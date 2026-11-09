@@ -31,6 +31,13 @@ research input; verify material claims before turning them into requirements.
 - Proceed autonomously on routine reversible work using the configured GSD
   workflow. Stop for material owner choices, unresolved rights, external
   publication, physical qualification or another explicit safety boundary.
+- **Autonomous operation (owner decision, 2026-11-09):** the owner has
+  delegated decision gates, public GitHub publication via `gh`, frequent
+  releases, keeping `main` green and PR triage. Unblock yourself by following
+  your own researched recommendations. The remaining hard stops, the fan-out
+  discuss protocol, the shift-left verification protocol, the CI efficiency
+  review and the release/hygiene steps are in `.planning/AUTONOMY.md`. Where
+  that file conflicts with the stop rule above, that file takes precedence.
 
 ## Engineering and evidence
 
