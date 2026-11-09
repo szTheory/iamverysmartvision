@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 1
 current_phase_name: Evidence, Profile and Rights Foundations
 status: executing
-stopped_at: Completed 01-02-PLAN.md
-last_updated: "2026-11-09T22:03:32.751Z"
+stopped_at: Completed 01-03-PLAN.md
+last_updated: "2026-11-09T22:13:08.594Z"
 last_activity: 2026-11-09
 last_activity_desc: Phase 1 execution started
-state_head: c07778af39d6c9ade5ff7760d5e543911f26c9de
+state_head: e6e684b4ea88faec687bc25fe50004d55487b1aa
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 14
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 1 (Evidence, Profile and Rights Foundations) — EXECUTING
-Plan: 4 of 14
+Plan: 5 of 14
 Status: Ready to execute
 Last activity: 2026-11-09 — Phase 1 execution started
 
@@ -55,6 +55,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 1 P01 | 30min | 2 tasks | 90 files |
 | Phase 1 P14 | 6min | 2 tasks | 1 files |
 | Phase 1 P02 | 35min | 3 tasks | 1 files |
+| Phase 01 P03 | 5min | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -70,6 +71,7 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 1]: 01-14: sources registry keeps community wiki and docs tree reference-only (no stable single-document hash); Blue Sky page re-hash matches research
 - [Phase 1]: C17 recorded resolved-primary from page-image reading of pdf 24, 46, 48, 62 (01-02)
 - [Phase 1]: Interrupt-entry (9 microcycles) and reset sequence counts in CP-1610 notes are inferred from timing-diagram time slots, not printed tables (01-02)
+- [Phase 01]: 01-03: opcode family table has 74 rows (below D-19's about 90: SDBD as attributes, aliases on one row, one jump row); NOPP transcribed as printed 7 cycles not 7/9; interruptible is no only where the page prints it, else manual-silent
 
 ### Pending Todos
 
@@ -98,6 +100,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-09T22:03:32.723Z
-Stopped at: Completed 01-02-PLAN.md
+Last session: 2026-11-09T22:13:08.575Z
+Stopped at: Completed 01-03-PLAN.md
 Resume file: None

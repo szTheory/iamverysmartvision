@@ -86,13 +86,13 @@ exit, until the gate is resolved by its named authority.
   3. The fixture-manifest schema (source, recipe/tool+version, digests, license, notices, allowed use, `redistributable`) and the no-copy provenance rule are in the review checklist. A sample `redistributable: unknown` entry is shown to be treated as non-redistributable.
   4. The CP-1610 reference notes give opcode encodings, cycle counts and the reset/interrupt sequence, each with a page citation to the directly read GI manual. They state whether the stack-direction reading (C17) is confirmed or still a logged conflict.
   5. A time-base glossary separates CPU cycle, input clock, STIC/PSG clocks and the crystal constant. D2 is recorded as an architecture decision with its rationale, for later code and docs to follow.
-**Plans:** 3/14 plans executed in 5 waves (walking skeleton: `.planning/phases/01-evidence-profile-and-rights-foundations/SKELETON.md`)
+**Plans:** 4/14 plans executed in 5 waves (walking skeleton: `.planning/phases/01-evidence-profile-and-rights-foundations/SKELETON.md`)
 
 Plans:
 **Wave 1**
 - [x] 01-01-PLAN.md — Walking skeleton: `sh tools/gate.sh`, generic record checker, profile record + tier vocabularies, control runner, CI workflow (wave 1)
 - [x] 01-02-PLAN.md — CP-1610 reference notes from GI manual page images; refs/ cache owner; image-derived C17 status (wave 1)
-- [ ] 01-03-PLAN.md — CP-1610 opcode family table transcription with throwaway 1024-pattern decode (wave 1)
+- [x] 01-03-PLAN.md — CP-1610 opcode family table transcription with throwaway 1024-pattern decode (wave 1)
 - [x] 01-14-PLAN.md — Reference-document registry `data/sources.json` (wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
@@ -249,7 +249,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Evidence, Profile and Rights Foundations | 3/14 | In Progress | - |
+| 1. Evidence, Profile and Rights Foundations | 4/14 | In Progress | - |
 | 2. CP-1610 CPU Core | 0/TBD | Not started | - |
 | 3. Memory Map, Content Loading and Refusal | 0/TBD | Not started | - |
 | 4. Headless Runner and Installed Consumer (Slice 0) | 0/TBD | Not started | - |
