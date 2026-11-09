@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 1
 current_phase_name: Evidence, Profile and Rights Foundations
 status: executing
-stopped_at: Completed 01-13-PLAN.md
-last_updated: "2026-11-09T22:58:22.165Z"
+stopped_at: Completed 01-09-PLAN.md
+last_updated: "2026-11-09T23:06:35.302Z"
 last_activity: 2026-11-09
 last_activity_desc: Phase 1 execution started
-state_head: 855f0652a6384b6df47bb446846b333dd84e6b4e
+state_head: 01719880b9e52a23a2715ad88b49425681a79286
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 14
-  completed_plans: 10
+  completed_plans: 11
   percent: 0
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 1 (Evidence, Profile and Rights Foundations) — EXECUTING
-Plan: 11 of 14
+Plan: 12 of 14
 Status: Ready to execute
 Last activity: 2026-11-09 — Phase 1 execution started
 
@@ -62,6 +62,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 1 P07 | 25min | 2 tasks | 41 files |
 | Phase 1 P08 | 25min | 2 tasks | 24 files |
 | Phase 1 P13 | 15min | 2 tasks | 12 files |
+| Phase 1 P09 | 25min | 2 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -86,6 +87,7 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 1]: 01-07: denylist stat named scanned= (not files=) to avoid clashing with the integrity step key; reference-only registry entries must carry null digests and a note mentioning hashing
 - [Phase 1]: 01-08: D-11 unit-suffix rule applies to duration/offset profile keys; ticks_per_X and X_per_Y ratio keys name their units and comply; enforced by the glossary step
 - [Phase 1]: 01-08: glossary success line uses doc-files= (text step already emits docs=)
+- [Phase 1]: 01-09: cite and sdbd regexes checked in the cp1610-row hook (DSL cannot hold spaces); no cycle value required so NOPP 7 passes; cp1610 step measured 0.7 s so decode stays in cmake -P
 
 ### Pending Todos
 
@@ -114,6 +116,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-09T22:58:22.130Z
-Stopped at: Completed 01-13-PLAN.md
+Last session: 2026-11-09T23:06:35.269Z
+Stopped at: Completed 01-09-PLAN.md
 Resume file: None
