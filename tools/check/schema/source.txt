@@ -1,0 +1,34 @@
+# Reference-document registry (D-15, D-12.8). Records are the elements of sources; ids are SRC-<slug>.
+# Every registry key has its own req line (presence plus type); nullable keys use TYPE|NULL.
+file data/sources.json
+topkeys schema_version note sources
+top schema_version NUMBER
+top note STRING
+top sources ARRAY
+array sources
+idkey id
+inventory data/expected/sources.ids
+keys id title url wayback accessed capture sha256 size_bytes pages rights authority_tier local_path note
+req id STRING
+req title STRING
+req url STRING
+req wayback STRING|NULL
+req accessed STRING
+req capture STRING
+req sha256 STRING|NULL
+req size_bytes NUMBER|NULL
+req pages NUMBER|NULL
+req rights STRING
+req authority_tier STRING
+req local_path STRING|NULL
+req note STRING
+nonblank title
+nonblank url
+nonblank note
+match id ^SRC-[a-z0-9-]+$
+match accessed ^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$
+match capture ^(hashed|reference-only)$
+match rights ^unknown$
+enumfrom authority_tier data/tiers.json source_authority_tags id
+match sha256 ^[0-9a-f]+$
+hook source

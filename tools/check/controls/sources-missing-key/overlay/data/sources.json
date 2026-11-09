@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "note": "Known-good control tree source registry.",
+  "sources": [
+    {
+      "id": "SRC-gi-cp1600-um-1975",
+      "title": "Example manual entry",
+      "url": "https://example.invalid/manual.pdf",
+      "wayback": null,
+      "accessed": "2026-11-09",
+      "capture": "hashed",
+      "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "size_bytes": 1000,
+      "pages": 10,
+      "rights": "unknown",
+      "authority_tier": "tier1-primary-doc",
+      "local_path": "refs/SRC-gi-cp1600-um-1975.pdf",
+      "note": "Example entry for the control tree."
+    },
+    {
+      "id": "SRC-gi-1980-catalog",
+      "title": "Example catalog entry",
+      "url": "https://example.invalid/catalog.pdf",
+      "wayback": null,
+      "accessed": "2026-11-09",
+      "capture": "hashed",
+      "sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+      "size_bytes": 2000,
+      "pages": 20,
+      "rights": "unknown",
+      "authority_tier": "tier1-primary-doc",
+      "local_path": "refs/SRC-gi-1980-catalog.pdf",
+      "note": "Example entry for the control tree."
+    },
+    {
+      "id": "SRC-bsr-2609",
+      "title": "Example web page entry",
+      "url": "https://example.invalid/page.html",
+      "wayback": null,
+      "accessed": "2026-11-09",
+      "capture": "hashed",
+      "sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+      "size_bytes": 3000,
+      "pages": null,
+      "authority_tier": "tier2-first-party-adjacent",
+      "local_path": "refs/SRC-bsr-2609.html",
+      "note": "Example entry for the control tree."
+    }
+  ]
+}

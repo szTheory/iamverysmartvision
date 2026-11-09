@@ -1,2 +1,10 @@
 # Owning plan 01-07: provenance controls.
 denylist-hit
+denylist-author-not-waivable
+denylist-cite-unwaived
+sources-bad-digest-format
+sources-unknown-ref
+sources-digest-mismatch
+sources-missing-key
+sources-local-path
+sources-reference-only-unexplained
