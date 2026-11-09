@@ -63,7 +63,7 @@ negative controls that prove each check fails for its intended reason.
 
 - Name form `<step>-<case>`; `_good` is reserved for the known-good tree `_good/tree/`.
 - Files: `CHECK` (one line: the step name), `EXPECT` (one token per line; every line must appear as a fixed substring of the step output), optional `FORBID` (no line may appear), optional `overlay/` (copied over a fresh copy of `_good/tree/`), optional `MAKE` (transform lines applied after the overlay).
-- `MAKE` verbs, one per line, paths relative to the temp tree: `delete <p>`, `empty <p>`, `write <p> <word>`, `rename <from> <to>`, `crlf <p>`, `bom <p>`, `nonascii <p>`, `homepath <p>`, `secret <p>`, `email <p>`. `homepath`, `secret` and `email` append a line whose bad text is assembled at run time from split pieces, so no tracked file ever contains a home path, a token shape or a foreign email. An unknown verb fails the control (`control-make-verb`).
+- `MAKE` verbs, one per line, paths relative to the temp tree: `delete <p>`, `empty <p>`, `write <p> <word>`, `rename <from> <to>`, `crlf <p>`, `bom <p>`, `nonascii <p>`, `homepath <p>`, `secret <p>`, `password <p>`, `email <p>`. `homepath`, `secret`, `password` and `email` append a line whose bad text is assembled at run time from split pieces, so no tracked file ever contains a home path, a token shape, a password assignment or a foreign email. An unknown verb fails the control (`control-make-verb`).
 - The runner builds the temp tree's `FILELIST` with `find` (not git), runs `ROOT=<tmp> FILELIST=<tmp list> CHECK_DIR=<real> sh tools/check/steps/<CHECK>.sh`, and requires nonzero exit AND every `EXPECT` line AND no `FORBID` line.
 - Positive control: every distinct `CHECK` step named by any control is run on the pristine `_good/tree` and must exit 0 and print `-- <step> pass`. Therefore every `_good/tree` fragment must pass every step (doc rules §7 included).
 - Runner tokens: `control-exit-zero`, `control-token-missing`, `control-forbidden-token`, `control-expect-blank` (an `EXPECT` with a blank line would match everything), `control-not-in-inventory`, `control-inventory-orphan`, `control-good-failed: <step>`, `control-unknown-step`, `control-make-verb`. The control-directory set must equal the union of `data/expected/controls/*.ids`.
@@ -85,9 +85,11 @@ One directive per line, `#` comments allowed. Key paths inside a record use `/` 
 | `req <key> <TYPE[\|TYPE]>` | Present with type (STRING NUMBER BOOLEAN NULL OBJECT ARRAY) | `<kind>-missing`, `<kind>-type` |
 | `nonblank <key>` | STRING non-empty after trim; OBJECT/ARRAY length > 0 | `<kind>-blank` |
 | `match <key> <cmake-regex>` | STRING value matches (skipped for NULL) | `<kind>-format` |
-| `enumfrom <key> <relpath> <arraykey> <idkey>` | Value is an id in another JSON file's array | `<kind>-unknown-ref` |
+| `enumfrom <key> <relpath> <arraykey> <idkey>` | Value is an id in another JSON file's array (skipped for NULL) | `<kind>-unknown-ref` |
 | `when <key>=<value> <directive...>` | Apply a directive only when a STRING key equals a value | as the inner directive |
 | `hook <kind>` | Include `tools/check/kinds/<kind>.cmake`; it defines `hook_record(id rec)` and `hook_finish()` | hook-defined |
+
+`keys` only rejects unknown keys; `match`, `enumfrom` and `nonblank` do not assert presence. Every required key of a kind therefore has its own `req` line (presence plus type; nullable keys use `TYPE|NULL`), and every record kind ships one negative control that removes a required key and expects `<kind>-missing: <id>/<key>`.
 
 Hooks may call `gate_fail(token detail)` and `gate_stat(key value)` from `tools/check/lib.cmake`. Single-file kinds only; multi-file records (fixture manifests) use a dedicated checker that includes `lib.cmake`.
 
@@ -104,6 +106,7 @@ Hooks may call `gate_fail(token detail)` and `gate_stat(key value)` from `tools/
 - `data/**`, `fixtures/**`, `tools/**`, `.github/**`: ASCII only (no byte outside tab, LF, 0x20-0x7E), LF only, no BOM, no empty files.
 - `docs/**`, `README.md`, `.planning/**`: UTF-8 allowed, LF only, no BOM.
 - Hex values in records are written `$1000` style strings; rationals as `{"num": N, "den": D}`.
+- Records under `data/` and `fixtures/` write manual sections as `S3.4.6` (never the section sign) and use ASCII substitutes for symbols (`!=`, `x`, `-`, `->`); the section sign, not-equal sign and arrows appear only in `docs/`.
 - CMake id regexes must not use `{n}`, `\b`, `\w`, `\s`, `\d` (they silently never match); write `[0-9][0-9][0-9][0-9]` instead of `[0-9]{4}`.
 
 ### §7 Doc and text rules (apply to every tracked file a plan writes)
@@ -117,7 +120,7 @@ Hooks may call `gate_fail(token detail)` and `gate_stat(key value)` from `tools/
   Write "crystal", "master tick", "CPU cycle", "CPU input clock", "STIC clock" or "PSG chip clock" instead of the bare word.
 - **R3 provenance denylist** (every tracked file outside `.planning/`, `.claude/`, `docs/provenance.md`, `docs/provenance/`, `data/sources.json`, `tools/check/`): author names and licence-header strings in `tools/check/denylist.txt` never appear; emulator project names in `tools/check/denylist-cite.txt` appear only on a line that also carries `[cite-only]`. Cite sources by their `SRC-<slug>` registry id instead of by name wherever possible.
 - **R4 no private paths**: no absolute home or scratch path in any tracked file, including SUMMARY.md files. Cite repo-relative paths or `../<sibling>` only. Reference PDFs, page renders and downloads live only under gitignored `refs/`.
-- Claims are cited as `[claim:CL-NNNN]`; sources as `SRC-<slug>`; manual pages as `§<section>, pdf <n>` (D-18) in docs and `pdf <n>` in records.
+- Claims are cited as `[claim:CL-NNNN]`; sources as `SRC-<slug>`; manual pages as `§<section>, pdf <n>` (D-18) in docs and `pdf <n>` (with `S<section>` when a section is needed) in records.
 - **R5 source references**: every token matching `SRC-[a-z0-9-]+` in `data/**/*.json` (other than `data/sources.json`), `docs/**/*.md` and `README.md` must be an id in `data/sources.json` (enforced by the `sources` step from plan 01-07). Write placeholders as `SRC-<slug>` (the `<` stops the match), never as `SRC-id`. Good-tree fragments under `tools/check/controls/_good/tree/` may cite only `SRC-gi-cp1600-um-1975`, `SRC-gi-1980-catalog` and `SRC-bsr-2609` (the ids registered in the good-tree registry).
 
 ### §8 Shell and CMake footguns (from 01-RESEARCH.md, all reproduced)

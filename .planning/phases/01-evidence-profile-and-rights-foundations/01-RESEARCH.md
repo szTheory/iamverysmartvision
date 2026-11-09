@@ -528,17 +528,23 @@ Not a rename or migration phase. The one migration-like action is the path scrub
 | A5 | The `ubuntu-24.04` pin is acceptable to the owner despite D-23 naming `ubuntu-latest` | CI | Cosmetic |
 | A6 | A weakest-field rule can be made mechanical via a `standing: provisional|established` claim field (REC, my design) | Claims | Planner may prefer another encoding; any works if the checker enforces D-09 |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Denylist scope (Pitfall 9.1).**
+1. **Denylist scope (Pitfall 9.1).** RESOLVED.
    - Known: CONTEXT excludes only `docs/provenance/` and `.planning/`; the docs and data legitimately name the emulators.
    - Unclear: owner intent for `docs/provenance.md` and `data/*.json`.
    - Recommendation: scan code and fixture paths only, plus the licence-header pattern anywhere outside `docs/provenance*` and `.planning/`. Record as a plan-level decision.
+   - RESOLVED: orchestrator resolution 1 sets the scope (everything tracked except `.planning/`, `docs/provenance.md`, `docs/provenance/`, `data/sources.json` and `tools/check/`); the planner adds `.claude/` because `.claude/CLAUDE.md` mirrors `.planning/research/STACK.md`. Author names and licence headers are never waivable; emulator project names need `[cite-only]` on the same line. Location: plan 01-07 `<context>` and Task 1; SKELETON.md §7 R3.
 2. **Pin `ubuntu-24.04` or keep `ubuntu-latest`?** Recommendation: pin now, revisit after 2026-11-19.
+   - RESOLVED: pin `ubuntu-24.04` (orchestrator resolution 5). Location: plan 01-01 Task 1 step 12 (workflow), SKELETON.md Architectural Decisions (CI row), plan 01-12 `CI-EFFICIENCY.md` decision to revisit the pin after 2026-11-19.
 3. **Private-first publication variant.** Default follows D-22 (public at creation). Planner may adopt the private-first variant to see CI green before exposure.
+   - RESOLVED: private-first variant rejected; the repository is created public directly, per D-22 and AUTONOMY.md section 1 (owner pre-authorized public publication), after the history rewrite and `tools/hygiene.sh --history` pass. Location: plan 01-12.
 4. **Where does the fixture-manifest schema document live?** CONTEXT D-07 lists no file. Recommendation: `docs/RIGHTS.md` carries the human text and `tools/check/schema/manifest.txt` the machine form; one real sample entry lives at `fixtures/FX-sample-rights-unknown/manifest.json` (`committed: false`, `redistributable: unknown`) so the real-tree gate is not vacuous, and a flipped copy (`committed: true`) is the control.
+   - RESOLVED: the schema document is `docs/fixture-manifest.md` (orchestrator resolution 7); `docs/RIGHTS.md` holds the rights policy and points to it; the machine form is the dedicated checker `tools/check/manifests.cmake` (multi-file kind, SKELETON.md §4); the sample entry and flipped-copy control are as recommended. Location: plan 01-06.
 5. **Empty inventories.** `fixtures/` legitimately has no real fixtures. Recommendation: `.ids` files accept `#allow-empty: <reason>`; any other empty inventory fails.
+   - RESOLVED: adopted as the inventory contract. Location: SKELETON.md §5 (`#allow-empty: <reason>`), implemented by `read_ids` in plan 01-01; the fixtures inventory is non-empty anyway because of the sample entry (plan 01-06).
 6. **AY-3-8914 datasheet.** A search found no primary datasheet (only 8910-family material and secondary mentions of a 4-level envelope and rearranged registers) [CITED: search results, LOW]. Keep C11 open and `psg.part` as tier 4. Time-boxed as PIT-18 requires.
+   - RESOLVED: no primary datasheet found (time-box spent); `psg.part` stays tier 4 with the datasheet recorded as none-found, per D-10, and C11 stays open. Location: plan 01-01 profile field `psg.part`; plan 01-04 discrepancy C11.
 
 ## Environment Availability
 
