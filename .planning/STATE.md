@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 1
 current_phase_name: Evidence, Profile and Rights Foundations
 status: executing
-stopped_at: Completed 01-04-PLAN.md
-last_updated: "2026-11-09T22:27:47.716Z"
+stopped_at: Completed 01-05-PLAN.md
+last_updated: "2026-11-09T22:33:24.080Z"
 last_activity: 2026-11-09
 last_activity_desc: Phase 1 execution started
-state_head: 35f22e1e0fd3c07ff1695eb1358eb5f6f3c53553
+state_head: b27af7e483dcd856247af196757726128c5028d4
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 14
-  completed_plans: 5
+  completed_plans: 6
   percent: 0
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 1 (Evidence, Profile and Rights Foundations) — EXECUTING
-Plan: 6 of 14
+Plan: 7 of 14
 Status: Ready to execute
 Last activity: 2026-11-09 — Phase 1 execution started
 
@@ -57,6 +57,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 1 P02 | 35min | 3 tasks | 1 files |
 | Phase 01 P03 | 5min | 3 tasks | 1 files |
 | Phase 01 P04 | 15min | 2 tasks | 18 files |
+| Phase 1 P05 | 20min | 2 tasks | 26 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 01]: 01-03: opcode family table has 74 rows (below D-19's about 90: SDBD as attributes, aliases on one row, one jump row); NOPP transcribed as printed 7 cycles not 7/9; interruptible is no only where the page prints it, else manual-silent
 - [Phase 01]: 01-04: C17 resolved-primary, C19 partial; notes candidates became C29-C35 (device-supplied reset PC is C32); log holds 35 entries
 - [Phase 01]: 01-04: open/partial default-policy prefix is checked in the discrepancy hook because the records DSL cannot hold a space in a regex
+- [Phase 1]: Claim ids are CL-NNNN, strictly ascending; only CL-0002 is established, claims resting on tier4-community, inference or unknown-default-chosen fields stay provisional
+- [Phase 1]: text step exempts only the literal placeholder CL-NNNN from claim-reference resolution
 
 ### Pending Todos
 
@@ -103,6 +106,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-09T22:27:47.677Z
-Stopped at: Completed 01-04-PLAN.md
+Last session: 2026-11-09T22:33:24.051Z
+Stopped at: Completed 01-05-PLAN.md
 Resume file: None
