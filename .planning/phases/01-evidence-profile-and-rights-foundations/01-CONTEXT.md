@@ -121,7 +121,7 @@ Not in scope:
   - Time slot TS1–TS4: four per CPU cycle.
   - STIC clock.
   - PSG chip clock.
-  - PSG step: 16 ticks [INF], to be verified in Phase 5.
+  - PSG step: 16 PSG chip clocks [INF]. Its master-tick equivalent is derived from `ticks_per_psg_clock` (2 × 16 = 32 ticks under the current default), consistent with the tier-4 tone formula F = crystal/(32·P). To be checked in Phase 5. (Corrected at plan-check iteration 3: the original draft said 16 ticks, which was unit-inconsistent.)
   - Frame (event).
   - The bare word "clock" is banned. Profile keys carry unit suffixes (`_ticks`, `_cpu_cycles`) and are converted once at load. Core internals, traces and goldens use ticks. A CPU-cycle convenience helper lives in the runner, not the core API. Wall-time and PCM conversion happen only in host adapters, with exact rational accumulators.
   - A named-fault control for unit swap and a "NTSC frame = 59,736 ticks = 14,934 cycles" check are queued for Phase 2.
