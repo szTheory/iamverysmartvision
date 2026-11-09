@@ -12,6 +12,7 @@ minus `createdAt`.
 | Date | Run id | Commit | Conclusion | Queue s | Setup s | Gate s | Total s |
 |------|--------|--------|------------|---------|---------|--------|---------|
 | 2026-11-09 | 42720541081 | a41281e | success | 4 | 2 | 6 | 16 |
+| 2026-11-09 | 42720666825 | 7c25c55 | success | 2 | 2 | 4 | 11 |
 
 ## Breakdown of the first run
 
