@@ -36,23 +36,23 @@ Not in scope:
 
 ### Gate decisions (delegated; record in PROJECT.md Decision Register)
 
-- **D-01 (D1: language and build):** C17 + CMake (floor 3.25, Presets v6) + Ninja + CTest, about 75% confidence. Rust stays the named alternative.
+- **D-01:** (D1: language and build) C17 + CMake (floor 3.25, Presets v6) + Ninja + CTest, about 75% confidence. Rust stays the named alternative.
   - Flip conditions: recurring UB found by UBSan or fuzzing despite the integer rules, Rust sanitizers reaching stable, or a Rust-first consumer.
   - Standard settings: `C_STANDARD 17`, `C_EXTENSIONS OFF`, hidden visibility, a hand-written public header.
   - Warnings: schwaystation's list with `-Werror` in the gate, plus `-ffp-contract=off`. The core uses no floats.
   - Tests: an in-repo harness of about 150 lines (no Unity) and an exact `tests/expected-tests.txt` inventory. Register tests via `include()`, per gabbaboy D-037.
   - Phase 1 only records this decision. Phase 2 builds it.
   - **Reversibility:** costly. The whole core, build and installed-consumer packaging depend on it.
-- **D-02 (D3: first profile):** a family-level profile `intv-2609-ntsc-family-p1` that models documented function. It does not pin a physical PCB revision. Per-field defaults are in D-10.
+- **D-02:** (D3: first profile) a family-level profile `intv-2609-ntsc-family-p1` that models documented function. It does not pin a physical PCB revision. Per-field defaults are in D-10.
   - Board-pinned profiles come later as new profile ids, for example `…-p2-owner-unit` once D10 measurement exists.
   - Aliases (Tandyvision One, GTE MC100, Sears) are recorded as `alias-candidate, unverified`. None is claimed.
-- **D-03 (D2: time base):** the canonical machine-time unit is the **master tick**, defined as one period of the profile's crystal.
+- **D-03:** (D2: time base) the canonical machine-time unit is the **master tick**, defined as one period of the profile's crystal.
   - Type: `uint64_t`, absolute since reset, origin 0.
   - The CPU cycle is a profile ratio, `ticks_per_cpu_cycle` (NTSC 4).
   - Contract: `run(target_tick)` returns `now_tick`, `overshoot_ticks` and a stop reason. A target above 2^63 is refused with an explicit stop reason.
   - The tick is a unit, not a stepping granularity. The CPU still advances in whole cycles under Option B catch-up scheduling, with no lockstep.
   - **Reversibility:** one-way once Phase 2 ships an API. The unit appears in the ABI, traces, save states and goldens, so changing it would break all of them.
-- **D-04 (D9: licence, visibility, name):**
+- **D-04:** (D9: licence, visibility, name)
   - Licence: **MIT**, copyright line `Copyright (c) 2026 iamverysmartvision contributors`. This matches the sibling convention (gabbaboy). Each new source file carries one `SPDX-License-Identifier: MIT` line; no REUSE tooling.
   - Visibility: the repo becomes **public on GitHub via `gh`** (`szTheory/iamverysmartvision`) at the end of this phase, only after the hygiene check (`.planning/AUTONOMY.md` §6) passes.
   - Name: keep `iamverysmartvision`. Never use "Intellivision" in a package or product name. The README carries a non-affiliation and trademark notice.
@@ -61,11 +61,11 @@ Not in scope:
 
 ### Record formats, layout and checks
 
-- **D-06 Format:** structured records are **JSON**. Prose lives in Markdown, and the checker never parses Markdown tables.
+- **D-06:** Format structured records are **JSON**. Prose lives in Markdown, and the checker never parses Markdown tables.
   - Why JSON: D1 = CMake means `cmake -P` with `string(JSON)` and `file(SHA256)` gives a zero-new-dependency, cross-platform checker on the toolchain the project needs anyway. It is sibling-proven (gabbaboy `VerifyFixtureManifest.cmake`), handles nested manifest fields naturally, and avoids awk dialect drift.
   - JSON has no comments, so records carry a `note` string field where needed.
   - Rejected alternatives: deb822 `.rec` + awk (dialect risk, second checker language); TOML/YAML (parser dependency); Markdown tables as source of truth (brittle).
-- **D-07 Layout.** These are project artifacts; `.planning/` remains GSD process state only.
+- **D-07:** Layout. These are project artifacts; `.planning/` remains GSD process state only.
   - `docs/`
     - `evidence-tiers.md`
     - `provenance.md` (no-copy rule plus review checklist)
@@ -86,7 +86,7 @@ Not in scope:
   - `tools/check/*.cmake`: generic checkers. Cap them small and prefer one generic record checker to many bespoke ones (lesson GB-CI-004: gabbaboy's gate grew to about 4,000 lines). Each `-P` script sets an explicit `cmake_policy` baseline.
   - `tools/check/controls/<name>/`: seeded bad trees plus an `EXPECT` failure-token file.
   - `refs/`: gitignored local cache for third-party PDFs. Tracking anything under it fails the gate.
-- **D-08 IDs:**
+- **D-08:** IDs
   - `C<n>` discrepancies: never reused; retired entries get `status: withdrawn` and are never deleted.
   - `CL-NNNN` claims: monotonic.
   - Profile slug, with dotted field paths (`stic.part`).
@@ -94,11 +94,11 @@ Not in scope:
   - `SRC-<slug>` sources.
   - Docs cite claims as `[claim:CL-0007]`.
   - The ID set must equal `data/expected/*.ids`, so removing an entry needs a visible inventory edit.
-- **D-09 Two distinct vocabularies.** Never conflate them.
+- **D-09:** Two distinct vocabularies. Never conflate them.
   - (a) **Source-authority tags** for profile fields and facts: `tier1-primary-doc`, `tier2-first-party-adjacent`, `tier3-service-hw`, `tier4-community`, `tier5-emulator-hint` (never evidence on its own), `inference`, `measured` (reserved for D10), `owner-decision` / `delegated-decision`, `unknown-default-chosen`.
   - (b) **Evidence tiers** for claims, the eight from REQUIREMENTS: source expectation, public vector, original diagnostic, independent-implementation comparison, measured hardware, deterministic repeatability, playable guest progress, installed-host behavior.
   - A claim lists the profile fields it depends on and cannot claim a higher standing than its weakest field. A value backed only by tier 5 must be `unknown-default-chosen`.
-- **D-10 Profile record:** one object per field, with keys `value`, `tag`, `cite`, `conflict` (C-id or null), `resolving_evidence`, `revisit_trigger` and `decision`. Blank values fail. Defaults:
+- **D-10:** Profile record one object per field, with keys `value`, `tag`, `cite`, `conflict` (C-id or null), `resolving_evidence`, `revisit_trigger` and `decision`. Blank values fail. Defaults:
   - `model`: "Mattel Intellivision Master Component, 2609 family" (tier2).
   - `board_revision`: `unspecified-2609-family` (unknown-default-chosen).
   - `region_video`: NTSC (tier1, GI 1980 STIC section).
@@ -113,7 +113,7 @@ Not in scope:
   - `power_on_fill` = `zero` for RAM, GRAM, STIC and PSG (unknown-default-chosen). The schema allows `zero | pattern(v) | seeded(algo,seed)`. A non-default fill is recorded in every run, report and snapshot. A fill-sensitivity matrix is noted for later phases.
   - `cartridge`: one slot, ROM-only 10-bit decles, no bank switching, cartridge RAM, ECS or IntelliVoice. Address windows come from the per-content descriptor, not the profile (unknown-default-chosen).
   - `system_images`: a required EXEC/GROM slot whose digest is bound at run time; a different digest means a different profile identity. Policy is pending D5 (unknown-default-chosen).
-- **D-11 Time-base glossary terms** (`docs/time-base.md`):
+- **D-11:** Time-base glossary terms (`docs/time-base.md`):
   - Crystal (master oscillator).
   - Master tick.
   - CPU cycle: equals the GI "micro cycle" and the unit of every manual cycle count and of 14,934 per frame.
@@ -125,7 +125,7 @@ Not in scope:
   - Frame (event).
   - The bare word "clock" is banned. Profile keys carry unit suffixes (`_ticks`, `_cpu_cycles`) and are converted once at load. Core internals, traces and goldens use ticks. A CPU-cycle convenience helper lives in the runner, not the core API. Wall-time and PCM conversion happen only in host adapters, with exact rational accumulators.
   - A named-fault control for unit swap and a "NTSC frame = 59,736 ticks = 14,934 cycles" check are queued for Phase 2.
-- **D-12 Gate and automated checks.** Run with `sh tools/gate.sh`. Phase 2 and later phases append build and CTest steps to the same script, and CI runs exactly this script. It prints a visible summary, for example `claims=n pending-resolvers=m unknown-fields=k controls=n/n`. Checks:
+- **D-12:** Gate and automated checks. Run with `sh tools/gate.sh`. Phase 2 and later phases append build and CTest steps to the same script, and CI runs exactly this script. It prints a visible summary, for example `claims=n pending-resolvers=m unknown-fields=k controls=n/n`. Checks:
   1. Every expected profile field exists with a known tag, non-empty value and cite; `unknown-default-chosen` requires `resolving_evidence`; D3 is cited.
   2. Discrepancies are set-equal to C1–C28, and each has a `default_policy` and a `resolver` (`test:`, `measurement:` or `pending:`). Pending resolvers are counted, not failed, in Phase 1.
   3. Claims resolve: the profile exists, the tier is known, and the artifact path exists. Every `[claim:…]` in `README.md` and `docs/` resolves.
@@ -148,7 +148,7 @@ Not in scope:
   - one positive good tree
 
   The control list is itself an exact inventory.
-- **D-13 Fixture-manifest schema** (`schema_version: 1`):
+- **D-13:** Fixture-manifest schema (`schema_version: 1`):
   - `id`
   - `kind`: `original-source | original-built | third-party-test | system-image | third-party-doc | derived-output`
   - `committed`: bool
@@ -175,7 +175,7 @@ Not in scope:
 
 ### Provenance and rights rules
 
-- **D-14 No-copy rule wording.** This goes into `docs/provenance.md` and the review checklist.
+- **D-14:** No-copy rule wording. This goes into `docs/provenance.md` and the review checklist.
   - Behavior, constants and tables come from cited tier 1–3 sources. Tier 4–5 sources are leads only. A tier-4/5-only value is `[UNK]` and enters code only as an explicit provisional item with an open evidence task.
   - Nothing from jzIntv, MAME or any emulator is copied, ported or paraphrased, whether by a human or an AI: no code, comments, identifiers, table layouts or file structure.
   - **GPL emulator source (jzIntv, FujiNet fork) is never opened, and no copy is kept in the workspace.** GPL documentation may be read as a tier-4 lead.
@@ -184,17 +184,17 @@ Not in scope:
   - The process is called "documented independent derivation", not "clean-room".
   - Review checklist: a `Source:` cite on every constant or table; consultations logged; no emulator identifiers; every binary listed in a manifest; any flip of `redistributable` to yes needs explicit review; nothing under `refs/`; spot-check one or two constants per PR against the cited page.
   - The checks catch accidents, not authorship (renaming evades the denylist). This limit must be stated honestly in the doc.
-- **D-15 Reference-document cache.** `refs/<SRC-id>.<ext>` is gitignored and excluded from CI caches and artifacts. Tracked `data/sources.json` records `id`, title, URL (plus Wayback if available), accessed date, sha256, size, `rights: unknown`, authority tier and local path. Quote only short phrases; paraphrase and cite. Hashes of single system images are allowed as facts; bulk ROM-hash databases from other projects are not.
+- **D-15:** Reference-document cache. `refs/<SRC-id>.<ext>` is gitignored and excluded from CI caches and artifacts. Tracked `data/sources.json` records `id`, title, URL (plus Wayback if available), accessed date, sha256, size, `rights: unknown`, authority tier and local path. Quote only short phrases; paraphrase and cite. Hashes of single system images are allowed as facts; bulk ROM-hash databases from other projects are not.
 
 ### CP-1610 reference notes
 
-- **D-16 Source.** The GI CP-1600 Microprocessor Users Manual, S16DOC-CP1600-04, May 1975 (bitsavers):
+- **D-16:** Source. The GI CP-1600 Microprocessor Users Manual, S16DOC-CP1600-04, May 1975 (bitsavers):
   - sha256 `ecdabe5c52b5e4429a40d1779d82315ab74bae9db00df774e605f8a882dc2b72`, 9,917,417 bytes, 116 pages.
   - It is a scanned image PDF whose OCR layer is damaged in tables (`DOD`, `lllO`).
   - A local copy (not in the repo) is at `<local-scratch>`. Executors should copy it to `refs/SRC-gi-cp1600-um-1975.pdf`, or re-download it with a browser UA and verify the sha256.
-- **D-17 Evidence rule.** Every encoding, cycle count and status-bit claim is read from the **page image** (`pdftoppm`). The OCR text is used only to find pages and for prose. A claim is `[OBS]` only if the image was read. The notes state that this is the CP-1600 manual applied to the CP-1610 [INF], and that electrical specifications are "Tentative".
-- **D-18 Citation form.** "§3.4.6, pdf 62". The scan has no printed page numbers. The sha256 is pinned once in the sources registry, and the notes say this once rather than inventing printed page numbers.
-- **D-19 Format and scope.**
+- **D-17:** Evidence rule. Every encoding, cycle count and status-bit claim is read from the **page image** (`pdftoppm`). The OCR text is used only to find pages and for prose. A claim is `[OBS]` only if the image was read. The notes state that this is the CP-1600 manual applied to the CP-1610 [INF], and that electrical specifications are "Tentative".
+- **D-18:** Citation form. "§3.4.6, pdf 62". The scan has no printed page numbers. The sha256 is pinned once in the sources registry, and the notes say this once rather than inventing printed page numbers.
+- **D-19:** Format and scope.
   - Markdown prose in `docs/cp1610/reference-notes.md`.
   - A hand-authored family-row table `data/cp1610/opcode-families.json` of about 90 rows: mnemonic, field pattern and mask/match, mode rules, base cycles plus modifiers, status bits, interruptible flag with cite or `manual-silent`, and a cite per row.
   - Content to cover:
@@ -205,8 +205,8 @@ Not in scope:
     - Interrupt sequence (pdf 25, 35).
     - Bus requests are honored before interrupts (pdf 25).
   - Page map: summary tables at pdf 53–58; addressing and stack at 46–49; formats at 50–52; state sequences at 21–25; timing diagrams at 26–37; interrupts at 75; start/stop at 74.
-- **D-20 Independence rule.** The family table is a coverage **inventory only**. Phase 2 test vectors are hand-derived per opcode from the cited manual page and carry their own cite; they are never generated from the table. Phase 1 ends with a second-reader pass that diffs the table against the page images, done by a separate agent. Named-fault controls such as wrong stack direction are queued for Phase 2.
-- **D-21 Conflict status to record.**
+- **D-20:** Independence rule. The family table is a coverage **inventory only**. Phase 2 test vectors are hand-derived per opcode from the cited manual page and carry their own cite; they are never generated from the table. Phase 1 ends with a second-reader pass that diffs the table against the page images, done by a separate agent. Named-fault controls such as wrong stack direction are queued for Phase 2.
+- **D-21:** Conflict status to record.
   - **C17: confirmed.** The stack grows upward, R6 post-increments on push and pre-decrements on pull (pdf 46, 62, 24). Recorded as `resolved-primary`.
   - **C19: partial.** The manual marks all shifts and EIS, DIS, TCI, CLRC and SETC non-interruptible (pdf 53, 56). It is silent on HLT, SDBD and MVO, so the wiki list is not corroborated; those stay open.
   - **New discrepancies to append (C29+):**
@@ -218,12 +218,12 @@ Not in scope:
 
 ### Publication and CI in this phase
 
-- **D-22 Publication.** This is the last step of the phase and must pass the gate.
+- **D-22:** Publication. This is the last step of the phase and must pass the gate.
   - Scrub absolute home paths (`~`) from tracked files: `.claude/CLAUDE.md` and `.planning/research/*.md` currently contain them. Use relative sibling names (for example `../gabbaboy`).
   - The history contains about 10 such occurrences and has never been published. The executor may rewrite unpublished history with built-in `git filter-branch`, adding no dependency, or accept the history. **Rewriting is preferred**, because the owner's rule is no PII in the public repo.
   - Then verify noreply author emails and no secrets, add `LICENSE` (MIT), add a `README.md` with a non-affiliation notice and evidence-bound wording, run `gh repo create szTheory/iamverysmartvision --public --source . --push`, and set `main` as the default branch.
-- **D-23 CI.** One GitHub Actions job on `ubuntu-latest` runs `sh tools/gate.sh`. It catches a distinct recurring failure class (evidence and rights drift) in about a second. Use `concurrency` with cancel-in-progress and no matrix. Create `.planning/CI-EFFICIENCY.md` on the first run (AUTONOMY §4). macOS is the local dev machine; a macOS CI leg is added only when the C build arrives.
-- **D-24 Release.** No software release this phase: there is no artifact yet, and GSD milestones are separate from versions. The first release candidate follows the first buildable artifact (Phase 2+), per AUTONOMY §5.
+- **D-23:** CI. One GitHub Actions job on `ubuntu-latest` runs `sh tools/gate.sh`. It catches a distinct recurring failure class (evidence and rights drift) in about a second. Use `concurrency` with cancel-in-progress and no matrix. Create `.planning/CI-EFFICIENCY.md` on the first run (AUTONOMY §4). macOS is the local dev machine; a macOS CI leg is added only when the C build arrives.
+- **D-24:** Release. No software release this phase: there is no artifact yet, and GSD milestones are separate from versions. The first release candidate follows the first buildable artifact (Phase 2+), per AUTONOMY §5.
 
 ### Claude's Discretion
 

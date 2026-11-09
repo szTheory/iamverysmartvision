@@ -89,19 +89,28 @@ exit, until the gate is resolved by its named authority.
 **Plans:** 14 plans in 5 waves (walking skeleton: `.planning/phases/01-evidence-profile-and-rights-foundations/SKELETON.md`)
 
 Plans:
+**Wave 1**
 - [ ] 01-01-PLAN.md — Walking skeleton: `sh tools/gate.sh`, generic record checker, profile record + tier vocabularies, control runner, CI workflow (wave 1)
 - [ ] 01-02-PLAN.md — CP-1610 reference notes from GI manual page images; refs/ cache owner; image-derived C17 status (wave 1)
 - [ ] 01-03-PLAN.md — CP-1610 opcode family table transcription with throwaway 1024-pattern decode (wave 1)
 - [ ] 01-14-PLAN.md — Reference-document registry `data/sources.json` (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 01-04-PLAN.md — Discrepancy log C1-C28 + C29+, checked, profile conflicts reconciled (wave 2)
 - [ ] 01-05-PLAN.md — Evidence-tiers doc, claim ledger, claim-language tripwire (wave 2)
 - [ ] 01-06-PLAN.md — Fixture-manifest schema (fail-closed), rights policy, tracked-file rights checks (wave 2)
 - [ ] 01-07-PLAN.md — Provenance rule + checklist, consultation log, denylist, source-registry check (wave 2)
 - [ ] 01-08-PLAN.md — Time-base glossary + D2, glossary step, decision-record cross-links (wave 2)
 - [ ] 01-13-PLAN.md — CI-parity step and control-runner self-test (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 01-09-PLAN.md — CP-1610 table checker: row schema, 1024-pattern coverage, C17 notes/log consistency, CL-0005 (wave 3)
 - [ ] 01-11-PLAN.md — Hygiene check (tree step + history tool), path scrub, README, LICENSE, clean-clone rehearsal (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 01-10-PLAN.md — Blind second-reader pass over the family table and the C17 stack pages (wave 4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
 - [ ] 01-12-PLAN.md — History rewrite, public repo via gh, first CI run, CI-EFFICIENCY.md (wave 5)
 
 ### Phase 2: CP-1610 CPU Core

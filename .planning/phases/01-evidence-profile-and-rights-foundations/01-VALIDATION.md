@@ -20,7 +20,7 @@ created: "2026-11-09"
 | Property | Value |
 |----------|-------|
 | **Framework** | None installed. A POSIX `sh` orchestrator runs `cmake -P` checkers and overlay-based negative controls |
-| **Config file** | None. Inventories live in `data/expected/*.ids` (controls: `data/expected/controls.ids`; gate steps: `data/expected/gate-steps.ids`) |
+| **Config file** | None. Inventories live in `data/expected/*.ids` plus the fragment directories `data/expected/controls/` and `data/expected/gate-steps/` (one fragment per owning plan; see SKELETON.md) |
 | **Quick run command** | `sh tools/gate.sh` |
 | **Full suite command** | `sh tools/gate.sh && dash tools/gate.sh` (publication adds `sh tools/hygiene.sh --history`) |
 | **Estimated runtime** | ~3 seconds |
@@ -32,13 +32,13 @@ created: "2026-11-09"
 - **After every task commit:** run `sh tools/gate.sh`.
 - **After every plan wave:** run `sh tools/gate.sh && dash tools/gate.sh`.
 - **Before `/gsd-verify-work`:** the gate must be green under both shells. Also required: `hygiene.sh --history` green, the gate green on a clean clone, and the first CI run green.
-- **Max feedback latency:** 10 seconds.
+- **Max feedback latency:** 10 seconds. Plan 01-11 re-measures with all controls; if over budget it falls back to parallel or batched control runs. If the cp1610 step alone exceeds 2 s, the 1024-pattern decode moves to a Phase 2 C test (D-12).
 
 ---
 
 ## Per-Task Verification Map
 
-Task IDs are bound once the plans exist. The table maps requirements to automated checks.
+There are 14 plans in 5 waves (01-01 to 01-14). Each task's `<automated>` verify plus `<fails_when>` is in its PLAN.md; all 46 commands pass the failing-direction probe. The table maps requirements to the gate steps that verify them.
 
 | Req / SC | Behavior | Test Type | Automated Command | File Exists | Status |
 |----------|----------|-----------|-------------------|-------------|--------|
@@ -60,8 +60,8 @@ Task IDs are bound once the plans exist. The table maps requirements to automate
 ## Wave 0 Requirements
 
 - [ ] `tools/gate.sh`, `tools/hygiene.sh`, `tools/check/*.cmake`, `tools/check/run-controls.sh`
-- [ ] `tools/check/controls/_good/` plus about 20 negative-control directories, with an exact `data/expected/controls.ids`
-- [ ] `data/expected/*.ids` inventories
+- [ ] `tools/check/controls/_good/` plus about 72 negative-control directories, with exact fragment inventories under `data/expected/controls/`
+- [ ] `data/expected/*.ids` inventories and `data/expected/gate-steps/` fragments
 - [ ] `.gitignore`, `LICENSE`, `README.md`, `.github/workflows/gate.yml`
 - [ ] No framework install is needed
 
