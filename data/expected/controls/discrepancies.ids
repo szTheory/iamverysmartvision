@@ -1,2 +1,7 @@
 discrepancies-missing-c17
 discrepancies-missing-key
+discrepancies-duplicate-id
+discrepancies-bad-resolver
+discrepancies-open-without-ukdc
+discrepancies-resolved-without-page
+profile-conflict-unknown-id

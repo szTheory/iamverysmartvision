@@ -3,6 +3,166 @@
   "note": "Discrepancy log (FND-03, D-21). Ids are never reused: a retired entry stays with status withdrawn. C1 to C28 are seeded from the research source-conflict table; C29 onward are appended from docs/cp1610/reference-notes.md. Open and partial entries state the default the project chose.",
   "discrepancies": [
     {
+      "id": "C1",
+      "topic": "STIC register-access window after the VBLANK interrupt",
+      "sources": "The community emulator documentation (SRC-community-emu-docs) gives about 2000 CPU cycles. The wiki (SRC-intv-wiki) gives about 2900. The community emulator's code constant and its own documentation differ from each other.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: the profile treats the window as a parameter and uses the shorter documented figure (about 2000 CPU cycles) as the conservative bound until the edges are probed.",
+      "resolver": "measurement: D10 owner-gated probe of the window edges by cycle count with an original diagnostic",
+      "evidence": "",
+      "note": "Seeded from the research source-conflict table."
+    },
+    {
+      "id": "C2",
+      "topic": "GROM/GRAM access window",
+      "sources": "Between about 3780 and 3790 CPU cycles per the community emulator documentation (SRC-community-emu-docs). About 3796 per the wiki (SRC-intv-wiki) and the community emulator code.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: the profile uses the shorter figure (about 3780 CPU cycles) as the conservative bound.",
+      "resolver": "measurement: D10 owner-gated probe of the window edges by cycle count with an original diagnostic",
+      "evidence": "",
+      "note": "Seeded from the research source-conflict table."
+    },
+    {
+      "id": "C3",
+      "topic": "Duration of the low period of the VBLANK interrupt line (INTRM)",
+      "sources": "The wiki (SRC-intv-wiki) states 3791 CPU cycles. The community emulator source holds 2907 CPU cycles, attributed there to a community measurement, with an alternate figure of 2920 commented out (SRC-community-emu-docs).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: the profile uses 3791 CPU cycles from the wiki and records 2907 as the alternate; no model behaviour depends on the figure until the interrupt hold is modelled.",
+      "resolver": "measurement: D10 owner-gated probe by cycle count; affects whether a CPU can miss the interrupt",
+      "evidence": "",
+      "note": "Seeded from the research source-conflict table."
+    },
+    {
+      "id": "C4",
+      "topic": "Bus request hold and bus acknowledge deadline",
+      "sources": "The wiki (SRC-intv-wiki) gives a hold of 114 CPU cycles with the CPU required to halt by about 57. The community emulator source gives 110 normally, 57 for the first and 44 for the fourteenth, with a must-acknowledge limit of 68 (SRC-community-emu-docs). A community note says the bus request was about one CPU cycle shorter in its experiments and lists the timing as unmeasured.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: the profile uses the wiki figures (114 and about 57 CPU cycles) and records the alternates.",
+      "resolver": "measurement: D10 owner-gated probe by cycle count",
+      "evidence": "",
+      "note": "Seeded from the research source-conflict table."
+    },
+    {
+      "id": "C5",
+      "topic": "Value read while a region is inaccessible",
+      "sources": "A community measurement on a different board (a STIC1A machine) reports $00FF for GROM and GRAM reads and random values for STIC registers. The community emulator source masks the address instead (SRC-community-emu-docs). A community author states unmapped reads return $FFFF; bus pull-ups are the likely mechanism.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: the value is a tagged profile parameter; unmapped reads return $FFFF and no value is claimed for inaccessible STIC or GROM/GRAM reads.",
+      "resolver": "pending: profile policy for inaccessible reads, then a diagnostic in the STIC phase",
+      "evidence": "",
+      "note": "Seeded from the research source-conflict table."
+    },
+    {
+      "id": "C6",
+      "topic": "Display-enable strobe",
+      "sources": "The wiki (SRC-intv-wiki) names $0020 the active display strobe, to be re-enabled every frame by a write. A comment in the permissive emulator driver attributes display enable to $21 (SRC-mame-intv); that comment was not opened in the research. Reads of $0021 switch the color-stack mode.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: $0020 is the display-enable strobe per the wiki reading, and a read of $0021 switches color-stack mode; both are tagged.",
+      "resolver": "measurement: D10 diagnostic on hardware later",
+      "evidence": "",
+      "note": "Seeded from the research source-conflict table."
+    },
+    {
+      "id": "C7",
+      "topic": "CPU cycles per NTSC frame",
+      "sources": "14,934 per the wiki (SRC-intv-wiki) and the community emulator documentation (SRC-community-emu-docs), consistent with 262 lines of 57 CPU cycles. The wiki also mentions 14394, which the research treats as a likely transposition. The cycles actually available vary with display enable and vertical delay (about 13,518 and 13,572 per the same documentation).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: 14,934 CPU cycles per nominal frame (59,736 master ticks) as profile data; the variation with display state is a model requirement and never a bare constant.",
+      "resolver": "pending: a tier 1 to 3 source for the frame geometry, or a measurement (D10)",
+      "evidence": "",
+      "note": "Seeded from the research source-conflict table. Profile fields scanlines_per_frame and cpu_cycles_per_scanline reference this entry."
+    },
+    {
+      "id": "C8",
+      "topic": "Unit naming for the 894,886 Hz rate",
+      "sources": "All sources agree on a rate of about 894,886 Hz. The community emulator documentation, the permissive emulator driver and the 2609 overview text call it the CPU clock or machine cycle rate (SRC-community-emu-docs, SRC-mame-intv, SRC-bsr-2609). The research reads the manufacturer datasheet cycle as two input-clock periods, implying a CPU input near 1.79 MHz, as inference.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: one CPU cycle is crystal divided by 4 (4 master ticks); the CPU input-clock question stays open and the numeric rate is agreed.",
+      "resolver": "pending: a schematic or measurement of the CPU input clock",
+      "evidence": "",
+      "note": "Seeded from the research source-conflict table. Profile field ticks_per_cpu_cycle references this entry."
+    },
+    {
+      "id": "C9",
+      "topic": "Crystal constant",
+      "sources": "3.579545 MHz appears in the documents and in the emulator sources; the exact colorburst value is 315/88 MHz, which differs by about 0.00001 percent (SRC-gi-1980-catalog, SRC-community-emu-docs).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: 3579545/1 Hz nominal crystal; the exact rational is recorded as inference only.",
+      "resolver": "measurement: D10 crystal frequency on owner hardware; or an explicit profile decision",
+      "evidence": "",
+      "note": "Seeded from the research source-conflict table. Profile field crystal_hz references this entry."
+    },
+    {
+      "id": "C10",
+      "topic": "Visible geometry and raw framebuffer",
+      "sources": "The 1980 catalog (SRC-gi-1980-catalog) states 159 x 96 visible positions for the -1 part and a 7-pixel 20th column; this is the strongest source. A 160-column nominal grid appears in SRC-bsr-2609. Other community material says the STIC1A shows a 160th column and quotes 192 vertical by 160 horizontal. Vertically, 192 active lines versus 96 pixel rows of 2 lines each.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: the profile holds the full nominal grid with a not-displayed marker so either reading is expressible, leaning to 159 visible columns from the tier 1 source.",
+      "resolver": "pending: D8 raw framebuffer definition",
+      "evidence": "",
+      "note": "Seeded from the research source-conflict table."
+    },
+    {
+      "id": "C11",
+      "topic": "PSG and STIC part identity",
+      "sources": "The PSG is named AY-3-8914 by SRC-bsr-2609 and the permissive emulator driver (SRC-mame-intv), while the 1980 catalog lists the AY-3-8910 as the sound generator of the 8900 system and no 8914 appears in the 1977, 1980 or 1982 catalogs (SRC-gi-1980-catalog, SRC-gi-1982-catalog). The STIC is the AY-3-8900-1 for NTSC per the 1980 catalog; other sources say AY-3-8900 or STIC1A.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: tier 4 AY-3-8914-class PSG with the Intellivision register map, and the AY-3-8900-1 STIC; the profile pins both parts.",
+      "resolver": "pending: a primary data sheet search for the PSG; die analysis or measurement otherwise",
+      "evidence": "",
+      "note": "Seeded from the research source-conflict table. Profile field psg.part references this entry."
+    },
+    {
+      "id": "C12",
+      "topic": "PSG behavior details",
+      "sources": "Tone period 0 is 4096 per the wiki through a summarizing fetch (SRC-intv-wiki), versus treated as 1 by many AY emulators. The envelope has 16 steps (AY-3-8910) versus 32 (YM2149, used by at least one emulator document). The noise shift register and DAC levels are unknown and 5-bit versus 6-bit volume variants differ. The 2-bit envelope select is noted as unusual for two of its values. A register-order list in the research covers only 14 of 16 addresses and is unverified.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: no PSG rule is frozen; period 0, envelope steps, noise and DAC levels are profile parameters tagged unknown-default-chosen until primary-documentation vectors exist.",
+      "resolver": "test: Phase 5 per-rule PSG vectors from primary documentation, pending a primary data sheet",
+      "evidence": "",
+      "note": "Seeded from the research source-conflict table."
+    },
+    {
+      "id": "C13",
+      "topic": "PAL timing",
+      "sources": "19,968 = 312 x 64 per the research, derived from the community emulator code and labelled inference (SRC-community-emu-docs). About 20,000 cycles, 312 lines and 8,840 to 8,850 elsewhere, with the community author marking several values as guesses. The 1980 catalog says the AY-3-8900 (not -1) is the CCIR part from a 4.000 MHz input (SRC-gi-1980-catalog).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: PAL stays out of the first profile; no PAL figure is asserted.",
+      "resolver": "pending: a PAL profile (v2) with tier 1 to 3 sources",
+      "evidence": "",
+      "note": "Seeded from the research source-conflict table."
+    },
+    {
+      "id": "C14",
+      "topic": "Controller core-input representation",
+      "sources": "One research file recommends a lossless logical state of 20 bits per controller with the core owning the control-to-electrical function. Two others recommend electrical state per port as core input (2 x 8 bits, 16, or 32 with the expansion) with the logical mapping on the host. They are incompatible on where the logical-to-electrical function lives.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: controllers are modelled by their electrical structure (active-low, bit clear when pressed) and no core-input representation is frozen before D6.",
+      "resolver": "pending: D6 owner and architecture decision, needed before the Phase 4 API skeleton",
+      "evidence": "",
+      "note": "Seeded from the research source-conflict table."
+    },
+    {
+      "id": "C15",
+      "topic": "Side-button count",
+      "sources": "Four physical buttons, three distinct electrical codes, with the top pair wired together (SRC-bsr-2609); the 3-bit action code counts three.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: four physical buttons map to three electrical codes; the research reads the sources as largely reconciled.",
+      "resolver": "pending: schematic or service manual confirmation (SRC-ifixit-2609-service-manual is not yet read)",
+      "evidence": "",
+      "note": "Seeded from the research source-conflict table."
+    },
+    {
+      "id": "C16",
+      "topic": "Controller pin matrix",
+      "sources": "A full pin table for the 16-direction disc, 12 keys and 3 side buttons comes from one archived community page, low confidence as extracted, with an apparent duplicate pin. The wiki gives only key codes ($7E for key 1, $5A for keys 1 and 9) and combination rules (SRC-intv-wiki). SRC-bsr-2609 gives code widths (disc 5-bit, action 3-bit, keypad 8-bit).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: no pin matrix is asserted; the two wiki key codes and the combination rules are the only controller test inputs.",
+      "resolver": "pending: a schematic or service manual; measurement D10 on owner hardware otherwise",
+      "evidence": "",
+      "note": "Seeded from the research source-conflict table."
+    },
+    {
       "id": "C17",
       "topic": "Stack direction and R6 behavior",
       "sources": "The community wiki (SRC-intv-wiki) is read as saying R6 auto-increments on indirect reads and auto-decrements on indirect writes, which is the reverse of the manual. A community transcription of the manual (SRC-community-emu-docs) agrees with the manual: post-increment on output (push), pre-decrement on input (pull), and its interrupts document has the stack growing upward. That transcription was damaged by character recognition, so the manual page images were read directly.",
@@ -11,6 +171,186 @@
       "resolver": "test: Phase 2 CPU-04 stack vectors and the wrong-stack-direction named-fault control",
       "evidence": "SRC-gi-cp1600-um-1975 S3.4.6, pdf 62; pdf 46; pdf 48; pdf 24. Read from page images in plan 01-02; see the Stack operations section of docs/cp1610/reference-notes.md.",
       "note": "Status equals the C17 status line of the reference notes. The manual describes the CP-1600; see the CP-1600 versus CP-1610 entry."
+    },
+    {
+      "id": "C18",
+      "topic": "Instruction count",
+      "sources": "86 in the 1980 catalog (SRC-gi-1980-catalog), 87 in the 1975 manual (SRC-gi-cp1600-um-1975), 1024 opcodes in SRC-bsr-2609, and 79 instructions in one low-confidence community tool.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: no count is asserted; the opcode-level table is the inventory.",
+      "resolver": "test: Phase 2 coverage inventory over the opcode-level table in data/cp1610/opcode-families.json",
+      "evidence": "",
+      "note": "Seeded from the research source-conflict table. The disagreement is a counting convention."
+    },
+    {
+      "id": "C19",
+      "topic": "Interruptibility of shifts and MVO",
+      "sources": "The wiki list (SRC-intv-wiki) marks HLT, SDBD, EIS, DIS, TCI, CLRC, SETC, shifts and all MVO as non-interruptible. The manual marks shifts and EIS, DIS, TCI, CLRC and SETC as not interruptable and says nothing about HLT, SDBD or MVO.",
+      "status": "partial",
+      "default_policy": "unknown-default-chosen: shifts and EIS, DIS, TCI, CLRC and SETC are non-interruptible per the manual; HLT, SDBD and MVO follow the wiki list until a vector shows otherwise.",
+      "resolver": "test: Phase 2 per-opcode interruptibility vectors",
+      "evidence": "SRC-gi-cp1600-um-1975 pdf 53 (shifts); pdf 56 (EIS, DIS, TCI, CLRC, SETC); HLT, SDBD and MVO are manual-silent on pdf 55, pdf 56 and pdf 57. See the Interruptibility section of docs/cp1610/reference-notes.md.",
+      "note": "Partial: the manual corroborates part of the community list and is silent on the rest."
+    },
+    {
+      "id": "C20",
+      "topic": "EXEC second half and RO-3-9504",
+      "sources": "The 1980 catalog calls the RO-3-9504 a cartridge ROM (SRC-gi-1980-catalog), while SRC-bsr-2609 and the permissive emulator driver use it as the second EXEC half (SRC-mame-intv). That driver's own comment on the EXEC halves is marked unclear between 0000 and 1000.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: the profile holds one EXEC/GROM slot supplied at run time and asserts no placement of the second half.",
+      "resolver": "pending: an EXEC image plus board evidence, owner-local",
+      "evidence": "",
+      "note": "Seeded from the research source-conflict table. Profile field system_images.exec_grom is related."
+    },
+    {
+      "id": "C21",
+      "topic": "GRAM extent and STIC decode range",
+      "sources": "GRAM is at $3800-$39FF mirrored at $3A00-$3FFF in some research files and $3800-$3AFF with a shadow to $3FFF in others. STIC registers are $0000-$007F in one file and respond at $00-$3F with decoding of $0000-$007F in others.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: GRAM at $3800-$39FF mirrored to $3FFF and STIC decode over $0000-$007F, both tagged and minor.",
+      "resolver": "test: Phase 3 memory-map decode diagnostic",
+      "evidence": "",
+      "note": "Seeded from the research source-conflict table."
+    },
+    {
+      "id": "C22",
+      "topic": "Fixture assembler",
+      "sources": "One research file recommends a pinned dev-time-only assembler from the GPL community fork (SRC-community-emu-docs) with a second assembler cross-check and a deferred project assembler. Another recommends a project-authored mini-assembler. Two more say either.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: no assembler is selected; Phase 1 needs none and CPU vectors are literal decle tables.",
+      "resolver": "pending: D4 owner decision (licence and architecture), needed before Phase 4",
+      "evidence": "",
+      "note": "Seeded from the research source-conflict table."
+    },
+    {
+      "id": "C23",
+      "topic": "Reference PCM location",
+      "sources": "One research file puts integer-only reference PCM decimation inside the core's observation layer, another derives host PCM outside the core, and a third says host resampling must stay out of the evidence path. All agree raw chip-rate output must be distinct from host PCM.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: raw chip-rate output is distinct from host PCM and the core derives no host PCM until D7 is decided.",
+      "resolver": "pending: D7 decision, needed before Phase 5",
+      "evidence": "",
+      "note": "Seeded from the research source-conflict table."
+    },
+    {
+      "id": "C24",
+      "topic": "CI shape",
+      "sources": "One research file recommends Linux gcc and clang with sanitizers, fuzz smoke if cheap, one macOS job and scheduled memory and thread sanitizer jobs. Another defers fuzzing and matrix growth until a failure class justifies them, and a third calls more than three required jobs a performance trap.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: one gate command and one CI job; matrix growth is deferred.",
+      "resolver": "pending: D12 decision in Phase 4",
+      "evidence": "",
+      "note": "Seeded from the research source-conflict table."
+    },
+    {
+      "id": "C25",
+      "topic": "Mini-EXEC and boot stub",
+      "sources": "One research file makes a mini-EXEC first-class from the first slice. Another labels it not an EXEC. A third warns against writing an EXEC replacement casually because its contract must be tested and its presence changes timing. A fourth calls the EXEC-less reset story an owner or profile question.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: no boot stub or EXEC replacement is built in Phase 1; the reset PC comes from the profile default.",
+      "resolver": "pending: D5 owner decision (open question 3), conditions in the Phase 4 plan",
+      "evidence": "",
+      "note": "Seeded from the research source-conflict table."
+    },
+    {
+      "id": "C26",
+      "topic": "Visible scenario timing",
+      "sources": "The project requires an early visible scenario, while the architecture research puts the playable step after the first slice. This is a sequencing question, not a factual conflict.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: the visible scenario stays in Phase 7 as the roadmap orders it.",
+      "resolver": "pending: roadmap sequencing, Phase 7 may move up after the first pass of Phase 6",
+      "evidence": "",
+      "note": "Seeded from the research source-conflict table."
+    },
+    {
+      "id": "C27",
+      "topic": "Mini-EXEC contract details",
+      "sources": "One research file has reset at $1000 and the interrupt service entry at $1004. Another adds dispatch at $1004 through a vector at $0100 and $0101 in double-byte form and a NOP at $1009 so a bus request can be serviced (SRC-community-emu-docs). A third says reset sets R7 to $1000 at low confidence. The sources are consistent on $1000 and $1004; the dispatch details come from one source.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: $1000 reset and $1004 interrupt entry are profile defaults for a configured EXEC; the dispatch details are unverified.",
+      "resolver": "test: boot-contract test against whichever EXEC is configured",
+      "evidence": "",
+      "note": "Seeded from the research source-conflict table. The reset PC question is carried by the device-supplied reset PC entry."
+    },
+    {
+      "id": "C28",
+      "topic": "Version and licence of the community emulator source",
+      "sources": "The GPL community fork is GPL-2.0 with a readme saying GPL v2 or later, and is based on a 2020-08-22 snapshot. The official page lists 20200712 as the current stable release and the upstream site was unreachable during research. A header in one example library is CC0 while its examples readme is GPL (SRC-community-emu-docs).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: no code, text or table is taken from the community emulator source; it is read for concepts only, after a licence review.",
+      "resolver": "pending: licence review before any reuse",
+      "evidence": "",
+      "note": "Seeded from the research source-conflict table."
+    },
+    {
+      "id": "C29",
+      "topic": "Branch cycle count printed 7/9 with no taken or not-taken label",
+      "sources": "The branch table prints 7/9 for the unconditional branch, for each condition row that carries a count, and for the external-condition branch, and prints a single 7 for the two-word NOPP form, with no label saying which figure applies when the branch is taken (SRC-gi-cp1600-um-1975). The one branch timing figure found shows only the fetch of the displacement and does not settle it.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: Phase 2 reads the first printed figure (7) as not taken and the second (9) as taken for rows that print 7/9, as a named policy; the manual does not state this.",
+      "resolver": "test: Phase 2 branch cycle vectors; a bus trace of taken and not-taken branches (D10) would settle it",
+      "evidence": "SRC-gi-cp1600-um-1975 pdf 54 (7/9 rows, NOPP prints 7); pdf 32 (displacement fetch only); S3.2.2, pdf 47. See the Branch timing section of docs/cp1610/reference-notes.md.",
+      "note": "Appended from the Discrepancy candidates section of docs/cp1610/reference-notes.md (D-21). Open item for Phase 2: the 7/9 column."
+    },
+    {
+      "id": "C30",
+      "topic": "Interrupt-entry cycle count is not tabulated",
+      "sources": "The manual gives the interrupt sequence as INTAK, NACT, DW, DWS, NACT, IAB, three NACT and then the first fetch address output, but the instruction summary tables carry no entry cycle count (SRC-gi-cp1600-um-1975).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: Phase 2 uses nine CPU cycles from counting the time-slot groups on the timing diagram, labelled inference and not a printed figure.",
+      "resolver": "test: Phase 2 interrupt-entry vectors; a bus trace of an interrupt acceptance (D10) would settle it",
+      "evidence": "SRC-gi-cp1600-um-1975 pdf 35 (timing diagram); pdf 53 to pdf 58 (no entry count tabulated); SC.6, pdf 24 and pdf 25. See the Interrupt sequence section of docs/cp1610/reference-notes.md.",
+      "note": "Appended from the Discrepancy candidates section of docs/cp1610/reference-notes.md (D-21)."
+    },
+    {
+      "id": "C31",
+      "topic": "The manual describes the CP-1600, not the CP-1610",
+      "sources": "The pages read describe the CP-1600 throughout and the electrical specifications section is headed Tentative (SRC-gi-cp1600-um-1975). The 1980 catalog lists the CP1610 used in the console (SRC-gi-1980-catalog).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: the manual's encodings, cycle counts and sequences are applied to the CP1610 as the nearest primary source, with the Tentative marking recorded.",
+      "resolver": "pending: a CP1610 datasheet page that states the same encodings, cycle counts and sequences",
+      "evidence": "SRC-gi-cp1600-um-1975 pdf 12; pdf 14; S2.4, pdf 38 (heading Tentative). See the Discrepancy candidates section of docs/cp1610/reference-notes.md.",
+      "note": "Appended from the Discrepancy candidates section of docs/cp1610/reference-notes.md (D-21)."
+    },
+    {
+      "id": "C32",
+      "topic": "Reset PC is supplied by a device over the bus through IAB, not by a fixed vector",
+      "sources": "The manual says the CPU inputs the starting address from the bus when MSYNC* is released, that the address may be user-defined or the default from the non-driven bus state, and that registers and status bits are undefined after initialization (SRC-gi-cp1600-um-1975). The profile's $1000 for R7 comes from community sources (SRC-community-emu-docs) and is not a manual fact.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: R7 is $1000 at reset as a profile default (field reset.r7), with other registers and flags zero, until the bus rule and the system image are decided.",
+      "resolver": "pending: Phase 2 boot-stub decision (D5); measurement: D10 reset read-back on owner hardware",
+      "evidence": "SRC-gi-cp1600-um-1975 SC.1, pdf 21; Fig. 2-6, pdf 22; pdf 27. See the Reset, MSYNC and IAB section of docs/cp1610/reference-notes.md.",
+      "note": "Appended from the Discrepancy candidates section of docs/cp1610/reference-notes.md (D-21). Profile fields reset.r7, reset.registers_other and reset.flags are the non-manual defaults."
+    },
+    {
+      "id": "C33",
+      "topic": "Shift mode-bit names do not match the shift mnemonic names for left shifts",
+      "sources": "The figure says A = 0 is logical or rotate, yet the SLL row is the pattern with B L A = 0 0 1, which is A = 1, while the SWAP row has A = 0 (SRC-gi-cp1600-um-1975).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: the shift table is taken as the operative statement and the figure names are not used to derive encodings.",
+      "resolver": "test: Phase 2 shift vectors read together with the figure and the table",
+      "evidence": "SRC-gi-cp1600-um-1975 S3.3.2, pdf 50; pdf 53. See the Discrepancy candidates section of docs/cp1610/reference-notes.md.",
+      "note": "Appended from the Discrepancy candidates section of docs/cp1610/reference-notes.md (D-21)."
+    },
+    {
+      "id": "C34",
+      "topic": "SDBD indirect cycle counts may or may not include the SDBD row",
+      "sources": "The manual prints a 4-cycle SDBD row followed by a 10-cycle instruction row for the indirect forms, against a single 14 for the immediate pairs (SRC-gi-cp1600-um-1975).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: Phase 2 adds the 4-cycle SDBD row to the printed instruction row and flags the total as ambiguous.",
+      "resolver": "test: Phase 2 SDBD cycle vectors; a worked example in the manual or a bus trace would settle it",
+      "evidence": "SRC-gi-cp1600-um-1975 pdf 57 (indirect SDBD table); pdf 58 (immediate pairs).",
+      "note": "Appended from the Discrepancy candidates section of docs/cp1610/reference-notes.md (D-21). Open item for Phase 2."
+    },
+    {
+      "id": "C35",
+      "topic": "Stop behavior wording differs between pages",
+      "sources": "One page says a stop request takes effect only after an interruptible instruction completes, while the start/stop section says after the completion of an instruction; the HLT row of the instruction table makes no statement (SRC-gi-cp1600-um-1975).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: the stop takes effect at the next instruction boundary, the wider wording, until the HLT row and a bus trace say otherwise.",
+      "resolver": "test: Phase 2 stop and halt vectors; a bus trace would settle it",
+      "evidence": "SRC-gi-cp1600-um-1975 pdf 14; S4.4, pdf 74; pdf 56. See the Start and stop section of docs/cp1610/reference-notes.md.",
+      "note": "Appended from the Discrepancy candidates section of docs/cp1610/reference-notes.md (D-21)."
     }
   ]
 }

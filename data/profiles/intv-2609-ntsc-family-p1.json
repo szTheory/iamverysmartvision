@@ -136,8 +136,8 @@
     "reset.r7": {
       "value": "$1000",
       "tag": "tier4-community",
-      "cite": "SRC-gi-cp1600-um-1975 pdf 21 (start PC is device-supplied over the bus); SRC-community-emu-docs",
-      "conflict": "C27",
+      "cite": "SRC-gi-cp1600-um-1975 SC.1, pdf 21 and pdf 27 (the start PC is device-supplied over the bus by IAB); SRC-community-emu-docs for the $1000 default",
+      "conflict": "C32",
       "resolving_evidence": "pending: Phase 2 boot-stub decision (D5)",
       "revisit_trigger": "at Phase 2 reset-vector design",
       "decision": null,
@@ -146,8 +146,8 @@
     "reset.registers_other": {
       "value": "zero",
       "tag": "unknown-default-chosen",
-      "cite": "SRC-gi-cp1600-um-1975: other registers are undefined at reset; zero is the chosen default",
-      "conflict": null,
+      "cite": "SRC-gi-cp1600-um-1975 SC.1, pdf 21: other registers are undefined at reset; zero is the chosen default",
+      "conflict": "C32",
       "resolving_evidence": "measurement: D10 reset read-back on owner hardware",
       "revisit_trigger": "when a source documents the reset state or a hardware read-back exists",
       "decision": null
@@ -155,8 +155,8 @@
     "reset.flags": {
       "value": "zero",
       "tag": "unknown-default-chosen",
-      "cite": "SRC-gi-cp1600-um-1975: flags are undefined at reset; zero is the chosen default",
-      "conflict": null,
+      "cite": "SRC-gi-cp1600-um-1975 SC.1, pdf 21: flags are undefined at reset; zero is the chosen default",
+      "conflict": "C32",
       "resolving_evidence": "measurement: D10 reset read-back on owner hardware",
       "revisit_trigger": "when a source documents the reset state or a hardware read-back exists",
       "decision": null

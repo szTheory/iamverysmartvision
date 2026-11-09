@@ -20,6 +20,7 @@ nonblank value
 enumfrom tag data/tiers.json source_authority_tags id
 nonblank cite
 match conflict ^C[0-9]+$
+enumfrom conflict data/discrepancies.json discrepancies id
 when tag=unknown-default-chosen nonblank resolving_evidence
 when tag=unknown-default-chosen nonblank revisit_trigger
 hook profile
