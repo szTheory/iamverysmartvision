@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 1
 current_phase_name: Evidence, Profile and Rights Foundations
 status: executing
-stopped_at: Completed 01-11-PLAN.md
-last_updated: "2026-11-09T23:13:19.123Z"
+stopped_at: Completed 01-10-PLAN.md
+last_updated: "2026-11-09T23:23:25.614Z"
 last_activity: 2026-11-09
 last_activity_desc: Phase 1 execution started
-state_head: 38481c4d64a8800f21cb860a6eb75a613e454625
+state_head: 4f8d9e591bd3768c783cba645e0ed5ce368ce16f
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 14
-  completed_plans: 12
+  completed_plans: 13
   percent: 0
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 1 (Evidence, Profile and Rights Foundations) — EXECUTING
-Plan: 13 of 14
+Plan: 14 of 14
 Status: Ready to execute
 Last activity: 2026-11-09 — Phase 1 execution started
 
@@ -64,6 +64,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 1 P13 | 15min | 2 tasks | 12 files |
 | Phase 1 P09 | 25min | 2 tasks | 15 files |
 | Phase 1 P01-11 | 40min | 2 tasks | 16 files |
+| Phase 1 P10 | 40min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -91,6 +92,7 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 1]: 01-09: cite and sdbd regexes checked in the cp1610-row hook (DSL cannot hold spaces); no cycle value required so NOPP 7 passes; cp1610 step measured 0.7 s so decode stays in cmake -P
 - [Phase 1]: 01-11: hygiene success line uses key hygiene-files (not files) to avoid a duplicate gate stat key; allow patterns anchored on grep -o output
 - [Phase 1]: 01-11: cmake line budget measured 2154 vs plan limit 1500; not shrunk, recorded as deviation for owner/orchestrator
+- [Phase 1]: 01-10: page-internal figure-vs-table differences (GSWD, RSWD, XOR@ printed form) are recorded as resolved second-reader entries; the family table is unchanged
 
 ### Pending Todos
 
@@ -119,6 +121,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-09T23:13:19.103Z
-Stopped at: Completed 01-11-PLAN.md
+Last session: 2026-11-09T23:23:20.353Z
+Stopped at: Completed 01-10-PLAN.md
 Resume file: None
