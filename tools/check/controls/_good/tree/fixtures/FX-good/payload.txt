@@ -1,0 +1,1 @@
+original fixture payload for the known-good tree

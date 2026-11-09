@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "FX-sample-rights-unknown",
+  "kind": "third-party-test",
+  "committed": true,
+  "path": null,
+  "local_path": "refs/FX-sample-rights-unknown.bin",
+  "source": {
+    "origin": "illustrative entry; no bytes exist",
+    "pin": null,
+    "accessed": null,
+    "holder": null
+  },
+  "recipe": null,
+  "inputs": [],
+  "outputs": [],
+  "licence": "NOASSERTION",
+  "licence_evidence": null,
+  "copyright": [],
+  "notices": [],
+  "redistributable": "unknown",
+  "allowed_use": ["local-test"],
+  "rights_review": {
+    "status": "unreviewed",
+    "by": null,
+    "date": null
+  },
+  "derived_from": [],
+  "note": "Demonstrates that redistributable unknown is treated as no: this entry must stay uncommitted and local-test only."
+}
