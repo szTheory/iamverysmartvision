@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "note": "Known-good control tree vocabularies.",
+  "source_authority_tags": [
+    {"id": "tier1-primary-doc", "meaning": "Manufacturer primary document.", "where_allowed": "profile fields"},
+    {"id": "tier2-first-party-adjacent", "meaning": "First-party-adjacent material.", "where_allowed": "profile fields"},
+    {"id": "unknown-default-chosen", "meaning": "Unknown; a default was chosen.", "where_allowed": "profile fields"}
+  ],
+  "evidence_tiers": [
+    {"id": "tier1-primary-doc", "meaning": "Expected value taken from a cited source.", "where_allowed": "claims"},
+    {"id": "deterministic-repeatability", "meaning": "Repeated runs give identical output.", "where_allowed": "claims"}
+  ]
+}

@@ -1,0 +1,2 @@
+write data/extra.json x
+empty data/extra.json

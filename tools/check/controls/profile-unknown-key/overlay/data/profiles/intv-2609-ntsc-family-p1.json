@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "good-profile",
+  "selected_by": "D3, a delegated decision recorded in the Decision Register",
+  "note": "Known-good control tree profile.",
+  "fields": {
+    "model": {
+      "value": "Example model",
+      "vaule": "x",
+      "tag": "tier2-first-party-adjacent",
+      "cite": "SRC-bsr-2609",
+      "conflict": null,
+      "resolving_evidence": null,
+      "revisit_trigger": null,
+      "decision": null
+    },
+    "stic.part": {
+      "value": "Example STIC",
+      "tag": "tier1-primary-doc",
+      "cite": "SRC-gi-1980-catalog pdf 191",
+      "conflict": null,
+      "resolving_evidence": null,
+      "revisit_trigger": null,
+      "decision": null
+    },
+    "board_revision": {
+      "value": "unspecified",
+      "tag": "unknown-default-chosen",
+      "cite": "none: example default",
+      "conflict": null,
+      "resolving_evidence": "pending: example evidence",
+      "revisit_trigger": "when example evidence exists",
+      "decision": null
+    }
+  }
+}
