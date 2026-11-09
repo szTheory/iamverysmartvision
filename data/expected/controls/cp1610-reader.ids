@@ -1,0 +1,4 @@
+# Negative controls for the cp1610-reader step (plan 01-10).
+cp1610-reader-missing-id
+cp1610-reader-resolved-without-note
+cp1610-reader-missing-key

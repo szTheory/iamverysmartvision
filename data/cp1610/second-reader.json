@@ -1,0 +1,1065 @@
+{
+  "schema_version": 1,
+  "reader": "independent agent pass, plan 01-10, blind per page",
+  "method": "render the page image with pdftoppm, extract every field blind into a scratch file before opening the table, mechanical diff of the listed fields, sharper 200 dpi re-read of every disagreement",
+  "c17_reading": "agree: pdf 24, 46, 62",
+  "rows": [
+    {
+      "id": "HLT",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 56",
+      "note": ""
+    },
+    {
+      "id": "SDBD",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 57",
+      "note": ""
+    },
+    {
+      "id": "EIS",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 56",
+      "note": ""
+    },
+    {
+      "id": "DIS",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 56",
+      "note": ""
+    },
+    {
+      "id": "J",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 56",
+      "note": ""
+    },
+    {
+      "id": "TCI",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 56",
+      "note": ""
+    },
+    {
+      "id": "CLRC",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 56",
+      "note": ""
+    },
+    {
+      "id": "SETC",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 56",
+      "note": ""
+    },
+    {
+      "id": "INCR",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 53",
+      "note": ""
+    },
+    {
+      "id": "DECR",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 53",
+      "note": ""
+    },
+    {
+      "id": "COMR",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 53",
+      "note": ""
+    },
+    {
+      "id": "NEGR",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 53",
+      "note": ""
+    },
+    {
+      "id": "ADCR",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 53",
+      "note": ""
+    },
+    {
+      "id": "GSWD",
+      "verdict": "resolved",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 56",
+      "note": "printed: pdf 51 fig 3.3.3 shows the generic single-register field DDD while the instruction table row on pdf 56 shows 0DD; both re-read from 200 dpi crops; winner 0DD (pdf 56 instruction table; the pdf 51 footnote limits true GSWD to R0-R3); table unchanged."
+    },
+    {
+      "id": "NOP",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 56",
+      "note": ""
+    },
+    {
+      "id": "SIN",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 56",
+      "note": ""
+    },
+    {
+      "id": "RSWD",
+      "verdict": "resolved",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 56",
+      "note": "printed: pdf 51 fig 3.3.3 shows the generic single-register field DDD while the instruction table row on pdf 56 shows SSS; both re-read from 200 dpi crops; winner SSS (pdf 56 instruction table, the register is the source); table unchanged."
+    },
+    {
+      "id": "SWAP",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 53",
+      "note": ""
+    },
+    {
+      "id": "SLL",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 53",
+      "note": ""
+    },
+    {
+      "id": "RLC",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 53",
+      "note": ""
+    },
+    {
+      "id": "SLLC",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 53",
+      "note": ""
+    },
+    {
+      "id": "SLR",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 53",
+      "note": ""
+    },
+    {
+      "id": "SAR",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 53",
+      "note": ""
+    },
+    {
+      "id": "RRC",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 53",
+      "note": ""
+    },
+    {
+      "id": "SARC",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 53",
+      "note": ""
+    },
+    {
+      "id": "MOVR",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 53",
+      "note": ""
+    },
+    {
+      "id": "TSTR",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 53",
+      "note": ""
+    },
+    {
+      "id": "JR",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 53",
+      "note": ""
+    },
+    {
+      "id": "ADDR",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 53",
+      "note": ""
+    },
+    {
+      "id": "SUBR",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 53",
+      "note": ""
+    },
+    {
+      "id": "CMPR",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 53",
+      "note": ""
+    },
+    {
+      "id": "ANDR",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 53",
+      "note": ""
+    },
+    {
+      "id": "XORR",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 53",
+      "note": ""
+    },
+    {
+      "id": "CLRR",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 53",
+      "note": ""
+    },
+    {
+      "id": "B",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 54",
+      "note": ""
+    },
+    {
+      "id": "BC",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 54",
+      "note": ""
+    },
+    {
+      "id": "BOV",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 54",
+      "note": ""
+    },
+    {
+      "id": "BPL",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 54",
+      "note": ""
+    },
+    {
+      "id": "BZE",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 54",
+      "note": ""
+    },
+    {
+      "id": "BLT",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 54",
+      "note": ""
+    },
+    {
+      "id": "BLE",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 54",
+      "note": ""
+    },
+    {
+      "id": "BUSC",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 54",
+      "note": ""
+    },
+    {
+      "id": "NOPP",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 54",
+      "note": ""
+    },
+    {
+      "id": "BNC",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 54",
+      "note": ""
+    },
+    {
+      "id": "BNOV",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 54",
+      "note": ""
+    },
+    {
+      "id": "BMI",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 54",
+      "note": ""
+    },
+    {
+      "id": "BNZE",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 54",
+      "note": ""
+    },
+    {
+      "id": "BGE",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 54",
+      "note": ""
+    },
+    {
+      "id": "BGT",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 54",
+      "note": ""
+    },
+    {
+      "id": "BESC",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 54",
+      "note": ""
+    },
+    {
+      "id": "BEXT",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 54",
+      "note": ""
+    },
+    {
+      "id": "MVO@",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 55",
+      "note": ""
+    },
+    {
+      "id": "MVO",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible",
+        "sdbd"
+      ],
+      "pdf": "pdf 55",
+      "note": ""
+    },
+    {
+      "id": "PSHR",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible",
+        "sdbd"
+      ],
+      "pdf": "pdf 55",
+      "note": ""
+    },
+    {
+      "id": "MVOI",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible"
+      ],
+      "pdf": "pdf 57",
+      "note": ""
+    },
+    {
+      "id": "MVI@",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible",
+        "sdbd"
+      ],
+      "pdf": "pdf 55",
+      "note": ""
+    },
+    {
+      "id": "MVI",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible",
+        "sdbd"
+      ],
+      "pdf": "pdf 55",
+      "note": ""
+    },
+    {
+      "id": "PULR",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible",
+        "sdbd"
+      ],
+      "pdf": "pdf 55",
+      "note": ""
+    },
+    {
+      "id": "MVII",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible",
+        "sdbd"
+      ],
+      "pdf": "pdf 57",
+      "note": ""
+    },
+    {
+      "id": "ADD@",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible",
+        "sdbd"
+      ],
+      "pdf": "pdf 55",
+      "note": ""
+    },
+    {
+      "id": "ADD",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible",
+        "sdbd"
+      ],
+      "pdf": "pdf 55",
+      "note": ""
+    },
+    {
+      "id": "ADDI",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible",
+        "sdbd"
+      ],
+      "pdf": "pdf 57",
+      "note": ""
+    },
+    {
+      "id": "SUB@",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible",
+        "sdbd"
+      ],
+      "pdf": "pdf 55",
+      "note": ""
+    },
+    {
+      "id": "SUB",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible",
+        "sdbd"
+      ],
+      "pdf": "pdf 55",
+      "note": ""
+    },
+    {
+      "id": "SUBI",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible",
+        "sdbd"
+      ],
+      "pdf": "pdf 57",
+      "note": ""
+    },
+    {
+      "id": "CMP@",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible",
+        "sdbd"
+      ],
+      "pdf": "pdf 55",
+      "note": ""
+    },
+    {
+      "id": "CMP",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible",
+        "sdbd"
+      ],
+      "pdf": "pdf 55",
+      "note": ""
+    },
+    {
+      "id": "CMPI",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible",
+        "sdbd"
+      ],
+      "pdf": "pdf 57",
+      "note": ""
+    },
+    {
+      "id": "AND@",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible",
+        "sdbd"
+      ],
+      "pdf": "pdf 55",
+      "note": ""
+    },
+    {
+      "id": "AND",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible",
+        "sdbd"
+      ],
+      "pdf": "pdf 55",
+      "note": ""
+    },
+    {
+      "id": "ANDI",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible",
+        "sdbd"
+      ],
+      "pdf": "pdf 57",
+      "note": ""
+    },
+    {
+      "id": "XOR@",
+      "verdict": "resolved",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible",
+        "sdbd"
+      ],
+      "pdf": "pdf 55",
+      "note": "printed: pdf 55 prints 1111 MMM DDD while the double byte section on pdf 57 prints 111 MMM DDD (one digit short); both re-read from 200 dpi crops; winner 1111 (pdf 55, same width as the sibling rows); table unchanged."
+    },
+    {
+      "id": "XOR",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible",
+        "sdbd"
+      ],
+      "pdf": "pdf 55",
+      "note": ""
+    },
+    {
+      "id": "XORI",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words",
+        "cycles_printed",
+        "cycle_modifiers",
+        "status_bits",
+        "interruptible",
+        "sdbd"
+      ],
+      "pdf": "pdf 57",
+      "note": ""
+    }
+  ]
+}

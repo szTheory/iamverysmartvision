@@ -274,3 +274,23 @@ The check catches encoding transcription errors: a wrong pattern, a missing row 
 It does not check cycle counts, status bits or interruptibility, which are read from the page images and are only checked for presence.
 The same step checks that the C17 status in the discrepancy log equals the `C17 status:` line above.
 Phase 2 test vectors are hand-derived from the cited manual pages and are never generated from this table.
+
+## Second-reader pass
+
+A separate agent re-read the family table pages from the page images before opening the first reader's values (decision D-20).
+The pass covered `§3.3, pdf 50` to `§3.3.5, pdf 52` and the instruction set pages `pdf 53` to `pdf 58`, plus the three stack pages `pdf 24`, `pdf 46` and `pdf 62`.
+For each page the agent rendered it with `pdftoppm`, wrote every printed field to a scratch file, and only then compared that file with the table by a throwaway script.
+The fields were the printed encoding, word count, cycles as printed, cycle modifiers, status bits, interruptibility and, on `pdf 57` and `pdf 58`, the SDBD form.
+Every disagreement was re-read from a 200 dpi crop of the page, and the winning reading and page were recorded.
+The verdicts are in `data/cp1610/second-reader.json`, one entry per row id, and the `cp1610-reader` gate step enforces id parity with the family table.
+Result: 74 rows read, 71 agreed and 3 resolved, with no change to any table row.
+The three resolved entries are page-internal differences, not table errors.
+GSWD and RSWD print the generic field DDD in the format figure on `pdf 51` and 0DD and SSS in the instruction table on `pdf 56`; the table follows the instruction table.
+XOR@ prints 1111 in the indirect section on `pdf 55` and a one-digit-short 111 in the double byte section on `pdf 57`; the table follows `pdf 55`.
+The ADD@ SDBD prefix is also printed with a three-digit first group on `pdf 57`; the table does not carry the prefix text, so no entry was needed.
+The stack pages `pdf 24`, `pdf 46` and `pdf 62` were read blind for push order, pull order and growth direction, and the reading agreed with the Stack operations section and the `C17 status:` line.
+Limits of this pass:
+- The second reader is the same model family as the first, so a misreading that both readers share is still possible.
+- The decode check covers encodings only; cycles, status bits and interruptibility rest on the two readings alone.
+- Agreement of two readings is not proof that a cite matches the page; the residual risk is recorded here for agent review.
+- The manual describes the CP-1600, and its electrical data are marked Tentative, so the CP-1610 reading in this table is an inference from it.

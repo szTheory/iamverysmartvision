@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "reader": "known-good control tree reader file",
+  "method": "control tree fixture",
+  "c17_reading": "agree: pdf 62",
+  "rows": [
+    {
+      "id": "ALL",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words"
+      ],
+      "pdf": "pdf 53",
+      "note": ""
+    },
+    {
+      "id": "ZERO",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words"
+      ],
+      "pdf": "pdf 53",
+      "note": ""
+    },
+    {
+      "id": "ONES",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words"
+      ],
+      "pdf": "pdf 53",
+      "note": ""
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+# Second-reader verdicts for the CP-1610 family table (FND-06, D-20). Records are the elements of rows;
+# ids are the table's row ids, so the reader file shares the table's inventory (id parity).
+# A schema regex cannot hold a space (the DSL splits lines on whitespace), so the `pdf <n>` form of
+# the pdf key and the `agree: ` or `resolved: ` form of c17_reading are checked by the hook.
+file data/cp1610/second-reader.json
+topkeys schema_version reader method c17_reading rows
+top schema_version NUMBER
+top reader STRING
+top method STRING
+top c17_reading STRING
+top rows ARRAY
+array rows
+idkey id
+inventory data/expected/cp1610-rows.ids
+keys id verdict fields_checked pdf note
+req id STRING
+req verdict STRING
+req fields_checked ARRAY
+req pdf STRING
+req note STRING
+match verdict ^(agree|resolved)$
+nonblank fields_checked
+when verdict=resolved nonblank note
+hook second-reader
