@@ -1,3 +1,8 @@
 # Negative controls for the cp1610 step (plan 01-09).
 cp1610-coverage-missing-row
 cp1610-row-missing-key
+cp1610-misread-pattern
+cp1610-overlap-without-refines
+cp1610-row-without-cite
+cp1610-empty-table
+cp1610-c17-inconsistent

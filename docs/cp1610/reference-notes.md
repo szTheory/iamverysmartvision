@@ -262,3 +262,15 @@ Plan 01-04 turns these into numbered log entries; no C numbers are assigned here
 - Per-opcode interruptibility for HLT, SDBD and MVO: the manual is silent (`pdf 55`; `pdf 56`; `pdf 57`), recorded under C19 as partial.
 - Whether INTFF is cleared on interrupt acceptance: not stated on `pdf 12`, `pdf 24` or `pdf 25`.
 - Whether the printed 10 for SDBD indirect forms includes the SDBD row (`pdf 57`).
+
+## Decode coverage
+
+The family table `data/cp1610/opcode-families.json` is checked by the `cp1610` gate step on every run.
+The checker result line is `patterns=1024 unclaimed=0 ambiguous=0 coincidences=1`: every 10-bit decle pattern maps to exactly one most-specific row. [claim:CL-0005]
+The one coincidence is 0010 111 111, which is TSTR R7, JR R7 and MOVR R7,R7; the table declares it with `also_encodes` and explains it in the TSTR and JR row notes.
+The table has 74 rows, below the earlier estimate of about 90, because SDBD forms are attributes of the memory rows, branch aliases share one row and the jump family is one first-decle row.
+Declared `refines` links let a specific row (for example TSTR) sit inside a general one (MOVR) without counting as an overlap.
+The check catches encoding transcription errors: a wrong pattern, a missing row or an undeclared overlap fails the gate.
+It does not check cycle counts, status bits or interruptibility, which are read from the page images and are only checked for presence.
+The same step checks that the C17 status in the discrepancy log equals the `C17 status:` line above.
+Phase 2 test vectors are hand-derived from the cited manual pages and are never generated from this table.

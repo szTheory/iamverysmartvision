@@ -41,6 +41,16 @@
       "depends_on": ["cpu.part"],
       "standing": "provisional",
       "note": "This records what the manual pages say (C19 partial). Whether the silent cases are interruptible on the CP1610 is unresolved, and applying the CP-1600 manual to the CP1610 is an inference logged as C31."
+    },
+    {
+      "id": "CL-0005",
+      "statement": "Every one of the 1024 10-bit opcode decle patterns maps to exactly one most-specific row of the CP-1610 family table, with one documented coincidence (0010 111 111: TSTR R7, JR R7 and MOVR R7,R7).",
+      "profile": "intv-2609-ntsc-family-p1",
+      "tier": "source-expectation",
+      "artifact": "data/cp1610/opcode-families.json",
+      "depends_on": ["cpu.part"],
+      "standing": "provisional",
+      "note": "The table is transcribed from the CP-1600 manual page images and the coverage check proves the rows tile the decle space, not that any encoding, cycle count or status bit was read correctly. Applying the CP-1600 manual to the CP1610 is an inference logged as C31, so the claim stays provisional."
     }
   ]
 }
