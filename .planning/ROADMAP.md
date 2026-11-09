@@ -86,7 +86,7 @@ exit, until the gate is resolved by its named authority.
   3. The fixture-manifest schema (source, recipe/tool+version, digests, license, notices, allowed use, `redistributable`) and the no-copy provenance rule are in the review checklist. A sample `redistributable: unknown` entry is shown to be treated as non-redistributable.
   4. The CP-1610 reference notes give opcode encodings, cycle counts and the reset/interrupt sequence, each with a page citation to the directly read GI manual. They state whether the stack-direction reading (C17) is confirmed or still a logged conflict.
   5. A time-base glossary separates CPU cycle, input clock, STIC/PSG clocks and the crystal constant. D2 is recorded as an architecture decision with its rationale, for later code and docs to follow.
-**Plans:** 11/14 plans executed in 5 waves (walking skeleton: `.planning/phases/01-evidence-profile-and-rights-foundations/SKELETON.md`)
+**Plans:** 12/14 plans executed in 5 waves (walking skeleton: `.planning/phases/01-evidence-profile-and-rights-foundations/SKELETON.md`)
 
 Plans:
 **Wave 1**
@@ -105,7 +105,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 - [x] 01-09-PLAN.md — CP-1610 table checker: row schema, 1024-pattern coverage, C17 notes/log consistency, CL-0005 (wave 3)
-- [ ] 01-11-PLAN.md — Hygiene check (tree step + history tool), path scrub, README, LICENSE, clean-clone rehearsal (wave 3)
+- [x] 01-11-PLAN.md — Hygiene check (tree step + history tool), path scrub, README, LICENSE, clean-clone rehearsal (wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 01-10-PLAN.md — Blind second-reader pass over the family table and the C17 stack pages (wave 4)
@@ -249,7 +249,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Evidence, Profile and Rights Foundations | 11/14 | In Progress | - |
+| 1. Evidence, Profile and Rights Foundations | 12/14 | In Progress | - |
 | 2. CP-1610 CPU Core | 0/TBD | Not started | - |
 | 3. Memory Map, Content Loading and Refusal | 0/TBD | Not started | - |
 | 4. Headless Runner and Installed Consumer (Slice 0) | 0/TBD | Not started | - |

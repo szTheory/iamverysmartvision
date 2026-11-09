@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 1
 current_phase_name: Evidence, Profile and Rights Foundations
 status: executing
-stopped_at: Completed 01-09-PLAN.md
-last_updated: "2026-11-09T23:06:35.302Z"
+stopped_at: Completed 01-11-PLAN.md
+last_updated: "2026-11-09T23:13:19.123Z"
 last_activity: 2026-11-09
 last_activity_desc: Phase 1 execution started
-state_head: 01719880b9e52a23a2715ad88b49425681a79286
+state_head: 38481c4d64a8800f21cb860a6eb75a613e454625
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 14
-  completed_plans: 11
+  completed_plans: 12
   percent: 0
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 1 (Evidence, Profile and Rights Foundations) — EXECUTING
-Plan: 12 of 14
+Plan: 13 of 14
 Status: Ready to execute
 Last activity: 2026-11-09 — Phase 1 execution started
 
@@ -63,6 +63,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 1 P08 | 25min | 2 tasks | 24 files |
 | Phase 1 P13 | 15min | 2 tasks | 12 files |
 | Phase 1 P09 | 25min | 2 tasks | 15 files |
+| Phase 1 P01-11 | 40min | 2 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -88,6 +89,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 1]: 01-08: D-11 unit-suffix rule applies to duration/offset profile keys; ticks_per_X and X_per_Y ratio keys name their units and comply; enforced by the glossary step
 - [Phase 1]: 01-08: glossary success line uses doc-files= (text step already emits docs=)
 - [Phase 1]: 01-09: cite and sdbd regexes checked in the cp1610-row hook (DSL cannot hold spaces); no cycle value required so NOPP 7 passes; cp1610 step measured 0.7 s so decode stays in cmake -P
+- [Phase 1]: 01-11: hygiene success line uses key hygiene-files (not files) to avoid a duplicate gate stat key; allow patterns anchored on grep -o output
+- [Phase 1]: 01-11: cmake line budget measured 2154 vs plan limit 1500; not shrunk, recorded as deviation for owner/orchestrator
 
 ### Pending Todos
 
@@ -116,6 +119,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-09T23:06:35.269Z
-Stopped at: Completed 01-09-PLAN.md
+Last session: 2026-11-09T23:13:19.103Z
+Stopped at: Completed 01-11-PLAN.md
 Resume file: None
