@@ -3,15 +3,18 @@
 # Inputs (passed with -D):
 #   ROOT      the tree under test (required)
 #   FILELIST  file with one repo-relative path per line (required)
+#   CONTENT_BINARY  file with one path per line that binscan.sh classified as binary by content
+#             (required; steps/files.sh builds it)
 # Rules, applied to FILELIST paths in sorted order:
 #   refs/ paths                         -> files-tracked-refs
 #   .env and .env.* files               -> files-env
-#   ROM, PDF or image-like extension not listed as a committed output of an effective-yes manifest
+#   binary by name (tools/check/binary-ext.txt) or by content (CONTENT_BINARY, the path list
+#   printed by binscan.sh binary) and not listed as a committed output of an effective-yes manifest
 #                                       -> files-unlisted-binary
 #   file inside repository-root fixtures/<dir>/ that its manifest does not list
 #                                       -> files-unlisted-fixture-file
 #   repository-root fixtures/<dir>/ without a manifest.json -> files-fixture-without-manifest
-# Tokens also: files-filelist-empty.
+# Tokens also: files-filelist-empty, files-ext-list-empty.
 # Success line: "files pass tracked=<n> binaries-listed=<k>".
 cmake_minimum_required(VERSION 3.25)
 
@@ -23,7 +26,22 @@ endforeach()
 include("${CMAKE_CURRENT_LIST_DIR}/lib.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/manifest-lib.cmake")
 
-set(BINARY_EXT int bin rom itv cfg cc3 pdf png jpg jpeg gif)
+file(STRINGS "${CMAKE_CURRENT_LIST_DIR}/binary-ext.txt" BINARY_EXT REGEX "^[a-z0-9]+$")
+if("${BINARY_EXT}" STREQUAL "")
+  gate_fail(files-ext-list-empty "tools/check/binary-ext.txt")
+endif()
+if(NOT DEFINED CONTENT_BINARY OR NOT EXISTS "${CONTENT_BINARY}")
+  message(FATAL_ERROR "files.cmake is missing CONTENT_BINARY")
+endif()
+file(READ "${CONTENT_BINARY}" cb_text)
+gate_lines(cb_lines "${cb_text}")
+set(content_binary "")
+foreach(l IN LISTS cb_lines)
+  gate_unprotect(l "${l}")
+  if(NOT l STREQUAL "")
+    list(APPEND content_binary "${l}")
+  endif()
+endforeach()
 
 # Manifests (parse problems are reported by the manifests step, not here). An unparseable
 # manifest lists nothing, so its files fail closed below.
@@ -93,7 +111,14 @@ foreach(p IN LISTS paths)
   get_filename_component(ext "${p}" LAST_EXT)
   string(TOLOWER "${ext}" ext)
   string(REGEX REPLACE "^[.]" "" ext "${ext}")
+  set(is_binary FALSE)
   if(NOT "${ext}" STREQUAL "" AND "${ext}" IN_LIST BINARY_EXT)
+    set(is_binary TRUE)
+  endif()
+  if("${p}" IN_LIST content_binary)
+    set(is_binary TRUE)
+  endif()
+  if(is_binary)
     if("${p}" IN_LIST binary_ok)
       math(EXPR nbin "${nbin} + 1")
     else()

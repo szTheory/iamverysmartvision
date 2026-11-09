@@ -48,6 +48,10 @@ apply_make() {
       homepath) printf '/%s/%s/x\n' Users ctlexample >> "$_t/$_p" ;;
       secret) printf '%s%s_%s\n' gh p abcdefghijklmnopqrstuvwxyz0123456789 >> "$_t/$_p" ;;
       password) printf '%s%s=%s\n' pass word Abcdefgh1234 >> "$_t/$_p" ;;
+      binary) mkdir -p "$(dirname "$_t/$_p")"; awk 'BEGIN { for (i = 0; i < 2048; i++) print i }' \
+        | tr '0123456789\n' '\200\201\202\203\204\205\206\207\210\211\000' > "$_t/$_p" ;;
+      highbytes) mkdir -p "$(dirname "$_t/$_p")"; awk 'BEGIN { for (i = 0; i < 2048; i++) print i }' \
+        | tr '0123456789\n' '\200\201\202\203\204\205\206\207\210\211\212' > "$_t/$_p" ;;
       nul) printf 'a\000b\n' >> "$_t/$_p" ;;
       email) printf '%s@%s\n' ctl mail.test >> "$_t/$_p" ;;
       *) fail control-make-verb "$_verb"; return 1 ;;

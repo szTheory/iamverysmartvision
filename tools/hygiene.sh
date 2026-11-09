@@ -25,7 +25,12 @@ PW_ASSIGN='[p]assword[ ]*[=:][ ]*["'"'"']?[A-Za-z0-9][A-Za-z0-9._~!@#%^&*+/-]{7,
 EMAIL='[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z][A-Za-z]+'
 # Applied to grep -o output; anchored so a look-alike suffix domain is still a finding.
 EMAIL_OK='@users\.noreply\.github\.com$|^noreply@github\.com$|@example\.(com|org|net)$|^git@github\.com$|^noreply@anthropic\.com$'
-BINARY_NAME='\.(int|bin|rom|itv|cfg|cc3|pdf|png|jpe?g|gif)$'
+# Binary-by-name extensions come from the one list the gate also reads (tools/check/binary-ext.txt).
+here=$(cd "$(dirname "$0")" && pwd) || exit 1
+BINARY_NAME=
+if [ -s "$here/check/binary-ext.txt" ]; then
+  BINARY_NAME='\.('$(grep -v -e '^#' -e '^[[:space:]]*$' "$here/check/binary-ext.txt" | tr '\n' '|' | sed 's/|$//')')$'
+fi
 
 fail=0
 found() { printf -- '-- FAIL hygiene-%s: %s\n' "$1" "$2"; fail=1; }
@@ -34,6 +39,7 @@ usage() { printf 'usage: sh tools/hygiene.sh --tree | --history\n' >&2; exit 2; 
 [ $# -eq 1 ] || usage
 mode=$1
 case $mode in --tree|--history) ;; *) usage ;; esac
+if [ -z "$BINARY_NAME" ]; then found unreadable "binary-ext.txt"; exit 1; fi
 
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/hygiene.XXXXXX") || exit 1
 trap 'rm -rf "$tmp"' EXIT

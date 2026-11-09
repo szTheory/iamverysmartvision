@@ -12,3 +12,15 @@ png
 jpg
 jpeg
 gif
+zip
+7z
+gz
+tar
+bz2
+xz
+dat
+bmp
+webp
+svg
+ico
+a26

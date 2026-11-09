@@ -1,0 +1,4 @@
+# Owning review fix WR-02: content-based binary detection controls.
+files-unlisted-binary-content
+files-unlisted-binary-archive
+files-unlisted-binary-nonul
