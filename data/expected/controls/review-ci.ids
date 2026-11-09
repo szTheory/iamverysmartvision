@@ -1,0 +1,7 @@
+# Owning review fix WR-01: CI parity hardening controls.
+ci-parity-continue-on-error
+ci-parity-conditional
+ci-parity-write-permissions
+ci-parity-run-spacing
+ci-parity-extra-workflow-target
+ci-parity-extra-workflow-unpinned
