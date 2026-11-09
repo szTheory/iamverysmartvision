@@ -26,8 +26,8 @@ differentiators and all variant/peripheral profiles are v2.
 
 ### Foundations, Evidence and Rights (FND)
 
-- [ ] **FND-01**: The first hardware profile exists as a data record that names model, revision, region/video timing, STIC and PSG part, reset/power-on policy and cartridge arrangement, with a provenance/tier tag on every field (selection gated on D3).
-- [ ] **FND-02**: The project has a written evidence-tier vocabulary and a claim ledger; every support claim in docs or reports cites a profile identity, tier and evidence artifact.
+- [x] **FND-01**: The first hardware profile exists as a data record that names model, revision, region/video timing, STIC and PSG part, reset/power-on policy and cartridge arrangement, with a provenance/tier tag on every field (selection gated on D3).
+- [x] **FND-02**: The project has a written evidence-tier vocabulary and a claim ledger; every support claim in docs or reports cites a profile identity, tier and evidence artifact.
 - [ ] **FND-03**: A discrepancy log records each unresolved source conflict (seeded with research conflicts C1–C28) with its chosen default policy (`unknown-default-chosen`) and the test or measurement that would resolve it.
 - [ ] **FND-04**: A fixture manifest records source, recipe/tool+version, input and output digests, license, notices, allowed use and a `redistributable: yes/no/unknown` field (unknown treated as no) for every fixture.
 - [ ] **FND-05**: A provenance rule is documented and checked in review: behavior is implemented from cited primary/secondary sources; no code, tables or constants are copied from jzIntv, MAME or other emulators.
@@ -180,8 +180,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FND-01 | Phase 1 | Pending |
-| FND-02 | Phase 1 | Pending |
+| FND-01 | Phase 1 | Complete |
+| FND-02 | Phase 1 | Complete |
 | FND-03 | Phase 1 | Pending |
 | FND-04 | Phase 1 | Pending |
 | FND-05 | Phase 1 | Pending |

@@ -2,17 +2,17 @@
 gsd_state_version: "1.0"
 current_phase: 1
 current_phase_name: Evidence, Profile and Rights Foundations
-status: planning
-stopped_at: Phase 1 context gathered
-last_updated: "2026-11-09T21:41:56.963Z"
+status: executing
+stopped_at: Completed 01-01-PLAN.md
+last_updated: "2026-11-09T21:53:11.969Z"
 last_activity: 2026-11-09
-last_activity_desc: Rolling roadmap created (8 phases, 50/50 v1 requirements mapped)
-state_head: 968246158ab509c77dfd02a03ecaeeb1c2961e0c
+last_activity_desc: Phase 1 execution started
+state_head: e20b051b76ff5b43ec4ef9bce56c627b89d427b1
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 14
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -23,14 +23,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-09)
 
 **Core value:** A deterministic, observable machine core whose every compatibility claim is bound to an exactly named profile and independent evidence — never an unqualified "it runs Intellivision games" label.
-**Current focus:** Phase 1 — Evidence, Profile and Rights Foundations (not started)
+**Current focus:** Phase 1 — Evidence, Profile and Rights Foundations
 
 ## Current Position
 
-Phase: 1 (Evidence, Profile and Rights Foundations) — READY TO EXECUTE
-Plan: 0 of TBD in current phase
-Status: Phase 1 not started — awaiting owner decisions/discuss-phase
-Last activity: 2026-11-09 — Rolling roadmap created (8 phases, 50/50 v1 requirements mapped)
+Phase: 1 (Evidence, Profile and Rights Foundations) — EXECUTING
+Plan: 2 of 14
+Status: Ready to execute
+Last activity: 2026-11-09 — Phase 1 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -48,6 +48,11 @@ Progress: [░░░░░░░░░░] 0%
 | - | - | - | - |
 
 *Updated after each plan completion*
+**Per-Plan Metrics:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 1 P01 | 30min | 2 tasks | 90 files |
 
 ## Accumulated Context
 
@@ -59,6 +64,7 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Init]: Roadmap order follows research (foundations → CPU → memory/refusal → Slice 0 runner+consumer → controllers+PSG → STIC first pass → visible scenario → STIC completion+state+perf). GSD default, reversible.
 - [Init]: Visible scenario (Phase 7) placed directly after the first STIC pass, ahead of full STIC coverage (conflict C26). GSD default, reversible.
 - [Init]: Variant profiles and peripherals (the research summary's proposed variants stage) are v2 and are not in this roadmap.
+- [Phase 1]: 01-01: gate summary steps=<passed>/<expected>; vocab step prints its own pass line; duplicate JSON keys stay a documented undetectable limit
 
 ### Pending Todos
 
@@ -87,6 +93,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-09T19:36:50.077Z
-Stopped at: Phase 1 context gathered
-Resume file: .planning/phases/01-evidence-profile-and-rights-foundations/01-CONTEXT.md
+Last session: 2026-11-09T21:53:11.950Z
+Stopped at: Completed 01-01-PLAN.md
+Resume file: None
