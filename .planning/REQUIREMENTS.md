@@ -32,7 +32,7 @@ differentiators and all variant/peripheral profiles are v2.
 - [x] **FND-04**: A fixture manifest records source, recipe/tool+version, input and output digests, license, notices, allowed use and a `redistributable: yes/no/unknown` field (unknown treated as no) for every fixture.
 - [ ] **FND-05**: A provenance rule is documented and checked in review: behavior is implemented from cited primary/secondary sources; no code, tables or constants are copied from jzIntv, MAME or other emulators.
 - [ ] **FND-06**: Project-owned reference notes extract the CP-1610 opcode/encoding/cycle tables and reset/interrupt sequence from the GI CP-1600 manual (May 1975) read directly, with page citations.
-- [ ] **FND-07**: Time-base vocabulary is defined (CPU cycle vs input clock vs STIC/PSG clocks, crystal constant) and used consistently in code and docs (D2).
+- [x] **FND-07**: Time-base vocabulary is defined (CPU cycle vs input clock vs STIC/PSG clocks, crystal constant) and used consistently in code and docs (D2).
 
 ### CPU — CP-1610 (CPU)
 
@@ -186,7 +186,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FND-04 | Phase 1 | Complete |
 | FND-05 | Phase 1 | Pending |
 | FND-06 | Phase 1 | Pending |
-| FND-07 | Phase 1 | Pending |
+| FND-07 | Phase 1 | Complete |
 | CPU-01 | Phase 2 | Pending |
 | CPU-02 | Phase 2 | Pending |
 | CPU-03 | Phase 2 | Pending |

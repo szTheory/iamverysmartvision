@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 1
 current_phase_name: Evidence, Profile and Rights Foundations
 status: executing
-stopped_at: Completed 01-07-PLAN.md
-last_updated: "2026-11-09T22:46:15.190Z"
+stopped_at: Completed 01-08-PLAN.md
+last_updated: "2026-11-09T22:52:36.715Z"
 last_activity: 2026-11-09
 last_activity_desc: Phase 1 execution started
-state_head: 1d436d609631b179fcbe71329f9b3882292a6621
+state_head: 3b59fca569994fc26c103aa81deb25af6c7de915
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 14
-  completed_plans: 8
+  completed_plans: 9
   percent: 0
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 1 (Evidence, Profile and Rights Foundations) — EXECUTING
-Plan: 9 of 14
+Plan: 10 of 14
 Status: Ready to execute
 Last activity: 2026-11-09 — Phase 1 execution started
 
@@ -60,6 +60,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 1 P05 | 20min | 2 tasks | 26 files |
 | Phase 1 P06 | 35min | 2 tasks | 60 files |
 | Phase 1 P07 | 25min | 2 tasks | 41 files |
+| Phase 1 P08 | 25min | 2 tasks | 24 files |
 
 ## Accumulated Context
 
@@ -82,6 +83,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 1]: text step exempts only the literal placeholder CL-NNNN from claim-reference resolution
 - [Phase 1]: 01-06: files step reports tracked=<n> (integrity already owns files=<n>); unknown derived_from ids and cycles resolve to effective-no
 - [Phase 1]: 01-07: denylist stat named scanned= (not files=) to avoid clashing with the integrity step key; reference-only registry entries must carry null digests and a note mentioning hashing
+- [Phase 1]: 01-08: D-11 unit-suffix rule applies to duration/offset profile keys; ticks_per_X and X_per_Y ratio keys name their units and comply; enforced by the glossary step
+- [Phase 1]: 01-08: glossary success line uses doc-files= (text step already emits docs=)
 
 ### Pending Todos
 
@@ -110,6 +113,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-09T22:46:15.160Z
-Stopped at: Completed 01-07-PLAN.md
+Last session: 2026-11-09T22:52:36.684Z
+Stopped at: Completed 01-08-PLAN.md
 Resume file: None
