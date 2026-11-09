@@ -1,0 +1,24 @@
+# Profile field paths for intv-2609-ntsc-family-p1; must equal the members of fields.
+model
+board_revision
+aliases
+region_video
+cpu.part
+stic.part
+psg.part
+crystal_hz
+ticks_per_cpu_cycle
+ticks_per_stic_clock
+ticks_per_psg_clock
+scanlines_per_frame
+cpu_cycles_per_scanline
+reset.r7
+reset.registers_other
+reset.flags
+power_on_fill.ram
+power_on_fill.gram
+power_on_fill.stic
+power_on_fill.psg
+cartridge.slots
+cartridge.address_windows
+system_images.exec_grom

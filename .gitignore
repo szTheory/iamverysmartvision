@@ -1,0 +1,24 @@
+# Reference documents, page renders and downloads live only in the local cache.
+/refs/
+
+# Rights-bearing or derivative binary classes are never committed by accident.
+*.pdf
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.int
+*.bin
+*.rom
+*.itv
+*.cfg
+*.cc3
+
+# Secrets and local environment.
+.env
+.env.*
+
+# Build output and OS noise.
+/build/
+/build-*/
+.DS_Store

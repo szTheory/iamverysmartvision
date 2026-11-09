@@ -1,0 +1,9 @@
+# Evidence tiers (D-09b); must equal the ids in data/tiers.json.
+source-expectation
+public-vector
+original-diagnostic
+independent-implementation-comparison
+measured-hardware
+deterministic-repeatability
+playable-guest-progress
+installed-host-behavior

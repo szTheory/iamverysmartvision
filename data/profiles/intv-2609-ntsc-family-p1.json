@@ -1,0 +1,232 @@
+{
+  "schema_version": 1,
+  "id": "intv-2609-ntsc-family-p1",
+  "selected_by": "D3, a delegated decision (owner authorization 2026-11-09), recorded in the Decision Register in .planning/PROJECT.md",
+  "note": "Family-level profile that models documented function. It does not pin a physical PCB revision. Alias names are candidates only. Field paths are listed in data/expected/profile-fields.ids.",
+  "fields": {
+    "model": {
+      "value": "Mattel Intellivision Master Component, 2609 family",
+      "tag": "tier2-first-party-adjacent",
+      "cite": "SRC-bsr-2609",
+      "conflict": null,
+      "resolving_evidence": null,
+      "revisit_trigger": null,
+      "decision": null
+    },
+    "board_revision": {
+      "value": "unspecified-2609-family",
+      "tag": "unknown-default-chosen",
+      "cite": "none: no PCB revision is pinned by this profile (D3)",
+      "conflict": null,
+      "resolving_evidence": "pending: a board-pinned unit (D10) or a service schematic",
+      "revisit_trigger": "when a physical board or a schematic for a named revision is available",
+      "decision": null
+    },
+    "aliases": {
+      "value": [
+        {"name": "Tandyvision One", "status": "alias-candidate, unverified"},
+        {"name": "GTE Sylvania MC100", "status": "alias-candidate, unverified"},
+        {"name": "Sears Super Video Arcade", "status": "alias-candidate, unverified"}
+      ],
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: alias names are candidates and no source ties them to this profile",
+      "conflict": null,
+      "resolving_evidence": "pending: documentation of each alias board and its parts",
+      "revisit_trigger": "when an alias profile is requested (v2)",
+      "decision": null
+    },
+    "region_video": {
+      "value": "NTSC",
+      "tag": "tier1-primary-doc",
+      "cite": "SRC-gi-1980-catalog pdf 191 (printed 5-10)",
+      "conflict": null,
+      "resolving_evidence": null,
+      "revisit_trigger": null,
+      "decision": null,
+      "note": "Research-era reading, not re-read in phase 1."
+    },
+    "cpu.part": {
+      "value": "CP1610",
+      "tag": "tier1-primary-doc",
+      "cite": "SRC-gi-1980-catalog, 8900 system section (printed 5-3)",
+      "conflict": null,
+      "resolving_evidence": null,
+      "revisit_trigger": null,
+      "decision": null,
+      "note": "Research-era reading, not re-read in phase 1."
+    },
+    "stic.part": {
+      "value": "AY-3-8900-1",
+      "tag": "tier1-primary-doc",
+      "cite": "SRC-gi-1980-catalog pdf 191 (printed 5-10)",
+      "conflict": null,
+      "resolving_evidence": null,
+      "revisit_trigger": null,
+      "decision": null,
+      "note": "STIC1A is not modelled. Research-era reading, not re-read in phase 1."
+    },
+    "psg.part": {
+      "value": "AY-3-8914-class, Intellivision register map at $01F0-$01FF",
+      "tag": "tier4-community",
+      "cite": "SRC-community-emu-docs; SRC-bsr-2609 names the part; primary data sheet: none-found",
+      "conflict": "C11",
+      "resolving_evidence": "pending: a primary data sheet, die analysis or hardware measurement",
+      "revisit_trigger": "when a primary source for the part register map is found, or at Phase 5 audio planning",
+      "decision": null
+    },
+    "crystal_hz": {
+      "value": {"num": 3579545, "den": 1},
+      "tag": "tier1-primary-doc",
+      "cite": "SRC-gi-1980-catalog pdf 191 (printed 5-10)",
+      "conflict": "C9",
+      "resolving_evidence": "measurement: D10 crystal frequency on owner hardware",
+      "revisit_trigger": "when the exact crystal ratio matters to a host adapter or a measurement exists",
+      "decision": null,
+      "note": "Nominal printed figure from the catalog (research-era reading, not re-read in phase 1). 315/88 MHz is recorded as inference. The core never reads Hz; only host adapters do."
+    },
+    "ticks_per_cpu_cycle": {
+      "value": 4,
+      "tag": "inference",
+      "cite": "SRC-gi-cp1600-um-1975 (two-phase input clock) with SRC-bsr-2609 (cycle rate); derivation in docs/time-base.md",
+      "conflict": "C8",
+      "resolving_evidence": "pending: a schematic or measurement of the CPU input clock",
+      "revisit_trigger": "when a schematic or measurement of the CPU input clock is available",
+      "decision": "D2"
+    },
+    "ticks_per_stic_clock": {
+      "value": 1,
+      "tag": "tier1-primary-doc",
+      "cite": "SRC-gi-1980-catalog pdf 191 (printed 5-10): the STIC runs from the crystal",
+      "conflict": null,
+      "resolving_evidence": null,
+      "revisit_trigger": null,
+      "decision": "D2",
+      "note": "Research-era reading, not re-read in phase 1."
+    },
+    "ticks_per_psg_clock": {
+      "value": 2,
+      "tag": "unknown-default-chosen",
+      "cite": "SRC-mame-intv (emulator hint only, never evidence by itself)",
+      "conflict": null,
+      "resolving_evidence": "test: PSG tone-frequency vectors in Phase 5; measurement: D10 tone capture",
+      "revisit_trigger": "at Phase 5 PSG planning or when a tier 1 to 3 source gives the PSG chip clock",
+      "decision": "D2",
+      "note": "Only an emulator hint backs this value."
+    },
+    "scanlines_per_frame": {
+      "value": 262,
+      "tag": "tier4-community",
+      "cite": "SRC-community-emu-docs",
+      "conflict": "C7",
+      "resolving_evidence": "pending: a tier 1 to 3 source for lines per frame, or a measurement",
+      "revisit_trigger": "when a primary source or a measurement states the frame geometry",
+      "decision": null,
+      "note": "A nominal frame is 14,934 CPU cycles = 59,736 master ticks. A frame is a timeline event and is never derived by modulo."
+    },
+    "cpu_cycles_per_scanline": {
+      "value": 57,
+      "tag": "tier4-community",
+      "cite": "SRC-community-emu-docs",
+      "conflict": "C7",
+      "resolving_evidence": "pending: a tier 1 to 3 source for cycles per line, or a measurement",
+      "revisit_trigger": "when a primary source or a measurement states the line length",
+      "decision": null,
+      "note": "A nominal frame is 14,934 CPU cycles = 59,736 master ticks. A frame is a timeline event and is never derived by modulo."
+    },
+    "reset.r7": {
+      "value": "$1000",
+      "tag": "tier4-community",
+      "cite": "SRC-gi-cp1600-um-1975 pdf 21 (start PC is device-supplied over the bus); SRC-community-emu-docs",
+      "conflict": "C27",
+      "resolving_evidence": "pending: Phase 2 boot-stub decision (D5)",
+      "revisit_trigger": "at Phase 2 reset-vector design",
+      "decision": null,
+      "note": "The manual says the start PC is supplied by a device through the bus via IAB. Whether the EXEC or the board supplies it is unknown-default-chosen for Phase 2 and D5."
+    },
+    "reset.registers_other": {
+      "value": "zero",
+      "tag": "unknown-default-chosen",
+      "cite": "SRC-gi-cp1600-um-1975: other registers are undefined at reset; zero is the chosen default",
+      "conflict": null,
+      "resolving_evidence": "measurement: D10 reset read-back on owner hardware",
+      "revisit_trigger": "when a source documents the reset state or a hardware read-back exists",
+      "decision": null
+    },
+    "reset.flags": {
+      "value": "zero",
+      "tag": "unknown-default-chosen",
+      "cite": "SRC-gi-cp1600-um-1975: flags are undefined at reset; zero is the chosen default",
+      "conflict": null,
+      "resolving_evidence": "measurement: D10 reset read-back on owner hardware",
+      "revisit_trigger": "when a source documents the reset state or a hardware read-back exists",
+      "decision": null
+    },
+    "power_on_fill.ram": {
+      "value": "zero",
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: no source documents power-on RAM contents; zero is the chosen default",
+      "conflict": null,
+      "resolving_evidence": "measurement: D10 power-on read-back on owner hardware",
+      "revisit_trigger": "when a read-back exists or a guest program depends on power-on RAM contents",
+      "decision": null,
+      "note": "The schema allows zero, pattern(v) and seeded(algo,seed). Any non-default fill is recorded in every run, report and snapshot."
+    },
+    "power_on_fill.gram": {
+      "value": "zero",
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: no source documents power-on GRAM contents; zero is the chosen default",
+      "conflict": null,
+      "resolving_evidence": "measurement: D10 power-on read-back on owner hardware",
+      "revisit_trigger": "when a read-back exists or a guest program depends on power-on GRAM contents",
+      "decision": null,
+      "note": "The schema allows zero, pattern(v) and seeded(algo,seed). Any non-default fill is recorded in every run, report and snapshot."
+    },
+    "power_on_fill.stic": {
+      "value": "zero",
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: no source documents power-on STIC register contents; zero is the chosen default",
+      "conflict": null,
+      "resolving_evidence": "measurement: D10 power-on read-back on owner hardware",
+      "revisit_trigger": "when a read-back exists or the STIC phase depends on power-on register contents",
+      "decision": null,
+      "note": "The schema allows zero, pattern(v) and seeded(algo,seed). Any non-default fill is recorded in every run, report and snapshot."
+    },
+    "power_on_fill.psg": {
+      "value": "zero",
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: no source documents power-on PSG register contents; zero is the chosen default",
+      "conflict": null,
+      "resolving_evidence": "measurement: D10 power-on read-back on owner hardware",
+      "revisit_trigger": "when a read-back exists or the PSG phase depends on power-on register contents",
+      "decision": null,
+      "note": "The schema allows zero, pattern(v) and seeded(algo,seed). Any non-default fill is recorded in every run, report and snapshot."
+    },
+    "cartridge.slots": {
+      "value": "one slot, ROM-only 10-bit decles; no bank switching, cartridge RAM, ECS or IntelliVoice",
+      "tag": "unknown-default-chosen",
+      "cite": "none: scope choice for the first profile (D3)",
+      "conflict": null,
+      "resolving_evidence": "pending: cartridge-format research in Phase 3",
+      "revisit_trigger": "when a content profile needs bank switching, cartridge RAM, ECS or IntelliVoice",
+      "decision": null
+    },
+    "cartridge.address_windows": {
+      "value": "from the per-content descriptor, not the profile",
+      "tag": "unknown-default-chosen",
+      "cite": "none: scope choice for the first profile (D3)",
+      "conflict": null,
+      "resolving_evidence": "pending: per-content descriptor design in Phase 3",
+      "revisit_trigger": "at Phase 3 memory-map design",
+      "decision": null
+    },
+    "system_images.exec_grom": {
+      "value": "required EXEC/GROM slot; digest bound at run time; a different digest is a different profile identity; supply policy pending D5",
+      "tag": "unknown-default-chosen",
+      "cite": "none: rights policy (AGENTS.md); system images are never committed",
+      "conflict": null,
+      "resolving_evidence": "pending: D5 system-image supply policy",
+      "revisit_trigger": "when D5 is decided or an original replacement image exists",
+      "decision": null
+    }
+  }
+}

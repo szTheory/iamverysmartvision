@@ -1,0 +1,19 @@
+# Evidence tiers (D-09b). Records are the elements of evidence_tiers.
+file data/tiers.json
+topkeys schema_version note source_authority_tags evidence_tiers
+top schema_version NUMBER
+top note STRING
+top source_authority_tags ARRAY
+top evidence_tiers ARRAY
+array evidence_tiers
+idkey id
+inventory data/expected/evidence-tiers.ids
+keys id meaning where_allowed
+req id STRING
+req meaning STRING
+req where_allowed STRING
+nonblank id
+nonblank meaning
+nonblank where_allowed
+match id ^[a-z0-9-]+$
+hook evidence-tiers

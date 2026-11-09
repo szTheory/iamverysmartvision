@@ -1,0 +1,11 @@
+# Source-authority tags (D-09a); must equal the ids in data/tiers.json.
+tier1-primary-doc
+tier2-first-party-adjacent
+tier3-service-hw
+tier4-community
+tier5-emulator-hint
+inference
+measured
+owner-decision
+delegated-decision
+unknown-default-chosen

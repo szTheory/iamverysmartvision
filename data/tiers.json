@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "note": "Two separate vocabularies. Source-authority tags describe how well a profile field or fact is sourced. Evidence tiers describe how a claim is backed. An id never appears in both.",
+  "source_authority_tags": [
+    {
+      "id": "tier1-primary-doc",
+      "meaning": "Manufacturer primary document, such as a data sheet, data catalog or users manual.",
+      "where_allowed": "profile fields, discrepancy resolutions, claims"
+    },
+    {
+      "id": "tier2-first-party-adjacent",
+      "meaning": "First-party-adjacent material, such as an edited reproduction of an in-house technical document.",
+      "where_allowed": "profile fields, discrepancy resolutions, claims"
+    },
+    {
+      "id": "tier3-service-hw",
+      "meaning": "Service or hardware documentation, such as a service manual or schematic.",
+      "where_allowed": "profile fields, discrepancy resolutions, claims"
+    },
+    {
+      "id": "tier4-community",
+      "meaning": "Community documentation or a community measurement. A lead that needs a cross-check.",
+      "where_allowed": "profile fields, discrepancy resolutions, claims"
+    },
+    {
+      "id": "tier5-emulator-hint",
+      "meaning": "An emulator is not hardware evidence; lead only. A value backed only by this tag must be recorded as unknown-default-chosen.",
+      "where_allowed": "notes and discrepancy leads, never as the tag of a profile field"
+    },
+    {
+      "id": "inference",
+      "meaning": "Derived by the project from cited sources. The derivation is stated and can be wrong.",
+      "where_allowed": "profile fields, discrepancy resolutions"
+    },
+    {
+      "id": "measured",
+      "meaning": "Reserved for owner-approved physical measurement (D10).",
+      "where_allowed": "profile fields after D10 only"
+    },
+    {
+      "id": "owner-decision",
+      "meaning": "Chosen by the owner and recorded in the Decision Register.",
+      "where_allowed": "profile fields, decisions"
+    },
+    {
+      "id": "delegated-decision",
+      "meaning": "Chosen by the project under the owner's delegation and recorded in the Decision Register.",
+      "where_allowed": "profile fields, decisions"
+    },
+    {
+      "id": "unknown-default-chosen",
+      "meaning": "The truth is unknown. A default was chosen; the evidence that would resolve it and the trigger to revisit are recorded.",
+      "where_allowed": "profile fields, discrepancy defaults"
+    }
+  ],
+  "evidence_tiers": [
+    {
+      "id": "source-expectation",
+      "meaning": "The expected value is taken from a cited source document.",
+      "where_allowed": "claims"
+    },
+    {
+      "id": "public-vector",
+      "meaning": "A public test vector with documented provenance and rights.",
+      "where_allowed": "claims"
+    },
+    {
+      "id": "original-diagnostic",
+      "meaning": "A project-authored diagnostic program with a recorded recipe.",
+      "where_allowed": "claims"
+    },
+    {
+      "id": "independent-implementation-comparison",
+      "meaning": "Agreement with an independently written implementation. Agreement with a shared core does not count.",
+      "where_allowed": "claims"
+    },
+    {
+      "id": "measured-hardware",
+      "meaning": "Owner-approved physical measurement of real hardware (D10).",
+      "where_allowed": "claims"
+    },
+    {
+      "id": "deterministic-repeatability",
+      "meaning": "Repeated runs give identical output. Establishes repeatability, not accuracy.",
+      "where_allowed": "claims"
+    },
+    {
+      "id": "playable-guest-progress",
+      "meaning": "A guest program makes observable progress on the named profile.",
+      "where_allowed": "claims"
+    },
+    {
+      "id": "installed-host-behavior",
+      "meaning": "Behavior of the installed package as consumed by a separate host program.",
+      "where_allowed": "claims"
+    }
+  ]
+}

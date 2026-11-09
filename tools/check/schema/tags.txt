@@ -1,0 +1,18 @@
+# Source-authority tags (D-09a). Records are the elements of source_authority_tags.
+file data/tiers.json
+topkeys schema_version note source_authority_tags evidence_tiers
+top schema_version NUMBER
+top note STRING
+top source_authority_tags ARRAY
+top evidence_tiers ARRAY
+array source_authority_tags
+idkey id
+inventory data/expected/source-authority-tags.ids
+keys id meaning where_allowed
+req id STRING
+req meaning STRING
+req where_allowed STRING
+nonblank id
+nonblank meaning
+nonblank where_allowed
+match id ^[a-z0-9-]+$

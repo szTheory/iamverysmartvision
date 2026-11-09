@@ -1,0 +1,25 @@
+# Profile record (D-10). Records are the members of fields; ids are field paths.
+file data/profiles/intv-2609-ntsc-family-p1.json
+topkeys schema_version id selected_by note fields
+top schema_version NUMBER
+top id STRING
+top selected_by STRING
+top note STRING
+top fields OBJECT
+members fields
+inventory data/expected/profile-fields.ids
+keys value tag cite conflict resolving_evidence revisit_trigger decision note
+req value STRING|NUMBER|OBJECT|ARRAY
+req tag STRING
+req cite STRING
+req conflict STRING|NULL
+req resolving_evidence STRING|NULL
+req revisit_trigger STRING|NULL
+req decision STRING|NULL
+nonblank value
+enumfrom tag data/tiers.json source_authority_tags id
+nonblank cite
+match conflict ^C[0-9]+$
+when tag=unknown-default-chosen nonblank resolving_evidence
+when tag=unknown-default-chosen nonblank revisit_trigger
+hook profile
