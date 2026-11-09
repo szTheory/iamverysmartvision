@@ -1,0 +1,3 @@
+# Overlay profile field paths: one duration-like field without a unit suffix.
+crystal_hz
+reset.hold

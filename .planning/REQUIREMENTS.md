@@ -160,15 +160,15 @@ Open decisions referenced by requirements. None are decided by this document.
 
 | # | Decision | Status | Needed before |
 |---|----------|--------|---------------|
-| D1 | Implementation language/build (C17 + CMake recommended; Rust alternative) | Owner — open | First code phase |
-| D2 | CPU-cycle unit, time base, crystal constant | Architecture — open | CPU phase |
-| D3 | First profile: 2609 NTSC recommended; revision, STIC/PSG parts, power-on RAM policy | Owner — open | Foundations exit |
+| D1 | Implementation language/build (C17 + CMake recommended; Rust alternative) | Delegated decision 2026-11-09 (PROJECT.md) | First code phase |
+| D2 | CPU-cycle unit, time base, crystal constant | Delegated decision 2026-11-09 (PROJECT.md) | CPU phase |
+| D3 | First profile: 2609 NTSC recommended; revision, STIC/PSG parts, power-on RAM policy | Delegated decision 2026-11-09 (PROJECT.md) | Foundations exit |
 | D4 | Fixture assembler policy (pinned dev-only `as1600` + cross-check vs project mini-assembler) | Owner (license) + architecture — open | Runner phase |
 | D5 | System-image policy: user-supplied EXEC/GROM only; project boot stub for CI, labelled "not an EXEC" | Owner — open | Loader / runner phases |
 | D6 | Controller core-input representation (logical lossless vs electrical per port) | Owner + architecture — open (conflict C14) | Core API skeleton |
 | D7 | Reference PCM location (core observation layer vs host) | Architecture — open | Sound phase |
 | D8 | Raw framebuffer geometry (159 vs 160 visible, nominal grid) | Architecture + evidence — open | Video phase |
-| D9 | License, repository visibility, naming/trademark, publication | Owner gate | Any external publication |
+| D9 | License, repository visibility, naming/trademark, publication | Delegated decision 2026-11-09 (PROJECT.md) | Any external publication |
 | D10 | Physical hardware measurement | Owner gate | Any measured-tier claim |
 | D11 | Owner-local real EXEC/GROM runs | Owner gate | SCN-02 |
 | D12 | CI shape (job count, sanitizers, fuzz schedule) | Architecture — open | Runner/CI phase |

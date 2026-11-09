@@ -3,8 +3,8 @@
 # Step glossary: time-base glossary inventory, bare-unit tripwire (R2) and the D2 link.
 # Reads ROOT, CHECK_DIR and FILELIST only. Findings are reported in sorted order.
 # Tokens: glossary-missing-term: <term>, glossary-doc-missing, glossary-inventory-empty,
-#   glossary-bare-clock: <file>:<line>, glossary-d2-unlinked.
-# Stats: terms=<n> doc-files=<n>.
+#   glossary-bare-clock: <file>:<line>, glossary-d2-unlinked, glossary-unit-suffix: <field path>.
+# Stats: terms=<n> doc-files=<n> profile-keys=<n>.
 LC_ALL=C; export LC_ALL
 : "${ROOT:?ROOT is not set}"
 : "${CHECK_DIR:?CHECK_DIR is not set}"
@@ -62,5 +62,29 @@ if [ ! -f "$proj" ] || ! grep -E '^\| D2 \|' "$proj" | grep -q -F 'docs/time-bas
   bad glossary-d2-unlinked ".planning/PROJECT.md"
 fi
 
+# (d) unit-suffix rule over the profile field inventory (D-10/D-11 resolution): a field whose last
+# segment has a whole duration/offset token must end in _ticks or _cpu_cycles. Ratio and count keys
+# (ticks_per_X, X_per_Y) name their units and carry none of the tokens. An absent inventory counts
+# 0 fields because the profile step owns presence.
+pf="$ROOT/data/expected/profile-fields.ids"
+keys=0
+: > "$tmp/suffix"
+if [ -f "$pf" ]; then
+  awk '/^#/ { next } NF { print $1 }' "$pf" | sort -u > "$tmp/paths"
+  keys=$(grep -c . "$tmp/paths")
+  while IFS= read -r p; do
+    seg=${p##*.}
+    case "_${seg}_" in
+      *_window_*|*_offset_*|*_hold_*|*_duration_*|*_delay_*|*_period_*|*_latency_*|*_interval_*|*_timeout_*)
+        case $seg in
+          *_ticks|*_cpu_cycles) ;;
+          *) printf -- '-- FAIL glossary-unit-suffix: %s\n' "$p" >> "$tmp/suffix" ;;
+        esac ;;
+    esac
+  done < "$tmp/paths"
+  cat "$tmp/suffix"
+  [ -s "$tmp/suffix" ] && rc=1
+fi
+
 [ "$rc" -eq 0 ] || exit 1
-printf -- '-- glossary pass terms=%s doc-files=%s\n' "$terms" "$docfiles"
+printf -- '-- glossary pass terms=%s doc-files=%s profile-keys=%s\n' "$terms" "$docfiles" "$keys"

@@ -57,15 +57,15 @@ exit, until the gate is resolved by its named authority.
 
 | Gate | Authority | Status | Must be resolved |
 |------|-----------|--------|------------------|
-| D1 Language/build (C17 + CMake recommended; Rust alternative) | Owner | Open | Before Phase 2 starts |
-| D2 CPU-cycle unit, time base, crystal constant | Architecture | Open | During Phase 1 (FND-07); before Phase 2 |
-| D3 First profile (2609 NTSC recommended; revision, STIC/PSG parts, power-on policy) | Owner | Open | Before Phase 1 exits |
+| D1 Language/build (C17 + CMake recommended; Rust alternative) | Owner | Delegated decision 2026-11-09 (PROJECT.md) | Before Phase 2 starts |
+| D2 CPU-cycle unit, time base, crystal constant | Architecture | Delegated decision 2026-11-09 (PROJECT.md) | During Phase 1 (FND-07); before Phase 2 |
+| D3 First profile (2609 NTSC recommended; revision, STIC/PSG parts, power-on policy) | Owner | Delegated decision 2026-11-09 (PROJECT.md) | Before Phase 1 exits |
 | D4 Fixture assembler policy | Owner (licence) + architecture | Open | Before Phase 4 starts |
 | D5 System-image policy and project boot stub | Owner | Open | Phase 3 (refusal); before Phase 4 (boot) |
 | D6 Controller core-input representation (C14) | Owner + architecture | Open | While Phase 4 shapes the API; before Phase 5 starts |
 | D7 Reference PCM location (C23) | Architecture | Open | During Phase 5 |
 | D8 Raw framebuffer geometry (C10) | Architecture + evidence | Open | During Phase 6 |
-| D9 License, visibility, naming/trademark, publication | Owner gate | Open | Before any external publication; CI hosting (Phase 4) and the milestone release assessment (Phase 8) touch it |
+| D9 License, visibility, naming/trademark, publication | Owner gate | Delegated decision 2026-11-09 (PROJECT.md) | Before any external publication; CI hosting (Phase 4) and the milestone release assessment (Phase 8) touch it |
 | D10 Physical hardware measurement | Owner gate | Open | Before any measured-tier claim (Phase 5 onward) |
 | D11 Owner-local real EXEC/GROM runs | Owner gate | Open | Before SCN-02 can be claimed (Phase 7) |
 | D12 CI shape (C24) | Architecture | Open | Before Phase 4 exits |
