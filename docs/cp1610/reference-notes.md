@@ -13,7 +13,7 @@ Encodings, cycle counts and status bits were read from rendered page images and 
 The OCR text layer is damaged in tables and was used only to locate pages, never as a source for a value.
 No other emulator, documentation or table was used as a source for any value here.
 The manual describes the CP-1600, and applying it to the CP-1610 is an inference [INF].
-Electrical specifications in the manual are marked Tentative and are not used here.
+The electrical specifications section is headed Tentative (`§2.4, pdf 38`) [OBS], and none of its values are used here.
 Pages are cited as `pdf <n>`; section numbers are the ones printed on the page, and a section number printed as `C.5` on pdf 24 is cited as printed.
 The rendered pages live only in the gitignored local cache and are never committed.
 
@@ -172,3 +172,93 @@ The MVO, MVO@, MVOI and PSHR descriptions on `pdf 55` and `pdf 57` say nothing a
 C19: partial.
 The manual carries a not-interruptible marking for shifts and for EIS, DIS, TCI, CLRC and SETC only; the community list of non-interruptible instructions is not corroborated for HLT, SDBD and MVO.
 The register-to-register, memory and jump summary tables on the pages read for this section carry no other interruptibility marking [OBS].
+
+## Reset, MSYNC and IAB
+
+MSYNC* is a negative-logic input that synchronizes the internal timing logic to the two main phases; it must stay active (low) for at least ten milliseconds after power is applied and becomes inactive (high) on a rising edge of Ø1, which corresponds to an internal TS3 (`pdf 12`) [OBS].
+The pin description also says MSYNC* disables the interrupt system (`pdf 12`) [OBS].
+On power-up with MSYNC* low, the CPU is forced to an inactive state: D0 to D15 are high impedance, the bus control signals issue NACT, all other signals are inactive, and the interrupt system is disabled (`§C.1, pdf 21`) [OBS].
+The page states that all eight internal registers and the status bits contain arbitrary, undefined data at that point (`§C.1, pdf 21`) [OBS].
+When MSYNC* goes inactive (high), the bus control signals issue IAB and the CPU inputs the starting address of the main program from the bus into the PC (`§C.1, pdf 21`) [OBS].
+The start PC is therefore supplied by a device over the bus by IAB; the manual describes no fixed reset vector inside the CPU (`§C.1, pdf 21`; `Fig. 2-6, pdf 22`) [OBS].
+The page adds that the initialization address can be defined by the user at any desired bus address or can be the default address resulting from the logical state of the non-driven bus (`§C.1, pdf 21`) [OBS].
+The flow diagram shows MSYNC* leading to Input Starting PC (IAB), then into the fetch loop that begins with Output Current PC (BAR) (`Fig. 2-6, pdf 22`) [OBS].
+The initialization timing diagram shows NACT while MSYNC* is low, then NACT, IAB, three NACT microcycles and BAR, with the first read marked at the BAR (`pdf 27`) [OBS].
+Counting the four-slot TS1 to TS4 groups printed on that diagram, IAB falls in the second microcycle after MSYNC* rises and the first BAR in the sixth [INF].
+Because registers and status bits are undefined after initialization, no value for R7 other than what the bus supplies, and no value for any other register or flag, is a manual fact [INF].
+The profile field `reset.r7` is a community-sourced default and not a manual fact, and the profile fields `reset.registers_other` and `reset.flags` record zero as a chosen default on top of the undefined state stated above.
+A hardware read-back is the evidence that would replace those defaults.
+
+## Interrupt sequence
+
+The CPU enters the interrupt sequence after all bus requests have been resolved and either INTR* is active, or INTRM* is active and the internal interrupt flip-flop INTFF is set (`§C.6, pdf 24`) [OBS].
+INTR* is always honored and is the highest-priority request line; INTRM* is honored only while INTFF is set, and INTFF is controlled by EIS, DIS and several other instructions (`pdf 12`) [OBS].
+A request is honored at the completion of an interruptible instruction (`pdf 12`; `pdf 14`) [OBS].
+The CPU samples INTR* and INTRM* every TS1 time (`§C.6, pdf 25`) [OBS].
+The first micro state issues INTAK, and the CPU places the contents of R6, the stack pointer, in the address register (`§C.6, pdf 24`) [OBS].
+The CPU then outputs the PC as data with DW and DWS, storing it at the location the stack pointer addresses, and the stack pointer is incremented after the store (`§C.6, pdf 24`) [OBS].
+Finally the CPU issues IAB, which brings the starting address of the interrupt service routine into the PC from the interrupting device, and returns to the fetch sequence (`§C.6, pdf 25`) [OBS].
+Only the PC is stored by the sequence as described; the status word is not stored by the CPU, and the software context-save example saves it with GSWD and PSHR (`§C.6, pdf 24`; `§3.4.7, pdf 62`) [OBS].
+The text on the pages read does not state whether INTFF is cleared on acceptance (`pdf 12`; `§C.6, pdf 24`; `pdf 25`) [OBS].
+The interrupt timing diagram shows the bus control sequence INTAK, NACT, DW, DWS, NACT, IAB, three NACT microcycles and then BAR for the first fetch of the service routine (`pdf 35`) [OBS].
+Counting the four-slot groups printed on that diagram, nine microcycles precede the BAR of the first service-routine fetch, which would be the entry count if each cell is one microcycle [INF].
+The instruction summary tables do not tabulate an interrupt-entry cycle count, so the nine is derived and not printed (`pdf 53-58`) [OBS].
+The TCI pulse is generated by the TCI instruction to terminate the highest-priority interrupt in service (`pdf 13`) [OBS].
+The manual describes a fixed interrupt address vector generated by IAB in the simplest case, and daisy-chained acknowledgement through INTAK in the nested case (`§4.5, pdf 75`) [OBS].
+The SIN instruction pulses PCIT as an output, which interfacing hardware can return as an interrupt request, and the interrupt is acknowledged at the end of the SIN instruction (`pdf 13`) [OBS].
+PCIT as an input prevents the program counter from incrementing during the fetch phase of all instructions (`pdf 13`) [OBS].
+
+## Bus requests
+
+A bus request is honored after the completion of an interruptible instruction (`pdf 14`; `§C.5, pdf 24`) [OBS].
+If BUSRQ* is pulled low before the completion of the current interruptible instruction, the CPU honors it by driving BUSAK* low (`§C.5, pdf 24`) [OBS].
+The CPU then enters a WAIT state that can be of indefinite duration, remains in it until BUSRQ* returns to logic 1, and does not use the bus; the bus control signals issue NACT and all other signals are inactive (`§C.5, pdf 24`) [OBS].
+BUSRQ* can be activated asynchronously with respect to the CPU input clock, and the CPU synchronizes it digitally during every TS1 time (`§C.5, pdf 24`) [OBS].
+If there are neither bus requests nor interrupt requests, the CPU returns to the fetch sequence (`§C.5, pdf 24`) [OBS].
+The CPU honors bus requests before it honors interrupt requests (`pdf 25`) [OBS].
+The state flow diagram shows the same order: after an interruptible instruction the bus request test comes first and the interrupt request test follows (`Fig. 2-6, pdf 22`) [OBS].
+The flow diagram also shows that an uninterruptible instruction returns to the fetch loop without passing either test (`Fig. 2-6, pdf 22`) [OBS].
+
+## Start and stop (HLT)
+
+The CPU has an internal start/stop flip-flop toggled by the negative edge of the STPST pin, so alternate pulses switch between the RUN and STOP modes (`§4.4, pdf 74`) [OBS].
+The HALT output indicates the run/stop condition, and the CPU stops only after the completion of an instruction (`§4.4, pdf 74`) [OBS].
+The pin description says that the negative transition of STPST stops a running CPU only after the completion of an interruptible instruction (`pdf 14`) [OBS].
+The HALT output is a high-active signal that indicates the stopped mode, which can result from STPST or from the execution of a HALT instruction (`pdf 14`) [OBS].
+The HLT instruction takes 4 cycles and is described as halting after the next instruction is executed, resuming on control start (`pdf 56`) [OBS].
+The figure on `pdf 74` shows MSYNC* and the HLT instruction acting on the same flip-flop that STPST toggles, with the HALT output formed from that flip-flop and the microcontrol sequencing logic [OBS].
+The wording of `pdf 14` and `pdf 74` differs on whether the stop waits for any instruction or only an interruptible one, and the HLT row on `pdf 56` makes no statement about it; this is carried as an open item.
+
+## Branch timing
+
+The branch table prints the cycle count as `7/9` for B, for each condition row that carries a count, and for BEXT, with no label saying which figure applies when the branch is taken (`pdf 54`) [OBS].
+NOPP, the two-word no-operation form, prints a single count of 7 (`pdf 54`) [OBS].
+The unconditional B also prints `7/9`, so the two figures cannot be read as a plain not-taken and taken pair for every row [INF].
+A weak reading, that 7 is the count when no branch occurs because NOPP never branches and prints 7, is not stated by the manual [INF].
+The only branch timing figure located among pdf 26 to 37 by page title is the Branch on External Instruction diagram on `pdf 32`.
+That figure shows the bus control sequence BAR, NACT, DTB, NACT and then BAR with the label output PC + 1 to fetch the displacement (`pdf 32`) [OBS].
+The figure ends during that displacement fetch and shows no execute tail, so it does not resolve which count applies to a taken branch (`pdf 32`) [OBS].
+The branch format page says a false result continues with the next sequential instruction and a true result transfers control (`§3.2.2, pdf 47`) [OBS].
+The same table prints the displacement range of the unconditional branch as +1025 to -1024 (`pdf 54`) [OBS].
+
+## Discrepancy candidates
+
+Plan 01-04 turns these into numbered log entries; no C numbers are assigned here.
+
+- Topic: branch cycle count printed `7/9` with no taken or not-taken label; what the manual says: `7/9` for B, the condition rows and BEXT, and 7 for NOPP (`pdf 54`); `pdf 32` shows only the fetch of a BEXT and does not resolve it; resolving evidence: a timing figure or table that labels the two counts, or a bus trace of taken and not-taken branches on hardware.
+- Topic: interrupt-entry cycle count is not tabulated; what the manual says: the sequence is INTAK, NACT, DW, DWS, NACT, IAB, three NACT and then the first fetch BAR (`pdf 35`); resolving evidence: a printed entry count in the manual, or a bus trace of an interrupt acceptance.
+- Topic: the manual describes the CP-1600, not the CP-1610; what the manual says: the pages read describe the CP-1600 throughout and the electrical specifications section is headed Tentative (`pdf 12`; `pdf 14`; `§2.4, pdf 38`); resolving evidence: a CP-1610 datasheet page that states the same encodings, cycle counts and sequences.
+- Topic: the reset PC is supplied by a device over the bus through IAB and not by a fixed vector; what the manual says: the CPU inputs the starting address from the bus at MSYNC* release, with registers and status undefined (`§C.1, pdf 21`; `pdf 27`); resolving evidence: the console memory map and bus behaviour on hardware, and a read-back of the registers after reset.
+- Topic: the Fig. 3.3.2 mode-bit names do not match the shift mnemonic names for left shifts; what the manual says: A = 0 is logical or rotate, and the SLL row is the pattern with B L A = 0 0 1, which is A = 1, while the SWAP row has A = 0 (`§3.3.2, pdf 50`; `pdf 53`); resolving evidence: a Phase 2 reading of the shift table together with the figure, with the table taken as the operative statement.
+- Topic: the cycle counts of SDBD indirect forms may or may not include the 4-cycle SDBD row; what the manual says: a 4-cycle SDBD row followed by a 10-cycle instruction row (`pdf 57`), against a single 14 for the immediate pairs (`pdf 58`); resolving evidence: a worked cycle example in the manual or a bus trace.
+- Topic: stop behaviour wording; what the manual says: STPST stops the CPU after an interruptible instruction (`pdf 14`) while the start/stop section says after the completion of an instruction (`pdf 74`); resolving evidence: the HLT row of the instruction table and a bus trace.
+
+## Open items for Phase 2
+
+- Branch taken and not-taken cycle column: `7/9` is unlabelled on `pdf 54`, and the one branch timing figure on `pdf 32` does not settle it.
+- SDBD modes 0 and 6 policy: the manual marks them not supported (`pdf 57`) and says nothing about the resulting behaviour, so the policy for those encodings is a Phase 2 decision.
+- Interrupt-acknowledge mechanism supplying the vector: the CPU reads the new PC from the bus at IAB (`pdf 25`), so the machine model needs a device or bus rule that supplies it.
+- Reset PC source: the same bus rule supplies the starting address at MSYNC* release (`§C.1, pdf 21`).
+- Per-opcode interruptibility for HLT, SDBD and MVO: the manual is silent (`pdf 55`; `pdf 56`; `pdf 57`), recorded under C19 as partial.
+- Whether INTFF is cleared on interrupt acceptance: not stated on `pdf 12`, `pdf 24` or `pdf 25`.
+- Whether the printed 10 for SDBD indirect forms includes the SDBD row (`pdf 57`).
