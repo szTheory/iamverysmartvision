@@ -1,0 +1,26 @@
+# Claim ledger (FND-02, D-08, D-09). Records are the elements of claims; ids are CL-NNNN.
+file data/claims.json
+topkeys schema_version note claims
+top schema_version NUMBER
+top note STRING
+top claims ARRAY
+array claims
+idkey id
+inventory data/expected/claims.ids
+keys id statement profile tier artifact depends_on standing note
+req id STRING
+req statement STRING
+req profile STRING
+req tier STRING
+req artifact STRING
+req depends_on ARRAY
+req standing STRING
+req note STRING
+nonblank statement
+nonblank profile
+nonblank artifact
+nonblank note
+match id ^CL-[0-9][0-9][0-9][0-9]$
+enumfrom tier data/tiers.json evidence_tiers id
+match standing ^(established|provisional)$
+hook claim

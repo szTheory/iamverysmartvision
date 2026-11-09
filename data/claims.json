@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "note": "Claim ledger. Each claim names a profile, one evidence tier, an artifact that exists, the profile fields it depends on and a standing. A claim that depends on a field tagged tier4-community, tier5-emulator-hint, inference or unknown-default-chosen is provisional. Vocabulary: docs/evidence-tiers.md.",
+  "claims": [
+    {
+      "id": "CL-0001",
+      "statement": "On the CP-1600 manual's reading, a push writes the word at the address held in R6 and then increments R6, and a pull first decrements R6 and then reads, so the stack grows toward higher addresses.",
+      "profile": "intv-2609-ntsc-family-p1",
+      "tier": "source-expectation",
+      "artifact": "docs/cp1610/reference-notes.md",
+      "depends_on": ["cpu.part"],
+      "standing": "provisional",
+      "note": "The expectation comes from three manual pages read in plan 01-02 (C17 resolved-primary). Applying the CP-1600 manual to the CP-1610 is an inference logged as C31 in the discrepancy log, so the claim stays provisional."
+    }
+  ]
+}
