@@ -191,7 +191,7 @@ Not in scope:
 - **D-16:** Source. The GI CP-1600 Microprocessor Users Manual, S16DOC-CP1600-04, May 1975 (bitsavers):
   - sha256 `ecdabe5c52b5e4429a40d1779d82315ab74bae9db00df774e605f8a882dc2b72`, 9,917,417 bytes, 116 pages.
   - It is a scanned image PDF whose OCR layer is damaged in tables (`DOD`, `lllO`).
-  - A local copy (not in the repo) is at `<local-scratch>`. Executors should copy it to `refs/SRC-gi-cp1600-um-1975.pdf`, or re-download it with a browser UA and verify the sha256.
+  - A local copy (not in the repo) is kept as a local scratch copy (path intentionally not recorded; see refs/ policy). Executors should copy it to `refs/SRC-gi-cp1600-um-1975.pdf`, or re-download it with a browser UA and verify the sha256.
 - **D-17:** Evidence rule. Every encoding, cycle count and status-bit claim is read from the **page image** (`pdftoppm`). The OCR text is used only to find pages and for prose. A claim is `[OBS]` only if the image was read. The notes state that this is the CP-1600 manual applied to the CP-1610 [INF], and that electrical specifications are "Tentative".
 - **D-18:** Citation form. "§3.4.6, pdf 62". The scan has no printed page numbers. The sha256 is pinned once in the sources registry, and the notes say this once rather than inventing printed page numbers.
 - **D-19:** Format and scope.
@@ -219,7 +219,7 @@ Not in scope:
 ### Publication and CI in this phase
 
 - **D-22:** Publication. This is the last step of the phase and must pass the gate.
-  - Scrub absolute home paths (`~`) from tracked files: `.claude/CLAUDE.md` and `.planning/research/*.md` currently contain them. Use relative sibling names (for example `../gabbaboy`).
+  - Scrub absolute home paths (paths under a user home directory) from tracked files: `.claude/CLAUDE.md` and `.planning/research/*.md` currently contain them. Use relative sibling names (for example `../gabbaboy`).
   - The history contains about 10 such occurrences and has never been published. The executor may rewrite unpublished history with built-in `git filter-branch`, adding no dependency, or accept the history. **Rewriting is preferred**, because the owner's rule is no PII in the public repo.
   - Then verify noreply author emails and no secrets, add `LICENSE` (MIT), add a `README.md` with a non-affiliation notice and evidence-bound wording, run `gh repo create szTheory/iamverysmartvision --public --source . --push`, and set `main` as the default branch.
 - **D-23:** CI. One GitHub Actions job on `ubuntu-latest` runs `sh tools/gate.sh`. It catches a distinct recurring failure class (evidence and rights drift) in about a second. Use `concurrency` with cancel-in-progress and no matrix. Create `.planning/CI-EFFICIENCY.md` on the first run (AUTONOMY §4). macOS is the local dev machine; a macOS CI leg is added only when the C build arrives.
