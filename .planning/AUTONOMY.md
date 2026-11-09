@@ -26,6 +26,10 @@ autonomous mode, while keeping quality high.
   as profile + evidence tier + artifact (Core Value). GSD milestones and
   software versions stay separate.
 - **Keep `main` green.** Fix red `main` before starting new feature work.
+  Phase work happens on `gsd/phase-<N>-<slug>` branches, because GSD treats
+  `main` as protected. `main` advances only by fast-forward or merge after
+  the gate passes. Once the GitHub remote exists, this goes through a PR
+  with CI green.
 - **Auto-triage PRs and issues.** Label them, then review, merge, close or
   answer. Merge only when CI is green.
 
