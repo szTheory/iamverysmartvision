@@ -1,0 +1,39 @@
+# CP-1610 opcode family table (FND-06, D-12.8). Records are the elements of rows; ids are mnemonic-style.
+# A schema regex cannot hold a space (the DSL splits lines on whitespace), so the `pdf <n>` cite form
+# and the `supported: <n>` sdbd form are checked by the hook (token cp1610-row-format).
+file data/cp1610/opcode-families.json
+topkeys schema_version source note rows
+top schema_version NUMBER
+top source STRING
+top note STRING
+top rows ARRAY
+array rows
+idkey id
+inventory data/expected/cp1610-rows.ids
+keys id mnemonic aliases group printed pattern eq refines also_encodes words cycles_printed cycle_modifiers sdbd status_bits interruptible cite note
+req id STRING
+req mnemonic STRING
+req aliases ARRAY
+req group STRING
+req printed STRING
+req pattern STRING
+req eq ARRAY
+req refines STRING|NULL
+req also_encodes ARRAY
+req words NUMBER
+req cycles_printed STRING
+req cycle_modifiers ARRAY
+req sdbd STRING
+req status_bits STRING
+req interruptible STRING
+req cite STRING
+req note STRING
+nonblank mnemonic
+nonblank printed
+nonblank cycles_printed
+nonblank status_bits
+match id ^[A-Z][A-Z0-9@]*$
+match group ^(register-register|single-register|register-shift|internal-control|jump|branch|direct-memory|indirect-memory|immediate)$
+match pattern ^[01.]+$
+match interruptible ^(yes|no|manual-silent)$
+hook cp1610-row
