@@ -1,2 +1,3 @@
-# Owning plan 01-13: CI parity step.
+# Owning plan 01-13: CI parity step and runner self-test.
 ci-parity
+runner-selftest
