@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "note": "Reference-document registry (D-15). Every cited document has a stable SRC id. Hashes identify a copy, they do not grant rights: rights stay unknown until reviewed. Cached copies live only under the gitignored refs/ directory and are never committed.",
+  "sources": [
+    {
+      "id": "SRC-gi-cp1600-um-1975",
+      "title": "GI CP-1600 Microprocessor Users Manual, May 1975",
+      "url": "https://www.bitsavers.org/components/gi/CP1600/CP-1600_Microprocessor_Users_Manual_May75.pdf",
+      "wayback": null,
+      "accessed": "2026-11-09",
+      "capture": "hashed",
+      "sha256": "ecdabe5c52b5e4429a40d1779d82315ab74bae9db00df774e605f8a882dc2b72",
+      "size_bytes": 9917417,
+      "pages": 116,
+      "rights": "unknown",
+      "authority_tier": "tier1-primary-doc",
+      "local_path": "refs/SRC-gi-cp1600-um-1975.pdf",
+      "note": "Scanned image PDF (document code S16DOC-CP1600-04). Plan 01-02 verifies the cached copy against this digest. The manual describes the CP-1600; applying it to the CP-1610 is an inference. Electrical specifications in it are marked tentative."
+    },
+    {
+      "id": "SRC-mame-intv",
+      "title": "MAME Intellivision driver source files (src/mame/mattel and the CP1610 core)",
+      "url": "https://github.com/mamedev/mame/blob/master/src/mame/mattel/intv.cpp",
+      "wayback": null,
+      "accessed": "2026-11-09",
+      "capture": "reference-only",
+      "sha256": null,
+      "size_bytes": null,
+      "pages": null,
+      "rights": "unknown",
+      "authority_tier": "tier5-emulator-hint",
+      "local_path": null,
+      "note": "Hints only; never an oracle; not hashed because it is consulted as a lead, not cited for values. Clock lines and per-file licence headers (BSD-3-Clause) were read during phase-1 research. No code, tables, comments or structure are copied."
+    }
+  ]
+}
