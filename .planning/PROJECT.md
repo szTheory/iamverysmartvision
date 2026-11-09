@@ -154,6 +154,17 @@ owner decision.
 | Discuss = per-decision subagent fan-out (multi-lens, adversarial, primary sources) → one coherent auto-selected recommendation; "another copy-paste is better than another dependency" | Owner, 2026-11-09 — `.planning/AUTONOMY.md` §2 |
 | Verification shifts left toward zero human UAT; CI only for checks with recurring value; review CI efficiency after every run | Owner, 2026-11-09 — `.planning/AUTONOMY.md` §3–4 |
 
+### Delegated decisions (owner authorization 2026-11-09, `.planning/AUTONOMY.md`)
+
+These come from a researched fan-out recommendation that was auto-adopted. Each is reversible through the same protocol, and the reversal evidence is listed. Details are in `.planning/phases/01-evidence-profile-and-rights-foundations/01-CONTEXT.md`.
+
+| Gate | Decision | Would reverse it |
+|------|----------|------------------|
+| D1 | C17 + CMake 3.25+/Presets/Ninja/CTest, in-repo test harness, no runtime deps (~75%) | Recurring UB despite integer rules; stable Rust sanitizers; Rust-first consumer |
+| D2 | Canonical machine time = master tick (one crystal period), `uint64_t` from reset; CPU cycle = profile ratio (NTSC 4); core never reads Hz | Evidence of a device clock not an integer divisor of the crystal |
+| D3 | First profile `intv-2609-ntsc-family-p1`: family-level 2609 NTSC, AY-3-8900-1 STIC, AY-3-8914-class PSG (tier 4), zero power-on fill, single-slot ROM-only cartridge, per-field tags | Owner unit measurement (D10) → new board-pinned profile id |
+| D9 | MIT licence; public GitHub repo `szTheory/iamverysmartvision` after hygiene check; keep working name; never "Intellivision" in product/package name; README non-affiliation notice | Owner instruction |
+
 ### Recommendations (not owner decisions)
 
 | Recommendation | Rationale | Status |

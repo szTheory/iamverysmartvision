@@ -59,18 +59,12 @@ None yet.
 
 ### Blockers/Concerns
 
-Owner gates (open; none decided; recommendations are not decisions):
-- D1 Language/build (C17 + CMake recommended; Rust alternative) — blocks Phase 2 start.
-- D3 First profile (2609 NTSC recommended; revision, STIC/PSG parts, power-on policy) — blocks Phase 1 exit.
-- D5 System-image policy and project boot stub — needed in Phase 3 (refusal) and before Phase 4 boot path.
-- D6 Controller core-input representation (C14; owner + architecture) — settle while Phase 4 shapes the API; blocks Phase 5 start.
-- D4 Fixture assembler policy (owner licence + architecture, C22) — blocks Phase 4 guest fixtures.
-- D9 License, repository visibility, naming/trademark, publication — blocks any external publication; touches CI hosting (Phase 4) and release assessment (Phase 8).
-- D10 Physical hardware measurement — no measured-tier claim without it.
-- D11 Owner-local real EXEC/GROM runs — gates SCN-02 claims (Phase 7).
-- D13 LibFuturo adapter — deferred; not before a real consumer.
+Gates resolved as delegated decisions (owner authorization 2026-11-09, `.planning/AUTONOMY.md`; see PROJECT.md Decision Register):
+- D1 C17 + CMake; D2 master tick (u64); D3 `intv-2609-ntsc-family-p1`; D9 MIT + public repo after hygiene check.
 
-Architecture decisions (open): D2 time base (Phase 1), D7 reference PCM location (Phase 5), D8 raw framebuffer geometry (Phase 6), D12 CI shape (Phase 4).
+Still open, decided by fan-out protocol when their phase needs them: D4 (Phase 4), D5 (Phase 3/4), D6 (Phase 4/5), D7 (Phase 5), D8 (Phase 6), D12 (Phase 4), D13 (deferred).
+Hard stops (not delegated): D10 physical measurement, D11 owner-local EXEC/GROM runs — evidence marked missing, work continues.
+
 
 Other open questions: cartridge import format (OQ4, Phase 3), first scenario title/program (OQ9, Phase 7), persistence policy (OQ8, Phase 8).
 
