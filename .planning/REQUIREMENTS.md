@@ -180,13 +180,62 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (filled by roadmapper) | | |
+| FND-01 | Phase 1 | Pending |
+| FND-02 | Phase 1 | Pending |
+| FND-03 | Phase 1 | Pending |
+| FND-04 | Phase 1 | Pending |
+| FND-05 | Phase 1 | Pending |
+| FND-06 | Phase 1 | Pending |
+| FND-07 | Phase 1 | Pending |
+| CPU-01 | Phase 2 | Pending |
+| CPU-02 | Phase 2 | Pending |
+| CPU-03 | Phase 2 | Pending |
+| CPU-04 | Phase 2 | Pending |
+| CPU-05 | Phase 2 | Pending |
+| MEM-01 | Phase 3 | Pending |
+| MEM-02 | Phase 3 | Pending |
+| MEM-03 | Phase 3 | Pending |
+| MEM-04 | Phase 3 | Pending |
+| MEM-05 | Phase 3 | Pending |
+| API-01 | Phase 3 | Pending |
+| API-02 | Phase 4 | Pending |
+| API-03 | Phase 5 | Pending |
+| API-04 | Phase 4 | Pending |
+| API-05 | Phase 2 | Pending |
+| API-06 | Phase 3 | Pending |
+| RUN-01 | Phase 4 | Pending |
+| RUN-02 | Phase 4 | Pending |
+| RUN-03 | Phase 2 | Pending |
+| RUN-04 | Phase 4 | Pending |
+| RUN-05 | Phase 4 | Pending |
+| RUN-06 | Phase 4 | Pending |
+| PKG-01 | Phase 4 | Pending |
+| PKG-02 | Phase 2 | Pending |
+| PKG-03 | Phase 4 | Pending |
+| PKG-04 | Phase 4 | Pending |
+| AUD-01 | Phase 5 | Pending |
+| AUD-02 | Phase 5 | Pending |
+| INP-01 | Phase 5 | Pending |
+| INP-02 | Phase 5 | Pending |
+| INP-03 | Phase 5 | Pending |
+| VID-01 | Phase 6 | Pending |
+| VID-02 | Phase 6 | Pending |
+| VID-03 | Phase 6 | Pending |
+| VID-04 | Phase 6 | Pending |
+| VID-05 | Phase 8 | Pending |
+| VID-06 | Phase 6 | Pending |
+| SCN-01 | Phase 7 | Pending |
+| SCN-02 | Phase 7 | Pending |
+| STA-01 | Phase 8 | Pending |
+| STA-02 | Phase 8 | Pending |
+| PRF-01 | Phase 8 | Pending |
+| REL-01 | Phase 8 | Pending |
 
 **Coverage:**
 - v1 requirements: 50 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 50 ⚠️
+- Mapped to phases: 50
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-11-09*
-*Last updated: 2026-11-09 after initial definition*
+*Last updated: 2026-11-09 after roadmap creation (traceability filled)*
