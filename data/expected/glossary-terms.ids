@@ -1,0 +1,10 @@
+# Time-base glossary term inventory: each term must appear as **term** in docs/time-base.md.
+Crystal
+Master tick
+CPU cycle
+CPU input clock
+Time slot
+STIC clock
+PSG chip clock
+PSG step
+Frame
