@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 1
 current_phase_name: Evidence, Profile and Rights Foundations
 status: executing
-stopped_at: Completed 01-01-PLAN.md
-last_updated: "2026-11-09T21:53:11.969Z"
+stopped_at: Completed 01-14-PLAN.md
+last_updated: "2026-11-09T21:55:47.554Z"
 last_activity: 2026-11-09
 last_activity_desc: Phase 1 execution started
-state_head: e20b051b76ff5b43ec4ef9bce56c627b89d427b1
+state_head: 07991902f8190882a7ab7079d664cb5640a15e60
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 14
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 1 (Evidence, Profile and Rights Foundations) — EXECUTING
-Plan: 2 of 14
+Plan: 3 of 14
 Status: Ready to execute
 Last activity: 2026-11-09 — Phase 1 execution started
 
@@ -53,6 +53,7 @@ Progress: [░░░░░░░░░░] 0%
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | Phase 1 P01 | 30min | 2 tasks | 90 files |
+| Phase 1 P14 | 6min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -65,6 +66,7 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Init]: Visible scenario (Phase 7) placed directly after the first STIC pass, ahead of full STIC coverage (conflict C26). GSD default, reversible.
 - [Init]: Variant profiles and peripherals (the research summary's proposed variants stage) are v2 and are not in this roadmap.
 - [Phase 1]: 01-01: gate summary steps=<passed>/<expected>; vocab step prints its own pass line; duplicate JSON keys stay a documented undetectable limit
+- [Phase 1]: 01-14: sources registry keeps community wiki and docs tree reference-only (no stable single-document hash); Blue Sky page re-hash matches research
 
 ### Pending Todos
 
@@ -93,6 +95,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-09T21:53:11.950Z
-Stopped at: Completed 01-01-PLAN.md
+Last session: 2026-11-09T21:55:47.521Z
+Stopped at: Completed 01-14-PLAN.md
 Resume file: None

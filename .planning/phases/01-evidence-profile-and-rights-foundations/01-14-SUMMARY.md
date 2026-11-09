@@ -28,7 +28,7 @@ key-decisions:
   - "Blue Sky page re-hashed in scratch: digest and size equal the research-era values, so no difference is recorded"
   - "Community wiki and community docs tree stay reference-only because a moving wiki or directory tree has no single stable hash"
   - "Owner-manual candidate copy is not hashed or opened; entry stays reference-only"
-requirements-completed: [FND-06]
+requirements-completed: []  # FND-06 is only partly served by this plan (sources registry); the opcode/encoding/cycle notes land in plans 01-02 and 01-03, so FND-06 stays open in REQUIREMENTS.md
 duration: 6min
 completed: 2026-11-09
 status: complete
@@ -76,7 +76,12 @@ None for code. Notes:
 - **Fix:** Used `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>` for accuracy.
 - **Commits:** `21c11a3`, `c764429`
 
-**2. [Interpretation] Registry values beyond the plan text**
+**2. [Rule 1 - Premature completion] FND-06 not marked complete**
+- **Found during:** state updates
+- **Issue:** `requirements.mark-complete FND-06` (from this plan's frontmatter) ticked FND-06, but FND-06 requires the CP-1610 reference notes, which plans 01-02 and 01-03 deliver. Ticking it would overstate evidence.
+- **Fix:** Reverted the REQUIREMENTS.md change; FND-06 stays Pending until those plans finish.
+
+**3. [Interpretation] Registry values beyond the plan text**
 - `SRC-mattel-owner-manual` carries the bootstrap URL from `.planning/bootstrap/EMULATOR-DNA.md` (the plan did not spell it out); `SRC-intv-wiki` carries the Hand Controller page URL with the research-read revision number in the note; `wayback` is null for entries with no known snapshot (only the Blue Sky page has one).
 - `SRC-ifixit-2609-service-manual` has `pages: 21` (page metadata) despite being reference-only; the contract allows a numeric `pages` for any entry.
 
