@@ -1,0 +1,28 @@
+# Discrepancy log (FND-03, D-21). Records are the elements of discrepancies; ids are C<number>.
+file data/discrepancies.json
+topkeys schema_version note discrepancies
+top schema_version NUMBER
+top note STRING
+top discrepancies ARRAY
+array discrepancies
+idkey id
+inventory data/expected/discrepancies.ids
+keys id topic sources status default_policy resolver evidence note
+req id STRING
+req topic STRING
+req sources STRING
+req status STRING
+req default_policy STRING
+req resolver STRING
+req evidence STRING
+req note STRING
+nonblank topic
+nonblank sources
+nonblank default_policy
+match id ^C[0-9]+$
+match status ^(open|partial|resolved-primary|withdrawn)$
+match resolver ^(test|measurement|pending):.+
+# open and partial entries must state `unknown-default-chosen: <text>`; a schema regex cannot hold a space,
+# so the hook checks that prefix (token discrepancy-format: <id>/default_policy).
+when status=resolved-primary nonblank evidence
+hook discrepancy

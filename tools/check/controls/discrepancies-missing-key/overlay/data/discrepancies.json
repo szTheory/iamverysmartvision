@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "note": "Known-good control tree discrepancy log.",
+  "discrepancies": [
+    {
+      "id": "C1",
+      "topic": "Example open conflict",
+      "sources": "Two sources disagree on an example figure (SRC-bsr-2609, SRC-gi-1980-catalog).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: the example default is used.",
+      "evidence": "",
+      "note": "Example entry."
+    },
+    {
+      "id": "C17",
+      "topic": "Example resolved conflict",
+      "sources": "A primary page settles the example question (SRC-gi-cp1600-um-1975).",
+      "status": "resolved-primary",
+      "default_policy": "resolved: the example behaviour is as the manual states.",
+      "resolver": "test: example vectors in a later phase",
+      "evidence": "SRC-gi-cp1600-um-1975 S3.4.6, pdf 62",
+      "note": "Example entry."
+    }
+  ]
+}

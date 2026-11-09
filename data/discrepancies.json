@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "note": "Discrepancy log (FND-03, D-21). Ids are never reused: a retired entry stays with status withdrawn. C1 to C28 are seeded from the research source-conflict table; C29 onward are appended from docs/cp1610/reference-notes.md. Open and partial entries state the default the project chose.",
+  "discrepancies": [
+    {
+      "id": "C17",
+      "topic": "Stack direction and R6 behavior",
+      "sources": "The community wiki (SRC-intv-wiki) is read as saying R6 auto-increments on indirect reads and auto-decrements on indirect writes, which is the reverse of the manual. A community transcription of the manual (SRC-community-emu-docs) agrees with the manual: post-increment on output (push), pre-decrement on input (pull), and its interrupts document has the stack growing upward. That transcription was damaged by character recognition, so the manual page images were read directly.",
+      "status": "resolved-primary",
+      "default_policy": "resolved: R6 is post-incremented after an indirect output (push) and pre-decremented before an indirect input (pull); the stack grows toward higher addresses; the interrupt entry stores the PC at the address held in R6 and then increments R6.",
+      "resolver": "test: Phase 2 CPU-04 stack vectors and the wrong-stack-direction named-fault control",
+      "evidence": "SRC-gi-cp1600-um-1975 S3.4.6, pdf 62; pdf 46; pdf 48; pdf 24. Read from page images in plan 01-02; see the Stack operations section of docs/cp1610/reference-notes.md.",
+      "note": "Status equals the C17 status line of the reference notes. The manual describes the CP-1600; see the CP-1600 versus CP-1610 entry."
+    }
+  ]
+}
