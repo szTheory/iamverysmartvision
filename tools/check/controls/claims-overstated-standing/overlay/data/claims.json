@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "note": "Known-good control tree claim ledger.",
+  "claims": [
+    {
+      "id": "CL-0001",
+      "statement": "The example profile names the STIC part.",
+      "profile": "intv-2609-ntsc-family-p1",
+      "tier": "source-expectation",
+      "artifact": "data/tiers.json",
+      "depends_on": ["board_revision"],
+      "standing": "established",
+      "note": "Example entry."
+    }
+  ]
+}

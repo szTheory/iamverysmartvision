@@ -1,2 +1,13 @@
 claims-dangling-artifact
 claims-missing-key
+claims-unknown-tier
+claims-overstated-standing
+claims-unknown-field
+claims-order
+claims-duplicate-id
+claims-empty
+claims-inventory-empty
+text-untagged-claim-word
+text-missing-claim-ref
+text-undocumented-tier
+text-no-files

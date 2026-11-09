@@ -11,6 +11,36 @@
       "depends_on": ["cpu.part"],
       "standing": "provisional",
       "note": "The expectation comes from three manual pages read in plan 01-02 (C17 resolved-primary). Applying the CP-1600 manual to the CP-1610 is an inference logged as C31 in the discrepancy log, so the claim stays provisional."
+    },
+    {
+      "id": "CL-0002",
+      "statement": "The NTSC STIC part of this profile is the AY-3-8900-1, operated from a 3.579545 MHz crystal.",
+      "profile": "intv-2609-ntsc-family-p1",
+      "tier": "source-expectation",
+      "artifact": "data/profiles/intv-2609-ntsc-family-p1.json",
+      "depends_on": ["stic.part", "crystal_hz", "region_video"],
+      "standing": "established",
+      "note": "All three fields carry tier1-primary-doc tags citing the 1980 data catalog; the page was a research-era reading and is re-read when the profile is next revised. The claim states only the printed figure; the exact crystal ratio is logged as C9. The STIC1A variant is not modelled."
+    },
+    {
+      "id": "CL-0003",
+      "statement": "A nominal NTSC frame is 262 scanlines times 57 CPU cycles, which is 14,934 CPU cycles and 59,736 master ticks.",
+      "profile": "intv-2609-ntsc-family-p1",
+      "tier": "source-expectation",
+      "artifact": "data/profiles/intv-2609-ntsc-family-p1.json",
+      "depends_on": ["scanlines_per_frame", "cpu_cycles_per_scanline", "ticks_per_cpu_cycle"],
+      "standing": "provisional",
+      "note": "The scanline and per-scanline counts are tier4-community and the ticks per CPU cycle are an inference, so the weakest-field rule makes the claim provisional. A primary source or a measurement would resolve it."
+    },
+    {
+      "id": "CL-0004",
+      "statement": "The CP-1600 manual marks shifts and the instructions EIS, DIS, TCI, CLRC and SETC as not interruptible and says nothing about HLT, SDBD and MVO.",
+      "profile": "intv-2609-ntsc-family-p1",
+      "tier": "source-expectation",
+      "artifact": "docs/cp1610/reference-notes.md",
+      "depends_on": ["cpu.part"],
+      "standing": "provisional",
+      "note": "This records what the manual pages say (C19 partial). Whether the silent cases are interruptible on the CP1610 is unresolved, and applying the CP-1600 manual to the CP1610 is an inference logged as C31."
     }
   ]
 }

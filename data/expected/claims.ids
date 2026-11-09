@@ -1,2 +1,5 @@
 # Claim ids (FND-02); must equal the ids in data/claims.json.
 CL-0001
+CL-0002
+CL-0003
+CL-0004

@@ -37,7 +37,7 @@ The same page states that the stack is maintained by R6 and expands upward in ex
 The effective-address figure gives the MVO-only case as: EA takes (R6), then (R6) is incremented by one (`Fig. 3.2.4, pdf 48`) [OBS].
 The same figure gives the non-MVO case as: (R6) is decremented by one, then EA takes (R6) (`Fig. 3.2.4, pdf 48`) [OBS].
 The interrupt sequence stores the program counter at the address held in R6, the stack pointer, and increments the stack pointer after the store (`§C.6, pdf 24`) [OBS].
-The three pages agree: the stack grows toward higher addresses, a push writes at R6 and then increments it, and a pull decrements R6 and then reads.
+The three pages agree: the stack grows toward higher addresses, a push writes at R6 and then increments it, and a pull decrements R6 and then reads. [claim:CL-0001]
 Because the interrupt entry uses the same post-increment rule, the first interrupt-saved word lands at the address held in R6 at acceptance [INF].
 The image reading in this phase matches the behaviour recorded in decision D-21, so the status is resolved from a primary source.
 C17 status: resolved-primary
@@ -170,7 +170,7 @@ The HLT description on `pdf 56` says nothing about interruptibility, so HLT is `
 The SDBD description on `pdf 57` says nothing about interruptibility, so SDBD is `manual-silent`.
 The MVO, MVO@, MVOI and PSHR descriptions on `pdf 55` and `pdf 57` say nothing about interruptibility, so MVO is `manual-silent`.
 C19: partial.
-The manual carries a not-interruptible marking for shifts and for EIS, DIS, TCI, CLRC and SETC only; the community list of non-interruptible instructions is not corroborated for HLT, SDBD and MVO.
+The manual carries a not-interruptible marking for shifts and for EIS, DIS, TCI, CLRC and SETC only; the community list of non-interruptible instructions is not corroborated for HLT, SDBD and MVO. [claim:CL-0004]
 The register-to-register, memory and jump summary tables on the pages read for this section carry no other interruptibility marking [OBS].
 
 ## Reset, MSYNC and IAB
