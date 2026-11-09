@@ -1,0 +1,53 @@
+{
+  "contract": "1.0.0",
+  "flavor": "core",
+  "milestone": null,
+  "phases": [
+    {
+      "number": "1",
+      "name": "Evidence, Profile and Rights Foundations",
+      "status": "pending"
+    },
+    {
+      "number": "2",
+      "name": "CP-1610 CPU Core",
+      "status": "pending"
+    },
+    {
+      "number": "3",
+      "name": "Memory Map, Content Loading and Refusal",
+      "status": "pending"
+    },
+    {
+      "number": "4",
+      "name": "Headless Runner and Installed Consumer (Slice 0)",
+      "status": "pending"
+    },
+    {
+      "number": "5",
+      "name": "Hand Controllers and PSG Sound",
+      "status": "pending"
+    },
+    {
+      "number": "6",
+      "name": "STIC Video First Pass",
+      "status": "pending"
+    },
+    {
+      "number": "7",
+      "name": "First Visible Original Scenario",
+      "status": "pending"
+    },
+    {
+      "number": "8",
+      "name": "STIC Completion, Save State and Performance Baselines",
+      "status": "pending"
+    }
+  ],
+  "next": {
+    "command": "/gsd-progress --next",
+    "label": "Advance to the next step (plan phase 1)",
+    "reason": "Phase 1 of 8 — needs a plan"
+  },
+  "updated_at": "2026-11-09T21:41:56.977Z"
+}
