@@ -23,4 +23,6 @@ nonblank note
 match id ^CL-[0-9][0-9][0-9][0-9]$
 enumfrom tier data/tiers.json evidence_tiers id
 match standing ^(established|provisional)$
+# WR-05: an established claim must name the profile fields it rests on, or the weakest-field rule is vacuous.
+when standing=established nonblank depends_on
 hook claim
