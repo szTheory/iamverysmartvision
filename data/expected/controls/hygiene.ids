@@ -1,2 +1,5 @@
 # Owning plan 01-11: hygiene controls.
 hygiene-home-path
+hygiene-secret
+hygiene-password
+hygiene-foreign-email
