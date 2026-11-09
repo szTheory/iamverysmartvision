@@ -86,7 +86,7 @@ exit, until the gate is resolved by its named authority.
   3. The fixture-manifest schema (source, recipe/tool+version, digests, license, notices, allowed use, `redistributable`) and the no-copy provenance rule are in the review checklist. A sample `redistributable: unknown` entry is shown to be treated as non-redistributable.
   4. The CP-1610 reference notes give opcode encodings, cycle counts and the reset/interrupt sequence, each with a page citation to the directly read GI manual. They state whether the stack-direction reading (C17) is confirmed or still a logged conflict.
   5. A time-base glossary separates CPU cycle, input clock, STIC/PSG clocks and the crystal constant. D2 is recorded as an architecture decision with its rationale, for later code and docs to follow.
-**Plans:** 7/14 plans executed in 5 waves (walking skeleton: `.planning/phases/01-evidence-profile-and-rights-foundations/SKELETON.md`)
+**Plans:** 8/14 plans executed in 5 waves (walking skeleton: `.planning/phases/01-evidence-profile-and-rights-foundations/SKELETON.md`)
 
 Plans:
 **Wave 1**
@@ -99,7 +99,7 @@ Plans:
 - [x] 01-04-PLAN.md — Discrepancy log C1-C28 + C29+, checked, profile conflicts reconciled (wave 2)
 - [x] 01-05-PLAN.md — Evidence-tiers doc, claim ledger, claim-language tripwire (wave 2)
 - [x] 01-06-PLAN.md — Fixture-manifest schema (fail-closed), rights policy, tracked-file rights checks (wave 2)
-- [ ] 01-07-PLAN.md — Provenance rule + checklist, consultation log, denylist, source-registry check (wave 2)
+- [x] 01-07-PLAN.md — Provenance rule + checklist, consultation log, denylist, source-registry check (wave 2)
 - [ ] 01-08-PLAN.md — Time-base glossary + D2, glossary step, decision-record cross-links (wave 2)
 - [ ] 01-13-PLAN.md — CI-parity step and control-runner self-test (wave 2)
 
@@ -249,7 +249,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Evidence, Profile and Rights Foundations | 7/14 | In Progress | - |
+| 1. Evidence, Profile and Rights Foundations | 8/14 | In Progress | - |
 | 2. CP-1610 CPU Core | 0/TBD | Not started | - |
 | 3. Memory Map, Content Loading and Refusal | 0/TBD | Not started | - |
 | 4. Headless Runner and Installed Consumer (Slice 0) | 0/TBD | Not started | - |

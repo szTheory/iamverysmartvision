@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 1
 current_phase_name: Evidence, Profile and Rights Foundations
 status: executing
-stopped_at: Completed 01-06-PLAN.md
-last_updated: "2026-11-09T22:40:51.625Z"
+stopped_at: Completed 01-07-PLAN.md
+last_updated: "2026-11-09T22:46:15.190Z"
 last_activity: 2026-11-09
 last_activity_desc: Phase 1 execution started
-state_head: c62738ef597b228873add6188483de21ba1e6ff4
+state_head: 1d436d609631b179fcbe71329f9b3882292a6621
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 14
-  completed_plans: 7
+  completed_plans: 8
   percent: 0
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 1 (Evidence, Profile and Rights Foundations) — EXECUTING
-Plan: 8 of 14
+Plan: 9 of 14
 Status: Ready to execute
 Last activity: 2026-11-09 — Phase 1 execution started
 
@@ -59,6 +59,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P04 | 15min | 2 tasks | 18 files |
 | Phase 1 P05 | 20min | 2 tasks | 26 files |
 | Phase 1 P06 | 35min | 2 tasks | 60 files |
+| Phase 1 P07 | 25min | 2 tasks | 41 files |
 
 ## Accumulated Context
 
@@ -80,6 +81,7 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 1]: Claim ids are CL-NNNN, strictly ascending; only CL-0002 is established, claims resting on tier4-community, inference or unknown-default-chosen fields stay provisional
 - [Phase 1]: text step exempts only the literal placeholder CL-NNNN from claim-reference resolution
 - [Phase 1]: 01-06: files step reports tracked=<n> (integrity already owns files=<n>); unknown derived_from ids and cycles resolve to effective-no
+- [Phase 1]: 01-07: denylist stat named scanned= (not files=) to avoid clashing with the integrity step key; reference-only registry entries must carry null digests and a note mentioning hashing
 
 ### Pending Todos
 
@@ -108,6 +110,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-09T22:40:51.606Z
-Stopped at: Completed 01-06-PLAN.md
+Last session: 2026-11-09T22:46:15.160Z
+Stopped at: Completed 01-07-PLAN.md
 Resume file: None
