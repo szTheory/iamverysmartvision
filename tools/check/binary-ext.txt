@@ -1,0 +1,14 @@
+# Extensions treated as binary by name (one per line, lower case, no dot). Binary-by-name
+# files are governed by the files step (rights gate) and skipped by the text integrity rules.
+# Read by tools/check/integrity.cmake, tools/check/files.cmake and tools/check/binscan.sh.
+int
+bin
+rom
+itv
+cfg
+cc3
+pdf
+png
+jpg
+jpeg
+gif

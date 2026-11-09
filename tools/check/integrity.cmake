@@ -4,7 +4,8 @@
 #   ROOT      the tree under test (required)
 #   FILELIST  file with one repo-relative path per line (required)
 # Failure tokens: integrity-filelist-empty, integrity-path-charset, integrity-empty-file,
-#   integrity-crlf, integrity-bom, integrity-non-ascii, integrity-missing-spdx.
+#   integrity-crlf, integrity-bom, integrity-non-ascii, integrity-missing-spdx, integrity-ext-list-empty.
+# NUL bytes (integrity-nul-byte) are reported by steps/integrity.sh through binscan.sh.
 # Success line: "integrity pass files=<n>".
 cmake_minimum_required(VERSION 3.25)
 
@@ -15,7 +16,10 @@ foreach(required ROOT FILELIST)
 endforeach()
 include("${CMAKE_CURRENT_LIST_DIR}/lib.cmake")
 
-set(SKIP_EXT pdf png jpg jpeg gif int bin rom itv cfg cc3)
+file(STRINGS "${CMAKE_CURRENT_LIST_DIR}/binary-ext.txt" SKIP_EXT REGEX "^[a-z0-9]+$")
+if("${SKIP_EXT}" STREQUAL "")
+  gate_fail(integrity-ext-list-empty "tools/check/binary-ext.txt")
+endif()
 file(READ "${FILELIST}" list_text)
 gate_lines(paths "${list_text}")
 set(nfiles 0)

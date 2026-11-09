@@ -48,6 +48,7 @@ apply_make() {
       homepath) printf '/%s/%s/x\n' Users ctlexample >> "$_t/$_p" ;;
       secret) printf '%s%s_%s\n' gh p abcdefghijklmnopqrstuvwxyz0123456789 >> "$_t/$_p" ;;
       password) printf '%s%s=%s\n' pass word Abcdefgh1234 >> "$_t/$_p" ;;
+      nul) printf 'a\000b\n' >> "$_t/$_p" ;;
       email) printf '%s@%s\n' ctl mail.test >> "$_t/$_p" ;;
       *) fail control-make-verb "$_verb"; return 1 ;;
     esac

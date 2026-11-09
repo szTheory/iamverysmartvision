@@ -40,7 +40,7 @@ trap 'rm -rf "$tmp"' EXIT
 trap 'exit 1' HUP INT TERM
 
 # True if file $1 has a match of ERE $2 that is not allowed by ERE $3 (grep flags in $4).
-file_leaks() { grep -I -o $4 -E -e "$2" "$1" 2>/dev/null | grep -v -E -e "$3" | grep -q .; }
+file_leaks() { grep -a -o $4 -E -e "$2" "$1" 2>/dev/null | grep -a -v -E -e "$3" | grep -q .; }
 
 if [ "$mode" = --tree ]; then
   if [ -n "${ROOT:-}" ]; then root=$ROOT; else root=$(git rev-parse --show-toplevel) || exit 1; fi
@@ -68,7 +68,7 @@ if [ "$mode" = --tree ]; then
 
   # Batch candidate scans, then filter the few candidates one by one.
   cand() { # $1 regex, $2 grep flags
-    if [ -s "$tmp/ok" ]; then xargs -0 grep -I -l $2 -E -e "$1" < "$tmp/ok" 2>/dev/null || true; fi
+    if [ -s "$tmp/ok" ]; then xargs -0 grep -a -l $2 -E -e "$1" < "$tmp/ok" 2>/dev/null || true; fi
   }
   cand "$HOME_PATH" "" | sort -u > "$tmp/c.home"
   while IFS= read -r f; do
@@ -99,10 +99,10 @@ n=$(grep -c . "$tmp/commits" || true)
 while IFS= read -r c; do
   [ -n "$c" ] || continue
   s=$(printf '%s' "$c" | cut -c1-10)
-  if git grep -I -h -o -E -e "$HOME_PATH" "$c" -- . 2>/dev/null | grep -v -E -e "$HOME_OK" | grep -q .; then
+  if git grep -a -h -o -E -e "$HOME_PATH" "$c" -- . 2>/dev/null | grep -a -v -E -e "$HOME_OK" | grep -q .; then
     found history-home-path "$s"
   fi
-  if { git grep -I -l -E -e "$TOKEN" "$c" -- . 2>/dev/null; git grep -I -l -i -E -e "$PW_ASSIGN" "$c" -- . 2>/dev/null; } | grep -q .; then
+  if { git grep -a -l -E -e "$TOKEN" "$c" -- . 2>/dev/null; git grep -a -l -i -E -e "$PW_ASSIGN" "$c" -- . 2>/dev/null; } | grep -q .; then
     found history-secret "$s"
   fi
   git log -1 --format=%B "$c" > "$tmp/msg"

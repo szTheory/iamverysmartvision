@@ -33,7 +33,7 @@ done < "$tmp/cand"
 
 : > "$tmp/refs"
 while IFS= read -r f; do
-  grep -o -E 'SRC-[a-z0-9-]+' "$ROOT/$f" >> "$tmp/refs"
+  grep -a -o -E 'SRC-[a-z0-9-]+' "$ROOT/$f" >> "$tmp/refs"
 done < "$tmp/scan"
 sort -u "$tmp/refs" | while IFS= read -r id; do
   grep -q -x -F -e "$id" "$tmp/ids" || printf -- '-- FAIL source-unknown-ref: %s\n' "$id"

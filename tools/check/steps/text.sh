@@ -31,8 +31,8 @@ fi
 # (a) R1 claim-word tripwire: a claim word needs a claim tag or the [nc] waiver on the same line.
 : > "$tmp/untagged"
 while IFS= read -r f; do
-  grep -n -i -w -E 'supports|compatible|passes|accurate|verified|runs' "$ROOT/$f" \
-    | grep -v -E '\[claim:CL-[0-9]{4}\]|\[nc\]' \
+  grep -a -n -i -w -E 'supports|compatible|passes|accurate|verified|runs' "$ROOT/$f" \
+    | grep -a -v -E '\[claim:CL-[0-9]{4}\]|\[nc\]' \
     | sed -n 's/^\([0-9][0-9]*\):.*/\1/p' \
     | while IFS= read -r n; do printf '%s:%s\n' "$f" "$n"; done >> "$tmp/untagged"
 done < "$tmp/scan"
@@ -45,7 +45,7 @@ done
 # The literal placeholder CL-NNNN (the documented citation form) is the only exempt token.
 : > "$tmp/refs"
 while IFS= read -r f; do
-  grep -o -E '\[claim:[^]]*\]' "$ROOT/$f" | sed 's/^\[claim://; s/\]$//' >> "$tmp/refs"
+  grep -a -o -E '\[claim:[^]]*\]' "$ROOT/$f" | sed 's/^\[claim://; s/\]$//' >> "$tmp/refs"
 done < "$tmp/scan"
 refs=$(grep -v -x -F -e CL-NNNN "$tmp/refs" | grep -c .)
 : > "$tmp/ids"

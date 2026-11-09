@@ -63,7 +63,7 @@ negative controls that prove each check fails for its intended reason.
 
 - Name form `<step>-<case>`; `_good` is reserved for the known-good tree `_good/tree/`.
 - Files: `CHECK` (one line: the step name), `EXPECT` (one token per line; every line must appear as a fixed substring of the step output), optional `FORBID` (no line may appear), optional `overlay/` (copied over a fresh copy of `_good/tree/`), optional `MAKE` (transform lines applied after the overlay).
-- `MAKE` verbs, one per line, paths relative to the temp tree: `delete <p>`, `empty <p>`, `write <p> <word>`, `rename <from> <to>`, `crlf <p>`, `bom <p>`, `nonascii <p>`, `homepath <p>`, `secret <p>`, `password <p>`, `email <p>`. `homepath`, `secret`, `password` and `email` append a line whose bad text is assembled at run time from split pieces, so no tracked file ever contains a home path, a token shape, a password assignment or a foreign email. An unknown verb fails the control (`control-make-verb`).
+- `MAKE` verbs, one per line, paths relative to the temp tree: `delete <p>`, `empty <p>`, `write <p> <word>`, `rename <from> <to>`, `crlf <p>`, `bom <p>`, `nonascii <p>`, `homepath <p>`, `secret <p>`, `password <p>`, `email <p>`, `nul <p>`. `homepath`, `secret`, `password` and `email` append a line whose bad text is assembled at run time from split pieces, so no tracked file ever contains a home path, a token shape, a password assignment or a foreign email; `nul` appends a line containing a NUL byte (a text file with a NUL is a scanner blind spot, CR-01). An unknown verb fails the control (`control-make-verb`).
 - The runner builds the temp tree's `FILELIST` with `find` (not git), runs `ROOT=<tmp> FILELIST=<tmp list> CHECK_DIR=<real> sh tools/check/steps/<CHECK>.sh`, and requires nonzero exit AND every `EXPECT` line AND no `FORBID` line.
 - Positive control: every distinct `CHECK` step named by any control is run on the pristine `_good/tree` and must exit 0 and print `-- <step> pass`. Therefore every `_good/tree` fragment must pass every step (doc rules §7 included).
 - Runner tokens: `control-exit-zero`, `control-token-missing`, `control-forbidden-token`, `control-expect-blank` (an `EXPECT` with a blank line would match everything), `control-not-in-inventory`, `control-inventory-orphan`, `control-good-failed: <step>`, `control-unknown-step`, `control-make-verb`. The control-directory set must equal the union of `data/expected/controls/*.ids`.
@@ -104,6 +104,7 @@ Hooks may call `gate_fail(token detail)` and `gate_stat(key value)` from `tools/
 ### §6 Encoding and path rules
 
 - Every tracked path matches `^[A-Za-z0-9._/-]+$`.
+- No tracked file that is not binary by extension (`tools/check/binary-ext.txt`) may contain a NUL byte (`integrity-nul-byte`); every content scan reads files with `grep -a` so nothing is skipped as "binary".
 - `data/**`, `fixtures/**`, `tools/**`, `.github/**`: ASCII only (no byte outside tab, LF, 0x20-0x7E), LF only, no BOM, no empty files.
 - `docs/**`, `README.md`, `.planning/**`: UTF-8 allowed, LF only, no BOM.
 - Hex values in records are written `$1000` style strings; rationals as `{"num": N, "den": D}`.

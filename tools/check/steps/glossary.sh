@@ -46,8 +46,8 @@ done < "$tmp/cand"
 docfiles=$(grep -c . "$tmp/scan")
 : > "$tmp/bare"
 while IFS= read -r f; do
-  grep -n -i -w -E 'clocks?' "$ROOT/$f" \
-    | grep -v -i -E 'input clock|STIC clock|PSG chip clock|\[nc\]' \
+  grep -a -n -i -w -E 'clocks?' "$ROOT/$f" \
+    | grep -a -v -i -E 'input clock|STIC clock|PSG chip clock|\[nc\]' \
     | sed -n 's/^\([0-9][0-9]*\):.*/\1/p' \
     | while IFS= read -r n; do printf '%s:%s\n' "$f" "$n"; done >> "$tmp/bare"
 done < "$tmp/scan"

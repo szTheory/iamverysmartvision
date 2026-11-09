@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 # Step denylist: provenance scan (FND-05, D-12.7). Findings name the file, never the matched text.
 # Scope: every FILELIST path except .planning/, .claude/, docs/provenance/, tools/check/ and the
-# exact paths docs/provenance.md and data/sources.json. Binary files are skipped (grep -I).
+# exact paths docs/provenance.md and data/sources.json. Every file is scanned as text (grep -a): the integrity step bans NUL bytes in text files.
 # denylist.txt entries (author names, licence-header strings) are never waivable.
 # denylist-cite.txt entries (emulator project names) are allowed only on a line that carries [cite-only].
 # Lists are read from CHECK_DIR, never from ROOT. '#' lines and blank lines in the lists are ignored.
@@ -48,15 +48,15 @@ waived=0
 : > "$tmp/hit"
 : > "$tmp/unw"
 while IFS= read -r f; do
-  if [ -s "$tmp/denylist" ] && grep -q -I -i -F -f "$tmp/denylist" "$ROOT/$f"; then
+  if [ -s "$tmp/denylist" ] && grep -q -a -i -F -f "$tmp/denylist" "$ROOT/$f"; then
     printf '%s\n' "$f" >> "$tmp/hit"
   fi
   if [ -s "$tmp/denylist-cite" ]; then
-    grep -I -i -F -f "$tmp/denylist-cite" "$ROOT/$f" > "$tmp/lines" 2>/dev/null || : > "$tmp/lines"
-    if grep -q -v -F '[cite-only]' "$tmp/lines"; then
+    grep -a -i -F -f "$tmp/denylist-cite" "$ROOT/$f" > "$tmp/lines" 2>/dev/null || : > "$tmp/lines"
+    if grep -a -q -v -F '[cite-only]' "$tmp/lines"; then
       printf '%s\n' "$f" >> "$tmp/unw"
     fi
-    k=$(grep -c -F '[cite-only]' "$tmp/lines")
+    k=$(grep -a -c -F '[cite-only]' "$tmp/lines")
     waived=$((waived + k))
   fi
 done < "$tmp/scan"

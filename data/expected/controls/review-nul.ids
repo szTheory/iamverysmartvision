@@ -1,0 +1,6 @@
+# Owning review fix CR-01: NUL byte controls.
+integrity-nul-byte
+hygiene-nul-home-path
+denylist-nul-hit
+text-nul-untagged-claim-word
+glossary-nul-bare-clock
