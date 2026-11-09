@@ -89,7 +89,9 @@ On direct jumps the return address is not saved (`§3.3.5, pdf 52`) [OBS].
 On subroutine jumps the return address is saved in register 4, 5 or 6, designated by BB plus 4 (`§3.3.5, pdf 52`) [OBS].
 The saved address is printed as the program counter plus an offset whose last digit is smudged in the scan; 3 is consistent with the three-location instruction length [INF].
 If BB = 3 the designated register becomes R7, the program counter, which the page describes as the jump instruction (`§3.3.5, pdf 52`) [OBS].
-The meaning of each DE value is given in a table on a later page and is not restated here.
+The summary table gives DE = 00 for J and JSR, DE = 01 for JE and JSRE, and DE = 10 for JD and JSRD; DE = 11 does not appear in the table (`pdf 56`) [OBS].
+The same table prints BB = 11 for J, JE and JD and marks the JSR family as BB not equal to 11; all six forms take 12 cycles (`pdf 56`) [OBS].
+JE and JSRE enable the interrupt system, JD and JSRD disable it, and J and JSR leave it unchanged (`pdf 56`) [OBS].
 
 ## Addressing modes
 
@@ -121,3 +123,52 @@ The format is bit 9 = 1, bits 8..6 = 000, bit 5 the direction bit, bit 4 the I/E
 Bit 4 = 1 selects an external condition code, giving 32 conditions in two groups of 16 (`§3.2.2, pdf 47`) [OBS].
 If the direction bit is 0, the displacement is added to PC + 2; if it is 1, the displacement is one's complemented and then added to PC + 2 (`§3.2.2, pdf 47`) [OBS].
 A false condition continues with the next sequential instruction (`§3.2.2, pdf 47`) [OBS].
+
+## SDBD (double-byte data)
+
+SDBD takes 4 cycles, has the pattern 0000 000 001, and sets Double Byte Data for the next instruction, which must be an External Reference instruction (`pdf 57`) [OBS].
+The manual says the assembler normally supplies SDBD when the data is wider than the memory word (`pdf 57`) [OBS].
+With SDBD in force, two words are accessed: the least significant byte comes from the low eight bits of the first word and the most significant byte from the low eight bits of the second word (`§3.2.1, pdf 47`) [OBS].
+Double-byte data may be accessed through indirect modes 4, 5 and 7 (`§3.2.1, pdf 47`) [OBS].
+If modes 1, 2 or 3 are used, only one word is accessed and both bytes come from the low eight bits of that same word (`§3.2.1, pdf 47`; `pdf 57`) [OBS].
+Modes 0 and 6 are not supported in the double-byte operation by this version of the CP-1600 (`§3.2.1, pdf 47`; `Fig. 3.2.6, pdf 49`; `pdf 57`) [OBS].
+For indirect SDBD with modes 4 and 5, the low byte comes from the word at the address in the register, the register is incremented, the high byte comes from the next word, and the register is incremented again (`Fig. 3.2.6, pdf 49`) [OBS].
+For indirect SDBD with modes 1 to 3 the same register address supplies both bytes, and the register is not incremented (`Fig. 3.2.6, pdf 49`) [OBS].
+The SDBD word precedes the instruction, so the External Reference instruction is at PC and SDBD at PC - 1 in the figure (`Fig. 3.2.6, pdf 49`) [OBS].
+For immediate SDBD the program counter advances by 3 after the instruction word, with the low byte at PC + 1 and the high byte at PC + 2 (`Fig. 3.2.7, pdf 49`) [OBS].
+The immediate SDBD figure marks the upper bits of each data word as Not Used (`Fig. 3.2.7, pdf 49`) [OBS].
+If the user writes SDBD explicitly, the data word is always generated to fill two bytes (`Fig. 3.2.7, pdf 49`) [OBS].
+The indirect double-byte table prints one 4-cycle row for SDBD followed by one row per instruction with 10 cycles: MVI@, ADD@, SUB@, CMP@, AND@ and XOR@ (`pdf 57`) [OBS].
+The page does not say whether the printed 10 includes the 4 cycles of the SDBD row; the one-row-per-pair layout suggests it does not [INF].
+The immediate double-byte table prints one count of 14 cycles for each of MVII, ADDI, SUBI, CMPI, ANDI and XORI, spanning the SDBD decle, the instruction decle and the two data words (`pdf 58`) [OBS].
+The single-byte immediate forms take 8 cycles for those six instructions and 9 for MVOI (`pdf 57`) [OBS].
+In the double-byte immediate rows the low byte is marked L and the upper byte U, with XX marked as don't care (`pdf 58`) [OBS].
+MVOI is not listed in the immediate double-byte table (`pdf 58`) [OBS].
+The XOR@ row of the indirect double-byte table prints the opcode field as the three digits `111` instead of four; the other five rows print four digits, and the single-byte XOR@ row on `pdf 55` prints `1111`, so the reading is 1111 [INF].
+
+## Unsupported and NOP-like encodings
+
+MVO@ with SSS = MMM equal to 4, 5, 6 or 7 is marked not supported (`pdf 55`) [OBS].
+The same MVO@ row gives the pattern 1001 MMM SSS and 9 cycles (`pdf 55`) [OBS].
+PSHR is the MVO@ form with MMM = 110 and takes 9 cycles; PULR is the MVI@ form with MMM = 110 and takes 11 cycles, which is the 8-cycle MVI@ count plus the 3 added when MMM = 6 (`pdf 55`) [OBS].
+GSWD has the pattern 0000 110 0DD and takes 6 cycles (`pdf 56`) [OBS].
+GSWD with R4 or R5 is a NOP instruction, and with R6 or R7 it is a NOP internal to the CPU plus a pulse on the PCIT pin (`§3.3.3, pdf 51`) [OBS].
+The GSWD description on the summary table places C in bits 4 and 12, OV in bits 5 and 13, Z in bits 6 and 14 and S in bits 7 and 15, with bits 0 to 3 and 8 to 11 set to 0 (`pdf 56`) [OBS].
+RSWD has the pattern 0000 111 SSS, takes 6 cycles, and restores bit 4 to C, bit 5 to OV, bit 6 to Z and bit 7 to S (`pdf 56`) [OBS].
+NOP has the pattern 0000 110 10N and takes 6 cycles (`pdf 56`) [OBS].
+SIN has the pattern 0000 110 11N and takes 6 cycles, and it pulses the PCIT pin (`pdf 56`) [OBS].
+The N bit of NOP and SIN is shown as an operand written in angle brackets, `<n>`, and the page does not say what N selects (`pdf 56`) [OBS].
+The jump group has no listed DE value 11 in the second decle; this is an operand-level gap, not a gap in the decle patterns (`pdf 56`) [OBS].
+HLT has the pattern 0000 000 000, takes 4 cycles, and is described as halting after the next instruction is executed, resuming on control start (`pdf 56`) [OBS].
+
+## Interruptibility (C19)
+
+The register shift table states that shifts are not interruptable (`pdf 53`) [OBS].
+The same note says shift-right instructions set the S flip-flop from bit 7 of the result and that two-position shifts add 2 cycles (`pdf 53`) [OBS].
+EIS, DIS, TCI, CLRC and SETC each carry the words Not Interruptible in their description (`pdf 56`) [OBS].
+The HLT description on `pdf 56` says nothing about interruptibility, so HLT is `manual-silent`.
+The SDBD description on `pdf 57` says nothing about interruptibility, so SDBD is `manual-silent`.
+The MVO, MVO@, MVOI and PSHR descriptions on `pdf 55` and `pdf 57` say nothing about interruptibility, so MVO is `manual-silent`.
+C19: partial.
+The manual carries a not-interruptible marking for shifts and for EIS, DIS, TCI, CLRC and SETC only; the community list of non-interruptible instructions is not corroborated for HLT, SDBD and MVO.
+The register-to-register, memory and jump summary tables on the pages read for this section carry no other interruptibility marking [OBS].
