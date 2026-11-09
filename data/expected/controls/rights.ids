@@ -1,2 +1,16 @@
 # Owning plan 01-06: rights controls.
 manifests-unknown-committed
+manifests-yes-without-evidence
+manifests-misspelled-key
+manifests-missing-key
+manifests-digest-mismatch
+files-unlisted-fixture-file
+files-tracked-refs-file
+files-unlisted-binary
+files-env-file
+manifests-duplicate-id
+manifests-inventory-empty
+manifests-id-missing
+manifests-uncommitted-output-tracked
+manifests-derived-from-unknown
+files-fixture-without-manifest

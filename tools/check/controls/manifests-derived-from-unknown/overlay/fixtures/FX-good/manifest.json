@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "id": "FX-good",
+  "kind": "original-source",
+  "committed": true,
+  "path": "fixtures/FX-good/payload.txt",
+  "local_path": null,
+  "source": {
+    "origin": "written for the known-good control tree",
+    "pin": null,
+    "accessed": null,
+    "holder": "project contributors"
+  },
+  "recipe": null,
+  "inputs": [],
+  "outputs": [
+    {
+      "path": "fixtures/FX-good/payload.txt",
+      "sha256": "00026c51a60a0baa597ce97b8c05ee6dac86da00e5f99a85b2d94cfc308c267c",
+      "size_bytes": 49
+    }
+  ],
+  "licence": "MIT",
+  "licence_evidence": {
+    "url": "LICENSE",
+    "text_sha256": "8597e12ca7c7e7580f5c99d1be32aa2f8ad8f2a82f2d455b15c3723d7602c8b0",
+    "accessed": "2026-11-09"
+  },
+  "copyright": ["Copyright (c) 2026 iamverysmartvision contributors"],
+  "notices": [],
+  "redistributable": "yes",
+  "allowed_use": ["local-test", "ci", "repo"],
+  "rights_review": {
+    "status": "author-attested",
+    "by": "project contributors",
+    "date": "2026-11-09"
+  },
+  "derived_from": ["FX-sample-rights-unknown"],
+  "note": "Known-good committed entry for the control tree."
+}
