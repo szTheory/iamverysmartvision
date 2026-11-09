@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 1
 current_phase_name: Evidence, Profile and Rights Foundations
 status: executing
-stopped_at: Completed 01-03-PLAN.md
-last_updated: "2026-11-09T22:13:08.594Z"
+stopped_at: Completed 01-04-PLAN.md
+last_updated: "2026-11-09T22:27:47.716Z"
 last_activity: 2026-11-09
 last_activity_desc: Phase 1 execution started
-state_head: e6e684b4ea88faec687bc25fe50004d55487b1aa
+state_head: 35f22e1e0fd3c07ff1695eb1358eb5f6f3c53553
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 14
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 1 (Evidence, Profile and Rights Foundations) — EXECUTING
-Plan: 5 of 14
+Plan: 6 of 14
 Status: Ready to execute
 Last activity: 2026-11-09 — Phase 1 execution started
 
@@ -56,6 +56,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 1 P14 | 6min | 2 tasks | 1 files |
 | Phase 1 P02 | 35min | 3 tasks | 1 files |
 | Phase 01 P03 | 5min | 3 tasks | 1 files |
+| Phase 01 P04 | 15min | 2 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -72,6 +73,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 1]: C17 recorded resolved-primary from page-image reading of pdf 24, 46, 48, 62 (01-02)
 - [Phase 1]: Interrupt-entry (9 microcycles) and reset sequence counts in CP-1610 notes are inferred from timing-diagram time slots, not printed tables (01-02)
 - [Phase 01]: 01-03: opcode family table has 74 rows (below D-19's about 90: SDBD as attributes, aliases on one row, one jump row); NOPP transcribed as printed 7 cycles not 7/9; interruptible is no only where the page prints it, else manual-silent
+- [Phase 01]: 01-04: C17 resolved-primary, C19 partial; notes candidates became C29-C35 (device-supplied reset PC is C32); log holds 35 entries
+- [Phase 01]: 01-04: open/partial default-policy prefix is checked in the discrepancy hook because the records DSL cannot hold a space in a regex
 
 ### Pending Todos
 
@@ -100,6 +103,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-09T22:13:08.575Z
-Stopped at: Completed 01-03-PLAN.md
+Last session: 2026-11-09T22:27:47.677Z
+Stopped at: Completed 01-04-PLAN.md
 Resume file: None
