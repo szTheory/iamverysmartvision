@@ -234,6 +234,7 @@ cpu.MVII.r2-8000
 cpu.MVII.r7-dest
 cpu.MVII.sdbd-dbd-cleared
 cpu.MVII.sdbd-low-high
+cpu.MVII.sdbd-then-intr-deferred
 cpu.MVO.address-ffff
 cpu.MVO.defers-intr
 cpu.MVO.overwrites-word
@@ -364,6 +365,7 @@ cpu.TSTR.sss7-bonus
 cpu.UNIT-INT.accept-clears-intff-config
 cpu.UNIT-INT.accept-keeps-intff
 cpu.UNIT-INT.entry-figure
+cpu.UNIT-INT.first-isr-instruction-runs
 cpu.UNIT-INT.iab-0000
 cpu.UNIT-INT.iab-abcd
 cpu.UNIT-INT.intr-always
@@ -371,6 +373,8 @@ cpu.UNIT-INT.intrm-intff-clear-ignored
 cpu.UNIT-INT.intrm-intff-set-accepted
 cpu.UNIT-INT.lines-low-no-entry
 cpu.UNIT-NOTRESET.zeroed-state
+cpu.UNIT-RESET.from-faulted
+cpu.UNIT-RESET.intr-during-reset
 cpu.UNIT-RESET.provider-0000
 cpu.UNIT-RESET.provider-ffff
 cpu.XOR.same-value-zero

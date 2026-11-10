@@ -3,6 +3,5 @@
 # listed meets its full derived coverage. Later plans remove lines as they land vectors.
 policy:POL-BUS-01
 policy:POL-WAIT-01
-policy:POL-SDBD-03
 policy:POL-HLT-01
 policy:POL-HLT-02

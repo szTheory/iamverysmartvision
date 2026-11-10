@@ -1096,6 +1096,9 @@ static int ivs_int_accept(const ivs_cp1610 *n, const ivs_cp1610_lines *l)
 #ifdef IVS_FAULT_LINES_LATCHED
   { static uint32_t seen; seen |= intr; intr = seen; if (open != 0u && n->dbd == 0u) seen = 0u; }
 #endif
+#ifdef IVS_FAULT_SDBD_INTERRUPTIBLE
+  if (n->dbd != 0u) return intr != 0u || (l->intrm != 0u && intff != 0u);
+#endif
   if (open == 0u || n->dbd != 0u) {
     return 0;
   }
@@ -1127,6 +1130,9 @@ static void ivs_unit_int_entry(ivs_cp1610 *n, const ivs_cp1610_config *cfg, ivs_
     n->intff = 0u;
   }
   n->prev_interruptible = 0u;
+#ifdef IVS_FAULT_FIRST_ISR_INSTR_INTERRUPTIBLE
+  n->prev_interruptible = 1u;
+#endif
   r->elapsed_cpu_cycles = IVS_INT_ENTRY_CYCLES + u->shift;
 }
 
@@ -1174,6 +1180,9 @@ ivs_status ivs_cp1610_step(ivs_cp1610 *s, const ivs_cp1610_config *cfg, const iv
     ivs_result_init(&r, &n, IVS_CP1610_UNIT_NOT_RESET);
     break;
   case IVS_CP1610_RS_RESET_PENDING:
+    /* The initialization sequence goes from IAB straight to the fetch (Fig 2-6, pdf 22): the
+     * lines are not tested here, and the entry leaves prev_interruptible 0, so the first
+     * instruction runs before any acceptance (POL-RST-01). */
     ivs_result_init(&r, &n, IVS_CP1610_UNIT_RESET_ENTRY);
     ivs_unit_reset_entry(&n, &u, &r);
     break;
