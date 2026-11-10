@@ -257,6 +257,8 @@ data/cp1610/vectors/*.json --(cmake -P generator, sha256 embedded)--> build/<pre
 | `cpu-bus` | figure-based access-list/offset contracts (pdf 27-37), state_validate, refusal-never-mutates, no-progress guard | `data/expected/tests/cpu-bus.ids` |
 | `cpu-fuzz` | seeded random state/lines/opcodes under ASan/UBSan | `data/expected/tests/cpu-fuzz.ids` |
 | `core_symbols` (ctest, not TAP) | `core-symbols.sh` on `$<TARGET_FILE:core>` | list compared with `ctest -N` |
+Planning note (2026-11-09, after plan-checker iteration 1): the plans fold the `cpu-bus` contracts into per-vector `bus` lists in `cpu-vectors` (every row needs one, rule `vector-bus-uncovered`) and into `cpu-api`; no `cpu-bus` suite or `cpu-bus.ids` exists. The ctest suite is named `core-symbols` and writes TAP like the others. The fault inventory has four columns (`<id> <must-fail-vector> <allowed-prefixes> <must-pass-vector>`).
+
 Also: `data/expected/cp1610-skips.ids` (id + discrepancy), `data/expected/faults/cpu.ids` (`<id> <must-fail-vector> <allowed-prefix>`), `data/expected/gate-steps/cpu.ids`, `data/expected/controls/{tests-inventory,core-purity,...}.ids`.
 
 ### Phase Requirements to Test Map

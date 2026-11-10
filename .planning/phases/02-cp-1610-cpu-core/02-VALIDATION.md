@@ -36,18 +36,19 @@ created: "2026-11-09"
 
 ## Per-Task Verification Map
 
-Filled by the planner (13 plans, 39 tasks). "gate" = `sh tools/gate.sh` (fails on non-zero exit or a last line not starting `gate: PASS`); "quick" = `cmake --build --preset dev && ctest --preset dev`; "controls" = `sh tools/check/run-controls.sh | tail -1`. Every task has at least one automated command; no three consecutive tasks lack one.
+Filled by the planner (13 plans, 40 tasks; revised after checker iteration 1). "gate" = `sh tools/gate.sh` (fails on non-zero exit or a last line not starting `gate: PASS`); "quick" = `cmake --build --preset dev && ctest --preset dev`; "controls" = `sh tools/check/run-controls.sh | tail -1`. Every task has at least one automated command; no three consecutive tasks lack one.
 
 | Task | Plan | Wave | Requirement | Threat Ref | Test Type | Automated Command | Status |
 |------|------|------|-------------|------------|-----------|-------------------|--------|
 | 02-01-T1 | 01 | 1 | PKG-02, RUN-03 | T-02-01 | gate + probe | gate; `test -s build/gate/NONCE` | ⬜ pending |
 | 02-01-T2 | 01 | 1 | RUN-03 | T-02-02, T-02-04 | controls | controls; `dash tools/gate.sh` | ⬜ pending |
-| 02-01-T3 | 01 | 1 | CPU-01..04 (records) | T-02-03 | data check | gate; C36-C57 count = 22 | ⬜ pending |
-| 02-02-T1 | 02 | 2 | CPU-05, CPU-04, PKG-02 | T-02-05, T-02-07 | build + vectors | `cmake --preset dev && cmake --build --preset dev && ctest --preset dev`; gate | ⬜ pending |
-| 02-02-T2 | 02 | 2 | RUN-03 | T-02-06 | inventory controls | controls; gate (`tests-missing=0`) | ⬜ pending |
-| 02-02-T3 | 02 | 2 | CPU-05 | T-02-05 | unit (cpu-api, harness) | quick; gate | ⬜ pending |
+| 02-01-T3 | 01 | 1 | CPU-01..04 (records) | T-02-03 | data check | gate; C36-C58 count = 23 (G8 = C58) | ⬜ pending |
+| 02-02-T1 | 02 | 2 | CPU-05, CPU-04, PKG-02 | T-02-05, T-02-07 | build + tracer vector | `cmake --preset dev && cmake --build --preset dev && ctest --preset dev`; gate (`steps=19/19`) | ⬜ pending |
+| 02-02-T2 | 02 | 2 | CPU-01, CPU-05 | T-02-05, T-02-07 | vectors (full schema) | quick; gate (7 vectors ok) | ⬜ pending |
+| 02-02-T3 | 02 | 2 | RUN-03 | T-02-06 | inventory controls | controls; gate (`tests-missing=0`) | ⬜ pending |
+| 02-02-T4 | 02 | 2 | CPU-05 | T-02-05 | unit (cpu-api, harness) | quick; gate | ⬜ pending |
 | 02-03-T1 | 03 | 3 | RUN-03, CPU-04 | T-02-09, T-02-10 | fault controls | gate (`faults=2/2`); controls | ⬜ pending |
-| 02-03-T2 | 03 | 3 | CPU-01, RUN-03 | T-02-11, T-02-12 | data checker controls | gate (`second-read=0/1`); controls | ⬜ pending |
+| 02-03-T2 | 03 | 3 | CPU-01, RUN-03 | T-02-11, T-02-12 | data checker controls (incl. addressing classes, per-row bus list) | gate (`-- cp1610-vectors pass`); controls (14 vectors-*) | ⬜ pending |
 | 02-03-T3 | 03 | 3 | CPU-01 | T-02-11 | vectors + faults | quick; gate (`faults=6/6`) | ⬜ pending |
 | 02-04-T1 | 04 | 4 | API-05 | T-02-13 | symbol check | gate (`core-imports=`); controls | ⬜ pending |
 | 02-04-T2 | 04 | 4 | API-05 | T-02-13, T-02-14 | purity controls + self-test | controls (13 core-purity); `dash tools/gate.sh` (`purity-selftest=5/5`) | ⬜ pending |
@@ -73,12 +74,13 @@ Filled by the planner (13 plans, 39 tasks). "gate" = `sh tools/gate.sh` (fails o
 | 02-11-T1 | 11 | 10 | CPU-02 | T-02-34 | vectors + fault | quick; gate | ⬜ pending |
 | 02-11-T2 | 11 | 10 | CPU-02, CPU-05 | T-02-32, T-02-34 | vectors + faults | gate (`faults=62/62`, `rows-pending=0`, `policies-pending=0`) | ⬜ pending |
 | 02-11-T3 | 11 | 10 | CPU-05 | T-02-32, T-02-33 | fuzz + unit | quick (cpu-fuzz listed); gate; `dash tools/gate.sh` | ⬜ pending |
-| 02-12-T1 | 12 | 11 | CPU-01 | T-02-35, T-02-36 | blind review | gate (`second-read=1/12`) | ⬜ pending |
-| 02-12-T2 | 12 | 11 | CPU-01 | T-02-35, T-02-37 | blind review | gate (`second-read=5/12`) | ⬜ pending |
-| 02-12-T3 | 12 | 11 | PKG-02 | T-02-38 | budget measurement | gate; `dash tools/gate.sh` | ⬜ pending |
-| 02-13-T1 | 13 | 12 | CPU-01, CPU-04 | T-02-39 | blind review | gate (`second-read=6/12`) | ⬜ pending |
-| 02-13-T2 | 13 | 12 | CPU-01..05 | T-02-39, T-02-41 | blind review | gate (`second-read=12/12`); reviewed set equals vector-file set | ⬜ pending |
-| 02-13-T3 | 13 | 12 | all 8 | T-02-40 | phase evidence | gate (all pending stats 0); `dash tools/gate.sh` | ⬜ pending |
+| 02-12-T1 | 12 | 11 | CPU-01, RUN-03 | T-02-35, T-02-37, T-02-38 | review tooling + marker controls | gate (`second-read=0/12`); controls (166) | ⬜ pending |
+| 02-12-T2 | 12 | 11 | CPU-01 | T-02-35 | reader protocol doc | gate; 6 protocol sections | ⬜ pending |
+| 02-12-T3 | 12 | 11 | PKG-02 | T-02-39 | budget measurement | gate; `dash tools/gate.sh` | ⬜ pending |
+| ORCH | between 12 and 13 | - | CPU-01 (D-15) | T-02-35, T-02-38 | isolated blind reading: one fresh subagent per vector file, outputs in `build/review/derived/` plus `HANDOFF.txt` (protocol `## Orchestrator procedure`) | checked by `tools/review/vector-diff.cmake` in 02-13 | ⬜ pending |
+| 02-13-T1 | 13 | 12 | CPU-01 | T-02-40, T-02-41 | adjudication (control) | diff tool `diff-summary file=control`; gate (`second-read=1/12`) | ⬜ pending |
+| 02-13-T2 | 13 | 12 | CPU-01..05 | T-02-40, T-02-41 | adjudication (11 files) | diff tool on all 12 stems; gate (`second-read=12/12`); reviewed set equals vector-file set | ⬜ pending |
+| 02-13-T3 | 13 | 12 | all 8 | T-02-42, T-02-43 | phase evidence | gate (all pending stats 0); `dash tools/gate.sh` | ⬜ pending |
 
 Requirement coverage target (from research):
 
@@ -88,8 +90,8 @@ Requirement coverage target (from research):
 | CPU-02 | POL-INT/BUS/HLT/LINE policy vectors, one fault each | `c-tests`, `c-faults` | ⬜ pending |
 | CPU-03 | SDBD modes 1-5 vectors, refusal vectors, SDBD faults | `c-tests`, `c-faults` | ⬜ pending |
 | CPU-04 | stack, auto-increment, reset vectors and faults | `c-tests`, `c-faults` | ⬜ pending |
-| CPU-05 | `cpu-bus` suite (exact offsets only where a printed figure exists), `state_validate`, determinism, fuzz | `c-tests` | ⬜ pending |
-| API-05 | `c-purity` + ctest `core_symbols` + 13 `core-purity-*` controls | gate, ctest | ⬜ pending |
+| CPU-05 | per-vector `bus` lists in the `cpu-vectors` suite (every row has at least one, rule `vector-bus-uncovered`; exact cycle offsets only where a printed figure exists, `bus_basis: figure`), `cpu-api` (bus order matches log, log refusal, `state_validate`, determinism, isolation, no-progress units), `cpu-fuzz`; there is no separate `cpu-bus` suite | `c-tests`, `cp1610-vectors` | ⬜ pending |
+| API-05 | `c-purity` + ctest suite `core-symbols` + 13 `core-purity-*` controls | gate, ctest | ⬜ pending |
 | PKG-02 | `sh tools/gate.sh` runs the C steps; ci-parity unchanged; ninja/cc prechecks | gate, CI | ⬜ pending |
 | RUN-03 | `tests-inventory` over TAP + NONCE + ids + `ctest -N`; ~10-12 `tests-inventory-*` controls | gate, control runner | ⬜ pending |
 
