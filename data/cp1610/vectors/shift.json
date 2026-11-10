@@ -1,0 +1,2858 @@
+{
+  "schema_version": 1,
+  "source": "SRC-gi-cp1600-um-1975",
+  "group": "shift",
+  "note": "Register shift and SWAP rows (pdf 53, format Fig 3.3.2 pdf 50). Every expect value is read from the cited page image and derived by hand; none comes from this core, an assembler or another implementation. C47 (S is bit 7 after right shifts and SWAP) and C48 (RLC/RRC link-bit positions, OV as an input for N = 1) are stated in each derivation; the SARC N = 1 link layout is an inference from the RRC row.",
+  "vectors": [
+    {
+      "id": "cpu.SWAP.n0",
+      "row": "SWAP",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, SWAP row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SWAP R1",
+      "program": [
+        "0041 0001 000 001"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). SWAP: 'N = 0, SWAP bytes of register RR. S equals Bit 7 of results of SWAP.' and 'N = 1, SWAP bytes of register RR, then swap them back to original form.', status S, Z for both N; C and OV keep their values. C47: the header says 'Shift Right instructions set the S flip-flop with Bit 7 of the result after the instruction', so S is bit 7 here; Z is set when the 16-bit result is all zero (pdf 45). N = 0, RR = 01 (R1): $8001 with bytes swapped is $0180. Bit 7 of $0180 (low byte $80) is 1, so S = 1 (bit 15 is 0); Z = 0. Init S = 0, Z = 1; C = 1, OV = 1 kept. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 6 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "8001",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "1": "0180",
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0
+        },
+        "prev_interruptible": 0,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0041"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n0",
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-preserved:C",
+        "flag-preserved:OV",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SWAP.n1",
+      "row": "SWAP",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, SWAP row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SWAP R2, 2",
+      "program": [
+        "0046 0001 000 110"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). SWAP: 'N = 0, SWAP bytes of register RR. S equals Bit 7 of results of SWAP.' and 'N = 1, SWAP bytes of register RR, then swap them back to original form.', status S, Z for both N; C and OV keep their values. C47: the header says 'Shift Right instructions set the S flip-flop with Bit 7 of the result after the instruction', so S is bit 7 here; Z is set when the 16-bit result is all zero (pdf 45). N = 1, RR = 10 (R2): $8001 swapped is $0180 and swapped back is $8001, the original form. Bit 7 of $8001 (low byte $01) is 0, so S = 0; Z = 0. Init S = 1, Z = 1; C = 1, OV = 1 kept. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "8001",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "2": "8001",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 0
+        },
+        "prev_interruptible": 0,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0046"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n1",
+        "flag-clear:S",
+        "flag-clear:Z",
+        "flag-preserved:C",
+        "flag-preserved:OV",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SWAP.zero",
+      "row": "SWAP",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, SWAP row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SWAP R0",
+      "program": [
+        "0040 0001 000 000"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). SWAP: 'N = 0, SWAP bytes of register RR. S equals Bit 7 of results of SWAP.' and 'N = 1, SWAP bytes of register RR, then swap them back to original form.', status S, Z for both N; C and OV keep their values. C47: the header says 'Shift Right instructions set the S flip-flop with Bit 7 of the result after the instruction', so S is bit 7 here; Z is set when the 16-bit result is all zero (pdf 45). N = 0, RR = 00 (R0): $0000 swapped is $0000, so Z = 1 and S = 0 (bit 7 is 0). Init S = 1, Z = 0; C = 1, OV = 1 kept. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 6 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "0": "0000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 1
+        },
+        "prev_interruptible": 0,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0040"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n0",
+        "flag-clear:S",
+        "flag-set:Z",
+        "flag-preserved:C",
+        "flag-preserved:OV",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SWAP.s-bit7-not-bit15",
+      "row": "SWAP",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, SWAP row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SWAP R3",
+      "program": [
+        "0043 0001 000 011"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). SWAP: 'N = 0, SWAP bytes of register RR. S equals Bit 7 of results of SWAP.' and 'N = 1, SWAP bytes of register RR, then swap them back to original form.', status S, Z for both N; C and OV keep their values. C47: the header says 'Shift Right instructions set the S flip-flop with Bit 7 of the result after the instruction', so S is bit 7 here; Z is set when the 16-bit result is all zero (pdf 45). N = 0, RR = 11 (R3): $00FF swapped is $FF00. Bit 7 of $FF00 (low byte $00) is 0, so S = 0 although bit 15 is 1; Z = 0. Init S = 1, Z = 1; C = 1, OV = 1 kept. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 6 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "00FF",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "3": "FF00",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 0
+        },
+        "prev_interruptible": 0,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0043"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n0",
+        "flag-clear:S",
+        "flag-clear:Z",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SWAP.n1-s-bit7",
+      "row": "SWAP",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, SWAP row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SWAP R0, 2",
+      "program": [
+        "0044 0001 000 100"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). SWAP: 'N = 0, SWAP bytes of register RR. S equals Bit 7 of results of SWAP.' and 'N = 1, SWAP bytes of register RR, then swap them back to original form.', status S, Z for both N; C and OV keep their values. C47: the header says 'Shift Right instructions set the S flip-flop with Bit 7 of the result after the instruction', so S is bit 7 here; Z is set when the 16-bit result is all zero (pdf 45). N = 1, RR = 00 (R0): $0080 swapped twice is $0080. Bit 7 is 1, so S = 1; Z = 0. Init S = 0, Z = 1; C = 1, OV = 1 kept. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0080",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "0": "0080",
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0
+        },
+        "prev_interruptible": 0,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0044"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n1",
+        "flag-set:S",
+        "flag-clear:Z",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SLL.n0",
+      "row": "SLL",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, SLL row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SLL R1",
+      "program": [
+        "0049 0001 001 001"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). SLL: 'N = 0. Shift Logical Left one bit, zero to low bit.' and 'N = 1, Shift Logical Left two bits, zero to low 2 bits.', status S, Z for both N; C and OV keep their values. Left shift: S is bit 15 of the result and Z is set when it is all zero (pdf 45). N = 0, RR = 01 (R1): $4001 = 0100 0000 0000 0001 shifted left one bit is 1000 0000 0000 0010 = $8002 (bit 15 out is 0). S = 1, Z = 0. Init S = 0, Z = 1; C = 1, OV = 1 kept. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 6 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "4001",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "1": "8002",
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0
+        },
+        "prev_interruptible": 0,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0049"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n0",
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-preserved:C",
+        "flag-preserved:OV",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SLL.n1",
+      "row": "SLL",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, SLL row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SLL R2, 2",
+      "program": [
+        "004E 0001 001 110"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). SLL: 'N = 0. Shift Logical Left one bit, zero to low bit.' and 'N = 1, Shift Logical Left two bits, zero to low 2 bits.', status S, Z for both N; C and OV keep their values. Left shift: S is bit 15 of the result and Z is set when it is all zero (pdf 45). N = 1, RR = 10 (R2): $2001 = 0010 0000 0000 0001 shifted left two bits is 1000 0000 0000 0100 = $8004 (bits 15 and 14 out are 0). S = 1, Z = 0. Init S = 0, Z = 1; C = 1, OV = 1 kept. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "2001",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "2": "8004",
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0
+        },
+        "prev_interruptible": 0,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "004E"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n1",
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-preserved:C",
+        "flag-preserved:OV",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SLL.zero",
+      "row": "SLL",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, SLL row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SLL R0",
+      "program": [
+        "0048 0001 001 000"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). SLL: 'N = 0. Shift Logical Left one bit, zero to low bit.' and 'N = 1, Shift Logical Left two bits, zero to low 2 bits.', status S, Z for both N; C and OV keep their values. Left shift: S is bit 15 of the result and Z is set when it is all zero (pdf 45). N = 0, RR = 00 (R0): $8000 shifted left one bit is $0000 (the 1 leaves bit 15). Z = 1, S = 0. Init S = 1, Z = 0; C = 1, OV = 1 kept. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 6 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "8000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "0": "0000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 1
+        },
+        "prev_interruptible": 0,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0048"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n0",
+        "flag-clear:S",
+        "flag-set:Z",
+        "flag-preserved:C",
+        "flag-preserved:OV",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SLL.n1-ffff",
+      "row": "SLL",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, SLL row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SLL R3, 2",
+      "program": [
+        "004F 0001 001 111"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). SLL: 'N = 0. Shift Logical Left one bit, zero to low bit.' and 'N = 1, Shift Logical Left two bits, zero to low 2 bits.', status S, Z for both N; C and OV keep their values. Left shift: S is bit 15 of the result and Z is set when it is all zero (pdf 45). N = 1, RR = 11 (R3): $FFFF shifted left two bits with zeros into the low two bits is 1111 1111 1111 1100 = $FFFC. S = 1, Z = 0. Init S = 0, Z = 1; C = 1, OV = 1 kept. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "FFFF",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "3": "FFFC",
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0
+        },
+        "prev_interruptible": 0,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "004F"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n1",
+        "flag-set:S",
+        "flag-clear:Z",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SLL.n1-zero",
+      "row": "SLL",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, SLL row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SLL R1, 2",
+      "program": [
+        "004D 0001 001 101"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). SLL: 'N = 0. Shift Logical Left one bit, zero to low bit.' and 'N = 1, Shift Logical Left two bits, zero to low 2 bits.', status S, Z for both N; C and OV keep their values. Left shift: S is bit 15 of the result and Z is set when it is all zero (pdf 45). N = 1, RR = 01 (R1): $C000 = 1100 0000 0000 0000 shifted left two bits is $0000. Z = 1, S = 0. Init S = 1, Z = 0; C = 1, OV = 1 kept. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "C000",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "1": "0000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 1
+        },
+        "prev_interruptible": 0,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "004D"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n1",
+        "flag-clear:S",
+        "flag-set:Z",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.RLC.n0",
+      "row": "RLC",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, RLC row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28, C48",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "RLC R1",
+      "program": [
+        "0051 0001 010 001"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). RLC: 'N = 0, Rotate Left one bit using Carry bit as bit 16.' (status S, Z, C) and 'N = 1, Rotate Left two bits using C as bit 17 and OV as bit 16.' (status S, Z, C, OV). C48: N = 1 rotates the 18-bit string C OV R15..R0 with OV as an input; N = 0 rotates the 17-bit string C R15..R0 and keeps OV. Left shift: S is bit 15 of the result and Z is set when it is all zero (pdf 45). N = 0, RR = 01 (R1), C = 0: C R = 0 1000 0000 0000 0001 rotated left one bit is 1 0000 0000 0000 0010, so C = 1 and R1 = $0002. S = 0, Z = 0. Init S = 1, Z = 1, C = 0; OV = 1 kept. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 6 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "8001",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "1": "0002",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "C": 1
+        },
+        "prev_interruptible": 0,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0051"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n0",
+        "flag-clear:S",
+        "flag-clear:Z",
+        "flag-set:C",
+        "flag-preserved:OV",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.RLC.n0-ov-preserved",
+      "row": "RLC",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, RLC row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28, C48",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "RLC R2",
+      "program": [
+        "0052 0001 010 010"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). RLC: 'N = 0, Rotate Left one bit using Carry bit as bit 16.' (status S, Z, C) and 'N = 1, Rotate Left two bits using C as bit 17 and OV as bit 16.' (status S, Z, C, OV). C48: N = 1 rotates the 18-bit string C OV R15..R0 with OV as an input; N = 0 rotates the 17-bit string C R15..R0 and keeps OV. Left shift: S is bit 15 of the result and Z is set when it is all zero (pdf 45). N = 0, RR = 10 (R2), C = 1: C R = 1 0010 0000 0000 0000 rotated left one bit is 0 0100 0000 0000 0001, so C = 0 and R2 = $4001. OV is not in the N = 0 status column and keeps its 1 (bit 14 of $2000 is 0, so an OV taken from it would read 0). S = 0, Z = 0. Init S = 1, Z = 1, C = 1, OV = 1. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 6 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "2000",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "2": "4001",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0052"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n0",
+        "flag-clear:S",
+        "flag-clear:Z",
+        "flag-clear:C",
+        "flag-preserved:OV",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.RLC.n0-sign",
+      "row": "RLC",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, RLC row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28, C48",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "RLC R3",
+      "program": [
+        "0053 0001 010 011"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). RLC: 'N = 0, Rotate Left one bit using Carry bit as bit 16.' (status S, Z, C) and 'N = 1, Rotate Left two bits using C as bit 17 and OV as bit 16.' (status S, Z, C, OV). C48: N = 1 rotates the 18-bit string C OV R15..R0 with OV as an input; N = 0 rotates the 17-bit string C R15..R0 and keeps OV. Left shift: S is bit 15 of the result and Z is set when it is all zero (pdf 45). N = 0, RR = 11 (R3), C = 0: C R = 0 0100 0000 0000 0000 rotated left one bit is 0 1000 0000 0000 0000, so C = 0 and R3 = $8000. S = 1, Z = 0. Init S = 0, Z = 1, C = 0; OV = 1 kept. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 6 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "4000",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "3": "8000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0053"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n0",
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-preserved:OV",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.RLC.n1",
+      "row": "RLC",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, RLC row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28, C48",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "RLC R1, 2",
+      "program": [
+        "0055 0001 010 101"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). RLC: 'N = 0, Rotate Left one bit using Carry bit as bit 16.' (status S, Z, C) and 'N = 1, Rotate Left two bits using C as bit 17 and OV as bit 16.' (status S, Z, C, OV). C48: N = 1 rotates the 18-bit string C OV R15..R0 with OV as an input; N = 0 rotates the 17-bit string C R15..R0 and keeps OV. Left shift: S is bit 15 of the result and Z is set when it is all zero (pdf 45). N = 1, RR = 01 (R1), C = 0, OV = 0: C OV R = 0 0 1100 0000 0000 0000 rotated left two bits is 1 1 0000 0000 0000 0000 (old bit 15 to C, old bit 14 to OV, old C to bit 1, old OV to bit 0), so C = 1, OV = 1, R1 = $0000. Z = 1, S = 0. Init S = 1, Z = 0, OV = 0, C = 0. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "C000",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "1": "0000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0055"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n1",
+        "flag-clear:S",
+        "flag-set:Z",
+        "flag-set:OV",
+        "flag-set:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.RLC.n1-ov-in",
+      "row": "RLC",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, RLC row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28, C48",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "RLC R2, 2",
+      "program": [
+        "0056 0001 010 110"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). RLC: 'N = 0, Rotate Left one bit using Carry bit as bit 16.' (status S, Z, C) and 'N = 1, Rotate Left two bits using C as bit 17 and OV as bit 16.' (status S, Z, C, OV). C48: N = 1 rotates the 18-bit string C OV R15..R0 with OV as an input; N = 0 rotates the 17-bit string C R15..R0 and keeps OV. Left shift: S is bit 15 of the result and Z is set when it is all zero (pdf 45). N = 1, RR = 10 (R2), initial C = 0, OV = 1: C OV R = 0 1 1000 0000 0000 0000 rotated left two bits is 1 0 0000 0000 0000 0001 (old bit 15 = 1 to C, old bit 14 = 0 to OV, old C = 0 to bit 1, old OV = 1 to bit 0), so C = 1, OV = 0, R2 = $0001. S = 0, Z = 0. Init S = 1, Z = 1, OV = 1, C = 0. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "8000",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "2": "0001",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 0,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0056"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n1",
+        "flag-clear:S",
+        "flag-clear:Z",
+        "flag-clear:OV",
+        "flag-set:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.RLC.n1-ffff",
+      "row": "RLC",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, RLC row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28, C48",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "RLC R0, 2",
+      "program": [
+        "0054 0001 010 100"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). RLC: 'N = 0, Rotate Left one bit using Carry bit as bit 16.' (status S, Z, C) and 'N = 1, Rotate Left two bits using C as bit 17 and OV as bit 16.' (status S, Z, C, OV). C48: N = 1 rotates the 18-bit string C OV R15..R0 with OV as an input; N = 0 rotates the 17-bit string C R15..R0 and keeps OV. Left shift: S is bit 15 of the result and Z is set when it is all zero (pdf 45). N = 1, RR = 00 (R0), C = 1, OV = 1: C OV R = 1 1 1111 1111 1111 1111 rotated left two bits is the same 18 ones, so C = 1, OV = 1, R0 = $FFFF. S = 1, Z = 0. Init S = 0, Z = 1, OV = 1, C = 1. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "FFFF",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "0": "FFFF",
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0054"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n1",
+        "flag-set:S",
+        "flag-clear:Z",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SLLC.n0",
+      "row": "SLLC",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, SLLC row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SLLC R1",
+      "program": [
+        "0059 0001 011 001"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). SLLC: 'N = 0, Shift Logical Left one bit using C as bit 16, zero to low bit.' (status S, Z, C) and 'N = 1, Shift Logical Left two bits using C as bit 17, OV as bit 16, zero to low 2 bits.' (status S, Z, C, OV). So N = 0 moves bit 15 to C and keeps OV; N = 1 moves bit 15 to C and bit 14 to OV. Left shift: S is bit 15 of the result and Z is set when it is all zero (pdf 45). N = 0, RR = 01 (R1): C R = (C) 1000 0000 0000 0001 shifted left one bit gives C = 1 and R1 = 0000 0000 0000 0010 = $0002. S = 0, Z = 0. Init S = 1, Z = 1, C = 0; OV = 1 kept. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 6 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "8001",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "1": "0002",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "C": 1
+        },
+        "prev_interruptible": 0,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0059"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n0",
+        "flag-clear:S",
+        "flag-clear:Z",
+        "flag-set:C",
+        "flag-preserved:OV",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SLLC.n1",
+      "row": "SLLC",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, SLLC row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SLLC R2, 2",
+      "program": [
+        "005E 0001 011 110"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). SLLC: 'N = 0, Shift Logical Left one bit using C as bit 16, zero to low bit.' (status S, Z, C) and 'N = 1, Shift Logical Left two bits using C as bit 17, OV as bit 16, zero to low 2 bits.' (status S, Z, C, OV). So N = 0 moves bit 15 to C and keeps OV; N = 1 moves bit 15 to C and bit 14 to OV. Left shift: S is bit 15 of the result and Z is set when it is all zero (pdf 45). N = 1, RR = 10 (R2): $4000 = 0100 0000 0000 0000; C OV R after two left shifts is 0 1 0000 0000 0000 0000, so C = 0 (old bit 15), OV = 1 (old bit 14), R2 = $0000. Z = 1, S = 0. Init S = 1, Z = 0, OV = 0, C = 1. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "4000",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "2": "0000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "005E"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n1",
+        "flag-clear:S",
+        "flag-set:Z",
+        "flag-set:OV",
+        "flag-clear:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SLLC.n1-sign",
+      "row": "SLLC",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, SLLC row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SLLC R0, 2",
+      "program": [
+        "005C 0001 011 100"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). SLLC: 'N = 0, Shift Logical Left one bit using C as bit 16, zero to low bit.' (status S, Z, C) and 'N = 1, Shift Logical Left two bits using C as bit 17, OV as bit 16, zero to low 2 bits.' (status S, Z, C, OV). So N = 0 moves bit 15 to C and keeps OV; N = 1 moves bit 15 to C and bit 14 to OV. Left shift: S is bit 15 of the result and Z is set when it is all zero (pdf 45). N = 1, RR = 00 (R0): $A000 = 1010 0000 0000 0000; C OV R after two left shifts is 1 0 1000 0000 0000 0000, so C = 1, OV = 0, R0 = $8000. S = 1, Z = 0. Init S = 0, Z = 1, OV = 1, C = 0. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "A000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "0": "8000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 0,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "005C"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n1",
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-clear:OV",
+        "flag-set:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SLLC.n0-zero",
+      "row": "SLLC",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, SLLC row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SLLC R3",
+      "program": [
+        "005B 0001 011 011"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). SLLC: 'N = 0, Shift Logical Left one bit using C as bit 16, zero to low bit.' (status S, Z, C) and 'N = 1, Shift Logical Left two bits using C as bit 17, OV as bit 16, zero to low 2 bits.' (status S, Z, C, OV). So N = 0 moves bit 15 to C and keeps OV; N = 1 moves bit 15 to C and bit 14 to OV. Left shift: S is bit 15 of the result and Z is set when it is all zero (pdf 45). N = 0, RR = 11 (R3): $8000 shifted left one bit gives C = 1 (old bit 15) and R3 = $0000. Z = 1, S = 0. Init S = 1, Z = 0, C = 0; OV = 1 kept. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 6 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "8000",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "3": "0000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "005B"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n0",
+        "flag-clear:S",
+        "flag-set:Z",
+        "flag-set:C",
+        "flag-preserved:OV",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SLLC.n1-ffff",
+      "row": "SLLC",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, SLLC row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SLLC R3, 2",
+      "program": [
+        "005F 0001 011 111"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). SLLC: 'N = 0, Shift Logical Left one bit using C as bit 16, zero to low bit.' (status S, Z, C) and 'N = 1, Shift Logical Left two bits using C as bit 17, OV as bit 16, zero to low 2 bits.' (status S, Z, C, OV). So N = 0 moves bit 15 to C and keeps OV; N = 1 moves bit 15 to C and bit 14 to OV. Left shift: S is bit 15 of the result and Z is set when it is all zero (pdf 45). N = 1, RR = 11 (R3): $FFFF; C OV R after two left shifts is 1 1 1111 1111 1111 1100, so C = 1, OV = 1, R3 = $FFFC. S = 1, Z = 0. Init S = 0, Z = 1, OV = 0, C = 0. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "FFFF",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "3": "FFFC",
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "005F"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n1",
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-set:OV",
+        "flag-set:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SLR.n0",
+      "row": "SLR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, SLR row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28, C47",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SLR R1",
+      "program": [
+        "0061 0001 100 001"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). SLR: 'N = 0, Shift Logical Right one bit, zero to high bit.' and 'N = 1, Shift Logical Right two bits, zero to high two bits.', status S, Z for both N; C and OV keep their values. C47: the header says 'Shift Right instructions set the S flip-flop with Bit 7 of the result after the instruction', so S is bit 7 here; Z is set when the 16-bit result is all zero (pdf 45). N = 0, RR = 01 (R1): $8002 = 1000 0000 0000 0010 shifted right one bit is 0100 0000 0000 0001 = $4001 (bit 0 out is 0). Bit 7 is 0, so S = 0; Z = 0. Init S = 1, Z = 1; C = 1, OV = 1 kept. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 6 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "8002",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "1": "4001",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 0
+        },
+        "prev_interruptible": 0,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0061"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n0",
+        "flag-clear:S",
+        "flag-clear:Z",
+        "flag-preserved:C",
+        "flag-preserved:OV",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SLR.n1",
+      "row": "SLR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, SLR row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28, C47",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SLR R2, 2",
+      "program": [
+        "0066 0001 100 110"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). SLR: 'N = 0, Shift Logical Right one bit, zero to high bit.' and 'N = 1, Shift Logical Right two bits, zero to high two bits.', status S, Z for both N; C and OV keep their values. C47: the header says 'Shift Right instructions set the S flip-flop with Bit 7 of the result after the instruction', so S is bit 7 here; Z is set when the 16-bit result is all zero (pdf 45). N = 1, RR = 10 (R2): $0204 = 0000 0010 0000 0100 shifted right two bits is 0000 0000 1000 0001 = $0081 (bits out 00). Bit 7 is 1, so S = 1; Z = 0. Init S = 0, Z = 1; C = 1, OV = 1 kept. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0204",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "2": "0081",
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0
+        },
+        "prev_interruptible": 0,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0066"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n1",
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-preserved:C",
+        "flag-preserved:OV",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SLR.s-from-bit7",
+      "row": "SLR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, SLR row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28, C47",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SLR R0",
+      "program": [
+        "0060 0001 100 000"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). SLR: 'N = 0, Shift Logical Right one bit, zero to high bit.' and 'N = 1, Shift Logical Right two bits, zero to high two bits.', status S, Z for both N; C and OV keep their values. C47: the header says 'Shift Right instructions set the S flip-flop with Bit 7 of the result after the instruction', so S is bit 7 here; Z is set when the 16-bit result is all zero (pdf 45). N = 0, RR = 00 (R0): $0100 shifted right one bit is $0080. Bit 7 is 1, so S = 1 (bit 15 is 0, so a bit-15 reading would give S = 0); Z = 0. Init S = 0, Z = 1; C = 1, OV = 1 kept. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 6 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0100",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "0": "0080",
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0
+        },
+        "prev_interruptible": 0,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0060"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n0",
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-preserved:C",
+        "flag-preserved:OV",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SLR.zero",
+      "row": "SLR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, SLR row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28, C47",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SLR R3",
+      "program": [
+        "0063 0001 100 011"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). SLR: 'N = 0, Shift Logical Right one bit, zero to high bit.' and 'N = 1, Shift Logical Right two bits, zero to high two bits.', status S, Z for both N; C and OV keep their values. C47: the header says 'Shift Right instructions set the S flip-flop with Bit 7 of the result after the instruction', so S is bit 7 here; Z is set when the 16-bit result is all zero (pdf 45). N = 0, RR = 11 (R3): $0001 shifted right one bit is $0000; the 1 leaves bit 0 and does not reach C (not in the status column). Z = 1, S = 0. Init S = 1, Z = 0; C = 1, OV = 1 kept. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 6 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0001",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "3": "0000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 1
+        },
+        "prev_interruptible": 0,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0063"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n0",
+        "flag-clear:S",
+        "flag-set:Z",
+        "flag-preserved:C",
+        "flag-preserved:OV",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SLR.n1-ffff",
+      "row": "SLR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, SLR row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28, C47",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SLR R1, 2",
+      "program": [
+        "0065 0001 100 101"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). SLR: 'N = 0, Shift Logical Right one bit, zero to high bit.' and 'N = 1, Shift Logical Right two bits, zero to high two bits.', status S, Z for both N; C and OV keep their values. C47: the header says 'Shift Right instructions set the S flip-flop with Bit 7 of the result after the instruction', so S is bit 7 here; Z is set when the 16-bit result is all zero (pdf 45). N = 1, RR = 01 (R1): $FFFF shifted right two bits with zeros into the high two bits is 0011 1111 1111 1111 = $3FFF. Bit 7 is 1, so S = 1; Z = 0. Init S = 0, Z = 1; C = 1, OV = 1 kept. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "FFFF",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "1": "3FFF",
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0
+        },
+        "prev_interruptible": 0,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0065"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n1",
+        "flag-set:S",
+        "flag-clear:Z",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SLR.n1-zero",
+      "row": "SLR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, SLR row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28, C47",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SLR R3, 2",
+      "program": [
+        "0067 0001 100 111"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). SLR: 'N = 0, Shift Logical Right one bit, zero to high bit.' and 'N = 1, Shift Logical Right two bits, zero to high two bits.', status S, Z for both N; C and OV keep their values. C47: the header says 'Shift Right instructions set the S flip-flop with Bit 7 of the result after the instruction', so S is bit 7 here; Z is set when the 16-bit result is all zero (pdf 45). N = 1, RR = 11 (R3): $0003 shifted right two bits is $0000. Z = 1, S = 0. Init S = 1, Z = 0; C = 1, OV = 1 kept. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0003",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "3": "0000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 1
+        },
+        "prev_interruptible": 0,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0067"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n1",
+        "flag-clear:S",
+        "flag-set:Z",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SAR.n0",
+      "row": "SAR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, SAR row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28, C47",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SAR R1",
+      "program": [
+        "0069 0001 101 001"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). SAR: 'N = 0, Shift Arithmetic Right one bit, sign bit copied to high bit.' and 'N = 1, Shift Arithmetic Right two bits, sign bit copied to high bits.', status S, Z for both N; C and OV keep their values. C47: the header says 'Shift Right instructions set the S flip-flop with Bit 7 of the result after the instruction', so S is bit 7 here; Z is set when the 16-bit result is all zero (pdf 45). N = 0, RR = 01 (R1): $8000 = 1000 0000 0000 0000 shifted right one bit with the sign copied is 1100 0000 0000 0000 = $C000. Bit 7 is 0, so S = 0 (bit 15 is 1); Z = 0. Init S = 1, Z = 1; C = 1, OV = 1 kept. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 6 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "8000",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "1": "C000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 0
+        },
+        "prev_interruptible": 0,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0069"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n0",
+        "flag-clear:S",
+        "flag-clear:Z",
+        "flag-preserved:C",
+        "flag-preserved:OV",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SAR.n1",
+      "row": "SAR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, SAR row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28, C47",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SAR R2, 2",
+      "program": [
+        "006E 0001 101 110"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). SAR: 'N = 0, Shift Arithmetic Right one bit, sign bit copied to high bit.' and 'N = 1, Shift Arithmetic Right two bits, sign bit copied to high bits.', status S, Z for both N; C and OV keep their values. C47: the header says 'Shift Right instructions set the S flip-flop with Bit 7 of the result after the instruction', so S is bit 7 here; Z is set when the 16-bit result is all zero (pdf 45). N = 1, RR = 10 (R2): $8200 = 1000 0010 0000 0000 shifted right two bits with the sign copied into both high bits is 1110 0000 1000 0000 = $E080 (bits out 00). Bit 7 is 1, so S = 1; Z = 0. Init S = 0, Z = 1; C = 1, OV = 1 kept. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "8200",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "2": "E080",
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0
+        },
+        "prev_interruptible": 0,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "006E"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n1",
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-preserved:C",
+        "flag-preserved:OV",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SAR.zero",
+      "row": "SAR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, SAR row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28, C47",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SAR R0",
+      "program": [
+        "0068 0001 101 000"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). SAR: 'N = 0, Shift Arithmetic Right one bit, sign bit copied to high bit.' and 'N = 1, Shift Arithmetic Right two bits, sign bit copied to high bits.', status S, Z for both N; C and OV keep their values. C47: the header says 'Shift Right instructions set the S flip-flop with Bit 7 of the result after the instruction', so S is bit 7 here; Z is set when the 16-bit result is all zero (pdf 45). N = 0, RR = 00 (R0): $0001 shifted right one bit with sign 0 copied is $0000. Z = 1, S = 0. Init S = 1, Z = 0; C = 1, OV = 1 kept. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 6 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0001",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "0": "0000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 1
+        },
+        "prev_interruptible": 0,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0068"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n0",
+        "flag-clear:S",
+        "flag-set:Z",
+        "flag-preserved:C",
+        "flag-preserved:OV",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SAR.positive",
+      "row": "SAR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, SAR row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28, C47",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SAR R3",
+      "program": [
+        "006B 0001 101 011"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). SAR: 'N = 0, Shift Arithmetic Right one bit, sign bit copied to high bit.' and 'N = 1, Shift Arithmetic Right two bits, sign bit copied to high bits.', status S, Z for both N; C and OV keep their values. C47: the header says 'Shift Right instructions set the S flip-flop with Bit 7 of the result after the instruction', so S is bit 7 here; Z is set when the 16-bit result is all zero (pdf 45). N = 0, RR = 11 (R3): $7FFF = 0111 1111 1111 1111 shifted right one bit with sign 0 copied is 0011 1111 1111 1111 = $3FFF. Bit 7 is 1, so S = 1; Z = 0. Init S = 0, Z = 1; C = 1, OV = 1 kept. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 6 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "7FFF",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "3": "3FFF",
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0
+        },
+        "prev_interruptible": 0,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "006B"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n0",
+        "flag-set:S",
+        "flag-clear:Z",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SAR.n1-ffff",
+      "row": "SAR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, SAR row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28, C47",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SAR R1, 2",
+      "program": [
+        "006D 0001 101 101"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). SAR: 'N = 0, Shift Arithmetic Right one bit, sign bit copied to high bit.' and 'N = 1, Shift Arithmetic Right two bits, sign bit copied to high bits.', status S, Z for both N; C and OV keep their values. C47: the header says 'Shift Right instructions set the S flip-flop with Bit 7 of the result after the instruction', so S is bit 7 here; Z is set when the 16-bit result is all zero (pdf 45). N = 1, RR = 01 (R1): $FFFF shifted right two bits with sign 1 copied into both high bits is $FFFF. Bit 7 is 1, so S = 1; Z = 0. Init S = 0, Z = 1; C = 1, OV = 1 kept. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "FFFF",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "1": "FFFF",
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0
+        },
+        "prev_interruptible": 0,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "006D"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n1",
+        "flag-set:S",
+        "flag-clear:Z",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.RRC.n0",
+      "row": "RRC",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, RRC row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28, C47, C48",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "RRC R1",
+      "program": [
+        "0071 0001 110 001"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). RRC: 'N = 0, Rotate Right one bit using Carry as bit 16.' (status S, Z, C) and 'N = 1, Rotate Right two bits using C as bit 16, OV as bit 17.' (status S, Z, C, OV). C48: N = 1 rotates the 18-bit string OV C R15..R0 with OV as an input; N = 0 rotates the 17-bit string C R15..R0 and keeps OV. C47: the header says 'Shift Right instructions set the S flip-flop with Bit 7 of the result after the instruction', so S is bit 7 here; Z is set when the 16-bit result is all zero (pdf 45). N = 0, RR = 01 (R1), C = 0: C R = 0 0000 0000 0000 0001 rotated right one bit is 1 0000 0000 0000 0000 (old bit 0 to C, old C to bit 15), so C = 1, R1 = $0000. Z = 1, S = 0. Init S = 1, Z = 0, C = 0; OV = 1 kept. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 6 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0001",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "1": "0000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0071"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n0",
+        "flag-clear:S",
+        "flag-set:Z",
+        "flag-set:C",
+        "flag-preserved:OV",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.RRC.n0-ov-preserved",
+      "row": "RRC",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, RRC row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28, C47, C48",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "RRC R2",
+      "program": [
+        "0072 0001 110 010"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). RRC: 'N = 0, Rotate Right one bit using Carry as bit 16.' (status S, Z, C) and 'N = 1, Rotate Right two bits using C as bit 16, OV as bit 17.' (status S, Z, C, OV). C48: N = 1 rotates the 18-bit string OV C R15..R0 with OV as an input; N = 0 rotates the 17-bit string C R15..R0 and keeps OV. C47: the header says 'Shift Right instructions set the S flip-flop with Bit 7 of the result after the instruction', so S is bit 7 here; Z is set when the 16-bit result is all zero (pdf 45). N = 0, RR = 10 (R2), C = 1: C R = 1 0000 0001 0000 0000 rotated right one bit is 0 1000 0000 1000 0000, so C = 0, R2 = $8080. OV is not in the N = 0 status column and keeps its 1 (bit 1 of $0100 is 0, so an OV taken from it would read 0). Bit 7 is 1, so S = 1; Z = 0. Init S = 0, Z = 1, C = 1, OV = 1. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 6 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0100",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "2": "8080",
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0072"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n0",
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-clear:C",
+        "flag-preserved:OV",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.RRC.n1",
+      "row": "RRC",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, RRC row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28, C47, C48",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "RRC R1, 2",
+      "program": [
+        "0075 0001 110 101"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). RRC: 'N = 0, Rotate Right one bit using Carry as bit 16.' (status S, Z, C) and 'N = 1, Rotate Right two bits using C as bit 16, OV as bit 17.' (status S, Z, C, OV). C48: N = 1 rotates the 18-bit string OV C R15..R0 with OV as an input; N = 0 rotates the 17-bit string C R15..R0 and keeps OV. C47: the header says 'Shift Right instructions set the S flip-flop with Bit 7 of the result after the instruction', so S is bit 7 here; Z is set when the 16-bit result is all zero (pdf 45). N = 1, RR = 01 (R1), OV = 0, C = 0: OV C R = 0 0 0000 0000 0000 0011 rotated right two bits is 1 1 0000 0000 0000 0000 (old bit 1 to OV, old bit 0 to C, old OV to bit 15, old C to bit 14), so OV = 1, C = 1, R1 = $0000. Z = 1, S = 0. Init S = 1, Z = 0, OV = 0, C = 0. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0003",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "1": "0000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0075"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n1",
+        "flag-clear:S",
+        "flag-set:Z",
+        "flag-set:OV",
+        "flag-set:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.RRC.n1-ov-in",
+      "row": "RRC",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, RRC row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28, C47, C48",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "RRC R2, 2",
+      "program": [
+        "0076 0001 110 110"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). RRC: 'N = 0, Rotate Right one bit using Carry as bit 16.' (status S, Z, C) and 'N = 1, Rotate Right two bits using C as bit 16, OV as bit 17.' (status S, Z, C, OV). C48: N = 1 rotates the 18-bit string OV C R15..R0 with OV as an input; N = 0 rotates the 17-bit string C R15..R0 and keeps OV. C47: the header says 'Shift Right instructions set the S flip-flop with Bit 7 of the result after the instruction', so S is bit 7 here; Z is set when the 16-bit result is all zero (pdf 45). N = 1, RR = 10 (R2), initial OV = 1, C = 0: OV C R = 1 0 0000 0000 0000 0001 rotated right two bits is 0 1 1000 0000 0000 0000 (old bit 1 = 0 to OV, old bit 0 = 1 to C, old OV = 1 to bit 15, old C = 0 to bit 14), so OV = 0, C = 1, R2 = $8000. Bit 7 is 0, so S = 0; Z = 0. With the link positions exchanged the result would be R2 = $4000, C = 0, OV = 1. Init S = 1, Z = 1, OV = 1, C = 0. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0001",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "2": "8000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 0,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0076"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n1",
+        "flag-clear:S",
+        "flag-clear:Z",
+        "flag-clear:OV",
+        "flag-set:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.RRC.n0-sign-bit15",
+      "row": "RRC",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, RRC row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28, C47, C48",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "RRC R3",
+      "program": [
+        "0073 0001 110 011"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). RRC: 'N = 0, Rotate Right one bit using Carry as bit 16.' (status S, Z, C) and 'N = 1, Rotate Right two bits using C as bit 16, OV as bit 17.' (status S, Z, C, OV). C48: N = 1 rotates the 18-bit string OV C R15..R0 with OV as an input; N = 0 rotates the 17-bit string C R15..R0 and keeps OV. C47: the header says 'Shift Right instructions set the S flip-flop with Bit 7 of the result after the instruction', so S is bit 7 here; Z is set when the 16-bit result is all zero (pdf 45). N = 0, RR = 11 (R3), C = 1: C R = 1 0000 0000 0000 0000 rotated right one bit is 0 1000 0000 0000 0000, so C = 0, R3 = $8000. Bit 7 is 0, so S = 0 (bit 15 is 1); Z = 0. Init S = 1, Z = 1, C = 1; OV = 0 kept. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 6 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0000",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "3": "8000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0073"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n0",
+        "flag-clear:S",
+        "flag-clear:Z",
+        "flag-clear:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.RRC.n1-ffff",
+      "row": "RRC",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, RRC row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28, C47, C48",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "RRC R0, 2",
+      "program": [
+        "0074 0001 110 100"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). RRC: 'N = 0, Rotate Right one bit using Carry as bit 16.' (status S, Z, C) and 'N = 1, Rotate Right two bits using C as bit 16, OV as bit 17.' (status S, Z, C, OV). C48: N = 1 rotates the 18-bit string OV C R15..R0 with OV as an input; N = 0 rotates the 17-bit string C R15..R0 and keeps OV. C47: the header says 'Shift Right instructions set the S flip-flop with Bit 7 of the result after the instruction', so S is bit 7 here; Z is set when the 16-bit result is all zero (pdf 45). N = 1, RR = 00 (R0), OV = 1, C = 1: OV C R = 1 1 1111 1111 1111 1111 rotated right two bits is the same 18 ones, so OV = 1, C = 1, R0 = $FFFF. Bit 7 is 1, so S = 1; Z = 0. Init S = 0, Z = 1, OV = 1, C = 1. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "FFFF",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "0": "FFFF",
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0074"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n1",
+        "flag-set:S",
+        "flag-clear:Z",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SARC.n0",
+      "row": "SARC",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, SARC row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28, C47, C48",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SARC R1",
+      "program": [
+        "0079 0001 111 001"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). SARC: 'N = 0, Shift Arithmetic Right one bit, thru Carry, sign bit copied to high bit.' (status S, Z, C) and 'N = 1, Shift Arithmetic Right two bits, thru Carry and OV, sign bit copied to high 2 bits' (status S, Z, C, OV). N = 0: bit 0 goes to C (Carry as bit 16, as in RRC) and OV is kept. N = 1: the page names no link positions for SARC; this vector takes the RRC layout on the same page (C as bit 16, OV as bit 17), so bit 0 goes to C and bit 1 to OV (inference, the C48 reading extended to SARC). C47: the header says 'Shift Right instructions set the S flip-flop with Bit 7 of the result after the instruction', so S is bit 7 here; Z is set when the 16-bit result is all zero (pdf 45). N = 0, RR = 01 (R1): $8001 = 1000 0000 0000 0001 shifted right one bit with the sign copied is 1100 0000 0000 0000 = $C000 and bit 0 = 1 goes to C. Bit 7 is 0, so S = 0; Z = 0. Init S = 1, Z = 1, C = 0; OV = 1 kept. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 6 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "8001",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "1": "C000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "C": 1
+        },
+        "prev_interruptible": 0,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0079"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n0",
+        "flag-clear:S",
+        "flag-clear:Z",
+        "flag-set:C",
+        "flag-preserved:OV",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SARC.n0-zero",
+      "row": "SARC",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, SARC row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28, C47, C48",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SARC R2",
+      "program": [
+        "007A 0001 111 010"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). SARC: 'N = 0, Shift Arithmetic Right one bit, thru Carry, sign bit copied to high bit.' (status S, Z, C) and 'N = 1, Shift Arithmetic Right two bits, thru Carry and OV, sign bit copied to high 2 bits' (status S, Z, C, OV). N = 0: bit 0 goes to C (Carry as bit 16, as in RRC) and OV is kept. N = 1: the page names no link positions for SARC; this vector takes the RRC layout on the same page (C as bit 16, OV as bit 17), so bit 0 goes to C and bit 1 to OV (inference, the C48 reading extended to SARC). C47: the header says 'Shift Right instructions set the S flip-flop with Bit 7 of the result after the instruction', so S is bit 7 here; Z is set when the 16-bit result is all zero (pdf 45). N = 0, RR = 10 (R2): $0000 shifted right one bit is $0000 and bit 0 = 0 goes to C. Z = 1, S = 0. Init S = 1, Z = 0, C = 1; OV = 1 kept. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 6 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0000",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "2": "0000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "007A"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n0",
+        "flag-clear:S",
+        "flag-set:Z",
+        "flag-clear:C",
+        "flag-preserved:OV",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SARC.n1",
+      "row": "SARC",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, SARC row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28, C47, C48",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SARC R3, 2",
+      "program": [
+        "007F 0001 111 111"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). SARC: 'N = 0, Shift Arithmetic Right one bit, thru Carry, sign bit copied to high bit.' (status S, Z, C) and 'N = 1, Shift Arithmetic Right two bits, thru Carry and OV, sign bit copied to high 2 bits' (status S, Z, C, OV). N = 0: bit 0 goes to C (Carry as bit 16, as in RRC) and OV is kept. N = 1: the page names no link positions for SARC; this vector takes the RRC layout on the same page (C as bit 16, OV as bit 17), so bit 0 goes to C and bit 1 to OV (inference, the C48 reading extended to SARC). C47: the header says 'Shift Right instructions set the S flip-flop with Bit 7 of the result after the instruction', so S is bit 7 here; Z is set when the 16-bit result is all zero (pdf 45). N = 1, RR = 11 (R3): $0202 = 0000 0010 0000 0010 shifted right two bits with sign 0 copied is 0000 0000 1000 0000 = $0080; bit 0 = 0 to C, bit 1 = 1 to OV. Bit 7 is 1, so S = 1; Z = 0. Init S = 0, Z = 1, OV = 0, C = 1. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0202",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "3": "0080",
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "007F"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n1",
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-set:OV",
+        "flag-clear:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SARC.n1-ov-clear",
+      "row": "SARC",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, SARC row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28, C47, C48",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SARC R0, 2",
+      "program": [
+        "007C 0001 111 100"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). SARC: 'N = 0, Shift Arithmetic Right one bit, thru Carry, sign bit copied to high bit.' (status S, Z, C) and 'N = 1, Shift Arithmetic Right two bits, thru Carry and OV, sign bit copied to high 2 bits' (status S, Z, C, OV). N = 0: bit 0 goes to C (Carry as bit 16, as in RRC) and OV is kept. N = 1: the page names no link positions for SARC; this vector takes the RRC layout on the same page (C as bit 16, OV as bit 17), so bit 0 goes to C and bit 1 to OV (inference, the C48 reading extended to SARC). C47: the header says 'Shift Right instructions set the S flip-flop with Bit 7 of the result after the instruction', so S is bit 7 here; Z is set when the 16-bit result is all zero (pdf 45). N = 1, RR = 00 (R0): $8001 = 1000 0000 0000 0001 shifted right two bits with sign 1 copied into both high bits is 1110 0000 0000 0000 = $E000; bit 0 = 1 to C, bit 1 = 0 to OV. Bit 7 is 0, so S = 0; Z = 0. Init S = 1, Z = 1, OV = 1, C = 0. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "8001",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "0": "E000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 0,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "007C"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n1",
+        "flag-clear:S",
+        "flag-clear:Z",
+        "flag-clear:OV",
+        "flag-set:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SARC.n1-zero",
+      "row": "SARC",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register shift table, SARC row and header, pdf 53; Fig 3.3.2, pdf 50; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28, C47, C48",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SARC R2, 2",
+      "program": [
+        "007E 0001 111 110"
+      ],
+      "derivation": "Fig 3.3.2 (pdf 50) prints the shift format 0001 B L A N DD (B = 1 right, L = 1 with link bits, A = 1 arithmetic, N = 1 two positions, DD the register, R0-R3 only); the shift table (pdf 53) prints the row as 0001 ooo NRR, cycles 6 (N = 0) and 8 (N = 1, header 'Add 2 cycles if shift is 2 bits or two bytes'). SARC: 'N = 0, Shift Arithmetic Right one bit, thru Carry, sign bit copied to high bit.' (status S, Z, C) and 'N = 1, Shift Arithmetic Right two bits, thru Carry and OV, sign bit copied to high 2 bits' (status S, Z, C, OV). N = 0: bit 0 goes to C (Carry as bit 16, as in RRC) and OV is kept. N = 1: the page names no link positions for SARC; this vector takes the RRC layout on the same page (C as bit 16, OV as bit 17), so bit 0 goes to C and bit 1 to OV (inference, the C48 reading extended to SARC). C47: the header says 'Shift Right instructions set the S flip-flop with Bit 7 of the result after the instruction', so S is bit 7 here; Z is set when the 16-bit result is all zero (pdf 45). N = 1, RR = 10 (R2): $0003 shifted right two bits with sign 0 copied is $0000; bit 0 = 1 to C, bit 1 = 1 to OV. Z = 1, S = 0. Init S = 1, Z = 0, OV = 0, C = 0. The shift header (pdf 53) says 'Shifts are not interruptable', so prev_interruptible goes 1 -> 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word, R7 -> $1001; the unit has no further bus access and lasts 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0003",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "2": "0000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "007E"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:n1",
+        "flag-clear:S",
+        "flag-set:Z",
+        "flag-set:OV",
+        "flag-set:C",
+        "fetch:bus"
+      ]
+    }
+  ]
+}

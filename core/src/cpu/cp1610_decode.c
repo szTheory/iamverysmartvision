@@ -47,14 +47,14 @@ static const ivs_cp1610_row ivs_cp1610_rows[] = {
     IVS_ROW("RSWD", 0x3F8u, 0x038u, 0u, 1u, 6u, 1u, IVS_CP1610_OP_RSWD),
     /* Register shift, Fig 3.3.2 (pdf 50) and shift table (pdf 53): 0001 ooo NRR, 6 cycles
      * (8 when N = 1), not interruptible. */
-    IVS_ROW("SWAP", 0x3F8u, 0x040u, 0u, 1u, 6u, 0u, IVS_CP1610_OP_NONE),
-    IVS_ROW("SLL", 0x3F8u, 0x048u, 0u, 1u, 6u, 0u, IVS_CP1610_OP_NONE),
-    IVS_ROW("RLC", 0x3F8u, 0x050u, 0u, 1u, 6u, 0u, IVS_CP1610_OP_NONE),
-    IVS_ROW("SLLC", 0x3F8u, 0x058u, 0u, 1u, 6u, 0u, IVS_CP1610_OP_NONE),
-    IVS_ROW("SLR", 0x3F8u, 0x060u, 0u, 1u, 6u, 0u, IVS_CP1610_OP_NONE),
-    IVS_ROW("SAR", 0x3F8u, 0x068u, 0u, 1u, 6u, 0u, IVS_CP1610_OP_NONE),
-    IVS_ROW("RRC", 0x3F8u, 0x070u, 0u, 1u, 6u, 0u, IVS_CP1610_OP_NONE),
-    IVS_ROW("SARC", 0x3F8u, 0x078u, 0u, 1u, 6u, 0u, IVS_CP1610_OP_NONE),
+    IVS_ROW("SWAP", 0x3F8u, 0x040u, 0u, 1u, 6u, 0u, IVS_CP1610_OP_SWAP),
+    IVS_ROW("SLL", 0x3F8u, 0x048u, 0u, 1u, 6u, 0u, IVS_CP1610_OP_SLL),
+    IVS_ROW("RLC", 0x3F8u, 0x050u, 0u, 1u, 6u, 0u, IVS_CP1610_OP_RLC),
+    IVS_ROW("SLLC", 0x3F8u, 0x058u, 0u, 1u, 6u, 0u, IVS_CP1610_OP_SLLC),
+    IVS_ROW("SLR", 0x3F8u, 0x060u, 0u, 1u, 6u, 0u, IVS_CP1610_OP_SLR),
+    IVS_ROW("SAR", 0x3F8u, 0x068u, 0u, 1u, 6u, 0u, IVS_CP1610_OP_SAR),
+    IVS_ROW("RRC", 0x3F8u, 0x070u, 0u, 1u, 6u, 0u, IVS_CP1610_OP_RRC),
+    IVS_ROW("SARC", 0x3F8u, 0x078u, 0u, 1u, 6u, 0u, IVS_CP1610_OP_SARC),
     /* Register to register, Fig 3.3.1 (pdf 50) and register table (pdf 53): 0 ooo SSS DDD.
      * TSTR is 0010 SSS SSS and JR 0010 SSS 111, both refining MOVR 0010 SSS DDD (6, +1 if DDD
      * is 6 or 7; TSTR +1 if SSS is 6 or 7; JR 7). CLRR 0111 DDD DDD refines XORR. Decle

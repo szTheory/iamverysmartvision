@@ -263,6 +263,91 @@ static uint16_t ivs_imm_read(ivs_cp1610 *n, ivs_unit *u)
   return ivs_access(u, IVS_DATA_BAR_OFFSET, IVS_ACC_READ, 0u, ivs_imm_addr(n), 0u);
 }
 
+/* Register shifts and SWAP (Fig 3.3.2, pdf 50; shift table, pdf 53): 0001 BLA N RR on R0-R3,
+ * N = 0 one bit or one byte, N = 1 two bits or two bytes (the page header adds 2 cycles). S is
+ * bit 15 of the result after left shifts and bit 7 after right shifts and SWAP (C47); Z is set
+ * when the 16-bit result is all zero. Link bits: N = 0 RLC/SLLC/RRC/SARC use C as bit 16; N = 1
+ * RLC/SLLC use C as bit 17 and OV as bit 16, RRC uses C as bit 16 and OV as bit 17 (C48), and
+ * SARC takes the RRC layout (inference: the page names no positions for it). Only rows whose
+ * status column lists C or OV for that N write them, so OV is kept on every N = 0 form. Returns
+ * the extra cycles (2 when N = 1). */
+static uint32_t ivs_shift(ivs_cp1610 *n, uint8_t op, uint32_t word)
+{
+  uint32_t rr = word & 3u;
+  uint32_t two = (word >> 2) & 1u;
+  uint32_t x = n->r[rr];
+  uint32_t c = ((uint32_t)n->status & IVS_CP1610_C) != 0u ? 1u : 0u;
+  uint32_t ov = ((uint32_t)n->status & IVS_CP1610_OV) != 0u ? 1u : 0u;
+  uint32_t r = x;
+  uint32_t s;
+  uint32_t st;
+  int right = 1;
+  switch (op) {
+  case IVS_CP1610_OP_SWAP:
+    /* N = 1 swaps the bytes and swaps them back to the original form (pdf 53). */
+    r = two ? x : ((x << 8) | (x >> 8));
+#ifdef IVS_FAULT_SWAP_N1_AS_N0
+    r = (x << 8) | (x >> 8);
+#endif
+    break;
+  case IVS_CP1610_OP_SLL:
+    r = x << (1u + two);
+    right = 0;
+    break;
+  case IVS_CP1610_OP_RLC:
+    r = two ? ((x << 2) | (c << 1) | ov) : ((x << 1) | c);
+    if (two) {
+      ov = (x >> 14) & 1u;
+    }
+    c = (x >> 15) & 1u;
+    right = 0;
+    break;
+  case IVS_CP1610_OP_SLLC:
+    r = x << (1u + two);
+    if (two) {
+      ov = (x >> 14) & 1u;
+    }
+    c = (x >> 15) & 1u;
+    right = 0;
+    break;
+  case IVS_CP1610_OP_SLR:
+    r = x >> (1u + two);
+    break;
+  case IVS_CP1610_OP_SAR:
+  case IVS_CP1610_OP_SARC:
+    r = two ? ((x >> 2) | ((x & 0x8000u) != 0u ? 0xC000u : 0u)) : ((x >> 1) | (x & 0x8000u));
+    if (op == IVS_CP1610_OP_SARC) {
+      ov = two ? (x >> 1) & 1u : ov;
+      c = x & 1u;
+    }
+    break;
+  case IVS_CP1610_OP_RRC:
+    r = two ? ((x >> 2) | (ov << 15) | (c << 14)) : ((x >> 1) | (c << 15));
+    ov = two ? (x >> 1) & 1u : ov;
+    c = x & 1u;
+#ifdef IVS_FAULT_RRC_LINK_SWAP
+    if (two) { r = (r & 0x3FFFu) | ((r >> 1) & 0x4000u) | ((r << 1) & 0x8000u); s = c; c = ov; ov = s; }
+#endif
+    break;
+  default:
+    __builtin_trap();
+  }
+  r &= 0xFFFFu;
+  n->r[rr] = IVS_U16(r);
+  ivs_set_sz(n, r);
+  s = right ? (r >> 7) & 1u : (r >> 15) & 1u;
+#ifdef IVS_FAULT_RIGHT_SHIFT_S_BIT15
+  s = (r >> 15) & 1u;
+#endif
+  st = (uint32_t)n->status & ~(uint32_t)(IVS_CP1610_S | IVS_CP1610_C | IVS_CP1610_OV);
+  st |= (s != 0u ? IVS_CP1610_S : 0u) | (c != 0u ? IVS_CP1610_C : 0u) | (ov != 0u ? IVS_CP1610_OV : 0u);
+  n->status = (uint8_t)st;
+#ifdef IVS_FAULT_SHIFT_N1_CYCLES
+  two = 0u;
+#endif
+  return two ? 2u : 0u;
+}
+
 /* Row semantics. Control group (pdf 56): HLT sets the stop latch evaluated at a later
  * boundary (POL-HLT-01, C40; evaluation is plan 02-15); SDBD sets DBD for the next unit
  * (consumption is plan 02-13); EIS enables and DIS disables the interrupt system (INTFF,
@@ -403,6 +488,16 @@ static uint32_t ivs_exec(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r, const
     } else if (row->handler == IVS_CP1610_OP_TSTR) {
       extra = sss >= 6u ? 1u : 0u;
     }
+    break;
+  case IVS_CP1610_OP_SWAP:
+  case IVS_CP1610_OP_SLL:
+  case IVS_CP1610_OP_RLC:
+  case IVS_CP1610_OP_SLLC:
+  case IVS_CP1610_OP_SLR:
+  case IVS_CP1610_OP_SAR:
+  case IVS_CP1610_OP_RRC:
+  case IVS_CP1610_OP_SARC:
+    extra = ivs_shift(n, row->handler, word);
     break;
   case IVS_CP1610_OP_MVII:
     /* MVII (pdf 57): DDD = the word at PC+1; no status change. */
