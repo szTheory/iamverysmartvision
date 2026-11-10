@@ -1,2 +1,8 @@
 # Expected results of suite cpu-vectors (D-17); first token per line, skip-ok marks a permitted skip.
+cpu.CLRC.c-already-clear-flags-preserved
+cpu.CLRC.clears-c
+cpu.SETC.flags-preserved
+cpu.SETC.sets-c
+cpu.UNIT-NOTRESET.zeroed-state
 cpu.UNIT-RESET.provider-0000
+cpu.UNIT-RESET.provider-ffff

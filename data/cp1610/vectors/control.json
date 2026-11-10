@@ -10,29 +10,425 @@
       "kind": "policy",
       "policy": "POL-RST-01",
       "cite": "Initialization sequence figure, pdf 27; first instruction after reset runs, pdf 22",
-      "sources": ["SRC-gi-cp1600-um-1975"],
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
       "asm": "none (reset entry unit)",
       "program": [],
       "derivation": "The initialization figure (pdf 27) starts counting at the MSYNC release: microcycle 0 is NACT, microcycle 1 is IAB (input starting program counter), microcycles 2 to 4 are NACT and the first BAR (output starting program counter) is in microcycle 5. So the reset entry unit is 5 cycles with one IAB access at offset 1. POL-RST-01: reset zero-fills R0-R7 and the status flags and clears INTFF; the IAB reply loads all 16 bits of R7, here the provider answers $0000 so R7 = $0000; R0-R6 stay 0 from the zero-fill (init values 1111..7777 are overwritten, status S and C and INTFF go from 1 to 0). The first instruction after the entry always runs (pdf 22), so prev_interruptible = 0. Run state goes RESET_PENDING -> RUNNING.",
       "reset": true,
       "iab": "0000",
       "init": {
-        "r": ["1111", "2222", "3333", "4444", "5555", "6666", "7777", "8888"],
-        "status": {"S": 1, "Z": 0, "OV": 0, "C": 1},
+        "r": [
+          "1111",
+          "2222",
+          "3333",
+          "4444",
+          "5555",
+          "6666",
+          "7777",
+          "8888"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 0,
+          "C": 1
+        },
         "intff": 1
       },
       "expect": {
-        "r": {"0": "0000", "1": "0000", "2": "0000", "3": "0000", "4": "0000", "5": "0000", "6": "0000", "7": "0000"},
-        "status": {"S": 0, "C": 0},
+        "r": {
+          "0": "0000",
+          "1": "0000",
+          "2": "0000",
+          "3": "0000",
+          "4": "0000",
+          "5": "0000",
+          "6": "0000",
+          "7": "0000"
+        },
+        "status": {
+          "S": 0,
+          "C": 0
+        },
         "intff": 0,
         "run_state": "RUNNING",
         "prev_interruptible": 0,
         "cycles": 5,
-        "units": ["RESET_ENTRY"]
+        "units": [
+          "RESET_ENTRY"
+        ]
       },
-      "bus": [[1, "IAB", "0000", "0000"]],
+      "bus": [
+        [
+          1,
+          "IAB",
+          "0000",
+          "0000"
+        ]
+      ],
       "bus_basis": "figure",
-      "covers": ["unit:reset-entry", "iab:0000", "reset:zero-fill"]
+      "covers": [
+        "unit:reset-entry",
+        "iab:0000",
+        "reset:zero-fill"
+      ]
+    },
+    {
+      "id": "cpu.UNIT-RESET.provider-ffff",
+      "row": "UNIT-RESET",
+      "kind": "policy",
+      "policy": "POL-RST-01",
+      "cite": "Initialization sequence figure, pdf 27; first instruction after reset runs, pdf 22",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "none (reset entry unit)",
+      "program": [],
+      "derivation": "The initialization figure (pdf 27) starts counting at the MSYNC release: microcycle 0 is NACT, microcycle 1 is IAB (input starting program counter), microcycles 2 to 4 are NACT and the first BAR (output starting program counter) is in microcycle 5. So the reset entry unit is 5 cycles with one IAB access at offset 1. POL-RST-01: reset zero-fills R0-R7 and the status flags and clears INTFF; the IAB reply loads all 16 bits of R7, here the provider answers $FFFF so R7 = $FFFF; R0-R6 stay 0 from the zero-fill (init values 1111..7777 are overwritten, status S and C and INTFF go from 1 to 0). The first instruction after the entry always runs (pdf 22), so prev_interruptible = 0. Run state goes RESET_PENDING -> RUNNING.",
+      "reset": true,
+      "iab": "FFFF",
+      "init": {
+        "r": [
+          "1111",
+          "2222",
+          "3333",
+          "4444",
+          "5555",
+          "6666",
+          "7777",
+          "8888"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 0,
+          "C": 1
+        },
+        "intff": 1
+      },
+      "expect": {
+        "r": {
+          "0": "0000",
+          "1": "0000",
+          "2": "0000",
+          "3": "0000",
+          "4": "0000",
+          "5": "0000",
+          "6": "0000",
+          "7": "FFFF"
+        },
+        "status": {
+          "S": 0,
+          "C": 0
+        },
+        "intff": 0,
+        "run_state": "RUNNING",
+        "prev_interruptible": 0,
+        "cycles": 5,
+        "units": [
+          "RESET_ENTRY"
+        ]
+      },
+      "bus": [
+        [
+          1,
+          "IAB",
+          "0000",
+          "FFFF"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "unit:reset-entry",
+        "iab:ffff",
+        "reset:zero-fill"
+      ]
+    },
+    {
+      "id": "cpu.UNIT-NOTRESET.zeroed-state",
+      "row": "UNIT-NOTRESET",
+      "kind": "policy",
+      "policy": "POL-RST-01",
+      "cite": "Initialization sequence figure, pdf 27 (no IAB before MSYNC release)",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "none (not-reset unit)",
+      "program": [],
+      "derivation": "POL-RST-01: a state that was never reset (all bytes zero, run state UNRESET) has not seen the MSYNC release that starts the initialization sequence (pdf 27), so the CPU has no program counter to fetch from. Stepping it reports a NOT_RESET unit of 0 cycles, makes no bus access and changes no state field.",
+      "init": {
+        "r": [
+          "0000",
+          "0000",
+          "0000",
+          "0000",
+          "0000",
+          "0000",
+          "0000",
+          "0000"
+        ],
+        "prev_interruptible": 0,
+        "run_state": "UNRESET"
+      },
+      "expect": {
+        "cycles": 0,
+        "units": [
+          "NOT_RESET"
+        ]
+      },
+      "bus": [],
+      "bus_basis": "inference",
+      "covers": [
+        "unit:not-reset"
+      ]
+    },
+    {
+      "id": "cpu.CLRC.clears-c",
+      "row": "CLRC",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Control instructions table, CLRC row, pdf 56; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "CLRC",
+      "program": [
+        "0006 0000 000 110"
+      ],
+      "derivation": "The control table (pdf 56) prints CLRC as 0000 000 110 = $0006, 4 cycles, 'CLeaR Carry to zero', marked Not Interruptable, with only C in the status change column. The instruction fetch figure (pdf 28) puts the BAR at cycle 0 and the DTB at cycle 2 of a 4-cycle fetch, so the whole instruction is the fetch: FETCH at cycle 0 from R7 = $1000, 4 cycles. One word is fetched, so R7 = $1000 + 1 = $1001. Not interruptible, so prev_interruptible = 0. R0-R6 are untouched. Init C = 1, S = Z = OV = 0: C becomes 0, S, Z and OV stay 0.",
+      "init": {
+        "r": [
+          "0001",
+          "0002",
+          "0003",
+          "0004",
+          "0005",
+          "0006",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 1
+        }
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "status": {
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "cycles": 4,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0006"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:C",
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:OV",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.CLRC.c-already-clear-flags-preserved",
+      "row": "CLRC",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Control instructions table, CLRC row, pdf 56; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "CLRC",
+      "program": [
+        "0006 0000 000 110"
+      ],
+      "derivation": "The control table (pdf 56) prints CLRC as 0000 000 110 = $0006, 4 cycles, 'CLeaR Carry to zero', marked Not Interruptable, with only C in the status change column. The instruction fetch figure (pdf 28) puts the BAR at cycle 0 and the DTB at cycle 2 of a 4-cycle fetch, so the whole instruction is the fetch: FETCH at cycle 0 from R7 = $1000, 4 cycles. One word is fetched, so R7 = $1000 + 1 = $1001. Not interruptible, so prev_interruptible = 0. R0-R6 are untouched. Init C = 0, S = Z = OV = 1: C stays 0 and S, Z and OV stay 1 (only C is in the status change column).",
+      "init": {
+        "r": [
+          "0001",
+          "0002",
+          "0003",
+          "0004",
+          "0005",
+          "0006",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 0
+        }
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "status": {
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "cycles": 4,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0006"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:C",
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:OV"
+      ]
+    },
+    {
+      "id": "cpu.SETC.sets-c",
+      "row": "SETC",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Control instructions table, SETC row, pdf 56; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SETC",
+      "program": [
+        "0007 0000 000 111"
+      ],
+      "derivation": "The control table (pdf 56) prints SETC as 0000 000 111 = $0007, 4 cycles, 'SET Carry to one', marked Not Interruptable, with only C in the status change column. The instruction fetch figure (pdf 28) puts the BAR at cycle 0 and the DTB at cycle 2 of a 4-cycle fetch, so the whole instruction is the fetch: FETCH at cycle 0 from R7 = $1000, 4 cycles. One word is fetched, so R7 = $1000 + 1 = $1001. Not interruptible, so prev_interruptible = 0. R0-R6 are untouched. Init C = 0, S = Z = OV = 0: C becomes 1, S, Z and OV stay 0.",
+      "init": {
+        "r": [
+          "0001",
+          "0002",
+          "0003",
+          "0004",
+          "0005",
+          "0006",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        }
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "status": {
+          "C": 1
+        },
+        "prev_interruptible": 0,
+        "cycles": 4,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0007"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:C",
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:OV",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SETC.flags-preserved",
+      "row": "SETC",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Control instructions table, SETC row, pdf 56; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SETC",
+      "program": [
+        "0007 0000 000 111"
+      ],
+      "derivation": "The control table (pdf 56) prints SETC as 0000 000 111 = $0007, 4 cycles, 'SET Carry to one', marked Not Interruptable, with only C in the status change column. The instruction fetch figure (pdf 28) puts the BAR at cycle 0 and the DTB at cycle 2 of a 4-cycle fetch, so the whole instruction is the fetch: FETCH at cycle 0 from R7 = $1000, 4 cycles. One word is fetched, so R7 = $1000 + 1 = $1001. Not interruptible, so prev_interruptible = 0. R0-R6 are untouched. Init C = 1, S = Z = OV = 1: C stays 1 and S, Z and OV stay 1 (only C is in the status change column).",
+      "init": {
+        "r": [
+          "0001",
+          "0002",
+          "0003",
+          "0004",
+          "0005",
+          "0006",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        }
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "status": {
+          "C": 1
+        },
+        "prev_interruptible": 0,
+        "cycles": 4,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0007"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:C",
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:OV"
+      ]
     }
   ]
 }

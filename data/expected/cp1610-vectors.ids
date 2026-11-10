@@ -1,2 +1,8 @@
 # CP-1610 vector ids (D-17); must equal the ids in data/cp1610/vectors/*.json.
+cpu.CLRC.c-already-clear-flags-preserved
+cpu.CLRC.clears-c
+cpu.SETC.flags-preserved
+cpu.SETC.sets-c
+cpu.UNIT-NOTRESET.zeroed-state
 cpu.UNIT-RESET.provider-0000
+cpu.UNIT-RESET.provider-ffff

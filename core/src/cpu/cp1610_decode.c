@@ -7,18 +7,21 @@
 
 #include "cpu/cp1610.h"
 
-/* No rows yet: the first rows arrive with their handlers. A one-element array with a zero
- * mask would match every decle, so the table is empty and the count is zero. */
-static const ivs_cp1610_row *const ivs_cp1610_rows[1] = {NULL};
-static const size_t ivs_cp1610_row_count = 0u;
+/* Columns: mask, value, words, base cycles, interruptible, handler.
+ * Control group (pdf 56): CLRC 0000 000 110 and SETC 0000 000 111, 4 cycles each, both
+ * marked "Not Interruptable", status change C. */
+static const ivs_cp1610_row ivs_cp1610_rows[] = {
+    {0x3FFu, 0x006u, 1u, 4u, 0u, IVS_CP1610_OP_CLRC},
+    {0x3FFu, 0x007u, 1u, 4u, 0u, IVS_CP1610_OP_SETC},
+};
 
 const ivs_cp1610_row *ivs_cp1610_decode(uint16_t decle)
 {
   uint32_t d = (uint32_t)decle & 0x3FFu;
   size_t i;
-  for (i = 0u; i < ivs_cp1610_row_count; i++) {
-    const ivs_cp1610_row *row = ivs_cp1610_rows[i];
-    if (row != NULL && (d & row->mask) == row->value) {
+  for (i = 0u; i < sizeof ivs_cp1610_rows / sizeof ivs_cp1610_rows[0]; i++) {
+    const ivs_cp1610_row *row = &ivs_cp1610_rows[i];
+    if ((d & row->mask) == row->value) {
       return row;
     }
   }

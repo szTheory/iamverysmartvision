@@ -14,21 +14,39 @@
 /* Instruction fetch (pdf 28): BAR at offset 0, NACT, DTB at offset 2, NACT: 4 cycles. */
 #define IVS_FETCH_CYCLES 4u
 
-/* Per-unit bookkeeping: the port, the optional log and the running access count. */
+/* Per-unit bookkeeping: the port, the optional log, the running access count, the wait
+ * shift applied so far and the wait-limit fault marker. */
 typedef struct ivs_unit {
   const ivs_cp1610_port *port;
   ivs_cp1610_access *log;
   uint32_t n;
+  uint32_t shift;
+  uint32_t wait_limit;
+  uint8_t wait_fault;
+  uint32_t fault_end;
 } ivs_unit;
 
-/* One bus access: the bus port sees the record first; the log receives the same record with
- * the transferred value filled in (read reply, or the written value). */
-static uint16_t ivs_access(ivs_unit *u, uint32_t offset, uint8_t kind, uint8_t flags, uint16_t addr,
+/* The one wait rule (A-04 as amended by A-11): "BDRDY waits apply only to accesses that
+ * begin with a BAR/ADAR address phase, which in the D-02 kind list are FETCH, READ, WRITE
+ * and ADAR; INTAK, IAB and DW take no waits". A kind not named here takes no wait. */
+static int ivs_kind_takes_wait(uint8_t kind)
+{
+  return kind == IVS_ACC_FETCH || kind == IVS_ACC_READ || kind == IVS_ACC_WRITE || kind == IVS_ACC_ADAR;
+}
+
+/* One bus access at nominal offset `nominal` (no-wait timing). The record carries the offset
+ * shifted by earlier waits; the bus port sees it first. A wait taken by this access is
+ * inserted as idle cycles before its data transfer (pdf 40, POL-WAIT-01), so it shifts every
+ * later access and the unit length. A wait above the configured limit marks a sticky
+ * BUS_WAIT_LIMIT fault; the faulting unit ends after that access's address cycle and wait
+ * (inference: the page bounds the wait, pdf 12, but defines no behaviour past it). The log
+ * receives the same record with the transferred value and the applied wait filled in. */
+static uint16_t ivs_access(ivs_unit *u, uint32_t nominal, uint8_t kind, uint8_t flags, uint16_t addr,
                            uint16_t data)
 {
   ivs_cp1610_access a;
   ivs_bus_reply reply;
-  a.offset_cpu_cycles = offset;
+  a.offset_cpu_cycles = nominal + u->shift;
   a.addr = addr;
   a.data = data;
   a.wait_cpu_cycles = 0u;
@@ -37,6 +55,14 @@ static uint16_t ivs_access(ivs_unit *u, uint32_t offset, uint8_t kind, uint8_t f
   reply = u->port->bus(u->port->ctx, &a);
   if (kind != IVS_ACC_WRITE && kind != IVS_ACC_DW) {
     a.data = reply.data;
+  }
+  if (ivs_kind_takes_wait(kind)) {
+    a.wait_cpu_cycles = reply.wait_cpu_cycles;
+    if ((uint32_t)reply.wait_cpu_cycles > u->wait_limit && !u->wait_fault) {
+      u->wait_fault = 1u;
+      u->fault_end = a.offset_cpu_cycles + 1u + (uint32_t)reply.wait_cpu_cycles;
+    }
+    u->shift += (uint32_t)reply.wait_cpu_cycles;
   }
   if (u->n >= IVS_CP1610_MAX_ACCESSES) {
     __builtin_trap();
@@ -137,24 +163,54 @@ static void ivs_set_fault(ivs_cp1610 *n, ivs_cp1610_result *r, uint8_t reason)
   r->events = (uint8_t)(r->events | IVS_CP1610_EV_FAULT);
 }
 
-/* Instruction unit: FETCH at offset 0 from R7, PC advances, decode bits 9..0. */
+/* Row semantics. Control group (pdf 56): CLRC clears C, SETC sets C; no other flag. */
+static void ivs_exec(ivs_cp1610 *n, const ivs_cp1610_row *row)
+{
+  switch (row->handler) {
+  case IVS_CP1610_OP_CLRC:
+    n->status = (uint8_t)((uint32_t)n->status & ~(uint32_t)IVS_CP1610_C);
+    break;
+  case IVS_CP1610_OP_SETC:
+    n->status = (uint8_t)((uint32_t)n->status | IVS_CP1610_C);
+    break;
+  default:
+    __builtin_trap();
+  }
+}
+
+/* Instruction unit: FETCH at offset 0 from R7 (pdf 28), PC advances one per word fetched,
+ * decode bits 9..0. The unit lasts the row's base cycles plus the waits taken; the row's
+ * interruptible flag becomes prev_interruptible for the next boundary (CPU-02). */
 static void ivs_unit_instr(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r)
 {
   uint16_t pc = n->r[7];
   uint16_t word = ivs_access(u, 0u, IVS_ACC_FETCH, 0u, pc, 0u);
   const ivs_cp1610_row *row;
   r->opcode = word;
-  r->elapsed_cpu_cycles = IVS_FETCH_CYCLES;
+  if (u->wait_fault) {
+    return;
+  }
   row = ivs_cp1610_decode(word);
   if (row == NULL) {
     /* Sticky fault: PC stays at the offending word; the fetch is traced and counted. */
+    r->elapsed_cpu_cycles = IVS_FETCH_CYCLES + u->shift;
     ivs_set_fault(n, r, IVS_CP1610_FAULT_UNIMPLEMENTED);
     return;
   }
   n->r[7] = IVS_U16((uint32_t)pc + 1u);
-  /* Row handlers arrive with their rows. */
-  ivs_set_fault(n, r, IVS_CP1610_FAULT_UNIMPLEMENTED);
-  n->r[7] = pc;
+  ivs_exec(n, row);
+  n->prev_interruptible = row->interruptible;
+  r->elapsed_cpu_cycles = (uint32_t)row->base_cycles + u->shift;
+}
+
+static int ivs_lines_valid(const ivs_cp1610_lines *l)
+{
+  return ivs_is_bit(l->intr) && ivs_is_bit(l->intrm) && ivs_is_bit(l->busrq) && ivs_is_bit(l->stpst);
+}
+
+static int ivs_config_valid(const ivs_cp1610_config *c)
+{
+  return ivs_is_bit(c->interrupt_accept_clears_intff) && c->reserved == 0u;
 }
 
 ivs_status ivs_cp1610_step(ivs_cp1610 *s, const ivs_cp1610_config *cfg, const ivs_cp1610_lines *lines,
@@ -170,6 +226,10 @@ ivs_status ivs_cp1610_step(ivs_cp1610 *s, const ivs_cp1610_config *cfg, const iv
   if (log != NULL && log_cap < IVS_CP1610_MAX_ACCESSES) {
     return IVS_E_BAD_ARG;
   }
+  /* Lines are validated now and acted on with the interrupt and bus policies (plan 02-14). */
+  if (!ivs_lines_valid(lines) || !ivs_config_valid(cfg)) {
+    return IVS_E_BAD_ARG;
+  }
   if (ivs_cp1610_state_validate(s) != IVS_OK) {
     return IVS_E_BAD_STATE;
   }
@@ -177,6 +237,10 @@ ivs_status ivs_cp1610_step(ivs_cp1610 *s, const ivs_cp1610_config *cfg, const iv
   u.port = port;
   u.log = log;
   u.n = 0u;
+  u.shift = 0u;
+  u.wait_limit = cfg->wait_limit_cpu_cycles;
+  u.wait_fault = 0u;
+  u.fault_end = 0u;
   switch (n.run_state) {
   case IVS_CP1610_RS_UNRESET:
     ivs_result_init(&r, &n, IVS_CP1610_UNIT_NOT_RESET);
@@ -196,6 +260,12 @@ ivs_status ivs_cp1610_step(ivs_cp1610 *s, const ivs_cp1610_config *cfg, const iv
   default:
     ivs_result_init(&r, &n, IVS_CP1610_UNIT_FAULT);
     break;
+  }
+  if (u.wait_fault) {
+    /* The unit is abandoned: architectural state stays as before it, the fault is sticky. */
+    n = *s;
+    ivs_set_fault(&n, &r, IVS_CP1610_FAULT_BUS_WAIT_LIMIT);
+    r.elapsed_cpu_cycles = u.fault_end;
   }
   r.n_accesses = (uint8_t)u.n;
   *s = n;
