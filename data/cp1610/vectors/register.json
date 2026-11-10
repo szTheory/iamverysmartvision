@@ -457,6 +457,64 @@
       ]
     },
     {
+      "id": "cpu.ADDR.r7-dest",
+      "row": "ADDR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, ADDR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ADDR R0, R7",
+      "program": [
+        "00C7 0011 000 111"
+      ],
+      "derivation": "The register table (pdf 53) prints ADDR SSS, DDD as 0011 SSS DDD, 6 cycles, 'ADD contents of Register SSS to contents of register DDD. Results to DDD', status change S, Z, C, OV. S3.1.2 (pdf 45): C is set when the add produces a carry out of the high bit, OV when it produces two's complement overflow, Z when the result is all zero, S when the high-order bit is one. SSS = 000 (R0), DDD = 111 (R7). After the fetch R7 = $1001. R7 read as a source is the PC after the opcode fetch incremented it, an inference from the fetch sequence (pdf 28) and POL-STK-01, not a printed value. $1001 + $0100 = $1101 is written to R7 and is the new PC (POL-STK-01: an R7 write overrides the incremented PC), so R7 = $1101. No carry, no overflow, nonzero, bit 15 = 0: flags stay 0. ADDR prints a flat 6 cycles; the +1 footnote for DDD = 6 or 7 belongs to MOVR only (A-06), so R7 as destination costs 6. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0100",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1101"
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "00C7"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:base",
+        "addr:r7-dest",
+        "fetch:bus"
+      ]
+    },
+    {
       "id": "cpu.SUBR.equal-operands-carry-zero",
       "row": "SUBR",
       "kind": "source",
@@ -3073,6 +3131,826 @@
       "bus_basis": "figure",
       "covers": [
         "flag-set:Z",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.MOVR.base",
+      "row": "MOVR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, MOVR row and footnote, pdf 53; Fig 3.3.1, pdf 50; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "MOVR R1, R2",
+      "program": [
+        "008A 0010 001 010"
+      ],
+      "derivation": "The register table (pdf 53) prints MOVR SSS, DDD as 0010 SSS DDD, '6 *' cycles with the footnote 'If DDD is 6 or 7 add 1 to Cycles', 'MOVe contents of Register SSS to register DDD', status change S, Z (from the moved value, pdf 45); C and OV keep their values. SSS = 001 (R1), DDD = 010 (R2): R2 = $8000. S = 1, Z = 0. DDD is not 6 or 7, so 6 cycles. Init S = 0, Z = 1, OV = 1, C = 1: OV and C stay 1. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "8000",
+          "0303",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "2": "8000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "008A"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "cycles:base",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.MOVR.zero",
+      "row": "MOVR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, MOVR row and footnote, pdf 53; Fig 3.3.1, pdf 50; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "MOVR R3, R4",
+      "program": [
+        "009C 0010 011 100"
+      ],
+      "derivation": "The register table (pdf 53) prints MOVR SSS, DDD as 0010 SSS DDD, '6 *' cycles with the footnote 'If DDD is 6 or 7 add 1 to Cycles', 'MOVe contents of Register SSS to register DDD', status change S, Z (from the moved value, pdf 45); C and OV keep their values. SSS = 011 (R3), DDD = 100 (R4): R4 = $0000. Z = 1, S = 0. 6 cycles. Init S = 1, Z = 0, OV = 1, C = 1. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0202",
+          "0303",
+          "0000",
+          "1234",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "4": "0000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "009C"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:S",
+        "flag-set:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.MOVR.ddd6-bonus",
+      "row": "MOVR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, MOVR row and footnote, pdf 53; Fig 3.3.1, pdf 50; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "MOVR R0, R6",
+      "program": [
+        "0086 0010 000 110"
+      ],
+      "derivation": "The register table (pdf 53) prints MOVR SSS, DDD as 0010 SSS DDD, '6 *' cycles with the footnote 'If DDD is 6 or 7 add 1 to Cycles', 'MOVe contents of Register SSS to register DDD', status change S, Z (from the moved value, pdf 45); C and OV keep their values. SSS = 000 (R0), DDD = 110 (R6): R6 = $0300. S = 0, Z = 0 as initialised. DDD = 6, so the footnote adds 1: 6 + 1 = 7 cycles. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 7 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0300",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "6": "0300",
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 7,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0086"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:mod",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.MOVR.sss6-src-no-bonus",
+      "row": "MOVR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, MOVR row and footnote, pdf 53; Fig 3.3.1, pdf 50; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "MOVR R6, R0",
+      "program": [
+        "00B0 0010 110 000"
+      ],
+      "derivation": "The register table (pdf 53) prints MOVR SSS, DDD as 0010 SSS DDD, '6 *' cycles with the footnote 'If DDD is 6 or 7 add 1 to Cycles', 'MOVe contents of Register SSS to register DDD', status change S, Z (from the moved value, pdf 45); C and OV keep their values. SSS = 110 (R6), DDD = 000 (R0): R0 = $02F0. S = 0, Z = 0. The MOVR footnote counts DDD only, so a source of R6 keeps 6 cycles. Init S = 0, Z = 1, OV = 0, C = 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "0": "02F0",
+          "7": "1001"
+        },
+        "status": {
+          "Z": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "00B0"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:Z",
+        "cycles:base",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.MOVR.ddd7-bonus",
+      "row": "JR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, MOVR row and footnote, pdf 53; Fig 3.3.1, pdf 50; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "MOVR R6, R7 (= JR R6)",
+      "program": [
+        "00B7 0010 110 111"
+      ],
+      "derivation": "The register table (pdf 53) prints MOVR SSS, DDD as 0010 SSS DDD, '6 *' cycles with the footnote 'If DDD is 6 or 7 add 1 to Cycles', 'MOVe contents of Register SSS to register DDD', status change S, Z (from the moved value, pdf 45); C and OV keep their values. SSS = 110 (R6), DDD = 111 (R7): every MOVR encoding with DDD = 7 is the JR row 0010 SSS 111, so the row label is JR. MOVR reading: R7 = R6 = $02F0 and DDD = 7 adds 1, 6 + 1 = 7 cycles; JR reading: jump to R6, printed 7 cycles. Both give R7 = $02F0 (the written R7 overrides the incremented PC, POL-STK-01), S = 0, Z = 0, 7 cycles. Init S = 1, Z = 1, OV = 0, C = 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 7 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "02F0"
+        },
+        "status": {
+          "S": 0,
+          "Z": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 7,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "00B7"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:S",
+        "flag-clear:Z",
+        "cycles:base",
+        "addr:r7-dest",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.MOVR.coincidence-0bf",
+      "row": "TSTR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, MOVR row and footnote, pdf 53; Fig 3.3.1, pdf 50; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "TSTR R7 (= MOVR R7, R7 = JR R7)",
+      "program": [
+        "00BF 0010 111 111"
+      ],
+      "derivation": "The register table (pdf 53) prints MOVR SSS, DDD as 0010 SSS DDD, '6 *' cycles with the footnote 'If DDD is 6 or 7 add 1 to Cycles', 'MOVe contents of Register SSS to register DDD', status change S, Z (from the moved value, pdf 45); C and OV keep their values. Decle 0010 111 111 ($0BF) matches MOVR (SSS = DDD = 111), TSTR (both fields 111) and JR (SSS = 111, DDD = 111) on pdf 53. After the fetch R7 = $1001. R7 read as a source is the PC after the opcode fetch incremented it, an inference from the fetch sequence (pdf 28) and POL-STK-01, not a printed value. MOVR R7, R7: R7 = $1001, DDD = 7 so 6 + 1 = 7 cycles. TSTR R7: tests $1001, SSS = 7 so 6 + 1 = 7 cycles, R7 keeps $1001. JR R7: jump to $1001, printed 7 cycles. All three: R7 = $1001, S = 0, Z = 0 (from $1001), 7 cycles. Init all flags 1: S and Z clear, OV and C stay 1. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 7 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 7,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "00BF"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:S",
+        "flag-clear:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.TSTR.base",
+      "row": "TSTR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, TSTR row and footnote, pdf 53; Fig 3.3.1, pdf 50; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "TSTR R1",
+      "program": [
+        "0089 0010 001 001"
+      ],
+      "derivation": "The register table (pdf 53) prints TSTR SSS as 0010 SSS SSS (the MOVR layout with both register fields equal), '6 *' cycles with the footnote 'If SSS is 6 or 7 add 1 to Cycles', 'TeST contents of Register SSS', status change S, Z from the tested value (pdf 45); the register keeps its value and C and OV keep theirs. SSS = DDD = 001 (R1): R1 = $0000 is tested and keeps its value. Z = 1, S = 0. SSS is not 6 or 7: 6 cycles. Init S = 1, Z = 0, OV = 1, C = 1: OV and C stay 1. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0000",
+          "0303",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0089"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:S",
+        "flag-set:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "cycles:base",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.TSTR.negative",
+      "row": "TSTR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, TSTR row and footnote, pdf 53; Fig 3.3.1, pdf 50; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "TSTR R2",
+      "program": [
+        "0092 0010 010 010"
+      ],
+      "derivation": "The register table (pdf 53) prints TSTR SSS as 0010 SSS SSS (the MOVR layout with both register fields equal), '6 *' cycles with the footnote 'If SSS is 6 or 7 add 1 to Cycles', 'TeST contents of Register SSS', status change S, Z from the tested value (pdf 45); the register keeps its value and C and OV keep theirs. SSS = DDD = 010 (R2): tests $8000: S = 1, Z = 0, R2 unchanged, 6 cycles. Init S = 0, Z = 1, OV = 0, C = 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0202",
+          "8000",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0092"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:S",
+        "flag-clear:Z",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.TSTR.sss6-bonus",
+      "row": "TSTR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, TSTR row and footnote, pdf 53; Fig 3.3.1, pdf 50; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "TSTR R6",
+      "program": [
+        "00B6 0010 110 110"
+      ],
+      "derivation": "The register table (pdf 53) prints TSTR SSS as 0010 SSS SSS (the MOVR layout with both register fields equal), '6 *' cycles with the footnote 'If SSS is 6 or 7 add 1 to Cycles', 'TeST contents of Register SSS', status change S, Z from the tested value (pdf 45); the register keeps its value and C and OV keep theirs. SSS = DDD = 110 (R6): tests $FFFF: S = 1, Z = 0, R6 unchanged. SSS = 6, so the footnote adds 1: 6 + 1 = 7 cycles. Init all flags 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 7 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "0606",
+          "FFFF",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "status": {
+          "S": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 7,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "00B6"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:S",
+        "cycles:mod",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.TSTR.sss7-bonus",
+      "row": "TSTR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, TSTR row and footnote, pdf 53; Fig 3.3.1, pdf 50; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "TSTR R7",
+      "program": [
+        "00BF 0010 111 111"
+      ],
+      "derivation": "The register table (pdf 53) prints TSTR SSS as 0010 SSS SSS (the MOVR layout with both register fields equal), '6 *' cycles with the footnote 'If SSS is 6 or 7 add 1 to Cycles', 'TeST contents of Register SSS', status change S, Z from the tested value (pdf 45); the register keeps its value and C and OV keep theirs. Program at $8000, so R7 = $8000 before the fetch and $8001 after it. R7 read as a source is the PC after the opcode fetch incremented it, an inference from the fetch sequence (pdf 28) and POL-STK-01, not a printed value. SSS = DDD = 111 (R7): tests $8001: S = 1, Z = 0, and R7 keeps $8001 (the same decle is MOVR R7, R7 and JR R7, which also leave $8001). SSS = 7, so 6 + 1 = 7 cycles. Init S = 0, Z = 1, OV = 1, C = 1. Fetch (pdf 28): FETCH at cycle 0 from R7 = $8000, one word; the unit is the printed 7 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "8000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "8001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 7,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "8000",
+          "00BF"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "cycles:mod",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.JR.to-r7",
+      "row": "JR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, JR row, pdf 53; Fig 3.3.1, pdf 50; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "JR R3",
+      "program": [
+        "009F 0010 011 111"
+      ],
+      "derivation": "The register table (pdf 53) prints JR SSS as 0010 SSS 111, 7 cycles, 'Jump to address in Register SSS. (Move address to Register 7.)', status change S, Z from the moved value (pdf 45); C and OV keep their values. A write to R7 is the new PC and overrides the PC incremented by the fetch (POL-STK-01). SSS = 011 (R3), DDD field 111: PC = R3 = $2000. The R7 write overrides the PC incremented by the fetch ($1001), so R7 = $2000 (POL-STK-01). S = 0, Z = 0 from $2000. Printed 7 cycles. Init all flags 1: S and Z clear, OV and C stay 1. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 7 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0202",
+          "0303",
+          "2000",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "2000"
+        },
+        "status": {
+          "S": 0,
+          "Z": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 7,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "009F"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:S",
+        "flag-clear:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "cycles:base",
+        "addr:r7-dest",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.JR.zero-target",
+      "row": "JR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, JR row, pdf 53; Fig 3.3.1, pdf 50; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "JR R4",
+      "program": [
+        "00A7 0010 100 111"
+      ],
+      "derivation": "The register table (pdf 53) prints JR SSS as 0010 SSS 111, 7 cycles, 'Jump to address in Register SSS. (Move address to Register 7.)', status change S, Z from the moved value (pdf 45); C and OV keep their values. A write to R7 is the new PC and overrides the PC incremented by the fetch (POL-STK-01). SSS = 100 (R4): PC = $0000, so R7 = $0000. Z = 1, S = 0. 7 cycles. Init all flags 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 7 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0000",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "0000"
+        },
+        "status": {
+          "Z": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 7,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "00A7"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:Z",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.JR.negative-target",
+      "row": "JR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, JR row, pdf 53; Fig 3.3.1, pdf 50; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "JR R5",
+      "program": [
+        "00AF 0010 101 111"
+      ],
+      "derivation": "The register table (pdf 53) prints JR SSS as 0010 SSS 111, 7 cycles, 'Jump to address in Register SSS. (Move address to Register 7.)', status change S, Z from the moved value (pdf 45); C and OV keep their values. A write to R7 is the new PC and overrides the PC incremented by the fetch (POL-STK-01). SSS = 101 (R5): PC = $8000, so R7 = $8000. S = 1, Z = 0. 7 cycles. Init S = 0, Z = 1, OV = 0, C = 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 7 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "8000",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "8000"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 7,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "00AF"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:S",
+        "flag-clear:Z",
         "fetch:bus"
       ]
     }

@@ -60,9 +60,9 @@ static const ivs_cp1610_row ivs_cp1610_rows[] = {
      * is 6 or 7; TSTR +1 if SSS is 6 or 7; JR 7). CLRR 0111 DDD DDD refines XORR. Decle
      * 0010 111 111 is TSTR R7, JR R7 and MOVR R7,R7 at once; the first match (TSTR) owns it
      * and all three readings give the same result. */
-    IVS_ROW("TSTR", 0x3C0u, 0x080u, 1u, 1u, 6u, 1u, IVS_CP1610_OP_NONE),
-    IVS_ROW("JR", 0x3C7u, 0x087u, 0u, 1u, 7u, 1u, IVS_CP1610_OP_NONE),
-    IVS_ROW("MOVR", 0x3C0u, 0x080u, 0u, 1u, 6u, 1u, IVS_CP1610_OP_NONE),
+    IVS_ROW("TSTR", 0x3C0u, 0x080u, 1u, 1u, 6u, 1u, IVS_CP1610_OP_TSTR),
+    IVS_ROW("JR", 0x3C7u, 0x087u, 0u, 1u, 7u, 1u, IVS_CP1610_OP_JR),
+    IVS_ROW("MOVR", 0x3C0u, 0x080u, 0u, 1u, 6u, 1u, IVS_CP1610_OP_MOVR),
     IVS_ROW("ADDR", 0x3C0u, 0x0C0u, 0u, 1u, 6u, 1u, IVS_CP1610_OP_ADDR),
     IVS_ROW("SUBR", 0x3C0u, 0x100u, 0u, 1u, 6u, 1u, IVS_CP1610_OP_SUBR),
     IVS_ROW("CMPR", 0x3C0u, 0x140u, 0u, 1u, 6u, 1u, IVS_CP1610_OP_CMPR),

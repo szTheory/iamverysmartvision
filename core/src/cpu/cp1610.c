@@ -218,6 +218,16 @@ static uint16_t ivs_op_add(ivs_cp1610 *n, uint32_t a, uint32_t b)
   return r;
 }
 
+/* Register write of the register group. A write to R7 is the new PC: it overrides the PC the
+ * fetch already incremented (POL-STK-01). */
+static void ivs_wreg(ivs_cp1610 *n, uint32_t reg, uint32_t v)
+{
+  n->r[reg & 7u] = IVS_U16(v);
+#ifdef IVS_FAULT_MOVR_R7_PC
+  if ((reg & 7u) == 7u) n->r[7] = IVS_U16((uint32_t)n->r[7] + 1u);
+#endif
+}
+
 /* SUB family: a - b as a + ~b + 1 (pdf 45); C is the carry out, so C = 1 means no borrow.
  * SUBR and CMPR here; SUB, SUB@, SUBI and the CMP forms share it later (C46 for CMP). */
 static uint16_t ivs_op_sub(ivs_cp1610 *n, uint32_t a, uint32_t b)
@@ -236,8 +246,12 @@ static uint16_t ivs_op_sub(ivs_cp1610 *n, uint32_t a, uint32_t b)
  * (pdf 56, footnote on pdf 51): GSWD writes the status word into R0-R3 with bits 4 and 12 =
  * C, 5 and 13 = OV, 6 and 14 = Z, 7 and 15 = S and bits 0-3, 8-11 = 0; NOP does nothing; SIN
  * pulses PCIT; RSWD loads C, OV, Z, S from bits 4, 5, 6, 7 of register SSS (for SSS = 7 that
- * is the already incremented PC, an inference no vector asserts). Only the status change
- * column's flags move. Strobe records carry no address or data. */
+ * is the already incremented PC, an inference no vector asserts). Register group (pdf 53):
+ * ADDR, SUBR, CMPR (DDD - SSS, not stored; C46), ANDR, XORR, CLRR, INCR, DECR, COMR, NEGR
+ * (0 - DDD by two's complement addition; C49), ADCR (DDD + C; C49), MOVR, TSTR and JR. A
+ * register read of R7 sees the PC already incremented by the fetch (inference, POL-STK-01).
+ * Only the status change column's flags move. Strobe records carry no address or data. The
+ * return value is the cycles added to the row's base count (the MOVR/TSTR R6/R7 bonus). */
 static uint32_t ivs_exec(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r, const ivs_cp1610_row *row,
                          uint16_t word)
 {
@@ -296,45 +310,49 @@ static uint32_t ivs_exec(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r, const
     n->status = (uint8_t)((uint32_t)n->status | IVS_CP1610_C);
     break;
   case IVS_CP1610_OP_ADDR:
-    n->r[ddd] = ivs_op_add(n, n->r[ddd], n->r[sss]);
+    ivs_wreg(n, ddd, ivs_op_add(n, n->r[ddd], n->r[sss]));
     break;
   case IVS_CP1610_OP_SUBR:
-    n->r[ddd] = ivs_op_sub(n, n->r[ddd], n->r[sss]);
+    ivs_wreg(n, ddd, ivs_op_sub(n, n->r[ddd], n->r[sss]));
     break;
   case IVS_CP1610_OP_CMPR:
     v = ivs_op_sub(n, n->r[ddd], n->r[sss]);
 #ifdef IVS_FAULT_CMP_WRITES_DEST
-    n->r[ddd] = IVS_U16(v);
+    ivs_wreg(n, ddd, v);
 #endif
     break;
   case IVS_CP1610_OP_ANDR:
-    n->r[ddd] = IVS_U16((uint32_t)n->r[ddd] & (uint32_t)n->r[sss]);
-    ivs_set_sz(n, n->r[ddd]);
+    v = (uint32_t)n->r[ddd] & (uint32_t)n->r[sss];
+    ivs_wreg(n, ddd, v);
+    ivs_set_sz(n, v);
     break;
   case IVS_CP1610_OP_XORR:
   case IVS_CP1610_OP_CLRR:
-    n->r[ddd] = IVS_U16((uint32_t)n->r[ddd] ^ (uint32_t)n->r[sss]);
-    ivs_set_sz(n, n->r[ddd]);
+    v = (uint32_t)n->r[ddd] ^ (uint32_t)n->r[sss];
+    ivs_wreg(n, ddd, v);
+    ivs_set_sz(n, v);
     break;
   case IVS_CP1610_OP_INCR:
     v = (uint32_t)n->r[ddd] + 1u;
-    n->r[ddd] = IVS_U16(v);
+    ivs_wreg(n, ddd, v);
     ivs_set_sz(n, v);
 #ifdef IVS_FAULT_INCR_TOUCHES_C
     n->status = (uint8_t)(((uint32_t)n->status & ~(uint32_t)IVS_CP1610_C) | ((v >> 12) & IVS_CP1610_C));
 #endif
     break;
   case IVS_CP1610_OP_DECR:
-    n->r[ddd] = IVS_U16((uint32_t)n->r[ddd] + 0xFFFFu);
-    ivs_set_sz(n, n->r[ddd]);
+    v = ((uint32_t)n->r[ddd] + 0xFFFFu) & 0xFFFFu;
+    ivs_wreg(n, ddd, v);
+    ivs_set_sz(n, v);
     break;
   case IVS_CP1610_OP_COMR:
-    n->r[ddd] = IVS_U16(~(uint32_t)n->r[ddd]);
-    ivs_set_sz(n, n->r[ddd]);
+    v = ~(uint32_t)n->r[ddd] & 0xFFFFu;
+    ivs_wreg(n, ddd, v);
+    ivs_set_sz(n, v);
     break;
   case IVS_CP1610_OP_NEGR:
     v = (uint32_t)n->status & IVS_CP1610_C;
-    n->r[ddd] = ivs_alu_add(n, 0u, ~(uint32_t)n->r[ddd], 1u);
+    ivs_wreg(n, ddd, ivs_alu_add(n, 0u, ~(uint32_t)n->r[ddd], 1u));
 #ifdef IVS_FAULT_NEGR_CARRY
     n->status = (uint8_t)(((uint32_t)n->status & ~(uint32_t)IVS_CP1610_C) | v);
 #endif
@@ -344,11 +362,28 @@ static uint32_t ivs_exec(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r, const
 #ifdef IVS_FAULT_ADCR_IGNORES_C
     v = 0u;
 #endif
-    n->r[ddd] = ivs_alu_add(n, n->r[ddd], 0u, v);
+    ivs_wreg(n, ddd, ivs_alu_add(n, n->r[ddd], 0u, v));
+    break;
+  case IVS_CP1610_OP_MOVR:
+  case IVS_CP1610_OP_TSTR:
+  case IVS_CP1610_OP_JR:
+    /* One move for the three rows (decle $0BF is all three): DDD = SSS, S and Z from the value.
+     * Cycles: MOVR +1 when DDD is 6 or 7, TSTR +1 when SSS is 6 or 7, JR a flat 7 (pdf 53). */
+    v = n->r[sss];
+    ivs_wreg(n, ddd, v);
+    ivs_set_sz(n, v);
+    if (row->handler == IVS_CP1610_OP_MOVR) {
+      extra = ddd >= 6u ? 1u : 0u;
+    } else if (row->handler == IVS_CP1610_OP_TSTR) {
+      extra = sss >= 6u ? 1u : 0u;
+    }
     break;
   default:
     __builtin_trap();
   }
+#ifdef IVS_FAULT_R7_CYCLE_BONUS_ALL
+  if (row->handler >= IVS_CP1610_OP_ADDR && row->handler <= IVS_CP1610_OP_ADCR && (sss >= 6u || ddd >= 6u)) extra = 1u;
+#endif
   return extra;
 }
 

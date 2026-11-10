@@ -9,6 +9,7 @@ cpu.ADDR.7fff-plus-1-overflow
 cpu.ADDR.7fff-plus-8000
 cpu.ADDR.8000-plus-8000
 cpu.ADDR.ffff-plus-1-carry-zero
+cpu.ADDR.r7-dest
 cpu.ADDR.r7-src-no-bonus
 cpu.ADDR.same-register-doubles
 cpu.ANDR.mask-low
@@ -45,6 +46,15 @@ cpu.INCR.0000
 cpu.INCR.7fff-sign
 cpu.INCR.ffff-c-preserved
 cpu.INCR.r6-no-bonus
+cpu.JR.negative-target
+cpu.JR.to-r7
+cpu.JR.zero-target
+cpu.MOVR.base
+cpu.MOVR.coincidence-0bf
+cpu.MOVR.ddd6-bonus
+cpu.MOVR.ddd7-bonus
+cpu.MOVR.sss6-src-no-bonus
+cpu.MOVR.zero
 cpu.NEGR.8000
 cpu.NEGR.c-from-carry-out
 cpu.NEGR.ffff-to-0001
@@ -68,6 +78,10 @@ cpu.SUBR.r6-dst-no-bonus
 cpu.SUBR.same-register-zero
 cpu.TCI.intff-clear-unchanged
 cpu.TCI.strobe-figure
+cpu.TSTR.base
+cpu.TSTR.negative
+cpu.TSTR.sss6-bonus
+cpu.TSTR.sss7-bonus
 cpu.UNIT-NOTRESET.zeroed-state
 cpu.UNIT-RESET.provider-0000
 cpu.UNIT-RESET.provider-ffff
