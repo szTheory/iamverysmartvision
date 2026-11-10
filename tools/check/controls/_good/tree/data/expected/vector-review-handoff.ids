@@ -1,0 +1,2 @@
+# Committed copy of build/review/derived/HANDOFF.txt (A-12); columns: <stem> <derived_sha256> <reviewer> <run-id>.
+toy 5ffac97c98bd6c636b7caa03ccd45293547d1cc894517de6f4e18930c92f81d7 isolated-subagent-blind-v1 run-good-0
