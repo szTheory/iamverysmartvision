@@ -1,0 +1,2 @@
+# CP-1610 vector ids (D-17); must equal the ids in data/cp1610/vectors/*.json.
+cpu.UNIT-RESET.provider-0000

@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "source": "SRC-gi-cp1600-um-1975",
+  "group": "control",
+  "note": "Reset entry, not-reset and the first control-class rows. Every expect value is read from the cited page image and derived by hand; none comes from this core, an assembler or another implementation.",
+  "vectors": [
+    {
+      "id": "cpu.UNIT-RESET.provider-0000",
+      "row": "UNIT-RESET",
+      "kind": "policy",
+      "policy": "POL-RST-01",
+      "cite": "Initialization sequence figure, pdf 27; first instruction after reset runs, pdf 22",
+      "sources": ["SRC-gi-cp1600-um-1975"],
+      "asm": "none (reset entry unit)",
+      "program": [],
+      "derivation": "The initialization figure (pdf 27) starts counting at the MSYNC release: microcycle 0 is NACT, microcycle 1 is IAB (input starting program counter), microcycles 2 to 4 are NACT and the first BAR (output starting program counter) is in microcycle 5. So the reset entry unit is 5 cycles with one IAB access at offset 1. POL-RST-01: reset zero-fills R0-R7 and the status flags and clears INTFF; the IAB reply loads all 16 bits of R7, here the provider answers $0000 so R7 = $0000; R0-R6 stay 0 from the zero-fill (init values 1111..7777 are overwritten, status S and C and INTFF go from 1 to 0). The first instruction after the entry always runs (pdf 22), so prev_interruptible = 0. Run state goes RESET_PENDING -> RUNNING.",
+      "reset": true,
+      "iab": "0000",
+      "init": {
+        "r": ["1111", "2222", "3333", "4444", "5555", "6666", "7777", "8888"],
+        "status": {"S": 1, "Z": 0, "OV": 0, "C": 1},
+        "intff": 1
+      },
+      "expect": {
+        "r": {"0": "0000", "1": "0000", "2": "0000", "3": "0000", "4": "0000", "5": "0000", "6": "0000", "7": "0000"},
+        "status": {"S": 0, "C": 0},
+        "intff": 0,
+        "run_state": "RUNNING",
+        "prev_interruptible": 0,
+        "cycles": 5,
+        "units": ["RESET_ENTRY"]
+      },
+      "bus": [[1, "IAB", "0000", "0000"]],
+      "bus_basis": "figure",
+      "covers": ["unit:reset-entry", "iab:0000", "reset:zero-fill"]
+    }
+  ]
+}

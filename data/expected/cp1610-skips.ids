@@ -1,0 +1,2 @@
+# CP-1610 vectors that are expected skips: '<vector id> <discrepancy id>' per line (D-16, D-17).
+#allow-empty: no expected skips (A-05)
