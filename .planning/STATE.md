@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 2
 current_phase_name: CP-1610 CPU Core
 status: executing
-stopped_at: Completed 02-07-PLAN.md
-last_updated: "2026-11-10T07:05:31.540Z"
+stopped_at: Completed 02-08-PLAN.md
+last_updated: "2026-11-10T07:27:05.836Z"
 last_activity: 2026-11-10
 last_activity_desc: Phase 2 execution started
-state_head: c834747e94eba0483b45d4317aa8dcc8e47feaa5
+state_head: 61cebbd4c1e32909c8adc2729eac71c4689a73e4
 progress:
   total_phases: 8
   completed_phases: 1
   total_plans: 32
-  completed_plans: 21
+  completed_plans: 22
   percent: 13
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 2 (CP-1610 CPU Core) — EXECUTING
-Plan: 8 of 18
+Plan: 9 of 18
 Status: Ready to execute
 Last activity: 2026-11-10 — Phase 2 execution started
 
@@ -73,6 +73,7 @@ Progress: [█░░░░░░░░░] 13%
 | Phase 02 P05 | 16min | 2 tasks | 89 files |
 | Phase 02 P06 | 8min | 2 tasks | 8 files |
 | Phase 02 P07 | 14min | 3 tasks | 50 files |
+| Phase 02 P08 | 19min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -122,6 +123,9 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 02]: c-purity source layer is a C preprocessing-number tokenizer (comments/strings/char literals removed); float-literal rule also scans core headers; float/double words .c-only
 - [Phase 02]: core-purity-lto is a purity-selftest case, not an overlay control: c-purity forces -fno-lto (D-21 allows the drop since the class stays covered)
 - [Phase 02]: Sanitizer prefixes reach the core-symbols ctest only via IVS_SYMBOL_PREFIX_ARGS when IVS_SAN is ON; release archive gets the strict check
+- [Phase 02]: 02-08: The decode table holds all 74 rows, most specific first; rows without semantics carry OP_NONE and report UNIMPLEMENTED; decle $0BF decodes to TSTR (TSTR/JR/MOVR give the same result)
+- [Phase 02]: 02-08: A register read of R7 sees the PC incremented by the fetch (inference, pdf 28, POL-STK-01); every register-group write goes through ivs_wreg, where an R7 write overrides the PC
+- [Phase 02]: 02-08: The MOVR/TSTR/JR coincidence decle is $0BF, not $2FF as plan text says; the vector is cpu.MOVR.coincidence-0bf and plan 02-13 should rename its high-bits vector to match
 
 ### Pending Todos
 
@@ -152,6 +156,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-10T07:05:31.469Z
-Stopped at: Completed 02-07-PLAN.md
+Last session: 2026-11-10T07:27:05.780Z
+Stopped at: Completed 02-08-PLAN.md
 Resume file: None
