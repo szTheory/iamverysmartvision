@@ -16,6 +16,7 @@ cpu.ADD@.r6-mmm6-bonus
 cpu.ADDI.7fff-plus-1-overflow
 cpu.ADDI.8000-plus-8000
 cpu.ADDI.ffff-plus-1-carry-zero
+cpu.ADDI.sdbd-carry
 cpu.ADDR.0001-plus-0001
 cpu.ADDR.7fff-plus-1-overflow
 cpu.ADDR.7fff-plus-8000
@@ -146,6 +147,7 @@ cpu.CMP@.r6-mmm6-bonus
 cpu.CMPI.equal-zero
 cpu.CMPI.no-write
 cpu.CMPI.overflow-borrow
+cpu.CMPI.sdbd-no-write
 cpu.CMPR.0000-vs-8000-overflow
 cpu.CMPR.8000-vs-0001-overflow
 cpu.CMPR.equal-sets-z
@@ -204,6 +206,7 @@ cpu.MVII.flags-preserved
 cpu.MVII.r1-load
 cpu.MVII.r2-8000
 cpu.MVII.r7-dest
+cpu.MVII.sdbd-low-high
 cpu.MVO.address-ffff
 cpu.MVO.overwrites-word
 cpu.MVO.write-sequence

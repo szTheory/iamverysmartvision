@@ -40,6 +40,15 @@
 #define IVS_JUMP_W3_BAR_OFFSET 8u
 #define IVS_JUMP_DE_FAULT_CYCLES 8u
 
+/* SDBD double byte data (POL-SDBD-01; pdf 47, Fig 3.2.6 and 3.2.7 pdf 49, pdf 57, 58). The
+ * instruction after SDBD prints 10 cycles (indirect, pdf 57) or 14 with the 4-cycle SDBD word
+ * (immediate, pdf 58), so a double byte operand costs 2 more than the single form's 8 (C34). No
+ * figure prints the second read (C36, inference): the low byte read keeps the BAR at offset 4,
+ * and the high byte read takes its BAR at 7, in place of the trailing NACT of the 8-cycle read
+ * figure (pdf 29), so the unit ends after its data transfer at 9. */
+#define IVS_SDBD_HIGH_BAR_OFFSET 7u
+#define IVS_SDBD_EXTRA_CYCLES 2u
+
 /* Strobe stamps (C39, D-12). TCI timing (pdf 33): the TCI pulse rises in the cycle after the
  * 4-cycle unit, the NACT that follows the next BAR, so its record sits at unit end plus 1.
  * PCIT timing (pdf 34): the output pulse of the 6-cycle SIN starts in its cycle 4, inside the
@@ -277,9 +286,42 @@ static uint16_t ivs_imm_addr(ivs_cp1610 *n)
   return ea;
 }
 
-/* Immediate operand read: one READ of all 16 bits at the operand address (C51). */
+static uint16_t ivs_ind_addr(ivs_cp1610 *n, uint32_t mmm, int output);
+
+/* Double byte operand of the instruction after SDBD (POL-SDBD-01). Two READ records: the low
+ * byte from the low 8 bits of the first word, the high byte from the low 8 bits of the second
+ * (pdf 47; Fig 3.2.7: bits 15..8 "Not Used"). Immediate (MMM = 7, Fig 3.2.7, pdf 49): EA_L = PC+1,
+ * EA_H = PC+2, so R7 ends past both words. Indirect (Fig 3.2.6, pdf 49): MMM 4-5 read (MMM), add 1,
+ * read (MMM), add 1; MMM 1-3 read (MMM) twice with no change ("the same byte twice", pdf 57; A-03,
+ * C37). Both addresses go through the single-word address rules, so those rules hold here too. */
+static uint16_t ivs_dbd_read(ivs_cp1610 *n, ivs_unit *u, uint32_t mmm)
+{
+  uint16_t lo_ea;
+  uint16_t hi_ea;
+  uint32_t lo;
+  uint32_t hi;
+  if (mmm == 7u) {
+    lo_ea = ivs_imm_addr(n);
+    hi_ea = ivs_imm_addr(n);
+#ifdef IVS_FAULT_SDBD_IMMEDIATE_PC
+    n->r[7] = hi_ea;
+#endif
+  } else {
+    lo_ea = ivs_ind_addr(n, mmm, 0);
+    hi_ea = ivs_ind_addr(n, mmm, 0);
+  }
+  lo = (uint32_t)ivs_access(u, IVS_DATA_BAR_OFFSET, IVS_ACC_READ, 0u, lo_ea, 0u) & 0xFFu;
+  hi = (uint32_t)ivs_access(u, IVS_SDBD_HIGH_BAR_OFFSET, IVS_ACC_READ, 0u, hi_ea, 0u) & 0xFFu;
+  return IVS_U16(lo | (hi << 8));
+}
+
+/* Immediate operand read: one READ of all 16 bits at the operand address (C51), or the double
+ * byte operand when DBD is set (only the six immediate rows reach here with DBD set). */
 static uint16_t ivs_imm_read(ivs_cp1610 *n, ivs_unit *u)
 {
+  if (n->dbd != 0u) {
+    return ivs_dbd_read(n, u, 7u);
+  }
   return ivs_access(u, IVS_DATA_BAR_OFFSET, IVS_ACC_READ, 0u, ivs_imm_addr(n), 0u);
 }
 
@@ -894,6 +936,24 @@ static int ivs_mvo_refused(uint16_t word)
   return ((uint32_t)word & 0x3C0u) == 0x240u && mmm >= 4u && mmm == ((uint32_t)word & 7u);
 }
 
+/* SDBD targets (POL-SDBD-01; pdf 57, 58): the six immediate rows MVII, ADDI, SUBI, CMPI, ANDI,
+ * XORI read a double byte operand. */
+static int ivs_sdbd_target(const ivs_cp1610_row *row, uint16_t word)
+{
+  (void)word;
+  switch (row->handler) {
+  case IVS_CP1610_OP_MVII:
+  case IVS_CP1610_OP_ADDI:
+  case IVS_CP1610_OP_SUBI:
+  case IVS_CP1610_OP_CMPI:
+  case IVS_CP1610_OP_ANDI:
+  case IVS_CP1610_OP_XORI:
+    return 1;
+  default:
+    return 0;
+  }
+}
+
 /* Instruction unit: FETCH at offset 0 from R7 (pdf 28), PC advances one per word fetched,
  * decode bits 9..0. The unit lasts the row's base cycles plus the waits taken; the row's
  * interruptible flag becomes prev_interruptible for the next boundary (CPU-02). */
@@ -903,6 +963,7 @@ static void ivs_unit_instr(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r)
   uint16_t word = ivs_access(u, 0u, IVS_ACC_FETCH, 0u, pc, 0u);
   const ivs_cp1610_row *row;
   uint32_t extra;
+  uint8_t dbd;
   r->opcode = word;
   if (u->wait_fault) {
     return;
@@ -916,8 +977,14 @@ static void ivs_unit_instr(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r)
                                                                          : IVS_CP1610_FAULT_UNSUPPORTED_MVO_SSS_EQ_MMM);
     return;
   }
+  dbd = ivs_sdbd_target(row, word) ? n->dbd : 0u;
   n->r[7] = IVS_U16((uint32_t)pc + 1u);
   extra = ivs_exec(n, u, r, row, word);
+  if (dbd != 0u) {
+    /* The target consumed DBD (pdf 57: SDBD sets double byte data "for the next instruction"). */
+    n->dbd = 0u;
+    extra += IVS_SDBD_EXTRA_CYCLES;
+  }
   if (n->run_state == IVS_CP1610_RS_FAULTED) {
     /* A refusal found after the first word (jump DE = 11): R7 is back at the offender and the
      * reads so far are traced and counted. */

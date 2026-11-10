@@ -39,3 +39,4 @@ BEXT_IGNORES_EBCI cpu.BEXT.fwd-taken-e5 cpu.BEXT. cpu.BEXT.back-not-taken-e5
 BEXT_E_FIELD_IGNORED cpu.BEXT.back-taken-e10 cpu.BEXT. cpu.BEXT.fwd-not-taken-e10
 JSR_RETURN_ADDR cpu.J.jsr-r5-return cpu.J. cpu.J.plain
 JUMP_TARGET_BITS cpu.J.target-ffff cpu.J. cpu.MVII.r1-load
+SDBD_IMMEDIATE_PC cpu.MVII.sdbd-low-high cpu.MVII.sdbd|cpu.ADDI.sdbd|cpu.SUBI.sdbd|cpu.CMPI.sdbd|cpu.ANDI.sdbd|cpu.XORI.sdbd cpu.MVII.r1-load

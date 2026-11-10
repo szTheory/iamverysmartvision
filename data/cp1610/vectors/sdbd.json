@@ -1,0 +1,255 @@
+{
+  "schema_version": 1,
+  "source": "SRC-gi-cp1600-um-1975",
+  "group": "sdbd",
+  "note": "SDBD double byte data (pdf 47; Fig 3.2.6 and 3.2.7, pdf 49; pdf 57, 58) and the refusal of every other target (POL-SDBD-02). Every vector starts with the SDBD word $0001 and runs the SDBD unit and its target as two steps. Every expect value is read from the cited page image and derived by hand; none comes from this core, an assembler or another implementation. The double byte READ offsets are inference (C36): no figure prints them.",
+  "vectors": [
+    {
+      "id": "cpu.MVII.sdbd-low-high",
+      "row": "MVII",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Immediate double byte data table, MVII row, pdf 58; SDBD row, pdf 57; Fig 3.2.7, pdf 49; S3.2.1 double byte data, pdf 47; C34",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SDBD; MVII #$1234, R1",
+      "program": [
+        "0001 0000 000 001",
+        "02B9 1010 111 001",
+        "AB34 1010 1011 0011 0100",
+        "CD12 1100 1101 0001 0010"
+      ],
+      "steps": 2,
+      "derivation": "Two units. Step 1, SDBD (0000 000 001, pdf 57, 4 cycles) sets DBD for the next instruction. Step 2, MVII I, DDD: the immediate double byte table (pdf 58) prints 1010 111 DDD with DDD = 001 (R1) after the SDBD word, then XXLL LLL LLL and XXUU UUU UUU (XX = don't care; Fig 3.2.7, pdf 49: bits 15..8 'Not Used'), 'L's will be low byte and U's upper byte'. Fig 3.2.7: EA_L <- (PC+1), EA_H <- (PC+2), PC <- PC+3, so R7 goes $1000 -> $1001 (SDBD) -> $1004. pdf 47: the low data byte is the low 8 bits of the first word and the high byte the low 8 bits of the second, so the operand is ($AB34 AND $00FF) = $34 low and ($CD12 AND $00FF) = $12 high, $1234; bits 15..8 of both words ($AB, $CD) take no part. MVII: 'MoVe In Immediate double byte data to register DDD', no status change: R1 = $1234 and the flags keep their initial 0. Cycles: the SDBD unit is 4 (pdf 57) and the target prints 14 including the SDBD word (pdf 58), i.e. 10 for the instruction unit, so the two units take 4 + 10 = 14 (C34, A-05). SDBD is non-interruptible by the C56 default and the target row has no Not Interruptable note, so prev_interruptible ends 1. DBD is set by the SDBD unit and cleared by the target that consumes it, so it ends 0. Bus (inference, C36: no figure prints a double byte access): FETCH of the SDBD word at cycle 0 (pdf 28), FETCH of the target at cycle 4 (the SDBD unit is its printed 4 cycles), the low byte READ at 4 + 4 = 8 (the data access BAR of pdf 29) and the high byte READ at 4 + 7 = 11 (the second read takes the place of the trailing NACT of the 8-cycle read, so the 10-cycle unit ends after its data transfer). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "1": "1234",
+          "7": "1004"
+        },
+        "prev_interruptible": 1,
+        "cycles": 14,
+        "units": [
+          "INSTR",
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0001"
+        ],
+        [
+          4,
+          "FETCH",
+          "1001",
+          "02B9"
+        ],
+        [
+          8,
+          "READ",
+          "1002",
+          "AB34"
+        ],
+        [
+          11,
+          "READ",
+          "1003",
+          "CD12"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "addr:sdbd"
+      ]
+    },
+    {
+      "id": "cpu.ADDI.sdbd-carry",
+      "row": "ADDI",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Immediate double byte data table, ADDI row, pdf 58; SDBD row, pdf 57; Fig 3.2.7, pdf 49; S3.2.1 double byte data, pdf 47; C34",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SDBD; ADDI #$FFFF, R2",
+      "program": [
+        "0001 0000 000 001",
+        "02FA 1011 111 010",
+        "12FF 0001 0010 1111 1111",
+        "34FF 0011 0100 1111 1111"
+      ],
+      "steps": 2,
+      "derivation": "Two units. Step 1, SDBD (0000 000 001, pdf 57, 4 cycles) sets DBD for the next instruction. Step 2, ADDI I, DDD: the immediate double byte table (pdf 58) prints 1011 111 DDD with DDD = 010 (R2) after the SDBD word, then XXLL LLL LLL and XXUU UUU UUU (XX = don't care; Fig 3.2.7, pdf 49: bits 15..8 'Not Used'), 'L's will be low byte and U's upper byte'. Fig 3.2.7: EA_L <- (PC+1), EA_H <- (PC+2), PC <- PC+3, so R7 goes $1000 -> $1001 (SDBD) -> $1004. pdf 47: the low data byte is the low 8 bits of the first word and the high byte the low 8 bits of the second, so the operand is $FF low and $FF high, $FFFF (bits 15..8 $12 and $34 take no part). ADDI adds the operand to R2, status S, Z, C, OV (pdf 58), by the adder rules of pdf 45: $0001 + $FFFF = $1_0000, R2 = $0000, C = 1 (carry out of bit 15), Z = 1, S = 0, OV = 0 (the operands have different signs). Cycles: the SDBD unit is 4 (pdf 57) and the target prints 14 including the SDBD word (pdf 58), i.e. 10 for the instruction unit, so the two units take 4 + 10 = 14 (C34, A-05). SDBD is non-interruptible by the C56 default and the target row has no Not Interruptable note, so prev_interruptible ends 1. DBD is set by the SDBD unit and cleared by the target that consumes it, so it ends 0. Bus (inference, C36: no figure prints a double byte access): FETCH of the SDBD word at cycle 0 (pdf 28), FETCH of the target at cycle 4 (the SDBD unit is its printed 4 cycles), the low byte READ at 4 + 4 = 8 (the data access BAR of pdf 29) and the high byte READ at 4 + 7 = 11 (the second read takes the place of the trailing NACT of the 8-cycle read, so the 10-cycle unit ends after its data transfer). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0001",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "2": "0000",
+          "7": "1004"
+        },
+        "status": {
+          "Z": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 14,
+        "units": [
+          "INSTR",
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0001"
+        ],
+        [
+          4,
+          "FETCH",
+          "1001",
+          "02FA"
+        ],
+        [
+          8,
+          "READ",
+          "1002",
+          "12FF"
+        ],
+        [
+          11,
+          "READ",
+          "1003",
+          "34FF"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "addr:sdbd"
+      ]
+    },
+    {
+      "id": "cpu.CMPI.sdbd-no-write",
+      "row": "CMPI",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Immediate double byte data table, CMPI row, pdf 58; SDBD row, pdf 57; Fig 3.2.7, pdf 49; S3.2.1 double byte data, pdf 47; C34",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SDBD; CMPI #$5678, R3",
+      "program": [
+        "0001 0000 000 001",
+        "037B 1101 111 011",
+        "9978 1001 1001 0111 1000",
+        "AA56 1010 1010 0101 0110"
+      ],
+      "steps": 2,
+      "derivation": "Two units. Step 1, SDBD (0000 000 001, pdf 57, 4 cycles) sets DBD for the next instruction. Step 2, CMPI I, SSS: the immediate double byte table (pdf 58) prints 1101 111 SSS with SSS = 011 (R3) after the SDBD word, then XXLL LLL LLL and XXUU UUU UUU (XX = don't care; Fig 3.2.7, pdf 49: bits 15..8 'Not Used'), 'L's will be low byte and U's upper byte'. Fig 3.2.7: EA_L <- (PC+1), EA_H <- (PC+2), PC <- PC+3, so R7 goes $1000 -> $1001 (SDBD) -> $1004. pdf 47: the low data byte is the low 8 bits of the first word and the high byte the low 8 bits of the second, so the operand is $78 low and $56 high, $5678 (bits 15..8 $99 and $AA take no part). CMPI compares by subtracting the operand from R3, results not stored (pdf 58; C46): $5678 - $5678 as $5678 + $A987 + 1 = $1_0000 (pdf 45, subtraction by two's complement addition), so Z = 1, C = 1 (carry out, no borrow), S = 0, OV = 0; R3 stays $5678. Cycles: the SDBD unit is 4 (pdf 57) and the target prints 14 including the SDBD word (pdf 58), i.e. 10 for the instruction unit, so the two units take 4 + 10 = 14 (C34, A-05). SDBD is non-interruptible by the C56 default and the target row has no Not Interruptable note, so prev_interruptible ends 1. DBD is set by the SDBD unit and cleared by the target that consumes it, so it ends 0. Bus (inference, C36: no figure prints a double byte access): FETCH of the SDBD word at cycle 0 (pdf 28), FETCH of the target at cycle 4 (the SDBD unit is its printed 4 cycles), the low byte READ at 4 + 4 = 8 (the data access BAR of pdf 29) and the high byte READ at 4 + 7 = 11 (the second read takes the place of the trailing NACT of the 8-cycle read, so the 10-cycle unit ends after its data transfer). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "5678",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1004"
+        },
+        "status": {
+          "Z": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 14,
+        "units": [
+          "INSTR",
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0001"
+        ],
+        [
+          4,
+          "FETCH",
+          "1001",
+          "037B"
+        ],
+        [
+          8,
+          "READ",
+          "1002",
+          "9978"
+        ],
+        [
+          11,
+          "READ",
+          "1003",
+          "AA56"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "addr:sdbd"
+      ]
+    }
+  ]
+}
