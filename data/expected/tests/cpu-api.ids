@@ -1,0 +1,8 @@
+# Suite cpu-api: internal CPU contract (plan 02-03).
+cpu-api.state-size-32
+cpu-api.access-size-12
+cpu-api.validate-zeroed-state
+cpu-api.validate-rejects-bad-run-state
+cpu-api.validate-rejects-bad-fault-reason
+cpu-api.validate-rejects-reserved-nonzero
+cpu-api.validate-rejects-status-low-bits

@@ -37,3 +37,8 @@ target_include_directories(ivs_tests_cpu_vectors PRIVATE "${CMAKE_CURRENT_BINARY
 target_link_libraries(ivs_tests_cpu_vectors PRIVATE ivs_test_harness ivs_core ivs_warnings ivs_san)
 add_test(NAME cpu-vectors COMMAND ivs_tests_cpu_vectors)
 set_tests_properties(cpu-vectors PROPERTIES SKIP_RETURN_CODE 77)
+
+add_executable(ivs_tests_cpu_api cpu/cpu_api.c)
+target_link_libraries(ivs_tests_cpu_api PRIVATE ivs_test_harness ivs_core ivs_warnings ivs_san)
+add_test(NAME cpu-api COMMAND ivs_tests_cpu_api)
+set_tests_properties(cpu-api PROPERTIES SKIP_RETURN_CODE 77)
