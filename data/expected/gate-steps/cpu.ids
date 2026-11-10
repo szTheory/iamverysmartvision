@@ -2,3 +2,5 @@
 c-build
 c-tests
 tests-inventory
+c-faults
+faults-verdict

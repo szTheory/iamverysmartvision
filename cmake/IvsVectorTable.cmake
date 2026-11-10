@@ -8,6 +8,9 @@
 # are kept so the harness can reject them before running. The SHA256 of each source file is
 # embedded as ivs_vec_sources[] and re-checked by the tests-inventory step.
 # Any unknown key, bad hex value or bad name stops the build (fail closed).
+# Optional -DMUTATE=<vector id> (named-fault control GEN_EXPECT_MUTATION, D-18): adds 1 to that
+# vector's merged expect.cycles, proving that expectations travel from JSON to the harness. The
+# vector must exist and assert cycles; the mutated table is written only to a fault build dir.
 cmake_minimum_required(VERSION 3.25)
 
 foreach(required ROOT FILES SKIPS OUT)
@@ -465,6 +468,13 @@ foreach(entry IN LISTS order)
     vt_uint(cycles "${exp}" "expect.cycles" cycles)
     set(cycles_asserted 1)
   endif()
+  if(DEFINED MUTATE AND id STREQUAL MUTATE)
+    if(NOT cycles_asserted)
+      vt_fail("MUTATE target asserts no expect.cycles")
+    endif()
+    math(EXPR cycles "${cycles} + 1")
+    set(VT_MUTATED 1)
+  endif()
   set(units_c "")
   set(n_units 0)
   vt_type(t "${exp}" units)
@@ -673,6 +683,10 @@ foreach(entry IN LISTS order)
   math(EXPR k "${k} + 1")
 endforeach()
 
+if(DEFINED MUTATE AND NOT VT_MUTATED)
+  set(VT_CTX "${FILES}")
+  vt_fail("MUTATE target '${MUTATE}' is not a vector id")
+endif()
 if(k EQUAL 0)
   set(table_c "  {0}\n")
 endif()

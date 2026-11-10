@@ -1,0 +1,10 @@
+# Negative controls for the faults-verdict step (plan 02-04).
+faults-collateral
+faults-list-mismatch
+faults-missing
+faults-missing-site
+faults-not-detected
+faults-orphan-site
+faults-stale
+faults-unknown-vector
+faults-wrong-reason

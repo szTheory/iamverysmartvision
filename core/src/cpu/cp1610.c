@@ -150,6 +150,9 @@ static void ivs_result_init(ivs_cp1610_result *r, const ivs_cp1610 *s, uint8_t u
 static void ivs_unit_reset_entry(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r)
 {
   n->r[7] = ivs_access(u, IVS_RESET_IAB_OFFSET, IVS_ACC_IAB, IVS_ACC_F_RESET, 0u, 0u);
+#ifdef IVS_FAULT_RESET_ENTRY
+  n->r[7] = (uint16_t)(n->r[7] & 0x00FFu);
+#endif
   n->run_state = IVS_CP1610_RS_RUNNING;
   n->prev_interruptible = 0u;
   r->elapsed_cpu_cycles = IVS_RESET_CYCLES;

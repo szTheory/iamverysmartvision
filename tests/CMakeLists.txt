@@ -48,3 +48,8 @@ add_executable(ivs_tests_harness harness/harness_selftest.c harness/ivs_test.c)
 target_link_libraries(ivs_tests_harness PRIVATE ivs_warnings ivs_san)
 add_test(NAME harness COMMAND ivs_tests_harness)
 set_tests_properties(harness PROPERTIES SKIP_RETURN_CODE 77)
+
+# Named-fault control executables (D-18): dev tree only, never registered with ctest.
+if(IVS_FAULT_CONTROLS)
+  include("${CMAKE_CURRENT_SOURCE_DIR}/faults.cmake")
+endif()

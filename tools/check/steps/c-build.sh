@@ -1,6 +1,7 @@
 #!/bin/sh
 # SPDX-License-Identifier: MIT
-# Step c-build: configure and build the dev and release presets (D-19, D-22), then fail on any
+# Step c-build: configure and build the dev and release presets (D-19, D-22), plus the
+# named-fault executables (target ivs_faults) in the dev tree (D-18), then fail on any
 # tracked or untracked-not-ignored core/**/*.c that the build does not compile (the build
 # writes its repo-relative source list to build/dev/ivs-core-sources.txt). Build logs are
 # printed only on failure.
@@ -26,6 +27,11 @@ for preset in dev release; do
     cat "$tmp/$preset.configure.log"
     [ -f "$tmp/$preset.build.log" ] && cat "$tmp/$preset.build.log"
     bad c-build-failed "$preset"
+    continue
+  fi
+  if [ "$preset" = dev ] && ! cmake --build --preset dev --target ivs_faults > "$tmp/dev.faults.log" 2>&1; then
+    cat "$tmp/dev.faults.log"
+    bad c-build-failed "dev (ivs_faults)"
   fi
 done
 

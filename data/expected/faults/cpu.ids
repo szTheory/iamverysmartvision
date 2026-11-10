@@ -1,0 +1,5 @@
+# suite=cpu-vectors; columns: <FAULT_ID> <must-fail-vector-id> <allowed-prefixes> <must-pass-vector-id>
+# Named-fault controls (D-18). Prefixes are |-separated vector-id prefixes; GEN_ ids are
+# generator-path controls with no source site; every other id has one IVS_FAULT_<ID> site in core/src.
+GEN_EXPECT_MUTATION cpu.CLRC.clears-c cpu.CLRC.clears-c cpu.SETC.sets-c
+RESET_ENTRY cpu.UNIT-RESET.provider-ffff cpu.UNIT-RESET. cpu.SETC.sets-c
