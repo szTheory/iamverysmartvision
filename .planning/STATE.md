@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 2
 current_phase_name: CP-1610 CPU Core
 status: executing
-stopped_at: Completed 02-02-PLAN.md
-last_updated: "2026-11-10T05:45:48.068Z"
+stopped_at: Completed 02-03-PLAN.md
+last_updated: "2026-11-10T05:58:58.277Z"
 last_activity: 2026-11-10
 last_activity_desc: Phase 2 execution started
-state_head: 664172d91fbc8f3b5132a43c3b64740d9a9b65e7
+state_head: 5e5545da595c074b6448e7922ef04fd0dfe9c58d
 progress:
   total_phases: 8
   completed_phases: 1
   total_plans: 32
-  completed_plans: 16
+  completed_plans: 17
   percent: 13
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 2 (CP-1610 CPU Core) — EXECUTING
-Plan: 3 of 18
+Plan: 4 of 18
 Status: Ready to execute
 Last activity: 2026-11-10 — Phase 2 execution started
 
@@ -68,6 +68,7 @@ Progress: [█░░░░░░░░░] 13%
 | Phase 1 P12 | 15min | 2 tasks | 1 files |
 | Phase 02 P01 | 12 min | 3 tasks | 23 files |
 | Phase 02 P02 | 14min | 3 tasks | 72 files |
+| Phase 02 P03 | 6min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -103,6 +104,9 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 02]: 02-02: a wait above wait_limit_cpu_cycles abandons the unit with sticky BUS_WAIT_LIMIT, elapsed = offset + 1 + wait (inference)
 - [Phase 02]: 02-02: step refuses lines outside 0/1 and an invalid config (IVS_E_BAD_ARG)
 - [Phase 02]: 02-02: vector units and events asserted only when listed; full state and 64K memory always asserted
+- [Phase 02]: 02-03: harness self-test compiles ivs_test.c directly and links only ivs_warnings and ivs_san, so it cannot depend on core or test-bus code
+- [Phase 02]: 02-03: refuse-small-log covers log_cap 0..7 (0 is below the 8-record minimum); log_cap 8 is the accepted control
+- [Phase 02]: 02-03: bus-order-matches-log compares kind, flags, addr, offset between port call and log record; data only for WRITE/DW; reads must show port data 0 and wait 0
 
 ### Pending Todos
 
@@ -133,6 +137,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-10T05:45:47.985Z
-Stopped at: Completed 02-02-PLAN.md
+Last session: 2026-11-10T05:58:58.229Z
+Stopped at: Completed 02-03-PLAN.md
 Resume file: None
