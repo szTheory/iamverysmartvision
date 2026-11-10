@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 2
 current_phase_name: CP-1610 CPU Core
 status: executing
-stopped_at: Completed 02-06-PLAN.md
-last_updated: "2026-11-10T06:46:38.156Z"
+stopped_at: Completed 02-07-PLAN.md
+last_updated: "2026-11-10T07:05:31.540Z"
 last_activity: 2026-11-10
 last_activity_desc: Phase 2 execution started
-state_head: 7c81937c79c6a9199e43f5257cd9a28b8e9743fd
+state_head: c834747e94eba0483b45d4317aa8dcc8e47feaa5
 progress:
   total_phases: 8
   completed_phases: 1
   total_plans: 32
-  completed_plans: 20
+  completed_plans: 21
   percent: 13
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 2 (CP-1610 CPU Core) — EXECUTING
-Plan: 7 of 18
+Plan: 8 of 18
 Status: Ready to execute
 Last activity: 2026-11-10 — Phase 2 execution started
 
@@ -72,6 +72,7 @@ Progress: [█░░░░░░░░░] 13%
 | Phase 02 P04 | 15min | 2 tasks | 114 files |
 | Phase 02 P05 | 16min | 2 tasks | 89 files |
 | Phase 02 P06 | 8min | 2 tasks | 8 files |
+| Phase 02 P07 | 14min | 3 tasks | 50 files |
 
 ## Accumulated Context
 
@@ -117,6 +118,10 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 02]: cp1610-vectors counts a coverage tag only after the vector's own data proves it; a row or policy leaves cp1610-coverage-pending.ids only with all its derived needs (flags, cycles, required addr/branch tags, bus, and for policies a fault naming them)
 - [Phase 02]: MVI@ cycles:mod is witnessed by a single-step PULR cycles:base vector of 11 cycles (cp1610-modifier-witness.ids, A-13); the branch direction bit is bit 5 (S on pdf 54, meaning on pdf 47)
 - [Phase 02]: Strobes are access records through the bus port (addr = data = 0): STROBE_TCI at elapsed_cpu_cycles + 1 (pdf 33), STROBE_PCIT at cycle 4 of SIN (pdf 34); HLT reports HALT_LATCHED when it sets halt_pending
+- [Phase 02]: core-symbols external= counts imports not defined inside the input; c-purity reports the -O2 count as core-imports (2: __stack_chk_fail, __stack_chk_guard)
+- [Phase 02]: c-purity source layer is a C preprocessing-number tokenizer (comments/strings/char literals removed); float-literal rule also scans core headers; float/double words .c-only
+- [Phase 02]: core-purity-lto is a purity-selftest case, not an overlay control: c-purity forces -fno-lto (D-21 allows the drop since the class stays covered)
+- [Phase 02]: Sanitizer prefixes reach the core-symbols ctest only via IVS_SYMBOL_PREFIX_ARGS when IVS_SAN is ON; release archive gets the strict check
 
 ### Pending Todos
 
@@ -147,6 +152,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-10T06:46:38.072Z
-Stopped at: Completed 02-06-PLAN.md
+Last session: 2026-11-10T07:05:31.469Z
+Stopped at: Completed 02-07-PLAN.md
 Resume file: None
