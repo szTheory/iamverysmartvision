@@ -5,3 +5,4 @@ tests-inventory
 c-faults
 faults-verdict
 cp1610-vectors
+c-purity

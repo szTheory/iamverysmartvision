@@ -1,0 +1,25 @@
+# Reviewed allowlist of external symbols the machine core may import (API-05, D-21).
+# One name per line, each with a one-line reason above it. Names are normalized (no Darwin
+# leading underscore, no @version). Read from CHECK_DIR by tools/check/core-symbols.sh.
+# Never add a clock, filesystem, environment, thread, I/O, randomness, allocator, assert,
+# abort or libm name; core-symbols-deny.txt lists known-bad names and must stay disjoint.
+# memcpy: compilers lower struct copies and copy loops to it; pure memory, no host state.
+memcpy
+# memmove: lowered overlapping copies; pure memory, no host state.
+memmove
+# memset: compilers lower zeroing (state reset, = {0}) to it; pure memory, no host state.
+memset
+# memcmp: lowered byte comparisons; pure memory, no host state.
+memcmp
+# __memcpy_chk: _FORTIFY_SOURCE form of memcpy (glibc and Darwin); traps on overflow only.
+__memcpy_chk
+# __memmove_chk: _FORTIFY_SOURCE form of memmove; traps on overflow only.
+__memmove_chk
+# __memset_chk: _FORTIFY_SOURCE form of memset (Apple clang emits it at -O0); traps on overflow only.
+__memset_chk
+# __stack_chk_fail: stack-protector failure handler emitted by default toolchain flags.
+__stack_chk_fail
+# __stack_chk_guard: stack-protector canary read by protected functions.
+__stack_chk_guard
+# bzero: Darwin lowers some zeroing loops to bzero; pure memory, no host state.
+bzero
