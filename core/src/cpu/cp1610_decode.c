@@ -98,7 +98,7 @@ static const ivs_cp1610_row ivs_cp1610_rows[] = {
      * two words, 8, pdf 57), MVI@ (otherwise, 8, +3 if MMM = 6), pdf 55. */
     IVS_ROW("MVI", 0x3F8u, 0x280u, 0u, 2u, 10u, 1u, IVS_CP1610_OP_NONE),
     IVS_ROW("PULR", 0x3F8u, 0x2B0u, 0u, 1u, 11u, 1u, IVS_CP1610_OP_NONE),
-    IVS_ROW("MVII", 0x3F8u, 0x2B8u, 0u, 2u, 8u, 1u, IVS_CP1610_OP_NONE),
+    IVS_ROW("MVII", 0x3F8u, 0x2B8u, 0u, 2u, 8u, 1u, IVS_CP1610_OP_MVII),
     IVS_ROW("MVI@", 0x3C0u, 0x280u, 0u, 1u, 8u, 1u, IVS_CP1610_OP_NONE),
     /* Arithmetic and logic groups ooo MMM DDD for ADD 1011, SUB 1100, CMP 1101, AND 1110,
      * XOR 1111: direct (MMM 000, two words, 10, pdf 55), immediate (MMM 111, two words, 8,

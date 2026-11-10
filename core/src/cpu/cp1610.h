@@ -196,6 +196,7 @@ typedef struct ivs_cp1610_row {
 #define IVS_CP1610_OP_MOVR 23u
 #define IVS_CP1610_OP_TSTR 24u
 #define IVS_CP1610_OP_JR 25u
+#define IVS_CP1610_OP_MVII 26u
 
 /* Internal decode lookup: the most specific row for decle & 0x3FF. Every one of the 1024
  * decles maps to exactly one row; NULL is never returned for a 10-bit decle. */

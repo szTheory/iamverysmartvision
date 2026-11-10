@@ -55,6 +55,11 @@ cpu.MOVR.ddd6-bonus
 cpu.MOVR.ddd7-bonus
 cpu.MOVR.sss6-src-no-bonus
 cpu.MOVR.zero
+cpu.MVII.ffff
+cpu.MVII.flags-preserved
+cpu.MVII.r1-load
+cpu.MVII.r2-8000
+cpu.MVII.r7-dest
 cpu.NEGR.8000
 cpu.NEGR.c-from-carry-out
 cpu.NEGR.ffff-to-0001

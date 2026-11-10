@@ -14,4 +14,5 @@ ADCR_IGNORES_C cpu.ADCR.carry-in-one cpu.ADCR. cpu.ADDR.0001-plus-0001
 INCR_TOUCHES_C cpu.INCR.ffff-c-preserved cpu.INCR. cpu.ADDR.0001-plus-0001
 NEGR_CARRY cpu.NEGR.c-from-carry-out cpu.NEGR. cpu.ADDR.0001-plus-0001
 R7_CYCLE_BONUS_ALL cpu.ADDR.r7-src-no-bonus cpu.ADDR.|cpu.SUBR.|cpu.CMPR.|cpu.ANDR.|cpu.XORR.|cpu.CLRR.|cpu.INCR.|cpu.DECR.|cpu.COMR.|cpu.NEGR.|cpu.ADCR. cpu.MOVR.base
-MOVR_R7_PC cpu.JR.to-r7 cpu.JR.|cpu.MOVR.|cpu.ADDR.r7-dest|cpu.TSTR.sss7-bonus cpu.TSTR.base
+MOVR_R7_PC cpu.JR.to-r7 cpu.JR.|cpu.MOVR.|cpu.ADDR.r7-dest|cpu.TSTR.sss7-bonus|cpu.MVII.r7-dest cpu.TSTR.base
+IMMEDIATE_PC_ADVANCE cpu.MVII.r1-load cpu.MVII.|cpu.ADDI.|cpu.SUBI.|cpu.CMPI.|cpu.ANDI.|cpu.XORI.|cpu.MVOI. cpu.ADDR.0001-plus-0001

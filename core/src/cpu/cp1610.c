@@ -14,6 +14,12 @@
 /* Instruction fetch (pdf 28): BAR at offset 0, NACT, DTB at offset 2, NACT: 4 cycles. */
 #define IVS_FETCH_CYCLES 4u
 
+/* Data access after the fetch (pdf 29, instruction fetch and data access, indirect register
+ * mode; pdf 31, the 9-cycle MVO write): the second BAR, which puts out the effective address,
+ * is at offset 4 and its data transfer at offset 6. Immediate mode is that access with the
+ * effective address PC+1 (Fig 3.2.5, pdf 49). */
+#define IVS_DATA_BAR_OFFSET 4u
+
 /* Strobe stamps (C39, D-12). TCI timing (pdf 33): the TCI pulse rises in the cycle after the
  * 4-cycle unit, the NACT that follows the next BAR, so its record sits at unit end plus 1.
  * PCIT timing (pdf 34): the output pulse of the 6-cycle SIN starts in its cycle 4, inside the
@@ -239,6 +245,24 @@ static uint16_t ivs_op_sub(ivs_cp1610 *n, uint32_t a, uint32_t b)
   return r;
 }
 
+/* Immediate operand address (Fig 3.2.5, pdf 49: EA <- PC+1, PC <- PC+2). The fetch already
+ * advanced R7 to PC+1, so the operand address is the current R7 and R7 moves past it. */
+static uint16_t ivs_imm_addr(ivs_cp1610 *n)
+{
+  uint16_t ea = n->r[7];
+  n->r[7] = IVS_U16((uint32_t)ea + 1u);
+#ifdef IVS_FAULT_IMMEDIATE_PC_ADVANCE
+  n->r[7] = ea;
+#endif
+  return ea;
+}
+
+/* Immediate operand read: one READ of all 16 bits at the operand address (C51). */
+static uint16_t ivs_imm_read(ivs_cp1610 *n, ivs_unit *u)
+{
+  return ivs_access(u, IVS_DATA_BAR_OFFSET, IVS_ACC_READ, 0u, ivs_imm_addr(n), 0u);
+}
+
 /* Row semantics. Control group (pdf 56): HLT sets the stop latch evaluated at a later
  * boundary (POL-HLT-01, C40; evaluation is plan 02-15); SDBD sets DBD for the next unit
  * (consumption is plan 02-13); EIS enables and DIS disables the interrupt system (INTFF,
@@ -377,6 +401,10 @@ static uint32_t ivs_exec(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r, const
     } else if (row->handler == IVS_CP1610_OP_TSTR) {
       extra = sss >= 6u ? 1u : 0u;
     }
+    break;
+  case IVS_CP1610_OP_MVII:
+    /* MVII (pdf 57): DDD = the word at PC+1; no status change. */
+    ivs_wreg(n, ddd, ivs_imm_read(n, u));
     break;
   default:
     __builtin_trap();
