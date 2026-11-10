@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 2
 current_phase_name: CP-1610 CPU Core
 status: executing
-stopped_at: Completed 02-13-PLAN.md
-last_updated: "2026-11-10T08:59:13.899Z"
+stopped_at: Completed 02-14-PLAN.md
+last_updated: "2026-11-10T09:20:40.894Z"
 last_activity: 2026-11-10
 last_activity_desc: Phase 2 execution started
-state_head: 1f88616362d4a0a7aba5a1693e00ab529dee8be8
+state_head: d72cacc5f74711d73ca16bf6933be697d2b5384f
 progress:
   total_phases: 8
   completed_phases: 1
   total_plans: 32
-  completed_plans: 27
+  completed_plans: 28
   percent: 13
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 2 (CP-1610 CPU Core) — EXECUTING
-Plan: 14 of 18
+Plan: 15 of 18
 Status: Ready to execute
 Last activity: 2026-11-10 — Phase 2 execution started
 
@@ -79,6 +79,7 @@ Progress: [█░░░░░░░░░] 13%
 | Phase 02 P11 | 9min | 3 tasks | 9 files |
 | Phase 02 P12 | 10min | 2 tasks | 13 files |
 | Phase 02 P13 | 18min | 3 tasks | 16 files |
+| Phase 02 P14 | 18min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -147,6 +148,9 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 02]: 02-13: SDBD double byte data is read inside the shared immediate and indirect readers; every other target after SDBD is refused with UNSUPPORTED_SDBD_TARGET before execution (SDBD check before POL-MVO-01); the high byte READ offset 7 is an inference (C36)
 - [Phase 02]: 02-13: The temporary unimplemented fault reason and OP_NONE are removed; jump DE = 11 faults UNSUPPORTED_JUMP_DE; FAULT_LAST bounds validation
 - [Phase 02]: 02-13: Suite cpu-sweep compares every decle (with and without DBD) and all 65536 words against the Phase 1 family table via cmake/IvsSweepTable.cmake; no readings differed
+- [Phase 02]: 02-14: Interrupt acceptance runs at the start of a RUNNING step (prev_interruptible open, DBD clear; INTR, or INTRM with INTFF; levels never latched); the INT_ENTRY unit is INTAK@0 (R6), DW@2 of R7, R6+1, IAB@5 into R7, 9 cycles, prev_interruptible 0 after it
+- [Phase 02]: 02-14: One IAB helper serves reset and interrupt entries (no vector constant); acceptance leaves INTFF unless config interrupt_accept_clears_intff = 1; all 39 interrupt vectors are kind policy
+- [Phase 02]: 02-14: Fault prefixes grow only by exact ids: MVO_INTERRUPTIBLE (row-flag site) also fails 12 existing MVO-family vectors, JE_AFTER_BOUNDARY also fails cpu.J.je-sets-intff and cpu.J.jsre-r5; LINES_LATCHED uses a fault-only static latch, which 02-15 HLT vectors holding INTR may leave set
 
 ### Pending Todos
 
@@ -177,6 +181,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-10T08:59:13.847Z
-Stopped at: Completed 02-13-PLAN.md
+Last session: 2026-11-10T09:20:40.839Z
+Stopped at: Completed 02-14-PLAN.md
 Resume file: None
