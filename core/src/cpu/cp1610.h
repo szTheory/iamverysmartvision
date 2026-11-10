@@ -167,6 +167,8 @@ typedef struct ivs_cp1610_row {
 /* Row handler ids (internal; one per implemented row). */
 #define IVS_CP1610_OP_CLRC 1u
 #define IVS_CP1610_OP_SETC 2u
+#define IVS_CP1610_OP_EIS 3u
+#define IVS_CP1610_OP_DIS 4u
 
 /* Internal decode lookup: the row for decle & 0x3FF, or NULL when no row is implemented. */
 const ivs_cp1610_row *ivs_cp1610_decode(uint16_t decle);

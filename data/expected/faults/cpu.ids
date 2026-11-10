@@ -3,3 +3,4 @@
 # generator-path controls with no source site; every other id has one IVS_FAULT_<ID> site in core/src.
 GEN_EXPECT_MUTATION cpu.CLRC.clears-c cpu.CLRC.clears-c cpu.SETC.sets-c
 RESET_ENTRY cpu.UNIT-RESET.provider-ffff cpu.UNIT-RESET. cpu.SETC.sets-c
+EIS_NO_INTFF cpu.EIS.sets-intff cpu.EIS. cpu.DIS.clears-intff

@@ -2,6 +2,10 @@
 # suite=cpu-vectors
 cpu.CLRC.c-already-clear-flags-preserved
 cpu.CLRC.clears-c
+cpu.DIS.clears-intff
+cpu.DIS.intff-already-clear
+cpu.EIS.intff-already-set
+cpu.EIS.sets-intff
 cpu.SETC.flags-preserved
 cpu.SETC.sets-c
 cpu.UNIT-NOTRESET.zeroed-state

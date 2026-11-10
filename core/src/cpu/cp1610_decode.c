@@ -8,9 +8,12 @@
 #include "cpu/cp1610.h"
 
 /* Columns: mask, value, words, base cycles, interruptible, handler.
- * Control group (pdf 56): CLRC 0000 000 110 and SETC 0000 000 111, 4 cycles each, both
- * marked "Not Interruptable", status change C. */
+ * Control group (pdf 56): EIS 0000 000 010, DIS 0000 000 011, CLRC 0000 000 110 and
+ * SETC 0000 000 111, 4 cycles each, all marked "Not Interruptable"; status change C for
+ * CLRC and SETC only. */
 static const ivs_cp1610_row ivs_cp1610_rows[] = {
+    {0x3FFu, 0x002u, 1u, 4u, 0u, IVS_CP1610_OP_EIS},
+    {0x3FFu, 0x003u, 1u, 4u, 0u, IVS_CP1610_OP_DIS},
     {0x3FFu, 0x006u, 1u, 4u, 0u, IVS_CP1610_OP_CLRC},
     {0x3FFu, 0x007u, 1u, 4u, 0u, IVS_CP1610_OP_SETC},
 };

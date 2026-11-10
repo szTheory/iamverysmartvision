@@ -424,6 +424,246 @@
         "flag-preserved:Z",
         "flag-preserved:OV"
       ]
+    },
+    {
+      "id": "cpu.EIS.sets-intff",
+      "row": "EIS",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Control instructions table, EIS row, pdf 56; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "EIS",
+      "program": [
+        "0002 0000 000 010"
+      ],
+      "derivation": "The control table (pdf 56) prints EIS as 0000 000 010 = $0002, 4 cycles, 'Enable Interrupt System. Not Interruptable.', with a blank status change column. The instruction fetch figure (pdf 28) puts the BAR at cycle 0 and the DTB at cycle 2 of a 4-cycle fetch, so the whole instruction is the fetch: FETCH at cycle 0 from R7 = $1000, 4 cycles. One word is fetched, so R7 = $1000 + 1 = $1001. Not interruptible, so prev_interruptible = 0 (init default 1). R0-R6 are untouched. Enabling the interrupt system sets INTFF (POL-INT-03). Init INTFF = 0 becomes 1. Init S = Z = OV = C = 1 all stay 1 (blank status change column).",
+      "init": {
+        "r": [
+          "0001",
+          "0002",
+          "0003",
+          "0004",
+          "0005",
+          "0006",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "intff": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "intff": 1,
+        "prev_interruptible": 0,
+        "cycles": 4,
+        "units": [
+          "INSTR"
+        ],
+        "events": []
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0002"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "intff:set"
+      ]
+    },
+    {
+      "id": "cpu.EIS.intff-already-set",
+      "row": "EIS",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Control instructions table, EIS row, pdf 56; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "EIS",
+      "program": [
+        "0002 0000 000 010"
+      ],
+      "derivation": "The control table (pdf 56) prints EIS as 0000 000 010 = $0002, 4 cycles, 'Enable Interrupt System. Not Interruptable.', with a blank status change column. The instruction fetch figure (pdf 28) puts the BAR at cycle 0 and the DTB at cycle 2 of a 4-cycle fetch, so the whole instruction is the fetch: FETCH at cycle 0 from R7 = $1000, 4 cycles. One word is fetched, so R7 = $1000 + 1 = $1001. Not interruptible, so prev_interruptible = 0 (init default 1). R0-R6 are untouched. Enabling the interrupt system sets INTFF (POL-INT-03). Init INTFF = 1 stays 1. Init S = Z = OV = C = 0 all stay 0 (blank status change column).",
+      "init": {
+        "r": [
+          "0001",
+          "0002",
+          "0003",
+          "0004",
+          "0005",
+          "0006",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "intff": 1
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "intff": 1,
+        "prev_interruptible": 0,
+        "cycles": 4,
+        "units": [
+          "INSTR"
+        ],
+        "events": []
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0002"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "intff:stays-set"
+      ]
+    },
+    {
+      "id": "cpu.DIS.clears-intff",
+      "row": "DIS",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Control instructions table, DIS row, pdf 56; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "DIS",
+      "program": [
+        "0003 0000 000 011"
+      ],
+      "derivation": "The control table (pdf 56) prints DIS as 0000 000 011 = $0003, 4 cycles, 'Disable Interrupt System. Not Interruptable.', with a blank status change column. The instruction fetch figure (pdf 28) puts the BAR at cycle 0 and the DTB at cycle 2 of a 4-cycle fetch, so the whole instruction is the fetch: FETCH at cycle 0 from R7 = $1000, 4 cycles. One word is fetched, so R7 = $1000 + 1 = $1001. Not interruptible, so prev_interruptible = 0 (init default 1). R0-R6 are untouched. Disabling the interrupt system clears INTFF (POL-INT-03). Init INTFF = 1 becomes 0. Init S = Z = OV = C = 1 all stay 1 (blank status change column).",
+      "init": {
+        "r": [
+          "0001",
+          "0002",
+          "0003",
+          "0004",
+          "0005",
+          "0006",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "intff": 1
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "intff": 0,
+        "prev_interruptible": 0,
+        "cycles": 4,
+        "units": [
+          "INSTR"
+        ],
+        "events": []
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0003"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "intff:clear"
+      ]
+    },
+    {
+      "id": "cpu.DIS.intff-already-clear",
+      "row": "DIS",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Control instructions table, DIS row, pdf 56; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "DIS",
+      "program": [
+        "0003 0000 000 011"
+      ],
+      "derivation": "The control table (pdf 56) prints DIS as 0000 000 011 = $0003, 4 cycles, 'Disable Interrupt System. Not Interruptable.', with a blank status change column. The instruction fetch figure (pdf 28) puts the BAR at cycle 0 and the DTB at cycle 2 of a 4-cycle fetch, so the whole instruction is the fetch: FETCH at cycle 0 from R7 = $1000, 4 cycles. One word is fetched, so R7 = $1000 + 1 = $1001. Not interruptible, so prev_interruptible = 0 (init default 1). R0-R6 are untouched. Disabling the interrupt system clears INTFF (POL-INT-03). Init INTFF = 0 stays 0. Init S = Z = OV = C = 0 all stay 0 (blank status change column).",
+      "init": {
+        "r": [
+          "0001",
+          "0002",
+          "0003",
+          "0004",
+          "0005",
+          "0006",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "intff": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "intff": 0,
+        "prev_interruptible": 0,
+        "cycles": 4,
+        "units": [
+          "INSTR"
+        ],
+        "events": []
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0003"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "intff:stays-clear"
+      ]
     }
   ]
 }

@@ -166,10 +166,21 @@ static void ivs_set_fault(ivs_cp1610 *n, ivs_cp1610_result *r, uint8_t reason)
   r->events = (uint8_t)(r->events | IVS_CP1610_EV_FAULT);
 }
 
-/* Row semantics. Control group (pdf 56): CLRC clears C, SETC sets C; no other flag. */
+/* Row semantics. Control group (pdf 56): EIS enables and DIS disables the interrupt system
+ * (INTFF, POL-INT-03), neither touches a status bit; CLRC clears C, SETC sets C; no other
+ * flag. */
 static void ivs_exec(ivs_cp1610 *n, const ivs_cp1610_row *row)
 {
   switch (row->handler) {
+  case IVS_CP1610_OP_EIS:
+    n->intff = 1u;
+#ifdef IVS_FAULT_EIS_NO_INTFF
+    n->intff = 0u;
+#endif
+    break;
+  case IVS_CP1610_OP_DIS:
+    n->intff = 0u;
+    break;
   case IVS_CP1610_OP_CLRC:
     n->status = (uint8_t)((uint32_t)n->status & ~(uint32_t)IVS_CP1610_C);
     break;
