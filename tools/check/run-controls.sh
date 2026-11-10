@@ -53,6 +53,16 @@ apply_make() {
       highbytes) mkdir -p "$(dirname "$_t/$_p")"; awk 'BEGIN { for (i = 0; i < 2048; i++) print i }' \
         | tr '0123456789\n' '\200\201\202\203\204\205\206\207\210\211\212' > "$_t/$_p" ;;
       nul) printf 'a\000b\n' >> "$_t/$_p" ;;
+      credential)
+        # Appends one line of the credential shape named by $3, assembled from split pieces.
+        case ${3:-} in
+          json-password) printf '{"%s%s": "%s"}\n' pass word Abcdefgh1234 >> "$_t/$_p" ;;
+          api-key) printf '%s_%s = "%s"\n' api key abcdef1234567890abcdef >> "$_t/$_p" ;;
+          slack) printf '%s%s-%s\n' xo xb 1234567890abcdef >> "$_t/$_p" ;;
+          anthropic) printf '%s-%s-%s\n' sk ant api03abcdefghijklmnopqrstuvwxyz >> "$_t/$_p" ;;
+          google) printf '%s%s%s\n' AI za 0123456789abcdefghijABCDEFGHIJ-_123 >> "$_t/$_p" ;;
+          *) fail control-make-verb "credential ${3:-}"; return 1 ;;
+        esac ;;
       email) printf '%s@%s\n' ctl mail.test >> "$_t/$_p" ;;
       *) fail control-make-verb "$_verb"; return 1 ;;
     esac

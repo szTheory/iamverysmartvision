@@ -170,9 +170,9 @@ never match because a `"` sits between the word and the colon. Only `password` i
 `api_key`, `token` and `passwd` are not. `TOKEN` covers `ghp_ gho_ ghu_ ghs_ ghr_`, `github_pat_`,
 `AKIA` and PEM private keys only.
 
-Reproduced with `sh tools/hygiene.sh --tree` in the copy: `{"password": "correcthorsebattery"}` passed;
+Reproduced with `sh tools/hygiene.sh --tree` in the copy: a JSON-quoted password key with a plain 19-character value passed;
 `DB_PASSWORD="..."` and `password: ...` were caught. Also uncaught: `xoxb-...`, `sk-ant-api03-...`,
-`api_key = "abcdef1234567890abcdef"`, `aws_secret_access_key = ...`.
+an `api_key` assignment with a quoted 22-character value, `aws_secret_access_key = ...`.
 **Fix:** Allow an optional closing quote before the separator and widen the keyword set:
 ```sh
 PW_ASSIGN='[p]ass(word|wd)["'"'"']?[ ]*[=:][ ]*["'"'"']?[A-Za-z0-9][A-Za-z0-9._~!@#%^&*+/-]{7,}|(secret|api[_-]?key|token)["'"'"']?[ ]*[=:][ ]*["'"'"'][A-Za-z0-9._~+/-]{16,}'

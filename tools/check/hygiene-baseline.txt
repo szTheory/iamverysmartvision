@@ -1,0 +1,4 @@
+# History baseline for tools/hygiene.sh --history (see the header of that script).
+# Commits at or before this one are held to the rules that existed when they were made;
+# every later commit is held to the full rule set. Never move it forward to hide a finding.
+85562802325d5651ad6609b5a24cc99e7cf27cb0

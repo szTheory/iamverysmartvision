@@ -19,9 +19,24 @@ HOME_PATH='/Users/[A-Za-z0-9][A-Za-z0-9._-]*|/home/[A-Za-z0-9][A-Za-z0-9._-]*|-U
 # Applied to grep -o output (the match alone), so anchors are exact.
 HOME_OK='^/home/runner$'
 TOKEN='gh[pousr]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----'
+# More provider shapes. Every character class directly follows a literal that the rule text itself
+# does not satisfy (a bracket expression is not a class member), so this file never matches itself.
+TOKEN_NEW='xox[baprs]-[A-Za-z0-9-]{10,}|sk-ant-[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{35}|glpat-[A-Za-z0-9_-]{20}|ASIA[0-9A-Z]{16}'
 # Used with grep -i. Value starts alphanumeric and has 8 or more value characters, so the bare
 # word, a backticked prefix and placeholders such as <...> or $VAR do not match.
+# PW_NEW (WR-03): the key may be followed by a closing quote (JSON or YAML "password": "..."); the
+# password keyword also covers passwd; secret, api_key and token assignments need a quoted value of
+# 16 or more value characters so that prose such as "token: expired" is not a finding.
 PW_ASSIGN='[p]assword[ ]*[=:][ ]*["'"'"']?[A-Za-z0-9][A-Za-z0-9._~!@#%^&*+/-]{7,}'
+PW_NEW='[p]ass(word|wd)["'"'"']?[ ]*[=:][ ]*["'"'"']?[A-Za-z0-9][A-Za-z0-9._~!@#%^&*+/-]{7,}'
+PW_NEW="$PW_NEW"'|(secret|api[_-]?key|token)[A-Za-z_]*["'"'"']?[ ]*[=:][ ]*["'"'"'][A-Za-z0-9._~+/-]{16,}'
+PW_NEW="$PW_NEW"'|aws_secret_access_key[ ]*[=:][ ]*["'"'"']?[A-Za-z0-9/+]{40}'
+# Full rule set: held against the tree and against every commit after the history baseline.
+# Commits at or before the baseline (tools/check/hygiene-baseline.txt) were published, or are the
+# review record, before these shapes existed and cannot be rewritten; they keep the rules above.
+HOME_ALL=$HOME_PATH
+TOKEN_ALL="$TOKEN|$TOKEN_NEW"
+PW_ALL=$PW_NEW
 EMAIL='[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z][A-Za-z]+'
 # Applied to grep -o output; anchored so a look-alike suffix domain is still a finding.
 EMAIL_OK='@users\.noreply\.github\.com$|^noreply@github\.com$|@example\.(com|org|net)$|^git@github\.com$|^noreply@anthropic\.com$'
@@ -76,12 +91,12 @@ if [ "$mode" = --tree ]; then
   cand() { # $1 regex, $2 grep flags
     if [ -s "$tmp/ok" ]; then xargs -0 grep -a -l $2 -E -e "$1" < "$tmp/ok" 2>/dev/null || true; fi
   }
-  cand "$HOME_PATH" "" | sort -u > "$tmp/c.home"
+  cand "$HOME_ALL" "" | sort -u > "$tmp/c.home"
   while IFS= read -r f; do
     [ -n "$f" ] || continue
-    if file_leaks "$f" "$HOME_PATH" "$HOME_OK" ""; then found home-path "${f#./}"; fi
+    if file_leaks "$f" "$HOME_ALL" "$HOME_OK" ""; then found home-path "${f#./}"; fi
   done < "$tmp/c.home"
-  { cand "$TOKEN" ""; cand "$PW_ASSIGN" "-i"; } | sort -u > "$tmp/c.secret"
+  { cand "$TOKEN_ALL" ""; cand "$PW_ALL" "-i"; } | sort -u > "$tmp/c.secret"
   while IFS= read -r f; do
     [ -n "$f" ] || continue
     found secret "${f#./}"
@@ -102,18 +117,29 @@ git() { command git -c core.quotePath=false "$@"; }
 cd "$(git rev-parse --show-toplevel)" || exit 1
 git rev-list --all > "$tmp/commits" || { found unreadable "git-rev-list"; exit 1; }
 n=$(grep -c . "$tmp/commits" || true)
+# History baseline: first non-comment line of tools/check/hygiene-baseline.txt, if it names a
+# commit of this repository. Without one (for example a fresh repository) every commit is strict.
+base_commit=
+if [ -f "$here/check/hygiene-baseline.txt" ]; then
+  b=$(grep -v -e '^#' -e '^[[:space:]]*$' "$here/check/hygiene-baseline.txt" | head -n 1 || true)
+  if [ -n "$b" ] && git cat-file -e "$b^{commit}" 2>/dev/null; then base_commit=$b; fi
+fi
 while IFS= read -r c; do
   [ -n "$c" ] || continue
   s=$(printf '%s' "$c" | cut -c1-10)
-  if git grep -a -h -o -E -e "$HOME_PATH" "$c" -- . 2>/dev/null | grep -a -v -E -e "$HOME_OK" | grep -q .; then
+  h=$HOME_ALL; t=$TOKEN_ALL; w=$PW_ALL
+  if [ -n "$base_commit" ] && git merge-base --is-ancestor "$c" "$base_commit"; then
+    h=$HOME_PATH; t=$TOKEN; w=$PW_ASSIGN
+  fi
+  if git grep -a -h -o -E -e "$h" "$c" -- . 2>/dev/null | grep -a -v -E -e "$HOME_OK" | grep -q .; then
     found history-home-path "$s"
   fi
-  if { git grep -a -l -E -e "$TOKEN" "$c" -- . 2>/dev/null; git grep -a -l -i -E -e "$PW_ASSIGN" "$c" -- . 2>/dev/null; } | grep -q .; then
+  if { git grep -a -l -E -e "$t" "$c" -- . 2>/dev/null; git grep -a -l -i -E -e "$w" "$c" -- . 2>/dev/null; } | grep -q .; then
     found history-secret "$s"
   fi
   git log -1 --format=%B "$c" > "$tmp/msg"
-  if file_leaks "$tmp/msg" "$HOME_PATH" "$HOME_OK" ""; then found message-home-path "$s"; fi
-  if file_leaks "$tmp/msg" "$TOKEN" '^$' "" || file_leaks "$tmp/msg" "$PW_ASSIGN" '^$' "-i"; then
+  if file_leaks "$tmp/msg" "$h" "$HOME_OK" ""; then found message-home-path "$s"; fi
+  if file_leaks "$tmp/msg" "$t" '^$' "" || file_leaks "$tmp/msg" "$w" '^$' "-i"; then
     found message-secret "$s"
   fi
   if file_leaks "$tmp/msg" "$EMAIL" "$EMAIL_OK" ""; then found message-email "$s"; fi
