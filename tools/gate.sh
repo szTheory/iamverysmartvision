@@ -15,6 +15,8 @@ tokens=""
 bad() { printf -- '-- FAIL %s: %s\n' "$1" "$2"; fail=1; }
 
 command -v cmake >/dev/null 2>&1 || { bad gate-no-cmake cmake; printf 'gate: FAIL\n'; exit 1; }
+command -v ninja >/dev/null 2>&1 || { bad gate-no-ninja ninja; printf 'gate: FAIL\n'; exit 1; }
+command -v "${CC:-cc}" >/dev/null 2>&1 || { bad gate-no-cc "${CC:-cc}"; printf 'gate: FAIL\n'; exit 1; }
 
 # FILELIST: tracked plus untracked-not-ignored paths. A failing git must not read as a clean list.
 cd "$ROOT" || exit 1
@@ -31,6 +33,18 @@ while IFS= read -r f; do
   esac
 done < "$GATE_TMP/files.raw"
 sort -u "$GATE_TMP/files.keep" > "$FILELIST"
+
+# Results directory contract: a fresh build/gate/ per run; NONCE is the basename of this run's temp dir.
+# The C steps export-read IVS_GATE_DIR and IVS_TEST_NONCE; build/ is ignored, so nothing enters FILELIST.
+NONCE=$(basename "$GATE_TMP")
+IVS_GATE_DIR="$ROOT/build/gate"
+if rm -rf "$IVS_GATE_DIR" && mkdir -p "$IVS_GATE_DIR" && printf '%s\n' "$NONCE" > "$IVS_GATE_DIR/NONCE"; then :; else
+  bad gate-results-dir build/gate
+  printf 'gate: FAIL\n'
+  exit 1
+fi
+IVS_TEST_NONCE=$NONCE
+export IVS_GATE_DIR IVS_TEST_NONCE
 
 # Step inventory: step scripts must equal the union of data/expected/gate-steps/*.ids.
 : > "$GATE_TMP/steps.have"
@@ -55,9 +69,13 @@ passed=0
 for name in $(cat "$GATE_TMP/steps.have"); do
   if sh "$CHECK_DIR/steps/$name.sh" > "$GATE_TMP/step.out" 2>&1; then
     cat "$GATE_TMP/step.out"
-    passed=$((passed + 1))
-    toks=$(sed -n "s/^-- $name pass //p" "$GATE_TMP/step.out" | tr '\n' ' ')
-    tokens="$tokens$toks"
+    if grep -q -F -e "-- $name pass" "$GATE_TMP/step.out"; then
+      passed=$((passed + 1))
+      toks=$(sed -n "s/^-- $name pass //p" "$GATE_TMP/step.out" | tr '\n' ' ')
+      tokens="$tokens$toks"
+    else
+      bad gate-step-no-pass-line "$name"
+    fi
   else
     cat "$GATE_TMP/step.out"
     bad gate-step-failed "$name"
