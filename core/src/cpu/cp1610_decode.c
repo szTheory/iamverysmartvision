@@ -29,7 +29,7 @@ static const ivs_cp1610_row ivs_cp1610_rows[] = {
     IVS_ROW("SDBD", 0x3FFu, 0x001u, 0u, 1u, 4u, 0u, IVS_CP1610_OP_SDBD),
     IVS_ROW("EIS", 0x3FFu, 0x002u, 0u, 1u, 4u, 0u, IVS_CP1610_OP_EIS),
     IVS_ROW("DIS", 0x3FFu, 0x003u, 0u, 1u, 4u, 0u, IVS_CP1610_OP_DIS),
-    IVS_ROW("J", 0x3FFu, 0x004u, 0u, 3u, 12u, 1u, IVS_CP1610_OP_NONE),
+    IVS_ROW("J", 0x3FFu, 0x004u, 0u, 3u, 12u, 1u, IVS_CP1610_OP_JUMP),
     IVS_ROW("TCI", 0x3FFu, 0x005u, 0u, 1u, 4u, 0u, IVS_CP1610_OP_TCI),
     IVS_ROW("CLRC", 0x3FFu, 0x006u, 0u, 1u, 4u, 0u, IVS_CP1610_OP_CLRC),
     IVS_ROW("SETC", 0x3FFu, 0x007u, 0u, 1u, 4u, 0u, IVS_CP1610_OP_SETC),

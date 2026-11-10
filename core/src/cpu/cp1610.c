@@ -33,6 +33,13 @@
  * record carries the effective address at 6. */
 #define IVS_DIRECT_ADAR_OFFSET 6u
 
+/* Jump group (inference, C36: no figure prints a jump). The 12 printed cycles (pdf 56) are taken
+ * as three 4-cycle word transfers like the fetch of pdf 28: the first word at 0, the second at 4
+ * (as an immediate operand, pdf 29) and the third at 8. A refused DE = 11 jump stops after the
+ * second word, 8 cycles. */
+#define IVS_JUMP_W3_BAR_OFFSET 8u
+#define IVS_JUMP_DE_FAULT_CYCLES 8u
+
 /* Strobe stamps (C39, D-12). TCI timing (pdf 33): the TCI pulse rises in the cycle after the
  * 4-cycle unit, the NACT that follows the next BAR, so its record sits at unit end plus 1.
  * PCIT timing (pdf 34): the output pulse of the 6-cycle SIN starts in its cycle 4, inside the
@@ -497,6 +504,48 @@ static uint32_t ivs_branch(ivs_cp1610 *n, ivs_unit *u, uint16_t word)
   return extra;
 }
 
+/* Jump group 0000 000 100, BB AAAAAA DE, AAAAAAAAAA (Fig 3.3.5 and S3.3.5, pdf 52; jump table,
+ * pdf 56). The second and third words are read like immediate operands (two READ records), so R7
+ * ends at PC+3. The target takes "bits 2-7 of the second word as bits 10-15 of the jump address
+ * and ... bits 0-9 of the third word as bits 0-9" (pdf 52); the other bits of both words ("Future
+ * Use", "Not Used") take no part. BB = 0..2 saves the return address PC+3 (pdf 56, C58) in
+ * register 1BB (R4, R5 or R6) before the PC is loaded; BB = 3 designates R7 itself, the plain
+ * jump, so nothing is saved. DE = 01 enables the interrupt system (JE, JSRE), 10 disables it (JD,
+ * JSRD) and 00 leaves it (POL-INT-03). No status bit changes. DE = 11 is not listed (pdf 56): the
+ * unit stops after the second word with R7 back at the offender and returns 0 so the caller
+ * reports the temporary UNIMPLEMENTED fault (UNSUPPORTED_JUMP_DE is plan 02-13); else returns 1. */
+static int ivs_jump(ivs_cp1610 *n, ivs_unit *u, uint16_t pc)
+{
+  uint32_t w2 = ivs_imm_read(n, u);
+  uint32_t hi = (w2 >> 2) & 0x3Fu;
+  uint32_t bb = (w2 >> 8) & 3u;
+  uint32_t de = w2 & 3u;
+  uint32_t lo;
+  uint32_t ret;
+  if (de == 3u) {
+    n->r[7] = pc;
+    return 0;
+  }
+#ifdef IVS_FAULT_JUMP_TARGET_BITS
+  hi = (w2 >> 4) & 0x3Fu;
+#endif
+  lo = (uint32_t)ivs_access(u, IVS_JUMP_W3_BAR_OFFSET, IVS_ACC_READ, 0u, ivs_imm_addr(n), 0u) & 0x3FFu;
+  ret = n->r[7];
+#ifdef IVS_FAULT_JSR_RETURN_ADDR
+  ret = (ret + 0xFFFFu) & 0xFFFFu;
+#endif
+  if (bb != 3u) {
+    n->r[4u + bb] = IVS_U16(ret);
+  }
+  n->r[7] = IVS_U16((hi << 10) | lo);
+  if (de == 1u) {
+    n->intff = 1u;
+  } else if (de == 2u) {
+    n->intff = 0u;
+  }
+  return 1;
+}
+
 /* Register shifts and SWAP (Fig 3.3.2, pdf 50; shift table, pdf 53): 0001 BLA N RR on R0-R3,
  * N = 0 one bit or one byte, N = 1 two bits or two bytes (the page header adds 2 cycles). S is
  * bit 15 of the result after left shifts and bit 7 after right shifts and SWAP (C47); Z is set
@@ -598,7 +647,8 @@ static uint32_t ivs_shift(ivs_cp1610 *n, uint8_t op, uint32_t word)
  * indirect groups (pdf 55): MVO, MVI, ADD, SUB, CMP, AND, XOR through the address word (ADAR,
  * pdf 30), the @ rows, PSHR and PULR through register MMM (C17, POL-STK-01, POL-STK-02).
  * Branches (pdf 54, pdf 47): B, the 14 internal-condition rows, NOPP and BEXT through
- * ivs_branch (C50, C57, POL-BR-01). Only the status change column's flags move. Strobe records carry no address or data. The
+ * ivs_branch (C50, C57, POL-BR-01). Jumps (pdf 52, 56): J, JE, JD, JSR, JSRE, JSRD through
+ * ivs_jump (C58, POL-INT-03). Only the status change column's flags move. Strobe records carry no address or data. The
  * return value is the cycles added to the row's base count (the MOVR/TSTR R6/R7 bonus). */
 static uint32_t ivs_exec(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r, const ivs_cp1610_row *row,
                          uint16_t word)
@@ -808,6 +858,11 @@ static uint32_t ivs_exec(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r, const
   case IVS_CP1610_OP_BRANCH:
     extra = ivs_branch(n, u, word);
     break;
+  case IVS_CP1610_OP_JUMP:
+    if (!ivs_jump(n, u, r->pc_before)) {
+      ivs_set_fault(n, r, IVS_CP1610_FAULT_UNIMPLEMENTED);
+    }
+    break;
   case IVS_CP1610_OP_MVI:
   case IVS_CP1610_OP_ADD:
   case IVS_CP1610_OP_SUB:
@@ -863,6 +918,12 @@ static void ivs_unit_instr(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r)
   }
   n->r[7] = IVS_U16((uint32_t)pc + 1u);
   extra = ivs_exec(n, u, r, row, word);
+  if (n->run_state == IVS_CP1610_RS_FAULTED) {
+    /* A refusal found after the first word (jump DE = 11): R7 is back at the offender and the
+     * reads so far are traced and counted. */
+    r->elapsed_cpu_cycles = IVS_JUMP_DE_FAULT_CYCLES + u->shift;
+    return;
+  }
   n->prev_interruptible = row->interruptible;
   r->elapsed_cpu_cycles = (uint32_t)row->base_cycles + extra + u->shift;
 }

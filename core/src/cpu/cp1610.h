@@ -231,6 +231,8 @@ typedef struct ivs_cp1610_row {
 /* The branches 1000 S? cccc (B, the conditional rows, NOPP and BEXT, pdf 54): one handler; bit 4
  * picks the internal condition cccc or the external condition E, which selects the test. */
 #define IVS_CP1610_OP_BRANCH 57u
+/* The jump group J, JE, JD, JSR, JSRE, JSRD (first word 0000 000 100, pdf 52, 56). */
+#define IVS_CP1610_OP_JUMP 58u
 
 /* Internal decode lookup: the most specific row for decle & 0x3FF. Every one of the 1024
  * decles maps to exactly one row; NULL is never returned for a 10-bit decle. */

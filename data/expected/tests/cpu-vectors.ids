@@ -170,6 +170,17 @@ cpu.INCR.0000
 cpu.INCR.7fff-sign
 cpu.INCR.ffff-c-preserved
 cpu.INCR.r6-no-bonus
+cpu.J.backward-target
+cpu.J.jd-clears-intff
+cpu.J.je-sets-intff
+cpu.J.jsr-r4-return
+cpu.J.jsr-r5-return
+cpu.J.jsr-r6-return
+cpu.J.jsr-return-wraps
+cpu.J.jsrd-r4
+cpu.J.jsre-r5
+cpu.J.plain
+cpu.J.target-ffff
 cpu.JR.negative-target
 cpu.JR.to-r7
 cpu.JR.zero-target
