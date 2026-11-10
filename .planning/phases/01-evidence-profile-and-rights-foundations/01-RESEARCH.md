@@ -373,7 +373,7 @@ The `-Users-<name>-` branch catches path slugs that name the owner (they appear 
 # Preconditions: working tree clean, all phase work committed, no other worktrees/executors running.
 FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch -f --tree-filter '
 for f in $(grep -rIl -E "/Users/[A-Za-z0-9._-]+|-Users-[A-Za-z0-9._]+-" . --exclude-dir=.git 2>/dev/null); do
-  sed -E -e "s#/private/tmp/claude-[0-9]+/-Users-[A-Za-z0-9._]+-[^ )]*#<local-scratch>#g" \
+  sed -E -e "s#/private/tmp/[c]laude-[0-9]+/-Users-[A-Za-z0-9._]+-[^ )]*#<local-scratch>#g" \
          -e "s#/Users/[A-Za-z0-9._-]+/projects/iamverysmartvision#.#g" \
          -e "s#/Users/[A-Za-z0-9._-]+/projects#..#g" \
          -e "s#/Users/[A-Za-z0-9._-]+#~#g" "$f" > "$f.scrub.tmp" && mv "$f.scrub.tmp" "$f"

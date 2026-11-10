@@ -53,6 +53,16 @@ apply_make() {
       highbytes) mkdir -p "$(dirname "$_t/$_p")"; awk 'BEGIN { for (i = 0; i < 2048; i++) print i }' \
         | tr '0123456789\n' '\200\201\202\203\204\205\206\207\210\211\212' > "$_t/$_p" ;;
       nul) printf 'a\000b\n' >> "$_t/$_p" ;;
+      scratchpath)
+        # Appends one scratch, temp or tilde path of the kind named by $3, assembled from split pieces.
+        case ${3:-} in
+          private-tmp) printf '/%s/%s/%s/x\n' private tmp ctlexample >> "$_t/$_p" ;;
+          var-folders) printf '/%s/%s/ab/x\n' var folders >> "$_t/$_p" ;;
+          tmp-claude) printf '/%s/%s-501/x\n' tmp claude >> "$_t/$_p" ;;
+          root-home) printf '/%s/%s/x\n' root .ssh >> "$_t/$_p" ;;
+          tilde) printf '~/%s/x\n' projects >> "$_t/$_p" ;;
+          *) fail control-make-verb "scratchpath ${3:-}"; return 1 ;;
+        esac ;;
       credential)
         # Appends one line of the credential shape named by $3, assembled from split pieces.
         case ${3:-} in

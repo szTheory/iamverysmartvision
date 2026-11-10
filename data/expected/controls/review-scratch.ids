@@ -1,0 +1,6 @@
+# Owning review fix WR-04: scratch and temp path controls.
+hygiene-scratch-private-tmp
+hygiene-scratch-var-folders
+hygiene-scratch-tmp-claude
+hygiene-scratch-root-home
+hygiene-scratch-tilde

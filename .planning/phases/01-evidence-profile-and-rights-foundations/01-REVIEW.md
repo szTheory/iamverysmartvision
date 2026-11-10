@@ -185,9 +185,9 @@ and add a `hygiene-password-json` control next to `hygiene-password`.
 **File:** `tools/hygiene.sh:3,18` (SKELETON.md section 7, R4)
 **Issue:** The header says "no home or scratch path" and R4 requires no "absolute home or scratch path
 in any tracked file". `HOME_PATH` only matches the macOS, Linux and Windows home-directory forms and the dash-encoded scratch-directory form.
-Reproduced: `/private/tmp/claude-501/foo`, `/tmp/claude-501/foo/bar`, `/var/folders/ab/cd/T/x`,
-`~/projects/foo` and `/root/.ssh/id_rsa` all pass `hygiene --tree`. The session scratchpad used by this
-very workflow lives under `/private/tmp/claude-501/...`, so a SUMMARY.md that cites it would ship.
+Reproduced: a macOS private scratch path, a Linux scratch path under the temp directory, a macOS per-user
+temp-folder path, a tilde-relative project path and a root-home ssh key path all pass `hygiene --tree`. The
+session scratchpad used by this very workflow lives under the macOS private temp directory, so a SUMMARY.md that cites it would ship.
 **Fix:** Add `/private/tmp/[A-Za-z0-9._-]+|/private/var/[A-Za-z0-9._-]+|/var/folders/[A-Za-z0-9]|/tmp/claude-[A-Za-z0-9._-]+|/root/[A-Za-z0-9.]|~/[A-Za-z0-9._-]` (and `-private-tmp-`) to `HOME_PATH`, mirror the change in `--history`, and add a `scratchpath` MAKE verb and control.
 
 ### WR-05: The weakest-field rule is vacuous for an established claim with no dependencies

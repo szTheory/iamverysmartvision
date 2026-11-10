@@ -17,7 +17,7 @@ export LC_ALL
 
 HOME_PATH='/Users/[A-Za-z0-9][A-Za-z0-9._-]*|/home/[A-Za-z0-9][A-Za-z0-9._-]*|-Users-[A-Za-z0-9][A-Za-z0-9._]*-|[A-Za-z]:\\Users\\[A-Za-z0-9]'
 # Applied to grep -o output (the match alone), so anchors are exact.
-HOME_OK='^/home/runner$'
+HOME_OK='^/home/runner$|^~/[.]claude$'
 TOKEN='gh[pousr]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----'
 # More provider shapes. Every character class directly follows a literal that the rule text itself
 # does not satisfy (a bracket expression is not a class member), so this file never matches itself.
@@ -34,7 +34,11 @@ PW_NEW="$PW_NEW"'|aws_secret_access_key[ ]*[=:][ ]*["'"'"']?[A-Za-z0-9/+]{40}'
 # Full rule set: held against the tree and against every commit after the history baseline.
 # Commits at or before the baseline (tools/check/hygiene-baseline.txt) were published, or are the
 # review record, before these shapes existed and cannot be rewritten; they keep the rules above.
-HOME_ALL=$HOME_PATH
+# HOME_NEW (WR-04) adds the scratch and temp-directory forms R4 forbids and tilde-relative paths. A
+# tilde path to the tool config directory is allowed (HOME_OK). Names need 3 or more characters so
+# that two chance bytes in a binary file do not read as a path.
+HOME_NEW='/private/tmp/[A-Za-z0-9._-]+|/private/var/[A-Za-z0-9._-]+|/var/folders/[A-Za-z0-9]|/tmp/claude-[A-Za-z0-9._-]+|/root/[A-Za-z0-9.]|~/[A-Za-z0-9._-]{3,}|-private-tmp-[A-Za-z0-9]'
+HOME_ALL="$HOME_PATH|$HOME_NEW"
 TOKEN_ALL="$TOKEN|$TOKEN_NEW"
 PW_ALL=$PW_NEW
 EMAIL='[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z][A-Za-z]+'
