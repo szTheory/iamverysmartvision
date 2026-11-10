@@ -351,6 +351,236 @@
       "resolver": "test: Phase 2 stop and halt vectors; a bus trace would settle it",
       "evidence": "SRC-gi-cp1600-um-1975 pdf 14; S4.4, pdf 74; pdf 56. See the Start and stop section of docs/cp1610/reference-notes.md.",
       "note": "Appended from the Discrepancy candidates section of docs/cp1610/reference-notes.md (D-21)."
+    },
+    {
+      "id": "C36",
+      "topic": "Access offsets inside an instruction outside the printed timing figures are inference",
+      "sources": "The manual prints bus timing figures only for some instruction classes (SRC-gi-cp1600-um-1975 pdf 27-37); every other in-instruction access offset is not tabulated.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: access offsets are asserted exactly only for classes with a printed timing figure; elsewhere they are tagged inference and the printed cycle totals stay authoritative (D-12).",
+      "resolver": "test: phase-2 access-schedule vectors for classes with a printed figure; measurement: D10 bus trace on owner hardware would settle the rest",
+      "evidence": "SRC-gi-cp1600-um-1975 pdf 27-37 (timing figures); pdf 53-58 (cycle totals).",
+      "note": "Recorded before implementation per D-13. Cycle totals are never derived from the inferred offsets."
+    },
+    {
+      "id": "C37",
+      "topic": "SDBD modes 1-3: one word versus the same byte twice",
+      "sources": "Page 47 says the double-byte-data mode reads only one word for the multi-word modes; page 57 says the instruction will access the same byte twice, and Fig. 3.2.6 on page 49 prints one cycle count for all modes (SRC-gi-cp1600-um-1975).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: SDBD modes 1-3 do two reads at the same address and the register is not incremented (POL-SDBD-01, A-03); modes 4 and 5 do two reads and two increments.",
+      "resolver": "test: phase-2 SDBD vectors for modes 1-3 (policy kind); measurement: D10 bus trace",
+      "evidence": "SRC-gi-cp1600-um-1975 pdf 47 (one word); pdf 57 (same byte twice); Fig. 3.2.6, pdf 49.",
+      "note": "RESEARCH gap G7 is this entry (A-06 mapping G1 = C46, G2 = C47, G3 = C48, G4 = C49, G5 = C50, G6 = C51, G7 = C37, G8 = C58). Flip trigger: a contrary primary reading."
+    },
+    {
+      "id": "C38",
+      "topic": "Line sampling point",
+      "sources": "The manual does not say at which tick within a unit the interrupt and bus request lines are sampled (SRC-gi-cp1600-um-1975).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: the machine layer samples the lines once per interruptible boundary at unit end minus one CPU cycle (POL-LINE-01); the CPU only receives the sampled values.",
+      "resolver": "test: phase-2 interrupt boundary vectors; measurement: D10 line-edge probe; revisit in Phase 6 STIC races",
+      "evidence": "SRC-gi-cp1600-um-1975 pdf 22 (interrupt entry); pdf 36 (bus request timing).",
+      "note": "A machine-layer rule: the CPU never sees ticks (D-05)."
+    },
+    {
+      "id": "C39",
+      "topic": "Strobe stamps for TCI and PCIT",
+      "sources": "The timing figures print the TCI pulse after the instruction end and the PCIT pulse inside the software interrupt cycle (SRC-gi-cp1600-um-1975).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: the TCI pulse is stamped at unit end plus 1 CPU cycle (pdf 33) and the PCIT pulse falls inside the 6-cycle SIN (pdf 34) (D-12).",
+      "resolver": "test: phase-2 control-class vectors for TCI and SIN pulse stamps; measurement: D10 bus trace",
+      "evidence": "SRC-gi-cp1600-um-1975 pdf 33 (TCI); pdf 34 (SIN, PCIT).",
+      "note": "Pulse events may be stamped up to 1 cycle past the unit end (D-12)."
+    },
+    {
+      "id": "C40",
+      "topic": "HLT sets a stop latch that wins at the next interruptible boundary",
+      "sources": "One page says a stop takes effect after an interruptible instruction; the start and stop section says after an instruction; the HLT row is silent about interrupt and bus request priority (SRC-gi-cp1600-um-1975). Community lists call HLT non-interruptible.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: HLT sets a stop latch evaluated at the next interruptible boundary with priority over BUSRQ and INTR; the stopped state is terminal until resume or reset (POL-HLT-01).",
+      "resolver": "test: phase-2 stop and halt vectors (sequence INSTR, INSTR, HALTED); measurement: D10 bus trace",
+      "evidence": "SRC-gi-cp1600-um-1975 pdf 14; pdf 56 (HLT row); S4.4, pdf 74.",
+      "note": "Refines C35. Low confidence (about 50 percent); flip trigger: a bus trace showing an interrupt accepted after HLT."
+    },
+    {
+      "id": "C41",
+      "topic": "Interrupt acceptance does not clear the interrupt enable flip-flop; JE takes effect before the boundary test",
+      "sources": "The manual says EIS, JE and JSRE enable the interrupt system and DIS, JD and JSRD disable it, and that a terminated interrupt returns control, without stating that acceptance clears the enable (SRC-gi-cp1600-um-1975).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: interrupt acceptance does not clear INTFF, and JE takes effect before the boundary test (POL-INT-03); profile field cpu.interrupt_accept_clears_intff = 0, with vectors for both values.",
+      "resolver": "test: phase-2 interrupt-entry vectors for both flag values; measurement: D10 repeated-interrupt probe",
+      "evidence": "SRC-gi-cp1600-um-1975 pdf 22; pdf 56 (EIS, DIS, TCI); pdf 52 (JE, JD).",
+      "note": "Profile field cpu.interrupt_accept_clears_intff holds 0 (false) as a JSON number."
+    },
+    {
+      "id": "C42",
+      "topic": "Interrupt vector value answered on the IAB access",
+      "sources": "The manual says the interrupt vector is obtained from the bus through the IAB access (SRC-gi-cp1600-um-1975 pdf 22); the value 0x1004 comes from community sources (SRC-community-emu-docs), like the reset value in C32.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: the core holds no vector constant; the bus layer answers the IAB access, with profile field interrupt.iab_value = $1004 for the first profile (POL-IAB-01).",
+      "resolver": "test: phase-2 IAB-provider vectors with arbitrary 16-bit values; measurement: D10 interrupt vector read-back on owner hardware",
+      "evidence": "SRC-gi-cp1600-um-1975 pdf 22; pdf 27; see C32 for the reset analogue.",
+      "note": "Tier 4 community value; the core only loads whatever the bus returns into R7."
+    },
+    {
+      "id": "C43",
+      "topic": "Residual shared-misreading risk in hand-derived vectors",
+      "sources": "The same model family reads the manual pages, writes the expected values and writes the code, so a shared misreading can pass every vector (D-15, D-16).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: vectors are hand-derived from the page images with a blinded second reading and sensitivity controls; the residual risk is recorded rather than claimed closed.",
+      "resolver": "test: phase-2 blinded second-reader comparison; measurement: Phase 4 original diagnostic ROMs and D10 hardware probes close it",
+      "evidence": "SRC-gi-cp1600-um-1975 page images read in plan 01-02; see data/cp1610/second-reader.json.",
+      "note": "Not closable inside this phase. Evidence tier of every vector stays source-expectation."
+    },
+    {
+      "id": "C44",
+      "topic": "PCIT as an input is not modelled",
+      "sources": "The manual describes a pin that, when asserted during a fetch, suppresses the program counter increment (SRC-gi-cp1600-um-1975).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: PCIT as an input is not modelled; the lines record has no field for it (A-01); PCIT is reported only as an output pulse (C39).",
+      "resolver": "test: phase-2 lines-record vectors show no input path; measurement: none planned",
+      "evidence": "SRC-gi-cp1600-um-1975 pdf 13.",
+      "note": "Revisit if a profile needs PCIT-driven fetch control."
+    },
+    {
+      "id": "C45",
+      "topic": "HALTED state with INTR, INTRM and BUSRQ",
+      "sources": "The manual does not state how the stopped state treats interrupt requests or bus requests (SRC-gi-cp1600-um-1975).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: the HALTED state ignores INTR and INTRM and still honours BUSRQ (A-10, RESEARCH A6).",
+      "resolver": "test: phase-2 halted-state vectors; measurement: D10 bus trace",
+      "evidence": "SRC-gi-cp1600-um-1975 pdf 14; pdf 36.",
+      "note": "Resume or reset is the only exit from HALTED."
+    },
+    {
+      "id": "C46",
+      "topic": "CMP operand direction (RESEARCH G1)",
+      "sources": "CMPR, CMP and CMP@ say compare with by subtraction without naming the operand order; CMPI says from the contents of register SSS (SRC-gi-cp1600-um-1975).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: CMP computes register minus operand; carry is the carry-out of register plus the two's complement of the operand.",
+      "resolver": "test: phase-2 arithmetic vectors cpu.CMP* (flags); measurement: D10 flag read-back",
+      "evidence": "SRC-gi-cp1600-um-1975 pdf 45; pdf 53; pdf 55; pdf 57.",
+      "note": "A-06 mapping: G1 = C46."
+    },
+    {
+      "id": "C47",
+      "topic": "S after right shifts and SWAP (RESEARCH G2)",
+      "sources": "The shift header says right shifts set S with bit 7 of the result, and the SWAP row says S equals bit 7 of the result (SRC-gi-cp1600-um-1975).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: S is bit 7 of the result after right shifts and SWAP; left shifts use the generic rule (S is bit 15).",
+      "resolver": "test: phase-2 shift vectors cpu.SLR* and cpu.SWAP*; measurement: D10 flag read-back",
+      "evidence": "SRC-gi-cp1600-um-1975 pdf 53.",
+      "note": "A-06 mapping: G2 = C47."
+    },
+    {
+      "id": "C48",
+      "topic": "Link-bit positions of RLC and RRC (RESEARCH G3)",
+      "sources": "For N=1 the manual gives RLC with C as bit 17 and OV as bit 16, and RRC with C as bit 16 and OV as bit 17, and says RLC and RRC use OV as an input (SRC-gi-cp1600-um-1975).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: RLC and RRC with N=1 use the 18-bit string with the stated link positions and OV as an input; with N=0 OV is preserved.",
+      "resolver": "test: phase-2 shift vectors with initial OV = 1; measurement: D10 flag read-back",
+      "evidence": "SRC-gi-cp1600-um-1975 pdf 53.",
+      "note": "A-06 mapping: G3 = C48."
+    },
+    {
+      "id": "C49",
+      "topic": "C and OV of NEGR, ADCR and RSWD (RESEARCH G4)",
+      "sources": "Section 3.1.2 names only add, subtract and compare for carry and overflow, while the NEGR, ADCR and RSWD rows list C and OV as changed (SRC-gi-cp1600-um-1975).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: NEGR, ADCR and RSWD set C and OV by analogy with section 3.1.2: NEGR is zero minus the operand by two's complement addition, ADCR is the operand plus C.",
+      "resolver": "test: phase-2 arithmetic and control vectors cpu.NEGR*, cpu.ADCR*, cpu.RSWD*; measurement: D10 flag read-back",
+      "evidence": "SRC-gi-cp1600-um-1975 pdf 45; pdf 53; pdf 56.",
+      "note": "A-06 mapping: G4 = C49. Tag inference in each derivation."
+    },
+    {
+      "id": "C50",
+      "topic": "Backward branch displacement width (RESEARCH G5)",
+      "sources": "The manual says a backward branch adds the one's complement of the displacement word to the address after the branch, without stating the width, and its printed range mixes bases (SRC-gi-cp1600-um-1975).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: for a backward branch the 16-bit one's complement of the displacement word is added to PC+2; the range text is not used for derivation.",
+      "resolver": "test: phase-2 branch vectors, backward direction; measurement: D10 branch probe",
+      "evidence": "SRC-gi-cp1600-um-1975 pdf 47; pdf 54.",
+      "note": "A-06 mapping: G5 = C50."
+    },
+    {
+      "id": "C51",
+      "topic": "Width of operand, direct-address, jump-address and displacement words (RESEARCH G6)",
+      "sources": "The direct address is aaaaaa AAAAAAAAAA with six high bits that depend on memory width, and the jump address uses bits 7..2 of the second word and bits 9..0 of the third (SRC-gi-cp1600-um-1975).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: operand, direct-address, jump-address and displacement words keep all 16 bits on the flat test bus; only the first decle of an instruction ignores bits 15..10 (POL-ILL-01).",
+      "resolver": "test: phase-2 policy vectors for wide words; measurement: Phase 3 decides what ROM upper bits read as",
+      "evidence": "SRC-gi-cp1600-um-1975 pdf 48; pdf 52.",
+      "note": "A-06 mapping: G6 = C51."
+    },
+    {
+      "id": "C52",
+      "topic": "Bus request release latency and the grant leading into the interrupt test",
+      "sources": "The bus timing diagram shows the grant and release but not a numeric release latency (SRC-gi-cp1600-um-1975 pdf 36).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: BUSRQ release latency is 2 CPU cycles (inference); prev_interruptible survives a bus grant and the grant leads into the interrupt test, not into a fetch (POL-BUS-01, A-02); profile field bus.release_latency_cpu_cycles = 2.",
+      "resolver": "test: phase-2 bus-grant vectors with BUSRQ and INTR together; measurement: D10 bus trace",
+      "evidence": "SRC-gi-cp1600-um-1975 pdf 22; pdf 36.",
+      "note": "Confidence about 60 percent."
+    },
+    {
+      "id": "C53",
+      "topic": "Bus wait rule and cap",
+      "sources": "The manual says wait states follow the address phase and that a device must answer in under 40 microseconds (SRC-gi-cp1600-um-1975 pdf 12, 40, 43).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: BDRDY waits apply only to accesses that begin with a BAR or ADAR address phase, which are FETCH, READ, WRITE and ADAR; INTAK, IAB and DW (the interrupt-entry write, reported as its own access kind) take none; the cap is 35 CPU cycles, from less than 40 microseconds at the D2 cycle (POL-WAIT-01, A-04, A-11); profile field bus.wait_limit_cpu_cycles = 35.",
+      "resolver": "test: phase-2 wait vectors including no-wait-on-DW; measurement: D10 slow-device probe",
+      "evidence": "SRC-gi-cp1600-um-1975 pdf 12; pdf 40; pdf 43.",
+      "note": "Exceeding the cap is a sticky fault (BUS_WAIT_LIMIT)."
+    },
+    {
+      "id": "C54",
+      "topic": "STPST is an edge event and one latch serves HLT and STPST",
+      "sources": "The manual describes the stop request as an event that takes effect at a boundary, not as a level (SRC-gi-cp1600-um-1975).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: STPST is an edge event; one stop latch serves HLT and STPST; a second edge before the boundary cancels a pending stop (A-01).",
+      "resolver": "test: phase-2 stop-edge vectors; measurement: D10 bus trace",
+      "evidence": "SRC-gi-cp1600-um-1975 pdf 14.",
+      "note": "Complements C40."
+    },
+    {
+      "id": "C55",
+      "topic": "Destination equal to the pointer register",
+      "sources": "The manual does not say what happens when the destination register of an indirect instruction is also the pointer register (SRC-gi-cp1600-um-1975).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: when DDD equals the pointer register (MVI@ R4,R4 or PULR R6) the result wins over the increment; the increment happens before the operation, so ADD@ R4,R4 sees R4+1 (POL-STK-02).",
+      "resolver": "test: phase-2 indirect-mode vectors cpu.MVI@ and cpu.PULR with DDD equal to the pointer; measurement: D10 register read-back",
+      "evidence": "SRC-gi-cp1600-um-1975 pdf 48; pdf 55.",
+      "note": "Applies to R4, R5 and R6."
+    },
+    {
+      "id": "C56",
+      "topic": "Interruptibility of HLT, SDBD and the MVO family",
+      "sources": "The manual marks shifts, EIS, DIS, TCI, CLRC and SETC as not interruptible and is silent on HLT, SDBD and the MVO family; SIN is shown as a software interrupt (SRC-gi-cp1600-um-1975). Related to C19.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: HLT, SDBD and the MVO family (MVO, MVO@, MVOI, PSHR) are non-interruptible by default; SIN is interruptible (POL-INT-02).",
+      "resolver": "test: phase-2 per-opcode interruptibility vectors; measurement: D10 interrupt-injection probe",
+      "evidence": "SRC-gi-cp1600-um-1975 pdf 13; pdf 56.",
+      "note": "Vector lists are literal, not generated from a table."
+    },
+    {
+      "id": "C57",
+      "topic": "External condition provider for BEXT",
+      "sources": "The manual describes the BEXT branch as testing an external condition input without stating its idle level (SRC-gi-cp1600-um-1975).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: the BEXT external condition provider defaults to false, stored as profile value 0 (POL-BR-01); profile field cpu.ebci_default = 0.",
+      "resolver": "test: phase-2 BEXT vectors with at least two E codes; measurement: D10 pin read-back",
+      "evidence": "SRC-gi-cp1600-um-1975 pdf 32; pdf 54.",
+      "note": "Profile field cpu.ebci_default holds 0 (false) as a JSON number."
+    },
+    {
+      "id": "C58",
+      "topic": "JSR return address (RESEARCH G8)",
+      "sources": "The reference notes call the last digit of the return address smudged on page 52; page 56 prints Return address (PC+3) legibly in the JSR, JSRE and JSRD rows (SRC-gi-cp1600-um-1975).",
+      "status": "resolved-primary",
+      "default_policy": "resolved: JSR, JSRE and JSRD store PC+3 in R4, R5 or R6 as designated by the two BB bits (BB not 11), matching the C17 stack-shape resolution.",
+      "resolver": "test: plan 02-12 jump vectors cpu.J.jsr-r4-return, cpu.J.jsr-r5-return, cpu.J.jsr-r6-return and fault JSR_RETURN_ADDR",
+      "evidence": "SRC-gi-cp1600-um-1975 ... pdf 56; pdf 52 (smudged).",
+      "note": "A-06 mapping: G8 = C58. Read from the page image gi-056 in plan 02-01."
     }
   ]
 }

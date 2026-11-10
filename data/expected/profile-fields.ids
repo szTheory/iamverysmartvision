@@ -22,3 +22,8 @@ power_on_fill.psg
 cartridge.slots
 cartridge.address_windows
 system_images.exec_grom
+interrupt.iab_value
+cpu.interrupt_accept_clears_intff
+bus.release_latency_cpu_cycles
+bus.wait_limit_cpu_cycles
+cpu.ebci_default
