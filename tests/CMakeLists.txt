@@ -53,3 +53,20 @@ set_tests_properties(harness PROPERTIES SKIP_RETURN_CODE 77)
 if(IVS_FAULT_CONTROLS)
   include("${CMAKE_CURRENT_SOURCE_DIR}/faults.cmake")
 endif()
+
+# Suite core-symbols (API-05, D-21): the exact shipped ivs_core archive of this preset against
+# the reviewed allowlist. The release archive gets the strict check; only an instrumented build
+# (IVS_SAN, the dev preset) passes the sanitizer runtime prefixes, set here by the build option
+# and never hard-coded in the script.
+set(IVS_SYMBOL_PREFIX_ARGS "")
+if(IVS_SAN)
+  # ASan and UBSan instrumentation imports their runtime entry points (__asan_*, __ubsan_*,
+  # __sanitizer_*); Darwin's extra leading underscore is stripped by the script.
+  list(APPEND IVS_SYMBOL_PREFIX_ARGS
+    --allow-prefix __asan_ --allow-prefix __ubsan_ --allow-prefix __sanitizer_)
+endif()
+add_test(NAME core-symbols
+  COMMAND sh "${CMAKE_SOURCE_DIR}/tests/core-symbols-tap.sh" "$<TARGET_FILE:ivs_core>"
+          ${IVS_SYMBOL_PREFIX_ARGS})
+set_tests_properties(core-symbols PROPERTIES SKIP_RETURN_CODE 77
+  ENVIRONMENT "NM=${CMAKE_NM};AR=${CMAKE_AR}")
