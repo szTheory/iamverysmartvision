@@ -345,7 +345,13 @@ static uint16_t ivs_ind_addr(ivs_cp1610 *n, uint32_t mmm, int output)
 #ifdef IVS_FAULT_PUSH_DIRECTION
     if (mmm == 6u) { ea = IVS_U16((uint32_t)ea + 0xFFFFu); n->r[6] = ea; }
 #endif
+#ifdef IVS_FAULT_AUTOINC_R4R5_MISSING
+    if (mmm != 6u) n->r[mmm] = ea;
+#endif
   }
+#ifdef IVS_FAULT_AUTOINC_R1R3
+  if (mmm < 4u) n->r[mmm] = IVS_U16((uint32_t)ea + 1u);
+#endif
   return ea;
 }
 
@@ -355,6 +361,21 @@ static uint16_t ivs_ind_read(ivs_cp1610 *n, ivs_unit *u, uint32_t mmm)
 {
   uint32_t off = mmm == 6u ? IVS_PULL_BAR_OFFSET : IVS_DATA_BAR_OFFSET;
   return ivs_access(u, off, IVS_ACC_READ, 0u, ivs_ind_addr(n, mmm, 0), 0u);
+}
+
+/* A read row through register MMM (MVI@, ADD@, SUB@, CMP@, AND@, XOR@ and PULR). POL-STK-02
+ * (C55, default-chosen): the pointer moves before the operation, so when DDD is the pointer
+ * register the loaded or computed value is its final value (MVI@ R4,R4; PULR R6) and ADD@ R4,R4
+ * adds the word at the old R4 to R4+1. */
+static void ivs_ind_op(ivs_cp1610 *n, ivs_unit *u, uint32_t op, uint32_t mmm, uint32_t ddd)
+{
+  uint16_t v = ivs_ind_read(n, u, mmm);
+  uint16_t p = n->r[mmm];
+  ivs_read_op(n, op, ddd, v);
+#ifdef IVS_FAULT_STK_RESULT_LOSES
+  if (ddd == mmm) n->r[mmm] = p;
+#endif
+  (void)p;
 }
 
 /* Indirect write of register SSS (MVO timing, pdf 31: BAR of the effective address at offset 4,
@@ -462,7 +483,9 @@ static uint32_t ivs_shift(ivs_cp1610 *n, uint8_t op, uint32_t word)
  * (0 - DDD by two's complement addition; C49), ADCR (DDD + C; C49), MOVR, TSTR and JR. A
  * register read of R7 sees the PC already incremented by the fetch (inference, POL-STK-01).
  * Immediate group (pdf 57): MVII, ADDI, SUBI, CMPI, ANDI and XORI read the word at PC+1 and
- * reuse the register-group flag rules; MVOI writes register SSS there (no flags).
+ * reuse the register-group flag rules; MVOI writes register SSS there (no flags). Direct and
+ * indirect groups (pdf 55): MVO, MVI, ADD, SUB, CMP, AND, XOR through the address word (ADAR,
+ * pdf 30), the @ rows, PSHR and PULR through register MMM (C17, POL-STK-01, POL-STK-02).
  * Only the status change column's flags move. Strobe records carry no address or data. The
  * return value is the cycles added to the row's base count (the MOVR/TSTR R6/R7 bonus). */
 static uint32_t ivs_exec(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r, const ivs_cp1610_row *row,
@@ -641,10 +664,26 @@ static uint32_t ivs_exec(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r, const
     /* PSHR SSS = MVO@ through R6 (1001 110 SSS, pdf 55, 62): write at R6, then R6 + 1. */
     ivs_ind_write(n, u, 6u, ddd);
     break;
+  case IVS_CP1610_OP_MVO_AT:
+    /* MVO@ SSS, MMM (1001 MMM SSS, pdf 55, 9 cycles): register SSS (bits 2..0) is written at the
+     * address in register MMM (bits 5..3); SSS = MMM in 4..7 never gets here (POL-MVO-01). */
+    ivs_ind_write(n, u, sss, ddd);
+    break;
   case IVS_CP1610_OP_PULR:
-    /* PULR DDD = MVI@ through R6 (1010 110 DDD, pdf 55, 62): R6 - 1, then read at R6. The
-     * printed 11 cycles already hold the MMM = 6 bonus (8 + 3). */
-    ivs_wreg(n, ddd, ivs_ind_read(n, u, 6u));
+  case IVS_CP1610_OP_MVI_AT:
+  case IVS_CP1610_OP_ADD_AT:
+  case IVS_CP1610_OP_SUB_AT:
+  case IVS_CP1610_OP_CMP_AT:
+  case IVS_CP1610_OP_AND_AT:
+  case IVS_CP1610_OP_XOR_AT:
+    /* PULR DDD = MVI@ through R6 (1010 110 DDD) and the @ read rows ooo MMM DDD (pdf 55, 62),
+     * MMM in bits 5..3. '*Add 3 to number of cycles if MMM=6' (pdf 55): the @ rows print 8, so
+     * MMM = 6 adds 3; PULR prints 11, which already holds it. */
+    ivs_ind_op(n, u, ((uint32_t)word >> 6) & 7u, sss, ddd);
+    extra = sss == 6u && row->handler != IVS_CP1610_OP_PULR ? 3u : 0u;
+#ifdef IVS_FAULT_MMM6_BONUS_MISSING
+    extra = 0u;
+#endif
     break;
   case IVS_CP1610_OP_MVO:
     /* MVO SSS, A (1001 000 SSS + address word, pdf 55, 11 cycles): the address word, then a
@@ -673,6 +712,18 @@ static uint32_t ivs_exec(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r, const
   return extra;
 }
 
+/* POL-MVO-01 (MVO@ note on pdf 55: "SSS = MMM = 4, 5, 6 or 7 not supported"): an output-group
+ * decle 1001 MMM SSS with SSS = MMM in 4..7 ($264, $26D, $276 = PSHR R6, $27F = MVOI R7) is
+ * refused with a sticky fault before it has any effect. */
+static int ivs_mvo_refused(uint16_t word)
+{
+  uint32_t mmm = ((uint32_t)word >> 3) & 7u;
+#ifdef IVS_FAULT_MVO_SSS_EQ_MMM_ALLOWED
+  mmm = 0u;
+#endif
+  return ((uint32_t)word & 0x3C0u) == 0x240u && mmm >= 4u && mmm == ((uint32_t)word & 7u);
+}
+
 /* Instruction unit: FETCH at offset 0 from R7 (pdf 28), PC advances one per word fetched,
  * decode bits 9..0. The unit lasts the row's base cycles plus the waits taken; the row's
  * interruptible flag becomes prev_interruptible for the next boundary (CPU-02). */
@@ -687,10 +738,12 @@ static void ivs_unit_instr(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r)
     return;
   }
   row = ivs_cp1610_decode(word);
-  if (row == NULL || row->handler == IVS_CP1610_OP_NONE) {
-    /* Sticky fault: PC stays at the offending word; the fetch is traced and counted. */
+  if (row == NULL || row->handler == IVS_CP1610_OP_NONE || ivs_mvo_refused(word)) {
+    /* Sticky fault: PC stays at the offending word; the fetch is traced and counted; nothing
+     * else changes (no write for a refused MVO). */
     r->elapsed_cpu_cycles = IVS_FETCH_CYCLES + u->shift;
-    ivs_set_fault(n, r, IVS_CP1610_FAULT_UNIMPLEMENTED);
+    ivs_set_fault(n, r, row == NULL || row->handler == IVS_CP1610_OP_NONE ? IVS_CP1610_FAULT_UNIMPLEMENTED
+                                                                         : IVS_CP1610_FAULT_UNSUPPORTED_MVO_SSS_EQ_MMM);
     return;
   }
   n->r[7] = IVS_U16((uint32_t)pc + 1u);

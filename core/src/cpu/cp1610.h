@@ -220,6 +220,14 @@ typedef struct ivs_cp1610_row {
 #define IVS_CP1610_OP_CMP 47u
 #define IVS_CP1610_OP_AND 48u
 #define IVS_CP1610_OP_XOR 49u
+/* The @ rows (indirect through register MMM): MVO@ MVI@ ADD@ SUB@ CMP@ AND@ XOR@. */
+#define IVS_CP1610_OP_MVO_AT 50u
+#define IVS_CP1610_OP_MVI_AT 51u
+#define IVS_CP1610_OP_ADD_AT 52u
+#define IVS_CP1610_OP_SUB_AT 53u
+#define IVS_CP1610_OP_CMP_AT 54u
+#define IVS_CP1610_OP_AND_AT 55u
+#define IVS_CP1610_OP_XOR_AT 56u
 
 /* Internal decode lookup: the most specific row for decle & 0x3FF. Every one of the 1024
  * decles maps to exactly one row; NULL is never returned for a 10-bit decle. */

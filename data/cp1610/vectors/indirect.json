@@ -382,6 +382,2195 @@
         "addr:stack",
         "policy:POL-STK-01"
       ]
+    },
+    {
+      "id": "cpu.MVO@.r2-no-increment",
+      "row": "MVO@",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Indirect addressed data table, MVO@ row, pdf 55; Fig 3.2.4, pdf 48; S3.2.1 Fig 3.2.1, pdf 46; MVO timing (write operation) figure, pdf 31; C56",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "MVO@ R1, R2",
+      "program": [
+        "0251 1001 010 001"
+      ],
+      "derivation": "The indirect table (pdf 55) prints MVO@ SSS, MMM as 1001 MMM SSS, 9 cycles, 'MoVe Out data from register SSS to the address in register MMM', no status change, with the note 'SSS = MMM = 4, 5, 6 or 7 not supported'. Fig 3.2.4 (pdf 48), MMM = 001, 010, 011: PC <- PC+1, EA <- (MMM); the pointer register does not change. MMM = 010 (R2 = $0300), SSS = 001 (R1 = $A5C3): the word at $0300 becomes $A5C3; R2 stays $0300. PC: $1000 -> $1001. S = Z = OV = C = 1 stay 1 (no status change). C56: the manual is silent on the MVO family's interruptibility and the default makes it non-interruptible, so prev_interruptible goes 1 -> 0. Bus (pdf 31, MVO timing (write operation), 9 cycles: BAR, NACT, DTB, NACT, BAR, NACT, DW, DWS, NACT; the second BAR puts out the effective address): FETCH at cycle 0 from $1000, then the WRITE of $0300 at cycle 4. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "A5C3",
+          "0300",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0300",
+            "A5C3"
+          ]
+        ],
+        "cycles": 9,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0251"
+        ],
+        [
+          4,
+          "WRITE",
+          "0300",
+          "A5C3"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:indirect",
+        "policy:POL-STK-01",
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "write:bus"
+      ]
+    },
+    {
+      "id": "cpu.MVO@.r4-autoinc",
+      "row": "MVO@",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Indirect addressed data table, MVO@ row, pdf 55; Fig 3.2.4, pdf 48; S3.2.1 Fig 3.2.1, pdf 46; MVO timing (write operation) figure, pdf 31; C56",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "MVO@ R0, R4",
+      "program": [
+        "0260 1001 100 000"
+      ],
+      "derivation": "The indirect table (pdf 55) prints MVO@ SSS, MMM as 1001 MMM SSS, 9 cycles, 'MoVe Out data from register SSS to the address in register MMM', no status change, with the note 'SSS = MMM = 4, 5, 6 or 7 not supported'. Fig 3.2.4 (pdf 48), MMM = 100, 101: PC <- PC+1, EA <- (MMM), (MMM) <- (MMM)+1 (post increment, also Fig 3.2.1, pdf 46, R4+1 -> R4 and R5+1 -> R5). MMM = 100 (R4 = $0300), SSS = 000 (R0 = $1234): the word at $0300 becomes $1234, then R4 = $0301. PC: $1000 -> $1001. Flags stay 0. C56: the manual is silent on the MVO family's interruptibility and the default makes it non-interruptible, so prev_interruptible goes 1 -> 0. Bus (pdf 31, MVO timing (write operation), 9 cycles: BAR, NACT, DTB, NACT, BAR, NACT, DW, DWS, NACT; the second BAR puts out the effective address): FETCH at cycle 0 from $1000, then the WRITE of $0300 at cycle 4. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "1234",
+          "0101",
+          "0202",
+          "0303",
+          "0300",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "4": "0301",
+          "7": "1001"
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0300",
+            "1234"
+          ]
+        ],
+        "cycles": 9,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0260"
+        ],
+        [
+          4,
+          "WRITE",
+          "0300",
+          "1234"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:autoinc",
+        "policy:POL-STK-01",
+        "write:bus"
+      ]
+    },
+    {
+      "id": "cpu.MVO@.r5-wrap-ffff",
+      "row": "MVO@",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Indirect addressed data table, MVO@ row, pdf 55; Fig 3.2.4, pdf 48; S3.2.1 Fig 3.2.1, pdf 46; MVO timing (write operation) figure, pdf 31; C56",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "MVO@ R3, R5",
+      "program": [
+        "026B 1001 101 011"
+      ],
+      "derivation": "The indirect table (pdf 55) prints MVO@ SSS, MMM as 1001 MMM SSS, 9 cycles, 'MoVe Out data from register SSS to the address in register MMM', no status change, with the note 'SSS = MMM = 4, 5, 6 or 7 not supported'. Fig 3.2.4 (pdf 48), MMM = 100, 101: PC <- PC+1, EA <- (MMM), (MMM) <- (MMM)+1 (post increment, also Fig 3.2.1, pdf 46, R4+1 -> R4 and R5+1 -> R5). MMM = 101 (R5 = $FFFF), SSS = 011 (R3 = $0303): the word at $FFFF becomes $0303, then R5 = $FFFF + 1, which wraps to $0000 (POL-STK-01). PC: $1000 -> $1001. Flags stay 0. C56: the manual is silent on the MVO family's interruptibility and the default makes it non-interruptible, so prev_interruptible goes 1 -> 0. Bus (pdf 31, MVO timing (write operation), 9 cycles: BAR, NACT, DTB, NACT, BAR, NACT, DW, DWS, NACT; the second BAR puts out the effective address): FETCH at cycle 0 from $1000, then the WRITE of $FFFF at cycle 4. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "FFFF",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "5": "0000",
+          "7": "1001"
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "FFFF",
+            "0303"
+          ]
+        ],
+        "cycles": 9,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "026B"
+        ],
+        [
+          4,
+          "WRITE",
+          "FFFF",
+          "0303"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:autoinc",
+        "policy:POL-STK-01",
+        "write:bus"
+      ]
+    },
+    {
+      "id": "cpu.MVO@.r1-sss-eq-mmm-allowed",
+      "row": "MVO@",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Indirect addressed data table, MVO@ row, pdf 55; Fig 3.2.4, pdf 48; S3.2.1 Fig 3.2.1, pdf 46; MVO timing (write operation) figure, pdf 31; C56",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "MVO@ R1, R1",
+      "program": [
+        "0249 1001 001 001"
+      ],
+      "derivation": "The indirect table (pdf 55) prints MVO@ SSS, MMM as 1001 MMM SSS, 9 cycles, 'MoVe Out data from register SSS to the address in register MMM', no status change, with the note 'SSS = MMM = 4, 5, 6 or 7 not supported'. Fig 3.2.4 (pdf 48), MMM = 001, 010, 011: PC <- PC+1, EA <- (MMM); the pointer register does not change. MMM = SSS = 001 (R1 = $0300). The note excludes only SSS = MMM = 4, 5, 6 or 7, so this form is supported: the word at $0300 becomes $0300 and R1 does not change. PC: $1000 -> $1001. Flags stay 0. C56: the manual is silent on the MVO family's interruptibility and the default makes it non-interruptible, so prev_interruptible goes 1 -> 0. Bus (pdf 31, MVO timing (write operation), 9 cycles: BAR, NACT, DTB, NACT, BAR, NACT, DW, DWS, NACT; the second BAR puts out the effective address): FETCH at cycle 0 from $1000, then the WRITE of $0300 at cycle 4. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0300",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0300",
+            "0300"
+          ]
+        ],
+        "cycles": 9,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0249"
+        ],
+        [
+          4,
+          "WRITE",
+          "0300",
+          "0300"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:indirect",
+        "write:bus"
+      ]
+    },
+    {
+      "id": "cpu.MVO@.sss-eq-mmm-r4-unsupported",
+      "row": "MVO@",
+      "kind": "policy",
+      "policy": "POL-MVO-01",
+      "cite": "MVO@ note, indirect addressed data table, pdf 55; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "MVO@ R4, R4",
+      "program": [
+        "0264 1001 100 100"
+      ],
+      "derivation": "POL-MVO-01 (policy, from the MVO@ note on pdf 55, 'SSS = MMM = 4, 5, 6 or 7 not supported'): the decle is refused with the sticky fault UNSUPPORTED_MVO_SSS_EQ_MMM. Only the fetch happens (FETCH at cycle 0 from $1000, pdf 28) and its 4 cycles are counted; R7 stays at the offender $1000, run_state becomes FAULTED, no word is written, and registers, flags and prev_interruptible keep their values. The decle 1001 100 100 is MVO@ with SSS = MMM (output group 1001 MMM SSS, Fig 3.2.1, pdf 46). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0300",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "run_state": "FAULTED",
+        "fault_reason": "UNSUPPORTED_MVO_SSS_EQ_MMM",
+        "cycles": 4,
+        "units": [
+          "FAULT"
+        ],
+        "events": [
+          "FAULT"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0264"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": []
+    },
+    {
+      "id": "cpu.MVO@.sss-eq-mmm-r5-unsupported",
+      "row": "MVO@",
+      "kind": "policy",
+      "policy": "POL-MVO-01",
+      "cite": "MVO@ note, indirect addressed data table, pdf 55; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "MVO@ R5, R5",
+      "program": [
+        "026D 1001 101 101"
+      ],
+      "derivation": "POL-MVO-01 (policy, from the MVO@ note on pdf 55, 'SSS = MMM = 4, 5, 6 or 7 not supported'): the decle is refused with the sticky fault UNSUPPORTED_MVO_SSS_EQ_MMM. Only the fetch happens (FETCH at cycle 0 from $1000, pdf 28) and its 4 cycles are counted; R7 stays at the offender $1000, run_state becomes FAULTED, no word is written, and registers, flags and prev_interruptible keep their values. The decle 1001 101 101 is MVO@ with SSS = MMM (output group 1001 MMM SSS, Fig 3.2.1, pdf 46). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0300",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "run_state": "FAULTED",
+        "fault_reason": "UNSUPPORTED_MVO_SSS_EQ_MMM",
+        "cycles": 4,
+        "units": [
+          "FAULT"
+        ],
+        "events": [
+          "FAULT"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "026D"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": []
+    },
+    {
+      "id": "cpu.PSHR.r6-r6-unsupported",
+      "row": "PSHR",
+      "kind": "policy",
+      "policy": "POL-MVO-01",
+      "cite": "MVO@ note, indirect addressed data table, pdf 55; instruction fetch figure, pdf 28; PSHR row, pdf 55; stack operations S3.4.6, pdf 62",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "PSHR R6",
+      "program": [
+        "0276 1001 110 110"
+      ],
+      "derivation": "POL-MVO-01 (policy, from the MVO@ note on pdf 55, 'SSS = MMM = 4, 5, 6 or 7 not supported'): the decle is refused with the sticky fault UNSUPPORTED_MVO_SSS_EQ_MMM. Only the fetch happens (FETCH at cycle 0 from $1000, pdf 28) and its 4 cycles are counted; R7 stays at the offender $1000, run_state becomes FAULTED, no word is written, and registers, flags and prev_interruptible keep their values. The decle 1001 110 110 is PSHR with SSS = MMM (output group 1001 MMM SSS, Fig 3.2.1, pdf 46). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "run_state": "FAULTED",
+        "fault_reason": "UNSUPPORTED_MVO_SSS_EQ_MMM",
+        "cycles": 4,
+        "units": [
+          "FAULT"
+        ],
+        "events": [
+          "FAULT"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0276"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": []
+    },
+    {
+      "id": "cpu.MVI@.r2-no-increment",
+      "row": "MVI@",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Indirect addressed data table, MVI@ row, pdf 55; Fig 3.2.4, pdf 48; S3.2.1 Fig 3.2.1, pdf 46; indirect access timing figure, pdf 29",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "MVI@ R2, R1",
+      "program": [
+        "0291 1010 010 001"
+      ],
+      "derivation": "The indirect table (pdf 55) prints MVI@ MMM, DDD as 1010 MMM DDD, 8 cycles with the footnote '*Add 3 to number of cycles if MMM=6', 'MoVe In data to register DDD from address in register MMM', no status change. MMM = 110 is the PULR row (pdf 55), so an MVI@ encoding costs the base 8 (A-13). Fig 3.2.4 (pdf 48), MMM = 001, 010, 011: PC <- PC+1, EA <- (MMM); the pointer register does not change. MMM = 010 (R2 = $0300), DDD = 001: R1 = the word at $0300 = $5A3C; R2 stays $0300. PC: $1000 -> $1001. S = Z = OV = C = 1 stay 1 (no status change). The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 29, instruction fetch & data access, indirect reg. mode: BAR, NACT, DTB, NACT, BAR, NACT, DTB): FETCH at cycle 0 from $1000, then the BAR that puts out the effective address at cycle 4, a READ of $0300 (data in at cycle 6); the unit is the printed 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0300",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0300",
+            "5A3C"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "1": "5A3C",
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0291"
+        ],
+        [
+          4,
+          "READ",
+          "0300",
+          "5A3C"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:indirect",
+        "cycles:base",
+        "policy:POL-STK-01",
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C"
+      ]
+    },
+    {
+      "id": "cpu.MVI@.r4-autoinc",
+      "row": "MVI@",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Indirect addressed data table, MVI@ row, pdf 55; Fig 3.2.4, pdf 48; S3.2.1 Fig 3.2.1, pdf 46; indirect access timing figure, pdf 29",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "MVI@ R4, R0",
+      "program": [
+        "02A0 1010 100 000"
+      ],
+      "derivation": "The indirect table (pdf 55) prints MVI@ MMM, DDD as 1010 MMM DDD, 8 cycles with the footnote '*Add 3 to number of cycles if MMM=6', 'MoVe In data to register DDD from address in register MMM', no status change. MMM = 110 is the PULR row (pdf 55), so an MVI@ encoding costs the base 8 (A-13). Fig 3.2.4 (pdf 48), MMM = 100, 101: PC <- PC+1, EA <- (MMM), (MMM) <- (MMM)+1 (post increment, also Fig 3.2.1, pdf 46, R4+1 -> R4 and R5+1 -> R5). MMM = 100 (R4 = $0300), DDD = 000: R0 = the word at $0300 = $8001, R4 = $0301. PC: $1000 -> $1001. Flags stay 0. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 29, instruction fetch & data access, indirect reg. mode: BAR, NACT, DTB, NACT, BAR, NACT, DTB): FETCH at cycle 0 from $1000, then the BAR that puts out the effective address at cycle 4, a READ of $0300 (data in at cycle 6); the unit is the printed 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0300",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0300",
+            "8001"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "0": "8001",
+          "4": "0301",
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "02A0"
+        ],
+        [
+          4,
+          "READ",
+          "0300",
+          "8001"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:autoinc",
+        "cycles:base",
+        "policy:POL-STK-01"
+      ]
+    },
+    {
+      "id": "cpu.MVI@.r5-wrap-ffff",
+      "row": "MVI@",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Indirect addressed data table, MVI@ row, pdf 55; Fig 3.2.4, pdf 48; S3.2.1 Fig 3.2.1, pdf 46; indirect access timing figure, pdf 29",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "MVI@ R5, R3",
+      "program": [
+        "02AB 1010 101 011"
+      ],
+      "derivation": "The indirect table (pdf 55) prints MVI@ MMM, DDD as 1010 MMM DDD, 8 cycles with the footnote '*Add 3 to number of cycles if MMM=6', 'MoVe In data to register DDD from address in register MMM', no status change. MMM = 110 is the PULR row (pdf 55), so an MVI@ encoding costs the base 8 (A-13). Fig 3.2.4 (pdf 48), MMM = 100, 101: PC <- PC+1, EA <- (MMM), (MMM) <- (MMM)+1 (post increment, also Fig 3.2.1, pdf 46, R4+1 -> R4 and R5+1 -> R5). MMM = 101 (R5 = $FFFF), DDD = 011: R3 = the word at $FFFF = $0F0F, then R5 = $FFFF + 1, which wraps to $0000 (POL-STK-01). PC: $1000 -> $1001. Flags stay 0. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 29, instruction fetch & data access, indirect reg. mode: BAR, NACT, DTB, NACT, BAR, NACT, DTB): FETCH at cycle 0 from $1000, then the BAR that puts out the effective address at cycle 4, a READ of $FFFF (data in at cycle 6); the unit is the printed 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "FFFF",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "FFFF",
+            "0F0F"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "3": "0F0F",
+          "5": "0000",
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "02AB"
+        ],
+        [
+          4,
+          "READ",
+          "FFFF",
+          "0F0F"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:autoinc",
+        "cycles:base",
+        "policy:POL-STK-01"
+      ]
+    },
+    {
+      "id": "cpu.MVI@.r1-read",
+      "row": "MVI@",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Indirect addressed data table, MVI@ row, pdf 55; Fig 3.2.4, pdf 48; S3.2.1 Fig 3.2.1, pdf 46; indirect access timing figure, pdf 29",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "MVI@ R1, R2",
+      "program": [
+        "028A 1010 001 010"
+      ],
+      "derivation": "The indirect table (pdf 55) prints MVI@ MMM, DDD as 1010 MMM DDD, 8 cycles with the footnote '*Add 3 to number of cycles if MMM=6', 'MoVe In data to register DDD from address in register MMM', no status change. MMM = 110 is the PULR row (pdf 55), so an MVI@ encoding costs the base 8 (A-13). Fig 3.2.4 (pdf 48), MMM = 001, 010, 011: PC <- PC+1, EA <- (MMM); the pointer register does not change. MMM = 001 (R1 = $0400), DDD = 010: R2 = the word at $0400 = $FFFF; R1 stays $0400. PC: $1000 -> $1001. Flags stay 0 (no status change; $FFFF would set S). The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 29, instruction fetch & data access, indirect reg. mode: BAR, NACT, DTB, NACT, BAR, NACT, DTB): FETCH at cycle 0 from $1000, then the BAR that puts out the effective address at cycle 4, a READ of $0400 (data in at cycle 6); the unit is the printed 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0400",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0400",
+            "FFFF"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "2": "FFFF",
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "028A"
+        ],
+        [
+          4,
+          "READ",
+          "0400",
+          "FFFF"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:indirect",
+        "cycles:base"
+      ]
+    },
+    {
+      "id": "cpu.MVI@.ddd-equals-pointer-r4",
+      "row": "MVI@",
+      "kind": "policy",
+      "policy": "POL-STK-02",
+      "cite": "Indirect addressed data table, MVI@ row, pdf 55; Fig 3.2.4, pdf 48; S3.2.1 Fig 3.2.1, pdf 46; indirect access timing figure, pdf 29; C55",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "MVI@ R4, R4",
+      "program": [
+        "02A4 1010 100 100"
+      ],
+      "derivation": "The indirect table (pdf 55) prints MVI@ MMM, DDD as 1010 MMM DDD, 8 cycles with the footnote '*Add 3 to number of cycles if MMM=6', 'MoVe In data to register DDD from address in register MMM', no status change. MMM = 110 is the PULR row (pdf 55), so an MVI@ encoding costs the base 8 (A-13). POL-STK-02 (policy, C55 default): the manual does not say which wins when DDD is the pointer register; Fig 3.2.4 (pdf 48) orders EA <- (MMM), (MMM) <- (MMM)+1 and S3.2.3 (pdf 48) says the result replaces the second operand register, so the loaded word is the final value. MMM = DDD = 100 (R4 = $0300): EA = $0300, R4 = $0301, then R4 = the word at $0300 = $1234 (not $0301). PC: $1000 -> $1001. Flags stay 0. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 29, instruction fetch & data access, indirect reg. mode: BAR, NACT, DTB, NACT, BAR, NACT, DTB): FETCH at cycle 0 from $1000, then the BAR that puts out the effective address at cycle 4, a READ of $0300 (data in at cycle 6); the unit is the printed 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0300",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0300",
+            "1234"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "4": "1234",
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "02A4"
+        ],
+        [
+          4,
+          "READ",
+          "0300",
+          "1234"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:autoinc",
+        "cycles:base"
+      ]
+    },
+    {
+      "id": "cpu.PULR.ddd-r6-result-wins",
+      "row": "PULR",
+      "kind": "policy",
+      "policy": "POL-STK-02",
+      "cite": "Indirect addressed data table, PULR row, pdf 55; Fig 3.2.4, pdf 48; stack operations S3.4.6, pdf 62; C55; C36",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "PULR R6",
+      "program": [
+        "02B6 1010 110 110"
+      ],
+      "derivation": "The indirect table (pdf 55) prints PULR DDD as 1010 110 DDD, 11 cycles, 'PULl data from the stack to Register DDD', no status change. POL-STK-02 (policy, C55 default): when DDD is the pointer register the pulled word is the final value. Fig 3.2.4 (pdf 48), MMM = 110 for non-MVO: PC <- PC+1, (MMM) <- (MMM)-1, EA <- (MMM) (pre-decrement, C17 resolved). DDD = 110: R6 = $02F1 - 1 = $02F0, then R6 = the word at $02F0 = $4000 (not $02F0). PC: $1000 -> $1001. The printed 11 cycles hold the MMM = 6 bonus. Flags stay 0. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (inference, C36): FETCH at cycle 0 from $1000, then one READ at the decremented R6 = $02F0; no figure prints where the 3 extra cycles fall, so the cycle is not asserted. The unit is 8 + 3 = 11 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F1",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "02F0",
+            "4000"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "6": "4000",
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 11,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "02B6"
+        ],
+        [
+          7,
+          "READ",
+          "02F0",
+          "4000"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "addr:stack"
+      ]
+    },
+    {
+      "id": "cpu.ADD@.r2-no-increment",
+      "row": "ADD@",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Indirect addressed data table, ADD@ row, pdf 55; Fig 3.2.4, pdf 48; S3.2.1 Fig 3.2.1, pdf 46; indirect access timing figure, pdf 29; status bits S3.1.2, pdf 45",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ADD@ R2, R1",
+      "program": [
+        "02D1 1011 010 001"
+      ],
+      "derivation": "The indirect table (pdf 55) prints ADD@ MMM, DDD as 1011 MMM DDD, 8 cycles plus 3 if MMM=6 (footnote), 'ADD data located at address in register MMM to the contents of register DDD. Results to DDD.', status change S, Z, C, OV. S3.1.2 (pdf 45): C is the carry out of bit 15, OV is two's complement overflow, Z is set when the result is all zero, S when bit 15 is one; subtraction adds the two's complement of the subtrahend, so C = 1 means no borrow. Fig 3.2.4 (pdf 48), MMM = 001, 010, 011: PC <- PC+1, EA <- (MMM); the pointer register does not change. MMM = 010 (R2 = $0300), DDD = 001: R1 = $0001 + $0001 = $0002; no carry out, C = 0; both operands positive and the result positive, OV = 0; S = 0, Z = 0. R2 stays $0300. PC: $1000 -> $1001. Init S = Z = OV = C = 1. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 29, instruction fetch & data access, indirect reg. mode: BAR, NACT, DTB, NACT, BAR, NACT, DTB): FETCH at cycle 0 from $1000, then the BAR that puts out the effective address at cycle 4, a READ of $0300 (data in at cycle 6); the unit is the printed 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0001",
+          "0300",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0300",
+            "0001"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "1": "0002",
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        }
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "02D1"
+        ],
+        [
+          4,
+          "READ",
+          "0300",
+          "0001"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:indirect",
+        "cycles:base",
+        "flag-clear:S",
+        "flag-clear:Z",
+        "flag-clear:OV",
+        "flag-clear:C"
+      ]
+    },
+    {
+      "id": "cpu.ADD@.r4-autoinc",
+      "row": "ADD@",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Indirect addressed data table, ADD@ row, pdf 55; Fig 3.2.4, pdf 48; S3.2.1 Fig 3.2.1, pdf 46; indirect access timing figure, pdf 29; status bits S3.1.2, pdf 45",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ADD@ R4, R0",
+      "program": [
+        "02E0 1011 100 000"
+      ],
+      "derivation": "The indirect table (pdf 55) prints ADD@ MMM, DDD as 1011 MMM DDD, 8 cycles plus 3 if MMM=6 (footnote), 'ADD data located at address in register MMM to the contents of register DDD. Results to DDD.', status change S, Z, C, OV. S3.1.2 (pdf 45): C is the carry out of bit 15, OV is two's complement overflow, Z is set when the result is all zero, S when bit 15 is one; subtraction adds the two's complement of the subtrahend, so C = 1 means no borrow. Fig 3.2.4 (pdf 48), MMM = 100, 101: PC <- PC+1, EA <- (MMM), (MMM) <- (MMM)+1 (post increment, also Fig 3.2.1, pdf 46, R4+1 -> R4 and R5+1 -> R5). MMM = 100 (R4 = $0300), DDD = 000: R0 = $7FFF + $0001 = $8000; no carry out, C = 0; both operands positive and the result negative, OV = 1; S = 1, Z = 0. R4 = $0301. PC: $1000 -> $1001. Init all 0. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 29, instruction fetch & data access, indirect reg. mode: BAR, NACT, DTB, NACT, BAR, NACT, DTB): FETCH at cycle 0 from $1000, then the BAR that puts out the effective address at cycle 4, a READ of $0300 (data in at cycle 6); the unit is the printed 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "7FFF",
+          "0101",
+          "0202",
+          "0303",
+          "0300",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0300",
+            "0001"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "0": "8000",
+          "4": "0301",
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        }
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "02E0"
+        ],
+        [
+          4,
+          "READ",
+          "0300",
+          "0001"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:autoinc",
+        "cycles:base",
+        "flag-set:S",
+        "flag-set:OV"
+      ]
+    },
+    {
+      "id": "cpu.ADD@.r6-mmm6-bonus",
+      "row": "ADD@",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Indirect addressed data table, ADD@ row, pdf 55; Fig 3.2.4, pdf 48; S3.2.1 Fig 3.2.1, pdf 46; indirect access timing figure, pdf 29; status bits S3.1.2, pdf 45",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ADD@ R6, R3",
+      "program": [
+        "02F3 1011 110 011"
+      ],
+      "derivation": "The indirect table (pdf 55) prints ADD@ MMM, DDD as 1011 MMM DDD, 8 cycles plus 3 if MMM=6 (footnote), 'ADD data located at address in register MMM to the contents of register DDD. Results to DDD.', status change S, Z, C, OV. S3.1.2 (pdf 45): C is the carry out of bit 15, OV is two's complement overflow, Z is set when the result is all zero, S when bit 15 is one; subtraction adds the two's complement of the subtrahend, so C = 1 means no borrow. Fig 3.2.4 (pdf 48), MMM = 110 for non-MVO: PC <- PC+1, (MMM) <- (MMM)-1, EA <- (MMM) (pre-decrement, C17 resolved). MMM = 110: R6 = $02F1 - 1 = $02F0, EA = $02F0. DDD = 011: R3 = $FFFF + $0001 = $10000, result $0000 with a carry out, C = 1; the operands have different signs, OV = 0; S = 0, Z = 1. PC: $1000 -> $1001. Cycles 8 + 3 = 11 (footnote, MMM = 6). Init all 0. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (inference, C36): FETCH at cycle 0 from $1000, then one READ at the decremented R6 = $02F0; no figure prints where the 3 extra cycles fall, so the cycle is not asserted. The unit is 8 + 3 = 11 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "FFFF",
+          "0404",
+          "0505",
+          "02F1",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "02F0",
+            "0001"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "3": "0000",
+          "6": "02F0",
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 11,
+        "units": [
+          "INSTR"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 1
+        }
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "02F3"
+        ],
+        [
+          7,
+          "READ",
+          "02F0",
+          "0001"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "addr:stack",
+        "cycles:mod",
+        "policy:POL-STK-01",
+        "flag-set:Z",
+        "flag-set:C"
+      ]
+    },
+    {
+      "id": "cpu.ADD@.r4-r4-sees-increment",
+      "row": "ADD@",
+      "kind": "policy",
+      "policy": "POL-STK-02",
+      "cite": "Indirect addressed data table, ADD@ row, pdf 55; Fig 3.2.4, pdf 48; S3.2.1 Fig 3.2.1, pdf 46; indirect access timing figure, pdf 29; status bits S3.1.2, pdf 45; C55",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ADD@ R4, R4",
+      "program": [
+        "02E4 1011 100 100"
+      ],
+      "derivation": "The indirect table (pdf 55) prints ADD@ MMM, DDD as 1011 MMM DDD, 8 cycles plus 3 if MMM=6 (footnote), 'ADD data located at address in register MMM to the contents of register DDD. Results to DDD.', status change S, Z, C, OV. S3.1.2 (pdf 45): C is the carry out of bit 15, OV is two's complement overflow, Z is set when the result is all zero, S when bit 15 is one; subtraction adds the two's complement of the subtrahend, so C = 1 means no borrow. POL-STK-02 (policy, C55 default): Fig 3.2.4 (pdf 48) increments the pointer as part of forming the address, before the operation, so the second operand is the incremented register. MMM = DDD = 100 (R4 = $0300): EA = $0300, R4 = $0301, then R4 = $0010 + $0301 = $0311 (the result wins over the increment). $0311: no carry, both operands positive and the result positive, so C = OV = 0, S = 0, Z = 0, all as initialised. PC: $1000 -> $1001. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 29, instruction fetch & data access, indirect reg. mode: BAR, NACT, DTB, NACT, BAR, NACT, DTB): FETCH at cycle 0 from $1000, then the BAR that puts out the effective address at cycle 4, a READ of $0300 (data in at cycle 6); the unit is the printed 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0300",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0300",
+            "0010"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "4": "0311",
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "02E4"
+        ],
+        [
+          4,
+          "READ",
+          "0300",
+          "0010"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:autoinc",
+        "cycles:base"
+      ]
+    },
+    {
+      "id": "cpu.ADD@.r5-wrap-ffff",
+      "row": "ADD@",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Indirect addressed data table, ADD@ row, pdf 55; Fig 3.2.4, pdf 48; S3.2.1 Fig 3.2.1, pdf 46; indirect access timing figure, pdf 29; status bits S3.1.2, pdf 45",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ADD@ R5, R1",
+      "program": [
+        "02E9 1011 101 001"
+      ],
+      "derivation": "The indirect table (pdf 55) prints ADD@ MMM, DDD as 1011 MMM DDD, 8 cycles plus 3 if MMM=6 (footnote), 'ADD data located at address in register MMM to the contents of register DDD. Results to DDD.', status change S, Z, C, OV. S3.1.2 (pdf 45): C is the carry out of bit 15, OV is two's complement overflow, Z is set when the result is all zero, S when bit 15 is one; subtraction adds the two's complement of the subtrahend, so C = 1 means no borrow. Fig 3.2.4 (pdf 48), MMM = 100, 101: PC <- PC+1, EA <- (MMM), (MMM) <- (MMM)+1 (post increment, also Fig 3.2.1, pdf 46, R4+1 -> R4 and R5+1 -> R5). MMM = 101 (R5 = $FFFF), DDD = 001: R1 = $0003 + $0002 = $0005 (C = OV = S = Z = 0, as initialised), then R5 = $FFFF + 1, which wraps to $0000. PC: $1000 -> $1001. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 29, instruction fetch & data access, indirect reg. mode: BAR, NACT, DTB, NACT, BAR, NACT, DTB): FETCH at cycle 0 from $1000, then the BAR that puts out the effective address at cycle 4, a READ of $FFFF (data in at cycle 6); the unit is the printed 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0003",
+          "0202",
+          "0303",
+          "0404",
+          "FFFF",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "FFFF",
+            "0002"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "1": "0005",
+          "5": "0000",
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "02E9"
+        ],
+        [
+          4,
+          "READ",
+          "FFFF",
+          "0002"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:autoinc",
+        "cycles:base",
+        "policy:POL-STK-01"
+      ]
+    },
+    {
+      "id": "cpu.SUB@.r2-no-increment",
+      "row": "SUB@",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Indirect addressed data table, SUB@ row, pdf 55; Fig 3.2.4, pdf 48; S3.2.1 Fig 3.2.1, pdf 46; indirect access timing figure, pdf 29; status bits S3.1.2, pdf 45",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SUB@ R2, R1",
+      "program": [
+        "0311 1100 010 001"
+      ],
+      "derivation": "The indirect table (pdf 55) prints SUB@ MMM, DDD as 1100 MMM DDD, 8 cycles plus 3 if MMM=6 (footnote), 'SUBtract data located at address in Register MMM from contents of register DDD. Results to DDD.', status change S, Z, C, OV. S3.1.2 (pdf 45): C is the carry out of bit 15, OV is two's complement overflow, Z is set when the result is all zero, S when bit 15 is one; subtraction adds the two's complement of the subtrahend, so C = 1 means no borrow. Fig 3.2.4 (pdf 48), MMM = 001, 010, 011: PC <- PC+1, EA <- (MMM); the pointer register does not change. MMM = 010 (R2 = $0300), DDD = 001: R1 = $1234 - $1234 = $1234 + $EDCB + 1 = $10000, result $0000 with a carry out, C = 1; $1234 positive and $EDCB negative, OV = 0; S = 0, Z = 1. R2 stays $0300. PC: $1000 -> $1001. Init S = 1, Z = 0, OV = 1, C = 0. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 29, instruction fetch & data access, indirect reg. mode: BAR, NACT, DTB, NACT, BAR, NACT, DTB): FETCH at cycle 0 from $1000, then the BAR that puts out the effective address at cycle 4, a READ of $0300 (data in at cycle 6); the unit is the printed 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "1234",
+          "0300",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0300",
+            "1234"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "1": "0000",
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 1
+        }
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0311"
+        ],
+        [
+          4,
+          "READ",
+          "0300",
+          "1234"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:indirect",
+        "cycles:base",
+        "flag-clear:S",
+        "flag-set:Z",
+        "flag-clear:OV",
+        "flag-set:C"
+      ]
+    },
+    {
+      "id": "cpu.SUB@.r5-autoinc",
+      "row": "SUB@",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Indirect addressed data table, SUB@ row, pdf 55; Fig 3.2.4, pdf 48; S3.2.1 Fig 3.2.1, pdf 46; indirect access timing figure, pdf 29; status bits S3.1.2, pdf 45",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SUB@ R5, R2",
+      "program": [
+        "032A 1100 101 010"
+      ],
+      "derivation": "The indirect table (pdf 55) prints SUB@ MMM, DDD as 1100 MMM DDD, 8 cycles plus 3 if MMM=6 (footnote), 'SUBtract data located at address in Register MMM from contents of register DDD. Results to DDD.', status change S, Z, C, OV. S3.1.2 (pdf 45): C is the carry out of bit 15, OV is two's complement overflow, Z is set when the result is all zero, S when bit 15 is one; subtraction adds the two's complement of the subtrahend, so C = 1 means no borrow. Fig 3.2.4 (pdf 48), MMM = 100, 101: PC <- PC+1, EA <- (MMM), (MMM) <- (MMM)+1 (post increment, also Fig 3.2.1, pdf 46, R4+1 -> R4 and R5+1 -> R5). MMM = 101 (R5 = $0300), DDD = 010: R2 = $0000 - $0001 = $0000 + $FFFE + 1 = $FFFF, no carry out, C = 0 (a borrow); $0000 positive and $FFFE negative, OV = 0; S = 1, Z = 0. R5 = $0301. PC: $1000 -> $1001. Init S = 0, Z = 1, OV = 0, C = 1. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 29, instruction fetch & data access, indirect reg. mode: BAR, NACT, DTB, NACT, BAR, NACT, DTB): FETCH at cycle 0 from $1000, then the BAR that puts out the effective address at cycle 4, a READ of $0300 (data in at cycle 6); the unit is the printed 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0000",
+          "0303",
+          "0404",
+          "0300",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0300",
+            "0001"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "2": "FFFF",
+          "5": "0301",
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        }
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "032A"
+        ],
+        [
+          4,
+          "READ",
+          "0300",
+          "0001"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:autoinc",
+        "cycles:base",
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-clear:C"
+      ]
+    },
+    {
+      "id": "cpu.SUB@.r6-mmm6-bonus",
+      "row": "SUB@",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Indirect addressed data table, SUB@ row, pdf 55; Fig 3.2.4, pdf 48; S3.2.1 Fig 3.2.1, pdf 46; indirect access timing figure, pdf 29; status bits S3.1.2, pdf 45",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SUB@ R6, R3",
+      "program": [
+        "0333 1100 110 011"
+      ],
+      "derivation": "The indirect table (pdf 55) prints SUB@ MMM, DDD as 1100 MMM DDD, 8 cycles plus 3 if MMM=6 (footnote), 'SUBtract data located at address in Register MMM from contents of register DDD. Results to DDD.', status change S, Z, C, OV. S3.1.2 (pdf 45): C is the carry out of bit 15, OV is two's complement overflow, Z is set when the result is all zero, S when bit 15 is one; subtraction adds the two's complement of the subtrahend, so C = 1 means no borrow. Fig 3.2.4 (pdf 48), MMM = 110 for non-MVO: PC <- PC+1, (MMM) <- (MMM)-1, EA <- (MMM) (pre-decrement, C17 resolved). MMM = 110: R6 = $02F0, EA = $02F0. DDD = 011: R3 = $8000 - $0001 = $8000 + $FFFE + 1 = $17FFF, result $7FFF with a carry out, C = 1; $8000 and $FFFE both negative and the result positive, OV = 1; S = 0, Z = 0. PC: $1000 -> $1001. Cycles 8 + 3 = 11. Init S = 1, Z = 1, OV = 0, C = 0. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (inference, C36): FETCH at cycle 0 from $1000, then one READ at the decremented R6 = $02F0; no figure prints where the 3 extra cycles fall, so the cycle is not asserted. The unit is 8 + 3 = 11 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "8000",
+          "0404",
+          "0505",
+          "02F1",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "02F0",
+            "0001"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "3": "7FFF",
+          "6": "02F0",
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 11,
+        "units": [
+          "INSTR"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 1,
+          "C": 1
+        }
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0333"
+        ],
+        [
+          7,
+          "READ",
+          "02F0",
+          "0001"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "addr:stack",
+        "cycles:mod",
+        "flag-clear:S",
+        "flag-clear:Z",
+        "flag-set:OV",
+        "flag-set:C"
+      ]
+    },
+    {
+      "id": "cpu.CMP@.r1-no-write",
+      "row": "CMP@",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Indirect addressed data table, CMP@ row, pdf 55; Fig 3.2.4, pdf 48; S3.2.1 Fig 3.2.1, pdf 46; indirect access timing figure, pdf 29; status bits S3.1.2, pdf 45",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "CMP@ R1, R2",
+      "program": [
+        "034A 1101 001 010"
+      ],
+      "derivation": "The indirect table (pdf 55) prints CMP@ MMM, SSS as 1101 MMM SSS, 8 cycles plus 3 if MMM=6 (footnote), 'CoMPare data located at address in Register MMM with contents of register SSS, by subtraction. Results not stored.', status change S, Z, C, OV. C46: the flags are those of register SSS minus the word, the order CMPI states (pdf 57). S3.1.2 (pdf 45): C is the carry out of bit 15, OV is two's complement overflow, Z is set when the result is all zero, S when bit 15 is one; subtraction adds the two's complement of the subtrahend, so C = 1 means no borrow. Fig 3.2.4 (pdf 48), MMM = 001, 010, 011: PC <- PC+1, EA <- (MMM); the pointer register does not change. MMM = 001 (R1 = $0300), SSS = 010 (R2 = $0005), word $0003: $0005 + $FFFC + 1 = $10002, result $0002 with a carry out, C = 1; $0005 positive and $FFFC negative, OV = 0; S = 0, Z = 0 (the other order, $0003 - $0005 = $FFFE, would give S = 1, C = 0). Not stored: R2 stays $0005, R1 stays $0300. PC: $1000 -> $1001. Init S = 1, Z = 1, OV = 1, C = 0. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 29, instruction fetch & data access, indirect reg. mode: BAR, NACT, DTB, NACT, BAR, NACT, DTB): FETCH at cycle 0 from $1000, then the BAR that puts out the effective address at cycle 4, a READ of $0300 (data in at cycle 6); the unit is the printed 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0300",
+          "0005",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0300",
+            "0003"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 1
+        }
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "034A"
+        ],
+        [
+          4,
+          "READ",
+          "0300",
+          "0003"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:indirect",
+        "cycles:base",
+        "flag-clear:S",
+        "flag-clear:Z",
+        "flag-clear:OV",
+        "flag-set:C"
+      ]
+    },
+    {
+      "id": "cpu.CMP@.r4-autoinc",
+      "row": "CMP@",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Indirect addressed data table, CMP@ row, pdf 55; Fig 3.2.4, pdf 48; S3.2.1 Fig 3.2.1, pdf 46; indirect access timing figure, pdf 29; status bits S3.1.2, pdf 45",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "CMP@ R4, R0",
+      "program": [
+        "0360 1101 100 000"
+      ],
+      "derivation": "The indirect table (pdf 55) prints CMP@ MMM, SSS as 1101 MMM SSS, 8 cycles plus 3 if MMM=6 (footnote), 'CoMPare data located at address in Register MMM with contents of register SSS, by subtraction. Results not stored.', status change S, Z, C, OV. C46: the flags are those of register SSS minus the word, the order CMPI states (pdf 57). S3.1.2 (pdf 45): C is the carry out of bit 15, OV is two's complement overflow, Z is set when the result is all zero, S when bit 15 is one; subtraction adds the two's complement of the subtrahend, so C = 1 means no borrow. Fig 3.2.4 (pdf 48), MMM = 100, 101: PC <- PC+1, EA <- (MMM), (MMM) <- (MMM)+1 (post increment, also Fig 3.2.1, pdf 46, R4+1 -> R4 and R5+1 -> R5). MMM = 100 (R4 = $0300), SSS = 000 (R0 = $7FFF), word $FFFF: $7FFF + $0000 + 1 = $8000, no carry out, C = 0; $7FFF and $0000 both positive and the result negative, OV = 1; S = 1, Z = 0. Not stored: R0 stays $7FFF. R4 = $0301. PC: $1000 -> $1001. Init S = 0, Z = 1, OV = 0, C = 1. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 29, instruction fetch & data access, indirect reg. mode: BAR, NACT, DTB, NACT, BAR, NACT, DTB): FETCH at cycle 0 from $1000, then the BAR that puts out the effective address at cycle 4, a READ of $0300 (data in at cycle 6); the unit is the printed 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "7FFF",
+          "0101",
+          "0202",
+          "0303",
+          "0300",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0300",
+            "FFFF"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "4": "0301",
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        }
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0360"
+        ],
+        [
+          4,
+          "READ",
+          "0300",
+          "FFFF"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:autoinc",
+        "cycles:base",
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-set:OV",
+        "flag-clear:C"
+      ]
+    },
+    {
+      "id": "cpu.CMP@.r6-mmm6-bonus",
+      "row": "CMP@",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Indirect addressed data table, CMP@ row, pdf 55; Fig 3.2.4, pdf 48; S3.2.1 Fig 3.2.1, pdf 46; indirect access timing figure, pdf 29; status bits S3.1.2, pdf 45",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "CMP@ R6, R3",
+      "program": [
+        "0373 1101 110 011"
+      ],
+      "derivation": "The indirect table (pdf 55) prints CMP@ MMM, SSS as 1101 MMM SSS, 8 cycles plus 3 if MMM=6 (footnote), 'CoMPare data located at address in Register MMM with contents of register SSS, by subtraction. Results not stored.', status change S, Z, C, OV. C46: the flags are those of register SSS minus the word, the order CMPI states (pdf 57). S3.1.2 (pdf 45): C is the carry out of bit 15, OV is two's complement overflow, Z is set when the result is all zero, S when bit 15 is one; subtraction adds the two's complement of the subtrahend, so C = 1 means no borrow. Fig 3.2.4 (pdf 48), MMM = 110 for non-MVO: PC <- PC+1, (MMM) <- (MMM)-1, EA <- (MMM) (pre-decrement, C17 resolved). MMM = 110: R6 = $02F0, EA = $02F0. SSS = 011 (R3 = $8000), word $8000: $8000 + $7FFF + 1 = $10000, result $0000 with a carry out, C = 1; $8000 negative and $7FFF positive, OV = 0; S = 0, Z = 1. Not stored: R3 stays $8000. PC: $1000 -> $1001. Cycles 8 + 3 = 11. Init all 0. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (inference, C36): FETCH at cycle 0 from $1000, then one READ at the decremented R6 = $02F0; no figure prints where the 3 extra cycles fall, so the cycle is not asserted. The unit is 8 + 3 = 11 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "8000",
+          "0404",
+          "0505",
+          "02F1",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "02F0",
+            "8000"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "6": "02F0",
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 11,
+        "units": [
+          "INSTR"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 1
+        }
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0373"
+        ],
+        [
+          7,
+          "READ",
+          "02F0",
+          "8000"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "addr:stack",
+        "cycles:mod",
+        "flag-set:Z",
+        "flag-set:C"
+      ]
+    },
+    {
+      "id": "cpu.AND@.r3-no-increment",
+      "row": "AND@",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Indirect addressed data table, AND@ row, pdf 55; Fig 3.2.4, pdf 48; S3.2.1 Fig 3.2.1, pdf 46; indirect access timing figure, pdf 29; status bits S3.1.2, pdf 45",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "AND@ R3, R1",
+      "program": [
+        "0399 1110 011 001"
+      ],
+      "derivation": "The indirect table (pdf 55) prints AND@ MMM, DDD as 1110 MMM DDD, 8 cycles plus 3 if MMM=6 (footnote), 'logical AND contents of register DDD with data located at address in register MMM. Results to DDD.', status change S, Z (S is bit 15, Z an all-zero result, pdf 45); C and OV keep their values. Fig 3.2.4 (pdf 48), MMM = 001, 010, 011: PC <- PC+1, EA <- (MMM); the pointer register does not change. MMM = 011 (R3 = $0300), DDD = 001: R1 = $F0F0 AND $8F0F = $8000 (nibbles F&8 = 8, 0&F = 0, F&0 = 0, 0&F = 0); S = 1, Z = 0; OV = C = 1 stay. R3 stays $0300. PC: $1000 -> $1001. Init S = 0, Z = 1, OV = 1, C = 1. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 29, instruction fetch & data access, indirect reg. mode: BAR, NACT, DTB, NACT, BAR, NACT, DTB): FETCH at cycle 0 from $1000, then the BAR that puts out the effective address at cycle 4, a READ of $0300 (data in at cycle 6); the unit is the printed 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "F0F0",
+          "0202",
+          "0300",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0300",
+            "8F0F"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "1": "8000",
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0
+        }
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0399"
+        ],
+        [
+          4,
+          "READ",
+          "0300",
+          "8F0F"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:indirect",
+        "cycles:base",
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C"
+      ]
+    },
+    {
+      "id": "cpu.AND@.r5-autoinc",
+      "row": "AND@",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Indirect addressed data table, AND@ row, pdf 55; Fig 3.2.4, pdf 48; S3.2.1 Fig 3.2.1, pdf 46; indirect access timing figure, pdf 29; status bits S3.1.2, pdf 45",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "AND@ R5, R2",
+      "program": [
+        "03AA 1110 101 010"
+      ],
+      "derivation": "The indirect table (pdf 55) prints AND@ MMM, DDD as 1110 MMM DDD, 8 cycles plus 3 if MMM=6 (footnote), 'logical AND contents of register DDD with data located at address in register MMM. Results to DDD.', status change S, Z (S is bit 15, Z an all-zero result, pdf 45); C and OV keep their values. Fig 3.2.4 (pdf 48), MMM = 100, 101: PC <- PC+1, EA <- (MMM), (MMM) <- (MMM)+1 (post increment, also Fig 3.2.1, pdf 46, R4+1 -> R4 and R5+1 -> R5). MMM = 101 (R5 = $0300), DDD = 010: R2 = $5555 AND $AAAA = $0000; S = 0, Z = 1. R5 = $0301. PC: $1000 -> $1001. Init S = 1, Z = 0, OV = 0, C = 0. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 29, instruction fetch & data access, indirect reg. mode: BAR, NACT, DTB, NACT, BAR, NACT, DTB): FETCH at cycle 0 from $1000, then the BAR that puts out the effective address at cycle 4, a READ of $0300 (data in at cycle 6); the unit is the printed 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "5555",
+          "0303",
+          "0404",
+          "0300",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0300",
+            "AAAA"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "2": "0000",
+          "5": "0301",
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1
+        }
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "03AA"
+        ],
+        [
+          4,
+          "READ",
+          "0300",
+          "AAAA"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:autoinc",
+        "cycles:base",
+        "flag-clear:S",
+        "flag-set:Z"
+      ]
+    },
+    {
+      "id": "cpu.AND@.r6-mmm6-bonus",
+      "row": "AND@",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Indirect addressed data table, AND@ row, pdf 55; Fig 3.2.4, pdf 48; S3.2.1 Fig 3.2.1, pdf 46; indirect access timing figure, pdf 29; status bits S3.1.2, pdf 45",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "AND@ R6, R0",
+      "program": [
+        "03B0 1110 110 000"
+      ],
+      "derivation": "The indirect table (pdf 55) prints AND@ MMM, DDD as 1110 MMM DDD, 8 cycles plus 3 if MMM=6 (footnote), 'logical AND contents of register DDD with data located at address in register MMM. Results to DDD.', status change S, Z (S is bit 15, Z an all-zero result, pdf 45); C and OV keep their values. Fig 3.2.4 (pdf 48), MMM = 110 for non-MVO: PC <- PC+1, (MMM) <- (MMM)-1, EA <- (MMM) (pre-decrement, C17 resolved). MMM = 110: R6 = $02F0, EA = $02F0. DDD = 000: R0 = $0F0F AND $00FF = $000F; S = 0, Z = 0, as initialised. PC: $1000 -> $1001. Cycles 8 + 3 = 11. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (inference, C36): FETCH at cycle 0 from $1000, then one READ at the decremented R6 = $02F0; no figure prints where the 3 extra cycles fall, so the cycle is not asserted. The unit is 8 + 3 = 11 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0F0F",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F1",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "02F0",
+            "00FF"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "0": "000F",
+          "6": "02F0",
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 11,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "03B0"
+        ],
+        [
+          7,
+          "READ",
+          "02F0",
+          "00FF"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "addr:stack",
+        "cycles:mod"
+      ]
+    },
+    {
+      "id": "cpu.XOR@.r1-no-increment",
+      "row": "XOR@",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Indirect addressed data table, XOR@ row, pdf 55; Fig 3.2.4, pdf 48; S3.2.1 Fig 3.2.1, pdf 46; indirect access timing figure, pdf 29; status bits S3.1.2, pdf 45",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "XOR@ R1, R2",
+      "program": [
+        "03CA 1111 001 010"
+      ],
+      "derivation": "The indirect table (pdf 55) prints XOR@ MMM, DDD as 1111 MMM DDD, 8 cycles plus 3 if MMM=6 (footnote), 'eXclusive OR contents of register DDD with data located at address in register MMM. Results to DDD.', status change S, Z (S is bit 15, Z an all-zero result, pdf 45); C and OV keep their values. Fig 3.2.4 (pdf 48), MMM = 001, 010, 011: PC <- PC+1, EA <- (MMM); the pointer register does not change. MMM = 001 (R1 = $0300), DDD = 010: R2 = $FFFF XOR $7FFF = $8000; S = 1, Z = 0; OV = C = 1 stay. R1 stays $0300. PC: $1000 -> $1001. Init S = 0, Z = 1, OV = 1, C = 1. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 29, instruction fetch & data access, indirect reg. mode: BAR, NACT, DTB, NACT, BAR, NACT, DTB): FETCH at cycle 0 from $1000, then the BAR that puts out the effective address at cycle 4, a READ of $0300 (data in at cycle 6); the unit is the printed 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0300",
+          "FFFF",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0300",
+            "7FFF"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "2": "8000",
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0
+        }
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "03CA"
+        ],
+        [
+          4,
+          "READ",
+          "0300",
+          "7FFF"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:indirect",
+        "cycles:base",
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C"
+      ]
+    },
+    {
+      "id": "cpu.XOR@.r4-autoinc",
+      "row": "XOR@",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Indirect addressed data table, XOR@ row, pdf 55; Fig 3.2.4, pdf 48; S3.2.1 Fig 3.2.1, pdf 46; indirect access timing figure, pdf 29; status bits S3.1.2, pdf 45",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "XOR@ R4, R3",
+      "program": [
+        "03E3 1111 100 011"
+      ],
+      "derivation": "The indirect table (pdf 55) prints XOR@ MMM, DDD as 1111 MMM DDD, 8 cycles plus 3 if MMM=6 (footnote), 'eXclusive OR contents of register DDD with data located at address in register MMM. Results to DDD.', status change S, Z (S is bit 15, Z an all-zero result, pdf 45); C and OV keep their values. Fig 3.2.4 (pdf 48), MMM = 100, 101: PC <- PC+1, EA <- (MMM), (MMM) <- (MMM)+1 (post increment, also Fig 3.2.1, pdf 46, R4+1 -> R4 and R5+1 -> R5). MMM = 100 (R4 = $0300), DDD = 011: R3 = $A5A5 XOR $A5A5 = $0000; S = 0, Z = 1. R4 = $0301. PC: $1000 -> $1001. Init S = 1, Z = 0, OV = 0, C = 0. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 29, instruction fetch & data access, indirect reg. mode: BAR, NACT, DTB, NACT, BAR, NACT, DTB): FETCH at cycle 0 from $1000, then the BAR that puts out the effective address at cycle 4, a READ of $0300 (data in at cycle 6); the unit is the printed 8 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "A5A5",
+          "0300",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0300",
+            "A5A5"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "3": "0000",
+          "4": "0301",
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1
+        }
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "03E3"
+        ],
+        [
+          4,
+          "READ",
+          "0300",
+          "A5A5"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:autoinc",
+        "cycles:base",
+        "flag-clear:S",
+        "flag-set:Z"
+      ]
+    },
+    {
+      "id": "cpu.XOR@.r6-mmm6-bonus",
+      "row": "XOR@",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Indirect addressed data table, XOR@ row, pdf 55; Fig 3.2.4, pdf 48; S3.2.1 Fig 3.2.1, pdf 46; indirect access timing figure, pdf 29; status bits S3.1.2, pdf 45",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "XOR@ R6, R1",
+      "program": [
+        "03F1 1111 110 001"
+      ],
+      "derivation": "The indirect table (pdf 55) prints XOR@ MMM, DDD as 1111 MMM DDD, 8 cycles plus 3 if MMM=6 (footnote), 'eXclusive OR contents of register DDD with data located at address in register MMM. Results to DDD.', status change S, Z (S is bit 15, Z an all-zero result, pdf 45); C and OV keep their values. Fig 3.2.4 (pdf 48), MMM = 110 for non-MVO: PC <- PC+1, (MMM) <- (MMM)-1, EA <- (MMM) (pre-decrement, C17 resolved). MMM = 110: R6 = $02F0, EA = $02F0. DDD = 001: R1 = $0000 XOR $0001 = $0001; S = 0, Z = 0, as initialised. PC: $1000 -> $1001. Cycles 8 + 3 = 11. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (inference, C36): FETCH at cycle 0 from $1000, then one READ at the decremented R6 = $02F0; no figure prints where the 3 extra cycles fall, so the cycle is not asserted. The unit is 8 + 3 = 11 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0000",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F1",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "02F0",
+            "0001"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "1": "0001",
+          "6": "02F0",
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 11,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "03F1"
+        ],
+        [
+          7,
+          "READ",
+          "02F0",
+          "0001"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "addr:stack",
+        "cycles:mod"
+      ]
     }
   ]
 }

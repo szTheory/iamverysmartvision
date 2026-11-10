@@ -8,7 +8,7 @@ GSWD_LAYOUT cpu.GSWD.r0-all-flags cpu.GSWD. cpu.CLRC.clears-c
 TCI_STROBE_STAMP cpu.TCI.strobe-figure cpu.TCI. cpu.SIN.n0
 HLT_NO_LATCH cpu.HLT.sets-halt-pending cpu.HLT. cpu.NOP.n0
 ADD_OVERFLOW cpu.ADDR.7fff-plus-1-overflow cpu.ADDR.|cpu.ADDI.|cpu.ADD.|cpu.ADD@. cpu.SETC.sets-c
-SUB_CARRY cpu.SUBR.equal-operands-carry-zero cpu.SUBR.|cpu.CMPR.|cpu.SUBI.|cpu.CMPI.|cpu.SUB.|cpu.CMP. cpu.ADDR.0001-plus-0001
+SUB_CARRY cpu.SUBR.equal-operands-carry-zero cpu.SUBR.|cpu.CMPR.|cpu.SUBI.|cpu.CMPI.|cpu.SUB.|cpu.CMP.|cpu.SUB@.|cpu.CMP@. cpu.ADDR.0001-plus-0001
 CMP_WRITES_DEST cpu.CMPR.no-write cpu.CMPR. cpu.SUBR.equal-operands-carry-zero
 ADCR_IGNORES_C cpu.ADCR.carry-in-one cpu.ADCR. cpu.ADDR.0001-plus-0001
 INCR_TOUCHES_C cpu.INCR.ffff-c-preserved cpu.INCR. cpu.ADDR.0001-plus-0001
@@ -24,3 +24,8 @@ SWAP_N1_AS_N0 cpu.SWAP.n1 cpu.SWAP. cpu.SWAP.n0
 PUSH_DIRECTION cpu.PSHR.write-then-increment cpu.PSHR.|cpu.MVO@. cpu.MVII.r1-load
 PULL_DIRECTION cpu.PULR.decrement-then-read cpu.PULR.|cpu.PSHR.then-PULR|cpu.ADD@.|cpu.SUB@.|cpu.CMP@.|cpu.AND@.|cpu.XOR@. cpu.PSHR.write-then-increment
 DIRECT_ADAR_ORDER cpu.MVI.adar-figure cpu.MVI.|cpu.MVO.|cpu.ADD.|cpu.SUB.|cpu.CMP.|cpu.AND.|cpu.XOR. cpu.MVII.r1-load
+AUTOINC_R4R5_MISSING cpu.MVI@.r4-autoinc cpu.MVI@.|cpu.MVO@.|cpu.ADD@.|cpu.SUB@.|cpu.CMP@.|cpu.AND@.|cpu.XOR@. cpu.MVI@.r2-no-increment
+AUTOINC_R1R3 cpu.MVI@.r2-no-increment cpu.MVI@.|cpu.MVO@.|cpu.ADD@.|cpu.SUB@.|cpu.CMP@.|cpu.AND@.|cpu.XOR@. cpu.MVI@.r4-autoinc
+MMM6_BONUS_MISSING cpu.ADD@.r6-mmm6-bonus cpu.ADD@.|cpu.SUB@.|cpu.CMP@.|cpu.AND@.|cpu.XOR@.|cpu.PULR. cpu.ADD@.r2-no-increment
+STK_RESULT_LOSES cpu.MVI@.ddd-equals-pointer-r4 cpu.MVI@.ddd-equals|cpu.PULR.ddd-r6|cpu.ADD@.r4-r4 cpu.MVI@.r4-autoinc
+MVO_SSS_EQ_MMM_ALLOWED cpu.MVO@.sss-eq-mmm-r4-unsupported cpu.MVO@.sss-eq|cpu.PSHR.r6-r6|cpu.MVOI.sss7 cpu.MVO@.r4-autoinc

@@ -1633,6 +1633,62 @@
       "covers": [
         "addr:immediate"
       ]
+    },
+    {
+      "id": "cpu.MVOI.sss7-unsupported",
+      "row": "MVOI",
+      "kind": "policy",
+      "policy": "POL-MVO-01",
+      "cite": "MVO@ note, indirect addressed data table, pdf 55; instruction fetch figure, pdf 28; immediate table, MVOI row, pdf 57",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "MVOI R7, $1001",
+      "program": [
+        "027F 1001 111 111",
+        "0000 0000 0000 0000 0000"
+      ],
+      "derivation": "POL-MVO-01 (policy, from the MVO@ note on pdf 55, 'SSS = MMM = 4, 5, 6 or 7 not supported'): the decle is refused with the sticky fault UNSUPPORTED_MVO_SSS_EQ_MMM. Only the fetch happens (FETCH at cycle 0 from $1000, pdf 28) and its 4 cycles are counted; R7 stays at the offender $1000, run_state becomes FAULTED, no word is written, and registers, flags and prev_interruptible keep their values. The decle 1001 111 111 is MVOI with SSS = MMM (output group 1001 MMM SSS, Fig 3.2.1, pdf 46). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "run_state": "FAULTED",
+        "fault_reason": "UNSUPPORTED_MVO_SSS_EQ_MMM",
+        "cycles": 4,
+        "units": [
+          "FAULT"
+        ],
+        "events": [
+          "FAULT"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "027F"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": []
     }
   ]
 }

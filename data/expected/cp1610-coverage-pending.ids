@@ -19,13 +19,6 @@ BGE
 BGT
 BESC
 BEXT
-MVO@
-MVI@
-ADD@
-SUB@
-CMP@
-AND@
-XOR@
 class:sdbd
 policy:POL-INT-01
 policy:POL-INT-02
@@ -38,8 +31,6 @@ policy:POL-WAIT-01
 policy:POL-SDBD-01
 policy:POL-SDBD-02
 policy:POL-SDBD-03
-policy:POL-STK-02
-policy:POL-MVO-01
 policy:POL-BR-01
 policy:POL-ILL-01
 policy:POL-HLT-01
