@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 2
 current_phase_name: CP-1610 CPU Core
 status: executing
-stopped_at: Completed 02-08-PLAN.md
-last_updated: "2026-11-10T07:27:05.836Z"
+stopped_at: Completed 02-09-PLAN.md
+last_updated: "2026-11-10T07:46:53.426Z"
 last_activity: 2026-11-10
 last_activity_desc: Phase 2 execution started
-state_head: 61cebbd4c1e32909c8adc2729eac71c4689a73e4
+state_head: 5e8d8955d314bcea61ccdbfc96e41b39b8c85cd7
 progress:
   total_phases: 8
   completed_phases: 1
   total_plans: 32
-  completed_plans: 22
+  completed_plans: 23
   percent: 13
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 2 (CP-1610 CPU Core) — EXECUTING
-Plan: 9 of 18
+Plan: 10 of 18
 Status: Ready to execute
 Last activity: 2026-11-10 — Phase 2 execution started
 
@@ -74,6 +74,7 @@ Progress: [█░░░░░░░░░] 13%
 | Phase 02 P06 | 8min | 2 tasks | 8 files |
 | Phase 02 P07 | 14min | 3 tasks | 50 files |
 | Phase 02 P08 | 19min | 3 tasks | 10 files |
+| Phase 02 P09 | 13min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -126,6 +127,9 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 02]: 02-08: The decode table holds all 74 rows, most specific first; rows without semantics carry OP_NONE and report UNIMPLEMENTED; decle $0BF decodes to TSTR (TSTR/JR/MOVR give the same result)
 - [Phase 02]: 02-08: A register read of R7 sees the PC incremented by the fetch (inference, pdf 28, POL-STK-01); every register-group write goes through ivs_wreg, where an R7 write overrides the PC
 - [Phase 02]: 02-08: The MOVR/TSTR/JR coincidence decle is $0BF, not $2FF as plan text says; the vector is cpu.MOVR.coincidence-0bf and plan 02-13 should rename its high-bits vector to match
+- [Phase 02]: Immediate reads/writes are figure-basis bus records at offset 4 (pdf 29 read, pdf 31 write) with EA = PC+1 (Fig 3.2.5, pdf 49)
+- [Phase 02]: S after right shifts and SWAP is bit 7 (C47); RLC/RRC N=1 use the C48 18-bit link strings with OV as input; N=0 forms keep OV
+- [Phase 02]: SARC N=1 takes the RRC link layout (bit 0 to C, bit 1 to OV): inference, the page names no positions
 
 ### Pending Todos
 
@@ -156,6 +160,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-10T07:27:05.780Z
-Stopped at: Completed 02-08-PLAN.md
+Last session: 2026-11-10T07:46:53.378Z
+Stopped at: Completed 02-09-PLAN.md
 Resume file: None
