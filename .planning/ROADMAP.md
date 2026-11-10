@@ -126,7 +126,7 @@ Plans:
   3. Interrupt and BUSRQ acceptance cases (previous-instruction interruptibility, I flag, D/SDBD, BUSRQ), SDBD modes (with a documented policy for unsupported modes), stack direction, auto-increment registers and reset entry each pass their vectors, and each has a named-fault control that fails for the intended reason.
   4. For any instruction, the stepper reports an ordered, cycle-stamped list of bus accesses that a test compares against the manual's bus sequence.
   5. A build/link or symbol check fails when the core library references host clocks, filesystem, environment, threads or I/O. A deliberate-violation control demonstrates this.
-**Plans**: 10/18 plans executed
+**Plans**: 11/18 plans executed
 
 Plans:
 - [x] 02-01-PLAN.md — Gate hardening (IN-04, IN-02, denylist status 2, SPDX/ASCII for C), build/gate NONCE contract, discrepancy entries C36-C58 (G8 = C58) and five profile fields
@@ -139,7 +139,7 @@ Plans:
 - [x] 02-08-PLAN.md — Complete 74-row decode table and the 14 register-register rows with vectors and faults
 - [x] 02-09-PLAN.md — Immediate rows and shift/SWAP rows with vectors and faults
 - [x] 02-10-PLAN.md — Direct and indirect memory rows: stack direction, auto-increment, ADAR, POL-STK-02, POL-MVO-01, MVI@ MMM=6 witnessed by PULR
-- [ ] 02-11-PLAN.md — B, the 14 conditional branches and NOPP in four directions (policy-carried 7/9 cycles)
+- [x] 02-11-PLAN.md — B, the 14 conditional branches and NOPP in four directions (policy-carried 7/9 cycles)
 - [ ] 02-12-PLAN.md — BEXT with two E codes via the provider, and the J/JSR family
 - [ ] 02-13-PLAN.md — SDBD supported modes and refusal (12 targets), POL-ILL-01 encodings, 1024-decle sweep against the Phase 1 table
 - [ ] 02-14-PLAN.md — Interrupt acceptance model and entry sequence (DW kind), IAB-supplied vector, 17 non-interruptible rows, SDBD deferral, reset interaction
@@ -270,7 +270,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Evidence, Profile and Rights Foundations | 14/14 | Complete    | 2026-11-09 |
-| 2. CP-1610 CPU Core | 10/18 | In Progress | - |
+| 2. CP-1610 CPU Core | 11/18 | In Progress | - |
 | 3. Memory Map, Content Loading and Refusal | 0/TBD | Not started | - |
 | 4. Headless Runner and Installed Consumer (Slice 0) | 0/TBD | Not started | - |
 | 5. Hand Controllers and PSG Sound | 0/TBD | Not started | - |
