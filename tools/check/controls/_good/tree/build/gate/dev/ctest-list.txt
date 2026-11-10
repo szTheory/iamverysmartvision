@@ -1,0 +1,4 @@
+Test project /src/build/dev
+  Test #1: toy
+
+Total Tests: 1

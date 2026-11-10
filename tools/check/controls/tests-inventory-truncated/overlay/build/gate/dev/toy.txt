@@ -1,0 +1,6 @@
+# suite=toy nonce=gate.good0
+# source data/cp1610/vectors/toy.json ce9927007c66c58c29febf49c15abf9b4d732aaa8bccc36d57f13bf918ff4018
+1..3
+ok 1 cpu.ZERO.alpha
+ok 2 cpu.ZERO.beta
+ok 3 cpu.ZERO.gamma # SKIP C1

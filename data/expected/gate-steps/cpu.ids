@@ -1,3 +1,4 @@
 # Gate steps for the CP-1610 core (phase 2).
 c-build
 c-tests
+tests-inventory

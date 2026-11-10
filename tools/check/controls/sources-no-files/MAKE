@@ -5,3 +5,4 @@ delete data/discrepancies.json
 delete data/profiles/intv-2609-ntsc-family-p1.json
 delete data/sources.json
 delete data/tiers.json
+delete data/cp1610/vectors/toy.json
