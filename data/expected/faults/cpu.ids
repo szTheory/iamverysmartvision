@@ -15,7 +15,7 @@ INCR_TOUCHES_C cpu.INCR.ffff-c-preserved cpu.INCR. cpu.ADDR.0001-plus-0001
 NEGR_CARRY cpu.NEGR.c-from-carry-out cpu.NEGR. cpu.ADDR.0001-plus-0001
 R7_CYCLE_BONUS_ALL cpu.ADDR.r7-src-no-bonus cpu.ADDR.|cpu.SUBR.|cpu.CMPR.|cpu.ANDR.|cpu.XORR.|cpu.CLRR.|cpu.INCR.|cpu.DECR.|cpu.COMR.|cpu.NEGR.|cpu.ADCR. cpu.MOVR.base
 MOVR_R7_PC cpu.JR.to-r7 cpu.JR.|cpu.MOVR.|cpu.ADDR.r7-dest|cpu.TSTR.sss7-bonus|cpu.MVII.r7-dest cpu.TSTR.base
-IMMEDIATE_PC_ADVANCE cpu.MVII.r1-load cpu.MVII.|cpu.ADDI.|cpu.SUBI.|cpu.CMPI.|cpu.ANDI.|cpu.XORI.|cpu.MVOI.|cpu.MVO.|cpu.MVI.|cpu.ADD.|cpu.SUB.|cpu.CMP.|cpu.AND.|cpu.XOR. cpu.ADDR.0001-plus-0001
+IMMEDIATE_PC_ADVANCE cpu.MVII.r1-load cpu.MVII.|cpu.ADDI.|cpu.SUBI.|cpu.CMPI.|cpu.ANDI.|cpu.XORI.|cpu.MVOI.|cpu.MVO.|cpu.MVI.|cpu.ADD.|cpu.SUB.|cpu.CMP.|cpu.AND.|cpu.XOR.|cpu.B. cpu.ADDR.0001-plus-0001
 MVOI_ADDRESS cpu.MVOI.store-next-word cpu.MVOI. cpu.MVII.r1-load
 SHIFT_N1_CYCLES cpu.SLL.n1 cpu.SWAP.|cpu.SLL.|cpu.RLC.|cpu.SLLC.|cpu.SLR.|cpu.SAR.|cpu.RRC.|cpu.SARC. cpu.MVII.r1-load
 RIGHT_SHIFT_S_BIT15 cpu.SLR.s-from-bit7 cpu.SLR.|cpu.SAR.|cpu.RRC.|cpu.SARC.|cpu.SWAP. cpu.SLL.n0
@@ -29,3 +29,5 @@ AUTOINC_R1R3 cpu.MVI@.r2-no-increment cpu.MVI@.|cpu.MVO@.|cpu.ADD@.|cpu.SUB@.|cp
 MMM6_BONUS_MISSING cpu.ADD@.r6-mmm6-bonus cpu.ADD@.|cpu.SUB@.|cpu.CMP@.|cpu.AND@.|cpu.XOR@.|cpu.PULR. cpu.ADD@.r2-no-increment
 STK_RESULT_LOSES cpu.MVI@.ddd-equals-pointer-r4 cpu.MVI@.ddd-equals|cpu.PULR.ddd-r6|cpu.ADD@.r4-r4 cpu.MVI@.r4-autoinc
 MVO_SSS_EQ_MMM_ALLOWED cpu.MVO@.sss-eq-mmm-r4-unsupported cpu.MVO@.sss-eq|cpu.PSHR.r6-r6|cpu.MVOI.sss7 cpu.MVO@.r4-autoinc
+BRANCH_BACKWARD_SIGN cpu.B.backward-minus-1 cpu.B.|cpu.BC.|cpu.BOV.|cpu.BPL.|cpu.BZE.|cpu.BLT.|cpu.BLE.|cpu.BUSC.|cpu.BNC.|cpu.BNOV.|cpu.BMI.|cpu.BNZE.|cpu.BGE.|cpu.BGT.|cpu.BESC.|cpu.BEXT.|cpu.NOPP. cpu.MVII.r1-load
+BRANCH_TAKEN_CYCLES cpu.B.cycles-taken cpu.B.|cpu.BC.|cpu.BOV.|cpu.BPL.|cpu.BZE.|cpu.BLT.|cpu.BLE.|cpu.BUSC.|cpu.BNC.|cpu.BNOV.|cpu.BMI.|cpu.BNZE.|cpu.BGE.|cpu.BGT.|cpu.BESC.|cpu.BEXT.|cpu.NOPP. cpu.MVII.r1-load

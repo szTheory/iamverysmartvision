@@ -386,6 +386,49 @@ static void ivs_ind_write(ivs_cp1610 *n, ivs_unit *u, uint32_t mmm, uint32_t sss
   (void)ivs_access(u, IVS_DATA_BAR_OFFSET, IVS_ACC_WRITE, 0u, ivs_ind_addr(n, mmm, 1), v);
 }
 
+/* POL-BR-01 (C29, default-chosen): the branch table prints 7/9 unlabelled (pdf 54); the row's
+ * base is the 7 and a taken branch adds 2 for the 9. NOPP prints a single 7 and is never taken. */
+#define IVS_BRANCH_TAKEN_EXTRA 2u
+
+/* Branch condition of the condition field cccc (bits 3..0; branch table, pdf 54). B (0000) is
+ * always true. */
+static uint32_t ivs_branch_cond(const ivs_cp1610 *n, uint32_t cccc)
+{
+  (void)n;
+  switch (cccc & 7u) {
+  case 0u:
+    return 1u;
+  default:
+    __builtin_trap();
+  }
+}
+
+/* Internal-condition branch 1000 S0 cccc plus a displacement word (S3.2.2, pdf 47; branch
+ * table, pdf 54). The displacement word at PC+1 is read like an immediate operand: the BAR at
+ * offset 4 puts out PC+1 "to fetch displacement" (pdf 32), and R7 is left at PC+2. Not taken,
+ * R7 stays PC+2. Taken, bit 5 (the direction bit, "S is 0 for +, 1 for -") = 0 adds the
+ * displacement to PC+2 and 1 adds its one's complement (C50: all 16 bits), wrapping at 16 bits.
+ * No status bit changes. Returns the cycles added to the base 7 (POL-BR-01). */
+static uint32_t ivs_branch(ivs_cp1610 *n, ivs_unit *u, uint16_t word)
+{
+  uint32_t disp = ivs_imm_read(n, u);
+  uint32_t extra = IVS_BRANCH_TAKEN_EXTRA;
+  if ((((uint32_t)word >> 5) & 1u) != 0u) {
+    disp = ~disp & 0xFFFFu;
+#ifdef IVS_FAULT_BRANCH_BACKWARD_SIGN
+    disp = (disp + 1u) & 0xFFFFu;
+#endif
+  }
+  if (ivs_branch_cond(n, (uint32_t)word & 0xFu) == 0u) {
+    return 0u;
+  }
+  n->r[7] = IVS_U16((uint32_t)n->r[7] + disp);
+#ifdef IVS_FAULT_BRANCH_TAKEN_CYCLES
+  extra = 0u;
+#endif
+  return extra;
+}
+
 /* Register shifts and SWAP (Fig 3.3.2, pdf 50; shift table, pdf 53): 0001 BLA N RR on R0-R3,
  * N = 0 one bit or one byte, N = 1 two bits or two bytes (the page header adds 2 cycles). S is
  * bit 15 of the result after left shifts and bit 7 after right shifts and SWAP (C47); Z is set
@@ -692,6 +735,9 @@ static uint32_t ivs_exec(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r, const
      * prints the direct write. The register is read after the address word, as for MVOI. */
     v = ivs_dir_addr(n, u);
     (void)ivs_access(u, IVS_DIRECT_ADAR_OFFSET, IVS_ACC_WRITE, 0u, IVS_U16(v), n->r[ddd]);
+    break;
+  case IVS_CP1610_OP_BRANCH:
+    extra = ivs_branch(n, u, word);
     break;
   case IVS_CP1610_OP_MVI:
   case IVS_CP1610_OP_ADD:

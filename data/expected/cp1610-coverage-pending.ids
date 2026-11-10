@@ -2,7 +2,6 @@
 # A listed row or policy may hold no vector (vector-pending-covered); a row or policy that is not
 # listed meets its full derived coverage. Later plans remove lines as they land vectors.
 J
-B
 BC
 BOV
 BPL
@@ -31,7 +30,6 @@ policy:POL-WAIT-01
 policy:POL-SDBD-01
 policy:POL-SDBD-02
 policy:POL-SDBD-03
-policy:POL-BR-01
 policy:POL-ILL-01
 policy:POL-HLT-01
 policy:POL-HLT-02

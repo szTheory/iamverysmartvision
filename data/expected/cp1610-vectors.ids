@@ -36,6 +36,11 @@ cpu.ANDR.mask-low
 cpu.ANDR.same-register
 cpu.ANDR.sign
 cpu.ANDR.zero-result
+cpu.B.backward-minus-1
+cpu.B.backward-wrap
+cpu.B.cycles-taken
+cpu.B.forward-plus-10
+cpu.B.forward-zero
 cpu.CLRC.c-already-clear-flags-preserved
 cpu.CLRC.clears-c
 cpu.CLRR.r0-already-zero

@@ -71,7 +71,7 @@ static const ivs_cp1610_row ivs_cp1610_rows[] = {
     IVS_ROW("XORR", 0x3C0u, 0x1C0u, 0u, 1u, 6u, 1u, IVS_CP1610_OP_XORR),
     /* Branches (pdf 54): 1000 S0 cccc plus a displacement word, 7/9 cycles (base 7); S is the
      * displacement sign and is not part of the row. NOPP prints 7. BEXT is 1000 S1 EEEE. */
-    IVS_ROW("B", 0x3DFu, 0x200u, 0u, 2u, 7u, 1u, IVS_CP1610_OP_NONE),
+    IVS_ROW("B", 0x3DFu, 0x200u, 0u, 2u, 7u, 1u, IVS_CP1610_OP_BRANCH),
     IVS_ROW("BC", 0x3DFu, 0x201u, 0u, 2u, 7u, 1u, IVS_CP1610_OP_NONE),
     IVS_ROW("BOV", 0x3DFu, 0x202u, 0u, 2u, 7u, 1u, IVS_CP1610_OP_NONE),
     IVS_ROW("BPL", 0x3DFu, 0x203u, 0u, 2u, 7u, 1u, IVS_CP1610_OP_NONE),

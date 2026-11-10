@@ -5,3 +5,4 @@ immediate
 shift
 indirect
 direct
+branch
