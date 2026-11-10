@@ -16,3 +16,11 @@ vectors-suite-drift
 vectors-unknown-key
 vectors-unknown-row
 vectors-unknown-source
+vectors-tag-false
+vectors-row-uncovered
+vectors-flag-uncovered
+vectors-cycles-uncovered
+vectors-cycles-basis
+vectors-policy-uncovered
+vectors-policy-no-fault
+vectors-pending-covered

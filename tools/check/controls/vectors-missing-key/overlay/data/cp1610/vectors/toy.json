@@ -27,7 +27,13 @@
           "0000",
           "0000",
           "1000"
-        ]
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        }
       },
       "expect": {
         "r": {
@@ -45,7 +51,11 @@
       ],
       "bus_basis": "inference",
       "covers": [
-        "toy"
+        "toy",
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C"
       ]
     },
     {

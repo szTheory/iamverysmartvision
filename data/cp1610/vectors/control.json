@@ -70,6 +70,7 @@
       ],
       "bus_basis": "figure",
       "covers": [
+        "policy:POL-RST-01",
         "unit:reset-entry",
         "iab:0000",
         "reset:zero-fill"
@@ -141,6 +142,7 @@
       ],
       "bus_basis": "figure",
       "covers": [
+        "policy:POL-RST-01",
         "unit:reset-entry",
         "iab:ffff",
         "reset:zero-fill"
@@ -181,6 +183,7 @@
       "bus": [],
       "bus_basis": "inference",
       "covers": [
+        "policy:POL-RST-01",
         "unit:not-reset"
       ]
     },
@@ -240,9 +243,6 @@
       "bus_basis": "figure",
       "covers": [
         "flag-clear:C",
-        "flag-preserved:S",
-        "flag-preserved:Z",
-        "flag-preserved:OV",
         "fetch:bus"
       ]
     },
@@ -301,7 +301,6 @@
       ],
       "bus_basis": "figure",
       "covers": [
-        "flag-clear:C",
         "flag-preserved:S",
         "flag-preserved:Z",
         "flag-preserved:OV"
@@ -363,9 +362,6 @@
       "bus_basis": "figure",
       "covers": [
         "flag-set:C",
-        "flag-preserved:S",
-        "flag-preserved:Z",
-        "flag-preserved:OV",
         "fetch:bus"
       ]
     },
@@ -424,7 +420,6 @@
       ],
       "bus_basis": "figure",
       "covers": [
-        "flag-set:C",
         "flag-preserved:S",
         "flag-preserved:Z",
         "flag-preserved:OV"

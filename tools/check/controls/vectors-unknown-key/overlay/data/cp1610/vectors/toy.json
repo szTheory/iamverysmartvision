@@ -28,7 +28,13 @@
           "0000",
           "0000",
           "1000"
-        ]
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        }
       },
       "expect": {
         "r": {
@@ -46,9 +52,12 @@
       ],
       "bus_basis": "inference",
       "covers": [
-        "toy"
-      ],
-      "hint": "x"
+        "toy",
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C"
+      ]
     },
     {
       "id": "cpu.ZERO.beta",
@@ -84,7 +93,8 @@
       },
       "covers": [
         "toy"
-      ]
+      ],
+      "hint": "x"
     },
     {
       "id": "cpu.ZERO.gamma",

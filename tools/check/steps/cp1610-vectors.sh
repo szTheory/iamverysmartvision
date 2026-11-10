@@ -1,9 +1,10 @@
 #!/bin/sh
 # SPDX-License-Identifier: MIT
 # Step cp1610-vectors: structural check of the CP-1610 vector data, its inventories and its
-# expected skips (tools/check/vectors.cmake; D-14, A-07). Plan 02-05 adds coverage derivation,
-# plan 02-16 the review record and the second-read stat.
-# Tokens: vector-* (listed in vectors.cmake). Stats: vectors=<n> source=<n> policy=<n>.
+# expected skips, plus the coverage derived from the opcode table (tools/check/vectors.cmake;
+# D-14, D-16, A-05, A-07, A-13). Plan 02-16 adds the review record and the second-read stat.
+# Tokens: vector-* (listed in vectors.cmake). Stats: vectors=<n> source=<n> policy=<n>
+# rows-pending=<n> policies-pending=<n> bus-figure-pages=<n>.
 LC_ALL=C; export LC_ALL
 : "${ROOT:?ROOT is not set}"
 : "${CHECK_DIR:?CHECK_DIR is not set}"

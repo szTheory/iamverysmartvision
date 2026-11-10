@@ -1,0 +1,4 @@
+# Flag cases that cannot occur (D-16, plan 02-05): '<ROW>/flag-set:<F>' or '<ROW>/flag-clear:<F>'.
+# Only impossible cases belong here: CLRC can never set C and SETC can never clear it (pdf 56).
+CLRC/flag-set:C
+SETC/flag-clear:C
