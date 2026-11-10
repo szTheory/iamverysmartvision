@@ -8,7 +8,7 @@ GSWD_LAYOUT cpu.GSWD.r0-all-flags cpu.GSWD. cpu.CLRC.clears-c
 TCI_STROBE_STAMP cpu.TCI.strobe-figure cpu.TCI. cpu.SIN.n0
 HLT_NO_LATCH cpu.HLT.sets-halt-pending cpu.HLT. cpu.NOP.n0
 ADD_OVERFLOW cpu.ADDR.7fff-plus-1-overflow cpu.ADDR.|cpu.ADDI.|cpu.ADD.|cpu.ADD@. cpu.SETC.sets-c
-SUB_CARRY cpu.SUBR.equal-operands-carry-zero cpu.SUBR.|cpu.CMPR. cpu.ADDR.0001-plus-0001
+SUB_CARRY cpu.SUBR.equal-operands-carry-zero cpu.SUBR.|cpu.CMPR.|cpu.SUBI.|cpu.CMPI. cpu.ADDR.0001-plus-0001
 CMP_WRITES_DEST cpu.CMPR.no-write cpu.CMPR. cpu.SUBR.equal-operands-carry-zero
 ADCR_IGNORES_C cpu.ADCR.carry-in-one cpu.ADCR. cpu.ADDR.0001-plus-0001
 INCR_TOUCHES_C cpu.INCR.ffff-c-preserved cpu.INCR. cpu.ADDR.0001-plus-0001
@@ -16,3 +16,4 @@ NEGR_CARRY cpu.NEGR.c-from-carry-out cpu.NEGR. cpu.ADDR.0001-plus-0001
 R7_CYCLE_BONUS_ALL cpu.ADDR.r7-src-no-bonus cpu.ADDR.|cpu.SUBR.|cpu.CMPR.|cpu.ANDR.|cpu.XORR.|cpu.CLRR.|cpu.INCR.|cpu.DECR.|cpu.COMR.|cpu.NEGR.|cpu.ADCR. cpu.MOVR.base
 MOVR_R7_PC cpu.JR.to-r7 cpu.JR.|cpu.MOVR.|cpu.ADDR.r7-dest|cpu.TSTR.sss7-bonus|cpu.MVII.r7-dest cpu.TSTR.base
 IMMEDIATE_PC_ADVANCE cpu.MVII.r1-load cpu.MVII.|cpu.ADDI.|cpu.SUBI.|cpu.CMPI.|cpu.ANDI.|cpu.XORI.|cpu.MVOI. cpu.ADDR.0001-plus-0001
+MVOI_ADDRESS cpu.MVOI.store-next-word cpu.MVOI. cpu.MVII.r1-load

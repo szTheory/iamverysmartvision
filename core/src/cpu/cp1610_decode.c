@@ -92,7 +92,7 @@ static const ivs_cp1610_row ivs_cp1610_rows[] = {
      * 9, pdf 55), MVOI (MMM 111, two words, 9, pdf 57), MVO@ (otherwise, 9, pdf 55). */
     IVS_ROW("MVO", 0x3F8u, 0x240u, 0u, 2u, 11u, 0u, IVS_CP1610_OP_NONE),
     IVS_ROW("PSHR", 0x3F8u, 0x270u, 0u, 1u, 9u, 0u, IVS_CP1610_OP_NONE),
-    IVS_ROW("MVOI", 0x3F8u, 0x278u, 0u, 2u, 9u, 0u, IVS_CP1610_OP_NONE),
+    IVS_ROW("MVOI", 0x3F8u, 0x278u, 0u, 2u, 9u, 0u, IVS_CP1610_OP_MVOI),
     IVS_ROW("MVO@", 0x3C0u, 0x240u, 0u, 1u, 9u, 0u, IVS_CP1610_OP_NONE),
     /* Input group 1010 MMM DDD: MVI direct (two words, 10), PULR (MMM 110, 11), MVII (MMM 111,
      * two words, 8, pdf 57), MVI@ (otherwise, 8, +3 if MMM = 6), pdf 55. */
@@ -104,19 +104,19 @@ static const ivs_cp1610_row ivs_cp1610_rows[] = {
      * XOR 1111: direct (MMM 000, two words, 10, pdf 55), immediate (MMM 111, two words, 8,
      * pdf 57), indirect (otherwise, 8, +3 if MMM = 6, pdf 55). */
     IVS_ROW("ADD", 0x3F8u, 0x2C0u, 0u, 2u, 10u, 1u, IVS_CP1610_OP_NONE),
-    IVS_ROW("ADDI", 0x3F8u, 0x2F8u, 0u, 2u, 8u, 1u, IVS_CP1610_OP_NONE),
+    IVS_ROW("ADDI", 0x3F8u, 0x2F8u, 0u, 2u, 8u, 1u, IVS_CP1610_OP_ADDI),
     IVS_ROW("ADD@", 0x3C0u, 0x2C0u, 0u, 1u, 8u, 1u, IVS_CP1610_OP_NONE),
     IVS_ROW("SUB", 0x3F8u, 0x300u, 0u, 2u, 10u, 1u, IVS_CP1610_OP_NONE),
-    IVS_ROW("SUBI", 0x3F8u, 0x338u, 0u, 2u, 8u, 1u, IVS_CP1610_OP_NONE),
+    IVS_ROW("SUBI", 0x3F8u, 0x338u, 0u, 2u, 8u, 1u, IVS_CP1610_OP_SUBI),
     IVS_ROW("SUB@", 0x3C0u, 0x300u, 0u, 1u, 8u, 1u, IVS_CP1610_OP_NONE),
     IVS_ROW("CMP", 0x3F8u, 0x340u, 0u, 2u, 10u, 1u, IVS_CP1610_OP_NONE),
-    IVS_ROW("CMPI", 0x3F8u, 0x378u, 0u, 2u, 8u, 1u, IVS_CP1610_OP_NONE),
+    IVS_ROW("CMPI", 0x3F8u, 0x378u, 0u, 2u, 8u, 1u, IVS_CP1610_OP_CMPI),
     IVS_ROW("CMP@", 0x3C0u, 0x340u, 0u, 1u, 8u, 1u, IVS_CP1610_OP_NONE),
     IVS_ROW("AND", 0x3F8u, 0x380u, 0u, 2u, 10u, 1u, IVS_CP1610_OP_NONE),
-    IVS_ROW("ANDI", 0x3F8u, 0x3B8u, 0u, 2u, 8u, 1u, IVS_CP1610_OP_NONE),
+    IVS_ROW("ANDI", 0x3F8u, 0x3B8u, 0u, 2u, 8u, 1u, IVS_CP1610_OP_ANDI),
     IVS_ROW("AND@", 0x3C0u, 0x380u, 0u, 1u, 8u, 1u, IVS_CP1610_OP_NONE),
     IVS_ROW("XOR", 0x3F8u, 0x3C0u, 0u, 2u, 10u, 1u, IVS_CP1610_OP_NONE),
-    IVS_ROW("XORI", 0x3F8u, 0x3F8u, 0u, 2u, 8u, 1u, IVS_CP1610_OP_NONE),
+    IVS_ROW("XORI", 0x3F8u, 0x3F8u, 0u, 2u, 8u, 1u, IVS_CP1610_OP_XORI),
     IVS_ROW("XOR@", 0x3C0u, 0x3C0u, 0u, 1u, 8u, 1u, IVS_CP1610_OP_NONE),
 };
 

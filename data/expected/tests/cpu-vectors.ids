@@ -4,6 +4,9 @@ cpu.ADCR.7fff-overflow
 cpu.ADCR.carry-in-one
 cpu.ADCR.carry-in-zero
 cpu.ADCR.ffff-carry-zero
+cpu.ADDI.7fff-plus-1-overflow
+cpu.ADDI.8000-plus-8000
+cpu.ADDI.ffff-plus-1-carry-zero
 cpu.ADDR.0001-plus-0001
 cpu.ADDR.7fff-plus-1-overflow
 cpu.ADDR.7fff-plus-8000
@@ -12,6 +15,9 @@ cpu.ADDR.ffff-plus-1-carry-zero
 cpu.ADDR.r7-dest
 cpu.ADDR.r7-src-no-bonus
 cpu.ADDR.same-register-doubles
+cpu.ANDI.ffff-identity
+cpu.ANDI.mask-sign
+cpu.ANDI.zero
 cpu.ANDR.mask-low
 cpu.ANDR.same-register
 cpu.ANDR.sign
@@ -21,6 +27,9 @@ cpu.CLRC.clears-c
 cpu.CLRR.r0-already-zero
 cpu.CLRR.r1
 cpu.CLRR.r6-no-bonus
+cpu.CMPI.equal-zero
+cpu.CMPI.no-write
+cpu.CMPI.overflow-borrow
 cpu.CMPR.0000-vs-8000-overflow
 cpu.CMPR.8000-vs-0001-overflow
 cpu.CMPR.equal-sets-z
@@ -60,6 +69,9 @@ cpu.MVII.flags-preserved
 cpu.MVII.r1-load
 cpu.MVII.r2-8000
 cpu.MVII.r7-dest
+cpu.MVOI.flags-preserved
+cpu.MVOI.r3-ffff
+cpu.MVOI.store-next-word
 cpu.NEGR.8000
 cpu.NEGR.c-from-carry-out
 cpu.NEGR.ffff-to-0001
@@ -75,6 +87,9 @@ cpu.SETC.flags-preserved
 cpu.SETC.sets-c
 cpu.SIN.n0
 cpu.SIN.n1
+cpu.SUBI.0000-minus-1-borrow
+cpu.SUBI.8000-minus-1-overflow
+cpu.SUBI.equal-carry-zero
 cpu.SUBR.0000-minus-0001-borrow
 cpu.SUBR.7fff-minus-ffff-overflow
 cpu.SUBR.8000-minus-0001-overflow
@@ -90,6 +105,9 @@ cpu.TSTR.sss7-bonus
 cpu.UNIT-NOTRESET.zeroed-state
 cpu.UNIT-RESET.provider-0000
 cpu.UNIT-RESET.provider-ffff
+cpu.XORI.equal-zero
+cpu.XORI.ffff-complement
+cpu.XORI.toggle-sign
 cpu.XORR.equal-values-zero
 cpu.XORR.r6-dst-no-bonus
 cpu.XORR.toggle

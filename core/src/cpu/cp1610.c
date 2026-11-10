@@ -274,6 +274,8 @@ static uint16_t ivs_imm_read(ivs_cp1610 *n, ivs_unit *u)
  * ADDR, SUBR, CMPR (DDD - SSS, not stored; C46), ANDR, XORR, CLRR, INCR, DECR, COMR, NEGR
  * (0 - DDD by two's complement addition; C49), ADCR (DDD + C; C49), MOVR, TSTR and JR. A
  * register read of R7 sees the PC already incremented by the fetch (inference, POL-STK-01).
+ * Immediate group (pdf 57): MVII, ADDI, SUBI, CMPI, ANDI and XORI read the word at PC+1 and
+ * reuse the register-group flag rules; MVOI writes register SSS there (no flags).
  * Only the status change column's flags move. Strobe records carry no address or data. The
  * return value is the cycles added to the row's base count (the MOVR/TSTR R6/R7 bonus). */
 static uint32_t ivs_exec(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r, const ivs_cp1610_row *row,
@@ -405,6 +407,38 @@ static uint32_t ivs_exec(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r, const
   case IVS_CP1610_OP_MVII:
     /* MVII (pdf 57): DDD = the word at PC+1; no status change. */
     ivs_wreg(n, ddd, ivs_imm_read(n, u));
+    break;
+  case IVS_CP1610_OP_ADDI:
+    v = ivs_imm_read(n, u);
+    ivs_wreg(n, ddd, ivs_op_add(n, n->r[ddd], v));
+    break;
+  case IVS_CP1610_OP_SUBI:
+    v = ivs_imm_read(n, u);
+    ivs_wreg(n, ddd, ivs_op_sub(n, n->r[ddd], v));
+    break;
+  case IVS_CP1610_OP_CMPI:
+    /* CMPI (pdf 57): 'from contents of register SSS' (bits 2..0), not stored (C46). */
+    v = ivs_imm_read(n, u);
+    (void)ivs_op_sub(n, n->r[ddd], v);
+    break;
+  case IVS_CP1610_OP_ANDI:
+    v = (uint32_t)ivs_imm_read(n, u) & (uint32_t)n->r[ddd];
+    ivs_wreg(n, ddd, v);
+    ivs_set_sz(n, v);
+    break;
+  case IVS_CP1610_OP_XORI:
+    v = (uint32_t)ivs_imm_read(n, u) ^ (uint32_t)n->r[ddd];
+    ivs_wreg(n, ddd, v);
+    ivs_set_sz(n, v);
+    break;
+  case IVS_CP1610_OP_MVOI:
+    /* MVOI (pdf 57): register SSS (bits 2..0) is written to PC+1; no status change. The
+     * address is taken (and PC advanced) before the register is read. */
+    v = ivs_imm_addr(n);
+#ifdef IVS_FAULT_MVOI_ADDRESS
+    v = (v + 0xFFFFu) & 0xFFFFu;
+#endif
+    (void)ivs_access(u, IVS_DATA_BAR_OFFSET, IVS_ACC_WRITE, 0u, IVS_U16(v), n->r[ddd]);
     break;
   default:
     __builtin_trap();

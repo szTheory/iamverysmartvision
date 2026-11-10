@@ -328,6 +328,1311 @@
       "covers": [
         "addr:immediate"
       ]
+    },
+    {
+      "id": "cpu.ADDI.7fff-plus-1-overflow",
+      "row": "ADDI",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Immediate table, ADDI row, pdf 57; status bits S3.1.2, pdf 45; Fig 3.2.5, pdf 49; data access timing figure, pdf 29",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ADDI #$0001, R1",
+      "program": [
+        "02F9 1011 111 001",
+        "0001 0000 0000 0000 0001"
+      ],
+      "derivation": "The immediate table (pdf 57) prints ADDI I, DDD as 1011 111 DDD followed by the word iiiiii IIII III III, 8 cycles, 'ADD Immediate data to contents of register DDD. Results to DDD', status change S, Z, C, OV. S3.1.2 (pdf 45): C is set when the add produces a carry out of the high bit, OV when it produces two's complement overflow, Z when the result is all zero, S when the high-order bit is one; subtraction adds the two's complement of the subtrahend, so C = 1 means no borrow. DDD = 001 (R1): $7FFF + $0001 = $8000. The sum is below $10000, so no carry out of bit 15: C = 0. Both addends are positive and the sum has bit 15 = 1, so OV = 1. S = 1, Z = 0. Init S = 0, Z = 1, OV = 0, C = 1. Fig 3.2.5 (pdf 49): EA <- PC+1, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the operand word keeps all 16 bits on the flat test bus. Bus (pdf 29, instruction fetch and data access, indirect register mode; immediate mode is that access with the effective address PC+1 per Fig 3.2.5, pdf 49): FETCH at cycle 0 from R7 = $1000, then the BAR that puts out the effective address at cycle 4, a READ of $1001 (data in at cycle 6); the unit is the printed 8 cycles. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "7FFF",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "1": "8000",
+          "7": "1002"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "02F9"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "0001"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-set:OV",
+        "flag-clear:C",
+        "addr:immediate"
+      ]
+    },
+    {
+      "id": "cpu.ADDI.ffff-plus-1-carry-zero",
+      "row": "ADDI",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Immediate table, ADDI row, pdf 57; status bits S3.1.2, pdf 45; Fig 3.2.5, pdf 49; data access timing figure, pdf 29",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ADDI #$0001, R2",
+      "program": [
+        "02FA 1011 111 010",
+        "0001 0000 0000 0000 0001"
+      ],
+      "derivation": "The immediate table (pdf 57) prints ADDI I, DDD as 1011 111 DDD followed by the word iiiiii IIII III III, 8 cycles, 'ADD Immediate data to contents of register DDD. Results to DDD', status change S, Z, C, OV. S3.1.2 (pdf 45): C is set when the add produces a carry out of the high bit, OV when it produces two's complement overflow, Z when the result is all zero, S when the high-order bit is one; subtraction adds the two's complement of the subtrahend, so C = 1 means no borrow. DDD = 010 (R2): $FFFF + $0001 = $10000, so the 16-bit result is $0000 with a carry out of bit 15: C = 1. The addends have different signs, so OV = 0. Z = 1, S = 0. Init S = 1, Z = 0, OV = 1, C = 0. Fig 3.2.5 (pdf 49): EA <- PC+1, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the operand word keeps all 16 bits on the flat test bus. Bus (pdf 29, instruction fetch and data access, indirect register mode; immediate mode is that access with the effective address PC+1 per Fig 3.2.5, pdf 49): FETCH at cycle 0 from R7 = $1000, then the BAR that puts out the effective address at cycle 4, a READ of $1001 (data in at cycle 6); the unit is the printed 8 cycles. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "FFFF",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "2": "0000",
+          "7": "1002"
+        },
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "02FA"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "0001"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:S",
+        "flag-set:Z",
+        "flag-clear:OV",
+        "flag-set:C",
+        "addr:immediate"
+      ]
+    },
+    {
+      "id": "cpu.ADDI.8000-plus-8000",
+      "row": "ADDI",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Immediate table, ADDI row, pdf 57; status bits S3.1.2, pdf 45; Fig 3.2.5, pdf 49; data access timing figure, pdf 29",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ADDI #$8000, R0",
+      "program": [
+        "02F8 1011 111 000",
+        "8000 1000 0000 0000 0000"
+      ],
+      "derivation": "The immediate table (pdf 57) prints ADDI I, DDD as 1011 111 DDD followed by the word iiiiii IIII III III, 8 cycles, 'ADD Immediate data to contents of register DDD. Results to DDD', status change S, Z, C, OV. S3.1.2 (pdf 45): C is set when the add produces a carry out of the high bit, OV when it produces two's complement overflow, Z when the result is all zero, S when the high-order bit is one; subtraction adds the two's complement of the subtrahend, so C = 1 means no borrow. DDD = 000 (R0): $8000 + $8000 = $10000: result $0000 with a carry out, C = 1. Both addends are negative and the result has bit 15 = 0, so OV = 1. Z = 1, S = 0. Init all four flags 0. Fig 3.2.5 (pdf 49): EA <- PC+1, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the operand word keeps all 16 bits on the flat test bus. Bus (pdf 29, instruction fetch and data access, indirect register mode; immediate mode is that access with the effective address PC+1 per Fig 3.2.5, pdf 49): FETCH at cycle 0 from R7 = $1000, then the BAR that puts out the effective address at cycle 4, a READ of $1001 (data in at cycle 6); the unit is the printed 8 cycles. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "8000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "0": "0000",
+          "7": "1002"
+        },
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "02F8"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "8000"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:Z",
+        "flag-set:OV",
+        "flag-set:C",
+        "addr:immediate"
+      ]
+    },
+    {
+      "id": "cpu.SUBI.equal-carry-zero",
+      "row": "SUBI",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Immediate table, SUBI row, pdf 57; status bits S3.1.2, pdf 45; Fig 3.2.5, pdf 49; data access timing figure, pdf 29",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SUBI #$1234, R1",
+      "program": [
+        "0339 1100 111 001",
+        "1234 0001 0010 0011 0100"
+      ],
+      "derivation": "The immediate table (pdf 57) prints SUBI I, DDD as 1100 111 DDD followed by the word iiiiii IIII III III, 8 cycles, 'SUBtract Immediate data from contents of register DDD. Results to DDD', status change S, Z, C, OV. S3.1.2 (pdf 45): C is set when the add produces a carry out of the high bit, OV when it produces two's complement overflow, Z when the result is all zero, S when the high-order bit is one; subtraction adds the two's complement of the subtrahend, so C = 1 means no borrow. DDD = 001 (R1): $1234 - $1234 = $1234 + $EDCB + 1 = $10000: result $0000 with a carry out, C = 1 (no borrow). $1234 is positive and $EDCB negative, so OV = 0. Z = 1, S = 0. Init S = 1, Z = 0, OV = 1, C = 0. Fig 3.2.5 (pdf 49): EA <- PC+1, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the operand word keeps all 16 bits on the flat test bus. Bus (pdf 29, instruction fetch and data access, indirect register mode; immediate mode is that access with the effective address PC+1 per Fig 3.2.5, pdf 49): FETCH at cycle 0 from R7 = $1000, then the BAR that puts out the effective address at cycle 4, a READ of $1001 (data in at cycle 6); the unit is the printed 8 cycles. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "1234",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "1": "0000",
+          "7": "1002"
+        },
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0339"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "1234"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:S",
+        "flag-set:Z",
+        "flag-clear:OV",
+        "flag-set:C",
+        "addr:immediate"
+      ]
+    },
+    {
+      "id": "cpu.SUBI.8000-minus-1-overflow",
+      "row": "SUBI",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Immediate table, SUBI row, pdf 57; status bits S3.1.2, pdf 45; Fig 3.2.5, pdf 49; data access timing figure, pdf 29",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SUBI #$0001, R2",
+      "program": [
+        "033A 1100 111 010",
+        "0001 0000 0000 0000 0001"
+      ],
+      "derivation": "The immediate table (pdf 57) prints SUBI I, DDD as 1100 111 DDD followed by the word iiiiii IIII III III, 8 cycles, 'SUBtract Immediate data from contents of register DDD. Results to DDD', status change S, Z, C, OV. S3.1.2 (pdf 45): C is set when the add produces a carry out of the high bit, OV when it produces two's complement overflow, Z when the result is all zero, S when the high-order bit is one; subtraction adds the two's complement of the subtrahend, so C = 1 means no borrow. DDD = 010 (R2): $8000 - $0001 = $8000 + $FFFE + 1 = $17FFF: result $7FFF with a carry out, C = 1. Both addends ($8000, $FFFE) are negative and the result has bit 15 = 0, so OV = 1. S = 0, Z = 0. Init S = 1, Z = 1, OV = 0, C = 0. Fig 3.2.5 (pdf 49): EA <- PC+1, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the operand word keeps all 16 bits on the flat test bus. Bus (pdf 29, instruction fetch and data access, indirect register mode; immediate mode is that access with the effective address PC+1 per Fig 3.2.5, pdf 49): FETCH at cycle 0 from R7 = $1000, then the BAR that puts out the effective address at cycle 4, a READ of $1001 (data in at cycle 6); the unit is the printed 8 cycles. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "8000",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "2": "7FFF",
+          "7": "1002"
+        },
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "033A"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "0001"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:S",
+        "flag-clear:Z",
+        "flag-set:OV",
+        "flag-set:C",
+        "addr:immediate"
+      ]
+    },
+    {
+      "id": "cpu.SUBI.0000-minus-1-borrow",
+      "row": "SUBI",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Immediate table, SUBI row, pdf 57; status bits S3.1.2, pdf 45; Fig 3.2.5, pdf 49; data access timing figure, pdf 29",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SUBI #$0001, R3",
+      "program": [
+        "033B 1100 111 011",
+        "0001 0000 0000 0000 0001"
+      ],
+      "derivation": "The immediate table (pdf 57) prints SUBI I, DDD as 1100 111 DDD followed by the word iiiiii IIII III III, 8 cycles, 'SUBtract Immediate data from contents of register DDD. Results to DDD', status change S, Z, C, OV. S3.1.2 (pdf 45): C is set when the add produces a carry out of the high bit, OV when it produces two's complement overflow, Z when the result is all zero, S when the high-order bit is one; subtraction adds the two's complement of the subtrahend, so C = 1 means no borrow. DDD = 011 (R3): $0000 - $0001 = $0000 + $FFFE + 1 = $FFFF with no carry out, C = 0 (borrow). $0000 is positive and $FFFE negative, so OV = 0. S = 1, Z = 0. Init S = 0, Z = 1, OV = 1, C = 1. Fig 3.2.5 (pdf 49): EA <- PC+1, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the operand word keeps all 16 bits on the flat test bus. Bus (pdf 29, instruction fetch and data access, indirect register mode; immediate mode is that access with the effective address PC+1 per Fig 3.2.5, pdf 49): FETCH at cycle 0 from R7 = $1000, then the BAR that puts out the effective address at cycle 4, a READ of $1001 (data in at cycle 6); the unit is the printed 8 cycles. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0000",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "3": "FFFF",
+          "7": "1002"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "033B"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "0001"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-clear:OV",
+        "flag-clear:C",
+        "addr:immediate"
+      ]
+    },
+    {
+      "id": "cpu.CMPI.no-write",
+      "row": "CMPI",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Immediate table, CMPI row, pdf 57; status bits S3.1.2, pdf 45; Fig 3.2.5, pdf 49; data access timing figure, pdf 29; C46",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "CMPI #$0003, R1",
+      "program": [
+        "0379 1101 111 001",
+        "0003 0000 0000 0000 0011"
+      ],
+      "derivation": "The immediate table (pdf 57) prints CMPI I, SSS as 1101 111 SSS followed by the word iiiiii IIII III III, 8 cycles, 'CoMPare Immediate data from contents of register SSS by subtraction. Results not stored.', status change S, Z, C, OV. C46: the flags are those of register SSS minus the immediate word, the order this row's wording states. S3.1.2 (pdf 45): C is set when the add produces a carry out of the high bit, OV when it produces two's complement overflow, Z when the result is all zero, S when the high-order bit is one; subtraction adds the two's complement of the subtrahend, so C = 1 means no borrow. SSS = 001 (R1): $0005 - $0003 = $0005 + $FFFC + 1 = $10002: result $0002 with a carry out, C = 1; $0005 positive and $FFFC negative, so OV = 0; S = 0, Z = 0 (the other order, $0003 - $0005 = $FFFE, would give S = 1, C = 0). The result is not stored: R1 stays $0005. Init S = 1, Z = 1, OV = 1, C = 0. Fig 3.2.5 (pdf 49): EA <- PC+1, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the operand word keeps all 16 bits on the flat test bus. Bus (pdf 29, instruction fetch and data access, indirect register mode; immediate mode is that access with the effective address PC+1 per Fig 3.2.5, pdf 49): FETCH at cycle 0 from R7 = $1000, then the BAR that puts out the effective address at cycle 4, a READ of $1001 (data in at cycle 6); the unit is the printed 8 cycles. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0005",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "1": "0005",
+          "7": "1002"
+        },
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0379"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "0003"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:S",
+        "flag-clear:Z",
+        "flag-clear:OV",
+        "flag-set:C",
+        "addr:immediate"
+      ]
+    },
+    {
+      "id": "cpu.CMPI.equal-zero",
+      "row": "CMPI",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Immediate table, CMPI row, pdf 57; status bits S3.1.2, pdf 45; Fig 3.2.5, pdf 49; data access timing figure, pdf 29; C46",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "CMPI #$8000, R2",
+      "program": [
+        "037A 1101 111 010",
+        "8000 1000 0000 0000 0000"
+      ],
+      "derivation": "The immediate table (pdf 57) prints CMPI I, SSS as 1101 111 SSS followed by the word iiiiii IIII III III, 8 cycles, 'CoMPare Immediate data from contents of register SSS by subtraction. Results not stored.', status change S, Z, C, OV. C46: the flags are those of register SSS minus the immediate word, the order this row's wording states. S3.1.2 (pdf 45): C is set when the add produces a carry out of the high bit, OV when it produces two's complement overflow, Z when the result is all zero, S when the high-order bit is one; subtraction adds the two's complement of the subtrahend, so C = 1 means no borrow. SSS = 010 (R2): $8000 - $8000 = $8000 + $7FFF + 1 = $10000: result $0000 with a carry out, C = 1; $8000 negative and $7FFF positive, so OV = 0; Z = 1, S = 0. Not stored: R2 stays $8000. Init S = 1, Z = 0, OV = 0, C = 0. Fig 3.2.5 (pdf 49): EA <- PC+1, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the operand word keeps all 16 bits on the flat test bus. Bus (pdf 29, instruction fetch and data access, indirect register mode; immediate mode is that access with the effective address PC+1 per Fig 3.2.5, pdf 49): FETCH at cycle 0 from R7 = $1000, then the BAR that puts out the effective address at cycle 4, a READ of $1001 (data in at cycle 6); the unit is the printed 8 cycles. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "8000",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "2": "8000",
+          "7": "1002"
+        },
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "037A"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "8000"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:S",
+        "flag-set:Z",
+        "flag-set:C",
+        "addr:immediate"
+      ]
+    },
+    {
+      "id": "cpu.CMPI.overflow-borrow",
+      "row": "CMPI",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Immediate table, CMPI row, pdf 57; status bits S3.1.2, pdf 45; Fig 3.2.5, pdf 49; data access timing figure, pdf 29; C46",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "CMPI #$FFFF, R3",
+      "program": [
+        "037B 1101 111 011",
+        "FFFF 1111 1111 1111 1111"
+      ],
+      "derivation": "The immediate table (pdf 57) prints CMPI I, SSS as 1101 111 SSS followed by the word iiiiii IIII III III, 8 cycles, 'CoMPare Immediate data from contents of register SSS by subtraction. Results not stored.', status change S, Z, C, OV. C46: the flags are those of register SSS minus the immediate word, the order this row's wording states. S3.1.2 (pdf 45): C is set when the add produces a carry out of the high bit, OV when it produces two's complement overflow, Z when the result is all zero, S when the high-order bit is one; subtraction adds the two's complement of the subtrahend, so C = 1 means no borrow. SSS = 011 (R3): $7FFF - $FFFF = $7FFF + $0000 + 1 = $8000 with no carry out, C = 0 (borrow); both addends ($7FFF, $0000) are positive and the result has bit 15 = 1, so OV = 1; S = 1, Z = 0. Not stored: R3 stays $7FFF. Init S = 0, Z = 1, OV = 0, C = 1. Fig 3.2.5 (pdf 49): EA <- PC+1, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the operand word keeps all 16 bits on the flat test bus. Bus (pdf 29, instruction fetch and data access, indirect register mode; immediate mode is that access with the effective address PC+1 per Fig 3.2.5, pdf 49): FETCH at cycle 0 from R7 = $1000, then the BAR that puts out the effective address at cycle 4, a READ of $1001 (data in at cycle 6); the unit is the printed 8 cycles. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "7FFF",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "3": "7FFF",
+          "7": "1002"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "037B"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "FFFF"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-set:OV",
+        "flag-clear:C",
+        "addr:immediate"
+      ]
+    },
+    {
+      "id": "cpu.ANDI.mask-sign",
+      "row": "ANDI",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Immediate table, ANDI row, pdf 57; status bits S3.1.2, pdf 45; Fig 3.2.5, pdf 49; data access timing figure, pdf 29",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ANDI #$8000, R1",
+      "program": [
+        "03B9 1110 111 001",
+        "8000 1000 0000 0000 0000"
+      ],
+      "derivation": "The immediate table (pdf 57) prints ANDI I, DDD as 1110 111 DDD followed by the word iiiiii IIII III III, 8 cycles, 'logical AND Immediate data with contents of register DDD. Results to DDD', status change S, Z (pdf 45: S is bit 15 of the result, Z is set when it is all zero); C and OV are not in the column and keep their values. DDD = 001 (R1): $FFFF AND $8000 = $8000. S = 1, Z = 0. Init S = 0, Z = 1; C = 1 and OV = 1 are kept. Fig 3.2.5 (pdf 49): EA <- PC+1, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the operand word keeps all 16 bits on the flat test bus. Bus (pdf 29, instruction fetch and data access, indirect register mode; immediate mode is that access with the effective address PC+1 per Fig 3.2.5, pdf 49): FETCH at cycle 0 from R7 = $1000, then the BAR that puts out the effective address at cycle 4, a READ of $1001 (data in at cycle 6); the unit is the printed 8 cycles. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "FFFF",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "1": "8000",
+          "7": "1002"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "03B9"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "8000"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-preserved:C",
+        "flag-preserved:OV",
+        "addr:immediate"
+      ]
+    },
+    {
+      "id": "cpu.ANDI.zero",
+      "row": "ANDI",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Immediate table, ANDI row, pdf 57; status bits S3.1.2, pdf 45; Fig 3.2.5, pdf 49; data access timing figure, pdf 29",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ANDI #$AAAA, R2",
+      "program": [
+        "03BA 1110 111 010",
+        "AAAA 1010 1010 1010 1010"
+      ],
+      "derivation": "The immediate table (pdf 57) prints ANDI I, DDD as 1110 111 DDD followed by the word iiiiii IIII III III, 8 cycles, 'logical AND Immediate data with contents of register DDD. Results to DDD', status change S, Z (pdf 45: S is bit 15 of the result, Z is set when it is all zero); C and OV are not in the column and keep their values. DDD = 010 (R2): $5555 AND $AAAA = $0000 (0101 and 1010 share no bit in any nibble). S = 0, Z = 1. Init S = 1, Z = 0; C = 1 and OV = 1 are kept. Fig 3.2.5 (pdf 49): EA <- PC+1, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the operand word keeps all 16 bits on the flat test bus. Bus (pdf 29, instruction fetch and data access, indirect register mode; immediate mode is that access with the effective address PC+1 per Fig 3.2.5, pdf 49): FETCH at cycle 0 from R7 = $1000, then the BAR that puts out the effective address at cycle 4, a READ of $1001 (data in at cycle 6); the unit is the printed 8 cycles. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "5555",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "2": "0000",
+          "7": "1002"
+        },
+        "status": {
+          "S": 0,
+          "Z": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "03BA"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "AAAA"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:S",
+        "flag-set:Z",
+        "flag-preserved:C",
+        "flag-preserved:OV",
+        "addr:immediate"
+      ]
+    },
+    {
+      "id": "cpu.ANDI.ffff-identity",
+      "row": "ANDI",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Immediate table, ANDI row, pdf 57; status bits S3.1.2, pdf 45; Fig 3.2.5, pdf 49; data access timing figure, pdf 29",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ANDI #$FFFF, R0",
+      "program": [
+        "03B8 1110 111 000",
+        "FFFF 1111 1111 1111 1111"
+      ],
+      "derivation": "The immediate table (pdf 57) prints ANDI I, DDD as 1110 111 DDD followed by the word iiiiii IIII III III, 8 cycles, 'logical AND Immediate data with contents of register DDD. Results to DDD', status change S, Z (pdf 45: S is bit 15 of the result, Z is set when it is all zero); C and OV are not in the column and keep their values. DDD = 000 (R0): $0001 AND $FFFF = $0001. S = 0, Z = 0. Init S = 1, Z = 1; C = 1 and OV = 1 are kept. Fig 3.2.5 (pdf 49): EA <- PC+1, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the operand word keeps all 16 bits on the flat test bus. Bus (pdf 29, instruction fetch and data access, indirect register mode; immediate mode is that access with the effective address PC+1 per Fig 3.2.5, pdf 49): FETCH at cycle 0 from R7 = $1000, then the BAR that puts out the effective address at cycle 4, a READ of $1001 (data in at cycle 6); the unit is the printed 8 cycles. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0001",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "0": "0001",
+          "7": "1002"
+        },
+        "status": {
+          "S": 0,
+          "Z": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "03B8"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "FFFF"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:S",
+        "flag-clear:Z",
+        "flag-preserved:C",
+        "flag-preserved:OV",
+        "addr:immediate"
+      ]
+    },
+    {
+      "id": "cpu.XORI.toggle-sign",
+      "row": "XORI",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Immediate table, XORI row, pdf 57; status bits S3.1.2, pdf 45; Fig 3.2.5, pdf 49; data access timing figure, pdf 29",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "XORI #$FFFF, R0",
+      "program": [
+        "03F8 1111 111 000",
+        "FFFF 1111 1111 1111 1111"
+      ],
+      "derivation": "The immediate table (pdf 57) prints XORI I, DDD as 1111 111 DDD followed by the word iiiiii IIII III III, 8 cycles, 'eXclusive OR Immediate data with contents of register DDD. Results to DDD', status change S, Z (pdf 45: S is bit 15 of the result, Z is set when it is all zero); C and OV are not in the column and keep their values. DDD = 000 (R0): $7FFF XOR $FFFF = $8000. S = 1, Z = 0. Init S = 0, Z = 1; C = 1 and OV = 1 are kept. Fig 3.2.5 (pdf 49): EA <- PC+1, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the operand word keeps all 16 bits on the flat test bus. Bus (pdf 29, instruction fetch and data access, indirect register mode; immediate mode is that access with the effective address PC+1 per Fig 3.2.5, pdf 49): FETCH at cycle 0 from R7 = $1000, then the BAR that puts out the effective address at cycle 4, a READ of $1001 (data in at cycle 6); the unit is the printed 8 cycles. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "7FFF",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "0": "8000",
+          "7": "1002"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "03F8"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "FFFF"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-preserved:C",
+        "flag-preserved:OV",
+        "addr:immediate"
+      ]
+    },
+    {
+      "id": "cpu.XORI.equal-zero",
+      "row": "XORI",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Immediate table, XORI row, pdf 57; status bits S3.1.2, pdf 45; Fig 3.2.5, pdf 49; data access timing figure, pdf 29",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "XORI #$8000, R3",
+      "program": [
+        "03FB 1111 111 011",
+        "8000 1000 0000 0000 0000"
+      ],
+      "derivation": "The immediate table (pdf 57) prints XORI I, DDD as 1111 111 DDD followed by the word iiiiii IIII III III, 8 cycles, 'eXclusive OR Immediate data with contents of register DDD. Results to DDD', status change S, Z (pdf 45: S is bit 15 of the result, Z is set when it is all zero); C and OV are not in the column and keep their values. DDD = 011 (R3): $8000 XOR $8000 = $0000. S = 0, Z = 1. Init S = 1, Z = 0; C = 1 and OV = 1 are kept. Fig 3.2.5 (pdf 49): EA <- PC+1, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the operand word keeps all 16 bits on the flat test bus. Bus (pdf 29, instruction fetch and data access, indirect register mode; immediate mode is that access with the effective address PC+1 per Fig 3.2.5, pdf 49): FETCH at cycle 0 from R7 = $1000, then the BAR that puts out the effective address at cycle 4, a READ of $1001 (data in at cycle 6); the unit is the printed 8 cycles. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "8000",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "3": "0000",
+          "7": "1002"
+        },
+        "status": {
+          "S": 0,
+          "Z": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "03FB"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "8000"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:S",
+        "flag-set:Z",
+        "flag-preserved:C",
+        "flag-preserved:OV",
+        "addr:immediate"
+      ]
+    },
+    {
+      "id": "cpu.XORI.ffff-complement",
+      "row": "XORI",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Immediate table, XORI row, pdf 57; status bits S3.1.2, pdf 45; Fig 3.2.5, pdf 49; data access timing figure, pdf 29",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "XORI #$FFFF, R1",
+      "program": [
+        "03F9 1111 111 001",
+        "FFFF 1111 1111 1111 1111"
+      ],
+      "derivation": "The immediate table (pdf 57) prints XORI I, DDD as 1111 111 DDD followed by the word iiiiii IIII III III, 8 cycles, 'eXclusive OR Immediate data with contents of register DDD. Results to DDD', status change S, Z (pdf 45: S is bit 15 of the result, Z is set when it is all zero); C and OV are not in the column and keep their values. DDD = 001 (R1): $1234 XOR $FFFF = $EDCB (each nibble complemented: 1->E, 2->D, 3->C, 4->B). S = 1, Z = 0. Init S = 0, Z = 0, OV = 0, C = 0. Fig 3.2.5 (pdf 49): EA <- PC+1, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the operand word keeps all 16 bits on the flat test bus. Bus (pdf 29, instruction fetch and data access, indirect register mode; immediate mode is that access with the effective address PC+1 per Fig 3.2.5, pdf 49): FETCH at cycle 0 from R7 = $1000, then the BAR that puts out the effective address at cycle 4, a READ of $1001 (data in at cycle 6); the unit is the printed 8 cycles. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "1234",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "1": "EDCB",
+          "7": "1002"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 8,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "03F9"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "FFFF"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:S",
+        "addr:immediate"
+      ]
+    },
+    {
+      "id": "cpu.MVOI.store-next-word",
+      "row": "MVOI",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Immediate table, MVOI row, pdf 57; Fig 3.2.5, pdf 49; MVO timing (write operation) figure, pdf 31; C56",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "MVOI R2, $1001",
+      "program": [
+        "027A 1001 111 010",
+        "0000 0000 0000 0000 0000"
+      ],
+      "derivation": "The immediate table (pdf 57) prints MVOI SSS, I as 1001 111 SSS followed by the word iiiiii IIII III III, 9 cycles, 'MoVe Out Immediate data from register SSS to PC+1', no status change. Fig 3.2.5 (pdf 49): EA <- PC+1, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the operand word keeps all 16 bits on the flat test bus. C56: the manual is silent on the MVO family's interruptibility and the default makes it non-interruptible, so prev_interruptible goes 1 -> 0. SSS = 010 (R2): the word at $1001 (initially $0000, the field the instruction carries) becomes $A5C3; R2 is unchanged. Flags keep their initial values (all 0). Bus (pdf 31, MVO timing (write operation), 9 cycles: BAR, NACT, DTB, NACT, BAR, NACT, DW, DWS, NACT; the second BAR puts out the effective address, which is PC+1 for the immediate form per Fig 3.2.5, pdf 49): FETCH at cycle 0 from R7 = $1000, then a WRITE of $1001 at cycle 4 (data out from cycle 6); the unit is the printed 9 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "A5C3",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "1001",
+            "A5C3"
+          ]
+        ],
+        "cycles": 9,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "027A"
+        ],
+        [
+          4,
+          "WRITE",
+          "1001",
+          "A5C3"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:immediate",
+        "write:bus"
+      ]
+    },
+    {
+      "id": "cpu.MVOI.flags-preserved",
+      "row": "MVOI",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Immediate table, MVOI row, pdf 57; Fig 3.2.5, pdf 49; MVO timing (write operation) figure, pdf 31; C56",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "MVOI R0, $1001",
+      "program": [
+        "0278 1001 111 000",
+        "FFFF 1111 1111 1111 1111"
+      ],
+      "derivation": "The immediate table (pdf 57) prints MVOI SSS, I as 1001 111 SSS followed by the word iiiiii IIII III III, 9 cycles, 'MoVe Out Immediate data from register SSS to PC+1', no status change. Fig 3.2.5 (pdf 49): EA <- PC+1, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the operand word keeps all 16 bits on the flat test bus. C56: the manual is silent on the MVO family's interruptibility and the default makes it non-interruptible, so prev_interruptible goes 1 -> 0. SSS = 000 (R0): the word at $1001 goes from $FFFF to $0000; R0 is unchanged. The status change column is empty, so S, Z, OV and C keep their initial value 1. Bus (pdf 31, MVO timing (write operation), 9 cycles: BAR, NACT, DTB, NACT, BAR, NACT, DW, DWS, NACT; the second BAR puts out the effective address, which is PC+1 for the immediate form per Fig 3.2.5, pdf 49): FETCH at cycle 0 from R7 = $1000, then a WRITE of $1001 at cycle 4 (data out from cycle 6); the unit is the printed 9 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "1001",
+            "0000"
+          ]
+        ],
+        "cycles": 9,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0278"
+        ],
+        [
+          4,
+          "WRITE",
+          "1001",
+          "0000"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "addr:immediate"
+      ]
+    },
+    {
+      "id": "cpu.MVOI.r3-ffff",
+      "row": "MVOI",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Immediate table, MVOI row, pdf 57; Fig 3.2.5, pdf 49; MVO timing (write operation) figure, pdf 31; C56",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "MVOI R3, $1001",
+      "program": [
+        "027B 1001 111 011",
+        "0000 0000 0000 0000 0000"
+      ],
+      "derivation": "The immediate table (pdf 57) prints MVOI SSS, I as 1001 111 SSS followed by the word iiiiii IIII III III, 9 cycles, 'MoVe Out Immediate data from register SSS to PC+1', no status change. Fig 3.2.5 (pdf 49): EA <- PC+1, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the operand word keeps all 16 bits on the flat test bus. C56: the manual is silent on the MVO family's interruptibility and the default makes it non-interruptible, so prev_interruptible goes 1 -> 0. SSS = 011 (R3): the word at $1001 goes from $0000 to $FFFF, all 16 bits; R3 is unchanged. Flags keep their initial values. Bus (pdf 31, MVO timing (write operation), 9 cycles: BAR, NACT, DTB, NACT, BAR, NACT, DW, DWS, NACT; the second BAR puts out the effective address, which is PC+1 for the immediate form per Fig 3.2.5, pdf 49): FETCH at cycle 0 from R7 = $1000, then a WRITE of $1001 at cycle 4 (data out from cycle 6); the unit is the printed 9 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "FFFF",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "1001",
+            "FFFF"
+          ]
+        ],
+        "cycles": 9,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "027B"
+        ],
+        [
+          4,
+          "WRITE",
+          "1001",
+          "FFFF"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:immediate"
+      ]
     }
   ]
 }
