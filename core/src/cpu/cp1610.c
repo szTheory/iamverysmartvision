@@ -391,41 +391,61 @@ static void ivs_ind_write(ivs_cp1610 *n, ivs_unit *u, uint32_t mmm, uint32_t sss
 #define IVS_BRANCH_TAKEN_EXTRA 2u
 
 /* Branch condition of the condition field cccc (bits 3..0; branch table, pdf 54). Bits 2..0 pick
- * the test: 000 B (always), 001 BC C = 1, 010 BOV OV = 1, 011 BPL S = 0, 100 BZE Z = 1. Each row
- * with bit 3 = 1 prints the opposite test of its bit-3 = 0 partner (BNC C = 0, BNOV OV = 0, BMI
- * S = 1, BNZE Z = 0), so bit 3 negates the test. */
+ * the test: 000 B (always), 001 BC C = 1, 010 BOV OV = 1, 011 BPL S = 0, 100 BZE Z = 1, 101 BLT
+ * S xor OV = 1, 110 BLE Z or (S xor OV) = 1, 111 BUSC C xor S = 1. Each row with bit 3 = 1
+ * prints the opposite test of its bit-3 = 0 partner (BNC C = 0, BNOV OV = 0, BMI S = 1, BNZE
+ * Z = 0, BGE S xor OV = 0, BGT Z or (S xor OV) = 0, BESC C xor S = 0), so bit 3 negates the test;
+ * 1000 NOPP ("NoOPeration, two words") is B negated and never branches. */
 static uint32_t ivs_branch_cond(const ivs_cp1610 *n, uint32_t cccc)
 {
   uint32_t st = n->status;
+  uint32_t s = (st & IVS_CP1610_S) != 0u ? 1u : 0u;
+  uint32_t z = (st & IVS_CP1610_Z) != 0u ? 1u : 0u;
+  uint32_t ov = (st & IVS_CP1610_OV) != 0u ? 1u : 0u;
+  uint32_t c = (st & IVS_CP1610_C) != 0u ? 1u : 0u;
+  uint32_t sx = s ^ ov;
   uint32_t neg = (cccc >> 3) & 1u;
   uint32_t t;
+#ifdef IVS_FAULT_BRANCH_COND_SIGNED
+  sx = s;
+#endif
   switch (cccc & 7u) {
   case 0u:
     t = 1u;
     break;
   case 1u:
-    t = (st & IVS_CP1610_C) != 0u ? 1u : 0u;
+    t = c;
     break;
   case 2u:
-    t = (st & IVS_CP1610_OV) != 0u ? 1u : 0u;
+    t = ov;
     break;
   case 3u:
-    t = (st & IVS_CP1610_S) != 0u ? 0u : 1u;
+    t = s ^ 1u;
     break;
   case 4u:
-    t = (st & IVS_CP1610_Z) != 0u ? 1u : 0u;
+    t = z;
+    break;
+  case 5u:
+    t = sx;
+    break;
+  case 6u:
+    t = z | sx;
     break;
   default:
-    __builtin_trap();
+    t = c ^ s;
+    break;
   }
 #ifdef IVS_FAULT_BRANCH_NEGATE_IGNORED
   neg = 0u;
 #endif
+#ifdef IVS_FAULT_NOPP_TAKEN
+  if ((cccc & 0xFu) == 8u) neg = 0u;
+#endif
   return t ^ neg;
 }
 
-/* Internal-condition branch 1000 S0 cccc plus a displacement word (S3.2.2, pdf 47; branch
- * table, pdf 54). The displacement word at PC+1 is read like an immediate operand: the BAR at
+/* Internal-condition branch 1000 S0 cccc plus a displacement word (B, the 14 conditional rows
+ * and NOPP; S3.2.2, pdf 47; branch table, pdf 54). The displacement word at PC+1 is read like an immediate operand: the BAR at
  * offset 4 puts out PC+1 "to fetch displacement" (pdf 32), and R7 is left at PC+2. Not taken,
  * R7 stays PC+2. Taken, bit 5 (the direction bit, "S is 0 for +, 1 for -") = 0 adds the
  * displacement to PC+2 and 1 adds its one's complement (C50: all 16 bits), wrapping at 16 bits.
@@ -553,7 +573,8 @@ static uint32_t ivs_shift(ivs_cp1610 *n, uint8_t op, uint32_t word)
  * reuse the register-group flag rules; MVOI writes register SSS there (no flags). Direct and
  * indirect groups (pdf 55): MVO, MVI, ADD, SUB, CMP, AND, XOR through the address word (ADAR,
  * pdf 30), the @ rows, PSHR and PULR through register MMM (C17, POL-STK-01, POL-STK-02).
- * Only the status change column's flags move. Strobe records carry no address or data. The
+ * Branches (pdf 54, pdf 47): B, the 14 internal-condition rows and NOPP through ivs_branch
+ * (C50, POL-BR-01). Only the status change column's flags move. Strobe records carry no address or data. The
  * return value is the cycles added to the row's base count (the MOVR/TSTR R6/R7 bonus). */
 static uint32_t ivs_exec(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r, const ivs_cp1610_row *row,
                          uint16_t word)

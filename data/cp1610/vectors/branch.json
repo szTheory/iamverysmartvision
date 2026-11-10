@@ -2721,6 +2721,2014 @@
       "covers": [
         "cycles:not-taken"
       ]
+    },
+    {
+      "id": "cpu.BLT.fwd-taken",
+      "row": "BLT",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Branch table, BLT row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50; branch timing figure, pdf 32",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BLT $1012",
+      "program": [
+        "0205 1000 00 0101",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BLT as 1000 S0 0101 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Less Than. S xor OV = 1'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $0205 (bit 5 = 0, forward), displacement $0010. Init S = 1, Z = 1, OV = 0, C = 1. The row tests S xor OV = 1; here S = 1 and OV = 0, so S xor OV = 1, so the test is true and the branch is taken: R7 = the target. Forward: the target is PC+2 + displacement = $1002 + $0010 = $1012. Cycles are not asserted: pdf 54 prints 7/9 without saying which figure applies (C29, A-05); the POL-BR-01 policy vectors carry them. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 32, the one branch timing figure, drawn for BEXT: BAR 'output program counter', NACT, DTB, NACT, BAR 'output PC+1 to fetch displacement'): FETCH at cycle 0 from $1000; the BAR at cycle 4 puts out $1001, whose word $0010 is the displacement (recorded as a READ). The figure ends there, so no later access is listed. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1012"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0205"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "0010"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "branch:fwd-taken",
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:C"
+      ]
+    },
+    {
+      "id": "cpu.BLT.fwd-not-taken",
+      "row": "BLT",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Branch table, BLT row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BLT $1012",
+      "program": [
+        "0205 1000 00 0101",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BLT as 1000 S0 0101 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Less Than. S xor OV = 1'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $0205 (bit 5 = 0, forward), displacement $0010. Init S = 0, Z = 1, OV = 0, C = 1. The row tests S xor OV = 1; here S = 0 and OV = 0, so S xor OV = 0, so the test is false and the branch is not taken: R7 = PC+2 = $1002, not the target. Forward: the target is PC+2 + displacement = $1002 + $0010 = $1012. Cycles are not asserted: pdf 54 prints 7/9 without saying which figure applies (C29, A-05); the POL-BR-01 policy vectors carry them. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "covers": [
+        "branch:fwd-not-taken",
+        "flag-preserved:Z",
+        "flag-preserved:C"
+      ]
+    },
+    {
+      "id": "cpu.BLT.back-taken",
+      "row": "BLT",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Branch table, BLT row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BLT $0FF1",
+      "program": [
+        "0225 1000 10 0101",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BLT as 1000 S0 0101 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Less Than. S xor OV = 1'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $0225 (bit 5 = 1, backward), displacement $0010. Init S = 0, Z = 0, OV = 1, C = 0. The row tests S xor OV = 1; here S = 0 and OV = 1, so S xor OV = 1, so the test is true and the branch is taken: R7 = the target. Backward: the one's complement of $0010 is $FFEF, and PC+2 + $FFEF = $1002 + $FFEF = $10FF1, which wraps to $0FF1 (16 bits); a two's complement subtraction would give $0FF2. Cycles are not asserted: pdf 54 prints 7/9 without saying which figure applies (C29, A-05); the POL-BR-01 policy vectors carry them. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "0FF1"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "covers": [
+        "branch:back-taken",
+        "flag-preserved:OV"
+      ]
+    },
+    {
+      "id": "cpu.BLT.back-not-taken",
+      "row": "BLT",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Branch table, BLT row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BLT $0FF1",
+      "program": [
+        "0225 1000 10 0101",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BLT as 1000 S0 0101 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Less Than. S xor OV = 1'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $0225 (bit 5 = 1, backward), displacement $0010. Init S = 1, Z = 0, OV = 1, C = 0. The row tests S xor OV = 1; here S = 1 and OV = 1, so S xor OV = 0, so the test is false and the branch is not taken: R7 = PC+2 = $1002, not the target. Backward: the one's complement of $0010 is $FFEF, and PC+2 + $FFEF = $1002 + $FFEF = $10FF1, which wraps to $0FF1 (16 bits); a two's complement subtraction would give $0FF2. Cycles are not asserted: pdf 54 prints 7/9 without saying which figure applies (C29, A-05); the POL-BR-01 policy vectors carry them. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "covers": [
+        "branch:back-not-taken",
+        "flag-preserved:S",
+        "flag-preserved:OV"
+      ]
+    },
+    {
+      "id": "cpu.BLT.cycles-taken",
+      "row": "BLT",
+      "kind": "policy",
+      "policy": "POL-BR-01",
+      "cite": "Branch table, BLT row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50; C29",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BLT $1012",
+      "program": [
+        "0205 1000 00 0101",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BLT as 1000 S0 0101 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Less Than. S xor OV = 1'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $0205 (bit 5 = 0, forward), displacement $0010. Init S = 1, Z = 1, OV = 0, C = 1. The row tests S xor OV = 1; here S = 1 and OV = 0, so S xor OV = 1, so the test is true and the branch is taken: R7 = the target. Forward: the target is PC+2 + displacement = $1002 + $0010 = $1012. POL-BR-01 (policy, C29, A-05): pdf 54 prints 7/9 for the row with no taken or not-taken label; the policy reads the larger printed figure (9) as taken and the smaller (7) as not taken, so this taken branch expects 9 cycles. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1012"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ],
+        "cycles": 9
+      },
+      "covers": [
+        "cycles:taken"
+      ]
+    },
+    {
+      "id": "cpu.BLT.cycles-not-taken",
+      "row": "BLT",
+      "kind": "policy",
+      "policy": "POL-BR-01",
+      "cite": "Branch table, BLT row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50; C29",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BLT $1012",
+      "program": [
+        "0205 1000 00 0101",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BLT as 1000 S0 0101 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Less Than. S xor OV = 1'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $0205 (bit 5 = 0, forward), displacement $0010. Init S = 0, Z = 1, OV = 0, C = 1. The row tests S xor OV = 1; here S = 0 and OV = 0, so S xor OV = 0, so the test is false and the branch is not taken: R7 = PC+2 = $1002, not the target. Forward: the target is PC+2 + displacement = $1002 + $0010 = $1012. POL-BR-01 (policy, C29, A-05): pdf 54 prints 7/9 for the row with no taken or not-taken label; the policy reads the larger printed figure (9) as taken and the smaller (7) as not taken, so this not-taken branch expects 7 cycles. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ],
+        "cycles": 7
+      },
+      "covers": [
+        "cycles:not-taken"
+      ]
+    },
+    {
+      "id": "cpu.BGE.fwd-taken",
+      "row": "BGE",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Branch table, BGE row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50; branch timing figure, pdf 32",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BGE $1012",
+      "program": [
+        "020D 1000 00 1101",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BGE as 1000 S0 1101 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Greater than or Equal. S xor OV = 0'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $020D (bit 5 = 0, forward), displacement $0010. Init S = 1, Z = 1, OV = 1, C = 1. The row tests S xor OV = 0; here S = 1 and OV = 1, so S xor OV = 0, so the test is true and the branch is taken: R7 = the target. Forward: the target is PC+2 + displacement = $1002 + $0010 = $1012. Cycles are not asserted: pdf 54 prints 7/9 without saying which figure applies (C29, A-05); the POL-BR-01 policy vectors carry them. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 32, the one branch timing figure, drawn for BEXT: BAR 'output program counter', NACT, DTB, NACT, BAR 'output PC+1 to fetch displacement'): FETCH at cycle 0 from $1000; the BAR at cycle 4 puts out $1001, whose word $0010 is the displacement (recorded as a READ). The figure ends there, so no later access is listed. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1012"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "020D"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "0010"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "branch:fwd-taken",
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C"
+      ]
+    },
+    {
+      "id": "cpu.BGE.fwd-not-taken",
+      "row": "BGE",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Branch table, BGE row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BGE $1012",
+      "program": [
+        "020D 1000 00 1101",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BGE as 1000 S0 1101 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Greater than or Equal. S xor OV = 0'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $020D (bit 5 = 0, forward), displacement $0010. Init S = 1, Z = 1, OV = 0, C = 1. The row tests S xor OV = 0; here S = 1 and OV = 0, so S xor OV = 1, so the test is false and the branch is not taken: R7 = PC+2 = $1002, not the target. Forward: the target is PC+2 + displacement = $1002 + $0010 = $1012. Cycles are not asserted: pdf 54 prints 7/9 without saying which figure applies (C29, A-05); the POL-BR-01 policy vectors carry them. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "covers": [
+        "branch:fwd-not-taken",
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:C"
+      ]
+    },
+    {
+      "id": "cpu.BGE.back-taken",
+      "row": "BGE",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Branch table, BGE row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BGE $0FF1",
+      "program": [
+        "022D 1000 10 1101",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BGE as 1000 S0 1101 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Greater than or Equal. S xor OV = 0'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $022D (bit 5 = 1, backward), displacement $0010. Init S = 0, Z = 0, OV = 0, C = 0. The row tests S xor OV = 0; here S = 0 and OV = 0, so S xor OV = 0, so the test is true and the branch is taken: R7 = the target. Backward: the one's complement of $0010 is $FFEF, and PC+2 + $FFEF = $1002 + $FFEF = $10FF1, which wraps to $0FF1 (16 bits); a two's complement subtraction would give $0FF2. Cycles are not asserted: pdf 54 prints 7/9 without saying which figure applies (C29, A-05); the POL-BR-01 policy vectors carry them. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "0FF1"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "covers": [
+        "branch:back-taken"
+      ]
+    },
+    {
+      "id": "cpu.BGE.back-not-taken",
+      "row": "BGE",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Branch table, BGE row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BGE $0FF1",
+      "program": [
+        "022D 1000 10 1101",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BGE as 1000 S0 1101 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Greater than or Equal. S xor OV = 0'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $022D (bit 5 = 1, backward), displacement $0010. Init S = 0, Z = 0, OV = 1, C = 0. The row tests S xor OV = 0; here S = 0 and OV = 1, so S xor OV = 1, so the test is false and the branch is not taken: R7 = PC+2 = $1002, not the target. Backward: the one's complement of $0010 is $FFEF, and PC+2 + $FFEF = $1002 + $FFEF = $10FF1, which wraps to $0FF1 (16 bits); a two's complement subtraction would give $0FF2. Cycles are not asserted: pdf 54 prints 7/9 without saying which figure applies (C29, A-05); the POL-BR-01 policy vectors carry them. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "covers": [
+        "branch:back-not-taken",
+        "flag-preserved:OV"
+      ]
+    },
+    {
+      "id": "cpu.BGE.cycles-taken",
+      "row": "BGE",
+      "kind": "policy",
+      "policy": "POL-BR-01",
+      "cite": "Branch table, BGE row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50; C29",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BGE $1012",
+      "program": [
+        "020D 1000 00 1101",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BGE as 1000 S0 1101 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Greater than or Equal. S xor OV = 0'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $020D (bit 5 = 0, forward), displacement $0010. Init S = 1, Z = 1, OV = 1, C = 1. The row tests S xor OV = 0; here S = 1 and OV = 1, so S xor OV = 0, so the test is true and the branch is taken: R7 = the target. Forward: the target is PC+2 + displacement = $1002 + $0010 = $1012. POL-BR-01 (policy, C29, A-05): pdf 54 prints 7/9 for the row with no taken or not-taken label; the policy reads the larger printed figure (9) as taken and the smaller (7) as not taken, so this taken branch expects 9 cycles. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1012"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ],
+        "cycles": 9
+      },
+      "covers": [
+        "cycles:taken"
+      ]
+    },
+    {
+      "id": "cpu.BGE.cycles-not-taken",
+      "row": "BGE",
+      "kind": "policy",
+      "policy": "POL-BR-01",
+      "cite": "Branch table, BGE row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50; C29",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BGE $1012",
+      "program": [
+        "020D 1000 00 1101",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BGE as 1000 S0 1101 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Greater than or Equal. S xor OV = 0'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $020D (bit 5 = 0, forward), displacement $0010. Init S = 1, Z = 1, OV = 0, C = 1. The row tests S xor OV = 0; here S = 1 and OV = 0, so S xor OV = 1, so the test is false and the branch is not taken: R7 = PC+2 = $1002, not the target. Forward: the target is PC+2 + displacement = $1002 + $0010 = $1012. POL-BR-01 (policy, C29, A-05): pdf 54 prints 7/9 for the row with no taken or not-taken label; the policy reads the larger printed figure (9) as taken and the smaller (7) as not taken, so this not-taken branch expects 7 cycles. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ],
+        "cycles": 7
+      },
+      "covers": [
+        "cycles:not-taken"
+      ]
+    },
+    {
+      "id": "cpu.BLE.fwd-taken",
+      "row": "BLE",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Branch table, BLE row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50; branch timing figure, pdf 32",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BLE $1012",
+      "program": [
+        "0206 1000 00 0110",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BLE as 1000 S0 0110 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Less than or Equal. Z or (S xor OV) = 1'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $0206 (bit 5 = 0, forward), displacement $0010. Init S = 1, Z = 1, OV = 1, C = 1. The row tests Z or (S xor OV) = 1; here Z = 1 (S = 1 and OV = 1 give S xor OV = 0), so Z or (S xor OV) = 1, so the test is true and the branch is taken: R7 = the target. Forward: the target is PC+2 + displacement = $1002 + $0010 = $1012. Cycles are not asserted: pdf 54 prints 7/9 without saying which figure applies (C29, A-05); the POL-BR-01 policy vectors carry them. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 32, the one branch timing figure, drawn for BEXT: BAR 'output program counter', NACT, DTB, NACT, BAR 'output PC+1 to fetch displacement'): FETCH at cycle 0 from $1000; the BAR at cycle 4 puts out $1001, whose word $0010 is the displacement (recorded as a READ). The figure ends there, so no later access is listed. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1012"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0206"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "0010"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "branch:fwd-taken",
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C"
+      ]
+    },
+    {
+      "id": "cpu.BLE.fwd-not-taken",
+      "row": "BLE",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Branch table, BLE row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BLE $1012",
+      "program": [
+        "0206 1000 00 0110",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BLE as 1000 S0 0110 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Less than or Equal. Z or (S xor OV) = 1'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $0206 (bit 5 = 0, forward), displacement $0010. Init S = 1, Z = 0, OV = 1, C = 1. The row tests Z or (S xor OV) = 1; here Z = 0 and S = 1, OV = 1 give S xor OV = 0, so Z or (S xor OV) = 0, so the test is false and the branch is not taken: R7 = PC+2 = $1002, not the target. Forward: the target is PC+2 + displacement = $1002 + $0010 = $1012. Cycles are not asserted: pdf 54 prints 7/9 without saying which figure applies (C29, A-05); the POL-BR-01 policy vectors carry them. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "covers": [
+        "branch:fwd-not-taken",
+        "flag-preserved:S",
+        "flag-preserved:OV",
+        "flag-preserved:C"
+      ]
+    },
+    {
+      "id": "cpu.BLE.back-taken",
+      "row": "BLE",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Branch table, BLE row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BLE $0FF1",
+      "program": [
+        "0226 1000 10 0110",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BLE as 1000 S0 0110 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Less than or Equal. Z or (S xor OV) = 1'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $0226 (bit 5 = 1, backward), displacement $0010. Init S = 1, Z = 0, OV = 0, C = 0. The row tests Z or (S xor OV) = 1; here Z = 0 but S = 1, OV = 0 give S xor OV = 1, so Z or (S xor OV) = 1, so the test is true and the branch is taken: R7 = the target. Backward: the one's complement of $0010 is $FFEF, and PC+2 + $FFEF = $1002 + $FFEF = $10FF1, which wraps to $0FF1 (16 bits); a two's complement subtraction would give $0FF2. Cycles are not asserted: pdf 54 prints 7/9 without saying which figure applies (C29, A-05); the POL-BR-01 policy vectors carry them. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "0FF1"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "covers": [
+        "branch:back-taken",
+        "flag-preserved:S"
+      ]
+    },
+    {
+      "id": "cpu.BLE.back-not-taken",
+      "row": "BLE",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Branch table, BLE row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BLE $0FF1",
+      "program": [
+        "0226 1000 10 0110",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BLE as 1000 S0 0110 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Less than or Equal. Z or (S xor OV) = 1'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $0226 (bit 5 = 1, backward), displacement $0010. Init S = 0, Z = 0, OV = 0, C = 0. The row tests Z or (S xor OV) = 1; here Z = 0 and S = 0, OV = 0 give S xor OV = 0, so Z or (S xor OV) = 0, so the test is false and the branch is not taken: R7 = PC+2 = $1002, not the target. Backward: the one's complement of $0010 is $FFEF, and PC+2 + $FFEF = $1002 + $FFEF = $10FF1, which wraps to $0FF1 (16 bits); a two's complement subtraction would give $0FF2. Cycles are not asserted: pdf 54 prints 7/9 without saying which figure applies (C29, A-05); the POL-BR-01 policy vectors carry them. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "covers": [
+        "branch:back-not-taken"
+      ]
+    },
+    {
+      "id": "cpu.BLE.cycles-taken",
+      "row": "BLE",
+      "kind": "policy",
+      "policy": "POL-BR-01",
+      "cite": "Branch table, BLE row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50; C29",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BLE $1012",
+      "program": [
+        "0206 1000 00 0110",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BLE as 1000 S0 0110 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Less than or Equal. Z or (S xor OV) = 1'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $0206 (bit 5 = 0, forward), displacement $0010. Init S = 1, Z = 1, OV = 1, C = 1. The row tests Z or (S xor OV) = 1; here Z = 1 (S = 1 and OV = 1 give S xor OV = 0), so Z or (S xor OV) = 1, so the test is true and the branch is taken: R7 = the target. Forward: the target is PC+2 + displacement = $1002 + $0010 = $1012. POL-BR-01 (policy, C29, A-05): pdf 54 prints 7/9 for the row with no taken or not-taken label; the policy reads the larger printed figure (9) as taken and the smaller (7) as not taken, so this taken branch expects 9 cycles. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1012"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ],
+        "cycles": 9
+      },
+      "covers": [
+        "cycles:taken"
+      ]
+    },
+    {
+      "id": "cpu.BLE.cycles-not-taken",
+      "row": "BLE",
+      "kind": "policy",
+      "policy": "POL-BR-01",
+      "cite": "Branch table, BLE row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50; C29",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BLE $1012",
+      "program": [
+        "0206 1000 00 0110",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BLE as 1000 S0 0110 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Less than or Equal. Z or (S xor OV) = 1'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $0206 (bit 5 = 0, forward), displacement $0010. Init S = 1, Z = 0, OV = 1, C = 1. The row tests Z or (S xor OV) = 1; here Z = 0 and S = 1, OV = 1 give S xor OV = 0, so Z or (S xor OV) = 0, so the test is false and the branch is not taken: R7 = PC+2 = $1002, not the target. Forward: the target is PC+2 + displacement = $1002 + $0010 = $1012. POL-BR-01 (policy, C29, A-05): pdf 54 prints 7/9 for the row with no taken or not-taken label; the policy reads the larger printed figure (9) as taken and the smaller (7) as not taken, so this not-taken branch expects 7 cycles. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ],
+        "cycles": 7
+      },
+      "covers": [
+        "cycles:not-taken"
+      ]
+    },
+    {
+      "id": "cpu.BGT.fwd-taken",
+      "row": "BGT",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Branch table, BGT row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50; branch timing figure, pdf 32",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BGT $1012",
+      "program": [
+        "020E 1000 00 1110",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BGT as 1000 S0 1110 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Greater Than. Z or (S xor OV) = 0'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $020E (bit 5 = 0, forward), displacement $0010. Init S = 1, Z = 0, OV = 1, C = 1. The row tests Z or (S xor OV) = 0; here Z = 0 and S = 1, OV = 1 give S xor OV = 0, so Z or (S xor OV) = 0, so the test is true and the branch is taken: R7 = the target. Forward: the target is PC+2 + displacement = $1002 + $0010 = $1012. Cycles are not asserted: pdf 54 prints 7/9 without saying which figure applies (C29, A-05); the POL-BR-01 policy vectors carry them. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 32, the one branch timing figure, drawn for BEXT: BAR 'output program counter', NACT, DTB, NACT, BAR 'output PC+1 to fetch displacement'): FETCH at cycle 0 from $1000; the BAR at cycle 4 puts out $1001, whose word $0010 is the displacement (recorded as a READ). The figure ends there, so no later access is listed. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1012"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "020E"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "0010"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "branch:fwd-taken",
+        "flag-preserved:S",
+        "flag-preserved:OV",
+        "flag-preserved:C"
+      ]
+    },
+    {
+      "id": "cpu.BGT.fwd-not-taken",
+      "row": "BGT",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Branch table, BGT row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BGT $1012",
+      "program": [
+        "020E 1000 00 1110",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BGT as 1000 S0 1110 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Greater Than. Z or (S xor OV) = 0'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $020E (bit 5 = 0, forward), displacement $0010. Init S = 1, Z = 1, OV = 1, C = 1. The row tests Z or (S xor OV) = 0; here Z = 1, so Z or (S xor OV) = 1, so the test is false and the branch is not taken: R7 = PC+2 = $1002, not the target. Forward: the target is PC+2 + displacement = $1002 + $0010 = $1012. Cycles are not asserted: pdf 54 prints 7/9 without saying which figure applies (C29, A-05); the POL-BR-01 policy vectors carry them. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "covers": [
+        "branch:fwd-not-taken",
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C"
+      ]
+    },
+    {
+      "id": "cpu.BGT.back-taken",
+      "row": "BGT",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Branch table, BGT row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BGT $0FF1",
+      "program": [
+        "022E 1000 10 1110",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BGT as 1000 S0 1110 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Greater Than. Z or (S xor OV) = 0'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $022E (bit 5 = 1, backward), displacement $0010. Init S = 0, Z = 0, OV = 0, C = 0. The row tests Z or (S xor OV) = 0; here Z = 0 and S = 0, OV = 0 give S xor OV = 0, so Z or (S xor OV) = 0, so the test is true and the branch is taken: R7 = the target. Backward: the one's complement of $0010 is $FFEF, and PC+2 + $FFEF = $1002 + $FFEF = $10FF1, which wraps to $0FF1 (16 bits); a two's complement subtraction would give $0FF2. Cycles are not asserted: pdf 54 prints 7/9 without saying which figure applies (C29, A-05); the POL-BR-01 policy vectors carry them. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "0FF1"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "covers": [
+        "branch:back-taken"
+      ]
+    },
+    {
+      "id": "cpu.BGT.back-not-taken",
+      "row": "BGT",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Branch table, BGT row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BGT $0FF1",
+      "program": [
+        "022E 1000 10 1110",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BGT as 1000 S0 1110 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Greater Than. Z or (S xor OV) = 0'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $022E (bit 5 = 1, backward), displacement $0010. Init S = 0, Z = 0, OV = 1, C = 0. The row tests Z or (S xor OV) = 0; here Z = 0 but S = 0, OV = 1 give S xor OV = 1, so Z or (S xor OV) = 1, so the test is false and the branch is not taken: R7 = PC+2 = $1002, not the target. Backward: the one's complement of $0010 is $FFEF, and PC+2 + $FFEF = $1002 + $FFEF = $10FF1, which wraps to $0FF1 (16 bits); a two's complement subtraction would give $0FF2. Cycles are not asserted: pdf 54 prints 7/9 without saying which figure applies (C29, A-05); the POL-BR-01 policy vectors carry them. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "covers": [
+        "branch:back-not-taken",
+        "flag-preserved:OV"
+      ]
+    },
+    {
+      "id": "cpu.BGT.cycles-taken",
+      "row": "BGT",
+      "kind": "policy",
+      "policy": "POL-BR-01",
+      "cite": "Branch table, BGT row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50; C29",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BGT $1012",
+      "program": [
+        "020E 1000 00 1110",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BGT as 1000 S0 1110 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Greater Than. Z or (S xor OV) = 0'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $020E (bit 5 = 0, forward), displacement $0010. Init S = 1, Z = 0, OV = 1, C = 1. The row tests Z or (S xor OV) = 0; here Z = 0 and S = 1, OV = 1 give S xor OV = 0, so Z or (S xor OV) = 0, so the test is true and the branch is taken: R7 = the target. Forward: the target is PC+2 + displacement = $1002 + $0010 = $1012. POL-BR-01 (policy, C29, A-05): pdf 54 prints 7/9 for the row with no taken or not-taken label; the policy reads the larger printed figure (9) as taken and the smaller (7) as not taken, so this taken branch expects 9 cycles. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1012"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ],
+        "cycles": 9
+      },
+      "covers": [
+        "cycles:taken"
+      ]
+    },
+    {
+      "id": "cpu.BGT.cycles-not-taken",
+      "row": "BGT",
+      "kind": "policy",
+      "policy": "POL-BR-01",
+      "cite": "Branch table, BGT row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50; C29",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BGT $1012",
+      "program": [
+        "020E 1000 00 1110",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BGT as 1000 S0 1110 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Greater Than. Z or (S xor OV) = 0'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $020E (bit 5 = 0, forward), displacement $0010. Init S = 1, Z = 1, OV = 1, C = 1. The row tests Z or (S xor OV) = 0; here Z = 1, so Z or (S xor OV) = 1, so the test is false and the branch is not taken: R7 = PC+2 = $1002, not the target. Forward: the target is PC+2 + displacement = $1002 + $0010 = $1012. POL-BR-01 (policy, C29, A-05): pdf 54 prints 7/9 for the row with no taken or not-taken label; the policy reads the larger printed figure (9) as taken and the smaller (7) as not taken, so this not-taken branch expects 7 cycles. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ],
+        "cycles": 7
+      },
+      "covers": [
+        "cycles:not-taken"
+      ]
+    },
+    {
+      "id": "cpu.BUSC.fwd-taken",
+      "row": "BUSC",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Branch table, BUSC row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50; branch timing figure, pdf 32",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BUSC $1012",
+      "program": [
+        "0207 1000 00 0111",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BUSC as 1000 S0 0111 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Unequal Sign and Carry. C xor S = 1'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $0207 (bit 5 = 0, forward), displacement $0010. Init S = 0, Z = 1, OV = 1, C = 1. The row tests C xor S = 1; here C = 1 and S = 0, so C xor S = 1, so the test is true and the branch is taken: R7 = the target. Forward: the target is PC+2 + displacement = $1002 + $0010 = $1012. Cycles are not asserted: pdf 54 prints 7/9 without saying which figure applies (C29, A-05); the POL-BR-01 policy vectors carry them. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 32, the one branch timing figure, drawn for BEXT: BAR 'output program counter', NACT, DTB, NACT, BAR 'output PC+1 to fetch displacement'): FETCH at cycle 0 from $1000; the BAR at cycle 4 puts out $1001, whose word $0010 is the displacement (recorded as a READ). The figure ends there, so no later access is listed. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1012"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0207"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "0010"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "branch:fwd-taken",
+        "flag-preserved:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C"
+      ]
+    },
+    {
+      "id": "cpu.BUSC.fwd-not-taken",
+      "row": "BUSC",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Branch table, BUSC row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BUSC $1012",
+      "program": [
+        "0207 1000 00 0111",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BUSC as 1000 S0 0111 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Unequal Sign and Carry. C xor S = 1'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $0207 (bit 5 = 0, forward), displacement $0010. Init S = 1, Z = 1, OV = 1, C = 1. The row tests C xor S = 1; here C = 1 and S = 1, so C xor S = 0, so the test is false and the branch is not taken: R7 = PC+2 = $1002, not the target. Forward: the target is PC+2 + displacement = $1002 + $0010 = $1012. Cycles are not asserted: pdf 54 prints 7/9 without saying which figure applies (C29, A-05); the POL-BR-01 policy vectors carry them. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "covers": [
+        "branch:fwd-not-taken",
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C"
+      ]
+    },
+    {
+      "id": "cpu.BUSC.back-taken",
+      "row": "BUSC",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Branch table, BUSC row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BUSC $0FF1",
+      "program": [
+        "0227 1000 10 0111",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BUSC as 1000 S0 0111 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Unequal Sign and Carry. C xor S = 1'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $0227 (bit 5 = 1, backward), displacement $0010. Init S = 1, Z = 0, OV = 0, C = 0. The row tests C xor S = 1; here C = 0 and S = 1, so C xor S = 1, so the test is true and the branch is taken: R7 = the target. Backward: the one's complement of $0010 is $FFEF, and PC+2 + $FFEF = $1002 + $FFEF = $10FF1, which wraps to $0FF1 (16 bits); a two's complement subtraction would give $0FF2. Cycles are not asserted: pdf 54 prints 7/9 without saying which figure applies (C29, A-05); the POL-BR-01 policy vectors carry them. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "0FF1"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "covers": [
+        "branch:back-taken",
+        "flag-preserved:S"
+      ]
+    },
+    {
+      "id": "cpu.BUSC.back-not-taken",
+      "row": "BUSC",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Branch table, BUSC row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BUSC $0FF1",
+      "program": [
+        "0227 1000 10 0111",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BUSC as 1000 S0 0111 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Unequal Sign and Carry. C xor S = 1'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $0227 (bit 5 = 1, backward), displacement $0010. Init S = 0, Z = 0, OV = 0, C = 0. The row tests C xor S = 1; here C = 0 and S = 0, so C xor S = 0, so the test is false and the branch is not taken: R7 = PC+2 = $1002, not the target. Backward: the one's complement of $0010 is $FFEF, and PC+2 + $FFEF = $1002 + $FFEF = $10FF1, which wraps to $0FF1 (16 bits); a two's complement subtraction would give $0FF2. Cycles are not asserted: pdf 54 prints 7/9 without saying which figure applies (C29, A-05); the POL-BR-01 policy vectors carry them. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "covers": [
+        "branch:back-not-taken"
+      ]
+    },
+    {
+      "id": "cpu.BUSC.cycles-taken",
+      "row": "BUSC",
+      "kind": "policy",
+      "policy": "POL-BR-01",
+      "cite": "Branch table, BUSC row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50; C29",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BUSC $1012",
+      "program": [
+        "0207 1000 00 0111",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BUSC as 1000 S0 0111 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Unequal Sign and Carry. C xor S = 1'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $0207 (bit 5 = 0, forward), displacement $0010. Init S = 0, Z = 1, OV = 1, C = 1. The row tests C xor S = 1; here C = 1 and S = 0, so C xor S = 1, so the test is true and the branch is taken: R7 = the target. Forward: the target is PC+2 + displacement = $1002 + $0010 = $1012. POL-BR-01 (policy, C29, A-05): pdf 54 prints 7/9 for the row with no taken or not-taken label; the policy reads the larger printed figure (9) as taken and the smaller (7) as not taken, so this taken branch expects 9 cycles. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1012"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ],
+        "cycles": 9
+      },
+      "covers": [
+        "cycles:taken"
+      ]
+    },
+    {
+      "id": "cpu.BUSC.cycles-not-taken",
+      "row": "BUSC",
+      "kind": "policy",
+      "policy": "POL-BR-01",
+      "cite": "Branch table, BUSC row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50; C29",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BUSC $1012",
+      "program": [
+        "0207 1000 00 0111",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BUSC as 1000 S0 0111 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Unequal Sign and Carry. C xor S = 1'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $0207 (bit 5 = 0, forward), displacement $0010. Init S = 1, Z = 1, OV = 1, C = 1. The row tests C xor S = 1; here C = 1 and S = 1, so C xor S = 0, so the test is false and the branch is not taken: R7 = PC+2 = $1002, not the target. Forward: the target is PC+2 + displacement = $1002 + $0010 = $1012. POL-BR-01 (policy, C29, A-05): pdf 54 prints 7/9 for the row with no taken or not-taken label; the policy reads the larger printed figure (9) as taken and the smaller (7) as not taken, so this not-taken branch expects 7 cycles. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ],
+        "cycles": 7
+      },
+      "covers": [
+        "cycles:not-taken"
+      ]
+    },
+    {
+      "id": "cpu.BESC.fwd-taken",
+      "row": "BESC",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Branch table, BESC row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50; branch timing figure, pdf 32",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BESC $1012",
+      "program": [
+        "020F 1000 00 1111",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BESC as 1000 S0 1111 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Equal Sign and Carry. C xor S = 0'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $020F (bit 5 = 0, forward), displacement $0010. Init S = 1, Z = 1, OV = 1, C = 1. The row tests C xor S = 0; here C = 1 and S = 1, so C xor S = 0, so the test is true and the branch is taken: R7 = the target. Forward: the target is PC+2 + displacement = $1002 + $0010 = $1012. Cycles are not asserted: pdf 54 prints 7/9 without saying which figure applies (C29, A-05); the POL-BR-01 policy vectors carry them. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 32, the one branch timing figure, drawn for BEXT: BAR 'output program counter', NACT, DTB, NACT, BAR 'output PC+1 to fetch displacement'): FETCH at cycle 0 from $1000; the BAR at cycle 4 puts out $1001, whose word $0010 is the displacement (recorded as a READ). The figure ends there, so no later access is listed. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1012"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "020F"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "0010"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "branch:fwd-taken",
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C"
+      ]
+    },
+    {
+      "id": "cpu.BESC.fwd-not-taken",
+      "row": "BESC",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Branch table, BESC row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BESC $1012",
+      "program": [
+        "020F 1000 00 1111",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BESC as 1000 S0 1111 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Equal Sign and Carry. C xor S = 0'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $020F (bit 5 = 0, forward), displacement $0010. Init S = 1, Z = 1, OV = 1, C = 0. The row tests C xor S = 0; here C = 0 and S = 1, so C xor S = 1, so the test is false and the branch is not taken: R7 = PC+2 = $1002, not the target. Forward: the target is PC+2 + displacement = $1002 + $0010 = $1012. Cycles are not asserted: pdf 54 prints 7/9 without saying which figure applies (C29, A-05); the POL-BR-01 policy vectors carry them. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "covers": [
+        "branch:fwd-not-taken",
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:OV"
+      ]
+    },
+    {
+      "id": "cpu.BESC.back-taken",
+      "row": "BESC",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Branch table, BESC row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BESC $0FF1",
+      "program": [
+        "022F 1000 10 1111",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BESC as 1000 S0 1111 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Equal Sign and Carry. C xor S = 0'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $022F (bit 5 = 1, backward), displacement $0010. Init S = 0, Z = 0, OV = 0, C = 0. The row tests C xor S = 0; here C = 0 and S = 0, so C xor S = 0, so the test is true and the branch is taken: R7 = the target. Backward: the one's complement of $0010 is $FFEF, and PC+2 + $FFEF = $1002 + $FFEF = $10FF1, which wraps to $0FF1 (16 bits); a two's complement subtraction would give $0FF2. Cycles are not asserted: pdf 54 prints 7/9 without saying which figure applies (C29, A-05); the POL-BR-01 policy vectors carry them. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "0FF1"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "covers": [
+        "branch:back-taken"
+      ]
+    },
+    {
+      "id": "cpu.BESC.back-not-taken",
+      "row": "BESC",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Branch table, BESC row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BESC $0FF1",
+      "program": [
+        "022F 1000 10 1111",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BESC as 1000 S0 1111 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Equal Sign and Carry. C xor S = 0'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $022F (bit 5 = 1, backward), displacement $0010. Init S = 0, Z = 0, OV = 0, C = 1. The row tests C xor S = 0; here C = 1 and S = 0, so C xor S = 1, so the test is false and the branch is not taken: R7 = PC+2 = $1002, not the target. Backward: the one's complement of $0010 is $FFEF, and PC+2 + $FFEF = $1002 + $FFEF = $10FF1, which wraps to $0FF1 (16 bits); a two's complement subtraction would give $0FF2. Cycles are not asserted: pdf 54 prints 7/9 without saying which figure applies (C29, A-05); the POL-BR-01 policy vectors carry them. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "covers": [
+        "branch:back-not-taken",
+        "flag-preserved:C"
+      ]
+    },
+    {
+      "id": "cpu.BESC.cycles-taken",
+      "row": "BESC",
+      "kind": "policy",
+      "policy": "POL-BR-01",
+      "cite": "Branch table, BESC row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50; C29",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BESC $1012",
+      "program": [
+        "020F 1000 00 1111",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BESC as 1000 S0 1111 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Equal Sign and Carry. C xor S = 0'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $020F (bit 5 = 0, forward), displacement $0010. Init S = 1, Z = 1, OV = 1, C = 1. The row tests C xor S = 0; here C = 1 and S = 1, so C xor S = 0, so the test is true and the branch is taken: R7 = the target. Forward: the target is PC+2 + displacement = $1002 + $0010 = $1012. POL-BR-01 (policy, C29, A-05): pdf 54 prints 7/9 for the row with no taken or not-taken label; the policy reads the larger printed figure (9) as taken and the smaller (7) as not taken, so this taken branch expects 9 cycles. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1012"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ],
+        "cycles": 9
+      },
+      "covers": [
+        "cycles:taken"
+      ]
+    },
+    {
+      "id": "cpu.BESC.cycles-not-taken",
+      "row": "BESC",
+      "kind": "policy",
+      "policy": "POL-BR-01",
+      "cite": "Branch table, BESC row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50; C29",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BESC $1012",
+      "program": [
+        "020F 1000 00 1111",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BESC as 1000 S0 1111 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Equal Sign and Carry. C xor S = 0'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $020F (bit 5 = 0, forward), displacement $0010. Init S = 1, Z = 1, OV = 1, C = 0. The row tests C xor S = 0; here C = 0 and S = 1, so C xor S = 1, so the test is false and the branch is not taken: R7 = PC+2 = $1002, not the target. Forward: the target is PC+2 + displacement = $1002 + $0010 = $1012. POL-BR-01 (policy, C29, A-05): pdf 54 prints 7/9 for the row with no taken or not-taken label; the policy reads the larger printed figure (9) as taken and the smaller (7) as not taken, so this not-taken branch expects 7 cycles. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ],
+        "cycles": 7
+      },
+      "covers": [
+        "cycles:not-taken"
+      ]
+    },
+    {
+      "id": "cpu.BLT.s1-ov1-not-taken",
+      "row": "BLT",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Branch table, BLT row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BLT $1012",
+      "program": [
+        "0205 1000 00 0101",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BLT as 1000 S0 0101 followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if Less Than. S xor OV = 1'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $0205 (bit 5 = 0, forward), displacement $0010. Init S = 1, Z = 0, OV = 1, C = 0. The row tests S xor OV = 1; here S = 1 and OV = 1, so S xor OV = 0, so the test is false and the branch is not taken: R7 = PC+2 = $1002, not the target. This is the signed rule: S alone is 1, but S xor OV is 0 (a negative result with overflow is not less than). Forward: the target is PC+2 + displacement = $1002 + $0010 = $1012. Cycles are not asserted: pdf 54 prints 7/9 without saying which figure applies (C29, A-05); the POL-BR-01 policy vectors carry them. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "covers": [
+        "branch:fwd-not-taken",
+        "flag-preserved:S",
+        "flag-preserved:OV"
+      ]
+    },
+    {
+      "id": "cpu.NOPP.fwd-never-taken",
+      "row": "NOPP",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Branch table, NOPP row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50; branch timing figure, pdf 32",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "NOPP",
+      "program": [
+        "0208 1000 00 1000",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints NOPP as 1000 S0 1000 followed by the displacement word pppppp PPPP PP PPPP, 7 cycles: 'NoOPeration, two words.'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $0208 (bit 5 = 0, forward), displacement $0010. Init S = 1, Z = 1, OV = 1, C = 1. NOPP is the bit-3 partner of B (1000 S0 1000 against 1000 S0 0000) and pdf 54 describes it as 'NoOPeration, two words' with no operand and a single cycle count, so it never branches, in either direction and whatever the flags: R7 = PC+2 = $1002. The displacement word $0010 is fetched but not used; a forward branch would have gone to $1002 + $0010 = $1012. NOPP prints a single 7 (pdf 54), so the unit is 7 cycles. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 32, the one branch timing figure, drawn for BEXT: BAR 'output program counter', NACT, DTB, NACT, BAR 'output PC+1 to fetch displacement'): FETCH at cycle 0 from $1000; the BAR at cycle 4 puts out $1001, whose word $0010 is the displacement (recorded as a READ). The figure ends there, so no later access is listed. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ],
+        "cycles": 7
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0208"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "0010"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "branch:fwd-not-taken",
+        "cycles:base",
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C"
+      ]
+    },
+    {
+      "id": "cpu.NOPP.back-never-taken",
+      "row": "NOPP",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Branch table, NOPP row, pdf 54; S3.2.2 and Fig 3.2.2, pdf 47; C50",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "NOPP",
+      "program": [
+        "0228 1000 10 1000",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints NOPP as 1000 S0 1000 followed by the displacement word pppppp PPPP PP PPPP, 7 cycles: 'NoOPeration, two words.'. S3.2.2 (pdf 47): the second word is the address displacement; when the destination direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $0228 (bit 5 = 1, backward), displacement $0010. Init S = 0, Z = 0, OV = 0, C = 0. NOPP is the bit-3 partner of B (1000 S0 1000 against 1000 S0 0000) and pdf 54 describes it as 'NoOPeration, two words' with no operand and a single cycle count, so it never branches, in either direction and whatever the flags: R7 = PC+2 = $1002. The displacement word $0010 is fetched but not used; a backward branch would have gone to $1002 + $FFEF = $0FF1. NOPP prints a single 7 (pdf 54), so the unit is 7 cycles. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ],
+        "cycles": 7
+      },
+      "covers": [
+        "branch:back-not-taken",
+        "cycles:base"
+      ]
     }
   ]
 }
