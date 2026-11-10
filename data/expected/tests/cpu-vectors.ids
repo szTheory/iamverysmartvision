@@ -1,4 +1,11 @@
 # Expected results of suite cpu-vectors (D-17); first token per line, skip-ok marks a permitted skip.
+cpu.ADDR.0001-plus-0001
+cpu.ADDR.7fff-plus-1-overflow
+cpu.ADDR.7fff-plus-8000
+cpu.ADDR.8000-plus-8000
+cpu.ADDR.ffff-plus-1-carry-zero
+cpu.ADDR.r7-src-no-bonus
+cpu.ADDR.same-register-doubles
 cpu.CLRC.c-already-clear-flags-preserved
 cpu.CLRC.clears-c
 cpu.DIS.clears-intff

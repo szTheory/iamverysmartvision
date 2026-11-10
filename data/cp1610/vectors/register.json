@@ -1,0 +1,460 @@
+{
+  "schema_version": 1,
+  "source": "SRC-gi-cp1600-um-1975",
+  "group": "register",
+  "note": "Register-register and single-register rows (pdf 53). Every expect value is read from the cited page image and derived by hand; none comes from this core, an assembler or another implementation. C46 (CMP direction) and C49 (NEGR/ADCR carry and overflow) readings are stated in each derivation.",
+  "vectors": [
+    {
+      "id": "cpu.ADDR.7fff-plus-1-overflow",
+      "row": "ADDR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, ADDR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ADDR R1, R2",
+      "program": [
+        "00CA 0011 001 010"
+      ],
+      "derivation": "The register table (pdf 53) prints ADDR SSS, DDD as 0011 SSS DDD, 6 cycles, 'ADD contents of Register SSS to contents of register DDD. Results to DDD', status change S, Z, C, OV. S3.1.2 (pdf 45): C is set when the add produces a carry out of the high bit, OV when it produces two's complement overflow, Z when the result is all zero, S when the high-order bit is one. SSS = 001 (R1), DDD = 010 (R2): $7FFF + $0001 = $8000. No carry out of bit 15 (the sum is below $10000), so C = 0. Both addends are positive (bit 15 = 0) and the sum has bit 15 = 1, so OV = 1. S = 1 (bit 15 of $8000), Z = 0. Init S = 0, Z = 1, OV = 0, C = 1. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0001",
+          "7FFF",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "2": "8000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "00CA"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-set:OV",
+        "flag-clear:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.ADDR.ffff-plus-1-carry-zero",
+      "row": "ADDR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, ADDR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ADDR R3, R4",
+      "program": [
+        "00DC 0011 011 100"
+      ],
+      "derivation": "The register table (pdf 53) prints ADDR SSS, DDD as 0011 SSS DDD, 6 cycles, 'ADD contents of Register SSS to contents of register DDD. Results to DDD', status change S, Z, C, OV. S3.1.2 (pdf 45): C is set when the add produces a carry out of the high bit, OV when it produces two's complement overflow, Z when the result is all zero, S when the high-order bit is one. SSS = 011 (R3), DDD = 100 (R4): $FFFF + $0001 = $10000, so the 16-bit result is $0000 with a carry out of bit 15: C = 1. The addends have different signs ($FFFF negative, $0001 positive), so OV = 0. Z = 1 (all zero), S = 0. Init S = 1, Z = 0, OV = 1, C = 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0202",
+          "0303",
+          "0001",
+          "FFFF",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "4": "0000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "00DC"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:S",
+        "flag-set:Z",
+        "flag-clear:OV",
+        "flag-set:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.ADDR.0001-plus-0001",
+      "row": "ADDR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, ADDR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ADDR R0, R1",
+      "program": [
+        "00C1 0011 000 001"
+      ],
+      "derivation": "The register table (pdf 53) prints ADDR SSS, DDD as 0011 SSS DDD, 6 cycles, 'ADD contents of Register SSS to contents of register DDD. Results to DDD', status change S, Z, C, OV. S3.1.2 (pdf 45): C is set when the add produces a carry out of the high bit, OV when it produces two's complement overflow, Z when the result is all zero, S when the high-order bit is one. SSS = 000 (R0), DDD = 001 (R1): $0001 + $0001 = $0002. No carry (C = 0), both addends and the sum positive (OV = 0), nonzero (Z = 0), bit 15 = 0 (S = 0). Init all four flags 1, so all four clear. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0001",
+          "0001",
+          "0303",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "1": "0002",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "00C1"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:S",
+        "flag-clear:Z",
+        "flag-clear:OV",
+        "flag-clear:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.ADDR.8000-plus-8000",
+      "row": "ADDR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, ADDR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ADDR R5, R0",
+      "program": [
+        "00E8 0011 101 000"
+      ],
+      "derivation": "The register table (pdf 53) prints ADDR SSS, DDD as 0011 SSS DDD, 6 cycles, 'ADD contents of Register SSS to contents of register DDD. Results to DDD', status change S, Z, C, OV. S3.1.2 (pdf 45): C is set when the add produces a carry out of the high bit, OV when it produces two's complement overflow, Z when the result is all zero, S when the high-order bit is one. SSS = 101 (R5), DDD = 000 (R0): $8000 + $8000 = $10000, so the result is $0000 with a carry out: C = 1. Both addends are negative and the sum is not, so OV = 1. Z = 1, S = 0. Init all flags 0, so Z, OV and C are set and S stays 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "8000",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "8000",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "0": "0000",
+          "7": "1001"
+        },
+        "status": {
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "00E8"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:Z",
+        "flag-set:OV",
+        "flag-set:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.ADDR.r7-src-no-bonus",
+      "row": "ADDR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, ADDR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ADDR R7, R0",
+      "program": [
+        "00F8 0011 111 000"
+      ],
+      "derivation": "The register table (pdf 53) prints ADDR SSS, DDD as 0011 SSS DDD, 6 cycles, 'ADD contents of Register SSS to contents of register DDD. Results to DDD', status change S, Z, C, OV. S3.1.2 (pdf 45): C is set when the add produces a carry out of the high bit, OV when it produces two's complement overflow, Z when the result is all zero, S when the high-order bit is one. SSS = 111 (R7), DDD = 000 (R0). R7 as source is $1001. R7 read as a source is the PC after the opcode fetch incremented it, an inference from the fetch sequence (pdf 28) and POL-STK-01, not a printed value. $1001 + $0100 = $1101: no carry, no overflow (both positive, positive sum), nonzero, bit 15 = 0, so S = Z = OV = C = 0 as initialised. The cycle footnote of pdf 53 belongs to MOVR and TSTR only; the ADDR row prints a flat 6, so a source of R7 adds nothing (A-06). Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0100",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "0": "1101",
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "00F8"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:base",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.ADDR.7fff-plus-8000",
+      "row": "ADDR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, ADDR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ADDR R1, R3",
+      "program": [
+        "00CB 0011 001 011"
+      ],
+      "derivation": "The register table (pdf 53) prints ADDR SSS, DDD as 0011 SSS DDD, 6 cycles, 'ADD contents of Register SSS to contents of register DDD. Results to DDD', status change S, Z, C, OV. S3.1.2 (pdf 45): C is set when the add produces a carry out of the high bit, OV when it produces two's complement overflow, Z when the result is all zero, S when the high-order bit is one. SSS = 001 (R1), DDD = 011 (R3): $8000 + $7FFF = $FFFF. No carry (sum below $10000): C = 0. The addends differ in sign, so OV = 0 (stays 0). S = 1, Z = 0. Init S = 0, Z = 1, OV = 0, C = 1. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "7FFF",
+          "0303",
+          "8000",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "3": "FFFF",
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "00CB"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-clear:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.ADDR.same-register-doubles",
+      "row": "ADDR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, ADDR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ADDR R2, R2",
+      "program": [
+        "00D2 0011 010 010"
+      ],
+      "derivation": "The register table (pdf 53) prints ADDR SSS, DDD as 0011 SSS DDD, 6 cycles, 'ADD contents of Register SSS to contents of register DDD. Results to DDD', status change S, Z, C, OV. S3.1.2 (pdf 45): C is set when the add produces a carry out of the high bit, OV when it produces two's complement overflow, Z when the result is all zero, S when the high-order bit is one. SSS = DDD = 010 (R2): $4000 + $4000 = $8000. No carry (C stays 0); both addends positive and the sum negative, so OV = 1; S = 1, Z = 0. Init all flags 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0202",
+          "4000",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "2": "8000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "OV": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "00D2"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:S",
+        "flag-set:OV",
+        "fetch:bus"
+      ]
+    }
+  ]
+}

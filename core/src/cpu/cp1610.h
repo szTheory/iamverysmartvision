@@ -154,10 +154,15 @@ typedef struct ivs_cp1610_result {
   uint8_t reserved;
 } ivs_cp1610_result;
 
-/* Decode table row (cp1610_decode.c). A decle matches when (decle & mask) == value. */
+/* Decode table row (cp1610_decode.c). A decle matches when (decle & mask) == value and, for a
+ * row with eq set, its two register fields are equal (bits 5..3 == bits 2..0: TSTR, CLRR).
+ * id is the row id of data/expected/cp1610-rows.ids. handler 0 (IVS_CP1610_OP_NONE) marks a
+ * row whose semantics have not landed yet: it reports the temporary UNIMPLEMENTED fault. */
 typedef struct ivs_cp1610_row {
+  const char *id;
   uint16_t mask;
   uint16_t value;
+  uint8_t eq;
   uint8_t words;
   uint8_t base_cycles;
   uint8_t interruptible;
@@ -165,6 +170,7 @@ typedef struct ivs_cp1610_row {
 } ivs_cp1610_row;
 
 /* Row handler ids (internal; one per implemented row). */
+#define IVS_CP1610_OP_NONE 0u
 #define IVS_CP1610_OP_CLRC 1u
 #define IVS_CP1610_OP_SETC 2u
 #define IVS_CP1610_OP_EIS 3u
@@ -176,8 +182,10 @@ typedef struct ivs_cp1610_row {
 #define IVS_CP1610_OP_NOP 9u
 #define IVS_CP1610_OP_SIN 10u
 #define IVS_CP1610_OP_RSWD 11u
+#define IVS_CP1610_OP_ADDR 12u
 
-/* Internal decode lookup: the row for decle & 0x3FF, or NULL when no row is implemented. */
+/* Internal decode lookup: the most specific row for decle & 0x3FF. Every one of the 1024
+ * decles maps to exactly one row; NULL is never returned for a 10-bit decle. */
 const ivs_cp1610_row *ivs_cp1610_decode(uint16_t decle);
 
 size_t ivs_cp1610_state_size(void);

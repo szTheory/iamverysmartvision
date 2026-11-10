@@ -7,3 +7,4 @@ EIS_NO_INTFF cpu.EIS.sets-intff cpu.EIS. cpu.DIS.clears-intff
 GSWD_LAYOUT cpu.GSWD.r0-all-flags cpu.GSWD. cpu.CLRC.clears-c
 TCI_STROBE_STAMP cpu.TCI.strobe-figure cpu.TCI. cpu.SIN.n0
 HLT_NO_LATCH cpu.HLT.sets-halt-pending cpu.HLT. cpu.NOP.n0
+ADD_OVERFLOW cpu.ADDR.7fff-plus-1-overflow cpu.ADDR.|cpu.ADDI.|cpu.ADD.|cpu.ADD@. cpu.SETC.sets-c

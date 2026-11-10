@@ -173,6 +173,51 @@ static void ivs_set_fault(ivs_cp1610 *n, ivs_cp1610_result *r, uint8_t reason)
   r->events = (uint8_t)(r->events | IVS_CP1610_EV_FAULT);
 }
 
+/* Status update from a 16-bit result (pdf 45): S is bit 15 of the result, Z is set when the
+ * result is all zeros. */
+static void ivs_set_sz(ivs_cp1610 *n, uint32_t result)
+{
+  uint32_t st = (uint32_t)n->status & ~(uint32_t)(IVS_CP1610_S | IVS_CP1610_Z);
+  if ((result & 0x8000u) != 0u) {
+    st |= IVS_CP1610_S;
+  }
+  if ((result & 0xFFFFu) == 0u) {
+    st |= IVS_CP1610_Z;
+  }
+  n->status = (uint8_t)st;
+}
+
+/* The ALU adder (pdf 45, S3.1.2): result = a + b + cin through a uint32_t temporary. C is the
+ * carry out of bit 15; OV is two's complement overflow by the sign rule (a and b have the
+ * same sign and the result has the other sign); S and Z come from the result. Subtraction and
+ * compare call it with b = ~operand and cin = 1 ("performed by addition of two's complement
+ * of the subtrahend operand"). */
+static uint16_t ivs_alu_add(ivs_cp1610 *n, uint32_t a, uint32_t b, uint32_t cin)
+{
+  uint32_t sum = (a & 0xFFFFu) + (b & 0xFFFFu) + (cin & 1u);
+  uint32_t st;
+  ivs_set_sz(n, sum);
+  st = (uint32_t)n->status & ~(uint32_t)(IVS_CP1610_C | IVS_CP1610_OV);
+  if ((sum & 0x10000u) != 0u) {
+    st |= IVS_CP1610_C;
+  }
+  if ((~(a ^ b) & (a ^ sum) & 0x8000u) != 0u) {
+    st |= IVS_CP1610_OV;
+  }
+  n->status = (uint8_t)st;
+  return IVS_U16(sum);
+}
+
+/* ADD family: a + b with no carry in (ADDR here; ADD, ADD@ and ADDI share it later). */
+static uint16_t ivs_op_add(ivs_cp1610 *n, uint32_t a, uint32_t b)
+{
+  uint16_t r = ivs_alu_add(n, a, b, 0u);
+#ifdef IVS_FAULT_ADD_OVERFLOW
+  n->status = (uint8_t)(((uint32_t)n->status & ~(uint32_t)IVS_CP1610_OV) | (((uint32_t)n->status & IVS_CP1610_C) << 1));
+#endif
+  return r;
+}
+
 /* Row semantics. Control group (pdf 56): HLT sets the stop latch evaluated at a later
  * boundary (POL-HLT-01, C40; evaluation is plan 02-15); SDBD sets DBD for the next unit
  * (consumption is plan 02-13); EIS enables and DIS disables the interrupt system (INTFF,
@@ -182,9 +227,13 @@ static void ivs_set_fault(ivs_cp1610 *n, ivs_cp1610_result *r, uint8_t reason)
  * pulses PCIT; RSWD loads C, OV, Z, S from bits 4, 5, 6, 7 of register SSS (for SSS = 7 that
  * is the already incremented PC, an inference no vector asserts). Only the status change
  * column's flags move. Strobe records carry no address or data. */
-static void ivs_exec(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r, const ivs_cp1610_row *row, uint16_t word)
+static uint32_t ivs_exec(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r, const ivs_cp1610_row *row,
+                         uint16_t word)
 {
   uint32_t v;
+  uint32_t sss = ((uint32_t)word >> 3) & 7u;
+  uint32_t ddd = (uint32_t)word & 7u;
+  uint32_t extra = 0u;
   switch (row->handler) {
   case IVS_CP1610_OP_HLT:
     n->halt_pending = 1u;
@@ -235,9 +284,13 @@ static void ivs_exec(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r, const ivs
   case IVS_CP1610_OP_SETC:
     n->status = (uint8_t)((uint32_t)n->status | IVS_CP1610_C);
     break;
+  case IVS_CP1610_OP_ADDR:
+    n->r[ddd] = ivs_op_add(n, n->r[ddd], n->r[sss]);
+    break;
   default:
     __builtin_trap();
   }
+  return extra;
 }
 
 /* Instruction unit: FETCH at offset 0 from R7 (pdf 28), PC advances one per word fetched,
@@ -248,21 +301,22 @@ static void ivs_unit_instr(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r)
   uint16_t pc = n->r[7];
   uint16_t word = ivs_access(u, 0u, IVS_ACC_FETCH, 0u, pc, 0u);
   const ivs_cp1610_row *row;
+  uint32_t extra;
   r->opcode = word;
   if (u->wait_fault) {
     return;
   }
   row = ivs_cp1610_decode(word);
-  if (row == NULL) {
+  if (row == NULL || row->handler == IVS_CP1610_OP_NONE) {
     /* Sticky fault: PC stays at the offending word; the fetch is traced and counted. */
     r->elapsed_cpu_cycles = IVS_FETCH_CYCLES + u->shift;
     ivs_set_fault(n, r, IVS_CP1610_FAULT_UNIMPLEMENTED);
     return;
   }
   n->r[7] = IVS_U16((uint32_t)pc + 1u);
-  ivs_exec(n, u, r, row, word);
+  extra = ivs_exec(n, u, r, row, word);
   n->prev_interruptible = row->interruptible;
-  r->elapsed_cpu_cycles = (uint32_t)row->base_cycles + u->shift;
+  r->elapsed_cpu_cycles = (uint32_t)row->base_cycles + extra + u->shift;
 }
 
 static int ivs_lines_valid(const ivs_cp1610_lines *l)
