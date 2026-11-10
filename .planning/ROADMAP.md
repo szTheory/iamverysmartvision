@@ -126,13 +126,13 @@ Plans:
   3. Interrupt and BUSRQ acceptance cases (previous-instruction interruptibility, I flag, D/SDBD, BUSRQ), SDBD modes (with a documented policy for unsupported modes), stack direction, auto-increment registers and reset entry each pass their vectors, and each has a named-fault control that fails for the intended reason.
   4. For any instruction, the stepper reports an ordered, cycle-stamped list of bus accesses that a test compares against the manual's bus sequence.
   5. A build/link or symbol check fails when the core library references host clocks, filesystem, environment, threads or I/O. A deliberate-violation control demonstrates this.
-**Plans**: 3/18 plans executed
+**Plans**: 4/18 plans executed
 
 Plans:
 - [x] 02-01-PLAN.md — Gate hardening (IN-04, IN-02, denylist status 2, SPDX/ASCII for C), build/gate NONCE contract, discrepancy entries C36-C58 (G8 = C58) and five profile fields
 - [x] 02-02-PLAN.md — Walking skeleton A: CMake/presets, internal CPU API (DW access kind, one wait rule) with reset entry and CLRC/SETC, harness, JSON-to-C generator, control vectors, steps c-build, c-tests, tests-inventory with 12 controls
 - [x] 02-03-PLAN.md — Walking skeleton B: cpu-api contract suite and harness self-test suite
-- [ ] 02-04-PLAN.md — Walking skeleton C: named-fault path (c-faults, faults-verdict, 9 controls) and the structural cp1610-vectors checker (17 controls)
+- [x] 02-04-PLAN.md — Walking skeleton C: named-fault path (c-faults, faults-verdict, 9 controls) and the structural cp1610-vectors checker (17 controls)
 - [ ] 02-05-PLAN.md — Coverage derivation: flags, cycles, policies, addressing classes, exact branch directions and BEXT E codes, modifier witness, per-row bus list (15 controls)
 - [ ] 02-06-PLAN.md — Control group complete (HLT, SDBD, EIS, DIS, TCI, GSWD, NOP, SIN, RSWD) with vectors and four faults
 - [ ] 02-07-PLAN.md — Purity (API-05): core-symbols allowlist check, c-purity step, 13 deliberate-violation controls, core-symbols ctest suite
@@ -270,7 +270,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Evidence, Profile and Rights Foundations | 14/14 | Complete    | 2026-11-09 |
-| 2. CP-1610 CPU Core | 3/18 | In Progress | - |
+| 2. CP-1610 CPU Core | 4/18 | In Progress | - |
 | 3. Memory Map, Content Loading and Refusal | 0/TBD | Not started | - |
 | 4. Headless Runner and Installed Consumer (Slice 0) | 0/TBD | Not started | - |
 | 5. Hand Controllers and PSG Sound | 0/TBD | Not started | - |

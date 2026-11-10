@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 2
 current_phase_name: CP-1610 CPU Core
 status: executing
-stopped_at: Completed 02-03-PLAN.md
-last_updated: "2026-11-10T05:58:58.277Z"
+stopped_at: Completed 02-04-PLAN.md
+last_updated: "2026-11-10T06:15:22.319Z"
 last_activity: 2026-11-10
 last_activity_desc: Phase 2 execution started
-state_head: 5e5545da595c074b6448e7922ef04fd0dfe9c58d
+state_head: 7797d20a72f4b3c5a89b4c3f2ab7391eff19420b
 progress:
   total_phases: 8
   completed_phases: 1
   total_plans: 32
-  completed_plans: 17
+  completed_plans: 18
   percent: 13
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 2 (CP-1610 CPU Core) — EXECUTING
-Plan: 4 of 18
+Plan: 5 of 18
 Status: Ready to execute
 Last activity: 2026-11-10 — Phase 2 execution started
 
@@ -69,6 +69,7 @@ Progress: [█░░░░░░░░░] 13%
 | Phase 02 P01 | 12 min | 3 tasks | 23 files |
 | Phase 02 P02 | 14min | 3 tasks | 72 files |
 | Phase 02 P03 | 6min | 2 tasks | 5 files |
+| Phase 02 P04 | 15min | 2 tasks | 114 files |
 
 ## Accumulated Context
 
@@ -107,6 +108,10 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 02]: 02-03: harness self-test compiles ivs_test.c directly and links only ivs_warnings and ivs_san, so it cannot depend on core or test-bus code
 - [Phase 02]: 02-03: refuse-small-log covers log_cap 0..7 (0 is below the 8-record minimum); log_cap 8 is the accepted control
 - [Phase 02]: 02-03: bus-order-matches-log compares kind, flags, addr, offset between port call and log record; data only for WRITE/DW; reads must show port data 0 and wait 0
+- [Phase 02]: 02-04: Fault executables (tests/faults.cmake) recompile only the owning TU with IVS_FAULT_<ID> and link plain core and harness copies with ivs_warnings only; c-faults runs them, faults-verdict judges them as a pure checker
+- [Phase 02]: 02-04: vector-program-mismatch compares a program word's binary with the whole hex word (generator rule), not only the low 10 bits
+- [Phase 02]: 02-04: vector-row-mismatch accepts only leaf rows for a decle; the 0BF TSTR/JR coincidence accepts TSTR or JR, never MOVR (plan 02-05 shows the MOVR R7 bonus with SSS != 7)
+- [Phase 02]: 02-04: mame lives only in tools/check/vector-emulator-names.txt; widening the shared denylist-cite.txt stays open for plan 02-18 (6 in-scope lines today)
 
 ### Pending Todos
 
@@ -137,6 +142,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-10T05:58:58.229Z
-Stopped at: Completed 02-03-PLAN.md
+Last session: 2026-11-10T06:15:22.249Z
+Stopped at: Completed 02-04-PLAN.md
 Resume file: None
