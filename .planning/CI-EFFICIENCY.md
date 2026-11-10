@@ -13,6 +13,8 @@ minus `createdAt`.
 |------|--------|--------|------------|---------|---------|--------|---------|
 | 2026-11-09 | 42720541081 | a41281e | success | 4 | 2 | 6 | 16 |
 | 2026-11-09 | 42720666825 | 7c25c55 | success | 2 | 2 | 4 | 11 |
+| 2026-11-09 | 42720865117 | 6aaae3f | success | 3 | 1 | 6 | 13 |
+| 2026-11-10 | 42727011942 | c1a8d07 | success | 3 | 2 | 9 | 16 |
 
 ## Breakdown of the first run
 
@@ -43,7 +45,19 @@ minus `createdAt`.
   pin.
 - **Artifact size: none.** The workflow uploads no artifacts.
 
+## Review after the code-review fixes (run 42727011942)
+
+- The gate step grew from 6 s to 9 s on the hosted runner: 112 controls (was 84) plus the
+  new `hygiene-history` step. Locally on a loaded host (load average about 15) the same gate
+  took 37 to 48 s, which is host load, not a cost the hosted runner pays.
+- Total wall time is still 16 s and queue is 3 s, so nothing needs changing now.
+- Cheapest lever if the gate keeps growing: run the negative controls in parallel (the runner
+  executes them one by one and they are independent). Not worth the complexity at 9 s; revisit
+  when the gate step passes about 30 s on the hosted runner, or when the Phase 2 C build adds
+  its own steps.
+- Local pre-push cost is the real friction: a loaded laptop makes the gate 4x slower than the
+  hosted runner. If that bites, parallelising controls is the fix and helps both.
+
 ## Next review
 
-After the next CI run (the push that carries the plan 01-12 summary and state commits).
-Append its row, and record a decision change only if the numbers move one.
+After the next CI run. Append its row, and record a decision change only if the numbers move one.
