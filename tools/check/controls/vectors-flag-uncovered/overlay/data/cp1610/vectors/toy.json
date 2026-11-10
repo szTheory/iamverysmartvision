@@ -55,7 +55,8 @@
         "toy",
         "flag-preserved:S",
         "flag-preserved:Z",
-        "flag-preserved:OV"
+        "flag-preserved:OV",
+        "addr:direct"
       ]
     },
     {

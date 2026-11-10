@@ -36,6 +36,18 @@
 #   a policy not pending without a vector naming it                 vector-policy-uncovered
 #   ... or without a fault whose must-fail vector names it          vector-policy-no-fault
 #   a pending row or policy that a vector names                     vector-pending-covered
+#   cp1610-addr-required.ids `<ROW> <addr tag>` line not met;
+#   an `addr:sdbd` vector per `supported` sdbd row once class:sdbd
+#   is not pending                                                  vector-addr-uncovered
+#   ... malformed line, unknown row, tag outside addr:, empty file
+#   without `#allow-empty:`                                          vector-addr-required-format
+#   a non-pending row without a vector carrying a non-empty bus     vector-bus-uncovered
+#   cp1610-branch-required.ids line not met / malformed             vector-branch-uncovered,
+#                                                                   vector-branch-required-format
+#   cp1610-modifier-witness.ids `<ROW> cycles:mod <WITNESS_ROW>`:
+#   ROW has one +k modifier, WITNESS_ROW refines ROW               vector-witness-format
+#   ... a single-step WITNESS_ROW vector tagged cycles:base asserts
+#   ROW's base plus k (replaces only ROW's cycles:mod requirement)  vector-witness-uncovered
 # Stats: vectors=<n> source=<n> policy=<n> rows-pending=<n> policies-pending=<n>
 # bus-figure-pages=<distinct pdf pages cited by bus_basis=figure vectors>. The review record
 # kind is plan 02-16's.
@@ -56,7 +68,9 @@ set(VTOKENS vector-file-unlisted vector-file-missing vector-missing-key vector-u
   vector-row-mismatch vector-program-mismatch vector-emulator-name vector-duplicate-id
   vector-id-missing vector-id-extra vector-suite-drift vector-skip-unknown
   vector-tag-false vector-row-uncovered vector-flag-uncovered vector-cycles-uncovered
-  vector-cycles-basis vector-policy-uncovered vector-policy-no-fault vector-pending-covered)
+  vector-cycles-basis vector-policy-uncovered vector-policy-no-fault vector-pending-covered
+  vector-addr-uncovered vector-addr-required-format vector-bus-uncovered vector-branch-uncovered
+  vector-branch-required-format vector-witness-format vector-witness-uncovered)
 set(FLAGS S Z OV C)
 
 # Finding with a per-token cap; totals are reported at the end.
@@ -899,6 +913,76 @@ function(vprove out i tag)
     if("${CMAKE_MATCH_1}" IN_LIST POLICY_IDS)
       set(r TRUE)
     endif()
+  elseif(tag MATCHES "^(addr|branch|ebci):")
+    set(fam "${CMAKE_MATCH_1}")
+    set(r FALSE)
+    set(words "${V${i}_words}")
+    list(LENGTH words nw)
+    if(nw GREATER 0)
+      list(GET words 0 w0)
+      math(EXPR d0 "${w0} & 1023")
+      # Addressing fields come from the target word: the second one after an SDBD word $0001.
+      set(d ${d0})
+      if(w0 EQUAL 1 AND nw GREATER 1)
+        list(GET words 1 w1)
+        math(EXPR d "${w1} & 1023")
+      endif()
+      math(EXPR mmm "(${d} >> 3) & 7")
+      math(EXPR ddd "${d} & 7")
+      if(fam STREQUAL "addr")
+        # MMM (bits 5..3): 0 direct, 1-3 indirect, 4-5 auto-increment, 6 stack, 7 immediate
+        if(tag STREQUAL "addr:sdbd")
+          if(w0 EQUAL 1 AND nw GREATER 1)
+            set(r TRUE)
+          endif()
+        elseif(tag STREQUAL "addr:direct" AND mmm EQUAL 0)
+          set(r TRUE)
+        elseif(tag STREQUAL "addr:indirect" AND mmm GREATER_EQUAL 1 AND mmm LESS_EQUAL 3)
+          set(r TRUE)
+        elseif(tag STREQUAL "addr:autoinc" AND mmm GREATER_EQUAL 4 AND mmm LESS_EQUAL 5)
+          set(r TRUE)
+        elseif(tag STREQUAL "addr:stack" AND mmm EQUAL 6)
+          set(r TRUE)
+        elseif(tag STREQUAL "addr:immediate" AND mmm EQUAL 7)
+          set(r TRUE)
+        elseif(tag STREQUAL "addr:r7-dest" AND ddd EQUAL 7 AND V${i}_r7set)
+          set(r TRUE)
+        endif()
+      elseif(fam STREQUAL "branch")
+        # Branch format `1000 S? cccc` (bits 9..6 = 1000). Bit 5 is the direction bit printed as
+        # S on pdf 54 ("S is 0 for +, 1 for -"); pdf 47: 0 adds the displacement to PC+2
+        # (forward), 1 adds its ones complement to PC+2 (backward). Taken when the final R7
+        # differs from start PC + 2, not taken when it equals it (16-bit wrap).
+        math(EXPR fmt "${d0} >> 6")
+        math(EXPR sbit "(${d0} >> 5) & 1")
+        math(EXPR next "(${V${i}_start} + 2) & 65535")
+        set(r7 "${V${i}_r7}")
+        if(tag MATCHES "^branch:(fwd|back)-(taken|not-taken)$" AND "${V${i}_steps}" STREQUAL "1"
+            AND fmt EQUAL 8 AND NOT r7 STREQUAL "")
+          set(dir "${CMAKE_MATCH_1}")
+          set(how "${CMAKE_MATCH_2}")
+          if((dir STREQUAL "fwd" AND sbit EQUAL 0) OR (dir STREQUAL "back" AND sbit EQUAL 1))
+            if(how STREQUAL "taken" AND NOT r7 EQUAL next)
+              set(r TRUE)
+            elseif(how STREQUAL "not-taken" AND r7 EQUAL next)
+              set(r TRUE)
+            endif()
+          endif()
+        endif()
+      elseif(tag MATCHES "^ebci:e([0-9]|1[0-5])-(true|false)$")
+        # E code = first decle AND $F; true when the vector's ebci list holds it
+        set(e "${CMAKE_MATCH_1}")
+        set(how "${CMAKE_MATCH_2}")
+        math(EXPR dl "${d0} & 15")
+        if(dl EQUAL e)
+          if(how STREQUAL "true" AND e IN_LIST V${i}_ebci)
+            set(r TRUE)
+          elseif(how STREQUAL "false" AND NOT e IN_LIST V${i}_ebci)
+            set(r TRUE)
+          endif()
+        endif()
+      endif()
+    endif()
   endif()
   set(${out} ${r} PARENT_SCOPE)
 endfunction()
@@ -965,8 +1049,88 @@ list(REMOVE_DUPLICATES PROVEN)
 list(REMOVE_DUPLICATES BUSROWS)
 list(REMOVE_DUPLICATES FIG_PAGES)
 
-# Rows whose cycles:mod branch is witnessed by a refining row (A-13; filled by the witness check).
+# Data lines of a coverage list file: sets <p>_lines (data lines, `;` made `,`), <p>_allow
+# (an `#allow-empty: <reason>` line exists) and <p>_exists.
+function(cov_lines p rel)
+  set(exists FALSE)
+  set(allow FALSE)
+  set(out "")
+  if(EXISTS "${ROOT}/${rel}")
+    set(exists TRUE)
+    file(STRINGS "${ROOT}/${rel}" lines)
+    foreach(l IN LISTS lines)
+      string(STRIP "${l}" l)
+      if(l MATCHES "^#allow-empty:[ \t]*[^ \t]")
+        set(allow TRUE)
+      elseif(NOT l STREQUAL "" AND NOT l MATCHES "^#")
+        string(REPLACE ";" "," l "${l}")
+        list(APPEND out "${l}")
+      endif()
+    endforeach()
+  endif()
+  set(${p}_lines "${out}" PARENT_SCOPE)
+  set(${p}_allow ${allow} PARENT_SCOPE)
+  set(${p}_exists ${exists} PARENT_SCOPE)
+endfunction()
+
+# Cycle-modifier witness (A-13): a `+k` branch that its own row cannot encode, because a
+# refining row owns that encoding, is witnessed by the refining row. Valid lines fill WITNESSED
+# (rows whose cycles:mod requirement is replaced).
 set(WITNESSED "")
+set(wrel "data/expected/cp1610-modifier-witness.ids")
+cov_lines(wl "${wrel}")
+if(NOT wl_exists)
+  vfail(vector-witness-format "${wrel} (missing)")
+elseif("${wl_lines}" STREQUAL "" AND NOT wl_allow)
+  vfail(vector-witness-format "${wrel} (no data lines and no #allow-empty: line)")
+endif()
+set(wseen "")
+foreach(l IN LISTS wl_lines)
+  if(NOT l MATCHES "^([^ \t]+)[ \t]+([^ \t]+)[ \t]+([^ \t]+)$")
+    vfail(vector-witness-format "${wrel} '${l}' is not '<ROW> cycles:mod <WITNESS_ROW>'")
+    continue()
+  endif()
+  set(wrow "${CMAKE_MATCH_1}")
+  set(wtag "${CMAKE_MATCH_2}")
+  set(wit "${CMAKE_MATCH_3}")
+  row_cols(wa "${wrow}")
+  row_cols(wb "${wit}")
+  if(NOT wtag STREQUAL "cycles:mod")
+    vfail(vector-witness-format "${wrel} '${l}' tag is not cycles:mod")
+  elseif(NOT wa_found OR NOT wb_found OR NOT wrow IN_LIST ROW_IDS OR NOT wit IN_LIST ROW_IDS)
+    vfail(vector-witness-format "${wrel} '${l}' names an unknown row")
+  elseif(NOT wa_nplus EQUAL 1)
+    vfail(vector-witness-format "${wrel} '${l}' ${wrow} has ${wa_nplus} +k modifiers, not 1")
+  elseif(NOT wb_refines STREQUAL wrow)
+    vfail(vector-witness-format "${wrel} '${l}' ${wit} refines '${wb_refines}', not ${wrow}")
+  elseif(wrow IN_LIST wseen)
+    vfail(vector-witness-format "${wrel} '${l}' repeats ${wrow}")
+  else()
+    list(APPEND wseen "${wrow}")
+    list(APPEND WITNESSED "${wrow}")
+    if(NOT wrow IN_LIST PENDING)
+      math(EXPR want "${wa_lead} + ${wa_k}")
+      if(wit IN_LIST PENDING)
+        vfail(vector-witness-uncovered "${wrow} cycles:mod: witness row ${wit} is pending")
+      else()
+        set(met FALSE)
+        foreach(i IN LISTS VIDX)
+          if("${V${i}_row}" STREQUAL "${wit}" AND "cycles:base" IN_LIST V${i}_tags)
+            vprove(okb ${i} "cycles:base")
+            cycles_is(okw ${i} "${want}")
+            if(okb STREQUAL "TRUE" AND okw)
+              set(met TRUE)
+              break()
+            endif()
+          endif()
+        endforeach()
+        if(NOT met)
+          vfail(vector-witness-uncovered "${wrow} cycles:mod: no single-step ${wit} vector tagged cycles:base asserts ${want} cycles")
+        endif()
+      endif()
+    endif()
+  endif()
+endforeach()
 
 # Derived requirements for every table row that is not pending.
 set(n_rows_pending 0)
@@ -1036,7 +1200,55 @@ foreach(row IN LISTS R_IDS)
       vfail(vector-cycles-uncovered "${row} ${tag}")
     endif()
   endforeach()
+
+  # Bus (ROADMAP SC4 per row) and the SDBD form of rows whose sdbd column is `supported`.
+  if(has AND NOT row IN_LIST BUSROWS)
+    vfail(vector-bus-uncovered "${row} (no vector with a non-empty bus list)")
+  endif()
+  if(rc_sdbd MATCHES "^supported" AND NOT "class:sdbd" IN_LIST PENDING
+      AND NOT "${row}|addr:sdbd" IN_LIST PROVEN)
+    vfail(vector-addr-uncovered "${row} addr:sdbd (sdbd column '${rc_sdbd}')")
+  endif()
 endforeach()
+
+# Required-tag files: `<ROW> <tag>` per line; rows that are not pending need a vector of that
+# row carrying that (proven) tag.
+function(req_file rel fmt_tok unc_tok family_re)
+  cov_lines(rq "${rel}")
+  if(NOT rq_exists)
+    vfail(${fmt_tok} "${rel} (missing)")
+    return()
+  endif()
+  if("${rq_lines}" STREQUAL "" AND NOT rq_allow)
+    vfail(${fmt_tok} "${rel} (no data lines and no #allow-empty: line)")
+  endif()
+  set(seen "")
+  foreach(l IN LISTS rq_lines)
+    if(NOT l MATCHES "^([^ \t]+)[ \t]+([^ \t]+)$")
+      vfail(${fmt_tok} "${rel} '${l}' is not '<ROW> <tag>'")
+      continue()
+    endif()
+    set(row "${CMAKE_MATCH_1}")
+    set(tag "${CMAKE_MATCH_2}")
+    if(NOT row IN_LIST ROW_IDS OR NOT row IN_LIST R_IDS)
+      vfail(${fmt_tok} "${rel} '${l}' unknown row")
+    elseif(NOT tag MATCHES "${family_re}")
+      vfail(${fmt_tok} "${rel} '${l}' tag outside this file's family")
+    elseif("${row}|${tag}" IN_LIST seen)
+      vfail(${fmt_tok} "${rel} '${l}' repeated")
+    else()
+      list(APPEND seen "${row}|${tag}")
+      if(NOT row IN_LIST PENDING AND NOT "${row}|${tag}" IN_LIST PROVEN)
+        vfail(${unc_tok} "${row} ${tag}")
+      endif()
+    endif()
+  endforeach()
+endfunction()
+req_file("data/expected/cp1610-addr-required.ids" vector-addr-required-format vector-addr-uncovered
+  "^addr:(direct|indirect|autoinc|stack|immediate|sdbd|r7-dest)$")
+req_file("data/expected/cp1610-branch-required.ids" vector-branch-required-format
+  vector-branch-uncovered
+  "^(branch:(fwd|back)-(taken|not-taken)|ebci:e([0-9]|1[0-5])-(true|false))$")
 
 # Exemption lines must name a row and a set/clear case of a flag the row changes.
 foreach(x IN LISTS EXEMPT)

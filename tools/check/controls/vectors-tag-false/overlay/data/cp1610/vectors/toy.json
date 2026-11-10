@@ -57,6 +57,7 @@
         "flag-preserved:Z",
         "flag-preserved:OV",
         "flag-preserved:C",
+        "addr:direct",
         "flag-set:Z"
       ]
     },

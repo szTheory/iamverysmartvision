@@ -1,0 +1,2 @@
+# Known-good control tree addressing requirements; columns: <ROW> <addr tag>.
+ZERO addr:direct

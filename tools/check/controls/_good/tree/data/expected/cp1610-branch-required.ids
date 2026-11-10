@@ -1,0 +1,2 @@
+# Known-good control tree branch requirements; columns: <ROW> <tag>.
+#allow-empty: the toy table has no branch row

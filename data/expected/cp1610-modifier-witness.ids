@@ -1,0 +1,3 @@
+# Cycle-modifier branches witnessed by a refining row (A-13); columns: <ROW> cycles:mod <WITNESS_ROW>.
+# MVI@ "+3 if MMM=6" is the PULR encoding, so a PULR vector shows the 8 + 3 cycles.
+MVI@ cycles:mod PULR

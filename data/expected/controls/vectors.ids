@@ -24,3 +24,10 @@ vectors-cycles-basis
 vectors-policy-uncovered
 vectors-policy-no-fault
 vectors-pending-covered
+vectors-addr-uncovered
+vectors-addr-required-format
+vectors-bus-uncovered
+vectors-branch-uncovered
+vectors-branch-required-format
+vectors-witness-format
+vectors-witness-uncovered
