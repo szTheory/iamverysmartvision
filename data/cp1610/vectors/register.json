@@ -455,6 +455,2626 @@
         "flag-set:OV",
         "fetch:bus"
       ]
+    },
+    {
+      "id": "cpu.SUBR.equal-operands-carry-zero",
+      "row": "SUBR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, SUBR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SUBR R1, R2",
+      "program": [
+        "010A 0100 001 010"
+      ],
+      "derivation": "The register table (pdf 53) prints SUBR SSS, DDD as 0100 SSS DDD, 6 cycles, 'SUBtract contents of Register SSS from contents of register DDD. Results to DDD', status change S, Z, C, OV. S3.1.2 (pdf 45): SUB is performed by addition of the two's complement of the subtrahend, so the result is DDD + ~SSS + 1; C is the carry out of that addition (C = 1 means no borrow) and OV its two's complement overflow (same-sign addends, other-sign sum). SSS = 001 (R1), DDD = 010 (R2): DDD - SSS = $1234 + ~$1234 + 1 = $1234 + $EDCB + 1 = $10000, so the result is $0000 with a carry out: C = 1 (no borrow) and Z = 1. The addends $1234 and $EDCB differ in sign, so OV = 0; S = 0. Init S = 1, Z = 0, OV = 1, C = 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "1234",
+          "1234",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "2": "0000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "010A"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:S",
+        "flag-set:Z",
+        "flag-clear:OV",
+        "flag-set:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SUBR.0000-minus-0001-borrow",
+      "row": "SUBR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, SUBR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SUBR R3, R0",
+      "program": [
+        "0118 0100 011 000"
+      ],
+      "derivation": "The register table (pdf 53) prints SUBR SSS, DDD as 0100 SSS DDD, 6 cycles, 'SUBtract contents of Register SSS from contents of register DDD. Results to DDD', status change S, Z, C, OV. S3.1.2 (pdf 45): SUB is performed by addition of the two's complement of the subtrahend, so the result is DDD + ~SSS + 1; C is the carry out of that addition (C = 1 means no borrow) and OV its two's complement overflow (same-sign addends, other-sign sum). SSS = 011 (R3), DDD = 000 (R0): $0000 + ~$0001 + 1 = $0000 + $FFFE + 1 = $FFFF with no carry out: C = 0 (a borrow). Addends $0000 and $FFFE differ in sign: OV = 0. S = 1, Z = 0. Init S = 0, Z = 1, OV = 1, C = 1. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0202",
+          "0303",
+          "0001",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "0": "FFFF",
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0118"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-clear:OV",
+        "flag-clear:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SUBR.8000-minus-0001-overflow",
+      "row": "SUBR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, SUBR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SUBR R4, R5",
+      "program": [
+        "0125 0100 100 101"
+      ],
+      "derivation": "The register table (pdf 53) prints SUBR SSS, DDD as 0100 SSS DDD, 6 cycles, 'SUBtract contents of Register SSS from contents of register DDD. Results to DDD', status change S, Z, C, OV. S3.1.2 (pdf 45): SUB is performed by addition of the two's complement of the subtrahend, so the result is DDD + ~SSS + 1; C is the carry out of that addition (C = 1 means no borrow) and OV its two's complement overflow (same-sign addends, other-sign sum). SSS = 100 (R4), DDD = 101 (R5): $8000 + ~$0001 + 1 = $8000 + $FFFE + 1 = $17FFF, so the result is $7FFF with a carry out: C = 1. Both addends ($8000, $FFFE) are negative and the sum is positive: OV = 1. S = 0, Z = 0. Init S = 1, Z = 1, OV = 0, C = 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0001",
+          "8000",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "5": "7FFF",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0125"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:S",
+        "flag-clear:Z",
+        "flag-set:OV",
+        "flag-set:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SUBR.r6-dst-no-bonus",
+      "row": "SUBR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, SUBR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SUBR R0, R6",
+      "program": [
+        "0106 0100 000 110"
+      ],
+      "derivation": "The register table (pdf 53) prints SUBR SSS, DDD as 0100 SSS DDD, 6 cycles, 'SUBtract contents of Register SSS from contents of register DDD. Results to DDD', status change S, Z, C, OV. S3.1.2 (pdf 45): SUB is performed by addition of the two's complement of the subtrahend, so the result is DDD + ~SSS + 1; C is the carry out of that addition (C = 1 means no borrow) and OV its two's complement overflow (same-sign addends, other-sign sum). SSS = 000 (R0), DDD = 110 (R6): $02F0 + ~$0010 + 1 = $02F0 + $FFEF + 1 = $102E0, so R6 = $02E0 with a carry out: C = 1. Addends differ in sign: OV = 0; S = 0, Z = 0. Init all flags 0. SUBR prints a flat 6 cycles; the footnote +1 for DDD = 6 or 7 belongs to MOVR only (A-06), so R6 as destination costs 6. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0010",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "6": "02E0",
+          "7": "1001"
+        },
+        "status": {
+          "C": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0106"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:C",
+        "cycles:base",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SUBR.7fff-minus-ffff-overflow",
+      "row": "SUBR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, SUBR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SUBR R1, R2",
+      "program": [
+        "010A 0100 001 010"
+      ],
+      "derivation": "The register table (pdf 53) prints SUBR SSS, DDD as 0100 SSS DDD, 6 cycles, 'SUBtract contents of Register SSS from contents of register DDD. Results to DDD', status change S, Z, C, OV. S3.1.2 (pdf 45): SUB is performed by addition of the two's complement of the subtrahend, so the result is DDD + ~SSS + 1; C is the carry out of that addition (C = 1 means no borrow) and OV its two's complement overflow (same-sign addends, other-sign sum). SSS = 001 (R1), DDD = 010 (R2): $7FFF + ~$FFFF + 1 = $7FFF + $0000 + 1 = $8000 with no carry out: C = 0 (borrow, since $7FFF < $FFFF unsigned). Both addends positive and the sum negative: OV = 1. S = 1, Z = 0. Init S = Z = OV = 0, C = 1. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "FFFF",
+          "7FFF",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "2": "8000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "010A"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:S",
+        "flag-set:OV",
+        "flag-clear:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.SUBR.same-register-zero",
+      "row": "SUBR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, SUBR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SUBR R3, R3",
+      "program": [
+        "011B 0100 011 011"
+      ],
+      "derivation": "The register table (pdf 53) prints SUBR SSS, DDD as 0100 SSS DDD, 6 cycles, 'SUBtract contents of Register SSS from contents of register DDD. Results to DDD', status change S, Z, C, OV. S3.1.2 (pdf 45): SUB is performed by addition of the two's complement of the subtrahend, so the result is DDD + ~SSS + 1; C is the carry out of that addition (C = 1 means no borrow) and OV its two's complement overflow (same-sign addends, other-sign sum). SSS = DDD = 011 (R3): $8000 + ~$8000 + 1 = $8000 + $7FFF + 1 = $10000, so R3 = $0000 with a carry out: C = 1, Z = 1, S = 0. Addends differ in sign: OV = 0 (stays 0). Init S = 1, Z = 0, OV = 0, C = 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0202",
+          "0303",
+          "8000",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "3": "0000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "011B"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:S",
+        "flag-set:Z",
+        "flag-set:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.CMPR.no-write",
+      "row": "CMPR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, CMPR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "CMPR R1, R2",
+      "program": [
+        "014A 0101 001 010"
+      ],
+      "derivation": "The register table (pdf 53) prints CMPR SSS, DDD as 0101 SSS DDD, 6 cycles, 'CoMPare Register SSS with register DDD by subtraction. Results not stored', status change S, Z, C, OV. The page does not name the operand order (C46); the chosen reading is register minus operand as for SUBR on the same row layout: the flags of DDD + ~SSS + 1, C the carry out of that addition and OV its overflow (pdf 45), and DDD is not written. SSS = 001 (R1), DDD = 010 (R2): flags of $0005 + ~$0003 + 1 = $0005 + $FFFC + 1 = $10002: result $0002 (not stored, R2 stays $0005), carry out C = 1, addends differ in sign so OV = 0, S = 0, Z = 0. Init S = 1, Z = 1, OV = 1, C = 0. Under the other operand order ($0003 - $0005 = $FFFE) S would be 1 and C 0, so this vector pins the C46 reading. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0003",
+          "0005",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "014A"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:S",
+        "flag-clear:Z",
+        "flag-clear:OV",
+        "flag-set:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.CMPR.equal-sets-z",
+      "row": "CMPR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, CMPR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "CMPR R3, R4",
+      "program": [
+        "015C 0101 011 100"
+      ],
+      "derivation": "The register table (pdf 53) prints CMPR SSS, DDD as 0101 SSS DDD, 6 cycles, 'CoMPare Register SSS with register DDD by subtraction. Results not stored', status change S, Z, C, OV. The page does not name the operand order (C46); the chosen reading is register minus operand as for SUBR on the same row layout: the flags of DDD + ~SSS + 1, C the carry out of that addition and OV its overflow (pdf 45), and DDD is not written. SSS = 011 (R3), DDD = 100 (R4): $8000 + ~$8000 + 1 = $8000 + $7FFF + 1 = $10000: result $0000 (not stored), C = 1, Z = 1, S = 0; addends differ in sign so OV = 0. Init S = 1, Z = 0, OV = 1, C = 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0202",
+          "0303",
+          "8000",
+          "8000",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "015C"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:S",
+        "flag-set:Z",
+        "flag-clear:OV",
+        "flag-set:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.CMPR.less-borrow",
+      "row": "CMPR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, CMPR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "CMPR R5, R0",
+      "program": [
+        "0168 0101 101 000"
+      ],
+      "derivation": "The register table (pdf 53) prints CMPR SSS, DDD as 0101 SSS DDD, 6 cycles, 'CoMPare Register SSS with register DDD by subtraction. Results not stored', status change S, Z, C, OV. The page does not name the operand order (C46); the chosen reading is register minus operand as for SUBR on the same row layout: the flags of DDD + ~SSS + 1, C the carry out of that addition and OV its overflow (pdf 45), and DDD is not written. SSS = 101 (R5), DDD = 000 (R0): $0000 + ~$0001 + 1 = $0000 + $FFFE + 1 = $FFFF with no carry: C = 0, S = 1, Z = 0; addends differ in sign so OV = 0. R0 stays $0000. Init S = 0, Z = 1, OV = 1, C = 1. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "0001",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0168"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-clear:OV",
+        "flag-clear:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.CMPR.8000-vs-0001-overflow",
+      "row": "CMPR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, CMPR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "CMPR R2, R3",
+      "program": [
+        "0153 0101 010 011"
+      ],
+      "derivation": "The register table (pdf 53) prints CMPR SSS, DDD as 0101 SSS DDD, 6 cycles, 'CoMPare Register SSS with register DDD by subtraction. Results not stored', status change S, Z, C, OV. The page does not name the operand order (C46); the chosen reading is register minus operand as for SUBR on the same row layout: the flags of DDD + ~SSS + 1, C the carry out of that addition and OV its overflow (pdf 45), and DDD is not written. SSS = 010 (R2), DDD = 011 (R3): $8000 + ~$0001 + 1 = $8000 + $FFFE + 1 = $17FFF: result $7FFF (not stored), carry out C = 1; both addends negative and the sum positive, so OV = 1; S = 0, Z = 0. Init S = 1, Z = 1, OV = 0, C = 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0202",
+          "0001",
+          "8000",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0153"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:S",
+        "flag-clear:Z",
+        "flag-set:OV",
+        "flag-set:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.CMPR.0000-vs-8000-overflow",
+      "row": "CMPR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, CMPR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "CMPR R4, R5",
+      "program": [
+        "0165 0101 100 101"
+      ],
+      "derivation": "The register table (pdf 53) prints CMPR SSS, DDD as 0101 SSS DDD, 6 cycles, 'CoMPare Register SSS with register DDD by subtraction. Results not stored', status change S, Z, C, OV. The page does not name the operand order (C46); the chosen reading is register minus operand as for SUBR on the same row layout: the flags of DDD + ~SSS + 1, C the carry out of that addition and OV its overflow (pdf 45), and DDD is not written. SSS = 100 (R4), DDD = 101 (R5): $0000 + ~$8000 + 1 = $0000 + $7FFF + 1 = $8000 with no carry: C = 0; both addends positive and the sum negative, so OV = 1; S = 1, Z = 0. Init S = Z = OV = 0, C = 1. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "8000",
+          "0000",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0165"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:S",
+        "flag-set:OV",
+        "flag-clear:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.ANDR.mask-low",
+      "row": "ANDR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, ANDR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ANDR R1, R2",
+      "program": [
+        "018A 0110 001 010"
+      ],
+      "derivation": "The register table (pdf 53) prints ANDR SSS, DDD as 0110 SSS DDD, 6 cycles, 'logical AND contents of Register SSS with contents of register DDD. Results to DDD', status change S, Z only, so C and OV keep their values. S and Z per S3.1.2 (pdf 45). SSS = 001 (R1), DDD = 010 (R2): $00FF AND $1234 = $0034. S = 0, Z = 0. Init all flags 1: S and Z clear, OV and C stay 1. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "00FF",
+          "1234",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "2": "0034",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "018A"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:S",
+        "flag-clear:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.ANDR.zero-result",
+      "row": "ANDR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, ANDR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ANDR R3, R4",
+      "program": [
+        "019C 0110 011 100"
+      ],
+      "derivation": "The register table (pdf 53) prints ANDR SSS, DDD as 0110 SSS DDD, 6 cycles, 'logical AND contents of Register SSS with contents of register DDD. Results to DDD', status change S, Z only, so C and OV keep their values. S and Z per S3.1.2 (pdf 45). SSS = 011 (R3), DDD = 100 (R4): $0F0F AND $F0F0 = $0000. Z = 1, S = 0. Init S = 0, Z = 0, OV = 1, C = 1: Z sets, OV and C stay 1. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0202",
+          "0303",
+          "0F0F",
+          "F0F0",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "4": "0000",
+          "7": "1001"
+        },
+        "status": {
+          "Z": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "019C"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.ANDR.sign",
+      "row": "ANDR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, ANDR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ANDR R5, R0",
+      "program": [
+        "01A8 0110 101 000"
+      ],
+      "derivation": "The register table (pdf 53) prints ANDR SSS, DDD as 0110 SSS DDD, 6 cycles, 'logical AND contents of Register SSS with contents of register DDD. Results to DDD', status change S, Z only, so C and OV keep their values. S and Z per S3.1.2 (pdf 45). SSS = 101 (R5), DDD = 000 (R0): $8001 AND $FFFF = $8001. S = 1, Z = 0. Init S = 0, Z = 1, OV = 0, C = 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "FFFF",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "8001",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "0": "8001",
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "01A8"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:S",
+        "flag-clear:Z",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.ANDR.same-register",
+      "row": "ANDR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, ANDR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ANDR R6, R6",
+      "program": [
+        "01B6 0110 110 110"
+      ],
+      "derivation": "The register table (pdf 53) prints ANDR SSS, DDD as 0110 SSS DDD, 6 cycles, 'logical AND contents of Register SSS with contents of register DDD. Results to DDD', status change S, Z only, so C and OV keep their values. S and Z per S3.1.2 (pdf 45). SSS = DDD = 110 (R6): $02F0 AND $02F0 = $02F0, so R6 keeps its value. S = 0, Z = 0 as initialised. ANDR prints a flat 6 cycles; R6 as source and destination adds nothing (the +1 footnote is MOVR and TSTR only, A-06). Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "01B6"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:base",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.XORR.toggle",
+      "row": "XORR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, XORR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "XORR R1, R2",
+      "program": [
+        "01CA 0111 001 010"
+      ],
+      "derivation": "The register table (pdf 53) prints XORR SSS, DDD as 0111 SSS DDD, 6 cycles, 'eXclusive OR contents of Register SSS with contents of register DDD. Results to DDD', status change S, Z only, so C and OV keep their values. The SSS = DDD encodings are the CLRR row. SSS = 001 (R1), DDD = 010 (R2): $FFFF XOR $0F0F = $F0F0. S = 1, Z = 0. Init S = 0, Z = 1, OV = 1, C = 1: OV and C stay 1. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "FFFF",
+          "0F0F",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "2": "F0F0",
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "01CA"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.XORR.equal-values-zero",
+      "row": "XORR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, XORR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "XORR R3, R4",
+      "program": [
+        "01DC 0111 011 100"
+      ],
+      "derivation": "The register table (pdf 53) prints XORR SSS, DDD as 0111 SSS DDD, 6 cycles, 'eXclusive OR contents of Register SSS with contents of register DDD. Results to DDD', status change S, Z only, so C and OV keep their values. The SSS = DDD encodings are the CLRR row. SSS = 011 (R3), DDD = 100 (R4), different registers holding the same value: $8421 XOR $8421 = $0000. Z = 1, S = 0. Init S = 1, Z = 0, OV = 1, C = 1. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0202",
+          "0303",
+          "8421",
+          "8421",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "4": "0000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "01DC"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:S",
+        "flag-set:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.XORR.r6-dst-no-bonus",
+      "row": "XORR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, XORR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "XORR R0, R6",
+      "program": [
+        "01C6 0111 000 110"
+      ],
+      "derivation": "The register table (pdf 53) prints XORR SSS, DDD as 0111 SSS DDD, 6 cycles, 'eXclusive OR contents of Register SSS with contents of register DDD. Results to DDD', status change S, Z only, so C and OV keep their values. The SSS = DDD encodings are the CLRR row. SSS = 000 (R0), DDD = 110 (R6): $0001 XOR $02F0 = $02F1. S = 0, Z = 0 as initialised. XORR prints a flat 6 cycles; R6 as destination adds nothing (A-06). Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0001",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "6": "02F1",
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "01C6"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:base",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.CLRR.r1",
+      "row": "CLRR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, CLRR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "CLRR R1",
+      "program": [
+        "01C9 0111 001 001"
+      ],
+      "derivation": "The register table (pdf 53) prints CLRR DDD as 0111 DDD DDD (the XORR layout with both register fields equal), 6 cycles, 'CLeaR Register to zero', status change S, Z: the result is always $0000, so after CLRR Z = 1 and S = 0 (pdf 45); C and OV keep their values. SSS = DDD = 001 (R1): R1 = $8421 XOR $8421 = $0000. Z = 1, S = 0. Init S = 1, Z = 0, OV = 1, C = 1: OV and C stay 1. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "8421",
+          "0303",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "1": "0000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "01C9"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:S",
+        "flag-set:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.CLRR.r6-no-bonus",
+      "row": "CLRR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, CLRR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "CLRR R6",
+      "program": [
+        "01F6 0111 110 110"
+      ],
+      "derivation": "The register table (pdf 53) prints CLRR DDD as 0111 DDD DDD (the XORR layout with both register fields equal), 6 cycles, 'CLeaR Register to zero', status change S, Z: the result is always $0000, so after CLRR Z = 1 and S = 0 (pdf 45); C and OV keep their values. SSS = DDD = 110 (R6): R6 = $0000. Z = 1 and S = 0 equal their initial values, OV = C = 1 stay. CLRR prints a flat 6 cycles; R6 adds nothing (A-06). Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "6": "0000",
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "01F6"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "cycles:base",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.CLRR.r0-already-zero",
+      "row": "CLRR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, CLRR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "CLRR R0",
+      "program": [
+        "01C0 0111 000 000"
+      ],
+      "derivation": "The register table (pdf 53) prints CLRR DDD as 0111 DDD DDD (the XORR layout with both register fields equal), 6 cycles, 'CLeaR Register to zero', status change S, Z: the result is always $0000, so after CLRR Z = 1 and S = 0 (pdf 45); C and OV keep their values. SSS = DDD = 000 (R0): R0 is already $0000 and stays $0000; the flags still follow the result: Z = 1, S = 0. Init S = 1, Z = 0, OV = 0, C = 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "01C0"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:S",
+        "flag-set:Z",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.INCR.ffff-c-preserved",
+      "row": "INCR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, INCR row, pdf 53; Fig 3.3.3, pdf 51; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "INCR R1",
+      "program": [
+        "0009 0000 001 001"
+      ],
+      "derivation": "The register table (pdf 53) prints INCR DDD as 0000 001 DDD, 6 cycles, 'INCrement contents of Register DDD. Results to DDD', status change S, Z only: C and OV are not printed and keep their values even when the increment carries out or overflows. DDD = 001 (R1): $FFFF + 1 = $10000, R1 = $0000. Z = 1, S = 0. The increment carries out of bit 15, but INCR does not print C, so C stays 0 (init S = 1, Z = 0, OV = 0, C = 0). Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "FFFF",
+          "0303",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "1": "0000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0009"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:S",
+        "flag-set:Z",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.INCR.7fff-sign",
+      "row": "INCR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, INCR row, pdf 53; Fig 3.3.3, pdf 51; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "INCR R2",
+      "program": [
+        "000A 0000 001 010"
+      ],
+      "derivation": "The register table (pdf 53) prints INCR DDD as 0000 001 DDD, 6 cycles, 'INCrement contents of Register DDD. Results to DDD', status change S, Z only: C and OV are not printed and keep their values even when the increment carries out or overflows. DDD = 010 (R2): $7FFF + 1 = $8000. S = 1, Z = 0. The step is a signed overflow and carries nothing, but INCR prints neither OV nor C, so both stay 1 (init S = 0, Z = 1, OV = 1, C = 1). Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0202",
+          "7FFF",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "2": "8000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "000A"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.INCR.0000",
+      "row": "INCR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, INCR row, pdf 53; Fig 3.3.3, pdf 51; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "INCR R0",
+      "program": [
+        "0008 0000 001 000"
+      ],
+      "derivation": "The register table (pdf 53) prints INCR DDD as 0000 001 DDD, 6 cycles, 'INCrement contents of Register DDD. Results to DDD', status change S, Z only: C and OV are not printed and keep their values even when the increment carries out or overflows. DDD = 000 (R0): $0000 + 1 = $0001. S = 0, Z = 0. Init all flags 1: OV and C stay 1. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "0": "0001",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0008"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:S",
+        "flag-clear:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.INCR.r6-no-bonus",
+      "row": "INCR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, INCR row, pdf 53; Fig 3.3.3, pdf 51; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "INCR R6",
+      "program": [
+        "000E 0000 001 110"
+      ],
+      "derivation": "The register table (pdf 53) prints INCR DDD as 0000 001 DDD, 6 cycles, 'INCrement contents of Register DDD. Results to DDD', status change S, Z only: C and OV are not printed and keep their values even when the increment carries out or overflows. DDD = 110 (R6): $02F0 + 1 = $02F1. S = 0, Z = 0 as initialised. INCR prints a flat 6 cycles; R6 adds nothing (A-06). Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "6": "02F1",
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "000E"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "cycles:base",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.DECR.0000-to-ffff",
+      "row": "DECR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, DECR row, pdf 53; Fig 3.3.3, pdf 51; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "DECR R3",
+      "program": [
+        "0013 0000 010 011"
+      ],
+      "derivation": "The register table (pdf 53) prints DECR DDD as 0000 010 DDD, 6 cycles, 'DECrement contents of Register DDD. Results to DDD', status change S, Z only: C and OV are not printed and keep their values. DDD = 011 (R3): $0000 - 1 = $FFFF (16-bit wrap). S = 1, Z = 0. DECR prints neither C nor OV, so both stay 1 (init S = 0, Z = 1, OV = 1, C = 1). Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0202",
+          "0303",
+          "0000",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "3": "FFFF",
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0013"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.DECR.0001-to-zero",
+      "row": "DECR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, DECR row, pdf 53; Fig 3.3.3, pdf 51; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "DECR R4",
+      "program": [
+        "0014 0000 010 100"
+      ],
+      "derivation": "The register table (pdf 53) prints DECR DDD as 0000 010 DDD, 6 cycles, 'DECrement contents of Register DDD. Results to DDD', status change S, Z only: C and OV are not printed and keep their values. DDD = 100 (R4): $0001 - 1 = $0000. Z = 1, S = 0. Init S = 1, Z = 0, OV = 1, C = 1. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0001",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "4": "0000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0014"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:S",
+        "flag-set:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.DECR.8000-to-7fff",
+      "row": "DECR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, DECR row, pdf 53; Fig 3.3.3, pdf 51; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "DECR R5",
+      "program": [
+        "0015 0000 010 101"
+      ],
+      "derivation": "The register table (pdf 53) prints DECR DDD as 0000 010 DDD, 6 cycles, 'DECrement contents of Register DDD. Results to DDD', status change S, Z only: C and OV are not printed and keep their values. DDD = 101 (R5): $8000 - 1 = $7FFF. S = 0, Z = 0. A signed overflow, but OV is not printed and stays 0 (init S = 1, Z = 1, OV = 0, C = 0). Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "8000",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "5": "7FFF",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0015"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:S",
+        "flag-clear:Z",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.COMR.0000-to-ffff",
+      "row": "COMR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, COMR row, pdf 53; Fig 3.3.3, pdf 51; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "COMR R0",
+      "program": [
+        "0018 0000 011 000"
+      ],
+      "derivation": "The register table (pdf 53) prints COMR DDD as 0000 011 DDD, 6 cycles, 'one's COMplement contents of Register DDD. Results to DDD', status change S, Z only: C and OV keep their values. DDD = 000 (R0): one's complement of $0000 is $FFFF. S = 1, Z = 0. Init S = 0, Z = 1, OV = 1, C = 1: OV and C stay 1. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "0": "FFFF",
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0018"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.COMR.ffff-to-zero",
+      "row": "COMR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, COMR row, pdf 53; Fig 3.3.3, pdf 51; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "COMR R1",
+      "program": [
+        "0019 0000 011 001"
+      ],
+      "derivation": "The register table (pdf 53) prints COMR DDD as 0000 011 DDD, 6 cycles, 'one's COMplement contents of Register DDD. Results to DDD', status change S, Z only: C and OV keep their values. DDD = 001 (R1): one's complement of $FFFF is $0000. Z = 1, S = 0. Init S = 1, Z = 0, OV = 1, C = 1. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "FFFF",
+          "0303",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "1": "0000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0019"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:S",
+        "flag-set:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.COMR.7fff-to-8000",
+      "row": "COMR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, COMR row, pdf 53; Fig 3.3.3, pdf 51; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "COMR R2",
+      "program": [
+        "001A 0000 011 010"
+      ],
+      "derivation": "The register table (pdf 53) prints COMR DDD as 0000 011 DDD, 6 cycles, 'one's COMplement contents of Register DDD. Results to DDD', status change S, Z only: C and OV keep their values. DDD = 010 (R2): one's complement of $7FFF is $8000. S = 1, Z = 0. Init all flags 0: S sets, the rest stay 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0202",
+          "7FFF",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "2": "8000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "001A"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:S",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.COMR.r6-no-bonus",
+      "row": "COMR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, COMR row, pdf 53; Fig 3.3.3, pdf 51; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "COMR R6",
+      "program": [
+        "001E 0000 011 110"
+      ],
+      "derivation": "The register table (pdf 53) prints COMR DDD as 0000 011 DDD, 6 cycles, 'one's COMplement contents of Register DDD. Results to DDD', status change S, Z only: C and OV keep their values. DDD = 110 (R6): one's complement of $02F0 is $FD0F. S = 1, Z = 0. Init all flags 0. COMR prints a flat 6 cycles; R6 adds nothing (A-06). Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "6": "FD0F",
+          "7": "1001"
+        },
+        "status": {
+          "S": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "001E"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:S",
+        "cycles:base",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.NEGR.zero",
+      "row": "NEGR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, NEGR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "NEGR R0",
+      "program": [
+        "0020 0000 100 000"
+      ],
+      "derivation": "The register table (pdf 53) prints NEGR DDD as 0000 100 DDD, 6 cycles, 'Two's complement contents of Register DDD. Results to DDD', status change S, Z, C, OV. S3.1.2 (pdf 45) defines C and OV only for ADD, SUB and CMP; by the C49 default NEGR is 0 - DDD performed as 0 + ~DDD + 1, with C the carry out and OV the two's complement overflow of that addition (an inference by analogy, C49). DDD = 000 (R0): 0 + ~$0000 + 1 = $0000 + $FFFF + 1 = $10000, so R0 stays $0000 with a carry out: C = 1, Z = 1, S = 0. Addends $0000 and $FFFF differ in sign: OV = 0. Init S = 1, Z = 0, OV = 1, C = 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0020"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:S",
+        "flag-set:Z",
+        "flag-clear:OV",
+        "flag-set:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.NEGR.8000",
+      "row": "NEGR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, NEGR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "NEGR R1",
+      "program": [
+        "0021 0000 100 001"
+      ],
+      "derivation": "The register table (pdf 53) prints NEGR DDD as 0000 100 DDD, 6 cycles, 'Two's complement contents of Register DDD. Results to DDD', status change S, Z, C, OV. S3.1.2 (pdf 45) defines C and OV only for ADD, SUB and CMP; by the C49 default NEGR is 0 - DDD performed as 0 + ~DDD + 1, with C the carry out and OV the two's complement overflow of that addition (an inference by analogy, C49). DDD = 001 (R1): 0 + ~$8000 + 1 = $0000 + $7FFF + 1 = $8000, so R1 stays $8000 with no carry: C = 0. Both addends positive and the sum negative: OV = 1. S = 1, Z = 0. Init S = 0, Z = 1, OV = 0, C = 1. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "8000",
+          "0303",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0021"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-set:OV",
+        "flag-clear:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.NEGR.c-from-carry-out",
+      "row": "NEGR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, NEGR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "NEGR R2",
+      "program": [
+        "0022 0000 100 010"
+      ],
+      "derivation": "The register table (pdf 53) prints NEGR DDD as 0000 100 DDD, 6 cycles, 'Two's complement contents of Register DDD. Results to DDD', status change S, Z, C, OV. S3.1.2 (pdf 45) defines C and OV only for ADD, SUB and CMP; by the C49 default NEGR is 0 - DDD performed as 0 + ~DDD + 1, with C the carry out and OV the two's complement overflow of that addition (an inference by analogy, C49). DDD = 010 (R2): 0 + ~$0001 + 1 = $0000 + $FFFE + 1 = $FFFF with no carry out: C = 0, while C was initialised to 1, so C must change. Addends differ in sign: OV = 0. S = 1, Z = 0. Init S = 0, Z = 1, OV = 1, C = 1. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0202",
+          "0001",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "2": "FFFF",
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0022"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-clear:OV",
+        "flag-clear:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.NEGR.ffff-to-0001",
+      "row": "NEGR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, NEGR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "NEGR R3",
+      "program": [
+        "0023 0000 100 011"
+      ],
+      "derivation": "The register table (pdf 53) prints NEGR DDD as 0000 100 DDD, 6 cycles, 'Two's complement contents of Register DDD. Results to DDD', status change S, Z, C, OV. S3.1.2 (pdf 45) defines C and OV only for ADD, SUB and CMP; by the C49 default NEGR is 0 - DDD performed as 0 + ~DDD + 1, with C the carry out and OV the two's complement overflow of that addition (an inference by analogy, C49). DDD = 011 (R3): 0 + ~$FFFF + 1 = $0000 + $0000 + 1 = $0001 with no carry: C = 0; both addends and the sum positive: OV = 0; S = 0, Z = 0. Init S = 1, Z = 1, OV = 0, C = 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0202",
+          "0303",
+          "FFFF",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "3": "0001",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0023"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:S",
+        "flag-clear:Z",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.ADCR.carry-in-one",
+      "row": "ADCR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, ADCR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ADCR R1",
+      "program": [
+        "0029 0000 101 001"
+      ],
+      "derivation": "The register table (pdf 53) prints ADCR DDD as 0000 101 DDD, 6 cycles, 'ADd Carry bit to contents of Register DDD', status change S, Z, C, OV. S3.1.2 (pdf 45) names only ADD, SUB and CMP for C and OV; by the C49 default ADCR is DDD + 0 with the old C as carry in, C the carry out of the high bit and OV the two's complement overflow of that addition (an inference by analogy, C49). DDD = 001 (R1), C = 1: $0001 + $0000 + 1 = $0002 with no carry out: C = 0. Both addends and the sum positive: OV = 0. S = 0, Z = 0. Init S = Z = OV = 0, C = 1. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0001",
+          "0303",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "1": "0002",
+          "7": "1001"
+        },
+        "status": {
+          "C": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0029"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.ADCR.carry-in-zero",
+      "row": "ADCR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, ADCR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ADCR R2",
+      "program": [
+        "002A 0000 101 010"
+      ],
+      "derivation": "The register table (pdf 53) prints ADCR DDD as 0000 101 DDD, 6 cycles, 'ADd Carry bit to contents of Register DDD', status change S, Z, C, OV. S3.1.2 (pdf 45) names only ADD, SUB and CMP for C and OV; by the C49 default ADCR is DDD + 0 with the old C as carry in, C the carry out of the high bit and OV the two's complement overflow of that addition (an inference by analogy, C49). DDD = 010 (R2), C = 0: $1234 + $0000 + 0 = $1234, so R2 keeps its value; no carry (C stays 0), no overflow (OV = 0), S = 0, Z = 0. Init S = 1, Z = 1, OV = 1, C = 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0202",
+          "1234",
+          "0404",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "002A"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:S",
+        "flag-clear:Z",
+        "flag-clear:OV",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.ADCR.7fff-overflow",
+      "row": "ADCR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, ADCR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ADCR R3",
+      "program": [
+        "002B 0000 101 011"
+      ],
+      "derivation": "The register table (pdf 53) prints ADCR DDD as 0000 101 DDD, 6 cycles, 'ADd Carry bit to contents of Register DDD', status change S, Z, C, OV. S3.1.2 (pdf 45) names only ADD, SUB and CMP for C and OV; by the C49 default ADCR is DDD + 0 with the old C as carry in, C the carry out of the high bit and OV the two's complement overflow of that addition (an inference by analogy, C49). DDD = 011 (R3), C = 1: $7FFF + $0000 + 1 = $8000 with no carry: C = 0. Both addends positive and the sum negative: OV = 1. S = 1, Z = 0. Init S = 0, Z = 1, OV = 0, C = 1. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0202",
+          "0303",
+          "7FFF",
+          "0505",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "3": "8000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "002B"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-set:OV",
+        "flag-clear:C",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.ADCR.ffff-carry-zero",
+      "row": "ADCR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, ADCR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ADCR R4",
+      "program": [
+        "002C 0000 101 100"
+      ],
+      "derivation": "The register table (pdf 53) prints ADCR DDD as 0000 101 DDD, 6 cycles, 'ADd Carry bit to contents of Register DDD', status change S, Z, C, OV. S3.1.2 (pdf 45) names only ADD, SUB and CMP for C and OV; by the C49 default ADCR is DDD + 0 with the old C as carry in, C the carry out of the high bit and OV the two's complement overflow of that addition (an inference by analogy, C49). DDD = 100 (R4), C = 1: $FFFF + $0000 + 1 = $10000, R4 = $0000 with a carry out, so C = 1 (it was 1). Addends $FFFF and $0000 differ in sign: OV = 0. Z = 1, S = 0. Init S = 1, Z = 0, OV = 1, C = 1. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "FFFF",
+          "0606",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "4": "0000",
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "002C"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:S",
+        "flag-set:Z",
+        "flag-clear:OV",
+        "fetch:bus"
+      ]
+    },
+    {
+      "id": "cpu.ADCR.0000-zero",
+      "row": "ADCR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Register-register table, ADCR row, pdf 53; status bits S3.1.2, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ADCR R5",
+      "program": [
+        "002D 0000 101 101"
+      ],
+      "derivation": "The register table (pdf 53) prints ADCR DDD as 0000 101 DDD, 6 cycles, 'ADd Carry bit to contents of Register DDD', status change S, Z, C, OV. S3.1.2 (pdf 45) names only ADD, SUB and CMP for C and OV; by the C49 default ADCR is DDD + 0 with the old C as carry in, C the carry out of the high bit and OV the two's complement overflow of that addition (an inference by analogy, C49). DDD = 101 (R5), C = 0: $0000 + $0000 + 0 = $0000: R5 stays $0000, Z = 1, S = 0, no carry and no overflow (C and OV stay 0). Init all flags 0. Fetch (pdf 28): FETCH at cycle 0 from R7 = $1000, one word; the unit is the printed 6 cycles with no further bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "0000",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "status": {
+          "Z": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "002D"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:Z",
+        "fetch:bus"
+      ]
     }
   ]
 }

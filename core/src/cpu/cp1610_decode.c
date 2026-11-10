@@ -36,11 +36,11 @@ static const ivs_cp1610_row ivs_cp1610_rows[] = {
     /* Single register, Fig 3.3.3 (pdf 51) and register table (pdf 53): 0000 ooo DDD, 6 cycles.
      * GSWD 0000 110 0DD, NOP 0000 110 10N, SIN 0000 110 11N (control table, pdf 56; footnote,
      * pdf 51), RSWD 0000 111 SSS. */
-    IVS_ROW("INCR", 0x3F8u, 0x008u, 0u, 1u, 6u, 1u, IVS_CP1610_OP_NONE),
-    IVS_ROW("DECR", 0x3F8u, 0x010u, 0u, 1u, 6u, 1u, IVS_CP1610_OP_NONE),
-    IVS_ROW("COMR", 0x3F8u, 0x018u, 0u, 1u, 6u, 1u, IVS_CP1610_OP_NONE),
-    IVS_ROW("NEGR", 0x3F8u, 0x020u, 0u, 1u, 6u, 1u, IVS_CP1610_OP_NONE),
-    IVS_ROW("ADCR", 0x3F8u, 0x028u, 0u, 1u, 6u, 1u, IVS_CP1610_OP_NONE),
+    IVS_ROW("INCR", 0x3F8u, 0x008u, 0u, 1u, 6u, 1u, IVS_CP1610_OP_INCR),
+    IVS_ROW("DECR", 0x3F8u, 0x010u, 0u, 1u, 6u, 1u, IVS_CP1610_OP_DECR),
+    IVS_ROW("COMR", 0x3F8u, 0x018u, 0u, 1u, 6u, 1u, IVS_CP1610_OP_COMR),
+    IVS_ROW("NEGR", 0x3F8u, 0x020u, 0u, 1u, 6u, 1u, IVS_CP1610_OP_NEGR),
+    IVS_ROW("ADCR", 0x3F8u, 0x028u, 0u, 1u, 6u, 1u, IVS_CP1610_OP_ADCR),
     IVS_ROW("GSWD", 0x3FCu, 0x030u, 0u, 1u, 6u, 1u, IVS_CP1610_OP_GSWD),
     IVS_ROW("NOP", 0x3FEu, 0x034u, 0u, 1u, 6u, 1u, IVS_CP1610_OP_NOP),
     IVS_ROW("SIN", 0x3FEu, 0x036u, 0u, 1u, 6u, 1u, IVS_CP1610_OP_SIN),
@@ -64,11 +64,11 @@ static const ivs_cp1610_row ivs_cp1610_rows[] = {
     IVS_ROW("JR", 0x3C7u, 0x087u, 0u, 1u, 7u, 1u, IVS_CP1610_OP_NONE),
     IVS_ROW("MOVR", 0x3C0u, 0x080u, 0u, 1u, 6u, 1u, IVS_CP1610_OP_NONE),
     IVS_ROW("ADDR", 0x3C0u, 0x0C0u, 0u, 1u, 6u, 1u, IVS_CP1610_OP_ADDR),
-    IVS_ROW("SUBR", 0x3C0u, 0x100u, 0u, 1u, 6u, 1u, IVS_CP1610_OP_NONE),
-    IVS_ROW("CMPR", 0x3C0u, 0x140u, 0u, 1u, 6u, 1u, IVS_CP1610_OP_NONE),
-    IVS_ROW("ANDR", 0x3C0u, 0x180u, 0u, 1u, 6u, 1u, IVS_CP1610_OP_NONE),
-    IVS_ROW("CLRR", 0x3C0u, 0x1C0u, 1u, 1u, 6u, 1u, IVS_CP1610_OP_NONE),
-    IVS_ROW("XORR", 0x3C0u, 0x1C0u, 0u, 1u, 6u, 1u, IVS_CP1610_OP_NONE),
+    IVS_ROW("SUBR", 0x3C0u, 0x100u, 0u, 1u, 6u, 1u, IVS_CP1610_OP_SUBR),
+    IVS_ROW("CMPR", 0x3C0u, 0x140u, 0u, 1u, 6u, 1u, IVS_CP1610_OP_CMPR),
+    IVS_ROW("ANDR", 0x3C0u, 0x180u, 0u, 1u, 6u, 1u, IVS_CP1610_OP_ANDR),
+    IVS_ROW("CLRR", 0x3C0u, 0x1C0u, 1u, 1u, 6u, 1u, IVS_CP1610_OP_CLRR),
+    IVS_ROW("XORR", 0x3C0u, 0x1C0u, 0u, 1u, 6u, 1u, IVS_CP1610_OP_XORR),
     /* Branches (pdf 54): 1000 S0 cccc plus a displacement word, 7/9 cycles (base 7); S is the
      * displacement sign and is not part of the row. NOPP prints 7. BEXT is 1000 S1 EEEE. */
     IVS_ROW("B", 0x3DFu, 0x200u, 0u, 2u, 7u, 1u, IVS_CP1610_OP_NONE),

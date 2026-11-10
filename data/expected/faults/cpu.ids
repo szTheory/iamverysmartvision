@@ -8,3 +8,8 @@ GSWD_LAYOUT cpu.GSWD.r0-all-flags cpu.GSWD. cpu.CLRC.clears-c
 TCI_STROBE_STAMP cpu.TCI.strobe-figure cpu.TCI. cpu.SIN.n0
 HLT_NO_LATCH cpu.HLT.sets-halt-pending cpu.HLT. cpu.NOP.n0
 ADD_OVERFLOW cpu.ADDR.7fff-plus-1-overflow cpu.ADDR.|cpu.ADDI.|cpu.ADD.|cpu.ADD@. cpu.SETC.sets-c
+SUB_CARRY cpu.SUBR.equal-operands-carry-zero cpu.SUBR.|cpu.CMPR. cpu.ADDR.0001-plus-0001
+CMP_WRITES_DEST cpu.CMPR.no-write cpu.CMPR. cpu.SUBR.equal-operands-carry-zero
+ADCR_IGNORES_C cpu.ADCR.carry-in-one cpu.ADCR. cpu.ADDR.0001-plus-0001
+INCR_TOUCHES_C cpu.INCR.ffff-c-preserved cpu.INCR. cpu.ADDR.0001-plus-0001
+NEGR_CARRY cpu.NEGR.c-from-carry-out cpu.NEGR. cpu.ADDR.0001-plus-0001

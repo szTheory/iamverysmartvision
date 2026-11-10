@@ -2,11 +2,6 @@
 # A listed row or policy may hold no vector (vector-pending-covered); a row or policy that is not
 # listed meets its full derived coverage. Later plans remove lines as they land vectors.
 J
-INCR
-DECR
-COMR
-NEGR
-ADCR
 SWAP
 SLL
 RLC
@@ -18,11 +13,6 @@ SARC
 MOVR
 TSTR
 JR
-SUBR
-CMPR
-ANDR
-XORR
-CLRR
 B
 BC
 BOV

@@ -2,3 +2,9 @@
 # Only impossible cases belong here: CLRC can never set C and SETC can never clear it (pdf 56).
 CLRC/flag-set:C
 SETC/flag-clear:C
+# CLRR always yields $0000 (pdf 53), so Z can never clear and S can never set.
+CLRR/flag-clear:Z
+CLRR/flag-set:S
+# ADCR adds the old C as its only carry in (C49 reading): with C = 0 the sum DDD + 0 cannot
+# carry out, so C can never go from 0 to 1.
+ADCR/flag-set:C

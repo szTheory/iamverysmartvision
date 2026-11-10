@@ -218,6 +218,17 @@ static uint16_t ivs_op_add(ivs_cp1610 *n, uint32_t a, uint32_t b)
   return r;
 }
 
+/* SUB family: a - b as a + ~b + 1 (pdf 45); C is the carry out, so C = 1 means no borrow.
+ * SUBR and CMPR here; SUB, SUB@, SUBI and the CMP forms share it later (C46 for CMP). */
+static uint16_t ivs_op_sub(ivs_cp1610 *n, uint32_t a, uint32_t b)
+{
+  uint16_t r = ivs_alu_add(n, a, ~b, 1u);
+#ifdef IVS_FAULT_SUB_CARRY
+  n->status = (uint8_t)((uint32_t)n->status ^ IVS_CP1610_C);
+#endif
+  return r;
+}
+
 /* Row semantics. Control group (pdf 56): HLT sets the stop latch evaluated at a later
  * boundary (POL-HLT-01, C40; evaluation is plan 02-15); SDBD sets DBD for the next unit
  * (consumption is plan 02-13); EIS enables and DIS disables the interrupt system (INTFF,
@@ -286,6 +297,54 @@ static uint32_t ivs_exec(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r, const
     break;
   case IVS_CP1610_OP_ADDR:
     n->r[ddd] = ivs_op_add(n, n->r[ddd], n->r[sss]);
+    break;
+  case IVS_CP1610_OP_SUBR:
+    n->r[ddd] = ivs_op_sub(n, n->r[ddd], n->r[sss]);
+    break;
+  case IVS_CP1610_OP_CMPR:
+    v = ivs_op_sub(n, n->r[ddd], n->r[sss]);
+#ifdef IVS_FAULT_CMP_WRITES_DEST
+    n->r[ddd] = IVS_U16(v);
+#endif
+    break;
+  case IVS_CP1610_OP_ANDR:
+    n->r[ddd] = IVS_U16((uint32_t)n->r[ddd] & (uint32_t)n->r[sss]);
+    ivs_set_sz(n, n->r[ddd]);
+    break;
+  case IVS_CP1610_OP_XORR:
+  case IVS_CP1610_OP_CLRR:
+    n->r[ddd] = IVS_U16((uint32_t)n->r[ddd] ^ (uint32_t)n->r[sss]);
+    ivs_set_sz(n, n->r[ddd]);
+    break;
+  case IVS_CP1610_OP_INCR:
+    v = (uint32_t)n->r[ddd] + 1u;
+    n->r[ddd] = IVS_U16(v);
+    ivs_set_sz(n, v);
+#ifdef IVS_FAULT_INCR_TOUCHES_C
+    n->status = (uint8_t)(((uint32_t)n->status & ~(uint32_t)IVS_CP1610_C) | ((v >> 12) & IVS_CP1610_C));
+#endif
+    break;
+  case IVS_CP1610_OP_DECR:
+    n->r[ddd] = IVS_U16((uint32_t)n->r[ddd] + 0xFFFFu);
+    ivs_set_sz(n, n->r[ddd]);
+    break;
+  case IVS_CP1610_OP_COMR:
+    n->r[ddd] = IVS_U16(~(uint32_t)n->r[ddd]);
+    ivs_set_sz(n, n->r[ddd]);
+    break;
+  case IVS_CP1610_OP_NEGR:
+    v = (uint32_t)n->status & IVS_CP1610_C;
+    n->r[ddd] = ivs_alu_add(n, 0u, ~(uint32_t)n->r[ddd], 1u);
+#ifdef IVS_FAULT_NEGR_CARRY
+    n->status = (uint8_t)(((uint32_t)n->status & ~(uint32_t)IVS_CP1610_C) | v);
+#endif
+    break;
+  case IVS_CP1610_OP_ADCR:
+    v = ((uint32_t)n->status & IVS_CP1610_C) != 0u ? 1u : 0u;
+#ifdef IVS_FAULT_ADCR_IGNORES_C
+    v = 0u;
+#endif
+    n->r[ddd] = ivs_alu_add(n, n->r[ddd], 0u, v);
     break;
   default:
     __builtin_trap();

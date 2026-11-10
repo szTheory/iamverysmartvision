@@ -183,6 +183,16 @@ typedef struct ivs_cp1610_row {
 #define IVS_CP1610_OP_SIN 10u
 #define IVS_CP1610_OP_RSWD 11u
 #define IVS_CP1610_OP_ADDR 12u
+#define IVS_CP1610_OP_SUBR 13u
+#define IVS_CP1610_OP_CMPR 14u
+#define IVS_CP1610_OP_ANDR 15u
+#define IVS_CP1610_OP_XORR 16u
+#define IVS_CP1610_OP_CLRR 17u
+#define IVS_CP1610_OP_INCR 18u
+#define IVS_CP1610_OP_DECR 19u
+#define IVS_CP1610_OP_COMR 20u
+#define IVS_CP1610_OP_NEGR 21u
+#define IVS_CP1610_OP_ADCR 22u
 
 /* Internal decode lookup: the most specific row for decle & 0x3FF. Every one of the 1024
  * decles maps to exactly one row; NULL is never returned for a 10-bit decle. */
