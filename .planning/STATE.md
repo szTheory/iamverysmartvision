@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 2
 current_phase_name: CP-1610 CPU Core
 status: executing
-stopped_at: Completed 02-04-PLAN.md
-last_updated: "2026-11-10T06:15:22.319Z"
+stopped_at: Completed 02-05-PLAN.md
+last_updated: "2026-11-10T06:32:51.217Z"
 last_activity: 2026-11-10
 last_activity_desc: Phase 2 execution started
-state_head: 7797d20a72f4b3c5a89b4c3f2ab7391eff19420b
+state_head: 52e1d640e6f39161f0052a1f2a75044f352b8407
 progress:
   total_phases: 8
   completed_phases: 1
   total_plans: 32
-  completed_plans: 18
+  completed_plans: 19
   percent: 13
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 2 (CP-1610 CPU Core) — EXECUTING
-Plan: 5 of 18
+Plan: 6 of 18
 Status: Ready to execute
 Last activity: 2026-11-10 — Phase 2 execution started
 
@@ -70,6 +70,7 @@ Progress: [█░░░░░░░░░] 13%
 | Phase 02 P02 | 14min | 3 tasks | 72 files |
 | Phase 02 P03 | 6min | 2 tasks | 5 files |
 | Phase 02 P04 | 15min | 2 tasks | 114 files |
+| Phase 02 P05 | 16min | 2 tasks | 89 files |
 
 ## Accumulated Context
 
@@ -112,6 +113,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 02]: 02-04: vector-program-mismatch compares a program word's binary with the whole hex word (generator rule), not only the low 10 bits
 - [Phase 02]: 02-04: vector-row-mismatch accepts only leaf rows for a decle; the 0BF TSTR/JR coincidence accepts TSTR or JR, never MOVR (plan 02-05 shows the MOVR R7 bonus with SSS != 7)
 - [Phase 02]: 02-04: mame lives only in tools/check/vector-emulator-names.txt; widening the shared denylist-cite.txt stays open for plan 02-18 (6 in-scope lines today)
+- [Phase 02]: cp1610-vectors counts a coverage tag only after the vector's own data proves it; a row or policy leaves cp1610-coverage-pending.ids only with all its derived needs (flags, cycles, required addr/branch tags, bus, and for policies a fault naming them)
+- [Phase 02]: MVI@ cycles:mod is witnessed by a single-step PULR cycles:base vector of 11 cycles (cp1610-modifier-witness.ids, A-13); the branch direction bit is bit 5 (S on pdf 54, meaning on pdf 47)
 
 ### Pending Todos
 
@@ -142,6 +145,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-10T06:15:22.249Z
-Stopped at: Completed 02-04-PLAN.md
+Last session: 2026-11-10T06:32:51.167Z
+Stopped at: Completed 02-05-PLAN.md
 Resume file: None
