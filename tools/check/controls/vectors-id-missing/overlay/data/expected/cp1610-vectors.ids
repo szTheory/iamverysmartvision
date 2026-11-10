@@ -1,0 +1,6 @@
+# Known-good control tree vector ids.
+# suite=toy
+cpu.ZERO.alpha
+cpu.ZERO.beta
+cpu.ZERO.delta
+cpu.ZERO.gamma

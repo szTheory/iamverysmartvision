@@ -1,0 +1,6 @@
+# Emulator project names that the no-copy and independence rules name (PROJECT.md Out of Scope
+# and the REQUIREMENTS.md out-of-scope table). Read only by tools/check/vectors.cmake, together
+# with denylist-cite.txt: no vector text field may contain any of them (case-insensitive
+# substring, no [cite-only] waiver). Lower case, one per line.
+jzintv
+mame

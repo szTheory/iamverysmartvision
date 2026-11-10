@@ -9,7 +9,7 @@
       "row": "ZERO",
       "kind": "source",
       "tier": "source-expectation",
-      "cite": "S3.3.4, pdf 53",
+      "cite": "Toy cite, pdf 1",
       "sources": [
         "SRC-gi-cp1600-um-1975"
       ],
@@ -36,6 +36,15 @@
         },
         "cycles": 4
       },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0000"
+        ]
+      ],
+      "bus_basis": "inference",
       "covers": [
         "toy"
       ]
@@ -45,7 +54,7 @@
       "row": "ZERO",
       "kind": "source",
       "tier": "source-expectation",
-      "cite": "S3.3.4, pdf 53",
+      "cite": "Toy cite, pdf 1",
       "sources": [
         "SRC-gi-cp1600-um-1975"
       ],
@@ -81,7 +90,7 @@
       "row": "ZERO",
       "kind": "source",
       "tier": "source-expectation",
-      "cite": "S3.3.4, pdf 53",
+      "cite": "Toy cite, pdf 1",
       "sources": [
         "SRC-gi-cp1600-um-1975"
       ],

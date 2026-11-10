@@ -1,0 +1,18 @@
+# Negative controls for the cp1610-vectors step (plans 02-04, 02-05).
+vectors-bad-cite
+vectors-duplicate-id
+vectors-emulator-name
+vectors-file-missing
+vectors-file-unlisted
+vectors-format
+vectors-id-extra
+vectors-id-missing
+vectors-missing-key
+vectors-policy-with-tier
+vectors-program-mismatch
+vectors-row-mismatch
+vectors-skip-unknown
+vectors-suite-drift
+vectors-unknown-key
+vectors-unknown-row
+vectors-unknown-source

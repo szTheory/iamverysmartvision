@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "source": "SRC-gi-cp1600-um-1975",
+  "group": "toy",
+  "note": "Known-good control tree vector file.",
+  "vectors": [
+    {
+      "id": "cpu.ZERO.alpha",
+      "row": "ZERO",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Toy cite, pdf 1",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ZERO",
+      "program": [
+        "0000 0000 000 000"
+      ],
+      "derivation": "Toy vector: one word fetched, R7 advances by 1, 4 cycles.",
+      "init": {
+        "r": [
+          "0000",
+          "0000",
+          "0000",
+          "0000",
+          "0000",
+          "0000",
+          "0000",
+          "1000"
+        ]
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "cycles": 4
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0000"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "toy"
+      ]
+    },
+    {
+      "id": "cpu.ZERO.beta",
+      "row": "ZERO",
+      "kind": "policy",
+      "tier": "source-expectation",
+      "cite": "Toy cite, pdf 1",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ZERO",
+      "program": [
+        "0000 0000 000 000"
+      ],
+      "derivation": "Toy vector: same as alpha.",
+      "init": {
+        "r": [
+          "0000",
+          "0000",
+          "0000",
+          "0000",
+          "0000",
+          "0000",
+          "0000",
+          "1000"
+        ]
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "cycles": 4
+      },
+      "covers": [
+        "toy"
+      ],
+      "policy": "POL-TOY-01"
+    },
+    {
+      "id": "cpu.ZERO.gamma",
+      "row": "ZERO",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Toy cite, pdf 1",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ZERO",
+      "program": [
+        "0000 0000 000 000"
+      ],
+      "derivation": "Toy vector: same as alpha; listed as a permitted skip.",
+      "init": {
+        "r": [
+          "0000",
+          "0000",
+          "0000",
+          "0000",
+          "0000",
+          "0000",
+          "0000",
+          "1000"
+        ]
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "cycles": 4
+      },
+      "covers": [
+        "toy"
+      ]
+    }
+  ]
+}

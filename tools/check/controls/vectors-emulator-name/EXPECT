@@ -1,0 +1,3 @@
+FAIL vector-emulator-name:
+cpu.ZERO.alpha derivation
+cpu.ZERO.beta derivation

@@ -1,5 +1,5 @@
 # suite=toy nonce=gate.good0
-# source data/cp1610/vectors/toy.json ce9927007c66c58c29febf49c15abf9b4d732aaa8bccc36d57f13bf918ff4018
+# source data/cp1610/vectors/toy.json fd1b99e0249f7020ee9ee70fa385d1b0ed58599764bfade9ab87c1150a707dd0
 1..3
 ok 1 cpu.ZERO.alpha
 not ok 2 cpu.ZERO.beta
