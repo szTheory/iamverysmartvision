@@ -64,8 +64,19 @@ tmp=$(mktemp -d "${TMPDIR:-/tmp}/hygiene.XXXXXX") || exit 1
 trap 'rm -rf "$tmp"' EXIT
 trap 'exit 1' HUP INT TERM
 
-# True if file $1 has a match of ERE $2 that is not allowed by ERE $3 (grep flags in $4).
-file_leaks() { grep -a -o $4 -E -e "$2" "$1" 2>/dev/null | grep -a -v -E -e "$3" | grep -q .; }
+# True if file $1 has a match of ERE $2 that is not allowed by ERE $3 (grep flags in $4; $5 is the
+# name reported if grep itself fails, default $1). A grep failure (exit status 2 or more) is a
+# finding, never "no match": unreadable input must not read as clean.
+file_leaks() {
+  _s=0
+  grep -a -o $4 -E -e "$2" "$1" > "$tmp/fl.out" 2> "$tmp/fl.err" || _s=$?
+  if [ "$_s" -ge 2 ]; then
+    found grep-error "${5:-$1}"
+    sed -n '1,3p' "$tmp/fl.err" >&2
+    return 1
+  fi
+  grep -a -v -E -e "$3" "$tmp/fl.out" | grep -q .
+}
 
 if [ "$mode" = --tree ]; then
   if [ -n "${ROOT:-}" ]; then root=$ROOT; else root=$(git rev-parse --show-toplevel) || exit 1; fi
@@ -91,24 +102,34 @@ if [ "$mode" = --tree ]; then
     if [ -f "$f" ] && [ -r "$f" ]; then printf './%s\0' "$f" >> "$tmp/ok"; else found unreadable "$f"; fi
   done < "$tmp/files"
 
-  # Batch candidate scans, then filter the few candidates one by one.
-  cand() { # $1 regex, $2 grep flags
-    if [ -s "$tmp/ok" ]; then xargs -0 grep -a -l $2 -E -e "$1" < "$tmp/ok" 2>/dev/null || true; fi
+  # Batch candidate scans, then filter the few candidates one by one. The batch runs grep through
+  # a wrapper that turns grep status 2 or more into status 255, which makes xargs stop and fail:
+  # status 1 (no match in a batch) is normal, an error is a finding.
+  cand() { # $1 regex, $2 grep flags; prints candidate files
+    [ -s "$tmp/ok" ] || return 0
+    GF=$2 PAT=$1 xargs -0 sh -c 'grep -a -l $GF -E -e "$PAT" "$@"; s=$?; [ "$s" -le 1 ] || exit 255' sh \
+      < "$tmp/ok" 2> "$tmp/cand.err" || {
+      found grep-error "candidate-scan"
+      sed -n '1,3p' "$tmp/cand.err" >&2
+    }
   }
-  cand "$HOME_ALL" "" | sort -u > "$tmp/c.home"
+  cand "$HOME_ALL" "" > "$tmp/c.raw"
+  sort -u "$tmp/c.raw" > "$tmp/c.home"
   while IFS= read -r f; do
     [ -n "$f" ] || continue
-    if file_leaks "$f" "$HOME_ALL" "$HOME_OK" ""; then found home-path "${f#./}"; fi
+    if file_leaks "$f" "$HOME_ALL" "$HOME_OK" "" "${f#./}"; then found home-path "${f#./}"; fi
   done < "$tmp/c.home"
-  { cand "$TOKEN_ALL" ""; cand "$PW_ALL" "-i"; } | sort -u > "$tmp/c.secret"
+  { cand "$TOKEN_ALL" ""; cand "$PW_ALL" "-i"; } > "$tmp/c.raw"
+  sort -u "$tmp/c.raw" > "$tmp/c.secret"
   while IFS= read -r f; do
     [ -n "$f" ] || continue
     found secret "${f#./}"
   done < "$tmp/c.secret"
-  cand "$EMAIL" "" | sort -u > "$tmp/c.email"
+  cand "$EMAIL" "" > "$tmp/c.raw"
+  sort -u "$tmp/c.raw" > "$tmp/c.email"
   while IFS= read -r f; do
     [ -n "$f" ] || continue
-    if file_leaks "$f" "$EMAIL" "$EMAIL_OK" ""; then found email "${f#./}"; fi
+    if file_leaks "$f" "$EMAIL" "$EMAIL_OK" "" "${f#./}"; then found email "${f#./}"; fi
   done < "$tmp/c.email"
 
   if [ "$fail" -eq 0 ]; then printf -- '-- hygiene pass mode=tree hygiene-files=%s\n' "$n"; fi
@@ -128,6 +149,19 @@ if [ -f "$here/check/hygiene-baseline.txt" ]; then
   b=$(grep -v -e '^#' -e '^[[:space:]]*$' "$here/check/hygiene-baseline.txt" | head -n 1 || true)
   if [ -n "$b" ] && git cat-file -e "$b^{commit}" 2>/dev/null; then base_commit=$b; fi
 fi
+# git grep wrapper: prints to $tmp/hg.out. Status 0 (match) and 1 (no match) are normal; any other
+# status is a finding, and so is an "error:" or "fatal:" line on stderr (git grep reports an
+# unreadable object that way while still exiting 1, which would otherwise read as "no match").
+hgrep() {
+  _s=0
+  git grep "$@" > "$tmp/hg.out" 2> "$tmp/hg.err" || _s=$?
+  if [ "$_s" -ge 2 ] || grep -q -E '^(error|fatal):' "$tmp/hg.err"; then
+    found history-grep-error "$s"
+    sed -n '1,3p' "$tmp/hg.err" >&2
+    return 1
+  fi
+  return 0
+}
 while IFS= read -r c; do
   [ -n "$c" ] || continue
   s=$(printf '%s' "$c" | cut -c1-10)
@@ -135,25 +169,31 @@ while IFS= read -r c; do
   if [ -n "$base_commit" ] && git merge-base --is-ancestor "$c" "$base_commit"; then
     h=$HOME_PATH; t=$TOKEN; w=$PW_ASSIGN
   fi
-  if git grep -a -h -o -E -e "$h" "$c" -- . 2>/dev/null | grep -a -v -E -e "$HOME_OK" | grep -q .; then
+  if hgrep -a -h -o -E -e "$h" "$c" -- . && grep -a -v -E -e "$HOME_OK" "$tmp/hg.out" | grep -q .; then
     found history-home-path "$s"
   fi
-  if { git grep -a -l -E -e "$t" "$c" -- . 2>/dev/null; git grep -a -l -i -E -e "$w" "$c" -- . 2>/dev/null; } | grep -q .; then
-    found history-secret "$s"
+  leak=0
+  if hgrep -a -l -E -e "$t" "$c" -- . && [ -s "$tmp/hg.out" ]; then leak=1; fi
+  if hgrep -a -l -i -E -e "$w" "$c" -- . && [ -s "$tmp/hg.out" ]; then leak=1; fi
+  if [ "$leak" -eq 1 ]; then found history-secret "$s"; fi
+  if ! git log -1 --format=%B "$c" > "$tmp/msg" 2> "$tmp/hg.err"; then
+    found history-log-error "$s"
+    continue
   fi
-  git log -1 --format=%B "$c" > "$tmp/msg"
-  if file_leaks "$tmp/msg" "$h" "$HOME_OK" ""; then found message-home-path "$s"; fi
-  if file_leaks "$tmp/msg" "$t" '^$' "" || file_leaks "$tmp/msg" "$w" '^$' "-i"; then
+  if file_leaks "$tmp/msg" "$h" "$HOME_OK" "" "message-$s"; then found message-home-path "$s"; fi
+  if file_leaks "$tmp/msg" "$t" '^$' "" "message-$s" || file_leaks "$tmp/msg" "$w" '^$' "-i" "message-$s"; then
     found message-secret "$s"
   fi
-  if file_leaks "$tmp/msg" "$EMAIL" "$EMAIL_OK" ""; then found message-email "$s"; fi
+  if file_leaks "$tmp/msg" "$EMAIL" "$EMAIL_OK" "" "message-$s"; then found message-email "$s"; fi
 done < "$tmp/commits"
-git log --all --format='%ae%n%ce' | sort -u > "$tmp/idents"
+git log --all --format='%ae%n%ce' > "$tmp/idents.raw" || { found unreadable "git-log-identities"; exit 1; }
+sort -u "$tmp/idents.raw" > "$tmp/idents"
 while IFS= read -r e; do
   [ -n "$e" ] || continue
   if ! printf '%s\n' "$e" | grep -q -E -e "$EMAIL_OK"; then found identity "identity-not-noreply"; fi
 done < "$tmp/idents"
-git log --all --name-only --format= | sort -u > "$tmp/names"
+git log --all --name-only --format= > "$tmp/names.raw" || { found unreadable "git-log-names"; exit 1; }
+sort -u "$tmp/names.raw" > "$tmp/names"
 while IFS= read -r p; do
   [ -n "$p" ] || continue
   base=${p##*/}

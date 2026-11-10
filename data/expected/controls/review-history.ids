@@ -1,0 +1,4 @@
+# Owning review fix WR-06: --history negative controls (throwaway repo built at run time).
+hygiene-history-home-path
+hygiene-history-secret
+hygiene-history-unreadable-object
