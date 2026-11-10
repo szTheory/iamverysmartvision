@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 2
 current_phase_name: CP-1610 CPU Core
 status: executing
-stopped_at: Completed 02-05-PLAN.md
-last_updated: "2026-11-10T06:32:51.217Z"
+stopped_at: Completed 02-06-PLAN.md
+last_updated: "2026-11-10T06:46:38.156Z"
 last_activity: 2026-11-10
 last_activity_desc: Phase 2 execution started
-state_head: 52e1d640e6f39161f0052a1f2a75044f352b8407
+state_head: 7c81937c79c6a9199e43f5257cd9a28b8e9743fd
 progress:
   total_phases: 8
   completed_phases: 1
   total_plans: 32
-  completed_plans: 19
+  completed_plans: 20
   percent: 13
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 2 (CP-1610 CPU Core) — EXECUTING
-Plan: 6 of 18
+Plan: 7 of 18
 Status: Ready to execute
 Last activity: 2026-11-10 — Phase 2 execution started
 
@@ -71,6 +71,7 @@ Progress: [█░░░░░░░░░] 13%
 | Phase 02 P03 | 6min | 2 tasks | 5 files |
 | Phase 02 P04 | 15min | 2 tasks | 114 files |
 | Phase 02 P05 | 16min | 2 tasks | 89 files |
+| Phase 02 P06 | 8min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -115,6 +116,7 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 02]: 02-04: mame lives only in tools/check/vector-emulator-names.txt; widening the shared denylist-cite.txt stays open for plan 02-18 (6 in-scope lines today)
 - [Phase 02]: cp1610-vectors counts a coverage tag only after the vector's own data proves it; a row or policy leaves cp1610-coverage-pending.ids only with all its derived needs (flags, cycles, required addr/branch tags, bus, and for policies a fault naming them)
 - [Phase 02]: MVI@ cycles:mod is witnessed by a single-step PULR cycles:base vector of 11 cycles (cp1610-modifier-witness.ids, A-13); the branch direction bit is bit 5 (S on pdf 54, meaning on pdf 47)
+- [Phase 02]: Strobes are access records through the bus port (addr = data = 0): STROBE_TCI at elapsed_cpu_cycles + 1 (pdf 33), STROBE_PCIT at cycle 4 of SIN (pdf 34); HLT reports HALT_LATCHED when it sets halt_pending
 
 ### Pending Todos
 
@@ -145,6 +147,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-10T06:32:51.167Z
-Stopped at: Completed 02-05-PLAN.md
+Last session: 2026-11-10T06:46:38.072Z
+Stopped at: Completed 02-06-PLAN.md
 Resume file: None
