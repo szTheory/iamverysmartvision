@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 2
 current_phase_name: CP-1610 CPU Core
 status: executing
-stopped_at: Completed 02-01-PLAN.md
-last_updated: "2026-11-10T05:24:08.786Z"
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-11-10T05:45:48.068Z"
 last_activity: 2026-11-10
 last_activity_desc: Phase 2 execution started
-state_head: 8edf03b1d02578cc7b02f378ac42d9756d72b365
+state_head: 664172d91fbc8f3b5132a43c3b64740d9a9b65e7
 progress:
   total_phases: 8
   completed_phases: 1
   total_plans: 32
-  completed_plans: 15
+  completed_plans: 16
   percent: 13
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 2 (CP-1610 CPU Core) — EXECUTING
-Plan: 2 of 18
+Plan: 3 of 18
 Status: Ready to execute
 Last activity: 2026-11-10 — Phase 2 execution started
 
@@ -67,6 +67,7 @@ Progress: [█░░░░░░░░░] 13%
 | Phase 1 P10 | 40min | 3 tasks | 11 files |
 | Phase 1 P12 | 15min | 2 tasks | 1 files |
 | Phase 02 P01 | 12 min | 3 tasks | 23 files |
+| Phase 02 P02 | 14min | 3 tasks | 72 files |
 
 ## Accumulated Context
 
@@ -98,6 +99,10 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 1]: 01-12: single CI job, no cache/matrix/path filter; macOS leg with the C build; revisit ubuntu-24.04 pin after 2026-11-19
 - [Phase 02]: C58 (JSR return address) resolved-primary: PC+3 legible on pdf 56; A-06 gap mapping G1-G6 = C46-C51, G7 = C37, G8 = C58
 - [Phase 02]: Profile flag fields cpu.interrupt_accept_clears_intff and cpu.ebci_default are JSON numbers (0 = false); the schema has no boolean value type
+- [Phase 02]: 02-02: the CPU access log carries read data and the applied wait; the bus port sees the request (wait 0, read data 0)
+- [Phase 02]: 02-02: a wait above wait_limit_cpu_cycles abandons the unit with sticky BUS_WAIT_LIMIT, elapsed = offset + 1 + wait (inference)
+- [Phase 02]: 02-02: step refuses lines outside 0/1 and an invalid config (IVS_E_BAD_ARG)
+- [Phase 02]: 02-02: vector units and events asserted only when listed; full state and 64K memory always asserted
 
 ### Pending Todos
 
@@ -128,6 +133,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-10T05:24:08.699Z
-Stopped at: Completed 02-01-PLAN.md
+Last session: 2026-11-10T05:45:47.985Z
+Stopped at: Completed 02-02-PLAN.md
 Resume file: None
