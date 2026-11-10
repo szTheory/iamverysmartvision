@@ -1,0 +1,9 @@
+# Suite cpu-fuzz: seeded robustness run of the CPU stepper, one case per fixed seed (D-12, plan 02-15).
+cpu-fuzz.seed-01
+cpu-fuzz.seed-02
+cpu-fuzz.seed-03
+cpu-fuzz.seed-04
+cpu-fuzz.seed-05
+cpu-fuzz.seed-06
+cpu-fuzz.seed-07
+cpu-fuzz.seed-08

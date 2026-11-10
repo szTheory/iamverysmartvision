@@ -15,3 +15,7 @@ cpu-api.not-reset-unit
 cpu-api.reset-idempotent
 cpu-api.deterministic-repeat
 cpu-api.two-instances-interleaved
+cpu-api.no-progress-units
+cpu-api.fault-sticky-until-reset
+cpu-api.halted-step-progresses
+cpu-api.wait-shifts-offsets

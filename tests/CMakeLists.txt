@@ -60,6 +60,12 @@ target_link_libraries(ivs_tests_cpu_api PRIVATE ivs_test_harness ivs_core ivs_wa
 add_test(NAME cpu-api COMMAND ivs_tests_cpu_api)
 set_tests_properties(cpu-api PROPERTIES SKIP_RETURN_CODE 77)
 
+# Suite cpu-fuzz (D-12, plan 02-15): the seeded robustness run; dev links the sanitizers.
+add_executable(ivs_tests_cpu_fuzz cpu/cpu_fuzz.c)
+target_link_libraries(ivs_tests_cpu_fuzz PRIVATE ivs_test_harness ivs_core ivs_warnings ivs_san)
+add_test(NAME cpu-fuzz COMMAND ivs_tests_cpu_fuzz)
+set_tests_properties(cpu-fuzz PROPERTIES SKIP_RETURN_CODE 77)
+
 # Suite harness: self-test of the harness library alone (compiled in directly, no core).
 add_executable(ivs_tests_harness harness/harness_selftest.c harness/ivs_test.c)
 target_link_libraries(ivs_tests_harness PRIVATE ivs_warnings ivs_san)

@@ -1,7 +1,9 @@
 /* SPDX-License-Identifier: MIT */
 /* Suite cpu-api: the internal CPU contract (D-02, D-03, D-06, D-12). State and access sizes,
  * state validation, refusal without mutation, access-log rules, determinism and instance
- * isolation. Programs use CLRC ($006) and SETC ($007) only, the rows implemented so far. */
+ * isolation, the no-progress guard, sticky faults, HALTED steps and wait-shifted offsets. The
+ * shared fixture programs use CLRC ($006) and SETC ($007); the plan 02-15 cases build their own
+ * small programs (NOP, MVI, a refused MVO@). */
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -474,6 +476,206 @@ static int api_not_reset_unit(void)
   return IVS_TEST_PASS;
 }
 
+/* ---- no-progress guard, sticky faults, HALTED and waits (D-12, plan 02-15) ---- */
+
+/* One step with the profile default config, the given lines and the bus port of b. */
+static ivs_status api_step_lines(ivs_cp1610 *s, ivs_testbus *b, const ivs_cp1610_lines *lines, ivs_cp1610_access *log,
+                                 ivs_cp1610_result *out)
+{
+  ivs_cp1610_config cfg;
+  ivs_cp1610_port port;
+  ivs_cp1610_config_default(&cfg);
+  ivs_testbus_port(b, &port, 0);
+  return ivs_cp1610_step(s, &cfg, lines, &port, log, IVS_CP1610_MAX_ACCESSES, out);
+}
+
+/* Lines from a 4-bit pattern: bit 0 INTR, 1 INTRM, 2 BUSRQ, 3 STPST. */
+static ivs_cp1610_lines api_lines(unsigned bits)
+{
+  ivs_cp1610_lines l;
+  l.intr = (uint8_t)(bits & 1u);
+  l.intrm = (uint8_t)((bits >> 1) & 1u);
+  l.busrq = (uint8_t)((bits >> 2) & 1u);
+  l.stpst = (uint8_t)((bits >> 3) & 1u);
+  return l;
+}
+
+/* A bus holding the refused decle $264 (MVO@ with SSS = MMM = 4, POL-MVO-01) at API_BASE_A, the
+ * reset vector answering API_BASE_A, and a reset state stepped through the reset entry and the
+ * refused fetch. The faulting step itself counts its fetch: a FAULT unit with elapsed above 0. */
+static int api_make_faulted(ivs_cp1610 *s)
+{
+  ivs_cp1610_lines low = api_lines(0u);
+  ivs_cp1610_access log[IVS_CP1610_MAX_ACCESSES];
+  ivs_cp1610_result r;
+  ivs_testbus_init(&api_bus_a);
+  ivs_testbus_poke(&api_bus_a, API_BASE_A, 0x0264u);
+  ivs_testbus_set_iab(&api_bus_a, API_BASE_A);
+  IVS_CHECK(ivs_cp1610_reset(s) == IVS_OK);
+  IVS_CHECK(api_step_lines(s, &api_bus_a, &low, log, &r) == IVS_OK);
+  IVS_CHECK(r.unit_kind == IVS_CP1610_UNIT_RESET_ENTRY);
+  IVS_CHECK(api_step_lines(s, &api_bus_a, &low, log, &r) == IVS_OK);
+  IVS_CHECK(r.unit_kind == IVS_CP1610_UNIT_FAULT && r.elapsed_cpu_cycles > 0u && r.n_accesses == 1u);
+  IVS_CHECK((r.events & IVS_CP1610_EV_FAULT) != 0u);
+  IVS_CHECK(s->run_state == IVS_CP1610_RS_FAULTED);
+  IVS_CHECK(s->fault_reason == IVS_CP1610_FAULT_UNSUPPORTED_MVO_SSS_EQ_MMM);
+  return IVS_TEST_PASS;
+}
+
+/* Steps that start in UNRESET or FAULTED take 0 cycles, make no access and no bus call, leave
+ * the state as it was and repeat byte-identically under any lines (T-02-32). The step that
+ * faults is not one of them: it reports the cycles it spent (api_make_faulted). */
+static int api_no_progress_units(void)
+{
+  static const uint8_t starts[2] = {IVS_CP1610_RS_UNRESET, IVS_CP1610_RS_FAULTED};
+  ivs_cp1610 s;
+  ivs_cp1610 before;
+  ivs_cp1610_result first;
+  ivs_cp1610_result r;
+  ivs_cp1610_access log[IVS_CP1610_MAX_ACCESSES];
+  unsigned which;
+  unsigned bits;
+  memset(&first, 0, sizeof first);
+  for (which = 0u; which < 2u; which++) {
+    if (starts[which] == IVS_CP1610_RS_UNRESET) {
+      ivs_testbus_init(&api_bus_a);
+      memset(&s, 0, sizeof s);
+    } else {
+      IVS_CHECK(api_make_faulted(&s) == IVS_TEST_PASS);
+    }
+    before = s;
+    for (bits = 0u; bits < 16u; bits++) {
+      ivs_cp1610_lines l = api_lines(bits);
+      size_t calls = api_bus_a.n_calls;
+      IVS_CHECK(api_step_lines(&s, &api_bus_a, &l, log, &r) == IVS_OK);
+      IVS_CHECK(r.elapsed_cpu_cycles == 0u && r.n_accesses == 0u && r.events == 0u);
+      IVS_CHECK(r.unit_kind == (starts[which] == IVS_CP1610_RS_UNRESET ? IVS_CP1610_UNIT_NOT_RESET : IVS_CP1610_UNIT_FAULT));
+      IVS_CHECK(api_bus_a.n_calls == calls);
+      IVS_CHECK(memcmp(&s, &before, sizeof s) == 0);
+      if (bits == 0u) {
+        first = r;
+      }
+      IVS_CHECK(memcmp(&r, &first, sizeof r) == 0);
+    }
+  }
+  return IVS_TEST_PASS;
+}
+
+/* A fault stays until reset: no line combination moves a FAULTED state; reset clears the
+ * fault reason and the next step is the reset entry (D-12, POL-RST-01). */
+static int api_fault_sticky_until_reset(void)
+{
+  ivs_cp1610 s;
+  ivs_cp1610 before;
+  ivs_cp1610_result r;
+  ivs_cp1610_access log[IVS_CP1610_MAX_ACCESSES];
+  ivs_cp1610_lines low = api_lines(0u);
+  unsigned k;
+  IVS_CHECK(api_make_faulted(&s) == IVS_TEST_PASS);
+  before = s;
+  for (k = 0u; k < 64u; k++) {
+    ivs_cp1610_lines l = api_lines(k & 15u);
+    IVS_CHECK(api_step_lines(&s, &api_bus_a, &l, log, &r) == IVS_OK);
+    IVS_CHECK(r.unit_kind == IVS_CP1610_UNIT_FAULT && r.elapsed_cpu_cycles == 0u);
+    IVS_CHECK(memcmp(&s, &before, sizeof s) == 0);
+  }
+  IVS_CHECK(ivs_cp1610_reset(&s) == IVS_OK);
+  IVS_CHECK(s.run_state == IVS_CP1610_RS_RESET_PENDING && s.fault_reason == IVS_CP1610_FAULT_NONE);
+  IVS_CHECK(api_step_lines(&s, &api_bus_a, &low, log, &r) == IVS_OK);
+  IVS_CHECK(r.unit_kind == IVS_CP1610_UNIT_RESET_ENTRY && r.elapsed_cpu_cycles > 0u);
+  IVS_CHECK(s.run_state == IVS_CP1610_RS_RUNNING && s.r[7] == API_BASE_A);
+  return IVS_TEST_PASS;
+}
+
+/* Every step in HALTED advances time: idle units of 1 cycle whatever INTR and INTRM do, grant
+ * and hold units of 1 cycle, a release of the configured latency, and the CPU stays HALTED
+ * until a STPST edge (POL-HLT-02, C45; the D-12 no-progress guard). */
+static int api_halted_step_progresses(void)
+{
+  static const uint16_t prog[2] = {0x0034u, 0x0034u};
+  ivs_cp1610 s;
+  ivs_cp1610_config cfg;
+  ivs_cp1610_result r;
+  ivs_cp1610_access log[IVS_CP1610_MAX_ACCESSES];
+  ivs_cp1610_lines l;
+  uint32_t total = 0u;
+  unsigned k;
+  ivs_cp1610_config_default(&cfg);
+  ivs_testbus_init(&api_bus_a);
+  ivs_testbus_poke(&api_bus_a, API_BASE_A, prog[0]);
+  ivs_testbus_poke(&api_bus_a, IVS_U16(API_BASE_A + 1u), prog[1]);
+  ivs_testbus_set_iab(&api_bus_a, API_BASE_A);
+  IVS_CHECK(ivs_cp1610_reset(&s) == IVS_OK);
+  l = api_lines(0u);
+  IVS_CHECK(api_step_lines(&s, &api_bus_a, &l, log, &r) == IVS_OK); /* reset entry */
+  IVS_CHECK(api_step_lines(&s, &api_bus_a, &l, log, &r) == IVS_OK); /* NOP: interruptible */
+  l = api_lines(8u);
+  IVS_CHECK(api_step_lines(&s, &api_bus_a, &l, log, &r) == IVS_OK); /* STPST edge: stop */
+  IVS_CHECK(r.unit_kind == IVS_CP1610_UNIT_HALTED && r.elapsed_cpu_cycles == 1u);
+  IVS_CHECK((r.events & IVS_CP1610_EV_STOPPED) != 0u && s.run_state == IVS_CP1610_RS_HALTED);
+  for (k = 0u; k < 100u; k++) {
+    l = api_lines(k & 3u); /* INTR and INTRM in every combination, never accepted */
+    IVS_CHECK(api_step_lines(&s, &api_bus_a, &l, log, &r) == IVS_OK);
+    IVS_CHECK(r.unit_kind == IVS_CP1610_UNIT_HALTED && r.elapsed_cpu_cycles == 1u && r.n_accesses == 0u);
+    IVS_CHECK(s.run_state == IVS_CP1610_RS_HALTED);
+    total += r.elapsed_cpu_cycles;
+  }
+  IVS_CHECK(total == 100u);
+  l = api_lines(4u);
+  for (k = 0u; k < 3u; k++) {
+    IVS_CHECK(api_step_lines(&s, &api_bus_a, &l, log, &r) == IVS_OK);
+    IVS_CHECK(r.unit_kind == IVS_CP1610_UNIT_BUS_GRANT && r.elapsed_cpu_cycles == 1u && r.n_accesses == 0u);
+    IVS_CHECK(s.busak == 1u && s.run_state == IVS_CP1610_RS_HALTED);
+  }
+  l = api_lines(0u);
+  IVS_CHECK(api_step_lines(&s, &api_bus_a, &l, log, &r) == IVS_OK);
+  IVS_CHECK(r.unit_kind == IVS_CP1610_UNIT_BUS_GRANT && r.elapsed_cpu_cycles == cfg.release_latency_cpu_cycles);
+  IVS_CHECK((r.events & IVS_CP1610_EV_BUS_RELEASED) != 0u && s.busak == 0u && s.run_state == IVS_CP1610_RS_HALTED);
+  l = api_lines(8u);
+  IVS_CHECK(api_step_lines(&s, &api_bus_a, &l, log, &r) == IVS_OK); /* STPST edge: resume, fetch */
+  IVS_CHECK(r.unit_kind == IVS_CP1610_UNIT_INSTR && s.run_state == IVS_CP1610_RS_RUNNING);
+  IVS_CHECK(s.r[7] == IVS_U16(API_BASE_A + 2u));
+  return IVS_TEST_PASS;
+}
+
+/* Each wait taken by a FETCH, READ or ADAR shifts every later access of the unit and the unit
+ * length (POL-WAIT-01, pdf 37, 40, 43). MVI $0200, R1 with waits 1 on the fetch, 2 on the
+ * address word and 3 on the operand: nominal offsets 0, 4, 6 (pdf 30) become 0, 5, 9, and the
+ * printed 10 cycles become 16. The port sees the same shifted offsets. */
+static int api_wait_shifts_offsets(void)
+{
+  ivs_cp1610 s;
+  ivs_cp1610_result r;
+  ivs_cp1610_access log[IVS_CP1610_MAX_ACCESSES];
+  ivs_cp1610_lines low = api_lines(0u);
+  size_t first;
+  size_t i;
+  ivs_testbus_init(&api_bus_a);
+  ivs_testbus_poke(&api_bus_a, API_BASE_A, 0x0281u);
+  ivs_testbus_poke(&api_bus_a, IVS_U16(API_BASE_A + 1u), 0x0200u);
+  ivs_testbus_poke(&api_bus_a, 0x0200u, 0x5A3Cu);
+  ivs_testbus_set_iab(&api_bus_a, API_BASE_A);
+  IVS_CHECK(ivs_testbus_add_wait(&api_bus_a, API_BASE_A, 1u) == 0);
+  IVS_CHECK(ivs_testbus_add_wait(&api_bus_a, IVS_U16(API_BASE_A + 1u), 2u) == 0);
+  IVS_CHECK(ivs_testbus_add_wait(&api_bus_a, 0x0200u, 3u) == 0);
+  IVS_CHECK(ivs_cp1610_reset(&s) == IVS_OK);
+  IVS_CHECK(api_step_lines(&s, &api_bus_a, &low, log, &r) == IVS_OK);
+  IVS_CHECK(r.unit_kind == IVS_CP1610_UNIT_RESET_ENTRY);
+  first = api_bus_a.n_calls;
+  IVS_CHECK(api_step_lines(&s, &api_bus_a, &low, log, &r) == IVS_OK);
+  IVS_CHECK(r.unit_kind == IVS_CP1610_UNIT_INSTR && r.n_accesses == 3u);
+  IVS_CHECK(log[0].kind == IVS_ACC_FETCH && log[0].offset_cpu_cycles == 0u && log[0].wait_cpu_cycles == 1u);
+  IVS_CHECK(log[1].kind == IVS_ACC_READ && log[1].offset_cpu_cycles == 5u && log[1].wait_cpu_cycles == 2u);
+  IVS_CHECK(log[2].kind == IVS_ACC_ADAR && log[2].offset_cpu_cycles == 9u && log[2].wait_cpu_cycles == 3u);
+  IVS_CHECK(log[2].addr == 0x0200u && log[2].data == 0x5A3Cu);
+  IVS_CHECK(r.elapsed_cpu_cycles == 16u);
+  IVS_CHECK(s.r[1] == 0x5A3Cu && s.r[7] == IVS_U16(API_BASE_A + 2u));
+  for (i = 0u; i < 3u; i++) {
+    IVS_CHECK(api_bus_a.calls[first + i].offset_cpu_cycles == log[i].offset_cpu_cycles);
+  }
+  return IVS_TEST_PASS;
+}
+
 /* reset twice equals reset once; reset ignores prior contents (zeroed, byte-filled, or a
  * state that has run), since POL-RST-01 zero-fills every field. */
 static int api_reset_idempotent(void)
@@ -566,6 +768,9 @@ static const ivs_test_case api_cases[] = {
     {"cpu-api.access-size-12", api_access_size_12, NULL},
     {"cpu-api.bus-order-matches-log", api_bus_order_matches_log, NULL},
     {"cpu-api.deterministic-repeat", api_deterministic_repeat, NULL},
+    {"cpu-api.fault-sticky-until-reset", api_fault_sticky_until_reset, NULL},
+    {"cpu-api.halted-step-progresses", api_halted_step_progresses, NULL},
+    {"cpu-api.no-progress-units", api_no_progress_units, NULL},
     {"cpu-api.not-reset-unit", api_not_reset_unit, NULL},
     {"cpu-api.null-log-equivalent", api_null_log_equivalent, NULL},
     {"cpu-api.refuse-invalid-state", api_refuse_invalid_state, NULL},
@@ -579,6 +784,7 @@ static const ivs_test_case api_cases[] = {
     {"cpu-api.validate-rejects-reserved-nonzero", api_validate_rejects_reserved_nonzero, NULL},
     {"cpu-api.validate-rejects-status-low-bits", api_validate_rejects_status_low_bits, NULL},
     {"cpu-api.validate-zeroed-state", api_validate_zeroed_state, NULL},
+    {"cpu-api.wait-shifts-offsets", api_wait_shifts_offsets, NULL},
 };
 
 int main(int argc, char **argv)
