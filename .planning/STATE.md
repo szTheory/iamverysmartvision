@@ -1,19 +1,19 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 1
-current_phase_name: Evidence, Profile and Rights Foundations
-status: verifying
-stopped_at: Completed 01-12-PLAN.md
-last_updated: "2026-11-09T23:29:00.786Z"
+current_phase: 2
+current_phase_name: CP-1610 CPU Core
+status: planning
+stopped_at: Phase 1 complete, ready to plan Phase 2
+last_updated: "2026-11-10T00:23:33.441Z"
 last_activity: 2026-11-09
-last_activity_desc: Phase 1 execution started
-state_head: 7c25c55049bdba30cb3a9867f2d5503030d2e3ad
+last_activity_desc: Phase 1 complete, transitioned to Phase 2
+state_head: 301488191cb210174f05d6c6b8410f973d046e61
 progress:
   total_phases: 8
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 14
   completed_plans: 14
-  percent: 0
+  percent: 13
 ---
 
 # Project State
@@ -23,21 +23,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-09)
 
 **Core value:** A deterministic, observable machine core whose every compatibility claim is bound to an exactly named profile and independent evidence — never an unqualified "it runs Intellivision games" label.
-**Current focus:** Phase 1 — Evidence, Profile and Rights Foundations
+**Current focus:** Phase 2 — CP-1610 CPU Core (Phase 1 complete, verified 5/5, security SECURED)
 
 ## Current Position
 
-Phase: 1 (Evidence, Profile and Rights Foundations) — EXECUTING
-Plan: 14 of 14
-Status: Phase complete — ready for verification
-Last activity: 2026-11-09 — Phase 1 execution started
+Phase: 2 — CP-1610 CPU Core
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-11-09 — Phase 1 complete, transitioned to Phase 2
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 13%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 0
+- Total plans completed: 14
 - Average duration: -
 - Total execution time: -
 
@@ -45,7 +45,7 @@ Progress: [░░░░░░░░░░] 0%
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 1 | 14 | - | - |
 
 *Updated after each plan completion*
 **Per-Plan Metrics:**
@@ -119,10 +119,12 @@ Concerns:
 
 | Category | Item | Status | Deferred At | Milestone |
 |----------|------|--------|-------------|-----------|
-| *(none)* | | | | |
+| Gate hardening | IN-01 whole `SRC-` token match; IN-02 fail glossary/sources on zero documents; IN-04 require each step's pass line; IN-03 anchor manifest outputs to their own fixture dir; IN-05 runner-selftest coverage of remaining tokens; denylist grep status 2 read as no-hit (`denylist.sh`); `--tree` grep-error control | Open, low severity (01-REVIEW.md, 01-SECURITY.md residual risks) | Phase 1 | Fold into a gate-hardening quick task when the Phase 2 C build adds steps |
+| Gate speed | Run negative controls in parallel if the hosted gate step passes ~30 s | Watching (9 s hosted, 2026-11-10) | Phase 1 | Phase 2 |
+| Evidence | C11 AY-3-8914 datasheet not found; CP-1600 vs CP-1610 inference (C31); same-model second reader | Open, carried by the discrepancy log | Phase 1 | Phase 5 / measurement gate D10 |
 
 ## Session Continuity
 
 Last session: 2026-11-09T23:29:00.766Z
-Stopped at: Completed 01-12-PLAN.md
+Stopped at: Phase 1 complete, ready to plan Phase 2
 Resume file: None

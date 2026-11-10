@@ -2,9 +2,9 @@
 phase: "1"
 slug: "evidence-profile-and-rights-foundations"
 # status lifecycle: draft (seeded by plan-phase) → validated (set by validate-phase §6)
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: validated
+nyquist_compliant: true
+wave_0_complete: true
 created: "2026-11-09"
 ---
 
@@ -42,16 +42,16 @@ There are 14 plans in 5 waves (01-01 to 01-14). Each task's `<automated>` verify
 
 | Req / SC | Behavior | Test Type | Automated Command | File Exists | Status |
 |----------|----------|-----------|-------------------|-------------|--------|
-| FND-01 / SC1 | Every expected profile field is present, with a known tag, a non-blank value and a cite. `unknown-default-chosen` carries `resolving_evidence`. D3 is cited | check + controls | `sh tools/gate.sh` (records:profile) | ❌ W0 | ⬜ pending |
-| FND-02 / SC2 | Two distinct vocabularies. Claims resolve. Every `[claim:]` in README/docs resolves. Claim-language tripwire | check + controls | `sh tools/gate.sh` (claims, text) | ❌ W0 | ⬜ pending |
-| FND-03 / SC2 | Discrepancy IDs are set-equal to the inventory (C1–C28 plus C29+). Each has `default_policy` and a resolver | check + controls | `sh tools/gate.sh` (discrepancies, ids) | ❌ W0 | ⬜ pending |
-| FND-04 / SC3 | Manifest is fail-closed. The sample `unknown` entry is treated as non-redistributable. A flipped copy fails | check + controls | `sh tools/gate.sh` (manifests) | ❌ W0 | ⬜ pending |
-| FND-05 / SC3 | The no-copy rule and checklist exist. Denylist runs on code paths. `refs/` is untracked. Unlisted binaries fail | check + controls | `sh tools/gate.sh` (text, files) | ❌ W0 | ⬜ pending |
-| FND-06 / SC4 | Row cites, sources registry, 1024-pattern coverage, second-reader ID parity, C17 `resolved-primary` | check + controls | `sh tools/gate.sh` (cp1610) | ❌ W0 | ⬜ pending |
-| FND-07 / SC5 | Glossary term inventory. Unit-suffixed profile keys. Bare-"clock" tripwire. D2 is linked | check + inventory | `sh tools/gate.sh` (glossary) | ❌ W0 | ⬜ pending |
-| Gate integrity | CRLF, non-ASCII, empty file and empty inventory each fail | controls | `sh tools/gate.sh` (controls) | ❌ W0 | ⬜ pending |
-| Hygiene | No home paths, non-noreply emails, secrets or unlisted binaries (tree and history) | check | `sh tools/hygiene.sh --tree` / `--history` | ❌ W0 | ⬜ pending |
-| CI parity | The workflow runs exactly `sh tools/gate.sh` | check | `sh tools/gate.sh` (ci-parity) | ❌ W0 | ⬜ pending |
+| FND-01 / SC1 | Every expected profile field is present, with a known tag, a non-blank value and a cite. `unknown-default-chosen` carries `resolving_evidence`. D3 is cited | check + controls | `sh tools/gate.sh` (records:profile) | ✅ | ✅ green |
+| FND-02 / SC2 | Two distinct vocabularies. Claims resolve. Every `[claim:]` in README/docs resolves. Claim-language tripwire | check + controls | `sh tools/gate.sh` (claims, text) | ✅ | ✅ green |
+| FND-03 / SC2 | Discrepancy IDs are set-equal to the inventory (C1–C28 plus C29+). Each has `default_policy` and a resolver | check + controls | `sh tools/gate.sh` (discrepancies, ids) | ✅ | ✅ green |
+| FND-04 / SC3 | Manifest is fail-closed. The sample `unknown` entry is treated as non-redistributable. A flipped copy fails | check + controls | `sh tools/gate.sh` (manifests) | ✅ | ✅ green |
+| FND-05 / SC3 | The no-copy rule and checklist exist. Denylist runs on code paths. `refs/` is untracked. Unlisted binaries fail | check + controls | `sh tools/gate.sh` (text, files) | ✅ | ✅ green |
+| FND-06 / SC4 | Row cites, sources registry, 1024-pattern coverage, second-reader ID parity, C17 `resolved-primary` | check + controls | `sh tools/gate.sh` (cp1610) | ✅ | ✅ green |
+| FND-07 / SC5 | Glossary term inventory. Unit-suffixed profile keys. Bare-"clock" tripwire. D2 is linked | check + inventory | `sh tools/gate.sh` (glossary) | ✅ | ✅ green |
+| Gate integrity | CRLF, non-ASCII, empty file and empty inventory each fail | controls | `sh tools/gate.sh` (controls) | ✅ | ✅ green |
+| Hygiene | No home paths, non-noreply emails, secrets or unlisted binaries (tree and history) | check | `sh tools/hygiene.sh --tree` / `--history` | ✅ | ✅ green |
+| CI parity | The workflow runs exactly `sh tools/gate.sh` | check | `sh tools/gate.sh` (ci-parity) | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -59,11 +59,11 @@ There are 14 plans in 5 waves (01-01 to 01-14). Each task's `<automated>` verify
 
 ## Wave 0 Requirements
 
-- [ ] `tools/gate.sh`, `tools/hygiene.sh`, `tools/check/*.cmake`, `tools/check/run-controls.sh`
-- [ ] `tools/check/controls/_good/` plus about 72 negative-control directories, with exact fragment inventories under `data/expected/controls/`
-- [ ] `data/expected/*.ids` inventories and `data/expected/gate-steps/` fragments
-- [ ] `.gitignore`, `LICENSE`, `README.md`, `.github/workflows/gate.yml`
-- [ ] No framework install is needed
+- [x] `tools/gate.sh`, `tools/hygiene.sh`, `tools/check/*.cmake`, `tools/check/run-controls.sh`
+- [x] `tools/check/controls/_good/` plus about 72 negative-control directories, with exact fragment inventories under `data/expected/controls/`
+- [x] `data/expected/*.ids` inventories and `data/expected/gate-steps/` fragments
+- [x] `.gitignore`, `LICENSE`, `README.md`, `.github/workflows/gate.yml`
+- [x] No framework install is needed
 
 ---
 
@@ -84,11 +84,11 @@ None of these needs the owner. They are handled by agent review and recorded as 
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 10s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency: 9 s on the hosted runner (CI-EFFICIENCY.md); local runs are 4x slower under host load
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** validated 2026-11-10. The goal verifier ran the gate (17 steps, 112 controls) and three mutation checks on a fresh clone; see 01-VERIFICATION.md.

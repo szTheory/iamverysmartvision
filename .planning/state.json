@@ -6,7 +6,7 @@
     {
       "number": "1",
       "name": "Evidence, Profile and Rights Foundations",
-      "status": "in_progress"
+      "status": "complete"
     },
     {
       "number": "2",
@@ -46,8 +46,8 @@
   ],
   "next": {
     "command": "/gsd-progress --next",
-    "label": "Advance to the next step (verify)",
-    "reason": "Phase 1 of 8 · 0% · ready to verify"
+    "label": "Advance to the next step (plan phase 2)",
+    "reason": "Phase 2 of 8 — needs a plan"
   },
-  "updated_at": "2026-11-09T23:29:00.252Z"
+  "updated_at": "2026-11-10T00:23:33.450Z"
 }
