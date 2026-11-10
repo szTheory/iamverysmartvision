@@ -2,17 +2,17 @@
 gsd_state_version: "1.0"
 current_phase: 2
 current_phase_name: CP-1610 CPU Core
-status: planning
-stopped_at: Phase 2 context gathered
-last_updated: "2026-11-10T02:08:50.246Z"
-last_activity: 2026-11-09
-last_activity_desc: Phase 1 complete, transitioned to Phase 2
-state_head: 522bad874ac1586cc9c25da5832e42e9d72d115c
+status: executing
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-11-10T05:24:08.786Z"
+last_activity: 2026-11-10
+last_activity_desc: Phase 2 execution started
+state_head: 8edf03b1d02578cc7b02f378ac42d9756d72b365
 progress:
   total_phases: 8
   completed_phases: 1
-  total_plans: 14
-  completed_plans: 14
+  total_plans: 32
+  completed_plans: 15
   percent: 13
 ---
 
@@ -23,14 +23,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-09)
 
 **Core value:** A deterministic, observable machine core whose every compatibility claim is bound to an exactly named profile and independent evidence — never an unqualified "it runs Intellivision games" label.
-**Current focus:** Phase 2 — CP-1610 CPU Core (Phase 1 complete, verified 5/5, security SECURED)
+**Current focus:** Phase 2 — CP-1610 CPU Core
 
 ## Current Position
 
-Phase: 2 — CP-1610 CPU Core
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-11-09 — Phase 1 complete, transitioned to Phase 2
+Phase: 2 (CP-1610 CPU Core) — EXECUTING
+Plan: 2 of 18
+Status: Ready to execute
+Last activity: 2026-11-10 — Phase 2 execution started
 
 Progress: [█░░░░░░░░░] 13%
 
@@ -66,6 +66,7 @@ Progress: [█░░░░░░░░░] 13%
 | Phase 1 P01-11 | 40min | 2 tasks | 16 files |
 | Phase 1 P10 | 40min | 3 tasks | 11 files |
 | Phase 1 P12 | 15min | 2 tasks | 1 files |
+| Phase 02 P01 | 12 min | 3 tasks | 23 files |
 
 ## Accumulated Context
 
@@ -95,6 +96,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 1]: 01-11: cmake line budget measured 2154 vs plan limit 1500; not shrunk, recorded as deviation for owner/orchestrator
 - [Phase 1]: 01-10: page-internal figure-vs-table differences (GSWD, RSWD, XOR@ printed form) are recorded as resolved second-reader entries; the family table is unchanged
 - [Phase 1]: 01-12: single CI job, no cache/matrix/path filter; macOS leg with the C build; revisit ubuntu-24.04 pin after 2026-11-19
+- [Phase 02]: C58 (JSR return address) resolved-primary: PC+3 legible on pdf 56; A-06 gap mapping G1-G6 = C46-C51, G7 = C37, G8 = C58
+- [Phase 02]: Profile flag fields cpu.interrupt_accept_clears_intff and cpu.ebci_default are JSON numbers (0 = false); the schema has no boolean value type
 
 ### Pending Todos
 
@@ -125,6 +128,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-10T02:08:50.188Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-cp-1610-cpu-core/02-CONTEXT.md
+Last session: 2026-11-10T05:24:08.699Z
+Stopped at: Completed 02-01-PLAN.md
+Resume file: None
