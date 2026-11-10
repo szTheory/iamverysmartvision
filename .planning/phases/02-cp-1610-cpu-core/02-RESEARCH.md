@@ -365,11 +365,11 @@ Parser sketch for `core-symbols.sh` (not executed; shape derived from the observ
 | A9 | Branch displacement DTB is at offset 6 (only BAR@4 is on the figure) | 1b | branch bus lists stay inference-tagged |
 | A10 | Full 16-bit direct EA and displacement words on the flat test bus | G5/G6 | Phase 3 may mask to 10 bits; policy vectors only |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **SDBD modes 1-3: one read or two?** Known: pages lean 2:1 to two reads (1c). Unclear: hardware. Recommendation: two reads, no increment, tagged `policy`, logged in the discrepancy entry D-13 already requires.
-2. **HALTED handling of INTR/BUSRQ** (A6): decide in plan 6, log as C36+, one vector and one fault.
-3. **Vector-data checker placement:** separate `cp1610-vectors` step versus folding into `tests-inventory`. Recommendation: separate (pure cmake -P, 0.8 s class cost, drivable by controls) and list it in `gate-steps/cpu.ids`.
+1. **SDBD modes 1-3: one read or two?** Known: pages lean 2:1 to two reads (1c). Unclear: hardware. Recommendation: two reads, no increment, tagged `policy`, logged in the discrepancy entry D-13 already requires. **RESOLVED:** adopted as CONTEXT A-03.
+2. **HALTED handling of INTR/BUSRQ** (A6): decide in plan 6, log as C36+, one vector and one fault. **RESOLVED:** adopted as CONTEXT A-10 (planned as POL-HLT-02).
+3. **Vector-data checker placement:** separate `cp1610-vectors` step versus folding into `tests-inventory`. Recommendation: separate (pure cmake -P, 0.8 s class cost, drivable by controls) and list it in `gate-steps/cpu.ids`. **RESOLVED:** separate step, CONTEXT A-07.
 
 ## Sources
 
