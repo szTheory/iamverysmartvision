@@ -53,6 +53,12 @@ cpu.BESC.cycles-not-taken
 cpu.BESC.cycles-taken
 cpu.BESC.fwd-not-taken
 cpu.BESC.fwd-taken
+cpu.BEXT.back-not-taken-e5
+cpu.BEXT.back-taken-e10
+cpu.BEXT.cycles-not-taken
+cpu.BEXT.cycles-taken
+cpu.BEXT.fwd-not-taken-e10
+cpu.BEXT.fwd-taken-e5
 cpu.BGE.back-not-taken
 cpu.BGE.back-taken
 cpu.BGE.cycles-not-taken

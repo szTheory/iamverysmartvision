@@ -87,7 +87,7 @@ static const ivs_cp1610_row ivs_cp1610_rows[] = {
     IVS_ROW("BGE", 0x3DFu, 0x20Du, 0u, 2u, 7u, 1u, IVS_CP1610_OP_BRANCH),
     IVS_ROW("BGT", 0x3DFu, 0x20Eu, 0u, 2u, 7u, 1u, IVS_CP1610_OP_BRANCH),
     IVS_ROW("BESC", 0x3DFu, 0x20Fu, 0u, 2u, 7u, 1u, IVS_CP1610_OP_BRANCH),
-    IVS_ROW("BEXT", 0x3D0u, 0x210u, 0u, 2u, 7u, 1u, IVS_CP1610_OP_NONE),
+    IVS_ROW("BEXT", 0x3D0u, 0x210u, 0u, 2u, 7u, 1u, IVS_CP1610_OP_BRANCH),
     /* Output group 1001 MMM SSS: MVO direct (MMM 000, two words, 11, pdf 55), PSHR (MMM 110,
      * 9, pdf 55), MVOI (MMM 111, two words, 9, pdf 57), MVO@ (otherwise, 9, pdf 55). */
     IVS_ROW("MVO", 0x3F8u, 0x240u, 0u, 2u, 11u, 0u, IVS_CP1610_OP_MVO),

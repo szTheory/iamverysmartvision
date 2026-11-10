@@ -593,10 +593,14 @@ foreach(entry IN LISTS order)
     endforeach()
   endif()
   list(JOIN cfg_vals "u, " cfg_c)
+  # ebci: absent means a NULL provider (C57); present, even empty, means a provider that answers
+  # true exactly for the listed codes.
   set(ebci_c "")
   set(n_ebci 0)
+  set(has_ebci 0)
   vt_type(t "${vec}" ebci)
   if(NOT t STREQUAL "MISSING")
+    set(has_ebci 1)
     string(JSON n_ebci LENGTH "${vec}" ebci)
     if(n_ebci GREATER 0)
       math(EXPR last "${n_ebci} - 1")
@@ -678,7 +682,7 @@ foreach(entry IN LISTS order)
   string(APPEND table_c "  {${id_c}, ${row_c}, ${kind_c}, ${policy_c}, ${cite_c},\n   ${der_c},\n"
     "   ${skip_c}, ${steps}u, ${reset}u, ${has_iab}u, ${iab_c}, ${cfg_mask}u, {${cfg_c}u, 0u},\n"
     "   ${init_c},\n   ${expect_c},\n   ${lines_c}, ${sl_ref}, ${mem_ref}, ${emem_ref},\n"
-    "   ${cycles_asserted}u, ${cycles}u, ${has_bus}u, ${bus_cyc}u, ${bus_ref}, ${waits_ref}, ${ebci_ref}, ${units_ref},\n"
+    "   ${cycles_asserted}u, ${cycles}u, ${has_bus}u, ${bus_cyc}u, ${bus_ref}, ${waits_ref}, ${ebci_ref}, ${has_ebci}u, ${units_ref},\n"
     "   ${has_events}u, (uint8_t)(${events_c})},\n")
   math(EXPR k "${k} + 1")
 endforeach()

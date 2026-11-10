@@ -60,8 +60,9 @@ typedef struct ivs_vec {
   size_t n_bus;
   const ivs_vec_wait *waits;
   size_t n_waits;
-  const uint8_t *ebci;
+  const uint8_t *ebci; /* codes the provider answers true for */
   size_t n_ebci;
+  uint8_t has_ebci; /* 0: NULL provider (key absent); 1: provider present, even with no codes */
   const uint8_t *units;
   size_t n_units;
   uint8_t has_events;

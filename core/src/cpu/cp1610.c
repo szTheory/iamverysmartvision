@@ -444,9 +444,31 @@ static uint32_t ivs_branch_cond(const ivs_cp1610 *n, uint32_t cccc)
   return t ^ neg;
 }
 
-/* Internal-condition branch 1000 S0 cccc plus a displacement word (B, the 14 conditional rows
- * and NOPP; S3.2.2, pdf 47; branch table, pdf 54). The displacement word at PC+1 is read like an immediate operand: the BAR at
- * offset 4 puts out PC+1 "to fetch displacement" (pdf 32), and R7 is left at PC+2. Not taken,
+/* External condition of BEXT 1000 S1 EEEE (branch table, pdf 54: "Field E is externally decoded
+ * to select 1 of 16 conditions. Response is tested for true condition."). EBCA0-3 are the 4
+ * least significant bits of the instruction register (pdf 11), so E = decle & $F. EBCI is valid
+ * throughout the TS1 of the displacement BAR (pdf 32), so the provider is asked after the
+ * displacement read. A NULL provider answers false (C57, POL-BR-01); any nonzero answer is true. */
+static uint32_t ivs_branch_ext(const ivs_unit *u, uint16_t word)
+{
+  uint8_t e = (uint8_t)((uint32_t)word & 0xFu);
+#ifdef IVS_FAULT_BEXT_E_FIELD_IGNORED
+  e = 0u;
+#endif
+#ifdef IVS_FAULT_BEXT_IGNORES_EBCI
+  return 0u;
+#endif
+  if (u->port->ebci == NULL) {
+    return 0u;
+  }
+  return u->port->ebci(u->port->ctx, e) != 0u ? 1u : 0u;
+}
+
+/* Branch 1000 S? cccc plus a displacement word (B, the 14 conditional rows, NOPP and, with bit 4
+ * set, BEXT; S3.2.2, pdf 47; branch table, pdf 54). The displacement word at PC+1 is read like
+ * an immediate operand: the BAR at offset 4 puts out PC+1 "to fetch displacement" (pdf 32), and
+ * R7 is left at PC+2. Bit 4 = 0 tests the internal condition cccc, bit 4 = 1 the external
+ * condition E (ivs_branch_ext). Not taken,
  * R7 stays PC+2. Taken, bit 5 (the direction bit, "S is 0 for +, 1 for -") = 0 adds the
  * displacement to PC+2 and 1 adds its one's complement (C50: all 16 bits), wrapping at 16 bits.
  * No status bit changes. Returns the cycles added to the base 7 (POL-BR-01). */
@@ -454,13 +476,15 @@ static uint32_t ivs_branch(ivs_cp1610 *n, ivs_unit *u, uint16_t word)
 {
   uint32_t disp = ivs_imm_read(n, u);
   uint32_t extra = IVS_BRANCH_TAKEN_EXTRA;
+  uint32_t taken;
   if ((((uint32_t)word >> 5) & 1u) != 0u) {
     disp = ~disp & 0xFFFFu;
 #ifdef IVS_FAULT_BRANCH_BACKWARD_SIGN
     disp = (disp + 1u) & 0xFFFFu;
 #endif
   }
-  if (ivs_branch_cond(n, (uint32_t)word & 0xFu) == 0u) {
+  taken = ((uint32_t)word & 0x10u) != 0u ? ivs_branch_ext(u, word) : ivs_branch_cond(n, (uint32_t)word & 0xFu);
+  if (taken == 0u) {
 #ifdef IVS_FAULT_BRANCH_NOT_TAKEN_CYCLES
     return IVS_BRANCH_TAKEN_EXTRA;
 #endif
@@ -573,8 +597,8 @@ static uint32_t ivs_shift(ivs_cp1610 *n, uint8_t op, uint32_t word)
  * reuse the register-group flag rules; MVOI writes register SSS there (no flags). Direct and
  * indirect groups (pdf 55): MVO, MVI, ADD, SUB, CMP, AND, XOR through the address word (ADAR,
  * pdf 30), the @ rows, PSHR and PULR through register MMM (C17, POL-STK-01, POL-STK-02).
- * Branches (pdf 54, pdf 47): B, the 14 internal-condition rows and NOPP through ivs_branch
- * (C50, POL-BR-01). Only the status change column's flags move. Strobe records carry no address or data. The
+ * Branches (pdf 54, pdf 47): B, the 14 internal-condition rows, NOPP and BEXT through
+ * ivs_branch (C50, C57, POL-BR-01). Only the status change column's flags move. Strobe records carry no address or data. The
  * return value is the cycles added to the row's base count (the MOVR/TSTR R6/R7 bonus). */
 static uint32_t ivs_exec(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r, const ivs_cp1610_row *row,
                          uint16_t word)

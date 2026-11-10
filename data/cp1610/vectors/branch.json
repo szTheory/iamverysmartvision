@@ -2,7 +2,7 @@
   "schema_version": 1,
   "source": "SRC-gi-cp1600-um-1975",
   "group": "branch",
-  "note": "Branch rows (pdf 54): B, the internal-condition rows 1000 S0 cccc and NOPP, each followed by a displacement word. Every expect value is read from the cited page images and derived by hand; none comes from this core, an assembler or another implementation. Targets follow S3.2.2 (pdf 47): forward adds the displacement to PC+2, backward adds its 16-bit one's complement (C50). Source vectors on the 7/9 rows omit cycles (A-05); the cycle counts live only in kind=policy POL-BR-01 vectors (C29). Bus lists stop at the displacement BAR of the one branch figure (pdf 32).",
+  "note": "Branch rows (pdf 54): B, the internal-condition rows 1000 S0 cccc, NOPP and BEXT 1000 S1 EEEE, each followed by a displacement word. A BEXT vector's ebci key lists the E codes its provider answers true for; without the key no provider is supplied (false, C57). Every expect value is read from the cited page images and derived by hand; none comes from this core, an assembler or another implementation. Targets follow S3.2.2 (pdf 47): forward adds the displacement to PC+2, backward adds its 16-bit one's complement (C50). Source vectors on the 7/9 rows omit cycles (A-05); the cycle counts live only in kind=policy POL-BR-01 vectors (C29). Bus lists stop at the displacement BAR of the one branch figure (pdf 32).",
   "vectors": [
     {
       "id": "cpu.B.forward-zero",
@@ -4728,6 +4728,330 @@
       "covers": [
         "branch:back-not-taken",
         "cycles:base"
+      ]
+    },
+    {
+      "id": "cpu.BEXT.fwd-taken-e5",
+      "row": "BEXT",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Branch table, BEXT row, pdf 54; EBCA0-3 and EBCI, pdf 11; S3.2.2 and Fig 3.2.2, pdf 47; C50; C57; branch on external timing figure, pdf 32",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BEXT $1012, 5",
+      "program": [
+        "0215 1000 01 0101",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BEXT as 1000 S1 EEEE followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if EXternal condition is True. Field E is externally decoded to select 1 of 16 conditions. Response is tested for true condition.' pdf 11: EBCA0-3 are 'the buffered outputs from the 4 least significant bits of the instruction register (bits 0-3)' and select one of sixteen states sampled during BEXT; EBCI is high active, a logic 1 tests as true and causes the branch, a logic 0 does not. The timing figure (pdf 32, 'Branch on External Instruction') shows EBCI 'valid input throughout TS1' of the BAR that outputs PC+1 to fetch the displacement. S3.2.2 (pdf 47): when the direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $0215 = 10 0001 0101 (bits 9..6 = 1000, bit 5 = 0 forward, bit 4 = 1, E = bits 3..0 = 0101 = 5), displacement $0010. Init S = 1, Z = 1, OV = 1, C = 1 (the flags play no part in BEXT). The provider answers true for E = 5 only (ebci [5]); the CPU asks for E = 5, the answer is true, so the branch is taken: R7 = the target. Forward: the target is PC+2 + displacement = $1002 + $0010 = $1012. Cycles are not asserted: pdf 54 prints 7/9 without saying which figure applies (C29, A-05); the POL-BR-01 policy vectors carry them. Bus (pdf 32: BAR 'output program counter', NACT, DTB 'input BEXT instruction', NACT, BAR 'output PC+1 to fetch displacement'): FETCH at cycle 0 from $1000; the BAR at cycle 4 puts out $1001, whose word $0010 is the displacement (recorded as a READ). The figure ends there, so no later access is listed; the EBCI sample is not a bus access. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "ebci": [
+        5
+      ],
+      "expect": {
+        "r": {
+          "7": "1012"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0215"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "0010"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "branch:fwd-taken",
+        "ebci:e5-true",
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C"
+      ]
+    },
+    {
+      "id": "cpu.BEXT.back-not-taken-e5",
+      "row": "BEXT",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Branch table, BEXT row, pdf 54; EBCA0-3 and EBCI, pdf 11; S3.2.2 and Fig 3.2.2, pdf 47; C50; C57",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BEXT $0FF1, 5",
+      "program": [
+        "0235 1000 11 0101",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BEXT as 1000 S1 EEEE followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if EXternal condition is True. Field E is externally decoded to select 1 of 16 conditions. Response is tested for true condition.' pdf 11: EBCA0-3 are 'the buffered outputs from the 4 least significant bits of the instruction register (bits 0-3)' and select one of sixteen states sampled during BEXT; EBCI is high active, a logic 1 tests as true and causes the branch, a logic 0 does not. The timing figure (pdf 32, 'Branch on External Instruction') shows EBCI 'valid input throughout TS1' of the BAR that outputs PC+1 to fetch the displacement. S3.2.2 (pdf 47): when the direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $0235 = 10 0011 0101 (bits 9..6 = 1000, bit 5 = 1 backward, bit 4 = 1, E = 0101 = 5), displacement $0010. Init S = 0, Z = 0, OV = 0, C = 0. A provider is present but answers true for no code (ebci []); the CPU asks for E = 5, the answer is false, so the branch is not taken: R7 = PC+2 = $1002, not the target. Backward: the one's complement of $0010 is $FFEF, and PC+2 + $FFEF = $1002 + $FFEF = $10FF1, which wraps to $0FF1 (16 bits); a two's complement subtraction would give $0FF2. Cycles are not asserted: pdf 54 prints 7/9 without saying which figure applies (C29, A-05); the POL-BR-01 policy vectors carry them. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "ebci": [],
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "covers": [
+        "branch:back-not-taken",
+        "ebci:e5-false"
+      ]
+    },
+    {
+      "id": "cpu.BEXT.back-taken-e10",
+      "row": "BEXT",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Branch table, BEXT row, pdf 54; EBCA0-3 and EBCI, pdf 11; S3.2.2 and Fig 3.2.2, pdf 47; C50; C57",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BEXT $0FF1, 10",
+      "program": [
+        "023A 1000 11 1010",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BEXT as 1000 S1 EEEE followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if EXternal condition is True. Field E is externally decoded to select 1 of 16 conditions. Response is tested for true condition.' pdf 11: EBCA0-3 are 'the buffered outputs from the 4 least significant bits of the instruction register (bits 0-3)' and select one of sixteen states sampled during BEXT; EBCI is high active, a logic 1 tests as true and causes the branch, a logic 0 does not. The timing figure (pdf 32, 'Branch on External Instruction') shows EBCI 'valid input throughout TS1' of the BAR that outputs PC+1 to fetch the displacement. S3.2.2 (pdf 47): when the direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $023A = 10 0011 1010 (bits 9..6 = 1000, bit 5 = 1 backward, bit 4 = 1, E = 1010 = 10), displacement $0010. Init S = 0, Z = 0, OV = 0, C = 0. The provider answers true for E = 10 only (ebci [10]); the CPU asks for E = 10, the answer is true, so the branch is taken: R7 = the target. Backward: the one's complement of $0010 is $FFEF, and PC+2 + $FFEF = $1002 + $FFEF = $10FF1, which wraps to $0FF1 (16 bits); a two's complement subtraction would give $0FF2. Cycles are not asserted: pdf 54 prints 7/9 without saying which figure applies (C29, A-05); the POL-BR-01 policy vectors carry them. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "ebci": [
+        10
+      ],
+      "expect": {
+        "r": {
+          "7": "0FF1"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "covers": [
+        "branch:back-taken",
+        "ebci:e10-true"
+      ]
+    },
+    {
+      "id": "cpu.BEXT.fwd-not-taken-e10",
+      "row": "BEXT",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Branch table, BEXT row, pdf 54; EBCA0-3 and EBCI, pdf 11; S3.2.2 and Fig 3.2.2, pdf 47; C50; C57",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BEXT $1012, 10",
+      "program": [
+        "021A 1000 01 1010",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BEXT as 1000 S1 EEEE followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if EXternal condition is True. Field E is externally decoded to select 1 of 16 conditions. Response is tested for true condition.' pdf 11: EBCA0-3 are 'the buffered outputs from the 4 least significant bits of the instruction register (bits 0-3)' and select one of sixteen states sampled during BEXT; EBCI is high active, a logic 1 tests as true and causes the branch, a logic 0 does not. The timing figure (pdf 32, 'Branch on External Instruction') shows EBCI 'valid input throughout TS1' of the BAR that outputs PC+1 to fetch the displacement. S3.2.2 (pdf 47): when the direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $021A = 10 0001 1010 (bits 9..6 = 1000, bit 5 = 0 forward, bit 4 = 1, E = 1010 = 10), displacement $0010. Init S = 1, Z = 1, OV = 1, C = 1. The provider answers true for E = 5 only (ebci [5]); the CPU asks for E = 10, the answer is false, so the branch is not taken: R7 = PC+2 = $1002, not the target. A core that asked for any code other than 10 and got true (E = 5) would branch. Forward: the target is PC+2 + displacement = $1002 + $0010 = $1012. Cycles are not asserted: pdf 54 prints 7/9 without saying which figure applies (C29, A-05); the POL-BR-01 policy vectors carry them. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "ebci": [
+        5
+      ],
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "covers": [
+        "branch:fwd-not-taken",
+        "ebci:e10-false",
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C"
+      ]
+    },
+    {
+      "id": "cpu.BEXT.cycles-taken",
+      "row": "BEXT",
+      "kind": "policy",
+      "policy": "POL-BR-01",
+      "cite": "Branch table, BEXT row, pdf 54; EBCA0-3 and EBCI, pdf 11; S3.2.2 and Fig 3.2.2, pdf 47; C50; C57; C29",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BEXT $1012, 5",
+      "program": [
+        "0215 1000 01 0101",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BEXT as 1000 S1 EEEE followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if EXternal condition is True. Field E is externally decoded to select 1 of 16 conditions. Response is tested for true condition.' pdf 11: EBCA0-3 are 'the buffered outputs from the 4 least significant bits of the instruction register (bits 0-3)' and select one of sixteen states sampled during BEXT; EBCI is high active, a logic 1 tests as true and causes the branch, a logic 0 does not. The timing figure (pdf 32, 'Branch on External Instruction') shows EBCI 'valid input throughout TS1' of the BAR that outputs PC+1 to fetch the displacement. S3.2.2 (pdf 47): when the direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $0215 (bit 5 = 0 forward, E = 5), displacement $0010. Init S = 1, Z = 1, OV = 1, C = 1. The provider answers true for E = 5 (ebci [5]), so the branch is taken: R7 = the target. Forward: the target is PC+2 + displacement = $1002 + $0010 = $1012. POL-BR-01 (policy, C29, A-05): pdf 54 prints 7/9 for the row with no taken or not-taken label; the policy reads the larger printed figure (9) as taken and the smaller (7) as not taken, so this taken branch expects 9 cycles. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "ebci": [
+        5
+      ],
+      "expect": {
+        "r": {
+          "7": "1012"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ],
+        "cycles": 9
+      },
+      "covers": [
+        "cycles:taken"
+      ]
+    },
+    {
+      "id": "cpu.BEXT.cycles-not-taken",
+      "row": "BEXT",
+      "kind": "policy",
+      "policy": "POL-BR-01",
+      "cite": "Branch table, BEXT row, pdf 54; EBCA0-3 and EBCI, pdf 11; S3.2.2 and Fig 3.2.2, pdf 47; C50; C57; C29",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "BEXT $1012, 5",
+      "program": [
+        "0215 1000 01 0101",
+        "0010 0000 0000 0001 0000"
+      ],
+      "derivation": "The branch table (pdf 54) prints BEXT as 1000 S1 EEEE followed by the displacement word pppppp PPPP PP PPPP, 7/9 cycles: 'Branch if EXternal condition is True. Field E is externally decoded to select 1 of 16 conditions. Response is tested for true condition.' pdf 11: EBCA0-3 are 'the buffered outputs from the 4 least significant bits of the instruction register (bits 0-3)' and select one of sixteen states sampled during BEXT; EBCI is high active, a logic 1 tests as true and causes the branch, a logic 0 does not. The timing figure (pdf 32, 'Branch on External Instruction') shows EBCI 'valid input throughout TS1' of the BAR that outputs PC+1 to fetch the displacement. S3.2.2 (pdf 47): when the direction bit (bit 5, printed S on pdf 54, 'S is 0 for +, 1 for -') is zero the displacement is added to PC+2, when it is one the displacement is one's complemented and then added to PC+2 (C50: the 16-bit one's complement of the displacement word; sums wrap at 16 bits); on a false result the program continues with the next sequential instruction, PC+2. Program at $1000: $0215 (bit 5 = 0 forward, E = 5), displacement $0010. Init S = 1, Z = 1, OV = 1, C = 1. No provider is supplied (no ebci key): C57 (POL-BR-01, default-chosen, profile cpu.ebci_default = 0) reads a missing provider as false, so the branch is not taken: R7 = PC+2 = $1002, not the target. Forward: the target is PC+2 + displacement = $1002 + $0010 = $1012. POL-BR-01 (policy, C29, A-05): pdf 54 prints 7/9 for the row with no taken or not-taken label; the policy reads the larger printed figure (9) as taken and the smaller (7) as not taken, so this not-taken branch expects 7 cycles. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (pdf 54 prints no status change). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "units": [
+          "INSTR"
+        ],
+        "cycles": 7
+      },
+      "covers": [
+        "cycles:not-taken"
       ]
     }
   ]

@@ -228,8 +228,8 @@ typedef struct ivs_cp1610_row {
 #define IVS_CP1610_OP_CMP_AT 54u
 #define IVS_CP1610_OP_AND_AT 55u
 #define IVS_CP1610_OP_XOR_AT 56u
-/* The internal-condition branches 1000 S0 cccc (B, the conditional rows and NOPP, pdf 54): one
- * handler, the condition field selects the test. */
+/* The branches 1000 S? cccc (B, the conditional rows, NOPP and BEXT, pdf 54): one handler; bit 4
+ * picks the internal condition cccc or the external condition E, which selects the test. */
 #define IVS_CP1610_OP_BRANCH 57u
 
 /* Internal decode lookup: the most specific row for decle & 0x3FF. Every one of the 1024

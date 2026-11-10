@@ -176,7 +176,7 @@ static int ivs_vec_run(const void *data, size_t i)
   if (v->has_iab) {
     ivs_testbus_set_iab(&ivs_bus_actual, v->iab);
   }
-  ivs_testbus_port(&ivs_bus_actual, &port, v->n_ebci > 0u);
+  ivs_testbus_port(&ivs_bus_actual, &port, v->has_ebci);
   if (v->reset && ivs_cp1610_reset(&s) != IVS_OK) {
     ivs_note("reset refused");
     fail = 1;
