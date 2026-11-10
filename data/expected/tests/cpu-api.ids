@@ -6,3 +6,12 @@ cpu-api.validate-rejects-bad-run-state
 cpu-api.validate-rejects-bad-fault-reason
 cpu-api.validate-rejects-reserved-nonzero
 cpu-api.validate-rejects-status-low-bits
+cpu-api.refuse-null-args
+cpu-api.refuse-small-log
+cpu-api.refuse-invalid-state
+cpu-api.null-log-equivalent
+cpu-api.bus-order-matches-log
+cpu-api.not-reset-unit
+cpu-api.reset-idempotent
+cpu-api.deterministic-repeat
+cpu-api.two-instances-interleaved

@@ -1,0 +1,5 @@
+# Suite harness: self-test of the harness library (plan 02-03).
+harness.duplicate-id-rejected
+harness.only-filter
+harness.skip-line-format
+harness.trailer-counts
