@@ -14,6 +14,13 @@
 /* Instruction fetch (pdf 28): BAR at offset 0, NACT, DTB at offset 2, NACT: 4 cycles. */
 #define IVS_FETCH_CYCLES 4u
 
+/* Strobe stamps (C39, D-12). TCI timing (pdf 33): the TCI pulse rises in the cycle after the
+ * 4-cycle unit, the NACT that follows the next BAR, so its record sits at unit end plus 1.
+ * PCIT timing (pdf 34): the output pulse of the 6-cycle SIN starts in its cycle 4, inside the
+ * unit. Waits shift both like any later record. */
+#define IVS_TCI_AFTER_END 1u
+#define IVS_PCIT_OFFSET 4u
+
 /* Per-unit bookkeeping: the port, the optional log, the running access count, the wait
  * shift applied so far and the wait-limit fault marker. */
 typedef struct ivs_unit {
@@ -166,12 +173,53 @@ static void ivs_set_fault(ivs_cp1610 *n, ivs_cp1610_result *r, uint8_t reason)
   r->events = (uint8_t)(r->events | IVS_CP1610_EV_FAULT);
 }
 
-/* Row semantics. Control group (pdf 56): EIS enables and DIS disables the interrupt system
- * (INTFF, POL-INT-03), neither touches a status bit; CLRC clears C, SETC sets C; no other
- * flag. */
-static void ivs_exec(ivs_cp1610 *n, const ivs_cp1610_row *row)
+/* Row semantics. Control group (pdf 56): HLT sets the stop latch evaluated at a later
+ * boundary (POL-HLT-01, C40; evaluation is plan 02-15); SDBD sets DBD for the next unit
+ * (consumption is plan 02-13); EIS enables and DIS disables the interrupt system (INTFF,
+ * POL-INT-03); TCI pulses the TCI pin; CLRC clears C, SETC sets C. Single-register forms
+ * (pdf 56, footnote on pdf 51): GSWD writes the status word into R0-R3 with bits 4 and 12 =
+ * C, 5 and 13 = OV, 6 and 14 = Z, 7 and 15 = S and bits 0-3, 8-11 = 0; NOP does nothing; SIN
+ * pulses PCIT; RSWD loads C, OV, Z, S from bits 4, 5, 6, 7 of register SSS (for SSS = 7 that
+ * is the already incremented PC, an inference no vector asserts). Only the status change
+ * column's flags move. Strobe records carry no address or data. */
+static void ivs_exec(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r, const ivs_cp1610_row *row, uint16_t word)
 {
+  uint32_t v;
   switch (row->handler) {
+  case IVS_CP1610_OP_HLT:
+    n->halt_pending = 1u;
+#ifdef IVS_FAULT_HLT_NO_LATCH
+    n->halt_pending = 0u;
+#endif
+    r->events = (uint8_t)(r->events | IVS_CP1610_EV_HALT_LATCHED);
+    break;
+  case IVS_CP1610_OP_SDBD:
+    n->dbd = 1u;
+    break;
+  case IVS_CP1610_OP_TCI:
+    v = (uint32_t)row->base_cycles + IVS_TCI_AFTER_END;
+#ifdef IVS_FAULT_TCI_STROBE_STAMP
+    v = (uint32_t)row->base_cycles;
+#endif
+    (void)ivs_access(u, v, IVS_ACC_STROBE_TCI, 0u, 0u, 0u);
+    r->events = (uint8_t)(r->events | IVS_CP1610_EV_TCI);
+    break;
+  case IVS_CP1610_OP_GSWD:
+    v = (uint32_t)n->status | ((uint32_t)n->status << 8);
+#ifdef IVS_FAULT_GSWD_LAYOUT
+    v = ((uint32_t)n->status >> 4) | ((uint32_t)n->status << 4);
+#endif
+    n->r[(uint32_t)word & 3u] = IVS_U16(v);
+    break;
+  case IVS_CP1610_OP_NOP:
+    break;
+  case IVS_CP1610_OP_SIN:
+    (void)ivs_access(u, IVS_PCIT_OFFSET, IVS_ACC_STROBE_PCIT, 0u, 0u, 0u);
+    r->events = (uint8_t)(r->events | IVS_CP1610_EV_PCIT);
+    break;
+  case IVS_CP1610_OP_RSWD:
+    n->status = (uint8_t)((uint32_t)n->r[(uint32_t)word & 7u] & IVS_CP1610_STATUS_MASK);
+    break;
   case IVS_CP1610_OP_EIS:
     n->intff = 1u;
 #ifdef IVS_FAULT_EIS_NO_INTFF
@@ -212,7 +260,7 @@ static void ivs_unit_instr(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r)
     return;
   }
   n->r[7] = IVS_U16((uint32_t)pc + 1u);
-  ivs_exec(n, row);
+  ivs_exec(n, u, r, row, word);
   n->prev_interruptible = row->interruptible;
   r->elapsed_cpu_cycles = (uint32_t)row->base_cycles + u->shift;
 }

@@ -1,19 +1,12 @@
 # CP-1610 coverage still pending (D-16, plan 02-05): rows, `class:sdbd` and `policy:<id>` lines.
 # A listed row or policy may hold no vector (vector-pending-covered); a row or policy that is not
 # listed meets its full derived coverage. Later plans remove lines as they land vectors.
-HLT
-SDBD
 J
-TCI
 INCR
 DECR
 COMR
 NEGR
 ADCR
-GSWD
-NOP
-SIN
-RSWD
 SWAP
 SLL
 RLC

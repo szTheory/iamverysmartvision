@@ -664,6 +664,1031 @@
       "covers": [
         "intff:stays-clear"
       ]
+    },
+    {
+      "id": "cpu.HLT.sets-halt-pending",
+      "row": "HLT",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Control instructions table, HLT row, pdf 56; instruction fetch figure, pdf 28; HALT pin, pdf 14",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "HLT",
+      "program": [
+        "0000 0000 000 000"
+      ],
+      "derivation": "The control table (pdf 56) prints HLT as 0000 000 000 = $0000, 4 cycles, 'HaLT after next instruction is executed. Resume on control start.', with a blank status change column. The instruction fetch figure (pdf 28) puts the BAR at cycle 0 and the DTB at cycle 2 of a 4-cycle fetch, so the whole instruction is the fetch: FETCH at cycle 0 from R7 = $1000, 4 cycles. One word is fetched, so R7 = $1000 + 1 = $1001. The halt is deferred to after the next instruction, so this unit only sets the stop latch: halt_pending 0 becomes 1, run state stays RUNNING and the event HALT_LATCHED is reported (POL-HLT-01, C40; the stop itself is evaluated at a later boundary, plan 02-15). The row is silent on interruptibility; the C56 default makes HLT non-interruptible, so prev_interruptible = 0 (init default 1). R0-R6 untouched. Init S = Z = OV = C = 1 all stay 1.",
+      "init": {
+        "r": [
+          "0001",
+          "0002",
+          "0003",
+          "0004",
+          "0005",
+          "0006",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        }
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "halt_pending": 1,
+        "run_state": "RUNNING",
+        "prev_interruptible": 0,
+        "cycles": 4,
+        "units": [
+          "INSTR"
+        ],
+        "events": [
+          "HALT_LATCHED"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0000"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "halt:latched"
+      ]
+    },
+    {
+      "id": "cpu.SDBD.sets-dbd",
+      "row": "SDBD",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "SDBD row, pdf 57; Fig 3.3.4, pdf 51; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SDBD",
+      "program": [
+        "0001 0000 000 001"
+      ],
+      "derivation": "The SDBD row (pdf 57) prints SDBD as 0000 000 001 = $0001, 4 cycles, 'Set Double Byte Data for the next instruction', with a blank status change column; Fig 3.3.4 (pdf 51) gives op code 001 the same name. The instruction fetch figure (pdf 28) puts the BAR at cycle 0 and the DTB at cycle 2 of a 4-cycle fetch, so the whole instruction is the fetch: FETCH at cycle 0 from R7 = $1000, 4 cycles. One word is fetched, so R7 = $1000 + 1 = $1001. This unit only sets DBD for the next unit: dbd 0 becomes 1 (its consumption is plan 02-13). The row is silent on interruptibility; the C56 default makes SDBD non-interruptible, so prev_interruptible = 0 (init default 1). R0-R6 untouched. Init S = Z = OV = C = 1 all stay 1.",
+      "init": {
+        "r": [
+          "0001",
+          "0002",
+          "0003",
+          "0004",
+          "0005",
+          "0006",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        }
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "dbd": 1,
+        "prev_interruptible": 0,
+        "cycles": 4,
+        "units": [
+          "INSTR"
+        ],
+        "events": []
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0001"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "dbd:set"
+      ]
+    },
+    {
+      "id": "cpu.TCI.strobe-figure",
+      "row": "TCI",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Control instructions table, TCI row, pdf 56; TCI instruction timing figure, pdf 33",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "TCI",
+      "program": [
+        "0005 0000 000 101"
+      ],
+      "derivation": "The control table (pdf 56) prints TCI as 0000 000 101 = $0005, 4 cycles, 'Terminate Current Interrupt. Not Interruptable.', with a blank status change column. The TCI instruction timing figure (pdf 33) shows BAR (cycle 0), NACT (1), DTB (2, input TCI instruction), NACT (3), then the BAR of the next instruction (cycle 4, output incremented program counter); the TCI pulse rises after t_TO in the NACT that follows that BAR, cycle 5. So the unit is 4 cycles with a FETCH at cycle 0 from R7 = $1000 and the STROBE_TCI record sits at unit end plus 1 = 4 + 1 = 5 (C39, D-12); a strobe carries no address or data, so addr = data = $0000. The event TCI is reported. One word is fetched, so R7 = $1001. Not interruptible, so prev_interruptible = 0 (init default 1). R0-R6 untouched. TCI drives only its pin: INTFF is not among the POL-INT-03 changes, so it keeps its init value. Init INTFF = 1 stays 1; init S = Z = OV = C = 1 all stay 1.",
+      "init": {
+        "r": [
+          "0001",
+          "0002",
+          "0003",
+          "0004",
+          "0005",
+          "0006",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "intff": 1
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "prev_interruptible": 0,
+        "cycles": 4,
+        "units": [
+          "INSTR"
+        ],
+        "events": [
+          "TCI"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0005"
+        ],
+        [
+          5,
+          "STROBE_TCI",
+          "0000",
+          "0000"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "strobe:tci"
+      ]
+    },
+    {
+      "id": "cpu.TCI.intff-clear-unchanged",
+      "row": "TCI",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Control instructions table, TCI row, pdf 56; TCI instruction timing figure, pdf 33",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "TCI",
+      "program": [
+        "0005 0000 000 101"
+      ],
+      "derivation": "The control table (pdf 56) prints TCI as 0000 000 101 = $0005, 4 cycles, 'Terminate Current Interrupt. Not Interruptable.', with a blank status change column. The TCI instruction timing figure (pdf 33) shows BAR (cycle 0), NACT (1), DTB (2, input TCI instruction), NACT (3), then the BAR of the next instruction (cycle 4, output incremented program counter); the TCI pulse rises after t_TO in the NACT that follows that BAR, cycle 5. So the unit is 4 cycles with a FETCH at cycle 0 from R7 = $1000 and the STROBE_TCI record sits at unit end plus 1 = 4 + 1 = 5 (C39, D-12); a strobe carries no address or data, so addr = data = $0000. The event TCI is reported. One word is fetched, so R7 = $1001. Not interruptible, so prev_interruptible = 0 (init default 1). R0-R6 untouched. TCI drives only its pin: INTFF is not among the POL-INT-03 changes, so it keeps its init value. Init INTFF = 0 stays 0 (TCI does not enable the interrupt system); init S = Z = OV = C = 0 all stay 0.",
+      "init": {
+        "r": [
+          "0001",
+          "0002",
+          "0003",
+          "0004",
+          "0005",
+          "0006",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "intff": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "prev_interruptible": 0,
+        "cycles": 4,
+        "units": [
+          "INSTR"
+        ],
+        "events": [
+          "TCI"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0005"
+        ],
+        [
+          5,
+          "STROBE_TCI",
+          "0000",
+          "0000"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "strobe:tci"
+      ]
+    },
+    {
+      "id": "cpu.GSWD.r0-all-flags",
+      "row": "GSWD",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Control instructions table, GSWD row, pdf 56; Fig 3.3.3 and footnote, pdf 51; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "GSWD R0",
+      "program": [
+        "0030 0000 110 000"
+      ],
+      "derivation": "The control table (pdf 56) prints GSWD as 0000 110 0DD, 6 cycles, 'Get Status WorD in register DD. Bits 0-3, 8-11 set to 0. Bits 4, 12 = C; 5, 13 = OV; 6, 14 = Z; 7, 15 = S.', with a blank status change column; the pdf 51 footnote limits true GSWD to R0-R3. The instruction fetch figure (pdf 28) puts the BAR at cycle 0 and the DTB at cycle 2, so the only bus transfer is the FETCH at cycle 0 from R7 = $1000; the printed 6 cycles are the unit length. One word is fetched, so R7 = $1000 + 1 = $1001. The row carries no Not Interruptable note, so prev_interruptible becomes 1 (init 0). Status bits do not change. DD = 00 selects R0 ($0030). S = Z = OV = C = 1: bits 4-7 = 1111 gives $00F0 and bits 12-15 = 1111 gives $F000; bits 0-3 and 8-11 are 0. R0 = $00F0 + $F000 = $F0F0 (init $0001 overwritten). S, Z, OV, C stay 1.",
+      "init": {
+        "r": [
+          "0001",
+          "0002",
+          "0003",
+          "0004",
+          "0005",
+          "0006",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "0": "F0F0",
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ],
+        "events": []
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0030"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "gswd:r0"
+      ]
+    },
+    {
+      "id": "cpu.GSWD.r3-s-z",
+      "row": "GSWD",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Control instructions table, GSWD row, pdf 56; Fig 3.3.3 and footnote, pdf 51; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "GSWD R3",
+      "program": [
+        "0033 0000 110 011"
+      ],
+      "derivation": "The control table (pdf 56) prints GSWD as 0000 110 0DD, 6 cycles, 'Get Status WorD in register DD. Bits 0-3, 8-11 set to 0. Bits 4, 12 = C; 5, 13 = OV; 6, 14 = Z; 7, 15 = S.', with a blank status change column; the pdf 51 footnote limits true GSWD to R0-R3. The instruction fetch figure (pdf 28) puts the BAR at cycle 0 and the DTB at cycle 2, so the only bus transfer is the FETCH at cycle 0 from R7 = $1000; the printed 6 cycles are the unit length. One word is fetched, so R7 = $1000 + 1 = $1001. The row carries no Not Interruptable note, so prev_interruptible becomes 1 (init 0). Status bits do not change. DD = 11 selects R3 ($0033). S = 1, Z = 1, OV = 0, C = 0: bit 7 (S) and bit 6 (Z) give $00C0, bits 15 and 14 give $C000; every other bit is 0. R3 = $C0C0 (init $0004 overwritten). S and Z stay 1, OV and C stay 0.",
+      "init": {
+        "r": [
+          "0001",
+          "0002",
+          "0003",
+          "0004",
+          "0005",
+          "0006",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "3": "C0C0",
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ],
+        "events": []
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0033"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "gswd:r3"
+      ]
+    },
+    {
+      "id": "cpu.GSWD.r1-ov-c",
+      "row": "GSWD",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Control instructions table, GSWD row, pdf 56; Fig 3.3.3 and footnote, pdf 51; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "GSWD R1",
+      "program": [
+        "0031 0000 110 001"
+      ],
+      "derivation": "The control table (pdf 56) prints GSWD as 0000 110 0DD, 6 cycles, 'Get Status WorD in register DD. Bits 0-3, 8-11 set to 0. Bits 4, 12 = C; 5, 13 = OV; 6, 14 = Z; 7, 15 = S.', with a blank status change column; the pdf 51 footnote limits true GSWD to R0-R3. The instruction fetch figure (pdf 28) puts the BAR at cycle 0 and the DTB at cycle 2, so the only bus transfer is the FETCH at cycle 0 from R7 = $1000; the printed 6 cycles are the unit length. One word is fetched, so R7 = $1000 + 1 = $1001. The row carries no Not Interruptable note, so prev_interruptible becomes 1 (init 0). Status bits do not change. DD = 01 selects R1 ($0031). S = 0, Z = 0, OV = 1, C = 1: bit 5 (OV) and bit 4 (C) give $0030, bits 13 and 12 give $3000; every other bit is 0. R1 = $3030 (init $0002 overwritten). OV and C stay 1, S and Z stay 0.",
+      "init": {
+        "r": [
+          "0001",
+          "0002",
+          "0003",
+          "0004",
+          "0005",
+          "0006",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "1": "3030",
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ],
+        "events": []
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0031"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "gswd:r1"
+      ]
+    },
+    {
+      "id": "cpu.GSWD.r2-no-flags",
+      "row": "GSWD",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Control instructions table, GSWD row, pdf 56; Fig 3.3.3 and footnote, pdf 51; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "GSWD R2",
+      "program": [
+        "0032 0000 110 010"
+      ],
+      "derivation": "The control table (pdf 56) prints GSWD as 0000 110 0DD, 6 cycles, 'Get Status WorD in register DD. Bits 0-3, 8-11 set to 0. Bits 4, 12 = C; 5, 13 = OV; 6, 14 = Z; 7, 15 = S.', with a blank status change column; the pdf 51 footnote limits true GSWD to R0-R3. The instruction fetch figure (pdf 28) puts the BAR at cycle 0 and the DTB at cycle 2, so the only bus transfer is the FETCH at cycle 0 from R7 = $1000; the printed 6 cycles are the unit length. One word is fetched, so R7 = $1000 + 1 = $1001. The row carries no Not Interruptable note, so prev_interruptible becomes 1 (init 0). Status bits do not change. DD = 10 selects R2 ($0032). S = Z = OV = C = 0, so every bit of the word is 0: R2 = $0000 (init $FFFF overwritten, which shows bits 0-3 and 8-11 are written as 0 too). All flags stay 0.",
+      "init": {
+        "r": [
+          "0001",
+          "0002",
+          "FFFF",
+          "0004",
+          "0005",
+          "0006",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "2": "0000",
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ],
+        "events": []
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0032"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "gswd:r2"
+      ]
+    },
+    {
+      "id": "cpu.NOP.n0",
+      "row": "NOP",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Control instructions table, NOP row, pdf 56; footnote, pdf 51; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "NOP 0",
+      "program": [
+        "0034 0000 110 100"
+      ],
+      "derivation": "The control table (pdf 56) prints NOP <n> as 0000 110 10N, 6 cycles, 'No operation.', with a blank status change column; the pdf 51 footnote makes these the GSWD R4/R5 encodings, a NOP, so N (bit 0) selects nothing. The instruction fetch figure (pdf 28) puts the BAR at cycle 0 and the DTB at cycle 2, so the only bus transfer is the FETCH at cycle 0 from R7 = $1000; the printed 6 cycles are the unit length. One word is fetched, so R7 = $1000 + 1 = $1001. No register other than R7 and no status bit changes. The row carries no Not Interruptable note, so prev_interruptible becomes 1 (init 0). Init S = Z = OV = C = 1 all stay 1. N = 0: $0034.",
+      "init": {
+        "r": [
+          "0001",
+          "0002",
+          "0003",
+          "0004",
+          "0005",
+          "0006",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ],
+        "events": []
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0034"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "n:0"
+      ]
+    },
+    {
+      "id": "cpu.NOP.n1",
+      "row": "NOP",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Control instructions table, NOP row, pdf 56; footnote, pdf 51; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "NOP 1",
+      "program": [
+        "0035 0000 110 101"
+      ],
+      "derivation": "The control table (pdf 56) prints NOP <n> as 0000 110 10N, 6 cycles, 'No operation.', with a blank status change column; the pdf 51 footnote makes these the GSWD R4/R5 encodings, a NOP, so N (bit 0) selects nothing. The instruction fetch figure (pdf 28) puts the BAR at cycle 0 and the DTB at cycle 2, so the only bus transfer is the FETCH at cycle 0 from R7 = $1000; the printed 6 cycles are the unit length. One word is fetched, so R7 = $1000 + 1 = $1001. No register other than R7 and no status bit changes. The row carries no Not Interruptable note, so prev_interruptible becomes 1 (init 0). Init S = Z = OV = C = 1 all stay 1. N = 1: $0035, same result as N = 0.",
+      "init": {
+        "r": [
+          "0001",
+          "0002",
+          "0003",
+          "0004",
+          "0005",
+          "0006",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ],
+        "events": []
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0035"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "n:1"
+      ]
+    },
+    {
+      "id": "cpu.SIN.n0",
+      "row": "SIN",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Control instructions table, SIN row, pdf 56; PCIT timing figure, pdf 34; PCIT pin, pdf 13; footnote, pdf 51",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SIN 0",
+      "program": [
+        "0036 0000 110 110"
+      ],
+      "derivation": "The control table (pdf 56) prints SIN <n> as 0000 110 11N, 6 cycles, 'Software Interrupt; pulse to PCIT * pin', with a blank status change column; the pdf 51 footnote makes these the GSWD R6/R7 encodings, a NOP internal to the CPU plus the PCIT pulse, so N (bit 0) selects nothing. The PCIT timing figure (pdf 34) shows BAR (cycle 0, output program counter), NACT (1), DTB (2, input fetched instruction), NACT over cycles 3-5 and the next BAR at cycle 6, so the unit is 6 cycles; the output pulse 'from CPU as a result of SIN instruction' starts in cycle 4 and ends in cycle 5, inside the unit, so the STROBE_PCIT record sits at cycle 4 (C39); a strobe carries no address or data, so addr = data = $0000. The event PCIT is reported. One word is fetched, so R7 = $1000 + 1 = $1001; nothing else changes. pdf 13 acknowledges the interrupt at the end of SIN and the row carries no Not Interruptable note, so SIN is interruptible: prev_interruptible becomes 1 (init 0). Init S = Z = OV = C = 1 all stay 1. N = 0: $0036.",
+      "init": {
+        "r": [
+          "0001",
+          "0002",
+          "0003",
+          "0004",
+          "0005",
+          "0006",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ],
+        "events": [
+          "PCIT"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0036"
+        ],
+        [
+          4,
+          "STROBE_PCIT",
+          "0000",
+          "0000"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "n:0",
+        "strobe:pcit"
+      ]
+    },
+    {
+      "id": "cpu.SIN.n1",
+      "row": "SIN",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Control instructions table, SIN row, pdf 56; PCIT timing figure, pdf 34; PCIT pin, pdf 13; footnote, pdf 51",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SIN 1",
+      "program": [
+        "0037 0000 110 111"
+      ],
+      "derivation": "The control table (pdf 56) prints SIN <n> as 0000 110 11N, 6 cycles, 'Software Interrupt; pulse to PCIT * pin', with a blank status change column; the pdf 51 footnote makes these the GSWD R6/R7 encodings, a NOP internal to the CPU plus the PCIT pulse, so N (bit 0) selects nothing. The PCIT timing figure (pdf 34) shows BAR (cycle 0, output program counter), NACT (1), DTB (2, input fetched instruction), NACT over cycles 3-5 and the next BAR at cycle 6, so the unit is 6 cycles; the output pulse 'from CPU as a result of SIN instruction' starts in cycle 4 and ends in cycle 5, inside the unit, so the STROBE_PCIT record sits at cycle 4 (C39); a strobe carries no address or data, so addr = data = $0000. The event PCIT is reported. One word is fetched, so R7 = $1000 + 1 = $1001; nothing else changes. pdf 13 acknowledges the interrupt at the end of SIN and the row carries no Not Interruptable note, so SIN is interruptible: prev_interruptible becomes 1 (init 0). Init S = Z = OV = C = 1 all stay 1. N = 1: $0037, same result as N = 0.",
+      "init": {
+        "r": [
+          "0001",
+          "0002",
+          "0003",
+          "0004",
+          "0005",
+          "0006",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ],
+        "events": [
+          "PCIT"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0037"
+        ],
+        [
+          4,
+          "STROBE_PCIT",
+          "0000",
+          "0000"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "n:1",
+        "strobe:pcit"
+      ]
+    },
+    {
+      "id": "cpu.RSWD.sets-all",
+      "row": "RSWD",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Control instructions table, RSWD row, pdf 56; Fig 3.3.3, pdf 51; status bits, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "RSWD R1",
+      "program": [
+        "0039 0000 111 001"
+      ],
+      "derivation": "The control table (pdf 56) prints RSWD SSS as 0000 111 SSS, 6 cycles, 'Restore Status Word from register SSS; Bit 4 to C, Bit 5 to OV, Bit 6 to Z, Bit 7 to S.', status change S, Z, C, OV (the four status bits of pdf 45). The instruction fetch figure (pdf 28) puts the BAR at cycle 0 and the DTB at cycle 2, so the only bus transfer is the FETCH at cycle 0 from R7 = $1000; the printed 6 cycles are the unit length. One word is fetched, so R7 = $1000 + 1 = $1001. Only bits 4-7 of the register are read; the register itself is unchanged. The row carries no Not Interruptable note, so prev_interruptible becomes 1 (init 0). SSS = 001 selects R1 ($0039). R1 = $00F0: bits 4, 5, 6, 7 are 1, so C, OV, Z and S all become 1 from init 0.",
+      "init": {
+        "r": [
+          "0001",
+          "00F0",
+          "0003",
+          "0004",
+          "0005",
+          "0006",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ],
+        "events": []
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0039"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:S",
+        "flag-set:Z",
+        "flag-set:OV",
+        "flag-set:C"
+      ]
+    },
+    {
+      "id": "cpu.RSWD.clears-all",
+      "row": "RSWD",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Control instructions table, RSWD row, pdf 56; Fig 3.3.3, pdf 51; status bits, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "RSWD R5",
+      "program": [
+        "003D 0000 111 101"
+      ],
+      "derivation": "The control table (pdf 56) prints RSWD SSS as 0000 111 SSS, 6 cycles, 'Restore Status Word from register SSS; Bit 4 to C, Bit 5 to OV, Bit 6 to Z, Bit 7 to S.', status change S, Z, C, OV (the four status bits of pdf 45). The instruction fetch figure (pdf 28) puts the BAR at cycle 0 and the DTB at cycle 2, so the only bus transfer is the FETCH at cycle 0 from R7 = $1000; the printed 6 cycles are the unit length. One word is fetched, so R7 = $1000 + 1 = $1001. Only bits 4-7 of the register are read; the register itself is unchanged. The row carries no Not Interruptable note, so prev_interruptible becomes 1 (init 0). SSS = 101 selects R5 ($003D). R5 = $FF0F: bits 4, 5, 6, 7 are 0 (bits 0-3 and 8-15 are 1 and are ignored), so C, OV, Z and S all become 0 from init 1.",
+      "init": {
+        "r": [
+          "0001",
+          "0002",
+          "0003",
+          "0004",
+          "0005",
+          "FF0F",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ],
+        "events": []
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "003D"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-clear:S",
+        "flag-clear:Z",
+        "flag-clear:OV",
+        "flag-clear:C"
+      ]
+    },
+    {
+      "id": "cpu.RSWD.s-c-only",
+      "row": "RSWD",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Control instructions table, RSWD row, pdf 56; Fig 3.3.3, pdf 51; status bits, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "RSWD R2",
+      "program": [
+        "003A 0000 111 010"
+      ],
+      "derivation": "The control table (pdf 56) prints RSWD SSS as 0000 111 SSS, 6 cycles, 'Restore Status Word from register SSS; Bit 4 to C, Bit 5 to OV, Bit 6 to Z, Bit 7 to S.', status change S, Z, C, OV (the four status bits of pdf 45). The instruction fetch figure (pdf 28) puts the BAR at cycle 0 and the DTB at cycle 2, so the only bus transfer is the FETCH at cycle 0 from R7 = $1000; the printed 6 cycles are the unit length. One word is fetched, so R7 = $1000 + 1 = $1001. Only bits 4-7 of the register are read; the register itself is unchanged. The row carries no Not Interruptable note, so prev_interruptible becomes 1 (init 0). SSS = 010 selects R2 ($003A). R2 = $0090 = 1001 0000: bit 7 = 1 (S), bit 6 = 0 (Z), bit 5 = 0 (OV), bit 4 = 1 (C). From init S = 0, Z = 1, OV = 1, C = 0: S becomes 1, Z becomes 0, OV becomes 0, C becomes 1.",
+      "init": {
+        "r": [
+          "0001",
+          "0002",
+          "0090",
+          "0004",
+          "0005",
+          "0006",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ],
+        "events": []
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "003A"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-clear:OV",
+        "flag-set:C"
+      ]
+    },
+    {
+      "id": "cpu.RSWD.s-ov-only",
+      "row": "RSWD",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Control instructions table, RSWD row, pdf 56; Fig 3.3.3, pdf 51; status bits, pdf 45; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "RSWD R0",
+      "program": [
+        "0038 0000 111 000"
+      ],
+      "derivation": "The control table (pdf 56) prints RSWD SSS as 0000 111 SSS, 6 cycles, 'Restore Status Word from register SSS; Bit 4 to C, Bit 5 to OV, Bit 6 to Z, Bit 7 to S.', status change S, Z, C, OV (the four status bits of pdf 45). The instruction fetch figure (pdf 28) puts the BAR at cycle 0 and the DTB at cycle 2, so the only bus transfer is the FETCH at cycle 0 from R7 = $1000; the printed 6 cycles are the unit length. One word is fetched, so R7 = $1000 + 1 = $1001. Only bits 4-7 of the register are read; the register itself is unchanged. The row carries no Not Interruptable note, so prev_interruptible becomes 1 (init 0). SSS = 000 selects R0 ($0038). R0 = $00A0 = 1010 0000: bit 7 = 1 (S), bit 6 = 0 (Z), bit 5 = 1 (OV), bit 4 = 0 (C). From init S = 0, Z = 1, OV = 0, C = 1: S becomes 1, Z becomes 0, OV becomes 1, C becomes 0.",
+      "init": {
+        "r": [
+          "00A0",
+          "0002",
+          "0003",
+          "0004",
+          "0005",
+          "0006",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 6,
+        "units": [
+          "INSTR"
+        ],
+        "events": []
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0038"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-set:OV",
+        "flag-clear:C"
+      ]
     }
   ]
 }
