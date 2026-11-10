@@ -1075,6 +1075,32 @@ static void ivs_unit_instr(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r)
   r->elapsed_cpu_cycles = (uint32_t)row->base_cycles + extra + u->shift;
 }
 
+/* Step-start conventions (plan 02-15; Fig 2-6, pdf 22; pdf 14, 25, 36, 40; C40, C45, C52-C54).
+ * No page prints these unit lengths; they are the stepper's conventions, carried by the profile
+ * where a number is involved:
+ *   - A step that starts in UNRESET or FAULTED takes 0 cycles and makes no access (D-12); the
+ *     step that refuses or faults reports a FAULT unit with the cycles spent up to the refusal.
+ *   - BUS_GRANT: while BUSAK is asserted and BUSRQ stays high, each step is a 1-cycle hold unit
+ *     with no access (the CPU re-samples BUSRQ every TS1, pdf 36). When BUSRQ is low with BUSAK
+ *     asserted, the step is the release unit: config release_latency_cpu_cycles cycles (profile
+ *     bus.release_latency_cpu_cycles, default 2, C52, inference from pdf 36), BUSAK cleared,
+ *     event BUS_RELEASED. A grant never changes prev_interruptible, so the step after the
+ *     release runs the interrupt test, not a fetch (Fig 2-6: the bus request loop exits into the
+ *     interrupt request test; A-02, POL-BUS-01).
+ *   - Boundary test in RUNNING with BUSAK clear: at an interruptible boundary (prev_interruptible
+ *     set, no SDBD prefix pending) the priority is BUSRQ before INTR (pdf 25: bus requests are
+ *     honoured "before" interrupt requests), then INTR, then INTRM with INTFF (POL-INT-01). A
+ *     closed boundary (after a non-interruptible unit, the reset entry or an interrupt entry)
+ *     tests nothing and fetches. */
+static uint32_t ivs_boundary_open(const ivs_cp1610 *n)
+{
+  uint32_t open = n->prev_interruptible;
+#ifdef IVS_FAULT_PREV_INTERRUPTIBLE_IGNORED
+  open = 1u;
+#endif
+  return open;
+}
+
 /* Interrupt acceptance at the start of a step in RUNNING state (CPU-02; Fig 2-6, pdf 22; pdf 12;
  * SC.6, pdf 24). The test runs only at an interruptible boundary: the previous unit was
  * interruptible (prev_interruptible, set from the row after every unit; an entry and the reset
@@ -1084,12 +1110,9 @@ static void ivs_unit_instr(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r)
  * so a line asserted at a closed boundary is forgotten. */
 static int ivs_int_accept(const ivs_cp1610 *n, const ivs_cp1610_lines *l)
 {
-  uint32_t open = n->prev_interruptible;
+  uint32_t open = ivs_boundary_open(n);
   uint32_t intr = l->intr;
   uint32_t intff = n->intff;
-#ifdef IVS_FAULT_PREV_INTERRUPTIBLE_IGNORED
-  open = 1u;
-#endif
 #ifdef IVS_FAULT_INTFF_IGNORED
   intff = 1u;
 #endif
@@ -1134,6 +1157,53 @@ static void ivs_unit_int_entry(ivs_cp1610 *n, const ivs_cp1610_config *cfg, ivs_
   n->prev_interruptible = 1u;
 #endif
   r->elapsed_cpu_cycles = IVS_INT_ENTRY_CYCLES + u->shift;
+}
+
+/* Bus grant unit (POL-BUS-01; pdf 36; Fig 2-6, pdf 22; C52): no access, the bus floats. With
+ * BUSAK asserted and BUSRQ low it is the release: release_latency_cpu_cycles cycles, BUSAK
+ * cleared, event BUS_RELEASED. Otherwise it grants or holds for 1 cycle with BUSAK asserted.
+ * prev_interruptible is left as it was (A-02). */
+static void ivs_unit_grant(ivs_cp1610 *n, const ivs_cp1610_config *cfg, const ivs_cp1610_lines *l,
+                           ivs_cp1610_result *r)
+{
+  uint32_t latency = cfg->release_latency_cpu_cycles;
+  if (n->busak != 0u && l->busrq == 0u) {
+    n->busak = 0u;
+    r->elapsed_cpu_cycles = latency;
+    r->events = (uint8_t)(r->events | IVS_CP1610_EV_BUS_RELEASED);
+  } else {
+    n->busak = 1u;
+    r->elapsed_cpu_cycles = 1u;
+  }
+}
+
+/* One step in RUNNING state: a held or released grant first, then the boundary test (see the
+ * step-start conventions above), then an instruction. */
+static void ivs_step_running(ivs_cp1610 *n, const ivs_cp1610_config *cfg, const ivs_cp1610_lines *l, ivs_unit *u,
+                             ivs_cp1610_result *r)
+{
+  int grant;
+  int accept;
+  if (n->busak != 0u) {
+    ivs_result_init(r, n, IVS_CP1610_UNIT_BUS_GRANT);
+    ivs_unit_grant(n, cfg, l, r);
+    return;
+  }
+  grant = ivs_boundary_open(n) != 0u && n->dbd == 0u && l->busrq != 0u;
+  accept = ivs_int_accept(n, l);
+#ifdef IVS_FAULT_BUSRQ_PRIORITY
+  grant = grant && !accept;
+#endif
+  if (grant) {
+    ivs_result_init(r, n, IVS_CP1610_UNIT_BUS_GRANT);
+    ivs_unit_grant(n, cfg, l, r);
+  } else if (accept) {
+    ivs_result_init(r, n, IVS_CP1610_UNIT_INT_ENTRY);
+    ivs_unit_int_entry(n, cfg, u, r);
+  } else {
+    ivs_result_init(r, n, IVS_CP1610_UNIT_INSTR);
+    ivs_unit_instr(n, u, r);
+  }
 }
 
 static int ivs_lines_valid(const ivs_cp1610_lines *l)
@@ -1187,13 +1257,7 @@ ivs_status ivs_cp1610_step(ivs_cp1610 *s, const ivs_cp1610_config *cfg, const iv
     ivs_unit_reset_entry(&n, &u, &r);
     break;
   case IVS_CP1610_RS_RUNNING:
-    if (ivs_int_accept(&n, lines)) {
-      ivs_result_init(&r, &n, IVS_CP1610_UNIT_INT_ENTRY);
-      ivs_unit_int_entry(&n, cfg, &u, &r);
-    } else {
-      ivs_result_init(&r, &n, IVS_CP1610_UNIT_INSTR);
-      ivs_unit_instr(&n, &u, &r);
-    }
+    ivs_step_running(&n, cfg, lines, &u, &r);
     break;
   case IVS_CP1610_RS_HALTED:
     /* Halted idle is defined with the halt policy (plan 02-15). */

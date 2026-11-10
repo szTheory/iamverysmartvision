@@ -362,6 +362,8 @@ cpu.TSTR.base
 cpu.TSTR.negative
 cpu.TSTR.sss6-bonus
 cpu.TSTR.sss7-bonus
+cpu.UNIT-BUS.busrq-and-intr
+cpu.UNIT-BUS.grant-release-then-fetch
 cpu.UNIT-INT.accept-clears-intff-config
 cpu.UNIT-INT.accept-keeps-intff
 cpu.UNIT-INT.entry-figure

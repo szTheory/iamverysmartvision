@@ -10,3 +10,4 @@ jump
 sdbd
 encoding
 interrupt
+busrq-halt
