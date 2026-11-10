@@ -309,8 +309,14 @@ static uint16_t ivs_dbd_read(ivs_cp1610 *n, ivs_unit *u, uint32_t mmm)
   } else {
     lo_ea = ivs_ind_addr(n, mmm, 0);
     hi_ea = ivs_ind_addr(n, mmm, 0);
+#ifdef IVS_FAULT_SDBD_INDIRECT_INCREMENT
+    if (mmm >= 4u) n->r[mmm] = hi_ea;
+#endif
   }
   lo = (uint32_t)ivs_access(u, IVS_DATA_BAR_OFFSET, IVS_ACC_READ, 0u, lo_ea, 0u) & 0xFFu;
+#ifdef IVS_FAULT_SDBD_MODE13_ONE_READ
+  if (mmm < 4u) return IVS_U16(lo | (lo << 8));
+#endif
   hi = (uint32_t)ivs_access(u, IVS_SDBD_HIGH_BAR_OFFSET, IVS_ACC_READ, 0u, hi_ea, 0u) & 0xFFu;
   return IVS_U16(lo | (hi << 8));
 }
@@ -405,10 +411,14 @@ static uint16_t ivs_ind_addr(ivs_cp1610 *n, uint32_t mmm, int output)
 }
 
 /* Indirect operand read: one READ of all 16 bits at the effective address, put out at offset 4
- * (pdf 29), or at the pull offset for MMM = 6. */
+ * (pdf 29), or at the pull offset for MMM = 6; the double byte operand when DBD is set (only the
+ * six @ read rows with MMM 1-5 reach here with DBD set). */
 static uint16_t ivs_ind_read(ivs_cp1610 *n, ivs_unit *u, uint32_t mmm)
 {
   uint32_t off = mmm == 6u ? IVS_PULL_BAR_OFFSET : IVS_DATA_BAR_OFFSET;
+  if (n->dbd != 0u) {
+    return ivs_dbd_read(n, u, mmm);
+  }
   return ivs_access(u, off, IVS_ACC_READ, 0u, ivs_ind_addr(n, mmm, 0), 0u);
 }
 
@@ -936,11 +946,14 @@ static int ivs_mvo_refused(uint16_t word)
   return ((uint32_t)word & 0x3C0u) == 0x240u && mmm >= 4u && mmm == ((uint32_t)word & 7u);
 }
 
-/* SDBD targets (POL-SDBD-01; pdf 57, 58): the six immediate rows MVII, ADDI, SUBI, CMPI, ANDI,
- * XORI read a double byte operand. */
+/* SDBD targets (POL-SDBD-01; pdf 47, 57, 58; Fig 3.2.6, pdf 49): the six immediate rows MVII,
+ * ADDI, SUBI, CMPI, ANDI, XORI (mode 7) and the six indirect read rows MVI@, ADD@, SUB@, CMP@,
+ * AND@, XOR@ with MMM 1-5 read a double byte operand. Every other decoded target is refused
+ * (POL-SDBD-02): modes 0 and 6 ("not supported", pdf 49, 57; MVI@ with MMM = 6 is the PULR row),
+ * MVO@, PSHR, MVOI, the direct rows, branches, jumps, register, shift and control rows and SDBD. */
 static int ivs_sdbd_target(const ivs_cp1610_row *row, uint16_t word)
 {
-  (void)word;
+  uint32_t mmm = ((uint32_t)word >> 3) & 7u;
   switch (row->handler) {
   case IVS_CP1610_OP_MVII:
   case IVS_CP1610_OP_ADDI:
@@ -949,9 +962,38 @@ static int ivs_sdbd_target(const ivs_cp1610_row *row, uint16_t word)
   case IVS_CP1610_OP_ANDI:
   case IVS_CP1610_OP_XORI:
     return 1;
+  case IVS_CP1610_OP_MVI_AT:
+  case IVS_CP1610_OP_ADD_AT:
+  case IVS_CP1610_OP_SUB_AT:
+  case IVS_CP1610_OP_CMP_AT:
+  case IVS_CP1610_OP_AND_AT:
+  case IVS_CP1610_OP_XOR_AT:
+    return mmm >= 1u && mmm <= 5u;
   default:
     return 0;
   }
+}
+
+/* Refusal of a fetched decle before it has any effect, or FAULT_NONE. POL-SDBD-02: with DBD set,
+ * a target that is not an SDBD target is refused (checked first: the prefix decides how the decle
+ * is read). POL-MVO-01: an MVO@ form with SSS = MMM in 4..7. */
+static uint8_t ivs_refusal(ivs_cp1610 *n, const ivs_cp1610_row *row, uint16_t word)
+{
+  int target;
+  if (row == NULL || row->handler == IVS_CP1610_OP_NONE) {
+    return IVS_CP1610_FAULT_UNIMPLEMENTED;
+  }
+  target = ivs_sdbd_target(row, word);
+#ifdef IVS_FAULT_SDBD_TARGET_ACCEPTED
+  if (!target) n->dbd = 0u;
+#endif
+  if (n->dbd != 0u && !target) {
+    return IVS_CP1610_FAULT_UNSUPPORTED_SDBD_TARGET;
+  }
+  if (ivs_mvo_refused(word)) {
+    return IVS_CP1610_FAULT_UNSUPPORTED_MVO_SSS_EQ_MMM;
+  }
+  return IVS_CP1610_FAULT_NONE;
 }
 
 /* Instruction unit: FETCH at offset 0 from R7 (pdf 28), PC advances one per word fetched,
@@ -964,25 +1006,29 @@ static void ivs_unit_instr(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r)
   const ivs_cp1610_row *row;
   uint32_t extra;
   uint8_t dbd;
+  uint8_t reason;
   r->opcode = word;
   if (u->wait_fault) {
     return;
   }
   row = ivs_cp1610_decode(word);
-  if (row == NULL || row->handler == IVS_CP1610_OP_NONE || ivs_mvo_refused(word)) {
+  reason = ivs_refusal(n, row, word);
+  if (reason != IVS_CP1610_FAULT_NONE) {
     /* Sticky fault: PC stays at the offending word; the fetch is traced and counted; nothing
-     * else changes (no write for a refused MVO). */
+     * else changes (no write for a refused MVO; DBD stays set for a refused SDBD target). */
     r->elapsed_cpu_cycles = IVS_FETCH_CYCLES + u->shift;
-    ivs_set_fault(n, r, row == NULL || row->handler == IVS_CP1610_OP_NONE ? IVS_CP1610_FAULT_UNIMPLEMENTED
-                                                                         : IVS_CP1610_FAULT_UNSUPPORTED_MVO_SSS_EQ_MMM);
+    ivs_set_fault(n, r, reason);
     return;
   }
-  dbd = ivs_sdbd_target(row, word) ? n->dbd : 0u;
+  dbd = n->dbd;
   n->r[7] = IVS_U16((uint32_t)pc + 1u);
   extra = ivs_exec(n, u, r, row, word);
   if (dbd != 0u) {
     /* The target consumed DBD (pdf 57: SDBD sets double byte data "for the next instruction"). */
     n->dbd = 0u;
+#ifdef IVS_FAULT_SDBD_DBD_NOT_CLEARED
+    n->dbd = 1u;
+#endif
     extra += IVS_SDBD_EXTRA_CYCLES;
   }
   if (n->run_state == IVS_CP1610_RS_FAULTED) {

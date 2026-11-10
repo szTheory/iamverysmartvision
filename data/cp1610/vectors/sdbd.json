@@ -250,6 +250,1922 @@
       "covers": [
         "addr:sdbd"
       ]
+    },
+    {
+      "id": "cpu.SUBI.sdbd-borrow",
+      "row": "SUBI",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Immediate double byte data table, SUBI row, pdf 58; SDBD row, pdf 57; Fig 3.2.7, pdf 49; S3.2.1 double byte data, pdf 47; C34",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SDBD; SUBI #$0001, R0",
+      "program": [
+        "0001 0000 000 001",
+        "0338 1100 111 000",
+        "5501 0101 0101 0000 0001",
+        "6600 0110 0110 0000 0000"
+      ],
+      "steps": 2,
+      "derivation": "Two units. Step 1, SDBD (0000 000 001, pdf 57, 4 cycles) sets DBD for the next instruction. Step 2, SUBI I, DDD: the immediate double byte table (pdf 58) prints 1100 111 DDD with DDD = 000 (R0) after the SDBD word, then XXLL LLL LLL and XXUU UUU UUU (XX = don't care; Fig 3.2.7, pdf 49: bits 15..8 'Not Used'), 'L's will be low byte and U's upper byte'. Fig 3.2.7: EA_L <- (PC+1), EA_H <- (PC+2), PC <- PC+3, so R7 goes $1000 -> $1001 (SDBD) -> $1004. pdf 47: the low data byte is the low 8 bits of the first word and the high byte the low 8 bits of the second, so the operand is $01 low and $00 high, $0001 (bits 15..8 $55 and $66 take no part). SUBI subtracts the operand from R0, status S, Z, C, OV (pdf 58): $0000 - $0001 as $0000 + $FFFE + 1 = $FFFF with no carry out (pdf 45), so R0 = $FFFF, S = 1, Z = 0, C = 0 (borrow), OV = 0 (the addends $0000 and $FFFE have different signs). Initial Z = 1 and C = 1 are cleared. Cycles: the SDBD unit is 4 (pdf 57) and the target prints 14 including the SDBD word (pdf 58), i.e. 10 for the instruction unit, so the two units take 4 + 10 = 14 (C34, A-05). SDBD is non-interruptible by the C56 default and the target row has no Not Interruptable note, so prev_interruptible ends 1. DBD is set by the SDBD unit and cleared by the target that consumes it, so it ends 0. Bus (inference, C36: no figure prints a double byte access): FETCH of the SDBD word at cycle 0 (pdf 28), FETCH of the target at cycle 4 (the SDBD unit is its printed 4 cycles), the low byte READ at 4 + 4 = 8 (the data access BAR of pdf 29) and the high byte READ at 4 + 7 = 11 (the second read takes the place of the trailing NACT of the 8-cycle read, so the 10-cycle unit ends after its data transfer). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "0": "FFFF",
+          "7": "1004"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 14,
+        "units": [
+          "INSTR",
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0001"
+        ],
+        [
+          4,
+          "FETCH",
+          "1001",
+          "0338"
+        ],
+        [
+          8,
+          "READ",
+          "1002",
+          "5501"
+        ],
+        [
+          11,
+          "READ",
+          "1003",
+          "6600"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "addr:sdbd"
+      ]
+    },
+    {
+      "id": "cpu.ANDI.sdbd-mask",
+      "row": "ANDI",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Immediate double byte data table, ANDI row, pdf 58; SDBD row, pdf 57; Fig 3.2.7, pdf 49; S3.2.1 double byte data, pdf 47; C34",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SDBD; ANDI #$8F0F, R4",
+      "program": [
+        "0001 0000 000 001",
+        "03BC 1110 111 100",
+        "770F 0111 0111 0000 1111",
+        "888F 1000 1000 1000 1111"
+      ],
+      "steps": 2,
+      "derivation": "Two units. Step 1, SDBD (0000 000 001, pdf 57, 4 cycles) sets DBD for the next instruction. Step 2, ANDI I, DDD: the immediate double byte table (pdf 58) prints 1110 111 DDD with DDD = 100 (R4) after the SDBD word, then XXLL LLL LLL and XXUU UUU UUU (XX = don't care; Fig 3.2.7, pdf 49: bits 15..8 'Not Used'), 'L's will be low byte and U's upper byte'. Fig 3.2.7: EA_L <- (PC+1), EA_H <- (PC+2), PC <- PC+3, so R7 goes $1000 -> $1001 (SDBD) -> $1004. pdf 47: the low data byte is the low 8 bits of the first word and the high byte the low 8 bits of the second, so the operand is $0F low and $8F high, $8F0F (bits 15..8 $77 and $88 take no part). ANDI: logical AND with R4, status S, Z (pdf 58): $F0F0 AND $8F0F = $8000, so R4 = $8000, S = 1 (bit 15), Z = 0; OV and C keep their initial 1. Cycles: the SDBD unit is 4 (pdf 57) and the target prints 14 including the SDBD word (pdf 58), i.e. 10 for the instruction unit, so the two units take 4 + 10 = 14 (C34, A-05). SDBD is non-interruptible by the C56 default and the target row has no Not Interruptable note, so prev_interruptible ends 1. DBD is set by the SDBD unit and cleared by the target that consumes it, so it ends 0. Bus (inference, C36: no figure prints a double byte access): FETCH of the SDBD word at cycle 0 (pdf 28), FETCH of the target at cycle 4 (the SDBD unit is its printed 4 cycles), the low byte READ at 4 + 4 = 8 (the data access BAR of pdf 29) and the high byte READ at 4 + 7 = 11 (the second read takes the place of the trailing NACT of the 8-cycle read, so the 10-cycle unit ends after its data transfer). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "F0F0",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "4": "8000",
+          "7": "1004"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 14,
+        "units": [
+          "INSTR",
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0001"
+        ],
+        [
+          4,
+          "FETCH",
+          "1001",
+          "03BC"
+        ],
+        [
+          8,
+          "READ",
+          "1002",
+          "770F"
+        ],
+        [
+          11,
+          "READ",
+          "1003",
+          "888F"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "addr:sdbd"
+      ]
+    },
+    {
+      "id": "cpu.XORI.sdbd-toggle",
+      "row": "XORI",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Immediate double byte data table, XORI row, pdf 58; SDBD row, pdf 57; Fig 3.2.7, pdf 49; S3.2.1 double byte data, pdf 47; C34",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SDBD; XORI #$FFFF, R5",
+      "program": [
+        "0001 0000 000 001",
+        "03FD 1111 111 101",
+        "00FF 0000 0000 1111 1111",
+        "11FF 0001 0001 1111 1111"
+      ],
+      "steps": 2,
+      "derivation": "Two units. Step 1, SDBD (0000 000 001, pdf 57, 4 cycles) sets DBD for the next instruction. Step 2, XORI I, DDD: the immediate double byte table (pdf 58) prints 1111 111 DDD with DDD = 101 (R5) after the SDBD word, then XXLL LLL LLL and XXUU UUU UUU (XX = don't care; Fig 3.2.7, pdf 49: bits 15..8 'Not Used'), 'L's will be low byte and U's upper byte'. Fig 3.2.7: EA_L <- (PC+1), EA_H <- (PC+2), PC <- PC+3, so R7 goes $1000 -> $1001 (SDBD) -> $1004. pdf 47: the low data byte is the low 8 bits of the first word and the high byte the low 8 bits of the second, so the operand is $FF low and $FF high, $FFFF (bits 15..8 $00 and $11 take no part). XORI: exclusive OR with R5, status S, Z (pdf 58): $A5A5 XOR $FFFF = $5A5A, so R5 = $5A5A, S = 0, Z = 0; the initial S = 1 and Z = 1 are cleared, OV and C keep 0. Cycles: the SDBD unit is 4 (pdf 57) and the target prints 14 including the SDBD word (pdf 58), i.e. 10 for the instruction unit, so the two units take 4 + 10 = 14 (C34, A-05). SDBD is non-interruptible by the C56 default and the target row has no Not Interruptable note, so prev_interruptible ends 1. DBD is set by the SDBD unit and cleared by the target that consumes it, so it ends 0. Bus (inference, C36: no figure prints a double byte access): FETCH of the SDBD word at cycle 0 (pdf 28), FETCH of the target at cycle 4 (the SDBD unit is its printed 4 cycles), the low byte READ at 4 + 4 = 8 (the data access BAR of pdf 29) and the high byte READ at 4 + 7 = 11 (the second read takes the place of the trailing NACT of the 8-cycle read, so the 10-cycle unit ends after its data transfer). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "A5A5",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "5": "5A5A",
+          "7": "1004"
+        },
+        "status": {
+          "S": 0,
+          "Z": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 14,
+        "units": [
+          "INSTR",
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0001"
+        ],
+        [
+          4,
+          "FETCH",
+          "1001",
+          "03FD"
+        ],
+        [
+          8,
+          "READ",
+          "1002",
+          "00FF"
+        ],
+        [
+          11,
+          "READ",
+          "1003",
+          "11FF"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "addr:sdbd"
+      ]
+    },
+    {
+      "id": "cpu.MVI@.sdbd-r4",
+      "row": "MVI@",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Indirect addressed double byte data table, SDBD and MVI@ rows, pdf 57; Fig 3.2.6, pdf 49; S3.2.1 double byte data, pdf 47; C34",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SDBD; MVI@ R4, R1",
+      "program": [
+        "0001 0000 000 001",
+        "02A1 1010 100 001"
+      ],
+      "steps": 2,
+      "derivation": "Two units. Step 1, SDBD (0000 000 001, pdf 57, 4 cycles) sets DBD for the next instruction. Step 2, MVI@ R4, R1 (1010 MMM DDD, MMM = 100 (R4), DDD = 001 (R1), pdf 57). Fig 3.2.6 (pdf 49), MMM = 4, 5: PC <- PC+1, EA_L <- (MMM), (MMM) <- (MMM)+1, EA_H <- (MMM), (MMM) <- (MMM)+1; the SDBD row text (pdf 57) says the high byte address 'will be EA+1 if register 4, 5 or 7 is used'. pdf 47: the low data byte is the low 8 bits of the first word read and the high byte the low 8 bits of the second, so the operand is $34 low (word $EE34 at $0400) and $12 high (word $DD12 at $0401), $1234. R7 goes $1000 -> $1001 -> $1002. MVI@ moves it to R1 with no status change: R1 = $1234; R4 goes $0400 -> $0401 -> $0402; flags keep 0. Cycles: the SDBD unit is 4 (pdf 57) and the target row prints 10 under the separate 4-cycle SDBD row (pdf 57), so the two units take 4 + 10 = 14 (C34, A-05). SDBD is non-interruptible by the C56 default and the target row has no Not Interruptable note, so prev_interruptible ends 1. DBD is set by the SDBD unit and cleared by the target that consumes it, so it ends 0. Bus (inference, C36: no figure prints a double byte access): FETCH of the SDBD word at cycle 0 (pdf 28), FETCH of the target at cycle 4 (the SDBD unit is its printed 4 cycles), the low byte READ at 4 + 4 = 8 (the data access BAR of pdf 29) and the high byte READ at 4 + 7 = 11 (the second read takes the place of the trailing NACT of the 8-cycle read, so the 10-cycle unit ends after its data transfer). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0400",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0400",
+            "EE34"
+          ],
+          [
+            "0401",
+            "DD12"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "1": "1234",
+          "4": "0402",
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "cycles": 14,
+        "units": [
+          "INSTR",
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0001"
+        ],
+        [
+          4,
+          "FETCH",
+          "1001",
+          "02A1"
+        ],
+        [
+          8,
+          "READ",
+          "0400",
+          "EE34"
+        ],
+        [
+          11,
+          "READ",
+          "0401",
+          "DD12"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "addr:sdbd"
+      ]
+    },
+    {
+      "id": "cpu.ADD@.sdbd-r5",
+      "row": "ADD@",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Indirect addressed double byte data table, SDBD and ADD@ rows, pdf 57; Fig 3.2.6, pdf 49; S3.2.1 double byte data, pdf 47; C34",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SDBD; ADD@ R5, R2",
+      "program": [
+        "0001 0000 000 001",
+        "02EA 1011 101 010"
+      ],
+      "steps": 2,
+      "derivation": "Two units. Step 1, SDBD (0000 000 001, pdf 57, 4 cycles) sets DBD for the next instruction. Step 2, ADD@ R5, R2 (1011 MMM DDD, MMM = 101 (R5), DDD = 010 (R2), pdf 57). Fig 3.2.6 (pdf 49), MMM = 4, 5: PC <- PC+1, EA_L <- (MMM), (MMM) <- (MMM)+1, EA_H <- (MMM), (MMM) <- (MMM)+1; the SDBD row text (pdf 57) says the high byte address 'will be EA+1 if register 4, 5 or 7 is used'. pdf 47: the low data byte is the low 8 bits of the first word read and the high byte the low 8 bits of the second, so the operand is $01 low (word $AA01 at $0500) and $80 high (word $BB80 at $0501), $8001. R7 goes $1000 -> $1001 -> $1002. ADD@ adds it to R2, status S, Z, C, OV (pdf 57), by pdf 45: $8000 + $8001 = $1_0001, R2 = $0001, C = 1 (carry out), OV = 1 (two negative operands give a positive result), S = 0, Z = 0. R5 goes $0500 -> $0502. Cycles: the SDBD unit is 4 (pdf 57) and the target row prints 10 under the separate 4-cycle SDBD row (pdf 57), so the two units take 4 + 10 = 14 (C34, A-05). SDBD is non-interruptible by the C56 default and the target row has no Not Interruptable note, so prev_interruptible ends 1. DBD is set by the SDBD unit and cleared by the target that consumes it, so it ends 0. Bus (inference, C36: no figure prints a double byte access): FETCH of the SDBD word at cycle 0 (pdf 28), FETCH of the target at cycle 4 (the SDBD unit is its printed 4 cycles), the low byte READ at 4 + 4 = 8 (the data access BAR of pdf 29) and the high byte READ at 4 + 7 = 11 (the second read takes the place of the trailing NACT of the 8-cycle read, so the 10-cycle unit ends after its data transfer). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "8000",
+          "0303",
+          "0404",
+          "0500",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0500",
+            "AA01"
+          ],
+          [
+            "0501",
+            "BB80"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "2": "0001",
+          "5": "0502",
+          "7": "1002"
+        },
+        "status": {
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 14,
+        "units": [
+          "INSTR",
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0001"
+        ],
+        [
+          4,
+          "FETCH",
+          "1001",
+          "02EA"
+        ],
+        [
+          8,
+          "READ",
+          "0500",
+          "AA01"
+        ],
+        [
+          11,
+          "READ",
+          "0501",
+          "BB80"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "addr:sdbd"
+      ]
+    },
+    {
+      "id": "cpu.SUB@.sdbd-r4",
+      "row": "SUB@",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Indirect addressed double byte data table, SDBD and SUB@ rows, pdf 57; Fig 3.2.6, pdf 49; S3.2.1 double byte data, pdf 47; C34",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SDBD; SUB@ R4, R3",
+      "program": [
+        "0001 0000 000 001",
+        "0323 1100 100 011"
+      ],
+      "steps": 2,
+      "derivation": "Two units. Step 1, SDBD (0000 000 001, pdf 57, 4 cycles) sets DBD for the next instruction. Step 2, SUB@ R4, R3 (1100 MMM DDD, MMM = 100 (R4), DDD = 011 (R3), pdf 57). Fig 3.2.6 (pdf 49), MMM = 4, 5: PC <- PC+1, EA_L <- (MMM), (MMM) <- (MMM)+1, EA_H <- (MMM), (MMM) <- (MMM)+1; the SDBD row text (pdf 57) says the high byte address 'will be EA+1 if register 4, 5 or 7 is used'. pdf 47: the low data byte is the low 8 bits of the first word read and the high byte the low 8 bits of the second, so the operand is $00 low (word $1100 at $0400) and $80 high (word $2280 at $0401), $8000. R7 goes $1000 -> $1001 -> $1002. SUB@ subtracts it from R3, status S, Z, C, OV (pdf 57): $7FFF - $8000 as $7FFF + $7FFF + 1 = $FFFF with no carry out (pdf 45), so R3 = $FFFF, S = 1, Z = 0, C = 0 (borrow), OV = 1 (two positive addends give a negative sum). R4 goes $0400 -> $0402. The initial C = 1 is cleared. Cycles: the SDBD unit is 4 (pdf 57) and the target row prints 10 under the separate 4-cycle SDBD row (pdf 57), so the two units take 4 + 10 = 14 (C34, A-05). SDBD is non-interruptible by the C56 default and the target row has no Not Interruptable note, so prev_interruptible ends 1. DBD is set by the SDBD unit and cleared by the target that consumes it, so it ends 0. Bus (inference, C36: no figure prints a double byte access): FETCH of the SDBD word at cycle 0 (pdf 28), FETCH of the target at cycle 4 (the SDBD unit is its printed 4 cycles), the low byte READ at 4 + 4 = 8 (the data access BAR of pdf 29) and the high byte READ at 4 + 7 = 11 (the second read takes the place of the trailing NACT of the 8-cycle read, so the 10-cycle unit ends after its data transfer). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "7FFF",
+          "0400",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0400",
+            "1100"
+          ],
+          [
+            "0401",
+            "2280"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "3": "FFFF",
+          "4": "0402",
+          "7": "1002"
+        },
+        "status": {
+          "S": 1,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 14,
+        "units": [
+          "INSTR",
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0001"
+        ],
+        [
+          4,
+          "FETCH",
+          "1001",
+          "0323"
+        ],
+        [
+          8,
+          "READ",
+          "0400",
+          "1100"
+        ],
+        [
+          11,
+          "READ",
+          "0401",
+          "2280"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "addr:sdbd"
+      ]
+    },
+    {
+      "id": "cpu.CMP@.sdbd-r5",
+      "row": "CMP@",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Indirect addressed double byte data table, SDBD and CMP@ rows, pdf 57; Fig 3.2.6, pdf 49; S3.2.1 double byte data, pdf 47; C34",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SDBD; CMP@ R5, R0",
+      "program": [
+        "0001 0000 000 001",
+        "0368 1101 101 000"
+      ],
+      "steps": 2,
+      "derivation": "Two units. Step 1, SDBD (0000 000 001, pdf 57, 4 cycles) sets DBD for the next instruction. Step 2, CMP@ R5, R0 (1101 MMM SSS, MMM = 101 (R5), SSS = 000 (R0), pdf 57). Fig 3.2.6 (pdf 49), MMM = 4, 5: PC <- PC+1, EA_L <- (MMM), (MMM) <- (MMM)+1, EA_H <- (MMM), (MMM) <- (MMM)+1; the SDBD row text (pdf 57) says the high byte address 'will be EA+1 if register 4, 5 or 7 is used'. pdf 47: the low data byte is the low 8 bits of the first word read and the high byte the low 8 bits of the second, so the operand is $34 low (word $0034 at $0500) and $12 high (word $0012 at $0501), $1234. R7 goes $1000 -> $1001 -> $1002. CMP@ compares by subtracting it from R0, results not stored (pdf 57; C46): $1234 + $EDCB + 1 = $1_0000, so Z = 1, C = 1, S = 0, OV = 0; R0 stays $1234. R5 goes $0500 -> $0502. The initial S = 1 and OV = 1 are cleared. Cycles: the SDBD unit is 4 (pdf 57) and the target row prints 10 under the separate 4-cycle SDBD row (pdf 57), so the two units take 4 + 10 = 14 (C34, A-05). SDBD is non-interruptible by the C56 default and the target row has no Not Interruptable note, so prev_interruptible ends 1. DBD is set by the SDBD unit and cleared by the target that consumes it, so it ends 0. Bus (inference, C36: no figure prints a double byte access): FETCH of the SDBD word at cycle 0 (pdf 28), FETCH of the target at cycle 4 (the SDBD unit is its printed 4 cycles), the low byte READ at 4 + 4 = 8 (the data access BAR of pdf 29) and the high byte READ at 4 + 7 = 11 (the second read takes the place of the trailing NACT of the 8-cycle read, so the 10-cycle unit ends after its data transfer). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "1234",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0500",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0500",
+            "0034"
+          ],
+          [
+            "0501",
+            "0012"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "5": "0502",
+          "7": "1002"
+        },
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 14,
+        "units": [
+          "INSTR",
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0001"
+        ],
+        [
+          4,
+          "FETCH",
+          "1001",
+          "0368"
+        ],
+        [
+          8,
+          "READ",
+          "0500",
+          "0034"
+        ],
+        [
+          11,
+          "READ",
+          "0501",
+          "0012"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "addr:sdbd"
+      ]
+    },
+    {
+      "id": "cpu.AND@.sdbd-r4",
+      "row": "AND@",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Indirect addressed double byte data table, SDBD and AND@ rows, pdf 57; Fig 3.2.6, pdf 49; S3.2.1 double byte data, pdf 47; C34",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SDBD; AND@ R4, R5",
+      "program": [
+        "0001 0000 000 001",
+        "03A5 1110 100 101"
+      ],
+      "steps": 2,
+      "derivation": "Two units. Step 1, SDBD (0000 000 001, pdf 57, 4 cycles) sets DBD for the next instruction. Step 2, AND@ R4, R5 (1110 MMM DDD, MMM = 100 (R4), DDD = 101 (R5), pdf 57). Fig 3.2.6 (pdf 49), MMM = 4, 5: PC <- PC+1, EA_L <- (MMM), (MMM) <- (MMM)+1, EA_H <- (MMM), (MMM) <- (MMM)+1; the SDBD row text (pdf 57) says the high byte address 'will be EA+1 if register 4, 5 or 7 is used'. pdf 47: the low data byte is the low 8 bits of the first word read and the high byte the low 8 bits of the second, so the operand is $00 low (word $FF00 at $0400) and $FF high (word $FFFF at $0401), $FF00. R7 goes $1000 -> $1001 -> $1002. AND@ ANDs it with R5, status S, Z (pdf 57): $00FF AND $FF00 = $0000, so R5 = $0000, Z = 1, S = 0. R4 goes $0400 -> $0402. The initial S = 1 is cleared; OV and C keep 0. Cycles: the SDBD unit is 4 (pdf 57) and the target row prints 10 under the separate 4-cycle SDBD row (pdf 57), so the two units take 4 + 10 = 14 (C34, A-05). SDBD is non-interruptible by the C56 default and the target row has no Not Interruptable note, so prev_interruptible ends 1. DBD is set by the SDBD unit and cleared by the target that consumes it, so it ends 0. Bus (inference, C36: no figure prints a double byte access): FETCH of the SDBD word at cycle 0 (pdf 28), FETCH of the target at cycle 4 (the SDBD unit is its printed 4 cycles), the low byte READ at 4 + 4 = 8 (the data access BAR of pdf 29) and the high byte READ at 4 + 7 = 11 (the second read takes the place of the trailing NACT of the 8-cycle read, so the 10-cycle unit ends after its data transfer). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0400",
+          "00FF",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0400",
+            "FF00"
+          ],
+          [
+            "0401",
+            "FFFF"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "4": "0402",
+          "5": "0000",
+          "7": "1002"
+        },
+        "status": {
+          "S": 0,
+          "Z": 1
+        },
+        "prev_interruptible": 1,
+        "cycles": 14,
+        "units": [
+          "INSTR",
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0001"
+        ],
+        [
+          4,
+          "FETCH",
+          "1001",
+          "03A5"
+        ],
+        [
+          8,
+          "READ",
+          "0400",
+          "FF00"
+        ],
+        [
+          11,
+          "READ",
+          "0401",
+          "FFFF"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "addr:sdbd"
+      ]
+    },
+    {
+      "id": "cpu.XOR@.sdbd-r5",
+      "row": "XOR@",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Indirect addressed double byte data table, SDBD and XOR@ rows, pdf 57; Fig 3.2.6, pdf 49; S3.2.1 double byte data, pdf 47; C34",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SDBD; XOR@ R5, R1",
+      "program": [
+        "0001 0000 000 001",
+        "03E9 1111 101 001"
+      ],
+      "steps": 2,
+      "derivation": "Two units. Step 1, SDBD (0000 000 001, pdf 57, 4 cycles) sets DBD for the next instruction. Step 2, XOR@ R5, R1 (1111 MMM DDD, MMM = 101 (R5), DDD = 001 (R1), pdf 57). Fig 3.2.6 (pdf 49), MMM = 4, 5: PC <- PC+1, EA_L <- (MMM), (MMM) <- (MMM)+1, EA_H <- (MMM), (MMM) <- (MMM)+1; the SDBD row text (pdf 57) says the high byte address 'will be EA+1 if register 4, 5 or 7 is used'. pdf 47: the low data byte is the low 8 bits of the first word read and the high byte the low 8 bits of the second, so the operand is $55 low (word $9955 at $0500) and $AA high (word $88AA at $0501), $AA55. R7 goes $1000 -> $1001 -> $1002. XOR@ XORs it with R1, status S, Z (pdf 57): $0000 XOR $AA55 = $AA55, so R1 = $AA55, S = 1, Z = 0. R5 goes $0500 -> $0502. The initial Z = 1 is cleared. Cycles: the SDBD unit is 4 (pdf 57) and the target row prints 10 under the separate 4-cycle SDBD row (pdf 57), so the two units take 4 + 10 = 14 (C34, A-05). SDBD is non-interruptible by the C56 default and the target row has no Not Interruptable note, so prev_interruptible ends 1. DBD is set by the SDBD unit and cleared by the target that consumes it, so it ends 0. Bus (inference, C36: no figure prints a double byte access): FETCH of the SDBD word at cycle 0 (pdf 28), FETCH of the target at cycle 4 (the SDBD unit is its printed 4 cycles), the low byte READ at 4 + 4 = 8 (the data access BAR of pdf 29) and the high byte READ at 4 + 7 = 11 (the second read takes the place of the trailing NACT of the 8-cycle read, so the 10-cycle unit ends after its data transfer). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0000",
+          "0202",
+          "0303",
+          "0404",
+          "0500",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0500",
+            "9955"
+          ],
+          [
+            "0501",
+            "88AA"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "1": "AA55",
+          "5": "0502",
+          "7": "1002"
+        },
+        "status": {
+          "S": 1,
+          "Z": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 14,
+        "units": [
+          "INSTR",
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0001"
+        ],
+        [
+          4,
+          "FETCH",
+          "1001",
+          "03E9"
+        ],
+        [
+          8,
+          "READ",
+          "0500",
+          "9955"
+        ],
+        [
+          11,
+          "READ",
+          "0501",
+          "88AA"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "addr:sdbd"
+      ]
+    },
+    {
+      "id": "cpu.MVI@.sdbd-r1-same-address-twice",
+      "row": "MVI@",
+      "kind": "policy",
+      "policy": "POL-SDBD-01",
+      "cite": "Indirect addressed double byte data table, SDBD and MVI@ rows, pdf 57; Fig 3.2.6, pdf 49; S3.2.1 double byte data, pdf 47; C34; C37",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SDBD; MVI@ R1, R2",
+      "program": [
+        "0001 0000 000 001",
+        "028A 1010 001 010"
+      ],
+      "steps": 2,
+      "derivation": "Two units. Step 1, SDBD (0000 000 001, pdf 57, 4 cycles) sets DBD for the next instruction. Step 2, MVI@ R1, R2 (1010 MMM DDD, MMM = 001 (R1), DDD = 010 (R2), pdf 57). Fig 3.2.6 (pdf 49), MMM = 1, 2, 3: PC <- PC+1, EA_L <- (MMM), EA_H <- (MMM), no register change; the SDBD row (pdf 57) says modes 1-3 'will access the same byte twice resulting in both bytes of data being the same'. pdf 47 says only one word is accessed; POL-SDBD-01 as amended by A-03 (C37, policy) takes two READs of the same address. pdf 47: the low data byte is the low 8 bits of the first word read and the high byte the low 8 bits of the second, so the operand is $5A low and $5A high, both from the word $C35A at $0300, $5A5A. R7 goes $1000 -> $1001 -> $1002. MVI@ moves it to R2 with no status change: R2 = $5A5A; R1 stays $0300; flags keep 0. Cycles: the SDBD unit is 4 (pdf 57) and the target row prints 10 under the separate 4-cycle SDBD row (pdf 57), so the two units take 4 + 10 = 14 (C34, A-05). SDBD is non-interruptible by the C56 default and the target row has no Not Interruptable note, so prev_interruptible ends 1. DBD is set by the SDBD unit and cleared by the target that consumes it, so it ends 0. Bus (inference, C36: no figure prints a double byte access): FETCH of the SDBD word at cycle 0 (pdf 28), FETCH of the target at cycle 4 (the SDBD unit is its printed 4 cycles), the low byte READ at 4 + 4 = 8 (the data access BAR of pdf 29) and the high byte READ at 4 + 7 = 11 (the second read takes the place of the trailing NACT of the 8-cycle read, so the 10-cycle unit ends after its data transfer). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0300",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0300",
+            "C35A"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "2": "5A5A",
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "cycles": 14,
+        "units": [
+          "INSTR",
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0001"
+        ],
+        [
+          4,
+          "FETCH",
+          "1001",
+          "028A"
+        ],
+        [
+          8,
+          "READ",
+          "0300",
+          "C35A"
+        ],
+        [
+          11,
+          "READ",
+          "0300",
+          "C35A"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "addr:sdbd",
+        "policy:POL-SDBD-01"
+      ]
+    },
+    {
+      "id": "cpu.ADD@.sdbd-r2-same-address-twice",
+      "row": "ADD@",
+      "kind": "policy",
+      "policy": "POL-SDBD-01",
+      "cite": "Indirect addressed double byte data table, SDBD and ADD@ rows, pdf 57; Fig 3.2.6, pdf 49; S3.2.1 double byte data, pdf 47; C34; C37",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SDBD; ADD@ R2, R3",
+      "program": [
+        "0001 0000 000 001",
+        "02D3 1011 010 011"
+      ],
+      "steps": 2,
+      "derivation": "Two units. Step 1, SDBD (0000 000 001, pdf 57, 4 cycles) sets DBD for the next instruction. Step 2, ADD@ R2, R3 (1011 MMM DDD, MMM = 010 (R2), DDD = 011 (R3), pdf 57). Fig 3.2.6 (pdf 49), MMM = 1, 2, 3: PC <- PC+1, EA_L <- (MMM), EA_H <- (MMM), no register change; the SDBD row (pdf 57) says modes 1-3 'will access the same byte twice resulting in both bytes of data being the same'. pdf 47 says only one word is accessed; POL-SDBD-01 as amended by A-03 (C37, policy) takes two READs of the same address. pdf 47: the low data byte is the low 8 bits of the first word read and the high byte the low 8 bits of the second, so the operand is $01 low and $01 high, both from the word $7701 at $0300, $0101. R7 goes $1000 -> $1001 -> $1002. ADD@ adds it to R3, status S, Z, C, OV (pdf 57): $0001 + $0101 = $0102 with no carry out and no sign change (pdf 45), so R3 = $0102 and S = Z = OV = C = 0, clearing their initial 1. R2 stays $0300. Cycles: the SDBD unit is 4 (pdf 57) and the target row prints 10 under the separate 4-cycle SDBD row (pdf 57), so the two units take 4 + 10 = 14 (C34, A-05). SDBD is non-interruptible by the C56 default and the target row has no Not Interruptable note, so prev_interruptible ends 1. DBD is set by the SDBD unit and cleared by the target that consumes it, so it ends 0. Bus (inference, C36: no figure prints a double byte access): FETCH of the SDBD word at cycle 0 (pdf 28), FETCH of the target at cycle 4 (the SDBD unit is its printed 4 cycles), the low byte READ at 4 + 4 = 8 (the data access BAR of pdf 29) and the high byte READ at 4 + 7 = 11 (the second read takes the place of the trailing NACT of the 8-cycle read, so the 10-cycle unit ends after its data transfer). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0300",
+          "0001",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0300",
+            "7701"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "3": "0102",
+          "7": "1002"
+        },
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1,
+        "cycles": 14,
+        "units": [
+          "INSTR",
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0001"
+        ],
+        [
+          4,
+          "FETCH",
+          "1001",
+          "02D3"
+        ],
+        [
+          8,
+          "READ",
+          "0300",
+          "7701"
+        ],
+        [
+          11,
+          "READ",
+          "0300",
+          "7701"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "addr:sdbd",
+        "policy:POL-SDBD-01"
+      ]
+    },
+    {
+      "id": "cpu.MVII.sdbd-dbd-cleared",
+      "row": "MVII",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "SDBD row, pdf 57; immediate double byte data table, MVII row, pdf 58; immediate table, MVII row, pdf 57; Fig 3.2.5 and 3.2.7, pdf 49; C34",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SDBD; MVII #$1234, R0; MVII #$ABCD, R1",
+      "program": [
+        "0001 0000 000 001",
+        "02B8 1010 111 000",
+        "0034 0000 0000 0011 0100",
+        "0012 0000 0000 0001 0010",
+        "02B9 1010 111 001",
+        "ABCD 1010 1011 1100 1101"
+      ],
+      "steps": 3,
+      "derivation": "Three units. Step 1, SDBD (pdf 57, 4 cycles) sets double byte data 'for the next instruction'. Step 2, MVII I, R0 (1010 111 000) after SDBD (pdf 58, 14 including the SDBD word, so 10 for this unit): Fig 3.2.7 (pdf 49) EA_L <- (PC+1) = $0034, EA_H <- (PC+2) = $0012, PC <- PC+3, so R0 = $1234 and R7 goes $1001 -> $1004. The prefix applies to that next instruction only, so DBD is cleared by it. Step 3, MVII I, R1 (1010 111 001, pdf 57, 8 cycles) is an ordinary immediate: Fig 3.2.5 (pdf 49) EA <- PC+1, PC <- PC+2, one word, R1 = $ABCD, R7 goes $1004 -> $1006. Had DBD stayed set it would have read two words. Cycles 4 + 10 + 8 = 22. No status change (flags keep 0). SDBD is non-interruptible (C56 default) and MVII is interruptible, so prev_interruptible ends 1; DBD ends 0, its initial value. Bus (inference for the double read, C36; figure for the single immediate, pdf 29): FETCH $1000 at 0, FETCH $1001 at 4, READ $1002 at 8, READ $1003 at 11, FETCH $1004 at 14, READ $1005 at 18. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "dbd": 0
+      },
+      "expect": {
+        "r": {
+          "0": "1234",
+          "1": "ABCD",
+          "7": "1006"
+        },
+        "prev_interruptible": 1,
+        "cycles": 22,
+        "units": [
+          "INSTR",
+          "INSTR",
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0001"
+        ],
+        [
+          4,
+          "FETCH",
+          "1001",
+          "02B8"
+        ],
+        [
+          8,
+          "READ",
+          "1002",
+          "0034"
+        ],
+        [
+          11,
+          "READ",
+          "1003",
+          "0012"
+        ],
+        [
+          14,
+          "FETCH",
+          "1004",
+          "02B9"
+        ],
+        [
+          18,
+          "READ",
+          "1005",
+          "ABCD"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "addr:sdbd"
+      ]
+    },
+    {
+      "id": "cpu.MVO@.sdbd-refused",
+      "row": "MVO@",
+      "kind": "policy",
+      "policy": "POL-SDBD-02",
+      "cite": "SDBD row, pdf 57; Fig 3.2.6 note, pdf 49; S3.2.1 double byte data, pdf 47; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SDBD; MVO@ R1, R4",
+      "program": [
+        "0001 0000 000 001",
+        "0261 1001 100 001"
+      ],
+      "steps": 2,
+      "derivation": "POL-SDBD-02 (policy, from the SDBD row of pdf 57: the next instruction 'must be an external reference instruction' and 'Use of modes 0 and 6 are not supported by this instruction'; Fig 3.2.6 note, pdf 49: 'Mode 000 and 110 are not supported for double byte data operations'; pdf 47: double byte data via modes 4, 5 and 7, and 1-3). Two units. Step 1, SDBD (0000 000 001, pdf 57, 4 cycles) sets DBD; it is non-interruptible (C56 default), so prev_interruptible goes 1 -> 0; R7 $1000 -> $1001. Step 2 fetches MVO@ R1, R4 (1001 100 001, MMM = 100, pdf 55): an output, not one of the six indirect double byte rows of pdf 57. That target is not a supported double byte target, so it is refused with the sticky fault UNSUPPORTED_SDBD_TARGET: only its fetch happens (FETCH at 4 from $1001, pdf 28) and its 4 cycles are counted, R7 stays at the offender $1001, DBD stays 1, run_state becomes FAULTED and nothing else changes (no WRITE, R4 keeps $0404). Cycles 4 + 4 = 8. Units INSTR then FAULT. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "dbd": 1,
+        "prev_interruptible": 0,
+        "run_state": "FAULTED",
+        "fault_reason": "UNSUPPORTED_SDBD_TARGET",
+        "cycles": 8,
+        "units": [
+          "INSTR",
+          "FAULT"
+        ],
+        "events": [
+          "FAULT"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0001"
+        ],
+        [
+          4,
+          "FETCH",
+          "1001",
+          "0261"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": []
+    },
+    {
+      "id": "cpu.PULR.sdbd-refused",
+      "row": "PULR",
+      "kind": "policy",
+      "policy": "POL-SDBD-02",
+      "cite": "SDBD row, pdf 57; Fig 3.2.6 note, pdf 49; S3.2.1 double byte data, pdf 47; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SDBD; PULR R0",
+      "program": [
+        "0001 0000 000 001",
+        "02B0 1010 110 000"
+      ],
+      "steps": 2,
+      "derivation": "POL-SDBD-02 (policy, from the SDBD row of pdf 57: the next instruction 'must be an external reference instruction' and 'Use of modes 0 and 6 are not supported by this instruction'; Fig 3.2.6 note, pdf 49: 'Mode 000 and 110 are not supported for double byte data operations'; pdf 47: double byte data via modes 4, 5 and 7, and 1-3). Two units. Step 1, SDBD (0000 000 001, pdf 57, 4 cycles) sets DBD; it is non-interruptible (C56 default), so prev_interruptible goes 1 -> 0; R7 $1000 -> $1001. Step 2 fetches 1010 110 000, the MMM = 6 (R6) input form, which pdf 55 prints as the PULR row (A-13); mode 6 is not supported. That target is not a supported double byte target, so it is refused with the sticky fault UNSUPPORTED_SDBD_TARGET: only its fetch happens (FETCH at 4 from $1001, pdf 28) and its 4 cycles are counted, R7 stays at the offender $1001, DBD stays 1, run_state becomes FAULTED and nothing else changes (no READ, R6 keeps $02F0). Cycles 4 + 4 = 8. Units INSTR then FAULT. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "dbd": 1,
+        "prev_interruptible": 0,
+        "run_state": "FAULTED",
+        "fault_reason": "UNSUPPORTED_SDBD_TARGET",
+        "cycles": 8,
+        "units": [
+          "INSTR",
+          "FAULT"
+        ],
+        "events": [
+          "FAULT"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0001"
+        ],
+        [
+          4,
+          "FETCH",
+          "1001",
+          "02B0"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": []
+    },
+    {
+      "id": "cpu.PSHR.sdbd-refused",
+      "row": "PSHR",
+      "kind": "policy",
+      "policy": "POL-SDBD-02",
+      "cite": "SDBD row, pdf 57; Fig 3.2.6 note, pdf 49; S3.2.1 double byte data, pdf 47; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SDBD; PSHR R1",
+      "program": [
+        "0001 0000 000 001",
+        "0271 1001 110 001"
+      ],
+      "steps": 2,
+      "derivation": "POL-SDBD-02 (policy, from the SDBD row of pdf 57: the next instruction 'must be an external reference instruction' and 'Use of modes 0 and 6 are not supported by this instruction'; Fig 3.2.6 note, pdf 49: 'Mode 000 and 110 are not supported for double byte data operations'; pdf 47: double byte data via modes 4, 5 and 7, and 1-3). Two units. Step 1, SDBD (0000 000 001, pdf 57, 4 cycles) sets DBD; it is non-interruptible (C56 default), so prev_interruptible goes 1 -> 0; R7 $1000 -> $1001. Step 2 fetches 1001 110 001, PSHR R1 (MMM = 6 output, pdf 55); mode 6 is not supported. That target is not a supported double byte target, so it is refused with the sticky fault UNSUPPORTED_SDBD_TARGET: only its fetch happens (FETCH at 4 from $1001, pdf 28) and its 4 cycles are counted, R7 stays at the offender $1001, DBD stays 1, run_state becomes FAULTED and nothing else changes (no WRITE, R6 keeps $02F0). Cycles 4 + 4 = 8. Units INSTR then FAULT. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "dbd": 1,
+        "prev_interruptible": 0,
+        "run_state": "FAULTED",
+        "fault_reason": "UNSUPPORTED_SDBD_TARGET",
+        "cycles": 8,
+        "units": [
+          "INSTR",
+          "FAULT"
+        ],
+        "events": [
+          "FAULT"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0001"
+        ],
+        [
+          4,
+          "FETCH",
+          "1001",
+          "0271"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": []
+    },
+    {
+      "id": "cpu.MVI.sdbd-direct-refused",
+      "row": "MVI",
+      "kind": "policy",
+      "policy": "POL-SDBD-02",
+      "cite": "SDBD row, pdf 57; Fig 3.2.6 note, pdf 49; S3.2.1 double byte data, pdf 47; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SDBD; MVI $0300, R1",
+      "program": [
+        "0001 0000 000 001",
+        "0281 1010 000 001",
+        "0300 0000 0011 0000 0000"
+      ],
+      "steps": 2,
+      "derivation": "POL-SDBD-02 (policy, from the SDBD row of pdf 57: the next instruction 'must be an external reference instruction' and 'Use of modes 0 and 6 are not supported by this instruction'; Fig 3.2.6 note, pdf 49: 'Mode 000 and 110 are not supported for double byte data operations'; pdf 47: double byte data via modes 4, 5 and 7, and 1-3). Two units. Step 1, SDBD (0000 000 001, pdf 57, 4 cycles) sets DBD; it is non-interruptible (C56 default), so prev_interruptible goes 1 -> 0; R7 $1000 -> $1001. Step 2 fetches 1010 000 001, MVI direct (MMM = 0, pdf 55); mode 0 is not supported. That target is not a supported double byte target, so it is refused with the sticky fault UNSUPPORTED_SDBD_TARGET: only its fetch happens (FETCH at 4 from $1001, pdf 28) and its 4 cycles are counted, R7 stays at the offender $1001, DBD stays 1, run_state becomes FAULTED and nothing else changes (the address word at $1002 is not read). Cycles 4 + 4 = 8. Units INSTR then FAULT. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "dbd": 1,
+        "prev_interruptible": 0,
+        "run_state": "FAULTED",
+        "fault_reason": "UNSUPPORTED_SDBD_TARGET",
+        "cycles": 8,
+        "units": [
+          "INSTR",
+          "FAULT"
+        ],
+        "events": [
+          "FAULT"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0001"
+        ],
+        [
+          4,
+          "FETCH",
+          "1001",
+          "0281"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": []
+    },
+    {
+      "id": "cpu.ADD.sdbd-direct-refused",
+      "row": "ADD",
+      "kind": "policy",
+      "policy": "POL-SDBD-02",
+      "cite": "SDBD row, pdf 57; Fig 3.2.6 note, pdf 49; S3.2.1 double byte data, pdf 47; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SDBD; ADD $0300, R2",
+      "program": [
+        "0001 0000 000 001",
+        "02C2 1011 000 010",
+        "0300 0000 0011 0000 0000"
+      ],
+      "steps": 2,
+      "derivation": "POL-SDBD-02 (policy, from the SDBD row of pdf 57: the next instruction 'must be an external reference instruction' and 'Use of modes 0 and 6 are not supported by this instruction'; Fig 3.2.6 note, pdf 49: 'Mode 000 and 110 are not supported for double byte data operations'; pdf 47: double byte data via modes 4, 5 and 7, and 1-3). Two units. Step 1, SDBD (0000 000 001, pdf 57, 4 cycles) sets DBD; it is non-interruptible (C56 default), so prev_interruptible goes 1 -> 0; R7 $1000 -> $1001. Step 2 fetches 1011 000 010, ADD direct (MMM = 0, pdf 55); mode 0 is not supported. That target is not a supported double byte target, so it is refused with the sticky fault UNSUPPORTED_SDBD_TARGET: only its fetch happens (FETCH at 4 from $1001, pdf 28) and its 4 cycles are counted, R7 stays at the offender $1001, DBD stays 1, run_state becomes FAULTED and nothing else changes (the address word at $1002 is not read and the flags keep S = 1, Z = 0, OV = 1, C = 0). Cycles 4 + 4 = 8. Units INSTR then FAULT. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "dbd": 1,
+        "prev_interruptible": 0,
+        "run_state": "FAULTED",
+        "fault_reason": "UNSUPPORTED_SDBD_TARGET",
+        "cycles": 8,
+        "units": [
+          "INSTR",
+          "FAULT"
+        ],
+        "events": [
+          "FAULT"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0001"
+        ],
+        [
+          4,
+          "FETCH",
+          "1001",
+          "02C2"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": []
+    },
+    {
+      "id": "cpu.B.sdbd-branch-refused",
+      "row": "B",
+      "kind": "policy",
+      "policy": "POL-SDBD-02",
+      "cite": "SDBD row, pdf 57; Fig 3.2.6 note, pdf 49; S3.2.1 double byte data, pdf 47; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SDBD; B $1003",
+      "program": [
+        "0001 0000 000 001",
+        "0200 1000 000 000",
+        "0000 0000 0000 0000 0000"
+      ],
+      "steps": 2,
+      "derivation": "POL-SDBD-02 (policy, from the SDBD row of pdf 57: the next instruction 'must be an external reference instruction' and 'Use of modes 0 and 6 are not supported by this instruction'; Fig 3.2.6 note, pdf 49: 'Mode 000 and 110 are not supported for double byte data operations'; pdf 47: double byte data via modes 4, 5 and 7, and 1-3). Two units. Step 1, SDBD (0000 000 001, pdf 57, 4 cycles) sets DBD; it is non-interruptible (C56 default), so prev_interruptible goes 1 -> 0; R7 $1000 -> $1001. Step 2 fetches 1000 000 000, B (pdf 54), a branch, not an external reference read. That target is not a supported double byte target, so it is refused with the sticky fault UNSUPPORTED_SDBD_TARGET: only its fetch happens (FETCH at 4 from $1001, pdf 28) and its 4 cycles are counted, R7 stays at the offender $1001, DBD stays 1, run_state becomes FAULTED and nothing else changes (the displacement word at $1002 is not read). Cycles 4 + 4 = 8. Units INSTR then FAULT. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "dbd": 1,
+        "prev_interruptible": 0,
+        "run_state": "FAULTED",
+        "fault_reason": "UNSUPPORTED_SDBD_TARGET",
+        "cycles": 8,
+        "units": [
+          "INSTR",
+          "FAULT"
+        ],
+        "events": [
+          "FAULT"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0001"
+        ],
+        [
+          4,
+          "FETCH",
+          "1001",
+          "0200"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": []
+    },
+    {
+      "id": "cpu.J.sdbd-refused",
+      "row": "J",
+      "kind": "policy",
+      "policy": "POL-SDBD-02",
+      "cite": "SDBD row, pdf 57; Fig 3.2.6 note, pdf 49; S3.2.1 double byte data, pdf 47; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SDBD; J $1234",
+      "program": [
+        "0001 0000 000 001",
+        "0004 0000 000 100",
+        "0310 0000 0011 0001 0000",
+        "0234 0000 0010 0011 0100"
+      ],
+      "steps": 2,
+      "derivation": "POL-SDBD-02 (policy, from the SDBD row of pdf 57: the next instruction 'must be an external reference instruction' and 'Use of modes 0 and 6 are not supported by this instruction'; Fig 3.2.6 note, pdf 49: 'Mode 000 and 110 are not supported for double byte data operations'; pdf 47: double byte data via modes 4, 5 and 7, and 1-3). Two units. Step 1, SDBD (0000 000 001, pdf 57, 4 cycles) sets DBD; it is non-interruptible (C56 default), so prev_interruptible goes 1 -> 0; R7 $1000 -> $1001. Step 2 fetches 0000 000 100, the first word of the jump group (pdf 52, 56), an internal reference instruction. That target is not a supported double byte target, so it is refused with the sticky fault UNSUPPORTED_SDBD_TARGET: only its fetch happens (FETCH at 4 from $1001, pdf 28) and its 4 cycles are counted, R7 stays at the offender $1001, DBD stays 1, run_state becomes FAULTED and nothing else changes (only the first jump word is fetched; the words at $1002 and $1003 are not read). Cycles 4 + 4 = 8. Units INSTR then FAULT. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "dbd": 1,
+        "prev_interruptible": 0,
+        "run_state": "FAULTED",
+        "fault_reason": "UNSUPPORTED_SDBD_TARGET",
+        "cycles": 8,
+        "units": [
+          "INSTR",
+          "FAULT"
+        ],
+        "events": [
+          "FAULT"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0001"
+        ],
+        [
+          4,
+          "FETCH",
+          "1001",
+          "0004"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": []
+    },
+    {
+      "id": "cpu.SDBD.sdbd-twice-refused",
+      "row": "SDBD",
+      "kind": "policy",
+      "policy": "POL-SDBD-02",
+      "cite": "SDBD row, pdf 57; Fig 3.2.6 note, pdf 49; S3.2.1 double byte data, pdf 47; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SDBD; SDBD",
+      "program": [
+        "0001 0000 000 001",
+        "0001 0000 000 001"
+      ],
+      "steps": 2,
+      "derivation": "POL-SDBD-02 (policy, from the SDBD row of pdf 57: the next instruction 'must be an external reference instruction' and 'Use of modes 0 and 6 are not supported by this instruction'; Fig 3.2.6 note, pdf 49: 'Mode 000 and 110 are not supported for double byte data operations'; pdf 47: double byte data via modes 4, 5 and 7, and 1-3). Two units. Step 1, SDBD (0000 000 001, pdf 57, 4 cycles) sets DBD; it is non-interruptible (C56 default), so prev_interruptible goes 1 -> 0; R7 $1000 -> $1001. Step 2 fetches 0000 000 001, a second SDBD (pdf 57), an internal control instruction. That target is not a supported double byte target, so it is refused with the sticky fault UNSUPPORTED_SDBD_TARGET: only its fetch happens (FETCH at 4 from $1001, pdf 28) and its 4 cycles are counted, R7 stays at the offender $1001, DBD stays 1, run_state becomes FAULTED and nothing else changes. Cycles 4 + 4 = 8. Units INSTR then FAULT. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "dbd": 1,
+        "prev_interruptible": 0,
+        "run_state": "FAULTED",
+        "fault_reason": "UNSUPPORTED_SDBD_TARGET",
+        "cycles": 8,
+        "units": [
+          "INSTR",
+          "FAULT"
+        ],
+        "events": [
+          "FAULT"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0001"
+        ],
+        [
+          4,
+          "FETCH",
+          "1001",
+          "0001"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": []
+    },
+    {
+      "id": "cpu.ADDR.sdbd-register-refused",
+      "row": "ADDR",
+      "kind": "policy",
+      "policy": "POL-SDBD-02",
+      "cite": "SDBD row, pdf 57; Fig 3.2.6 note, pdf 49; S3.2.1 double byte data, pdf 47; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SDBD; ADDR R1, R2",
+      "program": [
+        "0001 0000 000 001",
+        "00CA 0011 001 010"
+      ],
+      "steps": 2,
+      "derivation": "POL-SDBD-02 (policy, from the SDBD row of pdf 57: the next instruction 'must be an external reference instruction' and 'Use of modes 0 and 6 are not supported by this instruction'; Fig 3.2.6 note, pdf 49: 'Mode 000 and 110 are not supported for double byte data operations'; pdf 47: double byte data via modes 4, 5 and 7, and 1-3). Two units. Step 1, SDBD (0000 000 001, pdf 57, 4 cycles) sets DBD; it is non-interruptible (C56 default), so prev_interruptible goes 1 -> 0; R7 $1000 -> $1001. Step 2 fetches 0011 001 010, ADDR R1, R2 (pdf 53), a register to register instruction. That target is not a supported double byte target, so it is refused with the sticky fault UNSUPPORTED_SDBD_TARGET: only its fetch happens (FETCH at 4 from $1001, pdf 28) and its 4 cycles are counted, R7 stays at the offender $1001, DBD stays 1, run_state becomes FAULTED and nothing else changes (R2 keeps $0202 and the flags keep S = 1, Z = 0, OV = 1, C = 0). Cycles 4 + 4 = 8. Units INSTR then FAULT. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "dbd": 1,
+        "prev_interruptible": 0,
+        "run_state": "FAULTED",
+        "fault_reason": "UNSUPPORTED_SDBD_TARGET",
+        "cycles": 8,
+        "units": [
+          "INSTR",
+          "FAULT"
+        ],
+        "events": [
+          "FAULT"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0001"
+        ],
+        [
+          4,
+          "FETCH",
+          "1001",
+          "00CA"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": []
+    },
+    {
+      "id": "cpu.SLL.sdbd-refused",
+      "row": "SLL",
+      "kind": "policy",
+      "policy": "POL-SDBD-02",
+      "cite": "SDBD row, pdf 57; Fig 3.2.6 note, pdf 49; S3.2.1 double byte data, pdf 47; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SDBD; SLL R0",
+      "program": [
+        "0001 0000 000 001",
+        "0048 0001 001 000"
+      ],
+      "steps": 2,
+      "derivation": "POL-SDBD-02 (policy, from the SDBD row of pdf 57: the next instruction 'must be an external reference instruction' and 'Use of modes 0 and 6 are not supported by this instruction'; Fig 3.2.6 note, pdf 49: 'Mode 000 and 110 are not supported for double byte data operations'; pdf 47: double byte data via modes 4, 5 and 7, and 1-3). Two units. Step 1, SDBD (0000 000 001, pdf 57, 4 cycles) sets DBD; it is non-interruptible (C56 default), so prev_interruptible goes 1 -> 0; R7 $1000 -> $1001. Step 2 fetches 0001 001 000, SLL R0 (pdf 53), a register shift. That target is not a supported double byte target, so it is refused with the sticky fault UNSUPPORTED_SDBD_TARGET: only its fetch happens (FETCH at 4 from $1001, pdf 28) and its 4 cycles are counted, R7 stays at the offender $1001, DBD stays 1, run_state becomes FAULTED and nothing else changes (R0 keeps $0000). Cycles 4 + 4 = 8. Units INSTR then FAULT. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "dbd": 1,
+        "prev_interruptible": 0,
+        "run_state": "FAULTED",
+        "fault_reason": "UNSUPPORTED_SDBD_TARGET",
+        "cycles": 8,
+        "units": [
+          "INSTR",
+          "FAULT"
+        ],
+        "events": [
+          "FAULT"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0001"
+        ],
+        [
+          4,
+          "FETCH",
+          "1001",
+          "0048"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": []
+    },
+    {
+      "id": "cpu.CLRC.sdbd-refused",
+      "row": "CLRC",
+      "kind": "policy",
+      "policy": "POL-SDBD-02",
+      "cite": "SDBD row, pdf 57; Fig 3.2.6 note, pdf 49; S3.2.1 double byte data, pdf 47; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SDBD; CLRC",
+      "program": [
+        "0001 0000 000 001",
+        "0006 0000 000 110"
+      ],
+      "steps": 2,
+      "derivation": "POL-SDBD-02 (policy, from the SDBD row of pdf 57: the next instruction 'must be an external reference instruction' and 'Use of modes 0 and 6 are not supported by this instruction'; Fig 3.2.6 note, pdf 49: 'Mode 000 and 110 are not supported for double byte data operations'; pdf 47: double byte data via modes 4, 5 and 7, and 1-3). Two units. Step 1, SDBD (0000 000 001, pdf 57, 4 cycles) sets DBD; it is non-interruptible (C56 default), so prev_interruptible goes 1 -> 0; R7 $1000 -> $1001. Step 2 fetches 0000 000 110, CLRC (pdf 56), an internal control instruction. That target is not a supported double byte target, so it is refused with the sticky fault UNSUPPORTED_SDBD_TARGET: only its fetch happens (FETCH at 4 from $1001, pdf 28) and its 4 cycles are counted, R7 stays at the offender $1001, DBD stays 1, run_state becomes FAULTED and nothing else changes (C keeps 0). Cycles 4 + 4 = 8. Units INSTR then FAULT. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "dbd": 1,
+        "prev_interruptible": 0,
+        "run_state": "FAULTED",
+        "fault_reason": "UNSUPPORTED_SDBD_TARGET",
+        "cycles": 8,
+        "units": [
+          "INSTR",
+          "FAULT"
+        ],
+        "events": [
+          "FAULT"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0001"
+        ],
+        [
+          4,
+          "FETCH",
+          "1001",
+          "0006"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": []
+    },
+    {
+      "id": "cpu.MVOI.sdbd-refused",
+      "row": "MVOI",
+      "kind": "policy",
+      "policy": "POL-SDBD-02",
+      "cite": "SDBD row, pdf 57; Fig 3.2.6 note, pdf 49; S3.2.1 double byte data, pdf 47; instruction fetch figure, pdf 28",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SDBD; MVOI R1, $1002",
+      "program": [
+        "0001 0000 000 001",
+        "0279 1001 111 001",
+        "0000 0000 0000 0000 0000"
+      ],
+      "steps": 2,
+      "derivation": "POL-SDBD-02 (policy, from the SDBD row of pdf 57: the next instruction 'must be an external reference instruction' and 'Use of modes 0 and 6 are not supported by this instruction'; Fig 3.2.6 note, pdf 49: 'Mode 000 and 110 are not supported for double byte data operations'; pdf 47: double byte data via modes 4, 5 and 7, and 1-3). Two units. Step 1, SDBD (0000 000 001, pdf 57, 4 cycles) sets DBD; it is non-interruptible (C56 default), so prev_interruptible goes 1 -> 0; R7 $1000 -> $1001. Step 2 fetches 1001 111 001, MVOI R1 (pdf 57), an output; pdf 58 has no MVOI double byte row. That target is not a supported double byte target, so it is refused with the sticky fault UNSUPPORTED_SDBD_TARGET: only its fetch happens (FETCH at 4 from $1001, pdf 28) and its 4 cycles are counted, R7 stays at the offender $1001, DBD stays 1, run_state becomes FAULTED and nothing else changes (no WRITE at $1002). Cycles 4 + 4 = 8. Units INSTR then FAULT. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "dbd": 1,
+        "prev_interruptible": 0,
+        "run_state": "FAULTED",
+        "fault_reason": "UNSUPPORTED_SDBD_TARGET",
+        "cycles": 8,
+        "units": [
+          "INSTR",
+          "FAULT"
+        ],
+        "events": [
+          "FAULT"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0001"
+        ],
+        [
+          4,
+          "FETCH",
+          "1001",
+          "0279"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": []
     }
   ]
 }
