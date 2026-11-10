@@ -49,6 +49,16 @@
 #define IVS_SDBD_HIGH_BAR_OFFSET 7u
 #define IVS_SDBD_EXTRA_CYCLES 2u
 
+/* Interrupt entry (interrupt sequence figure, pdf 35; SC.6, pdf 24-25; Fig 2-6, pdf 22): INTAK at
+ * cycle 0 puts out R6, NACT, DW at 2 and DWS at 3 write the current PC at R6, NACT, IAB at 5 inputs
+ * the service routine address into the PC, three NACT, and the first BAR of the service routine
+ * is at 9, so the unit lasts 9 cycles (POL-INT-04, C30). DW is one cycle before DWS (pdf 10), so
+ * the write is recorded at DW. */
+#define IVS_INT_INTAK_OFFSET 0u
+#define IVS_INT_DW_OFFSET 2u
+#define IVS_INT_IAB_OFFSET 5u
+#define IVS_INT_ENTRY_CYCLES 9u
+
 /* Strobe stamps (C39, D-12). TCI timing (pdf 33): the TCI pulse rises in the cycle after the
  * 4-cycle unit, the NACT that follows the next BAR, so its record sits at unit end plus 1.
  * PCIT timing (pdf 34): the output pulse of the 6-cycle SIN starts in its cycle 4, inside the
@@ -187,11 +197,19 @@ static void ivs_result_init(ivs_cp1610_result *r, const ivs_cp1610 *s, uint8_t u
   r->reserved = 0u;
 }
 
+/* IAB access (POL-IAB-01, C32, C42): the bus layer answers the vector, and all 16 bits of the
+ * reply are the new PC. The core holds no vector constant for reset or for interrupts. */
+static uint16_t ivs_iab(ivs_unit *u, uint32_t nominal, uint8_t flags)
+{
+  uint16_t v = ivs_access(u, nominal, IVS_ACC_IAB, flags, 0u, 0u);
+  return v;
+}
+
 /* Reset entry unit: IAB at offset 1 loads all 16 bits of R7 (pdf 27); other registers are
  * untouched; the first instruction always runs (pdf 22), so prev_interruptible is 0. */
 static void ivs_unit_reset_entry(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r)
 {
-  n->r[7] = ivs_access(u, IVS_RESET_IAB_OFFSET, IVS_ACC_IAB, IVS_ACC_F_RESET, 0u, 0u);
+  n->r[7] = ivs_iab(u, IVS_RESET_IAB_OFFSET, IVS_ACC_F_RESET);
 #ifdef IVS_FAULT_RESET_ENTRY
   n->r[7] = (uint16_t)(n->r[7] & 0x00FFu);
 #endif
@@ -1048,6 +1066,46 @@ static void ivs_unit_instr(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r)
   r->elapsed_cpu_cycles = (uint32_t)row->base_cycles + extra + u->shift;
 }
 
+/* Interrupt acceptance at the start of a step in RUNNING state (CPU-02; Fig 2-6, pdf 22; pdf 12;
+ * SC.6, pdf 24). The test runs only at an interruptible boundary: the previous unit was
+ * interruptible (prev_interruptible, set from the row after every unit; an entry and the reset
+ * entry leave it 0) and no SDBD prefix is pending (POL-SDBD-03). INTR is always honoured, INTRM
+ * only when INTFF is set (POL-INT-01). The lines are the levels the caller sampled for this step
+ * (D-05; the sampling point is the machine-layer rule POL-LINE-01, C38) and nothing is latched,
+ * so a line asserted at a closed boundary is forgotten. */
+static int ivs_int_accept(const ivs_cp1610 *n, const ivs_cp1610_lines *l)
+{
+  uint32_t open = n->prev_interruptible;
+  uint32_t intr = l->intr;
+  if (open == 0u || n->dbd != 0u) {
+    return 0;
+  }
+  return intr != 0u || (l->intrm != 0u && n->intff != 0u);
+}
+
+/* Interrupt entry unit (POL-INT-04; pdf 35, SC.6 pdf 24-25): INTAK puts out R6, DW writes the
+ * current PC at R6 (the interrupt-entry write is its own access kind, never WRITE, A-11), R6
+ * moves up by one (mod 2^16), and IAB loads all 16 bits of R7 from the bus reply (POL-IAB-01).
+ * Flags are not pushed. The first service routine instruction always runs (Fig 2-6, pdf 22: the
+ * sequence returns to the fetch), so prev_interruptible is 0. Acceptance leaves INTFF unless the
+ * profile says it clears it (POL-INT-03, C41). INTAK, DW and IAB take no waits (A-11). */
+static void ivs_unit_int_entry(ivs_cp1610 *n, const ivs_cp1610_config *cfg, ivs_unit *u, ivs_cp1610_result *r)
+{
+  uint16_t sp = n->r[6];
+  (void)ivs_access(u, IVS_INT_INTAK_OFFSET, IVS_ACC_INTAK, 0u, sp, 0u);
+#ifdef IVS_FAULT_INT_ENTRY_ORDER
+  n->r[7] = ivs_iab(u, IVS_INT_DW_OFFSET, IVS_ACC_F_INTERRUPT);
+#endif
+  (void)ivs_access(u, IVS_INT_DW_OFFSET, IVS_ACC_DW, 0u, sp, n->r[7]);
+  n->r[6] = IVS_U16((uint32_t)sp + 1u);
+  n->r[7] = ivs_iab(u, IVS_INT_IAB_OFFSET, IVS_ACC_F_INTERRUPT);
+  if (cfg->interrupt_accept_clears_intff != 0u) {
+    n->intff = 0u;
+  }
+  n->prev_interruptible = 0u;
+  r->elapsed_cpu_cycles = IVS_INT_ENTRY_CYCLES + u->shift;
+}
+
 static int ivs_lines_valid(const ivs_cp1610_lines *l)
 {
   return ivs_is_bit(l->intr) && ivs_is_bit(l->intrm) && ivs_is_bit(l->busrq) && ivs_is_bit(l->stpst);
@@ -1071,7 +1129,8 @@ ivs_status ivs_cp1610_step(ivs_cp1610 *s, const ivs_cp1610_config *cfg, const iv
   if (log != NULL && log_cap < IVS_CP1610_MAX_ACCESSES) {
     return IVS_E_BAD_ARG;
   }
-  /* Lines are validated now and acted on with the interrupt and bus policies (plan 02-14). */
+  /* Lines are validated here; INTR and INTRM decide acceptance in RUNNING state (POL-INT-01);
+   * BUSRQ and STPST belong to the bus and halt policies (plan 02-15). */
   if (!ivs_lines_valid(lines) || !ivs_config_valid(cfg)) {
     return IVS_E_BAD_ARG;
   }
@@ -1095,11 +1154,16 @@ ivs_status ivs_cp1610_step(ivs_cp1610 *s, const ivs_cp1610_config *cfg, const iv
     ivs_unit_reset_entry(&n, &u, &r);
     break;
   case IVS_CP1610_RS_RUNNING:
-    ivs_result_init(&r, &n, IVS_CP1610_UNIT_INSTR);
-    ivs_unit_instr(&n, &u, &r);
+    if (ivs_int_accept(&n, lines)) {
+      ivs_result_init(&r, &n, IVS_CP1610_UNIT_INT_ENTRY);
+      ivs_unit_int_entry(&n, cfg, &u, &r);
+    } else {
+      ivs_result_init(&r, &n, IVS_CP1610_UNIT_INSTR);
+      ivs_unit_instr(&n, &u, &r);
+    }
     break;
   case IVS_CP1610_RS_HALTED:
-    /* Halted idle is defined with the halt policy (plan 02-14). */
+    /* Halted idle is defined with the halt policy (plan 02-15). */
     ivs_result_init(&r, &n, IVS_CP1610_UNIT_HALTED);
     break;
   default:

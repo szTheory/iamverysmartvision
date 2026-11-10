@@ -46,3 +46,4 @@ SDBD_DBD_NOT_CLEARED cpu.MVII.sdbd-dbd-cleared cpu.MVII.sdbd|cpu.ADDI.sdbd|cpu.S
 SDBD_TARGET_ACCEPTED cpu.PULR.sdbd-refused cpu.MVO@.sdbd-refused|cpu.PULR.sdbd-refused|cpu.PSHR.sdbd-refused|cpu.MVI.sdbd-direct-refused|cpu.ADD.sdbd-direct-refused|cpu.B.sdbd-branch-refused|cpu.J.sdbd-refused|cpu.SDBD.sdbd-twice-refused|cpu.ADDR.sdbd-register-refused|cpu.SLL.sdbd-refused|cpu.CLRC.sdbd-refused|cpu.MVOI.sdbd-refused cpu.MVII.sdbd-low-high
 DECODE_HIGH_BITS cpu.CLRC.high-bits-ignored cpu.CLRC.high|cpu.ADDR.high|cpu.NOP.high|cpu.MOVR.coincidence-0bf-high cpu.CLRC.clears-c
 JUMP_DE11_ALLOWED cpu.J.de11-unsupported cpu.J.de11 cpu.J.plain
+INT_ENTRY_ORDER cpu.UNIT-INT.entry-figure cpu.UNIT-INT.|cpu.NOP.then-intr cpu.ADDR.0001-plus-0001

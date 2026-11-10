@@ -1,0 +1,181 @@
+{
+  "schema_version": 1,
+  "source": "SRC-gi-cp1600-um-1975",
+  "group": "interrupt",
+  "note": "Interrupt acceptance and entry (POL-INT-01..04, POL-LINE-01, POL-IAB-01, POL-SDBD-03) and the reset interaction (POL-RST-01). Every vector that contains an interrupt entry answers IAB with $1004 except cpu.UNIT-INT.iab-0000 and cpu.UNIT-INT.iab-abcd. The non-interruptible rows are listed literally, one vector each. Every expect value is read from the cited page image and derived by hand; none comes from this core, an assembler or another implementation.",
+  "vectors": [
+    {
+      "id": "cpu.UNIT-INT.entry-figure",
+      "row": "UNIT-INT",
+      "kind": "policy",
+      "policy": "POL-INT-04",
+      "cite": "Interrupt sequence figure, pdf 35; SC.6 interrupt sequence, pdf 24, pdf 25; Fig 2-6, pdf 22; DW, pdf 10; INTR*, pdf 12",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "none (interrupt entry unit)",
+      "program": [],
+      "derivation": "One unit. The previous unit was interruptible (init prev_interruptible 1), no SDBD prefix is pending and INTR is high, so the step is an interrupt entry, not a fetch (Fig 2-6, pdf 22; pdf 12: 'INTR* is always honored'). Entry (interrupt sequence figure, pdf 35; SC.6, pdf 24-25; POL-INT-04, C30): INTAK at cycle 0 of the unit puts out R6 (the flat test bus answers $0000, which the CPU ignores), NACT, DW at 2 and DWS at 3 write the current PC at R6 (DW is one cycle before DWS, pdf 10, so the record is at DW), NACT, IAB at 5 inputs the service routine address into the PC, three NACT and the first BAR of the service routine at 9, so the unit is 9 cycles. R6 goes up by one after the store (pdf 24). The IAB reply is the vector's iab value and loads all 16 bits of R7 (POL-IAB-01, C42). Flags are not pushed and do not change. The entry leaves prev_interruptible 0 because the first service routine instruction always runs (Fig 2-6, pdf 22: the sequence returns to the fetch). INTFF is left as it was: config interrupt_accept_clears_intff is 0 by default (POL-INT-03, C41). R6 = $02F0 and R7 = $1000: INTAK at 0 with address $02F0; DW at 2 writes $1000 at $02F0; R6 = $02F0 + 1 = $02F1; IAB at 5 answers $1004, so R7 = $1004. The status flags S = 1 and C = 1 stay as they were and INTFF stays 0 (INTR does not need it). Cycles 9. Registers and memory not named stay unchanged.",
+      "iab": "1004",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 0,
+          "C": 1
+        },
+        "intff": 0,
+        "prev_interruptible": 1,
+        "lines": {
+          "intr": 1
+        }
+      },
+      "expect": {
+        "r": {
+          "6": "02F1",
+          "7": "1004"
+        },
+        "mem": [
+          [
+            "02F0",
+            "1000"
+          ]
+        ],
+        "prev_interruptible": 0,
+        "cycles": 9,
+        "units": [
+          "INT_ENTRY"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "INTAK",
+          "02F0",
+          "0000"
+        ],
+        [
+          2,
+          "DW",
+          "02F0",
+          "1000"
+        ],
+        [
+          5,
+          "IAB",
+          "0000",
+          "1004"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "policy:POL-INT-04",
+        "unit:int-entry",
+        "iab:1004"
+      ]
+    },
+    {
+      "id": "cpu.NOP.then-intr-entry",
+      "row": "NOP",
+      "kind": "policy",
+      "policy": "POL-INT-04",
+      "cite": "Control instructions table, NOP row, pdf 56; instruction fetch figure, pdf 28; interrupt sequence figure, pdf 35; Fig 2-6, pdf 22",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "NOP; <INTR>",
+      "program": [
+        "0034 0000 110 100"
+      ],
+      "steps": 2,
+      "step_lines": [
+        {
+          "intr": 0
+        },
+        {
+          "intr": 1
+        }
+      ],
+      "derivation": "Two units. Step 1, lines low: NOP (0000 110 10N with N = 0, $0034, pdf 56, 6 cycles, no status change) is fetched at cycle 0 from $1000 (pdf 28) and R7 = $1001. NOP has no Not Interruptable note, so the boundary after it is interruptible. Step 2, INTR high: the step is an interrupt entry (Fig 2-6, pdf 22). Entry (interrupt sequence figure, pdf 35; SC.6, pdf 24-25; POL-INT-04, C30): INTAK at cycle 0 of the unit puts out R6 (the flat test bus answers $0000, which the CPU ignores), NACT, DW at 2 and DWS at 3 write the current PC at R6 (DW is one cycle before DWS, pdf 10, so the record is at DW), NACT, IAB at 5 inputs the service routine address into the PC, three NACT and the first BAR of the service routine at 9, so the unit is 9 cycles. R6 goes up by one after the store (pdf 24). The IAB reply is the vector's iab value and loads all 16 bits of R7 (POL-IAB-01, C42). Flags are not pushed and do not change. The entry leaves prev_interruptible 0 because the first service routine instruction always runs (Fig 2-6, pdf 22: the sequence returns to the fetch). INTFF is left as it was: config interrupt_accept_clears_intff is 0 by default (POL-INT-03, C41). The entry starts at cycle 6: INTAK at 6 with address $02F0, DW at 8 writes the current PC $1001 at $02F0, R6 = $02F1, IAB at 11 answers $1004, so R7 = $1004. Cycles 6 + 9 = 15. Flags and INTFF stay 0.",
+      "iab": "1004",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "6": "02F1",
+          "7": "1004"
+        },
+        "mem": [
+          [
+            "02F0",
+            "1001"
+          ]
+        ],
+        "prev_interruptible": 0,
+        "cycles": 15,
+        "units": [
+          "INSTR",
+          "INT_ENTRY"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0034"
+        ],
+        [
+          6,
+          "INTAK",
+          "02F0",
+          "0000"
+        ],
+        [
+          8,
+          "DW",
+          "02F0",
+          "1001"
+        ],
+        [
+          11,
+          "IAB",
+          "0000",
+          "1004"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "policy:POL-INT-04",
+        "unit:int-entry"
+      ]
+    }
+  ]
+}
