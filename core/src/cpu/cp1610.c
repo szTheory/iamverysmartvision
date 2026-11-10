@@ -390,17 +390,38 @@ static void ivs_ind_write(ivs_cp1610 *n, ivs_unit *u, uint32_t mmm, uint32_t sss
  * base is the 7 and a taken branch adds 2 for the 9. NOPP prints a single 7 and is never taken. */
 #define IVS_BRANCH_TAKEN_EXTRA 2u
 
-/* Branch condition of the condition field cccc (bits 3..0; branch table, pdf 54). B (0000) is
- * always true. */
+/* Branch condition of the condition field cccc (bits 3..0; branch table, pdf 54). Bits 2..0 pick
+ * the test: 000 B (always), 001 BC C = 1, 010 BOV OV = 1, 011 BPL S = 0, 100 BZE Z = 1. Each row
+ * with bit 3 = 1 prints the opposite test of its bit-3 = 0 partner (BNC C = 0, BNOV OV = 0, BMI
+ * S = 1, BNZE Z = 0), so bit 3 negates the test. */
 static uint32_t ivs_branch_cond(const ivs_cp1610 *n, uint32_t cccc)
 {
-  (void)n;
+  uint32_t st = n->status;
+  uint32_t neg = (cccc >> 3) & 1u;
+  uint32_t t;
   switch (cccc & 7u) {
   case 0u:
-    return 1u;
+    t = 1u;
+    break;
+  case 1u:
+    t = (st & IVS_CP1610_C) != 0u ? 1u : 0u;
+    break;
+  case 2u:
+    t = (st & IVS_CP1610_OV) != 0u ? 1u : 0u;
+    break;
+  case 3u:
+    t = (st & IVS_CP1610_S) != 0u ? 0u : 1u;
+    break;
+  case 4u:
+    t = (st & IVS_CP1610_Z) != 0u ? 1u : 0u;
+    break;
   default:
     __builtin_trap();
   }
+#ifdef IVS_FAULT_BRANCH_NEGATE_IGNORED
+  neg = 0u;
+#endif
+  return t ^ neg;
 }
 
 /* Internal-condition branch 1000 S0 cccc plus a displacement word (S3.2.2, pdf 47; branch
@@ -420,6 +441,9 @@ static uint32_t ivs_branch(ivs_cp1610 *n, ivs_unit *u, uint16_t word)
 #endif
   }
   if (ivs_branch_cond(n, (uint32_t)word & 0xFu) == 0u) {
+#ifdef IVS_FAULT_BRANCH_NOT_TAKEN_CYCLES
+    return IVS_BRANCH_TAKEN_EXTRA;
+#endif
     return 0u;
   }
   n->r[7] = IVS_U16((uint32_t)n->r[7] + disp);
