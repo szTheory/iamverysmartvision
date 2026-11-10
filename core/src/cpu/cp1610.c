@@ -26,6 +26,13 @@
  * so the BAR is taken to come after those 3 cycles. No figure prints it. */
 #define IVS_PULL_BAR_OFFSET 7u
 
+/* Direct mode (instruction fetch and data access, direct addr. mode, pdf 30): BAR at 4 puts out
+ * PC+1, where the address word sits; ADAR at 6 ("addressed data to address register", pdf 11)
+ * gates that word into the address register, so the operand access has its address phase at 6
+ * and its data at 8. The address-word record is a READ at 4 carrying the word; the operand
+ * record carries the effective address at 6. */
+#define IVS_DIRECT_ADAR_OFFSET 6u
+
 /* Strobe stamps (C39, D-12). TCI timing (pdf 33): the TCI pulse rises in the cycle after the
  * 4-cycle unit, the NACT that follows the next BAR, so its record sits at unit end plus 1.
  * PCIT timing (pdf 34): the output pulse of the 6-cycle SIN starts in its cycle 4, inside the
@@ -267,6 +274,55 @@ static uint16_t ivs_imm_addr(ivs_cp1610 *n)
 static uint16_t ivs_imm_read(ivs_cp1610 *n, ivs_unit *u)
 {
   return ivs_access(u, IVS_DATA_BAR_OFFSET, IVS_ACC_READ, 0u, ivs_imm_addr(n), 0u);
+}
+
+/* Direct effective address (Fig 3.2.3, pdf 48): the word at PC+1 is the address, all 16 bits
+ * (C51), and PC moves past it, so it is read like an immediate operand. */
+static uint16_t ivs_dir_addr(ivs_cp1610 *n, ivs_unit *u)
+{
+  return ivs_imm_read(n, u);
+}
+
+/* Direct operand read: the address word, then the operand as an ADAR access (pdf 30, pdf 11). */
+static uint16_t ivs_dir_read(ivs_cp1610 *n, ivs_unit *u)
+{
+  uint16_t ea = ivs_dir_addr(n, u);
+  uint8_t kind = IVS_ACC_ADAR;
+#ifdef IVS_FAULT_DIRECT_ADAR_ORDER
+  kind = IVS_ACC_READ;
+#endif
+  return ivs_access(u, IVS_DIRECT_ADAR_OFFSET, kind, 0u, ea, 0u);
+}
+
+/* The operation of a read row of the external reference group (S3.2.1 Fig 3.2.1, pdf 46: bits
+ * 8..6 are 010 MVI, 011 ADD, 100 SUB, 101 CMP, 110 AND, 111 XOR; tables pdf 55, 57) applied to
+ * register DDD and the operand: MVI loads, ADD adds, SUB subtracts the operand from DDD, CMP
+ * forms DDD minus the operand and stores nothing (C46), AND and XOR change S and Z only. */
+static void ivs_read_op(ivs_cp1610 *n, uint32_t op, uint32_t ddd, uint32_t v)
+{
+  uint32_t x;
+  switch (op) {
+  case 2u:
+    ivs_wreg(n, ddd, v);
+    break;
+  case 3u:
+    ivs_wreg(n, ddd, ivs_op_add(n, n->r[ddd], v));
+    break;
+  case 4u:
+    ivs_wreg(n, ddd, ivs_op_sub(n, n->r[ddd], v));
+    break;
+  case 5u:
+    (void)ivs_op_sub(n, n->r[ddd], v);
+    break;
+  case 6u:
+  case 7u:
+    x = op == 6u ? ((uint32_t)n->r[ddd] & v) : ((uint32_t)n->r[ddd] ^ v);
+    ivs_wreg(n, ddd, x);
+    ivs_set_sz(n, x);
+    break;
+  default:
+    __builtin_trap();
+  }
 }
 
 /* Indirect effective address (Fig 3.2.4, pdf 48; Fig 3.2.1, pdf 46; stack operations, pdf 62;
@@ -589,6 +645,24 @@ static uint32_t ivs_exec(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r, const
     /* PULR DDD = MVI@ through R6 (1010 110 DDD, pdf 55, 62): R6 - 1, then read at R6. The
      * printed 11 cycles already hold the MMM = 6 bonus (8 + 3). */
     ivs_wreg(n, ddd, ivs_ind_read(n, u, 6u));
+    break;
+  case IVS_CP1610_OP_MVO:
+    /* MVO SSS, A (1001 000 SSS + address word, pdf 55, 11 cycles): the address word, then a
+     * WRITE of register SSS at the effective address in the ADAR address phase (pdf 30, 11);
+     * DW and DWS follow at 8 and 9 as in the write figure (pdf 31). Inference (C36): no figure
+     * prints the direct write. The register is read after the address word, as for MVOI. */
+    v = ivs_dir_addr(n, u);
+    (void)ivs_access(u, IVS_DIRECT_ADAR_OFFSET, IVS_ACC_WRITE, 0u, IVS_U16(v), n->r[ddd]);
+    break;
+  case IVS_CP1610_OP_MVI:
+  case IVS_CP1610_OP_ADD:
+  case IVS_CP1610_OP_SUB:
+  case IVS_CP1610_OP_CMP:
+  case IVS_CP1610_OP_AND:
+  case IVS_CP1610_OP_XOR:
+    /* Direct read rows ooo 000 DDD + address word (pdf 55, 10 cycles). */
+    v = ivs_dir_read(n, u);
+    ivs_read_op(n, ((uint32_t)word >> 6) & 7u, ddd, v);
     break;
   default:
     __builtin_trap();

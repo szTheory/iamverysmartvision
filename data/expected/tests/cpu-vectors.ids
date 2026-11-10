@@ -4,6 +4,9 @@ cpu.ADCR.7fff-overflow
 cpu.ADCR.carry-in-one
 cpu.ADCR.carry-in-zero
 cpu.ADCR.ffff-carry-zero
+cpu.ADD.0001-plus-0001
+cpu.ADD.7fff-plus-1-overflow
+cpu.ADD.ffff-plus-1
 cpu.ADDI.7fff-plus-1-overflow
 cpu.ADDI.8000-plus-8000
 cpu.ADDI.ffff-plus-1-carry-zero
@@ -15,6 +18,8 @@ cpu.ADDR.ffff-plus-1-carry-zero
 cpu.ADDR.r7-dest
 cpu.ADDR.r7-src-no-bonus
 cpu.ADDR.same-register-doubles
+cpu.AND.mask
+cpu.AND.zero
 cpu.ANDI.ffff-identity
 cpu.ANDI.mask-sign
 cpu.ANDI.zero
@@ -27,6 +32,9 @@ cpu.CLRC.clears-c
 cpu.CLRR.r0-already-zero
 cpu.CLRR.r1
 cpu.CLRR.r6-no-bonus
+cpu.CMP.equal-zero
+cpu.CMP.no-write
+cpu.CMP.overflow-sign
 cpu.CMPI.equal-zero
 cpu.CMPI.no-write
 cpu.CMPI.overflow-borrow
@@ -64,11 +72,17 @@ cpu.MOVR.ddd6-bonus
 cpu.MOVR.ddd7-bonus
 cpu.MOVR.sss6-src-no-bonus
 cpu.MOVR.zero
+cpu.MVI.adar-figure
+cpu.MVI.address-ffff
+cpu.MVI.full-16-bit-address
 cpu.MVII.ffff
 cpu.MVII.flags-preserved
 cpu.MVII.r1-load
 cpu.MVII.r2-8000
 cpu.MVII.r7-dest
+cpu.MVO.address-ffff
+cpu.MVO.overwrites-word
+cpu.MVO.write-sequence
 cpu.MVOI.flags-preserved
 cpu.MVOI.r3-ffff
 cpu.MVOI.store-next-word
@@ -130,6 +144,9 @@ cpu.SLR.n1-ffff
 cpu.SLR.n1-zero
 cpu.SLR.s-from-bit7
 cpu.SLR.zero
+cpu.SUB.0000-minus-0001
+cpu.SUB.8000-minus-0001-overflow
+cpu.SUB.equal-operands
 cpu.SUBI.0000-minus-1-borrow
 cpu.SUBI.8000-minus-1-overflow
 cpu.SUBI.equal-carry-zero
@@ -153,6 +170,8 @@ cpu.TSTR.sss7-bonus
 cpu.UNIT-NOTRESET.zeroed-state
 cpu.UNIT-RESET.provider-0000
 cpu.UNIT-RESET.provider-ffff
+cpu.XOR.same-value-zero
+cpu.XOR.toggle
 cpu.XORI.equal-zero
 cpu.XORI.ffff-complement
 cpu.XORI.toggle-sign
