@@ -11,7 +11,8 @@
 # Forbidden = undefined minus defined minus core-symbols-allow.txt minus every --allow-prefix.
 # The allowlist is an allowlist: any other import fails, whether or not it is a known-bad name.
 # core-symbols-deny.txt (optional, `<name> <category>` lines) only labels a forbidden name with
-# its category and must not share a name with the allowlist.
+# its category (a Darwin `$SUFFIX` variant such as fopen$DARWIN_EXTSN gets the base name's
+# label) and must not share a name with the allowlist.
 # Fails closed on: a missing FILE, LLVM bitcode (raw or wrapper magic, also as an archive
 # member), a GCC LTO object (`.gnu.lto_` section), an nm failure and a FILE with zero external
 # definitions (Apple clang emits a local ltmp0 even for an empty object, so count with -g).
@@ -72,6 +73,15 @@ norm() {
     $1 ~ /:$/ { next }
     { n = $1; sub(/@.*/, "", n); if (darwin && n ~ /^_/) n = substr(n, 2); if (n != "") print n }'
 }
+# run_nm <out> <nm args...>: a nonzero nm exit is a failure, except when its only complaint is
+# "no symbols" (an object with nothing external), which reads as empty output.
+run_nm() {
+  _out=$1; shift
+  if "$NM" "$@" > "$_out" 2> "$tmp/nm.err"; then return 0; fi
+  if [ -s "$tmp/nm.err" ] && ! grep -v -q -e 'no symbols' "$tmp/nm.err"; then return 0; fi
+  cat "$tmp/nm.err"
+  return 1
+}
 magic4() { od -An -tx1 -N4 "$1" 2> /dev/null | tr -d ' \n'; }
 is_bitcode() {
   case $(magic4 "$1") in 4243c0de|dec0170b) return 0 ;; esac
@@ -102,16 +112,8 @@ for f in "$@"; do
     if [ "$member_bc" -eq 1 ]; then bad core-symbols-bitcode "$f"; continue; fi
   fi
   if grep -q -a -F '.gnu.lto_' "$f"; then bad core-symbols-lto "$f"; continue; fi
-  if ! "$NM" -P -u "$f" > "$tmp/u.raw" 2> "$tmp/nm.err"; then
-    cat "$tmp/nm.err"
-    bad core-symbols-nm-failed "$f"
-    continue
-  fi
-  if ! "$NM" -P -g --defined-only "$f" > "$tmp/d.raw" 2> "$tmp/nm.err"; then
-    cat "$tmp/nm.err"
-    bad core-symbols-nm-failed "$f"
-    continue
-  fi
+  if ! run_nm "$tmp/u.raw" -P -u "$f"; then bad core-symbols-nm-failed "$f"; continue; fi
+  if ! run_nm "$tmp/d.raw" -P -g --defined-only "$f"; then bad core-symbols-nm-failed "$f"; continue; fi
   if grep -q -e '\.gnu\.lto_' -e '__gnu_lto_' "$tmp/u.raw" "$tmp/d.raw"; then
     bad core-symbols-lto "$f"
     continue
@@ -131,7 +133,7 @@ comm -23 "$tmp/imports" "$tmp/allow" \
       { for (k = 1; k <= n; k++) if (index($0, a[k]) == 1) next; print }' > "$tmp/forbidden"
 awk -v deny="$tmp/deny" '
     BEGIN { while ((getline l < deny) > 0) { split(l, a, " "); cat[a[1]] = a[2] } }
-    { if ($1 in cat) print $1 " (" cat[$1] ")"; else print $1 }' "$tmp/forbidden" \
+    { k = $1; sub(/[$].*/, "", k); if (k in cat) print $1 " (" cat[k] ")"; else print $1 }' "$tmp/forbidden" \
   | while IFS= read -r n; do printf -- '-- FAIL core-symbols-forbidden: %s\n' "$n"; done
 [ -s "$tmp/forbidden" ] && rc=1
 

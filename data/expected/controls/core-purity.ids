@@ -1,2 +1,14 @@
 # Negative controls for c-purity (plan 02-07).
+core-purity-alloc
+core-purity-asm
 core-purity-clock
+core-purity-env
+core-purity-float
+core-purity-float-literal
+core-purity-fs
+core-purity-header
+core-purity-hollow
+core-purity-io
+core-purity-prelude
+core-purity-rand
+core-purity-thread
