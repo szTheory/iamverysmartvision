@@ -146,6 +146,7 @@ cpu.CLRC.clears-c
 cpu.CLRC.defers-intr
 cpu.CLRC.high-bits-ignored
 cpu.CLRC.level-not-latched
+cpu.CLRC.no-grant-after-noninterruptible
 cpu.CLRC.sdbd-refused
 cpu.CLRR.r0-already-zero
 cpu.CLRR.r1
@@ -186,7 +187,11 @@ cpu.GSWD.r0-all-flags
 cpu.GSWD.r1-ov-c
 cpu.GSWD.r2-no-flags
 cpu.GSWD.r3-s-z
+cpu.HLT.halt-beats-busrq-and-intr
+cpu.HLT.intr-held-then-halted
+cpu.HLT.next-instruction-then-halt
 cpu.HLT.sets-halt-pending
+cpu.HLT.stpst-edge-cancels-hlt
 cpu.INCR.0000
 cpu.INCR.7fff-sign
 cpu.INCR.ffff-c-preserved
@@ -219,6 +224,7 @@ cpu.MVI.adar-figure
 cpu.MVI.address-ffff
 cpu.MVI.full-16-bit-address
 cpu.MVI.sdbd-direct-refused
+cpu.MVI.wait-on-adar
 cpu.MVI@.ddd-equals-pointer-r4
 cpu.MVI@.r1-read
 cpu.MVI@.r2-no-increment
@@ -226,6 +232,7 @@ cpu.MVI@.r4-autoinc
 cpu.MVI@.r5-wrap-ffff
 cpu.MVI@.sdbd-r1-same-address-twice
 cpu.MVI@.sdbd-r4
+cpu.MVI@.wait-8-plus-2w
 cpu.MVII.ffff
 cpu.MVII.flags-preserved
 cpu.MVII.r1-load
@@ -234,6 +241,9 @@ cpu.MVII.r7-dest
 cpu.MVII.sdbd-dbd-cleared
 cpu.MVII.sdbd-low-high
 cpu.MVII.sdbd-then-intr-deferred
+cpu.MVII.wait-36-faults
+cpu.MVII.wait-at-limit-35
+cpu.MVII.wait-on-fetch
 cpu.MVO.address-ffff
 cpu.MVO.defers-intr
 cpu.MVO.overwrites-word
@@ -246,6 +256,7 @@ cpu.MVO@.r5-wrap-ffff
 cpu.MVO@.sdbd-refused
 cpu.MVO@.sss-eq-mmm-r4-unsupported
 cpu.MVO@.sss-eq-mmm-r5-unsupported
+cpu.MVO@.wait-on-write
 cpu.MVOI.defers-intr
 cpu.MVOI.flags-preserved
 cpu.MVOI.r3-ffff
@@ -363,6 +374,13 @@ cpu.TSTR.sss6-bonus
 cpu.TSTR.sss7-bonus
 cpu.UNIT-BUS.busrq-and-intr
 cpu.UNIT-BUS.grant-release-then-fetch
+cpu.UNIT-BUS.no-grant-after-entry
+cpu.UNIT-BUS.release-latency-config-5
+cpu.UNIT-HALT.halted-grants-busrq
+cpu.UNIT-HALT.halted-ignores-intr
+cpu.UNIT-HALT.stpst-edge-resumes
+cpu.UNIT-HALT.stpst-edge-stops
+cpu.UNIT-HALT.stpst-second-edge-cancels
 cpu.UNIT-INT.accept-clears-intff-config
 cpu.UNIT-INT.accept-keeps-intff
 cpu.UNIT-INT.entry-figure
@@ -373,6 +391,8 @@ cpu.UNIT-INT.intr-always
 cpu.UNIT-INT.intrm-intff-clear-ignored
 cpu.UNIT-INT.intrm-intff-set-accepted
 cpu.UNIT-INT.lines-low-no-entry
+cpu.UNIT-INT.no-wait-on-dw
+cpu.UNIT-INT.no-wait-on-iab
 cpu.UNIT-NOTRESET.zeroed-state
 cpu.UNIT-RESET.from-faulted
 cpu.UNIT-RESET.intr-during-reset

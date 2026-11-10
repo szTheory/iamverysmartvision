@@ -83,16 +83,26 @@ typedef struct ivs_unit {
  * and ADAR; INTAK, IAB and DW take no waits". A kind not named here takes no wait. */
 static int ivs_kind_takes_wait(uint8_t kind)
 {
-  return kind == IVS_ACC_FETCH || kind == IVS_ACC_READ || kind == IVS_ACC_WRITE || kind == IVS_ACC_ADAR;
+  int takes = kind == IVS_ACC_FETCH || kind == IVS_ACC_READ || kind == IVS_ACC_WRITE || kind == IVS_ACC_ADAR;
+#ifdef IVS_FAULT_WAIT_ON_IAB
+  takes = takes || kind == IVS_ACC_IAB;
+#endif
+#ifdef IVS_FAULT_WAIT_ON_DW
+  takes = takes || kind == IVS_ACC_DW;
+#endif
+  return takes;
 }
 
 /* One bus access at nominal offset `nominal` (no-wait timing). The record carries the offset
  * shifted by earlier waits; the bus port sees it first. A wait taken by this access is
- * inserted as idle cycles before its data transfer (pdf 40, POL-WAIT-01), so it shifts every
- * later access and the unit length. A wait above the configured limit marks a sticky
- * BUS_WAIT_LIMIT fault; the faulting unit ends after that access's address cycle and wait
- * (inference: the page bounds the wait, pdf 12, but defines no behaviour past it). The log
- * receives the same record with the transferred value and the applied wait filled in. */
+ * inserted as idle cycles before its data transfer (pdf 37, BDRDY timing: the NACT cycles sit
+ * between the BAR and the DTB; pdf 40; pdf 43, "8+2W"; POL-WAIT-01), so it shifts every later
+ * access and the unit length. A wait up to the configured limit is accepted; a longer one marks
+ * a sticky BUS_WAIT_LIMIT fault, and the faulting unit ends one cycle past the limit: the
+ * address cycle, limit wait cycles and the cycle that exceeds it (inference: pdf 12 bounds the
+ * wait under 40 us but defines no behaviour past it; C53). The unit length therefore never
+ * depends on how long the device would have stalled. The log receives the same record with the
+ * transferred value and the wait the device answered. */
 static uint16_t ivs_access(ivs_unit *u, uint32_t nominal, uint8_t kind, uint8_t flags, uint16_t addr,
                            uint16_t data)
 {
@@ -109,10 +119,14 @@ static uint16_t ivs_access(ivs_unit *u, uint32_t nominal, uint8_t kind, uint8_t 
     a.data = reply.data;
   }
   if (ivs_kind_takes_wait(kind)) {
+    uint32_t limit = u->wait_limit;
+#ifdef IVS_FAULT_WAIT_LIMIT_MISSING
+    limit = 0xFFFFu;
+#endif
     a.wait_cpu_cycles = reply.wait_cpu_cycles;
-    if ((uint32_t)reply.wait_cpu_cycles > u->wait_limit && !u->wait_fault) {
+    if ((uint32_t)reply.wait_cpu_cycles > limit && !u->wait_fault) {
       u->wait_fault = 1u;
-      u->fault_end = a.offset_cpu_cycles + 1u + (uint32_t)reply.wait_cpu_cycles;
+      u->fault_end = a.offset_cpu_cycles + 1u + limit + 1u;
     }
     u->shift += (uint32_t)reply.wait_cpu_cycles;
   }
@@ -711,7 +725,7 @@ static uint32_t ivs_shift(ivs_cp1610 *n, uint8_t op, uint32_t word)
 }
 
 /* Row semantics. Control group (pdf 56): HLT sets the stop latch evaluated at a later
- * boundary (POL-HLT-01, C40; evaluation is plan 02-15); SDBD sets DBD for the next unit
+ * boundary (POL-HLT-01, C40; see the step-start conventions); SDBD sets DBD for the next unit
  * (consumption is plan 02-13); EIS enables and DIS disables the interrupt system (INTFF,
  * POL-INT-03); TCI pulses the TCI pin; CLRC clears C, SETC sets C. Single-register forms
  * (pdf 56, footnote on pdf 51): GSWD writes the status word into R0-R3 with bits 4 and 12 =
@@ -741,6 +755,9 @@ static uint32_t ivs_exec(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r, const
     n->halt_pending = 1u;
 #ifdef IVS_FAULT_HLT_NO_LATCH
     n->halt_pending = 0u;
+#endif
+#ifdef IVS_FAULT_HLT_IMMEDIATE
+    n->run_state = IVS_CP1610_RS_HALTED; n->halt_pending = 0u;
 #endif
     r->events = (uint8_t)(r->events | IVS_CP1610_EV_HALT_LATCHED);
     break;
@@ -1087,11 +1104,22 @@ static void ivs_unit_instr(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r)
  *     event BUS_RELEASED. A grant never changes prev_interruptible, so the step after the
  *     release runs the interrupt test, not a fetch (Fig 2-6: the bus request loop exits into the
  *     interrupt request test; A-02, POL-BUS-01).
+ *   - STPST is an edge event of this step (A-01, C54) and is processed first. In RUNNING it
+ *     toggles the stop latch halt_pending, so a second edge before the boundary cancels a
+ *     pending stop; in HALTED it resumes RUNNING (pdf 14: "The next negative transition of
+ *     STPST will cause the CPU to return to the run mode") and the same step goes on as a
+ *     RUNNING step. HLT sets the same latch (pdf 56: "HaLT after next instruction is executed").
  *   - Boundary test in RUNNING with BUSAK clear: at an interruptible boundary (prev_interruptible
- *     set, no SDBD prefix pending) the priority is BUSRQ before INTR (pdf 25: bus requests are
+ *     set, no SDBD prefix pending) the priority is stop, then BUSRQ (pdf 25: bus requests are
  *     honoured "before" interrupt requests), then INTR, then INTRM with INTFF (POL-INT-01). A
- *     closed boundary (after a non-interruptible unit, the reset entry or an interrupt entry)
- *     tests nothing and fetches. */
+ *     set stop latch wins (pdf 14: the stop comes "only after the completion of an
+ *     interruptable instruction"; POL-HLT-01, C40): the step is a 1-cycle HALTED unit that clears
+ *     the latch, enters HALTED and reports STOPPED. A closed boundary (after a non-interruptible
+ *     unit, the reset entry or an interrupt entry) tests nothing and fetches, so HLT, being
+ *     non-interruptible (C56), always lets the next instruction run.
+ *   - HALTED (POL-HLT-02, C45, A-10): INTR and INTRM are ignored; BUSRQ is granted, held and
+ *     released as above and the CPU stays HALTED; otherwise each step is a 1-cycle HALTED unit
+ *     with no access and no event. Only a STPST edge or reset leaves HALTED. */
 static uint32_t ivs_boundary_open(const ivs_cp1610 *n)
 {
   uint32_t open = n->prev_interruptible;
@@ -1167,6 +1195,9 @@ static void ivs_unit_grant(ivs_cp1610 *n, const ivs_cp1610_config *cfg, const iv
                            ivs_cp1610_result *r)
 {
   uint32_t latency = cfg->release_latency_cpu_cycles;
+#ifdef IVS_FAULT_RELEASE_LATENCY_IGNORED
+  latency = 1u;
+#endif
   if (n->busak != 0u && l->busrq == 0u) {
     n->busak = 0u;
     r->elapsed_cpu_cycles = latency;
@@ -1175,26 +1206,53 @@ static void ivs_unit_grant(ivs_cp1610 *n, const ivs_cp1610_config *cfg, const iv
     n->busak = 1u;
     r->elapsed_cpu_cycles = 1u;
   }
+#ifdef IVS_FAULT_GRANT_LOSES_INTERRUPTIBLE
+  n->prev_interruptible = 0u;
+#endif
 }
 
-/* One step in RUNNING state: a held or released grant first, then the boundary test (see the
- * step-start conventions above), then an instruction. */
-static void ivs_step_running(ivs_cp1610 *n, const ivs_cp1610_config *cfg, const ivs_cp1610_lines *l, ivs_unit *u,
-                             ivs_cp1610_result *r)
+/* One step in RUNNING state: the STPST edge (when `edge`), a held or released grant, then the
+ * boundary test in the order stop, BUSRQ, INTR/INTRM (see the step-start conventions above),
+ * then an instruction. The acceptance test is evaluated at every RUNNING boundary even when a
+ * stop or grant wins, so it always sees the lines of the step. */
+static void ivs_step_running(ivs_cp1610 *n, const ivs_cp1610_config *cfg, const ivs_cp1610_lines *l, int edge,
+                             ivs_unit *u, ivs_cp1610_result *r)
 {
+  uint32_t open;
+  int stop;
   int grant;
   int accept;
+  if (edge && l->stpst != 0u) {
+    n->halt_pending = (uint8_t)(n->halt_pending ^ 1u);
+#ifdef IVS_FAULT_STPST_LEVEL
+    n->halt_pending = 1u;
+#endif
+  }
   if (n->busak != 0u) {
     ivs_result_init(r, n, IVS_CP1610_UNIT_BUS_GRANT);
     ivs_unit_grant(n, cfg, l, r);
     return;
   }
-  grant = ivs_boundary_open(n) != 0u && n->dbd == 0u && l->busrq != 0u;
+  open = ivs_boundary_open(n) != 0u && n->dbd == 0u;
+  stop = open && n->halt_pending != 0u;
+  grant = open && l->busrq != 0u;
   accept = ivs_int_accept(n, l);
 #ifdef IVS_FAULT_BUSRQ_PRIORITY
   grant = grant && !accept;
 #endif
-  if (grant) {
+#ifdef IVS_FAULT_GRANT_AFTER_INT_ENTRY
+  grant = n->dbd == 0u && l->busrq != 0u;
+#endif
+#ifdef IVS_FAULT_HALT_PRIORITY
+  stop = stop && !grant;
+#endif
+  if (stop) {
+    ivs_result_init(r, n, IVS_CP1610_UNIT_HALTED);
+    n->run_state = IVS_CP1610_RS_HALTED;
+    n->halt_pending = 0u;
+    r->elapsed_cpu_cycles = 1u;
+    r->events = (uint8_t)(r->events | IVS_CP1610_EV_STOPPED);
+  } else if (grant) {
     ivs_result_init(r, n, IVS_CP1610_UNIT_BUS_GRANT);
     ivs_unit_grant(n, cfg, l, r);
   } else if (accept) {
@@ -1206,14 +1264,40 @@ static void ivs_step_running(ivs_cp1610 *n, const ivs_cp1610_config *cfg, const 
   }
 }
 
+/* One step in HALTED state (POL-HLT-02, C45): a STPST edge resumes RUNNING and the step goes on
+ * as a RUNNING step (the edge is consumed by the resume); BUSRQ, or a grant still held, gives a
+ * BUS_GRANT unit and the CPU stays HALTED; otherwise a 1-cycle HALTED unit. INTR and INTRM are
+ * never tested here. */
+static void ivs_step_halted(ivs_cp1610 *n, const ivs_cp1610_config *cfg, const ivs_cp1610_lines *l, ivs_unit *u,
+                            ivs_cp1610_result *r)
+{
+  int resume = l->stpst != 0u;
+#ifdef IVS_FAULT_HALTED_TAKES_INTR
+  resume = resume || ivs_int_accept(n, l);
+#endif
+  if (resume) {
+    n->run_state = IVS_CP1610_RS_RUNNING;
+    n->halt_pending = 0u;
+    ivs_step_running(n, cfg, l, 0, u, r);
+  } else if (n->busak != 0u || l->busrq != 0u) {
+    ivs_result_init(r, n, IVS_CP1610_UNIT_BUS_GRANT);
+    ivs_unit_grant(n, cfg, l, r);
+  } else {
+    ivs_result_init(r, n, IVS_CP1610_UNIT_HALTED);
+    r->elapsed_cpu_cycles = 1u;
+  }
+}
+
 static int ivs_lines_valid(const ivs_cp1610_lines *l)
 {
   return ivs_is_bit(l->intr) && ivs_is_bit(l->intrm) && ivs_is_bit(l->busrq) && ivs_is_bit(l->stpst);
 }
 
+/* A release latency of 0 would make a BUS_GRANT unit that takes no time; it is refused so every
+ * unit after the reset entry that is not a no-progress report advances time (D-12). */
 static int ivs_config_valid(const ivs_cp1610_config *c)
 {
-  return ivs_is_bit(c->interrupt_accept_clears_intff) && c->reserved == 0u;
+  return ivs_is_bit(c->interrupt_accept_clears_intff) && c->release_latency_cpu_cycles != 0u && c->reserved == 0u;
 }
 
 ivs_status ivs_cp1610_step(ivs_cp1610 *s, const ivs_cp1610_config *cfg, const ivs_cp1610_lines *lines,
@@ -1229,8 +1313,8 @@ ivs_status ivs_cp1610_step(ivs_cp1610 *s, const ivs_cp1610_config *cfg, const iv
   if (log != NULL && log_cap < IVS_CP1610_MAX_ACCESSES) {
     return IVS_E_BAD_ARG;
   }
-  /* Lines are validated here; INTR and INTRM decide acceptance in RUNNING state (POL-INT-01);
-   * BUSRQ and STPST belong to the bus and halt policies (plan 02-15). */
+  /* Lines and config are validated here; INTR and INTRM decide acceptance in RUNNING state
+   * (POL-INT-01), BUSRQ the bus grant (POL-BUS-01) and STPST the stop latch (POL-HLT-01/02). */
   if (!ivs_lines_valid(lines) || !ivs_config_valid(cfg)) {
     return IVS_E_BAD_ARG;
   }
@@ -1257,11 +1341,10 @@ ivs_status ivs_cp1610_step(ivs_cp1610 *s, const ivs_cp1610_config *cfg, const iv
     ivs_unit_reset_entry(&n, &u, &r);
     break;
   case IVS_CP1610_RS_RUNNING:
-    ivs_step_running(&n, cfg, lines, &u, &r);
+    ivs_step_running(&n, cfg, lines, 1, &u, &r);
     break;
   case IVS_CP1610_RS_HALTED:
-    /* Halted idle is defined with the halt policy (plan 02-15). */
-    ivs_result_init(&r, &n, IVS_CP1610_UNIT_HALTED);
+    ivs_step_halted(&n, cfg, lines, &u, &r);
     break;
   default:
     ivs_result_init(&r, &n, IVS_CP1610_UNIT_FAULT);

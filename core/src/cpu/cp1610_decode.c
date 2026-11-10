@@ -18,6 +18,13 @@
 
 #include "cpu/cp1610.h"
 
+/* HLT's interruptible column: 0 by the C56 default (POL-INT-02). */
+#define IVS_HLT_INTR 0u
+#ifdef IVS_FAULT_HLT_INTERRUPTIBLE
+#undef IVS_HLT_INTR
+#define IVS_HLT_INTR 1u
+#endif
+
 #define IVS_ROW(id, mask, value, eq, words, cycles, intr, handler)                                \
   {(id), (mask), (value), (eq), (words), (cycles), (intr), (handler)}
 
@@ -25,7 +32,7 @@ static const ivs_cp1610_row ivs_cp1610_rows[] = {
     /* Internal control, Fig 3.3.4 (pdf 51) and control table (pdf 56): 0000 000 ooo, 4 cycles.
      * SDBD 0000 000 001 is printed on pdf 57. J is the jump group's first word 0000 000 100
      * (Fig 3.3.5, pdf 52; jump table, pdf 56): three words, 12 cycles. */
-    IVS_ROW("HLT", 0x3FFu, 0x000u, 0u, 1u, 4u, 0u, IVS_CP1610_OP_HLT),
+    IVS_ROW("HLT", 0x3FFu, 0x000u, 0u, 1u, 4u, IVS_HLT_INTR, IVS_CP1610_OP_HLT),
     IVS_ROW("SDBD", 0x3FFu, 0x001u, 0u, 1u, 4u, 0u, IVS_CP1610_OP_SDBD),
     IVS_ROW("EIS", 0x3FFu, 0x002u, 0u, 1u, 4u, 0u, IVS_CP1610_OP_EIS),
     IVS_ROW("DIS", 0x3FFu, 0x003u, 0u, 1u, 4u, 0u, IVS_CP1610_OP_DIS),
