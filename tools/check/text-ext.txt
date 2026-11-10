@@ -1,0 +1,11 @@
+# Extensions of files that are text by name (one per line, lower case, no dot). steps/files.sh does
+# not classify these by content: a NUL byte in them is already a failure of the integrity step.
+# Everything else that is not binary by name is classified by content (binscan.sh binary).
+md
+txt
+json
+sh
+cmake
+yml
+yaml
+ids

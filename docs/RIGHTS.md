@@ -48,7 +48,7 @@ The non-affiliation notice lives in the README.
 - The `files` step fails on any tracked path under `refs/`, any tracked `.env` file, any tracked file that is binary by name (`tools/check/binary-ext.txt`) or by content (a NUL byte, or mostly non-text bytes) and is not a committed output of an effective `yes` manifest, and any unlisted file inside a fixture directory.
 - Each failure class has a negative control that must fail for its intended reason.
 - The checks compare recorded identities and file names.
-  They cannot decide whether the author of a licence statement had the authority to give it, and a binary that is deliberately made to look like text (no NUL byte, mostly printable bytes) is not detected.
+  They cannot decide whether the author of a licence statement had the authority to give it, and a binary that is deliberately made to look like text (no NUL byte, mostly printable bytes, or a text extension from `tools/check/text-ext.txt` and no NUL byte) is not detected.
   A committed output of an effective `yes` manifest that has no extension in the binary list still fails the NUL rule of the `integrity` step, so give such outputs a binary extension.
 
 ## If something gets in
