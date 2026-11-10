@@ -202,6 +202,9 @@ static void ivs_result_init(ivs_cp1610_result *r, const ivs_cp1610 *s, uint8_t u
 static uint16_t ivs_iab(ivs_unit *u, uint32_t nominal, uint8_t flags)
 {
   uint16_t v = ivs_access(u, nominal, IVS_ACC_IAB, flags, 0u, 0u);
+#ifdef IVS_FAULT_IAB_HARDCODED_1004
+  v = 0x1004u;
+#endif
   return v;
 }
 
@@ -601,6 +604,9 @@ static int ivs_jump(ivs_cp1610 *n, ivs_unit *u, uint16_t pc)
   }
 #ifdef IVS_FAULT_JUMP_TARGET_BITS
   hi = (w2 >> 4) & 0x3Fu;
+#endif
+#ifdef IVS_FAULT_JE_AFTER_BOUNDARY
+  de = de == 1u ? 0u : de;
 #endif
   lo = (uint32_t)ivs_access(u, IVS_JUMP_W3_BAR_OFFSET, IVS_ACC_READ, 0u, ivs_imm_addr(n), 0u) & 0x3FFu;
   ret = n->r[7];
@@ -1063,6 +1069,9 @@ static void ivs_unit_instr(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r)
     return;
   }
   n->prev_interruptible = row->interruptible;
+#ifdef IVS_FAULT_MVO_INTERRUPTIBLE
+  if (row->handler == IVS_CP1610_OP_MVO || row->handler == IVS_CP1610_OP_MVO_AT || row->handler == IVS_CP1610_OP_MVOI || row->handler == IVS_CP1610_OP_PSHR) n->prev_interruptible = 1u;
+#endif
   r->elapsed_cpu_cycles = (uint32_t)row->base_cycles + extra + u->shift;
 }
 
@@ -1077,10 +1086,20 @@ static int ivs_int_accept(const ivs_cp1610 *n, const ivs_cp1610_lines *l)
 {
   uint32_t open = n->prev_interruptible;
   uint32_t intr = l->intr;
+  uint32_t intff = n->intff;
+#ifdef IVS_FAULT_PREV_INTERRUPTIBLE_IGNORED
+  open = 1u;
+#endif
+#ifdef IVS_FAULT_INTFF_IGNORED
+  intff = 1u;
+#endif
+#ifdef IVS_FAULT_LINES_LATCHED
+  { static uint32_t seen; seen |= intr; intr = seen; if (open != 0u && n->dbd == 0u) seen = 0u; }
+#endif
   if (open == 0u || n->dbd != 0u) {
     return 0;
   }
-  return intr != 0u || (l->intrm != 0u && n->intff != 0u);
+  return intr != 0u || (l->intrm != 0u && intff != 0u);
 }
 
 /* Interrupt entry unit (POL-INT-04; pdf 35, SC.6 pdf 24-25): INTAK puts out R6, DW writes the
@@ -1092,6 +1111,7 @@ static int ivs_int_accept(const ivs_cp1610 *n, const ivs_cp1610_lines *l)
 static void ivs_unit_int_entry(ivs_cp1610 *n, const ivs_cp1610_config *cfg, ivs_unit *u, ivs_cp1610_result *r)
 {
   uint16_t sp = n->r[6];
+  uint32_t clears;
   (void)ivs_access(u, IVS_INT_INTAK_OFFSET, IVS_ACC_INTAK, 0u, sp, 0u);
 #ifdef IVS_FAULT_INT_ENTRY_ORDER
   n->r[7] = ivs_iab(u, IVS_INT_DW_OFFSET, IVS_ACC_F_INTERRUPT);
@@ -1099,7 +1119,11 @@ static void ivs_unit_int_entry(ivs_cp1610 *n, const ivs_cp1610_config *cfg, ivs_
   (void)ivs_access(u, IVS_INT_DW_OFFSET, IVS_ACC_DW, 0u, sp, n->r[7]);
   n->r[6] = IVS_U16((uint32_t)sp + 1u);
   n->r[7] = ivs_iab(u, IVS_INT_IAB_OFFSET, IVS_ACC_F_INTERRUPT);
-  if (cfg->interrupt_accept_clears_intff != 0u) {
+  clears = cfg->interrupt_accept_clears_intff;
+#ifdef IVS_FAULT_ACCEPT_CLEARS_INTFF_IGNORED
+  clears = 0u;
+#endif
+  if (clears != 0u) {
     n->intff = 0u;
   }
   n->prev_interruptible = 0u;
