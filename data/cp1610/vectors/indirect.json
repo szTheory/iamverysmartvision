@@ -1,0 +1,387 @@
+{
+  "schema_version": 1,
+  "source": "SRC-gi-cp1600-um-1975",
+  "group": "indirect",
+  "note": "Indirect and stack rows (pdf 55): the effective address is held in register MMM (Fig 3.2.4, pdf 48). R1-R3 never change, R4 and R5 post-increment, R6 post-increments on output (push) and pre-decrements on input (pull), all 16-bit wrapping (C17, POL-STK-01). Every expect value is read from the cited page image and derived by hand; none comes from this core, an assembler or another implementation. Bus offsets follow the indirect read figure (pdf 29) and the MVO write figure (pdf 31); the pull read offset is inference (C36).",
+  "vectors": [
+    {
+      "id": "cpu.PSHR.write-then-increment",
+      "row": "PSHR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Indirect addressed data table, PSHR row, pdf 55; Fig 3.2.4, pdf 48; S3.2.1 Fig 3.2.1, pdf 46; stack operations S3.4.6, pdf 62; MVO timing (write operation) figure, pdf 31; C17; C56",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "PSHR R1",
+      "program": [
+        "0271 1001 110 001"
+      ],
+      "derivation": "The indirect table (pdf 55) prints PSHR SSS as 1001 110 SSS, 9 cycles, 'PuSH data from Register SSS to the stack', no status change; the table header says MMM = 6 for MVO is post increment R6. Fig 3.2.4 (pdf 48), MMM = 110 for MVO only: PC <- PC+1, EA <- (MMM), (MMM) <- (MMM)+1. S3.4.6 (pdf 62): the data is placed in the cell R6 names and then R6 is incremented by one (C17 resolved). SSS = 001 (R1 = $A5C3), R6 = $02F0: the word at $02F0 becomes $A5C3, then R6 = $02F0 + 1 = $02F1. The write is at the old R6, not at $02EF (a pre-decrement would write there and leave R6 = $02EF). PC: $1000 -> $1001. Flags: S = Z = OV = C = 1 stay 1 (no status change). C56: the manual is silent on the MVO family's interruptibility and the default makes it non-interruptible, so prev_interruptible goes 1 -> 0. Bus (pdf 31, MVO timing (write operation), 9 cycles: BAR, NACT, DTB, NACT, BAR, NACT, DW, DWS, NACT; the second BAR puts out the effective address): FETCH at cycle 0 from R7 = $1000, then the WRITE at cycle 4. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "A5C3",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "6": "02F1",
+          "7": "1001"
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "02F0",
+            "A5C3"
+          ]
+        ],
+        "cycles": 9,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0271"
+        ],
+        [
+          4,
+          "WRITE",
+          "02F0",
+          "A5C3"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:stack",
+        "policy:POL-STK-01",
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "write:bus"
+      ]
+    },
+    {
+      "id": "cpu.PULR.decrement-then-read",
+      "row": "PULR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Indirect addressed data table, PULR row, pdf 55; Fig 3.2.4, pdf 48; S3.2.1 Fig 3.2.1, pdf 46; stack operations S3.4.6, pdf 62; C17; C36",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "PULR R2",
+      "program": [
+        "02B2 1010 110 010"
+      ],
+      "derivation": "The indirect table (pdf 55) prints PULR DDD as 1010 110 DDD, 11 cycles, 'PULl data from the stack to Register DDD', no status change; the table header says other instructions pre-decrement R6. Fig 3.2.4 (pdf 48), MMM = 110 for non-MVO: PC <- PC+1, (MMM) <- (MMM)-1, EA <- (MMM). S3.4.6 (pdf 62): R6 is first decremented, then the data is fetched from the cell R6 names (C17 resolved). DDD = 010 (R2), R6 = $02F1: R6 = $02F1 - 1 = $02F0, then R2 = the word at $02F0 = $5A3C. The word at the old R6 ($02F1) is never read (a post-decrement would read it). PC: $1000 -> $1001. Cycles: the printed 11, which is the MVI@ base 8 plus the '*Add 3 to number of cycles if MMM=6' footnote (pdf 55); this is the A-13 witness of MVI@'s MMM = 6 branch. Flags: S = Z = OV = C = 1 stay 1 (no status change). The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (inference, C36): FETCH at cycle 0 from R7 = $1000, then one READ at the decremented R6. No figure prints a pull; the core puts its BAR at cycle 7, after the 3 extra cycles, so the cycle is not asserted. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F1",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "02F0",
+            "5A3C"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "2": "5A3C",
+          "6": "02F0",
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 11,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "02B2"
+        ],
+        [
+          7,
+          "READ",
+          "02F0",
+          "5A3C"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "addr:stack",
+        "cycles:base",
+        "policy:POL-STK-01",
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "read:bus"
+      ]
+    },
+    {
+      "id": "cpu.PSHR.r6-wrap-ffff",
+      "row": "PSHR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Indirect addressed data table, PSHR row, pdf 55; Fig 3.2.4, pdf 48; S3.2.1 Fig 3.2.1, pdf 46; stack operations S3.4.6, pdf 62; MVO timing (write operation) figure, pdf 31; C17; C56",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "PSHR R3",
+      "program": [
+        "0273 1001 110 011"
+      ],
+      "derivation": "The indirect table (pdf 55) prints PSHR SSS as 1001 110 SSS, 9 cycles, 'PuSH data from Register SSS to the stack', no status change; the table header says MMM = 6 for MVO is post increment R6. Fig 3.2.4 (pdf 48), MMM = 110 for MVO only: PC <- PC+1, EA <- (MMM), (MMM) <- (MMM)+1. S3.4.6 (pdf 62): the data is placed in the cell R6 names and then R6 is incremented by one (C17 resolved). SSS = 011 (R3 = $0303), R6 = $FFFF: the word at $FFFF becomes $0303, then R6 = $FFFF + 1 = $10000, which wraps to $0000 in the 16-bit register (POL-STK-01). PC: $1000 -> $1001. Flags stay 0. C56: the manual is silent on the MVO family's interruptibility and the default makes it non-interruptible, so prev_interruptible goes 1 -> 0. Bus (pdf 31, MVO timing (write operation), 9 cycles: BAR, NACT, DTB, NACT, BAR, NACT, DW, DWS, NACT; the second BAR puts out the effective address): FETCH at cycle 0 from R7 = $1000, then the WRITE at cycle 4. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "FFFF",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "6": "0000",
+          "7": "1001"
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "FFFF",
+            "0303"
+          ]
+        ],
+        "cycles": 9,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0273"
+        ],
+        [
+          4,
+          "WRITE",
+          "FFFF",
+          "0303"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:stack",
+        "policy:POL-STK-01"
+      ]
+    },
+    {
+      "id": "cpu.PULR.r6-wrap-0000",
+      "row": "PULR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Indirect addressed data table, PULR row, pdf 55; Fig 3.2.4, pdf 48; S3.2.1 Fig 3.2.1, pdf 46; stack operations S3.4.6, pdf 62; C17; C36",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "PULR R0",
+      "program": [
+        "02B0 1010 110 000"
+      ],
+      "derivation": "The indirect table (pdf 55) prints PULR DDD as 1010 110 DDD, 11 cycles, 'PULl data from the stack to Register DDD', no status change; the table header says other instructions pre-decrement R6. Fig 3.2.4 (pdf 48), MMM = 110 for non-MVO: PC <- PC+1, (MMM) <- (MMM)-1, EA <- (MMM). S3.4.6 (pdf 62): R6 is first decremented, then the data is fetched from the cell R6 names (C17 resolved). DDD = 000 (R0), R6 = $0000: R6 = $0000 - 1, which wraps to $FFFF in the 16-bit register (POL-STK-01), then R0 = the word at $FFFF = $8001. PC: $1000 -> $1001. Cycles: the printed 11 (8 + 3 for MMM = 6). Flags stay 0. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (inference, C36): FETCH at cycle 0 from R7 = $1000, then one READ at the decremented R6. No figure prints a pull; the core puts its BAR at cycle 7, after the 3 extra cycles, so the cycle is not asserted. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "0000",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "FFFF",
+            "8001"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "0": "8001",
+          "6": "FFFF",
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 11,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "02B0"
+        ],
+        [
+          7,
+          "READ",
+          "FFFF",
+          "8001"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "addr:stack",
+        "cycles:base",
+        "policy:POL-STK-01"
+      ]
+    },
+    {
+      "id": "cpu.PSHR.then-PULR-round-trip",
+      "row": "PSHR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Indirect addressed data table, PSHR row, pdf 55; Fig 3.2.4, pdf 48; S3.2.1 Fig 3.2.1, pdf 46; stack operations S3.4.6, pdf 62; MVO timing (write operation) figure, pdf 31; C17; C56; PULR row, pdf 55",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "PSHR R1; PULR R5",
+      "program": [
+        "0271 1001 110 001",
+        "02B5 1010 110 101"
+      ],
+      "steps": 2,
+      "derivation": "Two units. Step 1, PSHR R1 (1001 110 001, pdf 55, 9 cycles): R1 = $BEEF is written at R6 = $02F0, then R6 = $02F1, PC $1000 -> $1001; the MVO family is non-interruptible by the C56 default. Step 2, PULR R5 (1010 110 101, pdf 55, 11 cycles): R6 = $02F1 - 1 = $02F0, then R5 = the word at $02F0 = $BEEF, PC $1001 -> $1002; PULR is interruptible, so prev_interruptible ends 1. S3.4.6 (pdf 62): the push places data and then increments R6, the pull decrements R6 and then fetches, so a push followed by a pull returns the pushed value and restores R6 to $02F0 (C17 resolved). Cycles 9 + 11 = 20. Flags stay 0 (neither row changes status). Bus (inference for the pull, C36): FETCH $1000 at 0, WRITE $02F0 at 4 (pdf 31), FETCH $1001 at 9, then one READ of $02F0 in the second unit. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "BEEF",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "5": "BEEF",
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "mem": [
+          [
+            "02F0",
+            "BEEF"
+          ]
+        ],
+        "cycles": 20,
+        "units": [
+          "INSTR",
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0271"
+        ],
+        [
+          4,
+          "WRITE",
+          "02F0",
+          "BEEF"
+        ],
+        [
+          9,
+          "FETCH",
+          "1001",
+          "02B5"
+        ],
+        [
+          16,
+          "READ",
+          "02F0",
+          "BEEF"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "addr:stack",
+        "policy:POL-STK-01"
+      ]
+    }
+  ]
+}

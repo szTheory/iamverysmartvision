@@ -91,13 +91,13 @@ static const ivs_cp1610_row ivs_cp1610_rows[] = {
     /* Output group 1001 MMM SSS: MVO direct (MMM 000, two words, 11, pdf 55), PSHR (MMM 110,
      * 9, pdf 55), MVOI (MMM 111, two words, 9, pdf 57), MVO@ (otherwise, 9, pdf 55). */
     IVS_ROW("MVO", 0x3F8u, 0x240u, 0u, 2u, 11u, 0u, IVS_CP1610_OP_NONE),
-    IVS_ROW("PSHR", 0x3F8u, 0x270u, 0u, 1u, 9u, 0u, IVS_CP1610_OP_NONE),
+    IVS_ROW("PSHR", 0x3F8u, 0x270u, 0u, 1u, 9u, 0u, IVS_CP1610_OP_PSHR),
     IVS_ROW("MVOI", 0x3F8u, 0x278u, 0u, 2u, 9u, 0u, IVS_CP1610_OP_MVOI),
     IVS_ROW("MVO@", 0x3C0u, 0x240u, 0u, 1u, 9u, 0u, IVS_CP1610_OP_NONE),
     /* Input group 1010 MMM DDD: MVI direct (two words, 10), PULR (MMM 110, 11), MVII (MMM 111,
      * two words, 8, pdf 57), MVI@ (otherwise, 8, +3 if MMM = 6), pdf 55. */
     IVS_ROW("MVI", 0x3F8u, 0x280u, 0u, 2u, 10u, 1u, IVS_CP1610_OP_NONE),
-    IVS_ROW("PULR", 0x3F8u, 0x2B0u, 0u, 1u, 11u, 1u, IVS_CP1610_OP_NONE),
+    IVS_ROW("PULR", 0x3F8u, 0x2B0u, 0u, 1u, 11u, 1u, IVS_CP1610_OP_PULR),
     IVS_ROW("MVII", 0x3F8u, 0x2B8u, 0u, 2u, 8u, 1u, IVS_CP1610_OP_MVII),
     IVS_ROW("MVI@", 0x3C0u, 0x280u, 0u, 1u, 8u, 1u, IVS_CP1610_OP_NONE),
     /* Arithmetic and logic groups ooo MMM DDD for ADD 1011, SUB 1100, CMP 1101, AND 1110,

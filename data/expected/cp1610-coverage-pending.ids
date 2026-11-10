@@ -21,10 +21,8 @@ BESC
 BEXT
 MVO@
 MVO
-PSHR
 MVI@
 MVI
-PULR
 ADD@
 ADD
 SUB@
@@ -47,7 +45,6 @@ policy:POL-WAIT-01
 policy:POL-SDBD-01
 policy:POL-SDBD-02
 policy:POL-SDBD-03
-policy:POL-STK-01
 policy:POL-STK-02
 policy:POL-MVO-01
 policy:POL-BR-01

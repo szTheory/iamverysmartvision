@@ -21,3 +21,5 @@ SHIFT_N1_CYCLES cpu.SLL.n1 cpu.SWAP.|cpu.SLL.|cpu.RLC.|cpu.SLLC.|cpu.SLR.|cpu.SA
 RIGHT_SHIFT_S_BIT15 cpu.SLR.s-from-bit7 cpu.SLR.|cpu.SAR.|cpu.RRC.|cpu.SARC.|cpu.SWAP. cpu.SLL.n0
 RRC_LINK_SWAP cpu.RRC.n1-ov-in cpu.RRC.|cpu.RLC. cpu.SLL.n0
 SWAP_N1_AS_N0 cpu.SWAP.n1 cpu.SWAP. cpu.SWAP.n0
+PUSH_DIRECTION cpu.PSHR.write-then-increment cpu.PSHR.|cpu.MVO@. cpu.MVII.r1-load
+PULL_DIRECTION cpu.PULR.decrement-then-read cpu.PULR.|cpu.PSHR.then-PULR|cpu.ADD@.|cpu.SUB@.|cpu.CMP@.|cpu.AND@.|cpu.XOR@. cpu.PSHR.write-then-increment

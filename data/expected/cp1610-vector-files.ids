@@ -3,3 +3,4 @@ control
 register
 immediate
 shift
+indirect

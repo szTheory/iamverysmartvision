@@ -79,6 +79,11 @@ cpu.NEGR.ffff-to-0001
 cpu.NEGR.zero
 cpu.NOP.n0
 cpu.NOP.n1
+cpu.PSHR.r6-wrap-ffff
+cpu.PSHR.then-PULR-round-trip
+cpu.PSHR.write-then-increment
+cpu.PULR.decrement-then-read
+cpu.PULR.r6-wrap-0000
 cpu.RLC.n0
 cpu.RLC.n0-ov-preserved
 cpu.RLC.n0-sign

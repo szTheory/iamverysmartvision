@@ -20,6 +20,12 @@
  * effective address PC+1 (Fig 3.2.5, pdf 49). */
 #define IVS_DATA_BAR_OFFSET 4u
 
+/* Stack pull read (inference, C36). The indirect read figure (pdf 29) is 8 cycles with the
+ * effective address put out at offset 4; an input through R6 costs 3 more ("Add 3 to number of
+ * cycles if MMM=6", pdf 55) and Fig 3.2.4 (pdf 48) orders (MMM) <- (MMM) - 1 before EA <- (MMM),
+ * so the BAR is taken to come after those 3 cycles. No figure prints it. */
+#define IVS_PULL_BAR_OFFSET 7u
+
 /* Strobe stamps (C39, D-12). TCI timing (pdf 33): the TCI pulse rises in the cycle after the
  * 4-cycle unit, the NACT that follows the next BAR, so its record sits at unit end plus 1.
  * PCIT timing (pdf 34): the output pulse of the 6-cycle SIN starts in its cycle 4, inside the
@@ -261,6 +267,46 @@ static uint16_t ivs_imm_addr(ivs_cp1610 *n)
 static uint16_t ivs_imm_read(ivs_cp1610 *n, ivs_unit *u)
 {
   return ivs_access(u, IVS_DATA_BAR_OFFSET, IVS_ACC_READ, 0u, ivs_imm_addr(n), 0u);
+}
+
+/* Indirect effective address (Fig 3.2.4, pdf 48; Fig 3.2.1, pdf 46; stack operations, pdf 62;
+ * C17 resolved): MMM 1-3 EA = (MMM), no change; MMM 4-5 EA = (MMM), then (MMM) + 1; MMM 6 on an
+ * output (MVO@, PSHR) EA = R6, then R6 + 1; MMM 6 on an input R6 - 1 first, then EA = R6. Every
+ * pointer update wraps at 16 bits (POL-STK-01). */
+static uint16_t ivs_ind_addr(ivs_cp1610 *n, uint32_t mmm, int output)
+{
+  uint16_t ea;
+  if (mmm == 6u && !output) {
+    n->r[6] = IVS_U16((uint32_t)n->r[6] + 0xFFFFu);
+#ifdef IVS_FAULT_PULL_DIRECTION
+    return IVS_U16((uint32_t)n->r[6] + 1u);
+#endif
+    return n->r[6];
+  }
+  ea = n->r[mmm];
+  if (mmm >= 4u) {
+    n->r[mmm] = IVS_U16((uint32_t)ea + 1u);
+#ifdef IVS_FAULT_PUSH_DIRECTION
+    if (mmm == 6u) { ea = IVS_U16((uint32_t)ea + 0xFFFFu); n->r[6] = ea; }
+#endif
+  }
+  return ea;
+}
+
+/* Indirect operand read: one READ of all 16 bits at the effective address, put out at offset 4
+ * (pdf 29), or at the pull offset for MMM = 6. */
+static uint16_t ivs_ind_read(ivs_cp1610 *n, ivs_unit *u, uint32_t mmm)
+{
+  uint32_t off = mmm == 6u ? IVS_PULL_BAR_OFFSET : IVS_DATA_BAR_OFFSET;
+  return ivs_access(u, off, IVS_ACC_READ, 0u, ivs_ind_addr(n, mmm, 0), 0u);
+}
+
+/* Indirect write of register SSS (MVO timing, pdf 31: BAR of the effective address at offset 4,
+ * DW at 6, DWS at 7, 9 cycles). The register is read before the pointer moves. */
+static void ivs_ind_write(ivs_cp1610 *n, ivs_unit *u, uint32_t mmm, uint32_t sss)
+{
+  uint16_t v = n->r[sss & 7u];
+  (void)ivs_access(u, IVS_DATA_BAR_OFFSET, IVS_ACC_WRITE, 0u, ivs_ind_addr(n, mmm, 1), v);
 }
 
 /* Register shifts and SWAP (Fig 3.3.2, pdf 50; shift table, pdf 53): 0001 BLA N RR on R0-R3,
@@ -534,6 +580,15 @@ static uint32_t ivs_exec(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r, const
     v = (v + 0xFFFFu) & 0xFFFFu;
 #endif
     (void)ivs_access(u, IVS_DATA_BAR_OFFSET, IVS_ACC_WRITE, 0u, IVS_U16(v), n->r[ddd]);
+    break;
+  case IVS_CP1610_OP_PSHR:
+    /* PSHR SSS = MVO@ through R6 (1001 110 SSS, pdf 55, 62): write at R6, then R6 + 1. */
+    ivs_ind_write(n, u, 6u, ddd);
+    break;
+  case IVS_CP1610_OP_PULR:
+    /* PULR DDD = MVI@ through R6 (1010 110 DDD, pdf 55, 62): R6 - 1, then read at R6. The
+     * printed 11 cycles already hold the MMM = 6 bonus (8 + 3). */
+    ivs_wreg(n, ddd, ivs_ind_read(n, u, 6u));
     break;
   default:
     __builtin_trap();
