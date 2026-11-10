@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 2
 current_phase_name: CP-1610 CPU Core
 status: executing
-stopped_at: Completed 02-15-PLAN.md
-last_updated: "2026-11-10T09:44:25.073Z"
+stopped_at: Completed 02-16-PLAN.md
+last_updated: "2026-11-10T10:06:44.916Z"
 last_activity: 2026-11-10
 last_activity_desc: Phase 2 execution started
-state_head: 6fae4e5e628a5eaa22e122687aa752ed5a38a12f
+state_head: 09a26914717670147793b8e9e391bcb29f15abe2
 progress:
   total_phases: 8
   completed_phases: 1
   total_plans: 32
-  completed_plans: 29
+  completed_plans: 30
   percent: 13
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 2 (CP-1610 CPU Core) — EXECUTING
-Plan: 16 of 18
+Plan: 17 of 18
 Status: Ready to execute
 Last activity: 2026-11-10 — Phase 2 execution started
 
@@ -81,6 +81,7 @@ Progress: [█░░░░░░░░░] 13%
 | Phase 02 P13 | 18min | 3 tasks | 16 files |
 | Phase 02 P14 | 18min | 3 tasks | 7 files |
 | Phase 02 P15 | 15min | 3 tasks | 14 files |
+| Phase 02 P16 | 15min | 3 tasks | 39 files |
 
 ## Accumulated Context
 
@@ -155,6 +156,7 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 02]: 02-15: Step start order is STPST edge (toggle in RUNNING, resume in HALTED), then a held grant (hold 1 cycle / release = config latency), then at an interruptible boundary stop > BUSRQ > INTR > INTRM; grants never change prev_interruptible (A-02)
 - [Phase 02]: 02-15: HALTED units are 1 cycle and ignore INTR/INTRM while BUSRQ is granted and released; the stop entry reports STOPPED; a STPST edge does not report HALT_LATCHED
 - [Phase 02]: 02-15: The BUS_WAIT_LIMIT fault unit ends at access offset + 1 + limit + 1 (bounded by config, not the device reply); release latency 0 is refused as a bad config
+- [Phase 02]: 02-16: blinded vector copies use opaque v-indices and opaque policy tokens p01..p19 (sha256 order); the gate projects all 12 files every run with a leak scan; the last HANDOFF line for a stem is authoritative
 
 ### Pending Todos
 
@@ -185,6 +187,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-10T09:44:25.021Z
-Stopped at: Completed 02-15-PLAN.md
+Last session: 2026-11-10T10:06:44.865Z
+Stopped at: Completed 02-16-PLAN.md
 Resume file: None
