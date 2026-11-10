@@ -1,0 +1,7 @@
+delete data/claims.json
+delete data/cp1610/opcode-families.json
+delete data/cp1610/second-reader.json
+delete data/discrepancies.json
+delete data/profiles/intv-2609-ntsc-family-p1.json
+delete data/sources.json
+delete data/tiers.json
