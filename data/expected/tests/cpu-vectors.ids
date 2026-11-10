@@ -24,6 +24,7 @@ cpu.ADDR.7fff-plus-1-overflow
 cpu.ADDR.7fff-plus-8000
 cpu.ADDR.8000-plus-8000
 cpu.ADDR.ffff-plus-1-carry-zero
+cpu.ADDR.high-bits-ignored
 cpu.ADDR.r7-dest
 cpu.ADDR.r7-src-no-bonus
 cpu.ADDR.same-register-doubles
@@ -141,6 +142,7 @@ cpu.BZE.fwd-not-taken
 cpu.BZE.fwd-taken
 cpu.CLRC.c-already-clear-flags-preserved
 cpu.CLRC.clears-c
+cpu.CLRC.high-bits-ignored
 cpu.CLRC.sdbd-refused
 cpu.CLRR.r0-already-zero
 cpu.CLRR.r1
@@ -182,6 +184,7 @@ cpu.INCR.7fff-sign
 cpu.INCR.ffff-c-preserved
 cpu.INCR.r6-no-bonus
 cpu.J.backward-target
+cpu.J.de11-unsupported
 cpu.J.jd-clears-intff
 cpu.J.je-sets-intff
 cpu.J.jsr-r4-return
@@ -198,6 +201,7 @@ cpu.JR.to-r7
 cpu.JR.zero-target
 cpu.MOVR.base
 cpu.MOVR.coincidence-0bf
+cpu.MOVR.coincidence-0bf-high-bits
 cpu.MOVR.ddd6-bonus
 cpu.MOVR.ddd7-bonus
 cpu.MOVR.sss6-src-no-bonus
@@ -239,6 +243,7 @@ cpu.NEGR.8000
 cpu.NEGR.c-from-carry-out
 cpu.NEGR.ffff-to-0001
 cpu.NEGR.zero
+cpu.NOP.high-bits-n1
 cpu.NOP.n0
 cpu.NOP.n1
 cpu.NOPP.back-never-taken

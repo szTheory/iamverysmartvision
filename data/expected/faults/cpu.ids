@@ -44,3 +44,5 @@ SDBD_INDIRECT_INCREMENT cpu.MVI@.sdbd-r4 cpu.MVI@.sdbd|cpu.ADD@.sdbd|cpu.SUB@.sd
 SDBD_MODE13_ONE_READ cpu.MVI@.sdbd-r1-same-address-twice cpu.MVI@.sdbd|cpu.ADD@.sdbd|cpu.SUB@.sdbd|cpu.CMP@.sdbd|cpu.AND@.sdbd|cpu.XOR@.sdbd cpu.MVI@.sdbd-r4
 SDBD_DBD_NOT_CLEARED cpu.MVII.sdbd-dbd-cleared cpu.MVII.sdbd|cpu.ADDI.sdbd|cpu.SUBI.sdbd|cpu.CMPI.sdbd|cpu.ANDI.sdbd|cpu.XORI.sdbd|cpu.MVI@.sdbd|cpu.ADD@.sdbd|cpu.SUB@.sdbd|cpu.CMP@.sdbd|cpu.AND@.sdbd|cpu.XOR@.sdbd cpu.MVII.r1-load
 SDBD_TARGET_ACCEPTED cpu.PULR.sdbd-refused cpu.MVO@.sdbd-refused|cpu.PULR.sdbd-refused|cpu.PSHR.sdbd-refused|cpu.MVI.sdbd-direct-refused|cpu.ADD.sdbd-direct-refused|cpu.B.sdbd-branch-refused|cpu.J.sdbd-refused|cpu.SDBD.sdbd-twice-refused|cpu.ADDR.sdbd-register-refused|cpu.SLL.sdbd-refused|cpu.CLRC.sdbd-refused|cpu.MVOI.sdbd-refused cpu.MVII.sdbd-low-high
+DECODE_HIGH_BITS cpu.CLRC.high-bits-ignored cpu.CLRC.high|cpu.ADDR.high|cpu.NOP.high|cpu.MOVR.coincidence-0bf-high cpu.CLRC.clears-c
+JUMP_DE11_ALLOWED cpu.J.de11-unsupported cpu.J.de11 cpu.J.plain

@@ -70,7 +70,7 @@ static int api_validate_rejects_bad_fault_reason(void)
   for (v = 0u; v <= 255u; v++) {
     memset(&s, 0, sizeof s);
     s.fault_reason = (uint8_t)v;
-    if (v <= IVS_CP1610_FAULT_UNIMPLEMENTED) {
+    if (v <= IVS_CP1610_FAULT_LAST) {
       IVS_CHECK(ivs_cp1610_state_validate(&s) == IVS_OK);
     } else {
       IVS_CHECK(ivs_cp1610_state_validate(&s) == IVS_E_BAD_STATE);
@@ -338,7 +338,7 @@ static int api_refuse_invalid_state(void)
       s.run_state = (uint8_t)(IVS_CP1610_RS_FAULTED + 1u);
       break;
     case 1u:
-      s.fault_reason = (uint8_t)(IVS_CP1610_FAULT_UNIMPLEMENTED + 1u);
+      s.fault_reason = (uint8_t)(IVS_CP1610_FAULT_LAST + 1u);
       break;
     case 2u:
       s.reserved[3] = 1u;

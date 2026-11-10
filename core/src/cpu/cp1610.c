@@ -135,7 +135,7 @@ ivs_status ivs_cp1610_state_validate(const ivs_cp1610 *s)
   if (((uint32_t)s->status & ~(uint32_t)IVS_CP1610_STATUS_MASK) != 0u) {
     return IVS_E_BAD_STATE;
   }
-  if (s->run_state > IVS_CP1610_RS_FAULTED || s->fault_reason > IVS_CP1610_FAULT_UNIMPLEMENTED) {
+  if (s->run_state > IVS_CP1610_RS_FAULTED || s->fault_reason > IVS_CP1610_FAULT_LAST) {
     return IVS_E_BAD_STATE;
   }
   if (!ivs_is_bit(s->intff) || !ivs_is_bit(s->dbd) || !ivs_is_bit(s->prev_interruptible) ||
@@ -563,9 +563,9 @@ static uint32_t ivs_branch(ivs_cp1610 *n, ivs_unit *u, uint16_t word)
  * Use", "Not Used") take no part. BB = 0..2 saves the return address PC+3 (pdf 56, C58) in
  * register 1BB (R4, R5 or R6) before the PC is loaded; BB = 3 designates R7 itself, the plain
  * jump, so nothing is saved. DE = 01 enables the interrupt system (JE, JSRE), 10 disables it (JD,
- * JSRD) and 00 leaves it (POL-INT-03). No status bit changes. DE = 11 is not listed (pdf 56): the
- * unit stops after the second word with R7 back at the offender and returns 0 so the caller
- * reports the temporary UNIMPLEMENTED fault (UNSUPPORTED_JUMP_DE is plan 02-13); else returns 1. */
+ * JSRD) and 00 leaves it (POL-INT-03). No status bit changes. DE = 11 is not listed (pdf 56;
+ * POL-ILL-01): the unit stops after the second word with R7 back at the offender and returns 0 so
+ * the caller reports the sticky fault UNSUPPORTED_JUMP_DE; else returns 1. */
 static int ivs_jump(ivs_cp1610 *n, ivs_unit *u, uint16_t pc)
 {
   uint32_t w2 = ivs_imm_read(n, u);
@@ -574,6 +574,9 @@ static int ivs_jump(ivs_cp1610 *n, ivs_unit *u, uint16_t pc)
   uint32_t de = w2 & 3u;
   uint32_t lo;
   uint32_t ret;
+#ifdef IVS_FAULT_JUMP_DE11_ALLOWED
+  de = de == 3u ? 0u : de;
+#endif
   if (de == 3u) {
     n->r[7] = pc;
     return 0;
@@ -912,7 +915,7 @@ static uint32_t ivs_exec(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r, const
     break;
   case IVS_CP1610_OP_JUMP:
     if (!ivs_jump(n, u, r->pc_before)) {
-      ivs_set_fault(n, r, IVS_CP1610_FAULT_UNIMPLEMENTED);
+      ivs_set_fault(n, r, IVS_CP1610_FAULT_UNSUPPORTED_JUMP_DE);
     }
     break;
   case IVS_CP1610_OP_MVI:
@@ -976,14 +979,14 @@ static int ivs_sdbd_target(const ivs_cp1610_row *row, uint16_t word)
 
 /* Refusal of a fetched decle before it has any effect, or FAULT_NONE. POL-SDBD-02: with DBD set,
  * a target that is not an SDBD target is refused (checked first: the prefix decides how the decle
- * is read). POL-MVO-01: an MVO@ form with SSS = MMM in 4..7. */
+ * is read). POL-MVO-01: an MVO@ form with SSS = MMM in 4..7. POL-ILL-01: bits 15..10 of the word
+ * take no part (the row and every field come from bits 9..0). */
 static uint8_t ivs_refusal(ivs_cp1610 *n, const ivs_cp1610_row *row, uint16_t word)
 {
-  int target;
-  if (row == NULL || row->handler == IVS_CP1610_OP_NONE) {
-    return IVS_CP1610_FAULT_UNIMPLEMENTED;
-  }
-  target = ivs_sdbd_target(row, word);
+  int target = ivs_sdbd_target(row, word);
+#ifdef IVS_FAULT_DECODE_HIGH_BITS
+  if (word > 0x3FFu) return IVS_CP1610_FAULT_UNSUPPORTED_JUMP_DE;
+#endif
 #ifdef IVS_FAULT_SDBD_TARGET_ACCEPTED
   if (!target) n->dbd = 0u;
 #endif
@@ -1012,6 +1015,10 @@ static void ivs_unit_instr(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r)
     return;
   }
   row = ivs_cp1610_decode(word);
+  if (row == NULL) {
+    /* Unreachable: every 10-bit decle has a row (cp1610_decode.c, checked by cpu-sweep). */
+    __builtin_trap();
+  }
   reason = ivs_refusal(n, row, word);
   if (reason != IVS_CP1610_FAULT_NONE) {
     /* Sticky fault: PC stays at the offending word; the fetch is traced and counted; nothing
@@ -1032,8 +1039,8 @@ static void ivs_unit_instr(ivs_cp1610 *n, ivs_unit *u, ivs_cp1610_result *r)
     extra += IVS_SDBD_EXTRA_CYCLES;
   }
   if (n->run_state == IVS_CP1610_RS_FAULTED) {
-    /* A refusal found after the first word (jump DE = 11): R7 is back at the offender and the
-     * reads so far are traced and counted. */
+    /* A refusal found after the first word (jump DE = 11, POL-ILL-01): R7 is back at the
+     * offender and the reads so far are traced and counted. */
     r->elapsed_cpu_cycles = IVS_JUMP_DE_FAULT_CYCLES + u->shift;
     return;
   }

@@ -99,14 +99,14 @@ typedef struct ivs_cp1610_lines {
 #define IVS_CP1610_RS_HALTED 3u
 #define IVS_CP1610_RS_FAULTED 4u
 
-/* Sticky guest fault reasons (D-12). UNIMPLEMENTED is temporary: it marks decles whose row
- * has no handler yet and is removed once every row exists (plan 02-13). */
+/* Sticky guest fault reasons (D-12). Every decle has a row with a handler, so no reason marks an
+ * unimplemented decle; fault_reason above IVS_CP1610_FAULT_LAST fails validation. */
 #define IVS_CP1610_FAULT_NONE 0u
 #define IVS_CP1610_FAULT_UNSUPPORTED_SDBD_TARGET 1u
 #define IVS_CP1610_FAULT_UNSUPPORTED_MVO_SSS_EQ_MMM 2u
 #define IVS_CP1610_FAULT_UNSUPPORTED_JUMP_DE 3u
 #define IVS_CP1610_FAULT_BUS_WAIT_LIMIT 4u
-#define IVS_CP1610_FAULT_UNIMPLEMENTED 5u
+#define IVS_CP1610_FAULT_LAST IVS_CP1610_FAULT_BUS_WAIT_LIMIT
 
 /* Unit kinds. */
 #define IVS_CP1610_UNIT_INSTR 1u
@@ -156,8 +156,7 @@ typedef struct ivs_cp1610_result {
 
 /* Decode table row (cp1610_decode.c). A decle matches when (decle & mask) == value and, for a
  * row with eq set, its two register fields are equal (bits 5..3 == bits 2..0: TSTR, CLRR).
- * id is the row id of data/expected/cp1610-rows.ids. handler 0 (IVS_CP1610_OP_NONE) marks a
- * row whose semantics have not landed yet: it reports the temporary UNIMPLEMENTED fault. */
+ * id is the row id of data/expected/cp1610-rows.ids; handler is the row's IVS_CP1610_OP_* id. */
 typedef struct ivs_cp1610_row {
   const char *id;
   uint16_t mask;
@@ -169,8 +168,7 @@ typedef struct ivs_cp1610_row {
   uint8_t handler;
 } ivs_cp1610_row;
 
-/* Row handler ids (internal; one per implemented row). */
-#define IVS_CP1610_OP_NONE 0u
+/* Row handler ids (internal). */
 #define IVS_CP1610_OP_CLRC 1u
 #define IVS_CP1610_OP_SETC 2u
 #define IVS_CP1610_OP_EIS 3u

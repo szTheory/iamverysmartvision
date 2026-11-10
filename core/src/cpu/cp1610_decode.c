@@ -3,10 +3,10 @@
  * instruction formats and tables of the GI manual (Fig 3.3.1-3.3.5, pdf 50-52; instruction set
  * tables, pdf 53-58). The Phase 1 family table data/cp1610/opcode-families.json is an inventory
  * and the independent comparison of the decode sweep; it is never a value source here.
- * Decode looks only at bits 9..0 of a word (D-07). Rows are listed most specific first and the
- * first match wins, so every one of the 1024 decles maps to exactly one row. A row whose
- * handler is IVS_CP1610_OP_NONE has not landed yet and reports the temporary UNIMPLEMENTED
- * fault, exactly as an unknown decle did before the table was complete.
+ * Decode looks only at bits 9..0 of a word (D-07, POL-ILL-01: bits 15..10 are "Future Use",
+ * Fig 3.3.1-3.3.5, pdf 50-52, and take no part). Rows are listed most specific first and the
+ * first match wins, so every one of the 1024 decles maps to exactly one row and every row has a
+ * handler. The suite cpu-sweep compares this table with the Phase 1 family table (D-16).
  *
  * Columns: id, mask, value, eq (bits 5..3 == bits 2..0), words, base cycles, interruptible,
  * handler. Base cycles are the printed counts without modifiers (branches 7 of `7/9`, shifts 6

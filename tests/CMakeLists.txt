@@ -38,6 +38,23 @@ target_link_libraries(ivs_tests_cpu_vectors PRIVATE ivs_test_harness ivs_core iv
 add_test(NAME cpu-vectors COMMAND ivs_tests_cpu_vectors)
 set_tests_properties(cpu-vectors PROPERTIES SKIP_RETURN_CODE 77)
 
+# Suite cpu-sweep (D-16, plan 02-13): the decode sweep against the Phase 1 family table, whose
+# columns cmake/IvsSweepTable.cmake turns into ivs_sweep.inc in this build directory.
+set(IVS_SWEEP_FAMILIES "${PROJECT_SOURCE_DIR}/data/cp1610/opcode-families.json")
+set(IVS_SWEEP_GENERATOR "${PROJECT_SOURCE_DIR}/cmake/IvsSweepTable.cmake")
+set(IVS_SWEEP_INC "${CMAKE_CURRENT_BINARY_DIR}/ivs_sweep.inc")
+add_custom_command(
+  OUTPUT "${IVS_SWEEP_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DROOT=${PROJECT_SOURCE_DIR}" "-DOUT=${IVS_SWEEP_INC}" -P "${IVS_SWEEP_GENERATOR}"
+  DEPENDS "${IVS_SWEEP_FAMILIES}" "${IVS_SWEEP_GENERATOR}"
+  COMMENT "Generating the CP-1610 decode sweep table"
+  VERBATIM)
+add_executable(ivs_tests_cpu_sweep cpu/cpu_sweep.c "${IVS_SWEEP_INC}")
+target_include_directories(ivs_tests_cpu_sweep PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+target_link_libraries(ivs_tests_cpu_sweep PRIVATE ivs_test_harness ivs_core ivs_warnings ivs_san)
+add_test(NAME cpu-sweep COMMAND ivs_tests_cpu_sweep)
+set_tests_properties(cpu-sweep PROPERTIES SKIP_RETURN_CODE 77)
+
 add_executable(ivs_tests_cpu_api cpu/cpu_api.c)
 target_link_libraries(ivs_tests_cpu_api PRIVATE ivs_test_harness ivs_core ivs_warnings ivs_san)
 add_test(NAME cpu-api COMMAND ivs_tests_cpu_api)
