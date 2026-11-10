@@ -126,7 +126,22 @@ Plans:
   3. Interrupt and BUSRQ acceptance cases (previous-instruction interruptibility, I flag, D/SDBD, BUSRQ), SDBD modes (with a documented policy for unsupported modes), stack direction, auto-increment registers and reset entry each pass their vectors, and each has a named-fault control that fails for the intended reason.
   4. For any instruction, the stepper reports an ordered, cycle-stamped list of bus accesses that a test compares against the manual's bus sequence.
   5. A build/link or symbol check fails when the core library references host clocks, filesystem, environment, threads or I/O. A deliberate-violation control demonstrates this.
-**Plans**: TBD
+**Plans**: 13 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — Gate hardening (IN-04, IN-02, denylist status 2, SPDX/ASCII for C), build/gate NONCE contract, discrepancy entries C36-C57 and five profile fields
+- [ ] 02-02-PLAN.md — Walking skeleton A: CMake/presets, internal CPU API with reset entry and CLRC/SETC, harness, JSON-to-C generator, control vectors, steps c-build, c-tests, tests-inventory with 12 controls
+- [ ] 02-03-PLAN.md — Walking skeleton B: named-fault path (c-faults, faults-verdict), vector data checker cp1610-vectors with coverage derivation and review kind, full control group
+- [ ] 02-04-PLAN.md — Purity (API-05): core-symbols allowlist check, c-purity step, 13 deliberate-violation controls, core-symbols ctest suite
+- [ ] 02-05-PLAN.md — Complete 74-row decode table and the 14 register-register rows with vectors and faults
+- [ ] 02-06-PLAN.md — Immediate rows and shift/SWAP rows with vectors and faults
+- [ ] 02-07-PLAN.md — Direct and indirect memory rows: stack direction, auto-increment, ADAR, POL-STK-02, POL-MVO-01
+- [ ] 02-08-PLAN.md — Branches (policy-carried 7/9 cycles, BEXT provider) and the J/JSR family
+- [ ] 02-09-PLAN.md — SDBD supported modes and refusal, POL-ILL-01 encodings, 1024-decle sweep against the Phase 1 table
+- [ ] 02-10-PLAN.md — Interrupt acceptance model and entry sequence, IAB-supplied vector, SDBD deferral, reset interaction
+- [ ] 02-11-PLAN.md — BUSRQ grant/release, wait states and cap, HLT/STPST/HALTED, seeded fuzz suite, stepper conventions doc
+- [ ] 02-12-PLAN.md — Blind second reading of the first five vector files, D-22 gate budget, CI-EFFICIENCY update
+- [ ] 02-13-PLAN.md — Blind second reading of the remaining seven files, reference-note updates, SC1-SC5 evidence check
 
 ### Phase 3: Memory Map, Content Loading and Refusal
 **Goal**: A host can create isolated machine instances and load typed system images and cartridge content against the profile's memory map. Every bad input gets a typed refusal that leaves prior machine state unchanged.
