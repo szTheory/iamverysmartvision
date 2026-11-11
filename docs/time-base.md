@@ -29,6 +29,7 @@ At 4 master ticks per CPU cycle that is 14,934 x 4 = 59,736 master ticks per fra
 The crystal is the nominal 3,579,545 Hz recorded as a rational in the profile (tag `tier1-primary-doc`), read only by host adapters.
 These are nominal figures for a frame with the display enabled, and the exact stall model is a separate open question.
 A frame is a timeline event and is never derived by modulo of the master-tick count.
+The API publishes the nominal frame length in master ticks as `ivs_info.nominal_frame_ticks` (59,736 on the NTSC profile), a nominal figure and not a frame event (D-09).
 
 ## Glossary
 

@@ -119,6 +119,8 @@ typedef struct ivs_profile_desc {
   uint32_t features_supported; /* cartridge.features_supported (D-32) */
   ivs_slot_desc exec;
   ivs_slot_desc grom;
+  uint16_t scanlines_per_frame;     /* nominal frame timebase (D-06, D-09, plan 04-09); nonzero */
+  uint16_t cpu_cycles_per_scanline; /* nominal; nonzero; never a frame event */
 } ivs_profile_desc;
 
 /* What the decode says about one address in one view (A-05b). */

@@ -15,6 +15,8 @@
 #   reset.r7, interrupt.iab_value, cpu.interrupt_accept_clears_intff,
 #   bus.release_latency_cpu_cycles, bus.wait_limit_cpu_cycles, power_on_fill.*,
 #   ticks_per_cpu_cycle (1..65535; the machine converts a CPU unit's cycles to master ticks, D2)
+#   scanlines_per_frame, cpu_cycles_per_scanline (1..65535 each; the nominal frame timebase that
+#   ivs_info publishes, D-06/D-09, plan 04-09; nominal figures, never a frame event)
 # Hex values are "$XXXX" strings (four uppercase digits), as in reset.r7.
 #
 # Fail closed (message `IvsMemmapTable: <profile>: <field>: <reason>`): hi < lo; lo or hi+1 not
@@ -260,6 +262,13 @@ foreach(rel IN LISTS mm_profiles)
   if(ticks_per_cpu EQUAL 0)
     mm_fail("must be nonzero")
   endif()
+  foreach(tb scanlines_per_frame cpu_cycles_per_scanline)
+    set(MM_CTX "${rel}: ${tb}")
+    mm_uint(${tb} "${doc}" "value" 65535 fields ${tb} value)
+    if(${tb} EQUAL 0)
+      mm_fail("must be nonzero")
+    endif()
+  endforeach()
 
   # Required registry fields (a missing one fails closed).
   foreach(need cartridge.features_supported system_images.exec system_images.grom memmap.cart_span
@@ -527,7 +536,8 @@ foreach(rel IN LISTS mm_profiles)
   mm_lit(shi_l "${span_hi}")
   string(APPEND reg_c
     "  {\"${pid}\", ${r7_l}, ${iab_l}, ${und_l}, ${slo_l}, ${shi_l}, ${ticks_per_cpu}u, ${has_span}u, ${intff}u, ${release}u,\n"
-    "   ${wait_limit}u, ${features}u, ${slot_exec_c}, ${slot_grom_c}},\n")
+    "   ${wait_limit}u, ${features}u, ${slot_exec_c}, ${slot_grom_c}, ${scanlines_per_frame}u,\n"
+    "   ${cpu_cycles_per_scanline}u},\n")
 endforeach()
 
 if(DEFINED MUTATE AND NOT MUTATE STREQUAL "" AND NOT MM_MUTATED)

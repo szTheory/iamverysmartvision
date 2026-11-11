@@ -29,6 +29,11 @@
 #define IVS_MACHINE_ALIGN 16u
 #define IVS_MACHINE_BYTES 113600u
 
+/* The v1 (Phase 3) size of ivs_info (A-02, plan 04-09): the smallest struct_size info accepts.
+ * Fields after it are written only when the caller's struct_size covers them. machine.c ties it
+ * to offsetof(ivs_info, ticks_per_cpu_cycle). */
+#define IVS_INFO_V1_SIZE 216u
+
 /* One image slot (kind fixed at create: slot i holds kind i + 1). */
 typedef struct ivs_machine_slot {
   uint32_t kind;

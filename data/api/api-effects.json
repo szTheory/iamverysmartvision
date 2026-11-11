@@ -272,21 +272,22 @@
     {
       "name": "ivs_machine_info",
       "header": "core/include/ivs/ivs_machine.h",
-      "on_ok": "Writes phase, machine time (master ticks), profile index and the three slot reports into *out; the instance is not written.",
+      "on_ok": "Writes phase, machine time (master ticks), profile index and the three slot reports into *out, then, as far as out->struct_size covers them, the timebase (ticks_per_cpu_cycle, cpu_cycles_per_scanline, scanlines_per_frame, nominal_frame_ticks) and the output layout (formats and bytes per frame); exactly min(struct_size, sizeof(ivs_info)) bytes are written and struct_size is set to that count; the instance is not written.",
       "precedence": [
-        {"status": "IVS_E_BAD_ARG", "checks": "out NULL or out->struct_size short", "pinned_by": ["machine.refuse.info.null-both"]},
+        {"status": "IVS_E_BAD_ARG", "checks": "out NULL or out->struct_size below the v1 size (216, the Phase 3 size; A-02)", "pinned_by": ["machine.refuse.info.null-both"]},
         {"status": "IVS_E_BAD_HANDLE", "checks": "NULL or invalid handle (a damaged stored profile index included, review WR-03)", "pinned_by": ["machine.refuse.info.destroyed-out-inside"]},
-        {"status": "IVS_E_BAD_ARG", "checks": "out overlapping the storage of the (valid) instance", "pinned_by": ["machine.refuse.info.out-inside"]}
+        {"status": "IVS_E_BAD_ARG", "checks": "the bytes to be written overlapping the storage of the (valid) instance", "pinned_by": ["machine.refuse.info.out-inside"]}
       ],
       "notes": [
-        "Out parameter rule (core/include/ivs/ivs_machine.h, plan 03-11): an out struct that overlaps the instance storage is BAD_ARG with nothing written. Review WR-01: the overlap is tested after BAD_HANDLE, against a validated instance only, so a NULL or invalid handle is BAD_HANDLE wherever out lies (A-08 a)."
+        "Out parameter rule (core/include/ivs/ivs_machine.h, plan 03-11): an out struct that overlaps the instance storage is BAD_ARG with nothing written. Review WR-01: the overlap is tested after BAD_HANDLE, against a validated instance only, so a NULL or invalid handle is BAD_HANDLE wherever out lies (A-08 a).",
+        "Minimum size rule (A-02, plan 04-09): the minimum struct_size stays the v1 (Phase 3) size of 216 bytes; the fields appended after it are written only when struct_size covers them, so a v1-sized caller is accepted and its bytes past 216 are untouched (run.info.v1-size-caller). nominal_frame_ticks is nominal, not a frame event (D-09)."
       ],
       "refusals": [
         {
           "status": "IVS_E_BAD_ARG",
           "effect": "none",
           "outs": "nothing written: *out keeps its bytes",
-          "tests": ["machine.refuse.info.null-out", "machine.refuse.info.null-both", "machine.refuse.info.size-0", "machine.refuse.info.short", "machine.refuse.info.out-inside"]
+          "tests": ["machine.refuse.info.null-out", "machine.refuse.info.null-both", "machine.refuse.info.size-0", "machine.refuse.info.short", "machine.refuse.info.out-inside", "run.info.short-refused"]
         },
         {
           "status": "IVS_E_BAD_HANDLE",

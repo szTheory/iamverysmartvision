@@ -24,6 +24,11 @@ extern const size_t ivs_run_observe_count;
 extern const ivs_test_case ivs_run_bound_cases[];
 extern const size_t ivs_run_bound_count;
 
+/* Family info (plan 04-09, D-06, D-09, A-02): the timebase and output layout of ivs_info and the
+ * v1-size growth rule (run_info.c). */
+extern const ivs_test_case ivs_run_info_cases[];
+extern const size_t ivs_run_info_count;
+
 /* ---- the refusal and side-effect oracle (SP4), shared by the run families ----
  * A snapshot holds a heap copy of the whole instance storage, the composite and the seven domain
  * digests (1..4, 16..18) and info's time_ticks; a destroyed instance has no digests or info. */

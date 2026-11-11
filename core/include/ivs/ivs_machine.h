@@ -101,8 +101,29 @@ typedef struct ivs_image_report {
   uint8_t sha256[32];
 } ivs_image_report;
 
+/* Output layout formats of ivs_info (D-06). NONE: the profile produces no bytes of that kind yet
+ * (the size per frame is then 0). */
+#define IVS_OUTPUT_FORMAT_NONE 0u
+
 /* Out: instance information. slots[i] is the slot of kind i + 1. time_ticks is machine time in
- * master ticks (docs/time-base.md). */
+ * master ticks (docs/time-base.md).
+ * Growth (A-02, plan 04-09): the v1 size of ivs_info is the Phase 3 size (216 bytes, up to and
+ * including slots); fields after it are written only when struct_size covers them (A-02). A
+ * caller sized for v1 is accepted and its bytes past the v1 size are untouched; the core writes
+ * min(struct_size, sizeof(ivs_info)) bytes and sets struct_size to that count.
+ * Appended fields (byte offsets; 64-bit members 8-aligned), all from the profile:
+ *   216 ticks_per_cpu_cycle      master ticks per CPU cycle (D2)
+ *   220 cpu_cycles_per_scanline  nominal
+ *   224 scanlines_per_frame      nominal
+ *   228 video_format             IVS_OUTPUT_FORMAT_*
+ *   232 nominal_frame_ticks      ticks_per_cpu_cycle * cpu_cycles_per_scanline *
+ *                                scanlines_per_frame; nominal_frame_ticks is nominal, not a frame
+ *                                event (D-09): frames are timeline events, never a modulo of time
+ *   240 video_bytes_per_frame    0 with IVS_OUTPUT_FORMAT_NONE
+ *   244 audio_format             IVS_OUTPUT_FORMAT_*
+ *   248 audio_bytes_per_frame    0 with IVS_OUTPUT_FORMAT_NONE
+ *   252 reserved2                written 0
+ * sizeof(ivs_info) is 256. */
 typedef struct ivs_info {
   uint32_t struct_size;
   uint32_t phase; /* IVS_PHASE_* */
@@ -110,6 +131,16 @@ typedef struct ivs_info {
   uint32_t profile_index;
   uint32_t reserved; /* written 0 */
   ivs_image_report slots[3];
+  /* ---- end of the v1 (Phase 3) size ---- */
+  uint32_t ticks_per_cpu_cycle;
+  uint32_t cpu_cycles_per_scanline;
+  uint32_t scanlines_per_frame;
+  uint32_t video_format; /* IVS_OUTPUT_FORMAT_* */
+  uint64_t nominal_frame_ticks;
+  uint32_t video_bytes_per_frame;
+  uint32_t audio_format; /* IVS_OUTPUT_FORMAT_* */
+  uint32_t audio_bytes_per_frame;
+  uint32_t reserved2; /* written 0 */
 } ivs_info;
 
 /* ---- typed content loading (D-10, D-11, D-24..D-27, D-32, D-33, A-04, A-08, plan 03-10) ----
@@ -212,8 +243,9 @@ IVS_API ivs_status ivs_machine_create(const ivs_create_options *opts, void *stor
 /* Zero-scrubs the instance bytes; the handle is then invalid (a later call is BAD_HANDLE). */
 IVS_API ivs_status ivs_machine_destroy(ivs_machine *m);
 
-/* Phase, machine time, profile index and the three slot reports. BAD_ARG: out NULL or short;
- * then BAD_HANDLE; then BAD_ARG: out overlapping the instance storage. */
+/* Phase, machine time, profile index and the three slot reports, then (when struct_size covers
+ * them, A-02) the timebase and output layout. BAD_ARG: out NULL or struct_size below the v1 size
+ * (216); then BAD_HANDLE; then BAD_ARG: the bytes to be written overlap the instance storage. */
 IVS_API ivs_status ivs_machine_info(const ivs_machine *m, ivs_info *out);
 
 /* SHA-256 of the canonical state (D-35) of one domain (IVS_DIGEST_CPU, _MEM, _IMAGES, _INSTANCE,

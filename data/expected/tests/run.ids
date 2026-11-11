@@ -67,3 +67,10 @@ run.prec.unsupported-over-state
 run.prec.state-over-range
 run.stop-name.known
 run.stop-name.unknown
+# Family info (plan 04-09, D-06, D-09, A-02): the timebase (equal to the profile; nominal frame
+# 59736 ticks, docs/time-base.md) and output layout (NONE, sizes 0) that ivs_machine_info appends,
+# a v1-sized (Phase 3) caller with a poisoned tail untouched, and a caller below v1 refused.
+run.info.timebase
+run.info.layout-none
+run.info.v1-size-caller
+run.info.short-refused
