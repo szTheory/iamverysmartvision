@@ -128,7 +128,7 @@ typedef struct ivs_memsys_desc {
   uint8_t device;        /* IVS_MEMSYS_DEVICE_* */
   uint8_t impl;          /* IVS_MEMSYS_IMPL_* */
   uint8_t gate;          /* IVS_MEMSYS_GATE_* */
-  uint16_t mirror_words; /* size_words when the extent exceeds it, else 0 */
+  uint16_t mirror_words; /* size_words when the extent exceeds it or the region is an alias, else 0 */
   uint16_t reserved;
 } ivs_memsys_desc;
 

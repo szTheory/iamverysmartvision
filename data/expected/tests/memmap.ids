@@ -1,5 +1,6 @@
 # Suite memmap: profile-driven memory system through its bus function (plan 03-04).
-# Fixed cases, then memmap.anchor.<region>-lo|hi for every region row of the test.
+# Fixed cases, then memmap.anchor.<region>-lo|hi for every region row of the test, then the
+# literal-map family (plan 03-06): the decode dump against the literal map.
 memmap.width.rom10-wide-reads-03ff
 memmap.width.grom8-wide-reads-00ff
 memmap.width.ram16-keeps-16
@@ -55,3 +56,4 @@ memmap.anchor.stic-alias-wc-lo
 memmap.anchor.stic-alias-wc-hi
 memmap.anchor.gram-alias-wf-lo
 memmap.anchor.gram-alias-wf-hi
+memmap.dump.matches-literal

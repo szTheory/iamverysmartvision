@@ -10,6 +10,7 @@
 #include "cpu/cp1610.h"
 #include "ivs_test.h"
 #include "memmap/memsys.h"
+#include "memmap_rows.h"
 
 /* Fails the case with a diagnostic naming the line and the failed expression. */
 #define IVS_CHECK(cond)                                                                                \
@@ -549,7 +550,8 @@ static int mm_registry_first_profile(void)
   return IVS_TEST_PASS;
 }
 
-/* ---- case table: fixed cases, then one lo and one hi anchor per region row ---- */
+/* ---- case table: fixed cases, one lo and one hi anchor per region row, then the literal-map
+ * family of memmap_rows.c ---- */
 
 static const ivs_test_case mm_fixed[] = {
     {"memmap.width.rom10-wide-reads-03ff", mm_width_rom10, NULL},
@@ -581,13 +583,16 @@ static const ivs_test_case mm_fixed[] = {
     {"memmap.registry.first-profile", mm_registry_first_profile, NULL},
 };
 #define MM_FIXED (sizeof mm_fixed / sizeof mm_fixed[0])
-#define MM_CASES (MM_FIXED + 2u * MM_ROWS)
+#define MM_ANCHORS (MM_FIXED + 2u * MM_ROWS)
 
 static char mm_ids[2u * MM_ROWS][48];
 
 static const char *mm_case_id(const void *data, size_t i)
 {
   (void)data;
+  if (i >= MM_ANCHORS) {
+    return mm_rows_id(i - MM_ANCHORS);
+  }
   return i < MM_FIXED ? mm_fixed[i].id : mm_ids[i - MM_FIXED];
 }
 
@@ -597,6 +602,9 @@ static int mm_case_run(const void *data, size_t i)
   (void)data;
   if (i < MM_FIXED) {
     return mm_fixed[i].fn();
+  }
+  if (i >= MM_ANCHORS) {
+    return mm_rows_run(i - MM_ANCHORS);
   }
   row = &mm_rows[(i - MM_FIXED) / 2u];
   return mm_anchor(row, ((i - MM_FIXED) % 2u) == 0u ? row->lo : row->hi);
@@ -610,10 +618,15 @@ int main(int argc, char **argv)
     (void)snprintf(mm_ids[2u * i], sizeof mm_ids[0], "memmap.anchor.%s-lo", mm_rows[i].slug);
     (void)snprintf(mm_ids[2u * i + 1u], sizeof mm_ids[0], "memmap.anchor.%s-hi", mm_rows[i].slug);
   }
+  if (!mm_rows_init()) {
+    fprintf(stderr, "# memmap: a literal-row case id does not fit\n");
+    return 1;
+  }
   memset(&suite, 0, sizeof suite);
   suite.name = "memmap";
-  suite.count = MM_CASES;
+  suite.count = MM_ANCHORS + mm_rows_count();
   suite.id = mm_case_id;
   suite.run = mm_case_run;
+  suite.sources = mm_rows_sources(&suite.n_sources);
   return ivs_test_main(argc, argv, &suite);
 }

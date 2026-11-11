@@ -439,18 +439,18 @@
       "note": "Extent 2048 words mirrored over a 512-word backing."
     },
     "memmap.region.stic_alias_w4": {
-      "value": {"view": "W", "lo": "$4000", "hi": "$403F", "device": "stub", "size_words": 64, "gate": "none", "impl": "stub"},
-      "tag": "tier4-community",
-      "cite": "SRC-intv-wiki (Memory Map, oldid 14847) for the write-only alias at $4000-$403F",
+      "value": {"view": "W", "lo": "$4000", "hi": "$403F", "device": "stub", "size_words": 64, "gate": "stic-regs", "impl": "stub"},
+      "tag": "inference",
+      "cite": "SRC-intv-wiki (Memory Map, oldid 14847) for the write-only alias at $4000-$403F; gate stic-regs is an inference: the alias reaches the same STIC registers as $0000-$003F, so it shares their access window (data/memmap/intv-2609-ntsc-family-p1.literal.txt header, D-18)",
       "conflict": "C61",
       "resolving_evidence": "pending: a tier 1 to 3 address source, or a D10 decode probe on owner hardware",
       "revisit_trigger": "when a tier 1 to 3 source or a hardware probe gives the decode",
       "decision": null
     },
     "memmap.region.gram_alias_w7": {
-      "value": {"view": "W", "lo": "$7800", "hi": "$7FFF", "device": "ram8", "size_words": 512, "gate": "none", "impl": "real"},
-      "tag": "tier4-community",
-      "cite": "SRC-intv-wiki (Memory Map, oldid 14847) for the write-only alias at $7800-$7FFF",
+      "value": {"view": "W", "lo": "$7800", "hi": "$7FFF", "device": "ram8", "size_words": 512, "gate": "gmem", "impl": "real"},
+      "tag": "inference",
+      "cite": "SRC-intv-wiki (Memory Map, oldid 14847) for the write-only alias at $7800-$7FFF; gate gmem is an inference: the alias reaches the same graphics RAM as $3800-$3FFF, so it shares their access window (data/memmap/intv-2609-ntsc-family-p1.literal.txt header, D-18)",
       "conflict": "C61",
       "resolving_evidence": "pending: a tier 1 to 3 address source, or a D10 decode probe on owner hardware",
       "revisit_trigger": "when a tier 1 to 3 source or a hardware probe gives the decode",
@@ -458,18 +458,18 @@
       "note": "Writes reach the GRAM backing; reads come from the cartridge span."
     },
     "memmap.region.stic_alias_w8": {
-      "value": {"view": "W", "lo": "$8000", "hi": "$803F", "device": "stub", "size_words": 64, "gate": "none", "impl": "stub"},
-      "tag": "tier4-community",
-      "cite": "SRC-intv-wiki (Memory Map, oldid 14847) for the write-only alias at $8000-$803F",
+      "value": {"view": "W", "lo": "$8000", "hi": "$803F", "device": "stub", "size_words": 64, "gate": "stic-regs", "impl": "stub"},
+      "tag": "inference",
+      "cite": "SRC-intv-wiki (Memory Map, oldid 14847) for the write-only alias at $8000-$803F; gate stic-regs is an inference: the alias reaches the same STIC registers as $0000-$003F, so it shares their access window (data/memmap/intv-2609-ntsc-family-p1.literal.txt header, D-18)",
       "conflict": "C61",
       "resolving_evidence": "pending: a tier 1 to 3 address source, or a D10 decode probe on owner hardware",
       "revisit_trigger": "when a tier 1 to 3 source or a hardware probe gives the decode",
       "decision": null
     },
     "memmap.region.gram_alias_wb": {
-      "value": {"view": "W", "lo": "$B800", "hi": "$BFFF", "device": "ram8", "size_words": 512, "gate": "none", "impl": "real"},
-      "tag": "tier4-community",
-      "cite": "SRC-intv-wiki (Memory Map, oldid 14847) for the write-only alias at $B800-$BFFF",
+      "value": {"view": "W", "lo": "$B800", "hi": "$BFFF", "device": "ram8", "size_words": 512, "gate": "gmem", "impl": "real"},
+      "tag": "inference",
+      "cite": "SRC-intv-wiki (Memory Map, oldid 14847) for the write-only alias at $B800-$BFFF; gate gmem is an inference: the alias reaches the same graphics RAM as $3800-$3FFF, so it shares their access window (data/memmap/intv-2609-ntsc-family-p1.literal.txt header, D-18)",
       "conflict": "C61",
       "resolving_evidence": "pending: a tier 1 to 3 address source, or a D10 decode probe on owner hardware",
       "revisit_trigger": "when a tier 1 to 3 source or a hardware probe gives the decode",
@@ -477,18 +477,18 @@
       "note": "Writes reach the GRAM backing; reads come from the cartridge span."
     },
     "memmap.region.stic_alias_wc": {
-      "value": {"view": "W", "lo": "$C000", "hi": "$C03F", "device": "stub", "size_words": 64, "gate": "none", "impl": "stub"},
-      "tag": "tier4-community",
-      "cite": "SRC-intv-wiki (Memory Map, oldid 14847) for the write-only alias at $C000-$C03F",
+      "value": {"view": "W", "lo": "$C000", "hi": "$C03F", "device": "stub", "size_words": 64, "gate": "stic-regs", "impl": "stub"},
+      "tag": "inference",
+      "cite": "SRC-intv-wiki (Memory Map, oldid 14847) for the write-only alias at $C000-$C03F; gate stic-regs is an inference: the alias reaches the same STIC registers as $0000-$003F, so it shares their access window (data/memmap/intv-2609-ntsc-family-p1.literal.txt header, D-18)",
       "conflict": "C61",
       "resolving_evidence": "pending: a tier 1 to 3 address source, or a D10 decode probe on owner hardware",
       "revisit_trigger": "when a tier 1 to 3 source or a hardware probe gives the decode",
       "decision": null
     },
     "memmap.region.gram_alias_wf": {
-      "value": {"view": "W", "lo": "$F800", "hi": "$FFFF", "device": "ram8", "size_words": 512, "gate": "none", "impl": "real"},
-      "tag": "tier4-community",
-      "cite": "SRC-intv-wiki (Memory Map, oldid 14847) for the write-only alias at $F800-$FFFF",
+      "value": {"view": "W", "lo": "$F800", "hi": "$FFFF", "device": "ram8", "size_words": 512, "gate": "gmem", "impl": "real"},
+      "tag": "inference",
+      "cite": "SRC-intv-wiki (Memory Map, oldid 14847) for the write-only alias at $F800-$FFFF; gate gmem is an inference: the alias reaches the same graphics RAM as $3800-$3FFF, so it shares their access window (data/memmap/intv-2609-ntsc-family-p1.literal.txt header, D-18)",
       "conflict": "C61",
       "resolving_evidence": "pending: a tier 1 to 3 address source, or a D10 decode probe on owner hardware",
       "revisit_trigger": "when a tier 1 to 3 source or a hardware probe gives the decode",

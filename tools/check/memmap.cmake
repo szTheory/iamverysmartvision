@@ -1,8 +1,11 @@
 # SPDX-License-Identifier: MIT
 # Literal memory-map checker (D-21; plan 03-05 static rules, plan 03-06 adds the dump comparison).
 # Inputs (passed with -D): ROOT (tree under test), FILELIST (repo-relative paths, one per line),
-# CHECK_DIR (the real tools/check). Reads only FILELIST paths under ROOT: data/profiles/*.json,
-# data/memmap/*, data/sources.json, data/tiers.json and data/discrepancies.json. Writes nothing.
+# CHECK_DIR (the real tools/check), GATE_DIR (the results dir, build/gate below). Reads only
+# FILELIST paths under ROOT (data/profiles/*.json, data/memmap/*, data/sources.json,
+# data/tiers.json, data/discrepancies.json) and, from GATE_DIR, NONCE and
+# <preset>/memmap-dump.txt for the presets dev and release. Writes nothing. It never builds or
+# runs code: suite memmap (tests/memmap/memmap_rows.c) produces the dumps during c-tests (H6).
 # Row grammar (documented in the header of every literal file):
 #   <R|W> <LO>-<HI> <device> w=<bits> impl=<real|stub|none> mirror=<words|-> gate=<name|->
 #   src=<SRC-id>@<locator> tag=<tag> [conf=C<n>]
@@ -25,12 +28,24 @@
 #   tier5-emulator-hint (emulator code is never a source)            memmap-literal-tier5
 #   tag not an id of data/tiers.json source_authority_tags            memmap-literal-unknown-tag
 #   conf id not an id of data/discrepancies.json                      memmap-literal-unknown-conf
+# Decode dump (D-21, plan 03-06), per preset dev and release:
+#   build/gate/<preset>/memmap-dump.txt absent                        memmap-dump-missing
+#   a `# memmap-dump nonce=<n> profile=<id>` header whose nonce is not
+#   build/gate/NONCE (or no header, or no NONCE)                      memmap-dump-stale
+#   for each profile whose literal has no finding, the dump lines under
+#   its header must equal the literal's structural projection (the
+#   first seven columns of every row, R rows then W rows by LO)
+#   exactly; a section of an unknown profile or a line before any
+#   header also differs                                               memmap-dump-diff
+#   A stale dump is not compared. The dev and release dumps are each compared with the literal,
+#   so a difference between them is caught without a rule of its own.
 # A row whose view and range parse takes part in the tiling check even when another column is
 # malformed, so one bad column reports one finding.
-# Stats: literal-rows=<rows over all literal files> views=<2 x profiles>.
+# Stats: literal-rows=<rows over all literal files> views=<2 x profiles>
+#   dump-lines=<dump lines read over both presets>.
 cmake_minimum_required(VERSION 3.25)
 
-foreach(required ROOT FILELIST CHECK_DIR)
+foreach(required ROOT FILELIST CHECK_DIR GATE_DIR)
   if(NOT DEFINED ${required} OR "${${required}}" STREQUAL "")
     message(FATAL_ERROR "memmap.cmake is missing ${required}")
   endif()
@@ -41,7 +56,7 @@ set(CAP 20)
 set(MTOKENS memmap-literal-missing memmap-literal-orphan memmap-literal-grammar
   memmap-literal-hole memmap-literal-overlap memmap-literal-no-cite
   memmap-literal-unknown-source memmap-literal-tier5 memmap-literal-unknown-tag
-  memmap-literal-unknown-conf)
+  memmap-literal-unknown-conf memmap-dump-missing memmap-dump-stale memmap-dump-diff)
 set(DEVICES stic scratchpad psg sysram exec grom gram cart undriven)
 set(GATES stic-regs gmem)
 set(TIER5 tier5-emulator-hint)
@@ -49,6 +64,7 @@ set(TIER5 tier5-emulator-hint)
 # Finding with a per-token cap; totals are reported at the end.
 function(mfail token detail)
   gate_incr("tok_${token}")
+  gate_incr(all_findings)
   gate_count(n "tok_${token}")
   if(n LESS_EQUAL ${CAP})
     gate_fail(${token} "${detail}")
@@ -153,7 +169,11 @@ endforeach()
 
 # One literal file: grammar, provenance, then tiling per view.
 set(n_rows 0)
+set(CLEAN_PROFILES "")
 foreach(rel IN LISTS LITERALS)
+  gate_count(findings_before all_findings)
+  string(REGEX REPLACE "^data/memmap/(.*)[.]literal[.]txt$" "\\1" lit_id "${rel}")
+  set(PROJ_${lit_id} "")
   file(READ "${ROOT}/${rel}" txt)
   gate_lines(lines "${txt}")
   set(lineno 0)
@@ -327,6 +347,10 @@ foreach(rel IN LISTS LITERALS)
         mfail(memmap-literal-no-cite "${at} source ${sid} has no locator in [A-Za-z0-9._,-]")
       endif()
     endif()
+    # Structural projection: the first seven columns.
+    list(SUBLIST toks 0 7 ptoks)
+    string(REPLACE ";" " " pline "${ptoks}")
+    list(APPEND PROJ_${lit_id} "${pline}")
   endforeach()
 
   # Tiling per view: sorted LO:HI pairs (four uppercase hex digits sort numerically).
@@ -360,6 +384,109 @@ foreach(rel IN LISTS LITERALS)
       mfail(memmap-literal-hole "${rel} ${view} ${g0}-FFFF")
     endif()
   endforeach()
+  gate_count(findings_after all_findings)
+  if(findings_after EQUAL findings_before)
+    # R sorts before W, and four uppercase hex digits sort numerically.
+    list(SORT PROJ_${lit_id})
+    list(APPEND CLEAN_PROFILES "${lit_id}")
+  endif()
+endforeach()
+
+# Decode dumps (plan 03-06): nonce-bound, one per preset, each compared with the literal.
+set(NONCE "")
+if(EXISTS "${GATE_DIR}/NONCE")
+  file(STRINGS "${GATE_DIR}/NONCE" nonce_lines LIMIT_COUNT 1)
+  if(nonce_lines)
+    list(GET nonce_lines 0 NONCE)
+    string(STRIP "${NONCE}" NONCE)
+  endif()
+endif()
+set(n_dump 0)
+foreach(preset dev release)
+  set(dump "${GATE_DIR}/${preset}/memmap-dump.txt")
+  set(drel "build/gate/${preset}/memmap-dump.txt")
+  if(NOT EXISTS "${dump}")
+    mfail(memmap-dump-missing "${preset} ${drel}")
+    continue()
+  endif()
+  file(READ "${dump}" dtxt)
+  gate_lines(dlines "${dtxt}")
+  set(sections "")
+  set(cur "")
+  set(stale "")
+  set(orphan "")
+  foreach(l IN LISTS dlines)
+    gate_unprotect(l "${l}")
+    if(l STREQUAL "")
+      continue()
+    endif()
+    if(l MATCHES "^# memmap-dump nonce=([^ ]*) profile=([a-z0-9-]+)$")
+      set(hn "${CMAKE_MATCH_1}")
+      set(cur "${CMAKE_MATCH_2}")
+      if(stale STREQUAL "" AND (NONCE STREQUAL "" OR NOT hn STREQUAL NONCE))
+        set(stale "nonce '${hn}' is not build/gate/NONCE ('${NONCE}')")
+      endif()
+      list(APPEND sections "${cur}")
+      set(GOT_${preset}_${cur} "")
+      continue()
+    endif()
+    if(l MATCHES "^#")
+      continue()
+    endif()
+    math(EXPR n_dump "${n_dump} + 1")
+    if(cur STREQUAL "")
+      if(orphan STREQUAL "")
+        set(orphan "${l}")
+      endif()
+    else()
+      list(APPEND GOT_${preset}_${cur} "${l}")
+    endif()
+  endforeach()
+  if(sections STREQUAL "" AND stale STREQUAL "")
+    set(stale "no '# memmap-dump nonce=' header")
+  endif()
+  if(NOT stale STREQUAL "")
+    mfail(memmap-dump-stale "${preset} ${drel}: ${stale}")
+    continue()
+  endif()
+  if(NOT orphan STREQUAL "")
+    mfail(memmap-dump-diff "${preset} line '${orphan}' before any profile header")
+  endif()
+  foreach(id IN LISTS sections)
+    if(NOT id IN_LIST PROFILES)
+      mfail(memmap-dump-diff "${preset} profile ${id} has no data/profiles/${id}.json")
+    endif()
+  endforeach()
+  foreach(id IN LISTS CLEAN_PROFILES)
+    if(NOT id IN_LIST sections)
+      mfail(memmap-dump-diff "${preset} no section for profile ${id}")
+      continue()
+    endif()
+    set(want ${PROJ_${id}})
+    set(got ${GOT_${preset}_${id}})
+    list(LENGTH want nw)
+    list(LENGTH got ng)
+    set(k 0)
+    set(first "")
+    while(first STREQUAL "" AND (k LESS nw OR k LESS ng))
+      set(wl "(none)")
+      set(gl "(none)")
+      if(k LESS nw)
+        list(GET want ${k} wl)
+      endif()
+      if(k LESS ng)
+        list(GET got ${k} gl)
+      endif()
+      if(NOT wl STREQUAL gl)
+        math(EXPR kn "${k} + 1")
+        set(first "dump line ${kn} of ${id} is '${gl}', literal has '${wl}'")
+      endif()
+      math(EXPR k "${k} + 1")
+    endwhile()
+    if(NOT first STREQUAL "")
+      mfail(memmap-dump-diff "${preset} ${first}")
+    endif()
+  endforeach()
 endforeach()
 
 # Exact totals for capped tokens.
@@ -374,4 +501,5 @@ list(LENGTH PROFILES n_prof)
 math(EXPR n_views "2 * ${n_prof}")
 gate_stat(literal-rows ${n_rows})
 gate_stat(views ${n_views})
+gate_stat(dump-lines ${n_dump})
 gate_finish(memmap)

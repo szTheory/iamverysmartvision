@@ -372,6 +372,25 @@ static const char *ivs_mm_phys_name(uint8_t phys)
   }
 }
 
+/* 1 when region idx is an alias: another region of the same profile (one that the profile's
+ * read or write table places at its lo) reaches the same physical device from a lower lo. The
+ * literal map's mirror column (plan 03-05 header) names the shared register file or backing on
+ * every alias, also when the alias is no larger than it. */
+static uint8_t ivs_mm_is_alias(uint32_t profile, uint8_t idx)
+{
+  const ivs_mm_region *r = &ivs_mm_regions[idx];
+  uint32_t j;
+  for (j = 0u; j < IVS_MM_REGION_COUNT; j++) {
+    const ivs_mm_region *o = &ivs_mm_regions[j];
+    uint32_t g = (uint32_t)o->lo >> 4u;
+    if (j != idx && o->phys == r->phys && o->lo < r->lo
+        && (ivs_mm_rd_region[profile][g] == j || ivs_mm_wr_region[profile][g] == j)) {
+      return 1u;
+    }
+  }
+  return 0u;
+}
+
 int ivs_memsys_describe(uint32_t profile, uint32_t view, uint16_t addr, ivs_memsys_desc *out)
 {
   ivs_memsys_desc d;
@@ -394,7 +413,7 @@ int ivs_memsys_describe(uint32_t profile, uint32_t view, uint16_t addr, ivs_mems
     d.device = r->device;
     d.impl = r->impl;
     d.gate = r->gate;
-    d.mirror_words = (extent > r->size_words) ? r->size_words : 0u;
+    d.mirror_words = (extent > r->size_words || ivs_mm_is_alias(profile, idx) != 0u) ? r->size_words : 0u;
   }
   d.phys_name = ivs_mm_phys_name(d.phys);
   *out = d;
