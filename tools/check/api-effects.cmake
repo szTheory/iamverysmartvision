@@ -31,8 +31,8 @@
 #   call with the same status, a precedence status without a row of that call or a row status
 #   absent from the call's precedence, an unparsable status define, an unparsable class define
 #   or pin line, a class name defined or pinned twice                   api-effects-format
-# Generic define pins (section 6, plan 04-08, D-04, D-05, D-16). DEFINE_CLASSES lists the pinned
-# classes (prefix, pin file, value form, excluded names). For each class, every object-like
+# Generic define pins (section 6, plan 04-08, D-04, D-05, D-16; input bits plan 04-13).
+# DEFINE_CLASSES lists the pinned classes (prefix, pin file, value form, excluded names). For each class, every object-like
 # `#define <PREFIX><NAME> <value>` of core/include/ivs/*.h (outside block and line comments;
 # function-like macros are ignored) must appear as `NAME VALUE` in the class pin file, and every
 # pin line must name such a define:
@@ -62,10 +62,14 @@ set(ATOKENS api-status-renumbered api-status-unpinned api-status-reserved api-ca
   api-define-unpinned api-define-renumbered api-define-orphan api-define-duplicate)
 # Pinned define classes: PREFIX|PIN FILE|VALUE FORM|EXCLUDED NAMES (comma separated). Value form
 # `uint`: an unsigned decimal (no leading zero) or 0x hex integer with an optional u/U suffix,
-# optionally in parentheses; the pin line holds the decimal value. Append-only pins (D-04).
+# optionally in parentheses; the pin line holds the decimal value. Value form `bit` (plan 04-13,
+# D-12, D-16): exactly `(1u << n)` (u or U, blanks optional), n a decimal bit index 0..31 without
+# a leading zero; the pin line holds n, so two names on one bit are api-define-duplicate.
+# Append-only pins (D-04).
 set(DEFINE_CLASSES
   "IVS_STOP_|data/expected/api-stop-reasons.ids|uint|"
-  "IVS_REASON_|data/expected/api-reasons.ids|uint|")
+  "IVS_REASON_|data/expected/api-reasons.ids|uint|"
+  "IVS_CTRL_|data/expected/input-bits.ids|bit|IVS_CTRL_RESERVED_MASK")
 set(STATUS_H "core/include/ivs/ivs_status.h")
 set(PIN "data/expected/api-statuses.ids")
 set(TABLE "data/api/api-effects.json")
@@ -500,7 +504,7 @@ foreach(row IN LISTS DEFINE_CLASSES)
   list(GET f 2 form)
   list(GET f 3 excl)
   string(REPLACE "," ";" excl "${excl}")
-  if(NOT form STREQUAL "uint")
+  if(NOT form STREQUAL "uint" AND NOT form STREQUAL "bit")
     afail(api-effects-format "define class ${pfx}: unknown value form '${form}'")
     continue()
   endif()
@@ -519,13 +523,25 @@ foreach(row IN LISTS DEFINE_CLASSES)
     if(NOT head STREQUAL "${pfx}" OR nm IN_LIST excl OR rest MATCHES "^[(]")
       continue()
     endif()
-    # An optional pair of parentheses around the integer, then the integer itself.
-    string(REGEX REPLACE "^[ \t]+[(][ \t]*([^()]*[^() \t])[ \t]*[)][ \t]*$" " \\1" val "${rest}")
-    if(NOT val MATCHES "^[ \t]+(0[xX][0-9A-Fa-f]+|0|[1-9][0-9]*)[uU]?[ \t]*$")
-      afail(api-effects-format "${hdr}: unparsable ${pfx} define: ${nm}${rest}")
-      continue()
+    if(form STREQUAL "bit")
+      # `(1u << n)`: the value is the bit index n (0..31).
+      set(v "")
+      if(rest MATCHES "^[ \t]+[(][ \t]*1[uU][ \t]*<<[ \t]*(0|[1-9][0-9]?)[ \t]*[)][ \t]*$")
+        set(v "${CMAKE_MATCH_1}")
+      endif()
+      if(v STREQUAL "" OR v GREATER 31)
+        afail(api-effects-format "${hdr}: unparsable ${pfx} define (want (1u << n), n 0..31): ${nm}${rest}")
+        continue()
+      endif()
+    else()
+      # An optional pair of parentheses around the integer, then the integer itself.
+      string(REGEX REPLACE "^[ \t]+[(][ \t]*([^()]*[^() \t])[ \t]*[)][ \t]*$" " \\1" val "${rest}")
+      if(NOT val MATCHES "^[ \t]+(0[xX][0-9A-Fa-f]+|0|[1-9][0-9]*)[uU]?[ \t]*$")
+        afail(api-effects-format "${hdr}: unparsable ${pfx} define: ${nm}${rest}")
+        continue()
+      endif()
+      math(EXPR v "${CMAKE_MATCH_1}")
     endif()
-    math(EXPR v "${CMAKE_MATCH_1}")
     if(nm IN_LIST dh)
       afail(api-effects-format "${nm} is defined twice (${DH_HDR_${nm}} and ${hdr})")
       continue()

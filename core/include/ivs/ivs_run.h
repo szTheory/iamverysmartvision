@@ -144,6 +144,45 @@ IVS_API ivs_status ivs_machine_peek(const ivs_machine *m, uint16_t addr, uint32_
 #define IVS_INPUT_EVENTS_MAX 65536u     /* largest event_count */
 #define IVS_INPUT_INDEX_NONE 0xFFFFFFFFu /* input_failing_index of a report that names no event */
 
+/* Control-surface bits of one controller word (D-12, D-16, plan 04-13): each name is one closed
+ * switch, as LOGICAL state; the word is indexed by PSG port, and the electrical byte a guest reads
+ * is a derived Phase 5 observation, not this bit layout. Keypad bits 0..11; disc positions bits
+ * 12..27, sixteen 22.5-degree steps clockwise from north; side codes bits 28..30, where
+ * IVS_CTRL_SIDE_TOP is the two top side buttons as ONE code (a host maps either to it; C15);
+ * bit 31 is IVS_CTRL_RESERVED_MASK. Several bits may be set at once. The bit indices are pinned
+ * by data/expected/input-bits.ids (append-only): a moved bit would change every recorded input. */
+#define IVS_CTRL_KEY_1 (1u << 0)
+#define IVS_CTRL_KEY_2 (1u << 1)
+#define IVS_CTRL_KEY_3 (1u << 2)
+#define IVS_CTRL_KEY_4 (1u << 3)
+#define IVS_CTRL_KEY_5 (1u << 4)
+#define IVS_CTRL_KEY_6 (1u << 5)
+#define IVS_CTRL_KEY_7 (1u << 6)
+#define IVS_CTRL_KEY_8 (1u << 7)
+#define IVS_CTRL_KEY_9 (1u << 8)
+#define IVS_CTRL_KEY_CLEAR (1u << 9)
+#define IVS_CTRL_KEY_0 (1u << 10)
+#define IVS_CTRL_KEY_ENTER (1u << 11)
+#define IVS_CTRL_DISC_N (1u << 12)
+#define IVS_CTRL_DISC_NNE (1u << 13)
+#define IVS_CTRL_DISC_NE (1u << 14)
+#define IVS_CTRL_DISC_ENE (1u << 15)
+#define IVS_CTRL_DISC_E (1u << 16)
+#define IVS_CTRL_DISC_ESE (1u << 17)
+#define IVS_CTRL_DISC_SE (1u << 18)
+#define IVS_CTRL_DISC_SSE (1u << 19)
+#define IVS_CTRL_DISC_S (1u << 20)
+#define IVS_CTRL_DISC_SSW (1u << 21)
+#define IVS_CTRL_DISC_SW (1u << 22)
+#define IVS_CTRL_DISC_WSW (1u << 23)
+#define IVS_CTRL_DISC_W (1u << 24)
+#define IVS_CTRL_DISC_WNW (1u << 25)
+#define IVS_CTRL_DISC_NW (1u << 26)
+#define IVS_CTRL_DISC_NNW (1u << 27)
+#define IVS_CTRL_SIDE_TOP (1u << 28)
+#define IVS_CTRL_SIDE_LOWER_LEFT (1u << 29)
+#define IVS_CTRL_SIDE_LOWER_RIGHT (1u << 30)
+
 /* One input event: 32 bytes, a fixed v1 record (no struct_size; growth is a new request field).
  * controller[i] is the full logical state of the controller on PSG port i from at_tick on
  * (IVS_INPUT_CONTROLLER_WORDS words). */
