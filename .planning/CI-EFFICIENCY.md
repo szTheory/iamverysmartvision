@@ -317,3 +317,91 @@ isolation (plan 03-12) still to come. Projection for the phase end: suite `machi
   faults and `c-faults` at 2 to 3 s; if a trigger fires, the next lever the step split points
   at is the owning-TU rebuild per fault (the lanes are already applied). The refusal oracle
   (whole-storage memcmp plus composite digest per row) is not a lever: it is the D-12 evidence.
+
+## 2026-11-11 — D-38/A-07 re-baseline: hosted gate budget 30 s -> 40 s; revisit trigger 40 s -> 50 s (plan 03-14, phase-end measurement 3)
+
+Owner-delegated decision D-38, sharpened by A-07: the Phase 3 gate keeps every check and
+token, and its hosted budget moves from the D-22 30 s to 40 s, with the revisit trigger moved
+from 40 s to 50 s. The earlier sections stay as written; this section supersedes their budget
+lines from today on.
+
+### Gate shape at the phase end
+
+- `steps=26/26` (planning baseline 24 at phase start; new steps `memmap` and `api-effects`).
+- Faults 115 (plan text: 113; plan 03-11 added `REPORT_INSIDE_UNCHECKED` and plan 03-12 added
+  `OUT_OVERLAP_UNCHECKED`, one each beyond the plan text): cpu 67, machine 25, memmap 11,
+  sha256 6, ivsc 6.
+- Controls 224 (plan text: 221; plan 03-05 added two literal-rule controls beyond its plan
+  text, `memmap-literal-unknown-tag` and `memmap-literal-orphan`, and plan 03-13 added the
+  ninth api token, `api-effects-format`).
+- Tests 2094 executed of 2094 expected (1047 ids in two presets), `tests-missing=0`.
+
+### Phase-end local measurement (`sh tools/gate.sh`, three runs)
+
+Owner laptop, macOS arm64, AppleClang, warm build trees (so `c-build` is 0 to 2). The host was
+loaded throughout (26 sessions); the load spiked during runs 2 and 3. Every figure is
+load-contaminated and none is a hosted number.
+
+| Run | Load at start | `gate-time total=` | c-build | c-faults | faults-verdict | c-tests | hygiene-history | cp1610-vectors | controls | controls-wait |
+|-----|---------------|--------------------|---------|----------|----------------|---------|-----------------|----------------|----------|---------------|
+| 1 | 9.87 | 30 | 1 | 3 | 4 | 3 | 6 | 4 | 13 | 0 |
+| 2 | 17.68 | 36 | 1 | 4 | 6 | 3 | 6 | 5 | 17 | 0 |
+| 3 | 17.38 | 38 | 1 | 4 | 7 | 3 | 6 | 4 | 17 | 0 |
+
+Median 36 s. All three: `gate: PASS steps=26/26 controls=224/224 ... faults=115/115 ...
+tests-expected=2094 tests-executed=2094 tests-skipped=0 tests-missing=0`.
+
+The same session also ran three gates at lower load (load 6.8 to 8.8): 25 s (sh, before the
+plan's record edit), 26 s (sh) and 27 s (dash). With those, the six runs give a median of
+28.5 s; the spread tracks the host load, not the gate.
+
+Five largest steps (run 1, the lowest-load run of the three): `controls` 13 (overlapped,
+`controls-wait` 0), `hygiene-history` 6, `faults-verdict` 4, `cp1610-vectors` 4, `c-tests` 3
+(tied with `c-faults` 3).
+
+| Point | Plan | Faults | Controls | Steps | Local median s | Load |
+|-------|------|--------|----------|-------|----------------|------|
+| planning baseline | before phase 3 | 67 | 192 | 24 | 29 | not recorded |
+| measurement 1 (after the lane lever) | 03-02 | 73 | 196 | 24 | 20 | 8.9 to 10.6 |
+| measurement 2 | 03-11 | 110 | 215 | 25 | 23 | 8.4 to 8.7 |
+| measurement 3 (phase end) | 03-14 | 115 | 224 | 26 | 36 (28.5 over six runs) | 9.9 to 17.7 |
+
+### Hosted figures of the phase so far (read by the orchestrator; agents never call `gh`)
+
+| After plan | Hosted `gate-time total=` s | Note |
+|------------|-----------------------------|------|
+| 03-02 | 36 | first hosted run of the phase |
+| 03-04 | 44 | cold gcc `c-build` 26 s (Phase 2 hosted cold build: 18 s) |
+| 03-06 | 30 | |
+| 03-10 | 33 | |
+
+Local warm gates across the phase took 20 to 30 s at load 7 to 16. One hosted run of four
+(03-04, 44 s) was above the new 40 s budget and below the 50 s trigger; its excess was the
+cold gcc C build, and the two later hosted runs were 30 and 33 s.
+
+### Levers
+
+Applied during the phase:
+1. Fault lanes: `c-faults` runs the fault executables in at most 4 lanes (plan 03-02). The
+   controls already overlap the steps (Phase 2, plan 02-18).
+
+Remaining, in order, each only when a hosted run is above 40 s and its `step-time` lines point
+at the step it shortens:
+1. Owning-TU rebuild per fault: rebuild only the translation unit that holds a fault site,
+   when `c-faults` dominates on the hosted tree.
+2. Background C build at the top of `gate.sh`, overlapping the cold `c-build` with the steps
+   that do not read the build tree (`hygiene`, `hygiene-history`, `denylist`, `discrepancies`,
+   `text` and the other record steps), when the cold hosted `c-build` dominates as on the
+   03-04 run.
+3. Watch item: `hygiene-history` costs 4 to 6 s locally with 1,157 tracked files (one
+   throwaway commit of every tracked file). It is the largest serial non-C step; a lever
+   for it would keep its git code path and its control.
+
+Not used: ccache and `actions/cache` (policy), dropping or merging checks, controls or tokens.
+The refusal oracle (whole-storage memcmp and composite digest per row) is D-12 evidence, not a
+lever.
+
+### Open item
+
+- Hosted gate time after Phase 3 is measured by the orchestrator on the phase PR's CI; if
+  above 40 s, apply the remaining levers; if above 50 s, revisit the budget.
