@@ -9,3 +9,6 @@ memmap-literal-unknown-source
 memmap-literal-tier5
 memmap-literal-unknown-tag
 memmap-literal-unknown-conf
+memmap-dump-diff
+memmap-dump-stale
+memmap-dump-missing
