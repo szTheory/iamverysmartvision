@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 /* Suite runner: the interface between runner_main.c, which owns the suite and the outcome
  * family, and the family files runner_parse.c (runner.parse.*, plan 04-17) and runner_fuzz.c
- * (runner.fuzz.*, plan 04-17). Each family exposes its cases by index. Test code only. */
+ * (runner.fuzz.*, plan 04-17) and runner_exec.c (runner.exec.*, plan 04-18). Each family exposes its cases by index. Test code only. */
 #ifndef RUNNER_CASES_H
 #define RUNNER_CASES_H
 
@@ -31,5 +31,10 @@ int runner_parse_base(size_t i, const char **text, size_t *len);
 size_t runner_fuzz_count(void);
 const char *runner_fuzz_id(size_t i);
 int runner_fuzz_run(size_t i);
+
+/* Family exec (runner_exec.c, plan 04-18): the executor and report writer with a fake host. */
+size_t runner_exec_count(void);
+const char *runner_exec_id(size_t i);
+int runner_exec_run(size_t i);
 
 #endif

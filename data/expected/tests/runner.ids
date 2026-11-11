@@ -113,3 +113,6 @@ runner.fuzz.seed-06
 runner.fuzz.seed-07
 runner.fuzz.seed-08
 runner.fuzz.reasons-covered
+# Plan 04-18 (D-17..D-20, D-22, D-30): the scenario executor and the report writer through a fake
+# host vtable (images from the build-tree include).
+runner.exec.diag-pass

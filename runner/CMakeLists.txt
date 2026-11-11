@@ -8,7 +8,9 @@
 # The repo-relative list is written to the build tree like ivs-core-sources.txt.
 
 set(IVS_RUNNER_SOURCES
+  exec.c
   outcome.c
+  report.c
   scenario.c
 )
 

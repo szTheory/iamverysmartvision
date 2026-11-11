@@ -250,4 +250,158 @@ int ivs_scenario_error_format(const ivs_scenario_error *err, char *buf, size_t c
 uint32_t ivs_scenario_input_name_count(void);
 const char *ivs_scenario_input_name(uint32_t i, uint32_t *mask);
 
+/* ---- executor and report (D-17, D-19, D-20, D-22, D-30, plan 04-18) ----
+ * ivs_runner_execute runs one parsed scenario on one fresh instance it creates in the host's
+ * storage buffer (aligned by hand; the library allocates nothing and has no globals), through
+ * the public API only: create, load each role in the order exec, grom, cart, reset, then one
+ * ivs_machine_run per run-to (always with IVS_RUN_F_STOP_ON_HALT, so a halt is observed as a
+ * stop), evaluating the asserts of a step through ivs_machine_cpu_state, ivs_machine_peek and
+ * ivs_machine_state_digest at that step's stop. Execution ends at the first step with a failed
+ * stop expectation or assert. It then writes the report through host->write_report and
+ * returns the outcome (an IVS_RUNNER_OUTCOME_* value).
+ * Content: `boot-stub` reads the reserved file boot-stub.exec under the content dir (the label
+ * comes from the symbolic name only, never from the bytes or a hash table, D-30); `zero-grom`
+ * is 2048 zero bytes made in the runner; a relpath goes to host->read_file; `user` goes to
+ * host->read_user (missing-fixture when that is NULL or has no operator image).
+ * Units: cpu-cycles and frames bounds and at_cycle input times are converted with the
+ * timebase of ivs_info (n * ticks_per_cpu_cycle, n * nominal_frame_ticks; frames are nominal,
+ * not frame events, D-09); a converted value above IVS_RUN_TARGET_MAX is harness-fail.
+ * Report numbering: steps and asserts are numbered from 1 in scenario order; an assert keeps
+ * its scenario-wide number (step.<k>.assert.<j>, outcome detail assert=<j>). */
+
+/* Bounds of a role's read (the core's own bounds, ivs/ivs_machine.h); the read buffer holds
+ * cap + 1 bytes so an oversized file reaches the core's own OVERSIZED refusal. */
+#define IVS_RUNNER_CAP_EXEC 8192u
+#define IVS_RUNNER_CAP_GROM 2048u
+#define IVS_RUNNER_CAP_CART 131256u
+#define IVS_RUNNER_STORAGE_MAX (64u * 1024u * 1024u) /* D-22: storage cap */
+#define IVS_RUNNER_BUFFERS_MAX (8u * 1024u * 1024u)  /* D-22: output buffer cap */
+#define IVS_RUNNER_BOOT_STUB_FILE "boot-stub.exec"   /* reserved name under the content dir */
+
+/* Host read results. MISSING and NOT_REGULAR are missing-fixture; TOO_LARGE means the file has
+ * more than cap bytes (the host returns the first cap + 1 in buf, which the executor hands to
+ * the core for its OVERSIZED refusal); IO_ERROR (and any other value) is harness-fail. */
+#define IVS_RUNNER_READ_OK 0
+#define IVS_RUNNER_READ_MISSING 1
+#define IVS_RUNNER_READ_NOT_REGULAR 2
+#define IVS_RUNNER_READ_TOO_LARGE 3
+#define IVS_RUNNER_READ_IO_ERROR 4
+
+/* Host services (D-17, D-21, D-22). read_file reads relpath (already validated by the parser,
+ * resolved by the host under its content dir only) into buf, at most cap + 1 bytes, and sets
+ * *len. read_user (may be NULL) reads the operator's image for a `user` role (role is
+ * IVS_SCN_ROLE_*). cancel_requested (may be NULL) returns nonzero once cancellation was asked
+ * for; now_ms (may be NULL) is the host's monotonic clock (used from plan 04-19 on).
+ * write_report receives the report one line at a time (LF included) and returns 0, or nonzero
+ * on a write error. storage: storage_bytes bytes the executor owns during the call (instance,
+ * aligned by hand, then the read buffer); at most IVS_RUNNER_STORAGE_MAX of it is used.
+ * buffers: buffer_bytes for video and audio output (may be NULL/0 while the profile's output
+ * layout is NONE); at most IVS_RUNNER_BUFFERS_MAX is used. */
+typedef struct ivs_runner_host {
+  void *ctx;
+  int (*read_file)(void *ctx, const char *relpath, size_t cap, uint8_t *buf, size_t *len);
+  int (*read_user)(void *ctx, uint32_t role, size_t cap, uint8_t *buf, size_t *len);
+  uint64_t (*now_ms)(void *ctx);
+  int (*cancel_requested)(void *ctx);
+  int (*write_report)(void *ctx, const char *bytes, size_t len);
+  void *storage;
+  size_t storage_bytes;
+  uint8_t *buffers;
+  size_t buffer_bytes;
+} ivs_runner_host;
+
+/* Executor options (may be NULL); reserved for plan 04-19 (slices, budget, wall cap). */
+typedef struct ivs_runner_options {
+  uint32_t flags;    /* must be 0 */
+  uint32_t reserved; /* must be 0 */
+} ivs_runner_options;
+
+/* What a call returned, besides the outcome. host_calls counts read_file, read_user, now_ms and
+ * cancel_requested calls (the one host-dependent report key); report_lines counts the lines
+ * before report.end; report_write_failed is 1 when write_report failed (the outcome is then
+ * harness-fail whatever the report's outcome line says). */
+typedef struct ivs_runner_result {
+  uint32_t outcome;
+  uint32_t exit_code;
+  uint64_t host_calls;
+  uint64_t report_lines;
+  uint32_t report_write_failed;
+  uint32_t reserved;
+} ivs_runner_result;
+
+/* Runs scn (a successful ivs_scenario_parse result) and writes its report. Returns the outcome
+ * (also in *result when result is not NULL); NULL scn or host, a NULL write_report or read_file,
+ * or nonzero options are harness-fail without a report. */
+uint32_t ivs_runner_execute(const ivs_scenario *scn, const ivs_runner_host *host, const ivs_runner_options *opts,
+                            ivs_runner_result *result);
+
+/* Stop classification (D-04, D-20), a pure function of the core's stop reason and the
+ * scenario's expected stop (IVS_SCN_STOP_*). Returns 0 when they match (TARGET with target,
+ * CPU_HALTED with halted, GUEST_FAULT with faulted); IVS_RUNNER_OBS_TIMEOUT_BUDGET when the
+ * bound was reached (TARGET) while halted or faulted was expected; IVS_RUNNER_OBS_HARNESS_FAIL for
+ * IVS_STOP_INTERNAL, a value that is not a stop reason or an unknown expectation;
+ * IVS_RUNNER_OBS_GUEST_FAIL for any other pair (the guest halted or faulted unexpectedly). */
+uint32_t ivs_runner_stop_observation(uint32_t stop_reason, uint32_t expected_stop);
+
+/* ---- report record: library-internal, filled by exec.c, written by report.c ---- */
+#define IVS_RUNNER_DETAIL_MAX 320u
+#define IVS_RUNNER_GOT_MAX 80u
+#define IVS_RUNNER_ASSERT_NOT_RUN 0u
+#define IVS_RUNNER_ASSERT_PASS 1u
+#define IVS_RUNNER_ASSERT_FAIL 2u
+
+typedef struct ivs_runner_slot_record {
+  uint32_t attempted; /* a load call was made */
+  int32_t status;     /* its status */
+  uint32_t reason;    /* its load report reason */
+  uint32_t loaded;
+  uint32_t length_bytes;
+  uint8_t sha256[32];
+} ivs_runner_slot_record;
+
+typedef struct ivs_runner_step_record {
+  uint32_t converted; /* target_ticks is known */
+  uint32_t ran;       /* the run call returned IVS_OK */
+  uint64_t target_ticks;
+  uint64_t now_ticks;
+  uint64_t overshoot_ticks;
+  uint32_t stop_reason;
+  uint32_t reserved;
+} ivs_runner_step_record;
+
+typedef struct ivs_runner_assert_record {
+  uint32_t state;                  /* IVS_RUNNER_ASSERT_* */
+  char got[IVS_RUNNER_GOT_MAX];    /* actual value as printed, NUL-terminated */
+} ivs_runner_assert_record;
+
+typedef struct ivs_runner_record {
+  const ivs_scenario *scn;
+  uint32_t outcome;
+  uint32_t have_machine; /* cpu and digest fields are valid */
+  char detail[IVS_RUNNER_DETAIL_MAX];
+  ivs_runner_slot_record slot[IVS_SCN_ROLES];
+  ivs_runner_step_record step[IVS_SCN_MAX_STEPS];
+  ivs_runner_assert_record assert_rec[IVS_SCN_MAX_ASSERTS];
+  uint32_t cpu_run_state;
+  uint32_t cpu_fault_reason;
+  uint8_t digest[8][32]; /* cpu, mem, images, instance, composite, video, audio, input */
+  uint32_t have_input;   /* a run call returned IVS_OK: controller words are valid */
+  uint32_t input_consumed;
+  uint32_t controller[4];
+  uint64_t video_bytes;
+  uint64_t audio_bytes;
+  uint64_t host_calls;
+} ivs_runner_record;
+
+/* Writes the report of rec through host->write_report, every key of the closed key table in
+ * its fixed order: `ivsr 1` first, `report.end <n>` last (n = lines before it). Returns 0, or
+ * -1 on a write error; *lines gets the count of lines before report.end. */
+int ivs_runner_report_write(const ivs_runner_record *rec, const ivs_runner_host *host, uint64_t *lines);
+
+/* Report tokens: the stop reason (target, halted, faulted, internal, unknown), an expected stop
+ * (target, halted, faulted, unknown) and a digest domain (cpu, ..., or unknown). */
+const char *ivs_runner_stop_token(uint32_t stop_reason);
+const char *ivs_runner_expected_stop_token(uint32_t expected_stop);
+const char *ivs_runner_domain_token(uint32_t domain);
+
 #endif
