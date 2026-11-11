@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 /* Suite runner: the interface between runner_main.c, which owns the suite and the outcome
  * family, and the family files runner_parse.c (runner.parse.*, plan 04-17) and runner_fuzz.c
- * (runner.fuzz.*, plan 04-17). Each family exposes its case table by index. Test code only. */
+ * (runner.fuzz.*, plan 04-17). Each family exposes its cases by index. Test code only. */
 #ifndef RUNNER_CASES_H
 #define RUNNER_CASES_H
 
@@ -18,10 +18,18 @@
     }                                                                                                  \
   } while (0)
 
-size_t runner_parse_case_count(void);
-const ivs_test_case *runner_parse_case(size_t i);
+/* Family parse (runner_parse.c): case count, id and run by index (id NULL past the end). */
+size_t runner_parse_count(void);
+const char *runner_parse_id(size_t i);
+int runner_parse_run(size_t i);
 
-size_t runner_fuzz_case_count(void);
-const ivs_test_case *runner_fuzz_case(size_t i);
+/* Accepted scenario texts of runner_parse.c, the mutation bases of the fuzz family: 0 when i is
+ * past the last base. */
+int runner_parse_base(size_t i, const char **text, size_t *len);
+
+/* Family fuzz (runner_fuzz.c). */
+size_t runner_fuzz_count(void);
+const char *runner_fuzz_id(size_t i);
+int runner_fuzz_run(size_t i);
 
 #endif

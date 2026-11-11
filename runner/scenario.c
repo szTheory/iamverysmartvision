@@ -784,7 +784,7 @@ int ivs_scenario_parse(const uint8_t *bytes, size_t len, ivs_scenario *out, ivs_
   size_t pos = 0u;
   uint32_t line = 0u;
   uint32_t have_header = 0u;
-  if (out == NULL || err == NULL) {
+  if (out == NULL || err == NULL || (bytes == NULL && len != 0u)) {
     return -1;
   }
   memset(out, 0, sizeof *out);
@@ -792,9 +792,6 @@ int ivs_scenario_parse(const uint8_t *bytes, size_t len, ivs_scenario *out, ivs_
   err->reason = IVS_SCN_R_NONE;
   if (len > IVS_SCN_MAX_BYTES) {
     return scn_refuse(out, err, 0u, IVS_SCN_R_FILE_TOO_LARGE);
-  }
-  if (bytes == NULL && len != 0u) {
-    return -1;
   }
   while (pos < len) {
     size_t start = pos;

@@ -233,9 +233,9 @@ typedef struct ivs_scenario_error {
   uint32_t reason; /* IVS_SCN_R_*; IVS_SCN_R_NONE after a successful parse */
 } ivs_scenario_error;
 
-/* Parses len bytes (bytes may be NULL only when len is 0). Returns 0 and fills *out on success;
- * returns the nonzero reason, fills *err and leaves *out all zero on refusal; returns -1 without
- * touching anything when out or err is NULL. The first failing check in file order wins. */
+/* Parses len bytes. Returns 0 and fills *out on success; returns the nonzero reason, fills *err
+ * and leaves *out all zero on refusal; returns -1 without touching anything when out or err is
+ * NULL, or bytes is NULL with a nonzero len. The first failing check in file order wins. */
 int ivs_scenario_parse(const uint8_t *bytes, size_t len, ivs_scenario *out, ivs_scenario_error *err);
 
 /* Report token of a reason ("file-too-large", ...), or "unknown" for a value that is not one. */
