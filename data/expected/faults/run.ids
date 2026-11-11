@@ -7,3 +7,18 @@ PEEK_ADVANCES_TIME run.observe.no-side-effect-powered run.observe.|run.peek.|run
 # PEEK_GATE_IGNORED: peek reads the backing word as if every gate were open; only the closed-gate
 # case sees GROM and GRAM data behind gate gmem.
 PEEK_GATE_IGNORED run.peek.gated run.peek.gated run.peek.loaded-words
+# Run-bound faults (plan 04-07, D-07), one site each in core/src/machine/machine_bound.c (the run
+# loop must neither run past its target range, stop short of the target nor step a faulted CPU).
+# RUN_TARGET_UNCHECKED: the OUT_OF_RANGE stage is skipped; the refusal case tries the targets on a
+# FAULTED CPU first, so the run ends at once with IVS_OK (never a run toward 2^64).
+RUN_TARGET_UNCHECKED run.refuse.target-above-2-63 run.refuse.target-above-2-63 run.stop-name.known
+# RUN_STOP_BEFORE_OVERSHOOT: a unit that would end past the target is taken back (CPU and time),
+# so the run stops at the last boundary below the target. Collateral by the same rule: every case
+# whose target lies inside a unit (overshoot window, run(now + 1), the idle target h + 41, and the
+# positive controls of report-inside-instance and tail-nonzero that expect now >= 1000).
+RUN_STOP_BEFORE_OVERSHOOT run.target.ends-at-first-boundary-ge-target run.target.|run.overshoot.|run.single-step.|run.stop.halt-no-flag|run.refuse.report-inside-instance|run.refuse.tail-nonzero run.stop-name.known
+# RUN_FAULT_STEPS: a FAULTED CPU is stepped (a zero-progress unit, counted) and the stop order
+# tests the target before the fault, so a fault on the target boundary reports TARGET and later
+# calls execute a unit. Collateral: every guest-fault stop case and the 2^63 boundary on a
+# faulted CPU (an extra unit).
+RUN_FAULT_STEPS run.stop.fault-sticky run.stop.|run.target.max-accepted run.cpu-state.off

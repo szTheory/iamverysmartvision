@@ -30,7 +30,9 @@
  * the loop always terminates. The stop reason is then a pure function of the exit state: INTERNAL,
  * GUEST_FAULT, CPU_HALTED (flag), TARGET. The report is filled last; overshoot is derived. Nothing
  * outlives the call (no budget, deficit or pointer): slicing invariance holds by construction.
- * The file holds no static or global state. */
+ * The file holds no static or global state.
+ * Named faults (plan 04-07, D-07): RUN_TARGET_UNCHECKED, RUN_STOP_BEFORE_OVERSHOOT,
+ * RUN_FAULT_STEPS. */
 #include "common/ivs_prelude.h"
 
 #include "ivs/ivs.h"
@@ -120,10 +122,12 @@ static ivs_status ivs_bound_validate(const ivs_machine *m, const ivs_run_request
     return IVS_E_BAD_STATE;
   }
   /* 6. OUT_OF_RANGE: the target. */
+#ifndef IVS_FAULT_RUN_TARGET_UNCHECKED /* named fault RUN_TARGET_UNCHECKED: the stage is skipped */
   if (req->target_ticks > IVS_RUN_TARGET_MAX) {
     *reason = IVS_REASON_RUN_TARGET_RANGE;
     return IVS_E_OUT_OF_RANGE;
   }
+#endif
   plan->target = req->target_ticks;
   plan->flags = req->flags;
   return IVS_OK;
@@ -132,6 +136,11 @@ static ivs_status ivs_bound_validate(const ivs_machine *m, const ivs_run_request
 /* The stop reason of an exit state (pure: fault, then halt with the flag, then target). */
 static uint32_t ivs_bound_stop(const struct ivs_machine *im, uint32_t flags, uint64_t target)
 {
+#ifdef IVS_FAULT_RUN_FAULT_STEPS /* and the stop order tests the target first */
+  if (im->time_ticks >= target) {
+    return IVS_STOP_TARGET; /* the target is checked before the guest state */
+  }
+#endif
   if (im->cpu.run_state == IVS_CP1610_RS_FAULTED) {
     return IVS_STOP_GUEST_FAULT;
   }
@@ -167,9 +176,16 @@ ivs_status ivs_machine_run(ivs_machine *m, const ivs_run_request *req, ivs_run_r
   while (im->time_ticks < plan.target) {
     ivs_cp1610_result unit;
     uint64_t before = im->time_ticks;
+#ifdef IVS_FAULT_RUN_STOP_BEFORE_OVERSHOOT
+    /* Named fault RUN_STOP_BEFORE_OVERSHOOT: a unit that would end past the target is taken back
+     * (CPU and time; its memory writes stay), so the run stops at the last boundary below it. */
+    ivs_cp1610 cpu_before = im->cpu;
+#endif
+#ifndef IVS_FAULT_RUN_FAULT_STEPS /* named fault RUN_FAULT_STEPS: a faulted CPU is stepped */
     if (im->cpu.run_state == IVS_CP1610_RS_FAULTED) {
       break; /* a faulted CPU is never stepped */
     }
+#endif
     if ((plan.flags & IVS_RUN_F_STOP_ON_HALT) != 0u && im->cpu.run_state == IVS_CP1610_RS_HALTED) {
       break;
     }
@@ -178,6 +194,13 @@ ivs_status ivs_machine_run(ivs_machine *m, const ivs_run_request *req, ivs_run_r
       internal = 1u; /* the seam refused: nothing changed, the state is the last whole boundary */
       break;
     }
+#ifdef IVS_FAULT_RUN_STOP_BEFORE_OVERSHOOT
+    if (im->time_ticks > plan.target) {
+      im->cpu = cpu_before;
+      im->time_ticks = before;
+      break;
+    }
+#endif
     units++;
     if (im->time_ticks == before) {
       /* No progress: never loop on it. A FAULTED CPU (a zero-cycle fault unit) is a guest stop. */
