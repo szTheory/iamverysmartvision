@@ -2,17 +2,17 @@
 gsd_state_version: "1.0"
 current_phase: 2
 current_phase_name: CP-1610 CPU Core
-status: executing
-stopped_at: Completed 02-17-PLAN.md
-last_updated: "2026-11-11T01:18:20.498Z"
+status: verifying
+stopped_at: Completed 02-18-PLAN.md
+last_updated: "2026-11-11T01:44:25.675Z"
 last_activity: 2026-11-10
 last_activity_desc: Phase 2 execution started
-state_head: d4a1f51a408225221131557af568f0d317f8a999
+state_head: 64a7730b165244a29668e8831573e7a46e2f3f26
 progress:
   total_phases: 8
   completed_phases: 1
   total_plans: 32
-  completed_plans: 31
+  completed_plans: 32
   percent: 13
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 
 Phase: 2 (CP-1610 CPU Core) — EXECUTING
 Plan: 18 of 18
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-11-10 — Phase 2 execution started
 
 Progress: [█░░░░░░░░░] 13%
@@ -83,6 +83,7 @@ Progress: [█░░░░░░░░░] 13%
 | Phase 02 P15 | 15min | 3 tasks | 14 files |
 | Phase 02 P16 | 15min | 3 tasks | 39 files |
 | Phase 02 P17 | 7min | 3 tasks | 6 files |
+| Phase 02 P18 | 15min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -160,6 +161,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 02]: 02-16: blinded vector copies use opaque v-indices and opaque policy tokens p01..p19 (sha256 order); the gate projects all 12 files every run with a leak scan; the last HANDOFF line for a stem is authoritative
 - [Phase 02]: 02-17: all 30 second-reader disagreements resolved for the committed value from the page (pdf 23/30 ADAR labels, pdf 33 TCI order, pdf 48 increment order, pdf 58 SDBD pair total kept under open C34); no vector or core change; second-read=12/12
 - [Phase 02]: 02-17: reader protocol and p07 policy statement completed where their wording caused disagreements (bus kind meanings, per-unit record order, increment before operation)
+- [Phase 02]: 02-18: D-22 lever 2 applied (4-lane control runner, byte-identical output, runner 73.0 s -> 32.3 s under load); levers 1 and 3 not applied (warm c-build 0.5 s, c-faults 3.2 s); host never idle so the 25 s local budget stays unjudged
+- [Phase 02]: 02-18: hosted gate budget (30 s) stays an open item for the final 190-control gate; D-24 supersedes the CI-EFFICIENCY macOS-leg line; C43 independent re-adjudication of the 30 second-read disagreements recommended
 
 ### Pending Todos
 
@@ -190,6 +193,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-11T01:18:20.440Z
-Stopped at: Completed 02-17-PLAN.md
+Last session: 2026-11-11T01:44:25.483Z
+Stopped at: Completed 02-18-PLAN.md
 Resume file: None

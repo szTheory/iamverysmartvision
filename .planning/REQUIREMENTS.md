@@ -36,11 +36,11 @@ differentiators and all variant/peripheral profiles are v2.
 
 ### CPU — CP-1610 (CPU)
 
-- [ ] **CPU-01**: Every CP-1610 opcode in an opcode-level inventory executes with hand-derived expected register, memory, flag and cycle results, each vector citing its source page.
-- [ ] **CPU-02**: Interrupt and bus-request acceptance follows an explicit state model (previous-instruction interruptibility, I flag, D/SDBD state, BUSRQ), with vectors and named-fault controls for each acceptance case.
-- [ ] **CPU-03**: SDBD double-byte data behaves per source for supported addressing modes, and unsupported modes follow a named, documented, tested policy.
-- [ ] **CPU-04**: Stack-direction, auto-increment register and reset-entry behavior are verified by vectors derived from the primary manual (resolving conflict C17).
-- [ ] **CPU-05**: The CPU stepper is pure and reports each instruction's cycle-stamped bus accesses, so devices can be advanced to the exact access time.
+- [x] **CPU-01**: Every CP-1610 opcode in an opcode-level inventory executes with hand-derived expected register, memory, flag and cycle results, each vector citing its source page.
+- [x] **CPU-02**: Interrupt and bus-request acceptance follows an explicit state model (previous-instruction interruptibility, I flag, D/SDBD state, BUSRQ), with vectors and named-fault controls for each acceptance case.
+- [x] **CPU-03**: SDBD double-byte data behaves per source for supported addressing modes, and unsupported modes follow a named, documented, tested policy.
+- [x] **CPU-04**: Stack-direction, auto-increment register and reset-entry behavior are verified by vectors derived from the primary manual (resolving conflict C17).
+- [x] **CPU-05**: The CPU stepper is pure and reports each instruction's cycle-stamped bus accesses, so devices can be advanced to the exact access time.
 
 ### Memory, Loading and Refusal (MEM)
 
@@ -56,14 +56,14 @@ differentiators and all variant/peripheral profiles are v2.
 - [ ] **API-02**: Execution is bounded by an explicit machine-time target (absolute cycle target; frame target as a derived convenience), with overshoot reported; splitting one run into slices yields identical state and output (slicing-invariance test).
 - [ ] **API-03**: Controller input is applied at an explicit machine-time boundary declared by the API; the same input script yields identical results regardless of host timing.
 - [ ] **API-04**: Video and audio outputs are written into caller-owned buffers; undersized buffers are refused before any state changes.
-- [ ] **API-05**: The core has no dependency on host clocks, filesystems, environment, threads, physical controller discovery or presentation, enforced by a build/link or symbol check.
+- [x] **API-05**: The core has no dependency on host clocks, filesystems, environment, threads, physical controller discovery or presentation, enforced by a build/link or symbol check.
 - [ ] **API-06**: Every API error/refusal has a documented effect on state (none, or a named partial effect), and each is covered by a test.
 
 ### Headless Runner and Verification (RUN)
 
 - [ ] **RUN-01**: A headless runner executes a scripted scenario (content, profile, input schedule, run bound) on fresh isolated state and reports machine time, stop reason, raw outputs and guest-state assertions.
 - [ ] **RUN-02**: The runner distinguishes harness failure, guest failure, timeout, cancellation and missing fixture as separate outcomes.
-- [ ] **RUN-03**: An exact test-inventory gate fails when a required test is missing, duplicated, unexpectedly skipped or consuming stale output, and reports executed/skipped/missing counts.
+- [x] **RUN-03**: An exact test-inventory gate fails when a required test is missing, duplicated, unexpectedly skipped or consuming stale output, and reports executed/skipped/missing counts.
 - [ ] **RUN-04**: Each important gate has a named-fault control that is shown to fail for its intended reason.
 - [ ] **RUN-05**: Per-domain digests (CPU/memory state, raw video, raw audio, input log) are produced, and repeated runs match; golden files record their evidence tier and oracle in a header.
 - [ ] **RUN-06**: At least one original, project-authored diagnostic runs end-to-end from reset (via a project boot path per D5) and reaches an expected guest-state predicate whose expected value is derived independently of the emulator.
@@ -71,7 +71,7 @@ differentiators and all variant/peripheral profiles are v2.
 ### Packaging, Local Gate and CI (PKG)
 
 - [ ] **PKG-01**: A clean, independent consumer project builds against the *installed* package in a relocated prefix and exercises load, refusal, run and digest.
-- [ ] **PKG-02**: One documented local command runs the same checks as the fast PR gate.
+- [x] **PKG-02**: One documented local command runs the same checks as the fast PR gate.
 - [ ] **PKG-03**: CI runs the fast gate on every PR, shows skips and missing artifacts visibly, and never caches or uploads system images or rights-unknown fixtures.
 - [ ] **PKG-04**: CI critical path (queue, setup, build, test) is measured and recorded per run so cache/concurrency/matrix changes are evidence-driven.
 
@@ -187,11 +187,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FND-05 | Phase 1 | Complete |
 | FND-06 | Phase 1 | Complete |
 | FND-07 | Phase 1 | Complete |
-| CPU-01 | Phase 2 | Pending |
-| CPU-02 | Phase 2 | Pending |
-| CPU-03 | Phase 2 | Pending |
-| CPU-04 | Phase 2 | Pending |
-| CPU-05 | Phase 2 | Pending |
+| CPU-01 | Phase 2 | Complete |
+| CPU-02 | Phase 2 | Complete |
+| CPU-03 | Phase 2 | Complete |
+| CPU-04 | Phase 2 | Complete |
+| CPU-05 | Phase 2 | Complete |
 | MEM-01 | Phase 3 | Pending |
 | MEM-02 | Phase 3 | Pending |
 | MEM-03 | Phase 3 | Pending |
@@ -201,16 +201,16 @@ Which phases cover which requirements. Updated during roadmap creation.
 | API-02 | Phase 4 | Pending |
 | API-03 | Phase 5 | Pending |
 | API-04 | Phase 4 | Pending |
-| API-05 | Phase 2 | Pending |
+| API-05 | Phase 2 | Complete |
 | API-06 | Phase 3 | Pending |
 | RUN-01 | Phase 4 | Pending |
 | RUN-02 | Phase 4 | Pending |
-| RUN-03 | Phase 2 | Pending |
+| RUN-03 | Phase 2 | Complete |
 | RUN-04 | Phase 4 | Pending |
 | RUN-05 | Phase 4 | Pending |
 | RUN-06 | Phase 4 | Pending |
 | PKG-01 | Phase 4 | Pending |
-| PKG-02 | Phase 2 | Pending |
+| PKG-02 | Phase 2 | Complete |
 | PKG-03 | Phase 4 | Pending |
 | PKG-04 | Phase 4 | Pending |
 | AUD-01 | Phase 5 | Pending |

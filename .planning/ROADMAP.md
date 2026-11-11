@@ -126,7 +126,7 @@ Plans:
   3. Interrupt and BUSRQ acceptance cases (previous-instruction interruptibility, I flag, D/SDBD, BUSRQ), SDBD modes (with a documented policy for unsupported modes), stack direction, auto-increment registers and reset entry each pass their vectors, and each has a named-fault control that fails for the intended reason.
   4. For any instruction, the stepper reports an ordered, cycle-stamped list of bus accesses that a test compares against the manual's bus sequence.
   5. A build/link or symbol check fails when the core library references host clocks, filesystem, environment, threads or I/O. A deliberate-violation control demonstrates this.
-**Plans**: 17/18 plans executed
+**Plans**: 18/18 plans executed
 
 Plans:
 - [x] 02-01-PLAN.md — Gate hardening (IN-04, IN-02, denylist status 2, SPDX/ASCII for C), build/gate NONCE contract, discrepancy entries C36-C58 (G8 = C58) and five profile fields
@@ -146,7 +146,7 @@ Plans:
 - [x] 02-15-PLAN.md — BUSRQ grant/release, wait states (no wait on INTAK/IAB/DW) and cap, HLT/STPST/HALTED, seeded fuzz suite, stepper conventions doc
 - [x] 02-16-PLAN.md — Blind-review tooling per A-12 (index-blinded, leak-checked copies, diff tool, vector-review kind with committed handoff check), reader protocol and policy document
 - [x] 02-17-PLAN.md — Non-autonomous: orchestrator checkpoint spawns 12 isolated readers, then adjudicate every vector file from the page and commit the handoff record
-- [ ] 02-18-PLAN.md — Reference-note updates, D-22 gate budget and CI-EFFICIENCY record, SC1-SC5 evidence check
+- [x] 02-18-PLAN.md — Reference-note updates, D-22 gate budget and CI-EFFICIENCY record, SC1-SC5 evidence check
 
 ### Phase 3: Memory Map, Content Loading and Refusal
 **Goal**: A host can create isolated machine instances and load typed system images and cartridge content against the profile's memory map. Every bad input gets a typed refusal that leaves prior machine state unchanged.
@@ -270,7 +270,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Evidence, Profile and Rights Foundations | 14/14 | Complete    | 2026-11-09 |
-| 2. CP-1610 CPU Core | 17/18 | In Progress | - |
+| 2. CP-1610 CPU Core | 18/18 | In Progress | - |
 | 3. Memory Map, Content Loading and Refusal | 0/TBD | Not started | - |
 | 4. Headless Runner and Installed Consumer (Slice 0) | 0/TBD | Not started | - |
 | 5. Hand Controllers and PSG Sound | 0/TBD | Not started | - |
