@@ -1,0 +1,11 @@
+# Negative controls for the memmap step (plans 03-05, 03-06).
+memmap-literal-missing
+memmap-literal-orphan
+memmap-literal-grammar
+memmap-literal-hole
+memmap-literal-overlap
+memmap-literal-no-cite
+memmap-literal-unknown-source
+memmap-literal-tier5
+memmap-literal-unknown-tag
+memmap-literal-unknown-conf

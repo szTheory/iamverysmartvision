@@ -10,7 +10,7 @@
 # listed, then one line with the exact total):
 #   every data/profiles/<id>.json has data/memmap/<id>.literal.txt   memmap-literal-missing
 #   every data/memmap/ file is <id>.literal.txt of an existing profile memmap-literal-orphan
-#   row shape: single spaces, columns and keys in order, view R|W, LO/HI four uppercase hex
+#   row shape: single spaces, 9 or 10 columns, keys in order, view R|W, LO/HI four uppercase hex
 #   digits with LO <= HI, device in {stic scratchpad psg sysram exec grom gram cart undriven},
 #   w 0..16, impl real|stub|none, mirror - or a positive power of two, gate - or one of
 #   {stic-regs gmem}; consistency: undriven <=> impl=none, undriven has w=0 mirror=- gate=-,
@@ -201,8 +201,19 @@ foreach(rel IN LISTS LITERALS)
       list(APPEND SPANS_${view} "${lo4}:${hi4}")
     endif()
 
-    if(NOT (nt EQUAL 9 OR nt EQUAL 10))
-      mfail(memmap-literal-grammar "${at} expected 9 or 10 single-space-separated columns, found ${nt}")
+    # Keys of columns 4 onward, in order: w impl mirror gate src tag, then an optional conf.
+    set(keys "")
+    if(nt GREATER 3)
+      math(EXPR lastk "${nt} - 1")
+      foreach(k RANGE 3 ${lastk})
+        list(GET toks ${k} tk)
+        string(REGEX REPLACE "=.*$" "" tk "${tk}")
+        string(APPEND keys " ${tk}")
+      endforeach()
+    endif()
+    if(NOT (keys STREQUAL " w impl mirror gate src tag" OR keys STREQUAL " w impl mirror gate src tag conf"))
+      string(STRIP "${keys}" keys)
+      mfail(memmap-literal-grammar "${at} expected <view> <LO-HI> <device> then w impl mirror gate src tag [conf], found ${nt} columns with keys '${keys}'")
       continue()
     endif()
     list(GET toks 2 device)
@@ -215,9 +226,6 @@ foreach(rel IN LISTS LITERALS)
     set(tconf "")
     if(nt EQUAL 10)
       list(GET toks 9 tconf)
-      if(NOT tconf MATCHES "^conf=")
-        string(APPEND bad " column 10 is not conf=")
-      endif()
     endif()
 
     if(NOT device IN_LIST DEVICES)
@@ -257,12 +265,6 @@ foreach(rel IN LISTS LITERALS)
       set(gate "${gname}")
     else()
       string(APPEND bad " gate '${tgate}'")
-    endif()
-    if(NOT tsrc MATCHES "^src=")
-      string(APPEND bad " column 8 is not src=")
-    endif()
-    if(NOT ttag MATCHES "^tag=")
-      string(APPEND bad " column 9 is not tag=")
     endif()
     # Consistency of device, impl, width, mirror and gate.
     if(NOT impl STREQUAL "" AND NOT w STREQUAL "")
