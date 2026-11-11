@@ -7,6 +7,7 @@
 # Usage: cmake -DIN=<input-bits.ids> -DOUT=<file.inc> -P input-bits-inc.cmake
 # Accepted lines: `IVS_CTRL_<NAME> <bit>` with NAME [A-Z0-9_]+ and bit 0..30; '#' lines and blank
 # lines are skipped; any other line, and a file without one name, stop the build.
+cmake_minimum_required(VERSION 3.25)
 if(NOT DEFINED IN OR NOT DEFINED OUT)
   message(FATAL_ERROR "input-bits-inc: IN and OUT are required")
 endif()
