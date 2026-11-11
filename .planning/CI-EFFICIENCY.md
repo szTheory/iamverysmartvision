@@ -264,3 +264,56 @@ with the fault count, so watch it at the next measurement point.
   this decomposition is the IVSC parser plan, so the second point moved to 03-11 and the third
   is the 03-14 close-out.
 - Hosted queue, setup and gate figures for the phase PR are recorded by the orchestrator.
+
+## 2026-11-11 — local measurement 2 of Phase 3 (plan 03-11, after the refusal matrix, A-07)
+
+A-07 named plan 03-07 for the second point; in this 14-plan decomposition that is the IVSC
+parser plan, so the second measurement moved here, right after the refusal matrix (plan
+03-11), and the third stays the 03-14 close-out (as recorded in the 03-02 section above).
+Fault count now 110 (plan text: 109; the extra fault `REPORT_INSIDE_UNCHECKED` is the plan
+03-11 addition for out parameters aimed into the instance), 25 of them run suite `machine`.
+Local figures only (owner laptop, macOS arm64, AppleClang, warm build trees, so `c-build` is
+0 to 1). The host was loaded the whole time: 1-minute load average 8.4 to 10.3 (26
+sessions), so every figure is load-contaminated and none is a hosted number. The hosted figure
+for the phase PR is the orchestrator's to record (agents never call `gh`); the last hosted run
+measured 30 s (budget 40 s, revisit trigger 50 s).
+
+### Gate after plan 03-11 (`sh tools/gate.sh`, three runs)
+
+| Run | Load at start | `gate-time total=` | c-build | c-faults | faults-verdict | c-tests | controls | controls-wait |
+|-----|---------------|--------------------|---------|----------|----------------|---------|----------|---------------|
+| 1 | 8.35 | 24 | 1 | 2 | 3 | 2 | 12 | 0 |
+| 2 | 8.74 | 23 | 0 | 3 | 3 | 2 | 11 | 0 |
+| 3 | 8.47 | 23 | 1 | 2 | 3 | 1 | 11 | 0 |
+| dash | 7.27 | 22 | 0 | 2 | 4 | 2 | 11 | 0 |
+
+Median 23 s (03-02 after the lane lever: 20 s at 73 faults; 03-10: 22 to 24 s at 101 faults).
+All three: `gate: PASS steps=25/25 controls=215/215 ... faults=110/110 ... tests-missing=0`.
+
+### Plain run times (median of 11, same loaded host)
+
+| Executable | s | 03-02 budget s |
+|------------|---|----------------|
+| release `ivs_tests_machine`, whole suite (299 cases) | 0.159 | 0.25 (phase end) |
+| release, `--only machine.refuse.` (216 cases: the 175 new load, unload and out-parameter rows and the 41 plan 03-09 refusals) | 0.112 | 0.06 (refusal matrix) |
+| release, `--only machine.prec.` (20 cases) | 0.015 | (in the matrix budget) |
+| release `ivs_tests_ivsc` (75 cases) | 0.029 | 0.03 |
+| dev (ASan+UBSan) `ivs_tests_machine` | 0.328 | - |
+| one suite-`machine` fault executable (`DUPLICATE_REPLACES`, `SHA_K_WRONG`) | 0.15 to 0.17 | 0.25 |
+
+The refusal matrix costs about twice its family budget (0.127 s against 0.06 s): each row
+builds its prior, copies the 113,456-byte instance and takes two composite state digests
+(SHA-256 over the whole instance), and the digest dominates. It is part of the D-12 oracle, so
+it stays. The suite as a whole is still inside its 0.25 s phase-end budget, with sweeps and
+isolation (plan 03-12) still to come. Projection for the phase end: suite `machine` about
+0.29 s (0.159 now + the 0.13 s sweeps and isolation budget) x about 29 suite-`machine` faults
+= 8.4 s serial, about 2.1 s in the 4 fault lanes; `c-faults` is 2 to 3 s today.
+
+### Lever decision
+
+- Trigger (median above 40 s locally on a host with load below 4): not evaluable (load 8 to
+  10) and not met (median 23 s). No lever applied; no check dropped, no token changed.
+- Watch items for 03-12 and the 03-14 close-out: `faults-verdict` holds at 3 s with 110
+  faults and `c-faults` at 2 to 3 s; if a trigger fires, the next lever the step split points
+  at is the owning-TU rebuild per fault (the lanes are already applied). The refusal oracle
+  (whole-storage memcmp plus composite digest per row) is not a lever: it is the D-12 evidence.

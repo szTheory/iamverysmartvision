@@ -22,3 +22,25 @@ DOMAIN_ID_DROPPED machine.digest.composite-framing machine.digest. machine.creat
 CART_REPORT_TRAILER_DIGEST machine.load.cart-whole-digest-not-trailer machine.load.cart-ok|machine.load.cart-whole-digest-not-trailer|machine.load.expect- machine.create.ok-info-destroy
 UNLOAD_KEEPS_IMAGE machine.load.exec-unload-fresh machine.load. machine.create.ok-info-destroy
 CART_SPAN_END_INCLUSIVE machine.load.cart-span-end machine.load.cart-span-end machine.create.ok-info-destroy
+# Ordering and typing faults (plan 03-11, D-10, D-37), one site each in machine_load.c, each
+# caught by a named row of the refusal matrix (whole-storage memcmp, digest, status, detail):
+# LOAD_LEN_BEFORE_CHECK writes the slot length before validation; LOAD_TABLE_BEFORE_VALIDATE sets
+# the decode table's EXEC or GROM loaded flag first; DUPLICATE_REPLACES skips the occupancy check
+# so the commit overwrites the slot; LEN_TRUNCATED_32 narrows the length to 32 bits before the
+# size check (2^32 + 8192 over a whole EXEC then loads); ROM_DECLE_MASKED_NOT_REFUSED accepts a
+# wide EXEC word; CHECK_ORDER_MALFORMED_FIRST answers a wrong system-image size MALFORMED before
+# the length bound; CART_COPY_BEFORE_VALIDATE installs the first segment before layer 2;
+# OVERLAP_BEFORE_LENGTH runs the input-overlap test on the unbounded span before the length
+# bound (A-08 a). REPORT_INSIDE_UNCHECKED (plan 03-11 addition) accepts a load report that lies
+# inside the instance, which is then written over it. The three faults that change a refused
+# load's instance bytes also fail family load's refusal cases (machine.load.), whose helper
+# compares every instance byte: their own rule.
+LOAD_LEN_BEFORE_CHECK machine.refuse.load.exec.oversized-by-one.f machine.refuse.load.|machine.prec.|machine.load. machine.load.exec-ok
+LOAD_TABLE_BEFORE_VALIDATE machine.refuse.load.grom.short-by-one.f machine.refuse.load.|machine.prec.|machine.load. machine.load.exec-ok
+DUPLICATE_REPLACES machine.refuse.load.exec.duplicate-load.s machine.refuse.load.|machine.prec. machine.load.order-free
+LEN_TRUNCATED_32 machine.refuse.load.exec.len-wrap-heap.f machine.refuse.load.exec.len-wrap- machine.load.exec-ok
+ROM_DECLE_MASKED_NOT_REFUSED machine.refuse.load.exec.wide-word-first.f machine.refuse.load.exec.wide-word- machine.load.exec-ok
+CHECK_ORDER_MALFORMED_FIRST machine.prec.oversized-over-malformed machine.refuse.load.|machine.prec. machine.load.exec-ok
+CART_COPY_BEFORE_VALIDATE machine.refuse.load.cart.feature-bit-0.f machine.refuse.load.cart.|machine.prec.cart-|machine.load.cart-|machine.load.expect-mismatch machine.load.exec-ok
+OVERLAP_BEFORE_LENGTH machine.prec.oversized-over-overlap machine.refuse.load.|machine.prec. machine.load.exec-ok
+REPORT_INSIDE_UNCHECKED machine.refuse.load.exec.report-inside.f machine.refuse.load.exec.report-inside.|machine.refuse.load.cart.report-inside. machine.load.exec-ok

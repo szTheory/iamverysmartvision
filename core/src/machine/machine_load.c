@@ -116,12 +116,16 @@ static ivs_status ivs_load_system(const ivs_profile_desc *p, uint32_t kind, cons
   const ivs_slot_desc *sd = kind == IVS_KIND_EXEC ? &p->exec : &p->grom;
   uint64_t n = (uint64_t)len;
   uint32_t i;
+  uint8_t wide = 0xFCu; /* bits 15..10 of a high-byte-first word */
+#ifdef IVS_FAULT_ROM_DECLE_MASKED_NOT_REFUSED
+  wide = 0x00u; /* a wide word is accepted and left to the 10-bit read mask, not refused */
+#endif
   if (n < ivs_load_bound(kind)) {
     return ivs_load_refuse(d, IVS_E_MALFORMED, IVS_REASON_IMAGE_SHORT, IVS_SEGMENT_NONE, n, 0u);
   }
   if (kind == IVS_KIND_EXEC) {
     for (i = 0u; i < IVS_MEMSYS_EXEC_WORDS; i++) {
-      if ((bytes[2u * i] & 0xFCu) != 0u) {
+      if ((bytes[2u * i] & wide) != 0u) {
         return ivs_load_refuse(d, IVS_E_MALFORMED, IVS_REASON_IMAGE_WORD, IVS_SEGMENT_NONE, 2u * (uint64_t)i, 0u);
       }
     }
@@ -134,8 +138,8 @@ static ivs_status ivs_load_system(const ivs_profile_desc *p, uint32_t kind, cons
 }
 
 /* Stage 8 for a cartridge: layer 1 (the parser), then layer 2 (span, then features). */
-static ivs_status ivs_load_cart(const ivs_profile_desc *p, const uint8_t *bytes, size_t len, ivs_load_plan *plan,
-                                ivs_load_report *d)
+static ivs_status ivs_load_cart(const struct ivs_machine *im, const ivs_profile_desc *p, const uint8_t *bytes,
+                                size_t len, ivs_load_plan *plan, ivs_load_report *d)
 {
   ivs_ivsc_report irep;
   ivs_status st;
@@ -148,6 +152,12 @@ static ivs_status ivs_load_cart(const ivs_profile_desc *p, const uint8_t *bytes,
   if (st != IVS_OK) {
     return ivs_load_refuse(d, st, irep.reason, irep.segment_index, irep.byte_offset, 0u);
   }
+#ifdef IVS_FAULT_CART_COPY_BEFORE_VALIDATE
+  /* the first segment is installed before layer 2 has accepted the container */
+  ivs_memsys_install_cart_segment(&((struct ivs_machine *)(uintptr_t)im)->mem, plan->view.segs[0].addr,
+                                  bytes + plan->view.segs[0].data_byte_offset, plan->view.segs[0].len_words);
+#endif
+  (void)im;
   seg = p->has_cart_span != 0u ? ivs_machine_cart_span_check(p->cart_lo, p->cart_hi, &plan->view) : 0u;
   if (seg != IVS_SEGMENT_NONE) {
     return ivs_load_refuse(d, IVS_E_OUT_OF_RANGE, IVS_REASON_OUT_OF_SPAN, seg,
@@ -179,6 +189,7 @@ static ivs_status ivs_load_validate(const ivs_machine *m, uint32_t kind, const u
   uint64_t n = (uint64_t)len;
   uint64_t bound;
   ivs_status st;
+  uint32_t occupied;
   uint32_t i;
 
   /* 1. BAD_ARG: argument values. */
@@ -211,11 +222,25 @@ static ivs_status ivs_load_validate(const ivs_machine *m, uint32_t kind, const u
     return ivs_load_refuse(d, IVS_E_BAD_STATE, IVS_REASON_STATE_POWERED, IVS_SEGMENT_NONE, 0u, 0u);
   }
   /* 5. DUPLICATE_LOAD. */
-  if (im->slot[kind - 1u].loaded != 0u) {
+  occupied = im->slot[kind - 1u].loaded;
+#ifdef IVS_FAULT_DUPLICATE_REPLACES
+  occupied = 0u; /* an occupied slot is validated and overwritten by the commit */
+#endif
+  if (occupied != 0u) {
     return ivs_load_refuse(d, IVS_E_DUPLICATE_LOAD, IVS_REASON_SLOT_OCCUPIED, IVS_SEGMENT_NONE, 0u, 0u);
   }
-  /* 6. OVERSIZED: the claimed length, before any byte is read. */
   bound = ivs_load_bound(kind);
+#ifdef IVS_FAULT_CHECK_ORDER_MALFORMED_FIRST
+  if (kind != IVS_KIND_CARTRIDGE && n != bound) { /* a wrong size is refused as a shape fault first */
+    return ivs_load_refuse(d, IVS_E_MALFORMED, IVS_REASON_IMAGE_SHORT, IVS_SEGMENT_NONE, n, 0u);
+  }
+#endif
+#ifdef IVS_FAULT_OVERLAP_BEFORE_LENGTH
+  if (ivs_machine_span_overlaps(bytes, len, im, sizeof *im) != 0u) { /* on the unbounded span */
+    return ivs_load_refuse(d, IVS_E_BAD_ARG, IVS_REASON_ARG_INPUT_OVERLAP, IVS_SEGMENT_NONE, 0u, 0u);
+  }
+#endif
+  /* 6. OVERSIZED: the claimed length, before any byte is read. */
   if (n > bound) {
     return ivs_load_refuse(d, IVS_E_OVERSIZED, kind == IVS_KIND_CARTRIDGE ? IVS_REASON_TOO_LARGE : IVS_REASON_IMAGE_LONG,
                            IVS_SEGMENT_NONE, bound, 0u);
@@ -225,7 +250,8 @@ static ivs_status ivs_load_validate(const ivs_machine *m, uint32_t kind, const u
     return ivs_load_refuse(d, IVS_E_BAD_ARG, IVS_REASON_ARG_INPUT_OVERLAP, IVS_SEGMENT_NONE, 0u, 0u);
   }
   /* 8. Content. */
-  st = kind == IVS_KIND_CARTRIDGE ? ivs_load_cart(p, bytes, len, plan, d) : ivs_load_system(p, kind, bytes, len, plan, d);
+  st = kind == IVS_KIND_CARTRIDGE ? ivs_load_cart(im, p, bytes, len, plan, d)
+                                  : ivs_load_system(p, kind, bytes, len, plan, d);
   if (st != IVS_OK) {
     return st;
   }
@@ -280,6 +306,9 @@ ivs_status ivs_machine_load(ivs_machine *m, uint32_t kind, const uint8_t *bytes,
   if (report != NULL) {
     /* A report aimed into the instance would be written over it after the commit. */
     uint32_t aliased = ivs_machine_span_overlaps(report, sizeof *report, m, sizeof(struct ivs_machine));
+#ifdef IVS_FAULT_REPORT_INSIDE_UNCHECKED
+    aliased = 0u; /* a report inside the instance is accepted and written over it */
+#endif
     if (aliased != 0u || report->struct_size < (uint32_t)sizeof(ivs_load_report)) {
       return IVS_E_BAD_ARG;
     }
@@ -288,6 +317,21 @@ ivs_status ivs_machine_load(ivs_machine *m, uint32_t kind, const uint8_t *bytes,
   memset(&r, 0, sizeof r);
   r.struct_size = (uint32_t)sizeof r;
   r.segment_index = IVS_SEGMENT_NONE;
+#ifdef IVS_FAULT_LEN_TRUNCATED_32
+  len = (size_t)(uint32_t)len; /* the length narrowed to 32 bits before the size check */
+#endif
+#ifdef IVS_FAULT_LOAD_LEN_BEFORE_CHECK
+  if (ivs_machine_from_handle_mut(m) != NULL && kind >= IVS_KIND_EXEC && kind <= IVS_KIND_CARTRIDGE) {
+    ivs_machine_from_handle_mut(m)->slot[kind - 1u].length_bytes = (uint32_t)len; /* recorded before checks */
+  }
+#endif
+#ifdef IVS_FAULT_LOAD_TABLE_BEFORE_VALIDATE
+  if (ivs_machine_from_handle_mut(m) != NULL && kind == IVS_KIND_EXEC) {
+    ivs_machine_from_handle_mut(m)->mem.exec_loaded = 1u; /* the decode table marks the slot loaded first */
+  } else if (ivs_machine_from_handle_mut(m) != NULL && kind == IVS_KIND_GROM) {
+    ivs_machine_from_handle_mut(m)->mem.grom_loaded = 1u;
+  }
+#endif
   st = ivs_load_validate(m, kind, bytes, len, opts, &plan, &r);
   if (st == IVS_OK) {
     struct ivs_machine *im = ivs_machine_from_handle_mut(m);
