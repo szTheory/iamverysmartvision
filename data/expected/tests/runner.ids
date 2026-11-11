@@ -1,4 +1,4 @@
-# Suite runner: the runner library in process (plan 04-03, D-20): outcome exit codes and names.
+# Suite runner: the runner library in process (plan 04-03, D-20): outcome exit codes, names and precedence.
 runner.outcome.exit-pass
 runner.outcome.exit-guest-fail
 runner.outcome.exit-timeout
@@ -11,3 +11,12 @@ runner.outcome.name-timeout
 runner.outcome.name-cancelled
 runner.outcome.name-missing-fixture
 runner.outcome.name-harness-fail
+runner.outcome.codes-distinct
+runner.outcome.prec-harness-over-missing
+runner.outcome.prec-missing-over-cancelled
+runner.outcome.prec-cancelled-over-wall
+runner.outcome.prec-wall-over-budget
+runner.outcome.prec-budget-over-guest
+runner.outcome.prec-guest-over-pass
+runner.outcome.prec-empty-is-pass
+runner.outcome.prec-single-and-unknown

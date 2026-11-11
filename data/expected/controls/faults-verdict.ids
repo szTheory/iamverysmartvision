@@ -13,3 +13,6 @@ faults-duplicate-id
 faults-second-missing-site
 faults-second-not-detected
 faults-suite-missing
+# Runner-site controls (plan 04-03, D-24).
+faults-missing-site-runner
+faults-orphan-site-runner
