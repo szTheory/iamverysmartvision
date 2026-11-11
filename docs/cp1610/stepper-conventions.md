@@ -25,7 +25,8 @@ Each access is one 12-byte record with the cycle of its address phase, the addre
 Idle cycles are not recorded; they are the gaps up to the unit length (D-02) [INF].
 An IAB record carries address 0 and a reason flag, reset or interrupt, and the bus layer answers it with the vector, which loads all 16 bits of R7 (POL-IAB-01, C32, C42) [INF].
 The write of R7 onto the stack during an interrupt entry is its own kind, DW, never WRITE (A-11), and it is stamped at the DW cycle, one cycle before DWS (pdf 10) [OBS].
-A direct-mode operand access is an ADAR record, and it carries the effective address, the word read through the address word (pdf 11, pdf 30) [OBS].
+A direct-mode operand read is an ADAR record, and it carries the effective address, the word read through the address word (pdf 11, pdf 30) [OBS].
+The MVO direct write has the same ADAR address phase but is a WRITE record stamped at the ADAR cycle, because a kind names the transfer as well as the address phase; a bus model that needs the phase of a write reads it from the row, not from the kind [INF].
 There is exactly one wait rule (A-04 as amended by A-11, C53): BDRDY waits apply only to accesses that begin with a BAR or ADAR address phase, which are FETCH, READ, WRITE and ADAR; INTAK, IAB and DW take no waits (pdf 40) [OBS].
 A wait is inserted as idle cycles between the address phase and the data transfer (pdf 37), so it shifts every later record of the unit and the unit length; the record that took it keeps its own address-phase cycle [OBS].
 A wait up to the configured cap is accepted; a longer one ends the unit one cycle past the cap with the sticky fault BUS_WAIT_LIMIT and the architectural state as before the unit (pdf 12 bounds the wait but defines nothing past it; C53) [INF].
