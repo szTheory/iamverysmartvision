@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 4
 current_phase_name: Headless Runner and Installed Consumer (Slice 0)
 status: executing
-stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-11-11T16:26:38.115Z"
+stopped_at: Completed 04-03-PLAN.md
+last_updated: "2026-11-11T16:41:16.060Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 3 complete, transitioned to Phase 4
-state_head: 512e26c70ddbd145d647b739e4ba974f90adb6f3
+state_head: 64d8901f542e47143247464000b8f5b23fad9a89
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 71
-  completed_plans: 48
+  completed_plans: 49
   percent: 38
 ---
 
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 4 — Headless Runner and Installed Consumer (Slice 0)
-Plan: 3 of 25
+Plan: 4 of 25
 Status: Ready to execute
-Last activity: 2026-11-11 — Completed 04-02 (hosted run record, ci-log step, D-45 budget rule)
+Last activity: 2026-11-11 — Completed 04-03 (repo-relative fault owners, runner outcome taxonomy)
 
 Progress: [████░░░░░░] 38%
 
@@ -102,6 +102,7 @@ Progress: [████░░░░░░] 38%
 | Phase 03 P14 | 12min | 3 tasks | 4 files |
 | Phase 04 P01 | 45min | 3 tasks | 36 files |
 | Phase 04 P02 | 15min | 2 tasks | 19 files |
+| Phase 04 P03 | 40min | 2 tasks | 24 files |
 
 ## Accumulated Context
 
@@ -225,6 +226,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 04]: 04-01: gate.sh prints gate-env/gate-cpu (POSIX times via 'command times' in the main shell after the controls wait); job summary only through the EXIT-trap helper tools/check/ci-summary.sh; ci-parity bans any action but actions/checkout, secrets, strategy, runs-on other than ubuntu-24.04 and a gate timeout other than 5
 - [Phase 04]: 04-02: ci-record.sh converts ISO times with awk civil-date arithmetic in the shared parser (offline --from-files tests it); ci-log also requires digit run ids and 40-hex shas
 - [Phase 04]: 04-02: PKG-04 stays Pending until hosted rows exist in .planning/ci-runs.tsv; orchestrator runs tools/ci-record.sh after each hosted run and evaluates D-45 after 04-10 and 04-19
+- [Phase 04]: 04-03: Fault owner TUs are repo-relative (core/ and runner/); file stems unique across both, checked at configure (D-24)
+- [Phase 04]: 04-03: Runner outcome values equal their exit codes; F_WALL 0x100 separates wall from budget timeout; non-outcome values map to harness-fail 14
 
 ### Pending Todos
 
@@ -257,6 +260,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-11T16:26:38.014Z
-Stopped at: Completed 04-02-PLAN.md
+Last session: 2026-11-11T16:41:15.932Z
+Stopped at: Completed 04-03-PLAN.md
 Resume file: None
