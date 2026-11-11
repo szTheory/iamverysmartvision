@@ -72,6 +72,56 @@ target_link_libraries(ivs_tests_harness PRIVATE ivs_warnings ivs_san)
 add_test(NAME harness COMMAND ivs_tests_harness)
 set_tests_properties(harness PROPERTIES SKIP_RETURN_CODE 77)
 
+# Fault-suite registry (D-37, plan 03-01): each suite named by a `# suite=<name>` header of a
+# data/expected/faults/*.ids file is described once here; tests/faults.cmake reads it to build
+# that suite's fault executables from its own test sources with plain flags.
+# ivs_fault_suite(<suite> SOURCES <test .c> INCLUDE_DIRS <dirs> GENERATED <generated files>)
+function(ivs_fault_suite suite)
+  cmake_parse_arguments(PARSE_ARGV 1 arg "" "" "SOURCES;INCLUDE_DIRS;GENERATED")
+  if(NOT suite MATCHES "^[a-z0-9][a-z0-9-]*$" OR NOT arg_SOURCES OR arg_UNPARSED_ARGUMENTS)
+    message(FATAL_ERROR "ivs_fault_suite(${suite}): bad suite name or arguments")
+  endif()
+  if(suite IN_LIST IVS_FAULT_SUITES)
+    message(FATAL_ERROR "ivs_fault_suite(${suite}): registered twice")
+  endif()
+  set(IVS_FAULT_SUITES ${IVS_FAULT_SUITES} "${suite}" PARENT_SCOPE)
+  set(IVS_FAULT_SUITE_${suite}_SOURCES "${arg_SOURCES}" PARENT_SCOPE)
+  set(IVS_FAULT_SUITE_${suite}_INCLUDE_DIRS "${arg_INCLUDE_DIRS}" PARENT_SCOPE)
+  set(IVS_FAULT_SUITE_${suite}_GENERATED "${arg_GENERATED}" PARENT_SCOPE)
+endfunction()
+# Generator-path controls (GEN_<NAME> fault ids, no source site): the generator script writes
+# <OUTPUT> with one mutation (-DMUTATE=<must-fail id>, -DOUT=<fault dir>/<OUTPUT> are added by
+# tests/faults.cmake) and the suite's test sources are recompiled against it.
+# ivs_fault_gen(<GEN_ID> SUITE <suite> OUTPUT <generated basename> GENERATOR <script>
+#               ARGS <-D arguments> DEPENDS <files>)
+function(ivs_fault_gen id)
+  cmake_parse_arguments(PARSE_ARGV 1 arg "" "SUITE;OUTPUT;GENERATOR" "ARGS;DEPENDS")
+  if(NOT id MATCHES "^GEN_[A-Z0-9_]+$" OR NOT arg_SUITE OR NOT arg_OUTPUT OR NOT arg_GENERATOR
+     OR arg_UNPARSED_ARGUMENTS)
+    message(FATAL_ERROR "ivs_fault_gen(${id}): bad id or arguments")
+  endif()
+  if(id IN_LIST IVS_FAULT_GENS)
+    message(FATAL_ERROR "ivs_fault_gen(${id}): registered twice")
+  endif()
+  set(IVS_FAULT_GENS ${IVS_FAULT_GENS} "${id}" PARENT_SCOPE)
+  set(IVS_FAULT_GEN_${id}_SUITE "${arg_SUITE}" PARENT_SCOPE)
+  set(IVS_FAULT_GEN_${id}_OUTPUT "${arg_OUTPUT}" PARENT_SCOPE)
+  set(IVS_FAULT_GEN_${id}_GENERATOR "${arg_GENERATOR}" PARENT_SCOPE)
+  set(IVS_FAULT_GEN_${id}_ARGS "${arg_ARGS}" PARENT_SCOPE)
+  set(IVS_FAULT_GEN_${id}_DEPENDS "${arg_DEPENDS}" PARENT_SCOPE)
+endfunction()
+set(IVS_FAULT_SUITES "")
+set(IVS_FAULT_GENS "")
+
+ivs_fault_suite(cpu-vectors
+  SOURCES cpu/cpu_vectors.c
+  INCLUDE_DIRS "${CMAKE_CURRENT_BINARY_DIR}"
+  GENERATED "${IVS_VEC_INC}")
+ivs_fault_gen(GEN_EXPECT_MUTATION SUITE cpu-vectors OUTPUT ivs_vectors.inc
+  GENERATOR "${IVS_VEC_GENERATOR}"
+  ARGS "-DROOT=${PROJECT_SOURCE_DIR}" "-DFILES=${IVS_VEC_FILES_IDS}" "-DSKIPS=${IVS_VEC_SKIPS_IDS}"
+  DEPENDS ${ivs_vec_json} "${IVS_VEC_GENERATOR}" "${IVS_VEC_FILES_IDS}" "${IVS_VEC_SKIPS_IDS}")
+
 # Named-fault control executables (D-18): dev tree only, never registered with ctest.
 if(IVS_FAULT_CONTROLS)
   include("${CMAKE_CURRENT_SOURCE_DIR}/faults.cmake")
