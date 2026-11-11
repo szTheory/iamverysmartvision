@@ -131,7 +131,8 @@ typedef struct ivs_load_options {
 } ivs_load_options;
 
 /* Refusal reasons of a load report. 1..18 are the reason numbers of the IVSC v1 reason table
- * (docs/formats/ivsc-v1.md); 19 and up are the load's own reasons. Numbers are append-only. */
+ * (docs/formats/ivsc-v1.md); 19..33 are the load's own reasons and 34 and up the run's (one
+ * list for every report). Numbers are append-only. */
 #define IVS_REASON_NONE 0u
 #define IVS_REASON_TRUNCATED 1u        /* MALFORMED */
 #define IVS_REASON_TOO_LARGE 2u        /* OVERSIZED */
@@ -166,6 +167,16 @@ typedef struct ivs_load_options {
 #define IVS_REASON_OPTION_TAIL 31u     /* UNSUPPORTED: a nonzero byte in a larger opts tail */
 #define IVS_REASON_STATE_POWERED 32u   /* BAD_STATE: the machine is POWERED */
 #define IVS_REASON_SLOT_OCCUPIED 33u   /* DUPLICATE_LOAD: the slot holds an image */
+/* Refusal reasons of ivs_machine_run (ivs_run_report.refusal_reason, plan 04-07, D-05). A refused
+ * run writes the reason only into a report that is not itself the cause; a bad handle reports
+ * IVS_REASON_HANDLE. */
+#define IVS_REASON_RUN_NULL_ARG 34u       /* BAD_ARG: req NULL */
+#define IVS_REASON_RUN_STRUCT_SIZE 35u    /* BAD_ARG: req->struct_size short or above the cap */
+#define IVS_REASON_RUN_REPORT_OVERLAP 36u /* BAD_ARG: the report overlaps the instance (never written into it) */
+#define IVS_REASON_RUN_FLAGS 37u          /* UNSUPPORTED: an unknown or reserved run flag */
+#define IVS_REASON_RUN_TAIL 38u           /* UNSUPPORTED: a nonzero byte in a larger request tail */
+#define IVS_REASON_RUN_STATE_OFF 39u      /* BAD_STATE: the machine is OFF */
+#define IVS_REASON_RUN_TARGET_RANGE 40u   /* OUT_OF_RANGE: target_ticks above 2^63 */
 
 /* segment_index of a report whose reason concerns no single segment. */
 #define IVS_SEGMENT_NONE 0xFFFFFFFFu

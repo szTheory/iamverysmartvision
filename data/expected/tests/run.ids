@@ -37,3 +37,33 @@ run.target.on-boundary-no-overshoot
 run.target.already-reached
 run.overshoot.equals-now-minus-target
 run.single-step.equals-seam
+# Family bound, stops and refusals (plan 04-07 Task 2, D-04, D-05): the largest accepted target;
+# stop reasons on project programs (HLT; NOP with and without the stop-on-halt flag, a sticky
+# MVO@ R4, R4 guest fault, HLT followed by the fault, a seam refusal); every refusal class of the
+# ladder with the SP4 oracle, one precedence case per adjacent pair; stop names.
+run.target.max-accepted
+run.stop.halt-flag
+run.stop.halt-no-flag
+run.stop.guest-fault
+run.stop.fault-sticky
+run.stop.fault-before-halt
+run.stop.internal-step-refused
+run.refuse.null-request
+run.refuse.null-report
+run.refuse.struct-size-request
+run.refuse.struct-size-report
+run.refuse.bad-handle
+run.refuse.report-inside-instance
+run.refuse.flags-unknown
+run.refuse.flags-frame-reserved
+run.refuse.tail-nonzero
+run.refuse.state-off
+run.refuse.target-above-2-63
+run.prec.arg-over-handle
+run.prec.handle-over-overlap
+run.prec.overlap-over-unsupported
+run.prec.flags-over-tail
+run.prec.unsupported-over-state
+run.prec.state-over-range
+run.stop-name.known
+run.stop-name.unknown

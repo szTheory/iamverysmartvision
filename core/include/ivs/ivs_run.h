@@ -132,8 +132,19 @@ typedef struct ivs_run_report {
   uint64_t units_executed;
 } ivs_run_report;
 
-/* Runs m to req->target_ticks (above). Every refusal happens before the first unit, so a refused
- * call changes nothing in the instance. */
+/* Runs m to req->target_ticks (above). Refusal order (D-05), first failing class wins, every
+ * refusal before the first unit so a refused call changes nothing in the instance:
+ *   BAD_ARG       req NULL (IVS_REASON_RUN_NULL_ARG); req->struct_size below the v1 size or above
+ *                 IVS_STRUCT_SIZE_MAX (RUN_STRUCT_SIZE); rep NULL, or rep->struct_size below the v1
+ *                 size or above IVS_STRUCT_SIZE_MAX (nothing written);
+ *   BAD_HANDLE    NULL or invalid handle (IVS_REASON_HANDLE);
+ *   BAD_ARG       rep overlaps the instance storage (nothing written);
+ *   UNSUPPORTED   an unknown or reserved flag (RUN_FLAGS), then a nonzero byte past the v1 size of
+ *                 a larger request (RUN_TAIL);
+ *   BAD_STATE     the machine is OFF (RUN_STATE_OFF);
+ *   OUT_OF_RANGE  target_ticks above IVS_RUN_TARGET_MAX (RUN_TARGET_RANGE).
+ * A refusal writes only struct_size and refusal_reason, and only into a report that is not the
+ * cause and does not overlap the bytes the handle names. */
 IVS_API ivs_status ivs_machine_run(ivs_machine *m, const ivs_run_request *req, ivs_run_report *rep);
 
 /* The static, constant name of a stop reason ("IVS_STOP_TARGET", ...) or "IVS_STOP_UNKNOWN" for

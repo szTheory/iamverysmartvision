@@ -20,6 +20,8 @@
  *                    one unit can never wrap;
  *   (later)          BUFFER_TOO_SMALL (plan 04-10) and the per-event order and channel checks
  *                    (plan 04-11) follow OUT_OF_RANGE, still before the first unit.
+ * A refusal writes struct_size and the IVS_REASON_* only into a report that is not the cause and
+ * does not overlap the bytes the handle names (ivs_bound_report_ok), whatever stage refused.
  *
  * Commit: while machine time is below the target, step one unit through the internal seam
  * ivs_machine_step_unit_internal (machine_run.c; the seam stays internal). A FAULTED CPU is never
@@ -44,38 +46,82 @@ typedef struct ivs_bound_plan {
   uint32_t flags;
 } ivs_bound_plan;
 
+/* 1 when every byte of p[from, to) is zero. */
+static uint32_t ivs_bound_tail_zero(const uint8_t *p, size_t from, size_t to)
+{
+  size_t i;
+  for (i = from; i < to; i++) {
+    if (p[i] != 0u) {
+      return 0u;
+    }
+  }
+  return 1u;
+}
+
+/* 1 when the caller's report may receive refusal detail: present, a size the core accepts, and
+ * not overlapping the instance bytes the handle names. That last test uses only the handle's
+ * address (uintptr_t differences, nothing read through it), so a report inside the storage of an
+ * invalid or destroyed instance gets nothing either. */
+static uint32_t ivs_bound_report_ok(const ivs_machine *m, const ivs_run_report *rep)
+{
+  if (rep == NULL || rep->struct_size < (uint32_t)sizeof(ivs_run_report) ||
+      rep->struct_size > IVS_STRUCT_SIZE_MAX) {
+    return 0u;
+  }
+  if (m != NULL && ivs_machine_span_overlaps(rep, sizeof *rep, m, sizeof(struct ivs_machine)) != 0u) {
+    return 0u;
+  }
+  return 1u;
+}
+
 /* The ladder (header comment). Reads only const inputs; on IVS_OK the plan is filled. */
 static ivs_status ivs_bound_validate(const ivs_machine *m, const ivs_run_request *req, const ivs_run_report *rep,
-                                     ivs_bound_plan *plan)
+                                     ivs_bound_plan *plan, uint32_t *reason)
 {
   const struct ivs_machine *im;
   /* 1. BAD_ARG: NULL arguments and struct sizes. */
   if (rep == NULL || rep->struct_size < (uint32_t)sizeof(ivs_run_report) ||
       rep->struct_size > IVS_STRUCT_SIZE_MAX) {
+    *reason = IVS_REASON_RUN_STRUCT_SIZE;
     return IVS_E_BAD_ARG;
   }
   if (req == NULL) {
+    *reason = IVS_REASON_RUN_NULL_ARG;
     return IVS_E_BAD_ARG;
   }
   if (req->struct_size < (uint32_t)sizeof(ivs_run_request) || req->struct_size > IVS_STRUCT_SIZE_MAX) {
+    *reason = IVS_REASON_RUN_STRUCT_SIZE;
     return IVS_E_BAD_ARG;
   }
   /* 2. BAD_HANDLE. */
   im = ivs_machine_from_handle(m);
   if (im == NULL) {
+    *reason = IVS_REASON_HANDLE;
     return IVS_E_BAD_HANDLE;
   }
   /* 3. BAD_ARG: the report overlaps the instance storage. */
   if (ivs_machine_span_overlaps(rep, sizeof *rep, im, sizeof *im) != 0u) {
+    *reason = IVS_REASON_RUN_REPORT_OVERLAP;
     return IVS_E_BAD_ARG;
+  }
+  /* 4. UNSUPPORTED: unknown flags, then a nonzero tail of a larger request. */
+  if ((req->flags & ~IVS_RUN_F_STOP_ON_HALT) != 0u) {
+    *reason = IVS_REASON_RUN_FLAGS;
+    return IVS_E_UNSUPPORTED;
+  }
+  if (ivs_bound_tail_zero((const uint8_t *)req, sizeof(ivs_run_request), (size_t)req->struct_size) == 0u) {
+    *reason = IVS_REASON_RUN_TAIL;
+    return IVS_E_UNSUPPORTED;
   }
   /* (slot: output buffers, plan 04-10; input events, plan 04-11.) */
   /* 5. BAD_STATE: the machine is OFF. */
   if (im->phase != IVS_PHASE_POWERED) {
+    *reason = IVS_REASON_RUN_STATE_OFF;
     return IVS_E_BAD_STATE;
   }
   /* 6. OUT_OF_RANGE: the target. */
   if (req->target_ticks > IVS_RUN_TARGET_MAX) {
+    *reason = IVS_REASON_RUN_TARGET_RANGE;
     return IVS_E_OUT_OF_RANGE;
   }
   plan->target = req->target_ticks;
@@ -102,12 +148,18 @@ ivs_status ivs_machine_run(ivs_machine *m, const ivs_run_request *req, ivs_run_r
   ivs_run_report r;
   struct ivs_machine *im;
   ivs_status st;
+  uint32_t reason = IVS_REASON_NONE;
   uint32_t internal = 0u;
   uint64_t entry;
   uint64_t units = 0u;
   memset(&plan, 0, sizeof plan);
-  st = ivs_bound_validate(m, req, rep, &plan);
+  st = ivs_bound_validate(m, req, rep, &plan, &reason);
   if (st != IVS_OK) {
+    /* Refusal detail only into a report that is not itself the cause. */
+    if (ivs_bound_report_ok(m, rep) != 0u) {
+      rep->struct_size = (uint32_t)sizeof(ivs_run_report);
+      rep->refusal_reason = reason;
+    }
     return st;
   }
   im = ivs_machine_from_handle_mut(m);

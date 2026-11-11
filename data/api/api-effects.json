@@ -388,16 +388,55 @@
       "name": "ivs_machine_run",
       "header": "core/include/ivs/ivs_run.h",
       "on_ok": "Runs a POWERED machine to the absolute target req->target_ticks in master ticks (D-01): while machine time is below the target it steps one CPU unit through the internal step seam, so it ends at the first unit boundary at or after the target (run.target.ends-at-first-boundary-ge-target, run.target.on-boundary-no-overshoot); a target at or below now runs nothing (run.target.already-reached). The report holds the stop reason, the CPU run state and fault reason at exit, now_ticks, overshoot_ticks = max(now - target, 0) (run.overshoot.equals-now-minus-target), elapsed_ticks and units_executed. No state is kept between calls; run(now + 1) is exactly one unit (run.single-step.equals-seam).",
-      "precedence": [],
-      "notes": [
-        "Plan 04-07 Task 1 (tracer): the refusal ladder and its rows land with the stop reasons in Task 2."
+      "precedence": [
+        {"status": "IVS_E_BAD_ARG", "checks": "req NULL (RUN_NULL_ARG); req struct_size below the v1 size or above IVS_STRUCT_SIZE_MAX (RUN_STRUCT_SIZE); rep NULL or its struct_size below the v1 size or above the cap (nothing written)", "pinned_by": ["run.prec.arg-over-handle"]},
+        {"status": "IVS_E_BAD_HANDLE", "checks": "NULL or invalid handle (IVS_REASON_HANDLE)", "pinned_by": ["run.prec.handle-over-overlap"]},
+        {"status": "IVS_E_BAD_ARG", "checks": "the report overlaps the storage of the (valid) instance (uintptr_t arithmetic; nothing written)", "pinned_by": ["run.prec.overlap-over-unsupported"]},
+        {"status": "IVS_E_UNSUPPORTED", "checks": "an unknown or reserved flag (IVS_RUN_F_RESERVED_FRAME until Phase 6; RUN_FLAGS), then a nonzero byte past the v1 size of a larger request (RUN_TAIL); the D-05 buffer and event argument slot (plans 04-10, 04-11) follows this stage", "pinned_by": ["run.prec.flags-over-tail", "run.prec.unsupported-over-state"]},
+        {"status": "IVS_E_BAD_STATE", "checks": "the machine is OFF (RUN_STATE_OFF)", "pinned_by": ["run.prec.state-over-range"]},
+        {"status": "IVS_E_OUT_OF_RANGE", "checks": "target_ticks above IVS_RUN_TARGET_MAX = 2^63 (RUN_TARGET_RANGE), before any unit; 2^63 itself is accepted (run.target.max-accepted)"}
       ],
-      "refusals": []
+      "notes": [
+        "D-04: stops are not refusals. A run that executes returns IVS_OK with stop_reason TARGET, CPU_HALTED (only with IVS_RUN_F_STOP_ON_HALT), GUEST_FAULT or INTERNAL, a pure function of the exit state in the order INTERNAL, fault, halt, target (run.stop.halt-flag, run.stop.halt-no-flag, run.stop.guest-fault, run.stop.fault-sticky, run.stop.fault-before-halt, run.stop.internal-step-refused). A FAULTED CPU is never stepped; a unit that does not advance time ends the loop.",
+        "D-05: a refusal writes only struct_size and refusal_reason (IVS_REASON_RUN_* 34..40, IVS_REASON_HANDLE), and nothing into a report that is itself the cause or that overlaps the bytes the handle names."
+      ],
+      "refusals": [
+        {
+          "status": "IVS_E_BAD_ARG",
+          "effect": "none",
+          "outs": "rep: struct_size and refusal_reason (RUN_NULL_ARG or RUN_STRUCT_SIZE) when rep is valid; nothing when rep is NULL, has a bad struct_size or overlaps the instance",
+          "tests": ["run.refuse.null-request", "run.refuse.null-report", "run.refuse.struct-size-request", "run.refuse.struct-size-report", "run.refuse.report-inside-instance", "run.prec.arg-over-handle", "run.prec.overlap-over-unsupported"]
+        },
+        {
+          "status": "IVS_E_BAD_HANDLE",
+          "effect": "none",
+          "outs": "rep: struct_size and refusal_reason HANDLE (nothing into the bytes the handle names)",
+          "tests": ["run.refuse.bad-handle", "run.prec.handle-over-overlap"]
+        },
+        {
+          "status": "IVS_E_UNSUPPORTED",
+          "effect": "none",
+          "outs": "rep: struct_size and refusal_reason RUN_FLAGS or RUN_TAIL",
+          "tests": ["run.refuse.flags-unknown", "run.refuse.flags-frame-reserved", "run.refuse.tail-nonzero", "run.prec.flags-over-tail", "run.prec.unsupported-over-state"]
+        },
+        {
+          "status": "IVS_E_BAD_STATE",
+          "effect": "none",
+          "outs": "rep: struct_size and refusal_reason RUN_STATE_OFF",
+          "tests": ["run.refuse.state-off", "run.prec.state-over-range"]
+        },
+        {
+          "status": "IVS_E_OUT_OF_RANGE",
+          "effect": "none",
+          "outs": "rep: struct_size and refusal_reason RUN_TARGET_RANGE",
+          "tests": ["run.refuse.target-above-2-63"]
+        }
+      ]
     },
     {
       "name": "ivs_run_stop_name",
       "header": "core/include/ivs/ivs_run.h",
-      "on_ok": "Returns the static, constant name of a stop reason (\"IVS_STOP_TARGET\", \"IVS_STOP_CPU_HALTED\", \"IVS_STOP_GUEST_FAULT\", \"IVS_STOP_INTERNAL\") or \"IVS_STOP_UNKNOWN\" for a value that is not one. Cannot refuse and touches no instance.",
+      "on_ok": "Returns the static, constant name of a stop reason (\"IVS_STOP_TARGET\", \"IVS_STOP_CPU_HALTED\", \"IVS_STOP_GUEST_FAULT\", \"IVS_STOP_INTERNAL\") or \"IVS_STOP_UNKNOWN\" for a value that is not one, 0 included (run.stop-name.known, run.stop-name.unknown). Cannot refuse and touches no instance.",
       "precedence": [],
       "notes": [],
       "refusals": []
