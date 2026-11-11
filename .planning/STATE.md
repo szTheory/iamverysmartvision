@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 3
 current_phase_name: Memory Map, Content Loading and Refusal
 status: executing
-stopped_at: Completed 03-07-PLAN.md
-last_updated: "2026-11-11T06:44:08.784Z"
+stopped_at: Completed 03-08-PLAN.md
+last_updated: "2026-11-11T07:04:14.338Z"
 last_activity: 2026-11-11
-last_activity_desc: Plan 03-07 complete (IVSC v1 spec, pure layer-1 parser, 50 parse-level ids in suite ivsc, FX-ivsc-vectors effective yes, manifest refresh helper; MEM-05 and MEM-04 stay open)
-state_head: 1619bbf38a8b4b3310475636e4a0ab34e2b50ee7
+last_activity_desc: Plan 03-08 complete (seeded IVSC fuzz family reaching all 18 reasons, 6 IVSC named faults with new fixture N34, optional non-gate libFuzzer target, CL-0007; MEM-05 and MEM-04 stay open)
+state_head: bc5d80318023d51b32e88dd17a952a4603fd3ba9
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 46
-  completed_plans: 39
+  completed_plans: 40
   percent: 25
 ---
 
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 3 — Memory Map, Content Loading and Refusal
-Plan: 8 of 14
+Plan: 9 of 14
 Status: Ready to execute
-Last activity: 2026-11-11 — Plan 03-07 complete (IVSC v1 spec, pure layer-1 parser, 50 parse-level ids in suite ivsc, FX-ivsc-vectors effective yes, manifest refresh helper; MEM-05 and MEM-04 stay open)
+Last activity: 2026-11-11 — Plan 03-08 complete (seeded IVSC fuzz family reaching all 18 reasons, 6 IVSC named faults with new fixture N34, optional non-gate libFuzzer target, CL-0007; MEM-05 and MEM-04 stay open)
 
 Progress: [███░░░░░░░] 25%
 
@@ -92,6 +92,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 03 P05 | 8min | 2 tasks | 40 files |
 | Phase 03 P06 | 12min | 3 tasks | 29 files |
 | Phase 03 P07 | 15min | 3 tasks | 16 files |
+| Phase 03 P08 | 14min | 3 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -192,6 +193,10 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 03]: 03-07: IVSC v1 reasons have stable numbers 1..18, each mapped to one status (spec table in docs/formats/ivsc-v1.md); the parser checks the table size before reading any entry so a lying segment_count cannot over-read
 - [Phase 03]: 03-07: long IVSC fixtures (P05, B07, B10, B12) are JSON build records with typed cmake -E sha256sum trailers; any data/cart/*.json edit refreshes FX-ivsc-vectors via tools/cart/manifest-outputs.sh in the same commit
 - [Phase 03]: 03-07: SHA fault prefixes not widened (sha256 faults run suite machine only); the loader plan 03-11 still owes the widening; MEM-05/MEM-04 stay open until 03-08/03-11
+- [Phase 03]: 03-08: IVSC_TRUST_TOTAL_BYTES drops only the table-smaller half of the implied-size check (memory-safe in the plain fault build); new fixture ivsc.N34-table-short pins that half, which no fixed fixture pinned before
+- [Phase 03]: 03-08: IVSC_COUNT_17 lets count 17 pass the count rule and reads the table as 16 entries so the plain fault build stays in bounds
+- [Phase 03]: 03-08: CL-0007 is source-expectation and provisional (cartridge.slots unknown-default-chosen); IVSC conformance is to the project's own spec
+- [Phase 03]: 03-08: optional libFuzzer target sanitizer list is the cache string IVS_LIBFUZZER_SANITIZERS (default fuzzer,address,undefined; fuzzer,undefined where the ASan runtime hangs)
 
 ### Pending Todos
 
@@ -223,6 +228,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-11T06:44:08.691Z
-Stopped at: Completed 03-07-PLAN.md
+Last session: 2026-11-11T07:04:14.244Z
+Stopped at: Completed 03-08-PLAN.md
 Resume file: None

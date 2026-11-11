@@ -161,7 +161,7 @@ Plans:
   3. Every refusal-matrix row (malformed, oversized, overlapping, out-of-range, missing system image, unknown profile) returns its own typed error, and the state digest is the same before and after the refused load.
   4. The cartridge import format is specified in the project's own words. Its positive, boundary and malformed fixtures pass and are recorded in the fixture manifest.
   5. Two instances created side by side, with different content, step without affecting each other (isolation test). Every API error and refusal has a documented state effect that a test verifies.
-**Plans**: 7/14 plans executed in 14 sequential waves
+**Plans**: 8/14 plans executed in 14 sequential waves
 
 Plans:
 - [x] 03-01-PLAN.md — Fault loop over every `data/expected/faults/*.ids` with a per-suite registry and union site checks (D-37), 4 controls
@@ -171,7 +171,7 @@ Plans:
 - [x] 03-05-PLAN.md — Sourced literal memory map and the `memmap` gate step (grammar, tiling, provenance), 8 controls
 - [x] 03-06-PLAN.md — Decode dump over all addresses compared with the literal, generated boundary probes (MEM-02), 5 faults, 3 controls, CL-0006
 - [x] 03-07-PLAN.md — IVSC v1 spec, pure parser, parse-level text fixtures, suite `ivsc`, manifest `FX-ivsc-vectors` and refresh helper
-- [ ] 03-08-PLAN.md — Seeded IVSC fuzzing, 6 parser faults, optional libFuzzer recipe, `.ivsc` hygiene, CL-0007
+- [x] 03-08-PLAN.md — Seeded IVSC fuzzing, 6 parser faults, optional libFuzzer recipe, `.ivsc` hygiene, CL-0007
 - [ ] 03-09-PLAN.md — Public machine headers, caller-storage create/destroy/info, status names and pin, canonical state digest, 8 faults
 - [ ] 03-10-PLAN.md — Typed load/unload of EXEC, GROM and cartridge with validate-then-commit, reports and the two-digest pass, 3 faults
 - [ ] 03-11-PLAN.md — Refusal matrix over prior states, precedence rows, layer-2 cartridge fixtures, 8 ordering faults, second gate measurement
@@ -287,7 +287,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 |-------|----------------|--------|-----------|
 | 1. Evidence, Profile and Rights Foundations | 14/14 | Complete    | 2026-11-09 |
 | 2. CP-1610 CPU Core | 18/18 | Complete    | 2026-11-10 |
-| 3. Memory Map, Content Loading and Refusal | 7/14 | In Progress | - |
+| 3. Memory Map, Content Loading and Refusal | 8/14 | In Progress | - |
 | 4. Headless Runner and Installed Consumer (Slice 0) | 0/TBD | Not started | - |
 | 5. Hand Controllers and PSG Sound | 0/TBD | Not started | - |
 | 6. STIC Video First Pass | 0/TBD | Not started | - |
