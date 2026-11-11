@@ -71,6 +71,7 @@ Without a `waits` entry for an address, accesses there take no wait.
 ## p07
 
 When the destination register of a read through a pointer register is that pointer register itself, for example MVI@ through R4 into R4 or PULR into R6, the value read wins over the pointer's increment or decrement.
+The increment or decrement is part of forming the address and happens before the operation, so an operation whose other operand is that pointer register uses the incremented or decremented value.
 
 ## p08
 

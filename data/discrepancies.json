@@ -340,7 +340,7 @@
       "default_policy": "unknown-default-chosen: Phase 2 adds the 4-cycle SDBD row to the printed instruction row and flags the total as ambiguous.",
       "resolver": "test: Phase 2 SDBD cycle vectors; a worked example in the manual or a bus trace would settle it",
       "evidence": "SRC-gi-cp1600-um-1975 pdf 57 (indirect SDBD table); pdf 58 (immediate pairs).",
-      "note": "Appended from the Discrepancy candidates section of docs/cp1610/reference-notes.md (D-21). Open item for Phase 2."
+      "note": "Appended from the Discrepancy candidates section of docs/cp1610/reference-notes.md (D-21). Open item for Phase 2. Plan 02-17: the isolated second readers of sdbd.json and interrupt.json read the immediate-pair 14 (pdf 58) as the target alone, so their pairs total 18; the adjudication kept the default (pdf 58 prints the 14 against a row that begins with the SDBD word, matching the 4 + 10 split of pdf 57) and the item stays open (data/cp1610/vector-review.json)."
     },
     {
       "id": "C35",
@@ -550,7 +550,7 @@
       "default_policy": "unknown-default-chosen: when DDD equals the pointer register (MVI@ R4,R4 or PULR R6) the result wins over the increment; the increment happens before the operation, so ADD@ R4,R4 sees R4+1 (POL-STK-02).",
       "resolver": "test: phase-2 indirect-mode vectors cpu.MVI@ and cpu.PULR with DDD equal to the pointer; measurement: D10 register read-back",
       "evidence": "SRC-gi-cp1600-um-1975 pdf 48; pdf 55.",
-      "note": "Applies to R4, R5 and R6."
+      "note": "Applies to R4, R5 and R6. Plan 02-17: the isolated second reader of indirect.json, whose policy statement lacked the increment-order clause, used the old R4 for ADD@ R4,R4; the adjudication kept the default from the pdf 48 order (the increment is part of address formation, which precedes the operation) and completed the statement in docs/cp1610/second-reader-policies.md."
     },
     {
       "id": "C56",

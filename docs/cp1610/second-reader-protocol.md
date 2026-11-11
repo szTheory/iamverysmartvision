@@ -75,6 +75,8 @@ The `expect` schema, in full:
 Event meanings: `TCI` and `PCIT` mark the strobe of that name, `HALT_LATCHED` marks HLT setting the stop latch, `STOPPED` marks a step that entered the halted state, `FAULT` marks a step that set a sticky guest fault, and `BUS_RELEASED` marks a step that released a granted bus.
 
 Each `bus` entry is `[cycle, kind, addr, data]` in order of occurrence, where `cycle` is the address-phase cycle counted from the start of the vector (across all steps), `kind` is one of `FETCH`, `READ`, `WRITE`, `ADAR`, `INTAK`, `IAB`, `DW`, `STROBE_TCI`, `STROBE_PCIT`, and `addr` and `data` are four-digit hex words.
+The entries are grouped by unit in step order and, within a unit, follow its accesses in order; a `STROBE_TCI` or `STROBE_PCIT` entry stays with the unit of its instruction even when its cycle lies past that unit's end.
+`FETCH` reads an instruction word, `READ` reads a data word through an address phase that puts an address out (BAR), `ADAR` is a data read whose address phase is the ADAR re-addressing of memory with the word just read (pdf 23), `WRITE` is any data write, and `DW` is the write of R7 during an interrupt entry.
 A bus entry is recorded for every access that is not an idle cycle; idle cycles are the gaps between entries.
 An `IAB` entry carries address `0000` and the answered vector as data, and a strobe entry carries address and data `0000`.
 
