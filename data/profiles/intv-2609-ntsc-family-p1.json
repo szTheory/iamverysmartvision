@@ -258,23 +258,45 @@
       "revisit_trigger": "when a content profile needs bank switching, cartridge RAM, ECS or IntelliVoice",
       "decision": null
     },
-    "cartridge.address_windows": {
-      "value": "from the per-content descriptor, not the profile",
-      "tag": "unknown-default-chosen",
-      "cite": "none: scope choice for the first profile (D3)",
+    "cartridge.features_supported": {
+      "value": 0,
+      "tag": "delegated-decision",
+      "cite": "none: project cartridge format IVSC v1 (D-29, D-32); required_features is a u32 mask and v1 defines no bit",
       "conflict": null,
-      "resolving_evidence": "pending: per-content descriptor design in Phase 3",
-      "revisit_trigger": "at Phase 3 memory-map design",
-      "decision": null
+      "resolving_evidence": null,
+      "revisit_trigger": "when a cartridge format version defines a feature bit",
+      "decision": "D-32 (delegated decision, phase 3 context)",
+      "note": "A cartridge whose required_features has a bit outside this mask is refused UNSUPPORTED (D-32)."
     },
     "system_images.exec_grom": {
-      "value": "required EXEC/GROM slot; digest bound at run time; a different digest is a different profile identity; supply policy pending D5",
-      "tag": "unknown-default-chosen",
-      "cite": "none: rights policy (AGENTS.md); system images are never committed",
+      "value": "user-supplied only: no built-in, fetched or high-level-emulated image (D-24); the Phase 4 project boot stub loads through the EXEC slot and is labelled \"project boot stub, not an EXEC\"",
+      "tag": "delegated-decision",
+      "cite": "none: rights policy (AGENTS.md, docs/RIGHTS.md); system images are never committed or redistributed",
       "conflict": null,
-      "resolving_evidence": "pending: D5 system-image supply policy",
-      "revisit_trigger": "when D5 is decided or an original replacement image exists",
-      "decision": null
+      "resolving_evidence": null,
+      "revisit_trigger": "when the owner wants plug-and-play commercial play (a separately labelled high-level image) or permission to redistribute an image appears",
+      "decision": "D-24 (D5, delegated decision, phase 3 context)",
+      "note": "Slot shapes are system_images.exec and system_images.grom. Identity is a recorded fact: the core checks shape only (D-27)."
+    },
+    "system_images.exec": {
+      "value": {"units": 4096, "unit_bits": 10, "base": "$1000", "required": 1},
+      "tag": "delegated-decision",
+      "cite": "SRC-bsr-2609 for the 4K EXEC size; SRC-gi-1980-catalog printed 5-13 (pdf 194) for the 10-bit words; SRC-intv-wiki (Memory Map, oldid 14847) for the $1000 base",
+      "conflict": "C20",
+      "resolving_evidence": null,
+      "revisit_trigger": "when board evidence places the EXEC halves (C20) or D11 checks a real image",
+      "decision": "D-24 and D-26 (delegated decision, phase 3 context)",
+      "note": "Raw container: 8192 bytes, 4096 words high byte first, bits 15..10 zero (D-26). Required: a power-on reset with this slot empty is refused MISSING_SYSTEM_IMAGE (D-14)."
+    },
+    "system_images.grom": {
+      "value": {"units": 2048, "unit_bits": 8, "base": "$3000", "required": 1},
+      "tag": "delegated-decision",
+      "cite": "SRC-gi-1980-catalog printed 5-16 (pdf 197): RO-3-9503 is 2048 x 8 and sits at $3000-$37FF after an SR1 pulse",
+      "conflict": null,
+      "resolving_evidence": null,
+      "revisit_trigger": "when D11 checks a real image",
+      "decision": "D-24 and D-26 (delegated decision, phase 3 context)",
+      "note": "Raw container: exactly 2048 bytes (D-26). Required: a power-on reset with this slot empty is refused MISSING_SYSTEM_IMAGE (D-14)."
     },
     "memmap.undriven_read": {
       "value": "$FFFF",
@@ -296,6 +318,96 @@
       "decision": null,
       "note": "read = (stored & rmask) | (fill & ~rmask) (D-17). The fill is a driven zero, not the undriven pull-up value. Bus stores are dropped; loaders refuse a word above $03FF instead of masking it."
     },
+    "memmap.device.grom8": {
+      "value": {"bits": 8, "rmask": "$00FF", "fill": "$0000", "store": "drop"},
+      "tag": "tier1-primary-doc",
+      "cite": "SRC-gi-1980-catalog printed 5-16 (pdf 197): the RO-3-9503 has an 8 bit tri-state bus with the higher 8 bits driven to zero during reads",
+      "conflict": null,
+      "resolving_evidence": null,
+      "revisit_trigger": "when a GROM device engine replaces the plain read (Phase 5 or later)",
+      "decision": null,
+      "note": "Bus stores are dropped; the GROM is read-only."
+    },
+    "memmap.device.ram16": {
+      "value": {"bits": 16, "rmask": "$FFFF", "fill": "$0000", "store": "keep"},
+      "tag": "tier1-primary-doc",
+      "cite": "SRC-gi-1980-catalog printed 5-18 (pdf 199): the RA-3-9600 is 352 x 16; the two most significant bits are available for user storage",
+      "conflict": null,
+      "resolving_evidence": null,
+      "revisit_trigger": "when a hardware read-back contradicts a full-width store",
+      "decision": null,
+      "note": "Stores and reads keep all 16 bits."
+    },
+    "memmap.device.ram8": {
+      "value": {"bits": 8, "rmask": "$00FF", "fill": "$0000", "store": "keep"},
+      "tag": "unknown-default-chosen",
+      "cite": "SRC-bsr-2609 for the 8-bit scratchpad and GRAM parts; none-found for what bits 15..8 read as",
+      "conflict": "C60",
+      "resolving_evidence": "measurement: D10 read-back of scratchpad and GRAM reads on owner hardware",
+      "revisit_trigger": "when a source documents the upper byte of 8-bit RAM reads or a hardware read-back exists",
+      "decision": null,
+      "note": "Stores keep value & $00FF; reads give the stored byte with bits 15..8 zero."
+    },
+    "memmap.device.stub": {
+      "value": {"bits": 0, "rmask": "$0000", "fill": "$FFFF", "store": "drop"},
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: no source documents STIC or PSG register reads for a device the core does not implement yet",
+      "conflict": "C60",
+      "resolving_evidence": "measurement: D10 read-back of STIC and PSG register reads on owner hardware",
+      "revisit_trigger": "when the PSG phase (5) or the STIC phase (6) implements the device",
+      "decision": null,
+      "note": "A stub region is decoded and named but holds no state: reads give the undriven value and writes are dropped (D-19)."
+    },
+    "memmap.region.stic_regs": {
+      "value": {"view": "RW", "lo": "$0000", "hi": "$003F", "device": "stub", "size_words": 64, "gate": "stic-regs", "impl": "stub"},
+      "tag": "tier4-community",
+      "cite": "SRC-intv-wiki (Memory Map, oldid 14847) for $0000-$003F; SRC-gi-1980-catalog printed 5-10 to 5-12 (pdf 191 to 193) gives no CPU register addresses",
+      "conflict": "C21",
+      "resolving_evidence": "pending: a tier 1 to 3 address source, or a D10 decode probe on owner hardware",
+      "revisit_trigger": "when a tier 1 to 3 source or a hardware probe gives the decode",
+      "decision": null,
+      "note": "STIC registers; the device arrives in Phase 6."
+    },
+    "memmap.region.stic_alias_read": {
+      "value": {"view": "R", "lo": "$0040", "hi": "$007F", "device": "stub", "size_words": 64, "gate": "stic-regs", "impl": "stub"},
+      "tag": "tier4-community",
+      "cite": "SRC-intv-wiki (Memory Map, oldid 14847) for the read-only alias at $0040-$007F",
+      "conflict": "C21",
+      "resolving_evidence": "pending: a tier 1 to 3 address source, or a D10 decode probe on owner hardware",
+      "revisit_trigger": "when a tier 1 to 3 source or a hardware probe gives the decode",
+      "decision": null,
+      "note": "Read view only."
+    },
+    "memmap.region.scratchpad": {
+      "value": {"view": "RW", "lo": "$0100", "hi": "$01EF", "device": "ram8", "size_words": 256, "gate": "none", "impl": "real"},
+      "tag": "tier4-community",
+      "cite": "SRC-intv-wiki (Memory Map, oldid 14847) for $0100-$01EF; SRC-bsr-2609 for one 256 x 8 part",
+      "conflict": null,
+      "resolving_evidence": "pending: a tier 1 to 3 address source, or a D10 decode probe on owner hardware",
+      "revisit_trigger": "when a tier 1 to 3 source or a hardware probe gives the decode",
+      "decision": null,
+      "note": "Extent 240 words over a 256-word backing; the 16 words above the extent are unreachable."
+    },
+    "memmap.region.psg_regs": {
+      "value": {"view": "RW", "lo": "$01F0", "hi": "$01FF", "device": "stub", "size_words": 16, "gate": "none", "impl": "stub"},
+      "tag": "tier4-community",
+      "cite": "SRC-intv-wiki (Memory Map, oldid 14847) for $01F0-$01FF",
+      "conflict": "C11",
+      "resolving_evidence": "pending: a tier 1 to 3 address source, or a D10 decode probe on owner hardware",
+      "revisit_trigger": "when a tier 1 to 3 source or a hardware probe gives the decode",
+      "decision": null,
+      "note": "PSG registers; the device arrives in Phase 5."
+    },
+    "memmap.region.sysram": {
+      "value": {"view": "RW", "lo": "$0200", "hi": "$035F", "device": "ram16", "size_words": 512, "gate": "none", "impl": "real"},
+      "tag": "tier1-primary-doc",
+      "cite": "SRC-gi-1980-catalog printed 5-18 (pdf 199): the RA-3-9600 holds 352 contiguous words from address 512 to 863",
+      "conflict": null,
+      "resolving_evidence": null,
+      "revisit_trigger": "when a hardware read-back or board source contradicts the range",
+      "decision": null,
+      "note": "Extent 352 words over a 512-word backing; the words above the extent are unreachable."
+    },
     "memmap.region.exec": {
       "value": {"view": "R", "lo": "$1000", "hi": "$1FFF", "device": "rom10", "size_words": 4096, "gate": "none", "impl": "real"},
       "tag": "tier4-community",
@@ -305,6 +417,93 @@
       "revisit_trigger": "when board evidence places the EXEC halves",
       "decision": null,
       "note": "Read view only: bus writes are dropped. Reads with no EXEC image loaded return memmap.undriven_read (D-B7)."
+    },
+    "memmap.region.grom": {
+      "value": {"view": "R", "lo": "$3000", "hi": "$37FF", "device": "grom8", "size_words": 2048, "gate": "gmem", "impl": "real"},
+      "tag": "tier1-primary-doc",
+      "cite": "SRC-gi-1980-catalog printed 5-16 (pdf 197): $3000-$37FF after an SR1 pulse; SRC-intv-wiki (Memory Map, oldid 14847) for the gating while the STIC owns the graphics bus",
+      "conflict": "C5",
+      "resolving_evidence": null,
+      "revisit_trigger": "when a hardware read-back or board source contradicts the range",
+      "decision": null,
+      "note": "Read view only. Reads with no GROM image loaded, or with gate gmem closed, return memmap.undriven_read."
+    },
+    "memmap.region.gram": {
+      "value": {"view": "RW", "lo": "$3800", "hi": "$3FFF", "device": "ram8", "size_words": 512, "gate": "gmem", "impl": "real"},
+      "tag": "tier4-community",
+      "cite": "SRC-gi-1980-catalog printed 5-16 (pdf 197): external memory at $3800-$3FFF in the CPU view; SRC-bsr-2609 for two 256-byte parts; SRC-intv-wiki (Memory Map, oldid 14847) for the mirroring",
+      "conflict": "C21",
+      "resolving_evidence": "pending: a tier 1 to 3 address source, or a D10 decode probe on owner hardware",
+      "revisit_trigger": "when a tier 1 to 3 source or a hardware probe gives the decode",
+      "decision": null,
+      "note": "Extent 2048 words mirrored over a 512-word backing."
+    },
+    "memmap.region.stic_alias_w4": {
+      "value": {"view": "W", "lo": "$4000", "hi": "$403F", "device": "stub", "size_words": 64, "gate": "none", "impl": "stub"},
+      "tag": "tier4-community",
+      "cite": "SRC-intv-wiki (Memory Map, oldid 14847) for the write-only alias at $4000-$403F",
+      "conflict": "C61",
+      "resolving_evidence": "pending: a tier 1 to 3 address source, or a D10 decode probe on owner hardware",
+      "revisit_trigger": "when a tier 1 to 3 source or a hardware probe gives the decode",
+      "decision": null
+    },
+    "memmap.region.gram_alias_w7": {
+      "value": {"view": "W", "lo": "$7800", "hi": "$7FFF", "device": "ram8", "size_words": 512, "gate": "none", "impl": "real"},
+      "tag": "tier4-community",
+      "cite": "SRC-intv-wiki (Memory Map, oldid 14847) for the write-only alias at $7800-$7FFF",
+      "conflict": "C61",
+      "resolving_evidence": "pending: a tier 1 to 3 address source, or a D10 decode probe on owner hardware",
+      "revisit_trigger": "when a tier 1 to 3 source or a hardware probe gives the decode",
+      "decision": null,
+      "note": "Writes reach the GRAM backing; reads come from the cartridge span."
+    },
+    "memmap.region.stic_alias_w8": {
+      "value": {"view": "W", "lo": "$8000", "hi": "$803F", "device": "stub", "size_words": 64, "gate": "none", "impl": "stub"},
+      "tag": "tier4-community",
+      "cite": "SRC-intv-wiki (Memory Map, oldid 14847) for the write-only alias at $8000-$803F",
+      "conflict": "C61",
+      "resolving_evidence": "pending: a tier 1 to 3 address source, or a D10 decode probe on owner hardware",
+      "revisit_trigger": "when a tier 1 to 3 source or a hardware probe gives the decode",
+      "decision": null
+    },
+    "memmap.region.gram_alias_wb": {
+      "value": {"view": "W", "lo": "$B800", "hi": "$BFFF", "device": "ram8", "size_words": 512, "gate": "none", "impl": "real"},
+      "tag": "tier4-community",
+      "cite": "SRC-intv-wiki (Memory Map, oldid 14847) for the write-only alias at $B800-$BFFF",
+      "conflict": "C61",
+      "resolving_evidence": "pending: a tier 1 to 3 address source, or a D10 decode probe on owner hardware",
+      "revisit_trigger": "when a tier 1 to 3 source or a hardware probe gives the decode",
+      "decision": null,
+      "note": "Writes reach the GRAM backing; reads come from the cartridge span."
+    },
+    "memmap.region.stic_alias_wc": {
+      "value": {"view": "W", "lo": "$C000", "hi": "$C03F", "device": "stub", "size_words": 64, "gate": "none", "impl": "stub"},
+      "tag": "tier4-community",
+      "cite": "SRC-intv-wiki (Memory Map, oldid 14847) for the write-only alias at $C000-$C03F",
+      "conflict": "C61",
+      "resolving_evidence": "pending: a tier 1 to 3 address source, or a D10 decode probe on owner hardware",
+      "revisit_trigger": "when a tier 1 to 3 source or a hardware probe gives the decode",
+      "decision": null
+    },
+    "memmap.region.gram_alias_wf": {
+      "value": {"view": "W", "lo": "$F800", "hi": "$FFFF", "device": "ram8", "size_words": 512, "gate": "none", "impl": "real"},
+      "tag": "tier4-community",
+      "cite": "SRC-intv-wiki (Memory Map, oldid 14847) for the write-only alias at $F800-$FFFF",
+      "conflict": "C61",
+      "resolving_evidence": "pending: a tier 1 to 3 address source, or a D10 decode probe on owner hardware",
+      "revisit_trigger": "when a tier 1 to 3 source or a hardware probe gives the decode",
+      "decision": null,
+      "note": "Writes reach the GRAM backing; reads come from the cartridge span."
+    },
+    "memmap.cart_span": {
+      "value": {"lo": "$4000", "hi": "$FFFF"},
+      "tag": "unknown-default-chosen",
+      "cite": "SRC-intv-wiki (Memory Map, oldid 14847) and SRC-community-emu-docs for cartridge-usable ranges; no tier 1 to 3 source",
+      "conflict": "C62",
+      "resolving_evidence": "measurement: D10 cartridge decode probe on owner hardware",
+      "revisit_trigger": "when content needs a range outside the span or a source gives the 2609 cartridge decode",
+      "decision": null,
+      "note": "A segment must lie wholly inside the span and must not overlap another segment; nothing else constrains its start (A-01). Write-only aliases inside the span are write view only."
     }
   }
 }

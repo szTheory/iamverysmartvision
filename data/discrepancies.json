@@ -205,10 +205,10 @@
     {
       "id": "C21",
       "topic": "GRAM extent and STIC decode range",
-      "sources": "GRAM is at $3800-$39FF mirrored at $3A00-$3FFF in some research files and $3800-$3AFF with a shadow to $3FFF in others. STIC registers are $0000-$007F in one file and respond at $00-$3F with decoding of $0000-$007F in others.",
+      "sources": "GRAM is at $3800-$39FF mirrored at $3A00-$3FFF in some research files and $3800-$3AFF with a shadow to $3FFF in others. STIC registers are $0000-$007F in one file and respond at $00-$3F with decoding of $0000-$007F in others. The 1980 catalog places the GROM at $3000-$37FF after an SR1 pulse and addresses external memory at $3800-$3FFF in that view (SRC-gi-1980-catalog printed 5-16, pdf 197), which supports a GRAM decode across the whole 2K window but gives no RAM size. Community documents disagree on whether $3A00-$3FFF accepts writes (SRC-intv-wiki, Memory Map oldid 14847, says read/write; another research file says not writable).",
       "status": "open",
       "default_policy": "unknown-default-chosen: GRAM at $3800-$39FF mirrored to $3FFF and STIC decode over $0000-$007F, both tagged and minor.",
-      "resolver": "test: Phase 3 memory-map decode diagnostic",
+      "resolver": "measurement: D10 read-back of GRAM writes at $3800-$3FFF and of STIC register reads at $0000-$007F on owner hardware; the Phase 3 memory-map tests only check consistency with the chosen default",
       "evidence": "",
       "note": "Seeded from the research source-conflict table."
     },
@@ -506,10 +506,10 @@
       "id": "C51",
       "topic": "Width of operand, direct-address, jump-address and displacement words (RESEARCH G6)",
       "sources": "The direct address is aaaaaa AAAAAAAAAA with six high bits that depend on memory width, and the jump address uses bits 7..2 of the second word and bits 9..0 of the third (SRC-gi-cp1600-um-1975).",
-      "status": "open",
+      "status": "partial",
       "default_policy": "unknown-default-chosen: operand, direct-address, jump-address and displacement words keep all 16 bits on the flat test bus; only the first decle of an instruction ignores bits 15..10 (POL-ILL-01).",
-      "resolver": "test: phase-2 policy vectors for wide words; measurement: Phase 3 decides what ROM upper bits read as",
-      "evidence": "SRC-gi-cp1600-um-1975 pdf 48; pdf 52.",
+      "resolver": "test: phase-2 policy vectors for wide words; measurement: D10 read-back of the upper bits of a non-GI cartridge ROM",
+      "evidence": "SRC-gi-cp1600-um-1975 pdf 48; pdf 52. Plan 03-04: ROM upper bits read 0 for the GI mask ROM parts (SRC-gi-1980-catalog printed 5-13, pdf 194; printed 5-21, pdf 202), so profile device rom10 reads (stored & $03FF); operand words on the flat CPU test bus keep 16 bits.",
       "note": "A-06 mapping: G6 = C51."
     },
     {
@@ -591,6 +591,36 @@
       "resolver": "measurement: D10 register read-back after SWAP Rn, 2 with distinct high and low bytes in an original diagnostic",
       "evidence": "SRC-gi-cp1600-um-1975 pdf 53 (SWAP row and shift header); Fig 3.3.2, pdf 50.",
       "note": "Raised by the phase 2 code review (WR-05). The vector cpu.SWAP.n1 encodes the manual reading (kind source); its derivation does not yet cite this entry because shift.json is pinned by its second-read record (A-12), so the cite waits for the next re-read of that file. The core cites C59 at the SWAP handler."
+    },
+    {
+      "id": "C60",
+      "topic": "Upper bits of 8-bit RAM, PSG and STIC register reads",
+      "sources": "The GI mask ROMs drive zero on the bits above their width (RO-3-9502 and RO-3-9504 bits 15..10, SRC-gi-1980-catalog printed 5-13 and 5-21, pdf 194 and 202; RO-3-9503 GROM bits 15..8, printed 5-16, pdf 197). No tier 1 to 3 source states what bits 15..8 of the 8-bit scratchpad and GRAM RAMs, or bits of the PSG and STIC registers, read as on a 2609. One community data point on a different board agrees with zero for 8-bit RAM.",
+      "status": "partial",
+      "default_policy": "unknown-default-chosen: scratchpad and GRAM upper byte read 0; stub registers read the undriven fill FFFF",
+      "resolver": "measurement: D10 read-back of scratchpad, GRAM, PSG and STIC register reads on owner hardware",
+      "evidence": "SRC-gi-1980-catalog printed 5-13, pdf 194; printed 5-16, pdf 197; printed 5-21, pdf 202 (the tier 1 zero applies to the GI mask ROM and GROM parts only).",
+      "note": "Raised by plan 03-04 (D-23). Profile fields memmap.device.ram8 and memmap.device.stub reference this entry."
+    },
+    {
+      "id": "C61",
+      "topic": "Write-only STIC and GRAM aliases coexisting with cartridge ROM",
+      "sources": "A community memory map lists write-only STIC aliases at $4000-$403F, $8000-$803F and $C000-$C03F and write-only GRAM aliases at $7800-$7FFF, $B800-$BFFF and $F800-$FFFF, and states that cartridge ROM may still be read there (SRC-intv-wiki, Memory Map oldid 14847). One community lineage; no tier 1 to 3 source.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: reads return cartridge ROM when a segment is loaded there, else the undriven fill; writes reach the alias device (GRAM backing or the stub STIC registers) whether or not a segment is loaded",
+      "resolver": "measurement: D10 write and read-back through an alias address with and without a cartridge segment on owner hardware",
+      "evidence": "",
+      "note": "Raised by plan 03-04 (D-23). The alias regions of the profile reference this entry."
+    },
+    {
+      "id": "C62",
+      "topic": "Cartridge span of the first profile",
+      "sources": "Community documents list cartridge-usable ranges inside $4000-$FFFF and lower ranges near $0500, $0D00 and $2000, some of them conditional on attached peripherals (SRC-intv-wiki, Memory Map oldid 14847; SRC-community-emu-docs). The same documents describe cartridge segments on 256-word boundaries; that alignment is recorded here as a tier 4 note only and is not a Phase 3 rule (A-01). No tier 1 to 3 source gives the 2609 cartridge decode.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: the cartridge span is $4000-$FFFF; a segment may start at any address inside it and must not overlap another segment; lower holes are not opened",
+      "resolver": "measurement: D10 cartridge decode probe on owner hardware, or a tier 1 to 3 board source",
+      "evidence": "",
+      "note": "Raised by plan 03-04 (D-23, A-01, A-02). Profile field memmap.cart_span references this entry. Widening the span later is additive; narrowing it is a claim change."
     }
   ]
 }
