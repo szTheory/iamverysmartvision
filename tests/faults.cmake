@@ -14,6 +14,8 @@
 # Fault executables link ivs_warnings only, never ivs_san, so no sanitizer abort can pass for a
 # detection. They are EXCLUDE_FROM_ALL (aggregate target ivs_faults) and never registered with
 # ctest; the c-faults gate step runs them and faults-verdict judges their results.
+# Every core and harness copy sees core/include (public ivs/*.h) before core/src, as the real
+# core objects do (D-06, plan 03-03).
 
 file(GLOB ivs_fault_files CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/data/expected/faults/*.ids")
 list(SORT ivs_fault_files)
@@ -34,13 +36,14 @@ foreach(src IN LISTS ivs_fault_core_sources)
   get_filename_component(stem "${src}" NAME_WE)
   set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/core/${src}")
   add_library(ivs_fault_plain_${stem} OBJECT EXCLUDE_FROM_ALL "${PROJECT_SOURCE_DIR}/core/${src}")
-  target_include_directories(ivs_fault_plain_${stem} PRIVATE "${PROJECT_SOURCE_DIR}/core/src")
+  target_include_directories(ivs_fault_plain_${stem} PRIVATE
+    "${PROJECT_SOURCE_DIR}/core/include" "${PROJECT_SOURCE_DIR}/core/src")
   target_link_libraries(ivs_fault_plain_${stem} PRIVATE ivs_warnings)
   set_target_properties(ivs_fault_plain_${stem} PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF)
 endforeach()
 add_library(ivs_fault_plain_harness OBJECT EXCLUDE_FROM_ALL harness/ivs_test.c harness/ivs_testbus.c)
 target_include_directories(ivs_fault_plain_harness PRIVATE
-  "${CMAKE_CURRENT_SOURCE_DIR}/harness" "${PROJECT_SOURCE_DIR}/core/src")
+  "${CMAKE_CURRENT_SOURCE_DIR}/harness" "${PROJECT_SOURCE_DIR}/core/include" "${PROJECT_SOURCE_DIR}/core/src")
 target_link_libraries(ivs_fault_plain_harness PRIVATE ivs_warnings)
 
 # One plain object library per suite that a faults file names (created on first use).
@@ -52,7 +55,7 @@ function(ivs_fault_suite_obj suite)
     ${IVS_FAULT_SUITE_${suite}_SOURCES} ${IVS_FAULT_SUITE_${suite}_GENERATED})
   target_include_directories(ivs_fault_suite_obj_${suite} PRIVATE
     ${IVS_FAULT_SUITE_${suite}_INCLUDE_DIRS}
-    "${CMAKE_CURRENT_SOURCE_DIR}/harness" "${PROJECT_SOURCE_DIR}/core/src")
+    "${CMAKE_CURRENT_SOURCE_DIR}/harness" "${PROJECT_SOURCE_DIR}/core/include" "${PROJECT_SOURCE_DIR}/core/src")
   target_link_libraries(ivs_fault_suite_obj_${suite} PRIVATE ivs_warnings)
   set_target_properties(ivs_fault_suite_obj_${suite} PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF)
 endfunction()
@@ -66,7 +69,8 @@ function(ivs_fault_exe id suite owner gen_dir gen_file)
     get_filename_component(stem "${src}" NAME_WE)
     if(src STREQUAL owner)
       add_library(ivs_fault_obj_${id} OBJECT EXCLUDE_FROM_ALL "${PROJECT_SOURCE_DIR}/core/${src}")
-      target_include_directories(ivs_fault_obj_${id} PRIVATE "${PROJECT_SOURCE_DIR}/core/src")
+      target_include_directories(ivs_fault_obj_${id} PRIVATE
+        "${PROJECT_SOURCE_DIR}/core/include" "${PROJECT_SOURCE_DIR}/core/src")
       target_compile_definitions(ivs_fault_obj_${id} PRIVATE "IVS_FAULT_${id}")
       target_link_libraries(ivs_fault_obj_${id} PRIVATE ivs_warnings)
       set_target_properties(ivs_fault_obj_${id} PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF)
@@ -93,7 +97,7 @@ function(ivs_fault_exe id suite owner gen_dir gen_file)
       ${IVS_FAULT_SUITE_${suite}_SOURCES} ${gen_srcs} ${objs})
     target_include_directories(ivs_fault_${id} PRIVATE "${gen_dir}"
       ${IVS_FAULT_SUITE_${suite}_INCLUDE_DIRS}
-      "${CMAKE_CURRENT_SOURCE_DIR}/harness" "${PROJECT_SOURCE_DIR}/core/src")
+      "${CMAKE_CURRENT_SOURCE_DIR}/harness" "${PROJECT_SOURCE_DIR}/core/include" "${PROJECT_SOURCE_DIR}/core/src")
   endif()
   target_link_libraries(ivs_fault_${id} PRIVATE ivs_warnings)
   set_target_properties(ivs_fault_${id} PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF)

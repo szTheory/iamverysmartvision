@@ -3,11 +3,13 @@
 # Step c-purity: the machine core imports no host service (API-05, D-21, ROADMAP SC5).
 # Stage 1, source layer (runs before any compile; a finding stops the step here, so a source
 # violation is always reported by its own token and never masked by a compile failure):
-#   - every FILELIST path core/src/**/*.c and core/src/**/*.h: every #include or #import line
+#   - every FILELIST path core/src/**/*.c, core/src/**/*.h and core/include/**/*.h (the public
+#     tree, same rules as core/src; A-06, plan 03-03): every #include or #import line
 #     is checked (c-purity-include). An angle include may name only stdint.h, stddef.h,
 #     stdbool.h, limits.h or string.h; a quoted include must name a FILELIST header under
-#     core/src, as a path from core/src or from the including file's directory, so
-#     `#include "stdio.h"` (resolved through the system path) fails; any other form (a computed
+#     core/src or core/include, as a path from core/src, from core/include or from the including
+#     file's directory, so `#include "stdio.h"` (resolved through the system path) and a header
+#     that exists only outside both trees fail; any other form (a computed
 #     `#include MACRO`, #include_next, a continuation or a comment before the operand) fails
 #     closed (review WR-02). After removing comments and string
 #     and character literals, the words asm, __asm, __asm__, __builtin_readcyclecounter,
@@ -19,7 +21,8 @@
 #     names them in its poison pragma), and the first #include must be "common/ivs_prelude.h"
 #     or another quoted path ending ivs_prelude.h (c-purity-prelude).
 # Stage 2, symbol layer (authoritative): every core .c is compiled fresh into a temp dir at -O0
-#   and at -O2 with ${CC:-cc} (-std=c17 -fno-lto; a missing compiler fails, never skips), each
+#   and at -O2 with ${CC:-cc} (-std=c17 -fno-lto -I core/include -I core/src; a missing
+#   include directory is ignored by the compiler; a missing compiler fails, never skips), each
 #   variant is archived with ar, and tools/check/core-symbols.sh checks each archive against the
 #   reviewed allowlist (lists read from CHECK_DIR, so a control cannot replace them).
 # Stage 3, purity self-test: core-symbols.sh must reject an LTO object (lto), a file with the
@@ -44,7 +47,7 @@ rc=0
 bad() { printf -- '-- FAIL %s: %s\n' "$1" "$2"; rc=1; }
 
 grep -E '^core/src/.*[.]c$' "$FILELIST" | sort -u > "$tmp/csrc"
-grep -E '^core/src/.*[.]h$' "$FILELIST" | sort -u > "$tmp/hsrc"
+grep -E '^core/(src|include)/.*[.]h$' "$FILELIST" | sort -u > "$tmp/hsrc"
 if [ ! -s "$tmp/csrc" ]; then
   bad c-purity-no-sources core/src
   exit 1
@@ -93,7 +96,8 @@ scan() { # $1 repo-relative path, $2 1 for a .c file, 0 for a header
             if (!(h in okh)) report("c-purity-include")
           } else if (rest ~ /^"[^"]*"/) {
             h = substr(rest, 2); sub(/".*$/, "", h)
-            if (!(("core/src/" h) in corehdr) && !((dir "/" h) in corehdr)) report("c-purity-include")
+            if (!(("core/src/" h) in corehdr) && !(("core/include/" h) in corehdr) \
+                && !((dir "/" h) in corehdr)) report("c-purity-include")
           } else report("c-purity-include")
         }
       }
@@ -156,7 +160,8 @@ for opt in O0 O2; do
   while IFS= read -r src; do
     obj="$tmp/$opt/$(printf '%s' "$src" | tr '/' '_').o"
     if "$cc" -std=c17 -fno-lto -Wall -Wextra -Werror=implicit-function-declaration \
-      -Werror=date-time "-$opt" -I"$ROOT/core/src" -c "$ROOT/$src" -o "$obj" > "$tmp/cc.log" 2>&1; then
+      -Werror=date-time "-$opt" -I"$ROOT/core/include" -I"$ROOT/core/src" \
+      -c "$ROOT/$src" -o "$obj" > "$tmp/cc.log" 2>&1; then
       set -- "$@" "$obj"
     else
       cat "$tmp/cc.log"

@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
-/* CP-1610 unit stepper: internal API (D-01..D-07). Not installed and not an ABI: the public
- * header directory stays empty until API-01..06. Page numbers are "pdf N" of the GI CP-1600
+/* CP-1610 unit stepper: internal API (D-01..D-07). Not installed and not an ABI: it lives in
+ * core/src, which only the core and the tests (target ivs_core_internal) see; the public tree
+ * core/include/ivs holds the status header it uses. Page numbers are "pdf N" of the GI CP-1600
  * Users Manual (SRC-gi-cp1600-um-1975).
  *
  * One call to ivs_cp1610_step executes exactly one unit: an instruction, an interrupt entry,
@@ -14,7 +15,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "common/ivs_status.h"
+#include "ivs/ivs_status.h"
 
 #define IVS_CP1610_STATE_VERSION 1u
 #define IVS_CP1610_MAX_ACCESSES 8u

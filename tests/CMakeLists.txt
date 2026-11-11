@@ -30,11 +30,13 @@ add_custom_command(
 
 add_library(ivs_test_harness STATIC harness/ivs_test.c harness/ivs_testbus.c)
 target_include_directories(ivs_test_harness PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/harness")
-target_link_libraries(ivs_test_harness PUBLIC ivs_core PRIVATE ivs_warnings ivs_san)
+# ivs_core exports only core/include (D-06); tests reach core/src internals (cpu/cp1610.h,
+# common/ivs_sha256.h) through ivs_core_internal, linked here and by every test executable.
+target_link_libraries(ivs_test_harness PUBLIC ivs_core ivs_core_internal PRIVATE ivs_warnings ivs_san)
 
 add_executable(ivs_tests_cpu_vectors cpu/cpu_vectors.c "${IVS_VEC_INC}")
 target_include_directories(ivs_tests_cpu_vectors PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
-target_link_libraries(ivs_tests_cpu_vectors PRIVATE ivs_test_harness ivs_core ivs_warnings ivs_san)
+target_link_libraries(ivs_tests_cpu_vectors PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
 add_test(NAME cpu-vectors COMMAND ivs_tests_cpu_vectors)
 set_tests_properties(cpu-vectors PROPERTIES SKIP_RETURN_CODE 77)
 
@@ -51,12 +53,12 @@ add_custom_command(
   VERBATIM)
 add_executable(ivs_tests_cpu_sweep cpu/cpu_sweep.c "${IVS_SWEEP_INC}")
 target_include_directories(ivs_tests_cpu_sweep PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
-target_link_libraries(ivs_tests_cpu_sweep PRIVATE ivs_test_harness ivs_core ivs_warnings ivs_san)
+target_link_libraries(ivs_tests_cpu_sweep PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
 add_test(NAME cpu-sweep COMMAND ivs_tests_cpu_sweep)
 set_tests_properties(cpu-sweep PROPERTIES SKIP_RETURN_CODE 77)
 
 add_executable(ivs_tests_cpu_api cpu/cpu_api.c)
-target_link_libraries(ivs_tests_cpu_api PRIVATE ivs_test_harness ivs_core ivs_warnings ivs_san)
+target_link_libraries(ivs_tests_cpu_api PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
 add_test(NAME cpu-api COMMAND ivs_tests_cpu_api)
 set_tests_properties(cpu-api PROPERTIES SKIP_RETURN_CODE 77)
 
@@ -76,13 +78,13 @@ add_custom_command(
   VERBATIM)
 add_executable(ivs_tests_machine machine/machine_main.c machine/machine_sha256.c "${IVS_SHA_INC}")
 target_include_directories(ivs_tests_machine PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
-target_link_libraries(ivs_tests_machine PRIVATE ivs_test_harness ivs_core ivs_warnings ivs_san)
+target_link_libraries(ivs_tests_machine PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
 add_test(NAME machine COMMAND ivs_tests_machine)
 set_tests_properties(machine PROPERTIES SKIP_RETURN_CODE 77)
 
 # Suite cpu-fuzz (D-12, plan 02-15): the seeded robustness run; dev links the sanitizers.
 add_executable(ivs_tests_cpu_fuzz cpu/cpu_fuzz.c)
-target_link_libraries(ivs_tests_cpu_fuzz PRIVATE ivs_test_harness ivs_core ivs_warnings ivs_san)
+target_link_libraries(ivs_tests_cpu_fuzz PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
 add_test(NAME cpu-fuzz COMMAND ivs_tests_cpu_fuzz)
 set_tests_properties(cpu-fuzz PROPERTIES SKIP_RETURN_CODE 77)
 
