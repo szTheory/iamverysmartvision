@@ -1,0 +1,5 @@
+# Toy suite results for the known-good control tree.
+cpu.ZERO.alpha
+cpu.ZERO.beta
+cpu.ZERO.gamma skip-ok
+cpu.ZERO.delta

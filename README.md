@@ -29,7 +29,7 @@ sh tools/gate.sh
 
 It prints one line per check and a final summary line that starts with `gate: PASS` when every check and every negative control is green.
 CI executes the same command.
-It needs a POSIX shell, git and CMake.
+It needs a POSIX shell, git, CMake 3.25 or newer, Ninja and a C17 compiler (cc).
 
 ## Layout
 

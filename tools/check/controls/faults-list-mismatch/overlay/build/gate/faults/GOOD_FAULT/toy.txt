@@ -1,0 +1,6 @@
+# suite=toy nonce=gate.good0
+# source data/cp1610/vectors/toy.json 4e0bac97f7cf401ecb5f83cccee5eebba08f4b8cff014c15f230c86b9e18f3e1
+1..2
+not ok 1 cpu.ZERO.alpha
+ok 2 cpu.ZERO.beta
+# suite=toy executed=2 skipped=0 failed=1

@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "method": "Known-good control tree marker: one isolated blind reading of toy.json, diffed mechanically.",
+  "rows": [
+    {
+      "id": "toy",
+      "file": "data/cp1610/vectors/toy.json",
+      "file_sha256": "4e0bac97f7cf401ecb5f83cccee5eebba08f4b8cff014c15f230c86b9e18f3e1",
+      "derived_sha256": "5ffac97c98bd6c636b7caa03ccd45293547d1cc894517de6f4e18930c92f81d7",
+      "reviewer": "isolated-subagent-blind-v1",
+      "vectors": 99,
+      "agree": 3,
+      "disagreements": [],
+      "resolutions": []
+    }
+  ]
+}

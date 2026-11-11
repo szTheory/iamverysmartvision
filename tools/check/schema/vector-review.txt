@@ -1,0 +1,26 @@
+# Second-read markers of the CP-1610 vector files (D-15, A-07, A-12; plan 02-16). Records are the
+# elements of rows; ids are vector file stems, listed in data/expected/vector-review.ids. Each row
+# names the isolated reading of one file: the committed file digest, the reader output digest and
+# reviewer (both re-checked against the committed handoff record data/expected/vector-review-handoff.ids),
+# the vector and agreement counts and the disagreements with their resolutions. The digest shapes,
+# the current file digest, the reviewer label, the counts, the resolution count and the handoff
+# record are checked by the hook (kinds/vector-review.cmake).
+file data/cp1610/vector-review.json
+topkeys schema_version method rows
+top schema_version NUMBER
+top method STRING
+top rows ARRAY
+array rows
+idkey id
+inventory data/expected/vector-review.ids
+keys id file file_sha256 derived_sha256 reviewer vectors agree disagreements resolutions
+req id STRING
+req file STRING
+req file_sha256 STRING
+req derived_sha256 STRING
+req reviewer STRING
+req vectors NUMBER
+req agree NUMBER
+req disagreements ARRAY
+req resolutions ARRAY
+hook vector-review

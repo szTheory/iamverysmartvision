@@ -161,6 +161,54 @@
       "revisit_trigger": "when a source documents the reset state or a hardware read-back exists",
       "decision": null
     },
+    "interrupt.iab_value": {
+      "value": "$1004",
+      "tag": "tier4-community",
+      "cite": "SRC-gi-cp1600-um-1975 pdf 22 (the interrupt vector is supplied over the bus by the IAB access); SRC-community-emu-docs for the $1004 value",
+      "conflict": "C42",
+      "resolving_evidence": "measurement: D10 interrupt vector read-back on owner hardware",
+      "revisit_trigger": "when a source documents the interrupt vector or a hardware read-back exists",
+      "decision": null,
+      "note": "The core holds no vector constant. The machine bus answers the IAB access with this value for an interrupt, as reset.r7 is answered for a reset."
+    },
+    "cpu.interrupt_accept_clears_intff": {
+      "value": 0,
+      "tag": "unknown-default-chosen",
+      "cite": "SRC-gi-cp1600-um-1975 pdf 22, pdf 56: the pages do not say that accepting an interrupt clears the interrupt enable; not-cleared is the chosen default",
+      "conflict": "C41",
+      "resolving_evidence": "measurement: D10 repeated-interrupt probe on owner hardware",
+      "revisit_trigger": "when a source documents the enable state after acceptance or a hardware probe exists",
+      "decision": null,
+      "note": "0 = false, 1 = true. Stored as a number because the profile schema has no boolean value type."
+    },
+    "bus.release_latency_cpu_cycles": {
+      "value": 2,
+      "tag": "inference",
+      "cite": "SRC-gi-cp1600-um-1975 pdf 36: the bus request timing diagram, read as a 2 CPU cycle release latency",
+      "conflict": "C52",
+      "resolving_evidence": "measurement: D10 bus trace on owner hardware",
+      "revisit_trigger": "when a bus trace exists or the Phase 6 STIC bus-request timing depends on it",
+      "decision": null
+    },
+    "bus.wait_limit_cpu_cycles": {
+      "value": 35,
+      "tag": "inference",
+      "cite": "SRC-gi-cp1600-um-1975 pdf 12, pdf 40, pdf 43: a device must answer in under 40 microseconds; 35 CPU cycles is the derived cap",
+      "conflict": "C53",
+      "resolving_evidence": "measurement: D10 slow-device probe on owner hardware",
+      "revisit_trigger": "when a bus trace exists or a device needs a longer hold",
+      "decision": null
+    },
+    "cpu.ebci_default": {
+      "value": 0,
+      "tag": "unknown-default-chosen",
+      "cite": "SRC-gi-cp1600-um-1975 pdf 32, pdf 54: the manual does not state the idle level of the external condition input; false is the chosen default",
+      "conflict": "C57",
+      "resolving_evidence": "measurement: D10 external condition pin read-back on owner hardware",
+      "revisit_trigger": "when a source documents the idle level or a hardware read-back exists",
+      "decision": null,
+      "note": "0 = false, 1 = true. Stored as a number because the profile schema has no boolean value type."
+    },
     "power_on_fill.ram": {
       "value": "zero",
       "tag": "unknown-default-chosen",

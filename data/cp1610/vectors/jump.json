@@ -1,0 +1,599 @@
+{
+  "schema_version": 1,
+  "source": "SRC-gi-cp1600-um-1975",
+  "group": "jump",
+  "note": "Jump rows (pdf 52, 56): J, JE, JD, JSR, JSRE and JSRD share the first word 0000 000 100 and are followed by BB AAAAAA DE and AAAAAAAAAA. Every expect value is read from the cited page images and derived by hand; none comes from this core, an assembler or another implementation. The target takes bits 7-2 of the second word as bits 15-10 and bits 9-0 of the third word as bits 9-0 (pdf 52); JSR forms save PC+3 in register 1BB (C58); DE = 01 sets and DE = 10 clears INTFF (POL-INT-03). No jump timing figure exists, so the bus list is an inference (C36).",
+  "vectors": [
+    {
+      "id": "cpu.J.plain",
+      "row": "J",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "S3.3.5 and Fig 3.3.5, pdf 52; jump table, pdf 56",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "J $1234",
+      "program": [
+        "0004 0000 000 100",
+        "0310 11 000100 00",
+        "0234 1000110100"
+      ],
+      "derivation": "The jump table (pdf 56) prints the six jump forms with the first word 0000 000 100 = $0004, 12 cycles and a blank status change column: J 11AA AAA A00 'Jump to address. Program counter is set to 16 bits of A's.'; JE 11AA AAA A01 'Enable interrupt system'; JD 11AA AAA A10 'Disable interrupt system'; JSR BBAA AAA A00 'Jump and Save Return address (PC+3) in register designated by 1BB', BB not 11; JSRE BBAA AAA A01 and JSRD BBAA AAA A10 also save 'Return (PC+3)' in register 1BB and enable or disable the interrupt system; the third word is AAAA AAA AAA. Fig 3.3.5 and S3.3.5 (pdf 52): three consecutive words; bits 9-8 of the second word are BB, bits 7-2 are A, bits 1-0 are DE ('the interrupt system can be either enabled or disabled by bits 0-1 of the second word'); 'The destination address is formed by using bits 2-7 of the second word as bits 10-15 of the jump address and using bits 0-9 of the third word as bits 0-9 of the jump address'; on subroutine jumps the return address (PC+3; C58: legible on pdf 56) is saved in register 4, 5 or 6, BB plus 4; 'if BB=3, the designated register becomes 7 (the PC) which is the jump instruction', so a plain jump saves nothing. Target $1234 = 0001 0010 0011 0100: bits 15-10 = 000100 go in bits 7-2 of the second word and bits 9-0 = 10 0011 0100 = $234 are the third word. J (BB = 11, DE = 00): second word 11 000100 00 = $310, third word $234. Program at $1000: $0004, $0310, $0234. The PC is loaded with (000100 << 10) | $234 = $1000 | $234 = $1234; BB = 3 designates R7, so R4, R5 and R6 are not written. DE = 00 leaves INTFF (init 1) unchanged. Init S = Z = OV = C = 1 all stay 1. Bus (inference, no jump figure; C36): FETCH at 0 from $1000, READ at 4 of $1001 (word $0310) and READ at 8 of $1002 (word $0234), three 4-cycle word transfers in the 12 printed cycles. 12 cycles (pdf 56). The jump rows have no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (blank status change column). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "intff": 1,
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1234"
+        },
+        "prev_interruptible": 1,
+        "cycles": 12,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0004"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "0310"
+        ],
+        [
+          8,
+          "READ",
+          "1002",
+          "0234"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "intff:stays-set",
+        "read:bus"
+      ]
+    },
+    {
+      "id": "cpu.J.target-ffff",
+      "row": "J",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "S3.3.5 and Fig 3.3.5, pdf 52; jump table, pdf 56",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "JSR R4, $FFFF",
+      "program": [
+        "0004 0000 000 100",
+        "00FC 00 111111 00",
+        "03FF 1111111111"
+      ],
+      "derivation": "The jump table (pdf 56) prints the six jump forms with the first word 0000 000 100 = $0004, 12 cycles and a blank status change column: J 11AA AAA A00 'Jump to address. Program counter is set to 16 bits of A's.'; JE 11AA AAA A01 'Enable interrupt system'; JD 11AA AAA A10 'Disable interrupt system'; JSR BBAA AAA A00 'Jump and Save Return address (PC+3) in register designated by 1BB', BB not 11; JSRE BBAA AAA A01 and JSRD BBAA AAA A10 also save 'Return (PC+3)' in register 1BB and enable or disable the interrupt system; the third word is AAAA AAA AAA. Fig 3.3.5 and S3.3.5 (pdf 52): three consecutive words; bits 9-8 of the second word are BB, bits 7-2 are A, bits 1-0 are DE ('the interrupt system can be either enabled or disabled by bits 0-1 of the second word'); 'The destination address is formed by using bits 2-7 of the second word as bits 10-15 of the jump address and using bits 0-9 of the third word as bits 0-9 of the jump address'; on subroutine jumps the return address (PC+3; C58: legible on pdf 56) is saved in register 4, 5 or 6, BB plus 4; 'if BB=3, the designated register becomes 7 (the PC) which is the jump instruction', so a plain jump saves nothing. Target $FFFF: all sixteen A bits are 1, so bits 7-2 of the second word are 111111 and the third word is 11 1111 1111 = $3FF. The JSR form with BB = 00 is used so that the BB bits differ from the A bits: second word 00 111111 00 = $0FC. Program at $1000: $0004, $00FC, $03FF. The PC is loaded with (111111 << 10) | $3FF = $FC00 | $3FF = $FFFF. A core that took bits 9-4 of the second word (001111) would form $3C00 | $3FF = $3FFF. The return address PC+3 = $1000 + 3 = $1003 goes to R4 (BB = 0, register 4). DE = 00 leaves INTFF (init 0) at 0. 12 cycles (pdf 56). The jump rows have no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (blank status change column). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "intff": 0,
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "4": "1003",
+          "7": "FFFF"
+        },
+        "prev_interruptible": 1,
+        "cycles": 12,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "covers": [
+        "intff:stays-clear"
+      ]
+    },
+    {
+      "id": "cpu.J.je-sets-intff",
+      "row": "J",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "S3.3.5 and Fig 3.3.5, pdf 52; jump table, pdf 56",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "JE $2000",
+      "program": [
+        "0004 0000 000 100",
+        "0321 11 001000 01",
+        "0000 0000000000"
+      ],
+      "derivation": "The jump table (pdf 56) prints the six jump forms with the first word 0000 000 100 = $0004, 12 cycles and a blank status change column: J 11AA AAA A00 'Jump to address. Program counter is set to 16 bits of A's.'; JE 11AA AAA A01 'Enable interrupt system'; JD 11AA AAA A10 'Disable interrupt system'; JSR BBAA AAA A00 'Jump and Save Return address (PC+3) in register designated by 1BB', BB not 11; JSRE BBAA AAA A01 and JSRD BBAA AAA A10 also save 'Return (PC+3)' in register 1BB and enable or disable the interrupt system; the third word is AAAA AAA AAA. Fig 3.3.5 and S3.3.5 (pdf 52): three consecutive words; bits 9-8 of the second word are BB, bits 7-2 are A, bits 1-0 are DE ('the interrupt system can be either enabled or disabled by bits 0-1 of the second word'); 'The destination address is formed by using bits 2-7 of the second word as bits 10-15 of the jump address and using bits 0-9 of the third word as bits 0-9 of the jump address'; on subroutine jumps the return address (PC+3; C58: legible on pdf 56) is saved in register 4, 5 or 6, BB plus 4; 'if BB=3, the designated register becomes 7 (the PC) which is the jump instruction', so a plain jump saves nothing. Target $2000 = 0010 0000 0000 0000: bits 15-10 = 001000 go in bits 7-2 of the second word and bits 9-0 = $000 are the third word. JE (BB = 11, DE = 01): second word 11 001000 01 = $321, third word $000. Program at $1000: $0004, $0321, $0000. The PC is loaded with (001000 << 10) | $000 = $2000; nothing is saved (BB = 3). DE = 01 enables the interrupt system: INTFF init 0 becomes 1 (POL-INT-03). 12 cycles (pdf 56). The jump rows have no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (blank status change column). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "intff": 0,
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "2000"
+        },
+        "prev_interruptible": 1,
+        "cycles": 12,
+        "units": [
+          "INSTR"
+        ],
+        "intff": 1
+      },
+      "covers": [
+        "intff:set"
+      ]
+    },
+    {
+      "id": "cpu.J.jd-clears-intff",
+      "row": "J",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "S3.3.5 and Fig 3.3.5, pdf 52; jump table, pdf 56",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "JD $2000",
+      "program": [
+        "0004 0000 000 100",
+        "0322 11 001000 10",
+        "0000 0000000000"
+      ],
+      "derivation": "The jump table (pdf 56) prints the six jump forms with the first word 0000 000 100 = $0004, 12 cycles and a blank status change column: J 11AA AAA A00 'Jump to address. Program counter is set to 16 bits of A's.'; JE 11AA AAA A01 'Enable interrupt system'; JD 11AA AAA A10 'Disable interrupt system'; JSR BBAA AAA A00 'Jump and Save Return address (PC+3) in register designated by 1BB', BB not 11; JSRE BBAA AAA A01 and JSRD BBAA AAA A10 also save 'Return (PC+3)' in register 1BB and enable or disable the interrupt system; the third word is AAAA AAA AAA. Fig 3.3.5 and S3.3.5 (pdf 52): three consecutive words; bits 9-8 of the second word are BB, bits 7-2 are A, bits 1-0 are DE ('the interrupt system can be either enabled or disabled by bits 0-1 of the second word'); 'The destination address is formed by using bits 2-7 of the second word as bits 10-15 of the jump address and using bits 0-9 of the third word as bits 0-9 of the jump address'; on subroutine jumps the return address (PC+3; C58: legible on pdf 56) is saved in register 4, 5 or 6, BB plus 4; 'if BB=3, the designated register becomes 7 (the PC) which is the jump instruction', so a plain jump saves nothing. Target $2000 = 0010 0000 0000 0000: bits 15-10 = 001000 go in bits 7-2 of the second word and bits 9-0 = $000 are the third word. JD (BB = 11, DE = 10): second word 11 001000 10 = $322, third word $000. Program at $1000: $0004, $0322, $0000. The PC is loaded with $2000; nothing is saved (BB = 3). DE = 10 disables the interrupt system: INTFF init 1 becomes 0 (POL-INT-03). 12 cycles (pdf 56). The jump rows have no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (blank status change column). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "intff": 1,
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "2000"
+        },
+        "prev_interruptible": 1,
+        "cycles": 12,
+        "units": [
+          "INSTR"
+        ],
+        "intff": 0
+      },
+      "covers": [
+        "intff:clear"
+      ]
+    },
+    {
+      "id": "cpu.J.jsr-r4-return",
+      "row": "J",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "S3.3.5 and Fig 3.3.5, pdf 52; jump table, pdf 56",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "JSR R4, $1234",
+      "program": [
+        "0004 0000 000 100",
+        "0010 00 000100 00",
+        "0234 1000110100"
+      ],
+      "derivation": "The jump table (pdf 56) prints the six jump forms with the first word 0000 000 100 = $0004, 12 cycles and a blank status change column: J 11AA AAA A00 'Jump to address. Program counter is set to 16 bits of A's.'; JE 11AA AAA A01 'Enable interrupt system'; JD 11AA AAA A10 'Disable interrupt system'; JSR BBAA AAA A00 'Jump and Save Return address (PC+3) in register designated by 1BB', BB not 11; JSRE BBAA AAA A01 and JSRD BBAA AAA A10 also save 'Return (PC+3)' in register 1BB and enable or disable the interrupt system; the third word is AAAA AAA AAA. Fig 3.3.5 and S3.3.5 (pdf 52): three consecutive words; bits 9-8 of the second word are BB, bits 7-2 are A, bits 1-0 are DE ('the interrupt system can be either enabled or disabled by bits 0-1 of the second word'); 'The destination address is formed by using bits 2-7 of the second word as bits 10-15 of the jump address and using bits 0-9 of the third word as bits 0-9 of the jump address'; on subroutine jumps the return address (PC+3; C58: legible on pdf 56) is saved in register 4, 5 or 6, BB plus 4; 'if BB=3, the designated register becomes 7 (the PC) which is the jump instruction', so a plain jump saves nothing. Target $1234 = 0001 0010 0011 0100: bits 15-10 = 000100 go in bits 7-2 of the second word and bits 9-0 = 10 0011 0100 = $234 are the third word. JSR R4 (BB = 00, DE = 00): second word 00 000100 00 = $010, third word $234. Program at $1000: $0004, $0010, $0234. The return address PC+3 = $1000 + 3 = $1003 is saved in register 1BB = 100 = R4 (init $0404); the PC is loaded with $1234. DE = 00 leaves INTFF (init 1) unchanged. 12 cycles (pdf 56). The jump rows have no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (blank status change column). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "intff": 1,
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "4": "1003",
+          "7": "1234"
+        },
+        "prev_interruptible": 1,
+        "cycles": 12,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "covers": [
+        "intff:stays-set"
+      ]
+    },
+    {
+      "id": "cpu.J.jsr-r5-return",
+      "row": "J",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "S3.3.5 and Fig 3.3.5, pdf 52; jump table, pdf 56",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "JSR R5, $1234",
+      "program": [
+        "0004 0000 000 100",
+        "0110 01 000100 00",
+        "0234 1000110100"
+      ],
+      "derivation": "The jump table (pdf 56) prints the six jump forms with the first word 0000 000 100 = $0004, 12 cycles and a blank status change column: J 11AA AAA A00 'Jump to address. Program counter is set to 16 bits of A's.'; JE 11AA AAA A01 'Enable interrupt system'; JD 11AA AAA A10 'Disable interrupt system'; JSR BBAA AAA A00 'Jump and Save Return address (PC+3) in register designated by 1BB', BB not 11; JSRE BBAA AAA A01 and JSRD BBAA AAA A10 also save 'Return (PC+3)' in register 1BB and enable or disable the interrupt system; the third word is AAAA AAA AAA. Fig 3.3.5 and S3.3.5 (pdf 52): three consecutive words; bits 9-8 of the second word are BB, bits 7-2 are A, bits 1-0 are DE ('the interrupt system can be either enabled or disabled by bits 0-1 of the second word'); 'The destination address is formed by using bits 2-7 of the second word as bits 10-15 of the jump address and using bits 0-9 of the third word as bits 0-9 of the jump address'; on subroutine jumps the return address (PC+3; C58: legible on pdf 56) is saved in register 4, 5 or 6, BB plus 4; 'if BB=3, the designated register becomes 7 (the PC) which is the jump instruction', so a plain jump saves nothing. Target $1234 = 0001 0010 0011 0100: bits 15-10 = 000100 go in bits 7-2 of the second word and bits 9-0 = 10 0011 0100 = $234 are the third word. JSR R5 (BB = 01, DE = 00): second word 01 000100 00 = $110, third word $234. Program at $1000: $0004, $0110, $0234. The return address PC+3 = $1003 is saved in register 1BB = 101 = R5 (init $0505); a core that saved PC+2 would leave $1002. The PC is loaded with $1234. DE = 00 leaves INTFF (init 0) at 0. 12 cycles (pdf 56). The jump rows have no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (blank status change column). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "intff": 0,
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "5": "1003",
+          "7": "1234"
+        },
+        "prev_interruptible": 1,
+        "cycles": 12,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "covers": [
+        "intff:stays-clear"
+      ]
+    },
+    {
+      "id": "cpu.J.jsr-r6-return",
+      "row": "J",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "S3.3.5 and Fig 3.3.5, pdf 52; jump table, pdf 56",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "JSR R6, $1234",
+      "program": [
+        "0004 0000 000 100",
+        "0210 10 000100 00",
+        "0234 1000110100"
+      ],
+      "derivation": "The jump table (pdf 56) prints the six jump forms with the first word 0000 000 100 = $0004, 12 cycles and a blank status change column: J 11AA AAA A00 'Jump to address. Program counter is set to 16 bits of A's.'; JE 11AA AAA A01 'Enable interrupt system'; JD 11AA AAA A10 'Disable interrupt system'; JSR BBAA AAA A00 'Jump and Save Return address (PC+3) in register designated by 1BB', BB not 11; JSRE BBAA AAA A01 and JSRD BBAA AAA A10 also save 'Return (PC+3)' in register 1BB and enable or disable the interrupt system; the third word is AAAA AAA AAA. Fig 3.3.5 and S3.3.5 (pdf 52): three consecutive words; bits 9-8 of the second word are BB, bits 7-2 are A, bits 1-0 are DE ('the interrupt system can be either enabled or disabled by bits 0-1 of the second word'); 'The destination address is formed by using bits 2-7 of the second word as bits 10-15 of the jump address and using bits 0-9 of the third word as bits 0-9 of the jump address'; on subroutine jumps the return address (PC+3; C58: legible on pdf 56) is saved in register 4, 5 or 6, BB plus 4; 'if BB=3, the designated register becomes 7 (the PC) which is the jump instruction', so a plain jump saves nothing. Target $1234 = 0001 0010 0011 0100: bits 15-10 = 000100 go in bits 7-2 of the second word and bits 9-0 = 10 0011 0100 = $234 are the third word. JSR R6 (BB = 10, DE = 00): second word 10 000100 00 = $210, third word $234. Program at $1000: $0004, $0210, $0234. The return address PC+3 = $1003 is saved in register 1BB = 110 = R6 (init $02F0); it is a register save, so no memory is written. The PC is loaded with $1234. DE = 00 leaves INTFF (init 0) at 0. 12 cycles (pdf 56). The jump rows have no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (blank status change column). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "intff": 0,
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "6": "1003",
+          "7": "1234"
+        },
+        "prev_interruptible": 1,
+        "cycles": 12,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "covers": [
+        "intff:stays-clear"
+      ]
+    },
+    {
+      "id": "cpu.J.jsre-r5",
+      "row": "J",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "S3.3.5 and Fig 3.3.5, pdf 52; jump table, pdf 56",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "JSRE R5, $1234",
+      "program": [
+        "0004 0000 000 100",
+        "0111 01 000100 01",
+        "0234 1000110100"
+      ],
+      "derivation": "The jump table (pdf 56) prints the six jump forms with the first word 0000 000 100 = $0004, 12 cycles and a blank status change column: J 11AA AAA A00 'Jump to address. Program counter is set to 16 bits of A's.'; JE 11AA AAA A01 'Enable interrupt system'; JD 11AA AAA A10 'Disable interrupt system'; JSR BBAA AAA A00 'Jump and Save Return address (PC+3) in register designated by 1BB', BB not 11; JSRE BBAA AAA A01 and JSRD BBAA AAA A10 also save 'Return (PC+3)' in register 1BB and enable or disable the interrupt system; the third word is AAAA AAA AAA. Fig 3.3.5 and S3.3.5 (pdf 52): three consecutive words; bits 9-8 of the second word are BB, bits 7-2 are A, bits 1-0 are DE ('the interrupt system can be either enabled or disabled by bits 0-1 of the second word'); 'The destination address is formed by using bits 2-7 of the second word as bits 10-15 of the jump address and using bits 0-9 of the third word as bits 0-9 of the jump address'; on subroutine jumps the return address (PC+3; C58: legible on pdf 56) is saved in register 4, 5 or 6, BB plus 4; 'if BB=3, the designated register becomes 7 (the PC) which is the jump instruction', so a plain jump saves nothing. Target $1234 = 0001 0010 0011 0100: bits 15-10 = 000100 go in bits 7-2 of the second word and bits 9-0 = 10 0011 0100 = $234 are the third word. JSRE R5 (BB = 01, DE = 01): second word 01 000100 01 = $111, third word $234. Program at $1000: $0004, $0111, $0234. The return address PC+3 = $1003 is saved in R5; the PC is loaded with $1234. DE = 01 enables the interrupt system: INTFF init 0 becomes 1 (POL-INT-03). 12 cycles (pdf 56). The jump rows have no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (blank status change column). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "intff": 0,
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "5": "1003",
+          "7": "1234"
+        },
+        "prev_interruptible": 1,
+        "cycles": 12,
+        "units": [
+          "INSTR"
+        ],
+        "intff": 1
+      },
+      "covers": [
+        "intff:set"
+      ]
+    },
+    {
+      "id": "cpu.J.jsrd-r4",
+      "row": "J",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "S3.3.5 and Fig 3.3.5, pdf 52; jump table, pdf 56",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "JSRD R4, $1234",
+      "program": [
+        "0004 0000 000 100",
+        "0012 00 000100 10",
+        "0234 1000110100"
+      ],
+      "derivation": "The jump table (pdf 56) prints the six jump forms with the first word 0000 000 100 = $0004, 12 cycles and a blank status change column: J 11AA AAA A00 'Jump to address. Program counter is set to 16 bits of A's.'; JE 11AA AAA A01 'Enable interrupt system'; JD 11AA AAA A10 'Disable interrupt system'; JSR BBAA AAA A00 'Jump and Save Return address (PC+3) in register designated by 1BB', BB not 11; JSRE BBAA AAA A01 and JSRD BBAA AAA A10 also save 'Return (PC+3)' in register 1BB and enable or disable the interrupt system; the third word is AAAA AAA AAA. Fig 3.3.5 and S3.3.5 (pdf 52): three consecutive words; bits 9-8 of the second word are BB, bits 7-2 are A, bits 1-0 are DE ('the interrupt system can be either enabled or disabled by bits 0-1 of the second word'); 'The destination address is formed by using bits 2-7 of the second word as bits 10-15 of the jump address and using bits 0-9 of the third word as bits 0-9 of the jump address'; on subroutine jumps the return address (PC+3; C58: legible on pdf 56) is saved in register 4, 5 or 6, BB plus 4; 'if BB=3, the designated register becomes 7 (the PC) which is the jump instruction', so a plain jump saves nothing. Target $1234 = 0001 0010 0011 0100: bits 15-10 = 000100 go in bits 7-2 of the second word and bits 9-0 = 10 0011 0100 = $234 are the third word. JSRD R4 (BB = 00, DE = 10): second word 00 000100 10 = $012, third word $234. Program at $1000: $0004, $0012, $0234. The return address PC+3 = $1003 is saved in R4; the PC is loaded with $1234. DE = 10 disables the interrupt system: INTFF init 1 becomes 0 (POL-INT-03). 12 cycles (pdf 56). The jump rows have no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (blank status change column). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "intff": 1,
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "4": "1003",
+          "7": "1234"
+        },
+        "prev_interruptible": 1,
+        "cycles": 12,
+        "units": [
+          "INSTR"
+        ],
+        "intff": 0
+      },
+      "covers": [
+        "intff:clear"
+      ]
+    },
+    {
+      "id": "cpu.J.jsr-return-wraps",
+      "row": "J",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "S3.3.5 and Fig 3.3.5, pdf 52; jump table, pdf 56",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "JSR R4, $1234",
+      "program": [
+        "0004 0000 000 100",
+        "0010 00 000100 00",
+        "0234 1000110100"
+      ],
+      "derivation": "The jump table (pdf 56) prints the six jump forms with the first word 0000 000 100 = $0004, 12 cycles and a blank status change column: J 11AA AAA A00 'Jump to address. Program counter is set to 16 bits of A's.'; JE 11AA AAA A01 'Enable interrupt system'; JD 11AA AAA A10 'Disable interrupt system'; JSR BBAA AAA A00 'Jump and Save Return address (PC+3) in register designated by 1BB', BB not 11; JSRE BBAA AAA A01 and JSRD BBAA AAA A10 also save 'Return (PC+3)' in register 1BB and enable or disable the interrupt system; the third word is AAAA AAA AAA. Fig 3.3.5 and S3.3.5 (pdf 52): three consecutive words; bits 9-8 of the second word are BB, bits 7-2 are A, bits 1-0 are DE ('the interrupt system can be either enabled or disabled by bits 0-1 of the second word'); 'The destination address is formed by using bits 2-7 of the second word as bits 10-15 of the jump address and using bits 0-9 of the third word as bits 0-9 of the jump address'; on subroutine jumps the return address (PC+3; C58: legible on pdf 56) is saved in register 4, 5 or 6, BB plus 4; 'if BB=3, the designated register becomes 7 (the PC) which is the jump instruction', so a plain jump saves nothing. Target $1234 = 0001 0010 0011 0100: bits 15-10 = 000100 go in bits 7-2 of the second word and bits 9-0 = 10 0011 0100 = $234 are the third word. JSR R4 (BB = 00, DE = 00) placed at the top of memory: program at $FFFE: $0004, then $0010 at $FFFF and $0234 at $0000 (the word addresses wrap at 16 bits). The return address PC+3 = $FFFE + 3 = $10001 wraps to $0001 and is saved in R4; the PC is loaded with $1234. DE = 00 leaves INTFF (init 0) at 0. 12 cycles (pdf 56). The jump rows have no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (blank status change column). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "FFFE"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "intff": 0,
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "4": "0001",
+          "7": "1234"
+        },
+        "prev_interruptible": 1,
+        "cycles": 12,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "covers": [
+        "intff:stays-clear"
+      ]
+    },
+    {
+      "id": "cpu.J.backward-target",
+      "row": "J",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "S3.3.5 and Fig 3.3.5, pdf 52; jump table, pdf 56",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "J $0123",
+      "program": [
+        "0004 0000 000 100",
+        "0300 11 000000 00",
+        "0123 0100100011"
+      ],
+      "derivation": "The jump table (pdf 56) prints the six jump forms with the first word 0000 000 100 = $0004, 12 cycles and a blank status change column: J 11AA AAA A00 'Jump to address. Program counter is set to 16 bits of A's.'; JE 11AA AAA A01 'Enable interrupt system'; JD 11AA AAA A10 'Disable interrupt system'; JSR BBAA AAA A00 'Jump and Save Return address (PC+3) in register designated by 1BB', BB not 11; JSRE BBAA AAA A01 and JSRD BBAA AAA A10 also save 'Return (PC+3)' in register 1BB and enable or disable the interrupt system; the third word is AAAA AAA AAA. Fig 3.3.5 and S3.3.5 (pdf 52): three consecutive words; bits 9-8 of the second word are BB, bits 7-2 are A, bits 1-0 are DE ('the interrupt system can be either enabled or disabled by bits 0-1 of the second word'); 'The destination address is formed by using bits 2-7 of the second word as bits 10-15 of the jump address and using bits 0-9 of the third word as bits 0-9 of the jump address'; on subroutine jumps the return address (PC+3; C58: legible on pdf 56) is saved in register 4, 5 or 6, BB plus 4; 'if BB=3, the designated register becomes 7 (the PC) which is the jump instruction', so a plain jump saves nothing. Target $0123 = 0000 0001 0010 0011: bits 15-10 = 000000 and bits 9-0 = 01 0010 0011 = $123. J (BB = 11, DE = 00): second word 11 000000 00 = $300, third word $123. Program at $1000: $0004, $0300, $0123. The target is an absolute address, not a displacement, so a target below the PC needs no sign: the PC is loaded with (000000 << 10) | $123 = $0123. Nothing is saved (BB = 3). DE = 00 leaves INTFF (init 0) at 0. Init S = Z = OV = C = 1 all stay 1. 12 cycles (pdf 56). The jump rows have no Not Interruptable note, so prev_interruptible goes 0 -> 1. No status bit changes (blank status change column). Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "intff": 0,
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "0123"
+        },
+        "prev_interruptible": 1,
+        "cycles": 12,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "covers": [
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "intff:stays-clear"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+# Committed copy of build/review/derived/HANDOFF.txt (A-12); columns: <stem> <derived_sha256> <reviewer> <run-id>.
+branch c30f3942e07855a3c0111edf2079c14c310597195cb724de03a488893365a30b isolated-subagent-blind-v1 run-branch-a1
+busrq-halt 9c7ac3d1d33be56ca5dc8c442e7b24d7ac017a02d0257b0394e7b3c387d04117 isolated-subagent-blind-v1 run-busrq-halt-a2
+control 69ee7d91578c66f5ee0cae5532e91c8a45ce0d75976981f534c39bf7b25a2f08 isolated-subagent-blind-v1 run-control-a1
+direct 93fc19699babb62735e86a9fd196fb5fc346c6bb4fb1efa1061984ceae08fb90 isolated-subagent-blind-v1 run-direct-a2
+encoding 015861b8ad523c67deb2049f6d52d90352eb7ca4032299758db9394ea3573311 isolated-subagent-blind-v1 run-encoding-a1
+immediate 9edd73d4325791e0a9beaf63fede849f79ac98fc050a5f651daa8a21a61c382c isolated-subagent-blind-v1 run-immediate-a2
+indirect 072a331451bc3ca2d497610f6322bf56d21265f9cff12d0d924766f8957f09c4 isolated-subagent-blind-v1 run-indirect-a1
+interrupt 507266a4cd3959d356c3bdc9951f104312ed820441cb56748e8c3100ad53175a isolated-subagent-blind-v1 run-interrupt-a2
+jump e7d74fc66a4046635db8be702a3f9408654fdfff3caf9c3f4f03624ea366c0fc isolated-subagent-blind-v1 run-jump-a1
+register ba23474b31509e3565c0e05a7b2326dadc606089bfc06eb562f3cd47b78b4fe3 isolated-subagent-blind-v1 run-register-a1
+sdbd e6f1656cba922edbb78d4be03ce4211e59efc7391dd7cdc871eddf5edf21ceb3 isolated-subagent-blind-v1 run-sdbd-a1
+shift 6c6e4c755f6907f24ccc5f476035e7d72c71d8ba246165cbf458da57863b0bce isolated-subagent-blind-v1 run-shift-a1

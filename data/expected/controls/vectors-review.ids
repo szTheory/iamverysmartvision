@@ -1,0 +1,9 @@
+# Negative controls for the vector second-reader marker and blind projection (plan 02-16).
+vectors-review-stale
+vectors-review-reviewer
+vectors-review-unresolved
+vectors-review-format
+vectors-review-count
+vectors-review-handoff-mismatch
+vectors-blind-unknown-key
+vectors-blind-leak

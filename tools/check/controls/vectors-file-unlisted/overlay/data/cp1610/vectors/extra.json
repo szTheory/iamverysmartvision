@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "source": "SRC-gi-cp1600-um-1975",
+  "group": "extra",
+  "note": "Known-good control tree vector file.",
+  "vectors": []
+}

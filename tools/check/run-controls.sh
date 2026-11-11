@@ -5,7 +5,17 @@
 # FORBID, overlay/ (copied over a fresh copy of _good/tree) and MAKE (transform lines).
 # Env: CONTROLS_DIR (default tools/check/controls), CONTROLS_INVENTORY_DIR
 # (default data/expected/controls). Final line: controls=<ok>/<total>.
+# Controls run in JOBS lanes (D-22 lever 2, A-09): each control gets its own work dir
+# (tree, filelist, step output, result lines), so lanes share no temp state. Lane i takes
+# every JOBS-th entry of the sorted list; results are printed afterwards in sorted order,
+# so the output does not depend on scheduling.
+# CONTROLS_END_FILE (optional): the runner writes its end time (date +%s) there; it is not
+# passed on to the steps. On HUP, INT or TERM the runner stops and terminates every process
+# below it (lanes, their steps and the compilers those start) before it exits, so an
+# interrupted gate leaves no orphans (review WR-04).
 LC_ALL=C; export LC_ALL
+end_file=${CONTROLS_END_FILE:-}
+unset CONTROLS_END_FILE
 here=$(cd "$(dirname "$0")" && pwd) || exit 1
 CHECK_DIR=$here
 ROOT=$(cd "$here/../.." && pwd) || exit 1
@@ -13,8 +23,48 @@ CONTROLS_DIR=${CONTROLS_DIR:-$CHECK_DIR/controls}
 CONTROLS_INVENTORY_DIR=${CONTROLS_INVENTORY_DIR:-$ROOT/data/expected/controls}
 export CHECK_DIR
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/ctl.XXXXXX") || exit 1
+
+# Every process below this runner, from one POSIX `ps -A -o pid= -o ppid=` snapshot. A lane is
+# an asynchronous list, so it and everything it starts ignore SIGINT, and a lane killed alone
+# would leave its step running under init: the whole tree is collected first, stopped so it
+# cannot grow, collected again (three rounds catch a child forked during a snapshot), and only
+# then terminated and continued.
+descendants() {
+  ps -A -o pid= -o ppid= 2> /dev/null | awk -v root="$$" '
+    { par[$1] = $2; ids[NR] = $1 }
+    END {
+      want[root] = 1
+      more = 1
+      while (more) {
+        more = 0
+        for (i = 1; i <= NR; i++) {
+          p = ids[i]
+          if (!(p in want) && (par[p] in want)) { want[p] = 1; more = 1 }
+        }
+      }
+      for (p in want) if (p != root) print p
+    }'
+}
+stop_tree() {
+  _all=
+  for _round in 1 2 3; do
+    _pids=$(descendants)
+    [ -n "$_pids" ] || continue
+    # shellcheck disable=SC2086
+    kill -s STOP $_pids 2> /dev/null
+    _all="$_all $_pids"
+  done
+  if [ -n "$_all" ]; then
+    # shellcheck disable=SC2086
+    kill -s TERM $_all 2> /dev/null
+    # shellcheck disable=SC2086
+    kill -s CONT $_all 2> /dev/null
+  fi
+  wait
+}
 trap 'rm -rf "$tmp"' EXIT
-trap 'exit 1' HUP INT TERM
+trap 'stop_tree; exit 1' HUP INT TERM
+JOBS=4
 bad=0
 total=0
 ok=0
@@ -80,21 +130,93 @@ apply_make() {
   return 0
 }
 
-# Build the temp tree $1 for control dir $2 (empty $2 = pristine good tree).
+# Build the tree $1/tree and its list $1/filelist in work dir $1 for control dir $2
+# (empty $2 = pristine good tree).
 build_tree() {
-  rm -rf "$1"
-  mkdir -p "$1"
-  cp -R "$CONTROLS_DIR/_good/tree/." "$1/" || return 1
+  rm -rf "$1/tree"
+  mkdir -p "$1/tree"
+  cp -R "$CONTROLS_DIR/_good/tree/." "$1/tree/" || return 1
   if [ -n "$2" ]; then
-    if [ -d "$2/overlay" ]; then cp -R "$2/overlay/." "$1/" || return 1; fi
-    if [ -f "$2/MAKE" ]; then apply_make "$1" "$2/MAKE" || return 1; fi
+    if [ -d "$2/overlay" ]; then cp -R "$2/overlay/." "$1/tree/" || return 1; fi
+    if [ -f "$2/MAKE" ]; then apply_make "$1/tree" "$2/MAKE" || return 1; fi
   fi
-  (cd "$1" && find . -type f | sed 's|^\./||' | sort) > "$tmp/filelist"
+  (cd "$1/tree" && find . -type f | sed 's|^\./||' | sort) > "$1/filelist"
   return 0
 }
 
+# Run step $2 on the tree of work dir $1; its output goes to $1/out. The results dir is the
+# tree's build/gate, never the one the gate exported for the real steps (review IN-07).
 run_step() {
-  ROOT="$tmp/tree" FILELIST="$tmp/filelist" CHECK_DIR="$CHECK_DIR" sh "$CHECK_DIR/steps/$1.sh" > "$tmp/out" 2>&1
+  ROOT="$1/tree" FILELIST="$1/filelist" CHECK_DIR="$CHECK_DIR" IVS_GATE_DIR="$1/tree/build/gate" \
+    sh "$CHECK_DIR/steps/$2.sh" > "$1/out" 2>&1
+}
+
+# Positive control for step $1 in work dir $2: prints its result lines, touches $2/ok on success.
+good_one() {
+  build_tree "$2" "" || { fail control-good-failed "$1"; return 0; }
+  if run_step "$2" "$1" && grep -q -F -e "-- $1 pass" "$2/out"; then
+    printf 'control ok   _good/%s\n' "$1"
+    : > "$2/ok"
+  else
+    fail control-good-failed "$1"
+    cat "$2/out"
+  fi
+}
+
+# Negative control $1 in work dir $2: prints its result lines, touches $2/ok when it is ok.
+ctl_one() {
+  _d="$CONTROLS_DIR/$1"
+  _step=
+  [ -f "$_d/CHECK" ] && _step=$(head -n 1 "$_d/CHECK")
+  if [ -z "$_step" ] || [ ! -f "$CHECK_DIR/steps/$_step.sh" ]; then
+    fail control-unknown-step "$1"; return 0
+  fi
+  if [ ! -s "$_d/EXPECT" ] || grep -q '^[[:space:]]*$' "$_d/EXPECT"; then
+    fail control-expect-blank "$1"; return 0
+  fi
+  build_tree "$2" "$_d" || { fail control-build "$1"; return 0; }
+  if run_step "$2" "$_step"; then
+    fail control-exit-zero "$1"; return 0
+  fi
+  _missing=0
+  while IFS= read -r _tok || [ -n "$_tok" ]; do
+    grep -q -F -e "$_tok" "$2/out" || _missing=1
+  done < "$_d/EXPECT"
+  if [ "$_missing" -ne 0 ]; then
+    fail control-token-missing "$1"; return 0
+  fi
+  _forbidden=0
+  if [ -f "$_d/FORBID" ]; then
+    while IFS= read -r _tok || [ -n "$_tok" ]; do
+      [ -n "$_tok" ] || continue
+      if grep -q -F -e "$_tok" "$2/out"; then _forbidden=1; fi
+    done < "$_d/FORBID"
+  fi
+  if [ "$_forbidden" -ne 0 ]; then
+    fail control-forbidden-token "$1"; return 0
+  fi
+  printf 'control ok   %s\n' "$1"
+  : > "$2/ok"
+}
+
+# Run function $2 for every entry of list file $1 in JOBS lanes; entry e gets work dir
+# $tmp/$2/e and its result lines go to $tmp/$2/e/result. Returns after every lane ends.
+run_lanes() {
+  _lane=0
+  while [ "$_lane" -lt "$JOBS" ]; do
+    (
+      _k=0
+      while IFS= read -r _e; do
+        if [ $((_k % JOBS)) -eq "$_lane" ]; then
+          mkdir -p "$tmp/$2/$_e"
+          "$2" "$_e" "$tmp/$2/$_e" > "$tmp/$2/$_e/result" 2>&1 < /dev/null
+        fi
+        _k=$((_k + 1))
+      done < "$1"
+    ) &
+    _lane=$((_lane + 1))
+  done
+  wait
 }
 
 # Control directories and inventory.
@@ -123,53 +245,24 @@ for n in $(cat "$tmp/ctl.have"); do
   [ -f "$CONTROLS_DIR/$n/CHECK" ] && head -n 1 "$CONTROLS_DIR/$n/CHECK" >> "$tmp/checks"
 done
 sort -u "$tmp/checks" -o "$tmp/checks"
+: > "$tmp/goodsteps"
 for step in $(cat "$tmp/checks"); do
-  if [ ! -f "$CHECK_DIR/steps/$step.sh" ]; then continue; fi
-  build_tree "$tmp/tree" "" || { fail control-good-failed "$step"; continue; }
-  if run_step "$step" && grep -q -F -e "-- $step pass" "$tmp/out"; then
-    printf 'control ok   _good/%s\n' "$step"
-  else
-    fail control-good-failed "$step"
-    cat "$tmp/out"
-  fi
+  if [ -f "$CHECK_DIR/steps/$step.sh" ]; then printf '%s\n' "$step" >> "$tmp/goodsteps"; fi
+done
+run_lanes "$tmp/goodsteps" good_one
+for step in $(cat "$tmp/goodsteps"); do
+  cat "$tmp/good_one/$step/result" 2> /dev/null || printf -- '-- FAIL %s: %s\n' control-good-failed "$step"
+  [ -f "$tmp/good_one/$step/ok" ] || bad=1
 done
 
-# Negative controls.
+# Negative controls, then their results in sorted order.
+run_lanes "$tmp/ctl.have" ctl_one
 for n in $(cat "$tmp/ctl.have"); do
-  d="$CONTROLS_DIR/$n"
   total=$((total + 1))
-  step=
-  [ -f "$d/CHECK" ] && step=$(head -n 1 "$d/CHECK")
-  if [ -z "$step" ] || [ ! -f "$CHECK_DIR/steps/$step.sh" ]; then
-    fail control-unknown-step "$n"; continue
-  fi
-  if [ ! -s "$d/EXPECT" ] || grep -q '^[[:space:]]*$' "$d/EXPECT"; then
-    fail control-expect-blank "$n"; continue
-  fi
-  build_tree "$tmp/tree" "$d" || { fail control-build "$n"; continue; }
-  if run_step "$step"; then
-    fail control-exit-zero "$n"; continue
-  fi
-  missing=0
-  while IFS= read -r tok || [ -n "$tok" ]; do
-    grep -q -F -e "$tok" "$tmp/out" || missing=1
-  done < "$d/EXPECT"
-  if [ "$missing" -ne 0 ]; then
-    fail control-token-missing "$n"; continue
-  fi
-  forbidden=0
-  if [ -f "$d/FORBID" ]; then
-    while IFS= read -r tok || [ -n "$tok" ]; do
-      [ -n "$tok" ] || continue
-      if grep -q -F -e "$tok" "$tmp/out"; then forbidden=1; fi
-    done < "$d/FORBID"
-  fi
-  if [ "$forbidden" -ne 0 ]; then
-    fail control-forbidden-token "$n"; continue
-  fi
-  printf 'control ok   %s\n' "$n"
-  ok=$((ok + 1))
+  cat "$tmp/ctl_one/$n/result" 2> /dev/null || printf -- '-- FAIL %s: %s\n' control-build "$n"
+  if [ -f "$tmp/ctl_one/$n/ok" ]; then ok=$((ok + 1)); else bad=1; fi
 done
 
 printf 'controls=%s/%s\n' "$ok" "$total"
+if [ -n "$end_file" ]; then date +%s > "$end_file"; fi
 [ "$bad" -eq 0 ]

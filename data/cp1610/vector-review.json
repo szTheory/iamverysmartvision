@@ -1,0 +1,206 @@
+{
+  "schema_version": 1,
+  "method": "isolated subagent per vector file reading a blinded copy, the page images, the reader protocol and the policy document keyed by opaque policy tokens only; outputs handed over by the orchestrator with sha256 and run id; mechanical diff; page re-read for every disagreement",
+  "rows": [
+    {
+      "id": "control",
+      "file": "data/cp1610/vectors/control.json",
+      "file_sha256": "9efd431c8b6493dd5522fbc7750572797470e66102edad35ca7e2b8755c4c4fc",
+      "derived_sha256": "69ee7d91578c66f5ee0cae5532e91c8a45ce0d75976981f534c39bf7b25a2f08",
+      "reviewer": "isolated-subagent-blind-v1",
+      "vectors": 27,
+      "agree": 27,
+      "disagreements": [],
+      "resolutions": []
+    },
+    {
+      "id": "register",
+      "file": "data/cp1610/vectors/register.json",
+      "file_sha256": "2875f086f8c73c051d1cda6f79da76f28718c86c98d75f70c24471e354dd4379",
+      "derived_sha256": "ba23474b31509e3565c0e05a7b2326dadc606089bfc06eb562f3cd47b78b4fe3",
+      "reviewer": "isolated-subagent-blind-v1",
+      "vectors": 62,
+      "agree": 62,
+      "disagreements": [],
+      "resolutions": []
+    },
+    {
+      "id": "immediate",
+      "file": "data/cp1610/vectors/immediate.json",
+      "file_sha256": "45b91bad910e3ad66d8aaadf46af179ca1d6110d9796b32697ede8a022358289",
+      "derived_sha256": "9edd73d4325791e0a9beaf63fede849f79ac98fc050a5f651daa8a21a61c382c",
+      "reviewer": "isolated-subagent-blind-v1",
+      "vectors": 24,
+      "agree": 24,
+      "disagreements": [],
+      "resolutions": []
+    },
+    {
+      "id": "shift",
+      "file": "data/cp1610/vectors/shift.json",
+      "file_sha256": "f608e7e786716f7ac0b2aac82f96015a02b77daf63cc1291f2f657e26032615f",
+      "derived_sha256": "6c6e4c755f6907f24ccc5f476035e7d72c71d8ba246165cbf458da57863b0bce",
+      "reviewer": "isolated-subagent-blind-v1",
+      "vectors": 43,
+      "agree": 43,
+      "disagreements": [],
+      "resolutions": []
+    },
+    {
+      "id": "direct",
+      "file": "data/cp1610/vectors/direct.json",
+      "file_sha256": "8ef6b95bf3e65848ac37cde92897c612f38f6d1dc51d201cfb8cea6a5f997a6b",
+      "derived_sha256": "93fc19699babb62735e86a9fd196fb5fc346c6bb4fb1efa1061984ceae08fb90",
+      "reviewer": "isolated-subagent-blind-v1",
+      "vectors": 19,
+      "agree": 0,
+      "disagreements": [
+        "cpu.SUB.8000-minus-0001-overflow bus",
+        "cpu.MVI.full-16-bit-address bus",
+        "cpu.XOR.toggle bus",
+        "cpu.ADD.0001-plus-0001 bus",
+        "cpu.ADD.ffff-plus-1 bus",
+        "cpu.SUB.equal-operands bus",
+        "cpu.CMP.no-write bus",
+        "cpu.MVI.adar-figure bus",
+        "cpu.MVO.write-sequence bus",
+        "cpu.MVO.overwrites-word bus",
+        "cpu.MVI.address-ffff bus",
+        "cpu.ADD.7fff-plus-1-overflow bus",
+        "cpu.CMP.equal-zero bus",
+        "cpu.AND.mask bus",
+        "cpu.AND.zero bus",
+        "cpu.XOR.same-value-zero bus",
+        "cpu.CMP.overflow-sign bus",
+        "cpu.MVO.address-ffff bus",
+        "cpu.SUB.0000-minus-0001 bus"
+      ],
+      "resolutions": [
+        "cpu.SUB.8000-minus-0001-overflow: bus committed (pdf 23; C.3 note: BAR puts out the address of the address word, then ADAR re-addresses memory before the operand DTB, so the access at the address word begins with BAR and is a READ and the operand access is the ADAR one, which pdf 30 prints at cycle 6; the reader put ADAR on the cycle-4 access whose bus control is BAR)",
+        "cpu.MVI.full-16-bit-address: bus committed (pdf 23; C.3 note: BAR puts out the address of the address word, then ADAR re-addresses memory before the operand DTB, so the access at the address word begins with BAR and is a READ and the operand access is the ADAR one, which pdf 30 prints at cycle 6; the reader put ADAR on the cycle-4 access whose bus control is BAR)",
+        "cpu.XOR.toggle: bus committed (pdf 23; C.3 note: BAR puts out the address of the address word, then ADAR re-addresses memory before the operand DTB, so the access at the address word begins with BAR and is a READ and the operand access is the ADAR one, which pdf 30 prints at cycle 6; the reader put ADAR on the cycle-4 access whose bus control is BAR)",
+        "cpu.ADD.0001-plus-0001: bus committed (pdf 23; C.3 note: BAR puts out the address of the address word, then ADAR re-addresses memory before the operand DTB, so the access at the address word begins with BAR and is a READ and the operand access is the ADAR one, which pdf 30 prints at cycle 6; the reader put ADAR on the cycle-4 access whose bus control is BAR)",
+        "cpu.ADD.ffff-plus-1: bus committed (pdf 23; C.3 note: BAR puts out the address of the address word, then ADAR re-addresses memory before the operand DTB, so the access at the address word begins with BAR and is a READ and the operand access is the ADAR one, which pdf 30 prints at cycle 6; the reader put ADAR on the cycle-4 access whose bus control is BAR)",
+        "cpu.SUB.equal-operands: bus committed (pdf 23; C.3 note: BAR puts out the address of the address word, then ADAR re-addresses memory before the operand DTB, so the access at the address word begins with BAR and is a READ and the operand access is the ADAR one, which pdf 30 prints at cycle 6; the reader put ADAR on the cycle-4 access whose bus control is BAR)",
+        "cpu.CMP.no-write: bus committed (pdf 23; C.3 note: BAR puts out the address of the address word, then ADAR re-addresses memory before the operand DTB, so the access at the address word begins with BAR and is a READ and the operand access is the ADAR one, which pdf 30 prints at cycle 6; the reader put ADAR on the cycle-4 access whose bus control is BAR)",
+        "cpu.MVI.adar-figure: bus committed (pdf 23; C.3 note: BAR puts out the address of the address word, then ADAR re-addresses memory before the operand DTB, so the access at the address word begins with BAR and is a READ and the operand access is the ADAR one, which pdf 30 prints at cycle 6; the reader put ADAR on the cycle-4 access whose bus control is BAR)",
+        "cpu.MVO.write-sequence: bus committed (pdf 23; C.3 note: the access at the address word begins with BAR, so it is a READ; ADAR is the re-addressing that follows it and belongs to the next access, here the write, which both sides record as WRITE)",
+        "cpu.MVO.overwrites-word: bus committed (pdf 23; C.3 note: the access at the address word begins with BAR, so it is a READ; ADAR is the re-addressing that follows it and belongs to the next access, here the write, which both sides record as WRITE)",
+        "cpu.MVI.address-ffff: bus committed (pdf 23; C.3 note: BAR puts out the address of the address word, then ADAR re-addresses memory before the operand DTB, so the access at the address word begins with BAR and is a READ and the operand access is the ADAR one, which pdf 30 prints at cycle 6; the reader put ADAR on the cycle-4 access whose bus control is BAR)",
+        "cpu.ADD.7fff-plus-1-overflow: bus committed (pdf 23; C.3 note: BAR puts out the address of the address word, then ADAR re-addresses memory before the operand DTB, so the access at the address word begins with BAR and is a READ and the operand access is the ADAR one, which pdf 30 prints at cycle 6; the reader put ADAR on the cycle-4 access whose bus control is BAR)",
+        "cpu.CMP.equal-zero: bus committed (pdf 23; C.3 note: BAR puts out the address of the address word, then ADAR re-addresses memory before the operand DTB, so the access at the address word begins with BAR and is a READ and the operand access is the ADAR one, which pdf 30 prints at cycle 6; the reader put ADAR on the cycle-4 access whose bus control is BAR)",
+        "cpu.AND.mask: bus committed (pdf 23; C.3 note: BAR puts out the address of the address word, then ADAR re-addresses memory before the operand DTB, so the access at the address word begins with BAR and is a READ and the operand access is the ADAR one, which pdf 30 prints at cycle 6; the reader put ADAR on the cycle-4 access whose bus control is BAR)",
+        "cpu.AND.zero: bus committed (pdf 23; C.3 note: BAR puts out the address of the address word, then ADAR re-addresses memory before the operand DTB, so the access at the address word begins with BAR and is a READ and the operand access is the ADAR one, which pdf 30 prints at cycle 6; the reader put ADAR on the cycle-4 access whose bus control is BAR)",
+        "cpu.XOR.same-value-zero: bus committed (pdf 23; C.3 note: BAR puts out the address of the address word, then ADAR re-addresses memory before the operand DTB, so the access at the address word begins with BAR and is a READ and the operand access is the ADAR one, which pdf 30 prints at cycle 6; the reader put ADAR on the cycle-4 access whose bus control is BAR)",
+        "cpu.CMP.overflow-sign: bus committed (pdf 23; C.3 note: BAR puts out the address of the address word, then ADAR re-addresses memory before the operand DTB, so the access at the address word begins with BAR and is a READ and the operand access is the ADAR one, which pdf 30 prints at cycle 6; the reader put ADAR on the cycle-4 access whose bus control is BAR)",
+        "cpu.MVO.address-ffff: bus committed (pdf 23; C.3 note: the access at the address word begins with BAR, so it is a READ; ADAR is the re-addressing that follows it and belongs to the next access, here the write, which both sides record as WRITE)",
+        "cpu.SUB.0000-minus-0001: bus committed (pdf 23; C.3 note: BAR puts out the address of the address word, then ADAR re-addresses memory before the operand DTB, so the access at the address word begins with BAR and is a READ and the operand access is the ADAR one, which pdf 30 prints at cycle 6; the reader put ADAR on the cycle-4 access whose bus control is BAR)"
+      ]
+    },
+    {
+      "id": "indirect",
+      "file": "data/cp1610/vectors/indirect.json",
+      "file_sha256": "5b1cd61f96947deecf63733556265b2bcdb12f1a60dbab07e5280ac4b9874642",
+      "derived_sha256": "072a331451bc3ca2d497610f6322bf56d21265f9cff12d0d924766f8957f09c4",
+      "reviewer": "isolated-subagent-blind-v1",
+      "vectors": 35,
+      "agree": 34,
+      "disagreements": [
+        "cpu.ADD@.r4-r4-sees-increment r4"
+      ],
+      "resolutions": [
+        "cpu.ADD@.r4-r4-sees-increment: r4 committed (pdf 48; Fig 3.2.4 lists (MMM) <- (MMM) + 1 as part of forming the address, and the text above it says the R7 increment of address formation happens before the operation code, so the operation sees R4 + 1 = 0301 and 0301 + 0010 = 0311; POL-STK-02, C55; the reader's policy statement lacked the increment-order clause and the reader chose the old R4 with this alternative noted)"
+      ]
+    },
+    {
+      "id": "branch",
+      "file": "data/cp1610/vectors/branch.json",
+      "file_sha256": "f3339c8c3621f5bcb60c35cffb7da83f02c7693432ff783d9fff486583707cd6",
+      "derived_sha256": "c30f3942e07855a3c0111edf2079c14c310597195cb724de03a488893365a30b",
+      "reviewer": "isolated-subagent-blind-v1",
+      "vectors": 98,
+      "agree": 98,
+      "disagreements": [],
+      "resolutions": []
+    },
+    {
+      "id": "jump",
+      "file": "data/cp1610/vectors/jump.json",
+      "file_sha256": "e124d4b1b885c2711f142d1ce164e8965d2c2c6965b5bd4d562e7f8596d34e22",
+      "derived_sha256": "e7d74fc66a4046635db8be702a3f9408654fdfff3caf9c3f4f03624ea366c0fc",
+      "reviewer": "isolated-subagent-blind-v1",
+      "vectors": 11,
+      "agree": 11,
+      "disagreements": [],
+      "resolutions": []
+    },
+    {
+      "id": "sdbd",
+      "file": "data/cp1610/vectors/sdbd.json",
+      "file_sha256": "6a8ba1577ecbdd5d43ffdfe9e8a5affaac8b27b3ec4ae488d3ca0ebac046577f",
+      "derived_sha256": "e6f1656cba922edbb78d4be03ce4211e59efc7391dd7cdc871eddf5edf21ceb3",
+      "reviewer": "isolated-subagent-blind-v1",
+      "vectors": 27,
+      "agree": 20,
+      "disagreements": [
+        "cpu.XORI.sdbd-toggle cycles",
+        "cpu.MVII.sdbd-low-high cycles",
+        "cpu.ANDI.sdbd-mask cycles",
+        "cpu.ADDI.sdbd-carry cycles",
+        "cpu.CMPI.sdbd-no-write cycles",
+        "cpu.SUBI.sdbd-borrow cycles",
+        "cpu.MVII.sdbd-dbd-cleared cycles"
+      ],
+      "resolutions": [
+        "cpu.XORI.sdbd-toggle: cycles committed (pdf 58; the row prints one 14 against four words beginning with the SDBD word, read as the pair total, which matches the SDBD 4 + target 10 split of pdf 57; the reader's 14 for the target alone, giving 18, is the open alternative of C34, kept open, not settled)",
+        "cpu.MVII.sdbd-low-high: cycles committed (pdf 58; the row prints one 14 against four words beginning with the SDBD word, read as the pair total, which matches the SDBD 4 + target 10 split of pdf 57; the reader's 14 for the target alone, giving 18, is the open alternative of C34, kept open, not settled)",
+        "cpu.ANDI.sdbd-mask: cycles committed (pdf 58; the row prints one 14 against four words beginning with the SDBD word, read as the pair total, which matches the SDBD 4 + target 10 split of pdf 57; the reader's 14 for the target alone, giving 18, is the open alternative of C34, kept open, not settled)",
+        "cpu.ADDI.sdbd-carry: cycles committed (pdf 58; the row prints one 14 against four words beginning with the SDBD word, read as the pair total, which matches the SDBD 4 + target 10 split of pdf 57; the reader's 14 for the target alone, giving 18, is the open alternative of C34, kept open, not settled)",
+        "cpu.CMPI.sdbd-no-write: cycles committed (pdf 58; the row prints one 14 against four words beginning with the SDBD word, read as the pair total, which matches the SDBD 4 + target 10 split of pdf 57; the reader's 14 for the target alone, giving 18, is the open alternative of C34, kept open, not settled)",
+        "cpu.SUBI.sdbd-borrow: cycles committed (pdf 58; the row prints one 14 against four words beginning with the SDBD word, read as the pair total, which matches the SDBD 4 + target 10 split of pdf 57; the reader's 14 for the target alone, giving 18, is the open alternative of C34, kept open, not settled)",
+        "cpu.MVII.sdbd-dbd-cleared: cycles committed (pdf 58; the row prints one 14 against four words beginning with the SDBD word, read as the pair total, which matches the SDBD 4 + target 10 split of pdf 57; the reader's 14 for the target alone, giving 18, is the open alternative of C34, kept open, not settled)"
+      ]
+    },
+    {
+      "id": "encoding",
+      "file": "data/cp1610/vectors/encoding.json",
+      "file_sha256": "d6eeb8e5b80801dd5362ddf8f6c14fcde1be3b8b9d2bedc377a85d7ef9a4aebf",
+      "derived_sha256": "015861b8ad523c67deb2049f6d52d90352eb7ca4032299758db9394ea3573311",
+      "reviewer": "isolated-subagent-blind-v1",
+      "vectors": 5,
+      "agree": 5,
+      "disagreements": [],
+      "resolutions": []
+    },
+    {
+      "id": "interrupt",
+      "file": "data/cp1610/vectors/interrupt.json",
+      "file_sha256": "fd4f22bd52d8efca4dd3162a069193e840d1f77be0eb5aeec00fa2cb6b21359a",
+      "derived_sha256": "507266a4cd3959d356c3bdc9951f104312ed820441cb56748e8c3100ad53175a",
+      "reviewer": "isolated-subagent-blind-v1",
+      "vectors": 39,
+      "agree": 36,
+      "disagreements": [
+        "cpu.TCI.defers-intr bus",
+        "cpu.MVO.defers-intr bus",
+        "cpu.MVII.sdbd-then-intr-deferred cycles"
+      ],
+      "resolutions": [
+        "cpu.TCI.defers-intr: bus committed (pdf 33; both lists stamp the next fetch at 4 and the TCI pulse at 5 exactly as the figure prints; they differ only in list order: records are grouped by unit and the strobe stays with the TCI unit one cycle past its end (C39), while the protocol's 'in order of occurrence' led the reader to sort by cycle; no page value differs)",
+        "cpu.MVO.defers-intr: bus committed (pdf 23; C.3 note: the access at the address word begins with BAR, so it is a READ; ADAR is the re-addressing that follows it and belongs to the next access, here the write, which both sides record as WRITE)",
+        "cpu.MVII.sdbd-then-intr-deferred: cycles committed (pdf 58; the row prints one 14 against four words beginning with the SDBD word, read as the pair total, which matches the SDBD 4 + target 10 split of pdf 57; the reader's 14 for the target alone, giving 18, is the open alternative of C34, kept open, not settled)"
+      ]
+    },
+    {
+      "id": "busrq-halt",
+      "file": "data/cp1610/vectors/busrq-halt.json",
+      "file_sha256": "6beb07f19ee1d9040ff2f65689053fe57a17ac99a4348d5a9321ff78657b1b59",
+      "derived_sha256": "9c7ac3d1d33be56ca5dc8c442e7b24d7ac017a02d0257b0394e7b3c387d04117",
+      "reviewer": "isolated-subagent-blind-v1",
+      "vectors": 22,
+      "agree": 22,
+      "disagreements": [],
+      "resolutions": []
+    }
+  ]
+}

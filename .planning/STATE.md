@@ -1,19 +1,19 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 2
-current_phase_name: CP-1610 CPU Core
+current_phase: 3
+current_phase_name: Memory Map, Content Loading and Refusal
 status: planning
-stopped_at: Phase 1 complete, ready to plan Phase 2
-last_updated: "2026-11-10T00:23:33.441Z"
-last_activity: 2026-11-09
-last_activity_desc: Phase 1 complete, transitioned to Phase 2
-state_head: 301488191cb210174f05d6c6b8410f973d046e61
+stopped_at: Phase 2 complete, ready to plan Phase 3
+last_updated: "2026-11-11T02:53:30.787Z"
+last_activity: 2026-11-10
+last_activity_desc: Phase 2 complete, transitioned to Phase 3
+state_head: c033d6106896cc7e77e8327f06708fec03d4b98a
 progress:
   total_phases: 8
-  completed_phases: 1
-  total_plans: 14
-  completed_plans: 14
-  percent: 13
+  completed_phases: 2
+  total_plans: 32
+  completed_plans: 32
+  percent: 25
 ---
 
 # Project State
@@ -23,21 +23,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-09)
 
 **Core value:** A deterministic, observable machine core whose every compatibility claim is bound to an exactly named profile and independent evidence — never an unqualified "it runs Intellivision games" label.
-**Current focus:** Phase 2 — CP-1610 CPU Core (Phase 1 complete, verified 5/5, security SECURED)
+**Current focus:** Phase 2 — CP-1610 CPU Core
 
 ## Current Position
 
-Phase: 2 — CP-1610 CPU Core
+Phase: 3 — Memory Map, Content Loading and Refusal
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-11-09 — Phase 1 complete, transitioned to Phase 2
+Last activity: 2026-11-10 — Phase 2 complete, transitioned to Phase 3
 
-Progress: [█░░░░░░░░░] 13%
+Progress: [███░░░░░░░] 25%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 14
+- Total plans completed: 32
 - Average duration: -
 - Total execution time: -
 
@@ -46,6 +46,7 @@ Progress: [█░░░░░░░░░] 13%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 1 | 14 | - | - |
+| 2 | 18 | - | - |
 
 *Updated after each plan completion*
 **Per-Plan Metrics:**
@@ -66,6 +67,24 @@ Progress: [█░░░░░░░░░] 13%
 | Phase 1 P01-11 | 40min | 2 tasks | 16 files |
 | Phase 1 P10 | 40min | 3 tasks | 11 files |
 | Phase 1 P12 | 15min | 2 tasks | 1 files |
+| Phase 02 P01 | 12 min | 3 tasks | 23 files |
+| Phase 02 P02 | 14min | 3 tasks | 72 files |
+| Phase 02 P03 | 6min | 2 tasks | 5 files |
+| Phase 02 P04 | 15min | 2 tasks | 114 files |
+| Phase 02 P05 | 16min | 2 tasks | 89 files |
+| Phase 02 P06 | 8min | 2 tasks | 8 files |
+| Phase 02 P07 | 14min | 3 tasks | 50 files |
+| Phase 02 P08 | 19min | 3 tasks | 10 files |
+| Phase 02 P09 | 13min | 3 tasks | 10 files |
+| Phase 02 P10 | 12min | 3 tasks | 11 files |
+| Phase 02 P11 | 9min | 3 tasks | 9 files |
+| Phase 02 P12 | 10min | 2 tasks | 13 files |
+| Phase 02 P13 | 18min | 3 tasks | 16 files |
+| Phase 02 P14 | 18min | 3 tasks | 7 files |
+| Phase 02 P15 | 15min | 3 tasks | 14 files |
+| Phase 02 P16 | 15min | 3 tasks | 39 files |
+| Phase 02 P17 | 7min | 3 tasks | 6 files |
+| Phase 02 P18 | 15min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -95,6 +114,56 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 1]: 01-11: cmake line budget measured 2154 vs plan limit 1500; not shrunk, recorded as deviation for owner/orchestrator
 - [Phase 1]: 01-10: page-internal figure-vs-table differences (GSWD, RSWD, XOR@ printed form) are recorded as resolved second-reader entries; the family table is unchanged
 - [Phase 1]: 01-12: single CI job, no cache/matrix/path filter; macOS leg with the C build; revisit ubuntu-24.04 pin after 2026-11-19
+- [Phase 02]: C58 (JSR return address) resolved-primary: PC+3 legible on pdf 56; A-06 gap mapping G1-G6 = C46-C51, G7 = C37, G8 = C58
+- [Phase 02]: Profile flag fields cpu.interrupt_accept_clears_intff and cpu.ebci_default are JSON numbers (0 = false); the schema has no boolean value type
+- [Phase 02]: 02-02: the CPU access log carries read data and the applied wait; the bus port sees the request (wait 0, read data 0)
+- [Phase 02]: 02-02: a wait above wait_limit_cpu_cycles abandons the unit with sticky BUS_WAIT_LIMIT, elapsed = offset + 1 + wait (inference)
+- [Phase 02]: 02-02: step refuses lines outside 0/1 and an invalid config (IVS_E_BAD_ARG)
+- [Phase 02]: 02-02: vector units and events asserted only when listed; full state and 64K memory always asserted
+- [Phase 02]: 02-03: harness self-test compiles ivs_test.c directly and links only ivs_warnings and ivs_san, so it cannot depend on core or test-bus code
+- [Phase 02]: 02-03: refuse-small-log covers log_cap 0..7 (0 is below the 8-record minimum); log_cap 8 is the accepted control
+- [Phase 02]: 02-03: bus-order-matches-log compares kind, flags, addr, offset between port call and log record; data only for WRITE/DW; reads must show port data 0 and wait 0
+- [Phase 02]: 02-04: Fault executables (tests/faults.cmake) recompile only the owning TU with IVS_FAULT_<ID> and link plain core and harness copies with ivs_warnings only; c-faults runs them, faults-verdict judges them as a pure checker
+- [Phase 02]: 02-04: vector-program-mismatch compares a program word's binary with the whole hex word (generator rule), not only the low 10 bits
+- [Phase 02]: 02-04: vector-row-mismatch accepts only leaf rows for a decle; the 0BF TSTR/JR coincidence accepts TSTR or JR, never MOVR (plan 02-05 shows the MOVR R7 bonus with SSS != 7)
+- [Phase 02]: 02-04: mame lives only in tools/check/vector-emulator-names.txt; widening the shared denylist-cite.txt stays open for plan 02-18 (6 in-scope lines today)
+- [Phase 02]: cp1610-vectors counts a coverage tag only after the vector's own data proves it; a row or policy leaves cp1610-coverage-pending.ids only with all its derived needs (flags, cycles, required addr/branch tags, bus, and for policies a fault naming them)
+- [Phase 02]: MVI@ cycles:mod is witnessed by a single-step PULR cycles:base vector of 11 cycles (cp1610-modifier-witness.ids, A-13); the branch direction bit is bit 5 (S on pdf 54, meaning on pdf 47)
+- [Phase 02]: Strobes are access records through the bus port (addr = data = 0): STROBE_TCI at elapsed_cpu_cycles + 1 (pdf 33), STROBE_PCIT at cycle 4 of SIN (pdf 34); HLT reports HALT_LATCHED when it sets halt_pending
+- [Phase 02]: core-symbols external= counts imports not defined inside the input; c-purity reports the -O2 count as core-imports (2: __stack_chk_fail, __stack_chk_guard)
+- [Phase 02]: c-purity source layer is a C preprocessing-number tokenizer (comments/strings/char literals removed); float-literal rule also scans core headers; float/double words .c-only
+- [Phase 02]: core-purity-lto is a purity-selftest case, not an overlay control: c-purity forces -fno-lto (D-21 allows the drop since the class stays covered)
+- [Phase 02]: Sanitizer prefixes reach the core-symbols ctest only via IVS_SYMBOL_PREFIX_ARGS when IVS_SAN is ON; release archive gets the strict check
+- [Phase 02]: 02-08: The decode table holds all 74 rows, most specific first; rows without semantics carry OP_NONE and report UNIMPLEMENTED; decle $0BF decodes to TSTR (TSTR/JR/MOVR give the same result)
+- [Phase 02]: 02-08: A register read of R7 sees the PC incremented by the fetch (inference, pdf 28, POL-STK-01); every register-group write goes through ivs_wreg, where an R7 write overrides the PC
+- [Phase 02]: 02-08: The MOVR/TSTR/JR coincidence decle is $0BF, not $2FF as plan text says; the vector is cpu.MOVR.coincidence-0bf and plan 02-13 should rename its high-bits vector to match
+- [Phase 02]: Immediate reads/writes are figure-basis bus records at offset 4 (pdf 29 read, pdf 31 write) with EA = PC+1 (Fig 3.2.5, pdf 49)
+- [Phase 02]: S after right shifts and SWAP is bit 7 (C47); RLC/RRC N=1 use the C48 18-bit link strings with OV as input; N=0 forms keep OV
+- [Phase 02]: SARC N=1 takes the RRC link layout (bit 0 to C, bit 1 to OV): inference, the page names no positions
+- [Phase 02]: 02-10: direct reads record FETCH, READ of the address word at 4 and ADAR of the effective address at 6 (pdf 30, pdf 11); direct MVO writes at the ADAR phase (inference)
+- [Phase 02]: 02-10: pull reads (PULR, @ rows with MMM=6) put the READ at offset 7, after the 3 extra cycles (inference, C36)
+- [Phase 02]: 02-10: POL-STK-02 pointer moves before the operation; result wins; ADD@ R4,R4 adds the word to R4+1
+- [Phase 02]: 02-10: POL-MVO-01 refuses $264 $26D $276 $27F as sticky UNSUPPORTED_MVO_SSS_EQ_MMM before any effect
+- [Phase 02]: 02-11: branch condition = pdf 54 test of bits 2..0 xor bit 3 (negate); NOPP (1000) is B negated and never branches
+- [Phase 02]: 02-11: branch displacement read through ivs_imm_read (one PC-advance site); backward target = PC+2 + 16-bit one's complement (C50); taken adds 2 to the base 7 (POL-BR-01)
+- [Phase 02]: 02-11: branch bus lists are FETCH at 0 and the displacement READ at 4, figure basis pdf 32; nothing after the displacement BAR is listed
+- [Phase 02]: 02-12: BEXT asks port->ebci(ctx, decle & $F) after the displacement READ (pdf 11, pdf 32); NULL provider is false (C57); vector ebci key absent = NULL provider, present (even empty) = provider via has_ebci
+- [Phase 02]: 02-12: Jump target = bits 7..2 of word 2 << 10 | bits 9..0 of word 3 (pdf 52); JSR saves R7 after both operand reads (PC+3, C58) in R4+BB; DE 01/10 set/clear INTFF; bus READ at 4 and 8 is inference (C36)
+- [Phase 02]: 02-12: Jump DE=11 stops after word 2 with R7 at the offender, 8 cycles, temporary UNIMPLEMENTED (02-13 renames); cpu.J.target-ffff uses JSR R4 so JUMP_TARGET_BITS can fail
+- [Phase 02]: 02-13: SDBD double byte data is read inside the shared immediate and indirect readers; every other target after SDBD is refused with UNSUPPORTED_SDBD_TARGET before execution (SDBD check before POL-MVO-01); the high byte READ offset 7 is an inference (C36)
+- [Phase 02]: 02-13: The temporary unimplemented fault reason and OP_NONE are removed; jump DE = 11 faults UNSUPPORTED_JUMP_DE; FAULT_LAST bounds validation
+- [Phase 02]: 02-13: Suite cpu-sweep compares every decle (with and without DBD) and all 65536 words against the Phase 1 family table via cmake/IvsSweepTable.cmake; no readings differed
+- [Phase 02]: 02-14: Interrupt acceptance runs at the start of a RUNNING step (prev_interruptible open, DBD clear; INTR, or INTRM with INTFF; levels never latched); the INT_ENTRY unit is INTAK@0 (R6), DW@2 of R7, R6+1, IAB@5 into R7, 9 cycles, prev_interruptible 0 after it
+- [Phase 02]: 02-14: One IAB helper serves reset and interrupt entries (no vector constant); acceptance leaves INTFF unless config interrupt_accept_clears_intff = 1; all 39 interrupt vectors are kind policy
+- [Phase 02]: 02-14: Fault prefixes grow only by exact ids: MVO_INTERRUPTIBLE (row-flag site) also fails 12 existing MVO-family vectors, JE_AFTER_BOUNDARY also fails cpu.J.je-sets-intff and cpu.J.jsre-r5; LINES_LATCHED uses a fault-only static latch, which 02-15 HLT vectors holding INTR may leave set
+- [Phase 02]: 02-15: Step start order is STPST edge (toggle in RUNNING, resume in HALTED), then a held grant (hold 1 cycle / release = config latency), then at an interruptible boundary stop > BUSRQ > INTR > INTRM; grants never change prev_interruptible (A-02)
+- [Phase 02]: 02-15: HALTED units are 1 cycle and ignore INTR/INTRM while BUSRQ is granted and released; the stop entry reports STOPPED; a STPST edge does not report HALT_LATCHED
+- [Phase 02]: 02-15: The BUS_WAIT_LIMIT fault unit ends at access offset + 1 + limit + 1 (bounded by config, not the device reply); release latency 0 is refused as a bad config
+- [Phase 02]: 02-16: blinded vector copies use opaque v-indices and opaque policy tokens p01..p19 (sha256 order); the gate projects all 12 files every run with a leak scan; the last HANDOFF line for a stem is authoritative
+- [Phase 02]: 02-17: all 30 second-reader disagreements resolved for the committed value from the page (pdf 23/30 ADAR labels, pdf 33 TCI order, pdf 48 increment order, pdf 58 SDBD pair total kept under open C34); no vector or core change; second-read=12/12
+- [Phase 02]: 02-17: reader protocol and p07 policy statement completed where their wording caused disagreements (bus kind meanings, per-unit record order, increment before operation)
+- [Phase 02]: 02-18: D-22 lever 2 applied (4-lane control runner, byte-identical output, runner 73.0 s -> 32.3 s under load); levers 1 and 3 not applied (warm c-build 0.5 s, c-faults 3.2 s); host never idle so the 25 s local budget stays unjudged
+- [Phase 02]: 02-18: hosted gate budget (30 s) stays an open item for the final 190-control gate; D-24 supersedes the CI-EFFICIENCY macOS-leg line; C43 independent re-adjudication of the 30 second-read disagreements recommended
 
 ### Pending Todos
 
@@ -125,6 +194,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-09T23:29:00.766Z
-Stopped at: Phase 1 complete, ready to plan Phase 2
+Last session: 2026-11-11T01:44:25.483Z
+Stopped at: Phase 2 complete, ready to plan Phase 3
 Resume file: None

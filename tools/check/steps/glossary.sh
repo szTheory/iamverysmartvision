@@ -3,7 +3,7 @@
 # Step glossary: time-base glossary inventory, bare-unit tripwire (R2) and the D2 link.
 # Reads ROOT, CHECK_DIR and FILELIST only. Findings are reported in sorted order.
 # Tokens: glossary-missing-term: <term>, glossary-doc-missing, glossary-inventory-empty,
-#   glossary-bare-clock: <file>:<line>, glossary-d2-unlinked, glossary-unit-suffix: <field path>.
+#   glossary-bare-clock: <file>:<line>, glossary-d2-unlinked, glossary-unit-suffix: <field path>, glossary-no-files (no README.md or docs/**/*.md scanned).
 # Stats: terms=<n> doc-files=<n> profile-keys=<n>.
 LC_ALL=C; export LC_ALL
 : "${ROOT:?ROOT is not set}"
@@ -44,6 +44,10 @@ while IFS= read -r f; do
   [ -f "$ROOT/$f" ] && printf '%s\n' "$f" >> "$tmp/scan"
 done < "$tmp/cand"
 docfiles=$(grep -c . "$tmp/scan")
+if [ "$docfiles" -eq 0 ]; then
+  bad glossary-no-files "README.md docs/"
+  exit 1
+fi
 : > "$tmp/bare"
 while IFS= read -r f; do
   grep -a -n -i -w -E 'clocks?' "$ROOT/$f" \

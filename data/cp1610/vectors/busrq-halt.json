@@ -1,0 +1,1736 @@
+{
+  "schema_version": 1,
+  "source": "SRC-gi-cp1600-um-1975",
+  "group": "busrq-halt",
+  "note": "Bus grant (POL-BUS-01), wait states and the wait cap (POL-WAIT-01), the stop latch set by HLT and STPST (POL-HLT-01) and the HALTED state (POL-HLT-02). Unit conventions that no page prints (grant hold 1 cycle, release = config release_latency_cpu_cycles, HALTED 1 cycle, the STPST edge processed first at step start, then stop before BUSRQ before INTR before INTRM) rest on C40, C45, C52, C53 and C54, so these vectors are kind policy. Every vector that contains an interrupt entry answers IAB with $1004. Every expect value is read from the cited page image and derived by hand; none comes from this core, an assembler or another implementation.",
+  "vectors": [
+    {
+      "id": "cpu.UNIT-BUS.busrq-and-intr",
+      "row": "UNIT-BUS",
+      "kind": "policy",
+      "policy": "POL-BUS-01",
+      "cite": "Bus request/acknowledge sequence figure, pdf 36; Fig 2-6, pdf 22; SC.6, pdf 25; interrupt sequence figure, pdf 35",
+      "asm": "none (<BUSRQ+INTR>, <BUSRQ+INTR>, <INTR>, <INTR>)",
+      "program": [],
+      "steps": 4,
+      "step_lines": [
+        {
+          "intr": 1,
+          "busrq": 1
+        },
+        {
+          "intr": 1,
+          "busrq": 1
+        },
+        {
+          "intr": 1
+        },
+        {
+          "intr": 1
+        }
+      ],
+      "derivation": "Four units. The previous unit was interruptible (init prev_interruptible 1), no SDBD prefix is pending and BUSAK is clear. Step 1, BUSRQ and INTR both high: at an interruptible boundary Fig 2-6 (pdf 22) tests BUS REQUEST before INTERRUPT REQUEST, and pdf 25 says the CPU 'will honor Bus Requests before it will honor Interrupt Requests', so the step is a bus grant: no bus access (pdf 36, the bus floats, bus control NACT), BUSAK asserted, 1 cycle (POL-BUS-01 hold unit, C52). Step 2, BUSRQ still high: the CPU stays in the WAIT (NACT) loop of Fig 2-6, one more 1-cycle grant unit. Step 3, BUSRQ low: the release unit, which lasts the profile release latency of 2 cycles (config default release_latency_cpu_cycles 2, C52, inference from pdf 36), clears BUSAK and reports BUS_RELEASED. A grant does not change prev_interruptible (A-02): Fig 2-6 leaves the bus request loop into the interrupt request test, not into a fetch. Step 4, INTR high: the boundary is still the interruptible one, so INTR (always honoured, pdf 12) starts an interrupt entry at cycle 1 + 1 + 2 = 4. Entry (interrupt sequence figure, pdf 35; SC.6, pdf 24-25; POL-INT-04, C30): INTAK at cycle 0 of the unit puts out R6 (the flat test bus answers $0000, which the CPU ignores), NACT, DW at 2 and DWS at 3 write the current PC at R6, NACT, IAB at 5 inputs the service routine address into the PC, three NACT, so the unit is 9 cycles; R6 goes up by one after the store; IAB answers $1004 and loads all 16 bits of R7 (POL-IAB-01); flags are not pushed; prev_interruptible becomes 0 (Fig 2-6, pdf 22: the sequence returns to the fetch). INTAK at 4 with address $02F0; DW at 6 writes the PC $1000 at $02F0; R6 = $02F0 + 1 = $02F1; IAB at 9 answers $1004, so R7 = $1004. Cycles 1 + 1 + 2 + 9 = 13. Flags and INTFF stay 0; BUSAK ends 0. Registers and memory not named stay unchanged.",
+      "iab": "1004",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "intff": 0,
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "6": "02F1",
+          "7": "1004"
+        },
+        "mem": [
+          [
+            "02F0",
+            "1000"
+          ]
+        ],
+        "prev_interruptible": 0,
+        "busak": 0,
+        "cycles": 13,
+        "units": [
+          "BUS_GRANT",
+          "BUS_GRANT",
+          "BUS_GRANT",
+          "INT_ENTRY"
+        ],
+        "events": [
+          "BUS_RELEASED"
+        ]
+      },
+      "bus": [
+        [
+          4,
+          "INTAK",
+          "02F0",
+          "0000"
+        ],
+        [
+          6,
+          "DW",
+          "02F0",
+          "1000"
+        ],
+        [
+          9,
+          "IAB",
+          "0000",
+          "1004"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "policy:POL-INT-01",
+        "unit:bus-grant",
+        "unit:int-entry",
+        "iab:1004"
+      ],
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ]
+    },
+    {
+      "id": "cpu.UNIT-BUS.grant-release-then-fetch",
+      "row": "UNIT-BUS",
+      "kind": "policy",
+      "policy": "POL-BUS-01",
+      "cite": "Bus request/acknowledge sequence figure, pdf 36; Fig 2-6, pdf 22; control instructions table, NOP row, pdf 56; instruction fetch figure, pdf 28",
+      "asm": "<BUSRQ>; <release>; NOP",
+      "program": [
+        "0034 0000 110 100"
+      ],
+      "steps": 3,
+      "step_lines": [
+        {
+          "busrq": 1
+        },
+        {
+          "busrq": 0
+        },
+        {
+          "busrq": 0
+        }
+      ],
+      "derivation": "Three units. Init prev_interruptible 1, BUSAK clear, INTR and INTRM low throughout. Step 1, BUSRQ high at an interruptible boundary: bus grant, no access, BUSAK asserted, 1 cycle (Fig 2-6, pdf 22; pdf 36; POL-BUS-01). Step 2, BUSRQ low with BUSAK asserted: the release unit, 2 cycles (config default release_latency_cpu_cycles 2, C52, inference from pdf 36), BUSAK cleared, event BUS_RELEASED. Step 3: the boundary is still interruptible (a grant leaves prev_interruptible, A-02) and no line is high, so Fig 2-6 returns to the fetch: NOP (0000 110 10N, N = 0, $0034, pdf 56, 6 cycles, no status change) is fetched at cycle 1 + 2 = 3 from $1000 (pdf 28) and R7 = $1001. NOP has no Not Interruptable note, so prev_interruptible stays 1. Cycles 1 + 2 + 6 = 9. Flags stay 0; BUSAK ends 0.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "busak": 0,
+        "cycles": 9,
+        "units": [
+          "BUS_GRANT",
+          "BUS_GRANT",
+          "INSTR"
+        ],
+        "events": [
+          "BUS_RELEASED"
+        ]
+      },
+      "bus": [
+        [
+          3,
+          "FETCH",
+          "1000",
+          "0034"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "unit:bus-grant",
+        "unit:bus-release"
+      ],
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ]
+    },
+    {
+      "id": "cpu.CLRC.no-grant-after-noninterruptible",
+      "row": "CLRC",
+      "kind": "policy",
+      "policy": "POL-BUS-01",
+      "cite": "Control instructions table, CLRC and NOP rows, pdf 56; Fig 2-6, pdf 22; bus request/acknowledge sequence figure, pdf 36; instruction fetch figure, pdf 28",
+      "asm": "CLRC; <BUSRQ> NOP; <BUSRQ>",
+      "program": [
+        "0006 0000 000 110",
+        "0034 0000 110 100"
+      ],
+      "steps": 3,
+      "step_lines": [
+        {
+          "busrq": 0
+        },
+        {
+          "busrq": 1
+        },
+        {
+          "busrq": 1
+        }
+      ],
+      "derivation": "Three units, init prev_interruptible 1, C = 1. Step 1, BUSRQ low: CLRC (0000 000 110 = $0006, pdf 56, 4 cycles, Not Interruptable, only C changes) is fetched at cycle 0 from $1000; C = 0, R7 = $1001, prev_interruptible 0. Step 2, BUSRQ high: Fig 2-6 (pdf 22) sends an UNINTERRUPTABLE INSTRUCTION straight back to the fetch, past the BUS REQUEST test, and pdf 36 marks the grant at the 'END OF CURRENT INTERRUPTABLE INSTRUCTION', so no grant: NOP (0000 110 10N, N = 0, $0034, pdf 56, 6 cycles, no status change, no Not Interruptable note) is fetched at cycle 4 from $1001, R7 = $1002, prev_interruptible 1. Step 3, BUSRQ still high: the boundary is interruptible, so the step is a bus grant: no bus access (pdf 36: the bus floats and the bus control is NACT), BUSAK asserted, 1 cycle (POL-BUS-01 grant unit, C52). Cycles 4 + 6 + 1 = 11; BUSAK ends 1. S, Z, OV stay 0. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "status": {
+          "C": 0
+        },
+        "prev_interruptible": 1,
+        "busak": 1,
+        "cycles": 11,
+        "units": [
+          "INSTR",
+          "INSTR",
+          "BUS_GRANT"
+        ],
+        "events": []
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0006"
+        ],
+        [
+          4,
+          "FETCH",
+          "1001",
+          "0034"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "flag-clear:C",
+        "unit:bus-grant"
+      ],
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ]
+    },
+    {
+      "id": "cpu.UNIT-BUS.no-grant-after-entry",
+      "row": "UNIT-BUS",
+      "kind": "policy",
+      "policy": "POL-BUS-01",
+      "cite": "Fig 2-6, pdf 22; interrupt sequence figure, pdf 35; SC.6, pdf 25; bus request/acknowledge sequence figure, pdf 36; control instructions table, NOP row, pdf 56",
+      "asm": "<INTR>; <BUSRQ> NOP (first service routine instruction at $1004); <BUSRQ>",
+      "program": [
+        "0034 0000 110 100"
+      ],
+      "program_at": "1004",
+      "steps": 3,
+      "step_lines": [
+        {
+          "intr": 1,
+          "busrq": 0
+        },
+        {
+          "intr": 0,
+          "busrq": 1
+        },
+        {
+          "intr": 0,
+          "busrq": 1
+        }
+      ],
+      "derivation": "Three units, init prev_interruptible 1, BUSAK clear. Step 1, INTR high and BUSRQ low: interrupt entry at cycle 0. Entry (interrupt sequence figure, pdf 35; SC.6, pdf 24-25; POL-INT-04, C30): INTAK at cycle 0 of the unit puts out R6 (the flat test bus answers $0000, which the CPU ignores), NACT, DW at 2 and DWS at 3 write the current PC at R6, NACT, IAB at 5 inputs the service routine address into the PC, three NACT, so the unit is 9 cycles; R6 goes up by one after the store; IAB answers $1004 and loads all 16 bits of R7 (POL-IAB-01); flags are not pushed; prev_interruptible becomes 0 (Fig 2-6, pdf 22: the sequence returns to the fetch). INTAK at 0 with address $02F0; DW at 2 writes the PC $1000 at $02F0; R6 = $02F1; IAB at 5 answers $1004, so R7 = $1004; the first BAR of the service routine is at 9 (pdf 35). Step 2, BUSRQ high: in Fig 2-6 the INPUT DEVICE PC (IAB) box returns to the fetch with no BUS REQUEST test, and pdf 25 says the CPU 'will then return to the Fetch Sequence', so no grant directly after an entry: NOP (0000 110 10N, N = 0, $0034, pdf 56, 6 cycles, no status change, no Not Interruptable note) is fetched at cycle 9 from $1004, R7 = $1005, prev_interruptible 1. Step 3, BUSRQ still high at an interruptible boundary: a bus grant: no bus access (pdf 36: the bus floats and the bus control is NACT), BUSAK asserted, 1 cycle (POL-BUS-01 grant unit, C52). Cycles 9 + 6 + 1 = 16; BUSAK ends 1. Flags and INTFF stay 0.",
+      "iab": "1004",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "intff": 0,
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "6": "02F1",
+          "7": "1005"
+        },
+        "mem": [
+          [
+            "02F0",
+            "1000"
+          ]
+        ],
+        "prev_interruptible": 1,
+        "busak": 1,
+        "cycles": 16,
+        "units": [
+          "INT_ENTRY",
+          "INSTR",
+          "BUS_GRANT"
+        ],
+        "events": []
+      },
+      "bus": [
+        [
+          0,
+          "INTAK",
+          "02F0",
+          "0000"
+        ],
+        [
+          2,
+          "DW",
+          "02F0",
+          "1000"
+        ],
+        [
+          5,
+          "IAB",
+          "0000",
+          "1004"
+        ],
+        [
+          9,
+          "FETCH",
+          "1004",
+          "0034"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "unit:int-entry",
+        "unit:bus-grant",
+        "iab:1004"
+      ],
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ]
+    },
+    {
+      "id": "cpu.UNIT-BUS.release-latency-config-5",
+      "row": "UNIT-BUS",
+      "kind": "policy",
+      "policy": "POL-BUS-01",
+      "cite": "Bus request/acknowledge sequence figure, pdf 36; Fig 2-6, pdf 22; control instructions table, NOP row, pdf 56; instruction fetch figure, pdf 28",
+      "asm": "<BUSRQ>; <release>; NOP",
+      "program": [
+        "0034 0000 110 100"
+      ],
+      "steps": 3,
+      "step_lines": [
+        {
+          "busrq": 1
+        },
+        {
+          "busrq": 0
+        },
+        {
+          "busrq": 0
+        }
+      ],
+      "config": {
+        "release_latency_cpu_cycles": 5
+      },
+      "derivation": "Three units with the profile field bus.release_latency_cpu_cycles set to 5 (config release_latency_cpu_cycles 5; the default 2 is an inference from pdf 36, C52, so the value is carried by the profile and this vector shows the core reads it). Init prev_interruptible 1. Step 1, BUSRQ high: a bus grant: no bus access (pdf 36: the bus floats and the bus control is NACT), BUSAK asserted, 1 cycle (POL-BUS-01 grant unit, C52). Step 2, BUSRQ low with BUSAK asserted: the release unit lasts the configured 5 cycles, clears BUSAK and reports BUS_RELEASED. Step 3: the boundary is still interruptible (A-02) and no line is high, so NOP (0000 110 10N, N = 0, $0034, pdf 56, 6 cycles, no status change, no Not Interruptable note) is fetched at cycle 1 + 5 = 6 from $1000, R7 = $1001, prev_interruptible stays 1. Cycles 1 + 5 + 6 = 12.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "busak": 0,
+        "cycles": 12,
+        "units": [
+          "BUS_GRANT",
+          "BUS_GRANT",
+          "INSTR"
+        ],
+        "events": [
+          "BUS_RELEASED"
+        ]
+      },
+      "bus": [
+        [
+          6,
+          "FETCH",
+          "1000",
+          "0034"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "unit:bus-release",
+        "config:release-latency"
+      ],
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ]
+    },
+    {
+      "id": "cpu.MVI.wait-on-adar",
+      "row": "MVI",
+      "kind": "policy",
+      "policy": "POL-WAIT-01",
+      "cite": "Direct addressed data table, MVI row, pdf 55; direct access timing figure, pdf 30; BDRDY timing figure, pdf 37; notes on BDRDY, pdf 40; instruction description, pdf 43; ADAR, pdf 11",
+      "asm": "MVI $0200, R1 (device at $0200 answers with 3 wait cycles)",
+      "program": [
+        "0281 1010 000 001",
+        "0200 0000 0010 0000 0000"
+      ],
+      "waits": [
+        [
+          "0200",
+          3
+        ]
+      ],
+      "derivation": "One unit. MVI A, DDD (pdf 55: 1010 000 DDD plus the address word, 10 cycles, no status change), DDD = 001: R1 = the word at $0200 = $5A3C, R7 = $1002. Bus without waits (pdf 30): FETCH at 0 from $1000, the BAR at 4 puts out $1001 whose word $0200 is the address (a READ), ADAR at 6 puts out $0200 and the operand DTB is at 8. pdf 40: the CPU samples BDRDY at the TS1 after every micro state that issues BAR or ADAR, so the ADAR access takes the device's wait; the BDRDY figure (pdf 37) puts the wait cycles as NACT between the address phase and the DTB, so the operand arrives at 8 + 3 = 11 and the unit grows by 3; pdf 43 adds a wait W for every memory access (POL-WAIT-01, C53). The ADAR record keeps its own address-phase cycle 6. Only $0200 answers a wait; the fetch and the address word take none. Cycles 10 + 3 = 13. The row has no Not Interruptable note, so prev_interruptible stays 1. Flags stay 0.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1,
+        "mem": [
+          [
+            "0200",
+            "5A3C"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "1": "5A3C",
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "cycles": 13,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0281"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "0200"
+        ],
+        [
+          6,
+          "ADAR",
+          "0200",
+          "5A3C"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "wait:adar",
+        "addr:direct"
+      ],
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ]
+    },
+    {
+      "id": "cpu.MVII.wait-on-fetch",
+      "row": "MVII",
+      "kind": "policy",
+      "policy": "POL-WAIT-01",
+      "cite": "Immediate table, MVII row, pdf 57; data access timing figure, pdf 29; BDRDY timing figure, pdf 37; notes on BDRDY, pdf 40; instruction description, pdf 43",
+      "asm": "MVII #$1234, R1 (the instruction word at $1000 answers with 2 wait cycles)",
+      "program": [
+        "02B9 1010 111 001",
+        "1234 0001 0010 0011 0100"
+      ],
+      "waits": [
+        [
+          "1000",
+          2
+        ]
+      ],
+      "derivation": "One unit. MVII I, DDD (pdf 57: 1010 111 DDD plus the data word, 8 cycles, no status change), DDD = 001: R1 = $1234, R7 = $1002. Bus without waits (pdf 29): FETCH (BAR) at 0, DTB at 2, the operand BAR at 4 putting out $1001, DTB at 6. The fetch BAR is followed by a BDRDY sample (pdf 40) and the device at $1000 answers 2 wait cycles, which the BDRDY figure (pdf 37) shows as NACT cycles before the DTB: the instruction word arrives at 2 + 2 = 4, and everything after it moves by 2, so the operand BAR is at 4 + 2 = 6. pdf 43: 'each instruction fetch has an associated wait time'. $1001 answers no wait. Cycles 8 + 2 = 10. prev_interruptible stays 1; flags stay 0.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "1": "1234",
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "cycles": 10,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "02B9"
+        ],
+        [
+          6,
+          "READ",
+          "1001",
+          "1234"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "wait:fetch",
+        "addr:immediate"
+      ],
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ]
+    },
+    {
+      "id": "cpu.MVI@.wait-8-plus-2w",
+      "row": "MVI@",
+      "kind": "policy",
+      "policy": "POL-WAIT-01",
+      "cite": "Instruction description, pdf 43; indirect addressed data table, MVI@ row, pdf 55; indirect access timing figure, pdf 29; BDRDY timing figure, pdf 37; notes on BDRDY, pdf 40",
+      "asm": "MVI@ R2, R1 (fast program memory, the data word at $0300 in slow memory answering 2 wait cycles)",
+      "program": [
+        "0291 1010 010 001"
+      ],
+      "waits": [
+        [
+          "0300",
+          2
+        ]
+      ],
+      "derivation": "One unit: the worked example of pdf 43, 'an external reference instruction that is itself accessed from fast memory but its data is accessed from slow memory': Number of Cycles = 8 + 2W = 8 + W + W = 8 + 0 + 2 = 10. MVI@ MMM, DDD (pdf 55: 1010 MMM DDD, 8 cycles, no status change), MMM = 010 (R2, no increment), DDD = 001: R1 = the word at R2 = $0300 = $5A3C, R7 = $1001. Bus (pdf 29): FETCH at 0 from $1000 (no wait), the data BAR at 4 puts out $0300; the device answers 2 wait cycles, inserted before the DTB (pdf 37, pdf 40). Cycles 10. The row has no Not Interruptable note, so prev_interruptible stays 1. Flags stay 0; R2 stays $0300.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0300",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1,
+        "mem": [
+          [
+            "0300",
+            "5A3C"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "1": "5A3C",
+          "7": "1001"
+        },
+        "prev_interruptible": 1,
+        "cycles": 10,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0291"
+        ],
+        [
+          4,
+          "READ",
+          "0300",
+          "5A3C"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "wait:read",
+        "addr:indirect"
+      ],
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ]
+    },
+    {
+      "id": "cpu.MVO@.wait-on-write",
+      "row": "MVO@",
+      "kind": "policy",
+      "policy": "POL-WAIT-01",
+      "cite": "Indirect addressed data table, MVO@ row, pdf 55; MVO timing (write operation) figure, pdf 31; BDRDY timing figure, pdf 37; notes on BDRDY, pdf 40; instruction description, pdf 43; C56",
+      "asm": "MVO@ R1, R2 (the device at $0300 answers the write with 5 wait cycles)",
+      "program": [
+        "0251 1001 010 001"
+      ],
+      "waits": [
+        [
+          "0300",
+          5
+        ]
+      ],
+      "derivation": "One unit. MVO@ SSS, MMM (pdf 55: 1001 MMM SSS, 9 cycles, no status change), MMM = 010 (R2, no increment), SSS = 001: the word at $0300 becomes R1 = $A5C3, R7 = $1001. Bus (pdf 31): FETCH at 0, the BAR at 4 puts out $0300 for the write. A write is an access that begins with a BAR, so BDRDY is sampled after it (pdf 40) and the device's 5 wait cycles are taken before the data transfer (pdf 37; pdf 43 'every memory access'). Cycles 9 + 5 = 14. The MVO family is non-interruptible by the C56 default, so prev_interruptible becomes 0. Flags stay 0.",
+      "init": {
+        "r": [
+          "0000",
+          "A5C3",
+          "0300",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "mem": [
+          [
+            "0300",
+            "A5C3"
+          ]
+        ],
+        "prev_interruptible": 0,
+        "cycles": 14,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0251"
+        ],
+        [
+          4,
+          "WRITE",
+          "0300",
+          "A5C3"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "wait:write",
+        "addr:indirect"
+      ],
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ]
+    },
+    {
+      "id": "cpu.UNIT-INT.no-wait-on-iab",
+      "row": "UNIT-INT",
+      "kind": "policy",
+      "policy": "POL-WAIT-01",
+      "cite": "Interrupt sequence figure, pdf 35; notes on BDRDY, pdf 40; SC.6, pdf 24, pdf 25; Fig 2-6, pdf 22",
+      "asm": "none (interrupt entry; the bus answers the IAB read with 4 wait cycles)",
+      "program": [],
+      "waits": [
+        [
+          "0000",
+          4
+        ]
+      ],
+      "derivation": "One unit, INTR high at an interruptible boundary (init prev_interruptible 1): interrupt entry. The test bus answers every access at address $0000 with 4 wait cycles, and the IAB record has address $0000. pdf 40: BDRDY is sampled only after a micro state that issues BAR or ADAR; the IAB cycle issues neither, so its wait reply is ignored (the one wait rule, A-04 as amended by A-11: INTAK, IAB and DW take no waits). Entry (interrupt sequence figure, pdf 35; SC.6, pdf 24-25; POL-INT-04, C30): INTAK at cycle 0 of the unit puts out R6 (the flat test bus answers $0000, which the CPU ignores), NACT, DW at 2 and DWS at 3 write the current PC at R6, NACT, IAB at 5 inputs the service routine address into the PC, three NACT, so the unit is 9 cycles; R6 goes up by one after the store; IAB answers $1004 and loads all 16 bits of R7 (POL-IAB-01); flags are not pushed; prev_interruptible becomes 0 (Fig 2-6, pdf 22: the sequence returns to the fetch). INTAK at 0 with address $02F0; DW at 2 writes $1000 at $02F0; R6 = $02F1; IAB at 5 answers $1004, so R7 = $1004. Cycles 9, the printed figure (pdf 35) unchanged. Flags and INTFF stay 0.",
+      "iab": "1004",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "intff": 0,
+        "prev_interruptible": 1,
+        "lines": {
+          "intr": 1
+        }
+      },
+      "expect": {
+        "r": {
+          "6": "02F1",
+          "7": "1004"
+        },
+        "mem": [
+          [
+            "02F0",
+            "1000"
+          ]
+        ],
+        "prev_interruptible": 0,
+        "cycles": 9,
+        "units": [
+          "INT_ENTRY"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "INTAK",
+          "02F0",
+          "0000"
+        ],
+        [
+          2,
+          "DW",
+          "02F0",
+          "1000"
+        ],
+        [
+          5,
+          "IAB",
+          "0000",
+          "1004"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "policy:POL-INT-04",
+        "wait:none-iab",
+        "iab:1004"
+      ],
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ]
+    },
+    {
+      "id": "cpu.UNIT-INT.no-wait-on-dw",
+      "row": "UNIT-INT",
+      "kind": "policy",
+      "policy": "POL-WAIT-01",
+      "cite": "Interrupt sequence figure, pdf 35; DW, pdf 10; notes on BDRDY, pdf 40; SC.6, pdf 24, pdf 25; Fig 2-6, pdf 22",
+      "asm": "none (interrupt entry; the bus answers the stack address with 4 wait cycles)",
+      "program": [],
+      "waits": [
+        [
+          "02F0",
+          4
+        ]
+      ],
+      "derivation": "One unit, INTR high at an interruptible boundary (init prev_interruptible 1): interrupt entry. The waits list names the entry's R6 address $02F0, so the test bus answers both the INTAK access (which puts out R6) and the DW access (which writes at R6) with 4 wait cycles. Neither is a BAR or ADAR micro state (pdf 40), so the CPU takes no wait on either (the one wait rule, A-04 as amended by A-11: INTAK, IAB and DW take no waits). Entry (interrupt sequence figure, pdf 35; SC.6, pdf 24-25; POL-INT-04, C30): INTAK at cycle 0 of the unit puts out R6 (the flat test bus answers $0000, which the CPU ignores), NACT, DW at 2 and DWS at 3 write the current PC at R6, NACT, IAB at 5 inputs the service routine address into the PC, three NACT, so the unit is 9 cycles; R6 goes up by one after the store; IAB answers $1004 and loads all 16 bits of R7 (POL-IAB-01); flags are not pushed; prev_interruptible becomes 0 (Fig 2-6, pdf 22: the sequence returns to the fetch). INTAK at 0 with address $02F0; DW at 2 writes $1000 at $02F0; R6 = $02F1; IAB at 5 answers $1004, so R7 = $1004. The bus list keeps the pdf 35 offsets 0, 2, 5 and the unit stays 9 cycles. Flags and INTFF stay 0.",
+      "iab": "1004",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "intff": 0,
+        "prev_interruptible": 1,
+        "lines": {
+          "intr": 1
+        }
+      },
+      "expect": {
+        "r": {
+          "6": "02F1",
+          "7": "1004"
+        },
+        "mem": [
+          [
+            "02F0",
+            "1000"
+          ]
+        ],
+        "prev_interruptible": 0,
+        "cycles": 9,
+        "units": [
+          "INT_ENTRY"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "INTAK",
+          "02F0",
+          "0000"
+        ],
+        [
+          2,
+          "DW",
+          "02F0",
+          "1000"
+        ],
+        [
+          5,
+          "IAB",
+          "0000",
+          "1004"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "policy:POL-INT-04",
+        "wait:none-dw",
+        "iab:1004"
+      ],
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ]
+    },
+    {
+      "id": "cpu.MVII.wait-at-limit-35",
+      "row": "MVII",
+      "kind": "policy",
+      "policy": "POL-WAIT-01",
+      "cite": "BDRDY, pdf 12; immediate table, MVII row, pdf 57; data access timing figure, pdf 29; BDRDY timing figure, pdf 37; instruction description, pdf 43",
+      "asm": "MVII #$1234, R1 (the instruction word at $1000 answers with 35 wait cycles)",
+      "program": [
+        "02B9 1010 111 001",
+        "1234 0001 0010 0011 0100"
+      ],
+      "waits": [
+        [
+          "1000",
+          35
+        ]
+      ],
+      "derivation": "One unit. pdf 12: the wait 'must be less than 40 microseconds to preserve the dynamic state of the CPU'; the profile caps it at bus.wait_limit_cpu_cycles = 35 (config default wait_limit_cpu_cycles 35, C53), and a wait equal to the cap is accepted. MVII I, DDD (pdf 57, 8 cycles), DDD = 001: R1 = $1234, R7 = $1002. The fetch at 0 takes the 35 wait cycles before its DTB (pdf 37, pdf 40), so everything after it moves by 35: the operand BAR at 4 + 35 = 39. Cycles 8 + 35 = 43. No fault; prev_interruptible stays 1; flags stay 0.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "1": "1234",
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "run_state": "RUNNING",
+        "fault_reason": "NONE",
+        "cycles": 43,
+        "units": [
+          "INSTR"
+        ],
+        "events": []
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "02B9"
+        ],
+        [
+          39,
+          "READ",
+          "1001",
+          "1234"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "wait:at-limit"
+      ],
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ]
+    },
+    {
+      "id": "cpu.MVII.wait-36-faults",
+      "row": "MVII",
+      "kind": "policy",
+      "policy": "POL-WAIT-01",
+      "cite": "BDRDY, pdf 12; immediate table, MVII row, pdf 57; BDRDY timing figure, pdf 37; notes on BDRDY, pdf 40",
+      "asm": "MVII #$1234, R1 (the instruction word at $1000 answers with 36 wait cycles)",
+      "program": [
+        "02B9 1010 111 001",
+        "1234 0001 0010 0011 0100"
+      ],
+      "waits": [
+        [
+          "1000",
+          36
+        ]
+      ],
+      "derivation": "One unit. The fetch at 0 from $1000 reads $02B9 (the record carries the word on the bus) and the device answers 36 wait cycles, one more than the profile cap bus.wait_limit_cpu_cycles = 35 (pdf 12: the wait must stay under 40 microseconds; C53). The page defines no behaviour past the bound, so the policy is a sticky fault (POL-WAIT-01, D-12): the unit is abandoned with the architectural state as before it (R1 and R7 = $1000 unchanged, nothing decoded), run state FAULTED, fault reason BUS_WAIT_LIMIT, event FAULT, unit FAULT. The unit ends one cycle past the cap: the address cycle 1, the 35 accepted wait cycles and the cycle that exceeds the cap, 1 + 35 + 1 = 37 cycles (the core convention, inference). prev_interruptible stays 1; flags stay 0.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "run_state": "FAULTED",
+        "fault_reason": "BUS_WAIT_LIMIT",
+        "prev_interruptible": 1,
+        "cycles": 37,
+        "units": [
+          "FAULT"
+        ],
+        "events": [
+          "FAULT"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "02B9"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "wait:over-limit",
+        "fault:bus-wait-limit"
+      ],
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ]
+    },
+    {
+      "id": "cpu.HLT.next-instruction-then-halt",
+      "row": "HLT",
+      "kind": "policy",
+      "policy": "POL-HLT-01",
+      "cite": "Control instructions table, HLT and NOP rows, pdf 56; STPST and HALT, pdf 14; Fig 2-6, pdf 22; instruction fetch figure, pdf 28; C40; C56",
+      "asm": "HLT; NOP; <stop>",
+      "program": [
+        "0000 0000 000 000",
+        "0034 0000 110 100"
+      ],
+      "steps": 3,
+      "derivation": "Three units, all lines low, init prev_interruptible 1. Step 1: HLT (0000 000 000 = $0000, pdf 56, 4 cycles, 'HaLT after next instruction is executed. Resume on control start.', blank status change column) is fetched (pdf 28) and sets the stop latch: halt_pending 1, event HALT_LATCHED, run state RUNNING. The row is silent on interruptibility, so the C56 default makes it non-interruptible (POL-INT-02): prev_interruptible 0; R7 = $1001, 4 cycles. Step 2: the boundary after HLT is closed, so the next instruction runs ('HaLT after next instruction is executed', pdf 56): NOP (0000 110 10N, N = 0, $0034, pdf 56, 6 cycles, no status change, no Not Interruptable note) is fetched at cycle 4 from $1001, R7 = $1002, prev_interruptible 1. Step 3: the boundary is interruptible and the stop latch is set, so the stop wins (pdf 14: the CPU stops 'only after the completion of an interruptable instruction'; POL-HLT-01, C40): a 1-cycle HALTED unit with no access clears the latch, enters HALTED and reports STOPPED. Cycles 4 + 6 + 1 = 11. Run state HALTED, halt_pending 0, flags stay 0, nothing else changes.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "run_state": "HALTED",
+        "halt_pending": 0,
+        "prev_interruptible": 1,
+        "cycles": 11,
+        "units": [
+          "INSTR",
+          "INSTR",
+          "HALTED"
+        ],
+        "events": [
+          "HALT_LATCHED",
+          "STOPPED"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0000"
+        ],
+        [
+          4,
+          "FETCH",
+          "1001",
+          "0034"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "halt:latched",
+        "halt:stopped"
+      ],
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ]
+    },
+    {
+      "id": "cpu.HLT.intr-held-then-halted",
+      "row": "HLT",
+      "kind": "policy",
+      "policy": "POL-HLT-01",
+      "cite": "Control instructions table, HLT and NOP rows, pdf 56; STPST and HALT, pdf 14; INTR*, pdf 12; Fig 2-6, pdf 22; instruction fetch figure, pdf 28; C40; C56; A-13",
+      "asm": "HLT; NOP; <stop> (INTR held high throughout)",
+      "program": [
+        "0000 0000 000 000",
+        "0034 0000 110 100"
+      ],
+      "steps": 3,
+      "derivation": "Three units with INTR high throughout and no IAB value supplied (an entry would fail the vector). init prev_interruptible 0 explicitly, so the first step is at a closed boundary and executes HLT before any acceptance test. Step 1: HLT (0000 000 000 = $0000, pdf 56, 4 cycles, 'HaLT after next instruction is executed. Resume on control start.', blank status change column) is fetched (pdf 28) and sets the stop latch: halt_pending 1, event HALT_LATCHED, run state RUNNING. The row is silent on interruptibility, so the C56 default makes it non-interruptible (POL-INT-02): prev_interruptible 0; R7 = $1001, 4 cycles. Step 2: HLT is non-interruptible by the C56 default, so INTR is not tested at this boundary and the next instruction runs: NOP (0000 110 10N, N = 0, $0034, pdf 56, 6 cycles, no status change, no Not Interruptable note) is fetched at cycle 4 from $1001, R7 = $1002, prev_interruptible 1. Step 3: INTR is high, but the boundary is interruptible and the stop latch is set, so the stop wins (pdf 14: the CPU stops 'only after the completion of an interruptable instruction'; POL-HLT-01, C40): a 1-cycle HALTED unit with no access clears the latch, enters HALTED and reports STOPPED (the stop latch wins over INTR at the next interruptible boundary, C40, A-13). The sequence is INSTR, INSTR, HALTED. Cycles 4 + 6 + 1 = 11. R6, memory, flags and INTFF stay as they were.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "intff": 0,
+        "prev_interruptible": 0,
+        "lines": {
+          "intr": 1
+        }
+      },
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "run_state": "HALTED",
+        "halt_pending": 0,
+        "prev_interruptible": 1,
+        "cycles": 11,
+        "units": [
+          "INSTR",
+          "INSTR",
+          "HALTED"
+        ],
+        "events": [
+          "HALT_LATCHED",
+          "STOPPED"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0000"
+        ],
+        [
+          4,
+          "FETCH",
+          "1001",
+          "0034"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "policy:POL-INT-02",
+        "halt:stopped"
+      ],
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ]
+    },
+    {
+      "id": "cpu.HLT.halt-beats-busrq-and-intr",
+      "row": "HLT",
+      "kind": "policy",
+      "policy": "POL-HLT-01",
+      "cite": "Control instructions table, HLT and NOP rows, pdf 56; STPST and HALT, pdf 14; Fig 2-6, pdf 22; bus request/acknowledge sequence figure, pdf 36; C40",
+      "asm": "HLT; NOP; <BUSRQ+INTR> <stop>",
+      "program": [
+        "0000 0000 000 000",
+        "0034 0000 110 100"
+      ],
+      "steps": 3,
+      "step_lines": [
+        {
+          "intr": 0,
+          "busrq": 0
+        },
+        {
+          "intr": 0,
+          "busrq": 0
+        },
+        {
+          "intr": 1,
+          "busrq": 1
+        }
+      ],
+      "derivation": "Three units, init prev_interruptible 1, no IAB value supplied. Steps 1 and 2 with all lines low: HLT (0000 000 000 = $0000, pdf 56, 4 cycles, 'HaLT after next instruction is executed. Resume on control start.', blank status change column) is fetched (pdf 28) and sets the stop latch: halt_pending 1, event HALT_LATCHED, run state RUNNING. The row is silent on interruptibility, so the C56 default makes it non-interruptible (POL-INT-02): prev_interruptible 0; R7 = $1001, 4 cycles; then NOP (0000 110 10N, N = 0, $0034, pdf 56, 6 cycles, no status change, no Not Interruptable note) at cycle 4 from $1001, R7 = $1002, prev_interruptible 1. Step 3, BUSRQ and INTR both high at the interruptible boundary while the stop latch is set: POL-HLT-01 gives the latch priority over BUSRQ and INTR (C40), so the boundary is interruptible and the stop latch is set, so the stop wins (pdf 14: the CPU stops 'only after the completion of an interruptable instruction'; POL-HLT-01, C40): a 1-cycle HALTED unit with no access clears the latch, enters HALTED and reports STOPPED; no grant (BUSAK stays 0) and no entry. Cycles 4 + 6 + 1 = 11.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "run_state": "HALTED",
+        "halt_pending": 0,
+        "busak": 0,
+        "prev_interruptible": 1,
+        "cycles": 11,
+        "units": [
+          "INSTR",
+          "INSTR",
+          "HALTED"
+        ],
+        "events": [
+          "HALT_LATCHED",
+          "STOPPED"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0000"
+        ],
+        [
+          4,
+          "FETCH",
+          "1001",
+          "0034"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "halt:stopped",
+        "priority:stop-busrq-intr"
+      ],
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ]
+    },
+    {
+      "id": "cpu.HLT.stpst-edge-cancels-hlt",
+      "row": "HLT",
+      "kind": "policy",
+      "policy": "POL-HLT-01",
+      "cite": "STPST, pdf 14; control instructions table, HLT and NOP rows, pdf 56; instruction fetch figure, pdf 28; C54",
+      "asm": "HLT; <STPST edge> NOP; NOP",
+      "program": [
+        "0000 0000 000 000",
+        "0034 0000 110 100",
+        "0034 0000 110 100"
+      ],
+      "steps": 3,
+      "step_lines": [
+        {
+          "stpst": 0
+        },
+        {
+          "stpst": 1
+        },
+        {
+          "stpst": 0
+        }
+      ],
+      "derivation": "Three units, init prev_interruptible 1. One stop latch serves HLT and STPST, and a STPST edge toggles it (pdf 14: STPST is edge triggered and the next edge returns the CPU to the run mode; C54, A-01). Step 1, no edge: HLT (0000 000 000 = $0000, pdf 56, 4 cycles, 'HaLT after next instruction is executed. Resume on control start.', blank status change column) is fetched (pdf 28) and sets the stop latch: halt_pending 1, event HALT_LATCHED, run state RUNNING. The row is silent on interruptibility, so the C56 default makes it non-interruptible (POL-INT-02): prev_interruptible 0; R7 = $1001, 4 cycles. Step 2, a STPST edge: it is processed first and toggles the latch back to 0, cancelling the pending stop; the boundary after HLT is closed, so NOP (0000 110 10N, N = 0, $0034, pdf 56, 6 cycles, no status change, no Not Interruptable note) is fetched at cycle 4 from $1001, R7 = $1002, prev_interruptible 1. Step 3, no edge: the boundary is interruptible but the latch is clear, so the second NOP is fetched at cycle 10 from $1002, R7 = $1003. Cycles 4 + 6 + 6 = 16. Run state RUNNING, halt_pending 0.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "7": "1003"
+        },
+        "run_state": "RUNNING",
+        "halt_pending": 0,
+        "prev_interruptible": 1,
+        "cycles": 16,
+        "units": [
+          "INSTR",
+          "INSTR",
+          "INSTR"
+        ],
+        "events": [
+          "HALT_LATCHED"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0000"
+        ],
+        [
+          4,
+          "FETCH",
+          "1001",
+          "0034"
+        ],
+        [
+          10,
+          "FETCH",
+          "1002",
+          "0034"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "halt:cancelled"
+      ],
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ]
+    },
+    {
+      "id": "cpu.UNIT-HALT.stpst-edge-stops",
+      "row": "UNIT-HALT",
+      "kind": "policy",
+      "policy": "POL-HLT-01",
+      "cite": "STPST and HALT, pdf 14; Fig 2-6, pdf 22; C54",
+      "asm": "none (<STPST edge>; <idle>)",
+      "program": [],
+      "steps": 2,
+      "step_lines": [
+        {
+          "stpst": 1
+        },
+        {
+          "stpst": 0
+        }
+      ],
+      "derivation": "Two units, init prev_interruptible 1 (the previous unit was interruptible), RUNNING. Step 1, a STPST edge: pdf 14, 'If the CPU is presently running, the negative transition of STPST will cause the CPU to stop but only after the completion of an interruptable instruction'. The edge is processed first and sets the stop latch (C54, A-01); the boundary is interruptible, so the boundary is interruptible and the stop latch is set, so the stop wins (pdf 14: the CPU stops 'only after the completion of an interruptable instruction'; POL-HLT-01, C40): a 1-cycle HALTED unit with no access clears the latch, enters HALTED and reports STOPPED. Nothing is fetched. Step 2, no edge: the CPU is HALTED, so another 1-cycle HALTED unit with no access and no event (POL-HLT-02). Cycles 1 + 1 = 2. R7 stays $1000.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "run_state": "HALTED",
+        "halt_pending": 0,
+        "prev_interruptible": 1,
+        "cycles": 2,
+        "units": [
+          "HALTED",
+          "HALTED"
+        ],
+        "events": [
+          "STOPPED"
+        ]
+      },
+      "bus": [],
+      "bus_basis": "inference",
+      "covers": [
+        "halt:stopped",
+        "stpst:edge"
+      ],
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ]
+    },
+    {
+      "id": "cpu.UNIT-HALT.stpst-second-edge-cancels",
+      "row": "UNIT-HALT",
+      "kind": "policy",
+      "policy": "POL-HLT-01",
+      "cite": "STPST, pdf 14; control instructions table, CLRC and NOP rows, pdf 56; instruction fetch figure, pdf 28; C54",
+      "asm": "<STPST edge> CLRC; <STPST edge> NOP; NOP",
+      "program": [
+        "0006 0000 000 110",
+        "0034 0000 110 100",
+        "0034 0000 110 100"
+      ],
+      "steps": 3,
+      "step_lines": [
+        {
+          "stpst": 1
+        },
+        {
+          "stpst": 1
+        },
+        {
+          "stpst": 0
+        }
+      ],
+      "derivation": "Three units, init prev_interruptible 0 (a closed boundary), C = 1. Step 1, a STPST edge: it sets the stop latch (C54), but the boundary is closed, so CLRC (0000 000 110 = $0006, pdf 56, 4 cycles, Not Interruptable, only C changes) is fetched at 0 from $1000: C = 0, R7 = $1001, prev_interruptible 0. Step 2, a second STPST edge before any interruptible boundary: it toggles the latch back to 0, cancelling the stop (C54, A-01); the boundary after CLRC is closed, so NOP (0000 110 10N, N = 0, $0034, pdf 56, 6 cycles, no status change, no Not Interruptable note) is fetched at cycle 4 from $1001, R7 = $1002, prev_interruptible 1. Step 3, no edge: interruptible boundary, latch clear, so the second NOP is fetched at cycle 10 from $1002, R7 = $1003. Cycles 4 + 6 + 6 = 16. Run state RUNNING, halt_pending 0, no event.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 0
+      },
+      "expect": {
+        "r": {
+          "7": "1003"
+        },
+        "status": {
+          "C": 0
+        },
+        "run_state": "RUNNING",
+        "halt_pending": 0,
+        "prev_interruptible": 1,
+        "cycles": 16,
+        "units": [
+          "INSTR",
+          "INSTR",
+          "INSTR"
+        ],
+        "events": []
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0006"
+        ],
+        [
+          4,
+          "FETCH",
+          "1001",
+          "0034"
+        ],
+        [
+          10,
+          "FETCH",
+          "1002",
+          "0034"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "stpst:cancel"
+      ],
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ]
+    },
+    {
+      "id": "cpu.UNIT-HALT.stpst-edge-resumes",
+      "row": "UNIT-HALT",
+      "kind": "policy",
+      "policy": "POL-HLT-01",
+      "cite": "STPST and HALT, pdf 14; Fig 2-6, pdf 22; control instructions table, NOP row, pdf 56; instruction fetch figure, pdf 28; C45",
+      "asm": "<halted idle>; <STPST edge> NOP",
+      "program": [
+        "0034 0000 110 100"
+      ],
+      "steps": 2,
+      "step_lines": [
+        {
+          "stpst": 0
+        },
+        {
+          "stpst": 1
+        }
+      ],
+      "derivation": "Two units, init run state HALTED, prev_interruptible 1. Step 1, no edge: a 1-cycle HALTED unit, no access, no event. Step 2, a STPST edge: pdf 14, 'The next negative transition of STPST will cause the CPU to return to the run mode'. The edge is processed first and resumes RUNNING; the same step then runs the boundary test, which finds no stop, no BUSRQ and no interrupt, so NOP (0000 110 10N, N = 0, $0034, pdf 56, 6 cycles, no status change, no Not Interruptable note) is fetched at cycle 1 from $1000, R7 = $1001, prev_interruptible stays 1. Cycles 1 + 6 = 7. Run state RUNNING.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1,
+        "run_state": "HALTED"
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "run_state": "RUNNING",
+        "halt_pending": 0,
+        "prev_interruptible": 1,
+        "cycles": 7,
+        "units": [
+          "HALTED",
+          "INSTR"
+        ],
+        "events": []
+      },
+      "bus": [
+        [
+          1,
+          "FETCH",
+          "1000",
+          "0034"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "stpst:resume"
+      ],
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ]
+    },
+    {
+      "id": "cpu.UNIT-HALT.halted-ignores-intr",
+      "row": "UNIT-HALT",
+      "kind": "policy",
+      "policy": "POL-HLT-02",
+      "cite": "STPST and HALT, pdf 14; INTR*, INTRM*, pdf 12; Fig 2-6, pdf 22; C45",
+      "asm": "none (<halted idle> x2 with INTR and INTRM high)",
+      "program": [],
+      "steps": 2,
+      "derivation": "Two units, init run state HALTED, prev_interruptible 1, INTFF 1, INTR and INTRM high throughout, no IAB value supplied. The pages do not say how the stopped mode treats interrupt requests; the default (C45, A-10, POL-HLT-02) ignores INTR and INTRM in HALTED, and only a STPST edge or reset leaves it. So each step is a 1-cycle HALTED unit with no access and no event. Cycles 1 + 1 = 2. Registers, memory, flags, INTFF and prev_interruptible stay as they were.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "intff": 1,
+        "prev_interruptible": 1,
+        "run_state": "HALTED",
+        "lines": {
+          "intr": 1,
+          "intrm": 1
+        }
+      },
+      "expect": {
+        "run_state": "HALTED",
+        "cycles": 2,
+        "units": [
+          "HALTED",
+          "HALTED"
+        ],
+        "events": []
+      },
+      "bus": [],
+      "bus_basis": "inference",
+      "covers": [
+        "halted:intr-ignored"
+      ],
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ]
+    },
+    {
+      "id": "cpu.UNIT-HALT.halted-grants-busrq",
+      "row": "UNIT-HALT",
+      "kind": "policy",
+      "policy": "POL-HLT-02",
+      "cite": "STPST and HALT, pdf 14; bus request/acknowledge sequence figure, pdf 36; Fig 2-6, pdf 22; C45; C52",
+      "asm": "none (<BUSRQ>, <BUSRQ>, <release>, <halted idle>)",
+      "program": [],
+      "steps": 4,
+      "step_lines": [
+        {
+          "busrq": 1
+        },
+        {
+          "busrq": 1
+        },
+        {
+          "busrq": 0
+        },
+        {
+          "busrq": 0
+        }
+      ],
+      "derivation": "Four units, init run state HALTED, prev_interruptible 1, BUSAK clear. The HALTED state still honours BUSRQ (C45, A-10, POL-HLT-02). Step 1, BUSRQ high: a bus grant: no bus access (pdf 36: the bus floats and the bus control is NACT), BUSAK asserted, 1 cycle (POL-BUS-01 grant unit, C52); the CPU stays HALTED. Step 2, BUSRQ still high: one more 1-cycle grant unit. Step 3, BUSRQ low: the release unit, 2 cycles (config default release_latency_cpu_cycles 2, C52), BUSAK cleared, BUS_RELEASED; the CPU is still HALTED. Step 4: a 1-cycle HALTED unit. Cycles 1 + 1 + 2 + 1 = 5. No access, prev_interruptible stays 1.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1,
+        "run_state": "HALTED"
+      },
+      "expect": {
+        "run_state": "HALTED",
+        "busak": 0,
+        "prev_interruptible": 1,
+        "cycles": 5,
+        "units": [
+          "BUS_GRANT",
+          "BUS_GRANT",
+          "BUS_GRANT",
+          "HALTED"
+        ],
+        "events": [
+          "BUS_RELEASED"
+        ]
+      },
+      "bus": [],
+      "bus_basis": "inference",
+      "covers": [
+        "halted:busrq-granted",
+        "unit:bus-release"
+      ],
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+# Vector file stems with a second-read marker row in data/cp1610/vector-review.json (D-15, A-07, A-12).
+control
+register
+immediate
+shift
+direct
+indirect
+branch
+jump
+sdbd
+encoding
+interrupt
+busrq-halt

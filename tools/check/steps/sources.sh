@@ -4,7 +4,7 @@
 # Every SRC-<slug> token in data/**/*.json (except data/sources.json), docs/**/*.md and README.md
 # must be an id in data/expected/sources.ids. Paths are anchored at the repository root, so control
 # overlays and good-tree copies under tools/check/controls/ are never scanned on the real tree.
-# Tokens: source-* (see kinds/source.cmake and schema/source.txt), source-unknown-ref: <id>.
+# Tokens: source-* (see kinds/source.cmake and schema/source.txt), source-unknown-ref: <id>, sources-no-files (no data/**/*.json to scan).
 # Stats: sources=<n> refs-verified=<k>/<hashed count>.
 LC_ALL=C; export LC_ALL
 : "${ROOT:?ROOT is not set}"
@@ -30,6 +30,10 @@ grep -E -e '^data/.*[.]json$' -e '^docs/.*[.]md$' -e '^README[.]md$' "$FILELIST"
 while IFS= read -r f; do
   [ -f "$ROOT/$f" ] && printf '%s\n' "$f" >> "$tmp/scan"
 done < "$tmp/cand"
+if ! grep -q '^data/' "$tmp/scan"; then
+  printf -- '-- FAIL sources-no-files: data/\n'
+  exit 1
+fi
 
 : > "$tmp/refs"
 while IFS= read -r f; do

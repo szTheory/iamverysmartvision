@@ -7,7 +7,7 @@
 # denylist-cite.txt entries (emulator project names) are allowed only on a line that carries [cite-only].
 # Lists are read from CHECK_DIR, never from ROOT. '#' lines and blank lines in the lists are ignored.
 # Tokens: denylist-hit: <file>, denylist-cite-unwaived: <file>, denylist-no-files, denylist-list-missing: <name>,
-#   denylist-list-empty: <name>.
+#   denylist-list-empty: <name>, denylist-grep-error: <file> (grep exit status 2 or more: never read as clean).
 # Stats: scanned=<n> waived=<k> (waived = lines with a cite-list name and the [cite-only] marker).
 LC_ALL=C; export LC_ALL
 : "${ROOT:?ROOT is not set}"
@@ -48,11 +48,26 @@ waived=0
 : > "$tmp/hit"
 : > "$tmp/unw"
 while IFS= read -r f; do
-  if [ -s "$tmp/denylist" ] && grep -q -a -i -F -f "$tmp/denylist" "$ROOT/$f"; then
-    printf '%s\n' "$f" >> "$tmp/hit"
+  reported=0
+  if [ -s "$tmp/denylist" ]; then
+    gs=0
+    grep -q -a -i -F -f "$tmp/denylist" "$ROOT/$f" 2> /dev/null || gs=$?
+    if [ "$gs" -eq 0 ]; then
+      printf '%s\n' "$f" >> "$tmp/hit"
+    elif [ "$gs" -ge 2 ]; then
+      bad denylist-grep-error "$f"
+      reported=1
+    fi
   fi
   if [ -s "$tmp/denylist-cite" ]; then
-    grep -a -i -F -f "$tmp/denylist-cite" "$ROOT/$f" > "$tmp/lines" 2>/dev/null || : > "$tmp/lines"
+    gs=0
+    grep -a -i -F -f "$tmp/denylist-cite" "$ROOT/$f" > "$tmp/lines" 2> /dev/null || gs=$?
+    if [ "$gs" -ge 2 ]; then
+      [ "$reported" -eq 1 ] || bad denylist-grep-error "$f"
+      : > "$tmp/lines"
+    elif [ "$gs" -eq 1 ]; then
+      : > "$tmp/lines"
+    fi
     if grep -a -q -v -F '[cite-only]' "$tmp/lines"; then
       printf '%s\n' "$f" >> "$tmp/unw"
     fi

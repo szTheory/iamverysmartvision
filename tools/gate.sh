@@ -2,19 +2,26 @@
 # SPDX-License-Identifier: MIT
 # The single local/CI command: sh tools/gate.sh (no arguments). See SKELETON.md section 1.
 LC_ALL=C; export LC_ALL
+gate_t0=$(date +%s)
 here=$(cd "$(dirname "$0")" && pwd) || exit 1
 ROOT=$(cd "$here/.." && pwd) || exit 1
 CHECK_DIR="$ROOT/tools/check"
 GATE_TMP=$(mktemp -d "${TMPDIR:-/tmp}/gate.XXXXXX") || exit 1
-trap 'rm -rf "$GATE_TMP"' EXIT
+ctl_pid=
+trap 'if [ -n "$ctl_pid" ]; then kill "$ctl_pid" 2> /dev/null; wait "$ctl_pid" 2> /dev/null; fi; rm -rf "$GATE_TMP"' EXIT
 trap 'exit 1' HUP INT TERM
 FILELIST="$GATE_TMP/filelist"
 export ROOT CHECK_DIR FILELIST GATE_TMP
 fail=0
 tokens=""
 bad() { printf -- '-- FAIL %s: %s\n' "$1" "$2"; fail=1; }
+# Wall-clock timing (whole seconds, POSIX date): one `step-time <name> <s>` line per step, so a
+# hosted log shows where the time goes. Not tokens: the summary line ignores them.
+step_time() { printf 'step-time %s %s\n' "$1" $(($2 - $3)); }
 
 command -v cmake >/dev/null 2>&1 || { bad gate-no-cmake cmake; printf 'gate: FAIL\n'; exit 1; }
+command -v ninja >/dev/null 2>&1 || { bad gate-no-ninja ninja; printf 'gate: FAIL\n'; exit 1; }
+command -v "${CC:-cc}" >/dev/null 2>&1 || { bad gate-no-cc "${CC:-cc}"; printf 'gate: FAIL\n'; exit 1; }
 
 # FILELIST: tracked plus untracked-not-ignored paths. A failing git must not read as a clean list.
 cd "$ROOT" || exit 1
@@ -31,6 +38,29 @@ while IFS= read -r f; do
   esac
 done < "$GATE_TMP/files.raw"
 sort -u "$GATE_TMP/files.keep" > "$FILELIST"
+
+# Results directory contract: a fresh build/gate/ per run; NONCE is the basename of this run's temp dir.
+# The C steps export-read IVS_GATE_DIR and IVS_TEST_NONCE; build/ is ignored, so nothing enters FILELIST.
+NONCE=$(basename "$GATE_TMP")
+IVS_GATE_DIR="$ROOT/build/gate"
+if rm -rf "$IVS_GATE_DIR" && mkdir -p "$IVS_GATE_DIR" && printf '%s\n' "$NONCE" > "$IVS_GATE_DIR/NONCE"; then :; else
+  bad gate-results-dir build/gate
+  printf 'gate: FAIL\n'
+  exit 1
+fi
+IVS_TEST_NONCE=$NONCE
+export IVS_GATE_DIR IVS_TEST_NONCE
+
+# Negative controls start now, in the background, and overlap the steps (D-22 next lever).
+# The runner reads only tools/check/ and copies of controls/_good/tree into its own temp dir,
+# never ROOT's build/ or the steps' outputs, so nothing a step writes can change its result.
+# Its output is held in a file and printed after the steps, in the same place as before.
+# The runner is the background job itself, so the EXIT trap's TERM reaches it, and it stops
+# its lanes and their steps before it exits (review WR-04); it writes its own end time.
+ctl_t0=$(date +%s)
+CONTROLS_END_FILE="$GATE_TMP/controls.end" sh "$CHECK_DIR/run-controls.sh" > "$GATE_TMP/controls.out" 2>&1 < /dev/null &
+ctl_pid=$!
+step_time setup "$ctl_t0" "$gate_t0"
 
 # Step inventory: step scripts must equal the union of data/expected/gate-steps/*.ids.
 : > "$GATE_TMP/steps.have"
@@ -53,22 +83,36 @@ for name in $(comm -13 "$GATE_TMP/steps.want" "$GATE_TMP/steps.have"); do bad ga
 # Run every step (sorted, never stopping at the first failure).
 passed=0
 for name in $(cat "$GATE_TMP/steps.have"); do
+  t0=$(date +%s)
   if sh "$CHECK_DIR/steps/$name.sh" > "$GATE_TMP/step.out" 2>&1; then
     cat "$GATE_TMP/step.out"
-    passed=$((passed + 1))
-    toks=$(sed -n "s/^-- $name pass //p" "$GATE_TMP/step.out" | tr '\n' ' ')
-    tokens="$tokens$toks"
+    if grep -q -F -e "-- $name pass" "$GATE_TMP/step.out"; then
+      passed=$((passed + 1))
+      toks=$(sed -n "s/^-- $name pass //p" "$GATE_TMP/step.out" | tr '\n' ' ')
+      tokens="$tokens$toks"
+    else
+      bad gate-step-no-pass-line "$name"
+    fi
   else
     cat "$GATE_TMP/step.out"
     bad gate-step-failed "$name"
   fi
+  step_time "$name" "$(date +%s)" "$t0"
 done
 
 # Negative controls.
 ctl_ok=0
 ctl_total=0
-if sh "$CHECK_DIR/run-controls.sh" > "$GATE_TMP/controls.out" 2>&1; then :; else bad gate-controls-failed "run-controls"; fi
+wait_t0=$(date +%s)
+if wait "$ctl_pid"; then ctl_rc=0; else ctl_rc=1; fi
+ctl_pid=
+wait_t1=$(date +%s)
+if [ "$ctl_rc" -ne 0 ]; then bad gate-controls-failed "run-controls"; fi
 cat "$GATE_TMP/controls.out"
+ctl_t1=$wait_t1
+if [ -s "$GATE_TMP/controls.end" ]; then ctl_t1=$(cat "$GATE_TMP/controls.end"); fi
+step_time controls "$ctl_t1" "$ctl_t0"
+step_time controls-wait "$wait_t1" "$wait_t0"
 line=$(sed -n 's/^controls=\([0-9][0-9]*\)\/\([0-9][0-9]*\)$/\1 \2/p' "$GATE_TMP/controls.out" | tail -n 1)
 if [ -n "$line" ]; then
   ctl_ok=${line% *}
@@ -81,5 +125,6 @@ if [ "$ctl_total" -eq 0 ]; then bad gate-controls-empty "no controls ran"; fi
 status=PASS
 [ "$fail" -eq 0 ] || status=FAIL
 tokens=${tokens% }
+printf 'gate-time total=%s\n' $(($(date +%s) - gate_t0))
 printf 'gate: %s steps=%s/%s controls=%s/%s %s\n' "$status" "$passed" "$want" "$ctl_ok" "$ctl_total" "$tokens"
 [ "$fail" -eq 0 ]

@@ -1,0 +1,3 @@
+# suite=toy; columns: <FAULT_ID> <must-fail-vector-id> <allowed-prefixes> <must-pass-vector-id>
+GOOD_FAULT cpu.ZERO.alpha cpu.ZERO.alpha cpu.ZERO.beta
+NOSITE cpu.ZERO.alpha cpu.ZERO.alpha cpu.ZERO.beta

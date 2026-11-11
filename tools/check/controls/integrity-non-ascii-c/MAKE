@@ -1,0 +1,2 @@
+write tests/x.c x
+nonascii tests/x.c

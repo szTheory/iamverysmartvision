@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "source": "SRC-gi-cp1600-um-1975",
+  "group": "toy",
+  "note": "Known-good control tree vector file, edited after the run.",
+  "vectors": [
+    {
+      "id": "cpu.ZERO.alpha",
+      "row": "ZERO",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "S3.3.4, pdf 53",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ZERO",
+      "program": [
+        "0000 0000 000 000"
+      ],
+      "derivation": "Toy vector: one word fetched, R7 advances by 1, 4 cycles.",
+      "init": {
+        "r": [
+          "0000",
+          "0000",
+          "0000",
+          "0000",
+          "0000",
+          "0000",
+          "0000",
+          "1000"
+        ]
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "cycles": 4
+      },
+      "covers": [
+        "toy"
+      ]
+    },
+    {
+      "id": "cpu.ZERO.beta",
+      "row": "ZERO",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "S3.3.4, pdf 53",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ZERO",
+      "program": [
+        "0000 0000 000 000"
+      ],
+      "derivation": "Toy vector: same as alpha.",
+      "init": {
+        "r": [
+          "0000",
+          "0000",
+          "0000",
+          "0000",
+          "0000",
+          "0000",
+          "0000",
+          "1000"
+        ]
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "cycles": 4
+      },
+      "covers": [
+        "toy"
+      ]
+    },
+    {
+      "id": "cpu.ZERO.gamma",
+      "row": "ZERO",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "S3.3.4, pdf 53",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ZERO",
+      "program": [
+        "0000 0000 000 000"
+      ],
+      "derivation": "Toy vector: same as alpha; listed as a permitted skip.",
+      "init": {
+        "r": [
+          "0000",
+          "0000",
+          "0000",
+          "0000",
+          "0000",
+          "0000",
+          "0000",
+          "1000"
+        ]
+      },
+      "expect": {
+        "r": {
+          "7": "1001"
+        },
+        "cycles": 4
+      },
+      "covers": [
+        "toy"
+      ]
+    }
+  ]
+}

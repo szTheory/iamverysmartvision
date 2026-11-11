@@ -1,0 +1,51 @@
+# Known host-dependency names (API-05, D-21): `<name> <category>`, categories
+# clock fs env thread io rand alloc. Read from CHECK_DIR by tools/check/core-symbols.sh.
+# This list only labels a forbidden import with its category; the allowlist decides what fails,
+# so a host name missing here still fails. A name here must never appear in
+# core-symbols-allow.txt (core-symbols-deny-in-allow).
+time clock
+clock clock
+clock_gettime clock
+gettimeofday clock
+mach_absolute_time clock
+nanosleep clock
+sleep clock
+usleep clock
+fopen fs
+fclose fs
+fread fs
+fwrite fs
+open fs
+close fs
+read fs
+stat fs
+opendir fs
+unlink fs
+mmap fs
+getenv env
+setenv env
+secure_getenv env
+environ env
+pthread_create thread
+pthread_mutex_lock thread
+thrd_create thread
+pthread_once thread
+printf io
+fprintf io
+puts io
+write io
+putchar io
+fputs io
+perror io
+rand rand
+srand rand
+random rand
+arc4random rand
+getrandom rand
+drand48 rand
+malloc alloc
+calloc alloc
+realloc alloc
+free alloc
+posix_memalign alloc
+aligned_alloc alloc

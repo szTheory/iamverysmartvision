@@ -1,0 +1,1 @@
+No external API integration: phase 2 builds a pure C17 CPU stepper, its in-repo test harness and gate checks; the detector matched the requirement id "API-05" (a host-independence rule enforced by a symbol check), not a third-party API, SDK or service.

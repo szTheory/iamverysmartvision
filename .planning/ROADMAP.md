@@ -42,7 +42,7 @@ not in this roadmap.
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Evidence, Profile and Rights Foundations** - Tier vocabulary, claim ledger, discrepancy log, fixture manifest, provenance rule, first-profile record, time base and CP-1610 reference notes (completed 2026-11-09)
-- [ ] **Phase 2: CP-1610 CPU Core** - Every opcode verified against page-cited, hand-derived vectors in a host-independent core with an exact inventory and one local gate command
+- [x] **Phase 2: CP-1610 CPU Core** - Every opcode verified against page-cited, hand-derived vectors in a host-independent core with an exact inventory and one local gate command (completed 2026-11-10)
 - [ ] **Phase 3: Memory Map, Content Loading and Refusal** - Profile-driven memory map, typed system-image and cartridge loading, isolated instances and a refusal matrix that never mutates prior state
 - [ ] **Phase 4: Headless Runner and Installed Consumer (Slice 0)** - An original diagnostic runs end to end through the runner and a relocated installed consumer, with deterministic digests and a CI gate that mirrors the local command
 - [ ] **Phase 5: Hand Controllers and PSG Sound** - Both controllers as multi-signal machine input at explicit time boundaries; PSG raw audio and a register-write log
@@ -126,7 +126,27 @@ Plans:
   3. Interrupt and BUSRQ acceptance cases (previous-instruction interruptibility, I flag, D/SDBD, BUSRQ), SDBD modes (with a documented policy for unsupported modes), stack direction, auto-increment registers and reset entry each pass their vectors, and each has a named-fault control that fails for the intended reason.
   4. For any instruction, the stepper reports an ordered, cycle-stamped list of bus accesses that a test compares against the manual's bus sequence.
   5. A build/link or symbol check fails when the core library references host clocks, filesystem, environment, threads or I/O. A deliberate-violation control demonstrates this.
-**Plans**: TBD
+**Plans**: 18/18 plans complete
+
+Plans:
+- [x] 02-01-PLAN.md — Gate hardening (IN-04, IN-02, denylist status 2, SPDX/ASCII for C), build/gate NONCE contract, discrepancy entries C36-C58 (G8 = C58) and five profile fields
+- [x] 02-02-PLAN.md — Walking skeleton A: CMake/presets, internal CPU API (DW access kind, one wait rule) with reset entry and CLRC/SETC, harness, JSON-to-C generator, control vectors, steps c-build, c-tests, tests-inventory with 12 controls
+- [x] 02-03-PLAN.md — Walking skeleton B: cpu-api contract suite and harness self-test suite
+- [x] 02-04-PLAN.md — Walking skeleton C: named-fault path (c-faults, faults-verdict, 9 controls) and the structural cp1610-vectors checker (17 controls)
+- [x] 02-05-PLAN.md — Coverage derivation: flags, cycles, policies, addressing classes, exact branch directions and BEXT E codes, modifier witness, per-row bus list (15 controls)
+- [x] 02-06-PLAN.md — Control group complete (HLT, SDBD, EIS, DIS, TCI, GSWD, NOP, SIN, RSWD) with vectors and four faults
+- [x] 02-07-PLAN.md — Purity (API-05): core-symbols allowlist check, c-purity step, 13 deliberate-violation controls, core-symbols ctest suite
+- [x] 02-08-PLAN.md — Complete 74-row decode table and the 14 register-register rows with vectors and faults
+- [x] 02-09-PLAN.md — Immediate rows and shift/SWAP rows with vectors and faults
+- [x] 02-10-PLAN.md — Direct and indirect memory rows: stack direction, auto-increment, ADAR, POL-STK-02, POL-MVO-01, MVI@ MMM=6 witnessed by PULR
+- [x] 02-11-PLAN.md — B, the 14 conditional branches and NOPP in four directions (policy-carried 7/9 cycles)
+- [x] 02-12-PLAN.md — BEXT with two E codes via the provider, and the J/JSR family
+- [x] 02-13-PLAN.md — SDBD supported modes and refusal (12 targets), POL-ILL-01 encodings, 1024-decle sweep against the Phase 1 table
+- [x] 02-14-PLAN.md — Interrupt acceptance model and entry sequence (DW kind), IAB-supplied vector, 17 non-interruptible rows, SDBD deferral, reset interaction
+- [x] 02-15-PLAN.md — BUSRQ grant/release, wait states (no wait on INTAK/IAB/DW) and cap, HLT/STPST/HALTED, seeded fuzz suite, stepper conventions doc
+- [x] 02-16-PLAN.md — Blind-review tooling per A-12 (index-blinded, leak-checked copies, diff tool, vector-review kind with committed handoff check), reader protocol and policy document
+- [x] 02-17-PLAN.md — Non-autonomous: orchestrator checkpoint spawns 12 isolated readers, then adjudicate every vector file from the page and commit the handoff record
+- [x] 02-18-PLAN.md — Reference-note updates, D-22 gate budget and CI-EFFICIENCY record, SC1-SC5 evidence check
 
 ### Phase 3: Memory Map, Content Loading and Refusal
 **Goal**: A host can create isolated machine instances and load typed system images and cartridge content against the profile's memory map. Every bad input gets a typed refusal that leaves prior machine state unchanged.
@@ -250,7 +270,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Evidence, Profile and Rights Foundations | 14/14 | Complete    | 2026-11-09 |
-| 2. CP-1610 CPU Core | 0/TBD | Not started | - |
+| 2. CP-1610 CPU Core | 18/18 | Complete    | 2026-11-10 |
 | 3. Memory Map, Content Loading and Refusal | 0/TBD | Not started | - |
 | 4. Headless Runner and Installed Consumer (Slice 0) | 0/TBD | Not started | - |
 | 5. Hand Controllers and PSG Sound | 0/TBD | Not started | - |

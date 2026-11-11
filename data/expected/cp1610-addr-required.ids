@@ -1,0 +1,37 @@
+# Addressing classes each row must cover (D-16, F-08); columns: <ROW> <addr tag>.
+# MVI@ and MVO@ with MMM=6 decode as the PULR and PSHR rows, so those rows carry addr:stack.
+MVO@ addr:indirect
+MVO@ addr:autoinc
+MVI@ addr:indirect
+MVI@ addr:autoinc
+ADD@ addr:indirect
+ADD@ addr:autoinc
+SUB@ addr:indirect
+SUB@ addr:autoinc
+CMP@ addr:indirect
+CMP@ addr:autoinc
+AND@ addr:indirect
+AND@ addr:autoinc
+XOR@ addr:indirect
+XOR@ addr:autoinc
+MVO addr:direct
+MVI addr:direct
+ADD addr:direct
+SUB addr:direct
+CMP addr:direct
+AND addr:direct
+XOR addr:direct
+MVOI addr:immediate
+MVII addr:immediate
+ADDI addr:immediate
+SUBI addr:immediate
+CMPI addr:immediate
+ANDI addr:immediate
+XORI addr:immediate
+PSHR addr:stack
+PULR addr:stack
+ADD@ addr:stack
+SUB@ addr:stack
+CMP@ addr:stack
+AND@ addr:stack
+XOR@ addr:stack

@@ -1,0 +1,1574 @@
+{
+  "schema_version": 1,
+  "source": "SRC-gi-cp1600-um-1975",
+  "group": "direct",
+  "note": "Direct rows (pdf 55): the word after the instruction is the address of the operand (Fig 3.2.3, pdf 48). Every expect value is read from the cited page image and derived by hand; none comes from this core, an assembler or another implementation. Read rows follow the direct access figure (pdf 30): FETCH at 0, a READ of the address word at 4 and an ADAR of the effective address at 6 (pdf 11). The direct MVO write has no printed figure, so its bus list is inference (C36). C46 (CMP direction) and C51 (word width) are stated in the derivations that depend on them.",
+  "vectors": [
+    {
+      "id": "cpu.MVO.write-sequence",
+      "row": "MVO",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Direct addressed data table, MVO row, pdf 55; Fig 3.2.3, pdf 48; direct access timing figure, pdf 30; ADAR, pdf 11; MVO timing (write operation) figure, pdf 31; C56",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "MVO R1, $0200",
+      "program": [
+        "0241 1001 000 001",
+        "0200 0000 0010 0000 0000"
+      ],
+      "derivation": "The direct table (pdf 55) prints MVO SSS, A as 1001 000 SSS followed by the word aaaaaa AAAA AAA AAA, 11 cycles, 'MoV Out data from register SSS to address A', no status change. Fig 3.2.3 (pdf 48): the word at PC+1 is the address, EA <- aaaaaaAAAAAAAAAA, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the address word keeps all 16 bits on the flat test bus. SSS = 001 (R1 = $A5C3): the word at $0200 becomes $A5C3. Flags keep their initial values (no status change). C56: the manual is silent on the MVO family's interruptibility and the default makes it non-interruptible, so prev_interruptible goes 1 -> 0. Bus (inference, C36; no figure prints a direct write): FETCH at cycle 0 from $1000; the BAR at cycle 4 puts out $1001, whose word $0200 is the address (a READ); the direct read figure (pdf 30) then puts the effective address in the address register with ADAR at cycle 6 (pdf 11), and the write figure (pdf 31) puts DW and DWS two and three cycles after an address phase, so the WRITE of $0200 is recorded at cycle 6 (DW 8, DWS 9, NACT 10: 11 cycles, the printed count). Offsets are not asserted. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "A5C3",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0200",
+            "A5C3"
+          ]
+        ],
+        "cycles": 11,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0241"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "0200"
+        ],
+        [
+          6,
+          "WRITE",
+          "0200",
+          "A5C3"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "addr:direct",
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C",
+        "write:bus"
+      ]
+    },
+    {
+      "id": "cpu.MVO.address-ffff",
+      "row": "MVO",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Direct addressed data table, MVO row, pdf 55; Fig 3.2.3, pdf 48; direct access timing figure, pdf 30; ADAR, pdf 11; MVO timing (write operation) figure, pdf 31; C56",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "MVO R0, $FFFF",
+      "program": [
+        "0240 1001 000 000",
+        "FFFF 1111 1111 1111 1111"
+      ],
+      "derivation": "The direct table (pdf 55) prints MVO SSS, A as 1001 000 SSS followed by the word aaaaaa AAAA AAA AAA, 11 cycles, 'MoV Out data from register SSS to address A', no status change. Fig 3.2.3 (pdf 48): the word at PC+1 is the address, EA <- aaaaaaAAAAAAAAAA, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the address word keeps all 16 bits on the flat test bus. SSS = 000 (R0 = $8000): the word at $FFFF becomes $8000 (the address word $FFFF is the highest address). Flags keep their initial values (no status change). C56: the manual is silent on the MVO family's interruptibility and the default makes it non-interruptible, so prev_interruptible goes 1 -> 0. Bus (inference, C36; no figure prints a direct write): FETCH at cycle 0 from $1000; the BAR at cycle 4 puts out $1001, whose word $FFFF is the address (a READ); the direct read figure (pdf 30) then puts the effective address in the address register with ADAR at cycle 6 (pdf 11), and the write figure (pdf 31) puts DW and DWS two and three cycles after an address phase, so the WRITE of $FFFF is recorded at cycle 6 (DW 8, DWS 9, NACT 10: 11 cycles, the printed count). Offsets are not asserted. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "8000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1
+      },
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "FFFF",
+            "8000"
+          ]
+        ],
+        "cycles": 11,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0240"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "FFFF"
+        ],
+        [
+          6,
+          "WRITE",
+          "FFFF",
+          "8000"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "addr:direct",
+        "write:bus"
+      ]
+    },
+    {
+      "id": "cpu.MVO.overwrites-word",
+      "row": "MVO",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Direct addressed data table, MVO row, pdf 55; Fig 3.2.3, pdf 48; direct access timing figure, pdf 30; ADAR, pdf 11; MVO timing (write operation) figure, pdf 31; C56",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "MVO R5, $0300",
+      "program": [
+        "0245 1001 000 101",
+        "0300 0000 0011 0000 0000"
+      ],
+      "derivation": "The direct table (pdf 55) prints MVO SSS, A as 1001 000 SSS followed by the word aaaaaa AAAA AAA AAA, 11 cycles, 'MoV Out data from register SSS to address A', no status change. Fig 3.2.3 (pdf 48): the word at PC+1 is the address, EA <- aaaaaaAAAAAAAAAA, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the address word keeps all 16 bits on the flat test bus. SSS = 101 (R5 = $0505): the word at $0300 becomes $0505 (it held $1111 before). Flags keep their initial values (no status change). C56: the manual is silent on the MVO family's interruptibility and the default makes it non-interruptible, so prev_interruptible goes 1 -> 0. Bus (inference, C36; no figure prints a direct write): FETCH at cycle 0 from $1000; the BAR at cycle 4 puts out $1001, whose word $0300 is the address (a READ); the direct read figure (pdf 30) then puts the effective address in the address register with ADAR at cycle 6 (pdf 11), and the write figure (pdf 31) puts DW and DWS two and three cycles after an address phase, so the WRITE of $0300 is recorded at cycle 6 (DW 8, DWS 9, NACT 10: 11 cycles, the printed count). Offsets are not asserted. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 1,
+        "mem": [
+          [
+            "0300",
+            "1111"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0300",
+            "0505"
+          ]
+        ],
+        "cycles": 11,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0245"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "0300"
+        ],
+        [
+          6,
+          "WRITE",
+          "0300",
+          "0505"
+        ]
+      ],
+      "bus_basis": "inference",
+      "covers": [
+        "addr:direct",
+        "write:bus"
+      ]
+    },
+    {
+      "id": "cpu.MVI.adar-figure",
+      "row": "MVI",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Direct addressed data table, MVI row, pdf 55; Fig 3.2.3, pdf 48; direct access timing figure, pdf 30; ADAR, pdf 11",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "MVI $0200, R1",
+      "program": [
+        "0281 1010 000 001",
+        "0200 0000 0010 0000 0000"
+      ],
+      "derivation": "The direct table (pdf 55) prints MVI A, DDD as 1010 000 DDD followed by the address word aaaaaa AAAA AAA AAA, 10 cycles, 'MoVe In data from address A to register DDD', no status change. DDD = 001 (R1): R1 = the word at $0200 = $5A3C. S = Z = OV = C = 1 stay 1 (no status change; a flag update from $5A3C would clear S and Z). Fig 3.2.3 (pdf 48): the word at PC+1 is the address, EA <- aaaaaaAAAAAAAAAA, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the address word keeps all 16 bits on the flat test bus. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 30, instruction fetch & data access, direct addr. mode: BAR, NACT, DTB, NACT, BAR, NACT, ADAR, NACT, DTB): FETCH at cycle 0 from $1000; the BAR at cycle 4 puts out PC+1 = $1001, whose word $0200 is the address (recorded as a READ); ADAR at cycle 6 gates that word into the address register (pdf 11: 'addressed data to address register', activated during all instructions which specify direct addressing), so the operand access is recorded as an ADAR of $0200, data in at cycle 8. The unit is the printed 10 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0200",
+            "5A3C"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "1": "5A3C",
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "cycles": 10,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0281"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "0200"
+        ],
+        [
+          6,
+          "ADAR",
+          "0200",
+          "5A3C"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:direct",
+        "flag-preserved:S",
+        "flag-preserved:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C"
+      ]
+    },
+    {
+      "id": "cpu.MVI.address-ffff",
+      "row": "MVI",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Direct addressed data table, MVI row, pdf 55; Fig 3.2.3, pdf 48; direct access timing figure, pdf 30; ADAR, pdf 11",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "MVI $FFFF, R2",
+      "program": [
+        "0282 1010 000 010",
+        "FFFF 1111 1111 1111 1111"
+      ],
+      "derivation": "The direct table (pdf 55) prints MVI A, DDD as 1010 000 DDD followed by the address word aaaaaa AAAA AAA AAA, 10 cycles, 'MoVe In data from address A to register DDD', no status change. DDD = 010 (R2): the address word is $FFFF, so R2 = the word at $FFFF = $1234. Flags stay 0. Fig 3.2.3 (pdf 48): the word at PC+1 is the address, EA <- aaaaaaAAAAAAAAAA, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the address word keeps all 16 bits on the flat test bus. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 30, instruction fetch & data access, direct addr. mode: BAR, NACT, DTB, NACT, BAR, NACT, ADAR, NACT, DTB): FETCH at cycle 0 from $1000; the BAR at cycle 4 puts out PC+1 = $1001, whose word $FFFF is the address (recorded as a READ); ADAR at cycle 6 gates that word into the address register (pdf 11: 'addressed data to address register', activated during all instructions which specify direct addressing), so the operand access is recorded as an ADAR of $FFFF, data in at cycle 8. The unit is the printed 10 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "FFFF",
+            "1234"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "2": "1234",
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "cycles": 10,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0282"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "FFFF"
+        ],
+        [
+          6,
+          "ADAR",
+          "FFFF",
+          "1234"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:direct"
+      ]
+    },
+    {
+      "id": "cpu.MVI.full-16-bit-address",
+      "row": "MVI",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Direct addressed data table, MVI row, pdf 55; Fig 3.2.3, pdf 48; direct access timing figure, pdf 30; ADAR, pdf 11",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "MVI $C123, R3",
+      "program": [
+        "0283 1010 000 011",
+        "C123 1100 0001 0010 0011"
+      ],
+      "derivation": "The direct table (pdf 55) prints MVI A, DDD as 1010 000 DDD followed by the address word aaaaaa AAAA AAA AAA, 10 cycles, 'MoVe In data from address A to register DDD', no status change. DDD = 011 (R3): the address word $C123 has aaaaaa = 110000; under C51 all 16 bits form the address, so R3 = the word at $C123 = $0001 (a 10-bit address would be $0123, which holds nothing). Flags stay 0. Fig 3.2.3 (pdf 48): the word at PC+1 is the address, EA <- aaaaaaAAAAAAAAAA, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the address word keeps all 16 bits on the flat test bus. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 30, instruction fetch & data access, direct addr. mode: BAR, NACT, DTB, NACT, BAR, NACT, ADAR, NACT, DTB): FETCH at cycle 0 from $1000; the BAR at cycle 4 puts out PC+1 = $1001, whose word $C123 is the address (recorded as a READ); ADAR at cycle 6 gates that word into the address register (pdf 11: 'addressed data to address register', activated during all instructions which specify direct addressing), so the operand access is recorded as an ADAR of $C123, data in at cycle 8. The unit is the printed 10 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "C123",
+            "0001"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "3": "0001",
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "cycles": 10,
+        "units": [
+          "INSTR"
+        ]
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0283"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "C123"
+        ],
+        [
+          6,
+          "ADAR",
+          "C123",
+          "0001"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:direct"
+      ]
+    },
+    {
+      "id": "cpu.ADD.0001-plus-0001",
+      "row": "ADD",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Direct addressed data table, ADD row, pdf 55; Fig 3.2.3, pdf 48; direct access timing figure, pdf 30; ADAR, pdf 11; status bits S3.1.2, pdf 45",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ADD $0200, R1",
+      "program": [
+        "02C1 1011 000 001",
+        "0200 0000 0010 0000 0000"
+      ],
+      "derivation": "The direct table (pdf 55) prints ADD A, DDD as 1011 000 DDD followed by the address word, 10 cycles, 'ADD data from address A to register DDD. Results to DDD.', status change S, Z, C, OV. S3.1.2 (pdf 45): C is the carry out of bit 15, OV is two's complement overflow, Z is set when the result is all zero, S when bit 15 is one; subtraction adds the two's complement of the subtrahend, so C = 1 means no borrow. DDD = 001: R1 = $0001 + $0001 = $0002; no carry out, C = 0; both operands positive and the result positive, OV = 0; S = 0, Z = 0. Init S = Z = OV = C = 1. Fig 3.2.3 (pdf 48): the word at PC+1 is the address, EA <- aaaaaaAAAAAAAAAA, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the address word keeps all 16 bits on the flat test bus. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 30, instruction fetch & data access, direct addr. mode: BAR, NACT, DTB, NACT, BAR, NACT, ADAR, NACT, DTB): FETCH at cycle 0 from $1000; the BAR at cycle 4 puts out PC+1 = $1001, whose word $0200 is the address (recorded as a READ); ADAR at cycle 6 gates that word into the address register (pdf 11: 'addressed data to address register', activated during all instructions which specify direct addressing), so the operand access is recorded as an ADAR of $0200, data in at cycle 8. The unit is the printed 10 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0001",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0200",
+            "0001"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "1": "0002",
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "cycles": 10,
+        "units": [
+          "INSTR"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        }
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "02C1"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "0200"
+        ],
+        [
+          6,
+          "ADAR",
+          "0200",
+          "0001"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:direct",
+        "flag-clear:S",
+        "flag-clear:Z",
+        "flag-clear:OV",
+        "flag-clear:C"
+      ]
+    },
+    {
+      "id": "cpu.ADD.7fff-plus-1-overflow",
+      "row": "ADD",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Direct addressed data table, ADD row, pdf 55; Fig 3.2.3, pdf 48; direct access timing figure, pdf 30; ADAR, pdf 11; status bits S3.1.2, pdf 45",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ADD $0200, R2",
+      "program": [
+        "02C2 1011 000 010",
+        "0200 0000 0010 0000 0000"
+      ],
+      "derivation": "The direct table (pdf 55) prints ADD A, DDD as 1011 000 DDD followed by the address word, 10 cycles, 'ADD data from address A to register DDD. Results to DDD.', status change S, Z, C, OV. S3.1.2 (pdf 45): C is the carry out of bit 15, OV is two's complement overflow, Z is set when the result is all zero, S when bit 15 is one; subtraction adds the two's complement of the subtrahend, so C = 1 means no borrow. DDD = 010: R2 = $7FFF + $0001 = $8000; no carry out, C = 0; both operands positive and the result negative, OV = 1; S = 1, Z = 0. Init all 0. Fig 3.2.3 (pdf 48): the word at PC+1 is the address, EA <- aaaaaaAAAAAAAAAA, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the address word keeps all 16 bits on the flat test bus. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 30, instruction fetch & data access, direct addr. mode: BAR, NACT, DTB, NACT, BAR, NACT, ADAR, NACT, DTB): FETCH at cycle 0 from $1000; the BAR at cycle 4 puts out PC+1 = $1001, whose word $0200 is the address (recorded as a READ); ADAR at cycle 6 gates that word into the address register (pdf 11: 'addressed data to address register', activated during all instructions which specify direct addressing), so the operand access is recorded as an ADAR of $0200, data in at cycle 8. The unit is the printed 10 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "7FFF",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0200",
+            "0001"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "2": "8000",
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "cycles": 10,
+        "units": [
+          "INSTR"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        }
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "02C2"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "0200"
+        ],
+        [
+          6,
+          "ADAR",
+          "0200",
+          "0001"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:direct",
+        "flag-set:S",
+        "flag-set:OV"
+      ]
+    },
+    {
+      "id": "cpu.ADD.ffff-plus-1",
+      "row": "ADD",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Direct addressed data table, ADD row, pdf 55; Fig 3.2.3, pdf 48; direct access timing figure, pdf 30; ADAR, pdf 11; status bits S3.1.2, pdf 45",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "ADD $0200, R3",
+      "program": [
+        "02C3 1011 000 011",
+        "0200 0000 0010 0000 0000"
+      ],
+      "derivation": "The direct table (pdf 55) prints ADD A, DDD as 1011 000 DDD followed by the address word, 10 cycles, 'ADD data from address A to register DDD. Results to DDD.', status change S, Z, C, OV. S3.1.2 (pdf 45): C is the carry out of bit 15, OV is two's complement overflow, Z is set when the result is all zero, S when bit 15 is one; subtraction adds the two's complement of the subtrahend, so C = 1 means no borrow. DDD = 011: R3 = $FFFF + $0001 = $10000, result $0000 with a carry out, C = 1; the operands have different signs, OV = 0; S = 0, Z = 1. Init all 0. Fig 3.2.3 (pdf 48): the word at PC+1 is the address, EA <- aaaaaaAAAAAAAAAA, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the address word keeps all 16 bits on the flat test bus. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 30, instruction fetch & data access, direct addr. mode: BAR, NACT, DTB, NACT, BAR, NACT, ADAR, NACT, DTB): FETCH at cycle 0 from $1000; the BAR at cycle 4 puts out PC+1 = $1001, whose word $0200 is the address (recorded as a READ); ADAR at cycle 6 gates that word into the address register (pdf 11: 'addressed data to address register', activated during all instructions which specify direct addressing), so the operand access is recorded as an ADAR of $0200, data in at cycle 8. The unit is the printed 10 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "FFFF",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0200",
+            "0001"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "3": "0000",
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "cycles": 10,
+        "units": [
+          "INSTR"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 1
+        }
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "02C3"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "0200"
+        ],
+        [
+          6,
+          "ADAR",
+          "0200",
+          "0001"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:direct",
+        "flag-set:Z",
+        "flag-set:C"
+      ]
+    },
+    {
+      "id": "cpu.SUB.equal-operands",
+      "row": "SUB",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Direct addressed data table, SUB row, pdf 55; Fig 3.2.3, pdf 48; direct access timing figure, pdf 30; ADAR, pdf 11; status bits S3.1.2, pdf 45",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SUB $0200, R1",
+      "program": [
+        "0301 1100 000 001",
+        "0200 0000 0010 0000 0000"
+      ],
+      "derivation": "The direct table (pdf 55) prints SUB A, DDD as 1100 000 DDD followed by the address word, 10 cycles, 'SUBtract data from address A from register DDD. Results to DDD.', status change S, Z, C, OV. S3.1.2 (pdf 45): C is the carry out of bit 15, OV is two's complement overflow, Z is set when the result is all zero, S when bit 15 is one; subtraction adds the two's complement of the subtrahend, so C = 1 means no borrow. DDD = 001: R1 = $1234 - $1234 = $1234 + $EDCB + 1 = $10000, result $0000 with a carry out, C = 1; $1234 positive and $EDCB negative, OV = 0; S = 0, Z = 1. Init S = 1, Z = 0, OV = 1, C = 0. Fig 3.2.3 (pdf 48): the word at PC+1 is the address, EA <- aaaaaaAAAAAAAAAA, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the address word keeps all 16 bits on the flat test bus. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 30, instruction fetch & data access, direct addr. mode: BAR, NACT, DTB, NACT, BAR, NACT, ADAR, NACT, DTB): FETCH at cycle 0 from $1000; the BAR at cycle 4 puts out PC+1 = $1001, whose word $0200 is the address (recorded as a READ); ADAR at cycle 6 gates that word into the address register (pdf 11: 'addressed data to address register', activated during all instructions which specify direct addressing), so the operand access is recorded as an ADAR of $0200, data in at cycle 8. The unit is the printed 10 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "1234",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0200",
+            "1234"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "1": "0000",
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "cycles": 10,
+        "units": [
+          "INSTR"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 1
+        }
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0301"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "0200"
+        ],
+        [
+          6,
+          "ADAR",
+          "0200",
+          "1234"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:direct",
+        "flag-clear:S",
+        "flag-set:Z",
+        "flag-clear:OV",
+        "flag-set:C"
+      ]
+    },
+    {
+      "id": "cpu.SUB.0000-minus-0001",
+      "row": "SUB",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Direct addressed data table, SUB row, pdf 55; Fig 3.2.3, pdf 48; direct access timing figure, pdf 30; ADAR, pdf 11; status bits S3.1.2, pdf 45",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SUB $0200, R2",
+      "program": [
+        "0302 1100 000 010",
+        "0200 0000 0010 0000 0000"
+      ],
+      "derivation": "The direct table (pdf 55) prints SUB A, DDD as 1100 000 DDD followed by the address word, 10 cycles, 'SUBtract data from address A from register DDD. Results to DDD.', status change S, Z, C, OV. S3.1.2 (pdf 45): C is the carry out of bit 15, OV is two's complement overflow, Z is set when the result is all zero, S when bit 15 is one; subtraction adds the two's complement of the subtrahend, so C = 1 means no borrow. DDD = 010: R2 = $0000 - $0001 = $0000 + $FFFE + 1 = $FFFF, no carry out, C = 0 (a borrow); $0000 positive and $FFFE negative, OV = 0; S = 1, Z = 0. Init S = 0, Z = 1, OV = 0, C = 1. Fig 3.2.3 (pdf 48): the word at PC+1 is the address, EA <- aaaaaaAAAAAAAAAA, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the address word keeps all 16 bits on the flat test bus. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 30, instruction fetch & data access, direct addr. mode: BAR, NACT, DTB, NACT, BAR, NACT, ADAR, NACT, DTB): FETCH at cycle 0 from $1000; the BAR at cycle 4 puts out PC+1 = $1001, whose word $0200 is the address (recorded as a READ); ADAR at cycle 6 gates that word into the address register (pdf 11: 'addressed data to address register', activated during all instructions which specify direct addressing), so the operand access is recorded as an ADAR of $0200, data in at cycle 8. The unit is the printed 10 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0000",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0200",
+            "0001"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "2": "FFFF",
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "cycles": 10,
+        "units": [
+          "INSTR"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        }
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0302"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "0200"
+        ],
+        [
+          6,
+          "ADAR",
+          "0200",
+          "0001"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:direct",
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-clear:C"
+      ]
+    },
+    {
+      "id": "cpu.SUB.8000-minus-0001-overflow",
+      "row": "SUB",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Direct addressed data table, SUB row, pdf 55; Fig 3.2.3, pdf 48; direct access timing figure, pdf 30; ADAR, pdf 11; status bits S3.1.2, pdf 45",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "SUB $0200, R3",
+      "program": [
+        "0303 1100 000 011",
+        "0200 0000 0010 0000 0000"
+      ],
+      "derivation": "The direct table (pdf 55) prints SUB A, DDD as 1100 000 DDD followed by the address word, 10 cycles, 'SUBtract data from address A from register DDD. Results to DDD.', status change S, Z, C, OV. S3.1.2 (pdf 45): C is the carry out of bit 15, OV is two's complement overflow, Z is set when the result is all zero, S when bit 15 is one; subtraction adds the two's complement of the subtrahend, so C = 1 means no borrow. DDD = 011: R3 = $8000 - $0001 = $8000 + $FFFE + 1 = $17FFF, result $7FFF with a carry out, C = 1; $8000 and $FFFE both negative and the result positive, OV = 1; S = 0, Z = 0. Init S = 1, Z = 1, OV = 0, C = 0. Fig 3.2.3 (pdf 48): the word at PC+1 is the address, EA <- aaaaaaAAAAAAAAAA, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the address word keeps all 16 bits on the flat test bus. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 30, instruction fetch & data access, direct addr. mode: BAR, NACT, DTB, NACT, BAR, NACT, ADAR, NACT, DTB): FETCH at cycle 0 from $1000; the BAR at cycle 4 puts out PC+1 = $1001, whose word $0200 is the address (recorded as a READ); ADAR at cycle 6 gates that word into the address register (pdf 11: 'addressed data to address register', activated during all instructions which specify direct addressing), so the operand access is recorded as an ADAR of $0200, data in at cycle 8. The unit is the printed 10 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "8000",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0200",
+            "0001"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "3": "7FFF",
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "cycles": 10,
+        "units": [
+          "INSTR"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 1,
+          "C": 1
+        }
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0303"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "0200"
+        ],
+        [
+          6,
+          "ADAR",
+          "0200",
+          "0001"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:direct",
+        "flag-clear:S",
+        "flag-clear:Z",
+        "flag-set:OV",
+        "flag-set:C"
+      ]
+    },
+    {
+      "id": "cpu.CMP.no-write",
+      "row": "CMP",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Direct addressed data table, CMP row, pdf 55; Fig 3.2.3, pdf 48; direct access timing figure, pdf 30; ADAR, pdf 11; status bits S3.1.2, pdf 45",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "CMP $0200, R1",
+      "program": [
+        "0341 1101 000 001",
+        "0200 0000 0010 0000 0000"
+      ],
+      "derivation": "The direct table (pdf 55) prints CMP A, SSS as 1101 000 SSS followed by the address word, 10 cycles, 'CoMPare data from address A with register SSS by subtraction. Results not stored.', status change S, Z, C, OV. C46: the flags are those of register SSS minus the word at A, the order CMPI states (pdf 57). S3.1.2 (pdf 45): C is the carry out of bit 15, OV is two's complement overflow, Z is set when the result is all zero, S when bit 15 is one; subtraction adds the two's complement of the subtrahend, so C = 1 means no borrow. SSS = 001 (R1 = $0005), word $0003: $0005 + $FFFC + 1 = $10002, result $0002 with a carry out, C = 1; $0005 positive and $FFFC negative, OV = 0; S = 0, Z = 0 (the other order, $0003 - $0005 = $FFFE, would give S = 1, C = 0). Not stored: R1 stays $0005. Init S = 1, Z = 1, OV = 1, C = 0. Fig 3.2.3 (pdf 48): the word at PC+1 is the address, EA <- aaaaaaAAAAAAAAAA, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the address word keeps all 16 bits on the flat test bus. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 30, instruction fetch & data access, direct addr. mode: BAR, NACT, DTB, NACT, BAR, NACT, ADAR, NACT, DTB): FETCH at cycle 0 from $1000; the BAR at cycle 4 puts out PC+1 = $1001, whose word $0200 is the address (recorded as a READ); ADAR at cycle 6 gates that word into the address register (pdf 11: 'addressed data to address register', activated during all instructions which specify direct addressing), so the operand access is recorded as an ADAR of $0200, data in at cycle 8. The unit is the printed 10 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0005",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 1,
+          "OV": 1,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0200",
+            "0003"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "cycles": 10,
+        "units": [
+          "INSTR"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 1
+        }
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0341"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "0200"
+        ],
+        [
+          6,
+          "ADAR",
+          "0200",
+          "0003"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:direct",
+        "flag-clear:S",
+        "flag-clear:Z",
+        "flag-clear:OV",
+        "flag-set:C"
+      ]
+    },
+    {
+      "id": "cpu.CMP.equal-zero",
+      "row": "CMP",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Direct addressed data table, CMP row, pdf 55; Fig 3.2.3, pdf 48; direct access timing figure, pdf 30; ADAR, pdf 11; status bits S3.1.2, pdf 45",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "CMP $0200, R2",
+      "program": [
+        "0342 1101 000 010",
+        "0200 0000 0010 0000 0000"
+      ],
+      "derivation": "The direct table (pdf 55) prints CMP A, SSS as 1101 000 SSS followed by the address word, 10 cycles, 'CoMPare data from address A with register SSS by subtraction. Results not stored.', status change S, Z, C, OV. C46: the flags are those of register SSS minus the word at A, the order CMPI states (pdf 57). S3.1.2 (pdf 45): C is the carry out of bit 15, OV is two's complement overflow, Z is set when the result is all zero, S when bit 15 is one; subtraction adds the two's complement of the subtrahend, so C = 1 means no borrow. SSS = 010 (R2 = $8000), word $8000: $8000 + $7FFF + 1 = $10000, result $0000 with a carry out, C = 1; $8000 negative and $7FFF positive, OV = 0; S = 0, Z = 1. R2 stays $8000. Init all 0. Fig 3.2.3 (pdf 48): the word at PC+1 is the address, EA <- aaaaaaAAAAAAAAAA, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the address word keeps all 16 bits on the flat test bus. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 30, instruction fetch & data access, direct addr. mode: BAR, NACT, DTB, NACT, BAR, NACT, ADAR, NACT, DTB): FETCH at cycle 0 from $1000; the BAR at cycle 4 puts out PC+1 = $1001, whose word $0200 is the address (recorded as a READ); ADAR at cycle 6 gates that word into the address register (pdf 11: 'addressed data to address register', activated during all instructions which specify direct addressing), so the operand access is recorded as an ADAR of $0200, data in at cycle 8. The unit is the printed 10 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "8000",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0200",
+            "8000"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "cycles": 10,
+        "units": [
+          "INSTR"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 1
+        }
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0342"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "0200"
+        ],
+        [
+          6,
+          "ADAR",
+          "0200",
+          "8000"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:direct",
+        "flag-set:Z",
+        "flag-set:C"
+      ]
+    },
+    {
+      "id": "cpu.CMP.overflow-sign",
+      "row": "CMP",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Direct addressed data table, CMP row, pdf 55; Fig 3.2.3, pdf 48; direct access timing figure, pdf 30; ADAR, pdf 11; status bits S3.1.2, pdf 45",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "CMP $0200, R3",
+      "program": [
+        "0343 1101 000 011",
+        "0200 0000 0010 0000 0000"
+      ],
+      "derivation": "The direct table (pdf 55) prints CMP A, SSS as 1101 000 SSS followed by the address word, 10 cycles, 'CoMPare data from address A with register SSS by subtraction. Results not stored.', status change S, Z, C, OV. C46: the flags are those of register SSS minus the word at A, the order CMPI states (pdf 57). S3.1.2 (pdf 45): C is the carry out of bit 15, OV is two's complement overflow, Z is set when the result is all zero, S when bit 15 is one; subtraction adds the two's complement of the subtrahend, so C = 1 means no borrow. SSS = 011 (R3 = $7FFF), word $FFFF: $7FFF + $0000 + 1 = $8000, no carry out, C = 0; $7FFF and $0000 both positive and the result negative, OV = 1; S = 1, Z = 0. R3 stays $7FFF. Init S = 0, Z = 1, OV = 0, C = 1. Fig 3.2.3 (pdf 48): the word at PC+1 is the address, EA <- aaaaaaAAAAAAAAAA, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the address word keeps all 16 bits on the flat test bus. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 30, instruction fetch & data access, direct addr. mode: BAR, NACT, DTB, NACT, BAR, NACT, ADAR, NACT, DTB): FETCH at cycle 0 from $1000; the BAR at cycle 4 puts out PC+1 = $1001, whose word $0200 is the address (recorded as a READ); ADAR at cycle 6 gates that word into the address register (pdf 11: 'addressed data to address register', activated during all instructions which specify direct addressing), so the operand access is recorded as an ADAR of $0200, data in at cycle 8. The unit is the printed 10 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "0202",
+          "7FFF",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 0,
+          "C": 1
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0200",
+            "FFFF"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "cycles": 10,
+        "units": [
+          "INSTR"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 1,
+          "C": 0
+        }
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0343"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "0200"
+        ],
+        [
+          6,
+          "ADAR",
+          "0200",
+          "FFFF"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:direct",
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-set:OV",
+        "flag-clear:C"
+      ]
+    },
+    {
+      "id": "cpu.AND.mask",
+      "row": "AND",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Direct addressed data table, AND row, pdf 55; Fig 3.2.3, pdf 48; direct access timing figure, pdf 30; ADAR, pdf 11; status bits S3.1.2, pdf 45",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "AND $0200, R1",
+      "program": [
+        "0381 1110 000 001",
+        "0200 0000 0010 0000 0000"
+      ],
+      "derivation": "The direct table (pdf 55) prints AND A, DDD as 1110 000 DDD followed by the address word, 10 cycles, 'logical AND data from address A with register DDD. Results to DDD.', status change S, Z: S is bit 15 and Z is set on an all-zero result (pdf 45); C and OV are not in the column and keep their values. DDD = 001: R1 = $F0F0 AND $8F0F = $8000 (nibbles F&8 = 8, 0&F = 0, F&0 = 0, 0&F = 0); S = 1, Z = 0; OV = C = 1 stay. Init S = 0, Z = 1, OV = 1, C = 1. Fig 3.2.3 (pdf 48): the word at PC+1 is the address, EA <- aaaaaaAAAAAAAAAA, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the address word keeps all 16 bits on the flat test bus. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 30, instruction fetch & data access, direct addr. mode: BAR, NACT, DTB, NACT, BAR, NACT, ADAR, NACT, DTB): FETCH at cycle 0 from $1000; the BAR at cycle 4 puts out PC+1 = $1001, whose word $0200 is the address (recorded as a READ); ADAR at cycle 6 gates that word into the address register (pdf 11: 'addressed data to address register', activated during all instructions which specify direct addressing), so the operand access is recorded as an ADAR of $0200, data in at cycle 8. The unit is the printed 10 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "F0F0",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0200",
+            "8F0F"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "1": "8000",
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "cycles": 10,
+        "units": [
+          "INSTR"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0
+        }
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0381"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "0200"
+        ],
+        [
+          6,
+          "ADAR",
+          "0200",
+          "8F0F"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:direct",
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C"
+      ]
+    },
+    {
+      "id": "cpu.AND.zero",
+      "row": "AND",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Direct addressed data table, AND row, pdf 55; Fig 3.2.3, pdf 48; direct access timing figure, pdf 30; ADAR, pdf 11; status bits S3.1.2, pdf 45",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "AND $0200, R2",
+      "program": [
+        "0382 1110 000 010",
+        "0200 0000 0010 0000 0000"
+      ],
+      "derivation": "The direct table (pdf 55) prints AND A, DDD as 1110 000 DDD followed by the address word, 10 cycles, 'logical AND data from address A with register DDD. Results to DDD.', status change S, Z: S is bit 15 and Z is set on an all-zero result (pdf 45); C and OV are not in the column and keep their values. DDD = 010: R2 = $5555 AND $AAAA = $0000 (0101 AND 1010 in every nibble); S = 0, Z = 1. Init S = 1, Z = 0, OV = 0, C = 0. Fig 3.2.3 (pdf 48): the word at PC+1 is the address, EA <- aaaaaaAAAAAAAAAA, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the address word keeps all 16 bits on the flat test bus. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 30, instruction fetch & data access, direct addr. mode: BAR, NACT, DTB, NACT, BAR, NACT, ADAR, NACT, DTB): FETCH at cycle 0 from $1000; the BAR at cycle 4 puts out PC+1 = $1001, whose word $0200 is the address (recorded as a READ); ADAR at cycle 6 gates that word into the address register (pdf 11: 'addressed data to address register', activated during all instructions which specify direct addressing), so the operand access is recorded as an ADAR of $0200, data in at cycle 8. The unit is the printed 10 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "5555",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0200",
+            "AAAA"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "2": "0000",
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "cycles": 10,
+        "units": [
+          "INSTR"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1
+        }
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "0382"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "0200"
+        ],
+        [
+          6,
+          "ADAR",
+          "0200",
+          "AAAA"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:direct",
+        "flag-clear:S",
+        "flag-set:Z"
+      ]
+    },
+    {
+      "id": "cpu.XOR.toggle",
+      "row": "XOR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Direct addressed data table, XOR row, pdf 55; Fig 3.2.3, pdf 48; direct access timing figure, pdf 30; ADAR, pdf 11; status bits S3.1.2, pdf 45",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "XOR $0200, R1",
+      "program": [
+        "03C1 1111 000 001",
+        "0200 0000 0010 0000 0000"
+      ],
+      "derivation": "The direct table (pdf 55) prints XOR A, DDD as 1111 000 DDD followed by the address word, 10 cycles, 'eXclusive OR data from address A with register DDD. Results to DDD.', status change S, Z: S is bit 15 and Z is set on an all-zero result (pdf 45); C and OV are not in the column and keep their values. DDD = 001: R1 = $FFFF XOR $7FFF = $8000; S = 1, Z = 0; OV = C = 1 stay. Init S = 0, Z = 1, OV = 1, C = 1. Fig 3.2.3 (pdf 48): the word at PC+1 is the address, EA <- aaaaaaAAAAAAAAAA, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the address word keeps all 16 bits on the flat test bus. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 30, instruction fetch & data access, direct addr. mode: BAR, NACT, DTB, NACT, BAR, NACT, ADAR, NACT, DTB): FETCH at cycle 0 from $1000; the BAR at cycle 4 puts out PC+1 = $1001, whose word $0200 is the address (recorded as a READ); ADAR at cycle 6 gates that word into the address register (pdf 11: 'addressed data to address register', activated during all instructions which specify direct addressing), so the operand access is recorded as an ADAR of $0200, data in at cycle 8. The unit is the printed 10 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "FFFF",
+          "0202",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1,
+          "OV": 1,
+          "C": 1
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0200",
+            "7FFF"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "1": "8000",
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "cycles": 10,
+        "units": [
+          "INSTR"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0
+        }
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "03C1"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "0200"
+        ],
+        [
+          6,
+          "ADAR",
+          "0200",
+          "7FFF"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:direct",
+        "flag-set:S",
+        "flag-clear:Z",
+        "flag-preserved:OV",
+        "flag-preserved:C"
+      ]
+    },
+    {
+      "id": "cpu.XOR.same-value-zero",
+      "row": "XOR",
+      "kind": "source",
+      "tier": "source-expectation",
+      "cite": "Direct addressed data table, XOR row, pdf 55; Fig 3.2.3, pdf 48; direct access timing figure, pdf 30; ADAR, pdf 11; status bits S3.1.2, pdf 45",
+      "sources": [
+        "SRC-gi-cp1600-um-1975"
+      ],
+      "asm": "XOR $0200, R2",
+      "program": [
+        "03C2 1111 000 010",
+        "0200 0000 0010 0000 0000"
+      ],
+      "derivation": "The direct table (pdf 55) prints XOR A, DDD as 1111 000 DDD followed by the address word, 10 cycles, 'eXclusive OR data from address A with register DDD. Results to DDD.', status change S, Z: S is bit 15 and Z is set on an all-zero result (pdf 45); C and OV are not in the column and keep their values. DDD = 010: R2 = $A5A5 XOR $A5A5 = $0000; S = 0, Z = 1. Init S = 1, Z = 0, OV = 0, C = 0. Fig 3.2.3 (pdf 48): the word at PC+1 is the address, EA <- aaaaaaAAAAAAAAAA, PC <- PC+2, so R7 goes $1000 -> $1002. C51: the address word keeps all 16 bits on the flat test bus. The row has no Not Interruptable note, so prev_interruptible goes 0 -> 1. Bus (pdf 30, instruction fetch & data access, direct addr. mode: BAR, NACT, DTB, NACT, BAR, NACT, ADAR, NACT, DTB): FETCH at cycle 0 from $1000; the BAR at cycle 4 puts out PC+1 = $1001, whose word $0200 is the address (recorded as a READ); ADAR at cycle 6 gates that word into the address register (pdf 11: 'addressed data to address register', activated during all instructions which specify direct addressing), so the operand access is recorded as an ADAR of $0200, data in at cycle 8. The unit is the printed 10 cycles. Registers and memory not named stay unchanged.",
+      "init": {
+        "r": [
+          "0000",
+          "0101",
+          "A5A5",
+          "0303",
+          "0404",
+          "0505",
+          "02F0",
+          "1000"
+        ],
+        "status": {
+          "S": 1,
+          "Z": 0,
+          "OV": 0,
+          "C": 0
+        },
+        "prev_interruptible": 0,
+        "mem": [
+          [
+            "0200",
+            "A5A5"
+          ]
+        ]
+      },
+      "expect": {
+        "r": {
+          "2": "0000",
+          "7": "1002"
+        },
+        "prev_interruptible": 1,
+        "cycles": 10,
+        "units": [
+          "INSTR"
+        ],
+        "status": {
+          "S": 0,
+          "Z": 1
+        }
+      },
+      "bus": [
+        [
+          0,
+          "FETCH",
+          "1000",
+          "03C2"
+        ],
+        [
+          4,
+          "READ",
+          "1001",
+          "0200"
+        ],
+        [
+          6,
+          "ADAR",
+          "0200",
+          "A5A5"
+        ]
+      ],
+      "bus_basis": "figure",
+      "covers": [
+        "addr:direct",
+        "flag-clear:S",
+        "flag-set:Z"
+      ]
+    }
+  ]
+}
