@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 4
 current_phase_name: Headless Runner and Installed Consumer (Slice 0)
 status: executing
-stopped_at: Completed 04-03-PLAN.md
-last_updated: "2026-11-11T16:41:16.060Z"
+stopped_at: Completed 04-04-PLAN.md
+last_updated: "2026-11-11T16:52:47.556Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 3 complete, transitioned to Phase 4
-state_head: 64d8901f542e47143247464000b8f5b23fad9a89
+state_head: a2e5f9855202302d699cc73bc4efec18d020f927
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 71
-  completed_plans: 49
+  completed_plans: 50
   percent: 38
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 4 — Headless Runner and Installed Consumer (Slice 0)
-Plan: 4 of 25
+Plan: 5 of 25
 Status: Ready to execute
 Last activity: 2026-11-11 — Completed 04-03 (repo-relative fault owners, runner outcome taxonomy)
 
@@ -103,6 +103,7 @@ Progress: [████░░░░░░] 38%
 | Phase 04 P01 | 45min | 3 tasks | 36 files |
 | Phase 04 P02 | 15min | 2 tasks | 19 files |
 | Phase 04 P03 | 40min | 2 tasks | 24 files |
+| Phase 4 P04 | 30min | 2 tasks | 28 files |
 
 ## Accumulated Context
 
@@ -228,6 +229,7 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 04]: 04-02: PKG-04 stays Pending until hosted rows exist in .planning/ci-runs.tsv; orchestrator runs tools/ci-record.sh after each hosted run and evaluates D-45 after 04-10 and 04-19
 - [Phase 04]: 04-03: Fault owner TUs are repo-relative (core/ and runner/); file stems unique across both, checked at configure (D-24)
 - [Phase 04]: 04-03: Runner outcome values equal their exit codes; F_WALL 0x100 separates wall from budget timeout; non-outcome values map to harness-fail 14
+- [Phase 4]: 04-04: runner-scan confines POSIX headers and feature macros to runner/hostio.c (also refusing feature macros as runner CMake compile definitions); no runner file, hostio.c included, may include core internals
 
 ### Pending Todos
 
@@ -260,6 +262,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-11T16:41:15.932Z
-Stopped at: Completed 04-03-PLAN.md
+Last session: 2026-11-11T16:52:47.326Z
+Stopped at: Completed 04-04-PLAN.md
 Resume file: None
