@@ -581,6 +581,16 @@
       "resolver": "test: plan 02-12 jump vectors cpu.J.jsr-r4-return, cpu.J.jsr-r5-return, cpu.J.jsr-r6-return and fault JSR_RETURN_ADDR",
       "evidence": "SRC-gi-cp1600-um-1975 ... pdf 56; pdf 52 (smudged).",
       "note": "A-06 mapping: G8 = C58. Read from the page image gi-056 in plan 02-01."
+    },
+    {
+      "id": "C59",
+      "topic": "SWAP with N = 1: register restored versus another two-byte result",
+      "sources": "The SWAP row of the shift table says N = 1 swaps the bytes of register RR and then swaps them back to original form, so the register value is unchanged and only S and Z are set (SRC-gi-cp1600-um-1975). Community programming descriptions of the CP-1610 are reported to give a different N = 1 result, such as the low byte copied into the high byte; that report is background knowledge, not re-read for this entry, and no emulator source was consulted.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: SWAP with N = 1 leaves the register value unchanged (swap, then swap back), sets S from bit 7 and Z from the 16-bit result (C47), keeps C and OV, and takes 8 cycles.",
+      "resolver": "measurement: D10 register read-back after SWAP Rn, 2 with distinct high and low bytes in an original diagnostic",
+      "evidence": "SRC-gi-cp1600-um-1975 pdf 53 (SWAP row and shift header); Fig 3.3.2, pdf 50.",
+      "note": "Raised by the phase 2 code review (WR-05). The vector cpu.SWAP.n1 encodes the manual reading (kind source); its derivation does not yet cite this entry because shift.json is pinned by its second-read record (A-12), so the cite waits for the next re-read of that file. The core cites C59 at the SWAP handler."
     }
   ]
 }

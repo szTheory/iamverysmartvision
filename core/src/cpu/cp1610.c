@@ -710,7 +710,7 @@ static uint32_t ivs_shift(ivs_cp1610 *n, uint8_t op, uint32_t word)
   int right = 1;
   switch (op) {
   case IVS_CP1610_OP_SWAP:
-    /* N = 1 swaps the bytes and swaps them back to the original form (pdf 53). */
+    /* N = 1 swaps the bytes and swaps them back to the original form (pdf 53; open C59). */
     r = two ? x : ((x << 8) | (x >> 8));
 #ifdef IVS_FAULT_SWAP_N1_AS_N0
     r = (x << 8) | (x >> 8);
