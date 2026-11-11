@@ -6,7 +6,7 @@
   "path": "data/cart/ivsc-parse.json",
   "local_path": null,
   "source": {
-    "origin": "project-authored IVSC v1 vectors (plan 03-07)",
+    "origin": "project-authored IVSC v1 vectors (plans 03-07 and 03-11)",
     "pin": null,
     "accessed": null,
     "holder": "project contributors"
@@ -18,6 +18,11 @@
       "path": "data/cart/ivsc-parse.json",
       "sha256": "9ded845c39f9e9b977fe644c0ac1eddba49deeabfc18a80c1d9e98dbbe95b8e6",
       "size_bytes": 21033
+    },
+    {
+      "path": "data/cart/ivsc-load.json",
+      "sha256": "984485c2b6de0e07ebd204e2289039949d0cbc63a1d1b79e66e27cd0d4d159de",
+      "size_bytes": 5046
     }
   ],
   "licence": "MIT",

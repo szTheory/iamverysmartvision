@@ -2,7 +2,8 @@
 # Machine named faults (D-37, plan 03-09). Each id has one IVS_FAULT_<ID> site in
 # core/src/machine/machine.c (create and destroy) or core/src/machine/machine_digest.c (digest).
 # INIT_SKIPS_MEMSET also breaks the fresh-state literals (poison in the CPU and slot fields) and
-# DESTROY_NO_SCRUB every after-destroy case (the magic survives); both are their own rule.
+# DESTROY_NO_SCRUB every after-destroy case (the magic survives, so plan 03-11's destroyed-handle
+# load and unload rows reach a live instance); both are their own rule.
 # INIT_SKIPS_MEMSET leaves poisoned slot records, so a load sees an occupied slot (machine.load.,
 # and every load and unload row of the plan 03-11 refusal matrix and machine.prec.).
 # Load faults (plan 03-10), one site each in core/src/machine/machine_load.c:
@@ -12,7 +13,7 @@
 # seam (the registered span ends at $FFFF, where the parser's address-wrap check fires first).
 CREATE_MAGIC_BEFORE_PROFILE_CHECK machine.refuse.create.unknown-profile machine.refuse.create. machine.create.ok-info-destroy
 INIT_SKIPS_MEMSET machine.create.poisoned-storage machine.create.poisoned-storage|machine.create.ok-info-destroy|machine.digest.|machine.load.|machine.refuse.load.|machine.refuse.unload.|machine.prec. machine.refuse.create.null-opts
-DESTROY_NO_SCRUB machine.destroy.scrubs machine.destroy.|machine.refuse.destroy.twice|machine.refuse.info.destroyed|machine.refuse.digest.destroyed|machine.create.ok-info-destroy|machine.create.static-storage machine.create.requirements
+DESTROY_NO_SCRUB machine.destroy.scrubs machine.destroy.|machine.refuse.destroy.twice|machine.refuse.info.destroyed|machine.refuse.digest.destroyed|machine.refuse.load.exec.destroyed|machine.refuse.unload.exec.destroyed|machine.create.ok-info-destroy|machine.create.static-storage machine.create.requirements
 DIGEST_SKIPS_RAM machine.digest.sensitivity-mem machine.digest. machine.create.ok-info-destroy
 DIGEST_SKIPS_IMAGE_TABLE machine.digest.sensitivity-images machine.digest. machine.create.ok-info-destroy
 DIGEST_LITTLE_ENDIAN machine.digest.stream-cpu-synthetic machine.digest. machine.create.ok-info-destroy

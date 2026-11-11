@@ -3,3 +3,4 @@
 # `sh tools/cart/manifest-outputs.sh` and refreshes fixtures/FX-ivsc-vectors/manifest.json in
 # the same commit.
 ivsc-parse
+ivsc-load

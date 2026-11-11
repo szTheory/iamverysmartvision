@@ -26,6 +26,23 @@
  *                              from the core SHA-256) reproduces the input bytes exactly.
  *   ivsc.X03-bad-args          NULL view, NULL report and NULL bytes with a length are BAD_ARG
  *                              and write nothing; the argument check precedes the length check.
+ * Load level (plan 03-11, D-33, D-34): records of kind load (data/cart/ivsc-load.json) name
+ * segments whose span-relative addresses the generator resolved from the literal map; the case
+ * assembles the container (words (97 i + 13 k + 5) & 0x3FF), seals it with the core SHA-256 and
+ * loads it through ivs_machine_load on a fresh instance of the record's profile, in exact-size
+ * heap storage, with the full oracle: status, every report detail field, an all-zero image on a
+ * refusal, whole-storage memcmp and state digest equality (D-12); an accepted load reports the
+ * image, the bus reads every word, and unload returns the never-loaded digest. Code-built:
+ *   ivsc.L07-second-load-duplicate  a second cartridge is DUPLICATE_LOAD, the first unchanged.
+ *   ivsc.L08-null-args              NULL machine (BAD_HANDLE), NULL bytes with a length (BAD_ARG),
+ *                                   both (BAD_ARG: arguments first); the instance unchanged.
+ *   ivsc.L09-unload-restores        load then unload gives the never-loaded digest and bytes.
+ *   ivsc.L10-two-instances          a cartridge loaded into A leaves B byte-identical and fresh.
+ *   ivsc.B07-load-out-of-span       the B07 container (65,536 words, accepted by the parser) is
+ *                                   OUT_OF_RANGE at load: it exceeds the 49,152-word span.
+ *   ivsc.X01-span-matches-map       every record that must lie in the span does so in the profile
+ *                                   registry, and every load record's literal-map span equals the
+ *                                   registry span (map drift detector).
  * Family ivsc.fuzz.* (plan 03-08) lives in ivsc_fuzz.c: seeded mutations of the literal positive
  * records, through the interface of ivsc_fuzz.h (the bases are defined here, the canonical
  * re-encoder used by X02 and the fuzz family in ivsc_reencode.c).
@@ -37,7 +54,10 @@
 
 #include "common/ivs_sha256.h"
 #include "content/ivsc.h"
+#include "ivs/ivs.h"
+#include "ivs/ivs_machine.h"
 #include "ivs_test.h"
+#include "machine/machine.h"
 #include "ivsc_fuzz.h"
 #include "ivsc_table.h"
 
@@ -294,7 +314,7 @@ static int ic_x02_canonical_roundtrip(void)
     size_t len = 0u;
     ivs_ivsc_view view;
     ivs_ivsc_report rep;
-    if (f->status != IVS_OK) {
+    if (f->status != IVS_OK || f->kind == IVS_CART_LOAD) {
       continue;
     }
     want++;
@@ -399,8 +419,438 @@ static int ic_x03_bad_args(void)
   return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
 }
 
+/* ---- load level (plan 03-11) ---- */
+
+/* One instance of a profile in exact-size heap storage. */
+typedef struct ic_inst {
+  uint8_t *storage;
+  ivs_machine *m;
+} ic_inst;
+
+static int ic_new(ic_inst *x, const char *profile)
+{
+  ivs_create_options o;
+  memset(&o, 0, sizeof o);
+  o.struct_size = (uint32_t)sizeof o;
+  o.profile_id = profile;
+  x->m = NULL;
+  x->storage = malloc(IVS_MACHINE_BYTES);
+  if (x->storage == NULL) {
+    return 0;
+  }
+  memset(x->storage, 0xA5, IVS_MACHINE_BYTES);
+  if (ivs_machine_create(&o, x->storage, IVS_MACHINE_BYTES, &x->m) != IVS_OK) {
+    free(x->storage);
+    x->storage = NULL;
+    return 0;
+  }
+  return 1;
+}
+
+static void ic_free(ic_inst *x)
+{
+  free(x->storage);
+  x->storage = NULL;
+  x->m = NULL;
+}
+
+static uint16_t ic_load_word(uint32_t seg, uint32_t k)
+{
+  return (uint16_t)((97u * seg + 13u * k + 5u) & 0x3FFu);
+}
+
+/* A load record's container: prefix, entries, generated words, core SHA-256 trailer. */
+static uint8_t *ic_load_build(const ivs_cart_fixture *f, size_t *out_len)
+{
+  size_t words = 0u;
+  size_t total;
+  size_t at;
+  size_t i;
+  uint32_t k;
+  uint8_t *b;
+  for (i = 0u; i < f->n_segs; i++) {
+    words += f->segs[i].len_words;
+  }
+  total = IVS_IVSC_PREFIX_BYTES + IVS_IVSC_ENTRY_BYTES * f->n_segs + 2u * words + IVS_IVSC_TRAILER_BYTES;
+  b = malloc(total);
+  if (b == NULL) {
+    return NULL;
+  }
+  memset(b, 0, total);
+  memcpy(b, ic_magic, sizeof ic_magic);
+  ic_put16(b + 8, 1u);
+  ic_put32(b + 12, f->features);
+  ic_put32(b + 16, (uint32_t)total);
+  ic_put16(b + 20, (uint32_t)f->n_segs);
+  at = IVS_IVSC_PREFIX_BYTES + IVS_IVSC_ENTRY_BYTES * f->n_segs;
+  for (i = 0u; i < f->n_segs; i++) {
+    uint8_t *e = b + IVS_IVSC_PREFIX_BYTES + IVS_IVSC_ENTRY_BYTES * i;
+    ic_put16(e, f->segs[i].addr);
+    ic_put16(e + 2, f->segs[i].len_words);
+    e[4] = (uint8_t)IVS_IVSC_WIDTH_BITS;
+    for (k = 0u; k < f->segs[i].len_words; k++) {
+      ic_put16(b + at, ic_load_word((uint32_t)i, k));
+      at += 2u;
+    }
+  }
+  ivs_sha256_digest(b, total - IVS_IVSC_TRAILER_BYTES, b + total - IVS_IVSC_TRAILER_BYTES);
+  *out_len = total;
+  return b;
+}
+
+static ivs_load_report ic_poisoned_report(void)
+{
+  ivs_load_report r;
+  memset(&r, 0xA5, sizeof r);
+  r.struct_size = (uint32_t)sizeof r;
+  return r;
+}
+
+static uint16_t ic_bus(const ic_inst *x, uint16_t addr)
+{
+  return ivs_memsys_read(&((const struct ivs_machine *)(const void *)x->m)->mem, addr);
+}
+
+/* A refused load: status, detail, zero image, every instance byte and the digest unchanged. */
+static int ic_refused(ic_inst *x, const uint8_t *b, size_t len, ivs_status want, uint32_t reason, uint32_t seg,
+                      uint64_t off, uint32_t missing, const char *what)
+{
+  static const uint8_t zero[sizeof(ivs_image_report)] = {0};
+  ivs_load_report r = ic_poisoned_report();
+  uint8_t d0[32];
+  uint8_t d1[32];
+  uint8_t *snap = malloc(IVS_MACHINE_BYTES);
+  ivs_status st;
+  int ok = 1;
+  if (snap == NULL || ivs_machine_state_digest(x->m, IVS_DIGEST_COMPOSITE, d0) != IVS_OK) {
+    free(snap);
+    return 0;
+  }
+  memcpy(snap, x->storage, IVS_MACHINE_BYTES);
+  st = ivs_machine_load(x->m, IVS_KIND_CARTRIDGE, b, len, NULL, &r);
+  if (st != want || r.struct_size != (uint32_t)sizeof r || r.reason != reason || r.segment_index != seg ||
+      r.byte_offset != off || r.missing_features != missing) {
+    ivs_test_diag("%s: status %d reason %u segment %u offset %llu missing 0x%X, want %d %u %u %llu 0x%X", what, st,
+                  (unsigned)r.reason, (unsigned)r.segment_index, (unsigned long long)r.byte_offset,
+                  (unsigned)r.missing_features, want, (unsigned)reason, (unsigned)seg, (unsigned long long)off,
+                  (unsigned)missing);
+    ok = 0;
+  } else if (memcmp(&r.image, zero, sizeof zero) != 0) {
+    ivs_test_diag("%s: a refused report carries an image", what);
+    ok = 0;
+  } else if (memcmp(snap, x->storage, IVS_MACHINE_BYTES) != 0) {
+    ivs_test_diag("%s: the refused load changed the instance", what);
+    ok = 0;
+  } else if (ivs_machine_state_digest(x->m, IVS_DIGEST_COMPOSITE, d1) != IVS_OK || memcmp(d0, d1, 32u) != 0) {
+    ivs_test_diag("%s: the state digest changed", what);
+    ok = 0;
+  }
+  free(snap);
+  return ok;
+}
+
+/* An accepted load: the report, every word on the bus, and unload back to the fresh digest. */
+static int ic_accepted(ic_inst *x, const ivs_cart_fixture *f, const uint8_t *b, size_t len)
+{
+  ivs_load_report r = ic_poisoned_report();
+  uint8_t d0[32];
+  uint8_t d1[32];
+  uint8_t sha[32];
+  uint32_t units = 0u;
+  size_t i;
+  uint32_t k;
+  ivs_status st;
+  if (ivs_machine_state_digest(x->m, IVS_DIGEST_COMPOSITE, d0) != IVS_OK) {
+    return 0;
+  }
+  for (i = 0u; i < f->n_segs; i++) {
+    units += f->segs[i].len_words;
+  }
+  ivs_sha256_digest(b, len, sha);
+  st = ivs_machine_load(x->m, IVS_KIND_CARTRIDGE, b, len, NULL, &r);
+  if (st != IVS_OK) {
+    ivs_test_diag("%s: refused (status %d reason %u)", f->id, st, (unsigned)r.reason);
+    return 0;
+  }
+  if (r.reason != IVS_REASON_NONE || r.segment_index != IVS_SEGMENT_NONE || r.byte_offset != 0u ||
+      r.missing_features != 0u || r.image.loaded != 1u || r.image.kind != IVS_KIND_CARTRIDGE ||
+      r.image.length_bytes != (uint32_t)len || r.image.length_units != units || r.image.unit_bits != 10u ||
+      r.image.base_addr != f->segs[0].addr || memcmp(r.image.sha256, sha, 32u) != 0) {
+    ivs_test_diag("%s: report wrong", f->id);
+    return 0;
+  }
+  for (i = 0u; i < f->n_segs; i++) {
+    for (k = 0u; k < f->segs[i].len_words; k++) {
+      uint16_t a = (uint16_t)(f->segs[i].addr + k);
+      if (ic_bus(x, a) != ic_load_word((uint32_t)i, k)) {
+        ivs_test_diag("%s: bus reads %04X at $%04X", f->id, (unsigned)ic_bus(x, a), (unsigned)a);
+        return 0;
+      }
+    }
+  }
+  if (ivs_machine_unload(x->m, IVS_KIND_CARTRIDGE) != IVS_OK ||
+      ivs_machine_state_digest(x->m, IVS_DIGEST_COMPOSITE, d1) != IVS_OK || memcmp(d0, d1, 32u) != 0) {
+    ivs_test_diag("%s: unload did not restore the never-loaded digest", f->id);
+    return 0;
+  }
+  return 1;
+}
+
+static int ic_run_load(const ivs_cart_fixture *f)
+{
+  ic_inst x;
+  size_t len = 0u;
+  int ok;
+  uint8_t *b = ic_load_build(f, &len);
+  if (b == NULL) {
+    return IVS_TEST_FAIL;
+  }
+  if (!ic_new(&x, f->profile)) {
+    ivs_test_diag("%s: no instance of profile %s", f->id, f->profile);
+    free(b);
+    return IVS_TEST_FAIL;
+  }
+  if (f->status == IVS_OK) {
+    ok = ic_accepted(&x, f, b, len);
+  } else {
+    ok = ic_refused(&x, b, len, f->status, f->reason, f->has_seg ? f->seg : IVS_SEGMENT_NONE,
+                    f->has_off ? f->off : 0u, f->missing, f->id);
+  }
+  ic_free(&x);
+  free(b);
+  return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
+}
+
+/* A literal fixture container in a fresh heap buffer. */
+static uint8_t *ic_fixture_bytes(const char *id, size_t *len)
+{
+  size_t i;
+  for (i = 0u; i < ivs_cart_count; i++) {
+    const ivs_cart_fixture *f = &ivs_cart_table[i];
+    if (strcmp(f->id, id) == 0) {
+      uint8_t *b = NULL;
+      if (f->kind == IVS_CART_LOAD || !ic_bytes(f, &b, len)) {
+        return NULL;
+      }
+      return b;
+    }
+  }
+  return NULL;
+}
+
+#define IC_PROFILE "intv-2609-ntsc-family-p1"
+
+/* ivsc.L07: a second cartridge is DUPLICATE_LOAD and the first stays (slot report and bytes). */
+static int ic_l07_second_load(void)
+{
+  ic_inst x;
+  size_t n1 = 0u;
+  size_t n2 = 0u;
+  ivs_info info;
+  int ok = 0;
+  uint8_t *p1 = ic_fixture_bytes("ivsc.P01-min", &n1);
+  uint8_t *p2 = ic_fixture_bytes("ivsc.P02-two-segments", &n2);
+  uint8_t sha1[32];
+  if (p1 == NULL || p2 == NULL || !ic_new(&x, IC_PROFILE)) {
+    free(p1);
+    free(p2);
+    return IVS_TEST_FAIL;
+  }
+  ivs_sha256_digest(p1, n1, sha1);
+  memset(&info, 0, sizeof info);
+  info.struct_size = (uint32_t)sizeof info;
+  if (ivs_machine_load(x.m, IVS_KIND_CARTRIDGE, p1, n1, NULL, NULL) != IVS_OK) {
+    ivs_test_diag("first load refused");
+  } else if (ic_refused(&x, p2, n2, IVS_E_DUPLICATE_LOAD, IVS_REASON_SLOT_OCCUPIED, IVS_SEGMENT_NONE, 0u, 0u,
+                        "second load")) {
+    ok = ivs_machine_info(x.m, &info) == IVS_OK && info.slots[2].loaded == 1u &&
+         info.slots[2].length_bytes == (uint32_t)n1 && memcmp(info.slots[2].sha256, sha1, 32u) == 0;
+    if (!ok) {
+      ivs_test_diag("the first cartridge's slot report changed");
+    }
+  }
+  ic_free(&x);
+  free(p1);
+  free(p2);
+  return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
+}
+
+/* ivsc.L08: NULL machine, NULL bytes with a length, and both; the live instance is unchanged. */
+static int ic_l08_null_args(void)
+{
+  ic_inst x;
+  size_t n = 0u;
+  ivs_load_report r = ic_poisoned_report();
+  int ok = 0;
+  uint8_t *p1 = ic_fixture_bytes("ivsc.P01-min", &n);
+  if (p1 == NULL || !ic_new(&x, IC_PROFILE)) {
+    free(p1);
+    return IVS_TEST_FAIL;
+  }
+  if (ivs_machine_load(NULL, IVS_KIND_CARTRIDGE, p1, n, NULL, &r) != IVS_E_BAD_HANDLE ||
+      r.reason != IVS_REASON_HANDLE) {
+    ivs_test_diag("NULL machine: status or reason %u wrong", (unsigned)r.reason);
+  } else if (!ic_refused(&x, NULL, n, IVS_E_BAD_ARG, IVS_REASON_ARG_NULL_BYTES, IVS_SEGMENT_NONE, 0u, 0u,
+                         "NULL bytes")) {
+    ivs_test_diag("NULL bytes with a length");
+  } else if (ivs_machine_load(NULL, IVS_KIND_CARTRIDGE, NULL, n, NULL, &r) != IVS_E_BAD_ARG ||
+             r.reason != IVS_REASON_ARG_NULL_BYTES) {
+    ivs_test_diag("NULL machine and NULL bytes: not BAD_ARG (reason %u)", (unsigned)r.reason);
+  } else {
+    ok = 1;
+  }
+  ic_free(&x);
+  free(p1);
+  return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
+}
+
+/* ivsc.L09: load then unload gives the never-loaded digest and instance bytes. */
+static int ic_l09_unload_restores(void)
+{
+  ic_inst x;
+  ic_inst fresh;
+  size_t n = 0u;
+  uint8_t d0[32];
+  uint8_t d1[32];
+  int ok = 0;
+  uint8_t *p2 = ic_fixture_bytes("ivsc.P02-two-segments", &n);
+  if (p2 == NULL || !ic_new(&x, IC_PROFILE)) {
+    free(p2);
+    return IVS_TEST_FAIL;
+  }
+  if (!ic_new(&fresh, IC_PROFILE)) {
+    ic_free(&x);
+    free(p2);
+    return IVS_TEST_FAIL;
+  }
+  if (ivs_machine_state_digest(x.m, IVS_DIGEST_COMPOSITE, d0) == IVS_OK &&
+      ivs_machine_load(x.m, IVS_KIND_CARTRIDGE, p2, n, NULL, NULL) == IVS_OK &&
+      ivs_machine_unload(x.m, IVS_KIND_CARTRIDGE) == IVS_OK &&
+      ivs_machine_state_digest(x.m, IVS_DIGEST_COMPOSITE, d1) == IVS_OK) {
+    ok = memcmp(d0, d1, 32u) == 0 && memcmp(x.storage, fresh.storage, IVS_MACHINE_BYTES) == 0;
+  }
+  if (!ok) {
+    ivs_test_diag("unload did not restore the never-loaded state");
+  }
+  ic_free(&fresh);
+  ic_free(&x);
+  free(p2);
+  return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
+}
+
+/* ivsc.L10: a cartridge loaded into A is invisible to B (API-01 isolation). */
+static int ic_l10_two_instances(void)
+{
+  ic_inst a;
+  ic_inst b;
+  size_t n = 0u;
+  uint8_t db0[32];
+  uint8_t db1[32];
+  uint8_t *snap = malloc(IVS_MACHINE_BYTES);
+  int ok = 0;
+  uint8_t *p2 = ic_fixture_bytes("ivsc.P02-two-segments", &n);
+  if (p2 == NULL || snap == NULL || !ic_new(&a, IC_PROFILE)) {
+    free(p2);
+    free(snap);
+    return IVS_TEST_FAIL;
+  }
+  if (!ic_new(&b, IC_PROFILE)) {
+    ic_free(&a);
+    free(p2);
+    free(snap);
+    return IVS_TEST_FAIL;
+  }
+  memcpy(snap, b.storage, IVS_MACHINE_BYTES);
+  if (ivs_machine_state_digest(b.m, IVS_DIGEST_COMPOSITE, db0) == IVS_OK &&
+      ivs_machine_load(a.m, IVS_KIND_CARTRIDGE, p2, n, NULL, NULL) == IVS_OK &&
+      ivs_machine_state_digest(b.m, IVS_DIGEST_COMPOSITE, db1) == IVS_OK) {
+    ok = memcmp(db0, db1, 32u) == 0 && memcmp(snap, b.storage, IVS_MACHINE_BYTES) == 0 &&
+         ic_bus(&a, 0x5000u) != ic_bus(&b, 0x5000u) && ic_bus(&b, 0x5000u) == 0xFFFFu;
+  }
+  if (!ok) {
+    ivs_test_diag("instance B saw instance A's cartridge");
+  }
+  ic_free(&b);
+  ic_free(&a);
+  free(p2);
+  free(snap);
+  return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
+}
+
+/* ivsc.B07 at load: 65,536 words parse, but segment 0 at 0000 lies below the span. */
+static int ic_b07_load(void)
+{
+  ic_inst x;
+  size_t n = 0u;
+  int ok;
+  uint8_t *b = ic_fixture_bytes("ivsc.B07-two-segments-64k", &n);
+  if (b == NULL || !ic_new(&x, IC_PROFILE)) {
+    free(b);
+    return IVS_TEST_FAIL;
+  }
+  ok = ic_refused(&x, b, n, IVS_E_OUT_OF_RANGE, IVS_REASON_OUT_OF_SPAN, 0u, IVS_IVSC_PREFIX_BYTES, 0u,
+                  "ivsc.B07-two-segments-64k");
+  ic_free(&x);
+  free(b);
+  return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
+}
+
+/* ivsc.X01: the records' span assumptions against the profile registry. */
+static int ic_x01_span(void)
+{
+  uint32_t np = ivs_profile_count();
+  size_t i;
+  size_t checked = 0u;
+  int ok = 1;
+  for (i = 0u; i < ivs_cart_count; i++) {
+    const ivs_cart_fixture *f = &ivs_cart_table[i];
+    uint32_t p;
+    size_t s;
+    if (f->kind == IVS_CART_LOAD) {
+      uint32_t index = 0u;
+      const ivs_profile_desc *d;
+      if (ivs_machine_profile_lookup(f->profile, &index) != IVS_OK || (d = ivs_profile_get(index)) == NULL ||
+          d->has_cart_span == 0u || d->cart_lo != f->span_lo || d->cart_hi != f->span_hi) {
+        ivs_test_diag("%s: the literal map's span %04X-%04X differs from profile %s's registry span", f->id,
+                      (unsigned)f->span_lo, (unsigned)f->span_hi, f->profile);
+        ok = 0;
+      }
+    }
+    if (!f->in_span) {
+      continue;
+    }
+    for (p = 0u; p < np; p++) {
+      const ivs_profile_desc *d = ivs_profile_get(p);
+      if (f->kind == IVS_CART_LOAD && strcmp(d->id, f->profile) != 0) {
+        continue;
+      }
+      for (s = 0u; s < f->n_segs; s++) {
+        uint32_t lo = f->segs[s].addr;
+        uint32_t end = lo + f->segs[s].len_words - 1u;
+        if (d->has_cart_span == 0u || lo < d->cart_lo || end > d->cart_hi) {
+          ivs_test_diag("%s: segment %zu ($%04X, %u words) leaves profile %s's span", f->id, s, (unsigned)lo,
+                        (unsigned)f->segs[s].len_words, d->id);
+          ok = 0;
+        }
+        checked++;
+      }
+    }
+  }
+  if (checked == 0u) {
+    ivs_test_diag("no in-span record checked");
+    ok = 0;
+  }
+  return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
+}
+
 static const ivs_test_case ic_code_cases[] = {
+    {"ivsc.B07-load-out-of-span", ic_b07_load, NULL},
     {"ivsc.B08-len-over-max", ic_b08_len_over_max, NULL},
+    {"ivsc.L07-second-load-duplicate", ic_l07_second_load, NULL},
+    {"ivsc.L08-null-args", ic_l08_null_args, NULL},
+    {"ivsc.L09-unload-restores", ic_l09_unload_restores, NULL},
+    {"ivsc.L10-two-instances", ic_l10_two_instances, NULL},
+    {"ivsc.X01-span-matches-map", ic_x01_span, NULL},
     {"ivsc.X02-canonical-roundtrip", ic_x02_canonical_roundtrip, NULL},
     {"ivsc.X03-bad-args", ic_x03_bad_args, NULL},
 };
@@ -421,7 +871,7 @@ static int ic_case_run(const void *data, size_t i)
 {
   (void)data;
   if (i < ivs_cart_count) {
-    return ic_run_record(&ivs_cart_table[i]);
+    return ivs_cart_table[i].kind == IVS_CART_LOAD ? ic_run_load(&ivs_cart_table[i]) : ic_run_record(&ivs_cart_table[i]);
   }
   i -= ivs_cart_count;
   return i < IC_CODE_CASES ? ic_code_cases[i].fn() : ivsc_fuzz_case_run(i - IC_CODE_CASES);

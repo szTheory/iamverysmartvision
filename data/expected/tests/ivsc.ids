@@ -1,7 +1,11 @@
 # Suite ivsc (plan 03-07): IVSC v1 layer-1 parser (docs/formats/ivsc-v1.md). One case per
 # fixture record of data/cart/*.json (positive, build and patch kinds), plus the code-built
 # cases ivsc.B08-len-over-max, ivsc.X02-canonical-roundtrip and ivsc.X03-bad-args. Classes:
-# P positive, B boundary, N malformed or refused, X cross-cutting; L (load) ids arrive in 03-11.
+# P positive, B boundary, N malformed or refused, X cross-cutting, L load.
+# Load level (plan 03-11, data/cart/ivsc-load.json): records B03-B05 and L01-L06 are loaded
+# through ivs_machine_load on an instance of the file's profile, with span-relative addresses
+# resolved from the literal map; code-built cases ivsc.L07..L10, ivsc.B07-load-out-of-span and
+# ivsc.X01-span-matches-map.
 # Family fuzz (plan 03-08, tests/ivsc/ivsc_fuzz.c): eight fixed seeds of mutated positives and
 # the non-vacuity case ivsc.fuzz.reasons-covered.
 ivsc.B01-segs-16
@@ -64,3 +68,18 @@ ivsc.fuzz.seed-06
 ivsc.fuzz.seed-07
 ivsc.fuzz.seed-08
 ivsc.fuzz.reasons-covered
+ivsc.B03-span-last-word
+ivsc.B04-span-plus-one
+ivsc.B05-span-minus-one
+ivsc.B07-load-out-of-span
+ivsc.L01-below-span
+ivsc.L02-over-exec
+ivsc.L03-straddle-span-start
+ivsc.L04-over-sysram
+ivsc.L05-feature-bit-0
+ivsc.L06-feature-bit-31
+ivsc.L07-second-load-duplicate
+ivsc.L08-null-args
+ivsc.L09-unload-restores
+ivsc.L10-two-instances
+ivsc.X01-span-matches-map

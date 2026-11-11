@@ -23,6 +23,7 @@ typedef struct ivs_cart_run {
 #define IVS_CART_POSITIVE 0u
 #define IVS_CART_BUILD 1u
 #define IVS_CART_PATCH 2u
+#define IVS_CART_LOAD 3u /* plan 03-11: a load-level record (data/cart/ivsc-load.json) */
 
 typedef struct ivs_cart_fixture {
   const char *id;
@@ -43,6 +44,13 @@ typedef struct ivs_cart_fixture {
   uint32_t seg;
   unsigned has_off;
   uint32_t off;
+  /* Load records (plan 03-11): status and reason above are the load's (IVS_REASON_* numbers,
+   * which equal the IVSC reason numbers 1..18). */
+  const char *profile;       /* load: the profile id of the instance */
+  uint32_t features;         /* load: required_features of the assembled container */
+  uint32_t missing;          /* load: expected missing_features */
+  unsigned in_span;          /* 1 when every segment must lie in the cartridge span (ivsc.X01) */
+  uint32_t span_lo, span_hi; /* load: the literal map's cart row the addresses were resolved on */
 } ivs_cart_fixture;
 
 #endif

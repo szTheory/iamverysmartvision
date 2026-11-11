@@ -4,8 +4,10 @@
  * the storage and the handle is its address (D-01).
  *
  * create validates everything before its first write to the storage (D-08, D-10), in this order:
- *   BAD_ARG          NULL opts, storage or out; opts struct_size below the v1 size; profile id
- *                    NULL or without a NUL in its first 64 bytes; storage not 16-byte aligned;
+ *   BAD_ARG          out inside the instance bytes of the storage (refused before *out is
+ *                    written, so the storage stays untouched; plan 03-11); NULL opts, storage or
+ *                    out; opts struct_size below the v1 size; profile id NULL or without a NUL in
+ *                    its first 64 bytes; storage not 16-byte aligned;
  *   UNSUPPORTED      nonzero flags; a nonzero byte in a larger caller struct's unknown tail;
  *   UNKNOWN_PROFILE  the id is not in the registry (exact, case-sensitive match);
  *   BUFFER_TOO_SMALL storage_bytes below the instance size.
@@ -38,6 +40,19 @@ struct ivs_machine *ivs_machine_from_handle_mut(ivs_machine *m)
     return NULL;
   }
   return m;
+}
+
+uint32_t ivs_machine_span_overlaps(const void *p, size_t n, const void *inst, size_t inst_bytes)
+{
+  uintptr_t a = (uintptr_t)p;
+  uintptr_t s = (uintptr_t)inst;
+  if (n == 0u || inst_bytes == 0u) {
+    return 0u;
+  }
+  if (a >= s) {
+    return (uint32_t)(a - s < (uintptr_t)inst_bytes);
+  }
+  return (uint32_t)(s - a < (uintptr_t)n);
 }
 
 ivs_status ivs_machine_profile_id_length(const char *id, uint32_t *len)
@@ -127,7 +142,12 @@ ivs_status ivs_machine_create(const ivs_create_options *opts, void *storage, siz
   uint32_t len = 0u;
   uint32_t i;
   size_t clear;
+  size_t span = storage_bytes < sizeof(struct ivs_machine) ? storage_bytes : sizeof(struct ivs_machine);
   ivs_status st;
+  /* BAD_ARG: an out pointer inside the bytes create may write is refused before *out is set. */
+  if (out != NULL && storage != NULL && ivs_machine_span_overlaps(out, sizeof *out, storage, span) != 0u) {
+    return IVS_E_BAD_ARG;
+  }
   if (out != NULL) {
     *out = NULL;
   }
@@ -202,7 +222,8 @@ ivs_status ivs_machine_info(const ivs_machine *m, ivs_info *out)
   const struct ivs_machine *im;
   ivs_info r;
   uint32_t i;
-  if (out == NULL || out->struct_size < (uint32_t)sizeof(ivs_info)) {
+  if (out == NULL || out->struct_size < (uint32_t)sizeof(ivs_info) ||
+      ivs_machine_span_overlaps(out, sizeof *out, m, sizeof(struct ivs_machine)) != 0u) {
     return IVS_E_BAD_ARG;
   }
   im = ivs_machine_from_handle(m);

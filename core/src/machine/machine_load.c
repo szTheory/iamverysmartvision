@@ -6,7 +6,8 @@
  * plan (kind, lengths, units, base, the reported digest; never a copy of image bytes). The ladder
  * is one stage per class, the first failing stage wins (D-11 refined by A-08 a, b):
  *   1. BAD_ARG         argument values: kind, NULL bytes with len above 0, opts struct size
- *                      (a short report struct is refused by the public function, writing nothing);
+ *                      (a short report struct, or a report that overlaps the instance storage,
+ *                      is refused by the public function, writing nothing; plan 03-11);
  *   2. BAD_HANDLE      NULL or invalid handle;
  *   3. UNSUPPORTED     load options: an unknown flag, a nonzero tail of a larger struct;
  *   4. BAD_STATE       the machine is POWERED;
@@ -64,21 +65,6 @@ static ivs_status ivs_load_refuse(ivs_load_report *d, ivs_status st, uint32_t re
   d->byte_offset = off;
   d->missing_features = missing;
   return st;
-}
-
-/* 1 when the n bytes at b overlap the instance at s (A-06, A-08 a). Differences of uintptr_t
- * values only, so nothing can wrap; called only with n within the kind's bound. */
-static uint32_t ivs_load_overlaps(const uint8_t *bytes, size_t n, const struct ivs_machine *im)
-{
-  uintptr_t b = (uintptr_t)bytes;
-  uintptr_t s = (uintptr_t)im;
-  if (n == 0u) {
-    return 0u;
-  }
-  if (b >= s) {
-    return (uint32_t)(b - s < (uintptr_t)sizeof(struct ivs_machine));
-  }
-  return (uint32_t)(s - b < (uintptr_t)n);
 }
 
 /* 1 when every byte of p[from, to) is zero. */
@@ -235,7 +221,7 @@ static ivs_status ivs_load_validate(const ivs_machine *m, uint32_t kind, const u
                            IVS_SEGMENT_NONE, bound, 0u);
   }
   /* 7. BAD_ARG: the bounded input span against the instance storage. */
-  if (ivs_load_overlaps(bytes, len, im) != 0u) {
+  if (ivs_machine_span_overlaps(bytes, len, im, sizeof *im) != 0u) {
     return ivs_load_refuse(d, IVS_E_BAD_ARG, IVS_REASON_ARG_INPUT_OVERLAP, IVS_SEGMENT_NONE, 0u, 0u);
   }
   /* 8. Content. */
@@ -291,8 +277,12 @@ ivs_status ivs_machine_load(ivs_machine *m, uint32_t kind, const uint8_t *bytes,
   ivs_load_plan plan;
   ivs_load_report r;
   ivs_status st;
-  if (report != NULL && report->struct_size < (uint32_t)sizeof(ivs_load_report)) {
-    return IVS_E_BAD_ARG;
+  if (report != NULL) {
+    /* A report aimed into the instance would be written over it after the commit. */
+    uint32_t aliased = ivs_machine_span_overlaps(report, sizeof *report, m, sizeof(struct ivs_machine));
+    if (aliased != 0u || report->struct_size < (uint32_t)sizeof(ivs_load_report)) {
+      return IVS_E_BAD_ARG;
+    }
   }
   memset(&plan, 0, sizeof plan);
   memset(&r, 0, sizeof r);
