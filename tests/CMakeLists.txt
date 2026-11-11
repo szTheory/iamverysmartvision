@@ -133,6 +133,16 @@ target_link_libraries(ivs_tests_machine PRIVATE ivs_test_harness ivs_core ivs_co
 add_test(NAME machine COMMAND ivs_tests_machine)
 set_tests_properties(machine PROPERTIES SKIP_RETURN_CODE 77)
 
+# Suite run (A-06, plan 04-06): run, observation, buffer and input tests through the public API,
+# in their own executable so the 512-case machine suite and its per-fault reruns stay bounded
+# (Pitfall 12). It reuses the machine suite's stand-in content (machine/machine_standin.c, the
+# ivs_ms_* helpers of machine/machine_cases.h); its named faults are data/expected/faults/run.ids.
+add_executable(ivs_tests_run run/run_main.c run/run_observe.c machine/machine_standin.c)
+target_include_directories(ivs_tests_run PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine")
+target_link_libraries(ivs_tests_run PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
+add_test(NAME run COMMAND ivs_tests_run)
+set_tests_properties(run PROPERTIES SKIP_RETURN_CODE 77)
+
 # Suite cpu-fuzz (D-12, plan 02-15): the seeded robustness run; dev links the sanitizers.
 add_executable(ivs_tests_cpu_fuzz cpu/cpu_fuzz.c)
 target_link_libraries(ivs_tests_cpu_fuzz PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
@@ -233,6 +243,10 @@ ivs_fault_suite(machine
           machine/machine_iso.c machine/machine_sweep.c
   INCLUDE_DIRS "${CMAKE_CURRENT_BINARY_DIR}"
   GENERATED "${IVS_SHA_INC}" "${IVS_CART_INC}")
+
+ivs_fault_suite(run
+  SOURCES run/run_main.c run/run_observe.c machine/machine_standin.c
+  INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/machine")
 
 ivs_fault_suite(memmap
   SOURCES memmap/memmap_main.c memmap/memmap_rows.c

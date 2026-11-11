@@ -322,6 +322,33 @@
           "tests": ["machine.refuse.digest.null-handle", "machine.refuse.digest.destroyed", "machine.refuse.digest.null-handle-low-out", "machine.refuse.digest.destroyed-out-inside", "machine.refuse.handle.profile-out-of-range", "machine.refuse.handle.mem-profile-mismatch", "machine.refuse.handle.profile-garbage"]
         }
       ]
+    },
+    {
+      "name": "ivs_machine_cpu_state",
+      "header": "core/include/ivs/ivs_run.h",
+      "on_ok": "Writes the CPU snapshot (run state, fault reason, R0..R7, the S, Z, OV and C flags and the interrupt enable) into *out with struct_size set to the v1 size (36); bytes of a larger caller struct past it are untouched. The instance is not written and machine time does not advance (D-08); valid OFF and POWERED.",
+      "precedence": [
+        {"status": "IVS_E_BAD_ARG", "checks": "out NULL, or out->struct_size below the v1 size or above IVS_STRUCT_SIZE_MAX", "pinned_by": ["run.refuse.cpu-state.null", "run.refuse.cpu-state.struct-size"]},
+        {"status": "IVS_E_BAD_HANDLE", "checks": "NULL or invalid handle", "pinned_by": ["run.refuse.cpu-state.bad-handle"]},
+        {"status": "IVS_E_BAD_ARG", "checks": "out overlapping the storage of the (valid) instance (uintptr_t arithmetic)", "pinned_by": ["run.refuse.cpu-state.out-inside-instance"]}
+      ],
+      "notes": [
+        "Side-effect free by contract (D-08, plan 04-06): a const instance, no machine time advance, no write to the instance. Out parameter rule as for ivs_machine_info: the overlap is tested after BAD_HANDLE, against a validated instance only, so a NULL or invalid handle is BAD_HANDLE wherever out lies."
+      ],
+      "refusals": [
+        {
+          "status": "IVS_E_BAD_ARG",
+          "effect": "none",
+          "outs": "nothing written: *out keeps its bytes",
+          "tests": ["run.refuse.cpu-state.null", "run.refuse.cpu-state.struct-size", "run.refuse.cpu-state.out-inside-instance"]
+        },
+        {
+          "status": "IVS_E_BAD_HANDLE",
+          "effect": "none",
+          "outs": "nothing written: *out keeps its bytes",
+          "tests": ["run.refuse.cpu-state.bad-handle"]
+        }
+      ]
     }
   ]
 }

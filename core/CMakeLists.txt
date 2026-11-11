@@ -15,6 +15,7 @@ set(IVS_CORE_SOURCES
   src/cpu/cp1610_decode.c
   src/machine/machine.c
   src/machine/machine_digest.c
+  src/machine/machine_inspect.c
   src/machine/machine_load.c
   src/machine/machine_run.c
   src/memmap/memsys.c

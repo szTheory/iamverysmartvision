@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 /* Umbrella public header (D-04, D-06, plan 03-09): the one header a host includes. It brings in
- * the status codes and the machine API and defines the API version. ivs_api_version() returns the
+ * the status codes, the machine API and the run and observation API (ivs/ivs_run.h, plan 04-06)
+ * and defines the API version. ivs_api_version() returns the
  * version the library was built with; a host compares it with IVS_API_VERSION to detect a header
  * and library mismatch. Pre-1.0: no ABI stability promise; struct_size and the append-only
  * status numbers let additions land without a break.
@@ -11,6 +12,7 @@
 #include <stdint.h>
 
 #include "ivs/ivs_machine.h"
+#include "ivs/ivs_run.h"
 #include "ivs/ivs_status.h"
 
 #ifdef __cplusplus

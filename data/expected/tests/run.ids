@@ -1,0 +1,14 @@
+# Suite run (plan 04-06, D-08, A-06): run, observation, buffer and input tests through the public
+# API, in their own executable (the 512-case machine suite and its per-fault reruns stay bounded).
+# Family observe (plan 04-06): ivs_machine_cpu_state (OFF, after reset, after stepped units of
+# stand-in program A, flag mapping, the out-struct size rule) and the refusals of the call with
+# the SP4 oracle (status, whole-storage memcmp, digests and machine time equal, poisoned out kept).
+run.cpu-state.off
+run.cpu-state.after-reset
+run.cpu-state.after-steps
+run.cpu-state.flag-bits
+run.cpu-state.larger-struct
+run.refuse.cpu-state.null
+run.refuse.cpu-state.struct-size
+run.refuse.cpu-state.bad-handle
+run.refuse.cpu-state.out-inside-instance
