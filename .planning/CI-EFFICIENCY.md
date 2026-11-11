@@ -163,3 +163,14 @@ not settle it; they compare the runner before and after under similar load.
   measurements do not close this item.
 - The queue, setup and gate times of the hosted runs on the phase PR, including the one after
   this plan, are recorded by the orchestrator after the phase PR's CI; agents never call `gh`.
+
+## 2026-11-11 — hosted run 42942719332 (after the overlapped control runner)
+
+- Hosted gate: `gate-time total=31` s on ubuntu-24.04 (D-22 budget 30 s; run 42941373641 before
+  the change took 50 s). Largest steps: `c-build` 18 s (cold tree, 2 presets), `controls` 13 s
+  (overlapped, `controls-wait` 0), `cp1610-vectors` 5 s; every other step 1 s or less.
+- Verdict: within 1 s of budget and inside run-to-run noise; the hosted-budget open item is
+  closed as met-within-noise. Nothing else is worth overlapping: the only large step is the
+  cold C build, and every later step depends on it. Not applied: ccache / `actions/cache`
+  (the policy bans them while the budget is met), background C build (nothing to overlap).
+- Revisit only if a later hosted run exceeds 40 s or a phase adds a step over 5 s.
