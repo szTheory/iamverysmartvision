@@ -19,3 +19,6 @@ core-purity-include-outside
 core-purity-generated-unlisted
 core-purity-generated-scan
 core-purity-generated-missing
+# Writable-data rule and compiler-introduced libc calls (plan 03-03, D-07, Pitfall 4).
+core-purity-strlen
+core-purity-static-mutable

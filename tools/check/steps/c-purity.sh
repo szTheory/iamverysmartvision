@@ -31,10 +31,14 @@
 #     generated file gets the header-level scan above (include, asm, float literal), reported as
 #     <token> gen/<basename>:<line>.
 # Stage 2, symbol layer (authoritative): every core .c is compiled fresh into a temp dir at -O0
-#   and at -O2 with ${CC:-cc} (-std=c17 -fno-lto -I core/include -I core/src -I <temp>/gen; a
-#   missing include directory is ignored by the compiler; a missing compiler fails, never
-#   skips), each variant is archived with ar, and tools/check/core-symbols.sh checks each archive against the
-#   reviewed allowlist (lists read from CHECK_DIR, so a control cannot replace them).
+#   and at -O2 with ${CC:-cc} (-std=c17 -fno-lto -fno-pie -I core/include -I core/src
+#   -I <temp>/gen; a missing include directory is ignored by the compiler; a missing compiler
+#   fails, never skips), each variant is archived with ar, and tools/check/core-symbols.sh
+#   checks each archive against the reviewed allowlist (lists read from CHECK_DIR, so a control
+#   cannot replace them) and, with --forbid-writable-data, for writable data symbols
+#   (core-symbols-writable; D-07, A-06, H5). -fno-pie keeps an ELF const table with pointers
+#   out of .data.rel.ro, so only real writable data fails. The ctest suite core-symbols stays
+#   imports-only (its dev archive is sanitized).
 # Stage 3, purity self-test: core-symbols.sh must reject an LTO object (lto), a file with the
 #   bitcode magic (bitcode-magic), an archive with zero external definitions (no-definitions),
 #   a missing file (missing-file) and no input at all (no-input, exit 2). Synthetic inputs live
@@ -212,7 +216,7 @@ for opt in O0 O2; do
   set --
   while IFS= read -r src; do
     obj="$tmp/$opt/$(printf '%s' "$src" | tr '/' '_').o"
-    if "$cc" -std=c17 -fno-lto -Wall -Wextra -Werror=implicit-function-declaration \
+    if "$cc" -std=c17 -fno-lto -fno-pie -Wall -Wextra -Werror=implicit-function-declaration \
       -Werror=date-time "-$opt" -I"$ROOT/core/include" -I"$ROOT/core/src" -I"$tmp/gen" \
       -c "$ROOT/$src" -o "$obj" > "$tmp/cc.log" 2>&1; then
       set -- "$@" "$obj"
@@ -231,7 +235,8 @@ done
 
 : > "$tmp/sym.out"
 for opt in O0 O2; do
-  if (cd "$tmp" && sh "$CHECK_DIR/core-symbols.sh" "core-$opt.a") > "$tmp/sym.$opt" 2>&1; then :; else rc=1; fi
+  if (cd "$tmp" && sh "$CHECK_DIR/core-symbols.sh" --forbid-writable-data "core-$opt.a") \
+    > "$tmp/sym.$opt" 2>&1; then :; else rc=1; fi
   grep -v -e '^-- core-symbols pass ' "$tmp/sym.$opt" >> "$tmp/sym.out"
 done
 # The same finding at -O0 and -O2 prints once.
