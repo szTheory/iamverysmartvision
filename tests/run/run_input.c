@@ -1243,6 +1243,132 @@ done:
   return rc;
 }
 
+/* ---- guest invisibility (plan 04-12, D-15) ---- */
+
+/* Stand-in program C at $1000, project-authored and hand-assembled here from the Phase 2 vector
+ * encodings (MVI direct.json cpu.MVI row, 1010 000 ddd + address; MVO, INCR and B as in
+ * tests/machine/machine_standin.c), no assembler and no listing: forever read both PSG I/O ports
+ * into RAM and count.
+ *   $1000 MVI $01FE, R1   $1002 MVO R1, $0200   $1004 MVI $01FF, R2   $1006 MVO R2, $0201
+ *   $1008 INCR R3         $1009 B $1000 (PC+2 $100B, d $00A) */
+static const uint16_t ri_prog_ports[] = {0x0281u, 0x01FEu, 0x0241u, 0x0200u, 0x0282u, 0x01FFu,
+                                         0x0242u, 0x0201u, 0x000Bu, 0x0220u, 0x000Au};
+
+/* A powered instance running program C (GROM and cartridge as content A). */
+static int ri_powered_ports(ivs_ms_inst *x)
+{
+  size_t n = 0u;
+  uint8_t *exec;
+  uint8_t *cart;
+  uint32_t i;
+  if (!ivs_ms_new(x, RI_POISON)) {
+    return 0;
+  }
+  exec = ivs_ms_exec(IVS_MS_PROG_A);
+  if (exec != NULL) {
+    for (i = 0u; i < (uint32_t)(sizeof ri_prog_ports / sizeof ri_prog_ports[0]); i++) {
+      exec[2u * i] = (uint8_t)(ri_prog_ports[i] >> 8);
+      exec[2u * i + 1u] = (uint8_t)(ri_prog_ports[i] & 0xFFu);
+    }
+  }
+  if (!ivs_ms_load(x->m, IVS_KIND_EXEC, exec, IVS_MS_EXEC_BYTES) ||
+      !ivs_ms_load(x->m, IVS_KIND_GROM, ivs_ms_grom(0u), IVS_MS_GROM_BYTES)) {
+    ivs_ms_free(x);
+    return 0;
+  }
+  cart = ivs_ms_cart(0x5000u, 16u, 0u, &n);
+  if (!ivs_ms_load(x->m, IVS_KIND_CARTRIDGE, cart, n) || ivs_machine_reset(x->m, IVS_RESET_POWER_ON) != IVS_OK) {
+    ivs_ms_free(x);
+    return 0;
+  }
+  return 1;
+}
+
+#define RI_INV_EVENTS 10u
+#define RI_INV_UNITS 64u
+
+/* Phase 4 boundary (D-15): the real profile registers no consumer of input, so input is recorded
+ * and digested but guest-invisible. Program C reads $01FE and $01FF in a loop; one instance runs
+ * with no event, its twin with ten events toggling words 0 and 1, both one unit per call (the
+ * twin resubmits its unconsumed suffix). After every call the CPU states (register trace) are
+ * equal; at the end the CPU, MEM and composite digests, the peeked RAM and every instance byte
+ * outside the INPUT row are equal, the twin applied all ten events, and only the INPUT digest
+ * differs. Phase 5 replaces this case when the control-to-byte table makes input guest-visible:
+ * it then becomes a positive read test of the PSG ports (the D-15 revisit point). */
+static int ri_guest_invisible(void)
+{
+  ivs_input_event ev[RI_INV_EVENTS];
+  ivs_ms_inst x;
+  ivs_ms_inst y;
+  uint32_t next = 0u;
+  uint32_t k;
+  uint8_t dx[32];
+  uint8_t dy[32];
+  uint16_t px[4];
+  uint16_t py[4];
+  size_t off = offsetof(struct ivs_machine, obs) + offsetof(ivs_machine_obs, input);
+  size_t len = sizeof(ivs_machine_obs_input);
+  static const uint32_t dom_same[3] = {IVS_DIGEST_CPU, IVS_DIGEST_MEM, IVS_DIGEST_COMPOSITE};
+  int rc = IVS_TEST_FAIL;
+  for (k = 0u; k < RI_INV_EVENTS; k++) {
+    static const uint32_t on[4] = {0x00000FFFu, 0x0001F00Fu, 0u, 0u};
+    ri_event(&ev[k], 20u + 200u * k, (k & 1u) == 0u ? on : ri_zero);
+  }
+  IVS_CHECK(ri_powered_ports(&x));
+  if (!ri_powered_ports(&y)) {
+    ivs_ms_free(&x);
+    return IVS_TEST_FAIL;
+  }
+  for (k = 0u; k < RI_INV_UNITS; k++) {
+    ivs_run_report rx;
+    ivs_run_report ry;
+    ivs_cpu_state_report cx;
+    ivs_cpu_state_report cy;
+    uint64_t target = ri_now(x.m) + 1u;
+    RI_CHECK(ri_run(x.m, 0u, target, NULL, 0u, &rx) == IVS_OK && rx.units_executed == 1u);
+    RI_CHECK(ri_run(y.m, 0u, target, ev + next, RI_INV_EVENTS - next, &ry) == IVS_OK && ry.units_executed == 1u);
+    next += ry.input_consumed;
+    RI_CHECK(rx.now_ticks == ry.now_ticks && rx.stop_reason == ry.stop_reason);
+    memset(&cx, 0, sizeof cx);
+    memset(&cy, 0, sizeof cy);
+    cx.struct_size = (uint32_t)sizeof cx;
+    cy.struct_size = (uint32_t)sizeof cy;
+    RI_CHECK(ivs_machine_cpu_state(x.m, &cx) == IVS_OK && ivs_machine_cpu_state(y.m, &cy) == IVS_OK);
+    if (memcmp(&cx, &cy, sizeof cx) != 0) {
+      ivs_test_diag("register trace differs after unit %u", (unsigned)k);
+      goto done;
+    }
+  }
+  RI_CHECK(next == RI_INV_EVENTS && y.m->obs.input.count == RI_INV_EVENTS);
+  {
+    ivs_cpu_state_report c;
+    memset(&c, 0, sizeof c);
+    c.struct_size = (uint32_t)sizeof c;
+    RI_CHECK(ivs_machine_cpu_state(x.m, &c) == IVS_OK);
+    RI_CHECK(c.r[3] >= 8u && c.r[7] >= 0x1000u && c.r[7] <= 0x100Au); /* program C looped */
+  }
+  for (k = 0u; k < 3u; k++) {
+    RI_CHECK(ivs_machine_state_digest(x.m, dom_same[k], dx) == IVS_OK);
+    RI_CHECK(ivs_machine_state_digest(y.m, dom_same[k], dy) == IVS_OK);
+    RI_CHECK(memcmp(dx, dy, 32u) == 0);
+  }
+  RI_CHECK(ivs_machine_state_digest(x.m, IVS_DIGEST_INPUT, dx) == IVS_OK);
+  RI_CHECK(ivs_machine_state_digest(y.m, IVS_DIGEST_INPUT, dy) == IVS_OK);
+  RI_CHECK(memcmp(dx, dy, 32u) != 0);
+  RI_CHECK(ivs_machine_peek(x.m, 0x0200u, 2u, px) == IVS_OK && ivs_machine_peek(x.m, 0x01FEu, 2u, px + 2) == IVS_OK);
+  RI_CHECK(ivs_machine_peek(y.m, 0x0200u, 2u, py) == IVS_OK && ivs_machine_peek(y.m, 0x01FEu, 2u, py + 2) == IVS_OK);
+  RI_CHECK(memcmp(px, py, sizeof px) == 0);
+  RI_CHECK(px[0] == px[2] && px[1] == px[3]); /* the program stored what the ports read */
+  RI_CHECK(memcmp(x.storage, y.storage, off) == 0);
+  RI_CHECK(memcmp((const uint8_t *)x.storage + off + len, (const uint8_t *)y.storage + off + len,
+                  IVS_MACHINE_BYTES - off - len) == 0);
+  rc = IVS_TEST_PASS;
+done:
+  ivs_ms_free(&x);
+  ivs_ms_free(&y);
+  return rc;
+}
+
 const ivs_test_case ivs_run_input_cases[] = {
     {"run.input.event-size", ri_event_size, NULL},
     {"run.input.one-event", ri_one_event, NULL},
@@ -1268,6 +1394,7 @@ const ivs_test_case ivs_run_input_cases[] = {
     {"run.input.refuse.event-reserved", ri_refuse_event_reserved, NULL},
     {"run.input.refuse.extra-controller-word", ri_refuse_extra_controller, NULL},
     {"run.input.extra-word-zero-ok", ri_extra_word_zero_ok, NULL},
+    {"run.input.guest-invisible", ri_guest_invisible, NULL},
     {"run.prec.unsupported-over-events", ri_prec_unsupported_over_events, NULL},
     {"run.prec.buffer-over-events", ri_prec_buffer_over_events, NULL},
     {"run.prec.events-over-state", ri_prec_events_over_state, NULL},
