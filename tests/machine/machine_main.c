@@ -58,7 +58,7 @@ static const char *ivs_machine_skip(const void *data, size_t i)
   return i < ivs_machine_n_cases ? ivs_machine_all[i].skip : ivs_machine_refuse_skip(i - ivs_machine_n_cases);
 }
 
-static int ivs_machine_run(const void *data, size_t i)
+static int ivs_machine_suite_run(const void *data, size_t i)
 {
   (void)data;
   return i < ivs_machine_n_cases ? ivs_machine_all[i].fn() : ivs_machine_refuse_run(i - ivs_machine_n_cases);
@@ -86,7 +86,7 @@ int main(int argc, char **argv)
   suite.count = n + ivs_machine_refuse_count();
   suite.id = ivs_machine_id;
   suite.skip = ivs_machine_skip;
-  suite.run = ivs_machine_run;
+  suite.run = ivs_machine_suite_run;
   suite.sources = ivs_machine_all_sources;
   suite.n_sources = ns;
   return ivs_test_main(argc, argv, &suite);

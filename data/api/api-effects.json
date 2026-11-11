@@ -383,6 +383,24 @@
           "tests": ["run.refuse.peek.range-end", "run.refuse.peek.range-before-overlap"]
         }
       ]
+    },
+    {
+      "name": "ivs_machine_run",
+      "header": "core/include/ivs/ivs_run.h",
+      "on_ok": "Runs a POWERED machine to the absolute target req->target_ticks in master ticks (D-01): while machine time is below the target it steps one CPU unit through the internal step seam, so it ends at the first unit boundary at or after the target (run.target.ends-at-first-boundary-ge-target, run.target.on-boundary-no-overshoot); a target at or below now runs nothing (run.target.already-reached). The report holds the stop reason, the CPU run state and fault reason at exit, now_ticks, overshoot_ticks = max(now - target, 0) (run.overshoot.equals-now-minus-target), elapsed_ticks and units_executed. No state is kept between calls; run(now + 1) is exactly one unit (run.single-step.equals-seam).",
+      "precedence": [],
+      "notes": [
+        "Plan 04-07 Task 1 (tracer): the refusal ladder and its rows land with the stop reasons in Task 2."
+      ],
+      "refusals": []
+    },
+    {
+      "name": "ivs_run_stop_name",
+      "header": "core/include/ivs/ivs_run.h",
+      "on_ok": "Returns the static, constant name of a stop reason (\"IVS_STOP_TARGET\", \"IVS_STOP_CPU_HALTED\", \"IVS_STOP_GUEST_FAULT\", \"IVS_STOP_INTERNAL\") or \"IVS_STOP_UNKNOWN\" for a value that is not one. Cannot refuse and touches no instance.",
+      "precedence": [],
+      "notes": [],
+      "refusals": []
     }
   ]
 }

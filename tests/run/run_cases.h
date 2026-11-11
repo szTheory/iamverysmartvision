@@ -19,6 +19,11 @@
 extern const ivs_test_case ivs_run_observe_cases[];
 extern const size_t ivs_run_observe_count;
 
+/* Family bound (plan 04-07, D-01..D-05): ivs_machine_run targets, overshoot, single step, stop
+ * reasons, the refusal ladder and stop names (run_bound.c). */
+extern const ivs_test_case ivs_run_bound_cases[];
+extern const size_t ivs_run_bound_count;
+
 /* ---- the refusal and side-effect oracle (SP4), shared by the run families ----
  * A snapshot holds a heap copy of the whole instance storage, the composite and the seven domain
  * digests (1..4, 16..18) and info's time_ticks; a destroyed instance has no digests or info. */

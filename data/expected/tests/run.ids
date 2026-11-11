@@ -28,3 +28,12 @@ run.refuse.peek.bad-handle
 run.refuse.peek.out-inside-instance
 run.refuse.peek.range-end
 run.refuse.peek.range-before-overlap
+# Family bound (plan 04-07, D-01..D-05): ivs_machine_run to an absolute master-tick target. The
+# expected boundaries come from a reference twin stepped unit by unit through the internal seam;
+# targets inside a unit, on a boundary and already reached; overshoot over a window of targets;
+# run(now + 1) equals one seam step.
+run.target.ends-at-first-boundary-ge-target
+run.target.on-boundary-no-overshoot
+run.target.already-reached
+run.overshoot.equals-now-minus-target
+run.single-step.equals-seam

@@ -30,7 +30,8 @@ int main(int argc, char **argv)
 {
   ivs_test_suite suite;
   size_t n = 0;
-  if (ivs_run_add(&n, ivs_run_observe_cases, ivs_run_observe_count) != 0) {
+  if (ivs_run_add(&n, ivs_run_observe_cases, ivs_run_observe_count) != 0 ||
+      ivs_run_add(&n, ivs_run_bound_cases, ivs_run_bound_count) != 0) {
     return 1;
   }
   ivs_test_suite_from_cases(&suite, "run", ivs_run_all, n);
