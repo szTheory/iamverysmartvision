@@ -5,15 +5,21 @@
 # violation is always reported by its own token and never masked by a compile failure):
 #   - every FILELIST path core/src/**/*.c, core/src/**/*.h and core/include/**/*.h (the public
 #     tree, same rules as core/src; A-06, plan 03-03): every #include or #import line
-#     is checked (c-purity-include). An angle include may name only stdint.h, stddef.h,
+#     is checked (c-purity-include). A directive is recognised after block comments (a comment
+#     counts as whitespace, also one opened on an earlier line) and with `#` spelled `%:` (the
+#     digraph) or `??=` (the trigraph); any other `#` or `%:` followed by include or import outside
+#     comments and literals fails closed (review WR-04). An angle include may name only stdint.h, stddef.h,
 #     stdbool.h, limits.h or string.h; a quoted include must name a FILELIST header under
 #     core/src or core/include, as a path from core/src, from core/include or from the including
 #     file's directory, so `#include "stdio.h"` (resolved through the system path) and a header
 #     that exists only outside both trees fail; any other form (a computed
-#     `#include MACRO`, #include_next, a continuation or a comment before the operand) fails
-#     closed (review WR-02). After removing comments and string
-#     and character literals, the words asm, __asm, __asm__, __builtin_readcyclecounter,
-#     __builtin_ia32_rdtsc, __rdtsc, __rdtscp and syscall fail (c-purity-asm), and so does a
+#     `#include MACRO`, #include_next, a continuation, or a comment opened before the operand
+#     and closed on a later line) fails closed (review WR-02). After removing comments and string
+#     and character literals, the words asm, __asm, __asm__ and syscall fail (c-purity-asm), and
+#     so does every word with a prefix of an inline host-instruction intrinsic: __builtin_arm_,
+#     __builtin_aarch64_, __builtin_ia32_, __builtin_ppc_, __builtin_read (readcyclecounter,
+#     readsteadycounter), __arm_ (ACLE register reads), __rdtsc, _rdtsc, __rdrand, _rdrand,
+#     __rdseed, _rdseed (counters and hardware randomness, review WR-04); and so does a
 #     floating literal (c-purity-float-literal): a decimal number with `.` or an exponent, or a
 #     hex number with `.` or a `p` exponent; integer hex constants such as 0x3E4u and comment
 #     cites such as `pdf 49` are not numbers here;
@@ -115,8 +121,13 @@ fi
 scan() { # $1 reported path, $2 1 for a .c file, 0 for a header, $3 file to read (default ROOT/$1)
   awk -v file="$1" -v isc="$2" -v hlist="$tmp/hsrc" -v glist="$tmp/genlist" '
     function report(t) { print t " " file ":" NR }
+    function asmword(w,   k) {
+      if (w in asmw) return 1
+      for (k = 1; k <= nasmp; k++) if (index(w, asmp[k]) == 1) return 1
+      return 0
+    }
     function word(w) {
-      if (w in asmw) report("c-purity-asm")
+      if (asmword(w)) report("c-purity-asm")
       else if (isc && (w == "float" || w == "double")) report("c-purity-float-type")
     }
     function number(s) {
@@ -126,8 +137,9 @@ scan() { # $1 reported path, $2 1 for a .c file, 0 for a header, $3 file to read
     BEGIN {
       split("stdint.h stddef.h stdbool.h limits.h string.h", a, " ")
       for (k in a) okh[a[k]] = 1
-      split("asm __asm __asm__ __builtin_readcyclecounter __builtin_ia32_rdtsc __rdtsc __rdtscp syscall", b, " ")
+      split("asm __asm __asm__ syscall", b, " ")
       for (k in b) asmw[b[k]] = 1
+      nasmp = split("__builtin_arm_ __builtin_aarch64_ __builtin_ia32_ __builtin_ppc_ __builtin_read __arm_ __rdtsc _rdtsc __rdrand _rdrand __rdseed _rdseed", asmp, " ")
       while ((getline hp < hlist) > 0) corehdr[hp] = 1
       close(hlist)
       while ((getline gp < glist) > 0) genname[gp] = 1
@@ -137,12 +149,22 @@ scan() { # $1 reported path, $2 1 for a .c file, 0 for a header, $3 file to read
     }
     {
       line = $0
-      if (!incomment && line ~ /^[[:space:]]*#[[:space:]]*(include|import)/) {
-        if (isc && !seen_inc && line !~ /^[[:space:]]*#[[:space:]]*include[[:space:]]*"([^"]*\/)?ivs_prelude\.h"/)
+      # The line as the preprocessor sees its start: the rest of a comment opened on an earlier
+      # line, and every whole block comment, become a space (C17 5.1.1.2: a comment is one space).
+      lead = line
+      if (incomment) {
+        k = index(lead, "*/")
+        lead = k > 0 ? " " substr(lead, k + 2) : ""
+      }
+      gsub(/\/\*([^*]|\*+[^*\/])*\*+\//, " ", lead)
+      directive = 0
+      if (lead ~ /^[[:space:]]*(#|%:|[?][?]=)[[:space:]]*(include|import)/) {
+        directive = 1
+        if (isc && !seen_inc && lead !~ /^[[:space:]]*(#|%:|[?][?]=)[[:space:]]*include[[:space:]]*"([^"]*\/)?ivs_prelude\.h"/)
           report("c-purity-prelude")
         seen_inc = 1
-        rest = line
-        sub(/^[[:space:]]*#[[:space:]]*(include|import)/, "", rest)
+        rest = lead
+        sub(/^[[:space:]]*(#|%:|[?][?]=)[[:space:]]*(include|import)/, "", rest)
         if (rest ~ /^[A-Za-z0-9_]/) report("c-purity-include")
         else {
           sub(/^[[:space:]]*/, "", rest)
@@ -165,6 +187,12 @@ scan() { # $1 reported path, $2 1 for a .c file, 0 for a header, $3 file to read
         }
         if (c == "/" && substr(line, i + 1, 1) == "*") { incomment = 1; i += 2; continue }
         if (c == "/" && substr(line, i + 1, 1) == "/") break
+        if (!directive && (c == "#" || (c == "%" && substr(line, i + 1, 1) == ":"))) {
+          # `#` or `%:` then include or import, anywhere but a recognised directive: fail closed.
+          r = substr(line, i + (c == "#" ? 1 : 2))
+          sub(/^[[:space:]]*/, "", r)
+          if (r ~ /^(include|import)([^A-Za-z0-9_]|$)/) report("c-purity-include")
+        }
         if (c == "\"" || c == "\047") {
           q = c; i++
           while (i <= n) {

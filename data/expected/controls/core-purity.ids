@@ -22,3 +22,9 @@ core-purity-generated-missing
 # Writable-data rule and compiler-introduced libc calls (plan 03-03, D-07, Pitfall 4).
 core-purity-strlen
 core-purity-static-mutable
+# Directive forms and inline counter or randomness intrinsics (review WR-04).
+core-purity-include-comment-prefix
+core-purity-include-digraph
+core-purity-arm-counter
+core-purity-steady-counter
+core-purity-hw-random
