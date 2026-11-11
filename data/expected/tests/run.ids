@@ -180,3 +180,8 @@ run.struct.v1-sizes-lp64 skip-ok
 # tools/pack into the build tree) with a 2048-byte zero GROM, from a power-on reset through the
 # public API: R7 at unit starts 1000, 1010, 1011, 1013, 5000.
 run.stub.path
+# Trap (plan 04-14, D-29): one INTR pulse at 5000 enters 1004, writes [035F] = 1 and halts at 100A;
+# halt-needs-follower shows HLT stopping only after its TSTR R0 follower, and with the follower
+# patched to a zero word the CPU runs on to 1013 (zero fill is not a trap).
+run.stub.trap
+run.stub.halt-needs-follower
