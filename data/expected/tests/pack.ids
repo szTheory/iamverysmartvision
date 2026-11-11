@@ -1,4 +1,6 @@
 # Suite pack (plan 04-15, D-26): per listing of data/expected/listings.ids, ivs_pack --dump-words
 # equals the listing step's own parse (cmake -DDUMP=<id> -P tools/check/listing.cmake) byte for
-# byte. Plan 04-16 adds the diagnostic's ids.
+# byte. pack.trailer-<id> (plan 04-16): the IVSC trailer of a cart listing equals cmake -E sha256sum
+# of the container minus its last 32 bytes.
 pack.words-boot-stub
+pack.words-diag-cpu-1

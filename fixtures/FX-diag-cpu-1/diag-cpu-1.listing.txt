@@ -1,0 +1,107 @@
+# id: diag-cpu-1
+# kind: cart
+# profile: intv-2609-ntsc-family-p1
+# window: 5000-5037
+# label: ivs-diag-cpu-1, the first project-authored CPU diagnostic
+# entry: 5000
+# stack: 0340
+#
+# Project-authored diagnostic (D-25, D-31), MIT like the rest of the repository. tools/pack builds
+# it into one IVSC v1 segment at 5000 (56 words) in the build tree; no image is committed. It is
+# entered through the project boot stub (fixtures/FX-boot-stub/boot-stub.listing.txt, contract 1),
+# which jumps to 5000 with R6 = 0340. Both numbers are project conventions with no hardware or
+# first-party source (discrepancy C68), so the program sets every other register it uses before
+# using it. It uses no SDBD, no shift, no interrupt, and no STIC, PSG, GROM or graphics RAM address;
+# every store goes to system RAM (0200-035F, 16 bits wide).
+#
+# Sections (the expected values and their derivation are in data/golden/diag-cpu-1.expect):
+#   S1 flags   5000-5018  R0 = 03FF doubled five times (7FE0), + 001F = 7FFF stored at 0200; INCR
+#                         (S and Z only) and then GSWD R1 to 0201; DECR, ADDI #1 (all four flags)
+#                         and GSWD R2 to 0202; ADDR R0,R0 (carry, zero and overflow) and GSWD R3 to
+#                         0203. INCR and ADD differ in which flags they write.
+#   S2 loop    5019-5021  R2 = 10, R3 = 0; R3 += R2, R2 -= 1, back while R2 is not zero: the sum
+#                         1..10 = 0037 stored at 0204.
+#   S3 stack   5022-5028  PSHR R3, PULR R5 round trip through the stack at 0340; R5 to 0205 and the
+#                         restored stack pointer (MOVR R6,R0) to 0206.
+#   S4 indirect 5029-502F MVI@ R4,R0 from 0200 with R4 auto-incremented; R4 to 0207, R0 to 0208.
+#   End        5030-5037  the end marker 03C5 written last at 020F, then HLT and three TSTR R0
+#                         followers: HLT stops the CPU only after the next instruction and only at
+#                         an interruptible boundary (D-29; C40, C45, C56), and three followers keep
+#                         the stop inside this listing under every reading of that rule.
+#
+# Line grammar (D-26): ADDR HEX4 BITS ROW ASM, as in the boot stub listing: BITS split at the
+# printed field boundaries for an instruction word and as 2+4+4 for an operand word; ROW is the
+# leaf row of data/cp1610/opcode-families.json or - for an operand word.
+#
+# Derivation of the encodings (hand-assembled; no assembler; nothing copied from another
+# implementation; "pdf N" is a page of the GI CP-1600 Microprocessor Users Manual,
+# SRC-gi-cp1600-um-1975; register numbers are 3-bit fields, R0 = 000 ... R7 = 111):
+#   MVII  1010 111 DDD, then the immediate word (immediate table, pdf 57).
+#   ADDI  1011 111 DDD, then the immediate word (immediate table, pdf 57).
+#   ADDR  0011 SSS DDD; MOVR 0010 SSS DDD; TSTR 0010 SSS SSS; CLRR 0111 DDD DDD; INCR 0000 001 DDD;
+#         DECR 0000 010 DDD (register-register table, pdf 53).
+#   GSWD  0000 110 0DD (control table, pdf 56); HLT 0000 000 000 (control table, pdf 56).
+#   MVO   1001 000 SSS, then the address word (direct table, pdf 55).
+#   PSHR  1001 110 SSS; PULR 1010 110 DDD; MVI@ 1010 MMM DDD with MMM = 100 for R4 (indirect
+#         table, pdf 55).
+#   BNZE  1000 S0 1100, then the displacement word; S = 1 is backward: the displacement is one's
+#         complemented and added to PC + 2 (branch table, pdf 54).
+# Branch arithmetic of the loop: BNZE at 501E, PC + 2 = 5020, target 501C; 5020 + ~d = 501C, so
+#   5020 - d - 1 = 501C and d = 0003; first decle 10 0010 1100 = 022C.
+# Words used: 56 (5000-5037).
+5000 02B8 1010 111 000  MVII  MVII #$03FF, R0     S1: R0 = 03FF
+5001 03FF 11 1111 1111  -     immediate 03FF
+5002 00C0 0011 000 000  ADDR  ADDR R0, R0         R0 = 07FE
+5003 00C0 0011 000 000  ADDR  ADDR R0, R0         R0 = 0FFC
+5004 00C0 0011 000 000  ADDR  ADDR R0, R0         R0 = 1FF8
+5005 00C0 0011 000 000  ADDR  ADDR R0, R0         R0 = 3FF0
+5006 00C0 0011 000 000  ADDR  ADDR R0, R0         R0 = 7FE0
+5007 02F8 1011 111 000  ADDI  ADDI #$001F, R0     R0 = 7FFF; S Z C OV all 0
+5008 001F 00 0001 1111  -     immediate 001F
+5009 0240 1001 000 000  MVO   MVO R0, $0200       [0200] = 7FFF
+500A 0200 10 0000 0000  -     address 0200
+500B 0008 0000 001 000  INCR  INCR R0             R0 = 8000; S = 1, Z = 0; C and OV keep 0
+500C 0031 0000 110 001  GSWD  GSWD R1             R1 = 8080
+500D 0241 1001 000 001  MVO   MVO R1, $0201       [0201] = 8080
+500E 0201 10 0000 0001  -     address 0201
+500F 0010 0000 010 000  DECR  DECR R0             R0 = 7FFF
+5010 02F8 1011 111 000  ADDI  ADDI #$0001, R0     R0 = 8000; S = 1, Z = 0, C = 0, OV = 1
+5011 0001 00 0000 0001  -     immediate 0001
+5012 0032 0000 110 010  GSWD  GSWD R2             R2 = A0A0
+5013 0242 1001 000 010  MVO   MVO R2, $0202       [0202] = A0A0
+5014 0202 10 0000 0010  -     address 0202
+5015 00C0 0011 000 000  ADDR  ADDR R0, R0         R0 = 0000; S = 0, Z = 1, C = 1, OV = 1
+5016 0033 0000 110 011  GSWD  GSWD R3             R3 = 7070
+5017 0243 1001 000 011  MVO   MVO R3, $0203       [0203] = 7070
+5018 0203 10 0000 0011  -     address 0203
+5019 02BA 1010 111 010  MVII  MVII #$000A, R2     S2: R2 = 10
+501A 000A 00 0000 1010  -     immediate 000A
+501B 01DB 0111 011 011  CLRR  CLRR R3             R3 = 0
+501C 00D3 0011 010 011  ADDR  ADDR R2, R3         loop: R3 = R3 + R2
+501D 0012 0000 010 010  DECR  DECR R2             R2 = R2 - 1; Z = 1 when it reaches 0
+501E 022C 1000 10 1100  BNZE  BNZE $501C          back to 501C while Z = 0
+501F 0003 00 0000 0011  -     displacement 0003 (S=1): 5020 + ~0003 = 501C
+5020 0243 1001 000 011  MVO   MVO R3, $0204       [0204] = 0037
+5021 0204 10 0000 0100  -     address 0204
+5022 0273 1001 110 011  PSHR  PSHR R3             S3: [0340] = 0037, R6 = 0341
+5023 02B5 1010 110 101  PULR  PULR R5             R6 = 0340, R5 = [0340] = 0037
+5024 0245 1001 000 101  MVO   MVO R5, $0205       [0205] = 0037
+5025 0205 10 0000 0101  -     address 0205
+5026 00B0 0010 110 000  MOVR  MOVR R6, R0         R0 = 0340
+5027 0240 1001 000 000  MVO   MVO R0, $0206       [0206] = 0340
+5028 0206 10 0000 0110  -     address 0206
+5029 02BC 1010 111 100  MVII  MVII #$0200, R4     S4: R4 = 0200
+502A 0200 10 0000 0000  -     immediate 0200
+502B 02A0 1010 100 000  MVI@  MVI@ R4, R0         R0 = [0200] = 7FFF, R4 = 0201
+502C 0244 1001 000 100  MVO   MVO R4, $0207       [0207] = 0201
+502D 0207 10 0000 0111  -     address 0207
+502E 0240 1001 000 000  MVO   MVO R0, $0208       [0208] = 7FFF
+502F 0208 10 0000 1000  -     address 0208
+5030 02B8 1010 111 000  MVII  MVII #$03C5, R0     End: R0 = 03C5
+5031 03C5 11 1100 0101  -     immediate 03C5
+5032 0240 1001 000 000  MVO   MVO R0, $020F       [020F] = 03C5, the end marker, written last
+5033 020F 10 0000 1111  -     address 020F
+5034 0000 0000 000 000  HLT   HLT                 sets the stop latch; the next instruction still runs
+5035 0080 0010 000 000  TSTR  TSTR R0             follower 1
+5036 0080 0010 000 000  TSTR  TSTR R0             follower 2
+5037 0080 0010 000 000  TSTR  TSTR R0             follower 3
