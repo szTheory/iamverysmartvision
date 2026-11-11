@@ -136,14 +136,11 @@ ivs_status ivs_machine_storage_requirements(const char *profile_id, ivs_storage_
 {
   ivs_storage_requirements r;
   uint32_t index = 0u;
-  uint32_t len = 0u;
   ivs_status st;
   if (req == NULL || req->struct_size < (uint32_t)sizeof(ivs_storage_requirements)) {
     return IVS_E_BAD_ARG;
   }
-  if (ivs_machine_profile_id_length(profile_id, &len) != IVS_OK) {
-    return IVS_E_BAD_ARG;
-  }
+  /* BAD_ARG for a NULL or unterminated id, then UNKNOWN_PROFILE, both from the lookup. */
   st = ivs_machine_profile_lookup(profile_id, &index);
   if (st != IVS_OK) {
     return st;
