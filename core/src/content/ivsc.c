@@ -62,7 +62,9 @@ ivs_status ivs_ivsc_parse(const uint8_t *bytes, size_t len, ivs_ivsc_view *view,
   uint64_t n_seg;
   uint64_t words;
   uint64_t data_at;
+  uint64_t wrap_limit;
   uint32_t features;
+  uint32_t word_max;
   uint32_t diff;
   uint32_t i;
   uint32_t k;
@@ -112,6 +114,9 @@ ivs_status ivs_ivsc_parse(const uint8_t *bytes, size_t len, ivs_ivsc_view *view,
     return ivsc_refuse(rep, IVS_E_MALFORMED, IVS_IVSC_R_TRAILING, IVS_IVSC_NO_SEGMENT, total, features);
   }
   n_seg = (uint64_t)ivsc_be16(bytes + IVSC_OFF_COUNT);
+#ifdef IVS_FAULT_IVSC_COUNT_17
+  if (n_seg == IVS_IVSC_MAX_SEGMENTS + 1u) n_seg = IVS_IVSC_MAX_SEGMENTS; /* 17 passes; table read as 16 */
+#endif
   if (n_seg == 0u || n_seg > IVS_IVSC_MAX_SEGMENTS) {
     return ivsc_refuse(rep, IVS_E_MALFORMED, IVS_IVSC_R_SEGMENT_COUNT, IVS_IVSC_NO_SEGMENT, IVSC_OFF_COUNT, features);
   }
@@ -121,6 +126,10 @@ ivs_status ivs_ivsc_parse(const uint8_t *bytes, size_t len, ivs_ivsc_view *view,
   if (total < IVS_IVSC_PREFIX_BYTES + n_seg * (IVS_IVSC_ENTRY_BYTES + 2u) + IVS_IVSC_TRAILER_BYTES) {
     return ivsc_refuse(rep, IVS_E_MALFORMED, IVS_IVSC_R_SIZE_MISMATCH, IVS_IVSC_NO_SEGMENT, IVSC_OFF_TOTAL, features);
   }
+  wrap_limit = IVS_IVSC_ADDRESS_SPACE_WORDS;
+#ifdef IVS_FAULT_IVSC_END_OFF_BY_ONE
+  wrap_limit = IVS_IVSC_ADDRESS_SPACE_WORDS - 1u;
+#endif
   memset(&v, 0, sizeof v);
   words = 0u;
   data_at = IVS_IVSC_PREFIX_BYTES + n_seg * IVS_IVSC_ENTRY_BYTES;
@@ -141,7 +150,7 @@ ivs_status ivs_ivsc_parse(const uint8_t *bytes, size_t len, ivs_ivsc_view *view,
     if (ivsc_be16(e + IVSC_ENT_RESERVED) != 0u) {
       return ivsc_refuse(rep, IVS_E_MALFORMED, IVS_IVSC_R_SEGMENT_RESERVED, i, at + IVSC_ENT_RESERVED, features);
     }
-    if ((uint64_t)addr + (uint64_t)len_words > IVS_IVSC_ADDRESS_SPACE_WORDS) {
+    if ((uint64_t)addr + (uint64_t)len_words > wrap_limit) {
       return ivsc_refuse(rep, IVS_E_OUT_OF_RANGE, IVS_IVSC_R_ADDR_WRAP, i, at + IVSC_ENT_ADDR, features);
     }
     v.segs[i].addr = (uint16_t)addr;
@@ -149,7 +158,11 @@ ivs_status ivs_ivsc_parse(const uint8_t *bytes, size_t len, ivs_ivsc_view *view,
     v.segs[i].data_byte_offset = (uint32_t)(data_at + 2u * words);
     words += (uint64_t)len_words;
   }
-  if (data_at + 2u * words + IVS_IVSC_TRAILER_BYTES != total) {
+  diff = (uint32_t)(data_at + 2u * words + IVS_IVSC_TRAILER_BYTES != total);
+#ifdef IVS_FAULT_IVSC_TRUST_TOTAL_BYTES
+  diff = (uint32_t)(data_at + 2u * words + IVS_IVSC_TRAILER_BYTES > total);
+#endif
+  if (diff != 0u) {
     return ivsc_refuse(rep, IVS_E_MALFORMED, IVS_IVSC_R_SIZE_MISMATCH, IVS_IVSC_NO_SEGMENT, IVSC_OFF_TOTAL, features);
   }
 
@@ -162,6 +175,9 @@ ivs_status ivs_ivsc_parse(const uint8_t *bytes, size_t len, ivs_ivsc_view *view,
     uint64_t start = v.segs[i].addr;
     uint64_t prev_start = v.segs[i - 1u].addr;
     uint64_t prev_end = prev_start + (uint64_t)v.segs[i - 1u].len_words;
+#ifdef IVS_FAULT_IVSC_ADJACENT_AS_OVERLAP
+    prev_end += 1u;
+#endif
     if (start < prev_start) {
       return ivsc_refuse(rep, IVS_E_MALFORMED, IVS_IVSC_R_ORDER, i, at, features);
     }
@@ -176,16 +192,23 @@ ivs_status ivs_ivsc_parse(const uint8_t *bytes, size_t len, ivs_ivsc_view *view,
   for (k = 0u; k < IVS_SHA256_DIGEST_BYTES; k++) {
     diff |= (uint32_t)(digest[k] ^ bytes[(size_t)(total - IVS_IVSC_TRAILER_BYTES) + k]);
   }
+#ifdef IVS_FAULT_IVSC_SKIP_DIGEST
+  diff = 0u;
+#endif
   if (diff != 0u) {
     return ivsc_refuse(rep, IVS_E_DIGEST_MISMATCH, IVS_IVSC_R_DIGEST, IVS_IVSC_NO_SEGMENT,
                        total - IVS_IVSC_TRAILER_BYTES, features);
   }
 
   /* 8. Word range: a word above 0x3FF is refused, never masked; the first one is reported. */
+  word_max = IVS_IVSC_WORD_MAX;
+#ifdef IVS_FAULT_IVSC_ACCEPT_WORD_400
+  word_max = IVS_IVSC_WORD_MAX + 1u;
+#endif
   for (i = 0u; i < (uint32_t)n_seg; i++) {
     uint64_t at = v.segs[i].data_byte_offset;
     for (k = 0u; k < (uint32_t)v.segs[i].len_words; k++) {
-      if (ivsc_be16(bytes + (size_t)(at + 2u * (uint64_t)k)) > IVS_IVSC_WORD_MAX) {
+      if (ivsc_be16(bytes + (size_t)(at + 2u * (uint64_t)k)) > word_max) {
         return ivsc_refuse(rep, IVS_E_MALFORMED, IVS_IVSC_R_WORD_RANGE, i, at + 2u * (uint64_t)k, features);
       }
     }

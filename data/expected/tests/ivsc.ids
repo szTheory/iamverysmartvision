@@ -46,6 +46,7 @@ ivsc.N30-trailer-31-bytes
 ivsc.N31-digest-and-word
 ivsc.N32-magic-and-short
 ivsc.N33-version-and-flags
+ivsc.N34-table-short
 ivsc.P01-min
 ivsc.P02-two-segments
 ivsc.P03-word-patterns

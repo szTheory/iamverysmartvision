@@ -16,8 +16,8 @@
   "outputs": [
     {
       "path": "data/cart/ivsc-parse.json",
-      "sha256": "64a2d42c5d1714737f0621c82153cb2caef4d63382a50cd8d6891f9931195224",
-      "size_bytes": 20599
+      "sha256": "9ded845c39f9e9b977fe644c0ac1eddba49deeabfc18a80c1d9e98dbbe95b8e6",
+      "size_bytes": 21033
     }
   ],
   "licence": "MIT",

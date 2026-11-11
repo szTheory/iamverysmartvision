@@ -451,6 +451,15 @@
       "patch": [{"offset": 8, "hex": "0002"}, {"offset": 10, "hex": "0001"}],
       "reseal": true,
       "expect": {"status": "MALFORMED", "reason": "version", "byte_offset": 8}
+    },
+    {
+      "id": "ivsc.N34-table-short",
+      "kind": "patch",
+      "note": "The second segment claims one word: the table implies 80 bytes, total_bytes and the length say 82, so two bytes lie between the data and the trailer.",
+      "base": "ivsc.P02-two-segments",
+      "patch": [{"offset": 34, "hex": "0001"}],
+      "reseal": true,
+      "expect": {"status": "MALFORMED", "reason": "size-mismatch", "byte_offset": 16}
     }
   ]
 }
