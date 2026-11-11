@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 4
 current_phase_name: Headless Runner and Installed Consumer (Slice 0)
 status: executing
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-11-11T16:12:28.756Z"
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-11-11T16:26:38.115Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 3 complete, transitioned to Phase 4
-state_head: ae7a35cd1f12f22c627874eb7f8d4e38bb2c79f2
+state_head: 512e26c70ddbd145d647b739e4ba974f90adb6f3
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 71
-  completed_plans: 47
+  completed_plans: 48
   percent: 38
 ---
 
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 4 — Headless Runner and Installed Consumer (Slice 0)
-Plan: 2 of 25
+Plan: 3 of 25
 Status: Ready to execute
-Last activity: 2026-11-11 — Completed 04-01 (CI measurement, job summary, ci-parity bans)
+Last activity: 2026-11-11 — Completed 04-02 (hosted run record, ci-log step, D-45 budget rule)
 
 Progress: [████░░░░░░] 38%
 
@@ -101,6 +101,7 @@ Progress: [████░░░░░░] 38%
 | Phase 03 P13 | 10min | 3 tasks | 46 files |
 | Phase 03 P14 | 12min | 3 tasks | 4 files |
 | Phase 04 P01 | 45min | 3 tasks | 36 files |
+| Phase 04 P02 | 15min | 2 tasks | 19 files |
 
 ## Accumulated Context
 
@@ -222,6 +223,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 03]: D5 recorded as decided by D-24 in reset.r7, C32 and C25; hardware read-back stays D10, boot stub stays Phase 4
 - [Phase 03]: Hosted gate budget re-baselined 30 s -> 40 s, revisit trigger 50 s (D-38, A-07); no lever applied at phase end
 - [Phase 04]: 04-01: gate.sh prints gate-env/gate-cpu (POSIX times via 'command times' in the main shell after the controls wait); job summary only through the EXIT-trap helper tools/check/ci-summary.sh; ci-parity bans any action but actions/checkout, secrets, strategy, runs-on other than ubuntu-24.04 and a gate timeout other than 5
+- [Phase 04]: 04-02: ci-record.sh converts ISO times with awk civil-date arithmetic in the shared parser (offline --from-files tests it); ci-log also requires digit run ids and 40-hex shas
+- [Phase 04]: 04-02: PKG-04 stays Pending until hosted rows exist in .planning/ci-runs.tsv; orchestrator runs tools/ci-record.sh after each hosted run and evaluates D-45 after 04-10 and 04-19
 
 ### Pending Todos
 
@@ -254,6 +257,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-11T16:12:21.386Z
-Stopped at: Completed 04-01-PLAN.md
+Last session: 2026-11-11T16:26:38.014Z
+Stopped at: Completed 04-02-PLAN.md
 Resume file: None
