@@ -21,8 +21,9 @@ RUN_TARGET_UNCHECKED run.refuse.target-above-2-63 run.refuse.target-above-2-63|r
 # plan 04-09, the slicing family run.slice.* (its per-call oracle ends at the first boundary at or
 # after each target); from plan 04-10 the accepted buffer runs run.buffers.* (they expect
 # now >= target); from plan 04-11 the input family run.input.* (its calls end at the first
-# boundary at or after targets inside units).
-RUN_STOP_BEFORE_OVERSHOOT run.target.ends-at-first-boundary-ge-target run.target.|run.overshoot.|run.single-step.|run.stop.halt-no-flag|run.refuse.report-inside-instance|run.refuse.tail-nonzero|run.slice.|run.buffers.|run.input. run.stop-name.known
+# boundary at or after targets inside units); from plan 04-13 the seeded fuzz run.fuzz.* (its
+# reference expects one unit per run(now + 1) call).
+RUN_STOP_BEFORE_OVERSHOOT run.target.ends-at-first-boundary-ge-target run.target.|run.overshoot.|run.single-step.|run.stop.halt-no-flag|run.refuse.report-inside-instance|run.refuse.tail-nonzero|run.slice.|run.buffers.|run.input.|run.fuzz. run.stop-name.known
 # RUN_FAULT_STEPS: a FAULTED CPU is stepped (a zero-progress unit, counted) and the stop order
 # tests the target before the fault, so a fault on the target boundary reports TARGET and later
 # calls execute a unit. Collateral: every guest-fault stop case and the 2^63 boundary on a
@@ -35,8 +36,9 @@ RUN_FAULT_STEPS run.stop.fault-sticky run.stop.|run.target.max-accepted|run.slic
 # where the last one ended, so a sliced run ends at other boundaries than one call. Collateral by
 # the same rule: every case that slices one run over consecutive calls (target windows, the
 # overshoot sequence, run(now + 1) single steps; from plan 04-10 the buffer cases that run twice
-# on one instance, run.buffers.*; from plan 04-11 the input cases, run.input.*).
-RUN_BUDGET_CARRY run.slice.halt.fixed-7 run.slice.|run.target.|run.overshoot.|run.single-step.|run.buffers.|run.input. run.info.timebase
+# on one instance, run.buffers.*; from plan 04-11 the input cases, run.input.*; from plan 04-13
+# the seeded slicing fuzz, run.fuzz.*).
+RUN_BUDGET_CARRY run.slice.halt.fixed-7 run.slice.|run.target.|run.overshoot.|run.single-step.|run.buffers.|run.input.|run.fuzz. run.info.timebase
 # INFO_TAIL_UNGUARDED (core/src/machine/machine.c): info writes the whole grown ivs_info whatever
 # the caller's struct_size, past a v1-sized caller's struct.
 INFO_TAIL_UNGUARDED run.info.v1-size-caller run.info.v1-size-caller run.info.timebase
@@ -50,19 +52,22 @@ RUN_CAPACITY_AFTER_STEP run.buffers.too-small-video run.buffers.|run.prec.capaci
 OUTBUF_PARTIAL_WRITE run.buffers.video-audio-overlap run.buffers.|run.prec.|run.input.refuse. run.buffers.exact-fit-video
 # Input faults (plan 04-11, D-05, D-07, D-14, D-16): sites in core/src/machine/machine_bound.c
 # (INPUT_APPLY_AT_RUN_START, RUN_EVENTS_UNCHECKED) and core/src/machine/machine_input.c (the
-# other four). Collateral stays inside the input family (run.input.*) and its precedence cases.
+# other four). Collateral stays inside the input family (run.input.*) and its precedence cases;
+# from plan 04-13 the seeded slicing fuzz (run.fuzz.*, random schedules and slicings against a
+# unit-by-unit reference) also sees the four timing faults and INPUT_STATIC_CARRY (its reference
+# and sliced instances run one after the other, so a carried static leaks into the second).
 # INPUT_APPLY_AT_RUN_START: every event with at_tick below the target is applied once at call
 # start, so a call whose target lies past an event's tick inside the last unit consumes it.
-INPUT_APPLY_AT_RUN_START run.input.one-event run.input. run.target.ends-at-first-boundary-ge-target
+INPUT_APPLY_AT_RUN_START run.input.one-event run.input.|run.fuzz. run.target.ends-at-first-boundary-ge-target
 # INPUT_LOG_SLICE_RELATIVE_TICK: the chain records at_tick minus the call's entry time, so sliced
 # runs differ from one call (and the literal chains differ).
-INPUT_LOG_SLICE_RELATIVE_TICK run.input.overshoot-window run.input. run.slice.halt.fixed-7
+INPUT_LOG_SLICE_RELATIVE_TICK run.input.overshoot-window run.input.|run.fuzz. run.slice.halt.fixed-7
 # INPUT_NO_FLOOR_CHECK: an event below the input floor is accepted.
 INPUT_NO_FLOOR_CHECK run.input.refuse.below-floor run.input.refuse. run.slice.halt.fixed-7
 # INPUT_STATIC_CARRY: a file-scope copy of the last applied words becomes the words in force of
 # whichever instance begins a unit next.
-INPUT_STATIC_CARRY run.input.isolation run.input. run.slice.halt.fixed-7
+INPUT_STATIC_CARRY run.input.isolation run.input.|run.fuzz. run.slice.halt.fixed-7
 # RUN_EVENT_AT_TARGET_ONLY: an event applies only at a unit starting exactly at its at_tick.
-RUN_EVENT_AT_TARGET_ONLY run.input.one-event run.input. run.target.ends-at-first-boundary-ge-target
+RUN_EVENT_AT_TARGET_ONLY run.input.one-event run.input.|run.fuzz. run.target.ends-at-first-boundary-ge-target
 # RUN_EVENTS_UNCHECKED: the event span overlap test (instance, report, buffers) is skipped.
 RUN_EVENTS_UNCHECKED run.input.refuse.events-inside-instance run.input.refuse. run.buffers.inside-instance

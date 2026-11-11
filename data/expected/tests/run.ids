@@ -159,3 +159,20 @@ run.prec.buffer-over-events
 run.prec.events-over-state
 run.prec.capacity-over-event-order
 run.prec.event-order-over-content
+# Family fuzz (plan 04-13, D-12..D-16, A-04): eight fixed xorshift32 seeds, each a random schedule
+# of up to 32 events under a random slicing against a unit-by-unit reference (consumed, words,
+# floor, INPUT and CPU digests at every call end, final storage); cases-covered requires an event
+# inside an overshoot window, equal ticks and an event on a call target across the seeds.
+run.fuzz.seed-01
+run.fuzz.seed-02
+run.fuzz.seed-03
+run.fuzz.seed-04
+run.fuzz.seed-05
+run.fuzz.seed-06
+run.fuzz.seed-07
+run.fuzz.seed-08
+run.fuzz.cases-covered
+# Frozen v1 sizes (plan 04-13, A-02, Pitfall 13): offsetof and sizeof literals of the pointer-free
+# structs and request prefix; the pointer-bearing request size is checked only with 64-bit pointers.
+run.struct.v1-sizes
+run.struct.v1-sizes-lp64 skip-ok

@@ -193,10 +193,11 @@ typedef struct ivs_input_event {
   uint32_t controller[4]; /* index = PSG port (0 = R14/$01FE, 1 = R15/$01FF), not player */
 } ivs_input_event;
 
-/* In: one run. Its size grows while Phase 4 appends fields (output buffers, input events); the
- * v1 size is pinned for release by plan 04-13 (A-02 from then on). struct_size must be
- * at least sizeof(ivs_run_request); a larger struct_size (up to IVS_STRUCT_SIZE_MAX) is accepted
- * only when every byte past it is zero. */
+/* In: one run. v1 size: the sizeof below (64 bytes with 64-bit pointers; events at offset 48),
+ * frozen by plan 04-13 (test run.struct.*): from there the A-02 rule applies, so a new field goes
+ * after the v1 size and the minimum struct_size stays the v1 size. struct_size must be at least
+ * the v1 size; a larger struct_size (up to IVS_STRUCT_SIZE_MAX) is accepted only when every byte
+ * past it is zero. */
 typedef struct ivs_run_request {
   uint32_t struct_size;
   uint32_t flags;          /* IVS_RUN_F_* */
@@ -210,7 +211,7 @@ typedef struct ivs_run_request {
   uint32_t reserved_in;          /* must be 0 (UNSUPPORTED otherwise) */
 } ivs_run_request;
 
-/* Out: what one run did (112 bytes; it grows with the request until plan 04-13 pins it). On IVS_OK
+/* Out: what one run did (v1 size 112 bytes on every ABI, frozen by plan 04-13; A-02 from there). On IVS_OK
  * every field is written: the stop reason,
  * refusal_reason IVS_REASON_NONE, the CPU run state and fault reason at exit (IVS_CPU_STATE_*,
  * IVS_CPU_FAULT_*), machine time at exit, overshoot_ticks = max(now_ticks - target_ticks, 0)

@@ -46,6 +46,11 @@ extern const size_t ivs_run_buffers_count;
 extern const ivs_test_case ivs_run_input_cases[];
 extern const size_t ivs_run_input_count;
 
+/* Family fuzz (plan 04-13, D-12..D-16, A-02): the seeded input/slicing fuzz against a unit-by-unit
+ * reference and the frozen v1 sizes of the Phase 4 public structs (run_fuzz.c). */
+extern const ivs_test_case ivs_run_fuzz_cases[];
+extern const size_t ivs_run_fuzz_count;
+
 /* ---- the refusal and side-effect oracle (SP4), shared by the run families ----
  * A snapshot holds a heap copy of the whole instance storage, the composite and the seven domain
  * digests (1..4, 16..18) and info's time_ticks; a destroyed instance has no digests or info. */
