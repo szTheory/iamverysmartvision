@@ -60,6 +60,12 @@ target_link_libraries(ivs_tests_cpu_api PRIVATE ivs_test_harness ivs_core ivs_wa
 add_test(NAME cpu-api COMMAND ivs_tests_cpu_api)
 set_tests_properties(cpu-api PROPERTIES SKIP_RETURN_CODE 77)
 
+# Suite machine (D-15, plans 03-02..03-12): every machine-level case family in one executable.
+add_executable(ivs_tests_machine machine/machine_main.c machine/machine_sha256.c)
+target_link_libraries(ivs_tests_machine PRIVATE ivs_test_harness ivs_core ivs_warnings ivs_san)
+add_test(NAME machine COMMAND ivs_tests_machine)
+set_tests_properties(machine PROPERTIES SKIP_RETURN_CODE 77)
+
 # Suite cpu-fuzz (D-12, plan 02-15): the seeded robustness run; dev links the sanitizers.
 add_executable(ivs_tests_cpu_fuzz cpu/cpu_fuzz.c)
 target_link_libraries(ivs_tests_cpu_fuzz PRIVATE ivs_test_harness ivs_core ivs_warnings ivs_san)
@@ -121,6 +127,9 @@ ivs_fault_gen(GEN_EXPECT_MUTATION SUITE cpu-vectors OUTPUT ivs_vectors.inc
   GENERATOR "${IVS_VEC_GENERATOR}"
   ARGS "-DROOT=${PROJECT_SOURCE_DIR}" "-DFILES=${IVS_VEC_FILES_IDS}" "-DSKIPS=${IVS_VEC_SKIPS_IDS}"
   DEPENDS ${ivs_vec_json} "${IVS_VEC_GENERATOR}" "${IVS_VEC_FILES_IDS}" "${IVS_VEC_SKIPS_IDS}")
+
+ivs_fault_suite(machine
+  SOURCES machine/machine_main.c machine/machine_sha256.c)
 
 # Named-fault control executables (D-18): dev tree only, never registered with ctest.
 if(IVS_FAULT_CONTROLS)

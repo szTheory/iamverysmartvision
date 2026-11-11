@@ -1,0 +1,4 @@
+# Suite machine (plans 03-02..03-12): machine-level cases in one executable (D-15). Family
+# sha256 (plan 03-02): core SHA-256 against independent literal digests (D-28, A-04).
+machine.sha256.ctx-plain
+machine.sha256.fips-abc

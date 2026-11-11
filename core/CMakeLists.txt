@@ -5,6 +5,7 @@
 # is not compiled (token c-build-unlisted-source).
 
 set(IVS_CORE_SOURCES
+  src/common/ivs_sha256.c
   src/cpu/cp1610.c
   src/cpu/cp1610_decode.c
 )
