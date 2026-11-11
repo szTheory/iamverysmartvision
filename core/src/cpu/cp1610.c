@@ -155,6 +155,44 @@ static int ivs_is_bit(uint8_t v)
   return v == 0u || v == 1u;
 }
 
+/* Cross-field invariants that every state the stepper can produce satisfies (review WR-01). A
+ * state that breaks one is refused, so a restored or hand-built state cannot drive the bus in a
+ * combination no step would have produced.
+ *   - FAULTED exactly when fault_reason is not NONE: ivs_set_fault sets both, reset clears both.
+ *   - UNRESET (the zeroed state) and RESET_PENDING (made only by reset, POL-RST-01) hold no INTFF,
+ *     DBD, stop latch or grant: reset clears them, and the reset entry reads IAB without testing
+ *     the grant (Fig 2-6, pdf 22), so a set BUSAK would put the CPU on a granted bus.
+ *   - BUSAK only in RUNNING or HALTED: only those states serve a grant, and a step that holds or
+ *     releases the grant makes no access and decodes nothing, so it cannot fault.
+ *   - DBD only in RUNNING or FAULTED, with prev_interruptible 0 and no grant: SDBD is
+ *     non-interruptible, so DBD lives only across the closed boundary before its target, where
+ *     no stop, grant or interrupt is taken (Fig 2-6, pdf 22; POL-SDBD-01); a refused target or a
+ *     wait-limit fault keeps it (D-12).
+ *   - no stop latch in HALTED: entering HALTED consumes it, and in HALTED a STPST edge resumes
+ *     instead of latching (POL-HLT-01/02, C54). */
+static int ivs_fields_consistent(const ivs_cp1610 *s)
+{
+  uint8_t rs = s->run_state;
+  if ((rs == IVS_CP1610_RS_FAULTED) != (s->fault_reason != IVS_CP1610_FAULT_NONE)) {
+    return 0;
+  }
+  if ((rs == IVS_CP1610_RS_UNRESET || rs == IVS_CP1610_RS_RESET_PENDING) &&
+      (s->intff | s->dbd | s->halt_pending | s->busak) != 0u) {
+    return 0;
+  }
+  if (s->busak != 0u && rs != IVS_CP1610_RS_RUNNING && rs != IVS_CP1610_RS_HALTED) {
+    return 0;
+  }
+  if (s->dbd != 0u && ((rs != IVS_CP1610_RS_RUNNING && rs != IVS_CP1610_RS_FAULTED) ||
+                       s->prev_interruptible != 0u || s->busak != 0u)) {
+    return 0;
+  }
+  if (rs == IVS_CP1610_RS_HALTED && s->halt_pending != 0u) {
+    return 0;
+  }
+  return 1;
+}
+
 ivs_status ivs_cp1610_state_validate(const ivs_cp1610 *s)
 {
   size_t i;
@@ -175,6 +213,9 @@ ivs_status ivs_cp1610_state_validate(const ivs_cp1610 *s)
     if (s->reserved[i] != 0u) {
       return IVS_E_BAD_STATE;
     }
+  }
+  if (!ivs_fields_consistent(s)) {
+    return IVS_E_BAD_STATE;
   }
   return IVS_OK;
 }

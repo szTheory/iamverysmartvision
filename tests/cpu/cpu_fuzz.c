@@ -20,9 +20,10 @@
  *   - every record's address phase lies inside its unit (a TCI or PCIT strobe up to one cycle
  *     past it, C39), and a BUS_WAIT_LIMIT fault unit ends at the record that took the over-cap
  *     wait: no access, WRITE included, follows it (POL-WAIT-01, C53; review CR-01, WR-03).
- * Every FUZZ_CORRUPT_EVERY steps a corrupted copy (a run state past FAULTED, or a nonzero
- * reserved byte) must be refused with IVS_E_BAD_STATE without a write or a bus call. Each seed
- * must also reach every unit kind at least once, so the run is not vacuous. */
+ * Every FUZZ_CORRUPT_EVERY steps a corrupted copy (a run state past FAULTED, a nonzero reserved
+ * byte, or a fault reason that contradicts the run state) must be refused with IVS_E_BAD_STATE
+ * without a write or a bus call. Each seed must also reach every unit kind at least once, so the
+ * run is not vacuous. */
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -122,6 +123,16 @@ static void fuzz_draw_state(fuzz_ctx *f, ivs_cp1610 *s)
   s->halt_pending = (uint8_t)fuzz_below(f, 2u);
   s->busak = (uint8_t)fuzz_below(f, 2u);
   s->run_state = (uint8_t)(fuzz_below(f, 4u) == 0u ? IVS_CP1610_RS_HALTED : IVS_CP1610_RS_RUNNING);
+  /* Keep the cross-field invariants of ivs_cp1610_state_validate (WR-01): no DBD or stop latch in
+   * HALTED, and DBD only at a closed boundary without the grant. */
+  if (s->run_state == IVS_CP1610_RS_HALTED) {
+    s->dbd = 0u;
+    s->halt_pending = 0u;
+  }
+  if (s->dbd != 0u) {
+    s->prev_interruptible = 0u;
+    s->busak = 0u;
+  }
 }
 
 /* Lines: each of INTR, INTRM, BUSRQ high one step in four, a STPST edge one step in sixteen. */
@@ -154,10 +165,18 @@ static int fuzz_corrupt(fuzz_ctx *f, const ivs_cp1610 *s, const ivs_cp1610_confi
   ivs_cp1610_result out_seen;
   ivs_cp1610_access log[IVS_CP1610_MAX_ACCESSES];
   uint32_t calls = f->calls;
-  if (fuzz_below(f, 2u) == 0u) {
+  switch (fuzz_below(f, 3u)) {
+  case 0u:
     bad.run_state = (uint8_t)(IVS_CP1610_RS_FAULTED + 1u + fuzz_below(f, 255u - IVS_CP1610_RS_FAULTED));
-  } else {
+    break;
+  case 1u:
     bad.reserved[fuzz_below(f, (uint32_t)sizeof bad.reserved)] = (uint8_t)(1u + fuzz_below(f, 255u));
+    break;
+  default:
+    /* A fault reason that contradicts the run state (WR-01). */
+    bad.fault_reason = (uint8_t)(bad.run_state == IVS_CP1610_RS_FAULTED ? IVS_CP1610_FAULT_NONE
+                                                                         : IVS_CP1610_FAULT_BUS_WAIT_LIMIT);
+    break;
   }
   seen = bad;
   memset(&out, 0xA5, sizeof out);

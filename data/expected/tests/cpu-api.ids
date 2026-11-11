@@ -22,3 +22,4 @@ cpu-api.wait-shifts-offsets
 cpu-api.wait-fault-no-write
 cpu-api.wait-fault-no-sdbd-high-read
 cpu-api.wait-fault-no-ebci
+cpu-api.validate-rejects-inconsistent-fields

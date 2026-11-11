@@ -127,7 +127,9 @@ typedef struct ivs_cp1610_lines {
 
 /* CPU state (D-03): a plain 32-byte struct embedded by value. No pointers, bool, enums or
  * bitfields; every reserved byte is zero. R6 is the stack pointer and R7 the program
- * counter. Boolean fields hold 0 or 1. */
+ * counter. Boolean fields hold 0 or 1. ivs_cp1610_state_validate also refuses field combinations
+ * that no step produces (FAULTED without a reason, a reason outside FAULTED, latches or the grant
+ * before the reset entry, DBD outside a closed boundary, the stop latch in HALTED; cp1610.c). */
 typedef struct ivs_cp1610 {
   uint16_t r[8];
   uint8_t status;

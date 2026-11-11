@@ -56,6 +56,9 @@ static int api_validate_rejects_bad_run_state(void)
   for (v = 0u; v <= 255u; v++) {
     memset(&s, 0, sizeof s);
     s.run_state = (uint8_t)v;
+    if (v == IVS_CP1610_RS_FAULTED) {
+      s.fault_reason = IVS_CP1610_FAULT_BUS_WAIT_LIMIT; /* FAULTED needs a reason (WR-01) */
+    }
     if (v <= IVS_CP1610_RS_FAULTED) {
       IVS_CHECK(ivs_cp1610_state_validate(&s) == IVS_OK);
     } else {
@@ -72,6 +75,9 @@ static int api_validate_rejects_bad_fault_reason(void)
   for (v = 0u; v <= 255u; v++) {
     memset(&s, 0, sizeof s);
     s.fault_reason = (uint8_t)v;
+    if (v != IVS_CP1610_FAULT_NONE) {
+      s.run_state = IVS_CP1610_RS_FAULTED; /* a reason needs FAULTED (WR-01) */
+    }
     if (v <= IVS_CP1610_FAULT_LAST) {
       IVS_CHECK(ivs_cp1610_state_validate(&s) == IVS_OK);
     } else {
@@ -108,6 +114,75 @@ static int api_validate_rejects_status_low_bits(void)
   memset(&s, 0, sizeof s);
   s.status = IVS_CP1610_STATUS_MASK;
   IVS_CHECK(ivs_cp1610_state_validate(&s) == IVS_OK);
+  return IVS_TEST_PASS;
+}
+
+/* Field combinations no step produces are refused (review WR-01), each next to a neighbouring
+ * combination that is valid, so the rule is not vacuous: FAULTED exactly with a fault reason; no
+ * INTFF, DBD, stop latch or grant in UNRESET or RESET_PENDING; a grant only in RUNNING or HALTED;
+ * DBD only in RUNNING or FAULTED with prev_interruptible 0 and no grant; no stop latch in
+ * HALTED. */
+typedef struct api_combo {
+  uint8_t run_state;
+  uint8_t fault_reason;
+  uint8_t intff;
+  uint8_t dbd;
+  uint8_t prev_interruptible;
+  uint8_t halt_pending;
+  uint8_t busak;
+  uint8_t valid;
+} api_combo;
+
+static int api_validate_rejects_inconsistent_fields(void)
+{
+  enum { U = IVS_CP1610_RS_UNRESET, P = IVS_CP1610_RS_RESET_PENDING, R = IVS_CP1610_RS_RUNNING };
+  enum { H = IVS_CP1610_RS_HALTED, F = IVS_CP1610_RS_FAULTED, W = IVS_CP1610_FAULT_BUS_WAIT_LIMIT };
+  static const api_combo combos[] = {
+      /* rs fr intff dbd prev halt busak valid */
+      {F, 0u, 0u, 0u, 0u, 0u, 0u, 0u}, /* FAULTED with reason NONE */
+      {F, W, 0u, 0u, 0u, 0u, 0u, 1u},
+      {F, IVS_CP1610_FAULT_UNSUPPORTED_SDBD_TARGET, 1u, 1u, 0u, 1u, 0u, 1u},
+      {R, W, 0u, 0u, 1u, 0u, 0u, 0u}, /* RUNNING with a reason */
+      {H, W, 0u, 0u, 1u, 0u, 0u, 0u}, /* HALTED with a reason */
+      {P, W, 0u, 0u, 0u, 0u, 0u, 0u}, /* RESET_PENDING with a reason */
+      {U, W, 0u, 0u, 0u, 0u, 0u, 0u}, /* UNRESET with a reason */
+      {P, 0u, 0u, 0u, 0u, 0u, 1u, 0u}, /* RESET_PENDING with the grant: the IAB read would drive a granted bus */
+      {P, 0u, 0u, 1u, 0u, 0u, 0u, 0u},
+      {P, 0u, 0u, 0u, 0u, 1u, 0u, 0u},
+      {P, 0u, 1u, 0u, 0u, 0u, 0u, 0u},
+      {P, 0u, 0u, 0u, 1u, 0u, 0u, 1u}, /* prev_interruptible is overwritten by the reset entry */
+      {U, 0u, 0u, 0u, 0u, 0u, 1u, 0u},
+      {U, 0u, 0u, 1u, 0u, 0u, 0u, 0u},
+      {U, 0u, 0u, 0u, 0u, 1u, 0u, 0u},
+      {U, 0u, 1u, 0u, 0u, 0u, 0u, 0u},
+      {F, W, 0u, 0u, 0u, 0u, 1u, 0u}, /* FAULTED with the grant */
+      {R, 0u, 1u, 0u, 1u, 1u, 1u, 1u},
+      {H, 0u, 1u, 0u, 1u, 0u, 1u, 1u},
+      {R, 0u, 0u, 1u, 1u, 0u, 0u, 0u}, /* DBD at an interruptible boundary */
+      {R, 0u, 0u, 1u, 0u, 0u, 1u, 0u}, /* DBD with the grant */
+      {R, 0u, 1u, 1u, 0u, 1u, 0u, 1u},
+      {H, 0u, 0u, 1u, 0u, 0u, 0u, 0u}, /* DBD in HALTED */
+      {H, 0u, 0u, 0u, 1u, 1u, 0u, 0u}, /* stop latch in HALTED */
+      {H, 0u, 0u, 0u, 0u, 0u, 0u, 1u},
+  };
+  ivs_cp1610 s;
+  size_t i;
+  for (i = 0u; i < sizeof combos / sizeof combos[0]; i++) {
+    const api_combo *c = &combos[i];
+    ivs_status want = c->valid ? IVS_OK : IVS_E_BAD_STATE;
+    memset(&s, 0, sizeof s);
+    s.run_state = c->run_state;
+    s.fault_reason = c->fault_reason;
+    s.intff = c->intff;
+    s.dbd = c->dbd;
+    s.prev_interruptible = c->prev_interruptible;
+    s.halt_pending = c->halt_pending;
+    s.busak = c->busak;
+    if (ivs_cp1610_state_validate(&s) != want) {
+      ivs_test_diag("combination %zu: expected %s", i, c->valid ? "IVS_OK" : "IVS_E_BAD_STATE");
+      return IVS_TEST_FAIL;
+    }
+  }
   return IVS_TEST_PASS;
 }
 
@@ -332,7 +407,7 @@ static int api_refuse_invalid_state(void)
   ivs_cp1610 s;
   ivs_cp1610 before;
   unsigned which;
-  for (which = 0u; which < 8u; which++) {
+  for (which = 0u; which < 10u; which++) {
     ivs_status st;
     api_setup(&api_bus_a, &s, API_BASE_A, api_prog_a, 0u);
     switch (which) {
@@ -357,8 +432,14 @@ static int api_refuse_invalid_state(void)
     case 6u:
       s.halt_pending = 0xFFu;
       break;
-    default:
+    case 7u:
       s.busak = 2u;
+      break;
+    case 8u:
+      s.busak = 1u; /* RESET_PENDING with the grant (WR-01): no IAB on a granted bus */
+      break;
+    default:
+      s.fault_reason = IVS_CP1610_FAULT_BUS_WAIT_LIMIT; /* a reason outside FAULTED (WR-01) */
       break;
     }
     before = s;
@@ -924,6 +1005,7 @@ static const ivs_test_case api_cases[] = {
     {"cpu-api.state-size-32", api_state_size_32, NULL},
     {"cpu-api.validate-rejects-bad-fault-reason", api_validate_rejects_bad_fault_reason, NULL},
     {"cpu-api.validate-rejects-bad-run-state", api_validate_rejects_bad_run_state, NULL},
+    {"cpu-api.validate-rejects-inconsistent-fields", api_validate_rejects_inconsistent_fields, NULL},
     {"cpu-api.validate-rejects-reserved-nonzero", api_validate_rejects_reserved_nonzero, NULL},
     {"cpu-api.validate-rejects-status-low-bits", api_validate_rejects_status_low_bits, NULL},
     {"cpu-api.validate-zeroed-state", api_validate_zeroed_state, NULL},
