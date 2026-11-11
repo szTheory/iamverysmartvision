@@ -495,6 +495,39 @@ static int rf_b_opts_tail(rf_ctx *c)
   return 1;
 }
 
+/* Review WR-02: struct_size is capped at IVS_STRUCT_SIZE_MAX, so the tail scan reads at most
+ * 4096 bytes. Each options struct is an exact-size heap buffer (ASan sees an over-read). */
+static int rf_b_opts_over_max(rf_ctx *c)
+{
+  return rf_b_valid(c) && rf_opts(c, IVS_STRUCT_SIZE_MAX + 1u, IVS_STRUCT_SIZE_MAX + 1u, 0u);
+}
+
+/* A garbage struct_size on a 48-byte struct whose first byte past the v1 size is nonzero: an
+ * uncapped scan would stop there (UNSUPPORTED); the cap refuses it first (BAD_ARG). */
+static int rf_b_opts_garbage_size(rf_ctx *c)
+{
+  if (!rf_b_valid(c) || !rf_opts(c, sizeof(ivs_load_options) + 8u, 0x7FFFFFF0u, 0u)) {
+    return 0;
+  }
+  c->optbuf[sizeof(ivs_load_options)] = 0xFFu;
+  return 1;
+}
+
+/* struct_size exactly IVS_STRUCT_SIZE_MAX keeps D-04: a nonzero last byte is UNSUPPORTED. */
+static int rf_b_opts_at_max_tail(rf_ctx *c)
+{
+  if (!rf_b_valid(c) || !rf_opts(c, IVS_STRUCT_SIZE_MAX, IVS_STRUCT_SIZE_MAX, 0u)) {
+    return 0;
+  }
+  c->optbuf[IVS_STRUCT_SIZE_MAX - 1u] = 1u;
+  return 1;
+}
+
+static int rf_b_opts_at_max(rf_ctx *c)
+{
+  return rf_b_valid(c) && rf_opts(c, IVS_STRUCT_SIZE_MAX, IVS_STRUCT_SIZE_MAX, 0u);
+}
+
 /* expect_sha256 set to the input's digest with its last bit flipped. */
 static int rf_expect_bad(rf_ctx *c)
 {
@@ -940,6 +973,10 @@ static const rf_row rf_rows[] = {
             IVS_REASON_ARG_STRUCT_SIZE, RF_NONE, 0u, 0u, 0u),
     RF_LOAD("machine.refuse.load.cart.opts-size-0", RF_K, RF_P_FSCW, rf_b_opts_size0, IVS_E_BAD_ARG,
             IVS_REASON_ARG_STRUCT_SIZE, RF_NONE, 0u, 0u, 0u),
+    RF_LOAD("machine.refuse.load.exec.opts-over-max", RF_E, RF_P_FSCW, rf_b_opts_over_max, IVS_E_BAD_ARG,
+            IVS_REASON_ARG_STRUCT_SIZE, RF_NONE, 0u, 0u, 0u),
+    RF_LOAD("machine.refuse.load.exec.opts-garbage-size", RF_E, RF_P_FSCW, rf_b_opts_garbage_size, IVS_E_BAD_ARG,
+            IVS_REASON_ARG_STRUCT_SIZE, RF_NONE, 0u, 0u, 0u),
     RF_LOAD("machine.refuse.load.exec.report-short", RF_E, RF_P_FSCW, rf_b_report_short, IVS_E_BAD_ARG, 0u, 0u, 0u, 0u,
             RF_REPORT_KEPT),
     RF_LOAD("machine.refuse.load.exec.report-inside", RF_E, RF_P_FSCW, rf_b_report_inside, IVS_E_BAD_ARG, 0u, 0u, 0u, 0u,
@@ -956,6 +993,10 @@ static const rf_row rf_rows[] = {
             IVS_REASON_OPTION_TAIL, RF_NONE, 0u, 0u, 0u),
     RF_LOAD("machine.refuse.load.grom.opts-tail-nonzero", RF_G, RF_P_FSCW, rf_b_opts_tail, IVS_E_UNSUPPORTED,
             IVS_REASON_OPTION_TAIL, RF_NONE, 0u, 0u, 0u),
+    RF_LOAD("machine.refuse.load.exec.opts-at-max-tail-nonzero", RF_E, RF_P_FSCW, rf_b_opts_at_max_tail,
+            IVS_E_UNSUPPORTED, IVS_REASON_OPTION_TAIL, RF_NONE, 0u, 0u, 0u),
+    RF_LOAD("machine.refuse.load.exec.opts-at-max-ok", RF_E, RF_P_F, rf_b_opts_at_max, IVS_OK, IVS_REASON_NONE, RF_NONE,
+            0u, 0u, RF_EXPECT_OK),
 
     /* DUPLICATE_LOAD: only on an occupied slot. */
     RF_LOAD("machine.refuse.load.exec.duplicate-load", RF_E, RF_P_SC, rf_b_valid, IVS_E_DUPLICATE_LOAD,

@@ -5,8 +5,11 @@
  * incomplete here; its layout is internal and not an ABI (D-02).
  *
  * Struct rule (D-04): every struct passed across this API starts with uint32_t struct_size.
- *   - in structs: a size below the v1 size is BAD_ARG; a larger size is accepted only when every
- *     byte the core does not know is zero (else UNSUPPORTED); nonzero flags are UNSUPPORTED;
+ *   - in structs: a size below the v1 size, or above IVS_STRUCT_SIZE_MAX, is BAD_ARG; a larger
+ *     size up to IVS_STRUCT_SIZE_MAX is accepted only when every byte the core does not know is
+ *     zero (else UNSUPPORTED); nonzero flags are UNSUPPORTED. The core reads at most
+ *     IVS_STRUCT_SIZE_MAX bytes of an in struct, so a garbage struct_size is refused, never
+ *     followed (review WR-02);
  *   - out structs: a size below the v1 size is BAD_ARG with nothing written; otherwise the core
  *     writes min(caller size, own size) bytes and sets struct_size to the size it wrote.
  * Out parameters must not overlap the instance storage: an out struct or buffer that overlaps
@@ -59,6 +62,9 @@ typedef struct ivs_machine ivs_machine;
 #define IVS_DIGEST_RESERVED_VIDEO 16u
 #define IVS_DIGEST_RESERVED_AUDIO 17u
 #define IVS_DIGEST_RESERVED_INPUT 18u
+
+/* Largest struct_size of an in struct (D-04): above it the call is BAD_ARG. */
+#define IVS_STRUCT_SIZE_MAX 4096u
 
 /* Bound on a profile id: at most 63 ASCII bytes and a NUL within the first 64 bytes. */
 #define IVS_PROFILE_ID_MAX_BYTES 64u
@@ -150,7 +156,7 @@ typedef struct ivs_load_options {
 #define IVS_REASON_EXPECT_DIGEST 24u   /* DIGEST_MISMATCH: expect_sha256 differs */
 #define IVS_REASON_ARG_KIND 25u        /* BAD_ARG: kind is not IVS_KIND_* */
 #define IVS_REASON_ARG_NULL_BYTES 26u  /* BAD_ARG: bytes NULL with len above 0 */
-#define IVS_REASON_ARG_STRUCT_SIZE 27u /* BAD_ARG: opts->struct_size below the v1 size */
+#define IVS_REASON_ARG_STRUCT_SIZE 27u /* BAD_ARG: opts->struct_size below the v1 size or above IVS_STRUCT_SIZE_MAX */
 #define IVS_REASON_ARG_INPUT_OVERLAP 28u /* BAD_ARG: the input span overlaps the instance */
 #define IVS_REASON_HANDLE 29u          /* BAD_HANDLE */
 #define IVS_REASON_OPTION_FLAGS 30u    /* UNSUPPORTED: an unknown option flag */
@@ -180,8 +186,8 @@ IVS_API ivs_status ivs_machine_storage_requirements(const char *profile_id, ivs_
 
 /* Creates an instance in storage (storage_bytes long). Validates everything before the first
  * write; on success zero-fills the instance bytes and sets *out. Refusal order: BAD_ARG (out
- * inside the instance bytes of storage; NULL opts, storage or out; short opts; bad profile id;
- * misaligned storage), UNSUPPORTED (flags, nonzero unknown tail), UNKNOWN_PROFILE,
+ * inside the instance bytes of storage; NULL opts, storage or out; opts struct_size short or
+ * above IVS_STRUCT_SIZE_MAX; bad profile id; misaligned storage), UNSUPPORTED (flags, nonzero unknown tail), UNKNOWN_PROFILE,
  * BUFFER_TOO_SMALL. On refusal *out is NULL (when out is not NULL and not inside the storage,
  * where nothing is written) and the storage is untouched. */
 IVS_API ivs_status ivs_machine_create(const ivs_create_options *opts, void *storage, size_t storage_bytes, ivs_machine **out);
@@ -205,7 +211,8 @@ IVS_API ivs_status ivs_machine_state_digest(const ivs_machine *m, uint32_t domai
  * failing class wins:
  *   BAD_ARG         report struct_size short, or report overlapping the storage of a valid
  *                   instance (nothing written; not tested for a NULL or invalid handle); kind
- *                   unknown; bytes NULL with len above 0; opts struct_size short;
+ *                   unknown; bytes NULL with len above 0; opts struct_size short or above
+ *                   IVS_STRUCT_SIZE_MAX;
  *   BAD_HANDLE      NULL or invalid handle;
  *   UNSUPPORTED     an unknown option flag or a nonzero opts tail;
  *   BAD_STATE       the machine is POWERED;

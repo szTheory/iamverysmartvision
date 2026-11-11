@@ -285,6 +285,54 @@ static int mc_refuse_tail_nonzero(void)
   return mc_create_refused(&b.o, 0, 0, 0u, IVS_MACHINE_BYTES, IVS_E_UNSUPPORTED);
 }
 
+/* Options in an exact-size heap buffer of bytes bytes (at least the v1 size), zero past the v1
+ * struct, with struct_size set: ASan sees any byte the core reads past the buffer (review WR-02).
+ * The caller frees the buffer. */
+static uint8_t *mc_heap_opts(size_t bytes, uint32_t struct_size)
+{
+  ivs_create_options o = mc_opts(MC_PROFILE);
+  uint8_t *b = malloc(bytes);
+  if (b != NULL) {
+    memset(b, 0, bytes);
+    o.struct_size = struct_size;
+    memcpy(b, &o, sizeof o);
+  }
+  return b;
+}
+
+static int mc_heap_opts_refused(size_t bytes, uint32_t struct_size, size_t nonzero_at, ivs_status want)
+{
+  uint8_t *b = mc_heap_opts(bytes, struct_size);
+  int r;
+  IVS_CHECK(b != NULL);
+  if (nonzero_at < bytes) {
+    b[nonzero_at] = 0xFFu;
+  }
+  r = mc_create_refused((const ivs_create_options *)(void *)b, 0, 0, 0u, IVS_MACHINE_BYTES, want);
+  free(b);
+  return r;
+}
+
+/* struct_size one above IVS_STRUCT_SIZE_MAX, with an all-zero tail: BAD_ARG, not a scan. */
+static int mc_refuse_size_over_max(void)
+{
+  return mc_heap_opts_refused(IVS_STRUCT_SIZE_MAX + 1u, IVS_STRUCT_SIZE_MAX + 1u, (size_t)-1, IVS_E_BAD_ARG);
+}
+
+/* A garbage struct_size (an uninitialised host struct) on a small struct whose first byte past
+ * the v1 size is nonzero: BAD_ARG; an uncapped scan would stop there with UNSUPPORTED. */
+static int mc_refuse_size_garbage(void)
+{
+  return mc_heap_opts_refused(sizeof(ivs_create_options) + 8u, 0x7FFFFFF0u, sizeof(ivs_create_options),
+                              IVS_E_BAD_ARG);
+}
+
+/* struct_size exactly IVS_STRUCT_SIZE_MAX keeps D-04: its last unknown byte nonzero is UNSUPPORTED. */
+static int mc_refuse_size_at_max_tail(void)
+{
+  return mc_heap_opts_refused(IVS_STRUCT_SIZE_MAX, IVS_STRUCT_SIZE_MAX, IVS_STRUCT_SIZE_MAX - 1u, IVS_E_UNSUPPORTED);
+}
+
 static int mc_refuse_unknown_profile(void)
 {
   ivs_create_options o = mc_opts("no-such-profile");
@@ -342,6 +390,22 @@ static int mc_tail_zero_ok(void)
   IVS_CHECK(st != NULL);
   ok = ivs_machine_create(&b.o, st, IVS_MACHINE_BYTES, &m) == IVS_OK && m != NULL &&
        ivs_machine_destroy(m) == IVS_OK;
+  free(st);
+  IVS_CHECK(ok);
+  return IVS_TEST_PASS;
+}
+
+/* struct_size exactly IVS_STRUCT_SIZE_MAX with an all-zero tail is accepted (review WR-02). */
+static int mc_size_at_max_ok(void)
+{
+  ivs_machine *m = NULL;
+  int ok;
+  uint8_t *b = mc_heap_opts(IVS_STRUCT_SIZE_MAX, IVS_STRUCT_SIZE_MAX);
+  uint8_t *st = mc_exact(0xA5u);
+  ok = b != NULL && st != NULL &&
+       ivs_machine_create((const ivs_create_options *)(void *)b, st, IVS_MACHINE_BYTES, &m) == IVS_OK && m != NULL &&
+       ivs_machine_destroy(m) == IVS_OK;
+  free(b);
   free(st);
   IVS_CHECK(ok);
   return IVS_TEST_PASS;
@@ -709,6 +773,7 @@ const ivs_test_case ivs_machine_create_cases[] = {
     {"machine.create.poisoned-storage", mc_poisoned_storage, NULL},
     {"machine.create.requirements", mc_requirements, NULL},
     {"machine.create.requirements-larger-out", mc_req_larger_out, NULL},
+    {"machine.create.size-at-max-ok", mc_size_at_max_ok, NULL},
     {"machine.create.static-storage", mc_static_storage_case, NULL},
     {"machine.create.tail-zero-ok", mc_tail_zero_ok, NULL},
     {"machine.destroy.scrubs", mc_destroy_scrubs, NULL},
@@ -727,6 +792,9 @@ const ivs_test_case ivs_machine_create_cases[] = {
     {"machine.refuse.create.short-storage", mc_refuse_short_storage, NULL},
     {"machine.refuse.create.size-0", mc_refuse_size_0, NULL},
     {"machine.refuse.create.size-4", mc_refuse_size_4, NULL},
+    {"machine.refuse.create.size-at-max-tail-nonzero", mc_refuse_size_at_max_tail, NULL},
+    {"machine.refuse.create.size-garbage", mc_refuse_size_garbage, NULL},
+    {"machine.refuse.create.size-over-max", mc_refuse_size_over_max, NULL},
     {"machine.refuse.create.tail-nonzero", mc_refuse_tail_nonzero, NULL},
     {"machine.refuse.create.trailing-space", mc_refuse_trailing_space, NULL},
     {"machine.refuse.create.unknown-over-short-storage", mc_refuse_unknown_over_short, NULL},

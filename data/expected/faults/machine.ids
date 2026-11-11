@@ -76,3 +76,7 @@ OUT_OVERLAP_UNCHECKED machine.refuse.info.out-inside machine.refuse.info.out-ins
 # the unvalidated handle, so a NULL handle "overlaps" every address below the instance size and a
 # destroyed instance's storage still refuses BAD_ARG.
 OUT_OVERLAP_BEFORE_HANDLE machine.refuse.digest.null-handle-low-out machine.refuse.digest.null-handle-low-out|machine.refuse.digest.destroyed-out-inside machine.create.ok-info-destroy
+# Review WR-02: STRUCT_SIZE_UNCAPPED (machine_load.c) drops the IVS_STRUCT_SIZE_MAX cap on the load
+# options, so a 4097-byte zero-tailed struct goes on to the later stages and a garbage struct_size
+# is followed by the tail scan up to its first nonzero byte (UNSUPPORTED, not BAD_ARG).
+STRUCT_SIZE_UNCAPPED machine.refuse.load.exec.opts-over-max.f machine.refuse.load.exec.opts-over-max.|machine.refuse.load.exec.opts-garbage-size. machine.load.exec-ok

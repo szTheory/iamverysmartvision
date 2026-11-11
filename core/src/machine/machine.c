@@ -6,7 +6,8 @@
  * create validates everything before its first write to the storage (D-08, D-10), in this order:
  *   BAD_ARG          out inside the instance bytes of the storage (refused before *out is
  *                    written, so the storage stays untouched; plan 03-11); NULL opts, storage or
- *                    out; opts struct_size below the v1 size; profile id NULL or without a NUL in
+ *                    out; opts struct_size below the v1 size or above IVS_STRUCT_SIZE_MAX (so the
+ *                    unknown-tail scan reads at most 4096 bytes); profile id NULL or without a NUL in
  *                    its first 64 bytes; storage not 16-byte aligned;
  *   UNSUPPORTED      nonzero flags; a nonzero byte in a larger caller struct's unknown tail;
  *   UNKNOWN_PROFILE  the id is not in the registry (exact, case-sensitive match);
@@ -164,8 +165,8 @@ ivs_status ivs_machine_create(const ivs_create_options *opts, void *storage, siz
   if (opts == NULL || storage == NULL || out == NULL) {
     return IVS_E_BAD_ARG;
   }
-  if (opts->struct_size < (uint32_t)sizeof(ivs_create_options)) {
-    return IVS_E_BAD_ARG;
+  if (opts->struct_size < (uint32_t)sizeof(ivs_create_options) || opts->struct_size > IVS_STRUCT_SIZE_MAX) {
+    return IVS_E_BAD_ARG; /* the cap bounds the tail scan below (review WR-02) */
   }
   if (ivs_machine_profile_id_length(opts->profile_id, &len) != IVS_OK) {
     return IVS_E_BAD_ARG;

@@ -6,6 +6,7 @@
  * plan (kind, lengths, units, base, the reported digest; never a copy of image bytes). The ladder
  * is one stage per class, the first failing stage wins (D-11 refined by A-08 a, b):
  *   1. BAD_ARG         argument values: kind, NULL bytes with len above 0, opts struct size
+ *                      (below the v1 size or above IVS_STRUCT_SIZE_MAX, which bounds stage 3)
  *                      (a short report struct, or a report that overlaps the storage of a
  *                      valid instance, is refused by the public function, writing nothing;
  *                      plan 03-11; the overlap is not tested for a NULL or invalid handle);
@@ -192,6 +193,7 @@ static ivs_status ivs_load_validate(const ivs_machine *m, uint32_t kind, const u
   ivs_status st;
   uint32_t occupied;
   uint32_t powered;
+  uint32_t over;
   uint32_t i;
 
   /* 1. BAD_ARG: argument values. */
@@ -202,6 +204,14 @@ static ivs_status ivs_load_validate(const ivs_machine *m, uint32_t kind, const u
     return ivs_load_refuse(d, IVS_E_BAD_ARG, IVS_REASON_ARG_NULL_BYTES, IVS_SEGMENT_NONE, 0u, 0u);
   }
   if (opts != NULL && opts->struct_size < (uint32_t)sizeof(ivs_load_options)) {
+    return ivs_load_refuse(d, IVS_E_BAD_ARG, IVS_REASON_ARG_STRUCT_SIZE, IVS_SEGMENT_NONE, 0u, 0u);
+  }
+  /* The cap bounds the stage-3 tail scan: a garbage struct_size is refused, never followed (WR-02). */
+  over = (uint32_t)(opts != NULL && opts->struct_size > IVS_STRUCT_SIZE_MAX);
+#ifdef IVS_FAULT_STRUCT_SIZE_UNCAPPED
+  over = 0u; /* any struct_size is followed by the tail scan */
+#endif
+  if (over != 0u) {
     return ivs_load_refuse(d, IVS_E_BAD_ARG, IVS_REASON_ARG_STRUCT_SIZE, IVS_SEGMENT_NONE, 0u, 0u);
   }
   /* 2. BAD_HANDLE. */

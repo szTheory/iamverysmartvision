@@ -18,6 +18,9 @@
 # machine.refuse.load.*.report-inside.*). Review WR-01: that test runs only against a valid
 # instance, after BAD_HANDLE (machine.refuse.digest.null-handle-low-out,
 # machine.refuse.*.destroyed-out-inside, machine.refuse.load.exec.destroyed-report-inside).
+# Review WR-02: an in struct's struct_size above IVS_STRUCT_SIZE_MAX (4096) is BAD_ARG before the
+# unknown-tail scan; exactly 4096 keeps D-04 (machine.refuse.create.size-*,
+# machine.create.size-at-max-ok, machine.refuse.load.exec.opts-{over-max,garbage-size,at-max-*}).
 machine.sha256.fips-empty
 machine.sha256.fips-abc
 machine.sha256.fips-448
@@ -49,6 +52,7 @@ machine.create.ok-info-destroy
 machine.create.poisoned-storage
 machine.create.requirements
 machine.create.requirements-larger-out
+machine.create.size-at-max-ok
 machine.create.static-storage
 machine.create.tail-zero-ok
 machine.destroy.scrubs
@@ -67,6 +71,9 @@ machine.refuse.create.null-storage
 machine.refuse.create.short-storage
 machine.refuse.create.size-0
 machine.refuse.create.size-4
+machine.refuse.create.size-at-max-tail-nonzero
+machine.refuse.create.size-garbage
+machine.refuse.create.size-over-max
 machine.refuse.create.tail-nonzero
 machine.refuse.create.trailing-space
 machine.refuse.create.unknown-over-short-storage
@@ -164,6 +171,19 @@ machine.refuse.load.cart.flags-bit-31.c
 machine.refuse.load.exec.opts-tail-nonzero.f
 machine.refuse.load.exec.opts-tail-nonzero.s
 machine.refuse.load.exec.opts-tail-nonzero.c
+machine.refuse.load.exec.opts-over-max.f
+machine.refuse.load.exec.opts-over-max.s
+machine.refuse.load.exec.opts-over-max.c
+machine.refuse.load.exec.opts-over-max.w
+machine.refuse.load.exec.opts-garbage-size.f
+machine.refuse.load.exec.opts-garbage-size.s
+machine.refuse.load.exec.opts-garbage-size.c
+machine.refuse.load.exec.opts-garbage-size.w
+machine.refuse.load.exec.opts-at-max-tail-nonzero.f
+machine.refuse.load.exec.opts-at-max-tail-nonzero.s
+machine.refuse.load.exec.opts-at-max-tail-nonzero.c
+machine.refuse.load.exec.opts-at-max-tail-nonzero.w
+machine.refuse.load.exec.opts-at-max-ok.f
 machine.refuse.load.grom.opts-tail-nonzero.f
 machine.refuse.load.grom.opts-tail-nonzero.s
 machine.refuse.load.grom.opts-tail-nonzero.c
