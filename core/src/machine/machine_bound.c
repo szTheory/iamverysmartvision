@@ -32,7 +32,7 @@
  * outlives the call (no budget, deficit or pointer): slicing invariance holds by construction.
  * The file holds no static or global state.
  * Named faults (plan 04-07, D-07): RUN_TARGET_UNCHECKED, RUN_STOP_BEFORE_OVERSHOOT,
- * RUN_FAULT_STEPS. */
+ * RUN_FAULT_STEPS; (plan 04-09, D-07): RUN_BUDGET_CARRY, the only static, inside its fault block. */
 #include "common/ivs_prelude.h"
 
 #include "ivs/ivs.h"
@@ -41,6 +41,17 @@
 _Static_assert(sizeof(ivs_run_request) == 16u, "ivs_run_request v1 is 16 bytes");
 _Static_assert(sizeof(ivs_run_report) == 56u, "ivs_run_report v1 is 56 bytes");
 _Static_assert(offsetof(ivs_run_report, now_ticks) % 8u == 0u, "64-bit report members are 8-aligned");
+
+#ifdef IVS_FAULT_RUN_BUDGET_CARRY
+/* Named fault RUN_BUDGET_CARRY (plan 04-09, D-07): a hidden carry between calls. The overshoot of
+ * the last call that ran a unit is kept at file scope and, when the next call continues the same
+ * handle from the boundary that call ended at, taken off its target ("those ticks already ran"),
+ * so a sliced run ends at a different boundary than one call. The slicing-invariance family
+ * (run.slice.*) must catch it. */
+static const void *ivs_bound_carry_handle;
+static uint64_t ivs_bound_carry_end;
+static uint64_t ivs_bound_carry_ticks;
+#endif
 
 /* What the commit loop needs from a validated request. */
 typedef struct ivs_bound_plan {
@@ -173,6 +184,11 @@ ivs_status ivs_machine_run(ivs_machine *m, const ivs_run_request *req, ivs_run_r
   }
   im = ivs_machine_from_handle_mut(m);
   entry = im->time_ticks;
+#ifdef IVS_FAULT_RUN_BUDGET_CARRY
+  if (ivs_bound_carry_handle == (const void *)m && ivs_bound_carry_end == entry) {
+    plan.target = plan.target > ivs_bound_carry_ticks ? plan.target - ivs_bound_carry_ticks : 0u;
+  }
+#endif
   while (im->time_ticks < plan.target) {
     ivs_cp1610_result unit;
     uint64_t before = im->time_ticks;
@@ -218,6 +234,13 @@ ivs_status ivs_machine_run(ivs_machine *m, const ivs_run_request *req, ivs_run_r
   r.overshoot_ticks = im->time_ticks > plan.target ? im->time_ticks - plan.target : 0u;
   r.elapsed_ticks = im->time_ticks - entry;
   r.units_executed = units;
+#ifdef IVS_FAULT_RUN_BUDGET_CARRY
+  if (units > 0u) {
+    ivs_bound_carry_ticks = r.overshoot_ticks;
+  }
+  ivs_bound_carry_handle = (const void *)m;
+  ivs_bound_carry_end = im->time_ticks;
+#endif
   *rep = r;
   return IVS_OK;
 }

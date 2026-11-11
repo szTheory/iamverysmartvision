@@ -74,3 +74,20 @@ run.info.timebase
 run.info.layout-none
 run.info.v1-size-caller
 run.info.short-refused
+# Family slice (plan 04-09, D-07): programs halt (loop, HLT, TSTR follower, idle units) and fault
+# (loop, sticky guest fault), each under five slicing patterns (single steps, fixed 7-tick slices,
+# prime-sized slices, seeded xorshift32 slices, one call) against a seam-stepped unit-by-unit
+# reference: per call end, now, units, elapsed, overshoot, stop and the CPU digest; at sampled ends
+# the composite, seven domain digests and storage; summed counters. edges: targets on a boundary,
+# one tick after, below now, equal to now.
+run.slice.halt.single
+run.slice.halt.fixed-7
+run.slice.halt.prime
+run.slice.halt.seeded
+run.slice.halt.one-call
+run.slice.fault.single
+run.slice.fault.fixed-7
+run.slice.fault.prime
+run.slice.fault.seeded
+run.slice.fault.one-call
+run.slice.edges

@@ -29,6 +29,11 @@ extern const size_t ivs_run_bound_count;
 extern const ivs_test_case ivs_run_info_cases[];
 extern const size_t ivs_run_info_count;
 
+/* Family slice (plan 04-09, D-07): five slicing patterns of two stand-in programs and the target
+ * edges against a seam-stepped unit-by-unit reference (run_slice.c). */
+extern const ivs_test_case ivs_run_slice_cases[];
+extern const size_t ivs_run_slice_count;
+
 /* ---- the refusal and side-effect oracle (SP4), shared by the run families ----
  * A snapshot holds a heap copy of the whole instance storage, the composite and the seven domain
  * digests (1..4, 16..18) and info's time_ticks; a destroyed instance has no digests or info. */

@@ -256,6 +256,11 @@ ivs_status ivs_machine_info(const ivs_machine *m, ivs_info *out)
   }
   /* A-02 (plan 04-09): exactly the bytes the caller's size covers, never past them. */
   n = out->struct_size < (uint32_t)sizeof r ? (size_t)out->struct_size : sizeof r;
+#ifdef IVS_FAULT_INFO_TAIL_UNGUARDED
+  /* Named fault INFO_TAIL_UNGUARDED (plan 04-09, A-02): the grown struct is written whole, past a
+   * shorter (v1-sized) caller's struct. */
+  n = sizeof r;
+#endif
   /* Only a valid instance has bytes to overlap: a NULL or invalid handle is BAD_HANDLE above
    * wherever out lies (A-08 a: a refusal status never depends on the buffer's address). */
   if (ivs_machine_out_overlaps(out, n, im, sizeof *im) != 0u) {
