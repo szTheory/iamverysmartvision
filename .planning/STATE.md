@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 3
 current_phase_name: Memory Map, Content Loading and Refusal
 status: executing
-stopped_at: Completed 03-06-PLAN.md
-last_updated: "2026-11-11T06:22:34.898Z"
+stopped_at: Completed 03-07-PLAN.md
+last_updated: "2026-11-11T06:44:08.784Z"
 last_activity: 2026-11-11
-last_activity_desc: Plan 03-06 complete (decode dump vs literal map, 30 literal-row cases, 5 faults, 3 controls, CL-0006; MEM-01 and MEM-02 complete)
-state_head: b70d9b70df9830171fcbde8b3d7ec7583650d1fc
+last_activity_desc: Plan 03-07 complete (IVSC v1 spec, pure layer-1 parser, 50 parse-level ids in suite ivsc, FX-ivsc-vectors effective yes, manifest refresh helper; MEM-05 and MEM-04 stay open)
+state_head: 1619bbf38a8b4b3310475636e4a0ab34e2b50ee7
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 46
-  completed_plans: 38
+  completed_plans: 39
   percent: 25
 ---
 
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 3 — Memory Map, Content Loading and Refusal
-Plan: 7 of 14
+Plan: 8 of 14
 Status: Ready to execute
-Last activity: 2026-11-11 — Plan 03-06 complete (decode dump vs literal map, 30 literal-row cases, 5 faults, 3 controls, CL-0006; MEM-01 and MEM-02 complete)
+Last activity: 2026-11-11 — Plan 03-07 complete (IVSC v1 spec, pure layer-1 parser, 50 parse-level ids in suite ivsc, FX-ivsc-vectors effective yes, manifest refresh helper; MEM-05 and MEM-04 stay open)
 
 Progress: [███░░░░░░░] 25%
 
@@ -91,6 +91,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 03 P04 | 15min | 3 tasks | 14 files |
 | Phase 03 P05 | 8min | 2 tasks | 40 files |
 | Phase 03 P06 | 12min | 3 tasks | 29 files |
+| Phase 03 P07 | 15min | 3 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -188,6 +189,9 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 03]: 03-05: memmap step adds memmap-literal-unknown-tag and memmap-literal-orphan with controls (controls=212; plan 03-06 expects 215); tier-5 refused by tag and by source authority tier
 - [Phase 03]: 03-06: profile alias gates follow the literal (STIC aliases stic-regs, GRAM aliases gmem; inference, C61); describe reports the shared backing as an alias's mirror
 - [Phase 03]: 03-06: MEM-01/MEM-02 complete by gate evidence (decode dump equals literal in dev and release; row probes at every literal boundary; faults 84); CL-0006 provisional
+- [Phase 03]: 03-07: IVSC v1 reasons have stable numbers 1..18, each mapped to one status (spec table in docs/formats/ivsc-v1.md); the parser checks the table size before reading any entry so a lying segment_count cannot over-read
+- [Phase 03]: 03-07: long IVSC fixtures (P05, B07, B10, B12) are JSON build records with typed cmake -E sha256sum trailers; any data/cart/*.json edit refreshes FX-ivsc-vectors via tools/cart/manifest-outputs.sh in the same commit
+- [Phase 03]: 03-07: SHA fault prefixes not widened (sha256 faults run suite machine only); the loader plan 03-11 still owes the widening; MEM-05/MEM-04 stay open until 03-08/03-11
 
 ### Pending Todos
 
@@ -219,6 +223,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-11T06:22:34.802Z
-Stopped at: Completed 03-06-PLAN.md
+Last session: 2026-11-11T06:44:08.691Z
+Stopped at: Completed 03-07-PLAN.md
 Resume file: None
