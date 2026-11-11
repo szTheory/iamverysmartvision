@@ -24,8 +24,26 @@
  * Adjacent equal tuples are merged into `<view> <LO>-<HI> <device> w=<n> impl=<x> mirror=<m|->
  * gate=<g|->` lines, compared with the literal's projection, and written (when IVS_TEST_OUT_DIR
  * is set) to $IVS_TEST_OUT_DIR/memmap-dump.txt, one `# memmap-dump nonce=<IVS_TEST_NONCE or
- * none> profile=<id>` header per profile, for the memmap gate step (H6). Test code may use
- * stdio and getenv; the core may not. All image words are generated stand-ins built here. */
+ * none> profile=<id>` header per profile, for the memmap gate step (H6).
+ *
+ * memmap.row.<view>-<LO>-<HI>, one case per literal row (D-22, MEM-02): probes at lo-1 and hi+1
+ * (judged by the neighbouring literal row), lo and hi, and for a row with a mirror inside it
+ * lo+mirror-1 and lo+mirror. Expected values come only from mr_rules below, keyed on the
+ * literal's device and width, never from the profile descriptors:
+ *   read view: a raw-poked FFFF reads (FFFF & rmask) | (fill & ~rmask), a raw-poked 0000 reads
+ *     fill & ~rmask (03FF, 00FF or FFFF and 0000 for real rows; FFFF for stub and undriven rows);
+ *     at the mirror wrap, a word poked at lo reads back at lo+mirror and lo+mirror-1 keeps its own;
+ *   write view, rows that keep a store: a bus write of 1234 and then of FFFF reads back at the
+ *     read-side address as value & rmask, and changes exactly one 16-bit word of the machine state,
+ *     to value & rmask (so a store kept wider than the read mask is seen); a store at lo+mirror
+ *     reads back at the read-side address of lo; rows that drop a store: writes at the probe
+ *     addresses, and FFFF and 0000 at every address of the row itself, leave the whole state
+ *     unchanged.
+ * memmap.row-gate.<gate>-closed, one case per gate of the literal (D-19): with the gate closed
+ * every row of that gate reads FFFF (the undriven value) and drops writes; reopened, a real row
+ * reads its stored word again.
+ * Test code may use stdio and getenv; the core may not. All image words are generated stand-ins
+ * built here. */
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -83,11 +101,17 @@ static int mr_view_index(char view)
   return view == 'R' ? 0 : 1;
 }
 
-/* Fills mr_rowmap for profile id pid; returns 0 when a view is not tiled by its rows. */
+/* Fills mr_rowmap for profile id pid (kept until another profile is mapped); returns 0 when a
+ * view is not tiled by its rows. */
 static int mr_map_profile(const char *pid)
 {
+  static const char *mapped = NULL;
   uint32_t i;
   uint32_t a;
+  if (mapped != NULL && strcmp(mapped, pid) == 0) {
+    return 1;
+  }
+  mapped = NULL;
   memset(mr_rowmap, MR_NONE, sizeof mr_rowmap);
   for (i = 0u; i < IVS_MP_ROWS; i++) {
     const ivs_mp_row *r = &ivs_mp_rows[i];
@@ -103,6 +127,7 @@ static int mr_map_profile(const char *pid)
       return 0;
     }
   }
+  mapped = pid;
   return 1;
 }
 
@@ -182,7 +207,12 @@ static void mr_put_be(uint8_t *p, uint32_t i, uint16_t w)
 
 static void mr_build_images(void)
 {
+  static int built = 0;
   uint32_t i;
+  if (built) {
+    return;
+  }
+  built = 1;
   for (i = 0u; i < IVS_MEMSYS_EXEC_WORDS; i++) {
     mr_put_be(mr_exec_img, i, (uint16_t)((37u * i + 11u) & 0x03FFu));
   }
@@ -228,6 +258,258 @@ static uint32_t mr_profile_index(const char *pid)
     }
   }
   return ivs_profile_count();
+}
+
+/* ---- rule table (D-17, D-19, D-B9), keyed on the literal's device and width ---- */
+
+typedef struct mr_rule {
+  const char *device;
+  uint8_t w;
+  uint16_t rmask;
+  uint16_t fill;
+  uint8_t keep; /* 1: a store keeps value & rmask */
+} mr_rule;
+
+/* Written here from the decisions, not read from the generated descriptors: decle ROM 10 bits and
+ * 8-bit GROM with the upper bits driven 0, 8-bit RAM reads its byte with the upper byte 0 (C60),
+ * system RAM 16 bits, stub and undriven reads give the undriven value FFFF (C5, C60). */
+static const mr_rule mr_rules[] = {
+    {"exec", 10u, 0x03FFu, 0x0000u, 0u},      {"cart", 10u, 0x03FFu, 0x0000u, 0u},
+    {"grom", 8u, 0x00FFu, 0x0000u, 0u},       {"scratchpad", 8u, 0x00FFu, 0x0000u, 1u},
+    {"gram", 8u, 0x00FFu, 0x0000u, 1u},       {"sysram", 16u, 0xFFFFu, 0x0000u, 1u},
+    {"stic", 0u, 0x0000u, 0xFFFFu, 0u},       {"psg", 0u, 0x0000u, 0xFFFFu, 0u},
+    {"undriven", 0u, 0x0000u, 0xFFFFu, 0u},
+};
+
+static const mr_rule *mr_rule_of(const ivs_mp_row *r)
+{
+  size_t i;
+  for (i = 0u; i < sizeof mr_rules / sizeof mr_rules[0]; i++) {
+    if (strcmp(mr_rules[i].device, r->device) == 0 && mr_rules[i].w == r->w) {
+      return &mr_rules[i];
+    }
+  }
+  ivs_test_diag("no rule for device %s width %u (literal row %s)", r->device, (unsigned)r->w, r->line);
+  return NULL;
+}
+
+static uint16_t mr_expect(const mr_rule *u, uint16_t stored)
+{
+  return (uint16_t)((stored & u->rmask) | (u->fill & (uint16_t)~u->rmask));
+}
+
+/* Number of 16-bit state words that differ from mr_snap; *last is the new value of the last one. */
+static uint32_t mr_changed_words(uint16_t *last)
+{
+  const unsigned char *a = (const unsigned char *)&mr_snap;
+  const unsigned char *b = (const unsigned char *)&mr_m;
+  uint32_t n = 0u;
+  size_t i;
+  *last = 0u;
+  for (i = 0u; i + 1u < sizeof mr_m; i += 2u) {
+    if (a[i] != b[i] || a[i + 1u] != b[i + 1u]) {
+      uint16_t v;
+      memcpy(&v, b + i, sizeof v);
+      *last = v;
+      n++;
+    }
+  }
+  return n;
+}
+
+/* Profile of literal row r mapped and set up fresh; 0 on failure. */
+static int mr_fresh(const ivs_mp_row *r)
+{
+  uint32_t p = mr_profile_index(r->profile);
+  if (p >= ivs_profile_count()) {
+    ivs_test_diag("literal map of profile %s has no registry profile", r->profile);
+    return 0;
+  }
+  if (!mr_map_profile(r->profile)) {
+    ivs_test_diag("profile %s: literal rows do not tile both views", r->profile);
+    return 0;
+  }
+  return mr_setup(p, r->profile);
+}
+
+/* Read-view probe at addr, judged by the literal row there. */
+static int mr_probe_read(uint16_t addr)
+{
+  const mr_rule *u = mr_rule_of(mr_row_at('R', addr));
+  MR_CHECK(u != NULL);
+  ivs_memsys_poke_raw_internal(&mr_m, addr, 0xFFFFu);
+  if (mr_read(addr) != mr_expect(u, 0xFFFFu)) {
+    ivs_test_diag("R %04X: raw FFFF reads %04X, rule gives %04X", (unsigned)addr, (unsigned)mr_read(addr),
+                  (unsigned)mr_expect(u, 0xFFFFu));
+    return IVS_TEST_FAIL;
+  }
+  ivs_memsys_poke_raw_internal(&mr_m, addr, 0x0000u);
+  if (mr_read(addr) != mr_expect(u, 0x0000u)) {
+    ivs_test_diag("R %04X: raw 0000 reads %04X, rule gives %04X", (unsigned)addr, (unsigned)mr_read(addr),
+                  (unsigned)mr_expect(u, 0x0000u));
+    return IVS_TEST_FAIL;
+  }
+  return IVS_TEST_PASS;
+}
+
+/* One kept store: reads back at obs as value & rmask and changes exactly one state word to it. */
+static int mr_store_kept(const mr_rule *u, uint16_t addr, uint16_t obs, uint16_t value)
+{
+  uint16_t want = (uint16_t)(value & u->rmask);
+  uint16_t got;
+  uint32_t n;
+  memcpy(&mr_snap, &mr_m, sizeof mr_snap);
+  mr_write(addr, value);
+  if (mr_read(obs) != want) {
+    ivs_test_diag("W %04X: store %04X reads %04X at %04X, rule gives %04X", (unsigned)addr, (unsigned)value,
+                  (unsigned)mr_read(obs), (unsigned)obs, (unsigned)want);
+    return IVS_TEST_FAIL;
+  }
+  n = mr_changed_words(&got);
+  if (n != 1u || got != want) {
+    ivs_test_diag("W %04X: store %04X changed %lu state words (last %04X), rule gives one word %04X",
+                  (unsigned)addr, (unsigned)value, (unsigned long)n, (unsigned)got, (unsigned)want);
+    return IVS_TEST_FAIL;
+  }
+  return IVS_TEST_PASS;
+}
+
+/* Write-view probe at addr, judged by the literal row there. */
+static int mr_probe_write(uint16_t addr)
+{
+  const mr_rule *u = mr_rule_of(mr_row_at('W', addr));
+  MR_CHECK(u != NULL);
+  if (u->keep != 0u) {
+    int ok;
+    uint16_t obs = mr_obs(addr, &ok);
+    MR_CHECK(ok);
+    MR_CHECK(mr_store_kept(u, addr, obs, 0x1234u) == IVS_TEST_PASS);
+    MR_CHECK(mr_store_kept(u, addr, obs, 0xFFFFu) == IVS_TEST_PASS);
+    return IVS_TEST_PASS;
+  }
+  memcpy(&mr_snap, &mr_m, sizeof mr_snap);
+  mr_write(addr, 0x1234u);
+  mr_write(addr, 0xFFFFu);
+  if (memcmp(&mr_snap, &mr_m, sizeof mr_snap) != 0) {
+    ivs_test_diag("W %04X: a store the rule drops changed the machine state", (unsigned)addr);
+    return IVS_TEST_FAIL;
+  }
+  return IVS_TEST_PASS;
+}
+
+static int mr_dropped_row(const ivs_mp_row *r);
+
+/* Case memmap.row.<view>-<LO>-<HI>. */
+static int mr_row_case(const ivs_mp_row *r)
+{
+  uint32_t probes[6];
+  size_t np = 0u;
+  size_t k;
+  const mr_rule *u = mr_rule_of(r);
+  MR_CHECK(u != NULL);
+  if (r->lo > 0u) {
+    probes[np++] = r->lo - 1u;
+  }
+  probes[np++] = r->lo;
+  probes[np++] = r->hi;
+  if (r->hi < 0xFFFFu) {
+    probes[np++] = r->hi + 1u;
+  }
+  for (k = 0u; k < np; k++) {
+    uint16_t a = (uint16_t)probes[k];
+    MR_CHECK(mr_fresh(r));
+    if (r->view == 'R') {
+      MR_CHECK(mr_probe_read(a) == IVS_TEST_PASS);
+    } else {
+      MR_CHECK(mr_probe_write(a) == IVS_TEST_PASS);
+    }
+  }
+  if (r->mirror != 0u && (uint32_t)r->lo + r->mirror <= r->hi) {
+    uint16_t at = (uint16_t)(r->lo + r->mirror);
+    uint16_t before = (uint16_t)(at - 1u);
+    MR_CHECK(mr_fresh(r));
+    if (r->view == 'R') {
+      ivs_memsys_poke_raw_internal(&mr_m, before, 0x02AAu);
+      ivs_memsys_poke_raw_internal(&mr_m, r->lo, 0x0155u);
+      MR_CHECK(mr_read(at) == mr_expect(u, 0x0155u));
+      MR_CHECK(before == r->lo || mr_read(before) == mr_expect(u, 0x02AAu));
+    } else if (u->keep != 0u) {
+      int ok;
+      uint16_t obs = mr_obs(r->lo, &ok);
+      MR_CHECK(ok);
+      mr_write(r->lo, 0x0011u);
+      mr_write(at, 0x0022u);
+      MR_CHECK(mr_read(obs) == (uint16_t)(0x0022u & u->rmask));
+      mr_write(before, 0x0033u);
+      MR_CHECK(before == r->lo || mr_read(obs) == (uint16_t)(0x0022u & u->rmask));
+    }
+  }
+  if (r->view == 'W' && u->keep == 0u) {
+    MR_CHECK(mr_fresh(r));
+    MR_CHECK(mr_dropped_row(r));
+  }
+  return IVS_TEST_PASS;
+}
+
+/* Gate names of the literal and their setter ids (D-19). */
+static uint32_t mr_gate_id(const char *name)
+{
+  if (strcmp(name, "stic-regs") == 0) {
+    return IVS_MEMSYS_GATE_STIC_REGS;
+  }
+  if (strcmp(name, "gmem") == 0) {
+    return IVS_MEMSYS_GATE_GMEM;
+  }
+  return IVS_MEMSYS_GATE_NONE;
+}
+
+/* Case memmap.row-gate.<gate>-closed over every literal row of that gate. */
+static int mr_gate_case(const char *gate)
+{
+  uint32_t g = mr_gate_id(gate);
+  uint32_t i;
+  MR_CHECK(g != IVS_MEMSYS_GATE_NONE);
+  for (i = 0u; i < IVS_MP_ROWS; i++) {
+    const ivs_mp_row *r = &ivs_mp_rows[i];
+    const mr_rule *u;
+    uint32_t k;
+    if (strcmp(r->gate, gate) != 0) {
+      continue;
+    }
+    u = mr_rule_of(r);
+    MR_CHECK(u != NULL);
+    MR_CHECK(mr_fresh(r));
+    if (r->view == 'R') {
+      for (k = 0u; k < 2u; k++) {
+        uint16_t a = k == 0u ? r->lo : r->hi;
+        ivs_memsys_poke_raw_internal(&mr_m, a, 0x0155u);
+        ivs_memsys_set_gate_internal(&mr_m, g, 0u);
+        if (mr_read(a) != 0xFFFFu) {
+          ivs_test_diag("R %04X: reads %04X with gate %s closed", (unsigned)a, (unsigned)mr_read(a), gate);
+          return IVS_TEST_FAIL;
+        }
+        ivs_memsys_set_gate_internal(&mr_m, g, 1u);
+        MR_CHECK(mr_read(a) == mr_expect(u, 0x0155u));
+      }
+    } else {
+      ivs_memsys_set_gate_internal(&mr_m, g, 0u);
+      memcpy(&mr_snap, &mr_m, sizeof mr_snap);
+      mr_write(r->lo, 0x1234u);
+      mr_write(r->hi, 0x1234u);
+      if (memcmp(&mr_snap, &mr_m, sizeof mr_snap) != 0) {
+        ivs_test_diag("W %04X-%04X: a store landed with gate %s closed", (unsigned)r->lo, (unsigned)r->hi, gate);
+        return IVS_TEST_FAIL;
+      }
+      ivs_memsys_set_gate_internal(&mr_m, g, 1u);
+      if (u->keep != 0u) {
+        int ok;
+        uint16_t obs = mr_obs(r->lo, &ok);
+        MR_CHECK(ok);
+        MR_CHECK(mr_store_kept(u, r->lo, obs, 0x1234u) == IVS_TEST_PASS);
+      }
+    }
+  }
+  return IVS_TEST_PASS;
 }
 
 /* ---- the decode dump ---- */
@@ -529,20 +811,54 @@ static int mr_dump_case(void)
   return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
 }
 
-/* ---- case table of this family ---- */
+/* ---- case table of this family: the dump, one case per literal row, one per gate ---- */
 
-#define MR_CASES 1u
+#define MR_GATES_MAX 8u
+#define MR_CASES (1u + IVS_MP_ROWS + MR_GATES_MAX)
 static char mr_ids[MR_CASES][48];
+static const char *mr_gates[MR_GATES_MAX];
+static size_t mr_ngates;
 
 int mm_rows_init(void)
 {
+  uint32_t i;
+  size_t j;
   int k = snprintf(mr_ids[0], sizeof mr_ids[0], "memmap.dump.matches-literal");
-  return k > 0 && (size_t)k < sizeof mr_ids[0];
+  if (k <= 0 || (size_t)k >= sizeof mr_ids[0]) {
+    return 0;
+  }
+  for (i = 0u; i < IVS_MP_ROWS; i++) {
+    const ivs_mp_row *r = &ivs_mp_rows[i];
+    int seen = 0;
+    k = snprintf(mr_ids[1u + i], sizeof mr_ids[0], "memmap.row.%c-%04X-%04X", r->view, (unsigned)r->lo,
+                 (unsigned)r->hi);
+    if (k <= 0 || (size_t)k >= sizeof mr_ids[0]) {
+      return 0;
+    }
+    if (strcmp(r->gate, "-") == 0) {
+      continue;
+    }
+    for (j = 0u; j < mr_ngates; j++) {
+      seen = seen || strcmp(mr_gates[j], r->gate) == 0;
+    }
+    if (!seen) {
+      if (mr_ngates >= MR_GATES_MAX) {
+        return 0;
+      }
+      mr_gates[mr_ngates] = r->gate;
+      k = snprintf(mr_ids[1u + IVS_MP_ROWS + mr_ngates], sizeof mr_ids[0], "memmap.row-gate.%s-closed", r->gate);
+      if (k <= 0 || (size_t)k >= sizeof mr_ids[0]) {
+        return 0;
+      }
+      mr_ngates++;
+    }
+  }
+  return 1;
 }
 
 size_t mm_rows_count(void)
 {
-  return MR_CASES;
+  return 1u + IVS_MP_ROWS + mr_ngates;
 }
 
 const char *mm_rows_id(size_t i)
@@ -552,8 +868,13 @@ const char *mm_rows_id(size_t i)
 
 int mm_rows_run(size_t i)
 {
-  (void)i;
-  return mr_dump_case();
+  if (i == 0u) {
+    return mr_dump_case();
+  }
+  if (i <= IVS_MP_ROWS) {
+    return mr_row_case(&ivs_mp_rows[i - 1u]);
+  }
+  return mr_gate_case(mr_gates[i - 1u - IVS_MP_ROWS]);
 }
 
 const ivs_test_source *mm_rows_sources(size_t *n)

@@ -160,10 +160,19 @@ static uint16_t ivs_mm_region_read(const ivs_memsys *m, uint8_t idx, uint16_t ad
   if (idx < IVS_MM_REGION_COUNT) {
     const ivs_mm_region *r = &ivs_mm_regions[idx];
     const ivs_mm_device *d = &ivs_mm_devices[m->profile][r->device];
-    if (m->gate_open[r->gate] != 0u && ivs_mm_present(m, r->phys) != 0u) {
+    uint8_t open = m->gate_open[r->gate];
+#ifdef IVS_FAULT_MEM_GATE_IGNORED
+    open = 1u;
+#endif
+    if (open != 0u && ivs_mm_present(m, r->phys) != 0u) {
       stored = ivs_mm_load(m, r->phys, ivs_mm_index(r, addr));
       rmask = d->rmask;
       fill = d->fill;
+#ifdef IVS_FAULT_MEM_ROM_NO_MASK
+      if (r->device == IVS_MEMSYS_DEVICE_ROM10) {
+        rmask = 0xFFFFu;
+      }
+#endif
     }
   }
   return ivs_mm_width(stored, rmask, fill);
@@ -216,10 +225,29 @@ void ivs_memsys_write(ivs_memsys *m, uint16_t addr, uint16_t value)
   if (idx < IVS_MM_REGION_COUNT) {
     const ivs_mm_region *r = &ivs_mm_regions[idx];
     const ivs_mm_device *d = &ivs_mm_devices[m->profile][r->device];
+    uint16_t v = IVS_U16((uint32_t)value & d->rmask);
+#ifdef IVS_FAULT_MEM_RAM8_NO_TRUNC
+    if (r->device == IVS_MEMSYS_DEVICE_RAM8) {
+      v = value;
+    }
+#endif
+#ifdef IVS_FAULT_MEM_RAM16_TRUNC
+    if (r->device == IVS_MEMSYS_DEVICE_RAM16) {
+      v = IVS_U16((uint32_t)value & 0x00FFu);
+    }
+#endif
     if (d->keep != 0u && m->gate_open[r->gate] != 0u) {
-      ivs_mm_store(m, r->phys, ivs_mm_index(r, addr), IVS_U16((uint32_t)value & d->rmask));
+      ivs_mm_store(m, r->phys, ivs_mm_index(r, addr), v);
     }
   }
+#ifdef IVS_FAULT_MEM_ROM_WRITABLE
+  if (idx >= IVS_MM_REGION_COUNT) {
+    uint8_t ri = ivs_mm_rd_region[m->profile][addr >> 4u];
+    if (ri < IVS_MM_REGION_COUNT && ivs_mm_regions[ri].phys == IVS_MEMSYS_PHYS_EXEC) {
+      ivs_mm_store(m, IVS_MEMSYS_PHYS_EXEC, ivs_mm_index(&ivs_mm_regions[ri], addr), value);
+    }
+  }
+#endif
 }
 
 /* IAB answer by reason flag (D-20): the start vector for a reset, the interrupt vector for an

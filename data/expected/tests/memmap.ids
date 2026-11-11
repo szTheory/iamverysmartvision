@@ -1,6 +1,8 @@
 # Suite memmap: profile-driven memory system through its bus function (plan 03-04).
 # Fixed cases, then memmap.anchor.<region>-lo|hi for every region row of the test, then the
-# literal-map family (plan 03-06): the decode dump against the literal map.
+# literal-map family (plan 03-06): the decode dump against the literal map, one case per row of
+# data/memmap/intv-2609-ntsc-family-p1.literal.txt (memmap.row.<view>-<LO>-<HI>), and one case
+# per gate of the literal (memmap.row-gate.<gate>-closed).
 memmap.width.rom10-wide-reads-03ff
 memmap.width.grom8-wide-reads-00ff
 memmap.width.ram16-keeps-16
@@ -57,3 +59,33 @@ memmap.anchor.stic-alias-wc-hi
 memmap.anchor.gram-alias-wf-lo
 memmap.anchor.gram-alias-wf-hi
 memmap.dump.matches-literal
+memmap.row.R-0000-003F
+memmap.row.R-0040-007F
+memmap.row.R-0080-00FF
+memmap.row.R-0100-01EF
+memmap.row.R-01F0-01FF
+memmap.row.R-0200-035F
+memmap.row.R-0360-0FFF
+memmap.row.R-1000-1FFF
+memmap.row.R-2000-2FFF
+memmap.row.R-3000-37FF
+memmap.row.R-3800-3FFF
+memmap.row.R-4000-FFFF
+memmap.row.W-0000-003F
+memmap.row.W-0040-00FF
+memmap.row.W-0100-01EF
+memmap.row.W-01F0-01FF
+memmap.row.W-0200-035F
+memmap.row.W-0360-37FF
+memmap.row.W-3800-3FFF
+memmap.row.W-4000-403F
+memmap.row.W-4040-77FF
+memmap.row.W-7800-7FFF
+memmap.row.W-8000-803F
+memmap.row.W-8040-B7FF
+memmap.row.W-B800-BFFF
+memmap.row.W-C000-C03F
+memmap.row.W-C040-F7FF
+memmap.row.W-F800-FFFF
+memmap.row-gate.stic-regs-closed
+memmap.row-gate.gmem-closed
