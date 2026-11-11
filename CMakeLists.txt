@@ -16,6 +16,8 @@ include(cmake/IvsWarnings.cmake)
 
 add_subdirectory(core)
 add_subdirectory(runner)
+# Build-tree image tool and images (plan 04-14, D-30): sets IVS_IMAGES_DIR before tests.
+add_subdirectory(tools/pack)
 
 enable_testing()
 add_subdirectory(tests)

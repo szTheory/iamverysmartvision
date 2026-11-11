@@ -51,6 +51,11 @@ extern const size_t ivs_run_input_count;
 extern const ivs_test_case ivs_run_fuzz_cases[];
 extern const size_t ivs_run_fuzz_count;
 
+/* Family stub (plan 04-14, D-28..D-30): the project boot stub from the build-tree image of
+ * tools/pack, from reset to the cartridge entry and its unexpected-interrupt trap (run_stub.c). */
+extern const ivs_test_case ivs_run_stub_cases[];
+extern const size_t ivs_run_stub_count;
+
 /* ---- the refusal and side-effect oracle (SP4), shared by the run families ----
  * A snapshot holds a heap copy of the whole instance storage, the composite and the seven domain
  * digests (1..4, 16..18) and info's time_ticks; a destroyed instance has no digests or info. */

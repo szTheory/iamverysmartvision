@@ -137,8 +137,19 @@ set_tests_properties(machine PROPERTIES SKIP_RETURN_CODE 77)
 # in their own executable so the 512-case machine suite and its per-fault reruns stay bounded
 # (Pitfall 12). It reuses the machine suite's stand-in content (machine/machine_standin.c, the
 # ivs_ms_* helpers of machine/machine_cases.h); its named faults are data/expected/faults/run.ids.
-add_executable(ivs_tests_run run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_fuzz.c machine/machine_standin.c)
-target_include_directories(ivs_tests_run PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine")
+# Its family stub (plan 04-14, D-28..D-30) reads ivs_images.inc: the bytes of the build-tree
+# images that tools/pack writes (target ivs_images, IVS_IMAGES_DIR), turned into a C include by
+# ivs_pack --c-include here. Nothing in it is committed.
+set(IVS_IMAGES_INC "${CMAKE_CURRENT_BINARY_DIR}/ivs_images.inc")
+add_custom_command(
+  OUTPUT "${IVS_IMAGES_INC}"
+  COMMAND ivs_pack --c-include "${IVS_IMAGES_INC}" "boot_stub=${IVS_BOOT_STUB_EXEC}"
+  DEPENDS ivs_pack ivs_images "${IVS_BOOT_STUB_EXEC}"
+  COMMENT "Generating the build-tree image include"
+  VERBATIM)
+add_executable(ivs_tests_run run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_fuzz.c run/run_stub.c machine/machine_standin.c "${IVS_IMAGES_INC}")
+target_include_directories(ivs_tests_run PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_BINARY_DIR}")
+add_dependencies(ivs_tests_run ivs_images)
 target_link_libraries(ivs_tests_run PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
 add_test(NAME run COMMAND ivs_tests_run)
 set_tests_properties(run PROPERTIES SKIP_RETURN_CODE 77)
@@ -245,8 +256,9 @@ ivs_fault_suite(machine
   GENERATED "${IVS_SHA_INC}" "${IVS_CART_INC}")
 
 ivs_fault_suite(run
-  SOURCES run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_fuzz.c machine/machine_standin.c
-  INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/machine")
+  SOURCES run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_fuzz.c run/run_stub.c machine/machine_standin.c
+  INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_BINARY_DIR}"
+  GENERATED "${IVS_IMAGES_INC}")
 
 ivs_fault_suite(memmap
   SOURCES memmap/memmap_main.c memmap/memmap_rows.c

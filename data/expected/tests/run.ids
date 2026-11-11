@@ -176,3 +176,7 @@ run.fuzz.cases-covered
 # structs and request prefix; the pointer-bearing request size is checked only with 64-bit pointers.
 run.struct.v1-sizes
 run.struct.v1-sizes-lp64 skip-ok
+# Family stub (plan 04-14, D-28..D-30): the project boot stub (a hand-assembled listing packed by
+# tools/pack into the build tree) with a 2048-byte zero GROM, from a power-on reset through the
+# public API: R7 at unit starts 1000, 1010, 1011, 1013, 5000.
+run.stub.path
