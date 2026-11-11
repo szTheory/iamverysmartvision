@@ -17,6 +17,15 @@
  * status, the report (reason, segment index, byte offset) or the view (segments and their data
  * offsets, recomputed here from the counts), and that a refusal leaves the view untouched and an
  * acceptance leaves the report untouched.
+ *
+ * Code-built cases (listed in data/expected/tests/ivsc.ids with the records):
+ *   ivsc.B08-len-over-max      a caller length of 131,257 (and SIZE_MAX) with a 1-byte buffer is
+ *                              OVERSIZED before any byte is read (ASan sees a read past the byte).
+ *   ivsc.X02-canonical-roundtrip  every accepted record re-encoded here from its view (prefix,
+ *                              entries, the words found at the view's data offsets, a trailer
+ *                              from the core SHA-256) reproduces the input bytes exactly.
+ *   ivsc.X03-bad-args          NULL view, NULL report and NULL bytes with a length are BAD_ARG
+ *                              and write nothing; the argument check precedes the length check.
  * Test code may use stdio and malloc; the core may not. */
 #include <stdint.h>
 #include <stdio.h>
@@ -92,6 +101,11 @@ static void ic_put32(uint8_t *p, uint32_t v)
   p[1] = (uint8_t)((v >> 16) & 0xFFu);
   p[2] = (uint8_t)((v >> 8) & 0xFFu);
   p[3] = (uint8_t)(v & 0xFFu);
+}
+
+static uint32_t ic_get16(const uint8_t *p)
+{
+  return ((uint32_t)p[0] << 8) | (uint32_t)p[1];
 }
 
 static uint32_t ic_get32(const uint8_t *p)
@@ -267,16 +281,195 @@ static int ic_run_record(const ivs_cart_fixture *f)
   return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
 }
 
+/* ivsc.B08: an oversize caller length is refused before any byte is read. */
+static int ic_b08_len_over_max(void)
+{
+  static const size_t lens[] = {(size_t)IVS_IVSC_MAX_BYTES + 1u, (size_t)-1};
+  uint8_t *b = malloc(1u);
+  size_t i;
+  int ok = 1;
+  if (b == NULL) {
+    return IVS_TEST_FAIL;
+  }
+  b[0] = ic_magic[0];
+  for (i = 0u; i < sizeof lens / sizeof lens[0]; i++) {
+    ivs_ivsc_view view;
+    ivs_ivsc_view view0;
+    ivs_ivsc_report rep;
+    ivs_status st;
+    memset(&view, 0xA5, sizeof view);
+    view0 = view;
+    memset(&rep, 0x5A, sizeof rep);
+    st = ivs_ivsc_parse(b, lens[i], &view, &rep);
+    if (st != IVS_E_OVERSIZED || rep.reason != IVS_IVSC_R_TOO_LARGE || rep.segment_index != IVS_IVSC_NO_SEGMENT ||
+        rep.byte_offset != IVS_IVSC_MAX_BYTES || rep.required_features != 0u ||
+        memcmp(&view, &view0, sizeof view) != 0) {
+      ivs_test_diag("length %zu: status %d reason %s segment %u offset %u", lens[i], st, ic_reason_name(rep.reason),
+                    (unsigned)rep.segment_index, (unsigned)rep.byte_offset);
+      ok = 0;
+    }
+  }
+  free(b);
+  return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
+}
+
+/* Re-encode an accepted view; 1 when the encoding equals the input bytes. */
+static int ic_reencode_equal(const uint8_t *b, size_t len, const ivs_ivsc_view *v)
+{
+  uint8_t *e;
+  size_t at;
+  uint32_t i;
+  uint32_t w;
+  int same;
+  if (v->total_bytes != len || v->segment_count == 0u || v->segment_count > IVS_IVSC_MAX_SEGMENTS) {
+    return 0;
+  }
+  e = malloc(len);
+  if (e == NULL) {
+    return 0;
+  }
+  memcpy(e, ic_magic, sizeof ic_magic);
+  ic_put16(e + 8, v->version);
+  ic_put16(e + 10, v->flags);
+  ic_put32(e + 12, v->required_features);
+  ic_put32(e + 16, v->total_bytes);
+  ic_put16(e + 20, v->segment_count);
+  ic_put16(e + 22, 0u);
+  at = IVS_IVSC_PREFIX_BYTES;
+  for (i = 0u; i < v->segment_count; i++) {
+    ic_put16(e + at, v->segs[i].addr);
+    ic_put16(e + at + 2u, v->segs[i].len_words);
+    e[at + 4u] = (uint8_t)IVS_IVSC_WIDTH_BITS;
+    e[at + 5u] = 0u;
+    ic_put16(e + at + 6u, 0u);
+    at += IVS_IVSC_ENTRY_BYTES;
+  }
+  for (i = 0u; i < v->segment_count; i++) {
+    for (w = 0u; w < v->segs[i].len_words; w++) {
+      size_t src = (size_t)v->segs[i].data_byte_offset + 2u * (size_t)w;
+      if (at + 2u > len - IVS_IVSC_TRAILER_BYTES || src + 2u > len) {
+        free(e);
+        return 0;
+      }
+      ic_put16(e + at, ic_get16(b + src));
+      at += 2u;
+    }
+  }
+  if (at != len - IVS_IVSC_TRAILER_BYTES) {
+    free(e);
+    return 0;
+  }
+  ivs_sha256_digest(e, at, e + at);
+  same = memcmp(e, b, len) == 0;
+  free(e);
+  return same;
+}
+
+/* ivsc.X02: every accepted record round-trips through its view. */
+static int ic_x02_canonical_roundtrip(void)
+{
+  size_t i;
+  size_t accepted = 0u;
+  size_t want = 0u;
+  int ok = 1;
+  for (i = 0u; i < ivs_cart_count; i++) {
+    const ivs_cart_fixture *f = &ivs_cart_table[i];
+    uint8_t *b = NULL;
+    size_t len = 0u;
+    ivs_ivsc_view view;
+    ivs_ivsc_report rep;
+    if (f->status != IVS_OK) {
+      continue;
+    }
+    want++;
+    if (!ic_bytes(f, &b, &len)) {
+      ivs_test_diag("%s: could not assemble the container", f->id);
+      ok = 0;
+      continue;
+    }
+    if (ivs_ivsc_parse(b, len, &view, &rep) != IVS_OK) {
+      ivs_test_diag("%s: not accepted (reason %s)", f->id, ic_reason_name(rep.reason));
+      ok = 0;
+    } else if (!ic_reencode_equal(b, len, &view)) {
+      ivs_test_diag("%s: the re-encoded view differs from the input", f->id);
+      ok = 0;
+    } else {
+      accepted++;
+    }
+    free(b);
+  }
+  if (want == 0u || accepted != want) {
+    ivs_test_diag("round trips: %zu of %zu accepted records", accepted, want);
+    ok = 0;
+  }
+  return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
+}
+
+/* ivsc.X03: argument refusals write nothing, and precede the length check. */
+static int ic_x03_bad_args(void)
+{
+  const ivs_cart_fixture *f = NULL;
+  ivs_ivsc_view view;
+  ivs_ivsc_view view0;
+  ivs_ivsc_report rep;
+  ivs_ivsc_report rep0;
+  size_t i;
+  int ok = 1;
+  for (i = 0u; i < ivs_cart_count; i++) {
+    if (strcmp(ivs_cart_table[i].id, "ivsc.P01-min") == 0) {
+      f = &ivs_cart_table[i];
+    }
+  }
+  if (f == NULL || f->bytes == NULL) {
+    ivs_test_diag("record ivsc.P01-min is missing");
+    return IVS_TEST_FAIL;
+  }
+  memset(&view, 0xA5, sizeof view);
+  view0 = view;
+  memset(&rep, 0x5A, sizeof rep);
+  rep0 = rep;
+  if (ivs_ivsc_parse(f->bytes, f->n_bytes, NULL, &rep) != IVS_E_BAD_ARG || memcmp(&rep, &rep0, sizeof rep) != 0) {
+    ivs_test_diag("NULL view");
+    ok = 0;
+  }
+  if (ivs_ivsc_parse(f->bytes, f->n_bytes, &view, NULL) != IVS_E_BAD_ARG || memcmp(&view, &view0, sizeof view) != 0) {
+    ivs_test_diag("NULL report");
+    ok = 0;
+  }
+  if (ivs_ivsc_parse(NULL, f->n_bytes, &view, &rep) != IVS_E_BAD_ARG || memcmp(&view, &view0, sizeof view) != 0 ||
+      memcmp(&rep, &rep0, sizeof rep) != 0) {
+    ivs_test_diag("NULL bytes with a length");
+    ok = 0;
+  }
+  if (ivs_ivsc_parse(NULL, (size_t)IVS_IVSC_MAX_BYTES + 1u, &view, &rep) != IVS_E_BAD_ARG ||
+      memcmp(&view, &view0, sizeof view) != 0 || memcmp(&rep, &rep0, sizeof rep) != 0) {
+    ivs_test_diag("NULL bytes with an oversize length");
+    ok = 0;
+  }
+  if (ivs_ivsc_parse(f->bytes, f->n_bytes, &view, &rep) != IVS_OK || memcmp(&rep, &rep0, sizeof rep) != 0) {
+    ivs_test_diag("the same bytes with valid arguments are not accepted");
+    ok = 0;
+  }
+  return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
+}
+
+static const ivs_test_case ic_code_cases[] = {
+    {"ivsc.B08-len-over-max", ic_b08_len_over_max, NULL},
+    {"ivsc.X02-canonical-roundtrip", ic_x02_canonical_roundtrip, NULL},
+    {"ivsc.X03-bad-args", ic_x03_bad_args, NULL},
+};
+#define IC_CODE_CASES (sizeof ic_code_cases / sizeof ic_code_cases[0])
+
 static const char *ic_case_id(const void *data, size_t i)
 {
   (void)data;
-  return ivs_cart_table[i].id;
+  return i < ivs_cart_count ? ivs_cart_table[i].id : ic_code_cases[i - ivs_cart_count].id;
 }
 
 static int ic_case_run(const void *data, size_t i)
 {
   (void)data;
-  return ic_run_record(&ivs_cart_table[i]);
+  return i < ivs_cart_count ? ic_run_record(&ivs_cart_table[i]) : ic_code_cases[i - ivs_cart_count].fn();
 }
 
 int main(int argc, char **argv)
@@ -284,7 +477,7 @@ int main(int argc, char **argv)
   ivs_test_suite suite;
   memset(&suite, 0, sizeof suite);
   suite.name = "ivsc";
-  suite.count = ivs_cart_count;
+  suite.count = ivs_cart_count + IC_CODE_CASES;
   suite.id = ic_case_id;
   suite.run = ic_case_run;
   suite.sources = ivs_cart_sources;
