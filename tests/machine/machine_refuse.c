@@ -35,7 +35,10 @@
  * instance bytes; they must load (or create) OK.
  * Out parameters aimed into the instance (plan 03-11 addition): the load report, the info out
  * struct, the digest out buffer and create's out pointer are refused BAD_ARG with nothing
- * written when they overlap the instance bytes.
+ * written when they overlap the instance bytes. Review WR-01: that test runs only against a
+ * valid instance, so a NULL or destroyed handle is BAD_HANDLE wherever the out parameter lies
+ * (a digest out at address 16 with a NULL handle; info, digest and load outs inside a destroyed
+ * instance's storage, where the load report then gets its BAD_HANDLE detail).
  *
  * Every instance and input lives in a heap buffer of exactly its size (never on the stack), so
  * ASan sees any byte the core touches outside them. Inputs are generated stand-ins (D-24): EXEC
@@ -103,6 +106,7 @@
 #define RF_LEAD 0x8u        /* the host allocation has RF_LEAD_BYTES before the instance */
 #define RF_DESTROYED 0x10u  /* the instance is destroyed before the call (no digest) */
 #define RF_SKIP32 0x20u     /* skipped where size_t is 32 bits */
+#define RF_REPORT_WRITTEN 0x40u /* the report lies in the allocation and the refusal writes it */
 
 #define RF_NONE IVS_SEGMENT_NONE
 
@@ -894,6 +898,16 @@ static int rf_b_digest_inside(rf_ctx *c)
   return 1;
 }
 
+/* A NULL handle with an out buffer at a low address (review WR-01): the overlap test must not run
+ * against a NULL handle, which "overlaps" every address below the instance size. The core never
+ * dereferences the out buffer of a refused digest, so the address is never touched. */
+static int rf_b_null_low_digest(rf_ctx *c)
+{
+  c->handle = NULL;
+  c->digest_out = (uint8_t *)(uintptr_t)16u;
+  return 1;
+}
+
 /* ---- rows ---- */
 
 #define RF_LOAD(id, kind, priors, build, want, reason, seg, off, missing, flags)                                      \
@@ -1135,6 +1149,17 @@ static const rf_row rf_rows[] = {
              RF_NO_SUFFIX),
     RF_OTHER("machine.refuse.create.out-after-instance-ok", RF_OP_CREATE, RF_E, RF_P_F, rf_b_none, IVS_OK,
              RF_NO_SUFFIX | RF_EXPECT_OK),
+    /* The handle before the out overlap (review WR-01): a NULL or destroyed handle has no instance
+     * bytes, so the call is BAD_HANDLE wherever the out parameter lies. A destroyed instance's
+     * storage is host memory again: the load report aimed there gets its BAD_HANDLE detail. */
+    RF_OTHER("machine.refuse.digest.null-handle-low-out", RF_OP_DIGEST, RF_E, RF_P_F, rf_b_null_low_digest,
+             IVS_E_BAD_HANDLE, RF_NO_SUFFIX),
+    RF_OTHER("machine.refuse.info.destroyed-out-inside", RF_OP_INFO, RF_E, RF_P_F, rf_b_info_inside, IVS_E_BAD_HANDLE,
+             RF_NO_SUFFIX | RF_DESTROYED),
+    RF_OTHER("machine.refuse.digest.destroyed-out-inside", RF_OP_DIGEST, RF_E, RF_P_F, rf_b_digest_inside,
+             IVS_E_BAD_HANDLE, RF_NO_SUFFIX | RF_DESTROYED),
+    RF_LOAD("machine.refuse.load.exec.destroyed-report-inside", RF_E, RF_P_F, rf_b_report_inside, IVS_E_BAD_HANDLE,
+            IVS_REASON_HANDLE, RF_NONE, 0u, 0u, RF_NO_SUFFIX | RF_DESTROYED | RF_REPORT_WRITTEN),
 
     /* Precedence: each adjacent pair of the load ladder (D-11, A-08 a, b). */
     RF_PREC("machine.prec.arg-over-handle", 0u, RF_P_F, rf_b_null_machine, IVS_E_BAD_ARG, IVS_REASON_ARG_KIND, RF_NONE,
@@ -1363,6 +1388,13 @@ static int rf_call_and_check(rf_ctx *c, const rf_row *row)
     ivs_test_diag("status %s, want %s (reason %u)", ivs_status_name(st), ivs_status_name(row->want),
                   (unsigned)rep.reason);
     ok = 0;
+  }
+  if ((row->flags & RF_REPORT_WRITTEN) != 0u) {
+    /* The report's own bytes are the one allowed write: judge them as the report, and exclude
+     * them from the allocation comparison. */
+    size_t at = (size_t)((uint8_t *)(void *)c->report - c->alloc);
+    memcpy(&rep, c->report, sizeof rep);
+    memcpy(snap + at, c->report, sizeof rep);
   }
   if (row->op == RF_OP_LOAD && (row->flags & RF_REPORT_KEPT) != 0u) {
     if (memcmp(&rep, &rep0, sizeof rep) != 0) {

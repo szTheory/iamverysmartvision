@@ -108,7 +108,8 @@ uint32_t ivs_machine_span_overlaps(const void *p, size_t n, const void *inst, si
 
 /* The out-parameter rule of create, info and state_digest (plan 03-11): 1 when the n bytes at out
  * overlap the inst_bytes bytes at inst (ivs_machine_span_overlaps), so the call refuses BAD_ARG
- * with nothing written. One function so the named fault OUT_OVERLAP_UNCHECKED (plan 03-12)
+ * with nothing written. info, state_digest and the load report test it only against a validated
+ * instance, after BAD_HANDLE (review WR-01): a NULL handle has no bytes to overlap. One function so the named fault OUT_OVERLAP_UNCHECKED (plan 03-12)
  * removes the rule from all three calls at once; the load report keeps its own check and fault
  * (REPORT_INSIDE_UNCHECKED). */
 uint32_t ivs_machine_out_overlaps(const void *out, size_t n, const void *inst, size_t inst_bytes);

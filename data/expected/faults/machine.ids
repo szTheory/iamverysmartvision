@@ -72,3 +72,7 @@ RESET_CLEARS_BEFORE_IMAGE_CHECK machine.refuse.reset.no-exec machine.refuse.rese
 STATIC_CARRY machine.iso.interleaved-equals-sequential machine.iso.|machine.reset. machine.reset.iab-reset-vector
 RESET_KEEPS_RAM machine.reset.equivalence machine.reset.equivalence machine.reset.step-program
 OUT_OVERLAP_UNCHECKED machine.refuse.info.out-inside machine.refuse.info.out-inside|machine.refuse.digest.out-inside|machine.refuse.create.out-inside-storage machine.create.ok-info-destroy
+# Review WR-01: OUT_OVERLAP_BEFORE_HANDLE (machine_digest.c) tests the digest out buffer against
+# the unvalidated handle, so a NULL handle "overlaps" every address below the instance size and a
+# destroyed instance's storage still refuses BAD_ARG.
+OUT_OVERLAP_BEFORE_HANDLE machine.refuse.digest.null-handle-low-out machine.refuse.digest.null-handle-low-out|machine.refuse.digest.destroyed-out-inside machine.create.ok-info-destroy

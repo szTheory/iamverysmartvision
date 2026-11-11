@@ -145,7 +145,7 @@
       "header": "core/include/ivs/ivs_machine.h",
       "on_ok": "Copies the validated image into its slot (copy-only commit, no pointer kept, nothing allocated) and sets the slot report; when report is not NULL it is written with reason NONE and the new slot report.",
       "precedence": [
-        {"status": "IVS_E_BAD_ARG", "checks": "report struct_size short or report overlapping the instance storage (nothing written)", "pinned_by": ["machine.refuse.load.exec.report-inside.f", "machine.refuse.load.exec.report-short.f"]},
+        {"status": "IVS_E_BAD_ARG", "checks": "report struct_size short, or report overlapping the storage of a valid instance (nothing written; the overlap is not tested for a NULL or invalid handle, review WR-01)", "pinned_by": ["machine.refuse.load.exec.report-inside.f", "machine.refuse.load.exec.report-short.f", "machine.refuse.load.exec.destroyed-report-inside"]},
         {"status": "IVS_E_BAD_ARG", "checks": "argument values: kind not IVS_KIND_* (A-08 e), bytes NULL with len above 0, opts struct_size short", "pinned_by": ["machine.prec.arg-over-handle", "machine.refuse.load.arg.kind-0.w"]},
         {"status": "IVS_E_BAD_HANDLE", "checks": "NULL or invalid handle", "pinned_by": ["machine.prec.handle-over-unsupported"]},
         {"status": "IVS_E_UNSUPPORTED", "checks": "an unknown option flag or a nonzero opts tail; after BAD_HANDLE (A-08 b)", "pinned_by": ["machine.prec.unsupported-over-bad-state", "machine.prec.unsupported-over-duplicate"]},
@@ -169,7 +169,7 @@
         "A-08 b: options (UNSUPPORTED) are checked after BAD_HANDLE; the content stage of a cartridge is the layer-1 parser in D-33 order, then layer 2 (span, then features), then expect_sha256. D-33 governs the inside of the parser; cross-stage outcomes are pinned by the machine.prec.cart-* rows: overlapping segments that also leave the span report OVERLAP, and a bad trailer with a wide word reports DIGEST_MISMATCH. This refines D-11 and is intended.",
         "A-08 d: after the first successful ivs_machine_reset the instance stays POWERED until destroy, so every load is BAD_STATE until a new instance (machine.refuse.load.exec.after-power-cycle.w).",
         "A-08 e: an unknown kind is BAD_ARG, never UNSUPPORTED; UNSUPPORTED is reserved for unknown option flags, struct tails and feature bits.",
-        "Out parameter rule (core/include/ivs/ivs_machine.h, plan 03-11): a report that overlaps the instance storage, or whose struct_size is short, is BAD_ARG with nothing written, checked before every other class. On any other refusal a non-NULL report gets only its detail fields (reason, segment_index, byte_offset, missing_features) and a zero image."
+        "Out parameter rule (core/include/ivs/ivs_machine.h, plan 03-11): a report that overlaps the storage of a valid instance, or whose struct_size is short, is BAD_ARG with nothing written, checked before every other class. Review WR-01: the overlap is tested only against a validated instance, so with a NULL or invalid handle the status never depends on where the report lies; a report inside a destroyed instance's storage gets its BAD_HANDLE detail (machine.refuse.load.exec.destroyed-report-inside). On any other refusal a non-NULL report gets only its detail fields (reason, segment_index, byte_offset, missing_features) and a zero image."
       ],
       "refusals": [
         {
@@ -182,7 +182,7 @@
           "status": "IVS_E_BAD_HANDLE",
           "effect": "none",
           "outs": "a non-NULL report gets reason HANDLE and a zero image",
-          "tests": ["machine.refuse.load.exec.null-machine", "machine.refuse.load.cart.null-machine", "machine.refuse.load.exec.destroyed", "machine.prec.handle-over-unsupported"]
+          "tests": ["machine.refuse.load.exec.null-machine", "machine.refuse.load.cart.null-machine", "machine.refuse.load.exec.destroyed", "machine.refuse.load.exec.destroyed-report-inside", "machine.prec.handle-over-unsupported"]
         },
         {
           "status": "IVS_E_UNSUPPORTED",
@@ -272,11 +272,12 @@
       "header": "core/include/ivs/ivs_machine.h",
       "on_ok": "Writes phase, machine time (master ticks), profile index and the three slot reports into *out; the instance is not written.",
       "precedence": [
-        {"status": "IVS_E_BAD_ARG", "checks": "out NULL, out->struct_size short, or out overlapping the instance storage", "pinned_by": ["machine.refuse.info.null-both"]},
-        {"status": "IVS_E_BAD_HANDLE", "checks": "NULL or invalid handle"}
+        {"status": "IVS_E_BAD_ARG", "checks": "out NULL or out->struct_size short", "pinned_by": ["machine.refuse.info.null-both"]},
+        {"status": "IVS_E_BAD_HANDLE", "checks": "NULL or invalid handle", "pinned_by": ["machine.refuse.info.destroyed-out-inside"]},
+        {"status": "IVS_E_BAD_ARG", "checks": "out overlapping the storage of the (valid) instance", "pinned_by": ["machine.refuse.info.out-inside"]}
       ],
       "notes": [
-        "Out parameter rule (core/include/ivs/ivs_machine.h, plan 03-11): an out struct that overlaps the instance storage is BAD_ARG with nothing written."
+        "Out parameter rule (core/include/ivs/ivs_machine.h, plan 03-11): an out struct that overlaps the instance storage is BAD_ARG with nothing written. Review WR-01: the overlap is tested after BAD_HANDLE, against a validated instance only, so a NULL or invalid handle is BAD_HANDLE wherever out lies (A-08 a)."
       ],
       "refusals": [
         {
@@ -289,7 +290,7 @@
           "status": "IVS_E_BAD_HANDLE",
           "effect": "none",
           "outs": "nothing written: *out keeps its bytes",
-          "tests": ["machine.refuse.info.null-handle", "machine.refuse.info.destroyed"]
+          "tests": ["machine.refuse.info.null-handle", "machine.refuse.info.destroyed", "machine.refuse.info.destroyed-out-inside"]
         }
       ]
     },
@@ -298,11 +299,12 @@
       "header": "core/include/ivs/ivs_machine.h",
       "on_ok": "Writes the SHA-256 of the canonical big-endian state of one domain (CPU, MEM, IMAGES, INSTANCE) or of their composite into out_sha256 (D-35); the instance is not written.",
       "precedence": [
-        {"status": "IVS_E_BAD_ARG", "checks": "out NULL, out overlapping the instance storage, or a domain other than 0..4 (the reserved 16..18 included)", "pinned_by": ["machine.refuse.digest.domain-over-handle"]},
-        {"status": "IVS_E_BAD_HANDLE", "checks": "NULL or invalid handle"}
+        {"status": "IVS_E_BAD_ARG", "checks": "out NULL, or a domain other than 0..4 (the reserved 16..18 included)", "pinned_by": ["machine.refuse.digest.domain-over-handle"]},
+        {"status": "IVS_E_BAD_HANDLE", "checks": "NULL or invalid handle", "pinned_by": ["machine.refuse.digest.null-handle-low-out", "machine.refuse.digest.destroyed-out-inside"]},
+        {"status": "IVS_E_BAD_ARG", "checks": "out overlapping the storage of the (valid) instance", "pinned_by": ["machine.refuse.digest.out-inside"]}
       ],
       "notes": [
-        "Out parameter rule (core/include/ivs/ivs_machine.h, plan 03-11): an out buffer that overlaps the instance storage is BAD_ARG with nothing written."
+        "Out parameter rule (core/include/ivs/ivs_machine.h, plan 03-11): an out buffer that overlaps the instance storage is BAD_ARG with nothing written. Review WR-01: the overlap is tested after BAD_HANDLE, against a validated instance only, so a NULL or invalid handle is BAD_HANDLE wherever out lies, a low address included (A-08 a)."
       ],
       "refusals": [
         {
@@ -315,7 +317,7 @@
           "status": "IVS_E_BAD_HANDLE",
           "effect": "none",
           "outs": "nothing written: out_sha256 keeps its bytes",
-          "tests": ["machine.refuse.digest.null-handle", "machine.refuse.digest.destroyed"]
+          "tests": ["machine.refuse.digest.null-handle", "machine.refuse.digest.destroyed", "machine.refuse.digest.null-handle-low-out", "machine.refuse.digest.destroyed-out-inside"]
         }
       ]
     }

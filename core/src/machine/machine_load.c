@@ -6,8 +6,9 @@
  * plan (kind, lengths, units, base, the reported digest; never a copy of image bytes). The ladder
  * is one stage per class, the first failing stage wins (D-11 refined by A-08 a, b):
  *   1. BAD_ARG         argument values: kind, NULL bytes with len above 0, opts struct size
- *                      (a short report struct, or a report that overlaps the instance storage,
- *                      is refused by the public function, writing nothing; plan 03-11);
+ *                      (a short report struct, or a report that overlaps the storage of a
+ *                      valid instance, is refused by the public function, writing nothing;
+ *                      plan 03-11; the overlap is not tested for a NULL or invalid handle);
  *   2. BAD_HANDLE      NULL or invalid handle;
  *   3. UNSUPPORTED     load options: an unknown flag, a nonzero tail of a larger struct;
  *   4. BAD_STATE       the machine is POWERED;
@@ -309,8 +310,11 @@ ivs_status ivs_machine_load(ivs_machine *m, uint32_t kind, const uint8_t *bytes,
   ivs_load_report r;
   ivs_status st;
   if (report != NULL) {
-    /* A report aimed into the instance would be written over it after the commit. */
-    uint32_t aliased = ivs_machine_span_overlaps(report, sizeof *report, m, sizeof(struct ivs_machine));
+    /* A report aimed into the instance would be written over it after the commit. Only a valid
+     * instance has bytes to overlap: with a NULL or invalid handle the ladder below answers
+     * BAD_HANDLE (or an earlier BAD_ARG) wherever the report lies (A-08 a). */
+    const struct ivs_machine *live = ivs_machine_from_handle(m);
+    uint32_t aliased = live != NULL ? ivs_machine_span_overlaps(report, sizeof *report, live, sizeof *live) : 0u;
 #ifdef IVS_FAULT_REPORT_INSIDE_UNCHECKED
     aliased = 0u; /* a report inside the instance is accepted and written over it */
 #endif

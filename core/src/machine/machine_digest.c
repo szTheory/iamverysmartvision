@@ -260,13 +260,22 @@ ivs_status ivs_machine_state_digest(const ivs_machine *m, uint32_t domain, uint8
   ivs_dsink k;
   uint32_t i;
   uint8_t with_id = 1u;
-  if (out_sha256 == NULL || domain > IVS_DIGEST_INSTANCE ||
-      ivs_machine_out_overlaps(out_sha256, 32u, m, sizeof(struct ivs_machine)) != 0u) {
+  if (out_sha256 == NULL || domain > IVS_DIGEST_INSTANCE) {
     return IVS_E_BAD_ARG;
   }
+#ifdef IVS_FAULT_OUT_OVERLAP_BEFORE_HANDLE
+  /* the overlap is tested against the unvalidated handle: a NULL handle "overlaps" every low address */
+  if (ivs_machine_out_overlaps(out_sha256, 32u, m, sizeof(struct ivs_machine)) != 0u) {
+    return IVS_E_BAD_ARG;
+  }
+#endif
   im = ivs_machine_from_handle(m);
   if (im == NULL) {
     return IVS_E_BAD_HANDLE;
+  }
+  /* Only a valid instance has bytes to overlap (A-08 a): see ivs_machine_info. */
+  if (ivs_machine_out_overlaps(out_sha256, 32u, im, sizeof *im) != 0u) {
+    return IVS_E_BAD_ARG;
   }
   if (domain != IVS_DIGEST_COMPOSITE) {
     ivs_digest_domain_sha(im, domain, out_sha256);

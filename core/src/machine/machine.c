@@ -231,13 +231,17 @@ ivs_status ivs_machine_info(const ivs_machine *m, ivs_info *out)
   const struct ivs_machine *im;
   ivs_info r;
   uint32_t i;
-  if (out == NULL || out->struct_size < (uint32_t)sizeof(ivs_info) ||
-      ivs_machine_out_overlaps(out, sizeof *out, m, sizeof(struct ivs_machine)) != 0u) {
+  if (out == NULL || out->struct_size < (uint32_t)sizeof(ivs_info)) {
     return IVS_E_BAD_ARG;
   }
   im = ivs_machine_from_handle(m);
   if (im == NULL) {
     return IVS_E_BAD_HANDLE;
+  }
+  /* Only a valid instance has bytes to overlap: a NULL or invalid handle is BAD_HANDLE above
+   * wherever out lies (A-08 a: a refusal status never depends on the buffer's address). */
+  if (ivs_machine_out_overlaps(out, sizeof *out, im, sizeof *im) != 0u) {
+    return IVS_E_BAD_ARG;
   }
   memset(&r, 0, sizeof r);
   r.struct_size = (uint32_t)sizeof r;

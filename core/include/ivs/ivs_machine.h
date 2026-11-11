@@ -10,10 +10,13 @@
  *   - out structs: a size below the v1 size is BAD_ARG with nothing written; otherwise the core
  *     writes min(caller size, own size) bytes and sets struct_size to the size it wrote.
  * Out parameters must not overlap the instance storage: an out struct or buffer that overlaps
- * the instance's bytes is BAD_ARG with nothing written (an argument refusal, checked before the
- * handle), so a host cannot aim a report into its own instance (plan 03-11).
+ * the instance's bytes is BAD_ARG with nothing written, so a host cannot aim a report into its
+ * own instance (plan 03-11). Only a valid instance has bytes to overlap, so for info,
+ * state_digest and the load report this test runs after the handle check: with a NULL or invalid
+ * handle the call is BAD_HANDLE wherever the out parameter lies (create tests its out pointer
+ * against the storage argument instead).
  * A refused call writes only its out parameters (D-08). A NULL or invalid handle is BAD_HANDLE
- * for every call that takes one; argument refusals (BAD_ARG) are checked first.
+ * for every call that takes one; the other argument refusals (BAD_ARG) are checked first.
  * Distinct instances are independent; one instance must be serialized by the host (D-07).
  * Standard headers only; constants are #defines (no enums, bool or bitfields). */
 #ifndef IVS_MACHINE_H
@@ -186,22 +189,23 @@ IVS_API ivs_status ivs_machine_create(const ivs_create_options *opts, void *stor
 /* Zero-scrubs the instance bytes; the handle is then invalid (a later call is BAD_HANDLE). */
 IVS_API ivs_status ivs_machine_destroy(ivs_machine *m);
 
-/* Phase, machine time, profile index and the three slot reports. BAD_ARG: out NULL, short or
- * overlapping the instance storage; then BAD_HANDLE. */
+/* Phase, machine time, profile index and the three slot reports. BAD_ARG: out NULL or short;
+ * then BAD_HANDLE; then BAD_ARG: out overlapping the instance storage. */
 IVS_API ivs_status ivs_machine_info(const ivs_machine *m, ivs_info *out);
 
 /* SHA-256 of the canonical state (D-35) of one domain (IVS_DIGEST_CPU, _MEM, _IMAGES, _INSTANCE)
  * or of their composite (IVS_DIGEST_COMPOSITE). The serialization is field by field and
  * big-endian, so the value does not depend on struct layout, padding or host byte order; it
- * excludes the magic and padding. BAD_ARG: out NULL, overlapping the instance storage, or any
- * other domain; then BAD_HANDLE. */
+ * excludes the magic and padding. BAD_ARG: out NULL or any other domain; then BAD_HANDLE; then
+ * BAD_ARG: out overlapping the instance storage. */
 IVS_API ivs_status ivs_machine_state_digest(const ivs_machine *m, uint32_t domain, uint8_t out_sha256[32]);
 
 /* Loads one image of kind (IVS_KIND_*) from len bytes at bytes. Validates everything before the
  * first write to the instance; a refusal leaves the instance unchanged (D-10, D-12). The first
  * failing class wins:
- *   BAD_ARG         kind unknown; bytes NULL with len above 0; opts or report struct_size short;
- *                   report overlapping the instance storage (nothing written);
+ *   BAD_ARG         report struct_size short, or report overlapping the storage of a valid
+ *                   instance (nothing written; not tested for a NULL or invalid handle); kind
+ *                   unknown; bytes NULL with len above 0; opts struct_size short;
  *   BAD_HANDLE      NULL or invalid handle;
  *   UNSUPPORTED     an unknown option flag or a nonzero opts tail;
  *   BAD_STATE       the machine is POWERED;

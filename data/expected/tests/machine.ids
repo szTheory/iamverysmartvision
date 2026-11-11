@@ -15,7 +15,9 @@
 # len-wrap rows (claimed length 2^32 + 8192) are skip-ok: they skip where size_t is 32 bits.
 # Plan 03-11 addition: out parameters aimed into the instance (load report, info out, digest out,
 # create out) are refused BAD_ARG with nothing written (machine.refuse.*.out-inside*,
-# machine.refuse.load.*.report-inside.*).
+# machine.refuse.load.*.report-inside.*). Review WR-01: that test runs only against a valid
+# instance, after BAD_HANDLE (machine.refuse.digest.null-handle-low-out,
+# machine.refuse.*.destroyed-out-inside, machine.refuse.load.exec.destroyed-report-inside).
 machine.sha256.fips-empty
 machine.sha256.fips-abc
 machine.sha256.fips-448
@@ -295,6 +297,10 @@ machine.refuse.info.out-inside
 machine.refuse.digest.out-inside
 machine.refuse.create.out-inside-storage
 machine.refuse.create.out-after-instance-ok
+machine.refuse.digest.null-handle-low-out
+machine.refuse.info.destroyed-out-inside
+machine.refuse.digest.destroyed-out-inside
+machine.refuse.load.exec.destroyed-report-inside
 machine.prec.arg-over-handle
 machine.prec.handle-over-unsupported
 machine.prec.unsupported-over-duplicate
