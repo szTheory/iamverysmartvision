@@ -17,13 +17,15 @@
 # instance after every refused load and the fresh state after every accepted load's unload:
 # LOAD_LEN_BEFORE_CHECK and UNLOAD_KEEPS_IMAGE fail it by their own rule, and INIT_SKIPS_MEMSET
 # refuses each sweep base (poisoned slot records) (machine.sweep.).
+# Review WR-03: the damaged-profile cases (machine.refuse.handle.) load the stand-ins too, so
+# INIT_SKIPS_MEMSET refuses their base instance (poisoned slot records): its own rule.
 # Load faults (plan 03-10), one site each in core/src/machine/machine_load.c:
 # CART_REPORT_TRAILER_DIGEST reports the trailer, so every case that compares a cartridge's
 # reported or expected digest fails; UNLOAD_KEEPS_IMAGE leaves the memsys words of every kind, so
 # every unload-to-fresh case fails; CART_SPAN_END_INCLUSIVE is reached only through the layer-2
 # seam (the registered span ends at $FFFF, where the parser's address-wrap check fires first).
 CREATE_MAGIC_BEFORE_PROFILE_CHECK machine.refuse.create.unknown-profile machine.refuse.create. machine.create.ok-info-destroy
-INIT_SKIPS_MEMSET machine.create.poisoned-storage machine.create.poisoned-storage|machine.create.ok-info-destroy|machine.digest.|machine.load.|machine.refuse.load.|machine.refuse.unload.|machine.prec.|machine.reset.|machine.iso.|machine.refuse.reset.|machine.sweep. machine.refuse.create.null-opts
+INIT_SKIPS_MEMSET machine.create.poisoned-storage machine.create.poisoned-storage|machine.create.ok-info-destroy|machine.digest.|machine.load.|machine.refuse.load.|machine.refuse.unload.|machine.prec.|machine.reset.|machine.iso.|machine.refuse.reset.|machine.sweep.|machine.refuse.handle. machine.refuse.create.null-opts
 DESTROY_NO_SCRUB machine.destroy.scrubs machine.destroy.|machine.refuse.destroy.twice|machine.refuse.info.destroyed|machine.refuse.digest.destroyed|machine.refuse.load.exec.destroyed|machine.refuse.unload.exec.destroyed|machine.create.ok-info-destroy|machine.create.static-storage|machine.refuse.reset.destroyed|machine.prec.reset-handle-over-missing|machine.reset.step-refusals machine.create.requirements
 DIGEST_SKIPS_RAM machine.digest.sensitivity-mem machine.digest. machine.create.ok-info-destroy
 DIGEST_SKIPS_IMAGE_TABLE machine.digest.sensitivity-images machine.digest. machine.create.ok-info-destroy
@@ -80,3 +82,8 @@ OUT_OVERLAP_BEFORE_HANDLE machine.refuse.digest.null-handle-low-out machine.refu
 # options, so a 4097-byte zero-tailed struct goes on to the later stages and a garbage struct_size
 # is followed by the tail scan up to its first nonzero byte (UNSUPPORTED, not BAD_ARG).
 STRUCT_SIZE_UNCAPPED machine.refuse.load.exec.opts-over-max.f machine.refuse.load.exec.opts-over-max.|machine.refuse.load.exec.opts-garbage-size. machine.load.exec-ok
+# Review WR-03: HANDLE_TRUSTS_PROFILE (machine.c) drops the stored-profile check of the handle
+# validation, so an instance whose profile words are damaged is accepted (info answers OK first;
+# the cases stop there, before any call indexes a profile table with the damaged index). The
+# digest sensitivity cases flip the profile words and expect BAD_HANDLE: their own rule.
+HANDLE_TRUSTS_PROFILE machine.refuse.handle.profile-out-of-range machine.refuse.handle.|machine.digest.sensitivity-mem|machine.digest.sensitivity-instance machine.create.ok-info-destroy

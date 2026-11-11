@@ -5,7 +5,8 @@
  *
  * Reset validates before its first write, in this order:
  *   BAD_ARG              kind is not IVS_RESET_POWER_ON (an unknown enumerant, A-08 e);
- *   BAD_HANDLE           NULL or invalid handle;
+ *   BAD_HANDLE           NULL or invalid handle (a stored profile index outside the registry
+ *                        included, review WR-03);
  *   MISSING_SYSTEM_IMAGE a slot the profile marks required is empty, EXEC checked before GROM
  *                        (D-14: reset is the first operation that needs the system images).
  * Only then does it apply the power-on state: system RAM, scratchpad and GRAM take the profile's
@@ -58,14 +59,12 @@ ivs_status ivs_machine_reset(ivs_machine *m, uint32_t kind)
     return IVS_E_BAD_ARG;
   }
   /* BAD_HANDLE. */
+  /* BAD_HANDLE also covers a stored profile index outside the registry (WR-03), so p is set. */
   im = ivs_machine_from_handle_mut(m);
   if (im == NULL) {
     return IVS_E_BAD_HANDLE;
   }
   p = ivs_profile_get(im->profile);
-  if (p == NULL) {
-    return IVS_E_BAD_HANDLE;
-  }
 #ifdef IVS_FAULT_RESET_CLEARS_BEFORE_IMAGE_CHECK
   ivs_run_power_on(im); /* the volatile state is reset before the images are checked */
 #endif
@@ -102,10 +101,7 @@ ivs_status ivs_machine_step_unit_internal(ivs_machine *m, ivs_cp1610_result *out
   if (im->phase != IVS_PHASE_POWERED) {
     return IVS_E_BAD_STATE;
   }
-  p = ivs_profile_get(im->profile);
-  if (p == NULL) {
-    return IVS_E_BAD_HANDLE;
-  }
+  p = ivs_profile_get(im->profile); /* registered: the handle check covers the index (WR-03) */
   memset(&cfg, 0, sizeof cfg);
   cfg.interrupt_accept_clears_intff = p->interrupt_accept_clears_intff;
   cfg.release_latency_cpu_cycles = p->release_latency_cpu_cycles;

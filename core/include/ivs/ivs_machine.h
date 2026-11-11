@@ -19,7 +19,9 @@
  * handle the call is BAD_HANDLE wherever the out parameter lies (create tests its out pointer
  * against the storage argument instead).
  * A refused call writes only its out parameters (D-08). A NULL or invalid handle is BAD_HANDLE
- * for every call that takes one; the other argument refusals (BAD_ARG) are checked first.
+ * for every call that takes one; the other argument refusals (BAD_ARG) are checked first. A handle
+ * is invalid when its storage holds no live instance (never created, destroyed) or when the
+ * instance's stored profile index is damaged (outside the registry, or inconsistent).
  * Distinct instances are independent; one instance must be serialized by the host (D-07).
  * Standard headers only; constants are #defines (no enums, bool or bitfields). */
 #ifndef IVS_MACHINE_H

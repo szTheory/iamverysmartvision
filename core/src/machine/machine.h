@@ -127,7 +127,10 @@ uint32_t ivs_machine_out_overlaps(const void *out, size_t n, const void *inst, s
  * run API is built on it. */
 ivs_status ivs_machine_step_unit_internal(ivs_machine *m, ivs_cp1610_result *out);
 
-/* The instance behind a handle, or NULL for NULL or a wrong magic. */
+/* The instance behind a handle, or NULL for NULL, a wrong magic, or a stored profile index that
+ * is outside the registry or differs from the memory system's (review WR-03): every call that
+ * takes a handle refuses such an instance BAD_HANDLE, and nothing behind it indexes a profile
+ * table with an unchecked index. */
 const struct ivs_machine *ivs_machine_from_handle(const ivs_machine *m);
 struct ivs_machine *ivs_machine_from_handle_mut(ivs_machine *m);
 

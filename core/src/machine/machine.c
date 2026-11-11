@@ -27,20 +27,31 @@ _Static_assert(IVS_PROFILE_ID_MAX_BYTES == IVS_MEMSYS_PROFILE_ID_CAP, "profile i
 _Static_assert(IVS_SLOT_COUNT == 3u, "three image slots");
 _Static_assert(sizeof(ivs_image_report) == 64u, "ivs_image_report is 64 bytes");
 
+/* 1 when m is a live instance: the magic, and a stored profile index that is in the registry and
+ * the same in the memory system (review WR-03). The instance lives in host storage, so the
+ * profile words cross the trust boundary just as the magic does; every call, and every memsys
+ * table index behind it, then sees a registered profile. */
+static uint32_t ivs_machine_handle_ok(const struct ivs_machine *m)
+{
+  uint32_t profile_ok;
+  if (m == NULL || m->magic != IVS_MACHINE_MAGIC) {
+    return 0u;
+  }
+  profile_ok = (uint32_t)(m->profile < ivs_profile_count() && m->mem.profile == m->profile);
+#ifdef IVS_FAULT_HANDLE_TRUSTS_PROFILE
+  profile_ok = 1u; /* the stored profile words are trusted: a corrupted index reaches the calls */
+#endif
+  return profile_ok;
+}
+
 const struct ivs_machine *ivs_machine_from_handle(const ivs_machine *m)
 {
-  if (m == NULL || m->magic != IVS_MACHINE_MAGIC) {
-    return NULL;
-  }
-  return m;
+  return ivs_machine_handle_ok(m) != 0u ? m : NULL;
 }
 
 struct ivs_machine *ivs_machine_from_handle_mut(ivs_machine *m)
 {
-  if (m == NULL || m->magic != IVS_MACHINE_MAGIC) {
-    return NULL;
-  }
-  return m;
+  return ivs_machine_handle_ok(m) != 0u ? m : NULL;
 }
 
 uint32_t ivs_machine_span_overlaps(const void *p, size_t n, const void *inst, size_t inst_bytes)

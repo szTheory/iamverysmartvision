@@ -303,7 +303,112 @@ done:
   return rc;
 }
 
+/* ---- damaged profile index (review WR-03) ----
+ * A loaded instance (EXEC and GROM, so a reset would succeed) is relocated by memcpy into a second
+ * exact-size buffer, which is a valid handle (info OK), then its stored profile words are damaged
+ * there: every call that takes the handle is BAD_HANDLE, the load report says HANDLE, and the
+ * copy's bytes are unchanged. The calls run in order and the case stops at the first wrong
+ * status, so no call reaches a profile table with the damaged index. */
+#define MR_DAMAGE_PROFILE 0u    /* profile = registry count; memsys profile intact */
+#define MR_DAMAGE_MEM_PROFILE 1u /* memsys profile = registry count; profile intact */
+#define MR_DAMAGE_BOTH 2u       /* both 0xFFFFFFFF (consistent, but unregistered) */
+
+static int mr_damaged_calls(ivs_machine *h)
+{
+  ivs_info info;
+  ivs_load_report rep;
+  ivs_cp1610_result r;
+  uint8_t dig[32];
+  uint8_t *cart;
+  size_t cart_len = 0u;
+  ivs_status st;
+  memset(&info, 0, sizeof info);
+  info.struct_size = (uint32_t)sizeof info;
+  IVS_CHECK(ivs_machine_info(h, &info) == IVS_E_BAD_HANDLE);
+  IVS_CHECK(ivs_machine_state_digest(h, IVS_DIGEST_COMPOSITE, dig) == IVS_E_BAD_HANDLE);
+  IVS_CHECK(ivs_machine_state_digest(h, IVS_DIGEST_MEM, dig) == IVS_E_BAD_HANDLE);
+  IVS_CHECK(ivs_machine_unload(h, IVS_KIND_EXEC) == IVS_E_BAD_HANDLE);
+  IVS_CHECK(ivs_machine_reset(h, IVS_RESET_POWER_ON) == IVS_E_BAD_HANDLE);
+  IVS_CHECK(ivs_machine_step_unit_internal(h, &r) == IVS_E_BAD_HANDLE);
+  cart = ivs_ms_cart(0x5000u, 16u, 0u, &cart_len);
+  IVS_CHECK(cart != NULL);
+  memset(&rep, 0, sizeof rep);
+  rep.struct_size = (uint32_t)sizeof rep;
+  st = ivs_machine_load(h, IVS_KIND_CARTRIDGE, cart, cart_len, NULL, &rep);
+  free(cart);
+  IVS_CHECK(st == IVS_E_BAD_HANDLE && rep.reason == IVS_REASON_HANDLE);
+  IVS_CHECK(ivs_machine_destroy(h) == IVS_E_BAD_HANDLE);
+  return IVS_TEST_PASS;
+}
+
+static int mr_damaged_profile(uint32_t damage)
+{
+  ivs_ms_inst x;
+  struct ivs_machine *cm;
+  ivs_info info;
+  uint8_t *copy = NULL;
+  uint8_t *snap = NULL;
+  int rc = IVS_TEST_FAIL;
+  if (!ivs_ms_new(&x, 0x5Au)) {
+    return IVS_TEST_FAIL;
+  }
+  copy = aligned_alloc(IVS_MACHINE_ALIGN, IVS_MACHINE_BYTES);
+  snap = malloc(IVS_MACHINE_BYTES);
+  if (copy == NULL || snap == NULL || !ivs_ms_load(x.m, IVS_KIND_EXEC, ivs_ms_exec(IVS_MS_PROG_A), IVS_MS_EXEC_BYTES) ||
+      !ivs_ms_load(x.m, IVS_KIND_GROM, ivs_ms_grom(0u), IVS_MS_GROM_BYTES)) {
+    goto done;
+  }
+  memcpy(copy, x.storage, IVS_MACHINE_BYTES);
+  memset(&info, 0, sizeof info);
+  info.struct_size = (uint32_t)sizeof info;
+  if (ivs_machine_info((ivs_machine *)(void *)copy, &info) != IVS_OK) {
+    ivs_test_diag("the relocated copy is not a valid handle before the damage");
+    goto done;
+  }
+  cm = (struct ivs_machine *)(void *)copy;
+  if (damage == MR_DAMAGE_PROFILE) {
+    cm->profile = ivs_profile_count();
+  } else if (damage == MR_DAMAGE_MEM_PROFILE) {
+    cm->mem.profile = ivs_profile_count();
+  } else {
+    cm->profile = 0xFFFFFFFFu;
+    cm->mem.profile = 0xFFFFFFFFu;
+  }
+  memcpy(snap, copy, IVS_MACHINE_BYTES);
+  if (mr_damaged_calls((ivs_machine *)(void *)copy) != IVS_TEST_PASS) {
+    goto done;
+  }
+  if (memcmp(snap, copy, IVS_MACHINE_BYTES) != 0) {
+    ivs_test_diag("a refused call changed the damaged instance");
+    goto done;
+  }
+  rc = IVS_TEST_PASS;
+done:
+  free(snap);
+  free(copy);
+  ivs_ms_free(&x);
+  return rc;
+}
+
+static int mr_damaged_profile_index(void)
+{
+  return mr_damaged_profile(MR_DAMAGE_PROFILE);
+}
+
+static int mr_damaged_mem_profile(void)
+{
+  return mr_damaged_profile(MR_DAMAGE_MEM_PROFILE);
+}
+
+static int mr_damaged_both(void)
+{
+  return mr_damaged_profile(MR_DAMAGE_BOTH);
+}
+
 const ivs_test_case ivs_machine_reset_cases[] = {
+    {"machine.refuse.handle.mem-profile-mismatch", mr_damaged_mem_profile, NULL},
+    {"machine.refuse.handle.profile-garbage", mr_damaged_both, NULL},
+    {"machine.refuse.handle.profile-out-of-range", mr_damaged_profile_index, NULL},
     {"machine.reset.equivalence", mr_equivalence, NULL},
     {"machine.reset.iab-reset-vector", mr_iab_reset_vector, NULL},
     {"machine.reset.no-cart-ok", mr_no_cart_ok, NULL},

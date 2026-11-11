@@ -21,6 +21,9 @@
 # Review WR-02: an in struct's struct_size above IVS_STRUCT_SIZE_MAX (4096) is BAD_ARG before the
 # unknown-tail scan; exactly 4096 keeps D-04 (machine.refuse.create.size-*,
 # machine.create.size-at-max-ok, machine.refuse.load.exec.opts-{over-max,garbage-size,at-max-*}).
+# Review WR-03: a damaged stored profile index (outside the registry, or the memory system's
+# differing) makes the handle invalid: every handle-taking call is BAD_HANDLE on a relocated copy
+# (machine.refuse.handle.*, family reset).
 machine.sha256.fips-empty
 machine.sha256.fips-abc
 machine.sha256.fips-448
@@ -352,6 +355,9 @@ machine.reset.no-cart-ok
 machine.reset.power-cycle-one-way
 machine.reset.step-program
 machine.reset.step-refusals
+machine.refuse.handle.mem-profile-mismatch
+machine.refuse.handle.profile-garbage
+machine.refuse.handle.profile-out-of-range
 # Family iso (plan 03-12, D-36, API-01): two instances with different content (stand-ins A and B)
 # step without affecting each other: interleaved equals sequential at every 8th unit, differently
 # poisoned storage ends byte-identical, a memcpy-relocated instance continues identically,

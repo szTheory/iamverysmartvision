@@ -94,7 +94,7 @@
       "header": "core/include/ivs/ivs_machine.h",
       "on_ok": "Zero-scrubs every instance byte; the handle is then invalid and every later call with it is BAD_HANDLE.",
       "precedence": [
-        {"status": "IVS_E_BAD_HANDLE", "checks": "NULL handle, wrong magic or an already destroyed instance"}
+        {"status": "IVS_E_BAD_HANDLE", "checks": "NULL handle, wrong magic, an already destroyed instance, or a damaged stored profile index (outside the registry or inconsistent, review WR-03)"}
       ],
       "notes": [],
       "refusals": [
@@ -102,7 +102,7 @@
           "status": "IVS_E_BAD_HANDLE",
           "effect": "none",
           "outs": "none (the call has no out parameter)",
-          "tests": ["machine.refuse.destroy.null", "machine.refuse.destroy.twice", "machine.refuse.destroy.wrong-magic"]
+          "tests": ["machine.refuse.destroy.null", "machine.refuse.destroy.twice", "machine.refuse.destroy.wrong-magic", "machine.refuse.handle.profile-out-of-range", "machine.refuse.handle.mem-profile-mismatch", "machine.refuse.handle.profile-garbage"]
         }
       ]
     },
@@ -112,7 +112,7 @@
       "on_ok": "Power-on reset (D-14): volatile state takes its power-on fill, every gate is open, the CPU is armed to take its reset entry through the profile reset vector, machine time is 0 and the phase is POWERED; the image slots, cartridge segments and profile index are untouched.",
       "precedence": [
         {"status": "IVS_E_BAD_ARG", "checks": "kind other than IVS_RESET_POWER_ON (A-08 e: unknown enumerants are BAD_ARG)", "pinned_by": ["machine.prec.reset-arg-over-handle", "machine.prec.reset-arg-over-missing"]},
-        {"status": "IVS_E_BAD_HANDLE", "checks": "NULL handle or an invalid instance", "pinned_by": ["machine.prec.reset-handle-over-missing"]},
+        {"status": "IVS_E_BAD_HANDLE", "checks": "NULL handle or an invalid instance (a damaged stored profile index included, review WR-03)", "pinned_by": ["machine.prec.reset-handle-over-missing"]},
         {"status": "IVS_E_MISSING_SYSTEM_IMAGE", "checks": "a slot the profile requires is empty; EXEC is checked before GROM (D-14)"}
       ],
       "notes": [
@@ -130,7 +130,7 @@
           "status": "IVS_E_BAD_HANDLE",
           "effect": "none",
           "outs": "none (the call has no out parameter)",
-          "tests": ["machine.refuse.reset.null", "machine.refuse.reset.destroyed", "machine.prec.reset-handle-over-missing"]
+          "tests": ["machine.refuse.reset.null", "machine.refuse.reset.destroyed", "machine.prec.reset-handle-over-missing", "machine.refuse.handle.profile-out-of-range", "machine.refuse.handle.mem-profile-mismatch", "machine.refuse.handle.profile-garbage"]
         },
         {
           "status": "IVS_E_MISSING_SYSTEM_IMAGE",
@@ -147,7 +147,7 @@
       "precedence": [
         {"status": "IVS_E_BAD_ARG", "checks": "report struct_size short, or report overlapping the storage of a valid instance (nothing written; the overlap is not tested for a NULL or invalid handle, review WR-01)", "pinned_by": ["machine.refuse.load.exec.report-inside.f", "machine.refuse.load.exec.report-short.f", "machine.refuse.load.exec.destroyed-report-inside"]},
         {"status": "IVS_E_BAD_ARG", "checks": "argument values: kind not IVS_KIND_* (A-08 e), bytes NULL with len above 0, opts struct_size short or above IVS_STRUCT_SIZE_MAX (4096, review WR-02)", "pinned_by": ["machine.prec.arg-over-handle", "machine.refuse.load.arg.kind-0.w", "machine.refuse.load.exec.opts-garbage-size.f"]},
-        {"status": "IVS_E_BAD_HANDLE", "checks": "NULL or invalid handle", "pinned_by": ["machine.prec.handle-over-unsupported"]},
+        {"status": "IVS_E_BAD_HANDLE", "checks": "NULL or invalid handle (a damaged stored profile index included, review WR-03)", "pinned_by": ["machine.prec.handle-over-unsupported"]},
         {"status": "IVS_E_UNSUPPORTED", "checks": "an unknown option flag or a nonzero opts tail; after BAD_HANDLE (A-08 b)", "pinned_by": ["machine.prec.unsupported-over-bad-state", "machine.prec.unsupported-over-duplicate"]},
         {"status": "IVS_E_BAD_STATE", "checks": "the machine is POWERED (A-08 d)", "pinned_by": ["machine.prec.bad-state-over-duplicate"]},
         {"status": "IVS_E_DUPLICATE_LOAD", "checks": "the slot already holds an image (unload first)", "pinned_by": ["machine.prec.duplicate-over-oversized", "machine.prec.duplicate-over-overlap", "machine.prec.duplicate-over-malformed", "machine.prec.duplicate-over-digest"]},
@@ -183,7 +183,7 @@
           "status": "IVS_E_BAD_HANDLE",
           "effect": "none",
           "outs": "a non-NULL report gets reason HANDLE and a zero image",
-          "tests": ["machine.refuse.load.exec.null-machine", "machine.refuse.load.cart.null-machine", "machine.refuse.load.exec.destroyed", "machine.refuse.load.exec.destroyed-report-inside", "machine.prec.handle-over-unsupported"]
+          "tests": ["machine.refuse.load.exec.null-machine", "machine.refuse.load.cart.null-machine", "machine.refuse.load.exec.destroyed", "machine.refuse.load.exec.destroyed-report-inside", "machine.prec.handle-over-unsupported", "machine.refuse.handle.profile-out-of-range", "machine.refuse.handle.mem-profile-mismatch", "machine.refuse.handle.profile-garbage"]
         },
         {
           "status": "IVS_E_UNSUPPORTED",
@@ -241,7 +241,7 @@
       "on_ok": "Zero-scrubs the slot's words and marks it loaded 0; an empty slot unloads OK with no change. After every slot is unloaded the state digest equals a fresh instance's (D-13).",
       "precedence": [
         {"status": "IVS_E_BAD_ARG", "checks": "kind not IVS_KIND_* (A-08 e)", "pinned_by": ["machine.refuse.unload.arg.kind-0.w"]},
-        {"status": "IVS_E_BAD_HANDLE", "checks": "NULL or invalid handle"},
+        {"status": "IVS_E_BAD_HANDLE", "checks": "NULL or invalid handle (a damaged stored profile index included, review WR-03)"},
         {"status": "IVS_E_BAD_STATE", "checks": "the machine is POWERED (A-08 d)"}
       ],
       "notes": [
@@ -258,7 +258,7 @@
           "status": "IVS_E_BAD_HANDLE",
           "effect": "none",
           "outs": "none (the call has no out parameter)",
-          "tests": ["machine.refuse.unload.exec.null-machine", "machine.refuse.unload.exec.destroyed"]
+          "tests": ["machine.refuse.unload.exec.null-machine", "machine.refuse.unload.exec.destroyed", "machine.refuse.handle.profile-out-of-range", "machine.refuse.handle.mem-profile-mismatch", "machine.refuse.handle.profile-garbage"]
         },
         {
           "status": "IVS_E_BAD_STATE",
@@ -274,7 +274,7 @@
       "on_ok": "Writes phase, machine time (master ticks), profile index and the three slot reports into *out; the instance is not written.",
       "precedence": [
         {"status": "IVS_E_BAD_ARG", "checks": "out NULL or out->struct_size short", "pinned_by": ["machine.refuse.info.null-both"]},
-        {"status": "IVS_E_BAD_HANDLE", "checks": "NULL or invalid handle", "pinned_by": ["machine.refuse.info.destroyed-out-inside"]},
+        {"status": "IVS_E_BAD_HANDLE", "checks": "NULL or invalid handle (a damaged stored profile index included, review WR-03)", "pinned_by": ["machine.refuse.info.destroyed-out-inside"]},
         {"status": "IVS_E_BAD_ARG", "checks": "out overlapping the storage of the (valid) instance", "pinned_by": ["machine.refuse.info.out-inside"]}
       ],
       "notes": [
@@ -291,7 +291,7 @@
           "status": "IVS_E_BAD_HANDLE",
           "effect": "none",
           "outs": "nothing written: *out keeps its bytes",
-          "tests": ["machine.refuse.info.null-handle", "machine.refuse.info.destroyed", "machine.refuse.info.destroyed-out-inside"]
+          "tests": ["machine.refuse.info.null-handle", "machine.refuse.info.destroyed", "machine.refuse.info.destroyed-out-inside", "machine.refuse.handle.profile-out-of-range", "machine.refuse.handle.mem-profile-mismatch", "machine.refuse.handle.profile-garbage"]
         }
       ]
     },
@@ -301,7 +301,7 @@
       "on_ok": "Writes the SHA-256 of the canonical big-endian state of one domain (CPU, MEM, IMAGES, INSTANCE) or of their composite into out_sha256 (D-35); the instance is not written.",
       "precedence": [
         {"status": "IVS_E_BAD_ARG", "checks": "out NULL, or a domain other than 0..4 (the reserved 16..18 included)", "pinned_by": ["machine.refuse.digest.domain-over-handle"]},
-        {"status": "IVS_E_BAD_HANDLE", "checks": "NULL or invalid handle", "pinned_by": ["machine.refuse.digest.null-handle-low-out", "machine.refuse.digest.destroyed-out-inside"]},
+        {"status": "IVS_E_BAD_HANDLE", "checks": "NULL or invalid handle (a damaged stored profile index included, review WR-03)", "pinned_by": ["machine.refuse.digest.null-handle-low-out", "machine.refuse.digest.destroyed-out-inside"]},
         {"status": "IVS_E_BAD_ARG", "checks": "out overlapping the storage of the (valid) instance", "pinned_by": ["machine.refuse.digest.out-inside"]}
       ],
       "notes": [
@@ -318,7 +318,7 @@
           "status": "IVS_E_BAD_HANDLE",
           "effect": "none",
           "outs": "nothing written: out_sha256 keeps its bytes",
-          "tests": ["machine.refuse.digest.null-handle", "machine.refuse.digest.destroyed", "machine.refuse.digest.null-handle-low-out", "machine.refuse.digest.destroyed-out-inside"]
+          "tests": ["machine.refuse.digest.null-handle", "machine.refuse.digest.destroyed", "machine.refuse.digest.null-handle-low-out", "machine.refuse.digest.destroyed-out-inside", "machine.refuse.handle.profile-out-of-range", "machine.refuse.handle.mem-profile-mismatch", "machine.refuse.handle.profile-garbage"]
         }
       ]
     }

@@ -338,12 +338,25 @@ static int md_base_init(md_base *b)
 }
 
 /* After a change at instance byte pos: own's digest differs (and the composite when check_comp),
- * every other domain's preimage is identical to the baseline. */
-static int md_changed_only(md_base *b, uint32_t own, size_t pos, int check_comp)
+ * every other domain's preimage is identical to the baseline. A changed profile word (seam != 0)
+ * damages the handle (review WR-03): the public digest is then BAD_HANDLE, and own's change is
+ * judged on its preimage through the seam, which takes no handle. */
+static int md_changed_only(md_base *b, uint32_t own, size_t pos, int check_comp, int seam)
 {
   uint8_t got[32];
   uint32_t d;
-  if (ivs_machine_state_digest(b->m, own, got) != IVS_OK || memcmp(got, b->dig[own], 32u) == 0) {
+  if (seam) {
+    size_t len = ivs_machine_digest_preimage(b->m, own, b->scratch, MD_PRE_MAX);
+    if (ivs_machine_state_digest(b->m, own, got) != IVS_E_BAD_HANDLE) {
+      ivs_test_diag("byte %zu: a damaged profile word was not BAD_HANDLE", pos);
+      return 0;
+    }
+    if (len == b->len[own] && memcmp(b->scratch, b->pre[own], len) == 0) {
+      ivs_test_diag("byte %zu: domain %u preimage unchanged", pos, (unsigned)own);
+      return 0;
+    }
+    check_comp = 0;
+  } else if (ivs_machine_state_digest(b->m, own, got) != IVS_OK || memcmp(got, b->dig[own], 32u) == 0) {
     ivs_test_diag("byte %zu: domain %u digest unchanged", pos, (unsigned)own);
     return 0;
   }
@@ -374,6 +387,7 @@ static int md_sensitivity(uint32_t domain)
   size_t r;
   uint32_t rows = 0u;
   int ok;
+  int seam;
   uint8_t *bytes;
   ok = md_base_init(&b);
   bytes = (uint8_t *)b.m;
@@ -386,12 +400,13 @@ static int md_sensitivity(uint32_t domain)
     }
     first = f->offset;
     last = (size_t)f->offset + (size_t)f->width * f->count - 1u;
+    seam = f->kind == IVS_DIGEST_KIND_PROFILE;
     bytes[first] ^= 0xFFu;
-    ok = md_changed_only(&b, domain, first, 1);
+    ok = md_changed_only(&b, domain, first, 1, seam);
     bytes[first] ^= 0xFFu;
     if (ok && last != first) {
       bytes[last] ^= 0xFFu;
-      ok = md_changed_only(&b, domain, last, 0);
+      ok = md_changed_only(&b, domain, last, 0, seam);
       bytes[last] ^= 0xFFu;
     }
     if (!ok) {
