@@ -63,7 +63,11 @@ static uint32_t ivs_bsig0(uint32_t x)
 
 static uint32_t ivs_bsig1(uint32_t x)
 {
-  return ivs_rotr(x, 6u) ^ ivs_rotr(x, 11u) ^ ivs_rotr(x, 25u);
+  uint32_t r = ivs_rotr(x, 6u) ^ ivs_rotr(x, 11u) ^ ivs_rotr(x, 25u);
+#ifdef IVS_FAULT_SHA_ROTATE_WRONG
+  r = ivs_rotr(x, 6u) ^ ivs_rotr(x, 12u) ^ ivs_rotr(x, 25u);
+#endif
+  return r;
 }
 
 static uint32_t ivs_ssig0(uint32_t x)
@@ -124,6 +128,9 @@ static void ivs_sha256_compress(uint32_t h[8], const uint8_t *b)
 void ivs_sha256_init(ivs_sha256 *c)
 {
   uint64_t total = 0u;
+#ifdef IVS_FAULT_SHA_INIT_NO_RESET
+  total = c->total_bytes;
+#endif
   uint32_t i;
   for (i = 0u; i < 8u; i++) {
     c->h[i] = ivs_sha256_h0[i];
@@ -173,6 +180,9 @@ void ivs_sha256_final(ivs_sha256 *c, uint8_t out[32])
   uint32_t rem = c->used;
   uint64_t bits = c->total_bytes << 3;
   uint32_t spill = rem >= 56u ? 1u : 0u;
+#ifdef IVS_FAULT_SHA_PAD_BOUNDARY
+  spill = rem > 56u ? 1u : 0u;
+#endif
   uint32_t nblocks = spill + 1u;
   uint32_t end = IVS_SHA256_BLOCK_BYTES * nblocks;
   uint32_t ncompress;
@@ -186,7 +196,13 @@ void ivs_sha256_final(ivs_sha256 *c, uint8_t out[32])
   for (i = 0u; i < 8u; i++) {
     pad[end - 1u - i] = (uint8_t)(bits >> (8u * i));
   }
+#ifdef IVS_FAULT_SHA_LENGTH_LE
+  for (i = 0u; i < 8u; i++) pad[end - 8u + i] = (uint8_t)(bits >> (8u * i));
+#endif
   ncompress = nblocks;
+#ifdef IVS_FAULT_SHA_FINAL_BLOCK_DROPPED
+  if (nblocks == 2u) ncompress = 1u;
+#endif
   for (i = 0u; i < ncompress; i++) {
     ivs_sha256_compress(c->h, pad + IVS_SHA256_BLOCK_BYTES * i);
   }

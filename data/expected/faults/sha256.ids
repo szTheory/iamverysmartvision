@@ -1,4 +1,9 @@
 # suite=machine; columns: <FAULT_ID> <must-fail> <allowed-prefixes> <must-pass>
 # SHA-256 named faults (D-28, D-37, plan 03-02). Each id has one IVS_FAULT_<ID> site in
 # core/src/common/ivs_sha256.c.
-SHA_K_WRONG machine.sha256.fips-abc machine.sha256. machine.sha256.ctx-plain
+SHA_K_WRONG machine.sha256.fips-abc machine.sha256. machine.sha256.split-every-offset
+SHA_ROTATE_WRONG machine.sha256.fips-448 machine.sha256. machine.sha256.ctx-copy-snapshot
+SHA_LENGTH_LE machine.sha256.pat-0001 machine.sha256. machine.sha256.fips-empty
+SHA_PAD_BOUNDARY machine.sha256.pat-0056 machine.sha256. machine.sha256.pat-0057
+SHA_FINAL_BLOCK_DROPPED machine.sha256.pat-0063 machine.sha256. machine.sha256.pat-0055
+SHA_INIT_NO_RESET machine.sha256.init-resets machine.sha256. machine.sha256.fips-abc

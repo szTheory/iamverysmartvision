@@ -61,7 +61,21 @@ add_test(NAME cpu-api COMMAND ivs_tests_cpu_api)
 set_tests_properties(cpu-api PROPERTIES SKIP_RETURN_CODE 77)
 
 # Suite machine (D-15, plans 03-02..03-12): every machine-level case family in one executable.
-add_executable(ivs_tests_machine machine/machine_main.c machine/machine_sha256.c)
+# Family sha256 reads ivs_sha_vectors.inc, generated from data/sha256/vectors.txt by
+# cmake/IvsShaVectors.cmake, which re-derives every literal digest with string(SHA256) and
+# stops the build on a mismatch (D-28).
+set(IVS_SHA_VECTORS "${PROJECT_SOURCE_DIR}/data/sha256/vectors.txt")
+set(IVS_SHA_GENERATOR "${PROJECT_SOURCE_DIR}/cmake/IvsShaVectors.cmake")
+set(IVS_SHA_INC "${CMAKE_CURRENT_BINARY_DIR}/ivs_sha_vectors.inc")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${IVS_SHA_VECTORS}")
+add_custom_command(
+  OUTPUT "${IVS_SHA_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DROOT=${PROJECT_SOURCE_DIR}" "-DOUT=${IVS_SHA_INC}" -P "${IVS_SHA_GENERATOR}"
+  DEPENDS "${IVS_SHA_VECTORS}" "${IVS_SHA_GENERATOR}"
+  COMMENT "Generating the SHA-256 vector table (string(SHA256) oracle)"
+  VERBATIM)
+add_executable(ivs_tests_machine machine/machine_main.c machine/machine_sha256.c "${IVS_SHA_INC}")
+target_include_directories(ivs_tests_machine PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(ivs_tests_machine PRIVATE ivs_test_harness ivs_core ivs_warnings ivs_san)
 add_test(NAME machine COMMAND ivs_tests_machine)
 set_tests_properties(machine PROPERTIES SKIP_RETURN_CODE 77)
@@ -129,7 +143,9 @@ ivs_fault_gen(GEN_EXPECT_MUTATION SUITE cpu-vectors OUTPUT ivs_vectors.inc
   DEPENDS ${ivs_vec_json} "${IVS_VEC_GENERATOR}" "${IVS_VEC_FILES_IDS}" "${IVS_VEC_SKIPS_IDS}")
 
 ivs_fault_suite(machine
-  SOURCES machine/machine_main.c machine/machine_sha256.c)
+  SOURCES machine/machine_main.c machine/machine_sha256.c
+  INCLUDE_DIRS "${CMAKE_CURRENT_BINARY_DIR}"
+  GENERATED "${IVS_SHA_INC}")
 
 # Named-fault control executables (D-18): dev tree only, never registered with ctest.
 if(IVS_FAULT_CONTROLS)

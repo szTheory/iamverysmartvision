@@ -13,7 +13,7 @@
 /* Family sha256 (plan 03-02): core SHA-256 against literal digests (machine_sha256.c). */
 extern const ivs_test_case ivs_machine_sha256_cases[];
 extern const size_t ivs_machine_sha256_count;
-extern const ivs_test_source ivs_machine_sha256_sources[];
+extern const ivs_test_source *const ivs_machine_sha256_sources;
 extern const size_t ivs_machine_sha256_source_count;
 
 #endif

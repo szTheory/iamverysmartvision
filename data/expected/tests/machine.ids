@@ -1,4 +1,27 @@
 # Suite machine (plans 03-02..03-12): machine-level cases in one executable (D-15). Family
-# sha256 (plan 03-02): core SHA-256 against independent literal digests (D-28, A-04).
-machine.sha256.ctx-plain
+# sha256 (plan 03-02): core SHA-256 against independent literal digests, one case per line of
+# data/sha256/vectors.txt plus the invariance, context and reset cases (D-28, A-04).
+machine.sha256.fips-empty
 machine.sha256.fips-abc
+machine.sha256.fips-448
+machine.sha256.fips-896
+machine.sha256.fips-million-a
+machine.sha256.pat-0000
+machine.sha256.pat-0001
+machine.sha256.pat-0055
+machine.sha256.pat-0056
+machine.sha256.pat-0057
+machine.sha256.pat-0063
+machine.sha256.pat-0064
+machine.sha256.pat-0065
+machine.sha256.pat-0119
+machine.sha256.pat-0120
+machine.sha256.pat-0127
+machine.sha256.pat-0128
+machine.sha256.pat-0129
+machine.sha256.pat-2048
+machine.sha256.pat-8192
+machine.sha256.ctx-copy-snapshot
+machine.sha256.ctx-plain
+machine.sha256.init-resets
+machine.sha256.split-every-offset
