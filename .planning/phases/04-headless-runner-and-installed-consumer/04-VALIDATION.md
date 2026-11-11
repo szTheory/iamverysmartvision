@@ -51,17 +51,17 @@ created: "2026-11-11"
 | 04-03-T1 | 03 | 3 | RUN-04, RUN-02 (D-24, D-17, D-20) | T-04-08, T-04-09, T-04-10 | fault framework end to end (tracer) | quick `ctest -R '^runner$'`; gate (`faults=120/120`) | ⬜ pending |
 | 04-03-T2 | 03 | 3 | RUN-02, RUN-04 | T-04-08, T-04-11 | unit + 3 faults + controls (2) | controls (243/243); gate + dash (`faults=123/123`); gate-linux | ⬜ pending |
 | 04-04-T1 | 04 | 4 | RUN-04, RUN-01 (D-23) | T-04-12 | static step (tracer) | gate (`runner-files=`, `steps=29/29`) | ⬜ pending |
-| 04-04-T2 | 04 | 4 | RUN-04 (A-07) | T-04-12, T-04-13, T-04-14 | controls (6) + build-tree probe | controls (249/249); gate + dash | ⬜ pending |
-| 04-05-T1 | 05 | 5 | RUN-05 (D-10, A-03) | T-04-15, T-04-16 | literal pin then one live domain (tracer) | quick `machine.digest.`; gate | ⬜ pending |
-| 04-05-T2 | 05 | 5 | RUN-05 | T-04-15, T-04-16, T-04-17 | unit (coverage, sensitivity, reset, refusal) + 2 faults | quick `machine.digest.`, `machine.reset.`; gate + dash (`faults=125/125`) | ⬜ pending |
+| 04-04-T2 | 04 | 4 | RUN-04 (A-07) | T-04-12, T-04-13, T-04-14 | integrity anchored to `runner/` and `tools/(pack|cart)/`; controls (6, `MAKE`-built) + build-tree probe | controls (249/249); gate + dash | ⬜ pending |
+| 04-05-T1 | 05 | 5 | RUN-05 (D-10, A-03) | T-04-15, T-04-16 | literal pin, then domains 16-18 with coverage, sensitivity and the domain-19 refusal retarget in one commit (tracer) | quick `machine.digest.`, `machine.refuse.digest.`; gate | ⬜ pending |
+| 04-05-T2 | 05 | 5 | RUN-05 | T-04-15, T-04-16, T-04-17 | domain separation, reset clearing + 2 faults | quick `machine.digest.`, `machine.reset.`; gate + dash (`faults=125/125`) | ⬜ pending |
 | 04-06-T1 | 06 | 6 | API-02, RUN-01 (D-08, A-01, A-06) | T-04-18 | new suite `run` via public header (tracer) | `ctest -R '^(run|headers)$'`; gate (`api-calls=11`) | ⬜ pending |
 | 04-06-T2 | 06 | 6 | API-02 (D-08) | T-04-18, T-04-19, T-04-20 | refusal rows + side-effect proofs + 2 faults | quick `run.`; gate + dash (`faults=127/127`, `api-calls=12`) | ⬜ pending |
 | 04-07-T1 | 07 | 7 | API-02 (D-01..D-03) | T-04-21 | run to absolute target (tracer) | quick `run.target.`, `run.single-step.`; gate (`api-calls=14`) | ⬜ pending |
 | 04-07-T2 | 07 | 7 | API-02 (D-04, D-05) | T-04-22, T-04-23 | stop reasons, ladder, precedence | quick `run.` both presets; gate | ⬜ pending |
 | 04-07-T3 | 07 | 7 | API-02 (D-07) | T-04-21, T-04-23 | 3 faults + gate-linux | gate + dash (`faults=130/130`); gate-linux | ⬜ pending |
-| 04-08-T1 | 08 | 8 | API-02, RUN-04 (D-04, D-05) | T-04-24, T-04-25 | define pin (tracer) | gate (`pinned-defines=`) | ⬜ pending |
+| 04-08-T1 | 08 | 8 | API-02, RUN-04 (D-04, D-05) | T-04-24, T-04-25 | define pin with good-tree toy pins in the same commit (tracer) | gate (`pinned-defines=`, `controls=249/249`) | ⬜ pending |
 | 04-08-T2 | 08 | 8 | RUN-04 | T-04-24 | controls (3) | controls (252/252); gate + dash | ⬜ pending |
-| 04-09-T1 | 09 | 9 | API-02 (D-06, D-09, A-02) | T-04-26 | generator to `ivs_info` (tracer) | quick `run.info.`, `ctest -R '^(machine|memmap)$'`; gate | ⬜ pending |
+| 04-09-T1 | 09 | 9 | API-02 (D-06, D-09, A-02) | T-04-26 | generator to `ivs_info`, `machine.refuse.info.short` retargeted to the v1 size (tracer) | quick `run.info.`, `ctest -R '^(machine|memmap)$'`; gate | ⬜ pending |
 | 04-09-T2 | 09 | 9 | API-02, RUN-05 (D-07) | T-04-26, T-04-27 | five-pattern slicing vs reference + 2 faults | quick `run.slice.` both presets; gate + dash (`faults=132/132`) | ⬜ pending |
 | 04-10-T1 | 10 | 10 | API-04 (D-06) | T-04-28, T-04-29 | env-seam refusal (tracer) | quick `run.buffers.`; gate | ⬜ pending |
 | 04-10-T2 | 10 | 10 | API-04 (D-02, D-03, D-05) | T-04-28, T-04-29, T-04-30 | buffer matrix + 2 faults | quick `run.buffers.`, `run.prec.`; gate + dash (`faults=134/134`) | ⬜ pending |
@@ -70,7 +70,7 @@ created: "2026-11-11"
 | 04-11-T3 | 11 | 11 | RUN-05 (D-16, D-07, D-05) | T-04-31..T-04-34 | 6 faults + gate-linux | gate + dash (`faults=140/140`); gate-linux | ⬜ pending |
 | 04-12-T1 | 12 | 12 | RUN-01 (D-13, D-15) | T-04-35 | profile field to API refusal (tracer) | quick `run.input.`, `ctest -R '^(memmap|machine)$'`; gate | ⬜ pending |
 | 04-12-T2 | 12 | 12 | RUN-05 (D-15) | T-04-36 | guest invisibility | quick `run.input.guest-invisible`; gate + dash | ⬜ pending |
-| 04-13-T1 | 13 | 13 | RUN-01 (D-12, D-16) | T-04-37 | bit pin (tracer) | gate + 31-name count | ⬜ pending |
+| 04-13-T1 | 13 | 13 | RUN-01 (D-12, D-16) | T-04-37 | bit pin with good-tree toy pin in the same commit (tracer) | gate + 31-name count | ⬜ pending |
 | 04-13-T2 | 13 | 13 | RUN-04 | T-04-37 | controls (2) | controls (254/254) | ⬜ pending |
 | 04-13-T3 | 13 | 13 | RUN-05 (D-16, A-05, A-02) | T-04-38, T-04-39 | records + seeded fuzz + struct sizes | quick `run.fuzz.`, `run.struct.`; gate + dash | ⬜ pending |
 | 04-14-T1 | 14 | 14 | RUN-06 (D-25, D-26, D-28, D-30) | T-04-40, T-04-41 | stub listing, manifest and images in both presets to boot path (tracer) | 8192-byte image equal across presets; quick `run.stub.`; gate | ⬜ pending |
@@ -93,9 +93,9 @@ created: "2026-11-11"
 | 04-20-T1 | 20 | 20 | RUN-01, RUN-06 (D-23) | T-04-59, T-04-60 | process suite on the diagnostic (tracer) | `ctest -R '^runner-process$'`; per-preset report files | ⬜ pending |
 | 04-20-T2 | 20 | 20 | RUN-02, RUN-06 (D-20, D-32, A-01) | T-04-59, T-04-61 | one scenario per outcome (six-column inventory with host-dependent class), diagnostic mutants, repeat/slice/cwd | `ctest -R '^runner-process$'`; gate (visible skip) | ⬜ pending |
 | 04-20-T3 | 20 | 20 | RUN-02, RUN-04 (D-23) | T-04-59 | judge self-controls + outcome anti-drift | gate + dash | ⬜ pending |
-| 04-21-T1 | 21 | 21 | RUN-05 (D-11, D-19, A-01) | T-04-62, T-04-63, T-04-64 | golden step on the real tree (tracer) | gate (`goldens=2`, `steps=31/31`) | ⬜ pending |
-| 04-21-T2 | 21 | 21 | RUN-05 | T-04-62 | input and budget goldens | gate (`goldens=4`) | ⬜ pending |
-| 04-21-T3 | 21 | 21 | RUN-05, RUN-04 (D-21) | T-04-62, T-04-63, T-04-65, T-04-79 | controls (10, incl. host-dependent exclusion) | controls (273/273); gate + dash | ⬜ pending |
+| 04-21-T1 | 21 | 21 | RUN-05 (D-11, D-19, A-01) | T-04-62, T-04-63, T-04-64 | golden step and the three `.digests` goldens on the real tree (tracer) | gate (`goldens=4`, `steps=31/31`) | ⬜ pending |
+| 04-21-T2 | 21 | 21 | RUN-05, RUN-04 (D-21) | T-04-62, T-04-63, T-04-79 | toy tree with a host-dependent scenario + header controls (4) | controls (267/267) | ⬜ pending |
+| 04-21-T3 | 21 | 21 | RUN-05, RUN-04 (D-21) | T-04-62, T-04-63, T-04-65, T-04-79 | body, dev/release and scope controls (6, incl. host-dependent) | controls (273/273); gate + dash | ⬜ pending |
 | 04-22-T1 | 22 | 22 | PKG-01 (D-33, D-34, D-35, D-37) | T-04-66, T-04-67 | relocated install and exact inventory (tracer) | gate (`prefix-files=`, `steps=32/32`); sanitized install refused | ⬜ pending |
 | 04-22-T2 | 22 | 22 | PKG-01 (D-37, D-38) | T-04-67, T-04-68 | header/archive/path/symbol/headers-alone proofs | gate (`public-symbols=`, `hdr-alone=`) | ⬜ pending |
 | 04-22-T3 | 22 | 22 | PKG-01 (D-40) | T-04-66..T-04-69 | in-step selftests (8) | gate + dash (`pkg-selftest=8/8`); gate-linux | ⬜ pending |
