@@ -76,12 +76,8 @@ add_custom_command(
   DEPENDS "${IVS_SHA_VECTORS}" "${IVS_SHA_GENERATOR}"
   COMMENT "Generating the SHA-256 vector table (string(SHA256) oracle)"
   VERBATIM)
-add_executable(ivs_tests_machine machine/machine_main.c machine/machine_sha256.c machine/machine_create.c
-  machine/machine_digest.c machine/machine_load.c "${IVS_SHA_INC}")
-target_include_directories(ivs_tests_machine PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
-target_link_libraries(ivs_tests_machine PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
-add_test(NAME machine COMMAND ivs_tests_machine)
-set_tests_properties(machine PROPERTIES SKIP_RETURN_CODE 77)
+# The executable is declared after suite ivsc, whose fixture table (IVS_CART_INC) family load
+# reads (plan 03-10).
 
 # Suite memmap (D-16..D-20, plan 03-04): the profile-driven memory system through its bus
 # function; expected values come from the suite's own rule table, never from the generated
@@ -126,6 +122,15 @@ target_include_directories(ivs_tests_ivsc PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(ivs_tests_ivsc PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
 add_test(NAME ivsc COMMAND ivs_tests_ivsc)
 set_tests_properties(ivsc PROPERTIES SKIP_RETURN_CODE 77)
+
+# Suite machine's executable (declared above): family load (plan 03-10) reads the IVSC fixture
+# table, so it compiles ivs_cart_table.inc too.
+add_executable(ivs_tests_machine machine/machine_main.c machine/machine_sha256.c machine/machine_create.c
+  machine/machine_digest.c machine/machine_load.c "${IVS_SHA_INC}" "${IVS_CART_INC}")
+target_include_directories(ivs_tests_machine PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+target_link_libraries(ivs_tests_machine PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
+add_test(NAME machine COMMAND ivs_tests_machine)
+set_tests_properties(machine PROPERTIES SKIP_RETURN_CODE 77)
 
 # Suite cpu-fuzz (D-12, plan 02-15): the seeded robustness run; dev links the sanitizers.
 add_executable(ivs_tests_cpu_fuzz cpu/cpu_fuzz.c)
@@ -215,7 +220,7 @@ ivs_fault_suite(machine
   SOURCES machine/machine_main.c machine/machine_sha256.c machine/machine_create.c machine/machine_digest.c
           machine/machine_load.c
   INCLUDE_DIRS "${CMAKE_CURRENT_BINARY_DIR}"
-  GENERATED "${IVS_SHA_INC}")
+  GENERATED "${IVS_SHA_INC}" "${IVS_CART_INC}")
 
 ivs_fault_suite(memmap
   SOURCES memmap/memmap_main.c memmap/memmap_rows.c

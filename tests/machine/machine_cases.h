@@ -30,5 +30,7 @@ extern const size_t ivs_machine_digest_count;
  * unload (machine_load.c). */
 extern const ivs_test_case ivs_machine_load_cases[];
 extern const size_t ivs_machine_load_count;
+extern const ivs_test_source *const ivs_machine_load_sources;
+extern const size_t ivs_machine_load_source_count;
 
 #endif

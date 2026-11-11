@@ -39,43 +39,7 @@
 #include "content/ivsc.h"
 #include "ivs_test.h"
 #include "ivsc_fuzz.h"
-
-/* Table types of the generated include (field order of its initializers). */
-typedef struct ivs_cart_seg {
-  uint16_t addr;
-  uint32_t len_words;
-} ivs_cart_seg;
-
-typedef struct ivs_cart_run {
-  uint32_t seg;
-  uint16_t word;
-  uint32_t count;
-} ivs_cart_run;
-
-#define IVS_CART_POSITIVE 0u
-#define IVS_CART_BUILD 1u
-#define IVS_CART_PATCH 2u
-
-typedef struct ivs_cart_fixture {
-  const char *id;
-  const char *base; /* patch: the positive record it changes */
-  unsigned kind;
-  const uint8_t *bytes; /* positive: the container; patch: patched bytes before any reseal */
-  size_t n_bytes;
-  unsigned reseal;
-  const ivs_cart_seg *segs; /* positive: expected segments; build: the recipe's segments */
-  size_t n_segs;
-  const ivs_cart_run *runs; /* build: word runs in segment order */
-  size_t n_runs;
-  const uint8_t *trailer;      /* build: the typed 32-byte trailer */
-  const uint8_t *whole_sha256; /* positive and build: typed digest of the whole container */
-  int status;
-  uint32_t reason;
-  unsigned has_seg;
-  uint32_t seg;
-  unsigned has_off;
-  uint32_t off;
-} ivs_cart_fixture;
+#include "ivsc_table.h"
 
 #include "ivs_cart_table.inc"
 
@@ -214,6 +178,11 @@ static int ic_check_view(const ivs_cart_fixture *f, const uint8_t *b, size_t len
       ivs_test_diag("segment %zu past the count is not zero", i);
       ok = 0;
     }
+  }
+  /* The whole-file digest of the view (A-04) against the typed authoring-time digest. */
+  if (f->whole_sha256 != NULL && memcmp(v->file_sha256, f->whole_sha256, sizeof v->file_sha256) != 0) {
+    ivs_test_diag("view file_sha256 differs from the record's whole_sha256");
+    ok = 0;
   }
   return ok;
 }

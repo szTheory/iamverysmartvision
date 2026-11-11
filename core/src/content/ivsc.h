@@ -4,9 +4,10 @@
  * docs/formats/ivsc-v1.md; this header carries its limits, the reason numbers of that spec and
  * the parser interface. Internal core interface, not installed and not an ABI.
  *
- * Layer 1 knows no profile: it checks the container's own rules only. Layer 2 (plan 03-11)
- * takes the view, checks each segment against the profile's cartridge span and the
- * required_features mask against the profile, and copies the words into an instance. */
+ * Layer 1 knows no profile: it checks the container's own rules only. Layer 2 (ivs_machine_load,
+ * core/src/machine/machine_load.c, plan 03-10) takes the view, checks each segment against the
+ * profile's cartridge span and the required_features mask against the profile, and copies the
+ * words into an instance. */
 #ifndef IVS_IVSC_H
 #define IVS_IVSC_H
 
@@ -28,6 +29,7 @@
 #define IVS_IVSC_WIDTH_BITS 10u
 #define IVS_IVSC_WORD_MAX 0x03FFu
 #define IVS_IVSC_ADDRESS_SPACE_WORDS 0x10000u
+#define IVS_IVSC_FEATURES_OFFSET 12u /* required_features in the prefix */
 
 /* Refusal reasons. The numbers are stable and listed in the reason table of the spec; a new
  * reason gets the next number. Each reason maps to exactly one status (spec, "Refusal
@@ -66,7 +68,9 @@ typedef struct ivs_ivsc_segment {
 
 /* Pointer-free view of an accepted container (zero-copy: the words stay in the caller's
  * buffer at segs[i].data_byte_offset, big-endian, two bytes each). Entries past
- * segment_count are zero. */
+ * segment_count are zero. file_sha256 is the SHA-256 of the whole container, trailer included
+ * (what `sha256sum` of the file prints, D-25); it comes from the same pass as the trailer check
+ * (A-04) and differs from the trailer. */
 typedef struct ivs_ivsc_view {
   uint16_t version;
   uint16_t flags;
@@ -74,6 +78,7 @@ typedef struct ivs_ivsc_view {
   uint32_t total_bytes;
   uint32_t segment_count;
   ivs_ivsc_segment segs[IVS_IVSC_MAX_SEGMENTS];
+  uint8_t file_sha256[32];
 } ivs_ivsc_view;
 
 /* Refusal report. byte_offset names the byte where the defect is seen (spec, "Refusal

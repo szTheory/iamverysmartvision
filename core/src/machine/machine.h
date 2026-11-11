@@ -16,6 +16,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "content/ivsc.h"
 #include "cpu/cp1610.h"
 #include "ivs/ivs_machine.h"
 #include "memmap/memsys.h"
@@ -90,6 +91,13 @@ size_t ivs_machine_digest_preimage(const struct ivs_machine *m, uint32_t domain,
 /* Writes the public report of one slot record (shared by ivs_machine_info and the load report,
  * A-08 f). */
 void ivs_machine_slot_report(const ivs_machine_slot *s, ivs_image_report *o);
+
+/* Layer 2 span rule of a cartridge load (D-33, A-01, machine_load.c): the index of the first
+ * segment of v (table order) that does not lie wholly inside the words [lo, hi], or
+ * IVS_SEGMENT_NONE. A test seam as well: the registered profile's span ends at $FFFF, where the
+ * parser's address-wrap check already refuses a segment that runs past it, so the span's upper
+ * edge is tested here with a synthetic span. */
+uint32_t ivs_machine_cart_span_check(uint32_t lo, uint32_t hi, const ivs_ivsc_view *v);
 
 /* The instance behind a handle, or NULL for NULL or a wrong magic. */
 const struct ivs_machine *ivs_machine_from_handle(const ivs_machine *m);

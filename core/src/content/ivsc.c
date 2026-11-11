@@ -19,7 +19,7 @@ static const uint8_t ivsc_magic[IVS_IVSC_MAGIC_BYTES] = {0x89u, 0x49u, 0x56u, 0x
 /* Prefix field offsets. */
 #define IVSC_OFF_VERSION 8u
 #define IVSC_OFF_FLAGS 10u
-#define IVSC_OFF_FEATURES 12u
+#define IVSC_OFF_FEATURES IVS_IVSC_FEATURES_OFFSET
 #define IVSC_OFF_TOTAL 16u
 #define IVSC_OFF_COUNT 20u
 #define IVSC_OFF_RESERVED 22u
@@ -56,7 +56,10 @@ static ivs_status ivsc_refuse(ivs_ivsc_report *rep, ivs_status st, uint32_t reas
 ivs_status ivs_ivsc_parse(const uint8_t *bytes, size_t len, ivs_ivsc_view *view, ivs_ivsc_report *rep)
 {
   ivs_ivsc_view v;
+  ivs_sha256 ctx = {{0u}, 0u, {0u}, 0u, 0u}; /* zeroed first, as ivs_sha256_digest does */
+  ivs_sha256 trail;
   uint8_t digest[IVS_SHA256_DIGEST_BYTES];
+  uint8_t file_digest[IVS_SHA256_DIGEST_BYTES];
   uint64_t n_bytes;
   uint64_t total;
   uint64_t n_seg;
@@ -186,8 +189,15 @@ ivs_status ivs_ivsc_parse(const uint8_t *bytes, size_t len, ivs_ivsc_view *view,
     }
   }
 
-  /* 7. Digest: SHA-256 of every byte before the trailer, compared over all 32 bytes. */
-  ivs_sha256_digest(bytes, (size_t)(total - IVS_IVSC_TRAILER_BYTES), digest);
+  /* 7. Digest: SHA-256 of every byte before the trailer, compared over all 32 bytes. The same
+   * pass gives the whole-file digest (A-04): a copy of the context is finished for the trailer
+   * comparison, and the original goes on over the 32 trailer bytes. */
+  ivs_sha256_init(&ctx);
+  ivs_sha256_update(&ctx, bytes, (size_t)(total - IVS_IVSC_TRAILER_BYTES));
+  trail = ctx;
+  ivs_sha256_final(&trail, digest);
+  ivs_sha256_update(&ctx, bytes + (size_t)(total - IVS_IVSC_TRAILER_BYTES), IVS_IVSC_TRAILER_BYTES);
+  ivs_sha256_final(&ctx, file_digest);
   diff = 0u;
   for (k = 0u; k < IVS_SHA256_DIGEST_BYTES; k++) {
     diff |= (uint32_t)(digest[k] ^ bytes[(size_t)(total - IVS_IVSC_TRAILER_BYTES) + k]);
@@ -219,6 +229,7 @@ ivs_status ivs_ivsc_parse(const uint8_t *bytes, size_t len, ivs_ivsc_view *view,
   v.required_features = features;
   v.total_bytes = (uint32_t)total;
   v.segment_count = (uint32_t)n_seg;
+  memcpy(v.file_sha256, file_digest, sizeof v.file_sha256);
   *view = v;
   return IVS_OK;
 }

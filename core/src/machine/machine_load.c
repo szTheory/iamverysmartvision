@@ -17,9 +17,19 @@
  *                      passed stage 6, with differences of uintptr_t values that cannot wrap
  *                      (never bytes + len), so a refusal status never depends on where the host
  *                      placed a buffer whose claimed length is out of bound (A-06, A-08 a);
- *   8. content         EXEC: MALFORMED for a short image, then for the first word with a bit of
- *                      15..10 set (its byte offset); nothing is truncated or masked (D-26);
+ *   8. content         EXEC and GROM: MALFORMED for a short image (zero length included), then
+ *                      for EXEC the first word with a bit of 15..10 set (its byte offset); every
+ *                      GROM byte is in range; nothing is truncated or masked (D-26).
+ *                      Cartridge: the IVSC v1 layer-1 parser in its spec order (D-33), then
+ *                      layer 2: every segment wholly inside the profile's cartridge span (else
+ *                      OUT_OF_RANGE with the segment; any start is allowed, A-01), then
+ *                      required_features within cartridge.features_supported (else UNSUPPORTED
+ *                      with the missing bits, D-32). Where a container has defects in two
+ *                      stages, the earlier stage wins (A-08 b).
  *   9. DIGEST_MISMATCH expect_sha256 against the digest of the supplied bytes (D-27).
+ * The reported digest is the SHA-256 of the exact supplied bytes (D-25). For a cartridge it is
+ * the whole file, trailer included, and it comes from the parser's single pass (A-04), never
+ * from the file's own trailer.
  * ivs_load_commit returns void, is copy-only and has no early return: it installs the words
  * through the memsys install primitives and writes the slot record. */
 #include "common/ivs_prelude.h"
@@ -42,6 +52,7 @@ typedef struct ivs_load_plan {
   uint32_t unit_bits;
   uint32_t base_addr;
   uint8_t sha256[IVS_SHA256_DIGEST_BYTES]; /* of the exact supplied bytes */
+  ivs_ivsc_view view;                      /* CARTRIDGE: the accepted container's segments */
 } ivs_load_plan;
 
 /* Fill the refusal detail and return the status. */
@@ -88,9 +99,84 @@ static uint64_t ivs_load_bound(uint32_t kind)
   switch (kind) {
   case IVS_KIND_EXEC:
     return IVS_MEMSYS_EXEC_BYTES;
+  case IVS_KIND_GROM:
+    return IVS_MEMSYS_GROM_BYTES;
   default:
-    return 0u;
+    return IVS_IVSC_MAX_BYTES;
   }
+}
+
+uint32_t ivs_machine_cart_span_check(uint32_t lo, uint32_t hi, const ivs_ivsc_view *v)
+{
+  uint64_t end_limit = (uint64_t)hi + 1u; /* first word past the span */
+  uint32_t i;
+  for (i = 0u; i < v->segment_count && i < IVS_IVSC_MAX_SEGMENTS; i++) {
+    uint64_t start = v->segs[i].addr;
+    uint64_t end = start + (uint64_t)v->segs[i].len_words;
+    if (start < (uint64_t)lo || end > end_limit) {
+      return i;
+    }
+  }
+  return IVS_SEGMENT_NONE;
+}
+
+/* Stage 8 for a system image (EXEC or GROM): exact size, then the word width. */
+static ivs_status ivs_load_system(const ivs_profile_desc *p, uint32_t kind, const uint8_t *bytes, size_t len,
+                                  ivs_load_plan *plan, ivs_load_report *d)
+{
+  const ivs_slot_desc *sd = kind == IVS_KIND_EXEC ? &p->exec : &p->grom;
+  uint64_t n = (uint64_t)len;
+  uint32_t i;
+  if (n < ivs_load_bound(kind)) {
+    return ivs_load_refuse(d, IVS_E_MALFORMED, IVS_REASON_IMAGE_SHORT, IVS_SEGMENT_NONE, n, 0u);
+  }
+  if (kind == IVS_KIND_EXEC) {
+    for (i = 0u; i < IVS_MEMSYS_EXEC_WORDS; i++) {
+      if ((bytes[2u * i] & 0xFCu) != 0u) {
+        return ivs_load_refuse(d, IVS_E_MALFORMED, IVS_REASON_IMAGE_WORD, IVS_SEGMENT_NONE, 2u * (uint64_t)i, 0u);
+      }
+    }
+  }
+  ivs_sha256_digest(bytes, len, plan->sha256);
+  plan->length_units = sd->units;
+  plan->unit_bits = sd->unit_bits;
+  plan->base_addr = sd->base;
+  return IVS_OK;
+}
+
+/* Stage 8 for a cartridge: layer 1 (the parser), then layer 2 (span, then features). */
+static ivs_status ivs_load_cart(const ivs_profile_desc *p, const uint8_t *bytes, size_t len, ivs_load_plan *plan,
+                                ivs_load_report *d)
+{
+  ivs_ivsc_report irep;
+  ivs_status st;
+  uint32_t seg;
+  uint32_t missing;
+  uint32_t units = 0u;
+  uint32_t i;
+  memset(&irep, 0, sizeof irep);
+  st = ivs_ivsc_parse(bytes, len, &plan->view, &irep);
+  if (st != IVS_OK) {
+    return ivs_load_refuse(d, st, irep.reason, irep.segment_index, irep.byte_offset, 0u);
+  }
+  seg = p->has_cart_span != 0u ? ivs_machine_cart_span_check(p->cart_lo, p->cart_hi, &plan->view) : 0u;
+  if (seg != IVS_SEGMENT_NONE) {
+    return ivs_load_refuse(d, IVS_E_OUT_OF_RANGE, IVS_REASON_OUT_OF_SPAN, seg,
+                           IVS_IVSC_PREFIX_BYTES + (uint64_t)seg * IVS_IVSC_ENTRY_BYTES, 0u);
+  }
+  missing = plan->view.required_features & ~p->features_supported;
+  if (missing != 0u) {
+    return ivs_load_refuse(d, IVS_E_UNSUPPORTED, IVS_REASON_FEATURES, IVS_SEGMENT_NONE, IVS_IVSC_FEATURES_OFFSET,
+                           missing);
+  }
+  for (i = 0u; i < plan->view.segment_count; i++) {
+    units += plan->view.segs[i].len_words;
+  }
+  memcpy(plan->sha256, plan->view.file_sha256, sizeof plan->sha256);
+  plan->length_units = units;
+  plan->unit_bits = IVS_IVSC_WIDTH_BITS;
+  plan->base_addr = plan->view.segs[0].addr;
+  return IVS_OK;
 }
 
 static ivs_status ivs_load_validate(const ivs_machine *m, uint32_t kind, const uint8_t *bytes, size_t len,
@@ -100,6 +186,7 @@ static ivs_status ivs_load_validate(const ivs_machine *m, uint32_t kind, const u
   const ivs_profile_desc *p;
   uint64_t n = (uint64_t)len;
   uint64_t bound;
+  ivs_status st;
   uint32_t i;
 
   /* 1. BAD_ARG: argument values. */
@@ -138,28 +225,18 @@ static ivs_status ivs_load_validate(const ivs_machine *m, uint32_t kind, const u
   /* 6. OVERSIZED: the claimed length, before any byte is read. */
   bound = ivs_load_bound(kind);
   if (n > bound) {
-    return ivs_load_refuse(d, IVS_E_OVERSIZED, IVS_REASON_IMAGE_LONG, IVS_SEGMENT_NONE, bound, 0u);
+    return ivs_load_refuse(d, IVS_E_OVERSIZED, kind == IVS_KIND_CARTRIDGE ? IVS_REASON_TOO_LARGE : IVS_REASON_IMAGE_LONG,
+                           IVS_SEGMENT_NONE, bound, 0u);
   }
   /* 7. BAD_ARG: the bounded input span against the instance storage. */
   if (ivs_load_overlaps(bytes, len, im) != 0u) {
     return ivs_load_refuse(d, IVS_E_BAD_ARG, IVS_REASON_ARG_INPUT_OVERLAP, IVS_SEGMENT_NONE, 0u, 0u);
   }
   /* 8. Content. */
-  if (kind != IVS_KIND_EXEC) {
-    return ivs_load_refuse(d, IVS_E_UNSUPPORTED, IVS_REASON_NONE, IVS_SEGMENT_NONE, 0u, 0u);
+  st = kind == IVS_KIND_CARTRIDGE ? ivs_load_cart(p, bytes, len, plan, d) : ivs_load_system(p, kind, bytes, len, plan, d);
+  if (st != IVS_OK) {
+    return st;
   }
-  if (n < bound) {
-    return ivs_load_refuse(d, IVS_E_MALFORMED, IVS_REASON_IMAGE_SHORT, IVS_SEGMENT_NONE, n, 0u);
-  }
-  for (i = 0u; i < IVS_MEMSYS_EXEC_WORDS; i++) {
-    if ((bytes[2u * i] & 0xFCu) != 0u) {
-      return ivs_load_refuse(d, IVS_E_MALFORMED, IVS_REASON_IMAGE_WORD, IVS_SEGMENT_NONE, 2u * (uint64_t)i, 0u);
-    }
-  }
-  ivs_sha256_digest(bytes, len, plan->sha256);
-  plan->length_units = p->exec.units;
-  plan->unit_bits = p->exec.unit_bits;
-  plan->base_addr = p->exec.base;
   /* 9. DIGEST_MISMATCH: expect_sha256, compared over all 32 bytes. */
   if (opts != NULL && (opts->flags & IVS_LOAD_F_EXPECT_SHA256) != 0u) {
     uint32_t diff = 0u;
@@ -179,7 +256,21 @@ static ivs_status ivs_load_validate(const ivs_machine *m, uint32_t kind, const u
 static void ivs_load_commit(struct ivs_machine *im, const ivs_load_plan *plan, const uint8_t *bytes)
 {
   ivs_machine_slot *s = &im->slot[plan->kind - 1u];
-  ivs_memsys_install_exec(&im->mem, bytes);
+  uint32_t i;
+  switch (plan->kind) {
+  case IVS_KIND_EXEC:
+    ivs_memsys_install_exec(&im->mem, bytes);
+    break;
+  case IVS_KIND_GROM:
+    ivs_memsys_install_grom(&im->mem, bytes);
+    break;
+  default:
+    for (i = 0u; i < plan->view.segment_count; i++) {
+      const ivs_ivsc_segment *g = &plan->view.segs[i];
+      ivs_memsys_install_cart_segment(&im->mem, g->addr, bytes + g->data_byte_offset, g->len_words);
+    }
+    break;
+  }
   s->loaded = 1u;
   s->length_bytes = plan->length_bytes;
   s->length_units = plan->length_units;

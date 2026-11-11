@@ -50,7 +50,8 @@ int main(int argc, char **argv)
       ivs_machine_add_sources(&ns, ivs_machine_sha256_sources, ivs_machine_sha256_source_count) != 0 ||
       ivs_machine_add(&n, ivs_machine_create_cases, ivs_machine_create_count) != 0 ||
       ivs_machine_add(&n, ivs_machine_digest_cases, ivs_machine_digest_count) != 0 ||
-      ivs_machine_add(&n, ivs_machine_load_cases, ivs_machine_load_count) != 0) {
+      ivs_machine_add(&n, ivs_machine_load_cases, ivs_machine_load_count) != 0 ||
+      ivs_machine_add_sources(&ns, ivs_machine_load_sources, ivs_machine_load_source_count) != 0) {
     return 1;
   }
   ivs_test_suite_from_cases(&suite, "machine", ivs_machine_all, n);
