@@ -1,0 +1,3 @@
+# Toy status pin of the known-good control tree (plan 03-13).
+IVS_OK 0
+IVS_E_BAD_ARG -2

@@ -1,0 +1,10 @@
+# Negative controls for the api-effects step (plan 03-13, D-15).
+api-status-renumbered
+api-status-unpinned
+api-status-reserved
+api-call-undocumented
+api-call-undeclared
+api-refusal-no-test
+api-effect-unregistered
+api-dead-status
+api-effects-format
