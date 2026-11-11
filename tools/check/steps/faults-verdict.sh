@@ -56,73 +56,104 @@ for ids in "$ROOT"/data/expected/faults/*.ids; do
     bad fault-suite-missing "$rel (data/expected/tests/$suite.ids missing)"
     suite=
   fi
-  awk '/^#/ { next } NF { print }' "$ids" > "$tmp/lines"
-  nlines=0
-  while IFS= read -r l; do
-    set -f
-    # shellcheck disable=SC2086
-    set -- $l
-    set +f
-    id=$1
-    total=$((total + 1))
-    nlines=$((nlines + 1))
-    before=$(grep -c . "$find")
-    case $id in
-      *[!A-Z0-9_]*) bad fault-missing-site "$id (bad id)"; continue ;;
-    esac
-    if grep -q -x -F -e "$id" "$tmp/seen"; then
-      bad fault-duplicate-id "$id ($rel)"
-      continue
-    fi
-    printf '%s\n' "$id" >> "$tmp/seen"
-    case $id in GEN_*) ;; *) printf '%s\n' "$id" >> "$tmp/fault-ids" ;; esac
-    # A file whose suite is unusable is already a finding; its ids still count for the
-    # duplicate and site checks, but there is nothing to judge them against.
-    [ -n "$suite" ] || continue
-    if [ "$#" -ne 4 ]; then
-      bad fault-unknown-vector "$id (line needs 4 columns)"
-      continue
-    fi
-    mf=$2
-    prefixes=$3
-    mp=$4
-    grep -q -x -F -e "$mf" "$tmp/suite.ids" || bad fault-unknown-vector "$id $mf"
-    grep -q -x -F -e "$mp" "$tmp/suite.ids" || bad fault-unknown-vector "$id $mp"
-    f="$gate/faults/$id/$suite.txt"
-    if [ ! -f "$f" ]; then
-      bad fault-missing "$id"
-      continue
-    fi
-    awk '
-      /^# suite=[^ ]* nonce=/ { split($3, b, "="); print "NONCE " b[2]; next }
-      /^#/ { next }
-      /^ok [0-9][0-9]* [^ ]/ { print "OK " $3; next }
-      /^not ok [0-9][0-9]* [^ ]/ { print "NOTOK " $4; next }
-    ' "$f" > "$tmp/res"
-    have_nonce=$(sed -n 's/^NONCE //p' "$tmp/res" | head -n 1)
-    if [ -z "$nonce" ] || [ "$have_nonce" != "$nonce" ]; then bad fault-stale "$id"; fi
-    sed -n 's/^\(NOT\)*OK //p' "$tmp/res" | sort -u > "$tmp/res.ids"
-    if [ "$(sed -n 's/^\(NOT\)*OK //p' "$tmp/res" | grep -c .)" -ne "$(grep -c . "$tmp/res.ids")" ] \
-      || ! cmp -s "$tmp/res.ids" "$tmp/suite.ids"; then
-      bad fault-list-mismatch "$id"
-    fi
-    grep -q -x -F -e "OK $mf" "$tmp/res" && bad fault-not-detected "$id $mf"
-    grep -q -x -F -e "NOTOK $mp" "$tmp/res" && bad fault-collateral "$id $mp"
-    for v in $(sed -n 's/^NOTOK //p' "$tmp/res"); do
-      matched=0
-      old_ifs=$IFS
-      IFS='|'
-      set -f
-      for p in $prefixes; do
-        case $v in "$p"*) matched=1 ;; esac
-      done
-      set +f
-      IFS=$old_ifs
-      [ "$matched" -eq 1 ] || bad fault-wrong-reason "$id $v"
+  # Result files that exist ([ -f ], a builtin), by fault id, for the awk pass below.
+  : > "$tmp/present"
+  if [ -n "$suite" ]; then
+    for r in "$gate"/faults/*/"$suite.txt"; do
+      [ -f "$r" ] || continue
+      r=${r%/*}
+      printf '%s\n' "${r##*/}" >> "$tmp/present"
     done
-    after=$(grep -c . "$find")
-    [ "$before" -eq "$after" ] && ok=$((ok + 1))
-  done < "$tmp/lines"
+  fi
+  # One awk pass judges every fault of this file (D-45 lever, plan 04-LEVER-01: it replaces about
+  # 17 processes per fault with one per file and reaches the same findings and counts). It
+  # appends its findings to $find, the ids it accepts to seen (and the non-GEN_ ones to
+  # fault-ids), and prints `<faults> <lines> <ok>`. A fault is ok when it adds no finding.
+  # Fields split on blanks, as `set -- $l` did; the prefixes split on `|` as the shell's
+  # IFS='|' field splitting did (an empty field, as in `a||b` or `|a`, matches every vector; a
+  # trailing `|` adds none).
+  counts=$(awk -v rel="$rel" -v suite="$suite" -v gate="$gate" -v nonce="$nonce" \
+    -v seenf="$tmp/seen" -v idsf="$tmp/fault-ids" -v suitef="$tmp/suite.ids" \
+    -v presentf="$tmp/present" -v findf="$find" '
+    function bad(t, d) { print t " " d >> findf; nfind++ }
+    # Judge result file f of fault id (must-fail mf, prefixes pre, must-pass mp).
+    function judge(id, f, mf, pre, mp,   line, a, b, v, have, gotnonce, n, k, hasempty, dup, \
+                   nuniq, uniq, okv, notv, nnot, notlist, p, np, matched, i, j) {
+      have = ""; gotnonce = 0; hasempty = 0; dup = 0; nuniq = 0; nnot = 0
+      split("", uniq); split("", okv); split("", notv); split("", notlist)
+      while ((getline line < f) > 0) {
+        n = split(line, a)
+        if (line ~ /^# suite=[^ ]* nonce=/) {
+          if (!gotnonce) { split(a[3], b, "="); have = b[2]; gotnonce = 1 }
+          continue
+        }
+        if (line ~ /^#/) continue
+        if (line ~ /^ok [0-9][0-9]* [^ ]/) { v = a[3]; okv[v] = 1 }
+        else if (line ~ /^not ok [0-9][0-9]* [^ ]/) { v = a[4]; notv[v] = 1; notlist[++nnot] = v }
+        else continue
+        if (v == "") { hasempty = 1; continue }
+        if (v in uniq) dup = 1
+        else { uniq[v] = 1; nuniq++ }
+      }
+      close(f)
+      if (nonce == "" || have != nonce) bad("fault-stale", id)
+      k = (dup || hasempty || nuniq != nsids)
+      if (!k) for (v in uniq) if (!(v in sids)) { k = 1; break }
+      if (k) bad("fault-list-mismatch", id)
+      if (mf in okv) bad("fault-not-detected", id " " mf)
+      if (mp in notv) bad("fault-collateral", id " " mp)
+      np = split(pre, p, "|")
+      if (np > 1 && p[np] == "") np--
+      for (i = 1; i <= nnot; i++) {
+        v = notlist[i]
+        if (v == "") continue
+        matched = 0
+        for (j = 1; j <= np; j++) if (index(v, p[j]) == 1) { matched = 1; break }
+        if (!matched) bad("fault-wrong-reason", id " " v)
+      }
+    }
+    BEGIN {
+      while ((getline l < seenf) > 0) seen[l] = 1
+      close(seenf)
+      nsids = 0
+      while ((getline l < suitef) > 0) { sids[l] = 1; nsids++ }
+      close(suitef)
+      while ((getline l < presentf) > 0) present[l] = 1
+      close(presentf)
+      total = 0; nlines = 0; ok = 0; nfind = 0
+    }
+    /^#/ { next }
+    NF == 0 { next }
+    {
+      id = $1
+      total++; nlines++
+      before = nfind
+      if (id ~ /[^A-Z0-9_]/) { bad("fault-missing-site", id " (bad id)"); next }
+      if (id in seen) { bad("fault-duplicate-id", id " (" rel ")"); next }
+      seen[id] = 1
+      print id >> seenf
+      if (id !~ /^GEN_/) print id >> idsf
+      # A file whose suite is unusable is already a finding; its ids still count for the
+      # duplicate and site checks, but there is nothing to judge them against.
+      if (suite == "") next
+      if (NF != 4) { bad("fault-unknown-vector", id " (line needs 4 columns)"); next }
+      if (!($2 in sids)) bad("fault-unknown-vector", id " " $2)
+      if (!($4 in sids)) bad("fault-unknown-vector", id " " $4)
+      if (!(id in present)) { bad("fault-missing", id); next }
+      judge(id, gate "/faults/" id "/" suite ".txt", $2, $3, $4)
+      if (nfind == before) ok++
+    }
+    END {
+      close(findf); close(seenf); close(idsf)
+      print total, nlines, ok
+    }' "$ids") || counts=
+  case $counts in
+    *[!0-9' ']*|'') bad fault-missing "$rel (judge failed)"; continue ;;
+  esac
+  set -- $counts
+  total=$((total + $1))
+  nlines=$2
+  ok=$((ok + $3))
   [ "$nlines" -gt 0 ] || bad fault-missing "$rel (no faults)"
 done
 [ "$nfiles" -gt 0 ] || bad fault-missing "data/expected/faults/*.ids (none)"
