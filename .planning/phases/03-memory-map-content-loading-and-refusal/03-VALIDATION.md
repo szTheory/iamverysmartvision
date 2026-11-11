@@ -9,7 +9,7 @@ created: "2026-11-10"
 
 # Phase 3 — Validation Strategy
 
-> Per-phase validation contract for feedback sampling during execution. Full requirement-to-check map: `03-RESEARCH.md` Section D (Validation Architecture); decisions: `03-CONTEXT.md` D-01..D-38 and amendments A-01..A-07.
+> Per-phase validation contract for feedback sampling during execution. Full requirement-to-check map: `03-RESEARCH.md` Section D (Validation Architecture); decisions: `03-CONTEXT.md` D-01..D-38 and amendments A-01..A-08.
 
 ---
 
@@ -36,7 +36,7 @@ created: "2026-11-10"
 
 ## Per-Task Verification Map
 
-"gate" = `sh tools/gate.sh` (fails on non-zero exit or a last line not starting `gate: PASS`); "dash" = `dash tools/gate.sh`; "quick" = `cmake --build --preset dev && ctest --preset dev -R '^<suite>$'` or `--only <prefix>`; "controls" = `out=$(sh tools/check/run-controls.sh) && printf '%s\n' "$out" | tail -1` (runner status observed through `&&`). Execution is sequential (one plan per wave), so each plan's expected counts are deterministic. Every task has at least one automated command; no three consecutive tasks lack one.
+"gate" = `sh tools/gate.sh` (fails on non-zero exit or a last line not starting `gate: PASS`); "dash" = `dash tools/gate.sh`; "quick" = `cmake --build --preset dev && ctest --preset dev -R '^<suite>$'` or `--only <prefix>`; "controls" = `out=$(sh tools/check/run-controls.sh) && test "$(printf '%s\n' "$out" | tail -1)" = "controls=N/N"` with the plan's N (an executable assertion; the runner status is observed through `&&`). Execution is sequential (one plan per wave), so each plan's expected counts are deterministic. Every task has at least one automated command; no three consecutive tasks lack one.
 
 | Task | Plan | Wave | Requirement | Threat Ref | Test Type | Automated Command | Status |
 |------|------|------|-------------|------------|-----------|-------------------|--------|
@@ -68,7 +68,7 @@ created: "2026-11-10"
 | 03-10-T1 | 10 | 10 | MEM-03 | T-03-33, T-03-35, T-03-36 | EXEC load end to end (tracer) | quick `machine.load.exec`; gate | ⬜ pending |
 | 03-10-T2 | 10 | 10 | MEM-03, MEM-05 | T-03-34, T-03-35 | GROM, cartridge, layer 2, A-04, options, order-free | quick both presets (`machine`, `ivsc`) | ⬜ pending |
 | 03-10-T3 | 10 | 10 | MEM-03 | T-03-35 | 3 faults | gate + dash (`faults=101/101`) | ⬜ pending |
-| 03-11-T1 | 11 | 11 | MEM-04 | T-03-37 | full-oracle refusal row x 3 priors (tracer) | quick `machine.refuse.load.exec.oversized-by-one`; gate | ⬜ pending |
+| 03-11-T1 | 11 | 11 | MEM-04 | T-03-37 | full-oracle refusal row x priors f and x (tracer) | quick `machine.refuse.load.exec.oversized-by-one`; gate | ⬜ pending |
 | 03-11-T2 | 11 | 11 | MEM-04, MEM-05, API-06 | T-03-37, T-03-38, T-03-39, T-03-40 | refusal matrix (lying lengths in heap and inside-instance placements, A-08a), prec rows incl. oversized-over-overlap, L/B/X fixtures, manifest refresh | quick `machine.refuse.`, `machine.prec.`, ivsc; helper `--check`; release ctest | ⬜ pending |
 | 03-11-T3 | 11 | 11 | MEM-04 | T-03-37, T-03-38, T-03-39 | 8 ordering faults + measurement 2 | gate + dash (`faults=109/109`) | ⬜ pending |
 | 03-12-T1 | 12 | 12 | API-01 | T-03-42 | reset + step seam program (tracer) | quick `machine.reset.`; gate | ⬜ pending |
