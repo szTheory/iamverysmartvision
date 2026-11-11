@@ -161,7 +161,23 @@ Plans:
   3. Every refusal-matrix row (malformed, oversized, overlapping, out-of-range, missing system image, unknown profile) returns its own typed error, and the state digest is the same before and after the refused load.
   4. The cartridge import format is specified in the project's own words. Its positive, boundary and malformed fixtures pass and are recorded in the fixture manifest.
   5. Two instances created side by side, with different content, step without affecting each other (isolation test). Every API error and refusal has a documented state effect that a test verifies.
-**Plans**: TBD
+**Plans**: 14 plans in 14 sequential waves
+
+Plans:
+- [ ] 03-01-PLAN.md — Fault loop over every `data/expected/faults/*.ids` with a per-suite registry and union site checks (D-37), 4 controls
+- [ ] 03-02-PLAN.md — In-repo SHA-256 (FIPS 180-4, copyable context) with an always-on CMake oracle, suite `machine`, 6 faults, first gate measurement
+- [ ] 03-03-PLAN.md — Public include tree (`ivs_status.h` moved), internal include split, c-purity for `core/include` and reviewed generated includes, writable-data rule, 6 controls
+- [ ] 03-04-PLAN.md — Profile memmap descriptors, fail-closed generator, memory system and bus in one core TU, C60-C62, suite `memmap`, 6 faults
+- [ ] 03-05-PLAN.md — Sourced literal memory map and the `memmap` gate step (grammar, tiling, provenance), 8 controls
+- [ ] 03-06-PLAN.md — Decode dump over all addresses compared with the literal, generated boundary probes (MEM-02), 5 faults, 3 controls, CL-0006
+- [ ] 03-07-PLAN.md — IVSC v1 spec, pure parser, parse-level text fixtures, suite `ivsc`, manifest `FX-ivsc-vectors` and refresh helper
+- [ ] 03-08-PLAN.md — Seeded IVSC fuzzing, 6 parser faults, optional libFuzzer recipe, `.ivsc` hygiene, CL-0007
+- [ ] 03-09-PLAN.md — Public machine headers, caller-storage create/destroy/info, status names and pin, canonical state digest, 8 faults
+- [ ] 03-10-PLAN.md — Typed load/unload of EXEC, GROM and cartridge with validate-then-commit, reports and the two-digest pass, 3 faults
+- [ ] 03-11-PLAN.md — Refusal matrix over prior states, precedence rows, layer-2 cartridge fixtures, 7 ordering faults, second gate measurement
+- [ ] 03-12-PLAN.md — Power-on reset with missing-system-image refusal, internal step seam, isolation tests, sweeps, headers suite, 4 faults
+- [ ] 03-13-PLAN.md — API effect table and the `api-effects` gate step, 8 controls
+- [ ] 03-14-PLAN.md — SC1-SC5 evidence table, record reconciliation, D-38 budget re-baseline, honest caveats
 
 ### Phase 4: Headless Runner and Installed Consumer (Slice 0)
 **Goal**: An original, project-authored diagnostic runs from reset through the public API, the headless runner and an independently built installed consumer. Digests are deterministic, failures are reported honestly by kind, and the CI gate mirrors the local command.
@@ -271,7 +287,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 |-------|----------------|--------|-----------|
 | 1. Evidence, Profile and Rights Foundations | 14/14 | Complete    | 2026-11-09 |
 | 2. CP-1610 CPU Core | 18/18 | Complete    | 2026-11-10 |
-| 3. Memory Map, Content Loading and Refusal | 0/TBD | Not started | - |
+| 3. Memory Map, Content Loading and Refusal | 0/14 | Planned | - |
 | 4. Headless Runner and Installed Consumer (Slice 0) | 0/TBD | Not started | - |
 | 5. Hand Controllers and PSG Sound | 0/TBD | Not started | - |
 | 6. STIC Video First Pass | 0/TBD | Not started | - |
