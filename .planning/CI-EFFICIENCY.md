@@ -118,15 +118,48 @@ not settle it; they compare the runner before and after under similar load.
   (about 39 s under this load) and controls (about 32 s) overlap. Not applied here; it
   changes `gate.sh` scheduling and should be measured on an idle host first.
 
+## 2026-11-10 - first hosted run of the final Phase 2 gate, and lever 4 (overlap controls with steps)
+
+- Run 42941373641 (ubuntu-24.04, cold tree, 190 controls, 4-lane runner): PASS, job about
+  55 s; the `sh tools/gate.sh` step took 50 s (13:46:59 to 13:47:49), **over the D-22 hosted
+  budget of 30 s**. The log had no per-step timing, so the hosted split between the cold C
+  build, the other steps and the control runner is unknown.
+- Timing added: `tools/gate.sh` now prints one `step-time <name> <s>` line per step (plus
+  `setup`, `controls` and `controls-wait`) and `gate-time total=<s>` just before the summary
+  line, which stays the final line (SKELETON.md section 1). Whole seconds from `date +%s`; the
+  lines are not tokens and nothing parses them. The next hosted run shows where the time goes.
+- Lever applied (the "next candidate" recorded under plan 02-18): the control runner now
+  starts in the background right after the results-dir setup and overlaps every step. It has
+  no dependency on any step: it reads only `tools/check/` and builds each control tree from
+  `controls/_good/tree` in its own temp dir, and the steps it drives read `$ROOT/build/gate`
+  of that control tree, never the real `build/`. Its output is held in a file and printed
+  after the steps in the same place; `wait` returns its exit status, so a failing control
+  still prints `-- FAIL gate-controls-failed: run-controls` before the runner output and
+  fails the gate. `controls` is the runner's own wall time; `controls-wait` is how long the
+  gate waited for it after the last step (0 means the steps were the critical path).
+- Checks: gate output minus the timing lines is byte-identical to the previous gate under
+  `sh` and `dash` (`controls=190/190`, same summary line), and in a scratch copy with one
+  control deliberately broken (extra EXPECT token): exit 1, `controls=189/190`,
+  `gate-controls-failed` and `control-token-missing` in the same order, under `sh` (cold
+  build) and `dash` (warm).
+- Local numbers (owner laptop, load 22 to 25, so load-contaminated like every local figure
+  here): gate 67 s before, 36 s (`sh`) and 42 s (`dash`) after. Per-step after: controls 25 s
+  (overlapped, `controls-wait` 0); `hygiene-history` 7 to 11; `cp1610-vectors` 6 to 7;
+  `faults-verdict` 5; `c-faults` 3; `denylist` 3; `hygiene` 2 to 3; the rest 2 s or less;
+  `c-build` 0 (warm). The steps are now the critical path locally.
+- On a 4-vCPU hosted runner the steps and the 4 lanes compete for the same cores, so the
+  hosted gain will be smaller than the local one; the next hosted run measures it.
+
 ## Open items
 
-- **Hosted gate budget.** D-22: hosted gate step at most 30 s. The final Phase 2 gate (190
-  controls, parallel runner) is unmeasured on the hosted runner; the last hosted figure is the
-  first hosted C run above (182 controls, gate step 19 s, job 23 s, after plan 02-07). The next
-  hosted run measures it. If it exceeds 30 s, apply the D-22 levers in order: (1) start the C
-  build in the background at the top of `gate.sh`, (2) parallel control runner (a runner
-  rewrite per A-09, at most 4 at a time, sorted output; done in plan 02-18), (3) rebuild only
-  the owning TU per fault; no ccache and no `actions/cache`. Local measurements do not close
-  this item.
+- **Hosted gate budget (open, over budget).** D-22: hosted gate step at most 30 s. The final
+  Phase 2 gate measured 50 s on run 42941373641 (before the background control runner). The
+  next hosted run measures the gate with the controls overlapping the steps and prints
+  `step-time` lines. If it still exceeds 30 s, read those lines and pick from the remaining
+  D-22 levers by the measured split: (1) start the C build in the background at the top of
+  `gate.sh` (only if `c-build` is large on the cold hosted tree), (3) rebuild only the owning
+  TU per fault (only if `c-faults` is large); lever 2 (parallel runner) is done in plan 02-18
+  and the controls already overlap the steps. No ccache and no `actions/cache`. Local
+  measurements do not close this item.
 - The queue, setup and gate times of the hosted runs on the phase PR, including the one after
   this plan, are recorded by the orchestrator after the phase PR's CI; agents never call `gh`.
