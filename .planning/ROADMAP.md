@@ -205,17 +205,17 @@ Plans:
 - [ ] 04-08-PLAN.md — Generic define pins for stop reasons and refusal reasons, 3 controls
 - [ ] 04-09-PLAN.md — Timebase and output layout in `ivs_info` (A-02 growth rule), five-pattern slicing invariance, 2 faults
 - [ ] 04-10-PLAN.md — Output buffers (API-04) through an internal env seam, refusal before any state change, 2 faults
-- [ ] 04-11-PLAN.md — Input events (D6 logical switch state) in the run call, live INPUT digest chain with an independent oracle, 5 faults
+- [ ] 04-11-PLAN.md — Input events (D6 logical switch state) in the run call, D-05 event-argument checks, live INPUT digest chain with an independent oracle, 6 faults
 - [ ] 04-12-PLAN.md — Profile `input.controllers`, extra-word refusal, guest invisibility of input in Phase 4
 - [ ] 04-13-PLAN.md — Input bit names pinned, D6 records (C14, C15, C63-C67), seeded input/slicing fuzz, v1 struct sizes, 2 controls
 - [ ] 04-14-PLAN.md — Project boot stub listing, `tools/pack` (build-tree images only), boot path and trap tests, `docs/diagnostics.md`
 - [ ] 04-15-PLAN.md — `listing` step with stub anti-HLE guards and suite `pack` (two independent parses), 9 controls
 - [ ] 04-16-PLAN.md — Original diagnostic `ivs-diag-cpu-1`, hand-derived `.expect` predicate, slicing on the real program, CL-0008
 - [ ] 04-17-PLAN.md — IVSS v1 parser (untrusted input, caps, fuzz), 2 faults
-- [ ] 04-18-PLAN.md — Runner executor and fixed-order report, outcomes and mutants in-process, 4 faults
+- [ ] 04-18-PLAN.md — Runner executor and fixed-order report with pinned key names, outcomes in-process, 4 faults
 - [ ] 04-19-PLAN.md — `ivs-run` executable: slices, budget/wall timeout, cancellation, POSIX in hostio.c only, `docs/runner.md`, 3 faults
 - [ ] 04-20-PLAN.md — Suite `runner-process`: one scenario per outcome, diagnostic mutants, repeat/slice/cwd checks, judge self-controls
-- [ ] 04-21-PLAN.md — Goldens with tier/oracle headers, `--update-golden`, pure `golden` step with dev-vs-release judge, 8 controls
+- [ ] 04-21-PLAN.md — Goldens with tier/oracle headers, `--update-golden`, pure `golden` step with dev-vs-release judge excluding host-dependent scenarios, 10 controls
 - [ ] 04-22-PLAN.md — Install/export of `ivs::core`, relocated prefix, `pkg-install` structure proofs, 8 in-step selftests
 - [ ] 04-23-PLAN.md — Independent installed consumer: find_package in the moved prefix, runner-golden agreement, 10/10 selftests, `docs/packaging.md`
 - [ ] 04-24-PLAN.md — RUN-04 important-gates registry and step, gate audit and gap fills, 2 controls

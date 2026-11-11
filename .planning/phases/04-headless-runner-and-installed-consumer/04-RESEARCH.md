@@ -498,7 +498,7 @@ Not a rename or migration phase; omitted. The one persistent-state hazard is the
 | A7 | libasm is not installed on this host, so the optional cross-check will be recorded "not run" | Environment Availability | None (non-gating by D-25) |
 | A8 | `gh ... --jq` supports `fromdateiso8601` for `tools/ci-record.sh` | Plan 01 | Fall back to awk civil-date conversion (04-DISCUSS-ci E5 [UNK]) |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Where does the runner get the boot-stub bytes?** (D-18 `content exec boot-stub`, D-30 pack output in the build tree)
    - What we know: the label must come from the symbolic name; images are built by `tools/pack` into the build tree; the runner reads only under `--content-dir` or operator flags.
@@ -510,10 +510,10 @@ Not a rename or migration phase; omitted. The one persistent-state hazard is the
 4. **Suite placement of the run tests.** RESOLVED: new suite `run` (Pitfall 12), so the `machine` case cap and per-fault runtime are not touched; the `RUN_*`, `PEEK_*` and `INPUT_*` faults live in `data/expected/faults/run.ids` (suite header `# suite=run`), not in `faults/machine.ids` as 04-DISCUSS-runapi section 6 proposed; only digest and reset faults of Plan 03 join `machine.ids`.
 5. **API version.** RESOLVED: keep `0.1.0` (pre-1.0, additive); the consumer's refused versions in selftest 8 are derived from the parsed version (minor + 1 and major + 1), not hard-coded.
 6. **Reasons pin.** RESOLVED as a recommendation: extend the generic pin check to `IVS_REASON_*` (`data/expected/api-reasons.ids`), because reason numbers are printed in reports and goldens; the CONTEXT pins only stop reasons and input bits, so Plan 05 may defer it without violating a decision.
-7. **Hosted gate-time budget (D-45).** Owner: orchestrator. Unknown until Plan 01's lines have two or three hosted rows; Plan 16 records the decision; levers in D-45 order.
-8. **Branch protection state on `main`.** Owner: orchestrator-assist (repository setting; agent permission not assumed; blocks nothing in Phase 4). Current ruleset state [UNK], not queryable without `gh`.
-9. **libasm cross-check.** Owner: Plan 09, optional, non-gating; if the tool is absent record "not run" in the diagnostic's manifest note.
-10. **Direct docs-commit friction after branch protection.** Accepted cost (04-DISCUSS-ci E7); record rows in the next phase branch.
+7. **Hosted gate-time budget (D-45).** RESOLVED (process): plan 04-01 lands the measurement lines, plan 04-02 records the rule and the run record, the orchestrator appends a row per hosted run and evaluates the rule at budget checkpoints after plans 04-10 and 04-19 (it may insert a lever plan there) and plan 04-25 records the phase-end evaluation; the measured value itself is data, not an open design question.
+8. **Branch protection state on `main`.** RESOLVED as a recorded recommendation: plan 04-25 writes it into `.planning/AUTONOMY.md`; applying it is deferred to the owner/orchestrator (repository setting; agent permission not assumed; blocks nothing in Phase 4); the current ruleset state is not queried by agents (no `gh`).
+9. **libasm cross-check.** RESOLVED: plan 04-16, optional and non-gating (D-25); if the tool is absent the SUMMARY and `docs/diagnostics.md` record "not run".
+10. **Direct docs-commit friction after branch protection.** RESOLVED: accepted cost (04-DISCUSS-ci E7); record commits go through phase branches (plan 04-25 states it in AUTONOMY.md).
 
 ## Sources
 
