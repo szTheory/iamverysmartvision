@@ -29,6 +29,7 @@ A direct-mode operand access is an ADAR record, and it carries the effective add
 There is exactly one wait rule (A-04 as amended by A-11, C53): BDRDY waits apply only to accesses that begin with a BAR or ADAR address phase, which are FETCH, READ, WRITE and ADAR; INTAK, IAB and DW take no waits (pdf 40) [OBS].
 A wait is inserted as idle cycles between the address phase and the data transfer (pdf 37), so it shifts every later record of the unit and the unit length; the record that took it keeps its own address-phase cycle [OBS].
 A wait up to the configured cap is accepted; a longer one ends the unit one cycle past the cap with the sticky fault BUS_WAIT_LIMIT and the architectural state as before the unit (pdf 12 bounds the wait but defines nothing past it; C53) [INF].
+The access that exceeds the cap is the last record of that unit: no later access of the unit reaches the bus or the log, so no WRITE lands after the fault, and a BEXT whose displacement read faults never asks the EBCI provider (C53) [INF].
 The TCI and PCIT strobe records may sit up to one cycle past the end of their unit (pdf 33, pdf 34, C39) [INF].
 
 ## Step-start order

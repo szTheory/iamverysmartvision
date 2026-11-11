@@ -102,12 +102,17 @@ static int ivs_kind_takes_wait(uint8_t kind)
  * address cycle, limit wait cycles and the cycle that exceeds it (inference: pdf 12 bounds the
  * wait under 40 us but defines no behaviour past it; C53). The unit length therefore never
  * depends on how long the device would have stalled. The log receives the same record with the
- * transferred value and the wait the device answered. */
+ * transferred value and the wait the device answered. Once the fault is marked the unit is
+ * abandoned: every later access of the unit is a no-op that reaches neither the port nor the
+ * log and reads as 0, so no WRITE lands after the fault (review CR-01). */
 static uint16_t ivs_access(ivs_unit *u, uint32_t nominal, uint8_t kind, uint8_t flags, uint16_t addr,
                            uint16_t data)
 {
   ivs_cp1610_access a;
   ivs_bus_reply reply;
+  if (u->wait_fault) {
+    return 0u;
+  }
   a.offset_cpu_cycles = nominal + u->shift;
   a.addr = addr;
   a.data = data;
@@ -542,10 +547,14 @@ static uint32_t ivs_branch_cond(const ivs_cp1610 *n, uint32_t cccc)
  * to select 1 of 16 conditions. Response is tested for true condition."). EBCA0-3 are the 4
  * least significant bits of the instruction register (pdf 11), so E = decle & $F. EBCI is valid
  * throughout the TS1 of the displacement BAR (pdf 32), so the provider is asked after the
- * displacement read. A NULL provider answers false (C57, POL-BR-01); any nonzero answer is true. */
+ * displacement read. A NULL provider answers false (C57, POL-BR-01); any nonzero answer is true.
+ * A unit abandoned by a wait-limit fault on the displacement read never asks the provider. */
 static uint32_t ivs_branch_ext(const ivs_unit *u, uint16_t word)
 {
   uint8_t e = (uint8_t)((uint32_t)word & 0xFu);
+  if (u->wait_fault) {
+    return 0u;
+  }
 #ifdef IVS_FAULT_BEXT_E_FIELD_IGNORED
   e = 0u;
 #endif

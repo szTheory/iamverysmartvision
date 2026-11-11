@@ -676,6 +676,149 @@ static int api_wait_shifts_offsets(void)
   return IVS_TEST_PASS;
 }
 
+/* ---- a wait-limit fault abandons the unit (POL-WAIT-01, C53; review CR-01) ---- */
+
+/* EBCI provider that counts its calls and answers the test bus table. */
+static uint32_t api_ebci_calls;
+
+static uint8_t api_ebci_counting(void *ctx, uint8_t e)
+{
+  api_ebci_calls++;
+  return ivs_testbus_ebci(ctx, e);
+}
+
+/* The faulting step of a wait-limit case: a FAULT unit with BUS_WAIT_LIMIT, the state as before
+ * the step, exactly `n` records whose last one took the over-cap wait at `fault_addr`, the port
+ * called once per record and no record at or past the unit end. */
+static int api_wait_fault_unit(const ivs_cp1610 *before, const ivs_cp1610 *s, const ivs_cp1610_result *r,
+                               const ivs_cp1610_access *log, size_t calls_before, uint8_t n, uint16_t fault_addr)
+{
+  ivs_cp1610 want = *before;
+  uint8_t i;
+  want.run_state = IVS_CP1610_RS_FAULTED;
+  want.fault_reason = IVS_CP1610_FAULT_BUS_WAIT_LIMIT;
+  IVS_CHECK(r->unit_kind == IVS_CP1610_UNIT_FAULT && (r->events & IVS_CP1610_EV_FAULT) != 0u);
+  IVS_CHECK(memcmp(s, &want, sizeof want) == 0);
+  IVS_CHECK(r->n_accesses == n);
+  IVS_CHECK(api_bus_a.n_calls - calls_before == (size_t)n);
+  IVS_CHECK(log[n - 1u].addr == fault_addr && log[n - 1u].wait_cpu_cycles == 36u);
+  for (i = 0u; i < n; i++) {
+    IVS_CHECK(log[i].offset_cpu_cycles < r->elapsed_cpu_cycles);
+    IVS_CHECK(log[i].kind != IVS_ACC_WRITE && log[i].kind != IVS_ACC_DW);
+  }
+  return IVS_TEST_PASS;
+}
+
+/* MVO R1, $0200 ($0241 at API_BASE_A, the address word $0200 at API_BASE_A + 1) with R1 = $BEEF;
+ * the device answers 36 waits (cap 35) on the address word. The unit ends at the fault: FETCH
+ * and the address-word READ are the only records, the port never sees the WRITE, and $0200
+ * stays unwritten. */
+static int api_wait_fault_no_write(void)
+{
+  ivs_cp1610 s;
+  ivs_cp1610 before;
+  ivs_cp1610_result r;
+  ivs_cp1610_access log[IVS_CP1610_MAX_ACCESSES];
+  ivs_cp1610_lines low = api_lines(0u);
+  size_t first;
+  size_t i;
+  ivs_testbus_init(&api_bus_a);
+  ivs_testbus_poke(&api_bus_a, API_BASE_A, 0x0241u);
+  ivs_testbus_poke(&api_bus_a, IVS_U16(API_BASE_A + 1u), 0x0200u);
+  ivs_testbus_set_iab(&api_bus_a, API_BASE_A);
+  IVS_CHECK(ivs_testbus_add_wait(&api_bus_a, IVS_U16(API_BASE_A + 1u), 36u) == 0);
+  IVS_CHECK(ivs_cp1610_reset(&s) == IVS_OK);
+  IVS_CHECK(api_step_lines(&s, &api_bus_a, &low, log, &r) == IVS_OK);
+  IVS_CHECK(r.unit_kind == IVS_CP1610_UNIT_RESET_ENTRY);
+  s.r[1] = 0xBEEFu;
+  before = s;
+  first = api_bus_a.n_calls;
+  IVS_CHECK(api_step_lines(&s, &api_bus_a, &low, log, &r) == IVS_OK);
+  IVS_CHECK(api_wait_fault_unit(&before, &s, &r, log, first, 2u, IVS_U16(API_BASE_A + 1u)) == IVS_TEST_PASS);
+  IVS_CHECK(log[0].kind == IVS_ACC_FETCH && log[1].kind == IVS_ACC_READ);
+  for (i = first; i < api_bus_a.n_calls; i++) {
+    IVS_CHECK(api_bus_a.calls[i].kind != IVS_ACC_WRITE);
+  }
+  IVS_CHECK(api_bus_a.valid[0x0200u] == 0u && api_bus_a.mem[0x0200u] == 0u);
+  return IVS_TEST_PASS;
+}
+
+/* SDBD then MVII #, R1 (POL-SDBD-01): the low-byte read at API_BASE_A + 2 answers 36 waits. The
+ * unit ends at the fault, so the high-byte read at API_BASE_A + 3 never reaches the port. */
+static int api_wait_fault_no_sdbd_high_read(void)
+{
+  ivs_cp1610 s;
+  ivs_cp1610 before;
+  ivs_cp1610_result r;
+  ivs_cp1610_access log[IVS_CP1610_MAX_ACCESSES];
+  ivs_cp1610_lines low = api_lines(0u);
+  size_t first;
+  size_t i;
+  ivs_testbus_init(&api_bus_a);
+  ivs_testbus_poke(&api_bus_a, API_BASE_A, 0x0001u);
+  ivs_testbus_poke(&api_bus_a, IVS_U16(API_BASE_A + 1u), 0x02B9u);
+  ivs_testbus_poke(&api_bus_a, IVS_U16(API_BASE_A + 2u), 0x0034u);
+  ivs_testbus_poke(&api_bus_a, IVS_U16(API_BASE_A + 3u), 0x0012u);
+  ivs_testbus_set_iab(&api_bus_a, API_BASE_A);
+  IVS_CHECK(ivs_testbus_add_wait(&api_bus_a, IVS_U16(API_BASE_A + 2u), 36u) == 0);
+  IVS_CHECK(ivs_cp1610_reset(&s) == IVS_OK);
+  IVS_CHECK(api_step_lines(&s, &api_bus_a, &low, log, &r) == IVS_OK); /* reset entry */
+  IVS_CHECK(api_step_lines(&s, &api_bus_a, &low, log, &r) == IVS_OK); /* SDBD */
+  IVS_CHECK(r.unit_kind == IVS_CP1610_UNIT_INSTR && s.dbd == 1u);
+  before = s;
+  first = api_bus_a.n_calls;
+  IVS_CHECK(api_step_lines(&s, &api_bus_a, &low, log, &r) == IVS_OK);
+  IVS_CHECK(api_wait_fault_unit(&before, &s, &r, log, first, 2u, IVS_U16(API_BASE_A + 2u)) == IVS_TEST_PASS);
+  for (i = first; i < api_bus_a.n_calls; i++) {
+    IVS_CHECK(api_bus_a.calls[i].addr != IVS_U16(API_BASE_A + 3u));
+  }
+  return IVS_TEST_PASS;
+}
+
+/* BEXT with E = 1 ($0211) and the displacement word at API_BASE_A + 1. With 36 waits on the
+ * displacement the unit ends at the fault and the EBCI provider is never asked; the control
+ * without the wait asks it exactly once, so the counter is not vacuous. */
+static int api_wait_fault_no_ebci(void)
+{
+  ivs_cp1610 s;
+  ivs_cp1610 before;
+  ivs_cp1610_config cfg;
+  ivs_cp1610_port port;
+  ivs_cp1610_result r;
+  ivs_cp1610_access log[IVS_CP1610_MAX_ACCESSES];
+  ivs_cp1610_lines low = api_lines(0u);
+  size_t first;
+  unsigned with_wait;
+  ivs_cp1610_config_default(&cfg);
+  for (with_wait = 0u; with_wait < 2u; with_wait++) {
+    ivs_testbus_init(&api_bus_a);
+    ivs_testbus_poke(&api_bus_a, API_BASE_A, 0x0211u);
+    ivs_testbus_poke(&api_bus_a, IVS_U16(API_BASE_A + 1u), 0x0010u);
+    ivs_testbus_set_iab(&api_bus_a, API_BASE_A);
+    ivs_testbus_set_ebci(&api_bus_a, 1u);
+    if (with_wait != 0u) {
+      IVS_CHECK(ivs_testbus_add_wait(&api_bus_a, IVS_U16(API_BASE_A + 1u), 36u) == 0);
+    }
+    ivs_testbus_port(&api_bus_a, &port, 1);
+    port.ebci = api_ebci_counting;
+    IVS_CHECK(ivs_cp1610_reset(&s) == IVS_OK);
+    IVS_CHECK(ivs_cp1610_step(&s, &cfg, &low, &port, log, IVS_CP1610_MAX_ACCESSES, &r) == IVS_OK);
+    IVS_CHECK(r.unit_kind == IVS_CP1610_UNIT_RESET_ENTRY);
+    before = s;
+    first = api_bus_a.n_calls;
+    api_ebci_calls = 0u;
+    IVS_CHECK(ivs_cp1610_step(&s, &cfg, &low, &port, log, IVS_CP1610_MAX_ACCESSES, &r) == IVS_OK);
+    if (with_wait == 0u) {
+      IVS_CHECK(r.unit_kind == IVS_CP1610_UNIT_INSTR && api_ebci_calls == 1u);
+      IVS_CHECK(s.r[7] == IVS_U16(API_BASE_A + 2u + 0x0010u));
+    } else {
+      IVS_CHECK(api_ebci_calls == 0u);
+      IVS_CHECK(api_wait_fault_unit(&before, &s, &r, log, first, 2u, IVS_U16(API_BASE_A + 1u)) == IVS_TEST_PASS);
+    }
+  }
+  return IVS_TEST_PASS;
+}
+
 /* reset twice equals reset once; reset ignores prior contents (zeroed, byte-filled, or a
  * state that has run), since POL-RST-01 zero-fills every field. */
 static int api_reset_idempotent(void)
@@ -784,6 +927,9 @@ static const ivs_test_case api_cases[] = {
     {"cpu-api.validate-rejects-reserved-nonzero", api_validate_rejects_reserved_nonzero, NULL},
     {"cpu-api.validate-rejects-status-low-bits", api_validate_rejects_status_low_bits, NULL},
     {"cpu-api.validate-zeroed-state", api_validate_zeroed_state, NULL},
+    {"cpu-api.wait-fault-no-ebci", api_wait_fault_no_ebci, NULL},
+    {"cpu-api.wait-fault-no-sdbd-high-read", api_wait_fault_no_sdbd_high_read, NULL},
+    {"cpu-api.wait-fault-no-write", api_wait_fault_no_write, NULL},
     {"cpu-api.wait-shifts-offsets", api_wait_shifts_offsets, NULL},
 };
 

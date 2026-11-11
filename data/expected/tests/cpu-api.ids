@@ -19,3 +19,6 @@ cpu-api.no-progress-units
 cpu-api.fault-sticky-until-reset
 cpu-api.halted-step-progresses
 cpu-api.wait-shifts-offsets
+cpu-api.wait-fault-no-write
+cpu-api.wait-fault-no-sdbd-high-read
+cpu-api.wait-fault-no-ebci

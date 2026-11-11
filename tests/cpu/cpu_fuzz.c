@@ -16,7 +16,10 @@
  *   - a step that STARTS in FAULTED or UNRESET takes 0 cycles, makes no access and leaves the
  *     state unchanged (keyed on the run state read before the step; the step that enters FAULTED
  *     is a FAULT unit with elapsed above 0 and is held only to the bound);
- *   - HALTED and BUS_GRANT units take at least 1 cycle (the D-12 no-progress guard).
+ *   - HALTED and BUS_GRANT units take at least 1 cycle (the D-12 no-progress guard);
+ *   - every record's address phase lies inside its unit (a TCI or PCIT strobe up to one cycle
+ *     past it, C39), and a BUS_WAIT_LIMIT fault unit ends at the record that took the over-cap
+ *     wait: no access, WRITE included, follows it (POL-WAIT-01, C53; review CR-01, WR-03).
  * Every FUZZ_CORRUPT_EVERY steps a corrupted copy (a run state past FAULTED, or a nonzero
  * reserved byte) must be refused with IVS_E_BAD_STATE without a write or a bus call. Each seed
  * must also reach every unit kind at least once, so the run is not vacuous. */
@@ -192,6 +195,7 @@ static int fuzz_seed(uint32_t seed)
     ivs_status st2;
     uint32_t calls;
     uint32_t bound;
+    uint32_t i;
     uint8_t start;
     f.step = k;
     if (k > 0u && k % FUZZ_REDRAW == 0u) {
@@ -230,6 +234,22 @@ static int fuzz_seed(uint32_t seed)
       FUZZ_CHECK(&f, ivs_cp1610_reset(&s) == IVS_OK);
     } else if (r.unit_kind == IVS_CP1610_UNIT_FAULT) {
       FUZZ_CHECK(&f, s.run_state == IVS_CP1610_RS_FAULTED && r.elapsed_cpu_cycles > 0u);
+      if (s.fault_reason == IVS_CP1610_FAULT_BUS_WAIT_LIMIT) {
+        /* The unit ends at the access whose wait exceeds the cap: it is the last record. */
+        FUZZ_CHECK(&f, r.n_accesses > 0u);
+        FUZZ_CHECK(&f, log[r.n_accesses - 1u].wait_cpu_cycles > cfg.wait_limit_cpu_cycles);
+        for (i = 0u; i + 1u < (uint32_t)r.n_accesses; i++) {
+          FUZZ_CHECK(&f, log[i].wait_cpu_cycles <= cfg.wait_limit_cpu_cycles);
+        }
+      }
+    }
+    /* Every record sits inside its unit; the TCI and PCIT strobes may sit one cycle past (C39). */
+    for (i = 0u; i < (uint32_t)r.n_accesses; i++) {
+      if (log[i].kind == IVS_ACC_STROBE_TCI || log[i].kind == IVS_ACC_STROBE_PCIT) {
+        FUZZ_CHECK(&f, log[i].offset_cpu_cycles <= r.elapsed_cpu_cycles + 1u);
+      } else {
+        FUZZ_CHECK(&f, log[i].offset_cpu_cycles < r.elapsed_cpu_cycles);
+      }
     }
     if (r.unit_kind == IVS_CP1610_UNIT_HALTED || r.unit_kind == IVS_CP1610_UNIT_BUS_GRANT) {
       FUZZ_CHECK(&f, r.elapsed_cpu_cycles >= 1u);
