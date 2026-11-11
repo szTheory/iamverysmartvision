@@ -209,6 +209,8 @@ typedef struct ivs_load_options {
 #define IVS_REASON_RUN_STATE_OFF 39u      /* BAD_STATE: the machine is OFF */
 #define IVS_REASON_RUN_TARGET_RANGE 40u   /* OUT_OF_RANGE: target_ticks above 2^63 */
 #define IVS_REASON_RUN_BUFFER_SMALL 41u   /* BUFFER_TOO_SMALL: an output capacity below the layout's requirement */
+#define IVS_REASON_RUN_BUFFER_NULL 42u    /* BAD_ARG: an output buffer NULL with a nonzero capacity */
+#define IVS_REASON_RUN_BUFFER_OVERLAP 43u /* BAD_ARG: a buffer overlaps the instance, the other buffer or the report */
 
 /* segment_index of a report whose reason concerns no single segment. */
 #define IVS_SEGMENT_NONE 0xFFFFFFFFu

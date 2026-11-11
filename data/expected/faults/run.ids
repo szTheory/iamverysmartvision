@@ -10,15 +10,18 @@ PEEK_GATE_IGNORED run.peek.gated run.peek.gated run.peek.loaded-words
 # Run-bound faults (plan 04-07, D-07), one site each in core/src/machine/machine_bound.c (the run
 # loop must neither run past its target range, stop short of the target nor step a faulted CPU).
 # RUN_TARGET_UNCHECKED: the OUT_OF_RANGE stage is skipped; the refusal case tries the targets on a
-# FAULTED CPU first, so the run ends at once with IVS_OK (never a run toward 2^64).
-RUN_TARGET_UNCHECKED run.refuse.target-above-2-63 run.refuse.target-above-2-63 run.stop-name.known
+# FAULTED CPU first, so the run ends at once with IVS_OK (never a run toward 2^64). From plan
+# 04-10 the precedence case range-over-capacity (target above 2^63 with an undersized buffer)
+# then reaches BUFFER_TOO_SMALL instead of OUT_OF_RANGE.
+RUN_TARGET_UNCHECKED run.refuse.target-above-2-63 run.refuse.target-above-2-63|run.prec.range-over-capacity run.stop-name.known
 # RUN_STOP_BEFORE_OVERSHOOT: a unit that would end past the target is taken back (CPU and time),
 # so the run stops at the last boundary below the target. Collateral by the same rule: every case
 # whose target lies inside a unit (overshoot window, run(now + 1), the idle target h + 41, and the
 # positive controls of report-inside-instance and tail-nonzero that expect now >= 1000) and, from
 # plan 04-09, the slicing family run.slice.* (its per-call oracle ends at the first boundary at or
-# after each target).
-RUN_STOP_BEFORE_OVERSHOOT run.target.ends-at-first-boundary-ge-target run.target.|run.overshoot.|run.single-step.|run.stop.halt-no-flag|run.refuse.report-inside-instance|run.refuse.tail-nonzero|run.slice. run.stop-name.known
+# after each target); from plan 04-10 the accepted buffer runs run.buffers.* (they expect
+# now >= target).
+RUN_STOP_BEFORE_OVERSHOOT run.target.ends-at-first-boundary-ge-target run.target.|run.overshoot.|run.single-step.|run.stop.halt-no-flag|run.refuse.report-inside-instance|run.refuse.tail-nonzero|run.slice.|run.buffers. run.stop-name.known
 # RUN_FAULT_STEPS: a FAULTED CPU is stepped (a zero-progress unit, counted) and the stop order
 # tests the target before the fault, so a fault on the target boundary reports TARGET and later
 # calls execute a unit. Collateral: every guest-fault stop case and the 2^63 boundary on a
@@ -30,8 +33,15 @@ RUN_FAULT_STEPS run.stop.fault-sticky run.stop.|run.target.max-accepted|run.slic
 # overshoot is taken off the next call's target when that call continues the same handle from
 # where the last one ended, so a sliced run ends at other boundaries than one call. Collateral by
 # the same rule: every case that slices one run over consecutive calls (target windows, the
-# overshoot sequence, run(now + 1) single steps).
-RUN_BUDGET_CARRY run.slice.halt.fixed-7 run.slice.|run.target.|run.overshoot.|run.single-step. run.info.timebase
+# overshoot sequence, run(now + 1) single steps; from plan 04-10 the buffer cases that run twice
+# on one instance, run.buffers.*).
+RUN_BUDGET_CARRY run.slice.halt.fixed-7 run.slice.|run.target.|run.overshoot.|run.single-step.|run.buffers. run.info.timebase
 # INFO_TAIL_UNGUARDED (core/src/machine/machine.c): info writes the whole grown ivs_info whatever
 # the caller's struct_size, past a v1-sized caller's struct.
 INFO_TAIL_UNGUARDED run.info.v1-size-caller run.info.v1-size-caller run.info.timebase
+# Output-buffer faults (plan 04-10, D-06, D-07), one site each in core/src/machine/machine_bound.c.
+# RUN_CAPACITY_AFTER_STEP: the BUFFER_TOO_SMALL check runs after the first unit, so an undersized
+# buffer is refused with a unit already executed (the storage and digests changed).
+RUN_CAPACITY_AFTER_STEP run.buffers.too-small-video run.buffers. run.buffers.real-layout-zero
+# OUTBUF_PARTIAL_WRITE: a refused run writes one byte into the caller's video buffer.
+OUTBUF_PARTIAL_WRITE run.buffers.video-audio-overlap run.buffers.|run.prec. run.buffers.exact-fit-video

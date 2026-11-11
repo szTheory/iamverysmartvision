@@ -163,11 +163,15 @@ typedef struct ivs_run_report {
  *   BAD_ARG       rep overlaps the instance storage (nothing written);
  *   UNSUPPORTED   an unknown or reserved flag (RUN_FLAGS), then a nonzero byte past sizeof of a
  *                 larger request (RUN_TAIL);
+ *   BAD_ARG       output buffers: a NULL buffer with a nonzero capacity (RUN_BUFFER_NULL), then a
+ *                 buffer (capacity bytes) overlapping the instance storage, the other buffer or
+ *                 the report (RUN_BUFFER_OVERLAP; uintptr_t arithmetic, 64-bit lengths);
  *   BAD_STATE     the machine is OFF (RUN_STATE_OFF);
  *   OUT_OF_RANGE  target_ticks above IVS_RUN_TARGET_MAX (RUN_TARGET_RANGE);
- *   BUFFER_TOO_SMALL a capacity below the requirement of the output layout (above; RUN_BUFFER_SMALL).
+ *   BUFFER_TOO_SMALL  a capacity below the output layout's requirement (above; RUN_BUFFER_SMALL).
  * A refusal writes only struct_size and refusal_reason, and only into a report that is not the
- * cause and does not overlap the bytes the handle names. */
+ * cause, does not overlap the bytes the handle names and does not overlap an output buffer; it
+ * writes no byte into either buffer. */
 IVS_API ivs_status ivs_machine_run(ivs_machine *m, const ivs_run_request *req, ivs_run_report *rep);
 
 /* The static, constant name of a stop reason ("IVS_STOP_TARGET", ...) or "IVS_STOP_UNKNOWN" for

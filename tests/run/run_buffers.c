@@ -198,7 +198,535 @@ done:
   return rc;
 }
 
+/* The audio channel likewise (video needs nothing). */
+static int bf_too_small_audio(void)
+{
+  ivs_ms_inst x;
+  ivs_run_env e;
+  ivs_run_request q;
+  uint8_t *a = NULL;
+  int rc = IVS_TEST_FAIL;
+  IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, BF_POISON));
+  a = bf_arena();
+  BF_CHECK(a != NULL);
+  bf_env(&e, 0u, BF_BYTES, BF_FRAME);
+  bf_req(&q, 0u, BF_SPAN, NULL, 0u, a + BF_AUDIO_OFF, BF_NEED - 1u);
+  BF_CHECK(bf_refused(&x, x.m, &q, &e, a, IVS_E_BUFFER_TOO_SMALL, IVS_REASON_RUN_BUFFER_SMALL));
+  /* Both channels with a layout; video fits, audio is one byte short. */
+  bf_env(&e, BF_BYTES, BF_BYTES, BF_FRAME);
+  bf_req(&q, 0u, BF_SPAN, a + BF_VIDEO_OFF, BF_NEED, a + BF_AUDIO_OFF, BF_NEED - 1u);
+  BF_CHECK(bf_refused(&x, x.m, &q, &e, a, IVS_E_BUFFER_TOO_SMALL, IVS_REASON_RUN_BUFFER_SMALL));
+  rc = IVS_TEST_PASS;
+done:
+  free(a);
+  ivs_ms_free(&x);
+  return rc;
+}
+
+/* An accepted run through the seam with buffers of exactly the requirement: IVS_OK, stop TARGET
+ * at the first boundary at or after the target, zero output counts (no frame is fabricated), the
+ * arena untouched, and the storage equal to a twin run through the public call. which: 0 video,
+ * 1 audio, 2 both. A target crossing a frame edge (now + 3000: 4 frames, 64 bytes) as well. */
+static int bf_exact_fit(uint32_t which)
+{
+  static const uint64_t spans[2] = {BF_SPAN, 3u * BF_FRAME};
+  ivs_ms_inst x;
+  ivs_ms_inst y;
+  ivs_run_env e;
+  ivs_run_request q;
+  ivs_run_request qy;
+  bf_rep u;
+  ivs_run_report ry;
+  uint8_t *a = NULL;
+  uint32_t i;
+  int rc = IVS_TEST_FAIL;
+  y.storage = NULL;
+  y.m = NULL;
+  IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, BF_POISON));
+  BF_CHECK(ivs_ms_powered(&y, IVS_MS_CONTENT_A, BF_POISON));
+  a = bf_arena();
+  BF_CHECK(a != NULL);
+  bf_env(&e, which != 1u ? BF_BYTES : 0u, which != 0u ? BF_BYTES : 0u, BF_FRAME);
+  for (i = 0u; i < 2u; i++) {
+    uint64_t now = bf_now(x.m);
+    uint64_t need = BF_BYTES * (spans[i] / BF_FRAME + 1u);
+    ivs_status st;
+    BF_CHECK(now != UINT64_MAX && now == bf_now(y.m));
+    bf_req(&q, 0u, now + spans[i], which != 1u ? a + BF_VIDEO_OFF : NULL, which != 1u ? need : 0u,
+           which != 0u ? a + BF_AUDIO_OFF : NULL, which != 0u ? need : 0u);
+    memset(&u, BF_POISON, sizeof u);
+    u.r.struct_size = (uint32_t)sizeof(ivs_run_report);
+    st = bf_call(x.m, &q, &u.r, &e);
+    BF_CHECK(st == IVS_OK);
+    BF_CHECK(u.r.struct_size == (uint32_t)sizeof(ivs_run_report) && u.r.stop_reason == IVS_STOP_TARGET);
+    BF_CHECK(u.r.refusal_reason == IVS_REASON_NONE && u.r.now_ticks >= now + spans[i] && u.r.units_executed > 0u);
+    BF_CHECK(u.r.video_frames_completed == 0u && u.r.video_bytes_written == 0u && u.r.audio_bytes_written == 0u);
+    BF_CHECK(bf_arena_kept(a));
+    bf_req(&qy, 0u, now + spans[i], NULL, 0u, NULL, 0u);
+    memset(&ry, 0, sizeof ry);
+    ry.struct_size = (uint32_t)sizeof ry;
+    st = ivs_machine_run(y.m, &qy, &ry);
+    BF_CHECK(st == IVS_OK && memcmp(&ry, &u.r, sizeof ry) == 0);
+    BF_CHECK(memcmp(x.storage, y.storage, IVS_MACHINE_BYTES) == 0);
+  }
+  rc = IVS_TEST_PASS;
+done:
+  free(a);
+  ivs_ms_free(&y);
+  ivs_ms_free(&x);
+  return rc;
+}
+
+static int bf_exact_fit_video(void)
+{
+  return bf_exact_fit(0u);
+}
+
+static int bf_exact_fit_audio(void)
+{
+  return bf_exact_fit(1u);
+}
+
+static int bf_exact_fit_both(void)
+{
+  return bf_exact_fit(2u);
+}
+
+/* A zero-size layout (0 bytes per frame on both channels, synthetic 1000-tick frame) needs
+ * nothing: NULL buffers with capacity 0 run, and so does a 0 frame length (never divided by). */
+static int bf_zero_layout(void)
+{
+  ivs_ms_inst x;
+  ivs_run_env e;
+  ivs_run_request q;
+  ivs_run_report r;
+  ivs_status st;
+  uint32_t pass;
+  int rc = IVS_TEST_FAIL;
+  IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, BF_POISON));
+  for (pass = 0u; pass < 2u; pass++) {
+    uint64_t now = bf_now(x.m);
+    bf_env(&e, 0u, 0u, pass == 0u ? BF_FRAME : 0u);
+    bf_req(&q, 0u, now + BF_SPAN, NULL, 0u, NULL, 0u);
+    memset(&r, BF_POISON, sizeof r);
+    r.struct_size = (uint32_t)sizeof r;
+    st = bf_call(x.m, &q, &r, &e);
+    BF_CHECK(st == IVS_OK && r.stop_reason == IVS_STOP_TARGET && r.now_ticks >= now + BF_SPAN);
+    BF_CHECK(r.video_frames_completed == 0u && r.video_bytes_written == 0u && r.audio_bytes_written == 0u);
+  }
+  rc = IVS_TEST_PASS;
+done:
+  ivs_ms_free(&x);
+  return rc;
+}
+
+/* ---- buffer arguments (D-05 slot after UNSUPPORTED, before BAD_STATE) ---- */
+
+/* BAD_ARG (RUN_BUFFER_NULL): a NULL video or audio buffer with a nonzero capacity, through the
+ * public call (real layout: the capacity would suffice) and through the seam. */
+static int bf_null_with_capacity(void)
+{
+  ivs_ms_inst x;
+  ivs_run_env e;
+  ivs_run_request q;
+  uint8_t *a = NULL;
+  int rc = IVS_TEST_FAIL;
+  IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, BF_POISON));
+  a = bf_arena();
+  BF_CHECK(a != NULL);
+  bf_env(&e, BF_BYTES, BF_BYTES, BF_FRAME);
+  bf_req(&q, 0u, BF_SPAN, NULL, 1u, NULL, 0u);
+  BF_CHECK(bf_refused(&x, x.m, &q, NULL, a, IVS_E_BAD_ARG, IVS_REASON_RUN_BUFFER_NULL));
+  bf_req(&q, 0u, BF_SPAN, a + BF_VIDEO_OFF, BF_NEED, NULL, BF_NEED);
+  BF_CHECK(bf_refused(&x, x.m, &q, &e, a, IVS_E_BAD_ARG, IVS_REASON_RUN_BUFFER_NULL));
+  bf_req(&q, 0u, BF_SPAN, NULL, UINT64_MAX, a + BF_AUDIO_OFF, BF_NEED);
+  BF_CHECK(bf_refused(&x, x.m, &q, &e, a, IVS_E_BAD_ARG, IVS_REASON_RUN_BUFFER_NULL));
+  rc = IVS_TEST_PASS;
+done:
+  free(a);
+  ivs_ms_free(&x);
+  return rc;
+}
+
+/* An offset inside the instance, 16-aligned, in cartridge backing words that no stand-in segment
+ * uses (content A writes $5000..$500F), as in run_bound.c. */
+static size_t bf_inside_off(void)
+{
+  size_t off = offsetof(struct ivs_machine, mem) + offsetof(ivs_memsys, cart) + 2u * 0x6000u;
+  return (off + 15u) & ~(size_t)15u;
+}
+
+/* BAD_ARG (RUN_BUFFER_OVERLAP): a video buffer inside the instance storage, an audio buffer
+ * straddling its last byte, and a buffer before the instance whose capacity reaches into it.
+ * Positive control: a buffer that ends exactly where the instance begins, and one that starts
+ * just after its last byte, both inside a longer host allocation, are accepted. */
+static int bf_inside_instance(void)
+{
+  ivs_ms_inst x;
+  ivs_run_env e;
+  ivs_run_request q;
+  ivs_run_report r;
+  ivs_create_options o;
+  uint8_t *a = NULL;
+  uint8_t *big = NULL;
+  ivs_machine *bm = NULL;
+  ivs_status st;
+  int rc = IVS_TEST_FAIL;
+  IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, BF_POISON));
+  a = bf_arena();
+  BF_CHECK(a != NULL);
+  bf_env(&e, BF_BYTES, BF_BYTES, BF_FRAME);
+  bf_req(&q, 0u, BF_SPAN, x.storage + bf_inside_off(), BF_NEED, NULL, 0u);
+  BF_CHECK(bf_refused(&x, x.m, &q, &e, a, IVS_E_BAD_ARG, IVS_REASON_RUN_BUFFER_OVERLAP));
+  BF_CHECK(bf_refused(&x, x.m, &q, NULL, a, IVS_E_BAD_ARG, IVS_REASON_RUN_BUFFER_OVERLAP));
+  bf_req(&q, 0u, BF_SPAN, NULL, 0u, x.storage + IVS_MACHINE_BYTES - 1u, BF_NEED);
+  BF_CHECK(bf_refused(&x, x.m, &q, &e, a, IVS_E_BAD_ARG, IVS_REASON_RUN_BUFFER_OVERLAP));
+  /* Host allocation: 64 bytes, the instance, 128 bytes. */
+  memset(&o, 0, sizeof o);
+  o.struct_size = (uint32_t)sizeof o;
+  o.profile_id = IVS_MS_PROFILE;
+  big = aligned_alloc(IVS_MACHINE_ALIGN, 64u + IVS_MACHINE_BYTES + 128u);
+  BF_CHECK(big != NULL);
+  memset(big, BF_POISON, 64u + IVS_MACHINE_BYTES + 128u);
+  BF_CHECK(ivs_machine_create(&o, big + 64u, IVS_MACHINE_BYTES, &bm) == IVS_OK);
+  BF_CHECK(ivs_ms_content(bm, IVS_MS_CONTENT_A) && ivs_machine_reset(bm, IVS_RESET_POWER_ON) == IVS_OK);
+  bf_req(&q, 0u, BF_SPAN, big + 64u - BF_NEED, BF_NEED, big + 64u + IVS_MACHINE_BYTES, BF_NEED);
+  memset(&r, BF_POISON, sizeof r);
+  r.struct_size = (uint32_t)sizeof r;
+  st = bf_call(bm, &q, &r, &e);
+  BF_CHECK(st == IVS_OK && r.stop_reason == IVS_STOP_TARGET);
+  /* One byte more on the video buffer reaches the instance's first byte. */
+  q.video_capacity = BF_NEED + 1u;
+  memset(&r, BF_POISON, sizeof r);
+  r.struct_size = (uint32_t)sizeof r;
+  st = bf_call(bm, &q, &r, &e);
+  BF_CHECK(st == IVS_E_BAD_ARG && r.refusal_reason == IVS_REASON_RUN_BUFFER_OVERLAP);
+  rc = IVS_TEST_PASS;
+done:
+  free(big);
+  free(a);
+  ivs_ms_free(&x);
+  return rc;
+}
+
+/* BAD_ARG (RUN_BUFFER_OVERLAP): video and audio overlapping (the same buffer, one byte shared,
+ * audio inside video). Positive control: adjacent buffers (video ends where audio begins) run. */
+static int bf_video_audio_overlap(void)
+{
+  ivs_ms_inst x;
+  ivs_run_env e;
+  ivs_run_request q;
+  ivs_run_report r;
+  uint8_t *a = NULL;
+  ivs_status st;
+  int rc = IVS_TEST_FAIL;
+  IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, BF_POISON));
+  a = bf_arena();
+  BF_CHECK(a != NULL);
+  bf_env(&e, BF_BYTES, BF_BYTES, BF_FRAME);
+  bf_req(&q, 0u, BF_SPAN, a + BF_VIDEO_OFF, BF_NEED, a + BF_VIDEO_OFF, BF_NEED);
+  BF_CHECK(bf_refused(&x, x.m, &q, &e, a, IVS_E_BAD_ARG, IVS_REASON_RUN_BUFFER_OVERLAP));
+  bf_req(&q, 0u, BF_SPAN, a + BF_VIDEO_OFF, BF_NEED, a + BF_VIDEO_OFF + BF_NEED - 1u, BF_NEED);
+  BF_CHECK(bf_refused(&x, x.m, &q, &e, a, IVS_E_BAD_ARG, IVS_REASON_RUN_BUFFER_OVERLAP));
+  bf_req(&q, 0u, BF_SPAN, a + BF_VIDEO_OFF, 4u * BF_NEED, a + BF_VIDEO_OFF + BF_NEED, BF_NEED);
+  BF_CHECK(bf_refused(&x, x.m, &q, &e, a, IVS_E_BAD_ARG, IVS_REASON_RUN_BUFFER_OVERLAP));
+  /* The real layout too: the overlap rule does not depend on the requirement. */
+  bf_req(&q, 0u, BF_SPAN, a + BF_VIDEO_OFF, 8u, a + BF_VIDEO_OFF + 4u, 8u);
+  BF_CHECK(bf_refused(&x, x.m, &q, NULL, a, IVS_E_BAD_ARG, IVS_REASON_RUN_BUFFER_OVERLAP));
+  bf_req(&q, 0u, BF_SPAN, a + BF_VIDEO_OFF, BF_NEED, a + BF_VIDEO_OFF + BF_NEED, BF_NEED);
+  memset(&r, BF_POISON, sizeof r);
+  r.struct_size = (uint32_t)sizeof r;
+  st = bf_call(x.m, &q, &r, &e);
+  BF_CHECK(st == IVS_OK && r.stop_reason == IVS_STOP_TARGET && bf_arena_kept(a));
+  rc = IVS_TEST_PASS;
+done:
+  free(a);
+  ivs_ms_free(&x);
+  return rc;
+}
+
+/* BAD_ARG (RUN_BUFFER_OVERLAP): a buffer overlapping the report. The report is then part of the
+ * cause, so nothing is written into it either: the whole arena (report included) is unchanged.
+ * Positive control: the report right after the video buffer runs (a video-only layout). */
+static int bf_report_overlap(void)
+{
+  ivs_ms_inst x;
+  ivs_run_snap s;
+  ivs_run_env e;
+  ivs_run_request q;
+  uint8_t before[BF_ARENA];
+  uint8_t *a = NULL;
+  ivs_run_report *rep;
+  ivs_status st;
+  uint32_t pass;
+  int rc = IVS_TEST_FAIL;
+  s.copy = NULL;
+  IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, BF_POISON));
+  a = bf_arena();
+  BF_CHECK(a != NULL);
+  bf_env(&e, BF_BYTES, BF_BYTES, BF_FRAME);
+  /* The report sits at BF_AUDIO_OFF (8-aligned); pass 0: video covers its last byte; pass 1:
+   * audio starts at its first byte. */
+  rep = (ivs_run_report *)(void *)(a + BF_AUDIO_OFF);
+  rep->struct_size = (uint32_t)sizeof(ivs_run_report);
+  for (pass = 0u; pass < 2u; pass++) {
+    if (pass == 0u) {
+      bf_req(&q, 0u, BF_SPAN, a + BF_AUDIO_OFF + sizeof(ivs_run_report) - 1u, BF_NEED, NULL, 0u);
+    } else {
+      bf_req(&q, 0u, BF_SPAN, a + BF_VIDEO_OFF, BF_NEED, a + BF_AUDIO_OFF, BF_NEED);
+    }
+    memcpy(before, a, BF_ARENA);
+    BF_CHECK(ivs_run_snap_take(&s, &x, 1));
+    st = bf_call(x.m, &q, rep, &e);
+    BF_CHECK(st == IVS_E_BAD_ARG);
+    BF_CHECK(memcmp(before, a, BF_ARENA) == 0);
+    BF_CHECK(ivs_run_snap_same(&s, &x));
+    ivs_run_snap_free(&s);
+  }
+  bf_env(&e, BF_BYTES, 0u, BF_FRAME);
+  bf_req(&q, 0u, BF_SPAN, a + BF_AUDIO_OFF - BF_NEED, BF_NEED, NULL, 0u);
+  st = bf_call(x.m, &q, rep, &e);
+  if (st != IVS_OK) {
+    ivs_test_diag("positive control: status %s reason %u", ivs_status_name(st), (unsigned)rep->refusal_reason);
+  }
+  BF_CHECK(st == IVS_OK && rep->stop_reason == IVS_STOP_TARGET);
+  rc = IVS_TEST_PASS;
+done:
+  ivs_run_snap_free(&s);
+  free(a);
+  ivs_ms_free(&x);
+  return rc;
+}
+
+/* The real (Phase 4) layout through the public call: every capacity suffices, NULL with 0
+ * included, no byte is written and every output count is 0, on a running and a halted CPU. */
+static int bf_real_layout_zero(void)
+{
+  static const uint64_t caps[4] = {0u, 1u, 7u, BF_ARENA - BF_AUDIO_OFF};
+  ivs_ms_inst x;
+  ivs_run_request q;
+  ivs_run_report r;
+  uint8_t *a = NULL;
+  uint32_t i;
+  int rc = IVS_TEST_FAIL;
+  IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, BF_POISON));
+  a = bf_arena();
+  BF_CHECK(a != NULL);
+  for (i = 0u; i < 4u; i++) {
+    uint64_t now = bf_now(x.m);
+    ivs_status st;
+    bf_req(&q, 0u, now + 20000u, caps[i] != 0u ? a + BF_VIDEO_OFF : NULL, i == 3u ? 64u : caps[i],
+           caps[i] != 0u ? a + BF_AUDIO_OFF : NULL, caps[i]);
+    memset(&r, BF_POISON, sizeof r);
+    r.struct_size = (uint32_t)sizeof r;
+    st = ivs_machine_run(x.m, &q, &r);
+    BF_CHECK(st == IVS_OK && r.stop_reason == IVS_STOP_TARGET && r.units_executed > 0u);
+    BF_CHECK(r.video_frames_completed == 0u && r.video_bytes_written == 0u && r.audio_bytes_written == 0u);
+    BF_CHECK(bf_arena_kept(a));
+  }
+  /* A non-NULL buffer with capacity 0 is accepted (it names no byte). */
+  bf_req(&q, 0u, bf_now(x.m) + 1000u, a + BF_VIDEO_OFF, 0u, a + BF_VIDEO_OFF, 0u);
+  memset(&r, BF_POISON, sizeof r);
+  r.struct_size = (uint32_t)sizeof r;
+  BF_CHECK(ivs_machine_run(x.m, &q, &r) == IVS_OK && r.video_bytes_written == 0u && bf_arena_kept(a));
+  rc = IVS_TEST_PASS;
+done:
+  free(a);
+  ivs_ms_free(&x);
+  return rc;
+}
+
+/* The public call and the env seam with an equal env (built here from the public ivs_info layout
+ * fields, not from the core's helper) give byte-equal reports and storage, call by call, over a
+ * sequence of targets including one at or below now and the stop-on-halt flag. */
+static int bf_entry_points_equal(void)
+{
+  static const uint64_t steps[5] = {1u, 1000u, 0u, 59736u, 120001u};
+  ivs_ms_inst x;
+  ivs_ms_inst y;
+  ivs_info info;
+  ivs_run_env e;
+  ivs_run_request q;
+  ivs_run_report rx;
+  ivs_run_report ry;
+  uint8_t *a = NULL;
+  uint32_t i;
+  int rc = IVS_TEST_FAIL;
+  y.storage = NULL;
+  y.m = NULL;
+  IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, BF_POISON));
+  BF_CHECK(ivs_ms_powered(&y, IVS_MS_CONTENT_A, BF_POISON));
+  a = bf_arena();
+  BF_CHECK(a != NULL);
+  memset(&info, 0, sizeof info);
+  info.struct_size = (uint32_t)sizeof info;
+  BF_CHECK(ivs_machine_info(x.m, &info) == IVS_OK);
+  memset(&e, 0, sizeof e);
+  e.video_format = info.video_format;
+  e.video_bytes_per_frame = info.video_bytes_per_frame;
+  e.audio_format = info.audio_format;
+  e.audio_bytes_per_frame = info.audio_bytes_per_frame;
+  e.nominal_frame_ticks = info.nominal_frame_ticks;
+  for (i = 0u; i < 5u; i++) {
+    uint64_t now = bf_now(x.m);
+    ivs_status sx;
+    ivs_status sy;
+    bf_req(&q, i == 4u ? IVS_RUN_F_STOP_ON_HALT : 0u, now + steps[i], a + BF_VIDEO_OFF, 32u, a + BF_AUDIO_OFF, 32u);
+    memset(&rx, BF_POISON, sizeof rx);
+    rx.struct_size = (uint32_t)sizeof rx;
+    memset(&ry, BF_POISON, sizeof ry);
+    ry.struct_size = (uint32_t)sizeof ry;
+    sx = ivs_machine_run(x.m, &q, &rx);
+    sy = ivs_machine_run_env_internal(y.m, &q, &ry, &e);
+    BF_CHECK(sx == IVS_OK && sy == IVS_OK);
+    BF_CHECK(memcmp(&rx, &ry, sizeof rx) == 0);
+    BF_CHECK(memcmp(x.storage, y.storage, IVS_MACHINE_BYTES) == 0);
+  }
+  BF_CHECK(bf_arena_kept(a));
+  rc = IVS_TEST_PASS;
+done:
+  free(a);
+  ivs_ms_free(&y);
+  ivs_ms_free(&x);
+  return rc;
+}
+
+/* ---- precedence: the neighbours of the two new slots (D-05) ---- */
+
+/* BAD_HANDLE over the buffer slot: a NULL handle with a NULL-with-capacity buffer, and a
+ * destroyed instance with a buffer inside its storage (the overlap is tested only against a
+ * valid instance). */
+static int bf_prec_handle_over_buffer(void)
+{
+  ivs_ms_inst x;
+  ivs_run_env e;
+  ivs_run_request q;
+  uint8_t *a = NULL;
+  int rc = IVS_TEST_FAIL;
+  IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, BF_POISON));
+  a = bf_arena();
+  BF_CHECK(a != NULL);
+  bf_env(&e, BF_BYTES, BF_BYTES, BF_FRAME);
+  bf_req(&q, 0u, BF_SPAN, NULL, 8u, NULL, 0u);
+  BF_CHECK(bf_refused(&x, NULL, &q, &e, a, IVS_E_BAD_HANDLE, IVS_REASON_HANDLE));
+  BF_CHECK(bf_refused(&x, NULL, &q, NULL, a, IVS_E_BAD_HANDLE, IVS_REASON_HANDLE));
+  BF_CHECK(ivs_machine_destroy(x.m) == IVS_OK);
+  bf_req(&q, 0u, BF_SPAN, x.storage + bf_inside_off(), BF_NEED, NULL, 0u);
+  {
+    ivs_run_snap s;
+    bf_rep u;
+    ivs_status st;
+    memset(&u, BF_POISON, sizeof u);
+    u.r.struct_size = (uint32_t)sizeof(ivs_run_report);
+    BF_CHECK(ivs_run_snap_take(&s, &x, 0));
+    st = ivs_machine_run(x.m, &q, &u.r);
+    if (st != IVS_E_BAD_HANDLE || u.r.refusal_reason != IVS_REASON_HANDLE || !ivs_run_snap_same(&s, &x)) {
+      ivs_test_diag("destroyed handle with a buffer inside: status %s reason %u", ivs_status_name(st),
+                    (unsigned)u.r.refusal_reason);
+      ivs_run_snap_free(&s);
+      goto done;
+    }
+    ivs_run_snap_free(&s);
+  }
+  rc = IVS_TEST_PASS;
+done:
+  free(a);
+  ivs_ms_free(&x);
+  return rc;
+}
+
+/* UNSUPPORTED over the buffer slot: an unknown flag, and the reserved frame flag, with a NULL
+ * buffer with capacity is UNSUPPORTED (RUN_FLAGS); a nonzero request tail with a video buffer
+ * inside the instance is UNSUPPORTED (RUN_TAIL). */
+static int bf_prec_unsupported_over_buffer(void)
+{
+  union {
+    ivs_run_request q;
+    uint8_t b[sizeof(ivs_run_request) + 8u];
+  } big;
+  ivs_ms_inst x;
+  ivs_run_request q;
+  uint8_t *a = NULL;
+  int rc = IVS_TEST_FAIL;
+  IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, BF_POISON));
+  a = bf_arena();
+  BF_CHECK(a != NULL);
+  bf_req(&q, 4u, BF_SPAN, NULL, 8u, NULL, 0u);
+  BF_CHECK(bf_refused(&x, x.m, &q, NULL, a, IVS_E_UNSUPPORTED, IVS_REASON_RUN_FLAGS));
+  bf_req(&q, IVS_RUN_F_RESERVED_FRAME, BF_SPAN, NULL, 0u, NULL, 8u);
+  BF_CHECK(bf_refused(&x, x.m, &q, NULL, a, IVS_E_UNSUPPORTED, IVS_REASON_RUN_FLAGS));
+  memset(&big, 0, sizeof big);
+  bf_req(&big.q, 0u, BF_SPAN, x.storage + bf_inside_off(), 8u, NULL, 0u);
+  big.q.struct_size = (uint32_t)sizeof big;
+  big.b[sizeof(ivs_run_request)] = 1u;
+  BF_CHECK(bf_refused(&x, x.m, &big.q, NULL, a, IVS_E_UNSUPPORTED, IVS_REASON_RUN_TAIL));
+  rc = IVS_TEST_PASS;
+done:
+  free(a);
+  ivs_ms_free(&x);
+  return rc;
+}
+
+/* The buffer slot over BAD_STATE: an OFF machine with a NULL-with-capacity buffer, and with
+ * overlapping buffers, is BAD_ARG. */
+static int bf_prec_buffer_over_state(void)
+{
+  ivs_ms_inst x;
+  ivs_run_request q;
+  uint8_t *a = NULL;
+  int rc = IVS_TEST_FAIL;
+  IVS_CHECK(ivs_ms_new(&x, BF_POISON));
+  a = bf_arena();
+  BF_CHECK(a != NULL);
+  bf_req(&q, 0u, BF_SPAN, NULL, 8u, NULL, 0u);
+  BF_CHECK(bf_refused(&x, x.m, &q, NULL, a, IVS_E_BAD_ARG, IVS_REASON_RUN_BUFFER_NULL));
+  bf_req(&q, 0u, BF_SPAN, a + BF_VIDEO_OFF, 8u, a + BF_VIDEO_OFF, 8u);
+  BF_CHECK(bf_refused(&x, x.m, &q, NULL, a, IVS_E_BAD_ARG, IVS_REASON_RUN_BUFFER_OVERLAP));
+  rc = IVS_TEST_PASS;
+done:
+  free(a);
+  ivs_ms_free(&x);
+  return rc;
+}
+
+/* OUT_OF_RANGE over BUFFER_TOO_SMALL: a target above 2^63 with an undersized buffer under the
+ * synthetic layout is OUT_OF_RANGE (RUN_TARGET_RANGE). */
+static int bf_prec_range_over_capacity(void)
+{
+  ivs_ms_inst x;
+  ivs_run_env e;
+  ivs_run_request q;
+  uint8_t *a = NULL;
+  int rc = IVS_TEST_FAIL;
+  IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, BF_POISON));
+  a = bf_arena();
+  BF_CHECK(a != NULL);
+  bf_env(&e, BF_BYTES, BF_BYTES, BF_FRAME);
+  bf_req(&q, 0u, IVS_RUN_TARGET_MAX + 1u, a + BF_VIDEO_OFF, 1u, NULL, 0u);
+  BF_CHECK(bf_refused(&x, x.m, &q, &e, a, IVS_E_OUT_OF_RANGE, IVS_REASON_RUN_TARGET_RANGE));
+  rc = IVS_TEST_PASS;
+done:
+  free(a);
+  ivs_ms_free(&x);
+  return rc;
+}
+
 const ivs_test_case ivs_run_buffers_cases[] = {
     {"run.buffers.too-small-video", bf_too_small_video, NULL},
+    {"run.buffers.too-small-audio", bf_too_small_audio, NULL},
+    {"run.buffers.exact-fit-video", bf_exact_fit_video, NULL},
+    {"run.buffers.exact-fit-audio", bf_exact_fit_audio, NULL},
+    {"run.buffers.exact-fit-both", bf_exact_fit_both, NULL},
+    {"run.buffers.zero-layout", bf_zero_layout, NULL},
+    {"run.buffers.null-with-capacity", bf_null_with_capacity, NULL},
+    {"run.buffers.inside-instance", bf_inside_instance, NULL},
+    {"run.buffers.video-audio-overlap", bf_video_audio_overlap, NULL},
+    {"run.buffers.report-overlap", bf_report_overlap, NULL},
+    {"run.buffers.real-layout-zero", bf_real_layout_zero, NULL},
+    {"run.buffers.entry-points-equal", bf_entry_points_equal, NULL},
+    {"run.prec.handle-over-buffer", bf_prec_handle_over_buffer, NULL},
+    {"run.prec.unsupported-over-buffer", bf_prec_unsupported_over_buffer, NULL},
+    {"run.prec.buffer-over-state", bf_prec_buffer_over_state, NULL},
+    {"run.prec.range-over-capacity", bf_prec_range_over_capacity, NULL},
 };
 const size_t ivs_run_buffers_count = sizeof ivs_run_buffers_cases / sizeof ivs_run_buffers_cases[0];

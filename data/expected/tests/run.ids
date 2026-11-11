@@ -94,5 +94,24 @@ run.slice.edges
 # Family buffers (plan 04-10, D-02, D-03, D-05, D-06, API-04): caller-owned video and audio buffers
 # of ivs_machine_run. The capacity rule bytes_per_frame x (max(target - now, 0) / nominal frame + 1)
 # is proven through the internal env seam with a synthetic layout (16 bytes per frame, 1000-tick
-# frame); every refusal with the SP4 oracle plus a poisoned buffer arena left unchanged.
+# frame); every refusal with the SP4 oracle plus a poisoned buffer arena left unchanged. Exact fit
+# per channel equals a public-call twin; NULL with capacity, a buffer inside the instance, video
+# overlapping audio and a buffer overlapping the report are BAD_ARG; the real layout accepts every
+# capacity and writes nothing; the public call equals the seam with an equal env. run.prec.*:
+# one case per neighbour of the two new ladder slots (D-05).
 run.buffers.too-small-video
+run.buffers.too-small-audio
+run.buffers.exact-fit-video
+run.buffers.exact-fit-audio
+run.buffers.exact-fit-both
+run.buffers.zero-layout
+run.buffers.null-with-capacity
+run.buffers.inside-instance
+run.buffers.video-audio-overlap
+run.buffers.report-overlap
+run.buffers.real-layout-zero
+run.buffers.entry-points-equal
+run.prec.handle-over-buffer
+run.prec.unsupported-over-buffer
+run.prec.buffer-over-state
+run.prec.range-over-capacity
