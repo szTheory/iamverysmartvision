@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 4
 current_phase_name: Headless Runner and Installed Consumer (Slice 0)
 status: executing
-stopped_at: Completed 04-05-PLAN.md
-last_updated: "2026-11-11T17:16:41.440Z"
+stopped_at: Completed 04-06-PLAN.md
+last_updated: "2026-11-11T17:40:24.757Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 3 complete, transitioned to Phase 4
-state_head: 55653772238161c9a05c4a15c743870140465f6d
+state_head: a569084c6b1814db76d56204c85df30112c99d10
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 71
-  completed_plans: 51
+  completed_plans: 52
   percent: 38
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 4 — Headless Runner and Installed Consumer (Slice 0)
-Plan: 6 of 25
+Plan: 7 of 25
 Status: Ready to execute
 Last activity: 2026-11-11 — Completed 04-03 (repo-relative fault owners, runner outcome taxonomy)
 
@@ -105,6 +105,7 @@ Progress: [████░░░░░░] 38%
 | Phase 04 P03 | 40min | 2 tasks | 24 files |
 | Phase 4 P04 | 30min | 2 tasks | 28 files |
 | Phase 4 P05 | 45min | 2 tasks | 8 files |
+| Phase 4 P06 | 30min | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -232,6 +233,7 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 04]: 04-03: Runner outcome values equal their exit codes; F_WALL 0x100 separates wall from budget timeout; non-outcome values map to harness-fail 14
 - [Phase 4]: 04-04: runner-scan confines POSIX headers and feature macros to runner/hostio.c (also refusing feature macros as runner CMake compile definitions); no runner file, hostio.c included, may include core internals
 - [Phase 4]: 04-05: observation rows (obs.video/audio/input, 144 bytes) sit before slot[] after an explicit obs_pad word; instance 113,600 bytes with no tail padding (asserted); domains 16..18 live, never in the version 1 composite over 1..4
+- [Phase 4]: 04-06: ivs_cpu_state_report is 36 bytes; IVS_CPU_STATE_*/IVS_CPU_FAULT_* mirror the CPU internals, pinned by static asserts; observation calls use ivs_machine_span_overlaps directly; run/observation tests live in suite run
 
 ### Pending Todos
 
@@ -264,6 +266,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-11T17:16:41.153Z
-Stopped at: Completed 04-05-PLAN.md
+Last session: 2026-11-11T17:40:24.562Z
+Stopped at: Completed 04-06-PLAN.md
 Resume file: None
