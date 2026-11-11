@@ -4,7 +4,9 @@
  * checked first, every read is bounded by the line it belongs to, the first failing check in
  * file order wins, and a refusal leaves the output all zero. Integers and ASCII classes are
  * hand-written (no strtol, sscanf or ctype: locale and overflow hazards). No allocation, no
- * state: tokens are slices of the input, and only length-checked values are copied. */
+ * state: tokens are slices of the input, and only length-checked values are copied.
+ * Named-fault sites (data/expected/faults/runner.ids, plan 04-17, D-22): the `..` path rule
+ * (threat T-04-49) and the 256-byte line cap (T-04-50), each removable by one fault id. */
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -173,11 +175,13 @@ static uint32_t check_path(scn_tok t)
       return IVS_SCN_R_PATH_BYTE;
     }
   }
+#ifndef IVS_FAULT_RUNNER_DOTDOT_ACCEPTED
   for (i = 0u; i + 1u < t.n; i++) {
     if (t.p[i] == (uint8_t)'.' && t.p[i + 1u] == (uint8_t)'.') {
       return IVS_SCN_R_PATH_DOTDOT;
     }
   }
+#endif
   for (i = 0u; i < t.n; i++) {
     if (t.p[i] == (uint8_t)'/' && (i + 1u == t.n || t.p[i + 1u] == (uint8_t)'/')) {
       return IVS_SCN_R_PATH_EMPTY_SEGMENT;
@@ -806,9 +810,11 @@ int ivs_scenario_parse(const uint8_t *bytes, size_t len, ivs_scenario *out, ivs_
     /* Byte classes and the line cap, in byte order (the first failing byte wins). */
     while (pos < len && bytes[pos] != (uint8_t)'\n') {
       uint8_t c = bytes[pos];
+#ifndef IVS_FAULT_RUNNER_LINE_CAP_UNCHECKED
       if (pos - start >= IVS_SCN_MAX_LINE_BYTES) {
         return scn_refuse(out, err, line, IVS_SCN_R_LINE_TOO_LONG);
       }
+#endif
       if (c == 0u) {
         return scn_refuse(out, err, line, IVS_SCN_R_NUL);
       }

@@ -24,8 +24,9 @@
  *   - a refusal leaves the output all zero; its line is at most the input's line count, and
  *     line 0 only for the whole-file reasons (file-too-large, missing-header,
  *     missing-directive);
- *   - an acceptance satisfies every structural rule of the grammar (charsets, path rule, caps,
- *     increasing steps, asserts tied to existing steps, sorted inputs, no reserved bit);
+ *   - an acceptance came from an input within the byte, line and line-length caps, and
+ *     satisfies every structural rule of the grammar (charsets, path rule, caps, increasing
+ *     steps, asserts tied to existing steps, sorted inputs, no reserved bit);
  *   - parsing the same bytes again gives the identical result, struct and error (determinism),
  *     and the input block is never written.
  * runner.fuzz.reasons-covered replays every seed and requires at least 8 distinct reasons and
@@ -338,6 +339,25 @@ static int fuzz_valid(fuzz_ctx *f, const ivs_scenario *s)
   return IVS_TEST_PASS;
 }
 
+/* Longest line in bytes, LF not counted. */
+static size_t fuzz_longest_line(const uint8_t *b, size_t n)
+{
+  size_t best = 0u;
+  size_t cur = 0u;
+  size_t i;
+  for (i = 0u; i < n; i++) {
+    if (b[i] == (uint8_t)'\n') {
+      cur = 0u;
+    } else {
+      cur++;
+      if (cur > best) {
+        best = cur;
+      }
+    }
+  }
+  return best;
+}
+
 static uint32_t fuzz_line_count(const uint8_t *b, size_t n)
 {
   uint32_t lines = 0u;
@@ -379,6 +399,8 @@ static int fuzz_check_one(fuzz_ctx *f, ivs_scenario *s1, ivs_scenario *s2)
   FUZZ_CHECK(f, memcmp(s1, s2, sizeof *s1) == 0);
   if (r1 == 0) {
     FUZZ_CHECK(f, e1.reason == IVS_SCN_R_NONE && e1.line == 0u);
+    FUZZ_CHECK(f, f->n <= IVS_SCN_MAX_BYTES && fuzz_line_count(f->buf, f->n) <= IVS_SCN_MAX_LINES);
+    FUZZ_CHECK(f, fuzz_longest_line(f->buf, f->n) <= IVS_SCN_MAX_LINE_BYTES);
     f->accepted++;
     return fuzz_valid(f, s1);
   }
