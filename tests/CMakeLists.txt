@@ -323,3 +323,9 @@ set_tests_properties(core-symbols PROPERTIES SKIP_RETURN_CODE 77
 # skip (skip-ok ids). CC is this preset's C compiler; CXX, when unset, is c++ from PATH.
 add_test(NAME headers COMMAND sh "${CMAKE_SOURCE_DIR}/tests/headers-tap.sh" "${CMAKE_SOURCE_DIR}")
 set_tests_properties(headers PROPERTIES SKIP_RETURN_CODE 77 ENVIRONMENT "CC=${CMAKE_C_COMPILER}")
+
+# Suite pack (D-26, plan 04-15): ivs_pack --dump-words of every listing of
+# data/expected/listings.ids against the listing step's own parse (cmake -DDUMP=<id> -P
+# tools/check/listing.cmake), byte for byte; two independent parsers, never the core.
+add_test(NAME pack COMMAND sh "${CMAKE_SOURCE_DIR}/tests/pack-tap.sh" "${CMAKE_SOURCE_DIR}" "$<TARGET_FILE:ivs_pack>")
+set_tests_properties(pack PROPERTIES SKIP_RETURN_CODE 77 ENVIRONMENT "CMAKE=${CMAKE_COMMAND}")

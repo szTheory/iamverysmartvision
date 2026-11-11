@@ -1,0 +1,4 @@
+# Suite pack (plan 04-15, D-26): per listing of data/expected/listings.ids, ivs_pack --dump-words
+# equals the listing step's own parse (cmake -DDUMP=<id> -P tools/check/listing.cmake) byte for
+# byte. Plan 04-16 adds the diagnostic's ids.
+pack.words-boot-stub
