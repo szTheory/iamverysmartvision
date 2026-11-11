@@ -4,7 +4,9 @@
 #   core/include/ivs/ivs_status.h      the `#define IVS_OK 0` and `#define IVS_E_<NAME> (<n>)` lines
 #   data/expected/api-statuses.ids     the frozen status pin, `NAME VALUE` per line
 #   core/include/ivs/*.h               every line that starts `IVS_API ` (one-line prototypes; the
-#                                      function name is the identifier before the first `(`)
+#                                      function name is the identifier before the first `(`);
+#                                      leading whitespace is allowed, and a bare `IVS_API` line
+#                                      has no name, so it fails closed (review IN-06)
 #   data/api/api-effects.json          the effect table
 #   data/expected/tests/*.ids          the test inventories (first token per line; `skip-ok` second)
 # Inputs (passed with -D): ROOT, CHECK_DIR (unused beyond the guard; kept for the step contract).
@@ -150,7 +152,7 @@ list(SORT headers)
 foreach(h IN LISTS headers)
   file(STRINGS "${ROOT}/${h}" dlines)
   foreach(l IN LISTS dlines)
-    if(NOT l MATCHES "^IVS_API[ \t]")
+    if(NOT l MATCHES "^[ \t]*IVS_API([ \t]|$)")
       continue()
     endif()
     if(l MATCHES "([A-Za-z_][A-Za-z0-9_]*)[ \t]*[(]")

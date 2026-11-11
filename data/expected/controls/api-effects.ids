@@ -8,3 +8,6 @@ api-refusal-no-test
 api-effect-unregistered
 api-dead-status
 api-effects-format
+# Indented and own-line IVS_API declarations (review IN-06).
+api-call-indented
+api-call-own-line
