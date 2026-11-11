@@ -235,9 +235,17 @@ static void rf_put16(uint8_t *p, uint32_t v)
   p[1] = (uint8_t)(v & 0xFFu);
 }
 
-static void rf_reseal(uint8_t *b, size_t len)
+/* Reseals a container of len bytes. A length below the IVSC minimum is a harness bug (an unset
+ * length would wrap len - 32), so it fails the row with a diagnostic and touches nothing. */
+static int rf_reseal(uint8_t *b, size_t len)
 {
+  if (b == NULL || len < IVS_IVSC_MIN_BYTES) {
+    ivs_test_diag("harness: reseal of a %lu-byte container (minimum %u)", (unsigned long)len,
+                  (unsigned)IVS_IVSC_MIN_BYTES);
+    return 0;
+  }
   ivs_sha256_digest(b, len - IVS_IVSC_TRAILER_BYTES, b + len - IVS_IVSC_TRAILER_BYTES);
+  return 1;
 }
 
 typedef struct rf_seg {
@@ -283,7 +291,10 @@ static uint8_t *rf_cart_build(const rf_seg *segs, uint32_t n, uint32_t features,
       at += 2u;
     }
   }
-  rf_reseal(b, total);
+  if (!rf_reseal(b, total)) {
+    free(b);
+    return NULL;
+  }
   *out_len = total;
   return b;
 }
@@ -670,13 +681,32 @@ static int rf_b_fixture_raw(rf_ctx *c)
 
 /* ---- builders: containers from the registry span ---- */
 
+/* Builds a container into the row. The buffer is built first and its length read only after
+ * rf_cart_build has set it: in the argument list rf_take(c, rf_cart_build(..., &n), n) the order
+ * of the read of n and the call is unspecified (C17 6.5p3, 6.5.2.2p10), and gcc 13 reads n first
+ * (a 0-byte row). A container shorter than the IVSC minimum fails the row here, before any
+ * builder indexes it from its end. */
+static int rf_cart_take(rf_ctx *c, const rf_seg *segs, uint32_t n_seg, uint32_t features)
+{
+  size_t n = 0u;
+  uint8_t *b = rf_cart_build(segs, n_seg, features, &n);
+  if (!rf_take(c, b, n)) {
+    return 0;
+  }
+  if (n < IVS_IVSC_MIN_BYTES) {
+    ivs_test_diag("harness: built container of %lu bytes (minimum %u)", (unsigned long)n,
+                  (unsigned)IVS_IVSC_MIN_BYTES);
+    return 0;
+  }
+  return 1;
+}
+
 static int rf_cart1(rf_ctx *c, uint32_t addr, uint32_t len_words, uint32_t features)
 {
   rf_seg seg;
-  size_t n = 0u;
   seg.addr = addr;
   seg.len_words = len_words;
-  return rf_take(c, rf_cart_build(&seg, 1u, features, &n), n);
+  return rf_cart_take(c, &seg, 1u, features);
 }
 
 static int rf_span_lo(uint32_t *lo)
@@ -725,24 +755,21 @@ static int rf_b_width_and_wrap(rf_ctx *c)
     return 0;
   }
   c->buf[IVS_IVSC_PREFIX_BYTES + 4u] = 8u;
-  rf_reseal(c->buf, c->len);
-  return 1;
+  return rf_reseal(c->buf, c->len);
 }
 
 /* prec: entry 0 wraps ($FFF0, 32 words) and entry 1 ($FFF8) overlaps it. */
 static int rf_b_wrap_and_overlap(rf_ctx *c)
 {
   static const rf_seg segs[2] = {{0xFFF0u, 0x20u}, {0xFFF8u, 1u}};
-  size_t n = 0u;
-  return rf_take(c, rf_cart_build(segs, 2u, 0u, &n), n);
+  return rf_cart_take(c, segs, 2u, 0u);
 }
 
 /* prec: overlapping segments below the span. */
 static int rf_b_overlap_below_span(rf_ctx *c)
 {
   static const rf_seg segs[2] = {{0x0100u, 4u}, {0x0102u, 1u}};
-  size_t n = 0u;
-  return rf_take(c, rf_cart_build(segs, 2u, 0u, &n), n);
+  return rf_cart_take(c, segs, 2u, 0u);
 }
 
 /* prec: a segment below the span with a wrong trailer. */
@@ -756,10 +783,10 @@ static int rf_b_trailer_below_span(rf_ctx *c)
 }
 
 /* Sets the first data word (one entry) to 0x0400 and reseals. */
-static void rf_first_word_400(rf_ctx *c)
+static int rf_first_word_400(rf_ctx *c)
 {
   rf_put16(c->buf + IVS_IVSC_PREFIX_BYTES + IVS_IVSC_ENTRY_BYTES, 0x0400u);
-  rf_reseal(c->buf, c->len);
+  return rf_reseal(c->buf, c->len);
 }
 
 /* prec: a word above 0x3FF in a container that also needs feature bit 0. */
@@ -769,8 +796,7 @@ static int rf_b_word_and_feature(rf_ctx *c)
   if (!rf_span_lo(&lo) || !rf_cart1(c, lo, 2u, 0x1u)) {
     return 0;
   }
-  rf_first_word_400(c);
-  return 1;
+  return rf_first_word_400(c);
 }
 
 /* prec: a word above 0x3FF in a segment below the span. */
@@ -779,8 +805,7 @@ static int rf_b_word_below_span(rf_ctx *c)
   if (!rf_cart1(c, 0x0100u, 1u, 0u)) {
     return 0;
   }
-  rf_first_word_400(c);
-  return 1;
+  return rf_first_word_400(c);
 }
 
 /* prec: a segment below the span in a container that also needs feature bit 0. */
