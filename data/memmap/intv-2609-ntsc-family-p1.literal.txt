@@ -47,6 +47,8 @@
 #   cart 4000-FFFF, 10 bits: RO-3-9504 drives the upper six bits to zero (printed 5-21) [OBS];
 #     the span itself is a chosen default narrower than the community list (C62).
 #   stic, psg, scratchpad addresses and every alias: community wiki only (C11, C21, C60, C61).
+#   alias gates: an alias reaches the same STIC registers or graphics RAM as its home row, so
+#     it carries the home row's gate (stic-regs or gmem) [INF from the wiki's alias wording].
 #   scratchpad: one 256 x 8 RAM per the 2609 overview, 240 words decoded at 0100-01EF.
 #   undriven: reads give the pull-up value (C5); writes go nowhere.
 R 0000-003F stic w=0 impl=stub mirror=- gate=stic-regs src=SRC-intv-wiki@Memory_Map.oldid-14847 tag=tier4-community conf=C21
