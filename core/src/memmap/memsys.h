@@ -121,6 +121,8 @@ typedef struct ivs_profile_desc {
   ivs_slot_desc grom;
   uint16_t scanlines_per_frame;     /* nominal frame timebase (D-06, D-09, plan 04-09); nonzero */
   uint16_t cpu_cycles_per_scanline; /* nominal; nonzero; never a frame event */
+  uint16_t input_controllers;       /* input.controllers, 1..4 (D-13, D-15, plan 04-12): a nonzero
+                                     * controller word at or above it is refused UNSUPPORTED */
 } ivs_profile_desc;
 
 /* What the decode says about one address in one view (A-05b). */

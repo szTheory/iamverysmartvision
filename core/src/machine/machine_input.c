@@ -11,8 +11,9 @@
  * so the log equals the accepted script whatever the slicing (D-15). The input floor is set by the
  * step seam (machine_run.c) when a unit begins. Nothing in the machine reads the words in Phase 4.
  * Validation (ivs_input_check) reads the whole array before the run writes anything: first every
- * event for order, range and floor (BAD_ARG), then every event for flags, the reserved word and
- * reserved control bits (UNSUPPORTED); the lowest failing index of the first failing pass wins.
+ * event for order, range and floor (BAD_ARG), then every event for flags, the reserved word,
+ * reserved control bits and a nonzero word at or above the profile's input.controllers
+ * (UNSUPPORTED); the lowest failing index of the first failing pass wins.
  * The file holds no static or global state outside named-fault blocks.
  * Named faults (plan 04-11, D-07, D-16): INPUT_LOG_SLICE_RELATIVE_TICK, INPUT_NO_FLOOR_CHECK,
  * INPUT_STATIC_CARRY, RUN_EVENT_AT_TARGET_ONLY. */
@@ -64,7 +65,7 @@ static void ivs_input_apply(ivs_machine_obs_input *in, const ivs_input_event *ev
 }
 
 uint32_t ivs_input_check(const ivs_machine_obs_input *in, const ivs_input_event *ev, uint32_t count,
-                         ivs_status *st, uint32_t *index)
+                         uint32_t controllers, ivs_status *st, uint32_t *index)
 {
   uint32_t i;
   /* Pass 1, BAD_ARG: order, range and floor over the whole array (the lowest failing index). */
@@ -87,7 +88,8 @@ uint32_t ivs_input_check(const ivs_machine_obs_input *in, const ivs_input_event 
       return reason;
     }
   }
-  /* Pass 2, UNSUPPORTED: flags, the reserved word, reserved control bits. */
+  /* Pass 2, UNSUPPORTED: flags, the reserved word, reserved control bits, then a nonzero word of a
+   * controller the profile does not connect (index >= input.controllers, D-13, plan 04-12). */
   for (i = 0u; i < count; i++) {
     uint32_t reason = IVS_REASON_NONE;
     uint32_t w;
@@ -99,6 +101,11 @@ uint32_t ivs_input_check(const ivs_machine_obs_input *in, const ivs_input_event 
     for (w = 0u; reason == IVS_REASON_NONE && w < IVS_INPUT_CONTROLLER_WORDS; w++) {
       if ((ev[i].controller[w] & IVS_CTRL_RESERVED_MASK) != 0u) {
         reason = IVS_REASON_INPUT_CONTROL_RESERVED;
+      }
+    }
+    for (w = controllers; reason == IVS_REASON_NONE && w < IVS_INPUT_CONTROLLER_WORDS; w++) {
+      if (ev[i].controller[w] != 0u) {
+        reason = IVS_REASON_INPUT_EXTRA_CONTROLLER;
       }
     }
     if (reason != IVS_REASON_NONE) {

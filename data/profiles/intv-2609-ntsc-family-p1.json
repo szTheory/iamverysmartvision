@@ -504,6 +504,16 @@
       "revisit_trigger": "when content needs a range outside the span or a source gives the 2609 cartridge decode",
       "decision": null,
       "note": "A segment must lie wholly inside the span and must not overlap another segment; nothing else constrains its start (A-01). Write-only aliases inside the span are write view only."
+    },
+    "input.controllers": {
+      "value": 2,
+      "tag": "tier2-first-party-adjacent",
+      "cite": "SRC-bsr-2609 (two hand controllers, each on one of the sound chip's two 8-bit I/O ports); research-era reading, not re-read in phase 4",
+      "conflict": "C14",
+      "resolving_evidence": null,
+      "revisit_trigger": "Phase 5 control-to-byte table, or a profile with the expansion connector",
+      "decision": "D6",
+      "note": "connected hand controllers; event word index = PSG port (0 = R14, 1 = R15); no Phase 4 consumer. A nonzero controller word at an index at or above this value is refused UNSUPPORTED (D-13, D-15, plan 04-12)."
     }
   }
 }

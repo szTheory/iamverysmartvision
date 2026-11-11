@@ -147,6 +147,10 @@ run.input.refuse.tick-range
 run.input.refuse.control-reserved
 run.input.refuse.event-flags
 run.input.refuse.event-reserved
+# Family input, profile coupling (plan 04-12, D-13, D-15): the profile's input.controllers (2)
+# refuses a nonzero word 2 or 3 UNSUPPORTED before any write; zero words above it run.
+run.input.refuse.extra-controller-word
+run.input.extra-word-zero-ok
 run.prec.unsupported-over-events
 run.prec.buffer-over-events
 run.prec.events-over-state

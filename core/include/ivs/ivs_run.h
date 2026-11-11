@@ -120,7 +120,9 @@ IVS_API ivs_status ivs_machine_peek(const ivs_machine *m, uint16_t addr, uint32_
  * switches that are closed; bit 31 (IVS_CTRL_RESERVED_MASK) is reserved and must be 0. The
  * electrical active-low port byte is a derived observation (Phase 5); there is no raw-byte
  * override and no electrical input path. Nothing in the machine reads the words in Phase 4.
- * Words 2 and 3 are reserved for expansion ports (plan 04-12 adds their profile rule).
+ * Words at an index at or above the profile's connected controller count (input.controllers; 2
+ * on the Phase 4 profile, so words 2 and 3, reserved for expansion ports) must be 0 (UNSUPPORTED,
+ * INPUT_EXTRA_CONTROLLER, plan 04-12).
  *
  * Input arrives as a caller-owned array of level samples in the run request, nondecreasing by
  * at_tick (master ticks, the unit of target_ticks). The core keeps no pointer, no queue and has no
@@ -225,7 +227,8 @@ typedef struct ivs_run_report {
  *                 input floor (INPUT_BEFORE_FLOOR);
  *   UNSUPPORTED   the events, whole array, lowest failing index: nonzero flags
  *                 (INPUT_EVENT_FLAGS), a nonzero reserved word (INPUT_EVENT_RESERVED), a controller
- *                 word with IVS_CTRL_RESERVED_MASK set (INPUT_CONTROL_RESERVED).
+ *                 word with IVS_CTRL_RESERVED_MASK set (INPUT_CONTROL_RESERVED), a nonzero word at
+ *                 an index at or above input.controllers (INPUT_EXTRA_CONTROLLER).
  * A refusal writes only struct_size and refusal_reason (and, for the last two stages,
  * input_failing_index), and only into a report that is not the cause, does not overlap the bytes
  * the handle names and does not overlap an output buffer or the event array (the event_count * 32

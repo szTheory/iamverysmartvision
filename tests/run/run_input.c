@@ -793,6 +793,68 @@ static int ri_refuse_event_reserved(void)
   return IVS_TEST_PASS;
 }
 
+/* UNSUPPORTED (INPUT_EXTRA_CONTROLLER, plan 04-12, D-13, D-15): the profile connects
+ * input.controllers = 2 controllers, so a nonzero word 2 or 3 is refused before any write with the
+ * failing index: word 2 on the only event, word 3 on the last of three, and word 2 with a later
+ * nonzero flags (lowest index wins). A word with bit 31 set stays INPUT_CONTROL_RESERVED (that
+ * check comes first per event); an earlier BAD_ARG event wins over the UNSUPPORTED pass. */
+static int ri_refuse_extra_controller(void)
+{
+  ivs_input_event ev[3];
+  uint32_t i;
+  for (i = 0u; i < 3u; i++) {
+    ri_event(&ev[i], RI_T0 + i, ri_words_a);
+  }
+  ev[0].controller[2] = 1u;
+  IVS_CHECK(ri_refuse_schedule(ev, 1u, IVS_E_UNSUPPORTED, IVS_REASON_INPUT_EXTRA_CONTROLLER, 0u));
+  ev[1].flags = 1u;
+  IVS_CHECK(ri_refuse_schedule(ev, 3u, IVS_E_UNSUPPORTED, IVS_REASON_INPUT_EXTRA_CONTROLLER, 0u));
+  ev[0].controller[2] = 0u;
+  ev[1].flags = 0u;
+  ev[2].controller[3] = 0x00000100u;
+  IVS_CHECK(ri_refuse_schedule(ev, 3u, IVS_E_UNSUPPORTED, IVS_REASON_INPUT_EXTRA_CONTROLLER, 2u));
+  ev[2].controller[0] |= IVS_CTRL_RESERVED_MASK;
+  IVS_CHECK(ri_refuse_schedule(ev, 3u, IVS_E_UNSUPPORTED, IVS_REASON_INPUT_CONTROL_RESERVED, 2u));
+  ev[2].controller[0] = ri_words_a[0];
+  ev[1].at_tick = RI_T0 - 1u;
+  IVS_CHECK(ri_refuse_schedule(ev, 3u, IVS_E_BAD_ARG, IVS_REASON_INPUT_UNSORTED, 1u));
+  return IVS_TEST_PASS;
+}
+
+/* The count comes from the profile (plan 04-12): the registry of the instance's profile holds
+ * input.controllers = 2; a schedule whose words 2 and 3 are zero runs and is applied; and the
+ * per-event check follows the count it is given (word 3 accepted with 4 controllers, word 1
+ * refused with 1), so no index is fixed in the core. */
+static int ri_extra_word_zero_ok(void)
+{
+  uint64_t b[RI_UNITS + 1u];
+  ivs_input_event ev[2];
+  ivs_machine_obs_input in;
+  ivs_ms_inst x;
+  ivs_run_report r;
+  ivs_status st;
+  uint32_t idx;
+  uint32_t reason;
+  int rc = IVS_TEST_FAIL;
+  IVS_CHECK(ri_bounds(b));
+  ri_event(&ev[0], RI_TICK, ri_words_a);
+  ri_event(&ev[1], RI_TICK + 1u, ri_words_b);
+  IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, RI_POISON));
+  RI_CHECK(ivs_profile_get(x.m->profile) != NULL && ivs_profile_get(x.m->profile)->input_controllers == 2u);
+  st = ri_run(x.m, 0u, b[6], ev, 2u, &r);
+  RI_CHECK(st == IVS_OK && ri_input_report(&r, 2u, b[5] + 1u, ri_words_b));
+  ivs_input_init(&in);
+  ev[1].controller[3] = 1u;
+  reason = ivs_input_check(&in, ev, 2u, 4u, &st, &idx);
+  RI_CHECK(reason == IVS_REASON_NONE && st == IVS_OK && idx == IVS_INPUT_INDEX_NONE);
+  reason = ivs_input_check(&in, ev, 2u, 1u, &st, &idx);
+  RI_CHECK(reason == IVS_REASON_INPUT_EXTRA_CONTROLLER && st == IVS_E_UNSUPPORTED && idx == 0u);
+  rc = IVS_TEST_PASS;
+done:
+  ivs_ms_free(&x);
+  return rc;
+}
+
 /* ---- precedence (D-05): one case per neighbour of the new slots ---- */
 
 /* UNSUPPORTED over the event arguments: an unknown run flag, and reserved_in, each with events
@@ -1204,6 +1266,8 @@ const ivs_test_case ivs_run_input_cases[] = {
     {"run.input.refuse.control-reserved", ri_refuse_control_reserved, NULL},
     {"run.input.refuse.event-flags", ri_refuse_event_flags, NULL},
     {"run.input.refuse.event-reserved", ri_refuse_event_reserved, NULL},
+    {"run.input.refuse.extra-controller-word", ri_refuse_extra_controller, NULL},
+    {"run.input.extra-word-zero-ok", ri_extra_word_zero_ok, NULL},
     {"run.prec.unsupported-over-events", ri_prec_unsupported_over_events, NULL},
     {"run.prec.buffer-over-events", ri_prec_buffer_over_events, NULL},
     {"run.prec.events-over-state", ri_prec_events_over_state, NULL},

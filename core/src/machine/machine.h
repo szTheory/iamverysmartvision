@@ -206,9 +206,10 @@ void ivs_input_init(ivs_machine_obs_input *in);
  * with *st IVS_OK and *index IVS_INPUT_INDEX_NONE, or the reason with *st and the failing index.
  * BAD_ARG pass over the whole array first (at_tick at or above 2^63, below its predecessor, below
  * in->floor_tick, in that order per event), then the UNSUPPORTED pass (nonzero flags, nonzero
- * reserved word, a controller word with IVS_CTRL_RESERVED_MASK set). Reads ev[0..count) only. */
+ * reserved word, a controller word with IVS_CTRL_RESERVED_MASK set, a nonzero word at an index at
+ * or above controllers, the profile's input.controllers). Reads ev[0..count) only. */
 uint32_t ivs_input_check(const ivs_machine_obs_input *in, const ivs_input_event *ev, uint32_t count,
-                         ivs_status *st, uint32_t *index);
+                         uint32_t controllers, ivs_status *st, uint32_t *index);
 
 /* Applies, in array order, every event ev[next..count) whose at_tick is at or below start (the
  * start tick of the unit about to begin): words in force, count + 1, chain. Returns the index of

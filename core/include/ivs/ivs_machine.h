@@ -211,8 +211,8 @@ typedef struct ivs_load_options {
 #define IVS_REASON_RUN_BUFFER_SMALL 41u   /* BUFFER_TOO_SMALL: an output capacity below the layout's requirement */
 #define IVS_REASON_RUN_BUFFER_NULL 42u    /* BAD_ARG: an output buffer NULL with a nonzero capacity */
 #define IVS_REASON_RUN_BUFFER_OVERLAP 43u /* BAD_ARG: a buffer overlaps the instance, the other buffer or the report */
-/* Input reasons of ivs_machine_run (plan 04-11, D-05, D-13, D-14). 48..53 concern one event: the
- * report's input_failing_index names it. */
+/* Input reasons of ivs_machine_run (plan 04-11, D-05, D-13, D-14; 54 plan 04-12, D-15). 48..54
+ * concern one event: the report's input_failing_index names it. */
 #define IVS_REASON_INPUT_RESERVED_IN 44u      /* UNSUPPORTED: req->reserved_in is nonzero */
 #define IVS_REASON_INPUT_EVENTS_NULL 45u      /* BAD_ARG: events NULL with event_count above 0 */
 #define IVS_REASON_INPUT_EVENT_COUNT 46u      /* BAD_ARG: event_count above IVS_INPUT_EVENTS_MAX */
@@ -223,6 +223,7 @@ typedef struct ivs_load_options {
 #define IVS_REASON_INPUT_EVENT_FLAGS 51u      /* UNSUPPORTED: an event's flags are nonzero */
 #define IVS_REASON_INPUT_EVENT_RESERVED 52u   /* UNSUPPORTED: an event's reserved word is nonzero */
 #define IVS_REASON_INPUT_CONTROL_RESERVED 53u /* UNSUPPORTED: a controller word has IVS_CTRL_RESERVED_MASK set */
+#define IVS_REASON_INPUT_EXTRA_CONTROLLER 54u /* UNSUPPORTED: a nonzero word at or above input.controllers */
 
 /* segment_index of a report whose reason concerns no single segment. */
 #define IVS_SEGMENT_NONE 0xFFFFFFFFu

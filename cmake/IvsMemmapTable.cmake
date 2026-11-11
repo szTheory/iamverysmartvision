@@ -17,6 +17,8 @@
 #   ticks_per_cpu_cycle (1..65535; the machine converts a CPU unit's cycles to master ticks, D2)
 #   scanlines_per_frame, cpu_cycles_per_scanline (1..65535 each; the nominal frame timebase that
 #   ivs_info publishes, D-06/D-09, plan 04-09; nominal figures, never a frame event)
+#   input.controllers (1..4: connected hand controllers, event word index = PSG port; the run
+#   call refuses a nonzero controller word at or above it, D-13/D-15, plan 04-12)
 # Hex values are "$XXXX" strings (four uppercase digits), as in reset.r7.
 #
 # Fail closed (message `IvsMemmapTable: <profile>: <field>: <reason>`): hi < lo; lo or hi+1 not
@@ -269,6 +271,11 @@ foreach(rel IN LISTS mm_profiles)
       mm_fail("must be nonzero")
     endif()
   endforeach()
+  set(MM_CTX "${rel}: input.controllers")
+  mm_uint(input_controllers "${doc}" "value" 4 fields input.controllers value)
+  if(input_controllers EQUAL 0)
+    mm_fail("must be 1 to 4")
+  endif()
 
   # Required registry fields (a missing one fails closed).
   foreach(need cartridge.features_supported system_images.exec system_images.grom memmap.cart_span
@@ -537,7 +544,7 @@ foreach(rel IN LISTS mm_profiles)
   string(APPEND reg_c
     "  {\"${pid}\", ${r7_l}, ${iab_l}, ${und_l}, ${slo_l}, ${shi_l}, ${ticks_per_cpu}u, ${has_span}u, ${intff}u, ${release}u,\n"
     "   ${wait_limit}u, ${features}u, ${slot_exec_c}, ${slot_grom_c}, ${scanlines_per_frame}u,\n"
-    "   ${cpu_cycles_per_scanline}u},\n")
+    "   ${cpu_cycles_per_scanline}u, ${input_controllers}u},\n")
 endforeach()
 
 if(DEFINED MUTATE AND NOT MUTATE STREQUAL "" AND NOT MM_MUTATED)

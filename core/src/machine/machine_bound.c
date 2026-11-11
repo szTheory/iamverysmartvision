@@ -35,7 +35,9 @@
  *                    the input floor (INPUT_BEFORE_FLOOR), lowest failing index;
  *   9. UNSUPPORTED   the events, whole array: nonzero flags (INPUT_EVENT_FLAGS), a nonzero reserved
  *                    word (INPUT_EVENT_RESERVED), a controller word with IVS_CTRL_RESERVED_MASK set
- *                    (INPUT_CONTROL_RESERVED), lowest failing index; still before the first unit.
+ *                    (INPUT_CONTROL_RESERVED), a nonzero word at an index at or above the profile's
+ *                    input.controllers (INPUT_EXTRA_CONTROLLER, plan 04-12), lowest failing index;
+ *                    still before the first unit.
  *                    Stages 8 and 9 also write the failing index (input_failing_index).
  * A refusal writes struct_size and the IVS_REASON_* only into a report that is not the cause, does
  * not overlap the bytes the handle names and does not overlap an output buffer or the event array
@@ -248,6 +250,7 @@ static ivs_status ivs_bound_validate(const ivs_machine *m, const ivs_run_request
                                      uint32_t *index)
 {
   ivs_status st;
+  uint32_t controllers;
   const struct ivs_machine *im;
   /* 1. BAD_ARG: NULL arguments and struct sizes. */
   if (rep == NULL || rep->struct_size < (uint32_t)sizeof(ivs_run_report) ||
@@ -317,9 +320,11 @@ static ivs_status ivs_bound_validate(const ivs_machine *m, const ivs_run_request
   }
 #endif
   /* 8, 9. The events one by one (D-14): order, range and floor (BAD_ARG) over the whole array,
-   * then flags, reserved word and control bits (UNSUPPORTED); every event is read before any
-   * write. */
-  *reason = ivs_input_check(&im->obs.input, req->events, req->event_count, &st, index);
+   * then flags, reserved word, control bits and words of unconnected controllers (UNSUPPORTED;
+   * the profile's input.controllers, plan 04-12); every event is read before any write. The
+   * profile index is registered: the handle check covers it (WR-03). */
+  controllers = ivs_profile_get(im->profile)->input_controllers;
+  *reason = ivs_input_check(&im->obs.input, req->events, req->event_count, controllers, &st, index);
   if (*reason != IVS_REASON_NONE) {
     return st;
   }
