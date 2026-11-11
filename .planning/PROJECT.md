@@ -168,6 +168,12 @@ These come from a researched fan-out recommendation that was auto-adopted. Each 
 | D5 | System images are user-supplied only; project boot stub through the EXEC slot; no built-in/HLE image (Phase 3 D-24) | Permission to redistribute an image, or owner wants a labelled HLE |
 | D-cart | Core cartridge format is the project container IVSC v1 (`docs/formats/ivsc-v1.md`); `.rom`/`.bin+.cfg` importers live outside core and later (Phase 3 D-29) | Owner wants third-party cartridges in this milestone, or a permissive full `.rom` spec |
 
+| D4 | Fixture assembler policy: hand-assembled annotated decle listings with a listing checker; no assembler as a build/gate/CI/release dependency; as1600 rejected (GPL), libasm optional non-gating cross-check (Phase 4 D-25) | A diagnostic count above 3, labels/macros, or a second author: build a project mini-assembler |
+| D6 | Controller core input is logical switch state per PSG port; the electrical byte is derived in-core from profile data (Phase 4 D-12) | Evidence the output is not a function of switch state plus port drive, or a need for raw port injection |
+| D12 | CI shape: one ubuntu-24.04 job, no matrix, no cache, no artifacts, no macOS leg, job summary from the gate, run record file (Phase 4 D-41..D-45) | An Apple-only failure reaching main, a shared library, or a median hosted gate above budget after levers |
+
+D4, D6 and D12 were decided by the fan-out protocol on 2026-11-11 (Delegated decision, owner authorization 2026-11-09).
+
 D5 and the cartridge format were decided by the fan-out protocol on 2026-11-11 (Delegated decision, owner authorization 2026-11-09). D6, D7, D8 and D12 are not decided in Phase 1 and are decided by the fan-out protocol when their phase needs them; D10 and D11 remain hard stops with evidence marked missing (D-05).
 
 ### Recommendations (not owner decisions)
