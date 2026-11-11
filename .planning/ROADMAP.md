@@ -42,7 +42,7 @@ not in this roadmap.
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Evidence, Profile and Rights Foundations** - Tier vocabulary, claim ledger, discrepancy log, fixture manifest, provenance rule, first-profile record, time base and CP-1610 reference notes (completed 2026-11-09)
-- [ ] **Phase 2: CP-1610 CPU Core** - Every opcode verified against page-cited, hand-derived vectors in a host-independent core with an exact inventory and one local gate command
+- [x] **Phase 2: CP-1610 CPU Core** - Every opcode verified against page-cited, hand-derived vectors in a host-independent core with an exact inventory and one local gate command (completed 2026-11-10)
 - [ ] **Phase 3: Memory Map, Content Loading and Refusal** - Profile-driven memory map, typed system-image and cartridge loading, isolated instances and a refusal matrix that never mutates prior state
 - [ ] **Phase 4: Headless Runner and Installed Consumer (Slice 0)** - An original diagnostic runs end to end through the runner and a relocated installed consumer, with deterministic digests and a CI gate that mirrors the local command
 - [ ] **Phase 5: Hand Controllers and PSG Sound** - Both controllers as multi-signal machine input at explicit time boundaries; PSG raw audio and a register-write log
@@ -126,7 +126,7 @@ Plans:
   3. Interrupt and BUSRQ acceptance cases (previous-instruction interruptibility, I flag, D/SDBD, BUSRQ), SDBD modes (with a documented policy for unsupported modes), stack direction, auto-increment registers and reset entry each pass their vectors, and each has a named-fault control that fails for the intended reason.
   4. For any instruction, the stepper reports an ordered, cycle-stamped list of bus accesses that a test compares against the manual's bus sequence.
   5. A build/link or symbol check fails when the core library references host clocks, filesystem, environment, threads or I/O. A deliberate-violation control demonstrates this.
-**Plans**: 18/18 plans executed
+**Plans**: 18/18 plans complete
 
 Plans:
 - [x] 02-01-PLAN.md — Gate hardening (IN-04, IN-02, denylist status 2, SPDX/ASCII for C), build/gate NONCE contract, discrepancy entries C36-C58 (G8 = C58) and five profile fields
@@ -270,7 +270,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Evidence, Profile and Rights Foundations | 14/14 | Complete    | 2026-11-09 |
-| 2. CP-1610 CPU Core | 18/18 | In Progress | - |
+| 2. CP-1610 CPU Core | 18/18 | Complete    | 2026-11-10 |
 | 3. Memory Map, Content Loading and Refusal | 0/TBD | Not started | - |
 | 4. Headless Runner and Installed Consumer (Slice 0) | 0/TBD | Not started | - |
 | 5. Hand Controllers and PSG Sound | 0/TBD | Not started | - |
