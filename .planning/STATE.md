@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 3
 current_phase_name: Memory Map, Content Loading and Refusal
 status: executing
-stopped_at: Completed 03-10-PLAN.md
-last_updated: "2026-11-11T07:41:21.064Z"
+stopped_at: Completed 03-11-PLAN.md
+last_updated: "2026-11-11T08:11:20.298Z"
 last_activity: 2026-11-11
-last_activity_desc: Plan 03-10 complete (typed ivs_machine_load/unload for EXEC, GROM and IVSC cartridges with validate-then-commit in the A-08 ladder, load report with whole-file SHA-256 from the parser single pass, layer-2 span and feature checks, expect_sha256, family load 16 cases, 3 faults, faults=101/101; MEM-03, MEM-04, API-06 stay open)
-state_head: ca80f1f0ff5e555d66648af1a4337bb3c790d3eb
+last_activity_desc: Plan 03-11 complete (load refusal matrix: 163 machine.refuse.load cases over priors f/x/s/c with whole-storage memcmp, digest and report-detail oracle, 20 machine.prec rows, out parameters overlapping the instance refused BAD_ARG, layer-2 load fixtures ivsc-load.json with span-relative addresses from the literal map, 9 faults, faults=110/110, gate median 23 s local on a loaded host; MEM-03 and MEM-05 complete, MEM-04 and API-06 stay open)
+state_head: b01095a63529c4aef1b2652048219b36b564c412
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 46
-  completed_plans: 42
+  completed_plans: 43
   percent: 25
 ---
 
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 3 — Memory Map, Content Loading and Refusal
-Plan: 11 of 14
+Plan: 12 of 14
 Status: Ready to execute
-Last activity: 2026-11-11 — Plan 03-10 complete (typed ivs_machine_load/unload for EXEC, GROM and IVSC cartridges with validate-then-commit in the A-08 ladder, load report with whole-file SHA-256 from the parser single pass, layer-2 span and feature checks, expect_sha256, family load 16 cases, 3 faults, faults=101/101; MEM-03, MEM-04, API-06 stay open)
+Last activity: 2026-11-11 — Plan 03-11 complete (load refusal matrix: 163 machine.refuse.load cases over priors f/x/s/c with whole-storage memcmp, digest and report-detail oracle, 20 machine.prec rows, out parameters overlapping the instance refused BAD_ARG, layer-2 load fixtures ivsc-load.json with span-relative addresses from the literal map, 9 faults, faults=110/110, gate median 23 s local on a loaded host; MEM-03 and MEM-05 complete, MEM-04 and API-06 stay open)
 
 Progress: [███░░░░░░░] 25%
 
@@ -95,6 +95,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 03 P08 | 14min | 3 tasks | 14 files |
 | Phase 03 P09 | 16min | 3 tasks | 16 files |
 | Phase 03 P10 | 12min | 3 tasks | 16 files |
+| Phase 03 P11 | 20min | 3 tasks | 21 files |
 
 ## Accumulated Context
 
@@ -205,6 +206,9 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 03]: 03-10: IVS_REASON_* 1..18 equal the IVSC reason table, 19..33 are load reasons (span, features, system-image size/width, expect digest, argument, handle, option, state, slot)
 - [Phase 03]: 03-10: parser computes trailer check and whole-file SHA-256 in one pass (view.file_sha256); layer-2 span check is the internal seam ivs_machine_cart_span_check
 - [Phase 03]: 03-10: no requirement marked complete; MEM-03 system-image shape refusals are tested by 03-11
+- [Phase 03]: 03-11: out parameters (load report, info out, digest out, create out) overlapping the instance storage are refused BAD_ARG with nothing written (orchestrator addition; fault REPORT_INSIDE_UNCHECKED); faults now 110
+- [Phase 03]: 03-11: refusal rows run per ladder stage: argument BAD_ARG/UNSUPPORTED on priors f,s,c; later classes on f,x; DUPLICATE_LOAD only on occupied slots; lying lengths in heap and inside placements
+- [Phase 03]: 03-11: load-level cartridge fixtures name segments with span-relative addresses resolved from the literal map; MEM-03 and MEM-05 complete, MEM-04 waits for 03-12 reset rows, API-06 for 03-13
 
 ### Pending Todos
 
@@ -236,6 +240,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-11T07:41:20.920Z
-Stopped at: Completed 03-10-PLAN.md
+Last session: 2026-11-11T08:11:20.195Z
+Stopped at: Completed 03-11-PLAN.md
 Resume file: None
