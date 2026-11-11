@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 4
 current_phase_name: Headless Runner and Installed Consumer (Slice 0)
 status: executing
-stopped_at: Completed 04-07-PLAN.md
-last_updated: "2026-11-11T17:59:49.410Z"
+stopped_at: Completed 04-08-PLAN.md
+last_updated: "2026-11-11T18:08:34.650Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 3 complete, transitioned to Phase 4
-state_head: e34eeb3912052653297ba13679f38a82670437fa
+state_head: 92faf5f122afdb4e8fe195150c38104ac69a5efe
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 71
-  completed_plans: 53
+  completed_plans: 54
   percent: 38
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 4 — Headless Runner and Installed Consumer (Slice 0)
-Plan: 8 of 25
+Plan: 9 of 25
 Status: Ready to execute
 Last activity: 2026-11-11 — Completed 04-03 (repo-relative fault owners, runner outcome taxonomy)
 
@@ -107,6 +107,7 @@ Progress: [████░░░░░░] 38%
 | Phase 4 P05 | 45min | 2 tasks | 8 files |
 | Phase 4 P06 | 30min | 2 tasks | 12 files |
 | Phase 4 P07 | 55min | 3 tasks | 12 files |
+| Phase 04 P08 | 20 min | 2 tasks | 20 files |
 
 ## Accumulated Context
 
@@ -236,6 +237,7 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 4]: 04-05: observation rows (obs.video/audio/input, 144 bytes) sit before slot[] after an explicit obs_pad word; instance 113,600 bytes with no tail padding (asserted); domains 16..18 live, never in the version 1 composite over 1..4
 - [Phase 4]: 04-06: ivs_cpu_state_report is 36 bytes; IVS_CPU_STATE_*/IVS_CPU_FAULT_* mirror the CPU internals, pinned by static asserts; observation calls use ivs_machine_span_overlaps directly; run/observation tests live in suite run
 - [Phase 4]: 04-07: ivs_machine_run loop tests fault then halt (flag) before each unit; any zero-progress unit ends the loop (INTERNAL unless FAULTED); refusal reasons IVS_REASON_RUN_* 34..40 (BAD_HANDLE reuses IVS_REASON_HANDLE); refusal detail never written into the bytes the handle names
+- [Phase 04]: 04-08: generic define pin in api-effects (class table PREFIX|PIN|FORM|EXCL); IVS_STOP_ and IVS_REASON_ pinned; a missing pin file or an empty class fails closed as api-define-unpinned
 
 ### Pending Todos
 
@@ -268,6 +270,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-11T17:59:49.265Z
-Stopped at: Completed 04-07-PLAN.md
+Last session: 2026-11-11T18:08:34.515Z
+Stopped at: Completed 04-08-PLAN.md
 Resume file: None
