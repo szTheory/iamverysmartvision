@@ -60,6 +60,12 @@ uint32_t ivs_runner_stop_observation(uint32_t stop_reason, uint32_t expected_sto
       expected_stop != IVS_SCN_STOP_FAULTED) {
     return IVS_RUNNER_OBS_HARNESS_FAIL;
   }
+#ifdef IVS_FAULT_RUNNER_STOP_EXPECT_IGNORED
+  /* Fault (plan 04-18, D-20, D-23): the stop expectation is not compared. */
+  if (stop_reason == IVS_STOP_TARGET || stop_reason == IVS_STOP_CPU_HALTED || stop_reason == IVS_STOP_GUEST_FAULT) {
+    return 0u;
+  }
+#endif
   switch (stop_reason) {
   case IVS_STOP_TARGET:
     return expected_stop == IVS_SCN_STOP_TARGET ? 0u : IVS_RUNNER_OBS_TIMEOUT_BUDGET;
@@ -316,6 +322,10 @@ static int ex_assert_eval(ex_state *x, const ivs_scenario_assert *a, ivs_runner_
   } else if (a->op != IVS_SCN_OP_EQ) {
     return -1;
   }
+#ifdef IVS_FAULT_RUNNER_ASSERT_ALWAYS_PASS
+  /* Fault (plan 04-18, D-20, D-23): every assert evaluates as held, so a runner cannot fail. */
+  held = 1;
+#endif
   return held ? 1 : 0;
 }
 

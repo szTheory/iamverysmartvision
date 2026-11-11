@@ -1,6 +1,7 @@
 # suite=runner; columns: <FAULT_ID> <must-fail> <allowed-prefixes> <must-pass>
-# Runner named faults (D-20, D-22, D-24, plans 04-03 and 04-17). Each id has one IVS_FAULT_<ID>
-# site in a runner TU (runner/outcome.c, runner/scenario.c; owner TUs under core/ or runner/).
+# Runner named faults (D-20, D-22, D-24, plans 04-03, 04-17 and 04-18). Each id has one
+# IVS_FAULT_<ID> site in a runner TU (runner/outcome.c, scenario.c, exec.c, report.c; owner TUs
+# under core/ or runner/).
 # OUTCOME_GUEST_AS_HARNESS: guest-fail exits with the harness-fail code; codes-distinct also
 # sees the two outcomes share code 14; since plan 04-18 the executor cases whose outcome is
 # guest-fail (runner.exec.) see the exit code 14 too.
@@ -22,3 +23,14 @@ RUNNER_DOTDOT_ACCEPTED runner.parse.refuse.path-dotdot runner.parse.|runner.fuzz
 # RUNNER_LINE_CAP_UNCHECKED: the 256-byte line cap is skipped (T-04-50); the fuzz invariant on
 # accepted inputs (longest line at most 256 bytes) may also see it.
 RUNNER_LINE_CAP_UNCHECKED runner.parse.refuse.line-too-long runner.parse.|runner.fuzz. runner.outcome.exit-pass
+# Executor and report faults (plan 04-18, D-19, D-20, D-23), sites in runner/exec.c and
+# runner/report.c; other executor cases (runner.exec.) may also see them.
+# RUNNER_ASSERT_ALWAYS_PASS: every assert evaluates as held, so a wrong expected word passes.
+RUNNER_ASSERT_ALWAYS_PASS runner.exec.guest-assert-mismatch runner.exec. runner.parse.diag-boot-pass
+# RUNNER_STOP_EXPECT_IGNORED: the stop expectation is not compared (a halt where the target was
+# expected passes; a too-small halt bound is no longer a budget timeout).
+RUNNER_STOP_EXPECT_IGNORED runner.exec.stop-mismatch runner.exec. runner.parse.diag-boot-pass
+# RUNNER_KEY_ORDER_SWAPPED: digest.cpu and digest.mem change places in the key table.
+RUNNER_KEY_ORDER_SWAPPED runner.exec.key-order runner.exec. runner.parse.diag-boot-pass
+# RUNNER_OVERSHOOT_NOT_REPORTED: the overshoot line is printed as 0.
+RUNNER_OVERSHOOT_NOT_REPORTED runner.exec.overshoot runner.exec. runner.parse.diag-boot-pass

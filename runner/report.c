@@ -91,8 +91,14 @@ static const rp_key rp_tail[] = {
     {"input.controller.1", RF_INPUT_CTRL + 1u},
     {"input.controller.2", RF_INPUT_CTRL + 2u},
     {"input.controller.3", RF_INPUT_CTRL + 3u},
+#ifdef IVS_FAULT_RUNNER_KEY_ORDER_SWAPPED
+    /* Fault (plan 04-18, D-19, D-23): two keys swapped, so the order is no longer the pinned one. */
+    {"digest.mem", RF_DIGEST + 1u},
+    {"digest.cpu", RF_DIGEST + 0u},
+#else
     {"digest.cpu", RF_DIGEST + 0u},
     {"digest.mem", RF_DIGEST + 1u},
+#endif
     {"digest.images", RF_DIGEST + 2u},
     {"digest.instance", RF_DIGEST + 3u},
     {"digest.composite", RF_DIGEST + 4u},
@@ -379,7 +385,12 @@ static void rp_step_value(const ivs_scenario_step *st, const ivs_runner_step_rec
     break;
   case RF_STEP_OVERSHOOT:
     if (sr->ran) {
+#ifdef IVS_FAULT_RUNNER_OVERSHOOT_NOT_REPORTED
+      /* Fault (plan 04-18, D-03, D-19, D-23): the overshoot is printed as 0. */
+      rp_u64(v, cap, 0u);
+#else
       rp_u64(v, cap, sr->overshoot_ticks);
+#endif
     }
     break;
   case RF_STEP_STOP:
