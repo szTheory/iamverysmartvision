@@ -21,4 +21,9 @@ extern const size_t ivs_machine_sha256_source_count;
 extern const ivs_test_case ivs_machine_create_cases[];
 extern const size_t ivs_machine_create_count;
 
+/* Family digest (plan 03-09): canonical state digest, literal streams, coverage, sensitivity
+ * and refusals (machine_digest.c). */
+extern const ivs_test_case ivs_machine_digest_cases[];
+extern const size_t ivs_machine_digest_count;
+
 #endif

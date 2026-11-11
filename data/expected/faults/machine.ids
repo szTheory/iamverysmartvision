@@ -1,0 +1,13 @@
+# suite=machine; columns: <FAULT_ID> <must-fail> <allowed-prefixes> <must-pass>
+# Machine named faults (D-37, plan 03-09). Each id has one IVS_FAULT_<ID> site in
+# core/src/machine/machine.c (create and destroy) or core/src/machine/machine_digest.c (digest).
+# INIT_SKIPS_MEMSET also breaks the fresh-state literals (poison in the CPU and slot fields) and
+# DESTROY_NO_SCRUB every after-destroy case (the magic survives); both are their own rule.
+CREATE_MAGIC_BEFORE_PROFILE_CHECK machine.refuse.create.unknown-profile machine.refuse.create. machine.create.ok-info-destroy
+INIT_SKIPS_MEMSET machine.create.poisoned-storage machine.create.poisoned-storage|machine.create.ok-info-destroy|machine.digest. machine.refuse.create.null-opts
+DESTROY_NO_SCRUB machine.destroy.scrubs machine.destroy.|machine.refuse.destroy.twice|machine.refuse.info.destroyed|machine.refuse.digest.destroyed|machine.create.ok-info-destroy|machine.create.static-storage machine.create.requirements
+DIGEST_SKIPS_RAM machine.digest.sensitivity-mem machine.digest. machine.create.ok-info-destroy
+DIGEST_SKIPS_IMAGE_TABLE machine.digest.sensitivity-images machine.digest. machine.create.ok-info-destroy
+DIGEST_LITTLE_ENDIAN machine.digest.stream-cpu-synthetic machine.digest. machine.create.ok-info-destroy
+DIGEST_INCLUDES_PADDING machine.digest.padding-ignored machine.digest. machine.create.ok-info-destroy
+DOMAIN_ID_DROPPED machine.digest.composite-framing machine.digest. machine.create.ok-info-destroy

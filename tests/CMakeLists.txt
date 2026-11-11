@@ -77,7 +77,7 @@ add_custom_command(
   COMMENT "Generating the SHA-256 vector table (string(SHA256) oracle)"
   VERBATIM)
 add_executable(ivs_tests_machine machine/machine_main.c machine/machine_sha256.c machine/machine_create.c
-  "${IVS_SHA_INC}")
+  machine/machine_digest.c "${IVS_SHA_INC}")
 target_include_directories(ivs_tests_machine PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(ivs_tests_machine PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
 add_test(NAME machine COMMAND ivs_tests_machine)
@@ -212,7 +212,7 @@ ivs_fault_gen(GEN_EXPECT_MUTATION SUITE cpu-vectors OUTPUT ivs_vectors.inc
   DEPENDS ${ivs_vec_json} "${IVS_VEC_GENERATOR}" "${IVS_VEC_FILES_IDS}" "${IVS_VEC_SKIPS_IDS}")
 
 ivs_fault_suite(machine
-  SOURCES machine/machine_main.c machine/machine_sha256.c machine/machine_create.c
+  SOURCES machine/machine_main.c machine/machine_sha256.c machine/machine_create.c machine/machine_digest.c
   INCLUDE_DIRS "${CMAKE_CURRENT_BINARY_DIR}"
   GENERATED "${IVS_SHA_INC}")
 

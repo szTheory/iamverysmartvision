@@ -126,6 +126,7 @@ ivs_status ivs_machine_create(const ivs_create_options *opts, void *storage, siz
   uint32_t index = 0u;
   uint32_t len = 0u;
   uint32_t i;
+  size_t clear;
   ivs_status st;
   if (out != NULL) {
     *out = NULL;
@@ -151,6 +152,9 @@ ivs_status ivs_machine_create(const ivs_create_options *opts, void *storage, siz
     return IVS_E_UNSUPPORTED;
   }
   /* UNKNOWN_PROFILE */
+#ifdef IVS_FAULT_CREATE_MAGIC_BEFORE_PROFILE_CHECK
+  ((struct ivs_machine *)storage)->magic = IVS_MACHINE_MAGIC;
+#endif
   st = ivs_machine_profile_lookup(opts->profile_id, &index);
   if (st != IVS_OK) {
     return st;
@@ -161,7 +165,11 @@ ivs_status ivs_machine_create(const ivs_create_options *opts, void *storage, siz
   }
   /* Commit: every instance byte is written. */
   im = (struct ivs_machine *)storage;
-  memset(im, 0, sizeof *im);
+  clear = sizeof *im;
+#ifdef IVS_FAULT_INIT_SKIPS_MEMSET
+  clear = 0u;
+#endif
+  memset(im, 0, clear);
   im->magic = IVS_MACHINE_MAGIC;
   im->profile = index;
   im->phase = IVS_PHASE_OFF;
@@ -177,10 +185,15 @@ ivs_status ivs_machine_create(const ivs_create_options *opts, void *storage, siz
 ivs_status ivs_machine_destroy(ivs_machine *m)
 {
   struct ivs_machine *im = ivs_machine_from_handle_mut(m);
+  size_t scrub;
   if (im == NULL) {
     return IVS_E_BAD_HANDLE;
   }
-  memset(im, 0, sizeof *im);
+  scrub = sizeof *im;
+#ifdef IVS_FAULT_DESTROY_NO_SCRUB
+  scrub = 0u;
+#endif
+  memset(im, 0, scrub);
   return IVS_OK;
 }
 

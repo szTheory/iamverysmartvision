@@ -3,6 +3,8 @@
 # data/sha256/vectors.txt plus the invariance, context and reset cases (D-28, A-04).
 # Family create (plan 03-09): storage requirements, create, info and destroy through the public
 # header, their refusals (whole-storage comparison), status names and the API version.
+# Family digest (plan 03-09): the canonical state digest (D-35): literal streams, composite
+# framing, field-table coverage, per-domain sensitivity, padding and the digest refusals.
 machine.sha256.fips-empty
 machine.sha256.fips-abc
 machine.sha256.fips-448
@@ -72,3 +74,22 @@ machine.refuse.requirements.short
 machine.refuse.requirements.size-0
 machine.refuse.requirements.unknown-profile
 machine.status.names
+machine.digest.composite-framing
+machine.digest.coverage
+machine.digest.fresh-composite
+machine.digest.padding-ignored
+machine.digest.preimage-hash
+machine.digest.sensitivity-cpu
+machine.digest.sensitivity-images
+machine.digest.sensitivity-instance
+machine.digest.sensitivity-mem
+machine.digest.stream-cpu
+machine.digest.stream-cpu-synthetic
+machine.digest.stream-instance
+machine.refuse.digest.destroyed
+machine.refuse.digest.domain-16
+machine.refuse.digest.domain-5
+machine.refuse.digest.domain-99
+machine.refuse.digest.domain-over-handle
+machine.refuse.digest.null-handle
+machine.refuse.digest.null-out

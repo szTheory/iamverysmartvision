@@ -109,6 +109,12 @@ IVS_API ivs_status ivs_machine_destroy(ivs_machine *m);
 /* Phase, machine time, profile index and the three slot reports. */
 IVS_API ivs_status ivs_machine_info(const ivs_machine *m, ivs_info *out);
 
+/* SHA-256 of the canonical state (D-35) of one domain (IVS_DIGEST_CPU, _MEM, _IMAGES, _INSTANCE)
+ * or of their composite (IVS_DIGEST_COMPOSITE). The serialization is field by field and
+ * big-endian, so the value does not depend on struct layout, padding or host byte order; it
+ * excludes the magic and padding. BAD_ARG: out NULL or any other domain; then BAD_HANDLE. */
+IVS_API ivs_status ivs_machine_state_digest(const ivs_machine *m, uint32_t domain, uint8_t out_sha256[32]);
+
 #ifdef __cplusplus
 }
 #endif

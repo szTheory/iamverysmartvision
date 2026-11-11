@@ -51,6 +51,42 @@ _Static_assert(_Alignof(struct ivs_machine) == IVS_MACHINE_ALIGN, "instance alig
 _Static_assert(sizeof(struct ivs_machine) == IVS_MACHINE_BYTES,
                "instance size changed: review the digest field table (machine_digest.c)");
 
+/* ---- canonical state digest (D-35, machine_digest.c) ----
+ * One field table covers every instance byte exactly once. A UINT row is count elements of width
+ * bytes (1, 2, 4 or 8), each read natively and written big-endian by shifts; a row with count > 1
+ * is preceded by its u32 count. A PROFILE row is a u32 registry index written as the profile id:
+ * u32 length then the ASCII bytes (an index outside the registry writes u32 0xFFFFFFFF then the
+ * index). MAGIC and PAD rows (the magic, the reserved word, the CPU's reserved bytes and the tail
+ * padding) are declared but never serialized; their domain names the neighbour they sit with.
+ * Domain preimage: "IVSD" || u8 domain || u16 IVS_DIGEST_DOMAIN_VERSION || the domain's rows in
+ * table order. Composite: "IVSSTATE" || u16 IVS_DIGEST_COMPOSITE_VERSION || for domains 1..4:
+ * u8 domain || its 32-byte SHA-256. */
+#define IVS_DIGEST_KIND_UINT 1u
+#define IVS_DIGEST_KIND_PROFILE 2u
+#define IVS_DIGEST_KIND_MAGIC 3u
+#define IVS_DIGEST_KIND_PAD 4u
+#define IVS_DIGEST_DOMAIN_VERSION 1u
+#define IVS_DIGEST_COMPOSITE_VERSION 1u
+
+typedef struct ivs_digest_field {
+  const char *name;
+  uint32_t offset; /* offsetof(struct ivs_machine, ...) */
+  uint32_t width;  /* bytes per element */
+  uint32_t count;  /* elements */
+  uint8_t domain;  /* IVS_DIGEST_CPU..IVS_DIGEST_INSTANCE */
+  uint8_t kind;    /* IVS_DIGEST_KIND_* */
+  uint16_t reserved;
+} ivs_digest_field;
+
+/* The field table (coverage seam for the tests). */
+size_t ivs_machine_digest_field_count(void);
+const ivs_digest_field *ivs_machine_digest_field(size_t i);
+
+/* Writes the preimage of domain 1..4 of m into buf (at most cap bytes; buf may be NULL when cap
+ * is 0) and returns its full length; 0 for NULL m or another domain. No handle check: the tests
+ * pass modified copies. */
+size_t ivs_machine_digest_preimage(const struct ivs_machine *m, uint32_t domain, uint8_t *buf, size_t cap);
+
 /* The instance behind a handle, or NULL for NULL or a wrong magic. */
 const struct ivs_machine *ivs_machine_from_handle(const ivs_machine *m);
 struct ivs_machine *ivs_machine_from_handle_mut(ivs_machine *m);
