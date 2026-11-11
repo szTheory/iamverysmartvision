@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 3
 current_phase_name: Memory Map, Content Loading and Refusal
 status: executing
-stopped_at: Completed 03-03-PLAN.md
-last_updated: "2026-11-11T05:25:17.793Z"
+stopped_at: Completed 03-04-PLAN.md
+last_updated: "2026-11-11T05:50:11.101Z"
 last_activity: 2026-11-11
-last_activity_desc: Plan 03-03 complete (public include tree, generated-include hook, writable-data rule)
-state_head: 4b6ab4e97f02ed2888c4017a3ea58d8f4849ffd0
+last_activity_desc: Plan 03-04 complete (profile memmap descriptors, fail-closed generator, memsys bus, suite memmap, 6 faults)
+state_head: ece054516eaf6da96e7c731aaf7d8c381e62ecfd
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 46
-  completed_plans: 35
+  completed_plans: 36
   percent: 25
 ---
 
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 3 — Memory Map, Content Loading and Refusal
-Plan: 4 of 14
+Plan: 5 of 14
 Status: Ready to execute
-Last activity: 2026-11-11 — Plan 03-03 complete (public include tree, generated-include hook, writable-data rule)
+Last activity: 2026-11-11 — Plan 03-04 complete (profile memmap descriptors, fail-closed generator, memsys bus, suite memmap, 6 faults)
 
 Progress: [███░░░░░░░] 25%
 
@@ -88,6 +88,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 03 P01 | 8min | 2 tasks | 22 files |
 | Phase 03 P02 | 15min | 3 tasks | 13 files |
 | Phase 03 P03 | 8min | 3 tasks | 31 files |
+| Phase 03 P04 | 15min | 3 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -176,6 +177,11 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 03]: 03-03: ivs_core exports only core/include; tests reach core/src through the interface target ivs_core_internal (D-06)
 - [Phase 03]: 03-03: a generated core include is accepted only via data/expected/core-generated.ids (read from ROOT); c-purity runs the generator, scans and compiles its output (A-06)
 - [Phase 03]: 03-03: writable-data rule (nm b B d D c C) runs only on c-purity's own -fno-pie archives; ctest core-symbols stays imports-only (D-07)
+- [Phase 03]: 03-04: the only mutable decode state is a committed segment table of at most 16 {addr, len_words} entries scanned by a bounded loop; it replaces D-20's per-256-word page table because A-01 allows one-word segments at any address (A-08 c)
+- [Phase 03]: 03-04: ivs_memsys backing arrays hold 16-bit words for every device; install and raw-poke store whole words and the width formula masks on read (A-05a)
+- [Phase 03]: 03-04: a region's physical device is its name up to the first underscore; regions sharing one share its backing and must agree on size_words and device kind
+- [Phase 03]: 03-04: write-only alias regions carry conflict C61; C21 stays on stic_regs, stic_alias_read and gram
+- [Phase 03]: 03-04: GEN faults on a core-consumed table use ivs_fault_gen CONSUMER core:<src>; an -DMUTATE= in ARGS replaces the default must-fail id
 
 ### Pending Todos
 
@@ -206,6 +212,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-11T05:25:17.709Z
-Stopped at: Completed 03-03-PLAN.md
+Last session: 2026-11-11T05:50:11.010Z
+Stopped at: Completed 03-04-PLAN.md
 Resume file: None
