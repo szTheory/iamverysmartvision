@@ -13,7 +13,9 @@
  * Validation (ivs_input_check) reads the whole array before the run writes anything: first every
  * event for order, range and floor (BAD_ARG), then every event for flags, the reserved word and
  * reserved control bits (UNSUPPORTED); the lowest failing index of the first failing pass wins.
- * The file holds no static or global state. */
+ * The file holds no static or global state outside named-fault blocks.
+ * Named faults (plan 04-11, D-07, D-16): INPUT_LOG_SLICE_RELATIVE_TICK, INPUT_NO_FLOOR_CHECK,
+ * INPUT_STATIC_CARRY, RUN_EVENT_AT_TARGET_ONLY. */
 #include "common/ivs_prelude.h"
 
 #include "common/ivs_sha256.h"
@@ -22,6 +24,13 @@
 
 _Static_assert(sizeof(ivs_input_event) == 32u, "ivs_input_event is 32 bytes");
 _Static_assert(IVS_INPUT_CONTROLLER_WORDS == 4u, "four controller words per event");
+
+#ifdef IVS_FAULT_INPUT_STATIC_CARRY
+/* Named fault INPUT_STATIC_CARRY (plan 04-11, D-16): a file-scope copy of the last words applied
+ * by any instance becomes the words in force of whichever instance begins a unit next, so input
+ * leaks between instances (run.input.isolation must catch it). */
+static uint32_t ivs_input_carry[IVS_INPUT_CONTROLLER_WORDS];
+#endif
 
 void ivs_input_init(ivs_machine_obs_input *in)
 {
@@ -49,6 +58,9 @@ static void ivs_input_apply(ivs_machine_obs_input *in, const ivs_input_event *ev
   }
   ivs_sha256_digest(pre, sizeof pre, in->chain);
   in->count++;
+#ifdef IVS_FAULT_INPUT_STATIC_CARRY
+  memcpy(ivs_input_carry, ev->controller, sizeof ivs_input_carry);
+#endif
 }
 
 uint32_t ivs_input_check(const ivs_machine_obs_input *in, const ivs_input_event *ev, uint32_t count,
@@ -63,9 +75,12 @@ uint32_t ivs_input_check(const ivs_machine_obs_input *in, const ivs_input_event 
       reason = IVS_REASON_INPUT_TICK_RANGE;
     } else if (i > 0u && t < ev[i - 1u].at_tick) {
       reason = IVS_REASON_INPUT_UNSORTED;
-    } else if (t < in->floor_tick) {
+    }
+#ifndef IVS_FAULT_INPUT_NO_FLOOR_CHECK /* named fault INPUT_NO_FLOOR_CHECK: events below the floor pass */
+    else if (t < in->floor_tick) {
       reason = IVS_REASON_INPUT_BEFORE_FLOOR;
     }
+#endif
     if (reason != IVS_REASON_NONE) {
       *st = IVS_E_BAD_ARG;
       *index = i;
@@ -92,6 +107,7 @@ uint32_t ivs_input_check(const ivs_machine_obs_input *in, const ivs_input_event 
       return reason;
     }
   }
+  (void)in; /* read by the floor test; named fault INPUT_NO_FLOOR_CHECK drops it */
   *st = IVS_OK;
   *index = IVS_INPUT_INDEX_NONE;
   return IVS_REASON_NONE;
@@ -102,12 +118,29 @@ uint32_t ivs_input_apply_due(struct ivs_machine *im, const ivs_input_event *ev, 
 {
   while (next < count) {
     ivs_input_event e = ev[next]; /* one read of the caller's event */
+    uint64_t tick = e.at_tick;
+#ifdef IVS_FAULT_RUN_EVENT_AT_TARGET_ONLY
+    /* Named fault RUN_EVENT_AT_TARGET_ONLY (plan 04-11, D-07): an event applies only at a unit that
+     * starts exactly at its at_tick, so an event inside a unit is never applied. */
+    if (e.at_tick != start) {
+      break;
+    }
+#else
     if (e.at_tick > start) {
       break;
     }
-    ivs_input_apply(&im->obs.input, &e, e.at_tick);
+#endif
+#ifdef IVS_FAULT_INPUT_LOG_SLICE_RELATIVE_TICK
+    /* Named fault INPUT_LOG_SLICE_RELATIVE_TICK (plan 04-11, D-16): the log records the tick
+     * relative to the call's entry, so the chain depends on how the host slices. */
+    tick -= entry;
+#endif
+    ivs_input_apply(&im->obs.input, &e, tick);
     next++;
   }
+#ifdef IVS_FAULT_INPUT_STATIC_CARRY
+  memcpy(im->obs.input.words, ivs_input_carry, sizeof ivs_input_carry);
+#endif
   (void)entry;
   return next;
 }

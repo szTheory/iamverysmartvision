@@ -390,7 +390,9 @@ done:
   return rc;
 }
 
-/* BAD_ARG (INPUT_EVENT_COUNT): event_count 65537 and UINT32_MAX with a non-NULL array (never read). */
+/* BAD_ARG (INPUT_EVENT_COUNT): event_count 65537 and UINT32_MAX with a non-NULL array (never read).
+ * The report gets the detail wherever it lies relative to the array: a count above the cap names
+ * no span (found on gcc/Linux, where the stack report lay inside 2^32 x 32 bytes from &ev). */
 static int ri_refuse_count_cap(void)
 {
   ivs_input_event ev;
@@ -403,6 +405,19 @@ static int ri_refuse_count_cap(void)
   RI_CHECK(ri_refused(&x, x.m, &q, NULL, IVS_E_BAD_ARG, IVS_REASON_INPUT_EVENT_COUNT, IVS_INPUT_INDEX_NONE));
   ri_req(&q, 0u, 1000u, &ev, UINT32_MAX);
   RI_CHECK(ri_refused(&x, x.m, &q, NULL, IVS_E_BAD_ARG, IVS_REASON_INPUT_EVENT_COUNT, IVS_INPUT_INDEX_NONE));
+  /* The report placed right after the array, inside what 65537 events would cover: detail still
+   * written, on every data layout. */
+  {
+    struct {
+      ivs_input_event ev;
+      ivs_run_report rep;
+    } pair;
+    memset(&pair, 0, sizeof pair);
+    pair.rep.struct_size = (uint32_t)sizeof pair.rep;
+    ri_req(&q, 0u, 1000u, &pair.ev, IVS_INPUT_EVENTS_MAX + 1u);
+    RI_CHECK(ivs_machine_run(x.m, &q, &pair.rep) == IVS_E_BAD_ARG);
+    RI_CHECK(pair.rep.refusal_reason == IVS_REASON_INPUT_EVENT_COUNT);
+  }
   rc = IVS_TEST_PASS;
 done:
   ivs_ms_free(&x);

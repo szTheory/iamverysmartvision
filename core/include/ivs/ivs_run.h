@@ -228,8 +228,9 @@ typedef struct ivs_run_report {
  *                 word with IVS_CTRL_RESERVED_MASK set (INPUT_CONTROL_RESERVED).
  * A refusal writes only struct_size and refusal_reason (and, for the last two stages,
  * input_failing_index), and only into a report that is not the cause, does not overlap the bytes
- * the handle names and does not overlap an output buffer or the event array; it writes no byte
- * into either buffer or the array. */
+ * the handle names and does not overlap an output buffer or the event array (the event_count * 32
+ * bytes at events, considered only for an event_count within IVS_INPUT_EVENTS_MAX); it writes no
+ * byte into either buffer or the array. */
 IVS_API ivs_status ivs_machine_run(ivs_machine *m, const ivs_run_request *req, ivs_run_report *rep);
 
 /* The static, constant name of a stop reason ("IVS_STOP_TARGET", ...) or "IVS_STOP_UNKNOWN" for

@@ -58,7 +58,8 @@
  * The file holds no static or global state.
  * Named faults (plan 04-07, D-07): RUN_TARGET_UNCHECKED, RUN_STOP_BEFORE_OVERSHOOT,
  * RUN_FAULT_STEPS; (plan 04-09, D-07): RUN_BUDGET_CARRY, the only static, inside its fault block;
- * (plan 04-10, D-06, D-07): RUN_CAPACITY_AFTER_STEP, OUTBUF_PARTIAL_WRITE. */
+ * (plan 04-10, D-06, D-07): RUN_CAPACITY_AFTER_STEP, OUTBUF_PARTIAL_WRITE; (plan 04-11, D-05,
+ * D-16): INPUT_APPLY_AT_RUN_START, RUN_EVENTS_UNCHECKED. */
 #include "common/ivs_prelude.h"
 
 #include "ivs/ivs.h"
@@ -154,10 +155,15 @@ static uint32_t ivs_bound_spans_meet(const void *a, uint64_t na, const void *b, 
   return (uint64_t)(y - x) < na ? 1u : 0u;
 }
 
-/* The bytes the event array of req names: event_count * 32 in 64 bits (at most about 2^37, so it
- * cannot wrap whatever the count; the 65536 cap bounds it further once the slot has run). */
+/* The bytes the event array of req names: event_count * 32 in 64 bits, or 0 when event_count is
+ * above IVS_INPUT_EVENTS_MAX (such a count names no array the core honours: it is refused
+ * INPUT_EVENT_COUNT before any overlap test, and the report rule must not depend on where a span
+ * of up to 2^37 bytes happens to reach in the caller's address space). */
 static uint64_t ivs_bound_events_bytes(const ivs_run_request *req)
 {
+  if (req->event_count > IVS_INPUT_EVENTS_MAX) {
+    return 0u;
+  }
   return (uint64_t)req->event_count * (uint64_t)sizeof(ivs_input_event);
 }
 
@@ -220,12 +226,18 @@ static uint32_t ivs_bound_events(const struct ivs_machine *im, const ivs_run_req
   if (req->event_count > IVS_INPUT_EVENTS_MAX) {
     return IVS_REASON_INPUT_EVENT_COUNT;
   }
+#ifndef IVS_FAULT_RUN_EVENTS_UNCHECKED /* named fault RUN_EVENTS_UNCHECKED: the overlap test is skipped */
   if (ivs_bound_spans_meet(req->events, n, im, sizeof *im) != 0u ||
       ivs_bound_spans_meet(req->events, n, rep, sizeof *rep) != 0u ||
       ivs_bound_spans_meet(req->events, n, req->video, req->video_capacity) != 0u ||
       ivs_bound_spans_meet(req->events, n, req->audio, req->audio_capacity) != 0u) {
     return IVS_REASON_INPUT_EVENTS_OVERLAP;
   }
+#else
+  (void)n;
+  (void)im;
+  (void)rep;
+#endif
   return IVS_REASON_NONE;
 }
 
@@ -383,6 +395,13 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
     plan.target = plan.target > ivs_bound_carry_ticks ? plan.target - ivs_bound_carry_ticks : 0u;
   }
 #endif
+#ifdef IVS_FAULT_INPUT_APPLY_AT_RUN_START
+  /* Named fault INPUT_APPLY_AT_RUN_START (plan 04-11, D-16): every event the call's range reaches
+   * (at_tick below the target) is applied once at call start instead of before each unit. */
+  if (plan.target > 0u) {
+    consumed = ivs_input_apply_due(im, plan.events, plan.event_count, 0u, plan.target - 1u, entry);
+  }
+#endif
   while (im->time_ticks < plan.target) {
     ivs_cp1610_result unit;
     uint64_t before = im->time_ticks;
@@ -401,7 +420,9 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
     }
     /* A unit will begin at before: apply every due event first (A-04, D-14); the step seam then
      * sets the input floor to before + 1. */
+#ifndef IVS_FAULT_INPUT_APPLY_AT_RUN_START
     consumed = ivs_input_apply_due(im, plan.events, plan.event_count, consumed, before, entry);
+#endif
     memset(&unit, 0, sizeof unit);
     if (ivs_machine_step_unit_internal(m, &unit) != IVS_OK) {
       internal = 1u; /* the seam refused: nothing changed, the state is the last whole boundary */
