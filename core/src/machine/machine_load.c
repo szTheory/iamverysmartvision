@@ -190,6 +190,7 @@ static ivs_status ivs_load_validate(const ivs_machine *m, uint32_t kind, const u
   uint64_t bound;
   ivs_status st;
   uint32_t occupied;
+  uint32_t powered;
   uint32_t i;
 
   /* 1. BAD_ARG: argument values. */
@@ -218,7 +219,11 @@ static ivs_status ivs_load_validate(const ivs_machine *m, uint32_t kind, const u
     }
   }
   /* 4. BAD_STATE. */
-  if (im->phase != IVS_PHASE_OFF) {
+  powered = (uint32_t)(im->phase != IVS_PHASE_OFF);
+#ifdef IVS_FAULT_STATE_CHECK_OMITTED
+  powered = 0u; /* a load while POWERED goes on to the later stages */
+#endif
+  if (powered != 0u) {
     return ivs_load_refuse(d, IVS_E_BAD_STATE, IVS_REASON_STATE_POWERED, IVS_SEGMENT_NONE, 0u, 0u);
   }
   /* 5. DUPLICATE_LOAD. */

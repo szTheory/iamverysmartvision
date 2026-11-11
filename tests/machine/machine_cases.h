@@ -53,6 +53,11 @@ extern const size_t ivs_machine_reset_count;
 extern const ivs_test_case ivs_machine_iso_cases[];
 extern const size_t ivs_machine_iso_count;
 
+/* Family sweep (plan 03-12, D-12, D-34): oracle-free truncation and byte-change sweeps of the
+ * small positive IVSC fixtures (machine_sweep.c). Robustness, not accuracy. */
+extern const ivs_test_case ivs_machine_sweep_cases[];
+extern const size_t ivs_machine_sweep_count;
+
 /* ---- shared stand-in content (plan 03-12, machine_standin.c) ----
  * Instances in exact-size heap storage and generated images (D-24): IVS_MS_PROG_A and _B are
  * two hand-assembled EXEC programs at $1000 (see machine_standin.c for their decles and the

@@ -55,6 +55,15 @@ uint32_t ivs_machine_span_overlaps(const void *p, size_t n, const void *inst, si
   return (uint32_t)(s - a < (uintptr_t)n);
 }
 
+uint32_t ivs_machine_out_overlaps(const void *out, size_t n, const void *inst, size_t inst_bytes)
+{
+  uint32_t hit = ivs_machine_span_overlaps(out, n, inst, inst_bytes);
+#ifdef IVS_FAULT_OUT_OVERLAP_UNCHECKED
+  hit = 0u; /* an out parameter inside the instance is accepted and written over it */
+#endif
+  return hit;
+}
+
 ivs_status ivs_machine_profile_id_length(const char *id, uint32_t *len)
 {
   uint32_t i;
@@ -145,7 +154,7 @@ ivs_status ivs_machine_create(const ivs_create_options *opts, void *storage, siz
   size_t span = storage_bytes < sizeof(struct ivs_machine) ? storage_bytes : sizeof(struct ivs_machine);
   ivs_status st;
   /* BAD_ARG: an out pointer inside the bytes create may write is refused before *out is set. */
-  if (out != NULL && storage != NULL && ivs_machine_span_overlaps(out, sizeof *out, storage, span) != 0u) {
+  if (out != NULL && storage != NULL && ivs_machine_out_overlaps(out, sizeof *out, storage, span) != 0u) {
     return IVS_E_BAD_ARG;
   }
   if (out != NULL) {
@@ -223,7 +232,7 @@ ivs_status ivs_machine_info(const ivs_machine *m, ivs_info *out)
   ivs_info r;
   uint32_t i;
   if (out == NULL || out->struct_size < (uint32_t)sizeof(ivs_info) ||
-      ivs_machine_span_overlaps(out, sizeof *out, m, sizeof(struct ivs_machine)) != 0u) {
+      ivs_machine_out_overlaps(out, sizeof *out, m, sizeof(struct ivs_machine)) != 0u) {
     return IVS_E_BAD_ARG;
   }
   im = ivs_machine_from_handle(m);

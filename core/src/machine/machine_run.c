@@ -20,16 +20,26 @@
  * (Phase 3 has no device that drives INTR, INTRM, BUSRQ or STPST) and a port whose bus is
  * ivs_memsys_bus on the instance's own memory system. Machine time advances by the unit's
  * elapsed CPU cycles times the profile's ticks_per_cpu_cycle (D2: time is kept in master ticks).
- * The file holds no static or global state: every value lives in the instance (D-07). */
+ * The file holds no static or global state: every value lives in the instance (D-07).
+ * Named faults (plan 03-12): RESET_CLEARS_BEFORE_IMAGE_CHECK, RESET_KEEPS_RAM, STATIC_CARRY. */
 #include "common/ivs_prelude.h"
 
 #include "ivs/ivs.h"
 #include "machine/machine.h"
 
+#ifdef IVS_FAULT_STATIC_CARRY
+/* Named fault STATIC_CARRY: a file-scope static carries the previous unit's cycle count, of
+ * whichever instance stepped last, into the next call's time. */
+static uint32_t ivs_run_carry_cycles;
+#endif
+
 /* The power-on state of every volatile part of the instance (no check, no early return). */
 static void ivs_run_power_on(struct ivs_machine *im)
 {
   size_t ram = sizeof im->mem.sysram;
+#ifdef IVS_FAULT_RESET_KEEPS_RAM
+  ram = 0u; /* system RAM keeps what the program wrote before the power cycle */
+#endif
   memset(im->mem.sysram, 0, ram);
   memset(im->mem.scratchpad, 0, sizeof im->mem.scratchpad);
   memset(im->mem.gram, 0, sizeof im->mem.gram);
@@ -56,6 +66,9 @@ ivs_status ivs_machine_reset(ivs_machine *m, uint32_t kind)
   if (p == NULL) {
     return IVS_E_BAD_HANDLE;
   }
+#ifdef IVS_FAULT_RESET_CLEARS_BEFORE_IMAGE_CHECK
+  ivs_run_power_on(im); /* the volatile state is reset before the images are checked */
+#endif
   /* MISSING_SYSTEM_IMAGE: EXEC, then GROM. */
   if (p->exec.required != 0u && im->slot[IVS_KIND_EXEC - 1u].loaded == 0u) {
     return IVS_E_MISSING_SYSTEM_IMAGE;
@@ -108,6 +121,13 @@ ivs_status ivs_machine_step_unit_internal(ivs_machine *m, ivs_cp1610_result *out
     return st;
   }
   cycles = r.elapsed_cpu_cycles;
+#ifdef IVS_FAULT_STATIC_CARRY
+  {
+    uint32_t previous = ivs_run_carry_cycles;
+    ivs_run_carry_cycles = cycles;
+    cycles = previous;
+  }
+#endif
   im->time_ticks += (uint64_t)cycles * (uint64_t)p->ticks_per_cpu_cycle;
   *out = r;
   return IVS_OK;

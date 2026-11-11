@@ -106,6 +106,13 @@ uint32_t ivs_machine_cart_span_check(uint32_t lo, uint32_t hi, const ivs_ivsc_vi
  * BAD_ARG with nothing written, so a host cannot aim a report into its own instance. */
 uint32_t ivs_machine_span_overlaps(const void *p, size_t n, const void *inst, size_t inst_bytes);
 
+/* The out-parameter rule of create, info and state_digest (plan 03-11): 1 when the n bytes at out
+ * overlap the inst_bytes bytes at inst (ivs_machine_span_overlaps), so the call refuses BAD_ARG
+ * with nothing written. One function so the named fault OUT_OVERLAP_UNCHECKED (plan 03-12)
+ * removes the rule from all three calls at once; the load report keeps its own check and fault
+ * (REPORT_INSIDE_UNCHECKED). */
+uint32_t ivs_machine_out_overlaps(const void *out, size_t n, const void *inst, size_t inst_bytes);
+
 /* ---- internal step seam (D-05, D-20, plan 03-12, machine_run.c) ----
  * Steps one CPU unit of a POWERED instance through its memory system: the CPU configuration
  * comes from the profile registry (cpu.interrupt_accept_clears_intff,

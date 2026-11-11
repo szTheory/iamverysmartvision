@@ -382,3 +382,15 @@ machine.prec.bad-state-over-duplicate
 machine.prec.reset-arg-over-handle
 machine.prec.reset-arg-over-missing
 machine.prec.reset-handle-over-missing
+# Family sweep (plan 03-12, D-12, D-34): robustness, not accuracy. One case per positive IVSC
+# fixture of at most 256 bytes in the cartridge span: every truncation and every single-byte
+# change to 0x00 and 0xFF either loads (then unload returns the fresh state) or is refused with
+# an IVSC refusal status and byte-identical storage. bases-complete pins the base list to the
+# fixture table.
+machine.sweep.B01-segs-16
+machine.sweep.P01-min
+machine.sweep.P02-two-segments
+machine.sweep.P03-word-patterns
+machine.sweep.P04-adjacent
+machine.sweep.P06-partial
+machine.sweep.bases-complete

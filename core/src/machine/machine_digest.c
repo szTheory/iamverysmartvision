@@ -261,7 +261,7 @@ ivs_status ivs_machine_state_digest(const ivs_machine *m, uint32_t domain, uint8
   uint32_t i;
   uint8_t with_id = 1u;
   if (out_sha256 == NULL || domain > IVS_DIGEST_INSTANCE ||
-      ivs_machine_span_overlaps(out_sha256, 32u, m, sizeof(struct ivs_machine)) != 0u) {
+      ivs_machine_out_overlaps(out_sha256, 32u, m, sizeof(struct ivs_machine)) != 0u) {
     return IVS_E_BAD_ARG;
   }
   im = ivs_machine_from_handle(m);

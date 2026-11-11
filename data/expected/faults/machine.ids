@@ -13,14 +13,17 @@
 # refusal statuses of B's loads (CHECK_ORDER_MALFORMED_FIRST answers its OVERSIZED GROM load
 # MALFORMED; DUPLICATE_REPLACES accepts its duplicate EXEC load), and
 # machine.reset.power-cycle-one-way compares the instance after refused loads
-# (LOAD_LEN_BEFORE_CHECK writes the slot length first).
+# (LOAD_LEN_BEFORE_CHECK writes the slot length first). Family sweep (plan 03-12) compares the
+# instance after every refused load and the fresh state after every accepted load's unload:
+# LOAD_LEN_BEFORE_CHECK and UNLOAD_KEEPS_IMAGE fail it by their own rule, and INIT_SKIPS_MEMSET
+# refuses each sweep base (poisoned slot records) (machine.sweep.).
 # Load faults (plan 03-10), one site each in core/src/machine/machine_load.c:
 # CART_REPORT_TRAILER_DIGEST reports the trailer, so every case that compares a cartridge's
 # reported or expected digest fails; UNLOAD_KEEPS_IMAGE leaves the memsys words of every kind, so
 # every unload-to-fresh case fails; CART_SPAN_END_INCLUSIVE is reached only through the layer-2
 # seam (the registered span ends at $FFFF, where the parser's address-wrap check fires first).
 CREATE_MAGIC_BEFORE_PROFILE_CHECK machine.refuse.create.unknown-profile machine.refuse.create. machine.create.ok-info-destroy
-INIT_SKIPS_MEMSET machine.create.poisoned-storage machine.create.poisoned-storage|machine.create.ok-info-destroy|machine.digest.|machine.load.|machine.refuse.load.|machine.refuse.unload.|machine.prec.|machine.reset.|machine.iso.|machine.refuse.reset. machine.refuse.create.null-opts
+INIT_SKIPS_MEMSET machine.create.poisoned-storage machine.create.poisoned-storage|machine.create.ok-info-destroy|machine.digest.|machine.load.|machine.refuse.load.|machine.refuse.unload.|machine.prec.|machine.reset.|machine.iso.|machine.refuse.reset.|machine.sweep. machine.refuse.create.null-opts
 DESTROY_NO_SCRUB machine.destroy.scrubs machine.destroy.|machine.refuse.destroy.twice|machine.refuse.info.destroyed|machine.refuse.digest.destroyed|machine.refuse.load.exec.destroyed|machine.refuse.unload.exec.destroyed|machine.create.ok-info-destroy|machine.create.static-storage|machine.refuse.reset.destroyed|machine.prec.reset-handle-over-missing|machine.reset.step-refusals machine.create.requirements
 DIGEST_SKIPS_RAM machine.digest.sensitivity-mem machine.digest. machine.create.ok-info-destroy
 DIGEST_SKIPS_IMAGE_TABLE machine.digest.sensitivity-images machine.digest. machine.create.ok-info-destroy
@@ -28,7 +31,7 @@ DIGEST_LITTLE_ENDIAN machine.digest.stream-cpu-synthetic machine.digest. machine
 DIGEST_INCLUDES_PADDING machine.digest.padding-ignored machine.digest. machine.create.ok-info-destroy
 DOMAIN_ID_DROPPED machine.digest.composite-framing machine.digest. machine.create.ok-info-destroy
 CART_REPORT_TRAILER_DIGEST machine.load.cart-whole-digest-not-trailer machine.load.cart-ok|machine.load.cart-whole-digest-not-trailer|machine.load.expect- machine.create.ok-info-destroy
-UNLOAD_KEEPS_IMAGE machine.load.exec-unload-fresh machine.load. machine.create.ok-info-destroy
+UNLOAD_KEEPS_IMAGE machine.load.exec-unload-fresh machine.load.|machine.sweep. machine.create.ok-info-destroy
 CART_SPAN_END_INCLUSIVE machine.load.cart-span-end machine.load.cart-span-end machine.create.ok-info-destroy
 # Ordering and typing faults (plan 03-11, D-10, D-37), one site each in machine_load.c, each
 # caught by a named row of the refusal matrix (whole-storage memcmp, digest, status, detail):
@@ -43,7 +46,7 @@ CART_SPAN_END_INCLUSIVE machine.load.cart-span-end machine.load.cart-span-end ma
 # inside the instance, which is then written over it. The three faults that change a refused
 # load's instance bytes also fail family load's refusal cases (machine.load.), whose helper
 # compares every instance byte: their own rule.
-LOAD_LEN_BEFORE_CHECK machine.refuse.load.exec.oversized-by-one.f machine.refuse.load.|machine.prec.|machine.load.|machine.reset.power-cycle-one-way machine.load.exec-ok
+LOAD_LEN_BEFORE_CHECK machine.refuse.load.exec.oversized-by-one.f machine.refuse.load.|machine.prec.|machine.load.|machine.reset.power-cycle-one-way|machine.sweep. machine.load.exec-ok
 LOAD_TABLE_BEFORE_VALIDATE machine.refuse.load.grom.short-by-one.f machine.refuse.load.|machine.prec.|machine.load. machine.load.exec-ok
 DUPLICATE_REPLACES machine.refuse.load.exec.duplicate-load.s machine.refuse.load.|machine.prec.|machine.iso.cross-load machine.load.order-free
 LEN_TRUNCATED_32 machine.refuse.load.exec.len-wrap-heap.f machine.refuse.load.exec.len-wrap- machine.load.exec-ok
@@ -52,3 +55,20 @@ CHECK_ORDER_MALFORMED_FIRST machine.prec.oversized-over-malformed machine.refuse
 CART_COPY_BEFORE_VALIDATE machine.refuse.load.cart.feature-bit-0.f machine.refuse.load.cart.|machine.prec.cart-|machine.load.cart-|machine.load.expect-mismatch machine.load.exec-ok
 OVERLAP_BEFORE_LENGTH machine.prec.oversized-over-overlap machine.refuse.load.|machine.prec. machine.load.exec-ok
 REPORT_INSIDE_UNCHECKED machine.refuse.load.exec.report-inside.f machine.refuse.load.exec.report-inside.|machine.refuse.load.cart.report-inside. machine.load.exec-ok
+# Lifecycle and isolation faults (plan 03-12, D-37): STATE_CHECK_OMITTED (machine_load.c) lets a
+# load while POWERED go on to the later stages (the cartridge row loads; the EXEC and GROM rows
+# reach DUPLICATE_LOAD; power-cycle-one-way's cartridge load reaches MALFORMED);
+# RESET_CLEARS_BEFORE_IMAGE_CHECK (machine_run.c) applies the power-on state before the slot
+# check, so a refused reset arms the CPU; STATIC_CARRY (machine_run.c) carries the previous unit's
+# cycle count, of whichever instance stepped last, through a file-scope static into the next
+# call's time: only behaviour can catch it (fault builds are not under the c-purity writable-data
+# rule, D-07), so every case that compares time or a digest of stepped instances fails, the
+# interleaved isolation case first; RESET_KEEPS_RAM (machine_run.c) skips the system RAM fill, so
+# a power cycle keeps the program's writes. OUT_OVERLAP_UNCHECKED (machine.c, plan 03-12 addition
+# closing a plan 03-11 open item) drops the out-parameter rule of create, info and state_digest,
+# which then write into the instance.
+STATE_CHECK_OMITTED machine.refuse.load.cart.powered.w machine.refuse.load.|machine.prec.bad-state-over-duplicate|machine.reset.power-cycle-one-way machine.load.exec-ok
+RESET_CLEARS_BEFORE_IMAGE_CHECK machine.refuse.reset.no-exec machine.refuse.reset. machine.reset.step-program
+STATIC_CARRY machine.iso.interleaved-equals-sequential machine.iso.|machine.reset. machine.reset.iab-reset-vector
+RESET_KEEPS_RAM machine.reset.equivalence machine.reset.equivalence machine.reset.step-program
+OUT_OVERLAP_UNCHECKED machine.refuse.info.out-inside machine.refuse.info.out-inside|machine.refuse.digest.out-inside|machine.refuse.create.out-inside-storage machine.create.ok-info-destroy

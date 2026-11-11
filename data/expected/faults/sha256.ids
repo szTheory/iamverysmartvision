@@ -9,10 +9,13 @@
 # sealed at authoring time by `cmake -E sha256sum`; under these three faults the core refuses that
 # trailer, so the prior cannot be built (machine.refuse.load., machine.refuse.unload.,
 # machine.prec.), again their own rule; plan 03-12's reset row no-exec-with-cart builds the same
-# prior (machine.refuse.reset.).
-SHA_K_WRONG machine.sha256.fips-abc machine.sha256.|machine.digest.|machine.load.|machine.refuse.load.|machine.refuse.unload.|machine.refuse.reset.|machine.prec. machine.sha256.split-every-offset
-SHA_ROTATE_WRONG machine.sha256.fips-448 machine.sha256.|machine.digest.|machine.load.|machine.refuse.load.|machine.refuse.unload.|machine.refuse.reset.|machine.prec. machine.sha256.ctx-copy-snapshot
-SHA_LENGTH_LE machine.sha256.pat-0001 machine.sha256.|machine.digest.|machine.load.|machine.refuse.load.|machine.refuse.unload.|machine.refuse.reset.|machine.prec. machine.sha256.fips-empty
-SHA_PAD_BOUNDARY machine.sha256.pat-0056 machine.sha256. machine.sha256.pat-0057
-SHA_FINAL_BLOCK_DROPPED machine.sha256.pat-0063 machine.sha256. machine.sha256.pat-0055
+# prior (machine.refuse.reset.). Family sweep (plan 03-12) requires each authored-trailer fixture
+# base to load before it mutates it: the same three faults refuse every base (machine.sweep.),
+# and SHA_PAD_BOUNDARY and SHA_FINAL_BLOCK_DROPPED, whose padding errors hit the 184-byte trailer
+# preimage of ivsc.B01-segs-16, refuse that base (machine.sweep.B01-segs-16); their own rule.
+SHA_K_WRONG machine.sha256.fips-abc machine.sha256.|machine.digest.|machine.load.|machine.refuse.load.|machine.refuse.unload.|machine.refuse.reset.|machine.prec.|machine.sweep. machine.sha256.split-every-offset
+SHA_ROTATE_WRONG machine.sha256.fips-448 machine.sha256.|machine.digest.|machine.load.|machine.refuse.load.|machine.refuse.unload.|machine.refuse.reset.|machine.prec.|machine.sweep. machine.sha256.ctx-copy-snapshot
+SHA_LENGTH_LE machine.sha256.pat-0001 machine.sha256.|machine.digest.|machine.load.|machine.refuse.load.|machine.refuse.unload.|machine.refuse.reset.|machine.prec.|machine.sweep. machine.sha256.fips-empty
+SHA_PAD_BOUNDARY machine.sha256.pat-0056 machine.sha256.|machine.sweep.B01-segs-16 machine.sha256.pat-0057
+SHA_FINAL_BLOCK_DROPPED machine.sha256.pat-0063 machine.sha256.|machine.sweep.B01-segs-16 machine.sha256.pat-0055
 SHA_INIT_NO_RESET machine.sha256.init-resets machine.sha256. machine.sha256.fips-abc
