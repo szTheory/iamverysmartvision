@@ -174,3 +174,93 @@ not settle it; they compare the runner before and after under similar load.
   cold C build, and every later step depends on it. Not applied: ccache / `actions/cache`
   (the policy bans them while the budget is met), background C build (nothing to overlap).
 - Revisit only if a later hosted run exceeds 40 s or a phase adds a step over 5 s.
+
+## 2026-11-11 — local measurement 1 of Phase 3 (plan 03-02, D-38 / A-07)
+
+First real second fault suite: `data/expected/faults/sha256.ids` (6 faults, suite `machine`),
+73 fault runs in total. Local figures only (owner laptop, macOS arm64, AppleClang, warm build
+trees, so `c-build` is 0). The host was heavily loaded the whole time: 1-minute load average
+8.9 to 13.1 (26 sessions). Every figure below is load-contaminated and is not a hosted
+number. Hosted figures are recorded by the orchestrator after the phase PR's CI (agents never
+call `gh`).
+
+### Gate before the lever (`sh tools/gate.sh`, three runs)
+
+| Run | Load at start | `gate-time total=` | c-build | c-faults | faults-verdict | c-tests | controls | controls-wait |
+|-----|---------------|--------------------|---------|----------|----------------|---------|----------|---------------|
+| 1 | 9.30 | 20 | 0 | 2 | 2 | 1 | 12 | 0 |
+| 2 | 9.40 | 22 | 0 | 2 | 3 | 1 | 12 | 0 |
+| 3 | 12.83 | 26 | 0 | 2 | 4 | 1 | 14 | 0 |
+
+Median 22 s (planning baseline 29 s). All three: `gate: PASS steps=24/24 controls=196/196
+... faults=73/73`.
+
+### Projection of the phase-end fault cost (step 1b, W7)
+
+Measured plain runs (median of 20 runs each): `build/release/tests/ivs_tests_machine` 0.0056 s
+(family sha256 only, 24 cases including the 1,000,000-byte vector); one `machine` fault
+executable (`ivs_fault_SHA_K_WRONG`) 0.0057 s; one `cpu-vectors` fault executable
+(`ivs_fault_ADD_OVERFLOW`) 0.019 s.
+
+Per-family budget for the plain release run of suite `machine` once the heavy families exist
+(RESEARCH Section C item 1):
+
+| Family | Budget s |
+|--------|----------|
+| refusal matrix | 0.06 |
+| sweeps | 0.08 |
+| isolation | 0.05 |
+| digest sensitivity | 0.03 |
+| everything else (sha256 measured 0.006) | 0.03 |
+| **suite machine total** | **0.25** |
+
+| Fault group (phase end, plan 03-12) | Faults | Per run s | Serial s |
+|-------------------------------------|--------|-----------|----------|
+| suite `machine` (sha256 6 + machine about 23) | 29 | 0.25 (budget) | 7.25 |
+| suite `memmap` (65,536-address dump) | 11 | 0.06 (0.05 dump + start) | 0.66 |
+| suite `ivsc` | 6 | 0.03 (assumed) | 0.18 |
+| suite `cpu-vectors` (unchanged) | 67 | 0.019 (measured) | 1.29 |
+| **projected phase-end `c-faults` run time, serial** | **113** | | **9.4** |
+
+The projection puts phase-end `c-faults` above the 8 s trigger, so the lane lever applies.
+With 4 lanes the run part projects to about 2.4 s locally; on a 4-vCPU hosted runner the
+fault lanes compete with the overlapped control lanes, so expect less than a 4x gain there.
+Later plans that add a heavy family record its measured plain release time in their SUMMARY
+against these budgets.
+
+### Lever decision
+
+- Trigger 1 (median above 29 + 5 s on a host with load below 4): not evaluable (load 9 to 13)
+  and not met (median 22 s).
+- Trigger 2 (`c-faults` alone above 5 s): not met (2 s).
+- Trigger 3 (projected phase-end `c-faults` above 8 s): **met** (9.4 s serial).
+- **lane lever: applied** (projection trigger). `tools/check/steps/c-faults.sh` runs the fault
+  executables in at most 4 lanes, copying the `run-controls.sh` pattern: ids are listed in
+  file order and sorted id order, lane i runs every 4th id with its own log, results go to the
+  same `<results>/faults/<ID>/<suite>.txt` paths, and findings and the pass line are printed
+  afterwards in listed order with unchanged tokens.
+
+### After the lever
+
+Step alone (`dash tools/check/steps/c-faults.sh`, warm, median of 5): serial 1.63 s, 4 lanes
+0.69 s, both `-- c-faults pass fault-runs=73`.
+
+| Run | Load at start | `gate-time total=` | c-build | c-faults | faults-verdict | c-tests | controls | controls-wait |
+|-----|---------------|--------------------|---------|----------|----------------|---------|----------|---------------|
+| sh 1 | 8.89 | 20 | 0 | 1 | 3 | 1 | 12 | 0 |
+| sh 2 | 10.04 | 19 | 0 | 1 | 3 | 1 | 11 | 0 |
+| sh 3 | 10.62 | 21 | 0 | 1 | 3 | 1 | 12 | 0 |
+| dash | 10.97 | 22 | 0 | 1 | 3 | 1 | 12 | 0 |
+
+Median (sh) 20 s. Every run: `gate: PASS steps=24/24 controls=196/196 ... faults=73/73`.
+`faults-verdict` (2 to 4 s at 73 faults) is now the larger of the two fault steps; it scales
+with the fault count, so watch it at the next measurement point.
+
+### Budget and next measurements
+
+- D-38 / A-07 re-baseline the hosted gate budget from 30 s to 40 s, with the revisit trigger
+  moved from 40 s to 50 s; the revisit is part of the phase close-out (plan 03-14).
+- Second measurement: after the refusal matrix (plan 03-11). A-07 named plan 03-07, which in
+  this decomposition is the IVSC parser plan, so the second point moved to 03-11 and the third
+  is the 03-14 close-out.
+- Hosted queue, setup and gate figures for the phase PR are recorded by the orchestrator.
