@@ -1,0 +1,4 @@
+# Hand-assembled listings (plan 04-15, D-26): `<id> <kind> <path>`, the exact set the listing
+# step checks; kind is boot-stub (also the D-29 anti-HLE guards) or cart. Every tracked
+# *.listing.txt outside tools/check/controls/ must be listed here.
+boot-stub boot-stub fixtures/FX-boot-stub/boot-stub.listing.txt

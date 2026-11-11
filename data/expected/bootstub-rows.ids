@@ -1,0 +1,11 @@
+# Rows the project boot stub may use (plan 04-15, D-29 anti-HLE guard), as written in
+# data/expected/cp1610-rows.ids. A stub row outside this set fails the listing step
+# (bootstub-row): the stub provides no routine or service (docs/diagnostics.md).
+HLT
+DIS
+EIS
+MVII
+MVO
+TSTR
+B
+J
