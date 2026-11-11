@@ -15,3 +15,6 @@ api-call-own-line
 api-stop-unpinned
 api-stop-renumbered
 api-reason-unpinned
+# Input bit pins (plan 04-13, D-16).
+api-input-bit-duplicate
+api-input-bit-unpinned
