@@ -174,7 +174,7 @@ Plans:
 - [ ] 03-08-PLAN.md — Seeded IVSC fuzzing, 6 parser faults, optional libFuzzer recipe, `.ivsc` hygiene, CL-0007
 - [ ] 03-09-PLAN.md — Public machine headers, caller-storage create/destroy/info, status names and pin, canonical state digest, 8 faults
 - [ ] 03-10-PLAN.md — Typed load/unload of EXEC, GROM and cartridge with validate-then-commit, reports and the two-digest pass, 3 faults
-- [ ] 03-11-PLAN.md — Refusal matrix over prior states, precedence rows, layer-2 cartridge fixtures, 7 ordering faults, second gate measurement
+- [ ] 03-11-PLAN.md — Refusal matrix over prior states, precedence rows, layer-2 cartridge fixtures, 8 ordering faults, second gate measurement
 - [ ] 03-12-PLAN.md — Power-on reset with missing-system-image refusal, internal step seam, isolation tests, sweeps, headers suite, 4 faults
 - [ ] 03-13-PLAN.md — API effect table and the `api-effects` gate step, 8 controls
 - [ ] 03-14-PLAN.md — SC1-SC5 evidence table, record reconciliation, D-38 budget re-baseline, honest caveats

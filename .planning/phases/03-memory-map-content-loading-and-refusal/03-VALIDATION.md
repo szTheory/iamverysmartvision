@@ -29,7 +29,7 @@ created: "2026-11-10"
 
 - **After every task commit:** dev-preset quick run of the touched family (`--only <prefix>`) plus the touched step script or control runner
 - **After every plan (each plan is its own wave):** `sh tools/gate.sh` and `dash tools/gate.sh`, both ending `gate: PASS` with exact inventories
-- **Before `/gsd-verify-work`:** gate green under sh and dash with the final counts of plan 03-14 (`steps=26/26`, `controls=221/221`, `faults=112/112`, `tests-missing=0`)
+- **Before `/gsd-verify-work`:** gate green under sh and dash with the final counts of plan 03-14 (`steps=26/26`, `controls=221/221`, `faults=113/113`, `tests-missing=0`)
 - **Max feedback latency:** 40 seconds (hosted budget, D-38)
 
 ---
@@ -49,11 +49,11 @@ created: "2026-11-10"
 | 03-03-T2 | 03 | 3 | API-06 (A-06) | T-03-07 | controls (4) | controls (200/200); gate | ⬜ pending |
 | 03-03-T3 | 03 | 3 | API-01 (D-07) | T-03-09, T-03-10 | purity rule + controls (2) | controls (202/202); gate + dash (`purity-selftest=5/5`) | ⬜ pending |
 | 03-04-T1 | 04 | 4 | MEM-01 | T-03-11, T-03-14 | generator + decode (tracer) | quick `memmap.anchor.exec-lo`; gate | ⬜ pending |
-| 03-04-T2 | 04 | 4 | MEM-01, MEM-02 | T-03-12, T-03-13 | unit (regions, width, gates, bus) | quick both presets | ⬜ pending |
+| 03-04-T2 | 04 | 4 | MEM-01, MEM-02 | T-03-12, T-03-13, T-03-14 | records (C60-C62, C21, C51) + all descriptors + unit (regions, width, gates, bus) | quick both presets; gate | ⬜ pending |
 | 03-04-T3 | 04 | 4 | MEM-01, MEM-02 | T-03-11, T-03-12 | 6 faults incl. core-consumed GEN | gate + dash (`faults=79/79`) | ⬜ pending |
 | 03-05-T1 | 05 | 5 | MEM-01 | T-03-15, T-03-16, T-03-17 | static step (tracer) | gate (`steps=25/25`, `-- memmap pass literal-rows=`) | ⬜ pending |
 | 03-05-T2 | 05 | 5 | MEM-01 | T-03-15, T-03-16 | controls (8) | controls (210/210); gate + dash | ⬜ pending |
-| 03-06-T1 | 06 | 6 | MEM-01 | T-03-18 | dump producer + pure consumer (tracer) | quick `memmap.dump.`; gate (`dump-lines=`) | ⬜ pending |
+| 03-06-T1 | 06 | 6 | MEM-01 | T-03-18 | dump producer (behavioural widths/mirrors per row class, declarative labels) + pure consumer (tracer) | quick `memmap.dump.`; gate (`dump-lines=`) | ⬜ pending |
 | 03-06-T2 | 06 | 6 | MEM-02 | T-03-19 | generated boundary probes + 5 faults | quick `memmap.row` both presets; gate (`faults=84/84`) | ⬜ pending |
 | 03-06-T3 | 06 | 6 | MEM-01 | T-03-18, T-03-20 | controls (3) + claim CL-0006 | controls (213/213); gate + dash (`claims=6`) | ⬜ pending |
 | 03-07-T1 | 07 | 7 | MEM-05 | T-03-21, T-03-22 | parser (tracer, P01) | quick `ivsc.P01-min`; gate | ⬜ pending |
@@ -69,16 +69,16 @@ created: "2026-11-10"
 | 03-10-T2 | 10 | 10 | MEM-03, MEM-05 | T-03-34, T-03-35 | GROM, cartridge, layer 2, A-04, options, order-free | quick both presets (`machine`, `ivsc`) | ⬜ pending |
 | 03-10-T3 | 10 | 10 | MEM-03 | T-03-35 | 3 faults | gate + dash (`faults=101/101`) | ⬜ pending |
 | 03-11-T1 | 11 | 11 | MEM-04 | T-03-37 | full-oracle refusal row x 3 priors (tracer) | quick `machine.refuse.load.exec.oversized-by-one`; gate | ⬜ pending |
-| 03-11-T2 | 11 | 11 | MEM-04, MEM-05, API-06 | T-03-37, T-03-38, T-03-39, T-03-40 | refusal matrix, prec rows, L/B/X fixtures, manifest refresh | quick `machine.refuse.`, `machine.prec.`, ivsc; helper `--check`; release ctest | ⬜ pending |
-| 03-11-T3 | 11 | 11 | MEM-04 | T-03-37, T-03-38, T-03-39 | 7 ordering faults + measurement 2 | gate + dash (`faults=108/108`) | ⬜ pending |
+| 03-11-T2 | 11 | 11 | MEM-04, MEM-05, API-06 | T-03-37, T-03-38, T-03-39, T-03-40 | refusal matrix (lying lengths in heap and inside-instance placements, A-08a), prec rows incl. oversized-over-overlap, L/B/X fixtures, manifest refresh | quick `machine.refuse.`, `machine.prec.`, ivsc; helper `--check`; release ctest | ⬜ pending |
+| 03-11-T3 | 11 | 11 | MEM-04 | T-03-37, T-03-38, T-03-39 | 8 ordering faults + measurement 2 | gate + dash (`faults=109/109`) | ⬜ pending |
 | 03-12-T1 | 12 | 12 | API-01 | T-03-42 | reset + step seam program (tracer) | quick `machine.reset.`; gate | ⬜ pending |
 | 03-12-T2 | 12 | 12 | API-01, MEM-04 | T-03-41, T-03-42, T-03-43 | reset refusals, powered prior, isolation | quick `machine.iso.`, `machine.refuse.reset.` both presets | ⬜ pending |
-| 03-12-T3 | 12 | 12 | API-01, MEM-04, API-06 | T-03-44, T-03-45 | sweeps, headers suite, 4 faults | quick (`machine`, `headers`), `dash tests/headers-tap.sh`; gate + dash (`faults=112/112`) | ⬜ pending |
+| 03-12-T3 | 12 | 12 | API-01, MEM-04, API-06 | T-03-44, T-03-45 | sweeps, headers suite, 4 faults | quick (`machine`, `headers`), `dash tests/headers-tap.sh`; gate + dash (`faults=113/113`) | ⬜ pending |
 | 03-13-T1 | 13 | 13 | API-06 | T-03-46, T-03-47, T-03-48 | static effect-table step (tracer) | step run (`api-calls=10`); gate (`steps=26/26`) | ⬜ pending |
 | 03-13-T2 | 13 | 13 | API-06 | T-03-46, T-03-47, T-03-48 | controls (8) | controls (221/221); gate + dash | ⬜ pending |
 | 03-13-T3 | 13 | 13 | API-06 | T-03-47 | return-site audit | gate + dash (`tests-missing=0`) | ⬜ pending |
 | 03-14-T1 | 14 | 14 | all 7 | T-03-49 | phase evidence (tracer) | gate (all final stats) | ⬜ pending |
-| 03-14-T2 | 14 | 14 | MEM-01 (records, D-23, D-24) | T-03-49 | record reconciliation | gate + dash; grep resolving-evidence text | ⬜ pending |
+| 03-14-T2 | 14 | 14 | MEM-01 (records, D-23, D-24) | T-03-49 | per-id record check script (shown to fail first) | `cmake -DROOT="$PWD" -P build/phase3-records.cmake`; gate + dash | ⬜ pending |
 | 03-14-T3 | 14 | 14 | (D-38, A-07) | T-03-50 | budget re-baseline + caveats | gate + dash; grep `hosted gate budget 30 s -> 40 s` | ⬜ pending |
 
 Requirement coverage target:
