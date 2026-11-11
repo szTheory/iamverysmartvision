@@ -2,17 +2,17 @@
 gsd_state_version: "1.0"
 current_phase: 3
 current_phase_name: Memory Map, Content Loading and Refusal
-status: executing
-stopped_at: Completed 03-13-PLAN.md
-last_updated: "2026-11-11T08:46:25.942Z"
+status: verifying
+stopped_at: Completed 03-14-PLAN.md
+last_updated: "2026-11-11T08:58:12.537Z"
 last_activity: 2026-11-11
-last_activity_desc: "Plan 03-13 complete (data/api/api-effects.json: 10 calls, 27 refusal rows with effect none, precedence with A-08 a/b/d/e and pinned_by ids, out-parameter rule; static step api-effects ties it to ivs_status.h, api-statuses.ids, the IVS_API symbol list and the test inventories; 9 controls, steps=26/26 controls=224/224 faults=115/115, gate 25-26 s local; API-06 complete with the OQ-5 residual recorded)"
-state_head: 7498c92055b2d5608c0b1b439eb4c89a42e21019
+last_activity_desc: "Plan 03-14 complete (phase 3 close-out: SC1-SC5 and MEM-01..05, API-01, API-06 mapped to one fresh gate run steps=26/26 controls=224/224 faults=115/115 tests 2094/2094; reset.r7, C32 and C25 record D5 as decided by D-24, checked by a fail-first per-id script; CI-EFFICIENCY D-38/A-07 re-baseline to a 40 s hosted budget with a 50 s trigger; honest caveats recorded; phase ready for verification)"
+state_head: 5b11ef5747db0004e8cd6e2c3a130a3e6b7f5b7b
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 46
-  completed_plans: 45
+  completed_plans: 46
   percent: 25
 ---
 
@@ -29,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 
 Phase: 3 — Memory Map, Content Loading and Refusal
 Plan: 14 of 14
-Status: Ready to execute
-Last activity: 2026-11-11 — Plan 03-13 complete (data/api/api-effects.json: 10 calls, 27 refusal rows with effect none, precedence with A-08 a/b/d/e and pinned_by ids, out-parameter rule; static step api-effects ties it to ivs_status.h, api-statuses.ids, the IVS_API symbol list and the test inventories; 9 controls, steps=26/26 controls=224/224 faults=115/115, gate 25-26 s local; API-06 complete with the OQ-5 residual recorded)
+Status: Phase complete — ready for verification
+Last activity: 2026-11-11 — Plan 03-14 complete (phase 3 close-out: SC1-SC5 and MEM-01..05, API-01, API-06 mapped to one fresh gate run steps=26/26 controls=224/224 faults=115/115 tests 2094/2094; reset.r7, C32 and C25 record D5 as decided by D-24, checked by a fail-first per-id script; CI-EFFICIENCY D-38/A-07 re-baseline to a 40 s hosted budget with a 50 s trigger; honest caveats recorded; phase ready for verification)
 
 Progress: [███░░░░░░░] 25%
 
@@ -98,6 +98,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 03 P11 | 20min | 3 tasks | 21 files |
 | Phase 03 P12 | 15min | 3 tasks | 22 files |
 | Phase 03 P13 | 10min | 3 tasks | 46 files |
+| Phase 03 P14 | 12min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -216,6 +217,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 03]: 03-12: one shared out-parameter check (ivs_machine_out_overlaps) for create, info and state_digest, guarded by fault OUT_OVERLAP_UNCHECKED
 - [Phase 03]: 03-13: data/api/api-effects.json is the D-06 symbol list and D-15 effect table (10 calls, 27 rows, effect none); step api-effects checks it against ivs_status.h, api-statuses.ids, IVS_API lines and the test inventories; OQ-5 residual kept (cited id exists, not that it asserts the status)
 - [Phase 03]: 03-13: ninth token/control api-effects-format for table shape; controls=224/224
+- [Phase 03]: D5 recorded as decided by D-24 in reset.r7, C32 and C25; hardware read-back stays D10, boot stub stays Phase 4
+- [Phase 03]: Hosted gate budget re-baselined 30 s -> 40 s, revisit trigger 50 s (D-38, A-07); no lever applied at phase end
 
 ### Pending Todos
 
@@ -226,7 +229,8 @@ None yet.
 Gates resolved as delegated decisions (owner authorization 2026-11-09, `.planning/AUTONOMY.md`; see PROJECT.md Decision Register):
 - D1 C17 + CMake; D2 master tick (u64); D3 `intv-2609-ntsc-family-p1`; D9 MIT + public repo after hygiene check.
 
-Still open, decided by fan-out protocol when their phase needs them: D4 (Phase 4), D5 (Phase 3/4), D6 (Phase 4/5), D7 (Phase 5), D8 (Phase 6), D12 (Phase 4), D13 (deferred).
+D5 decided 2026-11-11 by the fan-out protocol (Phase 3 D-24, PROJECT.md Decision Register).
+Still open, decided by fan-out protocol when their phase needs them: D4 (Phase 4), D6 (Phase 4/5), D7 (Phase 5), D8 (Phase 6), D12 (Phase 4), D13 (deferred).
 Hard stops (not delegated): D10 physical measurement, D11 owner-local EXEC/GROM runs — evidence marked missing, work continues.
 
 
@@ -247,6 +251,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-11T08:46:25.841Z
-Stopped at: Completed 03-13-PLAN.md
+Last session: 2026-11-11T08:58:12.416Z
+Stopped at: Completed 03-14-PLAN.md
 Resume file: None

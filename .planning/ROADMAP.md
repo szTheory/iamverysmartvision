@@ -61,7 +61,7 @@ exit, until the gate is resolved by its named authority.
 | D2 CPU-cycle unit, time base, crystal constant | Architecture | Delegated decision 2026-11-09 (PROJECT.md) | During Phase 1 (FND-07); before Phase 2 |
 | D3 First profile (2609 NTSC recommended; revision, STIC/PSG parts, power-on policy) | Owner | Delegated decision 2026-11-09 (PROJECT.md) | Before Phase 1 exits |
 | D4 Fixture assembler policy | Owner (licence) + architecture | Open | Before Phase 4 starts |
-| D5 System-image policy and project boot stub | Owner | Open | Phase 3 (refusal); before Phase 4 (boot) |
+| D5 System-image policy and project boot stub | Owner | Delegated decision 2026-11-11 (PROJECT.md; Phase 3 D-24) | Phase 3 (refusal); before Phase 4 (boot) |
 | D6 Controller core-input representation (C14) | Owner + architecture | Open | While Phase 4 shapes the API; before Phase 5 starts |
 | D7 Reference PCM location (C23) | Architecture | Open | During Phase 5 |
 | D8 Raw framebuffer geometry (C10) | Architecture + evidence | Open | During Phase 6 |
@@ -161,7 +161,7 @@ Plans:
   3. Every refusal-matrix row (malformed, oversized, overlapping, out-of-range, missing system image, unknown profile) returns its own typed error, and the state digest is the same before and after the refused load.
   4. The cartridge import format is specified in the project's own words. Its positive, boundary and malformed fixtures pass and are recorded in the fixture manifest.
   5. Two instances created side by side, with different content, step without affecting each other (isolation test). Every API error and refusal has a documented state effect that a test verifies.
-**Plans**: 13/14 plans executed in 14 sequential waves
+**Plans**: 14/14 plans executed in 14 sequential waves
 
 Plans:
 - [x] 03-01-PLAN.md — Fault loop over every `data/expected/faults/*.ids` with a per-suite registry and union site checks (D-37), 4 controls
@@ -177,7 +177,7 @@ Plans:
 - [x] 03-11-PLAN.md — Refusal matrix over prior states, precedence rows, layer-2 cartridge fixtures, 8 ordering faults, second gate measurement
 - [x] 03-12-PLAN.md — Power-on reset with missing-system-image refusal, internal step seam, isolation tests, sweeps, headers suite, 4 faults
 - [x] 03-13-PLAN.md — API effect table and the `api-effects` gate step, 8 controls
-- [ ] 03-14-PLAN.md — SC1-SC5 evidence table, record reconciliation, D-38 budget re-baseline, honest caveats
+- [x] 03-14-PLAN.md — SC1-SC5 evidence table, record reconciliation, D-38 budget re-baseline, honest caveats
 
 ### Phase 4: Headless Runner and Installed Consumer (Slice 0)
 **Goal**: An original, project-authored diagnostic runs from reset through the public API, the headless runner and an independently built installed consumer. Digests are deterministic, failures are reported honestly by kind, and the CI gate mirrors the local command.
@@ -287,7 +287,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 |-------|----------------|--------|-----------|
 | 1. Evidence, Profile and Rights Foundations | 14/14 | Complete    | 2026-11-09 |
 | 2. CP-1610 CPU Core | 18/18 | Complete    | 2026-11-10 |
-| 3. Memory Map, Content Loading and Refusal | 13/14 | In Progress | - |
+| 3. Memory Map, Content Loading and Refusal | 14/14 | In Progress | - |
 | 4. Headless Runner and Installed Consumer (Slice 0) | 0/TBD | Not started | - |
 | 5. Hand Controllers and PSG Sound | 0/TBD | Not started | - |
 | 6. STIC Video First Pass | 0/TBD | Not started | - |
