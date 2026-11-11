@@ -273,7 +273,7 @@ Suggested waves (file-set disjointness): W1 {01, 02}; W2 {03}; W3 {04}; W4 {05};
 
 ### Pitfall 10: goldens and reports can leak private text
 **What goes wrong:** a report echoing a scenario path, an environment value or wall time would put a home path into a tracked golden (`tools/hygiene.sh` home/temp patterns) or make dev and release reports differ.
-**How to avoid:** report keys come from a closed table; echoed tokens are charset-restricted; no wall time (`host.calls` is the only host-dependent key and is excluded from comparisons); scripts never write `/private/tmp/...` or tilde paths into tracked files (use `${TMPDIR:-/tmp}` and `mktemp -d`, as `tools/gate.sh:9` does).
+**How to avoid:** report keys come from a closed table; echoed tokens are charset-restricted; no wall time (`host.calls` is the only host-dependent key and is excluded from comparisons); scripts never write `/private/tmp/<name>` or tilde paths into tracked files (use `${TMPDIR:-/tmp}` and `mktemp -d`, as `tools/gate.sh:9` does).
 
 ### Pitfall 11: the process suite cannot compare dev and release in one ctest run
 **What goes wrong:** `c-tests.sh` builds and tests `dev` then `release` sequentially (`c-tests.sh:38-46`); during the dev run the release binary may not exist.
