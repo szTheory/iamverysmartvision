@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 3
 current_phase_name: Memory Map, Content Loading and Refusal
 status: executing
-stopped_at: Completed 03-08-PLAN.md
-last_updated: "2026-11-11T07:04:14.338Z"
+stopped_at: Completed 03-09-PLAN.md
+last_updated: "2026-11-11T07:23:58.973Z"
 last_activity: 2026-11-11
-last_activity_desc: Plan 03-08 complete (seeded IVSC fuzz family reaching all 18 reasons, 6 IVSC named faults with new fixture N34, optional non-gate libFuzzer target, CL-0007; MEM-05 and MEM-04 stay open)
-state_head: bc5d80318023d51b32e88dd17a952a4603fd3ba9
+last_activity_desc: Plan 03-09 complete (public headers ivs.h/ivs_machine.h, caller-storage create/destroy/info with poisoned-storage refusal rows, status names and pin api-statuses.ids, canonical per-domain state digest with IVSSTATE composite, 8 machine faults, faults=98/98; API-01, API-06, MEM-04 stay open)
+state_head: bed72d78ac3680ee3370ce96434a388760ea57c0
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 46
-  completed_plans: 40
+  completed_plans: 41
   percent: 25
 ---
 
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 3 — Memory Map, Content Loading and Refusal
-Plan: 9 of 14
+Plan: 10 of 14
 Status: Ready to execute
-Last activity: 2026-11-11 — Plan 03-08 complete (seeded IVSC fuzz family reaching all 18 reasons, 6 IVSC named faults with new fixture N34, optional non-gate libFuzzer target, CL-0007; MEM-05 and MEM-04 stay open)
+Last activity: 2026-11-11 — Plan 03-09 complete (public headers ivs.h/ivs_machine.h, caller-storage create/destroy/info with poisoned-storage refusal rows, status names and pin api-statuses.ids, canonical per-domain state digest with IVSSTATE composite, 8 machine faults, faults=98/98; API-01, API-06, MEM-04 stay open)
 
 Progress: [███░░░░░░░] 25%
 
@@ -93,6 +93,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 03 P06 | 12min | 3 tasks | 29 files |
 | Phase 03 P07 | 15min | 3 tasks | 16 files |
 | Phase 03 P08 | 14min | 3 tasks | 14 files |
+| Phase 03 P09 | 16min | 3 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -197,6 +198,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 03]: 03-08: IVSC_COUNT_17 lets count 17 pass the count rule and reads the table as 16 entries so the plain fault build stays in bounds
 - [Phase 03]: 03-08: CL-0007 is source-expectation and provisional (cartridge.slots unknown-default-chosen); IVSC conformance is to the project's own spec
 - [Phase 03]: 03-08: optional libFuzzer target sanitizer list is the cache string IVS_LIBFUZZER_SANITIZERS (default fuzzer,address,undefined; fuzzer,undefined where the ASan runtime hangs)
+- [Phase 03]: 03-09: create zeroes exactly the instance bytes (113,456; 16-aligned); calls taking a handle check BAD_ARG before BAD_HANDLE; create order BAD_ARG, UNSUPPORTED, UNKNOWN_PROFILE, BUFFER_TOO_SMALL
+- [Phase 03]: 03-09: state digest = per-domain SHA-256 from one 49-row field table (u32 count before arrays, profile index serialized as the id, magic/padding declared not serialized) and the IVSSTATE composite; SHA faults K_WRONG/ROTATE_WRONG/LENGTH_LE widened to machine.digest.
 
 ### Pending Todos
 
@@ -228,6 +231,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-11T07:04:14.244Z
-Stopped at: Completed 03-08-PLAN.md
+Last session: 2026-11-11T07:23:58.879Z
+Stopped at: Completed 03-09-PLAN.md
 Resume file: None
