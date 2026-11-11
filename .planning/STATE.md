@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 3
 current_phase_name: Memory Map, Content Loading and Refusal
 status: executing
-stopped_at: Completed 03-11-PLAN.md
-last_updated: "2026-11-11T08:11:20.298Z"
+stopped_at: Completed 03-12-PLAN.md
+last_updated: "2026-11-11T08:32:05.334Z"
 last_activity: 2026-11-11
-last_activity_desc: Plan 03-11 complete (load refusal matrix: 163 machine.refuse.load cases over priors f/x/s/c with whole-storage memcmp, digest and report-detail oracle, 20 machine.prec rows, out parameters overlapping the instance refused BAD_ARG, layer-2 load fixtures ivsc-load.json with span-relative addresses from the literal map, 9 faults, faults=110/110, gate median 23 s local on a loaded host; MEM-03 and MEM-05 complete, MEM-04 and API-06 stay open)
-state_head: b01095a63529c4aef1b2652048219b36b564c412
+last_activity_desc: "Plan 03-12 complete (ivs_machine_reset with MISSING_SYSTEM_IMAGE, BAD_ARG kind and one-way power cycle; internal step seam on the memsys bus with time in master ticks; powered prior w and reset rows in the refusal matrix; 5 isolation cases; oracle-free cartridge sweeps; headers suite C17 and C++17; 5 faults, faults=115/115, gate 24-30 s local; MEM-04 and API-01 complete, API-06 stays open for 03-13)"
+state_head: d70943640bf461648d49e23c954a9074647e6a8b
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 46
-  completed_plans: 43
+  completed_plans: 44
   percent: 25
 ---
 
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 3 — Memory Map, Content Loading and Refusal
-Plan: 12 of 14
+Plan: 13 of 14
 Status: Ready to execute
-Last activity: 2026-11-11 — Plan 03-11 complete (load refusal matrix: 163 machine.refuse.load cases over priors f/x/s/c with whole-storage memcmp, digest and report-detail oracle, 20 machine.prec rows, out parameters overlapping the instance refused BAD_ARG, layer-2 load fixtures ivsc-load.json with span-relative addresses from the literal map, 9 faults, faults=110/110, gate median 23 s local on a loaded host; MEM-03 and MEM-05 complete, MEM-04 and API-06 stay open)
+Last activity: 2026-11-11 — Plan 03-12 complete (ivs_machine_reset with MISSING_SYSTEM_IMAGE, BAD_ARG kind and one-way power cycle; internal step seam on the memsys bus with time in master ticks; powered prior w and reset rows in the refusal matrix; 5 isolation cases; oracle-free cartridge sweeps; headers suite C17 and C++17; 5 faults, faults=115/115, gate 24-30 s local; MEM-04 and API-01 complete, API-06 stays open for 03-13)
 
 Progress: [███░░░░░░░] 25%
 
@@ -96,6 +96,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 03 P09 | 16min | 3 tasks | 16 files |
 | Phase 03 P10 | 12min | 3 tasks | 16 files |
 | Phase 03 P11 | 20min | 3 tasks | 21 files |
+| Phase 03 P12 | 15min | 3 tasks | 22 files |
 
 ## Accumulated Context
 
@@ -209,6 +210,9 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 03]: 03-11: out parameters (load report, info out, digest out, create out) overlapping the instance storage are refused BAD_ARG with nothing written (orchestrator addition; fault REPORT_INSIDE_UNCHECKED); faults now 110
 - [Phase 03]: 03-11: refusal rows run per ladder stage: argument BAD_ARG/UNSUPPORTED on priors f,s,c; later classes on f,x; DUPLICATE_LOAD only on occupied slots; lying lengths in heap and inside placements
 - [Phase 03]: 03-11: load-level cartridge fixtures name segments with span-relative addresses resolved from the literal map; MEM-03 and MEM-05 complete, MEM-04 waits for 03-12 reset rows, API-06 for 03-13
+- [Phase 03]: 03-12: machine time stays in master ticks: the step seam adds elapsed CPU cycles times the registry's ticks_per_cpu_cycle (new registry field in the former reserved u16)
+- [Phase 03]: 03-12: reset checks BAD_ARG (kind), BAD_HANDLE, then MISSING_SYSTEM_IMAGE (EXEC before GROM) before any write; power cycle from POWERED; nothing returns to OFF (A-08 d)
+- [Phase 03]: 03-12: one shared out-parameter check (ivs_machine_out_overlaps) for create, info and state_digest, guarded by fault OUT_OVERLAP_UNCHECKED
 
 ### Pending Todos
 
@@ -240,6 +244,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-11T08:11:20.195Z
-Stopped at: Completed 03-11-PLAN.md
+Last session: 2026-11-11T08:32:05.226Z
+Stopped at: Completed 03-12-PLAN.md
 Resume file: None

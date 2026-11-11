@@ -47,12 +47,12 @@ differentiators and all variant/peripheral profiles are v2.
 - [x] **MEM-01**: The memory map is generated from profile descriptors (range, device, width mask, alias, blocked-read and undriven-read policy), and a decode-table dump matches the sourced literal map.
 - [x] **MEM-02**: 10-bit ROM (decle) and 8-/16-bit RAM width masking and store-truncation behave per profile and are tested at each boundary.
 - [x] **MEM-03**: A caller can load typed content — system images (EXEC, GROM) and cartridge segments — as separate inputs, and the core reports each image's length and digest (system-image supply policy per D5).
-- [ ] **MEM-04**: Malformed, oversized, overlapping, out-of-range, missing-system-image and unknown-profile loads are refused with a typed error, and a refused load leaves prior machine state unchanged (refusal matrix test).
+- [x] **MEM-04**: Malformed, oversized, overlapping, out-of-range, missing-system-image and unknown-profile loads are refused with a typed error, and a refused load leaves prior machine state unchanged (refusal matrix test).
 - [x] **MEM-05**: One documented cartridge import format is supported, specified in the project's own words, with positive, boundary and malformed fixtures.
 
 ### Core Contract and Host Independence (API)
 
-- [ ] **API-01**: A host can create, reset, unload and destroy independent machine instances; two instances run concurrently without shared mutable state (isolation test).
+- [x] **API-01**: A host can create, reset, unload and destroy independent machine instances; two instances run concurrently without shared mutable state (isolation test).
 - [ ] **API-02**: Execution is bounded by an explicit machine-time target (absolute cycle target; frame target as a derived convenience), with overshoot reported; splitting one run into slices yields identical state and output (slicing-invariance test).
 - [ ] **API-03**: Controller input is applied at an explicit machine-time boundary declared by the API; the same input script yields identical results regardless of host timing.
 - [ ] **API-04**: Video and audio outputs are written into caller-owned buffers; undersized buffers are refused before any state changes.
@@ -195,9 +195,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MEM-01 | Phase 3 | Complete |
 | MEM-02 | Phase 3 | Complete |
 | MEM-03 | Phase 3 | Complete |
-| MEM-04 | Phase 3 | Pending |
+| MEM-04 | Phase 3 | Complete |
 | MEM-05 | Phase 3 | Complete |
-| API-01 | Phase 3 | Pending |
+| API-01 | Phase 3 | Complete |
 | API-02 | Phase 4 | Pending |
 | API-03 | Phase 5 | Pending |
 | API-04 | Phase 4 | Pending |
