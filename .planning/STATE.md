@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 3
 current_phase_name: Memory Map, Content Loading and Refusal
 status: executing
-stopped_at: Completed 03-12-PLAN.md
-last_updated: "2026-11-11T08:32:05.334Z"
+stopped_at: Completed 03-13-PLAN.md
+last_updated: "2026-11-11T08:46:25.942Z"
 last_activity: 2026-11-11
-last_activity_desc: "Plan 03-12 complete (ivs_machine_reset with MISSING_SYSTEM_IMAGE, BAD_ARG kind and one-way power cycle; internal step seam on the memsys bus with time in master ticks; powered prior w and reset rows in the refusal matrix; 5 isolation cases; oracle-free cartridge sweeps; headers suite C17 and C++17; 5 faults, faults=115/115, gate 24-30 s local; MEM-04 and API-01 complete, API-06 stays open for 03-13)"
-state_head: d70943640bf461648d49e23c954a9074647e6a8b
+last_activity_desc: "Plan 03-13 complete (data/api/api-effects.json: 10 calls, 27 refusal rows with effect none, precedence with A-08 a/b/d/e and pinned_by ids, out-parameter rule; static step api-effects ties it to ivs_status.h, api-statuses.ids, the IVS_API symbol list and the test inventories; 9 controls, steps=26/26 controls=224/224 faults=115/115, gate 25-26 s local; API-06 complete with the OQ-5 residual recorded)"
+state_head: 7498c92055b2d5608c0b1b439eb4c89a42e21019
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 46
-  completed_plans: 44
+  completed_plans: 45
   percent: 25
 ---
 
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 3 — Memory Map, Content Loading and Refusal
-Plan: 13 of 14
+Plan: 14 of 14
 Status: Ready to execute
-Last activity: 2026-11-11 — Plan 03-12 complete (ivs_machine_reset with MISSING_SYSTEM_IMAGE, BAD_ARG kind and one-way power cycle; internal step seam on the memsys bus with time in master ticks; powered prior w and reset rows in the refusal matrix; 5 isolation cases; oracle-free cartridge sweeps; headers suite C17 and C++17; 5 faults, faults=115/115, gate 24-30 s local; MEM-04 and API-01 complete, API-06 stays open for 03-13)
+Last activity: 2026-11-11 — Plan 03-13 complete (data/api/api-effects.json: 10 calls, 27 refusal rows with effect none, precedence with A-08 a/b/d/e and pinned_by ids, out-parameter rule; static step api-effects ties it to ivs_status.h, api-statuses.ids, the IVS_API symbol list and the test inventories; 9 controls, steps=26/26 controls=224/224 faults=115/115, gate 25-26 s local; API-06 complete with the OQ-5 residual recorded)
 
 Progress: [███░░░░░░░] 25%
 
@@ -97,6 +97,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 03 P10 | 12min | 3 tasks | 16 files |
 | Phase 03 P11 | 20min | 3 tasks | 21 files |
 | Phase 03 P12 | 15min | 3 tasks | 22 files |
+| Phase 03 P13 | 10min | 3 tasks | 46 files |
 
 ## Accumulated Context
 
@@ -213,6 +214,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 03]: 03-12: machine time stays in master ticks: the step seam adds elapsed CPU cycles times the registry's ticks_per_cpu_cycle (new registry field in the former reserved u16)
 - [Phase 03]: 03-12: reset checks BAD_ARG (kind), BAD_HANDLE, then MISSING_SYSTEM_IMAGE (EXEC before GROM) before any write; power cycle from POWERED; nothing returns to OFF (A-08 d)
 - [Phase 03]: 03-12: one shared out-parameter check (ivs_machine_out_overlaps) for create, info and state_digest, guarded by fault OUT_OVERLAP_UNCHECKED
+- [Phase 03]: 03-13: data/api/api-effects.json is the D-06 symbol list and D-15 effect table (10 calls, 27 rows, effect none); step api-effects checks it against ivs_status.h, api-statuses.ids, IVS_API lines and the test inventories; OQ-5 residual kept (cited id exists, not that it asserts the status)
+- [Phase 03]: 03-13: ninth token/control api-effects-format for table shape; controls=224/224
 
 ### Pending Todos
 
@@ -244,6 +247,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-11T08:32:05.226Z
-Stopped at: Completed 03-12-PLAN.md
+Last session: 2026-11-11T08:46:25.841Z
+Stopped at: Completed 03-13-PLAN.md
 Resume file: None
