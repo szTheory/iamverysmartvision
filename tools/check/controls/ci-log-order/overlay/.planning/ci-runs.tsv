@@ -1,0 +1,3 @@
+date	run_id	sha	event	conclusion	queue_s	setup_s	build_s	test_s	gate_s	total_s	ncpu	cpu_s
+2026-11-10	1001	0123456789abcdef0123456789abcdef01234567	pull_request	success	3	2	18	20	38	52	4	95
+2026-11-09	1002	89abcdef0123456789abcdef0123456789abcdef	push	success	4	2	17	23	40	55	4	101
