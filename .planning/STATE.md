@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 4
 current_phase_name: Headless Runner and Installed Consumer (Slice 0)
 status: executing
-stopped_at: Completed 04-13-PLAN.md
-last_updated: "2026-11-11T21:25:15.620Z"
+stopped_at: Completed 04-14-PLAN.md
+last_updated: "2026-11-11T21:47:46.734Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 3 complete, transitioned to Phase 4
-state_head: d3a72024ffd7683fba923fa2e38955e1882c61bb
+state_head: 08cef1efbdc0152c87a4f311971c293006b07f2d
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 71
-  completed_plans: 59
+  completed_plans: 60
   percent: 38
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 4 — Headless Runner and Installed Consumer (Slice 0)
-Plan: 14 of 25
+Plan: 15 of 25
 Status: Ready to execute
 Last activity: 2026-11-11 — Completed 04-03 (repo-relative fault owners, runner outcome taxonomy)
 
@@ -113,6 +113,7 @@ Progress: [████░░░░░░] 38%
 | Phase 04 P11 | 95 min | 3 tasks | 18 files |
 | Phase 04 P12 | 35 min | 2 tasks | 13 files |
 | Phase 04 P13 | 35 min | 3 tasks | 18 files |
+| Phase 04 P14 | 16 min | 2 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -252,6 +253,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 04]: 04-13: IVS_CTRL_ bits are pinned by bit index through a new bit value form ((1u << n) read as n) of the generic define pin
 - [Phase 04]: 04-13: v1 sizes frozen (request 64 on LP64, report 112, event 32, cpu_state_report 36, ivs_info 216/256); A-02 applies to them from here
 - [Phase 04]: 04-13: C14 stays open with the D6 policy; C63-C67 record the D10 hardware questions and the unit-start granularity; next discrepancy id C68
+- [Phase 04]: 04-14: stub listing zero fill carries row HLT with text fill ('-' only for operand words); bit groups are exactly 10 digits; header keys are '# key: value' lines
+- [Phase 04]: 04-14: tools/pack writes images only to build/<preset>/images (IVS_IMAGES_DIR); the C include of image bytes is generated in tests/CMakeLists.txt and is GENERATED for the run fault suite
 
 ### Pending Todos
 
@@ -284,6 +287,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-11T21:25:15.317Z
-Stopped at: Completed 04-13-PLAN.md
+Last session: 2026-11-11T21:47:35.178Z
+Stopped at: Completed 04-14-PLAN.md
 Resume file: None
