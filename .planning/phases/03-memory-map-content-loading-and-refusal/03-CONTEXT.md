@@ -90,6 +90,17 @@ Plan ordering, exact struct layouts, the names of internal helpers, the final fi
 - Missing system image is owned by `reset` (content, refusal), with the MEM-04 reading recorded in D-14.
 - API-effects table is JSON checked by cmake -P (project norm) rather than TSV plus awk.
 
+
+### Amendments from research and pattern mapping (supersede conflicting text above)
+
+- **A-01 (cart alignment):** There is no alignment rule in Phase 3. A segment must lie wholly inside the profile cartridge span and must not overlap another segment; nothing else constrains its start. `memmap.cart_align_words` is dropped from D-16; the 256-word alignment seen in community documents is recorded only as a tier-4 note under C62. One-word fixtures are therefore legal.
+- **A-02 (field name):** The profile field `memmap.cart_window` is named `memmap.cart_span` (the glossary step requires a unit suffix on any field ending in `window`). D-18/D-33 read "cartridge span".
+- **A-03 (IVSC prefix):** The fixed prefix is 24 bytes including the 8-byte magic and has no padding (magic 8, version 2, flags 2, required_features 4, total_bytes 4, segment_count 2, reserved 2); the minimum valid file is 66 bytes (prefix 24 + one 8-byte entry + one 2-byte word + 32-byte trailer). D-30's "24-byte header + padding" is withdrawn.
+- **A-04 (two digests):** The IVSC trailer SHA-256 (over all bytes before the trailer) and the reported whole-file SHA-256 (D-25) are different values; the loader computes both in one pass with a copyable SHA-256 context. The report carries the whole-file digest.
+- **A-05 (observability seams):** Planning adds (a) an internal raw-poke seam so ROM read masks and stub devices can be tested although the loader refuses wide words, and (b) a device-kind column in the memory-map dump so a stub region is distinguishable from an undriven region. The raw-poke seam is internal only (never in `core/include`).
+- **A-06 (gate hygiene):** `c-purity` must scan `core/include`, hook generated includes through a reviewed list, and compile with `-fno-pie` for the writable-data rule; profile-id matching uses a bounded loop (no `strlen`/`strcmp`; `memcpy`/`memset`/`memcmp` stay allowed); input buffers overlapping instance storage are refused BAD_ARG with a matrix row.
+- **A-07 (budget):** D-38's estimate is optimistic; the research projects +6 to 10 s hosted. The re-baseline to 40 s stands with a revisit trigger at 50 s; measure at plan 03-02 and again at 03-07, and apply levers from `CI-EFFICIENCY.md` before accepting more.
+
 </decisions>
 
 <canonical_refs>
