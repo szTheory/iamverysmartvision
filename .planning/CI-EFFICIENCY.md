@@ -38,7 +38,11 @@ minus `createdAt`.
   cancelled, so each main commit keeps a recorded result.
 - **Add a macOS leg only when the C build arrives in Phase 2.** The gate is shell and CMake
   script; a second operating system adds cost without testing anything different until
-  compiled code exists.
+  compiled code exists. **Superseded by D-24 (Phase 2, PKG-02):** keep the single
+  `ubuntu-24.04` job with no matrix, cache or path filter; clang on macOS locally and gcc 13
+  with dash and GNU tools on the hosted runner give two compilers and two operating systems
+  without a second job. Revisit a 2-leg matrix at Phase 4 (installed consumer, dylib, rpath)
+  or at the first Apple-only escape to `main`.
 - **Keep the `ubuntu-24.04` pin for now; re-evaluate after 2026-11-19**, when the
   `ubuntu-latest` migration ends, and move to `ubuntu-latest` only if the label then
   resolves to the same image and the benefit (fewer manual bumps) is worth losing the exact
@@ -67,3 +71,62 @@ After the next CI run. Append its row, and record a decision change only if the 
 - Run 42773083392: single `gate` job on ubuntu-24.04 (gcc 13, GNU nm, ninja, cmake from the image), PASS in 23 s job time; 182 controls, 24 steps, dev (ASan+UBSan) and release presets.
 - Retired risks from the Phase 2 plans: GNU `nm -P` shapes accepted by `core-symbols.sh`, gcc 13 `-Werror` clean, sanitizer runtime imports covered by the dev prefixes, ninja present on the image.
 - Local idle-ish gate at the same commit measured 32-40 s under load 6-16 on the owner laptop (D-22 local budget 25 s); the hosted job is faster than local. Levers stay as listed in D-22; no change made yet (hosted 23 s is well under the 30 s hosted budget).
+
+## 2026-11-10 - local gate with the full C build and 190 controls (plan 02-18)
+
+Measured on the owner laptop (18 cores, Apple clang 21, macOS). The host was never idle:
+load average 13 to 33 during every run, from unrelated work (another emulator's tests, a
+fuzzer, RetroArch). D-22 judges the 25 s local budget on an idle host, so these numbers do
+not settle it; they compare the runner before and after under similar load.
+
+| Run | Runner | Wall s | User s | Sys s | Load at start |
+|-----|--------|--------|--------|-------|---------------|
+| gate 1 | sequential | 83.3 | 30.9 | 44.0 | 16.5 |
+| gate 2 | sequential | 101.4 | 37.8 | 56.1 | 15.3 |
+| gate 3 | sequential | 81.7 | 28.2 | 41.1 | 26.2 |
+| `run-controls.sh` alone | sequential | 73.0 | 19.2 | 43.5 | 15.8 |
+| gate 1 | 4 lanes | 60.6 | 33.0 | 54.9 | 20.0 |
+| gate 2 | 4 lanes | 87.9 | 39.5 | 72.6 | 19.9 (33.5 at end) |
+| gate 3 | 4 lanes | 67.3 | 37.1 | 59.3 | 33.5 |
+| `run-controls.sh` alone | 4 lanes | 32.3 | 19.4 | 48.1 | 18.4 |
+| `dash run-controls.sh` alone | 4 lanes | 43.9 | 20.3 | 51.0 | 24.3 (at end) |
+
+- Medians: gate 83.3 s before, 67.3 s after; control runner alone 73.0 s before, 32.3 s
+  after. The load was higher during the after runs, so the gate medians understate the
+  change; the runner-alone pair is the cleaner comparison.
+- Per-step breakdown (sequential runner, load 13): `run-controls` 55.0 s; `hygiene-history`
+  9.4; `cp1610-vectors` 6.5; `faults-verdict` 4.5; `c-faults` 3.2; `hygiene` 3.0;
+  `denylist` 2.7; `c-purity` 1.9; `c-tests` 1.7; `integrity` 1.3; `cp1610` 1.0; the other
+  13 steps under 0.8 s each; `c-build` 0.5 (warm). The runner is sys-dominated (tree copies
+  and process start-up).
+- Lever 1 (start the C build in the background) was not applied: `c-build` is already the
+  first step in C-locale order and costs 0.5 s on a warm tree, so a background start would
+  overlap with nothing. It matters only for a cold build, which the budget does not cover.
+- Lever 2 (parallel control runner) was applied: `tools/check/run-controls.sh` now gives each
+  control its own work dir (tree, filelist, step output, result lines) and runs them in 4
+  lanes; lane i takes every 4th entry of the sorted list and results are printed afterwards
+  in sorted order. Output is byte-identical to the sequential runner on the real controls
+  (sh and dash) and on a synthetic set covering every runner failure token
+  (`control-not-in-inventory`, `control-inventory-orphan`, `control-make-path`,
+  `control-build`, `control-exit-zero`, `control-expect-blank`, `control-forbidden-token`,
+  `control-unknown-step`, `control-token-missing`); `runner-selftest` still reports
+  `cases=4`. No control, token or inventory changed; `controls=190/190`.
+- Lever 3 (rebuild only the owning TU per fault) was not applied: on a warm tree the
+  `ivs_faults` build inside `c-faults` is incremental and the whole step is 3.2 s.
+- Next candidate if the local budget still bites on an idle host: start the control runner
+  in the background at the top of `gate.sh` and print its output after the steps, so steps
+  (about 39 s under this load) and controls (about 32 s) overlap. Not applied here; it
+  changes `gate.sh` scheduling and should be measured on an idle host first.
+
+## Open items
+
+- **Hosted gate budget.** D-22: hosted gate step at most 30 s. The final Phase 2 gate (190
+  controls, parallel runner) is unmeasured on the hosted runner; the last hosted figure is the
+  first hosted C run above (182 controls, gate step 19 s, job 23 s, after plan 02-07). The next
+  hosted run measures it. If it exceeds 30 s, apply the D-22 levers in order: (1) start the C
+  build in the background at the top of `gate.sh`, (2) parallel control runner (a runner
+  rewrite per A-09, at most 4 at a time, sorted output; done in plan 02-18), (3) rebuild only
+  the owning TU per fault; no ccache and no `actions/cache`. Local measurements do not close
+  this item.
+- The queue, setup and gate times of the hosted runs on the phase PR, including the one after
+  this plan, are recorded by the orchestrator after the phase PR's CI; agents never call `gh`.
