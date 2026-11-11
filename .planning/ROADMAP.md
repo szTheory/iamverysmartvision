@@ -192,7 +192,34 @@ Plans:
   3. A run to an absolute cycle target reports any overshoot. Splitting the run into slices gives the same per-domain digests (CPU/memory, video, audio, input log), and repeated runs match. Golden files carry tier and oracle headers. An undersized output buffer is refused before any state changes.
   4. A separate consumer project, built only against the installed package in a relocated prefix, runs load, refusal, run and digest successfully.
   5. CI runs the same fast gate as the local command on every PR, shows skipped and missing items, never caches or uploads system images or rights-unknown fixtures, and records queue, setup, build and test durations for each run.
-**Plans**: TBD
+**Plans**: 25 plans in 25 sequential waves
+
+Plans:
+- [ ] 04-01-PLAN.md — CI measurement first: `gate-env`/`gate-cpu` lines, job summary through the EXIT trap with a selftest step, ci-parity bans (action allowlist, secrets, matrix, runs-on, timeout 5), 6 controls
+- [ ] 04-02-PLAN.md — Run record `.planning/ci-runs.tsv`, `ci-log` step, orchestrator-only `tools/ci-record.sh`, D-45 budget rule, 4 controls
+- [ ] 04-03-PLAN.md — Fault framework generalized to `runner/` owners (D-24) with the runner outcome taxonomy as tracer, suite `runner`, 4 faults, 2 controls
+- [ ] 04-04-PLAN.md — Runner source hygiene: `runner-scan` (POSIX only in hostio.c), integrity for `runner/` and `tools/**/*.c`, unlisted-source guard, 6 controls
+- [ ] 04-05-PLAN.md — Stepped-state composite pin first, then observation rows and live digest domains 16-18 (composite unchanged), 2 faults
+- [ ] 04-06-PLAN.md — Public read-only observation (`ivs_run.h`, `ivs_machine_cpu_state`, `ivs_machine_peek`), new suite `run`, 2 faults
+- [ ] 04-07-PLAN.md — `ivs_machine_run`: absolute master-tick target, overshoot, stop reasons, refusal ladder, 3 faults
+- [ ] 04-08-PLAN.md — Generic define pins for stop reasons and refusal reasons, 3 controls
+- [ ] 04-09-PLAN.md — Timebase and output layout in `ivs_info` (A-02 growth rule), five-pattern slicing invariance, 2 faults
+- [ ] 04-10-PLAN.md — Output buffers (API-04) through an internal env seam, refusal before any state change, 2 faults
+- [ ] 04-11-PLAN.md — Input events (D6 logical switch state) in the run call, live INPUT digest chain with an independent oracle, 5 faults
+- [ ] 04-12-PLAN.md — Profile `input.controllers`, extra-word refusal, guest invisibility of input in Phase 4
+- [ ] 04-13-PLAN.md — Input bit names pinned, D6 records (C14, C15, C63-C67), seeded input/slicing fuzz, v1 struct sizes, 2 controls
+- [ ] 04-14-PLAN.md — Project boot stub listing, `tools/pack` (build-tree images only), boot path and trap tests, `docs/diagnostics.md`
+- [ ] 04-15-PLAN.md — `listing` step with stub anti-HLE guards and suite `pack` (two independent parses), 9 controls
+- [ ] 04-16-PLAN.md — Original diagnostic `ivs-diag-cpu-1`, hand-derived `.expect` predicate, slicing on the real program, CL-0008
+- [ ] 04-17-PLAN.md — IVSS v1 parser (untrusted input, caps, fuzz), 2 faults
+- [ ] 04-18-PLAN.md — Runner executor and fixed-order report, outcomes and mutants in-process, 4 faults
+- [ ] 04-19-PLAN.md — `ivs-run` executable: slices, budget/wall timeout, cancellation, POSIX in hostio.c only, `docs/runner.md`, 3 faults
+- [ ] 04-20-PLAN.md — Suite `runner-process`: one scenario per outcome, diagnostic mutants, repeat/slice/cwd checks, judge self-controls
+- [ ] 04-21-PLAN.md — Goldens with tier/oracle headers, `--update-golden`, pure `golden` step with dev-vs-release judge, 8 controls
+- [ ] 04-22-PLAN.md — Install/export of `ivs::core`, relocated prefix, `pkg-install` structure proofs, 8 in-step selftests
+- [ ] 04-23-PLAN.md — Independent installed consumer: find_package in the moved prefix, runner-golden agreement, 10/10 selftests, `docs/packaging.md`
+- [ ] 04-24-PLAN.md — RUN-04 important-gates registry and step, gate audit and gap fills, 2 controls
+- [ ] 04-25-PLAN.md — SC1-SC5 evidence table, fail-first record verification, D-45 evaluation, branch-protection and release-design records, honest caveats
 
 ### Phase 5: Hand Controllers and PSG Sound
 **Goal**: Both hand controllers are first-class, multi-signal machine input, read through the PSG I/O ports at an explicit machine-time boundary. The PSG produces raw, cycle-stamped audio observations kept separate from host PCM.
@@ -288,7 +315,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 1. Evidence, Profile and Rights Foundations | 14/14 | Complete    | 2026-11-09 |
 | 2. CP-1610 CPU Core | 18/18 | Complete    | 2026-11-10 |
 | 3. Memory Map, Content Loading and Refusal | 14/14 | Complete    | 2026-11-11 |
-| 4. Headless Runner and Installed Consumer (Slice 0) | 0/TBD | Not started | - |
+| 4. Headless Runner and Installed Consumer (Slice 0) | 0/25 | Planned | - |
 | 5. Hand Controllers and PSG Sound | 0/TBD | Not started | - |
 | 6. STIC Video First Pass | 0/TBD | Not started | - |
 | 7. First Visible Original Scenario | 0/TBD | Not started | - |
