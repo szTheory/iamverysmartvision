@@ -43,7 +43,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Evidence, Profile and Rights Foundations** - Tier vocabulary, claim ledger, discrepancy log, fixture manifest, provenance rule, first-profile record, time base and CP-1610 reference notes (completed 2026-11-09)
 - [x] **Phase 2: CP-1610 CPU Core** - Every opcode verified against page-cited, hand-derived vectors in a host-independent core with an exact inventory and one local gate command (completed 2026-11-10)
-- [ ] **Phase 3: Memory Map, Content Loading and Refusal** - Profile-driven memory map, typed system-image and cartridge loading, isolated instances and a refusal matrix that never mutates prior state
+- [x] **Phase 3: Memory Map, Content Loading and Refusal** - Profile-driven memory map, typed system-image and cartridge loading, isolated instances and a refusal matrix that never mutates prior state (completed 2026-11-11)
 - [ ] **Phase 4: Headless Runner and Installed Consumer (Slice 0)** - An original diagnostic runs end to end through the runner and a relocated installed consumer, with deterministic digests and a CI gate that mirrors the local command
 - [ ] **Phase 5: Hand Controllers and PSG Sound** - Both controllers as multi-signal machine input at explicit time boundaries; PSG raw audio and a register-write log
 - [ ] **Phase 6: STIC Video First Pass** - Access windows, VBLANK/BUSRQ timing, raw index framebuffer, FG/BG and Color Stack cards, and side-effect-free inspection
@@ -161,7 +161,7 @@ Plans:
   3. Every refusal-matrix row (malformed, oversized, overlapping, out-of-range, missing system image, unknown profile) returns its own typed error, and the state digest is the same before and after the refused load.
   4. The cartridge import format is specified in the project's own words. Its positive, boundary and malformed fixtures pass and are recorded in the fixture manifest.
   5. Two instances created side by side, with different content, step without affecting each other (isolation test). Every API error and refusal has a documented state effect that a test verifies.
-**Plans**: 14/14 plans executed in 14 sequential waves
+**Plans**: 14/14 plans complete in 14 sequential waves
 
 Plans:
 - [x] 03-01-PLAN.md — Fault loop over every `data/expected/faults/*.ids` with a per-suite registry and union site checks (D-37), 4 controls
@@ -287,7 +287,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 |-------|----------------|--------|-----------|
 | 1. Evidence, Profile and Rights Foundations | 14/14 | Complete    | 2026-11-09 |
 | 2. CP-1610 CPU Core | 18/18 | Complete    | 2026-11-10 |
-| 3. Memory Map, Content Loading and Refusal | 14/14 | In Progress | - |
+| 3. Memory Map, Content Loading and Refusal | 14/14 | Complete    | 2026-11-11 |
 | 4. Headless Runner and Installed Consumer (Slice 0) | 0/TBD | Not started | - |
 | 5. Hand Controllers and PSG Sound | 0/TBD | Not started | - |
 | 6. STIC Video First Pass | 0/TBD | Not started | - |
