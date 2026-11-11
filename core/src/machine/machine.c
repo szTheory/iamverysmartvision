@@ -215,19 +215,23 @@ ivs_status ivs_machine_info(const ivs_machine *m, ivs_info *out)
   r.time_ticks = im->time_ticks;
   r.profile_index = im->profile;
   for (i = 0u; i < IVS_SLOT_COUNT; i++) {
-    const ivs_machine_slot *s = &im->slot[i];
-    ivs_image_report *o = &r.slots[i];
-    o->struct_size = (uint32_t)sizeof *o;
-    o->kind = s->kind;
-    o->loaded = s->loaded;
-    o->length_bytes = s->length_bytes;
-    o->length_units = s->length_units;
-    o->unit_bits = s->unit_bits;
-    o->base_addr = s->base_addr;
-    memcpy(o->sha256, s->sha256, sizeof o->sha256);
+    ivs_machine_slot_report(&im->slot[i], &r.slots[i]);
   }
   *out = r;
   return IVS_OK;
+}
+
+void ivs_machine_slot_report(const ivs_machine_slot *s, ivs_image_report *o)
+{
+  memset(o, 0, sizeof *o);
+  o->struct_size = (uint32_t)sizeof *o;
+  o->kind = s->kind;
+  o->loaded = s->loaded;
+  o->length_bytes = s->length_bytes;
+  o->length_units = s->length_units;
+  o->unit_bits = s->unit_bits;
+  o->base_addr = s->base_addr;
+  memcpy(o->sha256, s->sha256, sizeof o->sha256);
 }
 
 uint32_t ivs_api_version(void)

@@ -92,6 +92,77 @@ typedef struct ivs_info {
   ivs_image_report slots[3];
 } ivs_info;
 
+/* ---- typed content loading (D-10, D-11, D-24..D-27, D-32, D-33, A-04, A-08, plan 03-10) ----
+ * One typed image per call. The core copies the supplied span into instance storage during the
+ * call, keeps no pointer and allocates nothing. System images are raw: EXEC is exactly 8192
+ * bytes (4096 16-bit words, high byte first, bits 15..10 zero), GROM exactly 2048 bytes. A
+ * cartridge is an IVSC v1 container (docs/formats/ivsc-v1.md) whose segments must lie in the
+ * profile's cartridge span. Loads and unloads are legal only while the machine is OFF. */
+
+/* Load option flags. Any other bit is UNSUPPORTED. */
+#define IVS_LOAD_F_EXPECT_SHA256 0x1u
+
+/* In: load options (may be NULL). With IVS_LOAD_F_EXPECT_SHA256 the load is refused
+ * DIGEST_MISMATCH unless expect_sha256 equals the SHA-256 of the supplied bytes (D-27). */
+typedef struct ivs_load_options {
+  uint32_t struct_size;
+  uint32_t flags;
+  uint8_t expect_sha256[32];
+} ivs_load_options;
+
+/* Refusal reasons of a load report. 1..18 are the reason numbers of the IVSC v1 reason table
+ * (docs/formats/ivsc-v1.md); 19 and up are the load's own reasons. Numbers are append-only. */
+#define IVS_REASON_NONE 0u
+#define IVS_REASON_TRUNCATED 1u        /* MALFORMED */
+#define IVS_REASON_TOO_LARGE 2u        /* OVERSIZED */
+#define IVS_REASON_MAGIC 3u            /* MALFORMED */
+#define IVS_REASON_VERSION 4u          /* MALFORMED */
+#define IVS_REASON_FLAGS 5u            /* MALFORMED */
+#define IVS_REASON_RESERVED 6u         /* MALFORMED */
+#define IVS_REASON_TRAILING 7u         /* MALFORMED */
+#define IVS_REASON_SEGMENT_COUNT 8u    /* MALFORMED */
+#define IVS_REASON_SIZE_MISMATCH 9u    /* MALFORMED */
+#define IVS_REASON_SEGMENT_LENGTH 10u  /* MALFORMED */
+#define IVS_REASON_SEGMENT_WIDTH 11u   /* MALFORMED */
+#define IVS_REASON_SEGMENT_ATTR 12u    /* MALFORMED */
+#define IVS_REASON_SEGMENT_RESERVED 13u /* MALFORMED */
+#define IVS_REASON_ADDR_WRAP 14u       /* OUT_OF_RANGE */
+#define IVS_REASON_ORDER 15u           /* MALFORMED */
+#define IVS_REASON_OVERLAP 16u         /* OVERLAP */
+#define IVS_REASON_DIGEST 17u          /* DIGEST_MISMATCH: the container's trailer */
+#define IVS_REASON_WORD_RANGE 18u      /* MALFORMED: a cartridge word above 0x3FF */
+#define IVS_REASON_OUT_OF_SPAN 19u     /* OUT_OF_RANGE: a segment leaves the profile's cartridge span */
+#define IVS_REASON_FEATURES 20u        /* UNSUPPORTED: required_features bits the profile lacks */
+#define IVS_REASON_IMAGE_SHORT 21u     /* MALFORMED: a system image below its exact size (0 included) */
+#define IVS_REASON_IMAGE_LONG 22u      /* OVERSIZED: a system image above its exact size */
+#define IVS_REASON_IMAGE_WORD 23u      /* MALFORMED: an EXEC word with a bit of 15..10 set */
+#define IVS_REASON_EXPECT_DIGEST 24u   /* DIGEST_MISMATCH: expect_sha256 differs */
+#define IVS_REASON_ARG_KIND 25u        /* BAD_ARG: kind is not IVS_KIND_* */
+#define IVS_REASON_ARG_NULL_BYTES 26u  /* BAD_ARG: bytes NULL with len above 0 */
+#define IVS_REASON_ARG_STRUCT_SIZE 27u /* BAD_ARG: opts->struct_size below the v1 size */
+#define IVS_REASON_ARG_INPUT_OVERLAP 28u /* BAD_ARG: the input span overlaps the instance */
+#define IVS_REASON_HANDLE 29u          /* BAD_HANDLE */
+#define IVS_REASON_OPTION_FLAGS 30u    /* UNSUPPORTED: an unknown option flag */
+#define IVS_REASON_OPTION_TAIL 31u     /* UNSUPPORTED: a nonzero byte in a larger opts tail */
+#define IVS_REASON_STATE_POWERED 32u   /* BAD_STATE: the machine is POWERED */
+#define IVS_REASON_SLOT_OCCUPIED 33u   /* DUPLICATE_LOAD: the slot holds an image */
+
+/* segment_index of a report whose reason concerns no single segment. */
+#define IVS_SEGMENT_NONE 0xFFFFFFFFu
+
+/* Out: load report (may be NULL). On success image is the slot's new report and reason is
+ * IVS_REASON_NONE. On a refusal only the detail fields are written (reason, segment_index,
+ * byte_offset, missing_features) and image stays zero. segment_index is IVS_SEGMENT_NONE unless
+ * the reason concerns one segment; byte_offset is where the defect is seen in the input. */
+typedef struct ivs_load_report {
+  uint32_t struct_size;
+  uint32_t reason;           /* IVS_REASON_* */
+  uint32_t segment_index;    /* or IVS_SEGMENT_NONE */
+  uint32_t missing_features; /* FEATURES: required bits the profile does not support */
+  uint64_t byte_offset;
+  ivs_image_report image;
+} ivs_load_report;
+
 /* Size and alignment of an instance of profile_id. BAD_ARG: req NULL or short, id NULL or not
  * NUL-terminated within 64 bytes; UNKNOWN_PROFILE: id not registered. */
 IVS_API ivs_status ivs_machine_storage_requirements(const char *profile_id, ivs_storage_requirements *req);
@@ -114,6 +185,28 @@ IVS_API ivs_status ivs_machine_info(const ivs_machine *m, ivs_info *out);
  * big-endian, so the value does not depend on struct layout, padding or host byte order; it
  * excludes the magic and padding. BAD_ARG: out NULL or any other domain; then BAD_HANDLE. */
 IVS_API ivs_status ivs_machine_state_digest(const ivs_machine *m, uint32_t domain, uint8_t out_sha256[32]);
+
+/* Loads one image of kind (IVS_KIND_*) from len bytes at bytes. Validates everything before the
+ * first write to the instance; a refusal leaves the instance unchanged (D-10, D-12). The first
+ * failing class wins:
+ *   BAD_ARG         kind unknown; bytes NULL with len above 0; opts or report struct_size short;
+ *   BAD_HANDLE      NULL or invalid handle;
+ *   UNSUPPORTED     an unknown option flag or a nonzero opts tail;
+ *   BAD_STATE       the machine is POWERED;
+ *   DUPLICATE_LOAD  the slot already holds an image (unload first);
+ *   OVERSIZED       len above the kind's bound (EXEC 8192, GROM 2048, cartridge 131,256);
+ *   BAD_ARG         the input span overlaps the instance storage (tested only within the bound);
+ *   content         system image: MALFORMED (short, or an EXEC word wider than 10 bits);
+ *                   cartridge: the IVSC v1 checks in spec order, then OUT_OF_RANGE (a segment
+ *                   outside the profile's cartridge span), then UNSUPPORTED (required_features);
+ *   DIGEST_MISMATCH expect_sha256 differs from the SHA-256 of the supplied bytes.
+ * A refusal status never depends on where the host placed its buffer. */
+IVS_API ivs_status ivs_machine_load(ivs_machine *m, uint32_t kind, const uint8_t *bytes, size_t len, const ivs_load_options *opts, ivs_load_report *report);
+
+/* Empties the slot of kind: its words are zero-scrubbed and it reports loaded 0. An empty slot
+ * unloads OK. BAD_ARG: unknown kind; BAD_HANDLE; BAD_STATE: the machine is POWERED. After every
+ * slot is unloaded the state digest equals a fresh instance's (D-13). */
+IVS_API ivs_status ivs_machine_unload(ivs_machine *m, uint32_t kind);
 
 #ifdef __cplusplus
 }

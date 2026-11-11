@@ -3,8 +3,9 @@
 # core/src/machine/machine.c (create and destroy) or core/src/machine/machine_digest.c (digest).
 # INIT_SKIPS_MEMSET also breaks the fresh-state literals (poison in the CPU and slot fields) and
 # DESTROY_NO_SCRUB every after-destroy case (the magic survives); both are their own rule.
+# INIT_SKIPS_MEMSET leaves poisoned slot records, so a load sees an occupied slot (machine.load.).
 CREATE_MAGIC_BEFORE_PROFILE_CHECK machine.refuse.create.unknown-profile machine.refuse.create. machine.create.ok-info-destroy
-INIT_SKIPS_MEMSET machine.create.poisoned-storage machine.create.poisoned-storage|machine.create.ok-info-destroy|machine.digest. machine.refuse.create.null-opts
+INIT_SKIPS_MEMSET machine.create.poisoned-storage machine.create.poisoned-storage|machine.create.ok-info-destroy|machine.digest.|machine.load. machine.refuse.create.null-opts
 DESTROY_NO_SCRUB machine.destroy.scrubs machine.destroy.|machine.refuse.destroy.twice|machine.refuse.info.destroyed|machine.refuse.digest.destroyed|machine.create.ok-info-destroy|machine.create.static-storage machine.create.requirements
 DIGEST_SKIPS_RAM machine.digest.sensitivity-mem machine.digest. machine.create.ok-info-destroy
 DIGEST_SKIPS_IMAGE_TABLE machine.digest.sensitivity-images machine.digest. machine.create.ok-info-destroy

@@ -26,4 +26,9 @@ extern const size_t ivs_machine_create_count;
 extern const ivs_test_case ivs_machine_digest_cases[];
 extern const size_t ivs_machine_digest_count;
 
+/* Family load (plan 03-10): typed EXEC, GROM and cartridge loads, reports, layer 2, options and
+ * unload (machine_load.c). */
+extern const ivs_test_case ivs_machine_load_cases[];
+extern const size_t ivs_machine_load_count;
+
 #endif

@@ -1,0 +1,240 @@
+/* SPDX-License-Identifier: MIT */
+/* Typed content loading (D-10, D-11, D-13, D-24..D-27, A-06, A-08, plan 03-10): ivs_machine_load
+ * and ivs_machine_unload through the public header ivs/ivs_machine.h.
+ *
+ * Validate-then-commit (D-10). ivs_load_validate takes a const instance and fills a small stack
+ * plan (kind, lengths, units, base, the reported digest; never a copy of image bytes). The ladder
+ * is one stage per class, the first failing stage wins (D-11 refined by A-08 a, b):
+ *   1. BAD_ARG         argument values: kind, NULL bytes with len above 0, opts struct size
+ *                      (a short report struct is refused by the public function, writing nothing);
+ *   2. BAD_HANDLE      NULL or invalid handle;
+ *   3. UNSUPPORTED     load options: an unknown flag, a nonzero tail of a larger struct;
+ *   4. BAD_STATE       the machine is POWERED;
+ *   5. DUPLICATE_LOAD  the slot holds an image;
+ *   6. OVERSIZED       the claimed length against the kind's bound, compared in uint64_t before
+ *                      any byte is read;
+ *   7. BAD_ARG         the input span overlaps the instance storage, tested only on a span that
+ *                      passed stage 6, with differences of uintptr_t values that cannot wrap
+ *                      (never bytes + len), so a refusal status never depends on where the host
+ *                      placed a buffer whose claimed length is out of bound (A-06, A-08 a);
+ *   8. content         EXEC: MALFORMED for a short image, then for the first word with a bit of
+ *                      15..10 set (its byte offset); nothing is truncated or masked (D-26);
+ *   9. DIGEST_MISMATCH expect_sha256 against the digest of the supplied bytes (D-27).
+ * ivs_load_commit returns void, is copy-only and has no early return: it installs the words
+ * through the memsys install primitives and writes the slot record. */
+#include "common/ivs_prelude.h"
+
+#include "common/ivs_sha256.h"
+#include "ivs/ivs.h"
+#include "machine/machine.h"
+
+_Static_assert(IVS_KIND_EXEC == IVS_MEMSYS_SLOT_EXEC && IVS_KIND_GROM == IVS_MEMSYS_SLOT_GROM &&
+                   IVS_KIND_CARTRIDGE == IVS_MEMSYS_SLOT_CART,
+               "image kinds and memsys slots share their numbers");
+_Static_assert(sizeof(ivs_load_options) == 40u, "ivs_load_options is 40 bytes");
+_Static_assert(sizeof(ivs_load_report) == 88u, "ivs_load_report is 88 bytes");
+
+/* What a validated load will commit. */
+typedef struct ivs_load_plan {
+  uint32_t kind;
+  uint32_t length_bytes;
+  uint32_t length_units;
+  uint32_t unit_bits;
+  uint32_t base_addr;
+  uint8_t sha256[IVS_SHA256_DIGEST_BYTES]; /* of the exact supplied bytes */
+} ivs_load_plan;
+
+/* Fill the refusal detail and return the status. */
+static ivs_status ivs_load_refuse(ivs_load_report *d, ivs_status st, uint32_t reason, uint32_t seg, uint64_t off,
+                                  uint32_t missing)
+{
+  d->reason = reason;
+  d->segment_index = seg;
+  d->byte_offset = off;
+  d->missing_features = missing;
+  return st;
+}
+
+/* 1 when the n bytes at b overlap the instance at s (A-06, A-08 a). Differences of uintptr_t
+ * values only, so nothing can wrap; called only with n within the kind's bound. */
+static uint32_t ivs_load_overlaps(const uint8_t *bytes, size_t n, const struct ivs_machine *im)
+{
+  uintptr_t b = (uintptr_t)bytes;
+  uintptr_t s = (uintptr_t)im;
+  if (n == 0u) {
+    return 0u;
+  }
+  if (b >= s) {
+    return (uint32_t)(b - s < (uintptr_t)sizeof(struct ivs_machine));
+  }
+  return (uint32_t)(s - b < (uintptr_t)n);
+}
+
+/* 1 when every byte of p[from, to) is zero. */
+static uint32_t ivs_load_tail_zero(const uint8_t *p, size_t from, size_t to)
+{
+  size_t i;
+  for (i = from; i < to; i++) {
+    if (p[i] != 0u) {
+      return 0u;
+    }
+  }
+  return 1u;
+}
+
+/* The kind's length bound in bytes (stage 6). */
+static uint64_t ivs_load_bound(uint32_t kind)
+{
+  switch (kind) {
+  case IVS_KIND_EXEC:
+    return IVS_MEMSYS_EXEC_BYTES;
+  default:
+    return 0u;
+  }
+}
+
+static ivs_status ivs_load_validate(const ivs_machine *m, uint32_t kind, const uint8_t *bytes, size_t len,
+                                    const ivs_load_options *opts, ivs_load_plan *plan, ivs_load_report *d)
+{
+  const struct ivs_machine *im;
+  const ivs_profile_desc *p;
+  uint64_t n = (uint64_t)len;
+  uint64_t bound;
+  uint32_t i;
+
+  /* 1. BAD_ARG: argument values. */
+  if (kind < IVS_KIND_EXEC || kind > IVS_KIND_CARTRIDGE) {
+    return ivs_load_refuse(d, IVS_E_BAD_ARG, IVS_REASON_ARG_KIND, IVS_SEGMENT_NONE, 0u, 0u);
+  }
+  if (bytes == NULL && len != 0u) {
+    return ivs_load_refuse(d, IVS_E_BAD_ARG, IVS_REASON_ARG_NULL_BYTES, IVS_SEGMENT_NONE, 0u, 0u);
+  }
+  if (opts != NULL && opts->struct_size < (uint32_t)sizeof(ivs_load_options)) {
+    return ivs_load_refuse(d, IVS_E_BAD_ARG, IVS_REASON_ARG_STRUCT_SIZE, IVS_SEGMENT_NONE, 0u, 0u);
+  }
+  /* 2. BAD_HANDLE. */
+  im = ivs_machine_from_handle(m);
+  if (im == NULL) {
+    return ivs_load_refuse(d, IVS_E_BAD_HANDLE, IVS_REASON_HANDLE, IVS_SEGMENT_NONE, 0u, 0u);
+  }
+  p = ivs_profile_get(im->profile);
+  /* 3. UNSUPPORTED: load options. */
+  if (opts != NULL) {
+    if ((opts->flags & ~IVS_LOAD_F_EXPECT_SHA256) != 0u) {
+      return ivs_load_refuse(d, IVS_E_UNSUPPORTED, IVS_REASON_OPTION_FLAGS, IVS_SEGMENT_NONE, 0u, 0u);
+    }
+    if (ivs_load_tail_zero((const uint8_t *)opts, sizeof(ivs_load_options), (size_t)opts->struct_size) == 0u) {
+      return ivs_load_refuse(d, IVS_E_UNSUPPORTED, IVS_REASON_OPTION_TAIL, IVS_SEGMENT_NONE, 0u, 0u);
+    }
+  }
+  /* 4. BAD_STATE. */
+  if (im->phase != IVS_PHASE_OFF) {
+    return ivs_load_refuse(d, IVS_E_BAD_STATE, IVS_REASON_STATE_POWERED, IVS_SEGMENT_NONE, 0u, 0u);
+  }
+  /* 5. DUPLICATE_LOAD. */
+  if (im->slot[kind - 1u].loaded != 0u) {
+    return ivs_load_refuse(d, IVS_E_DUPLICATE_LOAD, IVS_REASON_SLOT_OCCUPIED, IVS_SEGMENT_NONE, 0u, 0u);
+  }
+  /* 6. OVERSIZED: the claimed length, before any byte is read. */
+  bound = ivs_load_bound(kind);
+  if (n > bound) {
+    return ivs_load_refuse(d, IVS_E_OVERSIZED, IVS_REASON_IMAGE_LONG, IVS_SEGMENT_NONE, bound, 0u);
+  }
+  /* 7. BAD_ARG: the bounded input span against the instance storage. */
+  if (ivs_load_overlaps(bytes, len, im) != 0u) {
+    return ivs_load_refuse(d, IVS_E_BAD_ARG, IVS_REASON_ARG_INPUT_OVERLAP, IVS_SEGMENT_NONE, 0u, 0u);
+  }
+  /* 8. Content. */
+  if (kind != IVS_KIND_EXEC) {
+    return ivs_load_refuse(d, IVS_E_UNSUPPORTED, IVS_REASON_NONE, IVS_SEGMENT_NONE, 0u, 0u);
+  }
+  if (n < bound) {
+    return ivs_load_refuse(d, IVS_E_MALFORMED, IVS_REASON_IMAGE_SHORT, IVS_SEGMENT_NONE, n, 0u);
+  }
+  for (i = 0u; i < IVS_MEMSYS_EXEC_WORDS; i++) {
+    if ((bytes[2u * i] & 0xFCu) != 0u) {
+      return ivs_load_refuse(d, IVS_E_MALFORMED, IVS_REASON_IMAGE_WORD, IVS_SEGMENT_NONE, 2u * (uint64_t)i, 0u);
+    }
+  }
+  ivs_sha256_digest(bytes, len, plan->sha256);
+  plan->length_units = p->exec.units;
+  plan->unit_bits = p->exec.unit_bits;
+  plan->base_addr = p->exec.base;
+  /* 9. DIGEST_MISMATCH: expect_sha256, compared over all 32 bytes. */
+  if (opts != NULL && (opts->flags & IVS_LOAD_F_EXPECT_SHA256) != 0u) {
+    uint32_t diff = 0u;
+    for (i = 0u; i < IVS_SHA256_DIGEST_BYTES; i++) {
+      diff |= (uint32_t)(opts->expect_sha256[i] ^ plan->sha256[i]);
+    }
+    if (diff != 0u) {
+      return ivs_load_refuse(d, IVS_E_DIGEST_MISMATCH, IVS_REASON_EXPECT_DIGEST, IVS_SEGMENT_NONE, 0u, 0u);
+    }
+  }
+  plan->kind = kind;
+  plan->length_bytes = (uint32_t)n;
+  return IVS_OK;
+}
+
+/* Copy-only commit of a validated plan: no check, no early return. */
+static void ivs_load_commit(struct ivs_machine *im, const ivs_load_plan *plan, const uint8_t *bytes)
+{
+  ivs_machine_slot *s = &im->slot[plan->kind - 1u];
+  ivs_memsys_install_exec(&im->mem, bytes);
+  s->loaded = 1u;
+  s->length_bytes = plan->length_bytes;
+  s->length_units = plan->length_units;
+  s->unit_bits = plan->unit_bits;
+  s->base_addr = plan->base_addr;
+  memcpy(s->sha256, plan->sha256, sizeof s->sha256);
+}
+
+ivs_status ivs_machine_load(ivs_machine *m, uint32_t kind, const uint8_t *bytes, size_t len,
+                            const ivs_load_options *opts, ivs_load_report *report)
+{
+  ivs_load_plan plan;
+  ivs_load_report r;
+  ivs_status st;
+  if (report != NULL && report->struct_size < (uint32_t)sizeof(ivs_load_report)) {
+    return IVS_E_BAD_ARG;
+  }
+  memset(&plan, 0, sizeof plan);
+  memset(&r, 0, sizeof r);
+  r.struct_size = (uint32_t)sizeof r;
+  r.segment_index = IVS_SEGMENT_NONE;
+  st = ivs_load_validate(m, kind, bytes, len, opts, &plan, &r);
+  if (st == IVS_OK) {
+    struct ivs_machine *im = ivs_machine_from_handle_mut(m);
+    ivs_load_commit(im, &plan, bytes);
+    ivs_machine_slot_report(&im->slot[kind - 1u], &r.image);
+  }
+  if (report != NULL) {
+    *report = r;
+  }
+  return st;
+}
+
+ivs_status ivs_machine_unload(ivs_machine *m, uint32_t kind)
+{
+  struct ivs_machine *im;
+  ivs_machine_slot *s;
+  uint32_t mem_slot;
+  if (kind < IVS_KIND_EXEC || kind > IVS_KIND_CARTRIDGE) {
+    return IVS_E_BAD_ARG;
+  }
+  im = ivs_machine_from_handle_mut(m);
+  if (im == NULL) {
+    return IVS_E_BAD_HANDLE;
+  }
+  if (im->phase != IVS_PHASE_OFF) {
+    return IVS_E_BAD_STATE;
+  }
+  s = &im->slot[kind - 1u];
+  if (s->loaded == 0u) {
+    return IVS_OK;
+  }
+  memset(s, 0, sizeof *s);
+  s->kind = kind;
+  mem_slot = kind;
+  ivs_memsys_clear_slot(&im->mem, mem_slot);
+  return IVS_OK;
+}

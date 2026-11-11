@@ -87,6 +87,10 @@ const ivs_digest_field *ivs_machine_digest_field(size_t i);
  * pass modified copies. */
 size_t ivs_machine_digest_preimage(const struct ivs_machine *m, uint32_t domain, uint8_t *buf, size_t cap);
 
+/* Writes the public report of one slot record (shared by ivs_machine_info and the load report,
+ * A-08 f). */
+void ivs_machine_slot_report(const ivs_machine_slot *s, ivs_image_report *o);
+
 /* The instance behind a handle, or NULL for NULL or a wrong magic. */
 const struct ivs_machine *ivs_machine_from_handle(const ivs_machine *m);
 struct ivs_machine *ivs_machine_from_handle_mut(ivs_machine *m);
