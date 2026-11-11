@@ -12,8 +12,14 @@
 # pattern): the ids are first listed in file order and sorted id order, lane i runs every 4th
 # listed id with its own log, and the findings are printed afterwards in that listed order, so
 # the output does not depend on scheduling.
+# Watchdog (review IN-04): a fault binary is not a ctest test, so no ctest timeout applies; each
+# run gets IVS_FAULT_TIMEOUT seconds (default 120), after which it is sent TERM and reported
+# c-faults-run: <ID> (timeout). POSIX sh only: a background sleep in a watchdog subshell, killed
+# through its TERM trap when the run ends first. A self-test, run alongside the lanes, proves the
+# watchdog stops a 30-second sleep after 1 second and stays silent for a run that ends in time.
 # Tokens: c-faults-run: <ID or what>, c-faults-run: no suite in <file>,
-#   c-faults-run: duplicate <ID>. Stats: fault-runs=<n> (summed over files).
+#   c-faults-run: duplicate <ID>, c-faults-run: <ID> (timeout),
+#   c-faults-run: watchdog self-test (<case>). Stats: fault-runs=<n> (summed over files).
 LC_ALL=C; export LC_ALL
 : "${ROOT:?ROOT is not set}"
 : "${CHECK_DIR:?CHECK_DIR is not set}"
@@ -56,6 +62,29 @@ if ! cmake --build --preset dev --target ivs_faults > "$tmp/build.log" 2>&1; the
   exit 1
 fi
 
+# run_limited <seconds> <marker> <log> <command...>: runs the command (stdin /dev/null, output to
+# <log>); if it is still running after <seconds>, writes <marker> and sends it TERM.
+limit=${IVS_FAULT_TIMEOUT:-120}
+case $limit in ''|*[!0-9]*|0) bad c-faults-run "IVS_FAULT_TIMEOUT=$limit"; exit 1 ;; esac
+run_limited() {
+  _lim=$1; _mark=$2; _log=$3; shift 3
+  "$@" > "$_log" 2>&1 < /dev/null &
+  _pid=$!
+  (
+    _s=
+    trap 'if [ -n "$_s" ]; then kill "$_s" 2> /dev/null; fi; exit 0' TERM
+    sleep "$_lim" &
+    _s=$!
+    wait "$_s"
+    : > "$_mark"
+    kill -TERM "$_pid" 2> /dev/null
+  ) > /dev/null 2>&1 < /dev/null &
+  _wd=$!
+  wait "$_pid" || :
+  kill -TERM "$_wd" 2> /dev/null
+  wait "$_wd" 2> /dev/null || :
+}
+
 out_root="$gate_dir/faults"
 rm -rf "$out_root"
 mkdir -p "$out_root" || { bad c-faults-run "faults dir"; exit 1; }
@@ -87,6 +116,12 @@ while read -r suite rel; do
   done
 done < "$tmp/files"
 
+# Watchdog self-test, alongside the lanes (the `wait` below collects it): a 30-second sleep must
+# be stopped after 1 second, and a run that ends at once must leave no marker.
+(
+  run_limited 1 "$tmp/wd-fire.mark" "$tmp/wd-fire.log" sleep 30
+  run_limited 5 "$tmp/wd-quiet.mark" "$tmp/wd-quiet.log" true
+) 2> /dev/null &
 # Pass 2: run the listed ids in JOBS lanes; a fault run is expected to exit non-zero.
 lane=0
 while [ "$lane" -lt "$JOBS" ]; do
@@ -94,8 +129,10 @@ while [ "$lane" -lt "$JOBS" ]; do
     k=0
     while IFS= read -r id; do
       if [ $((k % JOBS)) -eq "$lane" ]; then
-        IVS_TEST_OUT_DIR="$out_root/$id" IVS_TEST_NONCE="$nonce" \
-          "$ROOT/build/dev/tests/ivs_fault_$id" > "$tmp/$id.log" 2>&1 < /dev/null || :
+        IVS_TEST_OUT_DIR="$out_root/$id"
+        IVS_TEST_NONCE=$nonce
+        export IVS_TEST_OUT_DIR IVS_TEST_NONCE
+        run_limited "$limit" "$tmp/$id.timeout" "$tmp/$id.log" "$ROOT/build/dev/tests/ivs_fault_$id"
       fi
       k=$((k + 1))
     done < "$tmp/runs"
@@ -105,6 +142,8 @@ while [ "$lane" -lt "$JOBS" ]; do
 done
 wait
 lane_pids=
+[ -f "$tmp/wd-fire.mark" ] || bad c-faults-run "watchdog self-test (fire)"
+[ ! -f "$tmp/wd-quiet.mark" ] || bad c-faults-run "watchdog self-test (quiet)"
 
 # Pass 3: findings in listed order.
 runs=0
@@ -113,7 +152,10 @@ while read -r kind id suite; do
     bad c-faults-run "$id${suite:+ $suite}"
     continue
   fi
-  if [ -s "$out_root/$id/$suite.txt" ]; then
+  if [ -f "$tmp/$id.timeout" ]; then
+    cat "$tmp/$id.log"
+    bad c-faults-run "$id (timeout after ${limit}s)"
+  elif [ -s "$out_root/$id/$suite.txt" ]; then
     runs=$((runs + 1))
   else
     cat "$tmp/$id.log"
