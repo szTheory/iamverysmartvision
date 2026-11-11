@@ -2,17 +2,17 @@
 gsd_state_version: "1.0"
 current_phase: 4
 current_phase_name: Headless Runner and Installed Consumer (Slice 0)
-status: planning
-stopped_at: Phase 3 complete, ready to plan Phase 4
-last_updated: "2026-11-11T10:27:37.755Z"
+status: executing
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-11-11T16:12:28.756Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 3 complete, transitioned to Phase 4
-state_head: 08f21627c0a8189086e07352f139290455f76bed
+state_head: ae7a35cd1f12f22c627874eb7f8d4e38bb2c79f2
 progress:
   total_phases: 8
   completed_phases: 3
-  total_plans: 46
-  completed_plans: 46
+  total_plans: 71
+  completed_plans: 47
   percent: 38
 ---
 
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 4 — Headless Runner and Installed Consumer (Slice 0)
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-11-11 — Phase 3 complete, transitioned to Phase 4
+Plan: 2 of 25
+Status: Ready to execute
+Last activity: 2026-11-11 — Completed 04-01 (CI measurement, job summary, ci-parity bans)
 
 Progress: [████░░░░░░] 38%
 
@@ -100,6 +100,7 @@ Progress: [████░░░░░░] 38%
 | Phase 03 P12 | 15min | 3 tasks | 22 files |
 | Phase 03 P13 | 10min | 3 tasks | 46 files |
 | Phase 03 P14 | 12min | 3 tasks | 4 files |
+| Phase 04 P01 | 45min | 3 tasks | 36 files |
 
 ## Accumulated Context
 
@@ -220,6 +221,7 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 03]: 03-13: ninth token/control api-effects-format for table shape; controls=224/224
 - [Phase 03]: D5 recorded as decided by D-24 in reset.r7, C32 and C25; hardware read-back stays D10, boot stub stays Phase 4
 - [Phase 03]: Hosted gate budget re-baselined 30 s -> 40 s, revisit trigger 50 s (D-38, A-07); no lever applied at phase end
+- [Phase 04]: 04-01: gate.sh prints gate-env/gate-cpu (POSIX times via 'command times' in the main shell after the controls wait); job summary only through the EXIT-trap helper tools/check/ci-summary.sh; ci-parity bans any action but actions/checkout, secrets, strategy, runs-on other than ubuntu-24.04 and a gate timeout other than 5
 
 ### Pending Todos
 
@@ -252,6 +254,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-11T08:58:12.416Z
-Stopped at: Phase 3 complete, ready to plan Phase 4
+Last session: 2026-11-11T16:12:21.386Z
+Stopped at: Completed 04-01-PLAN.md
 Resume file: None
