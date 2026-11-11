@@ -1,0 +1,323 @@
+{
+  "schema_version": 1,
+  "note": "API effect table (D-15, API-06, plan 03-13): for every public function, its header, its success behaviour, its check precedence (first failing class wins) and one row per refusal status with the state effect, the out parameters a refusal writes and the test ids that assert that status. The gate step api-effects (tools/check/api-effects.cmake) ties it to core/include/ivs/ivs_status.h, data/expected/api-statuses.ids, the IVS_API declarations of core/include/ivs/*.h (D-06 symbol list) and data/expected/tests/*.ids; tests-inventory proves each cited id ran in both presets. Residual (OQ-5): the step proves a cited id exists in an inventory, not that the case asserts that status; each cited case asserts its own status in its source. Status names are the macro names of ivs_status.h.",
+  "effects": [
+    {
+      "name": "none",
+      "definition": "The refused call leaves the instance storage byte-identical (whole-storage memcmp) and, where the handle is valid before and after, the state digest equal; it writes only the out parameters listed in the row and allocates nothing (D-08, D-10, D-12). A call that takes no instance touches none."
+    }
+  ],
+  "calls": [
+    {
+      "name": "ivs_api_version",
+      "header": "core/include/ivs/ivs.h",
+      "on_ok": "Returns IVS_API_VERSION of the headers the library was built with. Takes no argument, cannot refuse and touches no instance (machine.api.version).",
+      "precedence": [],
+      "notes": [],
+      "refusals": []
+    },
+    {
+      "name": "ivs_status_name",
+      "header": "core/include/ivs/ivs_status.h",
+      "on_ok": "Returns the static, constant, stable name of a status (\"IVS_OK\", \"IVS_E_BAD_ARG\", ...) or \"IVS_E_UNKNOWN\" for a value that is not a code. Cannot refuse and touches no instance (machine.status.names).",
+      "precedence": [],
+      "notes": [],
+      "refusals": []
+    },
+    {
+      "name": "ivs_machine_storage_requirements",
+      "header": "core/include/ivs/ivs_machine.h",
+      "on_ok": "Writes the instance size and alignment of the profile into *req, with struct_size set to the size written. Touches no instance.",
+      "precedence": [
+        {"status": "IVS_E_BAD_ARG", "checks": "req NULL or req->struct_size below the v1 size; profile id NULL or not NUL-terminated within 64 bytes"},
+        {"status": "IVS_E_UNKNOWN_PROFILE", "checks": "profile id not registered (exact, case-sensitive)"}
+      ],
+      "notes": [],
+      "refusals": [
+        {
+          "status": "IVS_E_BAD_ARG",
+          "effect": "none",
+          "outs": "nothing written: *req keeps its bytes",
+          "tests": ["machine.refuse.requirements.null-out", "machine.refuse.requirements.size-0", "machine.refuse.requirements.short", "machine.refuse.requirements.null-id", "machine.refuse.requirements.id-unterminated"]
+        },
+        {
+          "status": "IVS_E_UNKNOWN_PROFILE",
+          "effect": "none",
+          "outs": "nothing written: *req keeps its bytes",
+          "tests": ["machine.refuse.requirements.unknown-profile"]
+        }
+      ]
+    },
+    {
+      "name": "ivs_machine_create",
+      "header": "core/include/ivs/ivs_machine.h",
+      "on_ok": "Validates everything before the first write, then zero-fills the instance bytes of storage, sets the magic, profile index, phase OFF, time 0 and slot kinds, and sets *out to the handle.",
+      "precedence": [
+        {"status": "IVS_E_BAD_ARG", "checks": "out inside the instance bytes of storage (nothing written, checked before *out is cleared)", "pinned_by": ["machine.refuse.create.out-inside-storage", "machine.refuse.create.out-after-instance-ok"]},
+        {"status": "IVS_E_BAD_ARG", "checks": "opts, storage or out NULL; opts->struct_size short; profile id NULL or unterminated; storage misaligned", "pinned_by": ["machine.refuse.create.misaligned-over-flags"]},
+        {"status": "IVS_E_UNSUPPORTED", "checks": "nonzero flags; a nonzero byte in a larger opts tail (D-04)", "pinned_by": ["machine.refuse.create.flags-over-unknown-profile"]},
+        {"status": "IVS_E_UNKNOWN_PROFILE", "checks": "profile id not registered", "pinned_by": ["machine.refuse.create.unknown-over-short-storage"]},
+        {"status": "IVS_E_BUFFER_TOO_SMALL", "checks": "storage_bytes below the instance size"}
+      ],
+      "notes": [
+        "Out parameter rule (core/include/ivs/ivs_machine.h, plan 03-11): an out pointer that overlaps the instance bytes of storage is BAD_ARG with nothing written; an out pointer just after the instance bytes is accepted."
+      ],
+      "refusals": [
+        {
+          "status": "IVS_E_BAD_ARG",
+          "effect": "none",
+          "outs": "*out is set to NULL when out is not NULL and not inside the storage; otherwise nothing is written; the storage is untouched",
+          "tests": ["machine.refuse.create.null-opts", "machine.refuse.create.null-storage", "machine.refuse.create.null-out", "machine.refuse.create.size-0", "machine.refuse.create.size-4", "machine.refuse.create.id-null", "machine.refuse.create.id-unterminated", "machine.refuse.create.misaligned-1", "machine.refuse.create.misaligned-8", "machine.refuse.create.misaligned-over-flags", "machine.refuse.create.out-inside-storage"]
+        },
+        {
+          "status": "IVS_E_UNSUPPORTED",
+          "effect": "none",
+          "outs": "*out is set to NULL; the storage is untouched",
+          "tests": ["machine.refuse.create.flags-1", "machine.refuse.create.tail-nonzero", "machine.refuse.create.flags-over-unknown-profile"]
+        },
+        {
+          "status": "IVS_E_UNKNOWN_PROFILE",
+          "effect": "none",
+          "outs": "*out is set to NULL; the storage is untouched",
+          "tests": ["machine.refuse.create.unknown-profile", "machine.refuse.create.near-miss", "machine.refuse.create.trailing-space", "machine.refuse.create.id-63-unknown", "machine.refuse.create.unknown-over-short-storage"]
+        },
+        {
+          "status": "IVS_E_BUFFER_TOO_SMALL",
+          "effect": "none",
+          "outs": "*out is set to NULL; the storage is untouched",
+          "tests": ["machine.refuse.create.short-storage"]
+        }
+      ]
+    },
+    {
+      "name": "ivs_machine_destroy",
+      "header": "core/include/ivs/ivs_machine.h",
+      "on_ok": "Zero-scrubs every instance byte; the handle is then invalid and every later call with it is BAD_HANDLE.",
+      "precedence": [
+        {"status": "IVS_E_BAD_HANDLE", "checks": "NULL handle, wrong magic or an already destroyed instance"}
+      ],
+      "notes": [],
+      "refusals": [
+        {
+          "status": "IVS_E_BAD_HANDLE",
+          "effect": "none",
+          "outs": "none (the call has no out parameter)",
+          "tests": ["machine.refuse.destroy.null", "machine.refuse.destroy.twice", "machine.refuse.destroy.wrong-magic"]
+        }
+      ]
+    },
+    {
+      "name": "ivs_machine_reset",
+      "header": "core/include/ivs/ivs_machine.h",
+      "on_ok": "Power-on reset (D-14): volatile state takes its power-on fill, every gate is open, the CPU is armed to take its reset entry through the profile reset vector, machine time is 0 and the phase is POWERED; the image slots, cartridge segments and profile index are untouched.",
+      "precedence": [
+        {"status": "IVS_E_BAD_ARG", "checks": "kind other than IVS_RESET_POWER_ON (A-08 e: unknown enumerants are BAD_ARG)", "pinned_by": ["machine.prec.reset-arg-over-handle", "machine.prec.reset-arg-over-missing"]},
+        {"status": "IVS_E_BAD_HANDLE", "checks": "NULL handle or an invalid instance", "pinned_by": ["machine.prec.reset-handle-over-missing"]},
+        {"status": "IVS_E_MISSING_SYSTEM_IMAGE", "checks": "a slot the profile requires is empty; EXEC is checked before GROM (D-14)"}
+      ],
+      "notes": [
+        "A-08 d: reset from POWERED is a power cycle that gives the same state for the same content. Nothing returns a POWERED instance to OFF except destroy, so after the first successful reset every ivs_machine_load and ivs_machine_unload is BAD_STATE until a new instance (machine.reset.power-cycle-one-way).",
+        "D-14: the MEM-04 missing-system-image refusal is owned by reset, the first operation that needs the images."
+      ],
+      "refusals": [
+        {
+          "status": "IVS_E_BAD_ARG",
+          "effect": "none",
+          "outs": "none (the call has no out parameter)",
+          "tests": ["machine.refuse.reset.kind-0", "machine.refuse.reset.kind-2", "machine.refuse.reset.kind-2-powered", "machine.prec.reset-arg-over-handle", "machine.prec.reset-arg-over-missing"]
+        },
+        {
+          "status": "IVS_E_BAD_HANDLE",
+          "effect": "none",
+          "outs": "none (the call has no out parameter)",
+          "tests": ["machine.refuse.reset.null", "machine.refuse.reset.destroyed", "machine.prec.reset-handle-over-missing"]
+        },
+        {
+          "status": "IVS_E_MISSING_SYSTEM_IMAGE",
+          "effect": "none",
+          "outs": "none (the call has no out parameter)",
+          "tests": ["machine.refuse.reset.no-exec", "machine.refuse.reset.no-grom", "machine.refuse.reset.neither", "machine.refuse.reset.no-exec-with-cart"]
+        }
+      ]
+    },
+    {
+      "name": "ivs_machine_load",
+      "header": "core/include/ivs/ivs_machine.h",
+      "on_ok": "Copies the validated image into its slot (copy-only commit, no pointer kept, nothing allocated) and sets the slot report; when report is not NULL it is written with reason NONE and the new slot report.",
+      "precedence": [
+        {"status": "IVS_E_BAD_ARG", "checks": "report struct_size short or report overlapping the instance storage (nothing written)", "pinned_by": ["machine.refuse.load.exec.report-inside.f", "machine.refuse.load.exec.report-short.f"]},
+        {"status": "IVS_E_BAD_ARG", "checks": "argument values: kind not IVS_KIND_* (A-08 e), bytes NULL with len above 0, opts struct_size short", "pinned_by": ["machine.prec.arg-over-handle", "machine.refuse.load.arg.kind-0.w"]},
+        {"status": "IVS_E_BAD_HANDLE", "checks": "NULL or invalid handle", "pinned_by": ["machine.prec.handle-over-unsupported"]},
+        {"status": "IVS_E_UNSUPPORTED", "checks": "an unknown option flag or a nonzero opts tail; after BAD_HANDLE (A-08 b)", "pinned_by": ["machine.prec.unsupported-over-bad-state", "machine.prec.unsupported-over-duplicate"]},
+        {"status": "IVS_E_BAD_STATE", "checks": "the machine is POWERED (A-08 d)", "pinned_by": ["machine.prec.bad-state-over-duplicate"]},
+        {"status": "IVS_E_DUPLICATE_LOAD", "checks": "the slot already holds an image (unload first)", "pinned_by": ["machine.prec.duplicate-over-oversized", "machine.prec.duplicate-over-overlap", "machine.prec.duplicate-over-malformed", "machine.prec.duplicate-over-digest"]},
+        {"status": "IVS_E_OVERSIZED", "checks": "len above the kind's bound (EXEC 8192, GROM 2048, cartridge 131,256 bytes), u64-widened, before any byte is read (A-08 a)", "pinned_by": ["machine.prec.oversized-over-overlap", "machine.prec.oversized-over-malformed"]},
+        {"status": "IVS_E_BAD_ARG", "checks": "the input span overlaps the instance storage; tested only on a span inside the bound, with uintptr_t arithmetic that cannot wrap (A-08 a)", "pinned_by": ["machine.prec.overlap-over-malformed"]},
+        {"status": "IVS_E_MALFORMED", "checks": "system image: below its exact size (0 included) or an EXEC word with a bit of 15..10 set", "pinned_by": ["machine.prec.malformed-over-expect-digest"]},
+        {"status": "IVS_E_OVERSIZED", "checks": "cartridge, layer-1 parser (D-33 order from here): header total_bytes above the maximum", "pinned_by": ["machine.refuse.load.cart.total-over-max.f"]},
+        {"status": "IVS_E_MALFORMED", "checks": "cartridge parser: truncation, magic, version, flags, reserved fields, trailing bytes, segment count, size mismatch, segment length, width, attr, reserved, segment order", "pinned_by": ["machine.prec.malformed-over-out-of-range"]},
+        {"status": "IVS_E_OUT_OF_RANGE", "checks": "cartridge parser: a segment whose address range wraps past FFFF", "pinned_by": ["machine.prec.wrap-over-overlap"]},
+        {"status": "IVS_E_OVERLAP", "checks": "cartridge parser: overlapping segments", "pinned_by": ["machine.prec.overlap-over-digest", "machine.prec.cart-overlap-before-span"]},
+        {"status": "IVS_E_DIGEST_MISMATCH", "checks": "cartridge parser: the container's SHA-256 trailer differs", "pinned_by": ["machine.prec.cart-trailer-before-span"]},
+        {"status": "IVS_E_MALFORMED", "checks": "cartridge parser: a word above 0x3FF", "pinned_by": ["machine.prec.cart-malformed-before-span", "machine.prec.cart-malformed-before-feature"]},
+        {"status": "IVS_E_OUT_OF_RANGE", "checks": "cartridge layer 2: a segment outside the profile's cartridge span", "pinned_by": ["machine.prec.cart-span-before-feature"]},
+        {"status": "IVS_E_UNSUPPORTED", "checks": "cartridge layer 2: required_features bits the profile does not support", "pinned_by": ["machine.prec.cart-feature-before-expect"]},
+        {"status": "IVS_E_DIGEST_MISMATCH", "checks": "expect_sha256 (IVS_LOAD_F_EXPECT_SHA256) differs from the SHA-256 of the supplied bytes, compared over all 32 bytes"}
+      ],
+      "notes": [
+        "A-08 a: the claimed length bound (OVERSIZED) precedes the input-overlap BAD_ARG, which runs only on a span inside the bound, so a refusal status is a pure function of argument values and machine state, never of where the host placed its buffer (machine.prec.oversized-over-overlap; the .heap and .inside row pairs give the same status).",
+        "A-08 b: options (UNSUPPORTED) are checked after BAD_HANDLE; the content stage of a cartridge is the layer-1 parser in D-33 order, then layer 2 (span, then features), then expect_sha256. D-33 governs the inside of the parser; cross-stage outcomes are pinned by the machine.prec.cart-* rows: overlapping segments that also leave the span report OVERLAP, and a bad trailer with a wide word reports DIGEST_MISMATCH. This refines D-11 and is intended.",
+        "A-08 d: after the first successful ivs_machine_reset the instance stays POWERED until destroy, so every load is BAD_STATE until a new instance (machine.refuse.load.exec.after-power-cycle.w).",
+        "A-08 e: an unknown kind is BAD_ARG, never UNSUPPORTED; UNSUPPORTED is reserved for unknown option flags, struct tails and feature bits.",
+        "Out parameter rule (core/include/ivs/ivs_machine.h, plan 03-11): a report that overlaps the instance storage, or whose struct_size is short, is BAD_ARG with nothing written, checked before every other class. On any other refusal a non-NULL report gets only its detail fields (reason, segment_index, byte_offset, missing_features) and a zero image."
+      ],
+      "refusals": [
+        {
+          "status": "IVS_E_BAD_ARG",
+          "effect": "none",
+          "outs": "nothing written when the report itself is the cause (short or inside the instance); otherwise a non-NULL report gets reason ARG_KIND, ARG_NULL_BYTES, ARG_STRUCT_SIZE or ARG_INPUT_OVERLAP and a zero image",
+          "tests": ["machine.refuse.load.arg.kind-0.f", "machine.refuse.load.arg.kind-4.f", "machine.refuse.load.arg.kind-255.f", "machine.refuse.load.arg.kind-0.w", "machine.refuse.load.exec.null-bytes-len-8.f", "machine.refuse.load.grom.null-bytes-len-8.f", "machine.refuse.load.cart.null-bytes-len-8.f", "machine.refuse.load.exec.opts-short.f", "machine.refuse.load.cart.opts-size-0.f", "machine.refuse.load.exec.report-short.f", "machine.refuse.load.exec.report-inside.f", "machine.refuse.load.cart.report-inside.f", "machine.refuse.load.exec.input-inside.f", "machine.refuse.load.grom.input-inside.f", "machine.refuse.load.cart.input-inside.f", "machine.refuse.load.exec.input-straddle-below.f", "machine.prec.arg-over-handle", "machine.prec.overlap-over-malformed"]
+        },
+        {
+          "status": "IVS_E_BAD_HANDLE",
+          "effect": "none",
+          "outs": "a non-NULL report gets reason HANDLE and a zero image",
+          "tests": ["machine.refuse.load.exec.null-machine", "machine.refuse.load.cart.null-machine", "machine.refuse.load.exec.destroyed", "machine.prec.handle-over-unsupported"]
+        },
+        {
+          "status": "IVS_E_UNSUPPORTED",
+          "effect": "none",
+          "outs": "a non-NULL report gets reason OPTION_FLAGS, OPTION_TAIL or FEATURES (with missing_features) and a zero image",
+          "tests": ["machine.refuse.load.exec.flags-bit-1.f", "machine.refuse.load.cart.flags-bit-31.f", "machine.refuse.load.exec.opts-tail-nonzero.f", "machine.refuse.load.grom.opts-tail-nonzero.f", "machine.refuse.load.cart.feature-bit-0.f", "machine.refuse.load.cart.feature-bit-31.f", "ivsc.L05-feature-bit-0", "ivsc.L06-feature-bit-31", "machine.prec.unsupported-over-duplicate", "machine.prec.unsupported-over-bad-state", "machine.prec.cart-feature-before-expect"]
+        },
+        {
+          "status": "IVS_E_BAD_STATE",
+          "effect": "none",
+          "outs": "a non-NULL report gets reason STATE_POWERED and a zero image",
+          "tests": ["machine.refuse.load.exec.powered.w", "machine.refuse.load.grom.powered.w", "machine.refuse.load.cart.powered.w", "machine.refuse.load.exec.after-power-cycle.w", "machine.prec.bad-state-over-duplicate"]
+        },
+        {
+          "status": "IVS_E_DUPLICATE_LOAD",
+          "effect": "none",
+          "outs": "a non-NULL report gets reason SLOT_OCCUPIED and a zero image",
+          "tests": ["machine.refuse.load.exec.duplicate-load.s", "machine.refuse.load.grom.duplicate-load.s", "machine.refuse.load.cart.duplicate-load.c", "ivsc.L07-second-load-duplicate", "machine.prec.duplicate-over-oversized", "machine.prec.duplicate-over-overlap", "machine.prec.duplicate-over-malformed", "machine.prec.duplicate-over-digest"]
+        },
+        {
+          "status": "IVS_E_OVERSIZED",
+          "effect": "none",
+          "outs": "a non-NULL report gets reason IMAGE_LONG or TOO_LARGE with the bound as byte_offset, and a zero image",
+          "tests": ["machine.refuse.load.exec.oversized-by-one.f", "machine.refuse.load.exec.oversized-far-heap.f", "machine.refuse.load.exec.oversized-far-inside.f", "machine.refuse.load.exec.len-wrap-heap.f", "machine.refuse.load.exec.len-wrap-inside.f", "machine.refuse.load.grom.oversized-by-one.f", "machine.refuse.load.grom.oversized-far-heap.f", "machine.refuse.load.grom.oversized-far-inside.f", "machine.refuse.load.cart.oversized-by-one-heap.f", "machine.refuse.load.cart.oversized-by-one-inside.f", "machine.refuse.load.cart.total-over-max.f", "machine.prec.oversized-over-overlap", "machine.prec.oversized-over-malformed"]
+        },
+        {
+          "status": "IVS_E_MALFORMED",
+          "effect": "none",
+          "outs": "a non-NULL report gets the reason (IMAGE_SHORT, IMAGE_WORD or an IVSC v1 structure reason), segment index and byte offset of the first defect, and a zero image",
+          "tests": ["machine.refuse.load.exec.zero-length-ptr.f", "machine.refuse.load.exec.zero-length-null.f", "machine.refuse.load.grom.zero-length-ptr.f", "machine.refuse.load.grom.zero-length-null.f", "machine.refuse.load.cart.zero-length-ptr.f", "machine.refuse.load.cart.zero-length-null.f", "machine.refuse.load.exec.short-by-one.f", "machine.refuse.load.exec.odd-length-4097.f", "machine.refuse.load.exec.odd-length-1.f", "machine.refuse.load.grom.short-by-one.f", "machine.refuse.load.exec.wide-word-first.f", "machine.refuse.load.exec.wide-word-last.f", "machine.refuse.load.cart.parse-truncated.f", "machine.refuse.load.cart.parse-magic.f", "machine.refuse.load.cart.parse-version.f", "machine.refuse.load.cart.parse-flags.f", "machine.refuse.load.cart.parse-reserved.f", "machine.refuse.load.cart.parse-trailing.f", "machine.refuse.load.cart.parse-segment-count.f", "machine.refuse.load.cart.parse-size-mismatch.f", "machine.refuse.load.cart.parse-segment-length.f", "machine.refuse.load.cart.parse-segment-width.f", "machine.refuse.load.cart.parse-segment-attr.f", "machine.refuse.load.cart.parse-segment-reserved.f", "machine.refuse.load.cart.parse-order.f", "machine.refuse.load.cart.parse-word-range.f", "machine.prec.malformed-over-out-of-range", "machine.prec.malformed-over-expect-digest", "machine.prec.cart-malformed-before-span", "machine.prec.cart-malformed-before-feature"]
+        },
+        {
+          "status": "IVS_E_OUT_OF_RANGE",
+          "effect": "none",
+          "outs": "a non-NULL report gets reason ADDR_WRAP or OUT_OF_SPAN with the segment index and entry offset, and a zero image",
+          "tests": ["machine.refuse.load.cart.addr-wrap.f", "machine.refuse.load.cart.span-below-one.f", "machine.refuse.load.cart.span-straddle-start.f", "machine.refuse.load.cart.exec-region.f", "ivsc.B04-span-plus-one", "ivsc.B05-span-minus-one", "ivsc.B07-load-out-of-span", "ivsc.L01-below-span", "ivsc.L02-over-exec", "ivsc.L03-straddle-span-start", "ivsc.L04-over-sysram", "machine.prec.wrap-over-overlap", "machine.prec.cart-span-before-feature"]
+        },
+        {
+          "status": "IVS_E_OVERLAP",
+          "effect": "none",
+          "outs": "a non-NULL report gets reason OVERLAP with the segment index and byte offset, and a zero image",
+          "tests": ["machine.refuse.load.cart.overlap-exact.f", "machine.refuse.load.cart.overlap-partial.f", "machine.prec.overlap-over-digest", "machine.prec.cart-overlap-before-span"]
+        },
+        {
+          "status": "IVS_E_DIGEST_MISMATCH",
+          "effect": "none",
+          "outs": "a non-NULL report gets reason DIGEST (container trailer) or EXPECT_DIGEST (expect_sha256), and a zero image",
+          "tests": ["machine.refuse.load.cart.trailer-bit-flip.f", "machine.refuse.load.exec.expect-mismatch.f", "machine.refuse.load.grom.expect-mismatch.f", "machine.refuse.load.cart.expect-mismatch.f", "machine.prec.cart-trailer-before-span"]
+        }
+      ]
+    },
+    {
+      "name": "ivs_machine_unload",
+      "header": "core/include/ivs/ivs_machine.h",
+      "on_ok": "Zero-scrubs the slot's words and marks it loaded 0; an empty slot unloads OK with no change. After every slot is unloaded the state digest equals a fresh instance's (D-13).",
+      "precedence": [
+        {"status": "IVS_E_BAD_ARG", "checks": "kind not IVS_KIND_* (A-08 e)", "pinned_by": ["machine.refuse.unload.arg.kind-0.w"]},
+        {"status": "IVS_E_BAD_HANDLE", "checks": "NULL or invalid handle"},
+        {"status": "IVS_E_BAD_STATE", "checks": "the machine is POWERED (A-08 d)"}
+      ],
+      "notes": [
+        "A-08 d: after the first successful ivs_machine_reset the instance stays POWERED until destroy, so every unload is BAD_STATE until a new instance (machine.refuse.unload.grom.after-power-cycle.w)."
+      ],
+      "refusals": [
+        {
+          "status": "IVS_E_BAD_ARG",
+          "effect": "none",
+          "outs": "none (the call has no out parameter)",
+          "tests": ["machine.refuse.unload.arg.kind-0.f", "machine.refuse.unload.arg.kind-4.f", "machine.refuse.unload.arg.kind-0.w"]
+        },
+        {
+          "status": "IVS_E_BAD_HANDLE",
+          "effect": "none",
+          "outs": "none (the call has no out parameter)",
+          "tests": ["machine.refuse.unload.exec.null-machine", "machine.refuse.unload.exec.destroyed"]
+        },
+        {
+          "status": "IVS_E_BAD_STATE",
+          "effect": "none",
+          "outs": "none (the call has no out parameter)",
+          "tests": ["machine.refuse.unload.exec.powered.w", "machine.refuse.unload.grom.powered.w", "machine.refuse.unload.cart.powered.w", "machine.refuse.unload.grom.after-power-cycle.w"]
+        }
+      ]
+    },
+    {
+      "name": "ivs_machine_info",
+      "header": "core/include/ivs/ivs_machine.h",
+      "on_ok": "Writes phase, machine time (master ticks), profile index and the three slot reports into *out; the instance is not written.",
+      "precedence": [
+        {"status": "IVS_E_BAD_ARG", "checks": "out NULL, out->struct_size short, or out overlapping the instance storage", "pinned_by": ["machine.refuse.info.null-both"]},
+        {"status": "IVS_E_BAD_HANDLE", "checks": "NULL or invalid handle"}
+      ],
+      "notes": [
+        "Out parameter rule (core/include/ivs/ivs_machine.h, plan 03-11): an out struct that overlaps the instance storage is BAD_ARG with nothing written."
+      ],
+      "refusals": [
+        {
+          "status": "IVS_E_BAD_ARG",
+          "effect": "none",
+          "outs": "nothing written: *out keeps its bytes",
+          "tests": ["machine.refuse.info.null-out", "machine.refuse.info.null-both", "machine.refuse.info.size-0", "machine.refuse.info.short", "machine.refuse.info.out-inside"]
+        },
+        {
+          "status": "IVS_E_BAD_HANDLE",
+          "effect": "none",
+          "outs": "nothing written: *out keeps its bytes",
+          "tests": ["machine.refuse.info.null-handle", "machine.refuse.info.destroyed"]
+        }
+      ]
+    },
+    {
+      "name": "ivs_machine_state_digest",
+      "header": "core/include/ivs/ivs_machine.h",
+      "on_ok": "Writes the SHA-256 of the canonical big-endian state of one domain (CPU, MEM, IMAGES, INSTANCE) or of their composite into out_sha256 (D-35); the instance is not written.",
+      "precedence": [
+        {"status": "IVS_E_BAD_ARG", "checks": "out NULL, out overlapping the instance storage, or a domain other than 0..4 (the reserved 16..18 included)", "pinned_by": ["machine.refuse.digest.domain-over-handle"]},
+        {"status": "IVS_E_BAD_HANDLE", "checks": "NULL or invalid handle"}
+      ],
+      "notes": [
+        "Out parameter rule (core/include/ivs/ivs_machine.h, plan 03-11): an out buffer that overlaps the instance storage is BAD_ARG with nothing written."
+      ],
+      "refusals": [
+        {
+          "status": "IVS_E_BAD_ARG",
+          "effect": "none",
+          "outs": "nothing written: out_sha256 keeps its bytes",
+          "tests": ["machine.refuse.digest.null-out", "machine.refuse.digest.domain-5", "machine.refuse.digest.domain-16", "machine.refuse.digest.domain-99", "machine.refuse.digest.domain-over-handle", "machine.refuse.digest.out-inside"]
+        },
+        {
+          "status": "IVS_E_BAD_HANDLE",
+          "effect": "none",
+          "outs": "nothing written: out_sha256 keeps its bytes",
+          "tests": ["machine.refuse.digest.null-handle", "machine.refuse.digest.destroyed"]
+        }
+      ]
+    }
+  ]
+}
