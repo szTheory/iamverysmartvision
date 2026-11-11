@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 3
 current_phase_name: Memory Map, Content Loading and Refusal
 status: executing
-stopped_at: Completed 03-04-PLAN.md
-last_updated: "2026-11-11T05:50:11.101Z"
+stopped_at: Completed 03-05-PLAN.md
+last_updated: "2026-11-11T06:02:26.095Z"
 last_activity: 2026-11-11
-last_activity_desc: Plan 03-04 complete (profile memmap descriptors, fail-closed generator, memsys bus, suite memmap, 6 faults)
-state_head: ece054516eaf6da96e7c731aaf7d8c381e62ecfd
+last_activity_desc: Plan 03-05 complete (sourced literal memory map, memmap gate step, 10 controls)
+state_head: ac3057315213412d93b064a6c49e008758363343
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 46
-  completed_plans: 36
+  completed_plans: 37
   percent: 25
 ---
 
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 3 — Memory Map, Content Loading and Refusal
-Plan: 5 of 14
+Plan: 6 of 14
 Status: Ready to execute
-Last activity: 2026-11-11 — Plan 03-04 complete (profile memmap descriptors, fail-closed generator, memsys bus, suite memmap, 6 faults)
+Last activity: 2026-11-11 — Plan 03-05 complete (sourced literal memory map, memmap gate step, 10 controls)
 
 Progress: [███░░░░░░░] 25%
 
@@ -89,6 +89,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 03 P02 | 15min | 3 tasks | 13 files |
 | Phase 03 P03 | 8min | 3 tasks | 31 files |
 | Phase 03 P04 | 15min | 3 tasks | 14 files |
+| Phase 03 P05 | 8min | 2 tasks | 40 files |
 
 ## Accumulated Context
 
@@ -182,6 +183,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 03]: 03-04: a region's physical device is its name up to the first underscore; regions sharing one share its backing and must agree on size_words and device kind
 - [Phase 03]: 03-04: write-only alias regions carry conflict C61; C21 stays on stic_regs, stic_alias_read and gram
 - [Phase 03]: 03-04: GEN faults on a core-consumed table use ivs_fault_gen CONSUMER core:<src>; an -DMUTATE= in ARGS replaces the default must-fail id
+- [Phase 03]: 03-05: literal map mirror column = backing words when the row is an alias or exceeds its backing, - for the sole full-extent home of a device; write-view width = bits a store keeps (0 when dropped)
+- [Phase 03]: 03-05: memmap step adds memmap-literal-unknown-tag and memmap-literal-orphan with controls (controls=212; plan 03-06 expects 215); tier-5 refused by tag and by source authority tier
 
 ### Pending Todos
 
@@ -212,6 +215,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-11T05:50:11.010Z
-Stopped at: Completed 03-04-PLAN.md
+Last session: 2026-11-11T06:02:26.001Z
+Stopped at: Completed 03-05-PLAN.md
 Resume file: None
