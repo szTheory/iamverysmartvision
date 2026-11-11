@@ -11,6 +11,9 @@
  *   domain digest and leaves the other domains' preimages identical; the composite changes for a
  *   row of domains 1..4 and stays the same for a row of 16..18 (D-10, A-03); flipping a declared
  *   padding byte changes nothing.
+ * - Observation domains (plan 04-05): a fresh and a reset instance agree on VIDEO, AUDIO and
+ *   INPUT; a byte of a 16..18 row moves only its own domain; reset clears every observation byte
+ *   (machine.reset.clears-observation lives here with the other observation cases).
  * - Refusals: bad domain and NULL out (BAD_ARG), NULL or destroyed handle (BAD_HANDLE), with no
  *   write to the instance or out.
  * - Stepped literals (plan 04-05): the composite and domain 1..4 digests after content A, reset and
@@ -619,6 +622,111 @@ static int md_padding_ignored(void)
   return IVS_TEST_PASS;
 }
 
+/* ---- observation domains (plan 04-05, D-10) ---- */
+
+/* The VIDEO, AUDIO and INPUT digests of m into d[0..2]; 1 when all three are IVS_OK. */
+static int md_obs_digests(const ivs_machine *m, uint8_t d[3][32])
+{
+  return ivs_machine_state_digest(m, IVS_DIGEST_VIDEO, d[0]) == IVS_OK &&
+         ivs_machine_state_digest(m, IVS_DIGEST_AUDIO, d[1]) == IVS_OK &&
+         ivs_machine_state_digest(m, IVS_DIGEST_INPUT, d[2]) == IVS_OK;
+}
+
+/* A fresh instance's composite is still md_fresh_composite with the observation rows present,
+ * and an instance after content A and a power-on reset has the same VIDEO, AUDIO and INPUT
+ * digests as the fresh one. */
+static int md_video_fresh(void)
+{
+  ivs_ms_inst x;
+  uint8_t comp[32];
+  uint8_t df[3][32];
+  uint8_t dr[3][32];
+  int ok;
+  struct ivs_machine *f = md_fresh();
+  IVS_CHECK(f != NULL);
+  ok = ivs_machine_state_digest(f, IVS_DIGEST_COMPOSITE, comp) == IVS_OK && memcmp(comp, md_fresh_composite, 32u) == 0 &&
+       md_obs_digests(f, df);
+  free(f);
+  IVS_CHECK(ok);
+  IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, 0x5Au));
+  ok = md_obs_digests(x.m, dr) && memcmp(df, dr, sizeof df) == 0;
+  ivs_ms_free(&x);
+  IVS_CHECK(ok);
+  return IVS_TEST_PASS;
+}
+
+/* Flipping one byte of a VIDEO, an AUDIO and an INPUT row (one at a time) changes exactly that
+ * domain's digest; the composite and every other domain (1..4 and the other two observation
+ * domains) keep their baseline digests (D-10, A-03, Pitfall 2). */
+static int md_composite_excludes(void)
+{
+  static const struct {
+    size_t off;
+    uint32_t own;
+  } flips[3] = {
+      {offsetof(struct ivs_machine, obs.video.chain), IVS_DIGEST_VIDEO},
+      {offsetof(struct ivs_machine, obs.audio.count), IVS_DIGEST_AUDIO},
+      {offsetof(struct ivs_machine, obs.input.words), IVS_DIGEST_INPUT},
+  };
+  md_base b;
+  size_t k;
+  size_t i;
+  int ok;
+  uint8_t *bytes;
+  ok = md_base_init(&b);
+  bytes = (uint8_t *)b.m;
+  for (k = 0; ok && k < 3u; k++) {
+    bytes[flips[k].off] ^= 0xFFu;
+    for (i = 0; ok && i <= MD_DOMAIN_COUNT; i++) {
+      uint8_t got[32];
+      uint32_t d = i == 0 ? IVS_DIGEST_COMPOSITE : md_domains[i - 1u].id;
+      int same;
+      ok = ivs_machine_state_digest(b.m, d, got) == IVS_OK;
+      same = ok && memcmp(got, b.dig[d], 32u) == 0;
+      if (ok && (d == flips[k].own) == same) {
+        ivs_test_diag("flip in domain %u: domain %u %s", (unsigned)flips[k].own, (unsigned)d,
+                      same ? "unchanged" : "changed");
+        ok = 0;
+      }
+    }
+    bytes[flips[k].off] ^= 0xFFu;
+  }
+  md_base_free(&b);
+  IVS_CHECK(ok);
+  return IVS_TEST_PASS;
+}
+
+/* A power-on reset of a stepped instance whose observation rows are all non-zero leaves every
+ * observation byte zero, and the VIDEO, AUDIO and INPUT digests equal a fresh instance's. */
+static int md_reset_clears_obs(void)
+{
+  ivs_ms_inst x;
+  ivs_machine_obs zero;
+  uint8_t df[3][32];
+  uint8_t dr[3][32];
+  int ok;
+  struct ivs_machine *f = md_fresh();
+  IVS_CHECK(f != NULL);
+  ok = md_obs_digests(f, df);
+  free(f);
+  IVS_CHECK(ok);
+  IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, 0x5Au));
+  ok = ivs_ms_step(x.m, 10u, NULL);
+  if (ok) {
+    memset(&x.m->obs, 0xA5, sizeof x.m->obs);
+    ok = ivs_machine_reset(x.m, IVS_RESET_POWER_ON) == IVS_OK;
+  }
+  memset(&zero, 0, sizeof zero);
+  if (ok && memcmp(&x.m->obs, &zero, sizeof zero) != 0) {
+    ivs_test_diag("observation rows not cleared by reset");
+    ok = 0;
+  }
+  ok = ok && md_obs_digests(x.m, dr) && memcmp(df, dr, sizeof df) == 0;
+  ivs_ms_free(&x);
+  IVS_CHECK(ok);
+  return IVS_TEST_PASS;
+}
+
 /* ---- refusals ---- */
 
 /* digest(handle, domain, out) expecting want, with out and the instance untouched. */
@@ -692,6 +800,7 @@ static int md_refuse_domain_over_handle(void)
 }
 
 const ivs_test_case ivs_machine_digest_cases[] = {
+    {"machine.digest.composite-excludes-16-18", md_composite_excludes, NULL},
     {"machine.digest.composite-framing", md_composite_framing, NULL},
     {"machine.digest.coverage", md_coverage, NULL},
     {"machine.digest.fresh-composite", md_fresh_composite_case, NULL},
@@ -708,6 +817,7 @@ const ivs_test_case ivs_machine_digest_cases[] = {
     {"machine.digest.stream-cpu", md_stream_cpu, NULL},
     {"machine.digest.stream-cpu-synthetic", md_stream_cpu_synthetic, NULL},
     {"machine.digest.stream-instance", md_stream_instance, NULL},
+    {"machine.digest.video-fresh", md_video_fresh, NULL},
     {"machine.refuse.digest.destroyed", md_refuse_destroyed, NULL},
     {"machine.refuse.digest.domain-19", md_refuse_domain_19, NULL},
     {"machine.refuse.digest.domain-5", md_refuse_domain_5, NULL},
@@ -715,5 +825,6 @@ const ivs_test_case ivs_machine_digest_cases[] = {
     {"machine.refuse.digest.domain-over-handle", md_refuse_domain_over_handle, NULL},
     {"machine.refuse.digest.null-handle", md_refuse_null_handle, NULL},
     {"machine.refuse.digest.null-out", md_refuse_null_out, NULL},
+    {"machine.reset.clears-observation", md_reset_clears_obs, NULL},
 };
 const size_t ivs_machine_digest_count = sizeof ivs_machine_digest_cases / sizeof ivs_machine_digest_cases[0];

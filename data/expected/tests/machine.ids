@@ -9,7 +9,9 @@
 # digests of a stepped instance, recorded from the Phase 3 code (repeatability, A-03). Domains
 # 16..18 (VIDEO, AUDIO, INPUT) are live: their sensitivity cases require that a row change moves
 # only its own domain and never the composite (D-10), and the Phase 3 domain-16 refusal is
-# retargeted to domain 19, the first value after them.
+# retargeted to domain 19, the first value after them. machine.digest.video-fresh,
+# machine.digest.composite-excludes-16-18 and machine.reset.clears-observation (in the digest
+# family file) pin the fresh and reset observation rows and their separation from the composite.
 # Family load (plan 03-10): typed EXEC, GROM and IVSC cartridge loads through the public header
 # with generated stand-in bytes (D-24), their reports and digests, layer 2, the load options and
 # unload back to the fresh state.
@@ -102,6 +104,7 @@ machine.refuse.requirements.short
 machine.refuse.requirements.size-0
 machine.refuse.requirements.unknown-profile
 machine.status.names
+machine.digest.composite-excludes-16-18
 machine.digest.composite-framing
 machine.digest.coverage
 machine.digest.fresh-composite
@@ -118,6 +121,7 @@ machine.digest.stepped-literals
 machine.digest.stream-cpu
 machine.digest.stream-cpu-synthetic
 machine.digest.stream-instance
+machine.digest.video-fresh
 machine.refuse.digest.destroyed
 machine.refuse.digest.domain-19
 machine.refuse.digest.domain-5
@@ -365,6 +369,7 @@ machine.reset.no-cart-ok
 machine.reset.power-cycle-one-way
 machine.reset.step-program
 machine.reset.step-refusals
+machine.reset.clears-observation
 machine.refuse.handle.mem-profile-mismatch
 machine.refuse.handle.profile-garbage
 machine.refuse.handle.profile-out-of-range

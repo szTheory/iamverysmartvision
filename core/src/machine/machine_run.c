@@ -12,7 +12,8 @@
  * Only then does it apply the power-on state: system RAM, scratchpad and GRAM take the profile's
  * power-on fill (zero; the registry generator refuses any other fill), every gate opens, the CPU
  * is reset (POL-RST-01: its next step is the reset entry, whose IAB the memory system answers
- * with the profile's reset.r7), machine time is 0 and the phase is POWERED. The image slots, the
+ * with the profile's reset.r7), machine time is 0, the observation rows (digest domains 16..18,
+ * plan 04-05) are zero and the phase is POWERED. The image slots, the
  * committed cartridge segments and the profile index are untouched. Reset is allowed from OFF and
  * from POWERED; from POWERED it is a power cycle that gives the same state as a first reset with
  * the same content. Nothing returns an instance to OFF (A-08 d).
@@ -22,7 +23,8 @@
  * ivs_memsys_bus on the instance's own memory system. Machine time advances by the unit's
  * elapsed CPU cycles times the profile's ticks_per_cpu_cycle (D2: time is kept in master ticks).
  * The file holds no static or global state: every value lives in the instance (D-07).
- * Named faults (plan 03-12): RESET_CLEARS_BEFORE_IMAGE_CHECK, RESET_KEEPS_RAM, STATIC_CARRY. */
+ * Named faults (plan 03-12): RESET_CLEARS_BEFORE_IMAGE_CHECK, RESET_KEEPS_RAM, STATIC_CARRY;
+ * (plan 04-05): OBS_NOT_CLEARED_ON_RESET. */
 #include "common/ivs_prelude.h"
 
 #include "ivs/ivs.h"
@@ -48,6 +50,13 @@ static void ivs_run_power_on(struct ivs_machine *im)
   ivs_memsys_set_gate_internal(&im->mem, IVS_MEMSYS_GATE_GMEM, 1u);
   (void)ivs_cp1610_reset(&im->cpu);
   im->time_ticks = 0u;
+  /* The observation rows (digest domains 16..18, plan 04-05, D-10) start empty: every byte zero,
+   * as create leaves them (create zero-fills the whole instance). */
+  size_t obs = sizeof im->obs;
+#ifdef IVS_FAULT_OBS_NOT_CLEARED_ON_RESET
+  obs = 0u; /* the observation rows keep what they held before the reset */
+#endif
+  memset(&im->obs, 0, obs);
 }
 
 ivs_status ivs_machine_reset(ivs_machine *m, uint32_t kind)

@@ -41,6 +41,14 @@
 _Static_assert(IVS_MACHINE_SLOTS_END == sizeof(struct ivs_machine),
                "tail padding after slot[]: add a PAD row for it to the digest field table");
 
+/* Domain of the VIDEO chain and count rows. Named fault DIGEST_DOMAIN_SWAPPED (plan 04-05) tags
+ * them AUDIO, so a VIDEO change moves the AUDIO digest and domain 16 keeps only its pad row. */
+#ifdef IVS_FAULT_DIGEST_DOMAIN_SWAPPED
+#define IVS_DF_VIDEO_DOMAIN IVS_DIGEST_AUDIO
+#else
+#define IVS_DF_VIDEO_DOMAIN IVS_DIGEST_VIDEO
+#endif
+
 /* In instance offset order. */
 static const ivs_digest_field ivs_digest_fields[] = {
     IVS_DF("magic", magic, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_MAGIC),
@@ -71,8 +79,8 @@ static const ivs_digest_field ivs_digest_fields[] = {
     IVS_DF("mem.grom", mem.grom, 2u, IVS_MEMSYS_GROM_WORDS, IVS_DIGEST_MEM, IVS_DIGEST_KIND_UINT),
     IVS_DF("mem.cart", mem.cart, 2u, IVS_MEMSYS_CART_WORDS, IVS_DIGEST_MEM, IVS_DIGEST_KIND_UINT),
     IVS_DF("obs_pad", obs_pad, 4u, 1u, IVS_DIGEST_VIDEO, IVS_DIGEST_KIND_PAD),
-    IVS_DF("obs.video.chain", obs.video.chain, 1u, 32u, IVS_DIGEST_VIDEO, IVS_DIGEST_KIND_UINT),
-    IVS_DF("obs.video.count", obs.video.count, 8u, 1u, IVS_DIGEST_VIDEO, IVS_DIGEST_KIND_UINT),
+    IVS_DF("obs.video.chain", obs.video.chain, 1u, 32u, IVS_DF_VIDEO_DOMAIN, IVS_DIGEST_KIND_UINT),
+    IVS_DF("obs.video.count", obs.video.count, 8u, 1u, IVS_DF_VIDEO_DOMAIN, IVS_DIGEST_KIND_UINT),
     IVS_DF("obs.audio.chain", obs.audio.chain, 1u, 32u, IVS_DIGEST_AUDIO, IVS_DIGEST_KIND_UINT),
     IVS_DF("obs.audio.count", obs.audio.count, 8u, 1u, IVS_DIGEST_AUDIO, IVS_DIGEST_KIND_UINT),
     IVS_DF("obs.input.words", obs.input.words, 4u, 4u, IVS_DIGEST_INPUT, IVS_DIGEST_KIND_UINT),

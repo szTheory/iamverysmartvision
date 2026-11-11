@@ -91,3 +91,11 @@ STRUCT_SIZE_UNCAPPED machine.refuse.load.exec.opts-over-max.f machine.refuse.loa
 # the cases stop there, before any call indexes a profile table with the damaged index). The
 # digest sensitivity cases flip the profile words and expect BAD_HANDLE: their own rule.
 HANDLE_TRUSTS_PROFILE machine.refuse.handle.profile-out-of-range machine.refuse.handle.|machine.digest.sensitivity-mem|machine.digest.sensitivity-instance machine.create.ok-info-destroy
+# Observation faults (plan 04-05, D-10): OBS_NOT_CLEARED_ON_RESET (machine_run.c) skips the
+# clear of the observation rows in the power-on state, so a reset keeps them;
+# DIGEST_DOMAIN_SWAPPED (machine_digest.c) tags the VIDEO chain and count rows as domain 17, so
+# a VIDEO byte moves the AUDIO digest instead of domain 16 (composite-excludes-16-18 requires
+# exactly the own domain to move; a fresh-versus-reset comparison would not see it), and the
+# coverage and VIDEO and AUDIO sensitivity cases fail by the same rule (machine.digest.).
+OBS_NOT_CLEARED_ON_RESET machine.reset.clears-observation machine.reset.clears-observation machine.digest.video-fresh
+DIGEST_DOMAIN_SWAPPED machine.digest.composite-excludes-16-18 machine.digest. machine.reset.clears-observation
