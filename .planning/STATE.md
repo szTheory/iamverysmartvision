@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 4
 current_phase_name: Headless Runner and Installed Consumer (Slice 0)
 status: executing
-stopped_at: Completed 04-15-PLAN.md
-last_updated: "2026-11-11T22:49:51.985Z"
+stopped_at: Completed 04-16-PLAN.md
+last_updated: "2026-11-11T23:10:36.780Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 3 complete, transitioned to Phase 4
-state_head: 67ffc5878474d40d33cc83f3b27d1ac7ceb232b2
+state_head: e8b63309bc4013e25528d397ef12dca476295be1
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 71
-  completed_plans: 61
+  completed_plans: 62
   percent: 38
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 4 — Headless Runner and Installed Consumer (Slice 0)
-Plan: 16 of 25
+Plan: 17 of 25
 Status: Ready to execute
 Last activity: 2026-11-11 — Completed 04-03 (repo-relative fault owners, runner outcome taxonomy)
 
@@ -115,6 +115,7 @@ Progress: [████░░░░░░] 38%
 | Phase 04 P13 | 35 min | 3 tasks | 18 files |
 | Phase 04 P14 | 16 min | 2 tasks | 14 files |
 | Phase 04 P15 | 8 min | 3 tasks | 45 files |
+| Phase 04 P16 | 15 min | 3 tasks | 21 files |
 
 ## Accumulated Context
 
@@ -258,6 +259,9 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 04]: 04-14: tools/pack writes images only to build/<preset>/images (IVS_IMAGES_DIR); the C include of image bytes is generated in tests/CMakeLists.txt and is GENERATED for the run fault suite
 - [Phase 04]: listing step copies the vector checker's row loader, decle_leaves and program_word; operand count from the family table's words column; SDBD not modelled (fails closed)
 - [Phase 04]: suite pack: ivs_pack --dump-words vs listing.cmake -DDUMP parse, byte for byte; never the core
+- [Phase 04]: 04-16: the diag-cpu-1 predicate (data/golden/diag-cpu-1.expect) was derived by hand and committed before the program first ran; run.diag.predicate reads it through a generated include (tests/expect-inc.cmake)
+- [Phase 04]: 04-16: run.diag.slice reuses family slice's oracle via ivs_run_slice_halting; it also detects RUN_STOP_BEFORE_OVERSHOOT, RUN_BUDGET_CARRY and INPUT_STATIC_CARRY (allowed collateral)
+- [Phase 04]: 04-16: CL-0008 provisional (original-diagnostic); C68 records the stub's $5000 entry and $0340 stack as project conventions; next ids C69 and CL-0009
 
 ### Pending Todos
 
@@ -290,6 +294,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-11T22:49:51.672Z
-Stopped at: Completed 04-15-PLAN.md
+Last session: 2026-11-11T23:10:36.589Z
+Stopped at: Completed 04-16-PLAN.md
 Resume file: None
