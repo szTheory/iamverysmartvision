@@ -164,7 +164,7 @@ Open decisions referenced by requirements. None are decided by this document.
 | D2 | CPU-cycle unit, time base, crystal constant | Delegated decision 2026-11-09 (PROJECT.md) | CPU phase |
 | D3 | First profile: 2609 NTSC recommended; revision, STIC/PSG parts, power-on RAM policy | Delegated decision 2026-11-09 (PROJECT.md) | Foundations exit |
 | D4 | Fixture assembler policy (pinned dev-only `as1600` + cross-check vs project mini-assembler) | Owner (license) + architecture — open | Runner phase |
-| D5 | System-image policy: user-supplied EXEC/GROM only; project boot stub for CI, labelled "not an EXEC" | Owner — open | Loader / runner phases |
+| D5 | System-image policy: user-supplied EXEC/GROM only; project boot stub for CI, labelled "not an EXEC" | Decided in Phase 3 (D-24, delegated) | Loader / runner phases |
 | D6 | Controller core-input representation (logical lossless vs electrical per port) | Owner + architecture — open (conflict C14) | Core API skeleton |
 | D7 | Reference PCM location (core observation layer vs host) | Architecture — open | Sound phase |
 | D8 | Raw framebuffer geometry (159 vs 160 visible, nominal grid) | Architecture + evidence — open | Video phase |

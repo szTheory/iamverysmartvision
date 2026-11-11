@@ -124,3 +124,7 @@ All SUMMARY.md `## Threat Flags` sections (03-03 to 03-14) read "None" or map to
 3. **32-bit `size_t` path unexercised.** The `len-wrap` rows are skip-ok and no 32-bit CI host exists (already accepted in 03-14).
 4. **Relocated copies are valid handles by design.** `machine.iso.memcpy-relocation` copies an instance with `memcpy` and the copy is accepted as a valid handle. A host must not keep stale copies of live storage and expect them to be refused.
 5. **`hygiene-history` scans only `history-commits=1` locally.** This audit independently scanned every commit in `main..HEAD` (patches and messages) and found no hits.
+
+## Delta after the audited commit
+
+The audit above covered commit `684e729`. Thirteen review-fix commits (`b65296f` to `3d866f5`) followed. The orchestrator did not re-audit them line by line; the verifier ran independent ASan/UBSan probes at `3d866f5` (131,072 decode comparisons, 61 refusal rows over three starting states, 3,000-step interleaved isolation) with no finding. The changes narrow behaviour: a hard cap on `struct_size` (WR-02), a handle check that now also validates the stored profile index (WR-03, removes a NULL dereference), a handle-before-overlap check order (WR-01), a stronger c-purity include and intrinsic rule (WR-04), a dropped-write probe that can fail (WR-05), and a portable fault-run watchdog. No new input path, loop, allocation or libc use entered the core. Gate and hosted CI are green on `3d866f5` (controls 231/231, faults 119/119, tests 2144/2144). Verdict unchanged: SECURED.

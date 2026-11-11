@@ -153,7 +153,7 @@ Plans:
 **Mode:** mvp
 **Depends on**: Phase 2
 **Requirements**: MEM-01, MEM-02, MEM-03, MEM-04, MEM-05, API-01, API-06
-**Decision gates**: D3 must be resolved, because the memory map comes from the selected profile. D5 (owner, open) sets the system-image supply policy, and missing-system-image refusal depends on it. "User-supplied only, plus a CI boot stub" is recommended, not decided. Cartridge import format (open question 4): `.rom` is recommended, its format rights are unchecked, and it is confirmed at discussion.
+**Decision gates**: D3 must be resolved, because the memory map comes from the selected profile. D5 (decided in Phase 3, D-24: user-supplied system images only, plus a project boot stub authored in Phase 4) sets the system-image supply policy. The cartridge import format was decided in Phase 3 (D-29): the project container IVSC v1; `.rom` and `.bin+.cfg` importers are deferred and need their own rights review.
 **Research flags**: NEEDS RESEARCH on the cartridge import format and its rights, upper-bit behavior of 10-bit ROM reads (unknown), and GRAM/STIC decode ranges (C21). STANDARD PATTERNS for the refusal matrix and descriptor tables once the format is chosen.
 **Success Criteria** (what must be TRUE):
   1. A decode-table dump generated from the profile descriptors matches the sourced literal memory map. Decle (10-bit), 8-bit and 16-bit width masking and store truncation pass tests at each region boundary.
@@ -184,7 +184,7 @@ Plans:
 **Mode:** mvp
 **Depends on**: Phase 3
 **Requirements**: API-02, API-04, RUN-01, RUN-02, RUN-04, RUN-05, RUN-06, PKG-01, PKG-03, PKG-04
-**Decision gates**: D4 (owner licence + architecture, open) must be resolved before the first guest fixture is built. D5 (owner, open) must be resolved before the boot path is built; it covers the boot-stub contract and the "not an EXEC" label (C25, C27). D12 (architecture, open) decides CI shape. D6 (owner + architecture, open, C14) should be settled while this phase shapes the public API, and must be settled before Phase 5. D9 (owner gate): hosted CI needs a repository host and a visibility choice, and the phase must not assume public visibility.
+**Decision gates**: D4 (owner licence + architecture, open) must be resolved before the first guest fixture is built. D5 is decided (Phase 3, D-24: user-supplied images only; the project boot stub is authored in this phase and labelled "not an EXEC", C25, C27). D12 (architecture, open) decides CI shape. D6 (owner + architecture, open, C14) should be settled while this phase shapes the public API, and must be settled before Phase 5. D9 (owner gate): hosted CI needs a repository host and a visibility choice, and the phase must not assume public visibility.
 **Research flags**: STANDARD PATTERNS for install/export packaging, the relocated consumer and the runner, in whatever build system D1 selects. NEEDS RESEARCH on the EXEC-less reset story (open question 3) and the boot-stub contract.
 **Success Criteria** (what must be TRUE):
   1. A scripted scenario (content, profile, input schedule, run bound) on fresh state reports machine time, stop reason, raw outputs and guest-state assertions. The original diagnostic reaches a guest-state predicate whose expected value was derived independently of the emulator (tier: original diagnostic), and its boot path is labelled "project boot stub, not an EXEC".
