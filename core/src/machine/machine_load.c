@@ -110,6 +110,9 @@ uint32_t ivs_machine_cart_span_check(uint32_t lo, uint32_t hi, const ivs_ivsc_vi
 {
   uint64_t end_limit = (uint64_t)hi + 1u; /* first word past the span */
   uint32_t i;
+#ifdef IVS_FAULT_CART_SPAN_END_INCLUSIVE
+  end_limit += 1u; /* a segment ending one word past the span is accepted */
+#endif
   for (i = 0u; i < v->segment_count && i < IVS_IVSC_MAX_SEGMENTS; i++) {
     uint64_t start = v->segs[i].addr;
     uint64_t end = start + (uint64_t)v->segs[i].len_words;
@@ -173,6 +176,9 @@ static ivs_status ivs_load_cart(const ivs_profile_desc *p, const uint8_t *bytes,
     units += plan->view.segs[i].len_words;
   }
   memcpy(plan->sha256, plan->view.file_sha256, sizeof plan->sha256);
+#ifdef IVS_FAULT_CART_REPORT_TRAILER_DIGEST
+  memcpy(plan->sha256, bytes + len - IVS_IVSC_TRAILER_BYTES, sizeof plan->sha256); /* the trailer */
+#endif
   plan->length_units = units;
   plan->unit_bits = IVS_IVSC_WIDTH_BITS;
   plan->base_addr = plan->view.segs[0].addr;
@@ -326,6 +332,9 @@ ivs_status ivs_machine_unload(ivs_machine *m, uint32_t kind)
   memset(s, 0, sizeof *s);
   s->kind = kind;
   mem_slot = kind;
+#ifdef IVS_FAULT_UNLOAD_KEEPS_IMAGE
+  mem_slot = 0u; /* the memsys keeps the slot's words and loaded flag: only the slot record clears */
+#endif
   ivs_memsys_clear_slot(&im->mem, mem_slot);
   return IVS_OK;
 }
