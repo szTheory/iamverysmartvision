@@ -20,3 +20,5 @@ runner.outcome.prec-budget-over-guest
 runner.outcome.prec-guest-over-pass
 runner.outcome.prec-empty-is-pass
 runner.outcome.prec-single-and-unknown
+# Plan 04-17 (D-18, D-22): the IVSS v1 scenario parser.
+runner.parse.diag-boot-pass

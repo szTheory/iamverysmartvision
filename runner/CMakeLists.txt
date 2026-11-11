@@ -9,6 +9,7 @@
 
 set(IVS_RUNNER_SOURCES
   outcome.c
+  scenario.c
 )
 
 add_library(ivs_runner_lib STATIC ${IVS_RUNNER_SOURCES})

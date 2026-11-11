@@ -299,14 +299,37 @@ ivs_fault_suite(ivsc
 # Suite runner (D-17, D-20, D-23, plan 04-03): the runner library in process. It links the
 # public ivs_core through ivs_runner_lib; its named faults are data/expected/faults/runner.ids,
 # whose sites sit in runner/ TUs (D-24), so its fault executables link plain copies of the core
-# and runner library TUs.
-add_executable(ivs_tests_runner runner/runner_main.c)
+# and runner library TUs. Its parse family (plan 04-17) reads two more build-tree includes: the
+# assert lines of data/golden/diag-cpu-1.expect as C string literals (expect-inc.cmake
+# FORM=text, next to the X-macro form above) and the pinned input names of
+# data/expected/input-bits.ids (input-bits-inc.cmake).
+set(IVS_DIAG_EXPECT_TEXT_INC "${CMAKE_CURRENT_BINARY_DIR}/diag_cpu_1_expect_text.inc")
+add_custom_command(
+  OUTPUT "${IVS_DIAG_EXPECT_TEXT_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DIN=${IVS_DIAG_EXPECT}" "-DOUT=${IVS_DIAG_EXPECT_TEXT_INC}" -DFORM=text
+          -P "${CMAKE_CURRENT_SOURCE_DIR}/expect-inc.cmake"
+  DEPENDS "${IVS_DIAG_EXPECT}" "${CMAKE_CURRENT_SOURCE_DIR}/expect-inc.cmake"
+  COMMENT "Generating the diag-cpu-1 predicate text include"
+  VERBATIM)
+set(IVS_INPUT_BITS_IDS "${PROJECT_SOURCE_DIR}/data/expected/input-bits.ids")
+set(IVS_INPUT_BITS_INC "${CMAKE_CURRENT_BINARY_DIR}/ivs_input_bits.inc")
+add_custom_command(
+  OUTPUT "${IVS_INPUT_BITS_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DIN=${IVS_INPUT_BITS_IDS}" "-DOUT=${IVS_INPUT_BITS_INC}"
+          -P "${CMAKE_CURRENT_SOURCE_DIR}/input-bits-inc.cmake"
+  DEPENDS "${IVS_INPUT_BITS_IDS}" "${CMAKE_CURRENT_SOURCE_DIR}/input-bits-inc.cmake"
+  COMMENT "Generating the pinned input-name include"
+  VERBATIM)
+set(IVS_RUNNER_TEST_GENERATED "${IVS_DIAG_EXPECT_INC}" "${IVS_DIAG_EXPECT_TEXT_INC}" "${IVS_INPUT_BITS_INC}")
+add_executable(ivs_tests_runner runner/runner_main.c runner/runner_parse.c ${IVS_RUNNER_TEST_GENERATED})
+target_include_directories(ivs_tests_runner PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(ivs_tests_runner PRIVATE ivs_test_harness ivs_runner_lib ivs_core ivs_warnings ivs_san)
 add_test(NAME runner COMMAND ivs_tests_runner)
 set_tests_properties(runner PROPERTIES SKIP_RETURN_CODE 77)
 ivs_fault_suite(runner
-  SOURCES runner/runner_main.c
-  INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/runner"
+  SOURCES runner/runner_main.c runner/runner_parse.c
+  INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/runner" "${CMAKE_CURRENT_BINARY_DIR}"
+  GENERATED ${IVS_RUNNER_TEST_GENERATED}
   MODULES core runner)
 
 # Named-fault control executables (D-18): dev tree only, never registered with ctest.

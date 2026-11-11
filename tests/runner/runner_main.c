@@ -2,21 +2,14 @@
 /* Suite runner: the runner library in process (D-17, D-20, D-23, plan 04-03). Family outcome:
  * the exit code and report name of each of the six outcomes (both timeout kinds share code 11
  * and the name timeout), distinct codes, and the fixed precedence of
- * ivs_runner_outcome_resolve. Named faults: data/expected/faults/runner.ids. */
+ * ivs_runner_outcome_resolve. Family parse (runner_parse.c, plan 04-17): the IVSS v1 scenario
+ * parser. Named faults: data/expected/faults/runner.ids. */
 #include <stdint.h>
 #include <string.h>
 
 #include "ivs_runner.h"
 #include "ivs_test.h"
-
-/* Fails the case with a diagnostic naming the line and the failed expression. */
-#define IVS_CHECK(cond)                                                                                \
-  do {                                                                                                 \
-    if (!(cond)) {                                                                                     \
-      ivs_test_diag("check failed at line %d: %s", __LINE__, #cond);                                   \
-      return IVS_TEST_FAIL;                                                                            \
-    }                                                                                                  \
-  } while (0)
+#include "runner_cases.h"
 
 static int name_is(uint32_t outcome, const char *want)
 {
@@ -232,9 +225,39 @@ static const ivs_test_case runner_cases[] = {
     {"runner.outcome.prec-wall-over-budget", out_prec_wall_over_budget, NULL},
 };
 
+#define OUTCOME_CASES (sizeof runner_cases / sizeof runner_cases[0])
+
+/* The case of suite index i: the outcome family, then each family file in order. */
+static const ivs_test_case *runner_case_at(size_t i)
+{
+  if (i < OUTCOME_CASES) {
+    return &runner_cases[i];
+  }
+  i -= OUTCOME_CASES;
+  return runner_parse_case(i);
+}
+
+static const char *runner_case_id(const void *data, size_t i)
+{
+  const ivs_test_case *c = runner_case_at(i);
+  (void)data;
+  return c != NULL ? c->id : "runner.missing";
+}
+
+static int runner_case_run(const void *data, size_t i)
+{
+  const ivs_test_case *c = runner_case_at(i);
+  (void)data;
+  return c != NULL ? c->fn() : IVS_TEST_FAIL;
+}
+
 int main(int argc, char **argv)
 {
   ivs_test_suite suite;
-  ivs_test_suite_from_cases(&suite, "runner", runner_cases, sizeof runner_cases / sizeof runner_cases[0]);
+  memset(&suite, 0, sizeof suite);
+  suite.name = "runner";
+  suite.count = OUTCOME_CASES + runner_parse_case_count();
+  suite.id = runner_case_id;
+  suite.run = runner_case_run;
   return ivs_test_main(argc, argv, &suite);
 }

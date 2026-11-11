@@ -10,12 +10,22 @@
 # HHHH and AAAA are 4 upper-case hex digits. '#' lines and blank lines are skipped. Any other line
 # (another subject, '!=', a range, lower-case hex) stops the build: a clause the test cannot check
 # must not be dropped silently. A file without one assert line also stops the build.
+# -DFORM=text (plan 04-17) writes each accepted line instead as one C string literal
+# "<line>\n", so suite runner feeds the file's own text to the scenario parser and compares the
+# result with the X-macro reading of the same lines.
 if(NOT DEFINED IN OR NOT DEFINED OUT)
   message(FATAL_ERROR "expect-inc: IN and OUT are required")
+endif()
+if(NOT DEFINED FORM)
+  set(FORM xmacro)
+endif()
+if(NOT FORM STREQUAL "xmacro" AND NOT FORM STREQUAL "text")
+  message(FATAL_ERROR "expect-inc: FORM must be xmacro or text (got ${FORM})")
 endif()
 file(STRINGS "${IN}" lines)
 get_filename_component(in_name "${IN}" NAME)
 set(body "/* Generated from data/golden/${in_name} by tests/expect-inc.cmake: build output only, never committed. */\n")
+set(text "")
 set(n 0)
 set(lineno 0)
 foreach(l IN LISTS lines)
@@ -36,9 +46,15 @@ foreach(l IN LISTS lines)
   else()
     message(FATAL_ERROR "expect-inc: ${IN}:${lineno}: unsupported line: ${l}")
   endif()
+  if(FORM STREQUAL "text")
+    string(APPEND text "\"${l}\\n\"\n")
+  endif()
   math(EXPR n "${n} + 1")
 endforeach()
 if(n EQUAL 0)
   message(FATAL_ERROR "expect-inc: ${IN} has no assert line")
+endif()
+if(FORM STREQUAL "text")
+  set(body "/* Generated from data/golden/${in_name} by tests/expect-inc.cmake (FORM=text): build output only, never committed. */\n${text}")
 endif()
 file(WRITE "${OUT}" "${body}")
