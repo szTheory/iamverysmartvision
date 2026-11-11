@@ -405,3 +405,22 @@ lever.
 
 - Hosted gate time after Phase 3 is measured by the orchestrator on the phase PR's CI; if
   above 40 s, apply the remaining levers; if above 50 s, revisit the budget.
+
+## 2026-11-11 - hosted-only failures and the local Linux gate (03-14 post-verification)
+
+- Hosted runs 42985199346 and 42988058428 (ubuntu-24.04, gcc 13.3, cmake 3.28.3) failed while
+  the local macOS gate passed. Each hosted-only failure costs a full CI round trip (push,
+  queue, cold gcc build, read the log) before a fix can even be tried.
+- Shift-left lever: `sh tools/gate-linux.sh` runs `sh tools/gate.sh` on the working tree in a
+  throwaway `ubuntu:24.04` container (amd64 by default, the hosted runner's architecture; gcc
+  13, dash, GNU tools, cmake 3.28). It is a local pre-push helper: not a gate step, not run in
+  CI, no workflow change.
+- Its first use found two bugs the macOS gate cannot see: an unspecified argument evaluation
+  order in `tests/machine/machine_refuse.c` (gcc reads a length before the call that sets it;
+  ASan abort) and an ELF-only `_GLOBAL_OFFSET_TABLE_` import under gcc's default `-fPIE`
+  (core-symbols suite). Both are fixed; see the 03-14 SUMMARY, section Post-verification fixes.
+- Cost on the owner laptop (arm64, amd64 emulated): `gate-time total=127` and about 3 min wall
+  time including package installation. Emulated figures are not hosted figures and do not
+  enter the hosted budget.
+- Decision: no CI change. Run the helper before pushing changes that touch C code, shell
+  steps or toolchain-sensitive checks; skip it for record-only changes.
