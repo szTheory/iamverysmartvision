@@ -2,17 +2,17 @@
 gsd_state_version: "1.0"
 current_phase: 3
 current_phase_name: Memory Map, Content Loading and Refusal
-status: planning
-stopped_at: Phase 2 complete, ready to plan Phase 3
-last_updated: "2026-11-11T02:53:30.787Z"
-last_activity: 2026-11-10
-last_activity_desc: Phase 2 complete, transitioned to Phase 3
-state_head: c033d6106896cc7e77e8327f06708fec03d4b98a
+status: executing
+stopped_at: Completed 03-01-PLAN.md
+last_updated: "2026-11-11T04:53:43.867Z"
+last_activity: 2026-11-11
+last_activity_desc: Plan 03-01 complete (multi-file fault loop)
+state_head: bd94dba5522795e2126969b7ffe5bd9cd9368967
 progress:
   total_phases: 8
   completed_phases: 2
-  total_plans: 32
-  completed_plans: 32
+  total_plans: 46
+  completed_plans: 33
   percent: 25
 ---
 
@@ -23,14 +23,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-09)
 
 **Core value:** A deterministic, observable machine core whose every compatibility claim is bound to an exactly named profile and independent evidence — never an unqualified "it runs Intellivision games" label.
-**Current focus:** Phase 2 — CP-1610 CPU Core
+**Current focus:** Phase 3 — Memory Map, Content Loading and Refusal
 
 ## Current Position
 
 Phase: 3 — Memory Map, Content Loading and Refusal
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-11-10 — Phase 2 complete, transitioned to Phase 3
+Plan: 2 of 14
+Status: Ready to execute
+Last activity: 2026-11-11 — Plan 03-01 complete (multi-file fault loop)
 
 Progress: [███░░░░░░░] 25%
 
@@ -85,6 +85,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 02 P16 | 15min | 3 tasks | 39 files |
 | Phase 02 P17 | 7min | 3 tasks | 6 files |
 | Phase 02 P18 | 15min | 3 tasks | 3 files |
+| Phase 03 P01 | 8min | 2 tasks | 22 files |
 
 ## Accumulated Context
 
@@ -164,6 +165,9 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 02]: 02-17: reader protocol and p07 policy statement completed where their wording caused disagreements (bus kind meanings, per-unit record order, increment before operation)
 - [Phase 02]: 02-18: D-22 lever 2 applied (4-lane control runner, byte-identical output, runner 73.0 s -> 32.3 s under load); levers 1 and 3 not applied (warm c-build 0.5 s, c-faults 3.2 s); host never idle so the 25 s local budget stays unjudged
 - [Phase 02]: 02-18: hosted gate budget (30 s) stays an open item for the final 190-control gate; D-24 supersedes the CI-EFFICIENCY macOS-leg line; C43 independent re-adjudication of the 30 second-read disagreements recommended
+- [Phase 03]: 03-01: fault suites registered once in tests/CMakeLists.txt (ivs_fault_suite, ivs_fault_gen); faults .ids files stay pure inventory with a suite header
+- [Phase 03]: 03-01: site faults of a suite share one plain object library ivs_fault_suite_obj_<suite> (W7 lever applied)
+- [Phase 03]: 03-01: fault ids unique across all faults files (also within a file); site checks use the union of non-GEN_ ids (H3)
 
 ### Pending Todos
 
@@ -194,6 +198,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-11T01:44:25.483Z
-Stopped at: Phase 2 complete, ready to plan Phase 3
+Last session: 2026-11-11T04:53:30.966Z
+Stopped at: Completed 03-01-PLAN.md
 Resume file: None
