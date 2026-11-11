@@ -88,6 +88,8 @@ The page says the interrupt system can be enabled or disabled by bits 1..0 of th
 On direct jumps the return address is not saved (`§3.3.5, pdf 52`) [OBS].
 On subroutine jumps the return address is saved in register 4, 5 or 6, designated by BB plus 4 (`§3.3.5, pdf 52`) [OBS].
 The saved address is printed as the program counter plus an offset whose last digit is smudged in the scan; 3 is consistent with the three-location instruction length [INF].
+The summary table prints the return address legibly as (PC+3) in the JSR, JSRE and JSRD rows, saved in the register designated by 1BB (`pdf 56`) [OBS].
+That settles the smudged digit of `pdf 52` as 3; the log records it as C58, status resolved-primary, which is gap G8 of the phase research (plan 02-01) [INF].
 If BB = 3 the designated register becomes R7, the program counter, which the page describes as the jump instruction (`§3.3.5, pdf 52`) [OBS].
 The summary table gives DE = 00 for J and JSR, DE = 01 for JE and JSRE, and DE = 10 for JD and JSRD; DE = 11 does not appear in the table (`pdf 56`) [OBS].
 The same table prints BB = 11 for J, JE and JD and marks the JSR family as BB not equal to 11; all six forms take 12 cycles (`pdf 56`) [OBS].
@@ -145,6 +147,8 @@ The single-byte immediate forms take 8 cycles for those six instructions and 9 f
 In the double-byte immediate rows the low byte is marked L and the upper byte U, with XX marked as don't care (`pdf 58`) [OBS].
 MVOI is not listed in the immediate double-byte table (`pdf 58`) [OBS].
 The XOR@ row of the indirect double-byte table prints the opcode field as the three digits `111` instead of four; the other five rows print four digits, and the single-byte XOR@ row on `pdf 55` prints `1111`, so the reading is 1111 [INF].
+Phase 2 reads the printed 10 as excluding the SDBD row, so an indirect pair costs 4 + 10 = 14, and reads the single 14 of `pdf 58` as the same pair total, because that row begins with the SDBD word; the two pages then agree on 14 for both forms (A-05, C34) [INF].
+The log keeps C34 open: the isolated second readers of plan 02-17 read the 14 of `pdf 58` as the target instruction alone, giving 18 for an immediate pair, and the page does not settle which reading is meant (`pdf 57`; `pdf 58`) [INF].
 
 ## Unsupported and NOP-like encodings
 
@@ -155,9 +159,11 @@ GSWD has the pattern 0000 110 0DD and takes 6 cycles (`pdf 56`) [OBS].
 GSWD with R4 or R5 is a NOP instruction, and with R6 or R7 it is a NOP internal to the CPU plus a pulse on the PCIT pin (`§3.3.3, pdf 51`) [OBS].
 The GSWD description on the summary table places C in bits 4 and 12, OV in bits 5 and 13, Z in bits 6 and 14 and S in bits 7 and 15, with bits 0 to 3 and 8 to 11 set to 0 (`pdf 56`) [OBS].
 RSWD has the pattern 0000 111 SSS, takes 6 cycles, and restores bit 4 to C, bit 5 to OV, bit 6 to Z and bit 7 to S (`pdf 56`) [OBS].
+RSWD with SSS = 7 reads the program counter already incremented by the fetch; this follows the rule that a destination of R7 sees the incremented counter (`§3.2.3, pdf 48`) applied to a source read, it is the project policy POL-STK-01, and no vector asserts it [INF].
 NOP has the pattern 0000 110 10N and takes 6 cycles (`pdf 56`) [OBS].
 SIN has the pattern 0000 110 11N and takes 6 cycles, and it pulses the PCIT pin (`pdf 56`) [OBS].
 The N bit of NOP and SIN is shown as an operand written in angle brackets, `<n>`, and the page does not say what N selects (`pdf 56`) [OBS].
+NOP is 0000 110 10N and SIN is 0000 110 11N, which are the GSWD pattern 0000 110 DDD with DDD = 10N (R4, R5) and DDD = 11N (R6, R7); NOP and SIN are therefore the GSWD forms that the footnote calls a NOP and a NOP with a PCIT pulse, and N is bit 0 of DDD (`§3.3.3, pdf 51`; `pdf 56`) [INF].
 The jump group has no listed DE value 11 in the second decle; this is an operand-level gap, not a gap in the decle patterns (`pdf 56`) [OBS].
 HLT has the pattern 0000 000 000, takes 4 cycles, and is described as halting after the next instruction is executed, resuming on control start (`pdf 56`) [OBS].
 
@@ -235,11 +241,40 @@ The branch table prints the cycle count as `7/9` for B, for each condition row t
 NOPP, the two-word no-operation form, prints a single count of 7 (`pdf 54`) [OBS].
 The unconditional B also prints `7/9`, so the two figures cannot be read as a plain not-taken and taken pair for every row [INF].
 A weak reading, that 7 is the count when no branch occurs because NOPP never branches and prints 7, is not stated by the manual [INF].
+NOPP is printed with the pattern of B except for bit 3 of the condition field, so it is the never-taken twin of the unconditional branch, and it prints 7 where B prints `7/9` (`pdf 54`) [INF].
+Phase 2 adopts the weak reading as the named policy POL-BR-01, 7 cycles not taken and 9 taken, and the log keeps it open as C29 (`pdf 54`) [INF].
 The only branch timing figure located among pdf 26 to 37 by page title is the Branch on External Instruction diagram on `pdf 32`.
 That figure shows the bus control sequence BAR, NACT, DTB, NACT and then BAR with the label output PC + 1 to fetch the displacement (`pdf 32`) [OBS].
 The figure ends during that displacement fetch and shows no execute tail, so it does not resolve which count applies to a taken branch (`pdf 32`) [OBS].
 The branch format page says a false result continues with the next sequential instruction and a true result transfers control (`§3.2.2, pdf 47`) [OBS].
 The same table prints the displacement range of the unconditional branch as +1025 to -1024 (`pdf 54`) [OBS].
+
+## Timing figures and wait states (Phase 2 reading)
+
+Offsets below count microcycles from 0 at the first bus control cell of a unit, using the TS1 to TS4 groups printed on each figure.
+The initialization figure puts IAB at offset 1 and the first BAR at offset 5, counted from the first microcycle after MSYNC* rises (`pdf 27`) [OBS].
+The direct addressing figure prints BAR, NACT, DTB, NACT, BAR, NACT, ADAR, NACT and DTB, so the second BAR is at offset 4, the ADAR at 6 and the operand DTB at 8 (`pdf 30`) [OBS].
+ADAR gates the addressed contents of memory onto the bus into the address register, and the pin description says it is activated during all instructions that specify direct addressing (`pdf 11`) [OBS].
+Phase 2 therefore reports the operand access of a direct-mode instruction as its own access kind ADAR, and the access at the address word as a READ that begins with BAR (`pdf 11`; `pdf 30`) [INF].
+The TCI figure prints BAR, NACT, DTB, NACT, BAR, NACT and DTB, with the TCI pulse rising in the cell after the BAR that fetches the next instruction (`pdf 33`) [OBS].
+Phase 2 stamps the TCI strobe one cycle past the end of the TCI unit, which is an inference from that figure (`pdf 33`; C39) [INF].
+The interrupt figure puts INTAK at offset 0, DW at 2, DWS at 3, IAB at 5 and the BAR of the first service routine fetch at 9, with one long NACT cell after IAB (`pdf 35`) [OBS].
+The branch on external figure ends at the displacement fetch, so its second BAR at offset 4 is the last stamp it fixes (`pdf 32`) [INF].
+Plan 02-15 gave every figure page from pdf 27 to pdf 37 at least one figure-basis vector, and its summary carries the per-page audit; offsets inside an instruction that no figure prints stay inference under C36.
+The CPU samples BDRDY every TS1 immediately following every micro state in which a BAR or ADAR bus control signal is issued (`pdf 40`) [OBS].
+The instruction description gives a potential wait for every memory access and works the example of an external reference instruction fetched from fast memory with its data in slow memory as 8 + 2W = 8 + W + W = 8 + 0 + 2 = 10 cycles (`§3.1, pdf 43`) [OBS].
+Phase 2 reports the interrupt-entry write of the program counter as its own access kind DW, distinct from WRITE (A-11) [INF].
+FETCH, READ, WRITE and ADAR begin with a BAR or ADAR address phase and take waits, while INTAK, IAB and DW have no such phase and take none, which is the `pdf 40` sampling rule applied to each kind (A-11, C53) [INF].
+The STPST pin is headed negative edge triggered, and a negative transition stops a running CPU only after the completion of an interruptible instruction (`pdf 14`) [OBS].
+The notes on timing signals repeat that STPST is sensitive to high-to-low transitions (`pdf 40`) [OBS].
+Phase 2 models STPST as an edge event with one stop latch shared with HLT (C54, C40) [INF].
+
+### Inferences recorded against log entries
+
+The derivation gaps G1 to G8 of the phase research map to log entries as G1-G6 = C46-C51, G7 = C37 and G8 = C58 (A-06).
+The shift table names link-bit positions with N = 1 only for RLC and RRC; SARC with N = 1 takes the RRC layout, C as bit 16 and OV as bit 17, which is an inference recorded under C48 (`pdf 53`) [INF].
+The named fault JE_AFTER_BOUNDARY stands for a JE whose enable lands after the boundary test; the 32-byte machine state has no field for a pending enable, so the fault approximates that error by having JE and JSRE leave INTFF unchanged at their own unit end (C41) [INF].
+With that approximation `cpu.J.je-then-intrm-immediate` and the JE and JSRE vectors that expect INTFF set still fail, but the fault is not a model of a late enable; modelling one would need a state with a pending-enable field.
 
 ## Discrepancy candidates
 
@@ -262,6 +297,8 @@ Plan 01-04 turns these into numbered log entries; no C numbers are assigned here
 - Per-opcode interruptibility for HLT, SDBD and MVO: the manual is silent (`pdf 55`; `pdf 56`; `pdf 57`), recorded under C19 as partial.
 - Whether INTFF is cleared on interrupt acceptance: not stated on `pdf 12`, `pdf 24` or `pdf 25`.
 - Whether the printed 10 for SDBD indirect forms includes the SDBD row (`pdf 57`).
+
+Phase 2 gave these items log entries with named defaults rather than answers: C29 (branch cycles), C32 and C42 (reset and interrupt PC from IAB), C34 (SDBD totals), C41 (INTFF on acceptance), C56 (interruptibility of HLT, SDBD and MVO) and C35, C40 and C54 (stop behaviour).
 
 ## Decode coverage
 
@@ -294,3 +331,40 @@ Limits of this pass:
 - The decode check covers encodings only; cycles, status bits and interruptibility rest on the two readings alone.
 - Agreement of two readings is not proof that a cite matches the page; the residual risk is recorded here for agent review.
 - The manual describes the CP-1600, and its electrical data are marked Tentative, so the CP-1610 reading in this table is an inference from it.
+
+## Vector second reading
+
+The Phase 2 vectors under `data/cp1610/vectors/` were read a second time from the pages before the phase closed (decision D-15, amendment A-12).
+Method: in the plan 02-17 checkpoint the orchestrator spawned one isolated subagent per vector file.
+Each reader saw only an index-blinded copy of its file (init, program and neutral policy tokens, no ids, cites, derivations or expected values), the page images, `docs/cp1610/second-reader-protocol.md` and `docs/cp1610/second-reader-policies.md`.
+These notes and the phase context were forbidden reader inputs, because they state offsets, cycle counts and encodings.
+The orchestrator handed each output over with its sha256 and run id, and the committed copy of that handoff is `data/expected/vector-review-handoff.ids`.
+A mechanical diff then compared each reading with the committed vectors, and the plan 02-17 adjudicator re-read the page for every disagreement.
+The results are the marker rows of `data/cp1610/vector-review.json`, one per vector file.
+
+| Vector file | Vectors | Agreed | Disagreements | Resolved for |
+|-------------|---------|--------|---------------|--------------|
+| control | 27 | 27 | 0 | - |
+| register | 62 | 62 | 0 | - |
+| immediate | 24 | 24 | 0 | - |
+| shift | 43 | 43 | 0 | - |
+| direct | 19 | 0 | 19 | committed value (`pdf 23`; `pdf 30`) |
+| indirect | 35 | 34 | 1 | committed value (`pdf 48`) |
+| branch | 98 | 98 | 0 | - |
+| jump | 11 | 11 | 0 | - |
+| sdbd | 27 | 20 | 7 | committed value, C34 left open (`pdf 57`; `pdf 58`) |
+| encoding | 5 | 5 | 0 | - |
+| interrupt | 39 | 36 | 3 | committed value (`pdf 23`; `pdf 33`), C34 left open for the cycle case |
+| busrq-halt | 22 | 22 | 0 | - |
+| total | 412 | 382 | 30 | committed value in all 30 |
+
+The 30 disagreements fall into four groups: the READ and ADAR labels of direct-mode accesses (20), the order of the TCI strobe record within its unit (1), the R4 value after ADD@ R4,R4 (1), and the SDBD immediate pair total of 14 against 18 (8).
+No disagreement changed a vector, an init, a program or the core; no new log entry was needed, and the C34 and C55 notes now record the readers' alternative readings.
+The reader protocol and the policy statements were completed after the readings where their wording caused disagreements (bus kind meanings, per-unit record order, the increment order of policy p07).
+Those clause additions are outside every digest the gate checks, so they did not invalidate the readings, and the gate cannot show that they were added after them; the plan 02-17 summary records the order.
+Limits of this reading:
+- The readers are isolated subagents of the same model family as the first reader, so independence is limited to source-expectation, second-read, and a misreading that both share remains possible (C43).
+- All 30 disagreements were adjudicated to the committed values by the same executor that saw both sides; an independent re-adjudication by a reader that did not write the vectors is a recommended follow-up under C43.
+- Reader isolation is attested by the orchestrator transcript of plan 02-17, not by the gate; the gate checks each marker row's digests, reviewer and counts against the committed handoff record and the current vector file.
+- Policy vectors encode chosen defaults, not hardware facts, so agreement on them shows that a reader applied the stated rule the same way, not that the rule is right.
+- Hardware evidence (D10) stays missing: no timing offset, BUSRQ release latency or HLT and interrupt behaviour here has been compared with a real CPU.
