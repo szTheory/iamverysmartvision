@@ -140,14 +140,27 @@ set_tests_properties(machine PROPERTIES SKIP_RETURN_CODE 77)
 # Its family stub (plan 04-14, D-28..D-30) reads ivs_images.inc: the bytes of the build-tree
 # images that tools/pack writes (target ivs_images, IVS_IMAGES_DIR), turned into a C include by
 # ivs_pack --c-include here. Nothing in it is committed.
+# Plan 04-16 adds the diagnostic container diag-cpu-1.ivsc to the include, and diag_cpu_1_expect.inc:
+# the assert lines of data/golden/diag-cpu-1.expect as X-macro lines (tests/expect-inc.cmake), so
+# run.diag.predicate reads the hand-derived values from that file instead of retyping them.
 set(IVS_IMAGES_INC "${CMAKE_CURRENT_BINARY_DIR}/ivs_images.inc")
 add_custom_command(
   OUTPUT "${IVS_IMAGES_INC}"
   COMMAND ivs_pack --c-include "${IVS_IMAGES_INC}" "boot_stub=${IVS_BOOT_STUB_EXEC}"
-  DEPENDS ivs_pack ivs_images "${IVS_BOOT_STUB_EXEC}"
+          "diag_cpu_1=${IVS_DIAG_CPU_1_IVSC}"
+  DEPENDS ivs_pack ivs_images "${IVS_BOOT_STUB_EXEC}" "${IVS_DIAG_CPU_1_IVSC}"
   COMMENT "Generating the build-tree image include"
   VERBATIM)
-add_executable(ivs_tests_run run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_fuzz.c run/run_stub.c machine/machine_standin.c "${IVS_IMAGES_INC}")
+set(IVS_DIAG_EXPECT "${PROJECT_SOURCE_DIR}/data/golden/diag-cpu-1.expect")
+set(IVS_DIAG_EXPECT_INC "${CMAKE_CURRENT_BINARY_DIR}/diag_cpu_1_expect.inc")
+add_custom_command(
+  OUTPUT "${IVS_DIAG_EXPECT_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DIN=${IVS_DIAG_EXPECT}" "-DOUT=${IVS_DIAG_EXPECT_INC}"
+          -P "${CMAKE_CURRENT_SOURCE_DIR}/expect-inc.cmake"
+  DEPENDS "${IVS_DIAG_EXPECT}" "${CMAKE_CURRENT_SOURCE_DIR}/expect-inc.cmake"
+  COMMENT "Generating the diag-cpu-1 predicate include"
+  VERBATIM)
+add_executable(ivs_tests_run run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_fuzz.c run/run_stub.c run/run_diag.c machine/machine_standin.c "${IVS_IMAGES_INC}" "${IVS_DIAG_EXPECT_INC}")
 target_include_directories(ivs_tests_run PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_BINARY_DIR}")
 add_dependencies(ivs_tests_run ivs_images)
 target_link_libraries(ivs_tests_run PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
@@ -256,9 +269,9 @@ ivs_fault_suite(machine
   GENERATED "${IVS_SHA_INC}" "${IVS_CART_INC}")
 
 ivs_fault_suite(run
-  SOURCES run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_fuzz.c run/run_stub.c machine/machine_standin.c
+  SOURCES run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_fuzz.c run/run_stub.c run/run_diag.c machine/machine_standin.c
   INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_BINARY_DIR}"
-  GENERATED "${IVS_IMAGES_INC}")
+  GENERATED "${IVS_IMAGES_INC}" "${IVS_DIAG_EXPECT_INC}")
 
 ivs_fault_suite(memmap
   SOURCES memmap/memmap_main.c memmap/memmap_rows.c

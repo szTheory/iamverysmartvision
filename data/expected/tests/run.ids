@@ -185,3 +185,7 @@ run.stub.path
 # patched to a zero word the CPU runs on to 1013 (zero fill is not a trap).
 run.stub.trap
 run.stub.halt-needs-follower
+# Family diag (plan 04-16, D-27, D-31, RUN-06): ivs-diag-cpu-1 behind the boot stub from a
+# power-on reset; one run with STOP_ON_HALT to a 4000-CPU-cycle bound stops CPU_HALTED and meets
+# the hand-derived predicate read from data/golden/diag-cpu-1.expect (halted, R0-R6, ten words).
+run.diag.predicate

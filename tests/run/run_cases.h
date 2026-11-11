@@ -56,6 +56,12 @@ extern const size_t ivs_run_fuzz_count;
 extern const ivs_test_case ivs_run_stub_cases[];
 extern const size_t ivs_run_stub_count;
 
+/* Family diag (plan 04-16, D-27, D-31, RUN-06): the diagnostic ivs-diag-cpu-1 behind the boot stub,
+ * from reset to its hand-derived predicate (data/golden/diag-cpu-1.expect) through the public API
+ * (run_diag.c). */
+extern const ivs_test_case ivs_run_diag_cases[];
+extern const size_t ivs_run_diag_count;
+
 /* ---- the refusal and side-effect oracle (SP4), shared by the run families ----
  * A snapshot holds a heap copy of the whole instance storage, the composite and the seven domain
  * digests (1..4, 16..18) and info's time_ticks; a destroyed instance has no digests or info. */

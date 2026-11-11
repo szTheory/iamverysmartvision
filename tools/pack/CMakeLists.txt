@@ -7,7 +7,8 @@
 # IVS_PACK_SOURCES (relative to tools/pack/) is written repo-relative to the build tree like the
 # core and runner lists, so the c-build step finds a tracked tools/pack/*.c that is not compiled.
 # The C include of the images for the in-process suites is generated in tests/CMakeLists.txt.
-# Plan 04-16 adds diag-cpu-1.ivsc to ivs_images.
+# Plan 04-16 adds diag-cpu-1.ivsc (the first project-authored diagnostic, one IVSC v1 segment at
+# 5000, D-31) to ivs_images; its listing is fixtures/FX-diag-cpu-1/diag-cpu-1.listing.txt.
 
 set(IVS_PACK_SOURCES
   pack.c
@@ -30,7 +31,18 @@ add_custom_command(
   DEPENDS ivs_pack "${IVS_BOOT_STUB_LISTING}"
   COMMENT "Packing the project boot stub listing into the build tree"
   VERBATIM)
-add_custom_target(ivs_images ALL DEPENDS "${IVS_BOOT_STUB_EXEC}")
+set(IVS_DIAG_CPU_1_LISTING "${PROJECT_SOURCE_DIR}/fixtures/FX-diag-cpu-1/diag-cpu-1.listing.txt")
+set(IVS_DIAG_CPU_1_IVSC "${IVS_IMAGES_DIR}/diag-cpu-1.ivsc")
+set(IVS_DIAG_CPU_1_IVSC "${IVS_DIAG_CPU_1_IVSC}" PARENT_SCOPE)
+
+add_custom_command(
+  OUTPUT "${IVS_DIAG_CPU_1_IVSC}"
+  COMMAND "${CMAKE_COMMAND}" -E make_directory "${IVS_IMAGES_DIR}"
+  COMMAND ivs_pack --ivsc "${IVS_DIAG_CPU_1_LISTING}" "${IVS_DIAG_CPU_1_IVSC}"
+  DEPENDS ivs_pack "${IVS_DIAG_CPU_1_LISTING}"
+  COMMENT "Packing the diag-cpu-1 listing into the build tree"
+  VERBATIM)
+add_custom_target(ivs_images ALL DEPENDS "${IVS_BOOT_STUB_EXEC}" "${IVS_DIAG_CPU_1_IVSC}")
 
 set(listed "")
 foreach(src IN LISTS IVS_PACK_SOURCES)

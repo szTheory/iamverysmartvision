@@ -7,6 +7,10 @@
 # (the gate checker's own parse). Neither side is compared with the core: the core is not an
 # oracle for its own input. Id per listing: pack.words-<id>; a difference or a failing parser
 # is `not ok` with the diff or the error as `#` lines.
+# For a listing of kind cart a second case pack.trailer-<id> (plan 04-16) builds the IVSC container
+# with `ivs_pack --ivsc` and requires its last 32 bytes to equal `cmake -E sha256sum` of every byte
+# before them (cut with POSIX dd, printed with od): the trailer is checked by an implementation
+# other than the core SHA-256 that ivs_pack seals it with.
 # Output: the harness TAP shape (header with IVS_TEST_NONCE or none, plan, one result per case,
 # trailer) on stdout and, when IVS_TEST_OUT_DIR is set, in <dir>/pack.txt.
 # Usage: sh pack-tap.sh <source root> <ivs_pack>   Exit: 0 pass, 1 fail, 77 every case skipped.
@@ -32,6 +36,16 @@ n=0
 executed=0
 skipped=0
 failed=0
+# Appends the result of case $n ($tid) from $ok and $tmp/why.
+report() {
+  if [ "$ok" -eq 1 ]; then
+    printf 'ok %s %s\n' "$n" "$tid" >> "$tmp/results"
+  else
+    printf 'not ok %s %s\n' "$n" "$tid" >> "$tmp/results"
+    sed 's/^/# /' "$tmp/why" >> "$tmp/results"
+    failed=$((failed + 1))
+  fi
+}
 while read -r id kind path rest; do
   case $id in '' | '#'*) continue ;; esac
   n=$((n + 1))
@@ -51,13 +65,33 @@ while read -r id kind path rest; do
     ok=0
     { printf 'word dumps differ (< ivs_pack, > listing.cmake)\n'; diff "$tmp/pack.out" "$tmp/cmake.out"; } > "$tmp/why"
   fi
-  if [ "$ok" -eq 1 ]; then
-    printf 'ok %s %s\n' "$n" "$tid" >> "$tmp/results"
+  report
+  [ "$kind" = cart ] || continue
+  n=$((n + 1))
+  tid="pack.trailer-$id"
+  executed=$((executed + 1))
+  ok=1
+  rm -f "$tmp/c.ivsc" "$tmp/body" "$tmp/trail"
+  if ! "$pack" --ivsc "$root/$path" "$tmp/c.ivsc" 2> "$tmp/pack.err"; then
+    ok=0
+    { printf 'ivs_pack --ivsc failed\n'; cat "$tmp/pack.err"; } > "$tmp/why"
   else
-    printf 'not ok %s %s\n' "$n" "$tid" >> "$tmp/results"
-    sed 's/^/# /' "$tmp/why" >> "$tmp/results"
-    failed=$((failed + 1))
+    size=$(wc -c < "$tmp/c.ivsc" | tr -d ' ')
+    if [ "$size" -le 32 ]; then
+      ok=0
+      printf 'container of %s bytes has no room for a trailer\n' "$size" > "$tmp/why"
+    else
+      dd if="$tmp/c.ivsc" of="$tmp/body" bs=1 count=$((size - 32)) 2> /dev/null
+      dd if="$tmp/c.ivsc" of="$tmp/trail" bs=1 skip=$((size - 32)) 2> /dev/null
+      want=$("$cmake" -E sha256sum "$tmp/body" | cut -d ' ' -f 1)
+      got=$(od -An -tx1 -v "$tmp/trail" | tr -d ' \n')
+      if [ "${#want}" -ne 64 ] || [ "$want" != "$got" ]; then
+        ok=0
+        printf 'trailer %s, sha256 of the first %s bytes %s\n' "$got" "$((size - 32))" "$want" > "$tmp/why"
+      fi
+    fi
   fi
+  report
 done < "$inv"
 
 {

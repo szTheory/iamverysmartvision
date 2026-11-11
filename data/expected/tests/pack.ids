@@ -4,3 +4,4 @@
 # of the container minus its last 32 bytes.
 pack.words-boot-stub
 pack.words-diag-cpu-1
+pack.trailer-diag-cpu-1
