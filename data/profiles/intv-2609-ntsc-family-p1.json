@@ -275,6 +275,36 @@
       "resolving_evidence": "pending: D5 system-image supply policy",
       "revisit_trigger": "when D5 is decided or an original replacement image exists",
       "decision": null
+    },
+    "memmap.undriven_read": {
+      "value": "$FFFF",
+      "tag": "unknown-default-chosen",
+      "cite": "SRC-intv-wiki (Memory Map, oldid 14847): reads of undriven space return $FFFF, bus pull-ups being the likely mechanism; no tier 1 to 3 source found",
+      "conflict": "C5",
+      "resolving_evidence": "measurement: D10 read-back of undriven addresses on owner hardware",
+      "revisit_trigger": "when a source documents undriven reads or a hardware read-back exists",
+      "decision": null,
+      "note": "Also the read value of a closed gate and of an EXEC, GROM or cartridge region with no image loaded (D-17, D-19). Never $0000: decle $0000 is HLT."
+    },
+    "memmap.device.rom10": {
+      "value": {"bits": 10, "rmask": "$03FF", "fill": "$0000", "store": "drop"},
+      "tag": "tier1-primary-doc",
+      "cite": "SRC-gi-1980-catalog printed 5-13 (pdf 194: the RO-3-9502 outputs 10 data bits and drives logic zero on the top six bits) and printed 5-21 (pdf 202: the RO-3-9504 drives the higher 6 bits to zero on reads)",
+      "conflict": null,
+      "resolving_evidence": null,
+      "revisit_trigger": "when content on a non-GI ROM part is in scope",
+      "decision": null,
+      "note": "read = (stored & rmask) | (fill & ~rmask) (D-17). The fill is a driven zero, not the undriven pull-up value. Bus stores are dropped; loaders refuse a word above $03FF instead of masking it."
+    },
+    "memmap.region.exec": {
+      "value": {"view": "R", "lo": "$1000", "hi": "$1FFF", "device": "rom10", "size_words": 4096, "gate": "none", "impl": "real"},
+      "tag": "tier4-community",
+      "cite": "SRC-intv-wiki (Memory Map, oldid 14847) for $1000-$1FFF; SRC-bsr-2609 for the 4K EXEC size; SRC-gi-1980-catalog printed 5-13 (pdf 194) for the 2048 x 10 part with a mask-programmed 2K page location",
+      "conflict": "C20",
+      "resolving_evidence": "pending: an EXEC image plus board evidence for the placement of each 2K half (C20)",
+      "revisit_trigger": "when board evidence places the EXEC halves",
+      "decision": null,
+      "note": "Read view only: bus writes are dropped. Reads with no EXEC image loaded return memmap.undriven_read (D-B7)."
     }
   }
 }

@@ -27,3 +27,6 @@ cpu.interrupt_accept_clears_intff
 bus.release_latency_cpu_cycles
 bus.wait_limit_cpu_cycles
 cpu.ebci_default
+memmap.undriven_read
+memmap.device.rom10
+memmap.region.exec

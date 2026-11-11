@@ -12,7 +12,30 @@ set(IVS_CORE_SOURCES
   src/common/ivs_sha256.c
   src/cpu/cp1610.c
   src/cpu/cp1610_decode.c
+  src/memmap/memsys.c
 )
+
+# Generated core include (D-16, H2 a, plan 03-04): the memory map, device records and profile
+# registry, written from every data/profiles/*.json by cmake/IvsMemmapTable.cmake into
+# gen/ivs_profiles.inc in this build directory. memsys.c is its only includer and is listed in
+# data/expected/core-generated.ids with its generator, so c-purity regenerates and checks it.
+# tests/faults.cmake reads IVS_CORE_GEN_DIR and IVS_CORE_GEN_TARGET to compile the plain and
+# owner copies of every core TU against the same directory.
+set(IVS_CORE_GEN_DIR "${CMAKE_CURRENT_BINARY_DIR}/gen")
+set(IVS_PROFILES_INC "${IVS_CORE_GEN_DIR}/ivs_profiles.inc")
+set(IVS_MEMMAP_GENERATOR "${PROJECT_SOURCE_DIR}/cmake/IvsMemmapTable.cmake")
+file(GLOB IVS_PROFILE_FILES CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/data/profiles/*.json")
+list(SORT IVS_PROFILE_FILES)
+add_custom_command(
+  OUTPUT "${IVS_PROFILES_INC}"
+  COMMAND "${CMAKE_COMMAND}" -E make_directory "${IVS_CORE_GEN_DIR}"
+  COMMAND "${CMAKE_COMMAND}" "-DROOT=${PROJECT_SOURCE_DIR}" "-DOUT=${IVS_PROFILES_INC}"
+          -P "${IVS_MEMMAP_GENERATOR}"
+  DEPENDS ${IVS_PROFILE_FILES} "${IVS_MEMMAP_GENERATOR}"
+  COMMENT "Generating the memory map and profile registry"
+  VERBATIM)
+add_custom_target(ivs_core_gen DEPENDS "${IVS_PROFILES_INC}")
+set(IVS_CORE_GEN_TARGET ivs_core_gen)
 
 set(ivs_core_objects "")
 foreach(src IN LISTS IVS_CORE_SOURCES)
@@ -21,6 +44,8 @@ foreach(src IN LISTS IVS_CORE_SOURCES)
   add_library(${obj} OBJECT "${src}")
   target_include_directories(${obj} PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/src")
+  target_include_directories(${obj} PRIVATE "${IVS_CORE_GEN_DIR}")
+  add_dependencies(${obj} ivs_core_gen)
   target_link_libraries(${obj} PRIVATE ivs_warnings ivs_san)
   set_target_properties(${obj} PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF)
   list(APPEND ivs_core_objects "$<TARGET_OBJECTS:${obj}>")

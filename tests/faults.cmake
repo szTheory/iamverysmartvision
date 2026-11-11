@@ -27,6 +27,15 @@ get_directory_property(ivs_fault_core_sources DIRECTORY "${PROJECT_SOURCE_DIR}/c
 if(NOT ivs_fault_core_sources)
   message(FATAL_ERROR "faults: IVS_CORE_SOURCES is empty")
 endif()
+# Generated core includes (H2 b, plan 03-04): every plain and owner copy of a core TU sees the
+# core's generated directory and waits for its generator target.
+get_directory_property(ivs_fault_core_gen_dir DIRECTORY "${PROJECT_SOURCE_DIR}/core"
+  DEFINITION IVS_CORE_GEN_DIR)
+get_directory_property(ivs_fault_core_gen_target DIRECTORY "${PROJECT_SOURCE_DIR}/core"
+  DEFINITION IVS_CORE_GEN_TARGET)
+if(NOT ivs_fault_core_gen_dir OR NOT ivs_fault_core_gen_target)
+  message(FATAL_ERROR "faults: IVS_CORE_GEN_DIR or IVS_CORE_GEN_TARGET is not set by core/CMakeLists.txt")
+endif()
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${ivs_fault_files})
 
 add_custom_target(ivs_faults)
@@ -37,7 +46,8 @@ foreach(src IN LISTS ivs_fault_core_sources)
   set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/core/${src}")
   add_library(ivs_fault_plain_${stem} OBJECT EXCLUDE_FROM_ALL "${PROJECT_SOURCE_DIR}/core/${src}")
   target_include_directories(ivs_fault_plain_${stem} PRIVATE
-    "${PROJECT_SOURCE_DIR}/core/include" "${PROJECT_SOURCE_DIR}/core/src")
+    "${PROJECT_SOURCE_DIR}/core/include" "${PROJECT_SOURCE_DIR}/core/src" "${ivs_fault_core_gen_dir}")
+  add_dependencies(ivs_fault_plain_${stem} ${ivs_fault_core_gen_target})
   target_link_libraries(ivs_fault_plain_${stem} PRIVATE ivs_warnings)
   set_target_properties(ivs_fault_plain_${stem} PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF)
 endforeach()
@@ -70,7 +80,8 @@ function(ivs_fault_exe id suite owner gen_dir gen_file)
     if(src STREQUAL owner)
       add_library(ivs_fault_obj_${id} OBJECT EXCLUDE_FROM_ALL "${PROJECT_SOURCE_DIR}/core/${src}")
       target_include_directories(ivs_fault_obj_${id} PRIVATE
-        "${PROJECT_SOURCE_DIR}/core/include" "${PROJECT_SOURCE_DIR}/core/src")
+        "${PROJECT_SOURCE_DIR}/core/include" "${PROJECT_SOURCE_DIR}/core/src" "${ivs_fault_core_gen_dir}")
+      add_dependencies(ivs_fault_obj_${id} ${ivs_fault_core_gen_target})
       target_compile_definitions(ivs_fault_obj_${id} PRIVATE "IVS_FAULT_${id}")
       target_link_libraries(ivs_fault_obj_${id} PRIVATE ivs_warnings)
       set_target_properties(ivs_fault_obj_${id} PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF)

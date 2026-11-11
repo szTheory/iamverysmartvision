@@ -82,6 +82,14 @@ target_link_libraries(ivs_tests_machine PRIVATE ivs_test_harness ivs_core ivs_co
 add_test(NAME machine COMMAND ivs_tests_machine)
 set_tests_properties(machine PROPERTIES SKIP_RETURN_CODE 77)
 
+# Suite memmap (D-16..D-20, plan 03-04): the profile-driven memory system through its bus
+# function; expected values come from the suite's own rule table, never from the generated
+# descriptors.
+add_executable(ivs_tests_memmap memmap/memmap_main.c)
+target_link_libraries(ivs_tests_memmap PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
+add_test(NAME memmap COMMAND ivs_tests_memmap)
+set_tests_properties(memmap PROPERTIES SKIP_RETURN_CODE 77)
+
 # Suite cpu-fuzz (D-12, plan 02-15): the seeded robustness run; dev links the sanitizers.
 add_executable(ivs_tests_cpu_fuzz cpu/cpu_fuzz.c)
 target_link_libraries(ivs_tests_cpu_fuzz PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
@@ -148,6 +156,9 @@ ivs_fault_suite(machine
   SOURCES machine/machine_main.c machine/machine_sha256.c
   INCLUDE_DIRS "${CMAKE_CURRENT_BINARY_DIR}"
   GENERATED "${IVS_SHA_INC}")
+
+ivs_fault_suite(memmap
+  SOURCES memmap/memmap_main.c)
 
 # Named-fault control executables (D-18): dev tree only, never registered with ctest.
 if(IVS_FAULT_CONTROLS)

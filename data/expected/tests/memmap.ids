@@ -1,0 +1,3 @@
+# Suite memmap: profile-driven memory system through its bus function (plan 03-04).
+memmap.anchor.exec-lo
+memmap.unloaded.exec-reads-ffff
