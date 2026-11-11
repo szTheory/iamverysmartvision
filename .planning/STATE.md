@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 4
 current_phase_name: Headless Runner and Installed Consumer (Slice 0)
 status: executing
-stopped_at: Completed 04-14-PLAN.md
-last_updated: "2026-11-11T21:47:46.734Z"
+stopped_at: Completed 04-15-PLAN.md
+last_updated: "2026-11-11T22:49:51.985Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 3 complete, transitioned to Phase 4
-state_head: 08cef1efbdc0152c87a4f311971c293006b07f2d
+state_head: 67ffc5878474d40d33cc83f3b27d1ac7ceb232b2
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 71
-  completed_plans: 60
+  completed_plans: 61
   percent: 38
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 4 — Headless Runner and Installed Consumer (Slice 0)
-Plan: 15 of 25
+Plan: 16 of 25
 Status: Ready to execute
 Last activity: 2026-11-11 — Completed 04-03 (repo-relative fault owners, runner outcome taxonomy)
 
@@ -114,6 +114,7 @@ Progress: [████░░░░░░] 38%
 | Phase 04 P12 | 35 min | 2 tasks | 13 files |
 | Phase 04 P13 | 35 min | 3 tasks | 18 files |
 | Phase 04 P14 | 16 min | 2 tasks | 14 files |
+| Phase 04 P15 | 8 min | 3 tasks | 45 files |
 
 ## Accumulated Context
 
@@ -255,6 +256,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 04]: 04-13: C14 stays open with the D6 policy; C63-C67 record the D10 hardware questions and the unit-start granularity; next discrepancy id C68
 - [Phase 04]: 04-14: stub listing zero fill carries row HLT with text fill ('-' only for operand words); bit groups are exactly 10 digits; header keys are '# key: value' lines
 - [Phase 04]: 04-14: tools/pack writes images only to build/<preset>/images (IVS_IMAGES_DIR); the C include of image bytes is generated in tests/CMakeLists.txt and is GENERATED for the run fault suite
+- [Phase 04]: listing step copies the vector checker's row loader, decle_leaves and program_word; operand count from the family table's words column; SDBD not modelled (fails closed)
+- [Phase 04]: suite pack: ivs_pack --dump-words vs listing.cmake -DDUMP parse, byte for byte; never the core
 
 ### Pending Todos
 
@@ -287,6 +290,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-11T21:47:35.178Z
-Stopped at: Completed 04-14-PLAN.md
+Last session: 2026-11-11T22:49:51.672Z
+Stopped at: Completed 04-15-PLAN.md
 Resume file: None
