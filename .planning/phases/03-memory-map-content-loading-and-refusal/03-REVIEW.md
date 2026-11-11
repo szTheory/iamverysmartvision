@@ -363,6 +363,32 @@ future LTO or shared build could expose it.
 conflicting declared type. Alternatively, build the core with `-fno-strict-aliasing` as a documented
 safeguard.
 
+## Disposition
+
+Recorded 2026-11-11 after the fixes. Each commit passed `sh tools/gate.sh` and `dash tools/gate.sh`
+(`gate: PASS`). Prerequisite: `b65296f` reworded a scratch-path mention in `03-SECURITY.md` that the
+gate's own hygiene rule matched, so HEAD failed `hygiene` and `hygiene-history` before any fix.
+
+| Finding | Disposition | Commit | Notes |
+|---------|-------------|--------|-------|
+| WR-01 | fixed | `2339673` | info, state_digest and the load report test the out overlap only against a validated instance (BAD_ARG, then BAD_HANDLE, then the overlap BAD_ARG). Rows `machine.refuse.digest.null-handle-low-out` (NULL handle, out at address 16), `machine.refuse.{info,digest}.destroyed-out-inside`, `machine.refuse.load.exec.destroyed-report-inside`; fault `OUT_OVERLAP_BEFORE_HANDLE`. A NULL-handle row with a low out is possible only for the digest: info and load read `struct_size` from their out, which a native test cannot place at a low address |
+| WR-02 | fixed | `3275117` | `IVS_STRUCT_SIZE_MAX 4096u`: above it create and load options are BAD_ARG before the tail scan; exactly 4096 keeps D-04. Create and load rows at, above and far above the cap (exact-size heap buffers); fault `STRUCT_SIZE_UNCAPPED` |
+| WR-03 | fixed | `377b5de` | The handle check also requires `profile < count` and `mem.profile == profile`; the per-call NULL checks in `machine_run.c` are gone. Cases `machine.refuse.handle.*` damage a relocated copy and expect BAD_HANDLE from info, digest, unload, reset, step, load and destroy; fault `HANDLE_TRUSTS_PROFILE`. The digest sensitivity cases judge the profile rows through the preimage seam |
+| WR-04 | fixed | `1232876` | Directive start read with block comments as spaces; `%:` and `??=` count as `#`; a stray `#`/`%:` + include fails closed; the intrinsic list is a prefix rule. Five controls (`core-purity-include-comment-prefix`, `-include-digraph`, `-arm-counter`, `-steady-counter`, `-hw-random`), each failing against the old step |
+| WR-05 | fixed | `2583260` | The dropped-write probe compares the whole state after a FFFF sweep and after a 0000 sweep. Fault `MEM_DROPPED_WRITE_KEPT` (a kept store into zero RAM words from inside row 0040-00FF) passed the old probe and fails the new one in its own row and the dump; every other memmap fault stays within its prefixes |
+| WR-06 | fixed (header) | `d582d91` | Header made true: the instance bytes stay untouched on refusal; an out in storage after them is host memory (D-01) and gets the NULL. Row `machine.refuse.create.out-after-instance-refused`; api-effects outs and notes updated |
+| WR-07 | fixed | `bbbf3e1` | Duplicate length check removed; behaviour and tests unchanged |
+| IN-01 | deferred | - | `has_cart_span` dead branches: to be resolved when a profile without a cartridge port is designed (drop the field or make the span optional with a test) |
+| IN-02 | deferred | - | `units`/`unit_bits` enforcement: pin them in the generator to the loader's fixed EXEC/GROM sizes when a second system-image layout appears; today's single profile matches |
+| IN-03 | fixed | `1081db8` | `_Static_assert`s tie `IVS_REASON_*` 0..18, the start of the load's own reasons and `IVS_SEGMENT_NONE` to the parser's values |
+| IN-04 | fixed | `dafe631` | POSIX watchdog per fault run (`IVS_FAULT_TIMEOUT`, default 120 s, finding `c-faults-run: <ID> (timeout after <n>s)`) with an in-step self-test; no control, since a c-faults control would need a full fault build of a control tree |
+| IN-05 | deferred | - | Fault-site forms (`#elif`, several `IVS_FAULT_` tokens on one line) fail closed today; widen the scan when the first such site is written |
+| IN-06 | fixed | `ac6658b` | The scan takes `IVS_API` after optional leading whitespace, followed by a blank or the line end: indented prototypes are named and a bare marker line fails closed; controls `api-call-indented`, `api-call-own-line` |
+| IN-07 | deferred | - | `ivs_info.profile_index` stability: decide between documenting it as build-local and reporting the id when a second profile is added |
+| IN-08 | fixed | `f8e7594` | Every test instance storage comes from `aligned_alloc(IVS_MACHINE_ALIGN, n)` |
+| IN-09 | deferred | - | Memmap row ids without a profile part: add one when a second profile's literal map lands (fails closed today) |
+| IN-10 | deferred | - | Strict aliasing on a declared char-array storage: document the storage requirement (or build the core with `-fno-strict-aliasing`) before any LTO or shared build |
+
 ---
 
 _Reviewed: 2026-11-11T09:33:57Z_
