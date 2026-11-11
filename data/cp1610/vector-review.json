@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "method": "isolated subagent per vector file reading a blinded copy, the page images, the reader protocol and the policy document keyed by opaque policy tokens only; outputs handed over by the orchestrator with sha256 and run id; mechanical diff; page re-read for every disagreement",
+  "rows": [
+    {
+      "id": "control",
+      "file": "data/cp1610/vectors/control.json",
+      "file_sha256": "9efd431c8b6493dd5522fbc7750572797470e66102edad35ca7e2b8755c4c4fc",
+      "derived_sha256": "69ee7d91578c66f5ee0cae5532e91c8a45ce0d75976981f534c39bf7b25a2f08",
+      "reviewer": "isolated-subagent-blind-v1",
+      "vectors": 27,
+      "agree": 27,
+      "disagreements": [],
+      "resolutions": []
+    }
+  ]
+}
