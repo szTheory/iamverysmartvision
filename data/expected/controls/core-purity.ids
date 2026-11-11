@@ -14,3 +14,8 @@ core-purity-prelude
 core-purity-quoted-header
 core-purity-rand
 core-purity-thread
+# Public include tree and generated includes (plan 03-03, A-06).
+core-purity-include-outside
+core-purity-generated-unlisted
+core-purity-generated-scan
+core-purity-generated-missing

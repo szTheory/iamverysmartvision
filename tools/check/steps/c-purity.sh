@@ -20,10 +20,20 @@
 #   - .c files only: the words float and double fail (c-purity-float-type; the prelude header
 #     names them in its poison pragma), and the first #include must be "common/ivs_prelude.h"
 #     or another quoted path ending ivs_prelude.h (c-purity-prelude).
+#   - reviewed generated includes (A-06, H2 c-d, plan 03-03): the inventory
+#     data/expected/core-generated.ids (read from ROOT, not CHECK_DIR, so a control can overlay
+#     it; an absent file is an empty list) holds lines
+#     `<basename> <generator repo path>`. Before the scan, every listed generator is run as
+#     `cmake -DROOT=<tree> -DOUT=<temp>/gen/<basename> -P <tree>/<generator>`; a malformed line,
+#     a missing generator, a generator failure or a missing output fails
+#     (c-purity-generated: <basename> (<reason>)). A quoted include whose operand equals a listed
+#     basename resolves; any other name that is not a tracked header stays c-purity-include. Each
+#     generated file gets the header-level scan above (include, asm, float literal), reported as
+#     <token> gen/<basename>:<line>.
 # Stage 2, symbol layer (authoritative): every core .c is compiled fresh into a temp dir at -O0
-#   and at -O2 with ${CC:-cc} (-std=c17 -fno-lto -I core/include -I core/src; a missing
-#   include directory is ignored by the compiler; a missing compiler fails, never skips), each
-#   variant is archived with ar, and tools/check/core-symbols.sh checks each archive against the
+#   and at -O2 with ${CC:-cc} (-std=c17 -fno-lto -I core/include -I core/src -I <temp>/gen; a
+#   missing include directory is ignored by the compiler; a missing compiler fails, never
+#   skips), each variant is archived with ar, and tools/check/core-symbols.sh checks each archive against the
 #   reviewed allowlist (lists read from CHECK_DIR, so a control cannot replace them).
 # Stage 3, purity self-test: core-symbols.sh must reject an LTO object (lto), a file with the
 #   bitcode magic (bitcode-magic), an archive with zero external definitions (no-definitions),
@@ -32,6 +42,7 @@
 #   object; this stage covers that class instead.
 # Writes only to its temp dir. Reads ROOT, CHECK_DIR, FILELIST; CC and NM from the environment.
 # Tokens: c-purity-no-sources: core/src, c-purity-no-cc: <cc>, c-purity-compile: <file> (<opt>),
+#   c-purity-generated: <basename> (<reason>),
 #   c-purity-include, c-purity-prelude, c-purity-asm, c-purity-float-type,
 #   c-purity-float-literal (each: <file>:<line>), purity-selftest-<case>: <detail>, plus every
 #   core-symbols-* token. Stats: core-imports=<imports of the -O2 archive>
@@ -58,9 +69,45 @@ if ! command -v "$cc" > /dev/null 2>&1; then
   exit 1
 fi
 
+# Reviewed generated includes: run each listed generator into the temp dir.
+mkdir -p "$tmp/gen"
+: > "$tmp/genlist"
+geninv="$ROOT/data/expected/core-generated.ids"
+if [ -f "$geninv" ]; then
+  while IFS= read -r line || [ -n "$line" ]; do
+    set -f
+    # shellcheck disable=SC2086
+    set -- $line
+    set +f
+    [ "$#" -gt 0 ] || continue
+    case $1 in '#'*) continue ;; esac
+    if [ "$#" -ne 2 ]; then bad c-purity-generated "$1 (bad line)"; continue; fi
+    gname=$1; ggen=$2
+    case $gname in
+      *[!A-Za-z0-9._-]*|.*) bad c-purity-generated "$gname (bad basename)"; continue ;;
+    esac
+    case $ggen in
+      /*|*..*|*[!A-Za-z0-9._/-]*)
+        bad c-purity-generated "$gname (bad generator path $ggen)"; continue ;;
+    esac
+    if grep -q -x -F -e "$gname" "$tmp/genlist"; then
+      bad c-purity-generated "$gname (listed twice)"; continue
+    fi
+    printf '%s\n' "$gname" >> "$tmp/genlist"
+    if [ ! -f "$ROOT/$ggen" ]; then
+      bad c-purity-generated "$gname (generator $ggen missing)"; continue
+    fi
+    if ! cmake -DROOT="$ROOT" -DOUT="$tmp/gen/$gname" -P "$ROOT/$ggen" > "$tmp/gen.log" 2>&1; then
+      sed 's/^/# /' "$tmp/gen.log"
+      bad c-purity-generated "$gname (generator $ggen failed)"; continue
+    fi
+    [ -f "$tmp/gen/$gname" ] || bad c-purity-generated "$gname (generator $ggen wrote no output)"
+  done < "$geninv"
+fi
+
 # Stage 1: source layer. One awk pass per file prints "<token> <file>:<line>" findings.
-scan() { # $1 repo-relative path, $2 1 for a .c file, 0 for a header
-  awk -v file="$1" -v isc="$2" -v hlist="$tmp/hsrc" '
+scan() { # $1 reported path, $2 1 for a .c file, 0 for a header, $3 file to read (default ROOT/$1)
+  awk -v file="$1" -v isc="$2" -v hlist="$tmp/hsrc" -v glist="$tmp/genlist" '
     function report(t) { print t " " file ":" NR }
     function word(w) {
       if (w in asmw) report("c-purity-asm")
@@ -77,6 +124,8 @@ scan() { # $1 repo-relative path, $2 1 for a .c file, 0 for a header
       for (k in b) asmw[b[k]] = 1
       while ((getline hp < hlist) > 0) corehdr[hp] = 1
       close(hlist)
+      while ((getline gp < glist) > 0) genname[gp] = 1
+      close(glist)
       dir = file; sub(/\/[^\/]*$/, "", dir)
       incomment = 0; seen_inc = 0
     }
@@ -97,7 +146,7 @@ scan() { # $1 repo-relative path, $2 1 for a .c file, 0 for a header
           } else if (rest ~ /^"[^"]*"/) {
             h = substr(rest, 2); sub(/".*$/, "", h)
             if (!(("core/src/" h) in corehdr) && !(("core/include/" h) in corehdr) \
-                && !((dir "/" h) in corehdr)) report("c-purity-include")
+                && !((dir "/" h) in corehdr) && !(h in genname)) report("c-purity-include")
           } else report("c-purity-include")
         }
       }
@@ -141,17 +190,21 @@ scan() { # $1 repo-relative path, $2 1 for a .c file, 0 for a header
         i++
       }
     }
-    END { if (isc && !seen_inc) print "c-purity-prelude " file ":1" }' "$ROOT/$1"
+    END { if (isc && !seen_inc) print "c-purity-prelude " file ":1" }' "${3:-$ROOT/$1}"
 }
 : > "$tmp/src.find"
 while IFS= read -r p; do scan "$p" 1 >> "$tmp/src.find"; done < "$tmp/csrc"
 while IFS= read -r p; do scan "$p" 0 >> "$tmp/src.find"; done < "$tmp/hsrc"
+while IFS= read -r g; do
+  [ -f "$tmp/gen/$g" ] && scan "gen/$g" 0 "$tmp/gen/$g" >> "$tmp/src.find"
+done < "$tmp/genlist"
 if [ -s "$tmp/src.find" ]; then
   sort -u "$tmp/src.find" | while IFS= read -r l; do
     printf -- '-- FAIL %s: %s\n' "${l%% *}" "${l#* }"
   done
   exit 1
 fi
+[ "$rc" -eq 0 ] || exit 1
 
 # Stage 2: symbol layer. Fresh compile at -O0 and -O2, one archive per variant.
 for opt in O0 O2; do
@@ -160,7 +213,7 @@ for opt in O0 O2; do
   while IFS= read -r src; do
     obj="$tmp/$opt/$(printf '%s' "$src" | tr '/' '_').o"
     if "$cc" -std=c17 -fno-lto -Wall -Wextra -Werror=implicit-function-declaration \
-      -Werror=date-time "-$opt" -I"$ROOT/core/include" -I"$ROOT/core/src" \
+      -Werror=date-time "-$opt" -I"$ROOT/core/include" -I"$ROOT/core/src" -I"$tmp/gen" \
       -c "$ROOT/$src" -o "$obj" > "$tmp/cc.log" 2>&1; then
       set -- "$@" "$obj"
     else

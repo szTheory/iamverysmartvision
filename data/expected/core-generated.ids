@@ -1,0 +1,2 @@
+# Generated files a core TU may include: <basename> <generator repo path>; the generator must accept only -DROOT=<tree> -DOUT=<file>. (plan 03-03)
+#allow-empty: the first generated core include lands in plan 03-04
