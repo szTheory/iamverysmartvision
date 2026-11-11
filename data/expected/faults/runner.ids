@@ -2,14 +2,16 @@
 # Runner named faults (D-20, D-22, D-24, plans 04-03 and 04-17). Each id has one IVS_FAULT_<ID>
 # site in a runner TU (runner/outcome.c, runner/scenario.c; owner TUs under core/ or runner/).
 # OUTCOME_GUEST_AS_HARNESS: guest-fail exits with the harness-fail code; codes-distinct also
-# sees the two outcomes share code 14.
-OUTCOME_GUEST_AS_HARNESS runner.outcome.exit-guest-fail runner.outcome.exit-guest-fail|runner.outcome.codes-distinct runner.outcome.exit-pass
+# sees the two outcomes share code 14; since plan 04-18 the executor cases whose outcome is
+# guest-fail (runner.exec.) see the exit code 14 too.
+OUTCOME_GUEST_AS_HARNESS runner.outcome.exit-guest-fail runner.outcome.exit-guest-fail|runner.outcome.codes-distinct|runner.exec. runner.outcome.exit-pass
 # OUTCOME_TIMEOUT_AS_GUEST: both timeout kinds exit with the guest-fail code; codes-distinct
-# also sees timeout and guest-fail share code 10.
-OUTCOME_TIMEOUT_AS_GUEST runner.outcome.exit-timeout runner.outcome.exit-timeout|runner.outcome.codes-distinct runner.outcome.exit-pass
+# also sees timeout and guest-fail share code 10; runner.exec.halt-bound-small sees exit 10.
+OUTCOME_TIMEOUT_AS_GUEST runner.outcome.exit-timeout runner.outcome.exit-timeout|runner.outcome.codes-distinct|runner.exec. runner.outcome.exit-pass
 # OUTCOME_MISSING_FIXTURE_EXIT0: missing-fixture exits 0 (a missing file would read as a pass);
-# codes-distinct also sees it share code 0 with pass.
-OUTCOME_MISSING_FIXTURE_EXIT0 runner.outcome.exit-missing-fixture runner.outcome.exit-missing-fixture|runner.outcome.codes-distinct runner.outcome.exit-pass
+# codes-distinct also sees it share code 0 with pass; the missing-fixture executor cases
+# (runner.exec., plan 04-18) see exit 0.
+OUTCOME_MISSING_FIXTURE_EXIT0 runner.outcome.exit-missing-fixture runner.outcome.exit-missing-fixture|runner.outcome.codes-distinct|runner.exec. runner.outcome.exit-pass
 # OUTCOME_CANCEL_AS_TIMEOUT: resolve ranks cancelled below the wall timeout; only the pair case
 # that holds both observations sees it (each alone still resolves to itself).
 OUTCOME_CANCEL_AS_TIMEOUT runner.outcome.prec-cancelled-over-wall runner.outcome.prec-cancelled-over-wall runner.outcome.prec-wall-over-budget

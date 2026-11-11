@@ -116,3 +116,27 @@ runner.fuzz.reasons-covered
 # Plan 04-18 (D-17..D-20, D-22, D-30): the scenario executor and the report writer through a fake
 # host vtable (images from the build-tree include).
 runner.exec.diag-pass
+runner.exec.assert-forms
+runner.exec.cancel
+runner.exec.expect-load-refusal
+runner.exec.guest-assert-mismatch
+runner.exec.halt-bound-small
+runner.exec.input-schedule
+runner.exec.io-error
+runner.exec.key-order
+runner.exec.missing-file
+runner.exec.no-paths
+runner.exec.not-regular
+runner.exec.overshoot
+runner.exec.repeat-identical
+runner.exec.sha-match
+runner.exec.sha-mismatch
+runner.exec.stop-internal
+runner.exec.stop-mismatch
+runner.exec.too-large
+runner.exec.two-steps
+runner.exec.units
+runner.exec.unexpected-refusal
+runner.exec.unknown-profile
+runner.exec.user-role
+runner.exec.write-error
