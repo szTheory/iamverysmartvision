@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 4
 current_phase_name: Headless Runner and Installed Consumer (Slice 0)
 status: executing
-stopped_at: Completed 04-12-PLAN.md
-last_updated: "2026-11-11T21:03:15.798Z"
+stopped_at: Completed 04-13-PLAN.md
+last_updated: "2026-11-11T21:25:15.620Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 3 complete, transitioned to Phase 4
-state_head: 379e9af73ecda85cb42ac234906c4eccb6c7d924
+state_head: d3a72024ffd7683fba923fa2e38955e1882c61bb
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 71
-  completed_plans: 58
+  completed_plans: 59
   percent: 38
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 4 — Headless Runner and Installed Consumer (Slice 0)
-Plan: 13 of 25
+Plan: 14 of 25
 Status: Ready to execute
 Last activity: 2026-11-11 — Completed 04-03 (repo-relative fault owners, runner outcome taxonomy)
 
@@ -112,6 +112,7 @@ Progress: [████░░░░░░] 38%
 | Phase 04 P10 | 40 min | 2 tasks | 14 files |
 | Phase 04 P11 | 95 min | 3 tasks | 18 files |
 | Phase 04 P12 | 35 min | 2 tasks | 13 files |
+| Phase 04 P13 | 35 min | 3 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -248,6 +249,9 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 04]: 04-11: per-event validation is two whole-array passes after BUFFER_TOO_SMALL (BAD_ARG order/range/floor, then UNSUPPORTED content); lowest failing index reported
 - [Phase 04]: 04-11: an event_count above 65536 names no span for the report rule (found by gate-linux under gcc)
 - [Phase 04]: 04-12: input.controllers (profile, tier2-first-party-adjacent, SRC-bsr-2609, C14, D6) = 2; a nonzero controller word at or above it is UNSUPPORTED (IVS_REASON_INPUT_EXTRA_CONTROLLER 54), last check per event in pass 2
+- [Phase 04]: 04-13: IVS_CTRL_ bits are pinned by bit index through a new bit value form ((1u << n) read as n) of the generic define pin
+- [Phase 04]: 04-13: v1 sizes frozen (request 64 on LP64, report 112, event 32, cpu_state_report 36, ivs_info 216/256); A-02 applies to them from here
+- [Phase 04]: 04-13: C14 stays open with the D6 policy; C63-C67 record the D10 hardware questions and the unit-start granularity; next discrepancy id C68
 
 ### Pending Todos
 
@@ -280,6 +284,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-11T21:03:15.628Z
-Stopped at: Completed 04-12-PLAN.md
+Last session: 2026-11-11T21:25:15.317Z
+Stopped at: Completed 04-13-PLAN.md
 Resume file: None
