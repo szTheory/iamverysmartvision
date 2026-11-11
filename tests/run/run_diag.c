@@ -8,6 +8,14 @@
  *                       IVS_RUN_F_STOP_ON_HALT and a bound of 4000 CPU cycles (in ticks of the
  *                       profile's timebase); the stop reason is CPU_HALTED, and R0-R6 and the ten
  *                       memory words equal the predicate.
+ *   run.diag.slice      D-07 on the real program: the five slicing patterns of family slice
+ *                       (single, fixed-7, prime, seeded, one-call) against a unit-by-unit
+ *                       reference, the CPU digest at every call boundary, and the composite, the
+ *                       seven domain digests and the whole instance storage at the sampled ends
+ *                       (ivs_run_slice_halting, run_slice.c).
+ *   run.diag.repeat     two fresh instances in storage poisoned with different bytes, each run to
+ *                       the halt with one call, give the same stop report and equal composite and
+ *                       domain digests (repeatability, not accuracy).
  * The expected values are not in this file: diag_cpu_1_expect.inc is generated at build time from
  * the assert lines of data/golden/diag-cpu-1.expect (tests/expect-inc.cmake), where they were
  * derived by hand from arithmetic and the cited manual tables before the program first ran. R7,
@@ -33,6 +41,7 @@
   } while (0)
 
 #define RD_POISON 0x3Cu
+#define RD_POISON_2 0xC3u
 #define RD_ZERO_GROM_BYTES 2048u
 /* The run bound of run.diag.predicate in CPU cycles (the hand-summed path is 520). */
 #define RD_BOUND_CPU_CYCLES 4000u
@@ -164,6 +173,11 @@ static int rd_meets(const ivs_machine *m, const ivs_run_report *rep)
   return ok;
 }
 
+static const uint32_t rd_domains[8] = {IVS_DIGEST_COMPOSITE, IVS_DIGEST_CPU,   IVS_DIGEST_MEM,   IVS_DIGEST_IMAGES,
+                                       IVS_DIGEST_INSTANCE,  IVS_DIGEST_VIDEO, IVS_DIGEST_AUDIO, IVS_DIGEST_INPUT};
+
+static int rd_powered_default(ivs_ms_inst *x) { return rd_powered(x, RD_POISON); }
+
 /* ---- cases ---- */
 
 static int rd_predicate(void)
@@ -198,7 +212,49 @@ done:
   return rc;
 }
 
+static int rd_slice(void) { return ivs_run_slice_halting(rd_powered_default); }
+
+static int rd_repeat(void)
+{
+  ivs_ms_inst x;
+  ivs_ms_inst y;
+  ivs_run_report rx;
+  ivs_run_report ry;
+  size_t i;
+  int rc = IVS_TEST_FAIL;
+  if (!rd_powered(&x, RD_POISON)) {
+    return IVS_TEST_FAIL;
+  }
+  if (!rd_powered(&y, RD_POISON_2)) {
+    ivs_ms_free(&x);
+    return IVS_TEST_FAIL;
+  }
+  if (!rd_run_cycles(x.m, RD_BOUND_CPU_CYCLES, &rx) || !rd_run_cycles(y.m, RD_BOUND_CPU_CYCLES, &ry)) {
+    goto done;
+  }
+  RD_CHECK(rx.stop_reason == IVS_STOP_CPU_HALTED && ry.stop_reason == IVS_STOP_CPU_HALTED);
+  RD_CHECK(rx.now_ticks == ry.now_ticks && rx.units_executed == ry.units_executed &&
+           rx.elapsed_ticks == ry.elapsed_ticks);
+  for (i = 0u; i < sizeof rd_domains / sizeof rd_domains[0]; i++) {
+    uint8_t dx[32];
+    uint8_t dy[32];
+    RD_CHECK(ivs_machine_state_digest(x.m, rd_domains[i], dx) == IVS_OK);
+    RD_CHECK(ivs_machine_state_digest(y.m, rd_domains[i], dy) == IVS_OK);
+    if (memcmp(dx, dy, 32u) != 0) {
+      ivs_test_diag("digest of domain %u differs between the two instances", (unsigned)rd_domains[i]);
+      goto done;
+    }
+  }
+  rc = IVS_TEST_PASS;
+done:
+  ivs_ms_free(&y);
+  ivs_ms_free(&x);
+  return rc;
+}
+
 const ivs_test_case ivs_run_diag_cases[] = {
     {"run.diag.predicate", rd_predicate, NULL},
+    {"run.diag.slice", rd_slice, NULL},
+    {"run.diag.repeat", rd_repeat, NULL},
 };
 const size_t ivs_run_diag_count = sizeof ivs_run_diag_cases / sizeof ivs_run_diag_cases[0];

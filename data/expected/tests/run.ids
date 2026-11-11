@@ -189,3 +189,9 @@ run.stub.halt-needs-follower
 # power-on reset; one run with STOP_ON_HALT to a 4000-CPU-cycle bound stops CPU_HALTED and meets
 # the hand-derived predicate read from data/golden/diag-cpu-1.expect (halted, R0-R6, ten words).
 run.diag.predicate
+# Slice (D-07 on the real program): the five slicing patterns of family slice against a
+# unit-by-unit reference, CPU digest per call boundary, all domain digests and storage at the
+# sampled ends. Repeat: two fresh instances (different storage poison) give the same stop report
+# and equal composite and domain digests.
+run.diag.slice
+run.diag.repeat

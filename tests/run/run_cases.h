@@ -62,6 +62,13 @@ extern const size_t ivs_run_stub_count;
 extern const ivs_test_case ivs_run_diag_cases[];
 extern const size_t ivs_run_diag_count;
 
+/* ---- slicing invariance of another program (run_slice.c, plan 04-16, D-07) ----
+ * powered builds a POWERED instance of a program that ends HALTED (1 on success); the function
+ * runs the five slicing patterns of family slice (single, fixed-7, prime, seeded, one-call) on it
+ * against a unit-by-unit reference and returns IVS_TEST_PASS or IVS_TEST_FAIL. */
+typedef int (*ivs_run_powered_fn)(ivs_ms_inst *x);
+int ivs_run_slice_halting(ivs_run_powered_fn powered);
+
 /* ---- the refusal and side-effect oracle (SP4), shared by the run families ----
  * A snapshot holds a heap copy of the whole instance storage, the composite and the seven domain
  * digests (1..4, 16..18) and info's time_ticks; a destroyed instance has no digests or info. */

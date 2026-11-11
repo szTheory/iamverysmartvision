@@ -37,7 +37,9 @@
  *                                 $1003, PC+2 = $1005 and d = 2 gives $1002)
  *   H: HLT $0000, then TSTR R1 $0089 (register.json, cpu.TSTR.base) as the follower
  *   F: MVO@ R4, R4 $0264, a sticky guest fault (indirect.json, cpu.MVO@.sss-eq-mmm-r4-unsupported)
- * Cost: one CPU digest per call, full digests and storage only at two sampled ends. */
+ * Cost: one CPU digest per call, full digests and storage only at two sampled ends.
+ * ivs_run_slice_halting (run_cases.h, plan 04-16) runs the five patterns on another halting
+ * program that a caller powers up, so the same oracle checks the real diagnostic (D-07). */
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -70,6 +72,13 @@ static const uint16_t rs_prog_fault[] = {0x02B9u, 0x0008u, 0x0011u, 0x022Cu, 0x0
 
 #define RS_PROG_HALT 0u
 #define RS_PROG_FAULT 1u
+
+/* A program under test: powered builds a POWERED instance of it; faults is 1 when it ends in a
+ * guest fault (end E = FAULTED boundary + 1000), 0 when it halts (E = HALTED boundary + 41). */
+typedef struct rs_prog {
+  ivs_run_powered_fn powered;
+  int faults;
+} rs_prog;
 
 #define RS_SINGLE 0u
 #define RS_FIXED_7 1u
@@ -147,7 +156,7 @@ static uint32_t rs_state(const ivs_machine *m)
 }
 
 /* The reference of program prog (header comment). 1 on success. */
-static int rs_reference(uint32_t prog, rs_ref *r)
+static int rs_reference(const rs_prog *prog, rs_ref *r)
 {
   ivs_ms_inst y;
   uint32_t i;
@@ -155,7 +164,7 @@ static int rs_reference(uint32_t prog, rs_ref *r)
   memset(r, 0, sizeof *r);
   r->fault = UINT32_MAX;
   r->end = UINT64_MAX;
-  if (!rs_custom(&y, prog)) {
+  if (!prog->powered(&y)) {
     return 0;
   }
   r->b[0] = rs_now(y.m);
@@ -174,14 +183,14 @@ static int rs_reference(uint32_t prog, rs_ref *r)
       goto done;
     }
     s = rs_state(y.m);
-    if (prog == RS_PROG_FAULT && s == IVS_CPU_STATE_FAULTED) {
+    if (prog->faults && s == IVS_CPU_STATE_FAULTED) {
       r->n = i;
       r->fault = i;
       r->end = r->b[i] + 1000u;
       ok = 1;
       goto done;
     }
-    if (prog == RS_PROG_HALT && s == IVS_CPU_STATE_HALTED && r->end == UINT64_MAX) {
+    if (!prog->faults && s == IVS_CPU_STATE_HALTED && r->end == UINT64_MAX) {
       r->end = r->b[i] + 41u;
     }
     if (r->b[i] >= r->end) {
@@ -300,7 +309,7 @@ static int rs_call(rs_play *p, uint64_t t)
 }
 
 /* Runs pattern pat of program prog against its reference. */
-static int rs_case(uint32_t prog, uint32_t pat)
+static int rs_case(const rs_prog *prog, uint32_t pat)
 {
   rs_ref *r = malloc(sizeof *r);
   rs_play p;
@@ -314,11 +323,11 @@ static int rs_case(uint32_t prog, uint32_t pat)
     return IVS_TEST_FAIL;
   }
   p.r = r;
-  if (!rs_custom(&p.x, prog)) {
+  if (!prog->powered(&p.x)) {
     free(r);
     return IVS_TEST_FAIL;
   }
-  if (!rs_custom(&p.y, prog)) {
+  if (!prog->powered(&p.y)) {
     ivs_ms_free(&p.x);
     free(r);
     return IVS_TEST_FAIL;
@@ -372,17 +381,39 @@ done:
   return rc;
 }
 
-static int rs_halt_single(void) { return rs_case(RS_PROG_HALT, RS_SINGLE); }
-static int rs_halt_fixed(void) { return rs_case(RS_PROG_HALT, RS_FIXED_7); }
-static int rs_halt_prime(void) { return rs_case(RS_PROG_HALT, RS_PRIME); }
-static int rs_halt_seeded(void) { return rs_case(RS_PROG_HALT, RS_SEEDED); }
-static int rs_halt_one(void) { return rs_case(RS_PROG_HALT, RS_ONE_CALL); }
-static int rs_fault_single(void) { return rs_case(RS_PROG_FAULT, RS_SINGLE); }
-static int rs_fault_fixed(void) { return rs_case(RS_PROG_FAULT, RS_FIXED_7); }
-static int rs_fault_prime(void) { return rs_case(RS_PROG_FAULT, RS_PRIME); }
-static int rs_fault_seeded(void) { return rs_case(RS_PROG_FAULT, RS_SEEDED); }
-static int rs_fault_one(void) { return rs_case(RS_PROG_FAULT, RS_ONE_CALL); }
-static int rs_edges(void) { return rs_case(RS_PROG_HALT, RS_EDGES); }
+static int rs_powered_halt(ivs_ms_inst *x) { return rs_custom(x, RS_PROG_HALT); }
+static int rs_powered_fault(ivs_ms_inst *x) { return rs_custom(x, RS_PROG_FAULT); }
+static const rs_prog rs_halt = {rs_powered_halt, 0};
+static const rs_prog rs_fault = {rs_powered_fault, 1};
+
+static int rs_halt_single(void) { return rs_case(&rs_halt, RS_SINGLE); }
+static int rs_halt_fixed(void) { return rs_case(&rs_halt, RS_FIXED_7); }
+static int rs_halt_prime(void) { return rs_case(&rs_halt, RS_PRIME); }
+static int rs_halt_seeded(void) { return rs_case(&rs_halt, RS_SEEDED); }
+static int rs_halt_one(void) { return rs_case(&rs_halt, RS_ONE_CALL); }
+static int rs_fault_single(void) { return rs_case(&rs_fault, RS_SINGLE); }
+static int rs_fault_fixed(void) { return rs_case(&rs_fault, RS_FIXED_7); }
+static int rs_fault_prime(void) { return rs_case(&rs_fault, RS_PRIME); }
+static int rs_fault_seeded(void) { return rs_case(&rs_fault, RS_SEEDED); }
+static int rs_fault_one(void) { return rs_case(&rs_fault, RS_ONE_CALL); }
+static int rs_edges(void) { return rs_case(&rs_halt, RS_EDGES); }
+
+int ivs_run_slice_halting(ivs_run_powered_fn powered)
+{
+  static const uint32_t pats[] = {RS_SINGLE, RS_FIXED_7, RS_PRIME, RS_SEEDED, RS_ONE_CALL};
+  static const char *const names[] = {"single", "fixed-7", "prime", "seeded", "one-call"};
+  rs_prog prog;
+  size_t i;
+  prog.powered = powered;
+  prog.faults = 0;
+  for (i = 0u; i < sizeof pats / sizeof pats[0]; i++) {
+    if (rs_case(&prog, pats[i]) != IVS_TEST_PASS) {
+      ivs_test_diag("slicing pattern %s failed", names[i]);
+      return IVS_TEST_FAIL;
+    }
+  }
+  return IVS_TEST_PASS;
+}
 
 const ivs_test_case ivs_run_slice_cases[] = {
     {"run.slice.halt.single", rs_halt_single, NULL},

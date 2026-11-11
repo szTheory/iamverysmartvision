@@ -83,9 +83,36 @@ The gate enforces the mechanical half from plan 04-15 on: addresses inside `1000
 - `--patch ADDR=HEX`: replaces one listed word before any output (repeatable); used for mutants.
 - `--c-include <out.inc> <name>=<file>...`: the image bytes as C arrays for the in-process suites.
 
-The default build of both presets writes `build/<preset>/images/boot-stub.exec` (CMake variable `IVS_IMAGES_DIR`); the output holds no time, path or host-dependent byte, so both presets produce the same bytes.
+The default build of both presets writes `build/<preset>/images/boot-stub.exec` and `build/<preset>/images/diag-cpu-1.ivsc` (CMake variable `IVS_IMAGES_DIR`); the output holds no time, path or host-dependent byte, so both presets produce the same bytes.
+Suite `pack` compares `ivs_pack --dump-words` with the gate's own parse for every listing and, for a cartridge listing, checks the IVSC trailer against `cmake -E sha256sum` of the container minus its last 32 bytes (`pack.trailer-<id>`).
 No `.exec`, `.ivsc`, `.bin` or `.rom` file is tracked, and no real EXEC, GROM or cartridge image is committed, cached or required.
 `ivs_pack` is a development tool: it is never installed and never shipped.
+
+## ivs-diag-cpu-1
+
+The first project diagnostic (D-31): `fixtures/FX-diag-cpu-1/diag-cpu-1.listing.txt`, manifest `FX-diag-cpu-1`, one IVSC v1 segment of 56 words at `5000`-`5037`, entered through the boot stub (contract 1).
+It sets every register it uses before using it, and uses no SDBD, no shift, no interrupt and no STIC, PSG, GROM or graphics RAM address.
+
+What it covers:
+
+- Flags: `R0 = 03FF` doubled five times to `7FE0`, `ADDI #$001F` gives `7FFF` (stored at `0200`); `INCR` to `8000` writes S and Z only, so `GSWD` gives `8080`; `DECR`, then `ADDI #$0001` to `8000` sets S and OV (`A0A0`); `ADDR R0,R0` of `8000` gives `0000` with C, OV and Z (`7070`). The three status words separate an instruction that writes two flags from one that writes four.
+- A loop: `ADDR R2,R3; DECR R2; BNZE` back over 1..10, sum `0037`, which also uses a backward branch displacement.
+- The stack: a `PSHR R3; PULR R5` round trip at the stub's stack start `0340`, and the restored stack pointer.
+- Indirect addressing: `MVI@ R4,R0` from `0200` with R4 incremented after the read.
+- The end: the marker `[020F] = 03C5` is the last store, then `HLT` and three `TSTR R0` followers.
+
+The predicate is `data/golden/diag-cpu-1.expect` (tier `original-diagnostic`, oracle `independent-derivation`): stop reason halted, R0-R6, and the ten words `[0200]`-`[0208]` and `[020F]`.
+Its values were derived by hand from 16-bit arithmetic, the status-bit rules (`§3.1.2, pdf 45`), the GSWD layout (`pdf 56`), the stack direction (C17) and the instruction tables, and the derivation was committed before the program first ran on the emulator; the file shows each step with its page.
+Excluded on purpose: R7 and the flags at the stop (they depend on the HLT and interruptibility policies, C40, C45, C56), machine time (the hand-summed 520 CPU cycles to the halt are regression information only, since the 5-cycle reset entry is an inference and the branch count is policy C29), and the stack word `[0340]`.
+The test `run.diag.predicate` reads the expected values from the assert lines of that file through a generated include; `run.diag.slice` replays the program under the five slicing patterns of D-07, and `run.diag.repeat` compares two fresh instances.
+
+Shared-misreading risk: the author of the listing, of the predicate and of the core is the same, so all three can share one misreading of the manual, and agreement between them is not independent evidence about hardware.
+The risk is bounded by deriving the values from arithmetic and printed tables rather than from a second interpreter, by excluding policy-dependent state, and by keeping the claim on this diagnostic provisional.
+The cartridge entry `5000` and the stack start `0340` it relies on are project conventions without a source (C68).
+
+libasm cross-check (D-25, optional and never gating): not run, the tool is absent on the authoring machine; no assembler output was compared with the listing.
+
+Plan 04-20 adds program mutants of this listing through `ivs_pack --patch` (for example `ADDI` to `SUBI` at `5007`, `BNZE` to `BZE` at `501E`, `PSHR` replaced at `5022`, `INCR` to `DECR` at `500B`); each must end as a guest failure that names the predicate clause it breaks.
 
 ## When a project assembler becomes worth writing
 
