@@ -60,31 +60,32 @@
         {"status": "IVS_E_BUFFER_TOO_SMALL", "checks": "storage_bytes below the instance size"}
       ],
       "notes": [
-        "Out parameter rule (core/include/ivs/ivs_machine.h, plan 03-11): an out pointer that overlaps the instance bytes of storage is BAD_ARG with nothing written; an out pointer just after the instance bytes is accepted."
+        "Out parameter rule (core/include/ivs/ivs_machine.h, plan 03-11): an out pointer that overlaps the instance bytes of storage is BAD_ARG with nothing written; an out pointer just after the instance bytes is accepted.",
+        "Review WR-06: the instance bytes are the first min(storage_bytes, instance size) bytes of storage; bytes after them belong to the host (D-01). Every refusal leaves the instance bytes untouched; an out that lies in storage after them is host memory and gets *out = NULL like any other out (machine.refuse.create.out-after-instance-refused)."
       ],
       "refusals": [
         {
           "status": "IVS_E_BAD_ARG",
           "effect": "none",
-          "outs": "*out is set to NULL when out is not NULL and not inside the storage; otherwise nothing is written; the storage is untouched",
+          "outs": "*out is set to NULL when out is not NULL and not inside the instance bytes of storage (an out in storage after the instance bytes is host memory and gets the NULL); otherwise nothing is written; the instance bytes are untouched",
           "tests": ["machine.refuse.create.null-opts", "machine.refuse.create.null-storage", "machine.refuse.create.null-out", "machine.refuse.create.size-0", "machine.refuse.create.size-4", "machine.refuse.create.id-null", "machine.refuse.create.id-unterminated", "machine.refuse.create.misaligned-1", "machine.refuse.create.misaligned-8", "machine.refuse.create.misaligned-over-flags", "machine.refuse.create.out-inside-storage", "machine.refuse.create.size-over-max", "machine.refuse.create.size-garbage"]
         },
         {
           "status": "IVS_E_UNSUPPORTED",
           "effect": "none",
-          "outs": "*out is set to NULL; the storage is untouched",
-          "tests": ["machine.refuse.create.flags-1", "machine.refuse.create.tail-nonzero", "machine.refuse.create.flags-over-unknown-profile", "machine.refuse.create.size-at-max-tail-nonzero"]
+          "outs": "*out is set to NULL (also when out lies in storage after the instance bytes); the instance bytes are untouched",
+          "tests": ["machine.refuse.create.out-after-instance-refused", "machine.refuse.create.flags-1", "machine.refuse.create.tail-nonzero", "machine.refuse.create.flags-over-unknown-profile", "machine.refuse.create.size-at-max-tail-nonzero"]
         },
         {
           "status": "IVS_E_UNKNOWN_PROFILE",
           "effect": "none",
-          "outs": "*out is set to NULL; the storage is untouched",
+          "outs": "*out is set to NULL; the instance bytes of storage are untouched",
           "tests": ["machine.refuse.create.unknown-profile", "machine.refuse.create.near-miss", "machine.refuse.create.trailing-space", "machine.refuse.create.id-63-unknown", "machine.refuse.create.unknown-over-short-storage"]
         },
         {
           "status": "IVS_E_BUFFER_TOO_SMALL",
           "effect": "none",
-          "outs": "*out is set to NULL; the storage is untouched",
+          "outs": "*out is set to NULL; the instance bytes of storage are untouched",
           "tests": ["machine.refuse.create.short-storage"]
         }
       ]

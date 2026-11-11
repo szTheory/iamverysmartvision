@@ -107,6 +107,7 @@
 #define RF_DESTROYED 0x10u  /* the instance is destroyed before the call (no digest) */
 #define RF_SKIP32 0x20u     /* skipped where size_t is 32 bits */
 #define RF_REPORT_WRITTEN 0x40u /* the report lies in the allocation and the refusal writes it */
+#define RF_CREATE_TAIL_OUT 0x80u /* create refused with out in the storage after the instance bytes */
 
 #define RF_NONE IVS_SEGMENT_NONE
 
@@ -1190,6 +1191,10 @@ static const rf_row rf_rows[] = {
              RF_NO_SUFFIX),
     RF_OTHER("machine.refuse.create.out-after-instance-ok", RF_OP_CREATE, RF_E, RF_P_F, rf_b_none, IVS_OK,
              RF_NO_SUFFIX | RF_EXPECT_OK),
+    /* Review WR-06: a refusal (nonzero flags) with out in the storage after the instance bytes
+     * writes *out = NULL there (host bytes) and leaves the instance bytes untouched. */
+    RF_OTHER("machine.refuse.create.out-after-instance-refused", RF_OP_CREATE, RF_E, RF_P_F, rf_b_none,
+             IVS_E_UNSUPPORTED, RF_NO_SUFFIX | RF_CREATE_TAIL_OUT),
     /* The handle before the out overlap (review WR-01): a NULL or destroyed handle has no instance
      * bytes, so the call is BAD_HANDLE wherever the out parameter lies. A destroyed instance's
      * storage is host memory again: the load report aimed there gets its BAD_HANDLE detail. */
@@ -1469,8 +1474,9 @@ static int rf_call_and_check(rf_ctx *c, const rf_row *row)
   return ok;
 }
 
-/* create with its out pointer inside the storage's instance bytes (BAD_ARG, storage untouched)
- * or just past them in a larger storage (OK, *out is the storage). */
+/* create with its out pointer inside the storage's instance bytes (BAD_ARG, storage untouched),
+ * just past them in a larger storage (OK, *out is the storage), or just past them with a refused
+ * create (RF_CREATE_TAIL_OUT: the instance bytes and the rest of the tail untouched, *out NULL). */
 static int rf_run_create(const rf_row *row)
 {
   ivs_create_options o;
@@ -1479,6 +1485,7 @@ static int rf_run_create(const rf_row *row)
   uint8_t *snap = malloc(bytes);
   ivs_machine **out;
   ivs_status got;
+  int past;
   int ok = 0;
   if (st == NULL || snap == NULL) {
     free(st);
@@ -1489,10 +1496,22 @@ static int rf_run_create(const rf_row *row)
   memset(&o, 0, sizeof o);
   o.struct_size = (uint32_t)sizeof o;
   o.profile_id = RF_PROFILE;
-  out = (ivs_machine **)(void *)(st + ((row->flags & RF_EXPECT_OK) != 0u ? IVS_MACHINE_BYTES : 64u));
+  past = (row->flags & (RF_EXPECT_OK | RF_CREATE_TAIL_OUT)) != 0u;
+  out = (ivs_machine **)(void *)(st + (past ? IVS_MACHINE_BYTES : 64u));
+  if ((row->flags & RF_CREATE_TAIL_OUT) != 0u) {
+    o.flags = 1u;
+  }
   memcpy(snap, st, bytes);
   got = ivs_machine_create(&o, st, bytes, out);
-  if ((row->flags & RF_EXPECT_OK) != 0u) {
+  if ((row->flags & RF_CREATE_TAIL_OUT) != 0u) {
+    size_t rest = IVS_MACHINE_BYTES + sizeof *out;
+    int inst_same = memcmp(snap, st, IVS_MACHINE_BYTES) == 0;
+    ok = got == row->want && *out == NULL && inst_same && memcmp(snap + rest, st + rest, bytes - rest) == 0;
+    if (!ok) {
+      ivs_test_diag("refused create with out past the instance: %s, *out %s, instance %s", ivs_status_name(got),
+                    *out == NULL ? "NULL" : "set", inst_same ? "intact" : "changed");
+    }
+  } else if ((row->flags & RF_EXPECT_OK) != 0u) {
     ok = got == IVS_OK && *out == (ivs_machine *)(void *)st;
     if (!ok) {
       ivs_test_diag("create with out past the instance: %s", ivs_status_name(got));

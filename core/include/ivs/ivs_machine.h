@@ -158,7 +158,7 @@ typedef struct ivs_load_options {
 #define IVS_REASON_EXPECT_DIGEST 24u   /* DIGEST_MISMATCH: expect_sha256 differs */
 #define IVS_REASON_ARG_KIND 25u        /* BAD_ARG: kind is not IVS_KIND_* */
 #define IVS_REASON_ARG_NULL_BYTES 26u  /* BAD_ARG: bytes NULL with len above 0 */
-#define IVS_REASON_ARG_STRUCT_SIZE 27u /* BAD_ARG: opts->struct_size below the v1 size or above IVS_STRUCT_SIZE_MAX */
+#define IVS_REASON_ARG_STRUCT_SIZE 27u /* BAD_ARG: opts->struct_size short or above the cap */
 #define IVS_REASON_ARG_INPUT_OVERLAP 28u /* BAD_ARG: the input span overlaps the instance */
 #define IVS_REASON_HANDLE 29u          /* BAD_HANDLE */
 #define IVS_REASON_OPTION_FLAGS 30u    /* UNSUPPORTED: an unknown option flag */
@@ -189,9 +189,12 @@ IVS_API ivs_status ivs_machine_storage_requirements(const char *profile_id, ivs_
 /* Creates an instance in storage (storage_bytes long). Validates everything before the first
  * write; on success zero-fills the instance bytes and sets *out. Refusal order: BAD_ARG (out
  * inside the instance bytes of storage; NULL opts, storage or out; opts struct_size short or
- * above IVS_STRUCT_SIZE_MAX; bad profile id; misaligned storage), UNSUPPORTED (flags, nonzero unknown tail), UNKNOWN_PROFILE,
- * BUFFER_TOO_SMALL. On refusal *out is NULL (when out is not NULL and not inside the storage,
- * where nothing is written) and the storage is untouched. */
+ * above IVS_STRUCT_SIZE_MAX; bad profile id; misaligned storage), UNSUPPORTED (flags, nonzero
+ * unknown tail), UNKNOWN_PROFILE, BUFFER_TOO_SMALL. The instance bytes are the first
+ * min(storage_bytes, instance size) bytes of storage; any bytes after them belong to the host
+ * (D-01). On refusal the instance bytes are untouched and *out is set to NULL, unless out is NULL
+ * or lies inside the instance bytes (then nothing at all is written). An out that lies in storage
+ * after the instance bytes is host memory: it gets the NULL (review WR-06). */
 IVS_API ivs_status ivs_machine_create(const ivs_create_options *opts, void *storage, size_t storage_bytes, ivs_machine **out);
 
 /* Zero-scrubs the instance bytes; the handle is then invalid (a later call is BAD_HANDLE). */

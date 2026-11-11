@@ -320,6 +320,7 @@ machine.refuse.info.out-inside
 machine.refuse.digest.out-inside
 machine.refuse.create.out-inside-storage
 machine.refuse.create.out-after-instance-ok
+machine.refuse.create.out-after-instance-refused
 machine.refuse.digest.null-handle-low-out
 machine.refuse.info.destroyed-out-inside
 machine.refuse.digest.destroyed-out-inside

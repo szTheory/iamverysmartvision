@@ -14,7 +14,8 @@
  *   BUFFER_TOO_SMALL storage_bytes below the instance size.
  * Only then does it zero the instance bytes (sizeof the instance; bytes past them belong to the
  * host and are never touched) and set the fields of a new instance. A refusal writes *out = NULL
- * and nothing else. destroy zero-scrubs the same bytes, so the magic check refuses a stale
+ * and nothing else, also when out lies in the storage after the instance bytes (host bytes,
+ * review WR-06). destroy zero-scrubs the same bytes, so the magic check refuses a stale
  * handle with BAD_HANDLE. ivs_status_name and ivs_api_version live here too (D-04, D-09).
  * Profile-id matching is a hand-written loop bounded by 64 bytes (A-06):
  * no strlen or strcmp, which the core may not import. */
@@ -176,7 +177,8 @@ ivs_status ivs_machine_create(const ivs_create_options *opts, void *storage, siz
   if (opts == NULL || storage == NULL || out == NULL) {
     return IVS_E_BAD_ARG;
   }
-  if (opts->struct_size < (uint32_t)sizeof(ivs_create_options) || opts->struct_size > IVS_STRUCT_SIZE_MAX) {
+  if (opts->struct_size < (uint32_t)sizeof(ivs_create_options) ||
+      opts->struct_size > IVS_STRUCT_SIZE_MAX) {
     return IVS_E_BAD_ARG; /* the cap bounds the tail scan below (review WR-02) */
   }
   if (ivs_machine_profile_id_length(opts->profile_id, &len) != IVS_OK) {
