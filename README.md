@@ -31,6 +31,12 @@ It prints one line per check and a final summary line that starts with `gate: PA
 CI executes the same command.
 It needs a POSIX shell, git, CMake 3.25 or newer, Ninja and a C17 compiler (cc).
 
+Before pushing, `sh tools/gate-linux.sh` executes the same gate on the current working tree inside a throwaway `ubuntu:24.04` container, with the hosted runner's toolchain (amd64, gcc 13, dash, CMake 3.28).
+It catches failures that only the hosted runner would show, such as compiler-specific evaluation order or ELF-only symbols, without a CI round trip.
+It needs Docker and network access for the container's packages, and it takes a few minutes on an arm64 host, where amd64 is emulated.
+It prints every failure, the gate time, the summary line and the exit status, and keeps the full log in `build/gate-linux.log`.
+It is a local helper only: it is not a gate step and CI does not run it.
+
 ## Layout
 
 - `docs/` holds the policy and reference documents.

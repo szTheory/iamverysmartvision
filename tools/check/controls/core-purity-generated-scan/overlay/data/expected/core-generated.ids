@@ -1,0 +1,2 @@
+# Control core-purity-generated-scan: one listed generated include.
+ivs_toy.inc cmake/IvsToyTable.cmake

@@ -1,19 +1,19 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 3
-current_phase_name: Memory Map, Content Loading and Refusal
+current_phase: 4
+current_phase_name: Headless Runner and Installed Consumer (Slice 0)
 status: planning
-stopped_at: Phase 2 complete, ready to plan Phase 3
-last_updated: "2026-11-11T02:53:30.787Z"
-last_activity: 2026-11-10
-last_activity_desc: Phase 2 complete, transitioned to Phase 3
-state_head: c033d6106896cc7e77e8327f06708fec03d4b98a
+stopped_at: Phase 3 complete, ready to plan Phase 4
+last_updated: "2026-11-11T10:27:37.755Z"
+last_activity: 2026-11-11
+last_activity_desc: Phase 3 complete, transitioned to Phase 4
+state_head: 08f21627c0a8189086e07352f139290455f76bed
 progress:
   total_phases: 8
-  completed_phases: 2
-  total_plans: 32
-  completed_plans: 32
-  percent: 25
+  completed_phases: 3
+  total_plans: 46
+  completed_plans: 46
+  percent: 38
 ---
 
 # Project State
@@ -23,21 +23,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-09)
 
 **Core value:** A deterministic, observable machine core whose every compatibility claim is bound to an exactly named profile and independent evidence — never an unqualified "it runs Intellivision games" label.
-**Current focus:** Phase 2 — CP-1610 CPU Core
+**Current focus:** Phase 3 — Memory Map, Content Loading and Refusal
 
 ## Current Position
 
-Phase: 3 — Memory Map, Content Loading and Refusal
+Phase: 4 — Headless Runner and Installed Consumer (Slice 0)
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-11-10 — Phase 2 complete, transitioned to Phase 3
+Last activity: 2026-11-11 — Phase 3 complete, transitioned to Phase 4
 
-Progress: [███░░░░░░░] 25%
+Progress: [████░░░░░░] 38%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 32
+- Total plans completed: 46
 - Average duration: -
 - Total execution time: -
 
@@ -47,6 +47,7 @@ Progress: [███░░░░░░░] 25%
 |-------|-------|-------|----------|
 | 1 | 14 | - | - |
 | 2 | 18 | - | - |
+| 3 | 14 | - | - |
 
 *Updated after each plan completion*
 **Per-Plan Metrics:**
@@ -85,6 +86,20 @@ Progress: [███░░░░░░░] 25%
 | Phase 02 P16 | 15min | 3 tasks | 39 files |
 | Phase 02 P17 | 7min | 3 tasks | 6 files |
 | Phase 02 P18 | 15min | 3 tasks | 3 files |
+| Phase 03 P01 | 8min | 2 tasks | 22 files |
+| Phase 03 P02 | 15min | 3 tasks | 13 files |
+| Phase 03 P03 | 8min | 3 tasks | 31 files |
+| Phase 03 P04 | 15min | 3 tasks | 14 files |
+| Phase 03 P05 | 8min | 2 tasks | 40 files |
+| Phase 03 P06 | 12min | 3 tasks | 29 files |
+| Phase 03 P07 | 15min | 3 tasks | 16 files |
+| Phase 03 P08 | 14min | 3 tasks | 14 files |
+| Phase 03 P09 | 16min | 3 tasks | 16 files |
+| Phase 03 P10 | 12min | 3 tasks | 16 files |
+| Phase 03 P11 | 20min | 3 tasks | 21 files |
+| Phase 03 P12 | 15min | 3 tasks | 22 files |
+| Phase 03 P13 | 10min | 3 tasks | 46 files |
+| Phase 03 P14 | 12min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -164,6 +179,47 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 02]: 02-17: reader protocol and p07 policy statement completed where their wording caused disagreements (bus kind meanings, per-unit record order, increment before operation)
 - [Phase 02]: 02-18: D-22 lever 2 applied (4-lane control runner, byte-identical output, runner 73.0 s -> 32.3 s under load); levers 1 and 3 not applied (warm c-build 0.5 s, c-faults 3.2 s); host never idle so the 25 s local budget stays unjudged
 - [Phase 02]: 02-18: hosted gate budget (30 s) stays an open item for the final 190-control gate; D-24 supersedes the CI-EFFICIENCY macOS-leg line; C43 independent re-adjudication of the 30 second-read disagreements recommended
+- [Phase 03]: 03-01: fault suites registered once in tests/CMakeLists.txt (ivs_fault_suite, ivs_fault_gen); faults .ids files stay pure inventory with a suite header
+- [Phase 03]: 03-01: site faults of a suite share one plain object library ivs_fault_suite_obj_<suite> (W7 lever applied)
+- [Phase 03]: 03-01: fault ids unique across all faults files (also within a file); site checks use the union of non-GEN_ ids (H3)
+- [Phase 03]: 03-02: SHA-256 context has an explicit reserved word: 112 bytes, no implicit padding, assignment is a snapshot (A-04)
+- [Phase 03]: 03-02: IvsShaVectors re-derives every vectors.txt line, including the 1,000,000 x a rep line, with string(SHA256); build fails closed on mismatch
+- [Phase 03]: 03-02: c-faults runs fault executables in at most 4 lanes: projected phase-end c-faults 9.4 s serial exceeded the 8 s A-07 trigger
+- [Phase 03]: 03-03: ivs_core exports only core/include; tests reach core/src through the interface target ivs_core_internal (D-06)
+- [Phase 03]: 03-03: a generated core include is accepted only via data/expected/core-generated.ids (read from ROOT); c-purity runs the generator, scans and compiles its output (A-06)
+- [Phase 03]: 03-03: writable-data rule (nm b B d D c C) runs only on c-purity's own -fno-pie archives; ctest core-symbols stays imports-only (D-07)
+- [Phase 03]: 03-04: the only mutable decode state is a committed segment table of at most 16 {addr, len_words} entries scanned by a bounded loop; it replaces D-20's per-256-word page table because A-01 allows one-word segments at any address (A-08 c)
+- [Phase 03]: 03-04: ivs_memsys backing arrays hold 16-bit words for every device; install and raw-poke store whole words and the width formula masks on read (A-05a)
+- [Phase 03]: 03-04: a region's physical device is its name up to the first underscore; regions sharing one share its backing and must agree on size_words and device kind
+- [Phase 03]: 03-04: write-only alias regions carry conflict C61; C21 stays on stic_regs, stic_alias_read and gram
+- [Phase 03]: 03-04: GEN faults on a core-consumed table use ivs_fault_gen CONSUMER core:<src>; an -DMUTATE= in ARGS replaces the default must-fail id
+- [Phase 03]: 03-05: literal map mirror column = backing words when the row is an alias or exceeds its backing, - for the sole full-extent home of a device; write-view width = bits a store keeps (0 when dropped)
+- [Phase 03]: 03-05: memmap step adds memmap-literal-unknown-tag and memmap-literal-orphan with controls (controls=212; plan 03-06 expects 215); tier-5 refused by tag and by source authority tier
+- [Phase 03]: 03-06: profile alias gates follow the literal (STIC aliases stic-regs, GRAM aliases gmem; inference, C61); describe reports the shared backing as an alias's mirror
+- [Phase 03]: 03-06: MEM-01/MEM-02 complete by gate evidence (decode dump equals literal in dev and release; row probes at every literal boundary; faults 84); CL-0006 provisional
+- [Phase 03]: 03-07: IVSC v1 reasons have stable numbers 1..18, each mapped to one status (spec table in docs/formats/ivsc-v1.md); the parser checks the table size before reading any entry so a lying segment_count cannot over-read
+- [Phase 03]: 03-07: long IVSC fixtures (P05, B07, B10, B12) are JSON build records with typed cmake -E sha256sum trailers; any data/cart/*.json edit refreshes FX-ivsc-vectors via tools/cart/manifest-outputs.sh in the same commit
+- [Phase 03]: 03-07: SHA fault prefixes not widened (sha256 faults run suite machine only); the loader plan 03-11 still owes the widening; MEM-05/MEM-04 stay open until 03-08/03-11
+- [Phase 03]: 03-08: IVSC_TRUST_TOTAL_BYTES drops only the table-smaller half of the implied-size check (memory-safe in the plain fault build); new fixture ivsc.N34-table-short pins that half, which no fixed fixture pinned before
+- [Phase 03]: 03-08: IVSC_COUNT_17 lets count 17 pass the count rule and reads the table as 16 entries so the plain fault build stays in bounds
+- [Phase 03]: 03-08: CL-0007 is source-expectation and provisional (cartridge.slots unknown-default-chosen); IVSC conformance is to the project's own spec
+- [Phase 03]: 03-08: optional libFuzzer target sanitizer list is the cache string IVS_LIBFUZZER_SANITIZERS (default fuzzer,address,undefined; fuzzer,undefined where the ASan runtime hangs)
+- [Phase 03]: 03-09: create zeroes exactly the instance bytes (113,456; 16-aligned); calls taking a handle check BAD_ARG before BAD_HANDLE; create order BAD_ARG, UNSUPPORTED, UNKNOWN_PROFILE, BUFFER_TOO_SMALL
+- [Phase 03]: 03-09: state digest = per-domain SHA-256 from one 49-row field table (u32 count before arrays, profile index serialized as the id, magic/padding declared not serialized) and the IVSSTATE composite; SHA faults K_WRONG/ROTATE_WRONG/LENGTH_LE widened to machine.digest.
+- [Phase 03]: 03-10: load ladder per A-08 (BAD_ARG, BAD_HANDLE, UNSUPPORTED options, BAD_STATE, DUPLICATE_LOAD, OVERSIZED, wrap-proof overlap BAD_ARG, content, expect DIGEST_MISMATCH); refused report writes detail only, image zero
+- [Phase 03]: 03-10: IVS_REASON_* 1..18 equal the IVSC reason table, 19..33 are load reasons (span, features, system-image size/width, expect digest, argument, handle, option, state, slot)
+- [Phase 03]: 03-10: parser computes trailer check and whole-file SHA-256 in one pass (view.file_sha256); layer-2 span check is the internal seam ivs_machine_cart_span_check
+- [Phase 03]: 03-10: no requirement marked complete; MEM-03 system-image shape refusals are tested by 03-11
+- [Phase 03]: 03-11: out parameters (load report, info out, digest out, create out) overlapping the instance storage are refused BAD_ARG with nothing written (orchestrator addition; fault REPORT_INSIDE_UNCHECKED); faults now 110
+- [Phase 03]: 03-11: refusal rows run per ladder stage: argument BAD_ARG/UNSUPPORTED on priors f,s,c; later classes on f,x; DUPLICATE_LOAD only on occupied slots; lying lengths in heap and inside placements
+- [Phase 03]: 03-11: load-level cartridge fixtures name segments with span-relative addresses resolved from the literal map; MEM-03 and MEM-05 complete, MEM-04 waits for 03-12 reset rows, API-06 for 03-13
+- [Phase 03]: 03-12: machine time stays in master ticks: the step seam adds elapsed CPU cycles times the registry's ticks_per_cpu_cycle (new registry field in the former reserved u16)
+- [Phase 03]: 03-12: reset checks BAD_ARG (kind), BAD_HANDLE, then MISSING_SYSTEM_IMAGE (EXEC before GROM) before any write; power cycle from POWERED; nothing returns to OFF (A-08 d)
+- [Phase 03]: 03-12: one shared out-parameter check (ivs_machine_out_overlaps) for create, info and state_digest, guarded by fault OUT_OVERLAP_UNCHECKED
+- [Phase 03]: 03-13: data/api/api-effects.json is the D-06 symbol list and D-15 effect table (10 calls, 27 rows, effect none); step api-effects checks it against ivs_status.h, api-statuses.ids, IVS_API lines and the test inventories; OQ-5 residual kept (cited id exists, not that it asserts the status)
+- [Phase 03]: 03-13: ninth token/control api-effects-format for table shape; controls=224/224
+- [Phase 03]: D5 recorded as decided by D-24 in reset.r7, C32 and C25; hardware read-back stays D10, boot stub stays Phase 4
+- [Phase 03]: Hosted gate budget re-baselined 30 s -> 40 s, revisit trigger 50 s (D-38, A-07); no lever applied at phase end
 
 ### Pending Todos
 
@@ -174,7 +230,8 @@ None yet.
 Gates resolved as delegated decisions (owner authorization 2026-11-09, `.planning/AUTONOMY.md`; see PROJECT.md Decision Register):
 - D1 C17 + CMake; D2 master tick (u64); D3 `intv-2609-ntsc-family-p1`; D9 MIT + public repo after hygiene check.
 
-Still open, decided by fan-out protocol when their phase needs them: D4 (Phase 4), D5 (Phase 3/4), D6 (Phase 4/5), D7 (Phase 5), D8 (Phase 6), D12 (Phase 4), D13 (deferred).
+D5 decided 2026-11-11 by the fan-out protocol (Phase 3 D-24, PROJECT.md Decision Register).
+Still open, decided by fan-out protocol when their phase needs them: D4 (Phase 4), D6 (Phase 4/5), D7 (Phase 5), D8 (Phase 6), D12 (Phase 4), D13 (deferred).
 Hard stops (not delegated): D10 physical measurement, D11 owner-local EXEC/GROM runs — evidence marked missing, work continues.
 
 
@@ -190,10 +247,11 @@ Concerns:
 |----------|------|--------|-------------|-----------|
 | Gate hardening | IN-01 whole `SRC-` token match; IN-02 fail glossary/sources on zero documents; IN-04 require each step's pass line; IN-03 anchor manifest outputs to their own fixture dir; IN-05 runner-selftest coverage of remaining tokens; denylist grep status 2 read as no-hit (`denylist.sh`); `--tree` grep-error control | Open, low severity (01-REVIEW.md, 01-SECURITY.md residual risks) | Phase 1 | Fold into a gate-hardening quick task when the Phase 2 C build adds steps |
 | Gate speed | Run negative controls in parallel if the hosted gate step passes ~30 s | Watching (9 s hosted, 2026-11-10) | Phase 1 | Phase 2 |
+| Gate hardening | memmap-gen-* gate-level controls of cmake/IvsMemmapTable.cmake (needs a dedicated toy memmap profile fixture and a way for a pure step to run the generator; 03-04, 03-05, 03-06 open item) | Open | Phase 3 | Plan 03-14 close-out |
 | Evidence | C11 AY-3-8914 datasheet not found; CP-1600 vs CP-1610 inference (C31); same-model second reader | Open, carried by the discrepancy log | Phase 1 | Phase 5 / measurement gate D10 |
 
 ## Session Continuity
 
-Last session: 2026-11-11T01:44:25.483Z
-Stopped at: Phase 2 complete, ready to plan Phase 3
+Last session: 2026-11-11T08:58:12.416Z
+Stopped at: Phase 3 complete, ready to plan Phase 4
 Resume file: None

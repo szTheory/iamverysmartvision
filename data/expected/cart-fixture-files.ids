@@ -1,0 +1,6 @@
+# IVSC fixture file stems (D-34, plan 03-07); each names data/cart/<stem>.json, an input of
+# cmake/IvsCartTable.cmake. Every edit of a listed file or of this list reruns
+# `sh tools/cart/manifest-outputs.sh` and refreshes fixtures/FX-ivsc-vectors/manifest.json in
+# the same commit.
+ivsc-parse
+ivsc-load

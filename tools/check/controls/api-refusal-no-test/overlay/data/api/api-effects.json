@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "note": "Toy API effect table of the known-good control tree (plan 03-13).",
+  "effects": [
+    {"name": "none", "definition": "Toy effect: nothing changes."}
+  ],
+  "calls": [
+    {
+      "name": "ivs_toy",
+      "header": "core/include/ivs/ivs_status.h",
+      "on_ok": "Toy call.",
+      "precedence": [
+        {"status": "IVS_E_BAD_ARG", "checks": "toy argument check", "pinned_by": ["cpu.ZERO.beta"]}
+      ],
+      "notes": [],
+      "refusals": [
+        {"status": "IVS_E_BAD_ARG", "effect": "none", "outs": "nothing written", "tests": ["toy.no-such-test"]}
+      ]
+    }
+  ]
+}

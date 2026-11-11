@@ -23,3 +23,5 @@ __stack_chk_fail
 __stack_chk_guard
 # bzero: Darwin lowers some zeroing loops to bzero; pure memory, no host state.
 bzero
+# _GLOBAL_OFFSET_TABLE_: linker-defined GOT base, no host state; gcc -fPIE, external function address.
+_GLOBAL_OFFSET_TABLE_

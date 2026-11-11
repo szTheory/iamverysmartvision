@@ -43,7 +43,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Evidence, Profile and Rights Foundations** - Tier vocabulary, claim ledger, discrepancy log, fixture manifest, provenance rule, first-profile record, time base and CP-1610 reference notes (completed 2026-11-09)
 - [x] **Phase 2: CP-1610 CPU Core** - Every opcode verified against page-cited, hand-derived vectors in a host-independent core with an exact inventory and one local gate command (completed 2026-11-10)
-- [ ] **Phase 3: Memory Map, Content Loading and Refusal** - Profile-driven memory map, typed system-image and cartridge loading, isolated instances and a refusal matrix that never mutates prior state
+- [x] **Phase 3: Memory Map, Content Loading and Refusal** - Profile-driven memory map, typed system-image and cartridge loading, isolated instances and a refusal matrix that never mutates prior state (completed 2026-11-11)
 - [ ] **Phase 4: Headless Runner and Installed Consumer (Slice 0)** - An original diagnostic runs end to end through the runner and a relocated installed consumer, with deterministic digests and a CI gate that mirrors the local command
 - [ ] **Phase 5: Hand Controllers and PSG Sound** - Both controllers as multi-signal machine input at explicit time boundaries; PSG raw audio and a register-write log
 - [ ] **Phase 6: STIC Video First Pass** - Access windows, VBLANK/BUSRQ timing, raw index framebuffer, FG/BG and Color Stack cards, and side-effect-free inspection
@@ -61,7 +61,7 @@ exit, until the gate is resolved by its named authority.
 | D2 CPU-cycle unit, time base, crystal constant | Architecture | Delegated decision 2026-11-09 (PROJECT.md) | During Phase 1 (FND-07); before Phase 2 |
 | D3 First profile (2609 NTSC recommended; revision, STIC/PSG parts, power-on policy) | Owner | Delegated decision 2026-11-09 (PROJECT.md) | Before Phase 1 exits |
 | D4 Fixture assembler policy | Owner (licence) + architecture | Open | Before Phase 4 starts |
-| D5 System-image policy and project boot stub | Owner | Open | Phase 3 (refusal); before Phase 4 (boot) |
+| D5 System-image policy and project boot stub | Owner | Delegated decision 2026-11-11 (PROJECT.md; Phase 3 D-24) | Phase 3 (refusal); before Phase 4 (boot) |
 | D6 Controller core-input representation (C14) | Owner + architecture | Open | While Phase 4 shapes the API; before Phase 5 starts |
 | D7 Reference PCM location (C23) | Architecture | Open | During Phase 5 |
 | D8 Raw framebuffer geometry (C10) | Architecture + evidence | Open | During Phase 6 |
@@ -153,7 +153,7 @@ Plans:
 **Mode:** mvp
 **Depends on**: Phase 2
 **Requirements**: MEM-01, MEM-02, MEM-03, MEM-04, MEM-05, API-01, API-06
-**Decision gates**: D3 must be resolved, because the memory map comes from the selected profile. D5 (owner, open) sets the system-image supply policy, and missing-system-image refusal depends on it. "User-supplied only, plus a CI boot stub" is recommended, not decided. Cartridge import format (open question 4): `.rom` is recommended, its format rights are unchecked, and it is confirmed at discussion.
+**Decision gates**: D3 must be resolved, because the memory map comes from the selected profile. D5 (decided in Phase 3, D-24: user-supplied system images only, plus a project boot stub authored in Phase 4) sets the system-image supply policy. The cartridge import format was decided in Phase 3 (D-29): the project container IVSC v1; `.rom` and `.bin+.cfg` importers are deferred and need their own rights review.
 **Research flags**: NEEDS RESEARCH on the cartridge import format and its rights, upper-bit behavior of 10-bit ROM reads (unknown), and GRAM/STIC decode ranges (C21). STANDARD PATTERNS for the refusal matrix and descriptor tables once the format is chosen.
 **Success Criteria** (what must be TRUE):
   1. A decode-table dump generated from the profile descriptors matches the sourced literal memory map. Decle (10-bit), 8-bit and 16-bit width masking and store truncation pass tests at each region boundary.
@@ -161,14 +161,30 @@ Plans:
   3. Every refusal-matrix row (malformed, oversized, overlapping, out-of-range, missing system image, unknown profile) returns its own typed error, and the state digest is the same before and after the refused load.
   4. The cartridge import format is specified in the project's own words. Its positive, boundary and malformed fixtures pass and are recorded in the fixture manifest.
   5. Two instances created side by side, with different content, step without affecting each other (isolation test). Every API error and refusal has a documented state effect that a test verifies.
-**Plans**: TBD
+**Plans**: 14/14 plans complete in 14 sequential waves
+
+Plans:
+- [x] 03-01-PLAN.md — Fault loop over every `data/expected/faults/*.ids` with a per-suite registry and union site checks (D-37), 4 controls
+- [x] 03-02-PLAN.md — In-repo SHA-256 (FIPS 180-4, copyable context) with an always-on CMake oracle, suite `machine`, 6 faults, first gate measurement
+- [x] 03-03-PLAN.md — Public include tree (`ivs_status.h` moved), internal include split, c-purity for `core/include` and reviewed generated includes, writable-data rule, 6 controls
+- [x] 03-04-PLAN.md — Profile memmap descriptors, fail-closed generator, memory system and bus in one core TU, C60-C62, suite `memmap`, 6 faults
+- [x] 03-05-PLAN.md — Sourced literal memory map and the `memmap` gate step (grammar, tiling, provenance), 8 controls
+- [x] 03-06-PLAN.md — Decode dump over all addresses compared with the literal, generated boundary probes (MEM-02), 5 faults, 3 controls, CL-0006
+- [x] 03-07-PLAN.md — IVSC v1 spec, pure parser, parse-level text fixtures, suite `ivsc`, manifest `FX-ivsc-vectors` and refresh helper
+- [x] 03-08-PLAN.md — Seeded IVSC fuzzing, 6 parser faults, optional libFuzzer recipe, `.ivsc` hygiene, CL-0007
+- [x] 03-09-PLAN.md — Public machine headers, caller-storage create/destroy/info, status names and pin, canonical state digest, 8 faults
+- [x] 03-10-PLAN.md — Typed load/unload of EXEC, GROM and cartridge with validate-then-commit, reports and the two-digest pass, 3 faults
+- [x] 03-11-PLAN.md — Refusal matrix over prior states, precedence rows, layer-2 cartridge fixtures, 8 ordering faults, second gate measurement
+- [x] 03-12-PLAN.md — Power-on reset with missing-system-image refusal, internal step seam, isolation tests, sweeps, headers suite, 4 faults
+- [x] 03-13-PLAN.md — API effect table and the `api-effects` gate step, 8 controls
+- [x] 03-14-PLAN.md — SC1-SC5 evidence table, record reconciliation, D-38 budget re-baseline, honest caveats
 
 ### Phase 4: Headless Runner and Installed Consumer (Slice 0)
 **Goal**: An original, project-authored diagnostic runs from reset through the public API, the headless runner and an independently built installed consumer. Digests are deterministic, failures are reported honestly by kind, and the CI gate mirrors the local command.
 **Mode:** mvp
 **Depends on**: Phase 3
 **Requirements**: API-02, API-04, RUN-01, RUN-02, RUN-04, RUN-05, RUN-06, PKG-01, PKG-03, PKG-04
-**Decision gates**: D4 (owner licence + architecture, open) must be resolved before the first guest fixture is built. D5 (owner, open) must be resolved before the boot path is built; it covers the boot-stub contract and the "not an EXEC" label (C25, C27). D12 (architecture, open) decides CI shape. D6 (owner + architecture, open, C14) should be settled while this phase shapes the public API, and must be settled before Phase 5. D9 (owner gate): hosted CI needs a repository host and a visibility choice, and the phase must not assume public visibility.
+**Decision gates**: D4 (owner licence + architecture, open) must be resolved before the first guest fixture is built. D5 is decided (Phase 3, D-24: user-supplied images only; the project boot stub is authored in this phase and labelled "not an EXEC", C25, C27). D12 (architecture, open) decides CI shape. D6 (owner + architecture, open, C14) should be settled while this phase shapes the public API, and must be settled before Phase 5. D9 (owner gate): hosted CI needs a repository host and a visibility choice, and the phase must not assume public visibility.
 **Research flags**: STANDARD PATTERNS for install/export packaging, the relocated consumer and the runner, in whatever build system D1 selects. NEEDS RESEARCH on the EXEC-less reset story (open question 3) and the boot-stub contract.
 **Success Criteria** (what must be TRUE):
   1. A scripted scenario (content, profile, input schedule, run bound) on fresh state reports machine time, stop reason, raw outputs and guest-state assertions. The original diagnostic reaches a guest-state predicate whose expected value was derived independently of the emulator (tier: original diagnostic), and its boot path is labelled "project boot stub, not an EXEC".
@@ -271,7 +287,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 |-------|----------------|--------|-----------|
 | 1. Evidence, Profile and Rights Foundations | 14/14 | Complete    | 2026-11-09 |
 | 2. CP-1610 CPU Core | 18/18 | Complete    | 2026-11-10 |
-| 3. Memory Map, Content Loading and Refusal | 0/TBD | Not started | - |
+| 3. Memory Map, Content Loading and Refusal | 14/14 | Complete    | 2026-11-11 |
 | 4. Headless Runner and Installed Consumer (Slice 0) | 0/TBD | Not started | - |
 | 5. Hand Controllers and PSG Sound | 0/TBD | Not started | - |
 | 6. STIC Video First Pass | 0/TBD | Not started | - |

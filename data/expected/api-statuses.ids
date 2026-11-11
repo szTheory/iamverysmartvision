@@ -1,0 +1,17 @@
+# Frozen status numbers (D-09): NAME VALUE; append-only, never renumber or reuse. (plan 03-09)
+# The set equals the IVS_OK and IVS_E_* definitions of core/include/ivs/ivs_status.h.
+# -6..-15 are unassigned; -24..-31 are reserved for later content codes.
+IVS_OK 0
+IVS_E_BAD_ARG -1
+IVS_E_BAD_STATE -2
+IVS_E_BAD_HANDLE -3
+IVS_E_UNSUPPORTED -4
+IVS_E_BUFFER_TOO_SMALL -5
+IVS_E_UNKNOWN_PROFILE -16
+IVS_E_MALFORMED -17
+IVS_E_OVERSIZED -18
+IVS_E_OVERLAP -19
+IVS_E_OUT_OF_RANGE -20
+IVS_E_MISSING_SYSTEM_IMAGE -21
+IVS_E_DUPLICATE_LOAD -22
+IVS_E_DIGEST_MISMATCH -23

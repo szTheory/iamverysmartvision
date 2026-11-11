@@ -8,3 +8,8 @@ faults-orphan-site
 faults-stale
 faults-unknown-vector
 faults-wrong-reason
+# Multi-file fault loop controls (plan 03-01, D-37).
+faults-duplicate-id
+faults-second-missing-site
+faults-second-not-detected
+faults-suite-missing

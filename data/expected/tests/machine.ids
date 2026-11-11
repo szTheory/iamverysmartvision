@@ -1,0 +1,429 @@
+# Suite machine (plans 03-02..03-12): machine-level cases in one executable (D-15). Family
+# sha256 (plan 03-02): core SHA-256 against independent literal digests, one case per line of
+# data/sha256/vectors.txt plus the invariance, context and reset cases (D-28, A-04).
+# Family create (plan 03-09): storage requirements, create, info and destroy through the public
+# header, their refusals (whole-storage comparison), status names and the API version.
+# Family digest (plan 03-09): the canonical state digest (D-35): literal streams, composite
+# framing, field-table coverage, per-domain sensitivity, padding and the digest refusals.
+# Family load (plan 03-10): typed EXEC, GROM and IVSC cartridge loads through the public header
+# with generated stand-in bytes (D-24), their reports and digests, layer 2, the load options and
+# unload back to the fresh state.
+# Families refuse and prec (plan 03-11): the load refusal matrix, one id per row and prior
+# (machine.refuse.load.<kind>.<slug>.<prior>, priors f fresh, x every other kind loaded, s EXEC
+# and GROM loaded, c full), each asserting status, whole-storage memcmp, digest equality and the
+# report detail fields (D-12); machine.prec.* pins each adjacent pair of the load ladder. The
+# len-wrap rows (claimed length 2^32 + 8192) are skip-ok: they skip where size_t is 32 bits.
+# Plan 03-11 addition: out parameters aimed into the instance (load report, info out, digest out,
+# create out) are refused BAD_ARG with nothing written (machine.refuse.*.out-inside*,
+# machine.refuse.load.*.report-inside.*). Review WR-01: that test runs only against a valid
+# instance, after BAD_HANDLE (machine.refuse.digest.null-handle-low-out,
+# machine.refuse.*.destroyed-out-inside, machine.refuse.load.exec.destroyed-report-inside).
+# Review WR-02: an in struct's struct_size above IVS_STRUCT_SIZE_MAX (4096) is BAD_ARG before the
+# unknown-tail scan; exactly 4096 keeps D-04 (machine.refuse.create.size-*,
+# machine.create.size-at-max-ok, machine.refuse.load.exec.opts-{over-max,garbage-size,at-max-*}).
+# Review WR-03: a damaged stored profile index (outside the registry, or the memory system's
+# differing) makes the handle invalid: every handle-taking call is BAD_HANDLE on a relocated copy
+# (machine.refuse.handle.*, family reset).
+machine.sha256.fips-empty
+machine.sha256.fips-abc
+machine.sha256.fips-448
+machine.sha256.fips-896
+machine.sha256.fips-million-a
+machine.sha256.pat-0000
+machine.sha256.pat-0001
+machine.sha256.pat-0055
+machine.sha256.pat-0056
+machine.sha256.pat-0057
+machine.sha256.pat-0063
+machine.sha256.pat-0064
+machine.sha256.pat-0065
+machine.sha256.pat-0119
+machine.sha256.pat-0120
+machine.sha256.pat-0127
+machine.sha256.pat-0128
+machine.sha256.pat-0129
+machine.sha256.pat-2048
+machine.sha256.pat-8192
+machine.sha256.ctx-copy-snapshot
+machine.sha256.ctx-plain
+machine.sha256.init-resets
+machine.sha256.split-every-offset
+machine.api.version
+machine.create.info-larger-out
+machine.create.larger-storage
+machine.create.ok-info-destroy
+machine.create.poisoned-storage
+machine.create.requirements
+machine.create.requirements-larger-out
+machine.create.size-at-max-ok
+machine.create.static-storage
+machine.create.tail-zero-ok
+machine.destroy.scrubs
+machine.refuse.create.flags-1
+machine.refuse.create.flags-over-unknown-profile
+machine.refuse.create.id-63-unknown
+machine.refuse.create.id-null
+machine.refuse.create.id-unterminated
+machine.refuse.create.misaligned-1
+machine.refuse.create.misaligned-8
+machine.refuse.create.misaligned-over-flags
+machine.refuse.create.near-miss
+machine.refuse.create.null-opts
+machine.refuse.create.null-out
+machine.refuse.create.null-storage
+machine.refuse.create.short-storage
+machine.refuse.create.size-0
+machine.refuse.create.size-4
+machine.refuse.create.size-at-max-tail-nonzero
+machine.refuse.create.size-garbage
+machine.refuse.create.size-over-max
+machine.refuse.create.tail-nonzero
+machine.refuse.create.trailing-space
+machine.refuse.create.unknown-over-short-storage
+machine.refuse.create.unknown-profile
+machine.refuse.destroy.null
+machine.refuse.destroy.twice
+machine.refuse.destroy.wrong-magic
+machine.refuse.info.destroyed
+machine.refuse.info.null-both
+machine.refuse.info.null-handle
+machine.refuse.info.null-out
+machine.refuse.info.short
+machine.refuse.info.size-0
+machine.refuse.requirements.id-unterminated
+machine.refuse.requirements.null-id
+machine.refuse.requirements.null-out
+machine.refuse.requirements.short
+machine.refuse.requirements.size-0
+machine.refuse.requirements.unknown-profile
+machine.status.names
+machine.digest.composite-framing
+machine.digest.coverage
+machine.digest.fresh-composite
+machine.digest.padding-ignored
+machine.digest.preimage-hash
+machine.digest.sensitivity-cpu
+machine.digest.sensitivity-images
+machine.digest.sensitivity-instance
+machine.digest.sensitivity-mem
+machine.digest.stream-cpu
+machine.digest.stream-cpu-synthetic
+machine.digest.stream-instance
+machine.refuse.digest.destroyed
+machine.refuse.digest.domain-16
+machine.refuse.digest.domain-5
+machine.refuse.digest.domain-99
+machine.refuse.digest.domain-over-handle
+machine.refuse.digest.null-handle
+machine.refuse.digest.null-out
+machine.load.all-unload-all-fresh
+machine.load.cart-feature
+machine.load.cart-ok
+machine.load.cart-out-of-span
+machine.load.cart-span-end
+machine.load.cart-span-full
+machine.load.cart-whole-digest-not-trailer
+machine.load.exec-ok
+machine.load.exec-unload-fresh
+machine.load.expect-mismatch
+machine.load.expect-ok
+machine.load.flags-unknown
+machine.load.grom-ok
+machine.load.grom-unload-fresh
+machine.load.info-all-slots
+machine.load.order-free
+machine.refuse.load.arg.kind-0.f
+machine.refuse.load.arg.kind-0.s
+machine.refuse.load.arg.kind-0.c
+machine.refuse.load.arg.kind-4.f
+machine.refuse.load.arg.kind-4.s
+machine.refuse.load.arg.kind-4.c
+machine.refuse.load.arg.kind-255.f
+machine.refuse.load.arg.kind-255.s
+machine.refuse.load.arg.kind-255.c
+machine.refuse.load.exec.null-bytes-len-8.f
+machine.refuse.load.exec.null-bytes-len-8.s
+machine.refuse.load.exec.null-bytes-len-8.c
+machine.refuse.load.grom.null-bytes-len-8.f
+machine.refuse.load.grom.null-bytes-len-8.s
+machine.refuse.load.grom.null-bytes-len-8.c
+machine.refuse.load.cart.null-bytes-len-8.f
+machine.refuse.load.cart.null-bytes-len-8.s
+machine.refuse.load.cart.null-bytes-len-8.c
+machine.refuse.load.exec.opts-short.f
+machine.refuse.load.exec.opts-short.s
+machine.refuse.load.exec.opts-short.c
+machine.refuse.load.cart.opts-size-0.f
+machine.refuse.load.cart.opts-size-0.s
+machine.refuse.load.cart.opts-size-0.c
+machine.refuse.load.exec.report-short.f
+machine.refuse.load.exec.report-short.s
+machine.refuse.load.exec.report-short.c
+machine.refuse.load.exec.report-inside.f
+machine.refuse.load.exec.report-inside.s
+machine.refuse.load.exec.report-inside.c
+machine.refuse.load.cart.report-inside.f
+machine.refuse.load.cart.report-inside.s
+machine.refuse.load.cart.report-inside.c
+machine.refuse.load.exec.flags-bit-1.f
+machine.refuse.load.exec.flags-bit-1.s
+machine.refuse.load.exec.flags-bit-1.c
+machine.refuse.load.cart.flags-bit-31.f
+machine.refuse.load.cart.flags-bit-31.s
+machine.refuse.load.cart.flags-bit-31.c
+machine.refuse.load.exec.opts-tail-nonzero.f
+machine.refuse.load.exec.opts-tail-nonzero.s
+machine.refuse.load.exec.opts-tail-nonzero.c
+machine.refuse.load.exec.opts-over-max.f
+machine.refuse.load.exec.opts-over-max.s
+machine.refuse.load.exec.opts-over-max.c
+machine.refuse.load.exec.opts-over-max.w
+machine.refuse.load.exec.opts-garbage-size.f
+machine.refuse.load.exec.opts-garbage-size.s
+machine.refuse.load.exec.opts-garbage-size.c
+machine.refuse.load.exec.opts-garbage-size.w
+machine.refuse.load.exec.opts-at-max-tail-nonzero.f
+machine.refuse.load.exec.opts-at-max-tail-nonzero.s
+machine.refuse.load.exec.opts-at-max-tail-nonzero.c
+machine.refuse.load.exec.opts-at-max-tail-nonzero.w
+machine.refuse.load.exec.opts-at-max-ok.f
+machine.refuse.load.grom.opts-tail-nonzero.f
+machine.refuse.load.grom.opts-tail-nonzero.s
+machine.refuse.load.grom.opts-tail-nonzero.c
+machine.refuse.load.exec.duplicate-load.s
+machine.refuse.load.exec.duplicate-load.c
+machine.refuse.load.grom.duplicate-load.s
+machine.refuse.load.grom.duplicate-load.c
+machine.refuse.load.cart.duplicate-load.c
+machine.refuse.load.exec.oversized-by-one.f
+machine.refuse.load.exec.oversized-by-one.x
+machine.refuse.load.exec.oversized-far-heap.f
+machine.refuse.load.exec.oversized-far-heap.x
+machine.refuse.load.exec.oversized-far-inside.f
+machine.refuse.load.exec.oversized-far-inside.x
+machine.refuse.load.exec.len-wrap-heap.f skip-ok
+machine.refuse.load.exec.len-wrap-heap.x skip-ok
+machine.refuse.load.exec.len-wrap-inside.f skip-ok
+machine.refuse.load.exec.len-wrap-inside.x skip-ok
+machine.refuse.load.grom.oversized-by-one.f
+machine.refuse.load.grom.oversized-by-one.x
+machine.refuse.load.grom.oversized-far-heap.f
+machine.refuse.load.grom.oversized-far-heap.x
+machine.refuse.load.grom.oversized-far-inside.f
+machine.refuse.load.grom.oversized-far-inside.x
+machine.refuse.load.cart.oversized-by-one-heap.f
+machine.refuse.load.cart.oversized-by-one-heap.x
+machine.refuse.load.cart.oversized-by-one-inside.f
+machine.refuse.load.cart.oversized-by-one-inside.x
+machine.refuse.load.cart.total-over-max.f
+machine.refuse.load.cart.total-over-max.x
+machine.refuse.load.exec.input-inside.f
+machine.refuse.load.exec.input-inside.x
+machine.refuse.load.grom.input-inside.f
+machine.refuse.load.grom.input-inside.x
+machine.refuse.load.cart.input-inside.f
+machine.refuse.load.cart.input-inside.x
+machine.refuse.load.exec.input-straddle-below.f
+machine.refuse.load.exec.input-straddle-below.x
+machine.refuse.load.exec.input-adjacent-below-ok.f
+machine.refuse.load.exec.input-adjacent-below-ok.x
+machine.refuse.load.exec.zero-length-ptr.f
+machine.refuse.load.exec.zero-length-ptr.x
+machine.refuse.load.exec.zero-length-null.f
+machine.refuse.load.exec.zero-length-null.x
+machine.refuse.load.grom.zero-length-ptr.f
+machine.refuse.load.grom.zero-length-ptr.x
+machine.refuse.load.grom.zero-length-null.f
+machine.refuse.load.grom.zero-length-null.x
+machine.refuse.load.cart.zero-length-ptr.f
+machine.refuse.load.cart.zero-length-ptr.x
+machine.refuse.load.cart.zero-length-null.f
+machine.refuse.load.cart.zero-length-null.x
+machine.refuse.load.exec.short-by-one.f
+machine.refuse.load.exec.short-by-one.x
+machine.refuse.load.exec.odd-length-4097.f
+machine.refuse.load.exec.odd-length-4097.x
+machine.refuse.load.exec.odd-length-1.f
+machine.refuse.load.exec.odd-length-1.x
+machine.refuse.load.grom.short-by-one.f
+machine.refuse.load.grom.short-by-one.x
+machine.refuse.load.exec.wide-word-first.f
+machine.refuse.load.exec.wide-word-first.x
+machine.refuse.load.exec.wide-word-last.f
+machine.refuse.load.exec.wide-word-last.x
+machine.refuse.load.cart.parse-truncated.f
+machine.refuse.load.cart.parse-truncated.x
+machine.refuse.load.cart.parse-magic.f
+machine.refuse.load.cart.parse-magic.x
+machine.refuse.load.cart.parse-version.f
+machine.refuse.load.cart.parse-version.x
+machine.refuse.load.cart.parse-flags.f
+machine.refuse.load.cart.parse-flags.x
+machine.refuse.load.cart.parse-reserved.f
+machine.refuse.load.cart.parse-reserved.x
+machine.refuse.load.cart.parse-trailing.f
+machine.refuse.load.cart.parse-trailing.x
+machine.refuse.load.cart.parse-segment-count.f
+machine.refuse.load.cart.parse-segment-count.x
+machine.refuse.load.cart.parse-size-mismatch.f
+machine.refuse.load.cart.parse-size-mismatch.x
+machine.refuse.load.cart.parse-segment-length.f
+machine.refuse.load.cart.parse-segment-length.x
+machine.refuse.load.cart.parse-segment-width.f
+machine.refuse.load.cart.parse-segment-width.x
+machine.refuse.load.cart.parse-segment-attr.f
+machine.refuse.load.cart.parse-segment-attr.x
+machine.refuse.load.cart.parse-segment-reserved.f
+machine.refuse.load.cart.parse-segment-reserved.x
+machine.refuse.load.cart.parse-order.f
+machine.refuse.load.cart.parse-order.x
+machine.refuse.load.cart.parse-word-range.f
+machine.refuse.load.cart.parse-word-range.x
+machine.refuse.load.cart.addr-wrap.f
+machine.refuse.load.cart.addr-wrap.x
+machine.refuse.load.cart.span-below-one.f
+machine.refuse.load.cart.span-below-one.x
+machine.refuse.load.cart.span-straddle-start.f
+machine.refuse.load.cart.span-straddle-start.x
+machine.refuse.load.cart.exec-region.f
+machine.refuse.load.cart.exec-region.x
+machine.refuse.load.cart.overlap-exact.f
+machine.refuse.load.cart.overlap-exact.x
+machine.refuse.load.cart.overlap-partial.f
+machine.refuse.load.cart.overlap-partial.x
+machine.refuse.load.cart.overlap-adjacent-ok.f
+machine.refuse.load.cart.overlap-adjacent-ok.x
+machine.refuse.load.cart.trailer-bit-flip.f
+machine.refuse.load.cart.trailer-bit-flip.x
+machine.refuse.load.exec.expect-mismatch.f
+machine.refuse.load.exec.expect-mismatch.x
+machine.refuse.load.grom.expect-mismatch.f
+machine.refuse.load.grom.expect-mismatch.x
+machine.refuse.load.cart.expect-mismatch.f
+machine.refuse.load.cart.expect-mismatch.x
+machine.refuse.load.cart.feature-bit-0.f
+machine.refuse.load.cart.feature-bit-0.x
+machine.refuse.load.cart.feature-bit-31.f
+machine.refuse.load.cart.feature-bit-31.x
+machine.refuse.load.exec.null-machine
+machine.refuse.load.cart.null-machine
+machine.refuse.load.exec.destroyed
+machine.refuse.unload.exec.null-machine
+machine.refuse.unload.exec.destroyed
+machine.refuse.unload.arg.kind-0.f
+machine.refuse.unload.arg.kind-0.s
+machine.refuse.unload.arg.kind-0.c
+machine.refuse.unload.arg.kind-4.f
+machine.refuse.unload.arg.kind-4.s
+machine.refuse.unload.arg.kind-4.c
+machine.refuse.info.out-inside
+machine.refuse.digest.out-inside
+machine.refuse.create.out-inside-storage
+machine.refuse.create.out-after-instance-ok
+machine.refuse.create.out-after-instance-refused
+machine.refuse.digest.null-handle-low-out
+machine.refuse.info.destroyed-out-inside
+machine.refuse.digest.destroyed-out-inside
+machine.refuse.load.exec.destroyed-report-inside
+machine.prec.arg-over-handle
+machine.prec.handle-over-unsupported
+machine.prec.unsupported-over-duplicate
+machine.prec.duplicate-over-oversized
+machine.prec.duplicate-over-overlap
+machine.prec.duplicate-over-malformed
+machine.prec.duplicate-over-digest
+machine.prec.oversized-over-overlap
+machine.prec.overlap-over-malformed
+machine.prec.oversized-over-malformed
+machine.prec.malformed-over-out-of-range
+machine.prec.wrap-over-overlap
+machine.prec.overlap-over-digest
+machine.prec.malformed-over-expect-digest
+machine.prec.cart-overlap-before-span
+machine.prec.cart-trailer-before-span
+machine.prec.cart-malformed-before-span
+machine.prec.cart-malformed-before-feature
+machine.prec.cart-span-before-feature
+machine.prec.cart-feature-before-expect
+# Family reset (plan 03-12): the power-on reset and the internal step seam (never public). The
+# tracer runs a hand-assembled stand-in program (machine_standin.c) on the profile-driven bus,
+# entered through the profile's reset vector, and sees its RAM writes and its machine time; the
+# other cases check reset with EXEC and GROM only, power-cycle equivalence with one reset of the
+# same content, the one-way power cycle (A-08 d) and the seam's refusals (stepping while OFF).
+machine.reset.equivalence
+machine.reset.iab-reset-vector
+machine.reset.no-cart-ok
+machine.reset.power-cycle-one-way
+machine.reset.step-program
+machine.reset.step-refusals
+machine.refuse.handle.mem-profile-mismatch
+machine.refuse.handle.profile-garbage
+machine.refuse.handle.profile-out-of-range
+# Family iso (plan 03-12, D-36, API-01): two instances with different content (stand-ins A and B)
+# step without affecting each other: interleaved equals sequential at every 8th unit, differently
+# poisoned storage ends byte-identical, a memcpy-relocated instance continues identically,
+# destroying one mid-run leaves the other on its solo trace, loads into one leave the other's
+# digest and bytes unchanged. No threads.
+machine.iso.cross-load
+machine.iso.destroy-mid-run
+machine.iso.interleaved-equals-sequential
+machine.iso.memcpy-relocation
+machine.iso.poisoned-storage-identical
+# Plan 03-12 refusal rows (families refuse and prec): the powered prior w (EXEC and GROM loaded,
+# then a power-on reset) joins the matrix. Argument BAD_ARG and option UNSUPPORTED rows run on w
+# too; every load kind and unload is BAD_STATE on w, also after a power cycle (A-08 d).
+machine.refuse.load.arg.kind-0.w
+machine.refuse.load.arg.kind-4.w
+machine.refuse.load.arg.kind-255.w
+machine.refuse.load.exec.null-bytes-len-8.w
+machine.refuse.load.grom.null-bytes-len-8.w
+machine.refuse.load.cart.null-bytes-len-8.w
+machine.refuse.load.exec.opts-short.w
+machine.refuse.load.cart.opts-size-0.w
+machine.refuse.load.exec.report-short.w
+machine.refuse.load.exec.report-inside.w
+machine.refuse.load.cart.report-inside.w
+machine.refuse.load.exec.flags-bit-1.w
+machine.refuse.load.cart.flags-bit-31.w
+machine.refuse.load.exec.opts-tail-nonzero.w
+machine.refuse.load.grom.opts-tail-nonzero.w
+machine.refuse.unload.arg.kind-0.w
+machine.refuse.unload.arg.kind-4.w
+machine.refuse.load.exec.powered.w
+machine.refuse.load.grom.powered.w
+machine.refuse.load.cart.powered.w
+machine.refuse.load.exec.after-power-cycle.w
+machine.refuse.unload.exec.powered.w
+machine.refuse.unload.grom.powered.w
+machine.refuse.unload.cart.powered.w
+machine.refuse.unload.grom.after-power-cycle.w
+# Reset rows (D-14, A-08 e): MISSING_SYSTEM_IMAGE with EXEC, GROM or both empty (and EXEC empty
+# with a cartridge), BAD_ARG for reset kinds 0 and 2 (also while POWERED), BAD_HANDLE; each with
+# whole-storage memcmp and digest equality. Precedence: the run phase in the load ladder and the
+# reset ladder (BAD_ARG, BAD_HANDLE, MISSING_SYSTEM_IMAGE).
+machine.refuse.reset.no-exec
+machine.refuse.reset.no-grom
+machine.refuse.reset.neither
+machine.refuse.reset.no-exec-with-cart
+machine.refuse.reset.kind-0
+machine.refuse.reset.kind-2
+machine.refuse.reset.kind-2-powered
+machine.refuse.reset.null
+machine.refuse.reset.destroyed
+machine.prec.unsupported-over-bad-state
+machine.prec.bad-state-over-duplicate
+machine.prec.reset-arg-over-handle
+machine.prec.reset-arg-over-missing
+machine.prec.reset-handle-over-missing
+# Family sweep (plan 03-12, D-12, D-34): robustness, not accuracy. One case per positive IVSC
+# fixture of at most 256 bytes in the cartridge span: every truncation and every single-byte
+# change to 0x00 and 0xFF either loads (then unload returns the fresh state) or is refused with
+# an IVSC refusal status and byte-identical storage. bases-complete pins the base list to the
+# fixture table.
+machine.sweep.B01-segs-16
+machine.sweep.P01-min
+machine.sweep.P02-two-segments
+machine.sweep.P03-word-patterns
+machine.sweep.P04-adjacent
+machine.sweep.P06-partial
+machine.sweep.bases-complete

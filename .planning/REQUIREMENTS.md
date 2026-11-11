@@ -44,20 +44,20 @@ differentiators and all variant/peripheral profiles are v2.
 
 ### Memory, Loading and Refusal (MEM)
 
-- [ ] **MEM-01**: The memory map is generated from profile descriptors (range, device, width mask, alias, blocked-read and undriven-read policy), and a decode-table dump matches the sourced literal map.
-- [ ] **MEM-02**: 10-bit ROM (decle) and 8-/16-bit RAM width masking and store-truncation behave per profile and are tested at each boundary.
-- [ ] **MEM-03**: A caller can load typed content — system images (EXEC, GROM) and cartridge segments — as separate inputs, and the core reports each image's length and digest (system-image supply policy per D5).
-- [ ] **MEM-04**: Malformed, oversized, overlapping, out-of-range, missing-system-image and unknown-profile loads are refused with a typed error, and a refused load leaves prior machine state unchanged (refusal matrix test).
-- [ ] **MEM-05**: One documented cartridge import format is supported, specified in the project's own words, with positive, boundary and malformed fixtures.
+- [x] **MEM-01**: The memory map is generated from profile descriptors (range, device, width mask, alias, blocked-read and undriven-read policy), and a decode-table dump matches the sourced literal map.
+- [x] **MEM-02**: 10-bit ROM (decle) and 8-/16-bit RAM width masking and store-truncation behave per profile and are tested at each boundary.
+- [x] **MEM-03**: A caller can load typed content — system images (EXEC, GROM) and cartridge segments — as separate inputs, and the core reports each image's length and digest (system-image supply policy per D5).
+- [x] **MEM-04**: Malformed, oversized, overlapping, out-of-range, missing-system-image and unknown-profile loads are refused with a typed error, and a refused load leaves prior machine state unchanged (refusal matrix test).
+- [x] **MEM-05**: One documented cartridge import format is supported, specified in the project's own words, with positive, boundary and malformed fixtures.
 
 ### Core Contract and Host Independence (API)
 
-- [ ] **API-01**: A host can create, reset, unload and destroy independent machine instances; two instances run concurrently without shared mutable state (isolation test).
+- [x] **API-01**: A host can create, reset, unload and destroy independent machine instances; two instances run concurrently without shared mutable state (isolation test).
 - [ ] **API-02**: Execution is bounded by an explicit machine-time target (absolute cycle target; frame target as a derived convenience), with overshoot reported; splitting one run into slices yields identical state and output (slicing-invariance test).
 - [ ] **API-03**: Controller input is applied at an explicit machine-time boundary declared by the API; the same input script yields identical results regardless of host timing.
 - [ ] **API-04**: Video and audio outputs are written into caller-owned buffers; undersized buffers are refused before any state changes.
 - [x] **API-05**: The core has no dependency on host clocks, filesystems, environment, threads, physical controller discovery or presentation, enforced by a build/link or symbol check.
-- [ ] **API-06**: Every API error/refusal has a documented effect on state (none, or a named partial effect), and each is covered by a test.
+- [x] **API-06**: Every API error/refusal has a documented effect on state (none, or a named partial effect), and each is covered by a test.
 
 ### Headless Runner and Verification (RUN)
 
@@ -164,7 +164,7 @@ Open decisions referenced by requirements. None are decided by this document.
 | D2 | CPU-cycle unit, time base, crystal constant | Delegated decision 2026-11-09 (PROJECT.md) | CPU phase |
 | D3 | First profile: 2609 NTSC recommended; revision, STIC/PSG parts, power-on RAM policy | Delegated decision 2026-11-09 (PROJECT.md) | Foundations exit |
 | D4 | Fixture assembler policy (pinned dev-only `as1600` + cross-check vs project mini-assembler) | Owner (license) + architecture — open | Runner phase |
-| D5 | System-image policy: user-supplied EXEC/GROM only; project boot stub for CI, labelled "not an EXEC" | Owner — open | Loader / runner phases |
+| D5 | System-image policy: user-supplied EXEC/GROM only; project boot stub for CI, labelled "not an EXEC" | Decided in Phase 3 (D-24, delegated) | Loader / runner phases |
 | D6 | Controller core-input representation (logical lossless vs electrical per port) | Owner + architecture — open (conflict C14) | Core API skeleton |
 | D7 | Reference PCM location (core observation layer vs host) | Architecture — open | Sound phase |
 | D8 | Raw framebuffer geometry (159 vs 160 visible, nominal grid) | Architecture + evidence — open | Video phase |
@@ -192,17 +192,17 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CPU-03 | Phase 2 | Complete |
 | CPU-04 | Phase 2 | Complete |
 | CPU-05 | Phase 2 | Complete |
-| MEM-01 | Phase 3 | Pending |
-| MEM-02 | Phase 3 | Pending |
-| MEM-03 | Phase 3 | Pending |
-| MEM-04 | Phase 3 | Pending |
-| MEM-05 | Phase 3 | Pending |
-| API-01 | Phase 3 | Pending |
+| MEM-01 | Phase 3 | Complete |
+| MEM-02 | Phase 3 | Complete |
+| MEM-03 | Phase 3 | Complete |
+| MEM-04 | Phase 3 | Complete |
+| MEM-05 | Phase 3 | Complete |
+| API-01 | Phase 3 | Complete |
 | API-02 | Phase 4 | Pending |
 | API-03 | Phase 5 | Pending |
 | API-04 | Phase 4 | Pending |
 | API-05 | Phase 2 | Complete |
-| API-06 | Phase 3 | Pending |
+| API-06 | Phase 3 | Complete |
 | RUN-01 | Phase 4 | Pending |
 | RUN-02 | Phase 4 | Pending |
 | RUN-03 | Phase 2 | Complete |

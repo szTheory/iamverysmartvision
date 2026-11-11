@@ -1,0 +1,89 @@
+# suite=machine; columns: <FAULT_ID> <must-fail> <allowed-prefixes> <must-pass>
+# Machine named faults (D-37, plan 03-09). Each id has one IVS_FAULT_<ID> site in
+# core/src/machine/machine.c (create and destroy) or core/src/machine/machine_digest.c (digest).
+# INIT_SKIPS_MEMSET also breaks the fresh-state literals (poison in the CPU and slot fields) and
+# DESTROY_NO_SCRUB every after-destroy case (the magic survives, so plan 03-11's destroyed-handle
+# load and unload rows reach a live instance); both are their own rule.
+# INIT_SKIPS_MEMSET leaves poisoned slot records, so a load sees an occupied slot (machine.load.,
+# and every load and unload row of the plan 03-11 refusal matrix and machine.prec.), and every
+# plan 03-12 reset case that loads its stand-ins into such an instance (machine.reset.,
+# machine.refuse.reset., machine.iso.). DESTROY_NO_SCRUB also reaches a live instance through the
+# plan 03-12 destroyed-handle reset and step rows.
+# Plan 03-12 re-judging, each for the fault's own rule: machine.iso.cross-load checks the exact
+# refusal statuses of B's loads (CHECK_ORDER_MALFORMED_FIRST answers its OVERSIZED GROM load
+# MALFORMED; DUPLICATE_REPLACES accepts its duplicate EXEC load), and
+# machine.reset.power-cycle-one-way compares the instance after refused loads
+# (LOAD_LEN_BEFORE_CHECK writes the slot length first). Family sweep (plan 03-12) compares the
+# instance after every refused load and the fresh state after every accepted load's unload:
+# LOAD_LEN_BEFORE_CHECK and UNLOAD_KEEPS_IMAGE fail it by their own rule, and INIT_SKIPS_MEMSET
+# refuses each sweep base (poisoned slot records) (machine.sweep.).
+# Review WR-03: the damaged-profile cases (machine.refuse.handle.) load the stand-ins too, so
+# INIT_SKIPS_MEMSET refuses their base instance (poisoned slot records): its own rule.
+# Load faults (plan 03-10), one site each in core/src/machine/machine_load.c:
+# CART_REPORT_TRAILER_DIGEST reports the trailer, so every case that compares a cartridge's
+# reported or expected digest fails; UNLOAD_KEEPS_IMAGE leaves the memsys words of every kind, so
+# every unload-to-fresh case fails; CART_SPAN_END_INCLUSIVE is reached only through the layer-2
+# seam (the registered span ends at $FFFF, where the parser's address-wrap check fires first).
+CREATE_MAGIC_BEFORE_PROFILE_CHECK machine.refuse.create.unknown-profile machine.refuse.create. machine.create.ok-info-destroy
+INIT_SKIPS_MEMSET machine.create.poisoned-storage machine.create.poisoned-storage|machine.create.ok-info-destroy|machine.digest.|machine.load.|machine.refuse.load.|machine.refuse.unload.|machine.prec.|machine.reset.|machine.iso.|machine.refuse.reset.|machine.sweep.|machine.refuse.handle. machine.refuse.create.null-opts
+DESTROY_NO_SCRUB machine.destroy.scrubs machine.destroy.|machine.refuse.destroy.twice|machine.refuse.info.destroyed|machine.refuse.digest.destroyed|machine.refuse.load.exec.destroyed|machine.refuse.unload.exec.destroyed|machine.create.ok-info-destroy|machine.create.static-storage|machine.refuse.reset.destroyed|machine.prec.reset-handle-over-missing|machine.reset.step-refusals machine.create.requirements
+DIGEST_SKIPS_RAM machine.digest.sensitivity-mem machine.digest. machine.create.ok-info-destroy
+DIGEST_SKIPS_IMAGE_TABLE machine.digest.sensitivity-images machine.digest. machine.create.ok-info-destroy
+DIGEST_LITTLE_ENDIAN machine.digest.stream-cpu-synthetic machine.digest. machine.create.ok-info-destroy
+DIGEST_INCLUDES_PADDING machine.digest.padding-ignored machine.digest. machine.create.ok-info-destroy
+DOMAIN_ID_DROPPED machine.digest.composite-framing machine.digest. machine.create.ok-info-destroy
+CART_REPORT_TRAILER_DIGEST machine.load.cart-whole-digest-not-trailer machine.load.cart-ok|machine.load.cart-whole-digest-not-trailer|machine.load.expect- machine.create.ok-info-destroy
+UNLOAD_KEEPS_IMAGE machine.load.exec-unload-fresh machine.load.|machine.sweep. machine.create.ok-info-destroy
+CART_SPAN_END_INCLUSIVE machine.load.cart-span-end machine.load.cart-span-end machine.create.ok-info-destroy
+# Ordering and typing faults (plan 03-11, D-10, D-37), one site each in machine_load.c, each
+# caught by a named row of the refusal matrix (whole-storage memcmp, digest, status, detail):
+# LOAD_LEN_BEFORE_CHECK writes the slot length before validation; LOAD_TABLE_BEFORE_VALIDATE sets
+# the decode table's EXEC or GROM loaded flag first; DUPLICATE_REPLACES skips the occupancy check
+# so the commit overwrites the slot; LEN_TRUNCATED_32 narrows the length to 32 bits before the
+# size check (2^32 + 8192 over a whole EXEC then loads); ROM_DECLE_MASKED_NOT_REFUSED accepts a
+# wide EXEC word; CHECK_ORDER_MALFORMED_FIRST answers a wrong system-image size MALFORMED before
+# the length bound; CART_COPY_BEFORE_VALIDATE installs the first segment before layer 2;
+# OVERLAP_BEFORE_LENGTH runs the input-overlap test on the unbounded span before the length
+# bound (A-08 a). REPORT_INSIDE_UNCHECKED (plan 03-11 addition) accepts a load report that lies
+# inside the instance, which is then written over it. The three faults that change a refused
+# load's instance bytes also fail family load's refusal cases (machine.load.), whose helper
+# compares every instance byte: their own rule.
+LOAD_LEN_BEFORE_CHECK machine.refuse.load.exec.oversized-by-one.f machine.refuse.load.|machine.prec.|machine.load.|machine.reset.power-cycle-one-way|machine.sweep. machine.load.exec-ok
+LOAD_TABLE_BEFORE_VALIDATE machine.refuse.load.grom.short-by-one.f machine.refuse.load.|machine.prec.|machine.load. machine.load.exec-ok
+DUPLICATE_REPLACES machine.refuse.load.exec.duplicate-load.s machine.refuse.load.|machine.prec.|machine.iso.cross-load machine.load.order-free
+LEN_TRUNCATED_32 machine.refuse.load.exec.len-wrap-heap.f machine.refuse.load.exec.len-wrap- machine.load.exec-ok
+ROM_DECLE_MASKED_NOT_REFUSED machine.refuse.load.exec.wide-word-first.f machine.refuse.load.exec.wide-word- machine.load.exec-ok
+CHECK_ORDER_MALFORMED_FIRST machine.prec.oversized-over-malformed machine.refuse.load.|machine.prec.|machine.iso.cross-load machine.load.exec-ok
+CART_COPY_BEFORE_VALIDATE machine.refuse.load.cart.feature-bit-0.f machine.refuse.load.cart.|machine.prec.cart-|machine.load.cart-|machine.load.expect-mismatch machine.load.exec-ok
+OVERLAP_BEFORE_LENGTH machine.prec.oversized-over-overlap machine.refuse.load.|machine.prec. machine.load.exec-ok
+REPORT_INSIDE_UNCHECKED machine.refuse.load.exec.report-inside.f machine.refuse.load.exec.report-inside.|machine.refuse.load.cart.report-inside. machine.load.exec-ok
+# Lifecycle and isolation faults (plan 03-12, D-37): STATE_CHECK_OMITTED (machine_load.c) lets a
+# load while POWERED go on to the later stages (the cartridge row loads; the EXEC and GROM rows
+# reach DUPLICATE_LOAD; power-cycle-one-way's cartridge load reaches MALFORMED);
+# RESET_CLEARS_BEFORE_IMAGE_CHECK (machine_run.c) applies the power-on state before the slot
+# check, so a refused reset arms the CPU; STATIC_CARRY (machine_run.c) carries the previous unit's
+# cycle count, of whichever instance stepped last, through a file-scope static into the next
+# call's time: only behaviour can catch it (fault builds are not under the c-purity writable-data
+# rule, D-07), so every case that compares time or a digest of stepped instances fails, the
+# interleaved isolation case first; RESET_KEEPS_RAM (machine_run.c) skips the system RAM fill, so
+# a power cycle keeps the program's writes. OUT_OVERLAP_UNCHECKED (machine.c, plan 03-12 addition
+# closing a plan 03-11 open item) drops the out-parameter rule of create, info and state_digest,
+# which then write into the instance.
+STATE_CHECK_OMITTED machine.refuse.load.cart.powered.w machine.refuse.load.|machine.prec.bad-state-over-duplicate|machine.reset.power-cycle-one-way machine.load.exec-ok
+RESET_CLEARS_BEFORE_IMAGE_CHECK machine.refuse.reset.no-exec machine.refuse.reset. machine.reset.step-program
+STATIC_CARRY machine.iso.interleaved-equals-sequential machine.iso.|machine.reset. machine.reset.iab-reset-vector
+RESET_KEEPS_RAM machine.reset.equivalence machine.reset.equivalence machine.reset.step-program
+OUT_OVERLAP_UNCHECKED machine.refuse.info.out-inside machine.refuse.info.out-inside|machine.refuse.digest.out-inside|machine.refuse.create.out-inside-storage machine.create.ok-info-destroy
+# Review WR-01: OUT_OVERLAP_BEFORE_HANDLE (machine_digest.c) tests the digest out buffer against
+# the unvalidated handle, so a NULL handle "overlaps" every address below the instance size and a
+# destroyed instance's storage still refuses BAD_ARG.
+OUT_OVERLAP_BEFORE_HANDLE machine.refuse.digest.null-handle-low-out machine.refuse.digest.null-handle-low-out|machine.refuse.digest.destroyed-out-inside machine.create.ok-info-destroy
+# Review WR-02: STRUCT_SIZE_UNCAPPED (machine_load.c) drops the IVS_STRUCT_SIZE_MAX cap on the load
+# options, so a 4097-byte zero-tailed struct goes on to the later stages and a garbage struct_size
+# is followed by the tail scan up to its first nonzero byte (UNSUPPORTED, not BAD_ARG).
+STRUCT_SIZE_UNCAPPED machine.refuse.load.exec.opts-over-max.f machine.refuse.load.exec.opts-over-max.|machine.refuse.load.exec.opts-garbage-size. machine.load.exec-ok
+# Review WR-03: HANDLE_TRUSTS_PROFILE (machine.c) drops the stored-profile check of the handle
+# validation, so an instance whose profile words are damaged is accepted (info answers OK first;
+# the cases stop there, before any call indexes a profile table with the damaged index). The
+# digest sensitivity cases flip the profile words and expect BAD_HANDLE: their own rule.
+HANDLE_TRUSTS_PROFILE machine.refuse.handle.profile-out-of-range machine.refuse.handle.|machine.digest.sensitivity-mem|machine.digest.sensitivity-instance machine.create.ok-info-destroy

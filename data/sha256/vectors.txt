@@ -1,0 +1,37 @@
+# SHA-256 test vectors for the core SHA-256 (D-28, plan 03-02). ASCII, one vector per line:
+#   <id> <message-spec> <sha256-hex>
+# The test id is machine.sha256.<id> (suite machine, family sha256). Message specs:
+#   lit:<text>          the bytes of <text>, which holds only letters and digits (may be empty)
+#   pat:<length>        <length> bytes, byte i is character (i mod 62) of the 62-character
+#                       alphabet A..Z a..z 0..9 (so every pattern message is a prefix of a
+#                       longer one)
+#   rep:<char>:<count>  <char> (a letter or digit) repeated <count> times (count 1..1000000)
+# Provenance: every digest was typed in at authoring time from `cmake -E sha256sum` over a
+# scratch file holding the message (never from the code under test). fips-abc, fips-448 and
+# fips-million-a also equal the SHA-256 example digests NIST publishes for FIPS 180-4.
+# fips-896 (the 896-bit message of the NIST SHA-384/512 examples) and fips-empty rest on the
+# cmake digests alone. cmake/IvsShaVectors.cmake re-derives every line with
+# CMake's string(SHA256) at build time and stops the build on any mismatch, so a typo here
+# cannot pass.
+# Lengths cover the padding boundaries 55/56/57, 63/64/65, 119/120, 127/128/129 and multi-block
+# messages.
+fips-empty lit: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+fips-abc lit:abc ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
+fips-448 lit:abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq 248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1
+fips-896 lit:abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu cf5b16a778af8380036ce59e7b0492370b249b11e8f07a51afac45037afee9d1
+fips-million-a rep:a:1000000 cdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0
+pat-0000 pat:0 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+pat-0001 pat:1 559aead08264d5795d3909718cdd05abd49572e84fe55590eef31a88a08fdffd
+pat-0055 pat:55 59521aa5a72bfd087fc7b180efff1e20dc27a7d6232cc1ebb733183d02a8c062
+pat-0056 pat:56 f50e77559fcfb0be5b298f780857cf0c5f06af725838431f7c9da48ff024ba30
+pat-0057 pat:57 a70cdc426e03c55f6bab861695327e7c7b032d7da1ed0f1aca0c252125d4e77a
+pat-0063 pat:63 ef283a28d035e563d2f760d768f74b8529f5771fcd165baa87c27dfc270b1276
+pat-0064 pat:64 180efa1cd028fb62950d3e535632c471d0dc92486413a656237c971c78cc28a0
+pat-0065 pat:65 0b2f888a463b8355dce14614389a281d915fc7bf0b43137c21a160fa4a812d6e
+pat-0119 pat:119 534199041fc9e8015e63348e55c8823057bcdc5be07f499e6bdad91d49675b4c
+pat-0120 pat:120 d16787649c4dbc7b489a6077ef419d5b0f00cea7048064e0234bc9c345806f0a
+pat-0127 pat:127 56f521697afcb44bfdc0d96335a153df36f87d5521b98acb9f130694bc9843ae
+pat-0128 pat:128 c7fa88bade423b31dacb3ff0b1e80a210cb3a8303345465499d2239a9504e323
+pat-0129 pat:129 1fdcd7c5c0df8cc537dfa3144694cfc25bfbc2a0e16fad27f4669cad1f8bd02a
+pat-2048 pat:2048 3da4ce10ee3946964722afce597b6f09ccfd6ec3926085699ea522b5df45d8e8
+pat-8192 pat:8192 77283a8f514a557e1a0c88709c8328aeff9c1a48969ca235220392c9c15f81d0

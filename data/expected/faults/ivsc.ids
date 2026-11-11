@@ -1,0 +1,16 @@
+# suite=ivsc; columns: <FAULT_ID> <must-fail> <allowed-prefixes> <must-pass>
+# IVSC v1 parser named faults (D-33, D-37, plan 03-08). Each id has one IVS_FAULT_<ID> site in
+# core/src/content/ivsc.c. The must-fail fixture is the one that pins the rule alone; the
+# allowed prefixes are the other fixtures that rule also decides, plus ivsc.fuzz. where the
+# seeded family sees the loss. IVSC_COUNT_17 lets a count of 17 pass the count rule and reads
+# the table as 16 entries, so the plain fault build never writes past the 16-entry view.
+# IVSC_TRUST_TOTAL_BYTES keeps the table-larger-than-total_bytes refusal (an over-read guard)
+# and drops the table-smaller one, which N34 alone pins. Plan 03-11's load record
+# ivsc.B03-span-last-word ends on the last address (FFFF), which IVSC_END_OFF_BY_ONE refuses as a
+# wrap: its own rule.
+IVSC_SKIP_DIGEST ivsc.N27-data-bit-flip ivsc.N27-|ivsc.N28-|ivsc.N29-|ivsc.N31-|ivsc.fuzz. ivsc.P02-two-segments
+IVSC_END_OFF_BY_ONE ivsc.B10-len-65535 ivsc.B03-|ivsc.B07-|ivsc.B10-|ivsc.B12-|ivsc.P05-|ivsc.X02- ivsc.B06-addr-wrap
+IVSC_ACCEPT_WORD_400 ivsc.N24-word-400-first ivsc.N24-|ivsc.B11- ivsc.N25-word-ffff-last
+IVSC_COUNT_17 ivsc.B02-segs-17 ivsc.B02-|ivsc.fuzz. ivsc.B01-segs-16
+IVSC_TRUST_TOTAL_BYTES ivsc.N34-table-short ivsc.N34-|ivsc.fuzz. ivsc.N11-table-size-mismatch
+IVSC_ADJACENT_AS_OVERLAP ivsc.P04-adjacent ivsc.P04-|ivsc.B07-|ivsc.B10-|ivsc.B12-|ivsc.X02- ivsc.N20-overlap-one-word

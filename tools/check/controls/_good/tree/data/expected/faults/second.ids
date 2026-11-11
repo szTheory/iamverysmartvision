@@ -1,0 +1,3 @@
+# suite=toy; columns: <FAULT_ID> <must-fail-vector-id> <allowed-prefixes> <must-pass-vector-id>
+# Second toy faults file (plan 03-01, D-37): proves the multi-file fault loop on the good tree.
+GOOD_FAULT2 cpu.ZERO.alpha cpu.ZERO.alpha cpu.ZERO.beta

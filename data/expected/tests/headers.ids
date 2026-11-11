@@ -1,0 +1,10 @@
+# Suite headers (plan 03-12, D-05, D-06): every public header core/include/ivs/*.h compiles
+# alone, as C17 with -pedantic -Wall -Wextra -Werror (headers.c17-<stem>) and as C++17 with the
+# same warnings where a C++ compiler exists (headers.cxx-<stem>, skip-ok: a host without one
+# reports a visible skip). <stem> is the file name without .h, `_` written as `-`.
+headers.c17-ivs
+headers.cxx-ivs skip-ok
+headers.c17-ivs-machine
+headers.cxx-ivs-machine skip-ok
+headers.c17-ivs-status
+headers.cxx-ivs-status skip-ok

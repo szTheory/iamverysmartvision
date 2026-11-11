@@ -1,0 +1,4 @@
+# Control memmap-literal-overlap (plan 03-05).
+R 0000-8000 undriven w=0 impl=none mirror=- gate=- src=none tag=unknown-default-chosen conf=C1
+R 8000-FFFF undriven w=0 impl=none mirror=- gate=- src=none tag=unknown-default-chosen conf=C1
+W 0000-FFFF undriven w=0 impl=none mirror=- gate=- src=none tag=unknown-default-chosen conf=C1

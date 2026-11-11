@@ -1,0 +1,179 @@
+{
+  "schema_version": 1,
+  "source": "project-authored",
+  "group": "ivsc-load",
+  "profile": "intv-2609-ntsc-family-p1",
+  "note": "Load-level IVSC v1 vectors (plan 03-11, D-34): layer 2 of ivs_machine_load against the profile's cartridge span. Every byte is authored for this project. A record names segments, not bytes: the test assembles the container (prefix, entries, generated 10-bit words), seals it with the core SHA-256 at test time and loads it on a fresh instance of the profile below, asserting status, report detail, whole-storage equality and the state digest. Span-relative addresses (span_lo, span_hi) are resolved by cmake/IvsCartTable.cmake from the cart row of data/memmap/<profile>.literal.txt, never typed in. Code-built cases of the suite: ivsc.L07-second-load-duplicate, ivsc.L08-null-args, ivsc.L09-unload-restores, ivsc.L10-two-instances, ivsc.B07-load-out-of-span, ivsc.X01-span-matches-map.",
+  "fixtures": [
+    {
+      "id": "ivsc.B03-span-last-word",
+      "kind": "load",
+      "note": "One word on the last word of the cartridge span: inside, so the load is OK.",
+      "segments": [
+        {
+          "addr": "span_hi-0",
+          "len_words": 1
+        }
+      ],
+      "expect": {
+        "load": {
+          "status": "OK"
+        }
+      }
+    },
+    {
+      "id": "ivsc.B04-span-plus-one",
+      "kind": "load",
+      "note": "Two words from the last word of the span: the second is one word past it. On this profile the span ends at FFFF, so the parser's address-wrap rule refuses it first (the generator checks the reason against the resolved span).",
+      "segments": [
+        {
+          "addr": "span_hi-0",
+          "len_words": 2
+        }
+      ],
+      "expect": {
+        "load": {
+          "status": "OUT_OF_RANGE",
+          "reason": "addr-wrap",
+          "segment_index": 0,
+          "byte_offset": 24
+        }
+      }
+    },
+    {
+      "id": "ivsc.B05-span-minus-one",
+      "kind": "load",
+      "note": "One word starting one word below the span: layer 2 refuses it.",
+      "segments": [
+        {
+          "addr": "span_lo-1",
+          "len_words": 1
+        }
+      ],
+      "expect": {
+        "load": {
+          "status": "OUT_OF_RANGE",
+          "reason": "out-of-span",
+          "segment_index": 0,
+          "byte_offset": 24
+        }
+      }
+    },
+    {
+      "id": "ivsc.L01-below-span",
+      "kind": "load",
+      "note": "One word at 0100, in the scratchpad range below the span.",
+      "segments": [
+        {
+          "addr": "0100",
+          "len_words": 1
+        }
+      ],
+      "expect": {
+        "load": {
+          "status": "OUT_OF_RANGE",
+          "reason": "out-of-span",
+          "segment_index": 0,
+          "byte_offset": 24
+        }
+      }
+    },
+    {
+      "id": "ivsc.L02-over-exec",
+      "kind": "load",
+      "note": "One word at 1000, the EXEC range.",
+      "segments": [
+        {
+          "addr": "1000",
+          "len_words": 1
+        }
+      ],
+      "expect": {
+        "load": {
+          "status": "OUT_OF_RANGE",
+          "reason": "out-of-span",
+          "segment_index": 0,
+          "byte_offset": 24
+        }
+      }
+    },
+    {
+      "id": "ivsc.L03-straddle-span-start",
+      "kind": "load",
+      "note": "Two words starting one word below the span start: the segment straddles it.",
+      "segments": [
+        {
+          "addr": "span_lo-1",
+          "len_words": 2
+        }
+      ],
+      "expect": {
+        "load": {
+          "status": "OUT_OF_RANGE",
+          "reason": "out-of-span",
+          "segment_index": 0,
+          "byte_offset": 24
+        }
+      }
+    },
+    {
+      "id": "ivsc.L04-over-sysram",
+      "kind": "load",
+      "note": "One word at 0200, the system RAM range.",
+      "segments": [
+        {
+          "addr": "0200",
+          "len_words": 1
+        }
+      ],
+      "expect": {
+        "load": {
+          "status": "OUT_OF_RANGE",
+          "reason": "out-of-span",
+          "segment_index": 0,
+          "byte_offset": 24
+        }
+      }
+    },
+    {
+      "id": "ivsc.L05-feature-bit-0",
+      "kind": "load",
+      "note": "Four words at the span start in a container requiring feature bit 0, which the profile does not support.",
+      "segments": [
+        {
+          "addr": "span_lo+0",
+          "len_words": 4
+        }
+      ],
+      "required_features": 1,
+      "expect": {
+        "load": {
+          "status": "UNSUPPORTED",
+          "reason": "features",
+          "byte_offset": 12,
+          "missing_features": 1
+        }
+      }
+    },
+    {
+      "id": "ivsc.L06-feature-bit-31",
+      "kind": "load",
+      "note": "Four words at the span start in a container requiring feature bit 31.",
+      "segments": [
+        {
+          "addr": "span_lo+0",
+          "len_words": 4
+        }
+      ],
+      "required_features": 2147483648,
+      "expect": {
+        "load": {
+          "status": "UNSUPPORTED",
+          "reason": "features",
+          "byte_offset": 12,
+          "missing_features": 2147483648
+        }
+      }
+    }
+  ]
+}

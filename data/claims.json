@@ -51,6 +51,29 @@
       "depends_on": ["cpu.part"],
       "standing": "provisional",
       "note": "The table is transcribed from the CP-1600 manual page images and the coverage check proves the rows tile the decle space, not that any encoding, cycle count or status bit was read correctly. Applying the CP-1600 manual to the CP1610 is an inference logged as C31, so the claim stays provisional."
+    },
+    {
+      "id": "CL-0006",
+      "statement": "For profile intv-2609-ntsc-family-p1, the read and write widths of every address, the mirror extents of RAM and ROM rows and the behaviour-changing row boundaries, observed through the real bus functions, together with the device, impl and gate labels (and stub mirror labels) reported by the introspection function, equal the structural columns of the sourced literal map.",
+      "profile": "intv-2609-ntsc-family-p1",
+      "tier": "source-expectation",
+      "artifact": "data/memmap/intv-2609-ntsc-family-p1.literal.txt",
+      "depends_on": ["memmap.undriven_read", "memmap.device.rom10", "memmap.device.grom8", "memmap.device.ram16", "memmap.device.ram8", "memmap.device.stub", "memmap.region.stic_regs", "memmap.region.stic_alias_read", "memmap.region.scratchpad", "memmap.region.psg_regs", "memmap.region.sysram", "memmap.region.exec", "memmap.region.grom", "memmap.region.gram", "memmap.region.stic_alias_w4", "memmap.region.gram_alias_w7", "memmap.region.stic_alias_w8", "memmap.region.gram_alias_wb", "memmap.region.stic_alias_wc", "memmap.region.gram_alias_wf", "memmap.cart_span"],
+      "standing": "provisional",
+      "note": "Evidence: case memmap.dump.matches-literal of suite memmap writes the decode dump of all 65,536 addresses in both views, and the memmap gate step compares the dev and release dumps with the literal (plan 03-06). A pass shows transcription consistency between the literal map and the runtime decode, not hardware truth. Widths, RAM and ROM mirrors and the boundaries where they change are behavioural; the device, impl and gate columns and the mirror of stub and undriven rows are declarative labels from ivs_memsys_describe. Several depended-on fields are tier4-community, inference or unknown-default-chosen (C5, C11, C20, C21, C60, C61, C62), so the claim is provisional; a D10 decode probe on owner hardware would raise it."
+    },
+    {
+      "id": "CL-0007",
+      "statement": "The core's IVSC v1 layer-1 parser accepts every positive record and refuses every malformed record of fixture FX-ivsc-vectors with the status, reason, segment index and byte offset that docs/formats/ivsc-v1.md documents for it, and the seeded fuzz family of suite ivsc reaches every refusal reason of that specification without breaking the parser's refusal, determinism and round-trip invariants.",
+      "profile": "intv-2609-ntsc-family-p1",
+      "tier": "source-expectation",
+      "artifact": "docs/formats/ivsc-v1.md",
+      "depends_on": [
+        "cartridge.features_supported",
+        "cartridge.slots"
+      ],
+      "standing": "provisional",
+      "note": "Evidence: suite ivsc in the dev (ASan and UBSan) and release presets, with the parse-level records of data/cart/ivsc-parse.json and the fuzz family ivsc.fuzz.* (eight fixed seeds and ivsc.fuzz.reasons-covered, plan 03-08); six named faults in data/expected/faults/ivsc.ids show that the fixtures catch the loss of a parser rule. The expectations come from the project's own specification, and every positive trailer and whole-file digest was computed with cmake -E sha256sum, independently of the core's SHA-256. IVSC is the project's own format, so this is conformance to the project specification, not to any hardware or third-party format. Layer 1 knows no profile; the claim names the profile whose cartridge fields admit IVSC v1. cartridge.slots is unknown-default-chosen (a scope choice), so the weakest-field rule makes the claim provisional. The layer-2 load into an instance is not covered here (plan 03-11)."
     }
   ]
 }

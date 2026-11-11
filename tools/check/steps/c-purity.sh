@@ -3,32 +3,58 @@
 # Step c-purity: the machine core imports no host service (API-05, D-21, ROADMAP SC5).
 # Stage 1, source layer (runs before any compile; a finding stops the step here, so a source
 # violation is always reported by its own token and never masked by a compile failure):
-#   - every FILELIST path core/src/**/*.c and core/src/**/*.h: every #include or #import line
-#     is checked (c-purity-include). An angle include may name only stdint.h, stddef.h,
+#   - every FILELIST path core/src/**/*.c, core/src/**/*.h and core/include/**/*.h (the public
+#     tree, same rules as core/src; A-06, plan 03-03): every #include or #import line
+#     is checked (c-purity-include). A directive is recognised after block comments (a comment
+#     counts as whitespace, also one opened on an earlier line) and with `#` spelled `%:` (the
+#     digraph) or `??=` (the trigraph); any other `#` or `%:` followed by include or import outside
+#     comments and literals fails closed (review WR-04). An angle include may name only stdint.h, stddef.h,
 #     stdbool.h, limits.h or string.h; a quoted include must name a FILELIST header under
-#     core/src, as a path from core/src or from the including file's directory, so
-#     `#include "stdio.h"` (resolved through the system path) fails; any other form (a computed
-#     `#include MACRO`, #include_next, a continuation or a comment before the operand) fails
-#     closed (review WR-02). After removing comments and string
-#     and character literals, the words asm, __asm, __asm__, __builtin_readcyclecounter,
-#     __builtin_ia32_rdtsc, __rdtsc, __rdtscp and syscall fail (c-purity-asm), and so does a
+#     core/src or core/include, as a path from core/src, from core/include or from the including
+#     file's directory, so `#include "stdio.h"` (resolved through the system path) and a header
+#     that exists only outside both trees fail; any other form (a computed
+#     `#include MACRO`, #include_next, a continuation, or a comment opened before the operand
+#     and closed on a later line) fails closed (review WR-02). After removing comments and string
+#     and character literals, the words asm, __asm, __asm__ and syscall fail (c-purity-asm), and
+#     so does every word with a prefix of an inline host-instruction intrinsic: __builtin_arm_,
+#     __builtin_aarch64_, __builtin_ia32_, __builtin_ppc_, __builtin_read (readcyclecounter,
+#     readsteadycounter), __arm_ (ACLE register reads), __rdtsc, _rdtsc, __rdrand, _rdrand,
+#     __rdseed, _rdseed (counters and hardware randomness, review WR-04); and so does a
 #     floating literal (c-purity-float-literal): a decimal number with `.` or an exponent, or a
 #     hex number with `.` or a `p` exponent; integer hex constants such as 0x3E4u and comment
 #     cites such as `pdf 49` are not numbers here;
 #   - .c files only: the words float and double fail (c-purity-float-type; the prelude header
 #     names them in its poison pragma), and the first #include must be "common/ivs_prelude.h"
 #     or another quoted path ending ivs_prelude.h (c-purity-prelude).
+#   - reviewed generated includes (A-06, H2 c-d, plan 03-03): the inventory
+#     data/expected/core-generated.ids (read from ROOT, not CHECK_DIR, so a control can overlay
+#     it; an absent file is an empty list) holds lines
+#     `<basename> <generator repo path>`. Before the scan, every listed generator is run as
+#     `cmake -DROOT=<tree> -DOUT=<temp>/gen/<basename> -P <tree>/<generator>`; a malformed line,
+#     a missing generator, a generator failure or a missing output fails
+#     (c-purity-generated: <basename> (<reason>)). A quoted include whose operand equals a listed
+#     basename resolves; any other name that is not a tracked header stays c-purity-include. Each
+#     generated file gets the header-level scan above (include, asm, float literal), reported as
+#     <token> gen/<basename>:<line>.
 # Stage 2, symbol layer (authoritative): every core .c is compiled fresh into a temp dir at -O0
-#   and at -O2 with ${CC:-cc} (-std=c17 -fno-lto; a missing compiler fails, never skips), each
-#   variant is archived with ar, and tools/check/core-symbols.sh checks each archive against the
-#   reviewed allowlist (lists read from CHECK_DIR, so a control cannot replace them).
+#   and at -O2 with ${CC:-cc} (-std=c17 -fno-lto -fno-pie -I core/include -I core/src
+#   -I <temp>/gen; a missing include directory is ignored by the compiler; a missing compiler
+#   fails, never skips), each variant is archived with ar, and tools/check/core-symbols.sh
+#   checks each archive against the reviewed allowlist (lists read from CHECK_DIR, so a control
+#   cannot replace them) and, with --forbid-writable-data, for writable data symbols
+#   (core-symbols-writable; D-07, A-06, H5). -fno-pie keeps an ELF const table with pointers
+#   out of .data.rel.ro, so only real writable data fails. The ctest suite core-symbols stays
+#   imports-only (its dev archive is sanitized).
 # Stage 3, purity self-test: core-symbols.sh must reject an LTO object (lto), a file with the
 #   bitcode magic (bitcode-magic), an archive with zero external definitions (no-definitions),
-#   a missing file (missing-file) and no input at all (no-input, exit 2). Synthetic inputs live
-#   in the temp dir only. The step forces -fno-lto, so an overlay control cannot produce an LTO
-#   object; this stage covers that class instead.
+#   a missing file (missing-file) and no input at all (no-input, exit 2); it must accept a -fPIE
+#   archive that takes the address of a function defined in it (pie-got: gcc imports
+#   _GLOBAL_OFFSET_TABLE_ there) and still name an undefined function reached through the GOT
+#   (pie-got-import). Synthetic inputs live in the temp dir only. The step forces -fno-lto, so
+#   an overlay control cannot produce an LTO object; this stage covers that class instead.
 # Writes only to its temp dir. Reads ROOT, CHECK_DIR, FILELIST; CC and NM from the environment.
 # Tokens: c-purity-no-sources: core/src, c-purity-no-cc: <cc>, c-purity-compile: <file> (<opt>),
+#   c-purity-generated: <basename> (<reason>),
 #   c-purity-include, c-purity-prelude, c-purity-asm, c-purity-float-type,
 #   c-purity-float-literal (each: <file>:<line>), purity-selftest-<case>: <detail>, plus every
 #   core-symbols-* token. Stats: core-imports=<imports of the -O2 archive>
@@ -44,7 +70,7 @@ rc=0
 bad() { printf -- '-- FAIL %s: %s\n' "$1" "$2"; rc=1; }
 
 grep -E '^core/src/.*[.]c$' "$FILELIST" | sort -u > "$tmp/csrc"
-grep -E '^core/src/.*[.]h$' "$FILELIST" | sort -u > "$tmp/hsrc"
+grep -E '^core/(src|include)/.*[.]h$' "$FILELIST" | sort -u > "$tmp/hsrc"
 if [ ! -s "$tmp/csrc" ]; then
   bad c-purity-no-sources core/src
   exit 1
@@ -55,12 +81,53 @@ if ! command -v "$cc" > /dev/null 2>&1; then
   exit 1
 fi
 
+# Reviewed generated includes: run each listed generator into the temp dir.
+mkdir -p "$tmp/gen"
+: > "$tmp/genlist"
+geninv="$ROOT/data/expected/core-generated.ids"
+if [ -f "$geninv" ]; then
+  while IFS= read -r line || [ -n "$line" ]; do
+    set -f
+    # shellcheck disable=SC2086
+    set -- $line
+    set +f
+    [ "$#" -gt 0 ] || continue
+    case $1 in '#'*) continue ;; esac
+    if [ "$#" -ne 2 ]; then bad c-purity-generated "$1 (bad line)"; continue; fi
+    gname=$1; ggen=$2
+    case $gname in
+      *[!A-Za-z0-9._-]*|.*) bad c-purity-generated "$gname (bad basename)"; continue ;;
+    esac
+    case $ggen in
+      /*|*..*|*[!A-Za-z0-9._/-]*)
+        bad c-purity-generated "$gname (bad generator path $ggen)"; continue ;;
+    esac
+    if grep -q -x -F -e "$gname" "$tmp/genlist"; then
+      bad c-purity-generated "$gname (listed twice)"; continue
+    fi
+    printf '%s\n' "$gname" >> "$tmp/genlist"
+    if [ ! -f "$ROOT/$ggen" ]; then
+      bad c-purity-generated "$gname (generator $ggen missing)"; continue
+    fi
+    if ! cmake -DROOT="$ROOT" -DOUT="$tmp/gen/$gname" -P "$ROOT/$ggen" > "$tmp/gen.log" 2>&1; then
+      sed 's/^/# /' "$tmp/gen.log"
+      bad c-purity-generated "$gname (generator $ggen failed)"; continue
+    fi
+    [ -f "$tmp/gen/$gname" ] || bad c-purity-generated "$gname (generator $ggen wrote no output)"
+  done < "$geninv"
+fi
+
 # Stage 1: source layer. One awk pass per file prints "<token> <file>:<line>" findings.
-scan() { # $1 repo-relative path, $2 1 for a .c file, 0 for a header
-  awk -v file="$1" -v isc="$2" -v hlist="$tmp/hsrc" '
+scan() { # $1 reported path, $2 1 for a .c file, 0 for a header, $3 file to read (default ROOT/$1)
+  awk -v file="$1" -v isc="$2" -v hlist="$tmp/hsrc" -v glist="$tmp/genlist" '
     function report(t) { print t " " file ":" NR }
+    function asmword(w,   k) {
+      if (w in asmw) return 1
+      for (k = 1; k <= nasmp; k++) if (index(w, asmp[k]) == 1) return 1
+      return 0
+    }
     function word(w) {
-      if (w in asmw) report("c-purity-asm")
+      if (asmword(w)) report("c-purity-asm")
       else if (isc && (w == "float" || w == "double")) report("c-purity-float-type")
     }
     function number(s) {
@@ -70,21 +137,34 @@ scan() { # $1 repo-relative path, $2 1 for a .c file, 0 for a header
     BEGIN {
       split("stdint.h stddef.h stdbool.h limits.h string.h", a, " ")
       for (k in a) okh[a[k]] = 1
-      split("asm __asm __asm__ __builtin_readcyclecounter __builtin_ia32_rdtsc __rdtsc __rdtscp syscall", b, " ")
+      split("asm __asm __asm__ syscall", b, " ")
       for (k in b) asmw[b[k]] = 1
+      nasmp = split("__builtin_arm_ __builtin_aarch64_ __builtin_ia32_ __builtin_ppc_ __builtin_read __arm_ __rdtsc _rdtsc __rdrand _rdrand __rdseed _rdseed", asmp, " ")
       while ((getline hp < hlist) > 0) corehdr[hp] = 1
       close(hlist)
+      while ((getline gp < glist) > 0) genname[gp] = 1
+      close(glist)
       dir = file; sub(/\/[^\/]*$/, "", dir)
       incomment = 0; seen_inc = 0
     }
     {
       line = $0
-      if (!incomment && line ~ /^[[:space:]]*#[[:space:]]*(include|import)/) {
-        if (isc && !seen_inc && line !~ /^[[:space:]]*#[[:space:]]*include[[:space:]]*"([^"]*\/)?ivs_prelude\.h"/)
+      # The line as the preprocessor sees its start: the rest of a comment opened on an earlier
+      # line, and every whole block comment, become a space (C17 5.1.1.2: a comment is one space).
+      lead = line
+      if (incomment) {
+        k = index(lead, "*/")
+        lead = k > 0 ? " " substr(lead, k + 2) : ""
+      }
+      gsub(/\/\*([^*]|\*+[^*\/])*\*+\//, " ", lead)
+      directive = 0
+      if (lead ~ /^[[:space:]]*(#|%:|[?][?]=)[[:space:]]*(include|import)/) {
+        directive = 1
+        if (isc && !seen_inc && lead !~ /^[[:space:]]*(#|%:|[?][?]=)[[:space:]]*include[[:space:]]*"([^"]*\/)?ivs_prelude\.h"/)
           report("c-purity-prelude")
         seen_inc = 1
-        rest = line
-        sub(/^[[:space:]]*#[[:space:]]*(include|import)/, "", rest)
+        rest = lead
+        sub(/^[[:space:]]*(#|%:|[?][?]=)[[:space:]]*(include|import)/, "", rest)
         if (rest ~ /^[A-Za-z0-9_]/) report("c-purity-include")
         else {
           sub(/^[[:space:]]*/, "", rest)
@@ -93,7 +173,8 @@ scan() { # $1 repo-relative path, $2 1 for a .c file, 0 for a header
             if (!(h in okh)) report("c-purity-include")
           } else if (rest ~ /^"[^"]*"/) {
             h = substr(rest, 2); sub(/".*$/, "", h)
-            if (!(("core/src/" h) in corehdr) && !((dir "/" h) in corehdr)) report("c-purity-include")
+            if (!(("core/src/" h) in corehdr) && !(("core/include/" h) in corehdr) \
+                && !((dir "/" h) in corehdr) && !(h in genname)) report("c-purity-include")
           } else report("c-purity-include")
         }
       }
@@ -106,6 +187,12 @@ scan() { # $1 repo-relative path, $2 1 for a .c file, 0 for a header
         }
         if (c == "/" && substr(line, i + 1, 1) == "*") { incomment = 1; i += 2; continue }
         if (c == "/" && substr(line, i + 1, 1) == "/") break
+        if (!directive && (c == "#" || (c == "%" && substr(line, i + 1, 1) == ":"))) {
+          # `#` or `%:` then include or import, anywhere but a recognised directive: fail closed.
+          r = substr(line, i + (c == "#" ? 1 : 2))
+          sub(/^[[:space:]]*/, "", r)
+          if (r ~ /^(include|import)([^A-Za-z0-9_]|$)/) report("c-purity-include")
+        }
         if (c == "\"" || c == "\047") {
           q = c; i++
           while (i <= n) {
@@ -137,17 +224,21 @@ scan() { # $1 repo-relative path, $2 1 for a .c file, 0 for a header
         i++
       }
     }
-    END { if (isc && !seen_inc) print "c-purity-prelude " file ":1" }' "$ROOT/$1"
+    END { if (isc && !seen_inc) print "c-purity-prelude " file ":1" }' "${3:-$ROOT/$1}"
 }
 : > "$tmp/src.find"
 while IFS= read -r p; do scan "$p" 1 >> "$tmp/src.find"; done < "$tmp/csrc"
 while IFS= read -r p; do scan "$p" 0 >> "$tmp/src.find"; done < "$tmp/hsrc"
+while IFS= read -r g; do
+  [ -f "$tmp/gen/$g" ] && scan "gen/$g" 0 "$tmp/gen/$g" >> "$tmp/src.find"
+done < "$tmp/genlist"
 if [ -s "$tmp/src.find" ]; then
   sort -u "$tmp/src.find" | while IFS= read -r l; do
     printf -- '-- FAIL %s: %s\n' "${l%% *}" "${l#* }"
   done
   exit 1
 fi
+[ "$rc" -eq 0 ] || exit 1
 
 # Stage 2: symbol layer. Fresh compile at -O0 and -O2, one archive per variant.
 for opt in O0 O2; do
@@ -155,8 +246,9 @@ for opt in O0 O2; do
   set --
   while IFS= read -r src; do
     obj="$tmp/$opt/$(printf '%s' "$src" | tr '/' '_').o"
-    if "$cc" -std=c17 -fno-lto -Wall -Wextra -Werror=implicit-function-declaration \
-      -Werror=date-time "-$opt" -I"$ROOT/core/src" -c "$ROOT/$src" -o "$obj" > "$tmp/cc.log" 2>&1; then
+    if "$cc" -std=c17 -fno-lto -fno-pie -Wall -Wextra -Werror=implicit-function-declaration \
+      -Werror=date-time "-$opt" -I"$ROOT/core/include" -I"$ROOT/core/src" -I"$tmp/gen" \
+      -c "$ROOT/$src" -o "$obj" > "$tmp/cc.log" 2>&1; then
       set -- "$@" "$obj"
     else
       cat "$tmp/cc.log"
@@ -173,7 +265,8 @@ done
 
 : > "$tmp/sym.out"
 for opt in O0 O2; do
-  if (cd "$tmp" && sh "$CHECK_DIR/core-symbols.sh" "core-$opt.a") > "$tmp/sym.$opt" 2>&1; then :; else rc=1; fi
+  if (cd "$tmp" && sh "$CHECK_DIR/core-symbols.sh" --forbid-writable-data "core-$opt.a") \
+    > "$tmp/sym.$opt" 2>&1; then :; else rc=1; fi
   grep -v -e '^-- core-symbols pass ' "$tmp/sym.$opt" >> "$tmp/sym.out"
 done
 # The same finding at -O0 and -O2 prints once.
@@ -220,6 +313,44 @@ else
   bad purity-selftest-no-definitions "could not build the hollow archive"
 fi
 expect missing-file core-symbols-missing absent.a
+# GOT base (plan 03-14 post-verification fix): gcc under -fPIE (the Ubuntu default) imports
+# _GLOBAL_OFFSET_TABLE_ when code takes the address of an external function, so the allowlist
+# names it. pie-got: such a reference, its function defined in a second member, must pass.
+# pie-got-import: the same reference to a function defined nowhere must still fail by that
+# function's own name, so the allowance never hides an import routed through the GOT. On a
+# toolchain that emits no GOT symbol (Mach-O) both cases still hold, without the entry in play.
+printf 'int ivs_st_target(void);\nint ivs_st_target(void) { return 1; }\n' > "$st/target.c"
+printf 'typedef int (*ivs_st_fn)(void);\nint ivs_st_target(void);\nivs_st_fn ivs_st_pick(void);\nivs_st_fn ivs_st_pick(void) { return ivs_st_target; }\n' > "$st/pick.c"
+printf 'typedef int (*ivs_st_fn)(void);\nint ivs_st_absent(void);\nivs_st_fn ivs_st_pick(void);\nivs_st_fn ivs_st_pick(void) { return ivs_st_absent; }\n' > "$st/pick-absent.c"
+if "$cc" -std=c17 -fno-lto -fPIE -w -c "$st/target.c" -o "$st/target.o" > "$st/cc.log" 2>&1 \
+  && "$cc" -std=c17 -fno-lto -fPIE -w -c "$st/pick.c" -o "$st/pick.o" >> "$st/cc.log" 2>&1 \
+  && "$cc" -std=c17 -fno-lto -fPIE -w -c "$st/pick-absent.c" -o "$st/pick-absent.o" >> "$st/cc.log" 2>&1 \
+  && ar rcs "$st/pie.a" "$st/target.o" "$st/pick.o" > "$st/ar.log" 2>&1 \
+  && ar rcs "$st/pie-absent.a" "$st/pick-absent.o" >> "$st/ar.log" 2>&1; then
+  selftest_total=$((selftest_total + 1))
+  _st=0
+  (cd "$st" && sh "$CHECK_DIR/core-symbols.sh" pie.a) > "$st/out" 2>&1 || _st=$?
+  if [ "$_st" -eq 0 ]; then
+    selftest_ok=$((selftest_ok + 1))
+  else
+    bad purity-selftest-pie-got "exit $_st, wanted 0"
+    sed 's/^/# /' "$st/out"
+  fi
+  selftest_total=$((selftest_total + 1))
+  _st=0
+  (cd "$st" && sh "$CHECK_DIR/core-symbols.sh" pie-absent.a) > "$st/out" 2>&1 || _st=$?
+  if [ "$_st" -ne 0 ] && grep -q -x -F -e '-- FAIL core-symbols-forbidden: ivs_st_absent' "$st/out" \
+    && ! grep -q -e '_GLOBAL_OFFSET_TABLE_' "$st/out"; then
+    selftest_ok=$((selftest_ok + 1))
+  else
+    bad purity-selftest-pie-got-import "exit $_st, wanted core-symbols-forbidden: ivs_st_absent only"
+    sed 's/^/# /' "$st/out"
+  fi
+else
+  selftest_total=$((selftest_total + 2))
+  cat "$st/cc.log" "$st/ar.log" 2> /dev/null
+  bad purity-selftest-pie-got "could not build the -fPIE archives with $cc"
+fi
 selftest_total=$((selftest_total + 1))
 _st=0
 (cd "$st" && sh "$CHECK_DIR/core-symbols.sh") > "$st/out" 2>&1 || _st=$?

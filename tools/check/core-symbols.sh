@@ -3,7 +3,8 @@
 # Core symbol allowlist check (API-05, D-21). Not a step: called by steps/c-purity.sh on fresh
 # -O0/-O2 archives and by the ctest suite core-symbols (tests/core-symbols-tap.sh) on the
 # shipped ivs_core archive.
-# Usage: sh core-symbols.sh [--allow-prefix P]... FILE...   (no FILE: usage, exit 2)
+# Usage: sh core-symbols.sh [--allow-prefix P]... [--forbid-writable-data] FILE...
+#   (no FILE: usage, exit 2)
 # Env: NM (default nm), AR (default ar, used only to look inside archives for bitcode members),
 #   CHECK_DIR (directory of the lists; default: this script's directory).
 # Undefined = `$NM -P -u`, defined = `$NM -P -g --defined-only`, over the union of all FILEs.
@@ -16,16 +17,32 @@
 # Fails closed on: a missing FILE, LLVM bitcode (raw or wrapper magic, also as an archive
 # member), a GCC LTO object (`.gnu.lto_` section), an nm failure and a FILE with zero external
 # definitions (Apple clang emits a local ltmp0 even for an empty object, so count with -g).
+# --forbid-writable-data (opt-in, D-07, A-06, plan 03-03): also list every defined symbol with
+#   `$NM -P` (no -g, so file-local statics are visible) and fail each one of type b B d D c C
+#   (bss, data, common: writable data, which in the core would be state shared by every
+#   instance). On Darwin, names starting with l or L are assembler-local labels (ltmpN, l_.str,
+#   lCPI*, L*; C names carry a leading underscore) and are dropped first. Types s/S are not
+#   failed (Darwin puts const sections there), nor r/R (ELF read-only data). Platform caveat: an
+#   ELF const table that holds pointers lands in .data.rel.ro, which nm shows as d under PIE, so
+#   the caller must compile with -fno-pie (then it is r). Only steps/c-purity.sh passes this flag,
+#   on its own non-instrumented -fno-pie archives; the ctest suite core-symbols checks the
+#   shipped (and, in dev, sanitized) archive for imports only, because sanitizer runtimes add
+#   writable symbols there.
 # Tokens: core-symbols-forbidden: <name>[ (<category>)], core-symbols-missing: <file>,
 #   core-symbols-bitcode: <file>, core-symbols-lto: <file>, core-symbols-nm-failed: <file>,
 #   core-symbols-no-definitions: <file>, core-symbols-list-missing: <list>,
-#   core-symbols-list-empty: <list>, core-symbols-deny-in-allow: <name>.
+#   core-symbols-list-empty: <list>, core-symbols-deny-in-allow: <name>,
+#   core-symbols-writable: <symbol> (<type>) in <file>.
 # Pass: -- core-symbols pass external=<imports not defined inside the input> defined=<n>.
 LC_ALL=C; export LC_ALL
 NM=${NM:-nm}
 AR=${AR:-ar}
-usage() { printf 'usage: sh core-symbols.sh [--allow-prefix P]... FILE...\n' >&2; exit 2; }
+usage() {
+  printf 'usage: sh core-symbols.sh [--allow-prefix P]... [--forbid-writable-data] FILE...\n' >&2
+  exit 2
+}
 prefixes=
+writable=0
 while [ "$#" -gt 0 ]; do
   case $1 in
     --allow-prefix)
@@ -34,6 +51,7 @@ while [ "$#" -gt 0 ]; do
       case $2 in ''|*[!A-Za-z0-9_.\$]*) usage ;; esac
       prefixes="$prefixes $2"
       shift 2 ;;
+    --forbid-writable-data) writable=1; shift ;;
     --) shift; break ;;
     -*) usage ;;
     *) break ;;
@@ -117,6 +135,20 @@ for f in "$@"; do
   if grep -q -e '\.gnu\.lto_' -e '__gnu_lto_' "$tmp/u.raw" "$tmp/d.raw"; then
     bad core-symbols-lto "$f"
     continue
+  fi
+  if [ "$writable" -eq 1 ]; then
+    if ! run_nm "$tmp/a.raw" -P "$f"; then bad core-symbols-nm-failed "$f"; continue; fi
+    awk -v darwin="$darwin" '
+      NF < 2 { next }
+      $1 ~ /:$/ { next }
+      {
+        n = $1; t = $2
+        if (darwin && n ~ /^[lL]/) next
+        if (t !~ /^[bBdDcC]$/) next
+        sub(/@.*/, "", n); if (darwin && n ~ /^_/) n = substr(n, 2)
+        print n " (" t ")"
+      }' "$tmp/a.raw" | sort -u > "$tmp/w.one"
+    while IFS= read -r w; do bad core-symbols-writable "$w in $f"; done < "$tmp/w.one"
   fi
   norm < "$tmp/u.raw" | sort -u > "$tmp/u.one"
   norm < "$tmp/d.raw" | sort -u > "$tmp/d.one"

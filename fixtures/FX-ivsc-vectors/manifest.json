@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "id": "FX-ivsc-vectors",
+  "kind": "original-source",
+  "committed": true,
+  "path": "data/cart/ivsc-parse.json",
+  "local_path": null,
+  "source": {
+    "origin": "project-authored IVSC v1 vectors (plans 03-07 and 03-11)",
+    "pin": null,
+    "accessed": null,
+    "holder": "project contributors"
+  },
+  "recipe": null,
+  "inputs": [],
+  "outputs": [
+    {
+      "path": "data/cart/ivsc-parse.json",
+      "sha256": "9ded845c39f9e9b977fe644c0ac1eddba49deeabfc18a80c1d9e98dbbe95b8e6",
+      "size_bytes": 21033
+    },
+    {
+      "path": "data/cart/ivsc-load.json",
+      "sha256": "984485c2b6de0e07ebd204e2289039949d0cbc63a1d1b79e66e27cd0d4d159de",
+      "size_bytes": 5046
+    }
+  ],
+  "licence": "MIT",
+  "licence_evidence": {
+    "url": "LICENSE",
+    "text_sha256": "aeb83b57ece8dbf61992ea3bd58952f17e30959787fc6c9f82451f17baa67c26",
+    "accessed": "2026-11-11"
+  },
+  "copyright": ["Copyright (c) 2026 iamverysmartvision contributors"],
+  "notices": [],
+  "redistributable": "yes",
+  "allowed_use": ["local-test", "ci", "repo"],
+  "rights_review": {
+    "status": "author-attested",
+    "by": "project contributors",
+    "date": "2026-11-11"
+  },
+  "derived_from": [],
+  "note": "Text JSON fixtures of the project's own IVSC v1 container (docs/formats/ivsc-v1.md); every byte is authored for this project and no third-party image or container is copied. No binary container (.ivsc, .rom, .bin) is committed: positives are hex text, negatives are patches of a positive base, and maximum-size containers are assembled in test code from repeated words. Any edit of a listed output reruns sh tools/cart/manifest-outputs.sh and refreshes these outputs in the same commit."
+}

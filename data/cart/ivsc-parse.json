@@ -1,0 +1,465 @@
+{
+  "schema_version": 1,
+  "source": "project-authored",
+  "group": "ivsc-parse",
+  "note": "Parse-level IVSC v1 vectors (docs/formats/ivsc-v1.md, plan 03-07). Every byte is authored for this project. Positive hex trailers, build trailers and every whole_sha256 were computed at authoring time with cmake -E sha256sum on scratch files that were never committed. Patch records change a positive base in one stated place; reseal true rewrites the trailer at test time so the defect is reached past the digest check. Code-built cases of the suite: ivsc.B08-len-over-max, ivsc.X02-canonical-roundtrip, ivsc.X03-bad-args.",
+  "fixtures": [
+    {
+      "id": "ivsc.P01-min",
+      "kind": "positive",
+      "note": "The smallest valid container: one segment, one word 03FF at 5000, 66 bytes.",
+      "hex": "89495653430d0a1a 0001 0000 00000000 00000042 0001 0000 5000 0001 0a 00 0000 03ff c11992ef4947434da01aec35a64397065150011f25d776f89fcee5189a4990ef",
+      "whole_sha256": "5d774e95472f05ec629b2673481d0e05cd8a8e7f25db7cda6d94807424957dfd",
+      "expect": {"status": "OK", "segments": [{"addr": "5000", "len_words": 1}]}
+    },
+    {
+      "id": "ivsc.P02-two-segments",
+      "kind": "positive",
+      "note": "Two segments far apart in the cartridge span: three words at 5000, two at D000.",
+      "hex": "89495653430d0a1a 0001 0000 00000000 00000052 0002 0000 5000 0003 0a 00 0000 d000 0002 0a 00 0000 0001 0155 0300 02aa 0010 4f5d67b73899b74bb5a4fdb244a18befad13f3ec660ec6cbaaba6f4bee9b50df",
+      "whole_sha256": "aa287dcdf1a5f57b0a8be2aece819478cff63124743f3b6716224a5115914b78",
+      "expect": {"status": "OK", "segments": [{"addr": "5000", "len_words": 3}, {"addr": "D000", "len_words": 2}]}
+    },
+    {
+      "id": "ivsc.P03-word-patterns",
+      "kind": "positive",
+      "note": "Word patterns 0000, 03FF, 0155, 02AA in one segment at 6000.",
+      "hex": "89495653430d0a1a 0001 0000 00000000 00000048 0001 0000 6000 0004 0a 00 0000 0000 03ff 0155 02aa 86b8ee7c51a7cb1a9bbca06a95d11259cf3bf8debccb9e4275f7abc66553f7ce",
+      "whole_sha256": "6bfc2c3ead19f983202ba60114db065d51f9334c208905d6c0414c3179d047cc",
+      "expect": {"status": "OK", "segments": [{"addr": "6000", "len_words": 4}]}
+    },
+    {
+      "id": "ivsc.P04-adjacent",
+      "kind": "positive",
+      "note": "Adjacent segments: the second starts at the first one end (5000 two words, 5002 one word).",
+      "hex": "89495653430d0a1a 0001 0000 00000000 0000004e 0002 0000 5000 0002 0a 00 0000 5002 0001 0a 00 0000 0123 0234 0345 d2339a45fe0d715e08f56d2c7d614f89e161d65a5bc8aa1eeecdfbb1868083ae",
+      "whole_sha256": "a43f0e7154c89cac4672f4697990ddcc6678fe42141c22d27d3ff31979a9eca2",
+      "expect": {"status": "OK", "segments": [{"addr": "5000", "len_words": 2}, {"addr": "5002", "len_words": 1}]}
+    },
+    {
+      "id": "ivsc.P05-span-full",
+      "kind": "build",
+      "note": "One segment of 49,152 words filling the cartridge span 4000-FFFF of the literal map.",
+      "segments": [
+        {"addr": "4000", "repeat": [{"word": "03FF", "count": 1}, {"word": "0155", "count": 49150}, {"word": "02AA", "count": 1}]}
+      ],
+      "trailer": "3f39c15943ed6801fb672b206794c77e8047b00fa1690149cdda5220de8bb236",
+      "whole_sha256": "1112f24dd2d37bdf6adf2814e9e4c43c586b0fc179e173caba8b0d87e304a29a",
+      "expect": {"status": "OK"}
+    },
+    {
+      "id": "ivsc.P06-partial",
+      "kind": "positive",
+      "note": "Sixteen words at 4100: a segment covering part of the span.",
+      "hex": "89495653430d0a1a 0001 0000 00000000 00000060 0001 0000 4100 0010 0a 00 0000 0000 0041 0082 00c3 0104 0145 0186 01c7 0208 0249 028a 02cb 030c 034d 038e 03cf 605f0a1e8e24b07f0e242c29a386994e2f01db28ff4f5d2a7560735d562b3408",
+      "whole_sha256": "1d66ebb5f3dea25ee3bf1363da0c515d9feb9b4730b683d4da781085d3a50e4a",
+      "expect": {"status": "OK", "segments": [{"addr": "4100", "len_words": 16}]}
+    },
+    {
+      "id": "ivsc.B01-segs-16",
+      "kind": "positive",
+      "note": "Sixteen one-word segments, the segment-count limit, at 4000 + 0800 * i.",
+      "hex": "89495653430d0a1a 0001 0000 00000000 000000d8 0010 0000 4000 0001 0a 00 0000 4800 0001 0a 00 0000 5000 0001 0a 00 0000 5800 0001 0a 00 0000 6000 0001 0a 00 0000 6800 0001 0a 00 0000 7000 0001 0a 00 0000 7800 0001 0a 00 0000 8000 0001 0a 00 0000 8800 0001 0a 00 0000 9000 0001 0a 00 0000 9800 0001 0a 00 0000 a000 0001 0a 00 0000 a800 0001 0a 00 0000 b000 0001 0a 00 0000 b800 0001 0a 00 0000 03f0 03f1 03f2 03f3 03f4 03f5 03f6 03f7 03f8 03f9 03fa 03fb 03fc 03fd 03fe 03ff 6d9364640e2f505fd644fee03a768fd0fa8c182b2ec4fc1fed821adbb52b4843",
+      "whole_sha256": "df9de7ac68157805352fe2fb36215d1e556233e4c295cbf74627298252fb192b",
+      "expect": {"status": "OK", "segments": [{"addr": "4000", "len_words": 1}, {"addr": "4800", "len_words": 1}, {"addr": "5000", "len_words": 1}, {"addr": "5800", "len_words": 1}, {"addr": "6000", "len_words": 1}, {"addr": "6800", "len_words": 1}, {"addr": "7000", "len_words": 1}, {"addr": "7800", "len_words": 1}, {"addr": "8000", "len_words": 1}, {"addr": "8800", "len_words": 1}, {"addr": "9000", "len_words": 1}, {"addr": "9800", "len_words": 1}, {"addr": "A000", "len_words": 1}, {"addr": "A800", "len_words": 1}, {"addr": "B000", "len_words": 1}, {"addr": "B800", "len_words": 1}]}
+    },
+    {
+      "id": "ivsc.B02-segs-17",
+      "kind": "patch",
+      "note": "A seventeenth entry and word added with total_bytes and segment_count updated: only the count rule is broken.",
+      "base": "ivsc.B01-segs-16",
+      "patch": [{"offset": 16, "hex": "000000e2"}, {"offset": 20, "hex": "0011"}, {"offset": 152, "insert": "c000 0001 0a 00 0000"}, {"offset": 192, "insert": "0001"}],
+      "reseal": true,
+      "expect": {"status": "MALFORMED", "reason": "segment-count", "byte_offset": 20}
+    },
+    {
+      "id": "ivsc.B06-addr-wrap",
+      "kind": "patch",
+      "note": "Segment at FFFF of two words would pass the end of the 16-bit address space.",
+      "base": "ivsc.P01-min",
+      "patch": [{"offset": 24, "hex": "ffff"}, {"offset": 26, "hex": "0002"}],
+      "reseal": true,
+      "expect": {"status": "OUT_OF_RANGE", "reason": "addr-wrap", "segment_index": 0, "byte_offset": 24}
+    },
+    {
+      "id": "ivsc.B07-two-segments-64k",
+      "kind": "build",
+      "note": "Two segments of 32,768 words covering all 65,536 addresses (131,144 bytes); the parser accepts it, a profile load refuses it.",
+      "segments": [
+        {"addr": "0000", "repeat": [{"word": "0000", "count": 32768}]},
+        {"addr": "8000", "repeat": [{"word": "03FF", "count": 32768}]}
+      ],
+      "trailer": "1aecd3ffbed69a981b72522f4c2da4d695cd4371ca463839ebe841dd2b9cee69",
+      "whole_sha256": "4ba25816ec5546ee1c23c84739eb8890545417e7bf14bf85993208f48c6cb5b6",
+      "span": "format-edge",
+      "expect": {"status": "OK"}
+    },
+    {
+      "id": "ivsc.B09-total-over-max",
+      "kind": "patch",
+      "note": "total_bytes 131,257 (one above the limit) in a 66-byte buffer.",
+      "base": "ivsc.P01-min",
+      "patch": [{"offset": 16, "hex": "000200b9"}],
+      "reseal": true,
+      "expect": {"status": "OVERSIZED", "reason": "too-large", "byte_offset": 16}
+    },
+    {
+      "id": "ivsc.B10-len-65535",
+      "kind": "build",
+      "note": "A segment of the largest length 65,535 at 0000 plus one word at FFFF, the last address.",
+      "segments": [
+        {"addr": "0000", "repeat": [{"word": "0201", "count": 65535}]},
+        {"addr": "FFFF", "repeat": [{"word": "0102", "count": 1}]}
+      ],
+      "trailer": "d76c5599c8b2778d63745bfcd53640489246a8d972db537afa166ff58fef617b",
+      "whole_sha256": "27874ab4d6b03224b1780fcb7f21cfbfb1f1b7c43e269d551e748ac543d48ba0",
+      "span": "format-edge",
+      "expect": {"status": "OK"}
+    },
+    {
+      "id": "ivsc.B11-word-3ff-vs-400",
+      "kind": "patch",
+      "note": "The base word 03FF (accepted in P03) raised by one to 0400.",
+      "base": "ivsc.P03-word-patterns",
+      "patch": [{"offset": 34, "hex": "0400"}],
+      "reseal": true,
+      "expect": {"status": "MALFORMED", "reason": "word-range", "segment_index": 0, "byte_offset": 34}
+    },
+    {
+      "id": "ivsc.B12-max-bytes",
+      "kind": "build",
+      "note": "Sixteen segments of 4,096 words: exactly the 131,256-byte limit; the last segment ends at the top of the address space.",
+      "segments": [
+        {"addr": "0000", "repeat": [{"word": "0000", "count": 4096}]},
+        {"addr": "1000", "repeat": [{"word": "0041", "count": 4096}]},
+        {"addr": "2000", "repeat": [{"word": "0082", "count": 4096}]},
+        {"addr": "3000", "repeat": [{"word": "00C3", "count": 4096}]},
+        {"addr": "4000", "repeat": [{"word": "0104", "count": 4096}]},
+        {"addr": "5000", "repeat": [{"word": "0145", "count": 4096}]},
+        {"addr": "6000", "repeat": [{"word": "0186", "count": 4096}]},
+        {"addr": "7000", "repeat": [{"word": "01C7", "count": 4096}]},
+        {"addr": "8000", "repeat": [{"word": "0208", "count": 4096}]},
+        {"addr": "9000", "repeat": [{"word": "0249", "count": 4096}]},
+        {"addr": "A000", "repeat": [{"word": "028A", "count": 4096}]},
+        {"addr": "B000", "repeat": [{"word": "02CB", "count": 4096}]},
+        {"addr": "C000", "repeat": [{"word": "030C", "count": 4096}]},
+        {"addr": "D000", "repeat": [{"word": "034D", "count": 4096}]},
+        {"addr": "E000", "repeat": [{"word": "038E", "count": 4096}]},
+        {"addr": "F000", "repeat": [{"word": "03CF", "count": 4096}]}
+      ],
+      "trailer": "30044418d2feb89ede0e99a47e878a6ed3ceefb9d9e9973b9772918048aea64d",
+      "whole_sha256": "0e426006ad055c459e1a3d055aa5a5edf7c27f8d5aee8b851c2db811aea3d96f",
+      "span": "format-edge",
+      "expect": {"status": "OK"}
+    },
+    {
+      "id": "ivsc.N01-empty",
+      "kind": "patch",
+      "note": "Zero bytes.",
+      "base": "ivsc.P01-min",
+      "patch": [],
+      "truncate": 0,
+      "reseal": false,
+      "expect": {"status": "MALFORMED", "reason": "truncated", "byte_offset": 0}
+    },
+    {
+      "id": "ivsc.N02-len-65",
+      "kind": "patch",
+      "note": "One byte below the 66-byte minimum.",
+      "base": "ivsc.P01-min",
+      "patch": [],
+      "truncate": 65,
+      "reseal": false,
+      "expect": {"status": "MALFORMED", "reason": "truncated", "byte_offset": 65}
+    },
+    {
+      "id": "ivsc.N03-magic-bit",
+      "kind": "patch",
+      "note": "One bit cleared in the magic letter I.",
+      "base": "ivsc.P01-min",
+      "patch": [{"offset": 1, "hex": "48"}],
+      "reseal": true,
+      "expect": {"status": "MALFORMED", "reason": "magic", "byte_offset": 1}
+    },
+    {
+      "id": "ivsc.N04-magic-lf-only",
+      "kind": "patch",
+      "note": "The CR of the magic removed, as a text-mode transfer would.",
+      "base": "ivsc.P02-two-segments",
+      "patch": [{"offset": 5, "delete": 1}],
+      "reseal": false,
+      "expect": {"status": "MALFORMED", "reason": "magic", "byte_offset": 5}
+    },
+    {
+      "id": "ivsc.N05-version-0",
+      "kind": "patch",
+      "note": "Version 0.",
+      "base": "ivsc.P01-min",
+      "patch": [{"offset": 8, "hex": "0000"}],
+      "reseal": true,
+      "expect": {"status": "MALFORMED", "reason": "version", "byte_offset": 8}
+    },
+    {
+      "id": "ivsc.N06-version-2",
+      "kind": "patch",
+      "note": "Version 2, not defined by v1.",
+      "base": "ivsc.P01-min",
+      "patch": [{"offset": 8, "hex": "0002"}],
+      "reseal": true,
+      "expect": {"status": "MALFORMED", "reason": "version", "byte_offset": 8}
+    },
+    {
+      "id": "ivsc.N07-flags",
+      "kind": "patch",
+      "note": "A flags bit set.",
+      "base": "ivsc.P01-min",
+      "patch": [{"offset": 10, "hex": "0001"}],
+      "reseal": true,
+      "expect": {"status": "MALFORMED", "reason": "flags", "byte_offset": 10}
+    },
+    {
+      "id": "ivsc.N08-prefix-reserved",
+      "kind": "patch",
+      "note": "The prefix reserved field nonzero.",
+      "base": "ivsc.P01-min",
+      "patch": [{"offset": 22, "hex": "0001"}],
+      "reseal": true,
+      "expect": {"status": "MALFORMED", "reason": "reserved", "byte_offset": 22}
+    },
+    {
+      "id": "ivsc.N09-trailing-byte",
+      "kind": "patch",
+      "note": "One byte appended after the trailer.",
+      "base": "ivsc.P01-min",
+      "patch": [{"offset": 66, "insert": "00"}],
+      "reseal": false,
+      "expect": {"status": "MALFORMED", "reason": "trailing", "byte_offset": 66}
+    },
+    {
+      "id": "ivsc.N10-total-plus-one",
+      "kind": "patch",
+      "note": "total_bytes one above the supplied length.",
+      "base": "ivsc.P01-min",
+      "patch": [{"offset": 16, "hex": "00000043"}],
+      "reseal": true,
+      "expect": {"status": "MALFORMED", "reason": "truncated", "byte_offset": 66}
+    },
+    {
+      "id": "ivsc.N11-table-size-mismatch",
+      "kind": "patch",
+      "note": "The second segment claims three words: the table implies 84 bytes, total_bytes and the length say 82.",
+      "base": "ivsc.P02-two-segments",
+      "patch": [{"offset": 34, "hex": "0003"}],
+      "reseal": true,
+      "expect": {"status": "MALFORMED", "reason": "size-mismatch", "byte_offset": 16}
+    },
+    {
+      "id": "ivsc.N12-count-0",
+      "kind": "patch",
+      "note": "segment_count 0.",
+      "base": "ivsc.P01-min",
+      "patch": [{"offset": 20, "hex": "0000"}],
+      "reseal": true,
+      "expect": {"status": "MALFORMED", "reason": "segment-count", "byte_offset": 20}
+    },
+    {
+      "id": "ivsc.N13-segment-length-0",
+      "kind": "patch",
+      "note": "A segment of zero words.",
+      "base": "ivsc.P01-min",
+      "patch": [{"offset": 26, "hex": "0000"}],
+      "reseal": true,
+      "expect": {"status": "MALFORMED", "reason": "segment-length", "segment_index": 0, "byte_offset": 26}
+    },
+    {
+      "id": "ivsc.N14-width-8",
+      "kind": "patch",
+      "note": "Width 8.",
+      "base": "ivsc.P01-min",
+      "patch": [{"offset": 28, "hex": "08"}],
+      "reseal": true,
+      "expect": {"status": "MALFORMED", "reason": "segment-width", "segment_index": 0, "byte_offset": 28}
+    },
+    {
+      "id": "ivsc.N15-width-16",
+      "kind": "patch",
+      "note": "Width 16.",
+      "base": "ivsc.P01-min",
+      "patch": [{"offset": 28, "hex": "10"}],
+      "reseal": true,
+      "expect": {"status": "MALFORMED", "reason": "segment-width", "segment_index": 0, "byte_offset": 28}
+    },
+    {
+      "id": "ivsc.N16-width-0",
+      "kind": "patch",
+      "note": "Width 0.",
+      "base": "ivsc.P01-min",
+      "patch": [{"offset": 28, "hex": "00"}],
+      "reseal": true,
+      "expect": {"status": "MALFORMED", "reason": "segment-width", "segment_index": 0, "byte_offset": 28}
+    },
+    {
+      "id": "ivsc.N17-attr-1",
+      "kind": "patch",
+      "note": "attr 1.",
+      "base": "ivsc.P01-min",
+      "patch": [{"offset": 29, "hex": "01"}],
+      "reseal": true,
+      "expect": {"status": "MALFORMED", "reason": "segment-attr", "segment_index": 0, "byte_offset": 29}
+    },
+    {
+      "id": "ivsc.N18-attr-80",
+      "kind": "patch",
+      "note": "attr 80 (top bit).",
+      "base": "ivsc.P01-min",
+      "patch": [{"offset": 29, "hex": "80"}],
+      "reseal": true,
+      "expect": {"status": "MALFORMED", "reason": "segment-attr", "segment_index": 0, "byte_offset": 29}
+    },
+    {
+      "id": "ivsc.N19-segment-reserved",
+      "kind": "patch",
+      "note": "The entry reserved field nonzero.",
+      "base": "ivsc.P01-min",
+      "patch": [{"offset": 30, "hex": "0001"}],
+      "reseal": true,
+      "expect": {"status": "MALFORMED", "reason": "segment-reserved", "segment_index": 0, "byte_offset": 30}
+    },
+    {
+      "id": "ivsc.N20-overlap-one-word",
+      "kind": "patch",
+      "note": "The second segment moved to 5002: it shares one word with the first (5000-5002).",
+      "base": "ivsc.P02-two-segments",
+      "patch": [{"offset": 32, "hex": "5002"}],
+      "reseal": true,
+      "expect": {"status": "OVERLAP", "reason": "overlap", "segment_index": 1, "byte_offset": 32}
+    },
+    {
+      "id": "ivsc.N21-duplicate-segment",
+      "kind": "patch",
+      "note": "The second entry made identical to the first (4000, one word).",
+      "base": "ivsc.B01-segs-16",
+      "patch": [{"offset": 32, "hex": "4000"}],
+      "reseal": true,
+      "expect": {"status": "OVERLAP", "reason": "overlap", "segment_index": 1, "byte_offset": 32}
+    },
+    {
+      "id": "ivsc.N22-inner-segment",
+      "kind": "patch",
+      "note": "The second segment moved to 5001: it lies inside the first.",
+      "base": "ivsc.P02-two-segments",
+      "patch": [{"offset": 32, "hex": "5001"}],
+      "reseal": true,
+      "expect": {"status": "OVERLAP", "reason": "overlap", "segment_index": 1, "byte_offset": 32}
+    },
+    {
+      "id": "ivsc.N23-descending",
+      "kind": "patch",
+      "note": "The second segment moved to 4000, below the first and disjoint from it.",
+      "base": "ivsc.P02-two-segments",
+      "patch": [{"offset": 32, "hex": "4000"}],
+      "reseal": true,
+      "expect": {"status": "MALFORMED", "reason": "order", "segment_index": 1, "byte_offset": 32}
+    },
+    {
+      "id": "ivsc.N24-word-400-first",
+      "kind": "patch",
+      "note": "The first word 0400.",
+      "base": "ivsc.P02-two-segments",
+      "patch": [{"offset": 40, "hex": "0400"}],
+      "reseal": true,
+      "expect": {"status": "MALFORMED", "reason": "word-range", "segment_index": 0, "byte_offset": 40}
+    },
+    {
+      "id": "ivsc.N25-word-ffff-last",
+      "kind": "patch",
+      "note": "The last word of the last segment FFFF: the scan reaches the end.",
+      "base": "ivsc.P02-two-segments",
+      "patch": [{"offset": 48, "hex": "ffff"}],
+      "reseal": true,
+      "expect": {"status": "MALFORMED", "reason": "word-range", "segment_index": 1, "byte_offset": 48}
+    },
+    {
+      "id": "ivsc.N26-word-8000",
+      "kind": "patch",
+      "note": "The third word 8000 (top bit only).",
+      "base": "ivsc.P02-two-segments",
+      "patch": [{"offset": 44, "hex": "8000"}],
+      "reseal": true,
+      "expect": {"status": "MALFORMED", "reason": "word-range", "segment_index": 0, "byte_offset": 44}
+    },
+    {
+      "id": "ivsc.N27-data-bit-flip",
+      "kind": "patch",
+      "note": "One data bit flipped (0155 to 0154) under the old trailer.",
+      "base": "ivsc.P02-two-segments",
+      "patch": [{"offset": 43, "hex": "54"}],
+      "reseal": false,
+      "expect": {"status": "DIGEST_MISMATCH", "reason": "digest", "byte_offset": 50}
+    },
+    {
+      "id": "ivsc.N28-trailer-bit-flip",
+      "kind": "patch",
+      "note": "One trailer bit flipped (4f to 4e).",
+      "base": "ivsc.P02-two-segments",
+      "patch": [{"offset": 50, "hex": "4e"}],
+      "reseal": false,
+      "expect": {"status": "DIGEST_MISMATCH", "reason": "digest", "byte_offset": 50}
+    },
+    {
+      "id": "ivsc.N29-trailer-zero",
+      "kind": "patch",
+      "note": "An all-zero trailer.",
+      "base": "ivsc.P02-two-segments",
+      "patch": [{"offset": 50, "hex": "0000000000000000000000000000000000000000000000000000000000000000"}],
+      "reseal": false,
+      "expect": {"status": "DIGEST_MISMATCH", "reason": "digest", "byte_offset": 50}
+    },
+    {
+      "id": "ivsc.N30-trailer-31-bytes",
+      "kind": "patch",
+      "note": "The last trailer byte removed and total_bytes lowered to match: the table implies one byte more.",
+      "base": "ivsc.P02-two-segments",
+      "patch": [{"offset": 81, "delete": 1}, {"offset": 16, "hex": "00000051"}],
+      "reseal": false,
+      "expect": {"status": "MALFORMED", "reason": "size-mismatch", "byte_offset": 16}
+    },
+    {
+      "id": "ivsc.N31-digest-and-word",
+      "kind": "patch",
+      "note": "Word 0400 under the old trailer: the digest check comes before the word range.",
+      "base": "ivsc.P02-two-segments",
+      "patch": [{"offset": 40, "hex": "0400"}],
+      "reseal": false,
+      "expect": {"status": "DIGEST_MISMATCH", "reason": "digest", "byte_offset": 50}
+    },
+    {
+      "id": "ivsc.N32-magic-and-short",
+      "kind": "patch",
+      "note": "Bad magic and one byte short of total_bytes: the magic check comes first.",
+      "base": "ivsc.P02-two-segments",
+      "patch": [{"offset": 0, "hex": "88"}],
+      "truncate": 81,
+      "reseal": false,
+      "expect": {"status": "MALFORMED", "reason": "magic", "byte_offset": 0}
+    },
+    {
+      "id": "ivsc.N33-version-and-flags",
+      "kind": "patch",
+      "note": "Version 2 and a flags bit: the version check comes first.",
+      "base": "ivsc.P01-min",
+      "patch": [{"offset": 8, "hex": "0002"}, {"offset": 10, "hex": "0001"}],
+      "reseal": true,
+      "expect": {"status": "MALFORMED", "reason": "version", "byte_offset": 8}
+    },
+    {
+      "id": "ivsc.N34-table-short",
+      "kind": "patch",
+      "note": "The second segment claims one word: the table implies 80 bytes, total_bytes and the length say 82, so two bytes lie between the data and the trailer.",
+      "base": "ivsc.P02-two-segments",
+      "patch": [{"offset": 34, "hex": "0001"}],
+      "reseal": true,
+      "expect": {"status": "MALFORMED", "reason": "size-mismatch", "byte_offset": 16}
+    }
+  ]
+}

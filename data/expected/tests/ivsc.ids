@@ -1,0 +1,85 @@
+# Suite ivsc (plan 03-07): IVSC v1 layer-1 parser (docs/formats/ivsc-v1.md). One case per
+# fixture record of data/cart/*.json (positive, build and patch kinds), plus the code-built
+# cases ivsc.B08-len-over-max, ivsc.X02-canonical-roundtrip and ivsc.X03-bad-args. Classes:
+# P positive, B boundary, N malformed or refused, X cross-cutting, L load.
+# Load level (plan 03-11, data/cart/ivsc-load.json): records B03-B05 and L01-L06 are loaded
+# through ivs_machine_load on an instance of the file's profile, with span-relative addresses
+# resolved from the literal map; code-built cases ivsc.L07..L10, ivsc.B07-load-out-of-span and
+# ivsc.X01-span-matches-map.
+# Family fuzz (plan 03-08, tests/ivsc/ivsc_fuzz.c): eight fixed seeds of mutated positives and
+# the non-vacuity case ivsc.fuzz.reasons-covered.
+ivsc.B01-segs-16
+ivsc.B02-segs-17
+ivsc.B06-addr-wrap
+ivsc.B07-two-segments-64k
+ivsc.B08-len-over-max
+ivsc.B09-total-over-max
+ivsc.B10-len-65535
+ivsc.B11-word-3ff-vs-400
+ivsc.B12-max-bytes
+ivsc.N01-empty
+ivsc.N02-len-65
+ivsc.N03-magic-bit
+ivsc.N04-magic-lf-only
+ivsc.N05-version-0
+ivsc.N06-version-2
+ivsc.N07-flags
+ivsc.N08-prefix-reserved
+ivsc.N09-trailing-byte
+ivsc.N10-total-plus-one
+ivsc.N11-table-size-mismatch
+ivsc.N12-count-0
+ivsc.N13-segment-length-0
+ivsc.N14-width-8
+ivsc.N15-width-16
+ivsc.N16-width-0
+ivsc.N17-attr-1
+ivsc.N18-attr-80
+ivsc.N19-segment-reserved
+ivsc.N20-overlap-one-word
+ivsc.N21-duplicate-segment
+ivsc.N22-inner-segment
+ivsc.N23-descending
+ivsc.N24-word-400-first
+ivsc.N25-word-ffff-last
+ivsc.N26-word-8000
+ivsc.N27-data-bit-flip
+ivsc.N28-trailer-bit-flip
+ivsc.N29-trailer-zero
+ivsc.N30-trailer-31-bytes
+ivsc.N31-digest-and-word
+ivsc.N32-magic-and-short
+ivsc.N33-version-and-flags
+ivsc.N34-table-short
+ivsc.P01-min
+ivsc.P02-two-segments
+ivsc.P03-word-patterns
+ivsc.P04-adjacent
+ivsc.P05-span-full
+ivsc.P06-partial
+ivsc.X02-canonical-roundtrip
+ivsc.X03-bad-args
+ivsc.fuzz.seed-01
+ivsc.fuzz.seed-02
+ivsc.fuzz.seed-03
+ivsc.fuzz.seed-04
+ivsc.fuzz.seed-05
+ivsc.fuzz.seed-06
+ivsc.fuzz.seed-07
+ivsc.fuzz.seed-08
+ivsc.fuzz.reasons-covered
+ivsc.B03-span-last-word
+ivsc.B04-span-plus-one
+ivsc.B05-span-minus-one
+ivsc.B07-load-out-of-span
+ivsc.L01-below-span
+ivsc.L02-over-exec
+ivsc.L03-straddle-span-start
+ivsc.L04-over-sysram
+ivsc.L05-feature-bit-0
+ivsc.L06-feature-bit-31
+ivsc.L07-second-load-duplicate
+ivsc.L08-null-args
+ivsc.L09-unload-restores
+ivsc.L10-two-instances
+ivsc.X01-span-matches-map
