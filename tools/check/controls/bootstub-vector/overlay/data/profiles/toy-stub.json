@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "id": "toy-stub",
+  "note": "Toy profile of the bootstub-* controls (plan 04-15): only the two vector fields.",
+  "fields": {
+    "reset.r7": { "value": "$1000" },
+    "interrupt.iab_value": { "value": "$1004" }
+  }
+}

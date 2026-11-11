@@ -1,0 +1,8 @@
+# id: toy
+# kind: cart
+# window: 5000-5003
+#
+# Known-good control tree listing (plan 04-15): rows of the toy family table.
+5000 03FF 11 1111 1111  ONES  toy word
+5001 0000 0000 000 000  ZERO  toy word
+5003 0155 01 0101 0101  ALL   toy word

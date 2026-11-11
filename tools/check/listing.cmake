@@ -296,8 +296,8 @@ if(NOT DUMP_MODE)
 endif()
 
 # ---- One listing ---------------------------------------------------------------------------
-# Checks listing lid of kind lkind at lpath; sets <prefix>_ADDRS and <prefix>_WORDS (decimal)
-# in the caller and returns the word count in out_n.
+# Checks listing lid of kind lkind at lpath; returns its word count in out_n and its
+# `ADDR WORD` dump text (as parsed here, upper-case hex) in out_dump.
 function(check_listing out_n out_dump lid lkind lpath)
   set(${out_n} 0 PARENT_SCOPE)
   set(${out_dump} "" PARENT_SCOPE)
@@ -320,6 +320,7 @@ function(check_listing out_n out_dump lid lkind lpath)
   set(pending 0)
   set(pending_row "")
   set(addrs "")
+  set(atexts "")
   set(words "")
   set(dump "")
   set(win_lo -1)
@@ -400,6 +401,7 @@ function(check_listing out_n out_dump lid lkind lpath)
       math(EXPR nonzero "${nonzero} + 1")
     endif()
     list(APPEND addrs "${addr}")
+    list(APPEND atexts "${a_up}")
     list(APPEND words "${hv}")
     string(APPEND dump "${a_up} ${h_up}\n")
     # Row label and operand count.
@@ -460,9 +462,8 @@ function(check_listing out_n out_dump lid lkind lpath)
 
   # Anti-HLE guards (D-29).
   if(lkind STREQUAL "boot-stub")
-    foreach(a IN LISTS addrs)
+    foreach(a ax IN ZIP_LISTS addrs atexts)
       if(a LESS 4096 OR a GREATER 4127)
-        math(EXPR ax "${a}" OUTPUT_FORMAT HEXADECIMAL)
         lfail(bootstub-size "${lpath} address ${ax} is outside 1000-101F")
       endif()
     endforeach()
