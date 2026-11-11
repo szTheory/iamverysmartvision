@@ -115,8 +115,45 @@ IVS_API ivs_status ivs_machine_peek(const ivs_machine *m, uint16_t addr, uint32_
  * NULL buffer included) suffices, no byte is written and the three report counts below are 0: no
  * frame is fabricated. */
 
-/* In: one run. Its size grows while Phase 4 appends fields (output buffers here, input events
- * next); the v1 size is pinned for release by plan 04-13 (A-02 from then on). struct_size must be
+/* Input (D-12..D-15, plan 04-11). Core input is LOGICAL switch state: one uint32_t per controller,
+ * indexed by PSG port (0 = R14/$01FE, 1 = R15/$01FF), never by player or side. A word holds the
+ * switches that are closed; bit 31 (IVS_CTRL_RESERVED_MASK) is reserved and must be 0. The
+ * electrical active-low port byte is a derived observation (Phase 5); there is no raw-byte
+ * override and no electrical input path. Nothing in the machine reads the words in Phase 4.
+ * Words 2 and 3 are reserved for expansion ports (plan 04-12 adds their profile rule).
+ *
+ * Input arrives as a caller-owned array of level samples in the run request, nondecreasing by
+ * at_tick (master ticks, the unit of target_ticks). The core keeps no pointer, no queue and has no
+ * set-input call. An event takes effect at the first CPU-unit boundary whose start tick is at or
+ * after its at_tick: a run tests its exit conditions first and, only when a unit will begin,
+ * applies every not yet applied event with at_tick <= the unit's start, in array order (equal
+ * ticks keep it; the last one applied is the state in force). Nothing is applied when a call
+ * ends. The report returns input_consumed (events applied by this call; the host resubmits the
+ * suffix from there), input_floor_tick (start of the last begun unit + 1, 0 before any unit) and
+ * controller_now (the words in force). The floor is instance state: an event below it is refused,
+ * so an applied event can never be followed by an earlier one. Create and reset set the words to
+ * 0, the count and floor to 0 and the input log (digest domain IVS_DIGEST_INPUT) to its start.
+ * The log is a chain over the applied events with their absolute at_tick:
+ *   h0 = SHA-256("IVS-INPUT-LOG-V1"), h(n+1) = SHA-256(h(n) || be64(at_tick) || be32(controller[0..3]))
+ * The array must not change during the call (undefined behaviour otherwise): the whole array is
+ * validated before any write, then each event is read once for application. */
+#define IVS_INPUT_CONTROLLER_WORDS 4u   /* words per event and in controller_now */
+#define IVS_CTRL_RESERVED_MASK 0x80000000u /* reserved control bit: nonzero is UNSUPPORTED */
+#define IVS_INPUT_EVENTS_MAX 65536u     /* largest event_count */
+#define IVS_INPUT_INDEX_NONE 0xFFFFFFFFu /* input_failing_index of a report that names no event */
+
+/* One input event: 32 bytes, a fixed v1 record (no struct_size; growth is a new request field).
+ * controller[i] is the full logical state of the controller on PSG port i from at_tick on
+ * (IVS_INPUT_CONTROLLER_WORDS words). */
+typedef struct ivs_input_event {
+  uint64_t at_tick;       /* master ticks, below 2^63 */
+  uint32_t flags;         /* must be 0 (UNSUPPORTED otherwise) */
+  uint32_t reserved;      /* must be 0 (UNSUPPORTED otherwise) */
+  uint32_t controller[4]; /* index = PSG port (0 = R14/$01FE, 1 = R15/$01FF), not player */
+} ivs_input_event;
+
+/* In: one run. Its size grows while Phase 4 appends fields (output buffers, input events); the
+ * v1 size is pinned for release by plan 04-13 (A-02 from then on). struct_size must be
  * at least sizeof(ivs_run_request); a larger struct_size (up to IVS_STRUCT_SIZE_MAX) is accepted
  * only when every byte past it is zero. */
 typedef struct ivs_run_request {
@@ -127,16 +164,22 @@ typedef struct ivs_run_request {
   uint64_t video_capacity; /* bytes at video */
   uint8_t *audio;          /* caller-owned audio bytes, or NULL with audio_capacity 0 */
   uint64_t audio_capacity; /* bytes at audio */
+  const ivs_input_event *events; /* caller-owned input schedule, or NULL with event_count 0 */
+  uint32_t event_count;          /* events at events, at most IVS_INPUT_EVENTS_MAX */
+  uint32_t reserved_in;          /* must be 0 (UNSUPPORTED otherwise) */
 } ivs_run_request;
 
-/* Out: what one run did (80 bytes; it grows with the request until plan 04-13 pins it). On IVS_OK
+/* Out: what one run did (112 bytes; it grows with the request until plan 04-13 pins it). On IVS_OK
  * every field is written: the stop reason,
  * refusal_reason IVS_REASON_NONE, the CPU run state and fault reason at exit (IVS_CPU_STATE_*,
  * IVS_CPU_FAULT_*), machine time at exit, overshoot_ticks = max(now_ticks - target_ticks, 0)
  * (derived, never state), elapsed_ticks = now_ticks minus machine time at entry and the units
- * executed by this call, and the output counts (frames completed, bytes written to each buffer;
- * all 0 in Phase 4). On a refusal only struct_size and refusal_reason (IVS_REASON_*) are
- * written, and nothing at all when the report itself is the cause (NULL, size, overlap). */
+ * executed by this call, the output counts (frames completed, bytes written to each buffer;
+ * all 0 in Phase 4), and the input fields (input_consumed, input_failing_index
+ * IVS_INPUT_INDEX_NONE, input_floor_tick, controller_now; above). On a refusal only struct_size
+ * and refusal_reason (IVS_REASON_*) are written, plus input_failing_index for a refusal of one
+ * event (the IVS_REASON_INPUT_* reasons of the event stages below), and nothing at all when the
+ * report itself is the cause (NULL, size, overlap). */
 typedef struct ivs_run_report {
   uint32_t struct_size;
   uint32_t stop_reason;      /* IVS_STOP_* */
@@ -151,6 +194,10 @@ typedef struct ivs_run_report {
   uint64_t video_frames_completed; /* 0 in Phase 4 */
   uint64_t video_bytes_written;    /* 0 in Phase 4 */
   uint64_t audio_bytes_written;    /* 0 in Phase 4 */
+  uint32_t input_consumed;         /* events of the request applied by this call */
+  uint32_t input_failing_index;    /* the refused event, else IVS_INPUT_INDEX_NONE */
+  uint64_t input_floor_tick;       /* start of the last begun unit + 1 (0 before any unit) */
+  uint32_t controller_now[4];      /* the controller words in force at exit */
 } ivs_run_report;
 
 /* Runs m to req->target_ticks (above). Refusal order (D-05), first failing class wins, every

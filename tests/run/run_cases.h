@@ -40,6 +40,12 @@ extern const size_t ivs_run_slice_count;
 extern const ivs_test_case ivs_run_buffers_cases[];
 extern const size_t ivs_run_buffers_count;
 
+/* Family input (plan 04-11, D-12..D-16, A-04, A-08): the input schedule of ivs_machine_run, its
+ * timing at unit boundaries, its validation and the INPUT log against an independent literal
+ * chain oracle (run_input.c). */
+extern const ivs_test_case ivs_run_input_cases[];
+extern const size_t ivs_run_input_count;
+
 /* ---- the refusal and side-effect oracle (SP4), shared by the run families ----
  * A snapshot holds a heap copy of the whole instance storage, the composite and the seven domain
  * digests (1..4, 16..18) and info's time_ticks; a destroyed instance has no digests or info. */

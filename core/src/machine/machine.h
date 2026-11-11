@@ -48,9 +48,10 @@ typedef struct ivs_machine_slot {
 
 /* Observation rows (plan 04-05, D-10, A-03): a chain[32] and a u64 record count for VIDEO
  * (digest domain 16) and AUDIO (17); INPUT (18) holds the controller words in force, the applied
- * event count, the input floor tick and the input chain. Every row is zero at create and after a
- * reset (the INPUT chain's start value arrives with plan 04-11). Domain version 1; not part of the
- * composite, which stays version 1 over domains 1..4. */
+ * event count, the input floor tick and the input chain (plan 04-11, D-15). Every row is zero at
+ * create and after a reset except the INPUT chain, which then holds its start value h0
+ * (ivs_input_init). Domain version 1; not part of the composite, which stays version 1 over
+ * domains 1..4. */
 typedef struct ivs_machine_obs_av {
   uint8_t chain[32];
   uint64_t count;
@@ -192,6 +193,21 @@ void ivs_machine_profile_env(const ivs_profile_desc *p, ivs_run_env *env);
  * public: it is declared here and nowhere under core/include. */
 ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *req, ivs_run_report *rep,
                                         const ivs_run_env *env);
+
+/* ---- input (D-12..D-15, plan 04-11, machine_input.c) ----
+ * The INPUT row (obs.input): the controller words in force, the applied event count, the input
+ * floor (start of the last begun unit + 1, set by the step seam when a unit begins) and the chain
+ * h0 = SHA-256("IVS-INPUT-LOG-V1"), h(n+1) = SHA-256(h(n) || be64(at_tick) || be32(words[0..3])). */
+
+/* Sets in to its create and reset state: words, count and floor 0, chain h0. */
+void ivs_input_init(ivs_machine_obs_input *in);
+
+/* Applies, in array order, every event ev[next..count) whose at_tick is at or below start (the
+ * start tick of the unit about to begin): words in force, count + 1, chain. Returns the index of
+ * the first event not applied. entry is machine time at the call's entry (used only by a named
+ * fault). Cannot refuse: the run validated the whole array first. */
+uint32_t ivs_input_apply_due(struct ivs_machine *im, const ivs_input_event *ev, uint32_t count, uint32_t next,
+                             uint64_t start, uint64_t entry);
 
 /* The instance behind a handle, or NULL for NULL, a wrong magic, or a stored profile index that
  * is outside the registry or differs from the memory system's (review WR-03): every call that

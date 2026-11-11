@@ -16,6 +16,7 @@ set(IVS_CORE_SOURCES
   src/machine/machine.c
   src/machine/machine_bound.c
   src/machine/machine_digest.c
+  src/machine/machine_input.c
   src/machine/machine_inspect.c
   src/machine/machine_load.c
   src/machine/machine_run.c

@@ -32,7 +32,11 @@
  * request (ivs_bound_report_ok), whatever stage refused, and never a byte into either buffer.
  *
  * Commit: while machine time is below the target, step one unit through the internal seam
- * ivs_machine_step_unit_internal (machine_run.c; the seam stays internal). A FAULTED CPU is never
+ * ivs_machine_step_unit_internal (machine_run.c; the seam stays internal). The exit tests come
+ * first; only when a unit will begin are the due input events applied (every not yet applied
+ * event with at_tick <= the unit's start, in array order; machine_input.c), and the seam then
+ * sets the input floor to that start + 1 (A-04, D-14). Nothing is applied when the call ends, so
+ * an event with at_tick inside the overshoot window waits for the next call. A FAULTED CPU is never
  * stepped; with IVS_RUN_F_STOP_ON_HALT a HALTED CPU is not stepped; a unit the seam refuses, or a
  * unit that does not advance machine time, ends the loop (INTERNAL unless the CPU is FAULTED), so
  * the loop always terminates. The stop reason is then a pure function of the exit state: INTERNAL,
@@ -53,7 +57,7 @@
  * model (Pitfall 13); its size is bounded by the struct cap. The report is pointer-free. */
 _Static_assert(offsetof(ivs_run_request, video) == 16u, "ivs_run_request: the buffers follow the 16-byte prefix");
 _Static_assert(sizeof(ivs_run_request) <= IVS_STRUCT_SIZE_MAX, "ivs_run_request within the struct cap");
-_Static_assert(sizeof(ivs_run_report) == 80u, "ivs_run_report is 80 bytes");
+_Static_assert(sizeof(ivs_run_report) == 112u, "ivs_run_report is 112 bytes");
 _Static_assert(offsetof(ivs_run_report, now_ticks) % 8u == 0u, "64-bit report members are 8-aligned");
 
 #ifdef IVS_FAULT_RUN_BUDGET_CARRY
@@ -70,6 +74,8 @@ static uint64_t ivs_bound_carry_ticks;
 /* What the commit loop needs from a validated request. */
 typedef struct ivs_bound_plan {
   uint64_t target;
+  const ivs_input_event *events;
+  uint32_t event_count;
   uint32_t flags;
 } ivs_bound_plan;
 
@@ -248,6 +254,8 @@ static ivs_status ivs_bound_validate(const ivs_machine *m, const ivs_run_request
   }
 #endif
   plan->target = req->target_ticks;
+  plan->events = req->events;
+  plan->event_count = req->event_count;
   plan->flags = req->flags;
   return IVS_OK;
 }
@@ -297,6 +305,7 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
   uint32_t internal = 0u;
   uint64_t entry;
   uint64_t units = 0u;
+  uint32_t consumed = 0u;
   memset(&plan, 0, sizeof plan);
   st = ivs_bound_validate(m, req, rep, env, &plan, &reason);
   if (st != IVS_OK) {
@@ -326,6 +335,9 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
     if ((plan.flags & IVS_RUN_F_STOP_ON_HALT) != 0u && im->cpu.run_state == IVS_CP1610_RS_HALTED) {
       break;
     }
+    /* A unit will begin at before: apply every due event first (A-04, D-14); the step seam then
+     * sets the input floor to before + 1. */
+    consumed = ivs_input_apply_due(im, plan.events, plan.event_count, consumed, before, entry);
     memset(&unit, 0, sizeof unit);
     if (ivs_machine_step_unit_internal(m, &unit) != IVS_OK) {
       internal = 1u; /* the seam refused: nothing changed, the state is the last whole boundary */
@@ -364,6 +376,10 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
   r.elapsed_ticks = im->time_ticks - entry;
   r.units_executed = units;
   /* Output counts (D-03): Phase 4 layouts produce no bytes, so they stay 0 (memset above). */
+  r.input_consumed = consumed;
+  r.input_failing_index = IVS_INPUT_INDEX_NONE;
+  r.input_floor_tick = im->obs.input.floor_tick;
+  memcpy(r.controller_now, im->obs.input.words, sizeof r.controller_now);
 #ifdef IVS_FAULT_RUN_BUDGET_CARRY
   if (units > 0u) {
     ivs_bound_carry_ticks = r.overshoot_ticks;

@@ -12,7 +12,8 @@
  *   row of domains 1..4 and stays the same for a row of 16..18 (D-10, A-03); flipping a declared
  *   padding byte changes nothing.
  * - Observation domains (plan 04-05): a fresh and a reset instance agree on VIDEO, AUDIO and
- *   INPUT; a byte of a 16..18 row moves only its own domain; reset clears every observation byte
+ *   INPUT; a byte of a 16..18 row moves only its own domain; reset returns every observation byte
+ *   to its create value, zero except the input chain's h0 (plan 04-11)
  *   (machine.reset.clears-observation lives here with the other observation cases).
  * - Refusals: bad domain and NULL out (BAD_ARG), NULL or destroyed handle (BAD_HANDLE), with no
  *   write to the instance or out.
@@ -696,27 +697,36 @@ static int md_composite_excludes(void)
   return IVS_TEST_PASS;
 }
 
-/* A power-on reset of a stepped instance whose observation rows are all non-zero leaves every
- * observation byte zero, and the VIDEO, AUDIO and INPUT digests equal a fresh instance's. */
+/* A power-on reset of a stepped instance whose observation rows are all non-zero leaves the
+ * observation rows byte-identical to a fresh instance's: every byte zero except the input log's
+ * chain, which holds its start value h0 (plan 04-11, D-15; its literal is pinned in
+ * tests/run/run_input.c), and the VIDEO, AUDIO and INPUT digests equal a fresh instance's. */
 static int md_reset_clears_obs(void)
 {
   ivs_ms_inst x;
   ivs_machine_obs zero;
+  ivs_machine_obs h0_only;
   uint8_t df[3][32];
   uint8_t dr[3][32];
   int ok;
   struct ivs_machine *f = md_fresh();
   IVS_CHECK(f != NULL);
   ok = md_obs_digests(f, df);
+  memcpy(&zero, &f->obs, sizeof zero);
   free(f);
   IVS_CHECK(ok);
+  /* The fresh rows: zero everywhere except a non-zero input chain. */
+  memset(&h0_only, 0, sizeof h0_only);
+  memcpy(h0_only.input.chain, zero.input.chain, sizeof h0_only.input.chain);
+  IVS_CHECK(memcmp(&zero, &h0_only, sizeof zero) == 0);
+  memset(&h0_only, 0, sizeof h0_only);
+  IVS_CHECK(memcmp(zero.input.chain, h0_only.input.chain, sizeof zero.input.chain) != 0);
   IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, 0x5Au));
   ok = ivs_ms_step(x.m, 10u, NULL);
   if (ok) {
     memset(&x.m->obs, 0xA5, sizeof x.m->obs);
     ok = ivs_machine_reset(x.m, IVS_RESET_POWER_ON) == IVS_OK;
   }
-  memset(&zero, 0, sizeof zero);
   if (ok && memcmp(&x.m->obs, &zero, sizeof zero) != 0) {
     ivs_test_diag("observation rows not cleared by reset");
     ok = 0;

@@ -22,6 +22,8 @@
  * (Phase 3 has no device that drives INTR, INTRM, BUSRQ or STPST) and a port whose bus is
  * ivs_memsys_bus on the instance's own memory system. Machine time advances by the unit's
  * elapsed CPU cycles times the profile's ticks_per_cpu_cycle (D2: time is kept in master ticks).
+ * A unit the CPU accepts sets the input floor to its start tick + 1 (plan 04-11, D-14), so the run
+ * call and a seam-stepped twin leave the same INPUT row.
  * The file holds no static or global state: every value lives in the instance (D-07).
  * Named faults (plan 03-12): RESET_CLEARS_BEFORE_IMAGE_CHECK, RESET_KEEPS_RAM, STATIC_CARRY;
  * (plan 04-05): OBS_NOT_CLEARED_ON_RESET. */
@@ -50,13 +52,16 @@ static void ivs_run_power_on(struct ivs_machine *im)
   ivs_memsys_set_gate_internal(&im->mem, IVS_MEMSYS_GATE_GMEM, 1u);
   (void)ivs_cp1610_reset(&im->cpu);
   im->time_ticks = 0u;
-  /* The observation rows (digest domains 16..18, plan 04-05, D-10) start empty: every byte zero,
-   * as create leaves them (create zero-fills the whole instance). */
+  /* The observation rows (digest domains 16..18, plan 04-05, D-10) start as create leaves them:
+   * every byte zero except the input log, which starts at h0 (plan 04-11, D-15). */
   size_t obs = sizeof im->obs;
 #ifdef IVS_FAULT_OBS_NOT_CLEARED_ON_RESET
   obs = 0u; /* the observation rows keep what they held before the reset */
 #endif
   memset(&im->obs, 0, obs);
+  if (obs != 0u) {
+    ivs_input_init(&im->obs.input);
+  }
 }
 
 ivs_status ivs_machine_reset(ivs_machine *m, uint32_t kind)
@@ -100,6 +105,7 @@ ivs_status ivs_machine_step_unit_internal(ivs_machine *m, ivs_cp1610_result *out
   ivs_cp1610_result r;
   ivs_status st;
   uint32_t cycles;
+  uint64_t start;
   if (out == NULL) {
     return IVS_E_BAD_ARG;
   }
@@ -121,10 +127,14 @@ ivs_status ivs_machine_step_unit_internal(ivs_machine *m, ivs_cp1610_result *out
   port.ebci = NULL;
   port.ctx = &im->mem;
   memset(&r, 0, sizeof r);
+  start = im->time_ticks;
   st = ivs_cp1610_step(&im->cpu, &cfg, &lines, &port, NULL, 0u, &r);
   if (st != IVS_OK) {
     return st;
   }
+  /* A unit began at start: the input floor is its start + 1 (plan 04-11, D-14, A-04), so no later
+   * event may precede one the run already applied before this unit. */
+  im->obs.input.floor_tick = start + 1u;
   cycles = r.elapsed_cpu_cycles;
 #ifdef IVS_FAULT_STATIC_CARRY
   {

@@ -97,5 +97,7 @@ HANDLE_TRUSTS_PROFILE machine.refuse.handle.profile-out-of-range machine.refuse.
 # a VIDEO byte moves the AUDIO digest instead of domain 16 (composite-excludes-16-18 requires
 # exactly the own domain to move; a fresh-versus-reset comparison would not see it), and the
 # coverage and VIDEO and AUDIO sensitivity cases fail by the same rule (machine.digest.).
-OBS_NOT_CLEARED_ON_RESET machine.reset.clears-observation machine.reset.clears-observation machine.digest.video-fresh
+# From plan 04-11 a unit sets the input floor (INPUT row), so a power cycle that keeps the rows
+# also differs from a first reset: machine.reset.equivalence fails by the same rule.
+OBS_NOT_CLEARED_ON_RESET machine.reset.clears-observation machine.reset.clears-observation|machine.reset.equivalence machine.digest.video-fresh
 DIGEST_DOMAIN_SWAPPED machine.digest.composite-excludes-16-18 machine.digest. machine.reset.clears-observation
