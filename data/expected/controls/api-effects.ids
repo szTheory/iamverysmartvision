@@ -11,3 +11,7 @@ api-effects-format
 # Indented and own-line IVS_API declarations (review IN-06).
 api-call-indented
 api-call-own-line
+# Define pins (plan 04-08, D-04).
+api-stop-unpinned
+api-stop-renumbered
+api-reason-unpinned
