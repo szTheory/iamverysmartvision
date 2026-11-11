@@ -61,7 +61,7 @@ static int mc_ok_info_destroy(void)
   ivs_info info;
   uint32_t i;
   int rc = IVS_TEST_FAIL;
-  uint8_t *st = malloc(IVS_MACHINE_BYTES);
+  uint8_t *st = aligned_alloc(IVS_MACHINE_ALIGN, IVS_MACHINE_BYTES);
   IVS_CHECK(st != NULL);
   memset(st, 0xA5, IVS_MACHINE_BYTES);
   if (ivs_machine_create(&o, st, IVS_MACHINE_BYTES, &m) != IVS_OK || m != (ivs_machine *)(void *)st) {

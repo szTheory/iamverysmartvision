@@ -41,7 +41,8 @@
  * instance's storage, where the load report then gets its BAD_HANDLE detail).
  *
  * Every instance and input lives in a heap buffer of exactly its size (never on the stack), so
- * ASan sees any byte the core touches outside them. Inputs are generated stand-ins (D-24): EXEC
+ * ASan sees any byte the core touches outside them; instance storage comes from aligned_alloc
+ * with the instance alignment, never from malloc, whose alignment may be 8 (review IN-08). Inputs are generated stand-ins (D-24): EXEC
  * word i = (37 * i + 11) & 0x3FF high byte first, GROM byte i = (7 * i + 3) & 0xFF (the stand-ins
  * of family load), IVSC containers from the fixture records of data/cart/ (the prior cartridge is
  * ivsc.P02-two-segments, sealed at authoring time with `cmake -E sha256sum`), and containers
@@ -1481,7 +1482,7 @@ static int rf_run_create(const rf_row *row)
 {
   ivs_create_options o;
   size_t bytes = IVS_MACHINE_BYTES + 16u;
-  uint8_t *st = malloc(bytes);
+  uint8_t *st = aligned_alloc(IVS_MACHINE_ALIGN, bytes);
   uint8_t *snap = malloc(bytes);
   ivs_machine **out;
   ivs_status got;
@@ -1547,7 +1548,7 @@ int ivs_machine_refuse_run(size_t i)
   c.row = row;
   lead = (row->flags & RF_LEAD) != 0u ? RF_LEAD_BYTES : 0u;
   c.alloc_bytes = lead + IVS_MACHINE_BYTES;
-  c.alloc = malloc(c.alloc_bytes);
+  c.alloc = aligned_alloc(IVS_MACHINE_ALIGN, c.alloc_bytes);
   if (c.alloc == NULL) {
     return IVS_TEST_FAIL;
   }

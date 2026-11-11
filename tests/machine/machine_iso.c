@@ -137,7 +137,7 @@ static int mi_poisoned(void)
 static int mi_memcpy_relocation(void)
 {
   ivs_ms_inst x;
-  uint8_t *moved = malloc(IVS_MACHINE_BYTES);
+  uint8_t *moved = aligned_alloc(IVS_MACHINE_ALIGN, IVS_MACHINE_BYTES);
   ivs_machine *m2;
   uint8_t d1[32];
   uint8_t d2[32];

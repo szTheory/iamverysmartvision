@@ -107,7 +107,7 @@ int ivs_ms_new(ivs_ms_inst *x, uint8_t poison)
   o.struct_size = (uint32_t)sizeof o;
   o.profile_id = IVS_MS_PROFILE;
   x->m = NULL;
-  x->storage = malloc(IVS_MACHINE_BYTES);
+  x->storage = aligned_alloc(IVS_MACHINE_ALIGN, IVS_MACHINE_BYTES);
   if (x->storage == NULL) {
     return 0;
   }

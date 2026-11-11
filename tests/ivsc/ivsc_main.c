@@ -434,7 +434,7 @@ static int ic_new(ic_inst *x, const char *profile)
   o.struct_size = (uint32_t)sizeof o;
   o.profile_id = profile;
   x->m = NULL;
-  x->storage = malloc(IVS_MACHINE_BYTES);
+  x->storage = aligned_alloc(IVS_MACHINE_ALIGN, IVS_MACHINE_BYTES);
   if (x->storage == NULL) {
     return 0;
   }
