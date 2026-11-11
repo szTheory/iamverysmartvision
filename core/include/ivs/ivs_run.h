@@ -65,6 +65,16 @@ typedef struct ivs_cpu_state_report {
  * overlapping the instance storage). Nothing is written on a refusal. */
 IVS_API ivs_status ivs_machine_cpu_state(const ivs_machine *m, ivs_cpu_state_report *out);
 
+/* Reads count 16-bit words at addr, addr + 1, ... into out[0..count-1]; the caller supplies at
+ * least count words at out (there is no capacity argument). Each word is what a CPU read at that
+ * address returns now: decode, width mask, closed gates and undriven space included (a closed
+ * gate, a stub, an empty image slot and an address no device drives read the profile's undriven
+ * value). The instance is not written and machine time does not advance (D-08); valid OFF and
+ * POWERED. Refusal order: BAD_ARG (out NULL or count 0); BAD_HANDLE; OUT_OF_RANGE (addr + count
+ * above 0x10000; addr + count == 0x10000 is accepted); BAD_ARG (the count * 2 bytes at out
+ * overlap the instance storage). Nothing is written on a refusal. */
+IVS_API ivs_status ivs_machine_peek(const ivs_machine *m, uint16_t addr, uint32_t count, uint16_t *out);
+
 #ifdef __cplusplus
 }
 #endif

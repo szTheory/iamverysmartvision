@@ -1,0 +1,9 @@
+# suite=run; columns: <FAULT_ID> <must-fail> <allowed-prefixes> <must-pass>
+# Run named faults (plan 04-06, D-08). Each id has one IVS_FAULT_<ID> site in
+# core/src/machine/machine_inspect.c (observation must not disturb what it observes).
+# PEEK_ADVANCES_TIME: every accepted peek adds one master tick to machine time; both side-effect
+# cases see the storage, the INSTANCE and composite digests and machine time change.
+PEEK_ADVANCES_TIME run.observe.no-side-effect-powered run.observe.|run.peek.|run.refuse.peek. run.cpu-state.off
+# PEEK_GATE_IGNORED: peek reads the backing word as if every gate were open; only the closed-gate
+# case sees GROM and GRAM data behind gate gmem.
+PEEK_GATE_IGNORED run.peek.gated run.peek.gated run.peek.loaded-words

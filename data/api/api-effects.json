@@ -349,6 +349,40 @@
           "tests": ["run.refuse.cpu-state.bad-handle"]
         }
       ]
+    },
+    {
+      "name": "ivs_machine_peek",
+      "header": "core/include/ivs/ivs_run.h",
+      "on_ok": "Writes count words into out[0..count-1], each what a CPU read at addr + i returns now (decode, width mask, closed gates and undriven space included). The instance is not written and machine time does not advance (D-08); valid OFF and POWERED. addr + count == 0x10000 is accepted.",
+      "precedence": [
+        {"status": "IVS_E_BAD_ARG", "checks": "out NULL or count 0", "pinned_by": ["run.refuse.peek.null-out", "run.refuse.peek.count-zero"]},
+        {"status": "IVS_E_BAD_HANDLE", "checks": "NULL or invalid handle", "pinned_by": ["run.refuse.peek.bad-handle"]},
+        {"status": "IVS_E_OUT_OF_RANGE", "checks": "addr + count (64-bit) above 0x10000, before any span arithmetic", "pinned_by": ["run.refuse.peek.range-end", "run.refuse.peek.range-before-overlap"]},
+        {"status": "IVS_E_BAD_ARG", "checks": "the count * 2 bytes at out overlap the storage of the (valid) instance (uintptr_t arithmetic; at most 131072 bytes)", "pinned_by": ["run.refuse.peek.out-inside-instance"]}
+      ],
+      "notes": [
+        "Side-effect free by contract (D-08, plan 04-06): reads through the const memory-system read view, no access log, no gate or stub side effect, no machine time advance; named faults PEEK_ADVANCES_TIME and PEEK_GATE_IGNORED (data/expected/faults/run.ids). No capacity argument (A-01): the caller supplies count words, so there is no BUFFER_TOO_SMALL."
+      ],
+      "refusals": [
+        {
+          "status": "IVS_E_BAD_ARG",
+          "effect": "none",
+          "outs": "nothing written: out keeps its bytes",
+          "tests": ["run.refuse.peek.null-out", "run.refuse.peek.count-zero", "run.refuse.peek.out-inside-instance"]
+        },
+        {
+          "status": "IVS_E_BAD_HANDLE",
+          "effect": "none",
+          "outs": "nothing written: out keeps its bytes",
+          "tests": ["run.refuse.peek.bad-handle"]
+        },
+        {
+          "status": "IVS_E_OUT_OF_RANGE",
+          "effect": "none",
+          "outs": "nothing written: out keeps its bytes",
+          "tests": ["run.refuse.peek.range-end", "run.refuse.peek.range-before-overlap"]
+        }
+      ]
     }
   ]
 }

@@ -1,14 +1,30 @@
 # Suite run (plan 04-06, D-08, A-06): run, observation, buffer and input tests through the public
 # API, in their own executable (the 512-case machine suite and its per-fault reruns stay bounded).
 # Family observe (plan 04-06): ivs_machine_cpu_state (OFF, after reset, after stepped units of
-# stand-in program A, flag mapping, the out-struct size rule) and the refusals of the call with
-# the SP4 oracle (status, whole-storage memcmp, digests and machine time equal, poisoned out kept).
+# stand-in program A, flag mapping, the out-struct size rule), ivs_machine_peek (loaded words, the
+# 10-bit mask, closed gates and undriven space equal to a CPU read, the address-space end), side-
+# effect freedom over 1000 peeks and 1000 cpu_state calls OFF and POWERED, and the refusals of both
+# calls with the SP4 oracle (status, whole-storage memcmp, digests and machine time equal, poisoned
+# out kept).
 run.cpu-state.off
 run.cpu-state.after-reset
 run.cpu-state.after-steps
 run.cpu-state.flag-bits
 run.cpu-state.larger-struct
+run.peek.loaded-words
+run.peek.gated
+run.peek.undriven
+run.peek.after-steps
+run.peek.range-end-ok
+run.observe.no-side-effect-off
+run.observe.no-side-effect-powered
 run.refuse.cpu-state.null
 run.refuse.cpu-state.struct-size
 run.refuse.cpu-state.bad-handle
 run.refuse.cpu-state.out-inside-instance
+run.refuse.peek.null-out
+run.refuse.peek.count-zero
+run.refuse.peek.bad-handle
+run.refuse.peek.out-inside-instance
+run.refuse.peek.range-end
+run.refuse.peek.range-before-overlap
