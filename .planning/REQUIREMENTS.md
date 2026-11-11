@@ -44,8 +44,8 @@ differentiators and all variant/peripheral profiles are v2.
 
 ### Memory, Loading and Refusal (MEM)
 
-- [ ] **MEM-01**: The memory map is generated from profile descriptors (range, device, width mask, alias, blocked-read and undriven-read policy), and a decode-table dump matches the sourced literal map.
-- [ ] **MEM-02**: 10-bit ROM (decle) and 8-/16-bit RAM width masking and store-truncation behave per profile and are tested at each boundary.
+- [x] **MEM-01**: The memory map is generated from profile descriptors (range, device, width mask, alias, blocked-read and undriven-read policy), and a decode-table dump matches the sourced literal map.
+- [x] **MEM-02**: 10-bit ROM (decle) and 8-/16-bit RAM width masking and store-truncation behave per profile and are tested at each boundary.
 - [ ] **MEM-03**: A caller can load typed content — system images (EXEC, GROM) and cartridge segments — as separate inputs, and the core reports each image's length and digest (system-image supply policy per D5).
 - [ ] **MEM-04**: Malformed, oversized, overlapping, out-of-range, missing-system-image and unknown-profile loads are refused with a typed error, and a refused load leaves prior machine state unchanged (refusal matrix test).
 - [ ] **MEM-05**: One documented cartridge import format is supported, specified in the project's own words, with positive, boundary and malformed fixtures.
@@ -192,8 +192,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CPU-03 | Phase 2 | Complete |
 | CPU-04 | Phase 2 | Complete |
 | CPU-05 | Phase 2 | Complete |
-| MEM-01 | Phase 3 | Pending |
-| MEM-02 | Phase 3 | Pending |
+| MEM-01 | Phase 3 | Complete |
+| MEM-02 | Phase 3 | Complete |
 | MEM-03 | Phase 3 | Pending |
 | MEM-04 | Phase 3 | Pending |
 | MEM-05 | Phase 3 | Pending |

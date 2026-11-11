@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 3
 current_phase_name: Memory Map, Content Loading and Refusal
 status: executing
-stopped_at: Completed 03-05-PLAN.md
-last_updated: "2026-11-11T06:02:26.095Z"
+stopped_at: Completed 03-06-PLAN.md
+last_updated: "2026-11-11T06:22:34.898Z"
 last_activity: 2026-11-11
-last_activity_desc: Plan 03-05 complete (sourced literal memory map, memmap gate step, 10 controls)
-state_head: ac3057315213412d93b064a6c49e008758363343
+last_activity_desc: Plan 03-06 complete (decode dump vs literal map, 30 literal-row cases, 5 faults, 3 controls, CL-0006; MEM-01 and MEM-02 complete)
+state_head: b70d9b70df9830171fcbde8b3d7ec7583650d1fc
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 46
-  completed_plans: 37
+  completed_plans: 38
   percent: 25
 ---
 
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 3 — Memory Map, Content Loading and Refusal
-Plan: 6 of 14
+Plan: 7 of 14
 Status: Ready to execute
-Last activity: 2026-11-11 — Plan 03-05 complete (sourced literal memory map, memmap gate step, 10 controls)
+Last activity: 2026-11-11 — Plan 03-06 complete (decode dump vs literal map, 30 literal-row cases, 5 faults, 3 controls, CL-0006; MEM-01 and MEM-02 complete)
 
 Progress: [███░░░░░░░] 25%
 
@@ -90,6 +90,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 03 P03 | 8min | 3 tasks | 31 files |
 | Phase 03 P04 | 15min | 3 tasks | 14 files |
 | Phase 03 P05 | 8min | 2 tasks | 40 files |
+| Phase 03 P06 | 12min | 3 tasks | 29 files |
 
 ## Accumulated Context
 
@@ -185,6 +186,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 03]: 03-04: GEN faults on a core-consumed table use ivs_fault_gen CONSUMER core:<src>; an -DMUTATE= in ARGS replaces the default must-fail id
 - [Phase 03]: 03-05: literal map mirror column = backing words when the row is an alias or exceeds its backing, - for the sole full-extent home of a device; write-view width = bits a store keeps (0 when dropped)
 - [Phase 03]: 03-05: memmap step adds memmap-literal-unknown-tag and memmap-literal-orphan with controls (controls=212; plan 03-06 expects 215); tier-5 refused by tag and by source authority tier
+- [Phase 03]: 03-06: profile alias gates follow the literal (STIC aliases stic-regs, GRAM aliases gmem; inference, C61); describe reports the shared backing as an alias's mirror
+- [Phase 03]: 03-06: MEM-01/MEM-02 complete by gate evidence (decode dump equals literal in dev and release; row probes at every literal boundary; faults 84); CL-0006 provisional
 
 ### Pending Todos
 
@@ -211,10 +214,11 @@ Concerns:
 |----------|------|--------|-------------|-----------|
 | Gate hardening | IN-01 whole `SRC-` token match; IN-02 fail glossary/sources on zero documents; IN-04 require each step's pass line; IN-03 anchor manifest outputs to their own fixture dir; IN-05 runner-selftest coverage of remaining tokens; denylist grep status 2 read as no-hit (`denylist.sh`); `--tree` grep-error control | Open, low severity (01-REVIEW.md, 01-SECURITY.md residual risks) | Phase 1 | Fold into a gate-hardening quick task when the Phase 2 C build adds steps |
 | Gate speed | Run negative controls in parallel if the hosted gate step passes ~30 s | Watching (9 s hosted, 2026-11-10) | Phase 1 | Phase 2 |
+| Gate hardening | memmap-gen-* gate-level controls of cmake/IvsMemmapTable.cmake (needs a dedicated toy memmap profile fixture and a way for a pure step to run the generator; 03-04, 03-05, 03-06 open item) | Open | Phase 3 | Plan 03-14 close-out |
 | Evidence | C11 AY-3-8914 datasheet not found; CP-1600 vs CP-1610 inference (C31); same-model second reader | Open, carried by the discrepancy log | Phase 1 | Phase 5 / measurement gate D10 |
 
 ## Session Continuity
 
-Last session: 2026-11-11T06:02:26.001Z
-Stopped at: Completed 03-05-PLAN.md
+Last session: 2026-11-11T06:22:34.802Z
+Stopped at: Completed 03-06-PLAN.md
 Resume file: None
