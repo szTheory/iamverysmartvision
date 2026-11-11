@@ -11,7 +11,10 @@
  *   declared padding byte changes nothing.
  * - Refusals: bad domain and NULL out (BAD_ARG), NULL or destroyed handle (BAD_HANDLE), with no
  *   write to the instance or out.
- * The fresh composite literal is labelled repeatability only: it pins the value, not its truth. */
+ * - Stepped literals (plan 04-05): the composite and domain 1..4 digests after content A, reset and
+ *   100 units, recorded from the Phase 3 code before the observation rows were added.
+ * The fresh composite and stepped literals are labelled repeatability only: they pin the value,
+ * not its truth. */
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -238,6 +241,68 @@ static int md_fresh_composite_case(void)
     return IVS_TEST_FAIL;
   }
   return IVS_TEST_PASS;
+}
+
+/* Repeatability pin recorded from the Phase 3 code at commit dae4339 (plan 04-05, A-03); tier
+ * deterministic-repeatability; not an independent oracle. Content A loaded, power-on reset, 100
+ * units through the step seam: the composite (index 0) and the domain 1..4 digests. Recorded
+ * before the observation rows (domains 16..18) were added, and unchanged after: the composite
+ * stays version 1 over domains 1..4. */
+static const uint8_t md_stepped[5][32] = {
+    {
+        0x90, 0xa2, 0x3b, 0x92, 0x2f, 0x2c, 0x4a, 0xb3, 0xaa, 0x56, 0x85, 0x49, 0x8f, 0x54, 0x0a, 0x6b,
+        0xd3, 0x97, 0x0c, 0x1a, 0xeb, 0x7d, 0x9f, 0x1a, 0x9e, 0x3e, 0x5a, 0x7c, 0x01, 0xc1, 0x9e, 0x7f,
+    },
+    {
+        0x88, 0x10, 0x55, 0xb7, 0x67, 0x26, 0x5a, 0x9e, 0xc9, 0x3b, 0x94, 0x3e, 0xd1, 0x9e, 0x54, 0x7f,
+        0x37, 0x0c, 0x0d, 0xef, 0x76, 0x47, 0x12, 0xfa, 0x32, 0xa6, 0xe0, 0x6e, 0x68, 0xce, 0x82, 0xab,
+    },
+    {
+        0xea, 0x7b, 0xa6, 0x2a, 0x4f, 0x38, 0xae, 0x70, 0x0e, 0xca, 0x1c, 0xd5, 0x99, 0x86, 0xbf, 0xbd,
+        0xe4, 0x0e, 0x27, 0x81, 0x16, 0xbf, 0x20, 0x9e, 0x06, 0x3a, 0x29, 0xbb, 0xe1, 0x80, 0x1f, 0x95,
+    },
+    {
+        0x3f, 0x42, 0x08, 0x2e, 0xef, 0x76, 0xbb, 0xfb, 0xea, 0x05, 0xc9, 0x64, 0xfc, 0xf4, 0x7a, 0x2d,
+        0xd0, 0x89, 0xd9, 0x05, 0x0e, 0xe8, 0x5c, 0x2f, 0xc3, 0x28, 0xb0, 0xca, 0x83, 0x99, 0x5d, 0xfe,
+    },
+    {
+        0xfc, 0xa8, 0xe6, 0x2d, 0xd7, 0xd0, 0x5d, 0xed, 0xdd, 0x29, 0xc9, 0x3f, 0x51, 0xec, 0xfa, 0x25,
+        0xf5, 0x5d, 0x34, 0xbd, 0x72, 0x70, 0xbe, 0x8a, 0xcc, 0x27, 0x7f, 0xf9, 0x84, 0xeb, 0x3c, 0xcb,
+    },
+};
+
+static int md_stepped_literals(void)
+{
+  static const char xd[] = "0123456789abcdef";
+  ivs_ms_inst x;
+  uint8_t got[32];
+  uint32_t d;
+  size_t i;
+  int ok = 1;
+  IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, 0x5Au));
+  if (!ivs_ms_step(x.m, 100u, NULL)) {
+    ivs_ms_free(&x);
+    return IVS_TEST_FAIL;
+  }
+  for (d = 0u; d <= 4u; d++) {
+    if (ivs_machine_state_digest(x.m, d, got) != IVS_OK) {
+      ivs_test_diag("domain %u refused", (unsigned)d);
+      ok = 0;
+      continue;
+    }
+    if (memcmp(got, md_stepped[d], 32u) != 0) {
+      char hex[65];
+      for (i = 0; i < 32u; i++) {
+        hex[2u * i] = xd[got[i] >> 4];
+        hex[2u * i + 1u] = xd[got[i] & 15u];
+      }
+      hex[64] = '\0';
+      ivs_test_diag("stepped domain %u %s", (unsigned)d, hex);
+      ok = 0;
+    }
+  }
+  ivs_ms_free(&x);
+  return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
 }
 
 /* ---- coverage ---- */
@@ -565,6 +630,7 @@ const ivs_test_case ivs_machine_digest_cases[] = {
     {"machine.digest.sensitivity-images", md_sensitivity_images, NULL},
     {"machine.digest.sensitivity-instance", md_sensitivity_instance, NULL},
     {"machine.digest.sensitivity-mem", md_sensitivity_mem, NULL},
+    {"machine.digest.stepped-literals", md_stepped_literals, NULL},
     {"machine.digest.stream-cpu", md_stream_cpu, NULL},
     {"machine.digest.stream-cpu-synthetic", md_stream_cpu_synthetic, NULL},
     {"machine.digest.stream-instance", md_stream_instance, NULL},
