@@ -123,3 +123,7 @@ None found. SUMMARY.md files for plans 02-01 to 02-06 have a `## Threat Flags` s
 7. **`hygiene-history` gate step checks a synthetic one-commit repo by design (low).** Real history is checked by `sh tools/hygiene.sh --history` at publication. This audit ran it over 163 commits: pass.
 8. **Short manual quotations (low, legal not security).** Vectors and core comments quote short phrases from the GI manual's tables (for example the HLT description) with `pdf N` cites. They are facts and short attributed phrases, not page reproductions. This carries Phase 1 residual 7 (owner and counsel question).
 9. **Local-only state.** `refs/` holds the cached manual PDF and page renders, ignored and untracked. `.planning/config.json` and `.planning/state.json` have unstaged local modifications that are not part of any commit and contain no path or secret.
+
+## Delta after the audited commit
+
+The audit above covered commit `1b325b9`. Eleven review-fix commits (`831d94a` to `02dd9ef`) followed. The orchestrator read the whole core diff (`cp1610.c`, `cp1610.h`, +62/-6 lines): the changes only narrow behaviour. After a wait-limit fault `ivs_access` and the BEXT provider call become no-ops (CR-01), `ivs_cp1610_state_validate` refuses more cross-field combinations (WR-01), and INTAK/strobe records carry data 0 (IN-03). No new input path, loop, allocation or libc use was added. Gate and hosted CI are green on `220b59e` (controls 192/192, tests 1048/1048). Verdict unchanged: SECURED.
