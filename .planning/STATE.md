@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 3
 current_phase_name: Memory Map, Content Loading and Refusal
 status: executing
-stopped_at: Completed 03-02-PLAN.md
-last_updated: "2026-11-11T05:12:36.134Z"
+stopped_at: Completed 03-03-PLAN.md
+last_updated: "2026-11-11T05:25:17.793Z"
 last_activity: 2026-11-11
-last_activity_desc: Plan 03-02 complete (core SHA-256, suite machine, fault lanes)
-state_head: 2782039e1dcf57baf4f7615d51298f38ff4eed97
+last_activity_desc: Plan 03-03 complete (public include tree, generated-include hook, writable-data rule)
+state_head: 4b6ab4e97f02ed2888c4017a3ea58d8f4849ffd0
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 46
-  completed_plans: 34
+  completed_plans: 35
   percent: 25
 ---
 
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 3 — Memory Map, Content Loading and Refusal
-Plan: 3 of 14
+Plan: 4 of 14
 Status: Ready to execute
-Last activity: 2026-11-11 — Plan 03-02 complete (core SHA-256, suite machine, fault lanes)
+Last activity: 2026-11-11 — Plan 03-03 complete (public include tree, generated-include hook, writable-data rule)
 
 Progress: [███░░░░░░░] 25%
 
@@ -87,6 +87,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 02 P18 | 15min | 3 tasks | 3 files |
 | Phase 03 P01 | 8min | 2 tasks | 22 files |
 | Phase 03 P02 | 15min | 3 tasks | 13 files |
+| Phase 03 P03 | 8min | 3 tasks | 31 files |
 
 ## Accumulated Context
 
@@ -172,6 +173,9 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 03]: 03-02: SHA-256 context has an explicit reserved word: 112 bytes, no implicit padding, assignment is a snapshot (A-04)
 - [Phase 03]: 03-02: IvsShaVectors re-derives every vectors.txt line, including the 1,000,000 x a rep line, with string(SHA256); build fails closed on mismatch
 - [Phase 03]: 03-02: c-faults runs fault executables in at most 4 lanes: projected phase-end c-faults 9.4 s serial exceeded the 8 s A-07 trigger
+- [Phase 03]: 03-03: ivs_core exports only core/include; tests reach core/src through the interface target ivs_core_internal (D-06)
+- [Phase 03]: 03-03: a generated core include is accepted only via data/expected/core-generated.ids (read from ROOT); c-purity runs the generator, scans and compiles its output (A-06)
+- [Phase 03]: 03-03: writable-data rule (nm b B d D c C) runs only on c-purity's own -fno-pie archives; ctest core-symbols stays imports-only (D-07)
 
 ### Pending Todos
 
@@ -202,6 +206,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-11T05:12:36.028Z
-Stopped at: Completed 03-02-PLAN.md
+Last session: 2026-11-11T05:25:17.709Z
+Stopped at: Completed 03-03-PLAN.md
 Resume file: None
