@@ -1,13 +1,14 @@
 /* SPDX-License-Identifier: MIT */
-/* Bounded execution (D-01..D-05, D-07, D-09, plan 04-07): ivs_machine_run and ivs_run_stop_name
- * through the public header ivs/ivs_run.h.
+/* Bounded execution (D-01..D-07, D-09, plans 04-07, 04-10): ivs_machine_run and ivs_run_stop_name
+ * through the public header ivs/ivs_run.h, and the internal env seam ivs_machine_run_env_internal
+ * (machine/machine.h) that the public call wraps with the profile's own output layout.
  *
  * Validate-then-commit (analog: machine_load.c). ivs_bound_validate reads only const inputs and
  * fills a small stack plan (the request fields it needs); the ladder is one stage per class, the
  * first failing stage wins (D-05):
- *   1. BAD_ARG       req NULL or its struct_size below the v1 size or above IVS_STRUCT_SIZE_MAX
- *                    (which bounds the stage 4 tail scan); rep NULL or its struct_size below the
- *                    v1 size or above IVS_STRUCT_SIZE_MAX (nothing written);
+ *   1. BAD_ARG       req NULL or its struct_size below sizeof or above IVS_STRUCT_SIZE_MAX
+ *                    (which bounds the stage 4 tail scan); rep NULL or its struct_size below
+ *                    sizeof or above IVS_STRUCT_SIZE_MAX (nothing written); env NULL (the seam);
  *   2. BAD_HANDLE    NULL or invalid handle;
  *   3. BAD_ARG       rep overlaps the storage of the (valid) instance, uintptr_t differences only
  *                    (ivs_machine_span_overlaps; nothing written);
@@ -18,8 +19,11 @@
  *   5. BAD_STATE     the machine is OFF;
  *   6. OUT_OF_RANGE  target_ticks above IVS_RUN_TARGET_MAX (2^63), before any unit, so now plus
  *                    one unit can never wrap;
- *   (later)          BUFFER_TOO_SMALL (plan 04-10) and the per-event order and channel checks
- *                    (plan 04-11) follow OUT_OF_RANGE, still before the first unit.
+ *   7. BUFFER_TOO_SMALL  a video or audio capacity below the env's requirement for this run,
+ *                    bytes_per_frame * (max(target - now, 0) / nominal_frame_ticks + 1) (D-06),
+ *                    before the first unit;
+ *   (later)          the per-event order and channel checks (plan 04-11) follow, still before
+ *                    the first unit.
  * A refusal writes struct_size and the IVS_REASON_* only into a report that is not the cause and
  * does not overlap the bytes the handle names (ivs_bound_report_ok), whatever stage refused.
  *
@@ -30,6 +34,8 @@
  * the loop always terminates. The stop reason is then a pure function of the exit state: INTERNAL,
  * GUEST_FAULT, CPU_HALTED (flag), TARGET. The report is filled last; overshoot is derived. Nothing
  * outlives the call (no budget, deficit or pointer): slicing invariance holds by construction.
+ * Phase 4 layouts produce no bytes, so the loop writes nothing into the output buffers and the
+ * report's output counts are 0 (no frame is fabricated).
  * The file holds no static or global state.
  * Named faults (plan 04-07, D-07): RUN_TARGET_UNCHECKED, RUN_STOP_BEFORE_OVERSHOOT,
  * RUN_FAULT_STEPS; (plan 04-09, D-07): RUN_BUDGET_CARRY, the only static, inside its fault block. */
@@ -38,8 +44,11 @@
 #include "ivs/ivs.h"
 #include "machine/machine.h"
 
-_Static_assert(sizeof(ivs_run_request) == 16u, "ivs_run_request v1 is 16 bytes");
-_Static_assert(sizeof(ivs_run_report) == 56u, "ivs_run_report v1 is 56 bytes");
+/* The request carries pointers, so only its pointer-free prefix has a fixed offset on every data
+ * model (Pitfall 13); its size is bounded by the struct cap. The report is pointer-free. */
+_Static_assert(offsetof(ivs_run_request, video) == 16u, "ivs_run_request: the buffers follow the 16-byte prefix");
+_Static_assert(sizeof(ivs_run_request) <= IVS_STRUCT_SIZE_MAX, "ivs_run_request within the struct cap");
+_Static_assert(sizeof(ivs_run_report) == 80u, "ivs_run_report is 80 bytes");
 _Static_assert(offsetof(ivs_run_report, now_ticks) % 8u == 0u, "64-bit report members are 8-aligned");
 
 #ifdef IVS_FAULT_RUN_BUDGET_CARRY
@@ -58,6 +67,41 @@ typedef struct ivs_bound_plan {
   uint64_t target;
   uint32_t flags;
 } ivs_bound_plan;
+
+/* 1 when capacity holds the bytes one channel needs for a run from now to target (D-06):
+ * bytes_per_frame * (max(target - now, 0) / frame + 1). Nothing is needed at 0 bytes per frame;
+ * a frame of 0 ticks, or a product above UINT64_MAX, can never be met. target is at most 2^63
+ * here (OUT_OF_RANGE ran first); the frame count is still guarded against wrapping. */
+static uint32_t ivs_bound_fits(uint64_t capacity, uint32_t bytes_per_frame, uint64_t frame, uint64_t target,
+                               uint64_t now)
+{
+  uint64_t frames;
+  if (bytes_per_frame == 0u) {
+    return 1u;
+  }
+  if (frame == 0u) {
+    return 0u;
+  }
+  frames = (target > now ? target - now : 0u) / frame;
+  if (frames == UINT64_MAX) {
+    return 0u; /* unreachable below 2^63, kept so the + 1 can never wrap */
+  }
+  frames += 1u;
+  if (frames > UINT64_MAX / bytes_per_frame) {
+    return 0u;
+  }
+  return capacity >= frames * bytes_per_frame ? 1u : 0u;
+}
+
+/* 1 when both output buffers hold what the run from now to target needs under env. */
+static uint32_t ivs_bound_capacity_ok(const ivs_run_request *req, const ivs_run_env *env, uint64_t target,
+                                      uint64_t now)
+{
+  if (ivs_bound_fits(req->video_capacity, env->video_bytes_per_frame, env->nominal_frame_ticks, target, now) == 0u) {
+    return 0u;
+  }
+  return ivs_bound_fits(req->audio_capacity, env->audio_bytes_per_frame, env->nominal_frame_ticks, target, now);
+}
 
 /* 1 when every byte of p[from, to) is zero. */
 static uint32_t ivs_bound_tail_zero(const uint8_t *p, size_t from, size_t to)
@@ -89,7 +133,7 @@ static uint32_t ivs_bound_report_ok(const ivs_machine *m, const ivs_run_report *
 
 /* The ladder (header comment). Reads only const inputs; on IVS_OK the plan is filled. */
 static ivs_status ivs_bound_validate(const ivs_machine *m, const ivs_run_request *req, const ivs_run_report *rep,
-                                     ivs_bound_plan *plan, uint32_t *reason)
+                                     const ivs_run_env *env, ivs_bound_plan *plan, uint32_t *reason)
 {
   const struct ivs_machine *im;
   /* 1. BAD_ARG: NULL arguments and struct sizes. */
@@ -98,7 +142,7 @@ static ivs_status ivs_bound_validate(const ivs_machine *m, const ivs_run_request
     *reason = IVS_REASON_RUN_STRUCT_SIZE;
     return IVS_E_BAD_ARG;
   }
-  if (req == NULL) {
+  if (req == NULL || env == NULL) {
     *reason = IVS_REASON_RUN_NULL_ARG;
     return IVS_E_BAD_ARG;
   }
@@ -139,6 +183,11 @@ static ivs_status ivs_bound_validate(const ivs_machine *m, const ivs_run_request
     return IVS_E_OUT_OF_RANGE;
   }
 #endif
+  /* 7. BUFFER_TOO_SMALL: the output capacities against the env's requirement, before any unit. */
+  if (ivs_bound_capacity_ok(req, env, req->target_ticks, im->time_ticks) == 0u) {
+    *reason = IVS_REASON_RUN_BUFFER_SMALL;
+    return IVS_E_BUFFER_TOO_SMALL;
+  }
   plan->target = req->target_ticks;
   plan->flags = req->flags;
   return IVS_OK;
@@ -162,7 +211,17 @@ static uint32_t ivs_bound_stop(const struct ivs_machine *im, uint32_t flags, uin
   return IVS_STOP_TARGET;
 }
 
-ivs_status ivs_machine_run(ivs_machine *m, const ivs_run_request *req, ivs_run_report *rep)
+/* Refusal detail only into a report that is not itself the cause. */
+static void ivs_bound_refuse(const ivs_machine *m, ivs_run_report *rep, uint32_t reason)
+{
+  if (ivs_bound_report_ok(m, rep) != 0u) {
+    rep->struct_size = (uint32_t)sizeof(ivs_run_report);
+    rep->refusal_reason = reason;
+  }
+}
+
+ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *req, ivs_run_report *rep,
+                                        const ivs_run_env *env)
 {
   ivs_bound_plan plan;
   ivs_run_report r;
@@ -173,13 +232,9 @@ ivs_status ivs_machine_run(ivs_machine *m, const ivs_run_request *req, ivs_run_r
   uint64_t entry;
   uint64_t units = 0u;
   memset(&plan, 0, sizeof plan);
-  st = ivs_bound_validate(m, req, rep, &plan, &reason);
+  st = ivs_bound_validate(m, req, rep, env, &plan, &reason);
   if (st != IVS_OK) {
-    /* Refusal detail only into a report that is not itself the cause. */
-    if (ivs_bound_report_ok(m, rep) != 0u) {
-      rep->struct_size = (uint32_t)sizeof(ivs_run_report);
-      rep->refusal_reason = reason;
-    }
+    ivs_bound_refuse(m, rep, reason);
     return st;
   }
   im = ivs_machine_from_handle_mut(m);
@@ -234,6 +289,7 @@ ivs_status ivs_machine_run(ivs_machine *m, const ivs_run_request *req, ivs_run_r
   r.overshoot_ticks = im->time_ticks > plan.target ? im->time_ticks - plan.target : 0u;
   r.elapsed_ticks = im->time_ticks - entry;
   r.units_executed = units;
+  /* Output counts (D-03): Phase 4 layouts produce no bytes, so they stay 0 (memset above). */
 #ifdef IVS_FAULT_RUN_BUDGET_CARRY
   if (units > 0u) {
     ivs_bound_carry_ticks = r.overshoot_ticks;
@@ -243,6 +299,20 @@ ivs_status ivs_machine_run(ivs_machine *m, const ivs_run_request *req, ivs_run_r
 #endif
   *rep = r;
   return IVS_OK;
+}
+
+ivs_status ivs_machine_run(ivs_machine *m, const ivs_run_request *req, ivs_run_report *rep)
+{
+  ivs_run_env env;
+  const struct ivs_machine *im = ivs_machine_from_handle(m);
+  const ivs_profile_desc *p = im != NULL ? ivs_profile_get(im->profile) : NULL;
+  /* The profile's own layout; an invalid handle gets an empty env and is refused BAD_HANDLE by
+   * the ladder (its earlier stages first) exactly as before. */
+  memset(&env, 0, sizeof env);
+  if (p != NULL) {
+    ivs_machine_profile_env(p, &env);
+  }
+  return ivs_machine_run_env_internal(m, req, rep, &env);
 }
 
 const char *ivs_run_stop_name(uint32_t stop)

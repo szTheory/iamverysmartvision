@@ -395,11 +395,12 @@
         {"status": "IVS_E_BAD_ARG", "checks": "the report overlaps the storage of the (valid) instance (uintptr_t arithmetic; nothing written)", "pinned_by": ["run.prec.overlap-over-unsupported"]},
         {"status": "IVS_E_UNSUPPORTED", "checks": "an unknown or reserved flag (IVS_RUN_F_RESERVED_FRAME until Phase 6; RUN_FLAGS), then a nonzero byte past the v1 size of a larger request (RUN_TAIL); the D-05 buffer and event argument slot (plans 04-10, 04-11) follows this stage", "pinned_by": ["run.prec.flags-over-tail", "run.prec.unsupported-over-state"]},
         {"status": "IVS_E_BAD_STATE", "checks": "the machine is OFF (RUN_STATE_OFF)", "pinned_by": ["run.prec.state-over-range"]},
-        {"status": "IVS_E_OUT_OF_RANGE", "checks": "target_ticks above IVS_RUN_TARGET_MAX = 2^63 (RUN_TARGET_RANGE), before any unit; 2^63 itself is accepted (run.target.max-accepted)"}
+        {"status": "IVS_E_OUT_OF_RANGE", "checks": "target_ticks above IVS_RUN_TARGET_MAX = 2^63 (RUN_TARGET_RANGE), before any unit; 2^63 itself is accepted (run.target.max-accepted)"},
+        {"status": "IVS_E_BUFFER_TOO_SMALL", "checks": "a video or audio capacity below the output layout's requirement for this run, bytes_per_frame x (max(target - now, 0) / nominal_frame_ticks + 1) per channel (RUN_BUFFER_SMALL), before any unit (D-06)"}
       ],
       "notes": [
         "D-04: stops are not refusals. A run that executes returns IVS_OK with stop_reason TARGET, CPU_HALTED (only with IVS_RUN_F_STOP_ON_HALT), GUEST_FAULT or INTERNAL, a pure function of the exit state in the order INTERNAL, fault, halt, target (run.stop.halt-flag, run.stop.halt-no-flag, run.stop.guest-fault, run.stop.fault-sticky, run.stop.fault-before-halt, run.stop.internal-step-refused). A FAULTED CPU is never stepped; a unit that does not advance time ends the loop.",
-        "D-05: a refusal writes only struct_size and refusal_reason (IVS_REASON_RUN_* 34..40, IVS_REASON_HANDLE), and nothing into a report that is itself the cause or that overlaps the bytes the handle names. Named faults RUN_TARGET_UNCHECKED, RUN_STOP_BEFORE_OVERSHOOT and RUN_FAULT_STEPS (data/expected/faults/run.ids)."
+        "D-05: a refusal writes only struct_size and refusal_reason (IVS_REASON_RUN_* 34..41, IVS_REASON_HANDLE), and nothing into a report that is itself the cause or that overlaps the bytes the handle names. Named faults RUN_TARGET_UNCHECKED, RUN_STOP_BEFORE_OVERSHOOT and RUN_FAULT_STEPS (data/expected/faults/run.ids)."
       ],
       "refusals": [
         {
@@ -431,6 +432,12 @@
           "effect": "none",
           "outs": "rep: struct_size and refusal_reason RUN_TARGET_RANGE",
           "tests": ["run.refuse.target-above-2-63"]
+        },
+        {
+          "status": "IVS_E_BUFFER_TOO_SMALL",
+          "effect": "none",
+          "outs": "rep: struct_size and refusal_reason RUN_BUFFER_SMALL; no byte of either output buffer",
+          "tests": ["run.buffers.too-small-video"]
         }
       ]
     },

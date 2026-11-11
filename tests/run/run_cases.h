@@ -34,6 +34,12 @@ extern const size_t ivs_run_info_count;
 extern const ivs_test_case ivs_run_slice_cases[];
 extern const size_t ivs_run_slice_count;
 
+/* Family buffers (plan 04-10, D-02, D-03, D-05, D-06, API-04): the caller-owned output buffers of
+ * ivs_machine_run, their capacity rule through the internal env seam with a synthetic layout,
+ * their refusals and the real zero-length layout (run_buffers.c). */
+extern const ivs_test_case ivs_run_buffers_cases[];
+extern const size_t ivs_run_buffers_count;
+
 /* ---- the refusal and side-effect oracle (SP4), shared by the run families ----
  * A snapshot holds a heap copy of the whole instance storage, the composite and the seven domain
  * digests (1..4, 16..18) and info's time_ticks; a destroyed instance has no digests or info. */

@@ -208,6 +208,7 @@ typedef struct ivs_load_options {
 #define IVS_REASON_RUN_TAIL 38u           /* UNSUPPORTED: a nonzero byte in a larger request tail */
 #define IVS_REASON_RUN_STATE_OFF 39u      /* BAD_STATE: the machine is OFF */
 #define IVS_REASON_RUN_TARGET_RANGE 40u   /* OUT_OF_RANGE: target_ticks above 2^63 */
+#define IVS_REASON_RUN_BUFFER_SMALL 41u   /* BUFFER_TOO_SMALL: an output capacity below the layout's requirement */
 
 /* segment_index of a report whose reason concerns no single segment. */
 #define IVS_SEGMENT_NONE 0xFFFFFFFFu

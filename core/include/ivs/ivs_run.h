@@ -104,20 +104,38 @@ IVS_API ivs_status ivs_machine_peek(const ivs_machine *m, uint16_t addr, uint32_
 #define IVS_STOP_GUEST_FAULT 3u
 #define IVS_STOP_INTERNAL 4u
 
-/* In: one run. v1 size 16 bytes; a larger struct_size (up to IVS_STRUCT_SIZE_MAX) is accepted
- * only when every byte past the v1 size is zero. Phase 4 plans append fields (output buffers,
- * input events) before the v1 size is pinned for release. */
+/* Output buffers (D-02, D-03, D-06, plan 04-10). Video and audio go to caller-owned buffers named
+ * in the request; the core keeps no pointer after the call. The profile's output layout (ivs_info:
+ * video_format, video_bytes_per_frame, audio_format, audio_bytes_per_frame, nominal_frame_ticks)
+ * fixes the capacity a run needs, per channel, checked before the first unit:
+ *   required = bytes_per_frame * (max(target_ticks - now, 0) / nominal_frame_ticks + 1)
+ * an upper bound on the frames the run can complete, the overshoot of its last unit included. A
+ * capacity below it is BUFFER_TOO_SMALL with nothing changed; a buffer may be NULL only with
+ * capacity 0. Phase 4 profiles have layout NONE with 0 bytes per frame, so every capacity (0 and a
+ * NULL buffer included) suffices, no byte is written and the three report counts below are 0: no
+ * frame is fabricated. */
+
+/* In: one run. Its size grows while Phase 4 appends fields (output buffers here, input events
+ * next); the v1 size is pinned for release by plan 04-13 (A-02 from then on). struct_size must be
+ * at least sizeof(ivs_run_request); a larger struct_size (up to IVS_STRUCT_SIZE_MAX) is accepted
+ * only when every byte past it is zero. */
 typedef struct ivs_run_request {
   uint32_t struct_size;
-  uint32_t flags;        /* IVS_RUN_F_* */
-  uint64_t target_ticks; /* absolute machine time in master ticks, at most IVS_RUN_TARGET_MAX */
+  uint32_t flags;          /* IVS_RUN_F_* */
+  uint64_t target_ticks;   /* absolute machine time in master ticks, at most IVS_RUN_TARGET_MAX */
+  uint8_t *video;          /* caller-owned video bytes, or NULL with video_capacity 0 */
+  uint64_t video_capacity; /* bytes at video */
+  uint8_t *audio;          /* caller-owned audio bytes, or NULL with audio_capacity 0 */
+  uint64_t audio_capacity; /* bytes at audio */
 } ivs_run_request;
 
-/* Out: what one run did. v1 size 56 bytes. On IVS_OK every v1 field is written: the stop reason,
+/* Out: what one run did (80 bytes; it grows with the request until plan 04-13 pins it). On IVS_OK
+ * every field is written: the stop reason,
  * refusal_reason IVS_REASON_NONE, the CPU run state and fault reason at exit (IVS_CPU_STATE_*,
  * IVS_CPU_FAULT_*), machine time at exit, overshoot_ticks = max(now_ticks - target_ticks, 0)
  * (derived, never state), elapsed_ticks = now_ticks minus machine time at entry and the units
- * executed by this call. On a refusal only struct_size and refusal_reason (IVS_REASON_*) are
+ * executed by this call, and the output counts (frames completed, bytes written to each buffer;
+ * all 0 in Phase 4). On a refusal only struct_size and refusal_reason (IVS_REASON_*) are
  * written, and nothing at all when the report itself is the cause (NULL, size, overlap). */
 typedef struct ivs_run_report {
   uint32_t struct_size;
@@ -130,19 +148,24 @@ typedef struct ivs_run_report {
   uint64_t overshoot_ticks;
   uint64_t elapsed_ticks;
   uint64_t units_executed;
+  uint64_t video_frames_completed; /* 0 in Phase 4 */
+  uint64_t video_bytes_written;    /* 0 in Phase 4 */
+  uint64_t audio_bytes_written;    /* 0 in Phase 4 */
 } ivs_run_report;
 
 /* Runs m to req->target_ticks (above). Refusal order (D-05), first failing class wins, every
- * refusal before the first unit so a refused call changes nothing in the instance:
- *   BAD_ARG       req NULL (IVS_REASON_RUN_NULL_ARG); req->struct_size below the v1 size or above
- *                 IVS_STRUCT_SIZE_MAX (RUN_STRUCT_SIZE); rep NULL, or rep->struct_size below the v1
- *                 size or above IVS_STRUCT_SIZE_MAX (nothing written);
+ * refusal before the first unit so a refused call changes nothing in the instance and writes no
+ * byte into either output buffer:
+ *   BAD_ARG       req NULL (IVS_REASON_RUN_NULL_ARG); req->struct_size below sizeof or above
+ *                 IVS_STRUCT_SIZE_MAX (RUN_STRUCT_SIZE); rep NULL, or rep->struct_size below sizeof
+ *                 or above IVS_STRUCT_SIZE_MAX (nothing written);
  *   BAD_HANDLE    NULL or invalid handle (IVS_REASON_HANDLE);
  *   BAD_ARG       rep overlaps the instance storage (nothing written);
- *   UNSUPPORTED   an unknown or reserved flag (RUN_FLAGS), then a nonzero byte past the v1 size of
- *                 a larger request (RUN_TAIL);
+ *   UNSUPPORTED   an unknown or reserved flag (RUN_FLAGS), then a nonzero byte past sizeof of a
+ *                 larger request (RUN_TAIL);
  *   BAD_STATE     the machine is OFF (RUN_STATE_OFF);
- *   OUT_OF_RANGE  target_ticks above IVS_RUN_TARGET_MAX (RUN_TARGET_RANGE).
+ *   OUT_OF_RANGE  target_ticks above IVS_RUN_TARGET_MAX (RUN_TARGET_RANGE);
+ *   BUFFER_TOO_SMALL a capacity below the requirement of the output layout (above; RUN_BUFFER_SMALL).
  * A refusal writes only struct_size and refusal_reason, and only into a report that is not the
  * cause and does not overlap the bytes the handle names. */
 IVS_API ivs_status ivs_machine_run(ivs_machine *m, const ivs_run_request *req, ivs_run_report *rep);

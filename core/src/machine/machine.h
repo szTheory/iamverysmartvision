@@ -23,6 +23,7 @@
 #include "content/ivsc.h"
 #include "cpu/cp1610.h"
 #include "ivs/ivs_machine.h"
+#include "ivs/ivs_run.h"
 #include "memmap/memsys.h"
 
 #define IVS_MACHINE_MAGIC 0x4956534Du /* "IVSM" */
@@ -164,6 +165,33 @@ uint32_t ivs_machine_out_overlaps(const void *out, size_t n, const void *inst, s
  * IVS_OK. Never public: it is declared here and nowhere under core/include; Phase 4's bounded
  * run API is built on it. */
 ivs_status ivs_machine_step_unit_internal(ivs_machine *m, ivs_cp1610_result *out);
+
+/* ---- internal run env seam (D-06, plan 04-10, machine_bound.c) ----
+ * The output layout a run is checked against: per channel a format (IVS_OUTPUT_FORMAT_*) and the
+ * bytes one frame needs, and the nominal frame length in master ticks. The capacity a run needs
+ * per channel is bytes_per_frame * (max(target - now, 0) / nominal_frame_ticks + 1); a channel
+ * with 0 bytes per frame needs nothing, and nominal_frame_ticks 0 with bytes above 0 can never be
+ * met (BUFFER_TOO_SMALL). */
+typedef struct ivs_run_env {
+  uint32_t video_format;
+  uint32_t video_bytes_per_frame;
+  uint32_t audio_format;
+  uint32_t audio_bytes_per_frame;
+  uint64_t nominal_frame_ticks;
+} ivs_run_env;
+
+/* The real output layout of profile p (shared by ivs_machine_info and the public run call):
+ * Phase 4 profiles produce nothing (formats NONE, 0 bytes per frame), and the nominal frame is
+ * ticks_per_cpu_cycle * cpu_cycles_per_scanline * scanlines_per_frame (D-09). */
+void ivs_machine_profile_env(const ivs_profile_desc *p, ivs_run_env *env);
+
+/* ivs_machine_run against the layout env instead of the profile's (the public call passes the
+ * profile's own, ivs_machine_profile_env). Same ladder, loop and report as ivs_machine_run
+ * (ivs/ivs_run.h); env NULL is BAD_ARG (RUN_NULL_ARG) in the first stage. It lets the tests prove
+ * the capacity contract with a synthetic layout while the real layout is zero-length. Never
+ * public: it is declared here and nowhere under core/include. */
+ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *req, ivs_run_report *rep,
+                                        const ivs_run_env *env);
 
 /* The instance behind a handle, or NULL for NULL, a wrong magic, or a stored profile index that
  * is outside the registry or differs from the memory system's (review WR-03): every call that

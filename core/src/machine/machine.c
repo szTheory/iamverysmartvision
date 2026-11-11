@@ -245,6 +245,7 @@ ivs_status ivs_machine_info(const ivs_machine *m, ivs_info *out)
   const struct ivs_machine *im;
   const ivs_profile_desc *p;
   ivs_info r;
+  ivs_run_env env;
   size_t n;
   uint32_t i;
   if (out == NULL || out->struct_size < IVS_INFO_V1_SIZE) {
@@ -282,15 +283,28 @@ ivs_status ivs_machine_info(const ivs_machine *m, ivs_info *out)
   r.ticks_per_cpu_cycle = p->ticks_per_cpu_cycle;
   r.cpu_cycles_per_scanline = p->cpu_cycles_per_scanline;
   r.scanlines_per_frame = p->scanlines_per_frame;
-  r.nominal_frame_ticks = (uint64_t)p->ticks_per_cpu_cycle * (uint64_t)p->cpu_cycles_per_scanline *
-                          (uint64_t)p->scanlines_per_frame;
-  /* Output layout (D-06): the real profiles produce no video or audio bytes in Phase 4. */
-  r.video_format = IVS_OUTPUT_FORMAT_NONE;
-  r.video_bytes_per_frame = 0u;
-  r.audio_format = IVS_OUTPUT_FORMAT_NONE;
-  r.audio_bytes_per_frame = 0u;
+  /* Output layout (D-06) and the nominal frame: the same env the public run call checks
+   * capacities against (ivs_machine_profile_env). */
+  ivs_machine_profile_env(p, &env);
+  r.nominal_frame_ticks = env.nominal_frame_ticks;
+  r.video_format = env.video_format;
+  r.video_bytes_per_frame = env.video_bytes_per_frame;
+  r.audio_format = env.audio_format;
+  r.audio_bytes_per_frame = env.audio_bytes_per_frame;
   memcpy(out, &r, n);
   return IVS_OK;
+}
+
+void ivs_machine_profile_env(const ivs_profile_desc *p, ivs_run_env *env)
+{
+  memset(env, 0, sizeof *env);
+  /* The real profiles produce no video or audio bytes in Phase 4 (D-06): no frame is fabricated. */
+  env->video_format = IVS_OUTPUT_FORMAT_NONE;
+  env->video_bytes_per_frame = 0u;
+  env->audio_format = IVS_OUTPUT_FORMAT_NONE;
+  env->audio_bytes_per_frame = 0u;
+  env->nominal_frame_ticks = (uint64_t)p->ticks_per_cpu_cycle * (uint64_t)p->cpu_cycles_per_scanline *
+                             (uint64_t)p->scanlines_per_frame;
 }
 
 void ivs_machine_slot_report(const ivs_machine_slot *s, ivs_image_report *o)

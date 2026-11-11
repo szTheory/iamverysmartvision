@@ -137,7 +137,7 @@ set_tests_properties(machine PROPERTIES SKIP_RETURN_CODE 77)
 # in their own executable so the 512-case machine suite and its per-fault reruns stay bounded
 # (Pitfall 12). It reuses the machine suite's stand-in content (machine/machine_standin.c, the
 # ivs_ms_* helpers of machine/machine_cases.h); its named faults are data/expected/faults/run.ids.
-add_executable(ivs_tests_run run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c machine/machine_standin.c)
+add_executable(ivs_tests_run run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c machine/machine_standin.c)
 target_include_directories(ivs_tests_run PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine")
 target_link_libraries(ivs_tests_run PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
 add_test(NAME run COMMAND ivs_tests_run)
@@ -245,7 +245,7 @@ ivs_fault_suite(machine
   GENERATED "${IVS_SHA_INC}" "${IVS_CART_INC}")
 
 ivs_fault_suite(run
-  SOURCES run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c machine/machine_standin.c
+  SOURCES run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c machine/machine_standin.c
   INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/machine")
 
 ivs_fault_suite(memmap
