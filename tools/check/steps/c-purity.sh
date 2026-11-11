@@ -41,9 +41,11 @@
 #   imports-only (its dev archive is sanitized).
 # Stage 3, purity self-test: core-symbols.sh must reject an LTO object (lto), a file with the
 #   bitcode magic (bitcode-magic), an archive with zero external definitions (no-definitions),
-#   a missing file (missing-file) and no input at all (no-input, exit 2). Synthetic inputs live
-#   in the temp dir only. The step forces -fno-lto, so an overlay control cannot produce an LTO
-#   object; this stage covers that class instead.
+#   a missing file (missing-file) and no input at all (no-input, exit 2); it must accept a -fPIE
+#   archive that takes the address of a function defined in it (pie-got: gcc imports
+#   _GLOBAL_OFFSET_TABLE_ there) and still name an undefined function reached through the GOT
+#   (pie-got-import). Synthetic inputs live in the temp dir only. The step forces -fno-lto, so
+#   an overlay control cannot produce an LTO object; this stage covers that class instead.
 # Writes only to its temp dir. Reads ROOT, CHECK_DIR, FILELIST; CC and NM from the environment.
 # Tokens: c-purity-no-sources: core/src, c-purity-no-cc: <cc>, c-purity-compile: <file> (<opt>),
 #   c-purity-generated: <basename> (<reason>),
@@ -283,6 +285,44 @@ else
   bad purity-selftest-no-definitions "could not build the hollow archive"
 fi
 expect missing-file core-symbols-missing absent.a
+# GOT base (plan 03-14 post-verification fix): gcc under -fPIE (the Ubuntu default) imports
+# _GLOBAL_OFFSET_TABLE_ when code takes the address of an external function, so the allowlist
+# names it. pie-got: such a reference, its function defined in a second member, must pass.
+# pie-got-import: the same reference to a function defined nowhere must still fail by that
+# function's own name, so the allowance never hides an import routed through the GOT. On a
+# toolchain that emits no GOT symbol (Mach-O) both cases still hold, without the entry in play.
+printf 'int ivs_st_target(void);\nint ivs_st_target(void) { return 1; }\n' > "$st/target.c"
+printf 'typedef int (*ivs_st_fn)(void);\nint ivs_st_target(void);\nivs_st_fn ivs_st_pick(void);\nivs_st_fn ivs_st_pick(void) { return ivs_st_target; }\n' > "$st/pick.c"
+printf 'typedef int (*ivs_st_fn)(void);\nint ivs_st_absent(void);\nivs_st_fn ivs_st_pick(void);\nivs_st_fn ivs_st_pick(void) { return ivs_st_absent; }\n' > "$st/pick-absent.c"
+if "$cc" -std=c17 -fno-lto -fPIE -w -c "$st/target.c" -o "$st/target.o" > "$st/cc.log" 2>&1 \
+  && "$cc" -std=c17 -fno-lto -fPIE -w -c "$st/pick.c" -o "$st/pick.o" >> "$st/cc.log" 2>&1 \
+  && "$cc" -std=c17 -fno-lto -fPIE -w -c "$st/pick-absent.c" -o "$st/pick-absent.o" >> "$st/cc.log" 2>&1 \
+  && ar rcs "$st/pie.a" "$st/target.o" "$st/pick.o" > "$st/ar.log" 2>&1 \
+  && ar rcs "$st/pie-absent.a" "$st/pick-absent.o" >> "$st/ar.log" 2>&1; then
+  selftest_total=$((selftest_total + 1))
+  _st=0
+  (cd "$st" && sh "$CHECK_DIR/core-symbols.sh" pie.a) > "$st/out" 2>&1 || _st=$?
+  if [ "$_st" -eq 0 ]; then
+    selftest_ok=$((selftest_ok + 1))
+  else
+    bad purity-selftest-pie-got "exit $_st, wanted 0"
+    sed 's/^/# /' "$st/out"
+  fi
+  selftest_total=$((selftest_total + 1))
+  _st=0
+  (cd "$st" && sh "$CHECK_DIR/core-symbols.sh" pie-absent.a) > "$st/out" 2>&1 || _st=$?
+  if [ "$_st" -ne 0 ] && grep -q -x -F -e '-- FAIL core-symbols-forbidden: ivs_st_absent' "$st/out" \
+    && ! grep -q -e '_GLOBAL_OFFSET_TABLE_' "$st/out"; then
+    selftest_ok=$((selftest_ok + 1))
+  else
+    bad purity-selftest-pie-got-import "exit $_st, wanted core-symbols-forbidden: ivs_st_absent only"
+    sed 's/^/# /' "$st/out"
+  fi
+else
+  selftest_total=$((selftest_total + 2))
+  cat "$st/cc.log" "$st/ar.log" 2> /dev/null
+  bad purity-selftest-pie-got "could not build the -fPIE archives with $cc"
+fi
 selftest_total=$((selftest_total + 1))
 _st=0
 (cd "$st" && sh "$CHECK_DIR/core-symbols.sh") > "$st/out" 2>&1 || _st=$?
