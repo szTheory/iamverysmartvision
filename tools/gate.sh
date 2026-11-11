@@ -8,7 +8,7 @@ ROOT=$(cd "$here/.." && pwd) || exit 1
 CHECK_DIR="$ROOT/tools/check"
 GATE_TMP=$(mktemp -d "${TMPDIR:-/tmp}/gate.XXXXXX") || exit 1
 ctl_pid=
-trap 'if [ -n "$ctl_pid" ]; then kill "$ctl_pid" 2> /dev/null; fi; rm -rf "$GATE_TMP"' EXIT
+trap 'if [ -n "$ctl_pid" ]; then kill "$ctl_pid" 2> /dev/null; wait "$ctl_pid" 2> /dev/null; fi; rm -rf "$GATE_TMP"' EXIT
 trap 'exit 1' HUP INT TERM
 FILELIST="$GATE_TMP/filelist"
 export ROOT CHECK_DIR FILELIST GATE_TMP
@@ -55,14 +55,10 @@ export IVS_GATE_DIR IVS_TEST_NONCE
 # The runner reads only tools/check/ and copies of controls/_good/tree into its own temp dir,
 # never ROOT's build/ or the steps' outputs, so nothing a step writes can change its result.
 # Its output is held in a file and printed after the steps, in the same place as before.
+# The runner is the background job itself, so the EXIT trap's TERM reaches it, and it stops
+# its lanes and their steps before it exits (review WR-04); it writes its own end time.
 ctl_t0=$(date +%s)
-(
-  trap - EXIT HUP INT TERM
-  sh "$CHECK_DIR/run-controls.sh" > "$GATE_TMP/controls.out" 2>&1 < /dev/null
-  ctl_rc=$?
-  date +%s > "$GATE_TMP/controls.end"
-  exit "$ctl_rc"
-) &
+CONTROLS_END_FILE="$GATE_TMP/controls.end" sh "$CHECK_DIR/run-controls.sh" > "$GATE_TMP/controls.out" 2>&1 < /dev/null &
 ctl_pid=$!
 step_time setup "$ctl_t0" "$gate_t0"
 

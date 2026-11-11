@@ -9,7 +9,13 @@
 # (tree, filelist, step output, result lines), so lanes share no temp state. Lane i takes
 # every JOBS-th entry of the sorted list; results are printed afterwards in sorted order,
 # so the output does not depend on scheduling.
+# CONTROLS_END_FILE (optional): the runner writes its end time (date +%s) there; it is not
+# passed on to the steps. On HUP, INT or TERM the runner stops and terminates every process
+# below it (lanes, their steps and the compilers those start) before it exits, so an
+# interrupted gate leaves no orphans (review WR-04).
 LC_ALL=C; export LC_ALL
+end_file=${CONTROLS_END_FILE:-}
+unset CONTROLS_END_FILE
 here=$(cd "$(dirname "$0")" && pwd) || exit 1
 CHECK_DIR=$here
 ROOT=$(cd "$here/../.." && pwd) || exit 1
@@ -17,8 +23,47 @@ CONTROLS_DIR=${CONTROLS_DIR:-$CHECK_DIR/controls}
 CONTROLS_INVENTORY_DIR=${CONTROLS_INVENTORY_DIR:-$ROOT/data/expected/controls}
 export CHECK_DIR
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/ctl.XXXXXX") || exit 1
+
+# Every process below this runner, from one POSIX `ps -A -o pid= -o ppid=` snapshot. A lane is
+# an asynchronous list, so it and everything it starts ignore SIGINT, and a lane killed alone
+# would leave its step running under init: the whole tree is collected first, stopped so it
+# cannot grow, collected again (three rounds catch a child forked during a snapshot), and only
+# then terminated and continued.
+descendants() {
+  ps -A -o pid= -o ppid= 2> /dev/null | awk -v root="$$" '
+    { par[$1] = $2; ids[NR] = $1 }
+    END {
+      want[root] = 1
+      more = 1
+      while (more) {
+        more = 0
+        for (i = 1; i <= NR; i++) {
+          p = ids[i]
+          if (!(p in want) && (par[p] in want)) { want[p] = 1; more = 1 }
+        }
+      }
+      for (p in want) if (p != root) print p
+    }'
+}
+stop_tree() {
+  _all=
+  for _round in 1 2 3; do
+    _pids=$(descendants)
+    [ -n "$_pids" ] || continue
+    # shellcheck disable=SC2086
+    kill -s STOP $_pids 2> /dev/null
+    _all="$_all $_pids"
+  done
+  if [ -n "$_all" ]; then
+    # shellcheck disable=SC2086
+    kill -s TERM $_all 2> /dev/null
+    # shellcheck disable=SC2086
+    kill -s CONT $_all 2> /dev/null
+  fi
+  wait
+}
 trap 'rm -rf "$tmp"' EXIT
-trap 'exit 1' HUP INT TERM
+trap 'stop_tree; exit 1' HUP INT TERM
 JOBS=4
 bad=0
 total=0
@@ -217,4 +262,5 @@ for n in $(cat "$tmp/ctl.have"); do
 done
 
 printf 'controls=%s/%s\n' "$ok" "$total"
+if [ -n "$end_file" ]; then date +%s > "$end_file"; fi
 [ "$bad" -eq 0 ]
