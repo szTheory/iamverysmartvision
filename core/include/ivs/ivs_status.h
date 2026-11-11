@@ -5,10 +5,20 @@
  * The numbers are frozen and append-only (D-09): a number is never reused or renumbered.
  * -6..-15 are unassigned; -24..-31 are reserved for later content codes. Detail (reason,
  * segment index, byte offset) travels in an out report struct, never in the status.
- * The frozen pin file and ivs_status_name() arrive in plan 03-09.
+ * The numbers are pinned by data/expected/api-statuses.ids (plan 03-09).
+ * IVS_API marks every public function (D-06): empty for the Phase 3 static library; a later
+ * shared build may define it (visibility or dllexport) before including any ivs/ header.
  * Standard headers only; consumers include it as "ivs/ivs_status.h". */
 #ifndef IVS_STATUS_H
 #define IVS_STATUS_H
+
+#ifndef IVS_API
+#define IVS_API
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef int ivs_status;
 
@@ -28,5 +38,9 @@ typedef int ivs_status;
 #define IVS_E_MISSING_SYSTEM_IMAGE (-21)
 #define IVS_E_DUPLICATE_LOAD (-22)
 #define IVS_E_DIGEST_MISMATCH (-23)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

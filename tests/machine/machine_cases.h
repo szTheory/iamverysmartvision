@@ -16,4 +16,9 @@ extern const size_t ivs_machine_sha256_count;
 extern const ivs_test_source *const ivs_machine_sha256_sources;
 extern const size_t ivs_machine_sha256_source_count;
 
+/* Family create (plan 03-09): requirements, create, info, destroy, status names, API version
+ * (machine_create.c). */
+extern const ivs_test_case ivs_machine_create_cases[];
+extern const size_t ivs_machine_create_count;
+
 #endif
