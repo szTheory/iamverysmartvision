@@ -1,0 +1,8 @@
+# Owning plan 04-04: runner source hygiene (D-23, A-07): runner-scan include, internal-include
+# and feature-macro confinement; integrity SPDX/ASCII coverage of runner/ and tools/(pack|cart)/.
+integrity-missing-spdx-runner
+integrity-missing-spdx-tools-c
+integrity-non-ascii-runner
+runner-scan-header
+runner-scan-internal-include
+runner-scan-posix-define
