@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ivs/ivs.h"
 #include "ivs/ivs_machine.h"
 #include "ivs_test.h"
 #include "machine/machine.h"
@@ -97,8 +98,654 @@ done:
   return rc;
 }
 
+/* ---- storage helpers ---- */
+
+/* Over-allocated storage: raw holds n + MC_PAD bytes of poison and p is raw aligned to 16 plus
+ * misalign. A refusal must leave every raw byte poisoned (also bytes past the storage). */
+#define MC_PAD 32u
+
+typedef struct mc_store {
+  uint8_t *raw;
+  uint8_t *p;
+  size_t raw_bytes;
+  uint8_t poison;
+} mc_store;
+
+static int mc_store_new(mc_store *s, size_t n, size_t misalign, uint8_t poison)
+{
+  uintptr_t a;
+  s->raw_bytes = n + MC_PAD;
+  s->raw = malloc(s->raw_bytes);
+  s->poison = poison;
+  if (s->raw == NULL) {
+    return 0;
+  }
+  memset(s->raw, poison, s->raw_bytes);
+  a = (uintptr_t)s->raw;
+  s->p = s->raw + ((16u - (a % 16u)) % 16u) + misalign;
+  return 1;
+}
+
+static int mc_store_intact(const mc_store *s)
+{
+  size_t i;
+  for (i = 0; i < s->raw_bytes; i++) {
+    if (s->raw[i] != s->poison) {
+      ivs_test_diag("raw byte %zu written (0x%02x)", i, (unsigned)s->raw[i]);
+      return 0;
+    }
+  }
+  return 1;
+}
+
+/* Exact-size 16-aligned storage of one instance, poisoned. */
+static uint8_t *mc_exact(uint8_t poison)
+{
+  uint8_t *p = aligned_alloc(16u, IVS_MACHINE_BYTES);
+  if (p != NULL) {
+    memset(p, poison, IVS_MACHINE_BYTES);
+  }
+  return p;
+}
+
+/* create with o into poisoned storage aligned + misalign, passing storage_bytes; NULL storage or
+ * NULL out when asked. Expects status want, *out NULL and every storage byte untouched. */
+static int mc_create_refused(const ivs_create_options *o, int null_storage, int null_out, size_t misalign,
+                             size_t storage_bytes, ivs_status want)
+{
+  static uint8_t sentinel_storage[16];
+  mc_store s;
+  ivs_machine *m = (ivs_machine *)(void *)sentinel_storage;
+  ivs_status st;
+  int ok;
+  if (!mc_store_new(&s, IVS_MACHINE_BYTES, misalign, 0xA5u)) {
+    ivs_test_diag("malloc failed");
+    return IVS_TEST_FAIL;
+  }
+  st = ivs_machine_create(o, null_storage ? NULL : s.p, storage_bytes, null_out ? NULL : &m);
+  ok = mc_store_intact(&s);
+  free(s.raw);
+  if (st != want) {
+    ivs_test_diag("status %d, want %d", st, want);
+    return IVS_TEST_FAIL;
+  }
+  if (!null_out && m != NULL) {
+    ivs_test_diag("*out not NULL after a refusal");
+    return IVS_TEST_FAIL;
+  }
+  return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
+}
+
+/* ---- create refusals (precedence BAD_ARG, UNSUPPORTED, UNKNOWN_PROFILE, BUFFER_TOO_SMALL) ---- */
+
+static int mc_refuse_null_opts(void)
+{
+  return mc_create_refused(NULL, 0, 0, 0u, IVS_MACHINE_BYTES, IVS_E_BAD_ARG);
+}
+
+static int mc_refuse_null_storage(void)
+{
+  ivs_create_options o = mc_opts(MC_PROFILE);
+  return mc_create_refused(&o, 1, 0, 0u, IVS_MACHINE_BYTES, IVS_E_BAD_ARG);
+}
+
+static int mc_refuse_null_out(void)
+{
+  ivs_create_options o = mc_opts(MC_PROFILE);
+  return mc_create_refused(&o, 0, 1, 0u, IVS_MACHINE_BYTES, IVS_E_BAD_ARG);
+}
+
+static int mc_refuse_size_0(void)
+{
+  ivs_create_options o = mc_opts(MC_PROFILE);
+  o.struct_size = 0u;
+  return mc_create_refused(&o, 0, 0, 0u, IVS_MACHINE_BYTES, IVS_E_BAD_ARG);
+}
+
+static int mc_refuse_size_4(void)
+{
+  ivs_create_options o = mc_opts(MC_PROFILE);
+  o.struct_size = 4u;
+  return mc_create_refused(&o, 0, 0, 0u, IVS_MACHINE_BYTES, IVS_E_BAD_ARG);
+}
+
+static int mc_refuse_id_null(void)
+{
+  ivs_create_options o = mc_opts(NULL);
+  return mc_create_refused(&o, 0, 0, 0u, IVS_MACHINE_BYTES, IVS_E_BAD_ARG);
+}
+
+/* 64 bytes with no NUL, in an exact-size heap buffer: the scan must stop at the bound. */
+static int mc_refuse_id_unterminated(void)
+{
+  ivs_create_options o;
+  int rc;
+  char *id = malloc(IVS_PROFILE_ID_MAX_BYTES);
+  IVS_CHECK(id != NULL);
+  memset(id, 'x', IVS_PROFILE_ID_MAX_BYTES);
+  o = mc_opts(id);
+  rc = mc_create_refused(&o, 0, 0, 0u, IVS_MACHINE_BYTES, IVS_E_BAD_ARG);
+  free(id);
+  return rc;
+}
+
+/* 63 bytes and a NUL (the longest legal id) is not BAD_ARG: it is a registry miss. */
+static int mc_refuse_id_63_unknown(void)
+{
+  ivs_create_options o;
+  int rc;
+  char *id = malloc(IVS_PROFILE_ID_MAX_BYTES);
+  IVS_CHECK(id != NULL);
+  memset(id, 'x', IVS_PROFILE_ID_MAX_BYTES - 1u);
+  id[IVS_PROFILE_ID_MAX_BYTES - 1u] = '\0';
+  o = mc_opts(id);
+  rc = mc_create_refused(&o, 0, 0, 0u, IVS_MACHINE_BYTES, IVS_E_UNKNOWN_PROFILE);
+  free(id);
+  return rc;
+}
+
+static int mc_refuse_misaligned_1(void)
+{
+  ivs_create_options o = mc_opts(MC_PROFILE);
+  return mc_create_refused(&o, 0, 0, 1u, IVS_MACHINE_BYTES, IVS_E_BAD_ARG);
+}
+
+static int mc_refuse_misaligned_8(void)
+{
+  ivs_create_options o = mc_opts(MC_PROFILE);
+  return mc_create_refused(&o, 0, 0, 8u, IVS_MACHINE_BYTES, IVS_E_BAD_ARG);
+}
+
+static int mc_refuse_flags_1(void)
+{
+  ivs_create_options o = mc_opts(MC_PROFILE);
+  o.flags = 1u;
+  return mc_create_refused(&o, 0, 0, 0u, IVS_MACHINE_BYTES, IVS_E_UNSUPPORTED);
+}
+
+/* A larger caller struct (a future version) whose unknown tail is not zero. */
+typedef struct mc_big_opts {
+  ivs_create_options o;
+  uint8_t tail[16];
+} mc_big_opts;
+
+static mc_big_opts mc_big(const char *id)
+{
+  mc_big_opts b;
+  memset(&b, 0, sizeof b);
+  b.o.struct_size = (uint32_t)sizeof b;
+  b.o.profile_id = id;
+  return b;
+}
+
+static int mc_refuse_tail_nonzero(void)
+{
+  mc_big_opts b = mc_big(MC_PROFILE);
+  b.tail[15] = 1u;
+  return mc_create_refused(&b.o, 0, 0, 0u, IVS_MACHINE_BYTES, IVS_E_UNSUPPORTED);
+}
+
+static int mc_refuse_unknown_profile(void)
+{
+  ivs_create_options o = mc_opts("no-such-profile");
+  return mc_create_refused(&o, 0, 0, 0u, IVS_MACHINE_BYTES, IVS_E_UNKNOWN_PROFILE);
+}
+
+static int mc_refuse_near_miss(void)
+{
+  ivs_create_options o = mc_opts("intv-2609-ntsc-family-p2");
+  return mc_create_refused(&o, 0, 0, 0u, IVS_MACHINE_BYTES, IVS_E_UNKNOWN_PROFILE);
+}
+
+static int mc_refuse_trailing_space(void)
+{
+  ivs_create_options o = mc_opts(MC_PROFILE " ");
+  return mc_create_refused(&o, 0, 0, 0u, IVS_MACHINE_BYTES, IVS_E_UNKNOWN_PROFILE);
+}
+
+static int mc_refuse_short_storage(void)
+{
+  ivs_create_options o = mc_opts(MC_PROFILE);
+  return mc_create_refused(&o, 0, 0, 0u, IVS_MACHINE_BYTES - 1u, IVS_E_BUFFER_TOO_SMALL);
+}
+
+/* Two refusal classes at once: the earlier class wins (also pins the order the SUMMARY records). */
+static int mc_refuse_misaligned_over_flags(void)
+{
+  ivs_create_options o = mc_opts(MC_PROFILE);
+  o.flags = 1u;
+  return mc_create_refused(&o, 0, 0, 1u, IVS_MACHINE_BYTES, IVS_E_BAD_ARG);
+}
+
+static int mc_refuse_flags_over_unknown(void)
+{
+  ivs_create_options o = mc_opts("no-such-profile");
+  o.flags = 1u;
+  return mc_create_refused(&o, 0, 0, 0u, IVS_MACHINE_BYTES, IVS_E_UNSUPPORTED);
+}
+
+static int mc_refuse_unknown_over_short(void)
+{
+  ivs_create_options o = mc_opts("no-such-profile");
+  return mc_create_refused(&o, 0, 0, 0u, IVS_MACHINE_BYTES - 1u, IVS_E_UNKNOWN_PROFILE);
+}
+
+/* ---- create positives ---- */
+
+/* A larger caller struct with a zero tail is accepted. */
+static int mc_tail_zero_ok(void)
+{
+  mc_big_opts b = mc_big(MC_PROFILE);
+  ivs_machine *m = NULL;
+  int ok;
+  uint8_t *st = mc_exact(0xA5u);
+  IVS_CHECK(st != NULL);
+  ok = ivs_machine_create(&b.o, st, IVS_MACHINE_BYTES, &m) == IVS_OK && m != NULL &&
+       ivs_machine_destroy(m) == IVS_OK;
+  free(st);
+  IVS_CHECK(ok);
+  return IVS_TEST_PASS;
+}
+
+/* Create covers every instance byte: storage poisoned 0xA5 and 0x5A ends byte-identical. */
+static int mc_poisoned_storage(void)
+{
+  ivs_create_options o = mc_opts(MC_PROFILE);
+  ivs_machine *a = NULL;
+  ivs_machine *b = NULL;
+  int ok;
+  uint8_t *sa = mc_exact(0xA5u);
+  uint8_t *sb = mc_exact(0x5Au);
+  ok = sa != NULL && sb != NULL && ivs_machine_create(&o, sa, IVS_MACHINE_BYTES, &a) == IVS_OK &&
+       ivs_machine_create(&o, sb, IVS_MACHINE_BYTES, &b) == IVS_OK && memcmp(sa, sb, IVS_MACHINE_BYTES) == 0;
+  free(sa);
+  free(sb);
+  IVS_CHECK(ok);
+  return IVS_TEST_PASS;
+}
+
+/* Storage longer than the instance: the bytes past the instance are the host's and stay as they
+ * were; storage_bytes equal to the size is enough. */
+static int mc_larger_storage(void)
+{
+  ivs_create_options o = mc_opts(MC_PROFILE);
+  ivs_machine *m = NULL;
+  mc_store s;
+  size_t i;
+  int ok;
+  IVS_CHECK(mc_store_new(&s, IVS_MACHINE_BYTES + 64u, 0u, 0xA5u));
+  ok = ivs_machine_create(&o, s.p, IVS_MACHINE_BYTES + 64u, &m) == IVS_OK;
+  for (i = 0; ok && i < 64u; i++) {
+    ok = s.p[IVS_MACHINE_BYTES + i] == 0xA5u;
+  }
+  free(s.raw);
+  IVS_CHECK(ok);
+  return IVS_TEST_PASS;
+}
+
+/* One case in a 16-aligned static buffer, so the release -O2 run covers static storage too. */
+static _Alignas(16) uint8_t mc_static_storage[IVS_MACHINE_BYTES];
+
+static int mc_static_storage_case(void)
+{
+  ivs_create_options o = mc_opts(MC_PROFILE);
+  ivs_machine *m = NULL;
+  ivs_info info;
+  size_t i;
+  memset(mc_static_storage, 0x5A, sizeof mc_static_storage);
+  IVS_CHECK(ivs_machine_create(&o, mc_static_storage, sizeof mc_static_storage, &m) == IVS_OK);
+  memset(&info, 0, sizeof info);
+  info.struct_size = (uint32_t)sizeof info;
+  IVS_CHECK(ivs_machine_info(m, &info) == IVS_OK);
+  IVS_CHECK(info.phase == IVS_PHASE_OFF);
+  IVS_CHECK(ivs_machine_destroy(m) == IVS_OK);
+  for (i = 0; i < sizeof mc_static_storage; i++) {
+    IVS_CHECK(mc_static_storage[i] == 0u);
+  }
+  return IVS_TEST_PASS;
+}
+
+/* ---- destroy ---- */
+
+static int mc_refuse_destroy_null(void)
+{
+  IVS_CHECK(ivs_machine_destroy(NULL) == IVS_E_BAD_HANDLE);
+  return IVS_TEST_PASS;
+}
+
+/* Storage that never held an instance (no magic): BAD_HANDLE and no write. */
+static int mc_refuse_destroy_wrong_magic(void)
+{
+  mc_store s;
+  ivs_status st;
+  int ok;
+  IVS_CHECK(mc_store_new(&s, IVS_MACHINE_BYTES, 0u, 0xA5u));
+  st = ivs_machine_destroy((ivs_machine *)(void *)s.p);
+  ok = mc_store_intact(&s);
+  free(s.raw);
+  IVS_CHECK(st == IVS_E_BAD_HANDLE);
+  IVS_CHECK(ok);
+  return IVS_TEST_PASS;
+}
+
+/* Every instance byte is zero after destroy. */
+static int mc_destroy_scrubs(void)
+{
+  ivs_create_options o = mc_opts(MC_PROFILE);
+  ivs_machine *m = NULL;
+  size_t i;
+  int ok;
+  uint8_t *st = mc_exact(0xA5u);
+  IVS_CHECK(st != NULL);
+  ok = ivs_machine_create(&o, st, IVS_MACHINE_BYTES, &m) == IVS_OK && ivs_machine_destroy(m) == IVS_OK;
+  for (i = 0; ok && i < IVS_MACHINE_BYTES; i++) {
+    ok = st[i] == 0u;
+  }
+  free(st);
+  IVS_CHECK(ok);
+  return IVS_TEST_PASS;
+}
+
+static int mc_refuse_destroy_twice(void)
+{
+  ivs_create_options o = mc_opts(MC_PROFILE);
+  ivs_machine *m = NULL;
+  int ok;
+  uint8_t *st = mc_exact(0xA5u);
+  IVS_CHECK(st != NULL);
+  ok = ivs_machine_create(&o, st, IVS_MACHINE_BYTES, &m) == IVS_OK && ivs_machine_destroy(m) == IVS_OK &&
+       ivs_machine_destroy(m) == IVS_E_BAD_HANDLE;
+  free(st);
+  IVS_CHECK(ok);
+  return IVS_TEST_PASS;
+}
+
+/* ---- info ---- */
+
+/* A fresh instance in exact-size storage; the caller frees *st. */
+static int mc_fresh(uint8_t **st, ivs_machine **m)
+{
+  ivs_create_options o = mc_opts(MC_PROFILE);
+  *m = NULL;
+  *st = mc_exact(0xA5u);
+  return *st != NULL && ivs_machine_create(&o, *st, IVS_MACHINE_BYTES, m) == IVS_OK;
+}
+
+/* info(m, out) with a poisoned out of out_bytes whose struct_size is size: expects want, out
+ * untouched and the instance unchanged. */
+static int mc_info_refused(int null_handle, int destroyed, uint32_t size, ivs_status want)
+{
+  ivs_machine *m = NULL;
+  uint8_t *st = NULL;
+  uint8_t *snap;
+  ivs_info out;
+  ivs_info poison;
+  ivs_status got;
+  int ok;
+  if (!mc_fresh(&st, &m)) {
+    free(st);
+    ivs_test_diag("create failed");
+    return IVS_TEST_FAIL;
+  }
+  if (destroyed && ivs_machine_destroy(m) != IVS_OK) {
+    free(st);
+    return IVS_TEST_FAIL;
+  }
+  snap = malloc(IVS_MACHINE_BYTES);
+  if (snap == NULL) {
+    free(st);
+    return IVS_TEST_FAIL;
+  }
+  memcpy(snap, st, IVS_MACHINE_BYTES);
+  memset(&out, 0xA5, sizeof out);
+  out.struct_size = size;
+  poison = out;
+  got = ivs_machine_info(null_handle ? NULL : m, &out);
+  ok = got == want && memcmp(&out, &poison, sizeof out) == 0 && memcmp(snap, st, IVS_MACHINE_BYTES) == 0;
+  if (got != want) {
+    ivs_test_diag("status %d, want %d", got, want);
+  }
+  free(snap);
+  free(st);
+  return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
+}
+
+static int mc_refuse_info_null_out(void)
+{
+  ivs_machine *m = NULL;
+  uint8_t *st = NULL;
+  int ok = mc_fresh(&st, &m) && ivs_machine_info(m, NULL) == IVS_E_BAD_ARG;
+  free(st);
+  IVS_CHECK(ok);
+  return IVS_TEST_PASS;
+}
+
+/* Both a NULL out and a NULL handle: the argument class comes first. */
+static int mc_refuse_info_null_both(void)
+{
+  IVS_CHECK(ivs_machine_info(NULL, NULL) == IVS_E_BAD_ARG);
+  return IVS_TEST_PASS;
+}
+
+static int mc_refuse_info_size_0(void)
+{
+  return mc_info_refused(0, 0, 0u, IVS_E_BAD_ARG);
+}
+
+static int mc_refuse_info_short(void)
+{
+  return mc_info_refused(0, 0, (uint32_t)sizeof(ivs_info) - 1u, IVS_E_BAD_ARG);
+}
+
+static int mc_refuse_info_null_handle(void)
+{
+  return mc_info_refused(1, 0, (uint32_t)sizeof(ivs_info), IVS_E_BAD_HANDLE);
+}
+
+static int mc_refuse_info_destroyed(void)
+{
+  return mc_info_refused(0, 1, (uint32_t)sizeof(ivs_info), IVS_E_BAD_HANDLE);
+}
+
+/* A larger out struct gets only the known bytes; struct_size says how many were written. */
+typedef struct mc_big_info {
+  ivs_info info;
+  uint8_t tail[24];
+} mc_big_info;
+
+static int mc_info_larger_out(void)
+{
+  ivs_machine *m = NULL;
+  uint8_t *st = NULL;
+  mc_big_info b;
+  size_t i;
+  int ok;
+  memset(&b, 0xA5, sizeof b);
+  b.info.struct_size = (uint32_t)sizeof b;
+  ok = mc_fresh(&st, &m) && ivs_machine_info(m, &b.info) == IVS_OK;
+  free(st);
+  IVS_CHECK(ok);
+  IVS_CHECK(b.info.struct_size == (uint32_t)sizeof(ivs_info));
+  IVS_CHECK(b.info.phase == IVS_PHASE_OFF);
+  for (i = 0; i < sizeof b.tail; i++) {
+    IVS_CHECK(b.tail[i] == 0xA5u);
+  }
+  return IVS_TEST_PASS;
+}
+
+/* ---- storage requirements ---- */
+
+static int mc_req_refused(const char *id, uint32_t size, ivs_status want)
+{
+  ivs_storage_requirements r;
+  ivs_storage_requirements poison;
+  memset(&r, 0xA5, sizeof r);
+  r.struct_size = size;
+  poison = r;
+  IVS_CHECK(ivs_machine_storage_requirements(id, &r) == want);
+  IVS_CHECK(memcmp(&r, &poison, sizeof r) == 0);
+  return IVS_TEST_PASS;
+}
+
+static int mc_refuse_req_null_out(void)
+{
+  IVS_CHECK(ivs_machine_storage_requirements(MC_PROFILE, NULL) == IVS_E_BAD_ARG);
+  return IVS_TEST_PASS;
+}
+
+static int mc_refuse_req_size_0(void)
+{
+  return mc_req_refused(MC_PROFILE, 0u, IVS_E_BAD_ARG);
+}
+
+static int mc_refuse_req_short(void)
+{
+  return mc_req_refused(MC_PROFILE, (uint32_t)sizeof(ivs_storage_requirements) - 1u, IVS_E_BAD_ARG);
+}
+
+static int mc_refuse_req_null_id(void)
+{
+  return mc_req_refused(NULL, (uint32_t)sizeof(ivs_storage_requirements), IVS_E_BAD_ARG);
+}
+
+static int mc_refuse_req_id_unterminated(void)
+{
+  int rc;
+  char *id = malloc(IVS_PROFILE_ID_MAX_BYTES);
+  IVS_CHECK(id != NULL);
+  memset(id, 'x', IVS_PROFILE_ID_MAX_BYTES);
+  rc = mc_req_refused(id, (uint32_t)sizeof(ivs_storage_requirements), IVS_E_BAD_ARG);
+  free(id);
+  return rc;
+}
+
+static int mc_refuse_req_unknown(void)
+{
+  return mc_req_refused("no-such-profile", (uint32_t)sizeof(ivs_storage_requirements), IVS_E_UNKNOWN_PROFILE);
+}
+
+typedef struct mc_big_req {
+  ivs_storage_requirements r;
+  uint8_t tail[16];
+} mc_big_req;
+
+static int mc_req_larger_out(void)
+{
+  mc_big_req b;
+  size_t i;
+  memset(&b, 0xA5, sizeof b);
+  b.r.struct_size = (uint32_t)sizeof b;
+  IVS_CHECK(ivs_machine_storage_requirements(MC_PROFILE, &b.r) == IVS_OK);
+  IVS_CHECK(b.r.struct_size == (uint32_t)sizeof(ivs_storage_requirements));
+  IVS_CHECK(b.r.size_bytes == (uint64_t)IVS_MACHINE_BYTES);
+  for (i = 0; i < sizeof b.tail; i++) {
+    IVS_CHECK(b.tail[i] == 0xA5u);
+  }
+  return IVS_TEST_PASS;
+}
+
+/* ---- status names and API version ---- */
+
+#define MC_ST(x) {x, #x}
+
+typedef struct mc_status_name {
+  ivs_status value;
+  const char *name;
+} mc_status_name;
+
+/* Every code of ivs/ivs_status.h; the pin data/expected/api-statuses.ids lists the same set. */
+static const mc_status_name mc_statuses[] = {
+    MC_ST(IVS_OK),
+    MC_ST(IVS_E_BAD_ARG),
+    MC_ST(IVS_E_BAD_STATE),
+    MC_ST(IVS_E_BAD_HANDLE),
+    MC_ST(IVS_E_UNSUPPORTED),
+    MC_ST(IVS_E_BUFFER_TOO_SMALL),
+    MC_ST(IVS_E_UNKNOWN_PROFILE),
+    MC_ST(IVS_E_MALFORMED),
+    MC_ST(IVS_E_OVERSIZED),
+    MC_ST(IVS_E_OVERLAP),
+    MC_ST(IVS_E_OUT_OF_RANGE),
+    MC_ST(IVS_E_MISSING_SYSTEM_IMAGE),
+    MC_ST(IVS_E_DUPLICATE_LOAD),
+    MC_ST(IVS_E_DIGEST_MISMATCH),
+};
+
+static int mc_status_names(void)
+{
+  static const ivs_status unknown[] = {-6, -15, -24, -31, 1, -1000};
+  size_t i;
+  IVS_CHECK(sizeof mc_statuses / sizeof mc_statuses[0] == 14u);
+  for (i = 0; i < sizeof mc_statuses / sizeof mc_statuses[0]; i++) {
+    const char *got = ivs_status_name(mc_statuses[i].value);
+    if (got == NULL || strcmp(got, mc_statuses[i].name) != 0) {
+      ivs_test_diag("status %d: name %s, want %s", mc_statuses[i].value, got == NULL ? "(null)" : got,
+                    mc_statuses[i].name);
+      return IVS_TEST_FAIL;
+    }
+  }
+  for (i = 0; i < sizeof unknown / sizeof unknown[0]; i++) {
+    const char *got = ivs_status_name(unknown[i]);
+    IVS_CHECK(got != NULL && strcmp(got, "IVS_E_UNKNOWN") == 0);
+  }
+  return IVS_TEST_PASS;
+}
+
+static int mc_api_version(void)
+{
+  IVS_CHECK(IVS_API_VERSION_MAJOR == 0u);
+  IVS_CHECK(IVS_API_VERSION_MINOR == 1u);
+  IVS_CHECK(IVS_API_VERSION_PATCH == 0u);
+  IVS_CHECK(IVS_API_VERSION == ((IVS_API_VERSION_MAJOR << 16) | (IVS_API_VERSION_MINOR << 8) | IVS_API_VERSION_PATCH));
+  IVS_CHECK(ivs_api_version() == IVS_API_VERSION);
+  return IVS_TEST_PASS;
+}
+
 const ivs_test_case ivs_machine_create_cases[] = {
+    {"machine.api.version", mc_api_version, NULL},
+    {"machine.create.info-larger-out", mc_info_larger_out, NULL},
+    {"machine.create.larger-storage", mc_larger_storage, NULL},
     {"machine.create.ok-info-destroy", mc_ok_info_destroy, NULL},
+    {"machine.create.poisoned-storage", mc_poisoned_storage, NULL},
     {"machine.create.requirements", mc_requirements, NULL},
+    {"machine.create.requirements-larger-out", mc_req_larger_out, NULL},
+    {"machine.create.static-storage", mc_static_storage_case, NULL},
+    {"machine.create.tail-zero-ok", mc_tail_zero_ok, NULL},
+    {"machine.destroy.scrubs", mc_destroy_scrubs, NULL},
+    {"machine.refuse.create.flags-1", mc_refuse_flags_1, NULL},
+    {"machine.refuse.create.flags-over-unknown-profile", mc_refuse_flags_over_unknown, NULL},
+    {"machine.refuse.create.id-63-unknown", mc_refuse_id_63_unknown, NULL},
+    {"machine.refuse.create.id-null", mc_refuse_id_null, NULL},
+    {"machine.refuse.create.id-unterminated", mc_refuse_id_unterminated, NULL},
+    {"machine.refuse.create.misaligned-1", mc_refuse_misaligned_1, NULL},
+    {"machine.refuse.create.misaligned-8", mc_refuse_misaligned_8, NULL},
+    {"machine.refuse.create.misaligned-over-flags", mc_refuse_misaligned_over_flags, NULL},
+    {"machine.refuse.create.near-miss", mc_refuse_near_miss, NULL},
+    {"machine.refuse.create.null-opts", mc_refuse_null_opts, NULL},
+    {"machine.refuse.create.null-out", mc_refuse_null_out, NULL},
+    {"machine.refuse.create.null-storage", mc_refuse_null_storage, NULL},
+    {"machine.refuse.create.short-storage", mc_refuse_short_storage, NULL},
+    {"machine.refuse.create.size-0", mc_refuse_size_0, NULL},
+    {"machine.refuse.create.size-4", mc_refuse_size_4, NULL},
+    {"machine.refuse.create.tail-nonzero", mc_refuse_tail_nonzero, NULL},
+    {"machine.refuse.create.trailing-space", mc_refuse_trailing_space, NULL},
+    {"machine.refuse.create.unknown-over-short-storage", mc_refuse_unknown_over_short, NULL},
+    {"machine.refuse.create.unknown-profile", mc_refuse_unknown_profile, NULL},
+    {"machine.refuse.destroy.null", mc_refuse_destroy_null, NULL},
+    {"machine.refuse.destroy.twice", mc_refuse_destroy_twice, NULL},
+    {"machine.refuse.destroy.wrong-magic", mc_refuse_destroy_wrong_magic, NULL},
+    {"machine.refuse.info.destroyed", mc_refuse_info_destroyed, NULL},
+    {"machine.refuse.info.null-both", mc_refuse_info_null_both, NULL},
+    {"machine.refuse.info.null-handle", mc_refuse_info_null_handle, NULL},
+    {"machine.refuse.info.null-out", mc_refuse_info_null_out, NULL},
+    {"machine.refuse.info.short", mc_refuse_info_short, NULL},
+    {"machine.refuse.info.size-0", mc_refuse_info_size_0, NULL},
+    {"machine.refuse.requirements.id-unterminated", mc_refuse_req_id_unterminated, NULL},
+    {"machine.refuse.requirements.null-id", mc_refuse_req_null_id, NULL},
+    {"machine.refuse.requirements.null-out", mc_refuse_req_null_out, NULL},
+    {"machine.refuse.requirements.short", mc_refuse_req_short, NULL},
+    {"machine.refuse.requirements.size-0", mc_refuse_req_size_0, NULL},
+    {"machine.refuse.requirements.unknown-profile", mc_refuse_req_unknown, NULL},
+    {"machine.status.names", mc_status_names, NULL},
 };
 const size_t ivs_machine_create_count = sizeof ivs_machine_create_cases / sizeof ivs_machine_create_cases[0];

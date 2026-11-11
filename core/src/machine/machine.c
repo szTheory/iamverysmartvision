@@ -12,10 +12,12 @@
  * Only then does it zero the instance bytes (sizeof the instance; bytes past them belong to the
  * host and are never touched) and set the fields of a new instance. A refusal writes *out = NULL
  * and nothing else. destroy zero-scrubs the same bytes, so the magic check refuses a stale
- * handle with BAD_HANDLE. Profile-id matching is a hand-written loop bounded by 64 bytes (A-06):
+ * handle with BAD_HANDLE. ivs_status_name and ivs_api_version live here too (D-04, D-09).
+ * Profile-id matching is a hand-written loop bounded by 64 bytes (A-06):
  * no strlen or strcmp, which the core may not import. */
 #include "common/ivs_prelude.h"
 
+#include "ivs/ivs.h"
 #include "machine/machine.h"
 
 _Static_assert(IVS_PROFILE_ID_MAX_BYTES == IVS_MEMSYS_PROFILE_ID_CAP, "profile id bound");
@@ -213,4 +215,45 @@ ivs_status ivs_machine_info(const ivs_machine *m, ivs_info *out)
   }
   *out = r;
   return IVS_OK;
+}
+
+uint32_t ivs_api_version(void)
+{
+  return IVS_API_VERSION;
+}
+
+const char *ivs_status_name(ivs_status s)
+{
+  switch (s) {
+  case IVS_OK:
+    return "IVS_OK";
+  case IVS_E_BAD_ARG:
+    return "IVS_E_BAD_ARG";
+  case IVS_E_BAD_STATE:
+    return "IVS_E_BAD_STATE";
+  case IVS_E_BAD_HANDLE:
+    return "IVS_E_BAD_HANDLE";
+  case IVS_E_UNSUPPORTED:
+    return "IVS_E_UNSUPPORTED";
+  case IVS_E_BUFFER_TOO_SMALL:
+    return "IVS_E_BUFFER_TOO_SMALL";
+  case IVS_E_UNKNOWN_PROFILE:
+    return "IVS_E_UNKNOWN_PROFILE";
+  case IVS_E_MALFORMED:
+    return "IVS_E_MALFORMED";
+  case IVS_E_OVERSIZED:
+    return "IVS_E_OVERSIZED";
+  case IVS_E_OVERLAP:
+    return "IVS_E_OVERLAP";
+  case IVS_E_OUT_OF_RANGE:
+    return "IVS_E_OUT_OF_RANGE";
+  case IVS_E_MISSING_SYSTEM_IMAGE:
+    return "IVS_E_MISSING_SYSTEM_IMAGE";
+  case IVS_E_DUPLICATE_LOAD:
+    return "IVS_E_DUPLICATE_LOAD";
+  case IVS_E_DIGEST_MISMATCH:
+    return "IVS_E_DIGEST_MISMATCH";
+  default:
+    return "IVS_E_UNKNOWN";
+  }
 }

@@ -39,6 +39,10 @@ typedef int ivs_status;
 #define IVS_E_DUPLICATE_LOAD (-22)
 #define IVS_E_DIGEST_MISMATCH (-23)
 
+/* The stable name of a status ("IVS_OK", "IVS_E_BAD_ARG", ...), or "IVS_E_UNKNOWN" for a value
+ * that is not a code. The returned string is static and constant. */
+IVS_API const char *ivs_status_name(ivs_status s);
+
 #ifdef __cplusplus
 }
 #endif
