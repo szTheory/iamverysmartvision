@@ -47,7 +47,7 @@
       "topic": "Value read while a region is inaccessible",
       "sources": "A community measurement on a different board (a STIC1A machine) reports $00FF for GROM and GRAM reads and random values for STIC registers. The community emulator source masks the address instead (SRC-community-emu-docs). A community author states unmapped reads return $FFFF; bus pull-ups are the likely mechanism.",
       "status": "open",
-      "default_policy": "unknown-default-chosen: the value is a tagged profile parameter; unmapped reads return $FFFF and no value is claimed for inaccessible STIC or GROM/GRAM reads.",
+      "default_policy": "unknown-default-chosen: the value is a tagged profile parameter; unmapped reads return $FFFF and no value is claimed for inaccessible STIC or GROM/GRAM reads. Blocked and undriven reads are the profile field memmap.undriven_read.",
       "resolver": "pending: profile policy for inaccessible reads, then a diagnostic in the STIC phase",
       "evidence": "",
       "note": "Seeded from the research source-conflict table."
@@ -248,7 +248,7 @@
       "sources": "One research file makes a mini-EXEC first-class from the first slice. Another labels it not an EXEC. A third warns against writing an EXEC replacement casually because its contract must be tested and its presence changes timing. A fourth calls the EXEC-less reset story an owner or profile question.",
       "status": "open",
       "default_policy": "unknown-default-chosen: no boot stub or EXEC replacement is built in Phase 1; the reset PC comes from the profile default.",
-      "resolver": "pending: D5 owner decision (open question 3), conditions in the Phase 4 plan",
+      "resolver": "pending: Phase 4 project boot stub plan (D5 decided as D-24: user-supplied system images only)",
       "evidence": "",
       "note": "Seeded from the research source-conflict table."
     },
@@ -318,7 +318,7 @@
       "sources": "The manual says the CPU inputs the starting address from the bus when MSYNC* is released, that the address may be user-defined or the default from the non-driven bus state, and that registers and status bits are undefined after initialization (SRC-gi-cp1600-um-1975). The profile's $1000 for R7 comes from community sources (SRC-community-emu-docs) and is not a manual fact.",
       "status": "open",
       "default_policy": "unknown-default-chosen: R7 is $1000 at reset as a profile default (field reset.r7), with other registers and flags zero, until the bus rule and the system image are decided.",
-      "resolver": "pending: Phase 2 boot-stub decision (D5); measurement: D10 reset read-back on owner hardware",
+      "resolver": "measurement: D10 reset read-back on owner hardware (D5 decided as D-24: user-supplied system images only, project boot stub in Phase 4)",
       "evidence": "SRC-gi-cp1600-um-1975 SC.1, pdf 21; Fig. 2-6, pdf 22; pdf 27. See the Reset, MSYNC and IAB section of docs/cp1610/reference-notes.md.",
       "note": "Appended from the Discrepancy candidates section of docs/cp1610/reference-notes.md (D-21). Profile fields reset.r7, reset.registers_other and reset.flags are the non-manual defaults."
     },

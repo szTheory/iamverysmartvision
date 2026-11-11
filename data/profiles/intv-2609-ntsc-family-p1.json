@@ -138,10 +138,10 @@
       "tag": "tier4-community",
       "cite": "SRC-gi-cp1600-um-1975 SC.1, pdf 21 and pdf 27 (the start PC is device-supplied over the bus by IAB); SRC-community-emu-docs for the $1000 default",
       "conflict": "C32",
-      "resolving_evidence": "pending: Phase 2 boot-stub decision (D5)",
+      "resolving_evidence": "measurement: D10 reset read-back on owner hardware (D5 decided as D-24: user-supplied system images only; project boot stub in Phase 4)",
       "revisit_trigger": "at Phase 2 reset-vector design",
       "decision": null,
-      "note": "The manual says the start PC is supplied by a device through the bus via IAB. Whether the EXEC or the board supplies it is unknown-default-chosen for Phase 2 and D5."
+      "note": "The manual says the start PC is supplied by a device through the bus via IAB. Whether the EXEC or the board supplies it is unknown-default-chosen; D5 decided as D-24 (user-supplied images only, project boot stub in Phase 4), so the EXEC or the boot stub supplies it."
     },
     "reset.registers_other": {
       "value": "zero",
