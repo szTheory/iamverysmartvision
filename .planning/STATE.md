@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 3
 current_phase_name: Memory Map, Content Loading and Refusal
 status: executing
-stopped_at: Completed 03-09-PLAN.md
-last_updated: "2026-11-11T07:23:58.973Z"
+stopped_at: Completed 03-10-PLAN.md
+last_updated: "2026-11-11T07:41:21.064Z"
 last_activity: 2026-11-11
-last_activity_desc: Plan 03-09 complete (public headers ivs.h/ivs_machine.h, caller-storage create/destroy/info with poisoned-storage refusal rows, status names and pin api-statuses.ids, canonical per-domain state digest with IVSSTATE composite, 8 machine faults, faults=98/98; API-01, API-06, MEM-04 stay open)
-state_head: bed72d78ac3680ee3370ce96434a388760ea57c0
+last_activity_desc: Plan 03-10 complete (typed ivs_machine_load/unload for EXEC, GROM and IVSC cartridges with validate-then-commit in the A-08 ladder, load report with whole-file SHA-256 from the parser single pass, layer-2 span and feature checks, expect_sha256, family load 16 cases, 3 faults, faults=101/101; MEM-03, MEM-04, API-06 stay open)
+state_head: ca80f1f0ff5e555d66648af1a4337bb3c790d3eb
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 46
-  completed_plans: 41
+  completed_plans: 42
   percent: 25
 ---
 
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 3 — Memory Map, Content Loading and Refusal
-Plan: 10 of 14
+Plan: 11 of 14
 Status: Ready to execute
-Last activity: 2026-11-11 — Plan 03-09 complete (public headers ivs.h/ivs_machine.h, caller-storage create/destroy/info with poisoned-storage refusal rows, status names and pin api-statuses.ids, canonical per-domain state digest with IVSSTATE composite, 8 machine faults, faults=98/98; API-01, API-06, MEM-04 stay open)
+Last activity: 2026-11-11 — Plan 03-10 complete (typed ivs_machine_load/unload for EXEC, GROM and IVSC cartridges with validate-then-commit in the A-08 ladder, load report with whole-file SHA-256 from the parser single pass, layer-2 span and feature checks, expect_sha256, family load 16 cases, 3 faults, faults=101/101; MEM-03, MEM-04, API-06 stay open)
 
 Progress: [███░░░░░░░] 25%
 
@@ -94,6 +94,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 03 P07 | 15min | 3 tasks | 16 files |
 | Phase 03 P08 | 14min | 3 tasks | 14 files |
 | Phase 03 P09 | 16min | 3 tasks | 16 files |
+| Phase 03 P10 | 12min | 3 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -200,6 +201,10 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 03]: 03-08: optional libFuzzer target sanitizer list is the cache string IVS_LIBFUZZER_SANITIZERS (default fuzzer,address,undefined; fuzzer,undefined where the ASan runtime hangs)
 - [Phase 03]: 03-09: create zeroes exactly the instance bytes (113,456; 16-aligned); calls taking a handle check BAD_ARG before BAD_HANDLE; create order BAD_ARG, UNSUPPORTED, UNKNOWN_PROFILE, BUFFER_TOO_SMALL
 - [Phase 03]: 03-09: state digest = per-domain SHA-256 from one 49-row field table (u32 count before arrays, profile index serialized as the id, magic/padding declared not serialized) and the IVSSTATE composite; SHA faults K_WRONG/ROTATE_WRONG/LENGTH_LE widened to machine.digest.
+- [Phase 03]: 03-10: load ladder per A-08 (BAD_ARG, BAD_HANDLE, UNSUPPORTED options, BAD_STATE, DUPLICATE_LOAD, OVERSIZED, wrap-proof overlap BAD_ARG, content, expect DIGEST_MISMATCH); refused report writes detail only, image zero
+- [Phase 03]: 03-10: IVS_REASON_* 1..18 equal the IVSC reason table, 19..33 are load reasons (span, features, system-image size/width, expect digest, argument, handle, option, state, slot)
+- [Phase 03]: 03-10: parser computes trailer check and whole-file SHA-256 in one pass (view.file_sha256); layer-2 span check is the internal seam ivs_machine_cart_span_check
+- [Phase 03]: 03-10: no requirement marked complete; MEM-03 system-image shape refusals are tested by 03-11
 
 ### Pending Todos
 
@@ -231,6 +236,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-11T07:23:58.879Z
-Stopped at: Completed 03-09-PLAN.md
+Last session: 2026-11-11T07:41:20.920Z
+Stopped at: Completed 03-10-PLAN.md
 Resume file: None
