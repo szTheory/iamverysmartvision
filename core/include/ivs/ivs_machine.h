@@ -37,9 +37,14 @@ typedef struct ivs_machine ivs_machine;
 #define IVS_KIND_CARTRIDGE 3u
 #define IVS_SLOT_COUNT 3u
 
-/* Run phases (D-13, D-14): a new instance is OFF; a successful power-on reset makes it POWERED. */
+/* Run phases (D-13, D-14): a new instance is OFF; a successful power-on reset makes it POWERED.
+ * Nothing returns a POWERED instance to OFF: a later reset is a power cycle, and only destroy
+ * ends the instance (A-08 d). */
 #define IVS_PHASE_OFF 0u
 #define IVS_PHASE_POWERED 1u
+
+/* Reset kinds (D-14). Any other value is BAD_ARG (A-08 e). */
+#define IVS_RESET_POWER_ON 1u
 
 /* State digest domains (D-35). 0 is the composite of 1..4; 16..18 are reserved for the RUN-05
  * video, audio and input observations and are refused until they exist. */
@@ -214,6 +219,16 @@ IVS_API ivs_status ivs_machine_load(ivs_machine *m, uint32_t kind, const uint8_t
  * unloads OK. BAD_ARG: unknown kind; BAD_HANDLE; BAD_STATE: the machine is POWERED. After every
  * slot is unloaded the state digest equals a fresh instance's (D-13). */
 IVS_API ivs_status ivs_machine_unload(ivs_machine *m, uint32_t kind);
+
+/* Power-on reset (D-14, A-08 d, e). Validates before the first write: BAD_ARG for a kind other
+ * than IVS_RESET_POWER_ON; BAD_HANDLE; MISSING_SYSTEM_IMAGE when a slot the profile requires is
+ * empty (EXEC is checked before GROM). A refusal leaves the instance unchanged. On success the
+ * volatile state takes its power-on fill (system RAM, scratchpad and GRAM zero), every gate is
+ * open, the CPU is armed to take its reset entry through the profile's reset vector, machine
+ * time is 0 and the phase is POWERED; the image slots are untouched. Allowed from OFF and from
+ * POWERED (a power cycle, which gives the same state for the same content); after it every
+ * load and unload is BAD_STATE until a new instance. */
+IVS_API ivs_status ivs_machine_reset(ivs_machine *m, uint32_t kind);
 
 #ifdef __cplusplus
 }

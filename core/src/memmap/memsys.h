@@ -111,7 +111,7 @@ typedef struct ivs_profile_desc {
   uint16_t undriven_fill; /* memmap.undriven_read */
   uint16_t cart_lo;       /* memmap.cart_span */
   uint16_t cart_hi;
-  uint16_t reserved; /* 0; keeps the record free of implicit padding */
+  uint16_t ticks_per_cpu_cycle; /* master ticks per CPU cycle (D2, plan 03-12); nonzero */
   uint8_t has_cart_span;
   uint8_t interrupt_accept_clears_intff;
   uint8_t release_latency_cpu_cycles;

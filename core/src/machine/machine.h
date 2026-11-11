@@ -106,6 +106,19 @@ uint32_t ivs_machine_cart_span_check(uint32_t lo, uint32_t hi, const ivs_ivsc_vi
  * BAD_ARG with nothing written, so a host cannot aim a report into its own instance. */
 uint32_t ivs_machine_span_overlaps(const void *p, size_t n, const void *inst, size_t inst_bytes);
 
+/* ---- internal step seam (D-05, D-20, plan 03-12, machine_run.c) ----
+ * Steps one CPU unit of a POWERED instance through its memory system: the CPU configuration
+ * comes from the profile registry (cpu.interrupt_accept_clears_intff,
+ * bus.release_latency_cpu_cycles, bus.wait_limit_cpu_cycles), every line is inactive (no device
+ * drives INTR, INTRM, BUSRQ or STPST in Phase 3), and the port's bus is ivs_memsys_bus on the
+ * instance's own memory system, so the IAB of the reset entry answers the profile's reset.r7.
+ * No access log is kept. Machine time advances by the unit's elapsed CPU cycles times the
+ * profile's ticks_per_cpu_cycle. BAD_ARG: out NULL; BAD_HANDLE; BAD_STATE: the instance is OFF;
+ * else the CPU step's status (a CPU refusal leaves time unchanged). *out is written only on
+ * IVS_OK. Never public: it is declared here and nowhere under core/include; Phase 4's bounded
+ * run API is built on it. */
+ivs_status ivs_machine_step_unit_internal(ivs_machine *m, ivs_cp1610_result *out);
+
 /* The instance behind a handle, or NULL for NULL or a wrong magic. */
 const struct ivs_machine *ivs_machine_from_handle(const ivs_machine *m);
 struct ivs_machine *ivs_machine_from_handle_mut(ivs_machine *m);

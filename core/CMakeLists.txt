@@ -16,6 +16,7 @@ set(IVS_CORE_SOURCES
   src/machine/machine.c
   src/machine/machine_digest.c
   src/machine/machine_load.c
+  src/machine/machine_run.c
   src/memmap/memsys.c
 )
 

@@ -13,7 +13,8 @@
 #   cartridge.features_supported  u32 mask (D-32)
 #   system_images.exec|grom       {units, unit_bits, base, required} (D-24, D-26)
 #   reset.r7, interrupt.iab_value, cpu.interrupt_accept_clears_intff,
-#   bus.release_latency_cpu_cycles, bus.wait_limit_cpu_cycles, power_on_fill.*
+#   bus.release_latency_cpu_cycles, bus.wait_limit_cpu_cycles, power_on_fill.*,
+#   ticks_per_cpu_cycle (1..65535; the machine converts a CPU unit's cycles to master ticks, D2)
 # Hex values are "$XXXX" strings (four uppercase digits), as in reset.r7.
 #
 # Fail closed (message `IvsMemmapTable: <profile>: <field>: <reason>`): hi < lo; lo or hi+1 not
@@ -254,6 +255,11 @@ foreach(rel IN LISTS mm_profiles)
   mm_uint(release "${doc}" "value" 255 fields bus.release_latency_cpu_cycles value)
   set(MM_CTX "${rel}: bus.wait_limit_cpu_cycles")
   mm_uint(wait_limit "${doc}" "value" 255 fields bus.wait_limit_cpu_cycles value)
+  set(MM_CTX "${rel}: ticks_per_cpu_cycle")
+  mm_uint(ticks_per_cpu "${doc}" "value" 65535 fields ticks_per_cpu_cycle value)
+  if(ticks_per_cpu EQUAL 0)
+    mm_fail("must be nonzero")
+  endif()
 
   # Required registry fields (a missing one fails closed).
   foreach(need cartridge.features_supported system_images.exec system_images.grom memmap.cart_span
@@ -520,7 +526,7 @@ foreach(rel IN LISTS mm_profiles)
   mm_lit(slo_l "${span_lo}")
   mm_lit(shi_l "${span_hi}")
   string(APPEND reg_c
-    "  {\"${pid}\", ${r7_l}, ${iab_l}, ${und_l}, ${slo_l}, ${shi_l}, 0u, ${has_span}u, ${intff}u, ${release}u,\n"
+    "  {\"${pid}\", ${r7_l}, ${iab_l}, ${und_l}, ${slo_l}, ${shi_l}, ${ticks_per_cpu}u, ${has_span}u, ${intff}u, ${release}u,\n"
     "   ${wait_limit}u, ${features}u, ${slot_exec_c}, ${slot_grom_c}},\n")
 endforeach()
 

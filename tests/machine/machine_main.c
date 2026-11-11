@@ -74,7 +74,8 @@ int main(int argc, char **argv)
       ivs_machine_add(&n, ivs_machine_create_cases, ivs_machine_create_count) != 0 ||
       ivs_machine_add(&n, ivs_machine_digest_cases, ivs_machine_digest_count) != 0 ||
       ivs_machine_add(&n, ivs_machine_load_cases, ivs_machine_load_count) != 0 ||
-      ivs_machine_add_sources(&ns, ivs_machine_load_sources, ivs_machine_load_source_count) != 0) {
+      ivs_machine_add_sources(&ns, ivs_machine_load_sources, ivs_machine_load_source_count) != 0 ||
+      ivs_machine_add(&n, ivs_machine_reset_cases, ivs_machine_reset_count) != 0) {
     return 1;
   }
   ivs_machine_n_cases = n;

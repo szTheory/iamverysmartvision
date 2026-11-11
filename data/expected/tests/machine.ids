@@ -315,3 +315,8 @@ machine.prec.cart-malformed-before-span
 machine.prec.cart-malformed-before-feature
 machine.prec.cart-span-before-feature
 machine.prec.cart-feature-before-expect
+# Family reset (plan 03-12): the power-on reset and the internal step seam (never public). The
+# tracer runs a hand-assembled stand-in program (machine_standin.c) on the profile-driven bus,
+# entered through the profile's reset vector, and sees its RAM writes and its machine time.
+machine.reset.iab-reset-vector
+machine.reset.step-program
