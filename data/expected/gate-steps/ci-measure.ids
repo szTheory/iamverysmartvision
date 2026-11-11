@@ -1,2 +1,4 @@
 # Owning plan 04-01: CI measurement (D-42, D-44).
 ci-summary
+# Owning plan 04-02: hosted run record format check (D-44).
+ci-log
