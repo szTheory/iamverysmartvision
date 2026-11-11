@@ -161,11 +161,11 @@ Plans:
   3. Every refusal-matrix row (malformed, oversized, overlapping, out-of-range, missing system image, unknown profile) returns its own typed error, and the state digest is the same before and after the refused load.
   4. The cartridge import format is specified in the project's own words. Its positive, boundary and malformed fixtures pass and are recorded in the fixture manifest.
   5. Two instances created side by side, with different content, step without affecting each other (isolation test). Every API error and refusal has a documented state effect that a test verifies.
-**Plans**: 1/14 plans executed in 14 sequential waves
+**Plans**: 2/14 plans executed in 14 sequential waves
 
 Plans:
 - [x] 03-01-PLAN.md — Fault loop over every `data/expected/faults/*.ids` with a per-suite registry and union site checks (D-37), 4 controls
-- [ ] 03-02-PLAN.md — In-repo SHA-256 (FIPS 180-4, copyable context) with an always-on CMake oracle, suite `machine`, 6 faults, first gate measurement
+- [x] 03-02-PLAN.md — In-repo SHA-256 (FIPS 180-4, copyable context) with an always-on CMake oracle, suite `machine`, 6 faults, first gate measurement
 - [ ] 03-03-PLAN.md — Public include tree (`ivs_status.h` moved), internal include split, c-purity for `core/include` and reviewed generated includes, writable-data rule, 6 controls
 - [ ] 03-04-PLAN.md — Profile memmap descriptors, fail-closed generator, memory system and bus in one core TU, C60-C62, suite `memmap`, 6 faults
 - [ ] 03-05-PLAN.md — Sourced literal memory map and the `memmap` gate step (grammar, tiling, provenance), 8 controls
@@ -287,7 +287,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 |-------|----------------|--------|-----------|
 | 1. Evidence, Profile and Rights Foundations | 14/14 | Complete    | 2026-11-09 |
 | 2. CP-1610 CPU Core | 18/18 | Complete    | 2026-11-10 |
-| 3. Memory Map, Content Loading and Refusal | 1/14 | In Progress | - |
+| 3. Memory Map, Content Loading and Refusal | 2/14 | In Progress | - |
 | 4. Headless Runner and Installed Consumer (Slice 0) | 0/TBD | Not started | - |
 | 5. Hand Controllers and PSG Sound | 0/TBD | Not started | - |
 | 6. STIC Video First Pass | 0/TBD | Not started | - |

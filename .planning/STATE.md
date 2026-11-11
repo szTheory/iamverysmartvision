@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 3
 current_phase_name: Memory Map, Content Loading and Refusal
 status: executing
-stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-11-11T04:53:43.867Z"
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-11-11T05:12:36.134Z"
 last_activity: 2026-11-11
-last_activity_desc: Plan 03-01 complete (multi-file fault loop)
-state_head: bd94dba5522795e2126969b7ffe5bd9cd9368967
+last_activity_desc: Plan 03-02 complete (core SHA-256, suite machine, fault lanes)
+state_head: 2782039e1dcf57baf4f7615d51298f38ff4eed97
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 46
-  completed_plans: 33
+  completed_plans: 34
   percent: 25
 ---
 
@@ -28,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 3 — Memory Map, Content Loading and Refusal
-Plan: 2 of 14
+Plan: 3 of 14
 Status: Ready to execute
-Last activity: 2026-11-11 — Plan 03-01 complete (multi-file fault loop)
+Last activity: 2026-11-11 — Plan 03-02 complete (core SHA-256, suite machine, fault lanes)
 
 Progress: [███░░░░░░░] 25%
 
@@ -86,6 +86,7 @@ Progress: [███░░░░░░░] 25%
 | Phase 02 P17 | 7min | 3 tasks | 6 files |
 | Phase 02 P18 | 15min | 3 tasks | 3 files |
 | Phase 03 P01 | 8min | 2 tasks | 22 files |
+| Phase 03 P02 | 15min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -168,6 +169,9 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 03]: 03-01: fault suites registered once in tests/CMakeLists.txt (ivs_fault_suite, ivs_fault_gen); faults .ids files stay pure inventory with a suite header
 - [Phase 03]: 03-01: site faults of a suite share one plain object library ivs_fault_suite_obj_<suite> (W7 lever applied)
 - [Phase 03]: 03-01: fault ids unique across all faults files (also within a file); site checks use the union of non-GEN_ ids (H3)
+- [Phase 03]: 03-02: SHA-256 context has an explicit reserved word: 112 bytes, no implicit padding, assignment is a snapshot (A-04)
+- [Phase 03]: 03-02: IvsShaVectors re-derives every vectors.txt line, including the 1,000,000 x a rep line, with string(SHA256); build fails closed on mismatch
+- [Phase 03]: 03-02: c-faults runs fault executables in at most 4 lanes: projected phase-end c-faults 9.4 s serial exceeded the 8 s A-07 trigger
 
 ### Pending Todos
 
@@ -198,6 +202,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-11T04:53:30.966Z
-Stopped at: Completed 03-01-PLAN.md
+Last session: 2026-11-11T05:12:36.028Z
+Stopped at: Completed 03-02-PLAN.md
 Resume file: None
