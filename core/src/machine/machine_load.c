@@ -45,6 +45,29 @@ _Static_assert(IVS_KIND_EXEC == IVS_MEMSYS_SLOT_EXEC && IVS_KIND_GROM == IVS_MEM
                    IVS_KIND_CARTRIDGE == IVS_MEMSYS_SLOT_CART,
                "image kinds and memsys slots share their numbers");
 _Static_assert(sizeof(ivs_load_options) == 40u, "ivs_load_options is 40 bytes");
+/* ivs_load_cart copies the parser's reason and segment index into the public report unchanged,
+ * so the public, append-only numbers are pinned to the parser's here (review IN-03). */
+_Static_assert(IVS_REASON_NONE == IVS_IVSC_R_NONE, "reason none");
+_Static_assert(IVS_REASON_TRUNCATED == IVS_IVSC_R_TRUNCATED, "reason truncated");
+_Static_assert(IVS_REASON_TOO_LARGE == IVS_IVSC_R_TOO_LARGE, "reason too-large");
+_Static_assert(IVS_REASON_MAGIC == IVS_IVSC_R_MAGIC, "reason magic");
+_Static_assert(IVS_REASON_VERSION == IVS_IVSC_R_VERSION, "reason version");
+_Static_assert(IVS_REASON_FLAGS == IVS_IVSC_R_FLAGS, "reason flags");
+_Static_assert(IVS_REASON_RESERVED == IVS_IVSC_R_RESERVED, "reason reserved");
+_Static_assert(IVS_REASON_TRAILING == IVS_IVSC_R_TRAILING, "reason trailing");
+_Static_assert(IVS_REASON_SEGMENT_COUNT == IVS_IVSC_R_SEGMENT_COUNT, "reason segment-count");
+_Static_assert(IVS_REASON_SIZE_MISMATCH == IVS_IVSC_R_SIZE_MISMATCH, "reason size-mismatch");
+_Static_assert(IVS_REASON_SEGMENT_LENGTH == IVS_IVSC_R_SEGMENT_LENGTH, "reason segment-length");
+_Static_assert(IVS_REASON_SEGMENT_WIDTH == IVS_IVSC_R_SEGMENT_WIDTH, "reason segment-width");
+_Static_assert(IVS_REASON_SEGMENT_ATTR == IVS_IVSC_R_SEGMENT_ATTR, "reason segment-attr");
+_Static_assert(IVS_REASON_SEGMENT_RESERVED == IVS_IVSC_R_SEGMENT_RESERVED, "reason segment-reserved");
+_Static_assert(IVS_REASON_ADDR_WRAP == IVS_IVSC_R_ADDR_WRAP, "reason addr-wrap");
+_Static_assert(IVS_REASON_ORDER == IVS_IVSC_R_ORDER, "reason order");
+_Static_assert(IVS_REASON_OVERLAP == IVS_IVSC_R_OVERLAP, "reason overlap");
+_Static_assert(IVS_REASON_DIGEST == IVS_IVSC_R_DIGEST, "reason digest");
+_Static_assert(IVS_REASON_WORD_RANGE == IVS_IVSC_R_WORD_RANGE, "reason word-range");
+_Static_assert(IVS_IVSC_REASON_COUNT == IVS_REASON_OUT_OF_SPAN, "the load's own reasons follow the parser's");
+_Static_assert(IVS_SEGMENT_NONE == IVS_IVSC_NO_SEGMENT, "no-segment value");
 _Static_assert(sizeof(ivs_load_report) == 88u, "ivs_load_report is 88 bytes");
 
 /* What a validated load will commit. */
