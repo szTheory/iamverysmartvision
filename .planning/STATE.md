@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 4
 current_phase_name: Headless Runner and Installed Consumer (Slice 0)
 status: executing
-stopped_at: Completed 04-04-PLAN.md
-last_updated: "2026-11-11T16:52:47.556Z"
+stopped_at: Completed 04-05-PLAN.md
+last_updated: "2026-11-11T17:16:41.440Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 3 complete, transitioned to Phase 4
-state_head: a2e5f9855202302d699cc73bc4efec18d020f927
+state_head: 55653772238161c9a05c4a15c743870140465f6d
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 71
-  completed_plans: 50
+  completed_plans: 51
   percent: 38
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 4 — Headless Runner and Installed Consumer (Slice 0)
-Plan: 5 of 25
+Plan: 6 of 25
 Status: Ready to execute
 Last activity: 2026-11-11 — Completed 04-03 (repo-relative fault owners, runner outcome taxonomy)
 
@@ -104,6 +104,7 @@ Progress: [████░░░░░░] 38%
 | Phase 04 P02 | 15min | 2 tasks | 19 files |
 | Phase 04 P03 | 40min | 2 tasks | 24 files |
 | Phase 4 P04 | 30min | 2 tasks | 28 files |
+| Phase 4 P05 | 45min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -230,6 +231,7 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 04]: 04-03: Fault owner TUs are repo-relative (core/ and runner/); file stems unique across both, checked at configure (D-24)
 - [Phase 04]: 04-03: Runner outcome values equal their exit codes; F_WALL 0x100 separates wall from budget timeout; non-outcome values map to harness-fail 14
 - [Phase 4]: 04-04: runner-scan confines POSIX headers and feature macros to runner/hostio.c (also refusing feature macros as runner CMake compile definitions); no runner file, hostio.c included, may include core internals
+- [Phase 4]: 04-05: observation rows (obs.video/audio/input, 144 bytes) sit before slot[] after an explicit obs_pad word; instance 113,600 bytes with no tail padding (asserted); domains 16..18 live, never in the version 1 composite over 1..4
 
 ### Pending Todos
 
@@ -262,6 +264,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-11T16:52:47.326Z
-Stopped at: Completed 04-04-PLAN.md
+Last session: 2026-11-11T17:16:41.153Z
+Stopped at: Completed 04-05-PLAN.md
 Resume file: None
