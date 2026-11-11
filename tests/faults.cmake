@@ -10,7 +10,8 @@
 # plain object library ivs_fault_suite_obj_<suite> (W7: N faults cost one test-source compile).
 # A GEN_ id has no site: it is looked up in the ivs_fault_gen() registry, links the plain core and
 # recompiles the suite's test sources against the generated file its generator writes with one
-# mutation.
+# mutation; with CONSUMER core:<src> the mutated file is consumed by that core TU instead, which
+# is rebuilt with the fault directory first on its include path (H2 e, plan 03-04).
 # Fault executables link ivs_warnings only, never ivs_san, so no sanitizer abort can pass for a
 # detection. They are EXCLUDE_FROM_ALL (aggregate target ivs_faults) and never registered with
 # ctest; the c-faults gate step runs them and faults-verdict judges their results.
@@ -115,6 +116,32 @@ function(ivs_fault_exe id suite owner gen_dir gen_file)
   add_dependencies(ivs_faults ivs_fault_${id})
 endfunction()
 
+# ivs_fault_exe_core_gen(<GEN_ID> <suite> <consumer core src> <generated dir> <generated file>)
+# A GEN_ fault whose generated file a core TU includes (H2 e): that TU is the owner copy, built
+# with the fault directory before the real generated directory; the suite's test sources come
+# from the shared suite objects, the other core TUs from plain copies.
+function(ivs_fault_exe_core_gen id suite consumer gen_dir gen_file)
+  set(objs "$<TARGET_OBJECTS:ivs_fault_plain_harness>")
+  foreach(src IN LISTS ivs_fault_core_sources)
+    get_filename_component(stem "${src}" NAME_WE)
+    if(src STREQUAL consumer)
+      add_library(ivs_fault_obj_${id} OBJECT EXCLUDE_FROM_ALL "${PROJECT_SOURCE_DIR}/core/${src}" "${gen_file}")
+      target_include_directories(ivs_fault_obj_${id} PRIVATE "${gen_dir}"
+        "${PROJECT_SOURCE_DIR}/core/include" "${PROJECT_SOURCE_DIR}/core/src" "${ivs_fault_core_gen_dir}")
+      target_link_libraries(ivs_fault_obj_${id} PRIVATE ivs_warnings)
+      set_target_properties(ivs_fault_obj_${id} PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF)
+      list(APPEND objs "$<TARGET_OBJECTS:ivs_fault_obj_${id}>")
+    else()
+      list(APPEND objs "$<TARGET_OBJECTS:ivs_fault_plain_${stem}>")
+    endif()
+  endforeach()
+  ivs_fault_suite_obj(${suite})
+  add_executable(ivs_fault_${id} EXCLUDE_FROM_ALL "$<TARGET_OBJECTS:ivs_fault_suite_obj_${suite}>" ${objs})
+  set_target_properties(ivs_fault_${id} PROPERTIES LINKER_LANGUAGE C INTERPROCEDURAL_OPTIMIZATION OFF)
+  target_link_libraries(ivs_fault_${id} PRIVATE ivs_warnings)
+  add_dependencies(ivs_faults ivs_fault_${id})
+endfunction()
+
 set(ivs_fault_seen "")
 foreach(ids_file IN LISTS ivs_fault_files)
   file(RELATIVE_PATH ids_rel "${PROJECT_SOURCE_DIR}" "${ids_file}")
@@ -156,14 +183,31 @@ foreach(ids_file IN LISTS ivs_fault_files)
       endif()
       set(dir "${CMAKE_CURRENT_BINARY_DIR}/fault-${id}")
       set(out "${dir}/${IVS_FAULT_GEN_${id}_OUTPUT}")
+      set(mutate_arg "-DMUTATE=${must_fail}")
+      foreach(a IN LISTS IVS_FAULT_GEN_${id}_ARGS)
+        if(a MATCHES "^-DMUTATE=")
+          set(mutate_arg "")
+        endif()
+      endforeach()
       add_custom_command(
         OUTPUT "${out}"
-        COMMAND "${CMAKE_COMMAND}" ${IVS_FAULT_GEN_${id}_ARGS} "-DOUT=${out}" "-DMUTATE=${must_fail}"
+        COMMAND "${CMAKE_COMMAND}" ${IVS_FAULT_GEN_${id}_ARGS} "-DOUT=${out}" ${mutate_arg}
                 -P "${IVS_FAULT_GEN_${id}_GENERATOR}"
         DEPENDS ${IVS_FAULT_GEN_${id}_DEPENDS}
         COMMENT "Generating the mutated ${IVS_FAULT_GEN_${id}_OUTPUT} for fault ${id}"
         VERBATIM)
-      ivs_fault_exe(${id} ${suite} "" "${dir}" "${out}")
+      set(consumer "${IVS_FAULT_GEN_${id}_CONSUMER}")
+      if(consumer STREQUAL "")
+        ivs_fault_exe(${id} ${suite} "" "${dir}" "${out}")
+      elseif(consumer MATCHES "^core:(.+)$")
+        set(csrc "${CMAKE_MATCH_1}")
+        if(NOT csrc IN_LIST ivs_fault_core_sources)
+          message(FATAL_ERROR "fault ${id}: CONSUMER ${consumer} is not a core source")
+        endif()
+        ivs_fault_exe_core_gen(${id} ${suite} "${csrc}" "${dir}" "${out}")
+      else()
+        message(FATAL_ERROR "fault ${id}: CONSUMER '${consumer}' is not core:<core source>")
+      endif()
       continue()
     endif()
     set(owner "")

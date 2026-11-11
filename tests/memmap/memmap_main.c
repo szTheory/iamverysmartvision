@@ -262,6 +262,22 @@ static int mm_width_undriven(void)
   return IVS_TEST_PASS;
 }
 
+/* GRAM mirror (512-word backing over $3800-$3FFF): words written at $3800 and $3900 read back
+ * one and two mirror steps up. */
+static int mm_mirror_gram_3a00(void)
+{
+  IVS_CHECK(mm_init());
+  IVS_CHECK(mm_bus_write(0x3800u, 0x0011u));
+  IVS_CHECK(mm_bus_write(0x3900u, 0x0022u));
+  IVS_CHECK(mm_bus_read(0x3A00u) == 0x0011u);
+  IVS_CHECK(mm_bus_read(0x3B00u) == 0x0022u);
+  IVS_CHECK(mm_bus_read(0x3E00u) == 0x0011u);
+  IVS_CHECK(mm_bus_read(0x3FFFu) == 0x0000u);
+  IVS_CHECK(mm_bus_write(0x3FFFu, 0x0033u));
+  IVS_CHECK(mm_bus_read(0x39FFu) == 0x0033u);
+  return IVS_TEST_PASS;
+}
+
 /* ---- gates (D-19) ---- */
 
 static int mm_gate_gmem_closed(void)
@@ -542,6 +558,7 @@ static const ivs_test_case mm_fixed[] = {
     {"memmap.width.ram8-truncates", mm_width_ram8, NULL},
     {"memmap.width.stub-reads-ffff", mm_width_stub, NULL},
     {"memmap.width.undriven-reads-ffff", mm_width_undriven, NULL},
+    {"memmap.mirror.gram-3a00", mm_mirror_gram_3a00, NULL},
     {"memmap.gate.gmem-closed-blocks", mm_gate_gmem_closed, NULL},
     {"memmap.gate.stic-regs-scope", mm_gate_stic_regs_scope, NULL},
     {"memmap.gate.default-open", mm_gate_default_open, NULL},

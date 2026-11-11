@@ -81,6 +81,9 @@ static uint16_t ivs_mm_width(uint16_t stored, uint16_t rmask, uint16_t fill)
 static uint16_t ivs_mm_undriven(const ivs_memsys *m)
 {
   uint16_t v = ivs_mm_profiles[m->profile].undriven_fill;
+#ifdef IVS_FAULT_MEM_UNDRIVEN_ZERO
+  v = 0x0000u;
+#endif
   return v;
 }
 
@@ -88,6 +91,9 @@ static uint16_t ivs_mm_undriven(const ivs_memsys *m)
 static uint32_t ivs_mm_index(const ivs_mm_region *r, uint16_t addr)
 {
   uint32_t i = ((uint32_t)addr - r->lo) & ((uint32_t)r->size_words - 1u);
+#ifdef IVS_FAULT_MEM_MIRROR_MASK
+  i = ((uint32_t)addr - r->lo) & (((uint32_t)r->size_words - 1u) >> 1);
+#endif
   return i;
 }
 
@@ -178,6 +184,9 @@ static uint16_t ivs_mm_cart_read(const ivs_memsys *m, uint16_t addr)
     uint32_t a = m->cart_seg[k].addr;
     uint32_t end = a + m->cart_seg[k].len_words;
     uint8_t in = (uint8_t)((uint32_t)addr >= a && (uint32_t)addr < end);
+#ifdef IVS_FAULT_MEM_CART_END_INCLUSIVE
+    in = (uint8_t)((uint32_t)addr >= a && (uint32_t)addr <= end);
+#endif
     if (in != 0u && found == 0u) {
       stored = m->cart[(uint32_t)addr - p->cart_lo];
       rmask = d->rmask;
@@ -186,6 +195,9 @@ static uint16_t ivs_mm_cart_read(const ivs_memsys *m, uint16_t addr)
     }
   }
   v = ivs_mm_width(stored, rmask, fill);
+#ifdef IVS_FAULT_MEM_WO_READS_DEVICE
+  v = (found != 0u) ? v : ivs_mm_region_read(m, ivs_mm_wr_region[m->profile][addr >> 4u], addr);
+#endif
   return v;
 }
 
@@ -217,6 +229,10 @@ static uint16_t ivs_mm_iab(const ivs_memsys *m, uint8_t flags)
   const ivs_profile_desc *p = &ivs_mm_profiles[m->profile];
   uint16_t reset = p->reset_r7;
   uint16_t intr = p->iab_value;
+#ifdef IVS_FAULT_MEM_IAB_VECTOR_SWAPPED
+  reset = p->iab_value;
+  intr = p->reset_r7;
+#endif
   if ((flags & IVS_ACC_F_RESET) != 0u) {
     return reset;
   }

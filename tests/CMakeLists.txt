@@ -122,10 +122,14 @@ endfunction()
 # Generator-path controls (GEN_<NAME> fault ids, no source site): the generator script writes
 # <OUTPUT> with one mutation (-DMUTATE=<must-fail id>, -DOUT=<fault dir>/<OUTPUT> are added by
 # tests/faults.cmake) and the suite's test sources are recompiled against it.
+# CONSUMER core:<core source> (H2 e, plan 03-04): the generated file is included by that core TU
+# instead of a test source, so the fault executable compiles that TU as its owner copy with the
+# fault directory first on its include path; the other core TUs are plain copies and the suite's
+# test sources are compiled as usual. An -DMUTATE= in ARGS replaces the default must-fail id.
 # ivs_fault_gen(<GEN_ID> SUITE <suite> OUTPUT <generated basename> GENERATOR <script>
-#               ARGS <-D arguments> DEPENDS <files>)
+#               ARGS <-D arguments> DEPENDS <files> [CONSUMER core:<core source>])
 function(ivs_fault_gen id)
-  cmake_parse_arguments(PARSE_ARGV 1 arg "" "SUITE;OUTPUT;GENERATOR" "ARGS;DEPENDS")
+  cmake_parse_arguments(PARSE_ARGV 1 arg "" "SUITE;OUTPUT;GENERATOR;CONSUMER" "ARGS;DEPENDS")
   if(NOT id MATCHES "^GEN_[A-Z0-9_]+$" OR NOT arg_SUITE OR NOT arg_OUTPUT OR NOT arg_GENERATOR
      OR arg_UNPARSED_ARGUMENTS)
     message(FATAL_ERROR "ivs_fault_gen(${id}): bad id or arguments")
@@ -139,6 +143,7 @@ function(ivs_fault_gen id)
   set(IVS_FAULT_GEN_${id}_GENERATOR "${arg_GENERATOR}" PARENT_SCOPE)
   set(IVS_FAULT_GEN_${id}_ARGS "${arg_ARGS}" PARENT_SCOPE)
   set(IVS_FAULT_GEN_${id}_DEPENDS "${arg_DEPENDS}" PARENT_SCOPE)
+  set(IVS_FAULT_GEN_${id}_CONSUMER "${arg_CONSUMER}" PARENT_SCOPE)
 endfunction()
 set(IVS_FAULT_SUITES "")
 set(IVS_FAULT_GENS "")
@@ -159,6 +164,17 @@ ivs_fault_suite(machine
 
 ivs_fault_suite(memmap
   SOURCES memmap/memmap_main.c)
+# GEN_MAP_MUTATION: the memory-map generator moves region sysram's lo up one 16-word granule
+# after validation, and memsys.c is rebuilt against that table (plan 03-04).
+get_directory_property(IVS_MEMMAP_GENERATOR DIRECTORY "${PROJECT_SOURCE_DIR}/core"
+  DEFINITION IVS_MEMMAP_GENERATOR)
+get_directory_property(IVS_PROFILE_FILES DIRECTORY "${PROJECT_SOURCE_DIR}/core"
+  DEFINITION IVS_PROFILE_FILES)
+ivs_fault_gen(GEN_MAP_MUTATION SUITE memmap OUTPUT ivs_profiles.inc
+  GENERATOR "${IVS_MEMMAP_GENERATOR}"
+  ARGS "-DROOT=${PROJECT_SOURCE_DIR}" "-DMUTATE=sysram"
+  DEPENDS ${IVS_PROFILE_FILES} "${IVS_MEMMAP_GENERATOR}"
+  CONSUMER core:src/memmap/memsys.c)
 
 # Named-fault control executables (D-18): dev tree only, never registered with ctest.
 if(IVS_FAULT_CONTROLS)

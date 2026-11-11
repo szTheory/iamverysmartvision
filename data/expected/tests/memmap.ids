@@ -6,6 +6,7 @@ memmap.width.ram16-keeps-16
 memmap.width.ram8-truncates
 memmap.width.stub-reads-ffff
 memmap.width.undriven-reads-ffff
+memmap.mirror.gram-3a00
 memmap.gate.gmem-closed-blocks
 memmap.gate.stic-regs-scope
 memmap.gate.default-open
