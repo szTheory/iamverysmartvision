@@ -8,6 +8,10 @@
 # Family load (plan 03-10): typed EXEC, GROM and IVSC cartridge loads through the public header
 # with generated stand-in bytes (D-24), their reports and digests, layer 2, the load options and
 # unload back to the fresh state.
+# Families refuse and prec (plan 03-11): the load refusal matrix, one id per row and prior
+# (machine.refuse.load.<kind>.<slug>.<prior>, priors f fresh, x every other kind loaded, s EXEC
+# and GROM loaded, c full), each asserting status, whole-storage memcmp, digest equality and the
+# report detail fields (D-12); machine.prec.* pins each adjacent pair of the load ladder.
 machine.sha256.fips-empty
 machine.sha256.fips-abc
 machine.sha256.fips-448
@@ -112,3 +116,5 @@ machine.load.grom-ok
 machine.load.grom-unload-fresh
 machine.load.info-all-slots
 machine.load.order-free
+machine.refuse.load.exec.oversized-by-one.f
+machine.refuse.load.exec.oversized-by-one.x
