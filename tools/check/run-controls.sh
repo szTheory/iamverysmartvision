@@ -144,9 +144,11 @@ build_tree() {
   return 0
 }
 
-# Run step $2 on the tree of work dir $1; its output goes to $1/out.
+# Run step $2 on the tree of work dir $1; its output goes to $1/out. The results dir is the
+# tree's build/gate, never the one the gate exported for the real steps (review IN-07).
 run_step() {
-  ROOT="$1/tree" FILELIST="$1/filelist" CHECK_DIR="$CHECK_DIR" sh "$CHECK_DIR/steps/$2.sh" > "$1/out" 2>&1
+  ROOT="$1/tree" FILELIST="$1/filelist" CHECK_DIR="$CHECK_DIR" IVS_GATE_DIR="$1/tree/build/gate" \
+    sh "$CHECK_DIR/steps/$2.sh" > "$1/out" 2>&1
 }
 
 # Positive control for step $1 in work dir $2: prints its result lines, touches $2/ok on success.

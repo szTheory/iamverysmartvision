@@ -1,8 +1,10 @@
 #!/bin/sh
 # SPDX-License-Identifier: MIT
 # Step tests-inventory: pure checker over the TAP result files the c-tests step wrote (D-17,
-# RUN-03). Reads only $ROOT/build/gate/ and $ROOT/data/expected/; never builds, never runs a
-# test, so the control runner can drive it with text overlays.
+# RUN-03). Reads only the results dir and $ROOT/data/expected/; never builds, never runs a
+# test, so the control runner can drive it with text overlays. Results dir: IVS_GATE_DIR (set
+# by tools/gate.sh, and by the control runner to its tree's build/gate), else $ROOT/build/gate,
+# the same default the producer c-tests uses (review IN-07); build/gate below names it.
 # Presets: dev release. Suites: stems of data/expected/tests/*.ids (first token per non-#
 # line is an expected id; a second token `skip-ok` permits that id to be skipped).
 # Per preset: build/gate/NONCE must exist; the `Test #N: <name>` lines of
@@ -27,7 +29,7 @@ find="$tmp/findings"
 bad() { printf '%s %s\n' "$1" "$2" >> "$find"; }
 
 presets="dev release"
-gate="$ROOT/build/gate"
+gate=${IVS_GATE_DIR:-$ROOT/build/gate}
 
 # Suites and their expected ids.
 : > "$tmp/suites"

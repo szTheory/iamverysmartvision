@@ -1,8 +1,11 @@
 #!/bin/sh
 # SPDX-License-Identifier: MIT
 # Step faults-verdict: pure checker over the named-fault results the c-faults step wrote
-# (D-18, A-09). Reads only $ROOT/build/gate/, $ROOT/data/expected/ and the FILELIST core
-# sources; never builds and never runs a binary, so the control runner can drive it.
+# (D-18, A-09). Reads only the results dir, $ROOT/data/expected/ and the FILELIST core
+# sources; never builds and never runs a binary, so the control runner can drive it. Results
+# dir: IVS_GATE_DIR (set by tools/gate.sh, and by the control runner to its tree's build/gate),
+# else $ROOT/build/gate, the same default the producer c-faults uses (review IN-07); build/gate
+# below names it.
 # Inventory data/expected/faults/cpu.ids: a `# suite=<suite>` header, then one line
 # `<FAULT_ID> <must-fail> <allowed-prefixes> <must-pass>` per fault (prefixes |-separated).
 # Per fault, build/gate/faults/<ID>/<suite>.txt must exist, carry the gate nonce and list
@@ -25,7 +28,7 @@ find="$tmp/findings"
 : > "$find"
 bad() { printf '%s %s\n' "$1" "$2" >> "$find"; }
 
-gate="$ROOT/build/gate"
+gate=${IVS_GATE_DIR:-$ROOT/build/gate}
 ids="$ROOT/data/expected/faults/cpu.ids"
 total=0
 ok=0
