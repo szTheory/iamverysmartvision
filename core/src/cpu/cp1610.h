@@ -42,7 +42,8 @@
 
 /* One bus access (12 bytes). offset_cpu_cycles is the BAR (or address-phase) cycle relative
  * to the unit start, after earlier waits; wait_cpu_cycles is the wait the CPU applied. In the
- * log, data is the value transferred (read reply or written value). */
+ * log, data is the value transferred (read reply or written value); INTAK and strobe records,
+ * which transfer none, carry 0. */
 typedef struct ivs_cp1610_access {
   uint32_t offset_cpu_cycles;
   uint16_t addr;

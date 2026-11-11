@@ -120,7 +120,10 @@ static uint16_t ivs_access(ivs_unit *u, uint32_t nominal, uint8_t kind, uint8_t 
   a.kind = kind;
   a.flags = flags;
   reply = u->port->bus(u->port->ctx, &a);
-  if (kind != IVS_ACC_WRITE && kind != IVS_ACC_DW) {
+  /* Only the reads take the reply data. WRITE and DW keep the CPU's value; INTAK and the TCI and
+   * PCIT strobes transfer no data, so their records keep 0 whatever the bus model answers
+   * (review IN-03). */
+  if (kind == IVS_ACC_FETCH || kind == IVS_ACC_READ || kind == IVS_ACC_ADAR || kind == IVS_ACC_IAB) {
     a.data = reply.data;
   }
   if (ivs_kind_takes_wait(kind)) {

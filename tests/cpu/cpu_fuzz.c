@@ -19,7 +19,8 @@
  *   - HALTED and BUS_GRANT units take at least 1 cycle (the D-12 no-progress guard);
  *   - every record's address phase lies inside its unit (a TCI or PCIT strobe up to one cycle
  *     past it, C39), and a BUS_WAIT_LIMIT fault unit ends at the record that took the over-cap
- *     wait: no access, WRITE included, follows it (POL-WAIT-01, C53; review CR-01, WR-03).
+ *     wait: no access, WRITE included, follows it (POL-WAIT-01, C53; review CR-01, WR-03);
+ *   - INTAK, TCI and PCIT records carry data 0 (they transfer none; review IN-03).
  * Every FUZZ_CORRUPT_EVERY steps a corrupted copy (a run state past FAULTED, a nonzero reserved
  * byte, or a fault reason that contradicts the run state) must be refused with IVS_E_BAD_STATE
  * without a write or a bus call. Each seed must also reach every unit kind at least once, so the
@@ -262,8 +263,13 @@ static int fuzz_seed(uint32_t seed)
         }
       }
     }
-    /* Every record sits inside its unit; the TCI and PCIT strobes may sit one cycle past (C39). */
+    /* Every record sits inside its unit; the TCI and PCIT strobes may sit one cycle past (C39).
+     * INTAK and the strobes transfer no data, so their records carry 0 whatever the bus answers
+     * (this bus answers nonzero data to every access; review IN-03). */
     for (i = 0u; i < (uint32_t)r.n_accesses; i++) {
+      if (log[i].kind == IVS_ACC_INTAK || log[i].kind == IVS_ACC_STROBE_TCI || log[i].kind == IVS_ACC_STROBE_PCIT) {
+        FUZZ_CHECK(&f, log[i].data == 0u);
+      }
       if (log[i].kind == IVS_ACC_STROBE_TCI || log[i].kind == IVS_ACC_STROBE_PCIT) {
         FUZZ_CHECK(&f, log[i].offset_cpu_cycles <= r.elapsed_cpu_cycles + 1u);
       } else {
