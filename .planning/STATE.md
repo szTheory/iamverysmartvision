@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 4
 current_phase_name: Headless Runner and Installed Consumer (Slice 0)
 status: executing
-stopped_at: Completed 04-09-PLAN.md
-last_updated: "2026-11-11T18:25:36.526Z"
+stopped_at: Completed 04-10-PLAN.md
+last_updated: "2026-11-11T18:48:05.191Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 3 complete, transitioned to Phase 4
-state_head: 4ed59d2caa47b7015d1de0ae7b3d378484c7f795
+state_head: 5e1e29edddf5b16eb03ff4aed51326fbf4c786de
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 71
-  completed_plans: 55
+  completed_plans: 56
   percent: 38
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 4 — Headless Runner and Installed Consumer (Slice 0)
-Plan: 10 of 25
+Plan: 11 of 25
 Status: Ready to execute
 Last activity: 2026-11-11 — Completed 04-03 (repo-relative fault owners, runner outcome taxonomy)
 
@@ -109,6 +109,7 @@ Progress: [████░░░░░░] 38%
 | Phase 4 P07 | 55min | 3 tasks | 12 files |
 | Phase 04 P08 | 20 min | 2 tasks | 20 files |
 | Phase 04 P09 | 45 min | 2 tasks | 16 files |
+| Phase 04 P10 | 40 min | 2 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -240,6 +241,7 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 4]: 04-07: ivs_machine_run loop tests fault then halt (flag) before each unit; any zero-progress unit ends the loop (INTERNAL unless FAULTED); refusal reasons IVS_REASON_RUN_* 34..40 (BAD_HANDLE reuses IVS_REASON_HANDLE); refusal detail never written into the bytes the handle names
 - [Phase 04]: 04-08: generic define pin in api-effects (class table PREFIX|PIN|FORM|EXCL); IVS_STOP_ and IVS_REASON_ pinned; a missing pin file or an empty class fails closed as api-define-unpinned
 - [Phase 04]: 04-09: ivs_info grows to 256 bytes (timebase, nominal_frame_ticks, output layout NONE/0); minimum struct_size stays the v1 size 216 (IVS_INFO_V1_SIZE), copy is min(struct_size, sizeof) (A-02); the slicing reference is seam-stepped so a run-path fault cannot move its own oracle (D-07)
+- [Phase 04]: 04-10: ivs_machine_run checks caller-owned output buffers in the D-05 slots (BAD_ARG after UNSUPPORTED, BUFFER_TOO_SMALL after OUT_OF_RANGE) and wraps the internal env seam ivs_machine_run_env_internal with the profile layout; a report overlapping a buffer gets no refusal detail
 
 ### Pending Todos
 
@@ -272,6 +274,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-11T18:25:36.383Z
-Stopped at: Completed 04-09-PLAN.md
+Last session: 2026-11-11T18:48:04.731Z
+Stopped at: Completed 04-10-PLAN.md
 Resume file: None

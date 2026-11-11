@@ -55,7 +55,7 @@ differentiators and all variant/peripheral profiles are v2.
 - [x] **API-01**: A host can create, reset, unload and destroy independent machine instances; two instances run concurrently without shared mutable state (isolation test).
 - [ ] **API-02**: Execution is bounded by an explicit machine-time target (absolute cycle target; frame target as a derived convenience), with overshoot reported; splitting one run into slices yields identical state and output (slicing-invariance test).
 - [ ] **API-03**: Controller input is applied at an explicit machine-time boundary declared by the API; the same input script yields identical results regardless of host timing.
-- [ ] **API-04**: Video and audio outputs are written into caller-owned buffers; undersized buffers are refused before any state changes.
+- [x] **API-04**: Video and audio outputs are written into caller-owned buffers; undersized buffers are refused before any state changes.
 - [x] **API-05**: The core has no dependency on host clocks, filesystems, environment, threads, physical controller discovery or presentation, enforced by a build/link or symbol check.
 - [x] **API-06**: Every API error/refusal has a documented effect on state (none, or a named partial effect), and each is covered by a test.
 
@@ -200,7 +200,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | API-01 | Phase 3 | Complete |
 | API-02 | Phase 4 | Pending |
 | API-03 | Phase 5 | Pending |
-| API-04 | Phase 4 | Pending |
+| API-04 | Phase 4 | Complete |
 | API-05 | Phase 2 | Complete |
 | API-06 | Phase 3 | Complete |
 | RUN-01 | Phase 4 | Pending |
