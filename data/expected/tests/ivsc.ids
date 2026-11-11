@@ -1,0 +1,3 @@
+# Suite ivsc (plan 03-07): IVSC v1 layer-1 parser. Fixture records of data/cart/*.json
+# (positive, build and patch kinds, one case each), then the code-built cases.
+ivsc.P01-min

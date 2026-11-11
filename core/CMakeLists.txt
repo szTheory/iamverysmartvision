@@ -10,6 +10,7 @@
 
 set(IVS_CORE_SOURCES
   src/common/ivs_sha256.c
+  src/content/ivsc.c
   src/cpu/cp1610.c
   src/cpu/cp1610_decode.c
   src/memmap/memsys.c

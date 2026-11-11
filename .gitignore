@@ -13,6 +13,7 @@
 *.itv
 *.cfg
 *.cc3
+*.ivsc
 
 # Secrets and local environment.
 .env

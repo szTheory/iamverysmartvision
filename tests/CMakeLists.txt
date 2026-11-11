@@ -102,6 +102,30 @@ target_link_libraries(ivs_tests_memmap PRIVATE ivs_test_harness ivs_core ivs_cor
 add_test(NAME memmap COMMAND ivs_tests_memmap)
 set_tests_properties(memmap PROPERTIES SKIP_RETURN_CODE 77)
 
+# Suite ivsc (D-29..D-34, plan 03-07): the IVSC v1 layer-1 parser against the project-authored
+# fixtures data/cart/<stem>.json listed in data/expected/cart-fixture-files.ids, which
+# cmake/IvsCartTable.cmake turns into ivs_cart_table.inc in this build directory. The generator
+# also reads the literal maps (span rule) and checks every fixture id against the suite's ids.
+set(IVS_CART_FILES_IDS "${PROJECT_SOURCE_DIR}/data/expected/cart-fixture-files.ids")
+set(IVS_CART_IDS "${PROJECT_SOURCE_DIR}/data/expected/tests/ivsc.ids")
+set(IVS_CART_GENERATOR "${PROJECT_SOURCE_DIR}/cmake/IvsCartTable.cmake")
+set(IVS_CART_INC "${CMAKE_CURRENT_BINARY_DIR}/ivs_cart_table.inc")
+file(GLOB IVS_CART_JSON CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/data/cart/*")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${IVS_CART_FILES_IDS}")
+add_custom_command(
+  OUTPUT "${IVS_CART_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DROOT=${PROJECT_SOURCE_DIR}" "-DFILES=${IVS_CART_FILES_IDS}"
+          "-DIDS=${IVS_CART_IDS}" "-DOUT=${IVS_CART_INC}" -P "${IVS_CART_GENERATOR}"
+  DEPENDS ${IVS_CART_JSON} ${IVS_MMPROBE_LITERALS} "${IVS_CART_GENERATOR}" "${IVS_CART_FILES_IDS}"
+          "${IVS_CART_IDS}"
+  COMMENT "Generating the IVSC fixture table"
+  VERBATIM)
+add_executable(ivs_tests_ivsc ivsc/ivsc_main.c "${IVS_CART_INC}")
+target_include_directories(ivs_tests_ivsc PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+target_link_libraries(ivs_tests_ivsc PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
+add_test(NAME ivsc COMMAND ivs_tests_ivsc)
+set_tests_properties(ivsc PROPERTIES SKIP_RETURN_CODE 77)
+
 # Suite cpu-fuzz (D-12, plan 02-15): the seeded robustness run; dev links the sanitizers.
 add_executable(ivs_tests_cpu_fuzz cpu/cpu_fuzz.c)
 target_link_libraries(ivs_tests_cpu_fuzz PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
@@ -189,6 +213,12 @@ ivs_fault_gen(GEN_MAP_MUTATION SUITE memmap OUTPUT ivs_profiles.inc
   ARGS "-DROOT=${PROJECT_SOURCE_DIR}" "-DMUTATE=sysram"
   DEPENDS ${IVS_PROFILE_FILES} "${IVS_MEMMAP_GENERATOR}"
   CONSUMER core:src/memmap/memsys.c)
+
+# Suite ivsc: its named faults (data/expected/faults/ivsc.ids) arrive in plan 03-08.
+ivs_fault_suite(ivsc
+  SOURCES ivsc/ivsc_main.c
+  INCLUDE_DIRS "${CMAKE_CURRENT_BINARY_DIR}"
+  GENERATED "${IVS_CART_INC}")
 
 # Named-fault control executables (D-18): dev tree only, never registered with ctest.
 if(IVS_FAULT_CONTROLS)
