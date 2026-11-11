@@ -240,6 +240,13 @@ void ivs_memsys_write(ivs_memsys *m, uint16_t addr, uint16_t value)
       ivs_mm_store(m, r->phys, ivs_mm_index(r, addr), v);
     }
   }
+#ifdef IVS_FAULT_MEM_DROPPED_WRITE_KEPT
+  /* a store to the undriven $0080-$008F, inside a width-0 write row and away from its edges, is
+   * kept in the system RAM words of $0210-$021F; the decode description does not change */
+  if (idx >= IVS_MM_REGION_COUNT && (addr & 0xFFF0u) == 0x0080u) {
+    ivs_mm_store(m, IVS_MEMSYS_PHYS_SYSRAM, 0x10u + (uint32_t)(addr & 0x000Fu), value);
+  }
+#endif
 #ifdef IVS_FAULT_MEM_ROM_WRITABLE
   if (idx >= IVS_MM_REGION_COUNT) {
     uint8_t ri = ivs_mm_rd_region[m->profile][addr >> 4u];

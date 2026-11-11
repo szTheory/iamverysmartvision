@@ -14,3 +14,10 @@ MEM_RAM8_NO_TRUNC memmap.row.W-0100-01EF memmap.row.|memmap.row-gate. memmap.bus
 MEM_RAM16_TRUNC memmap.row.W-0200-035F memmap.row.|memmap.width.|memmap.anchor.|memmap.dump.|memmap.bus.|memmap.gate. memmap.cart.one-word-5000
 MEM_ROM_WRITABLE memmap.row.W-0360-37FF memmap.row.|memmap.anchor.|memmap.dump. memmap.bus.iab-reset
 MEM_GATE_IGNORED memmap.row-gate.gmem-closed memmap.row-gate.|memmap.gate. memmap.bus.iab-reset
+# Review WR-05: MEM_DROPPED_WRITE_KEPT keeps a store to $0080-$008F (inside the width-0 undriven
+# write row 0040-00FF, away from the edge addresses the per-row cases read) in system RAM words
+# that are zero when the probe runs, with no change to the decode description; the former
+# single FFFF-then-0000 sweep ended on the zero they held and missed it. Only the dropped-write probe, which compares the whole state
+# after a FFFF sweep and after a 0000 sweep of the row, can see it; that row's own case and the
+# dump both run it.
+MEM_DROPPED_WRITE_KEPT memmap.row.W-0040-00FF memmap.row.W-0040-00FF|memmap.dump.matches-literal memmap.bus.iab-reset

@@ -623,28 +623,40 @@ static int mr_emit(char view, uint16_t lo, uint16_t hi, const mr_tuple *t, uint3
 }
 
 /* Write view, rows the literal gives width 0: every write must leave the state unchanged.
- * Returns 1 when it does; else names the first address that changes it and returns 0. */
+ * Returns 1 when it does; else names the first address that changes it and returns 0.
+ * Two sweeps, each followed by a whole-state comparison (review WR-05): FFFF into every address,
+ * then 0000. A kept store into a backing that holds v changes the state in the sweep whose value
+ * differs from v, so a store kept anywhere in the row is seen whatever the backing held; one
+ * sweep that ended on 0000 could not see a store into a zero RAM backing. */
 static int mr_dropped_row(const ivs_mp_row *r)
 {
+  static const uint16_t vals[2] = {0xFFFFu, 0x0000u};
   uint32_t a;
+  uint32_t k;
+  int same = 1;
   memcpy(&mr_snap, &mr_m, sizeof mr_snap);
-  for (a = r->lo; a <= r->hi; a++) {
-    mr_write((uint16_t)a, 0xFFFFu);
-    mr_write((uint16_t)a, 0x0000u);
+  for (k = 0u; k < 2u && same; k++) {
+    for (a = r->lo; a <= r->hi; a++) {
+      mr_write((uint16_t)a, vals[k]);
+    }
+    same = memcmp(&mr_snap, &mr_m, sizeof mr_snap) == 0;
   }
-  if (memcmp(&mr_snap, &mr_m, sizeof mr_snap) == 0) {
+  if (same) {
     return 1;
   }
-  memcpy(&mr_m, &mr_snap, sizeof mr_m);
-  for (a = r->lo; a <= r->hi; a++) {
-    mr_write((uint16_t)a, 0xFFFFu);
-    mr_write((uint16_t)a, 0x0000u);
-    if (memcmp(&mr_snap, &mr_m, sizeof mr_snap) != 0) {
-      ivs_test_diag("W %04X: a write in literal row %s changed the machine state", (unsigned)a, r->line);
-      memcpy(&mr_m, &mr_snap, sizeof mr_m);
-      return 0;
+  for (k = 0u; k < 2u; k++) {
+    memcpy(&mr_m, &mr_snap, sizeof mr_m);
+    for (a = r->lo; a <= r->hi; a++) {
+      mr_write((uint16_t)a, vals[k]);
+      if (memcmp(&mr_snap, &mr_m, sizeof mr_snap) != 0) {
+        ivs_test_diag("W %04X: a write of %04X in literal row %s changed the machine state", (unsigned)a,
+                      (unsigned)vals[k], r->line);
+        memcpy(&mr_m, &mr_snap, sizeof mr_m);
+        return 0;
+      }
     }
   }
+  memcpy(&mr_m, &mr_snap, sizeof mr_m);
   return 0;
 }
 
