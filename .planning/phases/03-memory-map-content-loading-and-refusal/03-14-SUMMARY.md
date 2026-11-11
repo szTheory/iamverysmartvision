@@ -316,3 +316,33 @@ None.
   - No rights-bearing bytes.
   - Nothing was copied from another emulator or assembler.
   - `.planning/config.json` and `.planning/state.json` are still ` M` and in no commit of this plan.
+
+## Post-verification fixes
+
+The phase PR's hosted runs 42985199346 and 42988058428 (ubuntu-24.04, gcc 13.3, cmake 3.28.3)
+failed while every local macOS gate passed. A container run of the same gate reproduced both
+failures; three commits fix them and add the container run as a local helper.
+
+| Commit | Finding | Root cause | Fix |
+|--------|---------|------------|-----|
+| `2b799db` | machine suite aborted under ASan (dev and release), so the refuse and prec rows were missing | `rf_take(c, rf_cart_build(..., &n), n)` in `tests/machine/machine_refuse.c` (three builders): the order of the read of `n` and the call that sets it is unspecified (C17 6.5p3); gcc reads `n` first, so the row got a 0-byte container and `rf_b_width_and_wrap` resealed with `len - 32` wrapped. Clang reads left to right, so macOS never saw it | `rf_cart_take` builds into a local, then takes the buffer; a container below the 66-byte IVSC minimum fails the row with a diagnostic; `rf_reseal` refuses a short length and its result is propagated. Forcing the length to 0 in a scratch copy gives 18 clean row failures (`harness: built container of 0 bytes`), no ASan abort |
+| `33778c5` | `core-symbols-forbidden: _GLOBAL_OFFSET_TABLE_` in the ctest suite `core-symbols` (both presets) | `core/src/machine/machine_run.c` takes the address of the external function `ivs_memsys_bus`; Ubuntu gcc defaults to `-fPIE`, which imports the GOT base for that. Mach-O never emits it; c-purity's own `-fno-pie` archives never did | `_GLOBAL_OFFSET_TABLE_` in `tools/check/core-symbols-allow.txt` (linker-defined, no host state). Two c-purity self-test cases cover it: `pie-got` (a `-fPIE` archive taking a defined function's address must pass) and `pie-got-import` (the same reference to an undefined function must still fail by that function's name). With the entry removed, the container c-purity step fails both cases; `purity-selftest=7/7` with it |
+| `c06e4d8` | (process) a hosted-only failure costs a CI round trip | no local way to run the hosted toolchain | `tools/gate-linux.sh`: local pre-push helper that executes `sh tools/gate.sh` on the working tree in a throwaway `ubuntu:24.04` amd64 container; not a gate step, not in CI. README paragraph and `.planning/CI-EFFICIENCY.md` note |
+
+- **Same-class scan:** a scan of every tracked `.c`/`.h` for a call whose argument list both
+  passes `&x` into a nested call and reads `x` (and for a pointer passed into a nested call and
+  dereferenced in a sibling argument) found only the three fixed sites (the pointer form hit
+  three `memsys.c` calls whose nested callee takes a `const` pointer and only reads).
+- **Compiler warning:** none exists for this class. gcc 13 `-Wall -Wextra -Wsequence-point`
+  and `-fanalyzer`, and clang 18 and Apple clang 21 `-Weverything`, are all silent on a minimal
+  reproducer, so no flag was added.
+- **Container evidence at `c06e4d8`** (`sh tools/gate-linux.sh`, owner laptop, amd64
+  emulated on arm64; x86_64, gcc 13.3.0, cmake 3.28.3): `gate: PASS steps=26/26
+  controls=224/224 ... purity-selftest=7/7 ... faults=115/115 ... tests-expected=2094
+  tests-executed=2094 tests-skipped=0 tests-missing=0`, `gate-time total=139` (3 min 4 s wall
+  time with package installation). Emulated times are not hosted times.
+- **Local evidence at `c06e4d8`:** `sh tools/gate.sh` PASS (`gate-time total=24`) and
+  `dash tools/gate.sh` PASS (`gate-time total=30`), both `steps=26/26 controls=224/224
+  purity-selftest=7/7 tests-executed=2094 tests-missing=0`.
+- **Not yet observed:** a hosted run of these commits (the orchestrator reads it; agents never
+  call `gh`).
