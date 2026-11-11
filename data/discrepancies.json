@@ -671,6 +671,16 @@
       "resolver": "test: a Phase 5 PSG port-read test at instruction granularity; until then run.input.* and run.fuzz.* keep the unit-start rule independent of slicing",
       "evidence": "",
       "note": "Raised by plan 04-13 (D-14, D-16, A-04). Refining the rule later changes goldens that carry input."
+    },
+    {
+      "id": "C68",
+      "topic": "Boot stub cartridge entry and stack",
+      "sources": "project conventions of the Phase 4 boot stub ($5000 entry, $0340 stack); no hardware or first-party source",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: the stub jumps to $5000 with R6=$0340; Phase 6/7 may change both with a new stub contract number",
+      "resolver": "test: run.stub.path and run.diag.predicate (stub contract 1)",
+      "evidence": "",
+      "note": "Raised by plan 04-16 (D-28, D-31). fixtures/FX-boot-stub/boot-stub.listing.txt (contract 1) and fixtures/FX-diag-cpu-1/diag-cpu-1.listing.txt rely on both values; the predicate of data/golden/diag-cpu-1.expect asserts R6 = 0340 and [0206] = 0340 under this convention. Changing either value is a new stub contract number and new expected values, not an edit of the old ones."
     }
   ]
 }

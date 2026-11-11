@@ -107,7 +107,7 @@ Excluded on purpose: R7 and the flags at the stop (they depend on the HLT and in
 The test `run.diag.predicate` reads the expected values from the assert lines of that file through a generated include; `run.diag.slice` replays the program under the five slicing patterns of D-07, and `run.diag.repeat` compares two fresh instances.
 
 Shared-misreading risk: the author of the listing, of the predicate and of the core is the same, so all three can share one misreading of the manual, and agreement between them is not independent evidence about hardware.
-The risk is bounded by deriving the values from arithmetic and printed tables rather than from a second interpreter, by excluding policy-dependent state, and by keeping the claim on this diagnostic provisional.
+The risk is bounded by deriving the values from arithmetic and printed tables rather than from a second interpreter, by excluding policy-dependent state, and by keeping the claim on this diagnostic provisional (tier `original-diagnostic`, scoped to the project boot stub and this diagnostic, never to commercial content or any EXEC). [claim:CL-0008]
 The cartridge entry `5000` and the stack start `0340` it relies on are project conventions without a source (C68).
 
 libasm cross-check (D-25, optional and never gating): not run, the tool is absent on the authoring machine; no assembler output was compared with the listing.

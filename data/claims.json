@@ -74,6 +74,16 @@
       ],
       "standing": "provisional",
       "note": "Evidence: suite ivsc in the dev (ASan and UBSan) and release presets, with the parse-level records of data/cart/ivsc-parse.json and the fuzz family ivsc.fuzz.* (eight fixed seeds and ivsc.fuzz.reasons-covered, plan 03-08); six named faults in data/expected/faults/ivsc.ids show that the fixtures catch the loss of a parser rule. The expectations come from the project's own specification, and every positive trailer and whole-file digest was computed with cmake -E sha256sum, independently of the core's SHA-256. IVSC is the project's own format, so this is conformance to the project specification, not to any hardware or third-party format. Layer 1 knows no profile; the claim names the profile whose cartridge fields admit IVSC v1. cartridge.slots is unknown-default-chosen (a scope choice), so the weakest-field rule makes the claim provisional. The layer-2 load into an instance is not covered here (plan 03-11)."
+    },
+    {
+      "id": "CL-0008",
+      "statement": "From a power-on reset of profile intv-2609-ntsc-family-p1 through the public API, the project boot stub (contract 1) and the project-authored diagnostic ivs-diag-cpu-1 reach the hand-derived guest state of data/golden/diag-cpu-1.expect: the CPU halted, R0-R6 and the ten memory words 0200-0208 and 020F equal to the derived values.",
+      "profile": "intv-2609-ntsc-family-p1",
+      "tier": "original-diagnostic",
+      "artifact": "fixtures/FX-diag-cpu-1/diag-cpu-1.listing.txt",
+      "depends_on": ["reset.r7", "cartridge.slots"],
+      "standing": "provisional",
+      "note": "Evidence: run.diag.predicate in the dev (ASan and UBSan) and release presets reads the expected values from the assert lines of data/golden/diag-cpu-1.expect, whose derivation (16-bit arithmetic, the status-bit rules of pdf 45, the GSWD layout of pdf 56, the stack direction C17 and the printed instruction and cycle tables) was committed before the program first ran on the emulator; run.diag.slice and run.diag.repeat show that the result does not depend on how the run is sliced or on the instance. Shared-misreading risk: the same author wrote the listing, the derivation and the core, so all three can share one misreading of the manual; agreement among them is not independent evidence about hardware. Excluded: R7 and the flags at the stop (HLT and interruptibility policies C40, C45, C56), machine time (regression information only), and the stack word [0340]. The cartridge entry $5000 and the stack start $0340 are project conventions (C68). reset.r7 is tier4-community and cartridge.slots is unknown-default-chosen, so the weakest-field rule keeps the claim provisional. This is a statement about the project boot stub and the project's own diagnostic only: not a statement about commercial content or any EXEC."
     }
   ]
 }
