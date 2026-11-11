@@ -100,6 +100,18 @@ Plan ordering, exact struct layouts and field names, the final fault and control
 - Digest composite: stays version 1 over domains 1..4 (run-API agent); domains 16..18 reported individually; the controller agent's "composite version bump" is withdrawn so Phase 3 literals stay.
 - Guest observation names: `ivs_machine_cpu_state` and `ivs_machine_peek` (diagnostic agent) adopted for the run-API agent's `inspect/peek` proposal.
 - Branch protection application is not an executor task.
+
+### Amendments from research and pattern mapping (supersede conflicting text above)
+
+- **A-01 (names and places):** Public types for run, observation and input live in a new header `core/include/ivs/ivs_run.h` (included by the umbrella `ivs/ivs.h`); the CPU snapshot type is `ivs_cpu_state_report`; `ivs_machine_peek(const ivs_machine *, uint16_t addr, uint32_t count, uint16_t *out)` exactly as D-08. Scenarios live in `data/scenarios/*.ivss`; goldens in `data/golden/<id>.expect` and `data/golden/<id>.digests` (the single-name `.golden` wording in D-31 is withdrawn); the consumer pin stays `data/expected/pkg-consumer.golden`.
+- **A-02 (ivs_info growth):** The minimum `struct_size` for `ivs_info` stays the Phase 3 size (older callers keep working); the new timebase/layout fields are written only when the caller's `struct_size` covers them (D-04 forward-compat). Same rule for every struct that grows.
+- **A-03 (digest layout):** The composite digest stays version 1 and must not change when rows 16..18 change. Pin a stepped-state composite literal BEFORE touching the digest table. New rows need an explicit pad (the memory region ends at an offset that is 4 mod 8) and the new observation struct goes before `slot[]`; the existing domain-16 refusal row, its `api-effects.json` text, the `IVS_DIGEST_RESERVED_*` names, the coverage test and the sensitivity loops are retargeted in the same commit.
+- **A-04 (input application order):** `ivs_machine_run` tests exit conditions first and applies input events only when a unit will begin (never at the loop top before the exit test); the input floor lives in the instance as part of the INPUT domain row, which does not contradict "no state between calls" for the run bound itself. The caller's cursor is `input_consumed` (D-14).
+- **A-05 (C14 under the discrepancy schema):** C14 stays `open` with a rewritten `default_policy` (the logical-input choice and its reversal trigger); statuses are only open/partial/resolved-primary/withdrawn. New discrepancies start at C63; the next claim id is CL-0008.
+- **A-06 (suites and caps):** Run, observation and input tests go in a new suite `run` (the `machine` suite has a 512-case table cap and every fault reruns it). Prefer controls and in-step selftests over named faults when both prove the same thing, to keep gate cost down. Docs obey the text/glossary/denylist rules (claim words need `[nc]` or a claim tag; bare "clock" needs a qualifier; `jzintv` only with `[cite-only]`).
+- **A-07 (gate hygiene):** Extend `integrity.cmake` so SPDX/ASCII rules cover `runner/` and `tools/**/*.c`; keep runner and core `.c` file stems unique (object names use the stem); `gate.yml` `timeout-minutes` becomes 5 and `ci-parity` enforces it; run `tools/gate-linux.sh` before pushing the runner, packaging and close-out plans.
+- **A-08 (binary oracle):** The INPUT-chain oracle uses authoring-time `printf` octal escapes plus `cmake -E sha256sum` literals (cmake cannot carry NUL bytes or raw hash bytes), not the existing `string(SHA256)` oracle.
+
 </decisions>
 
 <canonical_refs>
