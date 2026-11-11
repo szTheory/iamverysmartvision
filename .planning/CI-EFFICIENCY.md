@@ -424,3 +424,10 @@ lever.
   enter the hosted budget.
 - Decision: no CI change. Run the helper before pushing changes that touch C code, shell
   steps or toolchain-sensitive checks; skip it for record-only changes.
+
+## 2026-11-11 — Phase 3 hosted runs (orchestrator record)
+
+- Hosted gate-time per push on the Phase 3 PR: 36 s (03-02), 44 s (03-04, cold C build 26 s), 30 s (03-06), 33 s (03-10), 39 s (after the gcc/PIE fixes), 38 s (review fixes), 49 s (final docs commit, same code as the 38 s run: run-to-run spread of about 10 s on the hosted runner). Budget 40 s, revisit trigger 50 s.
+- Largest hosted steps: `c-build` 16 to 26 s (cold, two presets), `controls` 13 to 24 s (overlapped), `c-faults` 1 to 5 s, `cp1610-vectors` 4 to 5 s.
+- Two failures were hosted-only (gcc argument-evaluation order in a test helper; `_GLOBAL_OFFSET_TABLE_` under PIE). Each cost a CI round trip; `tools/gate-linux.sh` (local, opt-in, takes about 3 minutes under emulation) now reproduces the Ubuntu environment before a push.
+- Next levers if the trigger is crossed: (1) rebuild only the source holding each fault, (2) overlap the cold C build with the steps that do not need it. Not applied: the 49 s run is variance on identical code, not a regression.
