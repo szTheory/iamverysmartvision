@@ -160,7 +160,7 @@ int ivs_test_run(const ivs_test_suite *s, const ivs_test_opts *o, const char *no
     return 1;
   }
   if (planned == 0) {
-    return o->only != NULL ? 0 : 1;
+    return 1; /* nothing selected, a mistyped --only prefix included (review IN-06) */
   }
   if (skipped == planned) {
     return IVS_TEST_EXIT_SKIP;

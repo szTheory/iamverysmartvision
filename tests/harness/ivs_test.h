@@ -8,8 +8,9 @@
  *   ok 1 <id> | not ok 2 <id> | ok 3 <id> # SKIP <reason>
  *   # suite=<s> executed=<n> skipped=<k> failed=<f>
  * Diagnostics (ivs_test_diag) go to stdout only, never into the result file.
- * Exit status: 1 on any failure or a duplicate id (checked before anything runs), 77 only
- * when every selected case is skipped, else 0. Flags: --only <prefix>, --list. */
+ * Exit status: 1 on any failure, a duplicate id (checked before anything runs) or an empty
+ * selection (no case, or an --only prefix that matches none), 77 only when every selected case
+ * is skipped, else 0. Flags: --only <prefix>, --list. */
 #ifndef IVS_TEST_H
 #define IVS_TEST_H
 

@@ -147,8 +147,9 @@ static int hs_duplicate_id_rejected(void)
 }
 
 /* --only <prefix> selects by id prefix: the plan counts only selected cases, numbering is
- * over selected cases, unselected cases never run; --list honours the filter; an empty
- * selection is not an error under --only. Bad arguments are usage errors. */
+ * over selected cases, unselected cases never run; --list honours the filter; an --only prefix
+ * that matches no case exits 1, so a mistyped prefix cannot pass with nothing run (IN-06). Bad
+ * arguments are usage errors. */
 static int hs_only_filter(void)
 {
   static const ivs_test_case cases[] = {
@@ -191,7 +192,7 @@ static int hs_only_filter(void)
   o.list = 0;
   o.only = "zzz";
   HS_CHECK(hs_run(&s, &o, &rc) == 0);
-  HS_CHECK(rc == 0);
+  HS_CHECK(rc == 1);
   HS_CHECK(hs_text("empty selection", hs_out, "# suite=flt nonce=N1\n1..0\n# suite=flt executed=0 skipped=0 failed=0\n"));
 
   HS_CHECK(ivs_test_parse_args(2, argv_bogus, &o) == -1);
