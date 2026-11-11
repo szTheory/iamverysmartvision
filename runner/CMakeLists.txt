@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: MIT
+# The headless runner (D-17, plan 04-03): the library ivs_runner_lib holds every runner TU except
+# the thin main.c and hostio.c (later plans), from an explicit source list (no file(GLOB)). It
+# links only the public ivs_core, never ivs_core_internal, so a runner TU cannot reach core/src.
+# IVS_RUNNER_SOURCES (relative to runner/, alphabetical) is read by tests/faults.cmake for the
+# named-fault owner scan and plain copies (D-24); file stems must stay unique across core/src and
+# runner/ (object and plain-copy names use the stem; faults.cmake checks it at configure time).
+# The repo-relative list is written to the build tree like ivs-core-sources.txt.
+
+set(IVS_RUNNER_SOURCES
+  outcome.c
+)
+
+add_library(ivs_runner_lib STATIC ${IVS_RUNNER_SOURCES})
+set_target_properties(ivs_runner_lib PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF LINKER_LANGUAGE C)
+target_include_directories(ivs_runner_lib PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(ivs_runner_lib PUBLIC ivs_core PRIVATE ivs_warnings ivs_san)
+
+set(listed "")
+foreach(src IN LISTS IVS_RUNNER_SOURCES)
+  string(APPEND listed "runner/${src}\n")
+endforeach()
+file(WRITE "${CMAKE_BINARY_DIR}/ivs-runner-sources.txt.tmp" "${listed}")
+file(COPY_FILE "${CMAKE_BINARY_DIR}/ivs-runner-sources.txt.tmp" "${CMAKE_BINARY_DIR}/ivs-runner-sources.txt"
+  ONLY_IF_DIFFERENT)

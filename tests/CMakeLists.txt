@@ -165,11 +165,20 @@ set_tests_properties(harness PROPERTIES SKIP_RETURN_CODE 77)
 # Fault-suite registry (D-37, plan 03-01): each suite named by a `# suite=<name>` header of a
 # data/expected/faults/*.ids file is described once here; tests/faults.cmake reads it to build
 # that suite's fault executables from its own test sources with plain flags.
-# ivs_fault_suite(<suite> SOURCES <test .c> INCLUDE_DIRS <dirs> GENERATED <generated files>)
+# ivs_fault_suite(<suite> SOURCES <test .c> INCLUDE_DIRS <dirs> GENERATED <generated files>
+#                 [MODULES <modules>])
+# MODULES (D-24, plan 04-03) names the owner-TU modules whose plain copies the suite's fault
+# executables link: core (the default) or core runner (the runner library needs the core).
 function(ivs_fault_suite suite)
-  cmake_parse_arguments(PARSE_ARGV 1 arg "" "" "SOURCES;INCLUDE_DIRS;GENERATED")
+  cmake_parse_arguments(PARSE_ARGV 1 arg "" "" "SOURCES;INCLUDE_DIRS;GENERATED;MODULES")
   if(NOT suite MATCHES "^[a-z0-9][a-z0-9-]*$" OR NOT arg_SOURCES OR arg_UNPARSED_ARGUMENTS)
     message(FATAL_ERROR "ivs_fault_suite(${suite}): bad suite name or arguments")
+  endif()
+  if(NOT arg_MODULES)
+    set(arg_MODULES core)
+  endif()
+  if(NOT arg_MODULES STREQUAL "core" AND NOT arg_MODULES STREQUAL "core;runner")
+    message(FATAL_ERROR "ivs_fault_suite(${suite}): MODULES must be core or core runner (got ${arg_MODULES})")
   endif()
   if(suite IN_LIST IVS_FAULT_SUITES)
     message(FATAL_ERROR "ivs_fault_suite(${suite}): registered twice")
@@ -178,6 +187,7 @@ function(ivs_fault_suite suite)
   set(IVS_FAULT_SUITE_${suite}_SOURCES "${arg_SOURCES}" PARENT_SCOPE)
   set(IVS_FAULT_SUITE_${suite}_INCLUDE_DIRS "${arg_INCLUDE_DIRS}" PARENT_SCOPE)
   set(IVS_FAULT_SUITE_${suite}_GENERATED "${arg_GENERATED}" PARENT_SCOPE)
+  set(IVS_FAULT_SUITE_${suite}_MODULES "${arg_MODULES}" PARENT_SCOPE)
 endfunction()
 # Generator-path controls (GEN_<NAME> fault ids, no source site): the generator script writes
 # <OUTPUT> with one mutation (-DMUTATE=<must-fail id>, -DOUT=<fault dir>/<OUTPUT> are added by
@@ -246,6 +256,19 @@ ivs_fault_suite(ivsc
   SOURCES ivsc/ivsc_main.c ivsc/ivsc_fuzz.c ivsc/ivsc_reencode.c
   INCLUDE_DIRS "${CMAKE_CURRENT_BINARY_DIR}"
   GENERATED "${IVS_CART_INC}")
+
+# Suite runner (D-17, D-20, D-23, plan 04-03): the runner library in process. It links the
+# public ivs_core through ivs_runner_lib; its named faults are data/expected/faults/runner.ids,
+# whose sites sit in runner/ TUs (D-24), so its fault executables link plain copies of the core
+# and runner library TUs.
+add_executable(ivs_tests_runner runner/runner_main.c)
+target_link_libraries(ivs_tests_runner PRIVATE ivs_test_harness ivs_runner_lib ivs_core ivs_warnings ivs_san)
+add_test(NAME runner COMMAND ivs_tests_runner)
+set_tests_properties(runner PROPERTIES SKIP_RETURN_CODE 77)
+ivs_fault_suite(runner
+  SOURCES runner/runner_main.c
+  INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/runner"
+  MODULES core runner)
 
 # Named-fault control executables (D-18): dev tree only, never registered with ctest.
 if(IVS_FAULT_CONTROLS)

@@ -1,0 +1,6 @@
+# suite=runner; columns: <FAULT_ID> <must-fail> <allowed-prefixes> <must-pass>
+# Runner outcome named faults (D-20, D-24, plan 04-03). Each id has one IVS_FAULT_<ID> site in
+# runner/outcome.c (owner TUs under core/ or runner/).
+# OUTCOME_GUEST_AS_HARNESS: guest-fail exits with the harness-fail code; only the guest-fail
+# exit case reads that code.
+OUTCOME_GUEST_AS_HARNESS runner.outcome.exit-guest-fail runner.outcome.exit-guest-fail runner.outcome.exit-pass

@@ -15,6 +15,7 @@ option(IVS_FAULT_CONTROLS "Build the named-fault control executables (dev tree o
 include(cmake/IvsWarnings.cmake)
 
 add_subdirectory(core)
+add_subdirectory(runner)
 
 enable_testing()
 add_subdirectory(tests)

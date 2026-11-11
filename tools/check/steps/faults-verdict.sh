@@ -1,8 +1,8 @@
 #!/bin/sh
 # SPDX-License-Identifier: MIT
 # Step faults-verdict: pure checker over the named-fault results the c-faults step wrote
-# (D-18, A-09). Reads only the results dir, $ROOT/data/expected/ and the FILELIST core
-# sources; never builds and never runs a binary, so the control runner can drive it. Results
+# (D-18, A-09). Reads only the results dir, $ROOT/data/expected/ and the FILELIST core and
+# runner sources; never builds and never runs a binary, so the control runner can drive it. Results
 # dir: IVS_GATE_DIR (set by tools/gate.sh, and by the control runner to its tree's build/gate),
 # else $ROOT/build/gate, the same default the producer c-faults uses (review IN-07); build/gate
 # below names it.
@@ -14,7 +14,8 @@
 # Per fault, build/gate/faults/<ID>/<suite>.txt must exist, carry the gate nonce and list
 # exactly the ids of data/expected/tests/<suite>.ids; the must-fail vector fails, every failing
 # vector starts with an allowed prefix and the must-pass vector passes. Sites: every
-# `#ifdef IVS_FAULT_<ID>` / `#if defined(IVS_FAULT_<ID>)` in core/src/**/*.{c,h} must name a
+# `#ifdef IVS_FAULT_<ID>` / `#if defined(IVS_FAULT_<ID>)` in core/src/**/*.{c,h} and
+# runner/**/*.{c,h} (repo-relative owner TUs, D-24, plan 04-03) must name a
 # non-GEN_ id listed in some faults file, and every listed non-GEN_ id must have a site (both
 # against the union of the non-GEN_ ids of all files, H3).
 # All findings are printed, sorted. Tokens: fault-not-detected, fault-wrong-reason,
@@ -126,9 +127,10 @@ for ids in "$ROOT"/data/expected/faults/*.ids; do
 done
 [ "$nfiles" -gt 0 ] || bad fault-missing "data/expected/faults/*.ids (none)"
 
-# Sites in the core sources against the union of the non-GEN_ fault ids of every file (H3).
+# Sites in the owner sources (core/src and runner/, D-24) against the union of the non-GEN_
+# fault ids of every file (H3).
 : > "$tmp/sites"
-for p in $(grep -E '^core/src/.*[.](c|h)$' "$FILELIST" | sort -u); do
+for p in $(grep -E '^(core/src|runner)/.*[.](c|h)$' "$FILELIST" | sort -u); do
   [ -f "$ROOT/$p" ] || continue
   grep -E '^[[:space:]]*#[[:space:]]*if' "$ROOT/$p" \
     | grep -E 'IVS_FAULT_[A-Za-z0-9_]' \
