@@ -192,7 +192,7 @@ Plans:
   3. A run to an absolute cycle target reports any overshoot. Splitting the run into slices gives the same per-domain digests (CPU/memory, video, audio, input log), and repeated runs match. Golden files carry tier and oracle headers. An undersized output buffer is refused before any state changes.
   4. A separate consumer project, built only against the installed package in a relocated prefix, runs load, refusal, run and digest successfully.
   5. CI runs the same fast gate as the local command on every PR, shows skipped and missing items, never caches or uploads system images or rights-unknown fixtures, and records queue, setup, build and test durations for each run.
-**Plans**: 6/25 plans executed in 25 sequential waves
+**Plans**: 7/25 plans executed in 25 sequential waves
 
 Plans:
 - [x] 04-01-PLAN.md — CI measurement first: `gate-env`/`gate-cpu` lines, job summary through the EXIT trap with a selftest step, ci-parity bans (action allowlist, secrets, matrix, runs-on, timeout 5), 6 controls
@@ -201,7 +201,7 @@ Plans:
 - [x] 04-04-PLAN.md — Runner source hygiene: `runner-scan` (POSIX only in hostio.c), integrity for `runner/` and `tools/**/*.c`, unlisted-source guard, 6 controls
 - [x] 04-05-PLAN.md — Stepped-state composite pin first, then observation rows and live digest domains 16-18 (composite unchanged), 2 faults
 - [x] 04-06-PLAN.md — Public read-only observation (`ivs_run.h`, `ivs_machine_cpu_state`, `ivs_machine_peek`), new suite `run`, 2 faults
-- [ ] 04-07-PLAN.md — `ivs_machine_run`: absolute master-tick target, overshoot, stop reasons, refusal ladder, 3 faults
+- [x] 04-07-PLAN.md — `ivs_machine_run`: absolute master-tick target, overshoot, stop reasons, refusal ladder, 3 faults
 - [ ] 04-08-PLAN.md — Generic define pins for stop reasons and refusal reasons, 3 controls
 - [ ] 04-09-PLAN.md — Timebase and output layout in `ivs_info` (A-02 growth rule), five-pattern slicing invariance, 2 faults
 - [ ] 04-10-PLAN.md — Output buffers (API-04) through an internal env seam, refusal before any state change, 2 faults
@@ -315,7 +315,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 1. Evidence, Profile and Rights Foundations | 14/14 | Complete    | 2026-11-09 |
 | 2. CP-1610 CPU Core | 18/18 | Complete    | 2026-11-10 |
 | 3. Memory Map, Content Loading and Refusal | 14/14 | Complete    | 2026-11-11 |
-| 4. Headless Runner and Installed Consumer (Slice 0) | 6/25 | In Progress | - |
+| 4. Headless Runner and Installed Consumer (Slice 0) | 7/25 | In Progress | - |
 | 5. Hand Controllers and PSG Sound | 0/TBD | Not started | - |
 | 6. STIC Video First Pass | 0/TBD | Not started | - |
 | 7. First Visible Original Scenario | 0/TBD | Not started | - |
