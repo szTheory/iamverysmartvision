@@ -3,9 +3,13 @@
 # Step c-purity: the machine core imports no host service (API-05, D-21, ROADMAP SC5).
 # Stage 1, source layer (runs before any compile; a finding stops the step here, so a source
 # violation is always reported by its own token and never masked by a compile failure):
-#   - every FILELIST path core/src/**/*.c and core/src/**/*.h: an angle include
-#     (^[[:space:]]*#[[:space:]]*include[[:space:]]*<) may name only stdint.h, stddef.h,
-#     stdbool.h, limits.h or string.h (c-purity-include); after removing comments and string
+#   - every FILELIST path core/src/**/*.c and core/src/**/*.h: every #include or #import line
+#     is checked (c-purity-include). An angle include may name only stdint.h, stddef.h,
+#     stdbool.h, limits.h or string.h; a quoted include must name a FILELIST header under
+#     core/src, as a path from core/src or from the including file's directory, so
+#     `#include "stdio.h"` (resolved through the system path) fails; any other form (a computed
+#     `#include MACRO`, #include_next, a continuation or a comment before the operand) fails
+#     closed (review WR-02). After removing comments and string
 #     and character literals, the words asm, __asm, __asm__, __builtin_readcyclecounter,
 #     __builtin_ia32_rdtsc, __rdtsc, __rdtscp and syscall fail (c-purity-asm), and so does a
 #     floating literal (c-purity-float-literal): a decimal number with `.` or an exponent, or a
@@ -53,7 +57,7 @@ fi
 
 # Stage 1: source layer. One awk pass per file prints "<token> <file>:<line>" findings.
 scan() { # $1 repo-relative path, $2 1 for a .c file, 0 for a header
-  awk -v file="$1" -v isc="$2" '
+  awk -v file="$1" -v isc="$2" -v hlist="$tmp/hsrc" '
     function report(t) { print t " " file ":" NR }
     function word(w) {
       if (w in asmw) report("c-purity-asm")
@@ -68,19 +72,29 @@ scan() { # $1 repo-relative path, $2 1 for a .c file, 0 for a header
       for (k in a) okh[a[k]] = 1
       split("asm __asm __asm__ __builtin_readcyclecounter __builtin_ia32_rdtsc __rdtsc __rdtscp syscall", b, " ")
       for (k in b) asmw[b[k]] = 1
+      while ((getline hp < hlist) > 0) corehdr[hp] = 1
+      close(hlist)
+      dir = file; sub(/\/[^\/]*$/, "", dir)
       incomment = 0; seen_inc = 0
     }
     {
       line = $0
-      if (!incomment && line ~ /^[[:space:]]*#[[:space:]]*include/) {
+      if (!incomment && line ~ /^[[:space:]]*#[[:space:]]*(include|import)/) {
         if (isc && !seen_inc && line !~ /^[[:space:]]*#[[:space:]]*include[[:space:]]*"([^"]*\/)?ivs_prelude\.h"/)
           report("c-purity-prelude")
         seen_inc = 1
-        if (line ~ /^[[:space:]]*#[[:space:]]*include[[:space:]]*</) {
-          h = line
-          sub(/^[[:space:]]*#[[:space:]]*include[[:space:]]*</, "", h)
-          sub(/>.*$/, "", h)
-          if (!(h in okh)) report("c-purity-include")
+        rest = line
+        sub(/^[[:space:]]*#[[:space:]]*(include|import)/, "", rest)
+        if (rest ~ /^[A-Za-z0-9_]/) report("c-purity-include")
+        else {
+          sub(/^[[:space:]]*/, "", rest)
+          if (rest ~ /^<[^>]*>/) {
+            h = substr(rest, 2); sub(/>.*$/, "", h)
+            if (!(h in okh)) report("c-purity-include")
+          } else if (rest ~ /^"[^"]*"/) {
+            h = substr(rest, 2); sub(/".*$/, "", h)
+            if (!(("core/src/" h) in corehdr) && !((dir "/" h) in corehdr)) report("c-purity-include")
+          } else report("c-purity-include")
         }
       }
       n = length(line); i = 1
