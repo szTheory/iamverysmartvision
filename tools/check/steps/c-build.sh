@@ -44,8 +44,18 @@ else
   bad c-build-failed "dev (no ivs-core-sources.txt)"
 fi
 
+# The compiler id comes from the CMakeFiles/<version>/ directory of the CMake version that wrote
+# the cache, so a stale directory left by an older CMake is never read (review IN-04).
 cc=
-cfg=$(ls "$ROOT"/build/dev/CMakeFiles/*/CMakeCCompiler.cmake 2> /dev/null | sort | head -n 1)
+cfg=
+cache="$ROOT/build/dev/CMakeCache.txt"
+if [ -f "$cache" ]; then
+  ver=$(awk -F= '/^CMAKE_CACHE_MAJOR_VERSION:/ { a = $2 } /^CMAKE_CACHE_MINOR_VERSION:/ { b = $2 }
+    /^CMAKE_CACHE_PATCH_VERSION:/ { c = $2 } END { if (a != "" && b != "" && c != "") print a "." b "." c }' "$cache")
+  if [ -n "$ver" ] && [ -f "$ROOT/build/dev/CMakeFiles/$ver/CMakeCCompiler.cmake" ]; then
+    cfg="$ROOT/build/dev/CMakeFiles/$ver/CMakeCCompiler.cmake"
+  fi
+fi
 if [ -n "$cfg" ]; then
   cc=$(sed -n 's/^set(CMAKE_C_COMPILER_ID "\([^"]*\)")$/\1/p' "$cfg" | head -n 1)
 fi
