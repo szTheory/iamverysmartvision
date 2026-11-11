@@ -17,12 +17,16 @@
  *   x  every kind except the one under test loaded (GROM and cartridge for an EXEC row, EXEC
  *      and cartridge for a GROM row, EXEC and GROM for a cartridge row);
  *   s  EXEC and GROM loaded;
- *   c  EXEC, GROM and cartridge loaded.
- * Rows decided before slot occupancy (argument BAD_ARG, UNSUPPORTED) run on f, s and c with the
- * same status; rows decided after it (OVERSIZED, input-overlap BAD_ARG, content, DIGEST_MISMATCH)
- * run on f and x, where the slot under test is empty; DUPLICATE_LOAD rows run only on an occupied
- * slot (s and c, or c for the cartridge); handle rows carry no prior. The powered prior w joins
- * in plan 03-12. Every lying length (a claimed length above the bound with a small buffer) runs
+ *   c  EXEC, GROM and cartridge loaded;
+ *   w  EXEC and GROM loaded, then a power-on reset: the machine is POWERED (plan 03-12).
+ * Rows decided before the run phase and slot occupancy (argument BAD_ARG, UNSUPPORTED) run on f,
+ * s, c and w with the same status; rows decided after them (OVERSIZED, input-overlap BAD_ARG,
+ * content, DIGEST_MISMATCH) run on f and x, where the slot under test is empty; DUPLICATE_LOAD
+ * rows run only on an occupied slot (s and c, or c for the cartridge); BAD_STATE rows (every load
+ * kind and unload while POWERED, D-13, A-08 d) run on w; handle rows carry no prior.
+ * Reset rows (plan 03-12, D-14, A-08 e): machine.refuse.reset.<slug>, one fixed prior each, check
+ * BAD_ARG for an unknown reset kind, BAD_HANDLE, and MISSING_SYSTEM_IMAGE with EXEC, GROM or both
+ * empty, with the same storage and digest oracle (a reset has no report). Every lying length (a claimed length above the bound with a small buffer) runs
  * in two placements, a 16-byte heap buffer (`-heap`) and a pointer into the middle of the
  * instance storage (`-inside`): both are OVERSIZED, since a refusal status is a function of the
  * argument values, never of where the host placed its buffer (A-08 a).
@@ -79,7 +83,8 @@
 #define RF_P_X 0x2u
 #define RF_P_S 0x4u
 #define RF_P_C 0x8u
-#define RF_P_FSC (RF_P_F | RF_P_S | RF_P_C)
+#define RF_P_W 0x10u
+#define RF_P_FSCW (RF_P_F | RF_P_S | RF_P_C | RF_P_W)
 #define RF_P_FX (RF_P_F | RF_P_X)
 #define RF_P_SC (RF_P_S | RF_P_C)
 
@@ -89,6 +94,7 @@
 #define RF_OP_INFO 3u
 #define RF_OP_DIGEST 4u
 #define RF_OP_CREATE 5u
+#define RF_OP_RESET 6u
 
 /* Row flags. */
 #define RF_REPORT_KEPT 0x1u /* the report is refused: every report byte stays poisoned */
@@ -330,6 +336,9 @@ static int rf_prior(ivs_machine *m, uint32_t prior, uint32_t kind)
     case RF_P_C:
       want = 1;
       break;
+    case RF_P_W:
+      want = k != IVS_KIND_CARTRIDGE;
+      break;
     default:
       want = 0;
       break;
@@ -337,6 +346,10 @@ static int rf_prior(ivs_machine *m, uint32_t prior, uint32_t kind)
     if (want && !rf_load_one(m, k)) {
       return 0;
     }
+  }
+  if (prior == RF_P_W && ivs_machine_reset(m, IVS_RESET_POWER_ON) != IVS_OK) {
+    ivs_test_diag("prior w: power-on reset refused");
+    return 0;
   }
   return 1;
 }
@@ -399,6 +412,12 @@ static int rf_b_null_8(rf_ctx *c)
 {
   c->bytes = NULL;
   c->len = 8u;
+  return 1;
+}
+
+static int rf_b_null_machine_only(rf_ctx *c)
+{
+  c->handle = NULL;
   return 1;
 }
 
@@ -802,6 +821,38 @@ static int rf_b_8191_expect(rf_ctx *c)
   return rf_b_exec_8191(c) && rf_expect_bad(c);
 }
 
+/* ---- builders: run phase and reset (plan 03-12) ---- */
+
+/* A second power-on reset (a power cycle), then a valid input: the machine stays POWERED. */
+static int rf_b_power_cycle_valid(rf_ctx *c)
+{
+  if (ivs_machine_reset(c->m, IVS_RESET_POWER_ON) != IVS_OK) {
+    ivs_test_diag("power cycle refused");
+    return 0;
+  }
+  return rf_b_valid(c);
+}
+
+static int rf_b_power_cycle(rf_ctx *c)
+{
+  if (ivs_machine_reset(c->m, IVS_RESET_POWER_ON) != IVS_OK) {
+    ivs_test_diag("power cycle refused");
+    return 0;
+  }
+  return 1;
+}
+
+/* Loads one system image into the fresh prior before the snapshot. */
+static int rf_b_with_grom(rf_ctx *c)
+{
+  return rf_load_one(c->m, IVS_KIND_GROM);
+}
+
+static int rf_b_with_exec(rf_ctx *c)
+{
+  return rf_load_one(c->m, IVS_KIND_EXEC);
+}
+
 /* ---- builders: out parameters ---- */
 
 static int rf_b_info_inside(rf_ctx *c)
@@ -834,37 +885,37 @@ static int rf_b_digest_inside(rf_ctx *c)
 
 static const rf_row rf_rows[] = {
     /* BAD_ARG, argument values (decided before occupancy): f, s, c. */
-    RF_LOAD("machine.refuse.load.arg.kind-0", 0u, RF_P_FSC, rf_b_valid, IVS_E_BAD_ARG, IVS_REASON_ARG_KIND, RF_NONE, 0u,
+    RF_LOAD("machine.refuse.load.arg.kind-0", 0u, RF_P_FSCW, rf_b_valid, IVS_E_BAD_ARG, IVS_REASON_ARG_KIND, RF_NONE, 0u,
             0u, 0u),
-    RF_LOAD("machine.refuse.load.arg.kind-4", 4u, RF_P_FSC, rf_b_valid, IVS_E_BAD_ARG, IVS_REASON_ARG_KIND, RF_NONE, 0u,
+    RF_LOAD("machine.refuse.load.arg.kind-4", 4u, RF_P_FSCW, rf_b_valid, IVS_E_BAD_ARG, IVS_REASON_ARG_KIND, RF_NONE, 0u,
             0u, 0u),
-    RF_LOAD("machine.refuse.load.arg.kind-255", 255u, RF_P_FSC, rf_b_valid, IVS_E_BAD_ARG, IVS_REASON_ARG_KIND, RF_NONE,
+    RF_LOAD("machine.refuse.load.arg.kind-255", 255u, RF_P_FSCW, rf_b_valid, IVS_E_BAD_ARG, IVS_REASON_ARG_KIND, RF_NONE,
             0u, 0u, 0u),
-    RF_LOAD("machine.refuse.load.exec.null-bytes-len-8", RF_E, RF_P_FSC, rf_b_null_8, IVS_E_BAD_ARG,
+    RF_LOAD("machine.refuse.load.exec.null-bytes-len-8", RF_E, RF_P_FSCW, rf_b_null_8, IVS_E_BAD_ARG,
             IVS_REASON_ARG_NULL_BYTES, RF_NONE, 0u, 0u, 0u),
-    RF_LOAD("machine.refuse.load.grom.null-bytes-len-8", RF_G, RF_P_FSC, rf_b_null_8, IVS_E_BAD_ARG,
+    RF_LOAD("machine.refuse.load.grom.null-bytes-len-8", RF_G, RF_P_FSCW, rf_b_null_8, IVS_E_BAD_ARG,
             IVS_REASON_ARG_NULL_BYTES, RF_NONE, 0u, 0u, 0u),
-    RF_LOAD("machine.refuse.load.cart.null-bytes-len-8", RF_K, RF_P_FSC, rf_b_null_8, IVS_E_BAD_ARG,
+    RF_LOAD("machine.refuse.load.cart.null-bytes-len-8", RF_K, RF_P_FSCW, rf_b_null_8, IVS_E_BAD_ARG,
             IVS_REASON_ARG_NULL_BYTES, RF_NONE, 0u, 0u, 0u),
-    RF_LOAD("machine.refuse.load.exec.opts-short", RF_E, RF_P_FSC, rf_b_opts_short, IVS_E_BAD_ARG,
+    RF_LOAD("machine.refuse.load.exec.opts-short", RF_E, RF_P_FSCW, rf_b_opts_short, IVS_E_BAD_ARG,
             IVS_REASON_ARG_STRUCT_SIZE, RF_NONE, 0u, 0u, 0u),
-    RF_LOAD("machine.refuse.load.cart.opts-size-0", RF_K, RF_P_FSC, rf_b_opts_size0, IVS_E_BAD_ARG,
+    RF_LOAD("machine.refuse.load.cart.opts-size-0", RF_K, RF_P_FSCW, rf_b_opts_size0, IVS_E_BAD_ARG,
             IVS_REASON_ARG_STRUCT_SIZE, RF_NONE, 0u, 0u, 0u),
-    RF_LOAD("machine.refuse.load.exec.report-short", RF_E, RF_P_FSC, rf_b_report_short, IVS_E_BAD_ARG, 0u, 0u, 0u, 0u,
+    RF_LOAD("machine.refuse.load.exec.report-short", RF_E, RF_P_FSCW, rf_b_report_short, IVS_E_BAD_ARG, 0u, 0u, 0u, 0u,
             RF_REPORT_KEPT),
-    RF_LOAD("machine.refuse.load.exec.report-inside", RF_E, RF_P_FSC, rf_b_report_inside, IVS_E_BAD_ARG, 0u, 0u, 0u, 0u,
+    RF_LOAD("machine.refuse.load.exec.report-inside", RF_E, RF_P_FSCW, rf_b_report_inside, IVS_E_BAD_ARG, 0u, 0u, 0u, 0u,
             RF_REPORT_KEPT),
-    RF_LOAD("machine.refuse.load.cart.report-inside", RF_K, RF_P_FSC, rf_b_report_inside, IVS_E_BAD_ARG, 0u, 0u, 0u, 0u,
+    RF_LOAD("machine.refuse.load.cart.report-inside", RF_K, RF_P_FSCW, rf_b_report_inside, IVS_E_BAD_ARG, 0u, 0u, 0u, 0u,
             RF_REPORT_KEPT),
 
     /* UNSUPPORTED, option flags and tails (decided before occupancy): f, s, c. */
-    RF_LOAD("machine.refuse.load.exec.flags-bit-1", RF_E, RF_P_FSC, rf_b_flags_bit1, IVS_E_UNSUPPORTED,
+    RF_LOAD("machine.refuse.load.exec.flags-bit-1", RF_E, RF_P_FSCW, rf_b_flags_bit1, IVS_E_UNSUPPORTED,
             IVS_REASON_OPTION_FLAGS, RF_NONE, 0u, 0u, 0u),
-    RF_LOAD("machine.refuse.load.cart.flags-bit-31", RF_K, RF_P_FSC, rf_b_flags_bit31, IVS_E_UNSUPPORTED,
+    RF_LOAD("machine.refuse.load.cart.flags-bit-31", RF_K, RF_P_FSCW, rf_b_flags_bit31, IVS_E_UNSUPPORTED,
             IVS_REASON_OPTION_FLAGS, RF_NONE, 0u, 0u, 0u),
-    RF_LOAD("machine.refuse.load.exec.opts-tail-nonzero", RF_E, RF_P_FSC, rf_b_opts_tail, IVS_E_UNSUPPORTED,
+    RF_LOAD("machine.refuse.load.exec.opts-tail-nonzero", RF_E, RF_P_FSCW, rf_b_opts_tail, IVS_E_UNSUPPORTED,
             IVS_REASON_OPTION_TAIL, RF_NONE, 0u, 0u, 0u),
-    RF_LOAD("machine.refuse.load.grom.opts-tail-nonzero", RF_G, RF_P_FSC, rf_b_opts_tail, IVS_E_UNSUPPORTED,
+    RF_LOAD("machine.refuse.load.grom.opts-tail-nonzero", RF_G, RF_P_FSCW, rf_b_opts_tail, IVS_E_UNSUPPORTED,
             IVS_REASON_OPTION_TAIL, RF_NONE, 0u, 0u, 0u),
 
     /* DUPLICATE_LOAD: only on an occupied slot. */
@@ -1012,8 +1063,44 @@ static const rf_row rf_rows[] = {
     RF_OTHER("machine.refuse.unload.exec.destroyed", RF_OP_UNLOAD, RF_E, RF_P_F, rf_b_none, IVS_E_BAD_HANDLE,
              RF_NO_SUFFIX | RF_DESTROYED),
     /* Unload BAD_ARG (unknown enumerant, A-08 e): f, s, c. */
-    RF_OTHER("machine.refuse.unload.arg.kind-0", RF_OP_UNLOAD, 0u, RF_P_FSC, rf_b_none, IVS_E_BAD_ARG, 0u),
-    RF_OTHER("machine.refuse.unload.arg.kind-4", RF_OP_UNLOAD, 4u, RF_P_FSC, rf_b_none, IVS_E_BAD_ARG, 0u),
+    RF_OTHER("machine.refuse.unload.arg.kind-0", RF_OP_UNLOAD, 0u, RF_P_FSCW, rf_b_none, IVS_E_BAD_ARG, 0u),
+    RF_OTHER("machine.refuse.unload.arg.kind-4", RF_OP_UNLOAD, 4u, RF_P_FSCW, rf_b_none, IVS_E_BAD_ARG, 0u),
+
+    /* BAD_STATE: every load kind and unload while POWERED (D-13), w only; after a power cycle the
+     * machine is still POWERED (A-08 d). The EXEC and GROM slots are occupied in w, so these rows
+     * also show BAD_STATE winning over DUPLICATE_LOAD; the cartridge slot is empty. */
+    RF_LOAD("machine.refuse.load.exec.powered", RF_E, RF_P_W, rf_b_valid, IVS_E_BAD_STATE, IVS_REASON_STATE_POWERED,
+            RF_NONE, 0u, 0u, 0u),
+    RF_LOAD("machine.refuse.load.grom.powered", RF_G, RF_P_W, rf_b_valid, IVS_E_BAD_STATE, IVS_REASON_STATE_POWERED,
+            RF_NONE, 0u, 0u, 0u),
+    RF_LOAD("machine.refuse.load.cart.powered", RF_K, RF_P_W, rf_b_valid, IVS_E_BAD_STATE, IVS_REASON_STATE_POWERED,
+            RF_NONE, 0u, 0u, 0u),
+    RF_LOAD("machine.refuse.load.exec.after-power-cycle", RF_E, RF_P_W, rf_b_power_cycle_valid, IVS_E_BAD_STATE,
+            IVS_REASON_STATE_POWERED, RF_NONE, 0u, 0u, 0u),
+    RF_OTHER("machine.refuse.unload.exec.powered", RF_OP_UNLOAD, RF_E, RF_P_W, rf_b_none, IVS_E_BAD_STATE, 0u),
+    RF_OTHER("machine.refuse.unload.grom.powered", RF_OP_UNLOAD, RF_G, RF_P_W, rf_b_none, IVS_E_BAD_STATE, 0u),
+    RF_OTHER("machine.refuse.unload.cart.powered", RF_OP_UNLOAD, RF_K, RF_P_W, rf_b_none, IVS_E_BAD_STATE, 0u),
+    RF_OTHER("machine.refuse.unload.grom.after-power-cycle", RF_OP_UNLOAD, RF_G, RF_P_W, rf_b_power_cycle,
+             IVS_E_BAD_STATE, 0u),
+
+    /* Reset (D-14, A-08 e): kind is the reset kind argument. MISSING_SYSTEM_IMAGE on a fresh
+     * instance with GROM only, EXEC only and neither; BAD_ARG for kinds 0 and 2 on an instance that
+     * a valid reset would power (s) and on a POWERED one (w); BAD_HANDLE. */
+    RF_OTHER("machine.refuse.reset.no-exec", RF_OP_RESET, IVS_RESET_POWER_ON, RF_P_F, rf_b_with_grom,
+             IVS_E_MISSING_SYSTEM_IMAGE, RF_NO_SUFFIX),
+    RF_OTHER("machine.refuse.reset.no-grom", RF_OP_RESET, IVS_RESET_POWER_ON, RF_P_F, rf_b_with_exec,
+             IVS_E_MISSING_SYSTEM_IMAGE, RF_NO_SUFFIX),
+    RF_OTHER("machine.refuse.reset.neither", RF_OP_RESET, IVS_RESET_POWER_ON, RF_P_F, rf_b_none,
+             IVS_E_MISSING_SYSTEM_IMAGE, RF_NO_SUFFIX),
+    RF_OTHER("machine.refuse.reset.no-exec-with-cart", RF_OP_RESET, IVS_RESET_POWER_ON, RF_P_X, rf_b_none,
+             IVS_E_MISSING_SYSTEM_IMAGE, RF_NO_SUFFIX),
+    RF_OTHER("machine.refuse.reset.kind-0", RF_OP_RESET, 0u, RF_P_S, rf_b_none, IVS_E_BAD_ARG, RF_NO_SUFFIX),
+    RF_OTHER("machine.refuse.reset.kind-2", RF_OP_RESET, 2u, RF_P_S, rf_b_none, IVS_E_BAD_ARG, RF_NO_SUFFIX),
+    RF_OTHER("machine.refuse.reset.kind-2-powered", RF_OP_RESET, 2u, RF_P_W, rf_b_none, IVS_E_BAD_ARG, RF_NO_SUFFIX),
+    RF_OTHER("machine.refuse.reset.null", RF_OP_RESET, IVS_RESET_POWER_ON, RF_P_S, rf_b_null_machine_only,
+             IVS_E_BAD_HANDLE, RF_NO_SUFFIX),
+    RF_OTHER("machine.refuse.reset.destroyed", RF_OP_RESET, IVS_RESET_POWER_ON, RF_P_S, rf_b_none, IVS_E_BAD_HANDLE,
+             RF_NO_SUFFIX | RF_DESTROYED),
 
     /* Out parameters aimed into the instance (plan 03-11 addition). */
     RF_OTHER("machine.refuse.info.out-inside", RF_OP_INFO, RF_E, RF_P_F, rf_b_info_inside, IVS_E_BAD_ARG, RF_NO_SUFFIX),
@@ -1065,12 +1152,24 @@ static const rf_row rf_rows[] = {
             IVS_REASON_OUT_OF_SPAN, 0u, 24u, 0u),
     RF_PREC("machine.prec.cart-feature-before-expect", RF_K, RF_P_F, rf_b_feature_and_expect, IVS_E_UNSUPPORTED,
             IVS_REASON_FEATURES, RF_NONE, IVS_IVSC_FEATURES_OFFSET, 0x1u),
+    /* The run phase in the load ladder (plan 03-12): UNSUPPORTED options win over BAD_STATE, and
+     * BAD_STATE wins over DUPLICATE_LOAD (the EXEC slot is occupied in w). */
+    RF_PREC("machine.prec.unsupported-over-bad-state", RF_E, RF_P_W, rf_b_flags_bit1, IVS_E_UNSUPPORTED,
+            IVS_REASON_OPTION_FLAGS, RF_NONE, 0u, 0u),
+    RF_PREC("machine.prec.bad-state-over-duplicate", RF_E, RF_P_W, rf_b_valid, IVS_E_BAD_STATE,
+            IVS_REASON_STATE_POWERED, RF_NONE, 0u, 0u),
+    /* The reset ladder: BAD_ARG, then BAD_HANDLE, then MISSING_SYSTEM_IMAGE. */
+    RF_OTHER("machine.prec.reset-arg-over-handle", RF_OP_RESET, 2u, RF_P_F, rf_b_null_machine_only, IVS_E_BAD_ARG,
+             RF_NO_SUFFIX),
+    RF_OTHER("machine.prec.reset-arg-over-missing", RF_OP_RESET, 0u, RF_P_F, rf_b_none, IVS_E_BAD_ARG, RF_NO_SUFFIX),
+    RF_OTHER("machine.prec.reset-handle-over-missing", RF_OP_RESET, IVS_RESET_POWER_ON, RF_P_F, rf_b_none,
+             IVS_E_BAD_HANDLE, RF_NO_SUFFIX | RF_DESTROYED),
 };
 #define RF_ROWS (sizeof rf_rows / sizeof rf_rows[0])
 
 /* ---- the (row, prior) index ---- */
 
-#define RF_MAX_CASES 256u
+#define RF_MAX_CASES 320u
 #define RF_ID_BYTES 96u
 
 typedef struct rf_case {
@@ -1092,17 +1191,19 @@ static char rf_prior_letter(uint32_t prior)
     return 'x';
   case RF_P_S:
     return 's';
+  case RF_P_W:
+    return 'w';
   default:
     return 'c';
   }
 }
 
-/* Expands every row into one case per prior (in the order f, x, s, c). An id that would not fit
+/* Expands every row into one case per prior (in the order f, x, s, c, w). An id that would not fit
  * is left empty and a row past RF_MAX_CASES is dropped; both make the harness or the inventory
  * fail, never pass silently. */
 static void rf_index(void)
 {
-  static const uint32_t order[4] = {RF_P_F, RF_P_X, RF_P_S, RF_P_C};
+  static const uint32_t order[5] = {RF_P_F, RF_P_X, RF_P_S, RF_P_C, RF_P_W};
   size_t r;
   uint32_t k;
   if (rf_ready) {
@@ -1110,7 +1211,7 @@ static void rf_index(void)
   }
   rf_ready = 1;
   for (r = 0u; r < RF_ROWS; r++) {
-    for (k = 0u; k < 4u; k++) {
+    for (k = 0u; k < 5u; k++) {
       size_t n = strlen(rf_rows[r].id);
       char *id;
       if ((rf_rows[r].priors & order[k]) == 0u || rf_n_cases >= RF_MAX_CASES) {
@@ -1172,6 +1273,8 @@ static ivs_status rf_call(rf_ctx *c, const rf_row *row)
     return ivs_machine_info(c->handle, c->info_out);
   case RF_OP_DIGEST:
     return ivs_machine_state_digest(c->handle, IVS_DIGEST_COMPOSITE, c->digest_out);
+  case RF_OP_RESET:
+    return ivs_machine_reset(c->handle, row->kind);
   default:
     return ivs_machine_load(c->handle, row->kind, c->bytes, c->len, c->opts, c->report);
   }

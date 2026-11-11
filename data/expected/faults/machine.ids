@@ -6,15 +6,22 @@
 # load and unload rows reach a live instance); both are their own rule.
 # INIT_SKIPS_MEMSET leaves poisoned slot records, so a load sees an occupied slot (machine.load.,
 # and every load and unload row of the plan 03-11 refusal matrix and machine.prec.), and every
-# plan 03-12 reset case that loads its stand-ins into such an instance (machine.reset.).
+# plan 03-12 reset case that loads its stand-ins into such an instance (machine.reset.,
+# machine.refuse.reset., machine.iso.). DESTROY_NO_SCRUB also reaches a live instance through the
+# plan 03-12 destroyed-handle reset and step rows.
+# Plan 03-12 re-judging, each for the fault's own rule: machine.iso.cross-load checks the exact
+# refusal statuses of B's loads (CHECK_ORDER_MALFORMED_FIRST answers its OVERSIZED GROM load
+# MALFORMED; DUPLICATE_REPLACES accepts its duplicate EXEC load), and
+# machine.reset.power-cycle-one-way compares the instance after refused loads
+# (LOAD_LEN_BEFORE_CHECK writes the slot length first).
 # Load faults (plan 03-10), one site each in core/src/machine/machine_load.c:
 # CART_REPORT_TRAILER_DIGEST reports the trailer, so every case that compares a cartridge's
 # reported or expected digest fails; UNLOAD_KEEPS_IMAGE leaves the memsys words of every kind, so
 # every unload-to-fresh case fails; CART_SPAN_END_INCLUSIVE is reached only through the layer-2
 # seam (the registered span ends at $FFFF, where the parser's address-wrap check fires first).
 CREATE_MAGIC_BEFORE_PROFILE_CHECK machine.refuse.create.unknown-profile machine.refuse.create. machine.create.ok-info-destroy
-INIT_SKIPS_MEMSET machine.create.poisoned-storage machine.create.poisoned-storage|machine.create.ok-info-destroy|machine.digest.|machine.load.|machine.refuse.load.|machine.refuse.unload.|machine.prec.|machine.reset. machine.refuse.create.null-opts
-DESTROY_NO_SCRUB machine.destroy.scrubs machine.destroy.|machine.refuse.destroy.twice|machine.refuse.info.destroyed|machine.refuse.digest.destroyed|machine.refuse.load.exec.destroyed|machine.refuse.unload.exec.destroyed|machine.create.ok-info-destroy|machine.create.static-storage machine.create.requirements
+INIT_SKIPS_MEMSET machine.create.poisoned-storage machine.create.poisoned-storage|machine.create.ok-info-destroy|machine.digest.|machine.load.|machine.refuse.load.|machine.refuse.unload.|machine.prec.|machine.reset.|machine.iso.|machine.refuse.reset. machine.refuse.create.null-opts
+DESTROY_NO_SCRUB machine.destroy.scrubs machine.destroy.|machine.refuse.destroy.twice|machine.refuse.info.destroyed|machine.refuse.digest.destroyed|machine.refuse.load.exec.destroyed|machine.refuse.unload.exec.destroyed|machine.create.ok-info-destroy|machine.create.static-storage|machine.refuse.reset.destroyed|machine.prec.reset-handle-over-missing|machine.reset.step-refusals machine.create.requirements
 DIGEST_SKIPS_RAM machine.digest.sensitivity-mem machine.digest. machine.create.ok-info-destroy
 DIGEST_SKIPS_IMAGE_TABLE machine.digest.sensitivity-images machine.digest. machine.create.ok-info-destroy
 DIGEST_LITTLE_ENDIAN machine.digest.stream-cpu-synthetic machine.digest. machine.create.ok-info-destroy
@@ -36,12 +43,12 @@ CART_SPAN_END_INCLUSIVE machine.load.cart-span-end machine.load.cart-span-end ma
 # inside the instance, which is then written over it. The three faults that change a refused
 # load's instance bytes also fail family load's refusal cases (machine.load.), whose helper
 # compares every instance byte: their own rule.
-LOAD_LEN_BEFORE_CHECK machine.refuse.load.exec.oversized-by-one.f machine.refuse.load.|machine.prec.|machine.load. machine.load.exec-ok
+LOAD_LEN_BEFORE_CHECK machine.refuse.load.exec.oversized-by-one.f machine.refuse.load.|machine.prec.|machine.load.|machine.reset.power-cycle-one-way machine.load.exec-ok
 LOAD_TABLE_BEFORE_VALIDATE machine.refuse.load.grom.short-by-one.f machine.refuse.load.|machine.prec.|machine.load. machine.load.exec-ok
-DUPLICATE_REPLACES machine.refuse.load.exec.duplicate-load.s machine.refuse.load.|machine.prec. machine.load.order-free
+DUPLICATE_REPLACES machine.refuse.load.exec.duplicate-load.s machine.refuse.load.|machine.prec.|machine.iso.cross-load machine.load.order-free
 LEN_TRUNCATED_32 machine.refuse.load.exec.len-wrap-heap.f machine.refuse.load.exec.len-wrap- machine.load.exec-ok
 ROM_DECLE_MASKED_NOT_REFUSED machine.refuse.load.exec.wide-word-first.f machine.refuse.load.exec.wide-word- machine.load.exec-ok
-CHECK_ORDER_MALFORMED_FIRST machine.prec.oversized-over-malformed machine.refuse.load.|machine.prec. machine.load.exec-ok
+CHECK_ORDER_MALFORMED_FIRST machine.prec.oversized-over-malformed machine.refuse.load.|machine.prec.|machine.iso.cross-load machine.load.exec-ok
 CART_COPY_BEFORE_VALIDATE machine.refuse.load.cart.feature-bit-0.f machine.refuse.load.cart.|machine.prec.cart-|machine.load.cart-|machine.load.expect-mismatch machine.load.exec-ok
 OVERLAP_BEFORE_LENGTH machine.prec.oversized-over-overlap machine.refuse.load.|machine.prec. machine.load.exec-ok
 REPORT_INSIDE_UNCHECKED machine.refuse.load.exec.report-inside.f machine.refuse.load.exec.report-inside.|machine.refuse.load.cart.report-inside. machine.load.exec-ok

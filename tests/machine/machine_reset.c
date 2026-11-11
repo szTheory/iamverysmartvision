@@ -136,8 +136,179 @@ static int mr_iab_reset_vector(void)
   return rc;
 }
 
+/* EXEC and GROM only (no cartridge): the reset succeeds, the slots and the images digest are
+ * untouched, and the instance is POWERED at time 0. */
+static int mr_no_cart_ok(void)
+{
+  ivs_ms_inst x;
+  ivs_info info;
+  uint8_t img0[32];
+  uint8_t img1[32];
+  int rc = IVS_TEST_FAIL;
+  if (!ivs_ms_new(&x, 0xA5u)) {
+    return IVS_TEST_FAIL;
+  }
+  memset(&info, 0, sizeof info);
+  info.struct_size = (uint32_t)sizeof info;
+  if (!ivs_ms_load(x.m, IVS_KIND_EXEC, ivs_ms_exec(IVS_MS_PROG_A), IVS_MS_EXEC_BYTES) ||
+      !ivs_ms_load(x.m, IVS_KIND_GROM, ivs_ms_grom(0u), IVS_MS_GROM_BYTES) ||
+      ivs_machine_state_digest(x.m, IVS_DIGEST_IMAGES, img0) != IVS_OK) {
+    ivs_test_diag("content or digest failed");
+  } else if (ivs_machine_reset(x.m, IVS_RESET_POWER_ON) != IVS_OK) {
+    ivs_test_diag("reset with EXEC and GROM only refused");
+  } else if (ivs_machine_info(x.m, &info) != IVS_OK || info.phase != IVS_PHASE_POWERED || info.time_ticks != 0u ||
+             info.slots[0].loaded != 1u || info.slots[1].loaded != 1u || info.slots[2].loaded != 0u) {
+    ivs_test_diag("info: phase %u time %llu loaded %u %u %u", (unsigned)info.phase,
+                  (unsigned long long)info.time_ticks, (unsigned)info.slots[0].loaded,
+                  (unsigned)info.slots[1].loaded, (unsigned)info.slots[2].loaded);
+  } else if (ivs_machine_state_digest(x.m, IVS_DIGEST_IMAGES, img1) != IVS_OK || memcmp(img0, img1, 32u) != 0) {
+    ivs_test_diag("the reset changed the images digest");
+  } else {
+    rc = IVS_TEST_PASS;
+  }
+  ivs_ms_free(&x);
+  return rc;
+}
+
+/* A power cycle after stepping gives the state of a fresh instance with the same content after
+ * one reset: same composite digest and the same instance bytes (D-14, A-08 d). Program A wrote
+ * $0200 and moved the CPU, so a reset that kept RAM or CPU state would differ. */
+static int mr_equivalence(void)
+{
+  ivs_ms_inst x;
+  ivs_ms_inst y;
+  uint8_t dx[32];
+  uint8_t dy[32];
+  int rc = IVS_TEST_FAIL;
+  if (!ivs_ms_powered(&x, IVS_MS_CONTENT_A, 0xA5u)) {
+    return IVS_TEST_FAIL;
+  }
+  if (!ivs_ms_powered(&y, IVS_MS_CONTENT_A, 0x5Au)) {
+    ivs_ms_free(&x);
+    return IVS_TEST_FAIL;
+  }
+  if (!ivs_ms_step(x.m, 40u, NULL)) {
+    ivs_test_diag("stepping failed");
+  } else if (ivs_memsys_read(&ivs_machine_from_handle(x.m)->mem, 0x0200u) == 0x0000u) {
+    ivs_test_diag("the program did not write $0200 before the power cycle");
+  } else if (ivs_machine_reset(x.m, IVS_RESET_POWER_ON) != IVS_OK) {
+    ivs_test_diag("power cycle refused");
+  } else if (ivs_machine_state_digest(x.m, IVS_DIGEST_COMPOSITE, dx) != IVS_OK ||
+             ivs_machine_state_digest(y.m, IVS_DIGEST_COMPOSITE, dy) != IVS_OK || memcmp(dx, dy, 32u) != 0) {
+    ivs_test_diag("composite digest after a power cycle differs from one reset of the same content");
+  } else if (memcmp(x.storage, y.storage, IVS_MACHINE_BYTES) != 0) {
+    ivs_test_diag("instance bytes after a power cycle differ from one reset of the same content");
+  } else {
+    rc = IVS_TEST_PASS;
+  }
+  ivs_ms_free(&y);
+  ivs_ms_free(&x);
+  return rc;
+}
+
+/* After the first reset nothing returns the instance to OFF (A-08 d): a second reset is OK and
+ * POWERED, and every load and unload of every kind is BAD_STATE with the instance unchanged. */
+static int mr_power_cycle_one_way(void)
+{
+  ivs_ms_inst x;
+  ivs_info info;
+  uint8_t *snap = NULL;
+  uint8_t *img = NULL;
+  uint32_t k;
+  int rc = IVS_TEST_FAIL;
+  if (!ivs_ms_powered(&x, IVS_MS_CONTENT_A, 0xA5u)) {
+    return IVS_TEST_FAIL;
+  }
+  memset(&info, 0, sizeof info);
+  info.struct_size = (uint32_t)sizeof info;
+  snap = malloc(IVS_MACHINE_BYTES);
+  img = ivs_ms_exec(IVS_MS_PROG_B);
+  if (snap == NULL || img == NULL || !ivs_ms_step(x.m, 5u, NULL)) {
+    goto done;
+  }
+  if (ivs_machine_reset(x.m, IVS_RESET_POWER_ON) != IVS_OK || ivs_machine_info(x.m, &info) != IVS_OK ||
+      info.phase != IVS_PHASE_POWERED) {
+    ivs_test_diag("second reset: phase %u", (unsigned)info.phase);
+    goto done;
+  }
+  memcpy(snap, x.storage, IVS_MACHINE_BYTES);
+  for (k = IVS_KIND_EXEC; k <= IVS_KIND_CARTRIDGE; k++) {
+    ivs_status sl = ivs_machine_load(x.m, k, img, k == IVS_KIND_GROM ? IVS_MS_GROM_BYTES : IVS_MS_EXEC_BYTES, NULL,
+                                     NULL);
+    ivs_status su = ivs_machine_unload(x.m, k);
+    if (sl != IVS_E_BAD_STATE || su != IVS_E_BAD_STATE) {
+      ivs_test_diag("kind %u: load %s, unload %s, want BAD_STATE", (unsigned)k, ivs_status_name(sl),
+                    ivs_status_name(su));
+      goto done;
+    }
+  }
+  if (memcmp(snap, x.storage, IVS_MACHINE_BYTES) != 0) {
+    ivs_test_diag("a refused load or unload changed the instance");
+    goto done;
+  }
+  rc = IVS_TEST_PASS;
+done:
+  free(img);
+  free(snap);
+  ivs_ms_free(&x);
+  return rc;
+}
+
+/* The seam refuses: out NULL is BAD_ARG, a NULL or destroyed handle BAD_HANDLE, and an instance
+ * that is OFF (fresh, or with every image loaded but never reset) BAD_STATE; each refusal leaves
+ * the instance bytes unchanged. */
+static int mr_step_refusals(void)
+{
+  ivs_ms_inst x;
+  ivs_cp1610_result r;
+  uint8_t *snap = malloc(IVS_MACHINE_BYTES);
+  int rc = IVS_TEST_FAIL;
+  if (snap == NULL) {
+    return IVS_TEST_FAIL;
+  }
+  if (!ivs_ms_new(&x, 0xA5u)) {
+    free(snap);
+    return IVS_TEST_FAIL;
+  }
+  memcpy(snap, x.storage, IVS_MACHINE_BYTES);
+  if (ivs_machine_step_unit_internal(x.m, &r) != IVS_E_BAD_STATE || memcmp(snap, x.storage, IVS_MACHINE_BYTES) != 0) {
+    ivs_test_diag("fresh instance: stepping while OFF was not BAD_STATE or changed the instance");
+    goto done;
+  }
+  if (!ivs_ms_content(x.m, IVS_MS_CONTENT_A)) {
+    goto done;
+  }
+  memcpy(snap, x.storage, IVS_MACHINE_BYTES);
+  if (ivs_machine_step_unit_internal(x.m, &r) != IVS_E_BAD_STATE || memcmp(snap, x.storage, IVS_MACHINE_BYTES) != 0) {
+    ivs_test_diag("loaded instance: stepping while OFF was not BAD_STATE or changed the instance");
+    goto done;
+  }
+  if (ivs_machine_reset(x.m, IVS_RESET_POWER_ON) != IVS_OK) {
+    goto done;
+  }
+  memcpy(snap, x.storage, IVS_MACHINE_BYTES);
+  if (ivs_machine_step_unit_internal(x.m, NULL) != IVS_E_BAD_ARG ||
+      ivs_machine_step_unit_internal(NULL, &r) != IVS_E_BAD_HANDLE || memcmp(snap, x.storage, IVS_MACHINE_BYTES) != 0) {
+    ivs_test_diag("out NULL or handle NULL not refused, or the instance changed");
+    goto done;
+  }
+  if (ivs_machine_destroy(x.m) != IVS_OK || ivs_machine_step_unit_internal(x.m, &r) != IVS_E_BAD_HANDLE) {
+    ivs_test_diag("destroyed instance: stepping was not BAD_HANDLE");
+    goto done;
+  }
+  rc = IVS_TEST_PASS;
+done:
+  free(snap);
+  ivs_ms_free(&x);
+  return rc;
+}
+
 const ivs_test_case ivs_machine_reset_cases[] = {
+    {"machine.reset.equivalence", mr_equivalence, NULL},
     {"machine.reset.iab-reset-vector", mr_iab_reset_vector, NULL},
+    {"machine.reset.no-cart-ok", mr_no_cart_ok, NULL},
+    {"machine.reset.power-cycle-one-way", mr_power_cycle_one_way, NULL},
     {"machine.reset.step-program", mr_step_program, NULL},
+    {"machine.reset.step-refusals", mr_step_refusals, NULL},
 };
 const size_t ivs_machine_reset_count = sizeof ivs_machine_reset_cases / sizeof ivs_machine_reset_cases[0];

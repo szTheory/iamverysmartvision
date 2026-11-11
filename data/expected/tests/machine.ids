@@ -317,6 +317,68 @@ machine.prec.cart-span-before-feature
 machine.prec.cart-feature-before-expect
 # Family reset (plan 03-12): the power-on reset and the internal step seam (never public). The
 # tracer runs a hand-assembled stand-in program (machine_standin.c) on the profile-driven bus,
-# entered through the profile's reset vector, and sees its RAM writes and its machine time.
+# entered through the profile's reset vector, and sees its RAM writes and its machine time; the
+# other cases check reset with EXEC and GROM only, power-cycle equivalence with one reset of the
+# same content, the one-way power cycle (A-08 d) and the seam's refusals (stepping while OFF).
+machine.reset.equivalence
 machine.reset.iab-reset-vector
+machine.reset.no-cart-ok
+machine.reset.power-cycle-one-way
 machine.reset.step-program
+machine.reset.step-refusals
+# Family iso (plan 03-12, D-36, API-01): two instances with different content (stand-ins A and B)
+# step without affecting each other: interleaved equals sequential at every 8th unit, differently
+# poisoned storage ends byte-identical, a memcpy-relocated instance continues identically,
+# destroying one mid-run leaves the other on its solo trace, loads into one leave the other's
+# digest and bytes unchanged. No threads.
+machine.iso.cross-load
+machine.iso.destroy-mid-run
+machine.iso.interleaved-equals-sequential
+machine.iso.memcpy-relocation
+machine.iso.poisoned-storage-identical
+# Plan 03-12 refusal rows (families refuse and prec): the powered prior w (EXEC and GROM loaded,
+# then a power-on reset) joins the matrix. Argument BAD_ARG and option UNSUPPORTED rows run on w
+# too; every load kind and unload is BAD_STATE on w, also after a power cycle (A-08 d).
+machine.refuse.load.arg.kind-0.w
+machine.refuse.load.arg.kind-4.w
+machine.refuse.load.arg.kind-255.w
+machine.refuse.load.exec.null-bytes-len-8.w
+machine.refuse.load.grom.null-bytes-len-8.w
+machine.refuse.load.cart.null-bytes-len-8.w
+machine.refuse.load.exec.opts-short.w
+machine.refuse.load.cart.opts-size-0.w
+machine.refuse.load.exec.report-short.w
+machine.refuse.load.exec.report-inside.w
+machine.refuse.load.cart.report-inside.w
+machine.refuse.load.exec.flags-bit-1.w
+machine.refuse.load.cart.flags-bit-31.w
+machine.refuse.load.exec.opts-tail-nonzero.w
+machine.refuse.load.grom.opts-tail-nonzero.w
+machine.refuse.unload.arg.kind-0.w
+machine.refuse.unload.arg.kind-4.w
+machine.refuse.load.exec.powered.w
+machine.refuse.load.grom.powered.w
+machine.refuse.load.cart.powered.w
+machine.refuse.load.exec.after-power-cycle.w
+machine.refuse.unload.exec.powered.w
+machine.refuse.unload.grom.powered.w
+machine.refuse.unload.cart.powered.w
+machine.refuse.unload.grom.after-power-cycle.w
+# Reset rows (D-14, A-08 e): MISSING_SYSTEM_IMAGE with EXEC, GROM or both empty (and EXEC empty
+# with a cartridge), BAD_ARG for reset kinds 0 and 2 (also while POWERED), BAD_HANDLE; each with
+# whole-storage memcmp and digest equality. Precedence: the run phase in the load ladder and the
+# reset ladder (BAD_ARG, BAD_HANDLE, MISSING_SYSTEM_IMAGE).
+machine.refuse.reset.no-exec
+machine.refuse.reset.no-grom
+machine.refuse.reset.neither
+machine.refuse.reset.no-exec-with-cart
+machine.refuse.reset.kind-0
+machine.refuse.reset.kind-2
+machine.refuse.reset.kind-2-powered
+machine.refuse.reset.null
+machine.refuse.reset.destroyed
+machine.prec.unsupported-over-bad-state
+machine.prec.bad-state-over-duplicate
+machine.prec.reset-arg-over-handle
+machine.prec.reset-arg-over-missing
+machine.prec.reset-handle-over-missing
