@@ -54,16 +54,17 @@ typedef struct ivs_machine ivs_machine;
 /* Reset kinds (D-14). Any other value is BAD_ARG (A-08 e). */
 #define IVS_RESET_POWER_ON 1u
 
-/* State digest domains (D-35). 0 is the composite of 1..4; 16..18 are reserved for the RUN-05
- * video, audio and input observations and are refused until they exist. */
+/* State digest domains (D-35, D-10). 0 is the composite of 1..4. 16..18 are live domains: the
+ * RUN-05 video, audio and input observations, domain version 1; not part of the composite, which
+ * stays version 1 over domains 1..4. Every other value is refused. */
 #define IVS_DIGEST_COMPOSITE 0u
 #define IVS_DIGEST_CPU 1u
 #define IVS_DIGEST_MEM 2u
 #define IVS_DIGEST_IMAGES 3u
 #define IVS_DIGEST_INSTANCE 4u
-#define IVS_DIGEST_RESERVED_VIDEO 16u
-#define IVS_DIGEST_RESERVED_AUDIO 17u
-#define IVS_DIGEST_RESERVED_INPUT 18u
+#define IVS_DIGEST_VIDEO 16u
+#define IVS_DIGEST_AUDIO 17u
+#define IVS_DIGEST_INPUT 18u
 
 /* Largest struct_size of an in struct (D-04): above it the call is BAD_ARG. */
 #define IVS_STRUCT_SIZE_MAX 4096u
@@ -204,8 +205,9 @@ IVS_API ivs_status ivs_machine_destroy(ivs_machine *m);
  * then BAD_HANDLE; then BAD_ARG: out overlapping the instance storage. */
 IVS_API ivs_status ivs_machine_info(const ivs_machine *m, ivs_info *out);
 
-/* SHA-256 of the canonical state (D-35) of one domain (IVS_DIGEST_CPU, _MEM, _IMAGES, _INSTANCE)
- * or of their composite (IVS_DIGEST_COMPOSITE). The serialization is field by field and
+/* SHA-256 of the canonical state (D-35) of one domain (IVS_DIGEST_CPU, _MEM, _IMAGES, _INSTANCE,
+ * _VIDEO, _AUDIO, _INPUT) or of the composite of the first four (IVS_DIGEST_COMPOSITE; the
+ * observation domains are not in it, D-10). The serialization is field by field and
  * big-endian, so the value does not depend on struct layout, padding or host byte order; it
  * excludes the magic and padding. BAD_ARG: out NULL or any other domain; then BAD_HANDLE; then
  * BAD_ARG: out overlapping the instance storage. */

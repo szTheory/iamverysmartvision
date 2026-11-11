@@ -6,7 +6,10 @@
 # Family digest (plan 03-09): the canonical state digest (D-35): literal streams, composite
 # framing, field-table coverage, per-domain sensitivity, padding and the digest refusals.
 # Plan 04-05 addition: machine.digest.stepped-literals pins the composite and domain 1..4
-# digests of a stepped instance, recorded from the Phase 3 code (repeatability, A-03).
+# digests of a stepped instance, recorded from the Phase 3 code (repeatability, A-03). Domains
+# 16..18 (VIDEO, AUDIO, INPUT) are live: their sensitivity cases require that a row change moves
+# only its own domain and never the composite (D-10), and the Phase 3 domain-16 refusal is
+# retargeted to domain 19, the first value after them.
 # Family load (plan 03-10): typed EXEC, GROM and IVSC cartridge loads through the public header
 # with generated stand-in bytes (D-24), their reports and digests, layer 2, the load options and
 # unload back to the fresh state.
@@ -104,16 +107,19 @@ machine.digest.coverage
 machine.digest.fresh-composite
 machine.digest.padding-ignored
 machine.digest.preimage-hash
+machine.digest.sensitivity-audio
 machine.digest.sensitivity-cpu
 machine.digest.sensitivity-images
+machine.digest.sensitivity-input
 machine.digest.sensitivity-instance
 machine.digest.sensitivity-mem
+machine.digest.sensitivity-video
 machine.digest.stepped-literals
 machine.digest.stream-cpu
 machine.digest.stream-cpu-synthetic
 machine.digest.stream-instance
 machine.refuse.digest.destroyed
-machine.refuse.digest.domain-16
+machine.refuse.digest.domain-19
 machine.refuse.digest.domain-5
 machine.refuse.digest.domain-99
 machine.refuse.digest.domain-over-handle

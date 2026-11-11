@@ -5,11 +5,15 @@
  *
  * One flat struct with no pointers: magic, profile index, run phase, a reserved word, machine
  * time, the embedded 32-byte CPU state, the memory system (gates, loaded flags, the committed
- * cartridge segment table and every backing array at the profile's worst-case capacity) and one
- * record per image slot. Every field is fixed width; the only bytes that are not fields are the
- * reserved word, the CPU's reserved bytes and the tail padding up to the 16-byte alignment, and
- * all of them stay zero. The instance holds no last-error, counter or timestamp (D-08).
- * Layout (bytes): header 24, cpu 32, mem 113,228, slots 3 x 56, tail padding 4: 113,456. */
+ * cartridge segment table and every backing array at the profile's worst-case capacity), an
+ * explicit pad word, the observation rows (plan 04-05, D-10: the video, audio and input digest
+ * domains 16..18) and one record per image slot. Every field is fixed width; the only bytes that
+ * are not fields are the reserved word, the CPU's reserved bytes and the observation pad word,
+ * and all of them stay zero. The instance holds no last-error or timestamp (D-08); the
+ * observation counts are machine state of their domains.
+ * Layout (bytes): header 24, cpu 32, mem 113,228 (ends at an offset that is 4 mod 8), pad 4,
+ * obs 144, slots 3 x 56: 113,600, a multiple of 16, so there is no tail padding (machine_digest.c
+ * asserts it). The previous layout (Phase 3, no obs) was 113,456 with 4 bytes of tail padding. */
 #ifndef IVS_MACHINE_INTERNAL_H
 #define IVS_MACHINE_INTERNAL_H
 
@@ -23,7 +27,7 @@
 
 #define IVS_MACHINE_MAGIC 0x4956534Du /* "IVSM" */
 #define IVS_MACHINE_ALIGN 16u
-#define IVS_MACHINE_BYTES 113456u
+#define IVS_MACHINE_BYTES 113600u
 
 /* One image slot (kind fixed at create: slot i holds kind i + 1). */
 typedef struct ivs_machine_slot {
@@ -36,6 +40,29 @@ typedef struct ivs_machine_slot {
   uint8_t sha256[32];
 } ivs_machine_slot;
 
+/* Observation rows (plan 04-05, D-10, A-03): a chain[32] and a u64 record count for VIDEO
+ * (digest domain 16) and AUDIO (17); INPUT (18) holds the controller words in force, the applied
+ * event count, the input floor tick and the input chain. Every row is zero at create and after a
+ * reset (the INPUT chain's start value arrives with plan 04-11). Domain version 1; not part of the
+ * composite, which stays version 1 over domains 1..4. */
+typedef struct ivs_machine_obs_av {
+  uint8_t chain[32];
+  uint64_t count;
+} ivs_machine_obs_av;
+
+typedef struct ivs_machine_obs_input {
+  uint32_t words[4];
+  uint64_t count;
+  uint64_t floor_tick;
+  uint8_t chain[32];
+} ivs_machine_obs_input;
+
+typedef struct ivs_machine_obs {
+  ivs_machine_obs_av video;
+  ivs_machine_obs_av audio;
+  ivs_machine_obs_input input;
+} ivs_machine_obs;
+
 struct ivs_machine {
   _Alignas(16) uint32_t magic; /* IVS_MACHINE_MAGIC while valid; 0 after destroy */
   uint32_t profile;            /* registry index */
@@ -44,10 +71,15 @@ struct ivs_machine {
   uint64_t time_ticks;         /* machine time in master ticks */
   ivs_cp1610 cpu;
   ivs_memsys mem;
+  uint32_t obs_pad;    /* 0: mem ends at 4 mod 8, so this word keeps obs 8-aligned with no hole */
+  ivs_machine_obs obs; /* before slot[]: IVS_FAULT_DIGEST_SKIPS_IMAGE_TABLE skips rows from slot on */
   ivs_machine_slot slot[IVS_SLOT_COUNT];
 };
 
 _Static_assert(sizeof(ivs_machine_slot) == 56u, "ivs_machine_slot must be 56 bytes");
+_Static_assert(sizeof(ivs_machine_obs) == 144u, "ivs_machine_obs must be 144 bytes");
+_Static_assert(offsetof(struct ivs_machine, obs) == offsetof(struct ivs_machine, obs_pad) + 4u,
+               "no implicit hole between the observation pad word and obs");
 _Static_assert(_Alignof(struct ivs_machine) == IVS_MACHINE_ALIGN, "instance alignment is 16");
 _Static_assert(sizeof(struct ivs_machine) == IVS_MACHINE_BYTES,
                "instance size changed: review the digest field table (machine_digest.c)");
@@ -57,11 +89,12 @@ _Static_assert(sizeof(struct ivs_machine) == IVS_MACHINE_BYTES,
  * bytes (1, 2, 4 or 8), each read natively and written big-endian by shifts; a row with count > 1
  * is preceded by its u32 count. A PROFILE row is a u32 registry index written as the profile id:
  * u32 length then the ASCII bytes (an index outside the registry writes u32 0xFFFFFFFF then the
- * index). MAGIC and PAD rows (the magic, the reserved word, the CPU's reserved bytes and the tail
- * padding) are declared but never serialized; their domain names the neighbour they sit with.
- * Domain preimage: "IVSD" || u8 domain || u16 IVS_DIGEST_DOMAIN_VERSION || the domain's rows in
- * table order. Composite: "IVSSTATE" || u16 IVS_DIGEST_COMPOSITE_VERSION || for domains 1..4:
- * u8 domain || its 32-byte SHA-256. */
+ * index). MAGIC and PAD rows (the magic, the reserved word, the CPU's reserved bytes and the
+ * observation pad word) are declared but never serialized; their domain names the neighbour they
+ * sit with. Domain preimage: "IVSD" || u8 domain || u16 IVS_DIGEST_DOMAIN_VERSION || the domain's
+ * rows in table order. Composite: "IVSSTATE" || u16 IVS_DIGEST_COMPOSITE_VERSION || for domains
+ * 1..4: u8 domain || its 32-byte SHA-256. Domains 16..18 (VIDEO, AUDIO, INPUT) have their own
+ * digests and are not in the composite (D-10). */
 #define IVS_DIGEST_KIND_UINT 1u
 #define IVS_DIGEST_KIND_PROFILE 2u
 #define IVS_DIGEST_KIND_MAGIC 3u
@@ -74,7 +107,7 @@ typedef struct ivs_digest_field {
   uint32_t offset; /* offsetof(struct ivs_machine, ...) */
   uint32_t width;  /* bytes per element */
   uint32_t count;  /* elements */
-  uint8_t domain;  /* IVS_DIGEST_CPU..IVS_DIGEST_INSTANCE */
+  uint8_t domain;  /* IVS_DIGEST_CPU..IVS_DIGEST_INSTANCE or IVS_DIGEST_VIDEO..IVS_DIGEST_INPUT */
   uint8_t kind;    /* IVS_DIGEST_KIND_* */
   uint16_t reserved;
 } ivs_digest_field;
@@ -83,7 +116,7 @@ typedef struct ivs_digest_field {
 size_t ivs_machine_digest_field_count(void);
 const ivs_digest_field *ivs_machine_digest_field(size_t i);
 
-/* Writes the preimage of domain 1..4 of m into buf (at most cap bytes; buf may be NULL when cap
+/* Writes the preimage of domain 1..4 or 16..18 of m into buf (at most cap bytes; buf may be NULL when cap
  * is 0) and returns its full length; 0 for NULL m or another domain. No handle check: the tests
  * pass modified copies. */
 size_t ivs_machine_digest_preimage(const struct ivs_machine *m, uint32_t domain, uint8_t *buf, size_t cap);

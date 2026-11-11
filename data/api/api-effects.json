@@ -299,9 +299,9 @@
     {
       "name": "ivs_machine_state_digest",
       "header": "core/include/ivs/ivs_machine.h",
-      "on_ok": "Writes the SHA-256 of the canonical big-endian state of one domain (CPU, MEM, IMAGES, INSTANCE) or of their composite into out_sha256 (D-35); the instance is not written.",
+      "on_ok": "Writes the SHA-256 of the canonical big-endian state of one domain (CPU, MEM, IMAGES, INSTANCE, and the observation domains VIDEO, AUDIO, INPUT) or of the composite of the first four into out_sha256 (D-35, D-10: the composite stays version 1 over domains 1..4); the instance is not written.",
       "precedence": [
-        {"status": "IVS_E_BAD_ARG", "checks": "out NULL, or a domain other than 0..4 (the reserved 16..18 included)", "pinned_by": ["machine.refuse.digest.domain-over-handle"]},
+        {"status": "IVS_E_BAD_ARG", "checks": "out NULL, or a domain other than 0..4 and 16..18 (19 included)", "pinned_by": ["machine.refuse.digest.domain-over-handle"]},
         {"status": "IVS_E_BAD_HANDLE", "checks": "NULL or invalid handle (a damaged stored profile index included, review WR-03)", "pinned_by": ["machine.refuse.digest.null-handle-low-out", "machine.refuse.digest.destroyed-out-inside"]},
         {"status": "IVS_E_BAD_ARG", "checks": "out overlapping the storage of the (valid) instance", "pinned_by": ["machine.refuse.digest.out-inside"]}
       ],
@@ -313,7 +313,7 @@
           "status": "IVS_E_BAD_ARG",
           "effect": "none",
           "outs": "nothing written: out_sha256 keeps its bytes",
-          "tests": ["machine.refuse.digest.null-out", "machine.refuse.digest.domain-5", "machine.refuse.digest.domain-16", "machine.refuse.digest.domain-99", "machine.refuse.digest.domain-over-handle", "machine.refuse.digest.out-inside"]
+          "tests": ["machine.refuse.digest.null-out", "machine.refuse.digest.domain-5", "machine.refuse.digest.domain-19", "machine.refuse.digest.domain-99", "machine.refuse.digest.domain-over-handle", "machine.refuse.digest.out-inside"]
         },
         {
           "status": "IVS_E_BAD_HANDLE",

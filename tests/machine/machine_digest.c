@@ -5,10 +5,12 @@
  *   values were computed at authoring time with `cmake -E sha256sum` over those bytes, so the
  *   code under test never produced them.
  * - Composite framing: "IVSSTATE" || u16 version || u8 id || digest for domains 1..4, rebuilt here.
- * - Coverage: every byte of struct ivs_machine is in exactly one field-table row.
+ * - Coverage: every byte of struct ivs_machine is in exactly one field-table row, and every row
+ *   names one of the seven domains (1..4 and the plan 04-05 observation domains 16..18).
  * - Sensitivity: flipping the first and the last byte of each serialized row changes that row's
- *   domain digest and the composite and leaves the other domains' preimages identical; flipping a
- *   declared padding byte changes nothing.
+ *   domain digest and leaves the other domains' preimages identical; the composite changes for a
+ *   row of domains 1..4 and stays the same for a row of 16..18 (D-10, A-03); flipping a declared
+ *   padding byte changes nothing.
  * - Refusals: bad domain and NULL out (BAD_ARG), NULL or destroyed handle (BAD_HANDLE), with no
  *   write to the instance or out.
  * - Stepped literals (plan 04-05): the composite and domain 1..4 digests after content A, reset and
@@ -36,6 +38,36 @@
 
 #define MD_PROFILE "intv-2609-ntsc-family-p1"
 #define MD_PRE_MAX 120000u /* larger than every domain preimage (MEM is about 113 KB) */
+
+/* The domains with rows (plan 04-05): in_composite marks 1..4, the composite's version 1 domains;
+ * the observation domains 16..18 have their own digests only (D-10). Arrays below are indexed by
+ * the domain id, so MD_DOMAIN_IDS covers 0 (the composite) to 18. */
+typedef struct md_domain {
+  uint32_t id;
+  int in_composite;
+} md_domain;
+
+static const md_domain md_domains[] = {
+    {IVS_DIGEST_CPU, 1},   {IVS_DIGEST_MEM, 1},   {IVS_DIGEST_IMAGES, 1}, {IVS_DIGEST_INSTANCE, 1},
+    {IVS_DIGEST_VIDEO, 0}, {IVS_DIGEST_AUDIO, 0}, {IVS_DIGEST_INPUT, 0},
+};
+#define MD_DOMAIN_COUNT (sizeof md_domains / sizeof md_domains[0])
+#define MD_DOMAIN_IDS 19u
+
+/* 1 for a listed domain; *in_comp (when not NULL) gets its composite flag. */
+static int md_domain_find(uint32_t d, int *in_comp)
+{
+  size_t i;
+  for (i = 0; i < MD_DOMAIN_COUNT; i++) {
+    if (md_domains[i].id == d) {
+      if (in_comp != NULL) {
+        *in_comp = md_domains[i].in_composite;
+      }
+      return 1;
+    }
+  }
+  return 0;
+}
 
 /* A fresh instance in exact-size 16-aligned heap storage (NULL on failure). */
 static struct ivs_machine *md_fresh(void)
@@ -156,7 +188,7 @@ static int md_stream_cpu_synthetic(void)
  * preimage seam and the hash path serialize the same bytes. */
 static int md_preimage_hash(void)
 {
-  uint32_t d;
+  size_t di;
   int ok = 1;
   struct ivs_machine *m = md_fresh();
   uint8_t *buf = malloc(MD_PRE_MAX);
@@ -165,7 +197,8 @@ static int md_preimage_hash(void)
     free(buf);
     return IVS_TEST_FAIL;
   }
-  for (d = IVS_DIGEST_CPU; ok && d <= IVS_DIGEST_INSTANCE; d++) {
+  for (di = 0; ok && di < MD_DOMAIN_COUNT; di++) {
+    uint32_t d = md_domains[di].id;
     uint8_t a[32];
     uint8_t b[32];
     size_t len = ivs_machine_digest_preimage(m, d, buf, MD_PRE_MAX);
@@ -313,13 +346,14 @@ static int md_coverage(void)
   size_t r;
   size_t i;
   size_t total = 0;
-  uint32_t per_domain[5] = {0u, 0u, 0u, 0u, 0u};
+  uint32_t per_domain[MD_DOMAIN_IDS];
   uint8_t *seen = calloc(IVS_MACHINE_BYTES, 1u);
   IVS_CHECK(seen != NULL);
+  memset(per_domain, 0, sizeof per_domain);
   for (r = 0; r < n; r++) {
     const ivs_digest_field *f = ivs_machine_digest_field(r);
     size_t len;
-    if (f == NULL || f->name == NULL || f->domain < 1u || f->domain > 4u || f->count == 0u ||
+    if (f == NULL || f->name == NULL || !md_domain_find(f->domain, NULL) || f->count == 0u ||
         (f->kind != IVS_DIGEST_KIND_UINT && f->kind != IVS_DIGEST_KIND_PROFILE && f->kind != IVS_DIGEST_KIND_MAGIC &&
          f->kind != IVS_DIGEST_KIND_PAD) ||
         (f->kind == IVS_DIGEST_KIND_UINT && f->width != 1u && f->width != 2u && f->width != 4u && f->width != 8u) ||
@@ -351,8 +385,8 @@ static int md_coverage(void)
   }
   free(seen);
   IVS_CHECK(total == sizeof(struct ivs_machine));
-  for (i = 1u; i <= 4u; i++) {
-    IVS_CHECK(per_domain[i] > 0u);
+  for (i = 0; i < MD_DOMAIN_COUNT; i++) {
+    IVS_CHECK(per_domain[md_domains[i].id] > 0u);
   }
   return IVS_TEST_PASS;
 }
@@ -360,18 +394,18 @@ static int md_coverage(void)
 /* ---- sensitivity ---- */
 
 typedef struct md_base {
-  struct ivs_machine *m; /* the instance under change (a copy of a fresh one) */
-  uint8_t *pre[5];       /* baseline preimages of domains 1..4 */
-  size_t len[5];
-  uint8_t dig[5][32]; /* baseline digests, [0] the composite */
+  struct ivs_machine *m;         /* the instance under change (a copy of a fresh one) */
+  uint8_t *pre[MD_DOMAIN_IDS];   /* baseline preimages of the listed domains, by id */
+  size_t len[MD_DOMAIN_IDS];
+  uint8_t dig[MD_DOMAIN_IDS][32]; /* baseline digests, [0] the composite */
   uint8_t *scratch;
 } md_base;
 
 static void md_base_free(md_base *b)
 {
-  uint32_t d;
-  for (d = 1u; d <= 4u; d++) {
-    free(b->pre[d]);
+  size_t i;
+  for (i = 0; i < MD_DOMAIN_COUNT; i++) {
+    free(b->pre[md_domains[i].id]);
   }
   free(b->scratch);
   free(b->m);
@@ -379,19 +413,20 @@ static void md_base_free(md_base *b)
 
 static int md_base_init(md_base *b)
 {
-  uint32_t d;
+  size_t i;
   memset(b, 0, sizeof *b);
   b->m = md_fresh();
   b->scratch = malloc(MD_PRE_MAX);
   if (b->m == NULL || b->scratch == NULL) {
     return 0;
   }
-  for (d = 0u; d <= 4u; d++) {
+  if (ivs_machine_state_digest(b->m, IVS_DIGEST_COMPOSITE, b->dig[0]) != IVS_OK) {
+    return 0;
+  }
+  for (i = 0; i < MD_DOMAIN_COUNT; i++) {
+    uint32_t d = md_domains[i].id;
     if (ivs_machine_state_digest(b->m, d, b->dig[d]) != IVS_OK) {
       return 0;
-    }
-    if (d == 0u) {
-      continue;
     }
     b->len[d] = ivs_machine_digest_preimage(b->m, d, NULL, 0u);
     b->pre[d] = malloc(b->len[d]);
@@ -402,14 +437,21 @@ static int md_base_init(md_base *b)
   return 1;
 }
 
-/* After a change at instance byte pos: own's digest differs (and the composite when check_comp),
- * every other domain's preimage is identical to the baseline. A changed profile word (seam != 0)
- * damages the handle (review WR-03): the public digest is then BAD_HANDLE, and own's change is
- * judged on its preimage through the seam, which takes no handle. */
+/* After a change at instance byte pos: own's digest differs, every other listed domain's
+ * preimage is identical to the baseline, and when check_comp the composite differs for a domain
+ * of the composite and is identical for an observation domain (16..18, Pitfall 2). A changed
+ * profile word (seam != 0) damages the handle (review WR-03): the public digest is then
+ * BAD_HANDLE, and own's change is judged on its preimage through the seam, which takes no
+ * handle. */
 static int md_changed_only(md_base *b, uint32_t own, size_t pos, int check_comp, int seam)
 {
   uint8_t got[32];
-  uint32_t d;
+  size_t i;
+  int own_in_comp = 0;
+  if (!md_domain_find(own, &own_in_comp)) {
+    ivs_test_diag("domain %u is not listed", (unsigned)own);
+    return 0;
+  }
   if (seam) {
     size_t len = ivs_machine_digest_preimage(b->m, own, b->scratch, MD_PRE_MAX);
     if (ivs_machine_state_digest(b->m, own, got) != IVS_E_BAD_HANDLE) {
@@ -425,7 +467,8 @@ static int md_changed_only(md_base *b, uint32_t own, size_t pos, int check_comp,
     ivs_test_diag("byte %zu: domain %u digest unchanged", pos, (unsigned)own);
     return 0;
   }
-  for (d = 1u; d <= 4u; d++) {
+  for (i = 0; i < MD_DOMAIN_COUNT; i++) {
+    uint32_t d = md_domains[i].id;
     size_t len;
     if (d == own) {
       continue;
@@ -436,10 +479,21 @@ static int md_changed_only(md_base *b, uint32_t own, size_t pos, int check_comp,
       return 0;
     }
   }
-  if (check_comp &&
-      (ivs_machine_state_digest(b->m, IVS_DIGEST_COMPOSITE, got) != IVS_OK || memcmp(got, b->dig[0], 32u) == 0)) {
-    ivs_test_diag("byte %zu: composite unchanged", pos);
-    return 0;
+  if (check_comp) {
+    int same;
+    if (ivs_machine_state_digest(b->m, IVS_DIGEST_COMPOSITE, got) != IVS_OK) {
+      ivs_test_diag("byte %zu: composite refused", pos);
+      return 0;
+    }
+    same = memcmp(got, b->dig[0], 32u) == 0;
+    if (own_in_comp && same) {
+      ivs_test_diag("byte %zu: composite unchanged", pos);
+      return 0;
+    }
+    if (!own_in_comp && !same) {
+      ivs_test_diag("byte %zu: composite changed by observation domain %u", pos, (unsigned)own);
+      return 0;
+    }
   }
   return 1;
 }
@@ -505,6 +559,21 @@ static int md_sensitivity_instance(void)
   return md_sensitivity(IVS_DIGEST_INSTANCE);
 }
 
+static int md_sensitivity_video(void)
+{
+  return md_sensitivity(IVS_DIGEST_VIDEO);
+}
+
+static int md_sensitivity_audio(void)
+{
+  return md_sensitivity(IVS_DIGEST_AUDIO);
+}
+
+static int md_sensitivity_input(void)
+{
+  return md_sensitivity(IVS_DIGEST_INPUT);
+}
+
 /* Flipping a declared padding byte leaves its domain's preimage identical; all padding flipped at
  * once leaves every domain digest and the composite unchanged. */
 static int md_padding_ignored(void)
@@ -513,7 +582,6 @@ static int md_padding_ignored(void)
   size_t n = ivs_machine_digest_field_count();
   size_t r;
   size_t i;
-  uint32_t d;
   uint32_t pads = 0u;
   int ok;
   uint8_t *bytes;
@@ -536,9 +604,10 @@ static int md_padding_ignored(void)
       pads++;
     }
   }
-  /* Now every padding byte is flipped at once. */
-  for (d = 0u; ok && d <= 4u; d++) {
+  /* Now every padding byte is flipped at once: the composite and every listed domain. */
+  for (i = 0; ok && i <= MD_DOMAIN_COUNT; i++) {
     uint8_t got[32];
+    uint32_t d = i == 0 ? IVS_DIGEST_COMPOSITE : md_domains[i - 1u].id;
     ok = ivs_machine_state_digest(b.m, d, got) == IVS_OK && memcmp(got, b.dig[d], 32u) == 0;
     if (!ok) {
       ivs_test_diag("domain %u changed with all padding flipped", (unsigned)d);
@@ -589,9 +658,11 @@ static int md_refuse_domain_5(void)
   return md_refused(0, 0, 5u, 0, IVS_E_BAD_ARG);
 }
 
-static int md_refuse_domain_16(void)
+/* 19, the first domain after the observation domains 16..18 (plan 04-05 retargets the Phase 3
+ * domain-16 refusal, A-03). */
+static int md_refuse_domain_19(void)
 {
-  return md_refused(0, 0, IVS_DIGEST_RESERVED_VIDEO, 0, IVS_E_BAD_ARG);
+  return md_refused(0, 0, IVS_DIGEST_INPUT + 1u, 0, IVS_E_BAD_ARG);
 }
 
 static int md_refuse_domain_99(void)
@@ -626,16 +697,19 @@ const ivs_test_case ivs_machine_digest_cases[] = {
     {"machine.digest.fresh-composite", md_fresh_composite_case, NULL},
     {"machine.digest.padding-ignored", md_padding_ignored, NULL},
     {"machine.digest.preimage-hash", md_preimage_hash, NULL},
+    {"machine.digest.sensitivity-audio", md_sensitivity_audio, NULL},
     {"machine.digest.sensitivity-cpu", md_sensitivity_cpu, NULL},
     {"machine.digest.sensitivity-images", md_sensitivity_images, NULL},
+    {"machine.digest.sensitivity-input", md_sensitivity_input, NULL},
     {"machine.digest.sensitivity-instance", md_sensitivity_instance, NULL},
     {"machine.digest.sensitivity-mem", md_sensitivity_mem, NULL},
+    {"machine.digest.sensitivity-video", md_sensitivity_video, NULL},
     {"machine.digest.stepped-literals", md_stepped_literals, NULL},
     {"machine.digest.stream-cpu", md_stream_cpu, NULL},
     {"machine.digest.stream-cpu-synthetic", md_stream_cpu_synthetic, NULL},
     {"machine.digest.stream-instance", md_stream_instance, NULL},
     {"machine.refuse.digest.destroyed", md_refuse_destroyed, NULL},
-    {"machine.refuse.digest.domain-16", md_refuse_domain_16, NULL},
+    {"machine.refuse.digest.domain-19", md_refuse_domain_19, NULL},
     {"machine.refuse.digest.domain-5", md_refuse_domain_5, NULL},
     {"machine.refuse.digest.domain-99", md_refuse_domain_99, NULL},
     {"machine.refuse.digest.domain-over-handle", md_refuse_domain_over_handle, NULL},
