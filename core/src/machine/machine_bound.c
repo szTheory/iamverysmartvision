@@ -13,23 +13,34 @@
  *   3. BAD_ARG       rep overlaps the storage of the (valid) instance, uintptr_t differences only
  *                    (ivs_machine_span_overlaps; nothing written);
  *   4. UNSUPPORTED   req: an unknown flag (IVS_RUN_F_RESERVED_FRAME included), then a nonzero
- *                    byte past the v1 size of a larger struct;
+ *                    byte past the v1 size of a larger struct, then a nonzero reserved_in
+ *                    (INPUT_RESERVED_IN, plan 04-11);
  *   4b. BAD_ARG      output buffers (D-05 slot, plan 04-10): a NULL buffer with a nonzero
  *                    capacity (RUN_BUFFER_NULL; video, then audio), then a buffer of capacity
  *                    bytes overlapping the instance storage, the other buffer or the report
  *                    (RUN_BUFFER_OVERLAP; uintptr_t differences, 64-bit lengths, nothing wraps);
- *   (slot)           the input event argument checks (plan 04-11) follow, before BAD_STATE;
+ *   4c. BAD_ARG      event arguments (D-05 slot, plan 04-11): events NULL with event_count above 0
+ *                    (INPUT_EVENTS_NULL), event_count above IVS_INPUT_EVENTS_MAX (INPUT_EVENT_COUNT),
+ *                    then the event_count * 32 bytes at events overlapping the instance storage,
+ *                    the report, the video buffer or the audio buffer (INPUT_EVENTS_OVERLAP;
+ *                    uintptr_t differences, 64-bit lengths); no event is read here;
  *   5. BAD_STATE     the machine is OFF;
  *   6. OUT_OF_RANGE  target_ticks above IVS_RUN_TARGET_MAX (2^63), before any unit, so now plus
  *                    one unit can never wrap;
  *   7. BUFFER_TOO_SMALL  a video or audio capacity below the env's requirement for this run,
  *                    bytes_per_frame * (max(target - now, 0) / nominal_frame_ticks + 1) (D-06),
  *                    before the first unit;
- *   (later)          the per-event order and channel checks (plan 04-11) follow, still before
- *                    the first unit.
+ *   8. BAD_ARG       the events, whole array (machine_input.c, ivs_input_check): an at_tick at or
+ *                    above 2^63 (INPUT_TICK_RANGE), below its predecessor (INPUT_UNSORTED) or below
+ *                    the input floor (INPUT_BEFORE_FLOOR), lowest failing index;
+ *   9. UNSUPPORTED   the events, whole array: nonzero flags (INPUT_EVENT_FLAGS), a nonzero reserved
+ *                    word (INPUT_EVENT_RESERVED), a controller word with IVS_CTRL_RESERVED_MASK set
+ *                    (INPUT_CONTROL_RESERVED), lowest failing index; still before the first unit.
+ *                    Stages 8 and 9 also write the failing index (input_failing_index).
  * A refusal writes struct_size and the IVS_REASON_* only into a report that is not the cause, does
- * not overlap the bytes the handle names and does not overlap an output buffer of a well-sized
- * request (ivs_bound_report_ok), whatever stage refused, and never a byte into either buffer.
+ * not overlap the bytes the handle names and does not overlap an output buffer or the event array
+ * of a well-sized request (ivs_bound_report_ok), whatever stage refused, and never a byte into
+ * either buffer or the array.
  *
  * Commit: while machine time is below the target, step one unit through the internal seam
  * ivs_machine_step_unit_internal (machine_run.c; the seam stays internal). The exit tests come
@@ -143,6 +154,13 @@ static uint32_t ivs_bound_spans_meet(const void *a, uint64_t na, const void *b, 
   return (uint64_t)(y - x) < na ? 1u : 0u;
 }
 
+/* The bytes the event array of req names: event_count * 32 in 64 bits (at most about 2^37, so it
+ * cannot wrap whatever the count; the 65536 cap bounds it further once the slot has run). */
+static uint64_t ivs_bound_events_bytes(const ivs_run_request *req)
+{
+  return (uint64_t)req->event_count * (uint64_t)sizeof(ivs_input_event);
+}
+
 /* 1 when req's buffer fields may be read: present and at least its full size (stage 1). */
 static uint32_t ivs_bound_req_sized(const ivs_run_request *req)
 {
@@ -168,7 +186,8 @@ static uint32_t ivs_bound_report_ok(const ivs_machine *m, const ivs_run_request 
   }
   if (ivs_bound_req_sized(req) != 0u &&
       (ivs_bound_spans_meet(rep, sizeof *rep, req->video, req->video_capacity) != 0u ||
-       ivs_bound_spans_meet(rep, sizeof *rep, req->audio, req->audio_capacity) != 0u)) {
+       ivs_bound_spans_meet(rep, sizeof *rep, req->audio, req->audio_capacity) != 0u ||
+       ivs_bound_spans_meet(rep, sizeof *rep, req->events, ivs_bound_events_bytes(req)) != 0u)) {
     return 0u;
   }
   return 1u;
@@ -190,10 +209,33 @@ static uint32_t ivs_bound_buffers(const struct ivs_machine *im, const ivs_run_re
   return IVS_REASON_NONE;
 }
 
-/* The ladder (header comment). Reads only const inputs; on IVS_OK the plan is filled. */
-static ivs_status ivs_bound_validate(const ivs_machine *m, const ivs_run_request *req, const ivs_run_report *rep,
-                                     const ivs_run_env *env, ivs_bound_plan *plan, uint32_t *reason)
+/* The D-05 event argument slot (stage 4c): IVS_REASON_NONE, or the reason the event array is
+ * refused. Nothing of the array is read here. */
+static uint32_t ivs_bound_events(const struct ivs_machine *im, const ivs_run_request *req, const ivs_run_report *rep)
 {
+  uint64_t n = ivs_bound_events_bytes(req);
+  if (req->events == NULL && req->event_count != 0u) {
+    return IVS_REASON_INPUT_EVENTS_NULL;
+  }
+  if (req->event_count > IVS_INPUT_EVENTS_MAX) {
+    return IVS_REASON_INPUT_EVENT_COUNT;
+  }
+  if (ivs_bound_spans_meet(req->events, n, im, sizeof *im) != 0u ||
+      ivs_bound_spans_meet(req->events, n, rep, sizeof *rep) != 0u ||
+      ivs_bound_spans_meet(req->events, n, req->video, req->video_capacity) != 0u ||
+      ivs_bound_spans_meet(req->events, n, req->audio, req->audio_capacity) != 0u) {
+    return IVS_REASON_INPUT_EVENTS_OVERLAP;
+  }
+  return IVS_REASON_NONE;
+}
+
+/* The ladder (header comment). Reads only const inputs; on IVS_OK the plan is filled. *index is
+ * the failing event of a per-event refusal, else IVS_INPUT_INDEX_NONE. */
+static ivs_status ivs_bound_validate(const ivs_machine *m, const ivs_run_request *req, const ivs_run_report *rep,
+                                     const ivs_run_env *env, ivs_bound_plan *plan, uint32_t *reason,
+                                     uint32_t *index)
+{
+  ivs_status st;
   const struct ivs_machine *im;
   /* 1. BAD_ARG: NULL arguments and struct sizes. */
   if (rep == NULL || rep->struct_size < (uint32_t)sizeof(ivs_run_report) ||
@@ -229,8 +271,17 @@ static ivs_status ivs_bound_validate(const ivs_machine *m, const ivs_run_request
     *reason = IVS_REASON_RUN_TAIL;
     return IVS_E_UNSUPPORTED;
   }
-  /* 4b. BAD_ARG: the output buffers (D-05 slot; input events follow here, plan 04-11). */
+  if (req->reserved_in != 0u) {
+    *reason = IVS_REASON_INPUT_RESERVED_IN;
+    return IVS_E_UNSUPPORTED;
+  }
+  /* 4b. BAD_ARG: the output buffers (D-05 slot). */
   *reason = ivs_bound_buffers(im, req, rep);
+  if (*reason != IVS_REASON_NONE) {
+    return IVS_E_BAD_ARG;
+  }
+  /* 4c. BAD_ARG: the event arguments (D-05 slot, plan 04-11). */
+  *reason = ivs_bound_events(im, req, rep);
   if (*reason != IVS_REASON_NONE) {
     return IVS_E_BAD_ARG;
   }
@@ -253,6 +304,13 @@ static ivs_status ivs_bound_validate(const ivs_machine *m, const ivs_run_request
     return IVS_E_BUFFER_TOO_SMALL;
   }
 #endif
+  /* 8, 9. The events one by one (D-14): order, range and floor (BAD_ARG) over the whole array,
+   * then flags, reserved word and control bits (UNSUPPORTED); every event is read before any
+   * write. */
+  *reason = ivs_input_check(&im->obs.input, req->events, req->event_count, &st, index);
+  if (*reason != IVS_REASON_NONE) {
+    return st;
+  }
   plan->target = req->target_ticks;
   plan->events = req->events;
   plan->event_count = req->event_count;
@@ -278,8 +336,10 @@ static uint32_t ivs_bound_stop(const struct ivs_machine *im, uint32_t flags, uin
   return IVS_STOP_TARGET;
 }
 
-/* Refusal detail only into a report that is not itself the cause; no byte into a buffer. */
-static void ivs_bound_refuse(const ivs_machine *m, const ivs_run_request *req, ivs_run_report *rep, uint32_t reason)
+/* Refusal detail only into a report that is not itself the cause; no byte into a buffer. index is
+ * written only for a refusal of one event (not IVS_INPUT_INDEX_NONE). */
+static void ivs_bound_refuse(const ivs_machine *m, const ivs_run_request *req, ivs_run_report *rep, uint32_t reason,
+                             uint32_t index)
 {
 #ifdef IVS_FAULT_OUTBUF_PARTIAL_WRITE
   /* Named fault OUTBUF_PARTIAL_WRITE (plan 04-10, D-06, D-07): a refused run writes one byte into
@@ -291,6 +351,9 @@ static void ivs_bound_refuse(const ivs_machine *m, const ivs_run_request *req, i
   if (ivs_bound_report_ok(m, req, rep) != 0u) {
     rep->struct_size = (uint32_t)sizeof(ivs_run_report);
     rep->refusal_reason = reason;
+    if (index != IVS_INPUT_INDEX_NONE) {
+      rep->input_failing_index = index;
+    }
   }
 }
 
@@ -302,14 +365,15 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
   struct ivs_machine *im;
   ivs_status st;
   uint32_t reason = IVS_REASON_NONE;
+  uint32_t index = IVS_INPUT_INDEX_NONE;
   uint32_t internal = 0u;
   uint64_t entry;
   uint64_t units = 0u;
   uint32_t consumed = 0u;
   memset(&plan, 0, sizeof plan);
-  st = ivs_bound_validate(m, req, rep, env, &plan, &reason);
+  st = ivs_bound_validate(m, req, rep, env, &plan, &reason, &index);
   if (st != IVS_OK) {
-    ivs_bound_refuse(m, req, rep, reason);
+    ivs_bound_refuse(m, req, rep, reason, index);
     return st;
   }
   im = ivs_machine_from_handle_mut(m);
@@ -355,7 +419,7 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
     /* Named fault RUN_CAPACITY_AFTER_STEP (plan 04-10, D-06, D-07): the capacity check runs after
      * the first unit, so an undersized buffer is refused with that unit already executed. */
     if (units == 1u && ivs_bound_capacity_ok(req, env, plan.target, entry) == 0u) {
-      ivs_bound_refuse(m, req, rep, IVS_REASON_RUN_BUFFER_SMALL);
+      ivs_bound_refuse(m, req, rep, IVS_REASON_RUN_BUFFER_SMALL, IVS_INPUT_INDEX_NONE);
       return IVS_E_BUFFER_TOO_SMALL;
     }
 #endif

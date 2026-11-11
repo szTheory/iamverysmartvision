@@ -209,16 +209,27 @@ typedef struct ivs_run_report {
  *   BAD_HANDLE    NULL or invalid handle (IVS_REASON_HANDLE);
  *   BAD_ARG       rep overlaps the instance storage (nothing written);
  *   UNSUPPORTED   an unknown or reserved flag (RUN_FLAGS), then a nonzero byte past sizeof of a
- *                 larger request (RUN_TAIL);
+ *                 larger request (RUN_TAIL), then a nonzero reserved_in (INPUT_RESERVED_IN);
  *   BAD_ARG       output buffers: a NULL buffer with a nonzero capacity (RUN_BUFFER_NULL), then a
  *                 buffer (capacity bytes) overlapping the instance storage, the other buffer or
  *                 the report (RUN_BUFFER_OVERLAP; uintptr_t arithmetic, 64-bit lengths);
+ *   BAD_ARG       event arguments: events NULL with event_count above 0 (INPUT_EVENTS_NULL),
+ *                 event_count above IVS_INPUT_EVENTS_MAX (INPUT_EVENT_COUNT), then the
+ *                 event_count * 32 bytes at events overlapping the instance storage, the report,
+ *                 the video buffer or the audio buffer (INPUT_EVENTS_OVERLAP); no event is read;
  *   BAD_STATE     the machine is OFF (RUN_STATE_OFF);
  *   OUT_OF_RANGE  target_ticks above IVS_RUN_TARGET_MAX (RUN_TARGET_RANGE);
- *   BUFFER_TOO_SMALL  a capacity below the output layout's requirement (above; RUN_BUFFER_SMALL).
- * A refusal writes only struct_size and refusal_reason, and only into a report that is not the
- * cause, does not overlap the bytes the handle names and does not overlap an output buffer; it
- * writes no byte into either buffer. */
+ *   BUFFER_TOO_SMALL  a capacity below the output layout's requirement (above; RUN_BUFFER_SMALL);
+ *   BAD_ARG       the events, whole array, lowest failing index: an at_tick at or above 2^63
+ *                 (INPUT_TICK_RANGE), below the previous event's (INPUT_UNSORTED) or below the
+ *                 input floor (INPUT_BEFORE_FLOOR);
+ *   UNSUPPORTED   the events, whole array, lowest failing index: nonzero flags
+ *                 (INPUT_EVENT_FLAGS), a nonzero reserved word (INPUT_EVENT_RESERVED), a controller
+ *                 word with IVS_CTRL_RESERVED_MASK set (INPUT_CONTROL_RESERVED).
+ * A refusal writes only struct_size and refusal_reason (and, for the last two stages,
+ * input_failing_index), and only into a report that is not the cause, does not overlap the bytes
+ * the handle names and does not overlap an output buffer or the event array; it writes no byte
+ * into either buffer or the array. */
 IVS_API ivs_status ivs_machine_run(ivs_machine *m, const ivs_run_request *req, ivs_run_report *rep);
 
 /* The static, constant name of a stop reason ("IVS_STOP_TARGET", ...) or "IVS_STOP_UNKNOWN" for

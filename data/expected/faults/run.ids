@@ -42,7 +42,9 @@ RUN_BUDGET_CARRY run.slice.halt.fixed-7 run.slice.|run.target.|run.overshoot.|ru
 INFO_TAIL_UNGUARDED run.info.v1-size-caller run.info.v1-size-caller run.info.timebase
 # Output-buffer faults (plan 04-10, D-06, D-07), one site each in core/src/machine/machine_bound.c.
 # RUN_CAPACITY_AFTER_STEP: the BUFFER_TOO_SMALL check runs after the first unit, so an undersized
-# buffer is refused with a unit already executed (the storage and digests changed).
-RUN_CAPACITY_AFTER_STEP run.buffers.too-small-video run.buffers. run.buffers.real-layout-zero
-# OUTBUF_PARTIAL_WRITE: a refused run writes one byte into the caller's video buffer.
-OUTBUF_PARTIAL_WRITE run.buffers.video-audio-overlap run.buffers.|run.prec. run.buffers.exact-fit-video
+# buffer is refused with a unit already executed (the storage and digests changed). From plan
+# 04-11 the precedence case capacity-over-event-order then sees the per-event refusal instead.
+RUN_CAPACITY_AFTER_STEP run.buffers.too-small-video run.buffers.|run.prec.capacity-over-event-order run.buffers.real-layout-zero
+# OUTBUF_PARTIAL_WRITE: a refused run writes one byte into the caller's video buffer (from plan
+# 04-11 also seen by the input refusal that checks its buffer arena, run.input.refuse.*).
+OUTBUF_PARTIAL_WRITE run.buffers.video-audio-overlap run.buffers.|run.prec.|run.input.refuse. run.buffers.exact-fit-video

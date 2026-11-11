@@ -120,3 +120,35 @@ run.prec.range-over-capacity
 # row against a literal chain produced with printf octal escapes and cmake -E sha256sum.
 run.input.event-size
 run.input.one-event
+# Family input, timing and validation (plan 04-11 Task 2, D-05, D-14): equal ticks keep array order
+# (literal chains h2 and g2), an event at a slice target and events inside overshoot windows apply
+# in the next call (four slicings equal one call byte for byte), a halted CPU with the stop flag
+# applies nothing, reset returns the row to h0, two interleaved instances equal their solo runs,
+# 65536 events run. Refusals (event slot after the buffers; per-event stages after
+# BUFFER_TOO_SMALL) with the SP4 oracle and the failing index; run.prec.*: one case per neighbour
+# of the new slots.
+run.input.equal-ticks
+run.input.at-target
+run.input.overshoot-window
+run.input.halt-stops-first
+run.input.reset
+run.input.isolation
+run.input.event-count-cap-ok
+run.input.refuse.events-null-with-count
+run.input.refuse.event-count-above-cap
+run.input.refuse.events-inside-instance
+run.input.refuse.events-overlap-report
+run.input.refuse.events-overlap-video
+run.input.refuse.events-overlap-audio
+run.input.refuse.reserved-in-nonzero
+run.input.refuse.unsorted
+run.input.refuse.below-floor
+run.input.refuse.tick-range
+run.input.refuse.control-reserved
+run.input.refuse.event-flags
+run.input.refuse.event-reserved
+run.prec.unsupported-over-events
+run.prec.buffer-over-events
+run.prec.events-over-state
+run.prec.capacity-over-event-order
+run.prec.event-order-over-content

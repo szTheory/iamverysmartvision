@@ -10,6 +10,9 @@
  * over the event's ABSOLUTE at_tick (the script tick, never a tick relative to a call or a unit),
  * so the log equals the accepted script whatever the slicing (D-15). The input floor is set by the
  * step seam (machine_run.c) when a unit begins. Nothing in the machine reads the words in Phase 4.
+ * Validation (ivs_input_check) reads the whole array before the run writes anything: first every
+ * event for order, range and floor (BAD_ARG), then every event for flags, the reserved word and
+ * reserved control bits (UNSUPPORTED); the lowest failing index of the first failing pass wins.
  * The file holds no static or global state. */
 #include "common/ivs_prelude.h"
 
@@ -48,12 +51,61 @@ static void ivs_input_apply(ivs_machine_obs_input *in, const ivs_input_event *ev
   in->count++;
 }
 
+uint32_t ivs_input_check(const ivs_machine_obs_input *in, const ivs_input_event *ev, uint32_t count,
+                         ivs_status *st, uint32_t *index)
+{
+  uint32_t i;
+  /* Pass 1, BAD_ARG: order, range and floor over the whole array (the lowest failing index). */
+  for (i = 0u; i < count; i++) {
+    uint64_t t = ev[i].at_tick;
+    uint32_t reason = IVS_REASON_NONE;
+    if (t >= IVS_RUN_TARGET_MAX) {
+      reason = IVS_REASON_INPUT_TICK_RANGE;
+    } else if (i > 0u && t < ev[i - 1u].at_tick) {
+      reason = IVS_REASON_INPUT_UNSORTED;
+    } else if (t < in->floor_tick) {
+      reason = IVS_REASON_INPUT_BEFORE_FLOOR;
+    }
+    if (reason != IVS_REASON_NONE) {
+      *st = IVS_E_BAD_ARG;
+      *index = i;
+      return reason;
+    }
+  }
+  /* Pass 2, UNSUPPORTED: flags, the reserved word, reserved control bits. */
+  for (i = 0u; i < count; i++) {
+    uint32_t reason = IVS_REASON_NONE;
+    uint32_t w;
+    if (ev[i].flags != 0u) {
+      reason = IVS_REASON_INPUT_EVENT_FLAGS;
+    } else if (ev[i].reserved != 0u) {
+      reason = IVS_REASON_INPUT_EVENT_RESERVED;
+    }
+    for (w = 0u; reason == IVS_REASON_NONE && w < IVS_INPUT_CONTROLLER_WORDS; w++) {
+      if ((ev[i].controller[w] & IVS_CTRL_RESERVED_MASK) != 0u) {
+        reason = IVS_REASON_INPUT_CONTROL_RESERVED;
+      }
+    }
+    if (reason != IVS_REASON_NONE) {
+      *st = IVS_E_UNSUPPORTED;
+      *index = i;
+      return reason;
+    }
+  }
+  *st = IVS_OK;
+  *index = IVS_INPUT_INDEX_NONE;
+  return IVS_REASON_NONE;
+}
+
 uint32_t ivs_input_apply_due(struct ivs_machine *im, const ivs_input_event *ev, uint32_t count, uint32_t next,
                              uint64_t start, uint64_t entry)
 {
-  while (next < count && ev[next].at_tick <= start) {
-    uint64_t tick = ev[next].at_tick;
-    ivs_input_apply(&im->obs.input, &ev[next], tick);
+  while (next < count) {
+    ivs_input_event e = ev[next]; /* one read of the caller's event */
+    if (e.at_tick > start) {
+      break;
+    }
+    ivs_input_apply(&im->obs.input, &e, e.at_tick);
     next++;
   }
   (void)entry;

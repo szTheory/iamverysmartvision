@@ -202,6 +202,14 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
 /* Sets in to its create and reset state: words, count and floor 0, chain h0. */
 void ivs_input_init(ivs_machine_obs_input *in);
 
+/* The per-event stages of the run ladder (D-05, D-14), after BUFFER_TOO_SMALL: IVS_REASON_NONE
+ * with *st IVS_OK and *index IVS_INPUT_INDEX_NONE, or the reason with *st and the failing index.
+ * BAD_ARG pass over the whole array first (at_tick at or above 2^63, below its predecessor, below
+ * in->floor_tick, in that order per event), then the UNSUPPORTED pass (nonzero flags, nonzero
+ * reserved word, a controller word with IVS_CTRL_RESERVED_MASK set). Reads ev[0..count) only. */
+uint32_t ivs_input_check(const ivs_machine_obs_input *in, const ivs_input_event *ev, uint32_t count,
+                         ivs_status *st, uint32_t *index);
+
 /* Applies, in array order, every event ev[next..count) whose at_tick is at or below start (the
  * start tick of the unit about to begin): words in force, count + 1, chain. Returns the index of
  * the first event not applied. entry is machine time at the call's entry (used only by a named
