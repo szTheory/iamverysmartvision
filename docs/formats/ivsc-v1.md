@@ -154,3 +154,13 @@ The parse-level vectors are text: `data/cart/ivsc-parse.json`, listed in `data/e
 Positive records give the whole container as hex with an authoring-time trailer and whole-file digest; long containers are described by repeated words and assembled by the test; negative records patch a positive base in one stated place.
 `cmake/IvsCartTable.cmake` turns them into a table in the build tree, and suite `ivsc` checks each against the parser in the dev and release presets.
 Any edit of a fixture file reruns `sh tools/cart/manifest-outputs.sh` and refreshes the manifest in the same commit.
+
+## Fuzzing
+
+Suite `ivsc` also holds a seeded fuzz family, `ivsc.fuzz.*` (`tests/ivsc/ivsc_fuzz.c`). Eight fixed seeds drive an in-repo xorshift32 generator, so no host randomness or time enters.
+Each mutant comes from a literal positive record by one bit flip, truncation, growth or field edit, and every second mutant is resealed so the checks after the digest are reached.
+On every mutant the family checks the following: the status and reason agree with the reason table, a refusal writes only the report, a second parse gives the same result, and an accepted container re-encodes to its own bytes.
+`ivsc.fuzz.reasons-covered` requires every reason of the table, and at least one acceptance, to be reached across the seeds.
+Six named faults in `data/expected/faults/ivsc.ids` remove one parser rule each and name the fixture that must then fail.
+A deeper, coverage-guided run is optional and outside the gate: the libFuzzer target `tests/fuzz/fuzz_ivsc.c` exists only when `IVS_ENABLE_LIBFUZZER` is ON, and its header gives the recipe. It needs a clang with the libFuzzer runtime (Homebrew LLVM or a Linux clang); Apple clang lacks it.
+Claim [claim:CL-0007] records this evidence.

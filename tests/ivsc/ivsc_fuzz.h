@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 /* Suite ivsc, seeded fuzz family (D-34, plan 03-08): the interface between ivsc_main.c, which
- * owns the generated fixture table and the canonical re-encoder, and ivsc_fuzz.c, which owns the
- * ivsc.fuzz.* cases. Test code only. */
+ * owns the generated fixture table, ivsc_reencode.c, which owns the canonical re-encoder, and
+ * ivsc_fuzz.c, which owns the ivsc.fuzz.* cases. Test code only. */
 #ifndef IVSC_FUZZ_H
 #define IVSC_FUZZ_H
 
@@ -18,7 +18,9 @@
  * the family fast); 0 when i is past the last base. */
 size_t ivsc_test_base_count(void);
 int ivsc_test_base(size_t i, const uint8_t **bytes, size_t *len);
-/* 1 when re-encoding the accepted view v of the len bytes at b reproduces b exactly. */
+
+/* Provided by ivsc_reencode.c (also linked by the optional libFuzzer target): 1 when
+ * re-encoding the accepted view v of the len bytes at b reproduces b exactly. */
 int ivsc_test_reencode_equal(const uint8_t *b, size_t len, const ivs_ivsc_view *v);
 
 /* Provided by ivsc_fuzz.c. */

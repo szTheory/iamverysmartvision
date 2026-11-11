@@ -120,7 +120,7 @@ add_custom_command(
           "${IVS_CART_IDS}"
   COMMENT "Generating the IVSC fixture table"
   VERBATIM)
-add_executable(ivs_tests_ivsc ivsc/ivsc_main.c ivsc/ivsc_fuzz.c "${IVS_CART_INC}")
+add_executable(ivs_tests_ivsc ivsc/ivsc_main.c ivsc/ivsc_fuzz.c ivsc/ivsc_reencode.c "${IVS_CART_INC}")
 target_include_directories(ivs_tests_ivsc PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(ivs_tests_ivsc PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
 add_test(NAME ivsc COMMAND ivs_tests_ivsc)
@@ -131,6 +131,23 @@ add_executable(ivs_tests_cpu_fuzz cpu/cpu_fuzz.c)
 target_link_libraries(ivs_tests_cpu_fuzz PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
 add_test(NAME cpu-fuzz COMMAND ivs_tests_cpu_fuzz)
 set_tests_properties(cpu-fuzz PROPERTIES SKIP_RETURN_CODE 77)
+
+# Optional libFuzzer target (D-34, plan 03-08): never in the gate, never registered with ctest,
+# never turned on by a preset. It compiles the parser and SHA-256 TUs itself so the fuzzer's
+# coverage instrumentation reaches them. Recipe in tests/fuzz/fuzz_ivsc.c (needs a clang with
+# the libFuzzer runtime: Homebrew LLVM or Linux; Apple clang lacks it).
+option(IVS_ENABLE_LIBFUZZER "Build the optional libFuzzer target (never in the gate)" OFF)
+set(IVS_LIBFUZZER_SANITIZERS "fuzzer,address,undefined" CACHE STRING
+  "-fsanitize= list of the optional libFuzzer target (fuzzer,undefined where the ASan runtime hangs)")
+if(IVS_ENABLE_LIBFUZZER)
+  add_executable(ivs_fuzz_ivsc EXCLUDE_FROM_ALL fuzz/fuzz_ivsc.c ivsc/ivsc_reencode.c
+    "${PROJECT_SOURCE_DIR}/core/src/content/ivsc.c" "${PROJECT_SOURCE_DIR}/core/src/common/ivs_sha256.c")
+  target_include_directories(ivs_fuzz_ivsc PRIVATE
+    "${PROJECT_SOURCE_DIR}/core/include" "${PROJECT_SOURCE_DIR}/core/src" "${CMAKE_CURRENT_SOURCE_DIR}/ivsc")
+  target_compile_options(ivs_fuzz_ivsc PRIVATE "-fsanitize=${IVS_LIBFUZZER_SANITIZERS}" -fno-omit-frame-pointer)
+  target_link_options(ivs_fuzz_ivsc PRIVATE "-fsanitize=${IVS_LIBFUZZER_SANITIZERS}")
+  target_link_libraries(ivs_fuzz_ivsc PRIVATE ivs_warnings)
+endif()
 
 # Suite harness: self-test of the harness library alone (compiled in directly, no core).
 add_executable(ivs_tests_harness harness/harness_selftest.c harness/ivs_test.c)
@@ -217,7 +234,7 @@ ivs_fault_gen(GEN_MAP_MUTATION SUITE memmap OUTPUT ivs_profiles.inc
 # Suite ivsc: its named faults are data/expected/faults/ivsc.ids (plan 03-08); the fuzz family
 # (ivsc/ivsc_fuzz.c) runs under every fault with the fixtures.
 ivs_fault_suite(ivsc
-  SOURCES ivsc/ivsc_main.c ivsc/ivsc_fuzz.c
+  SOURCES ivsc/ivsc_main.c ivsc/ivsc_fuzz.c ivsc/ivsc_reencode.c
   INCLUDE_DIRS "${CMAKE_CURRENT_BINARY_DIR}"
   GENERATED "${IVS_CART_INC}")
 

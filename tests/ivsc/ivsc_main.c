@@ -27,7 +27,8 @@
  *   ivsc.X03-bad-args          NULL view, NULL report and NULL bytes with a length are BAD_ARG
  *                              and write nothing; the argument check precedes the length check.
  * Family ivsc.fuzz.* (plan 03-08) lives in ivsc_fuzz.c: seeded mutations of the literal positive
- * records, through the interface of ivsc_fuzz.h (the bases and the re-encoder are defined here).
+ * records, through the interface of ivsc_fuzz.h (the bases are defined here, the canonical
+ * re-encoder used by X02 and the fuzz family in ivsc_reencode.c).
  * Test code may use stdio and malloc; the core may not. */
 #include <stdint.h>
 #include <stdio.h>
@@ -104,11 +105,6 @@ static void ic_put32(uint8_t *p, uint32_t v)
   p[1] = (uint8_t)((v >> 16) & 0xFFu);
   p[2] = (uint8_t)((v >> 8) & 0xFFu);
   p[3] = (uint8_t)(v & 0xFFu);
-}
-
-static uint32_t ic_get16(const uint8_t *p)
-{
-  return ((uint32_t)p[0] << 8) | (uint32_t)p[1];
 }
 
 static uint32_t ic_get32(const uint8_t *p)
@@ -314,58 +310,6 @@ static int ic_b08_len_over_max(void)
   }
   free(b);
   return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
-}
-
-/* Re-encode an accepted view; 1 when the encoding equals the input bytes. */
-int ivsc_test_reencode_equal(const uint8_t *b, size_t len, const ivs_ivsc_view *v)
-{
-  uint8_t *e;
-  size_t at;
-  uint32_t i;
-  uint32_t w;
-  int same;
-  if (v->total_bytes != len || v->segment_count == 0u || v->segment_count > IVS_IVSC_MAX_SEGMENTS) {
-    return 0;
-  }
-  e = malloc(len);
-  if (e == NULL) {
-    return 0;
-  }
-  memcpy(e, ic_magic, sizeof ic_magic);
-  ic_put16(e + 8, v->version);
-  ic_put16(e + 10, v->flags);
-  ic_put32(e + 12, v->required_features);
-  ic_put32(e + 16, v->total_bytes);
-  ic_put16(e + 20, v->segment_count);
-  ic_put16(e + 22, 0u);
-  at = IVS_IVSC_PREFIX_BYTES;
-  for (i = 0u; i < v->segment_count; i++) {
-    ic_put16(e + at, v->segs[i].addr);
-    ic_put16(e + at + 2u, v->segs[i].len_words);
-    e[at + 4u] = (uint8_t)IVS_IVSC_WIDTH_BITS;
-    e[at + 5u] = 0u;
-    ic_put16(e + at + 6u, 0u);
-    at += IVS_IVSC_ENTRY_BYTES;
-  }
-  for (i = 0u; i < v->segment_count; i++) {
-    for (w = 0u; w < v->segs[i].len_words; w++) {
-      size_t src = (size_t)v->segs[i].data_byte_offset + 2u * (size_t)w;
-      if (at + 2u > len - IVS_IVSC_TRAILER_BYTES || src + 2u > len) {
-        free(e);
-        return 0;
-      }
-      ic_put16(e + at, ic_get16(b + src));
-      at += 2u;
-    }
-  }
-  if (at != len - IVS_IVSC_TRAILER_BYTES) {
-    free(e);
-    return 0;
-  }
-  ivs_sha256_digest(e, at, e + at);
-  same = memcmp(e, b, len) == 0;
-  free(e);
-  return same;
 }
 
 /* ivsc.X02: every accepted record round-trips through its view. */
