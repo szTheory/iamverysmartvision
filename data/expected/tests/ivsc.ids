@@ -2,6 +2,8 @@
 # fixture record of data/cart/*.json (positive, build and patch kinds), plus the code-built
 # cases ivsc.B08-len-over-max, ivsc.X02-canonical-roundtrip and ivsc.X03-bad-args. Classes:
 # P positive, B boundary, N malformed or refused, X cross-cutting; L (load) ids arrive in 03-11.
+# Family fuzz (plan 03-08, tests/ivsc/ivsc_fuzz.c): eight fixed seeds of mutated positives and
+# the non-vacuity case ivsc.fuzz.reasons-covered.
 ivsc.B01-segs-16
 ivsc.B02-segs-17
 ivsc.B06-addr-wrap
@@ -52,3 +54,12 @@ ivsc.P05-span-full
 ivsc.P06-partial
 ivsc.X02-canonical-roundtrip
 ivsc.X03-bad-args
+ivsc.fuzz.seed-01
+ivsc.fuzz.seed-02
+ivsc.fuzz.seed-03
+ivsc.fuzz.seed-04
+ivsc.fuzz.seed-05
+ivsc.fuzz.seed-06
+ivsc.fuzz.seed-07
+ivsc.fuzz.seed-08
+ivsc.fuzz.reasons-covered

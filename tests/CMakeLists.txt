@@ -120,7 +120,7 @@ add_custom_command(
           "${IVS_CART_IDS}"
   COMMENT "Generating the IVSC fixture table"
   VERBATIM)
-add_executable(ivs_tests_ivsc ivsc/ivsc_main.c "${IVS_CART_INC}")
+add_executable(ivs_tests_ivsc ivsc/ivsc_main.c ivsc/ivsc_fuzz.c "${IVS_CART_INC}")
 target_include_directories(ivs_tests_ivsc PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(ivs_tests_ivsc PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
 add_test(NAME ivsc COMMAND ivs_tests_ivsc)
@@ -214,9 +214,10 @@ ivs_fault_gen(GEN_MAP_MUTATION SUITE memmap OUTPUT ivs_profiles.inc
   DEPENDS ${IVS_PROFILE_FILES} "${IVS_MEMMAP_GENERATOR}"
   CONSUMER core:src/memmap/memsys.c)
 
-# Suite ivsc: its named faults (data/expected/faults/ivsc.ids) arrive in plan 03-08.
+# Suite ivsc: its named faults are data/expected/faults/ivsc.ids (plan 03-08); the fuzz family
+# (ivsc/ivsc_fuzz.c) runs under every fault with the fixtures.
 ivs_fault_suite(ivsc
-  SOURCES ivsc/ivsc_main.c
+  SOURCES ivsc/ivsc_main.c ivsc/ivsc_fuzz.c
   INCLUDE_DIRS "${CMAKE_CURRENT_BINARY_DIR}"
   GENERATED "${IVS_CART_INC}")
 

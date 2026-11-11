@@ -26,6 +26,8 @@
  *                              from the core SHA-256) reproduces the input bytes exactly.
  *   ivsc.X03-bad-args          NULL view, NULL report and NULL bytes with a length are BAD_ARG
  *                              and write nothing; the argument check precedes the length check.
+ * Family ivsc.fuzz.* (plan 03-08) lives in ivsc_fuzz.c: seeded mutations of the literal positive
+ * records, through the interface of ivsc_fuzz.h (the bases and the re-encoder are defined here).
  * Test code may use stdio and malloc; the core may not. */
 #include <stdint.h>
 #include <stdio.h>
@@ -35,6 +37,7 @@
 #include "common/ivs_sha256.h"
 #include "content/ivsc.h"
 #include "ivs_test.h"
+#include "ivsc_fuzz.h"
 
 /* Table types of the generated include (field order of its initializers). */
 typedef struct ivs_cart_seg {
@@ -314,7 +317,7 @@ static int ic_b08_len_over_max(void)
 }
 
 /* Re-encode an accepted view; 1 when the encoding equals the input bytes. */
-static int ic_reencode_equal(const uint8_t *b, size_t len, const ivs_ivsc_view *v)
+int ivsc_test_reencode_equal(const uint8_t *b, size_t len, const ivs_ivsc_view *v)
 {
   uint8_t *e;
   size_t at;
@@ -390,7 +393,7 @@ static int ic_x02_canonical_roundtrip(void)
     if (ivs_ivsc_parse(b, len, &view, &rep) != IVS_OK) {
       ivs_test_diag("%s: not accepted (reason %s)", f->id, ic_reason_name(rep.reason));
       ok = 0;
-    } else if (!ic_reencode_equal(b, len, &view)) {
+    } else if (!ivsc_test_reencode_equal(b, len, &view)) {
       ivs_test_diag("%s: the re-encoded view differs from the input", f->id);
       ok = 0;
     } else {
@@ -403,6 +406,36 @@ static int ic_x02_canonical_roundtrip(void)
     ok = 0;
   }
   return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
+}
+
+/* The fuzz bases: accepted positive records whose container is literal hex. */
+static int ic_is_base(const ivs_cart_fixture *f)
+{
+  return f->kind == IVS_CART_POSITIVE && f->status == IVS_OK && f->bytes != NULL &&
+         f->n_bytes >= IVS_IVSC_MIN_BYTES;
+}
+
+size_t ivsc_test_base_count(void)
+{
+  size_t i;
+  size_t n = 0u;
+  for (i = 0u; i < ivs_cart_count; i++) {
+    n += ic_is_base(&ivs_cart_table[i]) ? 1u : 0u;
+  }
+  return n;
+}
+
+int ivsc_test_base(size_t k, const uint8_t **bytes, size_t *len)
+{
+  size_t i;
+  for (i = 0u; i < ivs_cart_count; i++) {
+    if (ic_is_base(&ivs_cart_table[i]) && k-- == 0u) {
+      *bytes = ivs_cart_table[i].bytes;
+      *len = ivs_cart_table[i].n_bytes;
+      return 1;
+    }
+  }
+  return 0;
 }
 
 /* ivsc.X03: argument refusals write nothing, and precede the length check. */
@@ -460,16 +493,25 @@ static const ivs_test_case ic_code_cases[] = {
 };
 #define IC_CODE_CASES (sizeof ic_code_cases / sizeof ic_code_cases[0])
 
+/* Case order: the fixture records, the code-built cases, the fuzz family. */
 static const char *ic_case_id(const void *data, size_t i)
 {
   (void)data;
-  return i < ivs_cart_count ? ivs_cart_table[i].id : ic_code_cases[i - ivs_cart_count].id;
+  if (i < ivs_cart_count) {
+    return ivs_cart_table[i].id;
+  }
+  i -= ivs_cart_count;
+  return i < IC_CODE_CASES ? ic_code_cases[i].id : ivsc_fuzz_case_id(i - IC_CODE_CASES);
 }
 
 static int ic_case_run(const void *data, size_t i)
 {
   (void)data;
-  return i < ivs_cart_count ? ic_run_record(&ivs_cart_table[i]) : ic_code_cases[i - ivs_cart_count].fn();
+  if (i < ivs_cart_count) {
+    return ic_run_record(&ivs_cart_table[i]);
+  }
+  i -= ivs_cart_count;
+  return i < IC_CODE_CASES ? ic_code_cases[i].fn() : ivsc_fuzz_case_run(i - IC_CODE_CASES);
 }
 
 int main(int argc, char **argv)
@@ -477,7 +519,7 @@ int main(int argc, char **argv)
   ivs_test_suite suite;
   memset(&suite, 0, sizeof suite);
   suite.name = "ivsc";
-  suite.count = ivs_cart_count + IC_CODE_CASES;
+  suite.count = ivs_cart_count + IC_CODE_CASES + IVSC_FUZZ_CASES;
   suite.id = ic_case_id;
   suite.run = ic_case_run;
   suite.sources = ivs_cart_sources;
