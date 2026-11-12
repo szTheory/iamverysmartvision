@@ -88,7 +88,7 @@ file(COPY_FILE "${CMAKE_BINARY_DIR}/ivs-core-sources.txt.tmp" "${CMAKE_BINARY_DI
 # internals, no images; the gate step pkg-install compares the prefix with
 # data/expected/pkg-install-files.ids). The package config is hand-written (no paths to
 # resolve), the version file comes from project(VERSION), parsed from ivs.h in the root.
-# No export(PACKAGE) and no pkg-config file: a consumer must never find this build tree.
+# No package-registry export and no pkg-config file: a consumer must never find this build tree.
 # A sanitized tree refuses to install: its archive needs -fsanitize at the consumer's link.
 if(IVS_SAN)
   install(CODE "message(FATAL_ERROR \"ivs: refusing to install a sanitized (IVS_SAN) tree; install from the release preset\")")
