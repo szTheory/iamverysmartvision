@@ -247,3 +247,28 @@ Both routes still fail only on the hosted gcc run.
 _Reviewed: 2026-11-11_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
+
+## Disposition
+
+Fixed on 2026-11-11 on branch `gsd/phase-4-headless-runner-installed-consumer`, one commit per item. `sh tools/gate.sh` and `dash tools/gate.sh` passed after every commit.
+
+| Finding | Disposition | Commit | Regression evidence |
+|---------|-------------|--------|---------------------|
+| WR-01 | fixed | cd121e2 | A budget timeout now needs both: the ceiling is below the bound, and machine time stopped below the bound (`x->now < target_ticks`). The rule is documented in docs/runner.md. Evidence: `runner.time.max-ticks-straddle` (ceiling 99 passes with the uncapped report; ceiling 1 stays budget) and scenario `max-ticks-straddle` (`--max-ticks 99`, pass). |
+| WR-02 | fixed | f6a1278 | New parser reason `dead-after-refusal` (43). After an expect-load that names a refusal, it refuses the first content line of a later role, run-to or input line. `expect-load-refusal.ivss` no longer has its dead lines. Evidence: `runner.parse.refuse.dead-after-refusal`, the edges `dead-run-to`, `dead-input` and `dead-second-refusal`, `runner.parse.accept.refusal-last-role`, a fuzz reachability invariant, and scenario `dead-after-refusal` (14, pinned stderr). |
+| WR-03 | fixed | f6a1278 | New parser reason `no-run-to` (44, line 0). It applies unless an expected refusal ends the scenario (WR-02 rule). Evidence: `runner.parse.refuse.no-run-to`, edges `no-run-to-expect-ok` and `no-run-to-inputs-only`, and scenario `no-run-to` (14). One commit with WR-02, because the WR-03 exemption is the WR-02 rule. |
+| WR-04 | fixed | a0ceb9f | `_DEFAULT_SOURCE` added in `hostio.c` only. runner-scan already exempts that file, so it needed no change. `signal()` is kept (D-23). hostio.h and the docs now state BSD semantics. New hook `--self-signal-count`. Evidence: scenario `cancel-signal-twice` (two raises, cancelled 12). gcc:13 probe: two raises survive with the define and exit 130 without it. |
+| IN-01 | fixed | f02353c | A seam refusal now restores the INPUT row and the consumed count. The ivs_run.h INTERNAL text says so. Evidence: `run.stop.internal-input-restored`. The named fault INPUT_APPLY_AT_RUN_START now lists it as allowed collateral. |
+| IN-02 | fixed | 82b81ec | A span that wraps the top of the address space counts as overlapping. This applies in `ivs_machine_span_overlaps` (out parameters, BAD_ARG) and to run buffers and event arrays (RUN_BUFFER_OVERLAP, INPUT_EVENTS_OVERLAP). Evidence: `run.buffers.wrap-overlap` and `run.refuse.peek.out-wraps`. The event-array wrap has no row: in the RUN_EVENTS_UNCHECKED fault build the core would read through the pointer. |
+| IN-03 | fixed | f7f5c55 | `ivs_machine_info` now enforces the `IVS_STRUCT_SIZE_MAX` cap. Evidence: `run.info.oversize-refused`. api-effects.json updated (check text, pinned_by, refusal row). |
+| IN-04 | deferred | - | Clock failure at the wall start. Phase 6 runner hardening; a broken monotonic clock is not seen on supported hosts. |
+| IN-05 | fixed (docs) | b9163c6 | docs/runner.md now states two operator trust boundaries: symlinks under `--content-dir` are followed, and `--update-golden` overwrites its target. This matches 04-SECURITY residual risks 1 and 2. No code change, so no test. |
+| IN-06 | deferred | - | A POSIX-identifier denylist and a C_EXTENSIONS flag for runner-scan. The hosted gcc run (`tools/gate-linux.sh`) still catches the class before a push. |
+| IN-07 | fixed | 3362fcd | The faults-verdict prefix match now uses an explicit length test, and an empty prefix field is `fault-unknown-vector`. Evidence: new negative control `faults-empty-prefix` (controls 277). |
+| IN-08 | fixed | 4001786 | `ferror` is now read before `fclose`; either failure prints the documented `write error` line and removes the output. Evidence: `pack.c-include.write-error`, which uses a 512-byte file-size limit with SIGXFSZ ignored. |
+| IN-09 | deferred | - | ARCH_INDEPENDENT is D-33's explicit choice. Revisit when a 32-bit consumer is in scope. |
+| IN-10 | deferred | - | Golden `.expect` and dev-versus-release coverage. runner-process covers both today; a golden.sh tightening is a gate-scope item for the next phase. |
+| IN-11 | deferred | - | Impossible-state guards. Kept as documented belts; this is an owner scope decision (necessity category). |
+
+Observation: in one `dash tools/gate.sh` run after a0ceb9f, the `c-faults` watchdog self-test (quiet) failed at load average 14. A rerun passed. The control's `true` has a 5 s limit and shares the CPU with the fault lanes. This is unrelated to the fixes, so no change was made.
+
