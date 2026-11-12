@@ -1,10 +1,12 @@
 # tier: deterministic-repeatability
 # oracle: regression pin, emulator is oracle
 # Owning plan 04-23 (PKG-01, D-39): the stdout of tests/installed-consumer, built only against the
-# installed, relocated package and run on build/release/images/boot-stub.exec and diag-cpu-1.ivsc
-# (gate step pkg-install). Self-consistent, not independent: the emulator produced these values.
+# installed, relocated package and run on build/release/images/boot-stub.exec, diag-cpu-1.ivsc and (plan 05-11)
+# diag-ctrl-psg-1.ivsc (gate step pkg-install). Self-consistent, not independent: the emulator produced these values.
 # The digest.<domain> lines must also equal data/golden/diag-input-pass.digests (cross-path
-# agreement with the runner). The step drops these # lines before comparing. A change is a
+# agreement with the runner); since plan 05-11 its ctrl.digest.<domain> lines and observed domains must equal
+# data/golden/diag-ctrl-psg-pass.digests (the replay of diag-ctrl-psg-pass through the installed headers, the
+# peeked $01FE after the first event is 0x007E, the new lines are additions only). The step drops these # lines before comparing. A change is a
 # reviewed diff, regenerated from build/gate/pkg-consumer.txt after a gate run.
 ivs-consumer 1
 version package=0.1.0 header=0.1.0 api=0x000100 library=0x000100 tie=yes
@@ -32,4 +34,20 @@ digest.composite 40fac93480accffcf975075f6519c739dd9c1e3ea0eec22fc87785e73a840a4
 digest.audio 6dc304749b42d364796e08346e078bf439f6befc8fd30f478a06a52fd3df31ab
 digest.input b18223e862aa91b5d3a82fdd7596b413954565c25b5adbc2d78dcc5dbbefdec1
 second-instance equal=yes
+ctrl.load.cart status=IVS_OK length_bytes=242 sha256=671fea4571c4bcec7f3c10ea475b65a88bb21e37f28864bbb3fd1aa09648de66
+ctrl.step.1 target_ticks=4100 stop=IVS_STOP_TARGET now_ticks=4132 overshoot_ticks=32 input_consumed=1 controller0=00000001
+ctrl.peek 01FE=0x007E
+ctrl.step.2 target_ticks=24000 stop=IVS_STOP_CPU_HALTED now_ticks=16752 overshoot_ticks=0 input_consumed=6 controller0=10000010
+ctrl.input events=7 consumed=7
+ctrl.mem 020F=03C5
+ctrl.mem 0210..0227=00FF,007E,00FF,005A,00FF,00FB,005B,001D,0000,0000,0000,0000,0000,0000,0000,0000,00FF,00FD,009F,00FF,0000,0000,0000,0000
+ctrl.digest.cpu d87bcb165ae1b160349184422a90987b49b0fc5a508081891dba1dea7f86497f
+ctrl.digest.mem 9d8f2cb338f2004830bca2e9672ca4dc7d09ad81431cf6d8b76b92815905e5a5
+ctrl.digest.images 3dc499c638993d029cc9222a4686a1700d815f548c028e84d04d38151ae28b4e
+ctrl.digest.instance 38a60a970ccff89f5beb67731f6408f13227f633b483de0d2c8a7003f988f533
+ctrl.digest.composite 796821563d91bc5309a83bffeda00345a5c3004fcb4582aba84b38d4c3933cab
+ctrl.digest.audio 49389f1090b6aea5d68d0c73afa47ba2c5f6771cda2f81d2df4062be6fd675ad
+ctrl.digest.input 31ef954649ec4809c873897c4e09145b95bfc48846d1ba1b78ee14372d25aacf
+ctrl.digest.psglog c98733eb428f93eb33bfe5c67e7f23b8444e73b1a8f6b432f39409260c470922
+ctrl.second-instance equal=yes
 result ok failures=0

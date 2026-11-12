@@ -1,7 +1,9 @@
 # Owning plans 04-22 and 04-23: cases of the in-step selftest of the gate step pkg-install (D-40).
 # Each case mutates a COPY (or probes a deleted path) and must fail for its intended reason; one case
 # name per line; the step runs exactly these and fails on a name it does not know
-# (pkg-selftest-missing). The last two (leak-detector, golden-drift) concern the consumer (04-23).
+# (pkg-selftest-missing). The last two (leak-detector, golden-drift) concern the consumer (04-23); plan 05-11
+# adds three for the replay of diag-ctrl-psg-pass: ctrl-digest-drift (a ctrl.digest nibble changed), ctrl-domain-missing
+# (the ctrl.digest.psglog line dropped) and ctrl-peek-wrong (the peeked $01FE changed from 0x007E).
 core-src-include
 missing-symbol
 ghost-decl
@@ -12,3 +14,6 @@ version-refused
 old-prefix
 leak-detector
 golden-drift
+ctrl-digest-drift
+ctrl-domain-missing
+ctrl-peek-wrong

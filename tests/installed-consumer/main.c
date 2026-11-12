@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: MIT */
 /* The independent consumer of the installed ivs package (PKG-01, D-34, D-39, plan 04-23).
  * Built only through find_package(ivs) against the installed, relocated prefix (gate step
- * pkg-install). Usage: consumer <boot-stub.exec> <diag-cpu-1.ivsc>; both images come from the
- * build tree's tools/pack output and the 2048-byte zero GROM is made here, so the program embeds
- * no content bytes. It replays the runner scenario data/scenarios/diag-input-pass.ivss through
- * the public API alone:
+ * pkg-install). Usage: consumer <boot-stub.exec> <diag-cpu-1.ivsc> <diag-ctrl-psg-1.ivsc>; the
+ * images come from the build tree's tools/pack output and the 2048-byte zero GROM is made here, so
+ * the program embeds no content bytes. It replays the runner scenario
+ * data/scenarios/diag-input-pass.ivss through the public API alone:
  *   version tie   ivs_VERSION (from the package config), IVS_API_VERSION, ivs_api_version();
  *   v1 sizes      the frozen v1 struct sizes as the installed headers declare them;
  *   create        storage sized by ivs_machine_storage_requirements, aligned by hand;
@@ -19,6 +19,12 @@
  *                 runner golden), the form of the runner golden; the replay passes an audio and a
  *                 write-log buffer sized from ivs_info, as the runner does;
  *   second instance  a fresh instance without the refusals must give the same digests.
+ * Plan 05-11 (D-19, D-05, V-14) adds a second replay, of data/scenarios/diag-ctrl-psg-pass.ivss, whose
+ * lines carry the prefix `ctrl.`: the seven controller events of that scenario through the installed
+ * headers, an audio and a write-log buffer sized from ivs_info (never hard-coded), a first run to
+ * tick 4100 after which the peeked $01FE is printed (0x007E, KEY_1 on port 0), then the run to the
+ * halt, the guest words at 020F and 0210..0227, and one ctrl.digest.<domain> line per observed domain
+ * (audio and psglog included; video not), equal to data/golden/diag-ctrl-psg-pass.digests.
  * Stdout is pinned by data/expected/pkg-consumer.golden and its digest lines must equal those of
  * data/golden/diag-input-pass.digests. Exit 0 only when every check held; a failed check prints
  * a `FAIL <what>` line. No path, time or address is printed (the output is host independent).
@@ -37,6 +43,7 @@
 #define C_CART_MAX 131256u
 #define C_DOMAINS 9u
 #define C_EVENTS 2u
+#define C_CTRL_EVENTS 7u
 
 typedef struct c_images {
   uint8_t exec[C_EXEC_BYTES + 1u];
@@ -44,6 +51,8 @@ typedef struct c_images {
   uint8_t grom[C_GROM_BYTES];
   uint8_t cart[C_CART_MAX + 1u];
   size_t cart_len;
+  uint8_t cart2[C_CART_MAX + 1u]; /* the second diagnostic (plan 05-11) */
+  size_t cart2_len;
 } c_images;
 
 typedef struct c_digests {
@@ -206,6 +215,9 @@ static void refusal(ivs_machine *m, const char *name, uint32_t kind, const uint8
 static uint64_t delivered_video_bytes;
 static uint64_t delivered_audio_bytes;
 static uint64_t delivered_psglog_bytes;
+/* The line prefix of run_step's printed lines: empty for the diag-input-pass replay, `ctrl.` for the
+ * diag-ctrl-psg-pass replay (plan 05-11). */
+static const char *run_prefix = "";
 
 /* One run call of the replay; returns the report's input_consumed (0 on a refusal). The audio and
  * log capacities are bytes_per_frame * ((target - now) / nominal_frame_ticks + 1) from ivs_info, the
@@ -257,15 +269,15 @@ static uint32_t run_step(ivs_machine *m, unsigned step, uint64_t target, const i
   free(plog);
   if (st != IVS_OK) {
     if (print) {
-      printf("step.%u status=%s reason=%u\n", step, status_token(st), (unsigned)rep.refusal_reason);
+      printf("%sstep.%u status=%s reason=%u\n", run_prefix, step, status_token(st), (unsigned)rep.refusal_reason);
     }
     fail("run refused");
     return 0u;
   }
   if (print) {
-    printf("step.%u target_ticks=%llu stop=%s now_ticks=%llu overshoot_ticks=%llu input_consumed=%u "
+    printf("%sstep.%u target_ticks=%llu stop=%s now_ticks=%llu overshoot_ticks=%llu input_consumed=%u "
            "controller0=%08x\n",
-           step, (unsigned long long)target, ivs_run_stop_name(rep.stop_reason), (unsigned long long)rep.now_ticks,
+           run_prefix, step, (unsigned long long)target, ivs_run_stop_name(rep.stop_reason), (unsigned long long)rep.now_ticks,
            (unsigned long long)rep.overshoot_ticks, (unsigned)rep.input_consumed, (unsigned)rep.controller_now[0]);
   }
   if (rep.stop_reason != want_stop) {
@@ -415,6 +427,130 @@ static void session(int with_refusals, int print, c_digests *d, int *observed)
   instance_destroy(&x);
 }
 
+/* The seven controller events of data/scenarios/diag-ctrl-psg-pass.ivss (tick, controller 0 word,
+ * controller 1 word). */
+static void ctrl_events(ivs_input_event *ev)
+{
+  memset(ev, 0, C_CTRL_EVENTS * sizeof ev[0]);
+  ev[0].at_tick = 4000u;
+  ev[0].controller[0] = IVS_CTRL_KEY_1;
+  ev[1].at_tick = 4800u;
+  ev[1].controller[1] = IVS_CTRL_DISC_E;
+  ev[2].at_tick = 5600u;
+  ev[2].controller[0] = IVS_CTRL_KEY_1 | IVS_CTRL_KEY_9;
+  ev[2].controller[1] = IVS_CTRL_SIDE_LOWER_LEFT;
+  ev[3].at_tick = 6400u;
+  ev[4].at_tick = 7200u;
+  ev[4].controller[0] = IVS_CTRL_DISC_N;
+  ev[5].at_tick = 8000u;
+  ev[5].controller[0] = IVS_CTRL_DISC_N | IVS_CTRL_SIDE_TOP;
+  ev[6].at_tick = 8800u;
+  ev[6].controller[0] = IVS_CTRL_KEY_5 | IVS_CTRL_SIDE_TOP;
+}
+
+/* The replay of diag-ctrl-psg-pass on a fresh instance (plan 05-11): boot stub, zero GROM, the second
+ * diagnostic, power-on reset, then run-to 4100 ticks (the first event is consumed), the peeked $01FE,
+ * and run-to 24000 ticks stopping at the halt with the six remaining events. The digests go into d and
+ * the observed set into observed (video only when bytes of it were delivered; audio and the write log
+ * are delivered through buffers sized from ivs_info). print selects the pinned output. */
+static void ctrl_session(int print, c_digests *d, int *observed)
+{
+  c_instance x;
+  ivs_load_report lr;
+  ivs_status st;
+  ivs_input_event ev[C_CTRL_EVENTS];
+  uint16_t w[24];
+  uint16_t pin = 0u;
+  uint32_t consumed = 0u;
+  static const uint32_t kinds[3] = {IVS_KIND_EXEC, IVS_KIND_GROM, IVS_KIND_CARTRIDGE};
+  const uint8_t *bytes[3];
+  size_t lens[3];
+  bytes[0] = images.exec;
+  bytes[1] = images.grom;
+  bytes[2] = images.cart2;
+  lens[0] = images.exec_len;
+  lens[1] = C_GROM_BYTES;
+  lens[2] = images.cart2_len;
+  memset(d, 0, sizeof *d);
+  delivered_video_bytes = 0u;
+  delivered_audio_bytes = 0u;
+  delivered_psglog_bytes = 0u;
+  run_prefix = "ctrl.";
+  ctrl_events(ev);
+  if (!instance_create(&x)) {
+    fail("ctrl create");
+    run_prefix = "";
+    return;
+  }
+  for (size_t i = 0u; i < 3u; i++) {
+    st = load(x.m, kinds[i], bytes[i], lens[i], &lr);
+    if (print && i == 2u) {
+      printf("ctrl.load.cart status=%s length_bytes=%u sha256=", status_token(st), (unsigned)lr.image.length_bytes);
+      print_hex(lr.image.sha256, sizeof lr.image.sha256);
+      printf("\n");
+    }
+    if (st != IVS_OK) {
+      fail("ctrl load");
+      instance_destroy(&x);
+      run_prefix = "";
+      return;
+    }
+  }
+  st = ivs_machine_reset(x.m, IVS_RESET_POWER_ON);
+  if (st != IVS_OK) {
+    fail("ctrl reset");
+    instance_destroy(&x);
+    run_prefix = "";
+    return;
+  }
+  consumed += run_step(x.m, 1u, 4100u, &ev[0], C_CTRL_EVENTS, IVS_STOP_TARGET, print);
+  if (consumed != 1u) {
+    fail("ctrl input_consumed");
+    consumed = 1u;
+  }
+  st = ivs_machine_peek(x.m, 0x01FEu, 1u, &pin);
+  if (st != IVS_OK) {
+    fail("ctrl peek");
+  }
+  if (print) {
+    printf("ctrl.peek 01FE=0x%04X\n", (unsigned)pin);
+  }
+  consumed += run_step(x.m, 2u, 24000u, &ev[consumed], C_CTRL_EVENTS - consumed, IVS_STOP_CPU_HALTED, print);
+  if (print) {
+    printf("ctrl.input events=%u consumed=%u\n", (unsigned)C_CTRL_EVENTS, (unsigned)consumed);
+  }
+  if (consumed != C_CTRL_EVENTS) {
+    fail("ctrl input consumed total");
+  }
+  st = ivs_machine_peek(x.m, 0x020Fu, 1u, w);
+  if (st != IVS_OK) {
+    fail("ctrl peek marker");
+  } else if (print) {
+    printf("ctrl.mem 020F=%04X\n", (unsigned)w[0]);
+  }
+  st = ivs_machine_peek(x.m, 0x0210u, 24u, w);
+  if (st != IVS_OK) {
+    fail("ctrl peek tables");
+  } else if (print) {
+    printf("ctrl.mem 0210..0227=");
+    for (size_t i = 0u; i < 24u; i++) {
+      printf("%s%04X", i == 0u ? "" : ",", (unsigned)w[i]);
+    }
+    printf("\n");
+  }
+  if (!digest_all(x.m, d)) {
+    fail("ctrl digest");
+  }
+  for (size_t i = 0u; i < C_DOMAINS; i++) {
+    observed[i] = 1;
+  }
+  observed[5] = delivered_video_bytes != 0u;
+  observed[6] = delivered_audio_bytes != 0u;
+  observed[8] = delivered_psglog_bytes != 0u;
+  instance_destroy(&x);
+  run_prefix = "";
+}
+
 static void version_tie(void)
 {
   uint32_t lib = ivs_api_version();
@@ -465,8 +601,8 @@ int main(int argc, char **argv)
   int observed[C_DOMAINS];
   int observed2[C_DOMAINS];
   int equal;
-  if (argc != 3) {
-    fprintf(stderr, "usage: consumer <boot-stub.exec> <diag-cpu-1.ivsc>\n");
+  if (argc != 4) {
+    fprintf(stderr, "usage: consumer <boot-stub.exec> <diag-cpu-1.ivsc> <diag-ctrl-psg-1.ivsc>\n");
     return 2;
   }
   if (!read_image(argv[1], images.exec, C_EXEC_BYTES, &images.exec_len) || images.exec_len == 0u) {
@@ -475,6 +611,10 @@ int main(int argc, char **argv)
   }
   if (!read_image(argv[2], images.cart, C_CART_MAX, &images.cart_len)) {
     fprintf(stderr, "consumer: cannot read the cartridge image\n");
+    return 2;
+  }
+  if (!read_image(argv[3], images.cart2, C_CART_MAX, &images.cart2_len)) {
+    fprintf(stderr, "consumer: cannot read the second cartridge image\n");
     return 2;
   }
   memset(images.grom, 0, sizeof images.grom);
@@ -496,6 +636,24 @@ int main(int argc, char **argv)
   printf("second-instance equal=%s\n", equal ? "yes" : "no");
   if (!equal) {
     fail("second instance");
+  }
+  /* The second replay (plan 05-11): its digests carry the prefix `ctrl.` so the lines of the first replay
+   * stay as they were. */
+  memset(observed, 0, sizeof observed);
+  memset(observed2, 0, sizeof observed2);
+  ctrl_session(1, &first, observed);
+  for (size_t i = 0u; i < C_DOMAINS; i++) {
+    if (observed[i]) {
+      printf("ctrl.digest.%s ", c_domain_name[i]);
+      print_hex(first.sha[i], sizeof first.sha[i]);
+      printf("\n");
+    }
+  }
+  ctrl_session(0, &second, observed2);
+  equal = memcmp(&first, &second, sizeof first) == 0 && memcmp(observed, observed2, sizeof observed) == 0;
+  printf("ctrl.second-instance equal=%s\n", equal ? "yes" : "no");
+  if (!equal) {
+    fail("ctrl second instance");
   }
   printf("result %s failures=%d\n", failures == 0 ? "ok" : "fail", failures);
   return failures == 0 ? 0 : 1;
