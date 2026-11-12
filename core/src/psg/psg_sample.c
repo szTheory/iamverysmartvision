@@ -17,7 +17,8 @@
  * Plan 05-07: every step also runs the noise generator (psg_noise.c) and the envelope generator
  * (psg_env.c); the mixer reads the noise bit of the register and the amplitude index the envelope level.
  * No static or global state.
- * Named faults (plan 05-06, suite psg): PSG_STEP_IS_16_CLOCKS, PSG_SAMPLE_PHASE_RESET_PER_CALL. */
+ * Named faults (plan 05-06, suite psg): PSG_STEP_IS_16_CLOCKS, PSG_SAMPLE_PHASE_RESET_PER_CALL; (plan 05-08):
+ * PSG_WRITE_EFFECT_LATE_ONE_STEP (ivs_psg_write catches up one step too far before the store). */
 #include "common/ivs_prelude.h"
 
 #include "common/ivs_sha256.h"
@@ -125,7 +126,11 @@ void ivs_psg_catch_up(const ivs_psg_params *p, ivs_psg_state *s, const uint16_t 
 void ivs_psg_write(const ivs_psg_params *p, ivs_psg_state *s, uint16_t *regs, ivs_psg_obs *obs, ivs_psg_sink *sink,
                    uint64_t stamp, uint32_t idx, uint32_t value)
 {
-  ivs_psg_catch_up(p, s, regs, obs, stamp, sink);
+  uint64_t to = stamp;
+#ifdef IVS_FAULT_PSG_WRITE_EFFECT_LATE_ONE_STEP
+  to += p->sample_period_ticks; /* named fault: the write takes effect one chip step late (the sample at the stamp + 16 does not see it) */
+#endif
+  ivs_psg_catch_up(p, s, regs, obs, to, sink);
   ivs_psg_reg_store(p, regs, idx, value);
   ivs_psg_after_write(p, s, regs, idx);
 }

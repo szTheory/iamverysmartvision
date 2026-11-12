@@ -46,8 +46,18 @@ ivs_bus_reply ivs_machine_bus(void *ctx, const ivs_cp1610_access *a)
   }
   reply = ivs_memsys_bus(&c->m->mem, a);
   if (slot != IVS_MEMSYS_NO_SLOT) {
-    const uint64_t tick = stamp;
+    uint64_t tick = stamp;
     ivs_psg_after_write(c->psg, &c->m->psg, c->m->mem.psg_reg, slot);
+#ifdef IVS_FAULT_PSG_LOG_TICK_UNIT_START
+    tick = c->unit_start_tick; /* named fault: the record carries the start of the unit, not the write's cycle */
+#endif
+#ifdef IVS_FAULT_PSG_LOG_TICK_SLICE_RELATIVE
+    /* named fault: the record carries the tick relative to the first write logged by this call */
+    if (c->sink->log_records == 0u) {
+      c->sink->base_tick = stamp;
+    }
+    tick = stamp - c->sink->base_tick;
+#endif
     ivs_psg_log_append(c->sink, &c->m->obs.psglog, tick, (uint32_t)a->data, a->addr & 0x0Fu,
                        a->kind == IVS_ACC_DW ? IVS_PSGLOG_SRC_CPU_DW : IVS_PSGLOG_SRC_CPU_WRITE);
   }

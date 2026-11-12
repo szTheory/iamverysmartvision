@@ -58,3 +58,24 @@ PSG_ENV_SHAPE_ATTACK_DECAY_SWAPPED psg.env.shape-0 psg.env.|psg.amp.|psg.ampenv.
 PSG_ENV_PERIOD_TIMES_16 psg.env.rate-ep1 psg.env.|psg.amp.|psg.ampenv.|psg.judge.env-|psg.profile. psg.reseng.envelope-held-zero
 # PSG_ENV_HOLD_ALTERNATE_NO_RESET: a held alternating shape keeps its last level (1011 holds 0 instead of 15).
 PSG_ENV_HOLD_ALTERNATE_NO_RESET psg.env.shape-11 psg.env. psg.env.shape-8
+# Write-log faults (plan 05-08, AUD-02, D-13, D-14, D-16, A-01, T-05-20, T-05-21), one site each: the log writer
+# (core/src/psg/psg_log.c), the machine bus wrapper (machine_bus.c), the sample engine (psg_sample.c) and the layout
+# (machine.c).
+# PSG_REG_WRITE_NOT_LOGGED: a guest write to the PSG leaves no record and no chain step; replaying the empty log gives
+# silence, not the original samples (psg.log.replay-equals-run), and every test that reads a record fails with it.
+PSG_REG_WRITE_NOT_LOGGED psg.log.replay-equals-run psg.log.|psg.buffers.|psg.slice.|psg.fuzz.|psg.reset.|psg.bounds.|psg.iso. psg.log.effect-boundary
+# PSG_LOG_TICK_UNIT_START: the record carries the start of the unit, not the write's cycle: the stamp of a direct MVO is
+# 24 ticks and of an MVO@ 16 ticks too early (psg.log.window).
+PSG_LOG_TICK_UNIT_START psg.log.window psg.log.|psg.buffers.|psg.slice.|psg.fuzz. psg.log.byte-order
+# PSG_LOG_TICK_SLICE_RELATIVE: the record carries the tick relative to the first write of the call, so the records of
+# a sliced run differ from the one-call run (psg.slice.log-split).
+PSG_LOG_TICK_SLICE_RELATIVE psg.slice.log-split psg.log.|psg.buffers.|psg.slice.|psg.fuzz. psg.log.byte-order
+# PSG_WRITE_EFFECT_LATE_ONE_STEP: ivs_psg_write catches up one chip step too far before the store, so a write stamped
+# t is not seen by the sample at t + 16 (psg.log.effect-boundary); the module-level engine vectors write through it.
+PSG_WRITE_EFFECT_LATE_ONE_STEP psg.log.effect-boundary psg.log.|psg.tone.|psg.sample.|psg.chain.|psg.noise.|psg.env.|psg.amp.|psg.ampenv.|psg.profile.|psg.judge. psg.slice.seam-equals-run
+# PSG_STATIC_CARRY: the record index of the chain is read from a file-scope static that an empty row resynchronises, so
+# two instances that log in turn mix their chains (psg.iso.interleaved-instances).
+PSG_STATIC_CARRY psg.iso.interleaved-instances psg.iso.|psg.fuzz.|psg.slice. psg.log.framing
+# PSG_LOG_RECORDS_PER_FRAME_CUT: the layout publishes half of W_log (1,076 records per frame slot), below the
+# instruction-only density of 1,660 writes per frame: the safety net stops the worst-case writer INTERNAL.
+PSG_LOG_RECORDS_PER_FRAME_CUT psg.buffers.worst-case-writer psg.buffers.|psg.bounds. psg.log.byte-order

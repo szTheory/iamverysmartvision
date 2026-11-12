@@ -15,11 +15,18 @@
  * updated by every call, whether or not the sink has a log buffer (the counting log sink runs the same
  * code), and depends on the records only, never on how a run is sliced.
  * No static or global state outside the named fault block below (D-07).
- * Named faults of this file (plan 05-08, suite psg) are added with their tests. */
+ * Named faults (plan 05-08, suite psg): PSG_REG_WRITE_NOT_LOGGED (a write is neither chained nor delivered),
+ * PSG_STATIC_CARRY (the record index of the chain is read from a file-scope static that an empty row
+ * resynchronises, so two instances that log in turn mix their indices). */
 #include "common/ivs_prelude.h"
 
 #include "common/ivs_sha256.h"
 #include "psg/psg.h"
+
+#ifdef IVS_FAULT_PSG_STATIC_CARRY
+/* Named fault PSG_STATIC_CARRY: the index of the next chain step lives in the file, not in the row. */
+static uint64_t ivs_psg_log_carry_index;
+#endif
 
 static void ivs_psglog_put_be64(uint8_t *d, uint64_t v)
 {
@@ -36,6 +43,22 @@ void ivs_psg_log_append(ivs_psg_sink *sink, ivs_psg_logrow *row, uint64_t tick, 
   uint8_t pre[4u + 1u + 32u + 8u + 4u + IVS_PSG_LOG_RECORD_BYTES];
   uint64_t index = row->count;
   uint32_t n = 0u;
+#ifdef IVS_FAULT_PSG_REG_WRITE_NOT_LOGGED
+  (void)sink;
+  (void)row;
+  (void)tick;
+  (void)value;
+  (void)addr;
+  (void)source;
+  return; /* named fault: a guest write to the PSG leaves no record and no chain step */
+#endif
+#ifdef IVS_FAULT_PSG_STATIC_CARRY
+  if (row->count == 0u) {
+    ivs_psg_log_carry_index = 0u;
+  }
+  index = ivs_psg_log_carry_index;
+  ivs_psg_log_carry_index = index + 1u;
+#endif
   ivs_psglog_put_be64(rec, tick);
   rec[8] = (uint8_t)((value >> 8) & 0xFFu);
   rec[9] = (uint8_t)(value & 0xFFu);

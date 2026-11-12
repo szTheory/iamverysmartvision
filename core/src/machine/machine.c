@@ -346,6 +346,9 @@ void ivs_machine_profile_env(const ivs_profile_desc *p, ivs_run_env *env)
    * (W_log = ceil(F / g) + ceil(U / g) + 1, generator-checked and probed) of 16 bytes. */
   if (p->psg_log_records_per_frame != 0u) {
     uint32_t records = p->psg_log_records_per_frame;
+#ifdef IVS_FAULT_PSG_LOG_RECORDS_PER_FRAME_CUT
+    records /= 2u; /* named fault: the env publishes half of W_log, below the instruction-only write density */
+#endif
     env->psg_log_bytes_per_frame = records * IVS_PSG_LOG_RECORD_BYTES;
   }
 }
