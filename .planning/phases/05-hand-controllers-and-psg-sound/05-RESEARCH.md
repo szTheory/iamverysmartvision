@@ -283,7 +283,7 @@ Wave suggestion: W1 05-01; W2 05-02; W3 05-03; W4 05-04; W5 05-05; W6 05-06; W7 
 
 ### Pitfall 5: capacity formulas rest on U and g
 **What goes wrong:** U and g are properties of the CPU model plus the bus; Phase 6 will make waits real. With U = 48 baked in, a Phase 6 stall silently makes the audio and log capacity too small and the "never expected" INTERNAL stop becomes reachable.
-**How to avoid:** derive U from profile fields (`(max base cycles 12 + 3 x bus.wait_limit_cpu_cycles) x ticks_per_cpu_cycle` = 468) or pin 468 with a property test through the CPU model with a synthetic bus at the wait limit AND assert that the real memsys bus never waits; g = 36 holds with waits. Record in the SUMMARY which one was published (Open Question 1). Note the D-17 NULL plus 0 amendment changes Phase 4 tests that expected refusal for NULL/0 with a nonzero layout (`run.buffers.*`).
+**How to avoid:** derive U from profile fields (`(max base cycles 12 + 3 x bus.wait_limit_cpu_cycles) x ticks_per_cpu_cycle` = 468) or pin 468 with a property test through the CPU model with a synthetic bus at the wait limit AND assert that the real memsys bus never waits; g = 36 holds for instruction-only writers with waits; the published bound is g = 28 once interrupt-entry units are included (checker round 1 W2, CONTEXT plans 05-06/05-08). Record in the SUMMARY which one was published (Open Question 1). Note the D-17 NULL plus 0 amendment changes Phase 4 tests that expected refusal for NULL/0 with a nonzero layout (`run.buffers.*`).
 
 ### Pitfall 6: the memmap probe sees per-register widths
 **What goes wrong:** `memmap.dump.matches-literal` probes every address with raw pokes and bus writes and merges adjacent equal tuples; PSG registers have masks `$00FF`, `$000F`, `$001F`, `$003F`, a read-masked shape register and port registers whose reads depend on direction and pull-down (not on the backing). A single `psg w=8` literal row fails the dump comparison.
@@ -432,9 +432,9 @@ Full map, ids and sampling: `05-VALIDATION.md`. Summary:
 | A6 | Hosted `dash` and `g++` as in Phase 4 | Environment | hosted-only failure class, caught by gate-linux |
 | A7 | `fopen` mode `"wx"` (C11 exclusive create) is accepted by glibc and Apple libc under `-std=c17`; otherwise `open(O_EXCL)` in `hostio.c`, which already holds POSIX | D-20 | `hostio.c` change only |
 
-## Open Questions (recommendations)
+## Open Questions (RESOLVED)
 
-1. **U for the capacity formula (D-17).** Real bus: 48 ticks. Synthetic maximal waits: 468 ticks. Recommendation: publish 468 (profile-derived from `bus.wait_limit_cpu_cycles`), property-test the CPU at the wait limit, and add a test that the memsys bus returns wait 0 so a Phase 6 change fails loudly; g = 36 ticks regardless.
+1. **U for the capacity formula (D-17).** Real bus: 48 ticks. Synthetic maximal waits: 468 ticks. Recommendation: publish 468 (profile-derived from `bus.wait_limit_cpu_cycles`), property-test the CPU at the wait limit, and add a test that the memsys bus returns wait 0 so a Phase 6 change fails loudly; g = 36 ticks for instruction-only writers, superseded by g = 28 (instruction write followed by an interrupt-entry write) as the published bound.
 2. **Seam catch-up.** Recommendation: eager at every unit end (Pattern 2); the digest then needs no caught-up-tick row, but a derived `next_sample_index` row is cheap insurance and detects a missed catch-up.
 3. **Where does the reference converter live?** D-21 says `tools/pcm`. Recommendation: honor it and extend, in the same plan with one control each: the integrity anchor (`tools/(pack|cart|pcm)/`, integrity.cmake:73), the `c-build` unlisted-source guard (c-build.sh:42), and a runner-scan allowance for `pcm/ivs_refpcm.h`; faults for it are impossible outside core and runner modules, so use judge self-controls (`runner.judge.*`) instead. Alternative: `runner/refpcm.[ch]` gets all four guards free; nothing in D-21's substance changes (outside the core, not installed). Planner's choice; either is gate-checkable.
 4. **Log byte order.** Recommendation: big-endian, written byte by byte, pinned by a hand-framed test and used by the domain-19 chain.

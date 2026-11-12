@@ -234,7 +234,21 @@ Plans:
   3. An input script applied at declared machine-time boundaries gives the same guest-visible results and digests whether the host delivers it in one call or many slices.
   4. Each PSG register, tone, noise and envelope rule has a passing vector. Behaviors without a primary source (period 0, envelope select, noise LFSR, DAC levels) appear as tier-tagged profile data, not hard-coded constants.
   5. A run emits a cycle-stamped PSG register-write log and integer chip-rate samples as raw audio. Any PCM conversion sits where D7 puts it and is outside the raw-audio evidence path.
-**Plans**: TBD
+**Plans**: 0/12 plans complete in 12 sequential waves
+
+Plans:
+- [ ] 05-01-PLAN.md — Oracle-first plan (D-23, A-12)
+- [ ] 05-02-PLAN.md — Behaviour-neutral ABI growth (A-12)
+- [ ] 05-03-PLAN.md — State and digest foundation (A-12)
+- [ ] 05-04-PLAN.md — PSG register file, memmap flip and the new suite `psg` (A-12)
+- [ ] 05-05-PLAN.md — Input byte and port reads (A-12)
+- [ ] 05-06-PLAN.md — Tone, mixer, amplitude, sampling and audio live (A-12)
+- [ ] 05-07-PLAN.md — Noise and envelope (A-12)
+- [ ] 05-08-PLAN.md — Write log (A-12)
+- [ ] 05-09-PLAN.md — Runner and scenarios (A-12)
+- [ ] 05-10-PLAN.md — Reference PCM converter and WAV helper (A-12)
+- [ ] 05-11-PLAN.md — Fixture and end to end (A-12)
+- [ ] 05-12-PLAN.md — Close-out (A-12)
 
 ### Phase 6: STIC Video First Pass
 **Goal**: The STIC control path, access windows and bus-steal timing run against profile constants. At a defined machine-time boundary, the core produces a raw palette-index framebuffer that renders background cards in Foreground/Background and Color Stack modes, checked against hand-derived expected frames.
