@@ -3,6 +3,8 @@
 # Plan 05-04: one id per vector of data/psg/vectors/regs.txt (psg.reg.*, 28) and reset.txt (psg.reset.*, 2),
 # evaluated through the memory-system bus against the register-address literal; the register-map,
 # reset, bus, no-mirror, purity and guest tests; and the two judge self-controls (psg.judge.*).
+# Plan 05-05: the port family (data/psg/vectors/port.txt, psg.port.*, 10), evaluated through the bus READ with
+# the pins of the vector's pin key and the direction bits of R7, and its judge self-control.
 # The vector families wired into the suite are the ones NOT listed in data/psg/vectors-pending.ids.
 psg.regmap.matches-literal
 psg.reset.power-on-zero
@@ -44,3 +46,14 @@ psg.reg.mixer-high-bits
 psg.reg.noise-reads-5-bits
 psg.reset.regs-zero
 psg.reset.ports-input-after-reset
+psg.port.idle-ff
+psg.port.pin-low-0
+psg.port.pin-low-1
+psg.port.independent
+psg.port.upper-byte-zero
+psg.port.output-reads-latch-0
+psg.port.output-reads-latch-1
+psg.port.write-in-input-latch-only
+psg.port.back-to-input
+psg.port.direction-bit-order
+psg.judge.port-row-changed

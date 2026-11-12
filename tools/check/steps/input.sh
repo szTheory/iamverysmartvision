@@ -2,11 +2,13 @@
 # SPDX-License-Identifier: MIT
 # Step input: the controller literal and its policy inventory (D-02, D-03; plan 05-01; tools/check/input.cmake).
 # A pure checker (H6): it reads only the tree under test (FILELIST paths and data/expected/*.ids) and writes
-# nothing. Plan 05-05 adds the comparison of the literal with the profile fields and the generated table.
+# nothing. Plan 05-05 adds the comparison of the literal with the profile fields input.control.* (the generated
+# table is compared with the literal by suite input, input.table.matches-literal).
 # Tokens: input-literal-grammar, input-literal-name-set, input-pins-mismatch, input-wiki-mismatch,
-#   input-byte-mismatch, input-tag, input-source-unknown, input-anchor, input-policy-inventory
+#   input-byte-mismatch, input-tag, input-source-unknown, input-anchor, input-policy-inventory and, from
+#   plan 05-05, input-profile-mask-mismatch, input-profile-field-missing, input-profile-field-shape
 #   (rules in input.cmake).
-# Stats: input-rows=<rows over all literal files> input-policies=<result classes>.
+# Stats: input-rows=<rows over all literal files> input-policies=<result classes> input-profile-fields=<fields>.
 LC_ALL=C; export LC_ALL
 : "${ROOT:?ROOT is not set}"
 : "${CHECK_DIR:?CHECK_DIR is not set}"

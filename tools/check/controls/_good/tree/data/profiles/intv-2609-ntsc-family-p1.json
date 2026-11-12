@@ -152,6 +152,28 @@
       "resolving_evidence": "pending: toy evidence",
       "revisit_trigger": "when toy evidence exists",
       "decision": null
+    },
+    "input.control.key_1": {
+      "value": {
+        "lines": "$81"
+      },
+      "tag": "tier2-first-party-adjacent",
+      "cite": "SRC-bsr-2609",
+      "conflict": null,
+      "resolving_evidence": null,
+      "revisit_trigger": null,
+      "decision": null
+    },
+    "input.control.key_2": {
+      "value": {
+        "lines": "$41"
+      },
+      "tag": "tier2-first-party-adjacent",
+      "cite": "SRC-bsr-2609",
+      "conflict": null,
+      "resolving_evidence": null,
+      "revisit_trigger": null,
+      "decision": null
     }
   }
 }

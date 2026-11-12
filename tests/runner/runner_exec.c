@@ -14,7 +14,7 @@
  *   (harness-fail, exit 14), expect-load-refusal and sha-match (pass), cancel (exit 12).
  *   Report: key-order (the pinned key sequence, written out here independently of report.c),
  *   no-paths, repeat-identical (byte-equal apart from host.calls), overshoot, units (cycles and
- *   frames sugar), input-schedule (only the input lines and the INPUT digest change),
+ *   frames sugar), input-schedule (only the input lines and the INPUT, MEM and composite digests change),
  *   two-steps and assert-forms. */
 #include <stdint.h>
 #include <stdio.h>
@@ -980,9 +980,14 @@ static int ex_no_paths(void)
  * the input lines. */
 static int ex_input_schedule(void)
 {
+  /* digest.mem and digest.composite join the list in plan 05-05: the words are guest-visible, so the
+   * pull-down masks of the two ports (MEM rows) differ while a controller word is held; the scenario
+   * holds nonzero words at its end. The CPU and image digests still do not see them (the diagnostic
+   * never reads the ports). */
   static const char *const may_differ[] = {"digest.input",       "input.events",       "input.consumed",
                                            "input.controller.0", "input.controller.1", "input.controller.2",
-                                           "input.controller.3", "host.calls"};
+                                           "input.controller.3", "host.calls",         "digest.mem",
+                                           "digest.composite"};
   fake_host a;
   fake_host b;
   char diag[RX_SCN_CAP];

@@ -2,3 +2,5 @@ model
 stic.part
 board_revision
 psg.regmap
+input.control.key_1
+input.control.key_2

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Controller literal checker (D-02, D-03; plan 05-01). Pure and text only: it reads the tree under test
 # (data/input/*.literal.txt named by FILELIST, data/expected/{input-bits,input-policies,sources,
-# source-authority-tags}.ids), writes nothing and never uses string(JSON).
+# source-authority-tags}.ids and, from plan 05-05, the profiles data/profiles/*.json named by FILELIST), writes nothing.
 # Inputs (passed with -D): ROOT (tree under test), FILELIST (repo-relative paths, one per line),
 # CHECK_DIR (the real tools/check).
 # Row grammar (documented in the header of every literal file):
@@ -20,8 +20,16 @@
 #   KEY_1 is not 7E, or KEY_1 with KEY_9 (FF XOR (cleared OR cleared)) is not 5A   input-anchor
 #   data/expected/input-policies.ids differs from the D-03 table of result
 #   classes and tags below                                                   input-policy-inventory
-# Stats: input-rows=<rows over all literal files> input-policies=<classes>.
-# The comparison with the profile fields and the generated table is added by plan 05-05.
+#   (plan 05-05) the profile fields input.control.<name> (the member names of data/profiles/*.json, read
+#   with string(JSON)) against the literal rows, when the tree has literal rows:
+#   a profile `lines` mask differs from the literal `cleared` of the same name  input-profile-mask-mismatch
+#   a literal control without its field input.control.<lower name>, or an
+#   input.control.* field with no literal row                                  input-profile-field-missing
+#   an input.control.* value that is not exactly an object with the single
+#   string key lines holding a dollar sign and two uppercase hex digits (this
+#   also proves the field names are the pinned control names and carry no
+#   host vocabulary: a name outside the literal is a missing-row finding)      input-profile-field-shape
+# Stats: input-rows=<rows over all literal files> input-policies=<classes> input-profile-fields=<fields>.
 cmake_minimum_required(VERSION 3.25)
 
 foreach(required ROOT FILELIST CHECK_DIR)
@@ -33,7 +41,8 @@ include("${CMAKE_CURRENT_LIST_DIR}/lib.cmake")
 
 set(CAP 20)
 set(ITOKENS input-literal-grammar input-literal-name-set input-pins-mismatch input-wiki-mismatch
-  input-byte-mismatch input-tag input-source-unknown input-anchor input-policy-inventory)
+  input-byte-mismatch input-tag input-source-unknown input-anchor input-policy-inventory
+  input-profile-mask-mismatch input-profile-field-missing input-profile-field-shape)
 
 function(ifail token detail)
   gate_incr("tok_${token}")
@@ -115,6 +124,7 @@ if(NOT LITS)
 endif()
 
 set(n_rows 0)
+set(LIT_NAMES "")
 foreach(rel IN LISTS LITS)
   file(READ "${ROOT}/${rel}" txt)
   gate_lines(lines "${txt}")
@@ -146,6 +156,7 @@ foreach(rel IN LISTS LITS)
       ifail(input-literal-name-set "duplicate ${nm}")
     endif()
     list(APPEND seen "${nm}")
+    list(APPEND LIT_NAMES "${nm}")
     if(NOT nm IN_LIST NAMES)
       ifail(input-literal-name-set "unknown ${nm}")
     endif()
@@ -177,6 +188,7 @@ foreach(rel IN LISTS LITS)
     if(NOT src IN_LIST SRC_IDS)
       ifail(input-source-unknown "${at} ${nm}: ${src}")
     endif()
+    set(LIT_CLEARED_${nm} "${cleared}")
     if(nm STREQUAL "KEY_1")
       set(CLEARED_KEY_1 "${cleared}")
       set(BYTE_KEY_1 "${byte}")
@@ -205,6 +217,82 @@ foreach(rel IN LISTS LITS)
     endif()
   endif()
 endforeach()
+
+# Profile fields input.control.<name> against the literal rows (plan 05-05, D-02). Active when the tree has
+# literal rows; every data/profiles/*.json named by FILELIST is compared.
+set(n_pfields 0)
+if(LIT_NAMES)
+  foreach(p IN LISTS paths)
+    if(NOT p MATCHES "^data/profiles/[^/]+[.]json$" OR NOT EXISTS "${ROOT}/${p}")
+      continue()
+    endif()
+    file(READ "${ROOT}/${p}" pdoc)
+    string(JSON nfields ERROR_VARIABLE perr LENGTH "${pdoc}" fields)
+    if(NOT "${perr}" STREQUAL "NOTFOUND")
+      ifail(input-profile-field-missing "${p} has no fields object")
+      continue()
+    endif()
+    # The input.control.* members, by their lower case names.
+    set(have "")
+    if(nfields GREATER 0)
+      math(EXPR plast "${nfields} - 1")
+      foreach(i RANGE ${plast})
+        string(JSON fk MEMBER "${pdoc}" fields ${i})
+        if(fk MATCHES "^input[.]control[.](.*)$")
+          list(APPEND have "${CMAKE_MATCH_1}")
+        endif()
+      endforeach()
+    endif()
+    # Every literal control has its field.
+    set(want_lower "")
+    foreach(nm IN LISTS LIT_NAMES)
+      string(TOLOWER "${nm}" lower)
+      list(APPEND want_lower "${lower}")
+      if(NOT lower IN_LIST have)
+        ifail(input-profile-field-missing "${p}: no field input.control.${lower} for the literal row ${nm}")
+      endif()
+    endforeach()
+    # Every field has its literal row, the shape of one string key lines and the literal's mask.
+    foreach(h IN LISTS have)
+      math(EXPR n_pfields "${n_pfields} + 1")
+      if(NOT h IN_LIST want_lower)
+        ifail(input-profile-field-missing "${p}: field input.control.${h} has no literal row")
+        continue()
+      endif()
+      string(TOUPPER "${h}" upper)
+      string(JSON vt ERROR_VARIABLE verr TYPE "${pdoc}" fields "input.control.${h}" value)
+      if(NOT "${verr}" STREQUAL "NOTFOUND" OR NOT vt STREQUAL "OBJECT")
+        ifail(input-profile-field-shape "${p}: input.control.${h} value is not an object")
+        continue()
+      endif()
+      string(JSON vobj GET "${pdoc}" fields "input.control.${h}" value)
+      string(JSON nk LENGTH "${vobj}")
+      set(shape_ok TRUE)
+      if(NOT nk EQUAL 1)
+        set(shape_ok FALSE)
+      else()
+        string(JSON k0 MEMBER "${vobj}" 0)
+        string(JSON lt ERROR_VARIABLE lerr TYPE "${vobj}" lines)
+        if(NOT k0 STREQUAL "lines" OR NOT "${lerr}" STREQUAL "NOTFOUND" OR NOT lt STREQUAL "STRING")
+          set(shape_ok FALSE)
+        endif()
+      endif()
+      if(NOT shape_ok)
+        ifail(input-profile-field-shape "${p}: input.control.${h} value is not exactly one string key lines")
+        continue()
+      endif()
+      string(JSON lines GET "${vobj}" lines)
+      if(NOT lines MATCHES "^[$]([0-9A-F][0-9A-F])$")
+        ifail(input-profile-field-shape "${p}: input.control.${h} lines '${lines}' is not a dollar sign and two uppercase hex digits")
+        continue()
+      endif()
+      set(pmask "${CMAKE_MATCH_1}")
+      if(NOT pmask STREQUAL "${LIT_CLEARED_${upper}}")
+        ifail(input-profile-mask-mismatch "${p}: input.control.${h} lines ${pmask}, the literal cleared ${LIT_CLEARED_${upper}}")
+      endif()
+    endforeach()
+  endforeach()
+endif()
 
 # Policy classes (data/expected/input-policies.ids): exact set and tags of the D-03 table.
 set(n_pol 0)
@@ -257,4 +345,5 @@ endforeach()
 
 gate_stat(input-rows ${n_rows})
 gate_stat(input-policies ${n_pol})
+gate_stat(input-profile-fields ${n_pfields})
 gate_finish(input)

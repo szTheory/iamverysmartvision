@@ -1,0 +1,179 @@
+{
+  "schema_version": 1,
+  "id": "good-profile",
+  "selected_by": "D3, a delegated decision recorded in the Decision Register",
+  "note": "Known-good control tree profile.",
+  "fields": {
+    "model": {
+      "value": "Example model",
+      "tag": "tier2-first-party-adjacent",
+      "cite": "SRC-bsr-2609",
+      "conflict": null,
+      "resolving_evidence": null,
+      "revisit_trigger": null,
+      "decision": null
+    },
+    "stic.part": {
+      "value": "Example STIC",
+      "tag": "tier1-primary-doc",
+      "cite": "SRC-gi-1980-catalog pdf 191",
+      "conflict": null,
+      "resolving_evidence": null,
+      "revisit_trigger": null,
+      "decision": null
+    },
+    "board_revision": {
+      "value": "unspecified",
+      "tag": "unknown-default-chosen",
+      "cite": "none: example default",
+      "conflict": null,
+      "resolving_evidence": "pending: example evidence",
+      "revisit_trigger": "when example evidence exists",
+      "decision": null
+    },
+    "psg.regmap": {
+      "value": [
+        {
+          "addr": "$01F0",
+          "name": "tone-a-fine",
+          "gi_octal": "R0",
+          "wmask": "$00FF",
+          "rmask": "$00FF"
+        },
+        {
+          "addr": "$01F1",
+          "name": "tone-b-fine",
+          "gi_octal": "R2",
+          "wmask": "$00FF",
+          "rmask": "$00FF"
+        },
+        {
+          "addr": "$01F2",
+          "name": "tone-c-fine",
+          "gi_octal": "R4",
+          "wmask": "$00FF",
+          "rmask": "$00FF"
+        },
+        {
+          "addr": "$01F3",
+          "name": "env-fine",
+          "gi_octal": "R13",
+          "wmask": "$00FF",
+          "rmask": "$00FF"
+        },
+        {
+          "addr": "$01F4",
+          "name": "tone-a-coarse",
+          "gi_octal": "R1",
+          "wmask": "$000F",
+          "rmask": "$000F"
+        },
+        {
+          "addr": "$01F5",
+          "name": "tone-b-coarse",
+          "gi_octal": "R3",
+          "wmask": "$000F",
+          "rmask": "$000F"
+        },
+        {
+          "addr": "$01F6",
+          "name": "tone-c-coarse",
+          "gi_octal": "R5",
+          "wmask": "$000F",
+          "rmask": "$000F"
+        },
+        {
+          "addr": "$01F7",
+          "name": "env-coarse",
+          "gi_octal": "R14",
+          "wmask": "$00FF",
+          "rmask": "$00FF"
+        },
+        {
+          "addr": "$01F8",
+          "name": "mixer-ports",
+          "gi_octal": "R7",
+          "wmask": "$00FF",
+          "rmask": "$00FF"
+        },
+        {
+          "addr": "$01F9",
+          "name": "noise-period",
+          "gi_octal": "R6",
+          "wmask": "$001F",
+          "rmask": "$001F"
+        },
+        {
+          "addr": "$01FA",
+          "name": "env-shape",
+          "gi_octal": "R15",
+          "wmask": "$000F",
+          "rmask": "$0000"
+        },
+        {
+          "addr": "$01FB",
+          "name": "amp-a",
+          "gi_octal": "R10",
+          "wmask": "$003F",
+          "rmask": "$003F"
+        },
+        {
+          "addr": "$01FC",
+          "name": "amp-b",
+          "gi_octal": "R11",
+          "wmask": "$003F",
+          "rmask": "$003F"
+        },
+        {
+          "addr": "$01FD",
+          "name": "amp-c",
+          "gi_octal": "R12",
+          "wmask": "$003F",
+          "rmask": "$003F"
+        },
+        {
+          "addr": "$01FE",
+          "name": "port-a",
+          "gi_octal": "R16",
+          "wmask": "$00FF",
+          "rmask": "$00FF"
+        },
+        {
+          "addr": "$01FF",
+          "name": "port-b",
+          "gi_octal": "R17",
+          "wmask": "$00FF",
+          "rmask": "$00FF"
+        }
+      ],
+      "tag": "unknown-default-chosen",
+      "cite": "none: toy register map",
+      "conflict": null,
+      "resolving_evidence": "pending: toy evidence",
+      "revisit_trigger": "when toy evidence exists",
+      "decision": null
+    },
+    "input.control.key_1": {
+      "value": {
+        "lines": "$80"
+      },
+      "tag": "tier2-first-party-adjacent",
+      "cite": "SRC-bsr-2609",
+      "conflict": null,
+      "resolving_evidence": null,
+      "revisit_trigger": null,
+      "decision": null
+    },
+    "input.control.key_2": {
+      "value": {
+        "lines": "$41"
+      },
+      "tag": "tier2-first-party-adjacent",
+      "cite": "SRC-bsr-2609",
+      "conflict": null,
+      "resolving_evidence": null,
+      "revisit_trigger": null,
+      "decision": null
+    }
+  }
+}

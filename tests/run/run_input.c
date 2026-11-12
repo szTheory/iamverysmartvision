@@ -1288,34 +1288,41 @@ static int ri_powered_ports(ivs_ms_inst *x)
 }
 
 #define RI_INV_EVENTS 10u
-#define RI_INV_UNITS 64u
+#define RI_INV_UNITS 72u
 
-/* Phase 4 boundary (D-15): the real profile registers no consumer of input, so input is recorded
- * and digested but guest-invisible. Program C reads $01FE and $01FF in a loop; one instance runs
- * with no event, its twin with ten events toggling words 0 and 1, both one unit per call (the
- * twin resubmits its unconsumed suffix). After every call the CPU states (register trace) are
- * equal; at the end the CPU, MEM and composite digests, the peeked RAM and every instance byte
- * outside the INPUT row are equal, the twin applied all ten events, and only the INPUT digest
- * differs. Phase 5 replaces this case when the control-to-byte table makes input guest-visible:
- * it then becomes a positive read test of the PSG ports (the D-15 revisit point). */
-static int ri_guest_invisible(void)
+/* Phase 5 (plan 05-05, D-01, D-04): the words are guest-visible. This case replaces the Phase 4
+ * run.input.guest-invisible, whose three digest equalities (CPU, MEM, composite) are deliberately
+ * inverted. Program C reads $01FE and $01FF in a loop; one instance runs with no event, its twin
+ * with ten events alternating between zero words (even) and nonzero words on both ports (odd, so the
+ * last one leaves the pins held), both one unit per call (the twin resubmits its unconsumed suffix).
+ * Until the first nonzero event takes effect (the first unit that starts at or after tick 220) the CPU
+ * states are equal after every call; afterwards the register trace diverges. At the end the CPU, MEM
+ * and composite digests and the INPUT digest all differ, the twin applied all ten events, the guest
+ * RAM holds different port reads and what each guest stored is what its port reads now. The whole
+ * instance storage is equal outside four areas: the INPUT row (the chain, as in Phase 4), the CPU
+ * (registers that hold the bytes read), the two RAM words the program stores to, and
+ * mem.port_pulldown, the second area that now differs (the pull-down masks, MEM rows of plan 05-03). */
+static int ri_guest_visible(void)
 {
   ivs_input_event ev[RI_INV_EVENTS];
   ivs_ms_inst x;
   ivs_ms_inst y;
   uint32_t next = 0u;
   uint32_t k;
+  uint64_t start;
+  int diverged = 0;
   uint8_t dx[32];
   uint8_t dy[32];
   uint16_t px[4];
   uint16_t py[4];
-  size_t off = offsetof(struct ivs_machine, obs) + offsetof(ivs_machine_obs, input);
-  size_t len = sizeof(ivs_machine_obs_input);
-  static const uint32_t dom_same[3] = {IVS_DIGEST_CPU, IVS_DIGEST_MEM, IVS_DIGEST_COMPOSITE};
+  static uint8_t cy[IVS_MACHINE_BYTES];
+  struct ivs_machine *ix;
+  struct ivs_machine *iy;
+  static const uint32_t dom_differ[4] = {IVS_DIGEST_CPU, IVS_DIGEST_MEM, IVS_DIGEST_COMPOSITE, IVS_DIGEST_INPUT};
   int rc = IVS_TEST_FAIL;
   for (k = 0u; k < RI_INV_EVENTS; k++) {
     static const uint32_t on[4] = {0x00000FFFu, 0x0001F00Fu, 0u, 0u};
-    ri_event(&ev[k], 20u + 200u * k, (k & 1u) == 0u ? on : ri_zero);
+    ri_event(&ev[k], 20u + 200u * k, (k & 1u) == 1u ? on : ri_zero);
   }
   IVS_CHECK(ri_powered_ports(&x));
   if (!ri_powered_ports(&y)) {
@@ -1326,45 +1333,56 @@ static int ri_guest_invisible(void)
     ivs_run_report rx;
     ivs_run_report ry;
     ivs_cpu_state_report cx;
-    ivs_cpu_state_report cy;
-    uint64_t target = ri_now(x.m) + 1u;
+    ivs_cpu_state_report cy_state;
+    uint64_t target;
+    start = ri_now(x.m);
+    target = start + 1u;
     RI_CHECK(ri_run(x.m, 0u, target, NULL, 0u, &rx) == IVS_OK && rx.units_executed == 1u);
     RI_CHECK(ri_run(y.m, 0u, target, ev + next, RI_INV_EVENTS - next, &ry) == IVS_OK && ry.units_executed == 1u);
     next += ry.input_consumed;
     RI_CHECK(rx.now_ticks == ry.now_ticks && rx.stop_reason == ry.stop_reason);
     memset(&cx, 0, sizeof cx);
-    memset(&cy, 0, sizeof cy);
+    memset(&cy_state, 0, sizeof cy_state);
     cx.struct_size = (uint32_t)sizeof cx;
-    cy.struct_size = (uint32_t)sizeof cy;
-    RI_CHECK(ivs_machine_cpu_state(x.m, &cx) == IVS_OK && ivs_machine_cpu_state(y.m, &cy) == IVS_OK);
-    if (memcmp(&cx, &cy, sizeof cx) != 0) {
-      ivs_test_diag("register trace differs after unit %u", (unsigned)k);
-      goto done;
+    cy_state.struct_size = (uint32_t)sizeof cy_state;
+    RI_CHECK(ivs_machine_cpu_state(x.m, &cx) == IVS_OK && ivs_machine_cpu_state(y.m, &cy_state) == IVS_OK);
+    if (memcmp(&cx, &cy_state, sizeof cx) != 0) {
+      if (start < 220u) {
+        ivs_test_diag("register trace differs after the unit at %llu, before any nonzero word was applied",
+                      (unsigned long long)start);
+        goto done;
+      }
+      diverged = 1;
     }
   }
+  RI_CHECK(diverged);
   RI_CHECK(next == RI_INV_EVENTS && y.m->obs.input.count == RI_INV_EVENTS);
-  {
-    ivs_cpu_state_report c;
-    memset(&c, 0, sizeof c);
-    c.struct_size = (uint32_t)sizeof c;
-    RI_CHECK(ivs_machine_cpu_state(x.m, &c) == IVS_OK);
-    RI_CHECK(c.r[3] >= 8u && c.r[7] >= 0x1000u && c.r[7] <= 0x100Au); /* program C looped */
+  for (k = 0u; k < 4u; k++) {
+    RI_CHECK(ivs_machine_state_digest(x.m, dom_differ[k], dx) == IVS_OK);
+    RI_CHECK(ivs_machine_state_digest(y.m, dom_differ[k], dy) == IVS_OK);
+    RI_CHECK(memcmp(dx, dy, 32u) != 0);
   }
-  for (k = 0u; k < 3u; k++) {
-    RI_CHECK(ivs_machine_state_digest(x.m, dom_same[k], dx) == IVS_OK);
-    RI_CHECK(ivs_machine_state_digest(y.m, dom_same[k], dy) == IVS_OK);
-    RI_CHECK(memcmp(dx, dy, 32u) == 0);
-  }
-  RI_CHECK(ivs_machine_state_digest(x.m, IVS_DIGEST_INPUT, dx) == IVS_OK);
-  RI_CHECK(ivs_machine_state_digest(y.m, IVS_DIGEST_INPUT, dy) == IVS_OK);
-  RI_CHECK(memcmp(dx, dy, 32u) != 0);
   RI_CHECK(ivs_machine_peek(x.m, 0x0200u, 2u, px) == IVS_OK && ivs_machine_peek(x.m, 0x01FEu, 2u, px + 2) == IVS_OK);
   RI_CHECK(ivs_machine_peek(y.m, 0x0200u, 2u, py) == IVS_OK && ivs_machine_peek(y.m, 0x01FEu, 2u, py + 2) == IVS_OK);
-  RI_CHECK(memcmp(px, py, sizeof px) == 0);
-  RI_CHECK(px[0] == px[2] && px[1] == px[3]); /* the program stored what the ports read */
-  RI_CHECK(memcmp(x.storage, y.storage, off) == 0);
-  RI_CHECK(memcmp((const uint8_t *)x.storage + off + len, (const uint8_t *)y.storage + off + len,
-                  IVS_MACHINE_BYTES - off - len) == 0);
+  RI_CHECK(px[0] == 0x00FFu && px[1] == 0x00FFu && px[2] == 0x00FFu && px[3] == 0x00FFu); /* no event: idle */
+  RI_CHECK(py[2] != 0x00FFu && py[3] != 0x00FFu);                                          /* the pins are held */
+  RI_CHECK(py[0] == py[2] && py[1] == py[3]); /* the program stored what the ports read */
+  /* the whole storage outside the four areas is equal: y's copy takes x's bytes there first */
+  ix = (struct ivs_machine *)(void *)x.storage;
+  iy = (struct ivs_machine *)(void *)y.storage;
+  memcpy(cy, y.storage, sizeof cy);
+  memcpy(cy + offsetof(struct ivs_machine, obs) + offsetof(ivs_machine_obs, input),
+         (const uint8_t *)x.storage + offsetof(struct ivs_machine, obs) + offsetof(ivs_machine_obs, input),
+         sizeof ix->obs.input);
+  memcpy(cy + offsetof(struct ivs_machine, cpu), (const uint8_t *)x.storage + offsetof(struct ivs_machine, cpu),
+         sizeof ix->cpu);
+  memcpy(cy + offsetof(struct ivs_machine, mem) + offsetof(ivs_memsys, port_pulldown),
+         (const uint8_t *)x.storage + offsetof(struct ivs_machine, mem) + offsetof(ivs_memsys, port_pulldown),
+         sizeof ix->mem.port_pulldown);
+  memcpy(cy + offsetof(struct ivs_machine, mem) + offsetof(ivs_memsys, sysram),
+         (const uint8_t *)x.storage + offsetof(struct ivs_machine, mem) + offsetof(ivs_memsys, sysram), 2u * sizeof(uint16_t));
+  RI_CHECK(memcmp(cy, x.storage, sizeof cy) == 0);
+  RI_CHECK(iy->mem.port_pulldown[0] != 0u && ix->mem.port_pulldown[0] == 0u); /* the second differing area */
   rc = IVS_TEST_PASS;
 done:
   ivs_ms_free(&x);
@@ -1397,7 +1415,7 @@ const ivs_test_case ivs_run_input_cases[] = {
     {"run.input.refuse.event-reserved", ri_refuse_event_reserved, NULL},
     {"run.input.refuse.extra-controller-word", ri_refuse_extra_controller, NULL},
     {"run.input.extra-word-zero-ok", ri_extra_word_zero_ok, NULL},
-    {"run.input.guest-invisible", ri_guest_invisible, NULL},
+    {"run.input.guest-visible", ri_guest_visible, NULL},
     {"run.prec.unsupported-over-events", ri_prec_unsupported_over_events, NULL},
     {"run.prec.buffer-over-events", ri_prec_buffer_over_events, NULL},
     {"run.prec.events-over-state", ri_prec_events_over_state, NULL},

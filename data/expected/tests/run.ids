@@ -172,7 +172,7 @@ run.input.refuse.extra-controller-word
 run.input.extra-word-zero-ok
 # Phase 4 boundary (D-15): a stand-in program reading $01FE and $01FF runs equal with and without
 # ten events (register trace, CPU, MEM and composite digests, RAM); only the INPUT digest differs.
-run.input.guest-invisible
+run.input.guest-visible
 run.prec.unsupported-over-events
 run.prec.buffer-over-events
 run.prec.events-over-state

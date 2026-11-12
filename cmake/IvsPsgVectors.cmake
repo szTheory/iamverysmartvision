@@ -4,17 +4,21 @@
 # writes a C include for suite psg (tests/psg/psg_reg.c) to OUT (build tree only, never committed).
 # It never reads the profile, the core headers, a generated table or a core output: the expected
 # values of the suite come from these two sourced text files only.
-# Usage: cmake -DROOT=<repo> -DOUT=<file> -DFAMILY=<reg|reset> -P cmake/IvsPsgVectors.cmake
+# Usage: cmake -DROOT=<repo> -DOUT=<file> -DFAMILY=<reg|reset|port> -P cmake/IvsPsgVectors.cmake
 #   FAMILY  reg     data/psg/vectors/regs.txt   ids psg.reg.*
 #           reset   data/psg/vectors/reset.txt  ids psg.reset.*
-# Later plans extend the family list (port, tone, mix, amp, noise, env, dac, ampenv, reseng).
+#           port    data/psg/vectors/port.txt   ids psg.port.*  (plan 05-05: the optional vector key
+#                   pin=<port>:<HH>, the driven-low mask of controller port 0 or 1 applied before the reads;
+#                   the reads of $01FE and $01FF follow the pins and the direction bits)
+# Later plans extend the family list (tone, mix, amp, noise, env, dac, ampenv, reseng).
 #
 # Line grammar (the closed grammar of the vector file headers and of the psg-vectors step):
 #   V <id> rule=<PSG-Rnn> kind=<source|policy> tier=<tier> cite=<cite> set=<AAAA:HHHH[@<step>][+...]|->
 #     [pin=<port>:<HH>] steps=<n> expect=<kind:values> derive=<words>
 # Evaluated here: expect kind `read` only (read:AAAA=HHHH[,AAAA=HHHH]*: the register store of each
-# address in order, upper byte 0), no pin and writes at step 0; a family that needs more is wired by
-# the plan that adds its engine, and this build stops on it rather than skip it.
+# address in order, upper byte 0; family port: the value a bus read returns), a pin only in family
+# port and writes at step 0; a family that needs more is wired by the plan that adds its engine, and
+# this build stops on it rather than skip it.
 #
 # Output (family name F): ivs_pv_F[IVS_PV_F_COUNT] of ivs_pv (tests/psg/psg_cases.h), each with its
 # write and read arrays; ivs_pv_sources_F[] (the vector file and the literal with their SHA-256, for
@@ -23,7 +27,7 @@
 # Fail closed (message `IvsPsgVectors: <file>[:<line>]: <reason>`): an unknown family; a missing
 # file; a line that is not blank, a comment or a vector line of the grammar; a repeated or
 # out-of-family id; a rule, kind, tier, cite, set, steps or expect that does not match its shape; a
-# pin; an expect kind other than read; a write or read address that is not an address of the literal;
+# pin outside family port, or one that is not <0|1>:<HH>; an expect kind other than read; a write or read address that is not an address of the literal;
 # a write at a step above 0; a read value above $00FF; a literal that does not have 16 rows
 # $01F0..$01FF in order, or whose mask is above $00FF.
 cmake_minimum_required(VERSION 3.25)
@@ -38,8 +42,10 @@ set(PV_FAMILY_reg_file "data/psg/vectors/regs.txt")
 set(PV_FAMILY_reg_prefix "psg.reg.")
 set(PV_FAMILY_reset_file "data/psg/vectors/reset.txt")
 set(PV_FAMILY_reset_prefix "psg.reset.")
-if(NOT FAMILY MATCHES "^(reg|reset)$")
-  message(FATAL_ERROR "IvsPsgVectors: family '${FAMILY}' is not wired (reg, reset)")
+set(PV_FAMILY_port_file "data/psg/vectors/port.txt")
+set(PV_FAMILY_port_prefix "psg.port.")
+if(NOT FAMILY MATCHES "^(reg|reset|port)$")
+  message(FATAL_ERROR "IvsPsgVectors: family '${FAMILY}' is not wired (reg, reset, port)")
 endif()
 set(PV_REL "${PV_FAMILY_${FAMILY}_file}")
 set(PV_PREFIX "${PV_FAMILY_${FAMILY}_prefix}")
@@ -167,8 +173,17 @@ foreach(l IN LISTS vlines)
     pv_fail("id ${id} is used twice")
   endif()
   list(APPEND ids_seen "${id}")
+  set(pin_port -1)
+  set(pin_mask 0)
   if(NOT "${pinv}" STREQUAL "")
-    pv_fail("${id}: a pin is not evaluated by family ${FAMILY}")
+    if(NOT FAMILY STREQUAL "port")
+      pv_fail("${id}: a pin is not evaluated by family ${FAMILY}")
+    endif()
+    if(NOT pinv MATCHES "^ pin=([01]):([0-9A-F][0-9A-F])$")
+      pv_fail("${id}: pin '${pinv}' is not pin=<0|1>:<HH>")
+    endif()
+    set(pin_port "${CMAKE_MATCH_1}")
+    math(EXPR pin_mask "0x${CMAKE_MATCH_2}")
   endif()
   if(NOT ekind STREQUAL "read")
     pv_fail("${id}: expect kind '${ekind}' is not evaluated by this build (read only)")
@@ -242,7 +257,7 @@ foreach(l IN LISTS vlines)
   if(kind STREQUAL "source")
     set(src_flag 1)
   endif()
-  string(APPEND table_c "  {\"${id}\", \"${rule}\", ${src_flag}u, ${wref}, ${n_w}u, ${rref}, ${n_r}u, ${steps}u},\n")
+  string(APPEND table_c "  {\"${id}\", \"${rule}\", ${src_flag}u, ${wref}, ${n_w}u, ${rref}, ${n_r}u, ${steps}u, ${pin_port}, ${pin_mask}u},\n")
   math(EXPR n_vec "${n_vec} + 1")
 endforeach()
 if(n_vec EQUAL 0)

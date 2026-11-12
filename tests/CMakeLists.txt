@@ -177,7 +177,7 @@ set_tests_properties(run PROPERTIES SKIP_RETURN_CODE 77)
 set(IVS_PSG_VEC_GENERATOR "${PROJECT_SOURCE_DIR}/cmake/IvsPsgVectors.cmake")
 set(IVS_PSG_REGMAP_LITERAL "${PROJECT_SOURCE_DIR}/data/psg/intv-2609-ntsc-family-p1.regmap.literal.txt")
 set(IVS_PSG_VEC_GENERATED "")
-foreach(fam_spec "reg:regs" "reset:reset")
+foreach(fam_spec "reg:regs" "reset:reset" "port:port")
   string(REPLACE ":" ";" fam_parts "${fam_spec}")
   list(GET fam_parts 0 fam)
   list(GET fam_parts 1 fam_stem)
@@ -192,7 +192,7 @@ foreach(fam_spec "reg:regs" "reset:reset")
     VERBATIM)
   list(APPEND IVS_PSG_VEC_GENERATED "${fam_inc}")
 endforeach()
-set(IVS_PSG_TEST_SOURCES psg/psg_main.c psg/psg_reg.c machine/machine_standin.c)
+set(IVS_PSG_TEST_SOURCES psg/psg_main.c psg/psg_reg.c psg/psg_port.c machine/machine_standin.c)
 add_executable(ivs_tests_psg ${IVS_PSG_TEST_SOURCES} ${IVS_PSG_VEC_GENERATED})
 target_include_directories(ivs_tests_psg PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(ivs_tests_psg PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
@@ -204,8 +204,17 @@ set_tests_properties(psg PROPERTIES SKIP_RETURN_CODE 77)
 # values come from the controller literal and the wiki statements only (never from the profile or the
 # generated table); it reuses the machine suite's stand-in content (machine/machine_standin.c). Its named
 # faults are data/expected/faults/input.ids, whose sites sit in core/src/machine and core/src/memmap.
-set(IVS_INPUT_TEST_SOURCES input/input_main.c input/input_single.c machine/machine_standin.c)
-add_executable(ivs_tests_input ${IVS_INPUT_TEST_SOURCES})
+set(IVS_INPUT_PROBE_GENERATOR "${PROJECT_SOURCE_DIR}/cmake/IvsInputProbes.cmake")
+set(IVS_INPUT_PROBE_INC "${CMAKE_CURRENT_BINARY_DIR}/ivs_input_probes.inc")
+file(GLOB IVS_INPUT_LITERALS CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/data/input/*.literal.txt")
+add_custom_command(
+  OUTPUT "${IVS_INPUT_PROBE_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DROOT=${PROJECT_SOURCE_DIR}" "-DOUT=${IVS_INPUT_PROBE_INC}" -P "${IVS_INPUT_PROBE_GENERATOR}"
+  DEPENDS ${IVS_INPUT_LITERALS} "${PROJECT_SOURCE_DIR}/data/expected/input-bits.ids" "${IVS_INPUT_PROBE_GENERATOR}"
+  COMMENT "Generating the controller probe table"
+  VERBATIM)
+set(IVS_INPUT_TEST_SOURCES input/input_main.c input/input_single.c input/input_port.c machine/machine_standin.c)
+add_executable(ivs_tests_input ${IVS_INPUT_TEST_SOURCES} "${IVS_INPUT_PROBE_INC}")
 target_include_directories(ivs_tests_input PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/input"
   "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(ivs_tests_input PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)

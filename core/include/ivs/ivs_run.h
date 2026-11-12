@@ -123,8 +123,11 @@ IVS_API ivs_status ivs_machine_peek(const ivs_machine *m, uint16_t addr, uint32_
 /* Input (D-12..D-15, plan 04-11). Core input is LOGICAL switch state: one uint32_t per controller,
  * indexed by PSG port (0 = R14/$01FE, 1 = R15/$01FF), never by player or side. A word holds the
  * switches that are closed; bit 31 (IVS_CTRL_RESERVED_MASK) is reserved and must be 0. The
- * electrical active-low port byte is a derived observation (Phase 5); there is no raw-byte
- * override and no electrical input path. Nothing in the machine reads the words in Phase 4.
+ * words are guest-visible machine input (plan 05-05): the guest reads the two PSG I/O ports at
+ * $01FE (word 0) and $01FF (word 1), indexed by PSG port, and a port in input mode returns the
+ * electrical active-low byte, derived by the core from the words and the profile's control table
+ * (FF XOR the OR of the line masks of every closed switch, upper byte 0; a port the guest set to
+ * output returns its stored latch); there is no raw-byte override and no electrical input path.
  * Words at an index at or above the profile's connected controller count (input.controllers; 2
  * on the Phase 4 profile, so words 2 and 3, reserved for expansion ports) must be 0 (UNSUPPORTED,
  * INPUT_EXTRA_CONTROLLER, plan 04-12).

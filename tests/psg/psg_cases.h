@@ -37,6 +37,8 @@ typedef struct ivs_pv {
   const ivs_pv_read *reads;
   uint32_t n_reads;
   uint32_t steps;
+  int32_t pin_port;  /* -1: none; 0 or 1: the controller port whose pins are driven low (family port) */
+  uint32_t pin_mask; /* the driven-low mask HH of that port */
 } ivs_pv;
 
 /* One row of the register-address literal: address, write mask, read mask. */
@@ -55,5 +57,15 @@ const char *ivs_psg_reg_vector_id(size_t i);
 int ivs_psg_reg_vector_run(size_t i);
 /* The data files the family derives from, with their SHA-256 (re-checked by tests-inventory). */
 const ivs_test_source *ivs_psg_reg_sources(size_t *n);
+
+/* Family port (plan 05-05, psg_port.c): the ports $01FE and $01FF as a bus read returns them. Fixed
+ * cases (the judge self-control) and the vector cases of port.txt, evaluated through the memory-system
+ * bus with the pins of the vector's pin key applied before the reads. */
+extern const ivs_test_case ivs_psg_port_cases[];
+extern const size_t ivs_psg_port_count;
+size_t ivs_psg_port_vector_count(void);
+const char *ivs_psg_port_vector_id(size_t i);
+int ivs_psg_port_vector_run(size_t i);
+const ivs_test_source *ivs_psg_port_sources(size_t *n);
 
 #endif
