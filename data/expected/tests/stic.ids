@@ -98,3 +98,7 @@ stic.fuzz.seed08
 stic.fuzz.non-vacuity
 stic.iso.two-instances
 stic.regress.guest-without-eis-or-strobe-unchanged
+stic.bounds.g-and-u-full-machine
+stic.bounds.log-records-per-frame-le-W
+stic.bounds.unit-ticks-le-U
+stic.bounds.no-wait-reply

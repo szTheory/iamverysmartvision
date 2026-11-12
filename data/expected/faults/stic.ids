@@ -25,10 +25,10 @@ STIC_MODE_SWITCH_ON_PEEK stic.peek.mode-unchanged-0021 stic.peek. stic.peek.valu
 STIC_LINE_LAG_IGNORED stic.lines.sampling-lag stic.lines.|stic.busrq.|stic.steal. stic.lines.pure-of-start-tick
 # STIC_IRQ_LEVEL_NEVER_RELEASED (core/src/stic/stic_lines.c): INTRM stays asserted to the frame end, so a DIS-first service routine
 # that re-enables before the frame end is entered again.
-STIC_IRQ_LEVEL_NEVER_RELEASED stic.irq.one-per-frame stic.irq.|stic.lines. stic.lines.sampling-lag
+STIC_IRQ_LEVEL_NEVER_RELEASED stic.irq.one-per-frame stic.irq.|stic.lines.|stic.bounds. stic.lines.sampling-lag
 # STIC_BUSRQ_WHEN_DISPLAY_OFF (core/src/stic/stic_lines.c): windows_active is ignored, so a frame whose display latch was never strobed
 # still drives the 13 bus requests.
-STIC_BUSRQ_WHEN_DISPLAY_OFF stic.busrq.none-when-display-off stic.busrq.|stic.lines.|stic.slice.|stic.regress. stic.busrq.closed-form-resume
+STIC_BUSRQ_WHEN_DISPLAY_OFF stic.busrq.none-when-display-off stic.busrq.|stic.lines.|stic.slice.|stic.regress.|stic.bounds. stic.busrq.closed-form-resume
 # STIC_GRANT_RELEASE_LATENCY_DROPPED (core/src/machine/machine_run.c): the CPU configuration the machine builds takes the release
 # latency of a bus grant one cycle short of bus.release_latency_cpu_cycles (the stepper refuses a configuration of 0, so the site
 # drops one cycle and not all of them).

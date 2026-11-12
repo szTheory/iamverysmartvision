@@ -53,6 +53,8 @@ extern const ivs_test_case ivs_stic_fuzz_cases[];
 extern const size_t ivs_stic_fuzz_count;
 extern const ivs_test_case ivs_stic_iso_cases[];
 extern const size_t ivs_stic_iso_count;
+extern const ivs_test_case ivs_stic_bounds_cases[];
+extern const size_t ivs_stic_bounds_count;
 extern const ivs_test_case ivs_stic_fetch_cases[];
 extern const size_t ivs_stic_fetch_count;
 extern const ivs_test_case ivs_stic_busrq_cases[];
@@ -121,7 +123,7 @@ int sc_run_until(ivs_ms_inst *x, uint64_t ticks);
  *                                           ISR outlasts the INTRM level (3,791 cycles) before it re-enables
  *   $100D EIS                  0002
  *   $100E PULR R7              02B7         the return (PULR 1010 110 DDD, pops the PC the entry pushed at R6)
- *   $100F MVII #$100, R6       02BE, 0100   the stack at the scratchpad
+ *   $100F MVII #$300, R6       02BE, 0300   the stack in system RAM (16-bit words; the scratchpad is 8 bits wide and would cut the pushed PC)
  *   $1011 EIS                  0002
  *   $1012 the loop body of the chosen shape (instruction length c), see the SC_BODY_* below. */
 #define SC_BODY_INCR 0u   /* three INCR R5 (6 cycles each, 000D) and a branch back (9 taken) */
@@ -136,7 +138,9 @@ int sc_run_until(ivs_ms_inst *x, uint64_t ticks);
 #define SC_STRADDLE_K 6u  /* stores in front of the swept store */
 #define SC_STRADDLE_N0 409u /* the first delay count of the straddle sweep (stic_fetch.c): the store of row 3 lands near its fetch tick */
 size_t sc_prog_vbl(uint16_t *w, uint32_t body_flags);
-size_t sc_prog_isr(uint16_t *w, uint32_t dis_first);   /* ISR INCR R2, PULR R7 (or DIS first), main MVII #$100,R6; EIS; B self */
+size_t sc_prog_isr(uint16_t *w, uint32_t dis_first);   /* ISR INCR R2, PULR R7 (or DIS first), main MVII #$300,R6; EIS; B self */
+size_t sc_prog_psg(uint16_t *w, uint32_t k, uint32_t pad);          /* the adversarial PSG writer in the VBL interrupt program (at most 40 words) */
+size_t sc_prog_psg_stream(uint16_t *w, size_t count, uint32_t strobe); /* the densest reachable PSG writer */
 size_t sc_prog_strobe_loop(uint16_t *w);                /* MVO R0,$0020 then B self */
 /* A loop that never strobes the display: [EIS or DIS] then B self ($1000, enable 1 for EIS, 0 for DIS; 3 words). */
 size_t sc_prog_loop(uint16_t *w, uint32_t enable);

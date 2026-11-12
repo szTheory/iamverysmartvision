@@ -15,7 +15,9 @@
  *   a 9-cycle unit, MVO direct at offset 6 of an 11-cycle unit); the smallest offset of an instruction's write
  *   is 4, so instruction to instruction the minimum gap is 9 CPU cycles = 36 ticks (the only density reachable in
  *   Phase 5); the interrupt-entry unit writes (kind DW) at offset 2, so 5 + 2 = 7 CPU cycles = 28 ticks is the
- *   minimum gap overall, and 28 is the number a Phase 6 interrupt source must not silently break.
+ *   minimum gap overall, and 28 is the number an interrupt source must not silently break (plan 06-08 re-proves U, g and
+ *   W_log through the full machine with the STIC interrupt level and bus windows live: stic.bounds.*; a bus-grant stall
+ *   only lengthens the time between two writes).
  *   Waits only lengthen a gap (a wait before the write moves its offset up, nothing follows the write).
  * The published psg.max_unit_ticks (468) is asserted equal to the measured maximum with waits, and to
  * (12 + 3 x bus.wait_limit_cpu_cycles) x ticks_per_cpu_cycle. Plan 05-08 publishes psg.min_write_gap_ticks (28)
@@ -26,8 +28,8 @@
  *                                    formula and to the published field
  *   psg.bounds.write-gap-min         36 ticks instruction to instruction, 28 ticks with the interrupt entry
  *   psg.bounds.memsys-bus-never-waits  the memory system and the machine wrapper answer wait 0 for every kind
- *                                    at every address, the premise of U = 48 on the real bus (a Phase 6 stall
- *                                    fails this id loudly)
+ *                                    at every address, the premise of U = 48 on the real bus (a bus-grant stall is
+ *                                    the stepper's own BUS_GRANT unit sequence, not a wait reply: stic.bounds.no-wait-reply)
  *   psg.bounds.slack-covers-worst-case  the audio capacity the info layout publishes covers the samples the
  *                                    last unit's overshoot can add, for the measured unit lengths
  *   psg.bounds.g-and-u               (plan 05-08) over every opcode x SDBD x wait in {0, the cap}, interrupt-entry

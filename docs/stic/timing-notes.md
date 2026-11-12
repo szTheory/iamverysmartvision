@@ -95,6 +95,16 @@ The manufacturer page of the system RAM describes a bus copy mode entered when t
 That mechanism can explain a register window and a graphics-memory window without two constants.
 It is recorded as the alternative to the pure frame-position schedule above; reversal is an owner measurement (D10-VID-06) or a primary page that prints the window events (C83).
 
+## Measured through the full machine (plan 06-08)
+
+These are outputs of the implemented lines and the test guests, recorded so a later change can be compared; none is an expected constant (D-02).
+
+- Executed instruction cycles per frame depend on the guest's instruction mix. With the display on, a loop of one instruction length keeps the CPU out of 13 bus windows (grant, hold and release cycles are stolen) and out of one interrupt entry per frame; the executed cycles of a steady frame of the 12-cycle loop lie within one percent of the community aggregate 13,518 (plausibility only, C95). With the display off the CPU keeps all 14,934 cycles of the frame.
+- A window starting at tick w resumes the CPU at w + 4 (H + 1 + L) ticks whichever instruction was interrupted (468 ticks with H 114 and L 2); the grant happens at the first open boundary inside the window, so a stream of non-interruptible stores is never stalled and its 13 windows count as late grants.
+- With C41 = 0 a service routine that does not start with DIS is entered again at every open boundary while the interrupt level is held: 15 CPU cycles per entry (9 for the entry, 6 for the first instruction) give about 253 entries in the level of 3,791 cycles. Every stand-in service routine of Phase 6 starts with DIS.
+- The densest reachable PSG writer (back-to-back non-interruptible indirect stores) makes 1,660 register writes in a span of one frame with the display on and with it off; the log bound is 2,152. The shortest gap between two writes of instruction units is 36 ticks; the 28 ticks of the published bound need an interrupt-entry write and are proven at the stepper level.
+- The longest unit seen through the full machine over all 1,024 decles, with and without the SDBD prefix, with the interrupt level held and a window open, is 48 ticks; grant, hold and release units are at most 8 ticks. U stays 468.
+
 ## Not modelled in Phase 6
 
 Mid-frame register effects, the picture offset that yields a fourteenth window, per-line fetches, the second half of the interrupt (acknowledge-driven release), and any PAL timing (D-03).

@@ -137,7 +137,7 @@ size_t sc_prog_vbl(uint16_t *w, uint32_t body_flags)
   w[n++] = 0x0002u;
   w[n++] = 0x0002u; /* EIS */
   w[n++] = 0x02B7u; /* PULR R7 */
-  n = sc_w_mvii(w, n, 6u, 0x0100u);
+  n = sc_w_mvii(w, n, 6u, 0x0300u);
   w[n++] = 0x0002u; /* EIS */
   start = n;
   switch (body) {
@@ -170,7 +170,7 @@ size_t sc_prog_vbl(uint16_t *w, uint32_t body_flags)
 }
 
 /* An interrupt program for the C41 consequences: B $1006 or $1007 over the ISR at $1004 (INCR R2; PULR R7, or DIS first), then
- * MVII #$100, R6; EIS; B self. The ISR never re-enables, so with INTFF held (C41 = 0) a service routine without DIS is re-entered. */
+ * MVII #$300, R6; EIS; B self. The ISR never re-enables, so with INTFF held (C41 = 0) a service routine without DIS is re-entered. */
 size_t sc_prog_isr(uint16_t *w, uint32_t dis_first)
 {
   size_t n = 0u;
@@ -183,7 +183,7 @@ size_t sc_prog_isr(uint16_t *w, uint32_t dis_first)
   }
   w[n++] = 0x000Au; /* INCR R2 */
   w[n++] = 0x02B7u; /* PULR R7 */
-  n = sc_w_mvii(w, n, 6u, 0x0100u);
+  n = sc_w_mvii(w, n, 6u, 0x0300u);
   w[n++] = 0x0002u; /* EIS */
   return sc_w_bback(w, n, n);
 }
@@ -192,6 +192,62 @@ size_t sc_prog_isr(uint16_t *w, uint32_t dis_first)
 size_t sc_prog_strobe_loop(uint16_t *w)
 {
   size_t n = sc_w_mvo(w, 0u, 0u, 0x0020u);
+  return sc_w_bback(w, n, n);
+}
+
+/* The interrupt program of sc_prog_vbl up to the main part: words 0..14 (the forward branch, the pad and the ISR), returns 15. */
+static size_t sc_vbl_prefix(uint16_t *w)
+{
+  size_t n = 0u;
+  w[n++] = 0x0200u;
+  w[n++] = 0x000Du;
+  w[n++] = 0x0000u;
+  w[n++] = 0x0000u;
+  w[n++] = 0x0003u; /* DIS */
+  n = sc_w_mvo(w, n, 0u, 0x0020u);
+  w[n++] = 0x000Au; /* INCR R2 */
+  n = sc_w_mvii(w, n, 1u, SC_ISR_DELAY);
+  w[n++] = 0x0011u;
+  w[n++] = 0x022Cu;
+  w[n++] = 0x0002u;
+  w[n++] = 0x0002u; /* EIS */
+  w[n++] = 0x02B7u; /* PULR R7 */
+  return n;
+}
+
+/* The adversarial PSG writer: the VBL interrupt program whose main loop is `pad` x INCR R5 and k x MVO@ R0, R3 with R3 = $01F8 (a PSG
+ * register: 0258 is MVO@ R0, R3, 9 cycles, not interruptible) and a branch back, so PSG writes meet the bus windows and the VBLANK
+ * entries at every phase. */
+size_t sc_prog_psg(uint16_t *w, uint32_t k, uint32_t pad)
+{
+  size_t n = sc_vbl_prefix(w);
+  size_t start;
+  uint32_t i;
+  n = sc_w_mvii(w, n, 6u, 0x0300u);
+  n = sc_w_mvii(w, n, 3u, 0x01F8u);
+  w[n++] = 0x0002u; /* EIS */
+  start = n;
+  for (i = 0u; i < pad; i++) {
+    w[n++] = 0x000Du;
+  }
+  for (i = 0u; i < k; i++) {
+    w[n++] = 0x0258u;
+  }
+  return sc_w_bback(w, n, start);
+}
+
+/* The densest reachable PSG writer: [the display strobe], R3 = $01F8, count x MVO@ R0, R3 back to back, then B self. */
+size_t sc_prog_psg_stream(uint16_t *w, size_t count, uint32_t strobe)
+{
+  size_t n = 0u;
+  size_t i;
+  if (strobe != 0u) {
+    n = sc_w_mvo(w, n, 0u, 0x0020u);
+  }
+  n = sc_w_mvii(w, n, 3u, 0x01F8u);
+  for (i = 0u; i < count; i++) {
+    w[n++] = 0x0258u;
+  }
   return sc_w_bback(w, n, n);
 }
 

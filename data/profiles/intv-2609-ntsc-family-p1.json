@@ -1018,7 +1018,7 @@
       "cite": "derived from bus.wait_limit_cpu_cycles (C53): (12 + 3 x 35) CPU cycles x ticks_per_cpu_cycle; the maximum unit on the real bus (wait 0) is 12 CPU cycles",
       "conflict": "C53",
       "resolving_evidence": "test: psg.bounds.unit-ticks-max and psg.bounds.unit-ticks-real-bus (exhaustive probe through the CPU model)",
-      "revisit_trigger": "when bus.wait_limit_cpu_cycles changes or a device other than the memory system can stall the bus (Phase 6)",
+      "revisit_trigger": "when bus.wait_limit_cpu_cycles changes or a stall unit can exceed U (the generator refuses bus.release_latency_cpu_cycles x ticks_per_cpu_cycle above U; stic.bounds.g-and-u-full-machine and stic.bounds.unit-ticks-le-U re-prove U with the bus windows live)",
       "decision": null,
       "note": "The proven maximum ticks of one CPU unit, published for the audio capacity slack (D-17): s = ceil(U / P) + 1. The generator refuses a value that is not (12 + 3 x bus.wait_limit_cpu_cycles) x ticks_per_cpu_cycle."
     },
@@ -1028,9 +1028,9 @@
       "cite": "derived from the CP-1610 cycle table and ticks_per_cpu_cycle (C53): exhaustive probe psg.bounds.write-gap-min over every decle, SDBD off and on, waits 0, 1 and 35",
       "conflict": "C53",
       "resolving_evidence": "test: psg.bounds.write-gap-min and psg.bounds.g-and-u (exhaustive probe through the CPU model, interrupt-entry units included)",
-      "revisit_trigger": "when the CPU cycle table changes or a device other than the memory system can raise an interrupt or stall the bus (Phase 6)",
+      "revisit_trigger": "when the CPU cycle table changes or a device other than the memory system or the STIC schedule of plan 06-08 can raise an interrupt or stall the bus (stic.bounds.g-and-u-full-machine re-proves the gap with the STIC lines live)",
       "decision": null,
-      "note": "The minimum master ticks between two PSG register writes over ALL PSG-writing units, an interrupt-entry unit included: an MVO@ write at offset 4 of a 9-cycle unit followed by an interrupt-entry unit that writes at offset 2 gives 9 - 4 + 2 = 7 CPU cycles = 28 ticks. Instruction-only writers reach 9 CPU cycles = 36 ticks, the only density reachable in Phase 5 (no device raises an interrupt before Phase 6); the published bound deliberately uses 28 so Phase 6 cannot silently break it. The generator refuses a value that is not a whole number of CPU cycles."
+      "note": "The minimum master ticks between two PSG register writes over ALL PSG-writing units, an interrupt-entry unit included: an MVO@ write at offset 4 of a 9-cycle unit followed by an interrupt-entry unit that writes at offset 2 gives 9 - 4 + 2 = 7 CPU cycles = 28 ticks. Instruction-only writers reach 9 CPU cycles = 36 ticks, the only density reachable by instructions alone; the published bound deliberately uses 28 so an interrupt source cannot silently break it. Phase 6 (plan 06-08) drives the VBLANK interrupt level and the bus-request windows: a bus-grant stall only lengthens the time between two writes, and stic.bounds.g-and-u-full-machine re-proves the gap through the full machine. The generator refuses a value that is not a whole number of CPU cycles."
     },
     "psg.log_records_per_frame": {
       "value": 2152,
@@ -1040,7 +1040,7 @@
       "resolving_evidence": "test: psg.bounds.g-and-u (writes in T ticks <= (T + U) / g + 1 over every opcode x SDBD x wait in {0, limit}) and psg.buffers.worst-case-writer",
       "revisit_trigger": "when psg.min_write_gap_ticks, psg.max_unit_ticks or the nominal frame changes",
       "decision": null,
-      "note": "Write-log records one frame slot is sized for: the capacity of a run is 16 bytes x this x (max(target - now, 0) / nominal_frame_ticks + 1). The generator refuses a value that is not ceil(F / g) + ceil(U / g) + 1 for the profile's frame F (scanlines x cycles per scanline x ticks per cycle = 59,736 ticks), g and U."
+      "note": "Write-log records one frame slot is sized for: the capacity of a run is 16 bytes x this x (max(target - now, 0) / nominal_frame_ticks + 1). The generator refuses a value that is not ceil(F / g) + ceil(U / g) + 1 for the profile's frame F (scanlines x cycles per scanline x ticks per cycle = 59,736 ticks), g and U. Plan 06-08 re-proves the bound through the full machine with the STIC lines live: stic.bounds.log-records-per-frame-le-W measures the densest reachable writer (back-to-back non-interruptible MVO@ stores, never stalled by a bus window) at 1,660 records in a span of one frame, with the display on and off, below this value."
     },
     "psg.period_zero.noise": {
       "value": 32,

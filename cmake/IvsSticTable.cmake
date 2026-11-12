@@ -44,6 +44,7 @@
 #   irq_low <= frame cycles, frame_phase_ticks < F, every product within a uint32
 #   1 <= last_card_column_px <= card_w, width <= grid.w, height <= grid.h, blank_value >= colors
 #   2 x psg.max_unit_ticks < F and video_slack_frames == ceil(U / F)  (the D-15 capacity rule)
+#   bus.release_latency_cpu_cycles x ticks_per_cpu_cycle <= psg.max_unit_ticks  (plan 06-08: the release unit of a bus grant is within U)
 #   backtab words == card_columns x card_rows, stic_regs spans $0000..$003F.
 #
 # Output: IVS_STIC_PROFILE_COUNT and ivs_stic_params_table[profile] (designated initializers of the members of
@@ -248,6 +249,16 @@ foreach(rel IN LISTS st_profiles)
   set(ST_CTX "${rel}: stic.video_slack_frames")
   if(NOT slack EQUAL slack_want)
     st_fail("value ${slack} is not ceil(U / F) (${slack_want}) with U ${unit_max} and F ${frame_ticks}")
+  endif()
+
+  # ---- the bus-grant release unit is bounded by U (plan 06-08, D-10): the grant and hold units are 1 cycle, the release unit
+  # bus.release_latency_cpu_cycles; the interrupt entry (a CPU constant of 9 cycles) is covered by the runtime probe
+  # stic.bounds.g-and-u-full-machine.
+  st_num(release_lat bus.release_latency_cpu_cycles 65535)
+  set(ST_CTX "bounds")
+  math(EXPR release_ticks "${release_lat} * ${tpc}")
+  if(release_ticks GREATER unit_max)
+    st_fail("${rel}: bus.release_latency_cpu_cycles ${release_lat} x ticks_per_cpu_cycle ${tpc} = ${release_ticks} ticks exceeds psg.max_unit_ticks ${unit_max}; a bus-grant release unit longer than U would break the published bounds")
   endif()
 
   # ---- frame phase

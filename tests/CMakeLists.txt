@@ -262,7 +262,7 @@ add_custom_command(
   COMMAND "${CMAKE_COMMAND}" "-DROOT=${PROJECT_SOURCE_DIR}" "-DOUT=${IVS_STICPROBE_INC}" -P "${IVS_STICPROBE_GENERATOR}"
   DEPENDS ${IVS_STICPROBE_LITERALS} "${PROJECT_SOURCE_DIR}/data/video/geometry.literal.txt" "${IVS_STICPROBE_GENERATOR}"
   COMMENT "Generating the STIC literal probe include")
-set(IVS_STIC_TEST_SOURCES stic/stic_main.c stic/stic_events.c stic/stic_access.c stic/stic_progs.c stic/stic_reg.c stic/stic_hook.c stic/stic_profile.c stic/stic_judge.c stic/stic_state.c stic/stic_peek.c stic/stic_lines.c stic/stic_irq.c stic/stic_busrq.c stic/stic_fetch.c stic/stic_tile.c stic/stic_slice.c stic/stic_fuzz.c stic/stic_iso.c machine/machine_standin.c)
+set(IVS_STIC_TEST_SOURCES stic/stic_main.c stic/stic_events.c stic/stic_access.c stic/stic_progs.c stic/stic_reg.c stic/stic_hook.c stic/stic_profile.c stic/stic_judge.c stic/stic_state.c stic/stic_peek.c stic/stic_lines.c stic/stic_irq.c stic/stic_busrq.c stic/stic_fetch.c stic/stic_tile.c stic/stic_slice.c stic/stic_fuzz.c stic/stic_iso.c stic/stic_bounds.c machine/machine_standin.c)
 add_executable(ivs_tests_stic ${IVS_STIC_TEST_SOURCES} "${IVS_STICPROBE_INC}")
 target_include_directories(ivs_tests_stic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/stic" "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(ivs_tests_stic PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
