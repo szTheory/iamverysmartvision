@@ -1,7 +1,7 @@
 # PSG vector second-read request
 
-State: `pending: orchestrator-run blind reader`.
-This request was written in plan 05-01 and no blind read has been performed; plan 05-01 is the oracle commit that precedes every implementation plan of Phase 5.
+State: `done: blind reads recorded` (commit b82c707, 2026-11-12).
+This request was written in plan 05-01, the oracle commit that precedes every implementation plan of Phase 5; the blind reads were run afterwards by the orchestrator and are recorded in `docs/psg/second-read-record-*.md` (11 files, 120 vectors: 90 agree, 7 answered unknown, 21 not comparable because of blinded-copy limits, 2 convention differences).
 
 ## What is to be blind-read
 

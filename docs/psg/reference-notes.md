@@ -86,7 +86,7 @@ The last column says whether a difference between the AY-3-8910 and the 8914-cla
 Vector totals: 120 vectors in 11 files, 95 `kind=source` and 25 `kind=policy` (12 policy ids in `data/expected/psg-policies.ids`).
 Every policy row and every row of a rule whose basis is `default-unknown` is a default chosen under the stated discrepancy, never a hardware claim.
 The DAC rows are all policy: the per-level labels are not on the pages read (page-reading verdict), and their values come from a planning-note reading of a reprint that could not be obtained, so they are not independent.
-Expected values were checked with a second, throwaway model written after the vectors (a shared-misreading risk, not an independent implementation); blind second reads of every vector file are requested in `docs/psg/second-read-request.md`.
+Expected values were checked with a second, throwaway model written after the vectors (a shared-misreading risk, not an independent implementation); blind second reads of every vector file were run afterwards and are recorded in `docs/psg/second-read-record-*.md` (request: `docs/psg/second-read-request.md`; tier `source-expectation, second-read`, same model family and same pages, so a transcription cross-check and not evidence about any console).
 
 ## Allocation table
 

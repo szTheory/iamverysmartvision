@@ -1,7 +1,7 @@
 # Controller literal second-read request
 
-State: `pending: orchestrator-run blind reader`.
-This request was written in plan 05-01 and the blind read has not been performed; plan 05-01 is the oracle commit that precedes every implementation plan of Phase 5.
+State: `done: blind read recorded` (commit b82c707, 2026-11-12).
+This request was written in plan 05-01, the oracle commit that precedes every implementation plan of Phase 5; the blind read was run afterwards by the orchestrator and is recorded in `docs/input/second-read-record.md` (31 rows read, 31 agree).
 
 ## What is to be blind-read
 
