@@ -1,0 +1,46 @@
+# Suite psg: the PSG register file, then (plans 05-05..05-08) the ports, tone, mixer, noise, envelope,
+# sample stream and write log (AUD-01, plan 05-04, A-12).
+# Plan 05-04: one id per vector of data/psg/vectors/regs.txt (psg.reg.*, 28) and reset.txt (psg.reset.*, 2),
+# evaluated through the memory-system bus against the register-address literal; the register-map,
+# reset, bus, no-mirror, purity and guest tests; and the two judge self-controls (psg.judge.*).
+# The vector families wired into the suite are the ones NOT listed in data/psg/vectors-pending.ids.
+psg.regmap.matches-literal
+psg.reset.power-on-zero
+psg.reset.dirty-file-cleared
+psg.bus.wait-zero
+psg.bus.wrapper-forwards
+psg.reg.no-mirror
+psg.reg.reads-pure
+psg.reg.guest-write-read
+psg.judge.mask-row-changed
+psg.judge.regmap-literal-changed
+psg.reg.tone-low-a
+psg.reg.tone-low-b
+psg.reg.tone-low-c
+psg.reg.env-low
+psg.reg.tone-high-mask
+psg.reg.tone-high-b
+psg.reg.tone-high-c
+psg.reg.env-high
+psg.reg.mixer-all
+psg.reg.noise-mask
+psg.reg.shape-reads-zero
+psg.reg.map-amplitude
+psg.reg.amp-b
+psg.reg.amp-c
+psg.reg.port-a-ff
+psg.reg.port-b-ff
+psg.reg.pattern-fine-a
+psg.reg.pattern-coarse-a
+psg.reg.pattern-noise
+psg.reg.pattern-amp-a
+psg.reg.pattern-shape
+psg.reg.pattern-mixer
+psg.reg.distinct-values
+psg.reg.rewrite
+psg.reg.read-twice-same
+psg.reg.env-coarse-full
+psg.reg.mixer-high-bits
+psg.reg.noise-reads-5-bits
+psg.reset.regs-zero
+psg.reset.ports-input-after-reset

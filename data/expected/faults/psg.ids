@@ -1,0 +1,13 @@
+# suite=psg; columns: <FAULT_ID> <must-fail> <allowed-prefixes> <must-pass>
+# PSG named faults (plan 05-04, AUD-01, D-08, D-25). Each id has one IVS_FAULT_<ID> site in
+# core/src/psg/psg_regs.c (the register file) and is caught by the vector it is named for.
+# PSG_TONE_HIGH_NIBBLE_UNMASKED: the coarse tone periods keep and read a whole byte instead of four bits;
+# the other coarse-register vectors, the one-store no-mirror case, the guest tracer ($0200 would read
+# $00FF) and the judge's positive control (the real row is judged under the fault) fail with it.
+PSG_TONE_HIGH_NIBBLE_UNMASKED psg.reg.tone-high-mask psg.reg.|psg.judge.mask-row- psg.reset.regs-zero
+# PSG_REG_OCTAL_AS_HEX: the amplitude registers (data sheet R10..R12, octal) land one slot low, R10 at
+# $01FA; only the vectors that write two registers or read the amplitude against a neighbour's mask see
+# it (store and load shift together, so a lone amplitude B or C round trip is consistent).
+PSG_REG_OCTAL_AS_HEX psg.reg.map-amplitude psg.reg. psg.reset.regs-zero
+# PSG_SHAPE_READBACK_STORED: the shape register reads back what was stored instead of 0 (C75).
+PSG_SHAPE_READBACK_STORED psg.reg.shape-reads-zero psg.reg. psg.reset.regs-zero

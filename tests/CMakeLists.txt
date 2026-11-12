@@ -167,6 +167,38 @@ target_link_libraries(ivs_tests_run PRIVATE ivs_test_harness ivs_core ivs_core_i
 add_test(NAME run COMMAND ivs_tests_run)
 set_tests_properties(run PROPERTIES SKIP_RETURN_CODE 77)
 
+# Suite psg (AUD-01, plans 05-04..05-08, A-12): the PSG register file and, in later plans, the ports,
+# tone, mixer, noise, envelope, sample stream and write log, in their own executable so that its named
+# faults rerun only it. Expected values come from the sourced text files only: cmake/IvsPsgVectors.cmake
+# turns one vector family of data/psg/vectors and the register-address literal into a C include per
+# family (it reads neither the profile nor the core). It reuses the machine suite's stand-in content
+# (machine/machine_standin.c); its named faults are data/expected/faults/psg.ids, whose sites sit in
+# core/src/psg. The result file carries a `# source` line for each vector file and the literal.
+set(IVS_PSG_VEC_GENERATOR "${PROJECT_SOURCE_DIR}/cmake/IvsPsgVectors.cmake")
+set(IVS_PSG_REGMAP_LITERAL "${PROJECT_SOURCE_DIR}/data/psg/intv-2609-ntsc-family-p1.regmap.literal.txt")
+set(IVS_PSG_VEC_GENERATED "")
+foreach(fam_spec "reg:regs" "reset:reset")
+  string(REPLACE ":" ";" fam_parts "${fam_spec}")
+  list(GET fam_parts 0 fam)
+  list(GET fam_parts 1 fam_stem)
+  set(fam_inc "${CMAKE_CURRENT_BINARY_DIR}/ivs_psg_vectors_${fam}.inc")
+  add_custom_command(
+    OUTPUT "${fam_inc}"
+    COMMAND "${CMAKE_COMMAND}" "-DROOT=${PROJECT_SOURCE_DIR}" "-DOUT=${fam_inc}" "-DFAMILY=${fam}"
+            -P "${IVS_PSG_VEC_GENERATOR}"
+    DEPENDS "${PROJECT_SOURCE_DIR}/data/psg/vectors/${fam_stem}.txt" "${IVS_PSG_REGMAP_LITERAL}"
+            "${IVS_PSG_VEC_GENERATOR}"
+    COMMENT "Generating the PSG ${fam} vector table"
+    VERBATIM)
+  list(APPEND IVS_PSG_VEC_GENERATED "${fam_inc}")
+endforeach()
+set(IVS_PSG_TEST_SOURCES psg/psg_main.c psg/psg_reg.c machine/machine_standin.c)
+add_executable(ivs_tests_psg ${IVS_PSG_TEST_SOURCES} ${IVS_PSG_VEC_GENERATED})
+target_include_directories(ivs_tests_psg PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_BINARY_DIR}")
+target_link_libraries(ivs_tests_psg PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
+add_test(NAME psg COMMAND ivs_tests_psg)
+set_tests_properties(psg PROPERTIES SKIP_RETURN_CODE 77)
+
 # Suite cpu-fuzz (D-12, plan 02-15): the seeded robustness run; dev links the sanitizers.
 add_executable(ivs_tests_cpu_fuzz cpu/cpu_fuzz.c)
 target_link_libraries(ivs_tests_cpu_fuzz PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
@@ -272,6 +304,11 @@ ivs_fault_suite(run
   SOURCES run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_struct.c run/run_fuzz.c run/run_stub.c run/run_diag.c machine/machine_standin.c
   INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_BINARY_DIR}"
   GENERATED "${IVS_IMAGES_INC}" "${IVS_DIAG_EXPECT_INC}")
+
+ivs_fault_suite(psg
+  SOURCES ${IVS_PSG_TEST_SOURCES}
+  INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_BINARY_DIR}"
+  GENERATED ${IVS_PSG_VEC_GENERATED})
 
 ivs_fault_suite(memmap
   SOURCES memmap/memmap_main.c memmap/memmap_rows.c
