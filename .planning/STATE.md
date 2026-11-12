@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 5
 current_phase_name: Hand Controllers and PSG Sound
 status: executing
-stopped_at: Completed 05-08-PLAN.md
-last_updated: "2026-11-12T11:25:53.191Z"
+stopped_at: Completed 05-09-PLAN.md
+last_updated: "2026-11-12T12:03:57.205Z"
 last_activity: 2026-11-12
 last_activity_desc: Phase 4 complete, transitioned to Phase 5
-state_head: 09bfde9a4a6a67fc2f954bcfdb49e7523feb0e4a
+state_head: d6f7ab48d2b30b663740874be52ba06ead909b74
 progress:
   total_phases: 8
   completed_phases: 4
   total_plans: 83
-  completed_plans: 79
+  completed_plans: 80
   percent: 50
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 5 (Hand Controllers and PSG Sound) — EXECUTING
-Plan: 9 of 12
+Plan: 10 of 12
 Status: Ready to execute
 Last activity: 2026-11-12 — Completed 05-01 (oracle-first: sources, controller literal, PSG rules and vectors, D10 inventory)
 
@@ -134,6 +134,7 @@ Progress: [█████░░░░░] 50%
 | Phase 5 P06 | 5h | 5 tasks | 60 files |
 | Phase 5 P07 | 4h | 5 tasks | 37 files |
 | Phase 05 P08 | 45min | 5 tasks | 35 files |
+| Phase 5 P09 | 3h | 5 tasks | 54 files |
 
 ## Accumulated Context
 
@@ -315,6 +316,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 5]: The DAC table psg.dac.levels is profile data the core never reads: not an ivs_psg_params member, byte-identical core parameters proven at build time (05-07)
 - [Phase 5]: Every tagged noise, envelope, period-zero and mixer parameter is proven to be data by a stack-copy perturbation test (psg.profile.*), faults hard-coding one fail exactly its test (05-07)
 - [Phase 05]: 05-08: the write log record is appended after the masked store with the catch-up stamp; domain-19 index is the record count; ivs_info publishes W_log from the env so the cut fault is visible to callers
+- [Phase 5]: 05-09: audio.chain.check is - unless an audio buffer was delivered on every slice; a mismatch is harness-fail audio-chain; the golden observed rule is count-based for video, audio, input and psglog
+- [Phase 5]: 05-09: operator raw outputs are vtable hooks plus options (--audio-raw, --psg-log-out, --audio-out-max-bytes), created exclusively in hostio.c; a capture or stream assert without output buffers is a harness failure
 
 ### Pending Todos
 
@@ -347,6 +350,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-12T11:25:52.792Z
-Stopped at: Completed 05-08-PLAN.md
+Last session: 2026-11-12T12:03:57.038Z
+Stopped at: Completed 05-09-PLAN.md
 Resume file: None
