@@ -170,11 +170,12 @@ These come from a researched fan-out recommendation that was auto-adopted. Each 
 
 | D4 | Fixture assembler policy: hand-assembled annotated decle listings with a listing checker; no assembler as a build/gate/CI/release dependency; as1600 rejected (GPL), libasm optional non-gating cross-check (Phase 4 D-25) | A diagnostic count above 3, labels/macros, or a second author: build a project mini-assembler |
 | D6 | Controller core input is logical switch state per PSG port; the electrical byte is derived in-core from profile data (Phase 4 D-12) | Evidence the output is not a function of switch state plus port drive, or a need for raw port injection |
+| D7 | Reference PCM is outside the core and outside every installed artifact: a pure integer converter in `tools/pcm/` is linked only by the runner's operator-side `--audio-wav` and its own tests; raw audio is per-channel level samples every 16 master ticks plus a cycle-stamped write log (Phase 5 D-15, D-21) | An adapter that needs bit-identical PCM across hosts (promote to an installed `ivs::refpcm` target, still outside the core) |
 | D12 | CI shape: one ubuntu-24.04 job, no matrix, no cache, no artifacts, no macOS leg, job summary from the gate, run record file (Phase 4 D-41..D-45) | An Apple-only failure reaching main, a shared library, or a median hosted gate above budget after levers |
 
-D4, D6 and D12 were decided by the fan-out protocol on 2026-11-11 (Delegated decision, owner authorization 2026-11-09).
+D4, D6 and D12 were decided by the fan-out protocol on 2026-11-11; D7 on 2026-11-12 (Phase 5) (Delegated decision, owner authorization 2026-11-09).
 
-D5 and the cartridge format were decided by the fan-out protocol on 2026-11-11 (Delegated decision, owner authorization 2026-11-09). D6, D7, D8 and D12 are not decided in Phase 1 and are decided by the fan-out protocol when their phase needs them; D10 and D11 remain hard stops with evidence marked missing (D-05).
+D5 and the cartridge format were decided by the fan-out protocol on 2026-11-11 (Delegated decision, owner authorization 2026-11-09). D6, D7, D8 and D12 were not decided in Phase 1 and are decided by the fan-out protocol when their phase needs them; D10 and D11 remain hard stops with evidence marked missing (D-05).
 
 ### Recommendations (not owner decisions)
 
