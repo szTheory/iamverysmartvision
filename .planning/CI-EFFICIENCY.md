@@ -513,3 +513,48 @@ lever.
 ### This plan's Linux parity run
 
 - `sh tools/gate-linux.sh` (Ubuntu 24.04 container, x86_64 emulated on arm64, gcc 13.3.0, cmake 3.28.3, dash as /bin/sh), run after the record edits of Task 2 and the AUTONOMY and CI-EFFICIENCY text of Task 3: `gate: PASS steps=33/33 controls=276/276 ... cc=GNU ... faults=149/149 ... gates=26 lines=102 ... consumer-lines=26 pkg-selftest=10/10 ... tests-expected=2780 tests-executed=2778 tests-skipped=2 tests-missing=0`, `gate-time total=199` (emulated; not a hosted figure), last line `gate-linux: exit 0 (log build/gate-linux.log)`.
+
+## 2026-11-12 - Phase 5 checkpoint 1 (plan 05-04, V-16): first measured cost of the PSG suite and faults
+
+All figures marked local are from the laptop (18 cores, Apple clang 21, other work running, 1-minute load 8 to 11); they are not hosted figures. Nothing here calls `gh`; the hosted rows are read from `.planning/ci-runs.tsv`, which the orchestrator records.
+
+### Counts
+
+- Plan 05-04 end: `steps=35/35 controls=300/300 faults=158/158 tests-expected=2968 tests-executed=2966 tests-skipped=2 tests-missing=0` (plan 05-03 end: `controls=296 faults=155 tests-expected=2862`). New: suite `psg` (40 ids per preset), 13 memmap ids (the PSG rows split, one id for the new width case), 3 faults, 4 controls.
+
+### Local gate (`sh tools/gate.sh`, three runs, plan 05-04 final tree)
+
+| Run | Load at start (1 min) | `gate-time total=` | `gate-cpu` user + sys | Five largest `step-time` (seconds) |
+|-----|-----------------------|--------------------|-----------------------|-------------------------------------|
+| 1 | 8.1 | 32 | 54.89 + 48.83 = 103.7 | controls 13, c-faults 8, c-tests 5, hygiene 3, cp1610-vectors 3 |
+| 2 | 11.3 | 32 | 54.39 + 48.93 = 103.3 | controls 13, c-faults 8, c-tests 5, hygiene 3, cp1610-vectors 3 |
+| 3 | 11.5 | 35 | 57.75 + 54.89 = 112.6 | controls 15, c-faults 7, c-tests 5, c-purity 4, hygiene 3 |
+
+- `gate-env ncpu=18 cc=AppleClang-21.0.0.21000101`; `c-build` 1 s (warm). `c-faults` 7 to 8 s and `c-tests` 5 s on every run. `dash tools/gate.sh`: `gate-time total=32`.
+- The Phase 4 close-out row (same host, a heavier day: gate 45 to 53 s, 80 + 80 cpu-s, `c-faults` 11, `c-tests` 6) is not comparable: the host load differs by more than the effect of nine faults. So the per-fault cost is measured directly, not as a step-time difference.
+
+### Measured unit costs (local)
+
+- Per fault: the `c-faults` step alone (build up to date, 158 fault executables, nothing else) costs 21.7 user + 1.1 sys = 22.8 cpu-s, wall 6.6 s (three runs: 22.8, 23.1, 23.0), so **0.144 cpu-s per fault** on average, inside the 0.15 to 0.25 band of the V-16 estimate and far below the 0.4 threshold. The three PSG faults run in under 0.01 s each (the suite has no sanitizer and the register file is small); their cost is dominated by the verdict's process starts, so they sit below the average.
+- Per control: the control runner alone costs 14.7 user + 40.7 sys = 55.4 cpu-s for 300 controls, **0.185 cpu-s per control on macOS** (process-start heavy; V-16 uses about 0.04 on native Linux).
+- Per test id of the `psg` suite, from its plain-run time (median of 11): dev (ASan and UBSan) 0.072 s wall, 0.069 cpu-s; release 0.004 s wall, 0.003 cpu-s; 40 ids, so **1.7 ms per id in dev and 0.1 ms in release**, under the 3 ms average assumed in V-16 and far under the plan targets (0.3 s release, 1.5 s dev). For comparison, the machine suite runs 0.52 s dev and 0.27 s release for 397 ids and memmap 0.10 s and 0.01 s.
+
+### Projection against the hosted trigger (V-16)
+
+- Hosted rows read from `.planning/ci-runs.tsv` (successful runs): last 5 `cpu_s` 179, 225, 136, 160, 252, median **179**; last 5 `gate_s` 59, 75, 45, 55, 81, median **59**. Budget since 04-25: median `gate_s` 75 s, median `cpu_s` 200; revisit when the last-5 `gate_s` median is above 90 s, any run above 120 s, or the last-5 `cpu_s` median above 200; the lever trigger of V-16 is a projection of 190 cpu-s.
+- Adds not yet in a hosted row: plan 05-04 itself (3 faults, 4 controls, 106 test ids over both presets) and the remaining Phase 5 plans: faults 8 (05-05) + 8 (05-06) + 6 (05-07) + 6 (05-08) + 3 (05-09) + 2 (05-10) = 33, controls 3 + 4 + 5 + 1 + 3 = 16, about 280 more test ids per preset (560 over both), and one more runner suite with two more steps already counted.
+- Arithmetic with the V-16 native-Linux unit costs and the measured fault cost: plan 05-04 own adds 3 x 0.15 + 4 x 0.04 + 106 x 0.003 = 0.93; remaining 33 x 0.15 + 16 x 0.04 + 560 x 0.003 + 1.5 (one more suite, two presets) = 4.95 + 0.64 + 1.68 + 1.5 = 8.8; total +9.7, giving **188.7 cpu-s**.
+- Cross-check with the laptop figures scaled to the hosted rows (hosted last-5 median 179 over a local gate of about 104 cpu-s is a factor of 1.7): the same adds cost about 9.7 x 1.7 = 16.5, giving **195.5 cpu-s**.
+- Wall: the local gate did not move (plan 05-03 end 32 to 34 s, now 32 to 35 s). Projected last-5 hosted `gate_s` median about 59 + 4 to 8 = 63 to 67 s, under the 90 s trigger. Not at risk.
+- Result: the projection is **188.7 to 195.5 cpu-s**, straddling the 190 trigger; the hosted spread of the same code (136 to 252 cpu-s in the last five) is larger than the whole projected add, so a single row will not settle it. The rule reaches 190 on the conservative estimate.
+
+### Decision rule (V-16, verbatim)
+
+If the projection or the last-5 median reaches 190 cpu-s, the lever order is (1) batch the `cp1610-vectors` JSON re-parse (about 5 cpu-s, no evidence change), (2) limit fault reruns to the suites a fault names (the verdict keeps its must-pass vector), (3) background `c-build` only if `cpu_s / (ncpu x gate_s)` shows idle cores (about 0.7 before); not levers: dropping a control, merging checks, weakening an oracle, a two-job split (redefines PKG-02). If the measured cost is above 0.4 cpu-s per fault, list the six lowest-value faults of plans 05-05 to 05-08 that can become `psg.judge.*` or `input.judge.*` self-controls.
+
+### Outcome
+
+- The measured cost is 0.144 cpu-s per fault, below 0.4, so no fault is converted to a judge self-control and no list is needed.
+- Lever list for the orchestrator to turn into plan 05-L1 if it wants to act on the conservative estimate (the executor does not create 05-L1): (1) batch the `cp1610-vectors` JSON re-parse (about 5 cpu-s, no evidence change; alone it brings the projection to 184 to 191); (2) limit fault reruns to the suites a fault names, only if (1) is not enough; (3) background `c-build` only if `cpu_s / (ncpu x gate_s)` shows idle cores (about 0.7 today: 179 / (4 x 59) = 0.76, so not yet). The next hosted rows (05-04 onward) will show whether the 195 reading or the 189 reading is the better one; a last-5 median at or above 190 fires the rule independently of this projection.
+
+checkpoint-1: lever-required
