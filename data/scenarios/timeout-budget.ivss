@@ -1,0 +1,12 @@
+# Scenario timeout-budget (plan 04-20, D-20, D-21): outcome timeout, exit 11, detail budget. The
+# original diagnostic expected to halt within 100 CPU cycles; it needs about 521, so the run-to
+# bound is reached first: the deterministic machine-time budget, never wall time.
+# expect-detail: budget step=1 line=11 expected=halted got=target
+ivss 1
+id timeout-budget
+profile intv-2609-ntsc-family-p1
+content exec boot-stub
+content grom zero-grom
+content cart diag-cpu-1.ivsc
+run-to 100 cpu-cycles stop halted
+assert halted == yes

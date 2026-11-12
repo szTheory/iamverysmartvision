@@ -1,0 +1,12 @@
+# Scenario expect-load-refusal (plan 04-20, D-20): outcome pass, exit 0. The same truncated
+# cartridge as unexpected-refusal, but the scenario expects the refusal, so it ends as pass.
+# The refused load ends the scenario, so nothing follows it: the parser refuses a run-to, an input
+# or a later role's content after an expected refusal (review WR-02, reason dead-after-refusal).
+# expect-detail: load-refused-as-expected role=cart status=IVS_E_MALFORMED reason=1
+ivss 1
+id expect-load-refusal
+profile intv-2609-ntsc-family-p1
+content exec boot-stub
+content grom zero-grom
+content cart diag-cpu-1-truncated.ivsc
+expect-load cart IVS_E_MALFORMED

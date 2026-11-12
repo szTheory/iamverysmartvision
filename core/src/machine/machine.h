@@ -5,11 +5,15 @@
  *
  * One flat struct with no pointers: magic, profile index, run phase, a reserved word, machine
  * time, the embedded 32-byte CPU state, the memory system (gates, loaded flags, the committed
- * cartridge segment table and every backing array at the profile's worst-case capacity) and one
- * record per image slot. Every field is fixed width; the only bytes that are not fields are the
- * reserved word, the CPU's reserved bytes and the tail padding up to the 16-byte alignment, and
- * all of them stay zero. The instance holds no last-error, counter or timestamp (D-08).
- * Layout (bytes): header 24, cpu 32, mem 113,228, slots 3 x 56, tail padding 4: 113,456. */
+ * cartridge segment table and every backing array at the profile's worst-case capacity), an
+ * explicit pad word, the observation rows (plan 04-05, D-10: the video, audio and input digest
+ * domains 16..18) and one record per image slot. Every field is fixed width; the only bytes that
+ * are not fields are the reserved word, the CPU's reserved bytes and the observation pad word,
+ * and all of them stay zero. The instance holds no last-error or timestamp (D-08); the
+ * observation counts are machine state of their domains.
+ * Layout (bytes): header 24, cpu 32, mem 113,228 (ends at an offset that is 4 mod 8), pad 4,
+ * obs 144, slots 3 x 56: 113,600, a multiple of 16, so there is no tail padding (machine_digest.c
+ * asserts it). The previous layout (Phase 3, no obs) was 113,456 with 4 bytes of tail padding. */
 #ifndef IVS_MACHINE_INTERNAL_H
 #define IVS_MACHINE_INTERNAL_H
 
@@ -19,11 +23,17 @@
 #include "content/ivsc.h"
 #include "cpu/cp1610.h"
 #include "ivs/ivs_machine.h"
+#include "ivs/ivs_run.h"
 #include "memmap/memsys.h"
 
 #define IVS_MACHINE_MAGIC 0x4956534Du /* "IVSM" */
 #define IVS_MACHINE_ALIGN 16u
-#define IVS_MACHINE_BYTES 113456u
+#define IVS_MACHINE_BYTES 113600u
+
+/* The v1 (Phase 3) size of ivs_info (A-02, plan 04-09): the smallest struct_size info accepts.
+ * Fields after it are written only when the caller's struct_size covers them. machine.c ties it
+ * to offsetof(ivs_info, ticks_per_cpu_cycle). */
+#define IVS_INFO_V1_SIZE 216u
 
 /* One image slot (kind fixed at create: slot i holds kind i + 1). */
 typedef struct ivs_machine_slot {
@@ -36,6 +46,30 @@ typedef struct ivs_machine_slot {
   uint8_t sha256[32];
 } ivs_machine_slot;
 
+/* Observation rows (plan 04-05, D-10, A-03): a chain[32] and a u64 record count for VIDEO
+ * (digest domain 16) and AUDIO (17); INPUT (18) holds the controller words in force, the applied
+ * event count, the input floor tick and the input chain (plan 04-11, D-15). Every row is zero at
+ * create and after a reset except the INPUT chain, which then holds its start value h0
+ * (ivs_input_init). Domain version 1; not part of the composite, which stays version 1 over
+ * domains 1..4. */
+typedef struct ivs_machine_obs_av {
+  uint8_t chain[32];
+  uint64_t count;
+} ivs_machine_obs_av;
+
+typedef struct ivs_machine_obs_input {
+  uint32_t words[4];
+  uint64_t count;
+  uint64_t floor_tick;
+  uint8_t chain[32];
+} ivs_machine_obs_input;
+
+typedef struct ivs_machine_obs {
+  ivs_machine_obs_av video;
+  ivs_machine_obs_av audio;
+  ivs_machine_obs_input input;
+} ivs_machine_obs;
+
 struct ivs_machine {
   _Alignas(16) uint32_t magic; /* IVS_MACHINE_MAGIC while valid; 0 after destroy */
   uint32_t profile;            /* registry index */
@@ -44,10 +78,15 @@ struct ivs_machine {
   uint64_t time_ticks;         /* machine time in master ticks */
   ivs_cp1610 cpu;
   ivs_memsys mem;
+  uint32_t obs_pad;    /* 0: mem ends at 4 mod 8, so this word keeps obs 8-aligned with no hole */
+  ivs_machine_obs obs; /* before slot[]: IVS_FAULT_DIGEST_SKIPS_IMAGE_TABLE skips rows from slot on */
   ivs_machine_slot slot[IVS_SLOT_COUNT];
 };
 
 _Static_assert(sizeof(ivs_machine_slot) == 56u, "ivs_machine_slot must be 56 bytes");
+_Static_assert(sizeof(ivs_machine_obs) == 144u, "ivs_machine_obs must be 144 bytes");
+_Static_assert(offsetof(struct ivs_machine, obs) == offsetof(struct ivs_machine, obs_pad) + 4u,
+               "no implicit hole between the observation pad word and obs");
 _Static_assert(_Alignof(struct ivs_machine) == IVS_MACHINE_ALIGN, "instance alignment is 16");
 _Static_assert(sizeof(struct ivs_machine) == IVS_MACHINE_BYTES,
                "instance size changed: review the digest field table (machine_digest.c)");
@@ -57,11 +96,12 @@ _Static_assert(sizeof(struct ivs_machine) == IVS_MACHINE_BYTES,
  * bytes (1, 2, 4 or 8), each read natively and written big-endian by shifts; a row with count > 1
  * is preceded by its u32 count. A PROFILE row is a u32 registry index written as the profile id:
  * u32 length then the ASCII bytes (an index outside the registry writes u32 0xFFFFFFFF then the
- * index). MAGIC and PAD rows (the magic, the reserved word, the CPU's reserved bytes and the tail
- * padding) are declared but never serialized; their domain names the neighbour they sit with.
- * Domain preimage: "IVSD" || u8 domain || u16 IVS_DIGEST_DOMAIN_VERSION || the domain's rows in
- * table order. Composite: "IVSSTATE" || u16 IVS_DIGEST_COMPOSITE_VERSION || for domains 1..4:
- * u8 domain || its 32-byte SHA-256. */
+ * index). MAGIC and PAD rows (the magic, the reserved word, the CPU's reserved bytes and the
+ * observation pad word) are declared but never serialized; their domain names the neighbour they
+ * sit with. Domain preimage: "IVSD" || u8 domain || u16 IVS_DIGEST_DOMAIN_VERSION || the domain's
+ * rows in table order. Composite: "IVSSTATE" || u16 IVS_DIGEST_COMPOSITE_VERSION || for domains
+ * 1..4: u8 domain || its 32-byte SHA-256. Domains 16..18 (VIDEO, AUDIO, INPUT) have their own
+ * digests and are not in the composite (D-10). */
 #define IVS_DIGEST_KIND_UINT 1u
 #define IVS_DIGEST_KIND_PROFILE 2u
 #define IVS_DIGEST_KIND_MAGIC 3u
@@ -74,7 +114,7 @@ typedef struct ivs_digest_field {
   uint32_t offset; /* offsetof(struct ivs_machine, ...) */
   uint32_t width;  /* bytes per element */
   uint32_t count;  /* elements */
-  uint8_t domain;  /* IVS_DIGEST_CPU..IVS_DIGEST_INSTANCE */
+  uint8_t domain;  /* IVS_DIGEST_CPU..IVS_DIGEST_INSTANCE or IVS_DIGEST_VIDEO..IVS_DIGEST_INPUT */
   uint8_t kind;    /* IVS_DIGEST_KIND_* */
   uint16_t reserved;
 } ivs_digest_field;
@@ -83,7 +123,7 @@ typedef struct ivs_digest_field {
 size_t ivs_machine_digest_field_count(void);
 const ivs_digest_field *ivs_machine_digest_field(size_t i);
 
-/* Writes the preimage of domain 1..4 of m into buf (at most cap bytes; buf may be NULL when cap
+/* Writes the preimage of domain 1..4 or 16..18 of m into buf (at most cap bytes; buf may be NULL when cap
  * is 0) and returns its full length; 0 for NULL m or another domain. No handle check: the tests
  * pass modified copies. */
 size_t ivs_machine_digest_preimage(const struct ivs_machine *m, uint32_t domain, uint8_t *buf, size_t cap);
@@ -100,7 +140,8 @@ void ivs_machine_slot_report(const ivs_machine_slot *s, ivs_image_report *o);
 uint32_t ivs_machine_cart_span_check(uint32_t lo, uint32_t hi, const ivs_ivsc_view *v);
 
 /* 1 when the n bytes at p overlap the inst_bytes bytes at inst (A-06, A-08 a). Differences of
- * uintptr_t values only, so nothing wraps whatever the pointers are; n or inst_bytes 0 is 0.
+ * uintptr_t values only, so nothing wraps whatever the pointers are; n or inst_bytes 0 is 0; a
+ * span that runs past the top of the address space is 1 (review IN-02: it names no object).
  * Used for input spans (only within the kind's bound) and for every out parameter that points
  * into caller memory: an out struct or buffer that overlaps the instance storage is refused
  * BAD_ARG with nothing written, so a host cannot aim a report into its own instance. */
@@ -126,6 +167,57 @@ uint32_t ivs_machine_out_overlaps(const void *out, size_t n, const void *inst, s
  * IVS_OK. Never public: it is declared here and nowhere under core/include; Phase 4's bounded
  * run API is built on it. */
 ivs_status ivs_machine_step_unit_internal(ivs_machine *m, ivs_cp1610_result *out);
+
+/* ---- internal run env seam (D-06, plan 04-10, machine_bound.c) ----
+ * The output layout a run is checked against: per channel a format (IVS_OUTPUT_FORMAT_*) and the
+ * bytes one frame needs, and the nominal frame length in master ticks. The capacity a run needs
+ * per channel is bytes_per_frame * (max(target - now, 0) / nominal_frame_ticks + 1); a channel
+ * with 0 bytes per frame needs nothing, and nominal_frame_ticks 0 with bytes above 0 can never be
+ * met (BUFFER_TOO_SMALL). */
+typedef struct ivs_run_env {
+  uint32_t video_format;
+  uint32_t video_bytes_per_frame;
+  uint32_t audio_format;
+  uint32_t audio_bytes_per_frame;
+  uint64_t nominal_frame_ticks;
+} ivs_run_env;
+
+/* The real output layout of profile p (shared by ivs_machine_info and the public run call):
+ * Phase 4 profiles produce nothing (formats NONE, 0 bytes per frame), and the nominal frame is
+ * ticks_per_cpu_cycle * cpu_cycles_per_scanline * scanlines_per_frame (D-09). */
+void ivs_machine_profile_env(const ivs_profile_desc *p, ivs_run_env *env);
+
+/* ivs_machine_run against the layout env instead of the profile's (the public call passes the
+ * profile's own, ivs_machine_profile_env). Same ladder, loop and report as ivs_machine_run
+ * (ivs/ivs_run.h); env NULL is BAD_ARG (RUN_NULL_ARG) in the first stage. It lets the tests prove
+ * the capacity contract with a synthetic layout while the real layout is zero-length. Never
+ * public: it is declared here and nowhere under core/include. */
+ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *req, ivs_run_report *rep,
+                                        const ivs_run_env *env);
+
+/* ---- input (D-12..D-15, plan 04-11, machine_input.c) ----
+ * The INPUT row (obs.input): the controller words in force, the applied event count, the input
+ * floor (start of the last begun unit + 1, set by the step seam when a unit begins) and the chain
+ * h0 = SHA-256("IVS-INPUT-LOG-V1"), h(n+1) = SHA-256(h(n) || be64(at_tick) || be32(words[0..3])). */
+
+/* Sets in to its create and reset state: words, count and floor 0, chain h0. */
+void ivs_input_init(ivs_machine_obs_input *in);
+
+/* The per-event stages of the run ladder (D-05, D-14), after BUFFER_TOO_SMALL: IVS_REASON_NONE
+ * with *st IVS_OK and *index IVS_INPUT_INDEX_NONE, or the reason with *st and the failing index.
+ * BAD_ARG pass over the whole array first (at_tick at or above 2^63, below its predecessor, below
+ * in->floor_tick, in that order per event), then the UNSUPPORTED pass (nonzero flags, nonzero
+ * reserved word, a controller word with IVS_CTRL_RESERVED_MASK set, a nonzero word at an index at
+ * or above controllers, the profile's input.controllers). Reads ev[0..count) only. */
+uint32_t ivs_input_check(const ivs_machine_obs_input *in, const ivs_input_event *ev, uint32_t count,
+                         uint32_t controllers, ivs_status *st, uint32_t *index);
+
+/* Applies, in array order, every event ev[next..count) whose at_tick is at or below start (the
+ * start tick of the unit about to begin): words in force, count + 1, chain. Returns the index of
+ * the first event not applied. entry is machine time at the call's entry (used only by a named
+ * fault). Cannot refuse: the run validated the whole array first. */
+uint32_t ivs_input_apply_due(struct ivs_machine *im, const ivs_input_event *ev, uint32_t count, uint32_t next,
+                             uint64_t start, uint64_t entry);
 
 /* The instance behind a handle, or NULL for NULL, a wrong magic, or a stored profile index that
  * is outside the registry or differs from the memory system's (review WR-03): every call that

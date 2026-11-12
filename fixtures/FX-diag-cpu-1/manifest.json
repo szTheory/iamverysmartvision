@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "id": "FX-diag-cpu-1",
+  "kind": "original-source",
+  "committed": true,
+  "path": "fixtures/FX-diag-cpu-1/diag-cpu-1.listing.txt",
+  "local_path": null,
+  "source": {
+    "origin": "project-authored diagnostic listing ivs-diag-cpu-1 (plan 04-16, D-31)",
+    "pin": null,
+    "accessed": null,
+    "holder": "project contributors"
+  },
+  "recipe": null,
+  "inputs": [],
+  "outputs": [
+    {
+      "path": "fixtures/FX-diag-cpu-1/diag-cpu-1.listing.txt",
+      "sha256": "3716f4749578522950c67bcaa53a9f742f40b53bc9bb12b3bf6f75a848235a4f",
+      "size_bytes": 7036
+    }
+  ],
+  "licence": "MIT",
+  "licence_evidence": {
+    "url": "LICENSE",
+    "text_sha256": "aeb83b57ece8dbf61992ea3bd58952f17e30959787fc6c9f82451f17baa67c26",
+    "accessed": "2026-11-11"
+  },
+  "copyright": ["Copyright (c) 2026 iamverysmartvision contributors"],
+  "notices": [],
+  "redistributable": "yes",
+  "allowed_use": ["local-test", "ci", "repo"],
+  "rights_review": {
+    "status": "author-attested",
+    "by": "project contributors",
+    "date": "2026-11-11"
+  },
+  "derived_from": [],
+  "note": "project-authored diagnostic; built .ivsc lives only in the build tree; its identity hash is pinned by the golden. The listing is a hand-assembled annotated text listing (D-25, D-26): every word is derived by hand from the manual pages it cites, with no assembler and nothing copied from another implementation. tools/pack builds the one-segment IVSC v1 container from it into build/<preset>/images/diag-cpu-1.ivsc; no container is committed. Its expected guest state is derived by hand in data/golden/diag-cpu-1.expect. Any edit of the listing refreshes the outputs entry (cmake -E sha256sum and size) in the same commit."
+}

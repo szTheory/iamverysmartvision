@@ -1,0 +1,48 @@
+# Suite runner-process (plan 04-20, D-20, D-21, D-23, D-32): tests/runner-process-tap.sh runs the
+# real ivs-run of each preset.
+# runner-process.scenario.<id>: one case per line of data/expected/runner-scenarios.ids (exit
+#   code, outcome, exit.code, outcome.detail, `ivsr 1` first and `report.end <n>` last);
+#   needs-user-exec needs an operator EXEC the gate never has and is a visible skip.
+# runner-process.mutant.<ID>: one case per program mutation of data/expected/diag-mutations.ids,
+#   guest-fail naming its clause (D-32).
+# runner-process.repeat.<id>, runner-process.slices.<id> (--slice-ticks 1 and 7) and
+#   runner-process.cwd (run from another directory): byte-equal reports apart from host.calls.
+# runner-process.judge.<slug>: judge self-controls, each passing only when the judge fails a fake
+#   runner for its intended reason (exit code, missing report.end, outcome and exit.code
+#   disagreeing, a changed report body; plan 04-24: a removed demonstrating scenario).
+# runner-process.outcomes-consistent: --help, docs/runner.md and data/expected/runner-outcomes.ids
+#   agree; runner-process.outcomes-covered: every outcome has a running scenario.
+# runner-process.watchdog: the watchdog self-control (stopped at once it stays silent; it stops a
+#   run past its limit).
+runner-process.scenario.diag-boot-pass
+runner-process.scenario.guest-assert-mismatch
+runner-process.scenario.timeout-budget
+runner-process.scenario.timeout-wall
+runner-process.scenario.cancel-signal
+runner-process.scenario.missing-cart-file
+runner-process.scenario.needs-user-exec skip-ok
+runner-process.scenario.bad-syntax
+runner-process.scenario.unexpected-refusal
+runner-process.scenario.expect-load-refusal
+runner-process.scenario.diag-input-pass
+runner-process.scenario.max-ticks-straddle
+runner-process.scenario.dead-after-refusal
+runner-process.scenario.no-run-to
+runner-process.scenario.cancel-signal-twice
+runner-process.mutant.ADDI-SUBI
+runner-process.mutant.BNZE-BZE
+runner-process.mutant.PSHR-MVOAT
+runner-process.mutant.INCR-DECR
+runner-process.repeat.diag-boot-pass
+runner-process.slices.diag-boot-pass
+runner-process.repeat.diag-input-pass
+runner-process.slices.diag-input-pass
+runner-process.cwd
+runner-process.judge.exit-mismatch
+runner-process.judge.no-report-end
+runner-process.judge.outcome-exit-disagree
+runner-process.judge.body-differs
+runner-process.judge.outcome-uncovered
+runner-process.outcomes-consistent
+runner-process.outcomes-covered
+runner-process.watchdog

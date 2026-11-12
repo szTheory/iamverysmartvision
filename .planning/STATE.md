@@ -1,19 +1,19 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 4
-current_phase_name: Headless Runner and Installed Consumer (Slice 0)
+current_phase: 5
+current_phase_name: Hand Controllers and PSG Sound
 status: planning
-stopped_at: Phase 3 complete, ready to plan Phase 4
-last_updated: "2026-11-11T10:27:37.755Z"
+stopped_at: Phase 4 complete, ready to plan Phase 5
+last_updated: "2026-11-12T03:27:20.567Z"
 last_activity: 2026-11-11
-last_activity_desc: Phase 3 complete, transitioned to Phase 4
-state_head: 08f21627c0a8189086e07352f139290455f76bed
+last_activity_desc: Phase 4 complete, transitioned to Phase 5
+state_head: 52ddd0b53feabaa97ddebe8839ff1075e4497e26
 progress:
   total_phases: 8
-  completed_phases: 3
-  total_plans: 46
-  completed_plans: 46
-  percent: 38
+  completed_phases: 4
+  total_plans: 71
+  completed_plans: 71
+  percent: 50
 ---
 
 # Project State
@@ -27,17 +27,17 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 
 ## Current Position
 
-Phase: 4 — Headless Runner and Installed Consumer (Slice 0)
+Phase: 5 — Hand Controllers and PSG Sound
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-11-11 — Phase 3 complete, transitioned to Phase 4
+Last activity: 2026-11-11 — Phase 4 complete, transitioned to Phase 5
 
-Progress: [████░░░░░░] 38%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 46
+- Total plans completed: 73
 - Average duration: -
 - Total execution time: -
 
@@ -48,6 +48,7 @@ Progress: [████░░░░░░] 38%
 | 1 | 14 | - | - |
 | 2 | 18 | - | - |
 | 3 | 14 | - | - |
+| 4 | 27 | - | - |
 
 *Updated after each plan completion*
 **Per-Plan Metrics:**
@@ -100,6 +101,31 @@ Progress: [████░░░░░░] 38%
 | Phase 03 P12 | 15min | 3 tasks | 22 files |
 | Phase 03 P13 | 10min | 3 tasks | 46 files |
 | Phase 03 P14 | 12min | 3 tasks | 4 files |
+| Phase 04 P01 | 45min | 3 tasks | 36 files |
+| Phase 04 P02 | 15min | 2 tasks | 19 files |
+| Phase 04 P03 | 40min | 2 tasks | 24 files |
+| Phase 4 P04 | 30min | 2 tasks | 28 files |
+| Phase 4 P05 | 45min | 2 tasks | 8 files |
+| Phase 4 P06 | 30min | 2 tasks | 12 files |
+| Phase 4 P07 | 55min | 3 tasks | 12 files |
+| Phase 04 P08 | 20 min | 2 tasks | 20 files |
+| Phase 04 P09 | 45 min | 2 tasks | 16 files |
+| Phase 04 P10 | 40 min | 2 tasks | 14 files |
+| Phase 04 P11 | 95 min | 3 tasks | 18 files |
+| Phase 04 P12 | 35 min | 2 tasks | 13 files |
+| Phase 04 P13 | 35 min | 3 tasks | 18 files |
+| Phase 04 P14 | 16 min | 2 tasks | 14 files |
+| Phase 04 P15 | 8 min | 3 tasks | 45 files |
+| Phase 04 P16 | 15 min | 3 tasks | 21 files |
+| Phase 04 P17 | 20 min | 3 tasks | 12 files |
+| Phase 04 P18 | 19 min | 3 tasks | 10 files |
+| Phase 04 P19 | 17 min | 3 tasks | 14 files |
+| Phase 04 P20 | 14 min | 3 tasks | 17 files |
+| Phase 04 P21 | 20 min | 3 tasks | 47 files |
+| Phase 04 P22 | 15 min | 3 tasks | 9 files |
+| Phase 4 P23 | 14min | 3 tasks | 8 files |
+| Phase 04 P24 | 35 min | 3 tasks | 15 files |
+| Phase 4 P25 | 40min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -220,6 +246,50 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 03]: 03-13: ninth token/control api-effects-format for table shape; controls=224/224
 - [Phase 03]: D5 recorded as decided by D-24 in reset.r7, C32 and C25; hardware read-back stays D10, boot stub stays Phase 4
 - [Phase 03]: Hosted gate budget re-baselined 30 s -> 40 s, revisit trigger 50 s (D-38, A-07); no lever applied at phase end
+- [Phase 04]: 04-01: gate.sh prints gate-env/gate-cpu (POSIX times via 'command times' in the main shell after the controls wait); job summary only through the EXIT-trap helper tools/check/ci-summary.sh; ci-parity bans any action but actions/checkout, secrets, strategy, runs-on other than ubuntu-24.04 and a gate timeout other than 5
+- [Phase 04]: 04-02: ci-record.sh converts ISO times with awk civil-date arithmetic in the shared parser (offline --from-files tests it); ci-log also requires digit run ids and 40-hex shas
+- [Phase 04]: 04-02: PKG-04 stays Pending until hosted rows exist in .planning/ci-runs.tsv; orchestrator runs tools/ci-record.sh after each hosted run and evaluates D-45 after 04-10 and 04-19
+- [Phase 04]: 04-03: Fault owner TUs are repo-relative (core/ and runner/); file stems unique across both, checked at configure (D-24)
+- [Phase 04]: 04-03: Runner outcome values equal their exit codes; F_WALL 0x100 separates wall from budget timeout; non-outcome values map to harness-fail 14
+- [Phase 4]: 04-04: runner-scan confines POSIX headers and feature macros to runner/hostio.c (also refusing feature macros as runner CMake compile definitions); no runner file, hostio.c included, may include core internals
+- [Phase 4]: 04-05: observation rows (obs.video/audio/input, 144 bytes) sit before slot[] after an explicit obs_pad word; instance 113,600 bytes with no tail padding (asserted); domains 16..18 live, never in the version 1 composite over 1..4
+- [Phase 4]: 04-06: ivs_cpu_state_report is 36 bytes; IVS_CPU_STATE_*/IVS_CPU_FAULT_* mirror the CPU internals, pinned by static asserts; observation calls use ivs_machine_span_overlaps directly; run/observation tests live in suite run
+- [Phase 4]: 04-07: ivs_machine_run loop tests fault then halt (flag) before each unit; any zero-progress unit ends the loop (INTERNAL unless FAULTED); refusal reasons IVS_REASON_RUN_* 34..40 (BAD_HANDLE reuses IVS_REASON_HANDLE); refusal detail never written into the bytes the handle names
+- [Phase 04]: 04-08: generic define pin in api-effects (class table PREFIX|PIN|FORM|EXCL); IVS_STOP_ and IVS_REASON_ pinned; a missing pin file or an empty class fails closed as api-define-unpinned
+- [Phase 04]: 04-09: ivs_info grows to 256 bytes (timebase, nominal_frame_ticks, output layout NONE/0); minimum struct_size stays the v1 size 216 (IVS_INFO_V1_SIZE), copy is min(struct_size, sizeof) (A-02); the slicing reference is seam-stepped so a run-path fault cannot move its own oracle (D-07)
+- [Phase 04]: 04-10: ivs_machine_run checks caller-owned output buffers in the D-05 slots (BAD_ARG after UNSUPPORTED, BUFFER_TOO_SMALL after OUT_OF_RANGE) and wraps the internal env seam ivs_machine_run_env_internal with the profile layout; a report overlapping a buffer gets no refusal detail
+- [Phase 04]: 04-11: the input floor is set by the step seam when the CPU accepts a unit, so run-stepped and seam-stepped twins stay byte-identical
+- [Phase 04]: 04-11: per-event validation is two whole-array passes after BUFFER_TOO_SMALL (BAD_ARG order/range/floor, then UNSUPPORTED content); lowest failing index reported
+- [Phase 04]: 04-11: an event_count above 65536 names no span for the report rule (found by gate-linux under gcc)
+- [Phase 04]: 04-12: input.controllers (profile, tier2-first-party-adjacent, SRC-bsr-2609, C14, D6) = 2; a nonzero controller word at or above it is UNSUPPORTED (IVS_REASON_INPUT_EXTRA_CONTROLLER 54), last check per event in pass 2
+- [Phase 04]: 04-13: IVS_CTRL_ bits are pinned by bit index through a new bit value form ((1u << n) read as n) of the generic define pin
+- [Phase 04]: 04-13: v1 sizes frozen (request 64 on LP64, report 112, event 32, cpu_state_report 36, ivs_info 216/256); A-02 applies to them from here
+- [Phase 04]: 04-13: C14 stays open with the D6 policy; C63-C67 record the D10 hardware questions and the unit-start granularity; next discrepancy id C68
+- [Phase 04]: 04-14: stub listing zero fill carries row HLT with text fill ('-' only for operand words); bit groups are exactly 10 digits; header keys are '# key: value' lines
+- [Phase 04]: 04-14: tools/pack writes images only to build/<preset>/images (IVS_IMAGES_DIR); the C include of image bytes is generated in tests/CMakeLists.txt and is GENERATED for the run fault suite
+- [Phase 04]: listing step copies the vector checker's row loader, decle_leaves and program_word; operand count from the family table's words column; SDBD not modelled (fails closed)
+- [Phase 04]: suite pack: ivs_pack --dump-words vs listing.cmake -DDUMP parse, byte for byte; never the core
+- [Phase 04]: 04-16: the diag-cpu-1 predicate (data/golden/diag-cpu-1.expect) was derived by hand and committed before the program first ran; run.diag.predicate reads it through a generated include (tests/expect-inc.cmake)
+- [Phase 04]: 04-16: run.diag.slice reuses family slice's oracle via ivs_run_slice_halting; it also detects RUN_STOP_BEFORE_OVERSHOOT, RUN_BUDGET_CARRY and INPUT_STATIC_CARRY (allowed collateral)
+- [Phase 04]: 04-16: CL-0008 provisional (original-diagnostic); C68 records the stub's $5000 entry and $0340 stack as project conventions; next ids C69 and CL-0009
+- [Phase 04]: 04-17: IVSS v1 parser in runner/scenario.c (pure, fixed-size, 42 reason tokens, line 0 = whole file); id and profile required; one unit for all run-to lines and one for all input lines; inputs nondecreasing, run-to strictly increasing, times at most 2^62
+- [Phase 04]: 04-17: mem A..B asserts mean every word of the inclusive range equals the value; digest domains by name (composite cpu mem images instance video audio input), 64 lower-case hex
+- [Phase 04]: 04-17: -P cmake scripts must start with cmake_minimum_required(VERSION 3.25): cmake 3.28 runs them with CMP0054 OLD and a quoted string in if() can dereference a same-named variable (found by gate-linux)
+- [Phase 04]: 04-18: the executor runs every run-to with IVS_RUN_F_STOP_ON_HALT; halted where target was expected is guest-fail, the bound reached where halted/faulted was expected is timeout budget, IVS_STOP_INTERNAL is harness-fail (ivs_runner_stop_observation, pure)
+- [Phase 04]: 04-18: report key names pinned (slot.*, exec:/grom: labels, step.<k>.*, step.<k>.assert.<j> with scenario-wide j, cpu.*, input.*, digest.<8 domains>, output.*, host.calls, report.end); host.calls counts read_file/read_user/now_ms/cancel_requested and is the only host-dependent key
+- [Phase 04]: 04-18: host vtable read_file(relpath, cap, buf[cap+1]) plus optional read_user(role) for user roles; a matching expect-load refusal ends as pass, a wrong reason or an unrefused load is harness-fail
+- [Phase 4]: 04-19: every run-to runs as slices (min(limit, now + slice_ticks), default 1<<22) with the unconsumed input suffix; cancel_requested then now_ms once before every slice; ivs_runner_options {flags, wall_timeout_ms, slice_ticks, max_ticks}, 0 = default
+- [Phase 4]: 04-19: --max-ticks (default 2^40) cutting a run-to is timeout budget (detail max-ticks=<m>); the wall cap is timeout 'wall step=<k> cap-ms=<n>' (never golden); scenario wall-timeout-ms only lowers; cancel+wall at one check resolves to cancelled
+- [Phase 4]: 04-19: ivs-run: POSIX only in runner/hostio.c (+hostio.h); --content-dir defaults to the scenario's directory; usage errors, unreadable or refused scenarios are exit 14 with no report; --self-signal-after-slices N raises SIGINT in the cancel check after slice N
+- [Phase 04]: 04-20: scenario expectations beyond the six inventory columns live in the scenario as # expect-detail: / # expect-stderr: comments; the judge pins outcome.detail exactly and requires each outcome/exit.code pair in data/expected/runner-outcomes.ids
+- [Phase 04]: 04-20: D-32 mutants are <FROM>-<TO> ids checked against the listing row; PSHR to MVO@ is MVO@ R3 via R1 (R1=8080), so R6 stays 0340
+- [Phase 04]: 04-21: golden key list (scenario.id/profile, outcome, detail, exit.code, slot.*, step.*, cpu.*, input.*, digest.cpu/mem/images/instance/composite, output counts, live-domain digests only when observed); written by ivs-run --update-golden in C and re-derived by the golden step in awk
+- [Phase 04]: 04-21: step golden judges dev vs release byte equality apart from host.calls, excluding host-dependent ids (column 4); a live domain is observed only when its report count is nonzero, else none with no digest line
+- [Phase 04]: 04-22: archive equality is whole-file sha256 on Linux, member-wise on Darwin (CMake re-runs ranlib at install); pass line archive=sha256|members
+- [Phase 04]: 04-22: version-refused also refuses an older minor (SameMinorVersion vs AnyNewerVersion) and requires the built major.minor found under the moved prefix
+- [Phase 4]: 04-23: the installed consumer (tests/installed-consumer) replays diag-input-pass from the moved prefix only; its digest lines must equal the runner golden; independence is read from ninja -t deps, the link line and ivs_DIR; pkg-selftest=10/10
+- [Phase 04]: 04-24: RUN-04 is gate-checked: data/expected/important-gates.ids (102 lines, 26 gates) and the pure step important-gates; mutant ids also resolve as <suite>.judge.* / <suite>.mutant.*; gap fills api-stop-orphan, pack.judge.patched-word, runner-process.judge.outcome-uncovered, no new fault
+- [Phase 4]: Hosted gate budget re-baselined (04-25): 30/40 s wall budgets superseded by median gate_s 75 s plus median cpu_s 200; revisit at last-5 gate_s median > 90 s, any run > 120 s, or last-5 cpu_s median > 200
 
 ### Pending Todos
 
@@ -252,6 +322,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-11T08:58:12.416Z
-Stopped at: Phase 3 complete, ready to plan Phase 4
+Last session: 2026-11-12T02:10:54.500Z
+Stopped at: Phase 4 complete, ready to plan Phase 5
 Resume file: None

@@ -1,0 +1,10 @@
+# Toy scenario of the golden step's positive control (plan 04-21): two assert lines.
+ivss 1
+id toy
+profile intv-2609-ntsc-family-p1
+content exec boot-stub
+content grom zero-grom
+content cart toy.ivsc
+run-to 100 cpu-cycles stop halted
+assert reg R0 == 0001
+assert mem 0200 == 0002

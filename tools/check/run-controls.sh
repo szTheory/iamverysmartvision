@@ -131,11 +131,12 @@ apply_make() {
 }
 
 # Build the tree $1/tree and its list $1/filelist in work dir $1 for control dir $2
-# (empty $2 = pristine good tree).
+# (empty $2 = pristine good tree). The work dir is new, so the good tree is copied as tree in
+# one cp (D-45 lever, plan 04-LEVER-01: no rm and mkdir per control); a full copy, never links,
+# because MAKE verbs append to tree files in place.
 build_tree() {
-  rm -rf "$1/tree"
-  mkdir -p "$1/tree"
-  cp -R "$CONTROLS_DIR/_good/tree/." "$1/tree/" || return 1
+  if [ -e "$1/tree" ]; then rm -rf "$1/tree"; fi
+  cp -R "$CONTROLS_DIR/_good/tree" "$1/tree" || return 1
   if [ -n "$2" ]; then
     if [ -d "$2/overlay" ]; then cp -R "$2/overlay/." "$1/tree/" || return 1; fi
     if [ -f "$2/MAKE" ]; then apply_make "$1/tree" "$2/MAKE" || return 1; fi
@@ -167,34 +168,55 @@ good_one() {
 ctl_one() {
   _d="$CONTROLS_DIR/$1"
   _step=
-  [ -f "$_d/CHECK" ] && _step=$(head -n 1 "$_d/CHECK")
+  if [ -f "$_d/CHECK" ]; then IFS= read -r _step < "$_d/CHECK" || :; fi
   if [ -z "$_step" ] || [ ! -f "$CHECK_DIR/steps/$_step.sh" ]; then
     fail control-unknown-step "$1"; return 0
   fi
-  if [ ! -s "$_d/EXPECT" ] || grep -q '^[[:space:]]*$' "$_d/EXPECT"; then
+  # A blank EXPECT line (only whitespace) would match every output. Checked with shell builtins,
+  # line by line as grep '^[[:space:]]*$' did (D-45 lever, plan 04-LEVER-01).
+  _blank=0
+  if [ -s "$_d/EXPECT" ]; then
+    while IFS= read -r _tok || [ -n "$_tok" ]; do
+      case $_tok in *[![:space:]]*) ;; *) _blank=1 ;; esac
+    done < "$_d/EXPECT"
+  else
+    _blank=1
+  fi
+  if [ "$_blank" -ne 0 ]; then
     fail control-expect-blank "$1"; return 0
   fi
   build_tree "$2" "$_d" || { fail control-build "$1"; return 0; }
   if run_step "$2" "$_step"; then
     fail control-exit-zero "$1"; return 0
   fi
-  _missing=0
-  while IFS= read -r _tok || [ -n "$_tok" ]; do
-    grep -q -F -e "$_tok" "$2/out" || _missing=1
-  done < "$_d/EXPECT"
-  if [ "$_missing" -ne 0 ]; then
-    fail control-token-missing "$1"; return 0
-  fi
-  _forbidden=0
-  if [ -f "$_d/FORBID" ]; then
-    while IFS= read -r _tok || [ -n "$_tok" ]; do
-      [ -n "$_tok" ] || continue
-      if grep -q -F -e "$_tok" "$2/out"; then _forbidden=1; fi
-    done < "$_d/FORBID"
-  fi
-  if [ "$_forbidden" -ne 0 ]; then
-    fail control-forbidden-token "$1"; return 0
-  fi
+  # Tokens are fixed strings matched within an output line (as grep -F): every EXPECT line must
+  # occur and no non-empty FORBID line may. One awk pass over the output (D-45 lever, plan
+  # 04-LEVER-01) replaces one grep per token; an awk failure counts as a missing token.
+  _ff=
+  if [ -f "$_d/FORBID" ]; then _ff="$_d/FORBID"; fi
+  _v=$(awk -v ef="$_d/EXPECT" -v ff="$_ff" '
+    BEGIN {
+      ne = 0; nf = 0; fhit = 0
+      while ((getline t < ef) > 0) e[++ne] = t
+      close(ef)
+      if (ff != "") {
+        while ((getline t < ff) > 0) if (t != "") f[++nf] = t
+        close(ff)
+      }
+    }
+    {
+      for (i = 1; i <= ne; i++) if (!(i in ehit) && index($0, e[i]) > 0) ehit[i] = 1
+      for (i = 1; i <= nf; i++) if (index($0, f[i]) > 0) fhit = 1
+    }
+    END {
+      for (i = 1; i <= ne; i++) if (!(i in ehit)) { print "missing"; exit }
+      print (fhit ? "forbidden" : "clean")
+    }' "$2/out") || _v=missing
+  case $_v in
+    clean) ;;
+    forbidden) fail control-forbidden-token "$1"; return 0 ;;
+    *) fail control-token-missing "$1"; return 0 ;;
+  esac
   printf 'control ok   %s\n' "$1"
   : > "$2/ok"
 }
@@ -202,17 +224,22 @@ ctl_one() {
 # Run function $2 for every entry of list file $1 in JOBS lanes; entry e gets work dir
 # $tmp/$2/e and its result lines go to $tmp/$2/e/result. Returns after every lane ends.
 run_lanes() {
+  _list=$1
+  _fn=$2
+  # Every work dir in one mkdir before the lanes start (D-45 lever, plan 04-LEVER-01).
+  set --
+  while IFS= read -r _e; do set -- "$@" "$tmp/$_fn/$_e"; done < "$_list"
+  if [ "$#" -gt 0 ]; then mkdir -p "$@"; fi
   _lane=0
   while [ "$_lane" -lt "$JOBS" ]; do
     (
       _k=0
       while IFS= read -r _e; do
         if [ $((_k % JOBS)) -eq "$_lane" ]; then
-          mkdir -p "$tmp/$2/$_e"
-          "$2" "$_e" "$tmp/$2/$_e" > "$tmp/$2/$_e/result" 2>&1 < /dev/null
+          "$_fn" "$_e" "$tmp/$_fn/$_e" > "$tmp/$_fn/$_e/result" 2>&1 < /dev/null
         fi
         _k=$((_k + 1))
-      done < "$1"
+      done < "$_list"
     ) &
     _lane=$((_lane + 1))
   done
@@ -223,7 +250,8 @@ run_lanes() {
 : > "$tmp/ctl.have"
 for d in "$CONTROLS_DIR"/*/; do
   [ -d "$d" ] || continue
-  n=$(basename "$d")
+  n=${d%/}
+  n=${n##*/}
   [ "$n" = _good ] && continue
   printf '%s\n' "$n" >> "$tmp/ctl.have"
 done
@@ -242,26 +270,49 @@ for n in $(comm -23 "$tmp/ctl.want" "$tmp/ctl.have"); do fail control-inventory-
 # Positive control: every distinct CHECK step must pass on the pristine good tree.
 : > "$tmp/checks"
 for n in $(cat "$tmp/ctl.have"); do
-  [ -f "$CONTROLS_DIR/$n/CHECK" ] && head -n 1 "$CONTROLS_DIR/$n/CHECK" >> "$tmp/checks"
+  _c=
+  if [ -f "$CONTROLS_DIR/$n/CHECK" ] && { IFS= read -r _c < "$CONTROLS_DIR/$n/CHECK" || [ -n "$_c" ]; }; then
+    printf '%s\n' "$_c" >> "$tmp/checks"
+  fi
 done
 sort -u "$tmp/checks" -o "$tmp/checks"
 : > "$tmp/goodsteps"
 for step in $(cat "$tmp/checks"); do
   if [ -f "$CHECK_DIR/steps/$step.sh" ]; then printf '%s\n' "$step" >> "$tmp/goodsteps"; fi
 done
+# Result files are printed in list order: in one cat when every one exists (D-45 lever, plan
+# 04-LEVER-01; the same bytes as one cat per file), else one by one, naming each missing file.
 run_lanes "$tmp/goodsteps" good_one
+set --
+each=0
 for step in $(cat "$tmp/goodsteps"); do
-  cat "$tmp/good_one/$step/result" 2> /dev/null || printf -- '-- FAIL %s: %s\n' control-good-failed "$step"
+  if [ -f "$tmp/good_one/$step/result" ]; then set -- "$@" "$tmp/good_one/$step/result"; else each=1; fi
   [ -f "$tmp/good_one/$step/ok" ] || bad=1
 done
+if [ "$each" -eq 0 ]; then
+  if [ "$#" -gt 0 ]; then cat "$@" 2> /dev/null || fail control-good-failed results; fi
+else
+  for step in $(cat "$tmp/goodsteps"); do
+    cat "$tmp/good_one/$step/result" 2> /dev/null || printf -- '-- FAIL %s: %s\n' control-good-failed "$step"
+  done
+fi
 
 # Negative controls, then their results in sorted order.
 run_lanes "$tmp/ctl.have" ctl_one
+set --
+each=0
 for n in $(cat "$tmp/ctl.have"); do
   total=$((total + 1))
-  cat "$tmp/ctl_one/$n/result" 2> /dev/null || printf -- '-- FAIL %s: %s\n' control-build "$n"
+  if [ -f "$tmp/ctl_one/$n/result" ]; then set -- "$@" "$tmp/ctl_one/$n/result"; else each=1; fi
   if [ -f "$tmp/ctl_one/$n/ok" ]; then ok=$((ok + 1)); else bad=1; fi
 done
+if [ "$each" -eq 0 ]; then
+  if [ "$#" -gt 0 ]; then cat "$@" 2> /dev/null || fail control-build results; fi
+else
+  for n in $(cat "$tmp/ctl.have"); do
+    cat "$tmp/ctl_one/$n/result" 2> /dev/null || printf -- '-- FAIL %s: %s\n' control-build "$n"
+  done
+fi
 
 printf 'controls=%s/%s\n' "$ok" "$total"
 if [ -n "$end_file" ]; then date +%s > "$end_file"; fi

@@ -1,0 +1,9 @@
+# Toy host-dependent scenario (plan 04-21): ends by the wall cap, so its dev and release reports
+# differ and it is never golden.
+ivss 1
+id toy-wall
+profile intv-2609-ntsc-family-p1
+content exec boot-stub
+content grom zero-grom
+content cart toy.ivsc
+run-to 1000000000000 ticks

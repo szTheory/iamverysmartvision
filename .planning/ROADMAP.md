@@ -44,7 +44,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Evidence, Profile and Rights Foundations** - Tier vocabulary, claim ledger, discrepancy log, fixture manifest, provenance rule, first-profile record, time base and CP-1610 reference notes (completed 2026-11-09)
 - [x] **Phase 2: CP-1610 CPU Core** - Every opcode verified against page-cited, hand-derived vectors in a host-independent core with an exact inventory and one local gate command (completed 2026-11-10)
 - [x] **Phase 3: Memory Map, Content Loading and Refusal** - Profile-driven memory map, typed system-image and cartridge loading, isolated instances and a refusal matrix that never mutates prior state (completed 2026-11-11)
-- [ ] **Phase 4: Headless Runner and Installed Consumer (Slice 0)** - An original diagnostic runs end to end through the runner and a relocated installed consumer, with deterministic digests and a CI gate that mirrors the local command
+- [x] **Phase 4: Headless Runner and Installed Consumer (Slice 0)** - An original diagnostic runs end to end through the runner and a relocated installed consumer, with deterministic digests and a CI gate that mirrors the local command (completed 2026-11-11)
 - [ ] **Phase 5: Hand Controllers and PSG Sound** - Both controllers as multi-signal machine input at explicit time boundaries; PSG raw audio and a register-write log
 - [ ] **Phase 6: STIC Video First Pass** - Access windows, VBLANK/BUSRQ timing, raw index framebuffer, FG/BG and Color Stack cards, and side-effect-free inspection
 - [ ] **Phase 7: First Visible Original Scenario** - A rights-clear original program responds to controller input with video and sound through the installed consumer in CI
@@ -60,15 +60,15 @@ exit, until the gate is resolved by its named authority.
 | D1 Language/build (C17 + CMake recommended; Rust alternative) | Owner | Delegated decision 2026-11-09 (PROJECT.md) | Before Phase 2 starts |
 | D2 CPU-cycle unit, time base, crystal constant | Architecture | Delegated decision 2026-11-09 (PROJECT.md) | During Phase 1 (FND-07); before Phase 2 |
 | D3 First profile (2609 NTSC recommended; revision, STIC/PSG parts, power-on policy) | Owner | Delegated decision 2026-11-09 (PROJECT.md) | Before Phase 1 exits |
-| D4 Fixture assembler policy | Owner (licence) + architecture | Open | Before Phase 4 starts |
+| D4 Fixture assembler policy | Owner (licence) + architecture | Delegated decision 2026-11-11 (PROJECT.md; Phase 4 D-25, D-12, D-41) | Before Phase 4 starts |
 | D5 System-image policy and project boot stub | Owner | Delegated decision 2026-11-11 (PROJECT.md; Phase 3 D-24) | Phase 3 (refusal); before Phase 4 (boot) |
-| D6 Controller core-input representation (C14) | Owner + architecture | Open | While Phase 4 shapes the API; before Phase 5 starts |
+| D6 Controller core-input representation (C14) | Owner + architecture | Delegated decision 2026-11-11 (PROJECT.md; Phase 4 D-25, D-12, D-41) | While Phase 4 shapes the API; before Phase 5 starts |
 | D7 Reference PCM location (C23) | Architecture | Open | During Phase 5 |
 | D8 Raw framebuffer geometry (C10) | Architecture + evidence | Open | During Phase 6 |
 | D9 License, visibility, naming/trademark, publication | Owner gate | Delegated decision 2026-11-09 (PROJECT.md) | Before any external publication; CI hosting (Phase 4) and the milestone release assessment (Phase 8) touch it |
 | D10 Physical hardware measurement | Owner gate | Open | Before any measured-tier claim (Phase 5 onward) |
 | D11 Owner-local real EXEC/GROM runs | Owner gate | Open | Before SCN-02 can be claimed (Phase 7) |
-| D12 CI shape (C24) | Architecture | Open | Before Phase 4 exits |
+| D12 CI shape (C24) | Architecture | Delegated decision 2026-11-11 (PROJECT.md; Phase 4 D-25, D-12, D-41) | Before Phase 4 exits |
 | D13 LibFuturo adapter / shared-contract change | Owner gate | Deferred | Not before a real consumer exists; outside this milestone |
 
 ## Phase Details
@@ -192,7 +192,34 @@ Plans:
   3. A run to an absolute cycle target reports any overshoot. Splitting the run into slices gives the same per-domain digests (CPU/memory, video, audio, input log), and repeated runs match. Golden files carry tier and oracle headers. An undersized output buffer is refused before any state changes.
   4. A separate consumer project, built only against the installed package in a relocated prefix, runs load, refusal, run and digest successfully.
   5. CI runs the same fast gate as the local command on every PR, shows skipped and missing items, never caches or uploads system images or rights-unknown fixtures, and records queue, setup, build and test durations for each run.
-**Plans**: TBD
+**Plans**: 27/25 plans complete in 25 sequential waves
+
+Plans:
+- [x] 04-01-PLAN.md — CI measurement first: `gate-env`/`gate-cpu` lines, job summary through the EXIT trap with a selftest step, ci-parity bans (action allowlist, secrets, matrix, runs-on, timeout 5), 6 controls
+- [x] 04-02-PLAN.md — Run record `.planning/ci-runs.tsv`, `ci-log` step, orchestrator-only `tools/ci-record.sh`, D-45 budget rule, 4 controls
+- [x] 04-03-PLAN.md — Fault framework generalized to `runner/` owners (D-24) with the runner outcome taxonomy as tracer, suite `runner`, 4 faults, 2 controls
+- [x] 04-04-PLAN.md — Runner source hygiene: `runner-scan` (POSIX only in hostio.c), integrity for `runner/` and `tools/**/*.c`, unlisted-source guard, 6 controls
+- [x] 04-05-PLAN.md — Stepped-state composite pin first, then observation rows and live digest domains 16-18 (composite unchanged), 2 faults
+- [x] 04-06-PLAN.md — Public read-only observation (`ivs_run.h`, `ivs_machine_cpu_state`, `ivs_machine_peek`), new suite `run`, 2 faults
+- [x] 04-07-PLAN.md — `ivs_machine_run`: absolute master-tick target, overshoot, stop reasons, refusal ladder, 3 faults
+- [x] 04-08-PLAN.md — Generic define pins for stop reasons and refusal reasons, 3 controls
+- [x] 04-09-PLAN.md — Timebase and output layout in `ivs_info` (A-02 growth rule), five-pattern slicing invariance, 2 faults
+- [x] 04-10-PLAN.md — Output buffers (API-04) through an internal env seam, refusal before any state change, 2 faults
+- [x] 04-11-PLAN.md — Input events (D6 logical switch state) in the run call, D-05 event-argument checks, live INPUT digest chain with an independent oracle, 6 faults
+- [x] 04-12-PLAN.md — Profile `input.controllers`, extra-word refusal, guest invisibility of input in Phase 4
+- [x] 04-13-PLAN.md — Input bit names pinned, D6 records (C14, C15, C63-C67), seeded input/slicing fuzz, v1 struct sizes, 2 controls
+- [x] 04-14-PLAN.md — Project boot stub listing, `tools/pack` (build-tree images only), boot path and trap tests, `docs/diagnostics.md`
+- [x] 04-15-PLAN.md — `listing` step with stub anti-HLE guards and suite `pack` (two independent parses), 9 controls
+- [x] 04-16-PLAN.md — Original diagnostic `ivs-diag-cpu-1`, hand-derived `.expect` predicate, slicing on the real program, CL-0008
+- [x] 04-17-PLAN.md — IVSS v1 parser (untrusted input, caps, fuzz), 2 faults
+- [x] 04-18-PLAN.md — Runner executor and fixed-order report with pinned key names, outcomes in-process, 4 faults
+- [x] 04-19-PLAN.md — `ivs-run` executable: slices, budget/wall timeout, cancellation, POSIX in hostio.c only, `docs/runner.md`, 3 faults
+- [x] 04-20-PLAN.md — Suite `runner-process`: one scenario per outcome, diagnostic mutants, repeat/slice/cwd checks, judge self-controls
+- [x] 04-21-PLAN.md — Goldens with tier/oracle headers, `--update-golden`, pure `golden` step with dev-vs-release judge excluding host-dependent scenarios, 10 controls
+- [x] 04-22-PLAN.md — Install/export of `ivs::core`, relocated prefix, `pkg-install` structure proofs, 8 in-step selftests
+- [x] 04-23-PLAN.md — Independent installed consumer: find_package in the moved prefix, runner-golden agreement, 10/10 selftests, `docs/packaging.md`
+- [x] 04-24-PLAN.md — RUN-04 important-gates registry and step, gate audit and gap fills, 2 controls
+- [x] 04-25-PLAN.md — SC1-SC5 evidence table, fail-first record verification, D-45 evaluation, branch-protection and release-design records, honest caveats
 
 ### Phase 5: Hand Controllers and PSG Sound
 **Goal**: Both hand controllers are first-class, multi-signal machine input, read through the PSG I/O ports at an explicit machine-time boundary. The PSG produces raw, cycle-stamped audio observations kept separate from host PCM.
@@ -288,7 +315,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 1. Evidence, Profile and Rights Foundations | 14/14 | Complete    | 2026-11-09 |
 | 2. CP-1610 CPU Core | 18/18 | Complete    | 2026-11-10 |
 | 3. Memory Map, Content Loading and Refusal | 14/14 | Complete    | 2026-11-11 |
-| 4. Headless Runner and Installed Consumer (Slice 0) | 0/TBD | Not started | - |
+| 4. Headless Runner and Installed Consumer (Slice 0) | 27/25 | Complete    | 2026-11-11 |
 | 5. Hand Controllers and PSG Sound | 0/TBD | Not started | - |
 | 6. STIC Video First Pass | 0/TBD | Not started | - |
 | 7. First Visible Original Scenario | 0/TBD | Not started | - |

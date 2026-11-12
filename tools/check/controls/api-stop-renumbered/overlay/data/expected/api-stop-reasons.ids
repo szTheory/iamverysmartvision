@@ -1,0 +1,3 @@
+# Toy stop reason pin of the known-good control tree (plan 04-08).
+IVS_STOP_TARGET 1
+IVS_STOP_CPU_HALTED 5

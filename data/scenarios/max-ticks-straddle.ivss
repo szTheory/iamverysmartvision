@@ -1,0 +1,12 @@
+# Scenario max-ticks-straddle (review WR-01, D-20, D-21): outcome pass, exit 0, run with
+# --max-ticks 99. The run-to bound is 100 ticks and its last unit ends at tick 104, so the ceiling
+# (99) sits inside the unit that reaches the bound: machine time did not stop below the bound, the
+# run-to completed and the step is judged as usual, never as a budget timeout.
+ivss 1
+id max-ticks-straddle
+profile intv-2609-ntsc-family-p1
+content exec boot-stub
+content grom zero-grom
+content cart diag-cpu-1.ivsc
+run-to 100 ticks
+assert halted == no

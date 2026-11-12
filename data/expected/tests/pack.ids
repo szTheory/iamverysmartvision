@@ -1,0 +1,13 @@
+# Suite pack (plan 04-15, D-26): per listing of data/expected/listings.ids, ivs_pack --dump-words
+# equals the listing step's own parse (cmake -DDUMP=<id> -P tools/check/listing.cmake) byte for
+# byte. pack.trailer-<id> (plan 04-16): the IVSC trailer of a cart listing equals cmake -E sha256sum
+# of the container minus its last 32 bytes.
+pack.words-boot-stub
+pack.words-diag-cpu-1
+pack.trailer-diag-cpu-1
+# pack.judge.patched-word (plan 04-24, D-46): self-control of the words comparison; passes only when
+# the comparison fails on ivs_pack's dump of the first listing with its first word patched.
+pack.judge.patched-word
+# pack.c-include.write-error (review IN-08): a failed write of --c-include is the documented
+# write error line, a nonzero exit and no output file.
+pack.c-include.write-error

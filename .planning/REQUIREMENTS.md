@@ -53,27 +53,27 @@ differentiators and all variant/peripheral profiles are v2.
 ### Core Contract and Host Independence (API)
 
 - [x] **API-01**: A host can create, reset, unload and destroy independent machine instances; two instances run concurrently without shared mutable state (isolation test).
-- [ ] **API-02**: Execution is bounded by an explicit machine-time target (absolute cycle target; frame target as a derived convenience), with overshoot reported; splitting one run into slices yields identical state and output (slicing-invariance test).
+- [x] **API-02**: Execution is bounded by an explicit machine-time target (absolute cycle target; frame target as a derived convenience), with overshoot reported; splitting one run into slices yields identical state and output (slicing-invariance test).
 - [ ] **API-03**: Controller input is applied at an explicit machine-time boundary declared by the API; the same input script yields identical results regardless of host timing.
-- [ ] **API-04**: Video and audio outputs are written into caller-owned buffers; undersized buffers are refused before any state changes.
+- [x] **API-04**: Video and audio outputs are written into caller-owned buffers; undersized buffers are refused before any state changes.
 - [x] **API-05**: The core has no dependency on host clocks, filesystems, environment, threads, physical controller discovery or presentation, enforced by a build/link or symbol check.
 - [x] **API-06**: Every API error/refusal has a documented effect on state (none, or a named partial effect), and each is covered by a test.
 
 ### Headless Runner and Verification (RUN)
 
-- [ ] **RUN-01**: A headless runner executes a scripted scenario (content, profile, input schedule, run bound) on fresh isolated state and reports machine time, stop reason, raw outputs and guest-state assertions.
-- [ ] **RUN-02**: The runner distinguishes harness failure, guest failure, timeout, cancellation and missing fixture as separate outcomes.
+- [x] **RUN-01**: A headless runner executes a scripted scenario (content, profile, input schedule, run bound) on fresh isolated state and reports machine time, stop reason, raw outputs and guest-state assertions.
+- [x] **RUN-02**: The runner distinguishes harness failure, guest failure, timeout, cancellation and missing fixture as separate outcomes.
 - [x] **RUN-03**: An exact test-inventory gate fails when a required test is missing, duplicated, unexpectedly skipped or consuming stale output, and reports executed/skipped/missing counts.
-- [ ] **RUN-04**: Each important gate has a named-fault control that is shown to fail for its intended reason.
-- [ ] **RUN-05**: Per-domain digests (CPU/memory state, raw video, raw audio, input log) are produced, and repeated runs match; golden files record their evidence tier and oracle in a header.
-- [ ] **RUN-06**: At least one original, project-authored diagnostic runs end-to-end from reset (via a project boot path per D5) and reaches an expected guest-state predicate whose expected value is derived independently of the emulator.
+- [x] **RUN-04**: Each important gate has a named-fault control that is shown to fail for its intended reason.
+- [x] **RUN-05**: Per-domain digests (CPU/memory state, raw video, raw audio, input log) are produced, and repeated runs match; golden files record their evidence tier and oracle in a header.
+- [x] **RUN-06**: At least one original, project-authored diagnostic runs end-to-end from reset (via a project boot path per D5) and reaches an expected guest-state predicate whose expected value is derived independently of the emulator.
 
 ### Packaging, Local Gate and CI (PKG)
 
-- [ ] **PKG-01**: A clean, independent consumer project builds against the *installed* package in a relocated prefix and exercises load, refusal, run and digest.
+- [x] **PKG-01**: A clean, independent consumer project builds against the *installed* package in a relocated prefix and exercises load, refusal, run and digest.
 - [x] **PKG-02**: One documented local command runs the same checks as the fast PR gate.
-- [ ] **PKG-03**: CI runs the fast gate on every PR, shows skips and missing artifacts visibly, and never caches or uploads system images or rights-unknown fixtures.
-- [ ] **PKG-04**: CI critical path (queue, setup, build, test) is measured and recorded per run so cache/concurrency/matrix changes are evidence-driven.
+- [x] **PKG-03**: CI runs the fast gate on every PR, shows skips and missing artifacts visibly, and never caches or uploads system images or rights-unknown fixtures.
+- [x] **PKG-04**: CI critical path (queue, setup, build, test) is measured and recorded per run so cache/concurrency/matrix changes are evidence-driven.
 
 ### Sound — PSG (AUD)
 
@@ -198,21 +198,21 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MEM-04 | Phase 3 | Complete |
 | MEM-05 | Phase 3 | Complete |
 | API-01 | Phase 3 | Complete |
-| API-02 | Phase 4 | Pending |
+| API-02 | Phase 4 | Complete |
 | API-03 | Phase 5 | Pending |
-| API-04 | Phase 4 | Pending |
+| API-04 | Phase 4 | Complete |
 | API-05 | Phase 2 | Complete |
 | API-06 | Phase 3 | Complete |
-| RUN-01 | Phase 4 | Pending |
-| RUN-02 | Phase 4 | Pending |
+| RUN-01 | Phase 4 | Complete |
+| RUN-02 | Phase 4 | Complete |
 | RUN-03 | Phase 2 | Complete |
-| RUN-04 | Phase 4 | Pending |
-| RUN-05 | Phase 4 | Pending |
-| RUN-06 | Phase 4 | Pending |
-| PKG-01 | Phase 4 | Pending |
+| RUN-04 | Phase 4 | Complete |
+| RUN-05 | Phase 4 | Complete |
+| RUN-06 | Phase 4 | Complete |
+| PKG-01 | Phase 4 | Complete |
 | PKG-02 | Phase 2 | Complete |
-| PKG-03 | Phase 4 | Pending |
-| PKG-04 | Phase 4 | Pending |
+| PKG-03 | Phase 4 | Complete |
+| PKG-04 | Phase 4 | Complete |
 | AUD-01 | Phase 5 | Pending |
 | AUD-02 | Phase 5 | Pending |
 | INP-01 | Phase 5 | Pending |

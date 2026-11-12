@@ -1,0 +1,14 @@
+# Scenario dead-after-refusal (review WR-02, D-20, D-22): outcome harness-fail, exit 14. The
+# expected cartridge refusal ends the scenario, so the run-to and the assert after it could never
+# run: the parser refuses the file at the run-to, ivs-run prints no report and one line on stderr.
+# expect-stderr: scenario-syntax line=13 reason=dead-after-refusal
+ivss 1
+id dead-after-refusal
+profile intv-2609-ntsc-family-p1
+content exec boot-stub
+content grom zero-grom
+content cart diag-cpu-1-truncated.ivsc
+expect-load cart IVS_E_MALFORMED
+
+run-to 4000 cpu-cycles stop halted
+assert halted == yes

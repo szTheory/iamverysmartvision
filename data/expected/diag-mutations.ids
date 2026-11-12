@@ -1,0 +1,27 @@
+# Program mutations of the original diagnostic (plan 04-20, D-32): `<ID> <addr> <word> <clause>`.
+# Suite runner-process (id runner-process.mutant.<ID>) builds each mutant in its temp dir with
+# `ivs_pack --ivsc fixtures/FX-diag-cpu-1/diag-cpu-1.listing.txt <out> --patch <addr>=<word>`, runs
+# data/scenarios/diag-boot-pass.ivss against it with the real ivs-run and requires guest-fail
+# (exit 10) with outcome.detail `assert=<j> line=<n> <clause> got <actual>`: never pass, never
+# harness-fail. <ID> is `<from>-<to>`; the listing row at <addr> must be <from> (upper case), so a
+# listing edit that moves the instruction fails the case instead of mutating something else. This
+# mutant family lives only in this suite (the in-process runner suite has none).
+#
+# Words hand-derived here from the printed encodings in data/cp1610/opcode-families.json and
+# docs/cp1610/reference-notes.md (GI CP-1600 Microprocessor Users Manual, SRC-gi-cp1600-um-1975):
+#   ID          addr  from  to    encoding (from -> to)                       clause it breaks
+#   ADDI-SUBI   5010  02F8  0338  ADDI 1011 111 000 -> SUBI 1100 111 000      flags of S1: 7FFF - 1
+#               (pdf 57)          leaves S=0 Z=0 OV=0 C=1, so GSWD R2 stores 1010, not A0A0, at 0202
+#   BNZE-BZE    501E  022C  0224  BNZE 1000 10 1100 -> BZE 1000 10 0100       the S2 loop runs once:
+#               (pdf 54)          R2 ends 0009, not 0000 (R3 would be 000A)
+#   PSHR-MVOAT  5022  0273  024B  PSHR = MVO@ R3 via R6 (1001 110 011) ->     S3 push: R3 goes to the
+#               (pdf 55, 62)      MVO@ R3 via R1 (1001 001 011)               address in R1 (8080), R6
+#                                 stays 0340, PULR pre-decrements to 033F and reads 0000 into R5
+#   INCR-DECR   500B  0008  0010  INCR 0000 001 000 -> DECR 0000 010 000      S1 sign flag: R0 7FFF - 1
+#               (pdf 51, 53)      = 7FFE has S=0, so GSWD R1 is 0000, not 8080
+# The clause is the first failing assert of diag-boot-pass in its order (halted, R0..R6, then the
+# memory words), so it is the earliest observable effect of the mutation.
+ADDI-SUBI 5010 0338 mem 0202 == A0A0
+BNZE-BZE 501E 0224 reg R2 == 0000
+PSHR-MVOAT 5022 024B reg R5 == 0037
+INCR-DECR 500B 0010 reg R1 == 8080

@@ -27,6 +27,9 @@
 _Static_assert(IVS_PROFILE_ID_MAX_BYTES == IVS_MEMSYS_PROFILE_ID_CAP, "profile id bound");
 _Static_assert(IVS_SLOT_COUNT == 3u, "three image slots");
 _Static_assert(sizeof(ivs_image_report) == 64u, "ivs_image_report is 64 bytes");
+_Static_assert(IVS_INFO_V1_SIZE == offsetof(ivs_info, ticks_per_cpu_cycle), "ivs_info v1 ends at the timebase");
+_Static_assert(offsetof(ivs_info, nominal_frame_ticks) % 8u == 0u, "64-bit info members are 8-aligned");
+_Static_assert(sizeof(ivs_info) == 256u, "ivs_info is 256 bytes");
 
 /* 1 when m is a live instance: the magic, and a stored profile index that is in the registry and
  * the same in the memory system (review WR-03). The instance lives in host storage, so the
@@ -61,6 +64,11 @@ uint32_t ivs_machine_span_overlaps(const void *p, size_t n, const void *inst, si
   uintptr_t s = (uintptr_t)inst;
   if (n == 0u || inst_bytes == 0u) {
     return 0u;
+  }
+  /* A span that runs past the top of the address space names no real object: it counts as
+   * overlapping (review IN-02), so the caller refuses it BAD_ARG with nothing written. */
+  if ((uintptr_t)(n - 1u) > UINTPTR_MAX - a || (uintptr_t)(inst_bytes - 1u) > UINTPTR_MAX - s) {
+    return 1u;
   }
   if (a >= s) {
     return (uint32_t)(a - s < (uintptr_t)inst_bytes);
@@ -215,6 +223,7 @@ ivs_status ivs_machine_create(const ivs_create_options *opts, void *storage, siz
   im->phase = IVS_PHASE_OFF;
   im->time_ticks = 0u;
   (void)ivs_memsys_init(&im->mem, index);
+  ivs_input_init(&im->obs.input); /* the input log starts at h0 (plan 04-11, D-15) */
   for (i = 0u; i < IVS_SLOT_COUNT; i++) {
     im->slot[i].kind = i + 1u;
   }
@@ -240,30 +249,68 @@ ivs_status ivs_machine_destroy(ivs_machine *m)
 ivs_status ivs_machine_info(const ivs_machine *m, ivs_info *out)
 {
   const struct ivs_machine *im;
+  const ivs_profile_desc *p;
   ivs_info r;
+  ivs_run_env env;
+  size_t n;
   uint32_t i;
-  if (out == NULL || out->struct_size < (uint32_t)sizeof(ivs_info)) {
-    return IVS_E_BAD_ARG;
+  if (out == NULL || out->struct_size < IVS_INFO_V1_SIZE || out->struct_size > IVS_STRUCT_SIZE_MAX) {
+    return IVS_E_BAD_ARG; /* the cap as for every out struct (ivs_run.h; review IN-03) */
   }
   im = ivs_machine_from_handle(m);
   if (im == NULL) {
     return IVS_E_BAD_HANDLE;
   }
+  /* A-02 (plan 04-09): exactly the bytes the caller's size covers, never past them. */
+  n = out->struct_size < (uint32_t)sizeof r ? (size_t)out->struct_size : sizeof r;
+#ifdef IVS_FAULT_INFO_TAIL_UNGUARDED
+  /* Named fault INFO_TAIL_UNGUARDED (plan 04-09, A-02): the grown struct is written whole, past a
+   * shorter (v1-sized) caller's struct. */
+  n = sizeof r;
+#endif
   /* Only a valid instance has bytes to overlap: a NULL or invalid handle is BAD_HANDLE above
    * wherever out lies (A-08 a: a refusal status never depends on the buffer's address). */
-  if (ivs_machine_out_overlaps(out, sizeof *out, im, sizeof *im) != 0u) {
+  if (ivs_machine_out_overlaps(out, n, im, sizeof *im) != 0u) {
     return IVS_E_BAD_ARG;
   }
+  p = ivs_profile_get(im->profile);
+  if (p == NULL) {
+    return IVS_E_BAD_HANDLE; /* unreachable: the handle check validated the profile index */
+  }
   memset(&r, 0, sizeof r);
-  r.struct_size = (uint32_t)sizeof r;
+  r.struct_size = (uint32_t)n;
   r.phase = im->phase;
   r.time_ticks = im->time_ticks;
   r.profile_index = im->profile;
   for (i = 0u; i < IVS_SLOT_COUNT; i++) {
     ivs_machine_slot_report(&im->slot[i], &r.slots[i]);
   }
-  *out = r;
+  /* Timebase (D-06): profile figures; the frame length is their product, nominal (D-09). */
+  r.ticks_per_cpu_cycle = p->ticks_per_cpu_cycle;
+  r.cpu_cycles_per_scanline = p->cpu_cycles_per_scanline;
+  r.scanlines_per_frame = p->scanlines_per_frame;
+  /* Output layout (D-06) and the nominal frame: the same env the public run call checks
+   * capacities against (ivs_machine_profile_env). */
+  ivs_machine_profile_env(p, &env);
+  r.nominal_frame_ticks = env.nominal_frame_ticks;
+  r.video_format = env.video_format;
+  r.video_bytes_per_frame = env.video_bytes_per_frame;
+  r.audio_format = env.audio_format;
+  r.audio_bytes_per_frame = env.audio_bytes_per_frame;
+  memcpy(out, &r, n);
   return IVS_OK;
+}
+
+void ivs_machine_profile_env(const ivs_profile_desc *p, ivs_run_env *env)
+{
+  memset(env, 0, sizeof *env);
+  /* The real profiles produce no video or audio bytes in Phase 4 (D-06): no frame is fabricated. */
+  env->video_format = IVS_OUTPUT_FORMAT_NONE;
+  env->video_bytes_per_frame = 0u;
+  env->audio_format = IVS_OUTPUT_FORMAT_NONE;
+  env->audio_bytes_per_frame = 0u;
+  env->nominal_frame_ticks = (uint64_t)p->ticks_per_cpu_cycle * (uint64_t)p->cpu_cycles_per_scanline *
+                             (uint64_t)p->scanlines_per_frame;
 }
 
 void ivs_machine_slot_report(const ivs_machine_slot *s, ivs_image_report *o)

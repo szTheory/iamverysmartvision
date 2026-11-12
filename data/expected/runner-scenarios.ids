@@ -1,0 +1,27 @@
+# Runner scenarios (plan 04-20, D-20, D-21, D-23): `<id> <exit> <outcome> <class> <skip>
+# <operator-args>`, six fixed columns, the first token the id. Each id names
+# data/scenarios/<id>.ivss; suite runner-process (tests/runner-process-tap.sh) runs every line
+# through the real ivs-run and requires the exit code and outcome given here.
+#   class          deterministic, or host-dependent (wall time, signals): the golden step of plan
+#                  04-21 excludes host-dependent reports from the dev versus release comparison
+#                  and refuses goldens for them (D-21: the wall watchdog is never golden).
+#   skip           run, or skip-ok: the scenario needs operator content the gate never has; it is
+#                  judged like any other and a passing judgement is a visible skip.
+#   operator-args  extra ivs-run words joined by `,`, or `-` for none.
+# One demonstrating scenario per outcome (D-20): pass 0, guest-fail 10, timeout 11, cancelled 12,
+# missing-fixture 13, harness-fail 14.
+diag-boot-pass 0 pass deterministic run -
+guest-assert-mismatch 10 guest-fail deterministic run -
+timeout-budget 11 timeout deterministic run -
+timeout-wall 11 timeout host-dependent run --wall-timeout-ms,1,--slice-ticks,4
+cancel-signal 12 cancelled host-dependent run --self-signal-after-slices,1,--slice-ticks,4
+missing-cart-file 13 missing-fixture deterministic run -
+needs-user-exec 13 missing-fixture deterministic skip-ok -
+bad-syntax 14 harness-fail deterministic run -
+unexpected-refusal 14 harness-fail deterministic run -
+expect-load-refusal 0 pass deterministic run -
+diag-input-pass 0 pass deterministic run -
+max-ticks-straddle 0 pass deterministic run --max-ticks,99
+dead-after-refusal 14 harness-fail deterministic run -
+no-run-to 14 harness-fail deterministic run -
+cancel-signal-twice 12 cancelled host-dependent run --self-signal-after-slices,1,--self-signal-count,2,--slice-ticks,4

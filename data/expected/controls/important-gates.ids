@@ -1,0 +1,4 @@
+# Negative controls for the important-gates step (plan 04-24, D-46, RUN-04): a registry id that no
+# inventory of its mechanism lists, and a Phase 4 requirement without a registry line.
+important-gates-unknown-id
+important-gates-uncovered-gate

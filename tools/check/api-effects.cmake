@@ -29,12 +29,24 @@
 #   unknown keys, duplicate call or effect names, a call header other than the header that
 #   declares it, a row or precedence status that is not a pinned non-OK name, two rows of one
 #   call with the same status, a precedence status without a row of that call or a row status
-#   absent from the call's precedence, an unparsable status define      api-effects-format
+#   absent from the call's precedence, an unparsable status define, an unparsable class define
+#   or pin line, a class name defined or pinned twice                   api-effects-format
+# Generic define pins (section 6, plan 04-08, D-04, D-05, D-16; input bits plan 04-13).
+# DEFINE_CLASSES lists the pinned classes (prefix, pin file, value form, excluded names). For each class, every object-like
+# `#define <PREFIX><NAME> <value>` of core/include/ivs/*.h (outside block and line comments;
+# function-like macros are ignored) must appear as `NAME VALUE` in the class pin file, and every
+# pin line must name such a define:
+#   a class define without a pin line, a missing pin file or a class with no define (fail closed)
+#                                                                    api-define-unpinned
+#   a class define whose value differs from its pin line             api-define-renumbered
+#   a pin line naming no class define                                api-define-orphan
+#   two names with one value inside a class (header side or pin side) api-define-duplicate
 # The IVS_API list equality is the D-06 symbol check (the JSON `calls` are the symbol list; there
 # is no separate calls inventory). Header self-containment is suite headers (plan 03-12).
 # Residual (OQ-5): a cited test id is proven to exist in an inventory (and tests-inventory proves
 # it ran in both presets), not to assert the row's status; each cited case asserts its own status.
-# Stats: api-calls=<JSON calls> api-statuses=<pinned statuses, OK included> api-rows=<refusal rows>.
+# Stats: api-calls=<JSON calls> api-statuses=<pinned statuses, OK included> api-rows=<refusal rows>
+# pinned-defines=<pin lines over every define class>.
 cmake_minimum_required(VERSION 3.25)
 
 foreach(required ROOT CHECK_DIR)
@@ -46,7 +58,18 @@ include("${CMAKE_CURRENT_LIST_DIR}/lib.cmake")
 
 set(CAP 20)
 set(ATOKENS api-status-renumbered api-status-unpinned api-status-reserved api-call-undocumented
-  api-call-undeclared api-refusal-no-test api-effect-unregistered api-dead-status api-effects-format)
+  api-call-undeclared api-refusal-no-test api-effect-unregistered api-dead-status api-effects-format
+  api-define-unpinned api-define-renumbered api-define-orphan api-define-duplicate)
+# Pinned define classes: PREFIX|PIN FILE|VALUE FORM|EXCLUDED NAMES (comma separated). Value form
+# `uint`: an unsigned decimal (no leading zero) or 0x hex integer with an optional u/U suffix,
+# optionally in parentheses; the pin line holds the decimal value. Value form `bit` (plan 04-13,
+# D-12, D-16): exactly `(1u << n)` (u or U, blanks optional), n a decimal bit index 0..31 without
+# a leading zero; the pin line holds n, so two names on one bit are api-define-duplicate.
+# Append-only pins (D-04).
+set(DEFINE_CLASSES
+  "IVS_STOP_|data/expected/api-stop-reasons.ids|uint|"
+  "IVS_REASON_|data/expected/api-reasons.ids|uint|"
+  "IVS_CTRL_|data/expected/input-bits.ids|bit|IVS_CTRL_RESERVED_MASK")
 set(STATUS_H "core/include/ivs/ivs_status.h")
 set(PIN "data/expected/api-statuses.ids")
 set(TABLE "data/api/api-effects.json")
@@ -430,6 +453,173 @@ foreach(st IN LISTS REFUSAL_NAMES)
   endif()
 endforeach()
 
+# ---- 6. generic define pins (plan 04-08) ----
+# Every object-like `#define` of the public headers, outside comments, as `NAME|HEADER|REST`
+# (REST is the text after the name, so a function-like macro has REST starting with `(`). Only
+# lines that can change the comment state or hold a define are read.
+set(DEF_LINES "")
+foreach(h IN LISTS headers)
+  file(STRINGS "${ROOT}/${h}" clines REGEX "/[*]|[*]/|//|#[ \t]*define")
+  set(in_c FALSE)
+  foreach(l IN LISTS clines)
+    set(t "")
+    set(s "${l}")
+    while(NOT s STREQUAL "")
+      if(in_c)
+        string(FIND "${s}" "*/" e)
+        if(e EQUAL -1)
+          break()
+        endif()
+        math(EXPR e "${e} + 2")
+        string(SUBSTRING "${s}" ${e} -1 s)
+        set(in_c FALSE)
+      else()
+        string(FIND "${s}" "/*" b)
+        if(b EQUAL -1)
+          string(APPEND t "${s}")
+          break()
+        endif()
+        string(SUBSTRING "${s}" 0 ${b} pre)
+        string(APPEND t "${pre} ")
+        math(EXPR b "${b} + 2")
+        string(SUBSTRING "${s}" ${b} -1 s)
+        set(in_c TRUE)
+      endif()
+    endwhile()
+    string(FIND "${t}" "//" c)
+    if(c GREATER -1)
+      string(SUBSTRING "${t}" 0 ${c} t)
+    endif()
+    if(t MATCHES "^[ \t]*#[ \t]*define[ \t]+([A-Za-z_][A-Za-z0-9_]*)(.*)$")
+      list(APPEND DEF_LINES "${CMAKE_MATCH_1}|${h}|${CMAKE_MATCH_2}")
+    endif()
+  endforeach()
+endforeach()
+
+set(n_pinned_defines 0)
+foreach(row IN LISTS DEFINE_CLASSES)
+  string(REPLACE "|" ";" f "${row}")
+  list(GET f 0 pfx)
+  list(GET f 1 dpin)
+  list(GET f 2 form)
+  list(GET f 3 excl)
+  string(REPLACE "," ";" excl "${excl}")
+  if(NOT form STREQUAL "uint" AND NOT form STREQUAL "bit")
+    afail(api-effects-format "define class ${pfx}: unknown value form '${form}'")
+    continue()
+  endif()
+  string(LENGTH "${pfx}" plen)
+
+  # Header side.
+  set(dh "")
+  foreach(e IN LISTS DEF_LINES)
+    if(NOT e MATCHES "^([^|]*)[|]([^|]*)[|](.*)$")
+      continue()
+    endif()
+    set(nm "${CMAKE_MATCH_1}")
+    set(hdr "${CMAKE_MATCH_2}")
+    set(rest "${CMAKE_MATCH_3}")
+    string(SUBSTRING "${nm}" 0 ${plen} head)
+    if(NOT head STREQUAL "${pfx}" OR nm IN_LIST excl OR rest MATCHES "^[(]")
+      continue()
+    endif()
+    if(form STREQUAL "bit")
+      # `(1u << n)`: the value is the bit index n (0..31).
+      set(v "")
+      if(rest MATCHES "^[ \t]+[(][ \t]*1[uU][ \t]*<<[ \t]*(0|[1-9][0-9]?)[ \t]*[)][ \t]*$")
+        set(v "${CMAKE_MATCH_1}")
+      endif()
+      if(v STREQUAL "" OR v GREATER 31)
+        afail(api-effects-format "${hdr}: unparsable ${pfx} define (want (1u << n), n 0..31): ${nm}${rest}")
+        continue()
+      endif()
+    else()
+      # An optional pair of parentheses around the integer, then the integer itself.
+      string(REGEX REPLACE "^[ \t]+[(][ \t]*([^()]*[^() \t])[ \t]*[)][ \t]*$" " \\1" val "${rest}")
+      if(NOT val MATCHES "^[ \t]+(0[xX][0-9A-Fa-f]+|0|[1-9][0-9]*)[uU]?[ \t]*$")
+        afail(api-effects-format "${hdr}: unparsable ${pfx} define: ${nm}${rest}")
+        continue()
+      endif()
+      math(EXPR v "${CMAKE_MATCH_1}")
+    endif()
+    if(nm IN_LIST dh)
+      afail(api-effects-format "${nm} is defined twice (${DH_HDR_${nm}} and ${hdr})")
+      continue()
+    endif()
+    list(APPEND dh "${nm}")
+    set("DH_HDR_${nm}" "${hdr}")
+    set("DH_VAL_${nm}" "${v}")
+  endforeach()
+
+  # Pin side; a missing pin file fails closed.
+  set(dp "")
+  if(NOT EXISTS "${ROOT}/${dpin}")
+    afail(api-define-unpinned "${dpin} missing: class ${pfx} has no pin file")
+  else()
+    file(STRINGS "${ROOT}/${dpin}" plines)
+    foreach(l IN LISTS plines)
+      string(STRIP "${l}" l)
+      if(l STREQUAL "" OR l MATCHES "^#")
+        continue()
+      endif()
+      if(NOT l MATCHES "^([A-Za-z0-9_]+)[ \t]+(0|[1-9][0-9]*)$")
+        afail(api-effects-format "${dpin}: unparsable line: ${l}")
+        continue()
+      endif()
+      set(nm "${CMAKE_MATCH_1}")
+      set(v "${CMAKE_MATCH_2}")
+      string(SUBSTRING "${nm}" 0 ${plen} head)
+      if(NOT head STREQUAL "${pfx}")
+        afail(api-effects-format "${dpin}: ${nm} is not of class ${pfx}")
+        continue()
+      endif()
+      if(nm IN_LIST dp)
+        afail(api-effects-format "${dpin}: ${nm} pinned twice")
+        continue()
+      endif()
+      list(APPEND dp "${nm}")
+      set("DP_VAL_${nm}" "${v}")
+    endforeach()
+  endif()
+  list(LENGTH dp np)
+  math(EXPR n_pinned_defines "${n_pinned_defines} + ${np}")
+  list(LENGTH dh nh)
+  if(nh EQUAL 0)
+    afail(api-define-unpinned "class ${pfx} has no define in core/include/ivs/*.h (a vacuous pin)")
+  endif()
+
+  foreach(nm IN LISTS dh)
+    if(NOT nm IN_LIST dp)
+      afail(api-define-unpinned "${nm} (${DH_VAL_${nm}}) is defined in ${DH_HDR_${nm}} but not pinned in ${dpin}")
+    elseif(NOT "${DH_VAL_${nm}}" STREQUAL "${DP_VAL_${nm}}")
+      afail(api-define-renumbered "${nm} is ${DH_VAL_${nm}} in ${DH_HDR_${nm}} but pinned ${DP_VAL_${nm}} in ${dpin}")
+    endif()
+  endforeach()
+  foreach(nm IN LISTS dp)
+    if(NOT nm IN_LIST dh)
+      afail(api-define-orphan "${nm} (${DP_VAL_${nm}}) is pinned in ${dpin} but no core/include/ivs/*.h defines it")
+    endif()
+  endforeach()
+  # Two names with one value, on each side.
+  foreach(side DH DP)
+    if(side STREQUAL "DH")
+      set(names "${dh}")
+      set(where "core/include/ivs/*.h")
+    else()
+      set(names "${dp}")
+      set(where "${dpin}")
+    endif()
+    foreach(nm IN LISTS names)
+      set(v "${${side}_VAL_${nm}}")
+      if(DEFINED "SEEN_${pfx}_${side}_${v}")
+        afail(api-define-duplicate "${nm} reuses value ${v} of ${SEEN_${pfx}_${side}_${v}} in ${where}")
+      else()
+        set("SEEN_${pfx}_${side}_${v}" "${nm}")
+      endif()
+    endforeach()
+  endforeach()
+endforeach()
+
 # Exact totals for capped tokens.
 foreach(tok IN LISTS ATOKENS)
   gate_count(n "tok_${tok}")
@@ -442,4 +632,5 @@ list(LENGTH P_NAMES n_statuses)
 gate_stat(api-calls ${n_calls})
 gate_stat(api-statuses ${n_statuses})
 gate_stat(api-rows ${n_rows})
+gate_stat(pinned-defines ${n_pinned_defines})
 gate_finish(api-effects)

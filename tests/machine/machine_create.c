@@ -596,9 +596,11 @@ static int mc_refuse_info_size_0(void)
   return mc_info_refused(0, 0, 0u, IVS_E_BAD_ARG);
 }
 
+/* Below the v1 size (A-02, plan 04-09: a size between the v1 size and sizeof(ivs_info) is a valid
+ * older caller, so the short case sits one byte below the v1 size). */
 static int mc_refuse_info_short(void)
 {
-  return mc_info_refused(0, 0, (uint32_t)sizeof(ivs_info) - 1u, IVS_E_BAD_ARG);
+  return mc_info_refused(0, 0, IVS_INFO_V1_SIZE - 1u, IVS_E_BAD_ARG);
 }
 
 static int mc_refuse_info_null_handle(void)

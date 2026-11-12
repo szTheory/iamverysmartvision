@@ -1,0 +1,3 @@
+# Toy runner scenarios (plan 04-21): `<id> <exit> <outcome> <class> <skip> <operator-args>`.
+toy 0 pass deterministic run -
+toy-wall 11 timeout host-dependent run --wall-timeout-ms,1

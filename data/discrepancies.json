@@ -137,20 +137,20 @@
       "topic": "Controller core-input representation",
       "sources": "One research file recommends a lossless logical state of 20 bits per controller with the core owning the control-to-electrical function. Two others recommend electrical state per port as core input (2 x 8 bits, 16, or 32 with the expansion) with the logical mapping on the host. They are incompatible on where the logical-to-electrical function lives.",
       "status": "open",
-      "default_policy": "unknown-default-chosen: controllers are modelled by their electrical structure (active-low, bit clear when pressed) and no core-input representation is frozen before D6.",
-      "resolver": "pending: D6 owner and architecture decision, needed before the Phase 4 API skeleton",
+      "default_policy": "unknown-default-chosen: logical switch state per controller indexed by PSG port (D6, delegated decision): 31 control-surface bits per uint32_t word (IVS_CTRL_*, bit 31 reserved), timestamped level samples in the run request, the electrical port byte derived in the core (Phase 5), no raw-byte input path. Reversal trigger: evidence that controller output is not a function of switch state plus port drive, or a consumer needing raw port injection.",
+      "resolver": "pending: Phase 5 control-to-byte table and D10 controller measurement",
       "evidence": "",
-      "note": "Seeded from the research source-conflict table."
+      "note": "Seeded from the research source-conflict table. Decided as D6 (delegated, owner authorization 2026-11-09) and recorded by plan 04-13 (A-05, D-12..D-16); it stays open because the wiring behind the choice is unmeasured (C16, C63-C66). The earlier research recommendation (apply input at the next run) is superseded by application at CPU-unit start (C67). Profile field input.controllers references this entry."
     },
     {
       "id": "C15",
       "topic": "Side-button count",
       "sources": "Four physical buttons, three distinct electrical codes, with the top pair wired together (SRC-bsr-2609); the 3-bit action code counts three.",
       "status": "open",
-      "default_policy": "unknown-default-chosen: four physical buttons map to three electrical codes; the research reads the sources as largely reconciled.",
+      "default_policy": "unknown-default-chosen: four physical buttons map to three side codes; the core models them as three logical bits and the two top buttons share one (IVS_CTRL_SIDE_TOP, bit 28): a host maps either top button to it, so both pressed read as one closed switch (D6, plan 04-13).",
       "resolver": "pending: schematic or service manual confirmation (SRC-ifixit-2609-service-manual is not yet read)",
       "evidence": "",
-      "note": "Seeded from the research source-conflict table."
+      "note": "Seeded from the research source-conflict table. Modelling choice recorded by plan 04-13; it stays open until a schematic or service manual confirms the wiring."
     },
     {
       "id": "C16",
@@ -237,20 +237,20 @@
       "topic": "CI shape",
       "sources": "One research file recommends Linux gcc and clang with sanitizers, fuzz smoke if cheap, one macOS job and scheduled memory and thread sanitizer jobs. Another defers fuzzing and matrix growth until a failure class justifies them, and a third calls more than three required jobs a performance trap.",
       "status": "open",
-      "default_policy": "unknown-default-chosen: one gate command and one CI job; matrix growth is deferred.",
-      "resolver": "pending: D12 decision in Phase 4",
+      "default_policy": "unknown-default-chosen: one gate job (D12, delegated decision); reverse on an Apple-only failure reaching main, a shared library, or a median hosted gate above budget after levers",
+      "resolver": "test: ci-parity bans and ci-log",
       "evidence": "",
-      "note": "Seeded from the research source-conflict table."
+      "note": "Seeded from the research source-conflict table. D12 decided as Phase 4 D-41..D-45 (one ubuntu-24.04 job, no matrix, no caches or artifacts, job summary, run record); recorded by plan 04-25. It stays open because the shape is a budgeted default with reversal triggers, not a settled fact."
     },
     {
       "id": "C25",
       "topic": "Mini-EXEC and boot stub",
       "sources": "One research file makes a mini-EXEC first-class from the first slice. Another labels it not an EXEC. A third warns against writing an EXEC replacement casually because its contract must be tested and its presence changes timing. A fourth calls the EXEC-less reset story an owner or profile question.",
       "status": "open",
-      "default_policy": "unknown-default-chosen: no boot stub or EXEC replacement is built in Phase 1; the reset PC comes from the profile default.",
-      "resolver": "pending: Phase 4 project boot stub plan (D5 decided as D-24: user-supplied system images only)",
+      "default_policy": "unknown-default-chosen: project boot stub contract 1 (plan 04-14), labelled \"project boot stub, not an EXEC\"; no EXEC replacement",
+      "resolver": "test: run.stub.path, run.stub.trap and the listing step's bootstub guards",
       "evidence": "",
-      "note": "Seeded from the research source-conflict table."
+      "note": "Seeded from the research source-conflict table. D5 decided as Phase 3 D-24 (user-supplied system images only, plus a project boot stub); the stub was built in plan 04-14 and recorded here by plan 04-25. Its cartridge entry and stack start are project conventions (C68)."
     },
     {
       "id": "C26",
@@ -621,6 +621,66 @@
       "resolver": "measurement: D10 cartridge decode probe on owner hardware, or a tier 1 to 3 board source",
       "evidence": "",
       "note": "Raised by plan 03-04 (D-23, A-01, A-02). Profile field memmap.cart_span references this entry. Widening the span later is additive; narrowing it is a claim change."
+    },
+    {
+      "id": "C63",
+      "topic": "Disc internals and two disc positions closed together",
+      "sources": "SRC-bsr-2609 gives the disc a 5-bit code for 16 directions. SRC-intv-wiki (Hand Controller, oldid 14808) gives key codes and combination rules but no disc contact structure. No source says whether two disc positions can be closed at once or what the port reads then.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: the 16 disc positions are independent logical bits (IVS_CTRL_DISC_*); a word may set more than one, and the Phase 5 byte function takes the union of the lines of every closed switch (one position at a time is the expected case).",
+      "resolver": "measurement: D10 controller reader diagnostic on owner hardware: each disc position singly and adjacent pairs where mechanically possible, on each port",
+      "evidence": "",
+      "note": "Raised by plan 04-13 (D-16, D6). Nothing reads the controller words in Phase 4, so no Phase 4 result depends on it."
+    },
+    {
+      "id": "C64",
+      "topic": "Unplugged connector and upper-byte read",
+      "sources": "SRC-intv-wiki (Hand Controller, oldid 14808) states that an idle controller reads all 1s in the low 8 bits (active-low). No source gives the read of a port with no controller attached, or the upper 8 bits of a CPU read of an 8-bit port.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: an unconnected controller index holds the idle word 0 (its event words must be 0, profile field input.controllers); no electrical value for an unplugged port or for the upper byte is asserted, and Phase 5 adds both as labelled profile policies.",
+      "resolver": "measurement: D10 owner hardware: read both ports with no controller attached and with an idle controller, recording the full 16-bit read",
+      "evidence": "",
+      "note": "Raised by plan 04-13 (D-16, D6)."
+    },
+    {
+      "id": "C65",
+      "topic": "Read of a port the PSG drives as output",
+      "sources": "SRC-bsr-2609 places the hand controllers on the sound chip's two 8-bit I/O ports. No source read by the project gives the value a CPU read returns from a port whose direction is set to output, with switches open or closed.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: core input stays logical switch state whatever the port direction; the Phase 5 byte function takes the port drive as an input, and the readback of an output-driven port is an explicit labelled policy, not a claim.",
+      "resolver": "measurement: D10 owner hardware: set each port to output, write known values and read them back with switches open and closed",
+      "evidence": "",
+      "note": "Raised by plan 04-13 (D-16, D6)."
+    },
+    {
+      "id": "C66",
+      "topic": "Which connector is R14",
+      "sources": "SRC-intv-wiki (Hand Controller, oldid 14808) gives reads at $01FE for the right controller and $01FF for the left. It is the only source (tier 4).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: the core indexes controllers by PSG port only (0 = R14/$01FE, 1 = R15/$01FF), never by side or player; which physical connector feeds which port is a host or profile fact, recorded later as a profile field that names this entry.",
+      "resolver": "measurement: D10 owner hardware: press one key on each physical controller and record which port reads it",
+      "evidence": "",
+      "note": "Raised by plan 04-13 (D-16, D6)."
+    },
+    {
+      "id": "C67",
+      "topic": "Input application granularity",
+      "sources": "No hardware source: a guest sees controller state only when an instruction reads a PSG port, and Phase 4 has no such read. The application rule is an architecture decision (D-14, A-04), not a hardware observation.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: an event takes effect at the first CPU-unit boundary whose start tick is at or after its at_tick; hardware may differ by up to one instruction, so this is a contract with a profile-flag reversal path, not a hardware claim.",
+      "resolver": "test: a Phase 5 PSG port-read test at instruction granularity; until then run.input.* and run.fuzz.* keep the unit-start rule independent of slicing",
+      "evidence": "",
+      "note": "Raised by plan 04-13 (D-14, D-16, A-04). Refining the rule later changes goldens that carry input."
+    },
+    {
+      "id": "C68",
+      "topic": "Boot stub cartridge entry and stack",
+      "sources": "project conventions of the Phase 4 boot stub ($5000 entry, $0340 stack); no hardware or first-party source",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: the stub jumps to $5000 with R6=$0340; Phase 6/7 may change both with a new stub contract number",
+      "resolver": "test: run.stub.path and run.diag.predicate (stub contract 1)",
+      "evidence": "",
+      "note": "Raised by plan 04-16 (D-28, D-31). fixtures/FX-boot-stub/boot-stub.listing.txt (contract 1) and fixtures/FX-diag-cpu-1/diag-cpu-1.listing.txt rely on both values; the predicate of data/golden/diag-cpu-1.expect asserts R6 = 0340 and [0206] = 0340 under this convention. Changing either value is a new stub contract number and new expected values, not an edit of the old ones."
     }
   ]
 }

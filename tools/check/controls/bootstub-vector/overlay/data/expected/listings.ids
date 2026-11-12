@@ -1,0 +1,3 @@
+# Control tree listing inventory (plan 04-15): the toy listing and a toy boot stub.
+toy cart data/listings/toy.listing.txt
+stub boot-stub data/listings/stub.listing.txt

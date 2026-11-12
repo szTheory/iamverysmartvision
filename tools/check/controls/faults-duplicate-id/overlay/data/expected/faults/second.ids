@@ -1,4 +1,6 @@
 # suite=toy; columns: <FAULT_ID> <must-fail-vector-id> <allowed-prefixes> <must-pass-vector-id>
 # Second toy faults file (plan 03-01, D-37): proves the multi-file fault loop on the good tree.
 GOOD_FAULT2 cpu.ZERO.alpha cpu.ZERO.alpha cpu.ZERO.beta
+# GOOD_RUNNER: its site is in runner/good.c (repo-relative owner TUs, D-24, plan 04-03).
+GOOD_RUNNER cpu.ZERO.alpha cpu.ZERO.alpha cpu.ZERO.beta
 GOOD_FAULT cpu.ZERO.alpha cpu.ZERO.alpha cpu.ZERO.beta

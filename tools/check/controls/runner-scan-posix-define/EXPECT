@@ -1,0 +1,2 @@
+FAIL runner-scan-posix-define: runner/good.c:4 _POSIX_C_SOURCE
+FAIL runner-scan-posix-define: runner/CMakeLists.txt:3 _POSIX_C_SOURCE

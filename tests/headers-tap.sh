@@ -1,7 +1,10 @@
 #!/bin/sh
 # SPDX-License-Identifier: MIT
 # Suite headers (D-05, D-06, plan 03-12): every public header core/include/ivs/<h>.h stands
-# alone. For each header a one-line TU `#include "ivs/<h>.h"` is compiled
+# alone. An optional second argument names another include directory (holding ivs/*.h) to check
+# the same way; the gate step pkg-install passes the installed prefix's include/ (D-38, plan
+# 04-22). The ctest registration passes only the source root. For each header a one-line TU
+# `#include "ivs/<h>.h"` is compiled
 #   - as C17: ${CC:-cc} -std=c17 -pedantic -Wall -Wextra -Werror -fsyntax-only -x c
 #     (id headers.c17-<stem>), and
 #   - as C++17 where a C++ compiler exists: ${CXX:-c++} -std=c++17 -pedantic -Wall -Wextra
@@ -12,12 +15,12 @@
 # shape (header with IVS_TEST_NONCE or none, plan, one result per case with the compiler output
 # as `#` lines after a failure, trailer) on stdout and, when IVS_TEST_OUT_DIR is set, in
 # <dir>/headers.txt.
-# Usage: sh headers-tap.sh <source root>   Exit: 0 pass, 1 fail, 77 every case skipped.
+# Usage: sh headers-tap.sh <source root> [<include dir>]   Exit: 0 pass, 1 fail, 77 every case skipped.
 # Env: CC (set by ctest from CMAKE_C_COMPILER), CXX, IVS_TEST_NONCE, IVS_TEST_OUT_DIR.
 LC_ALL=C; export LC_ALL
-[ "$#" -eq 1 ] || { printf 'usage: sh headers-tap.sh <source root>\n' >&2; exit 1; }
+[ "$#" -eq 1 ] || [ "$#" -eq 2 ] || { printf 'usage: sh headers-tap.sh <source root> [<include dir>]\n' >&2; exit 1; }
 root=$1
-inc="$root/core/include"
+inc=${2:-"$root/core/include"}
 [ -d "$inc/ivs" ] || { printf 'headers-tap: no %s\n' "$inc/ivs" >&2; exit 1; }
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/headers-tap.XXXXXX") || exit 1
 trap 'rm -rf "$tmp"' EXIT

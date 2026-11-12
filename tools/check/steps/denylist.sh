@@ -44,12 +44,39 @@ if [ "$scanned" -eq 0 ]; then
   exit 1
 fi
 
+# Batch prefilter (D-45 lever, plan 04-LEVER-01): one `grep -l` per list over every in-scope file
+# (through xargs, in scan order) names the files that match at all, so only those are read again
+# line by line below; a file no list matches adds nothing either way. A grep error (status 2 or
+# more) in a batch drops back to the per-file pass over every file, which names the unreadable
+# file (denylist-grep-error) as before.
+batch() { # $1 list file; prints the matching in-scope paths in scan order; status 1 on a grep error
+  (cd "$ROOT" && sed 's|^|./|' "$tmp/scan" | tr '\n' '\000' \
+    | LIST=$1 xargs -0 sh -c 'grep -l -a -i -F -f "$LIST" "$@" 2> /dev/null; s=$?; [ "$s" -le 1 ] || exit 255' sh) \
+    > "$tmp/batch.out" 2> /dev/null || return 1
+  sed 's|^[.]/||' "$tmp/batch.out"
+}
+mode=batch
+: > "$tmp/hit.batch"
+: > "$tmp/cite.batch"
+if [ -s "$tmp/denylist" ]; then batch "$tmp/denylist" > "$tmp/hit.batch" || mode=each; fi
+if [ "$mode" = batch ] && [ -s "$tmp/denylist-cite" ]; then
+  batch "$tmp/denylist-cite" > "$tmp/cite.batch" || mode=each
+fi
+
 waived=0
 : > "$tmp/hit"
 : > "$tmp/unw"
+if [ "$mode" = batch ]; then
+  cp "$tmp/hit.batch" "$tmp/hit"
+  each_deny=0
+  each="$tmp/cite.batch"
+else
+  each_deny=1
+  each="$tmp/scan"
+fi
 while IFS= read -r f; do
   reported=0
-  if [ -s "$tmp/denylist" ]; then
+  if [ "$each_deny" -eq 1 ] && [ -s "$tmp/denylist" ]; then
     gs=0
     grep -q -a -i -F -f "$tmp/denylist" "$ROOT/$f" 2> /dev/null || gs=$?
     if [ "$gs" -eq 0 ]; then
@@ -74,7 +101,7 @@ while IFS= read -r f; do
     k=$(grep -a -c -F '[cite-only]' "$tmp/lines")
     waived=$((waived + k))
   fi
-done < "$tmp/scan"
+done < "$each"
 while IFS= read -r f; do
   bad denylist-hit "$f"
 done < "$tmp/hit"

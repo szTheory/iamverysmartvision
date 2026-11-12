@@ -1,0 +1,12 @@
+# Negative controls for the golden step (plan 04-21, D-11, D-19, D-21): headers, domains, body,
+# dev versus release and scope, on the toy tree of tools/check/controls/_good/tree.
+golden-header-missing-tier
+golden-header-missing-oracle
+golden-self-recorded-wrong-tier
+golden-empty-domain-observed
+golden-mismatch
+golden-expect-drift
+golden-dev-release-diff
+golden-user-scenario-tracked
+golden-host-dependent-unmarked
+golden-host-dependent-golden

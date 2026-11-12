@@ -50,3 +50,4 @@ memmap.region.gram_alias_wb
 memmap.region.stic_alias_wc
 memmap.region.gram_alias_wf
 memmap.cart_span
+input.controllers

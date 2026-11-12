@@ -1,0 +1,12 @@
+# Negative controls for the listing step (plan 04-15, D-26, D-29): one per token. The positive
+# control is the toy cart listing of controls/_good/tree; the bootstub-* controls overlay a toy
+# boot stub, its inventory line and a toy-stub profile with the two vector fields.
+listing-bits-mismatch
+listing-row-mismatch
+listing-operand-count
+listing-range
+listing-header
+listing-unlisted
+bootstub-size
+bootstub-row
+bootstub-vector

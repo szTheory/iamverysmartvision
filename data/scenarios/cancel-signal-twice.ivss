@@ -1,0 +1,14 @@
+# Scenario cancel-signal-twice (review WR-04, D-21, D-23): outcome cancelled, exit 12;
+# host-dependent (signals). As cancel-signal, but run with --self-signal-count 2: ivs-run raises
+# SIGINT twice in the cancel check after slice 1 (no racing signal, no sleep). The handler must
+# survive the first signal (BSD signal() semantics, also on glibc), so the second is just another
+# cancel request and the run still ends cancelled with a report, not killed by the signal.
+# expect-detail: signal step=1
+ivss 1
+id cancel-signal-twice
+profile intv-2609-ntsc-family-p1
+content exec boot-stub
+content grom zero-grom
+content cart diag-cpu-1.ivsc
+run-to 4000 cpu-cycles stop halted
+assert halted == yes

@@ -1,3 +1,5 @@
 # Fixture manifests: one id per fixtures/<id>/manifest.json (exact set).
 FX-sample-rights-unknown
 FX-ivsc-vectors
+FX-boot-stub
+FX-diag-cpu-1

@@ -1,0 +1,10 @@
+# Scenario no-run-to (review WR-03, D-20, D-22): outcome harness-fail, exit 14. Content lines but
+# no run-to and no expected refusal: nothing would be checked, so the parser refuses the whole
+# file (line 0), ivs-run prints no report and one line on stderr.
+# expect-stderr: scenario-syntax line=0 reason=no-run-to
+ivss 1
+id no-run-to
+profile intv-2609-ntsc-family-p1
+content exec boot-stub
+content grom zero-grom
+content cart diag-cpu-1.ivsc

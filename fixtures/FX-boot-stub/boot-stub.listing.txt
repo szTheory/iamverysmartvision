@@ -1,0 +1,71 @@
+# id: boot-stub
+# kind: boot-stub
+# contract: 1
+# profile: intv-2609-ntsc-family-p1
+# window: 1000-101F
+# label: project boot stub, not an EXEC
+# entry: 5000
+# stack: 0340
+#
+# Project boot stub, contract 1 (D-28, D-29). Project-authored under the repository MIT licence;
+# it is not an EXEC, provides no routine, service, entry point or data to a cartridge, and is never
+# evidence of EXEC compatibility. The cartridge entry 5000 and the stack start 0340 are project
+# conventions, not hardware claims. The review rule is in docs/diagnostics.md.
+#
+# Line grammar (D-26): ADDR HEX4 BITS ROW ASM
+#   ADDR  4 hex digits, the word address; word lines are contiguous and inside the window.
+#   HEX4  4 hex digits, the word; at most 03FF (a 10-bit decle).
+#   BITS  groups of binary digits, 10 digits in total, whose value equals HEX4; an instruction
+#         word is split at its printed field boundaries, an operand word as 2+4+4 (or at its
+#         printed fields where the manual names them).
+#   ROW   the leaf row id (data/cp1610/opcode-families.json) of the instruction that starts on this
+#         line, or - for an operand word of the instruction above it.
+#   ASM   the rest of the line: instruction text and notes.
+# Zero-fill rule: an unreachable zero word carries the row of the decle it encodes (HLT) and the
+# text "fill". Zero fill is not a trap: HLT stops the CPU only after the next instruction and only
+# at an interruptible boundary, and HLT itself is not interruptible, so a run of zero words never
+# stops. Every ending therefore needs a follower such as TSTR R0 (D-29).
+#
+# Derivation (hand-assembled; no assembler; page numbers are "pdf N" of the GI CP-1600
+# Microprocessor Users Manual, SRC-gi-cp1600-um-1975; each encoding also matches a Phase 2 vector
+# row named in brackets):
+#   B     1000 S0 0000, then the displacement word; S=0 is forward and the target is the address of
+#         the B plus 2 plus the displacement (branch format and table, pdf 54) [branch.json
+#         cpu.B.forward-plus-10: B $1012 at 1000 is 0200 0010].
+#   J     0000 000 100, then BB AAAAAA EE (BB=11 for J, A = target bits 15..10, EE=00 for J), then
+#         target bits 9..0 (Fig 3.3.5, pdf 52; jump table, pdf 56) [jump.json cpu.J.plain].
+#   MVII  1010 111 DDD, then the immediate word (Fig 3.2.1, pdf 46; immediate table, pdf 57)
+#         [immediate.json cpu.MVII.ffff: MVII #$FFFF, R0 is 02B8].
+#   MVO   1001 000 SSS, then the address word (Fig 3.2.1, pdf 46; direct table, pdf 55)
+#         [direct.json cpu.MVO.address-ffff: MVO R0, $FFFF is 0240].
+#   HLT   0000 000 000; DIS 0000 000 011 (Fig 3.3.4, pdf 51; control table, pdf 56) [control.json
+#         cpu.HLT.sets-halt-pending, cpu.DIS.clears-intff].
+#   TSTR  0010 SSS SSS (Fig 3.3.1, pdf 50; register-register table, pdf 53) [register.json
+#         cpu.TSTR.base: TSTR R1 is 0089].
+# Branch arithmetic of the reset entry: B at 1000, PC + 2 = 1002, target 1010, displacement
+# 1010 - 1002 = 000E, S = 0.
+# Jump arithmetic of the hand-off: target 5000 = 0101 0000 0000 0000; bits 15..10 = 010100,
+# bits 9..0 = 0000000000; second decle 11 010100 00 = 0350, third decle 0000.
+# Words used: 22 (1000-1015), 12 of them non-zero.
+1000 0200 1000 00 0000  B     B $1010           reset entry (R7 = reset.r7 = 1000); skips the vector area
+1001 000E 00 0000 1110  -     displacement 000E (S=0): 1000 + 2 + 000E = 1010
+1002 0000 0000 000 000  HLT   fill (zero, unreachable)
+1003 0000 0000 000 000  HLT   fill (zero, unreachable)
+1004 02B8 1010 111 000  MVII  MVII #$0001, R0   interrupt entry (R7 = interrupt.iab_value = 1004): unexpected-interrupt trap
+1005 0001 00 0000 0001  -     immediate 0001
+1006 0240 1001 000 000  MVO   MVO R0, $035F     records [035F] = 1 (last word of system RAM)
+1007 035F 11 0101 1111  -     address 035F
+1008 0000 0000 000 000  HLT   HLT               sets the stop latch; the next instruction still runs
+1009 0080 0010 000 000  TSTR  TSTR R0           the follower: the CPU halts after it with R7 = 100A
+100A 0000 0000 000 000  HLT   fill (zero, unreachable)
+100B 0000 0000 000 000  HLT   fill (zero, unreachable)
+100C 0000 0000 000 000  HLT   fill (zero, unreachable)
+100D 0000 0000 000 000  HLT   fill (zero, unreachable)
+100E 0000 0000 000 000  HLT   fill (zero, unreachable)
+100F 0000 0000 000 000  HLT   fill (zero, unreachable)
+1010 0003 0000 000 011  DIS   DIS               reset code: interrupt system off
+1011 02BE 1010 111 110  MVII  MVII #$0340, R6   stack pointer at the project stack start in system RAM
+1012 0340 11 0100 0000  -     immediate 0340
+1013 0004 0000 000 100  J     J $5000           hand-off to the cartridge entry (project convention)
+1014 0350 11 010100 00  -     second decle: BB=11 (J), target bits 15..10 = 010100, EE=00
+1015 0000 00 0000 0000  -     third decle: target bits 9..0

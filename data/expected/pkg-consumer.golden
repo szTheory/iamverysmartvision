@@ -1,0 +1,34 @@
+# tier: deterministic-repeatability
+# oracle: regression pin, emulator is oracle
+# Owning plan 04-23 (PKG-01, D-39): the stdout of tests/installed-consumer, built only against the
+# installed, relocated package and run on build/release/images/boot-stub.exec and diag-cpu-1.ivsc
+# (gate step pkg-install). Self-consistent, not independent: the emulator produced these values.
+# The digest.<domain> lines must also equal data/golden/diag-input-pass.digests (cross-path
+# agreement with the runner). The step drops these # lines before comparing. A change is a
+# reviewed diff, regenerated from build/gate/pkg-consumer.txt after a gate run.
+ivs-consumer 1
+version package=0.1.0 header=0.1.0 api=0x000100 library=0x000100 tie=yes
+v1-sizes run_request=64 events_at=48 run_report=112 input_event=32 cpu_state_report=36 info=256 info_v1=216 ok=yes
+create status=IVS_OK profile=intv-2609-ntsc-family-p1
+refusal.truncated-exec status=IVS_E_MALFORMED reason=21 digest-unchanged=yes
+load.exec status=IVS_OK length_bytes=8192 sha256=2b7cfb0942d8ae38ac30fc3b5c771708de0a02c45585cdae5530ac0d1aa7c8d1
+load.grom status=IVS_OK length_bytes=2048 sha256=e5a00aa9991ac8a5ee3109844d84a55583bd20572ad3ffcd42792f3c36b183ad
+load.cart status=IVS_OK length_bytes=176 sha256=243626a75f7592fcb904a6c2cba2de307f19f08eb484ae9f94fd0383526ee5c0
+refusal.duplicate status=IVS_E_DUPLICATE_LOAD reason=33 digest-unchanged=yes
+reset status=IVS_OK
+info phase=1 time_ticks=0 ticks_per_cpu_cycle=4 nominal_frame_ticks=59736 video_format=0 audio_format=0
+step.1 target_ticks=1000 stop=IVS_STOP_TARGET now_ticks=1020 overshoot_ticks=20 input_consumed=1 controller0=00000001
+step.1.cpu run_state=2 fault_reason=0 r=0000,8080,0007,0022,0000,0000,0340,501D
+step.1.mem 0200..020F=7FFF,8080,A0A0,7070,0000,0000,0000,0000,0000,0000,0000,0000,0000,0000,0000,0000
+step.2 target_ticks=16000 stop=IVS_STOP_CPU_HALTED now_ticks=2084 overshoot_ticks=0 input_consumed=1 controller0=00000000
+step.2.cpu run_state=3 fault_reason=0 r=03C5,8080,0000,0037,0201,0037,0340,5036
+step.2.mem 0200..020F=7FFF,8080,A0A0,7070,0037,0037,0340,0201,7FFF,0000,0000,0000,0000,0000,0000,03C5
+input events=2 consumed=2
+digest.cpu 8c6a8aa37cf3293d3d88f1133f3cb218d89fb96a34e8bda49e6ea750cf4dbe55
+digest.mem 1d935916585661ba402808c52be6b5ecbbf2ccde49eafe9789b82ff40690be81
+digest.images 69d3b715595bdb3435c984ad72e0042fdf385b72e2687f13a4d59e8b09084e45
+digest.instance 3a953773906673ca8475db178952b9ea398991b234218eb9953453f04b15bb59
+digest.composite c834c07a18c9b7467e237890be951938367bc1a4e5338e766993f8980f10b408
+digest.input b18223e862aa91b5d3a82fdd7596b413954565c25b5adbc2d78dcc5dbbefdec1
+second-instance equal=yes
+result ok failures=0

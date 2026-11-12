@@ -2,9 +2,11 @@
 # SPDX-License-Identifier: MIT
 # Step c-build: configure and build the dev and release presets (D-19, D-22), plus the
 # named-fault executables (target ivs_faults) in the dev tree (D-18), then fail on any
-# tracked or untracked-not-ignored core/**/*.c that the build does not compile (the build
-# writes its repo-relative source list to build/dev/ivs-core-sources.txt). Build logs are
-# printed only on failure.
+# tracked or untracked-not-ignored core/**/*.c, runner/**/*.c or tools/pack/**/*.c that the build
+# does not compile (the build writes its repo-relative source lists to build/dev/ivs-core-sources.txt,
+# since plan 04-04 (D-24) build/dev/ivs-runner-sources.txt and since plan 04-14 (D-30)
+# build/dev/ivs-pack-sources.txt).
+# Build logs are printed only on failure.
 # Tokens: c-build-failed: <preset>, c-build-unlisted-source: <path>.
 # Stats: cc=<CMAKE_C_COMPILER_ID of the dev tree> c-presets=<n>.
 LC_ALL=C; export LC_ALL
@@ -35,14 +37,20 @@ for preset in dev release; do
   fi
 done
 
-listed="$ROOT/build/dev/ivs-core-sources.txt"
-grep -E '^core/.*[.]c$' "$FILELIST" | sort -u > "$tmp/tracked"
-if [ -f "$listed" ]; then
-  sort -u "$listed" > "$tmp/listed"
-  for p in $(comm -23 "$tmp/tracked" "$tmp/listed"); do bad c-build-unlisted-source "$p"; done
-else
-  bad c-build-failed "dev (no ivs-core-sources.txt)"
-fi
+# Each item: <tracked-path regex> <repo-relative source list the build writes to build/dev>.
+for mod in '^core/.*[.]c$ ivs-core-sources.txt' '^runner/.*[.]c$ ivs-runner-sources.txt' \
+  '^tools/pack/.*[.]c$ ivs-pack-sources.txt'; do
+  re=${mod%% *}
+  name=${mod#* }
+  listed="$ROOT/build/dev/$name"
+  grep -E "$re" "$FILELIST" | sort -u > "$tmp/tracked"
+  if [ -f "$listed" ]; then
+    sort -u "$listed" > "$tmp/listed"
+    for p in $(comm -23 "$tmp/tracked" "$tmp/listed"); do bad c-build-unlisted-source "$p"; done
+  else
+    bad c-build-failed "dev (no $name)"
+  fi
+done
 
 # The compiler id comes from the CMakeFiles/<version>/ directory of the CMake version that wrote
 # the cache, so a stale directory left by an older CMake is never read (review IN-04).

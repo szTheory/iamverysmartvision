@@ -194,14 +194,30 @@ while IFS= read -r e; do
 done < "$tmp/idents"
 git log --all --name-only --format= > "$tmp/names.raw" || { found unreadable "git-log-names"; exit 1; }
 sort -u "$tmp/names.raw" > "$tmp/names"
+# The binary-name rule runs once over the whole sorted list (D-45 lever, plan 04-LEVER-01; it was
+# one grep per name). Its matches keep the list's order, so the loop walks both lists in step and
+# reports the same names in the same order. A grep error is a finding, never "no match".
+_s=0
+grep -i -E -e "$BINARY_NAME" "$tmp/names" > "$tmp/names.bin" 2> "$tmp/names.err" || _s=$?
+if [ "$_s" -ge 2 ]; then
+  found unreadable "history-names-grep"
+  sed -n '1,3p' "$tmp/names.err" >&2
+fi
+exec 3< "$tmp/names.bin"
+nb=
+IFS= read -r nb <&3 || nb=
 while IFS= read -r p; do
   [ -n "$p" ] || continue
   base=${p##*/}
   hit=0
-  if printf '%s\n' "$p" | grep -q -i -E -e "$BINARY_NAME"; then hit=1; fi
+  if [ -n "$nb" ] && [ "$p" = "$nb" ]; then
+    hit=1
+    IFS= read -r nb <&3 || nb=
+  fi
   case $p in refs/*) hit=1 ;; esac
   case $base in .env|.env.*) hit=1 ;; esac
   if [ "$hit" -eq 1 ]; then found history-binary "$p"; fi
 done < "$tmp/names"
+exec 3<&-
 if [ "$fail" -eq 0 ]; then printf -- '-- hygiene pass mode=history commits=%s\n' "$n"; fi
 [ "$fail" -eq 0 ]

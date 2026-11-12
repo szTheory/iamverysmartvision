@@ -1,0 +1,65 @@
+# tier: deterministic-repeatability
+# oracle: self-recorded
+# scenario: diag-boot-pass
+# profile: intv-2609-ntsc-family-p1
+# domains: cpu=observed mem=observed images=observed instance=observed video=none audio=none input=none
+# Written by ivs-run --update-golden, never by the gate; a change is a reviewed diff
+# (docs/runner.md). The body is the run's report filtered to the golden key list.
+scenario.id diag-boot-pass
+scenario.profile intv-2609-ntsc-family-p1
+outcome pass
+outcome.detail -
+exit.code 0
+slot.exec.loaded 1
+slot.exec.length_bytes 8192
+slot.exec.sha256 2b7cfb0942d8ae38ac30fc3b5c771708de0a02c45585cdae5530ac0d1aa7c8d1
+slot.exec.status ok
+slot.exec.reason 0
+slot.grom.loaded 1
+slot.grom.length_bytes 2048
+slot.grom.sha256 e5a00aa9991ac8a5ee3109844d84a55583bd20572ad3ffcd42792f3c36b183ad
+slot.grom.status ok
+slot.grom.reason 0
+slot.cart.loaded 1
+slot.cart.length_bytes 176
+slot.cart.sha256 243626a75f7592fcb904a6c2cba2de307f19f08eb484ae9f94fd0383526ee5c0
+slot.cart.status ok
+slot.cart.reason 0
+step.1.target_ticks 16000 from=4000 cpu-cycles
+step.1.now_ticks 2084
+step.1.overshoot_ticks 0
+step.1.stop_reason halted
+step.1.expected_stop halted
+step.1.assert.1 pass halted == yes got yes
+step.1.assert.2 pass reg R0 == 03C5 got 03C5
+step.1.assert.3 pass reg R1 == 8080 got 8080
+step.1.assert.4 pass reg R2 == 0000 got 0000
+step.1.assert.5 pass reg R3 == 0037 got 0037
+step.1.assert.6 pass reg R4 == 0201 got 0201
+step.1.assert.7 pass reg R5 == 0037 got 0037
+step.1.assert.8 pass reg R6 == 0340 got 0340
+step.1.assert.9 pass mem 0200 == 7FFF got 7FFF
+step.1.assert.10 pass mem 0201 == 8080 got 8080
+step.1.assert.11 pass mem 0202 == A0A0 got A0A0
+step.1.assert.12 pass mem 0203 == 7070 got 7070
+step.1.assert.13 pass mem 0204 == 0037 got 0037
+step.1.assert.14 pass mem 0205 == 0037 got 0037
+step.1.assert.15 pass mem 0206 == 0340 got 0340
+step.1.assert.16 pass mem 0207 == 0201 got 0201
+step.1.assert.17 pass mem 0208 == 7FFF got 7FFF
+step.1.assert.18 pass mem 020F == 03C5 got 03C5
+cpu.run_state halted
+cpu.fault_reason none
+input.events 0
+input.consumed 0
+input.controller.0 00000000
+input.controller.1 00000000
+input.controller.2 00000000
+input.controller.3 00000000
+digest.cpu 8c6a8aa37cf3293d3d88f1133f3cb218d89fb96a34e8bda49e6ea750cf4dbe55
+digest.mem 1d935916585661ba402808c52be6b5ecbbf2ccde49eafe9789b82ff40690be81
+digest.images 69d3b715595bdb3435c984ad72e0042fdf385b72e2687f13a4d59e8b09084e45
+digest.instance 3a953773906673ca8475db178952b9ea398991b234218eb9953453f04b15bb59
+digest.composite c834c07a18c9b7467e237890be951938367bc1a4e5338e766993f8980f10b408
+output.video.bytes 0
+output.audio.bytes 0

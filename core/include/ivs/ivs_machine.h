@@ -54,16 +54,17 @@ typedef struct ivs_machine ivs_machine;
 /* Reset kinds (D-14). Any other value is BAD_ARG (A-08 e). */
 #define IVS_RESET_POWER_ON 1u
 
-/* State digest domains (D-35). 0 is the composite of 1..4; 16..18 are reserved for the RUN-05
- * video, audio and input observations and are refused until they exist. */
+/* State digest domains (D-35, D-10). 0 is the composite of 1..4. 16..18 are live domains: the
+ * RUN-05 video, audio and input observations, domain version 1; not part of the composite, which
+ * stays version 1 over domains 1..4. Every other value is refused. */
 #define IVS_DIGEST_COMPOSITE 0u
 #define IVS_DIGEST_CPU 1u
 #define IVS_DIGEST_MEM 2u
 #define IVS_DIGEST_IMAGES 3u
 #define IVS_DIGEST_INSTANCE 4u
-#define IVS_DIGEST_RESERVED_VIDEO 16u
-#define IVS_DIGEST_RESERVED_AUDIO 17u
-#define IVS_DIGEST_RESERVED_INPUT 18u
+#define IVS_DIGEST_VIDEO 16u
+#define IVS_DIGEST_AUDIO 17u
+#define IVS_DIGEST_INPUT 18u
 
 /* Largest struct_size of an in struct (D-04): above it the call is BAD_ARG. */
 #define IVS_STRUCT_SIZE_MAX 4096u
@@ -100,8 +101,30 @@ typedef struct ivs_image_report {
   uint8_t sha256[32];
 } ivs_image_report;
 
+/* Output layout formats of ivs_info (D-06). NONE: the profile produces no bytes of that kind yet
+ * (the size per frame is then 0). */
+#define IVS_OUTPUT_FORMAT_NONE 0u
+
 /* Out: instance information. slots[i] is the slot of kind i + 1. time_ticks is machine time in
- * master ticks (docs/time-base.md). */
+ * master ticks (docs/time-base.md).
+ * Growth (A-02, plan 04-09): the v1 size of ivs_info is the Phase 3 size (216 bytes, up to and
+ * including slots); fields after it are written only when struct_size covers them (A-02). A
+ * caller sized for v1 is accepted and its bytes past the v1 size are untouched; the core writes
+ * min(struct_size, sizeof(ivs_info)) bytes and sets struct_size to that count. A struct_size
+ * above IVS_STRUCT_SIZE_MAX is BAD_ARG with nothing written (review IN-03).
+ * Appended fields (byte offsets; 64-bit members 8-aligned), all from the profile:
+ *   216 ticks_per_cpu_cycle      master ticks per CPU cycle (D2)
+ *   220 cpu_cycles_per_scanline  nominal
+ *   224 scanlines_per_frame      nominal
+ *   228 video_format             IVS_OUTPUT_FORMAT_*
+ *   232 nominal_frame_ticks      ticks_per_cpu_cycle * cpu_cycles_per_scanline *
+ *                                scanlines_per_frame; nominal_frame_ticks is nominal, not a frame
+ *                                event (D-09): frames are timeline events, never a modulo of time
+ *   240 video_bytes_per_frame    0 with IVS_OUTPUT_FORMAT_NONE
+ *   244 audio_format             IVS_OUTPUT_FORMAT_*
+ *   248 audio_bytes_per_frame    0 with IVS_OUTPUT_FORMAT_NONE
+ *   252 reserved2                written 0
+ * sizeof(ivs_info) is 256. */
 typedef struct ivs_info {
   uint32_t struct_size;
   uint32_t phase; /* IVS_PHASE_* */
@@ -109,6 +132,16 @@ typedef struct ivs_info {
   uint32_t profile_index;
   uint32_t reserved; /* written 0 */
   ivs_image_report slots[3];
+  /* ---- end of the v1 (Phase 3) size ---- */
+  uint32_t ticks_per_cpu_cycle;
+  uint32_t cpu_cycles_per_scanline;
+  uint32_t scanlines_per_frame;
+  uint32_t video_format; /* IVS_OUTPUT_FORMAT_* */
+  uint64_t nominal_frame_ticks;
+  uint32_t video_bytes_per_frame;
+  uint32_t audio_format; /* IVS_OUTPUT_FORMAT_* */
+  uint32_t audio_bytes_per_frame;
+  uint32_t reserved2; /* written 0 */
 } ivs_info;
 
 /* ---- typed content loading (D-10, D-11, D-24..D-27, D-32, D-33, A-04, A-08, plan 03-10) ----
@@ -130,7 +163,8 @@ typedef struct ivs_load_options {
 } ivs_load_options;
 
 /* Refusal reasons of a load report. 1..18 are the reason numbers of the IVSC v1 reason table
- * (docs/formats/ivsc-v1.md); 19 and up are the load's own reasons. Numbers are append-only. */
+ * (docs/formats/ivsc-v1.md); 19..33 are the load's own reasons and 34 and up the run's (one
+ * list for every report). Numbers are append-only. */
 #define IVS_REASON_NONE 0u
 #define IVS_REASON_TRUNCATED 1u        /* MALFORMED */
 #define IVS_REASON_TOO_LARGE 2u        /* OVERSIZED */
@@ -165,6 +199,32 @@ typedef struct ivs_load_options {
 #define IVS_REASON_OPTION_TAIL 31u     /* UNSUPPORTED: a nonzero byte in a larger opts tail */
 #define IVS_REASON_STATE_POWERED 32u   /* BAD_STATE: the machine is POWERED */
 #define IVS_REASON_SLOT_OCCUPIED 33u   /* DUPLICATE_LOAD: the slot holds an image */
+/* Refusal reasons of ivs_machine_run (ivs_run_report.refusal_reason, plan 04-07, D-05). A refused
+ * run writes the reason only into a report that is not itself the cause; a bad handle reports
+ * IVS_REASON_HANDLE. */
+#define IVS_REASON_RUN_NULL_ARG 34u       /* BAD_ARG: req NULL */
+#define IVS_REASON_RUN_STRUCT_SIZE 35u    /* BAD_ARG: req->struct_size short or above the cap */
+#define IVS_REASON_RUN_REPORT_OVERLAP 36u /* BAD_ARG: the report overlaps the instance (never written into it) */
+#define IVS_REASON_RUN_FLAGS 37u          /* UNSUPPORTED: an unknown or reserved run flag */
+#define IVS_REASON_RUN_TAIL 38u           /* UNSUPPORTED: a nonzero byte in a larger request tail */
+#define IVS_REASON_RUN_STATE_OFF 39u      /* BAD_STATE: the machine is OFF */
+#define IVS_REASON_RUN_TARGET_RANGE 40u   /* OUT_OF_RANGE: target_ticks above 2^63 */
+#define IVS_REASON_RUN_BUFFER_SMALL 41u   /* BUFFER_TOO_SMALL: an output capacity below the layout's requirement */
+#define IVS_REASON_RUN_BUFFER_NULL 42u    /* BAD_ARG: an output buffer NULL with a nonzero capacity */
+#define IVS_REASON_RUN_BUFFER_OVERLAP 43u /* BAD_ARG: a buffer overlaps the instance, the other buffer or the report */
+/* Input reasons of ivs_machine_run (plan 04-11, D-05, D-13, D-14; 54 plan 04-12, D-15). 48..54
+ * concern one event: the report's input_failing_index names it. */
+#define IVS_REASON_INPUT_RESERVED_IN 44u      /* UNSUPPORTED: req->reserved_in is nonzero */
+#define IVS_REASON_INPUT_EVENTS_NULL 45u      /* BAD_ARG: events NULL with event_count above 0 */
+#define IVS_REASON_INPUT_EVENT_COUNT 46u      /* BAD_ARG: event_count above IVS_INPUT_EVENTS_MAX */
+#define IVS_REASON_INPUT_EVENTS_OVERLAP 47u   /* BAD_ARG: the events overlap the instance, the report or a buffer */
+#define IVS_REASON_INPUT_TICK_RANGE 48u       /* BAD_ARG: an at_tick at or above 2^63 */
+#define IVS_REASON_INPUT_UNSORTED 49u         /* BAD_ARG: an at_tick below the previous event's */
+#define IVS_REASON_INPUT_BEFORE_FLOOR 50u     /* BAD_ARG: an at_tick below the input floor */
+#define IVS_REASON_INPUT_EVENT_FLAGS 51u      /* UNSUPPORTED: an event's flags are nonzero */
+#define IVS_REASON_INPUT_EVENT_RESERVED 52u   /* UNSUPPORTED: an event's reserved word is nonzero */
+#define IVS_REASON_INPUT_CONTROL_RESERVED 53u /* UNSUPPORTED: a controller word has IVS_CTRL_RESERVED_MASK set */
+#define IVS_REASON_INPUT_EXTRA_CONTROLLER 54u /* UNSUPPORTED: a nonzero word at or above input.controllers */
 
 /* segment_index of a report whose reason concerns no single segment. */
 #define IVS_SEGMENT_NONE 0xFFFFFFFFu
@@ -200,12 +260,14 @@ IVS_API ivs_status ivs_machine_create(const ivs_create_options *opts, void *stor
 /* Zero-scrubs the instance bytes; the handle is then invalid (a later call is BAD_HANDLE). */
 IVS_API ivs_status ivs_machine_destroy(ivs_machine *m);
 
-/* Phase, machine time, profile index and the three slot reports. BAD_ARG: out NULL or short;
- * then BAD_HANDLE; then BAD_ARG: out overlapping the instance storage. */
+/* Phase, machine time, profile index and the three slot reports, then (when struct_size covers
+ * them, A-02) the timebase and output layout. BAD_ARG: out NULL or struct_size below the v1 size
+ * (216); then BAD_HANDLE; then BAD_ARG: the bytes to be written overlap the instance storage. */
 IVS_API ivs_status ivs_machine_info(const ivs_machine *m, ivs_info *out);
 
-/* SHA-256 of the canonical state (D-35) of one domain (IVS_DIGEST_CPU, _MEM, _IMAGES, _INSTANCE)
- * or of their composite (IVS_DIGEST_COMPOSITE). The serialization is field by field and
+/* SHA-256 of the canonical state (D-35) of one domain (IVS_DIGEST_CPU, _MEM, _IMAGES, _INSTANCE,
+ * _VIDEO, _AUDIO, _INPUT) or of the composite of the first four (IVS_DIGEST_COMPOSITE; the
+ * observation domains are not in it, D-10). The serialization is field by field and
  * big-endian, so the value does not depend on struct layout, padding or host byte order; it
  * excludes the magic and padding. BAD_ARG: out NULL or any other domain; then BAD_HANDLE; then
  * BAD_ARG: out overlapping the instance storage. */

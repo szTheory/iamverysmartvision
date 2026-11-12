@@ -1,0 +1,13 @@
+# Owning plan 04-01: cases of the ci-summary step, the self-test of tools/check/ci-summary.sh (D-42, D-44).
+# One case name per line; the step runs exactly these and fails on a name it does not know.
+render-headline
+skips-none
+skips-listed
+slowest-eight
+fail-cap-40
+backticks-stripped
+unwritable-keeps-exit
+unset-writes-nothing
+cpu-dash-format
+cpu-sh-format
+cpu-garbage-unknown

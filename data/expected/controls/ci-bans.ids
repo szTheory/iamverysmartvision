@@ -1,0 +1,7 @@
+# Owning plan 04-01: ci-parity structural bans (D-41, D-43, A-07).
+ci-parity-action-cache
+ci-parity-action-upload
+ci-parity-secrets
+ci-parity-matrix
+ci-parity-runs-on
+ci-parity-timeout

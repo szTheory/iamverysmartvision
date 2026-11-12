@@ -133,6 +133,40 @@ target_link_libraries(ivs_tests_machine PRIVATE ivs_test_harness ivs_core ivs_co
 add_test(NAME machine COMMAND ivs_tests_machine)
 set_tests_properties(machine PROPERTIES SKIP_RETURN_CODE 77)
 
+# Suite run (A-06, plan 04-06): run, observation, buffer and input tests through the public API,
+# in their own executable so the 512-case machine suite and its per-fault reruns stay bounded
+# (Pitfall 12). It reuses the machine suite's stand-in content (machine/machine_standin.c, the
+# ivs_ms_* helpers of machine/machine_cases.h); its named faults are data/expected/faults/run.ids.
+# Its family stub (plan 04-14, D-28..D-30) reads ivs_images.inc: the bytes of the build-tree
+# images that tools/pack writes (target ivs_images, IVS_IMAGES_DIR), turned into a C include by
+# ivs_pack --c-include here. Nothing in it is committed.
+# Plan 04-16 adds the diagnostic container diag-cpu-1.ivsc to the include, and diag_cpu_1_expect.inc:
+# the assert lines of data/golden/diag-cpu-1.expect as X-macro lines (tests/expect-inc.cmake), so
+# run.diag.predicate reads the hand-derived values from that file instead of retyping them.
+set(IVS_IMAGES_INC "${CMAKE_CURRENT_BINARY_DIR}/ivs_images.inc")
+add_custom_command(
+  OUTPUT "${IVS_IMAGES_INC}"
+  COMMAND ivs_pack --c-include "${IVS_IMAGES_INC}" "boot_stub=${IVS_BOOT_STUB_EXEC}"
+          "diag_cpu_1=${IVS_DIAG_CPU_1_IVSC}"
+  DEPENDS ivs_pack ivs_images "${IVS_BOOT_STUB_EXEC}" "${IVS_DIAG_CPU_1_IVSC}"
+  COMMENT "Generating the build-tree image include"
+  VERBATIM)
+set(IVS_DIAG_EXPECT "${PROJECT_SOURCE_DIR}/data/golden/diag-cpu-1.expect")
+set(IVS_DIAG_EXPECT_INC "${CMAKE_CURRENT_BINARY_DIR}/diag_cpu_1_expect.inc")
+add_custom_command(
+  OUTPUT "${IVS_DIAG_EXPECT_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DIN=${IVS_DIAG_EXPECT}" "-DOUT=${IVS_DIAG_EXPECT_INC}"
+          -P "${CMAKE_CURRENT_SOURCE_DIR}/expect-inc.cmake"
+  DEPENDS "${IVS_DIAG_EXPECT}" "${CMAKE_CURRENT_SOURCE_DIR}/expect-inc.cmake"
+  COMMENT "Generating the diag-cpu-1 predicate include"
+  VERBATIM)
+add_executable(ivs_tests_run run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_fuzz.c run/run_stub.c run/run_diag.c machine/machine_standin.c "${IVS_IMAGES_INC}" "${IVS_DIAG_EXPECT_INC}")
+target_include_directories(ivs_tests_run PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_BINARY_DIR}")
+add_dependencies(ivs_tests_run ivs_images)
+target_link_libraries(ivs_tests_run PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
+add_test(NAME run COMMAND ivs_tests_run)
+set_tests_properties(run PROPERTIES SKIP_RETURN_CODE 77)
+
 # Suite cpu-fuzz (D-12, plan 02-15): the seeded robustness run; dev links the sanitizers.
 add_executable(ivs_tests_cpu_fuzz cpu/cpu_fuzz.c)
 target_link_libraries(ivs_tests_cpu_fuzz PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
@@ -165,11 +199,20 @@ set_tests_properties(harness PROPERTIES SKIP_RETURN_CODE 77)
 # Fault-suite registry (D-37, plan 03-01): each suite named by a `# suite=<name>` header of a
 # data/expected/faults/*.ids file is described once here; tests/faults.cmake reads it to build
 # that suite's fault executables from its own test sources with plain flags.
-# ivs_fault_suite(<suite> SOURCES <test .c> INCLUDE_DIRS <dirs> GENERATED <generated files>)
+# ivs_fault_suite(<suite> SOURCES <test .c> INCLUDE_DIRS <dirs> GENERATED <generated files>
+#                 [MODULES <modules>])
+# MODULES (D-24, plan 04-03) names the owner-TU modules whose plain copies the suite's fault
+# executables link: core (the default) or core runner (the runner library needs the core).
 function(ivs_fault_suite suite)
-  cmake_parse_arguments(PARSE_ARGV 1 arg "" "" "SOURCES;INCLUDE_DIRS;GENERATED")
+  cmake_parse_arguments(PARSE_ARGV 1 arg "" "" "SOURCES;INCLUDE_DIRS;GENERATED;MODULES")
   if(NOT suite MATCHES "^[a-z0-9][a-z0-9-]*$" OR NOT arg_SOURCES OR arg_UNPARSED_ARGUMENTS)
     message(FATAL_ERROR "ivs_fault_suite(${suite}): bad suite name or arguments")
+  endif()
+  if(NOT arg_MODULES)
+    set(arg_MODULES core)
+  endif()
+  if(NOT arg_MODULES STREQUAL "core" AND NOT arg_MODULES STREQUAL "core;runner")
+    message(FATAL_ERROR "ivs_fault_suite(${suite}): MODULES must be core or core runner (got ${arg_MODULES})")
   endif()
   if(suite IN_LIST IVS_FAULT_SUITES)
     message(FATAL_ERROR "ivs_fault_suite(${suite}): registered twice")
@@ -178,6 +221,7 @@ function(ivs_fault_suite suite)
   set(IVS_FAULT_SUITE_${suite}_SOURCES "${arg_SOURCES}" PARENT_SCOPE)
   set(IVS_FAULT_SUITE_${suite}_INCLUDE_DIRS "${arg_INCLUDE_DIRS}" PARENT_SCOPE)
   set(IVS_FAULT_SUITE_${suite}_GENERATED "${arg_GENERATED}" PARENT_SCOPE)
+  set(IVS_FAULT_SUITE_${suite}_MODULES "${arg_MODULES}" PARENT_SCOPE)
 endfunction()
 # Generator-path controls (GEN_<NAME> fault ids, no source site): the generator script writes
 # <OUTPUT> with one mutation (-DMUTATE=<must-fail id>, -DOUT=<fault dir>/<OUTPUT> are added by
@@ -224,6 +268,11 @@ ivs_fault_suite(machine
   INCLUDE_DIRS "${CMAKE_CURRENT_BINARY_DIR}"
   GENERATED "${IVS_SHA_INC}" "${IVS_CART_INC}")
 
+ivs_fault_suite(run
+  SOURCES run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_fuzz.c run/run_stub.c run/run_diag.c machine/machine_standin.c
+  INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_BINARY_DIR}"
+  GENERATED "${IVS_IMAGES_INC}" "${IVS_DIAG_EXPECT_INC}")
+
 ivs_fault_suite(memmap
   SOURCES memmap/memmap_main.c memmap/memmap_rows.c
   INCLUDE_DIRS "${CMAKE_CURRENT_BINARY_DIR}"
@@ -246,6 +295,49 @@ ivs_fault_suite(ivsc
   SOURCES ivsc/ivsc_main.c ivsc/ivsc_fuzz.c ivsc/ivsc_reencode.c
   INCLUDE_DIRS "${CMAKE_CURRENT_BINARY_DIR}"
   GENERATED "${IVS_CART_INC}")
+
+# Suite runner (D-17, D-20, D-23, plan 04-03): the runner library in process. It links the
+# public ivs_core through ivs_runner_lib; its named faults are data/expected/faults/runner.ids,
+# whose sites sit in runner/ TUs (D-24), so its fault executables link plain copies of the core
+# and runner library TUs. Its parse family (plan 04-17) reads two more build-tree includes: the
+# assert lines of data/golden/diag-cpu-1.expect as C string literals (expect-inc.cmake
+# FORM=text, next to the X-macro form above) and the pinned input names of
+# data/expected/input-bits.ids (input-bits-inc.cmake).
+set(IVS_DIAG_EXPECT_TEXT_INC "${CMAKE_CURRENT_BINARY_DIR}/diag_cpu_1_expect_text.inc")
+add_custom_command(
+  OUTPUT "${IVS_DIAG_EXPECT_TEXT_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DIN=${IVS_DIAG_EXPECT}" "-DOUT=${IVS_DIAG_EXPECT_TEXT_INC}" -DFORM=text
+          -P "${CMAKE_CURRENT_SOURCE_DIR}/expect-inc.cmake"
+  DEPENDS "${IVS_DIAG_EXPECT}" "${CMAKE_CURRENT_SOURCE_DIR}/expect-inc.cmake"
+  COMMENT "Generating the diag-cpu-1 predicate text include"
+  VERBATIM)
+set(IVS_INPUT_BITS_IDS "${PROJECT_SOURCE_DIR}/data/expected/input-bits.ids")
+set(IVS_INPUT_BITS_INC "${CMAKE_CURRENT_BINARY_DIR}/ivs_input_bits.inc")
+add_custom_command(
+  OUTPUT "${IVS_INPUT_BITS_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DIN=${IVS_INPUT_BITS_IDS}" "-DOUT=${IVS_INPUT_BITS_INC}"
+          -P "${CMAKE_CURRENT_SOURCE_DIR}/input-bits-inc.cmake"
+  DEPENDS "${IVS_INPUT_BITS_IDS}" "${CMAKE_CURRENT_SOURCE_DIR}/input-bits-inc.cmake"
+  COMMENT "Generating the pinned input-name include"
+  VERBATIM)
+# Its exec family (plan 04-18) serves the build-tree stub and diagnostic images of
+# ivs_images.inc through a fake host (nothing committed).
+set(IVS_RUNNER_TEST_GENERATED "${IVS_DIAG_EXPECT_INC}" "${IVS_DIAG_EXPECT_TEXT_INC}" "${IVS_INPUT_BITS_INC}"
+  "${IVS_IMAGES_INC}")
+add_executable(ivs_tests_runner runner/runner_main.c runner/runner_parse.c runner/runner_fuzz.c runner/runner_exec.c
+  runner/runner_time.c
+  ${IVS_RUNNER_TEST_GENERATED})
+target_include_directories(ivs_tests_runner PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+add_dependencies(ivs_tests_runner ivs_images)
+target_link_libraries(ivs_tests_runner PRIVATE ivs_test_harness ivs_runner_lib ivs_core ivs_warnings ivs_san)
+add_test(NAME runner COMMAND ivs_tests_runner)
+set_tests_properties(runner PROPERTIES SKIP_RETURN_CODE 77)
+ivs_fault_suite(runner
+  SOURCES runner/runner_main.c runner/runner_parse.c runner/runner_fuzz.c runner/runner_exec.c
+  runner/runner_time.c
+  INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/runner" "${CMAKE_CURRENT_BINARY_DIR}"
+  GENERATED ${IVS_RUNNER_TEST_GENERATED}
+  MODULES core runner)
 
 # Named-fault control executables (D-18): dev tree only, never registered with ctest.
 if(IVS_FAULT_CONTROLS)
@@ -274,3 +366,18 @@ set_tests_properties(core-symbols PROPERTIES SKIP_RETURN_CODE 77
 # skip (skip-ok ids). CC is this preset's C compiler; CXX, when unset, is c++ from PATH.
 add_test(NAME headers COMMAND sh "${CMAKE_SOURCE_DIR}/tests/headers-tap.sh" "${CMAKE_SOURCE_DIR}")
 set_tests_properties(headers PROPERTIES SKIP_RETURN_CODE 77 ENVIRONMENT "CC=${CMAKE_C_COMPILER}")
+
+# Suite pack (D-26, plan 04-15): ivs_pack --dump-words of every listing of
+# data/expected/listings.ids against the listing step's own parse (cmake -DDUMP=<id> -P
+# tools/check/listing.cmake), byte for byte; two independent parsers, never the core.
+add_test(NAME pack COMMAND sh "${CMAKE_SOURCE_DIR}/tests/pack-tap.sh" "${CMAKE_SOURCE_DIR}" "$<TARGET_FILE:ivs_pack>")
+set_tests_properties(pack PROPERTIES SKIP_RETURN_CODE 77 ENVIRONMENT "CMAKE=${CMAKE_COMMAND}")
+
+# Suite runner-process (D-20, D-21, D-23, plan 04-20): the real ivs-run of this preset on every
+# scenario of data/expected/runner-scenarios.ids, judged by exit code and report text; the images
+# are this preset's build-tree outputs (IVS_IMAGES_DIR). Reports go to
+# IVS_TEST_OUT_DIR/runner/<id>.report for the golden step.
+add_test(NAME runner-process
+  COMMAND sh "${CMAKE_SOURCE_DIR}/tests/runner-process-tap.sh" "${CMAKE_SOURCE_DIR}"
+          "$<TARGET_FILE:ivs_run>" "$<TARGET_FILE:ivs_pack>" "${IVS_IMAGES_DIR}")
+set_tests_properties(runner-process PROPERTIES SKIP_RETURN_CODE 77)

@@ -1,0 +1,47 @@
+# suite=runner; columns: <FAULT_ID> <must-fail> <allowed-prefixes> <must-pass>
+# Runner named faults (D-20, D-21, D-22, D-24, plans 04-03, 04-17, 04-18 and 04-19). Each id has one
+# IVS_FAULT_<ID> site in a runner TU (runner/outcome.c, scenario.c, exec.c, report.c; owner TUs
+# under core/ or runner/).
+# OUTCOME_GUEST_AS_HARNESS: guest-fail exits with the harness-fail code; codes-distinct also
+# sees the two outcomes share code 14; since plan 04-18 the executor cases whose outcome is
+# guest-fail (runner.exec.) see the exit code 14 too.
+OUTCOME_GUEST_AS_HARNESS runner.outcome.exit-guest-fail runner.outcome.exit-guest-fail|runner.outcome.codes-distinct|runner.exec. runner.outcome.exit-pass
+# OUTCOME_TIMEOUT_AS_GUEST: both timeout kinds exit with the guest-fail code; codes-distinct
+# also sees timeout and guest-fail share code 10; runner.exec.halt-bound-small sees exit 10, and
+# the budget and wall cases of runner.time. (plan 04-19) see exit 10.
+OUTCOME_TIMEOUT_AS_GUEST runner.outcome.exit-timeout runner.outcome.exit-timeout|runner.outcome.codes-distinct|runner.exec.|runner.time. runner.outcome.exit-pass
+# OUTCOME_MISSING_FIXTURE_EXIT0: missing-fixture exits 0 (a missing file would read as a pass);
+# codes-distinct also sees it share code 0 with pass; the missing-fixture executor cases
+# (runner.exec., plan 04-18) see exit 0.
+OUTCOME_MISSING_FIXTURE_EXIT0 runner.outcome.exit-missing-fixture runner.outcome.exit-missing-fixture|runner.outcome.codes-distinct|runner.exec. runner.outcome.exit-pass
+# OUTCOME_CANCEL_AS_TIMEOUT: resolve ranks cancelled below the wall timeout; only the cases that
+# hold both observations see it (each alone still resolves to itself): the pair case, and
+# runner.time.cancel-over-wall (plan 04-19) through the executor.
+OUTCOME_CANCEL_AS_TIMEOUT runner.outcome.prec-cancelled-over-wall runner.outcome.prec-cancelled-over-wall|runner.time.cancel-over-wall runner.outcome.prec-wall-over-budget
+# Scenario parser faults (plan 04-17, D-22), sites in runner/scenario.c.
+# RUNNER_DOTDOT_ACCEPTED: the `..` path rule is skipped, so a scenario could name a file outside
+# --content-dir (T-04-49); edge.dotdot-inside, error-format and fuzz invariants may also see it.
+RUNNER_DOTDOT_ACCEPTED runner.parse.refuse.path-dotdot runner.parse.|runner.fuzz. runner.outcome.exit-pass
+# RUNNER_LINE_CAP_UNCHECKED: the 256-byte line cap is skipped (T-04-50); the fuzz invariant on
+# accepted inputs (longest line at most 256 bytes) may also see it.
+RUNNER_LINE_CAP_UNCHECKED runner.parse.refuse.line-too-long runner.parse.|runner.fuzz. runner.outcome.exit-pass
+# Executor and report faults (plan 04-18, D-19, D-20, D-23), sites in runner/exec.c and
+# runner/report.c; other executor cases (runner.exec.) may also see them.
+# RUNNER_ASSERT_ALWAYS_PASS: every assert evaluates as held, so a wrong expected word passes.
+RUNNER_ASSERT_ALWAYS_PASS runner.exec.guest-assert-mismatch runner.exec. runner.parse.diag-boot-pass
+# RUNNER_STOP_EXPECT_IGNORED: the stop expectation is not compared (a halt where the target was
+# expected passes; a too-small halt bound is no longer a budget timeout, runner.time.budget too).
+RUNNER_STOP_EXPECT_IGNORED runner.exec.stop-mismatch runner.exec.|runner.time.budget runner.parse.diag-boot-pass
+# RUNNER_KEY_ORDER_SWAPPED: digest.cpu and digest.mem change places in the key table.
+RUNNER_KEY_ORDER_SWAPPED runner.exec.key-order runner.exec. runner.parse.diag-boot-pass
+# RUNNER_OVERSHOOT_NOT_REPORTED: the overshoot line is printed as 0.
+RUNNER_OVERSHOOT_NOT_REPORTED runner.exec.overshoot runner.exec. runner.parse.diag-boot-pass
+# Slicing, wall cap and cancellation faults (plan 04-19, D-21), sites in runner/exec.c; other time
+# and executor cases (runner.time., runner.exec.) may also see them.
+# RUNNER_CANCEL_IGNORED: the cancel flag is never read, so a signal cannot end a run.
+RUNNER_CANCEL_IGNORED runner.time.cancel runner.time.|runner.exec. runner.parse.diag-boot-pass
+# RUNNER_WALL_AS_GUEST_FAIL: the wall cap is classified as guest-fail (exit 10, not timeout 11).
+RUNNER_WALL_AS_GUEST_FAIL runner.time.wall runner.time.|runner.exec. runner.parse.diag-boot-pass
+# RUNNER_SLICE_DROPS_REMAINDER: a last slice shorter than the slice size is skipped, so a sliced
+# run-to ends short of its bound and its report differs from one call.
+RUNNER_SLICE_DROPS_REMAINDER runner.time.slices-equal runner.time.|runner.exec. runner.parse.diag-boot-pass

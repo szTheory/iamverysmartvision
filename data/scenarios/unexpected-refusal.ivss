@@ -1,0 +1,12 @@
+# Scenario unexpected-refusal (plan 04-20, D-20): outcome harness-fail, exit 14. The cartridge is
+# the diagnostic container cut before its 32-byte trailer (built by the suite in its temp
+# content dir); the core refuses the load and nothing expects that.
+# expect-detail: load-refused role=cart status=IVS_E_MALFORMED reason=1
+ivss 1
+id unexpected-refusal
+profile intv-2609-ntsc-family-p1
+content exec boot-stub
+content grom zero-grom
+content cart diag-cpu-1-truncated.ivsc
+run-to 4000 cpu-cycles stop halted
+assert halted == yes

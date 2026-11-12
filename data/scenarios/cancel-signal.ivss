@@ -1,0 +1,13 @@
+# Scenario cancel-signal (plan 04-20, D-21): outcome cancelled, exit 12; host-dependent (signals).
+# The original diagnostic run with --self-signal-after-slices 1 --slice-ticks 4: ivs-run raises
+# SIGINT itself in the cancel check after slice 1 (no racing signal, no sleep), long before the
+# halt.
+# expect-detail: signal step=1
+ivss 1
+id cancel-signal
+profile intv-2609-ntsc-family-p1
+content exec boot-stub
+content grom zero-grom
+content cart diag-cpu-1.ivsc
+run-to 4000 cpu-cycles stop halted
+assert halted == yes

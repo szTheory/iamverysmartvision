@@ -1,0 +1,3 @@
+# suite=toy; columns: <FAULT_ID> <must-fail-vector-id> <allowed-prefixes> <must-pass-vector-id>
+# Review IN-07: an empty prefix field (between two `|`) is refused on every awk, never a match-all.
+GOOD_FAULT cpu.ZERO.alpha cpu.ZERO.alpha||cpu.ZERO.gamma cpu.ZERO.beta

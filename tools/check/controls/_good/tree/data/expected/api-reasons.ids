@@ -1,0 +1,3 @@
+# Toy refusal reason pin of the known-good control tree (plan 04-08).
+IVS_REASON_NONE 0
+IVS_REASON_TRUNCATED 1
