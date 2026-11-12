@@ -21,7 +21,7 @@
 #   call refuses a nonzero controller word at or above it, D-13/D-15, plan 04-12)
 #   ticks_per_psg_clock, psg.sample_period_ticks, psg.max_unit_ticks (1..65535 each, plan 05-06: the
 #   PSG time chain the audio layout derives from; cmake/IvsPsgTable.cmake validates their relations),
-#   psg.log_records_per_frame (1..65535, plan 05-08: the write-log bound of one frame slot, validated against
+#   psg.min_write_gap_ticks and psg.log_records_per_frame (1..65535, plan 05-08: the write-log bound of one frame slot, validated against
 #   ceil(F/g) + ceil(U/g) + 1 by cmake/IvsPsgTable.cmake)
 #   and crystal_hz {num, den} (the passthrough ivs_info republishes, D-19; the core never reads it)
 # Hex values are "$XXXX" strings (four uppercase digits), as in reset.r7.
@@ -287,6 +287,11 @@ foreach(rel IN LISTS mm_profiles)
   mm_uint(psg_sample_period "${doc}" "value" 65535 fields psg.sample_period_ticks value)
   set(MM_CTX "${rel}: psg.max_unit_ticks")
   mm_uint(psg_max_unit "${doc}" "value" 65535 fields psg.max_unit_ticks value)
+  set(MM_CTX "${rel}: psg.min_write_gap_ticks")
+  mm_uint(psg_min_gap "${doc}" "value" 65535 fields psg.min_write_gap_ticks value)
+  if(psg_min_gap EQUAL 0)
+    mm_fail("must be nonzero")
+  endif()
   set(MM_CTX "${rel}: psg.log_records_per_frame")
   mm_uint(psg_log_rpf "${doc}" "value" 65535 fields psg.log_records_per_frame value)
   if(psg_log_rpf EQUAL 0)
@@ -572,7 +577,7 @@ foreach(rel IN LISTS mm_profiles)
     "  {\"${pid}\", ${r7_l}, ${iab_l}, ${und_l}, ${slo_l}, ${shi_l}, ${ticks_per_cpu}u, ${has_span}u, ${intff}u, ${release}u,\n"
     "   ${wait_limit}u, ${features}u, ${slot_exec_c}, ${slot_grom_c}, ${scanlines_per_frame}u,\n"
     "   ${cpu_cycles_per_scanline}u, ${input_controllers}u, ${ticks_per_psg}u, ${psg_sample_period}u,\n"
-    "   ${psg_max_unit}u, ${psg_log_rpf}u, ${crystal_num}ull, ${crystal_den}ull},\n")
+    "   ${psg_max_unit}u, ${psg_log_rpf}u, ${psg_min_gap}u, ${crystal_num}ull, ${crystal_den}ull},\n")
 endforeach()
 
 if(DEFINED MUTATE AND NOT MUTATE STREQUAL "" AND NOT MM_MUTATED)

@@ -144,6 +144,7 @@ typedef struct ivs_profile_desc {
   uint16_t psg_sample_period_ticks; /* master ticks per chip step = audio sample (psg.sample_period_ticks) */
   uint16_t psg_max_unit_ticks;      /* proven maximum ticks of one CPU unit (psg.max_unit_ticks, C53) */
   uint16_t psg_log_records_per_frame; /* write-log records one frame slot is sized for (psg.log_records_per_frame, C53, plan 05-08) */
+  uint16_t psg_min_write_gap_ticks;   /* minimum ticks between two PSG register writes (psg.min_write_gap_ticks, C53, plan 05-08); the core never reads it, the tests re-prove it */
   uint64_t crystal_hz_num;          /* crystal_hz as a fraction; the core never reads it (D-19) */
   uint64_t crystal_hz_den;
 } ivs_profile_desc;

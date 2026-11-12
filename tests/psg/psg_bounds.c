@@ -18,8 +18,9 @@
  *   minimum gap overall, and 28 is the number a Phase 6 interrupt source must not silently break.
  *   Waits only lengthen a gap (a wait before the write moves its offset up, nothing follows the write).
  * The published psg.max_unit_ticks (468) is asserted equal to the measured maximum with waits, and to
- * (12 + 3 x bus.wait_limit_cpu_cycles) x ticks_per_cpu_cycle; psg.min_write_gap_ticks is published by plan
- * 05-08, where the write log consumes it.
+ * (12 + 3 x bus.wait_limit_cpu_cycles) x ticks_per_cpu_cycle. Plan 05-08 publishes psg.min_write_gap_ticks (28)
+ * and psg.log_records_per_frame (2,152 = ceil(F / g) + ceil(U / g) + 1 = 2,134 + 17 + 1), where the write log
+ * consumes them; psg.bounds.g-and-u re-proves both against the published fields.
  *   psg.bounds.unit-ticks-real-bus   wait 0: the maximum unit is 12 cycles = 48 ticks
  *   psg.bounds.unit-ticks-max        every wait-taking access waits the cap: 117 cycles = 468 ticks, equal to the
  *                                    formula and to the published field
@@ -28,7 +29,19 @@
  *                                    at every address, the premise of U = 48 on the real bus (a Phase 6 stall
  *                                    fails this id loudly)
  *   psg.bounds.slack-covers-worst-case  the audio capacity the info layout publishes covers the samples the
- *                                    last unit's overshoot can add, for the measured unit lengths */
+ *                                    last unit's overshoot can add, for the measured unit lengths
+ *   psg.bounds.g-and-u               (plan 05-08) over every opcode x SDBD x wait in {0, the cap}, interrupt-entry
+ *                                    units stepped with the line asserted: the smallest gap between two PSG
+ *                                    writes of ANY two units is 28 ticks (instruction to instruction 36 as a
+ *                                    separate assertion) and equals psg.min_write_gap_ticks; the largest unit
+ *                                    is 468 and equals psg.max_unit_ticks; hence writes in T ticks are at most
+ *                                    (T + U) / g + 1 for every T below, and W_log = ceil(F / g) + ceil(U / g) + 1
+ *                                    equals the published psg_log_records_per_frame
+ *   psg.bounds.log-capacity-formula  the arithmetic: 2,134, 17, 2,152, 34,432 bytes per frame slot, 71 slots and
+ *                                    2,444,672 bytes for a run of 1 << 22 ticks, through ivs_info and a run call
+ *   psg.bounds.log-bound-at-g        the machine bus wrapper driven with accesses spaced exactly 28 ticks apart
+ *                                    for one frame slot plus the longest unit: the records stay within W_log
+ *                                    and the log bytes within the frame slot's capacity */
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -42,6 +55,7 @@
 #include "memmap/memsys.h"
 #include "psg/psg.h"
 #include "psg_cases.h"
+#include "psg_util.h"
 
 #define PB_CHECK(cond)                                                                                 \
   do {                                                                                                 \
@@ -462,11 +476,234 @@ done:
   return rc;
 }
 
+/* ---- plan 05-08: the published write-log bounds ---- */
+
+/* PB_CHECK that leaves through the function's cleanup label. */
+#define PB_CHECKG(cond)                                                                                \
+  do {                                                                                                 \
+    if (!(cond)) {                                                                                     \
+      ivs_test_diag("check failed at line %d: %s", __LINE__, #cond);                                   \
+      goto done;                                                                                       \
+    }                                                                                                  \
+  } while (0)
+
+/* The smallest gap between two PSG writes of any two units, in CPU cycles, for the bus wait: the least e - o over
+ * every writer (instruction or interrupt entry) plus the least o over every writer. */
+static int pb_overall_gap(uint32_t wait, uint32_t wait_cap, uint32_t *instr_gap, uint32_t *all_gap)
+{
+  pb_gap g;
+  uint32_t min_eo;
+  uint32_t min_o;
+  if (!pb_gap_scan(&g, wait, wait_cap) || g.instr_writers == 0u || g.entry_writers == 0u) {
+    return 0;
+  }
+  *instr_gap = g.instr_e_minus_o + g.instr_o;
+  min_eo = g.instr_e_minus_o < g.entry_e_minus_o ? g.instr_e_minus_o : g.entry_e_minus_o;
+  min_o = g.instr_o < g.entry_o ? g.instr_o : g.entry_o;
+  *all_gap = min_eo + min_o;
+  return 1;
+}
+
+static uint64_t pb_ceil_div(uint64_t a, uint64_t b)
+{
+  return (a + b - 1u) / b;
+}
+
+static int pb_g_and_u(void)
+{
+  const ivs_profile_desc *p = ivs_profile_get(pb_profile_index());
+  const ivs_psg_params *pp = ivs_psg_params_get(pb_profile_index());
+  ivs_ms_inst x;
+  ivs_info info;
+  uint64_t units = 0u;
+  uint64_t frame;
+  uint64_t g;
+  uint64_t u;
+  uint64_t t;
+  uint32_t waits[2];
+  uint32_t i;
+  static const uint64_t spans[8] = {0u, 1u, 27u, 28u, 29u, 59735u, 59736u, 3u * 59736u};
+  int rc = IVS_TEST_FAIL;
+  x.storage = NULL;
+  x.m = NULL;
+  PB_CHECKG(p != NULL && pp != NULL);
+  waits[0] = 0u;
+  waits[1] = p->wait_limit_cpu_cycles;
+  for (i = 0u; i < 2u; i++) {
+    uint32_t instr_gap = 0u;
+    uint32_t all_gap = 0u;
+    PB_CHECKG(pb_overall_gap(waits[i], p->wait_limit_cpu_cycles, &instr_gap, &all_gap));
+    if (i == 0u) {
+      PB_CHECKG(instr_gap * p->ticks_per_cpu_cycle == 36u); /* instruction to instruction: the density Phase 5 reaches */
+      PB_CHECKG(all_gap * p->ticks_per_cpu_cycle == 28u);   /* with an interrupt-entry unit: the published bound */
+    } else {
+      PB_CHECKG(all_gap * p->ticks_per_cpu_cycle >= 28u); /* a wait only lengthens a gap */
+    }
+    if (i == 0u) {
+      g = (uint64_t)all_gap * p->ticks_per_cpu_cycle;
+    }
+  }
+  PB_CHECKG(g == 28u);
+  PB_CHECKG(g == (uint64_t)p->psg_min_write_gap_ticks); /* equals the published psg.min_write_gap_ticks */
+  /* U: the longest unit with every wait-taking access waiting the cap */
+  u = (uint64_t)pb_max_cycles(p->wait_limit_cpu_cycles, p->wait_limit_cpu_cycles, &units) * p->ticks_per_cpu_cycle;
+  PB_CHECKG(u == 468u && u == pp->max_unit_ticks);
+  /* writes in T ticks: n writes at least g apart span at least (n - 1) g, and a run of T ticks lasts at most
+   * T + U - 1 ticks, so n <= (T + U - 1) / g + 1 <= (T + U) / g + 1; checked against W_log for T = F */
+  for (t = 0u; t < sizeof spans / sizeof spans[0]; t++) {
+    uint64_t span = spans[t];
+    uint64_t n = (span + u - 1u) / g + 1u; /* the densest schedule: a write every g ticks over span + U - 1 ticks */
+    PB_CHECKG(n <= (span + u) / g + 1u);
+  }
+  if (!ivs_ms_powered(&x, IVS_MS_CONTENT_A, 0x5Au)) {
+    return IVS_TEST_FAIL;
+  }
+  memset(&info, 0, sizeof info);
+  info.struct_size = (uint32_t)sizeof info;
+  if (ivs_machine_info(x.m, &info) != IVS_OK) {
+    goto done;
+  }
+  frame = info.nominal_frame_ticks;
+  PB_CHECKG(frame == 59736u);
+  PB_CHECKG(pb_ceil_div(frame, g) + pb_ceil_div(u, g) + 1u == 2152u);
+  PB_CHECKG(info.psg_log_records_per_frame == 2152u && info.psg_log_record_bytes == 16u);
+  PB_CHECKG(p->psg_log_records_per_frame == 2152u);
+  PB_CHECKG(pb_ceil_div(frame, g) + pb_ceil_div(u, g) + 1u == (uint64_t)info.psg_log_records_per_frame);
+  /* the densest window of one frame slot: a write every g ticks over the frame and the longest unit */
+  PB_CHECKG((frame + u - 1u) / g + 1u <= (uint64_t)info.psg_log_records_per_frame);
+  rc = IVS_TEST_PASS;
+done:
+  if (x.storage != NULL) {
+    ivs_ms_free(&x);
+  }
+  return rc;
+}
+
+static int pb_log_capacity_formula(void)
+{
+  ivs_ms_inst x;
+  ivs_info info;
+  uint64_t need;
+  int rc = IVS_TEST_FAIL;
+  x.storage = NULL;
+  x.m = NULL;
+  /* the literal arithmetic of D-14 / A-03: F = 262 x 57 x 4, g = 28, U = 468 */
+  PB_CHECKG(262u * 57u * 4u == 59736u);
+  PB_CHECKG((59736u + 27u) / 28u == 2134u);
+  PB_CHECKG((468u + 27u) / 28u == 17u);
+  PB_CHECKG(2134u + 17u + 1u == 2152u);
+  PB_CHECKG(16u * 2152u == 34432u);
+  PB_CHECKG((1u << 22) / 59736u + 1u == 71u);
+  PB_CHECKG(71u * 34432u == 2444672u);
+  if (!ivs_ms_powered(&x, IVS_MS_CONTENT_A, 0x5Au)) {
+    return IVS_TEST_FAIL;
+  }
+  memset(&info, 0, sizeof info);
+  info.struct_size = (uint32_t)sizeof info;
+  PB_CHECKG(ivs_machine_info(x.m, &info) == IVS_OK);
+  PB_CHECKG(info.psg_log_record_bytes * info.psg_log_records_per_frame == 34432u);
+  need = pu_log_need(x.m, 0u, 1u << 22);
+  PB_CHECKG(need == 2444672u);
+  /* through the run call: one byte below is refused (RUN_PSGLOG_SMALL), the exact capacity is accepted */
+  {
+    ivs_run_request q;
+    ivs_run_report rep;
+    uint8_t *log = malloc((size_t)need);
+    PB_CHECKG(log != NULL);
+    memset(&q, 0, sizeof q);
+    q.struct_size = (uint32_t)sizeof q;
+    q.target_ticks = 1u << 22;
+    q.psg_log = log;
+    q.psg_log_capacity = need - 1u;
+    memset(&rep, 0, sizeof rep);
+    rep.struct_size = (uint32_t)sizeof rep;
+    if (ivs_machine_run(x.m, &q, &rep) != IVS_E_BUFFER_TOO_SMALL || rep.refusal_reason != IVS_REASON_RUN_PSGLOG_SMALL) {
+      free(log);
+      ivs_test_diag("one byte below the capacity was not refused as PSGLOG_SMALL");
+      goto done;
+    }
+    q.psg_log_capacity = need;
+    memset(&rep, 0, sizeof rep);
+    rep.struct_size = (uint32_t)sizeof rep;
+    if (ivs_machine_run(x.m, &q, &rep) != IVS_OK) {
+      free(log);
+      goto done;
+    }
+    free(log);
+  }
+  rc = IVS_TEST_PASS;
+done:
+  if (x.storage != NULL) {
+    ivs_ms_free(&x);
+  }
+  return rc;
+}
+
+static int pb_log_bound_at_g(void)
+{
+  ivs_ms_inst x;
+  ivs_machine_bus_ctx ctx;
+  ivs_psg_sink sink;
+  struct ivs_machine *im;
+  uint8_t *log = NULL;
+  uint64_t cap;
+  uint64_t i;
+  uint64_t frame = 59736u;
+  uint64_t g = 28u;
+  uint64_t u = 468u;
+  uint32_t profile = pb_profile_index();
+  int rc = IVS_TEST_FAIL;
+  x.storage = NULL;
+  x.m = NULL;
+  if (!ivs_ms_powered(&x, IVS_MS_CONTENT_A, 0x5Au)) {
+    return IVS_TEST_FAIL;
+  }
+  im = ivs_machine_from_handle_mut(x.m);
+  PB_CHECKG(im != NULL);
+  cap = 34432u; /* one frame slot: a run of fewer than F ticks needs max(target - now, 0) / F + 1 = 1 slot */
+  log = malloc((size_t)cap);
+  PB_CHECKG(log != NULL);
+  memset(log, 0xA5u, (size_t)cap);
+  ivs_psg_sink_init(&sink, NULL, 0u);
+  ivs_psg_sink_log(&sink, log, cap);
+  memset(&ctx, 0, sizeof ctx);
+  ctx.m = im;
+  ctx.psg = ivs_psg_params_get(profile);
+  ctx.sink = &sink;
+  ctx.ticks_per_cpu_cycle = ivs_profile_get(profile)->ticks_per_cpu_cycle;
+  /* a run of F - 1 ticks overshoots by at most U - 1: its writes lie below F - 1 + U - 1 + 1; space them 28 apart */
+  for (i = 0u; i * g < frame - 1u + u - 1u; i++) {
+    ivs_cp1610_access a;
+    memset(&a, 0, sizeof a);
+    a.kind = IVS_ACC_WRITE;
+    a.addr = 0x01FBu;
+    a.data = (uint16_t)(i & 0x0Fu);
+    a.offset_cpu_cycles = 0u;
+    ctx.unit_start_tick = i * g;
+    (void)ivs_machine_bus(&ctx, &a);
+  }
+  ivs_test_diag("%llu records at gap 28 over %llu ticks", (unsigned long long)i, (unsigned long long)(frame - 1u + u - 1u));
+  PB_CHECKG(i <= 2152u);
+  PB_CHECKG(sink.log_overflow == 0u && sink.log_written == 16u * i && sink.log_records == i);
+  PB_CHECKG(sink.log_written <= cap);
+  PB_CHECKG(im->obs.psglog.count == i);
+  /* spaced one tick closer, the slot would overflow: the bound is not slack beyond one record */
+  PB_CHECKG((frame - 1u + u - 1u) / (g - 1u) + 1u > 2152u);
+  rc = IVS_TEST_PASS;
+done:
+  free(log);
+  ivs_ms_free(&x);
+  return rc;
+}
+
 const ivs_test_case ivs_psg_bounds_cases[] = {
     {"psg.bounds.unit-ticks-real-bus", pb_unit_ticks_real_bus, NULL},
     {"psg.bounds.unit-ticks-max", pb_unit_ticks_max, NULL},
     {"psg.bounds.write-gap-min", pb_write_gap_min, NULL},
     {"psg.bounds.memsys-bus-never-waits", pb_memsys_bus_never_waits, NULL},
     {"psg.bounds.slack-covers-worst-case", pb_slack_covers, NULL},
+    {"psg.bounds.g-and-u", pb_g_and_u, NULL},
+    {"psg.bounds.log-capacity-formula", pb_log_capacity_formula, NULL},
+    {"psg.bounds.log-bound-at-g", pb_log_bound_at_g, NULL},
 };
 const size_t ivs_psg_bounds_count = sizeof ivs_psg_bounds_cases / sizeof ivs_psg_bounds_cases[0];

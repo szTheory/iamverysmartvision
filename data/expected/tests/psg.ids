@@ -10,6 +10,10 @@
 # self-controls (psg.judge.tone-row-changed, psg.judge.mix-row-changed).
 # Plan 05-06 (Task 3): the bounds derived from the CPU model (psg.bounds.*, 5) and the audio buffer rules of the public
 # run call with a guest that makes sound (psg.buffers.*, 6).
+# Plan 05-08: the published write-log bounds (psg.bounds.g-and-u, log-capacity-formula, log-bound-at-g), the write-log
+# buffer rules (psg.buffers.worst-case-writer, log-too-small, log-not-requested, log-sentinel-tail, log-safety-net)
+# and the write-log family psg.log.* (framing, window, vs-cpu-trace, replay, effect boundary, bytes), psg.slice.log-*,
+# the eight seeded fuzz cases psg.fuzz.seed01..08, psg.iso.interleaved-instances and psg.reset.*-cleared.
 # The vector families wired into the suite are the ones NOT listed in data/psg/vectors-pending.ids.
 psg.regmap.matches-literal
 psg.reset.power-on-zero
@@ -102,12 +106,20 @@ psg.bounds.unit-ticks-max
 psg.bounds.write-gap-min
 psg.bounds.memsys-bus-never-waits
 psg.bounds.slack-covers-worst-case
+psg.bounds.g-and-u
+psg.bounds.log-capacity-formula
+psg.bounds.log-bound-at-g
 psg.buffers.too-small-no-write
 psg.buffers.exact-fit
 psg.buffers.not-requested
 psg.buffers.state-independent-of-buffer
 psg.buffers.sentinel-tail
 psg.buffers.overlap
+psg.buffers.worst-case-writer
+psg.buffers.log-too-small
+psg.buffers.log-not-requested
+psg.buffers.log-sentinel-tail
+psg.buffers.log-safety-net
 # Plan 05-06 (Task 4): the sample stream (psg.sample.*, 12), slicing invariance (psg.slice.*, 8) and the AUDIO chain
 # (psg.chain.*, 4).
 psg.sample.count-formula
