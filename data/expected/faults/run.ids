@@ -97,3 +97,8 @@ RUN_REQUEST_V2_READ_UNGUARDED run.struct.request-v1-caller run.struct. run.info.
 # RUN_PSGLOG_OVERLAP_UNCHECKED: the log's overlap tests (instance, report, video, audio, events, the
 # top of the address space) are skipped, so an overlapping log is accepted.
 RUN_PSGLOG_OVERLAP_UNCHECKED run.buffers.psglog-overlap run.buffers.psglog-overlap run.buffers.psglog-null
+# INPUT_EXTRA_CONTROLLER_UNCHECKED (the Phase 4 fault deferred to plan 05-05): a nonzero word of a controller the
+# profile does not connect (index at or above input.controllers) passes the validation instead of being refused
+# UNSUPPORTED; the refusal case sees it, and so does run.input.extra-word-zero-ok, whose last step calls the validation
+# with one connected controller and expects the same refusal.
+INPUT_EXTRA_CONTROLLER_UNCHECKED run.input.refuse.extra-controller-word run.input.refuse.|run.input.extra-word- run.slice.halt.fixed-7

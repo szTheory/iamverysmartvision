@@ -22,7 +22,8 @@
  * (UNSUPPORTED); the lowest failing index of the first failing pass wins.
  * The file holds no static or global state outside named-fault blocks.
  * Named faults (plan 04-11, D-07, D-16): INPUT_LOG_SLICE_RELATIVE_TICK, INPUT_NO_FLOOR_CHECK,
- * INPUT_STATIC_CARRY, RUN_EVENT_AT_TARGET_ONLY. */
+ * INPUT_STATIC_CARRY, RUN_EVENT_AT_TARGET_ONLY; (plan 05-05) INPUT_PINS_NOT_UPDATED,
+ * CTRL_PORTS_SWAPPED, CTRL_UNION_AS_AND, INPUT_EXTRA_CONTROLLER_UNCHECKED. */
 #include "common/ivs_prelude.h"
 
 #include "common/ivs_sha256.h"
@@ -47,9 +48,19 @@ static uint32_t ivs_input_pins(uint32_t profile, uint32_t word)
 {
   uint32_t pins = 0u;
   uint32_t b;
+#ifdef IVS_FAULT_CTRL_UNION_AS_AND
+  uint32_t seen = 0u;
+#endif
   for (b = 0u; b < IVS_CTRL_COUNT; b++) {
     if (((word >> b) & 1u) != 0u) {
-      pins |= ivs_ctrl_lines[profile][b];
+      uint32_t lines = ivs_ctrl_lines[profile][b];
+#ifdef IVS_FAULT_CTRL_UNION_AS_AND
+      /* named fault CTRL_UNION_AS_AND: closed controls AND their line masks instead of OR-ing them */
+      pins = seen != 0u ? (pins & lines) : lines;
+      seen = 1u;
+#else
+      pins |= lines;
+#endif
     }
   }
   return pins;
@@ -62,7 +73,11 @@ void ivs_input_rederive(struct ivs_machine *im)
   for (p = 0u; p < IVS_MEMSYS_PSG_PORTS; p++) {
     /* ports at or above input.controllers stay idle (their words are refused nonzero) */
     uint32_t pins = p < controllers ? ivs_input_pins(im->profile, im->obs.input.words[p]) : 0u;
-    ivs_memsys_set_port_pulldown_internal(&im->mem, p, pins);
+    uint32_t port = p;
+#ifdef IVS_FAULT_CTRL_PORTS_SWAPPED
+    port = 1u - p; /* named fault CTRL_PORTS_SWAPPED: the word of port 0 pulls down port 1 and back */
+#endif
+    ivs_memsys_set_port_pulldown_internal(&im->mem, port, pins);
   }
 }
 
@@ -93,7 +108,9 @@ static void ivs_input_apply(struct ivs_machine *im, const ivs_input_event *ev, u
   }
   ivs_sha256_digest(pre, sizeof pre, in->chain);
   in->count++;
+#ifndef IVS_FAULT_INPUT_PINS_NOT_UPDATED /* named fault INPUT_PINS_NOT_UPDATED: the pins keep their old value */
   ivs_input_rederive(im);
+#endif
 #ifdef IVS_FAULT_INPUT_STATIC_CARRY
   memcpy(ivs_input_carry, ev->controller, sizeof ivs_input_carry);
 #endif
@@ -138,11 +155,13 @@ uint32_t ivs_input_check(const ivs_machine_obs_input *in, const ivs_input_event 
         reason = IVS_REASON_INPUT_CONTROL_RESERVED;
       }
     }
+#ifndef IVS_FAULT_INPUT_EXTRA_CONTROLLER_UNCHECKED /* named fault: a word of an unconnected controller passes */
     for (w = controllers; reason == IVS_REASON_NONE && w < IVS_INPUT_CONTROLLER_WORDS; w++) {
       if (ev[i].controller[w] != 0u) {
         reason = IVS_REASON_INPUT_EXTRA_CONTROLLER;
       }
     }
+#endif
     if (reason != IVS_REASON_NONE) {
       *st = IVS_E_UNSUPPORTED;
       *index = i;
@@ -150,6 +169,7 @@ uint32_t ivs_input_check(const ivs_machine_obs_input *in, const ivs_input_event 
     }
   }
   (void)in; /* read by the floor test; named fault INPUT_NO_FLOOR_CHECK drops it */
+  (void)controllers; /* read by the extra-controller test; named fault INPUT_EXTRA_CONTROLLER_UNCHECKED drops it */
   *st = IVS_OK;
   *index = IVS_INPUT_INDEX_NONE;
   return IVS_REASON_NONE;

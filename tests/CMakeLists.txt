@@ -335,6 +335,22 @@ ivs_fault_suite(psg
   INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_BINARY_DIR}"
   GENERATED ${IVS_PSG_VEC_GENERATED})
 
+ivs_fault_suite(input
+  SOURCES ${IVS_INPUT_TEST_SOURCES}
+  INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/input" "${CMAKE_CURRENT_BINARY_DIR}"
+  GENERATED "${IVS_INPUT_PROBE_INC}")
+# GEN_CTRL_MUTATION (plan 05-05): the controller-table generator flips the lowest bit of the line mask of KEY_1
+# after validation, and machine_input.c is rebuilt against that table.
+get_directory_property(IVS_CTRL_GENERATOR DIRECTORY "${PROJECT_SOURCE_DIR}/core"
+  DEFINITION IVS_CTRL_GENERATOR)
+get_directory_property(IVS_PROFILE_FILES DIRECTORY "${PROJECT_SOURCE_DIR}/core"
+  DEFINITION IVS_PROFILE_FILES)
+ivs_fault_gen(GEN_CTRL_MUTATION SUITE input OUTPUT ivs_ctrl_lines.inc
+  GENERATOR "${IVS_CTRL_GENERATOR}"
+  ARGS "-DROOT=${PROJECT_SOURCE_DIR}" "-DMUTATE=key_1"
+  DEPENDS ${IVS_PROFILE_FILES} "${IVS_CTRL_GENERATOR}" "${PROJECT_SOURCE_DIR}/data/expected/input-bits.ids"
+  CONSUMER core:src/machine/machine_input.c)
+
 ivs_fault_suite(memmap
   SOURCES memmap/memmap_main.c memmap/memmap_rows.c
   INCLUDE_DIRS "${CMAKE_CURRENT_BINARY_DIR}"

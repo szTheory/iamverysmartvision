@@ -52,7 +52,9 @@ static void ivs_run_power_on(struct ivs_machine *im)
   /* Plan 05-03 (D-04, D-16): power-on register state of the PSG is zero, both ports idle, and the
    * device state starts at its power-on values. Storage only until plans 05-04..05-06. */
   memset(im->mem.psg_reg, 0, sizeof im->mem.psg_reg);
+#ifndef IVS_FAULT_INPUT_PINS_NOT_RESET /* named fault INPUT_PINS_NOT_RESET: power-on leaves the pull-down masks */
   memset(im->mem.port_pulldown, 0, sizeof im->mem.port_pulldown);
+#endif
 #ifndef IVS_FAULT_PSG_STATE_NOT_RESET_ON_POWER_ON
   ivs_psg_state_reset(&im->psg); /* named fault PSG_STATE_NOT_RESET_ON_POWER_ON skips the call */
 #endif

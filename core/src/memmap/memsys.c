@@ -12,6 +12,7 @@
  * register selecting input the low byte is the idle byte XOR the port's pull-down mask
  * (port_pulldown, set only by the input path), with it selecting output the stored latch; every bit
  * number and the idle byte come from ivs_psg_params, a store always keeps the latch.
+ * Named fault CTRL_NO_INVERSION (plan 05-05): the input-mode read returns the pull-down mask itself.
  *
  * Read path: rd_region[addr >> 4] names a region, the cartridge span or nothing. A region of a
  * backed device reads its backing at (addr - lo) & (size_words - 1); the cartridge span scans
@@ -115,6 +116,9 @@ static uint16_t ivs_mm_port_read(const ivs_memsys *m, const ivs_psg_params *pp, 
     low = ivs_psg_reg_load(pp, m->psg_reg, IVS_PSG_SLOT_PORT0 + port); /* output mode: the latch */
   } else {
     low = (uint32_t)pp->port_idle ^ (uint32_t)m->port_pulldown[port]; /* input mode: the pins */
+#ifdef IVS_FAULT_CTRL_NO_INVERSION
+    low = (uint32_t)m->port_pulldown[port];
+#endif
   }
   return IVS_U16(low & 0x00FFu);
 }
