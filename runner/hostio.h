@@ -25,7 +25,9 @@ uint64_t ivs_hostio_now_ms(void);
 /* An operator output file (plan 05-09, D-20): created exclusively and written only here. The struct is
  * plain data so main.c holds one without including POSIX headers. */
 typedef struct ivs_hostio_out {
-  int fd; /* -1 when not open */
+  int fd;       /* -1 when not open */
+  uint64_t dev; /* the identity of the file this run created (st_dev, st_ino), set by the create calls; */
+  uint64_t ino; /* it survives the close, so a later removal can tell the file from a replacement */
 } ivs_hostio_out;
 
 /* Creates path for writing with O_CREAT | O_EXCL (mode 0644 before the umask): an existing path of any
@@ -50,8 +52,11 @@ int ivs_hostio_out_read_at(ivs_hostio_out *o, uint64_t offset, void *buf, size_t
 /* Closes o (idempotent on a closed one). Returns 0, or -1 when the close failed. */
 int ivs_hostio_out_close(ivs_hostio_out *o);
 
-/* Removes path (a file this run created and then abandoned). Returns 0 or -1. */
-int ivs_hostio_out_remove(const char *path);
+/* Removes path when it is still the regular file that o created (lstat of the path equals the identity
+ * recorded at creation; o may be open or closed), so a file replaced or linked in meanwhile is never
+ * removed. Returns 0 (removed), 1 (the path no longer names that file: left alone) or -1 (the identity
+ * is unknown or unlink failed). Used for the files a failed run created (review WR-01). */
+int ivs_hostio_out_remove_if_same(const ivs_hostio_out *o, const char *path);
 
 /* Reads the regular file dir/rel (rel alone when dir is NULL) into buf: opens it without
  * blocking, checks with fstat on the open descriptor that it is a regular file, then reads at

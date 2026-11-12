@@ -504,8 +504,8 @@ typedef struct ivs_runner_record {
   uint64_t host_calls;
   uint32_t refpcm_requested;   /* an operator WAV was asked for: the refpcm.* keys are printed (plan 05-10) */
   uint32_t refpcm_rate;        /* the WAV rate */
-  uint64_t refpcm_frames;      /* PCM frames written */
-  uint32_t refpcm_sha_set;     /* refpcm_sha256 is valid (finish_wav ran and returned 0) */
+  uint64_t refpcm_frames;      /* PCM frames written; printed only when refpcm_sha_set (else `-`) */
+  uint32_t refpcm_sha_set;     /* a finished file: finish_wav returned 0 and the outcome is not harness-fail */
   uint8_t refpcm_sha256[32];   /* SHA-256 of the WAV file bytes as the host wrote them */
 } ivs_runner_record;
 

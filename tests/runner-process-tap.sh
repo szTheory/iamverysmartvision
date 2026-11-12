@@ -491,6 +491,41 @@ run_one "$tmp" op-zero "$ivs_run" --content-dir "$opc" --audio-out-max-bytes 0 "
 [ "$rc" -eq 14 ] && [ ! -s "$tmp/runs/op-zero.out" ] || { ok=0; why operator-options "zero bound: exit $rc"; }
 [ ! -e "$opo/t1.raw" ] || { ok=0; why operator-options "a usage error created a file"; }
 result runner-process.operator.options
+# A run that ends harness-fail (exit 14) leaves no operator output file behind (review WR-01): a bound hit on
+# each of the three files, and all three at once, remove the files this run created, so a retry with the same
+# path is not blocked by "output file exists", and the report states no WAV (refpcm.frames and refpcm.sha256
+# are `-`). The retry without the bound then succeeds into the same path. Every other outcome keeps its
+# files: a budget timeout (exit 11, 252 bytes of audio by hand under --max-ticks 1000) leaves a complete file.
+: > "$tmp/why"
+ok=1
+run_one "$tmp" op-f-raw "$ivs_run" --content-dir "$opc" --audio-raw "$opo/f.raw" --audio-out-max-bytes 100 "$opscn"
+judge op-f-raw 14 harness-fail audio-out-max-bytes "" || ok=0
+[ ! -e "$opo/f.raw" ] || { ok=0; why operator-failed "--audio-raw: the failed run left $opo/f.raw"; }
+run_one "$tmp" op-f-log "$ivs_run" --content-dir "$opc" --psg-log-out "$opo/f.log" --audio-out-max-bytes 10 "$opscn"
+judge op-f-log 14 harness-fail psg-log-out-max-bytes "" || ok=0
+[ ! -e "$opo/f.log" ] || { ok=0; why operator-failed "--psg-log-out: the failed run left $opo/f.log"; }
+run_one "$tmp" op-f-wav "$ivs_run" --content-dir "$opc" --audio-wav "$opo/f.wav" --audio-out-max-bytes 100 "$opscn"
+judge op-f-wav 14 harness-fail wav-out-max-bytes "" || ok=0
+[ ! -e "$opo/f.wav" ] || { ok=0; why operator-failed "--audio-wav: the failed run left $opo/f.wav"; }
+[ "$(op_value op-f-wav refpcm.frames)" = - ] && [ "$(op_value op-f-wav refpcm.sha256)" = - ] \
+  || { ok=0; why operator-failed "the report of the failed WAV run states refpcm.frames '$(op_value op-f-wav refpcm.frames)'"; }
+run_one "$tmp" op-f-all "$ivs_run" --content-dir "$opc" --audio-raw "$opo/g.raw" --psg-log-out "$opo/g.log" \
+  --audio-wav "$opo/g.wav" --audio-out-max-bytes 100 "$opscn"
+[ "$rc" -eq 14 ] || { ok=0; why operator-failed "three files: exit $rc, expected 14"; }
+for f in g.raw g.log g.wav; do
+  [ ! -e "$opo/$f" ] || { ok=0; why operator-failed "three files: the failed run left $opo/$f"; }
+done
+run_one "$tmp" op-f-retry "$ivs_run" --content-dir "$opc" --audio-raw "$opo/f.raw" "$opscn"
+judge op-f-retry 0 pass - "" || ok=0
+sz=$(wc -c < "$opo/f.raw" 2> /dev/null | tr -d ' ')
+[ -n "$sz" ] && [ "$sz" = "$(op_value op-f-retry output.audio.bytes)" ] \
+  || { ok=0; why operator-failed "the retry file size '$sz', output.audio.bytes '$(op_value op-f-retry output.audio.bytes)'"; }
+run_one "$tmp" op-f-keep "$ivs_run" --content-dir "$opc" --audio-raw "$opo/k.raw" --max-ticks 1000 "$opscn"
+[ "$rc" -eq 11 ] || { ok=0; why operator-failed "budget timeout: exit $rc, expected 11"; }
+sz=$(wc -c < "$opo/k.raw" 2> /dev/null | tr -d ' ')
+[ "$sz" = 252 ] && [ "$sz" = "$(op_value op-f-keep output.audio.bytes)" ] \
+  || { ok=0; why operator-failed "budget timeout: file size '$sz', expected 252 and output.audio.bytes"; }
+result runner-process.operator.failed-run
 
 # Operator WAV (plan 05-10, D-20, D-21, T-05-26): the same stand-in under --audio-wav, into the mktemp directory.
 # By hand: the report ends with refpcm.rate (48000), refpcm.frames and refpcm.sha256 right before report.end;

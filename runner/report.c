@@ -582,7 +582,7 @@ int ivs_runner_report_write(const ivs_runner_record *rec, const ivs_runner_host 
     }
     rp_emit(&o, "refpcm.rate", v);
     (void)snprintf(v, sizeof v, "-");
-    if (on) {
+    if (on && rec->refpcm_sha_set != 0u) { /* frames of a file that was not finished (or was removed) are `-` too */
       rp_u64(v, sizeof v, rec->refpcm_frames);
     }
     rp_emit(&o, "refpcm.frames", v);

@@ -1115,6 +1115,11 @@ uint32_t ivs_runner_execute(const ivs_scenario *scn, const ivs_runner_host *host
     }
   }
   rec.outcome = outcome;
+  if (outcome == IVS_RUNNER_OUTCOME_HARNESS_FAIL) {
+    /* ivs-run removes its output files after a harness failure (review WR-01), so the report states no WAV:
+     * refpcm.frames and refpcm.sha256 are `-` (a library host decides for itself what it keeps). */
+    rec.refpcm_sha_set = 0u;
+  }
   if (x.m != NULL) {
     (void)ivs_machine_destroy(x.m);
     x.m = NULL;

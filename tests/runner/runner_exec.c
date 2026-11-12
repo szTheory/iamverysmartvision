@@ -1764,7 +1764,7 @@ static int ex_wav_failures(void)
     if (!rx_expect(scn, &h, IVS_RUNNER_OUTCOME_HARNESS_FAIL, 14u) ||
         !rx_is(h.out, "outcome.detail",
                shape == 0 ? "wav-out" : shape == 1 ? "wav-out" : shape == 2 ? "wav-out-max-bytes" : "wav-without-audio") ||
-        !rx_is(h.out, "refpcm.sha256", "-")) {
+        !rx_is(h.out, "refpcm.sha256", "-") || !rx_is(h.out, "refpcm.frames", "-")) { /* review WR-01: no frames of an unfinished file */
       ivs_test_diag("failure shape %d", shape);
       rx_free(&h);
       goto done;

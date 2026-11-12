@@ -126,8 +126,11 @@ int ivs_hostio_read(const char *dir, const char *rel, size_t cap, uint8_t *buf, 
 
 static int hostio_out_create(ivs_hostio_out *o, const char *path, int access)
 {
+  struct stat sb;
   int fd;
   o->fd = -1;
+  o->dev = 0u;
+  o->ino = 0u;
   if (path == NULL || path[0] == '\0') {
     return -1;
   }
@@ -135,7 +138,15 @@ static int hostio_out_create(ivs_hostio_out *o, const char *path, int access)
   if (fd < 0) {
     return errno == EEXIST ? 1 : -1;
   }
+  if (fstat(fd, &sb) != 0 || !S_ISREG(sb.st_mode)) {
+    /* The file was just created by this call, so it is removed again rather than left unidentified. */
+    (void)close(fd);
+    (void)unlink(path);
+    return -1;
+  }
   o->fd = fd;
+  o->dev = (uint64_t)sb.st_dev;
+  o->ino = (uint64_t)sb.st_ino;
   return 0;
 }
 
@@ -212,4 +223,17 @@ int ivs_hostio_out_close(ivs_hostio_out *o)
   return close(fd) == 0 ? 0 : -1;
 }
 
-int ivs_hostio_out_remove(const char *path) { return unlink(path) == 0 ? 0 : -1; }
+int ivs_hostio_out_remove_if_same(const ivs_hostio_out *o, const char *path)
+{
+  struct stat sb;
+  if (o->ino == 0u || path == NULL) {
+    return -1;
+  }
+  if (lstat(path, &sb) != 0) {
+    return errno == ENOENT ? 1 : -1;
+  }
+  if (!S_ISREG(sb.st_mode) || (uint64_t)sb.st_dev != o->dev || (uint64_t)sb.st_ino != o->ino) {
+    return 1;
+  }
+  return unlink(path) == 0 ? 0 : -1;
+}

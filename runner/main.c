@@ -15,8 +15,8 @@
  * only end by the wall cap.
  * --update-golden <file> (plan 04-21, D-11) also writes the run's repeatability golden: a header
  * (tier, oracle, scenario, profile, domains) and the report lines of the golden key list; it is run
- * by a person, never by the gate, and refuses `user` content and host-dependent outcomes.
- * Documented in docs/runner.md. */
+ * by a person, never by the gate, and refuses `user` content and host-dependent outcomes. A run that ends
+ * harness-fail removes the operator output files it created (review WR-01). Documented in docs/runner.md. */
 #include <signal.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -71,11 +71,13 @@ static const char main_usage[] =
     "  --update-golden <file>  also write the run's repeatability golden (.digests) to file;\n"
     "                       refused for `user` content and host-dependent outcomes\n"
     "  --audio-raw <file>   also write the dense audio sample bytes (4 per sample: levels A, B, C, 0)\n"
-    "                       to a NEW file (an existing path is refused, exit 14, never overwritten)\n"
+    "                       to a NEW file (an existing path is refused, exit 14, never overwritten);\n"
+    "                       a run that ends harness-fail (exit 14) removes the files it created\n"
     "  --psg-log-out <file>  also write one ASCII line per PSG write-log record, `index tick addr\n"
     "                       value source` (decimal), to a NEW file (same rule)\n"
     "  --audio-out-max-bytes <n>  bound of each of those files in bytes, 1..1099511627776\n"
-    "                       (default 268435456); passing it is a harness failure, never a truncation\n"
+    "                       (default 268435456); passing it is a harness failure (exit 14) and the\n"
+    "                       files of that run are removed, never a truncation on disk\n"
     "  --audio-wav <file>   also write the dense audio as a mono 16-bit WAV of the reference converter\n"
     "                       (reference conversion v1, converter repeatability only) to a NEW file (same\n"
     "                       rule); the report then ends with refpcm.rate, refpcm.frames and refpcm.sha256\n"
@@ -257,6 +259,20 @@ static int main_open_out_rw(ivs_hostio_out *o, const char *path, const char *opt
     return -1;
   }
   return 0;
+}
+
+/* Closes o and removes the file this run created at path, when path still names it (hostio.c compares the
+ * identity recorded at creation, so a replaced file is never removed). path NULL: not given, nothing to do.
+ * option non-NULL: one line on stderr when a file was removed. Review WR-01. */
+static void main_discard(ivs_hostio_out *o, const char *path, const char *option)
+{
+  if (path == NULL) {
+    return;
+  }
+  (void)ivs_hostio_out_close(o);
+  if (ivs_hostio_out_remove_if_same(o, path) == 0 && option != NULL) {
+    fprintf(stderr, "ivs-run: %s: the run failed, the incomplete output file was removed\n", option);
+  }
 }
 
 /* The directory part of path ("." when it has none, "/" for a file at the root). 0 when it does
@@ -663,10 +679,7 @@ int main(int argc, char **argv)
     return MAIN_EXIT_HARNESS;
   }
   if (psg_log_path != NULL && main_open_out(&mh.log_out, psg_log_path, "--psg-log-out") != 0) {
-    if (audio_raw_path != NULL) {
-      (void)ivs_hostio_out_close(&mh.audio_out);
-      (void)ivs_hostio_out_remove(audio_raw_path);
-    }
+    main_discard(&mh.audio_out, audio_raw_path, NULL);
     free(storage);
     free(buffers);
     free(mh.golden_buf);
@@ -681,19 +694,12 @@ int main(int argc, char **argv)
     int wr = main_open_out_rw(&mh.wav_out, audio_wav_path, "--audio-wav");
     if (wr == 0 && ivs_hostio_out_write(&mh.wav_out, zero_header, sizeof zero_header) != 0) {
       fprintf(stderr, "ivs-run: --audio-wav: cannot write the output file\n");
-      (void)ivs_hostio_out_close(&mh.wav_out);
-      (void)ivs_hostio_out_remove(audio_wav_path);
+      main_discard(&mh.wav_out, audio_wav_path, NULL);
       wr = -1;
     }
     if (wr != 0) {
-      if (audio_raw_path != NULL) {
-        (void)ivs_hostio_out_close(&mh.audio_out);
-        (void)ivs_hostio_out_remove(audio_raw_path);
-      }
-      if (psg_log_path != NULL) {
-        (void)ivs_hostio_out_close(&mh.log_out);
-        (void)ivs_hostio_out_remove(psg_log_path);
-      }
+      main_discard(&mh.audio_out, audio_raw_path, NULL);
+      main_discard(&mh.log_out, psg_log_path, NULL);
       free(storage);
       free(buffers);
       free(mh.golden_buf);
@@ -740,12 +746,18 @@ int main(int argc, char **argv)
     fprintf(stderr, "ivs-run: --audio-wav: close failed\n");
   }
   if (fflush(stdout) != 0 || ferror(stdout) || res.report_write_failed != 0u) {
-    free(mh.golden_buf);
-    free(scn);
-    return main_fail("report write failed");
-  }
-  if (golden_path != NULL && main_write_golden(golden_path, &mh, scn) != 0) {
     code = MAIN_EXIT_HARNESS;
+    fprintf(stderr, "ivs-run: report write failed\n");
+  } else if (golden_path != NULL && main_write_golden(golden_path, &mh, scn) != 0) {
+    code = MAIN_EXIT_HARNESS;
+  }
+  /* A run that ends harness-fail leaves no operator output file (review WR-01): what the files hold may be
+   * short of the run (a bound hit, a failed write), and an existing file would block the retry. Every other
+   * outcome ends with files that hold the whole run up to its end. */
+  if (code == MAIN_EXIT_HARNESS) {
+    main_discard(&mh.audio_out, audio_raw_path, "--audio-raw");
+    main_discard(&mh.log_out, psg_log_path, "--psg-log-out");
+    main_discard(&mh.wav_out, audio_wav_path, "--audio-wav");
   }
   free(mh.golden_buf);
   free(scn);

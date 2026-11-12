@@ -59,6 +59,7 @@ runner-process.operator.psg-log
 runner-process.operator.exclusive
 runner-process.operator.max-bytes
 runner-process.operator.options
+runner-process.operator.failed-run
 runner-process.refpcm.wav-written
 runner-process.refpcm.diag-ctrl-psg-pass
 runner-process.listen-demo.refuses-user
