@@ -1,0 +1,12 @@
+# Owning plan 04-22: cases of the in-step selftest of the gate step pkg-install (D-40). Each case
+# mutates a COPY (or probes a deleted path) and must fail for its intended reason; one case name per
+# line; the step runs exactly these and fails on a name it does not know (pkg-selftest-missing).
+# The remaining D-40 cases (leak-detector, golden-drift) belong to the consumer (plan 04-23).
+core-src-include
+missing-symbol
+ghost-decl
+unprefixed
+extra-file
+baked-path
+version-refused
+old-prefix

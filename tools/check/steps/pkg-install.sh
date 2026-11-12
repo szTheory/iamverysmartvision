@@ -22,21 +22,30 @@
 #              the installed archive with the unchanged allowlist.
 #   alone      tests/headers-tap.sh with the prefix include dir: every C17 case ok and every
 #              C++17 case ok or a visible `# SKIP` (D-38, Pitfall 14; no new test ids).
+#   selftest   eight in-step cases (D-40, exact inventory data/expected/pkg-selftests.ids), each on a
+#              copy or the deleted prefix and each required to fail for its intended reason:
+#              core-src-include, missing-symbol, ghost-decl, unprefixed, extra-file, baked-path,
+#              version-refused (the next minor, the next major and an older minor are refused;
+#              the built major.minor is found under the moved prefix), old-prefix (the deleted original is not found).
 # Every temp file is under one mktemp dir outside the repo, removed on exit; the step writes
 # nothing else. Logs are printed only on failure.
 # Tokens: pkg-install-no-tree: <path>, pkg-install-failed: <what>, pkg-install-relocate: <what>,
 #   pkg-inventory-missing: <path>, pkg-inventory-extra: <path>, pkg-inventory-list: <what>,
 #   pkg-header-diff: <name>, pkg-archive-diff: <what>, pkg-path-leak: <path>,
 #   pkg-symbol-missing: <name>, pkg-symbol-api-drift: <detail>, pkg-symbol-namespace: <name>,
-#   pkg-symbol-tool: <what>, pkg-header-alone: <case or what>, plus core-symbols.sh's tokens.
+#   pkg-symbol-tool: <what>, pkg-header-alone: <case or what>, pkg-selftest-inventory: <what>,
+#   pkg-selftest-missing: <case>, pkg-selftest-<case>: <detail>, plus core-symbols.sh's tokens.
 # Stats: prefix-files=<n> archive=<sha256|members> public-symbols=<declared names> defined=<defined externals>
-#   hdr-alone=<ok>/<cases> (skipped C++ cases are not ok; hdr-skip=<n> is appended when nonzero).
+#   hdr-alone=<ok>/<cases> (skipped C++ cases are not ok; hdr-skip=<n> is appended when nonzero)
+#   pkg-selftest=<ok>/<total>.
 LC_ALL=C; export LC_ALL
 : "${ROOT:?ROOT is not set}"
 : "${CHECK_DIR:?CHECK_DIR is not set}"
 T=$(mktemp -d "${TMPDIR:-/tmp}/pkg-install.XXXXXX") || exit 1
 trap 'rm -rf "$T"' EXIT
 trap 'exit 1' HUP INT TERM
+# Canonical form (a TMPDIR ending in / gives a double slash that CMake would normalize away).
+T=$(cd "$T" && pwd) || exit 1
 rc=0
 bad() { printf -- '-- FAIL %s: %s\n' "$1" "$2"; rc=1; }
 cd "$ROOT" || exit 1
@@ -67,30 +76,30 @@ NM=${NM:-nm}
 darwin=0
 [ "$(uname -s 2> /dev/null)" = Darwin ] && darwin=1
 # Symbol names of `nm -P` lines, normalized as core-symbols.sh's norm(): skip blank lines and
-# archive member headers, keep the first field, drop `@ver`, strip one Darwin underscore.
+# archive member headers (GNU nm prints `<archive>[<member>]:`, which splits into several fields
+# when the path holds a space, so the whole line is tested; nm also runs on a relative name),
+# keep the first field, drop `@ver`, strip one Darwin underscore.
 norm() {
   awk -v darwin="$darwin" '
     NF < 2 { next }
-    $1 ~ /:$/ { next }
+    $0 ~ /:$/ { next }
     { n = $1; sub(/@.*/, "", n); if (darwin && n ~ /^_/) n = substr(n, 2); if (n != "") print n }'
 }
-# The leak strings: ROOT's core/ and build/ paths, logical and physical.
+# The leak strings, one per line in $T/leak.pats: ROOT's core/ and build/ paths, logical and
+# physical.
 proot=$(cd "$ROOT" && pwd -P) || exit 1
-set -- -e "$ROOT/core" -e "$ROOT/build"
-[ "$proot" = "$ROOT" ] || set -- "$@" -e "$proot/core" -e "$proot/build"
+printf '%s\n' "$ROOT/core" "$ROOT/build" "$proot/core" "$proot/build" | sort -u > "$T/leak.pats"
 
-# check_paths <prefix> <grep -e args...>: no file under <prefix> contains a leak string. Prints
-# FAIL lines.
+# check_paths <prefix>: no file under <prefix> contains a leak string. Prints FAIL lines.
 # A grep error (status above 1) is a failure too, never a clean file.
 check_paths() {
   cp_rc=0
   cp_dir=$1
-  shift
   (cd "$cp_dir" && find . ! -type d) | sed 's|^\./||' | sort > "$T/paths.list"
   [ -s "$T/paths.list" ] || { printf -- '-- FAIL pkg-path-leak: %s\n' "no files under the prefix"; return 1; }
   while IFS= read -r cp_f; do
     cp_st=0
-    grep -q -a -F "$@" "$cp_dir/$cp_f" || cp_st=$?
+    grep -q -a -F -f "$T/leak.pats" "$cp_dir/$cp_f" || cp_st=$?
     case $cp_st in
       0) printf -- '-- FAIL pkg-path-leak: %s\n' "$cp_f"; cp_rc=1 ;;
       1) ;;
@@ -139,7 +148,9 @@ check_symbols() {
       }' "$cs_h" >> "$T/sym.decl"
   done
   sort -u "$T/sym.decl" -o "$T/sym.decl"
-  if ! "$NM" -P -g --defined-only "$2" > "$T/sym.nm" 2> "$T/sym.nm.err"; then
+  cs_dir=$(dirname "$2")
+  cs_base=$(basename "$2")
+  if ! (cd "$cs_dir" && "$NM" -P -g --defined-only "./$cs_base") > "$T/sym.nm" 2> "$T/sym.nm.err"; then
     cat "$T/sym.nm.err"
     printf -- '-- FAIL pkg-symbol-tool: %s\n' "nm failed on $2"
     return 1
@@ -225,7 +236,7 @@ else
 fi
 
 # 4. No repo path in any installed file or the archive.
-check_paths "$pb" "$@" || rc=1
+check_paths "$pb" || rc=1
 
 # 5. Symbol rules, then the import allowlist on the installed archive.
 pubsyms=0
@@ -234,7 +245,8 @@ if [ -f "$arch" ]; then
   check_symbols "$pb/include" "$arch" || rc=1
   pubsyms=$(grep -c . "$T/sym.decl")
   defined=$(grep -c . "$T/sym.def")
-  if ! CHECK_DIR="$CHECK_DIR" sh "$CHECK_DIR/core-symbols.sh" "$arch" > "$T/core-symbols.out" 2>&1; then
+  # Run on a relative name: GNU nm's member headers would carry the prefix path and its space.
+  if ! (cd "$pb/lib" && CHECK_DIR="$CHECK_DIR" sh "$CHECK_DIR/core-symbols.sh" ./libivs_core.a) > "$T/core-symbols.out" 2>&1; then
     cat "$T/core-symbols.out"
     rc=1
   fi
@@ -263,6 +275,137 @@ done < "$T/alone.tap"
 hdr_stat="hdr-alone=$hdr_ok/$hdr_n"
 [ "$hdr_skip" -eq 0 ] || hdr_stat="$hdr_stat hdr-skip=$hdr_skip"
 
+# 7. Selftests (D-40): each case mutates a copy under $T/st/<case> (or probes the deleted
+# prefix) and must fail for its intended reason; the cases are exactly the names of
+# data/expected/pkg-selftests.ids. Controls cannot drive this step (it needs a built tree).
+cc=${CC:-cc}
+vmaj=$(sed -n 's/^#define IVS_API_VERSION_MAJOR \([0-9][0-9]*\)[uU]\{0,1\}$/\1/p' "$ROOT/core/include/ivs/ivs.h")
+vmin=$(sed -n 's/^#define IVS_API_VERSION_MINOR \([0-9][0-9]*\)[uU]\{0,1\}$/\1/p' "$ROOT/core/include/ivs/ivs.h")
+vpat=$(sed -n 's/^#define IVS_API_VERSION_PATCH \([0-9][0-9]*\)[uU]\{0,1\}$/\1/p' "$ROOT/core/include/ivs/ivs.h")
+ppb=$(cd "$pb" && pwd -P) || exit 1
+mkdir -p "$T/probe/src"
+cat > "$T/probe/src/CMakeLists.txt" << 'CMK'
+cmake_minimum_required(VERSION 3.25)
+project(pkgprobe LANGUAGES NONE)
+find_package(ivs ${IVS_WANT} CONFIG REQUIRED NO_PACKAGE_ROOT_PATH NO_CMAKE_ENVIRONMENT_PATH
+  NO_SYSTEM_ENVIRONMENT_PATH NO_CMAKE_PACKAGE_REGISTRY NO_CMAKE_SYSTEM_PATH
+  NO_CMAKE_INSTALL_PREFIX NO_CMAKE_SYSTEM_PACKAGE_REGISTRY)
+message(STATUS "pkgprobe version=${ivs_VERSION} dir=${ivs_DIR}")
+CMK
+# probe <name> <prefix> <version>: configure the LANGUAGES NONE probe against <prefix> asking for
+# <version>, with the package path variables unset; output in $T/probe/<name>.log.
+probe() {
+  (
+    unset CMAKE_PREFIX_PATH ivs_DIR ivs_ROOT IVS_ROOT CMAKE_INSTALL_PREFIX
+    cmake -G Ninja -S "$T/probe/src" -B "$T/probe/$1" -DCMAKE_PREFIX_PATH="$2" -DIVS_WANT="$3" \
+      -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF -DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=OFF
+  ) > "$T/probe/$1.log" 2>&1
+}
+# run_case <name>: 0 the case failed as intended, 1 it did not ($detail says why), 2 unknown.
+run_case() {
+  detail=
+  d="$T/st/$1"
+  mkdir -p "$d"
+  case $1 in
+    core-src-include)
+      # An internal core/src header is not reachable from the prefix include dir alone, and the
+      # same TU compiles once core/src is added (so the failure is the include path).
+      printf '#include "common/ivs_sha256.h"\nint main(void) { return 0; }\n' > "$d/tu.c"
+      if "$cc" -std=c17 -fsyntax-only -I "$pb/include" "$d/tu.c" > "$d/out" 2>&1; then
+        detail="compiled with only the prefix include dir"; return 1
+      fi
+      grep -q -F 'ivs_sha256.h' "$d/out" || { detail="failed without naming ivs_sha256.h"; return 1; }
+      "$cc" -std=c17 -fsyntax-only -I "$pb/include" -I "$ROOT/core/src" "$d/tu.c" > "$d/out2" 2>&1 \
+        || { detail="does not compile with core/src either"; return 1; }
+      ;;
+    missing-symbol)
+      cp "$arch" "$d/lib.a" || { detail="copy"; return 1; }
+      ar d "$d/lib.a" machine_load.c.o > "$d/ar.log" 2>&1 || { detail="ar d machine_load.c.o failed"; return 1; }
+      if check_symbols "$pb/include" "$d/lib.a" > "$d/out"; then detail="symbol rules passed"; return 1; fi
+      grep -q -x -F -e '-- FAIL pkg-symbol-missing: ivs_machine_load' "$d/out" \
+        || { detail="no pkg-symbol-missing: ivs_machine_load"; return 1; }
+      ;;
+    ghost-decl)
+      cp -R "$pb/include" "$d/include" || { detail="copy"; return 1; }
+      printf 'IVS_API int ivs_ghost(void);\n' >> "$d/include/ivs/ivs.h"
+      if check_symbols "$d/include" "$arch" > "$d/out"; then detail="symbol rules passed"; return 1; fi
+      grep -q -x -F -e '-- FAIL pkg-symbol-missing: ivs_ghost' "$d/out" \
+        || { detail="no pkg-symbol-missing: ivs_ghost"; return 1; }
+      ;;
+    unprefixed)
+      printf 'int sha256_init(void);\nint sha256_init(void) { return 0; }\n' > "$d/sha.c"
+      cp "$arch" "$d/lib.a" || { detail="copy"; return 1; }
+      "$cc" -std=c17 -c "$d/sha.c" -o "$d/sha.o" > "$d/cc.log" 2>&1 || { detail="cc failed"; return 1; }
+      ar r "$d/lib.a" "$d/sha.o" > "$d/ar.log" 2>&1 || { detail="ar r failed"; return 1; }
+      if check_symbols "$pb/include" "$d/lib.a" > "$d/out"; then detail="symbol rules passed"; return 1; fi
+      grep -q -x -F -e '-- FAIL pkg-symbol-namespace: sha256_init' "$d/out" \
+        || { detail="no pkg-symbol-namespace: sha256_init"; return 1; }
+      ;;
+    extra-file)
+      cp -R "$pb" "$d/prefix" || { detail="copy"; return 1; }
+      mkdir -p "$d/prefix/share/ivs" && printf 'stray\n' > "$d/prefix/share/ivs/stray.txt"
+      if check_inventory "$d/prefix" > "$d/out"; then detail="inventory passed"; return 1; fi
+      grep -q -x -F -e '-- FAIL pkg-inventory-extra: share/ivs/stray.txt' "$d/out" \
+        || { detail="no pkg-inventory-extra: share/ivs/stray.txt"; return 1; }
+      ;;
+    baked-path)
+      cp -R "$pb" "$d/prefix" || { detail="copy"; return 1; }
+      printf '# %s/build/release\n' "$ROOT" >> "$d/prefix/lib/cmake/ivs/ivsTargets.cmake"
+      if check_paths "$d/prefix" > "$d/out"; then detail="path check passed"; return 1; fi
+      grep -q -x -F -e '-- FAIL pkg-path-leak: lib/cmake/ivs/ivsTargets.cmake' "$d/out" \
+        || { detail="no pkg-path-leak: lib/cmake/ivs/ivsTargets.cmake"; return 1; }
+      ;;
+    version-refused)
+      # SameMinorVersion: the built major.minor is found under the moved prefix (positive),
+      # the next minor and the next major are refused (D-40: 0.2 and 1 for 0.1.0).
+      [ -n "$vmaj" ] && [ -n "$vmin" ] && [ -n "$vpat" ] || { detail="cannot parse the ivs.h version"; return 1; }
+      probe accept "$pb" "$vmaj.$vmin" || { detail="find_package($vmaj.$vmin) failed: $(tail -n 3 "$T/probe/accept.log" | tr '\n' ' ')"; return 1; }
+      got=$(sed -n 's/^-- pkgprobe version=\([^ ]*\) dir=\(.*\)$/\1/p' "$T/probe/accept.log")
+      gdir=$(sed -n 's/^-- pkgprobe version=\([^ ]*\) dir=\(.*\)$/\2/p' "$T/probe/accept.log")
+      [ "$got" = "$vmaj.$vmin.$vpat" ] || { detail="found version '$got', wanted $vmaj.$vmin.$vpat"; return 1; }
+      case $gdir in
+        "$pb"/*|"$ppb"/*) ;;
+        *) detail="ivs_DIR '$gdir' is not under the moved prefix"; return 1 ;;
+      esac
+      # An older minor too (when there is one): AnyNewerVersion would accept it, SameMinorVersion
+      # must not.
+      ws="$vmaj.$((vmin + 1)) $((vmaj + 1))"
+      [ "$vmin" -eq 0 ] || ws="$ws $vmaj.$((vmin - 1))"
+      for w in $ws; do
+        if probe "refuse-$w" "$pb" "$w"; then detail="find_package($w) accepted $vmaj.$vmin.$vpat"; return 1; fi
+        grep -q -F "$vmaj.$vmin.$vpat" "$T/probe/refuse-$w.log" \
+          || { detail="find_package($w) failed without naming the rejected version"; return 1; }
+      done
+      ;;
+    old-prefix)
+      [ ! -e "$pa" ] || { detail="the original prefix still exists"; return 1; }
+      if probe old "$pa" "$vmaj.$vmin"; then detail="find_package found a package under the deleted prefix"; return 1; fi
+      grep -q -F 'ivsConfig.cmake' "$T/probe/old.log" || { detail="failed without the not-found message"; return 1; }
+      ;;
+    *) return 2 ;;
+  esac
+  return 0
+}
+sinv="$ROOT/data/expected/pkg-selftests.ids"
+st_ok=0
+st_total=0
+if [ -f "$sinv" ]; then
+  awk '/^#/ { next } NF { print $1 }' "$sinv" > "$T/st.cases"
+  [ -s "$T/st.cases" ] || bad pkg-selftest-inventory "no cases"
+  while IFS= read -r c; do
+    st_total=$((st_total + 1))
+    cst=0
+    run_case "$c" < /dev/null || cst=$?
+    case $cst in
+      0) st_ok=$((st_ok + 1)) ;;
+      2) bad pkg-selftest-missing "$c" ;;
+      *) bad "pkg-selftest-$c" "$detail" ;;
+    esac
+  done < "$T/st.cases"
+else
+  bad pkg-selftest-inventory "data/expected/pkg-selftests.ids"
+fi
+
 [ "$rc" -eq 0 ] || exit 1
-printf -- '-- pkg-install pass prefix-files=%s archive=%s public-symbols=%s defined=%s %s\n' \
-  "$files" "$archive_mode" "$pubsyms" "$defined" "$hdr_stat"
+printf -- '-- pkg-install pass prefix-files=%s archive=%s public-symbols=%s defined=%s %s pkg-selftest=%s/%s\n' \
+  "$files" "$archive_mode" "$pubsyms" "$defined" "$hdr_stat" "$st_ok" "$st_total"
