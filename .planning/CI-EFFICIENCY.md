@@ -666,3 +666,40 @@ If the projection or the last-5 median reaches the trigger the lever order is (1
 - **No lever pass is required before plan 05-09.** Watch items for the orchestrator, from the next hosted rows (recorded after this plan's push): a last-5 `cpu_s` median at or above 280 or a last-5 `gate_s` median at or above 90 fires the rule; the first lever to apply is `-g0` on the fault targets (tests/faults.cmake), the next an owner decision as above. No plan 05-L2 is created here.
 
 checkpoint-2: no-lever
+
+## 2026-11-12 - Phase 5 close-out (plan 05-12): D-45 and V-16 evaluation
+
+All figures marked local are from the laptop (18 cores, Apple clang 21, other work running); they are not hosted figures. Nothing here calls `gh`: the hosted rows are those the orchestrator recorded in `.planning/ci-runs.tsv`.
+
+### Counts
+
+- Phase 5 start (Phase 4 end): `steps=33/33 controls=277/277 faults=149/149 tests-expected=2816`. Phase 5 end: `steps=35/35 controls=316/316 faults=191/191 tests-expected=3772 tests-executed=3770 tests-skipped=2 tests-missing=0`, important-gate registry `gates=48 lines=175` (Phase 4 end: `gates=26 lines=102`), `d10-items=32`.
+- What grew: two steps (`input`, `psg-vectors`), 39 controls (277 to 316; plan 05-12 added 3 of them), 42 faults (149 to 191), three suites (`input` and `psg` new, `run`, `runner` and `machine` grown) plus the reference-converter cases in `runner`, the installed-consumer replay (`consumer-lines` 26 to 43, `pkg-selftest` 10 to 13) and seven goldens.
+
+### Local measurement (`sh tools/gate.sh`, three runs on the final tree)
+
+| Run | Load at start (1 min) | `gate-time total=` | `gate-cpu` user + sys | Five largest `step-time` (seconds) |
+|-----|-----------------------|--------------------|-----------------------|-------------------------------------|
+| 1 | 8.2 | 77 | 126.2 + 122.9 = 249.1 | controls 39, c-faults 24, c-tests 13, c-purity 8, hygiene 5 |
+| 2 | 12.3 | 79 | 127.1 + 115.2 = 242.4 | controls 33, c-faults 23, c-tests 15, c-purity 7, cp1610-vectors 6 |
+| 3 | 11.9 | 97 | 134.1 + 134.5 = 268.6 | controls 52, c-faults 29, c-tests 17, c-purity 8, hygiene 7 |
+
+- These local figures are about twice those of plan 05-11 (`gate-time total=41`, 126 cpu-s) for a tree that differs only by three controls and a registry. The host explains it: the 1-minute load was 8 to 15 with other projects' builds and a container gate running, and a reference run of the unchanged suite `psg` (227 ids, dev preset) took 0.80 s wall now against 0.34 s at plan 05-08 (a factor of 2.3). Plan 05-12 itself adds three controls (about 0.04 cpu-s each on native Linux) and a step that reads a few small files; there is no measurable cost to attribute to it. The local figures are therefore not a basis for a budget decision; the hosted rows are.
+- `c-build` was warm (1 to 4 s); `important-gates` 0 s.
+
+### Hosted rows and the rule
+
+- `.planning/ci-runs.tsv` holds 35 hosted rows, 12 of them since the Phase 4 close-out (one failed run, 43148343848, a 109 s run with `test_s` 84; 11 successful). Since the Phase 4 close: `gate_s` 45 to 109 s (successful runs 45 to 106 s), `cpu_s` 136 to 336 with a median of 226.
+- Last five rows (runs at plans 05-08 to 05-11: 43202448987, 43209453151, 43214813968, 43220350877, 43227486537): `gate_s` 78, 58, 103, 106, 72, median **78**; `cpu_s` 231, 173, 323, 336, 221, median **231**; `cpu_s / (4 x gate_s)` 0.74 to 0.79 (cores saturated). Two outlier runs (103 s and 106 s, 323 and 336 cpu-s) sit between runs at 58 s and 72 s on trees that were larger, so they read as host speed (the Phase 4 close-out already measured a 1.7x spread on identical code), not as code cost; this is an inference from adjacent rows, not a measurement of the hosts.
+- Rule in force (the 05-L1 decision of the orchestrator re-baselined the budgets on 2026-11-12): hosted `cpu_s` budget median 260 and revisit when the last-5 median is above 280; hosted wall budget median `gate_s` 75 and revisit when the last-5 median is above 90 s or any run above 120 s. Result: last-5 `gate_s` median 78 (under 90), maximum since the Phase 4 close 109 s (under 120), last-5 `cpu_s` median 231 (under 280). **The rule does not fire.** Read against the older figures that plan 05-12 quotes (revisit above 200 cpu-s, lever trigger at a projection of 190), the cpu median of 231 is above them; that line is superseded by the 05-L1 decision and is listed here so the reader can see both.
+- Projection: the last hosted row (72 s, 221 cpu-s) is the tree at the end of plan 05-11. Plan 05-12 adds three controls and registry lines: at most 0.2 hosted cpu-s. The last-5 median cannot move by more than the run-to-run spread (136 to 336 for similar code), so no figure here supports a lever. The orchestrator re-evaluates with the first hosted rows after this plan's push.
+
+### Checkpoints and levers
+
+- Checkpoint 1 (plan 05-04): `checkpoint-1: lever-required` on the conservative projection (188.7 to 195.5 against a 190 trigger). The measuring pass 05-L1 (recorded above) applied nothing (no lever cleared the bar of about 15 container cpu-s with the evidence unchanged), and the orchestrator re-baselined the hosted cpu budget to median 260 and trigger 280 (see the entries above).
+- Checkpoint 2 (plan 05-08): `checkpoint-2: no-lever` (projected last-5 median 260.8 at the phase end, against the 280 trigger).
+- Plan 05-L1 exists as the measuring pass recorded above (created outside this plan); no lever ran. Plan 05-12 creates no plan and calls no tool that reads the hosted API.
+- Lever order if the rule fires later: (1) batch the `cp1610-vectors` JSON re-parse (about 5 cpu-s, no evidence change; judged under the bar by 05-L1), (2) limit fault reruns to the suites a fault names (already true: each fault runs once and only its suite), (3) background `c-build` only if `cpu_s / (ncpu x gate_s)` shows idle cores (0.74 to 0.79 now: none). The first candidate named by 05-L1 for a future pass is `-g0` on the fault targets only (about 5 hosted cpu-s, no evidence change). Not levers: dropping a control, merging checks, weakening an oracle, a two-job split (it redefines PKG-02).
+- Gate robustness found in this plan (not a cost item): the watchdog arming of `c-faults` (the FIFO read added in `8225f4e`) could strand a lane forever under macOS `sh` when a child exit interrupted the blocking open after the writer was released (one hang of 10 minutes at no CPU, then killed). The parent now holds the FIFO read-write on one descriptor and retries the read there (commit `583d3c6`); 1,200 arm and release cycles per shell cost the same as before and ran clean under `sh`, `dash` and `bash`.
+
+phase5-close: no-lever

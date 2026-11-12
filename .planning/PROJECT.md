@@ -175,6 +175,13 @@ These come from a researched fan-out recommendation that was auto-adopted. Each 
 
 D4, D6 and D12 were decided by the fan-out protocol on 2026-11-11; D7 on 2026-11-12 (Phase 5) (Delegated decision, owner authorization 2026-11-09).
 
+Phase 5 notes on the register above (plan 05-12, 2026-11-12; Delegated decision, owner authorization 2026-11-09; nothing here is a new owner decision and each row is reversible by the evidence in its last column):
+
+- **D3 (note):** the PSG part stays `AY-3-8914-class` at tier 4 (profile field `psg.part`). The PSG function rules (tone, mixer, noise, envelope, amplitude) are read from the AY-3-8910 pages of the 1980 and 1982 catalogs and tagged `inference` (C11, C12, C69), so every claim that depends on them (CL-0012, CL-0013) stays `provisional`. No tier 1 page for the 8914 was found; a primary data sheet of the console part or a D10 capture is the resolver.
+- **D4 (note):** D4 stands after the second original diagnostic (`ivs-diag-ctrl-psg-1`, 89 hand-assembled words, derivation committed before the listing). The project mini-assembler trigger is a third diagnostic or the need for labels and macros, expected in Phase 7; the two listings so far needed neither.
+- **D6 (note):** the controller words are guest-visible from Phase 5: the in-core byte function reads the generated control table (31 rows on two ports, tier 4, byte table per Phase 5 D-02, `data/input/intv-2609-ntsc-family-p1.literal.txt`) and the electrical combinations follow the ground-union rule (inference). The reversal evidence is unchanged: output that is not a function of switch state plus port drive, or a need for raw port injection. The wiring is unmeasured (C16, C63 to C66, D10).
+- **D7 (confirmed, not changed):** the row above reads as decided and matches Phase 5 D-21: reference PCM outside the core and every installed artifact, raw audio as per-channel level samples every 16 master ticks plus a cycle-stamped write log, reversal trigger an adapter that needs bit-identical PCM across hosts (promote to an installed `ivs::refpcm` target, still outside the core). The Phase 5 listening handoff (D-22) was not performable and is recorded as a deferred item: no Phase 5 artifact has a listenable tone.
+
 D5 and the cartridge format were decided by the fan-out protocol on 2026-11-11 (Delegated decision, owner authorization 2026-11-09). D6, D7, D8 and D12 were not decided in Phase 1 and are decided by the fan-out protocol when their phase needs them; D10 and D11 remain hard stops with evidence marked missing (D-05).
 
 ### Recommendations (not owner decisions)
