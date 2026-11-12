@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 5
 current_phase_name: Hand Controllers and PSG Sound
 status: executing
-stopped_at: Phase 4 complete, ready to plan Phase 5
-last_updated: "2026-11-12T06:23:09.615Z"
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-11-12T07:01:35.507Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 4 complete, transitioned to Phase 5
-state_head: 95f222c4751c02bc004972554ab874378884ee55
+state_head: 14a19043e503c58dcefcb50020e3b32f8a731727
 progress:
   total_phases: 8
   completed_phases: 4
   total_plans: 83
-  completed_plans: 71
+  completed_plans: 72
   percent: 50
 ---
 
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 
 ## Current Position
 
-Phase: 5 (Hand Controllers and PSG Sound) — READY TO EXECUTE
-Plan: Not started
+Phase: 5 (Hand Controllers and PSG Sound) — EXECUTING
+Plan: 2 of 12
 Status: Ready to execute
-Last activity: 2026-11-11 — Phase 4 complete, transitioned to Phase 5
+Last activity: 2026-11-12 — Completed 05-01 (oracle-first: sources, controller literal, PSG rules and vectors, D10 inventory)
 
 Progress: [█████░░░░░] 50%
 
@@ -126,6 +126,7 @@ Progress: [█████░░░░░] 50%
 | Phase 4 P23 | 14min | 3 tasks | 8 files |
 | Phase 04 P24 | 35 min | 3 tasks | 15 files |
 | Phase 4 P25 | 40min | 3 tasks | 5 files |
+| Phase 05 P01 | 40 min | 5 tasks | 118 files |
 
 ## Accumulated Context
 
@@ -290,6 +291,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 4]: 04-23: the installed consumer (tests/installed-consumer) replays diag-input-pass from the moved prefix only; its digest lines must equal the runner golden; independence is read from ninja -t deps, the link line and ivs_DIR; pkg-selftest=10/10
 - [Phase 04]: 04-24: RUN-04 is gate-checked: data/expected/important-gates.ids (102 lines, 26 gates) and the pure step important-gates; mutant ids also resolve as <suite>.judge.* / <suite>.mutant.*; gap fills api-stop-orphan, pack.judge.patched-word, runner-process.judge.outcome-uncovered, no new fault
 - [Phase 4]: Hosted gate budget re-baselined (04-25): 30/40 s wall budgets superseded by median gate_s 75 s plus median cpu_s 200; revisit at last-5 gate_s median > 90 s, any run > 120 s, or last-5 cpu_s median > 200
+- [Phase 05]: 05-01: oracle-first plan done with no C; page-reading verdict equations no, shapes yes, amplitude no, DAC labels no; shape and printed-chain rate vectors are source, DAC and unprinted topics are policy; C69..C80 and CL-0009..CL-0015 allocated
+- [Phase 05]: 05-01: controller literal (31 rows) transcribed from the cached pin matrix and wiki image before any planning-note table; input and psg-vectors gate steps, 13 controls, steps 35/35 controls 294/294
 
 ### Pending Todos
 
@@ -322,6 +325,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-12T02:10:54.500Z
-Stopped at: Phase 4 complete, ready to plan Phase 5
+Last session: 2026-11-12T07:01:35.379Z
+Stopped at: Completed 05-01-PLAN.md
 Resume file: None
