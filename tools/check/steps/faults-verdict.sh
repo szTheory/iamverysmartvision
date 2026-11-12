@@ -70,8 +70,9 @@ for ids in "$ROOT"/data/expected/faults/*.ids; do
   # appends its findings to $find, the ids it accepts to seen (and the non-GEN_ ones to
   # fault-ids), and prints `<faults> <lines> <ok>`. A fault is ok when it adds no finding.
   # Fields split on blanks, as `set -- $l` did; the prefixes split on `|` as the shell's
-  # IFS='|' field splitting did (an empty field, as in `a||b` or `|a`, matches every vector; a
-  # trailing `|` adds none).
+  # IFS='|' field splitting did (a trailing `|` adds no field). An empty field, as in `a||b` or
+  # `|a`, is refused as fault-unknown-vector and never matches (review IN-07: an explicit length
+  # test, since index(v, "") is 1 on BWK awk but 0 on gawk and mawk).
   counts=$(awk -v rel="$rel" -v suite="$suite" -v gate="$gate" -v nonce="$nonce" \
     -v seenf="$tmp/seen" -v idsf="$tmp/fault-ids" -v suitef="$tmp/suite.ids" \
     -v presentf="$tmp/present" -v findf="$find" '
@@ -108,7 +109,9 @@ for ids in "$ROOT"/data/expected/faults/*.ids; do
         v = notlist[i]
         if (v == "") continue
         matched = 0
-        for (j = 1; j <= np; j++) if (index(v, p[j]) == 1) { matched = 1; break }
+        # An empty field never matches (an explicit length test: index(v, "") is 1 on BWK awk
+        # and 0 on gawk and mawk); a line with one is refused as fault-unknown-vector below.
+        for (j = 1; j <= np; j++) if (length(p[j]) > 0 && index(v, p[j]) == 1) { matched = 1; break }
         if (!matched) bad("fault-wrong-reason", id " " v)
       }
     }
@@ -139,6 +142,9 @@ for ids in "$ROOT"/data/expected/faults/*.ids; do
       if (NF != 4) { bad("fault-unknown-vector", id " (line needs 4 columns)"); next }
       if (!($2 in sids)) bad("fault-unknown-vector", id " " $2)
       if (!($4 in sids)) bad("fault-unknown-vector", id " " $4)
+      nq = split($3, q, "|")
+      if (nq > 1 && q[nq] == "") nq--
+      for (k = 1; k <= nq; k++) if (length(q[k]) == 0) { bad("fault-unknown-vector", id " (empty prefix)"); break }
       if (!(id in present)) { bad("fault-missing", id); next }
       judge(id, gate "/faults/" id "/" suite ".txt", $2, $3, $4)
       if (nfind == before) ok++

@@ -16,3 +16,5 @@ faults-suite-missing
 # Runner-site controls (plan 04-03, D-24).
 faults-missing-site-runner
 faults-orphan-site-runner
+# Review IN-07: an empty prefix field is refused on every awk.
+faults-empty-prefix
