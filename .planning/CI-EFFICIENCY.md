@@ -621,3 +621,48 @@ Recommended follow-ups, for the orchestrator and the owner (not done here):
 - Correction to V-16: a fault costs about 0.5 hosted cpu-s (build 0.72 container cpu-s plus run 0.27), not 0.15. The 33 faults and 16 controls still planned add about 16 to 25 hosted cpu-s, so the last-5 median is expected to settle near 250 by the end of Phase 5.
 - **Decision (delegated under AUTONOMY section 1; policy, reversible):** re-baseline the hosted `cpu_s` budget to a median of 260 with a revisit trigger at a last-5 median above 280. The wall budget is unchanged (median `gate_s` 75, trigger a last-5 median above 90 or any run above 120). No evidence is dropped, no check is moved out of the gate.
 - First candidate for the next lever pass if either trigger fires: `-g0` on the fault targets only (about 5 hosted cpu-s, no evidence change). Fault objects at `-O0` (about 37 container cpu-s) changes the evidence build and is an owner decision.
+
+## 2026-11-12 Phase 5 checkpoint 2 (plan 05-08, V-16): cost of the write log and the projection to the phase end
+
+All figures marked local are from the laptop (18 cores, Apple clang 21, other work running, 1-minute load 8 to 11); they are not hosted figures. Nothing here calls `gh`; the hosted rows are read from `.planning/ci-runs.tsv`, which the orchestrator records. Triggers in force since the 05-L1 decision: hosted `cpu_s` budget median 260, revisit when the last-5 median is above 280; hosted wall budget median `gate_s` 75, revisit when the last-5 median is above 90 or any run above 120. (The text of plan 05-08 still quotes the older 190 and 200 figures; the later decision supersedes it.)
+
+### Counts
+
+- Plan 05-08 end: `steps=35/35 controls=303/303 faults=186/186 tests-expected=3610 tests-executed=3608 tests-skipped=2 tests-missing=0` (plan 05-07 end: `faults=180/180 tests-expected=3538`). New: 36 ids in suite `psg` (191 to 227 per preset, 72 over both presets), six named faults, no control.
+
+### Local gate (`sh tools/gate.sh`, three runs, plan 05-08 final tree)
+
+| Run | Load at start (1 min) | `gate-time total=` | `gate-cpu` user + sys | Five largest `step-time` (seconds) |
+|-----|-----------------------|--------------------|-----------------------|-------------------------------------|
+| 1 | 7.9 | 37 | 66.81 + 52.19 = 119.0 | controls 14, c-faults 11, c-tests 5, hygiene 4, c-purity 3 |
+| 2 | 11.1 | 35 | 60.63 + 46.58 = 107.2 | controls 12, c-faults 10, c-tests 5, hygiene 3, cp1610-vectors 3 |
+| 3 | 9.6 | 37 | 63.23 + 49.65 = 112.9 | controls 13, c-faults 10, c-tests 5, hygiene 4, cp1610-vectors 3 |
+
+- `gate-env ncpu=18 cc=AppleClang-21.0.0.21000101`; `c-build` 1 s (warm). `dash tools/gate.sh`: `gate-time total=41`, 75.3 + 60.0 = 135.3 cpu-s (a run in the middle of other work). Checkpoint 1 (plan 05-04): 32, 32, 35 s and 103.7, 103.3, 112.6 cpu-s; plan 05-07 final `sh`: 39 s and 128.7 cpu-s on a heavier day. The spread between runs on this host (107 to 135 cpu-s for the same tree) is larger than any effect of this plan, so the adds are measured directly below.
+- Container (`sh tools/gate-linux.sh`, Ubuntu 24.04, gcc 13.3.0, emulated amd64, 8 cores; a correctness check, not a hosted figure): `gate-time total=151`, `gate-cpu user=629.53 sys=34.66`.
+
+### Measured unit costs (local)
+
+- Per fault (run only, the fault executables run alone and serially, build up to date): 186 executables cost 25.5 cpu-s, wall 26.3 s, so **0.137 cpu-s per fault run** (checkpoint 1: 0.144). The increase of the fault runs since the Phase 4 close-out (149 faults) is the 37 added faults x 0.137 = **5.1 cpu-s local**, spread over four lanes (the `c-faults` step reads 10 to 11 s now against 11 to 12 s at the close-out; the difference is inside the load noise). Add the build of a fault, measured in the 05-L1 pass at about 0.72 container cpu-s (an owner TU recompiled at -O1, a link) and scaled with the hosted over container ratio 0.51: a fault costs about **0.5 hosted cpu-s** (the corrected unit of 05-L1), so the 37 faults since the close-out account for about 18 hosted cpu-s of the rise of the hosted median from 164 (close-out) to 252 (now); the rest is the 27 added controls, the new suites and test ids, and the spread between hosted machines.
+- Per control: unchanged since checkpoint 1 (303 controls, none added by this plan). On macOS 0.185 cpu-s per control, about 0.04 on native Linux.
+- Per test id, from plain-run times (median of 11): `psg` 227 ids: dev (ASan and UBSan) 0.344 s wall, 0.338 cpu-s (**1.5 ms per id**), release 0.120 s, 0.119 cpu-s (0.5 ms per id); against 0.185 and 0.054 s for 191 ids at plan 05-07. The 36 new ids cost 0.16 s dev and 0.07 s release: the exhaustive write-gap probe over every decle at waits 0, 1 and 35 (about 0.1 s dev) and the eight seeded fuzz cases (0.05 s dev) are most of it. The suite stays under its plan targets (0.3 s release, 1.5 s dev). `run` 159 ids: 0.565 s dev, 0.306 s release (3.5 ms and 1.9 ms per id); `input` 123 ids: 0.104 and 0.022 s; `machine` 397 ids: 0.514 and 0.276 s.
+- The five largest local steps are the same five as at checkpoint 1 (controls, `c-faults`, `c-tests`, hygiene, `c-purity` or `cp1610-vectors`).
+
+### Projection against the hosted trigger (V-16)
+
+- Hosted rows from `.planning/ci-runs.tsv` (the last five, all successful, the newest at plan 05-07 `6f3001e`): `cpu_s` 252, 263, 273, 220, 231, median **252**; `gate_s` 81, 85, 89, 72, 78, median **81** (none of the five includes this plan).
+- Adds not yet in a hosted row, at hosted unit costs: this plan, 6 faults x 0.5 + 72 test ids x 3 ms x 1.7 (hosted scaling) + the heavier probe = 3.0 + 0.4 = **3.4 cpu-s**. Remaining plans: faults 3 (05-09) + 2 (05-10) = 5 x 0.5 = 2.5; controls 4 + 5 + 1 + 3 = 13 x 0.04 = 0.5; runner and process test ids of plans 05-09 to 05-11 (about 55 ids per preset, 110 over both presets, x 3 ms = 0.33) and about 40 process spawns (0.6); one installed-consumer scenario and one more golden pair (about 1.5): **5.4 cpu-s**. Total adds **8.8 cpu-s**.
+- Projected last-5 `cpu_s` median at the phase end: 252 + 8.8 = **260.8**; with a 20% margin on the adds, 262.6. That is at the 260 budget line and **19 cpu-s under the 280 trigger**; the hosted spread of one tree (220 to 273 in the last five) is larger than the whole projected add, so a single row cannot settle it, but the median needs a +28 move to fire.
+- Projected `gate_s`: the hosted wall follows the cpu figure within the run-to-run spread, +3.5 percent gives 81 x 1.035 = **84**. The median is above the 75 budget (81 now) and the margin to the 90 trigger is about 6 s; the newest five include one 89 s row. It is not at the trigger.
+- Result: neither trigger is projected to fire.
+
+### Decision rule (V-16, verbatim)
+
+If the projection or the last-5 median reaches the trigger the lever order is (1) batch the `cp1610-vectors` JSON re-parse (about 5 cpu-s, no evidence change), (2) limit fault reruns to the suites a fault names (the verdict keeps its must-pass vector), (3) background `c-build` only if `cpu_s / (ncpu x gate_s)` shows idle cores (252 / (4 x 81) = 0.78 now: none); not levers: dropping a control, merging checks, weakening an oracle, a two-job split (redefines PKG-02). The 05-L1 pass already found (2) to be a property of the gate and (1) below the bar; the first candidate it named for a future pass is `-g0` on the fault targets only (about 5 hosted cpu-s, no evidence change), then an owner decision on the fault executables' optimisation level.
+
+### Outcome
+
+- The measured cost is 0.137 cpu-s per fault run, far below 0.4; no fault is converted to a judge self-control. The write-log suite adds 0.16 s dev to a plain run of `psg`, inside its targets.
+- **No lever pass is required before plan 05-09.** Watch items for the orchestrator, from the next hosted rows (recorded after this plan's push): a last-5 `cpu_s` median at or above 280 or a last-5 `gate_s` median at or above 90 fires the rule; the first lever to apply is `-g0` on the fault targets (tests/faults.cmake), the next an owner decision as above. No plan 05-L2 is created here.
+
+checkpoint-2: no-lever
