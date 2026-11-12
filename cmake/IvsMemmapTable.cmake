@@ -7,7 +7,7 @@
 #
 # Profile fields read (every one carries the profile record's tag, cite and conflict):
 #   memmap.undriven_read          "$XXXX"
-#   memmap.device.<kind>          {bits, rmask, fill, store}; kind rom10 grom8 ram8 ram16 stub
+#   memmap.device.<kind>          {bits, rmask, fill, store}; kind rom10 grom8 ram8 ram16 stub psg8 (plan 05-04)
 #   memmap.region.<name>          {view R|W|RW, lo, hi, device, size_words, gate, impl}
 #   memmap.cart_span              {lo, hi} (A-02; no alignment field, A-01)
 #   cartridge.features_supported  u32 mask (D-32)
@@ -19,6 +19,11 @@
 #   ivs_info publishes, D-06/D-09, plan 04-09; nominal figures, never a frame event)
 #   input.controllers (1..4: connected hand controllers, event word index = PSG port; the run
 #   call refuses a nonzero controller word at or above it, D-13/D-15, plan 04-12)
+#   ticks_per_psg_clock, psg.sample_period_ticks, psg.max_unit_ticks (1..65535 each, plan 05-06: the
+#   PSG time chain the audio layout derives from; cmake/IvsPsgTable.cmake validates their relations),
+#   psg.min_write_gap_ticks and psg.log_records_per_frame (1..65535, plan 05-08: the write-log bound of one frame slot, validated against
+#   ceil(F/g) + ceil(U/g) + 1 by cmake/IvsPsgTable.cmake)
+#   and crystal_hz {num, den} (the passthrough ivs_info republishes, D-19; the core never reads it)
 # Hex values are "$XXXX" strings (four uppercase digits), as in reset.r7.
 #
 # Fail closed (message `IvsMemmapTable: <profile>: <field>: <reason>`): hi < lo; lo or hi+1 not
@@ -147,8 +152,8 @@ function(mm_key out v)
 endfunction()
 
 # Numeric ids; the order is the id (memsys.h repeats them and the output asserts equality).
-set(MM_DEVICES undriven rom10 grom8 ram8 ram16 stub)
-set(MM_DEVICE_MACROS UNDRIVEN ROM10 GROM8 RAM8 RAM16 STUB)
+set(MM_DEVICES undriven rom10 grom8 ram8 ram16 stub psg8)
+set(MM_DEVICE_MACROS UNDRIVEN ROM10 GROM8 RAM8 RAM16 STUB PSG8)
 set(MM_GATES none stic-regs gmem)
 set(MM_GATE_MACROS NONE STIC_REGS GMEM)
 set(MM_IMPLS none real stub)
@@ -156,13 +161,14 @@ set(MM_IMPL_MACROS NONE REAL STUB)
 set(MM_PHYS undriven stic scratchpad psg sysram exec grom gram cart)
 set(MM_PHYS_MACROS UNDRIVEN STIC SCRATCHPAD PSG SYSRAM EXEC GROM GRAM CART)
 set(MM_VIEWS - R W RW)
-set(MM_STUB_PHYS stic psg)
+set(MM_STUB_PHYS stic)
 # Backed physical devices and the memsys.h capacity macro of each.
 set(MM_CAP_scratchpad IVS_MEMSYS_SCRATCHPAD_WORDS)
 set(MM_CAP_sysram IVS_MEMSYS_SYSRAM_WORDS)
 set(MM_CAP_exec IVS_MEMSYS_EXEC_WORDS)
 set(MM_CAP_grom IVS_MEMSYS_GROM_WORDS)
 set(MM_CAP_gram IVS_MEMSYS_GRAM_WORDS)
+set(MM_CAP_psg IVS_MEMSYS_PSG_WORDS)
 set(MM_UNIT_TOKENS window offset hold duration delay period latency interval timeout)
 
 file(GLOB mm_profiles RELATIVE "${ROOT}" "${ROOT}/data/profiles/*.json")
@@ -271,6 +277,32 @@ foreach(rel IN LISTS mm_profiles)
       mm_fail("must be nonzero")
     endif()
   endforeach()
+  # Plan 05-06: the PSG time chain and the crystal passthrough (psg.* are validated by IvsPsgTable.cmake).
+  set(MM_CTX "${rel}: ticks_per_psg_clock")
+  mm_uint(ticks_per_psg "${doc}" "value" 65535 fields ticks_per_psg_clock value)
+  if(ticks_per_psg EQUAL 0)
+    mm_fail("must be nonzero")
+  endif()
+  set(MM_CTX "${rel}: psg.sample_period_ticks")
+  mm_uint(psg_sample_period "${doc}" "value" 65535 fields psg.sample_period_ticks value)
+  set(MM_CTX "${rel}: psg.max_unit_ticks")
+  mm_uint(psg_max_unit "${doc}" "value" 65535 fields psg.max_unit_ticks value)
+  set(MM_CTX "${rel}: psg.min_write_gap_ticks")
+  mm_uint(psg_min_gap "${doc}" "value" 65535 fields psg.min_write_gap_ticks value)
+  if(psg_min_gap EQUAL 0)
+    mm_fail("must be nonzero")
+  endif()
+  set(MM_CTX "${rel}: psg.log_records_per_frame")
+  mm_uint(psg_log_rpf "${doc}" "value" 65535 fields psg.log_records_per_frame value)
+  if(psg_log_rpf EQUAL 0)
+    mm_fail("must be nonzero")
+  endif()
+  set(MM_CTX "${rel}: crystal_hz")
+  mm_uint(crystal_num "${doc}" "num" 4294967295 fields crystal_hz value num)
+  mm_uint(crystal_den "${doc}" "den" 4294967295 fields crystal_hz value den)
+  if(crystal_num EQUAL 0 OR crystal_den EQUAL 0)
+    mm_fail("num and den must be nonzero")
+  endif()
   set(MM_CTX "${rel}: input.controllers")
   mm_uint(input_controllers "${doc}" "value" 4 fields input.controllers value)
   if(input_controllers EQUAL 0)
@@ -280,7 +312,7 @@ foreach(rel IN LISTS mm_profiles)
   # Required registry fields (a missing one fails closed).
   foreach(need cartridge.features_supported system_images.exec system_images.grom memmap.cart_span
           memmap.device.rom10 memmap.device.grom8 memmap.device.ram8 memmap.device.ram16
-          memmap.device.stub)
+          memmap.device.stub memmap.device.psg8)
     if(NOT need IN_LIST names)
       set(MM_CTX "${rel}: ${need}")
       mm_fail("missing")
@@ -446,7 +478,7 @@ foreach(rel IN LISTS mm_profiles)
     endif()
     if(dname STREQUAL "stub")
       if(NOT s STREQUAL "stub" OR NOT pname IN_LIST MM_STUB_PHYS)
-        mm_fail("a stub device needs impl stub and a stub physical device (stic, psg)")
+        mm_fail("a stub device needs impl stub and a stub physical device (stic)")
       endif()
     else()
       if(NOT s STREQUAL "real" OR pname IN_LIST MM_STUB_PHYS)
@@ -544,7 +576,8 @@ foreach(rel IN LISTS mm_profiles)
   string(APPEND reg_c
     "  {\"${pid}\", ${r7_l}, ${iab_l}, ${und_l}, ${slo_l}, ${shi_l}, ${ticks_per_cpu}u, ${has_span}u, ${intff}u, ${release}u,\n"
     "   ${wait_limit}u, ${features}u, ${slot_exec_c}, ${slot_grom_c}, ${scanlines_per_frame}u,\n"
-    "   ${cpu_cycles_per_scanline}u, ${input_controllers}u},\n")
+    "   ${cpu_cycles_per_scanline}u, ${input_controllers}u, ${ticks_per_psg}u, ${psg_sample_period}u,\n"
+    "   ${psg_max_unit}u, ${psg_log_rpf}u, ${psg_min_gap}u, ${crystal_num}ull, ${crystal_den}ull},\n")
 endforeach()
 
 if(DEFINED MUTATE AND NOT MUTATE STREQUAL "" AND NOT MM_MUTATED)

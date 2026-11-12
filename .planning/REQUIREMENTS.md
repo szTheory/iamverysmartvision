@@ -54,7 +54,7 @@ differentiators and all variant/peripheral profiles are v2.
 
 - [x] **API-01**: A host can create, reset, unload and destroy independent machine instances; two instances run concurrently without shared mutable state (isolation test).
 - [x] **API-02**: Execution is bounded by an explicit machine-time target (absolute cycle target; frame target as a derived convenience), with overshoot reported; splitting one run into slices yields identical state and output (slicing-invariance test).
-- [ ] **API-03**: Controller input is applied at an explicit machine-time boundary declared by the API; the same input script yields identical results regardless of host timing.
+- [x] **API-03**: Controller input is applied at an explicit machine-time boundary declared by the API; the same input script yields identical results regardless of host timing.
 - [x] **API-04**: Video and audio outputs are written into caller-owned buffers; undersized buffers are refused before any state changes.
 - [x] **API-05**: The core has no dependency on host clocks, filesystems, environment, threads, physical controller discovery or presentation, enforced by a build/link or symbol check.
 - [x] **API-06**: Every API error/refusal has a documented effect on state (none, or a named partial effect), and each is covered by a test.
@@ -77,14 +77,14 @@ differentiators and all variant/peripheral profiles are v2.
 
 ### Sound — PSG (AUD)
 
-- [ ] **AUD-01**: The PSG register file, tone, noise and envelope behavior follow the verified part's documented map, with per-rule vectors; behaviors lacking a primary source are profile data with tier tags (period-0, envelope select, LFSR, DAC).
-- [ ] **AUD-02**: The core emits a cycle-stamped PSG register-write log and integer chip-rate samples as raw audio, separate from any host PCM conversion (reference PCM location per D7).
+- [x] **AUD-01**: The PSG register file, tone, noise and envelope behavior follow the verified part's documented map, with per-rule vectors; behaviors lacking a primary source are profile data with tier tags (period-0, envelope select, LFSR, DAC).
+- [x] **AUD-02**: The core emits a cycle-stamped PSG register-write log and integer chip-rate samples as raw audio, separate from any host PCM conversion (reference PCM location per D7).
 
 ### Hand Controllers (INP)
 
-- [ ] **INP-01**: Both controllers' 12 keypad keys, 16 disc directions and side-action inputs each produce the profile's documented read value through the PSG I/O ports, tested individually for each player.
-- [ ] **INP-02**: Simultaneous inputs (multi-key, disc+key, side combinations, opposite directions, ambiguous electrical combinations) produce a documented, tested result under the selected electrical model.
-- [ ] **INP-03**: Core input is a machine-level controller representation (form per D6) with no host mapping, remapping, overlay or device discovery inside the core.
+- [x] **INP-01**: Both controllers' 12 keypad keys, 16 disc directions and side-action inputs each produce the profile's documented read value through the PSG I/O ports, tested individually for each player.
+- [x] **INP-02**: Simultaneous inputs (multi-key, disc+key, side combinations, opposite directions, ambiguous electrical combinations) produce a documented, tested result under the selected electrical model.
+- [x] **INP-03**: Core input is a machine-level controller representation (form per D6) with no host mapping, remapping, overlay or device discovery inside the core.
 
 ### Video — STIC (VID)
 
@@ -199,7 +199,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MEM-05 | Phase 3 | Complete |
 | API-01 | Phase 3 | Complete |
 | API-02 | Phase 4 | Complete |
-| API-03 | Phase 5 | Pending |
+| API-03 | Phase 5 | Complete |
 | API-04 | Phase 4 | Complete |
 | API-05 | Phase 2 | Complete |
 | API-06 | Phase 3 | Complete |
@@ -213,11 +213,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PKG-02 | Phase 2 | Complete |
 | PKG-03 | Phase 4 | Complete |
 | PKG-04 | Phase 4 | Complete |
-| AUD-01 | Phase 5 | Pending |
-| AUD-02 | Phase 5 | Pending |
-| INP-01 | Phase 5 | Pending |
-| INP-02 | Phase 5 | Pending |
-| INP-03 | Phase 5 | Pending |
+| AUD-01 | Phase 5 | Complete |
+| AUD-02 | Phase 5 | Complete |
+| INP-01 | Phase 5 | Complete |
+| INP-02 | Phase 5 | Complete |
+| INP-03 | Phase 5 | Complete |
 | VID-01 | Phase 6 | Pending |
 | VID-02 | Phase 6 | Pending |
 | VID-03 | Phase 6 | Pending |
@@ -231,6 +231,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PRF-01 | Phase 8 | Pending |
 | REL-01 | Phase 8 | Pending |
 
+**Phase 5 close-out note (plan 05-12):** INP-01, INP-02, INP-03, API-03, AUD-01 and AUD-02 are marked complete because the gate evidence in `.planning/phases/05-hand-controllers-and-psg-sound/05-VERIFICATION.md` exists, and only on these terms. Every claim behind them (CL-0009 to CL-0015) is `provisional` and none is at the `measured-hardware` tier (D10): the controller byte table is a tier 4 community literal (C16) with a blind second read that agrees on 31 of 31 rows, the PSG rules are read from AY-3-8910 pages and applied to an AY-3-8914-class part by inference (C11, C69), and the electrical combinations (C63) and port edge cases (C64 to C66) are labelled defaults. Owner hardware items (32 listed in `data/expected/d10-measurements.ids`, D10 and D11) are handed off and not performed; no listening handoff exists because no Phase 5 artifact has a listenable tone (D-22, deferred).
+
 **Coverage:**
 - v1 requirements: 50 total
 - Mapped to phases: 50
@@ -238,4 +240,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-11-09*
-*Last updated: 2026-11-09 after roadmap creation (traceability filled)*
+*Last updated: 2026-11-12 after Phase 5 close-out (plan 05-12)*

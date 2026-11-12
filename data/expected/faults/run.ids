@@ -2,8 +2,11 @@
 # Run named faults (plan 04-06, D-08). Each id has one IVS_FAULT_<ID> site in
 # core/src/machine/machine_inspect.c (observation must not disturb what it observes).
 # PEEK_ADVANCES_TIME: every accepted peek adds one master tick to machine time; both side-effect
-# cases see the storage, the INSTANCE and composite digests and machine time change.
-PEEK_ADVANCES_TIME run.observe.no-side-effect-powered run.observe.|run.peek.|run.refuse.peek. run.cpu-state.off
+# cases see the storage, the INSTANCE and composite digests and machine time change. Plan 05-05: the
+# input-visible fuzz peeks the poller log of its reference run, so it sees the added tick too (run.fuzz.input-visible-*).
+# Plan 05-11: run.diag.ctrl-psg.slicing peeks the marker after every unit of its tracked run, so the added ticks make
+# its tracked run differ from the one-call run.
+PEEK_ADVANCES_TIME run.observe.no-side-effect-powered run.observe.|run.peek.|run.refuse.peek.|run.fuzz.input-visible-|run.diag.ctrl-psg.slicing run.cpu-state.off
 # PEEK_GATE_IGNORED: peek reads the backing word as if every gate were open; only the closed-gate
 # case sees GROM and GRAM data behind gate gmem.
 PEEK_GATE_IGNORED run.peek.gated run.peek.gated run.peek.loaded-words
@@ -12,8 +15,8 @@ PEEK_GATE_IGNORED run.peek.gated run.peek.gated run.peek.loaded-words
 # RUN_TARGET_UNCHECKED: the OUT_OF_RANGE stage is skipped; the refusal case tries the targets on a
 # FAULTED CPU first, so the run ends at once with IVS_OK (never a run toward 2^64). From plan
 # 04-10 the precedence case range-over-capacity (target above 2^63 with an undersized buffer)
-# then reaches BUFFER_TOO_SMALL instead of OUT_OF_RANGE.
-RUN_TARGET_UNCHECKED run.refuse.target-above-2-63 run.refuse.target-above-2-63|run.prec.range-over-capacity run.stop-name.known
+# then reaches BUFFER_TOO_SMALL instead of OUT_OF_RANGE (plan 05-02: psglog-after-audio likewise).
+RUN_TARGET_UNCHECKED run.refuse.target-above-2-63 run.refuse.target-above-2-63|run.prec.range-over-capacity|run.prec.psglog-after-audio run.stop-name.known
 # RUN_STOP_BEFORE_OVERSHOOT: a unit that would end past the target is taken back (CPU and time),
 # so the run stops at the last boundary below the target. Collateral by the same rule: every case
 # whose target lies inside a unit (overshoot window, run(now + 1), the idle target h + 41, and the
@@ -27,7 +30,7 @@ RUN_TARGET_UNCHECKED run.refuse.target-above-2-63 run.refuse.target-above-2-63|r
 # From plan 04-16 the slicing replay of the real diagnostic (run.diag.slice) sees this fault, the
 # budget carry and the static input carry too (the input cases run before it, so the carried words
 # differ between its replay and its reference).
-RUN_STOP_BEFORE_OVERSHOOT run.target.ends-at-first-boundary-ge-target run.target.|run.overshoot.|run.single-step.|run.stop.halt-no-flag|run.refuse.report-inside-instance|run.refuse.tail-nonzero|run.slice.|run.buffers.|run.input.|run.fuzz.|run.stub.|run.diag. run.stop-name.known
+RUN_STOP_BEFORE_OVERSHOOT run.target.ends-at-first-boundary-ge-target run.target.|run.overshoot.|run.single-step.|run.stop.halt-no-flag|run.refuse.report-inside-instance|run.refuse.tail-nonzero|run.slice.|run.buffers.|run.input.|run.fuzz.|run.stub.|run.diag.|run.struct.report-v2-fields run.stop-name.known
 # RUN_FAULT_STEPS: a FAULTED CPU is stepped (a zero-progress unit, counted) and the stop order
 # tests the target before the fault, so a fault on the target boundary reports TARGET and later
 # calls execute a unit. Collateral: every guest-fault stop case and the 2^63 boundary on a
@@ -45,13 +48,15 @@ RUN_FAULT_STEPS run.stop.fault-sticky run.stop.|run.target.max-accepted|run.slic
 # run(now + 1) calls continue one handle).
 RUN_BUDGET_CARRY run.slice.halt.fixed-7 run.slice.|run.target.|run.overshoot.|run.single-step.|run.buffers.|run.input.|run.fuzz.|run.stub.|run.diag. run.info.timebase
 # INFO_TAIL_UNGUARDED (core/src/machine/machine.c): info writes the whole grown ivs_info whatever
-# the caller's struct_size, past a v1-sized caller's struct.
-INFO_TAIL_UNGUARDED run.info.v1-size-caller run.info.v1-size-caller run.info.timebase
+# the caller's struct_size, past a v1-sized caller's struct (from plan 05-02 also past a v2-sized
+# caller's, run.info.v2-size-caller).
+INFO_TAIL_UNGUARDED run.info.v1-size-caller run.info.v1-size-caller|run.info.v2-size-caller run.info.timebase
 # Output-buffer faults (plan 04-10, D-06, D-07), one site each in core/src/machine/machine_bound.c.
 # RUN_CAPACITY_AFTER_STEP: the BUFFER_TOO_SMALL check runs after the first unit, so an undersized
 # buffer is refused with a unit already executed (the storage and digests changed). From plan
-# 04-11 the precedence case capacity-over-event-order then sees the per-event refusal instead.
-RUN_CAPACITY_AFTER_STEP run.buffers.too-small-video run.buffers.|run.prec.capacity-over-event-order run.buffers.real-layout-zero
+# 04-11 the precedence case capacity-over-event-order then sees the per-event refusal instead;
+# from plan 05-02 so does psglog-after-audio, whose last cases need the capacity stage.
+RUN_CAPACITY_AFTER_STEP run.buffers.too-small-video run.buffers.|run.prec.capacity-over-event-order|run.prec.psglog-after-audio run.buffers.exact-fit-video
 # OUTBUF_PARTIAL_WRITE: a refused run writes one byte into the caller's video buffer (from plan
 # 04-11 also seen by the input refusal that checks its buffer arena, run.input.refuse.*).
 OUTBUF_PARTIAL_WRITE run.buffers.video-audio-overlap run.buffers.|run.prec.|run.input.refuse. run.buffers.exact-fit-video
@@ -65,16 +70,38 @@ OUTBUF_PARTIAL_WRITE run.buffers.video-audio-overlap run.buffers.|run.prec.|run.
 # start, so a call whose target lies past an event's tick inside the last unit consumes it.
 # Review IN-01: the events it applied at call start are not taken back when the first unit is
 # refused, so run.stop.internal-input-restored sees it too.
-INPUT_APPLY_AT_RUN_START run.input.one-event run.input.|run.fuzz.|run.stop.internal-input-restored run.target.ends-at-first-boundary-ge-target
+INPUT_APPLY_AT_RUN_START run.input.one-event run.input.|run.fuzz.|run.stop.internal-input-restored|run.diag.ctrl-psg.slicing|run.diag.ctrl-psg.order-equals-pass run.target.ends-at-first-boundary-ge-target
 # INPUT_LOG_SLICE_RELATIVE_TICK: the chain records at_tick minus the call's entry time, so sliced
 # runs differ from one call (and the literal chains differ).
-INPUT_LOG_SLICE_RELATIVE_TICK run.input.overshoot-window run.input.|run.fuzz. run.slice.halt.fixed-7
+INPUT_LOG_SLICE_RELATIVE_TICK run.input.overshoot-window run.input.|run.fuzz.|run.diag.ctrl-psg.slicing run.slice.halt.fixed-7
 # INPUT_NO_FLOOR_CHECK: an event below the input floor is accepted.
 INPUT_NO_FLOOR_CHECK run.input.refuse.below-floor run.input.refuse. run.slice.halt.fixed-7
 # INPUT_STATIC_CARRY: a file-scope copy of the last applied words becomes the words in force of
 # whichever instance begins a unit next.
 INPUT_STATIC_CARRY run.input.isolation run.input.|run.fuzz.|run.diag.slice run.slice.halt.fixed-7
-# RUN_EVENT_AT_TARGET_ONLY: an event applies only at a unit starting exactly at its at_tick.
-RUN_EVENT_AT_TARGET_ONLY run.input.one-event run.input.|run.fuzz. run.target.ends-at-first-boundary-ge-target
+# RUN_EVENT_AT_TARGET_ONLY: an event applies only at a unit starting exactly at its at_tick. Plan 05-11: the
+# controller-driven diagnostic family run.diag.ctrl-psg.* needs its events applied, so most of its cases see it.
+RUN_EVENT_AT_TARGET_ONLY run.input.one-event run.input.|run.fuzz.|run.diag.ctrl-psg. run.target.ends-at-first-boundary-ge-target
 # RUN_EVENTS_UNCHECKED: the event span overlap test (instance, report, buffers) is skipped.
 RUN_EVENTS_UNCHECKED run.input.refuse.events-inside-instance run.input.refuse. run.buffers.inside-instance
+# Struct-growth and write-log faults (plan 05-02, D-14, D-19, A-02, A-04), one site each in
+# core/src/machine/machine_bound.c.
+# RUN_REPORT_TAIL_UNGUARDED: the report is written (and its span tested) at the core's full 136
+# bytes whatever the caller's struct_size, past a v1-sized caller's struct. The report-side cases see
+# it: both v1-caller cases (a success writes the tail and struct_size comes back 136), the report-v2
+# case's 120-byte caller and, through the overlap span, the positive control of the log overlap case
+# (a v1-sized report with the log right after its 112 bytes is then refused).
+RUN_REPORT_TAIL_UNGUARDED run.struct.report-v1-caller run.struct.request-v1-caller|run.struct.report-v1-caller|run.struct.report-v2-fields|run.buffers.psglog-overlap run.info.timebase
+# RUN_REQUEST_V2_READ_UNGUARDED: psg_log and psg_log_capacity are read even when the request's
+# struct_size is the v1 size, so a v1-sized caller's poisoned bytes past its struct read as a
+# pointer and a capacity and the run is refused. Every case that runs a v1-sized (or between-sizes)
+# request sees it: run.struct.*.
+RUN_REQUEST_V2_READ_UNGUARDED run.struct.request-v1-caller run.struct. run.info.timebase
+# RUN_PSGLOG_OVERLAP_UNCHECKED: the log's overlap tests (instance, report, video, audio, events, the
+# top of the address space) are skipped, so an overlapping log is accepted.
+RUN_PSGLOG_OVERLAP_UNCHECKED run.buffers.psglog-overlap run.buffers.psglog-overlap run.buffers.psglog-null
+# INPUT_EXTRA_CONTROLLER_UNCHECKED (the Phase 4 fault deferred to plan 05-05): a nonzero word of a controller the
+# profile does not connect (index at or above input.controllers) passes the validation instead of being refused
+# UNSUPPORTED; the refusal case sees it, and so does run.input.extra-word-zero-ok, whose last step calls the validation
+# with one connected controller and expects the same refusal.
+INPUT_EXTRA_CONTROLLER_UNCHECKED run.input.refuse.extra-controller-word run.input.refuse.|run.input.extra-word- run.slice.halt.fixed-7

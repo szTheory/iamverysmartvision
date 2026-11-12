@@ -1,0 +1,17 @@
+# Toy register-address literal of the known-good control tree (plan 05-04): the real grammar, sixteen rows.
+01F0 role=tone-a-fine gi=R0 n=0 w=00FF r=00FF src=SRC-bsr-2609@toy-page tag=unknown-default-chosen conf=C1
+01F1 role=tone-b-fine gi=R2 n=2 w=00FF r=00FF src=SRC-bsr-2609@toy-page tag=unknown-default-chosen conf=C1
+01F2 role=tone-c-fine gi=R4 n=4 w=00FF r=00FF src=SRC-bsr-2609@toy-page tag=unknown-default-chosen conf=C1
+01F3 role=env-fine gi=R13 n=11 w=00FF r=00FF src=SRC-bsr-2609@toy-page tag=unknown-default-chosen conf=C1
+01F4 role=tone-a-coarse gi=R1 n=1 w=000F r=000F src=SRC-bsr-2609@toy-page tag=unknown-default-chosen conf=C1
+01F5 role=tone-b-coarse gi=R3 n=3 w=000F r=000F src=SRC-bsr-2609@toy-page tag=unknown-default-chosen conf=C1
+01F6 role=tone-c-coarse gi=R5 n=5 w=000F r=000F src=SRC-bsr-2609@toy-page tag=unknown-default-chosen conf=C1
+01F7 role=env-coarse gi=R14 n=12 w=00FF r=00FF src=SRC-bsr-2609@toy-page tag=unknown-default-chosen conf=C1
+01F8 role=mixer-ports gi=R7 n=7 w=00FF r=00FF src=SRC-bsr-2609@toy-page tag=unknown-default-chosen conf=C1
+01F9 role=noise-period gi=R6 n=6 w=001F r=001F src=SRC-bsr-2609@toy-page tag=unknown-default-chosen conf=C1
+01FA role=env-shape gi=R15 n=13 w=000F r=0000 src=SRC-bsr-2609@toy-page tag=unknown-default-chosen conf=C1
+01FB role=amp-a gi=R10 n=8 w=003F r=003F src=SRC-bsr-2609@toy-page tag=unknown-default-chosen conf=C1
+01FC role=amp-b gi=R11 n=9 w=003F r=003F src=SRC-bsr-2609@toy-page tag=unknown-default-chosen conf=C1
+01FD role=amp-c gi=R12 n=10 w=003F r=003F src=SRC-bsr-2609@toy-page tag=unknown-default-chosen conf=C1
+01FE role=port-a gi=R16 n=14 w=00FF r=00FF src=SRC-bsr-2609@toy-page tag=unknown-default-chosen conf=C1
+01FF role=port-b gi=R17 n=15 w=00FF r=00FF src=SRC-bsr-2609@toy-page tag=unknown-default-chosen conf=C1

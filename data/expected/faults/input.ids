@@ -1,0 +1,13 @@
+# suite=input; columns: <FAULT_ID> <must-fail> <allowed-prefixes> <must-pass>
+# Input named faults (plan 05-05, INP-01, INP-03, D-02..D-04, A-08: the per-plan cap of 8 binds, this suite holds 7 and
+# the deferred Phase 4 fault INPUT_EXTRA_CONTROLLER_UNCHECKED is in data/expected/faults/run.ids). Each non-GEN id has one
+# IVS_FAULT_<ID> site in core/src/machine (machine_input.c, machine_bound.c, machine_run.c) or core/src/memmap (memsys.c);
+# GEN_CTRL_MUTATION is a generator-path control (no site: cmake/IvsCtrlTable.cmake writes ivs_ctrl_lines.inc with the line
+# mask of KEY_1 flipped in one bit, and core/src/machine/machine_input.c is rebuilt against it).
+INPUT_PINS_NOT_UPDATED input.single.p0.key_1 input.idle.|input.anchor.|input.table.|input.judge.|input.single.|input.combo.|input.pairs.|input.port.|input.digest.|input.reset.|input.invariant.|input.boundary.|input.slice. input.struct.counts
+CTRL_PORTS_SWAPPED input.single.p1.key_1 input.anchor.|input.table.|input.judge.|input.single.|input.combo.|input.pairs.monotone-clear|input.pairs.decodable-claims|input.port.|input.takeback.|input.reset.|input.invariant.|input.boundary. input.struct.counts
+CTRL_UNION_AS_AND input.anchor.wiki-key1-9 input.idle.p0|input.anchor.wiki-key1-9|input.combo.|input.pairs.|input.port.upper-byte|input.invariant. input.struct.counts
+CTRL_NO_INVERSION input.anchor.wiki-key1 input.idle.|input.anchor.|input.table.|input.judge.|input.single.|input.combo.|input.pairs.union|input.pairs.commutative|input.pairs.monotone-clear|input.port.|input.takeback.|input.reset.|input.boundary. input.struct.counts
+INPUT_PINS_NOT_RESTORED_ON_TAKEBACK input.takeback.restores-pins input.takeback. input.struct.counts
+INPUT_PINS_NOT_RESET input.reset.clears-pulldown input.idle.|input.reset.|input.invariant. input.struct.counts
+GEN_CTRL_MUTATION input.table.matches-literal input.anchor.|input.table.|input.judge.|input.single.p0.key_1|input.single.p1.key_1|input.combo.|input.pairs.|input.port.|input.takeback.|input.reset.|input.invariant.|input.boundary. input.struct.counts

@@ -1,0 +1,81 @@
+# suite=psg; columns: <FAULT_ID> <must-fail> <allowed-prefixes> <must-pass>
+# PSG named faults (plan 05-04, AUD-01, D-08, D-25). Each id has one IVS_FAULT_<ID> site in
+# core/src/psg/psg_regs.c (the register file) and is caught by the vector it is named for.
+# PSG_TONE_HIGH_NIBBLE_UNMASKED: the coarse tone periods keep and read a whole byte instead of four bits;
+# the other coarse-register vectors, the one-store no-mirror case, the guest tracer ($0200 would read
+# $00FF) and the judge's positive control (the real row is judged under the fault) fail with it.
+PSG_TONE_HIGH_NIBBLE_UNMASKED psg.reg.tone-high-mask psg.reg.|psg.judge.mask-row-|psg.log. psg.reset.regs-zero
+# PSG_REG_OCTAL_AS_HEX: the amplitude registers (data sheet R10..R12, octal) land one slot low, R10 at
+# $01FA; only the vectors that write two registers or read the amplitude against a neighbour's mask see
+# it (store and load shift together, so a lone amplitude B or C round trip is consistent). From plan 05-06
+# every tone vector and the guest tracer write amplitude A at $01FB, which lands at $01FA under the fault.
+PSG_REG_OCTAL_AS_HEX psg.reg.map-amplitude psg.reg.|psg.tone.|psg.judge.tone-|psg.buffers.|psg.sample.|psg.slice.|psg.chain.|psg.amp.|psg.ampenv.|psg.env.|psg.judge.env-|psg.noise.|psg.profile.|psg.log. psg.reset.regs-zero
+# PSG_SHAPE_READBACK_STORED: the shape register reads back what was stored instead of 0 (C75).
+PSG_SHAPE_READBACK_STORED psg.reg.shape-reads-zero psg.reg. psg.reset.regs-zero
+# Tone, mixer, amplitude and step faults (plan 05-06, AUD-01, D-09, D-10, A-08), one site each in the engine TU of
+# its family (core/src/psg/psg_tone.c, psg_mix.c, psg_sample.c). The engine vectors run at module level on the
+# sample stream, so every tone vector sees a wrong period or step and fails with the named one.
+# PSG_TONE_PERIOD_OFF_BY_ONE: the counter reloads with P + 1, so every half-period is one step too long.
+PSG_TONE_PERIOD_OFF_BY_ONE psg.tone.rate-p1 psg.tone.|psg.judge.tone-|psg.buffers.|psg.sample.|psg.slice.|psg.chain.|psg.profile. psg.mix.truth-table
+# PSG_STEP_IS_16_CLOCKS: a chip step of 16 chip clocks (32 ticks), the glossary mistake corrected in plan 05-01:
+# a run of N x 16 ticks delivers N / 2 samples, so the sample count of every tone vector is wrong (and the byte
+# counts and the guest tone of the buffer tests with it, psg.buffers.*).
+PSG_STEP_IS_16_CLOCKS psg.tone.rate-p1 psg.tone.|psg.judge.tone-|psg.buffers.|psg.sample.|psg.slice.|psg.chain.|psg.amp.|psg.ampenv.|psg.env.|psg.judge.env-|psg.judge.noise-|psg.noise.|psg.profile.|psg.reseng.|psg.log. psg.mix.truth-table
+# PSG_MIXER_SENSE_INVERTED: the enable bits are read with the opposite polarity; the AND rows of the mixer vectors
+# fail and so does every tone vector (channel A would be disabled by the clear bit of R7). The row named
+# psg.mix.truth-table (both enabled, both generators 1, out 1) is the one printed row that a polarity flip leaves at
+# out 1, so psg.mix.and-tone0 (both enabled, tone 0, out 0) is the must-fail id (open item of plan 05-06).
+PSG_MIXER_SENSE_INVERTED psg.mix.and-tone0 psg.mix.|psg.tone.|psg.judge.tone-|psg.judge.mix-|psg.buffers.|psg.sample.|psg.slice.|psg.chain.|psg.amp.|psg.ampenv.|psg.env.|psg.judge.env-|psg.noise.|psg.profile.|psg.log. psg.amp.fixed-15
+# PSG_AMP_ENV_BIT_IGNORED: the amplitude select bits are ignored, the fixed level is always used.
+PSG_AMP_ENV_BIT_IGNORED psg.amp.env-mode psg.amp.|psg.ampenv.|psg.env.|psg.judge.env-|psg.profile.|psg.reseng. psg.mix.truth-table
+# Audio path faults (plan 05-06, T-05-15, T-05-16, D-16, D-17), one site each: AUDIO_SLACK_ZERO in
+# core/src/machine/machine.c (the layout), AUDIO_STATE_DEPENDS_ON_BUFFER and PSG_OUTBUF_PARTIAL_WRITE in
+# core/src/machine/machine_bound.c (the run call).
+# AUDIO_SLACK_ZERO: the capacity slack s = ceil(U / P) + 1 is 0, so a run whose last unit overshoots can emit more
+# samples than the requirement holds (the audio bytes per frame fall from 15,060 to 14,936).
+AUDIO_SLACK_ZERO psg.bounds.slack-covers-worst-case psg.bounds.slack-covers-worst-case psg.bounds.unit-ticks-max
+# AUDIO_STATE_DEPENDS_ON_BUFFER: the unit's PSG catch-up is undone when no buffer receives the samples, so the
+# machine state with and without a buffer differs.
+AUDIO_STATE_DEPENDS_ON_BUFFER psg.buffers.state-independent-of-buffer psg.buffers.state-independent-of-buffer|psg.buffers.not-requested psg.buffers.exact-fit
+# PSG_OUTBUF_PARTIAL_WRITE: a refused run writes one byte into the caller's audio buffer (the overlap refusal
+# writes it into the instance storage that the buffer overlaps).
+PSG_OUTBUF_PARTIAL_WRITE psg.buffers.too-small-no-write psg.buffers.too-small-no-write|psg.buffers.overlap psg.buffers.exact-fit
+# PSG_SAMPLE_PHASE_RESET_PER_CALL (core/src/psg/psg_sample.c): the sample grid restarts at each call's first catch-up,
+# skipping the steps due before it, so what a call delivers depends on where the host slices; every test that
+# counts samples from a fresh sink sees it.
+PSG_SAMPLE_PHASE_RESET_PER_CALL psg.slice.samples-split psg.slice.|psg.sample.|psg.chain.|psg.buffers.|psg.tone.guest|psg.tone.next-reload|psg.reseng.|psg.fuzz.|psg.log. psg.mix.truth-table
+# Noise and envelope faults (plan 05-07, AUD-01, D-10, D-12, T-05-18, T-05-19), three sites each in core/src/psg/psg_noise.c and
+# core/src/psg/psg_env.c. The engine vectors run at module level on a fresh PSG, so each wrong rule fails the vector it is named for.
+# PSG_NOISE_WRONG_TAP: the other candidate mask $14000 while the profile says $12000: the period is 114,681, not the maximal 131,071.
+PSG_NOISE_WRONG_TAP psg.noise.lfsr-maximal-period psg.noise.|psg.judge.noise-|psg.profile. psg.noise.rate-np1
+# PSG_NOISE_RATE_USES_TONE_DIVISOR: the register shifts every NP steps (the tone divisor) instead of 2 NP.
+PSG_NOISE_RATE_USES_TONE_DIVISOR psg.noise.rate-np1 psg.noise.|psg.judge.noise-|psg.profile. psg.noise.lfsr-maximal-period
+# PSG_NOISE_TAP_HARDCODED: the default mask is a constant of the engine, the profile field is ignored (T-05-18): only the perturbation tests see it.
+PSG_NOISE_TAP_HARDCODED psg.profile.noise-taps psg.noise.|psg.profile. psg.noise.rate-np1
+# PSG_ENV_SHAPE_ATTACK_DECAY_SWAPPED: attack and decay are swapped at the restart.
+PSG_ENV_SHAPE_ATTACK_DECAY_SWAPPED psg.env.shape-0 psg.env.|psg.amp.|psg.ampenv.|psg.judge.env-|psg.profile.env- psg.env.rate-ep1
+# PSG_ENV_PERIOD_TIMES_16: every envelope state lasts 16 times too many steps.
+PSG_ENV_PERIOD_TIMES_16 psg.env.rate-ep1 psg.env.|psg.amp.|psg.ampenv.|psg.judge.env-|psg.profile. psg.reseng.envelope-held-zero
+# PSG_ENV_HOLD_ALTERNATE_NO_RESET: a held alternating shape keeps its last level (1011 holds 0 instead of 15).
+PSG_ENV_HOLD_ALTERNATE_NO_RESET psg.env.shape-11 psg.env. psg.env.shape-8
+# Write-log faults (plan 05-08, AUD-02, D-13, D-14, D-16, A-01, T-05-20, T-05-21), one site each: the log writer
+# (core/src/psg/psg_log.c), the machine bus wrapper (machine_bus.c), the sample engine (psg_sample.c) and the layout
+# (machine.c).
+# PSG_REG_WRITE_NOT_LOGGED: a guest write to the PSG leaves no record and no chain step; replaying the empty log gives
+# silence, not the original samples (psg.log.replay-equals-run), and every test that reads a record fails with it.
+PSG_REG_WRITE_NOT_LOGGED psg.log.replay-equals-run psg.log.|psg.buffers.|psg.slice.|psg.fuzz.|psg.reset.|psg.bounds.|psg.iso. psg.log.effect-boundary
+# PSG_LOG_TICK_UNIT_START: the record carries the start of the unit, not the write's cycle: the stamp of a direct MVO is
+# 24 ticks and of an MVO@ 16 ticks too early (psg.log.window).
+PSG_LOG_TICK_UNIT_START psg.log.window psg.log.|psg.buffers.|psg.slice.|psg.fuzz. psg.log.byte-order
+# PSG_LOG_TICK_SLICE_RELATIVE: the record carries the tick relative to the first write of the call, so the records of
+# a sliced run differ from the one-call run (psg.slice.log-split).
+PSG_LOG_TICK_SLICE_RELATIVE psg.slice.log-split psg.log.|psg.buffers.|psg.slice.|psg.fuzz. psg.log.byte-order
+# PSG_WRITE_EFFECT_LATE_ONE_STEP: ivs_psg_write catches up one chip step too far before the store, so a write stamped
+# t is not seen by the sample at t + 16 (psg.log.effect-boundary); the module-level engine vectors write through it.
+PSG_WRITE_EFFECT_LATE_ONE_STEP psg.log.effect-boundary psg.log.|psg.tone.|psg.sample.|psg.chain.|psg.noise.|psg.env.|psg.amp.|psg.ampenv.|psg.profile.|psg.judge. psg.slice.seam-equals-run
+# PSG_STATIC_CARRY: the record index of the chain is read from a file-scope static that an empty row resynchronises, so
+# two instances that log in turn mix their chains (psg.iso.interleaved-instances).
+PSG_STATIC_CARRY psg.iso.interleaved-instances psg.iso.|psg.fuzz.|psg.slice. psg.log.framing
+# PSG_LOG_RECORDS_PER_FRAME_CUT: the layout publishes half of W_log (1,076 records per frame slot), below the
+# instruction-only density of 1,660 writes per frame: the safety net stops the worst-case writer INTERNAL.
+PSG_LOG_RECORDS_PER_FRAME_CUT psg.buffers.worst-case-writer psg.buffers.|psg.bounds. psg.log.byte-order

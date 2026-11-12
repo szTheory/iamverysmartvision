@@ -9,6 +9,7 @@
 # or a suite self-control `<suite>.judge.<slug>` / `<suite>.mutant.<slug>` that passes only when
 # its check fails for the intended reason. The audit behind this list is in
 # .planning/phases/04-headless-runner-and-installed-consumer/04-24-SUMMARY.md.
+# Phase 5 (plan 05-12) extends the registry to INP-01 INP-02 INP-03 API-03 AUD-01 AUD-02 (section below the Phase 4 lines).
 
 # API-02: absolute run bound, overshoot reported, slicing invariance (suite run, runner slicing),
 # timebase growth of ivs_info, pinned stop reasons.
@@ -135,3 +136,98 @@ ci-log control ci-log-order PKG-04
 gate-measure mutant cpu-dash-format PKG-04
 gate-measure mutant cpu-sh-format PKG-04
 gate-measure mutant cpu-garbage-unknown PKG-04
+
+# Phase 5 (plan 05-12, D-26): the six requirements INP-01 INP-02 INP-03 API-03 AUD-01 AUD-02. Each line is a
+# mechanism that is the sole evidence against a silent pass of its requirement. The audit behind this list is
+# in .planning/phases/05-hand-controllers-and-psg-sound/05-VERIFICATION.md.
+
+# INP-01: each of the 31 controls reads its documented byte on each port. A changed generator, a swapped
+# port, a missing inversion or a changed literal row must fail the single-control matrix.
+input-singles fault GEN_CTRL_MUTATION INP-01
+input-singles fault CTRL_PORTS_SWAPPED INP-01
+input-singles fault CTRL_NO_INVERSION INP-01
+input-literal control input-literal-name-set-missing INP-01
+input-literal control input-literal-duplicate INP-01
+input-literal control input-tag-missing INP-01
+input-literal control input-source-unknown INP-01
+input-literal control input-byte-mismatch INP-01
+input-literal control input-profile-mask-mismatch INP-01
+input-literal mutant input.judge.table-row-changed INP-01
+
+# INP-02: combinations follow the union rule, the wiki anchors and the decodability properties.
+input-combos fault CTRL_UNION_AS_AND INP-02
+input-combos fault CTRL_PORTS_SWAPPED INP-02
+input-combos fault CTRL_NO_INVERSION INP-02
+input-combos control input-tiling-pins INP-02
+input-combos mutant input.judge.table-row-changed INP-02
+input-direction mutant input.judge.direction-sense-flipped INP-02
+
+# INP-03: the core input is a machine-level word with no host mapping or device discovery: the profile
+# field shape, the exported-symbol guard and the purity guards keep host code out of the core.
+input-profile control input-profile-field-missing INP-03
+input-profile control input-profile-field-shape INP-03
+core-symbols control core-symbols-pcm-defined INP-03
+c-purity control core-purity-io INP-03
+c-purity control core-purity-fs INP-03
+c-purity control core-purity-clock INP-03
+
+# API-03: input applied at a declared machine-time boundary, identical results whatever the slicing, in
+# process, through the runner executable and through the installed package.
+input-boundary fault INPUT_PINS_NOT_RESTORED_ON_TAKEBACK API-03
+input-boundary fault INPUT_PINS_NOT_RESET API-03
+input-boundary fault INPUT_EXTRA_CONTROLLER_UNCHECKED API-03
+input-slicing fault INPUT_APPLY_AT_RUN_START API-03
+input-slicing fault RUN_EVENT_AT_TARGET_ONLY API-03
+input-slicing fault INPUT_LOG_SLICE_RELATIVE_TICK API-03
+runner-process mutant runner-process.mutant.ANDI-TO-MVII API-03
+runner-process mutant runner-process.mutant.MIXER-VALUE API-03
+runner-process mutant runner-process.mutant.PORT1-STORE-ADDR API-03
+runner-process mutant runner-process.judge.exit-mismatch API-03
+runner-process mutant runner-process.judge.body-differs API-03
+pkg-install mutant ctrl-digest-drift API-03
+pkg-install mutant ctrl-peek-wrong API-03
+
+# AUD-01: register file, tone, noise, envelope and amplitude rules with per-rule vectors and tagged
+# profile data. A wrong step, a flipped sense, a wrong tap or a swapped shape must fail a named vector.
+psg-tone fault PSG_TONE_PERIOD_OFF_BY_ONE AUD-01
+psg-tone fault PSG_STEP_IS_16_CLOCKS AUD-01
+psg-mixer fault PSG_MIXER_SENSE_INVERTED AUD-01
+psg-noise fault PSG_NOISE_WRONG_TAP AUD-01
+psg-noise fault PSG_NOISE_TAP_HARDCODED AUD-01
+psg-envelope fault PSG_ENV_SHAPE_ATTACK_DECAY_SWAPPED AUD-01
+psg-envelope fault PSG_ENV_HOLD_ALTERNATE_NO_RESET AUD-01
+psg-vectors control psg-vectors-rule-without-vector AUD-01
+psg-vectors control psg-vectors-vector-no-cite AUD-01
+psg-vectors control psg-vectors-unknown-default-unresolved AUD-01
+psg-vectors control psg-vectors-orphan-id AUD-01
+psg-vectors control psg-vectors-regmap-profile-mismatch AUD-01
+psg-vectors control psg-vectors-unregistered AUD-01
+psg-vectors control psg-vectors-field-pending-stale AUD-01
+psg-judge mutant psg.judge.mask-row-changed AUD-01
+psg-judge mutant psg.judge.regmap-literal-changed AUD-01
+psg-judge mutant psg.judge.port-row-changed AUD-01
+psg-judge mutant psg.judge.tone-row-changed AUD-01
+psg-judge mutant psg.judge.mix-row-changed AUD-01
+psg-judge mutant psg.judge.noise-row-changed AUD-01
+psg-judge mutant psg.judge.dac-row-changed AUD-01
+psg-judge mutant psg.judge.env-row-changed AUD-01
+
+# AUD-02: the cycle-stamped write log and integer chip-rate samples as raw audio, separate from host PCM.
+# The refpcm lines guard the reference converter that D7 keeps outside the core and outside the raw-audio
+# evidence path: no raw-audio claim reads them, they show the separation holds and the converter is repeatable.
+psg-log fault PSG_REG_WRITE_NOT_LOGGED AUD-02
+psg-log fault PSG_LOG_TICK_UNIT_START AUD-02
+psg-log fault PSG_LOG_TICK_SLICE_RELATIVE AUD-02
+psg-log fault PSG_LOG_RECORDS_PER_FRAME_CUT AUD-02
+psg-samples fault PSG_SAMPLE_PHASE_RESET_PER_CALL AUD-02
+psg-samples fault AUDIO_STATE_DEPENDS_ON_BUFFER AUD-02
+psg-samples fault AUDIO_SLACK_ZERO AUD-02
+psg-buffers fault PSG_OUTBUF_PARTIAL_WRITE AUD-02
+runner-audio fault RUNNER_AUDIO_CHAIN_CHECK_SKIPPED AUD-02
+runner-audio fault RUNNER_PSGLOG_ASSERT_IGNORED AUD-02
+raw-audio-separate control core-symbols-pcm-defined AUD-02
+refpcm-judge mutant runner.judge.refpcm-floor-rounding AUD-02
+refpcm-judge mutant runner.judge.refpcm-dc-state-carry AUD-02
+refpcm-judge mutant runner.judge.refpcm-rate-drift AUD-02
+refpcm-golden control golden-refpcm-mismatch AUD-02
+pkg-install mutant ctrl-domain-missing AUD-02

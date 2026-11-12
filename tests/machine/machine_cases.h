@@ -59,8 +59,8 @@ extern const ivs_test_case ivs_machine_sweep_cases[];
 extern const size_t ivs_machine_sweep_count;
 
 /* ---- shared stand-in content (plan 03-12, machine_standin.c) ----
- * Instances in exact-size heap storage and generated images (D-24): IVS_MS_PROG_A and _B are
- * two hand-assembled EXEC programs at $1000 (see machine_standin.c for their decles and the
+ * Instances in exact-size heap storage and generated images (D-24): IVS_MS_PROG_A, _B, _C and _PORTS
+ * are hand-assembled EXEC programs at $1000 (see machine_standin.c for their decles and the
  * vector rows the encodings come from); content A and B pair a program with its own GROM pattern
  * and one cartridge segment (A: 16 words at $5000, B: 24 words at $6000). */
 #define IVS_MS_PROFILE "intv-2609-ntsc-family-p1"
@@ -68,6 +68,14 @@ extern const size_t ivs_machine_sweep_count;
 #define IVS_MS_GROM_BYTES 2048u
 #define IVS_MS_PROG_A 0u
 #define IVS_MS_PROG_B 1u
+#define IVS_MS_PROG_C 2u /* plan 05-04: writes and reads back PSG register $01F4 */
+#define IVS_MS_PROG_PORTS 3u /* plan 05-05: reads $01FE and $01FF once into $0200 and $0201 */
+#define IVS_MS_PROG_POLL_CONST 4u /* plan 05-05: constant-cycle port poller, log at $0300 (fuzz content B) */
+#define IVS_MS_PROG_POLL_BRANCH 5u /* plan 05-05: data-dependent port poller (fuzz content C) */
+#define IVS_MS_PROG_TONE 6u /* plan 05-06: programs tone A (R7 $3E, amplitude $0F, period 1) late, then loops */
+#define IVS_MS_PROG_CONST 7u /* plan 05-06: channel A constant level 15 from its amplitude write on (mixer $3F) */
+#define IVS_MS_PROG_ENV 8u /* plan 05-07: mixer $3F, amplitude A $30 (envelope), period 1, then the shape write $08 */
+#define IVS_MS_PROGS 9u
 #define IVS_MS_CONTENT_A 0u
 #define IVS_MS_CONTENT_B 1u
 
@@ -91,6 +99,13 @@ int ivs_ms_load(ivs_machine *m, uint32_t kind, uint8_t *bytes, size_t len);
 int ivs_ms_content(ivs_machine *m, uint32_t content);
 /* ivs_ms_new, ivs_ms_content, then a power-on reset. */
 int ivs_ms_powered(ivs_ms_inst *x, uint32_t content, uint8_t poison);
+/* ivs_ms_new, the EXEC program (IVS_MS_PROG_*), the GROM and cartridge of content A, then a power-on
+ * reset (plan 05-05). */
+int ivs_ms_powered_prog(ivs_ms_inst *x, uint32_t program, uint8_t poison);
+/* Plan 05-08: an EXEC image from words at $1000 (heap, the caller frees), and ivs_ms_powered_prog for such a
+ * program (each word at most $3FF). */
+uint8_t *ivs_ms_exec_words(const uint16_t *words, size_t n);
+int ivs_ms_powered_words(ivs_ms_inst *x, const uint16_t *words, size_t n, uint8_t poison);
 /* Steps units units through the seam, adding their CPU cycles to *cycles when not NULL. */
 int ivs_ms_step(ivs_machine *m, uint32_t units, uint64_t *cycles);
 /* The composite and CPU digests. */

@@ -53,7 +53,7 @@
 
 static const uint32_t ro_domains[IVS_RUN_SNAP_DIGESTS] = {
     IVS_DIGEST_COMPOSITE, IVS_DIGEST_CPU,   IVS_DIGEST_MEM,   IVS_DIGEST_IMAGES,
-    IVS_DIGEST_INSTANCE,  IVS_DIGEST_VIDEO, IVS_DIGEST_AUDIO, IVS_DIGEST_INPUT};
+    IVS_DIGEST_INSTANCE,  IVS_DIGEST_VIDEO, IVS_DIGEST_AUDIO, IVS_DIGEST_INPUT, IVS_DIGEST_PSGLOG};
 
 /* ---- the refusal and side-effect oracle (run_cases.h) ---- */
 
@@ -564,17 +564,21 @@ done:
 }
 
 /* Undriven space and empty slots: a fresh instance reads the undriven value at $0080 (no region),
- * $01F0 (a stub) and $1000 / $3000 / $5000 (no image loaded), and zero in system RAM; each equals
- * the CPU read. */
+ * $0000 (a STIC stub) and $1000 / $3000 / $5000 (no image loaded), and zero in system RAM and in
+ * the PSG register file ($01F0, $01F1: a real device since plan 05-04) and the idle byte $00FF at the two
+ * ports $01FE, $01FF (plan 05-05: a port in input mode with no pin held low); each equals the CPU read. */
 static int ro_peek_undriven(void)
 {
   static const uint16_t fill2[2] = {RO_FILL, RO_FILL};
   static const uint16_t zero2[2] = {0u, 0u};
+  static const uint16_t idle2[2] = {0x00FFu, 0x00FFu}; /* the PSG ports, no pin held low (plan 05-05) */
   ivs_ms_inst x;
   int rc = IVS_TEST_FAIL;
   IVS_CHECK(ivs_ms_new(&x, RO_POISON));
   RO_CHECK(ro_peek_is(&x, 0x0080u, 2u, fill2));
-  RO_CHECK(ro_peek_is(&x, 0x01F0u, 2u, fill2));
+  RO_CHECK(ro_peek_is(&x, 0x0000u, 2u, fill2));
+  RO_CHECK(ro_peek_is(&x, 0x01F0u, 2u, zero2));
+  RO_CHECK(ro_peek_is(&x, 0x01FEu, 2u, idle2));
   RO_CHECK(ro_peek_is(&x, 0x1000u, 2u, fill2));
   RO_CHECK(ro_peek_is(&x, 0x3000u, 2u, fill2));
   RO_CHECK(ro_peek_is(&x, 0x5000u, 2u, fill2));

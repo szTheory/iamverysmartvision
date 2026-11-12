@@ -1,4 +1,5 @@
 # Known-good control tree coverage still pending.
 ALL
 ONES
+B
 policy:POL-TOY-01

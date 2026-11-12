@@ -15,12 +15,21 @@ set(IVS_CORE_SOURCES
   src/cpu/cp1610_decode.c
   src/machine/machine.c
   src/machine/machine_bound.c
+  src/machine/machine_bus.c
   src/machine/machine_digest.c
   src/machine/machine_input.c
   src/machine/machine_inspect.c
   src/machine/machine_load.c
   src/machine/machine_run.c
   src/memmap/memsys.c
+  src/psg/psg_env.c
+  src/psg/psg_mix.c
+  src/psg/psg_noise.c
+  src/psg/psg_regs.c
+  src/psg/psg_log.c
+  src/psg/psg_sample.c
+  src/psg/psg_state.c
+  src/psg/psg_tone.c
 )
 
 # Generated core include (D-16, H2 a, plan 03-04): the memory map, device records and profile
@@ -42,7 +51,35 @@ add_custom_command(
   DEPENDS ${IVS_PROFILE_FILES} "${IVS_MEMMAP_GENERATOR}"
   COMMENT "Generating the memory map and profile registry"
   VERBATIM)
-add_custom_target(ivs_core_gen DEPENDS "${IVS_PROFILES_INC}")
+# Second generated include (A-06, plan 05-04): the PSG parameters (register masks from psg.regmap)
+# written by cmake/IvsPsgTable.cmake into gen/ivs_psg_params.inc. psg_regs.c is its only includer
+# and data/expected/core-generated.ids lists it with its generator. ivs_core_gen waits for both.
+set(IVS_PSG_PARAMS_INC "${IVS_CORE_GEN_DIR}/ivs_psg_params.inc")
+set(IVS_PSG_GENERATOR "${PROJECT_SOURCE_DIR}/cmake/IvsPsgTable.cmake")
+add_custom_command(
+  OUTPUT "${IVS_PSG_PARAMS_INC}"
+  COMMAND "${CMAKE_COMMAND}" -E make_directory "${IVS_CORE_GEN_DIR}"
+  COMMAND "${CMAKE_COMMAND}" "-DROOT=${PROJECT_SOURCE_DIR}" "-DOUT=${IVS_PSG_PARAMS_INC}"
+          -P "${IVS_PSG_GENERATOR}"
+  DEPENDS ${IVS_PROFILE_FILES} "${IVS_PSG_GENERATOR}"
+  COMMENT "Generating the PSG parameter table"
+  VERBATIM)
+# Third generated include (plan 05-05, D-02): the control-to-pin table ivs_ctrl_lines[profile][31]
+# from the profile fields input.control.* by cmake/IvsCtrlTable.cmake (it also reads
+# data/expected/input-bits.ids, the pinned name set). machine_input.c is its only includer; the
+# named fault GEN_CTRL_MUTATION rebuilds that TU against a one-bit mutation of it.
+set(IVS_CTRL_LINES_INC "${IVS_CORE_GEN_DIR}/ivs_ctrl_lines.inc")
+set(IVS_CTRL_GENERATOR "${PROJECT_SOURCE_DIR}/cmake/IvsCtrlTable.cmake")
+set(IVS_INPUT_BITS_IDS "${PROJECT_SOURCE_DIR}/data/expected/input-bits.ids")
+add_custom_command(
+  OUTPUT "${IVS_CTRL_LINES_INC}"
+  COMMAND "${CMAKE_COMMAND}" -E make_directory "${IVS_CORE_GEN_DIR}"
+  COMMAND "${CMAKE_COMMAND}" "-DROOT=${PROJECT_SOURCE_DIR}" "-DOUT=${IVS_CTRL_LINES_INC}"
+          -P "${IVS_CTRL_GENERATOR}"
+  DEPENDS ${IVS_PROFILE_FILES} "${IVS_CTRL_GENERATOR}" "${IVS_INPUT_BITS_IDS}"
+  COMMENT "Generating the controller line table"
+  VERBATIM)
+add_custom_target(ivs_core_gen DEPENDS "${IVS_PROFILES_INC}" "${IVS_PSG_PARAMS_INC}" "${IVS_CTRL_LINES_INC}")
 set(IVS_CORE_GEN_TARGET ivs_core_gen)
 
 set(ivs_core_objects "")

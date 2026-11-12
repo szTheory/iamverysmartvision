@@ -10,7 +10,8 @@
  *                    unknown-tail scan reads at most 4096 bytes); profile id NULL or without a NUL in
  *                    its first 64 bytes; storage not 16-byte aligned;
  *   UNSUPPORTED      nonzero flags; a nonzero byte in a larger caller struct's unknown tail;
- *   UNKNOWN_PROFILE  the id is not in the registry (exact, case-sensitive match);
+ *   UNKNOWN_PROFILE  the id is not in the registry (exact, case-sensitive match), or its profile is
+ *                    not covered by every generated table (never true of a consistent build);
  *   BUFFER_TOO_SMALL storage_bytes below the instance size.
  * Only then does it zero the instance bytes (sizeof the instance; bytes past them belong to the
  * host and are never touched) and set the fields of a new instance. A refusal writes *out = NULL
@@ -29,19 +30,40 @@ _Static_assert(IVS_SLOT_COUNT == 3u, "three image slots");
 _Static_assert(sizeof(ivs_image_report) == 64u, "ivs_image_report is 64 bytes");
 _Static_assert(IVS_INFO_V1_SIZE == offsetof(ivs_info, ticks_per_cpu_cycle), "ivs_info v1 ends at the timebase");
 _Static_assert(offsetof(ivs_info, nominal_frame_ticks) % 8u == 0u, "64-bit info members are 8-aligned");
-_Static_assert(sizeof(ivs_info) == 256u, "ivs_info is 256 bytes");
+_Static_assert(offsetof(ivs_info, reserved2) == 252u, "ivs_info v2 ends at reserved2 (256 bytes)");
+_Static_assert(offsetof(ivs_info, audio_sample_ticks) == 256u, "info v3 tail starts at 256");
+_Static_assert(offsetof(ivs_info, audio_sample_bytes) == 260u, "audio_sample_bytes at 260");
+_Static_assert(offsetof(ivs_info, psg_log_record_bytes) == 264u, "psg_log_record_bytes at 264");
+_Static_assert(offsetof(ivs_info, psg_log_records_per_frame) == 268u, "psg_log_records_per_frame at 268");
+_Static_assert(offsetof(ivs_info, crystal_hz_num) == 272u, "crystal_hz_num at 272");
+_Static_assert(offsetof(ivs_info, crystal_hz_den) == 280u, "crystal_hz_den at 280");
+_Static_assert(sizeof(ivs_info) == 288u, "ivs_info is 288 bytes");
 
-/* 1 when m is a live instance: the magic, and a stored profile index that is in the registry and
- * the same in the memory system (review WR-03). The instance lives in host storage, so the
- * profile words cross the trust boundary just as the magic does; every call, and every memsys
- * table index behind it, then sees a registered profile. */
+/* 1 when registry index index is usable by the machine (review WR-04). The registry, the PSG parameter
+ * table and the control-line table are three generated includes, each in its own translation unit, that
+ * rely on one sorted list of profile files; nothing at compile time ties their counts. An index is
+ * therefore usable only below the smallest of the three counts: the lookup refuses a profile outside
+ * them (UNKNOWN_PROFILE) and the handle check refuses a stored index outside them, so no table is read
+ * past its end and the PSG code never meets a missing row, which would silence the device. Test
+ * machine.create.tables-cover-registry fails the gate when the three counts differ (named faults
+ * PSG_TABLE_SHORT and CTRL_TABLE_SHORT). */
+static uint32_t ivs_machine_profile_covered(uint32_t index)
+{
+  return (uint32_t)(index < ivs_profile_count() && index < ivs_psg_params_count() &&
+                    index < ivs_input_profile_count());
+}
+
+/* 1 when m is a live instance: the magic, and a stored profile index that is covered by every
+ * generated table and the same in the memory system (review WR-03, WR-04). The instance lives in host
+ * storage, so the profile words cross the trust boundary just as the magic does; every call, and every
+ * table index behind it, then sees a registered profile with a row in each table. */
 static uint32_t ivs_machine_handle_ok(const struct ivs_machine *m)
 {
   uint32_t profile_ok;
   if (m == NULL || m->magic != IVS_MACHINE_MAGIC) {
     return 0u;
   }
-  profile_ok = (uint32_t)(m->profile < ivs_profile_count() && m->mem.profile == m->profile);
+  profile_ok = (uint32_t)(ivs_machine_profile_covered(m->profile) != 0u && m->mem.profile == m->profile);
 #ifdef IVS_FAULT_HANDLE_TRUSTS_PROFILE
   profile_ok = 1u; /* the stored profile words are trusted: a corrupted index reaches the calls */
 #endif
@@ -121,6 +143,9 @@ ivs_status ivs_machine_profile_lookup(const char *id, uint32_t *index)
       }
     }
     if (same != 0u) {
+      if (ivs_machine_profile_covered(p) == 0u) {
+        return IVS_E_UNKNOWN_PROFILE; /* a registered profile that a generated table does not cover */
+      }
       *index = p;
       return IVS_OK;
     }
@@ -297,20 +322,53 @@ ivs_status ivs_machine_info(const ivs_machine *m, ivs_info *out)
   r.video_bytes_per_frame = env.video_bytes_per_frame;
   r.audio_format = env.audio_format;
   r.audio_bytes_per_frame = env.audio_bytes_per_frame;
+  /* v3 (plan 05-06, D-15, D-19): the audio sample grid and the crystal passthrough, republished
+   * from the profile; the core never reads the crystal. */
+  r.audio_sample_ticks = p->psg_sample_period_ticks;
+  r.audio_sample_bytes = env.audio_format != IVS_OUTPUT_FORMAT_NONE ? IVS_PSG_SAMPLE_BYTES : 0u;
+  r.crystal_hz_num = p->crystal_hz_num;
+  r.crystal_hz_den = p->crystal_hz_den;
+  /* v3 (plan 05-08, D-13, D-14): the write-log record size and the records one frame slot is sized for (the
+   * same figure the capacity of the public run call uses, so a caller sizes its log buffer from info). */
+  r.psg_log_record_bytes = IVS_PSG_LOG_RECORD_BYTES;
+  r.psg_log_records_per_frame = env.psg_log_bytes_per_frame / IVS_PSG_LOG_RECORD_BYTES;
   memcpy(out, &r, n);
   return IVS_OK;
 }
 
 void ivs_machine_profile_env(const ivs_profile_desc *p, ivs_run_env *env)
 {
+  uint64_t frame;
+  uint64_t period = p->psg_sample_period_ticks;
   memset(env, 0, sizeof *env);
-  /* The real profiles produce no video or audio bytes in Phase 4 (D-06): no frame is fabricated. */
+  frame = (uint64_t)p->ticks_per_cpu_cycle * (uint64_t)p->cpu_cycles_per_scanline * (uint64_t)p->scanlines_per_frame;
+  /* No video yet (plan 05-09 and later); the write log layout is set at the end (plan 05-08) (D-06: no frame is fabricated). */
   env->video_format = IVS_OUTPUT_FORMAT_NONE;
   env->video_bytes_per_frame = 0u;
   env->audio_format = IVS_OUTPUT_FORMAT_NONE;
   env->audio_bytes_per_frame = 0u;
-  env->nominal_frame_ticks = (uint64_t)p->ticks_per_cpu_cycle * (uint64_t)p->cpu_cycles_per_scanline *
-                             (uint64_t)p->scanlines_per_frame;
+  env->nominal_frame_ticks = frame;
+  if (period != 0u) {
+    /* Plan 05-06 (D-15, D-17): the audio layout is real. One sample per chip step, so a frame holds
+     * ceil(F / P) samples, plus the slack s = ceil(U / P) + 1 that covers the overshoot of the last
+     * unit of a call (U = psg.max_unit_ticks, derived and probed); the bytes per frame follow. */
+    uint64_t per_frame = (frame + period - 1u) / period;
+    uint64_t slack = ((uint64_t)p->psg_max_unit_ticks + period - 1u) / period + 1u;
+#ifdef IVS_FAULT_AUDIO_SLACK_ZERO
+    slack = 0u; /* named fault: no slack, so a call whose last unit overshoots can emit more than the capacity */
+#endif
+    env->audio_format = IVS_OUTPUT_FORMAT_PSG_LEVELS_V1;
+    env->audio_bytes_per_frame = (uint32_t)((per_frame + slack) * IVS_PSG_SAMPLE_BYTES);
+  }
+  /* Plan 05-08 (D-13, D-14): the write-log layout is real. A frame slot holds psg.log_records_per_frame records
+   * (W_log = ceil(F / g) + ceil(U / g) + 1, generator-checked and probed) of 16 bytes. */
+  if (p->psg_log_records_per_frame != 0u) {
+    uint32_t records = p->psg_log_records_per_frame;
+#ifdef IVS_FAULT_PSG_LOG_RECORDS_PER_FRAME_CUT
+    records /= 2u; /* named fault: the env publishes half of W_log, below the instruction-only write density */
+#endif
+    env->psg_log_bytes_per_frame = records * IVS_PSG_LOG_RECORD_BYTES;
+  }
 }
 
 void ivs_machine_slot_report(const ivs_machine_slot *s, ivs_image_report *o)

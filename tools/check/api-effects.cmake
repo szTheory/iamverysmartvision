@@ -69,6 +69,7 @@ set(ATOKENS api-status-renumbered api-status-unpinned api-status-reserved api-ca
 set(DEFINE_CLASSES
   "IVS_STOP_|data/expected/api-stop-reasons.ids|uint|"
   "IVS_REASON_|data/expected/api-reasons.ids|uint|"
+  "IVS_PSGLOG_SRC_|data/expected/psg-log-source.ids|uint|"
   "IVS_CTRL_|data/expected/input-bits.ids|bit|IVS_CTRL_RESERVED_MASK")
 set(STATUS_H "core/include/ivs/ivs_status.h")
 set(PIN "data/expected/api-statuses.ids")

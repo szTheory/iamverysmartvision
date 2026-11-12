@@ -405,6 +405,60 @@ static int mr_damaged_both(void)
   return mr_damaged_profile(MR_DAMAGE_BOTH);
 }
 
+/* Plan 05-03 (D-04, D-16): a power-on reset clears the PSG storage. Two instances of content A
+ * are powered; one then has the PSG registers, the pull-down masks, every PSG state member and
+ * every observation row (the audio level rows and the PSGLOG rows included) dirtied, and is reset
+ * again. The whole storage, byte for byte, and every digest then equal the untouched reference's
+ * (the reset adds nothing and leaves nothing behind). The two pad bytes of the memory system are
+ * never written by anything and stay zero, so they are not dirtied. */
+static int mr_psg_state_cleared(void)
+{
+  ivs_ms_inst a;
+  ivs_ms_inst r;
+  struct ivs_machine *im;
+  uint32_t d;
+  uint8_t da[32];
+  uint8_t dr[32];
+  int rc = IVS_TEST_FAIL;
+  if (!ivs_ms_powered(&r, IVS_MS_CONTENT_A, 0x5Au)) {
+    return IVS_TEST_FAIL;
+  }
+  if (!ivs_ms_powered(&a, IVS_MS_CONTENT_A, 0x5Au)) {
+    ivs_ms_free(&r);
+    return IVS_TEST_FAIL;
+  }
+  im = ivs_machine_from_handle_mut(a.m);
+  if (im == NULL) {
+    goto done;
+  }
+  memset(im->mem.psg_reg, 0xA5, sizeof im->mem.psg_reg);
+  memset(im->mem.port_pulldown, 0xA5, sizeof im->mem.port_pulldown);
+  memset(&im->psg, 0xA5, sizeof im->psg);
+  memset(&im->obs, 0xA5, sizeof im->obs);
+  if (ivs_machine_reset(a.m, IVS_RESET_POWER_ON) != IVS_OK) {
+    goto done;
+  }
+  if (memcmp(a.storage, r.storage, IVS_MACHINE_BYTES) != 0) {
+    ivs_test_diag("storage after the reset differs from the reference");
+    goto done;
+  }
+  for (d = 0u; d <= 19u; d++) {
+    if (d > 4u && d < 16u) {
+      continue;
+    }
+    if (ivs_machine_state_digest(a.m, d, da) != IVS_OK || ivs_machine_state_digest(r.m, d, dr) != IVS_OK ||
+        memcmp(da, dr, 32u) != 0) {
+      ivs_test_diag("digest of domain %u differs", (unsigned)d);
+      goto done;
+    }
+  }
+  rc = IVS_TEST_PASS;
+done:
+  ivs_ms_free(&a);
+  ivs_ms_free(&r);
+  return rc;
+}
+
 const ivs_test_case ivs_machine_reset_cases[] = {
     {"machine.refuse.handle.mem-profile-mismatch", mr_damaged_mem_profile, NULL},
     {"machine.refuse.handle.profile-garbage", mr_damaged_both, NULL},
@@ -413,6 +467,7 @@ const ivs_test_case ivs_machine_reset_cases[] = {
     {"machine.reset.iab-reset-vector", mr_iab_reset_vector, NULL},
     {"machine.reset.no-cart-ok", mr_no_cart_ok, NULL},
     {"machine.reset.power-cycle-one-way", mr_power_cycle_one_way, NULL},
+    {"machine.reset.psg-state-cleared", mr_psg_state_cleared, NULL},
     {"machine.reset.step-program", mr_step_program, NULL},
     {"machine.reset.step-refusals", mr_step_refusals, NULL},
 };

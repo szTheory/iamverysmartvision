@@ -5,15 +5,31 @@
  *
  * One flat struct with no pointers: magic, profile index, run phase, a reserved word, machine
  * time, the embedded 32-byte CPU state, the memory system (gates, loaded flags, the committed
- * cartridge segment table and every backing array at the profile's worst-case capacity), an
- * explicit pad word, the observation rows (plan 04-05, D-10: the video, audio and input digest
- * domains 16..18) and one record per image slot. Every field is fixed width; the only bytes that
- * are not fields are the reserved word, the CPU's reserved bytes and the observation pad word,
- * and all of them stay zero. The instance holds no last-error or timestamp (D-08); the
- * observation counts are machine state of their domains.
- * Layout (bytes): header 24, cpu 32, mem 113,228 (ends at an offset that is 4 mod 8), pad 4,
- * obs 144, slots 3 x 56: 113,600, a multiple of 16, so there is no tail padding (machine_digest.c
- * asserts it). The previous layout (Phase 3, no obs) was 113,456 with 4 bytes of tail padding. */
+ * cartridge segment table, every backing array at the profile's worst-case capacity and the PSG
+ * registers and port pull-down masks), the PSG device state (plan 05-03, D-16), the observation
+ * rows (plan 04-05, D-10: the video, audio and input digest domains 16..18; plan 05-03, D-18:
+ * the PSG write log, domain 19) and one record per image slot. Every field is fixed width; the
+ * only bytes that are not fields are the reserved words and pads (the instance's, the CPU's, the
+ * memory system's, the PSG state's and the audio row's), and all of them stay zero. The instance
+ * holds no last-error or timestamp (D-08); the observation counts are machine state of their
+ * domains.
+ *
+ * Layout derivation (bytes; offsets from the start of the instance):
+ *   header   24   magic, profile, phase, reserved (4 each) and time_ticks (8)         0 ..    24
+ *   cpu      32                                                                      24 ..    56
+ *   mem  113,264  Phase 4: 113,228; plus psg_reg[16] u16 (32), port_pulldown[2] u8 (2)
+ *                 and psg_reserved[2] (2): +36                                       56 .. 113,320
+ *   psg       72  ivs_psg_state: next_sample u64 (8), 13 u32 state words (52) and
+ *                 reserved[3] u32 (12)                                          113,320 .. 113,392
+ *   obs      200  video 40 (chain 32, count 8), audio 56 (chain 32, count 8,
+ *                 emitted 8, prev_levels 4, reserved 4), input 64, psglog 40
+ *                 (chain 32, count 8)                                             113,392 .. 113,592
+ *   slots    168  3 x 56                                                         113,592 .. 113,760
+ * Total 113,760, a multiple of 16 (7,110 x 16), so there is no tail padding. mem now ends at
+ * 56 + 113,264 = 113,320, which is 0 mod 8: the Phase 4 obs_pad word is gone and obs (8-aligned)
+ * follows the PSG state directly (the 72-byte PSG state is what brings the total back to a
+ * multiple of 16: with 64 bytes it would end at 113,752, 8 mod 16). The previous layout (Phase 4)
+ * was 113,600; Phase 3 (no obs) was 113,456 with 4 bytes of tail padding. */
 #ifndef IVS_MACHINE_INTERNAL_H
 #define IVS_MACHINE_INTERNAL_H
 
@@ -25,15 +41,14 @@
 #include "ivs/ivs_machine.h"
 #include "ivs/ivs_run.h"
 #include "memmap/memsys.h"
+#include "psg/psg.h"
 
 #define IVS_MACHINE_MAGIC 0x4956534Du /* "IVSM" */
 #define IVS_MACHINE_ALIGN 16u
-#define IVS_MACHINE_BYTES 113600u
+#define IVS_MACHINE_BYTES 113760u
 
-/* The v1 (Phase 3) size of ivs_info (A-02, plan 04-09): the smallest struct_size info accepts.
- * Fields after it are written only when the caller's struct_size covers them. machine.c ties it
- * to offsetof(ivs_info, ticks_per_cpu_cycle). */
-#define IVS_INFO_V1_SIZE 216u
+/* IVS_INFO_V1_SIZE, the smallest struct_size info accepts, is public (ivs/ivs_machine.h, plan
+ * 05-02): the installed consumer pins it from the installed headers. */
 
 /* One image slot (kind fixed at create: slot i holds kind i + 1). */
 typedef struct ivs_machine_slot {
@@ -46,16 +61,25 @@ typedef struct ivs_machine_slot {
   uint8_t sha256[32];
 } ivs_machine_slot;
 
-/* Observation rows (plan 04-05, D-10, A-03): a chain[32] and a u64 record count for VIDEO
- * (digest domain 16) and AUDIO (17); INPUT (18) holds the controller words in force, the applied
- * event count, the input floor tick and the input chain (plan 04-11, D-15). Every row is zero at
- * create and after a reset except the INPUT chain, which then holds its start value h0
- * (ivs_input_init). Domain version 1; not part of the composite, which stays version 1 over
- * domains 1..4. */
+/* Observation rows (plan 04-05, D-10, A-03; plan 05-03, D-18): a chain[32] and a u64 record count
+ * for VIDEO (digest domain 16) and PSGLOG (19); AUDIO (17) adds the emitted-sample count and the
+ * levels of the last emitted sample (the chain is over level-change records, plan 05-06); INPUT
+ * (18) holds the controller words in force, the applied event count, the input floor tick and
+ * the input chain (plan 04-11, D-15). Every row is zero at create and after a reset except the
+ * INPUT chain, which then holds its start value h0 (ivs_input_init). Domain version 1; not part
+ * of the composite, which is version 2 over domains 1..4. */
 typedef struct ivs_machine_obs_av {
   uint8_t chain[32];
   uint64_t count;
 } ivs_machine_obs_av;
+
+/* The AUDIO row is the PSG module's observation struct (psg/psg.h, plan 05-06): the chain over the
+ * level-change records, the emitted count and the previous sample's levels. */
+typedef ivs_psg_obs ivs_machine_obs_audio;
+
+/* The PSGLOG row is the PSG module's log row (psg/psg.h, plan 05-08): chain[32] and the record count, the
+ * same 40 bytes as the VIDEO row. */
+typedef ivs_psg_logrow ivs_machine_obs_psglog;
 
 typedef struct ivs_machine_obs_input {
   uint32_t words[4];
@@ -66,8 +90,9 @@ typedef struct ivs_machine_obs_input {
 
 typedef struct ivs_machine_obs {
   ivs_machine_obs_av video;
-  ivs_machine_obs_av audio;
+  ivs_machine_obs_audio audio;
   ivs_machine_obs_input input;
+  ivs_machine_obs_psglog psglog;
 } ivs_machine_obs;
 
 struct ivs_machine {
@@ -78,15 +103,18 @@ struct ivs_machine {
   uint64_t time_ticks;         /* machine time in master ticks */
   ivs_cp1610 cpu;
   ivs_memsys mem;
-  uint32_t obs_pad;    /* 0: mem ends at 4 mod 8, so this word keeps obs 8-aligned with no hole */
+  ivs_psg_state psg;   /* before obs and slot[] (plan 05-03, D-16): O(1) PSG device state */
   ivs_machine_obs obs; /* before slot[]: IVS_FAULT_DIGEST_SKIPS_IMAGE_TABLE skips rows from slot on */
   ivs_machine_slot slot[IVS_SLOT_COUNT];
 };
 
 _Static_assert(sizeof(ivs_machine_slot) == 56u, "ivs_machine_slot must be 56 bytes");
-_Static_assert(sizeof(ivs_machine_obs) == 144u, "ivs_machine_obs must be 144 bytes");
-_Static_assert(offsetof(struct ivs_machine, obs) == offsetof(struct ivs_machine, obs_pad) + 4u,
-               "no implicit hole between the observation pad word and obs");
+_Static_assert(sizeof(ivs_machine_obs_audio) == 56u, "ivs_machine_obs_audio must be 56 bytes");
+_Static_assert(sizeof(ivs_machine_obs) == 200u, "ivs_machine_obs must be 200 bytes");
+_Static_assert(offsetof(struct ivs_machine, mem) == 56u, "mem starts at 56");
+_Static_assert(offsetof(struct ivs_machine, psg) == 113320u, "psg state starts at 113,320");
+_Static_assert(offsetof(struct ivs_machine, obs) == 113392u, "obs follows the 72-byte PSG state with no hole");
+_Static_assert(offsetof(struct ivs_machine, slot) == 113592u, "slot[] follows the 200-byte obs rows with no hole");
 _Static_assert(_Alignof(struct ivs_machine) == IVS_MACHINE_ALIGN, "instance alignment is 16");
 _Static_assert(sizeof(struct ivs_machine) == IVS_MACHINE_BYTES,
                "instance size changed: review the digest field table (machine_digest.c)");
@@ -100,21 +128,24 @@ _Static_assert(sizeof(struct ivs_machine) == IVS_MACHINE_BYTES,
  * observation pad word) are declared but never serialized; their domain names the neighbour they
  * sit with. Domain preimage: "IVSD" || u8 domain || u16 IVS_DIGEST_DOMAIN_VERSION || the domain's
  * rows in table order. Composite: "IVSSTATE" || u16 IVS_DIGEST_COMPOSITE_VERSION || for domains
- * 1..4: u8 domain || its 32-byte SHA-256. Domains 16..18 (VIDEO, AUDIO, INPUT) have their own
- * digests and are not in the composite (D-10). */
+ * 1..4: u8 domain || its 32-byte SHA-256. Domains 16..19 (VIDEO, AUDIO, INPUT, PSGLOG) have their
+ * own digests and are not in the composite (D-10, D-18). Composite version 2 (plan 05-03,
+ * deliberate, D-18): the PSG registers and pull-downs (MEM) and the PSG device state (INSTANCE)
+ * joined domains 2 and 4, so guest-visible PSG state can never differ with equal composites;
+ * version 1 was the Phase 4 framing over the same four domains. */
 #define IVS_DIGEST_KIND_UINT 1u
 #define IVS_DIGEST_KIND_PROFILE 2u
 #define IVS_DIGEST_KIND_MAGIC 3u
 #define IVS_DIGEST_KIND_PAD 4u
 #define IVS_DIGEST_DOMAIN_VERSION 1u
-#define IVS_DIGEST_COMPOSITE_VERSION 1u
+#define IVS_DIGEST_COMPOSITE_VERSION 2u
 
 typedef struct ivs_digest_field {
   const char *name;
   uint32_t offset; /* offsetof(struct ivs_machine, ...) */
   uint32_t width;  /* bytes per element */
   uint32_t count;  /* elements */
-  uint8_t domain;  /* IVS_DIGEST_CPU..IVS_DIGEST_INSTANCE or IVS_DIGEST_VIDEO..IVS_DIGEST_INPUT */
+  uint8_t domain;  /* IVS_DIGEST_CPU..IVS_DIGEST_INSTANCE or IVS_DIGEST_VIDEO..IVS_DIGEST_PSGLOG */
   uint8_t kind;    /* IVS_DIGEST_KIND_* */
   uint16_t reserved;
 } ivs_digest_field;
@@ -123,7 +154,7 @@ typedef struct ivs_digest_field {
 size_t ivs_machine_digest_field_count(void);
 const ivs_digest_field *ivs_machine_digest_field(size_t i);
 
-/* Writes the preimage of domain 1..4 or 16..18 of m into buf (at most cap bytes; buf may be NULL when cap
+/* Writes the preimage of domain 1..4 or 16..19 of m into buf (at most cap bytes; buf may be NULL when cap
  * is 0) and returns its full length; 0 for NULL m or another domain. No handle check: the tests
  * pass modified copies. */
 size_t ivs_machine_digest_preimage(const struct ivs_machine *m, uint32_t domain, uint8_t *buf, size_t cap);
@@ -155,18 +186,60 @@ uint32_t ivs_machine_span_overlaps(const void *p, size_t n, const void *inst, si
  * (REPORT_INSIDE_UNCHECKED). */
 uint32_t ivs_machine_out_overlaps(const void *out, size_t n, const void *inst, size_t inst_bytes);
 
+/* ---- machine-level bus wrapper (plan 05-04, A-01, machine_bus.c) ----
+ * The CPU port of every unit the machine steps: ctx is an ivs_machine_bus_ctx built per unit in the
+ * step seam (the run call steps through the seam). The wrapper delegates EVERY access to
+ * ivs_memsys_bus on the instance's own memory system, which keeps the masked store of the PSG
+ * region (ivs_psg_reg_store); for a write that reaches the PSG region it first catches the PSG up to
+ * the write's tick and, after the store, appends the write-log record (plans 05-06 and 05-08, below).
+ * The context carries the unit start tick (machine time before the step) and the master ticks per CPU
+ * cycle of the profile, from which the wrapper stamps a write. ivs_memsys_bus itself answers wait 0
+ * for every kind (U and g depend on it, A-03). The wrapper never touches the memory system without
+ * going through ivs_memsys_bus. */
+typedef struct ivs_machine_bus_ctx {
+  struct ivs_machine *m;
+  uint64_t unit_start_tick;
+  const ivs_psg_params *psg;  /* the profile's PSG parameters (plan 05-06) */
+  ivs_psg_sink *sink;         /* where the samples a write's catch-up makes go (plan 05-06) */
+  uint32_t ticks_per_cpu_cycle;
+  uint32_t reserved; /* 0 */
+} ivs_machine_bus_ctx;
+/* Plan 05-08 (D-13, A-01): the same stamp is the tick of the write's log record (ivs_psg_log_append into
+ * m->obs.psglog and the log channel of sink), with source IVS_PSGLOG_SRC_CPU_WRITE for a WRITE access and
+ * IVS_PSGLOG_SRC_CPU_DW for the interrupt-entry write. */
+
+ivs_bus_reply ivs_machine_bus(void *ctx, const ivs_cp1610_access *a);
+
+/* Plan 05-06 (A-01, A-02, D-16): the wrapper stamps a write that reaches the PSG region with
+ * unit_start_tick + offset_cpu_cycles * ticks_per_cpu_cycle + psg.write_strobe_ticks and catches the
+ * PSG up to the stamp (the samples go to sink) BEFORE the memory system stores the masked register;
+ * the step seam catches it up to the unit's end (machine time after the unit) at every unit end. */
+
 /* ---- internal step seam (D-05, D-20, plan 03-12, machine_run.c) ----
  * Steps one CPU unit of a POWERED instance through its memory system: the CPU configuration
  * comes from the profile registry (cpu.interrupt_accept_clears_intff,
  * bus.release_latency_cpu_cycles, bus.wait_limit_cpu_cycles), every line is inactive (no device
- * drives INTR, INTRM, BUSRQ or STPST in Phase 3), and the port's bus is ivs_memsys_bus on the
- * instance's own memory system, so the IAB of the reset entry answers the profile's reset.r7.
+ * drives INTR, INTRM, BUSRQ or STPST in Phase 3), and the port's bus is ivs_machine_bus (plan
+ * 05-04), which forwards to ivs_memsys_bus on the instance's own memory system, so the IAB of the reset entry answers the profile's reset.r7.
  * No access log is kept. Machine time advances by the unit's elapsed CPU cycles times the
  * profile's ticks_per_cpu_cycle. BAD_ARG: out NULL; BAD_HANDLE; BAD_STATE: the instance is OFF;
  * else the CPU step's status (a CPU refusal leaves time unchanged). *out is written only on
  * IVS_OK. Never public: it is declared here and nowhere under core/include; Phase 4's bounded
  * run API is built on it. */
 ivs_status ivs_machine_step_unit_internal(ivs_machine *m, ivs_cp1610_result *out);
+
+/* The same step with a caller sink (plan 05-06, A-02): every sample the unit's PSG catch-ups produce
+ * (to each write's stamp, then to the unit's end) goes to sink; the run call passes the sink over the
+ * caller's audio buffer or a counting sink, the public-seam form above uses a counting sink of its
+ * own. The machine state after the unit does not depend on the sink. sink must not be NULL. */
+ivs_status ivs_machine_step_unit_sink_internal(ivs_machine *m, ivs_cp1610_result *out, ivs_psg_sink *sink);
+
+/* The same step that also records the unit's bus accesses (plan 05-08, D-13): trace is NULL (none) or an array
+ * of at least IVS_CP1610_MAX_ACCESSES accesses that ivs_cp1610_step fills (result.n_accesses of them). The
+ * machine state, the log and the samples do not depend on it; the public and default seams pass NULL. Lets a
+ * test compare the write log with the CPU's own access trace. */
+ivs_status ivs_machine_step_unit_trace_internal(ivs_machine *m, ivs_cp1610_result *out, ivs_psg_sink *sink,
+                                                ivs_cp1610_access *trace, size_t trace_cap);
 
 /* ---- internal run env seam (D-06, plan 04-10, machine_bound.c) ----
  * The output layout a run is checked against: per channel a format (IVS_OUTPUT_FORMAT_*) and the
@@ -180,6 +253,13 @@ typedef struct ivs_run_env {
   uint32_t audio_format;
   uint32_t audio_bytes_per_frame;
   uint64_t nominal_frame_ticks;
+  /* Plan 05-02 (D-14, D-19): the write-log channel, appended. The log needs
+   * psg_log_bytes_per_frame * (max(target - now, 0) / nominal_frame_ticks + 1) bytes like the
+   * other two channels; 0 needs nothing (the NTSC profile publishes 16 x 2,152 = 34,432 from plan 05-08). The seam is an internal
+   * plain struct without a struct_size: callers build it with memset, so the appended field is
+   * 0 for a caller that does not know it. */
+  uint32_t psg_log_bytes_per_frame;
+  uint32_t reserved_env; /* 0 */
 } ivs_run_env;
 
 /* The real output layout of profile p (shared by ivs_machine_info and the public run call):
@@ -202,6 +282,18 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
 
 /* Sets in to its create and reset state: words, count and floor 0, chain h0. */
 void ivs_input_init(ivs_machine_obs_input *in);
+
+/* The number of profiles the generated control-line table ivs_ctrl_lines covers (review WR-04): the
+ * pull-down derivation indexes it by the instance's registry index, so the machine uses an index only
+ * below this count (ivs_machine_profile_covered, machine.c). */
+uint32_t ivs_input_profile_count(void);
+
+/* Derives the pull-down masks of the PSG ports (mem.port_pulldown) from the words in force and the
+ * generated control table (plan 05-05, D-03, D-04): the OR of the line masks of every set bit, for
+ * each port below the profile's input.controllers, 0 for the others. The one function that sets the
+ * masks: an applied event calls it, and the refused-step take-back calls it after restoring the
+ * words, so the invariant port_pulldown == derive(words) holds after every call. */
+void ivs_input_rederive(struct ivs_machine *im);
 
 /* The per-event stages of the run ladder (D-05, D-14), after BUFFER_TOO_SMALL: IVS_REASON_NONE
  * with *st IVS_OK and *index IVS_INPUT_INDEX_NONE, or the reason with *st and the failing index.

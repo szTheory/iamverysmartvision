@@ -8,8 +8,10 @@
  * with EINTR. With it the handler stays installed and interrupted calls restart, as on Apple
  * libc and the BSDs; signal() stays (D-23).
  * Holds: the cancel flag (the program's only global), set by a signal() handler that does nothing
- * else; the monotonic timer; bounded reads of regular files. Never reads the environment and
- * never writes a file. */
+ * else; the monotonic timer; bounded reads of regular files; and, since plan 05-09, the operator's
+ * raw output files (--audio-raw, --psg-log-out) and the operator WAV (--audio-wav, plan 05-10), created exclusively with O_CREAT | O_EXCL so an
+ * existing path is refused and never overwritten. Never reads the environment; the --update-golden
+ * target is the one other file the program writes, and main.c does that with ISO stdio. */
 #define _POSIX_C_SOURCE 200809L
 #define _DEFAULT_SOURCE 1
 
@@ -120,4 +122,130 @@ int ivs_hostio_read(const char *dir, const char *rel, size_t cap, uint8_t *buf, 
   }
   *len = got;
   return got > cap ? IVS_RUNNER_READ_TOO_LARGE : IVS_RUNNER_READ_OK;
+}
+
+static int hostio_out_create(ivs_hostio_out *o, const char *path, int access)
+{
+  struct stat sb;
+  int fd;
+  o->fd = -1;
+  o->dev = 0u;
+  o->ino = 0u;
+  if (path == NULL || path[0] == '\0') {
+    return -1;
+  }
+  fd = open(path, access | O_CREAT | O_EXCL | O_NOCTTY, 0644);
+  if (fd < 0) {
+    return errno == EEXIST ? 1 : -1;
+  }
+  if (fstat(fd, &sb) != 0 || !S_ISREG(sb.st_mode)) {
+    /* The file was just created by this call, so it is removed again rather than left unidentified. */
+    (void)close(fd);
+    (void)unlink(path);
+    return -1;
+  }
+  o->fd = fd;
+  o->dev = (uint64_t)sb.st_dev;
+  o->ino = (uint64_t)sb.st_ino;
+  return 0;
+}
+
+int ivs_hostio_out_create(ivs_hostio_out *o, const char *path) { return hostio_out_create(o, path, O_WRONLY); }
+
+int ivs_hostio_out_create_rw(ivs_hostio_out *o, const char *path) { return hostio_out_create(o, path, O_RDWR); }
+
+int ivs_hostio_out_write_at(ivs_hostio_out *o, uint64_t offset, const void *bytes, size_t len)
+{
+  const uint8_t *p = bytes;
+  size_t done = 0u;
+  if (o->fd < 0 || offset > (uint64_t)INT64_MAX || (uint64_t)len > (uint64_t)INT64_MAX - offset) {
+    return -1;
+  }
+  while (done < len) {
+    ssize_t n = pwrite(o->fd, p + done, len - done, (off_t)(offset + (uint64_t)done));
+    if (n < 0) {
+      if (errno == EINTR) {
+        continue;
+      }
+      return -1;
+    }
+    done += (size_t)n;
+  }
+  return 0;
+}
+
+int ivs_hostio_out_read_at(ivs_hostio_out *o, uint64_t offset, void *buf, size_t cap, size_t *got)
+{
+  *got = 0u;
+  if (o->fd < 0 || offset > (uint64_t)INT64_MAX) {
+    return -1;
+  }
+  for (;;) {
+    ssize_t n = pread(o->fd, buf, cap, (off_t)offset);
+    if (n < 0) {
+      if (errno == EINTR) {
+        continue;
+      }
+      return -1;
+    }
+    *got = (size_t)n;
+    return 0;
+  }
+}
+
+int ivs_hostio_out_write(ivs_hostio_out *o, const void *bytes, size_t len)
+{
+  const uint8_t *p = bytes;
+  size_t done = 0u;
+  if (o->fd < 0) {
+    return -1;
+  }
+  while (done < len) {
+    ssize_t n = write(o->fd, p + done, len - done);
+    if (n < 0) {
+      if (errno == EINTR) {
+        continue;
+      }
+      return -1;
+    }
+    done += (size_t)n;
+  }
+  return 0;
+}
+
+int ivs_hostio_out_close(ivs_hostio_out *o)
+{
+  int fd = o->fd;
+  o->fd = -1;
+  if (fd < 0) {
+    return 0;
+  }
+  return close(fd) == 0 ? 0 : -1;
+}
+
+int ivs_hostio_out_remove_if_same(const ivs_hostio_out *o, const char *path)
+{
+  struct stat sb;
+  if (o->ino == 0u || path == NULL) {
+    return -1;
+  }
+  if (lstat(path, &sb) != 0) {
+    return errno == ENOENT ? 1 : -1;
+  }
+  if (!S_ISREG(sb.st_mode) || (uint64_t)sb.st_dev != o->dev || (uint64_t)sb.st_ino != o->ino) {
+    return 1;
+  }
+  return unlink(path) == 0 ? 0 : -1;
+}
+
+int ivs_hostio_out_is_path(const ivs_hostio_out *o, const char *path)
+{
+  struct stat sb;
+  if (o->ino == 0u || path == NULL) {
+    return -1;
+  }
+  if (stat(path, &sb) != 0) {
+    return 0;
+  }
+  return (uint64_t)sb.st_dev == o->dev && (uint64_t)sb.st_ino == o->ino ? 1 : 0;
 }

@@ -14,7 +14,7 @@
  *   (harness-fail, exit 14), expect-load-refusal and sha-match (pass), cancel (exit 12).
  *   Report: key-order (the pinned key sequence, written out here independently of report.c),
  *   no-paths, repeat-identical (byte-equal apart from host.calls), overshoot, units (cycles and
- *   frames sugar), input-schedule (only the input lines and the INPUT digest change),
+ *   frames sugar), input-schedule (only the input lines and the INPUT, MEM and composite digests change),
  *   two-steps and assert-forms. */
 #include <stdint.h>
 #include <stdio.h>
@@ -22,9 +22,12 @@
 #include <string.h>
 
 #include "ivs/ivs.h"
+#include "ivs_refpcm.h"
 #include "ivs_runner.h"
 #include "ivs_test.h"
 #include "runner_cases.h"
+#include "runner_chain.h"
+#include "runner_sha256.h"
 
 #include "ivs_images.inc"
 
@@ -33,6 +36,7 @@
 #define FH_STORAGE (512u * 1024u)
 #define RX_SCN_CAP 8192u
 #define RX_VALUE_CAP 512u
+#define RX_SCN_CAPTURE_CAP 4096u
 
 /* ---- the fake host ---- */
 
@@ -50,6 +54,26 @@ typedef struct fake_host {
   int fail_write;
   char *out;
   size_t out_len;
+  size_t buffer_bytes; /* the host's output block (0: none, so no channel is requested) */
+  uint8_t *buffers;
+  int corrupt_audio;   /* the audio hook flips one delivered byte before the chain check reads it */
+  uint64_t raw_bytes;  /* bytes the audio hook received */
+  uint32_t raw_calls;
+  int want_log;        /* install the PSG log hook */
+  int no_audio_hook;   /* leave the raw audio hook out */
+  char log_text[4096]; /* the lines the log hook received */
+  size_t log_len;
+  uint64_t out_max;    /* options.audio_out_max_bytes (0: the default) */
+  int want_wav;        /* install the operator WAV hooks (plan 05-10) */
+  uint32_t wav_rate;   /* options.wav_rate (0: the default 48000; an invalid value must be refused) */
+  uint64_t slice_ticks; /* options.slice_ticks (0: the default) */
+  int wav_fail_pcm;    /* the PCM hook fails */
+  int wav_fail_finish; /* the finish hook fails */
+  uint8_t wav_pcm[8192]; /* the PCM bytes the hook received, in order */
+  size_t wav_pcm_len;
+  uint8_t wav_hdr[44]; /* the header the finish hook received */
+  uint32_t wav_finishes;
+  uint8_t wav_sha[32]; /* what the finish hook returned: SHA-256 of header and PCM as a file */
 } fake_host;
 
 static int fh_read(void *ctx, const char *relpath, size_t cap, uint8_t *buf, size_t *len)
@@ -75,6 +99,49 @@ static int fh_read(void *ctx, const char *relpath, size_t cap, uint8_t *buf, siz
 
 static int fh_cancel(void *ctx) { return ((fake_host *)ctx)->cancel; }
 
+/* The operator-only raw audio hook of the vtable: counts what it receives and, when asked, flips the
+ * low bit of the first byte in the host's own block (the executor then reads a corrupted stream). */
+static int fh_audio_raw(void *ctx, const uint8_t *bytes, size_t len)
+{
+  fake_host *h = ctx;
+  h->raw_bytes += len;
+  h->raw_calls++;
+  if (h->corrupt_audio && h->buffers != NULL && bytes >= h->buffers) {
+    h->buffers[bytes - h->buffers] ^= 0x01u;
+  }
+  return 0;
+}
+
+/* The operator WAV hooks of the vtable: keep the PCM, and at the end answer with the SHA-256 of header
+ * followed by PCM (the host writing the file as the library asked). */
+static int fh_wav_pcm(void *ctx, const uint8_t *pcm, size_t len)
+{
+  fake_host *h = ctx;
+  if (h->wav_fail_pcm || len > sizeof h->wav_pcm - h->wav_pcm_len) {
+    return -1;
+  }
+  memcpy(h->wav_pcm + h->wav_pcm_len, pcm, len);
+  h->wav_pcm_len += len;
+  return 0;
+}
+
+static int fh_wav_finish(void *ctx, const uint8_t header[44], uint8_t sha256[32])
+{
+  fake_host *h = ctx;
+  ivs_rsha256 c;
+  h->wav_finishes++;
+  if (h->wav_fail_finish) {
+    return -1;
+  }
+  memcpy(h->wav_hdr, header, 44u);
+  ivs_rsha256_init(&c);
+  ivs_rsha256_update(&c, header, 44u);
+  ivs_rsha256_update(&c, h->wav_pcm, h->wav_pcm_len);
+  ivs_rsha256_final(&c, h->wav_sha);
+  memcpy(sha256, h->wav_sha, 32u);
+  return 0;
+}
+
 static int fh_write(void *ctx, const char *bytes, size_t len)
 {
   fake_host *h = ctx;
@@ -84,6 +151,18 @@ static int fh_write(void *ctx, const char *bytes, size_t len)
   memcpy(h->out + h->out_len, bytes, len);
   h->out_len += len;
   h->out[h->out_len] = '\0';
+  return 0;
+}
+
+static int fh_psg_log(void *ctx, const char *lines, size_t len)
+{
+  fake_host *h = ctx;
+  if (len > sizeof h->log_text - 1u - h->log_len) {
+    return -1;
+  }
+  memcpy(h->log_text + h->log_len, lines, len);
+  h->log_len += len;
+  h->log_text[h->log_len] = '\0';
   return 0;
 }
 
@@ -172,10 +251,40 @@ static uint32_t rx_exec(const char *text, fake_host *h, ivs_runner_result *res)
   host.read_file = fh_read;
   host.cancel_requested = fh_cancel;
   host.write_report = fh_write;
+  if (!h->no_audio_hook) {
+    host.write_audio_raw = fh_audio_raw;
+  }
+  if (h->want_log) {
+    host.write_psg_log = fh_psg_log;
+  }
+  if (h->want_wav) {
+    host.write_wav_pcm = fh_wav_pcm;
+    host.finish_wav = fh_wav_finish;
+  }
   host.storage = storage;
   host.storage_bytes = FH_STORAGE;
-  out = ivs_runner_execute(s, &host, NULL, res);
+  if (h->buffer_bytes != 0u) {
+    h->buffers = malloc(h->buffer_bytes);
+    if (h->buffers == NULL) {
+      goto done;
+    }
+    memset(h->buffers, 0xCC, h->buffer_bytes);
+    host.buffers = h->buffers;
+    host.buffer_bytes = h->buffer_bytes;
+  }
+  if (h->out_max != 0u || h->wav_rate != 0u || h->slice_ticks != 0u) {
+    ivs_runner_options o;
+    memset(&o, 0, sizeof o);
+    o.audio_out_max_bytes = h->out_max;
+    o.wav_rate = h->wav_rate;
+    o.slice_ticks = h->slice_ticks;
+    out = ivs_runner_execute(s, &host, &o, res);
+  } else {
+    out = ivs_runner_execute(s, &host, NULL, res);
+  }
 done:
+  free(h->buffers);
+  h->buffers = NULL;
   free(storage);
   free(s);
   return out;
@@ -248,14 +357,14 @@ static int rx_hex64(const char *s)
   return i == 64u;
 }
 
-/* The report is complete: first line `ivsr 1`, last `report.end <lines before it>`, LF ended. */
+/* The report is complete: first line `ivsr 2`, last `report.end <lines before it>`, LF ended. */
 static int rx_complete(const char *report, const ivs_runner_result *res)
 {
   char v[RX_VALUE_CAP];
   size_t n = rx_lines(report);
   size_t len = strlen(report);
-  if (strncmp(report, "ivsr 1\n", 7u) != 0 || len == 0u || report[len - 1u] != '\n') {
-    ivs_test_diag("report does not start with ivsr 1 or end with LF");
+  if (strncmp(report, "ivsr 2\n", 7u) != 0 || len == 0u || report[len - 1u] != '\n') {
+    ivs_test_diag("report does not start with ivsr 2 or end with LF");
     return 0;
   }
   if (!rx_value(report, "report.end", v, sizeof v) || strtoull(v, NULL, 10) != (unsigned long long)(n - 1u)) {
@@ -865,8 +974,10 @@ done:
   return rc;
 }
 
-/* The key order of the diagnostic report, written out here independently of report.c's table. */
-static int ex_key_order(void)
+/* The key order of the diagnostic report, written out here independently of report.c's table
+ * (ivsr 2, plan 05-09): with no output block (the keys are all present, their values `-` or 0) and
+ * with the block ivs-run gives (the same keys in the same order). */
+static int ex_key_order_with(size_t buffer_bytes)
 {
   static const char *const head[] = {"ivsr",           "scenario.id", "scenario.profile", "api.version",
                                      "outcome",        "outcome.detail", "exit.code"};
@@ -878,8 +989,10 @@ static int ex_key_order(void)
                                      "input.controller.2", "input.controller.3", "digest.cpu",
                                      "digest.mem",         "digest.images",      "digest.instance",
                                      "digest.composite",   "digest.video",       "digest.audio",
-                                     "digest.input",       "output.video.bytes", "output.audio.bytes",
-                                     "host.calls",         "report.end"};
+                                     "digest.input",       "digest.psglog",      "output.video.bytes",
+                                     "output.audio.bytes", "output.audio.samples", "output.audio.changes",
+                                     "output.psglog.records", "output.psglog.bytes", "audio.sample_ticks",
+                                     "audio.chain.check",  "host.calls",         "report.end"};
   char want[128][40];
   size_t n = 0u;
   fake_host h;
@@ -910,6 +1023,7 @@ static int ex_key_order(void)
     return IVS_TEST_FAIL;
   }
   fh_init(&h);
+  h.buffer_bytes = buffer_bytes;
   if (!rx_expect(diag, &h, IVS_RUNNER_OUTCOME_PASS, 0u)) {
     goto done;
   }
@@ -935,6 +1049,770 @@ static int ex_key_order(void)
   rc = IVS_TEST_PASS;
 done:
   rx_free(&h);
+  return rc;
+}
+
+static int ex_key_order(void) { return ex_key_order_with(0u); }
+
+/* ivsr 2 (plan 05-09, D-20): the first line is `ivsr 2`, the key table is the pinned one also with a
+ * real output block, and the new keys carry their values: the samples are the delivered bytes over 4,
+ * the log is empty for the diagnostic (it writes no PSG register), the sample period is the profile's 16
+ * and the audio chain check ran and passed. */
+static int ex_ivsr2_keys(void)
+{
+  fake_host h;
+  char diag[RX_SCN_CAP];
+  char v[RX_VALUE_CAP];
+  int rc = IVS_TEST_FAIL;
+  unsigned long long bytes;
+  if (ex_key_order_with(IVS_RUNNER_BUFFERS_MAX) != IVS_TEST_PASS || !rx_diag(diag, sizeof diag)) {
+    return IVS_TEST_FAIL;
+  }
+  fh_init(&h);
+  h.buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
+  if (!rx_expect(diag, &h, IVS_RUNNER_OUTCOME_PASS, 0u)) {
+    goto done;
+  }
+  if (strncmp(h.out, "ivsr 2\n", 7u) != 0 || !rx_value(h.out, "output.audio.bytes", v, sizeof v)) {
+    goto done;
+  }
+  bytes = strtoull(v, NULL, 10);
+  if (bytes == 0u || bytes % 4u != 0u || !rx_value(h.out, "output.audio.samples", v, sizeof v) ||
+      strtoull(v, NULL, 10) * 4u != bytes) {
+    ivs_test_diag("output.audio.bytes %llu, samples '%s'", bytes, v);
+    goto done;
+  }
+  if (!rx_is(h.out, "output.audio.changes", "0") || !rx_is(h.out, "output.psglog.records", "0") ||
+      !rx_is(h.out, "output.psglog.bytes", "0") || !rx_is(h.out, "audio.sample_ticks", "16") ||
+      !rx_is(h.out, "audio.chain.check", "pass") || !rx_is(h.out, "output.video.bytes", "0")) {
+    goto done;
+  }
+  rc = IVS_TEST_PASS;
+done:
+  rx_free(&h);
+  return rc;
+}
+
+/* ---- the audio chain check and the SHA-256 copy (plan 05-09, D-18) ---- */
+
+/* Project-authored EXEC stand-in (plan 05-06 encodings: MVII is 02B8 + destination, MVO Rs, a is 0240 +
+ * source, the branch to itself is 0220 0001): mixer R7 = $3F (tone and noise of every channel off, so a
+ * channel is the constant 1 and its level is its amplitude), then amplitude A = $0F, then $00, then $07,
+ * then a branch to itself. Channel A's level goes 0, 15, 0, 7 while B and C stay 0: by construction three
+ * level changes (0 to 15, 15 to 0, 0 to 7), each level held for several chip steps (one MVII and MVO pair
+ * is 19 CPU cycles, 76 ticks, and a step is 16 ticks). */
+static const uint16_t rx_psg_words[] = {0x02B8u, 0x003Fu, 0x0240u, 0x01F8u, 0x02B8u, 0x000Fu, 0x0240u, 0x01FBu,
+                                        0x02B8u, 0x0000u, 0x0240u, 0x01FBu, 0x02B8u, 0x0007u, 0x0240u, 0x01FBu,
+                                        0x0220u, 0x0001u};
+static const char rx_psg_content[] = "content exec psg-prog.exec\n"
+                                     "content grom zero-grom\n";
+static uint8_t rx_psg_exec[8192];
+
+/* The words as an 8192-byte EXEC image (4096 words, high byte first, the rest zero). */
+static void rx_psg_image(void)
+{
+  memset(rx_psg_exec, 0, sizeof rx_psg_exec);
+  for (size_t i = 0u; i < sizeof rx_psg_words / sizeof rx_psg_words[0]; i++) {
+    rx_psg_exec[2u * i] = (uint8_t)(rx_psg_words[i] >> 8);
+    rx_psg_exec[2u * i + 1u] = (uint8_t)(rx_psg_words[i] & 0xFFu);
+  }
+}
+
+static int rx_psg_scenario(char *scn, size_t cap, const char *run)
+{
+  return rx_scn(scn, cap, rx_psg_content, run);
+}
+
+/* The stand-in under a real output block: three changes by hand, samples times 4 equal the bytes, the
+ * hook saw every delivered byte, and the chain the runner rebuilt equals the core's AUDIO digest
+ * (`pass`). With the hook flipping a delivered byte the runner reads a stream the core did not emit:
+ * `fail`, harness-fail, detail audio-chain, exit 14 (the check is a comparison, not a label). */
+static int ex_audio_chain_check(void)
+{
+  fake_host h;
+  char scn[RX_SCN_CAP];
+  char v[RX_VALUE_CAP];
+  unsigned long long bytes;
+  int rc = IVS_TEST_FAIL;
+  rx_psg_image();
+  if (!rx_psg_scenario(scn, sizeof scn, "run-to 3000 ticks\n")) {
+    return IVS_TEST_FAIL;
+  }
+  fh_init(&h);
+  fh_add(&h, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
+  h.buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
+  if (!rx_expect(scn, &h, IVS_RUNNER_OUTCOME_PASS, 0u)) {
+    goto done;
+  }
+  /* By hand: three level changes; the guest makes four PSG writes (mixer and three amplitudes): four
+   * 16-byte log records. */
+  if (!rx_is(h.out, "audio.chain.check", "pass") || !rx_is(h.out, "output.audio.changes", "3") ||
+      !rx_is(h.out, "output.psglog.records", "4") || !rx_is(h.out, "output.psglog.bytes", "64")) {
+    goto done;
+  }
+  if (!rx_value(h.out, "output.audio.bytes", v, sizeof v)) {
+    goto done;
+  }
+  bytes = strtoull(v, NULL, 10);
+  if (bytes == 0u || bytes % 4u != 0u || h.raw_bytes != bytes || !rx_value(h.out, "output.audio.samples", v, sizeof v) ||
+      strtoull(v, NULL, 10) * 4u != bytes) {
+    ivs_test_diag("audio bytes %llu, hook %llu, samples '%s'", bytes, (unsigned long long)h.raw_bytes, v);
+    goto done;
+  }
+  rx_free(&h);
+  /* The same run with a host that corrupts the first delivered byte. */
+  fh_init(&h);
+  fh_add(&h, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
+  h.buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
+  h.corrupt_audio = 1;
+  if (!rx_expect(scn, &h, IVS_RUNNER_OUTCOME_HARNESS_FAIL, 14u)) {
+    goto done;
+  }
+  if (!rx_is(h.out, "audio.chain.check", "fail") || !rx_is(h.out, "outcome.detail", "audio-chain")) {
+    goto done;
+  }
+  rc = IVS_TEST_PASS;
+done:
+  rx_free(&h);
+  return rc;
+}
+
+/* The runner's SHA-256 copy against FIPS 180-4 and the literals of data/sha256/vectors.txt (the
+ * core's own vector file; each digest was typed from `cmake -E sha256sum` and is re-derived by the
+ * machine suite's generator): the empty message, `abc`, the 448-bit and 896-bit examples, the padding
+ * boundaries 55, 56, 57, 63, 64, 65 bytes of the pat: pattern (byte i is character i mod 62 of
+ * A..Z a..z 0..9), and a split feed (one byte at a time equals one call). */
+static int rx_unhex(const char *hex, uint8_t out[32])
+{
+  for (size_t i = 0u; i < 32u; i++) {
+    unsigned v = 0u;
+    for (size_t k = 0u; k < 2u; k++) {
+      char c = hex[2u * i + k];
+      unsigned d = c >= '0' && c <= '9' ? (unsigned)(c - '0') : c >= 'a' && c <= 'f' ? (unsigned)(c - 'a') + 10u : 99u;
+      if (d > 15u) {
+        return 0;
+      }
+      v = v * 16u + d;
+    }
+    out[i] = (uint8_t)v;
+  }
+  return 1;
+}
+
+static int ex_sha256_fips(void)
+{
+  static const char alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  static const struct {
+    const char *text;
+    size_t pat; /* when text is NULL: the pattern length */
+    const char *hex;
+  } vec[] = {
+      {"", 0u, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
+      {"abc", 0u, "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"},
+      {"abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq", 0u,
+       "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1"},
+      {"abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu",
+       0u, "cf5b16a778af8380036ce59e7b0492370b249b11e8f07a51afac45037afee9d1"},
+      {NULL, 55u, "59521aa5a72bfd087fc7b180efff1e20dc27a7d6232cc1ebb733183d02a8c062"},
+      {NULL, 56u, "f50e77559fcfb0be5b298f780857cf0c5f06af725838431f7c9da48ff024ba30"},
+      {NULL, 57u, "a70cdc426e03c55f6bab861695327e7c7b032d7da1ed0f1aca0c252125d4e77a"},
+      {NULL, 63u, "ef283a28d035e563d2f760d768f74b8529f5771fcd165baa87c27dfc270b1276"},
+      {NULL, 64u, "180efa1cd028fb62950d3e535632c471d0dc92486413a656237c971c78cc28a0"},
+      {NULL, 65u, "0b2f888a463b8355dce14614389a281d915fc7bf0b43137c21a160fa4a812d6e"},
+  };
+  uint8_t msg[128];
+  for (size_t v = 0u; v < sizeof vec / sizeof vec[0]; v++) {
+    uint8_t want[32];
+    uint8_t got[32];
+    ivs_rsha256 c;
+    size_t n;
+    if (vec[v].text != NULL) {
+      n = strlen(vec[v].text);
+      memcpy(msg, vec[v].text, n);
+    } else {
+      n = vec[v].pat;
+      for (size_t i = 0u; i < n; i++) {
+        msg[i] = (uint8_t)alphabet[i % 62u];
+      }
+    }
+    IVS_CHECK(n <= sizeof msg && rx_unhex(vec[v].hex, want));
+    ivs_rsha256_digest(msg, n, got);
+    if (memcmp(got, want, 32u) != 0) {
+      ivs_test_diag("vector %zu (%zu bytes): digest differs", v, n);
+      return IVS_TEST_FAIL;
+    }
+    ivs_rsha256_init(&c);
+    for (size_t i = 0u; i < n; i++) {
+      ivs_rsha256_update(&c, msg + i, 1u);
+    }
+    ivs_rsha256_final(&c, got);
+    if (memcmp(got, want, 32u) != 0) {
+      ivs_test_diag("vector %zu: byte-wise feed differs", v);
+      return IVS_TEST_FAIL;
+    }
+  }
+  return IVS_TEST_PASS;
+}
+
+/* ---- PSG log and audio asserts, captures, digests of the new domains (plan 05-09, D-20) ---- */
+
+/* Runs the stand-in with the extra scenario lines (captures and asserts) under a real output block and
+ * returns the outcome check; the report stays in h. */
+static int rx_psg_run(fake_host *h, const char *body, uint32_t outcome, uint32_t exit_code)
+{
+  char scn[RX_SCN_CAPTURE_CAP];
+  rx_psg_image();
+  if (!rx_scn(scn, sizeof scn, rx_psg_content, body)) {
+    return 0;
+  }
+  fh_init(h);
+  fh_add(h, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
+  h->buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
+  return rx_expect(scn, h, outcome, exit_code);
+}
+
+/* The stand-in's four PSG writes by hand (cycle tables as in plan 05-08: reset entry 5 CPU cycles,
+ * MVII 8, a direct MVO 11 with its write at cycle 6, 4 ticks per cycle): the first MVO starts at
+ * (5 + 8) x 4 = 52 and writes at 52 + 24 = 76; each MVII and MVO pair is 19 cycles = 76 ticks, so the
+ * writes are at 76, 152, 228, 304, to addresses $01F8 (low nibble 8) then $01FB (11) three times,
+ * with the raw values $003F, $000F, $0000, $0007, all source cpu-write. A changed expectation fails
+ * guest-fail naming the assert (exit 10); a record that does not exist is a failed assert. */
+static int ex_psglog_assert(void)
+{
+  static const char good[] = "capture psglog\n"
+                             "run-to 3000 ticks\n"
+                             "assert psglog count == 4\n"
+                             "assert psglog count != 5\n"
+                             "assert psglog 0 tick=76 addr=8 value=003F source=cpu-write\n"
+                             "assert psglog 1 tick=152 addr=11 value=000F source=cpu-write\n"
+                             "assert psglog 2 tick=228 addr=11 value=0000\n"
+                             "assert psglog 3 tick=304 addr=11 value=0007 source=cpu-write\n"
+                             "assert psglog 3 addr=11\n";
+  static const char *const bad[][2] = {
+      {"tick=304 addr=11 value=0007 source=cpu-write", "tick=305 addr=11 value=0007 source=cpu-write"},
+      {"tick=76 addr=8 value=003F", "tick=76 addr=9 value=003F"},
+      {"tick=228 addr=11 value=0000", "tick=228 addr=11 value=0001"},
+      {"psglog 3 addr=11", "psglog 3 source=cpu-dw"},
+      {"psglog count == 4", "psglog count == 3"},
+      {"psglog count != 5", "psglog count != 4"},
+      {"psglog 3 addr=11", "psglog 4 addr=11"},
+  };
+  fake_host h;
+  char text[2048];
+  int rc = IVS_TEST_FAIL;
+  if (!rx_psg_run(&h, good, IVS_RUNNER_OUTCOME_PASS, 0u)) {
+    goto done;
+  }
+  if (!rx_is(h.out, "output.psglog.records", "4") || !rx_starts(h.out, "step.1.assert.3", "pass psglog 0 tick=76")) {
+    goto done;
+  }
+  rx_free(&h);
+  for (size_t i = 0u; i < sizeof bad / sizeof bad[0]; i++) {
+    char want[64];
+    if (!rx_replace(good, bad[i][0], bad[i][1], text, sizeof text)) {
+      goto done;
+    }
+    if (!rx_psg_run(&h, text, IVS_RUNNER_OUTCOME_GUEST_FAIL, 10u)) {
+      ivs_test_diag("changed expectation %zu did not fail guest-fail", i);
+      goto done;
+    }
+    (void)snprintf(want, sizeof want, "assert=");
+    if (!rx_starts(h.out, "outcome.detail", want)) {
+      goto done;
+    }
+    rx_free(&h);
+  }
+  rc = IVS_TEST_PASS;
+done:
+  rx_free(&h);
+  return rc;
+}
+
+/* The levels by hand: writes land at 76 (mixer, all tones and noises off), 152 (A = $0F), 228
+ * (A = 0), 304 (A = 7); a sample at tick 16 k sees the writes stamped below 16 k (step first, then
+ * write, C78), so A is 0 at 144, 15 at 160 and 224, 0 at 240 and 304, 7 at 320 and at 2992 (the last
+ * multiple of 16 below 3000); B and C stay 0. The emitted count of a first run is the sample count the
+ * report gives; a changed count, level or tick fails; a tick that is not a multiple of the real sample
+ * period is a harness failure (exit 14). */
+static int ex_audio_assert(void)
+{
+  static const char good[] = "capture audio\n"
+                             "run-to 3000 ticks\n"
+                             "assert audio at 16 A=0 B=0 C=0\n"
+                             "assert audio at 144 A=0 B=0 C=0\n"
+                             "assert audio at 160 A=15 B=0 C=0\n"
+                             "assert audio at 224 A=15 B=0 C=0\n"
+                             "assert audio at 240 A=0 B=0 C=0\n"
+                             "assert audio at 304 A=0 B=0 C=0\n"
+                             "assert audio at 320 A=7 B=0 C=0\n"
+                             "assert audio at 2992 A=7 B=0 C=0\n"
+                             "assert audio emitted != 0\n";
+  fake_host h;
+  char text[2048];
+  char v[64];
+  char count[32];
+  int rc = IVS_TEST_FAIL;
+  if (!rx_psg_run(&h, good, IVS_RUNNER_OUTCOME_PASS, 0u) || !rx_value(h.out, "output.audio.samples", count, sizeof count)) {
+    goto done;
+  }
+  rx_free(&h);
+  (void)snprintf(v, sizeof v, "assert audio emitted == %s", count);
+  if (!rx_replace(good, "assert audio emitted != 0", v, text, sizeof text) ||
+      !rx_psg_run(&h, text, IVS_RUNNER_OUTCOME_PASS, 0u)) {
+    goto done;
+  }
+  rx_free(&h);
+  {
+    static const char *const bad[][2] = {
+        {"at 160 A=15", "at 160 A=14"},
+        {"at 160 A=15 B=0 C=0", "at 144 A=15 B=0 C=0"},
+        {"at 320 A=7 B=0 C=0", "at 320 A=7 B=1 C=0"},
+        {"at 2992 A=7", "at 2992 A=0"},
+        {"emitted != 0", "emitted == 0"},
+        {"at 16 A=0 B=0 C=0", "at 160000 A=0 B=0 C=0"},
+    };
+    for (size_t i = 0u; i < sizeof bad / sizeof bad[0]; i++) {
+      if (!rx_replace(good, bad[i][0], bad[i][1], text, sizeof text) ||
+          !rx_psg_run(&h, text, IVS_RUNNER_OUTCOME_GUEST_FAIL, 10u)) {
+        ivs_test_diag("changed audio expectation %zu did not fail guest-fail", i);
+        goto done;
+      }
+      rx_free(&h);
+    }
+  }
+  if (!rx_replace(good, "at 160 A=15", "at 161 A=15", text, sizeof text) ||
+      !rx_psg_run(&h, text, IVS_RUNNER_OUTCOME_HARNESS_FAIL, 14u) ||
+      !rx_starts(h.out, "outcome.detail", "audio-tick-misaligned assert=")) {
+    goto done;
+  }
+  rc = IVS_TEST_PASS;
+done:
+  rx_free(&h);
+  return rc;
+}
+
+/* A program that writes the PSG without end (`MVII #$01FB, R3; MVII #$0F, R0; MVO@ R0, R3; B back`),
+ * one record every 16 CPU cycles: past the 4096-entry capture the run ends harness-fail with the detail
+ * capture-overflow, never a silent drop; without `capture psglog` the same run passes with its records
+ * counted. The program is the second host file. */
+static int ex_capture_overflow(void)
+{
+  static const uint16_t words[] = {0x02BBu, 0x01FBu, 0x02B8u, 0x000Fu, 0x0258u, 0x0220u, 0x0002u};
+  static uint8_t image[8192];
+  fake_host h;
+  char scn[RX_SCN_CAP];
+  char v[RX_VALUE_CAP];
+  int rc = IVS_TEST_FAIL;
+  memset(image, 0, sizeof image);
+  for (size_t i = 0u; i < sizeof words / sizeof words[0]; i++) {
+    image[2u * i] = (uint8_t)(words[i] >> 8);
+    image[2u * i + 1u] = (uint8_t)(words[i] & 0xFFu);
+  }
+  for (int cap = 1; cap >= 0; cap--) {
+    if (!rx_scn(scn, sizeof scn, rx_psg_content,
+                cap != 0 ? "capture psglog\nrun-to 400000 ticks\n" : "run-to 400000 ticks\n")) {
+      return IVS_TEST_FAIL;
+    }
+    fh_init(&h);
+    fh_add(&h, "psg-prog.exec", image, sizeof image, IVS_RUNNER_READ_OK);
+    h.buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
+    if (!rx_expect(scn, &h, cap != 0 ? IVS_RUNNER_OUTCOME_HARNESS_FAIL : IVS_RUNNER_OUTCOME_PASS,
+                   cap != 0 ? 14u : 0u)) {
+      goto done;
+    }
+    if (cap != 0 && !rx_is(h.out, "outcome.detail", "capture-overflow target=psglog")) {
+      goto done;
+    }
+    if (!rx_value(h.out, "output.psglog.records", v, sizeof v) || strtoull(v, NULL, 10) <= 4096u) {
+      ivs_test_diag("records %s, want more than 4096", v);
+      goto done;
+    }
+    rx_free(&h);
+  }
+  rc = IVS_TEST_PASS;
+done:
+  rx_free(&h);
+  return rc;
+}
+
+/* `assert digest audio` and `assert digest psglog` (the existing digest assert with two domain names):
+ * the digest a first run reports passes `==` in a second run and fails `!=`; a different digest fails
+ * `==`. */
+static int ex_digest_assert_audio_psglog(void)
+{
+  static const char *const dom[2] = {"audio", "psglog"};
+  fake_host h;
+  char audio[RX_VALUE_CAP];
+  char psglog[RX_VALUE_CAP];
+  char body[1024];
+  int rc = IVS_TEST_FAIL;
+  if (!rx_psg_run(&h, "run-to 3000 ticks\n", IVS_RUNNER_OUTCOME_PASS, 0u) ||
+      !rx_value(h.out, "digest.audio", audio, sizeof audio) || !rx_value(h.out, "digest.psglog", psglog, sizeof psglog)) {
+    goto done;
+  }
+  rx_free(&h);
+  for (size_t d = 0u; d < 2u; d++) {
+    const char *hex = d == 0u ? audio : psglog;
+    const char *other = d == 0u ? psglog : audio;
+    for (int variant = 0; variant < 3; variant++) {
+      (void)snprintf(body, sizeof body, "run-to 3000 ticks\nassert digest %s %s %s\n", dom[d],
+                     variant == 1 ? "!=" : "==", variant == 2 ? other : hex);
+      if (!rx_psg_run(&h, body, variant == 0 ? IVS_RUNNER_OUTCOME_PASS : IVS_RUNNER_OUTCOME_GUEST_FAIL,
+                      variant == 0 ? 0u : 10u)) {
+        ivs_test_diag("domain %s variant %d", dom[d], variant);
+        goto done;
+      }
+      rx_free(&h);
+    }
+  }
+  rc = IVS_TEST_PASS;
+done:
+  rx_free(&h);
+  return rc;
+}
+
+/* The operator hooks (plan 05-09, D-20): the raw audio hook receives exactly the delivered bytes (its
+ * length is output.audio.bytes) and the log hook the ASCII lines `index tick addr value source` of
+ * every delivered record, one per record: the stand-in's four writes are, by the hand derivation of
+ * runner.exec.psglog-assert, `0 76 8 63 1`, `1 152 11 15 1`, `2 228 11 0 1`, `3 304 11 7 1`. With
+ * the hooks absent nothing changes in the report. */
+static int ex_operator_files_hook(void)
+{
+  static const char want[] = "0 76 8 63 1\n1 152 11 15 1\n2 228 11 0 1\n3 304 11 7 1\n";
+  fake_host h;
+  char scn[RX_SCN_CAP];
+  char v[RX_VALUE_CAP];
+  int rc = IVS_TEST_FAIL;
+  rx_psg_image();
+  if (!rx_psg_scenario(scn, sizeof scn, "run-to 3000 ticks\n")) {
+    return IVS_TEST_FAIL;
+  }
+  fh_init(&h);
+  fh_add(&h, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
+  h.buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
+  h.want_log = 1;
+  if (!rx_expect(scn, &h, IVS_RUNNER_OUTCOME_PASS, 0u)) {
+    goto done;
+  }
+  if (!rx_value(h.out, "output.audio.bytes", v, sizeof v) || h.raw_bytes != strtoull(v, NULL, 10) || h.raw_bytes == 0u) {
+    ivs_test_diag("raw bytes %llu, output.audio.bytes %s", (unsigned long long)h.raw_bytes, v);
+    goto done;
+  }
+  if (strcmp(h.log_text, want) != 0 || !rx_is(h.out, "output.psglog.records", "4")) {
+    ivs_test_diag("log text:\n%s", h.log_text);
+    goto done;
+  }
+  rc = IVS_TEST_PASS;
+done:
+  rx_free(&h);
+  return rc;
+}
+
+/* The byte bound (--audio-out-max-bytes): a bound below what the run produces is a harness failure
+ * (exit 14, detail audio-out-max-bytes), not a truncated success, and a bound exactly at the produced
+ * size passes; the same bound applies to the log file on its own (the log hook alone with a bound of 20
+ * bytes, below the 48 bytes of the four lines, fails psg-log-out-max-bytes). */
+static int ex_out_max_bytes(void)
+{
+  fake_host h;
+  char scn[RX_SCN_CAP];
+  char v[RX_VALUE_CAP];
+  unsigned long long bytes;
+  int rc = IVS_TEST_FAIL;
+  rx_psg_image();
+  if (!rx_psg_scenario(scn, sizeof scn, "run-to 3000 ticks\n")) {
+    return IVS_TEST_FAIL;
+  }
+  fh_init(&h);
+  fh_add(&h, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
+  h.buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
+  if (!rx_expect(scn, &h, IVS_RUNNER_OUTCOME_PASS, 0u) || !rx_value(h.out, "output.audio.bytes", v, sizeof v)) {
+    goto done;
+  }
+  bytes = strtoull(v, NULL, 10);
+  rx_free(&h);
+  fh_init(&h);
+  fh_add(&h, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
+  h.buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
+  h.out_max = bytes;
+  if (!rx_expect(scn, &h, IVS_RUNNER_OUTCOME_PASS, 0u) || h.raw_bytes != bytes) {
+    goto done;
+  }
+  rx_free(&h);
+  fh_init(&h);
+  fh_add(&h, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
+  h.buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
+  h.out_max = bytes - 1u;
+  if (!rx_expect(scn, &h, IVS_RUNNER_OUTCOME_HARNESS_FAIL, 14u) || !rx_is(h.out, "outcome.detail", "audio-out-max-bytes") ||
+      h.raw_bytes >= bytes) {
+    goto done;
+  }
+  rx_free(&h);
+  fh_init(&h);
+  fh_add(&h, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
+  h.buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
+  h.want_log = 1;
+  h.out_max = bytes; /* the audio file fits; the log file does not exceed it either */
+  if (!rx_expect(scn, &h, IVS_RUNNER_OUTCOME_PASS, 0u)) {
+    goto done;
+  }
+  rx_free(&h);
+  fh_init(&h);
+  fh_add(&h, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
+  h.buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
+  h.want_log = 1;
+  h.out_max = 20u;
+  h.no_audio_hook = 1;
+  if (!rx_expect(scn, &h, IVS_RUNNER_OUTCOME_HARNESS_FAIL, 14u) ||
+      !rx_is(h.out, "outcome.detail", "psg-log-out-max-bytes") || h.log_len != 0u) {
+    goto done;
+  }
+  rc = IVS_TEST_PASS;
+done:
+  rx_free(&h);
+  return rc;
+}
+
+/* ---- the operator WAV (plan 05-10, D-20, D-21) ---- */
+
+/* The keys that end a report, last first: report.end, then (only with the option) the refpcm group right after
+ * host.calls. Returns 1 when the last n lines of the report have exactly the keys in want (in order). */
+static int rx_tail_is(const char *report, const char *const *want, size_t n)
+{
+  size_t total = rx_lines(report);
+  size_t line = 0u;
+  const char *p = report;
+  if (total < n) {
+    return 0;
+  }
+  while (*p != '\0') {
+    const char *eol = strchr(p, '\n');
+    const char *sp = strchr(p, ' ');
+    if (eol == NULL) {
+      return 0;
+    }
+    if (line >= total - n) {
+      size_t k = line - (total - n);
+      size_t kl = strlen(want[k]);
+      if (sp == NULL || sp > eol || (size_t)(sp - p) != kl || strncmp(p, want[k], kl) != 0) {
+        ivs_test_diag("tail line %zu: key '%.*s', want '%s'", line + 1u, (int)(sp != NULL && sp < eol ? sp - p : eol - p),
+                      p, want[k]);
+        return 0;
+      }
+    }
+    line++;
+    p = eol + 1;
+  }
+  return 1;
+}
+
+/* The refpcm.* lines exist only with the option (the fault RUNNER_REFPCM_KEYS_WITHOUT_OPTION prints them
+ * always): none without the hooks, and with them exactly refpcm.rate, refpcm.frames, refpcm.sha256 between
+ * host.calls and report.end. */
+static int ex_refpcm_keys_only_with_option(void)
+{
+  static const char *const plain_tail[] = {"audio.chain.check", "host.calls", "report.end"};
+  static const char *const wav_tail[] = {"host.calls", "refpcm.rate", "refpcm.frames", "refpcm.sha256", "report.end"};
+  fake_host h;
+  char scn[RX_SCN_CAP];
+  int rc = IVS_TEST_FAIL;
+  rx_psg_image();
+  if (!rx_psg_scenario(scn, sizeof scn, "run-to 3000 ticks\n")) {
+    return IVS_TEST_FAIL;
+  }
+  fh_init(&h);
+  fh_add(&h, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
+  h.buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
+  if (!rx_expect(scn, &h, IVS_RUNNER_OUTCOME_PASS, 0u)) {
+    goto done;
+  }
+  if (strstr(h.out, "refpcm.") != NULL || !rx_tail_is(h.out, plain_tail, 3u)) {
+    ivs_test_diag("a refpcm. line without the option, or the tail changed");
+    goto done;
+  }
+  rx_free(&h);
+  fh_init(&h);
+  fh_add(&h, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
+  h.buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
+  h.want_wav = 1;
+  if (!rx_expect(scn, &h, IVS_RUNNER_OUTCOME_PASS, 0u) || !rx_tail_is(h.out, wav_tail, 5u) ||
+      !rx_is(h.out, "refpcm.rate", "48000")) {
+    goto done;
+  }
+  rc = IVS_TEST_PASS;
+done:
+  rx_free(&h);
+  return rc;
+}
+
+/* Frames of s samples at rate R by hand: the implicit leading cell makes s + 1 cells of 16 ticks, floor((s +
+ * 1) * 16 * R / 3,579,545). */
+static unsigned long long rx_wav_frames(unsigned long long samples, unsigned long long rate)
+{
+  return (samples + 1u) * 16u * rate / 3579545u;
+}
+
+/* One WAV run of the stand-in: the report values and what the hooks saw. frames from the report must be the
+ * by-hand count, the header the hook received equals ivs_refpcm_wav_header for it, the PCM is twice the
+ * frames in bytes and not all zero (the guest raises channel A to level 15), the sha256 key is the hash of
+ * header and PCM as a file would hold them. slice (0: default) cuts the run into slices of that many ticks. */
+static int rx_wav_run(fake_host *h, const char *scn, uint32_t rate, uint64_t slice)
+{
+  char v[RX_VALUE_CAP];
+  char hex[65];
+  uint8_t want_hdr[44];
+  unsigned long long samples;
+  unsigned long long frames;
+  static const char digits[] = "0123456789abcdef";
+  int nonzero = 0;
+  fh_init(h);
+  fh_add(h, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
+  h->buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
+  h->want_wav = 1;
+  h->wav_rate = rate == IVS_RUNNER_WAV_RATE_DEFAULT ? 0u : rate;
+  h->slice_ticks = slice;
+  if (!rx_expect(scn, h, IVS_RUNNER_OUTCOME_PASS, 0u) || !rx_value(h->out, "output.audio.samples", v, sizeof v)) {
+    return 0;
+  }
+  samples = strtoull(v, NULL, 10);
+  frames = rx_wav_frames(samples, rate);
+  if (!rx_value(h->out, "refpcm.frames", v, sizeof v) || strtoull(v, NULL, 10) != frames || frames == 0u) {
+    ivs_test_diag("refpcm.frames '%s', by hand %llu", v, frames);
+    return 0;
+  }
+  (void)snprintf(v, sizeof v, "%u", (unsigned)rate);
+  if (!rx_is(h->out, "refpcm.rate", v) || h->wav_finishes != 1u || h->wav_pcm_len != 2u * frames) {
+    ivs_test_diag("finishes %u, pcm bytes %zu, want %llu", (unsigned)h->wav_finishes, h->wav_pcm_len, 2u * frames);
+    return 0;
+  }
+  if (ivs_refpcm_wav_header(want_hdr, rate, frames) != IVS_REFPCM_OK || memcmp(want_hdr, h->wav_hdr, 44u) != 0) {
+    ivs_test_diag("the header the hook received is not the reference header");
+    return 0;
+  }
+  for (size_t i = 0u; i < 32u; i++) {
+    hex[2u * i] = digits[h->wav_sha[i] >> 4];
+    hex[2u * i + 1u] = digits[h->wav_sha[i] & 0x0Fu];
+  }
+  hex[64] = '\0';
+  if (!rx_is(h->out, "refpcm.sha256", hex)) {
+    return 0;
+  }
+  for (size_t i = 0u; i < h->wav_pcm_len; i++) {
+    nonzero |= h->wav_pcm[i] != 0u;
+  }
+  if (!nonzero || h->wav_pcm[0] != 0u || h->wav_pcm[1] != 0u) {
+    ivs_test_diag("PCM: first frame %02x%02x, nonzero %d", (unsigned)h->wav_pcm[1], (unsigned)h->wav_pcm[0], nonzero);
+    return 0;
+  }
+  return 1;
+}
+
+/* The hook contract: default rate 48000 and 44100 both give the by-hand frame count with the reference
+ * header and the file hash; a run cut into slices of 7 ticks gives the same PCM and hash as one slice
+ * (the converter state is carried across slices). */
+static int ex_wav_hook(void)
+{
+  fake_host a;
+  fake_host b;
+  char scn[RX_SCN_CAP];
+  int ok;
+  rx_psg_image();
+  if (!rx_psg_scenario(scn, sizeof scn, "run-to 3000 ticks\n")) {
+    return IVS_TEST_FAIL;
+  }
+  ok = rx_wav_run(&a, scn, 48000u, 0u);
+  if (ok) {
+    rx_free(&a);
+    ok = rx_wav_run(&a, scn, 44100u, 0u);
+  }
+  rx_free(&a);
+  if (ok) {
+    ok = rx_wav_run(&a, scn, 48000u, 0u);
+    if (ok) {
+      ok = rx_wav_run(&b, scn, 48000u, 7u) && a.wav_pcm_len == b.wav_pcm_len &&
+           memcmp(a.wav_pcm, b.wav_pcm, a.wav_pcm_len) == 0 && memcmp(a.wav_sha, b.wav_sha, 32u) == 0;
+      rx_free(&b);
+    }
+    rx_free(&a);
+  }
+  return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
+}
+
+/* Failure shapes of the WAV option: a PCM hook that fails (harness-fail wav-out, no hash), a finish hook that
+ * fails (wav-out), a byte bound below 44 + 2 x frames (wav-out-max-bytes), hooks without an audio buffer
+ * (wav-without-audio), only one of the two hooks (harness-fail before any report), and an invalid rate in the
+ * options (the same). */
+static int ex_wav_failures(void)
+{
+  fake_host h;
+  char scn[RX_SCN_CAP];
+  ivs_scenario *s = NULL;
+  int rc = IVS_TEST_FAIL;
+  rx_psg_image();
+  if (!rx_psg_scenario(scn, sizeof scn, "run-to 3000 ticks\n")) {
+    return IVS_TEST_FAIL;
+  }
+  for (int shape = 0; shape < 4; shape++) {
+    fh_init(&h);
+    fh_add(&h, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
+    h.buffer_bytes = shape == 3 ? 0u : IVS_RUNNER_BUFFERS_MAX;
+    h.want_wav = 1;
+    h.wav_fail_pcm = shape == 0;
+    h.wav_fail_finish = shape == 1;
+    h.out_max = shape == 2 ? 100u : 0u; /* 44 + 80 bytes are produced; the bound is judged on the WAV alone: */
+    h.no_audio_hook = shape == 2;       /* the raw audio hook is left out, it would hit the same bound first */
+    if (!rx_expect(scn, &h, IVS_RUNNER_OUTCOME_HARNESS_FAIL, 14u) ||
+        !rx_is(h.out, "outcome.detail",
+               shape == 0 ? "wav-out" : shape == 1 ? "wav-out" : shape == 2 ? "wav-out-max-bytes" : "wav-without-audio") ||
+        !rx_is(h.out, "refpcm.sha256", "-") || !rx_is(h.out, "refpcm.frames", "-")) { /* review WR-01: no frames of an unfinished file */
+      ivs_test_diag("failure shape %d", shape);
+      rx_free(&h);
+      goto done;
+    }
+    rx_free(&h);
+  }
+  /* only one hook, or an invalid rate: harness-fail without a report */
+  s = malloc(sizeof *s);
+  if (s != NULL) {
+    ivs_scenario_error e;
+    ivs_runner_host host;
+    ivs_runner_options o;
+    ivs_runner_result res;
+    void *storage = malloc(FH_STORAGE);
+    int ok = 0;
+    fh_init(&h);
+    fh_add(&h, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
+    h.out = malloc(FH_OUT_CAP);
+    memset(&e, 0, sizeof e);
+    if (storage != NULL && h.out != NULL && ivs_scenario_parse((const uint8_t *)scn, strlen(scn), s, &e) == 0) {
+      h.out[0] = '\0';
+      h.out_len = 0u;
+      memset(&host, 0, sizeof host);
+      host.ctx = &h;
+      host.read_file = fh_read;
+      host.write_report = fh_write;
+      host.storage = storage;
+      host.storage_bytes = FH_STORAGE;
+      host.write_wav_pcm = fh_wav_pcm; /* finish_wav missing */
+      ok = ivs_runner_execute(s, &host, NULL, &res) == IVS_RUNNER_OUTCOME_HARNESS_FAIL && h.out_len == 0u;
+      host.finish_wav = fh_wav_finish;
+      memset(&o, 0, sizeof o);
+      o.wav_rate = 8000u;
+      ok = ok && ivs_runner_execute(s, &host, &o, &res) == IVS_RUNNER_OUTCOME_HARNESS_FAIL && h.out_len == 0u;
+      o.wav_rate = 0u;
+      o.reserved = 1u;
+      ok = ok && ivs_runner_execute(s, &host, &o, &res) == IVS_RUNNER_OUTCOME_HARNESS_FAIL && h.out_len == 0u;
+    }
+    free(storage);
+    free(h.out);
+    h.out = NULL;
+    if (!ok) {
+      goto done;
+    }
+  }
+  rc = IVS_TEST_PASS;
+done:
+  free(s);
   return rc;
 }
 
@@ -980,9 +1858,14 @@ static int ex_no_paths(void)
  * the input lines. */
 static int ex_input_schedule(void)
 {
+  /* digest.mem and digest.composite join the list in plan 05-05: the words are guest-visible, so the
+   * pull-down masks of the two ports (MEM rows) differ while a controller word is held; the scenario
+   * holds nonzero words at its end. The CPU and image digests still do not see them (the diagnostic
+   * never reads the ports). */
   static const char *const may_differ[] = {"digest.input",       "input.events",       "input.consumed",
                                            "input.controller.0", "input.controller.1", "input.controller.2",
-                                           "input.controller.3", "host.calls"};
+                                           "input.controller.3", "host.calls",         "digest.mem",
+                                           "digest.composite"};
   fake_host a;
   fake_host b;
   char diag[RX_SCN_CAP];
@@ -1206,6 +2089,18 @@ static const ivs_test_case exec_cases[] = {
     {"runner.exec.halt-bound-small", ex_halt_bound_small, NULL},
     {"runner.exec.input-schedule", ex_input_schedule, NULL},
     {"runner.exec.io-error", ex_io_error, NULL},
+    {"runner.exec.ivsr2-keys", ex_ivsr2_keys, NULL},
+    {"runner.exec.audio-chain-check", ex_audio_chain_check, NULL},
+    {"runner.exec.sha256-fips", ex_sha256_fips, NULL},
+    {"runner.exec.psglog-assert", ex_psglog_assert, NULL},
+    {"runner.exec.audio-assert", ex_audio_assert, NULL},
+    {"runner.exec.capture-overflow", ex_capture_overflow, NULL},
+    {"runner.exec.digest-assert-audio-psglog", ex_digest_assert_audio_psglog, NULL},
+    {"runner.exec.operator-files-hook", ex_operator_files_hook, NULL},
+    {"runner.exec.out-max-bytes", ex_out_max_bytes, NULL},
+    {"runner.exec.refpcm-keys-only-with-option", ex_refpcm_keys_only_with_option, NULL},
+    {"runner.exec.wav-hook", ex_wav_hook, NULL},
+    {"runner.exec.wav-failures", ex_wav_failures, NULL},
     {"runner.exec.key-order", ex_key_order, NULL},
     {"runner.exec.missing-file", ex_missing_file, NULL},
     {"runner.exec.no-paths", ex_no_paths, NULL},

@@ -8,3 +8,4 @@ delete data/tiers.json
 delete data/cp1610/vectors/toy.json
 delete data/cp1610/vector-review.json
 delete data/api/api-effects.json
+delete data/psg/rules.json

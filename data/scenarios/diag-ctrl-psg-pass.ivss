@@ -1,0 +1,66 @@
+# Scenario diag-ctrl-psg-pass (plan 05-11, D-24, V-08): outcome pass, exit 0. The second original
+# diagnostic polls both controller ports and programs the PSG. Seven input events, each stating
+# both controller words, change what the guest reads at 01FE (port 0) and 01FF (port 1); the poll
+# loop stores each changed value, the guest then waits 120 delay iterations, writes its end
+# marker last and halts (about tick 16,700, a hand estimate that no assert uses). The asserts are
+# the hand-derived expectations of data/golden/diag-ctrl-psg-pass.expect (derivation in
+# docs/input/diag-ctrl-psg-1-derivation.md, written before the program); they are the same lines
+# in the same order (golden-expect-drift). The events are at least 600 ticks apart, far above one
+# poll loop (81 CPU cycles = 324 ticks). The installed consumer of plan 05-11 replays the same
+# seven events.
+ivss 1
+id diag-ctrl-psg-pass
+profile intv-2609-ntsc-family-p1
+content exec boot-stub
+content grom zero-grom
+content cart diag-ctrl-psg-1.ivsc
+capture psglog
+input at_tick=4000 c0=KEY_1 c1=0x0
+input at_tick=4800 c0=0x0 c1=DISC_E
+input at_tick=5600 c0=KEY_1+KEY_9 c1=SIDE_LOWER_LEFT
+input at_tick=6400 c0=0x0 c1=0x0
+input at_tick=7200 c0=DISC_N c1=0x0
+input at_tick=8000 c0=DISC_N+SIDE_TOP c1=0x0
+input at_tick=8800 c0=KEY_5+SIDE_TOP c1=0x0
+run-to 24000 ticks stop halted
+assert halted == yes
+assert mem 020F == 03C5
+assert mem 0210 == 00FF
+assert mem 0211 == 007E
+assert mem 0212 == 00FF
+assert mem 0213 == 005A
+assert mem 0214 == 00FF
+assert mem 0215 == 00FB
+assert mem 0216 == 005B
+assert mem 0217 == 001D
+assert mem 0220 == 00FF
+assert mem 0221 == 00FD
+assert mem 0222 == 009F
+assert mem 0223 == 00FF
+assert mem 0224 == 0000
+assert mem 0225 == 0000
+assert mem 0226 == 0000
+assert mem 0227 == 0000
+assert psglog count == 11
+assert psglog 0 addr=0 value=0023 source=cpu-write
+assert psglog 1 addr=4 value=0001 source=cpu-write
+assert psglog 2 addr=8 value=003E source=cpu-write
+assert psglog 3 addr=11 value=000F source=cpu-write
+assert psglog 4 addr=1 value=0080 source=cpu-write
+assert psglog 5 addr=5 value=0000 source=cpu-write
+assert psglog 6 addr=12 value=0008 source=cpu-write
+assert psglog 7 addr=9 value=0010 source=cpu-write
+assert psglog 8 addr=3 value=0064 source=cpu-write
+assert psglog 9 addr=7 value=0000 source=cpu-write
+assert psglog 10 addr=10 value=000A source=cpu-write
+assert mem 01F0 == 0023
+assert mem 01F4 == 0001
+assert mem 01F8 == 003E
+assert mem 01FB == 000F
+assert mem 01F1 == 0080
+assert mem 01F5 == 0000
+assert mem 01FC == 0008
+assert mem 01F9 == 0010
+assert mem 01F3 == 0064
+assert mem 01F7 == 0000
+assert mem 01FA == 0000

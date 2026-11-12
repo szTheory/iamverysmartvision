@@ -54,9 +54,10 @@ typedef struct ivs_machine ivs_machine;
 /* Reset kinds (D-14). Any other value is BAD_ARG (A-08 e). */
 #define IVS_RESET_POWER_ON 1u
 
-/* State digest domains (D-35, D-10). 0 is the composite of 1..4. 16..18 are live domains: the
- * RUN-05 video, audio and input observations, domain version 1; not part of the composite, which
- * stays version 1 over domains 1..4. Every other value is refused. */
+/* State digest domains (D-35, D-10, D-18). 0 is the composite of 1..4. 16..19 are observation
+ * domains: the RUN-05 video, audio and input observations and (plan 05-03) the PSG write log,
+ * domain version 1; none is part of the composite, which is version 2 since plan 05-03 over
+ * domains 1..4 (the PSG state joined domains 2 and 4). Every other value is refused. */
 #define IVS_DIGEST_COMPOSITE 0u
 #define IVS_DIGEST_CPU 1u
 #define IVS_DIGEST_MEM 2u
@@ -65,6 +66,7 @@ typedef struct ivs_machine ivs_machine;
 #define IVS_DIGEST_VIDEO 16u
 #define IVS_DIGEST_AUDIO 17u
 #define IVS_DIGEST_INPUT 18u
+#define IVS_DIGEST_PSGLOG 19u
 
 /* Largest struct_size of an in struct (D-04): above it the call is BAD_ARG. */
 #define IVS_STRUCT_SIZE_MAX 4096u
@@ -102,8 +104,16 @@ typedef struct ivs_image_report {
 } ivs_image_report;
 
 /* Output layout formats of ivs_info (D-06). NONE: the profile produces no bytes of that kind yet
- * (the size per frame is then 0). */
+ * (the size per frame is then 0). PSG_LEVELS_V1 (plan 05-02, D-15): the audio channel carries one
+ * 4-byte sample per PSG chip step, level_A, level_B, level_C, 0 (post-mixer effective amplitude
+ * index per channel); published by the profile from plan 05-06 on (the real profile's audio layout). */
 #define IVS_OUTPUT_FORMAT_NONE 0u
+#define IVS_OUTPUT_FORMAT_PSG_LEVELS_V1 1u
+
+/* The v1 (Phase 3) size of ivs_info (A-02, plan 04-09; public since plan 05-02): the smallest
+ * struct_size ivs_machine_info accepts. Fields after it are written only when the caller's
+ * struct_size covers them. machine.c ties it to offsetof(ivs_info, ticks_per_cpu_cycle). */
+#define IVS_INFO_V1_SIZE 216u
 
 /* Out: instance information. slots[i] is the slot of kind i + 1. time_ticks is machine time in
  * master ticks (docs/time-base.md).
@@ -124,7 +134,20 @@ typedef struct ivs_image_report {
  *   244 audio_format             IVS_OUTPUT_FORMAT_*
  *   248 audio_bytes_per_frame    0 with IVS_OUTPUT_FORMAT_NONE
  *   252 reserved2                written 0
- * sizeof(ivs_info) is 256. */
+ * v3 (plan 05-02, D-15, D-19): the Phase 5 tail, appended after the v2 size of 256 and written only
+ * when struct_size covers it (a 256-byte caller gets exactly 256 bytes). The audio fields and the
+ * crystal passthrough are filled from plan 05-06 (the core never reads the crystal, it only
+ * republishes the profile's figures); the write-log fields are filled from plan 05-08:
+ *   256 audio_sample_ticks       master ticks between audio samples (one PSG chip step; 16)
+ *   260 audio_sample_bytes       bytes of one audio sample (4 with IVS_OUTPUT_FORMAT_PSG_LEVELS_V1)
+ *   264 psg_log_record_bytes     bytes of one write-log record (16)
+ *   268 psg_log_records_per_frame  the log capacity bound of one frame slot, W_log = ceil(F / g) +
+ *                                ceil(U / g) + 1 = 2,152 on the NTSC profile (psg_log_bytes_per_frame
+ *                                is record_bytes times this; a log buffer needs that many bytes per
+ *                                (max(target - now, 0) / nominal_frame_ticks + 1))
+ *   272 crystal_hz_num           the master crystal in Hz as a fraction (numerator)
+ *   280 crystal_hz_den           ... denominator
+ * sizeof(ivs_info) is 288. IVS_INFO_V1_SIZE stays 216. */
 typedef struct ivs_info {
   uint32_t struct_size;
   uint32_t phase; /* IVS_PHASE_* */
@@ -142,6 +165,13 @@ typedef struct ivs_info {
   uint32_t audio_format; /* IVS_OUTPUT_FORMAT_* */
   uint32_t audio_bytes_per_frame;
   uint32_t reserved2; /* written 0 */
+  /* ---- end of the v2 (Phase 4) size, 256 ---- */
+  uint32_t audio_sample_ticks;
+  uint32_t audio_sample_bytes;
+  uint32_t psg_log_record_bytes;
+  uint32_t psg_log_records_per_frame;
+  uint64_t crystal_hz_num;
+  uint64_t crystal_hz_den;
 } ivs_info;
 
 /* ---- typed content loading (D-10, D-11, D-24..D-27, D-32, D-33, A-04, A-08, plan 03-10) ----
@@ -225,6 +255,18 @@ typedef struct ivs_load_options {
 #define IVS_REASON_INPUT_EVENT_RESERVED 52u   /* UNSUPPORTED: an event's reserved word is nonzero */
 #define IVS_REASON_INPUT_CONTROL_RESERVED 53u /* UNSUPPORTED: a controller word has IVS_CTRL_RESERVED_MASK set */
 #define IVS_REASON_INPUT_EXTRA_CONTROLLER 54u /* UNSUPPORTED: a nonzero word at or above input.controllers */
+/* Source of a PSG write-log record (plan 05-02, D-13; the record's `source` byte): 1 a CPU write
+ * access, 2 the write of an interrupt-entry (DW) cycle. 0 and 3..255 are invalid. Pinned by
+ * data/expected/psg-log-source.ids (append-only: a source number never moves and is never reused,
+ * because recorded logs carry it). */
+#define IVS_PSGLOG_SRC_CPU_WRITE 1u
+#define IVS_PSGLOG_SRC_CPU_DW 2u
+
+/* Write-log buffer reasons of ivs_machine_run (plan 05-02, D-14): the third caller-owned buffer
+ * (ivs_run_request.psg_log), checked after video and audio, before any state change. */
+#define IVS_REASON_RUN_PSGLOG_NULL 55u    /* BAD_ARG: psg_log NULL with a nonzero psg_log_capacity */
+#define IVS_REASON_RUN_PSGLOG_OVERLAP 56u /* BAD_ARG: psg_log overlaps the instance, report, video, audio or events */
+#define IVS_REASON_RUN_PSGLOG_SMALL 57u   /* BUFFER_TOO_SMALL: psg_log_capacity below the layout's requirement */
 
 /* segment_index of a report whose reason concerns no single segment. */
 #define IVS_SEGMENT_NONE 0xFFFFFFFFu
@@ -266,11 +308,22 @@ IVS_API ivs_status ivs_machine_destroy(ivs_machine *m);
 IVS_API ivs_status ivs_machine_info(const ivs_machine *m, ivs_info *out);
 
 /* SHA-256 of the canonical state (D-35) of one domain (IVS_DIGEST_CPU, _MEM, _IMAGES, _INSTANCE,
- * _VIDEO, _AUDIO, _INPUT) or of the composite of the first four (IVS_DIGEST_COMPOSITE; the
- * observation domains are not in it, D-10). The serialization is field by field and
+ * _VIDEO, _AUDIO, _INPUT, _PSGLOG) or of the composite of the first four (IVS_DIGEST_COMPOSITE,
+ * composite version 2; the observation domains are not in it, D-10, D-18). The serialization is field by field and
  * big-endian, so the value does not depend on struct layout, padding or host byte order; it
  * excludes the magic and padding. BAD_ARG: out NULL or any other domain; then BAD_HANDLE; then
- * BAD_ARG: out overlapping the instance storage. */
+ * BAD_ARG: out overlapping the instance storage.
+ * Domain 17 (AUDIO, plan 05-09, documentation only): the digest is SHA-256 of
+ *   'I' 'V' 'S' 'D' || 17 || be16(1) || be32(32) || chain || be64(changes) || be64(emitted) ||
+ *   be32(prev_levels)
+ * where `emitted` is the number of chip steps (samples) since power-on, `changes` the number of
+ * level-change records, `prev_levels` the last sample's levels (A in bits 7..0, B in 15..8, C in
+ * 23..16) and `chain` the level-change chain: initially 32 zero bytes, and for each sample k
+ * (k = 1, 2, ...) whose three levels differ from the previous sample's (initially all 0)
+ *   chain = SHA-256('I' 'V' 'S' 'R' || 17 || chain || be64(changes before this record) || be32(12) ||
+ *                   be64(k) || A || B || C || 0).
+ * The dense bytes a run call delivers (4 per sample: A, B, C, 0) are enough to recompute all of it,
+ * so a host can check the stream it received against this digest without any core state. */
 IVS_API ivs_status ivs_machine_state_digest(const ivs_machine *m, uint32_t domain, uint8_t out_sha256[32]);
 
 /* Loads one image of kind (IVS_KIND_*) from len bytes at bytes. Validates everything before the

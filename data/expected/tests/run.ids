@@ -74,8 +74,13 @@ run.stop-name.unknown
 # 59736 ticks, docs/time-base.md) and output layout (NONE, sizes 0) that ivs_machine_info appends,
 # a v1-sized (Phase 3) caller with a poisoned tail untouched, and a caller below v1 refused.
 run.info.timebase
-run.info.layout-none
+run.info.layout-real
 run.info.v1-size-caller
+# Plan 05-02 (D-19): ivs_info v3 appends the Phase 5 tail at offset 256; a 256-byte (v2) caller gets
+# exactly 256 bytes, a v3-sized caller the tail (0 until plans 05-06 and 05-08 fill it).
+run.info.v2-size-caller
+run.info.v3-fields
+run.info.audio-fields
 run.info.short-refused
 run.info.oversize-refused
 # Family slice (plan 04-09, D-07): programs halt (loop, HLT, TSTR follower, idle units) and fault
@@ -113,12 +118,24 @@ run.buffers.null-with-capacity
 run.buffers.inside-instance
 run.buffers.video-audio-overlap
 run.buffers.report-overlap
-run.buffers.real-layout-zero
+run.buffers.real-layout-audio
+run.buffers.audio-real
 run.buffers.entry-points-equal
 run.prec.handle-over-buffer
 run.prec.unsupported-over-buffer
 run.prec.buffer-over-state
 run.prec.range-over-capacity
+# Plan 05-02 (D-14, D-17, A-11): the write-log channel (psg_log) and the not-requested rule. A NULL
+# buffer with capacity 0 runs against a layout that needs bytes and equals the zero layout; a nonzero
+# short capacity and a non-NULL buffer of capacity 0 are still refused; RUN_PSGLOG_NULL,
+# RUN_PSGLOG_OVERLAP (instance, video, audio, events, top of the address space, the report) and
+# RUN_PSGLOG_SMALL (exact minus one, exact accepted); and the log stage after video and audio.
+run.buffers.null-zero-not-requested
+run.buffers.nonzero-too-small-refused
+run.buffers.psglog-null
+run.buffers.psglog-overlap
+run.buffers.psglog-small
+run.prec.psglog-after-audio
 # Family input (plan 04-11, D-12..D-16, A-04, A-08): the 32-byte event record, one event inside
 # unit 3 of stand-in content A taking effect at the start of unit 4 (never at exit), and the INPUT
 # row against a literal chain produced with printf octal escapes and cmake -E sha256sum.
@@ -157,7 +174,7 @@ run.input.refuse.extra-controller-word
 run.input.extra-word-zero-ok
 # Phase 4 boundary (D-15): a stand-in program reading $01FE and $01FF runs equal with and without
 # ten events (register trace, CPU, MEM and composite digests, RAM); only the INPUT digest differs.
-run.input.guest-invisible
+run.input.guest-visible
 run.prec.unsupported-over-events
 run.prec.buffer-over-events
 run.prec.events-over-state
@@ -176,6 +193,25 @@ run.fuzz.seed-06
 run.fuzz.seed-07
 run.fuzz.seed-08
 run.fuzz.cases-covered
+run.fuzz.input-visible-seed-01
+run.fuzz.input-visible-seed-02
+run.fuzz.input-visible-seed-03
+run.fuzz.input-visible-seed-04
+run.fuzz.input-visible-seed-05
+run.fuzz.input-visible-seed-06
+run.fuzz.input-visible-seed-07
+run.fuzz.input-visible-seed-08
+run.fuzz.input-visible-covered
+# Family struct (plan 05-02, D-19, A-02, A-04): the pinned v1 minimums of the grown run request (v2
+# appends psg_log and psg_log_capacity) and run report (v2 appends audio_first_index,
+# psg_log_bytes_written, psg_log_first_index): a v1-sized caller in a poisoned larger buffer runs as
+# the v2-sized form and no byte past its size is written; the appended fields' offsets; the tail rule
+# rebased on the core's own size; one byte below either v1 minimum refused.
+run.struct.request-v1-caller
+run.struct.report-v1-caller
+run.struct.request-v2-fields skip-ok
+run.struct.report-v2-fields
+run.struct.tail-nonzero
 # Frozen v1 sizes (plan 04-13, A-02, Pitfall 13): offsetof and sizeof literals of the pointer-free
 # structs and request prefix; the pointer-bearing request size is checked only with 64-bit pointers.
 run.struct.v1-sizes
@@ -199,3 +235,23 @@ run.diag.predicate
 # and equal composite and domain digests.
 run.diag.slice
 run.diag.repeat
+# Family diag-ctrl (plan 05-11, D-24, D-05, D-27): ivs-diag-ctrl-psg-1 behind the boot stub; the seven
+# controller events of data/scenarios/diag-ctrl-psg-pass.ivss through the public run call with an audio
+# buffer and a write-log buffer from ivs_info; expected values read from the assert lines of
+# data/golden/diag-ctrl-psg-pass.expect (derived by hand in plan 05-01), never from the core.
+# ram-tables: the 17 RAM clauses; psg-registers: the 11 masked read-backs; log-list: eleven records
+# (addr, value, source, strictly increasing ticks, tick = observed unit start + 6 cycles); channel-b-
+# constant-8: level_B 8 from the amplitude-B write on, level_C 0; tone-a-silent-until-reload: level_A 0 for
+# the whole run (C12, C77); halts: CPU_HALTED below the 20,000-tick cap; marker-last: tables and log final when
+# the marker shows; slicing: one call versus 1 and 7 tick slices; nokey-timeout: no input leaves the guest in
+# its poll loop at the target; order-equals-pass: the one-tick-apart split schedule gives the same result.
+run.diag.ctrl-psg.ram-tables
+run.diag.ctrl-psg.psg-registers
+run.diag.ctrl-psg.log-list
+run.diag.ctrl-psg.channel-b-constant-8
+run.diag.ctrl-psg.tone-a-silent-until-reload
+run.diag.ctrl-psg.halts
+run.diag.ctrl-psg.marker-last
+run.diag.ctrl-psg.slicing
+run.diag.ctrl-psg.nokey-timeout
+run.diag.ctrl-psg.order-equals-pass

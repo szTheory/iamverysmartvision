@@ -7,6 +7,11 @@
 #   assert halted == yes|no      -> IVS_EXPECT_HALTED(1|0)
 #   assert reg R<0-7> == HHHH    -> IVS_EXPECT_REG(<n>u, 0xHHHHu)
 #   assert mem AAAA == HHHH      -> IVS_EXPECT_MEM(0xAAAAu, 0xHHHHu)
+# Plan 05-11 adds the two PSG write-log forms of data/golden/diag-ctrl-psg-pass.expect (the write
+# list of the second diagnostic):
+#   assert psglog count == N     -> IVS_EXPECT_PSGCOUNT(Nu)
+#   assert psglog I addr=A value=HHHH source=cpu-write|cpu-dw
+#                                -> IVS_EXPECT_PSGLOG(Iu, Au, 0xHHHHu, 1u|2u)   (source 1 CPU write, 2 DW)
 # HHHH and AAAA are 4 upper-case hex digits. '#' lines and blank lines are skipped. Any other line
 # (another subject, '!=', a range, lower-case hex) stops the build: a clause the test cannot check
 # must not be dropped silently. A file without one assert line also stops the build.
@@ -44,6 +49,15 @@ foreach(l IN LISTS lines)
     string(APPEND body "IVS_EXPECT_REG(${CMAKE_MATCH_1}u, 0x${CMAKE_MATCH_2}u)\n")
   elseif(l MATCHES "^assert mem ([0-9A-F][0-9A-F][0-9A-F][0-9A-F]) == ([0-9A-F][0-9A-F][0-9A-F][0-9A-F])$")
     string(APPEND body "IVS_EXPECT_MEM(0x${CMAKE_MATCH_1}u, 0x${CMAKE_MATCH_2}u)\n")
+  elseif(l MATCHES "^assert psglog count == ([0-9]+)$")
+    string(APPEND body "IVS_EXPECT_PSGCOUNT(${CMAKE_MATCH_1}u)\n")
+  elseif(l MATCHES "^assert psglog ([0-9]+) addr=([0-9]+) value=([0-9A-F][0-9A-F][0-9A-F][0-9A-F]) source=(cpu-write|cpu-dw)$")
+    if(CMAKE_MATCH_4 STREQUAL "cpu-write")
+      set(src_code 1)
+    else()
+      set(src_code 2)
+    endif()
+    string(APPEND body "IVS_EXPECT_PSGLOG(${CMAKE_MATCH_1}u, ${CMAKE_MATCH_2}u, 0x${CMAKE_MATCH_3}u, ${src_code}u)\n")
   else()
     message(FATAL_ERROR "expect-inc: ${IN}:${lineno}: unsupported line: ${l}")
   endif()

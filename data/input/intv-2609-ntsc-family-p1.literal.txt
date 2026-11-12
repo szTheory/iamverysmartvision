@@ -1,0 +1,80 @@
+# Literal controller table of profile intv-2609-ntsc-family-p1 (D-02, D-03; plan 05-01).
+#
+# Claim tier: source-expectation. This file is a transcription of two cached community sources:
+# the ConsoleMods controller-port matrix (SRC-consolemods-intv-pinouts, revision 23186: which
+# connector pins each control grounds, plus the pin-to-bit map) and the key-table image of the
+# community wiki Hand Controller page (SRC-intv-wiki, Hand_controller.png@oldid-14808: for each
+# control the value whose set bits are the bits a press clears). Both are tier 4 and likely one
+# lineage, so their agreement is a transcription cross-check, not independent hardware evidence
+# (C16). A pass of the input gate step shows that this file is self-consistent and that a
+# profile or generated table agrees with it, not that the console behaves this way.
+#
+# Independence rule: this file is written from the sources only. It is never derived from,
+# generated from or edited to match a profile field, a generated table, a core output or a
+# planning-note table it judges, and it names no profile field. Where a source and the profile
+# differ, this file keeps the source reading and the profile is the side that changes.
+# Emulator source code is never a source for a row.
+#
+# Row grammar (one row per line, single spaces, columns in this order):
+#   <NAME> pins=<n,n[,n]> cleared=<HH> wiki=<HH> byte=<HH> src=<SRC-id>@<locator> tag=<tag> conf=C<n>
+#   NAME     an IVS_CTRL_ name without the prefix, exactly the set of data/expected/input-bits.ids.
+#   pins     the connector pins the control grounds, ascending, from the ConsoleMods matrix.
+#   cleared  the eight-bit mask of the bits a press clears: the pins mapped through the pin-to-bit
+#            map below, OR-ed together, two uppercase hex digits.
+#   wiki     the value printed for the control in the wiki image, read independently of the
+#            pins; it must equal cleared (the image rows are in the unchanged hexadecimal form).
+#   byte     the byte a read returns with only that control pressed: FF XOR cleared.
+#   src      the pin source and the locator of the row (Controller_Matrix-<row>); the wiki value
+#            of every row is from SRC-intv-wiki, locator Hand_controller.png@oldid-14808.
+#   tag      a source-authority tag of data/tiers.json.
+#   conf     a discrepancy id (C16: the matrix is unmeasured and has one lineage).
+# Pin-to-bit map (ConsoleMods, controller port table): pin 4 = b0, pin 3 = b1, pin 2 = b2,
+# pin 1 = b3, pin 9 = b4, pin 8 = b5, pin 7 = b6, pin 6 = b7 (pin 5 is ground). The table is
+# identical for both ports (D-02); which connector feeds which port is C66.
+# Disc names: direction 1 of the matrix is the top of the disc in the wiki image and the numbers
+# run clockwise (N, NNE, NE, ENE, E, ESE, SE, SSE, S, SSW, SW, WSW, W, WNW, NW, NNW); the compass
+# names come from the image only. The two top side buttons read the same code in both sources.
+#
+# Notes from the wiki prose (SRC-intv-wiki, oldid 14808), all reproduced by the union rule
+# byte = FF XOR (OR of the cleared masks of every pressed control):
+#   1. Reading an idle controller returns all ones in the low eight bits: FF.
+#   2. Pressing key 1 alone clears bits 0 and 7 and reads 7E (row KEY_1).
+#   3. Pressing keys 1 and 9 together clears bits 0, 2, 5 and 7 and reads 5A
+#      (cleared 81 OR 24 = A5, FF XOR A5 = 5A).
+#   4. A single keypad press, and a side button combined with a disc input, can be decoded
+#      uniquely (class single-control and disc-side in data/expected/input-policies.ids).
+#   5. A keypad press combined with a side button or a disc input, and two side buttons pressed
+#      together, cannot be decoded uniquely (classes key-disc, key-side and side-side).
+# Transcription check (plan 05-01): all 31 pin sets mapped through the pin-to-bit map equal the
+# 31 wiki values; no disagreement was found and none was corrected.
+KEY_1 pins=4,6 cleared=81 wiki=81 byte=7E src=SRC-consolemods-intv-pinouts@Controller_Matrix-key-1 tag=tier4-community conf=C16
+KEY_2 pins=4,7 cleared=41 wiki=41 byte=BE src=SRC-consolemods-intv-pinouts@Controller_Matrix-key-2 tag=tier4-community conf=C16
+KEY_3 pins=4,8 cleared=21 wiki=21 byte=DE src=SRC-consolemods-intv-pinouts@Controller_Matrix-key-3 tag=tier4-community conf=C16
+KEY_4 pins=3,6 cleared=82 wiki=82 byte=7D src=SRC-consolemods-intv-pinouts@Controller_Matrix-key-4 tag=tier4-community conf=C16
+KEY_5 pins=3,7 cleared=42 wiki=42 byte=BD src=SRC-consolemods-intv-pinouts@Controller_Matrix-key-5 tag=tier4-community conf=C16
+KEY_6 pins=3,8 cleared=22 wiki=22 byte=DD src=SRC-consolemods-intv-pinouts@Controller_Matrix-key-6 tag=tier4-community conf=C16
+KEY_7 pins=2,6 cleared=84 wiki=84 byte=7B src=SRC-consolemods-intv-pinouts@Controller_Matrix-key-7 tag=tier4-community conf=C16
+KEY_8 pins=2,7 cleared=44 wiki=44 byte=BB src=SRC-consolemods-intv-pinouts@Controller_Matrix-key-8 tag=tier4-community conf=C16
+KEY_9 pins=2,8 cleared=24 wiki=24 byte=DB src=SRC-consolemods-intv-pinouts@Controller_Matrix-key-9 tag=tier4-community conf=C16
+KEY_CLEAR pins=1,6 cleared=88 wiki=88 byte=77 src=SRC-consolemods-intv-pinouts@Controller_Matrix-Clear tag=tier4-community conf=C16
+KEY_0 pins=1,7 cleared=48 wiki=48 byte=B7 src=SRC-consolemods-intv-pinouts@Controller_Matrix-key-0 tag=tier4-community conf=C16
+KEY_ENTER pins=1,8 cleared=28 wiki=28 byte=D7 src=SRC-consolemods-intv-pinouts@Controller_Matrix-Enter tag=tier4-community conf=C16
+DISC_N pins=2 cleared=04 wiki=04 byte=FB src=SRC-consolemods-intv-pinouts@Controller_Matrix-D1 tag=tier4-community conf=C16
+DISC_NNE pins=2,9 cleared=14 wiki=14 byte=EB src=SRC-consolemods-intv-pinouts@Controller_Matrix-D2 tag=tier4-community conf=C16
+DISC_NE pins=2,3,9 cleared=16 wiki=16 byte=E9 src=SRC-consolemods-intv-pinouts@Controller_Matrix-D3 tag=tier4-community conf=C16
+DISC_ENE pins=2,3 cleared=06 wiki=06 byte=F9 src=SRC-consolemods-intv-pinouts@Controller_Matrix-D4 tag=tier4-community conf=C16
+DISC_E pins=3 cleared=02 wiki=02 byte=FD src=SRC-consolemods-intv-pinouts@Controller_Matrix-D5 tag=tier4-community conf=C16
+DISC_ESE pins=3,9 cleared=12 wiki=12 byte=ED src=SRC-consolemods-intv-pinouts@Controller_Matrix-D6 tag=tier4-community conf=C16
+DISC_SE pins=3,4,9 cleared=13 wiki=13 byte=EC src=SRC-consolemods-intv-pinouts@Controller_Matrix-D7 tag=tier4-community conf=C16
+DISC_SSE pins=3,4 cleared=03 wiki=03 byte=FC src=SRC-consolemods-intv-pinouts@Controller_Matrix-D8 tag=tier4-community conf=C16
+DISC_S pins=4 cleared=01 wiki=01 byte=FE src=SRC-consolemods-intv-pinouts@Controller_Matrix-D9 tag=tier4-community conf=C16
+DISC_SSW pins=4,9 cleared=11 wiki=11 byte=EE src=SRC-consolemods-intv-pinouts@Controller_Matrix-D10 tag=tier4-community conf=C16
+DISC_SW pins=1,4,9 cleared=19 wiki=19 byte=E6 src=SRC-consolemods-intv-pinouts@Controller_Matrix-D11 tag=tier4-community conf=C16
+DISC_WSW pins=1,4 cleared=09 wiki=09 byte=F6 src=SRC-consolemods-intv-pinouts@Controller_Matrix-D12 tag=tier4-community conf=C16
+DISC_W pins=1 cleared=08 wiki=08 byte=F7 src=SRC-consolemods-intv-pinouts@Controller_Matrix-D13 tag=tier4-community conf=C16
+DISC_WNW pins=1,9 cleared=18 wiki=18 byte=E7 src=SRC-consolemods-intv-pinouts@Controller_Matrix-D14 tag=tier4-community conf=C16
+DISC_NW pins=1,2,9 cleared=1C wiki=1C byte=E3 src=SRC-consolemods-intv-pinouts@Controller_Matrix-D15 tag=tier4-community conf=C16
+DISC_NNW pins=1,2 cleared=0C wiki=0C byte=F3 src=SRC-consolemods-intv-pinouts@Controller_Matrix-D16 tag=tier4-community conf=C16
+SIDE_TOP pins=6,8 cleared=A0 wiki=A0 byte=5F src=SRC-consolemods-intv-pinouts@Controller_Matrix-Top_Fire_Buttons tag=tier4-community conf=C16
+SIDE_LOWER_LEFT pins=7,8 cleared=60 wiki=60 byte=9F src=SRC-consolemods-intv-pinouts@Controller_Matrix-Bottom_Left_Fire_Button tag=tier4-community conf=C16
+SIDE_LOWER_RIGHT pins=6,7 cleared=C0 wiki=C0 byte=3F src=SRC-consolemods-intv-pinouts@Controller_Matrix-Bottom_Right_Fire_Button tag=tier4-community conf=C16

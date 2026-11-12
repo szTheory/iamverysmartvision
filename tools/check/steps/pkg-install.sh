@@ -26,9 +26,11 @@
 #   consumer   (D-36, D-39, plan 04-23) tests/installed-consumer copied to the temp dir, configured
 #              with -DCMAKE_PREFIX_PATH=<moved prefix>, registries off and the path variables unset
 #              in a subshell, built with strict C17 flags, run on build/release/images/
-#              {boot-stub.exec,diag-cpu-1.ivsc}; exit 0 required; stdout kept as
+#              {boot-stub.exec,diag-cpu-1.ivsc,diag-ctrl-psg-1.ivsc}; exit 0 required; stdout kept as
 #              build/gate/pkg-consumer.txt and equal to data/expected/pkg-consumer.golden without
-#              its # lines; its digest.<domain> lines equal data/golden/diag-input-pass.digests.
+#              its # lines; its digest.<domain> lines equal data/golden/diag-input-pass.digests, and
+#              (plan 05-11, D-19) its ctrl.digest.<domain> lines and observed domains equal
+#              data/golden/diag-ctrl-psg-pass.digests (audio and psglog observed, the composite aside).
 #   independence (D-37 d, e) `ninja -t deps`: no path under ROOT, no ivs*.h outside the moved
 #              prefix, nothing else under the temp dir but the source copy, and ivs.h,
 #              ivs_machine.h, ivs_run.h, ivs_status.h present under the prefix; `ninja -t
@@ -39,14 +41,17 @@
 #   c++ link   (D-38) tests/installed-consumer/main.cpp compiled and linked by ${CXX:-c++}
 #              -std=c++17 directly against the installed headers and archive, then run; a
 #              visible `-- pkg-cxx-link SKIP` line without a C++ compiler.
-#   selftest   ten in-step cases (D-40, exact inventory data/expected/pkg-selftests.ids), each on a
+#   selftest   thirteen in-step cases (D-40, exact inventory data/expected/pkg-selftests.ids), each on a
 #              copy or the deleted prefix and each required to fail for its intended reason:
 #              core-src-include, missing-symbol, ghost-decl, unprefixed, extra-file, baked-path,
 #              version-refused (the next minor, the next major and an older minor are refused;
 #              the built major.minor is found under the moved prefix), old-prefix (the deleted
 #              original is not found), leak-detector (a consumer copy built with -I core/src and an
 #              internal header: it builds, and the deps checker reports pkg-leak), golden-drift
-#              (the consumer output with one digest nibble changed: pkg-golden-diff).
+#              (the consumer output with one digest nibble changed: pkg-golden-diff), and, from plan
+#              05-11, ctrl-digest-drift (one ctrl.digest nibble changed: pkg-runner-golden-diff),
+#              ctrl-domain-missing (the ctrl.digest.psglog line dropped: pkg-runner-golden-diff) and
+#              ctrl-peek-wrong (the peeked $01FE changed: pkg-golden-diff).
 # Every temp file is under one mktemp dir outside the repo, removed on exit; the step writes
 # nothing else but build/gate/pkg-consumer.txt. Logs are printed only on failure.
 # Tokens: pkg-install-no-tree: <path>, pkg-install-failed: <what>, pkg-install-relocate: <what>,
@@ -431,31 +436,42 @@ check_ivs_dir() {
   printf -- '-- FAIL pkg-ivs-dir: %s\n' "$ci_dir is not under the moved prefix"
   return 1
 }
-# check_runner_golden <output>: the consumer's digest.<domain> lines equal those of the runner
-# golden of the same scenario (D-24, D-39), and its domains are exactly the golden's observed
-# ones (the composite apart). Prints FAIL lines.
-rgold="$ROOT/data/golden/diag-input-pass.digests"
-check_runner_golden() {
-  if [ ! -f "$rgold" ]; then
-    printf -- '-- FAIL pkg-runner-golden-diff: %s\n' "data/golden/diag-input-pass.digests missing"
+# check_one_golden <golden> <prefix> <output>: the consumer's <prefix>digest.<domain> lines equal the
+# digest.<domain> lines of the runner golden of the same scenario (D-24, D-39), and its domains are
+# exactly the golden's observed ones (the composite apart). Prints FAIL lines.
+check_one_golden() {
+  co_gold=$1; co_pre=$2; co_out=$3
+  co_lab=$(printf '%s' "$co_pre" | tr -d '\\')
+  if [ ! -f "$co_gold" ]; then
+    printf -- '-- FAIL pkg-runner-golden-diff: %s\n' "${co_gold#"$ROOT/"} missing"
     return 1
   fi
   cr_rc=0
-  grep '^digest\.' "$rgold" | sort > "$T/rg.want"
-  grep '^digest\.' "$1" | sort > "$T/rg.have"
+  grep '^digest\.' "$co_gold" | sort > "$T/rg.want"
+  sed -n "s/^${co_pre}digest\./digest./p" "$co_out" | sort > "$T/rg.have"
   if [ ! -s "$T/rg.want" ] || ! cmp -s "$T/rg.want" "$T/rg.have"; then
     printf -- '-- FAIL pkg-runner-golden-diff: %s\n' \
-      "golden only: $(comm -23 "$T/rg.want" "$T/rg.have" | awk '{ print $1 }' | tr '\n' ' ')consumer only: $(comm -13 "$T/rg.want" "$T/rg.have" | awk '{ print $1 }' | tr '\n' ' ')"
+      "${co_lab}golden only: $(comm -23 "$T/rg.want" "$T/rg.have" | awk '{ print $1 }' | tr '\n' ' ')consumer only: $(comm -13 "$T/rg.want" "$T/rg.have" | awk '{ print $1 }' | tr '\n' ' ')"
     cr_rc=1
   fi
-  sed -n 's/^# domains: //p' "$rgold" | tr ' ' '\n' | sed -n 's/=observed$//p' | sort > "$T/rg.dom.want"
-  sed -n 's/^digest\.\([a-z]*\) .*/\1/p' "$1" | grep -v -x -e composite | sort > "$T/rg.dom.have"
+  sed -n 's/^# domains: //p' "$co_gold" | tr ' ' '\n' | sed -n 's/=observed$//p' | sort > "$T/rg.dom.want"
+  sed -n "s/^${co_pre}digest\.\([a-z]*\) .*/\1/p" "$co_out" | grep -v -x -e composite | sort > "$T/rg.dom.have"
   if [ ! -s "$T/rg.dom.want" ] || ! cmp -s "$T/rg.dom.want" "$T/rg.dom.have"; then
     printf -- '-- FAIL pkg-runner-golden-diff: %s\n' \
-      "observed domains: golden $(tr '\n' ' ' < "$T/rg.dom.want")consumer $(tr '\n' ' ' < "$T/rg.dom.have")"
+      "${co_lab}observed domains: golden $(tr '\n' ' ' < "$T/rg.dom.want")consumer $(tr '\n' ' ' < "$T/rg.dom.have")"
     cr_rc=1
   fi
   return "$cr_rc"
+}
+# check_runner_golden <output>: the replay of diag-input-pass against its golden, and (plan 05-11) the
+# replay of diag-ctrl-psg-pass (lines prefixed ctrl.) against data/golden/diag-ctrl-psg-pass.digests.
+rgold="$ROOT/data/golden/diag-input-pass.digests"
+rgold2="$ROOT/data/golden/diag-ctrl-psg-pass.digests"
+check_runner_golden() {
+  crg_rc=0
+  check_one_golden "$rgold" "" "$1" || crg_rc=1
+  check_one_golden "$rgold2" "ctrl\\." "$1" || crg_rc=1
+  return "$crg_rc"
 }
 # check_calls <object>: the ivs_* names the consumer object references (nm -u, normalized) equal
 # data/expected/pkg-consumer-calls.ids. Prints FAIL lines.
@@ -488,10 +504,11 @@ cout="$T/consumer.out"
 consumer_lines=0
 img_exec="$rel/images/boot-stub.exec"
 img_cart="$rel/images/diag-cpu-1.ivsc"
+img_cart2="$rel/images/diag-ctrl-psg-1.ivsc"
 consumer_built=0
 consumer_ok=0
-if [ ! -f "$img_exec" ] || [ ! -f "$img_cart" ]; then
-  bad pkg-consumer-images "build/release/images/{boot-stub.exec,diag-cpu-1.ivsc}"
+if [ ! -f "$img_exec" ] || [ ! -f "$img_cart" ] || [ ! -f "$img_cart2" ]; then
+  bad pkg-consumer-images "build/release/images/{boot-stub.exec,diag-cpu-1.ivsc,diag-ctrl-psg-1.ivsc}"
 elif ! cp -R "$ROOT/tests/installed-consumer" "$csrc"; then
   bad pkg-consumer-copy "tests/installed-consumer"
 elif ! consumer_configure "$csrc" "$cbld" > "$T/consumer.cfg.log" 2>&1; then
@@ -503,7 +520,7 @@ elif ! cmake --build "$cbld" > "$T/consumer.build.log" 2>&1; then
 else
   consumer_built=1
   cst=0
-  "$cbld/consumer" "$img_exec" "$img_cart" > "$cout" 2> "$T/consumer.err" || cst=$?
+  "$cbld/consumer" "$img_exec" "$img_cart" "$img_cart2" > "$cout" 2> "$T/consumer.err" || cst=$?
   mkdir -p "$gate_dir" && cp "$cout" "$gate_dir/pkg-consumer.txt" 2> /dev/null || bad pkg-consumer-output "build/gate/pkg-consumer.txt"
   consumer_lines=$(grep -c . "$cout")
   if [ "$cst" -ne 0 ]; then
@@ -684,6 +701,38 @@ run_case() {
         } { print }' "$cout" > "$d/drift.txt"
       if cmp -s "$cout" "$d/drift.txt"; then detail="the mutation changed nothing"; return 1; fi
       if check_golden "$d/drift.txt" > "$d/out"; then detail="golden check passed"; return 1; fi
+      grep -q -F -e '-- FAIL pkg-golden-diff:' "$d/out" || { detail="no pkg-golden-diff"; return 1; }
+      ;;
+    ctrl-digest-drift)
+      # One nibble of a ctrl.digest line changed must fail the comparison with the runner golden of
+      # diag-ctrl-psg-pass (pkg-runner-golden-diff); the unchanged output matches it.
+      [ -s "$cout" ] || { detail="no consumer output"; return 1; }
+      check_one_golden "$rgold2" "ctrl\\." "$cout" > "$d/pos" || { detail="the unchanged output does not match the runner golden"; return 1; }
+      awk 'done == 0 && /^ctrl\.digest\./ {
+          c = substr($0, length($0), 1); $0 = substr($0, 1, length($0) - 1) (c == "0" ? "1" : "0"); done = 1
+        } { print }' "$cout" > "$d/drift.txt"
+      if cmp -s "$cout" "$d/drift.txt"; then detail="the mutation changed nothing"; return 1; fi
+      if check_one_golden "$rgold2" "ctrl\\." "$d/drift.txt" > "$d/out"; then detail="runner golden check passed"; return 1; fi
+      grep -q -F -e '-- FAIL pkg-runner-golden-diff:' "$d/out" || { detail="no pkg-runner-golden-diff"; return 1; }
+      ;;
+    ctrl-domain-missing)
+      # The ctrl.digest.psglog line dropped (a consumer that never read the write log) must fail the
+      # comparison: the observed domains differ from the golden's.
+      [ -s "$cout" ] || { detail="no consumer output"; return 1; }
+      grep -v '^ctrl\.digest\.psglog ' "$cout" > "$d/missing.txt"
+      if cmp -s "$cout" "$d/missing.txt"; then detail="the output has no ctrl.digest.psglog line"; return 1; fi
+      if check_one_golden "$rgold2" "ctrl\\." "$d/missing.txt" > "$d/out"; then detail="runner golden check passed"; return 1; fi
+      grep -q -F -e 'ctrl.observed domains' "$d/out" || { detail="no observed-domains finding"; return 1; }
+      ;;
+    ctrl-peek-wrong)
+      # The peeked $01FE after the first event is pinned (0x007E for KEY_1); another value fails the
+      # consumer pin (pkg-golden-diff) while the unchanged output matches it.
+      [ -s "$cout" ] || { detail="no consumer output"; return 1; }
+      grep -q -x -F -e 'ctrl.peek 01FE=0x007E' "$cout" || { detail="the consumer did not print ctrl.peek 01FE=0x007E"; return 1; }
+      check_golden "$cout" > "$d/pos" || { detail="the unchanged output does not match the pin"; return 1; }
+      sed 's/^ctrl\.peek 01FE=0x007E$/ctrl.peek 01FE=0x007F/' "$cout" > "$d/peek.txt"
+      if cmp -s "$cout" "$d/peek.txt"; then detail="the mutation changed nothing"; return 1; fi
+      if check_golden "$d/peek.txt" > "$d/out"; then detail="golden check passed"; return 1; fi
       grep -q -F -e '-- FAIL pkg-golden-diff:' "$d/out" || { detail="no pkg-golden-diff"; return 1; }
       ;;
     *) return 2 ;;

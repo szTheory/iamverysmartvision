@@ -28,11 +28,19 @@
 #   on its own non-instrumented -fno-pie archives; the ctest suite core-symbols checks the
 #   shipped (and, in dev, sanitized) archive for imports only, because sanitizer runtimes add
 #   writable symbols there.
+# Defined-symbol rule (D7 decided as D-21, plan 05-10, A-07; always on, no flag): the archive must not DEFINE a
+#   symbol, global or file-local, whose name contains refpcm, resample, wav or pcm in any letter case
+#   (`$NM -P`, the types U/u/w/W/v/V of undefined or weak-undefined references excluded; Darwin
+#   assembler-local labels l/L dropped as above): no PCM, resampling, filtering or WAV code, and no
+#   DAC-table use, may live in ivs_core. core-symbols-deny.txt labels those four words, but the real guards
+#   are this rule and the exact install inventory (data/expected/pkg-install-files.ids), because the deny
+#   list only labels imports.
 # Tokens: core-symbols-forbidden: <name>[ (<category>)], core-symbols-missing: <file>,
 #   core-symbols-bitcode: <file>, core-symbols-lto: <file>, core-symbols-nm-failed: <file>,
 #   core-symbols-no-definitions: <file>, core-symbols-list-missing: <list>,
 #   core-symbols-list-empty: <list>, core-symbols-deny-in-allow: <name>,
-#   core-symbols-writable: <symbol> (<type>) in <file>.
+#   core-symbols-writable: <symbol> (<type>) in <file>,
+#   core-symbols-pcm-defined: <symbol> in <file>.
 # Pass: -- core-symbols pass external=<imports not defined inside the input> defined=<n>.
 LC_ALL=C; export LC_ALL
 NM=${NM:-nm}
@@ -136,8 +144,19 @@ for f in "$@"; do
     bad core-symbols-lto "$f"
     continue
   fi
+  if ! run_nm "$tmp/a.raw" -P "$f"; then bad core-symbols-nm-failed "$f"; continue; fi
+  awk -v darwin="$darwin" '
+    NF < 2 { next }
+    $1 ~ /:$/ { next }
+    {
+      n = $1; t = $2
+      if (darwin && n ~ /^[lL]/) next
+      if (t ~ /^[uUwWvV]$/) next
+      sub(/@.*/, "", n); if (darwin && n ~ /^_/) n = substr(n, 2)
+      if (tolower(n) ~ /(refpcm|resample|wav|pcm)/) print n
+    }' "$tmp/a.raw" | sort -u > "$tmp/p.one"
+  while IFS= read -r w; do bad core-symbols-pcm-defined "$w in $f"; done < "$tmp/p.one"
   if [ "$writable" -eq 1 ]; then
-    if ! run_nm "$tmp/a.raw" -P "$f"; then bad core-symbols-nm-failed "$f"; continue; fi
     awk -v darwin="$darwin" '
       NF < 2 { next }
       $1 ~ /:$/ { next }

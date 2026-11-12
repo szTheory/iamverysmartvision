@@ -1,0 +1,42 @@
+# Literal PSG register-address map of profile intv-2609-ntsc-family-p1 (D-08, C70, C80; plan 05-01).
+#
+# Claim tier: tier4-community. This file is a transcription of two cached sources: the community wiki PSG page (SRC-intv-wiki,
+# PSG-oldid-14940: the sixteen consecutive CPU addresses 01F0..01FF, the role of each, and its data-bit column, which gives the
+# bits that keep a value and read back) and the AY-3-8910 pages of the 1980 GI catalog (SRC-gi-1980-catalog, pdf-207: the octal
+# register numbers and the width of each field, and the four low bits of the shape register, which the community column shows as
+# 0000). The two sources describe different parts: the community map is for the console part, the data sheet for the AY-3-8910, and
+# the permutation between their register orders is the content of this file (C70). A pass of the psg-vectors step shows that the
+# file is well formed, not that the console wires its registers this way.
+#
+# Independence rule: this file is written from the sources only. It is never derived from, generated from or edited to match a
+# profile field, a descriptor table or a core output it judges, and it names no profile field. Where a source and the profile differ,
+# this file keeps the source reading and the profile is the side that changes. Emulator source code is never a source for a row.
+#
+# Row grammar (one row per line, single spaces, columns in this order, sixteen rows in ascending address order):
+#   <ADDR> role=<role> gi=<R-octal> n=<decimal> w=<HHHH> r=<HHHH> src=<SRC-id>@<locator> tag=<tag> conf=C<n>
+#   ADDR   CPU word address 01F0..01FF, four uppercase hex digits.
+#   role   the function of the register: tone period fine or coarse byte of channel A, B or C, envelope period fine or coarse byte,
+#          the mixer and port direction byte, the noise period, the envelope shape, the amplitude of channel A, B or C, port A or B.
+#   gi     the register number in the data sheet, OCTAL: R0..R7 then R10..R17. n is the same number in DECIMAL (0..15), so R13 is n=11.
+#          The two numberings are never mixed: a bare number in any other table of the project is a defect (C80).
+#   w, r   the write mask and the read mask of the 16-bit bus word: a store keeps value AND w, a read gives the store AND r, bits 15..8 are 0.
+#          The envelope shape register keeps four bits (data sheet) and reads 0 under the community statement (C75): w=000F r=0000.
+#          The port registers 01FE and 01FF are stores here: what a read returns is decided by the port direction and the pins (plan 05-05).
+#   src    the source id and the locator (PSG-oldid-14940 for the address, role and read mask of every row).
+#   tag    tier4-community for every row. conf is the discrepancy id C70.
+01F0 role=tone-a-fine gi=R0 n=0 w=00FF r=00FF src=SRC-intv-wiki@PSG-oldid-14940 tag=tier4-community conf=C70
+01F1 role=tone-b-fine gi=R2 n=2 w=00FF r=00FF src=SRC-intv-wiki@PSG-oldid-14940 tag=tier4-community conf=C70
+01F2 role=tone-c-fine gi=R4 n=4 w=00FF r=00FF src=SRC-intv-wiki@PSG-oldid-14940 tag=tier4-community conf=C70
+01F3 role=env-fine gi=R13 n=11 w=00FF r=00FF src=SRC-intv-wiki@PSG-oldid-14940 tag=tier4-community conf=C70
+01F4 role=tone-a-coarse gi=R1 n=1 w=000F r=000F src=SRC-intv-wiki@PSG-oldid-14940 tag=tier4-community conf=C70
+01F5 role=tone-b-coarse gi=R3 n=3 w=000F r=000F src=SRC-intv-wiki@PSG-oldid-14940 tag=tier4-community conf=C70
+01F6 role=tone-c-coarse gi=R5 n=5 w=000F r=000F src=SRC-intv-wiki@PSG-oldid-14940 tag=tier4-community conf=C70
+01F7 role=env-coarse gi=R14 n=12 w=00FF r=00FF src=SRC-intv-wiki@PSG-oldid-14940 tag=tier4-community conf=C70
+01F8 role=mixer-ports gi=R7 n=7 w=00FF r=00FF src=SRC-intv-wiki@PSG-oldid-14940 tag=tier4-community conf=C70
+01F9 role=noise-period gi=R6 n=6 w=001F r=001F src=SRC-intv-wiki@PSG-oldid-14940 tag=tier4-community conf=C70
+01FA role=env-shape gi=R15 n=13 w=000F r=0000 src=SRC-intv-wiki@PSG-oldid-14940 tag=tier4-community conf=C70
+01FB role=amp-a gi=R10 n=8 w=003F r=003F src=SRC-intv-wiki@PSG-oldid-14940 tag=tier4-community conf=C70
+01FC role=amp-b gi=R11 n=9 w=003F r=003F src=SRC-intv-wiki@PSG-oldid-14940 tag=tier4-community conf=C70
+01FD role=amp-c gi=R12 n=10 w=003F r=003F src=SRC-intv-wiki@PSG-oldid-14940 tag=tier4-community conf=C70
+01FE role=port-a gi=R16 n=14 w=00FF r=00FF src=SRC-intv-wiki@PSG-oldid-14940 tag=tier4-community conf=C70
+01FF role=port-b gi=R17 n=15 w=00FF r=00FF src=SRC-intv-wiki@PSG-oldid-14940 tag=tier4-community conf=C70

@@ -45,7 +45,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: CP-1610 CPU Core** - Every opcode verified against page-cited, hand-derived vectors in a host-independent core with an exact inventory and one local gate command (completed 2026-11-10)
 - [x] **Phase 3: Memory Map, Content Loading and Refusal** - Profile-driven memory map, typed system-image and cartridge loading, isolated instances and a refusal matrix that never mutates prior state (completed 2026-11-11)
 - [x] **Phase 4: Headless Runner and Installed Consumer (Slice 0)** - An original diagnostic runs end to end through the runner and a relocated installed consumer, with deterministic digests and a CI gate that mirrors the local command (completed 2026-11-11)
-- [ ] **Phase 5: Hand Controllers and PSG Sound** - Both controllers as multi-signal machine input at explicit time boundaries; PSG raw audio and a register-write log
+- [x] **Phase 5: Hand Controllers and PSG Sound** - Both controllers as multi-signal machine input at explicit time boundaries; PSG raw audio and a register-write log (completed 2026-11-12)
 - [ ] **Phase 6: STIC Video First Pass** - Access windows, VBLANK/BUSRQ timing, raw index framebuffer, FG/BG and Color Stack cards, and side-effect-free inspection
 - [ ] **Phase 7: First Visible Original Scenario** - A rights-clear original program responds to controller input with video and sound through the installed consumer in CI
 - [ ] **Phase 8: STIC Completion, Save State and Performance Baselines** - Remaining STIC features, canonical snapshots, correctness-asserted benchmarks and the milestone-close record
@@ -63,7 +63,7 @@ exit, until the gate is resolved by its named authority.
 | D4 Fixture assembler policy | Owner (licence) + architecture | Delegated decision 2026-11-11 (PROJECT.md; Phase 4 D-25, D-12, D-41) | Before Phase 4 starts |
 | D5 System-image policy and project boot stub | Owner | Delegated decision 2026-11-11 (PROJECT.md; Phase 3 D-24) | Phase 3 (refusal); before Phase 4 (boot) |
 | D6 Controller core-input representation (C14) | Owner + architecture | Delegated decision 2026-11-11 (PROJECT.md; Phase 4 D-25, D-12, D-41) | While Phase 4 shapes the API; before Phase 5 starts |
-| D7 Reference PCM location (C23) | Architecture | Open | During Phase 5 |
+| D7 Reference PCM location (C23) | Architecture | Delegated decision 2026-11-12 (PROJECT.md; Phase 5 D-21: outside the core, `tools/pcm`, runner `--audio-wav` only) | Phase 5 |
 | D8 Raw framebuffer geometry (C10) | Architecture + evidence | Open | During Phase 6 |
 | D9 License, visibility, naming/trademark, publication | Owner gate | Delegated decision 2026-11-09 (PROJECT.md) | Before any external publication; CI hosting (Phase 4) and the milestone release assessment (Phase 8) touch it |
 | D10 Physical hardware measurement | Owner gate | Open | Before any measured-tier claim (Phase 5 onward) |
@@ -234,7 +234,22 @@ Plans:
   3. An input script applied at declared machine-time boundaries gives the same guest-visible results and digests whether the host delivers it in one call or many slices.
   4. Each PSG register, tone, noise and envelope rule has a passing vector. Behaviors without a primary source (period 0, envelope select, noise LFSR, DAC levels) appear as tier-tagged profile data, not hard-coded constants.
   5. A run emits a cycle-stamped PSG register-write log and integer chip-rate samples as raw audio. Any PCM conversion sits where D7 puts it and is outside the raw-audio evidence path.
-**Plans**: TBD
+**Plans**: 12/12 plans complete in 12 sequential waves (all Phase 5 claims are provisional; owner hardware items are handed off, not performed)
+
+Plans:
+- [x] 05-01-PLAN.md — Oracle-first plan (D-23, A-12)
+- [x] 05-02-PLAN.md — Behaviour-neutral ABI growth (A-12)
+- [x] 05-03-PLAN.md — State and digest foundation (A-12)
+- [x] 05-04-PLAN.md — PSG register file, memmap flip and the new suite `psg` (A-12)
+- [x] 05-05-PLAN.md — Input byte and port reads (A-12)
+- [x] 05-06-PLAN.md — Tone, mixer, amplitude, sampling and audio live (A-12)
+- [x] 05-07-PLAN.md — Noise and envelope (A-12)
+- [x] 05-08-PLAN.md — Write log (A-12)
+- [x] 05-09-PLAN.md — Runner and scenarios (A-12)
+- [x] 05-10-PLAN.md — Reference PCM converter and WAV helper (A-12)
+- [x] 05-11-PLAN.md — Fixture and end to end (A-12)
+- [x] 05-12-PLAN.md — Close-out: claims CL-0009..CL-0013, discrepancy states, important-gate registry for the six requirements, traceability, Decision Register notes, CI close-out, `05-VERIFICATION.md` with three tables (A-12)
+- [x] 05-12-PLAN.md — Close-out (A-12)
 
 ### Phase 6: STIC Video First Pass
 **Goal**: The STIC control path, access windows and bus-steal timing run against profile constants. At a defined machine-time boundary, the core produces a raw palette-index framebuffer that renders background cards in Foreground/Background and Color Stack modes, checked against hand-derived expected frames.
@@ -316,7 +331,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 2. CP-1610 CPU Core | 18/18 | Complete    | 2026-11-10 |
 | 3. Memory Map, Content Loading and Refusal | 14/14 | Complete    | 2026-11-11 |
 | 4. Headless Runner and Installed Consumer (Slice 0) | 27/25 | Complete    | 2026-11-11 |
-| 5. Hand Controllers and PSG Sound | 0/TBD | Not started | - |
+| 5. Hand Controllers and PSG Sound | 12/12 | Complete    | 2026-11-12 |
 | 6. STIC Video First Pass | 0/TBD | Not started | - |
 | 7. First Visible Original Scenario | 0/TBD | Not started | - |
 | 8. STIC Completion, Save State and Performance Baselines | 0/TBD | Not started | - |

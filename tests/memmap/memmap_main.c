@@ -37,6 +37,7 @@ static const mm_rule mm_rules[] = {
     {IVS_MEMSYS_DEVICE_RAM8, 0x00FFu, 0x0000u, 1u},  /* 8-bit RAM, upper byte 0 (C60) */
     {IVS_MEMSYS_DEVICE_RAM16, 0xFFFFu, 0x0000u, 1u}, /* 16-bit system RAM */
     {IVS_MEMSYS_DEVICE_STUB, 0x0000u, 0xFFFFu, 0u},  /* no state, undriven value (C60) */
+    {IVS_MEMSYS_DEVICE_PSG8, 0x00FFu, 0x0000u, 1u},  /* PSG register, low byte, upper byte 0 (C64) */
 };
 
 #define MM_UNDRIVEN 0xFFFFu
@@ -80,7 +81,7 @@ static const mm_row mm_rows[] = {
     {"stic-regs", MM_RW, IVS_MEMSYS_DEVICE_STUB, 0x0000u, 0x003Fu, 0u, 0u},
     {"stic-alias-read", MM_R, IVS_MEMSYS_DEVICE_STUB, 0x0040u, 0x007Fu, 0u, 0u},
     {"scratchpad", MM_RW, IVS_MEMSYS_DEVICE_RAM8, 0x0100u, 0x01EFu, 0u, 0u},
-    {"psg-regs", MM_RW, IVS_MEMSYS_DEVICE_STUB, 0x01F0u, 0x01FFu, 0u, 0u},
+    {"psg-regs", MM_RW, IVS_MEMSYS_DEVICE_PSG8, 0x01F0u, 0x01FFu, 0u, 0u},
     {"sysram", MM_RW, IVS_MEMSYS_DEVICE_RAM16, 0x0200u, 0x035Fu, 0u, 0u},
     {"exec", MM_R, IVS_MEMSYS_DEVICE_ROM10, 0x1000u, 0x1FFFu, 0u, 0u},
     {"grom", MM_R, IVS_MEMSYS_DEVICE_GROM8, 0x3000u, 0x37FFu, 0u, 0u},
@@ -180,6 +181,13 @@ static int mm_anchor(const mm_row *row, uint16_t addr)
     IVS_CHECK(mm_bus_read(addr) == mm_expect(row->kind, 0xFFFFu));
     IVS_CHECK(mm_bus_write(addr, 0x0155u));
     IVS_CHECK(mm_bus_read(addr) == mm_expect(row->kind, 0xFFFFu));
+  } else if (row->view == MM_RW && r->keep != 0u && row->kind == IVS_MEMSYS_DEVICE_PSG8
+             && (addr == 0x01FEu || addr == 0x01FFu)) {
+    /* the two port registers (plan 05-05): the store keeps the low byte, and the bus read follows the
+     * pins (input mode after power-on, none held low), so it gives the idle byte 00FF */
+    IVS_CHECK(mm_bus_write(addr, 0x1234u));
+    IVS_CHECK(mm_bus_read(addr) == 0x00FFu);
+    IVS_CHECK(ivs_memsys_psg_reg_internal(&mm_m, (uint32_t)addr - 0x01F0u) == 0x0034u);
   } else if (row->view == MM_RW && r->keep != 0u) {
     IVS_CHECK(mm_bus_write(addr, 0x1234u));
     IVS_CHECK(mm_bus_read(addr) == mm_expect(row->kind, 0x1234u));
@@ -244,10 +252,26 @@ static int mm_width_stub(void)
   IVS_CHECK(mm_init());
   IVS_CHECK(mm_bus_write(0x0001u, 0x1234u));
   IVS_CHECK(mm_bus_read(0x0001u) == 0xFFFFu);
-  IVS_CHECK(mm_bus_write(0x01F1u, 0x00AAu));
-  IVS_CHECK(mm_bus_read(0x01F1u) == 0xFFFFu);
-  ivs_memsys_poke_raw_internal(&mm_m, 0x01F2u, 0x1234u);
-  IVS_CHECK(mm_bus_read(0x01F2u) == 0xFFFFu);
+  IVS_CHECK(mm_bus_write(0x0002u, 0x00AAu));
+  IVS_CHECK(mm_bus_read(0x0002u) == 0xFFFFu);
+  ivs_memsys_poke_raw_internal(&mm_m, 0x0003u, 0x1234u);
+  IVS_CHECK(mm_bus_read(0x0003u) == 0xFFFFu);
+  return IVS_TEST_PASS;
+}
+
+/* The PSG region is a real device with a byte-wide register (psg8, plan 05-04): a store keeps the
+ * low byte under the register's mask, a raw wide word reads masked, and the upper byte reads 0
+ * (C64) where the stub it replaced read the undriven value. */
+static int mm_width_psg8(void)
+{
+  IVS_CHECK(mm_init());
+  IVS_CHECK(mm_bus_write(0x01F0u, 0x1234u));
+  IVS_CHECK(mm_bus_read(0x01F0u) == 0x0034u);
+  ivs_memsys_poke_raw_internal(&mm_m, 0x01F1u, 0xFFFFu);
+  IVS_CHECK(mm_bus_read(0x01F1u) == 0x00FFu);
+  ivs_memsys_poke_raw_internal(&mm_m, 0x01F4u, 0xFFFFu);
+  IVS_CHECK(mm_bus_read(0x01F4u) == 0x000Fu);
+  IVS_CHECK(mm_bus_read(0x01F2u) == 0x0000u);
   return IVS_TEST_PASS;
 }
 
@@ -515,6 +539,9 @@ static int mm_describe_stub_vs_undriven(void)
   IVS_CHECK(ivs_memsys_describe(0u, IVS_MEMSYS_VIEW_R, 0x0000u, &d) == IVS_OK);
   IVS_CHECK(d.device == IVS_MEMSYS_DEVICE_STUB && d.impl == IVS_MEMSYS_IMPL_STUB);
   IVS_CHECK(strcmp(d.phys_name, "stic") == 0 && d.gate == IVS_MEMSYS_GATE_STIC_REGS);
+  IVS_CHECK(ivs_memsys_describe(0u, IVS_MEMSYS_VIEW_R, 0x01F0u, &d) == IVS_OK);
+  IVS_CHECK(d.device == IVS_MEMSYS_DEVICE_PSG8 && d.impl == IVS_MEMSYS_IMPL_REAL);
+  IVS_CHECK(strcmp(d.phys_name, "psg") == 0 && d.gate == IVS_MEMSYS_GATE_NONE && d.mirror_words == 0u);
   IVS_CHECK(ivs_memsys_describe(0u, IVS_MEMSYS_VIEW_R, 0x0080u, &d) == IVS_OK);
   IVS_CHECK(d.device == IVS_MEMSYS_DEVICE_UNDRIVEN && d.impl == IVS_MEMSYS_IMPL_NONE);
   IVS_CHECK(strcmp(d.phys_name, "undriven") == 0);
@@ -559,6 +586,7 @@ static const ivs_test_case mm_fixed[] = {
     {"memmap.width.ram16-keeps-16", mm_width_ram16, NULL},
     {"memmap.width.ram8-truncates", mm_width_ram8, NULL},
     {"memmap.width.stub-reads-ffff", mm_width_stub, NULL},
+    {"memmap.width.psg8-low-byte-upper-zero", mm_width_psg8, NULL},
     {"memmap.width.undriven-reads-ffff", mm_width_undriven, NULL},
     {"memmap.mirror.gram-3a00", mm_mirror_gram_3a00, NULL},
     {"memmap.gate.gmem-closed-blocks", mm_gate_gmem_closed, NULL},

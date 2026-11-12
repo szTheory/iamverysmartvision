@@ -1,0 +1,11 @@
+{
+  "version": 6,
+  "configurePresets": [
+    { "name": "dev", "binaryDir": "${sourceDir}/build/dev" },
+    { "name": "release", "binaryDir": "${sourceDir}/build/release" }
+  ],
+  "buildPresets": [
+    { "name": "dev", "configurePreset": "dev" },
+    { "name": "release", "configurePreset": "release" }
+  ]
+}

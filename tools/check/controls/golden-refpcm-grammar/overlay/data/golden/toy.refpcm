@@ -1,0 +1,8 @@
+# Control golden-refpcm-grammar (plan 05-10): a .refpcm golden without the label line and with a body key
+# that is not a refpcm key.
+# tier: deterministic-repeatability
+# oracle: self-recorded
+# scenario: toy
+refpcm.rate 48000
+refpcm.frames 3
+output.audio.bytes 0

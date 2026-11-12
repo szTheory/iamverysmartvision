@@ -1,12 +1,16 @@
 # Suite runner-process (plan 04-20, D-20, D-21, D-23, D-32): tests/runner-process-tap.sh runs the
 # real ivs-run of each preset.
 # runner-process.scenario.<id>: one case per line of data/expected/runner-scenarios.ids (exit
-#   code, outcome, exit.code, outcome.detail, `ivsr 1` first and `report.end <n>` last);
+#   code, outcome, exit.code, outcome.detail, `ivsr 2` first and `report.end <n>` last);
 #   needs-user-exec needs an operator EXEC the gate never has and is a visible skip.
 # runner-process.mutant.<ID>: one case per program mutation of data/expected/diag-mutations.ids,
-#   guest-fail naming its clause (D-32).
+#   guest-fail naming its clause (D-32), and (plan 05-11) one per row of
+#   data/expected/diag-mutations-ctrl-psg.ids, judged by the outcome and exit code of the row
+#   (guest-fail 10, timeout 11, pass 0).
 # runner-process.repeat.<id>, runner-process.slices.<id> (--slice-ticks 1 and 7) and
-#   runner-process.cwd (run from another directory): byte-equal reports apart from host.calls.
+#   runner-process.cwd (run from another directory): byte-equal reports apart from host.calls;
+#   the slicing, repeat and directory variants cover diag-boot-pass, diag-input-pass and, since plan
+#   05-11 (cost cap V-16), diag-ctrl-psg-pass (runner-process.cwd.diag-ctrl-psg-pass).
 # runner-process.judge.<slug>: judge self-controls, each passing only when the judge fails a fake
 #   runner for its intended reason (exit code, missing report.end, outcome and exit.code
 #   disagreeing, a changed report body; plan 04-24: a removed demonstrating scenario).
@@ -29,15 +33,37 @@ runner-process.scenario.max-ticks-straddle
 runner-process.scenario.dead-after-refusal
 runner-process.scenario.no-run-to
 runner-process.scenario.cancel-signal-twice
+runner-process.scenario.psg-log-assert-mismatch
+runner-process.scenario.diag-ctrl-psg-pass
+runner-process.scenario.diag-ctrl-psg-nokey
+runner-process.scenario.diag-ctrl-psg-order
 runner-process.mutant.ADDI-SUBI
 runner-process.mutant.BNZE-BZE
 runner-process.mutant.PSHR-MVOAT
 runner-process.mutant.INCR-DECR
+runner-process.mutant.MIXER-VALUE
+runner-process.mutant.TONE-HIGH-VALUE
+runner-process.mutant.PORT1-STORE-ADDR
+runner-process.mutant.ANDI-TO-MVII
+runner-process.mutant.DELAY-COUNT-CHANGED
 runner-process.repeat.diag-boot-pass
 runner-process.slices.diag-boot-pass
 runner-process.repeat.diag-input-pass
 runner-process.slices.diag-input-pass
+runner-process.repeat.diag-ctrl-psg-pass
+runner-process.slices.diag-ctrl-psg-pass
 runner-process.cwd
+runner-process.cwd.diag-ctrl-psg-pass
+runner-process.operator.audio-raw
+runner-process.operator.psg-log
+runner-process.operator.exclusive
+runner-process.operator.max-bytes
+runner-process.operator.options
+runner-process.operator.failed-run
+runner-process.operator.golden-distinct
+runner-process.refpcm.wav-written
+runner-process.refpcm.diag-ctrl-psg-pass
+runner-process.listen-demo.refuses-user
 runner-process.judge.exit-mismatch
 runner-process.judge.no-report-end
 runner-process.judge.outcome-exit-disagree

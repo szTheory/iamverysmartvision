@@ -1,0 +1,160 @@
+# id: ivs-diag-ctrl-psg-1
+# kind: cart
+# profile: intv-2609-ntsc-family-p1
+# window: 5000-5058
+# label: ivs-diag-ctrl-psg-1, the second project-authored diagnostic (controller reads and PSG register writes)
+# entry: 5000
+# stack: 0340
+#
+# Project-authored diagnostic (D-24), MIT like the rest of the repository. tools/pack builds it
+# into one IVSC v1 segment at 5000 (89 words) in the build tree; no image is committed. It is
+# entered through the project boot stub (fixtures/FX-boot-stub/boot-stub.listing.txt, contract 1),
+# which jumps to 5000 with R6 = 0340; both numbers are project conventions with no hardware or
+# first-party source (discrepancy C68), so the program sets every other register it uses before
+# using it. It uses no SDBD, no interrupt, and no STIC, GROM or graphics RAM address; every
+# operand address is below 0400, so each address word is one decle; the three PSG-facing paths are
+# the 11 register writes of S1, the two port reads of S2 and the system RAM stores of S2 and S3.
+# The expected values are derived in docs/input/diag-ctrl-psg-1-derivation.md (committed before
+# this listing existed; section (g) there records the one correction made while assembling) and
+# in the header of data/golden/diag-ctrl-psg-pass.expect.
+#
+# Sections:
+#   S1 PSG     5000-502B  eleven MVII #value,R0 / MVO R0,$addr pairs: the PSG registers 0, 4, 8, 11,
+#                         1, 5, 12, 9, 3, 7, 10 (addresses 01F0, 01F4, 01F8, 01FB, 01F1, 01F5,
+#                         01FC, 01F9, 01F3, 01F7, 01FA) get 0023, 0001, 003E, 000F, 0080, 0000,
+#                         0008, 0010, 0064, 0000, 000A. The mixer value 003E keeps bits 6 and 7
+#                         clear: both ports stay inputs, so a read of 01FE or 01FF returns the pins.
+#   S2 poll    502C-504B  R1 = R2 = 0100 (previous values no masked read can equal), R4 = 0210 and
+#                         R5 = 0220 (store pointers, auto-incremented by MVO@), R3 = 0008 (port 0
+#                         values still to store). Loop at 5036: read 01FE, keep the low byte, and
+#                         when it differs from the previous value store it at [R4] and count it
+#                         down; the same for 01FF with R2 and R5 (no count); TSTR R3 and back
+#                         while eight port 0 values are not yet stored.
+#   S3 delay   504C-5058  R0 = 0078 counted down (120 iterations of DECR and a taken BNZE), then
+#                         the end marker 03C5 written last at 020F, then HLT and three TSTR R0
+#                         followers (docs/diagnostics.md, "Endings need a follower").
+#
+# Line grammar (D-26): ADDR HEX4 BITS ROW ASM, as in the boot stub listing. ROW is the leaf row of
+# data/cp1610/opcode-families.json or - for an operand word. Every branch line carries `-> ADDR`
+# (docs/diagnostics.md, "Branch targets").
+#
+# Derivation of the encodings (hand-assembled; no assembler; nothing copied from another
+# implementation; "pdf N" is a page of the GI CP-1600 Microprocessor Users Manual,
+# SRC-gi-cp1600-um-1975; register numbers are 3-bit fields, R0 = 000 ... R7 = 111):
+#   MVII  1010 111 DDD, then the immediate word (immediate table, pdf 57): R0 02B8, R1 02B9,
+#         R2 02BA, R3 02BB, R4 02BC, R5 02BD.
+#   MVO   1001 000 SSS, then the address word (direct table, pdf 55): R0 gives 0240.
+#   MVI   1010 000 DDD, then the address word (direct table, pdf 55): R0 gives 0280.
+#   ANDI  1110 111 DDD, then the immediate word (immediate table, pdf 57): R0 gives 03B8; the CP-1610
+#         has no OR instruction (the mutant ANDI-TO-MVII changes this first decle to 02B8).
+#   CMPR  0101 SSS DDD (register-register table, pdf 53): CMPR R1,R0 is 0101 001 000 = 0148 and
+#         CMPR R2,R0 is 0101 010 000 = 0150; it writes S, Z, C and OV, and Z = 1 when the two
+#         registers are equal.
+#   MOVR  0010 SSS DDD: MOVR R0,R1 is 0010 000 001 = 0081, MOVR R0,R2 is 0082; TSTR 0010 SSS SSS:
+#         TSTR R3 is 0010 011 011 = 009B and TSTR R0 is 0080 (pdf 53); DECR 0000 010 DDD: DECR R3 is
+#         0013, DECR R0 is 0010 (pdf 53); HLT 0000 000 000 (control table, pdf 56).
+#   MVO@  1001 MMM SSS with MMM = 100 for R4 and 101 for R5, post-incremented (indirect table,
+#         pdf 55; Fig. 3.2.1, pdf 46): MVO@ R0,R4 is 1001 100 000 = 0260, MVO@ R0,R5 is 0268. Only
+#         R4 and R5 increment; R1 to R3 do not (the derivation, section (g)).
+#   BZE   1000 S0 0100 and BNZE 1000 S0 1100, then the displacement word; S = 0 forward: PC + 2 plus
+#         the displacement; S = 1 backward: PC + 2 plus the one's complement of the displacement
+#         (branch table, pdf 54): BZE forward 0204, BNZE backward 022C.
+# Branch arithmetic:
+#   BZE at 503B (skip port 0 store): PC + 2 = 503D, target 5040 = 503D + 0003, so d = 0003.
+#   BZE at 5045 (skip port 1 store): PC + 2 = 5047, target 5049 = 5047 + 0002, so d = 0002.
+#   BNZE at 504A (back to the poll): PC + 2 = 504C, S = 1: 504C - d - 1 = 5036, so d = 0015.
+#   BNZE at 504F (delay loop): PC + 2 = 5051, 5051 - d - 1 = 504E, so d = 0002.
+# Cycles (regression information, V-07; the branch counts are policy C29): one poll loop without a
+# store is MVI 10 + ANDI 8 + CMPR 6 + taken BZE 9, twice, plus TSTR 6 + taken BNZE 9 = 81 CPU
+# cycles = 324 ticks; the delay is 120 x DECR 6 + 119 x taken 9 + 7 = 1798 cycles = about 7,200
+# ticks. No assertion depends on these numbers.
+# Words used: 89 (5000-5058).
+5000 02B8 1010 111 000  MVII  MVII #$0023, R0     S1: tone A period fine byte
+5001 0023 00 0010 0011  -     immediate 0023
+5002 0240 1001 000 000  MVO   MVO R0, $01F0       PSG register 0 = 0023
+5003 01F0 01 1111 0000  -     address 01F0
+5004 02B8 1010 111 000  MVII  MVII #$0001, R0     tone A period coarse nibble
+5005 0001 00 0000 0001  -     immediate 0001
+5006 0240 1001 000 000  MVO   MVO R0, $01F4       PSG register 4 = 0001
+5007 01F4 01 1111 0100  -     address 01F4
+5008 02B8 1010 111 000  MVII  MVII #$003E, R0     mixer: tone A on, everything else off, ports inputs
+5009 003E 00 0011 1110  -     immediate 003E
+500A 0240 1001 000 000  MVO   MVO R0, $01F8       PSG register 8 = 003E
+500B 01F8 01 1111 1000  -     address 01F8
+500C 02B8 1010 111 000  MVII  MVII #$000F, R0     amplitude A
+500D 000F 00 0000 1111  -     immediate 000F
+500E 0240 1001 000 000  MVO   MVO R0, $01FB       PSG register 11 = 000F
+500F 01FB 01 1111 1011  -     address 01FB
+5010 02B8 1010 111 000  MVII  MVII #$0080, R0     tone B period fine byte
+5011 0080 00 1000 0000  -     immediate 0080
+5012 0240 1001 000 000  MVO   MVO R0, $01F1       PSG register 1 = 0080
+5013 01F1 01 1111 0001  -     address 01F1
+5014 02B8 1010 111 000  MVII  MVII #$0000, R0     tone B period coarse nibble
+5015 0000 00 0000 0000  -     immediate 0000
+5016 0240 1001 000 000  MVO   MVO R0, $01F5       PSG register 5 = 0000
+5017 01F5 01 1111 0101  -     address 01F5
+5018 02B8 1010 111 000  MVII  MVII #$0008, R0     amplitude B
+5019 0008 00 0000 1000  -     immediate 0008
+501A 0240 1001 000 000  MVO   MVO R0, $01FC       PSG register 12 = 0008
+501B 01FC 01 1111 1100  -     address 01FC
+501C 02B8 1010 111 000  MVII  MVII #$0010, R0     noise period
+501D 0010 00 0001 0000  -     immediate 0010
+501E 0240 1001 000 000  MVO   MVO R0, $01F9       PSG register 9 = 0010
+501F 01F9 01 1111 1001  -     address 01F9
+5020 02B8 1010 111 000  MVII  MVII #$0064, R0     envelope period fine byte
+5021 0064 00 0110 0100  -     immediate 0064
+5022 0240 1001 000 000  MVO   MVO R0, $01F3       PSG register 3 = 0064
+5023 01F3 01 1111 0011  -     address 01F3
+5024 02B8 1010 111 000  MVII  MVII #$0000, R0     envelope period coarse byte
+5025 0000 00 0000 0000  -     immediate 0000
+5026 0240 1001 000 000  MVO   MVO R0, $01F7       PSG register 7 = 0000
+5027 01F7 01 1111 0111  -     address 01F7
+5028 02B8 1010 111 000  MVII  MVII #$000A, R0     envelope shape
+5029 000A 00 0000 1010  -     immediate 000A
+502A 0240 1001 000 000  MVO   MVO R0, $01FA       PSG register 10 = 000A (the read-back is 0)
+502B 01FA 01 1111 1010  -     address 01FA
+502C 02B9 1010 111 001  MVII  MVII #$0100, R1     S2: previous port 0 value
+502D 0100 01 0000 0000  -     immediate 0100
+502E 02BA 1010 111 010  MVII  MVII #$0100, R2     previous port 1 value
+502F 0100 01 0000 0000  -     immediate 0100
+5030 02BC 1010 111 100  MVII  MVII #$0210, R4     port 0 store pointer
+5031 0210 10 0001 0000  -     immediate 0210
+5032 02BD 1010 111 101  MVII  MVII #$0220, R5     port 1 store pointer
+5033 0220 10 0010 0000  -     immediate 0220
+5034 02BB 1010 111 011  MVII  MVII #$0008, R3     port 0 values still to store
+5035 0008 00 0000 1000  -     immediate 0008
+5036 0280 1010 000 000  MVI   MVI $01FE, R0       poll: read port 0
+5037 01FE 01 1111 1110  -     address 01FE
+5038 03B8 1110 111 000  ANDI  ANDI #$00FF, R0     keep the low byte
+5039 00FF 00 1111 1111  -     immediate 00FF
+503A 0148 0101 001 000  CMPR  CMPR R1, R0         Z = 1 when equal to the previous value
+503B 0204 1000 00 0100  BZE   BZE $5040 -> 5040           unchanged: skip the store
+503C 0003 00 0000 0011  -     displacement 0003 (S=0): 503D + 0003 = 5040
+503D 0081 0010 000 001  MOVR  MOVR R0, R1         remember the value
+503E 0260 1001 100 000  MVO@  MVO@ R0, R4         store at [R4], R4 = R4 + 1
+503F 0013 0000 010 011  DECR  DECR R3             one port 0 value fewer to store
+5040 0280 1010 000 000  MVI   MVI $01FF, R0       read port 1
+5041 01FF 01 1111 1111  -     address 01FF
+5042 03B8 1110 111 000  ANDI  ANDI #$00FF, R0     keep the low byte
+5043 00FF 00 1111 1111  -     immediate 00FF
+5044 0150 0101 010 000  CMPR  CMPR R2, R0         Z = 1 when equal to the previous value
+5045 0204 1000 00 0100  BZE   BZE $5049 -> 5049           unchanged: skip the store
+5046 0002 00 0000 0010  -     displacement 0002 (S=0): 5047 + 0002 = 5049
+5047 0082 0010 000 010  MOVR  MOVR R0, R2         remember the value
+5048 0268 1001 101 000  MVO@  MVO@ R0, R5         store at [R5], R5 = R5 + 1
+5049 009B 0010 011 011  TSTR  TSTR R3             Z = 1 when eight port 0 values are stored
+504A 022C 1000 10 1100  BNZE  BNZE $5036 -> 5036          back to the poll while Z = 0
+504B 0015 00 0001 0101  -     displacement 0015 (S=1): 504C + ~0015 = 5036
+504C 02B8 1010 111 000  MVII  MVII #$0078, R0     S3: delay count 120
+504D 0078 00 0111 1000  -     immediate 0078
+504E 0010 0000 010 000  DECR  DECR R0             delay loop
+504F 022C 1000 10 1100  BNZE  BNZE $504E -> 504E          back while R0 is not zero
+5050 0002 00 0000 0010  -     displacement 0002 (S=1): 5051 + ~0002 = 504E
+5051 02B8 1010 111 000  MVII  MVII #$03C5, R0     end marker
+5052 03C5 11 1100 0101  -     immediate 03C5
+5053 0240 1001 000 000  MVO   MVO R0, $020F       [020F] = 03C5, written last
+5054 020F 10 0000 1111  -     address 020F
+5055 0000 0000 000 000  HLT   HLT                 sets the stop latch; the next instruction still runs
+5056 0080 0010 000 000  TSTR  TSTR R0             follower 1
+5057 0080 0010 000 000  TSTR  TSTR R0             follower 2
+5058 0080 0010 000 000  TSTR  TSTR R0             follower 3

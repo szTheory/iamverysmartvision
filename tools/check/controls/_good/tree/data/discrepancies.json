@@ -8,7 +8,7 @@
       "sources": "Two sources disagree on an example figure (SRC-bsr-2609, SRC-gi-1980-catalog).",
       "status": "open",
       "default_policy": "unknown-default-chosen: the example default is used.",
-      "resolver": "pending: example decision",
+      "resolver": "measurement: example probe on owner hardware",
       "evidence": "",
       "note": "Example entry."
     },

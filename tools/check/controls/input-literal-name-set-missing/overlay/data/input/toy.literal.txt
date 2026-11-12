@@ -1,0 +1,2 @@
+# Control literal derived from the toy tree literal; see input-literal-name-set-missing/EXPECT for the defect.
+KEY_1 pins=4,6 cleared=81 wiki=81 byte=7E src=SRC-bsr-2609@Toy-key-1 tag=tier2-first-party-adjacent conf=C1

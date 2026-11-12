@@ -9,19 +9,28 @@
  *   h(n+1) = SHA-256(h(n) || be64(at_tick) || be32(controller[0]) .. be32(controller[3]))
  * over the event's ABSOLUTE at_tick (the script tick, never a tick relative to a call or a unit),
  * so the log equals the accepted script whatever the slicing (D-15). The input floor is set by the
- * step seam (machine_run.c) when a unit begins. Nothing in the machine reads the words in Phase 4.
+ * step seam (machine_run.c) when a unit begins.
+ * Plan 05-05 (D-02..D-04): the words are guest-visible. An applied event derives, for each connected
+ * port, the pull-down mask of the memory system: the OR of the line masks of every set bit, from
+ * the generated table ivs_ctrl_lines (cmake/IvsCtrlTable.cmake, profile fields input.control.*), and
+ * stores it through ivs_memsys_set_port_pulldown_internal; the guest read of $01FE and $01FF is then
+ * the idle byte XOR that mask (memsys.c). The mask is never state of its own: ivs_input_rederive
+ * derives it again from the words in force, which the refused-step take-back (machine_bound.c) uses.
  * Validation (ivs_input_check) reads the whole array before the run writes anything: first every
  * event for order, range and floor (BAD_ARG), then every event for flags, the reserved word,
  * reserved control bits and a nonzero word at or above the profile's input.controllers
  * (UNSUPPORTED); the lowest failing index of the first failing pass wins.
  * The file holds no static or global state outside named-fault blocks.
  * Named faults (plan 04-11, D-07, D-16): INPUT_LOG_SLICE_RELATIVE_TICK, INPUT_NO_FLOOR_CHECK,
- * INPUT_STATIC_CARRY, RUN_EVENT_AT_TARGET_ONLY. */
+ * INPUT_STATIC_CARRY, RUN_EVENT_AT_TARGET_ONLY; (plan 05-05) INPUT_PINS_NOT_UPDATED,
+ * CTRL_PORTS_SWAPPED, CTRL_UNION_AS_AND, INPUT_EXTRA_CONTROLLER_UNCHECKED. */
 #include "common/ivs_prelude.h"
 
 #include "common/ivs_sha256.h"
 #include "ivs/ivs.h"
 #include "machine/machine.h"
+
+#include "ivs_ctrl_lines.inc"
 
 _Static_assert(sizeof(ivs_input_event) == 32u, "ivs_input_event is 32 bytes");
 _Static_assert(IVS_INPUT_CONTROLLER_WORDS == 4u, "four controller words per event");
@@ -33,6 +42,56 @@ _Static_assert(IVS_INPUT_CONTROLLER_WORDS == 4u, "four controller words per even
 static uint32_t ivs_input_carry[IVS_INPUT_CONTROLLER_WORDS];
 #endif
 
+uint32_t ivs_input_profile_count(void)
+{
+#ifdef IVS_FAULT_CTRL_TABLE_SHORT
+  return IVS_CTRL_PROFILE_COUNT - 1u; /* named fault CTRL_TABLE_SHORT: the table covers one profile less than the registry */
+#else
+  return IVS_CTRL_PROFILE_COUNT;
+#endif
+}
+
+/* The pull-down mask of one controller word: the OR of the line masks of every set bit (D-03). The
+ * word is read as 31 independent switches; the core never resolves a combination. */
+static uint32_t ivs_input_pins(uint32_t profile, uint32_t word)
+{
+  uint32_t pins = 0u;
+  uint32_t b;
+  /* profile is below ivs_input_profile_count(): the machine's handle check refuses any other index
+   * before a call reaches here (review WR-04). */
+#ifdef IVS_FAULT_CTRL_UNION_AS_AND
+  uint32_t seen = 0u;
+#endif
+  for (b = 0u; b < IVS_CTRL_COUNT; b++) {
+    if (((word >> b) & 1u) != 0u) {
+      uint32_t lines = ivs_ctrl_lines[profile][b];
+#ifdef IVS_FAULT_CTRL_UNION_AS_AND
+      /* named fault CTRL_UNION_AS_AND: closed controls AND their line masks instead of OR-ing them */
+      pins = seen != 0u ? (pins & lines) : lines;
+      seen = 1u;
+#else
+      pins |= lines;
+#endif
+    }
+  }
+  return pins;
+}
+
+void ivs_input_rederive(struct ivs_machine *im)
+{
+  uint32_t controllers = ivs_profile_get(im->profile)->input_controllers;
+  uint32_t p;
+  for (p = 0u; p < IVS_MEMSYS_PSG_PORTS; p++) {
+    /* ports at or above input.controllers stay idle (their words are refused nonzero) */
+    uint32_t pins = p < controllers ? ivs_input_pins(im->profile, im->obs.input.words[p]) : 0u;
+    uint32_t port = p;
+#ifdef IVS_FAULT_CTRL_PORTS_SWAPPED
+    port = 1u - p; /* named fault CTRL_PORTS_SWAPPED: the word of port 0 pulls down port 1 and back */
+#endif
+    ivs_memsys_set_port_pulldown_internal(&im->mem, port, pins);
+  }
+}
+
 void ivs_input_init(ivs_machine_obs_input *in)
 {
   static const char tag[] = "IVS-INPUT-LOG-V1";
@@ -40,9 +99,10 @@ void ivs_input_init(ivs_machine_obs_input *in)
   ivs_sha256_digest((const uint8_t *)tag, sizeof tag - 1u, in->chain);
 }
 
-/* Applies one event logged at tick: words in force, count, chain. */
-static void ivs_input_apply(ivs_machine_obs_input *in, const ivs_input_event *ev, uint64_t tick)
+/* Applies one event logged at tick: words in force, count, chain, then the pull-down masks. */
+static void ivs_input_apply(struct ivs_machine *im, const ivs_input_event *ev, uint64_t tick)
 {
+  ivs_machine_obs_input *in = &im->obs.input;
   uint8_t pre[32u + 8u + 4u * IVS_INPUT_CONTROLLER_WORDS];
   uint32_t i;
   memcpy(pre, in->chain, 32u);
@@ -59,6 +119,9 @@ static void ivs_input_apply(ivs_machine_obs_input *in, const ivs_input_event *ev
   }
   ivs_sha256_digest(pre, sizeof pre, in->chain);
   in->count++;
+#ifndef IVS_FAULT_INPUT_PINS_NOT_UPDATED /* named fault INPUT_PINS_NOT_UPDATED: the pins keep their old value */
+  ivs_input_rederive(im);
+#endif
 #ifdef IVS_FAULT_INPUT_STATIC_CARRY
   memcpy(ivs_input_carry, ev->controller, sizeof ivs_input_carry);
 #endif
@@ -103,11 +166,13 @@ uint32_t ivs_input_check(const ivs_machine_obs_input *in, const ivs_input_event 
         reason = IVS_REASON_INPUT_CONTROL_RESERVED;
       }
     }
+#ifndef IVS_FAULT_INPUT_EXTRA_CONTROLLER_UNCHECKED /* named fault: a word of an unconnected controller passes */
     for (w = controllers; reason == IVS_REASON_NONE && w < IVS_INPUT_CONTROLLER_WORDS; w++) {
       if (ev[i].controller[w] != 0u) {
         reason = IVS_REASON_INPUT_EXTRA_CONTROLLER;
       }
     }
+#endif
     if (reason != IVS_REASON_NONE) {
       *st = IVS_E_UNSUPPORTED;
       *index = i;
@@ -115,6 +180,7 @@ uint32_t ivs_input_check(const ivs_machine_obs_input *in, const ivs_input_event 
     }
   }
   (void)in; /* read by the floor test; named fault INPUT_NO_FLOOR_CHECK drops it */
+  (void)controllers; /* read by the extra-controller test; named fault INPUT_EXTRA_CONTROLLER_UNCHECKED drops it */
   *st = IVS_OK;
   *index = IVS_INPUT_INDEX_NONE;
   return IVS_REASON_NONE;
@@ -142,7 +208,7 @@ uint32_t ivs_input_apply_due(struct ivs_machine *im, const ivs_input_event *ev, 
      * relative to the call's entry, so the chain depends on how the host slices. */
     tick -= entry;
 #endif
-    ivs_input_apply(&im->obs.input, &e, tick);
+    ivs_input_apply(im, &e, tick);
     next++;
   }
 #ifdef IVS_FAULT_INPUT_STATIC_CARRY

@@ -1,0 +1,96 @@
+# tier: deterministic-repeatability
+# oracle: self-recorded
+# scenario: diag-ctrl-psg-pass
+# profile: intv-2609-ntsc-family-p1
+# domains: cpu=observed mem=observed images=observed instance=observed video=none audio=observed input=observed psglog=observed
+# Written by ivs-run --update-golden, never by the gate; a change is a reviewed diff
+# (docs/runner.md). The body is the run's report filtered to the golden key list.
+scenario.id diag-ctrl-psg-pass
+scenario.profile intv-2609-ntsc-family-p1
+outcome pass
+outcome.detail -
+exit.code 0
+slot.exec.loaded 1
+slot.exec.length_bytes 8192
+slot.exec.sha256 2b7cfb0942d8ae38ac30fc3b5c771708de0a02c45585cdae5530ac0d1aa7c8d1
+slot.exec.status ok
+slot.exec.reason 0
+slot.grom.loaded 1
+slot.grom.length_bytes 2048
+slot.grom.sha256 e5a00aa9991ac8a5ee3109844d84a55583bd20572ad3ffcd42792f3c36b183ad
+slot.grom.status ok
+slot.grom.reason 0
+slot.cart.loaded 1
+slot.cart.length_bytes 242
+slot.cart.sha256 671fea4571c4bcec7f3c10ea475b65a88bb21e37f28864bbb3fd1aa09648de66
+slot.cart.status ok
+slot.cart.reason 0
+step.1.target_ticks 24000
+step.1.now_ticks 16752
+step.1.overshoot_ticks 0
+step.1.stop_reason halted
+step.1.expected_stop halted
+step.1.assert.1 pass halted == yes got yes
+step.1.assert.2 pass mem 020F == 03C5 got 03C5
+step.1.assert.3 pass mem 0210 == 00FF got 00FF
+step.1.assert.4 pass mem 0211 == 007E got 007E
+step.1.assert.5 pass mem 0212 == 00FF got 00FF
+step.1.assert.6 pass mem 0213 == 005A got 005A
+step.1.assert.7 pass mem 0214 == 00FF got 00FF
+step.1.assert.8 pass mem 0215 == 00FB got 00FB
+step.1.assert.9 pass mem 0216 == 005B got 005B
+step.1.assert.10 pass mem 0217 == 001D got 001D
+step.1.assert.11 pass mem 0220 == 00FF got 00FF
+step.1.assert.12 pass mem 0221 == 00FD got 00FD
+step.1.assert.13 pass mem 0222 == 009F got 009F
+step.1.assert.14 pass mem 0223 == 00FF got 00FF
+step.1.assert.15 pass mem 0224 == 0000 got 0000
+step.1.assert.16 pass mem 0225 == 0000 got 0000
+step.1.assert.17 pass mem 0226 == 0000 got 0000
+step.1.assert.18 pass mem 0227 == 0000 got 0000
+step.1.assert.19 pass psglog count == 11 got 11
+step.1.assert.20 pass psglog 0 addr=0 value=0023 source=cpu-write got tick=208 addr=0 value=0023 source=cpu-write
+step.1.assert.21 pass psglog 1 addr=4 value=0001 source=cpu-write got tick=284 addr=4 value=0001 source=cpu-write
+step.1.assert.22 pass psglog 2 addr=8 value=003E source=cpu-write got tick=360 addr=8 value=003E source=cpu-write
+step.1.assert.23 pass psglog 3 addr=11 value=000F source=cpu-write got tick=436 addr=11 value=000F source=cpu-write
+step.1.assert.24 pass psglog 4 addr=1 value=0080 source=cpu-write got tick=512 addr=1 value=0080 source=cpu-write
+step.1.assert.25 pass psglog 5 addr=5 value=0000 source=cpu-write got tick=588 addr=5 value=0000 source=cpu-write
+step.1.assert.26 pass psglog 6 addr=12 value=0008 source=cpu-write got tick=664 addr=12 value=0008 source=cpu-write
+step.1.assert.27 pass psglog 7 addr=9 value=0010 source=cpu-write got tick=740 addr=9 value=0010 source=cpu-write
+step.1.assert.28 pass psglog 8 addr=3 value=0064 source=cpu-write got tick=816 addr=3 value=0064 source=cpu-write
+step.1.assert.29 pass psglog 9 addr=7 value=0000 source=cpu-write got tick=892 addr=7 value=0000 source=cpu-write
+step.1.assert.30 pass psglog 10 addr=10 value=000A source=cpu-write got tick=968 addr=10 value=000A source=cpu-write
+step.1.assert.31 pass mem 01F0 == 0023 got 0023
+step.1.assert.32 pass mem 01F4 == 0001 got 0001
+step.1.assert.33 pass mem 01F8 == 003E got 003E
+step.1.assert.34 pass mem 01FB == 000F got 000F
+step.1.assert.35 pass mem 01F1 == 0080 got 0080
+step.1.assert.36 pass mem 01F5 == 0000 got 0000
+step.1.assert.37 pass mem 01FC == 0008 got 0008
+step.1.assert.38 pass mem 01F9 == 0010 got 0010
+step.1.assert.39 pass mem 01F3 == 0064 got 0064
+step.1.assert.40 pass mem 01F7 == 0000 got 0000
+step.1.assert.41 pass mem 01FA == 0000 got 0000
+cpu.run_state halted
+cpu.fault_reason none
+input.events 7
+input.consumed 7
+input.controller.0 10000010
+input.controller.1 00000000
+input.controller.2 00000000
+input.controller.3 00000000
+digest.cpu d87bcb165ae1b160349184422a90987b49b0fc5a508081891dba1dea7f86497f
+digest.mem 9d8f2cb338f2004830bca2e9672ca4dc7d09ad81431cf6d8b76b92815905e5a5
+digest.images 3dc499c638993d029cc9222a4686a1700d815f548c028e84d04d38151ae28b4e
+digest.instance 38a60a970ccff89f5beb67731f6408f13227f633b483de0d2c8a7003f988f533
+digest.composite 796821563d91bc5309a83bffeda00345a5c3004fcb4582aba84b38d4c3933cab
+digest.audio 49389f1090b6aea5d68d0c73afa47ba2c5f6771cda2f81d2df4062be6fd675ad
+digest.input 31ef954649ec4809c873897c4e09145b95bfc48846d1ba1b78ee14372d25aacf
+digest.psglog c98733eb428f93eb33bfe5c67e7f23b8444e73b1a8f6b432f39409260c470922
+output.video.bytes 0
+output.audio.bytes 4188
+output.audio.samples 1047
+output.audio.changes 1
+output.psglog.records 11
+output.psglog.bytes 176
+audio.sample_ticks 16

@@ -16,8 +16,8 @@
   "outputs": [
     {
       "path": "fixtures/FX-diag-cpu-1/diag-cpu-1.listing.txt",
-      "sha256": "3716f4749578522950c67bcaa53a9f742f40b53bc9bb12b3bf6f75a848235a4f",
-      "size_bytes": 7036
+      "sha256": "b31025676903933f2a37a32778472e069e1dfa8b31c1cdc18d063fbd7161d726",
+      "size_bytes": 7044
     }
   ],
   "licence": "MIT",

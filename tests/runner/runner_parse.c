@@ -359,7 +359,43 @@ static const refuse_case refuse_cases[] = {
     {"runner.parse.refuse.dead-after-refusal", IVS_SCN_R_DEAD_AFTER_REFUSAL, 5u,
      TXT(HDR "content exec boot-stub\ncontent cart a.ivsc\nexpect-load exec IVS_E_MALFORMED\nrun-to 1 ticks\n")},
     {"runner.parse.refuse.no-run-to", IVS_SCN_R_NO_RUN_TO, 0u, TXT(HDR "content exec boot-stub\n")},
+    /* Plan 05-09: capture and the stream asserts (one case per new reason). */
+    {"runner.parse.refuse.bad-capture", IVS_SCN_R_BAD_CAPTURE, 4u, TXT(HDR "capture video\n" RUN0)},
+    {"runner.parse.refuse.duplicate-capture", IVS_SCN_R_DUPLICATE_CAPTURE, 5u,
+     TXT(HDR "capture psglog\ncapture psglog\n" RUN0)},
+    {"runner.parse.refuse.bad-psglog-assert", IVS_SCN_R_BAD_PSGLOG_ASSERT, 6u,
+     TXT(HDR "capture psglog\n" RUN0 "assert psglog count == x\n")},
+    {"runner.parse.refuse.bad-audio-assert", IVS_SCN_R_BAD_AUDIO_ASSERT, 6u,
+     TXT(HDR "capture audio\n" RUN0 "assert audio at 16 A=1 B=2\n")},
+    {"runner.parse.refuse.assert-without-capture", IVS_SCN_R_ASSERT_WITHOUT_CAPTURE, 5u,
+     TXT(HDR RUN0 "assert psglog 0 addr=1\n")},
     /* Further refusals of covered tokens. */
+    {"runner.parse.edge.capture-arity", IVS_SCN_R_BAD_ARITY, 4u, TXT(HDR "capture\n" RUN0)},
+    {"runner.parse.edge.capture-extra-token", IVS_SCN_R_BAD_ARITY, 5u, TXT(HDR RUN0 "capture psglog extra\n")},
+    {"runner.parse.edge.psglog-no-field", IVS_SCN_R_BAD_PSGLOG_ASSERT, 6u,
+     TXT(HDR "capture psglog\n" RUN0 "assert psglog 0\n")},
+    {"runner.parse.edge.psglog-field-twice", IVS_SCN_R_BAD_PSGLOG_ASSERT, 6u,
+     TXT(HDR "capture psglog\n" RUN0 "assert psglog 0 addr=1 addr=2\n")},
+    {"runner.parse.edge.psglog-addr-16", IVS_SCN_R_BAD_PSGLOG_ASSERT, 6u,
+     TXT(HDR "capture psglog\n" RUN0 "assert psglog 0 addr=16\n")},
+    {"runner.parse.edge.psglog-value-lower", IVS_SCN_R_BAD_PSGLOG_ASSERT, 6u,
+     TXT(HDR "capture psglog\n" RUN0 "assert psglog 0 value=00ff\n")},
+    {"runner.parse.edge.psglog-bad-source", IVS_SCN_R_BAD_PSGLOG_ASSERT, 6u,
+     TXT(HDR "capture psglog\n" RUN0 "assert psglog 0 source=cpu\n")},
+    {"runner.parse.edge.psglog-index-cap", IVS_SCN_R_BAD_PSGLOG_ASSERT, 6u,
+     TXT(HDR "capture psglog\n" RUN0 "assert psglog 4096 addr=1\n")},
+    {"runner.parse.edge.psglog-eight-tokens", IVS_SCN_R_BAD_PSGLOG_ASSERT, 6u,
+     TXT(HDR "capture psglog\n" RUN0 "assert psglog 0 tick=1 addr=1 value=0001 source=cpu-dw extra\n")},
+    {"runner.parse.edge.audio-at-missing-level", IVS_SCN_R_BAD_AUDIO_ASSERT, 6u,
+     TXT(HDR "capture audio\n" RUN0 "assert audio at 16 A=1 C=2 B=3\n")},
+    {"runner.parse.edge.audio-level-256", IVS_SCN_R_BAD_AUDIO_ASSERT, 6u,
+     TXT(HDR "capture audio\n" RUN0 "assert audio at 16 A=256 B=0 C=0\n")},
+    {"runner.parse.edge.audio-emitted-no-op", IVS_SCN_R_BAD_AUDIO_ASSERT, 6u,
+     TXT(HDR "capture audio\n" RUN0 "assert audio emitted 3\n")},
+    {"runner.parse.edge.audio-at-without-capture", IVS_SCN_R_ASSERT_WITHOUT_CAPTURE, 5u,
+     TXT(HDR RUN0 "assert audio at 16 A=0 B=0 C=0\n")},
+    {"runner.parse.edge.capture-after-assert-ok-order", IVS_SCN_R_ASSERT_WITHOUT_CAPTURE, 5u,
+     TXT(HDR RUN0 "assert psglog 3 value=0001\ncapture audio\n")},
     {"runner.parse.edge.dead-run-to", IVS_SCN_R_DEAD_AFTER_REFUSAL, 6u,
      TXT(HDR "content cart a.ivsc\nexpect-load cart IVS_E_MALFORMED\nrun-to 1 ticks\nassert halted == yes\n")},
     {"runner.parse.edge.dead-input", IVS_SCN_R_DEAD_AFTER_REFUSAL, 4u,
@@ -656,6 +692,52 @@ static int parse_accept_assert(void)
   return IVS_TEST_PASS;
 }
 
+/* Plan 05-09: the capture directive and the stream asserts, every field checked. The capture
+ * directive may stand anywhere after the header, also after the assert that reads it. */
+static int parse_accept_capture_forms(void)
+{
+  ivs_scenario s;
+  const ivs_scenario_assert *a;
+  IVS_CHECK(parse_ok(HDR "run-to 100 ticks\n"
+                         "assert psglog count == 4\n"
+                         "assert psglog count != 0\n"
+                         "assert psglog 3 tick=18446744073709551615 addr=15 value=FFFF source=cpu-dw\n"
+                         "assert psglog 0 source=cpu-write\n"
+                         "assert audio emitted != 7\n"
+                         "assert audio at 160 A=15 B=0 C=255\n"
+                         "capture audio\n"
+                         "assert digest psglog == e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\n"
+                         "capture psglog\n",
+                     &s));
+  IVS_CHECK(s.capture == (IVS_SCN_CAPTURE_PSGLOG | IVS_SCN_CAPTURE_AUDIO));
+  IVS_CHECK(s.capture_line[1] == 11u && s.capture_line[0] == 13u);
+  IVS_CHECK(s.n_asserts == 7u);
+  a = &s.asserts[0];
+  IVS_CHECK(a->subject == IVS_SCN_SUBJ_PSGLOG && a->form == IVS_SCN_FORM_COUNT && a->op == IVS_SCN_OP_EQ && a->num == 4u);
+  a = &s.asserts[1];
+  IVS_CHECK(a->form == IVS_SCN_FORM_COUNT && a->op == IVS_SCN_OP_NE && a->num == 0u);
+  a = &s.asserts[2];
+  IVS_CHECK(a->form == IVS_SCN_FORM_RECORD && a->index == 3u && a->num == UINT64_MAX && a->addr == 15u);
+  IVS_CHECK(a->value == 0xFFFFu && a->source == IVS_PSGLOG_SRC_CPU_DW);
+  IVS_CHECK(a->fields == (IVS_SCN_FIELD_TICK | IVS_SCN_FIELD_ADDR | IVS_SCN_FIELD_VALUE | IVS_SCN_FIELD_SOURCE));
+  a = &s.asserts[3];
+  IVS_CHECK(a->index == 0u && a->fields == IVS_SCN_FIELD_SOURCE && a->source == IVS_PSGLOG_SRC_CPU_WRITE);
+  a = &s.asserts[4];
+  IVS_CHECK(a->subject == IVS_SCN_SUBJ_AUDIO && a->form == IVS_SCN_FORM_EMITTED && a->op == IVS_SCN_OP_NE &&
+            a->num == 7u);
+  a = &s.asserts[5];
+  IVS_CHECK(a->form == IVS_SCN_FORM_AT && a->num == 160u && a->level[0] == 15u && a->level[1] == 0u &&
+            a->level[2] == 255u && a->fields == 0x7u);
+  a = &s.asserts[6];
+  IVS_CHECK(a->subject == IVS_SCN_SUBJ_DIGEST && a->index == IVS_DIGEST_PSGLOG);
+  /* Field order is free; the count and emitted forms need no capture. */
+  IVS_CHECK(parse_ok(HDR RUN0 "assert psglog 5 source=cpu-dw value=0001 tick=9\ncapture psglog\n", &s));
+  IVS_CHECK(s.asserts[0].fields == (IVS_SCN_FIELD_TICK | IVS_SCN_FIELD_VALUE | IVS_SCN_FIELD_SOURCE));
+  IVS_CHECK(parse_ok(HDR RUN0 "assert psglog count == 0\nassert audio emitted == 0\n", &s));
+  IVS_CHECK(s.capture == 0u && s.capture_line[0] == 0u && s.capture_line[1] == 0u);
+  return IVS_TEST_PASS;
+}
+
 static int parse_accept_input(void)
 {
   ivs_scenario s;
@@ -817,6 +899,24 @@ static int parse_error_format(void)
   return IVS_TEST_PASS;
 }
 
+/* --wav-rate (plan 05-10, D-20, D-21): exactly 44100 and 48000 are accepted. The option parser of main.c asks
+ * ivs_runner_wav_rate_valid, so the in-process judge is that function; every other value, the near misses
+ * included, is refused (a repeated option and a missing value are refused by main.c, runner-process.operator.options). */
+static int parse_wav_rate_refused(void)
+{
+  static const uint32_t refused[] = {0u,     1u,     8000u,  22050u, 44099u,      44101u,      47999u,
+                                     48001u, 88200u, 96000u, 192000u, 4294967295u};
+  IVS_CHECK(ivs_runner_wav_rate_valid(44100u) == 1);
+  IVS_CHECK(ivs_runner_wav_rate_valid(48000u) == 1);
+  for (size_t i = 0u; i < sizeof refused / sizeof refused[0]; i++) {
+    if (ivs_runner_wav_rate_valid(refused[i]) != 0) {
+      ivs_test_diag("wav rate %u was accepted", (unsigned)refused[i]);
+      return IVS_TEST_FAIL;
+    }
+  }
+  return IVS_TEST_PASS;
+}
+
 static int parse_null_args(void)
 {
   ivs_scenario s;
@@ -851,12 +951,14 @@ static const fn_case fn_cases[] = {
     {"runner.parse.accept.run-to", parse_accept_run_to},
     {"runner.parse.accept.assert", parse_accept_assert},
     {"runner.parse.accept.input", parse_accept_input},
+    {"runner.parse.accept.capture-forms", parse_accept_capture_forms},
     {"runner.parse.accept.caps", parse_accept_caps},
     {"runner.parse.accept.refusal-last-role", parse_accept_refusal_last_role},
     {"runner.parse.input-names-complete", parse_input_names_complete},
     {"runner.parse.reasons-named", parse_reasons_named},
     {"runner.parse.error-format", parse_error_format},
     {"runner.parse.null-args", parse_null_args},
+    {"runner.parse.wav-rate-refused", parse_wav_rate_refused},
 };
 
 #define FN_CASES (sizeof fn_cases / sizeof fn_cases[0])
@@ -906,6 +1008,25 @@ static const char fuzz_base_rich[] =
     "assert mem 0200 == 7FFF\n"
     "assert digest input == e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\n";
 
+/* Plan 05-09: a base with both captures and every new assert form. */
+static const char fuzz_base_capture[] =
+    "# capture base\n"
+    "ivss 1\n"
+    "id capture-1\n"
+    "profile intv-2609-ntsc-family-p1\n"
+    "content exec boot-stub\n"
+    "content grom zero-grom\n"
+    "capture psglog\n"
+    "capture audio\n"
+    "run-to 3000 ticks\n"
+    "assert psglog count == 4\n"
+    "assert psglog 0 tick=100 addr=8 value=003F source=cpu-write\n"
+    "assert psglog 3 addr=11 value=0007\n"
+    "assert audio emitted != 0\n"
+    "assert audio at 160 A=15 B=0 C=0\n"
+    "assert digest psglog != e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\n"
+    "assert digest audio == e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\n";
+
 int runner_parse_base(size_t i, const char **text, size_t *len)
 {
   switch (i) {
@@ -920,6 +1041,10 @@ int runner_parse_base(size_t i, const char **text, size_t *len)
   case 2u:
     *text = accept_ivss_text;
     *len = sizeof accept_ivss_text - 1u;
+    return 1;
+  case 3u:
+    *text = fuzz_base_capture;
+    *len = sizeof fuzz_base_capture - 1u;
     return 1;
   default:
     return 0;

@@ -1,0 +1,12 @@
+# Vector files of data/psg/vectors (plan 05-01): the exact set the psg-vectors step accepts (token psg-vector-unlisted-file).
+regs
+reset
+reset-engine
+tone
+noise
+env
+mix
+amp
+ampenv
+port
+dac

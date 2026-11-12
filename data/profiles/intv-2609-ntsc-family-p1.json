@@ -105,13 +105,13 @@
     },
     "ticks_per_psg_clock": {
       "value": 2,
-      "tag": "unknown-default-chosen",
-      "cite": "SRC-mame-intv (emulator hint only, never evidence by itself)",
-      "conflict": null,
-      "resolving_evidence": "test: PSG tone-frequency vectors in Phase 5; measurement: D10 tone capture",
-      "revisit_trigger": "at Phase 5 PSG planning or when a tier 1 to 3 source gives the PSG chip clock",
+      "tag": "inference",
+      "cite": "SRC-gi-1980-catalog pdf-209 (printed 5-28): the AY-3-8910 input clock range 1.0 to 2.0 MHz; SRC-gi-1980-catalog pdf-207 (printed 5-26): the divide chains count the input clock; SRC-community-emu-docs: the tone formula F = crystal / (32 P), which is the crystal divided by 2 as the chip clock and a divide by 16 and by the period; the colour burst divided by 2 is the data sheet's own application clock circuit",
+      "conflict": "C76",
+      "resolving_evidence": "measurement: D10 owner hardware: a tone capture of known period against the video timing, and the PSG clock pin",
+      "revisit_trigger": "when a tier 1 to 3 source gives the PSG chip clock, or a D10 tone capture exists",
       "decision": "D2",
-      "note": "Only an emulator hint backs this value."
+      "note": "Retagged from unknown-default-chosen to inference in plan 05-06 (D-09): three non-emulator supports agree on crystal/2 (the community formula, the application circuit, the clock range). An emulator uses the same ratio; that is a hint, never evidence."
     },
     "scanlines_per_frame": {
       "value": 262,
@@ -348,15 +348,25 @@
       "decision": null,
       "note": "Stores keep value & $00FF; reads give the stored byte with bits 15..8 zero."
     },
+    "memmap.device.psg8": {
+      "value": {"bits": 8, "rmask": "$00FF", "fill": "$0000", "store": "keep"},
+      "tag": "unknown-default-chosen",
+      "cite": "SRC-intv-wiki (PSG, oldid 14940) for the byte-wide register file; none-found for what bits 15..8 of a PSG register or port read as on a 2609",
+      "conflict": "C64",
+      "resolving_evidence": "measurement: D10 idle upper-byte read on owner hardware",
+      "revisit_trigger": "a measurement of the upper byte of a PSG register read, or an owner EXEC run that exercises it",
+      "decision": null,
+      "note": "The PSG registers drive only the low byte of the 16-bit bus word; bits 15..8 read 0 (device kind psg8, D-04). Stores keep value & $00FF here and then value & the register's write mask (psg.regmap)."
+    },
     "memmap.device.stub": {
       "value": {"bits": 0, "rmask": "$0000", "fill": "$FFFF", "store": "drop"},
       "tag": "unknown-default-chosen",
-      "cite": "none-found: no source documents STIC or PSG register reads for a device the core does not implement yet",
+      "cite": "none-found: no source documents STIC register reads for a device the core does not implement yet",
       "conflict": "C60",
-      "resolving_evidence": "measurement: D10 read-back of STIC and PSG register reads on owner hardware",
-      "revisit_trigger": "when the PSG phase (5) or the STIC phase (6) implements the device",
+      "resolving_evidence": "measurement: D10 read-back of STIC register reads on owner hardware",
+      "revisit_trigger": "when the STIC phase (6) implements the device",
       "decision": null,
-      "note": "A stub region is decoded and named but holds no state: reads give the undriven value and writes are dropped (D-19)."
+      "note": "A stub region is decoded and named but holds no state: reads give the undriven value and writes are dropped (D-19). Only the STIC regions use it since plan 05-04; the PSG region is a real device (psg8)."
     },
     "memmap.region.stic_regs": {
       "value": {"view": "RW", "lo": "$0000", "hi": "$003F", "device": "stub", "size_words": 64, "gate": "stic-regs", "impl": "stub"},
@@ -389,14 +399,14 @@
       "note": "Extent 240 words over a 256-word backing; the 16 words above the extent are unreachable."
     },
     "memmap.region.psg_regs": {
-      "value": {"view": "RW", "lo": "$01F0", "hi": "$01FF", "device": "stub", "size_words": 16, "gate": "none", "impl": "stub"},
+      "value": {"view": "RW", "lo": "$01F0", "hi": "$01FF", "device": "psg8", "size_words": 16, "gate": "none", "impl": "real"},
       "tag": "tier4-community",
       "cite": "SRC-intv-wiki (Memory Map, oldid 14847) for $01F0-$01FF",
       "conflict": "C11",
       "resolving_evidence": "pending: a tier 1 to 3 address source, or a D10 decode probe on owner hardware",
       "revisit_trigger": "when a tier 1 to 3 source or a hardware probe gives the decode",
       "decision": null,
-      "note": "PSG registers; the device arrives in Phase 5."
+      "note": "PSG registers: the register file of plan 05-04 (sixteen words, low byte only, masks in psg.regmap, no mirror in psg.mirrors)."
     },
     "memmap.region.sysram": {
       "value": {"view": "RW", "lo": "$0200", "hi": "$035F", "device": "ram16", "size_words": 512, "gate": "none", "impl": "real"},
@@ -505,6 +515,43 @@
       "decision": null,
       "note": "A segment must lie wholly inside the span and must not overlap another segment; nothing else constrains its start (A-01). Write-only aliases inside the span are write view only."
     },
+    "psg.regmap": {
+      "value": [
+        {"addr": "$01F0", "name": "tone-a-fine", "gi_octal": "R0", "wmask": "$00FF", "rmask": "$00FF"},
+        {"addr": "$01F1", "name": "tone-b-fine", "gi_octal": "R2", "wmask": "$00FF", "rmask": "$00FF"},
+        {"addr": "$01F2", "name": "tone-c-fine", "gi_octal": "R4", "wmask": "$00FF", "rmask": "$00FF"},
+        {"addr": "$01F3", "name": "env-fine", "gi_octal": "R13", "wmask": "$00FF", "rmask": "$00FF"},
+        {"addr": "$01F4", "name": "tone-a-coarse", "gi_octal": "R1", "wmask": "$000F", "rmask": "$000F"},
+        {"addr": "$01F5", "name": "tone-b-coarse", "gi_octal": "R3", "wmask": "$000F", "rmask": "$000F"},
+        {"addr": "$01F6", "name": "tone-c-coarse", "gi_octal": "R5", "wmask": "$000F", "rmask": "$000F"},
+        {"addr": "$01F7", "name": "env-coarse", "gi_octal": "R14", "wmask": "$00FF", "rmask": "$00FF"},
+        {"addr": "$01F8", "name": "mixer-ports", "gi_octal": "R7", "wmask": "$00FF", "rmask": "$00FF"},
+        {"addr": "$01F9", "name": "noise-period", "gi_octal": "R6", "wmask": "$001F", "rmask": "$001F"},
+        {"addr": "$01FA", "name": "env-shape", "gi_octal": "R15", "wmask": "$000F", "rmask": "$0000"},
+        {"addr": "$01FB", "name": "amp-a", "gi_octal": "R10", "wmask": "$003F", "rmask": "$003F"},
+        {"addr": "$01FC", "name": "amp-b", "gi_octal": "R11", "wmask": "$003F", "rmask": "$003F"},
+        {"addr": "$01FD", "name": "amp-c", "gi_octal": "R12", "wmask": "$003F", "rmask": "$003F"},
+        {"addr": "$01FE", "name": "port-a", "gi_octal": "R16", "wmask": "$00FF", "rmask": "$00FF"},
+        {"addr": "$01FF", "name": "port-b", "gi_octal": "R17", "wmask": "$00FF", "rmask": "$00FF"}
+      ],
+      "tag": "tier4-community",
+      "cite": "SRC-intv-wiki (PSG, oldid 14940) for the sixteen addresses, roles and data-bit columns; SRC-gi-1980-catalog printed 5-26 (pdf 207) for the octal register numbers and field widths",
+      "conflict": "C70",
+      "resolving_evidence": "measurement: D10 owner hardware: write distinct values to each of $01F0..$01FF with sound disabled and read each back",
+      "revisit_trigger": "a primary data sheet of the console part, a schematic or a D10 read-back",
+      "decision": null,
+      "note": "One record per CPU address in ascending order; gi_octal is the data sheet register number in OCTAL (R10 is the eighth register, C80). wmask: a store keeps value & wmask; rmask: a read gives the store & rmask with bits 15..8 zero. The shape register $01FA keeps four bits and reads 0 (C75, the community claim; the data sheet text would read it back, a one-field reversal of its rmask to $000F). The tone coarse registers keep four bits (C60). The port registers $01FE and $01FF are plain stores in plan 05-04; what a read returns follows the direction bits and the pins from plan 05-05. Written by hand from data/psg/intv-2609-ntsc-family-p1.regmap.literal.txt; the psg-vectors step compares the two."
+    },
+    "psg.mirrors": {
+      "value": "none",
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: the data sheet puts the sixteen registers in a mask-programmable block and no source says whether the console decodes the block more than once",
+      "conflict": "C74",
+      "resolving_evidence": "measurement: D10 owner hardware: address-map probe of the words around $01F0..$01FF and the blocks 1024 words apart",
+      "revisit_trigger": "a decode source for the console or a D10 address-map probe",
+      "decision": null,
+      "note": "Only $01F0..$01FF decode to the PSG; no alias. The generator refuses any other value."
+    },
     "input.controllers": {
       "value": 2,
       "tag": "tier2-first-party-adjacent",
@@ -514,6 +561,575 @@
       "revisit_trigger": "Phase 5 control-to-byte table, or a profile with the expansion connector",
       "decision": "D6",
       "note": "connected hand controllers; event word index = PSG port (0 = R14, 1 = R15); no Phase 4 consumer. A nonzero controller word at an index at or above this value is refused UNSUPPORTED (D-13, D-15, plan 04-12)."
+    },
+    "input.control.key_1": {
+      "value": {"lines": "$81"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.key_2": {
+      "value": {"lines": "$41"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.key_3": {
+      "value": {"lines": "$21"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.key_4": {
+      "value": {"lines": "$82"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.key_5": {
+      "value": {"lines": "$42"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.key_6": {
+      "value": {"lines": "$22"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.key_7": {
+      "value": {"lines": "$84"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.key_8": {
+      "value": {"lines": "$44"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.key_9": {
+      "value": {"lines": "$24"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.key_clear": {
+      "value": {"lines": "$88"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.key_0": {
+      "value": {"lines": "$48"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.key_enter": {
+      "value": {"lines": "$28"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.disc_n": {
+      "value": {"lines": "$04"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.disc_nne": {
+      "value": {"lines": "$14"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.disc_ne": {
+      "value": {"lines": "$16"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.disc_ene": {
+      "value": {"lines": "$06"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.disc_e": {
+      "value": {"lines": "$02"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.disc_ese": {
+      "value": {"lines": "$12"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.disc_se": {
+      "value": {"lines": "$13"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.disc_sse": {
+      "value": {"lines": "$03"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.disc_s": {
+      "value": {"lines": "$01"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.disc_ssw": {
+      "value": {"lines": "$11"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.disc_sw": {
+      "value": {"lines": "$19"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.disc_wsw": {
+      "value": {"lines": "$09"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.disc_w": {
+      "value": {"lines": "$08"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.disc_wnw": {
+      "value": {"lines": "$18"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.disc_nw": {
+      "value": {"lines": "$1C"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.disc_nnw": {
+      "value": {"lines": "$0C"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.side_top": {
+      "value": {"lines": "$A0"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.side_lower_left": {
+      "value": {"lines": "$60"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.side_lower_right": {
+      "value": {"lines": "$C0"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.line_model": {
+      "value": "ground-union",
+      "tag": "inference",
+      "cite": "SRC-intv-wiki Hand_controller (oldid 14808) prose: combinations clear the union of the bits of each pressed control; SRC-consolemods-intv-pinouts for the switch-to-ground wiring",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or a D10 reading of a combination of two controls on one controller",
+      "decision": null,
+      "note": "ground-union: a closed switch grounds its pins; the port byte is the idle byte with the grounded pins low, so the result of a combination is the union of the line masks (pins = FF XOR OR of the masks). Combinations the wiki calls undecodable are results of this rule, not evidence (C63 for disc positions closed together)."
+    },
+    "input.line_idle": {
+      "value": "$FF",
+      "tag": "tier4-community",
+      "cite": "SRC-intv-wiki Hand_controller (oldid 14808): an idle controller reads all ones in the low eight bits; SRC-gi-1980-catalog pdf-205 (printed on-chip pull-ups of the port)",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a D10 reading of an idle controller on owner hardware",
+      "decision": null,
+      "note": "The low byte a port in input mode reads with no switch closed."
+    },
+    "input.port_output_read": {
+      "value": "latch",
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: no source read by the project gives the value a CPU read returns from a port whose direction is output",
+      "conflict": "C65",
+      "resolving_evidence": "measurement: D10 owner hardware: set each R7 direction bit, write a latch value, close a switch and read the port",
+      "revisit_trigger": "a D10 port direction probe or a source for the output-mode read",
+      "decision": null,
+      "note": "A read of a port whose R7 direction bit says output returns the stored latch (low byte) and ignores the pins; no contention is modelled. The generator accepts only the value latch."
+    },
+    "psg.mixer.port_dir_bits": {
+      "value": {"A": 6, "B": 7, "output": 1},
+      "tag": "unknown-default-chosen",
+      "cite": "SRC-gi-1980-catalog pdf-207 (printed 5-26): bits B7 and B6 of R7 are the Input Enable cells of the two ports, the sense is not printed; the community page orders the two bits the other way",
+      "conflict": "C73",
+      "resolving_evidence": "measurement: D10 port direction probe on owner hardware",
+      "revisit_trigger": "a primary data sheet of the console part or a D10 port direction probe",
+      "decision": null,
+      "note": "A and B are the bit numbers of R7 that select the direction of port 0 ($01FE) and port 1 ($01FF); output is the bit value that makes a port an output. The port read consumes it through the generated psg parameters; the read path holds no bit number."
+    },
+    "psg.clocks_per_step": {
+      "value": 8,
+      "tag": "inference",
+      "cite": "SRC-gi-1980-catalog pdf-207 (printed 5-26): the divide chains, the input clock by 16 and then by the period; a square wave toggles every half period, so one tone half-period is the period times 16 input clocks divided by 2",
+      "conflict": "C69",
+      "resolving_evidence": "measurement: D10 owner hardware: capture a tone of known period and compare the edge spacing with the profile",
+      "revisit_trigger": "when a primary source for the console part or a D10 tone capture exists",
+      "decision": null,
+      "note": "One PSG step is 8 PSG chip clocks (16 master ticks, 4 CPU cycles on the NTSC profile): tone half-period P steps, noise shift every 2 NP steps, envelope step every 2 EP steps. Counters are integers; there is no accumulator. This corrects the earlier text of docs/time-base.md (D-09)."
+    },
+    "psg.sample_period_ticks": {
+      "value": 16,
+      "tag": "inference",
+      "cite": "derived: ticks_per_psg_clock times psg.clocks_per_step (SRC-gi-1980-catalog pdf-207)",
+      "conflict": "C69",
+      "resolving_evidence": "measurement: D10 owner hardware: capture a tone of known period and compare the edge spacing with the profile",
+      "revisit_trigger": "when ticks_per_psg_clock or psg.clocks_per_step changes",
+      "decision": null,
+      "note": "Master ticks between two audio samples (one per PSG step, D-15). The generator refuses a value that is not ticks_per_psg_clock times psg.clocks_per_step."
+    },
+    "psg.counter_model": {
+      "value": "down-reload",
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: the data sheet prints the divide chain, not the counter structure",
+      "conflict": "C12",
+      "resolving_evidence": "measurement: D10 owner hardware: write a new period while a tone runs and capture the next edge",
+      "revisit_trigger": "a die analysis, a schematic or a D10 capture of a period change mid-half-cycle",
+      "decision": null,
+      "note": "Each counter is empty at reset, reloaded from the effective period on its first step, counts down by one per step and fires at zero; a period write takes effect at the next reload (policy POL-PSG-02). The generator accepts only down-reload."
+    },
+    "psg.period_zero.tone": {
+      "value": 4096,
+      "tag": "tier4-community",
+      "cite": "SRC-intv-wiki PSG (oldid 14940): a tone period of 0 acts as 4096",
+      "conflict": "C12",
+      "resolving_evidence": "measurement: D10 owner hardware: capture the tone of period 0",
+      "revisit_trigger": "a primary data sheet of the console part or a D10 capture",
+      "decision": null,
+      "note": "Effective tone period: value == 0 ? this field : value. Many other AY emulators treat 0 as 1 (C12)."
+    },
+    "psg.mixer.bits": {
+      "value": {"polarity": 0, "tone": [0, 1, 2], "noise": [3, 4, 5]},
+      "tag": "inference",
+      "cite": "SRC-gi-1980-catalog pdf-207 (printed 5-26): the Enable cells of R7 with the active-low overbar; SRC-intv-wiki PSG (oldid 14940): bits 0..2 tone, bits 3..5 noise",
+      "conflict": "C69",
+      "resolving_evidence": "measurement: D10 owner hardware: a mixer register sweep against the sound output",
+      "revisit_trigger": "a primary data sheet of the console part or a D10 capture",
+      "decision": null,
+      "note": "polarity 0 means a 0 bit enables the generator. The channel gate is (tone | tone_disabled) & (noise | noise_disabled), so a channel with both disabled is a constant 1. The tone and noise lists give the R7 bit of channel A, B, C."
+    },
+    "psg.amp.env_select": {
+      "value": {"fixed": [3, 0], "select": [5, 4], "shift": [2, 1, 0]},
+      "tag": "tier4-community",
+      "cite": "SRC-intv-wiki PSG (oldid 14940): the amplitude register bits 3..0 are the fixed level and the 2-bit select in bits 5..4 chooses the envelope scaled by a right shift",
+      "conflict": "C12",
+      "resolving_evidence": "measurement: D10 owner hardware: an envelope run through each select value",
+      "revisit_trigger": "a primary data sheet of the console part or a D10 capture",
+      "decision": null,
+      "note": "fixed and select are [high bit, low bit] of their fields in the amplitude register; shift lists the right shift of the envelope level for select 1, 2, 3 (select 0 is the fixed level). The data sheet does not print the sense (C12)."
+    },
+    "psg.reset": {
+      "value": {"registers": "zero", "tone_output": 0, "tone_counter": "reload-on-first-step", "lfsr": "seed", "envelope": "held-0", "ports": "input"},
+      "tag": "unknown-default-chosen",
+      "cite": "SRC-gi-1980-catalog pdf-205 (printed 5-24): a low reset pin resets all registers to zero; nothing else about the reset state is printed",
+      "conflict": "C77",
+      "resolving_evidence": "measurement: D10 owner hardware: read the registers and capture the first samples after power-on and after a console reset",
+      "revisit_trigger": "a schematic of the reset line or a D10 capture",
+      "decision": null,
+      "note": "Registers zero, tone outputs 0, tone counters empty (reloaded on the first step), the noise register at its seed (psg.noise.lfsr) and the envelope held at level 0 until the first shape write (psg.envelope.shape_bits), both ports input."
+    },
+    "psg.clock_phase_ticks": {
+      "value": 0,
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: no source gives the phase of the PSG clock against the master clock",
+      "conflict": "C76",
+      "resolving_evidence": "measurement: D10 owner hardware: capture a tone against the video timing",
+      "revisit_trigger": "a schematic or a D10 capture",
+      "decision": null,
+      "note": "The PSG step grid starts at master tick 0 at reset (step k at k times the sample period). The generator accepts only 0."
+    },
+    "psg.write_strobe_ticks": {
+      "value": 0,
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: no source gives the instant within a CPU cycle at which a register write takes effect",
+      "conflict": "C78",
+      "resolving_evidence": "test: psg.sample.write-effect-boundary and the psg.slice contract tests; a hardware reading is a D10 refinement",
+      "revisit_trigger": "a D10 capture of a write against the sample edge",
+      "decision": null,
+      "note": "Master ticks added to the start of the write's bus cycle to give the tick a PSG register write is stamped with; a sample at k times the sample period sees writes stamped below it (step first, then write, C78)."
+    },
+    "psg.max_unit_ticks": {
+      "value": 468,
+      "tag": "inference",
+      "cite": "derived from bus.wait_limit_cpu_cycles (C53): (12 + 3 x 35) CPU cycles x ticks_per_cpu_cycle; the maximum unit on the real bus (wait 0) is 12 CPU cycles",
+      "conflict": "C53",
+      "resolving_evidence": "test: psg.bounds.unit-ticks-max and psg.bounds.unit-ticks-real-bus (exhaustive probe through the CPU model)",
+      "revisit_trigger": "when bus.wait_limit_cpu_cycles changes or a device other than the memory system can stall the bus (Phase 6)",
+      "decision": null,
+      "note": "The proven maximum ticks of one CPU unit, published for the audio capacity slack (D-17): s = ceil(U / P) + 1. The generator refuses a value that is not (12 + 3 x bus.wait_limit_cpu_cycles) x ticks_per_cpu_cycle."
+    },
+    "psg.min_write_gap_ticks": {
+      "value": 28,
+      "tag": "inference",
+      "cite": "derived from the CP-1610 cycle table and ticks_per_cpu_cycle (C53): exhaustive probe psg.bounds.write-gap-min over every decle, SDBD off and on, waits 0, 1 and 35",
+      "conflict": "C53",
+      "resolving_evidence": "test: psg.bounds.write-gap-min and psg.bounds.g-and-u (exhaustive probe through the CPU model, interrupt-entry units included)",
+      "revisit_trigger": "when the CPU cycle table changes or a device other than the memory system can raise an interrupt or stall the bus (Phase 6)",
+      "decision": null,
+      "note": "The minimum master ticks between two PSG register writes over ALL PSG-writing units, an interrupt-entry unit included: an MVO@ write at offset 4 of a 9-cycle unit followed by an interrupt-entry unit that writes at offset 2 gives 9 - 4 + 2 = 7 CPU cycles = 28 ticks. Instruction-only writers reach 9 CPU cycles = 36 ticks, the only density reachable in Phase 5 (no device raises an interrupt before Phase 6); the published bound deliberately uses 28 so Phase 6 cannot silently break it. The generator refuses a value that is not a whole number of CPU cycles."
+    },
+    "psg.log_records_per_frame": {
+      "value": 2152,
+      "tag": "inference",
+      "cite": "derived from psg.min_write_gap_ticks and psg.max_unit_ticks (C53): W_log = ceil(F / g) + ceil(U / g) + 1 = 2134 + 17 + 1; exhaustive probe psg.bounds.write-gap-min",
+      "conflict": "C53",
+      "resolving_evidence": "test: psg.bounds.g-and-u (writes in T ticks <= (T + U) / g + 1 over every opcode x SDBD x wait in {0, limit}) and psg.buffers.worst-case-writer",
+      "revisit_trigger": "when psg.min_write_gap_ticks, psg.max_unit_ticks or the nominal frame changes",
+      "decision": null,
+      "note": "Write-log records one frame slot is sized for: the capacity of a run is 16 bytes x this x (max(target - now, 0) / nominal_frame_ticks + 1). The generator refuses a value that is not ceil(F / g) + ceil(U / g) + 1 for the profile's frame F (scanlines x cycles per scanline x ticks per cycle = 59,736 ticks), g and U."
+    },
+    "psg.period_zero.noise": {
+      "value": 32,
+      "tag": "unknown-default-chosen",
+      "cite": "no source: the data sheet pages print a 5-bit noise period and no statement about a written 0 (SRC-gi-1980-catalog pdf-207, printed 5-26); the tone and envelope rules of the same family act as the range top (SRC-intv-wiki PSG, oldid 14940), so the noise default follows by analogy",
+      "conflict": "C12",
+      "resolving_evidence": "measurement: D10 owner hardware: capture noise-only audio with the noise period register written 0 and compare the shift spacing with 64 steps",
+      "revisit_trigger": "a primary data sheet of the console part or a D10 capture",
+      "decision": null,
+      "note": "Effective noise period: value == 0 ? this field : value (the 5-bit register ranges 1..31, so 32 is the range top by analogy with the tone). A default by analogy, tagged as such; many other AY implementations treat 0 as 1 (C12)."
+    },
+    "psg.noise.steps_per_np": {
+      "value": 2,
+      "tag": "inference",
+      "cite": "SRC-gi-1980-catalog pdf-207 (printed 5-26): the noise frequency divide chain, the input clock by 16 and then by the 5-bit period; a shift register is clocked once per half period of that chain, so one shift every 2 NP steps of 8 chip clocks (inference)",
+      "conflict": "C69",
+      "resolving_evidence": "measurement: D10 owner hardware: capture a noise-only channel at two noise periods and compare the shift spacing with the profile",
+      "revisit_trigger": "when a primary source for the console part or a D10 noise capture exists",
+      "decision": null,
+      "note": "PSG steps per noise period unit: the register shifts every this-many x NP steps (NP the effective noise period). Counters are integers; there is no accumulator."
+    },
+    "psg.noise.lfsr": {
+      "value": {
+        "width": 17,
+        "galois_mask": "$12000",
+        "seed": "$00001",
+        "out_bit": 0,
+        "invert": 0
+      },
+      "tag": "unknown-default-chosen",
+      "cite": "no source for the console part: the data sheet defines a noise frequency but no register width, polynomial or seed (SRC-gi-1980-catalog pdf-207, printed 5-26); the width, mask and seed are a project default chosen for the maximal period",
+      "conflict": "C71",
+      "resolving_evidence": "measurement: D10 owner hardware: capture a noise-only channel and compare the bit pattern with the profile LFSR",
+      "revisit_trigger": "a measurement (D10 noise capture) or a data sheet of the 8914-class part",
+      "decision": null,
+      "note": "Right-shifting Galois register: if (s & 1) s = (s >> 1) ^ galois_mask else s >>= 1; the noise output bit is ((s >> out_bit) & 1) ^ invert. Mask $12000 with seed $00001 has the maximal period 131,071 (proved by psg.noise.lfsr-maximal-period). The alternative community mask $14000 is a one-field edit of galois_mask and has the non-maximal period 114,681 (tier 5 hint, SRC-intv-wiki PSG oldid 14940 names it, never a source of expected values). A zero seed locks the register, so the generator refuses it."
+    },
+    "psg.period_zero.envelope": {
+      "value": 65536,
+      "tag": "tier4-community",
+      "cite": "SRC-intv-wiki PSG (oldid 14940): an envelope period of 0 acts as 65536",
+      "conflict": "C12",
+      "resolving_evidence": "measurement: D10 owner hardware: capture the envelope with the period registers written 0",
+      "revisit_trigger": "a primary data sheet of the console part or a D10 capture",
+      "decision": null,
+      "note": "Effective envelope period: value == 0 ? this field : value, for the 16-bit period of the fine register at $01F3 and the coarse register at $01F7 (the wiki states 2 x 65536 PSG steps per state, which is steps_per_ep x 65536)."
+    },
+    "psg.envelope.steps_per_ep": {
+      "value": 2,
+      "tag": "inference",
+      "cite": "SRC-gi-1980-catalog pdf-207 and pdf-208 (printed 5-26 and 5-27): the envelope divide chain, the input clock by 256, then by the 16-bit period, and Fig. 3 names the period as the duration of one 16-state cycle; one state is 16 EP chip clocks, which is 2 EP steps of 8 chip clocks (inference)",
+      "conflict": "C72",
+      "resolving_evidence": "measurement: D10 owner hardware: capture the envelope at two periods and compare the state spacing with the profile",
+      "revisit_trigger": "when a primary source for the console part or a D10 envelope capture exists",
+      "decision": null,
+      "note": "PSG steps per envelope period unit: the envelope advances one of 16 states every this-many x EP steps (EP the effective envelope period), so one 16-state cycle is 256 EP chip clocks. The 16-state table is the engine's constant (the 32-step envelope is a different part, named in C12)."
+    },
+    "psg.envelope.shape_bits": {
+      "value": {
+        "continue": 3,
+        "attack": 2,
+        "alternate": 1,
+        "hold": 0,
+        "restart_on_write": 1
+      },
+      "tag": "inference",
+      "cite": "SRC-gi-1980-catalog pdf-208 (printed 5-27): the sixteen shapes of Fig. 3 over the four shape bits; SRC-intv-wiki PSG (oldid 14940): the envelope is reset each time the shape register is written",
+      "conflict": "C72",
+      "resolving_evidence": "measurement: D10 owner hardware: capture the envelope for each of the sixteen shapes and rewrite the shape register mid-cycle",
+      "revisit_trigger": "a primary data sheet of the console part or a D10 capture",
+      "decision": null,
+      "note": "Bit numbers of the shape register (the four bits at $01FA): continue, attack, alternate and hold, and restart_on_write (1: a write to the shape register restarts the generator at its first level with an empty step counter; a period write never restarts it). C70 names the register address. After a reset the generator holds level 0 until the first shape write (psg.reset). Start level = attack ? 0 : 15; at the end of a 16-state cycle continue 0 holds level 0, continue 1 with hold 1 holds the last level (alternate 0) or the initial level of the finished cycle (alternate 1: shape 1011 holds 15, shape 1111 holds 0), continue 1 with hold 0 restarts at the initial level (alternate 0) or reverses direction (alternate 1)."
+    },
+    "psg.dac.levels": {
+      "value": [
+        0,
+        781250,
+        946875,
+        1562500,
+        1893750,
+        3125000,
+        3787500,
+        6250000,
+        7575000,
+        12500000,
+        15150000,
+        25000000,
+        30300000,
+        50000000,
+        70700000,
+        100000000
+      ],
+      "tag": "inference",
+      "cite": "SRC-gi-1980-catalog Fig. 9 axis labels as read in the Phase 5 discuss note (levels 15..9 printed: 1.0, 0.707, 0.5, 0.303, 0.25, 0.1515, 0.125 V normalised); the text for level 0 (0 V); levels 8..1 extrapolated by the printed halving every two levels. plan 05-01 could not obtain the reprint pages: the labels are not an independent source",
+      "conflict": "C12",
+      "resolving_evidence": "measurement: D10 owner hardware: measure the analogue output voltage of each of the sixteen amplitude levels",
+      "revisit_trigger": "a measured DAC curve (D10) or a data sheet that prints the labels",
+      "decision": null,
+      "note": "Sixteen unsigned integers in units of 1e-8 of full scale, indexed by the 4-bit level 0..15. Per-entry basis: levels 15 to 9 are the printed Fig. 9 labels, levels 8 to 1 are extrapolated (level n = level n+2 divided by 2: 8 from 10, 7 from 9, 6 from 8, 5 from 7, 4 from 6, 3 from 5, 2 from 4, 1 from 3 as derived in the discuss note), level 0 is 0 from the text. The printed 0.303 and 0.1515 V labels are not on a pure 3 dB ladder: [UNK] unresolved. The sum of three channels is at most 300,000,000 and fits uint32_t. THE CORE NEVER READS THIS FIELD (D-11): raw audio is the level indices; a test-side generator (cmake/IvsPsgProfileProbe.cmake) reads it for the psg.dac.* tests, and a wrong table cannot invalidate a raw audio golden."
     }
   }
 }

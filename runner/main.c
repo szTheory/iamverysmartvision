@@ -15,8 +15,9 @@
  * only end by the wall cap.
  * --update-golden <file> (plan 04-21, D-11) also writes the run's repeatability golden: a header
  * (tier, oracle, scenario, profile, domains) and the report lines of the golden key list; it is run
- * by a person, never by the gate, and refuses `user` content and host-dependent outcomes.
- * Documented in docs/runner.md. */
+ * by a person, never by the gate, and refuses `user` content, host-dependent outcomes and a path that
+ * is one of the operator output files (review WR-02). A run that ends harness-fail removes the operator
+ * output files it created (review WR-01). Documented in docs/runner.md. */
 #include <signal.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -27,6 +28,7 @@
 #include "hostio.h"
 #include "ivs/ivs.h"
 #include "ivs_runner.h"
+#include "runner_sha256.h"
 
 #define MAIN_EXIT_HARNESS 14
 #define MAIN_DIR_MAX 4096u
@@ -43,6 +45,9 @@ typedef struct main_host {
   char *golden_buf;                /* report copy for --update-golden, NULL otherwise */
   size_t golden_len;
   int golden_overflow;             /* the report did not fit MAIN_GOLDEN_CAP */
+  ivs_hostio_out audio_out;        /* --audio-raw file (plan 05-09), fd -1 when not given */
+  ivs_hostio_out log_out;          /* --psg-log-out file */
+  ivs_hostio_out wav_out;          /* --audio-wav file (plan 05-10): 44 reserved header bytes, then the PCM */
 } main_host;
 
 static const char main_usage[] =
@@ -65,7 +70,21 @@ static const char main_usage[] =
     "  --self-signal-count <n>  test hook: raise SIGINT n times there, 1..4 (default 1);\n"
     "                       needs --self-signal-after-slices\n"
     "  --update-golden <file>  also write the run's repeatability golden (.digests) to file;\n"
-    "                       refused for `user` content and host-dependent outcomes\n"
+    "                       refused for `user` content, host-dependent outcomes and an output file's path\n"
+    "  --audio-raw <file>   also write the dense audio sample bytes (4 per sample: levels A, B, C, 0)\n"
+    "                       to a NEW file (an existing path is refused, exit 14, never overwritten);\n"
+    "                       a run that ends harness-fail (exit 14) removes the files it created\n"
+    "  --psg-log-out <file>  also write one ASCII line per PSG write-log record, `index tick addr\n"
+    "                       value source` (decimal), to a NEW file (same rule)\n"
+    "  --audio-out-max-bytes <n>  bound of each of those files in bytes, 1..1099511627776\n"
+    "                       (default 268435456); passing it is a harness failure (exit 14) and the\n"
+    "                       files of that run are removed, never a truncation on disk\n"
+    "  --audio-wav <file>   also write the dense audio as a mono 16-bit WAV of the reference converter\n"
+    "                       (reference conversion v1, converter repeatability only) to a NEW file (same\n"
+    "                       rule); the report then ends with refpcm.rate, refpcm.frames and refpcm.sha256\n"
+    "                       (the SHA-256 of the file as written); the file is bounded by\n"
+    "                       --audio-out-max-bytes; never a golden, never a claim\n"
+    "  --wav-rate <n>       the WAV rate, 44100 or 48000 (default 48000); needs --audio-wav\n"
     "  --help               print this text and exit 0\n"
     "outcomes (outcome exit-code):\n"
     "pass 0\n"
@@ -110,6 +129,54 @@ static int mh_cancel(void *ctx)
     }
   }
   return ivs_hostio_cancelled();
+}
+
+static int mh_audio_raw(void *ctx, const uint8_t *bytes, size_t len)
+{
+  main_host *h = ctx;
+  return ivs_hostio_out_write(&h->audio_out, bytes, len);
+}
+
+static int mh_psg_log(void *ctx, const char *lines, size_t len)
+{
+  main_host *h = ctx;
+  return ivs_hostio_out_write(&h->log_out, lines, len);
+}
+
+static int mh_wav_pcm(void *ctx, const uint8_t *pcm, size_t len)
+{
+  main_host *h = ctx;
+  return ivs_hostio_out_write(&h->wav_out, pcm, len);
+}
+
+/* The header goes in front of the PCM (the 44 bytes reserved at creation), then the finished file is read
+ * back from offset 0 and hashed: the SHA-256 of the WAV file bytes as written. */
+static int mh_wav_finish(void *ctx, const uint8_t header[44], uint8_t sha256[32])
+{
+  main_host *h = ctx;
+  ivs_rsha256 c;
+  uint8_t buf[16384];
+  uint64_t off = 0u;
+  size_t got = 0u;
+  if (ivs_hostio_out_write_at(&h->wav_out, 0u, header, 44u) != 0) {
+    return -1;
+  }
+  ivs_rsha256_init(&c);
+  for (;;) {
+    if (ivs_hostio_out_read_at(&h->wav_out, off, buf, sizeof buf, &got) != 0) {
+      return -1;
+    }
+    if (got == 0u) {
+      break;
+    }
+    ivs_rsha256_update(&c, buf, got);
+    off += (uint64_t)got;
+  }
+  if (off < 44u) {
+    return -1;
+  }
+  ivs_rsha256_final(&c, sha256);
+  return 0;
 }
 
 static int mh_write(void *ctx, const char *bytes, size_t len)
@@ -164,6 +231,53 @@ static int main_number(const char *a, uint64_t lo, uint64_t hi, uint64_t *out)
   *out = v;
   return 1;
 }
+
+/* Creates the operator output file exclusively (hostio.c). 0, or -1 after one line on stderr. */
+static int main_open_out(ivs_hostio_out *o, const char *path, const char *option)
+{
+  int r = ivs_hostio_out_create(o, path);
+  if (r == 1) {
+    fprintf(stderr, "ivs-run: %s: output file exists, refusing to overwrite it\n", option);
+    return -1;
+  }
+  if (r != 0) {
+    fprintf(stderr, "ivs-run: %s: cannot create the output file\n", option);
+    return -1;
+  }
+  return 0;
+}
+
+/* The same, for a file that is also read back (the operator WAV, plan 05-10). */
+static int main_open_out_rw(ivs_hostio_out *o, const char *path, const char *option)
+{
+  int r = ivs_hostio_out_create_rw(o, path);
+  if (r == 1) {
+    fprintf(stderr, "ivs-run: %s: output file exists, refusing to overwrite it\n", option);
+    return -1;
+  }
+  if (r != 0) {
+    fprintf(stderr, "ivs-run: %s: cannot create the output file\n", option);
+    return -1;
+  }
+  return 0;
+}
+
+/* Closes o and removes the file this run created at path, when path still names it (hostio.c compares the
+ * identity recorded at creation, so a replaced file is never removed). path NULL: not given, nothing to do.
+ * option non-NULL: one line on stderr when a file was removed. Review WR-01. */
+static void main_discard(ivs_hostio_out *o, const char *path, const char *option)
+{
+  if (path == NULL) {
+    return;
+  }
+  (void)ivs_hostio_out_close(o);
+  if (ivs_hostio_out_remove_if_same(o, path) == 0 && option != NULL) {
+    fprintf(stderr, "ivs-run: %s: the run failed, the incomplete output file was removed\n", option);
+  }
+}
+
+/* 1 when the two option values are both given and the same string. */
+static int main_same_path(const char *a, const char *b) { return a != NULL && b != NULL && strcmp(a, b) == 0; }
 
 /* The directory part of path ("." when it has none, "/" for a file at the root). 0 when it does
  * not fit. */
@@ -239,17 +353,26 @@ static int main_count_observed(const char *v, size_t n)
 }
 
 /* The golden key list (docs/runner.md): scenario, outcome and exit code, slots, steps, CPU state,
- * input and output counts, the digests of cpu, mem, images, instance and composite, and the
- * digest of each observed live domain. Never ivsr, api.version, the exec:/grom: labels,
- * host.calls or report.end. */
-static int main_golden_keep(const char *line, size_t n, const int live[3])
+ * input and output counts, the digests of cpu, mem, images, instance and composite, and for each
+ * observed live domain its keys: video digest.video; audio digest.audio, output.audio.samples,
+ * output.audio.changes and audio.sample_ticks; input digest.input; psglog digest.psglog,
+ * output.psglog.records and output.psglog.bytes. Never ivsr, api.version, the exec:/grom: labels,
+ * audio.chain.check, any refpcm.* key, host.calls or report.end. The same list sits in
+ * tools/check/steps/golden.sh and docs/runner.md (plan 05-09, A-09). */
+#define MAIN_LIVE 4u
+static int main_golden_keep(const char *line, size_t n, const int live[MAIN_LIVE])
 {
   static const char *const prefix[] = {"slot.", "step.", "cpu.", "input."};
   static const char *const exact[] = {"scenario.id",   "scenario.profile", "outcome",
                                       "outcome.detail", "exit.code",        "digest.cpu",
                                       "digest.mem",     "digest.images",    "digest.instance",
                                       "digest.composite", "output.video.bytes", "output.audio.bytes"};
-  static const char *const live_key[] = {"digest.video", "digest.audio", "digest.input"};
+  /* Per live domain (video, audio, input, psglog): the keys kept while it is observed. */
+  static const char *const live_key[MAIN_LIVE][4] = {
+      {"digest.video", NULL, NULL, NULL},
+      {"digest.audio", "output.audio.samples", "output.audio.changes", "audio.sample_ticks"},
+      {"digest.input", NULL, NULL, NULL},
+      {"digest.psglog", "output.psglog.records", "output.psglog.bytes", NULL}};
   for (size_t i = 0u; i < sizeof prefix / sizeof prefix[0]; i++) {
     size_t pl = strlen(prefix[i]);
     if (n > pl && memcmp(line, prefix[i], pl) == 0) {
@@ -261,9 +384,11 @@ static int main_golden_keep(const char *line, size_t n, const int live[3])
       return 1;
     }
   }
-  for (size_t i = 0u; i < 3u; i++) {
-    if (live[i] && main_key_is(line, n, live_key[i])) {
-      return 1;
+  for (size_t i = 0u; i < MAIN_LIVE; i++) {
+    for (size_t k = 0u; k < 4u; k++) {
+      if (live[i] && live_key[i][k] != NULL && main_key_is(line, n, live_key[i][k])) {
+        return 1;
+      }
     }
   }
   return 0;
@@ -273,12 +398,13 @@ static int main_golden_keep(const char *line, size_t n, const int live[3])
  * line on stderr (host-dependent outcome, incomplete capture, write error). */
 static int main_write_golden(const char *path, const main_host *h, const ivs_scenario *scn)
 {
-  static const char *const live_count[] = {"output.video.bytes", "output.audio.bytes", "input.events"};
+  static const char *const live_count[MAIN_LIVE] = {"output.video.bytes", "output.audio.bytes", "input.events",
+                                                    "output.psglog.bytes"};
   const char *buf = h->golden_buf;
   size_t len = h->golden_len;
   const char *v;
   size_t vn;
-  int live[3];
+  int live[MAIN_LIVE];
   FILE *f;
   int ok = 1;
   size_t i = 0u;
@@ -294,7 +420,7 @@ static int main_write_golden(const char *path, const main_host *h, const ivs_sce
   if (vn >= 5u && memcmp(v, "wall ", 5u) == 0) {
     return main_fail("golden refused: host-dependent outcome");
   }
-  for (size_t k = 0u; k < 3u; k++) {
+  for (size_t k = 0u; k < MAIN_LIVE; k++) {
     v = main_report_value(buf, len, live_count[k], &vn);
     live[k] = main_count_observed(v, vn);
   }
@@ -308,11 +434,11 @@ static int main_write_golden(const char *path, const main_host *h, const ivs_sce
               "# scenario: %s\n"
               "# profile: %s\n"
               "# domains: cpu=observed mem=observed images=observed instance=observed video=%s audio=%s "
-              "input=%s\n"
+              "input=%s psglog=%s\n"
               "# Written by ivs-run --update-golden, never by the gate; a change is a reviewed diff\n"
               "# (docs/runner.md). The body is the run's report filtered to the golden key list.\n",
               scn->id, scn->profile, live[0] ? "observed" : "none", live[1] ? "observed" : "none",
-              live[2] ? "observed" : "none") < 0) {
+              live[2] ? "observed" : "none", live[3] ? "observed" : "none") < 0) {
     ok = 0;
   }
   while (ok && i < len) {
@@ -340,8 +466,12 @@ int main(int argc, char **argv)
   ivs_storage_requirements req;
   uint8_t *text = NULL;
   void *storage = NULL;
+  uint8_t *buffers = NULL;
   const char *scenario_path = NULL;
   const char *golden_path = NULL;
+  const char *audio_raw_path = NULL;
+  const char *psg_log_path = NULL;
+  const char *audio_wav_path = NULL;
   char dirbuf[MAIN_DIR_MAX];
   size_t text_len = 0u;
   size_t storage_bytes;
@@ -350,7 +480,12 @@ int main(int argc, char **argv)
   int have_max = 0;
   int have_wall = 0;
   int have_slice = 0;
+  int have_out_max = 0;
+  int have_wav_rate = 0;
   memset(&mh, 0, sizeof mh);
+  mh.audio_out.fd = -1;
+  mh.log_out.fd = -1;
+  mh.wav_out.fd = -1;
   memset(&opts, 0, sizeof opts);
   for (int i = 1; i < argc; i++) {
     const char *a = argv[i];
@@ -373,6 +508,20 @@ int main(int argc, char **argv)
       slot = &mh.user[IVS_SCN_ROLE_CART];
     } else if (strcmp(a, "--update-golden") == 0) {
       slot = &golden_path;
+    } else if (strcmp(a, "--audio-raw") == 0) {
+      slot = &audio_raw_path;
+    } else if (strcmp(a, "--psg-log-out") == 0) {
+      slot = &psg_log_path;
+    } else if (strcmp(a, "--audio-wav") == 0) {
+      slot = &audio_wav_path;
+    } else if (strcmp(a, "--wav-rate") == 0) {
+      seen = &have_wav_rate;
+      lo = 1u;
+      hi = UINT32_MAX;
+    } else if (strcmp(a, "--audio-out-max-bytes") == 0) {
+      seen = &have_out_max;
+      lo = 1u;
+      hi = UINT64_C(1099511627776);
     } else if (strcmp(a, "--max-ticks") == 0) {
       seen = &have_max;
       lo = 1u;
@@ -418,13 +567,20 @@ int main(int argc, char **argv)
     if (!main_number(argv[i], lo, hi, &v)) {
       return main_usage_error("option value out of range");
     }
+    if (seen == &have_wav_rate && !ivs_runner_wav_rate_valid((uint32_t)v)) {
+      return main_usage_error("--wav-rate must be 44100 or 48000");
+    }
     *seen = 1;
-    if (seen == &have_max) {
+    if (seen == &have_wav_rate) {
+      opts.wav_rate = (uint32_t)v;
+    } else if (seen == &have_max) {
       opts.max_ticks = v;
     } else if (seen == &have_wall) {
       opts.wall_timeout_ms = (uint32_t)v;
     } else if (seen == &have_slice) {
       opts.slice_ticks = v;
+    } else if (seen == &have_out_max) {
+      opts.audio_out_max_bytes = v;
     } else if (seen == &mh.self_signal_repeat) {
       mh.self_signal_count = v;
     } else {
@@ -436,6 +592,16 @@ int main(int argc, char **argv)
   }
   if (mh.self_signal_repeat && !mh.self_signal) {
     return main_usage_error("--self-signal-count needs --self-signal-after-slices");
+  }
+  if (have_wav_rate && audio_wav_path == NULL) {
+    return main_usage_error("--wav-rate needs --audio-wav");
+  }
+  /* --update-golden overwrites its file, so it must never be one of the operator output files (review WR-02):
+   * the same string is refused here, before anything is created; the same file under another spelling is
+   * refused below once the outputs exist. */
+  if (main_same_path(golden_path, audio_raw_path) || main_same_path(golden_path, psg_log_path) ||
+      main_same_path(golden_path, audio_wav_path)) {
+    return main_fail("--update-golden must not name an operator output file");
   }
   if (!mh.self_signal_repeat) {
     mh.self_signal_count = 1u;
@@ -499,15 +665,72 @@ int main(int argc, char **argv)
   storage_bytes = 64u;
   if (ivs_machine_storage_requirements(scn->profile, &req) == IVS_OK && req.size_bytes <= IVS_RUNNER_STORAGE_MAX &&
       req.align_bytes <= IVS_RUNNER_STORAGE_MAX) {
-    storage_bytes = (size_t)req.size_bytes + (size_t)req.align_bytes + (size_t)IVS_RUNNER_CAP_CART + 1u;
+    storage_bytes = (size_t)req.size_bytes + (size_t)req.align_bytes + (size_t)IVS_RUNNER_CAP_CART + 1u +
+                    (size_t)IVS_RUNNER_CAPTURE_BYTES;
   }
   storage = malloc(storage_bytes);
-  if (storage == NULL) {
+  /* One output block for the three channels (video, audio, PSG write log), bounded by
+   * IVS_RUNNER_BUFFERS_MAX; the executor cuts it per slice from ivs_info (plan 05-09, A-11). */
+  buffers = malloc((size_t)IVS_RUNNER_BUFFERS_MAX);
+  if (storage == NULL || buffers == NULL) {
+    free(storage);
+    free(buffers);
     free(mh.golden_buf);
     free(scn);
     return main_fail("out of memory");
   }
 
+  /* The operator's raw outputs, created exclusively before the run: an existing path is refused with
+   * one line and exit 14, nothing is overwritten (plan 05-09, T-05-23). */
+  if (audio_raw_path != NULL && main_open_out(&mh.audio_out, audio_raw_path, "--audio-raw") != 0) {
+    free(storage);
+    free(buffers);
+    free(mh.golden_buf);
+    free(scn);
+    return MAIN_EXIT_HARNESS;
+  }
+  if (psg_log_path != NULL && main_open_out(&mh.log_out, psg_log_path, "--psg-log-out") != 0) {
+    main_discard(&mh.audio_out, audio_raw_path, NULL);
+    free(storage);
+    free(buffers);
+    free(mh.golden_buf);
+    free(scn);
+    return MAIN_EXIT_HARNESS;
+  }
+  /* The operator WAV (plan 05-10): created exclusively like the other files, 44 bytes reserved for the
+   * header (written after the stream is complete, so the file is never seen with a wrong length), then the
+   * PCM follows. A refusal abandons the files this run already created. */
+  if (audio_wav_path != NULL) {
+    static const uint8_t zero_header[44] = {0};
+    int wr = main_open_out_rw(&mh.wav_out, audio_wav_path, "--audio-wav");
+    if (wr == 0 && ivs_hostio_out_write(&mh.wav_out, zero_header, sizeof zero_header) != 0) {
+      fprintf(stderr, "ivs-run: --audio-wav: cannot write the output file\n");
+      main_discard(&mh.wav_out, audio_wav_path, NULL);
+      wr = -1;
+    }
+    if (wr != 0) {
+      main_discard(&mh.audio_out, audio_raw_path, NULL);
+      main_discard(&mh.log_out, psg_log_path, NULL);
+      free(storage);
+      free(buffers);
+      free(mh.golden_buf);
+      free(scn);
+      return MAIN_EXIT_HARNESS;
+    }
+  }
+  /* The golden path against the files just created, whatever its spelling or links (review WR-02). */
+  if (golden_path != NULL && (ivs_hostio_out_is_path(&mh.audio_out, golden_path) == 1 ||
+                              ivs_hostio_out_is_path(&mh.log_out, golden_path) == 1 ||
+                              ivs_hostio_out_is_path(&mh.wav_out, golden_path) == 1)) {
+    main_discard(&mh.audio_out, audio_raw_path, NULL);
+    main_discard(&mh.log_out, psg_log_path, NULL);
+    main_discard(&mh.wav_out, audio_wav_path, NULL);
+    free(storage);
+    free(buffers);
+    free(mh.golden_buf);
+    free(scn);
+    return main_fail("--update-golden must not name an operator output file");
+  }
   memset(&host, 0, sizeof host);
   host.ctx = &mh;
   host.read_file = mh_read_file;
@@ -517,17 +740,48 @@ int main(int argc, char **argv)
   host.write_report = mh_write;
   host.storage = storage;
   host.storage_bytes = storage_bytes;
+  host.buffers = buffers;
+  host.buffer_bytes = (size_t)IVS_RUNNER_BUFFERS_MAX;
+  if (audio_raw_path != NULL) {
+    host.write_audio_raw = mh_audio_raw;
+  }
+  if (psg_log_path != NULL) {
+    host.write_psg_log = mh_psg_log;
+  }
+  if (audio_wav_path != NULL) {
+    host.write_wav_pcm = mh_wav_pcm;
+    host.finish_wav = mh_wav_finish;
+  }
   memset(&res, 0, sizeof res);
   (void)ivs_runner_execute(scn, &host, &opts, &res);
   free(storage);
+  free(buffers);
   code = (int)res.exit_code;
-  if (fflush(stdout) != 0 || ferror(stdout) || res.report_write_failed != 0u) {
-    free(mh.golden_buf);
-    free(scn);
-    return main_fail("report write failed");
-  }
-  if (golden_path != NULL && main_write_golden(golden_path, &mh, scn) != 0) {
+  if (audio_raw_path != NULL && ivs_hostio_out_close(&mh.audio_out) != 0) {
     code = MAIN_EXIT_HARNESS;
+    fprintf(stderr, "ivs-run: --audio-raw: close failed\n");
+  }
+  if (psg_log_path != NULL && ivs_hostio_out_close(&mh.log_out) != 0) {
+    code = MAIN_EXIT_HARNESS;
+    fprintf(stderr, "ivs-run: --psg-log-out: close failed\n");
+  }
+  if (audio_wav_path != NULL && ivs_hostio_out_close(&mh.wav_out) != 0) {
+    code = MAIN_EXIT_HARNESS;
+    fprintf(stderr, "ivs-run: --audio-wav: close failed\n");
+  }
+  if (fflush(stdout) != 0 || ferror(stdout) || res.report_write_failed != 0u) {
+    code = MAIN_EXIT_HARNESS;
+    fprintf(stderr, "ivs-run: report write failed\n");
+  } else if (golden_path != NULL && main_write_golden(golden_path, &mh, scn) != 0) {
+    code = MAIN_EXIT_HARNESS;
+  }
+  /* A run that ends harness-fail leaves no operator output file (review WR-01): what the files hold may be
+   * short of the run (a bound hit, a failed write), and an existing file would block the retry. Every other
+   * outcome ends with files that hold the whole run up to its end. */
+  if (code == MAIN_EXIT_HARNESS) {
+    main_discard(&mh.audio_out, audio_raw_path, "--audio-raw");
+    main_discard(&mh.log_out, psg_log_path, "--psg-log-out");
+    main_discard(&mh.wav_out, audio_wav_path, "--audio-wav");
   }
   free(mh.golden_buf);
   free(scn);

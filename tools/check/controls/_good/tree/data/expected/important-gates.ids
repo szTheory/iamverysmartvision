@@ -1,5 +1,5 @@
 # Toy important-gate registry of the known-good control tree (plan 04-24, D-46): one line per
-# Phase 4 requirement, resolving to the toy fault GOOD_FAULT (data/expected/faults/cpu.ids), the
+# Phase 4 requirement and, since plan 05-12, per Phase 5 requirement, resolving to the toy fault GOOD_FAULT (data/expected/faults/cpu.ids), the
 # toy control toy-control (data/expected/controls/toy.ids) and the toy selftest toy-selftest
 # (data/expected/pkg-selftests.ids).
 toy-bound fault GOOD_FAULT API-02
@@ -12,3 +12,10 @@ toy-listing control toy-control RUN-06
 toy-package mutant toy-selftest PKG-01
 toy-ci control toy-control PKG-03
 toy-log control toy-control PKG-04
+# Phase 5 (plan 05-12): one toy line per Phase 5 requirement.
+toy-input fault GOOD_FAULT INP-01
+toy-combos fault GOOD_FAULT2 INP-02
+toy-core control toy-control INP-03
+toy-slicing mutant toy-selftest API-03
+toy-psg fault GOOD_FAULT AUD-01
+toy-log fault GOOD_RUNNER AUD-02

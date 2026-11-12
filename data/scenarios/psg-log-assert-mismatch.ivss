@@ -1,0 +1,14 @@
+# Scenario psg-log-assert-mismatch (plan 05-09, D-20): outcome guest-fail, exit 10. The original
+# diagnostic never writes a PSG register, so its write log is empty; this assert says one record,
+# so the failing clause is named in the detail. It shows that the new assert subject cannot pass
+# vacuously: a wrong count over an empty log fails.
+# expect-detail: assert=1 line=14 psglog count == 1 got 0
+ivss 1
+id psg-log-assert-mismatch
+profile intv-2609-ntsc-family-p1
+content exec boot-stub
+content grom zero-grom
+content cart diag-cpu-1.ivsc
+capture psglog
+run-to 4000 cpu-cycles stop halted
+assert psglog count == 1

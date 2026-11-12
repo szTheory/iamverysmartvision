@@ -272,12 +272,16 @@ typedef struct mr_rule {
 
 /* Written here from the decisions, not read from the generated descriptors: decle ROM 10 bits and
  * 8-bit GROM with the upper bits driven 0, 8-bit RAM reads its byte with the upper byte 0 (C60),
- * system RAM 16 bits, stub and undriven reads give the undriven value FFFF (C5, C60). */
+ * system RAM 16 bits, the PSG registers keep and read 4 to 8 low bits with the upper byte 0 (psg8,
+ * C64, masks of the register-address literal C70; the shape register reads 0, C75), stub and
+ * undriven reads give the undriven value FFFF (C5, C60). */
 static const mr_rule mr_rules[] = {
     {"exec", 10u, 0x03FFu, 0x0000u, 0u},      {"cart", 10u, 0x03FFu, 0x0000u, 0u},
     {"grom", 8u, 0x00FFu, 0x0000u, 0u},       {"scratchpad", 8u, 0x00FFu, 0x0000u, 1u},
     {"gram", 8u, 0x00FFu, 0x0000u, 1u},       {"sysram", 16u, 0xFFFFu, 0x0000u, 1u},
-    {"stic", 0u, 0x0000u, 0xFFFFu, 0u},       {"psg", 0u, 0x0000u, 0xFFFFu, 0u},
+    {"stic", 0u, 0x0000u, 0xFFFFu, 0u},       {"psg", 8u, 0x00FFu, 0x0000u, 1u},
+    {"psg", 4u, 0x000Fu, 0x0000u, 1u},        {"psg", 5u, 0x001Fu, 0x0000u, 1u},
+    {"psg", 6u, 0x003Fu, 0x0000u, 1u},        {"psg", 0u, 0x0000u, 0x0000u, 0u},
     {"undriven", 0u, 0x0000u, 0xFFFFu, 0u},
 };
 
@@ -296,6 +300,31 @@ static const mr_rule *mr_rule_of(const ivs_mp_row *r)
 static uint16_t mr_expect(const mr_rule *u, uint16_t stored)
 {
   return (uint16_t)((stored & u->rmask) | (u->fill & (uint16_t)~u->rmask));
+}
+
+/* Declared exception registers (the literal's x= rows, plan 05-04): the shape register $01FA, whose
+ * read mask is 0 (C75), and the two port registers $01FE and $01FF, whose read follows the direction
+ * bit and the pins (plan 05-05). A store to one of them is observed in the register storage of the
+ * memory system, not through a bus read, so the width a store keeps is still measured. */
+static int mr_is_exception(uint16_t addr)
+{
+  return addr == 0x01FAu || addr == 0x01FEu || addr == 0x01FFu;
+}
+
+/* The port registers, whose bus read follows the pins (plan 05-05): after power-on both ports are in
+ * input mode with no pin held low, so a read gives the idle byte 00FF whatever the store holds. */
+static int mr_is_pins(uint16_t addr)
+{
+  return addr == 0x01FEu || addr == 0x01FFu;
+}
+
+/* What a store at addr left behind, read back at obs (the read-side address of addr). */
+static uint16_t mr_observe(uint16_t addr, uint16_t obs)
+{
+  if (mr_is_exception(addr)) {
+    return mr_m.psg_reg[(uint32_t)addr - 0x01F0u];
+  }
+  return mr_read(obs);
 }
 
 /* Number of 16-bit state words that differ from mr_snap; *last is the new value of the last one. */
@@ -336,17 +365,25 @@ static int mr_fresh(const ivs_mp_row *r)
 static int mr_probe_read(uint16_t addr)
 {
   const mr_rule *u = mr_rule_of(mr_row_at('R', addr));
+  uint16_t want_ff;
+  uint16_t want_00;
   MR_CHECK(u != NULL);
+  want_ff = mr_expect(u, 0xFFFFu);
+  want_00 = mr_expect(u, 0x0000u);
+  if (mr_is_pins(addr)) {
+    want_ff = 0x00FFu; /* idle pins, input mode: the byte does not depend on the stored word */
+    want_00 = 0x00FFu;
+  }
   ivs_memsys_poke_raw_internal(&mr_m, addr, 0xFFFFu);
-  if (mr_read(addr) != mr_expect(u, 0xFFFFu)) {
+  if (mr_read(addr) != want_ff) {
     ivs_test_diag("R %04X: raw FFFF reads %04X, rule gives %04X", (unsigned)addr, (unsigned)mr_read(addr),
-                  (unsigned)mr_expect(u, 0xFFFFu));
+                  (unsigned)want_ff);
     return IVS_TEST_FAIL;
   }
   ivs_memsys_poke_raw_internal(&mr_m, addr, 0x0000u);
-  if (mr_read(addr) != mr_expect(u, 0x0000u)) {
+  if (mr_read(addr) != want_00) {
     ivs_test_diag("R %04X: raw 0000 reads %04X, rule gives %04X", (unsigned)addr, (unsigned)mr_read(addr),
-                  (unsigned)mr_expect(u, 0x0000u));
+                  (unsigned)want_00);
     return IVS_TEST_FAIL;
   }
   return IVS_TEST_PASS;
@@ -358,11 +395,13 @@ static int mr_store_kept(const mr_rule *u, uint16_t addr, uint16_t obs, uint16_t
   uint16_t want = (uint16_t)(value & u->rmask);
   uint16_t got;
   uint32_t n;
+  uint16_t seen;
   memcpy(&mr_snap, &mr_m, sizeof mr_snap);
   mr_write(addr, value);
-  if (mr_read(obs) != want) {
+  seen = mr_observe(addr, obs);
+  if (seen != want) {
     ivs_test_diag("W %04X: store %04X reads %04X at %04X, rule gives %04X", (unsigned)addr, (unsigned)value,
-                  (unsigned)mr_read(obs), (unsigned)obs, (unsigned)want);
+                  (unsigned)seen, (unsigned)obs, (unsigned)want);
     return IVS_TEST_FAIL;
   }
   n = mr_changed_words(&got);
@@ -584,9 +623,9 @@ static uint32_t mr_mirror_write(uint16_t lo, uint16_t hi)
     uint16_t x;
     uint16_t y;
     mr_write(lo, 0x0000u);
-    x = mr_read(obs);
+    x = mr_observe(lo, obs);
     mr_write((uint16_t)(lo + n), 0xFFFFu);
-    y = mr_read(obs);
+    y = mr_observe(lo, obs);
     if (x != y) {
       return n;
     }
@@ -708,9 +747,9 @@ static int mr_dump_view(uint32_t p, char view, int *clean)
       t.w = 0u;
       if (ok) {
         mr_write(addr, 0xFFFFu);
-        x = mr_read(obs);
+        x = mr_observe(addr, obs);
         mr_write(addr, 0x0000u);
-        y = mr_read(obs);
+        y = mr_observe(addr, obs);
         t.w = (uint8_t)mr_popcount((uint16_t)(x ^ y));
       }
     }

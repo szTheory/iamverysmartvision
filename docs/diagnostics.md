@@ -27,6 +27,7 @@ A listing is ASCII text with LF line endings (D-26).
   - `ROW`: the most specific leaf row id of `data/cp1610/opcode-families.json` for the instruction that starts on this line, or `-` for an operand word of the instruction above it (an instruction of `words` words is followed by `words - 1` operand lines).
   - `ASM`: the rest of the line, at least one token: the instruction text and notes.
 - Zero fill: an unreachable zero word carries the row of the decle it encodes (`HLT`) and the text `fill`.
+- Branch targets (plan 05-01, D-24): the `ASM` text of every branch line (rows `B`, `BC`, `BOV`, `BPL`, `BZE`, `BLT`, `BLE`, `BUSC`, `BNC`, `BNOV`, `BMI`, `BNZE`, `BGE`, `BGT`, `BESC`, `BEXT`) and of every `J` line carries `-> ADDR`, the target in four hex digits. The checker recomputes the target from the printed words: for a branch it is the address of the branch plus 2 plus the displacement word when the direction bit (bit 5 of the first decle) is 0, and the address plus 1 minus the displacement word when it is 1 (`5020 + ~0003 = 501C` for the `BNZE` of `diag-cpu-1`), modulo 65536; for `J` the bits 7..2 of the second decle are target bits 15..10 and the third decle holds bits 9..0. A printed target that differs fails with `listing-branch-target`, and a branch or jump line without the annotation fails with `listing-branch-target-missing`.
 
 The gate step `listing` (plan 04-15) checks this grammar and the row and operand rules; `tools/pack` reads the same grammar and is the only tool that turns a listing into image bytes.
 
@@ -114,7 +115,28 @@ libasm cross-check (D-25, optional and never gating): not run, the tool is absen
 
 Plan 04-20 adds program mutants of this listing through `ivs_pack --patch` (for example `ADDI` to `SUBI` at `5007`, `BNZE` to `BZE` at `501E`, `PSHR` replaced at `5022`, `INCR` to `DECR` at `500B`); each must end as a guest failure that names the predicate clause it breaks.
 
+## ivs-diag-ctrl-psg-1
+
+The second project diagnostic (D-24): `fixtures/FX-diag-ctrl-psg-1/diag-ctrl-psg-1.listing.txt`, manifest `FX-diag-ctrl-psg-1`, one IVSC v1 segment of 89 words at `5000`-`5058` (limit 110), entered through the boot stub (contract 1) with R6 = `0340`.
+It uses no SDBD, no interrupt and no STIC, GROM or graphics RAM address, keeps every operand address below `0400` (one decle each) and has three sections:
+
+- S1, eleven PSG programming writes (`MVII #value,R0; MVO R0,$addr`) in the fixed order `$01F0`, `$01F4`, `$01F8`, `$01FB`, `$01F1`, `$01F5`, `$01FC`, `$01F9`, `$01F3`, `$01F7`, `$01FA`. The mixer value `$003E` keeps bits 6 and 7 clear so both ports stay inputs and a read of `$01FE` or `$01FF` returns the pins, not the stored latch.
+- S2, a poll loop that reads `$01FE` (port 0) and `$01FF` (port 1), keeps the low byte (`ANDI #$00FF`; the CP-1610 has no OR instruction), and stores a value that differs from the previous one at `[0210+k]` and `[0220+k]` through `MVO@` with R4 and R5, the only registers that auto-increment (`Fig. 3.2.1`, derivation section (g)); it stops when eight port 0 values are stored.
+- S3, a counted delay of 120 iterations, the end marker `[020F] = 03C5` written last, then `HLT` and three `TSTR R0` followers.
+
+The listing has four branches, each annotated `-> ADDR` for the branch-target rule above.
+The expected values were derived by hand in `docs/input/diag-ctrl-psg-1-derivation.md` (plan 05-01) before the listing existed, and move into the header of `data/golden/diag-ctrl-psg-pass.expect` with the scenario (A-05).
+Its program mutants are in `data/expected/diag-mutations-ctrl-psg.ids`.
+The diagnostic is state-only: no assertion depends on machine time, and its halt tick is regression information.
+No real EXEC, GROM or cartridge is involved, and nothing in this section is a statement about measured hardware.
+
+The predicate is `data/golden/diag-ctrl-psg-pass.expect` (tier `original-diagnostic`, oracle `independent-derivation`): the halt, the end marker `[020F] = 03C5`, the polled port 0 table `[0210..0217]` = `00FF 007E 00FF 005A 00FF 00FB 005B 001D`, the port 1 table `[0220..0223]` = `00FF 00FD 009F 00FF` with the rest of the table zero, the eleven PSG registers read back (the shape register reads 0, C75), and a write log of exactly the eleven writes in order. A full 16-bit read of a PSG register depends on the default upper byte 0 (C64), so those lines carry `# policy: C64`. The program under the project boot stub reaches that state from a power-on reset [claim:CL-0014].
+Excluded on purpose: machine time, all CPU registers, R7 and the flags, and the ticks of the log records (printed in the report, never asserted). The chip-side consequences (channel B constant at level 8, channel C and channel A silent for the whole run) are tested in `run.diag.ctrl-psg.*` as properties; channel A is silent because its tone counter reloaded with the period of an empty register and the period written later takes effect only after about 65,536 ticks (C77), so the diagnostic is no listening test.
+Shared-misreading risk: the author of the controller and register literals, of the derivation, of the listing and of the core is the same, so all of them can share one misreading of a source; agreement among them is not independent evidence about the original console. The controller bytes rest on two community pages that are likely one lineage (C16) and the register map on one community page (C70).
+The contrast scenario `diag-ctrl-psg-nokey` (no input: timeout, the guest still polling), the one-tick-apart `diag-ctrl-psg-order` and five program mutants (`data/expected/diag-mutations-ctrl-psg.ids`, one of them a negative control that must still pass) show that controller input, and not time, changes the guest state and that the predicate can fail for the intended reasons.
+
 ## When a project assembler becomes worth writing
 
 Listings stay hand-assembled until one of these holds (D-25): more than 3 project diagnostics exist, a listing needs labels or macros, or a second author writes listings.
+Phase 7 re-examines the trigger: a third diagnostic, or any listing that needs labels or macros, is the point to weigh the project assembler (D-24); the second diagnostic above is still hand-assembled (D4).
 Then a small project-owned assembler written from the manual is the option to weigh; the asm/program pairs of the Phase 2 vectors are its ready test corpus.

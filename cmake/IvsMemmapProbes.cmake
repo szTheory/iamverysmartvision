@@ -9,6 +9,8 @@
 # columns of the row). The SHA256 of every literal file is embedded as ivs_mp_sources[] and
 # re-checked by the tests-inventory step. The test derives probe addresses, read-side addresses
 # and expected projections from this table only; expected values come from its own rule table.
+# An optional last column x=reads-zero|pins (plan 05-04) marks an exception row; it takes no part in
+# the structural projection (the first seven columns) and is not emitted.
 # Fail closed (message `IvsMemmapProbes: <file>[:<line>]: <reason>`): no literal file; a row that
 # does not match the grammar of the literal header; LO above HI; a device outside the literal
 # vocabulary; a width above 16; a mirror that is not a power of two; a view that does not tile
@@ -24,7 +26,7 @@ endforeach()
 set(MP_DEVICES stic scratchpad psg sysram exec grom gram cart undriven)
 set(MP_GATES - stic-regs gmem)
 set(MP_HEX "[0-9A-F][0-9A-F][0-9A-F][0-9A-F]")
-set(MP_ROW_RE "^([RW]) (${MP_HEX})-(${MP_HEX}) ([a-z]+) w=([0-9]+) impl=(real|stub|none) mirror=(-|[1-9][0-9]*) gate=([a-z-]+) src=[^ ]+ tag=[^ ]+( conf=C[0-9]+)?$")
+set(MP_ROW_RE "^([RW]) (${MP_HEX})-(${MP_HEX}) ([a-z]+) w=([0-9]+) impl=(real|stub|none) mirror=(-|[1-9][0-9]*) gate=([a-z-]+) src=[^ ]+ tag=[^ ]+( conf=C[0-9]+)?( x=(reads-zero|pins))?$")
 
 function(mp_fail where msg)
   message(FATAL_ERROR "IvsMemmapProbes: ${where}: ${msg}")

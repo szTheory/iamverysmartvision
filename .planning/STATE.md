@@ -1,19 +1,19 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 5
-current_phase_name: Hand Controllers and PSG Sound
+current_phase: 6
+current_phase_name: STIC Video First Pass
 status: planning
-stopped_at: Phase 4 complete, ready to plan Phase 5
-last_updated: "2026-11-12T03:27:20.567Z"
-last_activity: 2026-11-11
-last_activity_desc: Phase 4 complete, transitioned to Phase 5
-state_head: 52ddd0b53feabaa97ddebe8839ff1075e4497e26
+stopped_at: Phase 5 complete, ready to plan Phase 6
+last_updated: "2026-11-12T15:31:06.934Z"
+last_activity: 2026-11-12
+last_activity_desc: Phase 5 complete, transitioned to Phase 6
+state_head: df4dc207204678dc0bf2faa68cc1e7c2ede64aff
 progress:
   total_phases: 8
-  completed_phases: 4
-  total_plans: 71
-  completed_plans: 71
-  percent: 50
+  completed_phases: 5
+  total_plans: 83
+  completed_plans: 83
+  percent: 63
 ---
 
 # Project State
@@ -27,17 +27,17 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 
 ## Current Position
 
-Phase: 5 — Hand Controllers and PSG Sound
+Phase: 6 — STIC Video First Pass
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-11-11 — Phase 4 complete, transitioned to Phase 5
+Last activity: 2026-11-12 — Phase 5 complete, transitioned to Phase 6
 
-Progress: [█████░░░░░] 50%
+Progress: [██████░░░░] 63%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 73
+- Total plans completed: 85
 - Average duration: -
 - Total execution time: -
 
@@ -49,6 +49,7 @@ Progress: [█████░░░░░] 50%
 | 2 | 18 | - | - |
 | 3 | 14 | - | - |
 | 4 | 27 | - | - |
+| 5 | 12 | - | - |
 
 *Updated after each plan completion*
 **Per-Plan Metrics:**
@@ -126,6 +127,18 @@ Progress: [█████░░░░░] 50%
 | Phase 4 P23 | 14min | 3 tasks | 8 files |
 | Phase 04 P24 | 35 min | 3 tasks | 15 files |
 | Phase 4 P25 | 40min | 3 tasks | 5 files |
+| Phase 05 P01 | 40 min | 5 tasks | 118 files |
+| Phase 5 P02 | 35 min | 4 tasks | 33 files |
+| Phase 5 P03 | 70 min | 4 tasks | 21 files |
+| Phase 5 P04 | 150 min | 5 tasks | 54 files |
+| Phase 5 P05 | 6h | 5 tasks | 85 files |
+| Phase 5 P06 | 5h | 5 tasks | 60 files |
+| Phase 5 P07 | 4h | 5 tasks | 37 files |
+| Phase 05 P08 | 45min | 5 tasks | 35 files |
+| Phase 5 P09 | 3h | 5 tasks | 54 files |
+| Phase 5 P10 | 4h | 5 tasks | 56 files |
+| Phase 05 P11 | 40min | 5 tasks | 44 files |
+| Phase 05 P12 | 55min | 4 tasks | 30 files |
 
 ## Accumulated Context
 
@@ -290,6 +303,28 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 4]: 04-23: the installed consumer (tests/installed-consumer) replays diag-input-pass from the moved prefix only; its digest lines must equal the runner golden; independence is read from ninja -t deps, the link line and ivs_DIR; pkg-selftest=10/10
 - [Phase 04]: 04-24: RUN-04 is gate-checked: data/expected/important-gates.ids (102 lines, 26 gates) and the pure step important-gates; mutant ids also resolve as <suite>.judge.* / <suite>.mutant.*; gap fills api-stop-orphan, pack.judge.patched-word, runner-process.judge.outcome-uncovered, no new fault
 - [Phase 4]: Hosted gate budget re-baselined (04-25): 30/40 s wall budgets superseded by median gate_s 75 s plus median cpu_s 200; revisit at last-5 gate_s median > 90 s, any run > 120 s, or last-5 cpu_s median > 200
+- [Phase 05]: 05-01: oracle-first plan done with no C; page-reading verdict equations no, shapes yes, amplitude no, DAC labels no; shape and printed-chain rate vectors are source, DAC and unprinted topics are policy; C69..C80 and CL-0009..CL-0015 allocated
+- [Phase 05]: 05-01: controller literal (31 rows) transcribed from the cached pin matrix and wiki image before any planning-note table; input and psg-vectors gate steps, 13 controls, steps 35/35 controls 294/294
+- [Phase 5]: 05-02: request v2 (psg_log, psg_log_capacity) and report v2 (audio_first_index, psg_log_bytes_written, psg_log_first_index) grow behind pinned minimums IVS_RUN_REQUEST_V1_SIZE 64 and IVS_RUN_REPORT_V1_SIZE 112; the report is written as min(struct_size, 136) bytes and its overlap span is the written byte count
+- [Phase 5]: 05-02: write log is the third buffer after video and audio (reasons 55..57); a NULL buffer with capacity 0 means channel not requested (D-17); psg_log versus events is RUN_PSGLOG_OVERLAP decided in stage 4b; steps 35/35 controls 296/296 faults 152/152 under sh, dash and the Ubuntu container
+- [Phase 5]: 05-03: PSG storage joins the instance (psg_reg and port_pulldown in MEM, 72-byte ivs_psg_state in INSTANCE, audio rows emitted and prev_levels, domain 19 PSGLOG); composite version 2 with the v1 literals recorded first (5114d8a); IVS_MACHINE_BYTES 113760; goldens moved only on digest.mem, digest.instance and digest.composite, digest.cpu and digest.images equal v1
+- [Phase 5]: 05-04: PSG region is device kind psg8 (upper byte 0, C64) with masks from psg.regmap through IvsPsgTable.cmake; every guest access goes through ivs_machine_bus (forwards unchanged until 05-06/05-08); shape and port registers are declared exception rows (x=reads-zero, x=pins) observed in psg_reg; suite psg 40 ids, steps 35/35 controls 300/300 faults 158/158, goldens unchanged; checkpoint-1: lever-required (projection 188.7-195.5 cpu-s vs trigger 190, 0.144 cpu-s per fault)
+- [Phase 5]: 05-05: ivs_input_rederive is the only setter of port_pulldown (apply and the refused-step take-back call it); the port read is pure and lives in memsys.c
+- [Phase 5]: 05-05: the memmap read rows of the two port registers have w=0 x=pins; the input-visible fuzz compares whole-instance snapshots instead of MEM digests
+- [Phase 5]: Time chain: one PSG step = 8 chip clocks = 16 master ticks = 4 CPU cycles; step k stamped k x 16; first chip step after reset is step 1 (05-06)
+- [Phase 5]: PSG caught up to the write stamp before the masked store and to the unit end at every unit end, never to a call target (05-06)
+- [Phase 5]: Audio layout real: 4-byte samples, 15,060 bytes per frame with slack ceil(U/P)+1; U = 468 ticks derived by exhaustive probe, g = 28 ticks overall (36 instruction only) (05-06)
+- [Phase 5]: A layout whose audio format is not PSG levels, and a NULL buffer, use the counting sink: same code, same state (05-06)
+- [Phase 5]: Noise register is a profile-driven right-shifting Galois LFSR; shifts every 2 NP steps from the reload; reset loads the seed (05-07)
+- [Phase 5]: Envelope is the 16-state machine of the 16 shapes: one state per 2 EP steps, restart on a shape write through the shared write path (ivs_psg_after_write), held at level 0 after reset (05-07)
+- [Phase 5]: The DAC table psg.dac.levels is profile data the core never reads: not an ivs_psg_params member, byte-identical core parameters proven at build time (05-07)
+- [Phase 5]: Every tagged noise, envelope, period-zero and mixer parameter is proven to be data by a stack-copy perturbation test (psg.profile.*), faults hard-coding one fail exactly its test (05-07)
+- [Phase 05]: 05-08: the write log record is appended after the masked store with the catch-up stamp; domain-19 index is the record count; ivs_info publishes W_log from the env so the cut fault is visible to callers
+- [Phase 5]: 05-09: audio.chain.check is - unless an audio buffer was delivered on every slice; a mismatch is harness-fail audio-chain; the golden observed rule is count-based for video, audio, input and psglog
+- [Phase 5]: 05-09: operator raw outputs are vtable hooks plus options (--audio-raw, --psg-log-out, --audio-out-max-bytes), created exclusively in hostio.c; a capture or stream assert without output buffers is a harness failure
+- [Phase 05]: 05-11: fixture pointers use R4 and R5 (only they auto-increment); derivation corrected in dated section (g), original text kept
+- [Phase 05]: 05-11: .refpcm golden written from a runner report by a documented recipe; golden step compares it with dev and release refpcm reports
+- [Phase 05]: 05-12: C73 text aligned to the profile tag unknown-default-chosen; the D-22 listening check recorded as deferred (no listenable tone), not handed off; AUD-01 confirmed complete with the C11 caveat
 
 ### Pending Todos
 
@@ -322,6 +357,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-12T02:10:54.500Z
-Stopped at: Phase 4 complete, ready to plan Phase 5
+Last session: 2026-11-12T14:19:37.955Z
+Stopped at: Phase 5 complete, ready to plan Phase 6
 Resume file: None

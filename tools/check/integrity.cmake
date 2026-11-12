@@ -64,13 +64,14 @@ foreach(p IN LISTS paths)
     endif()
   endif()
   # SPDX rule (A-07, plan 04-04): runner/ sources, scripts and CMake files, and the C tool
-  # directories tools/pack/ and tools/cart/. The C pattern is anchored to those two directories on
+  # directories tools/pack/, tools/cart/ and, since plan 05-10 (D-21, A-07: the reference PCM
+  # converter sat outside the rule), tools/pcm/. The C pattern is anchored to those three directories on
   # purpose: tools/check/controls/denylist-hit/overlay/src/x.c and denylist-nul-hit/overlay/src/x.c
   # are SPDX-less denylist control inputs and must stay outside the rule.
   if(p MATCHES "^tools/.*[.](sh|cmake)$" OR p MATCHES "^[.]github/workflows/[^/]*[.]yml$"
      OR p MATCHES "^(core|include|tests)/.*[.](c|h|sh|cmake)$" OR p MATCHES "^cmake/.*[.]cmake$"
      OR p MATCHES "^CMakeLists[.]txt$" OR p MATCHES "^(core|include|tests|runner)/(.*/)?CMakeLists[.]txt$"
-     OR p MATCHES "^runner/.*[.](c|h|sh|cmake)$" OR p MATCHES "^tools/(pack|cart)/.*[.](c|h)$")
+     OR p MATCHES "^runner/.*[.](c|h|sh|cmake)$" OR p MATCHES "^tools/(pack|cart|pcm)/.*[.](c|h)$")
     string(FIND "${content}" "SPDX-License-Identifier: MIT" pos)
     if(pos EQUAL -1)
       gate_fail(integrity-missing-spdx "${p}")

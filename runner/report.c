@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 /* Runner report writer (D-19, D-30, plan 04-18). The report is flat `key value` lines, ASCII and
  * LF, every key of the closed key table below in its fixed order (all keys always present, `-`
- * when a value does not apply): `ivsr 1` first and `report.end <n>` last, n being the number of
+ * when a value does not apply): `ivsr 2` first and `report.end <n>` last, n being the number of
  * lines before it, so a truncated report cannot read as complete. The tables are the whole key
  * set; the writer prints nothing else. Never printed: wall time, host paths, the environment,
  * image bytes. Values echoed from the scenario (id, profile, a relative content path in a
@@ -13,8 +13,14 @@
  *   per step k: step.<k>.<target_ticks|now_ticks|overshoot_ticks|stop_reason|expected_stop>,
  *     then step.<k>.assert.<j> for that step's asserts,
  *   cpu.run_state, cpu.fault_reason, input.events, input.consumed, input.controller.<0..3>,
- *   digest.<cpu|mem|images|instance|composite|video|audio|input>, output.video.bytes,
- *   output.audio.bytes, host.calls, report.end.
+ *   digest.<cpu|mem|images|instance|composite|video|audio|input|psglog>, output.video.bytes,
+ *   output.audio.bytes, output.audio.samples, output.audio.changes, output.psglog.records,
+ *   output.psglog.bytes, audio.sample_ticks, audio.chain.check, host.calls, [refpcm.rate,
+ *   refpcm.frames, refpcm.sha256,] report.end.
+ * `ivsr 2` (plan 05-09, D-20, the one bump of Phase 5) adds the keys from digest.psglog on. The
+ * bracketed refpcm.* group (plan 05-10, D-20, D-21) is printed ONLY when the operator asked for a WAV
+ * (--audio-wav), immediately before report.end, and never belongs to a golden: the SHA-256 is that of the
+ * WAV file bytes as written, so sha256sum of the file equals it; `-` when the host did not finish the file.
  * Named-fault sites (data/expected/faults/runner.ids) sit in this TU. */
 #include <stdint.h>
 #include <stdio.h>
@@ -54,6 +60,12 @@
 #define RF_OUT_VIDEO 60u
 #define RF_OUT_AUDIO 61u
 #define RF_HOST_CALLS 62u
+#define RF_OUT_AUDIO_SAMPLES 63u
+#define RF_OUT_AUDIO_CHANGES 64u
+#define RF_OUT_PSG_RECORDS 65u
+#define RF_OUT_PSG_BYTES 66u
+#define RF_AUDIO_SAMPLE_TICKS 67u
+#define RF_AUDIO_CHAIN 68u
 
 typedef struct rp_key {
   const char *key;
@@ -105,8 +117,15 @@ static const rp_key rp_tail[] = {
     {"digest.video", RF_DIGEST + 5u},
     {"digest.audio", RF_DIGEST + 6u},
     {"digest.input", RF_DIGEST + 7u},
+    {"digest.psglog", RF_DIGEST + 8u},
     {"output.video.bytes", RF_OUT_VIDEO},
     {"output.audio.bytes", RF_OUT_AUDIO},
+    {"output.audio.samples", RF_OUT_AUDIO_SAMPLES},
+    {"output.audio.changes", RF_OUT_AUDIO_CHANGES},
+    {"output.psglog.records", RF_OUT_PSG_RECORDS},
+    {"output.psglog.bytes", RF_OUT_PSG_BYTES},
+    {"audio.sample_ticks", RF_AUDIO_SAMPLE_TICKS},
+    {"audio.chain.check", RF_AUDIO_CHAIN},
     {"host.calls", RF_HOST_CALLS},
 };
 
@@ -161,6 +180,8 @@ const char *ivs_runner_domain_token(uint32_t domain)
     return "audio";
   case IVS_DIGEST_INPUT:
     return "input";
+  case IVS_DIGEST_PSGLOG:
+    return "psglog";
   default:
     return "unknown";
   }
@@ -249,7 +270,7 @@ static void rp_value(const ivs_runner_record *r, uint32_t field, char *v, size_t
   (void)snprintf(v, cap, "-");
   switch (field) {
   case RF_IVSR:
-    (void)snprintf(v, cap, "1");
+    (void)snprintf(v, cap, "2");
     break;
   case RF_SCN_ID:
     (void)snprintf(v, cap, "%s", s->id);
@@ -311,6 +332,28 @@ static void rp_value(const ivs_runner_record *r, uint32_t field, char *v, size_t
   case RF_OUT_AUDIO:
     rp_u64(v, cap, r->audio_bytes);
     break;
+  case RF_OUT_AUDIO_SAMPLES:
+    rp_u64(v, cap, r->audio_samples);
+    break;
+  case RF_OUT_AUDIO_CHANGES:
+    rp_u64(v, cap, r->audio_changes);
+    break;
+  case RF_OUT_PSG_RECORDS:
+    rp_u64(v, cap, r->psglog_records);
+    break;
+  case RF_OUT_PSG_BYTES:
+    rp_u64(v, cap, r->psglog_bytes);
+    break;
+  case RF_AUDIO_SAMPLE_TICKS:
+    if (r->audio_sample_ticks != 0u) {
+      rp_u64(v, cap, r->audio_sample_ticks);
+    }
+    break;
+  case RF_AUDIO_CHAIN:
+    (void)snprintf(v, cap, "%s", r->chain_check == IVS_RUNNER_CHAIN_PASS   ? "pass"
+                                 : r->chain_check == IVS_RUNNER_CHAIN_FAIL ? "fail"
+                                                                           : "-");
+    break;
   case RF_HOST_CALLS:
     rp_u64(v, cap, r->host_calls);
     break;
@@ -319,7 +362,7 @@ static void rp_value(const ivs_runner_record *r, uint32_t field, char *v, size_t
       if (r->have_input) {
         (void)snprintf(v, cap, "%08X", (unsigned)r->controller[field - RF_INPUT_CTRL]);
       }
-    } else if (field >= RF_DIGEST && field < RF_DIGEST + 8u) {
+    } else if (field >= RF_DIGEST && field < RF_DIGEST + 9u) {
       if (r->have_machine) {
         rp_hex(r->digest[field - RF_DIGEST], v);
       }
@@ -406,37 +449,77 @@ static void rp_step_value(const ivs_scenario_step *st, const ivs_runner_step_rec
   }
 }
 
+static const char *rp_source_token(uint32_t src)
+{
+  return src == IVS_PSGLOG_SRC_CPU_WRITE ? "cpu-write" : src == IVS_PSGLOG_SRC_CPU_DW ? "cpu-dw" : "unknown";
+}
+
+void ivs_runner_assert_clause(const ivs_scenario_assert *a, char *out, size_t cap)
+{
+  const char *op = a->op == IVS_SCN_OP_NE ? "!=" : "==";
+  char hex[65];
+  size_t n;
+  switch (a->subject) {
+  case IVS_SCN_SUBJ_HALTED:
+    (void)snprintf(out, cap, "halted %s %s", op, a->value != 0u ? "yes" : "no");
+    break;
+  case IVS_SCN_SUBJ_REG:
+    (void)snprintf(out, cap, "reg R%u %s %04X", (unsigned)a->index, op, (unsigned)a->value);
+    break;
+  case IVS_SCN_SUBJ_MEM:
+    (void)snprintf(out, cap, "mem %04X %s %04X", (unsigned)a->addr_lo, op, (unsigned)a->value);
+    break;
+  case IVS_SCN_SUBJ_MEM_RANGE:
+    (void)snprintf(out, cap, "mem %04X..%04X %s %04X", (unsigned)a->addr_lo, (unsigned)a->addr_hi, op,
+                   (unsigned)a->value);
+    break;
+  case IVS_SCN_SUBJ_DIGEST:
+    rp_hex(a->sha256, hex);
+    (void)snprintf(out, cap, "digest %s %s %s", ivs_runner_domain_token(a->index), op, hex);
+    break;
+  case IVS_SCN_SUBJ_PSGLOG:
+    if (a->form == IVS_SCN_FORM_COUNT) {
+      (void)snprintf(out, cap, "psglog count %s %llu", op, (unsigned long long)a->num);
+      break;
+    }
+    n = (size_t)snprintf(out, cap, "psglog %u", (unsigned)a->index);
+    if ((a->fields & IVS_SCN_FIELD_TICK) != 0u && n < cap) {
+      n += (size_t)snprintf(out + n, cap - n, " tick=%llu", (unsigned long long)a->num);
+    }
+    if ((a->fields & IVS_SCN_FIELD_ADDR) != 0u && n < cap) {
+      n += (size_t)snprintf(out + n, cap - n, " addr=%u", (unsigned)a->addr);
+    }
+    if ((a->fields & IVS_SCN_FIELD_VALUE) != 0u && n < cap) {
+      n += (size_t)snprintf(out + n, cap - n, " value=%04X", (unsigned)a->value);
+    }
+    if ((a->fields & IVS_SCN_FIELD_SOURCE) != 0u && n < cap) {
+      (void)snprintf(out + n, cap - n, " source=%s", rp_source_token(a->source));
+    }
+    break;
+  case IVS_SCN_SUBJ_AUDIO:
+    if (a->form == IVS_SCN_FORM_EMITTED) {
+      (void)snprintf(out, cap, "audio emitted %s %llu", op, (unsigned long long)a->num);
+    } else {
+      (void)snprintf(out, cap, "audio at %llu A=%u B=%u C=%u", (unsigned long long)a->num, (unsigned)a->level[0],
+                     (unsigned)a->level[1], (unsigned)a->level[2]);
+    }
+    break;
+  default:
+    (void)snprintf(out, cap, "unknown");
+    break;
+  }
+}
+
 /* `<state> <subject> <op> <expected> got <actual>` of one assert. */
 static void rp_assert_value(const ivs_scenario_assert *a, const ivs_runner_assert_record *ar, char *v, size_t cap)
 {
   const char *state = ar->state == IVS_RUNNER_ASSERT_PASS   ? "pass"
                       : ar->state == IVS_RUNNER_ASSERT_FAIL ? "fail"
                                                             : "not-run";
-  const char *op = a->op == IVS_SCN_OP_NE ? "!=" : "==";
   const char *got = ar->state == IVS_RUNNER_ASSERT_NOT_RUN || ar->got[0] == '\0' ? "-" : ar->got;
-  char hex[65];
-  switch (a->subject) {
-  case IVS_SCN_SUBJ_HALTED:
-    (void)snprintf(v, cap, "%s halted %s %s got %s", state, op, a->value != 0u ? "yes" : "no", got);
-    break;
-  case IVS_SCN_SUBJ_REG:
-    (void)snprintf(v, cap, "%s reg R%u %s %04X got %s", state, (unsigned)a->index, op, (unsigned)a->value, got);
-    break;
-  case IVS_SCN_SUBJ_MEM:
-    (void)snprintf(v, cap, "%s mem %04X %s %04X got %s", state, (unsigned)a->addr_lo, op, (unsigned)a->value, got);
-    break;
-  case IVS_SCN_SUBJ_MEM_RANGE:
-    (void)snprintf(v, cap, "%s mem %04X..%04X %s %04X got %s", state, (unsigned)a->addr_lo, (unsigned)a->addr_hi, op,
-                   (unsigned)a->value, got);
-    break;
-  case IVS_SCN_SUBJ_DIGEST:
-    rp_hex(a->sha256, hex);
-    (void)snprintf(v, cap, "%s digest %s %s %s got %s", state, ivs_runner_domain_token(a->index), op, hex, got);
-    break;
-  default:
-    (void)snprintf(v, cap, "%s unknown", state);
-    break;
-  }
+  char clause[RP_LINE_MAX / 2u];
+  ivs_runner_assert_clause(a, clause, sizeof clause);
+  (void)snprintf(v, cap, "%s %s got %s", state, clause, got);
 }
 
 int ivs_runner_report_write(const ivs_runner_record *rec, const ivs_runner_host *host, uint64_t *lines)
@@ -485,6 +568,30 @@ int ivs_runner_report_write(const ivs_runner_record *rec, const ivs_runner_host 
   for (size_t i = 0u; i < RP_N(rp_tail); i++) {
     rp_value(rec, rp_tail[i].field, v, sizeof v);
     rp_emit(&o, rp_tail[i].key, v);
+  }
+#ifndef IVS_FAULT_RUNNER_REFPCM_KEYS_WITHOUT_OPTION
+  if (rec->refpcm_requested != 0u)
+#endif
+  {
+    /* Fault (plan 05-10, D-20): the refpcm.* keys are printed without the option (values `-`). */
+    int on = rec->refpcm_requested != 0u;
+    char hex[65];
+    (void)snprintf(v, sizeof v, "-");
+    if (on) {
+      rp_u64(v, sizeof v, rec->refpcm_rate);
+    }
+    rp_emit(&o, "refpcm.rate", v);
+    (void)snprintf(v, sizeof v, "-");
+    if (on && rec->refpcm_sha_set != 0u) { /* frames of a file that was not finished (or was removed) are `-` too */
+      rp_u64(v, sizeof v, rec->refpcm_frames);
+    }
+    rp_emit(&o, "refpcm.frames", v);
+    (void)snprintf(v, sizeof v, "-");
+    if (on && rec->refpcm_sha_set != 0u) {
+      rp_hex(rec->refpcm_sha256, hex);
+      (void)snprintf(v, sizeof v, "%s", hex);
+    }
+    rp_emit(&o, "refpcm.sha256", v);
   }
   if (lines != NULL) {
     *lines = o.lines;

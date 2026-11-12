@@ -1,0 +1,13 @@
+# Negative controls for the psg-vectors step (plan 05-01, D-07, D-23): one per token; plan 05-04 adds the four profile and registration tokens. The positive control is the toy rule file,
+# vector file and inventories of controls/_good/tree; each overlay replaces data/psg/vectors/toy.txt (unlisted-file adds extra.txt).
+psg-vectors-unknown-rule
+psg-vectors-rule-without-vector
+psg-vectors-vector-no-cite
+psg-vectors-unknown-default-unresolved
+psg-vectors-orphan-id
+psg-vectors-bad-grammar
+psg-vectors-unlisted-file
+psg-vectors-field-missing
+psg-vectors-field-pending-stale
+psg-vectors-regmap-profile-mismatch
+psg-vectors-unregistered

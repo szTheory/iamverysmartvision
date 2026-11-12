@@ -9,9 +9,13 @@
 # digests of a stepped instance, recorded from the Phase 3 code (repeatability, A-03). Domains
 # 16..18 (VIDEO, AUDIO, INPUT) are live: their sensitivity cases require that a row change moves
 # only its own domain and never the composite (D-10), and the Phase 3 domain-16 refusal is
-# retargeted to domain 19, the first value after them. machine.digest.video-fresh,
+# retargeted to domain 19, the first value after them (plan 05-03: 19 is the live PSGLOG domain
+# and the refusal moves to 20). machine.digest.video-fresh,
 # machine.digest.composite-excludes-16-18 and machine.reset.clears-observation (in the digest
 # family file) pin the fresh and reset observation rows and their separation from the composite.
+# Plan 05-03 addition (composite version 2, PSG storage): machine.digest.composite-v2-framing,
+# stream-instance-psg, domain-19-fresh, psg-rows-in-instance-domain, mem-rows-psg-regs, audio-rows,
+# psglog-rows, cpu-images-independent-of-psg and machine.reset.psg-state-cleared.
 # Family load (plan 03-10): typed EXEC, GROM and IVSC cartridge loads through the public header
 # with generated stand-in bytes (D-24), their reports and digests, layer 2, the load options and
 # unload back to the fresh state.
@@ -64,6 +68,7 @@ machine.create.requirements
 machine.create.requirements-larger-out
 machine.create.size-at-max-ok
 machine.create.static-storage
+machine.create.tables-cover-registry
 machine.create.tail-zero-ok
 machine.destroy.scrubs
 machine.refuse.create.flags-1
@@ -104,12 +109,19 @@ machine.refuse.requirements.short
 machine.refuse.requirements.size-0
 machine.refuse.requirements.unknown-profile
 machine.status.names
+machine.digest.audio-rows
 machine.digest.composite-excludes-16-18
 machine.digest.composite-framing
+machine.digest.composite-v2-framing
 machine.digest.coverage
+machine.digest.cpu-images-independent-of-psg
+machine.digest.domain-19-fresh
 machine.digest.fresh-composite
+machine.digest.mem-rows-psg-regs
 machine.digest.padding-ignored
 machine.digest.preimage-hash
+machine.digest.psg-rows-in-instance-domain
+machine.digest.psglog-rows
 machine.digest.sensitivity-audio
 machine.digest.sensitivity-cpu
 machine.digest.sensitivity-images
@@ -121,9 +133,10 @@ machine.digest.stepped-literals
 machine.digest.stream-cpu
 machine.digest.stream-cpu-synthetic
 machine.digest.stream-instance
+machine.digest.stream-instance-psg
 machine.digest.video-fresh
 machine.refuse.digest.destroyed
-machine.refuse.digest.domain-19
+machine.refuse.digest.domain-20
 machine.refuse.digest.domain-5
 machine.refuse.digest.domain-99
 machine.refuse.digest.domain-over-handle
@@ -367,6 +380,7 @@ machine.reset.equivalence
 machine.reset.iab-reset-vector
 machine.reset.no-cart-ok
 machine.reset.power-cycle-one-way
+machine.reset.psg-state-cleared
 machine.reset.step-program
 machine.reset.step-refusals
 machine.reset.clears-observation

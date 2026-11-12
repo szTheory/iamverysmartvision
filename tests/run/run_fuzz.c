@@ -6,7 +6,7 @@
  * (nothing reads a host source of randomness or time, so every run is identical). Over stand-in
  * content A (tests/machine/machine_standin.c, a forever loop; no rights-bearing byte):
  *   1. Boundaries b[0..FZ_UNITS] come from a twin stepped one unit at a time through the internal
- *      step seam, never through the call under test (input is guest-invisible in Phase 4, so the
+ *      step seam, never through the call under test (stand-in content A never reads a port, so the
  *      boundaries do not depend on the schedule).
  *   2. A schedule of 1..32 events, nondecreasing by at_tick: ticks on a boundary, strictly inside
  *      a unit (an overshoot window), anywhere up to past the horizon (those stay unconsumed),
@@ -30,6 +30,27 @@
  * ticks, one event sat exactly on a call target, some event was applied and some event was still
  * pending at the end (its at_tick past the last unit start; non-vacuity).
  *
+ * run.fuzz.input-visible-seed-01..08 (plan 05-05, D-05, API-03): the same seeds and the same kind of
+ * schedule against guests that READ the ports, whose unit boundaries can depend on the schedule. Each
+ * seed runs two contents (tests/machine/machine_standin.c):
+ *   content B (IVS_MS_PROG_POLL_CONST): a poller of constant cycle count per iteration that logs both
+ *     ports to RAM from $0300. Its boundaries do not depend on the schedule, so the independent
+ *     oracle is computed in the test: the j-th logged byte is 0xFF XOR the OR of the literal's masks
+ *     (data/input/<profile>.literal.txt through cmake/IvsInputProbes.cmake, never the profile or the
+ *     core's table) of the words in force at the start tick of the unit that performed the read, from
+ *     the schedule and the unit starts alone; the unit that performs a read is the one whose program
+ *     counter is the address of the MVI, recorded by single-stepping.
+ *   content C (IVS_MS_PROG_POLL_BRANCH): a data-dependent loop, so its unit boundaries depend on what
+ *     the reads returned. The oracle is relational: the one-unit-per-call reference (run(now + 1), the
+ *     unconsumed suffix resubmitted, which DEFINES the semantics) at every reference boundary, against
+ *     a random slicing of the same schedule: consumed count, controller words, input floor, the INPUT
+ *     and CPU digests and the whole instance storage byte for byte (stronger than the MEM digest and
+ *     much cheaper, see fv_ref). Content B is the oracle of the reference itself.
+ * Both contents also check, after every call of both instances, the invariant port_pulldown ==
+ * derive(words) with derive from the literal. run.fuzz.input-visible-covered requires (non-vacuity)
+ * that an event inside an overshoot window changed a read, that an event changed a branch, and that
+ * one event was still pending at the end. Schedules end below 100,000 ticks.
+ *
  * run.struct.v1-sizes: from plan 04-13 the v1 sizes of the Phase 4 public structs are frozen and
  * the A-02 growth rule applies to them (a new field goes after the v1 size and the minimum
  * struct_size stays the v1 size). Pinned here by offsetof and sizeof literals: the pointer-free
@@ -46,6 +67,8 @@
 #include "ivs_test.h"
 #include "machine/machine.h"
 #include "run_cases.h"
+
+#include "ivs_input_probes.inc"
 
 #define FZ_SEEDS 8u
 #define FZ_UNITS 96u      /* reference horizon in units */
@@ -389,6 +412,312 @@ static int fz_cases_covered(void)
   return IVS_TEST_PASS;
 }
 
+/* ---- input-visible seeds (plan 05-05, D-05, API-03) ---- */
+
+#define FV_PC_PORT0 0x1002u /* MVI $01FE of both pollers */
+#define FV_PC_PORT1 0x1005u /* MVI $01FF of content B */
+#define FV_PC_STORE0 0x1004u /* MVO@ after the first read of content B */
+#define FV_PC_STORE1 0x1007u /* MVO@ after the second read of content B */
+#define FV_LOG 0x0300u
+
+const ivs_test_source *ivs_run_fuzz_sources(size_t *n)
+{
+  *n = sizeof ivs_ip_sources / sizeof ivs_ip_sources[0];
+  return ivs_ip_sources;
+}
+
+typedef struct fv_cover {
+  uint32_t in_window;      /* events strictly inside the overshoot window of a call */
+  uint32_t read_changed;   /* such an event applied at a read unit and changed the word read there */
+  uint32_t branch_changed; /* seeds where the reference's instruction sequence differs from the idle run's */
+  uint32_t applied;        /* events applied */
+  uint32_t left;           /* events still pending at the end */
+} fv_cover;
+
+/* The reference of one seed at every boundary: time, the program counter before the unit, consumed
+ * events, the words in force and the INPUT and CPU digests. The whole instance storage at every
+ * boundary is kept beside it (fv_snap, heap): comparing the bytes is stronger than the MEM digest and
+ * costs a memcmp where the digest costs a SHA-256 of the 113,760-byte instance. */
+typedef struct fv_ref {
+  uint64_t b[FZ_UNITS + 1u];
+  uint32_t pc[FZ_UNITS + 1u]; /* pc[k]: the instruction the CPU runs as unit k (before it) */
+  uint32_t consumed[FZ_UNITS + 1u];
+  uint32_t words[FZ_UNITS + 1u][4];
+  uint8_t dig[FZ_UNITS + 1u][2][32];
+} fv_ref;
+
+/* The program counter of m (cpu_state r[7]); UINT32_MAX when refused. */
+static uint32_t fv_pc(const ivs_machine *m)
+{
+  ivs_cpu_state_report c;
+  memset(&c, 0, sizeof c);
+  c.struct_size = (uint32_t)sizeof c;
+  if (ivs_machine_cpu_state(m, &c) != IVS_OK) {
+    return UINT32_MAX;
+  }
+  return c.r[7];
+}
+
+/* The pull-down mask the literal gives a controller word: the OR of the cleared masks of every set bit. */
+static uint32_t fv_derive(uint32_t word)
+{
+  uint32_t mask = 0u;
+  size_t k;
+  for (k = 0u; k < ivs_ip_count; k++) {
+    if ((word & (1u << ivs_ip_ctls[k].bit)) != 0u) {
+      mask |= ivs_ip_ctls[k].cleared;
+    }
+  }
+  return mask;
+}
+
+/* The invariant after every call: port_pulldown[p] == derive(words in force of port p). */
+static int fv_invariant(const ivs_ms_inst *x)
+{
+  const struct ivs_machine *im = (const struct ivs_machine *)(const void *)x->storage;
+  uint32_t p;
+  for (p = 0u; p < 2u; p++) {
+    if ((uint32_t)im->mem.port_pulldown[p] != fv_derive(im->obs.input.words[p])) {
+      ivs_test_diag("port_pulldown[%u] = %02X, the words in force derive %02X", (unsigned)p,
+                    (unsigned)im->mem.port_pulldown[p], (unsigned)fv_derive(im->obs.input.words[p]));
+      return 0;
+    }
+  }
+  return 1;
+}
+
+/* The INPUT and CPU domain digests of m. 1 on success. */
+static int fv_digests(const ivs_machine *m, uint8_t d[2][32])
+{
+  return ivs_machine_state_digest(m, IVS_DIGEST_INPUT, d[0]) == IVS_OK &&
+         ivs_machine_state_digest(m, IVS_DIGEST_CPU, d[1]) == IVS_OK;
+}
+
+/* Boundaries and program counters of a program with no event, from a seam-stepped twin. 1 on success. */
+static int fv_guide(uint32_t program, uint64_t b[FZ_UNITS + 1u], uint32_t pc[FZ_UNITS + 1u])
+{
+  ivs_ms_inst y;
+  uint32_t i;
+  int ok = 0;
+  if (!ivs_ms_powered_prog(&y, program, FZ_POISON)) {
+    return 0;
+  }
+  b[0] = fz_now(y.m);
+  pc[0] = fv_pc(y.m);
+  for (i = 1u; i <= FZ_UNITS; i++) {
+    if (!ivs_ms_step(y.m, 1u, NULL)) {
+      goto done;
+    }
+    b[i] = fz_now(y.m);
+    pc[i] = fv_pc(y.m);
+    if (b[i] <= b[i - 1u] || b[i] == UINT64_MAX) {
+      goto done;
+    }
+  }
+  ok = b[0] == 0u;
+done:
+  ivs_ms_free(&y);
+  return ok;
+}
+
+/* The words of port p in force at tick t: the last event due at t (0 when none). */
+static uint32_t fv_words_at(const ivs_input_event *ev, uint32_t n, uint64_t t, uint32_t port)
+{
+  uint32_t due = fz_due(ev, n, t);
+  return due > 0u ? ev[due - 1u].controller[port] : 0u;
+}
+
+/* One seed of one content (header of this file). program is IVS_MS_PROG_POLL_CONST or _BRANCH. */
+static int fv_seed(uint32_t seed, uint32_t program, fv_cover *cov)
+{
+  static uint16_t log_x[FZ_UNITS];
+  static uint16_t log_y[FZ_UNITS];
+  static uint16_t expect[FZ_UNITS];
+  fv_ref *ref = NULL;
+  uint8_t *fv_snap = NULL; /* the instance storage after k units, k = 0..FZ_UNITS */
+  uint64_t gb[FZ_UNITS + 1u];
+  uint32_t gpc[FZ_UNITS + 1u];
+  ivs_input_event ev[FZ_EVENTS_MAX];
+  ivs_ms_inst x;
+  ivs_ms_inst y;
+  ivs_run_report r;
+  uint32_t s = seed;
+  uint32_t n;
+  uint32_t next;
+  uint32_t k;
+  uint32_t calls;
+  uint32_t n_expect = 0u;
+  uint32_t n_stored = 0u;
+  uint64_t end;
+  int have_x = 0;
+  int have_y = 0;
+  int rc = IVS_TEST_FAIL;
+  ref = (fv_ref *)calloc(1u, sizeof *ref);
+  fv_snap = (uint8_t *)malloc((size_t)(FZ_UNITS + 1u) * IVS_MACHINE_BYTES);
+  FZ_CHECK(ref != NULL && fv_snap != NULL);
+  FZ_CHECK(fv_guide(program, gb, gpc));
+  n = fz_schedule(&s, gb, ev);
+  for (k = 0u; k < n; k++) { /* about a third of the words are zero: both paths of content C are taken */
+    if (fz_next(&s) % 3u == 0u) {
+      ev[k].controller[0] = 0u;
+    }
+    if (fz_next(&s) % 3u == 0u) {
+      ev[k].controller[1] = 0u;
+    }
+  }
+
+  /* The reference: one unit per call, the unconsumed suffix resubmitted. */
+  FZ_CHECK(ivs_ms_powered_prog(&y, program, FZ_POISON));
+  have_y = 1;
+  next = 0u;
+  ref->b[0] = 0u;
+  ref->pc[0] = fv_pc(y.m);
+  FZ_CHECK(fv_digests(y.m, ref->dig[0]) && fv_invariant(&y));
+  memcpy(fv_snap, y.storage, IVS_MACHINE_BYTES);
+  for (k = 1u; k <= FZ_UNITS; k++) {
+    uint32_t want = fz_due(ev, n, ref->b[k - 1u]);
+    FZ_CHECK(fz_run(y.m, ref->b[k - 1u] + 1u, ev + next, n - next, &r));
+    next += r.input_consumed;
+    FZ_CHECK(r.units_executed == 1u && r.now_ticks > ref->b[k - 1u]);
+    FZ_CHECK(next == want && r.input_floor_tick == ref->b[k - 1u] + 1u);
+    ref->b[k] = r.now_ticks;
+    ref->pc[k] = fv_pc(y.m);
+    ref->consumed[k] = next;
+    memcpy(ref->words[k], r.controller_now, sizeof ref->words[k]);
+    FZ_CHECK(fv_digests(y.m, ref->dig[k]) && fv_invariant(&y));
+    memcpy(fv_snap + (size_t)k * IVS_MACHINE_BYTES, y.storage, IVS_MACHINE_BYTES);
+  }
+  for (k = 0u; k <= FZ_UNITS; k++) {
+    if (ref->pc[k] != gpc[k]) {
+      cov->branch_changed++;
+      break;
+    }
+  }
+
+  /* Content B: the independent oracle of the log, from the schedule and the observed unit starts. */
+  if (program == IVS_MS_PROG_POLL_CONST) {
+    for (k = 0u; k < FZ_UNITS; k++) {
+      FZ_CHECK(ref->b[k] == gb[k] && ref->pc[k] == gpc[k]); /* constant timing: no schedule moves a boundary */
+      if (ref->pc[k] == FV_PC_PORT0 || ref->pc[k] == FV_PC_PORT1) {
+        uint32_t port = ref->pc[k] == FV_PC_PORT0 ? 0u : 1u;
+        expect[n_expect++] = (uint16_t)(0xFFu ^ fv_derive(fv_words_at(ev, n, ref->b[k], port)));
+      } else if (ref->pc[k] == FV_PC_STORE0 || ref->pc[k] == FV_PC_STORE1) {
+        n_stored++;
+      }
+    }
+    FZ_CHECK(n_stored > 0u && n_stored <= n_expect);
+    FZ_CHECK(ivs_machine_peek(y.m, FV_LOG, n_stored, log_y) == IVS_OK);
+    FZ_CHECK(memcmp(log_y, expect, (size_t)n_stored * sizeof expect[0]) == 0);
+  }
+
+  /* Random slicing against the reference. */
+  end = ref->b[FZ_UNITS - 1u] + 1u + (uint64_t)fz_next(&s) % (ref->b[FZ_UNITS] - ref->b[FZ_UNITS - 1u]);
+  FZ_CHECK(ivs_ms_powered_prog(&x, program, FZ_POISON));
+  have_x = 1;
+  next = 0u;
+  k = 0u;
+  for (calls = 0u; ref->b[k] < end; calls++) {
+    uint64_t target = fz_target(&s, ref->b, k, ev, next, n, end);
+    uint8_t d[2][32];
+    uint32_t i;
+    FZ_CHECK(calls < FZ_CALLS_MAX);
+    FZ_CHECK(fz_run(x.m, target, ev + next, n - next, &r));
+    next += r.input_consumed;
+    cov->applied += r.input_consumed;
+    while (k < FZ_UNITS && ref->b[k] < r.now_ticks) {
+      k++;
+    }
+    FZ_CHECK(ref->b[k] == r.now_ticks);
+    /* an event inside the overshoot window waits for the unit that starts at this boundary: when that
+     * unit reads a port and the event is the last due there and changes the word read, it changed a read */
+    if (r.now_ticks > target && k < FZ_UNITS) {
+      uint32_t port = ref->pc[k] == FV_PC_PORT0 ? 0u : (ref->pc[k] == FV_PC_PORT1 ? 1u : 2u);
+      uint32_t due = fz_due(ev, n, r.now_ticks);
+      for (i = 0u; i < n; i++) {
+        if (ev[i].at_tick > target && ev[i].at_tick < r.now_ticks) {
+          cov->in_window++;
+          if (port < 2u && i + 1u == due) {
+            uint32_t before = i > 0u ? ev[i - 1u].controller[port] : 0u;
+            if (fv_derive(ev[i].controller[port]) != fv_derive(before)) {
+              cov->read_changed++;
+            }
+          }
+        }
+      }
+    }
+    FZ_CHECK(next == ref->consumed[k]);
+    FZ_CHECK(memcmp(r.controller_now, ref->words[k], sizeof r.controller_now) == 0);
+    FZ_CHECK(r.input_floor_tick == (k > 0u ? ref->b[k - 1u] + 1u : 0u));
+    FZ_CHECK(fv_digests(x.m, d));
+    FZ_CHECK(memcmp(d, ref->dig[k], sizeof d) == 0);
+    FZ_CHECK(memcmp(x.storage, fv_snap + (size_t)k * IVS_MACHINE_BYTES, IVS_MACHINE_BYTES) == 0);
+    FZ_CHECK(fv_invariant(&x));
+  }
+  FZ_CHECK(k == FZ_UNITS && next == ref->consumed[FZ_UNITS]);
+  cov->left += n - next;
+  FZ_CHECK(memcmp(x.storage, y.storage, IVS_MACHINE_BYTES) == 0);
+  if (program == IVS_MS_PROG_POLL_CONST) {
+    FZ_CHECK(ivs_machine_peek(x.m, FV_LOG, n_stored, log_x) == IVS_OK);
+    FZ_CHECK(memcmp(log_x, expect, (size_t)n_stored * sizeof expect[0]) == 0);
+  }
+  rc = IVS_TEST_PASS;
+done:
+  if (have_x) {
+    ivs_ms_free(&x);
+  }
+  if (have_y) {
+    ivs_ms_free(&y);
+  }
+  free(ref);
+  free(fv_snap);
+  return rc;
+}
+
+/* A seed of the list: content B with the seed, then content C with a second stream of the same seed. */
+static int fv_both(uint32_t i, fv_cover *cov)
+{
+  if (fv_seed(fz_seeds[i], IVS_MS_PROG_POLL_CONST, cov) != IVS_TEST_PASS) {
+    return IVS_TEST_FAIL;
+  }
+  return fv_seed(fz_seeds[i] ^ 0xA5A5A5A5u, IVS_MS_PROG_POLL_BRANCH, cov);
+}
+
+static int fv_one(uint32_t i)
+{
+  fv_cover cov;
+  memset(&cov, 0, sizeof cov);
+  return fv_both(i, &cov);
+}
+
+static int fv_seed_01(void) { return fv_one(0u); }
+static int fv_seed_02(void) { return fv_one(1u); }
+static int fv_seed_03(void) { return fv_one(2u); }
+static int fv_seed_04(void) { return fv_one(3u); }
+static int fv_seed_05(void) { return fv_one(4u); }
+static int fv_seed_06(void) { return fv_one(5u); }
+static int fv_seed_07(void) { return fv_one(6u); }
+static int fv_seed_08(void) { return fv_one(7u); }
+
+static int fv_covered(void)
+{
+  fv_cover cov;
+  uint32_t i;
+  memset(&cov, 0, sizeof cov);
+  for (i = 0u; i < FZ_SEEDS; i++) {
+    if (fv_both(i, &cov) != IVS_TEST_PASS) {
+      return IVS_TEST_FAIL;
+    }
+  }
+  if (cov.in_window == 0u || cov.read_changed == 0u || cov.branch_changed == 0u || cov.applied == 0u ||
+      cov.left == 0u) {
+    ivs_test_diag("vacuous: in-window %u read-changed %u branch-changed %u applied %u left %u",
+                  (unsigned)cov.in_window, (unsigned)cov.read_changed, (unsigned)cov.branch_changed,
+                  (unsigned)cov.applied, (unsigned)cov.left);
+    return IVS_TEST_FAIL;
+  }
+  return IVS_TEST_PASS;
+}
+
 /* ---- v1 struct sizes (A-02, Pitfall 13) ---- */
 
 static int fz_struct_v1(void)
@@ -400,14 +729,18 @@ static int fz_struct_v1(void)
   FZ_PIN(offsetof(ivs_cpu_state_report, r) == 12u && offsetof(ivs_cpu_state_report, s) == 28u);
   FZ_PIN(offsetof(ivs_cpu_state_report, intr_enabled) == 32u && offsetof(ivs_cpu_state_report, reserved) == 33u);
 
-  FZ_PIN(sizeof(ivs_run_report) == 112u);
+  /* The v1 report is the pinned constant, a prefix of the grown (v2, 136-byte) struct (plan 05-02). */
+  FZ_PIN(IVS_RUN_REPORT_V1_SIZE == 112u && offsetof(ivs_run_report, audio_first_index) == IVS_RUN_REPORT_V1_SIZE);
+  FZ_PIN(sizeof(ivs_run_report) == 136u);
   FZ_PIN(offsetof(ivs_run_report, reserved) == 20u && offsetof(ivs_run_report, now_ticks) == 24u);
   FZ_PIN(offsetof(ivs_run_report, units_executed) == 48u && offsetof(ivs_run_report, audio_bytes_written) == 72u);
   FZ_PIN(offsetof(ivs_run_report, input_consumed) == 80u && offsetof(ivs_run_report, input_failing_index) == 84u);
   FZ_PIN(offsetof(ivs_run_report, input_floor_tick) == 88u && offsetof(ivs_run_report, controller_now) == 96u);
 
   FZ_PIN(offsetof(ivs_info, ticks_per_cpu_cycle) == 216u && offsetof(ivs_info, nominal_frame_ticks) == 232u);
-  FZ_PIN(sizeof(ivs_info) == 256u);
+  /* The v2 (Phase 4) info ends at 256; v3 (plan 05-02) appends the Phase 5 tail up to 288. */
+  FZ_PIN(offsetof(ivs_info, reserved2) + sizeof(uint32_t) == 256u && offsetof(ivs_info, audio_sample_ticks) == 256u);
+  FZ_PIN(sizeof(ivs_info) == 288u);
 
   /* The pointer-free prefix of the request. */
   FZ_PIN(offsetof(ivs_run_request, flags) == 4u && offsetof(ivs_run_request, target_ticks) == 8u);
@@ -430,7 +763,10 @@ static int fz_struct_v1_lp64(void)
   FZ_PIN(offsetof(ivs_run_request, video_capacity) == 24u && offsetof(ivs_run_request, audio) == 32u);
   FZ_PIN(offsetof(ivs_run_request, audio_capacity) == 40u && offsetof(ivs_run_request, events) == 48u);
   FZ_PIN(offsetof(ivs_run_request, event_count) == 56u && offsetof(ivs_run_request, reserved_in) == 60u);
-  FZ_PIN(sizeof(ivs_run_request) == 64u);
+  /* The v1 request is the pinned constant 64 (the offset of the first appended field); the grown v2
+   * struct is 80 bytes (plan 05-02). */
+  FZ_PIN(IVS_RUN_REQUEST_V1_SIZE == 64u && offsetof(ivs_run_request, psg_log) == IVS_RUN_REQUEST_V1_SIZE);
+  FZ_PIN(sizeof(ivs_run_request) == 80u);
   return IVS_TEST_PASS;
 }
 
@@ -444,6 +780,15 @@ const ivs_test_case ivs_run_fuzz_cases[] = {
     {"run.fuzz.seed-07", fz_seed_07, NULL},
     {"run.fuzz.seed-08", fz_seed_08, NULL},
     {"run.fuzz.cases-covered", fz_cases_covered, NULL},
+    {"run.fuzz.input-visible-seed-01", fv_seed_01, NULL},
+    {"run.fuzz.input-visible-seed-02", fv_seed_02, NULL},
+    {"run.fuzz.input-visible-seed-03", fv_seed_03, NULL},
+    {"run.fuzz.input-visible-seed-04", fv_seed_04, NULL},
+    {"run.fuzz.input-visible-seed-05", fv_seed_05, NULL},
+    {"run.fuzz.input-visible-seed-06", fv_seed_06, NULL},
+    {"run.fuzz.input-visible-seed-07", fv_seed_07, NULL},
+    {"run.fuzz.input-visible-seed-08", fv_seed_08, NULL},
+    {"run.fuzz.input-visible-covered", fv_covered, NULL},
     {"run.struct.v1-sizes", fz_struct_v1, NULL},
     {"run.struct.v1-sizes-lp64", fz_struct_v1_lp64, FZ_LP64_SKIP},
 };

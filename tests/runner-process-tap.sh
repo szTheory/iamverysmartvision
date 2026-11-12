@@ -7,7 +7,7 @@
 #   ivs-run --content-dir <content> <operator-args split on ,> <root>/data/scenarios/<id>.ivss
 # where <content> is this run's temp copy of the build-tree images dir; id
 # runner-process.scenario.<id>. The judge requires the inventory's exit code; a report whose first
-# line is `ivsr 1` and whose last is `report.end <n>` (n = the lines before it, LF-terminated);
+# line is `ivsr 2` and whose last is `report.end <n>` (n = the lines before it, LF-terminated);
 # exactly one `outcome` and one `exit.code` line equal to the inventory's; and `outcome.detail`
 # equal to the scenario's `# expect-detail: <text>` comment line (`-` without one). A scenario
 # with a `# expect-stderr: <text>` comment line must instead print no report and exactly the line
@@ -22,11 +22,16 @@
 # Mutant cases (D-32): per line `<ID> <addr> <word> <clause>` of data/expected/diag-mutations.ids
 # the diagnostic is rebuilt here with `ivs_pack --ivsc ... --patch <addr>=<word>` and
 # diag-boot-pass run against it must end guest-fail (exit 10) with the detail naming <clause>; id
-# runner-process.mutant.<ID>.
+# runner-process.mutant.<ID>. Since plan 05-11 (D-24, V-10) a second inventory,
+# data/expected/diag-mutations-ctrl-psg.ids, lists `<ID> <addr> <from> <to> <clause> <outcome> <exit>`
+# for the second diagnostic (diag-ctrl-psg-pass): the <from> word is explicit and must equal the word
+# at <addr> of the unpatched listing (ivs_pack --dump-words) before the patch, and the stated outcome
+# (guest-fail 10, timeout 11 or pass 0) is judged; both inventories share one runner (run_mutant).
 # Determinism (D-23, Pitfall 11): runner-process.repeat.<id> (a second run),
-# runner-process.slices.<id> (--slice-ticks 1 and 7) for diag-boot-pass and diag-input-pass, and
-# runner-process.cwd (diag-boot-pass from another working directory) must equal the scenario case's
-# report byte for byte apart from the host.calls line.
+# runner-process.slices.<id> (--slice-ticks 1 and 7) for diag-boot-pass, diag-input-pass and (plan 05-11,
+# cost cap V-16) diag-ctrl-psg-pass, and runner-process.cwd (diag-boot-pass from another working
+# directory) and runner-process.cwd.diag-ctrl-psg-pass must equal the scenario case's report byte for
+# byte apart from the host.calls line.
 # Judge self-controls (runner-process.judge.<slug>): the same checks run against four fake
 # runners (shell scripts in the temp dir replaying this run's reports with one defect: exit 0 for
 # a guest-fail, no report.end, outcome pass with exit.code 10, a changed digest line); each passes
@@ -34,12 +39,15 @@
 # 04-24, D-46) runs the outcomes-covered check with the first outcome's scenarios removed and
 # passes only when it fails with outcome-uncovered.
 # runner-process.watchdog (watchdog self-control): watchdogs stopped at once stay silent, a quick run
-# is not hung and a run past a 1-second limit is (see wd_start).
+# is not hung and a run past a 1-second limit is (see wd_start), and a watchdog that dies before it arms
+# or never arms ends the arming wait as a bounded failure, not a hang (review WR-03).
 # runner-process.outcomes-consistent: `ivs-run --help`, the outcome table of docs/runner.md and
 # data/expected/runner-outcomes.ids list the same pairs; runner-process.outcomes-covered: every
 # pair has a running scenario and every scenario line names a pair.
 # Reports: when IVS_TEST_OUT_DIR is set, every scenario case that printed a report leaves it in
-# <dir>/runner/<id>.report (the golden step compares dev with release there).
+# <dir>/runner/<id>.report (the golden step compares dev with release there). Since plan 05-11 the case
+# runner-process.refpcm.<id> of each line of data/expected/refpcm-scenarios.ids also leaves the report of its
+# --audio-wav run in <dir>/runner/<id>.refpcm.report (the golden step compares the .refpcm golden with it).
 # Output: the harness TAP shape (header with IVS_TEST_NONCE or none, plan, one result per case
 # with the findings as `#` lines after a failure, trailer) on stdout and, when IVS_TEST_OUT_DIR is
 # set, in <dir>/runner-process.txt.
@@ -81,12 +89,13 @@ if [ -n "${IVS_TEST_OUT_DIR:-}" ]; then
   mkdir -p "$rep_dir" || { printf '# cannot create %s\n' "$rep_dir" >&2; exit 1; }
 fi
 
-# The content dir: copies of the build-tree images, plus diag-cpu-1-truncated.ivsc, the diagnostic
+# The content dir: copies of the build-tree images (boot stub, diag-cpu-1, and since plan 05-11 diag-ctrl-psg-1),
+# plus diag-cpu-1-truncated.ivsc, the diagnostic
 # container built here by ivs_pack and cut before its 32-byte trailer (POSIX dd).
 listing="$root/fixtures/FX-diag-cpu-1/diag-cpu-1.listing.txt"
 content="$tmp/content"
 mkdir "$content" "$tmp/runs" "$tmp/build" || exit 1
-for f in boot-stub.exec diag-cpu-1.ivsc; do
+for f in boot-stub.exec diag-cpu-1.ivsc diag-ctrl-psg-1.ivsc; do
   cp "$images/$f" "$content/$f" || { printf 'runner-process-tap: no image %s/%s\n' "$images" "$f" >&2; exit 1; }
 done
 "$pack" --ivsc "$listing" "$tmp/build/full.ivsc" 2> "$tmp/build/pack.err" \
@@ -95,33 +104,51 @@ size=$(wc -c < "$tmp/build/full.ivsc" | tr -d ' ')
 [ "$size" -gt 32 ] || { printf 'runner-process-tap: container of %s bytes\n' "$size" >&2; exit 1; }
 dd if="$tmp/build/full.ivsc" of="$content/diag-cpu-1-truncated.ivsc" bs=1 count=$((size - 32)) 2> /dev/null || exit 1
 
-# wd_start <pid> <mark>: starts the watchdog of process <pid> (a background subshell, its pid in
-# _wd): after $limit seconds it writes <mark> and sends <pid> TERM. Returns only once the watchdog
-# is armed (its TERM trap set and its sleep started), reported through the FIFO <mark>.ready, so
-# wd_stop never signals it earlier. Without that handshake a stop that follows at once (a run that
-# ends in milliseconds) can reach the fresh subshell while it still has this script's inherited
-# `exit 1` TERM handler: dash (/bin/sh on Linux) records the signal, resets that handler and then
-# drops the signal, so the watchdog ran to its limit and judged a finished run `hung` (hosted run
-# 43148343848, runner-process.scenario.dead-after-refusal).
+# wd_child <pid> <mark>: the watchdog, run by wd_start in a background subshell: it sets its TERM trap,
+# starts its sleep, and only then creates <mark>.armed (the arming signal); after $limit seconds it writes
+# <mark> and sends <pid> TERM. A function, so the self-control below can replace it by a watchdog that
+# never arms.
+wd_child() {
+  _s=
+  trap 'if [ -n "$_s" ]; then kill "$_s" 2> /dev/null; fi; exit 0' TERM
+  sleep "$limit" &
+  _s=$!
+  : > "$2.armed"
+  wait "$_s"
+  : > "$2"
+  kill -TERM "$1" 2> /dev/null
+}
+# wd_start <pid> <mark>: starts the watchdog of process <pid> (a background subshell, its pid in _wd).
+# Returns 0 only once the watchdog is armed (its TERM trap set and its sleep started), reported by the
+# file <mark>.armed, so wd_stop never signals it earlier. Without that handshake a stop that follows at
+# once (a run that ends in milliseconds) can reach the fresh subshell while it still has this script's
+# inherited `exit 1` TERM handler: dash (/bin/sh on Linux) records the signal, resets that handler and
+# then drops the signal, so the watchdog ran to its limit and judged a finished run `hung` (hosted run
+# 43148343848, runner-process.scenario.dead-after-refusal). The wait is a bounded poll (review WR-03): at
+# once, then every 0.01 s, for at most wd_polls polls (500, about 5 s) and never past the death of the
+# watchdog; then it returns 1 (not armed), which is a finding and never a hang. An earlier form read a
+# FIFO that the parent itself held open read-write, so a watchdog that died before it wrote left the read
+# blocked forever, and its retry counter counted only failed reads.
 # wd_stop: stops the watchdog started last (its sleep too) and waits for it.
+wd_polls=500
 wd_start() {
   _wp=$1; _wm=$2
-  rm -f "$_wm" "$_wm.ready"
-  mkfifo "$_wm.ready" || { printf 'runner-process-tap: mkfifo %s.ready failed\n' "$_wm" >&2; exit 1; }
-  (
-    _s=
-    trap 'if [ -n "$_s" ]; then kill "$_s" 2> /dev/null; fi; exit 0' TERM
-    sleep "$limit" &
-    _s=$!
-    : > "$_wm.ready"
-    wait "$_s"
-    : > "$_wm"
-    kill -TERM "$_wp" 2> /dev/null
-  ) > /dev/null 2>&1 < /dev/null &
+  rm -f "$_wm" "$_wm.armed"
+  ( wd_child "$_wp" "$_wm" ) > /dev/null 2>&1 < /dev/null &
   _wd=$!
-  # Opening the FIFO blocks until the armed watchdog opens it for writing.
-  : < "$_wm.ready"
-  rm -f "$_wm.ready"
+  _wa=1
+  _n=0
+  while [ ! -e "$_wm.armed" ]; do
+    if [ "$_n" -ge "$wd_polls" ] || ! kill -0 "$_wd" 2> /dev/null; then
+      # A watchdog that armed and ended in the last instant still counts as armed.
+      [ -e "$_wm.armed" ] || _wa=0
+      break
+    fi
+    _n=$((_n + 1))
+    sleep 0.01
+  done
+  rm -f "$_wm.armed"
+  [ "$_wa" -eq 1 ]
 }
 wd_stop() {
   kill -TERM "$_wd" 2> /dev/null
@@ -137,7 +164,12 @@ run_one() {
   _mark="$tmp/runs/$_name.hung"
   (cd "$_cwd" && exec "$@") > "$tmp/runs/$_name.out" 2> "$tmp/runs/$_name.err" < /dev/null &
   _pid=$!
-  wd_start "$_pid" "$_mark"
+  wdbad=0
+  if ! wd_start "$_pid" "$_mark"; then
+    # No armed watchdog: the run is stopped so nothing can hang, and judge reports the finding.
+    wdbad=1
+    kill -TERM "$_pid" 2> /dev/null
+  fi
   wait "$_pid"
   rc=$?
   wd_stop
@@ -158,6 +190,7 @@ why() { printf '%s: %s\n' "$1" "$2" >> "$tmp/why"; found=1; }
 judge() {
   _o="$tmp/runs/$1.out"; _e="$tmp/runs/$1.err"; _x=$2; _oc=$3; _dp=$4; _sl=$5
   found=0
+  if [ "$wdbad" -eq 1 ]; then why watchdog-unarmed "the watchdog did not arm; the run was stopped"; fi
   if [ "$hung" -eq 1 ]; then why hung "still running after ${limit}s, stopped by the watchdog"; fi
   [ "$rc" = "$_x" ] || why exit-code "exit $rc, expected $_x"
   if [ -n "$_sl" ]; then
@@ -168,7 +201,7 @@ judge() {
     why no-report "empty stdout"
   else
     _first=$(sed -n '1p' "$_o")
-    [ "$_first" = "ivsr 1" ] || why header "first line '$_first', expected 'ivsr 1'"
+    [ "$_first" = "ivsr 2" ] || why header "first line '$_first', expected 'ivsr 2'"
     _nr=$(awk 'END { print NR }' "$_o")
     _nl=$(wc -l < "$_o" | tr -d ' ')
     _last=$(sed -n '$p' "$_o")
@@ -307,6 +340,24 @@ while read -r id x oc class skip args rest; do
   fi
 done < "$inv"
 
+# run_mutant <id> <listing> <cart file name> <scenario id> <addr> <to> <exit> <outcome> <detail pattern>:
+# rebuilds the cartridge from <listing> in a fresh directory with the one word patched, runs the
+# scenario against it and judges the stated exit code, outcome and detail. Sets $ok, adds to $tmp/why.
+run_mutant() {
+  _mid=$1; _ml=$2; _mc=$3; _ms=$4; _ma=$5; _mw=$6; _mx=$7; _mo=$8; _mp=$9
+  md="$tmp/mut-$_mid"
+  if ! mkdir "$md" || ! cp "$content/boot-stub.exec" "$md/boot-stub.exec"; then
+    ok=0; why temp "cannot prepare $md"
+  elif ! "$pack" --ivsc "$_ml" "$md/$_mc" --patch "$_ma=$_mw" > "$tmp/why.pack" 2>&1; then
+    ok=0; why pack "ivs_pack --patch $_ma=$_mw failed: $(cat "$tmp/why.pack")"
+  elif cmp -s "$md/$_mc" "$content/$_mc"; then
+    ok=0; why pack "the patch $_ma=$_mw leaves the container unchanged"
+  else
+    run_one "$tmp" "mut-$_mid" "$ivs_run" --content-dir "$md" "$scen/$_ms.ivss"
+    judge "mut-$_mid" "$_mx" "$_mo" "$_mp" "" || ok=0
+  fi
+}
+
 # Program mutations (D-32): per line `<ID> <addr> <word> <clause>` of
 # data/expected/diag-mutations.ids, the diagnostic patched at <addr> (whose listing row must be
 # the <from> of <from>-<to>) must end guest-fail naming <clause>.
@@ -318,27 +369,51 @@ while read -r mid addr word clause; do
   from=${mid%%-*}
   # The ROW field follows the HEX4 word and the BITS groups (10 binary digits in total).
   row=$(awk -v a="$addr" '!/^#/ && $1 == a { d = 0; i = 3; while (d < 10 && i <= NF) { d += length($i); i++ } print $i; exit }' "$listing")
-  md="$tmp/mut-$mid"
   if [ -z "$clause" ]; then
     ok=0; why inventory "not <ID> <addr> <word> <clause>"
   elif [ "$row" != "$from" ]; then
     ok=0; why listing "row at $addr is '$row', expected '$from'"
-  elif ! mkdir "$md" || ! cp "$content/boot-stub.exec" "$md/boot-stub.exec"; then
-    ok=0; why temp "cannot prepare $md"
-  elif ! "$pack" --ivsc "$listing" "$md/diag-cpu-1.ivsc" --patch "$addr=$word" > "$tmp/why.pack" 2>&1; then
-    ok=0; why pack "ivs_pack --patch $addr=$word failed: $(cat "$tmp/why.pack")"
-  elif cmp -s "$md/diag-cpu-1.ivsc" "$content/diag-cpu-1.ivsc"; then
-    ok=0; why pack "the patch $addr=$word leaves the container unchanged"
   else
-    run_one "$tmp" "mut-$mid" "$ivs_run" --content-dir "$md" "$scen/diag-boot-pass.ivss"
-    judge "mut-$mid" 10 guest-fail "assert=* line=* $clause got *" "" || ok=0
+    run_mutant "$mid" "$listing" diag-cpu-1.ivsc diag-boot-pass "$addr" "$word" 10 guest-fail "assert=* line=* $clause got *"
   fi
   result "runner-process.mutant.$mid"
 done < "$muts"
 
+# Program mutations of the second diagnostic (plan 05-11, D-24, V-10): per line
+# `<ID> <addr> <from> <to> <clause> <outcome> <exit>` of data/expected/diag-mutations-ctrl-psg.ids; the
+# word at <addr> of the unpatched listing (ivs_pack --dump-words, `ADDR WORD` lines) must be <from>.
+listing2="$root/fixtures/FX-diag-ctrl-psg-1/diag-ctrl-psg-1.listing.txt"
+muts2="$root/data/expected/diag-mutations-ctrl-psg.ids"
+"$pack" --dump-words "$listing2" > "$tmp/words2" 2> /dev/null || : > "$tmp/words2"
+while read -r mid addr from to rest; do
+  case $mid in '' | '#'*) continue ;; esac
+  ok=1
+  : > "$tmp/why"
+  # The last two fields are the outcome and the exit code; the clause is what lies between.
+  mx=${rest##* }
+  rest=${rest% *}
+  mo=${rest##* }
+  clause=${rest% *}
+  have=$(awk -v a="$addr" '$1 == a { print $2; exit }' "$tmp/words2")
+  if [ -z "$mx" ] || [ -z "$mo" ] || [ -z "$clause" ] || [ "$clause" = "$rest" ]; then
+    ok=0; why inventory "not <ID> <addr> <from> <to> <clause> <outcome> <exit>"
+  elif [ "$have" != "$from" ]; then
+    ok=0; why listing "the word at $addr is '$have', expected from '$from'"
+  else
+    case $mo in
+      guest-fail) mp="assert=* line=* $clause got *" ;;
+      timeout) mp="budget step=* line=* expected=halted got=target" ;;
+      pass) mp=- ;;
+      *) mp=; ok=0; why inventory "outcome '$mo' is not guest-fail, timeout or pass" ;;
+    esac
+    [ "$ok" -eq 1 ] && run_mutant "$mid" "$listing2" diag-ctrl-psg-1.ivsc diag-ctrl-psg-pass "$addr" "$to" "$mx" "$mo" "$mp"
+  fi
+  result "runner-process.mutant.$mid"
+done < "$muts2"
+
 # Determinism (D-23, Pitfall 11): a second run, slice sizes 1 and 7, and a run from another
 # working directory all equal the scenario case's report apart from host.calls.
-for id in diag-boot-pass diag-input-pass; do
+for id in diag-boot-pass diag-input-pass diag-ctrl-psg-pass; do
   ref="$tmp/runs/scen-$id.out"
   : > "$tmp/why"
   ok=1
@@ -356,6 +431,217 @@ mkdir "$tmp/elsewhere" || exit 1
 ok=1
 check_repeat "$tmp/elsewhere" "$ivs_run" cwd diag-boot-pass "$tmp/runs/scen-diag-boot-pass.out" || ok=0
 result runner-process.cwd
+: > "$tmp/why"
+ok=1
+check_repeat "$tmp/elsewhere" "$ivs_run" cwd2 diag-ctrl-psg-pass "$tmp/runs/scen-diag-ctrl-psg-pass.out" || ok=0
+result runner-process.cwd.diag-ctrl-psg-pass
+
+# Operator-only raw outputs (plan 05-09, D-20, T-05-23): a project-authored EXEC stand-in (nine words
+# at $1000: mixer R7 = $3F, then amplitude A = $0F, $00, $07, then a branch to itself; encodings as
+# in tests/runner/runner_exec.c) run to tick 3000 under --audio-raw and --psg-log-out into a mktemp
+# directory (never the repository). By hand: four PSG writes at ticks 76, 152, 228 and 304, so the
+# log is `0 76 8 63 1` and three more lines; a sample at tick 16 k sees the writes stamped below it,
+# so sample 10 (byte offset 36, tick 160) is level A = 15: bytes 0f 00 00 00, and sample 1 is silent.
+# Each case runs once per preset (no slicing variants); the files are created exclusively.
+opc="$tmp/opcontent"
+opo="$tmp/opout"
+mkdir "$opc" "$opo" || exit 1
+{
+  printf '\002\270\000\077\002\100\001\370\002\270\000\017\002\100\001\373'
+  printf '\002\270\000\000\002\100\001\373\002\270\000\007\002\100\001\373\002\040\000\001'
+  dd if=/dev/zero bs=8156 count=1 2> /dev/null
+} > "$opc/psg-prog.exec"
+printf 'ivss 1\nid operator-psg\nprofile intv-2609-ntsc-family-p1\ncontent exec psg-prog.exec\ncontent grom zero-grom\nrun-to 3000 ticks\n' > "$opc/operator-psg.ivss"
+opscn="$opc/operator-psg.ivss"
+# op_value <name> <key>: the value of a report line of run <name>.
+op_value() { sed -n "s/^$2 //p" "$tmp/runs/$1.out"; }
+: > "$tmp/why"
+ok=1
+run_one "$tmp" op-audio "$ivs_run" --content-dir "$opc" --audio-raw "$opo/audio.raw" "$opscn"
+judge op-audio 0 pass - "" || ok=0
+sz=$(wc -c < "$opo/audio.raw" 2> /dev/null | tr -d ' ')
+[ -n "$sz" ] && [ "$sz" = "$(op_value op-audio output.audio.bytes)" ] && [ "$sz" -gt 40 ] \
+  || { ok=0; why operator-audio "file size '$sz', output.audio.bytes '$(op_value op-audio output.audio.bytes)'"; }
+[ "$(od -An -tx1 -N4 "$opo/audio.raw" | tr -d ' \n')" = 00000000 ] \
+  || { ok=0; why operator-audio "the first sample is not silent"; }
+[ "$(od -An -tx1 -j36 -N4 "$opo/audio.raw" | tr -d ' \n')" = 0f000000 ] \
+  || { ok=0; why operator-audio "sample 10 (offset 36) is not 0f000000"; }
+result runner-process.operator.audio-raw
+: > "$tmp/why"
+ok=1
+run_one "$tmp" op-log "$ivs_run" --content-dir "$opc" --psg-log-out "$opo/log.txt" "$opscn"
+judge op-log 0 pass - "" || ok=0
+lines=$(wc -l < "$opo/log.txt" 2> /dev/null | tr -d ' ')
+[ -n "$lines" ] && [ "$lines" = "$(op_value op-log output.psglog.records)" ] && [ "$lines" = 4 ] \
+  || { ok=0; why operator-log "log lines '$lines', output.psglog.records '$(op_value op-log output.psglog.records)'"; }
+[ "$(sed -n '1p' "$opo/log.txt")" = "0 76 8 63 1" ] || { ok=0; why operator-log "first line is not '0 76 8 63 1'"; }
+[ "$(sed -n '4p' "$opo/log.txt")" = "3 304 11 7 1" ] || { ok=0; why operator-log "fourth line is not '3 304 11 7 1'"; }
+result runner-process.operator.psg-log
+# A second run with the same path is refused (exit 14, one stderr line, no report) and leaves the
+# file byte-identical: no overwrite, no truncation.
+: > "$tmp/why"
+ok=1
+cp "$opo/log.txt" "$opo/log.before" || exit 1
+run_one "$tmp" op-excl "$ivs_run" --content-dir "$opc" --psg-log-out "$opo/log.txt" "$opscn"
+[ "$rc" -eq 14 ] || { ok=0; why operator-exclusive "exit $rc, expected 14"; }
+[ ! -s "$tmp/runs/op-excl.out" ] || { ok=0; why operator-exclusive "a report was printed"; }
+printf 'ivs-run: --psg-log-out: output file exists, refusing to overwrite it\n' > "$tmp/want.err"
+cmp -s "$tmp/runs/op-excl.err" "$tmp/want.err" || { ok=0; why operator-exclusive "stderr is not the one refusal line"; }
+cmp -s "$opo/log.txt" "$opo/log.before" || { ok=0; why operator-exclusive "the existing file changed"; }
+result runner-process.operator.exclusive
+# The byte bound is a harness failure, not a truncation.
+: > "$tmp/why"
+ok=1
+run_one "$tmp" op-max "$ivs_run" --content-dir "$opc" --audio-raw "$opo/small.raw" --audio-out-max-bytes 100 "$opscn"
+judge op-max 14 harness-fail audio-out-max-bytes "" || ok=0
+result runner-process.operator.max-bytes
+# Every option once, numbers decimal digits only: a usage error is exit 14 with no report.
+: > "$tmp/why"
+ok=1
+run_one "$tmp" op-twice "$ivs_run" --content-dir "$opc" --audio-raw "$opo/t1.raw" --audio-raw "$opo/t2.raw" "$opscn"
+[ "$rc" -eq 14 ] && [ ! -s "$tmp/runs/op-twice.out" ] || { ok=0; why operator-options "--audio-raw twice: exit $rc"; }
+run_one "$tmp" op-digits "$ivs_run" --content-dir "$opc" --audio-out-max-bytes 12x "$opscn"
+[ "$rc" -eq 14 ] && [ ! -s "$tmp/runs/op-digits.out" ] || { ok=0; why operator-options "non-digit bound: exit $rc"; }
+run_one "$tmp" op-zero "$ivs_run" --content-dir "$opc" --audio-out-max-bytes 0 "$opscn"
+[ "$rc" -eq 14 ] && [ ! -s "$tmp/runs/op-zero.out" ] || { ok=0; why operator-options "zero bound: exit $rc"; }
+[ ! -e "$opo/t1.raw" ] || { ok=0; why operator-options "a usage error created a file"; }
+result runner-process.operator.options
+# A run that ends harness-fail (exit 14) leaves no operator output file behind (review WR-01): a bound hit on
+# each of the three files, and all three at once, remove the files this run created, so a retry with the same
+# path is not blocked by "output file exists", and the report states no WAV (refpcm.frames and refpcm.sha256
+# are `-`). The retry without the bound then succeeds into the same path. Every other outcome keeps its
+# files: a budget timeout (exit 11, 252 bytes of audio by hand under --max-ticks 1000) leaves a complete file.
+: > "$tmp/why"
+ok=1
+run_one "$tmp" op-f-raw "$ivs_run" --content-dir "$opc" --audio-raw "$opo/f.raw" --audio-out-max-bytes 100 "$opscn"
+judge op-f-raw 14 harness-fail audio-out-max-bytes "" || ok=0
+[ ! -e "$opo/f.raw" ] || { ok=0; why operator-failed "--audio-raw: the failed run left $opo/f.raw"; }
+run_one "$tmp" op-f-log "$ivs_run" --content-dir "$opc" --psg-log-out "$opo/f.log" --audio-out-max-bytes 10 "$opscn"
+judge op-f-log 14 harness-fail psg-log-out-max-bytes "" || ok=0
+[ ! -e "$opo/f.log" ] || { ok=0; why operator-failed "--psg-log-out: the failed run left $opo/f.log"; }
+run_one "$tmp" op-f-wav "$ivs_run" --content-dir "$opc" --audio-wav "$opo/f.wav" --audio-out-max-bytes 100 "$opscn"
+judge op-f-wav 14 harness-fail wav-out-max-bytes "" || ok=0
+[ ! -e "$opo/f.wav" ] || { ok=0; why operator-failed "--audio-wav: the failed run left $opo/f.wav"; }
+[ "$(op_value op-f-wav refpcm.frames)" = - ] && [ "$(op_value op-f-wav refpcm.sha256)" = - ] \
+  || { ok=0; why operator-failed "the report of the failed WAV run states refpcm.frames '$(op_value op-f-wav refpcm.frames)'"; }
+run_one "$tmp" op-f-all "$ivs_run" --content-dir "$opc" --audio-raw "$opo/g.raw" --psg-log-out "$opo/g.log" \
+  --audio-wav "$opo/g.wav" --audio-out-max-bytes 100 "$opscn"
+[ "$rc" -eq 14 ] || { ok=0; why operator-failed "three files: exit $rc, expected 14"; }
+for f in g.raw g.log g.wav; do
+  [ ! -e "$opo/$f" ] || { ok=0; why operator-failed "three files: the failed run left $opo/$f"; }
+done
+run_one "$tmp" op-f-retry "$ivs_run" --content-dir "$opc" --audio-raw "$opo/f.raw" "$opscn"
+judge op-f-retry 0 pass - "" || ok=0
+sz=$(wc -c < "$opo/f.raw" 2> /dev/null | tr -d ' ')
+[ -n "$sz" ] && [ "$sz" = "$(op_value op-f-retry output.audio.bytes)" ] \
+  || { ok=0; why operator-failed "the retry file size '$sz', output.audio.bytes '$(op_value op-f-retry output.audio.bytes)'"; }
+run_one "$tmp" op-f-keep "$ivs_run" --content-dir "$opc" --audio-raw "$opo/k.raw" --max-ticks 1000 "$opscn"
+[ "$rc" -eq 11 ] || { ok=0; why operator-failed "budget timeout: exit $rc, expected 11"; }
+sz=$(wc -c < "$opo/k.raw" 2> /dev/null | tr -d ' ')
+[ "$sz" = 252 ] && [ "$sz" = "$(op_value op-f-keep output.audio.bytes)" ] \
+  || { ok=0; why operator-failed "budget timeout: file size '$sz', expected 252 and output.audio.bytes"; }
+result runner-process.operator.failed-run
+# --update-golden never names an operator output file (review WR-02): the same string, or the same file under
+# another spelling (`./g.raw`), is refused (exit 14, one stderr line, no report), and the run's own output files
+# are not left behind; a distinct golden path works and leaves the raw file intact.
+: > "$tmp/why"
+ok=1
+mkdir "$tmp/gold" || exit 1
+printf 'ivs-run: --update-golden must not name an operator output file\n' > "$tmp/want.err"
+for opt in --audio-raw --psg-log-out --audio-wav; do
+  run_one "$tmp/gold" op-g-same "$ivs_run" --content-dir "$opc" "$opt" x.out --update-golden x.out "$opscn"
+  [ "$rc" -eq 14 ] && [ ! -s "$tmp/runs/op-g-same.out" ] \
+    || { ok=0; why operator-golden "$opt with the same string: exit $rc or a report"; }
+  cmp -s "$tmp/runs/op-g-same.err" "$tmp/want.err" || { ok=0; why operator-golden "$opt: stderr is not the one refusal line"; }
+  [ ! -e "$tmp/gold/x.out" ] || { ok=0; why operator-golden "$opt with the same string: left x.out"; }
+  run_one "$tmp/gold" op-g-alias "$ivs_run" --content-dir "$opc" "$opt" x.out --update-golden ./x.out "$opscn"
+  [ "$rc" -eq 14 ] && [ ! -s "$tmp/runs/op-g-alias.out" ] \
+    || { ok=0; why operator-golden "$opt with ./x.out: exit $rc or a report"; }
+  cmp -s "$tmp/runs/op-g-alias.err" "$tmp/want.err" || { ok=0; why operator-golden "$opt: alias stderr is not the one refusal line"; }
+  [ ! -e "$tmp/gold/x.out" ] || { ok=0; why operator-golden "$opt with ./x.out: left x.out"; }
+done
+run_one "$tmp/gold" op-g-ok "$ivs_run" --content-dir "$opc" --audio-raw g.raw --update-golden g.digests "$opscn"
+judge op-g-ok 0 pass - "" || ok=0
+sz=$(wc -c < "$tmp/gold/g.raw" 2> /dev/null | tr -d ' ')
+[ -n "$sz" ] && [ "$sz" = "$(op_value op-g-ok output.audio.bytes)" ] \
+  || { ok=0; why operator-golden "a distinct golden path: raw file size '$sz'"; }
+[ "$(sed -n '1p' "$tmp/gold/g.digests" 2> /dev/null)" = "# tier: deterministic-repeatability" ] \
+  || { ok=0; why operator-golden "a distinct golden path: no golden written"; }
+result runner-process.operator.golden-distinct
+
+# Operator WAV (plan 05-10, D-20, D-21, T-05-26): the same stand-in under --audio-wav, into the mktemp directory.
+# By hand: the report ends with refpcm.rate (48000), refpcm.frames and refpcm.sha256 right before report.end;
+# the file is 44 + 2 x frames bytes (a mono 16-bit RIFF/WAVE file), begins with the four bytes RIFF and the
+# header's data size field is 2 x frames; the key refpcm.sha256 is the SHA-256 of the file bytes (cmake -E
+# sha256sum); a second run with the same path is refused (exit 14, one stderr line, no report) and leaves the
+# file byte-identical; --wav-rate 8000 and a --wav-rate without --audio-wav are usage errors (exit 14, no report,
+# no file). One run per preset, no slicing variants.
+: > "$tmp/why"
+ok=1
+run_one "$tmp" op-wav "$ivs_run" --content-dir "$opc" --audio-wav "$opo/a.wav" "$opscn"
+judge op-wav 0 pass - "" || ok=0
+wframes=$(op_value op-wav refpcm.frames)
+wsz=$(wc -c < "$opo/a.wav" 2> /dev/null | tr -d ' ')
+wsha=$(cmake -E sha256sum "$opo/a.wav" 2> /dev/null | awk '{ print $1 }')
+[ "$(op_value op-wav refpcm.rate)" = 48000 ] || { ok=0; why operator-wav "refpcm.rate '$(op_value op-wav refpcm.rate)'"; }
+[ -n "$wframes" ] && [ "$wframes" -gt 0 ] && [ "$wsz" = "$((44 + 2 * wframes))" ] \
+  || { ok=0; why operator-wav "file size '$wsz', refpcm.frames '$wframes'"; }
+[ "$(od -An -tx1 -N4 "$opo/a.wav" | tr -d ' \n')" = 52494646 ] || { ok=0; why operator-wav "the first four bytes are not RIFF"; }
+[ "$wsha" = "$(op_value op-wav refpcm.sha256)" ] && [ "${#wsha}" -eq 64 ] \
+  || { ok=0; why operator-wav "sha256 of the file '$wsha', refpcm.sha256 '$(op_value op-wav refpcm.sha256)'"; }
+[ "$(tail -n 5 "$tmp/runs/op-wav.out" | sed 's/ .*//' | tr '\n' ' ')" = "host.calls refpcm.rate refpcm.frames refpcm.sha256 report.end " ] \
+  || { ok=0; why operator-wav "the refpcm keys are not right before report.end"; }
+cp "$opo/a.wav" "$opo/a.before" || exit 1
+run_one "$tmp" op-wav2 "$ivs_run" --content-dir "$opc" --audio-wav "$opo/a.wav" "$opscn"
+[ "$rc" -eq 14 ] && [ ! -s "$tmp/runs/op-wav2.out" ] || { ok=0; why operator-wav "a second run with the same path: exit $rc"; }
+printf 'ivs-run: --audio-wav: output file exists, refusing to overwrite it\n' > "$tmp/want.err"
+cmp -s "$tmp/runs/op-wav2.err" "$tmp/want.err" || { ok=0; why operator-wav "stderr is not the one refusal line"; }
+cmp -s "$opo/a.wav" "$opo/a.before" || { ok=0; why operator-wav "the existing file changed"; }
+run_one "$tmp" op-wrate "$ivs_run" --content-dir "$opc" --audio-wav "$opo/r.wav" --wav-rate 8000 "$opscn"
+[ "$rc" -eq 14 ] && [ ! -s "$tmp/runs/op-wrate.out" ] || { ok=0; why operator-wav "--wav-rate 8000: exit $rc"; }
+run_one "$tmp" op-wlone "$ivs_run" --content-dir "$opc" --wav-rate 44100 "$opscn"
+[ "$rc" -eq 14 ] && [ ! -s "$tmp/runs/op-wlone.out" ] || { ok=0; why operator-wav "--wav-rate without --audio-wav: exit $rc"; }
+[ ! -e "$opo/r.wav" ] || { ok=0; why operator-wav "a usage error created a file"; }
+result runner-process.refpcm.wav-written
+# Reference PCM golden runs (plan 05-11, D-21, D7): per line `<scenario-id> <rate>` of
+# data/expected/refpcm-scenarios.ids the scenario runs with `--audio-wav <file> --wav-rate <rate>` into a
+# mktemp directory (never the repository); it must end exit 0 as the scenario inventory says, report the
+# listed refpcm.rate and leave a WAV of 44 + 2 x refpcm.frames bytes. The report is kept in
+# <IVS_TEST_OUT_DIR>/runner/<id>.refpcm.report so the golden step compares the .refpcm golden with it (dev
+# and release). One run per preset, no slicing variants.
+refpcm_inv="$root/data/expected/refpcm-scenarios.ids"
+mkdir "$tmp/refpcm" || exit 1
+while read -r rid rrate rrest; do
+  case $rid in '' | '#'*) continue ;; esac
+  ok=1
+  : > "$tmp/why"
+  if [ -z "$rrate" ] || [ -n "$rrest" ]; then
+    ok=0; why inventory "not <scenario-id> <rate>"
+  elif [ ! -f "$scen/$rid.ivss" ]; then
+    ok=0; why inventory "no scenario file data/scenarios/$rid.ivss"
+  else
+    run_one "$tmp" "refpcm-$rid" "$ivs_run" --content-dir "$content" --audio-wav "$tmp/refpcm/$rid.wav" --wav-rate "$rrate" "$scen/$rid.ivss"
+    judge "refpcm-$rid" 0 pass - "" || ok=0
+    rfr=$(op_value "refpcm-$rid" refpcm.frames)
+    rsz=$(wc -c < "$tmp/refpcm/$rid.wav" 2> /dev/null | tr -d ' ')
+    [ "$(op_value "refpcm-$rid" refpcm.rate)" = "$rrate" ] || { ok=0; why refpcm "refpcm.rate '$(op_value "refpcm-$rid" refpcm.rate)', expected $rrate"; }
+    [ -n "$rfr" ] && [ "$rfr" -gt 0 ] && [ "$rsz" = "$((44 + 2 * rfr))" ] \
+      || { ok=0; why refpcm "file size '$rsz', refpcm.frames '$rfr'"; }
+    if [ -n "$rep_dir" ] && [ -s "$tmp/runs/refpcm-$rid.out" ]; then
+      cp "$tmp/runs/refpcm-$rid.out" "$rep_dir/$rid.refpcm.report" || { printf '# cannot write %s\n' "$rep_dir/$rid.refpcm.report" >&2; exit 1; }
+    fi
+  fi
+  result "runner-process.refpcm.$rid"
+done < "$refpcm_inv"
+# The listening helper refuses a scenario with a `content ... user` line before it builds or runs anything
+# (rights: derived audio of operator content stays out of shared records): exit 2, a message naming the rule.
+: > "$tmp/why"
+ok=1
+run_one "$tmp" listen-user "$root/tools/listen-demo.sh" needs-user-exec
+[ "$rc" -eq 2 ] || { ok=0; why listen-demo "exit $rc, expected 2"; }
+[ ! -s "$tmp/runs/listen-user.out" ] || { ok=0; why listen-demo "output on stdout from a refusal"; }
+grep -q -e 'content .* user' "$tmp/runs/listen-user.err" || { ok=0; why listen-demo "the message does not name the content user rule"; }
+result runner-process.listen-demo.refuses-user
 
 # Judge self-controls (D-23, T-04-59): the same checks run against wrong runners, shell scripts
 # in the temp dir that replay this run's recorded reports with one defect each. A control passes
@@ -461,7 +747,7 @@ self_control outcome-uncovered outcome-uncovered check_covered "$tmp/pairs" "$tm
 
 # Watchdog self-control (the hosted false `hung` of run 43148343848, see wd_start): 20 watchdogs
 # of a live target, each stopped at once, must leave no marker and the target alive (before the
-# FIFO handshake dash dropped most of these stops: 95 of 100 in a local Ubuntu 24.04 container);
+# arming handshake dash dropped most of these stops: 95 of 100 in a local Ubuntu 24.04 container);
 # a run of `true` must end with exit 0 and not hung; `sleep 30` under a 1-second limit must be
 # stopped by the watchdog (hung, exit 143). The quiet limit is 10 s and the first marker ends the
 # loop, so a regression fails in about 10 seconds.
@@ -483,6 +769,14 @@ while [ "$k" -lt 20 ]; do
   k=$((k + 1))
 done
 kill -0 "$tgt" 2> /dev/null || { ok=0; why watchdog-quiet "the target of the stopped watchdogs is gone"; }
+# A watchdog that dies before it arms and one that never arms (10 polls) must each end wd_start with a
+# failure and no marker, in a subshell so the redefinition of wd_child stays there (review WR-03).
+( wd_child() { exit 0; }; wd_start "$tgt" "$tmp/runs/wd-dead.mark"; _r=$?; wd_stop; exit "$_r" ) 2> /dev/null
+[ $? -ne 0 ] || { ok=0; why watchdog-unarmed "a watchdog that died before it armed was reported armed"; }
+( wd_child() { exec sleep 3; }; wd_polls=10; wd_start "$tgt" "$tmp/runs/wd-stall.mark"; _r=$?; wd_stop; exit "$_r" ) 2> /dev/null
+[ $? -ne 0 ] || { ok=0; why watchdog-unarmed "a watchdog that never armed was reported armed"; }
+[ ! -f "$tmp/runs/wd-dead.mark" ] && [ ! -f "$tmp/runs/wd-stall.mark" ] \
+  || { ok=0; why watchdog-unarmed "an unarmed watchdog wrote its marker"; }
 kill "$tgt" 2> /dev/null
 wait "$tgt" 2> /dev/null
 run_one "$tmp" wd-true true

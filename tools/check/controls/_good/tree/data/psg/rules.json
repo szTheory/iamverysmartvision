@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "note": "Toy PSG rule inventory of the known-good control tree (plan 05-01).",
+  "rules": [
+    {
+      "id": "PSG-R01",
+      "statement": "Toy rule with a literal basis.",
+      "basis": "8910-primary-literal",
+      "cite": "SRC-bsr-2609@toy-page",
+      "fields": ["psg.regmap"],
+      "vectors": ["psg.toy.read"],
+      "conflict": "C1",
+      "note": ""
+    },
+    {
+      "id": "PSG-R02",
+      "statement": "Toy rule with a default basis.",
+      "basis": "default-unknown",
+      "cite": "none",
+      "fields": ["engine:toy"],
+      "vectors": ["psg.toy.policy"],
+      "conflict": "C1",
+      "note": "Toy default. resolver: a toy measurement. trigger: a toy observation."
+    }
+  ]
+}

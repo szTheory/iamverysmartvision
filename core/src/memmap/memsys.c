@@ -4,7 +4,15 @@
  * the profile files (data/profiles) by cmake/IvsMemmapTable.cmake; this file is their only includer, and it
  * restates no region (D-16). Width values rest on the profile's device records: rom10 and grom8
  * read zero in the upper bits (GI 1980 catalog pdf 194, 197, 202), ram16 keeps 16 bits (pdf 199),
- * ram8 and stub reads are chosen defaults (C60), undriven reads are the profile fill (C5).
+ * ram8 and stub reads are chosen defaults (C60), undriven reads are the profile fill (C5). The PSG
+ * region (plan 05-04) is the device kind psg8: its register file lives in psg_reg and is read and
+ * written through ivs_psg_reg_load and ivs_psg_reg_store with the masks of the profile's psg.regmap;
+ * the width formula then gives the upper byte the psg8 fill, 0 (C64). Plan 05-05 (D-04): the two port
+ * registers $01FE and $01FF (slots 14 and 15) read from the pins: with the direction bit of the mixer
+ * register selecting input the low byte is the idle byte XOR the port's pull-down mask
+ * (port_pulldown, set only by the input path), with it selecting output the stored latch; every bit
+ * number and the idle byte come from ivs_psg_params, a store always keeps the latch.
+ * Named fault CTRL_NO_INVERSION (plan 05-05): the input-mode read returns the pull-down mask itself.
  *
  * Read path: rd_region[addr >> 4] names a region, the cartridge span or nothing. A region of a
  * backed device reads its backing at (addr - lo) & (size_words - 1); the cartridge span scans
@@ -18,6 +26,7 @@
 #include "common/ivs_prelude.h"
 
 #include "memmap/memsys.h"
+#include "psg/psg.h"
 
 /* Generated record types (the generator writes initializers in this field order). */
 typedef struct ivs_mm_region {
@@ -60,7 +69,9 @@ const ivs_profile_desc *ivs_profile_get(uint32_t index)
 
 int ivs_memsys_init(ivs_memsys *m, uint32_t profile)
 {
-  if (m == NULL || profile >= IVS_MM_PROFILE_COUNT) {
+  /* A profile without a row in the PSG parameter table is refused here, so every access to the PSG
+   * region below finds its parameters (review WR-04). */
+  if (m == NULL || profile >= IVS_MM_PROFILE_COUNT || profile >= ivs_psg_params_count()) {
     return IVS_E_BAD_ARG;
   }
   memset(m, 0, sizeof *m);
@@ -97,6 +108,23 @@ static uint32_t ivs_mm_index(const ivs_mm_region *r, uint16_t addr)
   return i;
 }
 
+/* The low byte a bus read of PSG port 0 or 1 returns (D-04, plan 05-05): pure. */
+static uint16_t ivs_mm_port_read(const ivs_memsys *m, const ivs_psg_params *pp, uint32_t port)
+{
+  uint32_t mixer = ivs_psg_reg_load(pp, m->psg_reg, IVS_PSG_SLOT_MIXER);
+  uint32_t dir = (mixer >> pp->port_dir_bit[port]) & 1u;
+  uint32_t low;
+  if (dir == pp->port_dir_output && pp->port_output_read_latch != 0u) {
+    low = ivs_psg_reg_load(pp, m->psg_reg, IVS_PSG_SLOT_PORT0 + port); /* output mode: the latch */
+  } else {
+    low = (uint32_t)pp->port_idle ^ (uint32_t)m->port_pulldown[port]; /* input mode: the pins */
+#ifdef IVS_FAULT_CTRL_NO_INVERSION
+    low = (uint32_t)m->port_pulldown[port];
+#endif
+  }
+  return IVS_U16(low & 0x00FFu);
+}
+
 static uint16_t ivs_mm_load(const ivs_memsys *m, uint8_t phys, uint32_t i)
 {
   switch (phys) {
@@ -110,6 +138,13 @@ static uint16_t ivs_mm_load(const ivs_memsys *m, uint8_t phys, uint32_t i)
     return m->grom[i];
   case IVS_MEMSYS_PHYS_GRAM:
     return m->gram[i];
+  case IVS_MEMSYS_PHYS_PSG: {
+    const ivs_psg_params *pp = ivs_psg_params_get(m->profile); /* a row exists: ivs_memsys_init refused any other profile */
+    if (i == IVS_PSG_SLOT_PORT0 || i == IVS_PSG_SLOT_PORT1) {
+      return ivs_mm_port_read(m, pp, i - IVS_PSG_SLOT_PORT0);
+    }
+    return ivs_psg_reg_load(pp, m->psg_reg, i);
+  }
   default:
     return 0u; /* stub devices hold no state */
   }
@@ -133,6 +168,11 @@ static void ivs_mm_store(ivs_memsys *m, uint8_t phys, uint32_t i, uint16_t v)
   case IVS_MEMSYS_PHYS_GRAM:
     m->gram[i] = v;
     break;
+  case IVS_MEMSYS_PHYS_PSG: {
+    /* a row exists: ivs_memsys_init refused any other profile */
+    ivs_psg_reg_store(ivs_psg_params_get(m->profile), m->psg_reg, i, v); /* keeps v & the register's write mask */
+    break;
+  }
   default:
     break; /* stub devices hold no state */
   }
@@ -366,6 +406,27 @@ void ivs_memsys_set_gate_internal(ivs_memsys *m, uint32_t gate, uint8_t open)
   }
 }
 
+uint16_t ivs_memsys_psg_reg_internal(const ivs_memsys *m, uint32_t idx)
+{
+  return ivs_psg_reg_load(ivs_psg_params_get(m->profile), m->psg_reg, idx); /* a row exists, see ivs_memsys_init */
+}
+
+uint32_t ivs_memsys_psg_write_slot_internal(const ivs_memsys *m, uint16_t addr)
+{
+  uint8_t idx = ivs_mm_wr_region[m->profile][addr >> 4u];
+  if (idx < IVS_MM_REGION_COUNT && ivs_mm_regions[idx].phys == IVS_MEMSYS_PHYS_PSG) {
+    return ivs_mm_index(&ivs_mm_regions[idx], addr) & (IVS_MEMSYS_PSG_WORDS - 1u);
+  }
+  return IVS_MEMSYS_NO_SLOT;
+}
+
+void ivs_memsys_set_port_pulldown_internal(ivs_memsys *m, uint32_t port, uint32_t mask)
+{
+  if (port < IVS_MEMSYS_PSG_PORTS) {
+    m->port_pulldown[port] = (uint8_t)(mask & 0xFFu);
+  }
+}
+
 void ivs_memsys_poke_raw_internal(ivs_memsys *m, uint16_t addr, uint16_t value)
 {
   const ivs_profile_desc *p = &ivs_mm_profiles[m->profile];
@@ -379,6 +440,12 @@ void ivs_memsys_poke_raw_internal(ivs_memsys *m, uint16_t addr, uint16_t value)
   }
   if (idx < IVS_MM_REGION_COUNT) {
     const ivs_mm_region *r = &ivs_mm_regions[idx];
+    if (r->phys == IVS_MEMSYS_PHYS_PSG) {
+      /* the raw seam stores the whole word, as for every other backing; the read mask applies on
+       * read (plan 05-04) */
+      m->psg_reg[ivs_mm_index(r, addr) & (IVS_MEMSYS_PSG_WORDS - 1u)] = value;
+      return;
+    }
     ivs_mm_store(m, r->phys, ivs_mm_index(r, addr), value);
   }
 }

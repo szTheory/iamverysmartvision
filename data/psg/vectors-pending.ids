@@ -1,0 +1,8 @@
+# Vector families of data/psg/vectors that suite psg does not evaluate yet (plan 05-04, D-07, D-23).
+# One line per family: `<family> <owning plan>`; the family of a vector id `psg.<family>.<name>` is its second dotted
+# token. The psg-vectors step requires every vector id of a family that is NOT listed here to be a test id of
+# data/expected/tests/psg.ids, and no id of a listed family to be registered there yet (token psg-vector-registration):
+# the plan that wires a family deletes its line in the same commit. The families reg (regs.txt) and reset (reset.txt) are
+# wired by plan 05-04; the engine-dependent reset rows are in family reseng (reset-engine.txt) and the envelope-dependent
+# amplitude rows in ampenv, so every vector id is registered exactly when a test that evaluates its expectation exists.
+# Plan 05-07 leaves this file with no line.

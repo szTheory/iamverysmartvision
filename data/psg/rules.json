@@ -1,0 +1,405 @@
+{
+  "schema_version": 1,
+  "note": "PSG rule inventory (plan 05-01, D-07, D-12). One record per rule; basis names how well the page set backs it; vectors lists every vector of data/psg/vectors that names the rule (checked by the psg-vectors step). No profile field of the psg group exists yet: the fields are added by the plan whose generator reads them.",
+  "rules": [
+    {
+      "id": "PSG-R01",
+      "statement": "Sixteen registers, each readable and writable at its address.",
+      "basis": "8910-primary-literal",
+      "cite": "SRC-gi-1980-catalog@pdf-205",
+      "fields": [
+        "psg.regmap"
+      ],
+      "vectors": [
+        "psg.reg.rewrite"
+      ],
+      "conflict": "C70",
+      "note": ""
+    },
+    {
+      "id": "PSG-R02",
+      "statement": "The register permutation into 01F0..01FF: role per address as in the register-address literal.",
+      "basis": "8914-community",
+      "cite": "SRC-intv-wiki@PSG-oldid-14940",
+      "fields": [
+        "psg.regmap"
+      ],
+      "vectors": [
+        "psg.reg.tone-low-a",
+        "psg.reg.tone-low-b",
+        "psg.reg.tone-low-c",
+        "psg.reg.env-low",
+        "psg.reg.env-high",
+        "psg.reg.map-amplitude",
+        "psg.reg.distinct-values"
+      ],
+      "conflict": "C70",
+      "note": "Single tier 4 lineage; the 8914 delta against the data sheet is known only from that source. resolver: D10 register read-back on owner hardware. trigger: a schematic, a data sheet of the part or a measured read-back."
+    },
+    {
+      "id": "PSG-R03",
+      "statement": "Write and read masks: stores keep value AND the write mask, reads give the store AND the read mask with bits 15..8 zero.",
+      "basis": "8914-community",
+      "cite": "SRC-intv-wiki@PSG-oldid-14940",
+      "fields": [
+        "psg.regmap"
+      ],
+      "vectors": [
+        "psg.reg.tone-high-mask",
+        "psg.reg.tone-high-b",
+        "psg.reg.tone-high-c",
+        "psg.reg.mixer-all",
+        "psg.reg.noise-mask",
+        "psg.reg.shape-reads-zero",
+        "psg.reg.amp-b",
+        "psg.reg.amp-c",
+        "psg.reg.port-a-ff",
+        "psg.reg.port-b-ff",
+        "psg.reg.pattern-fine-a",
+        "psg.reg.pattern-coarse-a",
+        "psg.reg.pattern-noise",
+        "psg.reg.pattern-amp-a",
+        "psg.reg.pattern-shape",
+        "psg.reg.pattern-mixer",
+        "psg.reg.env-coarse-full",
+        "psg.reg.mixer-high-bits",
+        "psg.reg.noise-reads-5-bits"
+      ],
+      "conflict": "C60",
+      "note": "Masks from the community data bits column; the shape register read mask is the tier 4 zero (C75). resolver: D10 read-back. trigger: owner hardware or a part-specific sheet."
+    },
+    {
+      "id": "PSG-R04",
+      "statement": "A read of any PSG register has no side effect.",
+      "basis": "default-unknown",
+      "cite": "SRC-gi-1980-catalog@pdf-205",
+      "fields": [
+        "engine:pure-read"
+      ],
+      "vectors": [
+        "psg.reg.read-twice-same"
+      ],
+      "conflict": "C70",
+      "note": "The page says each register is readable and nothing about side effects. resolver: D10 repeated read-back. trigger: any observed change after a read."
+    },
+    {
+      "id": "PSG-R05",
+      "statement": "Tone frequency: the input clock divided by 16 and then by the 12-bit period, a square wave at 50 percent duty: half-period P steps (16 P master ticks).",
+      "basis": "8910-primary-derived",
+      "cite": "SRC-gi-1980-catalog@pdf-207",
+      "fields": [
+        "psg.clocks_per_step",
+        "ticks_per_psg_clock"
+      ],
+      "vectors": [
+        "psg.tone.rate-p1",
+        "psg.tone.rate-p2",
+        "psg.tone.rate-p3",
+        "psg.tone.rate-p255",
+        "psg.tone.rate-p256",
+        "psg.tone.rate-b-p3",
+        "psg.tone.rate-c-p3",
+        "psg.tone.toggles-p7",
+        "psg.tone.toggles-p255",
+        "psg.tone.coarse-fine-combine",
+        "psg.tone.first-edge-step1",
+        "psg.tone.level-seq-p1",
+        "psg.tone.level-seq-p2"
+      ],
+      "conflict": "C69",
+      "note": "The divide chain is printed, the 50 percent duty and the toggle at each half-period are inference; the closed-form equation is not printed on the pages read. resolver: D10 tone capture. trigger: a measured edge spacing."
+    },
+    {
+      "id": "PSG-R06",
+      "statement": "Tone period field is 12 bits, so the largest period is 4095.",
+      "basis": "8910-primary-derived",
+      "cite": "SRC-gi-1980-catalog@pdf-207",
+      "fields": [
+        "psg.clocks_per_step"
+      ],
+      "vectors": [
+        "psg.tone.rate-p4095"
+      ],
+      "conflict": "C69",
+      "note": "The 12-bit width is printed (TP11..TP0); the sentence naming 1 and 4095 as the range limits is not on the pages read. resolver: D10 tone capture at 4095. trigger: a measured edge spacing."
+    },
+    {
+      "id": "PSG-R07",
+      "statement": "Period 0 acts as the range top: tone 4096 and envelope 65536 (community), noise 32 (default by analogy).",
+      "basis": "8914-community",
+      "cite": "SRC-intv-wiki@PSG-oldid-14940",
+      "fields": [
+        "psg.period_zero.tone",
+        "psg.period_zero.noise",
+        "psg.period_zero.envelope"
+      ],
+      "vectors": [
+        "psg.tone.period-zero",
+        "psg.noise.period-zero",
+        "psg.env.period-zero"
+      ],
+      "conflict": "C12",
+      "note": "Tone and envelope zero from the community statement, noise zero has no source (policy POL-PSG-03). resolver: D10 capture with period 0. trigger: a measured edge spacing at period 0."
+    },
+    {
+      "id": "PSG-R08",
+      "statement": "Tone counter structure: a down-reload counter, a period write takes effect at the next reload.",
+      "basis": "default-unknown",
+      "cite": "SRC-gi-1980-catalog@pdf-207",
+      "fields": [
+        "psg.counter_model"
+      ],
+      "vectors": [
+        "psg.tone.next-reload"
+      ],
+      "conflict": "C12",
+      "note": "Steady state equals an up-compare counter; the two differ for a write during a half-cycle. resolver: D10 capture of a mid-cycle period write. trigger: a measured difference."
+    },
+    {
+      "id": "PSG-R09",
+      "statement": "Noise rate: the input clock divided by 16 and then by the 5-bit period; the register shifts every 2 NP steps.",
+      "basis": "8910-primary-derived",
+      "cite": "SRC-gi-1980-catalog@pdf-207",
+      "fields": [
+        "psg.noise.steps_per_np"
+      ],
+      "vectors": [
+        "psg.noise.rate-np1",
+        "psg.noise.rate-np2",
+        "psg.noise.rate-np3",
+        "psg.noise.rate-np16",
+        "psg.noise.rate-np31",
+        "psg.noise.first-shift-at-2np",
+        "psg.noise.no-shift-before-2np"
+      ],
+      "conflict": "C69",
+      "note": "The chain and the 5-bit width are printed; reading the noise frequency as the shift rate is inference. resolver: D10 noise capture. trigger: a measured shift spacing."
+    },
+    {
+      "id": "PSG-R10",
+      "statement": "Noise register polynomial, seed and output sense: right-shifting Galois, width 17, mask 12000 hex, seed 1, output bit 0.",
+      "basis": "default-unknown",
+      "cite": "none",
+      "fields": [
+        "psg.noise.lfsr"
+      ],
+      "vectors": [
+        "psg.noise.lfsr-maximal-period",
+        "psg.noise.lfsr-alt-period",
+        "psg.noise.lfsr-first-bits",
+        "psg.noise.level-seq-np1"
+      ],
+      "conflict": "C71",
+      "note": "No printed polynomial; the community mask is a one-field edit. resolver: D10 noise capture. trigger: a measured bit pattern."
+    },
+    {
+      "id": "PSG-R11",
+      "statement": "Envelope rate: the input clock divided by 256 and then by the 16-bit period gives the cycle, one state per 16 EP chip clocks, so one step per 2 EP PSG steps.",
+      "basis": "8910-primary-derived",
+      "cite": "SRC-gi-1980-catalog@pdf-207",
+      "fields": [
+        "psg.envelope.steps_per_ep"
+      ],
+      "vectors": [
+        "psg.env.rate-ep1",
+        "psg.env.rate-ep2",
+        "psg.env.rate-ep3",
+        "psg.env.rate-ep15625"
+      ],
+      "conflict": "C72",
+      "note": "Chain printed, the figure names the period as the duration of one cycle; the step reading is inference. resolver: D10 envelope capture. trigger: a measured step spacing."
+    },
+    {
+      "id": "PSG-R12",
+      "statement": "The sixteen envelope shapes of R15 bits B3..B0 (continue, attack, alternate, hold) with sixteen states per cycle.",
+      "basis": "8910-primary-literal",
+      "cite": "SRC-gi-1980-catalog@pdf-208",
+      "fields": [
+        "psg.envelope.shape_bits"
+      ],
+      "vectors": [
+        "psg.env.shape-0",
+        "psg.env.shape-1",
+        "psg.env.shape-2",
+        "psg.env.shape-3",
+        "psg.env.shape-4",
+        "psg.env.shape-5",
+        "psg.env.shape-6",
+        "psg.env.shape-7",
+        "psg.env.shape-8",
+        "psg.env.shape-9",
+        "psg.env.shape-10",
+        "psg.env.shape-11",
+        "psg.env.shape-12",
+        "psg.env.shape-13",
+        "psg.env.shape-14",
+        "psg.env.shape-15"
+      ],
+      "conflict": "C72",
+      "note": ""
+    },
+    {
+      "id": "PSG-R13",
+      "statement": "A write to the shape register restarts the envelope.",
+      "basis": "8914-community",
+      "cite": "SRC-intv-wiki@PSG-oldid-14940",
+      "fields": [
+        "psg.envelope.shape_bits"
+      ],
+      "vectors": [
+        "psg.env.restart-on-shape-write"
+      ],
+      "conflict": "C72",
+      "note": "Not printed on the data sheet pages. resolver: D10 envelope capture with a mid-cycle rewrite. trigger: a measured difference."
+    },
+    {
+      "id": "PSG-R14",
+      "statement": "Mixer polarity and bit order: R7 bits 0..2 disable tone A..C, bits 3..5 disable noise A..C, 1 = disabled.",
+      "basis": "8910-primary-literal",
+      "cite": "SRC-gi-1980-catalog@pdf-207",
+      "fields": [
+        "psg.mixer.bits"
+      ],
+      "vectors": [
+        "psg.mix.tone-only-1",
+        "psg.mix.tone-only-0",
+        "psg.mix.noise-only-1",
+        "psg.mix.noise-only-0",
+        "psg.mix.channel-isolated"
+      ],
+      "conflict": "C69",
+      "note": ""
+    },
+    {
+      "id": "PSG-R15",
+      "statement": "Tone and noise combine by AND after the disable bits are applied; a channel with both disabled is a constant 1.",
+      "basis": "8910-primary-derived",
+      "cite": "SRC-intv-wiki@PSG-oldid-14940",
+      "fields": [
+        "psg.mixer.bits"
+      ],
+      "vectors": [
+        "psg.mix.truth-table",
+        "psg.mix.and-tone0",
+        "psg.mix.and-noise0",
+        "psg.mix.and-both0",
+        "psg.mix.both-disabled-const1"
+      ],
+      "conflict": "C69",
+      "note": "The AND form is from the community statement, not printed on the pages read. resolver: D10 capture of a tone with noise enabled. trigger: a measured waveform."
+    },
+    {
+      "id": "PSG-R16",
+      "statement": "Amplitude: bits 3..0 of the amplitude register are the 4-bit fixed level.",
+      "basis": "8910-primary-literal",
+      "cite": "SRC-gi-1980-catalog@pdf-207",
+      "fields": [
+        "psg.amp.env_select"
+      ],
+      "vectors": [
+        "psg.amp.fixed-15",
+        "psg.amp.fixed-0",
+        "psg.amp.fixed-masks-upper"
+      ],
+      "conflict": "C70",
+      "note": ""
+    },
+    {
+      "id": "PSG-R17",
+      "statement": "Amplitude select bits 5..4: 0 fixed, 1 envelope shifted right by 2, 2 envelope shifted right by 1, 3 envelope.",
+      "basis": "8914-community",
+      "cite": "SRC-intv-wiki@PSG-oldid-14940",
+      "fields": [
+        "psg.amp.env_select"
+      ],
+      "vectors": [
+        "psg.amp.env-mode",
+        "psg.amp.env-shift2",
+        "psg.amp.env-shift1",
+        "psg.ampenv.env-through-amp",
+        "psg.ampenv.shift2"
+      ],
+      "conflict": "C12",
+      "note": "The mode bit sense is not printed on the pages read. resolver: D10 output level capture per register value. trigger: a measured level."
+    },
+    {
+      "id": "PSG-R18",
+      "statement": "Step scheduling and write ordering: a write stamped at a step boundary lands after that step (step first, then write).",
+      "basis": "default-unknown",
+      "cite": "none",
+      "fields": [
+        "psg.write_strobe_ticks",
+        "engine:step-then-write"
+      ],
+      "vectors": [
+        "psg.ampenv.write-after-step-n",
+        "psg.ampenv.write-at-0-visible"
+      ],
+      "conflict": "C78",
+      "note": "A project contract, not a hardware claim. resolver: test psg.write tie tests, D10 refinement. trigger: a measured write-to-output latency."
+    },
+    {
+      "id": "PSG-R19",
+      "statement": "DAC levels: sixteen output levels of a logarithmic converter between 0 and 1 volt.",
+      "basis": "default-unknown",
+      "cite": "SRC-gi-1980-catalog@pdf-208",
+      "fields": [
+        "psg.dac.levels"
+      ],
+      "vectors": [
+        "psg.dac.printed-levels",
+        "psg.dac.extrapolated-levels",
+        "psg.dac.level-0",
+        "psg.dac.level-15-full-scale",
+        "psg.dac.halving-8-from-10",
+        "psg.dac.halving-1-from-3",
+        "psg.dac.table-length",
+        "psg.dac.sum-fits-u32"
+      ],
+      "conflict": "C12",
+      "note": "The pages print the range only, no per-level label; the table is a default copied from a planning note. resolver: D10 output level capture. trigger: a measured level table."
+    },
+    {
+      "id": "PSG-R20",
+      "statement": "Port reads: input mode follows the pins with an on-chip pull-up idle of FF, output mode returns the store, a write stores the latch.",
+      "basis": "default-unknown",
+      "cite": "SRC-gi-1980-catalog@pdf-205",
+      "fields": [
+        "input.line_idle",
+        "input.port_output_read",
+        "psg.mixer.port_dir_bits"
+      ],
+      "vectors": [
+        "psg.port.idle-ff",
+        "psg.port.pin-low-0",
+        "psg.port.pin-low-1",
+        "psg.port.independent",
+        "psg.port.upper-byte-zero",
+        "psg.port.output-reads-latch-0",
+        "psg.port.output-reads-latch-1",
+        "psg.port.write-in-input-latch-only",
+        "psg.port.back-to-input",
+        "psg.port.direction-bit-order"
+      ],
+      "conflict": "C65",
+      "note": "Pull-up idle and grounding are printed; direction sense and the output-mode read are not. resolver: D10 port probes. trigger: a measured read in output mode."
+    },
+    {
+      "id": "PSG-R21",
+      "statement": "Reset: all registers 0, both ports input; generator state at its defaults.",
+      "basis": "8910-primary-literal",
+      "cite": "SRC-gi-1980-catalog@pdf-205",
+      "fields": [
+        "psg.reset"
+      ],
+      "vectors": [
+        "psg.reset.regs-zero",
+        "psg.reset.ports-input-after-reset",
+        "psg.reseng.silent-after-reset",
+        "psg.reseng.envelope-held-zero"
+      ],
+      "conflict": "C77",
+      "note": "Registers literal; the generator state beyond the registers is default (policy POL-PSG-12). resolver: D10 power-on capture. trigger: a measured first sample."
+    }
+  ]
+}

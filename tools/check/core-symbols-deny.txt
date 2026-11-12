@@ -49,3 +49,7 @@ realloc alloc
 free alloc
 posix_memalign alloc
 aligned_alloc alloc
+refpcm pcm
+resample pcm
+wav pcm
+pcm pcm

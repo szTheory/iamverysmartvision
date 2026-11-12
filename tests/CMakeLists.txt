@@ -140,6 +140,7 @@ set_tests_properties(machine PROPERTIES SKIP_RETURN_CODE 77)
 # Its family stub (plan 04-14, D-28..D-30) reads ivs_images.inc: the bytes of the build-tree
 # images that tools/pack writes (target ivs_images, IVS_IMAGES_DIR), turned into a C include by
 # ivs_pack --c-include here. Nothing in it is committed.
+# Plan 05-11 adds the third pair diag_ctrl_psg_1 (the second diagnostic, D-24) to the include.
 # Plan 04-16 adds the diagnostic container diag-cpu-1.ivsc to the include, and diag_cpu_1_expect.inc:
 # the assert lines of data/golden/diag-cpu-1.expect as X-macro lines (tests/expect-inc.cmake), so
 # run.diag.predicate reads the hand-derived values from that file instead of retyping them.
@@ -147,8 +148,8 @@ set(IVS_IMAGES_INC "${CMAKE_CURRENT_BINARY_DIR}/ivs_images.inc")
 add_custom_command(
   OUTPUT "${IVS_IMAGES_INC}"
   COMMAND ivs_pack --c-include "${IVS_IMAGES_INC}" "boot_stub=${IVS_BOOT_STUB_EXEC}"
-          "diag_cpu_1=${IVS_DIAG_CPU_1_IVSC}"
-  DEPENDS ivs_pack ivs_images "${IVS_BOOT_STUB_EXEC}" "${IVS_DIAG_CPU_1_IVSC}"
+          "diag_cpu_1=${IVS_DIAG_CPU_1_IVSC}" "diag_ctrl_psg_1=${IVS_DIAG_CTRL_PSG_1_IVSC}"
+  DEPENDS ivs_pack ivs_images "${IVS_BOOT_STUB_EXEC}" "${IVS_DIAG_CPU_1_IVSC}" "${IVS_DIAG_CTRL_PSG_1_IVSC}"
   COMMENT "Generating the build-tree image include"
   VERBATIM)
 set(IVS_DIAG_EXPECT "${PROJECT_SOURCE_DIR}/data/golden/diag-cpu-1.expect")
@@ -160,12 +161,104 @@ add_custom_command(
   DEPENDS "${IVS_DIAG_EXPECT}" "${CMAKE_CURRENT_SOURCE_DIR}/expect-inc.cmake"
   COMMENT "Generating the diag-cpu-1 predicate include"
   VERBATIM)
-add_executable(ivs_tests_run run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_fuzz.c run/run_stub.c run/run_diag.c machine/machine_standin.c "${IVS_IMAGES_INC}" "${IVS_DIAG_EXPECT_INC}")
+# Plan 05-11: the same X-macro include for the second diagnostic's hand-derived predicate
+# (data/golden/diag-ctrl-psg-pass.expect, with the PSG write-log lines), read by run.diag.ctrl-psg.*.
+set(IVS_CTRL_EXPECT "${PROJECT_SOURCE_DIR}/data/golden/diag-ctrl-psg-pass.expect")
+set(IVS_CTRL_EXPECT_INC "${CMAKE_CURRENT_BINARY_DIR}/diag_ctrl_psg_pass_expect.inc")
+add_custom_command(
+  OUTPUT "${IVS_CTRL_EXPECT_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DIN=${IVS_CTRL_EXPECT}" "-DOUT=${IVS_CTRL_EXPECT_INC}"
+          -P "${CMAKE_CURRENT_SOURCE_DIR}/expect-inc.cmake"
+  DEPENDS "${IVS_CTRL_EXPECT}" "${CMAKE_CURRENT_SOURCE_DIR}/expect-inc.cmake"
+  COMMENT "Generating the diag-ctrl-psg-pass predicate include"
+  VERBATIM)
+# Controller probe table (plan 05-05): cmake/IvsInputProbes.cmake turns the controller literal
+# data/input/*.literal.txt (and the pinned name set) into ivs_input_probes.inc, the expected bytes of suite
+# input and of the input-visible fuzz of suite run. It reads neither the profile nor the core.
+set(IVS_INPUT_PROBE_GENERATOR "${PROJECT_SOURCE_DIR}/cmake/IvsInputProbes.cmake")
+set(IVS_INPUT_PROBE_INC "${CMAKE_CURRENT_BINARY_DIR}/ivs_input_probes.inc")
+file(GLOB IVS_INPUT_LITERALS CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/data/input/*.literal.txt")
+add_custom_command(
+  OUTPUT "${IVS_INPUT_PROBE_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DROOT=${PROJECT_SOURCE_DIR}" "-DOUT=${IVS_INPUT_PROBE_INC}" -P "${IVS_INPUT_PROBE_GENERATOR}"
+  DEPENDS ${IVS_INPUT_LITERALS} "${PROJECT_SOURCE_DIR}/data/expected/input-bits.ids" "${IVS_INPUT_PROBE_GENERATOR}"
+  COMMENT "Generating the controller probe table"
+  VERBATIM)
+add_executable(ivs_tests_run run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_struct.c run/run_fuzz.c run/run_stub.c run/run_diag.c run/run_diag_ctrl.c machine/machine_standin.c "${IVS_IMAGES_INC}" "${IVS_DIAG_EXPECT_INC}" "${IVS_CTRL_EXPECT_INC}" "${IVS_INPUT_PROBE_INC}")
 target_include_directories(ivs_tests_run PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_BINARY_DIR}")
 add_dependencies(ivs_tests_run ivs_images)
 target_link_libraries(ivs_tests_run PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
 add_test(NAME run COMMAND ivs_tests_run)
 set_tests_properties(run PROPERTIES SKIP_RETURN_CODE 77)
+
+# Suite psg (AUD-01, plans 05-04..05-08, A-12): the PSG register file and, in later plans, the ports,
+# tone, mixer, noise, envelope, sample stream and write log, in their own executable so that its named
+# faults rerun only it. Expected values come from the sourced text files only: cmake/IvsPsgVectors.cmake
+# turns one vector family of data/psg/vectors and the register-address literal into a C include per
+# family (it reads neither the profile nor the core). It reuses the machine suite's stand-in content
+# (machine/machine_standin.c); its named faults are data/expected/faults/psg.ids, whose sites sit in
+# core/src/psg. The result file carries a `# source` line for each vector file and the literal.
+set(IVS_PSG_VEC_GENERATOR "${PROJECT_SOURCE_DIR}/cmake/IvsPsgVectors.cmake")
+set(IVS_PSG_REGMAP_LITERAL "${PROJECT_SOURCE_DIR}/data/psg/intv-2609-ntsc-family-p1.regmap.literal.txt")
+set(IVS_PSG_VEC_GENERATED "")
+foreach(fam_spec "reg:regs" "reset:reset" "port:port" "tone:tone" "mix:mix" "amp:amp" "noise:noise" "env:env"
+    "ampenv:ampenv" "reseng:reset-engine" "dac:dac")
+  string(REPLACE ":" ";" fam_parts "${fam_spec}")
+  list(GET fam_parts 0 fam)
+  list(GET fam_parts 1 fam_stem)
+  set(fam_inc "${CMAKE_CURRENT_BINARY_DIR}/ivs_psg_vectors_${fam}.inc")
+  add_custom_command(
+    OUTPUT "${fam_inc}"
+    COMMAND "${CMAKE_COMMAND}" "-DROOT=${PROJECT_SOURCE_DIR}" "-DOUT=${fam_inc}" "-DFAMILY=${fam}"
+            -P "${IVS_PSG_VEC_GENERATOR}"
+    DEPENDS "${PROJECT_SOURCE_DIR}/data/psg/vectors/${fam_stem}.txt" "${IVS_PSG_REGMAP_LITERAL}"
+            "${IVS_PSG_VEC_GENERATOR}"
+    COMMENT "Generating the PSG ${fam} vector table"
+    VERBATIM)
+  list(APPEND IVS_PSG_VEC_GENERATED "${fam_inc}")
+endforeach()
+# Test-side reads of the profile DAC table (plan 05-07, D-11): the core never reads psg.dac.levels. The probe turns the
+# field into ivs_psg_probe.inc (psg_dac.c), and the independence script proves that two profiles differing only in
+# the table generate byte-identical core parameters (ivs_psg_dac_independence.inc, psg_profile.c).
+set(IVS_PSG_PROBE_GENERATOR "${PROJECT_SOURCE_DIR}/cmake/IvsPsgProfileProbe.cmake")
+set(IVS_PSG_INDEP_GENERATOR "${PROJECT_SOURCE_DIR}/cmake/IvsPsgDacIndependence.cmake")
+set(IVS_PSG_TABLE_GENERATOR "${PROJECT_SOURCE_DIR}/cmake/IvsPsgTable.cmake")
+file(GLOB IVS_PSG_PROFILE_FILES CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/data/profiles/*.json")
+list(SORT IVS_PSG_PROFILE_FILES)
+set(IVS_PSG_PROBE_INC "${CMAKE_CURRENT_BINARY_DIR}/ivs_psg_probe.inc")
+set(IVS_PSG_INDEP_INC "${CMAKE_CURRENT_BINARY_DIR}/ivs_psg_dac_independence.inc")
+add_custom_command(
+  OUTPUT "${IVS_PSG_PROBE_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DROOT=${PROJECT_SOURCE_DIR}" "-DOUT=${IVS_PSG_PROBE_INC}" -P "${IVS_PSG_PROBE_GENERATOR}"
+  DEPENDS ${IVS_PSG_PROFILE_FILES} "${IVS_PSG_PROBE_GENERATOR}"
+  COMMENT "Generating the PSG DAC table probe (test side)"
+  VERBATIM)
+add_custom_command(
+  OUTPUT "${IVS_PSG_INDEP_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DROOT=${PROJECT_SOURCE_DIR}" "-DOUT=${IVS_PSG_INDEP_INC}" -P "${IVS_PSG_INDEP_GENERATOR}"
+  DEPENDS ${IVS_PSG_PROFILE_FILES} "${IVS_PSG_INDEP_GENERATOR}" "${IVS_PSG_TABLE_GENERATOR}"
+  COMMENT "Proving that the core PSG parameters do not depend on psg.dac.levels"
+  VERBATIM)
+list(APPEND IVS_PSG_VEC_GENERATED "${IVS_PSG_PROBE_INC}" "${IVS_PSG_INDEP_INC}")
+set(IVS_PSG_TEST_SOURCES psg/psg_main.c psg/psg_reg.c psg/psg_port.c psg/psg_tone.c psg/psg_mix.c psg/psg_noise.c psg/psg_env.c psg/psg_dac.c psg/psg_profile.c psg/psg_bounds.c psg/psg_buffers.c psg/psg_sample.c psg/psg_slice.c psg/psg_chain.c psg/psg_log.c psg/psg_fuzz.c psg/psg_iso.c machine/machine_standin.c)
+add_executable(ivs_tests_psg ${IVS_PSG_TEST_SOURCES} ${IVS_PSG_VEC_GENERATED})
+target_include_directories(ivs_tests_psg PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_BINARY_DIR}")
+target_link_libraries(ivs_tests_psg PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
+add_test(NAME psg COMMAND ivs_tests_psg)
+set_tests_properties(psg PROPERTIES SKIP_RETURN_CODE 77)
+
+# Suite input (INP-01..INP-03, API-03, plan 05-05): the two hand controllers as guest-visible machine
+# input through the PSG ports, in its own executable so that its named faults rerun only it. Expected
+# values come from the controller literal and the wiki statements only (never from the profile or the
+# generated table); it reuses the machine suite's stand-in content (machine/machine_standin.c). Its named
+# faults are data/expected/faults/input.ids, whose sites sit in core/src/machine and core/src/memmap.
+set(IVS_INPUT_TEST_SOURCES input/input_main.c input/input_single.c input/input_combo.c input/input_port.c input/input_slice.c machine/machine_standin.c)
+add_executable(ivs_tests_input ${IVS_INPUT_TEST_SOURCES} "${IVS_INPUT_PROBE_INC}")
+target_include_directories(ivs_tests_input PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/input"
+  "${CMAKE_CURRENT_BINARY_DIR}")
+target_link_libraries(ivs_tests_input PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
+add_test(NAME input COMMAND ivs_tests_input)
+set_tests_properties(input PROPERTIES SKIP_RETURN_CODE 77)
 
 # Suite cpu-fuzz (D-12, plan 02-15): the seeded robustness run; dev links the sanitizers.
 add_executable(ivs_tests_cpu_fuzz cpu/cpu_fuzz.c)
@@ -269,9 +362,30 @@ ivs_fault_suite(machine
   GENERATED "${IVS_SHA_INC}" "${IVS_CART_INC}")
 
 ivs_fault_suite(run
-  SOURCES run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_fuzz.c run/run_stub.c run/run_diag.c machine/machine_standin.c
+  SOURCES run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_struct.c run/run_fuzz.c run/run_stub.c run/run_diag.c run/run_diag_ctrl.c machine/machine_standin.c
   INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_BINARY_DIR}"
-  GENERATED "${IVS_IMAGES_INC}" "${IVS_DIAG_EXPECT_INC}")
+  GENERATED "${IVS_IMAGES_INC}" "${IVS_DIAG_EXPECT_INC}" "${IVS_CTRL_EXPECT_INC}" "${IVS_INPUT_PROBE_INC}")
+
+ivs_fault_suite(psg
+  SOURCES ${IVS_PSG_TEST_SOURCES}
+  INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_BINARY_DIR}"
+  GENERATED ${IVS_PSG_VEC_GENERATED})
+
+ivs_fault_suite(input
+  SOURCES ${IVS_INPUT_TEST_SOURCES}
+  INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/input" "${CMAKE_CURRENT_BINARY_DIR}"
+  GENERATED "${IVS_INPUT_PROBE_INC}")
+# GEN_CTRL_MUTATION (plan 05-05): the controller-table generator flips the lowest bit of the line mask of KEY_1
+# after validation, and machine_input.c is rebuilt against that table.
+get_directory_property(IVS_CTRL_GENERATOR DIRECTORY "${PROJECT_SOURCE_DIR}/core"
+  DEFINITION IVS_CTRL_GENERATOR)
+get_directory_property(IVS_PROFILE_FILES DIRECTORY "${PROJECT_SOURCE_DIR}/core"
+  DEFINITION IVS_PROFILE_FILES)
+ivs_fault_gen(GEN_CTRL_MUTATION SUITE input OUTPUT ivs_ctrl_lines.inc
+  GENERATOR "${IVS_CTRL_GENERATOR}"
+  ARGS "-DROOT=${PROJECT_SOURCE_DIR}" "-DMUTATE=key_1"
+  DEPENDS ${IVS_PROFILE_FILES} "${IVS_CTRL_GENERATOR}" "${PROJECT_SOURCE_DIR}/data/expected/input-bits.ids"
+  CONSUMER core:src/machine/machine_input.c)
 
 ivs_fault_suite(memmap
   SOURCES memmap/memmap_main.c memmap/memmap_rows.c
@@ -323,19 +437,19 @@ add_custom_command(
 # Its exec family (plan 04-18) serves the build-tree stub and diagnostic images of
 # ivs_images.inc through a fake host (nothing committed).
 set(IVS_RUNNER_TEST_GENERATED "${IVS_DIAG_EXPECT_INC}" "${IVS_DIAG_EXPECT_TEXT_INC}" "${IVS_INPUT_BITS_INC}"
-  "${IVS_IMAGES_INC}")
+  "${IVS_IMAGES_INC}" "${IVS_PSG_PROBE_INC}")
 add_executable(ivs_tests_runner runner/runner_main.c runner/runner_parse.c runner/runner_fuzz.c runner/runner_exec.c
-  runner/runner_time.c
+  runner/runner_time.c runner/runner_refpcm.c
   ${IVS_RUNNER_TEST_GENERATED})
 target_include_directories(ivs_tests_runner PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 add_dependencies(ivs_tests_runner ivs_images)
-target_link_libraries(ivs_tests_runner PRIVATE ivs_test_harness ivs_runner_lib ivs_core ivs_warnings ivs_san)
+target_link_libraries(ivs_tests_runner PRIVATE ivs_test_harness ivs_runner_lib ivs_refpcm ivs_core ivs_warnings ivs_san)
 add_test(NAME runner COMMAND ivs_tests_runner)
 set_tests_properties(runner PROPERTIES SKIP_RETURN_CODE 77)
 ivs_fault_suite(runner
   SOURCES runner/runner_main.c runner/runner_parse.c runner/runner_fuzz.c runner/runner_exec.c
-  runner/runner_time.c
-  INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/runner" "${CMAKE_CURRENT_BINARY_DIR}"
+  runner/runner_time.c runner/runner_refpcm.c "${PROJECT_SOURCE_DIR}/tools/pcm/ivs_refpcm.c"
+  INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/runner" "${PROJECT_SOURCE_DIR}/tools/pcm" "${CMAKE_CURRENT_BINARY_DIR}"
   GENERATED ${IVS_RUNNER_TEST_GENERATED}
   MODULES core runner)
 

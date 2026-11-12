@@ -112,15 +112,31 @@ IVS_API ivs_status ivs_machine_peek(const ivs_machine *m, uint16_t addr, uint32_
  *   required = bytes_per_frame * (max(target_ticks - now, 0) / nominal_frame_ticks + 1)
  * an upper bound on the frames the run can complete, the overshoot of its last unit included. A
  * capacity below it is BUFFER_TOO_SMALL with nothing changed; a buffer may be NULL only with
- * capacity 0. Phase 4 profiles have layout NONE with 0 bytes per frame, so every capacity (0 and a
- * NULL buffer included) suffices, no byte is written and the three report counts below are 0: no
- * frame is fabricated. */
+ * capacity 0, and that pair means "channel not requested": no check, no byte, no state change
+ * whatever the layout requires (D-17, plan 05-02; a non-NULL buffer with capacity 0 against a layout
+ * that needs bytes is still BUFFER_TOO_SMALL). A third channel, the PSG register-write log
+ * (psg_log, psg_log_capacity; request v2), follows video and audio with
+ * psg_log_bytes_per_frame from the profile's layout. A layout with 0 bytes per frame needs nothing
+ * and gets nothing (video, until Phase 6, is such a channel: no frame is fabricated). From plan 05-06 the audio layout is real: format IVS_OUTPUT_FORMAT_PSG_LEVELS_V1,
+ * one 4-byte sample (level_A, level_B, level_C, 0) per PSG chip step, stamped k * audio_sample_ticks
+ * master ticks on an absolute grid from reset, delivered into the audio buffer in order. The core
+ * catches the chip up to the end of every unit it runs (never to the target), so a call delivers
+ * the samples due up to the boundary it ends at; audio_bytes_written counts the bytes delivered and
+ * audio_first_index is the number of samples emitted before the call (the delivered streams of
+ * consecutive calls concatenate to the stream of one call). A NULL buffer with capacity 0 runs the
+ * same code against a counting sink: nothing is written and the machine state is byte-identical to a
+ * run with a buffer. The per-frame size includes a slack of ceil(U / P) + 1 samples, U the proven
+ * maximum ticks of one CPU unit and P the sample period, which covers the samples of the last
+ * unit's overshoot. */
 
 /* Input (D-12..D-15, plan 04-11). Core input is LOGICAL switch state: one uint32_t per controller,
  * indexed by PSG port (0 = R14/$01FE, 1 = R15/$01FF), never by player or side. A word holds the
  * switches that are closed; bit 31 (IVS_CTRL_RESERVED_MASK) is reserved and must be 0. The
- * electrical active-low port byte is a derived observation (Phase 5); there is no raw-byte
- * override and no electrical input path. Nothing in the machine reads the words in Phase 4.
+ * words are guest-visible machine input (plan 05-05): the guest reads the two PSG I/O ports at
+ * $01FE (word 0) and $01FF (word 1), indexed by PSG port, and a port in input mode returns the
+ * electrical active-low byte, derived by the core from the words and the profile's control table
+ * (FF XOR the OR of the line masks of every closed switch, upper byte 0; a port the guest set to
+ * output returns its stored latch); there is no raw-byte override and no electrical input path.
  * Words at an index at or above the profile's connected controller count (input.controllers; 2
  * on the Phase 4 profile, so words 2 and 3, reserved for expansion ports) must be 0 (UNSUPPORTED,
  * INPUT_EXTRA_CONTROLLER, plan 04-12).
@@ -194,11 +210,15 @@ typedef struct ivs_input_event {
   uint32_t controller[4]; /* index = PSG port (0 = R14/$01FE, 1 = R15/$01FF), not player */
 } ivs_input_event;
 
-/* In: one run. v1 size: the sizeof below (64 bytes with 64-bit pointers; events at offset 48),
- * frozen by plan 04-13 (test run.struct.*): from there the A-02 rule applies, so a new field goes
- * after the v1 size and the minimum struct_size stays the v1 size. struct_size must be at least
- * the v1 size; a larger struct_size (up to IVS_STRUCT_SIZE_MAX) is accepted only when every byte
- * past it is zero. */
+/* In: one run. The v1 size is IVS_RUN_REQUEST_V1_SIZE (64 bytes with 64-bit pointers; events at
+ * offset 48), frozen by plan 04-13 (test run.struct.*) and pinned as a constant by plan 05-02
+ * (D-19, A-04): the minimum accepted struct_size is that constant, never sizeof of the grown
+ * struct, so a caller built against the Phase 4 header keeps working. The v2 fields psg_log and
+ * psg_log_capacity (plan 05-02, offsets 64 and 72, sizeof 80 with 64-bit pointers) are read only
+ * when struct_size covers them (at least 80); a v1-sized caller reads as psg_log NULL, capacity
+ * 0. A struct_size above the core's own size (up to IVS_STRUCT_SIZE_MAX) is accepted only when
+ * every byte past the core's size is zero. New fields go after the last one (A-02). */
+#define IVS_RUN_REQUEST_V1_SIZE 64u /* the 64-bit-pointer statement; other pointer widths do not pin it */
 typedef struct ivs_run_request {
   uint32_t struct_size;
   uint32_t flags;          /* IVS_RUN_F_* */
@@ -210,9 +230,15 @@ typedef struct ivs_run_request {
   const ivs_input_event *events; /* caller-owned input schedule, or NULL with event_count 0 */
   uint32_t event_count;          /* events at events, at most IVS_INPUT_EVENTS_MAX */
   uint32_t reserved_in;          /* must be 0 (UNSUPPORTED otherwise) */
+  /* ---- end of the v1 size (64) ---- */
+  uint8_t *psg_log;            /* v2: caller-owned write-log bytes, or NULL with psg_log_capacity 0 */
+  uint64_t psg_log_capacity;   /* v2: bytes at psg_log */
 } ivs_run_request;
 
-/* Out: what one run did (v1 size 112 bytes on every ABI, frozen by plan 04-13; A-02 from there). On IVS_OK
+#define IVS_RUN_REPORT_V1_SIZE 112u
+
+/* Out: what one run did (v1 size IVS_RUN_REPORT_V1_SIZE = 112 bytes on every ABI, frozen by plan 04-13 and pinned as a
+ * constant by plan 05-02; A-02 from there). On IVS_OK
  * every field is written: the stop reason,
  * refusal_reason IVS_REASON_NONE, the CPU run state and fault reason at exit (IVS_CPU_STATE_*,
  * IVS_CPU_FAULT_*), machine time at exit, overshoot_ticks = max(now_ticks - target_ticks, 0)
@@ -222,7 +248,11 @@ typedef struct ivs_run_request {
  * IVS_INPUT_INDEX_NONE, input_floor_tick, controller_now; above). On a refusal only struct_size
  * and refusal_reason (IVS_REASON_*) are written, plus input_failing_index for a refusal of one
  * event (the IVS_REASON_INPUT_* reasons of the event stages below), and nothing at all when the
- * report itself is the cause (NULL, size, overlap). */
+ * report itself is the cause (NULL, size, overlap).
+ * Growth (plan 05-02, D-19, A-04): the minimum accepted rep->struct_size is IVS_RUN_REPORT_V1_SIZE;
+ * the core writes min(rep->struct_size, sizeof(ivs_run_report)) bytes, sets the written
+ * struct_size to that count, and leaves every byte of a larger caller struct past it untouched.
+ * Refusal writes (struct_size, refusal_reason, input_failing_index) stay inside the v1 prefix. */
 typedef struct ivs_run_report {
   uint32_t struct_size;
   uint32_t stop_reason;      /* IVS_STOP_* */
@@ -236,27 +266,36 @@ typedef struct ivs_run_report {
   uint64_t units_executed;
   uint64_t video_frames_completed; /* 0 in Phase 4 */
   uint64_t video_bytes_written;    /* 0 in Phase 4 */
-  uint64_t audio_bytes_written;    /* 0 in Phase 4 */
+  uint64_t audio_bytes_written;    /* audio bytes delivered into the caller buffer (plan 05-06) */
   uint32_t input_consumed;         /* events of the request applied by this call */
   uint32_t input_failing_index;    /* the refused event, else IVS_INPUT_INDEX_NONE */
   uint64_t input_floor_tick;       /* start of the last begun unit + 1 (0 before any unit) */
   uint32_t controller_now[4];      /* the controller words in force at exit */
+  /* ---- end of the v1 size (112) ---- */
+  uint64_t audio_first_index;      /* v2, offset 112: samples emitted before this call (plan 05-06) */
+  uint64_t psg_log_bytes_written;  /* v2, offset 120: write-log bytes delivered into psg_log by this call (plan 05-08) */
+  uint64_t psg_log_first_index;    /* v2, offset 128: records logged before this call (plan 05-08); sizeof 136 */
 } ivs_run_report;
 
 /* Runs m to req->target_ticks (above). Refusal order (D-05), first failing class wins, every
  * refusal before the first unit so a refused call changes nothing in the instance and writes no
  * byte into either output buffer:
- *   BAD_ARG       req NULL (IVS_REASON_RUN_NULL_ARG); req->struct_size below sizeof or above
- *                 IVS_STRUCT_SIZE_MAX (RUN_STRUCT_SIZE); rep NULL, or rep->struct_size below sizeof
- *                 or above IVS_STRUCT_SIZE_MAX (nothing written);
+ *   BAD_ARG       req NULL (IVS_REASON_RUN_NULL_ARG); req->struct_size below
+ *                 IVS_RUN_REQUEST_V1_SIZE or above IVS_STRUCT_SIZE_MAX (RUN_STRUCT_SIZE); rep NULL,
+ *                 or rep->struct_size below IVS_RUN_REPORT_V1_SIZE or above IVS_STRUCT_SIZE_MAX
+ *                 (nothing written);
  *   BAD_HANDLE    NULL or invalid handle (IVS_REASON_HANDLE);
  *   BAD_ARG       rep overlaps the instance storage (nothing written);
- *   UNSUPPORTED   an unknown or reserved flag (RUN_FLAGS), then a nonzero byte past sizeof of a
- *                 larger request (RUN_TAIL), then a nonzero reserved_in (INPUT_RESERVED_IN);
+ *   UNSUPPORTED   an unknown or reserved flag (RUN_FLAGS), then a nonzero byte past the core's own
+ *                 sizeof of a larger request (RUN_TAIL), then a nonzero reserved_in
+ *                 (INPUT_RESERVED_IN);
  *   BAD_ARG       output buffers: a NULL buffer with a nonzero capacity (RUN_BUFFER_NULL), then a
  *                 buffer (capacity bytes) running past the top of the address space or
  *                 overlapping the instance storage, the other buffer or the report
- *                 (RUN_BUFFER_OVERLAP; uintptr_t arithmetic, 64-bit lengths);
+ *                 (RUN_BUFFER_OVERLAP; uintptr_t arithmetic, 64-bit lengths); then the write log
+ *                 (plan 05-02): psg_log NULL with a nonzero psg_log_capacity (RUN_PSGLOG_NULL),
+ *                 psg_log running past the top of the address space or overlapping the instance,
+ *                 the report, video, audio or the event array (RUN_PSGLOG_OVERLAP);
  *   BAD_ARG       event arguments: events NULL with event_count above 0 (INPUT_EVENTS_NULL),
  *                 event_count above IVS_INPUT_EVENTS_MAX (INPUT_EVENT_COUNT), then the
  *                 event_count * 32 bytes at events running past the top of the address space
@@ -264,7 +303,8 @@ typedef struct ivs_run_report {
  *                 the video buffer or the audio buffer (INPUT_EVENTS_OVERLAP); no event is read;
  *   BAD_STATE     the machine is OFF (RUN_STATE_OFF);
  *   OUT_OF_RANGE  target_ticks above IVS_RUN_TARGET_MAX (RUN_TARGET_RANGE);
- *   BUFFER_TOO_SMALL  a capacity below the output layout's requirement (above; RUN_BUFFER_SMALL);
+ *   BUFFER_TOO_SMALL  a capacity below the output layout's requirement (above; RUN_BUFFER_SMALL for
+ *                 video or audio, RUN_PSGLOG_SMALL for the write log);
  *   BAD_ARG       the events, whole array, lowest failing index: an at_tick at or above 2^63
  *                 (INPUT_TICK_RANGE), below the previous event's (INPUT_UNSORTED) or below the
  *                 input floor (INPUT_BEFORE_FLOOR);

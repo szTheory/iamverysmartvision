@@ -5,7 +5,8 @@
  * ivs_runner_outcome_resolve. Families parse and fuzz (runner_parse.c, runner_fuzz.c, plan
  * 04-17): the IVSS v1 scenario parser. Family exec (runner_exec.c, plan 04-18): the executor and
  * report writer through a fake host. Family time (runner_time.c, plan 04-19): slicing, budget,
- * wall cap and cancellation with a fake clock. Named faults: data/expected/faults/runner.ids. */
+ * wall cap and cancellation with a fake clock. Family refpcm (runner_refpcm.c, plan 05-10): the
+ * reference PCM converter. Named faults: data/expected/faults/runner.ids. */
 #include <stdint.h>
 #include <string.h>
 
@@ -248,7 +249,11 @@ static const char *runner_case_id(const void *data, size_t i)
   if (i < runner_exec_count()) {
     return runner_exec_id(i);
   }
-  return runner_time_id(i - runner_exec_count());
+  i -= runner_exec_count();
+  if (i < runner_time_count()) {
+    return runner_time_id(i);
+  }
+  return runner_refpcm_id(i - runner_time_count());
 }
 
 static int runner_case_run(const void *data, size_t i)
@@ -269,7 +274,11 @@ static int runner_case_run(const void *data, size_t i)
   if (i < runner_exec_count()) {
     return runner_exec_run(i);
   }
-  return runner_time_run(i - runner_exec_count());
+  i -= runner_exec_count();
+  if (i < runner_time_count()) {
+    return runner_time_run(i);
+  }
+  return runner_refpcm_run(i - runner_time_count());
 }
 
 int main(int argc, char **argv)
@@ -278,7 +287,7 @@ int main(int argc, char **argv)
   memset(&suite, 0, sizeof suite);
   suite.name = "runner";
   suite.count = OUTCOME_CASES + runner_parse_count() + runner_fuzz_count() + runner_exec_count() +
-                runner_time_count();
+                runner_time_count() + runner_refpcm_count();
   suite.id = runner_case_id;
   suite.run = runner_case_run;
   return ivs_test_main(argc, argv, &suite);
