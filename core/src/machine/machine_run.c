@@ -22,7 +22,8 @@
  * (Phase 3 has no device that drives INTR, INTRM, BUSRQ or STPST) and a port whose bus is
  * ivs_machine_bus, the machine-level wrapper (plan 05-04, A-01), which forwards every access to
  * ivs_memsys_bus on the instance's own memory system. Machine time advances by the unit's
- * elapsed CPU cycles times the profile's ticks_per_cpu_cycle (D2: time is kept in master ticks).
+ * elapsed CPU cycles times the profile's ticks_per_cpu_cycle (D2: time is kept in master ticks); then the PSG is caught up to the new
+ * machine time (plan 05-06, A-02), after the catch-ups of its own register writes (machine_bus.c).
  * A unit the CPU accepts sets the input floor to its start tick + 1 (plan 04-11, D-14), so the run
  * call and a seam-stepped twin leave the same INPUT row.
  * The file holds no static or global state: every value lives in the instance (D-07).
@@ -108,6 +109,13 @@ ivs_status ivs_machine_reset(ivs_machine *m, uint32_t kind)
 
 ivs_status ivs_machine_step_unit_internal(ivs_machine *m, ivs_cp1610_result *out)
 {
+  ivs_psg_sink counting;
+  ivs_psg_sink_init(&counting, NULL, 0u); /* the counting sink: the same code, nothing delivered */
+  return ivs_machine_step_unit_sink_internal(m, out, &counting);
+}
+
+ivs_status ivs_machine_step_unit_sink_internal(ivs_machine *m, ivs_cp1610_result *out, ivs_psg_sink *sink)
+{
   struct ivs_machine *im;
   const ivs_profile_desc *p;
   ivs_cp1610_config cfg;
@@ -118,7 +126,7 @@ ivs_status ivs_machine_step_unit_internal(ivs_machine *m, ivs_cp1610_result *out
   ivs_status st;
   uint32_t cycles;
   uint64_t start;
-  if (out == NULL) {
+  if (out == NULL || sink == NULL) {
     return IVS_E_BAD_ARG;
   }
   im = ivs_machine_from_handle_mut(m);
@@ -142,6 +150,8 @@ ivs_status ivs_machine_step_unit_internal(ivs_machine *m, ivs_cp1610_result *out
   bus_ctx.m = im;
   bus_ctx.unit_start_tick = start;
   bus_ctx.ticks_per_cpu_cycle = p->ticks_per_cpu_cycle;
+  bus_ctx.psg = ivs_psg_params_get(im->profile); /* registered: the handle check covers the index */
+  bus_ctx.sink = sink;
   memset(&port, 0, sizeof port);
   port.bus = ivs_machine_bus;
   port.ebci = NULL;
@@ -163,6 +173,11 @@ ivs_status ivs_machine_step_unit_internal(ivs_machine *m, ivs_cp1610_result *out
   }
 #endif
   im->time_ticks += (uint64_t)cycles * (uint64_t)p->ticks_per_cpu_cycle;
+  /* Plan 05-06 (A-02): the PSG is caught up to the unit boundary at EVERY unit end, in the seam and
+   * in the run call alike (which steps through here), never to a call target. */
+  if (bus_ctx.psg != NULL) {
+    ivs_psg_catch_up(bus_ctx.psg, &im->psg, im->mem.psg_reg, &im->obs.audio, im->time_ticks, sink);
+  }
   *out = r;
   return IVS_OK;
 }

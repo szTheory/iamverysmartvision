@@ -19,6 +19,9 @@
 #   ivs_info publishes, D-06/D-09, plan 04-09; nominal figures, never a frame event)
 #   input.controllers (1..4: connected hand controllers, event word index = PSG port; the run
 #   call refuses a nonzero controller word at or above it, D-13/D-15, plan 04-12)
+#   ticks_per_psg_clock, psg.sample_period_ticks, psg.max_unit_ticks (1..65535 each, plan 05-06: the
+#   PSG time chain the audio layout derives from; cmake/IvsPsgTable.cmake validates their relations)
+#   and crystal_hz {num, den} (the passthrough ivs_info republishes, D-19; the core never reads it)
 # Hex values are "$XXXX" strings (four uppercase digits), as in reset.r7.
 #
 # Fail closed (message `IvsMemmapTable: <profile>: <field>: <reason>`): hi < lo; lo or hi+1 not
@@ -272,6 +275,22 @@ foreach(rel IN LISTS mm_profiles)
       mm_fail("must be nonzero")
     endif()
   endforeach()
+  # Plan 05-06: the PSG time chain and the crystal passthrough (psg.* are validated by IvsPsgTable.cmake).
+  set(MM_CTX "${rel}: ticks_per_psg_clock")
+  mm_uint(ticks_per_psg "${doc}" "value" 65535 fields ticks_per_psg_clock value)
+  if(ticks_per_psg EQUAL 0)
+    mm_fail("must be nonzero")
+  endif()
+  set(MM_CTX "${rel}: psg.sample_period_ticks")
+  mm_uint(psg_sample_period "${doc}" "value" 65535 fields psg.sample_period_ticks value)
+  set(MM_CTX "${rel}: psg.max_unit_ticks")
+  mm_uint(psg_max_unit "${doc}" "value" 65535 fields psg.max_unit_ticks value)
+  set(MM_CTX "${rel}: crystal_hz")
+  mm_uint(crystal_num "${doc}" "num" 4294967295 fields crystal_hz value num)
+  mm_uint(crystal_den "${doc}" "den" 4294967295 fields crystal_hz value den)
+  if(crystal_num EQUAL 0 OR crystal_den EQUAL 0)
+    mm_fail("num and den must be nonzero")
+  endif()
   set(MM_CTX "${rel}: input.controllers")
   mm_uint(input_controllers "${doc}" "value" 4 fields input.controllers value)
   if(input_controllers EQUAL 0)
@@ -545,7 +564,8 @@ foreach(rel IN LISTS mm_profiles)
   string(APPEND reg_c
     "  {\"${pid}\", ${r7_l}, ${iab_l}, ${und_l}, ${slo_l}, ${shi_l}, ${ticks_per_cpu}u, ${has_span}u, ${intff}u, ${release}u,\n"
     "   ${wait_limit}u, ${features}u, ${slot_exec_c}, ${slot_grom_c}, ${scanlines_per_frame}u,\n"
-    "   ${cpu_cycles_per_scanline}u, ${input_controllers}u},\n")
+    "   ${cpu_cycles_per_scanline}u, ${input_controllers}u, ${ticks_per_psg}u, ${psg_sample_period}u,\n"
+    "   ${psg_max_unit}u, ${crystal_num}ull, ${crystal_den}ull},\n")
 endforeach()
 
 if(DEFINED MUTATE AND NOT MUTATE STREQUAL "" AND NOT MM_MUTATED)

@@ -139,6 +139,12 @@ typedef struct ivs_profile_desc {
   uint16_t cpu_cycles_per_scanline; /* nominal; nonzero; never a frame event */
   uint16_t input_controllers;       /* input.controllers, 1..4 (D-13, D-15, plan 04-12): a nonzero
                                      * controller word at or above it is refused UNSUPPORTED */
+  /* Plan 05-06 (D-09, D-15, D-17, D-19): the PSG time chain and the crystal passthrough. */
+  uint16_t ticks_per_psg_clock;     /* master ticks per PSG chip clock (ticks_per_psg_clock), nonzero */
+  uint16_t psg_sample_period_ticks; /* master ticks per chip step = audio sample (psg.sample_period_ticks) */
+  uint16_t psg_max_unit_ticks;      /* proven maximum ticks of one CPU unit (psg.max_unit_ticks, C53) */
+  uint64_t crystal_hz_num;          /* crystal_hz as a fraction; the core never reads it (D-19) */
+  uint64_t crystal_hz_den;
 } ivs_profile_desc;
 
 /* What the decode says about one address in one view (A-05b). */

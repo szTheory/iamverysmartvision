@@ -89,3 +89,13 @@ input.line_model
 input.line_idle
 input.port_output_read
 psg.mixer.port_dir_bits
+psg.clocks_per_step
+psg.sample_period_ticks
+psg.counter_model
+psg.period_zero.tone
+psg.mixer.bits
+psg.amp.env_select
+psg.reset
+psg.clock_phase_ticks
+psg.write_strobe_ticks
+psg.max_unit_ticks

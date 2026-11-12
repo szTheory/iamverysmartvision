@@ -108,7 +108,9 @@ DIGEST_DOMAIN_SWAPPED machine.digest.composite-excludes-16-18 machine.digest. ma
 # the PSG-row sensitivity cases see no change; DIGEST_COMPOSITE_VERSION_STALE (machine_digest.c)
 # keeps the Phase 4 composite framing version 1 (machine.digest.composite-v2-framing and every
 # composite literal fail by the same rule); PSG_STATE_NOT_RESET_ON_POWER_ON (machine_run.c) skips
-# the reset call of the PSG state struct, so a dirtied state survives a power cycle.
+# the reset call of the PSG state struct, so a dirtied state survives a power cycle (from plan 05-06 the
+# state also starts at step 1, so a machine that skipped the call steps from 0 and the stepped
+# literals and the reset equivalence of two powered instances differ too).
 DIGEST_PSG_ROWS_OMITTED machine.digest.coverage machine.digest. machine.create.ok-info-destroy
 DIGEST_COMPOSITE_VERSION_STALE machine.digest.composite-v2-framing machine.digest. machine.create.ok-info-destroy
-PSG_STATE_NOT_RESET_ON_POWER_ON machine.reset.psg-state-cleared machine.reset.psg-state-cleared machine.create.ok-info-destroy
+PSG_STATE_NOT_RESET_ON_POWER_ON machine.reset.psg-state-cleared machine.reset.psg-state-cleared|machine.reset.equivalence|machine.digest.stepped-literals machine.create.ok-info-destroy

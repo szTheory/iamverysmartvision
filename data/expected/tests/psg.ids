@@ -5,6 +5,9 @@
 # reset, bus, no-mirror, purity and guest tests; and the two judge self-controls (psg.judge.*).
 # Plan 05-05: the port family (data/psg/vectors/port.txt, psg.port.*, 10), evaluated through the bus READ with
 # the pins of the vector's pin key and the direction bits of R7, and its judge self-control.
+# Plan 05-06: the engine families tone (tone.txt, psg.tone.*, 16 plus the guest tracer), mix (mix.txt, 10) and amp
+# (amp.txt, 6), judged on the sample stream or the pure functions by psg_tone.c and psg_mix.c, and two judge
+# self-controls (psg.judge.tone-row-changed, psg.judge.mix-row-changed).
 # The vector families wired into the suite are the ones NOT listed in data/psg/vectors-pending.ids.
 psg.regmap.matches-literal
 psg.reset.power-on-zero
@@ -57,3 +60,38 @@ psg.port.write-in-input-latch-only
 psg.port.back-to-input
 psg.port.direction-bit-order
 psg.judge.port-row-changed
+psg.tone.rate-p1
+psg.tone.rate-p2
+psg.tone.rate-p3
+psg.tone.rate-p255
+psg.tone.rate-p256
+psg.tone.rate-p4095
+psg.tone.rate-b-p3
+psg.tone.rate-c-p3
+psg.tone.toggles-p7
+psg.tone.toggles-p255
+psg.tone.coarse-fine-combine
+psg.tone.first-edge-step1
+psg.tone.level-seq-p1
+psg.tone.level-seq-p2
+psg.tone.period-zero
+psg.tone.next-reload
+psg.mix.truth-table
+psg.mix.and-tone0
+psg.mix.and-noise0
+psg.mix.and-both0
+psg.mix.both-disabled-const1
+psg.mix.tone-only-1
+psg.mix.tone-only-0
+psg.mix.noise-only-1
+psg.mix.noise-only-0
+psg.mix.channel-isolated
+psg.amp.fixed-15
+psg.amp.fixed-0
+psg.amp.fixed-masks-upper
+psg.amp.env-mode
+psg.amp.env-shift2
+psg.amp.env-shift1
+psg.tone.guest-late-period
+psg.judge.tone-row-changed
+psg.judge.mix-row-changed

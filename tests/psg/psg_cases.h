@@ -68,4 +68,57 @@ const char *ivs_psg_port_vector_id(size_t i);
 int ivs_psg_port_vector_run(size_t i);
 const ivs_test_source *ivs_psg_port_sources(size_t *n);
 
+/* Engine vectors (plan 05-06, cmake/IvsPsgVectors.cmake families tone, mix, amp): the writes run through the
+ * module-level PSG write function at their step (stamp step x 16 master ticks), the engine runs steps chip
+ * steps, and one expectation of the kind below is judged on the sample stream or the pure function. */
+#define IVS_PE_EDGE_SPACING 1u /* level changes of channel chan at exactly multiples of n steps */
+#define IVS_PE_TOGGLES 2u      /* n level changes of channel chan in the first window steps */
+#define IVS_PE_LEVEL_SEQ 3u    /* the levels of channel chan at steps 1.. equal seq */
+#define IVS_PE_GATE 4u         /* ivs_psg_mix_channel(tone b, noise c, r7 a, ch chan) == n */
+#define IVS_PE_INDEX 5u        /* ivs_psg_amp_index(amp a, env b) == n */
+
+typedef struct ivs_pe {
+  const char *id;
+  const char *rule;
+  uint32_t source;
+  const ivs_pv_write *writes;
+  uint32_t n_writes;
+  uint32_t steps;
+  uint32_t kind;
+  uint32_t chan;
+  uint32_t n;
+  uint32_t window;
+  uint32_t a;
+  uint32_t b;
+  uint32_t c;
+  const uint8_t *seq;
+  uint32_t n_seq;
+} ivs_pe;
+
+/* Judges v (quiet suppresses the diagnostics): 1 when its expectation holds on a fresh PSG. Shared by
+ * the families tone (psg_tone.c), mix and amp (psg_mix.c). */
+int ivs_pe_eval(const ivs_pe *v, int quiet);
+
+/* Family tone (plan 05-06, psg_tone.c): the 16 vectors of tone.txt and the fixed cases (the guest tracer). */
+extern const ivs_test_case ivs_psg_tone_cases[];
+extern const size_t ivs_psg_tone_count;
+size_t ivs_psg_tone_vector_count(void);
+const char *ivs_psg_tone_vector_id(size_t i);
+int ivs_psg_tone_vector_run(size_t i);
+const ivs_test_source *ivs_psg_tone_sources(size_t *n);
+
+/* Families mix and amp (plan 05-06, psg_mix.c). */
+extern const ivs_test_case ivs_psg_mix_cases[];
+extern const size_t ivs_psg_mix_count;
+size_t ivs_psg_mix_vector_count(void);
+const char *ivs_psg_mix_vector_id(size_t i);
+int ivs_psg_mix_vector_run(size_t i);
+const ivs_test_source *ivs_psg_mix_sources(size_t *n);
+extern const ivs_test_case ivs_psg_amp_cases[];
+extern const size_t ivs_psg_amp_count;
+size_t ivs_psg_amp_vector_count(void);
+const char *ivs_psg_amp_vector_id(size_t i);
+int ivs_psg_amp_vector_run(size_t i);
+const ivs_test_source *ivs_psg_amp_sources(size_t *n);
+
 #endif

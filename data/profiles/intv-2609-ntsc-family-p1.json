@@ -105,13 +105,13 @@
     },
     "ticks_per_psg_clock": {
       "value": 2,
-      "tag": "unknown-default-chosen",
-      "cite": "SRC-mame-intv (emulator hint only, never evidence by itself)",
-      "conflict": null,
-      "resolving_evidence": "test: PSG tone-frequency vectors in Phase 5; measurement: D10 tone capture",
-      "revisit_trigger": "at Phase 5 PSG planning or when a tier 1 to 3 source gives the PSG chip clock",
+      "tag": "inference",
+      "cite": "SRC-gi-1980-catalog pdf-209 (printed 5-28): the AY-3-8910 input clock range 1.0 to 2.0 MHz; SRC-gi-1980-catalog pdf-207 (printed 5-26): the divide chains count the input clock; SRC-community-emu-docs: the tone formula F = crystal / (32 P), which is the crystal divided by 2 as the chip clock and a divide by 16 and by the period; the colour burst divided by 2 is the data sheet's own application clock circuit",
+      "conflict": "C76",
+      "resolving_evidence": "measurement: D10 owner hardware: a tone capture of known period against the video timing, and the PSG clock pin",
+      "revisit_trigger": "when a tier 1 to 3 source gives the PSG chip clock, or a D10 tone capture exists",
       "decision": "D2",
-      "note": "Only an emulator hint backs this value."
+      "note": "Retagged from unknown-default-chosen to inference in plan 05-06 (D-09): three non-emulator supports agree on crystal/2 (the community formula, the application circuit, the clock range). An emulator uses the same ratio; that is a hint, never evidence."
     },
     "scanlines_per_frame": {
       "value": 262,
@@ -911,6 +911,106 @@
       "revisit_trigger": "a primary data sheet of the console part or a D10 port direction probe",
       "decision": null,
       "note": "A and B are the bit numbers of R7 that select the direction of port 0 ($01FE) and port 1 ($01FF); output is the bit value that makes a port an output. The port read consumes it through the generated psg parameters; the read path holds no bit number."
+    },
+    "psg.clocks_per_step": {
+      "value": 8,
+      "tag": "inference",
+      "cite": "SRC-gi-1980-catalog pdf-207 (printed 5-26): the divide chains, the input clock by 16 and then by the period; a square wave toggles every half period, so one tone half-period is the period times 16 input clocks divided by 2",
+      "conflict": "C69",
+      "resolving_evidence": "measurement: D10 owner hardware: capture a tone of known period and compare the edge spacing with the profile",
+      "revisit_trigger": "when a primary source for the console part or a D10 tone capture exists",
+      "decision": null,
+      "note": "One PSG step is 8 PSG chip clocks (16 master ticks, 4 CPU cycles on the NTSC profile): tone half-period P steps, noise shift every 2 NP steps, envelope step every 2 EP steps. Counters are integers; there is no accumulator. This corrects the earlier text of docs/time-base.md (D-09)."
+    },
+    "psg.sample_period_ticks": {
+      "value": 16,
+      "tag": "inference",
+      "cite": "derived: ticks_per_psg_clock times psg.clocks_per_step (SRC-gi-1980-catalog pdf-207)",
+      "conflict": "C69",
+      "resolving_evidence": "measurement: D10 owner hardware: capture a tone of known period and compare the edge spacing with the profile",
+      "revisit_trigger": "when ticks_per_psg_clock or psg.clocks_per_step changes",
+      "decision": null,
+      "note": "Master ticks between two audio samples (one per PSG step, D-15). The generator refuses a value that is not ticks_per_psg_clock times psg.clocks_per_step."
+    },
+    "psg.counter_model": {
+      "value": "down-reload",
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: the data sheet prints the divide chain, not the counter structure",
+      "conflict": "C12",
+      "resolving_evidence": "measurement: D10 owner hardware: write a new period while a tone runs and capture the next edge",
+      "revisit_trigger": "a die analysis, a schematic or a D10 capture of a period change mid-half-cycle",
+      "decision": null,
+      "note": "Each counter is empty at reset, reloaded from the effective period on its first step, counts down by one per step and fires at zero; a period write takes effect at the next reload (policy POL-PSG-02). The generator accepts only down-reload."
+    },
+    "psg.period_zero.tone": {
+      "value": 4096,
+      "tag": "tier4-community",
+      "cite": "SRC-intv-wiki PSG (oldid 14940): a tone period of 0 acts as 4096",
+      "conflict": "C12",
+      "resolving_evidence": "measurement: D10 owner hardware: capture the tone of period 0",
+      "revisit_trigger": "a primary data sheet of the console part or a D10 capture",
+      "decision": null,
+      "note": "Effective tone period: value == 0 ? this field : value. Many other AY emulators treat 0 as 1 (C12)."
+    },
+    "psg.mixer.bits": {
+      "value": {"polarity": 0, "tone": [0, 1, 2], "noise": [3, 4, 5]},
+      "tag": "inference",
+      "cite": "SRC-gi-1980-catalog pdf-207 (printed 5-26): the Enable cells of R7 with the active-low overbar; SRC-intv-wiki PSG (oldid 14940): bits 0..2 tone, bits 3..5 noise",
+      "conflict": "C69",
+      "resolving_evidence": "measurement: D10 owner hardware: a mixer register sweep against the sound output",
+      "revisit_trigger": "a primary data sheet of the console part or a D10 capture",
+      "decision": null,
+      "note": "polarity 0 means a 0 bit enables the generator. The channel gate is (tone | tone_disabled) & (noise | noise_disabled), so a channel with both disabled is a constant 1. The tone and noise lists give the R7 bit of channel A, B, C."
+    },
+    "psg.amp.env_select": {
+      "value": {"fixed": [3, 0], "select": [5, 4], "shift": [2, 1, 0]},
+      "tag": "tier4-community",
+      "cite": "SRC-intv-wiki PSG (oldid 14940): the amplitude register bits 3..0 are the fixed level and the 2-bit select in bits 5..4 chooses the envelope scaled by a right shift",
+      "conflict": "C12",
+      "resolving_evidence": "measurement: D10 owner hardware: an envelope run through each select value",
+      "revisit_trigger": "a primary data sheet of the console part or a D10 capture",
+      "decision": null,
+      "note": "fixed and select are [high bit, low bit] of their fields in the amplitude register; shift lists the right shift of the envelope level for select 1, 2, 3 (select 0 is the fixed level). The data sheet does not print the sense (C12)."
+    },
+    "psg.reset": {
+      "value": {"registers": "zero", "tone_output": 0, "tone_counter": "reload-on-first-step", "lfsr": "seed", "envelope": "held-0", "ports": "input"},
+      "tag": "unknown-default-chosen",
+      "cite": "SRC-gi-1980-catalog pdf-205 (printed 5-24): a low reset pin resets all registers to zero; nothing else about the reset state is printed",
+      "conflict": "C77",
+      "resolving_evidence": "measurement: D10 owner hardware: read the registers and capture the first samples after power-on and after a console reset",
+      "revisit_trigger": "a schematic of the reset line or a D10 capture",
+      "decision": null,
+      "note": "Registers zero, tone outputs 0, tone counters empty (reloaded on the first step), the noise register at its seed and the envelope held at level 0 (the last two are written by plan 05-07), both ports input."
+    },
+    "psg.clock_phase_ticks": {
+      "value": 0,
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: no source gives the phase of the PSG clock against the master clock",
+      "conflict": "C76",
+      "resolving_evidence": "measurement: D10 owner hardware: capture a tone against the video timing",
+      "revisit_trigger": "a schematic or a D10 capture",
+      "decision": null,
+      "note": "The PSG step grid starts at master tick 0 at reset (step k at k times the sample period). The generator accepts only 0."
+    },
+    "psg.write_strobe_ticks": {
+      "value": 0,
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: no source gives the instant within a CPU cycle at which a register write takes effect",
+      "conflict": "C78",
+      "resolving_evidence": "test: psg.sample.write-effect-boundary and the psg.slice contract tests; a hardware reading is a D10 refinement",
+      "revisit_trigger": "a D10 capture of a write against the sample edge",
+      "decision": null,
+      "note": "Master ticks added to the start of the write's bus cycle to give the tick a PSG register write is stamped with; a sample at k times the sample period sees writes stamped below it (step first, then write, C78)."
+    },
+    "psg.max_unit_ticks": {
+      "value": 468,
+      "tag": "inference",
+      "cite": "derived from bus.wait_limit_cpu_cycles (C53): (12 + 3 x 35) CPU cycles x ticks_per_cpu_cycle; the maximum unit on the real bus (wait 0) is 12 CPU cycles",
+      "conflict": "C53",
+      "resolving_evidence": "test: psg.bounds.unit-ticks-max and psg.bounds.unit-ticks-real-bus (exhaustive probe through the CPU model)",
+      "revisit_trigger": "when bus.wait_limit_cpu_cycles changes or a device other than the memory system can stall the bus (Phase 6)",
+      "decision": null,
+      "note": "The proven maximum ticks of one CPU unit, published for the audio capacity slack (D-17): s = ceil(U / P) + 1. The generator refuses a value that is not (12 + 3 x bus.wait_limit_cpu_cycles) x ticks_per_cpu_cycle."
     }
   }
 }

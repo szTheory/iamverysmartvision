@@ -73,13 +73,9 @@ typedef struct ivs_machine_obs_av {
   uint64_t count;
 } ivs_machine_obs_av;
 
-typedef struct ivs_machine_obs_audio {
-  uint8_t chain[32];
-  uint64_t count;      /* level-change records chained */
-  uint64_t emitted;    /* samples emitted (with or without a buffer) */
-  uint32_t prev_levels; /* levels of the last emitted sample, channels A, B, C in bytes 0..2 */
-  uint32_t reserved;    /* 0 (PAD row) */
-} ivs_machine_obs_audio;
+/* The AUDIO row is the PSG module's observation struct (psg/psg.h, plan 05-06): the chain over the
+ * level-change records, the emitted count and the previous sample's levels. */
+typedef ivs_psg_obs ivs_machine_obs_audio;
 
 typedef struct ivs_machine_obs_input {
   uint32_t words[4];
@@ -199,11 +195,18 @@ uint32_t ivs_machine_out_overlaps(const void *out, size_t n, const void *inst, s
 typedef struct ivs_machine_bus_ctx {
   struct ivs_machine *m;
   uint64_t unit_start_tick;
+  const ivs_psg_params *psg;  /* the profile's PSG parameters (plan 05-06) */
+  ivs_psg_sink *sink;         /* where the samples a write's catch-up makes go (plan 05-06) */
   uint32_t ticks_per_cpu_cycle;
   uint32_t reserved; /* 0 */
 } ivs_machine_bus_ctx;
 
 ivs_bus_reply ivs_machine_bus(void *ctx, const ivs_cp1610_access *a);
+
+/* Plan 05-06 (A-01, A-02, D-16): the wrapper stamps a write that reaches the PSG region with
+ * unit_start_tick + offset_cpu_cycles * ticks_per_cpu_cycle + psg.write_strobe_ticks and catches the
+ * PSG up to the stamp (the samples go to sink) BEFORE the memory system stores the masked register;
+ * the step seam catches it up to the unit's end (machine time after the unit) at every unit end. */
 
 /* ---- internal step seam (D-05, D-20, plan 03-12, machine_run.c) ----
  * Steps one CPU unit of a POWERED instance through its memory system: the CPU configuration
@@ -217,6 +220,12 @@ ivs_bus_reply ivs_machine_bus(void *ctx, const ivs_cp1610_access *a);
  * IVS_OK. Never public: it is declared here and nowhere under core/include; Phase 4's bounded
  * run API is built on it. */
 ivs_status ivs_machine_step_unit_internal(ivs_machine *m, ivs_cp1610_result *out);
+
+/* The same step with a caller sink (plan 05-06, A-02): every sample the unit's PSG catch-ups produce
+ * (to each write's stamp, then to the unit's end) goes to sink; the run call passes the sink over the
+ * caller's audio buffer or a counting sink, the public-seam form above uses a counting sink of its
+ * own. The machine state after the unit does not depend on the sink. sink must not be NULL. */
+ivs_status ivs_machine_step_unit_sink_internal(ivs_machine *m, ivs_cp1610_result *out, ivs_psg_sink *sink);
 
 /* ---- internal run env seam (D-06, plan 04-10, machine_bound.c) ----
  * The output layout a run is checked against: per channel a format (IVS_OUTPUT_FORMAT_*) and the

@@ -7,7 +7,23 @@
 PSG_TONE_HIGH_NIBBLE_UNMASKED psg.reg.tone-high-mask psg.reg.|psg.judge.mask-row- psg.reset.regs-zero
 # PSG_REG_OCTAL_AS_HEX: the amplitude registers (data sheet R10..R12, octal) land one slot low, R10 at
 # $01FA; only the vectors that write two registers or read the amplitude against a neighbour's mask see
-# it (store and load shift together, so a lone amplitude B or C round trip is consistent).
-PSG_REG_OCTAL_AS_HEX psg.reg.map-amplitude psg.reg. psg.reset.regs-zero
+# it (store and load shift together, so a lone amplitude B or C round trip is consistent). From plan 05-06
+# every tone vector and the guest tracer write amplitude A at $01FB, which lands at $01FA under the fault.
+PSG_REG_OCTAL_AS_HEX psg.reg.map-amplitude psg.reg.|psg.tone.|psg.judge.tone- psg.reset.regs-zero
 # PSG_SHAPE_READBACK_STORED: the shape register reads back what was stored instead of 0 (C75).
 PSG_SHAPE_READBACK_STORED psg.reg.shape-reads-zero psg.reg. psg.reset.regs-zero
+# Tone, mixer, amplitude and step faults (plan 05-06, AUD-01, D-09, D-10, A-08), one site each in the engine TU of
+# its family (core/src/psg/psg_tone.c, psg_mix.c, psg_sample.c). The engine vectors run at module level on the
+# sample stream, so every tone vector sees a wrong period or step and fails with the named one.
+# PSG_TONE_PERIOD_OFF_BY_ONE: the counter reloads with P + 1, so every half-period is one step too long.
+PSG_TONE_PERIOD_OFF_BY_ONE psg.tone.rate-p1 psg.tone.|psg.judge.tone- psg.mix.truth-table
+# PSG_STEP_IS_16_CLOCKS: a chip step of 16 chip clocks (32 ticks), the glossary mistake corrected in plan 05-01:
+# a run of N x 16 ticks delivers N / 2 samples, so the sample count of every tone vector is wrong.
+PSG_STEP_IS_16_CLOCKS psg.tone.rate-p1 psg.tone.|psg.judge.tone- psg.mix.truth-table
+# PSG_MIXER_SENSE_INVERTED: the enable bits are read with the opposite polarity; the AND rows of the mixer vectors
+# fail and so does every tone vector (channel A would be disabled by the clear bit of R7). The row named
+# psg.mix.truth-table (both enabled, both generators 1, out 1) is the one printed row that a polarity flip leaves at
+# out 1, so psg.mix.and-tone0 (both enabled, tone 0, out 0) is the must-fail id (open item of plan 05-06).
+PSG_MIXER_SENSE_INVERTED psg.mix.and-tone0 psg.mix.|psg.tone.|psg.judge.tone-|psg.judge.mix- psg.amp.fixed-15
+# PSG_AMP_ENV_BIT_IGNORED: the amplitude select bits are ignored, the fixed level is always used.
+PSG_AMP_ENV_BIT_IGNORED psg.amp.env-mode psg.amp. psg.mix.truth-table

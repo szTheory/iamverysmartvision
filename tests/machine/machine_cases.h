@@ -72,7 +72,8 @@ extern const size_t ivs_machine_sweep_count;
 #define IVS_MS_PROG_PORTS 3u /* plan 05-05: reads $01FE and $01FF once into $0200 and $0201 */
 #define IVS_MS_PROG_POLL_CONST 4u /* plan 05-05: constant-cycle port poller, log at $0300 (fuzz content B) */
 #define IVS_MS_PROG_POLL_BRANCH 5u /* plan 05-05: data-dependent port poller (fuzz content C) */
-#define IVS_MS_PROGS 6u
+#define IVS_MS_PROG_TONE 6u /* plan 05-06: programs tone A (R7 $3E, amplitude $0F, period 1) late, then loops */
+#define IVS_MS_PROGS 7u
 #define IVS_MS_CONTENT_A 0u
 #define IVS_MS_CONTENT_B 1u
 
