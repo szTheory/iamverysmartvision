@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 4
 current_phase_name: Headless Runner and Installed Consumer (Slice 0)
 status: executing
-stopped_at: Completed 04-17-PLAN.md
-last_updated: "2026-11-11T23:40:43.181Z"
+stopped_at: Completed 04-18-PLAN.md
+last_updated: "2026-11-12T00:06:00.810Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 3 complete, transitioned to Phase 4
-state_head: c26df68614fccefb489ddd9a42faab682ff9c8e9
+state_head: c19440ee9f32dedfc71b07a5a16ddc1645ea8707
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 71
-  completed_plans: 63
+  completed_plans: 64
   percent: 38
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 4 — Headless Runner and Installed Consumer (Slice 0)
-Plan: 18 of 25
+Plan: 19 of 25
 Status: Ready to execute
 Last activity: 2026-11-11 — Completed 04-03 (repo-relative fault owners, runner outcome taxonomy)
 
@@ -117,6 +117,7 @@ Progress: [████░░░░░░] 38%
 | Phase 04 P15 | 8 min | 3 tasks | 45 files |
 | Phase 04 P16 | 15 min | 3 tasks | 21 files |
 | Phase 04 P17 | 20 min | 3 tasks | 12 files |
+| Phase 04 P18 | 19 min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -266,6 +267,9 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 04]: 04-17: IVSS v1 parser in runner/scenario.c (pure, fixed-size, 42 reason tokens, line 0 = whole file); id and profile required; one unit for all run-to lines and one for all input lines; inputs nondecreasing, run-to strictly increasing, times at most 2^62
 - [Phase 04]: 04-17: mem A..B asserts mean every word of the inclusive range equals the value; digest domains by name (composite cpu mem images instance video audio input), 64 lower-case hex
 - [Phase 04]: 04-17: -P cmake scripts must start with cmake_minimum_required(VERSION 3.25): cmake 3.28 runs them with CMP0054 OLD and a quoted string in if() can dereference a same-named variable (found by gate-linux)
+- [Phase 04]: 04-18: the executor runs every run-to with IVS_RUN_F_STOP_ON_HALT; halted where target was expected is guest-fail, the bound reached where halted/faulted was expected is timeout budget, IVS_STOP_INTERNAL is harness-fail (ivs_runner_stop_observation, pure)
+- [Phase 04]: 04-18: report key names pinned (slot.*, exec:/grom: labels, step.<k>.*, step.<k>.assert.<j> with scenario-wide j, cpu.*, input.*, digest.<8 domains>, output.*, host.calls, report.end); host.calls counts read_file/read_user/now_ms/cancel_requested and is the only host-dependent key
+- [Phase 04]: 04-18: host vtable read_file(relpath, cap, buf[cap+1]) plus optional read_user(role) for user roles; a matching expect-load refusal ends as pass, a wrong reason or an unrefused load is harness-fail
 
 ### Pending Todos
 
@@ -298,6 +302,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-11T23:40:42.965Z
-Stopped at: Completed 04-17-PLAN.md
+Last session: 2026-11-12T00:06:00.574Z
+Stopped at: Completed 04-18-PLAN.md
 Resume file: None
