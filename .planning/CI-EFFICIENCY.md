@@ -473,3 +473,43 @@ lever.
 - **Effect, native arm64 Ubuntu 24.04 (4 cpus by cpuset, gcc 13.3, cold build; the hosted shape), 5 old and 5 new runs alternating:** c-tests wall 18.4 to 7.2 s. c-tests cpu 18.6 to 19.9 (about +1 cpu-s, overlap contention). Gate wall 48.2 to 35.2 s (-27 percent). Gate cpu 96.9 to 95.6 (no rise). In emulated amd64 (`tools/gate-linux.sh`, 8 cpus), c-tests went from 10-13 to 3-4 s, but the gate is bound by controls there (87-116 s). On macOS, c-tests went from 5-6 to 1-2 s, and the gate is bound by controls there too (20-37 s). Expected hosted effect: about -10 s `gate_s`, with `cpu_s` unchanged; the next recorded rows will confirm it.
 - **Rejected after a prototype:** starting cp1610-vectors in the background at gate start. It needs no build and its output stayed byte-identical. But it saved only about 3 s (37 35 37 to 39 32 29 s natively, within noise), because it overlaps the core-saturated c-build. It would also need a named special case in the generic step loop and a second job in the EXIT trap. Its `step-time` would become a join wait, and its CPU would be charged to whichever step reaps it. That blurs the per-step profile these levers depend on.
 - **Biggest remaining hosted costs:** cold c-build (11-17 s wall natively on 4 cpus) and c-faults (6-8 s, already 4 lanes). The vectors JSON re-parse is still deferred.
+
+## 2026-11-11 — Phase 4 close-out (plan 04-25): D-45 evaluation and hosted budget re-baseline
+
+### Counts
+
+- Phase 4 start: `steps=26/26 controls=231/231 faults=119/119 tests-expected=2144`. Phase 4 end: `steps=33/33 controls=276/276 faults=149/149 tests-expected=2780 tests-executed=2778 tests-skipped=2 tests-missing=0`, with four new suites per preset (`run`, `runner`, `runner-process`, `pack`), the installed-consumer step `pkg-install` and the `important-gates` registry (`gates=26 lines=102`).
+- Since the hosted budget was first set at 30 s (Phase 2 end, `controls=190/190`), the gate has grown to 276 controls and 149 faults (the orchestrator's count of the Phase 2 baseline is 192 controls and 67 faults). The 40 s budget was set at the Phase 3 end (`controls=221/221 faults=113/113`).
+
+### Local measurement (laptop, 18 cores, Apple clang 21, other work running; not hosted figures)
+
+| Run | Load (1 min) | `gate-time total=` | `gate-cpu` user + sys | Five largest `step-time` |
+|-----|--------------|--------------------|-----------------------|--------------------------|
+| sh 1 (before the 04-25 record edits) | 6.1 | 50 | 83.70 + 83.57 | controls 28, c-faults 12, c-tests 7, cp1610-vectors 6, c-purity 5 (pkg-install 4) |
+| sh 2 | 8.6 | 45 | 80.96 + 80.40 | controls 27, c-faults 11, c-tests 7, cp1610-vectors 5, c-purity 5 (pkg-install 2) |
+| sh 3 | 8.8 | 53 | 84.08 + 82.17 | controls 25, c-faults 11, c-tests 6, cp1610-vectors 5, c-purity 5 (pkg-install 4) |
+| dash | 13.2 | 45 | 81.09 + 77.43 | controls 24, c-faults 11, c-tests 6, cp1610-vectors 5, c-purity 5 (pkg-install 3) |
+
+- `gate-env ncpu=18 cc=AppleClang-21.0.0.21000101` on every run; `c-build` 1 s (warm); `important-gates` 0 s.
+- Local median (three sh runs): `gate-time total=50`, about 166 cpu-s. Plan 04-01 measured `gate-time total=30` and 82.8 cpu-s (sh, 26 steps). Locally the gate is bound by the overlapped `controls` lane (24-28 s); `c-faults` and `c-tests` follow.
+
+### Budget checkpoints during the phase
+
+- After plan 04-10 the D-45 rule fired (last 3 hosted `gate_s` 69, 60, 54; median 60 s > 40 s; one run > 60 s). The orchestrator inserted 04-LEVER-01 (fewer process starts: exec calls 20988 -> 12203 per gate; large gain on macOS, about 8 percent cpu on native Linux) and 04-LEVER-02 (parallel ctest in `c-tests`: about -10 s wall at equal CPU on native arm64 Linux).
+- At the 04-19 checkpoint the rows still read above 40 s; no further lever was inserted (the remaining levers are listed below).
+
+### Hosted rows and the D-45 rule
+
+- `.planning/ci-runs.tsv` holds 23 hosted rows (recorded by the orchestrator with `tools/ci-record.sh`; one failed run, 22 successful). `gate_s` ranges 39-75 s, median 59 s; `cpu_s` (22 rows with a value, 4 cores) ranges 114-225, median 164. `build_s` (`c-build`, cold) 19-34 s.
+- Rule result: median of the last 3 `gate_s` (59, 59, 75) = 59 s > 40 s: **fires**. Any run > 60 s: **yes** (75 s, run 43135732132). Median of the last 5 (41, 53, 59, 59, 75) = 59 s > 50 s: **fires**. Both the lever trigger and the revisit trigger have fired.
+- What the rows show: near-identical code swings from about 40 s to 67 s between adjacent runs (for example 41 s at 324040001e and 67 s at 2ee9358f, both after the levers, with `c-build` 21 s vs 29 s), a hosted machine-speed spread of about 1.7x. `cpu_s` swings with it (125 vs 211), so the hosted cores themselves differ in speed, not only the waiting. The two levers did move the gate (the four runs right after 04-LEVER-02 read 39-57 s), but a single slow host erases their effect. The step profile of the slow rows is the same as the fast rows, scaled.
+
+### Decision: the 30 s and 40 s hosted wall budgets are superseded (re-baseline)
+
+- **New hosted budget:** median `gate_s` of 75 s, and a median `cpu_s` of 200 as a cost signal that is less sensitive to waiting. **Revisit trigger:** the median of the last 5 `gate_s` above 90 s, or any run above 120 s, or the median `cpu_s` of the last 5 above 200. Today: median `gate_s` 59 s (last 5: 59 s), median `cpu_s` 164 (last 5: 175); inside the new budget.
+- **Why a re-baseline and not more levers now.** The budget was set when the gate carried Phase 2 evidence. It now carries Phase 3 and Phase 4 evidence: controls 190 -> 276, faults 113 -> 149 since the 40 s budget (149 fault executables each rerunning its suite), and four new suites in two presets, the installed-consumer build and the important-gates registry. The rows show that wall time is dominated by which hosted machine the job lands on (a 1.7x spread on the same code), not by any one step: a lever that saves 5 s is inside the run-to-run noise. Each remaining lever adds structural risk (background build jobs in the EXIT trap, rewriting the vectors generators, changing how faults rerun suites, or splitting the job, which redefines PKG-02). With the gate at about one minute and no queue pressure, that risk is not worth it now. No check is weakened, dropped or merged; no CI shape change (D-41..D-43 unchanged).
+- **Remaining levers, in order, for when the new trigger fires:** (1) background `c-build` for the steps that do not need it, only if `gate-cpu` shows idle cores (today `cpu_s / (ncpu x gate_s)` is about 0.7: 164 / (4 x 59)); (2) batch the cp1610-vectors JSON re-parse (about 5 cpu-s per gate, plus the cold-build generators); (3) cut the per-fault suite reruns in `c-faults` (run only the suites a fault's must-fail ids name; needs the verdict to keep its must-pass evidence); (4) a two-job split, last resort, because it redefines PKG-02 and needs an owner-visible Decision Register entry. Not levers: dropping controls, merging checks, weakening oracles.
+
+### This plan's Linux parity run
+
+- `sh tools/gate-linux.sh` (Ubuntu 24.04 container, x86_64 emulated on arm64, gcc 13.3.0, cmake 3.28.3, dash as /bin/sh), run after the record edits of Task 2 and the AUTONOMY and CI-EFFICIENCY text of Task 3: `gate: PASS steps=33/33 controls=276/276 ... cc=GNU ... faults=149/149 ... gates=26 lines=102 ... consumer-lines=26 pkg-selftest=10/10 ... tests-expected=2780 tests-executed=2778 tests-skipped=2 tests-missing=0`, `gate-time total=199` (emulated; not a hosted figure), last line `gate-linux: exit 0 (log build/gate-linux.log)`.

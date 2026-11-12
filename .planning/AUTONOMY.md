@@ -44,6 +44,56 @@ autonomous mode, while keeping quality high.
 | "Intellivision" in a package, product or repo name | Third-party trademark (REQUIREMENTS Out of Scope) |
 | Paid services beyond free tiers | Cost |
 
+### 2026-11-11 — Branch protection on main (Phase 4 D-47, recommended, not applied by agents)
+
+Recommended shape: a repository ruleset on the default branch (not legacy
+branch protection) that requires a pull request with 0 approvals (a solo flow
+cannot self-approve), requires the status check `gate` (the job id of
+`.github/workflows/gate.yml`; renaming the job or adding a matrix changes the
+required context, so such a change must update the ruleset in the same PR),
+does not require the branch to be up to date (PR runs already test the merge
+ref), and blocks force-push and deletion with no bypass list. This is a
+repository-settings action for the owner or orchestrator; executors never
+call `gh` and never change settings. It blocks nothing in Phase 4: record
+commits go through phase branches (or a `gsd/records-*` PR once it applies),
+never straight to `main`.
+
+Exact commands for the owner or orchestrator (run once from the repository
+checkout; `{owner}/{repo}` is filled in by `gh` from the current remote):
+
+```sh
+gh api --method POST 'repos/{owner}/{repo}/rulesets' --input - <<'EOF'
+{
+  "name": "main: PR and gate",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": { "ref_name": { "include": ["~DEFAULT_BRANCH"], "exclude": [] } },
+  "bypass_actors": [],
+  "rules": [
+    { "type": "deletion" },
+    { "type": "non_fast_forward" },
+    { "type": "pull_request",
+      "parameters": {
+        "required_approving_review_count": 0,
+        "dismiss_stale_reviews_on_push": false,
+        "require_code_owner_review": false,
+        "require_last_push_approval": false,
+        "required_review_thread_resolution": false } },
+    { "type": "required_status_checks",
+      "parameters": {
+        "strict_required_status_checks_policy": false,
+        "required_status_checks": [ { "context": "gate" } ] } }
+  ]
+}
+EOF
+# one read to confirm (at apply time and at milestone close; never polled)
+gh api 'repos/{owner}/{repo}/rulesets' --jq '.[] | [.id, .name, .enforcement] | @tsv'
+```
+
+After applying, record the date and the ruleset id here. Reversal: delete the
+ruleset (`gh api --method DELETE 'repos/{owner}/{repo}/rulesets/<id>'`) if it
+blocks a needed recovery; force-push to `main` stays a hard stop either way.
+
 ## 2. Discuss protocol (fan-out by default)
 
 Use this at every discuss-phase and milestone discussion, and for any
@@ -112,6 +162,31 @@ Measure before changing. Append findings and actions to
 6. Record the release in STATE.md.
 
 Run the CI efficiency review (section 4) on the release workflow as well.
+
+### 2026-11-11 — Release workflow design (Phase 4 D-47, recorded; implemented at the first release)
+
+Not implemented in Phase 4; the release PR implements it and updates
+`ci-parity` in the same change.
+
+- `.github/workflows/release.yml`, `on: push: tags: ['v*']`; `permissions:
+  contents: write` at job level only (the top level stays `contents: read`);
+  the same SHA-pinned checkout of the tag, `persist-credentials: false`.
+- The job re-runs `sh tools/gate.sh` on the tag commit. That proves the
+  released commit is the tested commit without `actions: read` or API polling.
+- Assets: a `git archive --format=tar.gz --prefix=ivs-vX.Y.Z/` source tarball
+  (deterministic), a tarball of the install tree from the installed-consumer
+  step's stage prefix, and `SHA256SUMS` written with `cmake -E sha256sum`.
+- `gh release create vX.Y.Z` with those assets; the notes state claims only as
+  profile + evidence tier + artifact (Core Value).
+- Assets come from an allowlist of redistributable project-authored files:
+  tracked files, fixture manifests with `redistributable: yes`, plus the
+  install tree; a `release-assets` check refuses any asset that is untracked or
+  matches the binary-extension list. No EXEC, GROM or commercial bytes, ever.
+- `ci-parity` gets a deliberate extension in that PR (job-level `contents:
+  write` allowed only in `release.yml`, a `run:` allowlist for that file). A
+  tag ruleset (`v*` created only from a green `main`, no update or deletion)
+  is a settings action like the branch ruleset in section 1. Attestations are
+  deferred until someone consumes them.
 
 ## 6. Public-repo hygiene check
 
