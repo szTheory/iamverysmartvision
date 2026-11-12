@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 4
 current_phase_name: Headless Runner and Installed Consumer (Slice 0)
 status: executing
-stopped_at: Completed 04-19-PLAN.md
-last_updated: "2026-11-12T00:24:39.034Z"
+stopped_at: Completed 04-20-PLAN.md
+last_updated: "2026-11-12T00:43:25.277Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 3 complete, transitioned to Phase 4
-state_head: 06321957581ac589b9d6d308bfa72e1384af81b1
+state_head: 1e5a75fdd1cc6878fdf27953f9486dd62d272715
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 71
-  completed_plans: 65
+  completed_plans: 66
   percent: 38
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 4 — Headless Runner and Installed Consumer (Slice 0)
-Plan: 20 of 25
+Plan: 21 of 25
 Status: Ready to execute
 Last activity: 2026-11-11 — Completed 04-03 (repo-relative fault owners, runner outcome taxonomy)
 
@@ -119,6 +119,7 @@ Progress: [████░░░░░░] 38%
 | Phase 04 P17 | 20 min | 3 tasks | 12 files |
 | Phase 04 P18 | 19 min | 3 tasks | 10 files |
 | Phase 04 P19 | 17 min | 3 tasks | 14 files |
+| Phase 04 P20 | 14 min | 3 tasks | 17 files |
 
 ## Accumulated Context
 
@@ -274,6 +275,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 4]: 04-19: every run-to runs as slices (min(limit, now + slice_ticks), default 1<<22) with the unconsumed input suffix; cancel_requested then now_ms once before every slice; ivs_runner_options {flags, wall_timeout_ms, slice_ticks, max_ticks}, 0 = default
 - [Phase 4]: 04-19: --max-ticks (default 2^40) cutting a run-to is timeout budget (detail max-ticks=<m>); the wall cap is timeout 'wall step=<k> cap-ms=<n>' (never golden); scenario wall-timeout-ms only lowers; cancel+wall at one check resolves to cancelled
 - [Phase 4]: 04-19: ivs-run: POSIX only in runner/hostio.c (+hostio.h); --content-dir defaults to the scenario's directory; usage errors, unreadable or refused scenarios are exit 14 with no report; --self-signal-after-slices N raises SIGINT in the cancel check after slice N
+- [Phase 04]: 04-20: scenario expectations beyond the six inventory columns live in the scenario as # expect-detail: / # expect-stderr: comments; the judge pins outcome.detail exactly and requires each outcome/exit.code pair in data/expected/runner-outcomes.ids
+- [Phase 04]: 04-20: D-32 mutants are <FROM>-<TO> ids checked against the listing row; PSHR to MVO@ is MVO@ R3 via R1 (R1=8080), so R6 stays 0340
 
 ### Pending Todos
 
@@ -306,6 +309,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-12T00:24:38.832Z
-Stopped at: Completed 04-19-PLAN.md
+Last session: 2026-11-12T00:43:25.078Z
+Stopped at: Completed 04-20-PLAN.md
 Resume file: None
