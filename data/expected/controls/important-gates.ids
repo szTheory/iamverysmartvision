@@ -2,3 +2,8 @@
 # inventory of its mechanism lists, and a Phase 4 requirement without a registry line.
 important-gates-unknown-id
 important-gates-uncovered-gate
+# Plan 05-12 (RUN-04 extended): a Phase 5 requirement without a registry line, a Phase 5 line naming an unknown id,
+# and a line naming a Phase 5 requirement outside the six.
+important-gates-req-uncovered-phase5
+important-gates-unknown-id-phase5
+important-gates-bad-req-phase5
