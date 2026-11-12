@@ -147,8 +147,9 @@ typedef struct ivs_image_report {
  *   224 scanlines_per_frame      nominal
  *   228 video_format             IVS_OUTPUT_FORMAT_*
  *   232 nominal_frame_ticks      ticks_per_cpu_cycle * cpu_cycles_per_scanline *
- *                                scanlines_per_frame; nominal_frame_ticks is nominal, not a frame
- *                                event (D-09): frames are timeline events, never a modulo of time
+ *                                scanlines_per_frame; for a profile that publishes frame events
+ *                                (plan 06-03, D-14) this is the exact spacing of two frame events;
+ *                                frames are timeline events, never a modulo of time (D-09)
  *   240 video_bytes_per_frame    0 with IVS_OUTPUT_FORMAT_NONE
  *   244 audio_format             IVS_OUTPUT_FORMAT_*
  *   248 audio_bytes_per_frame    0 with IVS_OUTPUT_FORMAT_NONE
@@ -362,7 +363,14 @@ IVS_API ivs_status ivs_machine_info(const ivs_machine *m, ivs_info *out);
  *   chain = SHA-256('I' 'V' 'S' 'R' || 17 || chain || be64(changes before this record) || be32(12) ||
  *                   be64(k) || A || B || C || 0).
  * The dense bytes a run call delivers (4 per sample: A, B, C, 0) are enough to recompute all of it,
- * so a host can check the stream it received against this digest without any core state. */
+ * so a host can check the stream it received against this digest without any core state.
+ * Domain 16 (VIDEO, plan 06-03, documentation only; outside the composite): a per-frame chain over
+ * the slots a run call delivers (IVS_OUTPUT_FORMAT_INDEX8_FRAMES_V1, the slot layout beside that
+ * constant). h0 is the SHA-256 of the 16 ASCII bytes 'IVS-VIDEO-LOG-V1', and h(n+1) =
+ * SHA-256(h(n) || slot bytes) for the n-th completed frame, the slot bytes being the 32-byte header
+ * and the pixel rows exactly as delivered, so a host recomputes the chain from the slots it received;
+ * the count is the number of frames chained. Nothing is delivered and nothing is chained until a
+ * profile publishes frame events. */
 IVS_API ivs_status ivs_machine_state_digest(const ivs_machine *m, uint32_t domain, uint8_t out_sha256[32]);
 
 /* Loads one image of kind (IVS_KIND_*) from len bytes at bytes. Validates everything before the

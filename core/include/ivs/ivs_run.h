@@ -119,7 +119,19 @@ IVS_API ivs_status ivs_machine_peek(const ivs_machine *m, uint16_t addr, uint32_
  * capacity below it is BUFFER_TOO_SMALL with nothing changed; a buffer may be NULL only with
  * capacity 0, and that pair means "channel not requested": no check, no byte, no state change
  * whatever the layout requires (D-17, plan 05-02; a non-NULL buffer with capacity 0 against a layout
- * that needs bytes is still BUFFER_TOO_SMALL). A third channel, the PSG register-write log
+ * that needs bytes is still BUFFER_TOO_SMALL). Video rule (plan 06-03, D-15) for a published video
+ * layout (video_format IVS_OUTPUT_FORMAT_INDEX8_FRAMES_V1; the frames are timeline events, not
+ * a modulo of time):
+ *   required = video_bytes_per_frame * (floor(D / F) + 1 + video_slack_frames)
+ * with D = max(target_ticks - now, 0), F = nominal_frame_ticks and the slack published as
+ * video_slack_frames (ivs_info v4). The Phase 4 "+ 1" is not enough for frames that are timeline
+ * events: a call from now to target completes the frames whose end lies after now and at most
+ * target + U - 1 (U the proven maximum ticks of one unit), which is at most floor(D / F) + 2 of
+ * them, so one extra slot is reserved. Audio and write-log capacities keep their formulas; a NULL buffer with
+ * capacity 0 means not requested, nothing is checked and nothing is written. nominal_frame_ticks
+ * is, for the profile that publishes frame events, the exact spacing of two frame events (the name
+ * is historical); for a profile without a video layout it is the product of the timebase fields.
+ * A third channel, the PSG register-write log
  * (psg_log, psg_log_capacity; request v2), follows video and audio with
  * psg_log_bytes_per_frame from the profile's layout. A layout with 0 bytes per frame needs nothing
  * and gets nothing (video, until Phase 6, is such a channel: no frame is fabricated). From plan 05-06 the audio layout is real: format IVS_OUTPUT_FORMAT_PSG_LEVELS_V1,
