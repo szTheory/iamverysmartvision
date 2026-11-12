@@ -37,7 +37,7 @@ ivs_bus_reply ivs_machine_bus(void *ctx, const ivs_cp1610_access *a)
   if (a->kind == IVS_ACC_WRITE || a->kind == IVS_ACC_DW) {
     ivs_memsys_desc d;
     if (ivs_memsys_describe(c->m->mem.profile, IVS_MEMSYS_VIEW_W, a->addr, &d) == IVS_OK &&
-        d.phys == IVS_MEMSYS_PHYS_PSG && c->psg != NULL && c->sink != NULL) {
+        d.phys == IVS_MEMSYS_PHYS_PSG && c->sink != NULL) { /* c->psg is set with the sink (a context without a sink is a bare wrapper test) */
       stamp = c->unit_start_tick + (uint64_t)a->offset_cpu_cycles * (uint64_t)c->ticks_per_cpu_cycle +
               (uint64_t)c->psg->write_strobe_ticks;
       ivs_psg_catch_up(c->psg, &c->m->psg, c->m->mem.psg_reg, &c->m->obs.audio, stamp, c->sink);

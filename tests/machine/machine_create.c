@@ -380,6 +380,38 @@ static int mc_refuse_unknown_over_short(void)
 
 /* ---- create positives ---- */
 
+/* Review WR-04: the profile registry, the PSG parameter table and the control-line table are three
+ * generated includes in three translation units; a profile must have a row in each. The three counts are
+ * equal, every registered profile has PSG parameters (and none exists past the end), and a machine of
+ * every registered profile can be created, so no profile index reads a table past its end and no machine
+ * runs with its PSG silently absent. The named faults PSG_TABLE_SHORT and CTRL_TABLE_SHORT shorten one
+ * table by a profile. */
+static int mc_tables_cover_registry(void)
+{
+  uint32_t n = ivs_profile_count();
+  uint32_t i;
+  IVS_CHECK(n > 0u);
+  IVS_CHECK(ivs_psg_params_count() == n);
+  IVS_CHECK(ivs_input_profile_count() == n);
+  IVS_CHECK(ivs_psg_params_get(n) == NULL);
+  for (i = 0u; i < n; i++) {
+    const ivs_profile_desc *d = ivs_profile_get(i);
+    ivs_create_options o;
+    ivs_machine *m = NULL;
+    uint8_t *st;
+    int ok;
+    IVS_CHECK(d != NULL);
+    IVS_CHECK(ivs_psg_params_get(i) != NULL);
+    o = mc_opts(d->id);
+    st = mc_exact(0xA5u);
+    IVS_CHECK(st != NULL);
+    ok = ivs_machine_create(&o, st, IVS_MACHINE_BYTES, &m) == IVS_OK && m != NULL && ivs_machine_destroy(m) == IVS_OK;
+    free(st);
+    IVS_CHECK(ok);
+  }
+  return IVS_TEST_PASS;
+}
+
 /* A larger caller struct with a zero tail is accepted. */
 static int mc_tail_zero_ok(void)
 {
@@ -777,6 +809,7 @@ const ivs_test_case ivs_machine_create_cases[] = {
     {"machine.create.requirements-larger-out", mc_req_larger_out, NULL},
     {"machine.create.size-at-max-ok", mc_size_at_max_ok, NULL},
     {"machine.create.static-storage", mc_static_storage_case, NULL},
+    {"machine.create.tables-cover-registry", mc_tables_cover_registry, NULL},
     {"machine.create.tail-zero-ok", mc_tail_zero_ok, NULL},
     {"machine.destroy.scrubs", mc_destroy_scrubs, NULL},
     {"machine.refuse.create.flags-1", mc_refuse_flags_1, NULL},

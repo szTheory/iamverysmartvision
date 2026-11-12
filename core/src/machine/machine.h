@@ -283,6 +283,11 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
 /* Sets in to its create and reset state: words, count and floor 0, chain h0. */
 void ivs_input_init(ivs_machine_obs_input *in);
 
+/* The number of profiles the generated control-line table ivs_ctrl_lines covers (review WR-04): the
+ * pull-down derivation indexes it by the instance's registry index, so the machine uses an index only
+ * below this count (ivs_machine_profile_covered, machine.c). */
+uint32_t ivs_input_profile_count(void);
+
 /* Derives the pull-down masks of the PSG ports (mem.port_pulldown) from the words in force and the
  * generated control table (plan 05-05, D-03, D-04): the OR of the line masks of every set bit, for
  * each port below the profile's input.controllers, 0 for the others. The one function that sets the

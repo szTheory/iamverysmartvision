@@ -15,9 +15,18 @@
 
 #include "ivs_psg_params.inc"
 
+uint32_t ivs_psg_params_count(void)
+{
+#ifdef IVS_FAULT_PSG_TABLE_SHORT
+  return IVS_PSG_PROFILE_COUNT - 1u; /* named fault PSG_TABLE_SHORT: the table covers one profile less than the registry */
+#else
+  return IVS_PSG_PROFILE_COUNT;
+#endif
+}
+
 const ivs_psg_params *ivs_psg_params_get(uint32_t profile)
 {
-  if (profile >= IVS_PSG_PROFILE_COUNT) {
+  if (profile >= ivs_psg_params_count()) {
     return NULL;
   }
   return &ivs_psg_params_table[profile];

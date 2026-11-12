@@ -69,7 +69,9 @@ const ivs_profile_desc *ivs_profile_get(uint32_t index)
 
 int ivs_memsys_init(ivs_memsys *m, uint32_t profile)
 {
-  if (m == NULL || profile >= IVS_MM_PROFILE_COUNT) {
+  /* A profile without a row in the PSG parameter table is refused here, so every access to the PSG
+   * region below finds its parameters (review WR-04). */
+  if (m == NULL || profile >= IVS_MM_PROFILE_COUNT || profile >= ivs_psg_params_count()) {
     return IVS_E_BAD_ARG;
   }
   memset(m, 0, sizeof *m);
@@ -137,10 +139,7 @@ static uint16_t ivs_mm_load(const ivs_memsys *m, uint8_t phys, uint32_t i)
   case IVS_MEMSYS_PHYS_GRAM:
     return m->gram[i];
   case IVS_MEMSYS_PHYS_PSG: {
-    const ivs_psg_params *pp = ivs_psg_params_get(m->profile);
-    if (pp == NULL) {
-      return 0u;
-    }
+    const ivs_psg_params *pp = ivs_psg_params_get(m->profile); /* a row exists: ivs_memsys_init refused any other profile */
     if (i == IVS_PSG_SLOT_PORT0 || i == IVS_PSG_SLOT_PORT1) {
       return ivs_mm_port_read(m, pp, i - IVS_PSG_SLOT_PORT0);
     }
@@ -170,10 +169,8 @@ static void ivs_mm_store(ivs_memsys *m, uint8_t phys, uint32_t i, uint16_t v)
     m->gram[i] = v;
     break;
   case IVS_MEMSYS_PHYS_PSG: {
-    const ivs_psg_params *pp = ivs_psg_params_get(m->profile);
-    if (pp != NULL) {
-      ivs_psg_reg_store(pp, m->psg_reg, i, v); /* keeps v & the register's write mask */
-    }
+    /* a row exists: ivs_memsys_init refused any other profile */
+    ivs_psg_reg_store(ivs_psg_params_get(m->profile), m->psg_reg, i, v); /* keeps v & the register's write mask */
     break;
   }
   default:
@@ -411,11 +408,7 @@ void ivs_memsys_set_gate_internal(ivs_memsys *m, uint32_t gate, uint8_t open)
 
 uint16_t ivs_memsys_psg_reg_internal(const ivs_memsys *m, uint32_t idx)
 {
-  const ivs_psg_params *pp = ivs_psg_params_get(m->profile);
-  if (pp == NULL) {
-    return 0u;
-  }
-  return ivs_psg_reg_load(pp, m->psg_reg, idx);
+  return ivs_psg_reg_load(ivs_psg_params_get(m->profile), m->psg_reg, idx); /* a row exists, see ivs_memsys_init */
 }
 
 uint32_t ivs_memsys_psg_write_slot_internal(const ivs_memsys *m, uint16_t addr)

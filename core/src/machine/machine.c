@@ -10,7 +10,8 @@
  *                    unknown-tail scan reads at most 4096 bytes); profile id NULL or without a NUL in
  *                    its first 64 bytes; storage not 16-byte aligned;
  *   UNSUPPORTED      nonzero flags; a nonzero byte in a larger caller struct's unknown tail;
- *   UNKNOWN_PROFILE  the id is not in the registry (exact, case-sensitive match);
+ *   UNKNOWN_PROFILE  the id is not in the registry (exact, case-sensitive match), or its profile is
+ *                    not covered by every generated table (never true of a consistent build);
  *   BUFFER_TOO_SMALL storage_bytes below the instance size.
  * Only then does it zero the instance bytes (sizeof the instance; bytes past them belong to the
  * host and are never touched) and set the fields of a new instance. A refusal writes *out = NULL
@@ -38,17 +39,31 @@ _Static_assert(offsetof(ivs_info, crystal_hz_num) == 272u, "crystal_hz_num at 27
 _Static_assert(offsetof(ivs_info, crystal_hz_den) == 280u, "crystal_hz_den at 280");
 _Static_assert(sizeof(ivs_info) == 288u, "ivs_info is 288 bytes");
 
-/* 1 when m is a live instance: the magic, and a stored profile index that is in the registry and
- * the same in the memory system (review WR-03). The instance lives in host storage, so the
- * profile words cross the trust boundary just as the magic does; every call, and every memsys
- * table index behind it, then sees a registered profile. */
+/* 1 when registry index index is usable by the machine (review WR-04). The registry, the PSG parameter
+ * table and the control-line table are three generated includes, each in its own translation unit, that
+ * rely on one sorted list of profile files; nothing at compile time ties their counts. An index is
+ * therefore usable only below the smallest of the three counts: the lookup refuses a profile outside
+ * them (UNKNOWN_PROFILE) and the handle check refuses a stored index outside them, so no table is read
+ * past its end and the PSG code never meets a missing row, which would silence the device. Test
+ * machine.create.tables-cover-registry fails the gate when the three counts differ (named faults
+ * PSG_TABLE_SHORT and CTRL_TABLE_SHORT). */
+static uint32_t ivs_machine_profile_covered(uint32_t index)
+{
+  return (uint32_t)(index < ivs_profile_count() && index < ivs_psg_params_count() &&
+                    index < ivs_input_profile_count());
+}
+
+/* 1 when m is a live instance: the magic, and a stored profile index that is covered by every
+ * generated table and the same in the memory system (review WR-03, WR-04). The instance lives in host
+ * storage, so the profile words cross the trust boundary just as the magic does; every call, and every
+ * table index behind it, then sees a registered profile with a row in each table. */
 static uint32_t ivs_machine_handle_ok(const struct ivs_machine *m)
 {
   uint32_t profile_ok;
   if (m == NULL || m->magic != IVS_MACHINE_MAGIC) {
     return 0u;
   }
-  profile_ok = (uint32_t)(m->profile < ivs_profile_count() && m->mem.profile == m->profile);
+  profile_ok = (uint32_t)(ivs_machine_profile_covered(m->profile) != 0u && m->mem.profile == m->profile);
 #ifdef IVS_FAULT_HANDLE_TRUSTS_PROFILE
   profile_ok = 1u; /* the stored profile words are trusted: a corrupted index reaches the calls */
 #endif
@@ -128,6 +143,9 @@ ivs_status ivs_machine_profile_lookup(const char *id, uint32_t *index)
       }
     }
     if (same != 0u) {
+      if (ivs_machine_profile_covered(p) == 0u) {
+        return IVS_E_UNKNOWN_PROFILE; /* a registered profile that a generated table does not cover */
+      }
       *index = p;
       return IVS_OK;
     }

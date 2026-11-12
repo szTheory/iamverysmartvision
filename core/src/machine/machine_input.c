@@ -42,12 +42,23 @@ _Static_assert(IVS_INPUT_CONTROLLER_WORDS == 4u, "four controller words per even
 static uint32_t ivs_input_carry[IVS_INPUT_CONTROLLER_WORDS];
 #endif
 
+uint32_t ivs_input_profile_count(void)
+{
+#ifdef IVS_FAULT_CTRL_TABLE_SHORT
+  return IVS_CTRL_PROFILE_COUNT - 1u; /* named fault CTRL_TABLE_SHORT: the table covers one profile less than the registry */
+#else
+  return IVS_CTRL_PROFILE_COUNT;
+#endif
+}
+
 /* The pull-down mask of one controller word: the OR of the line masks of every set bit (D-03). The
  * word is read as 31 independent switches; the core never resolves a combination. */
 static uint32_t ivs_input_pins(uint32_t profile, uint32_t word)
 {
   uint32_t pins = 0u;
   uint32_t b;
+  /* profile is below ivs_input_profile_count(): the machine's handle check refuses any other index
+   * before a call reaches here (review WR-04). */
 #ifdef IVS_FAULT_CTRL_UNION_AS_AND
   uint32_t seen = 0u;
 #endif

@@ -68,6 +68,7 @@ machine.create.requirements
 machine.create.requirements-larger-out
 machine.create.size-at-max-ok
 machine.create.static-storage
+machine.create.tables-cover-registry
 machine.create.tail-zero-ok
 machine.destroy.scrubs
 machine.refuse.create.flags-1

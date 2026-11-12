@@ -156,7 +156,7 @@ ivs_status ivs_machine_step_unit_trace_internal(ivs_machine *m, ivs_cp1610_resul
   bus_ctx.m = im;
   bus_ctx.unit_start_tick = start;
   bus_ctx.ticks_per_cpu_cycle = p->ticks_per_cpu_cycle;
-  bus_ctx.psg = ivs_psg_params_get(im->profile); /* registered: the handle check covers the index */
+  bus_ctx.psg = ivs_psg_params_get(im->profile); /* never NULL: the handle check covers the index in every generated table (WR-04) */
   bus_ctx.sink = sink;
   memset(&port, 0, sizeof port);
   port.bus = ivs_machine_bus;
@@ -181,9 +181,7 @@ ivs_status ivs_machine_step_unit_trace_internal(ivs_machine *m, ivs_cp1610_resul
   im->time_ticks += (uint64_t)cycles * (uint64_t)p->ticks_per_cpu_cycle;
   /* Plan 05-06 (A-02): the PSG is caught up to the unit boundary at EVERY unit end, in the seam and
    * in the run call alike (which steps through here), never to a call target. */
-  if (bus_ctx.psg != NULL) {
-    ivs_psg_catch_up(bus_ctx.psg, &im->psg, im->mem.psg_reg, &im->obs.audio, im->time_ticks, sink);
-  }
+  ivs_psg_catch_up(bus_ctx.psg, &im->psg, im->mem.psg_reg, &im->obs.audio, im->time_ticks, sink);
   *out = r;
   return IVS_OK;
 }

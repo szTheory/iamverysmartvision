@@ -76,9 +76,17 @@ typedef struct ivs_psg_params {
 #define IVS_PSG_SLOT_PORT0 14u
 #define IVS_PSG_SLOT_PORT1 15u
 
-/* The parameters of registry profile index profile, or NULL for an index at or above the
- * profile count (the registry of ivs_profile_get and this table are generated over the same sorted
- * profile files). */
+/* The number of profiles the generated parameter table covers. The registry (ivs_profile_get), this
+ * table and the control-line table (ivs_input_profile_count) are three generated includes over the same
+ * sorted profile files; the machine uses a registry index only below the smallest of the three counts
+ * (ivs_machine_profile_covered, review WR-04), and test machine.create.tables-cover-registry requires all
+ * three to equal the registry. */
+uint32_t ivs_psg_params_count(void);
+
+/* The parameters of registry profile index profile, or NULL for an index at or above
+ * ivs_psg_params_count(). A live machine never holds such an index (the handle check refuses it), so
+ * the machine code does not test for NULL: a missing row is a refusal at create, never a PSG that is
+ * quietly absent. */
 const ivs_psg_params *ivs_psg_params_get(uint32_t profile);
 
 #endif
