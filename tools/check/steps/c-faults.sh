@@ -70,16 +70,30 @@ run_limited() {
   _lim=$1; _mark=$2; _log=$3; shift 3
   "$@" > "$_log" 2>&1 < /dev/null &
   _pid=$!
+  rm -f "$_mark.ready"
+  mkfifo "$_mark.ready" || { bad c-faults-run "mkfifo"; return 1; }
   (
     _s=
     trap 'if [ -n "$_s" ]; then kill "$_s" 2> /dev/null; fi; exit 0' TERM
     sleep "$_lim" &
     _s=$!
+    : > "$_mark.ready"
     wait "$_s"
     : > "$_mark"
     kill -TERM "$_pid" 2> /dev/null
   ) > /dev/null 2>&1 < /dev/null &
   _wd=$!
+  # Return only once the watchdog is armed (its TERM trap set), reported through the FIFO: a stop
+  # that arrives before the trap exists can be dropped by dash, and the watchdog then sleeps its
+  # whole limit and reports a finished run as stopped. A signal that interrupts the blocking open
+  # makes dash fail it, so the open is retried (on `true`, a regular builtin, because a failed
+  # redirection on the special builtin `:` ends a POSIX shell).
+  _try=0
+  until true < "$_mark.ready" 2> /dev/null; do
+    _try=$((_try + 1))
+    [ "$_try" -lt 1000 ] || break
+  done
+  rm -f "$_mark.ready"
   wait "$_pid" || :
   kill -TERM "$_wd" 2> /dev/null
   wait "$_wd" 2> /dev/null || :
