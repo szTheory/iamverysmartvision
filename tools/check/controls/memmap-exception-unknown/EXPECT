@@ -1,0 +1,2 @@
+FAIL memmap-literal-grammar:
+x column 'x=bogus' is not x=reads-zero, x=pins or x=strobe

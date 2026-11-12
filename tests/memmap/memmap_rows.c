@@ -280,6 +280,14 @@ static const mr_rule mr_rules[] = {
     {"grom", 8u, 0x00FFu, 0x0000u, 0u},       {"scratchpad", 8u, 0x00FFu, 0x0000u, 1u},
     {"gram", 8u, 0x00FFu, 0x0000u, 1u},       {"sysram", 16u, 0xFFFFu, 0x0000u, 1u},
     {"stic", 0u, 0x0000u, 0xFFFFu, 0u},       {"psg", 8u, 0x00FFu, 0x0000u, 1u},
+    /* plan 06-06, the STIC register file (stic14, C81, C86; the widths of the register-address literal
+     * data/stic): a read gives (stored & rmask) | (FFFF & ~rmask), so a collision register (10 bits) reads FC00
+     * OR its stored bits and a write-only register (w 0 in the read view) reads FFFF; a store keeps value & the
+     * write mask of the register, 11, 12, 14, 4, 3 or 2 bits, and a strobe or reserved register keeps nothing */
+    {"stic", 10u, 0x03FFu, 0xFFFFu, 1u},      {"stic", 11u, 0x07FFu, 0xFFFFu, 1u},
+    {"stic", 12u, 0x0FFFu, 0xFFFFu, 1u},      {"stic", 14u, 0x3FFFu, 0xFFFFu, 1u},
+    {"stic", 4u, 0x000Fu, 0xFFFFu, 1u},       {"stic", 3u, 0x0007u, 0xFFFFu, 1u},
+    {"stic", 2u, 0x0003u, 0xFFFFu, 1u},
     {"psg", 4u, 0x000Fu, 0x0000u, 1u},        {"psg", 5u, 0x001Fu, 0x0000u, 1u},
     {"psg", 6u, 0x003Fu, 0x0000u, 1u},        {"psg", 0u, 0x0000u, 0x0000u, 0u},
     {"undriven", 0u, 0x0000u, 0xFFFFu, 0u},
@@ -302,13 +310,23 @@ static uint16_t mr_expect(const mr_rule *u, uint16_t stored)
   return (uint16_t)((stored & u->rmask) | (u->fill & (uint16_t)~u->rmask));
 }
 
-/* Declared exception registers (the literal's x= rows, plan 05-04): the shape register $01FA, whose
+/* Declared exception registers (the literal's x= rows, plans 05-04 and 06-06): the shape register $01FA, whose
  * read mask is 0 (C75), and the two port registers $01FE and $01FF, whose read follows the direction
  * bit and the pins (plan 05-05). A store to one of them is observed in the register storage of the
  * memory system, not through a bus read, so the width a store keeps is still measured. */
+/* Plan 06-06: every write-view address of the STIC register file ($0000-$003F and the three write aliases at
+ * $4000, $8000 and $C000, named by the literal's x=reads-zero and x=strobe rows) is observed in the register
+ * storage too: a write-only register keeps bits that no read returns, and the strobe and reserved registers
+ * (x=strobe, nothing is stored) must leave the storage as it was. The collision registers read back through the
+ * bus as well; the storage gives the same count of kept bits. */
+static int mr_is_stic_write(uint16_t addr)
+{
+  return (addr & 0x3FC0u) == 0u; /* includes the strobe registers $0020 and $0021 and their aliases */
+}
+
 static int mr_is_exception(uint16_t addr)
 {
-  return addr == 0x01FAu || addr == 0x01FEu || addr == 0x01FFu;
+  return addr == 0x01FAu || addr == 0x01FEu || addr == 0x01FFu || mr_is_stic_write(addr);
 }
 
 /* The port registers, whose bus read follows the pins (plan 05-05): after power-on both ports are in
@@ -321,6 +339,9 @@ static int mr_is_pins(uint16_t addr)
 /* What a store at addr left behind, read back at obs (the read-side address of addr). */
 static uint16_t mr_observe(uint16_t addr, uint16_t obs)
 {
+  if (mr_is_stic_write(addr)) {
+    return mr_m.stic_reg[addr & 0x3Fu];
+  }
   if (mr_is_exception(addr)) {
     return mr_m.psg_reg[(uint32_t)addr - 0x01F0u];
   }
@@ -396,6 +417,7 @@ static int mr_store_kept(const mr_rule *u, uint16_t addr, uint16_t obs, uint16_t
   uint16_t got;
   uint32_t n;
   uint16_t seen;
+  uint16_t prev = mr_observe(addr, obs);
   memcpy(&mr_snap, &mr_m, sizeof mr_snap);
   mr_write(addr, value);
   seen = mr_observe(addr, obs);
@@ -405,6 +427,15 @@ static int mr_store_kept(const mr_rule *u, uint16_t addr, uint16_t obs, uint16_t
     return IVS_TEST_FAIL;
   }
   n = mr_changed_words(&got);
+  if (prev == want) {
+    /* a store of a value that the register already holds (a 2-bit register stores 1234 as 0, plan 06-06) changes no word */
+    if (n != 0u) {
+      ivs_test_diag("W %04X: store %04X changed %lu state words, rule gives none", (unsigned)addr,
+                    (unsigned)value, (unsigned long)n);
+      return IVS_TEST_FAIL;
+    }
+    return IVS_TEST_PASS;
+  }
   if (n != 1u || got != want) {
     ivs_test_diag("W %04X: store %04X changed %lu state words (last %04X), rule gives one word %04X",
                   (unsigned)addr, (unsigned)value, (unsigned long)n, (unsigned)got, (unsigned)want);

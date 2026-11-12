@@ -23,7 +23,7 @@
 #              0 for stub devices and undriven space. In the write view w is the width a store
 #              keeps when read back (0 where a store is dropped).
 #   impl       real (behaviour modelled), stub (decoded and named, reads give the undriven
-#              value, writes are dropped), none (undriven rows only).
+#              value, writes are dropped; no row uses it since plan 06-06), none (undriven rows only).
 #   mirror     words of the backing or register file the row reaches, when that backing is
 #              smaller than the row or is shared with another row (an alias); - when the row is
 #              the sole full-extent home of its device. Undriven rows carry -.
@@ -37,13 +37,20 @@
 #   conf       a discrepancy id of data/discrepancies.json that qualifies the row.
 #   x          optional last column, a declared exception row whose read-back is not the value a
 #              store kept (plan 05-04): x=reads-zero (the read mask of the register is 0: a store
-#              keeps w bits that a read never returns, C75; an impl=real row with w=0 needs it) or
+#              keeps w bits that a read never returns, C75; an impl=real row with w=0 needs it),
 #              x=pins (a port register whose read follows the direction bit and the pins, plan
 #              05-05: the read view has width 0, since the byte read does not depend on the word
-#              stored, and an impl=real row with w=0 accepts it; the write view keeps its 8 bits).
+#              stored, and an impl=real row with w=0 accepts it; the write view keeps its 8 bits)
+#              or x=strobe (plan 06-06: the registers of the row store nothing, a store keeps no
+#              bit, and the access may have a machine-level effect instead: the two strobe
+#              registers $0020 and $0021 and the reserved registers around them; an impl=real row
+#              with w=0 accepts it). The STIC read view rows whose read mask is 0 (write-only
+#              registers, strobes, reserved) read FFFF and are marked x=reads-zero, and so are the
+#              write rows of the stored write-only registers, whose w bits a read never returns.
 #              The behavioural width probe of an exception row observes the store in the memory
 #              system's register storage, not through a bus read; the named rows are $01FA, $01FE
-#              and $01FF. An x=pins row reads the idle byte 00FF after power-on whatever was
+#              and $01FF and every STIC write-view address ($0000-$003F and the three aliases).
+#              An x=pins row reads the idle byte 00FF after power-on whatever was
 #              stored (ports in input mode, no pin held low; data/psg vectors family port and
 #              the input suite cover the pins and the direction).
 #
@@ -67,12 +74,25 @@
 #     period, 6 for the amplitudes. The shape register reads 0 whatever was stored (C75), so its read
 #     row has w=0 and its write row w=4, both marked x=reads-zero; the two port registers are marked
 #     x=pins (plan 05-05): their read row has w=0 (the byte read follows the pins), their write row w=8. The register-address literal data/psg carries the masks per register.
+#   stic 0000-003F, plan 06-06: the five STIC regions are the real device (impl=real), the rows split
+#     where the register width or the read-back model changes, exactly as the independent register
+#     literal data/stic (sixty-four rows) states: the stored registers keep 11, 12 or 14 bits (mob x,
+#     y and attribute), 4 (color stack and border), 3 and 2 (delays and border extension) and read
+#     FFFF (the undriven fill, C81); the eight collision registers keep and read 10 bits and read FC00
+#     OR the stored bits (read mask 03FF, fill FFFF); the two strobe registers and the reserved
+#     registers keep nothing. The read alias at 0040-007F mirrors the register file, so it splits
+#     like the home rows; the three write aliases mirror the write rows. The merged rows are the ones
+#     the dump probe produces (adjacent addresses with the same structure are one row).
 #   alias gates: an alias reaches the same STIC registers or graphics RAM as its home row, so
 #     it carries the home row's gate (stic-regs or gmem) [INF from the wiki's alias wording].
 #   scratchpad: one 256 x 8 RAM per the 2609 overview, 240 words decoded at 0100-01EF.
 #   undriven: reads give the pull-up value (C5); writes go nowhere.
-R 0000-003F stic w=0 impl=stub mirror=- gate=stic-regs src=SRC-intv-wiki@Memory_Map.oldid-14847 tag=tier4-community conf=C21
-R 0040-007F stic w=0 impl=stub mirror=64 gate=stic-regs src=SRC-intv-wiki@Memory_Map.oldid-14847 tag=tier4-community conf=C21
+R 0000-0017 stic w=0 impl=real mirror=- gate=stic-regs src=SRC-intv-wiki@Memory_Map.oldid-14847 tag=tier4-community conf=C81 x=reads-zero
+R 0018-001F stic w=10 impl=real mirror=- gate=stic-regs src=SRC-intv-wiki@Memory_Map.oldid-14847 tag=tier4-community conf=C86
+R 0020-003F stic w=0 impl=real mirror=- gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C81 x=reads-zero
+R 0040-0057 stic w=0 impl=real mirror=64 gate=stic-regs src=SRC-intv-wiki@Memory_Map.oldid-14847 tag=tier4-community conf=C81 x=reads-zero
+R 0058-005F stic w=10 impl=real mirror=- gate=stic-regs src=SRC-intv-wiki@Memory_Map.oldid-14847 tag=tier4-community conf=C86
+R 0060-007F stic w=0 impl=real mirror=64 gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C81 x=reads-zero
 R 0080-00FF undriven w=0 impl=none mirror=- gate=- src=none tag=unknown-default-chosen conf=C5
 R 0100-01EF scratchpad w=8 impl=real mirror=- gate=- src=SRC-intv-wiki@Memory_Map.oldid-14847 tag=tier4-community conf=C60
 R 01F0-01F3 psg w=8 impl=real mirror=- gate=- src=SRC-intv-wiki@PSG-oldid-14940 tag=tier4-community conf=C70
@@ -89,7 +109,16 @@ R 2000-2FFF undriven w=0 impl=none mirror=- gate=- src=none tag=unknown-default-
 R 3000-37FF grom w=8 impl=real mirror=- gate=gmem src=SRC-gi-1980-catalog@pdf-197 tag=tier1-primary-doc
 R 3800-3FFF gram w=8 impl=real mirror=512 gate=gmem src=SRC-gi-1980-catalog@pdf-197 tag=inference conf=C21
 R 4000-FFFF cart w=10 impl=real mirror=- gate=- src=SRC-gi-1980-catalog@pdf-202 tag=unknown-default-chosen conf=C62
-W 0000-003F stic w=0 impl=stub mirror=- gate=stic-regs src=SRC-intv-wiki@Memory_Map.oldid-14847 tag=tier4-community conf=C21
+W 0000-0007 stic w=11 impl=real mirror=- gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=reads-zero
+W 0008-000F stic w=12 impl=real mirror=- gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=reads-zero
+W 0010-0017 stic w=14 impl=real mirror=- gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=reads-zero
+W 0018-001F stic w=10 impl=real mirror=- gate=stic-regs src=SRC-intv-wiki@Memory_Map.oldid-14847 tag=tier4-community conf=C86
+W 0020-0027 stic w=0 impl=real mirror=- gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=strobe
+W 0028-002C stic w=4 impl=real mirror=- gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=reads-zero
+W 002D-002F stic w=0 impl=real mirror=- gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=strobe
+W 0030-0031 stic w=3 impl=real mirror=- gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=reads-zero
+W 0032-0032 stic w=2 impl=real mirror=- gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=reads-zero
+W 0033-003F stic w=0 impl=real mirror=- gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=strobe
 W 0040-00FF undriven w=0 impl=none mirror=- gate=- src=none tag=unknown-default-chosen conf=C21
 W 0100-01EF scratchpad w=8 impl=real mirror=- gate=- src=SRC-intv-wiki@Memory_Map.oldid-14847 tag=tier4-community conf=C60
 W 01F0-01F3 psg w=8 impl=real mirror=- gate=- src=SRC-intv-wiki@PSG-oldid-14940 tag=tier4-community conf=C70
@@ -102,12 +131,39 @@ W 01FE-01FF psg w=8 impl=real mirror=- gate=- src=SRC-intv-wiki@PSG-oldid-14940 
 W 0200-035F sysram w=16 impl=real mirror=- gate=- src=SRC-gi-1980-catalog@pdf-199 tag=tier1-primary-doc
 W 0360-37FF undriven w=0 impl=none mirror=- gate=- src=none tag=unknown-default-chosen conf=C5
 W 3800-3FFF gram w=8 impl=real mirror=512 gate=gmem src=SRC-gi-1980-catalog@pdf-197 tag=inference conf=C21
-W 4000-403F stic w=0 impl=stub mirror=64 gate=stic-regs src=SRC-intv-wiki@Memory_Map.oldid-14847 tag=tier4-community conf=C61
+W 4000-4007 stic w=11 impl=real mirror=- gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=reads-zero
+W 4008-400F stic w=12 impl=real mirror=- gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=reads-zero
+W 4010-4017 stic w=14 impl=real mirror=- gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=reads-zero
+W 4018-401F stic w=10 impl=real mirror=- gate=stic-regs src=SRC-intv-wiki@Memory_Map.oldid-14847 tag=tier4-community conf=C86
+W 4020-4027 stic w=0 impl=real mirror=64 gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=strobe
+W 4028-402C stic w=4 impl=real mirror=- gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=reads-zero
+W 402D-402F stic w=0 impl=real mirror=64 gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=strobe
+W 4030-4031 stic w=3 impl=real mirror=- gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=reads-zero
+W 4032-4032 stic w=2 impl=real mirror=- gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=reads-zero
+W 4033-403F stic w=0 impl=real mirror=64 gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=strobe
 W 4040-77FF undriven w=0 impl=none mirror=- gate=- src=none tag=unknown-default-chosen conf=C5
 W 7800-7FFF gram w=8 impl=real mirror=512 gate=gmem src=SRC-intv-wiki@Memory_Map.oldid-14847 tag=tier4-community conf=C61
-W 8000-803F stic w=0 impl=stub mirror=64 gate=stic-regs src=SRC-intv-wiki@Memory_Map.oldid-14847 tag=tier4-community conf=C61
+W 8000-8007 stic w=11 impl=real mirror=- gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=reads-zero
+W 8008-800F stic w=12 impl=real mirror=- gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=reads-zero
+W 8010-8017 stic w=14 impl=real mirror=- gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=reads-zero
+W 8018-801F stic w=10 impl=real mirror=- gate=stic-regs src=SRC-intv-wiki@Memory_Map.oldid-14847 tag=tier4-community conf=C86
+W 8020-8027 stic w=0 impl=real mirror=64 gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=strobe
+W 8028-802C stic w=4 impl=real mirror=- gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=reads-zero
+W 802D-802F stic w=0 impl=real mirror=64 gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=strobe
+W 8030-8031 stic w=3 impl=real mirror=- gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=reads-zero
+W 8032-8032 stic w=2 impl=real mirror=- gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=reads-zero
+W 8033-803F stic w=0 impl=real mirror=64 gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=strobe
 W 8040-B7FF undriven w=0 impl=none mirror=- gate=- src=none tag=unknown-default-chosen conf=C5
 W B800-BFFF gram w=8 impl=real mirror=512 gate=gmem src=SRC-intv-wiki@Memory_Map.oldid-14847 tag=tier4-community conf=C61
-W C000-C03F stic w=0 impl=stub mirror=64 gate=stic-regs src=SRC-intv-wiki@Memory_Map.oldid-14847 tag=tier4-community conf=C61
+W C000-C007 stic w=11 impl=real mirror=- gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=reads-zero
+W C008-C00F stic w=12 impl=real mirror=- gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=reads-zero
+W C010-C017 stic w=14 impl=real mirror=- gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=reads-zero
+W C018-C01F stic w=10 impl=real mirror=- gate=stic-regs src=SRC-intv-wiki@Memory_Map.oldid-14847 tag=tier4-community conf=C86
+W C020-C027 stic w=0 impl=real mirror=64 gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=strobe
+W C028-C02C stic w=4 impl=real mirror=- gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=reads-zero
+W C02D-C02F stic w=0 impl=real mirror=64 gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=strobe
+W C030-C031 stic w=3 impl=real mirror=- gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=reads-zero
+W C032-C032 stic w=2 impl=real mirror=- gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=reads-zero
+W C033-C03F stic w=0 impl=real mirror=64 gate=stic-regs src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86 x=strobe
 W C040-F7FF undriven w=0 impl=none mirror=- gate=- src=none tag=unknown-default-chosen conf=C5
 W F800-FFFF gram w=8 impl=real mirror=512 gate=gmem src=SRC-intv-wiki@Memory_Map.oldid-14847 tag=tier4-community conf=C61

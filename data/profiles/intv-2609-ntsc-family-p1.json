@@ -364,29 +364,39 @@
       "cite": "none-found: no source documents STIC register reads for a device the core does not implement yet",
       "conflict": "C60",
       "resolving_evidence": "measurement: D10 read-back of STIC register reads on owner hardware",
-      "revisit_trigger": "when the STIC phase (6) implements the device",
+      "revisit_trigger": "when an extension device is decoded before it is implemented",
       "decision": null,
-      "note": "A stub region is decoded and named but holds no state: reads give the undriven value and writes are dropped (D-19). Only the STIC regions use it since plan 05-04; the PSG region is a real device (psg8)."
+      "note": "A stub region is decoded and named but holds no state: reads give the undriven value and writes are dropped (D-19). No region uses it since plan 06-06 (the STIC regions are the real device stic14); the record stays for a later extension stub that holds no state."
+    },
+    "memmap.device.stic14": {
+      "value": {"bits": 14, "rmask": "$3FFF", "fill": "$FFFF", "store": "keep"},
+      "tag": "unknown-default-chosen",
+      "cite": "SRC-gi-1980-catalog pdf 191 (printed 5-10) and SRC-gi-1982-catalog pdf 462: the STIC data bus is 14 bits wide (S00 to S013), so bits 15 and 14 of a stored or read word are never driven by it; none-found for what a read of a register returns on a 2609",
+      "conflict": "C81",
+      "resolving_evidence": "measurement: D10 read-back of STIC register reads on owner hardware",
+      "revisit_trigger": "a tier 1 to 3 source for the STIC register read-back, or a D10 read-back on owner hardware",
+      "decision": null,
+      "note": "Device kind stic14 (plan 06-06, D-04): the 64 STIC registers are one backed word each. The record is the device default; the per-register masks of stic.regmap refine it: a store keeps value & the register's write mask, a read gives (stored & the read mask) | (fill & ~the read mask) with this fill, so a write-only register reads $FFFF and a collision register reads $FC00 OR its stored bits."
     },
     "memmap.region.stic_regs": {
-      "value": {"view": "RW", "lo": "$0000", "hi": "$003F", "device": "stub", "size_words": 64, "gate": "stic-regs", "impl": "stub"},
+      "value": {"view": "RW", "lo": "$0000", "hi": "$003F", "device": "stic14", "size_words": 64, "gate": "stic-regs", "impl": "real"},
       "tag": "tier4-community",
       "cite": "SRC-intv-wiki (Memory Map, oldid 14847) for $0000-$003F; SRC-gi-1980-catalog printed 5-10 to 5-12 (pdf 191 to 193) gives no CPU register addresses",
       "conflict": "C21",
       "resolving_evidence": "pending: a tier 1 to 3 address source, or a D10 decode probe on owner hardware",
       "revisit_trigger": "when a tier 1 to 3 source or a hardware probe gives the decode",
       "decision": null,
-      "note": "STIC registers; the device arrives in Phase 6."
+      "note": "STIC registers, the real device stic14 since plan 06-06: a store keeps value & the register's write mask, a read gives the register store under its read mask with the undriven fill above (stic.regmap)."
     },
     "memmap.region.stic_alias_read": {
-      "value": {"view": "R", "lo": "$0040", "hi": "$007F", "device": "stub", "size_words": 64, "gate": "stic-regs", "impl": "stub"},
+      "value": {"view": "R", "lo": "$0040", "hi": "$007F", "device": "stic14", "size_words": 64, "gate": "stic-regs", "impl": "real"},
       "tag": "tier4-community",
       "cite": "SRC-intv-wiki (Memory Map, oldid 14847) for the read-only alias at $0040-$007F",
       "conflict": "C21",
       "resolving_evidence": "pending: a tier 1 to 3 address source, or a D10 decode probe on owner hardware",
       "revisit_trigger": "when a tier 1 to 3 source or a hardware probe gives the decode",
       "decision": null,
-      "note": "Read view only."
+      "note": "Read view only; it mirrors the register file ($0040 reads register $00 and so on), so a read there gives what the same register reads."
     },
     "memmap.region.scratchpad": {
       "value": {"view": "RW", "lo": "$0100", "hi": "$01EF", "device": "ram8", "size_words": 256, "gate": "none", "impl": "real"},
@@ -449,7 +459,7 @@
       "note": "Extent 2048 words mirrored over a 512-word backing."
     },
     "memmap.region.stic_alias_w4": {
-      "value": {"view": "W", "lo": "$4000", "hi": "$403F", "device": "stub", "size_words": 64, "gate": "stic-regs", "impl": "stub"},
+      "value": {"view": "W", "lo": "$4000", "hi": "$403F", "device": "stic14", "size_words": 64, "gate": "stic-regs", "impl": "real"},
       "tag": "inference",
       "cite": "SRC-intv-wiki (Memory Map, oldid 14847) for the write-only alias at $4000-$403F; gate stic-regs is an inference: the alias reaches the same STIC registers as $0000-$003F, so it shares their access window (data/memmap/intv-2609-ntsc-family-p1.literal.txt header, D-18)",
       "conflict": "C61",
@@ -468,7 +478,7 @@
       "note": "Writes reach the GRAM backing; reads come from the cartridge span."
     },
     "memmap.region.stic_alias_w8": {
-      "value": {"view": "W", "lo": "$8000", "hi": "$803F", "device": "stub", "size_words": 64, "gate": "stic-regs", "impl": "stub"},
+      "value": {"view": "W", "lo": "$8000", "hi": "$803F", "device": "stic14", "size_words": 64, "gate": "stic-regs", "impl": "real"},
       "tag": "inference",
       "cite": "SRC-intv-wiki (Memory Map, oldid 14847) for the write-only alias at $8000-$803F; gate stic-regs is an inference: the alias reaches the same STIC registers as $0000-$003F, so it shares their access window (data/memmap/intv-2609-ntsc-family-p1.literal.txt header, D-18)",
       "conflict": "C61",
@@ -487,7 +497,7 @@
       "note": "Writes reach the GRAM backing; reads come from the cartridge span."
     },
     "memmap.region.stic_alias_wc": {
-      "value": {"view": "W", "lo": "$C000", "hi": "$C03F", "device": "stub", "size_words": 64, "gate": "stic-regs", "impl": "stub"},
+      "value": {"view": "W", "lo": "$C000", "hi": "$C03F", "device": "stic14", "size_words": 64, "gate": "stic-regs", "impl": "real"},
       "tag": "inference",
       "cite": "SRC-intv-wiki (Memory Map, oldid 14847) for the write-only alias at $C000-$C03F; gate stic-regs is an inference: the alias reaches the same STIC registers as $0000-$003F, so it shares their access window (data/memmap/intv-2609-ntsc-family-p1.literal.txt header, D-18)",
       "conflict": "C61",

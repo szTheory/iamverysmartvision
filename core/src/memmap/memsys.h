@@ -19,7 +19,11 @@
  * grom, cart, each u16), then (plan 05-03, D-04) the guest-visible PSG words: 16 registers of
  * 16 bits (32 bytes), the two port pull-down masks (2 bytes) and an explicit 2-byte pad: 113,264
  * bytes in all, divisible by 8; plan 06-05 (D-04, D-16) appends the 64 STIC register words (128
- * bytes), 113,392 bytes in all, divisible by 16. Since plan 05-04 the PSG region ($01F0-$01FF) is the real device
+ * bytes), 113,392 bytes in all, divisible by 16. Plan 06-06 (D-04, A-01): the five STIC regions are the real device kind
+ * stic14: a read gives the register word under the register's read mask of the generated ivs_stic_params with the
+ * undriven fill above it, a store keeps value & the register's write mask (a strobe or reserved register stores
+ * nothing); side effects (the display-enable strobe, the mode select) live in the machine's bus wrapper, never here,
+ * so a peek can never switch a mode. Since plan 05-04 the PSG region ($01F0-$01FF) is the real device
  * kind psg8: a read gives the register store under the profile's read mask (psg.regmap) with
  * bits 15..8 zero, a store keeps value & the write mask, through ivs_psg_reg_load and
  * ivs_psg_reg_store (psg/psg.h). */
@@ -55,7 +59,8 @@
 #define IVS_MEMSYS_DEVICE_RAM16 4u
 #define IVS_MEMSYS_DEVICE_STUB 5u
 #define IVS_MEMSYS_DEVICE_PSG8 6u /* plan 05-04: byte-wide PSG register file, upper byte 0 (C64) */
-#define IVS_MEMSYS_DEVICE_KINDS 7u
+#define IVS_MEMSYS_DEVICE_STIC14 7u /* plan 06-06: the 14-bit STIC register file, per-register masks (stic.regmap) */
+#define IVS_MEMSYS_DEVICE_KINDS 8u
 
 /* Gates (D-19): open after init; the internal setter closes them. */
 #define IVS_MEMSYS_GATE_NONE 0u
@@ -221,6 +226,11 @@ void ivs_memsys_set_port_pulldown_internal(ivs_memsys *m, uint32_t port, uint32_
 /* Raw-poke seam (A-05a): stores value unmasked into the backing word of addr (read view first,
  * then write view; the cartridge span stores at addr - span lo). No backing: nothing happens. */
 void ivs_memsys_poke_raw_internal(ivs_memsys *m, uint16_t addr, uint16_t value);
+
+/* The register store of STIC register idx (0..63 = $0000 + idx) as a bus read of that register in the register
+ * window gives it, ignoring the gate: (stored & read mask) | (fill & ~read mask). 0xFFFF for idx at or above
+ * IVS_MEMSYS_STIC_REGS. Pure (plan 06-06). */
+uint16_t ivs_memsys_stic_reg_read_internal(const ivs_memsys *m, uint32_t idx);
 
 /* Decode introspection (A-05b). view is IVS_MEMSYS_VIEW_R or IVS_MEMSYS_VIEW_W. Returns IVS_OK,
  * or BAD_ARG for NULL out, a bad profile index or a bad view (out untouched). */

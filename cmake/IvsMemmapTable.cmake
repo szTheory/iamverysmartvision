@@ -7,7 +7,7 @@
 #
 # Profile fields read (every one carries the profile record's tag, cite and conflict):
 #   memmap.undriven_read          "$XXXX"
-#   memmap.device.<kind>          {bits, rmask, fill, store}; kind rom10 grom8 ram8 ram16 stub psg8 (plan 05-04)
+#   memmap.device.<kind>          {bits, rmask, fill, store}; kind rom10 grom8 ram8 ram16 stub psg8 (plan 05-04) stic14 (plan 06-06)
 #   memmap.region.<name>          {view R|W|RW, lo, hi, device, size_words, gate, impl}
 #   memmap.cart_span              {lo, hi} (A-02; no alignment field, A-01)
 #   cartridge.features_supported  u32 mask (D-32)
@@ -152,8 +152,8 @@ function(mm_key out v)
 endfunction()
 
 # Numeric ids; the order is the id (memsys.h repeats them and the output asserts equality).
-set(MM_DEVICES undriven rom10 grom8 ram8 ram16 stub psg8)
-set(MM_DEVICE_MACROS UNDRIVEN ROM10 GROM8 RAM8 RAM16 STUB PSG8)
+set(MM_DEVICES undriven rom10 grom8 ram8 ram16 stub psg8 stic14)
+set(MM_DEVICE_MACROS UNDRIVEN ROM10 GROM8 RAM8 RAM16 STUB PSG8 STIC14)
 set(MM_GATES none stic-regs gmem)
 set(MM_GATE_MACROS NONE STIC_REGS GMEM)
 set(MM_IMPLS none real stub)
@@ -161,7 +161,6 @@ set(MM_IMPL_MACROS NONE REAL STUB)
 set(MM_PHYS undriven stic scratchpad psg sysram exec grom gram cart)
 set(MM_PHYS_MACROS UNDRIVEN STIC SCRATCHPAD PSG SYSRAM EXEC GROM GRAM CART)
 set(MM_VIEWS - R W RW)
-set(MM_STUB_PHYS stic)
 # Backed physical devices and the memsys.h capacity macro of each.
 set(MM_CAP_scratchpad IVS_MEMSYS_SCRATCHPAD_WORDS)
 set(MM_CAP_sysram IVS_MEMSYS_SYSRAM_WORDS)
@@ -169,6 +168,7 @@ set(MM_CAP_exec IVS_MEMSYS_EXEC_WORDS)
 set(MM_CAP_grom IVS_MEMSYS_GROM_WORDS)
 set(MM_CAP_gram IVS_MEMSYS_GRAM_WORDS)
 set(MM_CAP_psg IVS_MEMSYS_PSG_WORDS)
+set(MM_CAP_stic IVS_MEMSYS_STIC_REGS) # plan 06-06: the STIC register file is backed (stic14)
 set(MM_UNIT_TOKENS window offset hold duration delay period latency interval timeout)
 
 file(GLOB mm_profiles RELATIVE "${ROOT}" "${ROOT}/data/profiles/*.json")
@@ -312,7 +312,7 @@ foreach(rel IN LISTS mm_profiles)
   # Required registry fields (a missing one fails closed).
   foreach(need cartridge.features_supported system_images.exec system_images.grom memmap.cart_span
           memmap.device.rom10 memmap.device.grom8 memmap.device.ram8 memmap.device.ram16
-          memmap.device.stub memmap.device.psg8)
+          memmap.device.stub memmap.device.psg8 memmap.device.stic14)
     if(NOT need IN_LIST names)
       set(MM_CTX "${rel}: ${need}")
       mm_fail("missing")
@@ -476,13 +476,15 @@ foreach(rel IN LISTS mm_profiles)
     if(extent GREATER size AND NOT rem EQUAL 0)
       mm_fail("extent ${extent} is neither at most size_words ${size} nor a whole multiple of it")
     endif()
+    # Plan 06-06 (A-01): every physical device is backed since the STIC flipped; a stub device (kept for
+    # a later extension stub) holds no state and needs only impl stub; no region has to use it.
     if(dname STREQUAL "stub")
-      if(NOT s STREQUAL "stub" OR NOT pname IN_LIST MM_STUB_PHYS)
-        mm_fail("a stub device needs impl stub and a stub physical device (stic)")
+      if(NOT s STREQUAL "stub")
+        mm_fail("a stub device needs impl stub")
       endif()
     else()
-      if(NOT s STREQUAL "real" OR pname IN_LIST MM_STUB_PHYS)
-        mm_fail("a backed device needs impl real and a backed physical device")
+      if(NOT s STREQUAL "real")
+        mm_fail("a backed device needs impl real")
       endif()
       if(DEFINED mm_phys_${pname}_size)
         if(NOT mm_phys_${pname}_size EQUAL size OR NOT mm_phys_${pname}_dev STREQUAL dname)

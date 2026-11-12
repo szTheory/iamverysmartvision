@@ -37,6 +37,7 @@ memmap.device.ram16
 memmap.device.ram8
 memmap.device.psg8
 memmap.device.stub
+memmap.device.stic14
 memmap.region.stic_regs
 memmap.region.stic_alias_read
 memmap.region.scratchpad

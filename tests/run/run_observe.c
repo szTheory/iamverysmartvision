@@ -564,7 +564,7 @@ done:
 }
 
 /* Undriven space and empty slots: a fresh instance reads the undriven value at $0080 (no region),
- * $0000 (a STIC stub) and $1000 / $3000 / $5000 (no image loaded), and zero in system RAM and in
+ * $0000 (a write-only STIC register, a real device since plan 06-06, whose read mask is 0) and $1000 / $3000 / $5000 (no image loaded), and zero in system RAM and in
  * the PSG register file ($01F0, $01F1: a real device since plan 05-04) and the idle byte $00FF at the two
  * ports $01FE, $01FF (plan 05-05: a port in input mode with no pin held low); each equals the CPU read. */
 static int ro_peek_undriven(void)
@@ -583,6 +583,8 @@ static int ro_peek_undriven(void)
   RO_CHECK(ro_peek_is(&x, 0x3000u, 2u, fill2));
   RO_CHECK(ro_peek_is(&x, 0x5000u, 2u, fill2));
   RO_CHECK(ro_peek_is(&x, 0x0200u, 2u, zero2));
+  /* $0070..$00AF: the tail of the STIC read alias ($0070-$007F mirrors registers $30..$3F, all with read mask 0 in the
+   * register-address literal, so FFFF) and the undriven gap above it; peek equals the CPU read (plan 06-06) */
   RO_CHECK(ro_peek_is(&x, 0x0070u, 64u, NULL));
   RO_CHECK(ro_peek_is(&x, 0x01E8u, 64u, NULL));
   rc = IVS_TEST_PASS;

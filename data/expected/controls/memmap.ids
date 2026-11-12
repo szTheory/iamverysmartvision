@@ -12,3 +12,4 @@ memmap-literal-unknown-conf
 memmap-dump-diff
 memmap-dump-stale
 memmap-dump-missing
+memmap-exception-unknown

@@ -27,6 +27,7 @@
 
 #include "memmap/memsys.h"
 #include "psg/psg.h"
+#include "stic/stic_params.h"
 
 /* Generated record types (the generator writes initializers in this field order). */
 typedef struct ivs_mm_region {
@@ -70,8 +71,10 @@ const ivs_profile_desc *ivs_profile_get(uint32_t index)
 int ivs_memsys_init(ivs_memsys *m, uint32_t profile)
 {
   /* A profile without a row in the PSG parameter table is refused here, so every access to the PSG
-   * region below finds its parameters (review WR-04). */
-  if (m == NULL || profile >= IVS_MM_PROFILE_COUNT || profile >= ivs_psg_params_count()) {
+   * region below finds its parameters (review WR-04); plan 06-06 adds the STIC table (the fourth-table guard),
+   * for the per-register masks of the STIC regions. */
+  if (m == NULL || profile >= IVS_MM_PROFILE_COUNT || profile >= ivs_psg_params_count()
+      || profile >= ivs_stic_params_count()) {
     return IVS_E_BAD_ARG;
   }
   memset(m, 0, sizeof *m); /* also zeroes psg_reg, the pull-down masks and stic_reg (plan 06-05) */
@@ -145,6 +148,8 @@ static uint16_t ivs_mm_load(const ivs_memsys *m, uint8_t phys, uint32_t i)
     }
     return ivs_psg_reg_load(pp, m->psg_reg, i);
   }
+  case IVS_MEMSYS_PHYS_STIC:
+    return m->stic_reg[i & (IVS_MEMSYS_STIC_REGS - 1u)];
   default:
     return 0u; /* stub devices hold no state */
   }
@@ -171,6 +176,12 @@ static void ivs_mm_store(ivs_memsys *m, uint8_t phys, uint32_t i, uint16_t v)
   case IVS_MEMSYS_PHYS_PSG: {
     /* a row exists: ivs_memsys_init refused any other profile */
     ivs_psg_reg_store(ivs_psg_params_get(m->profile), m->psg_reg, i, v); /* keeps v & the register's write mask */
+    break;
+  }
+  case IVS_MEMSYS_PHYS_STIC: {
+    /* a row exists: ivs_memsys_init refused any other profile; a strobe or reserved register has write mask 0 */
+    uint32_t r = i & (IVS_MEMSYS_STIC_REGS - 1u);
+    m->stic_reg[r] = IVS_U16((uint32_t)v & ivs_stic_params_get(m->profile)->reg_wmask[r]);
     break;
   }
   default:
@@ -205,9 +216,15 @@ static uint16_t ivs_mm_region_read(const ivs_memsys *m, uint8_t idx, uint16_t ad
     open = 1u;
 #endif
     if (open != 0u && ivs_mm_present(m, r->phys) != 0u) {
-      stored = ivs_mm_load(m, r->phys, ivs_mm_index(r, addr));
+      uint32_t i = ivs_mm_index(r, addr);
+      stored = ivs_mm_load(m, r->phys, i);
       rmask = d->rmask;
       fill = d->fill;
+      if (r->phys == IVS_MEMSYS_PHYS_STIC) {
+        /* plan 06-06: the per-register read mask of stic.regmap refines the device record; a write-only register
+         * (mask 0) reads the fill and a collision register reads fill OR its stored bits (fill FFFF) */
+        rmask = ivs_stic_params_get(m->profile)->reg_rmask[i & (IVS_MEMSYS_STIC_REGS - 1u)];
+      }
 #ifdef IVS_FAULT_MEM_ROM_NO_MASK
       if (r->device == IVS_MEMSYS_DEVICE_ROM10) {
         rmask = 0xFFFFu;
@@ -420,6 +437,17 @@ uint32_t ivs_memsys_psg_write_slot_internal(const ivs_memsys *m, uint16_t addr)
   return IVS_MEMSYS_NO_SLOT;
 }
 
+uint16_t ivs_memsys_stic_reg_read_internal(const ivs_memsys *m, uint32_t idx)
+{
+  const ivs_mm_device *d = &ivs_mm_devices[m->profile][IVS_MEMSYS_DEVICE_STIC14];
+  uint32_t i;
+  if (idx >= IVS_MEMSYS_STIC_REGS) {
+    return 0xFFFFu;
+  }
+  i = idx;
+  return ivs_mm_width(m->stic_reg[i], ivs_stic_params_get(m->profile)->reg_rmask[i], d->fill);
+}
+
 void ivs_memsys_set_port_pulldown_internal(ivs_memsys *m, uint32_t port, uint32_t mask)
 {
   if (port < IVS_MEMSYS_PSG_PORTS) {
@@ -444,6 +472,11 @@ void ivs_memsys_poke_raw_internal(ivs_memsys *m, uint16_t addr, uint16_t value)
       /* the raw seam stores the whole word, as for every other backing; the read mask applies on
        * read (plan 05-04) */
       m->psg_reg[ivs_mm_index(r, addr) & (IVS_MEMSYS_PSG_WORDS - 1u)] = value;
+      return;
+    }
+    if (r->phys == IVS_MEMSYS_PHYS_STIC) {
+      /* the raw seam stores the whole word, as for every other backing; the masks apply on read (plan 06-06) */
+      m->stic_reg[ivs_mm_index(r, addr) & (IVS_MEMSYS_STIC_REGS - 1u)] = value;
       return;
     }
     ivs_mm_store(m, r->phys, ivs_mm_index(r, addr), value);
