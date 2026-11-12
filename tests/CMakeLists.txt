@@ -160,7 +160,7 @@ add_custom_command(
   DEPENDS "${IVS_DIAG_EXPECT}" "${CMAKE_CURRENT_SOURCE_DIR}/expect-inc.cmake"
   COMMENT "Generating the diag-cpu-1 predicate include"
   VERBATIM)
-add_executable(ivs_tests_run run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_fuzz.c run/run_stub.c run/run_diag.c machine/machine_standin.c "${IVS_IMAGES_INC}" "${IVS_DIAG_EXPECT_INC}")
+add_executable(ivs_tests_run run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_struct.c run/run_fuzz.c run/run_stub.c run/run_diag.c machine/machine_standin.c "${IVS_IMAGES_INC}" "${IVS_DIAG_EXPECT_INC}")
 target_include_directories(ivs_tests_run PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_BINARY_DIR}")
 add_dependencies(ivs_tests_run ivs_images)
 target_link_libraries(ivs_tests_run PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
@@ -269,7 +269,7 @@ ivs_fault_suite(machine
   GENERATED "${IVS_SHA_INC}" "${IVS_CART_INC}")
 
 ivs_fault_suite(run
-  SOURCES run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_fuzz.c run/run_stub.c run/run_diag.c machine/machine_standin.c
+  SOURCES run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_struct.c run/run_fuzz.c run/run_stub.c run/run_diag.c machine/machine_standin.c
   INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_BINARY_DIR}"
   GENERATED "${IVS_IMAGES_INC}" "${IVS_DIAG_EXPECT_INC}")
 

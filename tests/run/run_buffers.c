@@ -45,10 +45,10 @@
 #define BF_SPAN 2500u
 #define BF_NEED 48u
 /* The poisoned caller memory the buffers are cut from (offsets below), with guard bytes. */
-#define BF_ARENA 256u
+#define BF_ARENA 512u
 #define BF_VIDEO_OFF 16u
 #define BF_AUDIO_OFF 128u
-#define BF_REP_BYTES 128u
+#define BF_REP_BYTES 192u
 
 typedef union bf_rep {
   ivs_run_report r;

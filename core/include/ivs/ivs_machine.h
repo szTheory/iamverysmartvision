@@ -105,6 +105,11 @@ typedef struct ivs_image_report {
  * (the size per frame is then 0). */
 #define IVS_OUTPUT_FORMAT_NONE 0u
 
+/* The v1 (Phase 3) size of ivs_info (A-02, plan 04-09; public since plan 05-02): the smallest
+ * struct_size ivs_machine_info accepts. Fields after it are written only when the caller's
+ * struct_size covers them. machine.c ties it to offsetof(ivs_info, ticks_per_cpu_cycle). */
+#define IVS_INFO_V1_SIZE 216u
+
 /* Out: instance information. slots[i] is the slot of kind i + 1. time_ticks is machine time in
  * master ticks (docs/time-base.md).
  * Growth (A-02, plan 04-09): the v1 size of ivs_info is the Phase 3 size (216 bytes, up to and

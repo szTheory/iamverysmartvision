@@ -30,10 +30,8 @@
 #define IVS_MACHINE_ALIGN 16u
 #define IVS_MACHINE_BYTES 113600u
 
-/* The v1 (Phase 3) size of ivs_info (A-02, plan 04-09): the smallest struct_size info accepts.
- * Fields after it are written only when the caller's struct_size covers them. machine.c ties it
- * to offsetof(ivs_info, ticks_per_cpu_cycle). */
-#define IVS_INFO_V1_SIZE 216u
+/* IVS_INFO_V1_SIZE, the smallest struct_size info accepts, is public (ivs/ivs_machine.h, plan
+ * 05-02): the installed consumer pins it from the installed headers. */
 
 /* One image slot (kind fixed at create: slot i holds kind i + 1). */
 typedef struct ivs_machine_slot {
@@ -180,6 +178,13 @@ typedef struct ivs_run_env {
   uint32_t audio_format;
   uint32_t audio_bytes_per_frame;
   uint64_t nominal_frame_ticks;
+  /* Plan 05-02 (D-14, D-19): the write-log channel, appended. The log needs
+   * psg_log_bytes_per_frame * (max(target - now, 0) / nominal_frame_ticks + 1) bytes like the
+   * other two channels; 0 (every profile until plan 05-08) needs nothing. The seam is an internal
+   * plain struct without a struct_size: callers build it with memset, so the appended field is
+   * 0 for a caller that does not know it. */
+  uint32_t psg_log_bytes_per_frame;
+  uint32_t reserved_env; /* 0 */
 } ivs_run_env;
 
 /* The real output layout of profile p (shared by ivs_machine_info and the public run call):

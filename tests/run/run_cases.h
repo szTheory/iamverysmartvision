@@ -46,6 +46,12 @@ extern const size_t ivs_run_buffers_count;
 extern const ivs_test_case ivs_run_input_cases[];
 extern const size_t ivs_run_input_count;
 
+/* Family struct (plan 05-02, D-19, A-02, A-04): the pinned v1 minimums of the grown run request and
+ * run report, v1-sized callers against the v2 core, and the appended fields' offsets
+ * (run_struct.c). */
+extern const ivs_test_case ivs_run_struct_cases[];
+extern const size_t ivs_run_struct_count;
+
 /* Family fuzz (plan 04-13, D-12..D-16, A-02): the seeded input/slicing fuzz against a unit-by-unit
  * reference and the frozen v1 sizes of the Phase 4 public structs (run_fuzz.c). */
 extern const ivs_test_case ivs_run_fuzz_cases[];

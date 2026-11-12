@@ -71,8 +71,21 @@
  * model (Pitfall 13); its size is bounded by the struct cap. The report is pointer-free. */
 _Static_assert(offsetof(ivs_run_request, video) == 16u, "ivs_run_request: the buffers follow the 16-byte prefix");
 _Static_assert(sizeof(ivs_run_request) <= IVS_STRUCT_SIZE_MAX, "ivs_run_request within the struct cap");
-_Static_assert(sizeof(ivs_run_report) == 112u, "ivs_run_report is 112 bytes");
+#if UINTPTR_MAX == 0xFFFFFFFFFFFFFFFFu
+_Static_assert(offsetof(ivs_run_request, psg_log) == IVS_RUN_REQUEST_V1_SIZE, "request v2 starts at the v1 size");
+_Static_assert(offsetof(ivs_run_request, psg_log_capacity) == 72u, "psg_log_capacity at offset 72");
+_Static_assert(sizeof(ivs_run_request) == 80u, "ivs_run_request is 80 bytes (v2, 64-bit pointers)");
+#endif
+_Static_assert(IVS_RUN_REPORT_V1_SIZE == 112u, "the pinned v1 report size is 112");
+_Static_assert(offsetof(ivs_run_report, audio_first_index) == IVS_RUN_REPORT_V1_SIZE, "report v2 starts at the v1 size");
+_Static_assert(offsetof(ivs_run_report, psg_log_bytes_written) == 120u, "psg_log_bytes_written at offset 120");
+_Static_assert(offsetof(ivs_run_report, psg_log_first_index) == 128u, "psg_log_first_index at offset 128");
+_Static_assert(sizeof(ivs_run_report) == 136u, "ivs_run_report is 136 bytes (v2)");
 _Static_assert(offsetof(ivs_run_report, now_ticks) % 8u == 0u, "64-bit report members are 8-aligned");
+
+/* One byte past the last v2 request field: a request whose struct_size reaches it carries
+ * psg_log and psg_log_capacity (plan 05-02). A smaller (v1-sized) caller never has them read. */
+#define IVS_BOUND_REQ_LOG_END (offsetof(ivs_run_request, psg_log_capacity) + sizeof(uint64_t))
 
 #ifdef IVS_FAULT_RUN_BUDGET_CARRY
 /* Named fault RUN_BUDGET_CARRY (plan 04-09, D-07): a hidden carry between calls. The overshoot of
@@ -180,13 +193,30 @@ static uint64_t ivs_bound_events_bytes(const ivs_run_request *req)
   return (uint64_t)req->event_count * (uint64_t)sizeof(ivs_input_event);
 }
 
-/* 1 when req's buffer fields may be read: present and at least its full size (stage 1). */
+/* 1 when req's v1 buffer fields may be read: present and at least the pinned v1 size (stage 1). */
 static uint32_t ivs_bound_req_sized(const ivs_run_request *req)
 {
-  return req != NULL && req->struct_size >= (uint32_t)sizeof(ivs_run_request) &&
-                 req->struct_size <= IVS_STRUCT_SIZE_MAX
-             ? 1u
-             : 0u;
+  return req != NULL && req->struct_size >= IVS_RUN_REQUEST_V1_SIZE && req->struct_size <= IVS_STRUCT_SIZE_MAX ? 1u
+                                                                                                             : 0u;
+}
+
+/* The write-log buffer of a request and its capacity: read only when struct_size covers the v2
+ * fields (plan 05-02, A-02), else NULL and 0 (the channel is not requested). req is sized. */
+static uint8_t *ivs_bound_log_ptr(const ivs_run_request *req)
+{
+  return req->struct_size >= IVS_BOUND_REQ_LOG_END ? req->psg_log : NULL;
+}
+
+static uint64_t ivs_bound_log_cap(const ivs_run_request *req)
+{
+  return req->struct_size >= IVS_BOUND_REQ_LOG_END ? req->psg_log_capacity : 0u;
+}
+
+/* The bytes the core writes into rep on success or refusal: min(caller struct_size, own size)
+ * (A-02, plan 05-02), the same rule as ivs_machine_info. rep is sized (stage 1). */
+static uint32_t ivs_bound_rep_bytes(const ivs_run_report *rep)
+{
+  return rep->struct_size < (uint32_t)sizeof(ivs_run_report) ? rep->struct_size : (uint32_t)sizeof(ivs_run_report);
 }
 
 /* 1 when the caller's report may receive refusal detail: present, a size the core accepts, not
@@ -196,17 +226,19 @@ static uint32_t ivs_bound_req_sized(const ivs_run_request *req)
  * a report inside the storage of an invalid or destroyed instance gets nothing either. */
 static uint32_t ivs_bound_report_ok(const ivs_machine *m, const ivs_run_request *req, const ivs_run_report *rep)
 {
-  if (rep == NULL || rep->struct_size < (uint32_t)sizeof(ivs_run_report) ||
-      rep->struct_size > IVS_STRUCT_SIZE_MAX) {
+  uint32_t n;
+  if (rep == NULL || rep->struct_size < IVS_RUN_REPORT_V1_SIZE || rep->struct_size > IVS_STRUCT_SIZE_MAX) {
     return 0u;
   }
-  if (m != NULL && ivs_machine_span_overlaps(rep, sizeof *rep, m, sizeof(struct ivs_machine)) != 0u) {
+  n = ivs_bound_rep_bytes(rep); /* the bytes a write would cover, not the caller's whole struct */
+  if (m != NULL && ivs_machine_span_overlaps(rep, n, m, sizeof(struct ivs_machine)) != 0u) {
     return 0u;
   }
   if (ivs_bound_req_sized(req) != 0u &&
-      (ivs_bound_spans_meet(rep, sizeof *rep, req->video, req->video_capacity) != 0u ||
-       ivs_bound_spans_meet(rep, sizeof *rep, req->audio, req->audio_capacity) != 0u ||
-       ivs_bound_spans_meet(rep, sizeof *rep, req->events, ivs_bound_events_bytes(req)) != 0u)) {
+      (ivs_bound_spans_meet(rep, n, req->video, req->video_capacity) != 0u ||
+       ivs_bound_spans_meet(rep, n, req->audio, req->audio_capacity) != 0u ||
+       ivs_bound_spans_meet(rep, n, ivs_bound_log_ptr(req), ivs_bound_log_cap(req)) != 0u ||
+       ivs_bound_spans_meet(rep, n, req->events, ivs_bound_events_bytes(req)) != 0u)) {
     return 0u;
   }
   return 1u;
@@ -266,8 +298,7 @@ static ivs_status ivs_bound_validate(const ivs_machine *m, const ivs_run_request
   uint32_t controllers;
   const struct ivs_machine *im;
   /* 1. BAD_ARG: NULL arguments and struct sizes. */
-  if (rep == NULL || rep->struct_size < (uint32_t)sizeof(ivs_run_report) ||
-      rep->struct_size > IVS_STRUCT_SIZE_MAX) {
+  if (rep == NULL || rep->struct_size < IVS_RUN_REPORT_V1_SIZE || rep->struct_size > IVS_STRUCT_SIZE_MAX) {
     *reason = IVS_REASON_RUN_STRUCT_SIZE;
     return IVS_E_BAD_ARG;
   }
@@ -275,7 +306,7 @@ static ivs_status ivs_bound_validate(const ivs_machine *m, const ivs_run_request
     *reason = IVS_REASON_RUN_NULL_ARG;
     return IVS_E_BAD_ARG;
   }
-  if (req->struct_size < (uint32_t)sizeof(ivs_run_request) || req->struct_size > IVS_STRUCT_SIZE_MAX) {
+  if (req->struct_size < IVS_RUN_REQUEST_V1_SIZE || req->struct_size > IVS_STRUCT_SIZE_MAX) {
     *reason = IVS_REASON_RUN_STRUCT_SIZE;
     return IVS_E_BAD_ARG;
   }
@@ -285,8 +316,8 @@ static ivs_status ivs_bound_validate(const ivs_machine *m, const ivs_run_request
     *reason = IVS_REASON_HANDLE;
     return IVS_E_BAD_HANDLE;
   }
-  /* 3. BAD_ARG: the report overlaps the instance storage. */
-  if (ivs_machine_span_overlaps(rep, sizeof *rep, im, sizeof *im) != 0u) {
+  /* 3. BAD_ARG: the report overlaps the instance storage (the bytes the core would write). */
+  if (ivs_machine_span_overlaps(rep, ivs_bound_rep_bytes(rep), im, sizeof *im) != 0u) {
     *reason = IVS_REASON_RUN_REPORT_OVERLAP;
     return IVS_E_BAD_ARG;
   }
@@ -295,6 +326,8 @@ static ivs_status ivs_bound_validate(const ivs_machine *m, const ivs_run_request
     *reason = IVS_REASON_RUN_FLAGS;
     return IVS_E_UNSUPPORTED;
   }
+  /* The tail rule is rebased on the core's own size (A-02, plan 05-02): a caller between the v1
+   * size and sizeof is valid; one above sizeof must be zero past it. */
   if (ivs_bound_tail_zero((const uint8_t *)req, sizeof(ivs_run_request), (size_t)req->struct_size) == 0u) {
     *reason = IVS_REASON_RUN_TAIL;
     return IVS_E_UNSUPPORTED;
@@ -379,7 +412,7 @@ static void ivs_bound_refuse(const ivs_machine *m, const ivs_run_request *req, i
   }
 #endif
   if (ivs_bound_report_ok(m, req, rep) != 0u) {
-    rep->struct_size = (uint32_t)sizeof(ivs_run_report);
+    rep->struct_size = ivs_bound_rep_bytes(rep); /* inside the v1 prefix: struct_size, reason, index */
     rep->refusal_reason = reason;
     if (index != IVS_INPUT_INDEX_NONE) {
       rep->input_failing_index = index;
@@ -400,6 +433,7 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
   uint64_t entry;
   uint64_t units = 0u;
   uint32_t consumed = 0u;
+  uint32_t n;
   memset(&plan, 0, sizeof plan);
   st = ivs_bound_validate(m, req, rep, env, &plan, &reason, &index);
   if (st != IVS_OK) {
@@ -474,8 +508,9 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
       break;
     }
   }
+  n = ivs_bound_rep_bytes(rep); /* before rep is written: the caller's size, capped at our own */
   memset(&r, 0, sizeof r);
-  r.struct_size = (uint32_t)sizeof r;
+  r.struct_size = n;
   r.stop_reason = internal != 0u ? IVS_STOP_INTERNAL : ivs_bound_stop(im, plan.flags, plan.target);
   r.refusal_reason = IVS_REASON_NONE;
   r.cpu_run_state = im->cpu.run_state;
@@ -496,7 +531,7 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
   ivs_bound_carry_handle = (const void *)m;
   ivs_bound_carry_end = im->time_ticks;
 #endif
-  *rep = r;
+  memcpy(rep, &r, n); /* never past the caller's struct (A-02): a v1-sized caller gets 112 bytes */
   return IVS_OK;
 }
 

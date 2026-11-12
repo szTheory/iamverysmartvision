@@ -379,22 +379,29 @@ static void version_tie(void)
   }
 }
 
-/* The frozen v1 sizes as the installed headers declare them (plans 04-09, 04-13). The request's
- * size holds pointers: 64 with the events at 48 on LP64, a visible skip elsewhere. */
+/* The frozen v1 sizes as the installed headers declare them (plans 04-09, 04-13, 05-02): the
+ * pinned v1 constants (IVS_RUN_REQUEST_V1_SIZE, IVS_RUN_REPORT_V1_SIZE, IVS_INFO_V1_SIZE) are the
+ * minimum struct_size a v1-sized caller passes, and the grown sizes are the core's own (v2 request
+ * and report, current info). The request's size holds pointers: 64 and 80 with the events at 48 on
+ * LP64, a visible skip elsewhere. */
 static void v1_sizes(void)
 {
   int lp64 = sizeof(void *) == 8u && sizeof(long) == 8u;
-  int ok = sizeof(ivs_run_report) == 112u && sizeof(ivs_input_event) == 32u && sizeof(ivs_cpu_state_report) == 36u &&
-           sizeof(ivs_info) == 256u && offsetof(ivs_info, ticks_per_cpu_cycle) == 216u;
+  int ok = IVS_RUN_REPORT_V1_SIZE == 112u && IVS_INFO_V1_SIZE == 216u && sizeof(ivs_input_event) == 32u &&
+           sizeof(ivs_cpu_state_report) == 36u && offsetof(ivs_info, ticks_per_cpu_cycle) == IVS_INFO_V1_SIZE &&
+           offsetof(ivs_run_report, audio_first_index) == IVS_RUN_REPORT_V1_SIZE && sizeof(ivs_run_report) == 136u &&
+           sizeof(ivs_info) >= IVS_INFO_V1_SIZE;
   if (lp64) {
-    ok = ok && sizeof(ivs_run_request) == 64u && offsetof(ivs_run_request, events) == 48u;
-    printf("v1-sizes run_request=%zu events_at=%zu", sizeof(ivs_run_request), offsetof(ivs_run_request, events));
+    ok = ok && IVS_RUN_REQUEST_V1_SIZE == 64u && offsetof(ivs_run_request, events) == 48u &&
+         offsetof(ivs_run_request, psg_log) == IVS_RUN_REQUEST_V1_SIZE && sizeof(ivs_run_request) == 80u;
+    printf("v1-sizes run_request_v1=%u events_at=%zu run_request=%zu", (unsigned)IVS_RUN_REQUEST_V1_SIZE,
+           offsetof(ivs_run_request, events), sizeof(ivs_run_request));
   } else {
-    printf("v1-sizes run_request=skip-non-lp64 events_at=skip-non-lp64");
+    printf("v1-sizes run_request_v1=skip-non-lp64 events_at=skip-non-lp64 run_request=skip-non-lp64");
   }
-  printf(" run_report=%zu input_event=%zu cpu_state_report=%zu info=%zu info_v1=%zu ok=%s\n", sizeof(ivs_run_report),
-         sizeof(ivs_input_event), sizeof(ivs_cpu_state_report), sizeof(ivs_info), offsetof(ivs_info, ticks_per_cpu_cycle),
-         ok ? "yes" : "no");
+  printf(" run_report_v1=%u run_report=%zu info_v1=%u info=%zu input_event=%zu cpu_state_report=%zu ok=%s\n",
+         (unsigned)IVS_RUN_REPORT_V1_SIZE, sizeof(ivs_run_report), (unsigned)IVS_INFO_V1_SIZE, sizeof(ivs_info),
+         sizeof(ivs_input_event), sizeof(ivs_cpu_state_report), ok ? "yes" : "no");
   if (!ok) {
     fail("v1 sizes");
   }

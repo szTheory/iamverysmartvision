@@ -693,7 +693,7 @@ done:
 /* ---- refusals (D-05) ---- */
 
 #define RB_NO_WRITE 0xFFFFFFFFu
-#define RB_REP_BYTES 128u
+#define RB_REP_BYTES 192u
 
 typedef union rb_rep_buf {
   ivs_run_report r;
@@ -768,6 +768,8 @@ static int rb_refused(const ivs_ms_inst *x, int live, ivs_machine *m, const ivs_
   return ok;
 }
 
+/* The core's own (current, v2) sizes: the ladder tests use the full structs (plan 05-02); the
+ * v1-sized callers are the run.struct.* cases (run_struct.c). */
 #define RB_V1_REQ ((uint32_t)sizeof(ivs_run_request))
 #define RB_V1_REP ((uint32_t)sizeof(ivs_run_report))
 
@@ -901,10 +903,10 @@ static int rb_refuse_report_inside(void)
   memset(&o, 0, sizeof o);
   o.struct_size = (uint32_t)sizeof o;
   o.profile_id = IVS_MS_PROFILE;
-  big = aligned_alloc(IVS_MACHINE_ALIGN, IVS_MACHINE_BYTES + 128u);
+  big = aligned_alloc(IVS_MACHINE_ALIGN, IVS_MACHINE_BYTES + 256u);
   RB_CHECK(big != NULL);
-  memset(big, RB_POISON, IVS_MACHINE_BYTES + 128u);
-  RB_CHECK(ivs_machine_create(&o, big, IVS_MACHINE_BYTES + 128u, &bm) == IVS_OK);
+  memset(big, RB_POISON, IVS_MACHINE_BYTES + 256u);
+  RB_CHECK(ivs_machine_create(&o, big, IVS_MACHINE_BYTES + 256u, &bm) == IVS_OK);
   RB_CHECK(ivs_ms_content(bm, IVS_MS_CONTENT_A) && ivs_machine_reset(bm, IVS_RESET_POWER_ON) == IVS_OK);
   after = (ivs_run_report *)(void *)(big + IVS_MACHINE_BYTES);
   after->struct_size = RB_V1_REP;

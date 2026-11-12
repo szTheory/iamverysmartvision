@@ -176,6 +176,16 @@ run.fuzz.seed-06
 run.fuzz.seed-07
 run.fuzz.seed-08
 run.fuzz.cases-covered
+# Family struct (plan 05-02, D-19, A-02, A-04): the pinned v1 minimums of the grown run request (v2
+# appends psg_log and psg_log_capacity) and run report (v2 appends audio_first_index,
+# psg_log_bytes_written, psg_log_first_index): a v1-sized caller in a poisoned larger buffer runs as
+# the v2-sized form and no byte past its size is written; the appended fields' offsets; the tail rule
+# rebased on the core's own size; one byte below either v1 minimum refused.
+run.struct.request-v1-caller
+run.struct.report-v1-caller
+run.struct.request-v2-fields skip-ok
+run.struct.report-v2-fields
+run.struct.tail-nonzero
 # Frozen v1 sizes (plan 04-13, A-02, Pitfall 13): offsetof and sizeof literals of the pointer-free
 # structs and request prefix; the pointer-bearing request size is checked only with 64-bit pointers.
 run.struct.v1-sizes

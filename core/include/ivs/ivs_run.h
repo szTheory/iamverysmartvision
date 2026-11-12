@@ -194,11 +194,15 @@ typedef struct ivs_input_event {
   uint32_t controller[4]; /* index = PSG port (0 = R14/$01FE, 1 = R15/$01FF), not player */
 } ivs_input_event;
 
-/* In: one run. v1 size: the sizeof below (64 bytes with 64-bit pointers; events at offset 48),
- * frozen by plan 04-13 (test run.struct.*): from there the A-02 rule applies, so a new field goes
- * after the v1 size and the minimum struct_size stays the v1 size. struct_size must be at least
- * the v1 size; a larger struct_size (up to IVS_STRUCT_SIZE_MAX) is accepted only when every byte
- * past it is zero. */
+/* In: one run. The v1 size is IVS_RUN_REQUEST_V1_SIZE (64 bytes with 64-bit pointers; events at
+ * offset 48), frozen by plan 04-13 (test run.struct.*) and pinned as a constant by plan 05-02
+ * (D-19, A-04): the minimum accepted struct_size is that constant, never sizeof of the grown
+ * struct, so a caller built against the Phase 4 header keeps working. The v2 fields psg_log and
+ * psg_log_capacity (plan 05-02, offsets 64 and 72, sizeof 80 with 64-bit pointers) are read only
+ * when struct_size covers them (at least 80); a v1-sized caller reads as psg_log NULL, capacity
+ * 0. A struct_size above the core's own size (up to IVS_STRUCT_SIZE_MAX) is accepted only when
+ * every byte past the core's size is zero. New fields go after the last one (A-02). */
+#define IVS_RUN_REQUEST_V1_SIZE 64u /* the 64-bit-pointer statement; other pointer widths do not pin it */
 typedef struct ivs_run_request {
   uint32_t struct_size;
   uint32_t flags;          /* IVS_RUN_F_* */
@@ -210,9 +214,15 @@ typedef struct ivs_run_request {
   const ivs_input_event *events; /* caller-owned input schedule, or NULL with event_count 0 */
   uint32_t event_count;          /* events at events, at most IVS_INPUT_EVENTS_MAX */
   uint32_t reserved_in;          /* must be 0 (UNSUPPORTED otherwise) */
+  /* ---- end of the v1 size (64) ---- */
+  uint8_t *psg_log;            /* v2: caller-owned write-log bytes, or NULL with psg_log_capacity 0 */
+  uint64_t psg_log_capacity;   /* v2: bytes at psg_log */
 } ivs_run_request;
 
-/* Out: what one run did (v1 size 112 bytes on every ABI, frozen by plan 04-13; A-02 from there). On IVS_OK
+#define IVS_RUN_REPORT_V1_SIZE 112u
+
+/* Out: what one run did (v1 size IVS_RUN_REPORT_V1_SIZE = 112 bytes on every ABI, frozen by plan 04-13 and pinned as a
+ * constant by plan 05-02; A-02 from there). On IVS_OK
  * every field is written: the stop reason,
  * refusal_reason IVS_REASON_NONE, the CPU run state and fault reason at exit (IVS_CPU_STATE_*,
  * IVS_CPU_FAULT_*), machine time at exit, overshoot_ticks = max(now_ticks - target_ticks, 0)
@@ -222,7 +232,11 @@ typedef struct ivs_run_request {
  * IVS_INPUT_INDEX_NONE, input_floor_tick, controller_now; above). On a refusal only struct_size
  * and refusal_reason (IVS_REASON_*) are written, plus input_failing_index for a refusal of one
  * event (the IVS_REASON_INPUT_* reasons of the event stages below), and nothing at all when the
- * report itself is the cause (NULL, size, overlap). */
+ * report itself is the cause (NULL, size, overlap).
+ * Growth (plan 05-02, D-19, A-04): the minimum accepted rep->struct_size is IVS_RUN_REPORT_V1_SIZE;
+ * the core writes min(rep->struct_size, sizeof(ivs_run_report)) bytes, sets the written
+ * struct_size to that count, and leaves every byte of a larger caller struct past it untouched.
+ * Refusal writes (struct_size, refusal_reason, input_failing_index) stay inside the v1 prefix. */
 typedef struct ivs_run_report {
   uint32_t struct_size;
   uint32_t stop_reason;      /* IVS_STOP_* */
@@ -241,6 +255,10 @@ typedef struct ivs_run_report {
   uint32_t input_failing_index;    /* the refused event, else IVS_INPUT_INDEX_NONE */
   uint64_t input_floor_tick;       /* start of the last begun unit + 1 (0 before any unit) */
   uint32_t controller_now[4];      /* the controller words in force at exit */
+  /* ---- end of the v1 size (112) ---- */
+  uint64_t audio_first_index;      /* v2, offset 112: 0 until plan 05-06 fills it */
+  uint64_t psg_log_bytes_written;  /* v2, offset 120: 0 until plan 05-08 fills it */
+  uint64_t psg_log_first_index;    /* v2, offset 128: 0 until plan 05-08 fills it; sizeof 136 */
 } ivs_run_report;
 
 /* Runs m to req->target_ticks (above). Refusal order (D-05), first failing class wins, every

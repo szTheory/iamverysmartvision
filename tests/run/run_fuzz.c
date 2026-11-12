@@ -400,7 +400,9 @@ static int fz_struct_v1(void)
   FZ_PIN(offsetof(ivs_cpu_state_report, r) == 12u && offsetof(ivs_cpu_state_report, s) == 28u);
   FZ_PIN(offsetof(ivs_cpu_state_report, intr_enabled) == 32u && offsetof(ivs_cpu_state_report, reserved) == 33u);
 
-  FZ_PIN(sizeof(ivs_run_report) == 112u);
+  /* The v1 report is the pinned constant, a prefix of the grown (v2, 136-byte) struct (plan 05-02). */
+  FZ_PIN(IVS_RUN_REPORT_V1_SIZE == 112u && offsetof(ivs_run_report, audio_first_index) == IVS_RUN_REPORT_V1_SIZE);
+  FZ_PIN(sizeof(ivs_run_report) == 136u);
   FZ_PIN(offsetof(ivs_run_report, reserved) == 20u && offsetof(ivs_run_report, now_ticks) == 24u);
   FZ_PIN(offsetof(ivs_run_report, units_executed) == 48u && offsetof(ivs_run_report, audio_bytes_written) == 72u);
   FZ_PIN(offsetof(ivs_run_report, input_consumed) == 80u && offsetof(ivs_run_report, input_failing_index) == 84u);
@@ -430,7 +432,10 @@ static int fz_struct_v1_lp64(void)
   FZ_PIN(offsetof(ivs_run_request, video_capacity) == 24u && offsetof(ivs_run_request, audio) == 32u);
   FZ_PIN(offsetof(ivs_run_request, audio_capacity) == 40u && offsetof(ivs_run_request, events) == 48u);
   FZ_PIN(offsetof(ivs_run_request, event_count) == 56u && offsetof(ivs_run_request, reserved_in) == 60u);
-  FZ_PIN(sizeof(ivs_run_request) == 64u);
+  /* The v1 request is the pinned constant 64 (the offset of the first appended field); the grown v2
+   * struct is 80 bytes (plan 05-02). */
+  FZ_PIN(IVS_RUN_REQUEST_V1_SIZE == 64u && offsetof(ivs_run_request, psg_log) == IVS_RUN_REQUEST_V1_SIZE);
+  FZ_PIN(sizeof(ivs_run_request) == 80u);
   return IVS_TEST_PASS;
 }
 
