@@ -234,7 +234,7 @@ Plans:
   3. An input script applied at declared machine-time boundaries gives the same guest-visible results and digests whether the host delivers it in one call or many slices.
   4. Each PSG register, tone, noise and envelope rule has a passing vector. Behaviors without a primary source (period 0, envelope select, noise LFSR, DAC levels) appear as tier-tagged profile data, not hard-coded constants.
   5. A run emits a cycle-stamped PSG register-write log and integer chip-rate samples as raw audio. Any PCM conversion sits where D7 puts it and is outside the raw-audio evidence path.
-**Plans**: 5/12 plans executed in 12 sequential waves
+**Plans**: 6/12 plans executed in 12 sequential waves
 
 Plans:
 - [x] 05-01-PLAN.md — Oracle-first plan (D-23, A-12)
@@ -242,7 +242,7 @@ Plans:
 - [x] 05-03-PLAN.md — State and digest foundation (A-12)
 - [x] 05-04-PLAN.md — PSG register file, memmap flip and the new suite `psg` (A-12)
 - [x] 05-05-PLAN.md — Input byte and port reads (A-12)
-- [ ] 05-06-PLAN.md — Tone, mixer, amplitude, sampling and audio live (A-12)
+- [x] 05-06-PLAN.md — Tone, mixer, amplitude, sampling and audio live (A-12)
 - [ ] 05-07-PLAN.md — Noise and envelope (A-12)
 - [ ] 05-08-PLAN.md — Write log (A-12)
 - [ ] 05-09-PLAN.md — Runner and scenarios (A-12)
@@ -330,7 +330,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 2. CP-1610 CPU Core | 18/18 | Complete    | 2026-11-10 |
 | 3. Memory Map, Content Loading and Refusal | 14/14 | Complete    | 2026-11-11 |
 | 4. Headless Runner and Installed Consumer (Slice 0) | 27/25 | Complete    | 2026-11-11 |
-| 5. Hand Controllers and PSG Sound | 5/12 | In Progress | - |
+| 5. Hand Controllers and PSG Sound | 6/12 | In Progress | - |
 | 6. STIC Video First Pass | 0/TBD | Not started | - |
 | 7. First Visible Original Scenario | 0/TBD | Not started | - |
 | 8. STIC Completion, Save State and Performance Baselines | 0/TBD | Not started | - |

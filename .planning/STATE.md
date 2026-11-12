@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 5
 current_phase_name: Hand Controllers and PSG Sound
 status: executing
-stopped_at: Completed 05-05-PLAN.md
-last_updated: "2026-11-12T09:36:37.587Z"
+stopped_at: Completed 05-06-PLAN.md
+last_updated: "2026-11-12T10:12:48.626Z"
 last_activity: 2026-11-12
 last_activity_desc: Phase 4 complete, transitioned to Phase 5
-state_head: faa1644daadc135107642258b67511f86a1fc7c3
+state_head: 78f8b5f7319f21e59234e56b004862700920a731
 progress:
   total_phases: 8
   completed_phases: 4
   total_plans: 83
-  completed_plans: 76
+  completed_plans: 77
   percent: 50
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 5 (Hand Controllers and PSG Sound) — EXECUTING
-Plan: 6 of 12
+Plan: 7 of 12
 Status: Ready to execute
 Last activity: 2026-11-12 — Completed 05-01 (oracle-first: sources, controller literal, PSG rules and vectors, D10 inventory)
 
@@ -131,6 +131,7 @@ Progress: [█████░░░░░] 50%
 | Phase 5 P03 | 70 min | 4 tasks | 21 files |
 | Phase 5 P04 | 150 min | 5 tasks | 54 files |
 | Phase 5 P05 | 6h | 5 tasks | 85 files |
+| Phase 5 P06 | 5h | 5 tasks | 60 files |
 
 ## Accumulated Context
 
@@ -303,6 +304,10 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 5]: 05-04: PSG region is device kind psg8 (upper byte 0, C64) with masks from psg.regmap through IvsPsgTable.cmake; every guest access goes through ivs_machine_bus (forwards unchanged until 05-06/05-08); shape and port registers are declared exception rows (x=reads-zero, x=pins) observed in psg_reg; suite psg 40 ids, steps 35/35 controls 300/300 faults 158/158, goldens unchanged; checkpoint-1: lever-required (projection 188.7-195.5 cpu-s vs trigger 190, 0.144 cpu-s per fault)
 - [Phase 5]: 05-05: ivs_input_rederive is the only setter of port_pulldown (apply and the refused-step take-back call it); the port read is pure and lives in memsys.c
 - [Phase 5]: 05-05: the memmap read rows of the two port registers have w=0 x=pins; the input-visible fuzz compares whole-instance snapshots instead of MEM digests
+- [Phase 5]: Time chain: one PSG step = 8 chip clocks = 16 master ticks = 4 CPU cycles; step k stamped k x 16; first chip step after reset is step 1 (05-06)
+- [Phase 5]: PSG caught up to the write stamp before the masked store and to the unit end at every unit end, never to a call target (05-06)
+- [Phase 5]: Audio layout real: 4-byte samples, 15,060 bytes per frame with slack ceil(U/P)+1; U = 468 ticks derived by exhaustive probe, g = 28 ticks overall (36 instruction only) (05-06)
+- [Phase 5]: A layout whose audio format is not PSG levels, and a NULL buffer, use the counting sink: same code, same state (05-06)
 
 ### Pending Todos
 
@@ -335,6 +340,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-12T09:36:37.431Z
-Stopped at: Completed 05-05-PLAN.md
+Last session: 2026-11-12T10:12:48.469Z
+Stopped at: Completed 05-06-PLAN.md
 Resume file: None
