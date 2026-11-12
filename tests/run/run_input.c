@@ -873,7 +873,7 @@ static int ri_prec_unsupported_over_events(void)
   ivs_run_request q;
   int rc = IVS_TEST_FAIL;
   IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, RI_POISON));
-  ri_req(&q, IVS_RUN_F_RESERVED_FRAME, 1000u, NULL, 1u);
+  ri_req(&q, RUN_TEST_BAD_FLAG, 1000u, NULL, 1u);
   RI_CHECK(ri_refused(&x, x.m, &q, NULL, IVS_E_UNSUPPORTED, IVS_REASON_RUN_FLAGS, IVS_INPUT_INDEX_NONE));
   ri_req(&q, 0u, 1000u, NULL, 1u);
   q.reserved_in = 1u;

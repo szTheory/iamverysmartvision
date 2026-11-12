@@ -754,7 +754,7 @@ static int bf_prec_unsupported_over_buffer(void)
   BF_CHECK(a != NULL);
   bf_req(&q, 4u, BF_SPAN, NULL, 8u, NULL, 0u);
   BF_CHECK(bf_refused(&x, x.m, &q, NULL, a, IVS_E_UNSUPPORTED, IVS_REASON_RUN_FLAGS));
-  bf_req(&q, IVS_RUN_F_RESERVED_FRAME, BF_SPAN, NULL, 0u, NULL, 8u);
+  bf_req(&q, RUN_TEST_BAD_FLAG, BF_SPAN, NULL, 0u, NULL, 8u);
   BF_CHECK(bf_refused(&x, x.m, &q, NULL, a, IVS_E_UNSUPPORTED, IVS_REASON_RUN_FLAGS));
   memset(&big, 0, sizeof big);
   bf_req(&big.q, 0u, BF_SPAN, x.storage + bf_inside_off(), 8u, NULL, 0u);

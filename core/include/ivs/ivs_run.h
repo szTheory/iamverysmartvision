@@ -89,7 +89,8 @@ IVS_API ivs_status ivs_machine_peek(const ivs_machine *m, uint16_t addr, uint32_
 
 /* Run flags (ivs_run_request.flags). Any other bit is UNSUPPORTED. */
 #define IVS_RUN_F_STOP_ON_HALT 1u   /* stop at the first boundary where the CPU is HALTED */
-#define IVS_RUN_F_RESERVED_FRAME 2u /* reserved for a frame stop; UNSUPPORTED until Phase 6 */
+#define IVS_RUN_F_STOP_ON_FRAME 2u  /* stop at the end of a frame; accepted only once the machine publishes frame
+                                     * events, UNSUPPORTED as an unknown flag until then (D-14) */
 
 /* Largest accepted target: 2^63 master ticks; a target above it is OUT_OF_RANGE. */
 #define IVS_RUN_TARGET_MAX 0x8000000000000000u
@@ -99,11 +100,15 @@ IVS_API ivs_status ivs_machine_peek(const ivs_machine *m, uint16_t addr, uint32_
  * step was refused or made no progress: a harness failure, the state is the last whole
  * boundary; for a refused step the INPUT row included, since the events applied for that unit
  * are taken back and not counted in input_consumed), GUEST_FAULT (the CPU is FAULTED), CPU_HALTED (only with IVS_RUN_F_STOP_ON_HALT: the
- * CPU is HALTED), TARGET (machine time reached the target). */
+ * CPU is HALTED), FRAME (only with IVS_RUN_F_STOP_ON_FRAME: a frame event was reached at the
+ * boundary the call ends at), TARGET (machine time reached the target). The exit-state order is
+ * INTERNAL, GUEST_FAULT, CPU_HALTED (flag), FRAME (flag), TARGET. IVS_STOP_FRAME is defined from
+ * plan 06-03 and is not produced by any run until the frame stop is implemented. */
 #define IVS_STOP_TARGET 1u
 #define IVS_STOP_CPU_HALTED 2u
 #define IVS_STOP_GUEST_FAULT 3u
 #define IVS_STOP_INTERNAL 4u
+#define IVS_STOP_FRAME 5u
 
 /* Output buffers (D-02, D-03, D-06, plan 04-10). Video and audio go to caller-owned buffers named
  * in the request; the core keeps no pointer after the call. The profile's output layout (ivs_info:
@@ -286,7 +291,8 @@ typedef struct ivs_run_report {
  *                 (nothing written);
  *   BAD_HANDLE    NULL or invalid handle (IVS_REASON_HANDLE);
  *   BAD_ARG       rep overlaps the instance storage (nothing written);
- *   UNSUPPORTED   an unknown or reserved flag (RUN_FLAGS), then a nonzero byte past the core's own
+ *   UNSUPPORTED   any flag bit other than IVS_RUN_F_STOP_ON_HALT (RUN_FLAGS; IVS_RUN_F_STOP_ON_FRAME
+ *                 is refused as unknown until the frame stop is implemented), then a nonzero byte past the core's own
  *                 sizeof of a larger request (RUN_TAIL), then a nonzero reserved_in
  *                 (INPUT_RESERVED_IN);
  *   BAD_ARG       output buffers: a NULL buffer with a nonzero capacity (RUN_BUFFER_NULL), then a

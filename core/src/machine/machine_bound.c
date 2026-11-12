@@ -14,7 +14,8 @@
  *   2. BAD_HANDLE    NULL or invalid handle;
  *   3. BAD_ARG       rep overlaps the storage of the (valid) instance, uintptr_t differences only
  *                    (ivs_machine_span_overlaps; nothing written);
- *   4. UNSUPPORTED   req: an unknown flag (IVS_RUN_F_RESERVED_FRAME included), then a nonzero
+ *   4. UNSUPPORTED   req: an unknown flag (IVS_RUN_F_STOP_ON_FRAME included until the frame stop
+ *                    is implemented: any bit other than IVS_RUN_F_STOP_ON_HALT), then a nonzero
  *                    byte past the core's own size of a larger struct (the tail rule is rebased on
  *                    sizeof, plan 05-02), then a nonzero reserved_in (INPUT_RESERVED_IN, plan 04-11);
  *   4b. BAD_ARG      output buffers (D-05 slot, plan 04-10): a NULL buffer with a nonzero
@@ -694,6 +695,8 @@ const char *ivs_run_stop_name(uint32_t stop)
     return "IVS_STOP_GUEST_FAULT";
   case IVS_STOP_INTERNAL:
     return "IVS_STOP_INTERNAL";
+  case IVS_STOP_FRAME:
+    return "IVS_STOP_FRAME";
   default:
     return "IVS_STOP_UNKNOWN";
   }

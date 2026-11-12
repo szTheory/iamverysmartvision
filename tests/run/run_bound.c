@@ -939,16 +939,17 @@ done:
   return rc;
 }
 
-/* UNSUPPORTED (RUN_FLAGS): the reserved frame-stop bit alone and with the stop-on-halt bit. */
+/* UNSUPPORTED (RUN_FLAGS): IVS_RUN_F_STOP_ON_FRAME (value 2) alone and with the stop-on-halt bit; the
+ * frame stop is refused as an unknown flag until it is implemented (plan 06-09 inverts this test). */
 static int rb_refuse_flags_frame(void)
 {
   ivs_ms_inst x;
   rb_req_buf q;
   int rc = IVS_TEST_FAIL;
   IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, RB_POISON));
-  rb_req(&q, RB_V1_REQ, IVS_RUN_F_RESERVED_FRAME, 1000u);
+  rb_req(&q, RB_V1_REQ, IVS_RUN_F_STOP_ON_FRAME, 1000u);
   RB_CHECK(rb_refused(&x, 1, x.m, &q.q, RB_V1_REP, IVS_E_UNSUPPORTED, IVS_REASON_RUN_FLAGS));
-  rb_req(&q, RB_V1_REQ, IVS_RUN_F_RESERVED_FRAME | IVS_RUN_F_STOP_ON_HALT, 1000u);
+  rb_req(&q, RB_V1_REQ, IVS_RUN_F_STOP_ON_FRAME | IVS_RUN_F_STOP_ON_HALT, 1000u);
   RB_CHECK(rb_refused(&x, 1, x.m, &q.q, RB_V1_REP, IVS_E_UNSUPPORTED, IVS_REASON_RUN_FLAGS));
   rc = IVS_TEST_PASS;
 done:
@@ -1082,7 +1083,7 @@ static int rb_prec_handle_over_overlap(void)
   IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, RB_POISON));
   s.copy = NULL;
   RB_CHECK(ivs_machine_destroy(x.m) == IVS_OK);
-  rb_req(&q, RB_V1_REQ, IVS_RUN_F_RESERVED_FRAME, 1000u);
+  rb_req(&q, RB_V1_REQ, RUN_TEST_BAD_FLAG, 1000u);
   in = (ivs_run_report *)(void *)(x.storage + rb_inside_off());
   in->struct_size = RB_V1_REP;
   RB_CHECK(ivs_run_snap_take(&s, &x, 0));
@@ -1106,7 +1107,7 @@ static int rb_prec_overlap_over_unsupported(void)
   int rc = IVS_TEST_FAIL;
   IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, RB_POISON));
   s.copy = NULL;
-  rb_req(&q, RB_V1_REQ, IVS_RUN_F_RESERVED_FRAME, 1000u);
+  rb_req(&q, RB_V1_REQ, RUN_TEST_BAD_FLAG, 1000u);
   in = (ivs_run_report *)(void *)(x.storage + rb_inside_off());
   in->struct_size = RB_V1_REP;
   RB_CHECK(ivs_run_snap_take(&s, &x, 1));
@@ -1143,7 +1144,7 @@ static int rb_prec_unsupported_over_state(void)
   rb_req_buf q;
   int rc = IVS_TEST_FAIL;
   IVS_CHECK(ivs_ms_new(&x, RB_POISON));
-  rb_req(&q, RB_V1_REQ, IVS_RUN_F_RESERVED_FRAME, 1000u);
+  rb_req(&q, RB_V1_REQ, RUN_TEST_BAD_FLAG, 1000u);
   RB_CHECK(rb_refused(&x, 1, x.m, &q.q, RB_V1_REP, IVS_E_UNSUPPORTED, IVS_REASON_RUN_FLAGS));
   rb_req(&q, RB_V1_REQ + 8u, 0u, 1000u);
   q.b[RB_V1_REQ + 7u] = 1u;
@@ -1178,20 +1179,39 @@ static int rb_stop_name_known(void)
   IVS_CHECK(strcmp(ivs_run_stop_name(IVS_STOP_CPU_HALTED), "IVS_STOP_CPU_HALTED") == 0);
   IVS_CHECK(strcmp(ivs_run_stop_name(IVS_STOP_GUEST_FAULT), "IVS_STOP_GUEST_FAULT") == 0);
   IVS_CHECK(strcmp(ivs_run_stop_name(IVS_STOP_INTERNAL), "IVS_STOP_INTERNAL") == 0);
+  IVS_CHECK(strcmp(ivs_run_stop_name(IVS_STOP_FRAME), "IVS_STOP_FRAME") == 0);
   IVS_CHECK(IVS_STOP_TARGET == 1u && IVS_STOP_CPU_HALTED == 2u && IVS_STOP_GUEST_FAULT == 3u &&
-            IVS_STOP_INTERNAL == 4u);
+            IVS_STOP_INTERNAL == 4u && IVS_STOP_FRAME == 5u);
   return IVS_TEST_PASS;
 }
 
 static int rb_stop_name_unknown(void)
 {
-  static const uint32_t v[4] = {0u, 5u, 0x80000000u, 0xFFFFFFFFu};
+  static const uint32_t v[4] = {0u, 6u, 0x80000000u, 0xFFFFFFFFu};
   const char *first = ivs_run_stop_name(0u);
   uint32_t i;
   IVS_CHECK(first != NULL);
   for (i = 0u; i < 4u; i++) {
     const char *n = ivs_run_stop_name(v[i]);
     IVS_CHECK(n != NULL && strcmp(n, "IVS_STOP_UNKNOWN") == 0 && n == first);
+  }
+  return IVS_TEST_PASS;
+}
+
+/* run.stop.frame-name (plan 06-03, D-14): the fifth stop reason is named, and 0, 6 and the large values
+ * stay unknown, all with one static string. */
+static int rb_stop_frame_name(void)
+{
+  static const uint32_t v[4] = {0u, 6u, 0x80000000u, 0xFFFFFFFFu};
+  const char *unknown = ivs_run_stop_name(0u);
+  const char *frame = ivs_run_stop_name(IVS_STOP_FRAME);
+  uint32_t i;
+  IVS_CHECK(IVS_STOP_FRAME == 5u);
+  IVS_CHECK(frame != NULL && strcmp(frame, "IVS_STOP_FRAME") == 0);
+  IVS_CHECK(unknown != NULL && strcmp(unknown, "IVS_STOP_UNKNOWN") == 0 && frame != unknown);
+  for (i = 0u; i < 4u; i++) {
+    const char *n = ivs_run_stop_name(v[i]);
+    IVS_CHECK(n != NULL && strcmp(n, "IVS_STOP_UNKNOWN") == 0 && n == unknown);
   }
   return IVS_TEST_PASS;
 }
@@ -1210,6 +1230,7 @@ const ivs_test_case ivs_run_bound_cases[] = {
     {"run.stop.fault-before-halt", rb_stop_fault_before_halt, NULL},
     {"run.stop.internal-step-refused", rb_stop_internal, NULL},
     {"run.stop.internal-input-restored", rb_stop_internal_input, NULL},
+    {"run.stop.frame-name", rb_stop_frame_name, NULL},
     {"run.buffers.wrap-overlap", rb_wrap_buffers, NULL},
     {"run.refuse.peek.out-wraps", rb_peek_out_wraps, NULL},
     {"run.refuse.null-request", rb_refuse_null_request, NULL},

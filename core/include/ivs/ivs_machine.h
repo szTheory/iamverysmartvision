@@ -110,6 +110,25 @@ typedef struct ivs_image_report {
 #define IVS_OUTPUT_FORMAT_NONE 0u
 #define IVS_OUTPUT_FORMAT_PSG_LEVELS_V1 1u
 
+/* IVS_OUTPUT_FORMAT_INDEX8_FRAMES_V1 (plan 06-03, D-13): the video channel carries one slot per
+ * completed frame event. A slot is IVS_FRAME_HEADER_BYTES (32) header bytes written byte by byte,
+ * big-endian, then height rows of width bytes, row-major from the top-left, one byte per position
+ * holding a STIC color number 0..IVS_PIXEL_COLOR_MAX or IVS_PIXEL_BLANK for a position that is not
+ * displayed, no padding:
+ *   offset 0   be64 tick     machine tick of the frame event the slot belongs to
+ *   offset 8   be64 index    frame index, counted from reset
+ *   offset 16  be32 width    positions per row
+ *   offset 20  be32 height   rows
+ *   offset 24  be32 flags    bit 0 (IVS_FRAME_F_DISPLAYED): the display was enabled for the frame
+ *   offset 28  be32 reserved written 0
+ * No profile publishes this format yet (video_format stays NONE); the constants exist so the
+ * layout is pinned before any plan writes a slot. */
+#define IVS_OUTPUT_FORMAT_INDEX8_FRAMES_V1 2u
+#define IVS_FRAME_HEADER_BYTES 32u
+#define IVS_FRAME_F_DISPLAYED 1u
+#define IVS_PIXEL_BLANK 0xFFu
+#define IVS_PIXEL_COLOR_MAX 15u
+
 /* The v1 (Phase 3) size of ivs_info (A-02, plan 04-09; public since plan 05-02): the smallest
  * struct_size ivs_machine_info accepts. Fields after it are written only when the caller's
  * struct_size covers them. machine.c ties it to offsetof(ivs_info, ticks_per_cpu_cycle). */

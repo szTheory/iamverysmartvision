@@ -14,6 +14,11 @@
 #include "ivs_test.h"
 #include "machine_cases.h"
 
+/* A flag bit no run accepts (plan 06-03, research mechanism 16): the refusal tests that need "an
+ * arbitrary unsupported flag" use this bit, so that bit 1 (IVS_RUN_F_STOP_ON_FRAME, refused as unknown
+ * until the frame stop is implemented) keeps one dedicated test, run.refuse.flags-frame-reserved. */
+#define RUN_TEST_BAD_FLAG 4u
+
 /* Family observe (plan 04-06, D-08): ivs_machine_cpu_state and ivs_machine_peek, their
  * side-effect freedom and their refusals (run_observe.c). */
 extern const ivs_test_case ivs_run_observe_cases[];
