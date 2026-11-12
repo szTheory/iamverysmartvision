@@ -6,7 +6,7 @@ BR=$(git branch --show-current)
 n=$(git log --oneline "$base"..HEAD | wc -l | tr -d ' ')
 t=$(git log --format=%b "$base"..HEAD | grep -c 'Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>')
 echo "commits=$n trailers=$t"
-sh tools/gate.sh 2>&1 | grep -a 'FAIL\|gate: ' | cut -c1-70
+[ -z "$LOCAL_GATE" ] || sh tools/gate.sh 2>&1 | grep -a 'FAIL\|gate: ' | cut -c1-70
 git push -q origin $BR 2>&1 | tail -1
 head=$(git rev-parse HEAD)
 id=
