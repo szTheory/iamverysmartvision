@@ -281,7 +281,7 @@ static int ex_diag_pass(void)
   ivs_runner_result res;
   char scn[RX_SCN_CAP];
   char v[RX_VALUE_CAP];
-  char want[RX_VALUE_CAP];
+  char want[RX_VALUE_CAP + 64u];
   int rc = IVS_TEST_FAIL;
   uint32_t out;
   fh_init(&h);
@@ -721,7 +721,7 @@ static int ex_sha_match(void)
 {
   char diag[RX_SCN_CAP];
   char sha[RX_VALUE_CAP];
-  char line[256];
+  char line[RX_VALUE_CAP + 128u];
   char scn[RX_SCN_CAP];
   fake_host h;
   int rc = IVS_TEST_FAIL;
