@@ -2,17 +2,18 @@
 gsd_state_version: "1.0"
 current_phase: 6
 current_phase_name: STIC Video First Pass
+current_plan: 2
 status: executing
-stopped_at: Phase 5 complete, ready to plan Phase 6
-last_updated: "2026-11-12T18:06:14.076Z"
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-11-12T18:50:34.045Z"
 last_activity: 2026-11-12
 last_activity_desc: Phase 5 complete, transitioned to Phase 6
-state_head: 58c6d8689cd59d06affce27053854c891b073f12
+state_head: eae8ca56e5b7a82816503f350f4dde23fa56a033
 progress:
   total_phases: 8
   completed_phases: 5
   total_plans: 97
-  completed_plans: 83
+  completed_plans: 84
   percent: 63
 ---
 
@@ -27,8 +28,9 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 
 ## Current Position
 
-Phase: 6 (STIC Video First Pass) — READY TO EXECUTE
-Plan: Not started
+Phase: 6 (STIC Video First Pass) — EXECUTING
+Current Plan: 2
+Total Plans in Phase: 14
 Status: Ready to execute
 Last activity: 2026-11-12 — Phase 5 complete, transitioned to Phase 6
 
@@ -139,6 +141,7 @@ Progress: [██████░░░░] 63%
 | Phase 5 P10 | 4h | 5 tasks | 56 files |
 | Phase 05 P11 | 40min | 5 tasks | 44 files |
 | Phase 05 P12 | 55min | 4 tasks | 30 files |
+| Phase 6 P01 | about 5 hours | 5 tasks | 96 files |
 
 ## Accumulated Context
 
@@ -325,6 +328,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 05]: 05-11: fixture pointers use R4 and R5 (only they auto-increment); derivation corrected in dated section (g), original text kept
 - [Phase 05]: 05-11: .refpcm golden written from a runner report by a documented recipe; golden step compares it with dev and release refpcm reports
 - [Phase 05]: 05-12: C73 text aligned to the profile tag unknown-default-chosen; the D-22 listening check recorded as deferred (no listenable tone), not handed off; AUD-01 confirmed complete with the C11 caveat
+- [Phase 6]: 06-01: page-reading verdict: BACKTAB address and 14-bit use are tier 1 (partial), registers, windows and bus hold are tier 4 or defaults; allocation table fixes C81..C105 and CL-0016..CL-0022
+- [Phase 6]: 06-01: the diagnostic reads one BACKTAB word set in both modes and is derived against the frame-0 timeline before its listing (133 words, 4 branches, margins in docs/video/diag-stic-1-derivation.md)
 
 ### Pending Todos
 
@@ -357,6 +362,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-12T14:19:37.955Z
-Stopped at: Phase 5 complete, ready to plan Phase 6
+Last session: 2026-11-12T18:50:28.402Z
+Stopped at: Completed 06-01-PLAN.md
 Resume file: None
