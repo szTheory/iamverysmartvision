@@ -192,7 +192,7 @@ Plans:
   3. A run to an absolute cycle target reports any overshoot. Splitting the run into slices gives the same per-domain digests (CPU/memory, video, audio, input log), and repeated runs match. Golden files carry tier and oracle headers. An undersized output buffer is refused before any state changes.
   4. A separate consumer project, built only against the installed package in a relocated prefix, runs load, refusal, run and digest successfully.
   5. CI runs the same fast gate as the local command on every PR, shows skipped and missing items, never caches or uploads system images or rights-unknown fixtures, and records queue, setup, build and test durations for each run.
-**Plans**: 18/25 plans executed in 25 sequential waves
+**Plans**: 19/25 plans executed in 25 sequential waves
 
 Plans:
 - [x] 04-01-PLAN.md — CI measurement first: `gate-env`/`gate-cpu` lines, job summary through the EXIT trap with a selftest step, ci-parity bans (action allowlist, secrets, matrix, runs-on, timeout 5), 6 controls
@@ -213,7 +213,7 @@ Plans:
 - [x] 04-16-PLAN.md — Original diagnostic `ivs-diag-cpu-1`, hand-derived `.expect` predicate, slicing on the real program, CL-0008
 - [x] 04-17-PLAN.md — IVSS v1 parser (untrusted input, caps, fuzz), 2 faults
 - [x] 04-18-PLAN.md — Runner executor and fixed-order report with pinned key names, outcomes in-process, 4 faults
-- [ ] 04-19-PLAN.md — `ivs-run` executable: slices, budget/wall timeout, cancellation, POSIX in hostio.c only, `docs/runner.md`, 3 faults
+- [x] 04-19-PLAN.md — `ivs-run` executable: slices, budget/wall timeout, cancellation, POSIX in hostio.c only, `docs/runner.md`, 3 faults
 - [ ] 04-20-PLAN.md — Suite `runner-process`: one scenario per outcome, diagnostic mutants, repeat/slice/cwd checks, judge self-controls
 - [ ] 04-21-PLAN.md — Goldens with tier/oracle headers, `--update-golden`, pure `golden` step with dev-vs-release judge excluding host-dependent scenarios, 10 controls
 - [ ] 04-22-PLAN.md — Install/export of `ivs::core`, relocated prefix, `pkg-install` structure proofs, 8 in-step selftests
@@ -315,7 +315,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 1. Evidence, Profile and Rights Foundations | 14/14 | Complete    | 2026-11-09 |
 | 2. CP-1610 CPU Core | 18/18 | Complete    | 2026-11-10 |
 | 3. Memory Map, Content Loading and Refusal | 14/14 | Complete    | 2026-11-11 |
-| 4. Headless Runner and Installed Consumer (Slice 0) | 18/25 | In Progress | - |
+| 4. Headless Runner and Installed Consumer (Slice 0) | 19/25 | In Progress | - |
 | 5. Hand Controllers and PSG Sound | 0/TBD | Not started | - |
 | 6. STIC Video First Pass | 0/TBD | Not started | - |
 | 7. First Visible Original Scenario | 0/TBD | Not started | - |

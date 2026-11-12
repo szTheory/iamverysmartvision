@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 4
 current_phase_name: Headless Runner and Installed Consumer (Slice 0)
 status: executing
-stopped_at: Completed 04-18-PLAN.md
-last_updated: "2026-11-12T00:06:00.810Z"
+stopped_at: Completed 04-19-PLAN.md
+last_updated: "2026-11-12T00:24:39.034Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 3 complete, transitioned to Phase 4
-state_head: c19440ee9f32dedfc71b07a5a16ddc1645ea8707
+state_head: 06321957581ac589b9d6d308bfa72e1384af81b1
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 71
-  completed_plans: 64
+  completed_plans: 65
   percent: 38
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 4 — Headless Runner and Installed Consumer (Slice 0)
-Plan: 19 of 25
+Plan: 20 of 25
 Status: Ready to execute
 Last activity: 2026-11-11 — Completed 04-03 (repo-relative fault owners, runner outcome taxonomy)
 
@@ -118,6 +118,7 @@ Progress: [████░░░░░░] 38%
 | Phase 04 P16 | 15 min | 3 tasks | 21 files |
 | Phase 04 P17 | 20 min | 3 tasks | 12 files |
 | Phase 04 P18 | 19 min | 3 tasks | 10 files |
+| Phase 04 P19 | 17 min | 3 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -270,6 +271,9 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 04]: 04-18: the executor runs every run-to with IVS_RUN_F_STOP_ON_HALT; halted where target was expected is guest-fail, the bound reached where halted/faulted was expected is timeout budget, IVS_STOP_INTERNAL is harness-fail (ivs_runner_stop_observation, pure)
 - [Phase 04]: 04-18: report key names pinned (slot.*, exec:/grom: labels, step.<k>.*, step.<k>.assert.<j> with scenario-wide j, cpu.*, input.*, digest.<8 domains>, output.*, host.calls, report.end); host.calls counts read_file/read_user/now_ms/cancel_requested and is the only host-dependent key
 - [Phase 04]: 04-18: host vtable read_file(relpath, cap, buf[cap+1]) plus optional read_user(role) for user roles; a matching expect-load refusal ends as pass, a wrong reason or an unrefused load is harness-fail
+- [Phase 4]: 04-19: every run-to runs as slices (min(limit, now + slice_ticks), default 1<<22) with the unconsumed input suffix; cancel_requested then now_ms once before every slice; ivs_runner_options {flags, wall_timeout_ms, slice_ticks, max_ticks}, 0 = default
+- [Phase 4]: 04-19: --max-ticks (default 2^40) cutting a run-to is timeout budget (detail max-ticks=<m>); the wall cap is timeout 'wall step=<k> cap-ms=<n>' (never golden); scenario wall-timeout-ms only lowers; cancel+wall at one check resolves to cancelled
+- [Phase 4]: 04-19: ivs-run: POSIX only in runner/hostio.c (+hostio.h); --content-dir defaults to the scenario's directory; usage errors, unreadable or refused scenarios are exit 14 with no report; --self-signal-after-slices N raises SIGINT in the cancel check after slice N
 
 ### Pending Todos
 
@@ -302,6 +306,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-12T00:06:00.574Z
-Stopped at: Completed 04-18-PLAN.md
+Last session: 2026-11-12T00:24:38.832Z
+Stopped at: Completed 04-19-PLAN.md
 Resume file: None
