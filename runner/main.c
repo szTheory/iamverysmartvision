@@ -43,6 +43,8 @@ typedef struct main_host {
   char *golden_buf;                /* report copy for --update-golden, NULL otherwise */
   size_t golden_len;
   int golden_overflow;             /* the report did not fit MAIN_GOLDEN_CAP */
+  ivs_hostio_out audio_out;        /* --audio-raw file (plan 05-09), fd -1 when not given */
+  ivs_hostio_out log_out;          /* --psg-log-out file */
 } main_host;
 
 static const char main_usage[] =
@@ -66,6 +68,12 @@ static const char main_usage[] =
     "                       needs --self-signal-after-slices\n"
     "  --update-golden <file>  also write the run's repeatability golden (.digests) to file;\n"
     "                       refused for `user` content and host-dependent outcomes\n"
+    "  --audio-raw <file>   also write the dense audio sample bytes (4 per sample: levels A, B, C, 0)\n"
+    "                       to a NEW file (an existing path is refused, exit 14, never overwritten)\n"
+    "  --psg-log-out <file>  also write one ASCII line per PSG write-log record, `index tick addr\n"
+    "                       value source` (decimal), to a NEW file (same rule)\n"
+    "  --audio-out-max-bytes <n>  bound of each of those files in bytes, 1..1099511627776\n"
+    "                       (default 268435456); passing it is a harness failure, never a truncation\n"
     "  --help               print this text and exit 0\n"
     "outcomes (outcome exit-code):\n"
     "pass 0\n"
@@ -110,6 +118,18 @@ static int mh_cancel(void *ctx)
     }
   }
   return ivs_hostio_cancelled();
+}
+
+static int mh_audio_raw(void *ctx, const uint8_t *bytes, size_t len)
+{
+  main_host *h = ctx;
+  return ivs_hostio_out_write(&h->audio_out, bytes, len);
+}
+
+static int mh_psg_log(void *ctx, const char *lines, size_t len)
+{
+  main_host *h = ctx;
+  return ivs_hostio_out_write(&h->log_out, lines, len);
 }
 
 static int mh_write(void *ctx, const char *bytes, size_t len)
@@ -163,6 +183,21 @@ static int main_number(const char *a, uint64_t lo, uint64_t hi, uint64_t *out)
   }
   *out = v;
   return 1;
+}
+
+/* Creates the operator output file exclusively (hostio.c). 0, or -1 after one line on stderr. */
+static int main_open_out(ivs_hostio_out *o, const char *path, const char *option)
+{
+  int r = ivs_hostio_out_create(o, path);
+  if (r == 1) {
+    fprintf(stderr, "ivs-run: %s: output file exists, refusing to overwrite it\n", option);
+    return -1;
+  }
+  if (r != 0) {
+    fprintf(stderr, "ivs-run: %s: cannot create the output file\n", option);
+    return -1;
+  }
+  return 0;
 }
 
 /* The directory part of path ("." when it has none, "/" for a file at the root). 0 when it does
@@ -355,6 +390,8 @@ int main(int argc, char **argv)
   uint8_t *buffers = NULL;
   const char *scenario_path = NULL;
   const char *golden_path = NULL;
+  const char *audio_raw_path = NULL;
+  const char *psg_log_path = NULL;
   char dirbuf[MAIN_DIR_MAX];
   size_t text_len = 0u;
   size_t storage_bytes;
@@ -363,7 +400,10 @@ int main(int argc, char **argv)
   int have_max = 0;
   int have_wall = 0;
   int have_slice = 0;
+  int have_out_max = 0;
   memset(&mh, 0, sizeof mh);
+  mh.audio_out.fd = -1;
+  mh.log_out.fd = -1;
   memset(&opts, 0, sizeof opts);
   for (int i = 1; i < argc; i++) {
     const char *a = argv[i];
@@ -386,6 +426,14 @@ int main(int argc, char **argv)
       slot = &mh.user[IVS_SCN_ROLE_CART];
     } else if (strcmp(a, "--update-golden") == 0) {
       slot = &golden_path;
+    } else if (strcmp(a, "--audio-raw") == 0) {
+      slot = &audio_raw_path;
+    } else if (strcmp(a, "--psg-log-out") == 0) {
+      slot = &psg_log_path;
+    } else if (strcmp(a, "--audio-out-max-bytes") == 0) {
+      seen = &have_out_max;
+      lo = 1u;
+      hi = UINT64_C(1099511627776);
     } else if (strcmp(a, "--max-ticks") == 0) {
       seen = &have_max;
       lo = 1u;
@@ -438,6 +486,8 @@ int main(int argc, char **argv)
       opts.wall_timeout_ms = (uint32_t)v;
     } else if (seen == &have_slice) {
       opts.slice_ticks = v;
+    } else if (seen == &have_out_max) {
+      opts.audio_out_max_bytes = v;
     } else if (seen == &mh.self_signal_repeat) {
       mh.self_signal_count = v;
     } else {
@@ -527,6 +577,26 @@ int main(int argc, char **argv)
     return main_fail("out of memory");
   }
 
+  /* The operator's raw outputs, created exclusively before the run: an existing path is refused with
+   * one line and exit 14, nothing is overwritten (plan 05-09, T-05-23). */
+  if (audio_raw_path != NULL && main_open_out(&mh.audio_out, audio_raw_path, "--audio-raw") != 0) {
+    free(storage);
+    free(buffers);
+    free(mh.golden_buf);
+    free(scn);
+    return MAIN_EXIT_HARNESS;
+  }
+  if (psg_log_path != NULL && main_open_out(&mh.log_out, psg_log_path, "--psg-log-out") != 0) {
+    if (audio_raw_path != NULL) {
+      (void)ivs_hostio_out_close(&mh.audio_out);
+      (void)ivs_hostio_out_remove(audio_raw_path);
+    }
+    free(storage);
+    free(buffers);
+    free(mh.golden_buf);
+    free(scn);
+    return MAIN_EXIT_HARNESS;
+  }
   memset(&host, 0, sizeof host);
   host.ctx = &mh;
   host.read_file = mh_read_file;
@@ -538,11 +608,25 @@ int main(int argc, char **argv)
   host.storage_bytes = storage_bytes;
   host.buffers = buffers;
   host.buffer_bytes = (size_t)IVS_RUNNER_BUFFERS_MAX;
+  if (audio_raw_path != NULL) {
+    host.write_audio_raw = mh_audio_raw;
+  }
+  if (psg_log_path != NULL) {
+    host.write_psg_log = mh_psg_log;
+  }
   memset(&res, 0, sizeof res);
   (void)ivs_runner_execute(scn, &host, &opts, &res);
   free(storage);
   free(buffers);
   code = (int)res.exit_code;
+  if (audio_raw_path != NULL && ivs_hostio_out_close(&mh.audio_out) != 0) {
+    code = MAIN_EXIT_HARNESS;
+    fprintf(stderr, "ivs-run: --audio-raw: close failed\n");
+  }
+  if (psg_log_path != NULL && ivs_hostio_out_close(&mh.log_out) != 0) {
+    code = MAIN_EXIT_HARNESS;
+    fprintf(stderr, "ivs-run: --psg-log-out: close failed\n");
+  }
   if (fflush(stdout) != 0 || ferror(stdout) || res.report_write_failed != 0u) {
     free(mh.golden_buf);
     free(scn);

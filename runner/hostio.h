@@ -22,6 +22,26 @@ int ivs_hostio_cancelled(void);
  * anything); 0 when the host cannot read it, so a broken source never ends a run by itself. */
 uint64_t ivs_hostio_now_ms(void);
 
+/* An operator output file (plan 05-09, D-20): created exclusively and written only here. The struct is
+ * plain data so main.c holds one without including POSIX headers. */
+typedef struct ivs_hostio_out {
+  int fd; /* -1 when not open */
+} ivs_hostio_out;
+
+/* Creates path for writing with O_CREAT | O_EXCL (mode 0644 before the umask): an existing path of any
+ * kind, a dangling symbolic link included, is refused and never overwritten or truncated. Returns 0
+ * (o is open), 1 when the path exists, -1 on any other failure (o is then closed). */
+int ivs_hostio_out_create(ivs_hostio_out *o, const char *path);
+
+/* Writes all len bytes (retrying on EINTR and short writes). Returns 0, or -1 on an error. */
+int ivs_hostio_out_write(ivs_hostio_out *o, const void *bytes, size_t len);
+
+/* Closes o (idempotent on a closed one). Returns 0, or -1 when the close failed. */
+int ivs_hostio_out_close(ivs_hostio_out *o);
+
+/* Removes path (a file this run created and then abandoned). Returns 0 or -1. */
+int ivs_hostio_out_remove(const char *path);
+
 /* Reads the regular file dir/rel (rel alone when dir is NULL) into buf: opens it without
  * blocking, checks with fstat on the open descriptor that it is a regular file, then reads at
  * most cap + 1 bytes (buf must hold cap + 1). Returns an IVS_RUNNER_READ_* result: OK with *len

@@ -365,6 +365,77 @@ ok=1
 check_repeat "$tmp/elsewhere" "$ivs_run" cwd diag-boot-pass "$tmp/runs/scen-diag-boot-pass.out" || ok=0
 result runner-process.cwd
 
+# Operator-only raw outputs (plan 05-09, D-20, T-05-23): a project-authored EXEC stand-in (nine words
+# at $1000: mixer R7 = $3F, then amplitude A = $0F, $00, $07, then a branch to itself; encodings as
+# in tests/runner/runner_exec.c) run to tick 3000 under --audio-raw and --psg-log-out into a mktemp
+# directory (never the repository). By hand: four PSG writes at ticks 76, 152, 228 and 304, so the
+# log is `0 76 8 63 1` and three more lines; a sample at tick 16 k sees the writes stamped below it,
+# so sample 10 (byte offset 36, tick 160) is level A = 15: bytes 0f 00 00 00, and sample 1 is silent.
+# Each case runs once per preset (no slicing variants); the files are created exclusively.
+opc="$tmp/opcontent"
+opo="$tmp/opout"
+mkdir "$opc" "$opo" || exit 1
+{
+  printf '\002\270\000\077\002\100\001\370\002\270\000\017\002\100\001\373'
+  printf '\002\270\000\000\002\100\001\373\002\270\000\007\002\100\001\373\002\040\000\001'
+  dd if=/dev/zero bs=8156 count=1 2> /dev/null
+} > "$opc/psg-prog.exec"
+printf 'ivss 1\nid operator-psg\nprofile intv-2609-ntsc-family-p1\ncontent exec psg-prog.exec\ncontent grom zero-grom\nrun-to 3000 ticks\n' > "$opc/operator-psg.ivss"
+opscn="$opc/operator-psg.ivss"
+# op_value <name> <key>: the value of a report line of run <name>.
+op_value() { sed -n "s/^$2 //p" "$tmp/runs/$1.out"; }
+: > "$tmp/why"
+ok=1
+run_one "$tmp" op-audio "$ivs_run" --content-dir "$opc" --audio-raw "$opo/audio.raw" "$opscn"
+judge op-audio 0 pass - "" || ok=0
+sz=$(wc -c < "$opo/audio.raw" 2> /dev/null | tr -d ' ')
+[ -n "$sz" ] && [ "$sz" = "$(op_value op-audio output.audio.bytes)" ] && [ "$sz" -gt 40 ] \
+  || { ok=0; why operator-audio "file size '$sz', output.audio.bytes '$(op_value op-audio output.audio.bytes)'"; }
+[ "$(od -An -tx1 -N4 "$opo/audio.raw" | tr -d ' \n')" = 00000000 ] \
+  || { ok=0; why operator-audio "the first sample is not silent"; }
+[ "$(od -An -tx1 -j36 -N4 "$opo/audio.raw" | tr -d ' \n')" = 0f000000 ] \
+  || { ok=0; why operator-audio "sample 10 (offset 36) is not 0f000000"; }
+result runner-process.operator.audio-raw
+: > "$tmp/why"
+ok=1
+run_one "$tmp" op-log "$ivs_run" --content-dir "$opc" --psg-log-out "$opo/log.txt" "$opscn"
+judge op-log 0 pass - "" || ok=0
+lines=$(wc -l < "$opo/log.txt" 2> /dev/null | tr -d ' ')
+[ -n "$lines" ] && [ "$lines" = "$(op_value op-log output.psglog.records)" ] && [ "$lines" = 4 ] \
+  || { ok=0; why operator-log "log lines '$lines', output.psglog.records '$(op_value op-log output.psglog.records)'"; }
+[ "$(sed -n '1p' "$opo/log.txt")" = "0 76 8 63 1" ] || { ok=0; why operator-log "first line is not '0 76 8 63 1'"; }
+[ "$(sed -n '4p' "$opo/log.txt")" = "3 304 11 7 1" ] || { ok=0; why operator-log "fourth line is not '3 304 11 7 1'"; }
+result runner-process.operator.psg-log
+# A second run with the same path is refused (exit 14, one stderr line, no report) and leaves the
+# file byte-identical: no overwrite, no truncation.
+: > "$tmp/why"
+ok=1
+cp "$opo/log.txt" "$opo/log.before" || exit 1
+run_one "$tmp" op-excl "$ivs_run" --content-dir "$opc" --psg-log-out "$opo/log.txt" "$opscn"
+[ "$rc" -eq 14 ] || { ok=0; why operator-exclusive "exit $rc, expected 14"; }
+[ ! -s "$tmp/runs/op-excl.out" ] || { ok=0; why operator-exclusive "a report was printed"; }
+printf 'ivs-run: --psg-log-out: output file exists, refusing to overwrite it\n' > "$tmp/want.err"
+cmp -s "$tmp/runs/op-excl.err" "$tmp/want.err" || { ok=0; why operator-exclusive "stderr is not the one refusal line"; }
+cmp -s "$opo/log.txt" "$opo/log.before" || { ok=0; why operator-exclusive "the existing file changed"; }
+result runner-process.operator.exclusive
+# The byte bound is a harness failure, not a truncation.
+: > "$tmp/why"
+ok=1
+run_one "$tmp" op-max "$ivs_run" --content-dir "$opc" --audio-raw "$opo/small.raw" --audio-out-max-bytes 100 "$opscn"
+judge op-max 14 harness-fail audio-out-max-bytes "" || ok=0
+result runner-process.operator.max-bytes
+# Every option once, numbers decimal digits only: a usage error is exit 14 with no report.
+: > "$tmp/why"
+ok=1
+run_one "$tmp" op-twice "$ivs_run" --content-dir "$opc" --audio-raw "$opo/t1.raw" --audio-raw "$opo/t2.raw" "$opscn"
+[ "$rc" -eq 14 ] && [ ! -s "$tmp/runs/op-twice.out" ] || { ok=0; why operator-options "--audio-raw twice: exit $rc"; }
+run_one "$tmp" op-digits "$ivs_run" --content-dir "$opc" --audio-out-max-bytes 12x "$opscn"
+[ "$rc" -eq 14 ] && [ ! -s "$tmp/runs/op-digits.out" ] || { ok=0; why operator-options "non-digit bound: exit $rc"; }
+run_one "$tmp" op-zero "$ivs_run" --content-dir "$opc" --audio-out-max-bytes 0 "$opscn"
+[ "$rc" -eq 14 ] && [ ! -s "$tmp/runs/op-zero.out" ] || { ok=0; why operator-options "zero bound: exit $rc"; }
+[ ! -e "$opo/t1.raw" ] || { ok=0; why operator-options "a usage error created a file"; }
+result runner-process.operator.options
+
 # Judge self-controls (D-23, T-04-59): the same checks run against wrong runners, shell scripts
 # in the temp dir that replay this run's recorded reports with one defect each. A control passes
 # only when the check fails with a finding of its intended token.

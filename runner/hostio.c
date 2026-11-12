@@ -8,8 +8,10 @@
  * with EINTR. With it the handler stays installed and interrupted calls restart, as on Apple
  * libc and the BSDs; signal() stays (D-23).
  * Holds: the cancel flag (the program's only global), set by a signal() handler that does nothing
- * else; the monotonic timer; bounded reads of regular files. Never reads the environment and
- * never writes a file. */
+ * else; the monotonic timer; bounded reads of regular files; and, since plan 05-09, the operator's
+ * raw output files (--audio-raw, --psg-log-out), created exclusively with O_CREAT | O_EXCL so an
+ * existing path is refused and never overwritten. Never reads the environment; the --update-golden
+ * target is the one other file the program writes, and main.c does that with ISO stdio. */
 #define _POSIX_C_SOURCE 200809L
 #define _DEFAULT_SOURCE 1
 
@@ -121,3 +123,50 @@ int ivs_hostio_read(const char *dir, const char *rel, size_t cap, uint8_t *buf, 
   *len = got;
   return got > cap ? IVS_RUNNER_READ_TOO_LARGE : IVS_RUNNER_READ_OK;
 }
+
+int ivs_hostio_out_create(ivs_hostio_out *o, const char *path)
+{
+  int fd;
+  o->fd = -1;
+  if (path == NULL || path[0] == '\0') {
+    return -1;
+  }
+  fd = open(path, O_WRONLY | O_CREAT | O_EXCL | O_NOCTTY, 0644);
+  if (fd < 0) {
+    return errno == EEXIST ? 1 : -1;
+  }
+  o->fd = fd;
+  return 0;
+}
+
+int ivs_hostio_out_write(ivs_hostio_out *o, const void *bytes, size_t len)
+{
+  const uint8_t *p = bytes;
+  size_t done = 0u;
+  if (o->fd < 0) {
+    return -1;
+  }
+  while (done < len) {
+    ssize_t n = write(o->fd, p + done, len - done);
+    if (n < 0) {
+      if (errno == EINTR) {
+        continue;
+      }
+      return -1;
+    }
+    done += (size_t)n;
+  }
+  return 0;
+}
+
+int ivs_hostio_out_close(ivs_hostio_out *o)
+{
+  int fd = o->fd;
+  o->fd = -1;
+  if (fd < 0) {
+    return 0;
+  }
+  return close(fd) == 0 ? 0 : -1;
+}
+
+int ivs_hostio_out_remove(const char *path) { return unlink(path) == 0 ? 0 : -1; }

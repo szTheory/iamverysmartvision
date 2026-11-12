@@ -39,6 +39,11 @@ runner-process.slices.diag-boot-pass
 runner-process.repeat.diag-input-pass
 runner-process.slices.diag-input-pass
 runner-process.cwd
+runner-process.operator.audio-raw
+runner-process.operator.psg-log
+runner-process.operator.exclusive
+runner-process.operator.max-bytes
+runner-process.operator.options
 runner-process.judge.exit-mismatch
 runner-process.judge.no-report-end
 runner-process.judge.outcome-exit-disagree

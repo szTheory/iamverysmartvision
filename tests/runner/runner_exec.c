@@ -58,6 +58,11 @@ typedef struct fake_host {
   int corrupt_audio;   /* the audio hook flips one delivered byte before the chain check reads it */
   uint64_t raw_bytes;  /* bytes the audio hook received */
   uint32_t raw_calls;
+  int want_log;        /* install the PSG log hook */
+  int no_audio_hook;   /* leave the raw audio hook out */
+  char log_text[4096]; /* the lines the log hook received */
+  size_t log_len;
+  uint64_t out_max;    /* options.audio_out_max_bytes (0: the default) */
 } fake_host;
 
 static int fh_read(void *ctx, const char *relpath, size_t cap, uint8_t *buf, size_t *len)
@@ -105,6 +110,18 @@ static int fh_write(void *ctx, const char *bytes, size_t len)
   memcpy(h->out + h->out_len, bytes, len);
   h->out_len += len;
   h->out[h->out_len] = '\0';
+  return 0;
+}
+
+static int fh_psg_log(void *ctx, const char *lines, size_t len)
+{
+  fake_host *h = ctx;
+  if (len > sizeof h->log_text - 1u - h->log_len) {
+    return -1;
+  }
+  memcpy(h->log_text + h->log_len, lines, len);
+  h->log_len += len;
+  h->log_text[h->log_len] = '\0';
   return 0;
 }
 
@@ -193,7 +210,12 @@ static uint32_t rx_exec(const char *text, fake_host *h, ivs_runner_result *res)
   host.read_file = fh_read;
   host.cancel_requested = fh_cancel;
   host.write_report = fh_write;
-  host.write_audio_raw = fh_audio_raw;
+  if (!h->no_audio_hook) {
+    host.write_audio_raw = fh_audio_raw;
+  }
+  if (h->want_log) {
+    host.write_psg_log = fh_psg_log;
+  }
   host.storage = storage;
   host.storage_bytes = FH_STORAGE;
   if (h->buffer_bytes != 0u) {
@@ -205,7 +227,14 @@ static uint32_t rx_exec(const char *text, fake_host *h, ivs_runner_result *res)
     host.buffers = h->buffers;
     host.buffer_bytes = h->buffer_bytes;
   }
-  out = ivs_runner_execute(s, &host, NULL, res);
+  if (h->out_max != 0u) {
+    ivs_runner_options o;
+    memset(&o, 0, sizeof o);
+    o.audio_out_max_bytes = h->out_max;
+    out = ivs_runner_execute(s, &host, &o, res);
+  } else {
+    out = ivs_runner_execute(s, &host, NULL, res);
+  }
 done:
   free(h->buffers);
   h->buffers = NULL;
@@ -1395,6 +1424,108 @@ done:
   return rc;
 }
 
+/* The operator hooks (plan 05-09, D-20): the raw audio hook receives exactly the delivered bytes (its
+ * length is output.audio.bytes) and the log hook the ASCII lines `index tick addr value source` of
+ * every delivered record, one per record: the stand-in's four writes are, by the hand derivation of
+ * runner.exec.psglog-assert, `0 76 8 63 1`, `1 152 11 15 1`, `2 228 11 0 1`, `3 304 11 7 1`. With
+ * the hooks absent nothing changes in the report. */
+static int ex_operator_files_hook(void)
+{
+  static const char want[] = "0 76 8 63 1\n1 152 11 15 1\n2 228 11 0 1\n3 304 11 7 1\n";
+  fake_host h;
+  char scn[RX_SCN_CAP];
+  char v[RX_VALUE_CAP];
+  int rc = IVS_TEST_FAIL;
+  rx_psg_image();
+  if (!rx_psg_scenario(scn, sizeof scn, "run-to 3000 ticks\n")) {
+    return IVS_TEST_FAIL;
+  }
+  fh_init(&h);
+  fh_add(&h, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
+  h.buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
+  h.want_log = 1;
+  if (!rx_expect(scn, &h, IVS_RUNNER_OUTCOME_PASS, 0u)) {
+    goto done;
+  }
+  if (!rx_value(h.out, "output.audio.bytes", v, sizeof v) || h.raw_bytes != strtoull(v, NULL, 10) || h.raw_bytes == 0u) {
+    ivs_test_diag("raw bytes %llu, output.audio.bytes %s", (unsigned long long)h.raw_bytes, v);
+    goto done;
+  }
+  if (strcmp(h.log_text, want) != 0 || !rx_is(h.out, "output.psglog.records", "4")) {
+    ivs_test_diag("log text:\n%s", h.log_text);
+    goto done;
+  }
+  rc = IVS_TEST_PASS;
+done:
+  rx_free(&h);
+  return rc;
+}
+
+/* The byte bound (--audio-out-max-bytes): a bound below what the run produces is a harness failure
+ * (exit 14, detail audio-out-max-bytes), not a truncated success, and a bound exactly at the produced
+ * size passes; the same bound applies to the log file on its own (the log hook alone with a bound of 20
+ * bytes, below the 48 bytes of the four lines, fails psg-log-out-max-bytes). */
+static int ex_out_max_bytes(void)
+{
+  fake_host h;
+  char scn[RX_SCN_CAP];
+  char v[RX_VALUE_CAP];
+  unsigned long long bytes;
+  int rc = IVS_TEST_FAIL;
+  rx_psg_image();
+  if (!rx_psg_scenario(scn, sizeof scn, "run-to 3000 ticks\n")) {
+    return IVS_TEST_FAIL;
+  }
+  fh_init(&h);
+  fh_add(&h, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
+  h.buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
+  if (!rx_expect(scn, &h, IVS_RUNNER_OUTCOME_PASS, 0u) || !rx_value(h.out, "output.audio.bytes", v, sizeof v)) {
+    goto done;
+  }
+  bytes = strtoull(v, NULL, 10);
+  rx_free(&h);
+  fh_init(&h);
+  fh_add(&h, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
+  h.buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
+  h.out_max = bytes;
+  if (!rx_expect(scn, &h, IVS_RUNNER_OUTCOME_PASS, 0u) || h.raw_bytes != bytes) {
+    goto done;
+  }
+  rx_free(&h);
+  fh_init(&h);
+  fh_add(&h, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
+  h.buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
+  h.out_max = bytes - 1u;
+  if (!rx_expect(scn, &h, IVS_RUNNER_OUTCOME_HARNESS_FAIL, 14u) || !rx_is(h.out, "outcome.detail", "audio-out-max-bytes") ||
+      h.raw_bytes >= bytes) {
+    goto done;
+  }
+  rx_free(&h);
+  fh_init(&h);
+  fh_add(&h, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
+  h.buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
+  h.want_log = 1;
+  h.out_max = bytes; /* the audio file fits; the log file does not exceed it either */
+  if (!rx_expect(scn, &h, IVS_RUNNER_OUTCOME_PASS, 0u)) {
+    goto done;
+  }
+  rx_free(&h);
+  fh_init(&h);
+  fh_add(&h, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
+  h.buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
+  h.want_log = 1;
+  h.out_max = 20u;
+  h.no_audio_hook = 1;
+  if (!rx_expect(scn, &h, IVS_RUNNER_OUTCOME_HARNESS_FAIL, 14u) ||
+      !rx_is(h.out, "outcome.detail", "psg-log-out-max-bytes") || h.log_len != 0u) {
+    goto done;
+  }
+  rc = IVS_TEST_PASS;
+done:
+  rx_free(&h);
+  return rc;
+}
+
 /* No host path or other free text: every byte is printable ASCII or LF, no `/` anywhere (the
  * scenarios here name no subdirectory), single-space `key value` lines, and no clock or
  * environment key (the key set is the closed one of ex_key_order). Checked on a pass and on a
@@ -1675,6 +1806,8 @@ static const ivs_test_case exec_cases[] = {
     {"runner.exec.audio-assert", ex_audio_assert, NULL},
     {"runner.exec.capture-overflow", ex_capture_overflow, NULL},
     {"runner.exec.digest-assert-audio-psglog", ex_digest_assert_audio_psglog, NULL},
+    {"runner.exec.operator-files-hook", ex_operator_files_hook, NULL},
+    {"runner.exec.out-max-bytes", ex_out_max_bytes, NULL},
     {"runner.exec.key-order", ex_key_order, NULL},
     {"runner.exec.missing-file", ex_missing_file, NULL},
     {"runner.exec.no-paths", ex_no_paths, NULL},

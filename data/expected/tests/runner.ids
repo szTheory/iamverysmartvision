@@ -177,6 +177,9 @@ runner.exec.psglog-assert
 runner.exec.audio-assert
 runner.exec.capture-overflow
 runner.exec.digest-assert-audio-psglog
+# Plan 05-09 Task 4: the operator-only raw outputs through the vtable hooks.
+runner.exec.operator-files-hook
+runner.exec.out-max-bytes
 # Plan 04-19 (D-21): slicing, the machine-time budget, the wall cap and cancellation through a fake
 # clock and a fake cancel flag (no sleeps, no signals).
 runner.time.budget
