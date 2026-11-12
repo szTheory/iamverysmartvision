@@ -116,27 +116,29 @@ wd_start() {
   _wp=$1; _wm=$2
   rm -f "$_wm" "$_wm.ready"
   mkfifo "$_wm.ready" || { printf 'runner-process-tap: mkfifo %s.ready failed\n' "$_wm" >&2; exit 1; }
+  # The parent holds the FIFO open read-write (fd 9, an open that never blocks) before the watchdog
+  # starts and until it has read the watchdog's line, so a retried read can never lose the line.
+  exec 9<> "$_wm.ready"
   (
+    exec 9>&-
     _s=
     trap 'if [ -n "$_s" ]; then kill "$_s" 2> /dev/null; fi; exit 0' TERM
     sleep "$limit" &
     _s=$!
-    : > "$_wm.ready"
+    echo armed > "$_wm.ready"
     wait "$_s"
     : > "$_wm"
     kill -TERM "$_wp" 2> /dev/null
   ) > /dev/null 2>&1 < /dev/null &
   _wd=$!
-  # Opening the FIFO blocks until the armed watchdog opens it for writing. A signal that arrives
-  # while the open waits (the SIGCHLD of a run that ends in milliseconds) makes dash fail the open
-  # with "Interrupted system call" instead of restarting it (seen under `dash tools/gate.sh`), so
-  # the open is retried (on `true`, not the special builtin `:`, because a failed redirection on a
-  # special builtin ends a POSIX shell); the FIFO exists, so a failed open can only be that interruption.
+  # A signal that interrupts the read (a child exiting) fails it under dash, so the read is retried
+  # on the same descriptor (an open-for-read retry could lose its writer for good and hang).
   _try=0
-  until true < "$_wm.ready" 2> /dev/null; do
+  until read -r _armed <&9; do
     _try=$((_try + 1))
-    [ "$_try" -lt 1000 ] || { printf 'runner-process-tap: cannot open %s.ready\n' "$_wm" >&2; exit 1; }
+    [ "$_try" -lt 1000 ] || break
   done
+  exec 9>&-
   rm -f "$_wm.ready"
 }
 wd_stop() {
