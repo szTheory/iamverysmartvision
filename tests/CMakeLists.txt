@@ -425,7 +425,7 @@ add_custom_command(
 # Its exec family (plan 04-18) serves the build-tree stub and diagnostic images of
 # ivs_images.inc through a fake host (nothing committed).
 set(IVS_RUNNER_TEST_GENERATED "${IVS_DIAG_EXPECT_INC}" "${IVS_DIAG_EXPECT_TEXT_INC}" "${IVS_INPUT_BITS_INC}"
-  "${IVS_IMAGES_INC}")
+  "${IVS_IMAGES_INC}" "${IVS_PSG_PROBE_INC}")
 add_executable(ivs_tests_runner runner/runner_main.c runner/runner_parse.c runner/runner_fuzz.c runner/runner_exec.c
   runner/runner_time.c runner/runner_refpcm.c
   ${IVS_RUNNER_TEST_GENERATED})
