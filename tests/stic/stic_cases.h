@@ -45,6 +45,14 @@ extern const ivs_test_case ivs_stic_lines_cases[];
 extern const size_t ivs_stic_lines_count;
 extern const ivs_test_case ivs_stic_irq_cases[];
 extern const size_t ivs_stic_irq_count;
+extern const ivs_test_case ivs_stic_tile_cases[];
+extern const size_t ivs_stic_tile_count;
+extern const ivs_test_case ivs_stic_slice_cases[];
+extern const size_t ivs_stic_slice_count;
+extern const ivs_test_case ivs_stic_fuzz_cases[];
+extern const size_t ivs_stic_fuzz_count;
+extern const ivs_test_case ivs_stic_iso_cases[];
+extern const size_t ivs_stic_iso_count;
 extern const ivs_test_case ivs_stic_fetch_cases[];
 extern const size_t ivs_stic_fetch_count;
 extern const ivs_test_case ivs_stic_busrq_cases[];
@@ -123,10 +131,13 @@ int sc_run_until(ivs_ms_inst *x, uint64_t ticks);
 #define SC_BODY_MVI 4u    /* MVI $0100, R5 (10 cycles, 0285 0100) and a branch back */
 #define SC_BODY_J 5u      /* J self (12 cycles, 0004 0310 0012) */
 #define SC_BODIES 6u
+#define SC_BODY_BACKTAB 0x100u /* or-ed into the body: the ISR also stores its counter to the first BACKTAB word (MVO R2, $0200; 24 words with a one-word-body only) */
 #define SC_ISR_DELAY 300u
 #define SC_STRADDLE_K 6u  /* stores in front of the swept store */
 #define SC_STRADDLE_N0 409u /* the first delay count of the straddle sweep (stic_fetch.c): the store of row 3 lands near its fetch tick */
-size_t sc_prog_vbl(uint16_t *w, uint32_t body);
+size_t sc_prog_vbl(uint16_t *w, uint32_t body_flags);
+size_t sc_prog_isr(uint16_t *w, uint32_t dis_first);   /* ISR INCR R2, PULR R7 (or DIS first), main MVII #$100,R6; EIS; B self */
+size_t sc_prog_strobe_loop(uint16_t *w);                /* MVO R0,$0020 then B self */
 /* A loop that never strobes the display: [EIS or DIS] then B self ($1000, enable 1 for EIS, 0 for DIS; 3 words). */
 size_t sc_prog_loop(uint16_t *w, uint32_t enable);
 /* MVO R0, $0020 (strobe), HLT, NOP, B self: the CPU halts after the NOP and then runs 1-cycle HALTED units (5 words). */
@@ -135,6 +146,13 @@ size_t sc_prog_halt(uint16_t *w);
 size_t sc_prog_stream(uint16_t *w, size_t count);
 /* sc_guest without the 24-word limit (the stream program); 1 on success. */
 int sc_guest_n(ivs_ms_inst *x, const uint16_t *w, size_t n);
+
+/* Slice comparison (stic_slice.c): the guest w[0..n) runs on instance A in calls of `slice` ticks (or of 1 + xorshift32(seed) % 2999 ticks
+ * when seed is nonzero) to machine time total, and on a reference instance B one unit per call, run(now + 1). After every call B is
+ * advanced to A's time and the whole instance storage is compared when stride is 1, within 64 B units of a frame event, a grant or an
+ * interrupt entry, and at every stride-th call; the final storage is always compared, and when big is nonzero also with a third
+ * instance that ran in one call. Returns 1 on equality; *events gets bit 0 when a bus grant and bit 1 when an interrupt entry were seen. */
+int ss_compare(const uint16_t *w, size_t n, uint32_t slice, uint32_t seed, uint64_t total, uint32_t stride, int big, uint32_t *events);
 
 /* One recorded CPU unit: its start tick (machine time before it), its cycles and kind and the stepper's event bits. */
 typedef struct sc_unit {

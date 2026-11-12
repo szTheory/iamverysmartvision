@@ -114,18 +114,23 @@ static size_t sc_w_bback(uint16_t *w, size_t n, size_t start)
   return n + 2u;
 }
 
-size_t sc_prog_vbl(uint16_t *w, uint32_t body)
+size_t sc_prog_vbl(uint16_t *w, uint32_t body_flags)
 {
+  uint32_t body = body_flags & 0xFFu;
+  uint32_t backtab = body_flags & SC_BODY_BACKTAB;
   size_t n = 0u;
   size_t start;
   size_t k;
-  w[n++] = 0x0200u; /* B forward to $100F */
-  w[n++] = 0x000Du;
+  w[n++] = 0x0200u; /* B forward to $100F, or $1011 when the ISR also stores to BACKTAB */
+  w[n++] = backtab != 0u ? 0x000Fu : 0x000Du;
   w[n++] = 0x0000u;
   w[n++] = 0x0000u;
   w[n++] = 0x0003u; /* $1004 DIS */
   n = sc_w_mvo(w, n, 0u, 0x0020u);
   w[n++] = 0x000Au; /* INCR R2 */
+  if (backtab != 0u) {
+    n = sc_w_mvo(w, n, 2u, 0x0200u); /* MVO R2, $0200: the counter into the first BACKTAB word (a store to background memory) */
+  }
   n = sc_w_mvii(w, n, 1u, SC_ISR_DELAY);
   w[n++] = 0x0011u; /* DECR R1 */
   w[n++] = 0x022Cu; /* BNZE back */
@@ -162,6 +167,32 @@ size_t sc_prog_vbl(uint16_t *w, uint32_t body)
   default: /* SC_BODY_BSELF */
     return sc_w_bback(w, n, start);
   }
+}
+
+/* An interrupt program for the C41 consequences: B $1006 or $1007 over the ISR at $1004 (INCR R2; PULR R7, or DIS first), then
+ * MVII #$100, R6; EIS; B self. The ISR never re-enables, so with INTFF held (C41 = 0) a service routine without DIS is re-entered. */
+size_t sc_prog_isr(uint16_t *w, uint32_t dis_first)
+{
+  size_t n = 0u;
+  w[n++] = 0x0200u;
+  w[n++] = dis_first != 0u ? 0x0005u : 0x0004u; /* target $1002 + d: the main part right after the ISR */
+  w[n++] = 0x0000u;
+  w[n++] = 0x0000u;
+  if (dis_first != 0u) {
+    w[n++] = 0x0003u; /* DIS */
+  }
+  w[n++] = 0x000Au; /* INCR R2 */
+  w[n++] = 0x02B7u; /* PULR R7 */
+  n = sc_w_mvii(w, n, 6u, 0x0100u);
+  w[n++] = 0x0002u; /* EIS */
+  return sc_w_bback(w, n, n);
+}
+
+/* MVO R0, $0020 (the strobe once) then B self (4 words): a constant-cost loop in a display-on frame 0. */
+size_t sc_prog_strobe_loop(uint16_t *w)
+{
+  size_t n = sc_w_mvo(w, 0u, 0u, 0x0020u);
+  return sc_w_bback(w, n, n);
 }
 
 size_t sc_prog_loop(uint16_t *w, uint32_t enable)

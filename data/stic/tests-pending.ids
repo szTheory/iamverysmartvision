@@ -3,12 +3,7 @@
 # registers an id of the family in data/expected/tests/*.ids. The video step requires every test entry of a rule of data/stic/rules.json
 # to be a prefix of at least one registered id or a line here, and a line here whose prefix already has a registered id to be deleted
 # (tokens video-rule-no-test and video-pending-stale): the owner plan deletes its lines in the same commit that registers the first id.
-stic.tile. 06-08
-stic.steal. 06-08
-stic.fuzz. 06-08
-stic.iso. 06-08
 stic.bounds. 06-08
-stic.regress. 06-08
 video.geom. 06-09
 video.layout. 06-09
 video.slot. 06-09
