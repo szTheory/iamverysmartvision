@@ -64,7 +64,7 @@ exit, until the gate is resolved by its named authority.
 | D5 System-image policy and project boot stub | Owner | Delegated decision 2026-11-11 (PROJECT.md; Phase 3 D-24) | Phase 3 (refusal); before Phase 4 (boot) |
 | D6 Controller core-input representation (C14) | Owner + architecture | Delegated decision 2026-11-11 (PROJECT.md; Phase 4 D-25, D-12, D-41) | While Phase 4 shapes the API; before Phase 5 starts |
 | D7 Reference PCM location (C23) | Architecture | Delegated decision 2026-11-12 (PROJECT.md; Phase 5 D-21: outside the core, `tools/pcm`, runner `--audio-wav` only) | Phase 5 |
-| D8 Raw framebuffer geometry (C10) | Architecture + evidence | Open | During Phase 6 |
+| D8 Raw framebuffer geometry (C10) | Architecture + evidence | Delegated decision 2026-11-12 (PROJECT.md; Phase 6 D-12: 159 x 96, width from `video.last_card_column_px`, reversible by one profile field) | Phase 6 |
 | D9 License, visibility, naming/trademark, publication | Owner gate | Delegated decision 2026-11-09 (PROJECT.md) | Before any external publication; CI hosting (Phase 4) and the milestone release assessment (Phase 8) touch it |
 | D10 Physical hardware measurement | Owner gate | Open | Before any measured-tier claim (Phase 5 onward) |
 | D11 Owner-local real EXEC/GROM runs | Owner gate | Open | Before SCN-02 can be claimed (Phase 7) |

@@ -171,9 +171,10 @@ These come from a researched fan-out recommendation that was auto-adopted. Each 
 | D4 | Fixture assembler policy: hand-assembled annotated decle listings with a listing checker; no assembler as a build/gate/CI/release dependency; as1600 rejected (GPL), libasm optional non-gating cross-check (Phase 4 D-25) | A diagnostic count above 3, labels/macros, or a second author: build a project mini-assembler |
 | D6 | Controller core input is logical switch state per PSG port; the electrical byte is derived in-core from profile data (Phase 4 D-12) | Evidence the output is not a function of switch state plus port drive, or a need for raw port injection |
 | D7 | Reference PCM is outside the core and outside every installed artifact: a pure integer converter in `tools/pcm/` is linked only by the runner's operator-side `--audio-wav` and its own tests; raw audio is per-channel level samples every 16 master ticks plus a cycle-stamped write log (Phase 5 D-15, D-21) | An adapter that needs bit-identical PCM across hosts (promote to an installed `ivs::refpcm` target, still outside the core) |
+| D8 | Framebuffer geometry: published 159 x 96 display rows (width = 19 x 8 + `video.last_card_column_px`, 7 now), one byte per position holding the STIC color number 0..15, `0xFF` not displayed, frames produced at the frame end by an `IVS_RUN_F_STOP_ON_FRAME` run; no palette, scaling or presentation in the core (Phase 6 D-12..D-14) | Hardware or primary-page evidence that the visible picture is 160 columns (one-field profile change) or a different clip side |
 | D12 | CI shape: one ubuntu-24.04 job, no matrix, no cache, no artifacts, no macOS leg, job summary from the gate, run record file (Phase 4 D-41..D-45) | An Apple-only failure reaching main, a shared library, or a median hosted gate above budget after levers |
 
-D4, D6 and D12 were decided by the fan-out protocol on 2026-11-11; D7 on 2026-11-12 (Phase 5) (Delegated decision, owner authorization 2026-11-09).
+D4, D6 and D12 were decided by the fan-out protocol on 2026-11-11; D7 on 2026-11-12 (Phase 5), D8 on 2026-11-12 (Phase 6) (Delegated decision, owner authorization 2026-11-09).
 
 Phase 5 notes on the register above (plan 05-12, 2026-11-12; Delegated decision, owner authorization 2026-11-09; nothing here is a new owner decision and each row is reversible by the evidence in its last column):
 
