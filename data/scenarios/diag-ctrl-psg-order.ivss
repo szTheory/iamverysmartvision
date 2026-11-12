@@ -1,0 +1,71 @@
+# Scenario diag-ctrl-psg-order (plan 05-11, D-24, V-08): outcome pass, exit 0. Every event of
+# diag-ctrl-psg-pass is split into two input lines ONE TICK APART, because the scenario grammar
+# requires `c0=` then `c1=` in every line, so no per-line port order exists. The first line at tick
+# T changes only the port-1 word (it repeats the previous port-0 word) and the second line at tick
+# T+1 sets the port-0 word. The asserts are the pass scenario's, in the same order: a delivery
+# order of the two ports one tick apart cannot change the polled tables, which shows that the
+# per-port index, not the line position, selects the port (C66 itself is covered by
+# input.single.p1.* and input.port.independence).
+ivss 1
+id diag-ctrl-psg-order
+profile intv-2609-ntsc-family-p1
+content exec boot-stub
+content grom zero-grom
+content cart diag-ctrl-psg-1.ivsc
+capture psglog
+input at_tick=4000 c0=0x0 c1=0x0
+input at_tick=4001 c0=KEY_1 c1=0x0
+input at_tick=4800 c0=KEY_1 c1=DISC_E
+input at_tick=4801 c0=0x0 c1=DISC_E
+input at_tick=5600 c0=0x0 c1=SIDE_LOWER_LEFT
+input at_tick=5601 c0=KEY_1+KEY_9 c1=SIDE_LOWER_LEFT
+input at_tick=6400 c0=KEY_1+KEY_9 c1=0x0
+input at_tick=6401 c0=0x0 c1=0x0
+input at_tick=7200 c0=0x0 c1=0x0
+input at_tick=7201 c0=DISC_N c1=0x0
+input at_tick=8000 c0=DISC_N c1=0x0
+input at_tick=8001 c0=DISC_N+SIDE_TOP c1=0x0
+input at_tick=8800 c0=DISC_N+SIDE_TOP c1=0x0
+input at_tick=8801 c0=KEY_5+SIDE_TOP c1=0x0
+run-to 24000 ticks stop halted
+assert halted == yes
+assert mem 020F == 03C5
+assert mem 0210 == 00FF
+assert mem 0211 == 007E
+assert mem 0212 == 00FF
+assert mem 0213 == 005A
+assert mem 0214 == 00FF
+assert mem 0215 == 00FB
+assert mem 0216 == 005B
+assert mem 0217 == 001D
+assert mem 0220 == 00FF
+assert mem 0221 == 00FD
+assert mem 0222 == 009F
+assert mem 0223 == 00FF
+assert mem 0224 == 0000
+assert mem 0225 == 0000
+assert mem 0226 == 0000
+assert mem 0227 == 0000
+assert psglog count == 11
+assert psglog 0 addr=0 value=0023 source=cpu-write
+assert psglog 1 addr=4 value=0001 source=cpu-write
+assert psglog 2 addr=8 value=003E source=cpu-write
+assert psglog 3 addr=11 value=000F source=cpu-write
+assert psglog 4 addr=1 value=0080 source=cpu-write
+assert psglog 5 addr=5 value=0000 source=cpu-write
+assert psglog 6 addr=12 value=0008 source=cpu-write
+assert psglog 7 addr=9 value=0010 source=cpu-write
+assert psglog 8 addr=3 value=0064 source=cpu-write
+assert psglog 9 addr=7 value=0000 source=cpu-write
+assert psglog 10 addr=10 value=000A source=cpu-write
+assert mem 01F0 == 0023
+assert mem 01F4 == 0001
+assert mem 01F8 == 003E
+assert mem 01FB == 000F
+assert mem 01F1 == 0080
+assert mem 01F5 == 0000
+assert mem 01FC == 0008
+assert mem 01F9 == 0010
+assert mem 01F3 == 0064
+assert mem 01F7 == 0000
+assert mem 01FA == 0000

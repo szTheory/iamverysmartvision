@@ -85,6 +85,12 @@ extern const size_t ivs_run_stub_count;
 extern const ivs_test_case ivs_run_diag_cases[];
 extern const size_t ivs_run_diag_count;
 
+/* Family diag-ctrl (plan 05-11, D-24, D-05, D-27): the diagnostic ivs-diag-ctrl-psg-1 (controller
+ * reads and PSG writes) behind the boot stub, from reset to its hand-derived predicate
+ * (data/golden/diag-ctrl-psg-pass.expect) through the public API (run_diag_ctrl.c). */
+extern const ivs_test_case ivs_run_diag_ctrl_cases[];
+extern const size_t ivs_run_diag_ctrl_count;
+
 /* ---- slicing invariance of another program (run_slice.c, plan 04-16, D-07) ----
  * powered builds a POWERED instance of a program that ends HALTED (1 on success); the function
  * runs the five slicing patterns of family slice (single, fixed-7, prime, seeded, one-call) on it

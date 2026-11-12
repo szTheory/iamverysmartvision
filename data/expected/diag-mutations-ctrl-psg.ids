@@ -1,0 +1,46 @@
+# Program mutations of the second original diagnostic (plan 05-11, D-24, V-10):
+# `<ID> <addr> <from> <to> <clause> <outcome> <exit>`; the clause is everything between the fourth
+# column and the last two (it may hold blanks). Suite runner-process (id
+# runner-process.mutant.<ID>) builds each mutant in its temp dir with
+# `ivs_pack --ivsc fixtures/FX-diag-ctrl-psg-1/diag-ctrl-psg-1.listing.txt <out> --patch <addr>=<to>`
+# and runs data/scenarios/diag-ctrl-psg-pass.ivss against it with the real ivs-run.
+# Unlike data/expected/diag-mutations.ids the <from> word is an explicit column: the Phase 4 loop
+# derives it from the id prefix and compares it with the listing row text, which cannot work for a
+# patched immediate (its listing row is `-`). The loop checks that the word at <addr> of the
+# unpatched listing, as ivs_pack decodes it (--dump-words), equals <from> before patching, so a
+# listing edit that moves the instruction fails the case instead of mutating something else.
+# <outcome> is guest-fail (exit 10: outcome.detail is `assert=<j> line=<n> <clause> got <actual>`),
+# timeout (exit 11: detail `budget step=<n> line=<n> expected=halted got=target`, the machine-time
+# bound, never wall time; <clause> is `budget`) or pass (exit 0, detail `-`, the negative mutant;
+# <clause> is `-`). A mutant whose loop could run forever is never listed as guest-fail.
+#
+# Words hand-derived from the printed encodings in data/cp1610/opcode-families.json and
+# docs/cp1610/reference-notes.md (GI CP-1600 Microprocessor Users Manual, SRC-gi-cp1600-um-1975),
+# the derivation in docs/input/diag-ctrl-psg-1-derivation.md section (e) and the listing addresses:
+#   ID                    addr  from  to    what changes                                 clause it breaks
+#   MIXER-VALUE           5009  003E  003F  immediate of the $01F8 write; bits 6 and 7   psglog record 2 has
+#                                           stay clear, so port 0 still reads the pins   value 003F, not 003E
+#                                           and the loop still ends (a value with bit   (the mem read-backs come
+#                                           6 set would make port 0 read the latch,      after the log in the
+#                                           the loop would never end and the outcome     assert order)
+#                                           would be a timeout)
+#   TONE-HIGH-VALUE       5005  0001  0002  immediate of the $01F4 write                 psglog record 1 has
+#                                                                                        value 0002, not 0001
+#   PORT1-STORE-ADDR      5033  0220  0221  immediate of MVII #$0220,R5 (the port 1      mem 0220 == 00FF: the
+#                                           pointer); port 0 still stores 8 values and   first port 1 value lands
+#                                           the loop still ends                          at 0221
+#   ANDI-TO-MVII          5038  03B8  02B8  first decle of ANDI #$00FF,R0 (1110 111      the loop never reaches
+#                                           000) becomes the first decle of MVII         eight port 0 values; the
+#                                           (1010 111 000) for the same register; the    run ends at the
+#                                           operand 00FF stays, so R0 is the constant    machine-time bound
+#                                           00FF after every port 0 read and port 0      (timeout, detail
+#                                           never changes after the first store; the     budget)
+#                                           CP-1610 has no OR instruction, so no OR
+#                                           patch exists
+#   DELAY-COUNT-CHANGED   504D  0078  0050  immediate of the delay count (120 to 80);    none: only the halt tick
+#                                           negative mutant, every predicate passes      moves (pass, exit 0)
+MIXER-VALUE 5009 003E 003F psglog 2 addr=8 value=003E source=cpu-write guest-fail 10
+TONE-HIGH-VALUE 5005 0001 0002 psglog 1 addr=4 value=0001 source=cpu-write guest-fail 10
+PORT1-STORE-ADDR 5033 0220 0221 mem 0220 == 00FF guest-fail 10
+ANDI-TO-MVII 5038 03B8 02B8 budget timeout 11
+DELAY-COUNT-CHANGED 504D 0078 0050 - pass 0

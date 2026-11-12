@@ -48,29 +48,29 @@ step.1.assert.15 pass mem 0224 == 0000 got 0000
 step.1.assert.16 pass mem 0225 == 0000 got 0000
 step.1.assert.17 pass mem 0226 == 0000 got 0000
 step.1.assert.18 pass mem 0227 == 0000 got 0000
-step.1.assert.19 pass mem 01F0 == 0023 got 0023
-step.1.assert.20 pass mem 01F4 == 0001 got 0001
-step.1.assert.21 pass mem 01F8 == 003E got 003E
-step.1.assert.22 pass mem 01FB == 000F got 000F
-step.1.assert.23 pass mem 01F1 == 0080 got 0080
-step.1.assert.24 pass mem 01F5 == 0000 got 0000
-step.1.assert.25 pass mem 01FC == 0008 got 0008
-step.1.assert.26 pass mem 01F9 == 0010 got 0010
-step.1.assert.27 pass mem 01F3 == 0064 got 0064
-step.1.assert.28 pass mem 01F7 == 0000 got 0000
-step.1.assert.29 pass mem 01FA == 0000 got 0000
-step.1.assert.30 pass psglog count == 11 got 11
-step.1.assert.31 pass psglog 0 addr=0 value=0023 source=cpu-write got tick=208 addr=0 value=0023 source=cpu-write
-step.1.assert.32 pass psglog 1 addr=4 value=0001 source=cpu-write got tick=284 addr=4 value=0001 source=cpu-write
-step.1.assert.33 pass psglog 2 addr=8 value=003E source=cpu-write got tick=360 addr=8 value=003E source=cpu-write
-step.1.assert.34 pass psglog 3 addr=11 value=000F source=cpu-write got tick=436 addr=11 value=000F source=cpu-write
-step.1.assert.35 pass psglog 4 addr=1 value=0080 source=cpu-write got tick=512 addr=1 value=0080 source=cpu-write
-step.1.assert.36 pass psglog 5 addr=5 value=0000 source=cpu-write got tick=588 addr=5 value=0000 source=cpu-write
-step.1.assert.37 pass psglog 6 addr=12 value=0008 source=cpu-write got tick=664 addr=12 value=0008 source=cpu-write
-step.1.assert.38 pass psglog 7 addr=9 value=0010 source=cpu-write got tick=740 addr=9 value=0010 source=cpu-write
-step.1.assert.39 pass psglog 8 addr=3 value=0064 source=cpu-write got tick=816 addr=3 value=0064 source=cpu-write
-step.1.assert.40 pass psglog 9 addr=7 value=0000 source=cpu-write got tick=892 addr=7 value=0000 source=cpu-write
-step.1.assert.41 pass psglog 10 addr=10 value=000A source=cpu-write got tick=968 addr=10 value=000A source=cpu-write
+step.1.assert.19 pass psglog count == 11 got 11
+step.1.assert.20 pass psglog 0 addr=0 value=0023 source=cpu-write got tick=208 addr=0 value=0023 source=cpu-write
+step.1.assert.21 pass psglog 1 addr=4 value=0001 source=cpu-write got tick=284 addr=4 value=0001 source=cpu-write
+step.1.assert.22 pass psglog 2 addr=8 value=003E source=cpu-write got tick=360 addr=8 value=003E source=cpu-write
+step.1.assert.23 pass psglog 3 addr=11 value=000F source=cpu-write got tick=436 addr=11 value=000F source=cpu-write
+step.1.assert.24 pass psglog 4 addr=1 value=0080 source=cpu-write got tick=512 addr=1 value=0080 source=cpu-write
+step.1.assert.25 pass psglog 5 addr=5 value=0000 source=cpu-write got tick=588 addr=5 value=0000 source=cpu-write
+step.1.assert.26 pass psglog 6 addr=12 value=0008 source=cpu-write got tick=664 addr=12 value=0008 source=cpu-write
+step.1.assert.27 pass psglog 7 addr=9 value=0010 source=cpu-write got tick=740 addr=9 value=0010 source=cpu-write
+step.1.assert.28 pass psglog 8 addr=3 value=0064 source=cpu-write got tick=816 addr=3 value=0064 source=cpu-write
+step.1.assert.29 pass psglog 9 addr=7 value=0000 source=cpu-write got tick=892 addr=7 value=0000 source=cpu-write
+step.1.assert.30 pass psglog 10 addr=10 value=000A source=cpu-write got tick=968 addr=10 value=000A source=cpu-write
+step.1.assert.31 pass mem 01F0 == 0023 got 0023
+step.1.assert.32 pass mem 01F4 == 0001 got 0001
+step.1.assert.33 pass mem 01F8 == 003E got 003E
+step.1.assert.34 pass mem 01FB == 000F got 000F
+step.1.assert.35 pass mem 01F1 == 0080 got 0080
+step.1.assert.36 pass mem 01F5 == 0000 got 0000
+step.1.assert.37 pass mem 01FC == 0008 got 0008
+step.1.assert.38 pass mem 01F9 == 0010 got 0010
+step.1.assert.39 pass mem 01F3 == 0064 got 0064
+step.1.assert.40 pass mem 01F7 == 0000 got 0000
+step.1.assert.41 pass mem 01FA == 0000 got 0000
 cpu.run_state halted
 cpu.fault_reason none
 input.events 7

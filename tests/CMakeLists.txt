@@ -161,6 +161,17 @@ add_custom_command(
   DEPENDS "${IVS_DIAG_EXPECT}" "${CMAKE_CURRENT_SOURCE_DIR}/expect-inc.cmake"
   COMMENT "Generating the diag-cpu-1 predicate include"
   VERBATIM)
+# Plan 05-11: the same X-macro include for the second diagnostic's hand-derived predicate
+# (data/golden/diag-ctrl-psg-pass.expect, with the PSG write-log lines), read by run.diag.ctrl-psg.*.
+set(IVS_CTRL_EXPECT "${PROJECT_SOURCE_DIR}/data/golden/diag-ctrl-psg-pass.expect")
+set(IVS_CTRL_EXPECT_INC "${CMAKE_CURRENT_BINARY_DIR}/diag_ctrl_psg_pass_expect.inc")
+add_custom_command(
+  OUTPUT "${IVS_CTRL_EXPECT_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DIN=${IVS_CTRL_EXPECT}" "-DOUT=${IVS_CTRL_EXPECT_INC}"
+          -P "${CMAKE_CURRENT_SOURCE_DIR}/expect-inc.cmake"
+  DEPENDS "${IVS_CTRL_EXPECT}" "${CMAKE_CURRENT_SOURCE_DIR}/expect-inc.cmake"
+  COMMENT "Generating the diag-ctrl-psg-pass predicate include"
+  VERBATIM)
 # Controller probe table (plan 05-05): cmake/IvsInputProbes.cmake turns the controller literal
 # data/input/*.literal.txt (and the pinned name set) into ivs_input_probes.inc, the expected bytes of suite
 # input and of the input-visible fuzz of suite run. It reads neither the profile nor the core.
@@ -173,7 +184,7 @@ add_custom_command(
   DEPENDS ${IVS_INPUT_LITERALS} "${PROJECT_SOURCE_DIR}/data/expected/input-bits.ids" "${IVS_INPUT_PROBE_GENERATOR}"
   COMMENT "Generating the controller probe table"
   VERBATIM)
-add_executable(ivs_tests_run run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_struct.c run/run_fuzz.c run/run_stub.c run/run_diag.c machine/machine_standin.c "${IVS_IMAGES_INC}" "${IVS_DIAG_EXPECT_INC}" "${IVS_INPUT_PROBE_INC}")
+add_executable(ivs_tests_run run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_struct.c run/run_fuzz.c run/run_stub.c run/run_diag.c run/run_diag_ctrl.c machine/machine_standin.c "${IVS_IMAGES_INC}" "${IVS_DIAG_EXPECT_INC}" "${IVS_CTRL_EXPECT_INC}" "${IVS_INPUT_PROBE_INC}")
 target_include_directories(ivs_tests_run PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_BINARY_DIR}")
 add_dependencies(ivs_tests_run ivs_images)
 target_link_libraries(ivs_tests_run PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
@@ -351,9 +362,9 @@ ivs_fault_suite(machine
   GENERATED "${IVS_SHA_INC}" "${IVS_CART_INC}")
 
 ivs_fault_suite(run
-  SOURCES run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_struct.c run/run_fuzz.c run/run_stub.c run/run_diag.c machine/machine_standin.c
+  SOURCES run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_struct.c run/run_fuzz.c run/run_stub.c run/run_diag.c run/run_diag_ctrl.c machine/machine_standin.c
   INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_BINARY_DIR}"
-  GENERATED "${IVS_IMAGES_INC}" "${IVS_DIAG_EXPECT_INC}" "${IVS_INPUT_PROBE_INC}")
+  GENERATED "${IVS_IMAGES_INC}" "${IVS_DIAG_EXPECT_INC}" "${IVS_CTRL_EXPECT_INC}" "${IVS_INPUT_PROBE_INC}")
 
 ivs_fault_suite(psg
   SOURCES ${IVS_PSG_TEST_SOURCES}

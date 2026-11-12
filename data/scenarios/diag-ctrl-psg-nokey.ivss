@@ -1,0 +1,16 @@
+# Scenario diag-ctrl-psg-nokey (plan 05-11, D-24, V-08): outcome timeout, exit 11, detail budget. The
+# same cartridge as diag-ctrl-psg-pass with no input line: both ports read idle (FF), the poll loop
+# stores one value per port and never reaches eight port 0 values, so the guest is still polling,
+# its end marker unwritten, when the run-to bound is reached first (deterministic machine time,
+# never wall time). The contrast with the pass scenario shows that controller input, not time,
+# changes guest state.
+# expect-detail: budget step=1 line=15 expected=halted got=target
+ivss 1
+id diag-ctrl-psg-nokey
+profile intv-2609-ntsc-family-p1
+content exec boot-stub
+content grom zero-grom
+content cart diag-ctrl-psg-1.ivsc
+capture psglog
+run-to 12000 ticks stop halted
+assert halted == yes

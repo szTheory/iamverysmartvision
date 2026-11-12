@@ -41,17 +41,6 @@ assert mem 0224 == 0000
 assert mem 0225 == 0000
 assert mem 0226 == 0000
 assert mem 0227 == 0000
-assert mem 01F0 == 0023
-assert mem 01F4 == 0001
-assert mem 01F8 == 003E
-assert mem 01FB == 000F
-assert mem 01F1 == 0080
-assert mem 01F5 == 0000
-assert mem 01FC == 0008
-assert mem 01F9 == 0010
-assert mem 01F3 == 0064
-assert mem 01F7 == 0000
-assert mem 01FA == 0000
 assert psglog count == 11
 assert psglog 0 addr=0 value=0023 source=cpu-write
 assert psglog 1 addr=4 value=0001 source=cpu-write
@@ -64,3 +53,14 @@ assert psglog 7 addr=9 value=0010 source=cpu-write
 assert psglog 8 addr=3 value=0064 source=cpu-write
 assert psglog 9 addr=7 value=0000 source=cpu-write
 assert psglog 10 addr=10 value=000A source=cpu-write
+assert mem 01F0 == 0023
+assert mem 01F4 == 0001
+assert mem 01F8 == 003E
+assert mem 01FB == 000F
+assert mem 01F1 == 0080
+assert mem 01F5 == 0000
+assert mem 01FC == 0008
+assert mem 01F9 == 0010
+assert mem 01F3 == 0064
+assert mem 01F7 == 0000
+assert mem 01FA == 0000

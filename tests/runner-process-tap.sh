@@ -22,11 +22,16 @@
 # Mutant cases (D-32): per line `<ID> <addr> <word> <clause>` of data/expected/diag-mutations.ids
 # the diagnostic is rebuilt here with `ivs_pack --ivsc ... --patch <addr>=<word>` and
 # diag-boot-pass run against it must end guest-fail (exit 10) with the detail naming <clause>; id
-# runner-process.mutant.<ID>.
+# runner-process.mutant.<ID>. Since plan 05-11 (D-24, V-10) a second inventory,
+# data/expected/diag-mutations-ctrl-psg.ids, lists `<ID> <addr> <from> <to> <clause> <outcome> <exit>`
+# for the second diagnostic (diag-ctrl-psg-pass): the <from> word is explicit and must equal the word
+# at <addr> of the unpatched listing (ivs_pack --dump-words) before the patch, and the stated outcome
+# (guest-fail 10, timeout 11 or pass 0) is judged; both inventories share one runner (run_mutant).
 # Determinism (D-23, Pitfall 11): runner-process.repeat.<id> (a second run),
-# runner-process.slices.<id> (--slice-ticks 1 and 7) for diag-boot-pass and diag-input-pass, and
-# runner-process.cwd (diag-boot-pass from another working directory) must equal the scenario case's
-# report byte for byte apart from the host.calls line.
+# runner-process.slices.<id> (--slice-ticks 1 and 7) for diag-boot-pass, diag-input-pass and (plan 05-11,
+# cost cap V-16) diag-ctrl-psg-pass, and runner-process.cwd (diag-boot-pass from another working
+# directory) and runner-process.cwd.diag-ctrl-psg-pass must equal the scenario case's report byte for
+# byte apart from the host.calls line.
 # Judge self-controls (runner-process.judge.<slug>): the same checks run against four fake
 # runners (shell scripts in the temp dir replaying this run's reports with one defect: exit 0 for
 # a guest-fail, no report.end, outcome pass with exit.code 10, a changed digest line); each passes
@@ -316,6 +321,24 @@ while read -r id x oc class skip args rest; do
   fi
 done < "$inv"
 
+# run_mutant <id> <listing> <cart file name> <scenario id> <addr> <to> <exit> <outcome> <detail pattern>:
+# rebuilds the cartridge from <listing> in a fresh directory with the one word patched, runs the
+# scenario against it and judges the stated exit code, outcome and detail. Sets $ok, adds to $tmp/why.
+run_mutant() {
+  _mid=$1; _ml=$2; _mc=$3; _ms=$4; _ma=$5; _mw=$6; _mx=$7; _mo=$8; _mp=$9
+  md="$tmp/mut-$_mid"
+  if ! mkdir "$md" || ! cp "$content/boot-stub.exec" "$md/boot-stub.exec"; then
+    ok=0; why temp "cannot prepare $md"
+  elif ! "$pack" --ivsc "$_ml" "$md/$_mc" --patch "$_ma=$_mw" > "$tmp/why.pack" 2>&1; then
+    ok=0; why pack "ivs_pack --patch $_ma=$_mw failed: $(cat "$tmp/why.pack")"
+  elif cmp -s "$md/$_mc" "$content/$_mc"; then
+    ok=0; why pack "the patch $_ma=$_mw leaves the container unchanged"
+  else
+    run_one "$tmp" "mut-$_mid" "$ivs_run" --content-dir "$md" "$scen/$_ms.ivss"
+    judge "mut-$_mid" "$_mx" "$_mo" "$_mp" "" || ok=0
+  fi
+}
+
 # Program mutations (D-32): per line `<ID> <addr> <word> <clause>` of
 # data/expected/diag-mutations.ids, the diagnostic patched at <addr> (whose listing row must be
 # the <from> of <from>-<to>) must end guest-fail naming <clause>.
@@ -327,27 +350,51 @@ while read -r mid addr word clause; do
   from=${mid%%-*}
   # The ROW field follows the HEX4 word and the BITS groups (10 binary digits in total).
   row=$(awk -v a="$addr" '!/^#/ && $1 == a { d = 0; i = 3; while (d < 10 && i <= NF) { d += length($i); i++ } print $i; exit }' "$listing")
-  md="$tmp/mut-$mid"
   if [ -z "$clause" ]; then
     ok=0; why inventory "not <ID> <addr> <word> <clause>"
   elif [ "$row" != "$from" ]; then
     ok=0; why listing "row at $addr is '$row', expected '$from'"
-  elif ! mkdir "$md" || ! cp "$content/boot-stub.exec" "$md/boot-stub.exec"; then
-    ok=0; why temp "cannot prepare $md"
-  elif ! "$pack" --ivsc "$listing" "$md/diag-cpu-1.ivsc" --patch "$addr=$word" > "$tmp/why.pack" 2>&1; then
-    ok=0; why pack "ivs_pack --patch $addr=$word failed: $(cat "$tmp/why.pack")"
-  elif cmp -s "$md/diag-cpu-1.ivsc" "$content/diag-cpu-1.ivsc"; then
-    ok=0; why pack "the patch $addr=$word leaves the container unchanged"
   else
-    run_one "$tmp" "mut-$mid" "$ivs_run" --content-dir "$md" "$scen/diag-boot-pass.ivss"
-    judge "mut-$mid" 10 guest-fail "assert=* line=* $clause got *" "" || ok=0
+    run_mutant "$mid" "$listing" diag-cpu-1.ivsc diag-boot-pass "$addr" "$word" 10 guest-fail "assert=* line=* $clause got *"
   fi
   result "runner-process.mutant.$mid"
 done < "$muts"
 
+# Program mutations of the second diagnostic (plan 05-11, D-24, V-10): per line
+# `<ID> <addr> <from> <to> <clause> <outcome> <exit>` of data/expected/diag-mutations-ctrl-psg.ids; the
+# word at <addr> of the unpatched listing (ivs_pack --dump-words, `ADDR WORD` lines) must be <from>.
+listing2="$root/fixtures/FX-diag-ctrl-psg-1/diag-ctrl-psg-1.listing.txt"
+muts2="$root/data/expected/diag-mutations-ctrl-psg.ids"
+"$pack" --dump-words "$listing2" > "$tmp/words2" 2> /dev/null || : > "$tmp/words2"
+while read -r mid addr from to rest; do
+  case $mid in '' | '#'*) continue ;; esac
+  ok=1
+  : > "$tmp/why"
+  # The last two fields are the outcome and the exit code; the clause is what lies between.
+  mx=${rest##* }
+  rest=${rest% *}
+  mo=${rest##* }
+  clause=${rest% *}
+  have=$(awk -v a="$addr" '$1 == a { print $2; exit }' "$tmp/words2")
+  if [ -z "$mx" ] || [ -z "$mo" ] || [ -z "$clause" ] || [ "$clause" = "$rest" ]; then
+    ok=0; why inventory "not <ID> <addr> <from> <to> <clause> <outcome> <exit>"
+  elif [ "$have" != "$from" ]; then
+    ok=0; why listing "the word at $addr is '$have', expected from '$from'"
+  else
+    case $mo in
+      guest-fail) mp="assert=* line=* $clause got *" ;;
+      timeout) mp="budget step=* line=* expected=halted got=target" ;;
+      pass) mp=- ;;
+      *) mp=; ok=0; why inventory "outcome '$mo' is not guest-fail, timeout or pass" ;;
+    esac
+    [ "$ok" -eq 1 ] && run_mutant "$mid" "$listing2" diag-ctrl-psg-1.ivsc diag-ctrl-psg-pass "$addr" "$to" "$mx" "$mo" "$mp"
+  fi
+  result "runner-process.mutant.$mid"
+done < "$muts2"
+
 # Determinism (D-23, Pitfall 11): a second run, slice sizes 1 and 7, and a run from another
 # working directory all equal the scenario case's report apart from host.calls.
-for id in diag-boot-pass diag-input-pass; do
+for id in diag-boot-pass diag-input-pass diag-ctrl-psg-pass; do
   ref="$tmp/runs/scen-$id.out"
   : > "$tmp/why"
   ok=1
@@ -365,6 +412,10 @@ mkdir "$tmp/elsewhere" || exit 1
 ok=1
 check_repeat "$tmp/elsewhere" "$ivs_run" cwd diag-boot-pass "$tmp/runs/scen-diag-boot-pass.out" || ok=0
 result runner-process.cwd
+: > "$tmp/why"
+ok=1
+check_repeat "$tmp/elsewhere" "$ivs_run" cwd2 diag-ctrl-psg-pass "$tmp/runs/scen-diag-ctrl-psg-pass.out" || ok=0
+result runner-process.cwd.diag-ctrl-psg-pass
 
 # Operator-only raw outputs (plan 05-09, D-20, T-05-23): a project-authored EXEC stand-in (nine words
 # at $1000: mixer R7 = $3F, then amplitude A = $0F, $00, $07, then a branch to itself; encodings as

@@ -235,3 +235,23 @@ run.diag.predicate
 # and equal composite and domain digests.
 run.diag.slice
 run.diag.repeat
+# Family diag-ctrl (plan 05-11, D-24, D-05, D-27): ivs-diag-ctrl-psg-1 behind the boot stub; the seven
+# controller events of data/scenarios/diag-ctrl-psg-pass.ivss through the public run call with an audio
+# buffer and a write-log buffer from ivs_info; expected values read from the assert lines of
+# data/golden/diag-ctrl-psg-pass.expect (derived by hand in plan 05-01), never from the core.
+# ram-tables: the 17 RAM clauses; psg-registers: the 11 masked read-backs; log-list: eleven records
+# (addr, value, source, strictly increasing ticks, tick = observed unit start + 6 cycles); channel-b-
+# constant-8: level_B 8 from the amplitude-B write on, level_C 0; tone-a-silent-until-reload: level_A 0 for
+# the whole run (C12, C77); halts: CPU_HALTED below the 20,000-tick cap; marker-last: tables and log final when
+# the marker shows; slicing: one call versus 1 and 7 tick slices; nokey-timeout: no input leaves the guest in
+# its poll loop at the target; order-equals-pass: the one-tick-apart split schedule gives the same result.
+run.diag.ctrl-psg.ram-tables
+run.diag.ctrl-psg.psg-registers
+run.diag.ctrl-psg.log-list
+run.diag.ctrl-psg.channel-b-constant-8
+run.diag.ctrl-psg.tone-a-silent-until-reload
+run.diag.ctrl-psg.halts
+run.diag.ctrl-psg.marker-last
+run.diag.ctrl-psg.slicing
+run.diag.ctrl-psg.nokey-timeout
+run.diag.ctrl-psg.order-equals-pass

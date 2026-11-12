@@ -4,7 +4,9 @@
 # PEEK_ADVANCES_TIME: every accepted peek adds one master tick to machine time; both side-effect
 # cases see the storage, the INSTANCE and composite digests and machine time change. Plan 05-05: the
 # input-visible fuzz peeks the poller log of its reference run, so it sees the added tick too (run.fuzz.input-visible-*).
-PEEK_ADVANCES_TIME run.observe.no-side-effect-powered run.observe.|run.peek.|run.refuse.peek.|run.fuzz.input-visible- run.cpu-state.off
+# Plan 05-11: run.diag.ctrl-psg.slicing peeks the marker after every unit of its tracked run, so the added ticks make
+# its tracked run differ from the one-call run.
+PEEK_ADVANCES_TIME run.observe.no-side-effect-powered run.observe.|run.peek.|run.refuse.peek.|run.fuzz.input-visible-|run.diag.ctrl-psg.slicing run.cpu-state.off
 # PEEK_GATE_IGNORED: peek reads the backing word as if every gate were open; only the closed-gate
 # case sees GROM and GRAM data behind gate gmem.
 PEEK_GATE_IGNORED run.peek.gated run.peek.gated run.peek.loaded-words
@@ -68,17 +70,18 @@ OUTBUF_PARTIAL_WRITE run.buffers.video-audio-overlap run.buffers.|run.prec.|run.
 # start, so a call whose target lies past an event's tick inside the last unit consumes it.
 # Review IN-01: the events it applied at call start are not taken back when the first unit is
 # refused, so run.stop.internal-input-restored sees it too.
-INPUT_APPLY_AT_RUN_START run.input.one-event run.input.|run.fuzz.|run.stop.internal-input-restored run.target.ends-at-first-boundary-ge-target
+INPUT_APPLY_AT_RUN_START run.input.one-event run.input.|run.fuzz.|run.stop.internal-input-restored|run.diag.ctrl-psg.slicing|run.diag.ctrl-psg.order-equals-pass run.target.ends-at-first-boundary-ge-target
 # INPUT_LOG_SLICE_RELATIVE_TICK: the chain records at_tick minus the call's entry time, so sliced
 # runs differ from one call (and the literal chains differ).
-INPUT_LOG_SLICE_RELATIVE_TICK run.input.overshoot-window run.input.|run.fuzz. run.slice.halt.fixed-7
+INPUT_LOG_SLICE_RELATIVE_TICK run.input.overshoot-window run.input.|run.fuzz.|run.diag.ctrl-psg.slicing run.slice.halt.fixed-7
 # INPUT_NO_FLOOR_CHECK: an event below the input floor is accepted.
 INPUT_NO_FLOOR_CHECK run.input.refuse.below-floor run.input.refuse. run.slice.halt.fixed-7
 # INPUT_STATIC_CARRY: a file-scope copy of the last applied words becomes the words in force of
 # whichever instance begins a unit next.
 INPUT_STATIC_CARRY run.input.isolation run.input.|run.fuzz.|run.diag.slice run.slice.halt.fixed-7
-# RUN_EVENT_AT_TARGET_ONLY: an event applies only at a unit starting exactly at its at_tick.
-RUN_EVENT_AT_TARGET_ONLY run.input.one-event run.input.|run.fuzz. run.target.ends-at-first-boundary-ge-target
+# RUN_EVENT_AT_TARGET_ONLY: an event applies only at a unit starting exactly at its at_tick. Plan 05-11: the
+# controller-driven diagnostic family run.diag.ctrl-psg.* needs its events applied, so most of its cases see it.
+RUN_EVENT_AT_TARGET_ONLY run.input.one-event run.input.|run.fuzz.|run.diag.ctrl-psg. run.target.ends-at-first-boundary-ge-target
 # RUN_EVENTS_UNCHECKED: the event span overlap test (instance, report, buffers) is skipped.
 RUN_EVENTS_UNCHECKED run.input.refuse.events-inside-instance run.input.refuse. run.buffers.inside-instance
 # Struct-growth and write-log faults (plan 05-02, D-14, D-19, A-02, A-04), one site each in
