@@ -319,7 +319,11 @@ static void ex_capture_log(ex_state *x, const uint8_t *b, size_t n)
   }
   for (size_t off = 0u; n - off >= 16u; off += 16u) {
     if (x->cap_log_n >= IVS_SCN_CAPTURE_MAX) {
+#ifndef IVS_FAULT_RUNNER_CAPTURE_OVERFLOW_SILENT
       ex_observe(x, IVS_RUNNER_OBS_HARNESS_FAIL, "capture-overflow target=psglog");
+#endif
+      /* Fault RUNNER_CAPTURE_OVERFLOW_SILENT (plan 05-09, T-05-24): the entries past the bound are dropped
+       * without a word, so an assert reads an incomplete capture. */
       return;
     }
     memcpy(x->cap_log + 16u * (size_t)x->cap_log_n, b + off, 16u);
@@ -373,7 +377,9 @@ static void ex_capture_audio(ex_state *x, const uint8_t *b, size_t n)
     if (word != prev) {
       uint8_t *e;
       if (x->cap_aud_n >= IVS_SCN_CAPTURE_MAX) {
+#ifndef IVS_FAULT_RUNNER_CAPTURE_OVERFLOW_SILENT
         ex_observe(x, IVS_RUNNER_OBS_HARNESS_FAIL, "capture-overflow target=audio");
+#endif
         return;
       }
       e = x->cap_aud + 12u * (size_t)x->cap_aud_n;
@@ -565,6 +571,12 @@ static int ex_assert_eval(ex_state *x, const ivs_scenario_assert *a, ivs_runner_
 #ifdef IVS_FAULT_RUNNER_ASSERT_ALWAYS_PASS
   /* Fault (plan 04-18, D-20, D-23): every assert evaluates as held, so a runner cannot fail. */
   held = 1;
+#endif
+#ifdef IVS_FAULT_RUNNER_PSGLOG_ASSERT_IGNORED
+  /* Fault (plan 05-09, D-20): a psglog assert evaluates as held, so a wrong count or record passes. */
+  if (a->subject == IVS_SCN_SUBJ_PSGLOG) {
+    held = 1;
+  }
 #endif
   return held ? 1 : 0;
 }
@@ -838,6 +850,10 @@ static void ex_audio_chain_check(ex_state *x)
   }
   ivs_runner_achain_digest(&x->chain, calc);
   ok = memcmp(calc, x->rec->digest[EX_ROW_AUDIO], sizeof calc) == 0;
+#ifdef IVS_FAULT_RUNNER_AUDIO_CHAIN_CHECK_SKIPPED
+  /* Fault (plan 05-09, D-18): the chain is not compared, the check reports pass whatever was delivered. */
+  ok = 1;
+#endif
   x->rec->chain_check = ok ? IVS_RUNNER_CHAIN_PASS : IVS_RUNNER_CHAIN_FAIL;
   if (!ok) {
     ex_observe(x, IVS_RUNNER_OBS_HARNESS_FAIL, "audio-chain");

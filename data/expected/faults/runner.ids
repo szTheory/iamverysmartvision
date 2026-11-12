@@ -45,3 +45,10 @@ RUNNER_WALL_AS_GUEST_FAIL runner.time.wall runner.time.|runner.exec. runner.pars
 # RUNNER_SLICE_DROPS_REMAINDER: a last slice shorter than the slice size is skipped, so a sliced
 # run-to ends short of its bound and its report differs from one call.
 RUNNER_SLICE_DROPS_REMAINDER runner.time.slices-equal runner.time.|runner.exec. runner.parse.diag-boot-pass
+# Plan 05-09 (D-18, D-20, T-05-24), sites in runner/exec.c.
+# RUNNER_PSGLOG_ASSERT_IGNORED: a psglog assert evaluates as held, so a wrong count or a wrong record passes.
+RUNNER_PSGLOG_ASSERT_IGNORED runner.exec.psglog-assert runner.exec.psglog-assert runner.parse.diag-boot-pass
+# RUNNER_AUDIO_CHAIN_CHECK_SKIPPED: the audio chain check reports pass without comparing, so a corrupted delivered stream passes.
+RUNNER_AUDIO_CHAIN_CHECK_SKIPPED runner.exec.audio-chain-check runner.exec.audio-chain-check runner.parse.diag-boot-pass
+# RUNNER_CAPTURE_OVERFLOW_SILENT: entries past the 4096-entry capture bound are dropped without a harness failure.
+RUNNER_CAPTURE_OVERFLOW_SILENT runner.exec.capture-overflow runner.exec.capture-overflow runner.parse.diag-boot-pass
