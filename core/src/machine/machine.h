@@ -78,6 +78,10 @@ typedef struct ivs_machine_obs_av {
   uint64_t count;
 } ivs_machine_obs_av;
 
+/* Plan 06-09 (D-16): the VIDEO row is the STIC module's row type (stic/stic.h, the same 40 bytes): the per-frame chain, h0 = SHA-256
+ * of the 16 ASCII bytes IVS-VIDEO-LOG-V1 after create and after every power-on reset (ivs_video_chain_init). */
+_Static_assert(sizeof(ivs_stic_video_row) == sizeof(ivs_machine_obs_av), "the VIDEO row and the machine row are the same 40 bytes");
+
 /* The AUDIO row is the PSG module's observation struct (psg/psg.h, plan 05-06): the chain over the
  * level-change records, the emitted count and the previous sample's levels. */
 typedef ivs_psg_obs ivs_machine_obs_audio;
@@ -94,7 +98,7 @@ typedef struct ivs_machine_obs_input {
 } ivs_machine_obs_input;
 
 typedef struct ivs_machine_obs {
-  ivs_machine_obs_av video;
+  ivs_stic_video_row video;
   ivs_machine_obs_audio audio;
   ivs_machine_obs_input input;
   ivs_machine_obs_psglog psglog;

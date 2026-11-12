@@ -28,8 +28,10 @@
 
 #include <stdint.h>
 
+#include "ivs/ivs_machine.h"
 #include "ivs/ivs_status.h"
 #include "memmap/memsys.h"
+#include "psg/psg.h"
 #include "stic/stic_params.h"
 
 #define IVS_STIC_LATCH_ROWS 12u  /* card rows with a fetch window (window 12 fetches nothing, A-05) */
@@ -63,15 +65,67 @@ void ivs_stic_state_reset(ivs_stic_state *s, const ivs_stic_params *p);
  * ivs_cp1610_state_validate: a Phase 8 snapshot reload refuses a state this function does not accept. */
 ivs_status ivs_stic_state_validate(const ivs_stic_state *s);
 
-/* The frame sink of the STIC (plan 06-09 delivers frames through it); opaque until then, NULL accepted. */
-typedef struct ivs_stic_sink ivs_stic_sink;
+/* The frame sink of the STIC (plan 06-09, D-13, D-16, A-03): the per-call delivery target of every observation channel is the
+ * psg-named struct ivs_psg_sink, whose video channel (video, video_cap, video_written, video_frames, video_overflow) takes the
+ * slots a catch-up completes. NULL is accepted and means a counting video channel that is not tallied. */
+typedef ivs_psg_sink ivs_stic_sink;
+
+/* The VIDEO row of the instance (digest domain 16, plan 06-09, D-16): the per-frame chain and the count of frames chained. The same
+ * 40 bytes as the earlier row; the machine's ivs_machine_obs_av is this type. The chain is h0 = SHA-256 of the 16 ASCII bytes
+ * IVS-VIDEO-LOG-V1 and h(n+1) = SHA-256(h(n) || slot n) over the exact delivered slot bytes (header then plane rows). */
+typedef struct ivs_stic_video_row {
+  uint8_t chain[32];
+  uint64_t count;
+} ivs_stic_video_row;
+
+/* Sets row to its create and power-on state: count 0 and chain h0 (stic_frame.c). Both call sites, create and reset, use it. */
+void ivs_video_chain_init(ivs_stic_video_row *row);
+
+/* The published surface derived from the PRIMARY geometry inputs of the parameters (card columns, last card column pixels, card
+ * width, card rows, card height) and IVS_FRAME_HEADER_BYTES (stic_frame.c): width = (columns - 1) x card_w + last_px, height =
+ * rows x card_h, stride = width (rows tightly packed), plane = width x height, slot = header + plane. Pure. A test compares the
+ * generated derived members of ivs_stic_params with this function. */
+typedef struct ivs_stic_geom {
+  uint32_t width;
+  uint32_t height;
+  uint32_t stride;
+  uint32_t plane_bytes;
+  uint32_t header_bytes;
+  uint32_t slot_bytes;
+} ivs_stic_geom;
+ivs_stic_geom ivs_stic_geom_derive(const ivs_stic_params *p);
+
+/* The working plane the renderer fills: card_columns x card_w by card_rows x card_h index bytes (160 x 96 = 15,360 for the first
+ * profile); the published rows are the first width bytes of each row. The core never holds the whole plane on its stack (a 15 KB frame
+ * pulls in the platform stack probe, a forbidden import): it renders one card row at a time, card_h pixel rows of the working width,
+ * at most IVS_STIC_CARDROW_MAX bytes (8 x 160 = 1,280 for the first profile). */
+#define IVS_STIC_PLANE_MAX 15360u
+#define IVS_STIC_CARDROW_MAX 2048u
+
+/* Fills out with the pixel rows of card row cr (0 .. card_rows - 1), row stride card_columns x card_w: a display-off frame (displayed
+ * 0) with the border color index (stic_reg 0x2C & 0xF, video.display_off_fill border, C99); until the card decoder of plan 06-10 a
+ * display-on frame with IVS_PIXEL_BLANK (every position not displayed). Returns the bytes filled (card_h x working width), 0 when
+ * one card row does not fit IVS_STIC_CARDROW_MAX. */
+uint32_t ivs_stic_render_card_row(const ivs_stic_params *p, const ivs_memsys *mem, uint32_t displayed, uint32_t cr, uint8_t *out);
+
+/* The whole working plane, card row by card row, into a caller-owned buffer of at least IVS_STIC_PLANE_MAX bytes (a test and review
+ * entry point; the frame writer below streams card rows instead). Returns the bytes filled, 0 when the plane does not fit. */
+uint32_t ivs_stic_render_plane(const ivs_stic_params *p, const ivs_memsys *mem, uint32_t displayed, uint8_t *plane);
+
+/* Completes the frame that ends at end_tick: renders it from the state and the register file, frames the 32-byte header (be64 tick,
+ * be64 index = row->count, be32 width, be32 height, be32 flags with bit 0 set when s->windows_active, be32 0), advances the chain
+ * and the count of row whether or not a buffer is present, and copies the slot to sink->video when it has room (else sets
+ * video_overflow). sink NULL is the counting channel. Called by the FRAME_END handler of ivs_stic_catch_up at the event. */
+void ivs_stic_frame_deliver(const ivs_stic_params *p, const ivs_stic_state *s, const ivs_memsys *mem, ivs_stic_video_row *row,
+                            ivs_stic_sink *sink, uint64_t end_tick);
 
 /* Moves the timeline cursor of s to machine tick to_tick: applies, in order, every event of the per-frame table whose
  * tick is at or below to_tick (the next tick is phase + frame_index x F + event_tick[event_index], from the state),
  * opening and closing the register and graphics-memory gates of mem and deciding windows_active (stic_events.c, D-05,
- * D-07, D-10, A-06). Idempotent for one to_tick; sink is unused in plan 06-06. */
-void ivs_stic_catch_up(const ivs_stic_params *p, ivs_stic_state *s, ivs_memsys *mem, uint64_t to_tick,
-                       ivs_stic_sink *sink);
+ * D-07, D-10, A-06). Idempotent for one to_tick. At each FRAME_END event (plan 06-09) the frame is completed through
+ * ivs_stic_frame_deliver into row and sink when row is not NULL (a NULL row delivers nothing: only the module-level tests pass it). */
+void ivs_stic_catch_up(const ivs_stic_params *p, ivs_stic_state *s, ivs_memsys *mem, uint64_t to_tick, ivs_stic_sink *sink,
+                       ivs_stic_video_row *row);
 
 /* The two CPU line levels the STIC drives (stic_lines.c, plan 06-08, D-08, D-09): INTRM (the VBLANK interrupt request) and BUSRQ
  * (the bus request of the 13 fetch windows), each 0 or 1. */

@@ -100,7 +100,7 @@ HANDLE_TRUSTS_PROFILE machine.refuse.handle.profile-out-of-range machine.refuse.
 # From plan 04-11 a unit sets the input floor (INPUT row), so a power cycle that keeps the rows
 # also differs from a first reset: machine.reset.equivalence fails by the same rule. From plan
 # 05-03 machine.reset.psg-state-cleared dirties every observation row too, so it fails here as well.
-OBS_NOT_CLEARED_ON_RESET machine.reset.clears-observation machine.reset.clears-observation|machine.reset.equivalence|machine.reset.psg-state-cleared machine.digest.video-fresh
+OBS_NOT_CLEARED_ON_RESET machine.reset.clears-observation machine.reset.clears-observation|machine.reset.equivalence|machine.reset.psg-state-cleared|machine.digest.video-h0-create-and-reset machine.digest.video-fresh
 DIGEST_DOMAIN_SWAPPED machine.digest.composite-excludes-16-18 machine.digest. machine.reset.clears-observation
 # PSG storage faults (plan 05-03, D-04, D-16, D-18, A-13), one site each. DIGEST_PSG_ROWS_OMITTED
 # (machine_digest.c) removes the PSG register, pull-down and device-state rows from the field

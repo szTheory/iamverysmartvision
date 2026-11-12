@@ -29,3 +29,9 @@ void ivs_psg_sink_log(ivs_psg_sink *k, uint8_t *buf, uint64_t cap)
   k->log = buf;
   k->log_cap = buf != NULL ? cap : 0u;
 }
+
+void ivs_psg_sink_video(ivs_psg_sink *k, uint8_t *buf, uint64_t cap)
+{
+  k->video = buf;
+  k->video_cap = buf != NULL ? cap : 0u;
+}

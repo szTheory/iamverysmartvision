@@ -241,7 +241,7 @@ static int so_unit_ticks(void)
         ivs_memsys_poke_raw_internal(&im->mem, 0x1000u, sdbd != 0u ? 0x0001u : (uint16_t)decle);
         ivs_memsys_poke_raw_internal(&im->mem, 0x1001u, sdbd != 0u ? (uint16_t)decle : 0x0034u);
         if (phase != 0u) {
-          ivs_stic_catch_up(p, &im->stic, &im->mem, t0, NULL); /* the schedule up to the first window; the latch decision is made by hand: windows on */
+          ivs_stic_catch_up(p, &im->stic, &im->mem, t0, NULL, NULL); /* the schedule up to the first window; the latch decision is made by hand: windows on */
           im->stic.windows_active = 1u;
           im->time_ticks = t0;
         }

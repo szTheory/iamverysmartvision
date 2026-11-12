@@ -81,6 +81,7 @@ static void ivs_run_power_on(struct ivs_machine *im)
   memset(&im->obs, 0, obs);
   if (obs != 0u) {
     ivs_input_init(&im->obs.input);
+    ivs_video_chain_init(&im->obs.video); /* plan 06-09 (D-16): h0 at power-on as at create */
   }
 }
 
@@ -227,7 +228,7 @@ ivs_status ivs_machine_step_unit_trace_internal(ivs_machine *m, ivs_cp1610_resul
 #ifdef IVS_FAULT_STIC_CATCHUP_LAGS_UNIT
     stic_to = start; /* named fault: the seam catches the STIC up to the unit START instead of the unit end */
 #endif
-    ivs_stic_catch_up(bus_ctx.stic, &im->stic, &im->mem, stic_to, NULL);
+    ivs_stic_catch_up(bus_ctx.stic, &im->stic, &im->mem, stic_to, sink, &im->obs.video);
   }
   *out = r;
   return IVS_OK;

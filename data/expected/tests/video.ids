@@ -1,0 +1,19 @@
+# Suite video: the raw framebuffer slot, its per-frame chain, the video buffer rules, the frame stop and the geometry (VID-03, plan 06-09).
+# Plan 06-09 task 1: the geometry family (video.geom.*) and the slot family (video.layout.*, video.slot.*, video.frame.*, video.noop.*, video.chain.*): the first display-off frames delivered as slots whose header, plane and chain step equal the independently framed literal, with and without a buffer.
+video.geom.profile-derives-159x96
+video.geom.literal-matches-page
+video.geom.reversal-one-field
+video.geom.generated-equals-derive
+video.layout.bytes
+video.slot.header-bytes
+video.slot.plane-stride
+video.slot.blank-frame-border-fill
+video.slot.displayed-flag-follows-latch
+video.frame.count-equals-events
+video.frame.display-on-not-decoded
+video.noop.null-buffer
+video.chain.framing-oracle
+video.chain.recompute-from-slots
+video.chain.index-continuity
+video.chain.reset-clears
+video.chain.init-h0-create-and-reset

@@ -102,6 +102,18 @@ typedef struct ivs_psg_sink {
   uint64_t base_tick;
   uint32_t log_overflow;
   uint32_t log_reserved; /* 0 */
+  /* Plan 06-09 (D-13, D-16, A-03): the VIDEO channel. This struct keeps its psg name although it now carries the channel of a
+   * second device (a rename would be churn for no gain): the per-call delivery target of every observation channel. video NULL is
+   * the counting video sink (nothing is written, the same code runs and the domain-16 chain advances), video_cap the bytes video
+   * holds, video_written the slot bytes delivered, video_frames the frames completed by the call (with or without a buffer),
+   * video_overflow 1 when a slot did not fit (never expected: the capacity rule proves the room). Zero is the counting channel,
+   * so ivs_psg_sink_init leaves it counting and no existing call site changes. */
+  uint8_t *video;
+  uint64_t video_cap;
+  uint64_t video_written;
+  uint64_t video_frames;
+  uint32_t video_overflow;
+  uint32_t video_reserved; /* 0 */
 } ivs_psg_sink;
 
 /* Bytes of one audio sample record: A, B, C, 0 (IVS_OUTPUT_FORMAT_PSG_LEVELS_V1). */
@@ -130,6 +142,9 @@ _Static_assert(sizeof(ivs_psg_logrow) == 40u, "ivs_psg_logrow must be 40 bytes (
 
 /* Sets the write-log channel of sink k to buf (NULL for the counting log sink) holding cap bytes. */
 void ivs_psg_sink_log(ivs_psg_sink *k, uint8_t *buf, uint64_t cap);
+
+/* Sets the video channel of sink k to buf (NULL for the counting video sink) holding cap bytes (plan 06-09). */
+void ivs_psg_sink_video(ivs_psg_sink *k, uint8_t *buf, uint64_t cap);
 
 /* Appends one record to the log row (the chain and the count) and, when the sink has a log buffer with
  * room, to the buffer. A record that does not fit sets sink->log_overflow and is still chained. */

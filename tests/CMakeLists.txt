@@ -269,6 +269,25 @@ target_link_libraries(ivs_tests_stic PRIVATE ivs_test_harness ivs_core ivs_core_
 add_test(NAME stic COMMAND ivs_tests_stic)
 set_tests_properties(stic PROPERTIES SKIP_RETURN_CODE 77)
 
+# Suite video (VID-03, plan 06-09): the raw framebuffer slot, its per-frame chain, the video buffer rules, the frame stop and the
+# geometry. ONE source list feeds both the executable and ivs_fault_suite(video ...) (the psg and stic precedent); the stand-in guest
+# builders of suite stic (stic/stic_progs.c) are reused. Its named faults are data/expected/faults/video.ids, whose sites sit in
+# core/src/stic and core/src/machine. The literal include (cmake/IvsVideoLiterals.cmake) reads only the geometry and chain-framing
+# literals, never the profile or the core.
+set(IVS_VIDEOLIT_GENERATOR "${PROJECT_SOURCE_DIR}/cmake/IvsVideoLiterals.cmake")
+set(IVS_VIDEOLIT_INC "${CMAKE_CURRENT_BINARY_DIR}/ivs_video_lit.inc")
+add_custom_command(
+  OUTPUT "${IVS_VIDEOLIT_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DROOT=${PROJECT_SOURCE_DIR}" "-DOUT=${IVS_VIDEOLIT_INC}" -P "${IVS_VIDEOLIT_GENERATOR}"
+  DEPENDS "${PROJECT_SOURCE_DIR}/data/video/geometry.literal.txt" "${PROJECT_SOURCE_DIR}/data/video/chain-framing.literal.txt" "${IVS_VIDEOLIT_GENERATOR}"
+  COMMENT "Generating the video literal include")
+set(IVS_VIDEO_TEST_SOURCES video/video_main.c video/video_geom.c video/video_slot.c video/video_progs.c stic/stic_progs.c machine/machine_standin.c)
+add_executable(ivs_tests_video ${IVS_VIDEO_TEST_SOURCES} "${IVS_VIDEOLIT_INC}")
+target_include_directories(ivs_tests_video PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/stic" "${CMAKE_CURRENT_SOURCE_DIR}/video" "${CMAKE_CURRENT_BINARY_DIR}")
+target_link_libraries(ivs_tests_video PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
+add_test(NAME video COMMAND ivs_tests_video)
+set_tests_properties(video PROPERTIES SKIP_RETURN_CODE 77)
+
 # Suite input (INP-01..INP-03, API-03, plan 05-05): the two hand controllers as guest-visible machine
 # input through the PSG ports, in its own executable so that its named faults rerun only it. Expected
 # values come from the controller literal and the wiki statements only (never from the profile or the
@@ -397,6 +416,11 @@ ivs_fault_suite(stic
   SOURCES ${IVS_STIC_TEST_SOURCES}
   INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/stic" "${CMAKE_CURRENT_BINARY_DIR}"
   GENERATED "${IVS_STICPROBE_INC}")
+
+ivs_fault_suite(video
+  SOURCES ${IVS_VIDEO_TEST_SOURCES}
+  INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/stic" "${CMAKE_CURRENT_SOURCE_DIR}/video" "${CMAKE_CURRENT_BINARY_DIR}"
+  GENERATED "${IVS_VIDEOLIT_INC}")
 
 ivs_fault_suite(input
   SOURCES ${IVS_INPUT_TEST_SOURCES}

@@ -1287,7 +1287,7 @@ static int md_composite_excludes(void)
 /* A power-on reset of a stepped instance whose observation rows are all non-zero leaves the
  * observation rows byte-identical to a fresh instance's: every byte zero except the input log's
  * chain, which holds its start value h0 (plan 04-11, D-15; its literal is pinned in
- * tests/run/run_input.c), and the VIDEO, AUDIO and INPUT digests equal a fresh instance's. */
+ * tests/run/run_input.c), and (plan 06-09) the video chain, h0 too, and the VIDEO, AUDIO and INPUT digests equal a fresh instance's. */
 static int md_reset_clears_obs(void)
 {
   ivs_ms_inst x;
@@ -1302,12 +1302,14 @@ static int md_reset_clears_obs(void)
   memcpy(&zero, &f->obs, sizeof zero);
   free(f);
   IVS_CHECK(ok);
-  /* The fresh rows: zero everywhere except a non-zero input chain. */
+  /* The fresh rows: zero everywhere except the input chain and (plan 06-09, D-16, a reviewed edit) the video chain, both h0. */
   memset(&h0_only, 0, sizeof h0_only);
   memcpy(h0_only.input.chain, zero.input.chain, sizeof h0_only.input.chain);
+  memcpy(h0_only.video.chain, zero.video.chain, sizeof h0_only.video.chain);
   IVS_CHECK(memcmp(&zero, &h0_only, sizeof zero) == 0);
   memset(&h0_only, 0, sizeof h0_only);
   IVS_CHECK(memcmp(zero.input.chain, h0_only.input.chain, sizeof zero.input.chain) != 0);
+  IVS_CHECK(memcmp(zero.video.chain, h0_only.video.chain, sizeof zero.video.chain) != 0);
   IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, 0x5Au));
   ok = ivs_ms_step(x.m, 10u, NULL);
   if (ok) {
@@ -1319,6 +1321,36 @@ static int md_reset_clears_obs(void)
     ok = 0;
   }
   ok = ok && md_obs_digests(x.m, dr) && memcmp(df, dr, sizeof df) == 0;
+  ivs_ms_free(&x);
+  IVS_CHECK(ok);
+  return IVS_TEST_PASS;
+}
+
+/* Plan 06-09 (D-16): the video chain is h0 = SHA-256 of the 16 ASCII bytes IVS-VIDEO-LOG-V1 at create AND after a power-on reset (the
+ * two call sites agree byte for byte); the expected bytes are the value printed in data/video/chain-framing.literal.txt (the oracle
+ * of plan 06-01, derived by a shell recipe, not by the core), and the count is 0. */
+static const uint8_t md_video_h0[32] = {0xbd, 0x02, 0x69, 0x3a, 0xa2, 0x84, 0x14, 0x6e, 0x94, 0x42, 0xca, 0x28, 0x5d, 0x6e, 0x74, 0x6d,
+                                        0x17, 0xe5, 0xd5, 0xfb, 0xcf, 0x88, 0xde, 0x5f, 0x7a, 0x4d, 0x0f, 0x18, 0x19, 0xe3, 0x84, 0xca};
+
+static int md_video_h0_create_and_reset(void)
+{
+  ivs_ms_inst x;
+  struct ivs_machine *f = md_fresh();
+  int ok;
+  IVS_CHECK(f != NULL);
+  ok = memcmp(f->obs.video.chain, md_video_h0, 32u) == 0 && f->obs.video.count == 0u;
+  free(f);
+  IVS_CHECK(ok);
+  IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, 0x5Au));
+  ok = memcmp(x.m->obs.video.chain, md_video_h0, 32u) == 0 && x.m->obs.video.count == 0u;
+  if (ok) {
+    ok = ivs_ms_step(x.m, 10u, NULL);
+  }
+  if (ok) {
+    memset(&x.m->obs.video, 0xA5, sizeof x.m->obs.video);
+    ok = ivs_machine_reset(x.m, IVS_RESET_POWER_ON) == IVS_OK;
+  }
+  ok = ok && memcmp(x.m->obs.video.chain, md_video_h0, 32u) == 0 && x.m->obs.video.count == 0u;
   ivs_ms_free(&x);
   IVS_CHECK(ok);
   return IVS_TEST_PASS;
@@ -1433,5 +1465,6 @@ const ivs_test_case ivs_machine_digest_cases[] = {
     {"machine.refuse.digest.null-handle", md_refuse_null_handle, NULL},
     {"machine.refuse.digest.null-out", md_refuse_null_out, NULL},
     {"machine.reset.clears-observation", md_reset_clears_obs, NULL},
+    {"machine.digest.video-h0-create-and-reset", md_video_h0_create_and_reset, NULL},
 };
 const size_t ivs_machine_digest_count = sizeof ivs_machine_digest_cases / sizeof ivs_machine_digest_cases[0];

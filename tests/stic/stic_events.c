@@ -64,7 +64,7 @@ static uint64_t sc_edge(const ivs_stic_params *p, uint32_t gate)
     ivs_stic_state s;
     ivs_stic_state_reset(&s, p);
     (void)ivs_memsys_init(&sc_mem, SC_PROFILE);
-    ivs_stic_catch_up(p, &s, &sc_mem, mid, NULL);
+    ivs_stic_catch_up(p, &s, &sc_mem, mid, NULL, NULL);
     if (sc_open(gate) == 0u) {
       hi = mid;
     } else {
@@ -98,17 +98,17 @@ static int sc_table_order(void)
       }
     }
     SC_CHECK(sc_init(&p, &s));
-    ivs_stic_catch_up(&p, &s, &sc_mem, p.event_tick[i], NULL);
+    ivs_stic_catch_up(&p, &s, &sc_mem, p.event_tick[i], NULL, NULL);
     SC_CHECK(s.event_index == want && s.frame_index == 0u);
     if (p.event_tick[i] > 0u) {
       SC_CHECK(sc_init(&p, &s));
-      ivs_stic_catch_up(&p, &s, &sc_mem, p.event_tick[i] - 1u, NULL);
+      ivs_stic_catch_up(&p, &s, &sc_mem, p.event_tick[i] - 1u, NULL, NULL);
       SC_CHECK(s.event_index < want || p.event_tick[i - 1u] == p.event_tick[i]);
     }
   }
   /* the frame end wraps the cursor and advances the frame index; the next FRAME_START is applied at the same tick */
   SC_CHECK(sc_init(&p, &s));
-  ivs_stic_catch_up(&p, &s, &sc_mem, p.frame_ticks, NULL);
+  ivs_stic_catch_up(&p, &s, &sc_mem, p.frame_ticks, NULL, NULL);
   SC_CHECK(s.frame_index == 1u && s.event_index == 1u);
   return IVS_TEST_PASS;
 }
@@ -134,10 +134,10 @@ static int sc_edges(void)
     at = p.event_tick[idx];
     SC_CHECK(at > 0u);
     /* open one tick before, closed at the tick */
-    ivs_stic_catch_up(&p, &s, &sc_mem, at - 1u, NULL);
+    ivs_stic_catch_up(&p, &s, &sc_mem, at - 1u, NULL, NULL);
     SC_CHECK(sc_open(gates[g]) == 1u);
     SC_CHECK(sc_init(&p, &s));
-    ivs_stic_catch_up(&p, &s, &sc_mem, at, NULL);
+    ivs_stic_catch_up(&p, &s, &sc_mem, at, NULL, NULL);
     SC_CHECK(sc_open(gates[g]) == 0u);
     edge = sc_edge(&p, gates[g]);
     SC_CHECK(edge == at);
@@ -182,7 +182,7 @@ static int sc_frame_index_is_state(void)
     SC_CHECK(to / p.frame_ticks != k); /* the premise: a modulo derivation would be wrong here */
     SC_CHECK(sc_init(&p, &s));
     p.frame_phase_ticks = (uint32_t)((2u * (uint64_t)p.frame_ticks) / 3u);
-    ivs_stic_catch_up(&p, &s, &sc_mem, to, NULL);
+    ivs_stic_catch_up(&p, &s, &sc_mem, to, NULL, NULL);
     SC_CHECK(s.frame_index == k);
     SC_CHECK(s.event_index == n);
     SC_CHECK(s.frame_index * p.event_count + s.event_index == (uint64_t)k * p.event_count + n);
@@ -190,7 +190,7 @@ static int sc_frame_index_is_state(void)
   /* the interval before the first frame start schedules nothing: both gates stay open and the cursor does not move */
   SC_CHECK(sc_init(&p, &s));
   p.frame_phase_ticks = (uint32_t)((2u * (uint64_t)p.frame_ticks) / 3u);
-  ivs_stic_catch_up(&p, &s, &sc_mem, (uint64_t)p.frame_phase_ticks - 1u, NULL);
+  ivs_stic_catch_up(&p, &s, &sc_mem, (uint64_t)p.frame_phase_ticks - 1u, NULL, NULL);
   SC_CHECK(s.frame_index == 0u && s.event_index == 0u);
   SC_CHECK(sc_open(IVS_MEMSYS_GATE_STIC_REGS) == 1u && sc_open(IVS_MEMSYS_GATE_GMEM) == 1u);
   return IVS_TEST_PASS;
@@ -206,13 +206,13 @@ static int sc_idempotent(void)
   uint64_t to;
   SC_CHECK(sc_init(&p, &s));
   to = (uint64_t)p.frame_ticks + (uint64_t)p.reg_window_ticks + 7u;
-  ivs_stic_catch_up(&p, &s, &sc_mem, to, NULL);
+  ivs_stic_catch_up(&p, &s, &sc_mem, to, NULL, NULL);
   before = s;
   memcpy(gates, sc_mem.gate_open, sizeof gates);
-  ivs_stic_catch_up(&p, &s, &sc_mem, to, NULL);
+  ivs_stic_catch_up(&p, &s, &sc_mem, to, NULL, NULL);
   SC_CHECK(memcmp(&before, &s, sizeof s) == 0 && memcmp(gates, sc_mem.gate_open, sizeof gates) == 0);
-  ivs_stic_catch_up(&p, &s, &sc_mem, to - 1000u, NULL);
-  ivs_stic_catch_up(&p, &s, &sc_mem, 0u, NULL);
+  ivs_stic_catch_up(&p, &s, &sc_mem, to - 1000u, NULL, NULL);
+  ivs_stic_catch_up(&p, &s, &sc_mem, 0u, NULL, NULL);
   SC_CHECK(memcmp(&before, &s, sizeof s) == 0 && memcmp(gates, sc_mem.gate_open, sizeof gates) == 0);
   return IVS_TEST_PASS;
 }
@@ -227,22 +227,22 @@ static int sc_latch_cleared_at_frame_start(void)
   SC_CHECK(sc_init(&p, &s));
   gm = sc_kind_index(&p, IVS_STIC_EV_GMEM_CLOSE);
   SC_CHECK(gm < p.event_count);
-  ivs_stic_catch_up(&p, &s, &sc_mem, (uint64_t)p.event_tick[gm] - 1u, NULL);
+  ivs_stic_catch_up(&p, &s, &sc_mem, (uint64_t)p.event_tick[gm] - 1u, NULL, NULL);
   SC_CHECK(s.windows_active == 0u && sc_open(IVS_MEMSYS_GATE_STIC_REGS) == 0u && sc_open(IVS_MEMSYS_GATE_GMEM) == 1u);
   s.display_latch = 1u; /* what the strobe does inside the register window (machine_bus.c) */
   s.cs_ptr = 3u;
   s.grants_in_frame = 5u;
-  ivs_stic_catch_up(&p, &s, &sc_mem, (uint64_t)p.event_tick[gm], NULL);
+  ivs_stic_catch_up(&p, &s, &sc_mem, (uint64_t)p.event_tick[gm], NULL, NULL);
   SC_CHECK(s.windows_active == 1u && s.display_latch == 1u && sc_open(IVS_MEMSYS_GATE_GMEM) == 0u);
-  ivs_stic_catch_up(&p, &s, &sc_mem, (uint64_t)p.frame_ticks - 1u, NULL);
+  ivs_stic_catch_up(&p, &s, &sc_mem, (uint64_t)p.frame_ticks - 1u, NULL, NULL);
   SC_CHECK(s.display_latch == 1u && s.windows_active == 1u && s.frame_index == 0u);
-  ivs_stic_catch_up(&p, &s, &sc_mem, p.frame_ticks, NULL);
+  ivs_stic_catch_up(&p, &s, &sc_mem, p.frame_ticks, NULL, NULL);
   SC_CHECK(s.frame_index == 1u && s.display_latch == 0u && s.windows_active == 0u && s.grants_in_frame == 0u);
   SC_CHECK(s.cs_ptr == 3u);
   SC_CHECK(sc_open(IVS_MEMSYS_GATE_STIC_REGS) == 1u && sc_open(IVS_MEMSYS_GATE_GMEM) == 1u);
   /* a frame without a strobe leaves windows_active 0 */
   s.display_latch = 0u;
-  ivs_stic_catch_up(&p, &s, &sc_mem, (uint64_t)p.frame_ticks + (uint64_t)p.event_tick[gm], NULL);
+  ivs_stic_catch_up(&p, &s, &sc_mem, (uint64_t)p.frame_ticks + (uint64_t)p.event_tick[gm], NULL, NULL);
   SC_CHECK(s.windows_active == 0u);
   return IVS_TEST_PASS;
 }
@@ -329,7 +329,7 @@ static int sc_slice_state_equal(void)
       goto done;
     }
     n++;
-    ivs_stic_catch_up(p, &ref, &ref_mem, im->time_ticks, NULL);
+    ivs_stic_catch_up(p, &ref, &ref_mem, im->time_ticks, NULL, NULL);
     if (memcmp(&ref, &im->stic, sizeof ref) != 0 ||
         ref_mem.gate_open[IVS_MEMSYS_GATE_STIC_REGS] != im->mem.gate_open[IVS_MEMSYS_GATE_STIC_REGS] ||
         ref_mem.gate_open[IVS_MEMSYS_GATE_GMEM] != im->mem.gate_open[IVS_MEMSYS_GATE_GMEM]) {

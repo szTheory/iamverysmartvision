@@ -78,7 +78,7 @@ ivs_bus_reply ivs_machine_bus(void *ctx, const ivs_cp1610_access *a)
         cls == IVS_MEMSYS_HOOK_STIC_ALIAS_READ) {
       uint64_t at = c->unit_start_tick + (uint64_t)a->offset_cpu_cycles * (uint64_t)c->ticks_per_cpu_cycle +
                     (uint64_t)c->stic->access_strobe_ticks;
-      ivs_stic_catch_up(c->stic, &c->m->stic, &c->m->mem, at, NULL);
+      ivs_stic_catch_up(c->stic, &c->m->stic, &c->m->mem, at, c->sink, &c->m->obs.video);
       if (cls != IVS_MEMSYS_HOOK_BACKTAB && (is_read != 0u || is_write != 0u)) {
         uint32_t gate = cls == IVS_MEMSYS_HOOK_GMEM ? IVS_MEMSYS_GATE_GMEM : IVS_MEMSYS_GATE_STIC_REGS;
         uint32_t open = c->m->mem.gate_open[gate];

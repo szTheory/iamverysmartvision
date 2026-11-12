@@ -1,0 +1,75 @@
+/* SPDX-License-Identifier: MIT */
+/* Suite video (VID-03, plan 06-09): concatenates the fixed cases of every family declared in video_cases.h into one indexed suite. Ids
+ * are unique across the families (the harness rejects a duplicate before running anything). Its named faults are
+ * data/expected/faults/video.ids; their sites are in core/src/stic and core/src/machine. The TAP header carries one `# source <path>
+ * <sha256>` line per data file the families read (the geometry and chain-framing literals). */
+#include <stdio.h>
+#include <string.h>
+
+#include "ivs_test.h"
+#include "video_cases.h"
+
+#define VIDEO_MAX_CASES 256u
+#define VIDEO_MAX_SECTIONS 16u
+
+typedef struct video_section {
+  const ivs_test_case *fixed;
+  size_t n_fixed;
+} video_section;
+
+static video_section video_sections[VIDEO_MAX_SECTIONS];
+static size_t video_n_sections;
+static size_t video_total;
+
+static void video_add(const ivs_test_case *fixed, size_t n_fixed)
+{
+  video_section *s = &video_sections[video_n_sections++];
+  s->fixed = fixed;
+  s->n_fixed = n_fixed;
+  video_total += n_fixed;
+}
+
+static const ivs_test_case *video_find(size_t i)
+{
+  size_t k;
+  for (k = 0u; k < video_n_sections; k++) {
+    const video_section *s = &video_sections[k];
+    if (i < s->n_fixed) {
+      return &s->fixed[i];
+    }
+    i -= s->n_fixed;
+  }
+  return NULL;
+}
+
+static const char *video_case_id(const void *data, size_t i)
+{
+  const ivs_test_case *c = video_find(i);
+  (void)data;
+  return c != NULL ? c->id : "";
+}
+
+static int video_case_run(const void *data, size_t i)
+{
+  const ivs_test_case *c = video_find(i);
+  (void)data;
+  return c != NULL ? c->fn() : IVS_TEST_FAIL;
+}
+
+int main(int argc, char **argv)
+{
+  ivs_test_suite suite;
+  video_add(ivs_video_geom_cases, ivs_video_geom_count);
+  video_add(ivs_video_slot_cases, ivs_video_slot_count);
+  if (video_total > VIDEO_MAX_CASES) {
+    fprintf(stderr, "video: more than %u cases; raise VIDEO_MAX_CASES\n", VIDEO_MAX_CASES);
+    return 1;
+  }
+  memset(&suite, 0, sizeof suite);
+  suite.name = "video";
+  suite.count = video_total;
+  suite.id = video_case_id;
+  suite.run = video_case_run;
+  suite.sources = vl_source_table(&suite.n_sources);
+  return ivs_test_main(argc, argv, &suite);
+}

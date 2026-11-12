@@ -26,16 +26,17 @@
  *                frame_index and wraps the cursor to 0; the late-grant policy is fetch-at-schedule: the fetch never waits for the CPU.
  * The interval before S_0 (a nonzero frame phase) schedules nothing: the first event of frame 0 is at the phase, so
  * both gates stay open until then. The gates are flipped only through ivs_memsys_set_gate_internal.
- * sink: accepted and unused until frames are delivered (plan 06-09). Calling twice with the same to_tick changes
+ * Plan 06-09: FRAME_END also completes the frame (stic_frame.c: render, slot header, chain step, delivery into the video channel of
+ * sink); the frame contains the accesses stamped strictly below E_k, because the machine catches the STIC up to an access stamp before
+ * the access acts. Named fault STIC_EVENT_ORDER_START_BEFORE_END clears windows_active before the frame is rendered. Calling twice with the same to_tick changes
  * nothing the second time (idempotent). No static or global state. */
 #include "common/ivs_prelude.h"
 
 #include "stic/stic.h"
 
 void ivs_stic_catch_up(const ivs_stic_params *p, ivs_stic_state *s, ivs_memsys *mem, uint64_t to_tick,
-                       ivs_stic_sink *sink)
+                       ivs_stic_sink *sink, ivs_stic_video_row *vrow)
 {
-  (void)sink;
   while (s->event_index < p->event_count) {
     uint32_t ei = s->event_index;
     uint32_t kind = p->event_kind[ei];
@@ -78,6 +79,12 @@ void ivs_stic_catch_up(const ivs_stic_params *p, ivs_stic_state *s, ivs_memsys *
       if (s->windows_active != 0u && s->grants_in_frame < p->bus_count) {
         uint32_t late = p->bus_count - s->grants_in_frame;
         s->late_grants = late > 0xFFFFFFFFu - s->late_grants ? 0xFFFFFFFFu : s->late_grants + late;
+      }
+#ifdef IVS_FAULT_STIC_EVENT_ORDER_START_BEFORE_END
+      s->windows_active = 0u; /* named fault: FRAME_START of the next frame is applied before FRAME_END is rendered */
+#endif
+      if (vrow != NULL) {
+        ivs_stic_frame_deliver(p, s, mem, vrow, sink, at); /* the frame completes at the event: its content is the state just before it (A-06) */
       }
       break;
     default:

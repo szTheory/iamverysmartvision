@@ -144,6 +144,7 @@ machine.digest.stream-cpu-synthetic
 machine.digest.stream-instance
 machine.digest.stream-instance-psg
 machine.digest.video-fresh
+machine.digest.video-h0-create-and-reset
 machine.refuse.digest.destroyed
 machine.refuse.digest.domain-20
 machine.refuse.digest.domain-5
