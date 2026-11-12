@@ -63,7 +63,9 @@ OUTBUF_PARTIAL_WRITE run.buffers.video-audio-overlap run.buffers.|run.prec.|run.
 # and sliced instances run one after the other, so a carried static leaks into the second).
 # INPUT_APPLY_AT_RUN_START: every event with at_tick below the target is applied once at call
 # start, so a call whose target lies past an event's tick inside the last unit consumes it.
-INPUT_APPLY_AT_RUN_START run.input.one-event run.input.|run.fuzz. run.target.ends-at-first-boundary-ge-target
+# Review IN-01: the events it applied at call start are not taken back when the first unit is
+# refused, so run.stop.internal-input-restored sees it too.
+INPUT_APPLY_AT_RUN_START run.input.one-event run.input.|run.fuzz.|run.stop.internal-input-restored run.target.ends-at-first-boundary-ge-target
 # INPUT_LOG_SLICE_RELATIVE_TICK: the chain records at_tick minus the call's entry time, so sliced
 # runs differ from one call (and the literal chains differ).
 INPUT_LOG_SLICE_RELATIVE_TICK run.input.overshoot-window run.input.|run.fuzz. run.slice.halt.fixed-7

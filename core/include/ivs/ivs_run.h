@@ -97,7 +97,8 @@ IVS_API ivs_status ivs_machine_peek(const ivs_machine *m, uint16_t addr, uint32_
 /* Stop reasons (ivs_run_report.stop_reason), append-only; 0 is not a stop reason (a refused
  * call does not write stop_reason). The reason is a pure function of the exit state, in this order: INTERNAL (a unit
  * step was refused or made no progress: a harness failure, the state is the last whole
- * boundary), GUEST_FAULT (the CPU is FAULTED), CPU_HALTED (only with IVS_RUN_F_STOP_ON_HALT: the
+ * boundary; for a refused step the INPUT row included, since the events applied for that unit
+ * are taken back and not counted in input_consumed), GUEST_FAULT (the CPU is FAULTED), CPU_HALTED (only with IVS_RUN_F_STOP_ON_HALT: the
  * CPU is HALTED), TARGET (machine time reached the target). */
 #define IVS_STOP_TARGET 1u
 #define IVS_STOP_CPU_HALTED 2u

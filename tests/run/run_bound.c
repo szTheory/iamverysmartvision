@@ -594,6 +594,50 @@ done:
   return rc;
 }
 
+/* Review IN-01: the same refused unit with two input events due at its start (at the entry
+ * tick): the INPUT row is restored, so the instance is byte-identical (words, count, floor and
+ * chain), and input_consumed is 0, as the INTERNAL contract states. The second event clears the
+ * words again, so the static of the named fault INPUT_STATIC_CARRY ends all zero and later cases
+ * of that fault build see no carry from this one. */
+static int rb_stop_internal_input(void)
+{
+  ivs_ms_inst x;
+  ivs_run_snap s;
+  ivs_run_request q;
+  ivs_run_report r;
+  ivs_input_event ev[2];
+  ivs_status st;
+  struct ivs_machine *im;
+  int rc = IVS_TEST_FAIL;
+  IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, RB_POISON));
+  s.copy = NULL;
+  RB_CHECK(ivs_ms_step(x.m, 3u, NULL));
+  im = (struct ivs_machine *)(void *)x.storage;
+  im->cpu.run_state = 9u;
+  RB_CHECK(ivs_run_snap_take(&s, &x, 0));
+  memset(ev, 0, sizeof ev);
+  ev[0].at_tick = im->time_ticks;
+  ev[0].controller[0] = IVS_CTRL_KEY_1;
+  ev[1].at_tick = im->time_ticks;
+  memset(&q, 0, sizeof q);
+  q.struct_size = (uint32_t)sizeof q;
+  q.target_ticks = im->time_ticks + 100u;
+  q.events = ev;
+  q.event_count = 2u;
+  memset(&r, RB_POISON, sizeof r);
+  r.struct_size = (uint32_t)sizeof r;
+  st = ivs_machine_run(x.m, &q, &r);
+  RB_CHECK(st == IVS_OK);
+  RB_CHECK(r.stop_reason == IVS_STOP_INTERNAL && r.units_executed == 0u && r.elapsed_ticks == 0u &&
+           r.input_consumed == 0u && r.controller_now[0] == 0u && r.controller_now[1] == 0u);
+  RB_CHECK(ivs_run_snap_same(&s, &x));
+  rc = IVS_TEST_PASS;
+done:
+  ivs_run_snap_free(&s);
+  ivs_ms_free(&x);
+  return rc;
+}
+
 /* ---- refusals (D-05) ---- */
 
 #define RB_NO_WRITE 0xFFFFFFFFu
@@ -1111,6 +1155,7 @@ const ivs_test_case ivs_run_bound_cases[] = {
     {"run.stop.fault-sticky", rb_stop_fault_sticky, NULL},
     {"run.stop.fault-before-halt", rb_stop_fault_before_halt, NULL},
     {"run.stop.internal-step-refused", rb_stop_internal, NULL},
+    {"run.stop.internal-input-restored", rb_stop_internal_input, NULL},
     {"run.refuse.null-request", rb_refuse_null_request, NULL},
     {"run.refuse.null-report", rb_refuse_null_report, NULL},
     {"run.refuse.struct-size-request", rb_refuse_struct_size_request, NULL},

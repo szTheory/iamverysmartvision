@@ -410,6 +410,8 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
   while (im->time_ticks < plan.target) {
     ivs_cp1610_result unit;
     uint64_t before = im->time_ticks;
+    ivs_machine_obs_input input_before = im->obs.input; /* restored if the seam refuses (IN-01) */
+    uint32_t consumed_before = consumed;
 #ifdef IVS_FAULT_RUN_STOP_BEFORE_OVERSHOOT
     /* Named fault RUN_STOP_BEFORE_OVERSHOOT: a unit that would end past the target is taken back
      * (CPU and time; its memory writes stay), so the run stops at the last boundary below it. */
@@ -430,7 +432,11 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
 #endif
     memset(&unit, 0, sizeof unit);
     if (ivs_machine_step_unit_internal(m, &unit) != IVS_OK) {
-      internal = 1u; /* the seam refused: nothing changed, the state is the last whole boundary */
+      /* The seam refused before any write: the events applied for this unit are taken back, so
+       * nothing changed and the state is the last whole boundary (review IN-01). */
+      im->obs.input = input_before;
+      consumed = consumed_before;
+      internal = 1u;
       break;
     }
 #ifdef IVS_FAULT_RUN_STOP_BEFORE_OVERSHOOT

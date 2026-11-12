@@ -48,6 +48,7 @@ run.stop.guest-fault
 run.stop.fault-sticky
 run.stop.fault-before-halt
 run.stop.internal-step-refused
+run.stop.internal-input-restored
 run.refuse.null-request
 run.refuse.null-report
 run.refuse.struct-size-request
