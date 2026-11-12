@@ -1,0 +1,63 @@
+# PSG vectors, family regs (plan 05-01, D-07, D-10, D-11, D-23). Evaluated by plan 05-04.
+#
+# Claim tier: source-expectation for kind=source rows, policy for kind=policy rows. A source row takes its expected value from the
+# cited page, figure or community statement (tier 4 sources keep dependent claims provisional); a policy row states what the project
+# default says, never what hardware does. Nothing here is generated from a profile field, a table of the core or a core output.
+# No other emulator is a source for any row. The 1980 catalog pages 5-23..5-29 print the divide chains and the sixteen shapes but no
+# closed-form equation, no amplitude mode sense and no DAC label (docs/psg/reference-notes.md, Page-reading verdict).
+#
+# Grammar (one vector per line, single spaces, closed key set, keys in this order, derive last and to the end of the line):
+#   V <id> rule=<PSG-Rnn> kind=<source|policy> tier=<source-expectation|POL-PSG-nn> cite=<SRC-id>@<locator|none>
+#     set=<AAAA:HHHH[@<step>][+AAAA:HHHH[@<step>]]*|-> [pin=<port>:<HH>] steps=<n> expect=<kind:values> derive=<words>
+#   id      psg.<family>.<name>, the TAP and ctest id of the psg suite test that runs the vector; family prefix psg.reg.
+#   set     writes applied at module level through the PSG write function, never through a guest program, in the order written:
+#           AAAA is the CPU address 01F0..01FF and HHHH the raw 16-bit bus value; the write is stamped step x 16 master ticks and a step
+#           defaults to 0 (before chip step 1); by the step-first-then-write rule a write at @N lands after step N and before step N+1.
+#   pin     optional: the driven-low mask HH of controller port 0 or 1 before the reads (the byte read in input mode is FF XOR HH).
+#   steps   the number of chip steps (16 master ticks each) run after the writes; the sample at step k is taken after step k.
+#   expect  read:AAAA=HHHH,...    the register store value of each address in order (ports: see family notes), upper byte 0
+#           edge-spacing:C=n      level changes of channel C are spaced exactly n steps apart and the first is at step n
+#           toggles:C/W=n         n level changes of channel C in the first W steps
+#           (a level change is counted against the level after the writes of step 0, before step 1: 0 for a tone, the first level for an envelope)
+#           shifts:W=n            n noise register shifts in the first W steps
+#           level-seq:C=l,l,...   the level index of channel C (N = noise output bit) at steps 1,2,... or the stated sequence
+#           period:n              cycle length of the noise register in shifts
+#           silent:ABC            levels 0 on the named channels for all steps
+#           gate:r7=HH,tone=b,noise=b,ch=C,out=b     module level mixer gate of one channel, no running time
+#           index:amp=HH,env=n,out=n                 module level effective level index, no running time
+#           table:k=v,...         DAC table entries in units of 1e-8 of full scale (count and sum3 are derived keys), no running time
+#   convention (policy POL-PSG-02): every counter is empty at reset and reloaded from the effective period on its first step; per step a
+#           counter reloads if empty, counts down by one and fires when it reaches zero: tone toggles every P steps, noise shifts every 2 NP
+#           steps, the envelope advances every 2 EP steps; a shape write restarts the envelope at its first level with an empty counter.
+#   channels A B C are the three tone channels; the tone flip-flop starts at 0 after reset.
+# family notes: expect=read evaluates the register store (the stored low byte under the read mask); the two port registers 01FE and 01FF
+#   are read as stores here, the pin-following read is in family port.
+#
+V psg.reg.tone-low-a rule=PSG-R02 kind=source tier=source-expectation cite=SRC-intv-wiki@PSG-oldid-14940 set=01F0:FFFF steps=0 expect=read:01F0=00FF derive=write FFFF to 01F0 (channel A tone period fine byte), read back 00FF: the write keeps value AND the write mask and the read gives the read mask with bits 15..8 zero
+V psg.reg.tone-low-b rule=PSG-R02 kind=source tier=source-expectation cite=SRC-intv-wiki@PSG-oldid-14940 set=01F1:FFFF steps=0 expect=read:01F1=00FF derive=write FFFF to 01F1 (channel B tone period fine byte), read back 00FF: the write keeps value AND the write mask and the read gives the read mask with bits 15..8 zero
+V psg.reg.tone-low-c rule=PSG-R02 kind=source tier=source-expectation cite=SRC-intv-wiki@PSG-oldid-14940 set=01F2:FFFF steps=0 expect=read:01F2=00FF derive=write FFFF to 01F2 (channel C tone period fine byte), read back 00FF: the write keeps value AND the write mask and the read gives the read mask with bits 15..8 zero
+V psg.reg.env-low rule=PSG-R02 kind=source tier=source-expectation cite=SRC-intv-wiki@PSG-oldid-14940 set=01F3:FFFF steps=0 expect=read:01F3=00FF derive=write FFFF to 01F3 (envelope period fine byte), read back 00FF: the write keeps value AND the write mask and the read gives the read mask with bits 15..8 zero
+V psg.reg.tone-high-mask rule=PSG-R03 kind=source tier=source-expectation cite=SRC-intv-wiki@PSG-oldid-14940 set=01F4:FFFF steps=0 expect=read:01F4=000F derive=write FFFF to 01F4 (channel A tone period coarse nibble), read back 000F: the write keeps value AND the write mask and the read gives the read mask with bits 15..8 zero
+V psg.reg.tone-high-b rule=PSG-R03 kind=source tier=source-expectation cite=SRC-intv-wiki@PSG-oldid-14940 set=01F5:FFFF steps=0 expect=read:01F5=000F derive=write FFFF to 01F5 (channel B tone period coarse nibble), read back 000F: the write keeps value AND the write mask and the read gives the read mask with bits 15..8 zero
+V psg.reg.tone-high-c rule=PSG-R03 kind=source tier=source-expectation cite=SRC-intv-wiki@PSG-oldid-14940 set=01F6:FFFF steps=0 expect=read:01F6=000F derive=write FFFF to 01F6 (channel C tone period coarse nibble), read back 000F: the write keeps value AND the write mask and the read gives the read mask with bits 15..8 zero
+V psg.reg.env-high rule=PSG-R02 kind=source tier=source-expectation cite=SRC-intv-wiki@PSG-oldid-14940 set=01F7:FFFF steps=0 expect=read:01F7=00FF derive=write FFFF to 01F7 (envelope period coarse byte), read back 00FF: the write keeps value AND the write mask and the read gives the read mask with bits 15..8 zero
+V psg.reg.mixer-all rule=PSG-R03 kind=source tier=source-expectation cite=SRC-intv-wiki@PSG-oldid-14940 set=01F8:FFFF steps=0 expect=read:01F8=00FF derive=write FFFF to 01F8 (mixer and port direction byte), read back 00FF: the write keeps value AND the write mask and the read gives the read mask with bits 15..8 zero
+V psg.reg.noise-mask rule=PSG-R03 kind=source tier=source-expectation cite=SRC-intv-wiki@PSG-oldid-14940 set=01F9:FFFF steps=0 expect=read:01F9=001F derive=write FFFF to 01F9 (noise period 5 bits), read back 001F: the write keeps value AND the write mask and the read gives the read mask with bits 15..8 zero
+V psg.reg.shape-reads-zero rule=PSG-R03 kind=source tier=source-expectation cite=SRC-intv-wiki@PSG-oldid-14940 set=01FA:FFFF steps=0 expect=read:01FA=0000 derive=write FFFF to 01FA (envelope shape nibble, reads zero under the tier 4 claim (C75)), read back 0000: the write keeps value AND the write mask and the read gives the read mask with bits 15..8 zero
+V psg.reg.map-amplitude rule=PSG-R02 kind=source tier=source-expectation cite=SRC-intv-wiki@PSG-oldid-14940 set=01FB:FFFF steps=0 expect=read:01FB=003F derive=write FFFF to 01FB (channel A amplitude 6 bits), read back 003F: the write keeps value AND the write mask and the read gives the read mask with bits 15..8 zero
+V psg.reg.amp-b rule=PSG-R03 kind=source tier=source-expectation cite=SRC-intv-wiki@PSG-oldid-14940 set=01FC:FFFF steps=0 expect=read:01FC=003F derive=write FFFF to 01FC (channel B amplitude 6 bits), read back 003F: the write keeps value AND the write mask and the read gives the read mask with bits 15..8 zero
+V psg.reg.amp-c rule=PSG-R03 kind=source tier=source-expectation cite=SRC-intv-wiki@PSG-oldid-14940 set=01FD:FFFF steps=0 expect=read:01FD=003F derive=write FFFF to 01FD (channel C amplitude 6 bits), read back 003F: the write keeps value AND the write mask and the read gives the read mask with bits 15..8 zero
+V psg.reg.port-a-ff rule=PSG-R03 kind=source tier=source-expectation cite=SRC-intv-wiki@PSG-oldid-14940 set=01FE:FFFF steps=0 expect=read:01FE=00FF derive=write FFFF to 01FE (port A store byte), read back 00FF: the write keeps value AND the write mask and the read gives the read mask with bits 15..8 zero
+V psg.reg.port-b-ff rule=PSG-R03 kind=source tier=source-expectation cite=SRC-intv-wiki@PSG-oldid-14940 set=01FF:FFFF steps=0 expect=read:01FF=00FF derive=write FFFF to 01FF (port B store byte), read back 00FF: the write keeps value AND the write mask and the read gives the read mask with bits 15..8 zero
+V psg.reg.pattern-fine-a rule=PSG-R03 kind=source tier=source-expectation cite=SRC-intv-wiki@PSG-oldid-14940 set=01F0:0AA5 steps=0 expect=read:01F0=00A5 derive=write 0AA5 to 01F0, read back 00A5: upper byte of the bus word is never stored
+V psg.reg.pattern-coarse-a rule=PSG-R03 kind=source tier=source-expectation cite=SRC-intv-wiki@PSG-oldid-14940 set=01F4:00A5 steps=0 expect=read:01F4=0005 derive=write 00A5 to 01F4, read back 0005: only the low nibble is stored
+V psg.reg.pattern-noise rule=PSG-R03 kind=source tier=source-expectation cite=SRC-intv-wiki@PSG-oldid-14940 set=01F9:00A5 steps=0 expect=read:01F9=0005 derive=write 00A5 to 01F9, read back 0005: only five bits are stored
+V psg.reg.pattern-amp-a rule=PSG-R03 kind=source tier=source-expectation cite=SRC-intv-wiki@PSG-oldid-14940 set=01FB:00A5 steps=0 expect=read:01FB=0025 derive=write 00A5 to 01FB, read back 0025: six bits are stored
+V psg.reg.pattern-shape rule=PSG-R03 kind=source tier=source-expectation cite=SRC-intv-wiki@PSG-oldid-14940 set=01FA:00A5 steps=0 expect=read:01FA=0000 derive=write 00A5 to 01FA, read back 0000: the shape register reads zero (C75)
+V psg.reg.pattern-mixer rule=PSG-R03 kind=source tier=source-expectation cite=SRC-intv-wiki@PSG-oldid-14940 set=01F8:01A5 steps=0 expect=read:01F8=00A5 derive=write 01A5 to 01F8, read back 00A5: all eight mixer bits are stored, bit 8 is not
+V psg.reg.distinct-values rule=PSG-R02 kind=source tier=source-expectation cite=SRC-intv-wiki@PSG-oldid-14940 set=01F0:0011+01F1:0022+01F2:0033+01F3:0044+01F4:0005+01F5:0006+01F6:0007+01F7:0088+01F8:003F+01F9:0011+01FA:0003+01FB:0025+01FC:0026+01FD:0027 steps=0 expect=read:01F0=0011,01F1=0022,01F2=0033,01F3=0044,01F4=0005,01F5=0006,01F6=0007,01F7=0088,01F8=003F,01F9=0011,01FA=0000,01FB=0025,01FC=0026,01FD=0027 derive=fourteen different values written to fourteen addresses read back at the same addresses under the masks, so no two registers share storage and none is permuted differently from the register map literal
+V psg.reg.rewrite rule=PSG-R01 kind=source tier=source-expectation cite=SRC-gi-1980-catalog@pdf-205 set=01F0:0011+01F0:0022 steps=0 expect=read:01F0=0022 derive=two writes to one register: the last write wins, each of the sixteen registers is readable and writable
+V psg.reg.read-twice-same rule=PSG-R04 kind=policy tier=POL-PSG-01 cite=SRC-gi-1980-catalog@pdf-205 set=01F0:00A5 steps=0 expect=read:01F0=00A5,01F0=00A5,01F4=0000 derive=three reads in a row return the stored values and the second read of 01F0 equals the first: a read changes nothing (the page says only that every register is readable)
+V psg.reg.env-coarse-full rule=PSG-R03 kind=source tier=source-expectation cite=SRC-intv-wiki@PSG-oldid-14940 set=01F7:00FF steps=0 expect=read:01F7=00FF derive=the envelope period coarse byte keeps all eight bits (a 16-bit period)
+V psg.reg.mixer-high-bits rule=PSG-R03 kind=source tier=source-expectation cite=SRC-intv-wiki@PSG-oldid-14940 set=01F8:00C0 steps=0 expect=read:01F8=00C0 derive=the two port direction bits of the mixer byte are stored and read back
+V psg.reg.noise-reads-5-bits rule=PSG-R03 kind=source tier=source-expectation cite=SRC-intv-wiki@PSG-oldid-14940 set=01F9:00E3 steps=0 expect=read:01F9=0003 derive=write E3 to the noise period, only the low five bits are kept: 03

@@ -1,0 +1,46 @@
+# PSG vectors, family noise (plan 05-01, D-07, D-10, D-11, D-23). Evaluated by plan 05-07.
+#
+# Claim tier: source-expectation for kind=source rows, policy for kind=policy rows. A source row takes its expected value from the
+# cited page, figure or community statement (tier 4 sources keep dependent claims provisional); a policy row states what the project
+# default says, never what hardware does. Nothing here is generated from a profile field, a table of the core or a core output.
+# No other emulator is a source for any row. The 1980 catalog pages 5-23..5-29 print the divide chains and the sixteen shapes but no
+# closed-form equation, no amplitude mode sense and no DAC label (docs/psg/reference-notes.md, Page-reading verdict).
+#
+# Grammar (one vector per line, single spaces, closed key set, keys in this order, derive last and to the end of the line):
+#   V <id> rule=<PSG-Rnn> kind=<source|policy> tier=<source-expectation|POL-PSG-nn> cite=<SRC-id>@<locator|none>
+#     set=<AAAA:HHHH[@<step>][+AAAA:HHHH[@<step>]]*|-> [pin=<port>:<HH>] steps=<n> expect=<kind:values> derive=<words>
+#   id      psg.<family>.<name>, the TAP and ctest id of the psg suite test that runs the vector; family prefix psg.noise.
+#   set     writes applied at module level through the PSG write function, never through a guest program, in the order written:
+#           AAAA is the CPU address 01F0..01FF and HHHH the raw 16-bit bus value; the write is stamped step x 16 master ticks and a step
+#           defaults to 0 (before chip step 1); by the step-first-then-write rule a write at @N lands after step N and before step N+1.
+#   pin     optional: the driven-low mask HH of controller port 0 or 1 before the reads (the byte read in input mode is FF XOR HH).
+#   steps   the number of chip steps (16 master ticks each) run after the writes; the sample at step k is taken after step k.
+#   expect  read:AAAA=HHHH,...    the register store value of each address in order (ports: see family notes), upper byte 0
+#           edge-spacing:C=n      level changes of channel C are spaced exactly n steps apart and the first is at step n
+#           toggles:C/W=n         n level changes of channel C in the first W steps
+#           (a level change is counted against the level after the writes of step 0, before step 1: 0 for a tone, the first level for an envelope)
+#           shifts:W=n            n noise register shifts in the first W steps
+#           level-seq:C=l,l,...   the level index of channel C (N = noise output bit) at steps 1,2,... or the stated sequence
+#           period:n              cycle length of the noise register in shifts
+#           silent:ABC            levels 0 on the named channels for all steps
+#           gate:r7=HH,tone=b,noise=b,ch=C,out=b     module level mixer gate of one channel, no running time
+#           index:amp=HH,env=n,out=n                 module level effective level index, no running time
+#           table:k=v,...         DAC table entries in units of 1e-8 of full scale (count and sum3 are derived keys), no running time
+#   convention (policy POL-PSG-02): every counter is empty at reset and reloaded from the effective period on its first step; per step a
+#           counter reloads if empty, counts down by one and fires when it reaches zero: tone toggles every P steps, noise shifts every 2 NP
+#           steps, the envelope advances every 2 EP steps; a shape write restarts the envelope at its first level with an empty counter.
+#   channels A B C are the three tone channels; the tone flip-flop starts at 0 after reset.
+# family notes: noise period 0 acts as 32 by default. The register shifts right: if bit 0 is set s = (s >> 1) XOR mask else s = s >> 1, mask 12000 hex, seed 1, output bit 0.
+#
+V psg.noise.rate-np1 rule=PSG-R09 kind=source tier=source-expectation cite=SRC-gi-1980-catalog@pdf-207 set=01F8:003E+01F9:0001 steps=64 expect=shifts:64=32 derive=noise period 1: counting down the input clock by 16 and then by the period, the shift rate is read as one shift every 2 x 1 = 2 steps (inference), first shift at step 2: 32 shifts in 64 steps
+V psg.noise.rate-np2 rule=PSG-R09 kind=source tier=source-expectation cite=SRC-gi-1980-catalog@pdf-207 set=01F8:003E+01F9:0002 steps=128 expect=shifts:128=32 derive=noise period 2: counting down the input clock by 16 and then by the period, the shift rate is read as one shift every 2 x 2 = 4 steps (inference), first shift at step 4: 32 shifts in 128 steps
+V psg.noise.rate-np3 rule=PSG-R09 kind=source tier=source-expectation cite=SRC-gi-1980-catalog@pdf-207 set=01F8:003E+01F9:0003 steps=600 expect=shifts:600=100 derive=noise period 3: counting down the input clock by 16 and then by the period, the shift rate is read as one shift every 2 x 3 = 6 steps (inference), first shift at step 6: 100 shifts in 600 steps
+V psg.noise.rate-np16 rule=PSG-R09 kind=source tier=source-expectation cite=SRC-gi-1980-catalog@pdf-207 set=01F8:003E+01F9:0010 steps=640 expect=shifts:640=20 derive=noise period 16: counting down the input clock by 16 and then by the period, the shift rate is read as one shift every 2 x 16 = 32 steps (inference), first shift at step 32: 20 shifts in 640 steps
+V psg.noise.rate-np31 rule=PSG-R09 kind=source tier=source-expectation cite=SRC-gi-1980-catalog@pdf-207 set=01F8:003E+01F9:001F steps=1240 expect=shifts:1240=20 derive=noise period 31: counting down the input clock by 16 and then by the period, the shift rate is read as one shift every 2 x 31 = 62 steps (inference), first shift at step 62: 20 shifts in 1240 steps
+V psg.noise.first-shift-at-2np rule=PSG-R09 kind=source tier=source-expectation cite=SRC-gi-1980-catalog@pdf-207 set=01F8:003E+01F9:0001 steps=2 expect=shifts:2=1 derive=noise period 1: the first shift is at step 2
+V psg.noise.no-shift-before-2np rule=PSG-R09 kind=source tier=source-expectation cite=SRC-gi-1980-catalog@pdf-207 set=01F8:003E+01F9:0002 steps=3 expect=shifts:3=0 derive=noise period 2: spacing 4 steps, no shift in the first 3 steps
+V psg.noise.period-zero rule=PSG-R07 kind=policy tier=POL-PSG-03 cite=SRC-gi-1980-catalog@pdf-207 set=01F8:003E+01F9:0000 steps=640 expect=shifts:640=10 derive=noise period 0 acts as 32 (a default by analogy with the tone): spacing 64 steps, ten shifts in 640 steps
+V psg.noise.lfsr-maximal-period rule=PSG-R10 kind=policy tier=POL-PSG-04 cite=none set=- steps=131071 expect=period:131071 derive=a right-shifting Galois register of width 17 with mask 12000 hex starting from seed 1 returns to the seed after exactly 131071 shifts (maximal length, property of the polynomial, no source for the console)
+V psg.noise.lfsr-alt-period rule=PSG-R10 kind=policy tier=POL-PSG-05 cite=SRC-intv-wiki@PSG-oldid-14940 set=- steps=114681 expect=period:114681 derive=the same register with mask 14000 hex returns to the seed after 114681 shifts (not maximal), the community statement of this mask is a one-field edit of the profile
+V psg.noise.lfsr-first-bits rule=PSG-R10 kind=policy tier=POL-PSG-04 cite=none set=- steps=40 expect=level-seq:N=0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,0 derive=the output bit (state bit 0) after each of the first 40 shifts from seed 1 with mask 12000 hex, derived by hand: states 12000 9000 4800 2400 1200 0900 0480 0240 ... the first one appears at shift 14
+V psg.noise.level-seq-np1 rule=PSG-R10 kind=policy tier=POL-PSG-04 cite=SRC-gi-1980-catalog@pdf-207 set=01F8:0037+01FB:000F+01F9:0001 steps=16 expect=level-seq:A=15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 derive=noise only on channel A at fixed level 15, noise period 1: the output bit is state bit 0, seed 1 gives a 1 before the first shift at step 2 and then zeros: step 1 level 15, steps 2..16 level 0 (the next 1 appears at shift 14, step 28)

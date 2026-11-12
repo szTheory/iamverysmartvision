@@ -55,7 +55,38 @@ The Intellivision register map is a permutation of these, recorded in `data/psg/
 
 ## Rule table
 
-Filled in by Task 4 of plan 05-01.
+The rules of `data/psg/rules.json`, one row per rule; the exact vector lists are in that file and are checked in both directions by the `psg-vectors` step.
+Basis names how the page set backs the rule: `8910-primary-literal` is printed on pages 5-23..5-29 of the 1980 catalog, `8910-primary-derived` is derived from printed text by inference, `8914-community` rests on the community page (tier 4, one lineage), `default-unknown` has no usable source and carries a resolver and a trigger in its note.
+The last column says whether a difference between the AY-3-8910 and the 8914-class part is known for the rule: nothing documents the 8914 beyond the community page, so where the column says unknown the rule is an 8910 reading applied by inference (C11, C69).
+
+| Rule | Statement | Basis | Source tier | Vectors | Discrepancy | 8914 delta known |
+|------|-----------|-------|-------------|---------|-------------|------------------|
+| PSG-R01 | Sixteen registers, each readable and writable at its address. | 8910-primary-literal | tier 1 (AY-3-8910 pages) | reg.rewrite | C70 | no |
+| PSG-R02 | The register permutation into 01F0..01FF: role per address as in the register-address literal. | 8914-community | tier 4 | psg.reg.* (7 rows) | C70 | yes, tier 4 only |
+| PSG-R03 | Write and read masks: stores keep value AND the write mask, reads give the store AND the read mask with bits 15..8 zero. | 8914-community | tier 4 | psg.reg.* (19 rows) | C60 | yes, tier 4 only (C60, C75) |
+| PSG-R04 | A read of any PSG register has no side effect. | default-unknown | none or inference | reg.read-twice-same | C70 | unknown |
+| PSG-R05 | Tone frequency: the input clock divided by 16 and then by the 12-bit period, a square wave at 50 percent duty: half-period P steps (16 P master ticks). | 8910-primary-derived | tier 1 pages plus inference | psg.tone.* (13 rows) | C69 | unknown (C76 for the clock) |
+| PSG-R06 | Tone period field is 12 bits, so the largest period is 4095. | 8910-primary-derived | tier 1 pages plus inference | tone.rate-p4095 | C69 | unknown |
+| PSG-R07 | Period 0 acts as the range top: tone 4096 and envelope 65536 (community), noise 32 (default by analogy). | 8914-community | tier 4 | tone.period-zero, noise.period-zero, env.period-zero | C12 | yes, tier 4 only (noise zero unknown) |
+| PSG-R08 | Tone counter structure: a down-reload counter, a period write takes effect at the next reload. | default-unknown | none or inference | tone.next-reload | C12 | unknown |
+| PSG-R09 | Noise rate: the input clock divided by 16 and then by the 5-bit period; the register shifts every 2 NP steps. | 8910-primary-derived | tier 1 pages plus inference | psg.noise.rate-np*, first-shift, no-shift (7 rows) | C69 | unknown |
+| PSG-R10 | Noise register polynomial, seed and output sense: right-shifting Galois, width 17, mask 12000 hex, seed 1, output bit 0. | default-unknown | none or inference | noise.lfsr-maximal-period, noise.lfsr-alt-period, noise.lfsr-first-bits, noise.level-seq-np1 | C71 | unknown (no source) |
+| PSG-R11 | Envelope rate: the input clock divided by 256 and then by the 16-bit period gives the cycle, one state per 16 EP chip clocks, so one step per 2 EP PSG steps. | 8910-primary-derived | tier 1 pages plus inference | env.rate-ep1, env.rate-ep2, env.rate-ep3, env.rate-ep15625 | C72 | unknown (step reading is inference) |
+| PSG-R12 | The sixteen envelope shapes of R15 bits B3..B0 (continue, attack, alternate, hold) with sixteen states per cycle. | 8910-primary-literal | tier 1 (AY-3-8910 pages) | psg.env.shape-0..15 | C72 | unknown for the 8914 |
+| PSG-R13 | A write to the shape register restarts the envelope. | 8914-community | tier 4 | env.restart-on-shape-write | C72 | yes, tier 4 only |
+| PSG-R14 | Mixer polarity and bit order: R7 bits 0..2 disable tone A..C, bits 3..5 disable noise A..C, 1 = disabled. | 8910-primary-literal | tier 1 (AY-3-8910 pages) | mix.tone-only-1, mix.tone-only-0, mix.noise-only-1, mix.noise-only-0, mix.channel-isolated | C69 | unknown for the 8914 |
+| PSG-R15 | Tone and noise combine by AND after the disable bits are applied; a channel with both disabled is a constant 1. | 8910-primary-derived | tier 1 pages plus inference | mix.truth-table, mix.and-tone0, mix.and-noise0, mix.and-both0, mix.both-disabled-const1 | C69 | tier 4 only |
+| PSG-R16 | Amplitude: bits 3..0 of the amplitude register are the 4-bit fixed level. | 8910-primary-literal | tier 1 (AY-3-8910 pages) | amp.fixed-15, amp.fixed-0, amp.fixed-masks-upper | C70 | unknown (8914 field width unverified) |
+| PSG-R17 | Amplitude select bits 5..4: 0 fixed, 1 envelope shifted right by 2, 2 envelope shifted right by 1, 3 envelope. | 8914-community | tier 4 | amp.env-mode, amp.env-shift2, amp.env-shift1, ampenv.env-through-amp, ampenv.shift2 | C12 | yes, tier 4 only (6-bit variant) |
+| PSG-R18 | Step scheduling and write ordering: a write stamped at a step boundary lands after that step (step first, then write). | default-unknown | none or inference | ampenv.write-after-step-n, ampenv.write-at-0-visible | C78 | not a hardware rule |
+| PSG-R19 | DAC levels: sixteen output levels of a logarithmic converter between 0 and 1 volt. | default-unknown | none or inference | psg.dac.* (8 rows) | C12 | unknown (no printed labels) |
+| PSG-R20 | Port reads: input mode follows the pins with an on-chip pull-up idle of FF, output mode returns the store, a write stores the latch. | default-unknown | none or inference | psg.port.* (10 rows) | C65 | unknown |
+| PSG-R21 | Reset: all registers 0, both ports input; generator state at its defaults. | 8910-primary-literal | tier 1 (AY-3-8910 pages) | reset.regs-zero, reset.ports-input-after-reset, reseng.silent-after-reset, reseng.envelope-held-zero | C77 | unknown for generator state |
+
+Vector totals: 120 vectors in 11 files, 95 `kind=source` and 25 `kind=policy` (12 policy ids in `data/expected/psg-policies.ids`).
+Every policy row and every row of a rule whose basis is `default-unknown` is a default chosen under the stated discrepancy, never a hardware claim.
+The DAC rows are all policy: the per-level labels are not on the pages read (page-reading verdict), and their values come from a planning-note reading of a reprint that could not be obtained, so they are not independent.
+Expected values were checked with a second, throwaway model written after the vectors (a shared-misreading risk, not an independent implementation); blind second reads of every vector file are requested in `docs/psg/second-read-request.md`.
 
 ## Allocation table
 

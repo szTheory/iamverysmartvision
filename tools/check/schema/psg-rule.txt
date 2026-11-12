@@ -1,0 +1,28 @@
+# PSG rule inventory (AUD-01, D-07, D-12; plan 05-01). Records are the elements of rules; ids are PSG-Rnn.
+# Every rule has a statement, a basis, a source locator, the profile field paths or engine markers it will read, the vector ids that
+# cover it, a discrepancy id and a note. The vector coverage in both directions and the policy ids are checked by the psg-vectors
+# step (tools/check/psg-vectors.cmake); the field syntax, the cite, the discrepancy id and the resolver and trigger text of a rule
+# that is not primary-literal are checked by the hook (kinds/psg-rule.cmake).
+file data/psg/rules.json
+topkeys schema_version note rules
+top schema_version NUMBER
+top note STRING
+top rules ARRAY
+array rules
+idkey id
+inventory data/expected/psg-rules.ids
+keys id statement basis cite fields vectors conflict note
+req id STRING
+req statement STRING
+req basis STRING
+req cite STRING
+req fields ARRAY
+req vectors ARRAY
+req conflict STRING
+req note STRING
+nonblank statement
+nonblank cite
+match id ^PSG-R[0-9][0-9]$
+match basis ^(8910-primary-literal|8910-primary-derived|8914-community|default-unknown)$
+match conflict ^C[0-9]+$
+hook psg-rule

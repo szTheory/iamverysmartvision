@@ -1,0 +1,44 @@
+# PSG vectors, family mix (plan 05-01, D-07, D-10, D-11, D-23). Evaluated by plan 05-06.
+#
+# Claim tier: source-expectation for kind=source rows, policy for kind=policy rows. A source row takes its expected value from the
+# cited page, figure or community statement (tier 4 sources keep dependent claims provisional); a policy row states what the project
+# default says, never what hardware does. Nothing here is generated from a profile field, a table of the core or a core output.
+# No other emulator is a source for any row. The 1980 catalog pages 5-23..5-29 print the divide chains and the sixteen shapes but no
+# closed-form equation, no amplitude mode sense and no DAC label (docs/psg/reference-notes.md, Page-reading verdict).
+#
+# Grammar (one vector per line, single spaces, closed key set, keys in this order, derive last and to the end of the line):
+#   V <id> rule=<PSG-Rnn> kind=<source|policy> tier=<source-expectation|POL-PSG-nn> cite=<SRC-id>@<locator|none>
+#     set=<AAAA:HHHH[@<step>][+AAAA:HHHH[@<step>]]*|-> [pin=<port>:<HH>] steps=<n> expect=<kind:values> derive=<words>
+#   id      psg.<family>.<name>, the TAP and ctest id of the psg suite test that runs the vector; family prefix psg.mix.
+#   set     writes applied at module level through the PSG write function, never through a guest program, in the order written:
+#           AAAA is the CPU address 01F0..01FF and HHHH the raw 16-bit bus value; the write is stamped step x 16 master ticks and a step
+#           defaults to 0 (before chip step 1); by the step-first-then-write rule a write at @N lands after step N and before step N+1.
+#   pin     optional: the driven-low mask HH of controller port 0 or 1 before the reads (the byte read in input mode is FF XOR HH).
+#   steps   the number of chip steps (16 master ticks each) run after the writes; the sample at step k is taken after step k.
+#   expect  read:AAAA=HHHH,...    the register store value of each address in order (ports: see family notes), upper byte 0
+#           edge-spacing:C=n      level changes of channel C are spaced exactly n steps apart and the first is at step n
+#           toggles:C/W=n         n level changes of channel C in the first W steps
+#           (a level change is counted against the level after the writes of step 0, before step 1: 0 for a tone, the first level for an envelope)
+#           shifts:W=n            n noise register shifts in the first W steps
+#           level-seq:C=l,l,...   the level index of channel C (N = noise output bit) at steps 1,2,... or the stated sequence
+#           period:n              cycle length of the noise register in shifts
+#           silent:ABC            levels 0 on the named channels for all steps
+#           gate:r7=HH,tone=b,noise=b,ch=C,out=b     module level mixer gate of one channel, no running time
+#           index:amp=HH,env=n,out=n                 module level effective level index, no running time
+#           table:k=v,...         DAC table entries in units of 1e-8 of full scale (count and sum3 are derived keys), no running time
+#   convention (policy POL-PSG-02): every counter is empty at reset and reloaded from the effective period on its first step; per step a
+#           counter reloads if empty, counts down by one and fires when it reaches zero: tone toggles every P steps, noise shifts every 2 NP
+#           steps, the envelope advances every 2 EP steps; a shape write restarts the envelope at its first level with an empty counter.
+#   channels A B C are the three tone channels; the tone flip-flop starts at 0 after reset.
+# family notes: gate rows are module level; r7 bits 0..2 disable tone A..C and bits 3..5 disable noise A..C (1 = disabled, the overbar of Enable).
+#
+V psg.mix.truth-table rule=PSG-R15 kind=source tier=source-expectation cite=SRC-intv-wiki@PSG-oldid-14940 set=- steps=0 expect=gate:r7=00,tone=1,noise=1,ch=A,out=1 derive=both mixer inputs enabled and both generator outputs 1: the channel output is 1
+V psg.mix.and-tone0 rule=PSG-R15 kind=source tier=source-expectation cite=SRC-intv-wiki@PSG-oldid-14940 set=- steps=0 expect=gate:r7=00,tone=0,noise=1,ch=A,out=0 derive=both enabled, tone output 0: the AND gives 0
+V psg.mix.and-noise0 rule=PSG-R15 kind=source tier=source-expectation cite=SRC-intv-wiki@PSG-oldid-14940 set=- steps=0 expect=gate:r7=00,tone=1,noise=0,ch=A,out=0 derive=both enabled, noise output 0: the AND gives 0
+V psg.mix.and-both0 rule=PSG-R15 kind=source tier=source-expectation cite=SRC-intv-wiki@PSG-oldid-14940 set=- steps=0 expect=gate:r7=00,tone=0,noise=0,ch=A,out=0 derive=both enabled and both outputs 0: 0
+V psg.mix.both-disabled-const1 rule=PSG-R15 kind=source tier=source-expectation cite=SRC-intv-wiki@PSG-oldid-14940 set=- steps=0 expect=gate:r7=09,tone=0,noise=0,ch=A,out=1 derive=tone A (bit 0) and noise A (bit 3) both disabled by 1 bits: the channel is a constant 1 whatever the generators do
+V psg.mix.tone-only-1 rule=PSG-R14 kind=source tier=source-expectation cite=SRC-gi-1980-catalog@pdf-207 set=- steps=0 expect=gate:r7=08,tone=1,noise=0,ch=A,out=1 derive=noise A disabled (bit 3 set, the overbar of Enable marks active low), tone enabled: the channel follows the tone output 1
+V psg.mix.tone-only-0 rule=PSG-R14 kind=source tier=source-expectation cite=SRC-gi-1980-catalog@pdf-207 set=- steps=0 expect=gate:r7=08,tone=0,noise=1,ch=A,out=0 derive=noise A disabled, tone enabled with output 0: the channel is 0 whatever the noise does
+V psg.mix.noise-only-1 rule=PSG-R14 kind=source tier=source-expectation cite=SRC-gi-1980-catalog@pdf-207 set=- steps=0 expect=gate:r7=01,tone=0,noise=1,ch=A,out=1 derive=tone A disabled (bit 0 set), noise enabled with output 1: the channel is 1
+V psg.mix.noise-only-0 rule=PSG-R14 kind=source tier=source-expectation cite=SRC-gi-1980-catalog@pdf-207 set=- steps=0 expect=gate:r7=01,tone=1,noise=0,ch=A,out=0 derive=tone A disabled, noise output 0: the channel is 0 whatever the tone does
+V psg.mix.channel-isolated rule=PSG-R14 kind=source tier=source-expectation cite=SRC-gi-1980-catalog@pdf-207 set=- steps=0 expect=gate:r7=09,tone=0,noise=0,ch=B,out=0 derive=channel A is fully disabled by bits 0 and 3 but channel B uses bits 1 and 4, both clear: channel B is enabled and its tone output 0 gives 0 (bit positions per channel: tone bits 0..2 and noise bits 3..5 are A, B, C)

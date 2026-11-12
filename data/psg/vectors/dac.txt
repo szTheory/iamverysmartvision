@@ -1,0 +1,42 @@
+# PSG vectors, family dac (plan 05-01, D-07, D-10, D-11, D-23). Evaluated by plan 05-07.
+#
+# Claim tier: source-expectation for kind=source rows, policy for kind=policy rows. A source row takes its expected value from the
+# cited page, figure or community statement (tier 4 sources keep dependent claims provisional); a policy row states what the project
+# default says, never what hardware does. Nothing here is generated from a profile field, a table of the core or a core output.
+# No other emulator is a source for any row. The 1980 catalog pages 5-23..5-29 print the divide chains and the sixteen shapes but no
+# closed-form equation, no amplitude mode sense and no DAC label (docs/psg/reference-notes.md, Page-reading verdict).
+#
+# Grammar (one vector per line, single spaces, closed key set, keys in this order, derive last and to the end of the line):
+#   V <id> rule=<PSG-Rnn> kind=<source|policy> tier=<source-expectation|POL-PSG-nn> cite=<SRC-id>@<locator|none>
+#     set=<AAAA:HHHH[@<step>][+AAAA:HHHH[@<step>]]*|-> [pin=<port>:<HH>] steps=<n> expect=<kind:values> derive=<words>
+#   id      psg.<family>.<name>, the TAP and ctest id of the psg suite test that runs the vector; family prefix psg.dac.
+#   set     writes applied at module level through the PSG write function, never through a guest program, in the order written:
+#           AAAA is the CPU address 01F0..01FF and HHHH the raw 16-bit bus value; the write is stamped step x 16 master ticks and a step
+#           defaults to 0 (before chip step 1); by the step-first-then-write rule a write at @N lands after step N and before step N+1.
+#   pin     optional: the driven-low mask HH of controller port 0 or 1 before the reads (the byte read in input mode is FF XOR HH).
+#   steps   the number of chip steps (16 master ticks each) run after the writes; the sample at step k is taken after step k.
+#   expect  read:AAAA=HHHH,...    the register store value of each address in order (ports: see family notes), upper byte 0
+#           edge-spacing:C=n      level changes of channel C are spaced exactly n steps apart and the first is at step n
+#           toggles:C/W=n         n level changes of channel C in the first W steps
+#           (a level change is counted against the level after the writes of step 0, before step 1: 0 for a tone, the first level for an envelope)
+#           shifts:W=n            n noise register shifts in the first W steps
+#           level-seq:C=l,l,...   the level index of channel C (N = noise output bit) at steps 1,2,... or the stated sequence
+#           period:n              cycle length of the noise register in shifts
+#           silent:ABC            levels 0 on the named channels for all steps
+#           gate:r7=HH,tone=b,noise=b,ch=C,out=b     module level mixer gate of one channel, no running time
+#           index:amp=HH,env=n,out=n                 module level effective level index, no running time
+#           table:k=v,...         DAC table entries in units of 1e-8 of full scale (count and sum3 are derived keys), no running time
+#   convention (policy POL-PSG-02): every counter is empty at reset and reloaded from the effective period on its first step; per step a
+#           counter reloads if empty, counts down by one and fires when it reaches zero: tone toggles every P steps, noise shifts every 2 NP
+#           steps, the envelope advances every 2 EP steps; a shape write restarts the envelope at its first level with an empty counter.
+#   channels A B C are the three tone channels; the tone flip-flop starts at 0 after reset.
+# family notes: table rows compare the profile table psg.dac.levels (units of 1e-8 of full scale, index = 4-bit level); the core never reads it.
+#
+V psg.dac.printed-levels rule=PSG-R19 kind=policy tier=POL-PSG-11 cite=none set=- steps=0 expect=table:15=100000000,14=70700000,13=50000000,12=30300000,11=25000000,10=15150000,9=12500000 derive=levels 15..9 in units of 1e-8 of full scale, values copied from the Phase 5 discuss note reading of a reprint that plan 05-01 could not obtain, so not an independent source (the 1980 catalog pages label no level)
+V psg.dac.extrapolated-levels rule=PSG-R19 kind=policy tier=POL-PSG-11 cite=none set=- steps=0 expect=table:8=7575000,7=6250000,6=3787500,5=3125000,4=1893750,3=1562500,2=946875,1=781250 derive=levels 8..1 continue the pattern of halving every two levels, values copied from the Phase 5 discuss note reading of a reprint that plan 05-01 could not obtain, so not an independent source (the 1980 catalog pages label no level)
+V psg.dac.level-0 rule=PSG-R19 kind=policy tier=POL-PSG-11 cite=none set=- steps=0 expect=table:0=0 derive=level 0 is 0 V (the 0 axis of Fig. 5), values copied from the Phase 5 discuss note reading of a reprint that plan 05-01 could not obtain, so not an independent source (the 1980 catalog pages label no level)
+V psg.dac.level-15-full-scale rule=PSG-R19 kind=policy tier=POL-PSG-11 cite=none set=- steps=0 expect=table:15=100000000 derive=level 15 is the normalised 1 V full scale, values copied from the Phase 5 discuss note reading of a reprint that plan 05-01 could not obtain, so not an independent source (the 1980 catalog pages label no level)
+V psg.dac.halving-8-from-10 rule=PSG-R19 kind=policy tier=POL-PSG-11 cite=none set=- steps=0 expect=table:8=7575000 derive=level 8 is half of level 10 (15150000 / 2), values copied from the Phase 5 discuss note reading of a reprint that plan 05-01 could not obtain, so not an independent source (the 1980 catalog pages label no level)
+V psg.dac.halving-1-from-3 rule=PSG-R19 kind=policy tier=POL-PSG-11 cite=none set=- steps=0 expect=table:1=781250 derive=level 1 is half of level 3 (1562500 / 2), values copied from the Phase 5 discuss note reading of a reprint that plan 05-01 could not obtain, so not an independent source (the 1980 catalog pages label no level)
+V psg.dac.table-length rule=PSG-R19 kind=policy tier=POL-PSG-11 cite=none set=- steps=0 expect=table:count=16 derive=sixteen entries, one per 4-bit index, values copied from the Phase 5 discuss note reading of a reprint that plan 05-01 could not obtain, so not an independent source (the 1980 catalog pages label no level)
+V psg.dac.sum-fits-u32 rule=PSG-R19 kind=policy tier=POL-PSG-11 cite=none set=- steps=0 expect=table:sum3=300000000 derive=three channels at level 15 sum to 300000000, below 2^32, values copied from the Phase 5 discuss note reading of a reprint that plan 05-01 could not obtain, so not an independent source (the 1980 catalog pages label no level)

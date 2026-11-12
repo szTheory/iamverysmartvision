@@ -1,0 +1,14 @@
+# PSG policy ids a kind=policy vector may name (plan 05-01, D-23): each is an unknown-default-chosen default with a discrepancy id; one id per line, then a note.
+# Tag of every policy: unknown-default-chosen. A policy id no vector names fails the psg-vectors step (psg-rule-unknown-default-unresolved).
+POL-PSG-01 reads of the PSG registers have no side effects (C70)
+POL-PSG-02 tone, noise and envelope counters are down-reload counters, empty at reset, a period write takes effect at the next reload (C12)
+POL-PSG-03 noise period 0 acts as 32 by analogy with the tone (C12)
+POL-PSG-04 noise register: right-shifting Galois, width 17, mask 12000 hex, seed 1, output bit 0 (C71)
+POL-PSG-05 community noise mask 14000 hex, cycle length 114681 (C71)
+POL-PSG-06 write-effect instant and the step-first-then-write tie rule (C78)
+POL-PSG-07 a read of a port set to output returns the stored latch (C65)
+POL-PSG-08 a write to a port in input mode stores the latch and the read still follows the pins (C65)
+POL-PSG-09 R7 bit 6 selects port 0 and bit 7 port 1, 1 = output (C73)
+POL-PSG-10 the upper byte of a port read is 00 (C64)
+POL-PSG-11 DAC level table in units of 1e-8 of full scale (C12)
+POL-PSG-12 generator state after reset: tone outputs 0, noise register at its seed, envelope held at level 0 (C77)
