@@ -2,17 +2,17 @@
 gsd_state_version: "1.0"
 current_phase: 4
 current_phase_name: Headless Runner and Installed Consumer (Slice 0)
-status: executing
-stopped_at: Completed 04-24-PLAN.md
-last_updated: "2026-11-12T01:53:07.636Z"
+status: verifying
+stopped_at: Completed 04-25-PLAN.md
+last_updated: "2026-11-12T02:10:54.797Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 3 complete, transitioned to Phase 4
-state_head: badf00483c5833553aecf2219aaa7a0aa9c0709b
+state_head: 17aa8192cfbb6a8cf836fea78370c8195bfa1e68
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 71
-  completed_plans: 70
+  completed_plans: 71
   percent: 38
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 
 Phase: 4 — Headless Runner and Installed Consumer (Slice 0)
 Plan: 25 of 25
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-11-11 — Completed 04-03 (repo-relative fault owners, runner outcome taxonomy)
 
 Progress: [████░░░░░░] 38%
@@ -124,6 +124,7 @@ Progress: [████░░░░░░] 38%
 | Phase 04 P22 | 15 min | 3 tasks | 9 files |
 | Phase 4 P23 | 14min | 3 tasks | 8 files |
 | Phase 04 P24 | 35 min | 3 tasks | 15 files |
+| Phase 4 P25 | 40min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -287,6 +288,7 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 04]: 04-22: version-refused also refuses an older minor (SameMinorVersion vs AnyNewerVersion) and requires the built major.minor found under the moved prefix
 - [Phase 4]: 04-23: the installed consumer (tests/installed-consumer) replays diag-input-pass from the moved prefix only; its digest lines must equal the runner golden; independence is read from ninja -t deps, the link line and ivs_DIR; pkg-selftest=10/10
 - [Phase 04]: 04-24: RUN-04 is gate-checked: data/expected/important-gates.ids (102 lines, 26 gates) and the pure step important-gates; mutant ids also resolve as <suite>.judge.* / <suite>.mutant.*; gap fills api-stop-orphan, pack.judge.patched-word, runner-process.judge.outcome-uncovered, no new fault
+- [Phase 4]: Hosted gate budget re-baselined (04-25): 30/40 s wall budgets superseded by median gate_s 75 s plus median cpu_s 200; revisit at last-5 gate_s median > 90 s, any run > 120 s, or last-5 cpu_s median > 200
 
 ### Pending Todos
 
@@ -319,6 +321,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-12T01:53:07.350Z
-Stopped at: Completed 04-24-PLAN.md
+Last session: 2026-11-12T02:10:54.500Z
+Stopped at: Completed 04-25-PLAN.md
 Resume file: None
