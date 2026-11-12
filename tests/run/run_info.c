@@ -12,7 +12,10 @@
  *                            caller, and every byte past its size is untouched; a mid-size caller
  *                            (through video_format) likewise.
  *   run.info.short-refused   one byte below the v1 size: BAD_ARG, nothing written, the instance
- *                            storage unchanged. */
+ *                            storage unchanged.
+ *   run.info.oversize-refused  one byte above IVS_STRUCT_SIZE_MAX: BAD_ARG, nothing written, the
+ *                            instance storage unchanged (review IN-03); exactly the cap is
+ *                            accepted. */
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -168,10 +171,39 @@ done:
   return rc;
 }
 
+static int ri_oversize_refused(void)
+{
+  ivs_ms_inst x;
+  ri_buf b;
+  ri_buf poison;
+  ivs_run_snap s;
+  ivs_status st;
+  int rc = IVS_TEST_FAIL;
+  IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, RI_POISON));
+  memset(&s, 0, sizeof s);
+  RI_CHECK(ivs_run_snap_take(&s, &x, 1));
+  memset(&b, RI_POISON, sizeof b);
+  b.info.struct_size = IVS_STRUCT_SIZE_MAX + 1u;
+  poison = b;
+  st = ivs_machine_info(x.m, &b.info);
+  RI_CHECK(st == IVS_E_BAD_ARG);
+  RI_CHECK(memcmp(&b, &poison, sizeof b) == 0);
+  RI_CHECK(ivs_run_snap_same(&s, &x));
+  /* Exactly the cap: accepted, the core's own size written. */
+  b.info.struct_size = IVS_STRUCT_SIZE_MAX;
+  RI_CHECK(ivs_machine_info(x.m, &b.info) == IVS_OK && b.info.struct_size == (uint32_t)sizeof(ivs_info));
+  rc = IVS_TEST_PASS;
+done:
+  ivs_run_snap_free(&s);
+  ivs_ms_free(&x);
+  return rc;
+}
+
 const ivs_test_case ivs_run_info_cases[] = {
     {"run.info.timebase", ri_timebase, NULL},
     {"run.info.layout-none", ri_layout_none, NULL},
     {"run.info.v1-size-caller", ri_v1_size_caller, NULL},
     {"run.info.short-refused", ri_short_refused, NULL},
+    {"run.info.oversize-refused", ri_oversize_refused, NULL},
 };
 const size_t ivs_run_info_count = sizeof ivs_run_info_cases / sizeof ivs_run_info_cases[0];

@@ -110,7 +110,8 @@ typedef struct ivs_image_report {
  * Growth (A-02, plan 04-09): the v1 size of ivs_info is the Phase 3 size (216 bytes, up to and
  * including slots); fields after it are written only when struct_size covers them (A-02). A
  * caller sized for v1 is accepted and its bytes past the v1 size are untouched; the core writes
- * min(struct_size, sizeof(ivs_info)) bytes and sets struct_size to that count.
+ * min(struct_size, sizeof(ivs_info)) bytes and sets struct_size to that count. A struct_size
+ * above IVS_STRUCT_SIZE_MAX is BAD_ARG with nothing written (review IN-03).
  * Appended fields (byte offsets; 64-bit members 8-aligned), all from the profile:
  *   216 ticks_per_cpu_cycle      master ticks per CPU cycle (D2)
  *   220 cpu_cycles_per_scanline  nominal

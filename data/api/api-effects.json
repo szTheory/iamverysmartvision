@@ -274,7 +274,7 @@
       "header": "core/include/ivs/ivs_machine.h",
       "on_ok": "Writes phase, machine time (master ticks), profile index and the three slot reports into *out, then, as far as out->struct_size covers them, the timebase (ticks_per_cpu_cycle, cpu_cycles_per_scanline, scanlines_per_frame, nominal_frame_ticks) and the output layout (formats and bytes per frame); exactly min(struct_size, sizeof(ivs_info)) bytes are written and struct_size is set to that count; the instance is not written.",
       "precedence": [
-        {"status": "IVS_E_BAD_ARG", "checks": "out NULL or out->struct_size below the v1 size (216, the Phase 3 size; A-02)", "pinned_by": ["machine.refuse.info.null-both"]},
+        {"status": "IVS_E_BAD_ARG", "checks": "out NULL or out->struct_size below the v1 size (216, the Phase 3 size; A-02) or above IVS_STRUCT_SIZE_MAX (review IN-03)", "pinned_by": ["machine.refuse.info.null-both", "run.info.oversize-refused"]},
         {"status": "IVS_E_BAD_HANDLE", "checks": "NULL or invalid handle (a damaged stored profile index included, review WR-03)", "pinned_by": ["machine.refuse.info.destroyed-out-inside"]},
         {"status": "IVS_E_BAD_ARG", "checks": "the bytes to be written overlapping the storage of the (valid) instance", "pinned_by": ["machine.refuse.info.out-inside"]}
       ],
@@ -287,7 +287,7 @@
           "status": "IVS_E_BAD_ARG",
           "effect": "none",
           "outs": "nothing written: *out keeps its bytes",
-          "tests": ["machine.refuse.info.null-out", "machine.refuse.info.null-both", "machine.refuse.info.size-0", "machine.refuse.info.short", "machine.refuse.info.out-inside", "run.info.short-refused"]
+          "tests": ["machine.refuse.info.null-out", "machine.refuse.info.null-both", "machine.refuse.info.size-0", "machine.refuse.info.short", "machine.refuse.info.out-inside", "run.info.short-refused", "run.info.oversize-refused"]
         },
         {
           "status": "IVS_E_BAD_HANDLE",

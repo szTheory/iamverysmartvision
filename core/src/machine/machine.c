@@ -254,8 +254,8 @@ ivs_status ivs_machine_info(const ivs_machine *m, ivs_info *out)
   ivs_run_env env;
   size_t n;
   uint32_t i;
-  if (out == NULL || out->struct_size < IVS_INFO_V1_SIZE) {
-    return IVS_E_BAD_ARG;
+  if (out == NULL || out->struct_size < IVS_INFO_V1_SIZE || out->struct_size > IVS_STRUCT_SIZE_MAX) {
+    return IVS_E_BAD_ARG; /* the cap as for every out struct (ivs_run.h; review IN-03) */
   }
   im = ivs_machine_from_handle(m);
   if (im == NULL) {
