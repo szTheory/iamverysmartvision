@@ -1,0 +1,14 @@
+# Owning plan 04-22: the exact installed file list of the ivs package (PKG-01, D-33, D-37), one path
+# per line relative to the install prefix. The step pkg-install installs the release tree and fails
+# on any file missing from or extra to this list, so it is also the guard that no image, runner or
+# other rights-bearing byte enters the distributable. <docdir> is GNUInstallDirs' share/doc/ivs.
+include/ivs/ivs.h
+include/ivs/ivs_machine.h
+include/ivs/ivs_run.h
+include/ivs/ivs_status.h
+lib/cmake/ivs/ivsConfig.cmake
+lib/cmake/ivs/ivsConfigVersion.cmake
+lib/cmake/ivs/ivsTargets-release.cmake
+lib/cmake/ivs/ivsTargets.cmake
+lib/libivs_core.a
+share/doc/ivs/LICENSE

@@ -55,13 +55,22 @@ foreach(src IN LISTS IVS_CORE_SOURCES)
   target_include_directories(${obj} PRIVATE "${IVS_CORE_GEN_DIR}")
   add_dependencies(${obj} ivs_core_gen)
   target_link_libraries(${obj} PRIVATE ivs_warnings ivs_san)
-  set_target_properties(${obj} PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF)
+  # PIC (D-34, plan 04-22): a host may link the archive into a shared plugin.
+  set_target_properties(${obj} PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF POSITION_INDEPENDENT_CODE ON)
   list(APPEND ivs_core_objects "$<TARGET_OBJECTS:${obj}>")
 endforeach()
 
+# Static only (D-35): STATIC is explicit, so BUILD_SHARED_LIBS is ignored and IVS_API stays empty.
 add_library(ivs_core STATIC ${ivs_core_objects})
-set_target_properties(ivs_core PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF LINKER_LANGUAGE C)
-target_include_directories(ivs_core PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+set_target_properties(ivs_core PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF LINKER_LANGUAGE C
+  EXPORT_NAME core)
+# The in-tree name a FetchContent or add_subdirectory user writes, the same as the installed one.
+add_library(ivs::core ALIAS ivs_core)
+# No absolute path may reach the export (D-33): the build tree sees core/include, the installed
+# package its own include/ directory.
+target_include_directories(ivs_core PUBLIC
+  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+  "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
 
 add_library(ivs_core_internal INTERFACE)
 target_include_directories(ivs_core_internal INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/src")
@@ -73,3 +82,23 @@ endforeach()
 file(WRITE "${CMAKE_BINARY_DIR}/ivs-core-sources.txt.tmp" "${listed}")
 file(COPY_FILE "${CMAKE_BINARY_DIR}/ivs-core-sources.txt.tmp" "${CMAKE_BINARY_DIR}/ivs-core-sources.txt"
   ONLY_IF_DIFFERENT)
+
+# Install and export (D-33, D-34, D-35, plan 04-22). The package is the static archive, the
+# public headers ivs/*.h, the CMake package files and the licence; nothing else (no runner, no
+# internals, no images; the gate step pkg-install compares the prefix with
+# data/expected/pkg-install-files.ids). The package config is hand-written (no paths to
+# resolve), the version file comes from project(VERSION), parsed from ivs.h in the root.
+# No export(PACKAGE) and no pkg-config file: a consumer must never find this build tree.
+# A sanitized tree refuses to install: its archive needs -fsanitize at the consumer's link.
+if(IVS_SAN)
+  install(CODE "message(FATAL_ERROR \"ivs: refusing to install a sanitized (IVS_SAN) tree; install from the release preset\")")
+endif()
+install(TARGETS ivs_core EXPORT ivsTargets ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+install(DIRECTORY include/ivs DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}" FILES_MATCHING PATTERN "*.h")
+install(EXPORT ivsTargets NAMESPACE ivs:: DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/ivs")
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file("${CMAKE_CURRENT_BINARY_DIR}/ivsConfigVersion.cmake"
+  VERSION "${PROJECT_VERSION}" COMPATIBILITY SameMinorVersion ARCH_INDEPENDENT)
+install(FILES "${PROJECT_SOURCE_DIR}/cmake/ivsConfig.cmake" "${CMAKE_CURRENT_BINARY_DIR}/ivsConfigVersion.cmake"
+  DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/ivs")
+install(FILES "${PROJECT_SOURCE_DIR}/LICENSE" DESTINATION "${CMAKE_INSTALL_DOCDIR}")
