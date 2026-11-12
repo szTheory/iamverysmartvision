@@ -517,8 +517,8 @@ static int pb_g_and_u(void)
   ivs_info info;
   uint64_t units = 0u;
   uint64_t frame;
-  uint64_t g;
-  uint64_t u;
+  uint64_t g = 0u;
+  uint64_t u = 0u;
   uint64_t t;
   uint32_t waits[2];
   uint32_t i;
