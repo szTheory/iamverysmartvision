@@ -117,8 +117,7 @@ IVS_API ivs_status ivs_machine_peek(const ivs_machine *m, uint16_t addr, uint32_
  * that needs bytes is still BUFFER_TOO_SMALL). A third channel, the PSG register-write log
  * (psg_log, psg_log_capacity; request v2), follows video and audio with
  * psg_log_bytes_per_frame from the profile's layout. A layout with 0 bytes per frame needs nothing
- * and gets nothing (video until plan 05-09 and the write log until plan 05-08 are such channels: no
- * frame is fabricated). From plan 05-06 the audio layout is real: format IVS_OUTPUT_FORMAT_PSG_LEVELS_V1,
+ * and gets nothing (video, until Phase 6, is such a channel: no frame is fabricated). From plan 05-06 the audio layout is real: format IVS_OUTPUT_FORMAT_PSG_LEVELS_V1,
  * one 4-byte sample (level_A, level_B, level_C, 0) per PSG chip step, stamped k * audio_sample_ticks
  * master ticks on an absolute grid from reset, delivered into the audio buffer in order. The core
  * catches the chip up to the end of every unit it runs (never to the target), so a call delivers
