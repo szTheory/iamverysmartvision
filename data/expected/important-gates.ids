@@ -1,0 +1,20 @@
+# Important-gate registry (plan 04-24, D-46, RUN-04), checked by the gate step important-gates.
+# An important gate is one whose silent pass would let a requirement, claim or evidence tier be
+# asserted without evidence: it is the sole evidence for a requirement or claim, it can pass
+# vacuously (inventory, digest or golden comparison, outcome classifier, refusal/no-state-change
+# check, verdict over producer output), or its failure class escaped once.
+# Columns: <gate> <fault|control|mutant> <id> <REQ>. A fault is judged by faults-verdict (must-fail
+# vector, allowed reason prefixes, must-pass vector); a control by tools/check/run-controls.sh
+# (EXPECT token); a mutant is an in-step selftest case (pkg-selftests.ids, ci-summary-selftests.ids)
+# or a suite self-control `<suite>.judge.<slug>` / `<suite>.mutant.<slug>` that passes only when
+# its check fails for the intended reason.
+run-bound fault RUN_STOP_BEFORE_OVERSHOOT API-02
+output-buffers fault RUN_CAPACITY_AFTER_STEP API-04
+runner-exec fault RUNNER_ASSERT_ALWAYS_PASS RUN-01
+runner-outcomes fault OUTCOME_GUEST_AS_HARNESS RUN-02
+faults-runner-site control faults-orphan-site-runner RUN-04
+golden control golden-header-missing-tier RUN-05
+listing control listing-bits-mismatch RUN-06
+pkg-install mutant golden-drift PKG-01
+ci-parity control ci-parity-action-cache PKG-03
+ci-log control ci-log-fields PKG-04
