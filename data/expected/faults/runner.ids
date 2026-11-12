@@ -1,5 +1,5 @@
 # suite=runner; columns: <FAULT_ID> <must-fail> <allowed-prefixes> <must-pass>
-# Runner named faults (D-20, D-22, D-24, plans 04-03, 04-17 and 04-18). Each id has one
+# Runner named faults (D-20, D-21, D-22, D-24, plans 04-03, 04-17, 04-18 and 04-19). Each id has one
 # IVS_FAULT_<ID> site in a runner TU (runner/outcome.c, scenario.c, exec.c, report.c; owner TUs
 # under core/ or runner/).
 # OUTCOME_GUEST_AS_HARNESS: guest-fail exits with the harness-fail code; codes-distinct also
@@ -36,3 +36,12 @@ RUNNER_STOP_EXPECT_IGNORED runner.exec.stop-mismatch runner.exec.|runner.time.bu
 RUNNER_KEY_ORDER_SWAPPED runner.exec.key-order runner.exec. runner.parse.diag-boot-pass
 # RUNNER_OVERSHOOT_NOT_REPORTED: the overshoot line is printed as 0.
 RUNNER_OVERSHOOT_NOT_REPORTED runner.exec.overshoot runner.exec. runner.parse.diag-boot-pass
+# Slicing, wall cap and cancellation faults (plan 04-19, D-21), sites in runner/exec.c; other time
+# and executor cases (runner.time., runner.exec.) may also see them.
+# RUNNER_CANCEL_IGNORED: the cancel flag is never read, so a signal cannot end a run.
+RUNNER_CANCEL_IGNORED runner.time.cancel runner.time.|runner.exec. runner.parse.diag-boot-pass
+# RUNNER_WALL_AS_GUEST_FAIL: the wall cap is classified as guest-fail (exit 10, not timeout 11).
+RUNNER_WALL_AS_GUEST_FAIL runner.time.wall runner.time.|runner.exec. runner.parse.diag-boot-pass
+# RUNNER_SLICE_DROPS_REMAINDER: a last slice shorter than the slice size is skipped, so a sliced
+# run-to ends short of its bound and its report differs from one call.
+RUNNER_SLICE_DROPS_REMAINDER runner.time.slices-equal runner.time.|runner.exec. runner.parse.diag-boot-pass

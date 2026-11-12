@@ -89,6 +89,10 @@ uint32_t ivs_runner_stop_observation(uint32_t stop_reason, uint32_t expected_sto
 
 static int ex_cancelled(ex_state *x)
 {
+#ifdef IVS_FAULT_RUNNER_CANCEL_IGNORED
+  /* Fault (plan 04-19, D-21): the cancel flag is never read, so a signal cannot end a run. */
+  return 0;
+#endif
   if (x->host->cancel_requested == NULL) {
     return 0;
   }
@@ -124,7 +128,12 @@ static int ex_between_slices(ex_state *x, uint32_t k)
   }
   if (wall) {
     (void)snprintf(d, sizeof d, "wall step=%u cap-ms=%u", (unsigned)(k + 1u), (unsigned)x->wall_cap_ms);
+#ifdef IVS_FAULT_RUNNER_WALL_AS_GUEST_FAIL
+    /* Fault (plan 04-19, D-21): the wall cap is classified as a guest failure. */
+    ex_observe(x, IVS_RUNNER_OBS_GUEST_FAIL, d);
+#else
     ex_observe(x, IVS_RUNNER_OBS_TIMEOUT_WALL, d);
+#endif
   }
   return cancel || wall;
 }
@@ -481,6 +490,12 @@ static void ex_run_steps(ex_state *x, const ivs_info *info)
       if (ex_between_slices(x, k)) {
         return;
       }
+#ifdef IVS_FAULT_RUNNER_SLICE_DROPS_REMAINDER
+      /* Fault (plan 04-19, D-21): after a slice, a last slice shorter than slice_ticks is skipped. */
+      if (sr->ran && x->now < limit && limit - x->now < x->slice_ticks) {
+        break;
+      }
+#endif
       memset(&q, 0, sizeof q);
       q.struct_size = (uint32_t)sizeof q;
       q.flags = IVS_RUN_F_STOP_ON_HALT;
