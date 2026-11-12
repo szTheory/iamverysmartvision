@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 4
 current_phase_name: Headless Runner and Installed Consumer (Slice 0)
 status: executing
-stopped_at: Completed 04-23-PLAN.md
-last_updated: "2026-11-12T01:36:21.015Z"
+stopped_at: Completed 04-24-PLAN.md
+last_updated: "2026-11-12T01:53:07.636Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 3 complete, transitioned to Phase 4
-state_head: 120d50a0158a310ca4ec68390ce709f0d38bb9e0
+state_head: badf00483c5833553aecf2219aaa7a0aa9c0709b
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 71
-  completed_plans: 69
+  completed_plans: 70
   percent: 38
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 4 — Headless Runner and Installed Consumer (Slice 0)
-Plan: 24 of 25
+Plan: 25 of 25
 Status: Ready to execute
 Last activity: 2026-11-11 — Completed 04-03 (repo-relative fault owners, runner outcome taxonomy)
 
@@ -123,6 +123,7 @@ Progress: [████░░░░░░] 38%
 | Phase 04 P21 | 20 min | 3 tasks | 47 files |
 | Phase 04 P22 | 15 min | 3 tasks | 9 files |
 | Phase 4 P23 | 14min | 3 tasks | 8 files |
+| Phase 04 P24 | 35 min | 3 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -285,6 +286,7 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 04]: 04-22: archive equality is whole-file sha256 on Linux, member-wise on Darwin (CMake re-runs ranlib at install); pass line archive=sha256|members
 - [Phase 04]: 04-22: version-refused also refuses an older minor (SameMinorVersion vs AnyNewerVersion) and requires the built major.minor found under the moved prefix
 - [Phase 4]: 04-23: the installed consumer (tests/installed-consumer) replays diag-input-pass from the moved prefix only; its digest lines must equal the runner golden; independence is read from ninja -t deps, the link line and ivs_DIR; pkg-selftest=10/10
+- [Phase 04]: 04-24: RUN-04 is gate-checked: data/expected/important-gates.ids (102 lines, 26 gates) and the pure step important-gates; mutant ids also resolve as <suite>.judge.* / <suite>.mutant.*; gap fills api-stop-orphan, pack.judge.patched-word, runner-process.judge.outcome-uncovered, no new fault
 
 ### Pending Todos
 
@@ -317,6 +319,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-12T01:36:20.901Z
-Stopped at: Completed 04-23-PLAN.md
+Last session: 2026-11-12T01:53:07.350Z
+Stopped at: Completed 04-24-PLAN.md
 Resume file: None
