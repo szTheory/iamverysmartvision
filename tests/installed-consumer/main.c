@@ -25,6 +25,11 @@
  * tick 4100 after which the peeked $01FE is printed (0x007E, KEY_1 on port 0), then the run to the
  * halt, the guest words at 020F and 0210..0227, and one ctrl.digest.<domain> line per observed domain
  * (audio and psglog included; video not), equal to data/golden/diag-ctrl-psg-pass.digests.
+ * Plan 06-07 (D-04, VID-06) adds the STIC inspection call: after the first session's last run call and its
+ * digests one ivs_machine_stic_state call on the replay machine prints a `stic-state` line (the stored view,
+ * never a digest) and the two refusals `stic-state.refusal.null` and `.small`; the installed header's
+ * ivs_stic_report size is checked at compile time. These lines carry no digest, so the comparison with the
+ * runner golden (digest lines and observed domains) is unaffected.
  * Stdout is pinned by data/expected/pkg-consumer.golden and its digest lines must equal those of
  * data/golden/diag-input-pass.digests. Exit 0 only when every check held; a failed check prints
  * a `FAIL <what>` line. No path, time or address is printed (the output is host independent).
@@ -318,6 +323,36 @@ static void observe(const ivs_machine *m, const char *tag)
   printf("\n");
 }
 
+/* The STIC inspection call on a machine (plan 06-07): the stored view and two refusals. Each call is its own statement. */
+static void stic_state_lines(const ivs_machine *m)
+{
+  ivs_stic_report r;
+  ivs_status st;
+  ivs_status st_null;
+  ivs_status st_small;
+  memset(&r, 0, sizeof r);
+  r.struct_size = IVS_STIC_REPORT_V1_SIZE;
+  st = ivs_machine_stic_state(m, &r);
+  if (st != IVS_OK || r.struct_size != IVS_STIC_REPORT_V1_SIZE) {
+    fail("stic_state");
+    return;
+  }
+  printf("stic-state mode=%u latch=%u windows=%u regs-window=%u gmem-window=%u event=%u frame=%llu blocked=%u/%u\n",
+         (unsigned)r.mode, (unsigned)r.display_latch, (unsigned)r.windows_active, (unsigned)r.regs_window_open,
+         (unsigned)r.gmem_window_open, (unsigned)r.event_index, (unsigned long long)r.frame_index,
+         (unsigned)r.blocked_reads, (unsigned)r.blocked_writes);
+  st_null = ivs_machine_stic_state(m, NULL);
+  memset(&r, 0xA5, sizeof r);
+  r.struct_size = IVS_STIC_REPORT_V1_SIZE - 1u;
+  st_small = ivs_machine_stic_state(m, &r);
+  printf("stic-state.refusal.null status=%s\n", status_token(st_null));
+  printf("stic-state.refusal.small status=%s written=%s\n", status_token(st_small),
+         r.mode == 0xA5A5A5A5u && r.regs[63] == 0xA5A5u && r.struct_size == IVS_STIC_REPORT_V1_SIZE - 1u ? "no" : "yes");
+  if (st_null != IVS_E_BAD_ARG || st_small != IVS_E_BAD_ARG) {
+    fail("stic_state refusals");
+  }
+}
+
 /* One whole session on a fresh instance: optional refusals, loads, reset, the two-step replay,
  * final digests into d. print selects the pinned output (the first instance only). */
 static void session(int with_refusals, int print, c_digests *d, int *observed)
@@ -417,6 +452,9 @@ static void session(int with_refusals, int print, c_digests *d, int *observed)
   }
   if (!digest_all(x.m, d)) {
     fail("digest");
+  }
+  if (print) {
+    stic_state_lines(x.m);
   }
   for (size_t i = 0u; i < C_DOMAINS; i++) {
     observed[i] = 1;
@@ -576,6 +614,12 @@ static void version_tie(void)
 _Static_assert(IVS_STOP_FRAME == 5u, "IVS_STOP_FRAME is 5 in the installed header");
 _Static_assert(IVS_OUTPUT_FORMAT_INDEX8_FRAMES_V1 == 2u, "IVS_OUTPUT_FORMAT_INDEX8_FRAMES_V1 is 2 in the installed header");
 _Static_assert(IVS_FRAME_HEADER_BYTES == 32u, "IVS_FRAME_HEADER_BYTES is 32 in the installed header");
+
+/* Plan 06-07 (D-04, VID-06): the installed header's STIC report, checked at compile time. */
+_Static_assert(IVS_STIC_REPORT_V1_SIZE == 208u, "IVS_STIC_REPORT_V1_SIZE is 208 in the installed header");
+_Static_assert(sizeof(ivs_stic_report) == IVS_STIC_REPORT_V1_SIZE, "ivs_stic_report is the pinned v1 size");
+_Static_assert(offsetof(ivs_stic_report, frame_index) == 32u && offsetof(ivs_stic_report, regs) == 64u,
+               "ivs_stic_report offsets in the installed header");
 
 static void v1_sizes(void)
 {

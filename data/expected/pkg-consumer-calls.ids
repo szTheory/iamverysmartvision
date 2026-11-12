@@ -12,6 +12,7 @@ ivs_machine_peek
 ivs_machine_reset
 ivs_machine_run
 ivs_machine_state_digest
+ivs_machine_stic_state
 ivs_machine_storage_requirements
 ivs_run_stop_name
 ivs_status_name

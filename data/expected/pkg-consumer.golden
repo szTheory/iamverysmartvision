@@ -26,6 +26,9 @@ step.2 target_ticks=16000 stop=IVS_STOP_CPU_HALTED now_ticks=2084 overshoot_tick
 step.2.cpu run_state=3 fault_reason=0 r=03C5,8080,0000,0037,0201,0037,0340,5036
 step.2.mem 0200..020F=7FFF,8080,A0A0,7070,0037,0037,0340,0201,7FFF,0000,0000,0000,0000,0000,0000,03C5
 input events=2 consumed=2
+stic-state mode=0 latch=0 windows=0 regs-window=1 gmem-window=1 event=1 frame=0 blocked=0/0
+stic-state.refusal.null status=IVS_E_BAD_ARG
+stic-state.refusal.small status=IVS_E_BAD_ARG written=no
 digest.cpu 8c6a8aa37cf3293d3d88f1133f3cb218d89fb96a34e8bda49e6ea750cf4dbe55
 digest.mem 6ff06f9c2861d40901606baef86ac7b5d2c7527f3f42f9a148636d8ff3cd7757
 digest.images 69d3b715595bdb3435c984ad72e0042fdf385b72e2687f13a4d59e8b09084e45
