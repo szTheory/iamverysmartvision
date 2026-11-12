@@ -1,0 +1,8 @@
+# Negative controls for the input step (plan 05-01, D-02, D-03): one per defect shape. The positive control is the toy
+# literal of controls/_good/tree (two rows, the real grammar); each overlay replaces data/input/toy.literal.txt.
+input-literal-name-set-missing
+input-literal-duplicate
+input-tag-missing
+input-source-unknown
+input-byte-mismatch
+input-tiling-pins

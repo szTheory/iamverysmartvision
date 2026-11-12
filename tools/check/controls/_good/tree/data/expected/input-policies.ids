@@ -1,0 +1,12 @@
+# Toy policy inventory of the known-good control tree (plan 05-01): the D-03 classes.
+single-control tier4-community toy
+key-key tier4-community toy
+disc-side tier4-community toy
+key-disc inference toy
+key-side inference toy
+side-side inference toy
+disc-disc-adjacent unknown-default-chosen toy
+disc-disc-other unknown-default-chosen toy
+opposite-directions unknown-default-chosen toy
+three-or-more unknown-default-chosen toy
+bit31-words2-3-flags refusal-unchanged toy

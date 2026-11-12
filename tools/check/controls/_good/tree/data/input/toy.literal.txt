@@ -1,0 +1,3 @@
+# Toy controller literal of the known-good control tree (plan 05-01): two rows, same grammar as the real literal.
+KEY_1 pins=4,6 cleared=81 wiki=81 byte=7E src=SRC-bsr-2609@Toy-key-1 tag=tier2-first-party-adjacent conf=C1
+KEY_2 pins=4,7 cleared=41 wiki=41 byte=BE src=SRC-bsr-2609@Toy-key-2 tag=tier2-first-party-adjacent conf=C1

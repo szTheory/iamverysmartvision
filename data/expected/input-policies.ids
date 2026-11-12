@@ -1,0 +1,18 @@
+# Result classes and tags of the combination rule pins = FF XOR OR(line masks) (plan 05-01, D-03, P5-C2).
+# Format: <class> <tag> <note>. The `input` step holds the D-03 table of class and tag pairs and fails
+# when a class is missing, extra or carries another tag (token input-policy-inventory). The tag is a
+# source-authority tag of data/tiers.json, except refusal-unchanged, which marks the refusals the
+# reserved bit and the Phase 4 word flags keep (no evidence tier is claimed for them).
+# Precedent: data/expected/cp1610-policies.ids. A result that is only the model's definition
+# (the union of grounded pins) is a policy row, never evidence of what hardware reads.
+single-control tier4-community one control pressed alone, the table row itself (wiki anchor KEY_1 = 7E)
+key-key tier4-community two keys, wiki anchor KEY_1 with KEY_9 = 5A
+disc-side tier4-community one disc direction with one side button, uniquely decodable per the wiki prose
+key-disc inference guest-ambiguous: most key and disc pairs collide with another state
+key-side inference guest-ambiguous: every key and side pair collides with another state
+side-side inference guest-ambiguous: two side buttons collide with a third
+disc-disc-adjacent unknown-default-chosen C63 adjacent disc directions, union rule only
+disc-disc-other unknown-default-chosen C63 non-adjacent disc directions, union rule only
+opposite-directions unknown-default-chosen C63 opposite disc directions, union rule only
+three-or-more unknown-default-chosen C63 three or more controls, union rule only
+bit31-words2-3-flags refusal-unchanged reserved bit 31 and the Phase 4 word 2 and 3 flags refuse as before
