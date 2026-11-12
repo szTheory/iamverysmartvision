@@ -4,6 +4,8 @@
 # Plan 05-05 task 2: the single-control matrix (input.single.p0.<name>, input.single.p1.<name>: 31 + 31), idle, the
 # three wiki anchors, the literal structure (input.struct.*), the generated table against the literal, the port
 # semantics (input.port.*), pins in the digest, take-back, reset and the invariant, and two judge self-controls.
+# Plan 05-05 task 3: the combination rows (input.combo.*, 24, each with its class of data/expected/input-policies.ids in the
+# test source) and the pair properties over all 465 unordered pairs (input.pairs.union|commutative|monotone-clear|decodable-claims).
 input.idle.p0
 input.idle.p1
 input.anchor.wiki-idle
@@ -16,6 +18,34 @@ input.struct.disc-masks-within-disc-pins
 input.struct.side-masks-two-pins
 input.struct.port-tables-identical
 input.table.matches-literal
+input.combo.key1-key9
+input.combo.key2-key8
+input.combo.clear-enter
+input.combo.discn-sidetop
+input.combo.disce-sidelowerleft
+input.combo.discsw-sidelowerright
+input.combo.discn-discnne
+input.combo.disce-discese
+input.combo.discn-disce
+input.combo.discnne-discese
+input.combo.opposite-n-s
+input.combo.opposite-e-w
+input.combo.opposite-ne-sw
+input.combo.opposite-nw-se
+input.combo.sidetop-sidelowerleft
+input.combo.sides-all
+input.combo.key5-discn
+input.combo.key0-discw
+input.combo.key5-sidetop
+input.combo.keyenter-sidelowerright
+input.combo.three-key1-key9-discn
+input.combo.three-discn-disce-discs
+input.combo.all-closed
+input.combo.ports-independent
+input.pairs.union
+input.pairs.commutative
+input.pairs.monotone-clear
+input.pairs.decodable-claims
 input.port.direction-input-reads-pins
 input.port.direction-output-reads-latch
 input.port.per-port-direction

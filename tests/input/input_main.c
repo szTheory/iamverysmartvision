@@ -11,7 +11,7 @@
 
 #define II_MAX_CASES 512u
 
-static const ii_family *const ii_families[] = {&ivs_input_fam_single, &ivs_input_fam_port};
+static const ii_family *const ii_families[] = {&ivs_input_fam_single, &ivs_input_fam_combo, &ivs_input_fam_port};
 #define II_FAMILIES (sizeof ii_families / sizeof ii_families[0])
 
 /* Family and index inside it of case i. */

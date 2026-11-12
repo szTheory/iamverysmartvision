@@ -213,7 +213,7 @@ add_custom_command(
   DEPENDS ${IVS_INPUT_LITERALS} "${PROJECT_SOURCE_DIR}/data/expected/input-bits.ids" "${IVS_INPUT_PROBE_GENERATOR}"
   COMMENT "Generating the controller probe table"
   VERBATIM)
-set(IVS_INPUT_TEST_SOURCES input/input_main.c input/input_single.c input/input_port.c machine/machine_standin.c)
+set(IVS_INPUT_TEST_SOURCES input/input_main.c input/input_single.c input/input_combo.c input/input_port.c machine/machine_standin.c)
 add_executable(ivs_tests_input ${IVS_INPUT_TEST_SOURCES} "${IVS_INPUT_PROBE_INC}")
 target_include_directories(ivs_tests_input PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/input"
   "${CMAKE_CURRENT_BINARY_DIR}")
