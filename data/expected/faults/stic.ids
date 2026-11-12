@@ -6,7 +6,14 @@
 STIC_FRAME_BY_MODULO stic.events.frame-index-is-state stic.events.frame-index-is-state|stic.events.idempotent stic.events.table-order
 # STIC_WINDOW_OFF_BY_ONE (core/src/stic/stic_events.c): an event is applied only when its tick is strictly below the
 # stamp, so a gate closes one tick late and an access at the close tick would still be served.
-STIC_WINDOW_OFF_BY_ONE stic.events.edges stic.events.|stic.reset.|stic.slice. stic.events.idempotent
+STIC_WINDOW_OFF_BY_ONE stic.events.edges stic.events.|stic.reset.|stic.slice.|stic.window. stic.events.idempotent
 # STIC_CATCHUP_LAGS_UNIT (core/src/machine/machine_run.c): the step seam catches the STIC up to the unit START instead of
 # the unit end, so the gates and the cursor lag one unit behind machine time.
 STIC_CATCHUP_LAGS_UNIT stic.slice.state-equal-at-every-unit-boundary stic.slice.|stic.reset. stic.events.table-order
+# STIC_ALIAS_NOT_HOOKED (core/src/machine/machine_bus.c): the STIC_ALIAS_READ hook class is treated as NONE, so a read of a
+# mode-select alias address ($4021, $8021, $C021), which the read view decodes to the cartridge, never reaches the STIC:
+# no mode switch inside the window and no blocked count outside it.
+STIC_ALIAS_NOT_HOOKED stic.alias.read-4021-switches-mode stic.alias. stic.mode.read-selects-cs
+# STIC_MODE_SWITCH_OUTSIDE_WINDOW (core/src/machine/machine_bus.c): the access effects (the display-enable strobe, the mode
+# selects) are applied even when the gate is closed, so a blocked access still changes the latch or the mode.
+STIC_MODE_SWITCH_OUTSIDE_WINDOW stic.mode.read-outside-window-no-effect stic.mode.|stic.alias.|stic.enable.|stic.window.|stic.blocked. stic.events.table-order

@@ -60,6 +60,7 @@ int main(int argc, char **argv)
 {
   ivs_test_suite suite;
   stic_add(ivs_stic_events_cases, ivs_stic_events_count);
+  stic_add(ivs_stic_access_cases, ivs_stic_access_count);
   if (stic_total > STIC_MAX_CASES) {
     fprintf(stderr, "stic: more than %u cases; raise STIC_MAX_CASES\n", STIC_MAX_CASES);
     return 1;

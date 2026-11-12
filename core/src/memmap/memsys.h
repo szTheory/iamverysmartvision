@@ -62,6 +62,17 @@
 #define IVS_MEMSYS_DEVICE_STIC14 7u /* plan 06-06: the 14-bit STIC register file, per-register masks (stic.regmap) */
 #define IVS_MEMSYS_DEVICE_KINDS 8u
 
+/* Hook classes (plan 06-06, D-04, D-05, A-07): one per 16-word granule and view, generated from the profile. The machine's
+ * bus wrapper hooks an access whose class is STIC_REGS, GMEM, BACKTAB or STIC_ALIAS_READ; PSG (1) is the class the wrapper
+ * already serves through its own write-view decode. STIC_ALIAS_READ exists in the read view only: the granules that hold a
+ * read-sensitive mode-select address outside the STIC register span, which the read view decodes to the cartridge. */
+#define IVS_MEMSYS_HOOK_NONE 0u
+#define IVS_MEMSYS_HOOK_PSG 1u
+#define IVS_MEMSYS_HOOK_STIC_REGS 2u
+#define IVS_MEMSYS_HOOK_GMEM 3u
+#define IVS_MEMSYS_HOOK_BACKTAB 4u
+#define IVS_MEMSYS_HOOK_STIC_ALIAS_READ 5u
+
 /* Gates (D-19): open after init; the internal setter closes them. */
 #define IVS_MEMSYS_GATE_NONE 0u
 #define IVS_MEMSYS_GATE_STIC_REGS 1u
@@ -231,6 +242,11 @@ void ivs_memsys_poke_raw_internal(ivs_memsys *m, uint16_t addr, uint16_t value);
  * window gives it, ignoring the gate: (stored & read mask) | (fill & ~read mask). 0xFFFF for idx at or above
  * IVS_MEMSYS_STIC_REGS. Pure (plan 06-06). */
 uint16_t ivs_memsys_stic_reg_read_internal(const ivs_memsys *m, uint32_t idx);
+
+/* The hook class of an access of kind IVS_ACC_* at addr: FETCH, READ and ADAR (the operand read of a direct-addressed
+ * instruction, which the memory system serves as a read) look in the read table, WRITE and DW in the write table, every
+ * other kind is NONE. O(1), pure, depends only on the profile (plan 06-06). */
+uint32_t ivs_memsys_hook_class_internal(const ivs_memsys *m, uint32_t kind, uint32_t addr);
 
 /* Decode introspection (A-05b). view is IVS_MEMSYS_VIEW_R or IVS_MEMSYS_VIEW_W. Returns IVS_OK,
  * or BAD_ARG for NULL out, a bad profile index or a bad view (out untouched). */

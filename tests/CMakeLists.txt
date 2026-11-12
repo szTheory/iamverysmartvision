@@ -252,7 +252,7 @@ set_tests_properties(psg PROPERTIES SKIP_RETURN_CODE 77)
 # the generated ivs_stic_params; the machine-path cases reuse the stand-in content of machine/machine_standin.c. ONE
 # source list feeds both the executable and ivs_fault_suite(stic ...) below (the psg precedent). Its named faults are
 # data/expected/faults/stic.ids, whose sites sit in core/src/stic and core/src/machine.
-set(IVS_STIC_TEST_SOURCES stic/stic_main.c stic/stic_events.c machine/machine_standin.c)
+set(IVS_STIC_TEST_SOURCES stic/stic_main.c stic/stic_events.c stic/stic_access.c stic/stic_progs.c machine/machine_standin.c)
 add_executable(ivs_tests_stic ${IVS_STIC_TEST_SOURCES})
 target_include_directories(ivs_tests_stic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/stic" "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(ivs_tests_stic PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)

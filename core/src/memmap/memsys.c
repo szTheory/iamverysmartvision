@@ -437,6 +437,22 @@ uint32_t ivs_memsys_psg_write_slot_internal(const ivs_memsys *m, uint16_t addr)
   return IVS_MEMSYS_NO_SLOT;
 }
 
+uint32_t ivs_memsys_hook_class_internal(const ivs_memsys *m, uint32_t kind, uint32_t addr)
+{
+  uint32_t g = (addr & 0xFFFFu) >> 4u;
+  switch (kind) {
+  case IVS_ACC_FETCH:
+  case IVS_ACC_READ:
+  case IVS_ACC_ADAR: /* the operand read of a direct-addressed instruction (cp1610.c, pdf 30): a read the memory system serves */
+    return ivs_mm_hook_rd[m->profile][g];
+  case IVS_ACC_WRITE:
+  case IVS_ACC_DW:
+    return ivs_mm_hook_wr[m->profile][g];
+  default:
+    return IVS_MEMSYS_HOOK_NONE;
+  }
+}
+
 uint16_t ivs_memsys_stic_reg_read_internal(const ivs_memsys *m, uint32_t idx)
 {
   const ivs_mm_device *d = &ivs_mm_devices[m->profile][IVS_MEMSYS_DEVICE_STIC14];

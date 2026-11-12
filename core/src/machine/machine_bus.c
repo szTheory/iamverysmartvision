@@ -22,6 +22,18 @@
  * ivs_memsys with no machine and no wrapper and must measure the same behaviour. The wait reply is
  * the memory system's, which is 0 for every kind (a test asserts it; the PSG time chain depends on
  * it, A-03).
+ * Plan 06-06 (D-04, D-05, D-06, A-07): an access whose hook class (ivs_memsys_hook_class_internal, generated from the
+ * profile) is STIC_REGS, GMEM, BACKTAB or STIC_ALIAS_READ is stamped (unit start + offset x ticks per CPU cycle +
+ * access_strobe_ticks), the STIC is caught up to the stamp (an event at the stamp is applied first: step first, then
+ * act), and then the gate decides: a closed gate means the access is BLOCKED (the memory system's own closed-gate path
+ * drops a write and returns the undriven fill for a read; here the saturating blocked counter of the access kind counts
+ * it and no effect is applied); an open gate applies the effects of stic.access_effects (the display-enable strobe sets
+ * the latch, a mode-select write sets Foreground/Background) before the memory system serves the access. A READ or FETCH
+ * whose ADDRESS is a member of stic.mode_select_addrs is a mode-select read, decided on the address before any decode: with
+ * the register gate open the mode becomes Color Stack, with it closed the access counts as a blocked read (policy C84, the
+ * STIC saw it and could not serve it); an access of class STIC_ALIAS_READ whose address is not a member is class NONE. The
+ * wrapper never alters a reply: the CPU receives what the memory system returns (the cartridge word or the undriven
+ * fill for the alias addresses). BACKTAB accesses catch up only. A context without params (c->stic NULL) is a bare wrapper.
  * The file holds no static or global state (D-07). */
 #include "common/ivs_prelude.h"
 
@@ -42,6 +54,40 @@ ivs_bus_reply ivs_machine_bus(void *ctx, const ivs_cp1610_access *a)
               (uint64_t)c->psg->write_strobe_ticks;
       ivs_psg_catch_up(c->psg, &c->m->psg, c->m->mem.psg_reg, &c->m->obs.audio, stamp, c->sink);
       slot = ivs_memsys_psg_write_slot_internal(&c->m->mem, a->addr);
+    }
+  }
+  if (c->stic != NULL) {
+    uint32_t cls = ivs_memsys_hook_class_internal(&c->m->mem, a->kind, a->addr);
+    uint32_t is_read = (a->kind == IVS_ACC_READ || a->kind == IVS_ACC_FETCH || a->kind == IVS_ACC_ADAR) ? 1u : 0u; /* ADAR: the operand read of a direct-addressed instruction (MVI $0021, R0) */
+    uint32_t is_write = (a->kind == IVS_ACC_WRITE || a->kind == IVS_ACC_DW) ? 1u : 0u;
+    uint32_t member = is_read != 0u ? ivs_stic_is_mode_select_addr(c->stic, a->addr) : 0u;
+#ifdef IVS_FAULT_STIC_ALIAS_NOT_HOOKED
+    if (cls == IVS_MEMSYS_HOOK_STIC_ALIAS_READ) {
+      cls = IVS_MEMSYS_HOOK_NONE; /* named fault: the alias read class is not hooked, a read of the alias never reaches the STIC */
+    }
+#endif
+    if (cls == IVS_MEMSYS_HOOK_STIC_ALIAS_READ && member == 0u) {
+      cls = IVS_MEMSYS_HOOK_NONE; /* a granule neighbour of a mode-select address: no effect, no count (A-07) */
+    }
+    if (cls == IVS_MEMSYS_HOOK_STIC_REGS || cls == IVS_MEMSYS_HOOK_GMEM || cls == IVS_MEMSYS_HOOK_BACKTAB ||
+        cls == IVS_MEMSYS_HOOK_STIC_ALIAS_READ) {
+      uint64_t at = c->unit_start_tick + (uint64_t)a->offset_cpu_cycles * (uint64_t)c->ticks_per_cpu_cycle +
+                    (uint64_t)c->stic->access_strobe_ticks;
+      ivs_stic_catch_up(c->stic, &c->m->stic, &c->m->mem, at, NULL);
+      if (cls != IVS_MEMSYS_HOOK_BACKTAB && (is_read != 0u || is_write != 0u)) {
+        uint32_t gate = cls == IVS_MEMSYS_HOOK_GMEM ? IVS_MEMSYS_GATE_GMEM : IVS_MEMSYS_GATE_STIC_REGS;
+        uint32_t open = c->m->mem.gate_open[gate];
+        if (open == 0u) {
+          ivs_stic_count_blocked(&c->m->stic, is_read);
+        }
+#ifdef IVS_FAULT_STIC_MODE_SWITCH_OUTSIDE_WINDOW
+        open = 1u; /* named fault: the effects are applied even when the gate is closed */
+#endif
+        if (open != 0u && cls != IVS_MEMSYS_HOOK_GMEM) {
+          ivs_stic_apply_effect(&c->m->stic,
+                                ivs_stic_effect(c->stic, is_read != 0u ? IVS_STIC_ACCESS_READ : IVS_STIC_ACCESS_WRITE, a->addr));
+        }
+      }
     }
   }
   reply = ivs_memsys_bus(&c->m->mem, a);

@@ -32,6 +32,7 @@ set(IVS_CORE_SOURCES
   src/psg/psg_tone.c
   src/stic/stic_events.c
   src/stic/stic_params.c
+  src/stic/stic_regs.c
   src/stic/stic_state.c
 )
 

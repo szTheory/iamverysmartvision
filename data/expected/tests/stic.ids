@@ -1,6 +1,7 @@
 # Suite stic: the STIC register file, the access windows, the display-enable handshake and the frame timeline (VID-01, plan 06-06).
 # Plan 06-06 task 2: the timeline family (stic.events.*, stic.reset.*, stic.slice.*); later tasks of the plan add the access, register,
 # hook, profile and judge families.
+# Plan 06-06 task 3: the access family (stic.alias.*, stic.window.*, stic.blocked.*, stic.enable.seq.*, stic.mode.*): the write and read aliases, the windows, the blocked policy and its counters, the display-enable handshake and the mode select, from stand-in guests and synthesized accesses through the bus wrapper.
 stic.events.table-order
 stic.events.edges
 stic.events.frame-index-is-state
@@ -8,3 +9,28 @@ stic.events.idempotent
 stic.events.latch-cleared-at-frame-start
 stic.reset.cursor
 stic.slice.state-equal-at-every-unit-boundary
+stic.alias.write-4000
+stic.alias.write-8000
+stic.alias.write-C000
+stic.alias.read-0040
+stic.alias.read-4021-switches-mode
+stic.alias.read-4021-returns-read-view-value
+stic.alias.read-4021-closed-gate-counts-blocked
+stic.alias.read-non-member-granule-neighbour-no-effect
+stic.window.applies-when-display-off
+stic.window.gmem-edges
+stic.blocked.reg-read
+stic.blocked.reg-write
+stic.blocked.gram-read
+stic.blocked.gram-write
+stic.blocked.grom-read
+stic.blocked.counters
+stic.enable.seq.strobe-in-window
+stic.enable.seq.strobe-outside-window-dropped
+stic.enable.seq.second-strobe
+stic.enable.seq.latch-cleared-at-frame-start
+stic.enable.seq.reset-clears
+stic.enable.seq.strobe-via-write-alias
+stic.mode.write-selects-fgbg
+stic.mode.read-selects-cs
+stic.mode.read-outside-window-no-effect

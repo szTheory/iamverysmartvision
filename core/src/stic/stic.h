@@ -73,4 +73,14 @@ typedef struct ivs_stic_sink ivs_stic_sink;
 void ivs_stic_catch_up(const ivs_stic_params *p, ivs_stic_state *s, ivs_memsys *mem, uint64_t to_tick,
                        ivs_stic_sink *sink);
 
+/* Access effects (stic_regs.c, plan 06-06; pure functions of the parameters, no address constant). access is
+ * IVS_STIC_ACCESS_READ (a READ or FETCH) or IVS_STIC_ACCESS_WRITE (a WRITE or DW); the result is an IVS_STIC_EFFECT_*.
+ * A read has an effect only when its address is in stic.mode_select_addrs (decided on the address before decode, A-07). */
+uint32_t ivs_stic_is_mode_select_addr(const ivs_stic_params *p, uint32_t addr);
+uint32_t ivs_stic_effect(const ivs_stic_params *p, uint32_t access, uint32_t addr);
+/* Applies an effect to the display latch or the mode of s; any other value does nothing. */
+void ivs_stic_apply_effect(ivs_stic_state *s, uint32_t effect);
+/* Counts one refused access (blocked_reads when is_read is nonzero, else blocked_writes), saturating at 0xFFFFFFFF. */
+void ivs_stic_count_blocked(ivs_stic_state *s, uint32_t is_read);
+
 #endif
