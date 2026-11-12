@@ -1,5 +1,7 @@
 # Hand derivation of the fixture `ivs-diag-ctrl-psg-1`
 
+From plan 05-11 on the derivation also lives in the header of `data/golden/diag-ctrl-psg-pass.expect`, which carries the asserted values; this document stays as the earlier record whose commit precedes the program.
+
 Plan 05-01 (D-24, V-06, V-07). This is the derivation of the second original diagnostic fixture, written before the fixture, the scenarios or any PSG code exists.
 It is documentation only (A-05): plan 05-11 builds the listing from it, moves the write list and the polled values into the header of `data/golden/diag-ctrl-psg-1.expect` and checks them against a dev report.
 Every value below is derived by hand from the controller literal `data/input/intv-2609-ntsc-family-p1.literal.txt`, the register-address literal `data/psg/intv-2609-ntsc-family-p1.regmap.literal.txt` and the CPU cycle table of `data/cp1610/opcode-families.json`; none comes from a generator, a profile field or a core output.

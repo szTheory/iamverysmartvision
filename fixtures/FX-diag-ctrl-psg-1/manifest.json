@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "id": "FX-diag-ctrl-psg-1",
+  "kind": "original-source",
+  "committed": true,
+  "path": "fixtures/FX-diag-ctrl-psg-1/diag-ctrl-psg-1.listing.txt",
+  "local_path": null,
+  "source": {
+    "origin": "project-authored diagnostic listing ivs-diag-ctrl-psg-1 (plan 05-11, D-24)",
+    "pin": null,
+    "accessed": null,
+    "holder": "project contributors"
+  },
+  "recipe": null,
+  "inputs": [],
+  "outputs": [
+    {
+      "path": "fixtures/FX-diag-ctrl-psg-1/diag-ctrl-psg-1.listing.txt",
+      "sha256": "1374b53374e9eec87f880cb257efc2b7c40de5aa1a7c64b720f6214813b4d5fa",
+      "size_bytes": 10992
+    }
+  ],
+  "licence": "MIT",
+  "licence_evidence": {
+    "url": "LICENSE",
+    "text_sha256": "aeb83b57ece8dbf61992ea3bd58952f17e30959787fc6c9f82451f17baa67c26",
+    "accessed": "2026-11-11"
+  },
+  "copyright": [
+    "Copyright (c) 2026 iamverysmartvision contributors"
+  ],
+  "notices": [],
+  "redistributable": "yes",
+  "allowed_use": [
+    "local-test",
+    "ci",
+    "repo"
+  ],
+  "rights_review": {
+    "status": "author-attested",
+    "by": "project contributors",
+    "date": "2026-11-11"
+  },
+  "derived_from": [],
+  "note": "project-authored diagnostic; built .ivsc lives only in the build tree; its identity hash is pinned by the golden. The listing is a hand-assembled annotated text listing (D-24, D4): every word is derived by hand from the manual pages it cites, with no assembler and nothing copied from another implementation. tools/pack builds the one-segment IVSC v1 container from it into build/<preset>/images/diag-ctrl-psg-1.ivsc; no container is committed. Its expected guest state and PSG write list are derived by hand in docs/input/diag-ctrl-psg-1-derivation.md (plan 05-01, committed before the program) and in data/golden/diag-ctrl-psg-pass.expect. No measured-hardware claim and no owner EXEC or GROM: the project boot stub only. Any edit of the listing refreshes the outputs entry (cmake -E sha256sum and size) in the same commit."
+}

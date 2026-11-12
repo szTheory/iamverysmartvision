@@ -9,6 +9,8 @@
 # The C include of the images for the in-process suites is generated in tests/CMakeLists.txt.
 # Plan 04-16 adds diag-cpu-1.ivsc (the first project-authored diagnostic, one IVSC v1 segment at
 # 5000, D-31) to ivs_images; its listing is fixtures/FX-diag-cpu-1/diag-cpu-1.listing.txt.
+# Plan 05-11 adds diag-ctrl-psg-1.ivsc (the second project-authored diagnostic, D-24; listing
+# fixtures/FX-diag-ctrl-psg-1/diag-ctrl-psg-1.listing.txt).
 
 set(IVS_PACK_SOURCES
   pack.c
@@ -42,7 +44,18 @@ add_custom_command(
   DEPENDS ivs_pack "${IVS_DIAG_CPU_1_LISTING}"
   COMMENT "Packing the diag-cpu-1 listing into the build tree"
   VERBATIM)
-add_custom_target(ivs_images ALL DEPENDS "${IVS_BOOT_STUB_EXEC}" "${IVS_DIAG_CPU_1_IVSC}")
+set(IVS_DIAG_CTRL_PSG_1_LISTING "${PROJECT_SOURCE_DIR}/fixtures/FX-diag-ctrl-psg-1/diag-ctrl-psg-1.listing.txt")
+set(IVS_DIAG_CTRL_PSG_1_IVSC "${IVS_IMAGES_DIR}/diag-ctrl-psg-1.ivsc")
+set(IVS_DIAG_CTRL_PSG_1_IVSC "${IVS_DIAG_CTRL_PSG_1_IVSC}" PARENT_SCOPE)
+
+add_custom_command(
+  OUTPUT "${IVS_DIAG_CTRL_PSG_1_IVSC}"
+  COMMAND "${CMAKE_COMMAND}" -E make_directory "${IVS_IMAGES_DIR}"
+  COMMAND ivs_pack --ivsc "${IVS_DIAG_CTRL_PSG_1_LISTING}" "${IVS_DIAG_CTRL_PSG_1_IVSC}"
+  DEPENDS ivs_pack "${IVS_DIAG_CTRL_PSG_1_LISTING}"
+  COMMENT "Packing the diag-ctrl-psg-1 listing into the build tree"
+  VERBATIM)
+add_custom_target(ivs_images ALL DEPENDS "${IVS_BOOT_STUB_EXEC}" "${IVS_DIAG_CPU_1_IVSC}" "${IVS_DIAG_CTRL_PSG_1_IVSC}")
 
 set(listed "")
 foreach(src IN LISTS IVS_PACK_SOURCES)

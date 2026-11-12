@@ -115,7 +115,23 @@ libasm cross-check (D-25, optional and never gating): not run, the tool is absen
 
 Plan 04-20 adds program mutants of this listing through `ivs_pack --patch` (for example `ADDI` to `SUBI` at `5007`, `BNZE` to `BZE` at `501E`, `PSHR` replaced at `5022`, `INCR` to `DECR` at `500B`); each must end as a guest failure that names the predicate clause it breaks.
 
+## ivs-diag-ctrl-psg-1
+
+The second project diagnostic (D-24): `fixtures/FX-diag-ctrl-psg-1/diag-ctrl-psg-1.listing.txt`, manifest `FX-diag-ctrl-psg-1`, one IVSC v1 segment of 89 words at `5000`-`5058` (limit 110), entered through the boot stub (contract 1) with R6 = `0340`.
+It uses no SDBD, no interrupt and no STIC, GROM or graphics RAM address, keeps every operand address below `0400` (one decle each) and has three sections:
+
+- S1, eleven PSG programming writes (`MVII #value,R0; MVO R0,$addr`) in the fixed order `$01F0`, `$01F4`, `$01F8`, `$01FB`, `$01F1`, `$01F5`, `$01FC`, `$01F9`, `$01F3`, `$01F7`, `$01FA`. The mixer value `$003E` keeps bits 6 and 7 clear so both ports stay inputs and a read of `$01FE` or `$01FF` returns the pins, not the stored latch.
+- S2, a poll loop that reads `$01FE` (port 0) and `$01FF` (port 1), keeps the low byte (`ANDI #$00FF`; the CP-1610 has no OR instruction), and stores a value that differs from the previous one at `[0210+k]` and `[0220+k]` through `MVO@` with R4 and R5, the only registers that auto-increment (`Fig. 3.2.1`, derivation section (g)); it stops when eight port 0 values are stored.
+- S3, a counted delay of 120 iterations, the end marker `[020F] = 03C5` written last, then `HLT` and three `TSTR R0` followers.
+
+The listing has four branches, each annotated `-> ADDR` for the branch-target rule above.
+The expected values were derived by hand in `docs/input/diag-ctrl-psg-1-derivation.md` (plan 05-01) before the listing existed, and move into the header of `data/golden/diag-ctrl-psg-pass.expect` with the scenario (A-05).
+Its program mutants are in `data/expected/diag-mutations-ctrl-psg.ids`.
+The diagnostic is state-only: no assertion depends on machine time, and its halt tick is regression information.
+No real EXEC, GROM or cartridge is involved, and nothing in this section is a statement about measured hardware.
+
 ## When a project assembler becomes worth writing
 
 Listings stay hand-assembled until one of these holds (D-25): more than 3 project diagnostics exist, a listing needs labels or macros, or a second author writes listings.
+Phase 7 re-examines the trigger: a third diagnostic, or any listing that needs labels or macros, is the point to weigh the project assembler (D-24); the second diagnostic above is still hand-assembled (D4).
 Then a small project-owned assembler written from the manual is the option to weigh; the asm/program pairs of the Phase 2 vectors are its ready test corpus.
