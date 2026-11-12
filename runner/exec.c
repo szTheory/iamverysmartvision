@@ -537,8 +537,11 @@ static void ex_run_steps(ex_state *x, const ivs_info *info)
         break;
       }
     }
-    if (stop == IVS_STOP_TARGET && limit < sr->target_ticks) {
-      /* The max_ticks ceiling cut this run-to short: a deterministic budget timeout. */
+    if (stop == IVS_STOP_TARGET && limit < sr->target_ticks && x->now < sr->target_ticks) {
+      /* The max_ticks ceiling cut this run-to short: a deterministic budget timeout. A last unit
+       * that straddled the ceiling and carried machine time to or past the target did not cut the
+       * run-to short: the machine is the one an uncapped run gives, so the step is judged as
+       * usual (review WR-01). */
       (void)snprintf(d, sizeof d, "budget step=%u line=%u max-ticks=%llu", (unsigned)(k + 1u), (unsigned)st->line,
                      (unsigned long long)x->max_ticks);
       ex_observe(x, IVS_RUNNER_OBS_TIMEOUT_BUDGET, d);

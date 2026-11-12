@@ -22,7 +22,7 @@ ivs-run [options] <scenario.ivss>
 | `--exec <file>` | a file | The operator's image for `content exec user`. |
 | `--grom <file>` | a file | The operator's image for `content grom user`. |
 | `--cart <file>` | a file | The operator's image for `content cart user`. |
-| `--max-ticks <n>` | 1 to 9223372036854775808 | Machine-time ceiling in master ticks (default 1099511627776, that is 2^40). A run-to cut short by it ends as timeout (budget). |
+| `--max-ticks <n>` | 1 to 9223372036854775808 | Machine-time ceiling in master ticks (default 1099511627776, that is 2^40). A run-to whose machine time stops below its bound because of the ceiling ends as timeout (budget); a last unit that reaches the bound anyway is not a timeout. |
 | `--wall-timeout-ms <n>` | 1 to 4294967295 | The host wall-time cap in milliseconds (default 30000). A scenario's `wall-timeout-ms` can only lower it. |
 | `--slice-ticks <n>` | 1 to 4194304 | Master ticks per slice (default 4194304, that is 1 << 22). |
 | `--self-signal-after-slices <n>` | 0 to 4294967295 | Test hook: raise SIGINT after slice n (0: before the first slice). |
@@ -105,7 +105,7 @@ Details (`outcome.detail`), the first one recorded for the winning outcome:
 `assert=<j> line=<n> <clause> got <actual>`;
 `stop step=<k> line=<n> expected=<t> got=<t>`;
 `budget step=<k> line=<n> expected=<t> got=target` (the bound reached where a halt or fault was expected);
-`budget step=<k> line=<n> max-ticks=<m>` (the `--max-ticks` ceiling cut the step short);
+`budget step=<k> line=<n> max-ticks=<m>` (the `--max-ticks` ceiling stopped machine time below the step's bound);
 `wall step=<k> cap-ms=<n>`;
 `signal step=<k>`;
 `missing role=<r> path=<rel>` or `... user`, `not-regular role=<r> ...`, `io-error role=<r> ...`;
@@ -133,7 +133,7 @@ Every run-to is executed as slices: `ivs_machine_run(target = min(limit, now + s
 The core keeps no state between calls, so any slicing gives the same machine as one call (API-02); the in-process suite checks that sliced reports equal the single-call report except `host.calls`.
 Before every slice the runner checks the cancel flag once, then the host monotonic timer once.
 
-- **Machine-time budget** (deterministic, may appear in goldens): the run-to bound reached where `stop halted` or `stop faulted` was expected, or the `--max-ticks` ceiling cutting a run-to short. Outcome timeout, detail `budget ...`.
+- **Machine-time budget** (deterministic, may appear in goldens): the run-to bound reached where `stop halted` or `stop faulted` was expected, or the `--max-ticks` ceiling cutting a run-to short. Outcome timeout, detail `budget ...`. The ceiling cuts a run-to short only when machine time stopped below the run-to bound: the last slice ends at the first unit boundary at or after the ceiling, and when that unit carries machine time to or past the bound the run-to completed, the machine equals the uncapped one and the step is judged as usual (its stop expectation and asserts), never as a budget timeout (review WR-01).
 - **Wall-time cap** (host-dependent, never in a golden): host time since the first step reached the cap (the operator's `--wall-timeout-ms`, default 30 s, lowered by a scenario's `wall-timeout-ms`). Outcome timeout, detail `wall step=<k> cap-ms=<n>`. It protects the host against an absurd bound in an untrusted scenario.
 - **Cancellation**: a handler installed with `signal()` for SIGINT and SIGTERM sets a `volatile sig_atomic_t` flag and does nothing else; the runner reads the flag between slices. Outcome cancelled, detail `signal step=<k>`. On hosts where `signal()` resets the handler, a second signal ends the process at once.
 

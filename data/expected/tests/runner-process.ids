@@ -23,6 +23,7 @@ runner-process.scenario.bad-syntax
 runner-process.scenario.unexpected-refusal
 runner-process.scenario.expect-load-refusal
 runner-process.scenario.diag-input-pass
+runner-process.scenario.max-ticks-straddle
 runner-process.mutant.ADDI-SUBI
 runner-process.mutant.BNZE-BZE
 runner-process.mutant.PSHR-MVOAT

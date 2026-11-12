@@ -11,6 +11,8 @@
  *   budget             `stop halted` expected and the bound reached: timeout (budget), exit 11,
  *                      the stop time as in one call
  *   max-ticks          the ceiling below the bound: timeout (budget, max-ticks=); above it: pass
+ *   max-ticks-straddle the ceiling inside the unit that reaches the bound: pass, the uncapped
+ *                      report (review WR-01); a ceiling below the bound's unit: budget
  *   wall               the fake clock passes the cap between slices: timeout (wall), exit 11,
  *                      never guest-fail
  *   wall-only-lowers   a scenario wall-timeout-ms above the operator cap is clamped, below it
@@ -384,6 +386,48 @@ static int tm_max_ticks(void)
   return IVS_TEST_PASS;
 }
 
+/* Review WR-01: run-to 100 ticks ends at the boundary 104 (the unit that straddles the bound).
+ * A ceiling of 99 sits inside that last unit: the slice to 99 ends at 104, machine time reached
+ * the bound, so the step completed and passes with the report of the uncapped run. A ceiling at
+ * or below the previous boundary stops machine time below 100: budget (the control). */
+static int tm_max_ticks_straddle(void)
+{
+  char text[TH_SCN_CAP];
+  char *ref = malloc(TH_OUT_CAP);
+  time_host h;
+  ivs_runner_options o;
+  ivs_runner_result res;
+  uint32_t out = 0u;
+  uint64_t before = 0u;
+  int ok;
+  IVS_CHECK(ref != NULL);
+  ok = th_scn(text, sizeof text, "", "run-to 100 ticks\nassert halted == no\n") &&
+       th_report(text, 64u, ref, TH_OUT_CAP, &out) && out == IVS_RUNNER_OUTCOME_PASS &&
+       th_is(ref, "step.1.now_ticks", "104");
+  if (ok) {
+    th_init(&h, 0);
+    th_opts(&o, 64u, 0u, 99u);
+    out = th_exec(text, &h, &o, &res);
+    ok = out == IVS_RUNNER_OUTCOME_PASS && res.exit_code == 0u && th_is(h.out, "outcome", "pass") &&
+         th_is(h.out, "step.1.now_ticks", "104") && th_is(h.out, "step.1.stop_reason", "target") &&
+         th_is(h.out, "step.1.assert.1", "pass halted == no got no") && th_same_but_calls(ref, h.out, "ceiling 99");
+    th_free(&h);
+  }
+  if (ok) {
+    /* The control: a ceiling of 1 stops at the first boundary, below the bound. */
+    th_init(&h, 0);
+    th_opts(&o, 64u, 0u, 1u);
+    out = th_exec(text, &h, &o, &res);
+    before = th_u64(h.out, "step.1.now_ticks");
+    ok = out == IVS_RUNNER_OUTCOME_TIMEOUT_BUDGET && res.exit_code == 11u &&
+         th_is(h.out, "outcome.detail", "budget step=1 line=7 max-ticks=1") && before >= 1u && before < 100u;
+    th_free(&h);
+  }
+  free(ref);
+  IVS_CHECK(ok);
+  return IVS_TEST_PASS;
+}
+
 /* Clock step 3 ms, cap 10 ms: the start reads 1003, the checks 1006, 1009, 1012, 1015 (wall at
  * the fourth check, elapsed 12 ms, after three slices). */
 static int tm_wall(void)
@@ -574,6 +618,7 @@ static const ivs_test_case time_cases[] = {
     {"runner.time.cancel-over-wall", tm_cancel_over_wall, NULL},
     {"runner.time.check-per-slice", tm_check_per_slice, NULL},
     {"runner.time.max-ticks", tm_max_ticks, NULL},
+    {"runner.time.max-ticks-straddle", tm_max_ticks_straddle, NULL},
     {"runner.time.no-clock", tm_no_clock, NULL},
     {"runner.time.options-refused", tm_options_refused, NULL},
     {"runner.time.slice-sizes-equal", tm_slice_sizes_equal, NULL},

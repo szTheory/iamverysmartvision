@@ -147,6 +147,7 @@ runner.time.cancel
 runner.time.cancel-over-wall
 runner.time.check-per-slice
 runner.time.max-ticks
+runner.time.max-ticks-straddle
 runner.time.no-clock
 runner.time.options-refused
 runner.time.slice-sizes-equal

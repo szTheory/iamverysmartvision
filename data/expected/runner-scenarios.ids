@@ -21,3 +21,4 @@ bad-syntax 14 harness-fail deterministic run -
 unexpected-refusal 14 harness-fail deterministic run -
 expect-load-refusal 0 pass deterministic run -
 diag-input-pass 0 pass deterministic run -
+max-ticks-straddle 0 pass deterministic run --max-ticks,99
