@@ -18,7 +18,8 @@
  * Layout: 76 bytes of header, then 113,152 bytes of backing (sysram, scratchpad, gram, exec,
  * grom, cart, each u16), then (plan 05-03, D-04) the guest-visible PSG words: 16 registers of
  * 16 bits (32 bytes), the two port pull-down masks (2 bytes) and an explicit 2-byte pad: 113,264
- * bytes in all, divisible by 8. Since plan 05-04 the PSG region ($01F0-$01FF) is the real device
+ * bytes in all, divisible by 8; plan 06-05 (D-04, D-16) appends the 64 STIC register words (128
+ * bytes), 113,392 bytes in all, divisible by 16. Since plan 05-04 the PSG region ($01F0-$01FF) is the real device
  * kind psg8: a read gives the register store under the profile's read mask (psg.regmap) with
  * bits 15..8 zero, a store keeps value & the write mask, through ivs_psg_reg_load and
  * ivs_psg_reg_store (psg/psg.h). */
@@ -41,6 +42,7 @@
 #define IVS_MEMSYS_PSG_WORDS 16u /* PSG register words: the backing of the psg region (plan 05-04) */
 #define IVS_MEMSYS_PSG_REGS IVS_MEMSYS_PSG_WORDS
 #define IVS_MEMSYS_PSG_PORTS 2u /* PSG I/O ports: R14 = port 0, R15 = port 1 (D-04) */
+#define IVS_MEMSYS_STIC_REGS 64u /* STIC register words $0000..$003F (plan 06-05, D-04; machine.h ties it to IVS_STIC_REG_COUNT) */
 #define IVS_MEMSYS_EXEC_BYTES 8192u /* raw EXEC image: 4096 big-endian words (D-26) */
 #define IVS_MEMSYS_GROM_BYTES 2048u /* raw GROM image (D-26) */
 #define IVS_MEMSYS_PROFILE_ID_CAP 64u
@@ -108,9 +110,15 @@ typedef struct ivs_memsys {
   uint16_t psg_reg[IVS_MEMSYS_PSG_REGS];
   uint8_t port_pulldown[IVS_MEMSYS_PSG_PORTS]; /* low-driven pin masks of the two ports */
   uint8_t psg_reserved[2];                     /* 0: pad to 4 bytes, no implicit hole */
+  /* Plan 06-05 (D-04, D-16): the guest-visible STIC register file, words $0000..$003F, MEM digest rows.
+   * Zero at create and after a power-on reset (the profile's registers record is "zero"); the 24 reserved
+   * slots stay 0 for good. Nothing reads or writes it until the device plan (06-06). */
+  uint16_t stic_reg[IVS_MEMSYS_STIC_REGS];
 } ivs_memsys;
 
-_Static_assert(sizeof(ivs_memsys) == 113264u, "ivs_memsys must be 113,264 bytes (machine.h layout)");
+/* 113,264 (Phase 5) + 64 x 2 = 113,392, a multiple of 16 (7,087 x 16): psg_reserved ends 4-aligned, so the
+ * u16 array follows with no hole and nothing trails it. */
+_Static_assert(sizeof(ivs_memsys) == 113392u, "ivs_memsys must be 113,392 bytes (machine.h layout)");
 
 /* A system-image slot descriptor (D-24, D-26): units of unit_bits each, loaded at base. */
 typedef struct ivs_slot_desc {

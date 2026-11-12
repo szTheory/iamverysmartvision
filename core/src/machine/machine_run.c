@@ -59,6 +59,11 @@ static void ivs_run_power_on(struct ivs_machine *im)
 #ifndef IVS_FAULT_PSG_STATE_NOT_RESET_ON_POWER_ON
   ivs_psg_state_reset(ivs_psg_params_get(im->profile), &im->psg); /* named fault PSG_STATE_NOT_RESET_ON_POWER_ON skips the call */
 #endif
+  /* Plan 06-05 (D-04, D-06, D-16): the STIC register file is zero (the profile's power-on registers
+   * record) and the device state starts at its power-on record: counters, frame_index, event_index and
+   * the color-stack pointer 0, the row latches 0, mode and display latch from the profile. */
+  memset(im->mem.stic_reg, 0, sizeof im->mem.stic_reg);
+  ivs_stic_state_reset(&im->stic, ivs_stic_params_get(im->profile));
   ivs_memsys_set_gate_internal(&im->mem, IVS_MEMSYS_GATE_STIC_REGS, 1u);
   ivs_memsys_set_gate_internal(&im->mem, IVS_MEMSYS_GATE_GMEM, 1u);
   (void)ivs_cp1610_reset(&im->cpu);

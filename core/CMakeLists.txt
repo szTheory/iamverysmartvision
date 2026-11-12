@@ -31,6 +31,7 @@ set(IVS_CORE_SOURCES
   src/psg/psg_state.c
   src/psg/psg_tone.c
   src/stic/stic_params.c
+  src/stic/stic_state.c
 )
 
 # Generated core include (D-16, H2 a, plan 03-04): the memory map, device records and profile

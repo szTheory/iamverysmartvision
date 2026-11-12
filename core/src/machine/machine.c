@@ -260,6 +260,7 @@ ivs_status ivs_machine_create(const ivs_create_options *opts, void *storage, siz
   im->phase = IVS_PHASE_OFF;
   im->time_ticks = 0u;
   (void)ivs_memsys_init(&im->mem, index);
+  ivs_stic_state_reset(&im->stic, ivs_stic_params_get(index)); /* plan 06-05: a row exists, the profile is covered */
   ivs_input_init(&im->obs.input); /* the input log starts at h0 (plan 04-11, D-15) */
   for (i = 0u; i < IVS_SLOT_COUNT; i++) {
     im->slot[i].kind = i + 1u;

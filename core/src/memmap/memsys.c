@@ -74,7 +74,7 @@ int ivs_memsys_init(ivs_memsys *m, uint32_t profile)
   if (m == NULL || profile >= IVS_MM_PROFILE_COUNT || profile >= ivs_psg_params_count()) {
     return IVS_E_BAD_ARG;
   }
-  memset(m, 0, sizeof *m);
+  memset(m, 0, sizeof *m); /* also zeroes psg_reg, the pull-down masks and stic_reg (plan 06-05) */
   m->profile = profile;
   m->gate_open[IVS_MEMSYS_GATE_NONE] = 1u;
   m->gate_open[IVS_MEMSYS_GATE_STIC_REGS] = 1u;
