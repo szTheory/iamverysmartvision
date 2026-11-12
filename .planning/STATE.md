@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 current_phase: 6
 current_phase_name: STIC Video First Pass
-current_plan: 5
+current_plan: 6
 status: executing
-stopped_at: Completed 06-04-PLAN.md
-last_updated: "2026-11-12T20:55:57.859Z"
+stopped_at: Completed 06-05-PLAN.md
+last_updated: "2026-11-12T21:32:21.154Z"
 last_activity: 2026-11-12
 last_activity_desc: Phase 5 complete, transitioned to Phase 6
-state_head: 7456369c338ac852531652b70488050ab2dca6f0
+state_head: 97627d21abd0308edb1b975176238deaf48d90a6
 progress:
   total_phases: 8
   completed_phases: 5
   total_plans: 97
-  completed_plans: 87
+  completed_plans: 88
   percent: 63
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 6 (STIC Video First Pass) — EXECUTING
-Current Plan: 5
+Current Plan: 6
 Total Plans in Phase: 14
 Status: Ready to execute
 Last activity: 2026-11-12 — Phase 5 complete, transitioned to Phase 6
@@ -145,6 +145,7 @@ Progress: [██████░░░░] 63%
 | Phase 6 P02 | 2h | 3 tasks | 2 files |
 | Phase 06 P03 | 3h | 3 tasks | 22 files |
 | Phase 06 P04 | about 4 hours | 4 tasks | 24 files |
+| Phase 6 P05 | 3h | 4 tasks | 24 files |
 
 ## Accumulated Context
 
@@ -336,6 +337,7 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 6]: 06-02: -g0 on fault-only targets applied (paired cold fault build minus 35.6 container cpu-s, about 18 hosted, no evidence change); r = cpu_s / build_s recorded beside raw triggers (budget 7.8, revisit above 8.3)
 - [Phase 06]: 06-03: v3 report and v4 info tails are zeroed locals copied min(struct_size, sizeof); IVS_RUN_F_STOP_ON_FRAME stays refused until 06-09
 - [Phase 06]: 06-04: STIC window, interrupt and hold figures tagged tier4-community per the timing-notes evidence table; first_start, fetch_offset and policies stay unknown-default-chosen
+- [Phase 6]: 06-05: STIC storage joins the instance (stic_reg[64] in MEM, 528-byte ivs_stic_state in INSTANCE, 12 row latches); composite version 3 with the v2 literals recorded first (21b1ad5); IVS_MACHINE_BYTES 114416; goldens moved only on digest.mem, digest.instance and digest.composite, digest.cpu and digest.images equal v2
 
 ### Pending Todos
 
@@ -368,6 +370,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-12T20:55:57.268Z
-Stopped at: Completed 06-04-PLAN.md
+Last session: 2026-11-12T21:32:20.900Z
+Stopped at: Completed 06-05-PLAN.md
 Resume file: None
