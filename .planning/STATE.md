@@ -2,17 +2,17 @@
 gsd_state_version: "1.0"
 current_phase: 5
 current_phase_name: Hand Controllers and PSG Sound
-status: executing
-stopped_at: Completed 05-11-PLAN.md
-last_updated: "2026-11-12T13:24:21.684Z"
+status: verifying
+stopped_at: Completed 05-12-PLAN.md
+last_updated: "2026-11-12T14:19:38.202Z"
 last_activity: 2026-11-12
 last_activity_desc: Phase 4 complete, transitioned to Phase 5
-state_head: 689c12aa44dea8c53bebaea2a428067376a158d6
+state_head: d03719c40c601c1ff39fa4538c27ca9e95bc5444
 progress:
   total_phases: 8
   completed_phases: 4
   total_plans: 83
-  completed_plans: 82
+  completed_plans: 83
   percent: 50
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 
 Phase: 5 (Hand Controllers and PSG Sound) — EXECUTING
 Plan: 12 of 12
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-11-12 — Completed 05-01 (oracle-first: sources, controller literal, PSG rules and vectors, D10 inventory)
 
 Progress: [█████░░░░░] 50%
@@ -137,6 +137,7 @@ Progress: [█████░░░░░] 50%
 | Phase 5 P09 | 3h | 5 tasks | 54 files |
 | Phase 5 P10 | 4h | 5 tasks | 56 files |
 | Phase 05 P11 | 40min | 5 tasks | 44 files |
+| Phase 05 P12 | 55min | 4 tasks | 30 files |
 
 ## Accumulated Context
 
@@ -322,6 +323,7 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 5]: 05-09: operator raw outputs are vtable hooks plus options (--audio-raw, --psg-log-out, --audio-out-max-bytes), created exclusively in hostio.c; a capture or stream assert without output buffers is a harness failure
 - [Phase 05]: 05-11: fixture pointers use R4 and R5 (only they auto-increment); derivation corrected in dated section (g), original text kept
 - [Phase 05]: 05-11: .refpcm golden written from a runner report by a documented recipe; golden step compares it with dev and release refpcm reports
+- [Phase 05]: 05-12: C73 text aligned to the profile tag unknown-default-chosen; the D-22 listening check recorded as deferred (no listenable tone), not handed off; AUD-01 confirmed complete with the C11 caveat
 
 ### Pending Todos
 
@@ -354,6 +356,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-12T13:24:21.477Z
-Stopped at: Completed 05-11-PLAN.md
+Last session: 2026-11-12T14:19:37.955Z
+Stopped at: Completed 05-12-PLAN.md
 Resume file: None
