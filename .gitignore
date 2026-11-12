@@ -16,6 +16,9 @@
 *.ivsc
 # Rendered audio (plan 05-10, D-21, T-05-26): derived audio of rights-bearing content must not be committed.
 *.wav
+# Raw and operator-side video output (plan 06-01): derived frames of rights-bearing content must not be committed.
+*.ppm
+*.vraw
 
 # Secrets and local environment.
 .env
