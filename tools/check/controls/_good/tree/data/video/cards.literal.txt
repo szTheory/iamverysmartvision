@@ -1,0 +1,82 @@
+# Literal BACKTAB bit roles of the four word variants of profile intv-2609-ntsc-family-p1 (D-18; C96, C98, C103; plan 06-01).
+#
+# Claim tier: tier4-community, one lineage. This file is a transcription of the five word-format figures of the community wiki STIC page
+# (SRC-intv-wiki, STIC-oldid-15008: the Foreground/Background word, the general Color Stack word, the Color Stack word for graphics
+# ROM cards, the Color Stack word for graphics RAM cards and the Colored Squares word), read as images in plan 06-01; the manufacturer pages
+# print only that graphics use the low 14 bits of a word (SRC-gi-1980-catalog pdf 199). It is never derived from, generated from or edited
+# to match the core. A pass of the video step shows the file is complete, not that the layout is right.
+#
+# Variants: fgbg (mode Foreground/Background), cs-grom (Color Stack, select bit 11 = 0 and bit 12 = 0), cs-gram (Color Stack, select bit 11
+# = 1, bit 12 is foreground bit 3) and cs-sq (Color Stack, bit 12 = 1 and bit 11 = 0, Colored Squares).
+# Row grammar (one row per line, single spaces): <variant> <bit 15..0> <role> then the source key (src, an equals sign,
+# <SRC-id>@<locator>), tag=tier4-community and conf=C<n>. Sixty-four rows: each variant has the sixteen bits 15 down to 0 once.
+# Roles: ign (ignored by the STIC), fgN and bgN (foreground and background color bit N), cardN (card number bit N), sel (graphics ROM
+# 0 or RAM 1), adv (advance the color stack), fg3 (foreground bit 3 in the graphics RAM word), fixed0 and fixed1 (a bit that must be 0 or 1
+# to stay in the variant), sqXcK (bit K of the color of square X; squares are numbered 0 top left, 1 top right, 2 bottom left, 3 bottom right).
+# Open reading (C98): the figure labels the two low bits of the color of square 3 at word bits 10 and 9 as 'Bits 0-1' where the
+# Foreground/Background figure writes 'Bits 1 - 0'; the order below (bit 10 is color bit 1, bit 9 is color bit 0) is the natural reading
+# and the swapped order is the recorded alternative. No Phase 6 frame uses Colored Squares.
+fgbg 15 ign src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+fgbg 14 ign src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+fgbg 13 bg2 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+fgbg 12 bg3 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+fgbg 11 sel src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+fgbg 10 bg1 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+fgbg 9 bg0 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+fgbg 8 card5 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+fgbg 7 card4 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+fgbg 6 card3 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+fgbg 5 card2 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+fgbg 4 card1 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+fgbg 3 card0 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+fgbg 2 fg2 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+fgbg 1 fg1 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+fgbg 0 fg0 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+cs-grom 15 ign src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+cs-grom 14 ign src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+cs-grom 13 adv src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+cs-grom 12 fixed0 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+cs-grom 11 sel src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+cs-grom 10 card7 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+cs-grom 9 card6 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+cs-grom 8 card5 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+cs-grom 7 card4 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+cs-grom 6 card3 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+cs-grom 5 card2 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+cs-grom 4 card1 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+cs-grom 3 card0 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+cs-grom 2 fg2 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+cs-grom 1 fg1 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+cs-grom 0 fg0 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+cs-gram 15 ign src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+cs-gram 14 ign src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+cs-gram 13 adv src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+cs-gram 12 fg3 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+cs-gram 11 sel src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+cs-gram 10 ign src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+cs-gram 9 ign src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+cs-gram 8 card5 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+cs-gram 7 card4 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+cs-gram 6 card3 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+cs-gram 5 card2 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+cs-gram 4 card1 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+cs-gram 3 card0 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+cs-gram 2 fg2 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+cs-gram 1 fg1 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+cs-gram 0 fg0 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C96
+cs-sq 15 ign src=SRC-bsr-2609@toy-page tag=tier4-community conf=C98
+cs-sq 14 ign src=SRC-bsr-2609@toy-page tag=tier4-community conf=C98
+cs-sq 13 sq3c2 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C98
+cs-sq 12 fixed1 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C98
+cs-sq 11 fixed0 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C98
+cs-sq 10 sq3c1 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C98
+cs-sq 9 sq3c0 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C98
+cs-sq 8 sq2c2 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C98
+cs-sq 7 sq2c1 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C98
+cs-sq 6 sq2c0 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C98
+cs-sq 5 sq1c2 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C98
+cs-sq 4 sq1c1 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C98
+cs-sq 3 sq1c0 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C98
+cs-sq 2 sq0c2 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C98
+cs-sq 1 sq0c1 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C98
+cs-sq 0 sq0c0 src=SRC-bsr-2609@toy-page tag=tier4-community conf=C98

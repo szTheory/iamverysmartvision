@@ -2,3 +2,9 @@
 video-verdict-key-missing
 video-regmap-row-count
 video-rule-no-test
+video-frame-dimension
+video-frame-symbol
+video-frame-tier-missing
+video-frame-popcount
+video-frame-hash-drift
+video-frame-unregistered
