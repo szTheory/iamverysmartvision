@@ -1,0 +1,35 @@
+# Scenario diag-input-pass (plan 04-20, D-14, D-20): outcome pass, exit 0. The original diagnostic
+# with a two-event input schedule across two run-to steps: controller 0 reads KEY_1 from tick 400
+# and nothing again from tick 1200, both before the halt (about tick 2084), so both events are
+# consumed. The diagnostic does not read the controllers; the events show in the input domain.
+# The installed consumer of plan 04-23 replays exactly this.
+ivss 1
+id diag-input-pass
+profile intv-2609-ntsc-family-p1
+content exec boot-stub
+content grom zero-grom
+content cart diag-cpu-1.ivsc
+input at_tick=400 c0=KEY_1 c1=0x0
+input at_tick=1200 c0=0x0 c1=0x0
+run-to 1000 ticks
+assert halted == no
+assert mem 0200 == 7FFF
+run-to 16000 ticks stop halted
+assert halted == yes
+assert reg R0 == 03C5
+assert reg R1 == 8080
+assert reg R2 == 0000
+assert reg R3 == 0037
+assert reg R4 == 0201
+assert reg R5 == 0037
+assert reg R6 == 0340
+assert mem 0200 == 7FFF
+assert mem 0201 == 8080
+assert mem 0202 == A0A0
+assert mem 0203 == 7070
+assert mem 0204 == 0037
+assert mem 0205 == 0037
+assert mem 0206 == 0340
+assert mem 0207 == 0201
+assert mem 0208 == 7FFF
+assert mem 020F == 03C5

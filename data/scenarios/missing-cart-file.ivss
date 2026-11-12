@@ -1,0 +1,11 @@
+# Scenario missing-cart-file (plan 04-20, D-20): outcome missing-fixture, exit 13. The cartridge
+# path names no file in the content directory.
+# expect-detail: missing role=cart path=absent-cart.ivsc
+ivss 1
+id missing-cart-file
+profile intv-2609-ntsc-family-p1
+content exec boot-stub
+content grom zero-grom
+content cart absent-cart.ivsc
+run-to 4000 cpu-cycles stop halted
+assert halted == yes

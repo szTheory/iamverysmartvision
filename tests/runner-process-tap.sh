@@ -56,12 +56,19 @@ if [ -n "${IVS_TEST_OUT_DIR:-}" ]; then
   mkdir -p "$rep_dir" || { printf '# cannot create %s\n' "$rep_dir" >&2; exit 1; }
 fi
 
-# The content dir: copies of the build-tree images.
+# The content dir: copies of the build-tree images, plus diag-cpu-1-truncated.ivsc, the diagnostic
+# container built here by ivs_pack and cut before its 32-byte trailer (POSIX dd).
+listing="$root/fixtures/FX-diag-cpu-1/diag-cpu-1.listing.txt"
 content="$tmp/content"
-mkdir "$content" "$tmp/runs" || exit 1
+mkdir "$content" "$tmp/runs" "$tmp/build" || exit 1
 for f in boot-stub.exec diag-cpu-1.ivsc; do
   cp "$images/$f" "$content/$f" || { printf 'runner-process-tap: no image %s/%s\n' "$images" "$f" >&2; exit 1; }
 done
+"$pack" --ivsc "$listing" "$tmp/build/full.ivsc" 2> "$tmp/build/pack.err" \
+  || { cat "$tmp/build/pack.err" >&2; printf 'runner-process-tap: ivs_pack --ivsc failed\n' >&2; exit 1; }
+size=$(wc -c < "$tmp/build/full.ivsc" | tr -d ' ')
+[ "$size" -gt 32 ] || { printf 'runner-process-tap: container of %s bytes\n' "$size" >&2; exit 1; }
+dd if="$tmp/build/full.ivsc" of="$content/diag-cpu-1-truncated.ivsc" bs=1 count=$((size - 32)) 2> /dev/null || exit 1
 
 # run_one <cwd> <name> <command...>: runs the command in <cwd> with stdin /dev/null, stdout in
 # $tmp/runs/<name>.out and stderr in $tmp/runs/<name>.err; sets rc to its exit status and hung to
@@ -207,6 +214,84 @@ while read -r id x oc class skip args rest; do
     result "runner-process.scenario.$id"
   fi
 done < "$inv"
+
+# Program mutations (D-32): per line `<ID> <addr> <word> <clause>` of
+# data/expected/diag-mutations.ids, the diagnostic patched at <addr> (whose listing row must be
+# the <from> of <from>-<to>) must end guest-fail naming <clause>.
+muts="$root/data/expected/diag-mutations.ids"
+while read -r mid addr word clause; do
+  case $mid in '' | '#'*) continue ;; esac
+  ok=1
+  : > "$tmp/why"
+  from=${mid%%-*}
+  # The ROW field follows the HEX4 word and the BITS groups (10 binary digits in total).
+  row=$(awk -v a="$addr" '!/^#/ && $1 == a { d = 0; i = 3; while (d < 10 && i <= NF) { d += length($i); i++ } print $i; exit }' "$listing")
+  md="$tmp/mut-$mid"
+  if [ -z "$clause" ]; then
+    ok=0; why inventory "not <ID> <addr> <word> <clause>"
+  elif [ "$row" != "$from" ]; then
+    ok=0; why listing "row at $addr is '$row', expected '$from'"
+  elif ! mkdir "$md" || ! cp "$content/boot-stub.exec" "$md/boot-stub.exec"; then
+    ok=0; why temp "cannot prepare $md"
+  elif ! "$pack" --ivsc "$listing" "$md/diag-cpu-1.ivsc" --patch "$addr=$word" > "$tmp/why.pack" 2>&1; then
+    ok=0; why pack "ivs_pack --patch $addr=$word failed: $(cat "$tmp/why.pack")"
+  elif cmp -s "$md/diag-cpu-1.ivsc" "$content/diag-cpu-1.ivsc"; then
+    ok=0; why pack "the patch $addr=$word leaves the container unchanged"
+  else
+    run_one "$tmp" "mut-$mid" "$ivs_run" --content-dir "$md" "$scen/diag-boot-pass.ivss"
+    judge "mut-$mid" 10 guest-fail "assert=* line=* $clause got *" "" || ok=0
+  fi
+  result "runner-process.mutant.$mid"
+done < "$muts"
+
+# body <report> <out>: the report without its host.calls line (the one host-dependent key).
+body() { grep -v '^host\.calls ' "$1" > "$2"; }
+# same_body <name> <reference report>: run <name>'s report equals the reference apart from
+# host.calls; records a body-differs finding otherwise.
+same_body() {
+  if [ ! -s "$2" ]; then
+    why body-differs "no reference report"
+    return 1
+  fi
+  body "$tmp/runs/$1.out" "$tmp/a.body"
+  body "$2" "$tmp/b.body"
+  if ! cmp -s "$tmp/a.body" "$tmp/b.body"; then
+    why body-differs "run $1 differs from the reference report (< run, > reference):"
+    diff "$tmp/a.body" "$tmp/b.body" | sed -n '1,12p' >> "$tmp/why"
+    return 1
+  fi
+  return 0
+}
+
+# Determinism (D-23, Pitfall 11): a second run, slice sizes 1 and 7, and a run from another
+# working directory all equal the scenario case's report apart from host.calls.
+for id in diag-boot-pass diag-input-pass; do
+  ref="$tmp/runs/scen-$id.out"
+  : > "$tmp/why"
+  ok=1
+  run_one "$tmp" "rep-$id" "$ivs_run" --content-dir "$content" "$scen/$id.ivss"
+  judge "rep-$id" 0 pass - "" || ok=0
+  same_body "rep-$id" "$ref" || ok=0
+  result "runner-process.repeat.$id"
+  ok=1
+  : > "$tmp/all.why"
+  for s in 1 7; do
+    run_one "$tmp" "sl$s-$id" "$ivs_run" --content-dir "$content" --slice-ticks "$s" "$scen/$id.ivss"
+    judge "sl$s-$id" 0 pass - "" || ok=0
+    cat "$tmp/why" >> "$tmp/all.why"
+    : > "$tmp/why"
+    same_body "sl$s-$id" "$ref" || ok=0
+    cat "$tmp/why" >> "$tmp/all.why"
+  done
+  cp "$tmp/all.why" "$tmp/why"
+  result "runner-process.slices.$id"
+done
+mkdir "$tmp/elsewhere" || exit 1
+ok=1
+run_one "$tmp/elsewhere" cwd "$ivs_run" --content-dir "$content" "$scen/diag-boot-pass.ivss"
+judge cwd 0 pass - "" || ok=0
+same_body cwd "$tmp/runs/scen-diag-boot-pass.out" || ok=0
+result runner-process.cwd
 
 {
   printf '# suite=%s nonce=%s\n' "$suite" "$nonce"

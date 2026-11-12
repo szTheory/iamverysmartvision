@@ -1,0 +1,11 @@
+# Scenario timeout-wall (plan 04-20, D-21): outcome timeout, exit 11, detail wall; host-dependent.
+# The boot stub alone (no cartridge: the CPU never halts) with a bound of 10^12 master ticks;
+# run with --wall-timeout-ms 1 --slice-ticks 4 it can only end by the wall cap, and how far the
+# machine got depends on the host, so its report is never golden.
+# expect-detail: wall step=1 cap-ms=1
+ivss 1
+id timeout-wall
+profile intv-2609-ntsc-family-p1
+content exec boot-stub
+content grom zero-grom
+run-to 1000000000000 ticks

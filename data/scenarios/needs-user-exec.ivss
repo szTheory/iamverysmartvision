@@ -1,0 +1,13 @@
+# Scenario needs-user-exec (plan 04-20, D-20, D-22): outcome missing-fixture, exit 13, skip-ok. It
+# asks for the operator's EXEC image (`content exec user`), which the gate never passes (--exec),
+# so in the gate it ends missing-fixture and the suite reports a visible skip. No image of an
+# operator is named or pinned here.
+# expect-detail: missing role=exec user
+ivss 1
+id needs-user-exec
+profile intv-2609-ntsc-family-p1
+content exec user
+content grom zero-grom
+content cart diag-cpu-1.ivsc
+run-to 4000 cpu-cycles stop halted
+assert halted == yes

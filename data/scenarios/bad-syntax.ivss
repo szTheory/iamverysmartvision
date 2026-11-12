@@ -1,0 +1,9 @@
+# Scenario bad-syntax (plan 04-20, D-20, D-22): outcome harness-fail, exit 14. An unknown
+# directive: the parser refuses the file, so ivs-run prints no report and one line on stderr.
+# expect-stderr: scenario-syntax line=9 reason=unknown-directive
+ivss 1
+id bad-syntax
+profile intv-2609-ntsc-family-p1
+content exec boot-stub
+content grom zero-grom
+run-for 100 ticks
