@@ -66,6 +66,11 @@ ivs_bus_reply ivs_machine_bus(void *ctx, const ivs_cp1610_access *a)
       cls = IVS_MEMSYS_HOOK_NONE; /* named fault: the alias read class is not hooked, a read of the alias never reaches the STIC */
     }
 #endif
+#ifdef IVS_FAULT_STIC_BACKTAB_WRITE_NOT_HOOKED
+    if (cls == IVS_MEMSYS_HOOK_BACKTAB) {
+      cls = IVS_MEMSYS_HOOK_NONE; /* named fault: a BACKTAB access is not caught up first, so a store sees the row latch of the unit end */
+    }
+#endif
     if (cls == IVS_MEMSYS_HOOK_STIC_ALIAS_READ && member == 0u) {
       cls = IVS_MEMSYS_HOOK_NONE; /* a granule neighbour of a mode-select address: no effect, no count (A-07) */
     }

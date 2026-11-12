@@ -238,6 +238,10 @@ void ivs_memsys_set_port_pulldown_internal(ivs_memsys *m, uint32_t port, uint32_
  * then write view; the cartridge span stores at addr - span lo). No backing: nothing happens. */
 void ivs_memsys_poke_raw_internal(ivs_memsys *m, uint16_t addr, uint16_t value);
 
+/* The STIC's own view of one background memory word (plan 06-08, D-11): word i of BACKTAB is system RAM word $0200 + i for i below
+ * 240, read from the backing store with no gate, no fill and no access record (never the CPU view). Any other index gives 0. */
+uint16_t ivs_memsys_stic_backtab_word_internal(const ivs_memsys *m, uint32_t i);
+
 /* The hook class of an access of kind IVS_ACC_* at addr: FETCH, READ and ADAR (the operand read of a direct-addressed
  * instruction, which the memory system serves as a read) look in the read table, WRITE and DW in the write table, every
  * other kind is NONE. O(1), pure, depends only on the profile (plan 06-06). */

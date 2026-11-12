@@ -4,7 +4,8 @@
  * accepts anything is caught.
  *   stic.judge.register-row-changed  the literal-table check on a copy with one write mask flipped
  *   stic.judge.window-edge-moved     the edge check against an expected edge moved by one tick
- *   stic.judge.blocked-write-applied the blocked-write check on a stand-in that applies a write the window blocked */
+ *   stic.judge.blocked-write-applied the blocked-write check on a stand-in that applies a write the window blocked
+ *   stic.judge.late-grant-latched    the late-grant check on a stand-in that latches a late grant (counts it as granted, or carries it over) */
 #include <stdint.h>
 #include <string.h>
 
@@ -79,9 +80,20 @@ static int sj_blocked_write_applied(void)
   return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
 }
 
+static int sj_late_grant_latched(void)
+{
+  uint32_t n = ivs_stic_params_get(SC_PROFILE)->bus_count;
+  SC_CHECK(sb_late_counter_ok(n, 0u, n) == 1);      /* the expected observation is accepted */
+  SC_CHECK(sb_late_counter_ok(0u, 0u, n) == 0);     /* a late grant counted as granted: nothing counted late */
+  SC_CHECK(sb_late_counter_ok(n - 1u, 0u, n) == 0); /* one window latched and fetched late */
+  SC_CHECK(sb_late_counter_ok(n, 1u, n) == 0);      /* a late grant carried into an interruptible frame */
+  return IVS_TEST_PASS;
+}
+
 const ivs_test_case ivs_stic_judge_cases[] = {
     {"stic.judge.register-row-changed", sj_register_row_changed, NULL},
     {"stic.judge.window-edge-moved", sj_window_edge_moved, NULL},
     {"stic.judge.blocked-write-applied", sj_blocked_write_applied, NULL},
+    {"stic.judge.late-grant-latched", sj_late_grant_latched, NULL},
 };
 const size_t ivs_stic_judge_count = sizeof ivs_stic_judge_cases / sizeof ivs_stic_judge_cases[0];

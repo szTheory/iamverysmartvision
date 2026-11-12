@@ -212,6 +212,11 @@ ivs_status ivs_machine_step_unit_trace_internal(ivs_machine *m, ivs_cp1610_resul
   }
 #endif
   im->time_ticks += (uint64_t)cycles * (uint64_t)p->ticks_per_cpu_cycle;
+  /* Plan 06-08 (D-09): a bus window is GRANTED when the stepper reports the release of the bus in this unit; the count belongs to the
+   * frame the unit began in (the STIC is caught up below, and the last window ends before the frame end), saturating at bus_count. */
+  if ((r.events & IVS_CP1610_EV_BUS_RELEASED) != 0u && im->stic.grants_in_frame < bus_ctx.stic->bus_count) {
+    im->stic.grants_in_frame += 1u;
+  }
   /* Plan 05-06 (A-02): the PSG is caught up to the unit boundary at EVERY unit end, in the seam and
    * in the run call alike (which steps through here), never to a call target. */
   ivs_psg_catch_up(bus_ctx.psg, &im->psg, im->mem.psg_reg, &im->obs.audio, im->time_ticks, sink);

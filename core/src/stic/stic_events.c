@@ -18,7 +18,12 @@
  *   REG_CLOSE    closes the register gate (the STIC registers can no longer be reached).
  *   GMEM_CLOSE   closes the graphics-memory gate (GROM and GRAM) and decides windows_active from the display
  *                latch: the last event before window 0 starts; the latch can only change inside the register window.
- *   ROW_FETCH(i), FRAME_END  change nothing but the cursor (FRAME_END advances frame_index and wraps the cursor to 0).
+ *   ROW_FETCH(i) (plan 06-08, D-11, A-05) copies the 20 BACKTAB words of card row i into row_latch[i] through the memory system's pure
+ *                backing accessor (never the CPU view, no gate) when windows_active is set; inert otherwise. A guest store stamped
+ *                before the event's tick is seen by the row, one stamped at or after it is not (the machine bus catches the STIC up to
+ *                the store's stamp first, the tie rule A-06). Window 12 steals time and fetches nothing: the table has no event for it.
+ *   FRAME_END    (plan 06-08, D-09) adds bus_count - grants_in_frame to late_grants when windows_active (saturating), then advances
+ *                frame_index and wraps the cursor to 0; the late-grant policy is fetch-at-schedule: the fetch never waits for the CPU.
  * The interval before S_0 (a nonzero frame phase) schedules nothing: the first event of frame 0 is at the phase, so
  * both gates stay open until then. The gates are flipped only through ivs_memsys_set_gate_internal.
  * sink: accepted and unused until frames are delivered (plan 06-09). Calling twice with the same to_tick changes
@@ -59,7 +64,23 @@ void ivs_stic_catch_up(const ivs_stic_params *p, ivs_stic_state *s, ivs_memsys *
       ivs_memsys_set_gate_internal(mem, IVS_MEMSYS_GATE_GMEM, 0u);
       s->windows_active = s->display_latch != 0u ? 1u : 0u;
       break;
-    default: /* ROW_FETCH and FRAME_END: the cursor only */
+    case IVS_STIC_EV_ROW_FETCH: {
+      uint32_t row = p->event_arg[ei];
+      if (s->windows_active != 0u && row < IVS_STIC_LATCH_ROWS) {
+        uint32_t c;
+        for (c = 0u; c < IVS_STIC_ROW_WORDS; c++) {
+          s->row_latch[row][c] = ivs_memsys_stic_backtab_word_internal(mem, row * IVS_STIC_ROW_WORDS + c);
+        }
+      }
+      break;
+    }
+    case IVS_STIC_EV_FRAME_END:
+      if (s->windows_active != 0u && s->grants_in_frame < p->bus_count) {
+        uint32_t late = p->bus_count - s->grants_in_frame;
+        s->late_grants = late > 0xFFFFFFFFu - s->late_grants ? 0xFFFFFFFFu : s->late_grants + late;
+      }
+      break;
+    default:
       break;
     }
     if (kind == IVS_STIC_EV_FRAME_END) {

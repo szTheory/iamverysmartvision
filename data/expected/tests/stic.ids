@@ -71,3 +71,9 @@ stic.busrq.hold-from-profile
 stic.busrq.none-when-display-off
 stic.busrq.mvo-stream-never-stalled
 stic.busrq.halted-grants
+stic.fetch.rows-latched-at-schedule
+stic.fetch.display-off-no-latch
+stic.fetch.write-after-latch-tears
+stic.fetch.backtab-straddle
+stic.busrq.late-grant-counter
+stic.judge.late-grant-latched

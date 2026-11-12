@@ -11,7 +11,9 @@
  *                                   (stepper plus line function with a stack copy of the parameters)
  *   stic.busrq.none-when-display-off  a loop that never strobes the display is never stalled
  *   stic.busrq.mvo-stream-never-stalled  a stream of non-interruptible stores is neither stalled nor interrupted
- *   stic.busrq.halted-grants        a halted CPU grants every window, 13 releases, and stays halted */
+ *   stic.busrq.halted-grants        a halted CPU grants every window, 13 releases, and stays halted
+ *   stic.busrq.late-grant-counter   a stream of non-interruptible stores that covers every window: late_grants grows by bus_count in the
+ *                                   display-on frame and no grant occurs; an interruptible loop: late_grants stays 0 */
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -391,6 +393,65 @@ done:
   return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
 }
 
+/* The checker of the late-grant observations (also run on corrupted observations by stic.judge.late-grant-latched). */
+int sb_late_counter_ok(uint32_t late_after_stream, uint32_t late_after_loop, uint32_t bus_count)
+{
+  return late_after_stream == bus_count && late_after_loop == 0u;
+}
+
+static int sb_late_grant_counter(void)
+{
+  const ivs_stic_params *p = ivs_stic_params_get(SC_PROFILE);
+  const struct ivs_machine *im;
+  ivs_ms_inst x;
+  uint16_t *w = malloc(4096u * sizeof *w);
+  uint16_t v[SC_PROG_MAX];
+  uint32_t late_stream = 0u;
+  uint32_t late_loop = 0u;
+  uint32_t grants = 0u;
+  int ok = 0;
+  memset(&x, 0, sizeof x);
+  if (w == NULL) {
+    return IVS_TEST_FAIL;
+  }
+  /* 1,355 stores of 11 cycles after the EIS end at cycle 14,909, after the last window (it ends at 14,849) and before the frame end */
+  if (!sc_guest_n(&x, w, sc_prog_stream(w, 1355u))) {
+    free(w);
+    return IVS_TEST_FAIL;
+  }
+  im = ivs_machine_from_handle(x.m);
+  if (!sc_run_until(&x, (uint64_t)p->frame_phase_ticks + (uint64_t)p->frame_ticks - 100u)) { /* every window is over, the frame is not */
+    goto done;
+  }
+  grants = im->stic.grants_in_frame;
+  if (!sc_run_until(&x, (uint64_t)p->frame_phase_ticks + (uint64_t)p->frame_ticks + 4u)) {
+    goto done;
+  }
+  late_stream = im->stic.late_grants;
+  ivs_ms_free(&x);
+  memset(&x, 0, sizeof x);
+  if (!sc_guest(&x, v, sc_prog_vbl(v, SC_BODY_INCR), 0u)) {
+    goto done;
+  }
+  im = ivs_machine_from_handle(x.m);
+  if (!sc_run_until(&x, 3u * (uint64_t)p->frame_ticks + 4u)) {
+    goto done;
+  }
+  late_loop = im->stic.late_grants;
+  if (grants != 0u || sb_late_counter_ok(late_stream, late_loop, p->bus_count) == 0) {
+    ivs_test_diag("stream: %u late grants after frame 0, %u grants; loop: %u late grants (bus_count %u)",
+                  (unsigned)late_stream, (unsigned)grants, (unsigned)late_loop, (unsigned)p->bus_count);
+    goto done;
+  }
+  ok = 1;
+done:
+  free(w);
+  if (x.storage != NULL) {
+    ivs_ms_free(&x);
+  }
+  return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
+}
+
 const ivs_test_case ivs_stic_busrq_cases[] = {
     {"stic.busrq.closed-form-resume", sb_closed_form, NULL},
     {"stic.busrq.count-per-frame", sb_count_per_frame, NULL},
@@ -398,5 +459,6 @@ const ivs_test_case ivs_stic_busrq_cases[] = {
     {"stic.busrq.none-when-display-off", sb_none_when_display_off, NULL},
     {"stic.busrq.mvo-stream-never-stalled", sb_mvo_stream, NULL},
     {"stic.busrq.halted-grants", sb_halted_grants, NULL},
+    {"stic.busrq.late-grant-counter", sb_late_grant_counter, NULL},
 };
 const size_t ivs_stic_busrq_count = sizeof ivs_stic_busrq_cases / sizeof ivs_stic_busrq_cases[0];

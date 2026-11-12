@@ -460,6 +460,11 @@ void ivs_memsys_set_port_pulldown_internal(ivs_memsys *m, uint32_t port, uint32_
   }
 }
 
+uint16_t ivs_memsys_stic_backtab_word_internal(const ivs_memsys *m, uint32_t i)
+{
+  return i < 240u ? m->sysram[i] : 0u;
+}
+
 void ivs_memsys_poke_raw_internal(ivs_memsys *m, uint16_t addr, uint16_t value)
 {
   const ivs_profile_desc *p = &ivs_mm_profiles[m->profile];

@@ -45,6 +45,8 @@ extern const ivs_test_case ivs_stic_lines_cases[];
 extern const size_t ivs_stic_lines_count;
 extern const ivs_test_case ivs_stic_irq_cases[];
 extern const size_t ivs_stic_irq_count;
+extern const ivs_test_case ivs_stic_fetch_cases[];
+extern const size_t ivs_stic_fetch_count;
 extern const ivs_test_case ivs_stic_busrq_cases[];
 extern const size_t ivs_stic_busrq_count;
 
@@ -63,6 +65,7 @@ const ivs_test_source *sl_sources(size_t *n);
 
 /* Checking functions that the judges (stic_judge.c) run on corrupted copies of their oracle input. */
 uint32_t sr_table_diff_copy(uint32_t row, uint16_t wmask_delta);   /* stic_reg.c: 0 when a copy of the literal with one write mask flipped still matches */
+int sb_late_counter_ok(uint32_t late_after_stream, uint32_t late_after_loop, uint32_t bus_count); /* stic_busrq.c: 1 when the late-grant observations are the expected ones */
 int sp_edge_matches(uint64_t expected);                           /* stic_profile.c: 1 when the first blocked register access is stamped at expected */
 uint64_t sp_register_edge(void);                                  /* stic_profile.c: the observed first blocked stamp of the register window */
 
@@ -121,6 +124,8 @@ int sc_run_until(ivs_ms_inst *x, uint64_t ticks);
 #define SC_BODY_J 5u      /* J self (12 cycles, 0004 0310 0012) */
 #define SC_BODIES 6u
 #define SC_ISR_DELAY 300u
+#define SC_STRADDLE_K 6u  /* stores in front of the swept store */
+#define SC_STRADDLE_N0 409u /* the first delay count of the straddle sweep (stic_fetch.c): the store of row 3 lands near its fetch tick */
 size_t sc_prog_vbl(uint16_t *w, uint32_t body);
 /* A loop that never strobes the display: [EIS or DIS] then B self ($1000, enable 1 for EIS, 0 for DIS; 3 words). */
 size_t sc_prog_loop(uint16_t *w, uint32_t enable);
