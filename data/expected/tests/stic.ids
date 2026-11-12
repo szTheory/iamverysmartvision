@@ -48,3 +48,9 @@ stic.profile.window-open
 stic.judge.register-row-changed
 stic.judge.window-edge-moved
 stic.judge.blocked-write-applied
+# Plan 06-07 task 1: the state family (stic.state.*): the public inspection call ivs_machine_stic_state, its refusal ladder, fields, no-write, caller sizes and layout pins.
+stic.state.refusal-ladder
+stic.state.fields
+stic.state.no-write
+stic.state.v1-size-caller
+stic.state.struct-pins

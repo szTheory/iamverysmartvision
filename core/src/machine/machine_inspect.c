@@ -16,8 +16,18 @@
  * The overlap tests use ivs_machine_span_overlaps (uintptr_t differences only) against a
  * validated instance. The CPU report is built in a local and copied out last.
  * The file holds no static or global state.
- * Named faults (plan 04-06, D-08): PEEK_ADVANCES_TIME, PEEK_GATE_IGNORED. */
+ * Named faults (plan 04-06, D-08): PEEK_ADVANCES_TIME, PEEK_GATE_IGNORED.
+ *
+ * ivs_machine_stic_state (plan 06-07, D-04, VID-06) is the STIC inspection call: the STORED view of
+ * the device (mode, latch, window gates, cursor, counters, the 64 register words), built in a local
+ * from the const instance and copied out last, min of struct_size and the v1 size bytes. It runs no
+ * catch-up (the STIC is caught up at every unit end), advances no time, writes no machine byte and
+ * shares no function with ivs_machine_peek: peek is the bus view (gates honoured), this is the
+ * stored view (gate independent), and the read side effects (the mode select) live only in the bus
+ * wrapper, so neither call can switch the mode by construction. */
 #include "common/ivs_prelude.h"
+
+#include <stddef.h>
 
 #include "ivs/ivs.h"
 #include "machine/machine.h"
@@ -35,6 +45,28 @@ _Static_assert(IVS_CPU_FAULT_UNSUPPORTED_MVO_SSS_EQ_MMM == IVS_CP1610_FAULT_UNSU
 _Static_assert(IVS_CPU_FAULT_UNSUPPORTED_JUMP_DE == IVS_CP1610_FAULT_UNSUPPORTED_JUMP_DE, "fault reason 3");
 _Static_assert(IVS_CPU_FAULT_BUS_WAIT_LIMIT == IVS_CP1610_FAULT_BUS_WAIT_LIMIT, "fault reason 4");
 _Static_assert(IVS_CPU_FAULT_BUS_WAIT_LIMIT == IVS_CP1610_FAULT_LAST, "every CPU fault reason is public");
+
+/* ivs_stic_report v1 (plan 06-07): every offset and the size are pinned, all members u32, u64 or u16. */
+_Static_assert(sizeof(ivs_stic_report) == 208u, "ivs_stic_report v1 is 208 bytes");
+_Static_assert(IVS_STIC_REPORT_V1_SIZE == 208u, "IVS_STIC_REPORT_V1_SIZE is 208");
+_Static_assert(offsetof(ivs_stic_report, struct_size) == 0u, "stic report struct_size at 0");
+_Static_assert(offsetof(ivs_stic_report, mode) == 4u, "stic report mode at 4");
+_Static_assert(offsetof(ivs_stic_report, display_latch) == 8u, "stic report display_latch at 8");
+_Static_assert(offsetof(ivs_stic_report, windows_active) == 12u, "stic report windows_active at 12");
+_Static_assert(offsetof(ivs_stic_report, cs_ptr) == 16u, "stic report cs_ptr at 16");
+_Static_assert(offsetof(ivs_stic_report, regs_window_open) == 20u, "stic report regs_window_open at 20");
+_Static_assert(offsetof(ivs_stic_report, gmem_window_open) == 24u, "stic report gmem_window_open at 24");
+_Static_assert(offsetof(ivs_stic_report, event_index) == 28u, "stic report event_index at 28");
+_Static_assert(offsetof(ivs_stic_report, frame_index) == 32u, "stic report frame_index at 32");
+_Static_assert(offsetof(ivs_stic_report, frame_start_tick) == 40u, "stic report frame_start_tick at 40");
+_Static_assert(offsetof(ivs_stic_report, blocked_reads) == 48u, "stic report blocked_reads at 48");
+_Static_assert(offsetof(ivs_stic_report, blocked_writes) == 52u, "stic report blocked_writes at 52");
+_Static_assert(offsetof(ivs_stic_report, late_grants) == 56u, "stic report late_grants at 56");
+_Static_assert(offsetof(ivs_stic_report, reserved0) == 60u, "stic report reserved0 at 60");
+_Static_assert(offsetof(ivs_stic_report, regs) == 64u, "stic report regs at 64");
+_Static_assert(offsetof(ivs_stic_report, reserved) == 192u, "stic report reserved at 192");
+_Static_assert(sizeof(((ivs_stic_report *)0)->regs) / sizeof(uint16_t) == IVS_STIC_REG_COUNT,
+               "stic report holds every register word");
 
 /* 1 when the status bit is set in the CPU's status byte, else 0. */
 static uint8_t ivs_inspect_flag(uint8_t status, uint32_t bit)
@@ -71,6 +103,47 @@ ivs_status ivs_machine_cpu_state(const ivs_machine *m, ivs_cpu_state_report *out
   r.c = ivs_inspect_flag(im->cpu.status, IVS_CP1610_C);
   r.intr_enabled = (uint8_t)(im->cpu.intff != 0u ? 1u : 0u);
   *out = r;
+  return IVS_OK;
+}
+
+ivs_status ivs_machine_stic_state(const ivs_machine *m, ivs_stic_report *out)
+{
+  const struct ivs_machine *im;
+  const ivs_stic_params *p;
+  ivs_stic_report r;
+  uint32_t n;
+  uint32_t i;
+  if (out == NULL || out->struct_size < IVS_STIC_REPORT_V1_SIZE || out->struct_size > IVS_STRUCT_SIZE_MAX) {
+    return IVS_E_BAD_ARG;
+  }
+  im = ivs_machine_from_handle(m);
+  if (im == NULL) {
+    return IVS_E_BAD_HANDLE;
+  }
+  if (ivs_machine_span_overlaps(out, sizeof *out, im, sizeof *im) != 0u) {
+    return IVS_E_BAD_ARG;
+  }
+  p = ivs_stic_params_get(im->profile); /* never NULL: the handle check covers the index (WR-04) */
+  memset(&r, 0, sizeof r);
+  r.struct_size = IVS_STIC_REPORT_V1_SIZE;
+  r.mode = im->stic.mode;
+  r.display_latch = im->stic.display_latch;
+  r.windows_active = im->stic.windows_active;
+  r.cs_ptr = im->stic.cs_ptr;
+  r.regs_window_open = im->mem.gate_open[IVS_MEMSYS_GATE_STIC_REGS] != 0u ? 1u : 0u;
+  r.gmem_window_open = im->mem.gate_open[IVS_MEMSYS_GATE_GMEM] != 0u ? 1u : 0u;
+  r.event_index = im->stic.event_index;
+  r.frame_index = im->stic.frame_index;
+  /* the start of the frame in progress, from the state and the parameters, never now / F */
+  r.frame_start_tick = (uint64_t)p->frame_phase_ticks + im->stic.frame_index * (uint64_t)p->frame_ticks;
+  r.blocked_reads = im->stic.blocked_reads;
+  r.blocked_writes = im->stic.blocked_writes;
+  r.late_grants = im->stic.late_grants;
+  for (i = 0u; i < IVS_STIC_REG_COUNT; i++) {
+    r.regs[i] = im->mem.stic_reg[i];
+  }
+  n = out->struct_size < IVS_STIC_REPORT_V1_SIZE ? out->struct_size : IVS_STIC_REPORT_V1_SIZE;
+  memcpy(out, &r, n); /* last: the caller's bytes past the v1 size are untouched */
   return IVS_OK;
 }
 

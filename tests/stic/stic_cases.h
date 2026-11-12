@@ -37,6 +37,10 @@ extern const ivs_test_case ivs_stic_profile_cases[];
 extern const size_t ivs_stic_profile_count;
 extern const ivs_test_case ivs_stic_judge_cases[];
 extern const size_t ivs_stic_judge_count;
+extern const ivs_test_case ivs_stic_state_cases[];
+extern const size_t ivs_stic_state_count;
+extern const ivs_test_case ivs_stic_peek_cases[];
+extern const size_t ivs_stic_peek_count;
 
 /* ---- the independent literals (stic_reg.c includes the generated ivs_stic_probe.inc, cmake/IvsSticProbes.cmake) ---- */
 typedef struct sl_reg_row {
@@ -86,5 +90,18 @@ size_t sc_w_loop(uint16_t *w, size_t n);
 int sc_guest(ivs_ms_inst *x, const uint16_t *w, size_t n, uint32_t cart_addr);
 /* Steps the instance unit by unit until machine time reaches ticks (at most 40,000 units); 1 on success. */
 int sc_run_until(ivs_ms_inst *x, uint64_t ticks);
+
+/* ---- the whole-instance oracle of the inspection families (stic_state.c, plan 06-07) ----
+ * A snapshot holds a heap copy of the whole instance storage, the nine digests (composite and domains 1..4, 16..19) and
+ * machine time; a call that must not touch the machine leaves all three equal. */
+#define SS_DIGESTS 9u
+typedef struct ss_snap {
+  uint8_t *copy;
+  uint8_t digest[SS_DIGESTS][32];
+  uint64_t time_ticks;
+} ss_snap;
+int ss_snap_take(ss_snap *s, const ivs_ms_inst *x); /* 1 on success; s->copy is NULL on failure */
+int ss_snap_same(const ss_snap *s, const ivs_ms_inst *x); /* 1 when storage, digests and time are all equal */
+void ss_snap_free(ss_snap *s);
 
 #endif

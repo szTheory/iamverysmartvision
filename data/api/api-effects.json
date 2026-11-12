@@ -352,6 +352,33 @@
       ]
     },
     {
+      "name": "ivs_machine_stic_state",
+      "header": "core/include/ivs/ivs_run.h",
+      "on_ok": "Writes the stored STIC view (mode, display latch, windows active, Color Stack pointer, the two access gate bits, the event cursor, the frame index and frame start tick, the blocked and late-grant counters and the 64 register words) into *out with struct_size set to the v1 size (208); bytes of a larger caller struct past it are untouched. The instance is not written, machine time does not advance and no catch-up runs (D-04); valid OFF and POWERED.",
+      "precedence": [
+        {"status": "IVS_E_BAD_ARG", "checks": "out NULL, or out->struct_size below the v1 size or above IVS_STRUCT_SIZE_MAX", "pinned_by": ["stic.state.refusal-ladder", "stic.state.v1-size-caller"]},
+        {"status": "IVS_E_BAD_HANDLE", "checks": "NULL or invalid handle", "pinned_by": ["stic.state.refusal-ladder"]},
+        {"status": "IVS_E_BAD_ARG", "checks": "out overlapping the storage of the (valid) instance (uintptr_t arithmetic)", "pinned_by": ["stic.state.refusal-ladder"]}
+      ],
+      "notes": [
+        "Side-effect free by contract (D-04, VID-06, plan 06-07): a const instance, no machine time advance, no write to the instance, no function shared with ivs_machine_peek. The report is the stored view; the read side effects of the STIC (the mode select) live only in the bus wrapper. Out parameter rule as for ivs_machine_cpu_state."
+      ],
+      "refusals": [
+        {
+          "status": "IVS_E_BAD_ARG",
+          "effect": "none",
+          "outs": "nothing written: *out keeps its bytes",
+          "tests": ["stic.state.refusal-ladder", "stic.state.v1-size-caller"]
+        },
+        {
+          "status": "IVS_E_BAD_HANDLE",
+          "effect": "none",
+          "outs": "nothing written: *out keeps its bytes",
+          "tests": ["stic.state.refusal-ladder"]
+        }
+      ]
+    },
+    {
       "name": "ivs_machine_peek",
       "header": "core/include/ivs/ivs_run.h",
       "on_ok": "Writes count words into out[0..count-1], each what a CPU read at addr + i returns now (decode, width mask, closed gates and undriven space included). The instance is not written and machine time does not advance (D-08); valid OFF and POWERED. addr + count == 0x10000 is accepted.",

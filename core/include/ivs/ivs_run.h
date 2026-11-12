@@ -65,6 +65,54 @@ typedef struct ivs_cpu_state_report {
  * overlapping the instance storage). Nothing is written on a refusal. */
 IVS_API ivs_status ivs_machine_cpu_state(const ivs_machine *m, ivs_cpu_state_report *out);
 
+/* Out: the stored view of the STIC (plan 06-07, D-04, VID-06): what the device holds now, never what
+ * a CPU read of an address returns. Every member is a u32, a u64 or a u16, so the offsets below are
+ * the same on every ABI; the v1 size is IVS_STIC_REPORT_V1_SIZE bytes, reserved members are 0.
+ *   struct_size        0  written as the v1 size
+ *   mode               4  0 Foreground/Background, 1 Color Stack
+ *   display_latch      8  0 or 1, the display-enable handshake of the frame in progress
+ *   windows_active    12  0 or 1, decided from the latch at the first window of the frame
+ *   cs_ptr            16  the Color Stack pointer 0..3 as of the last rendered frame; each render starts at 0
+ *   regs_window_open  20  0 or 1, the register access gate at machine time now
+ *   gmem_window_open  24  0 or 1, the graphics-memory access gate at machine time now
+ *   event_index       28  the cursor into the per-frame event table
+ *   frame_index       32  u64, the frame in progress (counted, never derived from time)
+ *   frame_start_tick  40  u64, the master tick at which the frame in progress started
+ *   blocked_reads     48  reads refused by a closed gate, saturating
+ *   blocked_writes    52  writes dropped by a closed gate, saturating
+ *   late_grants       56  bus windows that ended without a grant
+ *   reserved0         60  0
+ *   regs              64  64 u16 words, the STORED register words (no read mask, no gate), words 0..63
+ *   reserved         192  4 u32, 0
+ * The report is the inspection path of the STIC: it never triggers a read side effect, so looking at
+ * the mode select address cannot change the mode (the CPU read path owns that effect). */
+#define IVS_STIC_REPORT_V1_SIZE 208u
+typedef struct ivs_stic_report {
+  uint32_t struct_size;
+  uint32_t mode;
+  uint32_t display_latch;
+  uint32_t windows_active;
+  uint32_t cs_ptr;
+  uint32_t regs_window_open;
+  uint32_t gmem_window_open;
+  uint32_t event_index;
+  uint64_t frame_index;
+  uint64_t frame_start_tick;
+  uint32_t blocked_reads;
+  uint32_t blocked_writes;
+  uint32_t late_grants;
+  uint32_t reserved0;
+  uint16_t regs[64];
+  uint32_t reserved[4];
+} ivs_stic_report;
+
+/* Copies the stored STIC view into *out; the instance is not written, no time advances and no catch-up
+ * runs (the STIC is already caught up at every unit end); valid OFF and POWERED. Refusal order: BAD_ARG
+ * (out NULL, or out->struct_size below the v1 size or above IVS_STRUCT_SIZE_MAX); BAD_HANDLE; BAD_ARG (out
+ * overlapping the instance storage). Nothing is written on a refusal; on success min of struct_size and
+ * the v1 size bytes are written, last. */
+IVS_API ivs_status ivs_machine_stic_state(const ivs_machine *m, ivs_stic_report *out);
+
 /* Reads count 16-bit words at addr, addr + 1, ... into out[0..count-1]; the caller supplies at
  * least count words at out (there is no capacity argument). Each word is what a CPU read at that
  * address returns now: decode, width mask, closed gates and undriven space included (a closed
