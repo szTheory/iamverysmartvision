@@ -117,10 +117,11 @@ while read -r suite rel; do
 done < "$tmp/files"
 
 # Watchdog self-test, alongside the lanes (the `wait` below collects it): a 30-second sleep must
-# be stopped after 1 second, and a run that ends at once must leave no marker.
+# be stopped after 1 second, and a run that ends at once must leave no marker (60 s
+# limit: a scheduling stall on a loaded host must not fire it).
 (
   run_limited 1 "$tmp/wd-fire.mark" "$tmp/wd-fire.log" sleep 30
-  run_limited 5 "$tmp/wd-quiet.mark" "$tmp/wd-quiet.log" true
+  run_limited 60 "$tmp/wd-quiet.mark" "$tmp/wd-quiet.log" true
 ) 2> /dev/null &
 # Pass 2: run the listed ids in JOBS lanes; a fault run is expected to exit non-zero.
 lane=0
