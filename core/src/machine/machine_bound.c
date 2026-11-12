@@ -6,19 +6,25 @@
  * Validate-then-commit (analog: machine_load.c). ivs_bound_validate reads only const inputs and
  * fills a small stack plan (the request fields it needs); the ladder is one stage per class, the
  * first failing stage wins (D-05):
- *   1. BAD_ARG       req NULL or its struct_size below sizeof or above IVS_STRUCT_SIZE_MAX
- *                    (which bounds the stage 4 tail scan); rep NULL or its struct_size below
- *                    sizeof or above IVS_STRUCT_SIZE_MAX (nothing written); env NULL (the seam);
+ *   1. BAD_ARG       req NULL or its struct_size below IVS_RUN_REQUEST_V1_SIZE or above
+ *                    IVS_STRUCT_SIZE_MAX (which bounds the stage 4 tail scan); rep NULL or its
+ *                    struct_size below IVS_RUN_REPORT_V1_SIZE or above IVS_STRUCT_SIZE_MAX (nothing
+ *                    written); env NULL (the seam). The minimums are the pinned v1 sizes, never
+ *                    sizeof of the grown structs (plan 05-02, D-19, A-04);
  *   2. BAD_HANDLE    NULL or invalid handle;
  *   3. BAD_ARG       rep overlaps the storage of the (valid) instance, uintptr_t differences only
  *                    (ivs_machine_span_overlaps; nothing written);
  *   4. UNSUPPORTED   req: an unknown flag (IVS_RUN_F_RESERVED_FRAME included), then a nonzero
- *                    byte past the v1 size of a larger struct, then a nonzero reserved_in
- *                    (INPUT_RESERVED_IN, plan 04-11);
+ *                    byte past the core's own size of a larger struct (the tail rule is rebased on
+ *                    sizeof, plan 05-02), then a nonzero reserved_in (INPUT_RESERVED_IN, plan 04-11);
  *   4b. BAD_ARG      output buffers (D-05 slot, plan 04-10): a NULL buffer with a nonzero
  *                    capacity (RUN_BUFFER_NULL; video, then audio), then a buffer of capacity
  *                    bytes overlapping the instance storage, the other buffer or the report
  *                    (RUN_BUFFER_OVERLAP; uintptr_t differences, 64-bit lengths, nothing wraps);
+ *                    then the write log (plan 05-02, D-14; read only when struct_size covers it):
+ *                    psg_log NULL with a nonzero capacity (RUN_PSGLOG_NULL), then psg_log running
+ *                    past the top of the address space or overlapping the instance, the report,
+ *                    video, audio or the event array (RUN_PSGLOG_OVERLAP);
  *   4c. BAD_ARG      event arguments (D-05 slot, plan 04-11): events NULL with event_count above 0
  *                    (INPUT_EVENTS_NULL), event_count above IVS_INPUT_EVENTS_MAX (INPUT_EVENT_COUNT),
  *                    then the event_count * 32 bytes at events overlapping the instance storage,
@@ -27,9 +33,11 @@
  *   5. BAD_STATE     the machine is OFF;
  *   6. OUT_OF_RANGE  target_ticks above IVS_RUN_TARGET_MAX (2^63), before any unit, so now plus
  *                    one unit can never wrap;
- *   7. BUFFER_TOO_SMALL  a video or audio capacity below the env's requirement for this run,
- *                    bytes_per_frame * (max(target - now, 0) / nominal_frame_ticks + 1) (D-06),
- *                    before the first unit;
+ *   7. BUFFER_TOO_SMALL  a video, audio (RUN_BUFFER_SMALL) or write-log (RUN_PSGLOG_SMALL)
+ *                    capacity below the env's requirement for this run, bytes_per_frame *
+ *                    (max(target - now, 0) / nominal_frame_ticks + 1) (D-06), before the first
+ *                    unit. A NULL buffer with capacity 0 means the channel is not requested and
+ *                    needs nothing (D-17, plan 05-02);
  *   8. BAD_ARG       the events, whole array (machine_input.c, ivs_input_check): an at_tick at or
  *                    above 2^63 (INPUT_TICK_RANGE), below its predecessor (INPUT_UNSORTED) or below
  *                    the input floor (INPUT_BEFORE_FLOOR), lowest failing index;
@@ -106,14 +114,46 @@ typedef struct ivs_bound_plan {
   uint32_t flags;
 } ivs_bound_plan;
 
+/* 1 when req's v1 buffer fields may be read: present and at least the pinned v1 size (stage 1). */
+static uint32_t ivs_bound_req_sized(const ivs_run_request *req)
+{
+  return req != NULL && req->struct_size >= IVS_RUN_REQUEST_V1_SIZE && req->struct_size <= IVS_STRUCT_SIZE_MAX ? 1u
+                                                                                                             : 0u;
+}
+
+/* The write-log buffer of a request and its capacity: read only when struct_size covers the v2
+ * fields (plan 05-02, A-02), else NULL and 0 (the channel is not requested). req is sized. */
+static uint8_t *ivs_bound_log_ptr(const ivs_run_request *req)
+{
+  return req->struct_size >= IVS_BOUND_REQ_LOG_END ? req->psg_log : NULL;
+}
+
+static uint64_t ivs_bound_log_cap(const ivs_run_request *req)
+{
+  return req->struct_size >= IVS_BOUND_REQ_LOG_END ? req->psg_log_capacity : 0u;
+}
+
+/* The bytes the core writes into rep on success or refusal: min(caller struct_size, own size)
+ * (A-02, plan 05-02), the same rule as ivs_machine_info. rep is sized (stage 1). */
+static uint32_t ivs_bound_rep_bytes(const ivs_run_report *rep)
+{
+  return rep->struct_size < (uint32_t)sizeof(ivs_run_report) ? rep->struct_size : (uint32_t)sizeof(ivs_run_report);
+}
+
 /* 1 when capacity holds the bytes one channel needs for a run from now to target (D-06):
  * bytes_per_frame * (max(target - now, 0) / frame + 1). Nothing is needed at 0 bytes per frame;
  * a frame of 0 ticks, or a product above UINT64_MAX, can never be met. target is at most 2^63
- * here (OUT_OF_RANGE ran first); the frame count is still guarded against wrapping. */
-static uint32_t ivs_bound_fits(uint64_t capacity, uint32_t bytes_per_frame, uint64_t frame, uint64_t target,
-                               uint64_t now)
+ * here (OUT_OF_RANGE ran first); the frame count is still guarded against wrapping.
+ * D-17 (plan 05-02): a NULL buffer with capacity 0 means the channel is not requested, so it needs
+ * nothing whatever the layout says; a nonzero capacity below the requirement is still refused, and
+ * so is a non-NULL buffer of capacity 0 against a layout that needs bytes (Phase 4 behaviour). */
+static uint32_t ivs_bound_fits(const void *buf, uint64_t capacity, uint32_t bytes_per_frame, uint64_t frame,
+                               uint64_t target, uint64_t now)
 {
   uint64_t frames;
+  if (buf == NULL && capacity == 0u) {
+    return 1u;
+  }
   if (bytes_per_frame == 0u) {
     return 1u;
   }
@@ -131,14 +171,23 @@ static uint32_t ivs_bound_fits(uint64_t capacity, uint32_t bytes_per_frame, uint
   return capacity >= frames * bytes_per_frame ? 1u : 0u;
 }
 
-/* 1 when both output buffers hold what the run from now to target needs under env. */
-static uint32_t ivs_bound_capacity_ok(const ivs_run_request *req, const ivs_run_env *env, uint64_t target,
-                                      uint64_t now)
+/* IVS_REASON_NONE when the three channels hold what the run from now to target needs under env
+ * (video, audio, psg_log in that order), else the first short channel's reason: RUN_BUFFER_SMALL
+ * for video or audio, RUN_PSGLOG_SMALL for the write log. */
+static uint32_t ivs_bound_capacity_reason(const ivs_run_request *req, const ivs_run_env *env, uint64_t target,
+                                          uint64_t now)
 {
-  if (ivs_bound_fits(req->video_capacity, env->video_bytes_per_frame, env->nominal_frame_ticks, target, now) == 0u) {
-    return 0u;
+  if (ivs_bound_fits(req->video, req->video_capacity, env->video_bytes_per_frame, env->nominal_frame_ticks, target,
+                     now) == 0u ||
+      ivs_bound_fits(req->audio, req->audio_capacity, env->audio_bytes_per_frame, env->nominal_frame_ticks, target,
+                     now) == 0u) {
+    return IVS_REASON_RUN_BUFFER_SMALL;
   }
-  return ivs_bound_fits(req->audio_capacity, env->audio_bytes_per_frame, env->nominal_frame_ticks, target, now);
+  if (ivs_bound_fits(ivs_bound_log_ptr(req), ivs_bound_log_cap(req), env->psg_log_bytes_per_frame,
+                     env->nominal_frame_ticks, target, now) == 0u) {
+    return IVS_REASON_RUN_PSGLOG_SMALL;
+  }
+  return IVS_REASON_NONE;
 }
 
 /* 1 when every byte of p[from, to) is zero. */
@@ -193,32 +242,6 @@ static uint64_t ivs_bound_events_bytes(const ivs_run_request *req)
   return (uint64_t)req->event_count * (uint64_t)sizeof(ivs_input_event);
 }
 
-/* 1 when req's v1 buffer fields may be read: present and at least the pinned v1 size (stage 1). */
-static uint32_t ivs_bound_req_sized(const ivs_run_request *req)
-{
-  return req != NULL && req->struct_size >= IVS_RUN_REQUEST_V1_SIZE && req->struct_size <= IVS_STRUCT_SIZE_MAX ? 1u
-                                                                                                             : 0u;
-}
-
-/* The write-log buffer of a request and its capacity: read only when struct_size covers the v2
- * fields (plan 05-02, A-02), else NULL and 0 (the channel is not requested). req is sized. */
-static uint8_t *ivs_bound_log_ptr(const ivs_run_request *req)
-{
-  return req->struct_size >= IVS_BOUND_REQ_LOG_END ? req->psg_log : NULL;
-}
-
-static uint64_t ivs_bound_log_cap(const ivs_run_request *req)
-{
-  return req->struct_size >= IVS_BOUND_REQ_LOG_END ? req->psg_log_capacity : 0u;
-}
-
-/* The bytes the core writes into rep on success or refusal: min(caller struct_size, own size)
- * (A-02, plan 05-02), the same rule as ivs_machine_info. rep is sized (stage 1). */
-static uint32_t ivs_bound_rep_bytes(const ivs_run_report *rep)
-{
-  return rep->struct_size < (uint32_t)sizeof(ivs_run_report) ? rep->struct_size : (uint32_t)sizeof(ivs_run_report);
-}
-
 /* 1 when the caller's report may receive refusal detail: present, a size the core accepts, not
  * overlapping the instance bytes the handle names and not overlapping an output buffer of a
  * well-sized request (the report is then part of the cause, and a buffer gets no byte). The
@@ -244,9 +267,17 @@ static uint32_t ivs_bound_report_ok(const ivs_machine *m, const ivs_run_request 
   return 1u;
 }
 
-/* The D-05 buffer slot (stage 4b): IVS_REASON_NONE, or the reason the buffers are refused. */
+/* The D-05 buffer slot (stage 4b): IVS_REASON_NONE, or the reason the buffers are refused. Video
+ * and audio first (a NULL buffer with a capacity, then the overlap tests), then the write log in
+ * the same two steps (plan 05-02, D-14), so any video or audio problem is reported before any
+ * psg_log problem. The log's overlap list also holds the event array: it is tested here, whatever
+ * the events stage would say (an array the core honours is at most IVS_INPUT_EVENTS_MAX events;
+ * a larger count names no span). Only the bytes the core would write into the report count. */
 static uint32_t ivs_bound_buffers(const struct ivs_machine *im, const ivs_run_request *req, const ivs_run_report *rep)
 {
+  const uint8_t *log = ivs_bound_log_ptr(req);
+  uint64_t logn = ivs_bound_log_cap(req);
+  uint32_t repn = ivs_bound_rep_bytes(rep);
   if ((req->video == NULL && req->video_capacity != 0u) || (req->audio == NULL && req->audio_capacity != 0u)) {
     return IVS_REASON_RUN_BUFFER_NULL;
   }
@@ -255,9 +286,19 @@ static uint32_t ivs_bound_buffers(const struct ivs_machine *im, const ivs_run_re
       ivs_bound_spans_meet(req->video, req->video_capacity, im, sizeof *im) != 0u ||
       ivs_bound_spans_meet(req->audio, req->audio_capacity, im, sizeof *im) != 0u ||
       ivs_bound_spans_meet(req->video, req->video_capacity, req->audio, req->audio_capacity) != 0u ||
-      ivs_bound_spans_meet(req->video, req->video_capacity, rep, sizeof *rep) != 0u ||
-      ivs_bound_spans_meet(req->audio, req->audio_capacity, rep, sizeof *rep) != 0u) {
+      ivs_bound_spans_meet(req->video, req->video_capacity, rep, repn) != 0u ||
+      ivs_bound_spans_meet(req->audio, req->audio_capacity, rep, repn) != 0u) {
     return IVS_REASON_RUN_BUFFER_OVERLAP;
+  }
+  if (log == NULL && logn != 0u) {
+    return IVS_REASON_RUN_PSGLOG_NULL;
+  }
+  if (ivs_bound_span_wraps(log, logn) != 0u || ivs_bound_spans_meet(log, logn, im, sizeof *im) != 0u ||
+      ivs_bound_spans_meet(log, logn, rep, repn) != 0u ||
+      ivs_bound_spans_meet(log, logn, req->video, req->video_capacity) != 0u ||
+      ivs_bound_spans_meet(log, logn, req->audio, req->audio_capacity) != 0u ||
+      ivs_bound_spans_meet(log, logn, req->events, ivs_bound_events_bytes(req)) != 0u) {
+    return IVS_REASON_RUN_PSGLOG_OVERLAP;
   }
   return IVS_REASON_NONE;
 }
@@ -275,7 +316,7 @@ static uint32_t ivs_bound_events(const struct ivs_machine *im, const ivs_run_req
   }
 #ifndef IVS_FAULT_RUN_EVENTS_UNCHECKED /* named fault RUN_EVENTS_UNCHECKED: the overlap test is skipped */
   if (ivs_bound_span_wraps(req->events, n) != 0u || ivs_bound_spans_meet(req->events, n, im, sizeof *im) != 0u ||
-      ivs_bound_spans_meet(req->events, n, rep, sizeof *rep) != 0u ||
+      ivs_bound_spans_meet(req->events, n, rep, ivs_bound_rep_bytes(rep)) != 0u ||
       ivs_bound_spans_meet(req->events, n, req->video, req->video_capacity) != 0u ||
       ivs_bound_spans_meet(req->events, n, req->audio, req->audio_capacity) != 0u) {
     return IVS_REASON_INPUT_EVENTS_OVERLAP;
@@ -360,8 +401,8 @@ static ivs_status ivs_bound_validate(const ivs_machine *m, const ivs_run_request
 #endif
   /* 7. BUFFER_TOO_SMALL: the output capacities against the env's requirement, before any unit. */
 #ifndef IVS_FAULT_RUN_CAPACITY_AFTER_STEP /* named fault: the check moves after the first unit */
-  if (ivs_bound_capacity_ok(req, env, req->target_ticks, im->time_ticks) == 0u) {
-    *reason = IVS_REASON_RUN_BUFFER_SMALL;
+  *reason = ivs_bound_capacity_reason(req, env, req->target_ticks, im->time_ticks);
+  if (*reason != IVS_REASON_NONE) {
     return IVS_E_BUFFER_TOO_SMALL;
   }
 #endif
@@ -497,9 +538,12 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
 #ifdef IVS_FAULT_RUN_CAPACITY_AFTER_STEP
     /* Named fault RUN_CAPACITY_AFTER_STEP (plan 04-10, D-06, D-07): the capacity check runs after
      * the first unit, so an undersized buffer is refused with that unit already executed. */
-    if (units == 1u && ivs_bound_capacity_ok(req, env, plan.target, entry) == 0u) {
-      ivs_bound_refuse(m, req, rep, IVS_REASON_RUN_BUFFER_SMALL, IVS_INPUT_INDEX_NONE);
-      return IVS_E_BUFFER_TOO_SMALL;
+    if (units == 1u) {
+      uint32_t small = ivs_bound_capacity_reason(req, env, plan.target, entry);
+      if (small != IVS_REASON_NONE) {
+        ivs_bound_refuse(m, req, rep, small, IVS_INPUT_INDEX_NONE);
+        return IVS_E_BUFFER_TOO_SMALL;
+      }
     }
 #endif
     if (im->time_ticks == before) {

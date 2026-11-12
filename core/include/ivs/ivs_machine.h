@@ -102,8 +102,11 @@ typedef struct ivs_image_report {
 } ivs_image_report;
 
 /* Output layout formats of ivs_info (D-06). NONE: the profile produces no bytes of that kind yet
- * (the size per frame is then 0). */
+ * (the size per frame is then 0). PSG_LEVELS_V1 (plan 05-02, D-15): the audio channel carries one
+ * 4-byte sample per PSG chip step, level_A, level_B, level_C, 0 (post-mixer effective amplitude
+ * index per channel); published by the profile from plan 05-06 on. */
 #define IVS_OUTPUT_FORMAT_NONE 0u
+#define IVS_OUTPUT_FORMAT_PSG_LEVELS_V1 1u
 
 /* The v1 (Phase 3) size of ivs_info (A-02, plan 04-09; public since plan 05-02): the smallest
  * struct_size ivs_machine_info accepts. Fields after it are written only when the caller's
@@ -230,6 +233,11 @@ typedef struct ivs_load_options {
 #define IVS_REASON_INPUT_EVENT_RESERVED 52u   /* UNSUPPORTED: an event's reserved word is nonzero */
 #define IVS_REASON_INPUT_CONTROL_RESERVED 53u /* UNSUPPORTED: a controller word has IVS_CTRL_RESERVED_MASK set */
 #define IVS_REASON_INPUT_EXTRA_CONTROLLER 54u /* UNSUPPORTED: a nonzero word at or above input.controllers */
+/* Write-log buffer reasons of ivs_machine_run (plan 05-02, D-14): the third caller-owned buffer
+ * (ivs_run_request.psg_log), checked after video and audio, before any state change. */
+#define IVS_REASON_RUN_PSGLOG_NULL 55u    /* BAD_ARG: psg_log NULL with a nonzero psg_log_capacity */
+#define IVS_REASON_RUN_PSGLOG_OVERLAP 56u /* BAD_ARG: psg_log overlaps the instance, report, video, audio or events */
+#define IVS_REASON_RUN_PSGLOG_SMALL 57u   /* BUFFER_TOO_SMALL: psg_log_capacity below the layout's requirement */
 
 /* segment_index of a report whose reason concerns no single segment. */
 #define IVS_SEGMENT_NONE 0xFFFFFFFFu

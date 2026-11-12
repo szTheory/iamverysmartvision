@@ -112,9 +112,13 @@ IVS_API ivs_status ivs_machine_peek(const ivs_machine *m, uint16_t addr, uint32_
  *   required = bytes_per_frame * (max(target_ticks - now, 0) / nominal_frame_ticks + 1)
  * an upper bound on the frames the run can complete, the overshoot of its last unit included. A
  * capacity below it is BUFFER_TOO_SMALL with nothing changed; a buffer may be NULL only with
- * capacity 0. Phase 4 profiles have layout NONE with 0 bytes per frame, so every capacity (0 and a
- * NULL buffer included) suffices, no byte is written and the three report counts below are 0: no
- * frame is fabricated. */
+ * capacity 0, and that pair means "channel not requested": no check, no byte, no state change
+ * whatever the layout requires (D-17, plan 05-02; a non-NULL buffer with capacity 0 against a layout
+ * that needs bytes is still BUFFER_TOO_SMALL). A third channel, the PSG register-write log
+ * (psg_log, psg_log_capacity; request v2), follows video and audio with
+ * psg_log_bytes_per_frame from the profile's layout. Phase 4 profiles have layout NONE with 0 bytes
+ * per frame, so every capacity (0 and a NULL buffer included) suffices, no byte is written and the
+ * three report counts below are 0: no frame is fabricated. */
 
 /* Input (D-12..D-15, plan 04-11). Core input is LOGICAL switch state: one uint32_t per controller,
  * indexed by PSG port (0 = R14/$01FE, 1 = R15/$01FF), never by player or side. A word holds the
@@ -264,17 +268,22 @@ typedef struct ivs_run_report {
 /* Runs m to req->target_ticks (above). Refusal order (D-05), first failing class wins, every
  * refusal before the first unit so a refused call changes nothing in the instance and writes no
  * byte into either output buffer:
- *   BAD_ARG       req NULL (IVS_REASON_RUN_NULL_ARG); req->struct_size below sizeof or above
- *                 IVS_STRUCT_SIZE_MAX (RUN_STRUCT_SIZE); rep NULL, or rep->struct_size below sizeof
- *                 or above IVS_STRUCT_SIZE_MAX (nothing written);
+ *   BAD_ARG       req NULL (IVS_REASON_RUN_NULL_ARG); req->struct_size below
+ *                 IVS_RUN_REQUEST_V1_SIZE or above IVS_STRUCT_SIZE_MAX (RUN_STRUCT_SIZE); rep NULL,
+ *                 or rep->struct_size below IVS_RUN_REPORT_V1_SIZE or above IVS_STRUCT_SIZE_MAX
+ *                 (nothing written);
  *   BAD_HANDLE    NULL or invalid handle (IVS_REASON_HANDLE);
  *   BAD_ARG       rep overlaps the instance storage (nothing written);
- *   UNSUPPORTED   an unknown or reserved flag (RUN_FLAGS), then a nonzero byte past sizeof of a
- *                 larger request (RUN_TAIL), then a nonzero reserved_in (INPUT_RESERVED_IN);
+ *   UNSUPPORTED   an unknown or reserved flag (RUN_FLAGS), then a nonzero byte past the core's own
+ *                 sizeof of a larger request (RUN_TAIL), then a nonzero reserved_in
+ *                 (INPUT_RESERVED_IN);
  *   BAD_ARG       output buffers: a NULL buffer with a nonzero capacity (RUN_BUFFER_NULL), then a
  *                 buffer (capacity bytes) running past the top of the address space or
  *                 overlapping the instance storage, the other buffer or the report
- *                 (RUN_BUFFER_OVERLAP; uintptr_t arithmetic, 64-bit lengths);
+ *                 (RUN_BUFFER_OVERLAP; uintptr_t arithmetic, 64-bit lengths); then the write log
+ *                 (plan 05-02): psg_log NULL with a nonzero psg_log_capacity (RUN_PSGLOG_NULL),
+ *                 psg_log running past the top of the address space or overlapping the instance,
+ *                 the report, video, audio or the event array (RUN_PSGLOG_OVERLAP);
  *   BAD_ARG       event arguments: events NULL with event_count above 0 (INPUT_EVENTS_NULL),
  *                 event_count above IVS_INPUT_EVENTS_MAX (INPUT_EVENT_COUNT), then the
  *                 event_count * 32 bytes at events running past the top of the address space
@@ -282,7 +291,8 @@ typedef struct ivs_run_report {
  *                 the video buffer or the audio buffer (INPUT_EVENTS_OVERLAP); no event is read;
  *   BAD_STATE     the machine is OFF (RUN_STATE_OFF);
  *   OUT_OF_RANGE  target_ticks above IVS_RUN_TARGET_MAX (RUN_TARGET_RANGE);
- *   BUFFER_TOO_SMALL  a capacity below the output layout's requirement (above; RUN_BUFFER_SMALL);
+ *   BUFFER_TOO_SMALL  a capacity below the output layout's requirement (above; RUN_BUFFER_SMALL for
+ *                 video or audio, RUN_PSGLOG_SMALL for the write log);
  *   BAD_ARG       the events, whole array, lowest failing index: an at_tick at or above 2^63
  *                 (INPUT_TICK_RANGE), below the previous event's (INPUT_UNSORTED) or below the
  *                 input floor (INPUT_BEFORE_FLOOR);

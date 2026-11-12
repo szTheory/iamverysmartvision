@@ -915,8 +915,10 @@ done:
 }
 
 /* BUFFER_TOO_SMALL over the event order checks (env seam, 16 bytes per 1000-tick frame, video
- * capacity 0): an unsorted schedule is refused BUFFER_TOO_SMALL, and with the capacity met it is
- * refused INPUT_UNSORTED at index 1. */
+ * capacity one byte short): an unsorted schedule is refused BUFFER_TOO_SMALL, and with the capacity
+ * met it is refused INPUT_UNSORTED at index 1. Plan 05-02 (D-17): the first call used a NULL video
+ * buffer with capacity 0 and expected BUFFER_TOO_SMALL; that pair now means "channel not
+ * requested", so the capacity is a nonzero 31 and the case still tests the stage order. */
 static int ri_prec_capacity_over_event_order(void)
 {
   ivs_input_event ev[2];
@@ -932,8 +934,9 @@ static int ri_prec_capacity_over_event_order(void)
   e.nominal_frame_ticks = 1000u;
   IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, RI_POISON));
   ri_req(&q, 0u, 1000u, ev, 2u);
-  RI_CHECK(ri_refused(&x, x.m, &q, &e, IVS_E_BUFFER_TOO_SMALL, IVS_REASON_RUN_BUFFER_SMALL, IVS_INPUT_INDEX_NONE));
   q.video = buf;
+  q.video_capacity = 31u; /* one byte below the requirement */
+  RI_CHECK(ri_refused(&x, x.m, &q, &e, IVS_E_BUFFER_TOO_SMALL, IVS_REASON_RUN_BUFFER_SMALL, IVS_INPUT_INDEX_NONE));
   q.video_capacity = 32u; /* (1000 - 0) / 1000 + 1 = 2 frames */
   RI_CHECK(ri_refused(&x, x.m, &q, &e, IVS_E_BAD_ARG, IVS_REASON_INPUT_UNSORTED, 1u));
   rc = IVS_TEST_PASS;

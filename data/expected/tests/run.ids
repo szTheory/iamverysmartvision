@@ -119,6 +119,17 @@ run.prec.handle-over-buffer
 run.prec.unsupported-over-buffer
 run.prec.buffer-over-state
 run.prec.range-over-capacity
+# Plan 05-02 (D-14, D-17, A-11): the write-log channel (psg_log) and the not-requested rule. A NULL
+# buffer with capacity 0 runs against a layout that needs bytes and equals the zero layout; a nonzero
+# short capacity and a non-NULL buffer of capacity 0 are still refused; RUN_PSGLOG_NULL,
+# RUN_PSGLOG_OVERLAP (instance, video, audio, events, top of the address space, the report) and
+# RUN_PSGLOG_SMALL (exact minus one, exact accepted); and the log stage after video and audio.
+run.buffers.null-zero-not-requested
+run.buffers.nonzero-too-small-refused
+run.buffers.psglog-null
+run.buffers.psglog-overlap
+run.buffers.psglog-small
+run.prec.psglog-after-audio
 # Family input (plan 04-11, D-12..D-16, A-04, A-08): the 32-byte event record, one event inside
 # unit 3 of stand-in content A taking effect at the start of unit 4 (never at exit), and the INPUT
 # row against a literal chain produced with printf octal escapes and cmake -E sha256sum.
