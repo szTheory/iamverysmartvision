@@ -253,9 +253,9 @@ const char *ivs_scenario_input_name(uint32_t i, uint32_t *mask);
 /* ---- executor and report (D-17, D-19, D-20, D-22, D-30, plan 04-18) ----
  * ivs_runner_execute runs one parsed scenario on one fresh instance it creates in the host's
  * storage buffer (aligned by hand; the library allocates nothing and has no globals), through
- * the public API only: create, load each role in the order exec, grom, cart, reset, then one
- * ivs_machine_run per run-to (always with IVS_RUN_F_STOP_ON_HALT, so a halt is observed as a
- * stop), evaluating the asserts of a step through ivs_machine_cpu_state, ivs_machine_peek and
+ * the public API only: create, load each role in the order exec, grom, cart, reset, then each
+ * run-to as slices of ivs_machine_run (always with IVS_RUN_F_STOP_ON_HALT, so a halt is observed
+ * as a stop; slicing, budget and wall cap: ivs_runner_options), evaluating the asserts of a step through ivs_machine_cpu_state, ivs_machine_peek and
  * ivs_machine_state_digest at that step's stop. Execution ends at the first step with a failed
  * stop expectation or assert. It then writes the report through host->write_report and
  * returns the outcome (an IVS_RUNNER_OUTCOME_* value).
@@ -291,7 +291,8 @@ const char *ivs_scenario_input_name(uint32_t i, uint32_t *mask);
  * resolved by the host under its content dir only) into buf, at most cap + 1 bytes, and sets
  * *len. read_user (may be NULL) reads the operator's image for a `user` role (role is
  * IVS_SCN_ROLE_*). cancel_requested (may be NULL) returns nonzero once cancellation was asked
- * for; now_ms (may be NULL) is the host's monotonic clock (used from plan 04-19 on).
+ * for; now_ms (may be NULL: no wall cap) is the host's monotonic time in milliseconds; both are
+ * called once before every slice (ivs_runner_options above).
  * write_report receives the report one line at a time (LF included) and returns 0, or nonzero
  * on a write error. storage: storage_bytes bytes the executor owns during the call (instance,
  * aligned by hand, then the read buffer); at most IVS_RUNNER_STORAGE_MAX of it is used.
@@ -310,10 +311,29 @@ typedef struct ivs_runner_host {
   size_t buffer_bytes;
 } ivs_runner_host;
 
-/* Executor options (may be NULL); reserved for plan 04-19 (slices, budget, wall cap). */
+/* Slicing, budget and wall cap (D-21, plan 04-19). Every run-to is executed as slices of at most
+ * slice_ticks master ticks: ivs_machine_run(target = min(limit, now + slice_ticks)) with the
+ * unconsumed input suffix, until the CPU stops or machine time reaches the limit (the core's
+ * slicing invariance, API-02, makes the result equal to one call). Before every slice (so also
+ * between slices) the executor calls cancel_requested exactly once, then now_ms once: a
+ * cancellation is outcome cancelled (`signal step=<k>`); now_ms minus its value at the start of
+ * the first step at or above the wall cap is timeout with detail `wall step=<k> cap-ms=<n>`
+ * (host-dependent, never golden). Both at once resolve to cancelled (precedence). The
+ * machine-time budget is separate and deterministic: the run-to bound reached where `stop
+ * halted|faulted` was expected (`budget step=...`), or the max_ticks ceiling cut a run-to short
+ * (`budget step=<k> line=<n> max-ticks=<m>`), are timeout without the wall flag. A scenario's
+ * wall-timeout-ms only lowers the operator's cap. */
+#define IVS_RUNNER_SLICE_TICKS_MAX UINT64_C(4194304)          /* 1 << 22, the default slice */
+#define IVS_RUNNER_MAX_TICKS_DEFAULT UINT64_C(1099511627776)  /* 1 << 40 master ticks */
+#define IVS_RUNNER_WALL_MS_DEFAULT 30000u                    /* D-22: default wall cap */
+
+/* Executor options (may be NULL: every default). A value outside its range is harness-fail
+ * without a report. */
 typedef struct ivs_runner_options {
-  uint32_t flags;    /* must be 0 */
-  uint32_t reserved; /* must be 0 */
+  uint32_t flags;           /* must be 0 */
+  uint32_t wall_timeout_ms; /* the operator's wall cap; 0: IVS_RUNNER_WALL_MS_DEFAULT */
+  uint64_t slice_ticks;     /* 1..IVS_RUNNER_SLICE_TICKS_MAX; 0: IVS_RUNNER_SLICE_TICKS_MAX */
+  uint64_t max_ticks;       /* machine-time ceiling, 1..IVS_RUN_TARGET_MAX; 0: the default */
 } ivs_runner_options;
 
 /* What a call returned, besides the outcome. host_calls counts read_file, read_user, now_ms and

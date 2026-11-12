@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: MIT */
 /* Suite runner: the interface between runner_main.c, which owns the suite and the outcome
- * family, and the family files runner_parse.c (runner.parse.*, plan 04-17) and runner_fuzz.c
- * (runner.fuzz.*, plan 04-17) and runner_exec.c (runner.exec.*, plan 04-18). Each family exposes its cases by index. Test code only. */
+ * family, and the family files runner_parse.c (runner.parse.*, plan 04-17), runner_fuzz.c
+ * (runner.fuzz.*, plan 04-17), runner_exec.c (runner.exec.*, plan 04-18) and runner_time.c
+ * (runner.time.*, plan 04-19). Each family exposes its cases by index. Test code only. */
 #ifndef RUNNER_CASES_H
 #define RUNNER_CASES_H
 
@@ -36,5 +37,11 @@ int runner_fuzz_run(size_t i);
 size_t runner_exec_count(void);
 const char *runner_exec_id(size_t i);
 int runner_exec_run(size_t i);
+
+/* Family time (runner_time.c, plan 04-19): slicing, budget, wall cap and cancellation with a fake
+ * clock and a fake cancel flag. */
+size_t runner_time_count(void);
+const char *runner_time_id(size_t i);
+int runner_time_run(size_t i);
 
 #endif

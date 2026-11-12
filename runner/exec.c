@@ -2,8 +2,10 @@
 /* Runner scenario executor (D-08, D-09, D-17, D-20, D-22, D-30, plan 04-18). One scenario on one
  * fresh instance the executor creates in the host's storage buffer, aligned by hand; the public
  * API only (ivs/ivs.h); no globals and no allocation (the host owns every buffer). Each run-to is
- * one ivs_machine_run call in this plan (slices, budget ceiling and wall cap: plan 04-19), always
- * with IVS_RUN_F_STOP_ON_HALT so a halt is a stop the scenario must expect. The outcome is the
+ * executed as slices of ivs_machine_run calls (plan 04-19, D-21: at most slice_ticks each, the
+ * unconsumed input suffix resubmitted each call, cancellation and the wall cap checked before
+ * every slice, the max_ticks ceiling a deterministic budget), always with IVS_RUN_F_STOP_ON_HALT
+ * so a halt is a stop the scenario must expect. The outcome is the
  * pure precedence of ivs_runner_outcome_resolve over what the run observed (outcome.c), except a
  * load refusal that matches expect-load, which the executor decides as pass before that call.
  * C rule (hosted-only hazard): one call per statement when one argument reads state another
@@ -26,6 +28,11 @@ typedef struct ex_state {
   ivs_runner_record *rec;
   ivs_machine *m;
   uint8_t *readbuf; /* EX_READ_BUF bytes of host storage after the instance */
+  uint64_t slice_ticks;
+  uint64_t max_ticks;
+  uint64_t now;        /* machine time after the last run call (ivs_info time_ticks before any) */
+  uint64_t wall_start; /* now_ms at the start of the first step */
+  uint32_t wall_cap_ms;
   uint32_t observed;
   char detail[EX_OBS_BITS][IVS_RUNNER_DETAIL_MAX];
 } ex_state;
@@ -87,6 +94,39 @@ static int ex_cancelled(ex_state *x)
   }
   x->rec->host_calls++;
   return x->host->cancel_requested(x->host->ctx) != 0;
+}
+
+/* now_ms, or 0 without a clock (then the wall cap never ends a run). */
+static uint64_t ex_now_ms(ex_state *x)
+{
+  if (x->host->now_ms == NULL) {
+    return 0u;
+  }
+  x->rec->host_calls++;
+  return x->host->now_ms(x->host->ctx);
+}
+
+/* The check before every slice of step k (D-21): cancel_requested once, then now_ms once against
+ * the wall cap. Both are observed when both hold (the precedence makes it cancelled). Returns 1
+ * when the step ends here. */
+static int ex_between_slices(ex_state *x, uint32_t k)
+{
+  char d[IVS_RUNNER_DETAIL_MAX];
+  int cancel = ex_cancelled(x);
+  int wall = 0;
+  if (x->host->now_ms != NULL) {
+    uint64_t t = ex_now_ms(x);
+    wall = t >= x->wall_start && t - x->wall_start >= x->wall_cap_ms;
+  }
+  if (cancel) {
+    (void)snprintf(d, sizeof d, "signal step=%u", (unsigned)(k + 1u));
+    ex_observe(x, IVS_RUNNER_OBS_CANCELLED, d);
+  }
+  if (wall) {
+    (void)snprintf(d, sizeof d, "wall step=%u cap-ms=%u", (unsigned)(k + 1u), (unsigned)x->wall_cap_ms);
+    ex_observe(x, IVS_RUNNER_OBS_TIMEOUT_WALL, d);
+  }
+  return cancel || wall;
 }
 
 /* Reads the bytes of one role into x->readbuf; returns an IVS_RUNNER_READ_* result and the
@@ -418,12 +458,12 @@ static void ex_run_steps(ex_state *x, const ivs_info *info)
     events[i].controller[0] = s->inputs[i].controller[0];
     events[i].controller[1] = s->inputs[i].controller[1];
   }
+  x->wall_start = ex_now_ms(x);
   for (uint32_t k = 0u; k < s->n_steps && k < IVS_SCN_MAX_STEPS; k++) {
     const ivs_scenario_step *st = &s->steps[k];
     ivs_runner_step_record *sr = &x->rec->step[k];
-    ivs_run_request q;
-    ivs_run_report rep;
-    ivs_status rs;
+    uint64_t limit;
+    uint32_t stop = 0u;
     uint32_t sobs;
     if (!ex_ticks(st->target, step_mult, &sr->target_ticks)) {
       (void)snprintf(d, sizeof d, "bound-too-large step=%u line=%u", (unsigned)(k + 1u), (unsigned)st->line);
@@ -431,58 +471,75 @@ static void ex_run_steps(ex_state *x, const ivs_info *info)
       return;
     }
     sr->converted = 1u;
-    if (ex_cancelled(x)) {
-      (void)snprintf(d, sizeof d, "signal step=%u", (unsigned)(k + 1u));
-      ex_observe(x, IVS_RUNNER_OBS_CANCELLED, d);
-      return;
-    }
-    memset(&q, 0, sizeof q);
-    q.struct_size = (uint32_t)sizeof q;
-    q.flags = IVS_RUN_F_STOP_ON_HALT;
-    q.target_ticks = sr->target_ticks;
-    if (info->video_bytes_per_frame != 0u || info->audio_bytes_per_frame != 0u) {
-      size_t half = x->host->buffer_bytes > IVS_RUNNER_BUFFERS_MAX ? IVS_RUNNER_BUFFERS_MAX / 2u
-                                                                   : x->host->buffer_bytes / 2u;
-      if (x->host->buffers != NULL && half > 0u) {
-        q.video = x->host->buffers;
-        q.video_capacity = half;
-        q.audio = x->host->buffers + half;
-        q.audio_capacity = half;
+    limit = sr->target_ticks < x->max_ticks ? sr->target_ticks : x->max_ticks;
+    /* Slices (D-21): each ends at the first unit boundary at or after its target; the loop ends at
+     * a stop that is not TARGET or once machine time reached the limit. */
+    for (;;) {
+      ivs_run_request q;
+      ivs_run_report rep;
+      ivs_status rs;
+      if (ex_between_slices(x, k)) {
+        return;
+      }
+      memset(&q, 0, sizeof q);
+      q.struct_size = (uint32_t)sizeof q;
+      q.flags = IVS_RUN_F_STOP_ON_HALT;
+      q.target_ticks = (x->now < limit && limit - x->now > x->slice_ticks) ? x->now + x->slice_ticks : limit;
+      if (info->video_bytes_per_frame != 0u || info->audio_bytes_per_frame != 0u) {
+        size_t half = x->host->buffer_bytes > IVS_RUNNER_BUFFERS_MAX ? IVS_RUNNER_BUFFERS_MAX / 2u
+                                                                     : x->host->buffer_bytes / 2u;
+        if (x->host->buffers != NULL && half > 0u) {
+          q.video = x->host->buffers;
+          q.video_capacity = half;
+          q.audio = x->host->buffers + half;
+          q.audio_capacity = half;
+        }
+      }
+      q.events = consumed < s->n_inputs ? &events[consumed] : NULL;
+      q.event_count = s->n_inputs - consumed;
+      memset(&rep, 0, sizeof rep);
+      rep.struct_size = (uint32_t)sizeof rep;
+      rs = ivs_machine_run(x->m, &q, &rep);
+      if (rs != IVS_OK) {
+        (void)snprintf(d, sizeof d, "run-refused step=%u status=%s reason=%u", (unsigned)(k + 1u),
+                       ivs_status_name(rs), (unsigned)rep.refusal_reason);
+        ex_observe(x, IVS_RUNNER_OBS_HARNESS_FAIL, d);
+        return;
+      }
+      x->now = rep.now_ticks;
+      stop = rep.stop_reason;
+      sr->ran = 1u;
+      sr->now_ticks = x->now;
+      sr->overshoot_ticks = x->now > sr->target_ticks ? x->now - sr->target_ticks : 0u;
+      sr->stop_reason = stop;
+      consumed += rep.input_consumed;
+      x->rec->have_input = 1u;
+      x->rec->input_consumed = consumed;
+      memcpy(x->rec->controller, rep.controller_now, sizeof x->rec->controller);
+      x->rec->video_bytes += rep.video_bytes_written;
+      x->rec->audio_bytes += rep.audio_bytes_written;
+      if (stop != IVS_STOP_TARGET || x->now >= limit) {
+        break;
       }
     }
-    q.events = consumed < s->n_inputs ? &events[consumed] : NULL;
-    q.event_count = s->n_inputs - consumed;
-    memset(&rep, 0, sizeof rep);
-    rep.struct_size = (uint32_t)sizeof rep;
-    rs = ivs_machine_run(x->m, &q, &rep);
-    if (rs != IVS_OK) {
-      (void)snprintf(d, sizeof d, "run-refused step=%u status=%s reason=%u", (unsigned)(k + 1u), ivs_status_name(rs),
-                     (unsigned)rep.refusal_reason);
-      ex_observe(x, IVS_RUNNER_OBS_HARNESS_FAIL, d);
+    if (stop == IVS_STOP_TARGET && limit < sr->target_ticks) {
+      /* The max_ticks ceiling cut this run-to short: a deterministic budget timeout. */
+      (void)snprintf(d, sizeof d, "budget step=%u line=%u max-ticks=%llu", (unsigned)(k + 1u), (unsigned)st->line,
+                     (unsigned long long)x->max_ticks);
+      ex_observe(x, IVS_RUNNER_OBS_TIMEOUT_BUDGET, d);
       return;
     }
-    sr->ran = 1u;
-    sr->now_ticks = rep.now_ticks;
-    sr->overshoot_ticks = rep.overshoot_ticks;
-    sr->stop_reason = rep.stop_reason;
-    consumed += rep.input_consumed;
-    x->rec->have_input = 1u;
-    x->rec->input_consumed = consumed;
-    memcpy(x->rec->controller, rep.controller_now, sizeof x->rec->controller);
-    x->rec->video_bytes += rep.video_bytes_written;
-    x->rec->audio_bytes += rep.audio_bytes_written;
-    sobs = ivs_runner_stop_observation(rep.stop_reason, st->stop);
+    sobs = ivs_runner_stop_observation(stop, st->stop);
     if ((sobs & IVS_RUNNER_OBS_HARNESS_FAIL) != 0u) {
       (void)snprintf(d, sizeof d, "stop-internal step=%u line=%u got=%s", (unsigned)(k + 1u), (unsigned)st->line,
-                     ivs_runner_stop_token(rep.stop_reason));
+                     ivs_runner_stop_token(stop));
       ex_observe(x, IVS_RUNNER_OBS_HARNESS_FAIL, d);
       return;
     }
     if (sobs != 0u) {
       (void)snprintf(d, sizeof d, "%s step=%u line=%u expected=%s got=%s",
                      sobs == IVS_RUNNER_OBS_TIMEOUT_BUDGET ? "budget" : "stop", (unsigned)(k + 1u),
-                     (unsigned)st->line, ivs_runner_expected_stop_token(st->stop),
-                     ivs_runner_stop_token(rep.stop_reason));
+                     (unsigned)st->line, ivs_runner_expected_stop_token(st->stop), ivs_runner_stop_token(stop));
       ex_observe(x, sobs, d);
     }
     ex_step_asserts(x, k);
@@ -574,7 +631,8 @@ uint32_t ivs_runner_execute(const ivs_scenario *scn, const ivs_runner_host *host
     result->exit_code = ivs_runner_exit_code(IVS_RUNNER_OUTCOME_HARNESS_FAIL);
   }
   if (scn == NULL || host == NULL || host->read_file == NULL || host->write_report == NULL ||
-      (opts != NULL && (opts->flags != 0u || opts->reserved != 0u))) {
+      (opts != NULL && (opts->flags != 0u || opts->slice_ticks > IVS_RUNNER_SLICE_TICKS_MAX ||
+                        opts->max_ticks > IVS_RUN_TARGET_MAX))) {
     return IVS_RUNNER_OUTCOME_HARNESS_FAIL;
   }
   memset(&rec, 0, sizeof rec);
@@ -583,6 +641,12 @@ uint32_t ivs_runner_execute(const ivs_scenario *scn, const ivs_runner_host *host
   x.scn = scn;
   x.host = host;
   x.rec = &rec;
+  x.slice_ticks = opts != NULL && opts->slice_ticks != 0u ? opts->slice_ticks : IVS_RUNNER_SLICE_TICKS_MAX;
+  x.max_ticks = opts != NULL && opts->max_ticks != 0u ? opts->max_ticks : IVS_RUNNER_MAX_TICKS_DEFAULT;
+  x.wall_cap_ms = opts != NULL && opts->wall_timeout_ms != 0u ? opts->wall_timeout_ms : IVS_RUNNER_WALL_MS_DEFAULT;
+  if (scn->wall_timeout_ms != 0u && scn->wall_timeout_ms < x.wall_cap_ms) {
+    x.wall_cap_ms = scn->wall_timeout_ms; /* D-21: a scenario only lowers the cap */
+  }
   if (ex_create(&x) && ex_load_all(&x)) {
     ivs_status st = ivs_machine_reset(x.m, IVS_RESET_POWER_ON);
     if (st != IVS_OK) {
@@ -596,6 +660,7 @@ uint32_t ivs_runner_execute(const ivs_scenario *scn, const ivs_runner_host *host
       if (st != IVS_OK || info.ticks_per_cpu_cycle == 0u || info.nominal_frame_ticks == 0u) {
         ex_observe(&x, IVS_RUNNER_OBS_HARNESS_FAIL, "no-timebase");
       } else {
+        x.now = info.time_ticks;
         ex_run_steps(&x, &info);
       }
     }
