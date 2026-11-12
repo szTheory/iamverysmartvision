@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 5
 current_phase_name: Hand Controllers and PSG Sound
 status: executing
-stopped_at: Completed 05-07-PLAN.md
-last_updated: "2026-11-12T10:39:16.839Z"
+stopped_at: Completed 05-08-PLAN.md
+last_updated: "2026-11-12T11:25:53.191Z"
 last_activity: 2026-11-12
 last_activity_desc: Phase 4 complete, transitioned to Phase 5
-state_head: 1fd2ef95decee5c0986b3218efd0b1b9e19e7b8b
+state_head: 09bfde9a4a6a67fc2f954bcfdb49e7523feb0e4a
 progress:
   total_phases: 8
   completed_phases: 4
   total_plans: 83
-  completed_plans: 78
+  completed_plans: 79
   percent: 50
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 5 (Hand Controllers and PSG Sound) — EXECUTING
-Plan: 8 of 12
+Plan: 9 of 12
 Status: Ready to execute
 Last activity: 2026-11-12 — Completed 05-01 (oracle-first: sources, controller literal, PSG rules and vectors, D10 inventory)
 
@@ -133,6 +133,7 @@ Progress: [█████░░░░░] 50%
 | Phase 5 P05 | 6h | 5 tasks | 85 files |
 | Phase 5 P06 | 5h | 5 tasks | 60 files |
 | Phase 5 P07 | 4h | 5 tasks | 37 files |
+| Phase 05 P08 | 45min | 5 tasks | 35 files |
 
 ## Accumulated Context
 
@@ -313,6 +314,7 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 5]: Envelope is the 16-state machine of the 16 shapes: one state per 2 EP steps, restart on a shape write through the shared write path (ivs_psg_after_write), held at level 0 after reset (05-07)
 - [Phase 5]: The DAC table psg.dac.levels is profile data the core never reads: not an ivs_psg_params member, byte-identical core parameters proven at build time (05-07)
 - [Phase 5]: Every tagged noise, envelope, period-zero and mixer parameter is proven to be data by a stack-copy perturbation test (psg.profile.*), faults hard-coding one fail exactly its test (05-07)
+- [Phase 05]: 05-08: the write log record is appended after the masked store with the catch-up stamp; domain-19 index is the record count; ivs_info publishes W_log from the env so the cut fault is visible to callers
 
 ### Pending Todos
 
@@ -345,6 +347,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-12T10:39:16.677Z
-Stopped at: Completed 05-07-PLAN.md
+Last session: 2026-11-12T11:25:52.792Z
+Stopped at: Completed 05-08-PLAN.md
 Resume file: None
