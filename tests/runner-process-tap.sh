@@ -39,7 +39,8 @@
 # 04-24, D-46) runs the outcomes-covered check with the first outcome's scenarios removed and
 # passes only when it fails with outcome-uncovered.
 # runner-process.watchdog (watchdog self-control): watchdogs stopped at once stay silent, a quick run
-# is not hung and a run past a 1-second limit is (see wd_start).
+# is not hung and a run past a 1-second limit is (see wd_start), and a watchdog that dies before it arms
+# or never arms ends the arming wait as a bounded failure, not a hang (review WR-03).
 # runner-process.outcomes-consistent: `ivs-run --help`, the outcome table of docs/runner.md and
 # data/expected/runner-outcomes.ids list the same pairs; runner-process.outcomes-covered: every
 # pair has a running scenario and every scenario line names a pair.
@@ -103,43 +104,51 @@ size=$(wc -c < "$tmp/build/full.ivsc" | tr -d ' ')
 [ "$size" -gt 32 ] || { printf 'runner-process-tap: container of %s bytes\n' "$size" >&2; exit 1; }
 dd if="$tmp/build/full.ivsc" of="$content/diag-cpu-1-truncated.ivsc" bs=1 count=$((size - 32)) 2> /dev/null || exit 1
 
-# wd_start <pid> <mark>: starts the watchdog of process <pid> (a background subshell, its pid in
-# _wd): after $limit seconds it writes <mark> and sends <pid> TERM. Returns only once the watchdog
-# is armed (its TERM trap set and its sleep started), reported through the FIFO <mark>.ready, so
-# wd_stop never signals it earlier. Without that handshake a stop that follows at once (a run that
-# ends in milliseconds) can reach the fresh subshell while it still has this script's inherited
-# `exit 1` TERM handler: dash (/bin/sh on Linux) records the signal, resets that handler and then
-# drops the signal, so the watchdog ran to its limit and judged a finished run `hung` (hosted run
-# 43148343848, runner-process.scenario.dead-after-refusal).
+# wd_child <pid> <mark>: the watchdog, run by wd_start in a background subshell: it sets its TERM trap,
+# starts its sleep, and only then creates <mark>.armed (the arming signal); after $limit seconds it writes
+# <mark> and sends <pid> TERM. A function, so the self-control below can replace it by a watchdog that
+# never arms.
+wd_child() {
+  _s=
+  trap 'if [ -n "$_s" ]; then kill "$_s" 2> /dev/null; fi; exit 0' TERM
+  sleep "$limit" &
+  _s=$!
+  : > "$2.armed"
+  wait "$_s"
+  : > "$2"
+  kill -TERM "$1" 2> /dev/null
+}
+# wd_start <pid> <mark>: starts the watchdog of process <pid> (a background subshell, its pid in _wd).
+# Returns 0 only once the watchdog is armed (its TERM trap set and its sleep started), reported by the
+# file <mark>.armed, so wd_stop never signals it earlier. Without that handshake a stop that follows at
+# once (a run that ends in milliseconds) can reach the fresh subshell while it still has this script's
+# inherited `exit 1` TERM handler: dash (/bin/sh on Linux) records the signal, resets that handler and
+# then drops the signal, so the watchdog ran to its limit and judged a finished run `hung` (hosted run
+# 43148343848, runner-process.scenario.dead-after-refusal). The wait is a bounded poll (review WR-03): at
+# once, then every 0.01 s, for at most wd_polls polls (500, about 5 s) and never past the death of the
+# watchdog; then it returns 1 (not armed), which is a finding and never a hang. An earlier form read a
+# FIFO that the parent itself held open read-write, so a watchdog that died before it wrote left the read
+# blocked forever, and its retry counter counted only failed reads.
 # wd_stop: stops the watchdog started last (its sleep too) and waits for it.
+wd_polls=500
 wd_start() {
   _wp=$1; _wm=$2
-  rm -f "$_wm" "$_wm.ready"
-  mkfifo "$_wm.ready" || { printf 'runner-process-tap: mkfifo %s.ready failed\n' "$_wm" >&2; exit 1; }
-  # The parent holds the FIFO open read-write (fd 9, an open that never blocks) before the watchdog
-  # starts and until it has read the watchdog's line, so a retried read can never lose the line.
-  exec 9<> "$_wm.ready"
-  (
-    exec 9>&-
-    _s=
-    trap 'if [ -n "$_s" ]; then kill "$_s" 2> /dev/null; fi; exit 0' TERM
-    sleep "$limit" &
-    _s=$!
-    echo armed > "$_wm.ready"
-    wait "$_s"
-    : > "$_wm"
-    kill -TERM "$_wp" 2> /dev/null
-  ) > /dev/null 2>&1 < /dev/null &
+  rm -f "$_wm" "$_wm.armed"
+  ( wd_child "$_wp" "$_wm" ) > /dev/null 2>&1 < /dev/null &
   _wd=$!
-  # A signal that interrupts the read (a child exiting) fails it under dash, so the read is retried
-  # on the same descriptor (an open-for-read retry could lose its writer for good and hang).
-  _try=0
-  until read -r _armed <&9; do
-    _try=$((_try + 1))
-    [ "$_try" -lt 1000 ] || break
+  _wa=1
+  _n=0
+  while [ ! -e "$_wm.armed" ]; do
+    if [ "$_n" -ge "$wd_polls" ] || ! kill -0 "$_wd" 2> /dev/null; then
+      # A watchdog that armed and ended in the last instant still counts as armed.
+      [ -e "$_wm.armed" ] || _wa=0
+      break
+    fi
+    _n=$((_n + 1))
+    sleep 0.01
   done
-  exec 9>&-
-  rm -f "$_wm.ready"
+  rm -f "$_wm.armed"
+  [ "$_wa" -eq 1 ]
 }
 wd_stop() {
   kill -TERM "$_wd" 2> /dev/null
@@ -155,7 +164,12 @@ run_one() {
   _mark="$tmp/runs/$_name.hung"
   (cd "$_cwd" && exec "$@") > "$tmp/runs/$_name.out" 2> "$tmp/runs/$_name.err" < /dev/null &
   _pid=$!
-  wd_start "$_pid" "$_mark"
+  wdbad=0
+  if ! wd_start "$_pid" "$_mark"; then
+    # No armed watchdog: the run is stopped so nothing can hang, and judge reports the finding.
+    wdbad=1
+    kill -TERM "$_pid" 2> /dev/null
+  fi
   wait "$_pid"
   rc=$?
   wd_stop
@@ -176,6 +190,7 @@ why() { printf '%s: %s\n' "$1" "$2" >> "$tmp/why"; found=1; }
 judge() {
   _o="$tmp/runs/$1.out"; _e="$tmp/runs/$1.err"; _x=$2; _oc=$3; _dp=$4; _sl=$5
   found=0
+  if [ "$wdbad" -eq 1 ]; then why watchdog-unarmed "the watchdog did not arm; the run was stopped"; fi
   if [ "$hung" -eq 1 ]; then why hung "still running after ${limit}s, stopped by the watchdog"; fi
   [ "$rc" = "$_x" ] || why exit-code "exit $rc, expected $_x"
   if [ -n "$_sl" ]; then
@@ -732,7 +747,7 @@ self_control outcome-uncovered outcome-uncovered check_covered "$tmp/pairs" "$tm
 
 # Watchdog self-control (the hosted false `hung` of run 43148343848, see wd_start): 20 watchdogs
 # of a live target, each stopped at once, must leave no marker and the target alive (before the
-# FIFO handshake dash dropped most of these stops: 95 of 100 in a local Ubuntu 24.04 container);
+# arming handshake dash dropped most of these stops: 95 of 100 in a local Ubuntu 24.04 container);
 # a run of `true` must end with exit 0 and not hung; `sleep 30` under a 1-second limit must be
 # stopped by the watchdog (hung, exit 143). The quiet limit is 10 s and the first marker ends the
 # loop, so a regression fails in about 10 seconds.
@@ -754,6 +769,14 @@ while [ "$k" -lt 20 ]; do
   k=$((k + 1))
 done
 kill -0 "$tgt" 2> /dev/null || { ok=0; why watchdog-quiet "the target of the stopped watchdogs is gone"; }
+# A watchdog that dies before it arms and one that never arms (10 polls) must each end wd_start with a
+# failure and no marker, in a subshell so the redefinition of wd_child stays there (review WR-03).
+( wd_child() { exit 0; }; wd_start "$tgt" "$tmp/runs/wd-dead.mark"; _r=$?; wd_stop; exit "$_r" ) 2> /dev/null
+[ $? -ne 0 ] || { ok=0; why watchdog-unarmed "a watchdog that died before it armed was reported armed"; }
+( wd_child() { exec sleep 3; }; wd_polls=10; wd_start "$tgt" "$tmp/runs/wd-stall.mark"; _r=$?; wd_stop; exit "$_r" ) 2> /dev/null
+[ $? -ne 0 ] || { ok=0; why watchdog-unarmed "a watchdog that never armed was reported armed"; }
+[ ! -f "$tmp/runs/wd-dead.mark" ] && [ ! -f "$tmp/runs/wd-stall.mark" ] \
+  || { ok=0; why watchdog-unarmed "an unarmed watchdog wrote its marker"; }
 kill "$tgt" 2> /dev/null
 wait "$tgt" 2> /dev/null
 run_one "$tmp" wd-true true
