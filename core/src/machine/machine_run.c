@@ -20,6 +20,7 @@
  *
  * The step seam runs exactly one CPU unit with the profile's CPU configuration, inactive lines
  * (Phase 3 has no device that drives INTR, INTRM, BUSRQ or STPST) and a port whose bus is
+ * ivs_machine_bus, the machine-level wrapper (plan 05-04, A-01), which forwards every access to
  * ivs_memsys_bus on the instance's own memory system. Machine time advances by the unit's
  * elapsed CPU cycles times the profile's ticks_per_cpu_cycle (D2: time is kept in master ticks).
  * A unit the CPU accepts sets the input floor to its start tick + 1 (plan 04-11, D-14), so the run
@@ -110,6 +111,7 @@ ivs_status ivs_machine_step_unit_internal(ivs_machine *m, ivs_cp1610_result *out
   ivs_cp1610_config cfg;
   ivs_cp1610_lines lines;
   ivs_cp1610_port port;
+  ivs_machine_bus_ctx bus_ctx;
   ivs_cp1610_result r;
   ivs_status st;
   uint32_t cycles;
@@ -130,12 +132,19 @@ ivs_status ivs_machine_step_unit_internal(ivs_machine *m, ivs_cp1610_result *out
   cfg.release_latency_cpu_cycles = p->release_latency_cpu_cycles;
   cfg.wait_limit_cpu_cycles = p->wait_limit_cpu_cycles;
   memset(&lines, 0, sizeof lines);
-  memset(&port, 0, sizeof port);
-  port.bus = ivs_memsys_bus;
-  port.ebci = NULL;
-  port.ctx = &im->mem;
-  memset(&r, 0, sizeof r);
   start = im->time_ticks;
+  /* The per-unit bus context (plan 05-04, A-01): the instance, the unit's start tick and the
+   * profile's master ticks per CPU cycle. Built here for every unit, the run call included (it steps
+   * through this seam). Plans 05-06 and 05-08 stamp PSG writes from it; nothing reads it yet. */
+  memset(&bus_ctx, 0, sizeof bus_ctx);
+  bus_ctx.m = im;
+  bus_ctx.unit_start_tick = start;
+  bus_ctx.ticks_per_cpu_cycle = p->ticks_per_cpu_cycle;
+  memset(&port, 0, sizeof port);
+  port.bus = ivs_machine_bus;
+  port.ebci = NULL;
+  port.ctx = &bus_ctx;
+  memset(&r, 0, sizeof r);
   st = ivs_cp1610_step(&im->cpu, &cfg, &lines, &port, NULL, 0u, &r);
   if (st != IVS_OK) {
     return st;

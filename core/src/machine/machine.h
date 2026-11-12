@@ -186,12 +186,31 @@ uint32_t ivs_machine_span_overlaps(const void *p, size_t n, const void *inst, si
  * (REPORT_INSIDE_UNCHECKED). */
 uint32_t ivs_machine_out_overlaps(const void *out, size_t n, const void *inst, size_t inst_bytes);
 
+/* ---- machine-level bus wrapper (plan 05-04, A-01, machine_bus.c) ----
+ * The CPU port of every unit the machine steps: ctx is an ivs_machine_bus_ctx built per unit in the
+ * step seam (the run call steps through the seam). In plan 05-04 the wrapper forwards EVERY access
+ * unchanged to ivs_memsys_bus on the instance's own memory system, which keeps the masked store of
+ * the PSG region (ivs_psg_reg_store); it only reserves the place where plans 05-06 and 05-08 add the
+ * catch-up of the PSG to the write's tick and the write log BEFORE delegating the store. The context
+ * carries the unit start tick (machine time before the step) and the master ticks per CPU cycle
+ * of the profile, from which those plans stamp a write; nothing reads them yet. ivs_memsys_bus
+ * itself answers wait 0 for every kind (U and g depend on it, A-03). The wrapper never touches
+ * the memory system without going through ivs_memsys_bus. */
+typedef struct ivs_machine_bus_ctx {
+  struct ivs_machine *m;
+  uint64_t unit_start_tick;
+  uint32_t ticks_per_cpu_cycle;
+  uint32_t reserved; /* 0 */
+} ivs_machine_bus_ctx;
+
+ivs_bus_reply ivs_machine_bus(void *ctx, const ivs_cp1610_access *a);
+
 /* ---- internal step seam (D-05, D-20, plan 03-12, machine_run.c) ----
  * Steps one CPU unit of a POWERED instance through its memory system: the CPU configuration
  * comes from the profile registry (cpu.interrupt_accept_clears_intff,
  * bus.release_latency_cpu_cycles, bus.wait_limit_cpu_cycles), every line is inactive (no device
- * drives INTR, INTRM, BUSRQ or STPST in Phase 3), and the port's bus is ivs_memsys_bus on the
- * instance's own memory system, so the IAB of the reset entry answers the profile's reset.r7.
+ * drives INTR, INTRM, BUSRQ or STPST in Phase 3), and the port's bus is ivs_machine_bus (plan
+ * 05-04), which forwards to ivs_memsys_bus on the instance's own memory system, so the IAB of the reset entry answers the profile's reset.r7.
  * No access log is kept. Machine time advances by the unit's elapsed CPU cycles times the
  * profile's ticks_per_cpu_cycle. BAD_ARG: out NULL; BAD_HANDLE; BAD_STATE: the instance is OFF;
  * else the CPU step's status (a CPU refusal leaves time unchanged). *out is written only on

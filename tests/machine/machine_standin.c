@@ -35,10 +35,21 @@ static const uint16_t ms_prog_a[] = {0x02B9u, 0x0155u, 0x0241u, 0x0200u, 0x0009u
  *   $1006 B $1002 (PC+2 $1008, d 5) */
 static const uint16_t ms_prog_b[] = {0x02BAu, 0x002Au, 0x0242u, 0x0201u, 0x0012u, 0x000Bu, 0x0220u, 0x0005u};
 
+/* Program C at $1000 (plan 05-04, the PSG register file seen from a guest): R0 = $03FF (the widest
+ * immediate a 10-bit EXEC decle holds), [$01F4] = R0 (the channel A coarse tone period, four bits),
+ * R1 = [$01F4], [$0200] = R1, then a branch to itself.
+ *   $1000 MVII #$3FF, R0   $1002 MVO R0, $01F4   $1004 MVI $01F4, R1   $1006 MVO R1, $0200
+ *   $1008 B $1008 (PC+2 $100A, d 1)
+ * MVI direct is MVI $0200, R1 = 0281 0200 of direct.json (cpu.MVI.adar-figure), so MVI $01F4, R1 is
+ * 0281 01F4; MVO R0, a is 0240 (MVO R1, a is 0241); the branch is as in program A. */
+static const uint16_t ms_prog_c[] = {0x02B8u, 0x03FFu, 0x0240u, 0x01F4u, 0x0281u, 0x01F4u,
+                                     0x0241u, 0x0200u, 0x0220u, 0x0001u};
+
 uint8_t *ivs_ms_exec(uint32_t program)
 {
-  const uint16_t *prog = program == IVS_MS_PROG_B ? ms_prog_b : ms_prog_a;
-  size_t n = program == IVS_MS_PROG_B ? sizeof ms_prog_b / sizeof ms_prog_b[0] : sizeof ms_prog_a / sizeof ms_prog_a[0];
+  const uint16_t *prog = program == IVS_MS_PROG_C ? ms_prog_c : (program == IVS_MS_PROG_B ? ms_prog_b : ms_prog_a);
+  size_t n = program == IVS_MS_PROG_C ? sizeof ms_prog_c / sizeof ms_prog_c[0]
+             : (program == IVS_MS_PROG_B ? sizeof ms_prog_b / sizeof ms_prog_b[0] : sizeof ms_prog_a / sizeof ms_prog_a[0]);
   uint8_t *b = malloc(IVS_MS_EXEC_BYTES);
   uint32_t i;
   if (b == NULL) {

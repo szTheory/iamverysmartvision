@@ -59,8 +59,8 @@ extern const ivs_test_case ivs_machine_sweep_cases[];
 extern const size_t ivs_machine_sweep_count;
 
 /* ---- shared stand-in content (plan 03-12, machine_standin.c) ----
- * Instances in exact-size heap storage and generated images (D-24): IVS_MS_PROG_A and _B are
- * two hand-assembled EXEC programs at $1000 (see machine_standin.c for their decles and the
+ * Instances in exact-size heap storage and generated images (D-24): IVS_MS_PROG_A, _B and _C are
+ * three hand-assembled EXEC programs at $1000 (see machine_standin.c for their decles and the
  * vector rows the encodings come from); content A and B pair a program with its own GROM pattern
  * and one cartridge segment (A: 16 words at $5000, B: 24 words at $6000). */
 #define IVS_MS_PROFILE "intv-2609-ntsc-family-p1"
@@ -68,6 +68,7 @@ extern const size_t ivs_machine_sweep_count;
 #define IVS_MS_GROM_BYTES 2048u
 #define IVS_MS_PROG_A 0u
 #define IVS_MS_PROG_B 1u
+#define IVS_MS_PROG_C 2u /* plan 05-04: writes and reads back PSG register $01F4 */
 #define IVS_MS_CONTENT_A 0u
 #define IVS_MS_CONTENT_B 1u
 

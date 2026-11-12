@@ -20,6 +20,8 @@
 
 #include <stdint.h>
 
+#include "psg/psg_params.h"
+
 typedef struct ivs_psg_state {
   uint64_t next_sample;     /* index of the next chip step (sample) to produce */
   uint32_t tone_counter[3]; /* down-reload counters of channels A, B, C */
@@ -39,5 +41,12 @@ _Static_assert(sizeof(ivs_psg_state) == 72u, "ivs_psg_state must be 72 bytes (ma
 /* Sets s to the power-on state: every member 0 in plan 05-03 (a later plan gives the noise
  * register its seed). */
 void ivs_psg_state_reset(ivs_psg_state *s);
+
+/* The register file (plan 05-04, D-08): the 16 guest-visible words regs[0..15] at $01F0..$01FF
+ * (the storage lives in ivs_memsys psg_reg). A store keeps value & the write mask of the register;
+ * a load gives the stored word & the read mask (never above bit 7); neither has a side effect and
+ * there is no mirror. idx at or above IVS_PSG_REG_COUNT stores nothing and loads 0. */
+void ivs_psg_reg_store(const ivs_psg_params *p, uint16_t *regs, uint32_t idx, uint32_t value);
+uint16_t ivs_psg_reg_load(const ivs_psg_params *p, const uint16_t *regs, uint32_t idx);
 
 #endif

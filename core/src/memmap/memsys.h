@@ -17,8 +17,11 @@
  * happens on read, so a wide stored value (raw-poke seam, A-05a) reads back masked.
  * Layout: 76 bytes of header, then 113,152 bytes of backing (sysram, scratchpad, gram, exec,
  * grom, cart, each u16), then (plan 05-03, D-04) the guest-visible PSG words: 16 registers of
- * 16 bits (32 bytes, only storage until plan 05-04), the two port pull-down masks (2 bytes) and
- * an explicit 2-byte pad: 113,264 bytes in all, divisible by 8. */
+ * 16 bits (32 bytes), the two port pull-down masks (2 bytes) and an explicit 2-byte pad: 113,264
+ * bytes in all, divisible by 8. Since plan 05-04 the PSG region ($01F0-$01FF) is the real device
+ * kind psg8: a read gives the register store under the profile's read mask (psg.regmap) with
+ * bits 15..8 zero, a store keeps value & the write mask, through ivs_psg_reg_load and
+ * ivs_psg_reg_store (psg/psg.h). */
 #ifndef IVS_MEMSYS_H
 #define IVS_MEMSYS_H
 
@@ -35,7 +38,8 @@
 #define IVS_MEMSYS_SCRATCHPAD_WORDS 256u /* backing for the 240-byte extent */
 #define IVS_MEMSYS_GRAM_WORDS 512u
 #define IVS_MEMSYS_CART_SEGMENTS 16u
-#define IVS_MEMSYS_PSG_REGS 16u /* PSG register words (plan 05-03; the device lands in plan 05-04) */
+#define IVS_MEMSYS_PSG_WORDS 16u /* PSG register words: the backing of the psg region (plan 05-04) */
+#define IVS_MEMSYS_PSG_REGS IVS_MEMSYS_PSG_WORDS
 #define IVS_MEMSYS_PSG_PORTS 2u /* PSG I/O ports: R14 = port 0, R15 = port 1 (D-04) */
 #define IVS_MEMSYS_EXEC_BYTES 8192u /* raw EXEC image: 4096 big-endian words (D-26) */
 #define IVS_MEMSYS_GROM_BYTES 2048u /* raw GROM image (D-26) */
@@ -48,7 +52,8 @@
 #define IVS_MEMSYS_DEVICE_RAM8 3u
 #define IVS_MEMSYS_DEVICE_RAM16 4u
 #define IVS_MEMSYS_DEVICE_STUB 5u
-#define IVS_MEMSYS_DEVICE_KINDS 6u
+#define IVS_MEMSYS_DEVICE_PSG8 6u /* plan 05-04: byte-wide PSG register file, upper byte 0 (C64) */
+#define IVS_MEMSYS_DEVICE_KINDS 7u
 
 /* Gates (D-19): open after init; the internal setter closes them. */
 #define IVS_MEMSYS_GATE_NONE 0u
@@ -175,6 +180,13 @@ void ivs_memsys_clear_slot(ivs_memsys *m, uint32_t slot);
 
 /* Internal gate setter (Phase 6 drives it from the STIC). open is 0 or nonzero. */
 void ivs_memsys_set_gate_internal(ivs_memsys *m, uint32_t gate, uint8_t open);
+
+/* The register store of PSG register idx (0..15 = $01F0 + idx): the stored word under the profile's
+ * read mask, which is what a bus read of that address returns (upper byte 0); 0 for idx at or
+ * above IVS_MEMSYS_PSG_WORDS. Pure. It does not follow the port direction and pins, so it is also
+ * what the register-file tests read for the two port registers (plan 05-05 changes the bus read
+ * of $01FE and $01FF, not this accessor). */
+uint16_t ivs_memsys_psg_reg_internal(const ivs_memsys *m, uint32_t idx);
 
 /* Internal pull-down setter (plan 05-03, D-04; called from the input path in plan 05-05): stores
  * mask as the set of low-driven pins of PSG port 0 or 1. A port at or above IVS_MEMSYS_PSG_PORTS

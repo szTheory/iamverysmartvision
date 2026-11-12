@@ -348,15 +348,25 @@
       "decision": null,
       "note": "Stores keep value & $00FF; reads give the stored byte with bits 15..8 zero."
     },
+    "memmap.device.psg8": {
+      "value": {"bits": 8, "rmask": "$00FF", "fill": "$0000", "store": "keep"},
+      "tag": "unknown-default-chosen",
+      "cite": "SRC-intv-wiki (PSG, oldid 14940) for the byte-wide register file; none-found for what bits 15..8 of a PSG register or port read as on a 2609",
+      "conflict": "C64",
+      "resolving_evidence": "measurement: D10 idle upper-byte read on owner hardware",
+      "revisit_trigger": "a measurement of the upper byte of a PSG register read, or an owner EXEC run that exercises it",
+      "decision": null,
+      "note": "The PSG registers drive only the low byte of the 16-bit bus word; bits 15..8 read 0 (device kind psg8, D-04). Stores keep value & $00FF here and then value & the register's write mask (psg.regmap)."
+    },
     "memmap.device.stub": {
       "value": {"bits": 0, "rmask": "$0000", "fill": "$FFFF", "store": "drop"},
       "tag": "unknown-default-chosen",
-      "cite": "none-found: no source documents STIC or PSG register reads for a device the core does not implement yet",
+      "cite": "none-found: no source documents STIC register reads for a device the core does not implement yet",
       "conflict": "C60",
-      "resolving_evidence": "measurement: D10 read-back of STIC and PSG register reads on owner hardware",
-      "revisit_trigger": "when the PSG phase (5) or the STIC phase (6) implements the device",
+      "resolving_evidence": "measurement: D10 read-back of STIC register reads on owner hardware",
+      "revisit_trigger": "when the STIC phase (6) implements the device",
       "decision": null,
-      "note": "A stub region is decoded and named but holds no state: reads give the undriven value and writes are dropped (D-19)."
+      "note": "A stub region is decoded and named but holds no state: reads give the undriven value and writes are dropped (D-19). Only the STIC regions use it since plan 05-04; the PSG region is a real device (psg8)."
     },
     "memmap.region.stic_regs": {
       "value": {"view": "RW", "lo": "$0000", "hi": "$003F", "device": "stub", "size_words": 64, "gate": "stic-regs", "impl": "stub"},
@@ -389,14 +399,14 @@
       "note": "Extent 240 words over a 256-word backing; the 16 words above the extent are unreachable."
     },
     "memmap.region.psg_regs": {
-      "value": {"view": "RW", "lo": "$01F0", "hi": "$01FF", "device": "stub", "size_words": 16, "gate": "none", "impl": "stub"},
+      "value": {"view": "RW", "lo": "$01F0", "hi": "$01FF", "device": "psg8", "size_words": 16, "gate": "none", "impl": "real"},
       "tag": "tier4-community",
       "cite": "SRC-intv-wiki (Memory Map, oldid 14847) for $01F0-$01FF",
       "conflict": "C11",
       "resolving_evidence": "pending: a tier 1 to 3 address source, or a D10 decode probe on owner hardware",
       "revisit_trigger": "when a tier 1 to 3 source or a hardware probe gives the decode",
       "decision": null,
-      "note": "PSG registers; the device arrives in Phase 5."
+      "note": "PSG registers: the register file of plan 05-04 (sixteen words, low byte only, masks in psg.regmap, no mirror in psg.mirrors)."
     },
     "memmap.region.sysram": {
       "value": {"view": "RW", "lo": "$0200", "hi": "$035F", "device": "ram16", "size_words": 512, "gate": "none", "impl": "real"},
@@ -504,6 +514,43 @@
       "revisit_trigger": "when content needs a range outside the span or a source gives the 2609 cartridge decode",
       "decision": null,
       "note": "A segment must lie wholly inside the span and must not overlap another segment; nothing else constrains its start (A-01). Write-only aliases inside the span are write view only."
+    },
+    "psg.regmap": {
+      "value": [
+        {"addr": "$01F0", "name": "tone-a-fine", "gi_octal": "R0", "wmask": "$00FF", "rmask": "$00FF"},
+        {"addr": "$01F1", "name": "tone-b-fine", "gi_octal": "R2", "wmask": "$00FF", "rmask": "$00FF"},
+        {"addr": "$01F2", "name": "tone-c-fine", "gi_octal": "R4", "wmask": "$00FF", "rmask": "$00FF"},
+        {"addr": "$01F3", "name": "env-fine", "gi_octal": "R13", "wmask": "$00FF", "rmask": "$00FF"},
+        {"addr": "$01F4", "name": "tone-a-coarse", "gi_octal": "R1", "wmask": "$000F", "rmask": "$000F"},
+        {"addr": "$01F5", "name": "tone-b-coarse", "gi_octal": "R3", "wmask": "$000F", "rmask": "$000F"},
+        {"addr": "$01F6", "name": "tone-c-coarse", "gi_octal": "R5", "wmask": "$000F", "rmask": "$000F"},
+        {"addr": "$01F7", "name": "env-coarse", "gi_octal": "R14", "wmask": "$00FF", "rmask": "$00FF"},
+        {"addr": "$01F8", "name": "mixer-ports", "gi_octal": "R7", "wmask": "$00FF", "rmask": "$00FF"},
+        {"addr": "$01F9", "name": "noise-period", "gi_octal": "R6", "wmask": "$001F", "rmask": "$001F"},
+        {"addr": "$01FA", "name": "env-shape", "gi_octal": "R15", "wmask": "$000F", "rmask": "$0000"},
+        {"addr": "$01FB", "name": "amp-a", "gi_octal": "R10", "wmask": "$003F", "rmask": "$003F"},
+        {"addr": "$01FC", "name": "amp-b", "gi_octal": "R11", "wmask": "$003F", "rmask": "$003F"},
+        {"addr": "$01FD", "name": "amp-c", "gi_octal": "R12", "wmask": "$003F", "rmask": "$003F"},
+        {"addr": "$01FE", "name": "port-a", "gi_octal": "R16", "wmask": "$00FF", "rmask": "$00FF"},
+        {"addr": "$01FF", "name": "port-b", "gi_octal": "R17", "wmask": "$00FF", "rmask": "$00FF"}
+      ],
+      "tag": "tier4-community",
+      "cite": "SRC-intv-wiki (PSG, oldid 14940) for the sixteen addresses, roles and data-bit columns; SRC-gi-1980-catalog printed 5-26 (pdf 207) for the octal register numbers and field widths",
+      "conflict": "C70",
+      "resolving_evidence": "measurement: D10 owner hardware: write distinct values to each of $01F0..$01FF with sound disabled and read each back",
+      "revisit_trigger": "a primary data sheet of the console part, a schematic or a D10 read-back",
+      "decision": null,
+      "note": "One record per CPU address in ascending order; gi_octal is the data sheet register number in OCTAL (R10 is the eighth register, C80). wmask: a store keeps value & wmask; rmask: a read gives the store & rmask with bits 15..8 zero. The shape register $01FA keeps four bits and reads 0 (C75, the community claim; the data sheet text would read it back, a one-field reversal of its rmask to $000F). The tone coarse registers keep four bits (C60). The port registers $01FE and $01FF are plain stores in plan 05-04; what a read returns follows the direction bits and the pins from plan 05-05. Written by hand from data/psg/intv-2609-ntsc-family-p1.regmap.literal.txt; the psg-vectors step compares the two."
+    },
+    "psg.mirrors": {
+      "value": "none",
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: the data sheet puts the sixteen registers in a mask-programmable block and no source says whether the console decodes the block more than once",
+      "conflict": "C74",
+      "resolving_evidence": "measurement: D10 owner hardware: address-map probe of the words around $01F0..$01FF and the blocks 1024 words apart",
+      "revisit_trigger": "a decode source for the console or a D10 address-map probe",
+      "decision": null,
+      "note": "Only $01F0..$01FF decode to the PSG; no alias. The generator refuses any other value."
     },
     "input.controllers": {
       "value": 2,
