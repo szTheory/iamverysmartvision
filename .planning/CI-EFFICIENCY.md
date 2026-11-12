@@ -558,3 +558,59 @@ If the projection or the last-5 median reaches 190 cpu-s, the lever order is (1)
 - Lever list for the orchestrator to turn into plan 05-L1 if it wants to act on the conservative estimate (the executor does not create 05-L1): (1) batch the `cp1610-vectors` JSON re-parse (about 5 cpu-s, no evidence change; alone it brings the projection to 184 to 191); (2) limit fault reruns to the suites a fault names, only if (1) is not enough; (3) background `c-build` only if `cpu_s / (ncpu x gate_s)` shows idle cores (about 0.7 today: 179 / (4 x 59) = 0.76, so not yet). The next hosted rows (05-04 onward) will show whether the 195 reading or the 189 reading is the better one; a last-5 median at or above 190 fires the rule independently of this projection.
 
 checkpoint-1: lever-required
+
+## 2026-11-12 Phase 5 lever pass 05-L1: where the gate's CPU goes, and a no-action decision
+
+Trigger (read from `.planning/ci-runs.tsv`, successful rows, orchestrator-recorded): last-5 `cpu_s` 225, 136, 160, 252, 263, median **225** (above the 200 trigger); last-5 `gate_s` 75, 45, 55, 81, 85, median 75 (under 90). `cpu_s / (ncpu x gate_s)` for the last two rows: 252 / (4 x 81) = 0.78 and 263 / (4 x 85) = 0.77, so the hosted cores are saturated and total CPU is fixed by the work, not by scheduling (V-16 lever 3 cannot help). Hosted split of the last row: `build_s` 37 of `gate_s` 85. Nothing here calls `gh`.
+
+### Measurement method (no edits to the repository for it)
+
+- Local macOS: `sh tools/gate.sh` plus each step and the control runner run alone with the gate's environment (results dir, nonce, file list) and `times` for children CPU. Warm build, so `c-build` is not representative.
+- Linux shape: `sh tools/gate-linux.sh` (Ubuntu 24.04, gcc 13.3.0, cmake 3.28.3, dash, x86_64 under emulation on an arm64 host, 8 cores; a cold build every run), then the same per-step harness run inside the container with the steps one after another (no overlap with the controls). The emulation inflates CPU by about 2x against the hosted runner (container `gate-cpu` 515 to 551 against hosted 263 for nearly the same code), so container figures are used for shares and for sizing a lever, hosted rows for the trigger.
+
+### Ranked cost table (container, cold, steps run alone and in sequence; cpu-s = user + sys, wall-s)
+
+| Rank | Step or phase | cpu-s | wall-s | Share of about 515 | Notes |
+|------|---------------|-------|--------|--------------------|-------|
+| 1 | `c-build` | 190.1 | 29.5 | 37% | dev build 41.2 (5.9 wall), `ivs_faults` build 114.1 (16.7), release build 40.8 (5.9), two configures 2 |
+| 2 | control runner (300 controls, 4 lanes) | 165.8 | 49.8 | 32% | step compute about 125, spawn and tree copy about 41; ten `c-purity` controls that reach the symbol layer cost 4.3 to 4.5 each (about 44), `cp1610-vectors` 39 runs 14.4, `faults-verdict` 17 runs 8.7, `golden` 11 runs 7.2 |
+| 3 | `c-faults` (158 runs, 4 lanes) | 43.4 | 14.2 | 8% | 0.27 cpu-s per fault run |
+| 4 | `c-tests` (ctest dev and release in parallel) | 32.9 | 11.9 | 6% | 2966 tests, dev under ASan and UBSan |
+| 5 | `c-purity` | 13.1 | 12.5 | 3% | compiles every core TU at -O0 and -O2 plus the self-test; serial |
+| 6 | `pkg-install` | 7.8 | 7.3 | 1.5% | |
+| 7 | `hygiene` | 7.1 | 5.6 | 1.4% | |
+| 8 | `cp1610-vectors` | 4.7 | 4.7 | 0.9% | one cmake script, pure JSON string work |
+| 9 | `faults-verdict` | 4.1 | 3.1 | 0.8% | |
+| 10 | `tests-inventory` | 3.9 | 3.7 | 0.8% | |
+| - | the other 25 steps | about 17 | about 22 | 3% | each under 3.1 cpu-s |
+
+- Container gate runs: `gate-time total=131` and `123` (two runs), `gate-cpu user=517.01 sys=33.60` and `user=486.22 sys=28.87`; `step-time` controls 79 and 73 (overlapped), `c-build` 38 and 36, `c-faults` 18 and 17, `c-purity` 16 and 14, `c-tests` 13 and 12. The wall is the serial step chain; the controls overlap it.
+- Local macOS (18 cores, load 7 to 9, warm build): `sh tools/gate.sh` `gate-time total=31`, `gate-cpu user=53.45 sys=48.05` (101.5). Alone: controls 42.6 cpu-s (15.8 wall), `c-faults` 21.9 (6.3), `c-tests` 9.5 (4.1), `hygiene-history` 3.9, `hygiene` 2.9, `cp1610-vectors` 2.9, `c-purity` 2.0, `pkg-install` 1.9, the rest under 1 each. The laptop cannot see the dominant hosted cost, because its `c-build` is warm (0.7 cpu-s).
+- Unit costs (container): per fault, build 114.1 / 158 = **0.72 cpu-s** (an owner TU recompiled at -O1 with the warning set, about 0.61 wall on average, plus a link of about 0.19; the ninja log shows 157 owner-object compiles for 158 faults) and run 43.4 / 158 = 0.27 cpu-s. A front end only compile (`-fsyntax-only`) of a core TU is 0.08 s against 0.36 s at -O1, so the compile is optimizer time, not warning time (`-w` saves 0.01 s).
+- Finding on the V-16 projection: the 0.144 cpu-s per fault of checkpoint 1 counted the fault run only. The fault build is 2.7x the run cost, so a fault costs about (0.72 + 0.27) x 0.51 = **0.5 cpu-s hosted** (0.51 is the hosted over container CPU ratio), not 0.15. The 33 faults still planned (05-05 to 05-10) therefore add about 16 cpu-s hosted, not the 5 assumed, and the last-5 median is expected to settle around 240 to 260 by the phase end rather than 190.
+
+### Levers considered
+
+| Lever | Measured saving (container cpu-s) | Evidence change | Decision |
+|-------|-----------------------------------|-----------------|----------|
+| V-16 (1) batch the `cp1610-vectors` JSON re-parse | about 5: the whole step is 4.7 alone and 14.4 over 39 controls, most of the control share is fixed (cmake start, blind projection, tree copy); halving the script cost saves about 2 + 3 | none intended, but it is a rewrite of a 1328-line checker guarded by 40 controls | **rejected**: under the 15 cpu-s bar by a factor of 3, and a rewrite risk out of proportion |
+| V-16 (2) limit fault reruns to the suites a fault names | 0 | would weaken | **rejected, already true**: `c-faults` runs each fault once and the executable runs only the suite its ids file names (`# suite=<name>`); there is no full-suite rerun per fault. Running fewer vectors per fault would break the verdict's exact `list-mismatch` check, so it cannot be done without losing evidence |
+| V-16 (3) background `c-build` | 0 cpu (wall only) | none | **rejected**: cores are saturated (0.77), total CPU is fixed |
+| `-g0` on the fault objects and executables only (tests/faults.cmake) | about 10 (removing `-g` from the whole dev preset measured 13.9: dev 41.2 to 37.6, faults 114.1 to 103.8) | none (codegen is unchanged; fault binaries are never debugged) | **rejected for now**: 10 cpu-s is about 5 hosted (2%) against a hosted spread of 136 to 263 for the same code, under the 15 bar; keep it as the first item of a later pass |
+| fault objects at -O0 instead of -O1 | about 35 to 40 (a compile drops from 0.36 to 0.22 s) | the fault executables would no longer be built with the dev flags the suites are proven with; a fault could in principle pass at -O0 and fail at -O1 | **rejected**: changes the evidence build; it is an owner decision, not a lever |
+| fewer controls, controls without the `c-purity` self-test, shared compile cache between control runs | 40 to 50 | would weaken the control or the step it proves | **rejected** (listed in the D-45 rule as not levers) |
+| ccache | not measured | none | banned by the D-45 rule while the gate is within the wall budget, and a hosted cache needs an action step and a cache key (a CI change, AGENTS.md: measure first) |
+
+### Decision
+
+No lever clears the bar (at least about 15 cpu-s on the container shape with the evidence unchanged and a simple, safe change), so **nothing was applied and no tracked file other than this entry changed**. The cost is structural: 37% is the cold build and its 157 per-fault owner-TU compiles, 32% is the 300 controls, and both grow linearly with the faults and controls the phase still has to add. The gate wall is far from its trigger (median 75 s against 90 s), the hosted cores are saturated, and the CPU figure is not billed time; it is the trigger the D-45 rule uses to ask whether a cheaper design exists, and the measurement says the only cheap one (`-g0`, 10 cpu-s) is below the bar.
+
+Recommended follow-ups, for the orchestrator and the owner (not done here):
+
+- Re-baseline the hosted cpu budget with the corrected per-fault unit cost: median `cpu_s` 200 is already exceeded by the current code (225), and the 33 planned faults add about 16 and the 16 planned controls about 6 hosted; a budget near 260 and a trigger near 280 describe the phase end, the wall budget (median `gate_s` 75, trigger 90) stays as it is. Updating V-16's per-fault figure from 0.15 to about 0.5 hosted cpu-s keeps later projections honest.
+- If a lever is still wanted before the phase end, in this order: `-g0` for the fault targets (about 5 hosted cpu-s, no evidence change), then a decision by the owner on whether the fault executables must be built at the dev flags (the -O0 option above, about 19 hosted cpu-s, changes the evidence build). Wider changes (ccache, a second job) stay banned or last-resort per the D-45 rule.
+
+### Before and after
+
+- Before: counts `steps=35/35 controls=300/300 faults=158/158 tests-expected=2968 tests-executed=2966 tests-skipped=2 tests-missing=0`; local `gate-time total=31`, `gate-cpu` 101.5; container `gate-time total=131`, 550.6 cpu-s.
+- After (this entry is the only change to the tree): `sh tools/gate.sh` `gate-time total=31`, `gate-cpu user=53.68 sys=45.80` (99.5); `dash tools/gate.sh` `gate-time total=33`, `gate-cpu user=54.55 sys=49.75`. The `gate:` summary line of the sh run before and the sh and dash runs after is byte-identical (same md5): `steps=35/35 controls=300/300 faults=158/158 tests-expected=2968 tests-executed=2966 tests-skipped=2 tests-missing=0`. Container (`sh tools/gate-linux.sh`): exit 0, last log line `gate: PASS steps=35/35 controls=300/300 ... faults=158/158 ... tests-expected=2968 tests-executed=2966 tests-skipped=2 tests-missing=0`, `gate-time total=124`, `gate-cpu user=481.83 sys=29.08` (510.9); its summary line is byte-identical to the before run (same md5). CPU and wall are unchanged within the host noise, as expected for a no-action pass.
