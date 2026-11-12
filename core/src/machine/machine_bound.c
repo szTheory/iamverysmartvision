@@ -157,6 +157,17 @@ static uint32_t ivs_bound_spans_meet(const void *a, uint64_t na, const void *b, 
   return (uint64_t)(y - x) < na ? 1u : 0u;
 }
 
+/* 1 when the n bytes at p run past the top of the address space (review IN-02): such a span
+ * names no real object, so a buffer or event array that does is refused as overlapping before
+ * the pairwise tests (whose arithmetic does not wrap but would miss the wrapped part). */
+static uint32_t ivs_bound_span_wraps(const void *p, uint64_t n)
+{
+  if (p == NULL || n == 0u) {
+    return 0u;
+  }
+  return n - 1u > (uint64_t)(UINTPTR_MAX - (uintptr_t)p) ? 1u : 0u;
+}
+
 /* The bytes the event array of req names: event_count * 32 in 64 bits, or 0 when event_count is
  * above IVS_INPUT_EVENTS_MAX (such a count names no array the core honours: it is refused
  * INPUT_EVENT_COUNT before any overlap test, and the report rule must not depend on where a span
@@ -207,7 +218,9 @@ static uint32_t ivs_bound_buffers(const struct ivs_machine *im, const ivs_run_re
   if ((req->video == NULL && req->video_capacity != 0u) || (req->audio == NULL && req->audio_capacity != 0u)) {
     return IVS_REASON_RUN_BUFFER_NULL;
   }
-  if (ivs_bound_spans_meet(req->video, req->video_capacity, im, sizeof *im) != 0u ||
+  if (ivs_bound_span_wraps(req->video, req->video_capacity) != 0u ||
+      ivs_bound_span_wraps(req->audio, req->audio_capacity) != 0u ||
+      ivs_bound_spans_meet(req->video, req->video_capacity, im, sizeof *im) != 0u ||
       ivs_bound_spans_meet(req->audio, req->audio_capacity, im, sizeof *im) != 0u ||
       ivs_bound_spans_meet(req->video, req->video_capacity, req->audio, req->audio_capacity) != 0u ||
       ivs_bound_spans_meet(req->video, req->video_capacity, rep, sizeof *rep) != 0u ||
@@ -229,7 +242,7 @@ static uint32_t ivs_bound_events(const struct ivs_machine *im, const ivs_run_req
     return IVS_REASON_INPUT_EVENT_COUNT;
   }
 #ifndef IVS_FAULT_RUN_EVENTS_UNCHECKED /* named fault RUN_EVENTS_UNCHECKED: the overlap test is skipped */
-  if (ivs_bound_spans_meet(req->events, n, im, sizeof *im) != 0u ||
+  if (ivs_bound_span_wraps(req->events, n) != 0u || ivs_bound_spans_meet(req->events, n, im, sizeof *im) != 0u ||
       ivs_bound_spans_meet(req->events, n, rep, sizeof *rep) != 0u ||
       ivs_bound_spans_meet(req->events, n, req->video, req->video_capacity) != 0u ||
       ivs_bound_spans_meet(req->events, n, req->audio, req->audio_capacity) != 0u) {

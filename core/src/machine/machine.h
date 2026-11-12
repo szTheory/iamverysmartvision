@@ -140,7 +140,8 @@ void ivs_machine_slot_report(const ivs_machine_slot *s, ivs_image_report *o);
 uint32_t ivs_machine_cart_span_check(uint32_t lo, uint32_t hi, const ivs_ivsc_view *v);
 
 /* 1 when the n bytes at p overlap the inst_bytes bytes at inst (A-06, A-08 a). Differences of
- * uintptr_t values only, so nothing wraps whatever the pointers are; n or inst_bytes 0 is 0.
+ * uintptr_t values only, so nothing wraps whatever the pointers are; n or inst_bytes 0 is 0; a
+ * span that runs past the top of the address space is 1 (review IN-02: it names no object).
  * Used for input spans (only within the kind's bound) and for every out parameter that points
  * into caller memory: an out struct or buffer that overlaps the instance storage is refused
  * BAD_ARG with nothing written, so a host cannot aim a report into its own instance. */

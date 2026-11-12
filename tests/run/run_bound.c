@@ -638,6 +638,58 @@ done:
   return rc;
 }
 
+/* Review IN-02: a span that runs past the top of the address space names no object and is
+ * refused as overlapping before the pairwise tests, with nothing written or read: an audio buffer
+ * (RUN_BUFFER_OVERLAP; the video buffer takes the same test), and a peek out array (BAD_ARG). The pointers are never
+ * dereferenced by a correct core (Phase 4 writes no buffer byte; a refused peek writes nothing). */
+static int rb_wrap_buffers(void)
+{
+  ivs_ms_inst x;
+  ivs_run_snap s;
+  ivs_run_request q;
+  ivs_run_report r;
+  ivs_status st;
+  uint8_t *top = (uint8_t *)(uintptr_t)(UINTPTR_MAX - 15u);
+  uint32_t pass;
+  int rc = IVS_TEST_FAIL;
+  IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, RB_POISON));
+  s.copy = NULL;
+  for (pass = 0u; pass < 2u; pass++) {
+    memset(&q, 0, sizeof q);
+    q.struct_size = (uint32_t)sizeof q;
+    q.target_ticks = 100u;
+    /* The audio buffer: the named fault OUTBUF_PARTIAL_WRITE writes video[0] of a refused run,
+     * which would dereference a wrapping video pointer in that fault build. */
+    q.audio = top;
+    q.audio_capacity = pass == 0u ? 17u : UINT64_MAX; /* one byte past the top; far past it */
+    memset(&r, RB_POISON, sizeof r);
+    r.struct_size = (uint32_t)sizeof r;
+    RB_CHECK(ivs_run_snap_take(&s, &x, 0));
+    st = ivs_machine_run(x.m, &q, &r);
+    RB_CHECK(st == IVS_E_BAD_ARG && r.refusal_reason == IVS_REASON_RUN_BUFFER_OVERLAP);
+    RB_CHECK(ivs_run_snap_same(&s, &x));
+    ivs_run_snap_free(&s);
+  }
+  rc = IVS_TEST_PASS;
+done:
+  ivs_run_snap_free(&s);
+  ivs_ms_free(&x);
+  return rc;
+}
+
+static int rb_peek_out_wraps(void)
+{
+  ivs_ms_inst x;
+  uint16_t *top = (uint16_t *)(uintptr_t)(UINTPTR_MAX - 7u); /* 8 bytes to the top, even */
+  int rc = IVS_TEST_FAIL;
+  IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, RB_POISON));
+  RB_CHECK(ivs_machine_peek(x.m, 0x0100u, 8u, top) == IVS_E_BAD_ARG); /* 16 bytes: wraps */
+  rc = IVS_TEST_PASS;
+done:
+  ivs_ms_free(&x);
+  return rc;
+}
+
 /* ---- refusals (D-05) ---- */
 
 #define RB_NO_WRITE 0xFFFFFFFFu
@@ -1156,6 +1208,8 @@ const ivs_test_case ivs_run_bound_cases[] = {
     {"run.stop.fault-before-halt", rb_stop_fault_before_halt, NULL},
     {"run.stop.internal-step-refused", rb_stop_internal, NULL},
     {"run.stop.internal-input-restored", rb_stop_internal_input, NULL},
+    {"run.buffers.wrap-overlap", rb_wrap_buffers, NULL},
+    {"run.refuse.peek.out-wraps", rb_peek_out_wraps, NULL},
     {"run.refuse.null-request", rb_refuse_null_request, NULL},
     {"run.refuse.null-report", rb_refuse_null_report, NULL},
     {"run.refuse.struct-size-request", rb_refuse_struct_size_request, NULL},

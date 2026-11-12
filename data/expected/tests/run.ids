@@ -49,6 +49,8 @@ run.stop.fault-sticky
 run.stop.fault-before-halt
 run.stop.internal-step-refused
 run.stop.internal-input-restored
+run.buffers.wrap-overlap
+run.refuse.peek.out-wraps
 run.refuse.null-request
 run.refuse.null-report
 run.refuse.struct-size-request

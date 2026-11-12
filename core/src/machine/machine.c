@@ -65,6 +65,11 @@ uint32_t ivs_machine_span_overlaps(const void *p, size_t n, const void *inst, si
   if (n == 0u || inst_bytes == 0u) {
     return 0u;
   }
+  /* A span that runs past the top of the address space names no real object: it counts as
+   * overlapping (review IN-02), so the caller refuses it BAD_ARG with nothing written. */
+  if ((uintptr_t)(n - 1u) > UINTPTR_MAX - a || (uintptr_t)(inst_bytes - 1u) > UINTPTR_MAX - s) {
+    return 1u;
+  }
   if (a >= s) {
     return (uint32_t)(a - s < (uintptr_t)inst_bytes);
   }

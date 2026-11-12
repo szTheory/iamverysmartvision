@@ -254,11 +254,13 @@ typedef struct ivs_run_report {
  *   UNSUPPORTED   an unknown or reserved flag (RUN_FLAGS), then a nonzero byte past sizeof of a
  *                 larger request (RUN_TAIL), then a nonzero reserved_in (INPUT_RESERVED_IN);
  *   BAD_ARG       output buffers: a NULL buffer with a nonzero capacity (RUN_BUFFER_NULL), then a
- *                 buffer (capacity bytes) overlapping the instance storage, the other buffer or
- *                 the report (RUN_BUFFER_OVERLAP; uintptr_t arithmetic, 64-bit lengths);
+ *                 buffer (capacity bytes) running past the top of the address space or
+ *                 overlapping the instance storage, the other buffer or the report
+ *                 (RUN_BUFFER_OVERLAP; uintptr_t arithmetic, 64-bit lengths);
  *   BAD_ARG       event arguments: events NULL with event_count above 0 (INPUT_EVENTS_NULL),
  *                 event_count above IVS_INPUT_EVENTS_MAX (INPUT_EVENT_COUNT), then the
- *                 event_count * 32 bytes at events overlapping the instance storage, the report,
+ *                 event_count * 32 bytes at events running past the top of the address space
+ *                 or overlapping the instance storage, the report,
  *                 the video buffer or the audio buffer (INPUT_EVENTS_OVERLAP); no event is read;
  *   BAD_STATE     the machine is OFF (RUN_STATE_OFF);
  *   OUT_OF_RANGE  target_ticks above IVS_RUN_TARGET_MAX (RUN_TARGET_RANGE);
