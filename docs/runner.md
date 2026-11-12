@@ -170,11 +170,14 @@ Two kinds, each with a header the gate step `golden` checks (`tools/check/steps/
 - `data/golden/<id>.expect`: predicates, tier `original-diagnostic`, oracle `independent-derivation`, with the derivation cites in comments. Its `assert` lines must equal the scenario's `assert` lines.
 - `data/golden/<id>.digests`: repeatability digests, tier `deterministic-repeatability`, oracle `self-recorded`. A self-recorded golden only shows that a later run repeats this one; it is no evidence that the run is right.
 
-Header lines: `# tier:` (an id of `data/expected/evidence-tiers.ids`), `# oracle:`, `# scenario:` (the scenario id), `# profile:`, and for `.digests` `# domains: cpu=observed mem=observed images=observed instance=observed video=<v> audio=<v> input=<v>`.
-A live domain (video, audio, input) is `observed` only when its report count (`output.video.bytes`, `output.audio.bytes`, `input.events`) is not 0; otherwise it is `none` and its digest line is left out, so a hash of nothing is never recorded as an observation.
+Header lines: `# tier:` (an id of `data/expected/evidence-tiers.ids`), `# oracle:`, `# scenario:` (the scenario id), `# profile:`, and for `.digests` `# domains: cpu=observed mem=observed images=observed instance=observed video=<v> audio=<v> input=<v> psglog=<v>`.
+A live domain (video, audio, input, psglog) is `observed` by one count-based rule: exactly when its report count (`output.video.bytes`, `output.audio.bytes`, `input.events`, `output.psglog.bytes`) is a decimal other than 0; otherwise it is `none` and its keys are left out, so a hash of nothing is never recorded as an observation.
+A delivered but silent audio stream has nonzero bytes and is a real observation of silence; a run in which the guest wrote no PSG register has an empty log and `psglog=none`.
+The installed consumer decides `observed` by the same rule (delivered bytes nonzero), and the gate step `pkg-install` compares its `digest.<domain>` lines and observed set with `data/golden/diag-input-pass.digests` (plan 05-09).
 
-The body of a `.digests` golden is the run's report filtered to the golden key list, in report order: `scenario.id`, `scenario.profile`, `outcome`, `outcome.detail`, `exit.code`, every `slot.*`, `step.*`, `cpu.*` and `input.*` line, `digest.cpu`, `digest.mem`, `digest.images`, `digest.instance`, `digest.composite`, `output.video.bytes`, `output.audio.bytes`, and the digest of each observed live domain.
-Left out: `ivsr`, `api.version`, the `exec:` and `grom:` labels, `host.calls` and `report.end`.
+The body of a `.digests` golden is the run's report filtered to the golden key list, in report order: `scenario.id`, `scenario.profile`, `outcome`, `outcome.detail`, `exit.code`, every `slot.*`, `step.*`, `cpu.*` and `input.*` line, `digest.cpu`, `digest.mem`, `digest.images`, `digest.instance`, `digest.composite`, `output.video.bytes`, `output.audio.bytes`, and for each observed live domain its keys: video `digest.video`; audio `digest.audio`, `output.audio.samples`, `output.audio.changes`, `audio.sample_ticks`; input `digest.input`; psglog `digest.psglog`, `output.psglog.records`, `output.psglog.bytes`.
+Left out: `ivsr`, `api.version`, the `exec:` and `grom:` labels, `audio.chain.check`, every `refpcm.` key, `host.calls` and `report.end`; a golden that holds a `refpcm.` key or an `output.` or `audio.` key outside this list is refused by the step.
+The same list is kept in `runner/main.c` (`main_golden_keep`), `tools/check/steps/golden.sh` and here.
 
 Goldens are written only by `ivs-run --update-golden <file>`, run by a person; a changed golden is a reviewed diff. The gate never writes one: the step only compares. The tracked goldens were written with:
 

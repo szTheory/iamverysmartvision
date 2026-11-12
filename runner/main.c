@@ -239,17 +239,26 @@ static int main_count_observed(const char *v, size_t n)
 }
 
 /* The golden key list (docs/runner.md): scenario, outcome and exit code, slots, steps, CPU state,
- * input and output counts, the digests of cpu, mem, images, instance and composite, and the
- * digest of each observed live domain. Never ivsr, api.version, the exec:/grom: labels,
- * host.calls or report.end. */
-static int main_golden_keep(const char *line, size_t n, const int live[3])
+ * input and output counts, the digests of cpu, mem, images, instance and composite, and for each
+ * observed live domain its keys: video digest.video; audio digest.audio, output.audio.samples,
+ * output.audio.changes and audio.sample_ticks; input digest.input; psglog digest.psglog,
+ * output.psglog.records and output.psglog.bytes. Never ivsr, api.version, the exec:/grom: labels,
+ * audio.chain.check, any refpcm.* key, host.calls or report.end. The same list sits in
+ * tools/check/steps/golden.sh and docs/runner.md (plan 05-09, A-09). */
+#define MAIN_LIVE 4u
+static int main_golden_keep(const char *line, size_t n, const int live[MAIN_LIVE])
 {
   static const char *const prefix[] = {"slot.", "step.", "cpu.", "input."};
   static const char *const exact[] = {"scenario.id",   "scenario.profile", "outcome",
                                       "outcome.detail", "exit.code",        "digest.cpu",
                                       "digest.mem",     "digest.images",    "digest.instance",
                                       "digest.composite", "output.video.bytes", "output.audio.bytes"};
-  static const char *const live_key[] = {"digest.video", "digest.audio", "digest.input"};
+  /* Per live domain (video, audio, input, psglog): the keys kept while it is observed. */
+  static const char *const live_key[MAIN_LIVE][4] = {
+      {"digest.video", NULL, NULL, NULL},
+      {"digest.audio", "output.audio.samples", "output.audio.changes", "audio.sample_ticks"},
+      {"digest.input", NULL, NULL, NULL},
+      {"digest.psglog", "output.psglog.records", "output.psglog.bytes", NULL}};
   for (size_t i = 0u; i < sizeof prefix / sizeof prefix[0]; i++) {
     size_t pl = strlen(prefix[i]);
     if (n > pl && memcmp(line, prefix[i], pl) == 0) {
@@ -261,9 +270,11 @@ static int main_golden_keep(const char *line, size_t n, const int live[3])
       return 1;
     }
   }
-  for (size_t i = 0u; i < 3u; i++) {
-    if (live[i] && main_key_is(line, n, live_key[i])) {
-      return 1;
+  for (size_t i = 0u; i < MAIN_LIVE; i++) {
+    for (size_t k = 0u; k < 4u; k++) {
+      if (live[i] && live_key[i][k] != NULL && main_key_is(line, n, live_key[i][k])) {
+        return 1;
+      }
     }
   }
   return 0;
@@ -273,12 +284,13 @@ static int main_golden_keep(const char *line, size_t n, const int live[3])
  * line on stderr (host-dependent outcome, incomplete capture, write error). */
 static int main_write_golden(const char *path, const main_host *h, const ivs_scenario *scn)
 {
-  static const char *const live_count[] = {"output.video.bytes", "output.audio.bytes", "input.events"};
+  static const char *const live_count[MAIN_LIVE] = {"output.video.bytes", "output.audio.bytes", "input.events",
+                                                    "output.psglog.bytes"};
   const char *buf = h->golden_buf;
   size_t len = h->golden_len;
   const char *v;
   size_t vn;
-  int live[3];
+  int live[MAIN_LIVE];
   FILE *f;
   int ok = 1;
   size_t i = 0u;
@@ -294,7 +306,7 @@ static int main_write_golden(const char *path, const main_host *h, const ivs_sce
   if (vn >= 5u && memcmp(v, "wall ", 5u) == 0) {
     return main_fail("golden refused: host-dependent outcome");
   }
-  for (size_t k = 0u; k < 3u; k++) {
+  for (size_t k = 0u; k < MAIN_LIVE; k++) {
     v = main_report_value(buf, len, live_count[k], &vn);
     live[k] = main_count_observed(v, vn);
   }
@@ -308,11 +320,11 @@ static int main_write_golden(const char *path, const main_host *h, const ivs_sce
               "# scenario: %s\n"
               "# profile: %s\n"
               "# domains: cpu=observed mem=observed images=observed instance=observed video=%s audio=%s "
-              "input=%s\n"
+              "input=%s psglog=%s\n"
               "# Written by ivs-run --update-golden, never by the gate; a change is a reviewed diff\n"
               "# (docs/runner.md). The body is the run's report filtered to the golden key list.\n",
               scn->id, scn->profile, live[0] ? "observed" : "none", live[1] ? "observed" : "none",
-              live[2] ? "observed" : "none") < 0) {
+              live[2] ? "observed" : "none", live[3] ? "observed" : "none") < 0) {
     ok = 0;
   }
   while (ok && i < len) {

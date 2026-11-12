@@ -14,8 +14,10 @@
  *   bounded run   run-to 1000 ticks, then run-to 16000 ticks stopping at the halt, with the
  *                 scenario's two input events (tick 400 controller 0 KEY_1, tick 1200 none),
  *                 the unconsumed suffix resubmitted on the second call;
- *   digests       one digest.<domain> line per observed domain (video and audio only when the
- *                 profile's output layout is not NONE), the form of the runner golden;
+ *   digests       one digest.<domain> line per observed domain (video, audio and psglog only when
+ *                 the session's calls delivered bytes of that channel: the count rule of the
+ *                 runner golden), the form of the runner golden; the replay passes an audio and a
+ *                 write-log buffer sized from ivs_info, as the runner does;
  *   second instance  a fresh instance without the refusals must give the same digests.
  * Stdout is pinned by data/expected/pkg-consumer.golden and its digest lines must equal those of
  * data/golden/diag-input-pass.digests. Exit 0 only when every check held; a failed check prints
@@ -33,7 +35,7 @@
 #define C_EXEC_BYTES 8192u
 #define C_GROM_BYTES 2048u
 #define C_CART_MAX 131256u
-#define C_DOMAINS 8u
+#define C_DOMAINS 9u
 #define C_EVENTS 2u
 
 typedef struct c_images {
@@ -52,10 +54,11 @@ static c_images images;
 static int failures;
 
 /* Digest domains in the order of the runner report; observed[i] says whether a line is printed. */
-static const uint32_t c_domain[C_DOMAINS] = {IVS_DIGEST_CPU,       IVS_DIGEST_MEM,   IVS_DIGEST_IMAGES, IVS_DIGEST_INSTANCE,
-                                             IVS_DIGEST_COMPOSITE, IVS_DIGEST_VIDEO, IVS_DIGEST_AUDIO,  IVS_DIGEST_INPUT};
-static const char *const c_domain_name[C_DOMAINS] = {"cpu",       "mem",   "images", "instance",
-                                                     "composite", "video", "audio",  "input"};
+static const uint32_t c_domain[C_DOMAINS] = {IVS_DIGEST_CPU,       IVS_DIGEST_MEM,   IVS_DIGEST_IMAGES,
+                                             IVS_DIGEST_INSTANCE,  IVS_DIGEST_COMPOSITE, IVS_DIGEST_VIDEO,
+                                             IVS_DIGEST_AUDIO,     IVS_DIGEST_INPUT, IVS_DIGEST_PSGLOG};
+static const char *const c_domain_name[C_DOMAINS] = {"cpu",       "mem",   "images", "instance", "composite",
+                                                     "video",     "audio", "input",  "psglog"};
 
 static void fail(const char *what)
 {
@@ -195,29 +198,63 @@ static void refusal(ivs_machine *m, const char *name, uint32_t kind, const uint8
   }
 }
 
-/* Bytes of video and audio the session's calls delivered (reports): the consumer supplies no output
- * buffer (NULL with capacity 0, "not requested"), so both stay 0. A domain is observed when its
- * delivered bytes are nonzero, the count rule of the runner golden (plan 05-06, B1): the layout in
- * ivs_info says what a call could deliver, not what this session observed. */
+/* Bytes of video, audio and write log the session's calls delivered (reports): the replay requests the
+ * audio and the log through buffers sized from ivs_info, as the runner does (plan 05-09), and video
+ * not at all (its layout is NONE). A domain is observed when its delivered bytes are nonzero, the
+ * count rule of the runner golden (B1): the layout in ivs_info says what a call could deliver, not
+ * what this session observed. */
 static uint64_t delivered_video_bytes;
 static uint64_t delivered_audio_bytes;
+static uint64_t delivered_psglog_bytes;
 
-/* One run call of the replay; returns the report's input_consumed (0 on a refusal). */
+/* One run call of the replay; returns the report's input_consumed (0 on a refusal). The audio and
+ * log capacities are bytes_per_frame * ((target - now) / nominal_frame_ticks + 1) from ivs_info, the
+ * most the call can require (ivs_run.h). */
 static uint32_t run_step(ivs_machine *m, unsigned step, uint64_t target, const ivs_input_event *events, uint32_t count,
                          uint32_t want_stop, int print)
 {
   ivs_run_request q;
   ivs_run_report rep;
+  ivs_info info;
   ivs_status st;
+  uint8_t *audio = NULL;
+  uint8_t *plog = NULL;
+  uint64_t slots;
+  memset(&info, 0, sizeof info);
+  info.struct_size = (uint32_t)sizeof info;
+  st = ivs_machine_info(m, &info);
+  if (st != IVS_OK || info.nominal_frame_ticks == 0u) {
+    fail("info");
+    return 0u;
+  }
+  slots = (target > info.time_ticks ? target - info.time_ticks : 0u) / info.nominal_frame_ticks + 1u;
   memset(&q, 0, sizeof q);
   q.struct_size = (uint32_t)sizeof q;
   q.flags = IVS_RUN_F_STOP_ON_HALT;
   q.target_ticks = target;
   q.events = count > 0u ? events : NULL;
   q.event_count = count;
+  if (info.audio_bytes_per_frame != 0u) {
+    q.audio_capacity = (uint64_t)info.audio_bytes_per_frame * slots;
+    audio = malloc((size_t)q.audio_capacity);
+    q.audio = audio;
+  }
+  if (info.psg_log_record_bytes != 0u && info.psg_log_records_per_frame != 0u) {
+    q.psg_log_capacity = (uint64_t)info.psg_log_record_bytes * info.psg_log_records_per_frame * slots;
+    plog = malloc((size_t)q.psg_log_capacity);
+    q.psg_log = plog;
+  }
+  if ((q.audio_capacity != 0u && audio == NULL) || (q.psg_log_capacity != 0u && plog == NULL)) {
+    free(audio);
+    free(plog);
+    fail("buffers");
+    return 0u;
+  }
   memset(&rep, 0, sizeof rep);
   rep.struct_size = (uint32_t)sizeof rep;
   st = ivs_machine_run(m, &q, &rep);
+  free(audio);
+  free(plog);
   if (st != IVS_OK) {
     if (print) {
       printf("step.%u status=%s reason=%u\n", step, status_token(st), (unsigned)rep.refusal_reason);
@@ -236,6 +273,7 @@ static uint32_t run_step(ivs_machine *m, unsigned step, uint64_t target, const i
   }
   delivered_video_bytes += rep.video_bytes_written;
   delivered_audio_bytes += rep.audio_bytes_written;
+  delivered_psglog_bytes += rep.psg_log_bytes_written;
   return rep.input_consumed;
 }
 
@@ -291,6 +329,7 @@ static void session(int with_refusals, int print, c_digests *d, int *observed)
   memset(d, 0, sizeof *d);
   delivered_video_bytes = 0u;
   delivered_audio_bytes = 0u;
+  delivered_psglog_bytes = 0u;
   if (!instance_create(&x)) {
     fail("create");
     return;
@@ -372,6 +411,7 @@ static void session(int with_refusals, int print, c_digests *d, int *observed)
   }
   observed[5] = delivered_video_bytes != 0u;
   observed[6] = delivered_audio_bytes != 0u;
+  observed[8] = delivered_psglog_bytes != 0u;
   instance_destroy(&x);
 }
 

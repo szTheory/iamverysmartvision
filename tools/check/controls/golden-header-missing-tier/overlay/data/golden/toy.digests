@@ -1,7 +1,7 @@
 # oracle: self-recorded
 # scenario: toy
 # profile: intv-2609-ntsc-family-p1
-# domains: cpu=observed mem=observed images=observed instance=observed video=none audio=none input=none
+# domains: cpu=observed mem=observed images=observed instance=observed video=none audio=none input=none psglog=none
 scenario.id toy
 scenario.profile intv-2609-ntsc-family-p1
 outcome pass

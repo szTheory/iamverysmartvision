@@ -2,7 +2,7 @@
 # oracle: self-recorded
 # scenario: timeout-budget
 # profile: intv-2609-ntsc-family-p1
-# domains: cpu=observed mem=observed images=observed instance=observed video=none audio=none input=none
+# domains: cpu=observed mem=observed images=observed instance=observed video=none audio=observed input=none psglog=none
 # Written by ivs-run --update-golden, never by the gate; a change is a reviewed diff
 # (docs/runner.md). The body is the run's report filtered to the golden key list.
 scenario.id timeout-budget
@@ -44,5 +44,9 @@ digest.mem 2431abbd01df0f9dd886febf0716e2a79477432b2b422e1dd706bbf505ef62dc
 digest.images 69d3b715595bdb3435c984ad72e0042fdf385b72e2687f13a4d59e8b09084e45
 digest.instance aedbd8f6fca56b183a0eeeb31f12e0f7e7f84dbf50abbe72c00ac0da5ec1c34e
 digest.composite 16162282e28d7d3aa282fdad27c6070bf1a8fa703a79ff39770462000487516c
+digest.audio 63ceafddd67551402994176f6af5615eafd5668ddba8cc009b5de7dbb3e418c6
 output.video.bytes 0
-output.audio.bytes 0
+output.audio.bytes 100
+output.audio.samples 25
+output.audio.changes 0
+audio.sample_ticks 16

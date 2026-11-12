@@ -23,18 +23,25 @@
 #   - .expect: its `assert` lines equal the scenario's `assert` lines in order, at least one, and
 #     its body holds nothing else (golden-expect-drift);
 #   - .digests: one `# domains:` line `cpu=observed mem=observed images=observed
-#     instance=observed video=<v> audio=<v> input=<v>` with v `observed` or `none`
+#     instance=observed video=<v> audio=<v> input=<v> psglog=<v>` with v `observed` or `none`
 #     (golden-mismatch when missing or malformed); a live domain is observed exactly when its
-#     report count (output.video.bytes, output.audio.bytes, input.events) is a decimal other than
-#     0: an observed domain without content, or a digest line of a domain marked none, is
-#     golden-empty-domain-observed (no hash of nothing is a recorded fact), a domain with content
-#     marked none is golden-mismatch; the body (lines not starting with `#`) equals the dev
-#     report filtered to the golden key list (golden-mismatch).
+#     report count (output.video.bytes, output.audio.bytes, input.events, output.psglog.bytes) is
+#     a decimal other than 0, the one count-based rule (a delivered but silent audio stream has
+#     nonzero bytes and is a real observation of silence; a run with no PSG write has an empty log
+#     and psglog=none): an observed domain without content, or a digest line of a domain marked
+#     none, is golden-empty-domain-observed (no hash of nothing is a recorded fact), a domain with
+#     content marked none is golden-mismatch; the body (lines not starting with `#`) equals the
+#     dev report filtered to the golden key list (golden-mismatch); a body line whose key starts
+#     `refpcm.`, or an `output.` or `audio.` key outside the allowed list (below), is
+#     golden-mismatch with its own message (audio.chain.check and the refpcm.* keys are never
+#     written to a golden).
 # Golden key list (the same list ivs-run --update-golden writes; docs/runner.md): scenario.id,
 #   scenario.profile, outcome, outcome.detail, exit.code, slot.*, step.*, cpu.*, input.*,
 #   digest.cpu, digest.mem, digest.images, digest.instance, digest.composite,
-#   output.video.bytes, output.audio.bytes, and digest.video, digest.audio, digest.input for the
-#   observed live domains, in report order.
+#   output.video.bytes, output.audio.bytes, and for each observed live domain its keys: video
+#   digest.video; audio digest.audio, output.audio.samples, output.audio.changes,
+#   audio.sample_ticks; input digest.input; psglog digest.psglog, output.psglog.records,
+#   output.psglog.bytes; in report order.
 # Dev versus release (Pitfall 11: one ctest run sees one tree): the union of report names in
 #   build/gate/dev/runner and build/gate/release/runner; an id absent from the inventory is
 #   golden-mismatch; an id of class `host-dependent` is skipped and counted; every other id needs
@@ -83,14 +90,18 @@ fi
 class_of() { awk -v id="$1" '$1 == id { print $2; exit }' "$tmp/inv"; }
 in_list() { grep -q -x -F -e "$1" "$FILELIST"; }
 
-# The golden key list, applied to a report on stdin; v, a and i are 1 for observed live domains.
+# The golden key list, applied to a report on stdin; v, a, i and p are 1 for observed live domains
+# (video, audio, input, psglog).
 filter_report() {
-  awk -v v="$1" -v a="$2" -v i="$3" '
+  awk -v v="$1" -v a="$2" -v i="$3" -v p="$4" '
     $1 ~ /^(slot|step|cpu|input)\./ { print; next }
     $1 ~ /^(scenario\.id|scenario\.profile|outcome|outcome\.detail|exit\.code)$/ { print; next }
     $1 ~ /^digest\.(cpu|mem|images|instance|composite)$/ { print; next }
     $1 ~ /^output\.(video|audio)\.bytes$/ { print; next }
-    ($1 == "digest.video" && v == 1) || ($1 == "digest.audio" && a == 1) || ($1 == "digest.input" && i == 1) { print }'
+    ($1 == "digest.video" && v == 1) { print; next }
+    ($1 ~ /^(digest\.audio|output\.audio\.samples|output\.audio\.changes|audio\.sample_ticks)$/ && a == 1) { print; next }
+    ($1 == "digest.input" && i == 1) { print; next }
+    ($1 ~ /^(digest\.psglog|output\.psglog\.records|output\.psglog\.bytes)$/ && p == 1) { print }'
 }
 
 # A live count from a report: 1 when the key has a decimal value other than 0.
@@ -131,11 +142,11 @@ while IFS= read -r g; do
       if (np > 1 || (np == 1 && p !~ /^[a-z0-9-]+$/)) print "F golden-mismatch " g " (profile header malformed)"
       else if (np == 1) print "V profile " p
       if (kind == "digests") {
-        live = "^cpu=observed mem=observed images=observed instance=observed video=(observed|none) audio=(observed|none) input=(observed|none)$"
+        live = "^cpu=observed mem=observed images=observed instance=observed video=(observed|none) audio=(observed|none) input=(observed|none) psglog=(observed|none)$"
         if (nd != 1 || d !~ live) print "F golden-mismatch " g " (domains header missing or malformed)"
         else {
           split(d, w, " ")
-          print "V domains " substr(w[5], 7) " " substr(w[6], 7) " " substr(w[7], 7)
+          print "V domains " substr(w[5], 7) " " substr(w[6], 7) " " substr(w[7], 7) " " substr(w[8], 8)
         }
       }
     }' "$ROOT/$g" > "$tmp/head"
@@ -182,11 +193,18 @@ while IFS= read -r g; do
   [ -n "$doms" ] || continue
   # shellcheck disable=SC2086
   set -- $doms
-  hv=$1 ha=$2 hi=$3
+  hv=$1 ha=$2 hi=$3 hp=$4
   lv=$(live_count output.video.bytes "$rep")
   la=$(live_count output.audio.bytes "$rep")
   li=$(live_count input.events "$rep")
-  for d in video:$hv:$lv audio:$ha:$la input:$hi:$li; do
+  lp=$(live_count output.psglog.bytes "$rep")
+  # Keys no golden may hold: the refpcm.* keys, and an output. or audio. key outside the list.
+  awk -v g="$g" '
+    /^#/ { next }
+    $1 ~ /^refpcm\./ { print "golden-mismatch " g " (refpcm key " $1 " in a .digests golden)"; next }
+    $1 ~ /^(output|audio)\./ && $1 !~ /^(output\.video\.bytes|output\.audio\.bytes|output\.audio\.samples|output\.audio\.changes|output\.psglog\.records|output\.psglog\.bytes|audio\.sample_ticks)$/ {
+      print "golden-mismatch " g " (output key " $1 " is not in the golden key list)" }' "$ROOT/$g" >> "$find"
+  for d in video:$hv:$lv audio:$ha:$la input:$hi:$li psglog:$hp:$lp; do
     name=${d%%:*}; rest=${d#*:}; mark=${rest%%:*}; have=${rest#*:}
     if [ "$mark" = observed ] && [ "$have" -eq 0 ]; then
       bad golden-empty-domain-observed "$g ($name marked observed, the report has no $name content)"
@@ -198,7 +216,7 @@ while IFS= read -r g; do
       bad golden-mismatch "$g ($name has content but is marked none)"
     fi
   done
-  filter_report "$lv" "$la" "$li" < "$rep" > "$tmp/want"
+  filter_report "$lv" "$la" "$li" "$lp" < "$rep" > "$tmp/want"
   awk '/^#/ { next } { print }' "$ROOT/$g" > "$tmp/have"
   cmp -s "$tmp/want" "$tmp/have" || bad golden-mismatch "$g (body differs from build/gate/dev/runner/$scn.report)"
 done < "$tmp/goldens"
