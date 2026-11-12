@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 current_phase: 6
 current_phase_name: STIC Video First Pass
-current_plan: 3
+current_plan: 4
 status: executing
-stopped_at: Completed 06-02-PLAN.md
-last_updated: "2026-11-12T19:50:09.852Z"
+stopped_at: Completed 06-03-PLAN.md
+last_updated: "2026-11-12T20:22:00.541Z"
 last_activity: 2026-11-12
 last_activity_desc: Phase 5 complete, transitioned to Phase 6
-state_head: 51cc67cc4c5c2909ab40aa03cbc5e1c81acaff65
+state_head: 33ffa8d6b4f4b8a81dcdb96c9da92b0430032831
 progress:
   total_phases: 8
   completed_phases: 5
   total_plans: 97
-  completed_plans: 85
+  completed_plans: 86
   percent: 63
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 6 (STIC Video First Pass) — EXECUTING
-Current Plan: 3
+Current Plan: 4
 Total Plans in Phase: 14
 Status: Ready to execute
 Last activity: 2026-11-12 — Phase 5 complete, transitioned to Phase 6
@@ -143,6 +143,7 @@ Progress: [██████░░░░] 63%
 | Phase 05 P12 | 55min | 4 tasks | 30 files |
 | Phase 6 P01 | about 5 hours | 5 tasks | 96 files |
 | Phase 6 P02 | 2h | 3 tasks | 2 files |
+| Phase 06 P03 | 3h | 3 tasks | 22 files |
 
 ## Accumulated Context
 
@@ -332,6 +333,7 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 6]: 06-01: page-reading verdict: BACKTAB address and 14-bit use are tier 1 (partial), registers, windows and bus hold are tier 4 or defaults; allocation table fixes C81..C105 and CL-0016..CL-0022
 - [Phase 6]: 06-01: the diagnostic reads one BACKTAB word set in both modes and is derived against the frame-0 timeline before its listing (133 words, 4 branches, margins in docs/video/diag-stic-1-derivation.md)
 - [Phase 6]: 06-02: -g0 on fault-only targets applied (paired cold fault build minus 35.6 container cpu-s, about 18 hosted, no evidence change); r = cpu_s / build_s recorded beside raw triggers (budget 7.8, revisit above 8.3)
+- [Phase 06]: 06-03: v3 report and v4 info tails are zeroed locals copied min(struct_size, sizeof); IVS_RUN_F_STOP_ON_FRAME stays refused until 06-09
 
 ### Pending Todos
 
@@ -364,6 +366,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-12T19:50:09.647Z
-Stopped at: Completed 06-02-PLAN.md
+Last session: 2026-11-12T20:22:00.029Z
+Stopped at: Completed 06-03-PLAN.md
 Resume file: None
