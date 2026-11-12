@@ -886,3 +886,8 @@ Runs A and B are the quiet runs; C and the dash run ran while the laptop was loa
 The speed-normalised arbiter `r = cpu_s / build_s` is read from `.planning/ci-runs.tsv` by the orchestrator when it records the hosted row of this plan; this plan adds no workflow, matrix or cache change and one generator step input (the probe include of the `stic` suite), so no change of `r` is expected beyond the added suite and faults counted above.
 
 checkpointA: no-lever
+
+## 2026-11-12 Phase 6 trigger review after plan 06-07 (orchestrator)
+
+- Last-5 hosted medians: gate 115 s and cpu 345 (raw triggers 110 / 330: both over). Normalised metric `r = cpu_s / build_s` for the last five rows: 7.67, 7.49, 7.97, 7.98, 7.88, median **7.88** against the budget 7.8 and the revisit trigger 8.3: under the arbiter's trigger. The last three Phase 5 rows read 6.4 to 7.4, so r has drifted up about 10 percent over plans 06-03 to 06-07 (faults 193 to 203, ids 3778 to about 4000): a small real growth on top of runner speed.
+- Decision: no lever now (arbiter not tripped); the next candidate in order is the 06-02 queue (fault objects at `-O0` is an owner decision; batching the `cp1610-vectors` re-parse, about 5 cpu-s, is the cheap one). If the median r exceeds 8.3 at checkpoint B (after 06-09) a lever pass runs before 06-10.
