@@ -18,8 +18,8 @@
  * from POWERED; from POWERED it is a power cycle that gives the same state as a first reset with
  * the same content. Nothing returns an instance to OFF (A-08 d).
  *
- * The step seam runs exactly one CPU unit with the profile's CPU configuration, inactive lines
- * (Phase 3 has no device that drives INTR, INTRM, BUSRQ or STPST) and a port whose bus is
+ * The step seam runs exactly one CPU unit with the profile's CPU configuration, the line levels of the STIC (plan 06-08: INTRM and
+ * BUSRQ from ivs_stic_lines, sampled one profile lag before the unit start; INTR and STPST stay 0, no device drives them) and a port whose bus is
  * ivs_machine_bus, the machine-level wrapper (plan 05-04, A-01), which forwards every access to
  * ivs_memsys_bus on the instance's own memory system. Machine time advances by the unit's
  * elapsed CPU cycles times the profile's ticks_per_cpu_cycle (D2: time is kept in master ticks); then the PSG is caught up to the new
@@ -28,7 +28,8 @@
  * call and a seam-stepped twin leave the same INPUT row.
  * The file holds no static or global state: every value lives in the instance (D-07).
  * Named faults (plan 03-12): RESET_CLEARS_BEFORE_IMAGE_CHECK, RESET_KEEPS_RAM, STATIC_CARRY;
- * (plan 04-05): OBS_NOT_CLEARED_ON_RESET; (plan 06-05): STIC_STATE_NOT_RESET_ON_POWER_ON. */
+ * (plan 04-05): OBS_NOT_CLEARED_ON_RESET; (plan 06-05): STIC_STATE_NOT_RESET_ON_POWER_ON;
+ * (plan 06-06): STIC_CATCHUP_LAGS_UNIT; (plan 06-08): STIC_LINE_LAG_IGNORED, STIC_GRANT_RELEASE_LATENCY_DROPPED. */
 #include "common/ivs_prelude.h"
 
 #include "ivs/ivs.h"
@@ -132,8 +133,9 @@ ivs_status ivs_machine_step_unit_trace_internal(ivs_machine *m, ivs_cp1610_resul
   struct ivs_machine *im;
   const ivs_profile_desc *p;
   ivs_cp1610_config cfg;
-  ivs_cp1610_lines lines;
+  ivs_cp1610_lines lines = {0u, 0u, 0u, 0u};
   ivs_cp1610_port port;
+  ivs_stic_line_levels levels;
   ivs_machine_bus_ctx bus_ctx;
   ivs_cp1610_result r;
   ivs_status st;
@@ -153,8 +155,12 @@ ivs_status ivs_machine_step_unit_trace_internal(ivs_machine *m, ivs_cp1610_resul
   memset(&cfg, 0, sizeof cfg);
   cfg.interrupt_accept_clears_intff = p->interrupt_accept_clears_intff;
   cfg.release_latency_cpu_cycles = p->release_latency_cpu_cycles;
+#ifdef IVS_FAULT_STIC_GRANT_RELEASE_LATENCY_DROPPED
+  if (cfg.release_latency_cpu_cycles > 1u) { /* named fault: the release unit of a bus grant is one cycle shorter (the stepper refuses 0) */
+    cfg.release_latency_cpu_cycles = (uint8_t)(cfg.release_latency_cpu_cycles - 1u);
+  }
+#endif
   cfg.wait_limit_cpu_cycles = p->wait_limit_cpu_cycles;
-  memset(&lines, 0, sizeof lines);
   start = im->time_ticks;
   /* The per-unit bus context (plan 05-04, A-01): the instance, the unit's start tick and the
    * profile's master ticks per CPU cycle. Built here for every unit, the run call included (it steps
@@ -167,6 +173,24 @@ ivs_status ivs_machine_step_unit_trace_internal(ivs_machine *m, ivs_cp1610_resul
   bus_ctx.psg = ivs_psg_params_get(im->profile); /* never NULL: the handle check covers the index in every generated table (WR-04) */
   bus_ctx.stic = ivs_stic_params_get(im->profile); /* never NULL: the handle check covers the index (WR-04) */
   bus_ctx.sink = sink;
+  /* Plan 06-08 (D-08, D-09): the STIC drives INTRM and BUSRQ. The levels are sampled at start minus the line sampling lag, so a unit
+   * whose start is below the lag sees neither line; INTR and STPST stay 0. The state is caught up to this start (the end of the
+   * previous unit), and the function never advances it. */
+  {
+    uint64_t lag = (uint64_t)bus_ctx.stic->line_sample_lag_ticks;
+    uint64_t sample = start;
+#ifndef IVS_FAULT_STIC_LINE_LAG_IGNORED
+    sample = start - lag; /* named fault STIC_LINE_LAG_IGNORED: the lines are sampled at the unit start, without the lag */
+#endif
+    if (start >= lag) {
+      levels = ivs_stic_lines(bus_ctx.stic, &im->stic, sample);
+    } else {
+      levels.intrm = 0u;
+      levels.busrq = 0u;
+    }
+    lines.intrm = (uint8_t)levels.intrm;
+    lines.busrq = (uint8_t)levels.busrq;
+  }
   memset(&port, 0, sizeof port);
   port.bus = ivs_machine_bus;
   port.ebci = NULL;

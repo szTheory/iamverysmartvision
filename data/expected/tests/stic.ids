@@ -59,3 +59,15 @@ stic.peek.mode-unchanged-0021
 stic.peek.sweep-bytes-equal
 stic.peek.cpu-read-switches
 stic.peek.value-equals-cpu-value
+stic.lines.pure-of-start-tick
+stic.lines.sampling-lag
+stic.irq.one-per-frame
+stic.irq.open-boundary-only
+stic.irq.dis-blocks
+stic.irq.eis-late-misses
+stic.busrq.closed-form-resume
+stic.busrq.count-per-frame
+stic.busrq.hold-from-profile
+stic.busrq.none-when-display-off
+stic.busrq.mvo-stream-never-stalled
+stic.busrq.halted-grants

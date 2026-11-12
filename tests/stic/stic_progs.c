@@ -69,13 +69,13 @@ size_t sc_w_loop(uint16_t *w, size_t n)
   return n;
 }
 
-int sc_guest(ivs_ms_inst *x, const uint16_t *w, size_t n, uint32_t cart_addr)
+static int sc_guest_any(ivs_ms_inst *x, const uint16_t *w, size_t n, uint32_t cart_addr, size_t limit)
 {
   size_t cn = 0u;
   uint8_t *cart;
   uint8_t *exec;
   ivs_status st;
-  if (n > SC_PROG_MAX || !ivs_ms_new(x, 0x5Au)) {
+  if (n > limit || !ivs_ms_new(x, 0x5Au)) {
     return 0;
   }
   /* the cartridge and the EXEC image are built in their own statements: ivs_ms_cart sets cn (an out-parameter) and
@@ -94,6 +94,119 @@ int sc_guest(ivs_ms_inst *x, const uint16_t *w, size_t n, uint32_t cart_addr)
     return 0;
   }
   return 1;
+}
+
+int sc_guest(ivs_ms_inst *x, const uint16_t *w, size_t n, uint32_t cart_addr)
+{
+  return sc_guest_any(x, w, n, cart_addr, SC_PROG_MAX);
+}
+
+int sc_guest_n(ivs_ms_inst *x, const uint16_t *w, size_t n)
+{
+  return sc_guest_any(x, w, n, 0u, 4096u);
+}
+
+/* A branch back to word index start from the branch word at index n: backward, target = addr + 2 - d - 1, so d = n + 1 - start. */
+static size_t sc_w_bback(uint16_t *w, size_t n, size_t start)
+{
+  w[n] = 0x0220u;
+  w[n + 1u] = (uint16_t)(n + 1u - start);
+  return n + 2u;
+}
+
+size_t sc_prog_vbl(uint16_t *w, uint32_t body)
+{
+  size_t n = 0u;
+  size_t start;
+  size_t k;
+  w[n++] = 0x0200u; /* B forward to $100F */
+  w[n++] = 0x000Du;
+  w[n++] = 0x0000u;
+  w[n++] = 0x0000u;
+  w[n++] = 0x0003u; /* $1004 DIS */
+  n = sc_w_mvo(w, n, 0u, 0x0020u);
+  w[n++] = 0x000Au; /* INCR R2 */
+  n = sc_w_mvii(w, n, 1u, SC_ISR_DELAY);
+  w[n++] = 0x0011u; /* DECR R1 */
+  w[n++] = 0x022Cu; /* BNZE back */
+  w[n++] = 0x0002u;
+  w[n++] = 0x0002u; /* EIS */
+  w[n++] = 0x02B7u; /* PULR R7 */
+  n = sc_w_mvii(w, n, 6u, 0x0100u);
+  w[n++] = 0x0002u; /* EIS */
+  start = n;
+  switch (body) {
+  case SC_BODY_INCR:
+    for (k = 0u; k < 3u; k++) {
+      w[n++] = 0x000Du;
+    }
+    return sc_w_bback(w, n, start);
+  case SC_BODY_TSTR6:
+    for (k = 0u; k < 3u; k++) {
+      w[n++] = 0x00B6u;
+    }
+    return sc_w_bback(w, n, start);
+  case SC_BODY_MVII:
+    n = sc_w_mvii(w, n, 5u, 0u);
+    n = sc_w_mvii(w, n, 5u, 0u);
+    return sc_w_bback(w, n, start);
+  case SC_BODY_MVI:
+    w[n++] = 0x0285u;
+    w[n++] = 0x0100u;
+    return sc_w_bback(w, n, start);
+  case SC_BODY_J:
+    w[n++] = 0x0004u;
+    w[n++] = (uint16_t)(0x0300u | ((((0x1000u + (uint32_t)start) >> 10) & 0x3Fu) << 2));
+    w[n++] = (uint16_t)((0x1000u + (uint32_t)start) & 0x3FFu);
+    return n;
+  default: /* SC_BODY_BSELF */
+    return sc_w_bback(w, n, start);
+  }
+}
+
+size_t sc_prog_loop(uint16_t *w, uint32_t enable)
+{
+  w[0] = enable != 0u ? 0x0002u : 0x0003u;
+  return sc_w_bback(w, 1u, 1u);
+}
+
+size_t sc_prog_halt(uint16_t *w)
+{
+  size_t n = sc_w_mvo(w, 0u, 0u, 0x0020u);
+  w[n++] = 0x0000u; /* HLT */
+  w[n++] = 0x0034u; /* NOP */
+  return sc_w_bback(w, n, n);
+}
+
+size_t sc_prog_stream(uint16_t *w, size_t count)
+{
+  size_t n = 0u;
+  size_t k;
+  w[n++] = 0x0002u; /* EIS */
+  for (k = 0u; k < count; k++) {
+    n = sc_w_mvo(w, n, 0u, 0x0020u);
+  }
+  return sc_w_bback(w, n, n);
+}
+
+size_t sc_trace(ivs_ms_inst *x, uint64_t until, sc_unit *u, size_t cap)
+{
+  const struct ivs_machine *im = ivs_machine_from_handle(x->m);
+  size_t n = 0u;
+  while (im->time_ticks < until) {
+    ivs_cp1610_result r;
+    uint64_t start = im->time_ticks;
+    if (n >= cap || ivs_machine_step_unit_internal(x->m, &r) != IVS_OK) {
+      return (size_t)-1;
+    }
+    u[n].start = start;
+    u[n].cycles = r.elapsed_cpu_cycles;
+    u[n].kind = r.unit_kind;
+    u[n].events = r.events;
+    u[n].opcode = r.opcode;
+    n++;
+  }
+  return n;
 }
 
 int sc_run_until(ivs_ms_inst *x, uint64_t ticks)

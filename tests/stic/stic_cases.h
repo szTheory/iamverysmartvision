@@ -41,6 +41,12 @@ extern const ivs_test_case ivs_stic_state_cases[];
 extern const size_t ivs_stic_state_count;
 extern const ivs_test_case ivs_stic_peek_cases[];
 extern const size_t ivs_stic_peek_count;
+extern const ivs_test_case ivs_stic_lines_cases[];
+extern const size_t ivs_stic_lines_count;
+extern const ivs_test_case ivs_stic_irq_cases[];
+extern const size_t ivs_stic_irq_count;
+extern const ivs_test_case ivs_stic_busrq_cases[];
+extern const size_t ivs_stic_busrq_count;
 
 /* ---- the independent literals (stic_reg.c includes the generated ivs_stic_probe.inc, cmake/IvsSticProbes.cmake) ---- */
 typedef struct sl_reg_row {
@@ -90,6 +96,52 @@ size_t sc_w_loop(uint16_t *w, size_t n);
 int sc_guest(ivs_ms_inst *x, const uint16_t *w, size_t n, uint32_t cart_addr);
 /* Steps the instance unit by unit until machine time reaches ticks (at most 40,000 units); 1 on success. */
 int sc_run_until(ivs_ms_inst *x, uint64_t ticks);
+
+/* ---- frame-timeline stand-ins and the unit trace (plan 06-08, stic_progs.c) ----
+ * The interrupt programs put their service routine at the address the profile's IAB value points to ($1004), so the first four
+ * words are a forward branch over it (the boot stub's trap would halt). Program VBL (at most 24 words, every decle derived from the
+ * Phase 2 vectors; cycles per instruction from cp1610_decode.c):
+ *   $1000 B $100F              0200, 000D   (branch.json cpu.B.forward-zero: target = addr + 2 + d; d = $100F - $1002)
+ *   $1002 two pad words (0000, never executed)
+ *   $1004 DIS                  0003         the ISR starts with DIS (C41 = 0: INTFF stays set, so a DIS-first ISR is entered once)
+ *   $1005 MVO R0, $0020        0240, 0020   the display-enable strobe, inside the register window
+ *   $1007 INCR R2              000A         the interrupt counter (INCR 0000 001 DDD)
+ *   $1008 MVII #N, R1          02B9, N      N iterations of DECR R1 (0011) and BNZE back (022C, 0002), about 15 cycles each, so the
+ *                                           ISR outlasts the INTRM level (3,791 cycles) before it re-enables
+ *   $100D EIS                  0002
+ *   $100E PULR R7              02B7         the return (PULR 1010 110 DDD, pops the PC the entry pushed at R6)
+ *   $100F MVII #$100, R6       02BE, 0100   the stack at the scratchpad
+ *   $1011 EIS                  0002
+ *   $1012 the loop body of the chosen shape (instruction length c), see the SC_BODY_* below. */
+#define SC_BODY_INCR 0u   /* three INCR R5 (6 cycles each, 000D) and a branch back (9 taken) */
+#define SC_BODY_TSTR6 1u  /* three TSTR R6 (7 cycles: 6 plus one for R6, 0B6) and a branch back */
+#define SC_BODY_MVII 2u   /* two MVII #0, R5 (8 cycles, 02BD 0000) and a branch back */
+#define SC_BODY_BSELF 3u  /* B self (9 cycles taken, 0220 0001) */
+#define SC_BODY_MVI 4u    /* MVI $0100, R5 (10 cycles, 0285 0100) and a branch back */
+#define SC_BODY_J 5u      /* J self (12 cycles, 0004 0310 0012) */
+#define SC_BODIES 6u
+#define SC_ISR_DELAY 300u
+size_t sc_prog_vbl(uint16_t *w, uint32_t body);
+/* A loop that never strobes the display: [EIS or DIS] then B self ($1000, enable 1 for EIS, 0 for DIS; 3 words). */
+size_t sc_prog_loop(uint16_t *w, uint32_t enable);
+/* MVO R0, $0020 (strobe), HLT, NOP, B self: the CPU halts after the NOP and then runs 1-cycle HALTED units (5 words). */
+size_t sc_prog_halt(uint16_t *w);
+/* EIS, then count times MVO R0, $0020 (11 cycles, not interruptible), then B self; 1 + 2 count + 2 words, at most 4,096. */
+size_t sc_prog_stream(uint16_t *w, size_t count);
+/* sc_guest without the 24-word limit (the stream program); 1 on success. */
+int sc_guest_n(ivs_ms_inst *x, const uint16_t *w, size_t n);
+
+/* One recorded CPU unit: its start tick (machine time before it), its cycles and kind and the stepper's event bits. */
+typedef struct sc_unit {
+  uint64_t start;
+  uint32_t cycles;
+  uint8_t kind;
+  uint8_t events;
+  uint16_t opcode;
+} sc_unit;
+/* Steps the instance unit by unit while machine time is below until and records every unit; the count, or (size_t)-1 when a step is
+ * refused or more than cap units would be needed. */
+size_t sc_trace(ivs_ms_inst *x, uint64_t until, sc_unit *u, size_t cap);
 
 /* ---- the whole-instance oracle of the inspection families (stic_state.c, plan 06-07) ----
  * A snapshot holds a heap copy of the whole instance storage, the nine digests (composite and domains 1..4, 16..19) and

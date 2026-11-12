@@ -73,6 +73,20 @@ typedef struct ivs_stic_sink ivs_stic_sink;
 void ivs_stic_catch_up(const ivs_stic_params *p, ivs_stic_state *s, ivs_memsys *mem, uint64_t to_tick,
                        ivs_stic_sink *sink);
 
+/* The two CPU line levels the STIC drives (stic_lines.c, plan 06-08, D-08, D-09): INTRM (the VBLANK interrupt request) and BUSRQ
+ * (the bus request of the 13 fetch windows), each 0 or 1. */
+typedef struct ivs_stic_line_levels {
+  uint32_t intrm;
+  uint32_t busrq;
+} ivs_stic_line_levels;
+
+/* The levels at machine tick `tick` of the frame in progress: S_k = frame_phase_ticks + frame_index x F from the state, rel = tick - S_k.
+ * A tick before S_k is in the previous frame, where both levels are 0 (INTRM ended and the last window closed before the frame end).
+ * INTRM is 0 <= rel < irq_low_ticks, independent of the display latch; BUSRQ needs windows_active and window index
+ * (rel - first_start) / pitch below bus_count with (rel - first_start) % pitch < hold. Pure: it reads the state and never advances it
+ * (the event cursor is the only clock, D-07), so the machine seam may call it at any unit start whatever the host's slicing. */
+ivs_stic_line_levels ivs_stic_lines(const ivs_stic_params *p, const ivs_stic_state *s, uint64_t tick);
+
 /* Access effects (stic_regs.c, plan 06-06; pure functions of the parameters, no address constant). access is
  * IVS_STIC_ACCESS_READ (a READ or FETCH) or IVS_STIC_ACCESS_WRITE (a WRITE or DW); the result is an IVS_STIC_EFFECT_*.
  * A read has an effect only when its address is in stic.mode_select_addrs (decided on the address before decode, A-07). */
