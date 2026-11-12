@@ -14,6 +14,8 @@
 *.cfg
 *.cc3
 *.ivsc
+# Rendered audio (plan 05-10, D-21, T-05-26): derived audio of rights-bearing content must not be committed.
+*.wav
 
 # Secrets and local environment.
 .env

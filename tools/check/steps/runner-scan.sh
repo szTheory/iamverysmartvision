@@ -13,7 +13,11 @@
 #   - include rule (every runner .c/.h except runner/hostio.c): an #include or #import of
 #     `<name>` must name an ISO C header of the list below or `ivs/<name>.h`; a quoted include
 #     must name a FILELIST header under runner/ (relative to runner/ or to the including file's
-#     directory) or `ivs/<name>.h`. Anything else, including #include_next, a computed
+#     directory) or `ivs/<name>.h`. Since plan 05-10 (D-21, A-07) exactly one more operand is
+#     allowed, the quoted `ivs_refpcm.h` (the reference PCM converter of tools/pcm, found through the
+#     include directory of the internal ivs_refpcm target); any other tools/ header, a neighbour of
+#     that name included, the angle form `<ivs_refpcm.h>` and a path to it stay
+#     runner-scan-header. Anything else, including #include_next, a computed
 #     `#include MACRO` and an unterminated operand, is runner-scan-header (fails closed).
 #   - internal rule (every runner .c/.h, runner/hostio.c included): an include operand that
 #     contains `src/`, `machine/`, `memmap/`, `cpu/`, `common/` or `..` is
@@ -142,6 +146,7 @@ while IFS= read -r p; do
       }
       if (exempt) return
       if (op ~ /^ivs\/[A-Za-z0-9_]+[.]h$/) return
+      if (substr(s, 1, 1) == "\"" && op == "ivs_refpcm.h") return
       if (substr(s, 1, 1) == "<") {
         if (op in ok) return
       } else if (("runner/" op) in have || (dir "/" op) in have) {

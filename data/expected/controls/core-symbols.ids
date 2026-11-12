@@ -1,0 +1,2 @@
+# Negative control for the defined-symbol rule of core-symbols.sh, driven through the c-purity step (plan 05-10, D-21, A-07).
+core-symbols-pcm-defined

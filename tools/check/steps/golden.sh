@@ -6,8 +6,9 @@
 # writes nothing outside its temp dir. It never writes a golden: only `ivs-run --update-golden`,
 # run by a person, does (docs/runner.md). Results dir: IVS_GATE_DIR (set by tools/gate.sh, and by
 # the control runner to its tree's build/gate), else $ROOT/build/gate.
-# Goldens: every FILELIST path data/golden/<name>.expect (predicates) or .digests (repeatability
-# digests); any other file there is golden-mismatch (the single-name `.golden` was withdrawn, A-01).
+# Goldens: every FILELIST path data/golden/<name>.expect (predicates), .digests (repeatability
+# digests) or, since plan 05-10 (D7 decided as D-21), .refpcm (the reference PCM converter's repeatability
+# record); any other file there is golden-mismatch (the single-name `.golden` was withdrawn, A-01).
 # Rules, per golden:
 #   - exactly one `# tier:` naming an id of data/expected/evidence-tiers.ids
 #     (golden-header-missing-tier) and exactly one non-empty `# oracle:`
@@ -42,6 +43,14 @@
 #   digest.video; audio digest.audio, output.audio.samples, output.audio.changes,
 #   audio.sample_ticks; input digest.input; psglog digest.psglog, output.psglog.records,
 #   output.psglog.bytes; in report order.
+# .refpcm (plan 05-10): its own grammar. Header: `# tier: deterministic-repeatability`, `# oracle:
+#   self-recorded`, exactly one `# label: reference conversion v1, converter repeatability only` and one
+#   `# scenario: <id>` (the scenario rules above apply: a FILELIST scenario, class deterministic, no
+#   `content ... user` line); body: exactly the lines `refpcm.rate` (44100 or 48000), `refpcm.frames` (a
+#   decimal) and `refpcm.sha256` (64 lower-case hex digits), in that order, and nothing else: any other key is
+#   golden-mismatch. The converter is outside the raw-audio evidence path, so a .refpcm golden is never
+#   compared with a runner report here (the comparison with a rendered WAV belongs to the plan that records
+#   one) and no digest, claim or gate row depends on it.
 # Dev versus release (Pitfall 11: one ctest run sees one tree): the union of report names in
 #   build/gate/dev/runner and build/gate/release/runner; an id absent from the inventory is
 #   golden-mismatch; an id of class `host-dependent` is skipped and counted; every other id needs
@@ -115,7 +124,8 @@ while IFS= read -r g; do
   case $g in
     *.expect) kind=expect ;;
     *.digests) kind=digests ;;
-    *) bad golden-mismatch "$g (not a .expect or .digests golden)"; continue ;;
+    *.refpcm) kind=refpcm ;;
+    *) bad golden-mismatch "$g (not a .expect, .digests or .refpcm golden)"; continue ;;
   esac
   [ -f "$ROOT/$g" ] || { bad golden-mismatch "$g (unreadable)"; continue; }
   goldens=$((goldens + 1))
@@ -128,6 +138,7 @@ while IFS= read -r g; do
     /^# scenario:/ { ns++; s = trim(substr($0, 12)); next }
     /^# profile:/ { np++; p = trim(substr($0, 11)); next }
     /^# domains:/ { nd++; d = trim(substr($0, 11)); next }
+    /^# label:/ { nl++; lb = trim(substr($0, 9)); next }
     END {
       tier_ok = (nt == 1 && (t in ok))
       oracle_ok = (no == 1 && o != "")
@@ -135,8 +146,12 @@ while IFS= read -r g; do
       if (!oracle_ok) print "F golden-header-missing-oracle " g
       if (tier_ok && oracle_ok && o == "self-recorded" && t != "deterministic-repeatability")
         print "F golden-self-recorded-wrong-tier " g " (oracle self-recorded, tier " t ")"
-      if (kind == "digests" && oracle_ok && o != "self-recorded")
-        print "F golden-self-recorded-wrong-tier " g " (a .digests golden is self-recorded, oracle " o ")"
+      if ((kind == "digests" || kind == "refpcm") && oracle_ok && o != "self-recorded")
+        print "F golden-self-recorded-wrong-tier " g " (a ." kind " golden is self-recorded, oracle " o ")"
+      if (kind == "refpcm" && tier_ok && t != "deterministic-repeatability")
+        print "F golden-self-recorded-wrong-tier " g " (a .refpcm golden has tier deterministic-repeatability, tier " t ")"
+      if (kind == "refpcm" && (nl != 1 || lb != "reference conversion v1, converter repeatability only"))
+        print "F golden-mismatch " g " (label header missing or wrong)"
       if (ns != 1 || s !~ /^[a-z0-9-]+$/) print "F golden-mismatch " g " (scenario header missing or malformed)"
       else print "V scenario " s
       if (np > 1 || (np == 1 && p !~ /^[a-z0-9-]+$/)) print "F golden-mismatch " g " (profile header malformed)"
@@ -184,6 +199,23 @@ while IFS= read -r g; do
     fi
   fi
 
+  if [ "$kind" = refpcm ]; then
+    # Body grammar: exactly refpcm.rate, refpcm.frames, refpcm.sha256 in that order and nothing else.
+    awk -v g="$g" '
+      /^#/ { next }
+      NF == 0 { next }
+      { n++; k = $1
+        if ($1 !~ /^refpcm\./) { print "golden-mismatch " g " (body key " $1 " is not a refpcm key)"; next }
+        if (n == 1 && !($1 == "refpcm.rate" && NF == 2 && ($2 == "44100" || $2 == "48000"))) bad1 = 1
+        if (n == 2 && !($1 == "refpcm.frames" && NF == 2 && $2 ~ /^[0-9]+$/)) bad2 = 1
+        if (n == 3 && !($1 == "refpcm.sha256" && NF == 2 && $2 ~ /^[0-9a-f]+$/ && length($2) == 64)) bad3 = 1
+      }
+      END {
+        if (n != 3 || bad1 || bad2 || bad3)
+          print "golden-mismatch " g " (body must be refpcm.rate 44100|48000, refpcm.frames <n>, refpcm.sha256 <64 hex>)"
+      }' "$ROOT/$g" >> "$find"
+    continue
+  fi
   rep="$gate/dev/runner/$scn.report"
   if [ ! -f "$rep" ]; then
     bad golden-mismatch "$g (no report build/gate/dev/runner/$scn.report)"

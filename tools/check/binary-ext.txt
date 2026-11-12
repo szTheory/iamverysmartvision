@@ -25,3 +25,4 @@ webp
 svg
 ico
 a26
+wav

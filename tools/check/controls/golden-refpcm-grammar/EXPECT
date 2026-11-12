@@ -1,0 +1,2 @@
+FAIL golden-mismatch: data/golden/toy.refpcm (label header missing or wrong)
+FAIL golden-mismatch: data/golden/toy.refpcm (body key output.audio.bytes is not a refpcm key)
