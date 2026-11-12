@@ -152,6 +152,31 @@ runner.exec.write-error
 runner.exec.ivsr2-keys
 runner.exec.audio-chain-check
 runner.exec.sha256-fips
+# Plan 05-09 (D-20): capture and the PSG log and audio asserts.
+runner.parse.accept.capture-forms
+runner.parse.refuse.bad-capture
+runner.parse.refuse.duplicate-capture
+runner.parse.refuse.bad-psglog-assert
+runner.parse.refuse.bad-audio-assert
+runner.parse.refuse.assert-without-capture
+runner.parse.edge.capture-arity
+runner.parse.edge.capture-extra-token
+runner.parse.edge.psglog-no-field
+runner.parse.edge.psglog-field-twice
+runner.parse.edge.psglog-addr-16
+runner.parse.edge.psglog-value-lower
+runner.parse.edge.psglog-bad-source
+runner.parse.edge.psglog-index-cap
+runner.parse.edge.psglog-eight-tokens
+runner.parse.edge.audio-at-missing-level
+runner.parse.edge.audio-level-256
+runner.parse.edge.audio-emitted-no-op
+runner.parse.edge.audio-at-without-capture
+runner.parse.edge.capture-after-assert-ok-order
+runner.exec.psglog-assert
+runner.exec.audio-assert
+runner.exec.capture-overflow
+runner.exec.digest-assert-audio-psglog
 # Plan 04-19 (D-21): slicing, the machine-time budget, the wall cap and cancellation through a fake
 # clock and a fake cancel flag (no sleeps, no signals).
 runner.time.budget

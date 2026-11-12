@@ -29,6 +29,7 @@ runner-process.scenario.max-ticks-straddle
 runner-process.scenario.dead-after-refusal
 runner-process.scenario.no-run-to
 runner-process.scenario.cancel-signal-twice
+runner-process.scenario.psg-log-assert-mismatch
 runner-process.mutant.ADDI-SUBI
 runner-process.mutant.BNZE-BZE
 runner-process.mutant.PSHR-MVOAT

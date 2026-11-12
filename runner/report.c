@@ -446,37 +446,77 @@ static void rp_step_value(const ivs_scenario_step *st, const ivs_runner_step_rec
   }
 }
 
+static const char *rp_source_token(uint32_t src)
+{
+  return src == IVS_PSGLOG_SRC_CPU_WRITE ? "cpu-write" : src == IVS_PSGLOG_SRC_CPU_DW ? "cpu-dw" : "unknown";
+}
+
+void ivs_runner_assert_clause(const ivs_scenario_assert *a, char *out, size_t cap)
+{
+  const char *op = a->op == IVS_SCN_OP_NE ? "!=" : "==";
+  char hex[65];
+  size_t n;
+  switch (a->subject) {
+  case IVS_SCN_SUBJ_HALTED:
+    (void)snprintf(out, cap, "halted %s %s", op, a->value != 0u ? "yes" : "no");
+    break;
+  case IVS_SCN_SUBJ_REG:
+    (void)snprintf(out, cap, "reg R%u %s %04X", (unsigned)a->index, op, (unsigned)a->value);
+    break;
+  case IVS_SCN_SUBJ_MEM:
+    (void)snprintf(out, cap, "mem %04X %s %04X", (unsigned)a->addr_lo, op, (unsigned)a->value);
+    break;
+  case IVS_SCN_SUBJ_MEM_RANGE:
+    (void)snprintf(out, cap, "mem %04X..%04X %s %04X", (unsigned)a->addr_lo, (unsigned)a->addr_hi, op,
+                   (unsigned)a->value);
+    break;
+  case IVS_SCN_SUBJ_DIGEST:
+    rp_hex(a->sha256, hex);
+    (void)snprintf(out, cap, "digest %s %s %s", ivs_runner_domain_token(a->index), op, hex);
+    break;
+  case IVS_SCN_SUBJ_PSGLOG:
+    if (a->form == IVS_SCN_FORM_COUNT) {
+      (void)snprintf(out, cap, "psglog count %s %llu", op, (unsigned long long)a->num);
+      break;
+    }
+    n = (size_t)snprintf(out, cap, "psglog %u", (unsigned)a->index);
+    if ((a->fields & IVS_SCN_FIELD_TICK) != 0u && n < cap) {
+      n += (size_t)snprintf(out + n, cap - n, " tick=%llu", (unsigned long long)a->num);
+    }
+    if ((a->fields & IVS_SCN_FIELD_ADDR) != 0u && n < cap) {
+      n += (size_t)snprintf(out + n, cap - n, " addr=%u", (unsigned)a->addr);
+    }
+    if ((a->fields & IVS_SCN_FIELD_VALUE) != 0u && n < cap) {
+      n += (size_t)snprintf(out + n, cap - n, " value=%04X", (unsigned)a->value);
+    }
+    if ((a->fields & IVS_SCN_FIELD_SOURCE) != 0u && n < cap) {
+      (void)snprintf(out + n, cap - n, " source=%s", rp_source_token(a->source));
+    }
+    break;
+  case IVS_SCN_SUBJ_AUDIO:
+    if (a->form == IVS_SCN_FORM_EMITTED) {
+      (void)snprintf(out, cap, "audio emitted %s %llu", op, (unsigned long long)a->num);
+    } else {
+      (void)snprintf(out, cap, "audio at %llu A=%u B=%u C=%u", (unsigned long long)a->num, (unsigned)a->level[0],
+                     (unsigned)a->level[1], (unsigned)a->level[2]);
+    }
+    break;
+  default:
+    (void)snprintf(out, cap, "unknown");
+    break;
+  }
+}
+
 /* `<state> <subject> <op> <expected> got <actual>` of one assert. */
 static void rp_assert_value(const ivs_scenario_assert *a, const ivs_runner_assert_record *ar, char *v, size_t cap)
 {
   const char *state = ar->state == IVS_RUNNER_ASSERT_PASS   ? "pass"
                       : ar->state == IVS_RUNNER_ASSERT_FAIL ? "fail"
                                                             : "not-run";
-  const char *op = a->op == IVS_SCN_OP_NE ? "!=" : "==";
   const char *got = ar->state == IVS_RUNNER_ASSERT_NOT_RUN || ar->got[0] == '\0' ? "-" : ar->got;
-  char hex[65];
-  switch (a->subject) {
-  case IVS_SCN_SUBJ_HALTED:
-    (void)snprintf(v, cap, "%s halted %s %s got %s", state, op, a->value != 0u ? "yes" : "no", got);
-    break;
-  case IVS_SCN_SUBJ_REG:
-    (void)snprintf(v, cap, "%s reg R%u %s %04X got %s", state, (unsigned)a->index, op, (unsigned)a->value, got);
-    break;
-  case IVS_SCN_SUBJ_MEM:
-    (void)snprintf(v, cap, "%s mem %04X %s %04X got %s", state, (unsigned)a->addr_lo, op, (unsigned)a->value, got);
-    break;
-  case IVS_SCN_SUBJ_MEM_RANGE:
-    (void)snprintf(v, cap, "%s mem %04X..%04X %s %04X got %s", state, (unsigned)a->addr_lo, (unsigned)a->addr_hi, op,
-                   (unsigned)a->value, got);
-    break;
-  case IVS_SCN_SUBJ_DIGEST:
-    rp_hex(a->sha256, hex);
-    (void)snprintf(v, cap, "%s digest %s %s %s got %s", state, ivs_runner_domain_token(a->index), op, hex, got);
-    break;
-  default:
-    (void)snprintf(v, cap, "%s unknown", state);
-    break;
-  }
+  char clause[RP_LINE_MAX / 2u];
+  ivs_runner_assert_clause(a, clause, sizeof clause);
+  (void)snprintf(v, cap, "%s %s got %s", state, clause, got);
 }
 
 int ivs_runner_report_write(const ivs_runner_record *rec, const ivs_runner_host *host, uint64_t *lines)

@@ -56,14 +56,20 @@ Every directive of an accepted scenario can take effect (review WR-02, WR-03). R
 | | `assert reg R<0-7> ==\|!= <HHHH>` | A CPU register. |
 | | `assert mem <AAAA> ==\|!= <HHHH>` | One memory word. |
 | | `assert mem <AAAA>..<BBBB> ==\|!= <HHHH>` | Every word of an inclusive range. |
-| | `assert digest <domain> ==\|!= <64 hex>` | A state digest: `composite`, `cpu`, `mem`, `images`, `instance`, `video`, `audio` or `input`. |
+| | `assert digest <domain> ==\|!= <64 hex>` | A state digest: `composite`, `cpu`, `mem`, `images`, `instance`, `video`, `audio`, `input` or `psglog`. |
+| | `assert psglog count ==\|!= <n>` | The number of PSG write-log records delivered so far (needs no capture). |
+| | `assert psglog <i> [tick=<n>] [addr=<0..15>] [value=<HHHH>] [source=<cpu-write\|cpu-dw>]` | Record `i` (0-based) of the capture: only the named fields are compared, each at most once and at least one, in any order. `value` is the raw 16-bit bus value before the register's write mask; `addr` is the low nibble of the bus address (`$01F8` is 8). Needs `capture psglog`. |
+| | `assert audio emitted ==\|!= <n>` | The number of audio samples delivered so far. |
+| | `assert audio at <tick> A=<n> B=<n> C=<n>` | The channel levels of the sample stamped `<tick>`: the last level change at or before that sample, else 0, 0, 0. The tick must be a multiple of the real sample period (`audio.sample_ticks`), checked at run time (a harness failure otherwise, detail `audio-tick-misaligned`); a tick beyond the emitted samples fails the assert. Needs `capture audio`. |
+| `capture` | `capture psglog\|audio` | Keeps the first 4096 delivered write-log records, or audio level-change entries, for the asserts above; once per target, anywhere after `ivss 1`. The 4097th entry is a harness failure, detail `capture-overflow target=<t>`, never a silent drop. A scenario names no output file and no rate. |
 | `input` | `input at_tick=<n>\|at_cycle=<n> c0=<names\|0xHEX> c1=<names\|0xHEX>` | Controller words from that machine time on; names are the `IVS_CTRL_*` bit names without the prefix, joined by `+`. |
 
 Steps share one unit and their targets strictly increase; input lines share one unit and are nondecreasing.
 The `c0` and `c1` words are indexed by PSG port, not by player: `c0` drives the port a guest reads at `$01FE` and `c1` the port at `$01FF` (plan 05-05); an event is visible to every guest read of the unit that begins at or after its tick, and a read inside the unit that began earlier sees the old state (C67).
 `cpu-cycles` and `frames` are host conversions to master ticks through the instance's timebase (`ivs_info`); frames are nominal, not frame events (D-09).
 Every run-to stops at a CPU halt (`IVS_RUN_F_STOP_ON_HALT`), so a halt is a stop the scenario must expect.
-Caps (D-22): 64 KiB, 512 lines, 256 bytes per line, 64 steps, 64 asserts, 64 input lines.
+Caps (D-22): 64 KiB, 512 lines, 256 bytes per line, 64 steps, 64 asserts, 64 input lines, 4096 capture entries per target.
+A record or `at` assert without its capture directive anywhere in the file is refused at the end of the parse (reason `assert-without-capture`, at that assert's line). The reasons added in plan 05-09, appended after `no-run-to`: `bad-capture`, `duplicate-capture`, `bad-psglog-assert`, `bad-audio-assert`, `assert-without-capture`. A scenario with a capture or a `psglog` or `audio` assert run without output buffers is a harness failure (`stream-without-buffer target=<t>`), never a vacuous pass.
 
 The first tracked scenario is `data/scenarios/diag-boot-pass.ivss`: the project boot stub, the zero GROM and the original diagnostic cartridge `diag-cpu-1.ivsc`, `run-to 4000 cpu-cycles stop halted`, and the 18 assert lines of `data/golden/diag-cpu-1.expect`.
 Its images are build outputs (`build/<preset>/images`), never committed:
@@ -117,6 +123,7 @@ Details (`outcome.detail`), the first one recorded for the winning outcome:
 `signal step=<k>`;
 `missing role=<r> path=<rel>` or `... user`, `not-regular role=<r> ...`, `io-error role=<r> ...`;
 `load-refused role=<r> status=<IVS_E_*> reason=<n>`, `load-refused-as-expected ...`, `load-not-refused role=<r> expected=<IVS_E_*>`;
+`audio-chain` (the runner's recomputation of the AUDIO chain disagreed with the core's digest), `buffers-too-small`, `capture-overflow target=<psglog|audio>`, `audio-tick-misaligned assert=<j> line=<n>`, `stream-without-buffer target=<t>`, `audio-out`, `audio-out-max-bytes`, `psg-log-out`, `psg-log-out-max-bytes`,
 `profile-refused status=...`, `create-refused status=...`, `storage-too-small`, `reset-refused status=...`, `run-refused step=<k> status=... reason=<n>`, `bound-too-large step=<k> line=<n>`, `input-out-of-range line=<n>`, `no-timebase`, `observe-refused ...`, `stop-internal step=<k> line=<n> got=<t>`.
 
 ## Outcomes and exit codes

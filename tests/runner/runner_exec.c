@@ -35,6 +35,7 @@
 #define FH_STORAGE (512u * 1024u)
 #define RX_SCN_CAP 8192u
 #define RX_VALUE_CAP 512u
+#define RX_SCN_CAPTURE_CAP 4096u
 
 /* ---- the fake host ---- */
 
@@ -1177,6 +1178,223 @@ static int ex_sha256_fips(void)
   return IVS_TEST_PASS;
 }
 
+/* ---- PSG log and audio asserts, captures, digests of the new domains (plan 05-09, D-20) ---- */
+
+/* Runs the stand-in with the extra scenario lines (captures and asserts) under a real output block and
+ * returns the outcome check; the report stays in h. */
+static int rx_psg_run(fake_host *h, const char *body, uint32_t outcome, uint32_t exit_code)
+{
+  char scn[RX_SCN_CAPTURE_CAP];
+  rx_psg_image();
+  if (!rx_scn(scn, sizeof scn, rx_psg_content, body)) {
+    return 0;
+  }
+  fh_init(h);
+  fh_add(h, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
+  h->buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
+  return rx_expect(scn, h, outcome, exit_code);
+}
+
+/* The stand-in's four PSG writes by hand (cycle tables as in plan 05-08: reset entry 5 CPU cycles,
+ * MVII 8, a direct MVO 11 with its write at cycle 6, 4 ticks per cycle): the first MVO starts at
+ * (5 + 8) x 4 = 52 and writes at 52 + 24 = 76; each MVII and MVO pair is 19 cycles = 76 ticks, so the
+ * writes are at 76, 152, 228, 304, to addresses $01F8 (low nibble 8) then $01FB (11) three times,
+ * with the raw values $003F, $000F, $0000, $0007, all source cpu-write. A changed expectation fails
+ * guest-fail naming the assert (exit 10); a record that does not exist is a failed assert. */
+static int ex_psglog_assert(void)
+{
+  static const char good[] = "capture psglog\n"
+                             "run-to 3000 ticks\n"
+                             "assert psglog count == 4\n"
+                             "assert psglog count != 5\n"
+                             "assert psglog 0 tick=76 addr=8 value=003F source=cpu-write\n"
+                             "assert psglog 1 tick=152 addr=11 value=000F source=cpu-write\n"
+                             "assert psglog 2 tick=228 addr=11 value=0000\n"
+                             "assert psglog 3 tick=304 addr=11 value=0007 source=cpu-write\n"
+                             "assert psglog 3 addr=11\n";
+  static const char *const bad[][2] = {
+      {"tick=304 addr=11 value=0007 source=cpu-write", "tick=305 addr=11 value=0007 source=cpu-write"},
+      {"tick=76 addr=8 value=003F", "tick=76 addr=9 value=003F"},
+      {"tick=228 addr=11 value=0000", "tick=228 addr=11 value=0001"},
+      {"psglog 3 addr=11", "psglog 3 source=cpu-dw"},
+      {"psglog count == 4", "psglog count == 3"},
+      {"psglog count != 5", "psglog count != 4"},
+      {"psglog 3 addr=11", "psglog 4 addr=11"},
+  };
+  fake_host h;
+  char text[2048];
+  int rc = IVS_TEST_FAIL;
+  if (!rx_psg_run(&h, good, IVS_RUNNER_OUTCOME_PASS, 0u)) {
+    goto done;
+  }
+  if (!rx_is(h.out, "output.psglog.records", "4") || !rx_starts(h.out, "step.1.assert.3", "pass psglog 0 tick=76")) {
+    goto done;
+  }
+  rx_free(&h);
+  for (size_t i = 0u; i < sizeof bad / sizeof bad[0]; i++) {
+    char want[64];
+    if (!rx_replace(good, bad[i][0], bad[i][1], text, sizeof text)) {
+      goto done;
+    }
+    if (!rx_psg_run(&h, text, IVS_RUNNER_OUTCOME_GUEST_FAIL, 10u)) {
+      ivs_test_diag("changed expectation %zu did not fail guest-fail", i);
+      goto done;
+    }
+    (void)snprintf(want, sizeof want, "assert=");
+    if (!rx_starts(h.out, "outcome.detail", want)) {
+      goto done;
+    }
+    rx_free(&h);
+  }
+  rc = IVS_TEST_PASS;
+done:
+  rx_free(&h);
+  return rc;
+}
+
+/* The levels by hand: writes land at 76 (mixer, all tones and noises off), 152 (A = $0F), 228
+ * (A = 0), 304 (A = 7); a sample at tick 16 k sees the writes stamped below 16 k (step first, then
+ * write, C78), so A is 0 at 144, 15 at 160 and 224, 0 at 240 and 304, 7 at 320 and at 2992 (the last
+ * multiple of 16 below 3000); B and C stay 0. The emitted count of a first run is the sample count the
+ * report gives; a changed count, level or tick fails; a tick that is not a multiple of the real sample
+ * period is a harness failure (exit 14). */
+static int ex_audio_assert(void)
+{
+  static const char good[] = "capture audio\n"
+                             "run-to 3000 ticks\n"
+                             "assert audio at 16 A=0 B=0 C=0\n"
+                             "assert audio at 144 A=0 B=0 C=0\n"
+                             "assert audio at 160 A=15 B=0 C=0\n"
+                             "assert audio at 224 A=15 B=0 C=0\n"
+                             "assert audio at 240 A=0 B=0 C=0\n"
+                             "assert audio at 304 A=0 B=0 C=0\n"
+                             "assert audio at 320 A=7 B=0 C=0\n"
+                             "assert audio at 2992 A=7 B=0 C=0\n"
+                             "assert audio emitted != 0\n";
+  fake_host h;
+  char text[2048];
+  char v[RX_VALUE_CAP];
+  char count[RX_VALUE_CAP];
+  int rc = IVS_TEST_FAIL;
+  if (!rx_psg_run(&h, good, IVS_RUNNER_OUTCOME_PASS, 0u) || !rx_value(h.out, "output.audio.samples", count, sizeof count)) {
+    goto done;
+  }
+  rx_free(&h);
+  (void)snprintf(v, sizeof v, "assert audio emitted == %s", count);
+  if (!rx_replace(good, "assert audio emitted != 0", v, text, sizeof text) ||
+      !rx_psg_run(&h, text, IVS_RUNNER_OUTCOME_PASS, 0u)) {
+    goto done;
+  }
+  rx_free(&h);
+  {
+    static const char *const bad[][2] = {
+        {"at 160 A=15", "at 160 A=14"},
+        {"at 160 A=15 B=0 C=0", "at 144 A=15 B=0 C=0"},
+        {"at 320 A=7 B=0 C=0", "at 320 A=7 B=1 C=0"},
+        {"at 2992 A=7", "at 2992 A=0"},
+        {"emitted != 0", "emitted == 0"},
+        {"at 16 A=0 B=0 C=0", "at 160000 A=0 B=0 C=0"},
+    };
+    for (size_t i = 0u; i < sizeof bad / sizeof bad[0]; i++) {
+      if (!rx_replace(good, bad[i][0], bad[i][1], text, sizeof text) ||
+          !rx_psg_run(&h, text, IVS_RUNNER_OUTCOME_GUEST_FAIL, 10u)) {
+        ivs_test_diag("changed audio expectation %zu did not fail guest-fail", i);
+        goto done;
+      }
+      rx_free(&h);
+    }
+  }
+  if (!rx_replace(good, "at 160 A=15", "at 161 A=15", text, sizeof text) ||
+      !rx_psg_run(&h, text, IVS_RUNNER_OUTCOME_HARNESS_FAIL, 14u) ||
+      !rx_starts(h.out, "outcome.detail", "audio-tick-misaligned assert=")) {
+    goto done;
+  }
+  rc = IVS_TEST_PASS;
+done:
+  rx_free(&h);
+  return rc;
+}
+
+/* A program that writes the PSG without end (`MVII #$01FB, R3; MVII #$0F, R0; MVO@ R0, R3; B back`),
+ * one record every 16 CPU cycles: past the 4096-entry capture the run ends harness-fail with the detail
+ * capture-overflow, never a silent drop; without `capture psglog` the same run passes with its records
+ * counted. The program is the second host file. */
+static int ex_capture_overflow(void)
+{
+  static const uint16_t words[] = {0x02BBu, 0x01FBu, 0x02B8u, 0x000Fu, 0x0258u, 0x0220u, 0x0002u};
+  static uint8_t image[8192];
+  fake_host h;
+  char scn[RX_SCN_CAP];
+  char v[RX_VALUE_CAP];
+  int rc = IVS_TEST_FAIL;
+  memset(image, 0, sizeof image);
+  for (size_t i = 0u; i < sizeof words / sizeof words[0]; i++) {
+    image[2u * i] = (uint8_t)(words[i] >> 8);
+    image[2u * i + 1u] = (uint8_t)(words[i] & 0xFFu);
+  }
+  for (int cap = 1; cap >= 0; cap--) {
+    if (!rx_scn(scn, sizeof scn, rx_psg_content,
+                cap != 0 ? "capture psglog\nrun-to 400000 ticks\n" : "run-to 400000 ticks\n")) {
+      return IVS_TEST_FAIL;
+    }
+    fh_init(&h);
+    fh_add(&h, "psg-prog.exec", image, sizeof image, IVS_RUNNER_READ_OK);
+    h.buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
+    if (!rx_expect(scn, &h, cap != 0 ? IVS_RUNNER_OUTCOME_HARNESS_FAIL : IVS_RUNNER_OUTCOME_PASS,
+                   cap != 0 ? 14u : 0u)) {
+      goto done;
+    }
+    if (cap != 0 && !rx_is(h.out, "outcome.detail", "capture-overflow target=psglog")) {
+      goto done;
+    }
+    if (!rx_value(h.out, "output.psglog.records", v, sizeof v) || strtoull(v, NULL, 10) <= 4096u) {
+      ivs_test_diag("records %s, want more than 4096", v);
+      goto done;
+    }
+    rx_free(&h);
+  }
+  rc = IVS_TEST_PASS;
+done:
+  rx_free(&h);
+  return rc;
+}
+
+/* `assert digest audio` and `assert digest psglog` (the existing digest assert with two domain names):
+ * the digest a first run reports passes `==` in a second run and fails `!=`; a different digest fails
+ * `==`. */
+static int ex_digest_assert_audio_psglog(void)
+{
+  static const char *const dom[2] = {"audio", "psglog"};
+  fake_host h;
+  char audio[RX_VALUE_CAP];
+  char psglog[RX_VALUE_CAP];
+  char body[1024];
+  int rc = IVS_TEST_FAIL;
+  if (!rx_psg_run(&h, "run-to 3000 ticks\n", IVS_RUNNER_OUTCOME_PASS, 0u) ||
+      !rx_value(h.out, "digest.audio", audio, sizeof audio) || !rx_value(h.out, "digest.psglog", psglog, sizeof psglog)) {
+    goto done;
+  }
+  rx_free(&h);
+  for (size_t d = 0u; d < 2u; d++) {
+    const char *hex = d == 0u ? audio : psglog;
+    const char *other = d == 0u ? psglog : audio;
+    for (int variant = 0; variant < 3; variant++) {
+      (void)snprintf(body, sizeof body, "run-to 3000 ticks\nassert digest %s %s %s\n", dom[d],
+                     variant == 1 ? "!=" : "==", variant == 2 ? other : hex);
+      if (!rx_psg_run(&h, body, variant == 0 ? IVS_RUNNER_OUTCOME_PASS : IVS_RUNNER_OUTCOME_GUEST_FAIL,
+                      variant == 0 ? 0u : 10u)) {
+        ivs_test_diag("domain %s variant %d", dom[d], variant);
+        goto done;
+      }
+      rx_free(&h);
+    }
+  }
+  rc = IVS_TEST_PASS;
+done:
+  rx_free(&h);
+  return rc;
+}
+
 /* No host path or other free text: every byte is printable ASCII or LF, no `/` anywhere (the
  * scenarios here name no subdirectory), single-space `key value` lines, and no clock or
  * environment key (the key set is the closed one of ex_key_order). Checked on a pass and on a
@@ -1453,6 +1671,10 @@ static const ivs_test_case exec_cases[] = {
     {"runner.exec.ivsr2-keys", ex_ivsr2_keys, NULL},
     {"runner.exec.audio-chain-check", ex_audio_chain_check, NULL},
     {"runner.exec.sha256-fips", ex_sha256_fips, NULL},
+    {"runner.exec.psglog-assert", ex_psglog_assert, NULL},
+    {"runner.exec.audio-assert", ex_audio_assert, NULL},
+    {"runner.exec.capture-overflow", ex_capture_overflow, NULL},
+    {"runner.exec.digest-assert-audio-psglog", ex_digest_assert_audio_psglog, NULL},
     {"runner.exec.key-order", ex_key_order, NULL},
     {"runner.exec.missing-file", ex_missing_file, NULL},
     {"runner.exec.no-paths", ex_no_paths, NULL},

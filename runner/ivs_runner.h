@@ -66,7 +66,18 @@ uint32_t ivs_runner_outcome_resolve(uint32_t observed_mask);
  *   assert reg R<0-7> ==|!= <HHHH>
  *   assert mem <AAAA> ==|!= <HHHH>
  *   assert mem <AAAA>..<BBBB> ==|!= <HHHH>     (every word of the inclusive range equals HHHH)
- *   assert digest <composite|cpu|mem|images|instance|video|audio|input> ==|!= <64 hex>
+ *   assert digest <composite|cpu|mem|images|instance|video|audio|input|psglog> ==|!= <64 hex>
+ *   capture psglog|audio                       (plan 05-09: keep the first IVS_SCN_CAPTURE_MAX
+ *       delivered PSG write-log records, or audio level-change entries, for the asserts below; once
+ *       per target, anywhere after `ivss 1`; the 4097th entry is a harness failure, never a drop)
+ *   assert psglog count ==|!= <n>              (records delivered so far)
+ *   assert psglog <i> [tick=<n>] [addr=<0..15>] [value=<HHHH>] [source=<cpu-write|cpu-dw>]
+ *       (record i, 0-based, of the capture; each field at most once, at least one, only the named
+ *       fields are compared; needs `capture psglog`)
+ *   assert audio emitted ==|!= <n>             (samples delivered so far)
+ *   assert audio at <tick> A=<n> B=<n> C=<n>   (the levels of the sample stamped <tick>; the tick
+ *       must be a multiple of the real audio_sample_ticks, checked at run time; needs
+ *       `capture audio`)
  *   input at_tick=<n>|at_cycle=<n> c0=<names|0xHEX> c1=<names|0xHEX>
  * Header directives (id, profile, content, expect-load, expect-sha256, wall-timeout-ms) come
  * before the first run-to; singletons (per role for content and expect-*) appear once. Steps
@@ -77,14 +88,15 @@ uint32_t ivs_runner_outcome_resolve(uint32_t observed_mask);
  * ivs/ivs_run.h minus the IVS_CTRL_ prefix (the names pinned by data/expected/input-bits.ids);
  * the reserved bit 31 is refused. `at_frame=` is refused until Phase 6. Numbers are decimal
  * digits only (no sign); HHHH and AAAA are four upper-case hex digits. A scenario names no
- * output file and no system image path. Caps: 64 KiB, 512 lines, 256 bytes per line (LF not
- * counted), 64 steps, 64 asserts, 64 input lines. */
+ * output file, no rate and no system image path. Caps: 64 KiB, 512 lines, 256 bytes per line (LF
+ * not counted), 64 steps, 64 asserts, 64 input lines, 4096 capture entries per target. */
 #define IVS_SCN_MAX_BYTES 65536u
 #define IVS_SCN_MAX_LINES 512u
 #define IVS_SCN_MAX_LINE_BYTES 256u
 #define IVS_SCN_MAX_STEPS 64u
 #define IVS_SCN_MAX_ASSERTS 64u
 #define IVS_SCN_MAX_INPUTS 64u
+#define IVS_SCN_CAPTURE_MAX 4096u /* entries kept per capture target (plan 05-09, D-20) */
 #define IVS_SCN_MAX_PATH 200u
 #define IVS_SCN_MAX_ID 48u
 #define IVS_SCN_MAX_PROFILE 64u
@@ -121,6 +133,20 @@ uint32_t ivs_runner_outcome_resolve(uint32_t observed_mask);
 #define IVS_SCN_SUBJ_MEM 3u
 #define IVS_SCN_SUBJ_MEM_RANGE 4u
 #define IVS_SCN_SUBJ_DIGEST 5u
+#define IVS_SCN_SUBJ_PSGLOG 6u
+#define IVS_SCN_SUBJ_AUDIO 7u
+/* The form of a PSGLOG or AUDIO assert (ivs_scenario_assert.form), and the fields a record form
+ * names (ivs_scenario_assert.fields), and the capture targets (ivs_scenario.capture bits). */
+#define IVS_SCN_FORM_COUNT 1u   /* psglog count */
+#define IVS_SCN_FORM_RECORD 2u  /* psglog <i> fields */
+#define IVS_SCN_FORM_EMITTED 3u /* audio emitted */
+#define IVS_SCN_FORM_AT 4u      /* audio at <tick> A B C */
+#define IVS_SCN_FIELD_TICK 0x1u
+#define IVS_SCN_FIELD_ADDR 0x2u
+#define IVS_SCN_FIELD_VALUE 0x4u
+#define IVS_SCN_FIELD_SOURCE 0x8u
+#define IVS_SCN_CAPTURE_PSGLOG 0x1u
+#define IVS_SCN_CAPTURE_AUDIO 0x2u
 #define IVS_SCN_OP_EQ 1u
 #define IVS_SCN_OP_NE 2u
 
@@ -175,7 +201,13 @@ uint32_t ivs_runner_outcome_resolve(uint32_t observed_mask);
 #define IVS_SCN_R_BAD_INPUT_VALUE 42u
 #define IVS_SCN_R_DEAD_AFTER_REFUSAL 43u
 #define IVS_SCN_R_NO_RUN_TO 44u
-#define IVS_SCN_R_COUNT 45u
+/* Plan 05-09 (appended; a token never moves): the capture and assert grammar of PSG log and audio. */
+#define IVS_SCN_R_BAD_CAPTURE 45u          /* `capture` with a target that is not psglog or audio */
+#define IVS_SCN_R_DUPLICATE_CAPTURE 46u    /* the same capture target twice */
+#define IVS_SCN_R_BAD_PSGLOG_ASSERT 47u    /* a malformed `assert psglog` (form, index, field, value) */
+#define IVS_SCN_R_BAD_AUDIO_ASSERT 48u     /* a malformed `assert audio` */
+#define IVS_SCN_R_ASSERT_WITHOUT_CAPTURE 49u /* a record or `at` assert with no capture of its target */
+#define IVS_SCN_R_COUNT 50u
 
 typedef struct ivs_scenario_content {
   uint32_t kind; /* IVS_SCN_CONTENT_* */
@@ -208,8 +240,16 @@ typedef struct ivs_scenario_assert {
   uint32_t index;     /* register number (REG) or IVS_DIGEST_* domain (DIGEST) */
   uint16_t addr_lo;   /* MEM, MEM_RANGE */
   uint16_t addr_hi;   /* MEM_RANGE; equals addr_lo for MEM */
-  uint16_t value;     /* HALTED (1 yes, 0 no), REG, MEM, MEM_RANGE */
+  uint16_t value;     /* HALTED (1 yes, 0 no), REG, MEM, MEM_RANGE; PSGLOG record: the raw value */
   uint8_t sha256[32]; /* DIGEST */
+  /* Plan 05-09 (PSGLOG and AUDIO subjects). index is the record number of a PSGLOG record form. */
+  uint32_t form;      /* IVS_SCN_FORM_* */
+  uint32_t fields;    /* PSGLOG record: IVS_SCN_FIELD_* named; AUDIO at: 0x7 (A, B, C) */
+  uint32_t addr;      /* PSGLOG record: addr= (0..15) */
+  uint32_t source;    /* PSGLOG record: source= (IVS_PSGLOG_SRC_*) */
+  uint32_t level[3];  /* AUDIO at: A, B, C (0..255) */
+  uint32_t reserved;
+  uint64_t num;       /* PSGLOG count and AUDIO emitted: the number; record: tick=; at: the tick */
 } ivs_scenario_assert;
 
 typedef struct ivs_scenario_input {
@@ -232,6 +272,8 @@ typedef struct ivs_scenario {
   uint32_t input_unit; /* IVS_SCN_INPUT_AT_*, 0 when there is no input line */
   uint32_t n_inputs;
   ivs_scenario_input inputs[IVS_SCN_MAX_INPUTS];
+  uint32_t capture;         /* IVS_SCN_CAPTURE_* bits (plan 05-09) */
+  uint32_t capture_line[2]; /* line of `capture psglog`, `capture audio` (0: none) */
 } ivs_scenario;
 
 typedef struct ivs_scenario_error {
@@ -281,6 +323,10 @@ const char *ivs_scenario_input_name(uint32_t i, uint32_t *mask);
 #define IVS_RUNNER_CAP_GROM 2048u
 #define IVS_RUNNER_CAP_CART 131256u
 #define IVS_RUNNER_STORAGE_MAX (64u * 1024u * 1024u) /* D-22: storage cap */
+/* Host storage the captures need after the instance and the read buffer (plan 05-09): 4096 write-log
+ * records of 16 bytes and 4096 audio level-change entries of 12 bytes. Only a scenario with a
+ * capture directive needs it. */
+#define IVS_RUNNER_CAPTURE_BYTES (IVS_SCN_CAPTURE_MAX * 16u + IVS_SCN_CAPTURE_MAX * 12u)
 #define IVS_RUNNER_BUFFERS_MAX (8u * 1024u * 1024u)  /* D-22: output buffer cap */
 #define IVS_RUNNER_BOOT_STUB_FILE "boot-stub.exec"   /* reserved name under the content dir */
 
@@ -345,6 +391,7 @@ typedef struct ivs_runner_host {
 #define IVS_RUNNER_SLICE_TICKS_MAX UINT64_C(4194304)          /* 1 << 22, the default slice */
 #define IVS_RUNNER_MAX_TICKS_DEFAULT UINT64_C(1099511627776)  /* 1 << 40 master ticks */
 #define IVS_RUNNER_WALL_MS_DEFAULT 30000u                    /* D-22: default wall cap */
+#define IVS_RUNNER_AUDIO_OUT_MAX_DEFAULT UINT64_C(268435456) /* 256 MiB: default bound of an operator raw output */
 
 /* Executor options (may be NULL: every default). A value outside its range is harness-fail
  * without a report. */
@@ -353,6 +400,8 @@ typedef struct ivs_runner_options {
   uint32_t wall_timeout_ms; /* the operator's wall cap; 0: IVS_RUNNER_WALL_MS_DEFAULT */
   uint64_t slice_ticks;     /* 1..IVS_RUNNER_SLICE_TICKS_MAX; 0: IVS_RUNNER_SLICE_TICKS_MAX */
   uint64_t max_ticks;       /* machine-time ceiling, 1..IVS_RUN_TARGET_MAX; 0: the default */
+  uint64_t audio_out_max_bytes; /* bytes each operator raw output may take (plan 05-09), 0: the default;
+                                   exceeding it is a harness failure, never a truncation */
 } ivs_runner_options;
 
 /* What a call returned, besides the outcome. host_calls counts read_file, read_user, now_ms and
@@ -448,6 +497,11 @@ typedef struct ivs_runner_record {
  * its fixed order: `ivsr 2` first, `report.end <n>` last (n = lines before it). Returns 0, or
  * -1 on a write error; *lines gets the count of lines before report.end. */
 int ivs_runner_report_write(const ivs_runner_record *rec, const ivs_runner_host *host, uint64_t *lines);
+
+/* The clause of an assert as the scenario states it (`halted == yes`, `reg R3 != 0037`, `psglog count == 4`,
+ * `audio at 160 A=15 B=0 C=0`, ...), NUL-terminated into out (cap bytes); shared by the report and
+ * the outcome detail. */
+void ivs_runner_assert_clause(const ivs_scenario_assert *a, char *out, size_t cap);
 
 /* Report tokens: the stop reason (target, halted, faulted, internal, unknown), an expected stop
  * (target, halted, faulted, unknown) and a digest domain (cpu, ..., or unknown). */

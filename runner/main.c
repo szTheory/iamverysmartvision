@@ -512,7 +512,8 @@ int main(int argc, char **argv)
   storage_bytes = 64u;
   if (ivs_machine_storage_requirements(scn->profile, &req) == IVS_OK && req.size_bytes <= IVS_RUNNER_STORAGE_MAX &&
       req.align_bytes <= IVS_RUNNER_STORAGE_MAX) {
-    storage_bytes = (size_t)req.size_bytes + (size_t)req.align_bytes + (size_t)IVS_RUNNER_CAP_CART + 1u;
+    storage_bytes = (size_t)req.size_bytes + (size_t)req.align_bytes + (size_t)IVS_RUNNER_CAP_CART + 1u +
+                    (size_t)IVS_RUNNER_CAPTURE_BYTES;
   }
   storage = malloc(storage_bytes);
   /* One output block for the three channels (video, audio, PSG write log), bounded by

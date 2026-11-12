@@ -15,7 +15,7 @@
 #include "ivs/ivs.h"
 #include "ivs_runner.h"
 
-#define SCN_TOKS 6u /* longest directive has 5 tokens; a 6th marks "too many" */
+#define SCN_TOKS 8u /* longest directive has 7 tokens (assert audio at, assert psglog with four fields); an 8th marks "too many" */
 
 typedef struct scn_tok {
   const uint8_t *p;
@@ -529,6 +529,8 @@ static uint32_t parse_digest_domain(scn_tok t, uint32_t *domain)
     *domain = IVS_DIGEST_AUDIO;
   } else if (tok_is(t, "input")) {
     *domain = IVS_DIGEST_INPUT;
+  } else if (tok_is(t, "psglog")) {
+    *domain = IVS_DIGEST_PSGLOG;
   } else {
     return IVS_SCN_R_BAD_TOKEN;
   }
@@ -544,6 +546,133 @@ static uint32_t parse_op(scn_tok t, uint32_t *op)
   } else {
     return IVS_SCN_R_BAD_TOKEN;
   }
+  return IVS_SCN_R_NONE;
+}
+
+/* `name=<decimal>`: 1 and *v when t is `name=` plus a decimal number (hand-written, no overflow). */
+static int field_dec(scn_tok t, const char *name, uint64_t *v)
+{
+  size_t k = strlen(name);
+  if (!tok_starts(t, name) || t.n <= k) {
+    return 0;
+  }
+  return parse_dec(tok_tail(t, k), v) == IVS_SCN_R_NONE;
+}
+
+/* `assert psglog count ==|!= <n>` and `assert psglog <i> [tick=<n>] [addr=<0..15>] [value=<HHHH>]
+ * [source=<cpu-write|cpu-dw>]` (plan 05-09). Any malformation is bad-psglog-assert; a record form
+ * names each field at most once and at least one. */
+static uint32_t assert_psglog(ivs_scenario_assert *a, const scn_line *l)
+{
+  uint64_t n = 0u;
+  a->subject = IVS_SCN_SUBJ_PSGLOG;
+  if (tok_is(l->t[2], "count")) {
+    if (l->n != 5u || parse_op(l->t[3], &a->op) != IVS_SCN_R_NONE || parse_dec(l->t[4], &n) != IVS_SCN_R_NONE) {
+      return IVS_SCN_R_BAD_PSGLOG_ASSERT;
+    }
+    a->form = IVS_SCN_FORM_COUNT;
+    a->num = n;
+    return IVS_SCN_R_NONE;
+  }
+  if (l->n < 4u || l->n > 7u || parse_dec(l->t[2], &n) != IVS_SCN_R_NONE || n >= IVS_SCN_CAPTURE_MAX) {
+    return IVS_SCN_R_BAD_PSGLOG_ASSERT;
+  }
+  a->form = IVS_SCN_FORM_RECORD;
+  a->op = IVS_SCN_OP_EQ;
+  a->index = (uint32_t)n;
+  for (uint32_t k = 3u; k < l->n; k++) {
+    uint64_t v = 0u;
+    scn_tok t = l->t[k];
+    if (tok_starts(t, "tick=")) {
+      if ((a->fields & IVS_SCN_FIELD_TICK) != 0u || !field_dec(t, "tick=", &v)) {
+        return IVS_SCN_R_BAD_PSGLOG_ASSERT;
+      }
+      a->fields |= IVS_SCN_FIELD_TICK;
+      a->num = v;
+    } else if (tok_starts(t, "addr=")) {
+      if ((a->fields & IVS_SCN_FIELD_ADDR) != 0u || !field_dec(t, "addr=", &v) || v > 15u) {
+        return IVS_SCN_R_BAD_PSGLOG_ASSERT;
+      }
+      a->fields |= IVS_SCN_FIELD_ADDR;
+      a->addr = (uint32_t)v;
+    } else if (tok_starts(t, "value=")) {
+      if ((a->fields & IVS_SCN_FIELD_VALUE) != 0u || !parse_hex4(tok_tail(t, 6u), &a->value)) {
+        return IVS_SCN_R_BAD_PSGLOG_ASSERT;
+      }
+      a->fields |= IVS_SCN_FIELD_VALUE;
+    } else if (tok_starts(t, "source=")) {
+      scn_tok src = tok_tail(t, 7u);
+      if ((a->fields & IVS_SCN_FIELD_SOURCE) != 0u) {
+        return IVS_SCN_R_BAD_PSGLOG_ASSERT;
+      }
+      if (tok_is(src, "cpu-write")) {
+        a->source = IVS_PSGLOG_SRC_CPU_WRITE;
+      } else if (tok_is(src, "cpu-dw")) {
+        a->source = IVS_PSGLOG_SRC_CPU_DW;
+      } else {
+        return IVS_SCN_R_BAD_PSGLOG_ASSERT;
+      }
+      a->fields |= IVS_SCN_FIELD_SOURCE;
+    } else {
+      return IVS_SCN_R_BAD_PSGLOG_ASSERT;
+    }
+  }
+  return a->fields != 0u ? IVS_SCN_R_NONE : IVS_SCN_R_BAD_PSGLOG_ASSERT;
+}
+
+/* `assert audio emitted ==|!= <n>` and `assert audio at <tick> A=<n> B=<n> C=<n>` (plan 05-09). */
+static uint32_t assert_audio(ivs_scenario_assert *a, const scn_line *l)
+{
+  uint64_t n = 0u;
+  static const char *const name[3] = {"A=", "B=", "C="};
+  a->subject = IVS_SCN_SUBJ_AUDIO;
+  if (tok_is(l->t[2], "emitted")) {
+    if (l->n != 5u || parse_op(l->t[3], &a->op) != IVS_SCN_R_NONE || parse_dec(l->t[4], &n) != IVS_SCN_R_NONE) {
+      return IVS_SCN_R_BAD_AUDIO_ASSERT;
+    }
+    a->form = IVS_SCN_FORM_EMITTED;
+    a->num = n;
+    return IVS_SCN_R_NONE;
+  }
+  if (!tok_is(l->t[2], "at") || l->n != 7u || parse_dec(l->t[3], &n) != IVS_SCN_R_NONE || n > IVS_SCN_TIME_MAX) {
+    return IVS_SCN_R_BAD_AUDIO_ASSERT;
+  }
+  a->form = IVS_SCN_FORM_AT;
+  a->op = IVS_SCN_OP_EQ;
+  a->num = n;
+  for (uint32_t k = 0u; k < 3u; k++) {
+    uint64_t v = 0u;
+    if (!field_dec(l->t[4u + k], name[k], &v) || v > 255u) {
+      return IVS_SCN_R_BAD_AUDIO_ASSERT;
+    }
+    a->level[k] = (uint32_t)v;
+  }
+  a->fields = 0x7u;
+  return IVS_SCN_R_NONE;
+}
+
+/* `capture psglog|audio`: once per target, anywhere after the header (plan 05-09). */
+static uint32_t dir_capture(ivs_scenario *s, const scn_line *l, uint32_t line)
+{
+  uint32_t bit;
+  uint32_t idx;
+  if (l->n != 2u) {
+    return IVS_SCN_R_BAD_ARITY;
+  }
+  if (tok_is(l->t[1], "psglog")) {
+    bit = IVS_SCN_CAPTURE_PSGLOG;
+    idx = 0u;
+  } else if (tok_is(l->t[1], "audio")) {
+    bit = IVS_SCN_CAPTURE_AUDIO;
+    idx = 1u;
+  } else {
+    return IVS_SCN_R_BAD_CAPTURE;
+  }
+  if ((s->capture & bit) != 0u) {
+    return IVS_SCN_R_DUPLICATE_CAPTURE;
+  }
+  s->capture |= bit;
+  s->capture_line[idx] = line;
   return IVS_SCN_R_NONE;
 }
 
@@ -625,6 +754,14 @@ static uint32_t dir_assert(ivs_scenario *s, const scn_line *l, uint32_t line)
       }
     } else if (!parse_hex4(l->t[4], &a.value)) {
       return IVS_SCN_R_BAD_VALUE;
+    }
+  } else if (tok_is(l->t[1], "psglog") || tok_is(l->t[1], "audio")) {
+    if (l->n < 3u) {
+      return IVS_SCN_R_BAD_ARITY;
+    }
+    r = tok_is(l->t[1], "psglog") ? assert_psglog(&a, l) : assert_audio(&a, l);
+    if (r != IVS_SCN_R_NONE) {
+      return r;
     }
   } else {
     return IVS_SCN_R_BAD_TOKEN;
@@ -722,6 +859,9 @@ static uint32_t parse_directive(ivs_scenario *s, const scn_line *l, uint32_t lin
   if (tok_is(d, "input")) {
     return dir_input(s, l, line);
   }
+  if (tok_is(d, "capture")) {
+    return dir_capture(s, l, line);
+  }
   if (!tok_is(d, "id") && !tok_is(d, "profile") && !tok_is(d, "content") && !tok_is(d, "expect-load") &&
       !tok_is(d, "expect-sha256") && !tok_is(d, "wall-timeout-ms")) {
     return IVS_SCN_R_UNKNOWN_DIRECTIVE;
@@ -788,6 +928,22 @@ static uint32_t scn_first_line(uint32_t a, uint32_t b)
  * and any input line are refused as dead-after-refusal, at the first such line. Without an
  * expected refusal a scenario needs at least one run-to (no-run-to, line 0): steps and asserts
  * are what a pass vouches for. */
+static uint32_t scn_check_capture(const ivs_scenario *s, uint32_t *line)
+{
+  /* A record form of `assert psglog` and `assert audio at` read a capture: the directive may stand
+   * anywhere in the file, so this is decided at the end, at the first assert that lacks its capture. */
+  for (uint32_t i = 0u; i < s->n_asserts; i++) {
+    const ivs_scenario_assert *a = &s->asserts[i];
+    if ((a->form == IVS_SCN_FORM_RECORD && (s->capture & IVS_SCN_CAPTURE_PSGLOG) == 0u) ||
+        (a->form == IVS_SCN_FORM_AT && (s->capture & IVS_SCN_CAPTURE_AUDIO) == 0u)) {
+      *line = a->line;
+      return IVS_SCN_R_ASSERT_WITHOUT_CAPTURE;
+    }
+  }
+  *line = 0u;
+  return IVS_SCN_R_NONE;
+}
+
 static uint32_t scn_check_reach(const ivs_scenario *s, uint32_t *line)
 {
   uint32_t refused = IVS_SCN_ROLES;
@@ -919,7 +1075,10 @@ int ivs_scenario_parse(const uint8_t *bytes, size_t len, ivs_scenario *out, ivs_
   }
   {
     uint32_t at = 0u;
-    uint32_t r = scn_check_reach(out, &at);
+    uint32_t r = scn_check_capture(out, &at);
+    if (r == IVS_SCN_R_NONE) {
+      r = scn_check_reach(out, &at);
+    }
     if (r != IVS_SCN_R_NONE) {
       return scn_refuse(out, err, at, r);
     }
@@ -1020,6 +1179,16 @@ const char *ivs_scenario_reason_name(uint32_t reason)
     return "dead-after-refusal";
   case IVS_SCN_R_NO_RUN_TO:
     return "no-run-to";
+  case IVS_SCN_R_BAD_CAPTURE:
+    return "bad-capture";
+  case IVS_SCN_R_DUPLICATE_CAPTURE:
+    return "duplicate-capture";
+  case IVS_SCN_R_BAD_PSGLOG_ASSERT:
+    return "bad-psglog-assert";
+  case IVS_SCN_R_BAD_AUDIO_ASSERT:
+    return "bad-audio-assert";
+  case IVS_SCN_R_ASSERT_WITHOUT_CAPTURE:
+    return "assert-without-capture";
   default:
     return "unknown";
   }
