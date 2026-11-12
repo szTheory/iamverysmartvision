@@ -62,6 +62,8 @@ runner-process mutant runner-process.judge.outcome-uncovered RUN-02
 # RUN-04: the fault framework over runner sources, and this registry itself.
 faults-runner-site control faults-orphan-site-runner RUN-04
 faults-runner-site control faults-missing-site-runner RUN-04
+important-gates control important-gates-unknown-id RUN-04
+important-gates control important-gates-uncovered-gate RUN-04
 
 # RUN-05: per-domain digests, the input log, repeat-run equality, golden headers and bodies.
 digest-domains fault DIGEST_DOMAIN_SWAPPED RUN-05
