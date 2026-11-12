@@ -134,3 +134,11 @@ Each mutant changes one word of the listing and must end as stated; the clause t
 The author of this derivation, of the listing, of the literals and of the core is one model family, so one misreading of a source can be shared by all of them, and agreement between them is not independent evidence about hardware.
 The controller bytes rest on two community pages that are likely one lineage (C16), the register map on one community page (C70), and the tone-A silence and the write-effect instant on project conventions (C77, C78).
 A pass of this fixture shows the model is self-consistent on these paths and nothing more.
+
+## (g) Correction of 2026-11-12 (plan 05-11, found while hand-assembling the listing)
+
+Section (a) names `R3` as the port 0 store pointer and `MVO@ R0,R3` as a store with `R3 += 1`.
+The addressing-mode table of the manual (`Fig. 3.2.1, pdf 46`; `docs/cp1610/reference-notes.md`, section "Addressing modes") increments the register after the access only for mode 100 (R4) and mode 101 (R5); modes 001 to 011 (R1 to R3) address indirectly and do not increment.
+The listing therefore keeps the pointer registers that auto-increment and moves the counter: R4 = `0210` (port 0 pointer), R5 = `0220` (port 1 pointer), R3 = `0008` (port 0 values still to store), R1 and R2 as before.
+Nothing else in this document changes: the word count (89), the addresses of the loop (`5036`, targets `5040`, `5049`, `5036`), the instruction mix and so the 81-cycle loop, the write list, the polled values, the tables `[0210..0217]` and `[0220..0223]` and the mutants (mutant 3 patches the immediate of `MVII #$0220,R5`, not R4) are the same; the original text above is kept as written so that the order of the commits stays the evidence.
+No asserted value depends on a register choice: the scenario asserts memory, PSG registers and the write list only.
