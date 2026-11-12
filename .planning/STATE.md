@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 5
 current_phase_name: Hand Controllers and PSG Sound
 status: executing
-stopped_at: Completed 05-04-PLAN.md
-last_updated: "2026-11-12T08:19:41.565Z"
+stopped_at: Completed 05-05-PLAN.md
+last_updated: "2026-11-12T09:36:37.587Z"
 last_activity: 2026-11-12
 last_activity_desc: Phase 4 complete, transitioned to Phase 5
-state_head: 9f7c1c2eb9d5654b942bc7d3eebbb39feceb7561
+state_head: faa1644daadc135107642258b67511f86a1fc7c3
 progress:
   total_phases: 8
   completed_phases: 4
   total_plans: 83
-  completed_plans: 75
+  completed_plans: 76
   percent: 50
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 5 (Hand Controllers and PSG Sound) — EXECUTING
-Plan: 5 of 12
+Plan: 6 of 12
 Status: Ready to execute
 Last activity: 2026-11-12 — Completed 05-01 (oracle-first: sources, controller literal, PSG rules and vectors, D10 inventory)
 
@@ -130,6 +130,7 @@ Progress: [█████░░░░░] 50%
 | Phase 5 P02 | 35 min | 4 tasks | 33 files |
 | Phase 5 P03 | 70 min | 4 tasks | 21 files |
 | Phase 5 P04 | 150 min | 5 tasks | 54 files |
+| Phase 5 P05 | 6h | 5 tasks | 85 files |
 
 ## Accumulated Context
 
@@ -300,6 +301,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 5]: 05-02: write log is the third buffer after video and audio (reasons 55..57); a NULL buffer with capacity 0 means channel not requested (D-17); psg_log versus events is RUN_PSGLOG_OVERLAP decided in stage 4b; steps 35/35 controls 296/296 faults 152/152 under sh, dash and the Ubuntu container
 - [Phase 5]: 05-03: PSG storage joins the instance (psg_reg and port_pulldown in MEM, 72-byte ivs_psg_state in INSTANCE, audio rows emitted and prev_levels, domain 19 PSGLOG); composite version 2 with the v1 literals recorded first (5114d8a); IVS_MACHINE_BYTES 113760; goldens moved only on digest.mem, digest.instance and digest.composite, digest.cpu and digest.images equal v1
 - [Phase 5]: 05-04: PSG region is device kind psg8 (upper byte 0, C64) with masks from psg.regmap through IvsPsgTable.cmake; every guest access goes through ivs_machine_bus (forwards unchanged until 05-06/05-08); shape and port registers are declared exception rows (x=reads-zero, x=pins) observed in psg_reg; suite psg 40 ids, steps 35/35 controls 300/300 faults 158/158, goldens unchanged; checkpoint-1: lever-required (projection 188.7-195.5 cpu-s vs trigger 190, 0.144 cpu-s per fault)
+- [Phase 5]: 05-05: ivs_input_rederive is the only setter of port_pulldown (apply and the refused-step take-back call it); the port read is pure and lives in memsys.c
+- [Phase 5]: 05-05: the memmap read rows of the two port registers have w=0 x=pins; the input-visible fuzz compares whole-instance snapshots instead of MEM digests
 
 ### Pending Todos
 
@@ -332,6 +335,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-12T08:19:41.424Z
-Stopped at: Completed 05-04-PLAN.md
+Last session: 2026-11-12T09:36:37.431Z
+Stopped at: Completed 05-05-PLAN.md
 Resume file: None
