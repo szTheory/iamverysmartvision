@@ -18,8 +18,11 @@
  * the core.
  *
  * ALGORITHM (D-21).
- *   input   the dense stream, 4-byte samples A, B, C, 0 (each level 0..15), sample i holding from master
- *           tick i * P to (i + 1) * P, P = audio_sample_ticks of ivs_info
+ *   input   the dense stream, 4-byte samples A, B, C, 0 (each level 0..15), P = audio_sample_ticks of
+ *           ivs_info. The 0-based sample i is stamped (i + 1) * P (the core's absolute grid, the first
+ *           sample is the state after the first chip step) and is held from its stamp: cell i covers master
+ *           ticks (i + 1) * P to (i + 2) * P. The first P ticks, before the first stamp, hold level 0 (the
+ *           reset state): the converter treats them as one implicit silent cell before sample 0.
  *   mix     x_i = dac[A_i] + dac[B_i] + dac[C_i], unsigned, at most 300,000,000 (units of 1e-8 of full
  *           scale, the profile field psg.dac.levels)
  *   filter  exact rational box filter. The crystal is num / den Hz and the output rate is R, so output
@@ -65,6 +68,7 @@ typedef struct ivs_refpcm_state {
   uint64_t acc;        /* sum of overlap * x over the covered part of the current window */
   uint64_t frames;     /* output frames produced so far */
   uint64_t samples;    /* input samples consumed so far */
+  uint64_t lead_units; /* units of the implicit silent cell before sample 0 not yet consumed (P * den * R, then 0) */
   int32_t prev_x;      /* DC block: the previous box output (0..30000) */
   int32_t prev_y;      /* DC block: the previous high-pass output, before saturation */
   uint32_t rate;       /* R */
@@ -79,7 +83,8 @@ int ivs_refpcm_init(ivs_refpcm_state *st, uint64_t crystal_num, uint64_t crystal
                     uint32_t rate);
 
 /* An upper bound of the frames that feeding nsamples input samples can produce from the current state:
- * floor(nsamples * P * den * R / num) + 1. */
+ * floor((nsamples + 1) * P * den * R / num) + 1 (the +1 cell is the implicit leading one, counted until it
+ * has been consumed). */
 size_t ivs_refpcm_out_bound(const ivs_refpcm_state *st, size_t nsamples);
 
 /* Feeds nsamples 4-byte samples (levels A, B, C, 0, so 4 * nsamples bytes) and writes the frames that

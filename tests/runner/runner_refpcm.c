@@ -8,17 +8,21 @@
  *   box-exact-vector          the tracer: a four-sample stream with toy rational parameters (crystal
  *                             384,000 Hz over 1, P = 12 ticks, 48,000 Hz output) worked by hand below
  *   silence-zeros             an all-zero stream gives all-zero frames
- *   constant-settles-zero     a constant level 15 on one channel (box output 10,000) decays through the DC
- *                             block: frame 0 is 10,000 and the decay (y = floor(y * 32763 / 32768),
- *                             iterated by hand) reaches 0 at frame 8,276 and stays there
+ *   constant-settles-zero     a constant level 15 on one channel (box output 10,000 once the stream has
+ *                             begun) decays through the DC block: frame 0 is 7,854 (the implicit silent
+ *                             first cell fills 16 of its 74.57 ticks: 58.57 / 74.57 of 10,000), frame 1 is
+ *                             9,998, and the decay (y = floor(y * 32763 / 32768), iterated) reaches 0 at
+ *                             frame 8,276 and stays there
  *   floor-division-negative   the helper floors toward minus infinity (a table of hand values)
  *   dc-state-split-invariance two feed calls with the state carried equal one call
  *   frame-split-invariance    every chunk size 1..9 and the cut inside a window equal one call
- *   rate-44100, rate-48000    the crystal 3,579,545 / 1, P = 16: 223,722 samples cover 3,579,552 ticks, so
- *                             floor(3,579,552 * R / 3,579,545) = R frames (the excess is 7 ticks: 0.09
- *                             of a frame at 48,000 and 0.09 at 44,100), and 223,721 samples (3,579,536
- *                             ticks, 9 short) give R - 1
- *   no-clip-max-input         three channels at level 15 give box 30,000 (3e8 / 1e4), never saturated; an
+ *   rate-44100, rate-48000    the crystal 3,579,545 / 1, P = 16, one implicit leading cell: 223,722 samples
+ *                             are 223,723 cells = 3,579,568 ticks, so floor(3,579,568 * R / 3,579,545) = R
+ *                             frames (the excess is 23 ticks: 0.31 of a frame at 48,000 and 0.28 at
+ *                             44,100), and 223,720 samples (223,721 cells = 3,579,536 ticks, 9 short) give
+ *                             R - 1
+ *   no-clip-max-input         three channels at level 15 give box 30,000 (3e8 / 1e4) once the stream has
+ *                             begun (frame 0 is 23,563 and frame 1 is 29,996), never saturated; an
  *                             alternating full-scale stream keeps |y| <= 30,000
  *   dac-table-matches-profile the converter's copy equals the profile field psg.dac.levels (plan 05-07
  *                             probe include)
@@ -35,25 +39,33 @@
  *
  * Hand derivation of box-exact-vector. The crystal is 384,000 / 1 Hz and the output rate 48,000, so an
  * output window is 384,000 / 48,000 = 8 master ticks (384,000 units of 1 / (den * R) tick, one unit is
- * 1 / 48,000 tick) and an input cell P = 12 ticks is 576,000 units. Levels (A, B, C), mix x in units of
- * 1e-8 of full scale from the DAC table (level 15 = 100,000,000, level 5 = 3,125,000):
- *   cell 0 (15, 0, 0)  x0 = 100,000,000    cell 1 (0, 0, 0)   x1 = 0
- *   cell 2 (15, 15, 0) x2 = 200,000,000    cell 3 (5, 0, 0)   x3 = 3,125,000
- * Six windows cover the four cells exactly (4 x 576,000 = 6 x 384,000). out_j = round_half_up(s_j /
- * (num * 10000)) with num * 10000 = 3,840,000,000 and s_j = sum of overlap * x:
- *   W0 [0, 384k)      cell 0 whole:           s/D = 100,000,000 / 10,000          = 10000
- *   W1 [384k, 768k)   192k of cell 0, 192k of cell 1:  (1e8 + 0) / 2 / 10,000    =  5000
- *   W2 [768k, 1152k)  cell 1 whole:           0                                   =     0
- *   W3 [1152k, 1536k) cell 2 whole:           200,000,000 / 10,000                = 20000
- *   W4 [1536k, 1920k) 192k of cell 2, 192k of cell 3: (2e8 + 3,125,000) / 2 / 10,000 = 10156.25 -> 10156
- *   W5 [1920k, 2304k) cell 3 whole:           3,125,000 / 10,000 = 312.5 -> 313 (half up; a floor gives 312)
+ * 1 / 48,000 tick) and an input cell P = 12 ticks is 576,000 units. The stream holds an implicit silent
+ * cell before sample 0 (the first P ticks precede the first stamp, D-15: the 0-based sample i is stamped
+ * (i + 1) * P and held from there), so the cells are: cell L (silent), then the four samples. Levels
+ * (A, B, C), mix x in units of 1e-8 of full scale from the DAC table (level 15 = 100,000,000, level 5 =
+ * 3,125,000):
+ *   cell L   x = 0                          cell 0 (15, 0, 0)  x0 = 100,000,000   cell 1 (0, 0, 0)  x1 = 0
+ *   cell 2 (15, 15, 0) x2 = 200,000,000     cell 3 (5, 0, 0)   x3 = 3,125,000
+ * Five cells are 2,880,000 units = 7.5 windows, so seven windows complete (the half window stays pending).
+ * out_j = round_half_up(s_j / (num * 10000)) with num * 10000 = 3,840,000,000 and s_j = sum of overlap * x;
+ * the cells span (k = thousand units) L [0, 576k), 0 [576k, 1152k), 1 [1152k, 1728k), 2 [1728k, 2304k) and
+ * 3 [2304k, 2880k):
+ *   W0 [0, 384k)       cell L whole:                               0
+ *   W1 [384k, 768k)    192k of cell L, 192k of cell 0: (0 + 1e8) / 2 / 10,000 = 5000
+ *   W2 [768k, 1152k)   cell 0 whole:                               100,000,000 / 10,000 = 10000
+ *   W3 [1152k, 1536k)  cell 1 whole:                               0
+ *   W4 [1536k, 1920k)  192k of cell 1, 192k of cell 2: (0 + 2e8) / 2 / 10,000 = 10000
+ *   W5 [1920k, 2304k)  cell 2 whole:                               200,000,000 / 10,000 = 20000
+ *   W6 [2304k, 2688k)  cell 3 whole:                               3,125,000 / 10,000 = 312.5 -> 313 (half up; a floor gives 312)
  * DC block y_j = out_j - out_{j-1} + floor(y_{j-1} * 32763 / 32768), y_{-1} = out_{-1} = 0:
- *   y0 = 10000
- *   y1 = 5000 - 10000 + floor(10000 * 32763 / 32768 = 9998.47) = -5000 + 9998 =  4998
- *   y2 = 0 - 5000 + floor(4998 * 32763 / 32768 = 4997.24)      = -5000 + 4997 =    -3
- *   y3 = 20000 - 0 + floor(-3 * 32763 / 32768 = -2.9995)       = 20000 - 3    = 19997  (a truncation gives 19998)
- *   y4 = 10156 - 20000 + floor(19997 * 32763 / 32768 = 19993.95) = -9844 + 19993 = 10149
- *   y5 = 313 - 10156 + floor(10149 * 32763 / 32768 = 10147.45)   = -9843 + 10147 =   304 */
+ *   y0 = 0
+ *   y1 = 5000 - 0 + 0                                                          = 5000
+ *   y2 = 10000 - 5000 + floor(5000 * 32763 / 32768 = 4999.25)                  = 5000 + 4999   = 9999
+ *   y3 = 0 - 10000 + floor(9999 * 32763 / 32768 = 9997.47)                     = -10000 + 9997 =   -3
+ *   y4 = 10000 - 0 + floor(-3 * 32763 / 32768 = -2.9995)                       = 10000 - 3     = 9997  (a truncation gives 9998)
+ *   y5 = 20000 - 10000 + floor(9997 * 32763 / 32768 = 9995.46)                 = 10000 + 9995  = 19995
+ *   y6 = 313 - 20000 + floor(19995 * 32763 / 32768 = 19991.95)                 = -19687 + 19991 =  304
+ * (with a flooring box division W6 is 312 and y6 is 303). */
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -73,15 +85,15 @@
 
 /* The toy stream: four samples of levels A, B, C, 0. */
 static const uint8_t rp_toy_levels[16] = {15, 0, 0, 0, 0, 0, 0, 0, 15, 15, 0, 0, 5, 0, 0, 0};
-static const int16_t rp_toy_expect[6] = {10000, 4998, -3, 19997, 10149, 304};
+static const int16_t rp_toy_expect[7] = {0, 5000, 9999, -3, 9997, 19995, 304};
 
 /* The predicate of box-exact-vector: the six frames are the hand-derived ones. */
 static int rp_vec_ok(const int16_t *got, size_t n)
 {
-  if (n != 6u) {
+  if (n != 7u) {
     return 0;
   }
-  for (size_t j = 0u; j < 6u; j++) {
+  for (size_t j = 0u; j < 7u; j++) {
     if (got[j] != rp_toy_expect[j]) {
       return 0;
     }
@@ -129,7 +141,7 @@ static size_t rp_model(uint64_t num, uint64_t den, uint32_t p, uint32_t rate, co
 {
   uint64_t cell = (uint64_t)p * den * rate;
   uint64_t d = num * 10000u;
-  uint64_t total = (uint64_t)n * cell;
+  uint64_t total = (uint64_t)(n + 1u) * cell; /* the implicit silent cell before sample 0, then n samples */
   int64_t px = 0;
   int64_t py = 0;
   size_t j = 0u;
@@ -139,11 +151,14 @@ static size_t rp_model(uint64_t num, uint64_t den, uint32_t p, uint32_t rate, co
     uint64_t s = 0u;
     int64_t x;
     int64_t y;
-    for (uint64_t i = a / cell; i * cell < b; i++) {
+    for (uint64_t i = a / cell; i * cell < b; i++) { /* cell i: 0 is the silent one, i >= 1 is sample i - 1 */
       uint64_t lo = a > i * cell ? a : i * cell;
       uint64_t hi = b < (i + 1u) * cell ? b : (i + 1u) * cell;
-      uint64_t mix = (uint64_t)ivs_refpcm_dac_level(levels[4u * i]) + ivs_refpcm_dac_level(levels[4u * i + 1u]) +
-                     ivs_refpcm_dac_level(levels[4u * i + 2u]);
+      uint64_t mix = 0u;
+      if (i >= 1u) {
+        mix = (uint64_t)ivs_refpcm_dac_level(levels[4u * (i - 1u)]) + ivs_refpcm_dac_level(levels[4u * (i - 1u) + 1u]) +
+              ivs_refpcm_dac_level(levels[4u * (i - 1u) + 2u]);
+      }
       s += (hi - lo) * mix;
     }
     x = round_floor ? (int64_t)(s / d) : (int64_t)((2u * s + d) / (2u * d));
@@ -182,10 +197,10 @@ static int rp_box_exact_vector(void)
   size_t produced = 0u;
   int16_t model[8];
   IVS_CHECK(ivs_refpcm_init(&st, 384000u, 1u, 12u, IVS_REFPCM_RATE_48000) == IVS_REFPCM_OK);
-  IVS_CHECK(ivs_refpcm_out_bound(&st, 4u) == 7u); /* 4 * 576,000 / 384,000 = 6, plus 1 */
+  IVS_CHECK(ivs_refpcm_out_bound(&st, 4u) == 8u); /* (4 + 1) * 576,000 / 384,000 = 7, plus 1 */
   IVS_CHECK(ivs_refpcm_feed(&st, rp_toy_levels, 4u, out, 8u, &produced) == IVS_REFPCM_OK);
-  IVS_CHECK(produced == 6u && st.frames == 6u && st.samples == 4u);
-  for (size_t j = 0u; j < 6u; j++) {
+  IVS_CHECK(produced == 7u && st.frames == 7u && st.samples == 4u);
+  for (size_t j = 0u; j < 7u; j++) {
     if (out[j] != rp_toy_expect[j]) {
       ivs_test_diag("frame %zu: %d, want %d", j, (int)out[j], (int)rp_toy_expect[j]);
       return IVS_TEST_FAIL;
@@ -193,8 +208,8 @@ static int rp_box_exact_vector(void)
   }
   IVS_CHECK(rp_vec_ok(out, produced));
   /* the second implementation agrees with the hand values (and so with the converter) */
-  IVS_CHECK(rp_model(384000u, 1u, 12u, IVS_REFPCM_RATE_48000, rp_toy_levels, 4u, 0, model, 8u) == 6u);
-  IVS_CHECK(rp_vec_ok(model, 6u));
+  IVS_CHECK(rp_model(384000u, 1u, 12u, IVS_REFPCM_RATE_48000, rp_toy_levels, 4u, 0, model, 8u) == 7u);
+  IVS_CHECK(rp_vec_ok(model, 7u));
   return IVS_TEST_PASS;
 }
 
@@ -232,9 +247,11 @@ static int rp_constant_settles_zero(void)
     l[4u * i] = 15u;
   }
   n = rp_convert(RP_CRYSTAL_NUM, 1u, RP_P, IVS_REFPCM_RATE_48000, l, (size_t)N, RP_CHUNK, 0, out, (size_t)N);
-  /* 42000 samples = 672,000 ticks = 9011 frames (9011.2); the box output is 1e8 / 1e4 = 10000 throughout */
-  ok = n == 9011u && out[0] == 10000 && out[1] == 9998;
-  for (size_t j = 1u; ok && j < n; j++) {
+  /* 42000 samples + the silent first cell = 672,016 ticks = 9011 frames (9011.4); frame 0 is 58.57 / 74.57
+   * of the box output 1e8 / 1e4 = 10000 (7854), frame 1 is 10000 - 7854 + floor(7854 * 32763 / 32768) =
+   * 2146 + 7852 = 9998 */
+  ok = n == 9011u && out[0] == 7854 && out[1] == 9998;
+  for (size_t j = 2u; ok && j < n; j++) {
     ok = out[j] <= out[j - 1u] && out[j] >= 0 && (j < 8276u ? out[j] > 0 : out[j] == 0);
   }
   free(l);
@@ -369,14 +386,14 @@ static int rp_rate_ok(size_t frames, size_t want) { return frames == want; }
 static int rp_rate_44100(void)
 {
   IVS_CHECK(rp_rate_ok(rp_silent_frames(223722u, IVS_REFPCM_RATE_44100), 44100u));
-  IVS_CHECK(rp_rate_ok(rp_silent_frames(223721u, IVS_REFPCM_RATE_44100), 44099u));
+  IVS_CHECK(rp_rate_ok(rp_silent_frames(223720u, IVS_REFPCM_RATE_44100), 44099u));
   return IVS_TEST_PASS;
 }
 
 static int rp_rate_48000(void)
 {
   IVS_CHECK(rp_rate_ok(rp_silent_frames(223722u, IVS_REFPCM_RATE_48000), 48000u));
-  IVS_CHECK(rp_rate_ok(rp_silent_frames(223721u, IVS_REFPCM_RATE_48000), 47999u));
+  IVS_CHECK(rp_rate_ok(rp_silent_frames(223720u, IVS_REFPCM_RATE_48000), 47999u));
   return IVS_TEST_PASS;
 }
 
@@ -396,7 +413,12 @@ static int rp_no_clip_max_input(void)
     l[4u * i + 2u] = 15u;
   }
   n = rp_convert(RP_CRYSTAL_NUM, 1u, RP_P, IVS_REFPCM_RATE_48000, l, (size_t)N, RP_CHUNK, 0, out, (size_t)N + 512u);
-  ok = n > 1u && out[0] == 30000 && out[1] == 29995; /* 30000 * 32763 / 32768 = 29995.4 */
+  /* frame 0 is 58.57 / 74.57 of 30000 = 23563 (the silent first cell), frame 1 is 30000 - 23563 +
+   * floor(23563 * 32763 / 32768 = 23559.6) = 29996 */
+  ok = n > 2u && out[0] == 23563 && out[1] == 29996;
+  for (size_t j = 0u; ok && j < n; j++) {
+    ok = out[j] <= 30000 && out[j] >= 0;
+  }
   /* full-scale alternation with window = cell (num = P * den * R, so no filtering): every frame 3e8 / 1e4 or 0 */
   for (size_t i = 0u; ok && i < (size_t)N; i++) {
     uint8_t v = (i & 1u) == 0u ? 15u : 0u;
@@ -406,7 +428,8 @@ static int rp_no_clip_max_input(void)
   }
   if (ok) {
     n = rp_convert(768000u, 1u, RP_P, IVS_REFPCM_RATE_48000, l, (size_t)N, RP_CHUNK, 0, out, (size_t)N + 512u);
-    ok = n == (size_t)N && out[0] == 30000 && out[1] == -5;
+    /* the silent cell, then 15, 0, 15, ...: frame 0 is 0, frame 1 is 30000, frame 2 is 0 - 30000 + 29995 = -5 */
+    ok = n == (size_t)N + 1u && out[0] == 0 && out[1] == 30000 && out[2] == -5;
     for (size_t j = 0u; ok && j < n; j++) {
       ok = out[j] <= 30000 && out[j] >= -30000;
     }
@@ -657,10 +680,10 @@ static int rp_judge_floor_rounding(void)
   int16_t good[8];
   int16_t bad[8];
   /* the model with the rounding the converter uses passes the predicate; the model that floors fails it */
-  IVS_CHECK(rp_model(384000u, 1u, 12u, IVS_REFPCM_RATE_48000, rp_toy_levels, 4u, 0, good, 8u) == 6u);
-  IVS_CHECK(rp_vec_ok(good, 6u));
-  IVS_CHECK(rp_model(384000u, 1u, 12u, IVS_REFPCM_RATE_48000, rp_toy_levels, 4u, 1, bad, 8u) == 6u);
-  IVS_CHECK(!rp_vec_ok(bad, 6u));
+  IVS_CHECK(rp_model(384000u, 1u, 12u, IVS_REFPCM_RATE_48000, rp_toy_levels, 4u, 0, good, 8u) == 7u);
+  IVS_CHECK(rp_vec_ok(good, 7u));
+  IVS_CHECK(rp_model(384000u, 1u, 12u, IVS_REFPCM_RATE_48000, rp_toy_levels, 4u, 1, bad, 8u) == 7u);
+  IVS_CHECK(!rp_vec_ok(bad, 7u));
   return IVS_TEST_PASS;
 }
 

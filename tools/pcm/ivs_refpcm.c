@@ -41,6 +41,7 @@ int ivs_refpcm_init(ivs_refpcm_state *st, uint64_t crystal_num, uint64_t crystal
   st->cell_units = (uint64_t)sample_period_ticks * crystal_den * (uint64_t)rate;
   st->win_units = crystal_num;
   st->win_rem = crystal_num;
+  st->lead_units = st->cell_units;
   st->acc = 0u;
   st->frames = 0u;
   st->samples = 0u;
@@ -53,9 +54,10 @@ int ivs_refpcm_init(ivs_refpcm_state *st, uint64_t crystal_num, uint64_t crystal
 
 size_t ivs_refpcm_out_bound(const ivs_refpcm_state *st, size_t nsamples)
 {
-  /* nsamples * cell_units is at most 2^64 / 2^20 * 2^52 only for absurd nsamples; the callers feed at most
-   * a few thousand samples, and the product is computed in 64 bits with the quotient first. */
-  uint64_t whole = ((uint64_t)nsamples * st->cell_units) / st->win_units;
+  /* The callers feed at most a few thousand samples, so (nsamples + 1) * cell_units (at most 2^52 each) fits
+   * 64 bits. */
+  uint64_t cells = (uint64_t)nsamples + (st->lead_units != 0u ? 1u : 0u);
+  uint64_t whole = (cells * st->cell_units) / st->win_units;
   return (size_t)whole + 1u;
 }
 
@@ -77,6 +79,23 @@ static int16_t refpcm_emit(ivs_refpcm_state *st)
   return (int16_t)y;
 }
 
+/* Covers `units` units of time at level mix x (units of 1e-8 of full scale): windows that complete are stored
+ * at out[*n]. */
+static void refpcm_cover(ivs_refpcm_state *st, uint64_t units, uint64_t x, int16_t *out, size_t *n)
+{
+  while (units != 0u) {
+    uint64_t t = units < st->win_rem ? units : st->win_rem;
+    st->acc += t * x;
+    units -= t;
+    st->win_rem -= t;
+    if (st->win_rem == 0u) {
+      out[(*n)++] = refpcm_emit(st);
+      st->acc = 0u;
+      st->win_rem = st->win_units;
+    }
+  }
+}
+
 int ivs_refpcm_feed(ivs_refpcm_state *st, const uint8_t *levels, size_t nsamples, int16_t *out, size_t out_capacity,
                     size_t *produced)
 {
@@ -93,21 +112,14 @@ int ivs_refpcm_feed(ivs_refpcm_state *st, const uint8_t *levels, size_t nsamples
       return IVS_REFPCM_E_LEVEL;
     }
   }
+  if (st->lead_units != 0u) {
+    refpcm_cover(st, st->lead_units, 0u, out, &n);
+    st->lead_units = 0u;
+  }
   for (size_t i = 0u; i < nsamples; i++) {
     uint64_t x = (uint64_t)refpcm_dac[levels[4u * i]] + (uint64_t)refpcm_dac[levels[4u * i + 1u]] +
                  (uint64_t)refpcm_dac[levels[4u * i + 2u]];
-    uint64_t cell = st->cell_units;
-    while (cell != 0u) {
-      uint64_t t = cell < st->win_rem ? cell : st->win_rem;
-      st->acc += t * x;
-      cell -= t;
-      st->win_rem -= t;
-      if (st->win_rem == 0u) {
-        out[n++] = refpcm_emit(st);
-        st->acc = 0u;
-        st->win_rem = st->win_units;
-      }
-    }
+    refpcm_cover(st, st->cell_units, x, out, &n);
     st->samples++;
   }
   *produced = n;
