@@ -30,7 +30,7 @@
       "rights": "unknown",
       "authority_tier": "tier1-primary-doc",
       "local_path": "refs/SRC-gi-1980-catalog.pdf",
-      "note": "Hash and page readings recorded by the phase-1 research download (2026-11-09); research-era provenance, not re-read in this phase. The 8900 system section (STIC) was located at pdf 190-191 (printed 5-9 and 5-10) and the AY-3-8910 sound generator at pdf 204-209 during research. The text layer contains no 8914 entry."
+      "note": "Hash and page readings recorded by the phase-1 research download (2026-11-09); research-era provenance, not re-read in this phase. The 8900 system section (STIC) was located at pdf 190-191 (printed 5-9 and 5-10) and the AY-3-8910 sound generator at pdf 204-209 during research. The text layer contains no 8914 entry. Phase 5 plan 05-01 (2026-11-12): fetched again into the gitignored cache and hash-verified (size and sha256 equal the values above); pdf 204-210 (printed 5-23..5-29, AY-3-8910/8912) re-read, see docs/psg/reference-notes.md."
     },
     {
       "id": "SRC-gi-1982-catalog",
@@ -45,7 +45,7 @@
       "rights": "unknown",
       "authority_tier": "tier1-primary-doc",
       "local_path": "refs/SRC-gi-1982-catalog.pdf",
-      "note": "Hash and page readings recorded by the phase-1 research download (2026-11-09); research-era provenance, not re-read in this phase. Used as a second catalog edition for the CP1610 and STIC sections."
+      "note": "Hash and page readings recorded by the phase-1 research download (2026-11-09); research-era provenance, not re-read in this phase. Used as a second catalog edition for the CP1610 and STIC sections. Phase 5 plan 05-01 (2026-11-12): fetched again into the gitignored cache and hash-verified; pdf 299-305 carry the same AY-3-8910/8912/8913 text as the 1980 catalog (no closed-form frequency equations either)."
     },
     {
       "id": "SRC-bsr-2609",
@@ -75,7 +75,7 @@
       "rights": "unknown",
       "authority_tier": "tier4-community",
       "local_path": null,
-      "note": "Community wiki; wiki pages are editable and change, so a hash of one revision would not identify the document. Research read revision 14808 of the Hand Controller page (last edited 2010). Consulted as a lead for active-low input behaviour and ambiguous key combinations; needs a cross-check against schematics, software or hardware."
+      "note": "Community wiki; wiki pages are editable and change, so a hash of one revision would not identify the document. Research read revision 14808 of the Hand Controller page (last edited 2010). Consulted as a lead for active-low input behaviour and ambiguous key combinations; needs a cross-check against schematics, software or hardware. Phase 5 locators: Hand_Controller revision 14808 (page text; the page html differs byte for byte between fetches because the server inserts per-request tokens, size 14,861 bytes, so only the image hash identifies a copy) and the key-table image Hand_controller.png@oldid-14808 (image hash sha256 f789cc5a5954072374d958f1f96d1013a0de2c04b2510ee97b3129766bb41d36, 7,498 bytes, 283 x 443, re-fetched and re-hashed on 2026-11-12; read locally only, never committed); PSG.oldid-14940 (PSG page, last edited 2011-09-28, recorded by the Phase 5 discuss, not re-read in plan 05-01). Cached only under the gitignored refs/ directory."
     },
     {
       "id": "SRC-community-emu-docs",
@@ -136,6 +136,51 @@
       "authority_tier": "tier3-service-hw",
       "local_path": null,
       "note": "Bootstrap source defect: the URL serves an HTML viewer page, not a PDF. Page metadata states 21 pages and subassembly-level diagnostics. The viewer content was not read, so the bootstrap claims about the MTE-201 test cartridge and a 90-minute burn-in are unverified. Third-party host; rights unknown; not hashed because only an HTML viewer was available."
+    },
+    {
+      "id": "SRC-gi-ay8910-manual",
+      "title": "GI AY-3-8910/8912 Programmable Sound Generator Data Manual (third-party reprint copy)",
+      "url": "https://www.bitsavers.org/components/gi/_dataBooks/1980_GI_Microelectronics_Data_Catalog.pdf",
+      "wayback": null,
+      "accessed": "2026-11-12",
+      "capture": "reference-only",
+      "sha256": null,
+      "size_bytes": null,
+      "pages": 55,
+      "rights": "unknown",
+      "authority_tier": "tier2-first-party-adjacent",
+      "local_path": null,
+      "note": "Edited reproduction by the project's own definition (docs/evidence-tiers.md): a third-party reprint whose cover adds notes and omits pages. The Phase 5 discuss recorded a copy of 55 pages with sha256 3fbc9b40c7736ab79270e274bb6688f2d9f0dab693d7eb8060d6d8d29cd73deb, hosted on a public file CDN whose address was not recorded. Plan 05-01 could not obtain that copy: the url field names the 1980 catalog that prints the same register text and figures, the capture is reference-only and no hash is pinned here. Only a different 8-page scan (not this document) was reachable. Every PSG fact in the project is therefore cited to the catalog pages (pdf 204-210), and anything that only this reprint prints (closed-form frequency equations, period ranges, the worked envelope example, the DAC voltage labels, the amplitude mode bit sense) is recorded as not re-read."
+    },
+    {
+      "id": "SRC-tilton-intv-pinouts",
+      "title": "Intellivision Controller Pinouts (J. Tilton, 06/28/98), web-archive capture of a 2006 page",
+      "url": "https://web.archive.org/",
+      "wayback": null,
+      "accessed": "2026-11-12",
+      "capture": "reference-only",
+      "sha256": null,
+      "size_bytes": null,
+      "pages": null,
+      "rights": "unknown",
+      "authority_tier": "tier4-community",
+      "local_path": null,
+      "note": "Community pin chart of the hand controller. The Phase 5 discuss recorded a capture of 10,837 bytes with sha256 prefix c93d5014 (same lineage as SRC-consolemods-intv-pinouts). Plan 05-01 could not re-fetch it (exact archive address not recorded, archive search denied), so no hash is pinned here and the controller literal cites it nowhere; rows cite the re-read sources only."
+    },
+    {
+      "id": "SRC-consolemods-intv-pinouts",
+      "title": "ConsoleMods wiki, Intellivision:Connector Pinouts, revision 23186 (web-archive capture)",
+      "url": "https://consolemods.org/wiki/index.php?title=Intellivision:Connector_Pinouts&oldid=23186",
+      "wayback": "https://web.archive.org/web/2023/https://consolemods.org/wiki/Intellivision:Connector_Pinouts",
+      "accessed": "2026-11-12",
+      "capture": "reference-only",
+      "sha256": null,
+      "size_bytes": null,
+      "pages": null,
+      "rights": "unknown",
+      "authority_tier": "tier4-community",
+      "local_path": null,
+      "note": "Community wiki page with the controller-port pin table, the pin-to-PSG-bit map and the 31-row pull-to-ground matrix. Identity is the revision number (23186, read on 2026-11-12). The capture bytes are not pinned: the Phase 5 discuss recorded 36,791 bytes with sha256 prefix 984d548c, plan 05-01 fetched 35,364 bytes with sha256 prefix 82ad0ff1 (the archive wraps each fetch in a different toolbar), so no hash is pinned and the difference is recorded, not accepted as a match. The live host answers 403 to command-line clients. Cached only under refs/."
     }
   ]
 }
