@@ -634,7 +634,9 @@ static int ex_unexpected_refusal(void)
 }
 
 /* A refusal that matches expect-load ends the scenario as pass (status alone, then status and
- * reason); a wrong reason, or a load that was not refused, is harness-fail. */
+ * reason); a wrong reason, or a load that was not refused, is harness-fail. The scenario has
+ * nothing after the refused load (review WR-02: the parser refuses a run-to there), so the report
+ * has no step keys. */
 static int ex_expect_load_refusal(void)
 {
   static const char *const ok_forms[] = {"content cart diag-cpu-1.ivsc\nexpect-load cart IVS_E_MALFORMED\n",
@@ -642,7 +644,7 @@ static int ex_expect_load_refusal(void)
   char diag[RX_SCN_CAP];
   char scn[RX_SCN_CAP];
   fake_host h;
-  if (!rx_diag(diag, sizeof diag)) {
+  if (!rx_scn(diag, sizeof diag, rx_content, "")) {
     return IVS_TEST_FAIL;
   }
   for (size_t i = 0u; i < 2u; i++) {
@@ -655,7 +657,7 @@ static int ex_expect_load_refusal(void)
     ok = rx_expect(scn, &h, IVS_RUNNER_OUTCOME_PASS, 0u) &&
          rx_is(h.out, "outcome.detail", "load-refused-as-expected role=cart status=IVS_E_MALFORMED reason=1") &&
          rx_is(h.out, "slot.cart.status", "IVS_E_MALFORMED") && rx_is(h.out, "slot.cart.reason", "1") &&
-         rx_is(h.out, "step.1.now_ticks", "-") && rx_is(h.out, "step.1.assert.1", "not-run halted == yes got -");
+         strstr(h.out, "\nstep.") == NULL;
     rx_free(&h);
     if (!ok) {
       return IVS_TEST_FAIL;
@@ -706,7 +708,9 @@ static int ex_sha_mismatch(void)
   (void)snprintf(line, sizeof line, "content cart diag-cpu-1.ivsc\nexpect-sha256 cart %s\nexpect-load cart IVS_E_DIGEST_MISMATCH\n",
                  zero);
   fh_init(&h);
-  if (rx_replace(diag, "content cart diag-cpu-1.ivsc\n", line, scn, sizeof scn) &&
+  /* The expected refusal ends the scenario: no run-to after it (review WR-02). */
+  if (rx_scn(diag, sizeof diag, rx_content, "") &&
+      rx_replace(diag, "content cart diag-cpu-1.ivsc\n", line, scn, sizeof scn) &&
       rx_expect(scn, &h, IVS_RUNNER_OUTCOME_PASS, 0u) &&
       rx_is(h.out, "outcome.detail", "load-refused-as-expected role=cart status=IVS_E_DIGEST_MISMATCH reason=24")) {
     rc = IVS_TEST_PASS;

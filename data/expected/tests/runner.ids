@@ -35,6 +35,7 @@ runner.parse.accept.run-to
 runner.parse.accept.assert
 runner.parse.accept.input
 runner.parse.accept.caps
+runner.parse.accept.refusal-last-role
 runner.parse.input-names-complete
 runner.parse.reasons-named
 runner.parse.error-format
@@ -81,6 +82,8 @@ runner.parse.refuse.input-unsorted
 runner.parse.refuse.too-many-inputs
 runner.parse.refuse.mixed-input-unit
 runner.parse.refuse.bad-input-value
+runner.parse.refuse.dead-after-refusal
+runner.parse.refuse.no-run-to
 runner.parse.edge.empty-file
 runner.parse.edge.comments-only
 runner.parse.edge.number-overflow
@@ -103,6 +106,11 @@ runner.parse.edge.input-empty-word
 runner.parse.edge.input-prefix-name
 runner.parse.edge.time-max-plus-one-input
 runner.parse.edge.cr-at-header
+runner.parse.edge.dead-run-to
+runner.parse.edge.dead-input
+runner.parse.edge.dead-second-refusal
+runner.parse.edge.no-run-to-expect-ok
+runner.parse.edge.no-run-to-inputs-only
 runner.parse.edge.del-byte
 runner.fuzz.seed-01
 runner.fuzz.seed-02

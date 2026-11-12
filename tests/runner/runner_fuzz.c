@@ -23,10 +23,11 @@
  *     equal to the error's reason, whose name is not "unknown"; never -1;
  *   - a refusal leaves the output all zero; its line is at most the input's line count, and
  *     line 0 only for the whole-file reasons (file-too-large, missing-header,
- *     missing-directive);
+ *     missing-directive, no-run-to);
  *   - an acceptance came from an input within the byte, line and line-length caps, and
  *     satisfies every structural rule of the grammar (charsets, path rule, caps, increasing
- *     steps, asserts tied to existing steps, sorted inputs, no reserved bit);
+ *     steps, asserts tied to existing steps, sorted inputs, no reserved bit, a run-to unless an
+ *     expected refusal ends the scenario, nothing after such a refusal);
  *   - parsing the same bytes again gives the identical result, struct and error (determinism),
  *     and the input block is never written.
  * runner.fuzz.reasons-covered replays every seed and requires at least 8 distinct reasons and
@@ -320,6 +321,20 @@ static int fuzz_valid(fuzz_ctx *f, const ivs_scenario *s)
     FUZZ_CHECK(f, i == 0u || st->target > s->steps[i - 1u].target);
   }
   FUZZ_CHECK(f, s->n_asserts == 0u || s->n_steps > 0u);
+  /* Reachability (review WR-02, WR-03): without an expected refusal at least one run-to; with
+   * one, no run-to, no input and no content for a role loaded after the first refused role. */
+  for (i = 0u; i < IVS_SCN_ROLES; i++) {
+    if (s->expect[i].load_set != 0u && s->expect[i].load_status != 0) {
+      break;
+    }
+  }
+  FUZZ_CHECK(f, i < IVS_SCN_ROLES || s->n_steps > 0u);
+  if (i < IVS_SCN_ROLES) {
+    FUZZ_CHECK(f, s->n_steps == 0u && s->n_inputs == 0u);
+    for (i = i + 1u; i < IVS_SCN_ROLES; i++) {
+      FUZZ_CHECK(f, s->content[i].kind == IVS_SCN_CONTENT_NONE);
+    }
+  }
   for (i = 0u; i < s->n_asserts; i++) {
     const ivs_scenario_assert *a = &s->asserts[i];
     FUZZ_CHECK(f, a->step < s->n_steps && (i == 0u || a->step >= s->asserts[i - 1u].step));
@@ -415,7 +430,7 @@ static int fuzz_check_one(fuzz_ctx *f, ivs_scenario *s1, ivs_scenario *s2)
   }
   if (e1.line == 0u) {
     FUZZ_CHECK(f, e1.reason == IVS_SCN_R_FILE_TOO_LARGE || e1.reason == IVS_SCN_R_MISSING_HEADER ||
-                      e1.reason == IVS_SCN_R_MISSING_DIRECTIVE);
+                      e1.reason == IVS_SCN_R_MISSING_DIRECTIVE || e1.reason == IVS_SCN_R_NO_RUN_TO);
   } else {
     FUZZ_CHECK(f, e1.line <= fuzz_line_count(f->buf, f->n));
   }

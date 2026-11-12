@@ -5,7 +5,9 @@
  *     lines come verbatim from data/golden/diag-cpu-1.expect (diag_cpu_1_expect_text.inc), and
  *     compares the parsed asserts with the independent cmake reading of the same lines
  *     (diag_cpu_1_expect.inc, the X-macro form suite run reads).
- *   - runner.parse.accept.<directive>: one accepted scenario per directive, every field checked;
+ *   - runner.parse.accept.<directive>: one accepted scenario per directive, every field checked
+ *     (each has a run-to, review WR-03); runner.parse.accept.refusal-last-role: an expected
+ *     refusal with nothing after it, accepted without a run-to (review WR-02);
  *     runner.parse.accept.caps: every cap exactly at its limit is accepted.
  *   - runner.parse.refuse.<token>: one refused scenario per reason token, with the line it must
  *     name; the output must be all zero and a second parse identical.
@@ -155,12 +157,14 @@ static void sb_num(sb *b, uint64_t v)
 }
 
 #define HDR "ivss 1\nid t\nprofile p\n"
+/* A run-to every accepted scenario without an expected refusal needs (review WR-03). */
+#define RUN0 "run-to 0 ticks\n"
 
-/* Header, then comment lines until the file is exactly total bytes (total >= 30). */
+/* Header and a run-to, then comment lines until the file is exactly total bytes (total >= 45). */
 static size_t build_size(size_t total)
 {
   sb b = {0u, 0};
-  sb_add(&b, HDR);
+  sb_add(&b, HDR RUN0);
   while (!b.overflow && total - b.n > 200u) {
     sb_add(&b, "#");
     sb_rep(&b, 'c', 198u);
@@ -180,13 +184,13 @@ static size_t build_file_too_large(void)
   return build_size(IVS_SCN_MAX_BYTES + 1u);
 }
 
-/* Header (3 lines) and comment lines up to n lines in total. */
+/* Header (3 lines), a run-to and comment lines up to n lines in total. */
 static size_t build_lines(uint32_t n)
 {
   sb b = {0u, 0};
   uint32_t i;
-  sb_add(&b, HDR);
-  for (i = 3u; i < n; i++) {
+  sb_add(&b, HDR RUN0);
+  for (i = 4u; i < n; i++) {
     sb_add(&b, "#\n");
   }
   return b.overflow ? 0u : b.n;
@@ -219,7 +223,7 @@ static size_t build_path_of(size_t k)
   sb_add(&b, HDR);
   sb_add(&b, "content cart ");
   sb_rep(&b, 'a', k);
-  sb_add(&b, "\n");
+  sb_add(&b, "\n" RUN0);
   return b.overflow ? 0u : b.n;
 }
 
@@ -272,6 +276,7 @@ static size_t build_inputs(uint32_t n)
     sb_num(&b, i);
     sb_add(&b, " c0=KEY_1 c1=0x0\n");
   }
+  sb_add(&b, RUN0);
   return b.overflow ? 0u : b.n;
 }
 
@@ -349,7 +354,22 @@ static const refuse_case refuse_cases[] = {
      TXT(HDR "input at_tick=5 c0=0x0 c1=0x0\ninput at_cycle=6 c0=0x0 c1=0x0\n")},
     {"runner.parse.refuse.bad-input-value", IVS_SCN_R_BAD_INPUT_VALUE, 4u,
      TXT(HDR "input at_tick=0 c0=KEY_1++KEY_2 c1=0x0\n")},
+    /* Review WR-02: the first line that can never run after an expected refusal (here the later
+     * role's content line, before the run-to). Review WR-03: no run-to and no expected refusal. */
+    {"runner.parse.refuse.dead-after-refusal", IVS_SCN_R_DEAD_AFTER_REFUSAL, 5u,
+     TXT(HDR "content exec boot-stub\ncontent cart a.ivsc\nexpect-load exec IVS_E_MALFORMED\nrun-to 1 ticks\n")},
+    {"runner.parse.refuse.no-run-to", IVS_SCN_R_NO_RUN_TO, 0u, TXT(HDR "content exec boot-stub\n")},
     /* Further refusals of covered tokens. */
+    {"runner.parse.edge.dead-run-to", IVS_SCN_R_DEAD_AFTER_REFUSAL, 6u,
+     TXT(HDR "content cart a.ivsc\nexpect-load cart IVS_E_MALFORMED\nrun-to 1 ticks\nassert halted == yes\n")},
+    {"runner.parse.edge.dead-input", IVS_SCN_R_DEAD_AFTER_REFUSAL, 4u,
+     TXT(HDR "input at_tick=0 c0=0x0 c1=0x0\ncontent cart a.ivsc\nexpect-load cart IVS_E_MALFORMED\n")},
+    {"runner.parse.edge.dead-second-refusal", IVS_SCN_R_DEAD_AFTER_REFUSAL, 6u,
+     TXT(HDR "content exec boot-stub\nexpect-load exec IVS_E_MALFORMED\ncontent grom zero-grom\n"
+             "expect-load grom IVS_E_MALFORMED\n")},
+    {"runner.parse.edge.no-run-to-expect-ok", IVS_SCN_R_NO_RUN_TO, 0u,
+     TXT(HDR "content cart a.ivsc\nexpect-load cart ok\n")},
+    {"runner.parse.edge.no-run-to-inputs-only", IVS_SCN_R_NO_RUN_TO, 0u, TXT(HDR "input at_tick=0 c0=0x0 c1=0x0\n")},
     {"runner.parse.edge.empty-file", IVS_SCN_R_MISSING_HEADER, 0u, TXT("")},
     {"runner.parse.edge.comments-only", IVS_SCN_R_MISSING_HEADER, 0u, TXT("# a\n\n#b")},
     {"runner.parse.edge.number-overflow", IVS_SCN_R_BAD_NUMBER, 4u, TXT(HDR "run-to 18446744073709551616 ticks\n")},
@@ -474,7 +494,8 @@ static const char accept_ivss_text[] = "# comment before the header\n"
                                        "  \t \n"
                                        "ivss 1\n"
                                        "id t\n"
-                                       "profile p"; /* no final LF */
+                                       "profile p\n"
+                                       "run-to 0 ticks"; /* no final LF */
 
 static int parse_accept_ivss(void)
 {
@@ -482,7 +503,8 @@ static int parse_accept_ivss(void)
   uint32_t i;
   IVS_CHECK(parse_ok(accept_ivss_text, &s));
   IVS_CHECK(strcmp(s.id, "t") == 0 && strcmp(s.profile, "p") == 0);
-  IVS_CHECK(s.n_steps == 0u && s.n_asserts == 0u && s.n_inputs == 0u && s.wall_timeout_ms == 0u);
+  IVS_CHECK(s.n_steps == 1u && s.steps[0].target == 0u && s.steps[0].line == 7u);
+  IVS_CHECK(s.n_asserts == 0u && s.n_inputs == 0u && s.wall_timeout_ms == 0u);
   for (i = 0u; i < IVS_SCN_ROLES; i++) {
     IVS_CHECK(s.content[i].kind == IVS_SCN_CONTENT_NONE);
   }
@@ -492,7 +514,7 @@ static int parse_accept_ivss(void)
 static int parse_accept_id(void)
 {
   ivs_scenario s;
-  IVS_CHECK(parse_ok("ivss 1\nprofile p\n\tid   abcdefghijklmnopqrstuvwxyz-0123456789-abcdefghij  \n", &s));
+  IVS_CHECK(parse_ok("ivss 1\nprofile p\n\tid   abcdefghijklmnopqrstuvwxyz-0123456789-abcdefghij  \n" RUN0, &s));
   IVS_CHECK(strlen(s.id) == IVS_SCN_MAX_ID);
   IVS_CHECK(strcmp(s.id, "abcdefghijklmnopqrstuvwxyz-0123456789-abcdefghij") == 0);
   return IVS_TEST_PASS;
@@ -501,7 +523,7 @@ static int parse_accept_id(void)
 static int parse_accept_profile(void)
 {
   ivs_scenario s;
-  IVS_CHECK(parse_ok("ivss 1\nid t\nprofile 0123456789-0123456789-0123456789-0123456789-0123456789-012345678\n", &s));
+  IVS_CHECK(parse_ok("ivss 1\nid t\nprofile 0123456789-0123456789-0123456789-0123456789-0123456789-012345678\n" RUN0, &s));
   IVS_CHECK(strlen(s.profile) == IVS_SCN_MAX_PROFILE);
   return IVS_TEST_PASS;
 }
@@ -509,14 +531,14 @@ static int parse_accept_profile(void)
 static int parse_accept_content(void)
 {
   ivs_scenario s;
-  IVS_CHECK(parse_ok(HDR "content cart sub_1/x-y.Z9/diag.ivsc\ncontent exec user\ncontent grom user\n", &s));
+  IVS_CHECK(parse_ok(HDR "content cart sub_1/x-y.Z9/diag.ivsc\ncontent exec user\ncontent grom user\n" RUN0, &s));
   IVS_CHECK(s.content[IVS_SCN_ROLE_CART].kind == IVS_SCN_CONTENT_PATH);
   IVS_CHECK(strcmp(s.content[IVS_SCN_ROLE_CART].path, "sub_1/x-y.Z9/diag.ivsc") == 0);
   IVS_CHECK(s.content[IVS_SCN_ROLE_CART].line == 4u);
   IVS_CHECK(s.content[IVS_SCN_ROLE_EXEC].kind == IVS_SCN_CONTENT_USER && s.content[IVS_SCN_ROLE_EXEC].line == 5u);
   IVS_CHECK(s.content[IVS_SCN_ROLE_GROM].kind == IVS_SCN_CONTENT_USER && s.content[IVS_SCN_ROLE_GROM].line == 6u);
   IVS_CHECK(s.content[IVS_SCN_ROLE_EXEC].path[0] == '\0');
-  IVS_CHECK(parse_ok(HDR "content exec boot-stub\ncontent grom zero-grom\ncontent cart ./a.b\n", &s));
+  IVS_CHECK(parse_ok(HDR "content exec boot-stub\ncontent grom zero-grom\ncontent cart ./a.b\n" RUN0, &s));
   IVS_CHECK(s.content[IVS_SCN_ROLE_EXEC].kind == IVS_SCN_CONTENT_BOOT_STUB);
   IVS_CHECK(s.content[IVS_SCN_ROLE_GROM].kind == IVS_SCN_CONTENT_ZERO_GROM);
   IVS_CHECK(strcmp(s.content[IVS_SCN_ROLE_CART].path, "./a.b") == 0);
@@ -541,6 +563,25 @@ static int parse_accept_expect_load(void)
   return IVS_TEST_PASS;
 }
 
+/* Review WR-02: an expected refusal of the last loaded role, with the earlier roles loaded (one
+ * expecting ok), an expect-sha256 on the refused role and a wall cap: every line can take effect,
+ * accepted without a run-to. */
+static int parse_accept_refusal_last_role(void)
+{
+  ivs_scenario s;
+  IVS_CHECK(parse_ok(HDR "wall-timeout-ms 5\ncontent exec boot-stub\ncontent grom zero-grom\nexpect-load exec ok\n"
+                         "content cart a.ivsc\n"
+                         "expect-sha256 cart ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad\n"
+                         "expect-load cart IVS_E_DIGEST_MISMATCH\n",
+                     &s));
+  IVS_CHECK(s.n_steps == 0u && s.n_inputs == 0u && s.wall_timeout_ms == 5u);
+  IVS_CHECK(s.expect[IVS_SCN_ROLE_CART].load_status == IVS_E_DIGEST_MISMATCH && s.expect[IVS_SCN_ROLE_CART].sha_set);
+  /* The refused role first in load order, the later roles absent. */
+  IVS_CHECK(parse_ok(HDR "content exec a.bin\nexpect-load exec IVS_E_MALFORMED reason 2\n", &s));
+  IVS_CHECK(s.n_steps == 0u && s.content[IVS_SCN_ROLE_GROM].kind == IVS_SCN_CONTENT_NONE);
+  return IVS_TEST_PASS;
+}
+
 static int parse_accept_expect_sha256(void)
 {
   static const uint8_t want[32] = {0xba, 0x78, 0x16, 0xbf, 0x8f, 0x01, 0xcf, 0xea, 0x41, 0x41, 0x40,
@@ -548,7 +589,7 @@ static int parse_accept_expect_sha256(void)
                                    0x7a, 0x9c, 0xb4, 0x10, 0xff, 0x61, 0xf2, 0x00, 0x15, 0xad};
   ivs_scenario s;
   IVS_CHECK(parse_ok(HDR "content grom zero-grom\n"
-                         "expect-sha256 grom ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad\n",
+                         "expect-sha256 grom ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad\n" RUN0,
                      &s));
   IVS_CHECK(s.expect[IVS_SCN_ROLE_GROM].sha_set == 1u && s.expect[IVS_SCN_ROLE_GROM].sha_line == 5u);
   IVS_CHECK(memcmp(s.expect[IVS_SCN_ROLE_GROM].sha256, want, 32u) == 0);
@@ -558,9 +599,9 @@ static int parse_accept_expect_sha256(void)
 static int parse_accept_wall_timeout(void)
 {
   ivs_scenario s;
-  IVS_CHECK(parse_ok(HDR "wall-timeout-ms 4294967295\n", &s));
+  IVS_CHECK(parse_ok(HDR "wall-timeout-ms 4294967295\n" RUN0, &s));
   IVS_CHECK(s.wall_timeout_ms == 4294967295u);
-  IVS_CHECK(parse_ok(HDR "wall-timeout-ms 0001\n", &s));
+  IVS_CHECK(parse_ok(HDR "wall-timeout-ms 0001\n" RUN0, &s));
   IVS_CHECK(s.wall_timeout_ms == 1u);
   return IVS_TEST_PASS;
 }
@@ -630,7 +671,7 @@ static int parse_accept_input(void)
   IVS_CHECK(s.inputs[1].at == 10u && s.inputs[1].controller[0] == 0x7FFFFFFFu);
   IVS_CHECK(s.inputs[1].controller[1] == IVS_CTRL_KEY_ENTER);
   IVS_CHECK(s.inputs[2].controller[1] == IVS_CTRL_SIDE_LOWER_RIGHT);
-  IVS_CHECK(parse_ok(HDR "input at_tick=4611686018427387904 c0=0xA c1=0x0\n", &s));
+  IVS_CHECK(parse_ok(HDR "input at_tick=4611686018427387904 c0=0xA c1=0x0\n" RUN0, &s));
   IVS_CHECK(s.input_unit == IVS_SCN_INPUT_AT_TICK && s.inputs[0].at == IVS_SCN_TIME_MAX);
   IVS_CHECK(s.inputs[0].controller[0] == 0xAu);
   return IVS_TEST_PASS;
@@ -689,7 +730,7 @@ static int parse_input_names_complete(void)
     IVS_CHECK(pinned_names[i].header_mask == (1u << pinned_names[i].bit));
     sb_add(&b, HDR "input at_tick=0 c0=0x0 c1=");
     sb_add(&b, pinned_names[i].name);
-    sb_add(&b, "\n");
+    sb_add(&b, "\n" RUN0);
     IVS_CHECK(!b.overflow && parse_ok_n(build_buf, b.n, &s));
     if (s.inputs[0].controller[1] != (1u << pinned_names[i].bit)) {
       ivs_test_diag("name %s parses to 0x%08X", pinned_names[i].name, (unsigned)s.inputs[0].controller[1]);
@@ -811,6 +852,7 @@ static const fn_case fn_cases[] = {
     {"runner.parse.accept.assert", parse_accept_assert},
     {"runner.parse.accept.input", parse_accept_input},
     {"runner.parse.accept.caps", parse_accept_caps},
+    {"runner.parse.accept.refusal-last-role", parse_accept_refusal_last_role},
     {"runner.parse.input-names-complete", parse_input_names_complete},
     {"runner.parse.reasons-named", parse_reasons_named},
     {"runner.parse.error-format", parse_error_format},

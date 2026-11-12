@@ -39,6 +39,7 @@ A scenario is ASCII text with LF line ends, one directive per line, tokens split
 A line whose first byte is `#` is a comment; blank lines are skipped.
 The first directive is `ivss 1`; `id` and `profile` are required.
 Header directives (`id`, `profile`, `content`, `expect-load`, `expect-sha256`, `wall-timeout-ms`) come before the first `run-to`.
+Every directive of an accepted scenario can take effect (review WR-02, WR-03). Roles load in the order exec, grom, cart, and an `expect-load` naming a refusal ends the scenario at that load when it matches, so after it the parser refuses (reason `dead-after-refusal`, at the first such line) a content line of a later role, any `run-to` (and with it any `assert`) and any `input` line. A scenario without an expected refusal needs at least one `run-to` (reason `no-run-to`, line 0).
 
 | Directive | Form | Meaning |
 |---|---|---|
@@ -46,7 +47,7 @@ Header directives (`id`, `profile`, `content`, `expect-load`, `expect-sha256`, `
 | `id` | `id <[a-z0-9-]{1,48}>` | The scenario id (printed as `scenario.id`). |
 | `profile` | `profile <[a-z0-9-]{1,64}>` | The hardware profile id the instance is created with. |
 | `content` | `content <exec\|grom\|cart> <relpath>\|user\|boot-stub\|zero-grom` | The image of a role: a relative path under the content directory; `user` (the operator's `--exec`, `--grom` or `--cart`); `boot-stub` (exec only: the project boot stub, the reserved file `boot-stub.exec` under the content directory); `zero-grom` (grom only: 2048 zero bytes made by the runner). |
-| `expect-load` | `expect-load <role> ok\|<IVS_E_NAME> [reason <n>]` | The expected load status of a role (default `ok`); a matching refusal ends the scenario as pass. |
+| `expect-load` | `expect-load <role> ok\|<IVS_E_NAME> [reason <n>]` | The expected load status of a role (default `ok`); a matching refusal ends the scenario as pass, so nothing may follow it (above). |
 | `expect-sha256` | `expect-sha256 <role> <64 lower-case hex>` | The role's image must have this SHA-256 (checked by the core at load). |
 | `wall-timeout-ms` | `wall-timeout-ms <n>` | Lowers the wall-time cap (1 to 4294967295); a value above the operator's cap is ignored. |
 | `run-to` | `run-to <n> ticks\|cpu-cycles\|frames [stop target\|halted\|faulted]` | One step: run to an absolute machine time and expect that stop (default `target`). |

@@ -775,6 +775,51 @@ static uint32_t parse_directive(ivs_scenario *s, const scn_line *l, uint32_t lin
   return IVS_SCN_R_NONE;
 }
 
+/* The smaller nonzero line of a and b (0: none yet). */
+static uint32_t scn_first_line(uint32_t a, uint32_t b)
+{
+  return (a == 0u || (b != 0u && b < a)) ? b : a;
+}
+
+/* Every directive of an accepted scenario can take effect (review WR-02, WR-03). The executor
+ * loads the roles in role order (exec, grom, cart) and a refusal that matches expect-load ends
+ * the scenario as pass, so with an expect-load naming a refusal nothing after that load ever
+ * runs: a content line of a later role (and its expect lines), any run-to (and so any assert)
+ * and any input line are refused as dead-after-refusal, at the first such line. Without an
+ * expected refusal a scenario needs at least one run-to (no-run-to, line 0): steps and asserts
+ * are what a pass vouches for. */
+static uint32_t scn_check_reach(const ivs_scenario *s, uint32_t *line)
+{
+  uint32_t refused = IVS_SCN_ROLES;
+  uint32_t dead = 0u;
+  uint32_t role;
+  for (role = 0u; role < IVS_SCN_ROLES; role++) {
+    if (s->expect[role].load_set != 0u && s->expect[role].load_status != 0) {
+      refused = role;
+      break;
+    }
+  }
+  if (refused == IVS_SCN_ROLES) {
+    *line = 0u;
+    return s->n_steps == 0u ? IVS_SCN_R_NO_RUN_TO : IVS_SCN_R_NONE;
+  }
+  /* A role's expect lines follow its content line, so the content line is the role's first. */
+  for (role = refused + 1u; role < IVS_SCN_ROLES; role++) {
+    if (s->content[role].kind != IVS_SCN_CONTENT_NONE) {
+      dead = scn_first_line(dead, s->content[role].line);
+    }
+  }
+  /* Steps and inputs are stored in file order; an assert follows a run-to. */
+  if (s->n_steps > 0u) {
+    dead = scn_first_line(dead, s->steps[0].line);
+  }
+  if (s->n_inputs > 0u) {
+    dead = scn_first_line(dead, s->inputs[0].line);
+  }
+  *line = dead;
+  return dead != 0u ? IVS_SCN_R_DEAD_AFTER_REFUSAL : IVS_SCN_R_NONE;
+}
+
 static int scn_refuse(ivs_scenario *out, ivs_scenario_error *err, uint32_t line, uint32_t reason)
 {
   memset(out, 0, sizeof *out);
@@ -872,6 +917,13 @@ int ivs_scenario_parse(const uint8_t *bytes, size_t len, ivs_scenario *out, ivs_
   if (out->id[0] == '\0' || out->profile[0] == '\0') {
     return scn_refuse(out, err, 0u, IVS_SCN_R_MISSING_DIRECTIVE);
   }
+  {
+    uint32_t at = 0u;
+    uint32_t r = scn_check_reach(out, &at);
+    if (r != IVS_SCN_R_NONE) {
+      return scn_refuse(out, err, at, r);
+    }
+  }
   return 0;
 }
 
@@ -964,6 +1016,10 @@ const char *ivs_scenario_reason_name(uint32_t reason)
     return "mixed-input-unit";
   case IVS_SCN_R_BAD_INPUT_VALUE:
     return "bad-input-value";
+  case IVS_SCN_R_DEAD_AFTER_REFUSAL:
+    return "dead-after-refusal";
+  case IVS_SCN_R_NO_RUN_TO:
+    return "no-run-to";
   default:
     return "unknown";
   }

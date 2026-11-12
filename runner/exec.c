@@ -250,7 +250,8 @@ static int ex_load_all(ex_state *x)
       continue;
     }
     if (st != IVS_OK && st == want && (e->load_reason == 0u || e->load_reason == lr.reason)) {
-      /* D-20: a refusal the scenario expects ends it as pass. */
+      /* D-20: a refusal the scenario expects ends it as pass. The parser guarantees nothing
+       * follows it (no later role, run-to or input: review WR-02), so no line goes unchecked. */
       (void)snprintf(x->rec->detail, sizeof x->rec->detail, "load-refused-as-expected role=%s status=%s reason=%u",
                      ex_role_name[role], ivs_status_name(st), (unsigned)lr.reason);
       return 0;

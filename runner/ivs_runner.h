@@ -125,7 +125,11 @@ uint32_t ivs_runner_outcome_resolve(uint32_t observed_mask);
 #define IVS_SCN_OP_NE 2u
 
 /* Refusal reasons: each has one report token (ivs_scenario_reason_name). Line 0 names the whole
- * file (file-too-large, and missing-header or missing-directive found at the end). */
+ * file (file-too-large, and missing-header, missing-directive or no-run-to found at the end).
+ * dead-after-refusal (review WR-02) names the first line that could never run: with an
+ * expect-load naming a refusal the scenario ends at that load, so a content line of a later role
+ * (load order exec, grom, cart), a run-to or an input line is refused; no-run-to (review WR-03):
+ * a scenario without an expected refusal has at least one run-to. */
 #define IVS_SCN_R_NONE 0u
 #define IVS_SCN_R_FILE_TOO_LARGE 1u
 #define IVS_SCN_R_TOO_MANY_LINES 2u
@@ -169,7 +173,9 @@ uint32_t ivs_runner_outcome_resolve(uint32_t observed_mask);
 #define IVS_SCN_R_TOO_MANY_INPUTS 40u
 #define IVS_SCN_R_MIXED_INPUT_UNIT 41u
 #define IVS_SCN_R_BAD_INPUT_VALUE 42u
-#define IVS_SCN_R_COUNT 43u
+#define IVS_SCN_R_DEAD_AFTER_REFUSAL 43u
+#define IVS_SCN_R_NO_RUN_TO 44u
+#define IVS_SCN_R_COUNT 45u
 
 typedef struct ivs_scenario_content {
   uint32_t kind; /* IVS_SCN_CONTENT_* */
