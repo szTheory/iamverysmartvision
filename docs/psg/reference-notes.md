@@ -59,4 +59,37 @@ Filled in by Task 4 of plan 05-01.
 
 ## Allocation table
 
-Filled in by Task 2 of plan 05-01.
+ONE table for all Phase 5 ids (D-12). A profile field, a rule or a claim cites an id from here and never invents one; ids are never reused.
+The discrepancy records C69..C80 exist in `data/discrepancies.json` and `data/expected/discrepancies.ids` as of plan 05-01, so a later `conflict` reference resolves.
+
+| Id | Topic | Profile field or contract |
+|----|-------|---------------------------|
+| C69 | data sheet applicability to the 8914-class part, and the chip step | `psg.clocks_per_step` |
+| C70 | register permutation and the R8 and R10 amplitude layouts | `psg.regmap` |
+| C71 | noise LFSR width, polynomial, seed and sense | `psg.noise.lfsr` |
+| C72 | envelope step rate and restart on shape write | engine, rules PSG-R11 and PSG-R13 |
+| C73 | port direction bit order of R7 | `psg.mixer.port_dir_bits` |
+| C74 | decode aliasing and mirrors | `psg.mirrors` |
+| C75 | read-back of R10 and of the shape register | read masks of `psg.regmap` |
+| C76 | PSG chip clock = crystal/2, and its phase | `ticks_per_psg_clock`, `psg.clock_phase_ticks` |
+| C77 | power-on and reset state beyond zero, and whether the PSG reset follows the system reset | `psg.reset` |
+| C78 | write-effect instant, step-first-then-write tie rule, sample alignment (a project contract like C67, not a hardware claim) | `psg.write_strobe_ticks`, engine |
+| C79 | raw 16-bit write value in the log versus the 8-bit register | log format, write masks |
+| C80 | octal versus decimal register numbering across the sources | every register table |
+
+Existing ids that Phase 5 updates and does not reopen: C11, C12 (partial), C14, C15 (partial), C16, C23 (partial), C60, C63, C64, C65, C66, C67.
+The next free discrepancy id after this table is C81.
+
+Claim ids reserved for later plans (the records are written by plans 05-11 and 05-12, because a claim needs an existing artifact, D-26); all are provisional:
+
+| Claim id | Scope |
+|----------|-------|
+| CL-0009 | single-control table (31 controls) |
+| CL-0010 | control combinations |
+| CL-0011 | slicing-invariant input |
+| CL-0012 | PSG rule vectors |
+| CL-0013 | write log and samples |
+| CL-0014 | the diagnostic fixture `ivs-diag-ctrl-psg-1` |
+| CL-0015 | installed-package replay |
+
+The next free claim id is CL-0016.

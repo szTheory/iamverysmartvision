@@ -58,11 +58,15 @@ A time slot is a quarter of a CPU cycle, so on the NTSC profile it is 1 master t
 
 **STIC clock**: the STIC input rate, which is one master tick per STIC clock on the NTSC profile (tag `tier1-primary-doc`, key `ticks_per_stic_clock`).
 
-**PSG chip clock**: the PSG input rate, which is two master ticks per PSG chip clock on the NTSC profile (tag `unknown-default-chosen`, key `ticks_per_psg_clock`).
-The ratio comes from an emulator-level hint only and is to be confirmed in Phase 5.
+**PSG chip clock**: the PSG input rate, which is two master ticks per PSG chip clock on the NTSC profile (key `ticks_per_psg_clock`).
+The profile tags it `unknown-default-chosen` today; Phase 5 retags it `inference` (D-09, C76), because the ratio agrees with three facts that are not emulator code: the input range of 1.0 to 2.0 MHz printed for the AY-3-8910 (`SRC-gi-1980-catalog`, pdf 209), the community tone formula of the crystal divided by 32 times the period (tag `tier4-community`), and the crystal divided by 2 giving about 1.79 MHz.
+An emulator-level hint gives the same ratio and is never evidence.
 
-**PSG step**: 16 PSG chip clocks [INF], whose master-tick equivalent is derived from the profile ratio `ticks_per_psg_clock`, so 32 master ticks under the current default of 2 and to be checked in Phase 5.
-This is consistent with the community tone formula of the crystal divided by 32 times the period (tag `tier4-community`).
+**PSG step**: 8 PSG chip clocks, which is 16 master ticks and 4 CPU cycles on the NTSC profile (`ticks_per_psg_clock` 2 times `psg.clocks_per_step` 8, tag `inference`, D-09, C69).
+Tone half-period is P steps, a noise shift happens every 2 NP steps, and an envelope step every 2 EP steps, with P, NP and EP the programmed periods.
+The step is the finest time at which any PSG output can change; counters are integers and there is no accumulator.
+Samples per nominal frame are 59,736 master ticks divided by 16, so 3,733.5, which means a frame is never PSG-aligned.
+This replaces an earlier statement of 16 PSG chip clocks per step, which the printed divide chain and the tone formula do not match.
 _Avoid_: stating the PSG step in master ticks without naming the ratio that produced the number.
 
 **Frame**: a timeline event, with a nominal NTSC length of 262 x 57 = 14,934 CPU cycles = 59,736 master ticks.

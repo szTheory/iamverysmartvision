@@ -1,0 +1,38 @@
+# Owner-evidence inventory (plan 05-01, D-26, D-28). One line per item that needs physical hardware (D10) or an owner system image (D11).
+# Format: <id> | <discrepancy id> | <what the owner records> | <anchor in docs/input/d10-procedure.md>
+# Rules (checked by the discrepancies step, tools/check/kinds/discrepancy.cmake): every open or partial discrepancy whose resolver starts
+# `measurement:` is named by at least one line (token discrepancies-d10-missing); a line names an existing discrepancy, and a D10 line names one
+# that is open or partial (token discrepancies-d10-unknown; D11 lines are checked for existence only). Keep a line free of semicolons and brackets.
+# Nothing here has been measured or run: these are items handed to the owner, and no claim uses the measured-hardware tier.
+D10-SYS-01 | C1 | STIC register access window after the vertical-blank interrupt, edges by cycle count | #system-probes
+D10-SYS-02 | C2 | GROM and GRAM access window, edges by cycle count | #system-probes
+D10-SYS-03 | C3 | low period of the vertical-blank interrupt line | #system-probes
+D10-SYS-04 | C4 | bus request hold and acknowledge deadline by cycle count | #system-probes
+D10-SYS-05 | C6 | display-enable strobe behaviour | #system-probes
+D10-SYS-06 | C9 | crystal frequency of the console | #system-probes
+D10-SYS-07 | C21 | GRAM extent and STIC decode range, read-back of writes and reads | #system-probes
+D10-SYS-08 | C32 | reset read-back, where the first instruction word comes from | #system-probes
+D10-SYS-09 | C59 | register after SWAP with N = 1 using distinct high and low bytes | #system-probes
+D10-SYS-10 | C60 | upper bits of scratchpad, GRAM, PSG and STIC register reads | #system-probes
+D10-SYS-11 | C61 | write and read-back through an alias address with and without a cartridge segment | #system-probes
+D10-SYS-12 | C62 | cartridge decode probe, which segments answer | #system-probes
+D10-INP-01 | C16 | byte read for each of the 31 controls on each port | #controller-bytes
+D10-INP-02 | C66 | which physical connector the first port reads | #port-naming
+D10-INP-03 | C64 | upper byte of a 16-bit read of an idle port | #port-idle-and-unplugged
+D10-INP-04 | C64 | read of a port with no controller attached | #port-idle-and-unplugged
+D10-INP-05 | C65 | read-back of a port set to output with switches open and closed | #output-read
+D10-INP-06 | C63 | two adjacent disc positions closed together where mechanically possible | #disc-closures
+D10-INP-07 | C63 | opposite disc directions and three or more controls closed together | #disc-closures
+D10-PSG-01 | C69 | tone capture at a known period, edge spacing against the profile | #psg-tone
+D10-PSG-02 | C71 | noise-only capture, bit pattern against the profile register | #psg-noise
+D10-PSG-03 | C72 | envelope capture for the sixteen shapes and a rewrite of the shape register mid-cycle | #psg-envelope
+D10-PSG-04 | C12 | output level for each of the sixteen amplitude values | #psg-dac
+D10-PSG-05 | C12 | behaviour of tone, noise and envelope period 0 | #psg-period-zero
+D10-PSG-06 | C70 | write distinct values to each of the sixteen register addresses and read each back | #psg-registers
+D10-PSG-07 | C75 | read-back of the amplitude and shape registers after writing all ones | #psg-registers
+D10-PSG-08 | C77 | registers and first samples after power-on and after a console reset | #psg-reset
+D10-PSG-09 | C76 | PSG chip clock ratio to the crystal, tone capture against the video timing | #psg-timing
+D10-PSG-10 | C74 | address-map probe around the register block and one block per 1024 words | #psg-address-map
+D10-PSG-11 | C73 | effect of each R7 direction bit on whether a port follows the pins | #psg-direction
+D11-EXEC-01 | C32 | owner system image reading the controllers through the real startup program | #owner-exec
+D11-EXEC-02 | C20 | commercial game input and audio with the owner system image, placement of the second program half | #owner-exec

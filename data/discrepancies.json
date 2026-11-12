@@ -105,22 +105,22 @@
     {
       "id": "C11",
       "topic": "PSG and STIC part identity",
-      "sources": "The PSG is named AY-3-8914 by SRC-bsr-2609 and the permissive emulator driver (SRC-mame-intv), while the 1980 catalog lists the AY-3-8910 as the sound generator of the 8900 system and no 8914 appears in the 1977, 1980 or 1982 catalogs (SRC-gi-1980-catalog, SRC-gi-1982-catalog). The STIC is the AY-3-8900-1 for NTSC per the 1980 catalog; other sources say AY-3-8900 or STIC1A.",
+      "sources": "The PSG is named AY-3-8914 by SRC-bsr-2609 and the permissive emulator driver (SRC-mame-intv), while the 1980 catalog lists the AY-3-8910 as the sound generator of the 8900 system and no 8914 appears in the 1977, 1980 or 1982 catalogs (SRC-gi-1980-catalog, SRC-gi-1982-catalog). The STIC is the AY-3-8900-1 for NTSC per the 1980 catalog; other sources say AY-3-8900 or STIC1A. Phase 5 (plan 05-01): the AY-3-8910/8912 pages 5-23..5-29 of the 1980 catalog (pdf 204-210) and pdf 299-305 of the 1982 catalog were re-read; the string 8914 does not occur there (SRC-gi-1980-catalog, SRC-gi-1982-catalog).",
       "status": "open",
-      "default_policy": "unknown-default-chosen: tier 4 AY-3-8914-class PSG with the Intellivision register map, and the AY-3-8900-1 STIC; the profile pins both parts.",
+      "default_policy": "unknown-default-chosen: tier 4 AY-3-8914-class PSG with the Intellivision register map, and the AY-3-8900-1 STIC; the profile pins both parts. Phase 5 PSG function rules are read from the AY-3-8910 pages and tagged inference (basis 8910-primary-literal or 8910-primary-derived in data/psg/rules.json); the 8914 label stays tier 4.",
       "resolver": "pending: a primary data sheet search for the PSG; die analysis or measurement otherwise",
       "evidence": "",
-      "note": "Seeded from the research source-conflict table. Profile field psg.part references this entry."
+      "note": "Seeded from the research source-conflict table. Profile field psg.part references this entry. Phase 5 (D-07, D-12): still open; the 8910 pages are applied to the 8914-class part by inference, see C69."
     },
     {
       "id": "C12",
       "topic": "PSG behavior details",
-      "sources": "Tone period 0 is 4096 per the wiki through a summarizing fetch (SRC-intv-wiki), versus treated as 1 by many AY emulators. The envelope has 16 steps (AY-3-8910) versus 32 (YM2149, used by at least one emulator document). The noise shift register and DAC levels are unknown and 5-bit versus 6-bit volume variants differ. The 2-bit envelope select is noted as unusual for two of its values. A register-order list in the research covers only 14 of 16 addresses and is unverified.",
-      "status": "open",
-      "default_policy": "unknown-default-chosen: no PSG rule is frozen; period 0, envelope steps, noise and DAC levels are profile parameters tagged unknown-default-chosen until primary-documentation vectors exist.",
-      "resolver": "test: Phase 5 per-rule PSG vectors from primary documentation, pending a primary data sheet",
+      "sources": "Tone period 0 is 4096 per the wiki through a summarizing fetch (SRC-intv-wiki), versus treated as 1 by many AY emulators. The envelope has 16 steps (AY-3-8910) versus 32 (YM2149, used by at least one emulator document). The noise shift register and DAC levels are unknown and 5-bit versus 6-bit volume variants differ. The 2-bit envelope select is noted as unusual for two of its values. A register-order list in the research covers only 14 of 16 addresses and is unverified. Phase 5 (plan 05-01): the 1980 and 1982 catalog pages print the divide chains, the field widths, the sixteen envelope shapes (Fig. 3) and the sixteen output states (Fig. 5) of the AY-3-8910; they do not print the amplitude mode bit sense, the DAC voltage labels or a statement about period 0 (SRC-gi-1980-catalog pdf 207-208, printed 5-26 and 5-27).",
+      "status": "partial",
+      "default_policy": "unknown-default-chosen: three separate period-zero fields (tone 4096 and envelope 65536 from tier 4, noise 32 by default), the noise LFSR (psg.noise.lfsr), the DAC levels (psg.dac.levels, 16 integers in units of 1e-8 of full scale, never read by the core) and the 2-bit envelope select map (psg.amp.envelope_select) are profile parameters; each is tagged and cited by the rule that reads it (PSG-R07, PSG-R10, PSG-R17, PSG-R19); the envelope has 16 steps per cycle (printed).",
+      "resolver": "test: Phase 5 per-rule PSG vectors (data/psg/vectors); the printed topics are source vectors, the unprinted ones are policy vectors until a primary data sheet or D10 capture exists",
       "evidence": "",
-      "note": "Seeded from the research source-conflict table."
+      "note": "Seeded from the research source-conflict table. Phase 5 (D-06, D-10, D-11): partial, not resolved; vector kinds follow the page-reading verdict in docs/psg/reference-notes.md."
     },
     {
       "id": "C13",
@@ -137,30 +137,30 @@
       "topic": "Controller core-input representation",
       "sources": "One research file recommends a lossless logical state of 20 bits per controller with the core owning the control-to-electrical function. Two others recommend electrical state per port as core input (2 x 8 bits, 16, or 32 with the expansion) with the logical mapping on the host. They are incompatible on where the logical-to-electrical function lives.",
       "status": "open",
-      "default_policy": "unknown-default-chosen: logical switch state per controller indexed by PSG port (D6, delegated decision): 31 control-surface bits per uint32_t word (IVS_CTRL_*, bit 31 reserved), timestamped level samples in the run request, the electrical port byte derived in the core (Phase 5), no raw-byte input path. Reversal trigger: evidence that controller output is not a function of switch state plus port drive, or a consumer needing raw port injection.",
+      "default_policy": "unknown-default-chosen: logical switch state per controller indexed by PSG port (D6, delegated decision): 31 control-surface bits per uint32_t word (IVS_CTRL_*, bit 31 reserved), timestamped level samples in the run request, the electrical port byte derived in the core from the generated control table (input.control.<name> profile fields, ground-union rule, Phase 5), no raw-byte input path. Reversal trigger: evidence that controller output is not a function of switch state plus port drive, or a consumer needing raw port injection.",
       "resolver": "pending: Phase 5 control-to-byte table and D10 controller measurement",
       "evidence": "",
-      "note": "Seeded from the research source-conflict table. Decided as D6 (delegated, owner authorization 2026-11-09) and recorded by plan 04-13 (A-05, D-12..D-16); it stays open because the wiring behind the choice is unmeasured (C16, C63-C66). The earlier research recommendation (apply input at the next run) is superseded by application at CPU-unit start (C67). Profile field input.controllers references this entry."
+      "note": "Seeded from the research source-conflict table. Decided as D6 (delegated, owner authorization 2026-11-09) and recorded by plan 04-13 (A-05, D-12..D-16); it stays open because the wiring behind the choice is unmeasured (C16, C63-C66). The earlier research recommendation (apply input at the next run) is superseded by application at CPU-unit start (C67). Profile field input.controllers references this entry. Phase 5 (D-02, D-06): the generated control-to-byte table makes the choice guest-visible; the entry stays open because the wiring is unmeasured (C16)."
     },
     {
       "id": "C15",
       "topic": "Side-button count",
-      "sources": "Four physical buttons, three distinct electrical codes, with the top pair wired together (SRC-bsr-2609); the 3-bit action code counts three.",
-      "status": "open",
+      "sources": "Four physical buttons, three distinct electrical codes, with the top pair wired together (SRC-bsr-2609); the 3-bit action code counts three. Phase 5 (plan 05-01): two tier 4 sources (the ConsoleMods pin matrix and the community wiki key-table image) give the same code for both top buttons (SRC-consolemods-intv-pinouts, SRC-intv-wiki Hand_controller.png@oldid-14808); a schematic or service manual is still missing.",
+      "status": "partial",
       "default_policy": "unknown-default-chosen: four physical buttons map to three side codes; the core models them as three logical bits and the two top buttons share one (IVS_CTRL_SIDE_TOP, bit 28): a host maps either top button to it, so both pressed read as one closed switch (D6, plan 04-13).",
       "resolver": "pending: schematic or service manual confirmation (SRC-ifixit-2609-service-manual is not yet read)",
       "evidence": "",
-      "note": "Seeded from the research source-conflict table. Modelling choice recorded by plan 04-13; it stays open until a schematic or service manual confirms the wiring."
+      "note": "Seeded from the research source-conflict table. Modelling choice recorded by plan 04-13; it stays open until a schematic or service manual confirms the wiring. Phase 5 (D-06): partial: four buttons, three codes, both top buttons read the same code in two tier 4 sources."
     },
     {
       "id": "C16",
       "topic": "Controller pin matrix",
-      "sources": "A full pin table for the 16-direction disc, 12 keys and 3 side buttons comes from one archived community page, low confidence as extracted, with an apparent duplicate pin. The wiki gives only key codes ($7E for key 1, $5A for keys 1 and 9) and combination rules (SRC-intv-wiki). SRC-bsr-2609 gives code widths (disc 5-bit, action 3-bit, keypad 8-bit).",
+      "sources": "Three tier 4 sources were read and cross-checked in Phase 5 (plan 05-01): the ConsoleMods controller-port matrix and pin-to-bit map (SRC-consolemods-intv-pinouts, revision 23186; one pin lineage with the 1998 pin chart SRC-tilton-intv-pinouts, which could not be fetched again), the community wiki key-table image giving one value per control (SRC-intv-wiki, Hand_controller.png@oldid-14808; a software-level lineage), and the wiki prose (key 1 reads $7E, keys 1 and 9 read $5A). They agree on all 31 controls. SRC-bsr-2609 gives code widths (disc 5-bit, action 3-bit, keypad 8-bit). The earlier remark of an apparent duplicate pin is not reproduced: no two of the 31 masks are equal.",
       "status": "open",
-      "default_policy": "unknown-default-chosen: no pin matrix is asserted; the two wiki key codes and the combination rules are the only controller test inputs.",
-      "resolver": "pending: a schematic or service manual; measurement D10 on owner hardware otherwise",
+      "default_policy": "unknown-default-chosen: the 31-row control table is data/input/intv-2609-ntsc-family-p1.literal.txt (tier4-community, one pin lineage, one software lineage, one wiki image); the profile fields input.control.<name> must equal it row for row and every claim built on it stays provisional.",
+      "resolver": "measurement: D10 controller reader diagnostic on owner hardware, or a schematic or service manual: all 31 controls on each port",
       "evidence": "",
-      "note": "Seeded from the research source-conflict table."
+      "note": "Seeded from the research source-conflict table. Phase 5 (D-02): sources rewritten, status unchanged (open)."
     },
     {
       "id": "C17",
@@ -225,12 +225,12 @@
     {
       "id": "C23",
       "topic": "Reference PCM location",
-      "sources": "One research file puts integer-only reference PCM decimation inside the core's observation layer, another derives host PCM outside the core, and a third says host resampling must stay out of the evidence path. All agree raw chip-rate output must be distinct from host PCM.",
-      "status": "open",
-      "default_policy": "unknown-default-chosen: raw chip-rate output is distinct from host PCM and the core derives no host PCM until D7 is decided.",
-      "resolver": "pending: D7 decision, needed before Phase 5",
+      "sources": "One research file puts integer-only reference PCM decimation inside the core's observation layer, another derives host PCM outside the core, and a third says host resampling must stay out of the evidence path. All agree raw chip-rate output must be distinct from host PCM. Decided as D7 (D-21, owner authorization 2026-11-09): no PCM, resampling, DAC-table use or WAV code in the core or any installed artifact; a pure integer reference converter outside the core is operator-side only.",
+      "status": "partial",
+      "default_policy": "unknown-default-chosen: raw chip-rate output (post-mixer effective level per channel) is distinct from host PCM; the core derives no PCM; the DAC table psg.dac.levels stays unknown-default-chosen (C12) and only hosts and the reference converter read it.",
+      "resolver": "test: Phase 5 raw-audio tests and the converter repeatability tests (plans 05-06 and 05-10)",
       "evidence": "",
-      "note": "Seeded from the research source-conflict table."
+      "note": "Seeded from the research source-conflict table. Phase 5 (D-21): partial, not resolved-primary: the location is decided on architecture grounds, not by a primary page."
     },
     {
       "id": "C24",
@@ -595,7 +595,7 @@
     {
       "id": "C60",
       "topic": "Upper bits of 8-bit RAM, PSG and STIC register reads",
-      "sources": "The GI mask ROMs drive zero on the bits above their width (RO-3-9502 and RO-3-9504 bits 15..10, SRC-gi-1980-catalog printed 5-13 and 5-21, pdf 194 and 202; RO-3-9503 GROM bits 15..8, printed 5-16, pdf 197). No tier 1 to 3 source states what bits 15..8 of the 8-bit scratchpad and GRAM RAMs, or bits of the PSG and STIC registers, read as on a 2609. One community data point on a different board agrees with zero for 8-bit RAM.",
+      "sources": "The GI mask ROMs drive zero on the bits above their width (RO-3-9502 and RO-3-9504 bits 15..10, SRC-gi-1980-catalog printed 5-13 and 5-21, pdf 194 and 202; RO-3-9503 GROM bits 15..8, printed 5-16, pdf 197). No tier 1 to 3 source states what bits 15..8 of the 8-bit scratchpad and GRAM RAMs, or bits of the PSG and STIC registers, read as on a 2609. One community data point on a different board agrees with zero for 8-bit RAM. Phase 5 (plan 05-01): the PSG register map writes and reads only the low byte of the 16-bit bus word (psg.regmap, tier 4, C70); upper bits of the PSG registers and ports read 0 by default (memmap.device.psg8).",
       "status": "partial",
       "default_policy": "unknown-default-chosen: scratchpad and GRAM upper byte read 0; stub registers read the undriven fill FFFF",
       "resolver": "measurement: D10 read-back of scratchpad, GRAM, PSG and STIC register reads on owner hardware",
@@ -627,40 +627,40 @@
       "topic": "Disc internals and two disc positions closed together",
       "sources": "SRC-bsr-2609 gives the disc a 5-bit code for 16 directions. SRC-intv-wiki (Hand Controller, oldid 14808) gives key codes and combination rules but no disc contact structure. No source says whether two disc positions can be closed at once or what the port reads then.",
       "status": "open",
-      "default_policy": "unknown-default-chosen: the 16 disc positions are independent logical bits (IVS_CTRL_DISC_*); a word may set more than one, and the Phase 5 byte function takes the union of the lines of every closed switch (one position at a time is the expected case).",
+      "default_policy": "unknown-default-chosen: the 16 disc positions are independent logical bits (IVS_CTRL_*); a word may set more than one, and the byte function takes the union of the lines of every closed switch (pins = 0xFF XOR OR of the line masks). Policy rows in data/expected/input-policies.ids: two adjacent disc positions, two non-adjacent positions, opposite directions and three or more controls are unknown-default-chosen results of the union rule, never evidence of what hardware reads.",
       "resolver": "measurement: D10 controller reader diagnostic on owner hardware: each disc position singly and adjacent pairs where mechanically possible, on each port",
       "evidence": "",
-      "note": "Raised by plan 04-13 (D-16, D6). Nothing reads the controller words in Phase 4, so no Phase 4 result depends on it."
+      "note": "Raised by plan 04-13 (D-16, D6). Nothing reads the controller words in Phase 4, so no Phase 4 result depends on it. Phase 5 (D-03): the policy classes are pinned in data/expected/input-policies.ids."
     },
     {
       "id": "C64",
       "topic": "Unplugged connector and upper-byte read",
       "sources": "SRC-intv-wiki (Hand Controller, oldid 14808) states that an idle controller reads all 1s in the low 8 bits (active-low). No source gives the read of a port with no controller attached, or the upper 8 bits of a CPU read of an 8-bit port.",
       "status": "open",
-      "default_policy": "unknown-default-chosen: an unconnected controller index holds the idle word 0 (its event words must be 0, profile field input.controllers); no electrical value for an unplugged port or for the upper byte is asserted, and Phase 5 adds both as labelled profile policies.",
+      "default_policy": "unknown-default-chosen: an unplugged connector reduces to an idle port by inference (all ones in the low byte, the same as an idle controller); the upper byte of a port read is $00 (device kind psg8 fill, D-04), a default with one weak source (illustrative wiki code), and stays open.",
       "resolver": "measurement: D10 owner hardware: read both ports with no controller attached and with an idle controller, recording the full 16-bit read",
       "evidence": "",
-      "note": "Raised by plan 04-13 (D-16, D6)."
+      "note": "Raised by plan 04-13 (D-16, D6). Phase 5 (D-04): both defaults are labelled; the upper-byte default is the memmap device kind psg8 fill."
     },
     {
       "id": "C65",
       "topic": "Read of a port the PSG drives as output",
       "sources": "SRC-bsr-2609 places the hand controllers on the sound chip's two 8-bit I/O ports. No source read by the project gives the value a CPU read returns from a port whose direction is set to output, with switches open or closed.",
       "status": "open",
-      "default_policy": "unknown-default-chosen: core input stays logical switch state whatever the port direction; the Phase 5 byte function takes the port drive as an input, and the readback of an output-driven port is an explicit labelled policy, not a claim.",
+      "default_policy": "unknown-default-chosen: input.port_output_read = latch: a read of a port whose R7 direction bit is 1 returns the stored latch value (low byte); a write always stores the latch; no contention is modelled when a switch grounds a driven pin. Core input stays logical switch state whatever the port direction.",
       "resolver": "measurement: D10 owner hardware: set each port to output, write known values and read them back with switches open and closed",
       "evidence": "",
-      "note": "Raised by plan 04-13 (D-16, D6)."
+      "note": "Raised by plan 04-13 (D-16, D6). Phase 5 (D-04): the field input.port_output_read carries this policy; the 8910 pages say each register is readable but not what an output-mode port read returns."
     },
     {
       "id": "C66",
       "topic": "Which connector is R14",
-      "sources": "SRC-intv-wiki (Hand Controller, oldid 14808) gives reads at $01FE for the right controller and $01FF for the left. It is the only source (tier 4).",
+      "sources": "SRC-intv-wiki (Hand Controller, oldid 14808) gives reads at $01FE for the right controller and $01FF for the left. It is the only source (tier 4). Naming mismatch noted in Phase 5: SRC-consolemods-intv-pinouts labels port B the first player (1P) and port A the second (2P), while the wiki calls $01FE the right controller and $01FF the left; neither fixes the physical connector.",
       "status": "open",
       "default_policy": "unknown-default-chosen: the core indexes controllers by PSG port only (0 = R14/$01FE, 1 = R15/$01FF), never by side or player; which physical connector feeds which port is a host or profile fact, recorded later as a profile field that names this entry.",
       "resolver": "measurement: D10 owner hardware: press one key on each physical controller and record which port reads it",
       "evidence": "",
-      "note": "Raised by plan 04-13 (D-16, D6)."
+      "note": "Raised by plan 04-13 (D-16, D6). Phase 5 (D-04): ports stay named by index."
     },
     {
       "id": "C67",
@@ -668,9 +668,9 @@
       "sources": "No hardware source: a guest sees controller state only when an instruction reads a PSG port, and Phase 4 has no such read. The application rule is an architecture decision (D-14, A-04), not a hardware observation.",
       "status": "open",
       "default_policy": "unknown-default-chosen: an event takes effect at the first CPU-unit boundary whose start tick is at or after its at_tick; hardware may differ by up to one instruction, so this is a contract with a profile-flag reversal path, not a hardware claim.",
-      "resolver": "test: a Phase 5 PSG port-read test at instruction granularity; until then run.input.* and run.fuzz.* keep the unit-start rule independent of slicing",
+      "resolver": "test: input.boundary.start (Phase 5 instruction-granularity test: an event at s, s+1 and s-1 relative to a poll instruction's start tick); until then run.input.* and run.fuzz.* keep the unit-start rule independent of slicing",
       "evidence": "",
-      "note": "Raised by plan 04-13 (D-14, D-16, A-04). Refining the rule later changes goldens that carry input."
+      "note": "Raised by plan 04-13 (D-14, D-16, A-04). Refining the rule later changes goldens that carry input. Phase 5 (D-05): now guest-visible; the Phase 5 resolver is the named instruction-granularity test."
     },
     {
       "id": "C68",
@@ -681,6 +681,126 @@
       "resolver": "test: run.stub.path and run.diag.predicate (stub contract 1)",
       "evidence": "",
       "note": "Raised by plan 04-16 (D-28, D-31). fixtures/FX-boot-stub/boot-stub.listing.txt (contract 1) and fixtures/FX-diag-cpu-1/diag-cpu-1.listing.txt rely on both values; the predicate of data/golden/diag-cpu-1.expect asserts R6 = 0340 and [0206] = 0340 under this convention. Changing either value is a new stub contract number and new expected values, not an edit of the old ones."
+    },
+    {
+      "id": "C69",
+      "topic": "AY-3-8910 data sheet applied to the AY-3-8914-class part, and the chip step",
+      "sources": "The data sheet pages are for the AY-3-8910/8912 (SRC-gi-1980-catalog pdf 204-210, printed 5-23..5-29; SRC-gi-1982-catalog pdf 299-305); the console part is named AY-3-8914 by SRC-bsr-2609 and no 8914 page was found (C11). The divide chains on printed page 5-26 (input clock by 16, then by the period) fix the tone, noise and envelope step in PSG chip clocks only through the inference that a square wave toggles every half period.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: one PSG step is 8 PSG chip clocks (psg.clocks_per_step 8, tag inference): tone half-period P steps, noise shift every 2 NP steps, envelope step every 2 EP steps; the AY-3-8910 pages are applied to the 8914-class part by inference.",
+      "resolver": "measurement: D10 owner hardware: capture a tone of known period and compare the edge spacing with the profile",
+      "evidence": "",
+      "note": "Raised by plan 05-01 (D-09, D-12). Profile fields psg.clocks_per_step and the PSG rules tagged 8910-primary-derived reference this entry."
+    },
+    {
+      "id": "C70",
+      "topic": "PSG register address permutation and the R8/R10 amplitude layouts",
+      "sources": "The Intellivision order of the 16 registers at $01F0..$01FF is a permutation of the data sheet order and comes from community documentation only (SRC-intv-wiki PSG.oldid-14940, SRC-community-emu-docs; tier 4). The data sheet numbers registers in octal (SRC-gi-1980-catalog pdf 207, printed 5-26: R10, R11, R12 amplitude, R13 and R14 envelope period, R15 shape, R16 and R17 ports). The 8914 amplitude register layout (4 bit fixed, 1 bit mode versus a wider field) is not documented.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: psg.regmap is the table in data/psg/intv-2609-ntsc-family-p1.regmap.literal.txt (16 CPU addresses with role, GI octal number, write mask and read mask); stores keep value AND wmask; reads give reg AND rmask with bits 15..8 zero; no side effects.",
+      "resolver": "measurement: D10 owner hardware: write distinct values to each of $01F0..$01FF with sound disabled and read each back",
+      "evidence": "",
+      "note": "Raised by plan 05-01 (D-08, D-12). Profile field psg.regmap references this entry. The register-address literal is a tier 4 transcription."
+    },
+    {
+      "id": "C71",
+      "topic": "Noise generator polynomial, seed and output sense",
+      "sources": "The data sheet defines a noise frequency (divide chain by 16 and the 5-bit period) but not a shift-register width, polynomial or seed (SRC-gi-1980-catalog pdf 207, printed 5-26). Community documents give an LFSR mask that is not maximal.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: psg.noise.lfsr is a right-shifting Galois LFSR of width 17, mask $12000, seed $00001, output bit 0, no inversion (cycle length 131,071); the community mask $14000 is a one-field edit and has a non-maximal cycle length.",
+      "resolver": "measurement: D10 owner hardware: capture a noise-only channel and compare the bit pattern with the profile LFSR",
+      "evidence": "",
+      "note": "Raised by plan 05-01 (D-10, D-12). Profile field psg.noise.lfsr references this entry."
+    },
+    {
+      "id": "C72",
+      "topic": "Envelope step rate and restart on shape write",
+      "sources": "The page gives the envelope divide chain (input clock by 256, then by the 16-bit period, then a further 16 for the 16-state cycle) and labels the period in Fig. 3 as the duration of one cycle (SRC-gi-1980-catalog pdf 207 and 208, printed 5-26 and 5-27). Whether the counter restarts when R15 is written is not printed on these pages; community documents say it does.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: one envelope step is 16 EP chip clocks (2 EP PSG steps), a 16-state cycle is 256 EP chip clocks; a write to the shape register restarts the generator at the first state of the chosen shape.",
+      "resolver": "measurement: D10 owner hardware: capture the envelope at two periods and the effect of rewriting R15 mid-cycle",
+      "evidence": "",
+      "note": "Raised by plan 05-01 (D-10, D-12). Rules PSG-R11 and PSG-R13 reference this entry."
+    },
+    {
+      "id": "C73",
+      "topic": "Port direction bit order of register R7",
+      "sources": "Register R7 bits B7 and B6 choose the direction of the two I/O ports (SRC-gi-1980-catalog pdf 207, printed 5-26); the figure labels the cell Input Enable and the page prints no sentence for the sense. The overbar of that cell was not resolvable on the 300 dpi render of plan 05-01.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: psg.mixer.port_dir_bits: B6 selects the direction of port 0 ($01FE) and B7 of port 1 ($01FF), 1 = output (tag inference).",
+      "resolver": "measurement: D10 owner hardware: set each R7 direction bit and observe whether the port still follows the pins",
+      "evidence": "",
+      "note": "Raised by plan 05-01 (D-04, D-12). Profile field psg.mixer.port_dir_bits references this entry."
+    },
+    {
+      "id": "C74",
+      "topic": "Register decode aliasing and mirrors",
+      "sources": "The data sheet says the 16 registers occupy a 16-word block of a 1,024-word space selected by A9, A8 and the high address bits, which are mask programmable (SRC-gi-1980-catalog pdf 205, printed 5-24). Whether the console decodes the block more than once is not documented.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: psg.mirrors = none: only $01F0..$01FF decode to the PSG; no alias.",
+      "resolver": "measurement: D10 owner hardware: address-map probe of the words around $01F0..$01FF and the blocks 1024 words apart",
+      "evidence": "",
+      "note": "Raised by plan 05-01 (D-08, D-12). Profile field psg.mirrors references this entry."
+    },
+    {
+      "id": "C75",
+      "topic": "Read-back of the amplitude register R10 and of the shape register",
+      "sources": "The data sheet says each of the 16 registers is readable (SRC-gi-1980-catalog pdf 205, printed 5-24) and the register figure marks only low bits as used; the community register table reads the shape register as zero. The behaviour of the unused bits is not printed.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: the read mask of the amplitude registers is $003F, of the shape register $0000 (reads zero, the tier 4 claim); the 8910 text would read it back, a one-field reversal.",
+      "resolver": "measurement: D10 owner hardware: write all ones to the amplitude and shape registers and read them back",
+      "evidence": "",
+      "note": "Raised by plan 05-01 (D-08, D-12). The psg.regmap read masks reference this entry."
+    },
+    {
+      "id": "C76",
+      "topic": "PSG chip clock ratio and phase",
+      "sources": "The ratio of the PSG chip clock to the crystal is not printed for the console. The AY-3-8910 pages give the input clock range 1.0 to 2.0 MHz (SRC-gi-1980-catalog pdf 209, printed 5-28); the community tone formula uses the crystal divided by 32 times the period (SRC-community-emu-docs); an emulator hint uses the crystal divided by 2 (tier 5, never evidence).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: ticks_per_psg_clock = 2 (PSG chip clock = crystal/2, tag inference), psg.clock_phase_ticks = 0 counted from reset.",
+      "resolver": "measurement: D10 owner hardware: capture a tone of known period against the video timing, and measure the PSG clock pin",
+      "evidence": "",
+      "note": "Raised by plan 05-01 (D-09, D-12). Profile fields ticks_per_psg_clock and psg.clock_phase_ticks reference this entry."
+    },
+    {
+      "id": "C77",
+      "topic": "PSG power-on and reset state beyond zero",
+      "sources": "The data sheet says a low reset pin resets all registers to zero (SRC-gi-1980-catalog pdf 205, printed 5-24) and says nothing about the counters, the noise register or the envelope. Whether the console ties the reset pin to the system reset is not documented.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: psg.reset: registers zero, tone outputs 0, tone counters empty (reload on the first step), noise register = seed, envelope held at its first state; the PSG is reset with the machine.",
+      "resolver": "measurement: D10 owner hardware: read the registers and capture the first samples after power-on and after a console reset",
+      "evidence": "",
+      "note": "Raised by plan 05-01 (D-10, D-12). Profile field psg.reset references this entry."
+    },
+    {
+      "id": "C78",
+      "topic": "Write-effect instant, tie rule and sample alignment",
+      "sources": "No source gives the instant within a CPU cycle at which a register write takes effect on the chip, nor the order of a write and a chip step at the same instant; the project contract is an architecture decision (D-16), like C67.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: a sample at tick k*16 observes writes stamped before k*16 (step first, then write); psg.write_strobe_ticks = 0; samples are stamped on an absolute grid from reset.",
+      "resolver": "test: psg.write.* and psg.sample.* contract tests (plans 05-06 and 05-08); a hardware reading is a D10 refinement",
+      "evidence": "",
+      "note": "Raised by plan 05-01 (D-13, D-16). A project contract, not a hardware claim; refining it changes audio goldens."
+    },
+    {
+      "id": "C79",
+      "topic": "Raw 16-bit write value in the log versus the 8-bit register",
+      "sources": "The CPU writes a 16-bit bus word to each PSG register while the chip data bus is 8 bits wide (SRC-gi-1980-catalog pdf 204-205, printed 5-23 and 5-24); which bits the chip latches is not documented.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: the write log stores the raw 16-bit bus value; the register keeps value AND wmask (low byte only); the high byte is never driven into the chip.",
+      "resolver": "test: psg.log.raw-value (plan 05-08)",
+      "evidence": "",
+      "note": "Raised by plan 05-01 (D-13, D-12). Profile field psg.regmap write masks reference this entry."
+    },
+    {
+      "id": "C80",
+      "topic": "Octal versus decimal register numbering across sources",
+      "sources": "The data sheet numbers registers in octal (R0..R7, R10..R17; SRC-gi-1980-catalog pdf 207, printed 5-26), while community documents number them in decimal 0..15; R14 and R15 in one list are the same ports as R16 and R17 in the other (SRC-intv-wiki, SRC-consolemods-intv-pinouts).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: every table of the project carries both numberings and names the register by role; no table uses a bare register number.",
+      "resolver": "test: the second blind read of data/psg/intv-2609-ntsc-family-p1.regmap.literal.txt and the psg-vectors step (rule PSG-R02)",
+      "evidence": "",
+      "note": "Raised by plan 05-01 (D-12). A transcription hazard, not a hardware question."
     }
   ]
 }
