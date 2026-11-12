@@ -237,20 +237,20 @@
       "topic": "CI shape",
       "sources": "One research file recommends Linux gcc and clang with sanitizers, fuzz smoke if cheap, one macOS job and scheduled memory and thread sanitizer jobs. Another defers fuzzing and matrix growth until a failure class justifies them, and a third calls more than three required jobs a performance trap.",
       "status": "open",
-      "default_policy": "unknown-default-chosen: one gate command and one CI job; matrix growth is deferred.",
-      "resolver": "pending: D12 decision in Phase 4",
+      "default_policy": "unknown-default-chosen: one gate job (D12, delegated decision); reverse on an Apple-only failure reaching main, a shared library, or a median hosted gate above budget after levers",
+      "resolver": "test: ci-parity bans and ci-log",
       "evidence": "",
-      "note": "Seeded from the research source-conflict table."
+      "note": "Seeded from the research source-conflict table. D12 decided as Phase 4 D-41..D-45 (one ubuntu-24.04 job, no matrix, no caches or artifacts, job summary, run record); recorded by plan 04-25. It stays open because the shape is a budgeted default with reversal triggers, not a settled fact."
     },
     {
       "id": "C25",
       "topic": "Mini-EXEC and boot stub",
       "sources": "One research file makes a mini-EXEC first-class from the first slice. Another labels it not an EXEC. A third warns against writing an EXEC replacement casually because its contract must be tested and its presence changes timing. A fourth calls the EXEC-less reset story an owner or profile question.",
       "status": "open",
-      "default_policy": "unknown-default-chosen: no boot stub or EXEC replacement is built in Phase 1; the reset PC comes from the profile default.",
-      "resolver": "pending: Phase 4 project boot stub plan (D5 decided as D-24: user-supplied system images only)",
+      "default_policy": "unknown-default-chosen: project boot stub contract 1 (plan 04-14), labelled \"project boot stub, not an EXEC\"; no EXEC replacement",
+      "resolver": "test: run.stub.path, run.stub.trap and the listing step's bootstub guards",
       "evidence": "",
-      "note": "Seeded from the research source-conflict table."
+      "note": "Seeded from the research source-conflict table. D5 decided as Phase 3 D-24 (user-supplied system images only, plus a project boot stub); the stub was built in plan 04-14 and recorded here by plan 04-25. Its cartridge entry and stack start are project conventions (C68)."
     },
     {
       "id": "C26",
