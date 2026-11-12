@@ -340,6 +340,7 @@ int main(int argc, char **argv)
   ivs_storage_requirements req;
   uint8_t *text = NULL;
   void *storage = NULL;
+  uint8_t *buffers = NULL;
   const char *scenario_path = NULL;
   const char *golden_path = NULL;
   char dirbuf[MAIN_DIR_MAX];
@@ -502,7 +503,12 @@ int main(int argc, char **argv)
     storage_bytes = (size_t)req.size_bytes + (size_t)req.align_bytes + (size_t)IVS_RUNNER_CAP_CART + 1u;
   }
   storage = malloc(storage_bytes);
-  if (storage == NULL) {
+  /* One output block for the three channels (video, audio, PSG write log), bounded by
+   * IVS_RUNNER_BUFFERS_MAX; the executor cuts it per slice from ivs_info (plan 05-09, A-11). */
+  buffers = malloc((size_t)IVS_RUNNER_BUFFERS_MAX);
+  if (storage == NULL || buffers == NULL) {
+    free(storage);
+    free(buffers);
     free(mh.golden_buf);
     free(scn);
     return main_fail("out of memory");
@@ -517,9 +523,12 @@ int main(int argc, char **argv)
   host.write_report = mh_write;
   host.storage = storage;
   host.storage_bytes = storage_bytes;
+  host.buffers = buffers;
+  host.buffer_bytes = (size_t)IVS_RUNNER_BUFFERS_MAX;
   memset(&res, 0, sizeof res);
   (void)ivs_runner_execute(scn, &host, &opts, &res);
   free(storage);
+  free(buffers);
   code = (int)res.exit_code;
   if (fflush(stdout) != 0 || ferror(stdout) || res.report_write_failed != 0u) {
     free(mh.golden_buf);

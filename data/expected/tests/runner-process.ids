@@ -1,7 +1,7 @@
 # Suite runner-process (plan 04-20, D-20, D-21, D-23, D-32): tests/runner-process-tap.sh runs the
 # real ivs-run of each preset.
 # runner-process.scenario.<id>: one case per line of data/expected/runner-scenarios.ids (exit
-#   code, outcome, exit.code, outcome.detail, `ivsr 1` first and `report.end <n>` last);
+#   code, outcome, exit.code, outcome.detail, `ivsr 2` first and `report.end <n>` last);
 #   needs-user-exec needs an operator EXEC the gate never has and is a visible skip.
 # runner-process.mutant.<ID>: one case per program mutation of data/expected/diag-mutations.ids,
 #   guest-fail naming its clause (D-32).

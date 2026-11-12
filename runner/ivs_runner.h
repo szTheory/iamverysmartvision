@@ -302,8 +302,13 @@ const char *ivs_scenario_input_name(uint32_t i, uint32_t *mask);
  * write_report receives the report one line at a time (LF included) and returns 0, or nonzero
  * on a write error. storage: storage_bytes bytes the executor owns during the call (instance,
  * aligned by hand, then the read buffer); at most IVS_RUNNER_STORAGE_MAX of it is used.
- * buffers: buffer_bytes for video and audio output (may be NULL/0 while the profile's output
- * layout is NONE); at most IVS_RUNNER_BUFFERS_MAX is used. */
+ * buffers: buffer_bytes for the three output channels (video, audio, PSG write log), one block the
+ * executor splits per slice (plan 05-09, A-11): each channel gets bytes_per_frame * (slice_ticks /
+ * nominal_frame_ticks + 1) bytes from ivs_info (video, audio, and psg_log_record_bytes *
+ * psg_log_records_per_frame for the log; a channel whose layout is NONE or 0 gets nothing). A block
+ * that cannot hold the three is a harness failure (`buffers-too-small`), never a truncation. NULL
+ * or 0 bytes: no channel is requested (the core's NULL plus 0 rule), the audio chain check then
+ * reads `-`. At most IVS_RUNNER_BUFFERS_MAX is used. */
 typedef struct ivs_runner_host {
   void *ctx;
   int (*read_file)(void *ctx, const char *relpath, size_t cap, uint8_t *buf, size_t *len);
@@ -315,6 +320,14 @@ typedef struct ivs_runner_host {
   size_t storage_bytes;
   uint8_t *buffers;
   size_t buffer_bytes;
+  /* Operator-only raw outputs (plan 05-09, D-20; NULL: not requested). write_audio_raw gets the dense
+   * sample bytes each slice delivered (4 per sample, A, B, C, 0), in order, before the audio chain
+   * check reads them; write_psg_log gets the ASCII lines `index tick addr value source` (decimal
+   * fields, LF ended) of each slice's delivered write-log records, in order. Each returns 0, or
+   * nonzero on a write error (harness-fail `audio-out` or `psg-log-out`). The library names no file:
+   * a scenario cannot ask for one. */
+  int (*write_audio_raw)(void *ctx, const uint8_t *bytes, size_t len);
+  int (*write_psg_log)(void *ctx, const char *lines, size_t len);
 } ivs_runner_host;
 
 /* Slicing, budget and wall cap (D-21, plan 04-19). Every run-to is executed as slices of at most
@@ -410,17 +423,29 @@ typedef struct ivs_runner_record {
   ivs_runner_assert_record assert_rec[IVS_SCN_MAX_ASSERTS];
   uint32_t cpu_run_state;
   uint32_t cpu_fault_reason;
-  uint8_t digest[8][32]; /* cpu, mem, images, instance, composite, video, audio, input */
+  uint8_t digest[9][32]; /* cpu, mem, images, instance, composite, video, audio, input, psglog */
   uint32_t have_input;   /* a run call returned IVS_OK: controller words are valid */
   uint32_t input_consumed;
   uint32_t controller[4];
   uint64_t video_bytes;
   uint64_t audio_bytes;
+  uint64_t audio_samples;      /* delivered audio bytes / 4 */
+  uint64_t audio_changes;      /* level-change records the runner counted from the delivered bytes */
+  uint64_t psglog_records;     /* delivered write-log bytes / psg_log_record_bytes */
+  uint64_t psglog_bytes;
+  uint32_t audio_sample_ticks; /* ivs_info audio_sample_ticks; 0 when there is no machine */
+  uint32_t chain_check;        /* IVS_RUNNER_CHAIN_* */
   uint64_t host_calls;
 } ivs_runner_record;
 
+/* audio.chain.check of the report: not checked (an audio buffer was not delivered on every slice
+ * or no slice ran), recomputed chain equal to the core's AUDIO digest, or different. */
+#define IVS_RUNNER_CHAIN_NONE 0u
+#define IVS_RUNNER_CHAIN_PASS 1u
+#define IVS_RUNNER_CHAIN_FAIL 2u
+
 /* Writes the report of rec through host->write_report, every key of the closed key table in
- * its fixed order: `ivsr 1` first, `report.end <n>` last (n = lines before it). Returns 0, or
+ * its fixed order: `ivsr 2` first, `report.end <n>` last (n = lines before it). Returns 0, or
  * -1 on a write error; *lines gets the count of lines before report.end. */
 int ivs_runner_report_write(const ivs_runner_record *rec, const ivs_runner_host *host, uint64_t *lines);
 

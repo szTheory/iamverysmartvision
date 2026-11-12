@@ -17,6 +17,7 @@
 
 #include "ivs/ivs.h"
 #include "ivs_runner.h"
+#include "runner_chain.h"
 
 /* Observation slots for the first detail of each kind (index = bit number of IVS_RUNNER_OBS_*). */
 #define EX_OBS_BITS 6u
@@ -34,6 +35,16 @@ typedef struct ex_state {
   uint64_t wall_start; /* now_ms at the start of the first step */
   uint32_t wall_cap_ms;
   uint32_t observed;
+  uint8_t *vid_buf; /* the three output channels cut from host->buffers (ex_plan_buffers); NULL: not requested */
+  size_t vid_cap;
+  uint8_t *aud_buf;
+  size_t aud_cap;
+  uint8_t *log_buf;
+  size_t log_cap;
+  ivs_runner_achain chain; /* the runner's own recomputation of the AUDIO chain (D-18) */
+  uint32_t log_record_bytes; /* ivs_info psg_log_record_bytes: bytes of one write-log record */
+  uint32_t slices;         /* run calls that returned IVS_OK */
+  uint32_t slices_audio;   /* ... of which delivered into an audio buffer */
   char detail[EX_OBS_BITS][IVS_RUNNER_DETAIL_MAX];
 } ex_state;
 
@@ -42,8 +53,11 @@ static const char *const ex_role_name[IVS_SCN_ROLES] = {"exec", "grom", "cart"};
 static const size_t ex_role_cap[IVS_SCN_ROLES] = {IVS_RUNNER_CAP_EXEC, IVS_RUNNER_CAP_GROM, IVS_RUNNER_CAP_CART};
 
 /* Digest rows in record order (report.c prints them in this order). */
-static const uint32_t ex_domains[8] = {IVS_DIGEST_CPU,       IVS_DIGEST_MEM,   IVS_DIGEST_IMAGES, IVS_DIGEST_INSTANCE,
-                                       IVS_DIGEST_COMPOSITE, IVS_DIGEST_VIDEO, IVS_DIGEST_AUDIO,  IVS_DIGEST_INPUT};
+#define EX_DOMAINS 9u
+#define EX_ROW_AUDIO 6u
+static const uint32_t ex_domains[EX_DOMAINS] = {IVS_DIGEST_CPU,       IVS_DIGEST_MEM,   IVS_DIGEST_IMAGES,
+                                                IVS_DIGEST_INSTANCE,  IVS_DIGEST_COMPOSITE, IVS_DIGEST_VIDEO,
+                                                IVS_DIGEST_AUDIO,     IVS_DIGEST_INPUT, IVS_DIGEST_PSGLOG};
 
 /* Records an observation; the first detail of each kind is kept. */
 static void ex_observe(ex_state *x, uint32_t bit, const char *detail)
@@ -444,6 +458,51 @@ static void ex_step_asserts(ex_state *x, uint32_t k)
 
 /* ---- steps ---- */
 
+/* Cuts the host's buffer block into the three output channels (plan 05-09, A-11, D-17): each gets
+ * bytes_per_frame * (slice_ticks / nominal_frame_ticks + 1) bytes, the most a slice of slice_ticks
+ * can require (ivs_run.h), where the per-frame bytes come from ivs_info (video; audio; the log's
+ * record bytes times its records per frame). A channel whose layout needs 0 bytes is not requested
+ * (NULL with capacity 0). No block: nothing is requested. 0 when the block cannot hold the three
+ * (a harness failure, never a truncation). */
+static int ex_plan_buffers(ex_state *x, const ivs_info *info)
+{
+  uint64_t slots = x->slice_ticks / info->nominal_frame_ticks + 1u;
+  uint64_t need[3];
+  uint64_t total = 0u;
+  uint64_t block = x->host->buffer_bytes > IVS_RUNNER_BUFFERS_MAX ? IVS_RUNNER_BUFFERS_MAX : x->host->buffer_bytes;
+  uint64_t per[3];
+  uint8_t *p = x->host->buffers;
+  if (p == NULL || block == 0u) {
+    return 1;
+  }
+  per[0] = info->video_bytes_per_frame;
+  per[1] = info->audio_bytes_per_frame;
+  per[2] = (uint64_t)info->psg_log_record_bytes * (uint64_t)info->psg_log_records_per_frame;
+  for (size_t i = 0u; i < 3u; i++) {
+    need[i] = per[i] * slots; /* at most 2^32 * 2^32 / 1: slots is below 2^23 for a slice of 2^22 ticks */
+    if (need[i] > block || total > block - need[i]) {
+      return 0;
+    }
+    total += need[i];
+  }
+  if (need[0] != 0u) {
+    x->vid_buf = p;
+    x->vid_cap = (size_t)need[0];
+  }
+  p += need[0];
+  if (need[1] != 0u) {
+    x->aud_buf = p;
+    x->aud_cap = (size_t)need[1];
+  }
+  p += need[1];
+  if (need[2] != 0u) {
+    x->log_buf = p;
+    x->log_cap = (size_t)need[2];
+  }
+  return 1;
+}
+
+
 static void ex_run_steps(ex_state *x, const ivs_info *info)
 {
   const ivs_scenario *s = x->scn;
@@ -468,6 +527,12 @@ static void ex_run_steps(ex_state *x, const ivs_info *info)
     events[i].controller[0] = s->inputs[i].controller[0];
     events[i].controller[1] = s->inputs[i].controller[1];
   }
+  if (!ex_plan_buffers(x, info)) {
+    ex_observe(x, IVS_RUNNER_OBS_HARNESS_FAIL, "buffers-too-small");
+    return;
+  }
+  x->rec->audio_sample_ticks = info->audio_sample_ticks;
+  x->log_record_bytes = info->psg_log_record_bytes;
   x->wall_start = ex_now_ms(x);
   for (uint32_t k = 0u; k < s->n_steps && k < IVS_SCN_MAX_STEPS; k++) {
     const ivs_scenario_step *st = &s->steps[k];
@@ -501,16 +566,12 @@ static void ex_run_steps(ex_state *x, const ivs_info *info)
       q.struct_size = (uint32_t)sizeof q;
       q.flags = IVS_RUN_F_STOP_ON_HALT;
       q.target_ticks = (x->now < limit && limit - x->now > x->slice_ticks) ? x->now + x->slice_ticks : limit;
-      if (info->video_bytes_per_frame != 0u || info->audio_bytes_per_frame != 0u) {
-        size_t half = x->host->buffer_bytes > IVS_RUNNER_BUFFERS_MAX ? IVS_RUNNER_BUFFERS_MAX / 2u
-                                                                     : x->host->buffer_bytes / 2u;
-        if (x->host->buffers != NULL && half > 0u) {
-          q.video = x->host->buffers;
-          q.video_capacity = half;
-          q.audio = x->host->buffers + half;
-          q.audio_capacity = half;
-        }
-      }
+      q.video = x->vid_buf;
+      q.video_capacity = x->vid_cap;
+      q.audio = x->aud_buf;
+      q.audio_capacity = x->aud_cap;
+      q.psg_log = x->log_buf;
+      q.psg_log_capacity = x->log_cap;
       q.events = consumed < s->n_inputs ? &events[consumed] : NULL;
       q.event_count = s->n_inputs - consumed;
       memset(&rep, 0, sizeof rep);
@@ -534,6 +595,20 @@ static void ex_run_steps(ex_state *x, const ivs_info *info)
       memcpy(x->rec->controller, rep.controller_now, sizeof x->rec->controller);
       x->rec->video_bytes += rep.video_bytes_written;
       x->rec->audio_bytes += rep.audio_bytes_written;
+      x->rec->psglog_bytes += rep.psg_log_bytes_written;
+      x->slices++;
+      if (x->aud_buf != NULL) {
+        /* Dense 4-byte samples, never more than the capacity: the chain re-hash reads what the
+         * core delivered and nothing else (D-18). */
+        size_t got = rep.audio_bytes_written > x->aud_cap ? x->aud_cap : (size_t)rep.audio_bytes_written;
+        if (x->host->write_audio_raw != NULL && got != 0u &&
+            x->host->write_audio_raw(x->host->ctx, x->aud_buf, got) != 0) {
+          ex_observe(x, IVS_RUNNER_OBS_HARNESS_FAIL, "audio-out");
+          return;
+        }
+        ivs_runner_achain_feed(&x->chain, x->aud_buf, got);
+        x->slices_audio++;
+      }
       if (stop != IVS_STOP_TARGET || x->now >= limit) {
         break;
       }
@@ -568,6 +643,26 @@ static void ex_run_steps(ex_state *x, const ivs_info *info)
   }
 }
 
+/* The audio chain check (D-18): the runner recomputed the level-change chain from the dense bytes it
+ * received; the AUDIO digest it implies must equal the core's domain-17 digest. Not checked (`-`)
+ * unless an audio buffer was delivered on every slice of at least one slice. A mismatch is a harness
+ * failure with the detail audio-chain (the core's own state and what it delivered disagree). */
+static void ex_audio_chain_check(ex_state *x)
+{
+  uint8_t calc[32];
+  int ok;
+  if (x->slices == 0u || x->slices != x->slices_audio) {
+    x->rec->chain_check = IVS_RUNNER_CHAIN_NONE;
+    return;
+  }
+  ivs_runner_achain_digest(&x->chain, calc);
+  ok = memcmp(calc, x->rec->digest[EX_ROW_AUDIO], sizeof calc) == 0;
+  x->rec->chain_check = ok ? IVS_RUNNER_CHAIN_PASS : IVS_RUNNER_CHAIN_FAIL;
+  if (!ok) {
+    ex_observe(x, IVS_RUNNER_OBS_HARNESS_FAIL, "audio-chain");
+  }
+}
+
 /* Final observation for the report: CPU state and every digest domain. */
 static void ex_final(ex_state *x)
 {
@@ -580,13 +675,19 @@ static void ex_final(ex_state *x)
   }
   x->rec->cpu_run_state = c.run_state;
   x->rec->cpu_fault_reason = c.fault_reason;
-  for (size_t i = 0u; i < 8u; i++) {
+  for (size_t i = 0u; i < EX_DOMAINS; i++) {
     if (ivs_machine_state_digest(x->m, ex_domains[i], x->rec->digest[i]) != IVS_OK) {
       ex_observe(x, IVS_RUNNER_OBS_HARNESS_FAIL, "observe-refused final");
       return;
     }
   }
   x->rec->have_machine = 1u;
+  x->rec->audio_samples = x->rec->audio_bytes / 4u;
+  x->rec->audio_changes = x->chain.changes;
+  if (x->log_record_bytes != 0u) {
+    x->rec->psglog_records = x->rec->psglog_bytes / x->log_record_bytes;
+  }
+  ex_audio_chain_check(x);
 }
 
 /* Creates the instance in host storage, aligned by hand (D-17, D-22). */

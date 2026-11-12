@@ -75,13 +75,13 @@ build/dev/runner/ivs-run --content-dir build/dev/images data/scenarios/diag-boot
 ## Report
 
 The report is flat `key value` lines, ASCII and LF, every key of the closed table below in this fixed order, all keys always present (`-` when a value does not apply) (D-19).
-The first line is `ivsr 1` and the last is `report.end <n>`, n being the number of lines before it, so a truncated report cannot read as complete.
+The first line is `ivsr 2` and the last is `report.end <n>`, n being the number of lines before it, so a truncated report cannot read as complete.
 Never printed: wall time, host paths, the environment, image bytes.
 `host.calls` is the one key that depends on the host (it counts host service calls, so it changes with the slice size); every other key is a function of the scenario, the images and the core.
 
 | Key | Value |
 |---|---|
-| `ivsr` | `1` |
+| `ivsr` | `2` (report format 2, plan 05-09: one bump for the audio and write-log keys) |
 | `scenario.id`, `scenario.profile` | scenario tokens |
 | `api.version` | `ivs_api_version()`, for example `0.1.0` |
 | `outcome` | `pass`, `guest-fail`, `timeout`, `cancelled`, `missing-fixture`, `harness-fail` |
@@ -96,8 +96,12 @@ Never printed: wall time, host paths, the environment, image bytes.
 | `step.<k>.assert.<j>` | `pass`, `fail` or `not-run`, then `<subject> <op> <expected> got <actual>` |
 | `cpu.run_state`, `cpu.fault_reason` | `unreset`, `reset-pending`, `running`, `halted` or `faulted`; `none` or a fault token |
 | `input.events`, `input.consumed`, `input.controller.<0..3>` | counts; 8 upper-case hex digits, or `-` before any run |
-| `digest.cpu`, `.mem`, `.images`, `.instance`, `.composite`, `.video`, `.audio`, `.input` | 64 lower-case hex |
-| `output.video.bytes`, `output.audio.bytes` | byte counts (0 in Phase 4) |
+| `digest.cpu`, `.mem`, `.images`, `.instance`, `.composite`, `.video`, `.audio`, `.input`, `.psglog` | 64 lower-case hex |
+| `output.video.bytes`, `output.audio.bytes` | byte counts delivered through the output buffers (video is 0 until Phase 6; audio is the dense sample stream, 4 bytes per sample) |
+| `output.audio.samples`, `output.audio.changes` | delivered audio bytes over 4; the level-change records the runner itself counted from the delivered bytes |
+| `output.psglog.records`, `output.psglog.bytes` | PSG write-log records and bytes delivered (16 bytes per record) |
+| `audio.sample_ticks` | master ticks between samples (`ivs_info` `audio_sample_ticks`, 16 on the NTSC profile) |
+| `audio.chain.check` | `pass` when the runner's recomputation of the AUDIO level-change chain from the delivered bytes gives the core's domain-17 digest, `fail` when it does not (the outcome is then `harness-fail`, detail `audio-chain`), `-` when an audio buffer was not delivered on every slice |
 | `host.calls` | host service calls (read_file, read_user, now_ms, cancel_requested) |
 | `report.end` | the number of lines before it |
 
@@ -152,7 +156,7 @@ Test hooks (documented, deterministic, no sleeps and no racing signals):
 
 `tests/runner-process-tap.sh` (D-23, plan 04-20) drives the real `ivs-run` of each preset, so exit codes and report text are checked at the boundary a user sees.
 
-- Scenarios: every line `<id> <exit> <outcome> <class> <skip> <operator-args>` of `data/expected/runner-scenarios.ids` names `data/scenarios/<id>.ivss`; there is one demonstrating scenario per outcome of the table above, plus an expected load refusal and a two-event input schedule (`diag-input-pass`). The judge requires the exit code, `ivsr 1` first, `report.end <n>` last, one `outcome` and one `exit.code` line forming a pair of `data/expected/runner-outcomes.ids`, and the `outcome.detail` pinned by the scenario's `# expect-detail:` comment (a parse refusal pins its one stderr line with `# expect-stderr:` and prints no report).
+- Scenarios: every line `<id> <exit> <outcome> <class> <skip> <operator-args>` of `data/expected/runner-scenarios.ids` names `data/scenarios/<id>.ivss`; there is one demonstrating scenario per outcome of the table above, plus an expected load refusal and a two-event input schedule (`diag-input-pass`). The judge requires the exit code, `ivsr 2` first, `report.end <n>` last, one `outcome` and one `exit.code` line forming a pair of `data/expected/runner-outcomes.ids`, and the `outcome.detail` pinned by the scenario's `# expect-detail:` comment (a parse refusal pins its one stderr line with `# expect-stderr:` and prints no report).
 - `host-dependent` scenarios (`timeout-wall`, `cancel-signal`) use the two test hooks above; their reports are never compared between presets or kept as goldens. `needs-user-exec` asks for an operator EXEC the gate never has: it must end missing-fixture and is then a visible skip.
 - Mutants (D-32): the diagnostic rebuilt with one changed word (`data/expected/diag-mutations.ids`: ADDI to SUBI, BNZE to BZE, PSHR to MVO@, INCR to DECR) must end guest-fail, with the detail naming the first assert the change breaks.
 - Determinism: a second run, `--slice-ticks` 1 and 7, and a run from another working directory give the same report apart from `host.calls`.

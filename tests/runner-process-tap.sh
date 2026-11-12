@@ -7,7 +7,7 @@
 #   ivs-run --content-dir <content> <operator-args split on ,> <root>/data/scenarios/<id>.ivss
 # where <content> is this run's temp copy of the build-tree images dir; id
 # runner-process.scenario.<id>. The judge requires the inventory's exit code; a report whose first
-# line is `ivsr 1` and whose last is `report.end <n>` (n = the lines before it, LF-terminated);
+# line is `ivsr 2` and whose last is `report.end <n>` (n = the lines before it, LF-terminated);
 # exactly one `outcome` and one `exit.code` line equal to the inventory's; and `outcome.detail`
 # equal to the scenario's `# expect-detail: <text>` comment line (`-` without one). A scenario
 # with a `# expect-stderr: <text>` comment line must instead print no report and exactly the line
@@ -176,7 +176,7 @@ judge() {
     why no-report "empty stdout"
   else
     _first=$(sed -n '1p' "$_o")
-    [ "$_first" = "ivsr 1" ] || why header "first line '$_first', expected 'ivsr 1'"
+    [ "$_first" = "ivsr 2" ] || why header "first line '$_first', expected 'ivsr 2'"
     _nr=$(awk 'END { print NR }' "$_o")
     _nl=$(wc -l < "$_o" | tr -d ' ')
     _last=$(sed -n '$p' "$_o")

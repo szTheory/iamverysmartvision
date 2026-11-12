@@ -15,6 +15,8 @@ set(IVS_RUNNER_SOURCES
   exec.c
   outcome.c
   report.c
+  runner_chain.c
+  runner_sha256.c
   scenario.c
 )
 

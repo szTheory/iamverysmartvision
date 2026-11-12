@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 /* Runner report writer (D-19, D-30, plan 04-18). The report is flat `key value` lines, ASCII and
  * LF, every key of the closed key table below in its fixed order (all keys always present, `-`
- * when a value does not apply): `ivsr 1` first and `report.end <n>` last, n being the number of
+ * when a value does not apply): `ivsr 2` first and `report.end <n>` last, n being the number of
  * lines before it, so a truncated report cannot read as complete. The tables are the whole key
  * set; the writer prints nothing else. Never printed: wall time, host paths, the environment,
  * image bytes. Values echoed from the scenario (id, profile, a relative content path in a
@@ -13,8 +13,11 @@
  *   per step k: step.<k>.<target_ticks|now_ticks|overshoot_ticks|stop_reason|expected_stop>,
  *     then step.<k>.assert.<j> for that step's asserts,
  *   cpu.run_state, cpu.fault_reason, input.events, input.consumed, input.controller.<0..3>,
- *   digest.<cpu|mem|images|instance|composite|video|audio|input>, output.video.bytes,
- *   output.audio.bytes, host.calls, report.end.
+ *   digest.<cpu|mem|images|instance|composite|video|audio|input|psglog>, output.video.bytes,
+ *   output.audio.bytes, output.audio.samples, output.audio.changes, output.psglog.records,
+ *   output.psglog.bytes, audio.sample_ticks, audio.chain.check, host.calls, report.end.
+ * `ivsr 2` (plan 05-09, D-20, the one bump of Phase 5) adds the keys from digest.psglog on; the
+ * refpcm.* keys of the reference-PCM option join the table in plan 05-10 only when it is asked for.
  * Named-fault sites (data/expected/faults/runner.ids) sit in this TU. */
 #include <stdint.h>
 #include <stdio.h>
@@ -54,6 +57,12 @@
 #define RF_OUT_VIDEO 60u
 #define RF_OUT_AUDIO 61u
 #define RF_HOST_CALLS 62u
+#define RF_OUT_AUDIO_SAMPLES 63u
+#define RF_OUT_AUDIO_CHANGES 64u
+#define RF_OUT_PSG_RECORDS 65u
+#define RF_OUT_PSG_BYTES 66u
+#define RF_AUDIO_SAMPLE_TICKS 67u
+#define RF_AUDIO_CHAIN 68u
 
 typedef struct rp_key {
   const char *key;
@@ -105,8 +114,15 @@ static const rp_key rp_tail[] = {
     {"digest.video", RF_DIGEST + 5u},
     {"digest.audio", RF_DIGEST + 6u},
     {"digest.input", RF_DIGEST + 7u},
+    {"digest.psglog", RF_DIGEST + 8u},
     {"output.video.bytes", RF_OUT_VIDEO},
     {"output.audio.bytes", RF_OUT_AUDIO},
+    {"output.audio.samples", RF_OUT_AUDIO_SAMPLES},
+    {"output.audio.changes", RF_OUT_AUDIO_CHANGES},
+    {"output.psglog.records", RF_OUT_PSG_RECORDS},
+    {"output.psglog.bytes", RF_OUT_PSG_BYTES},
+    {"audio.sample_ticks", RF_AUDIO_SAMPLE_TICKS},
+    {"audio.chain.check", RF_AUDIO_CHAIN},
     {"host.calls", RF_HOST_CALLS},
 };
 
@@ -161,6 +177,8 @@ const char *ivs_runner_domain_token(uint32_t domain)
     return "audio";
   case IVS_DIGEST_INPUT:
     return "input";
+  case IVS_DIGEST_PSGLOG:
+    return "psglog";
   default:
     return "unknown";
   }
@@ -249,7 +267,7 @@ static void rp_value(const ivs_runner_record *r, uint32_t field, char *v, size_t
   (void)snprintf(v, cap, "-");
   switch (field) {
   case RF_IVSR:
-    (void)snprintf(v, cap, "1");
+    (void)snprintf(v, cap, "2");
     break;
   case RF_SCN_ID:
     (void)snprintf(v, cap, "%s", s->id);
@@ -311,6 +329,28 @@ static void rp_value(const ivs_runner_record *r, uint32_t field, char *v, size_t
   case RF_OUT_AUDIO:
     rp_u64(v, cap, r->audio_bytes);
     break;
+  case RF_OUT_AUDIO_SAMPLES:
+    rp_u64(v, cap, r->audio_samples);
+    break;
+  case RF_OUT_AUDIO_CHANGES:
+    rp_u64(v, cap, r->audio_changes);
+    break;
+  case RF_OUT_PSG_RECORDS:
+    rp_u64(v, cap, r->psglog_records);
+    break;
+  case RF_OUT_PSG_BYTES:
+    rp_u64(v, cap, r->psglog_bytes);
+    break;
+  case RF_AUDIO_SAMPLE_TICKS:
+    if (r->audio_sample_ticks != 0u) {
+      rp_u64(v, cap, r->audio_sample_ticks);
+    }
+    break;
+  case RF_AUDIO_CHAIN:
+    (void)snprintf(v, cap, "%s", r->chain_check == IVS_RUNNER_CHAIN_PASS   ? "pass"
+                                 : r->chain_check == IVS_RUNNER_CHAIN_FAIL ? "fail"
+                                                                           : "-");
+    break;
   case RF_HOST_CALLS:
     rp_u64(v, cap, r->host_calls);
     break;
@@ -319,7 +359,7 @@ static void rp_value(const ivs_runner_record *r, uint32_t field, char *v, size_t
       if (r->have_input) {
         (void)snprintf(v, cap, "%08X", (unsigned)r->controller[field - RF_INPUT_CTRL]);
       }
-    } else if (field >= RF_DIGEST && field < RF_DIGEST + 8u) {
+    } else if (field >= RF_DIGEST && field < RF_DIGEST + 9u) {
       if (r->have_machine) {
         rp_hex(r->digest[field - RF_DIGEST], v);
       }

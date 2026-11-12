@@ -148,6 +148,10 @@ runner.exec.unexpected-refusal
 runner.exec.unknown-profile
 runner.exec.user-role
 runner.exec.write-error
+# Plan 05-09 (D-18, D-20): ivsr 2, the audio chain re-hash and the runner-local SHA-256.
+runner.exec.ivsr2-keys
+runner.exec.audio-chain-check
+runner.exec.sha256-fips
 # Plan 04-19 (D-21): slicing, the machine-time budget, the wall cap and cancellation through a fake
 # clock and a fake cancel flag (no sleeps, no signals).
 runner.time.budget

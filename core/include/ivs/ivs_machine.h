@@ -312,7 +312,18 @@ IVS_API ivs_status ivs_machine_info(const ivs_machine *m, ivs_info *out);
  * composite version 2; the observation domains are not in it, D-10, D-18). The serialization is field by field and
  * big-endian, so the value does not depend on struct layout, padding or host byte order; it
  * excludes the magic and padding. BAD_ARG: out NULL or any other domain; then BAD_HANDLE; then
- * BAD_ARG: out overlapping the instance storage. */
+ * BAD_ARG: out overlapping the instance storage.
+ * Domain 17 (AUDIO, plan 05-09, documentation only): the digest is SHA-256 of
+ *   'I' 'V' 'S' 'D' || 17 || be16(1) || be32(32) || chain || be64(changes) || be64(emitted) ||
+ *   be32(prev_levels)
+ * where `emitted` is the number of chip steps (samples) since power-on, `changes` the number of
+ * level-change records, `prev_levels` the last sample's levels (A in bits 7..0, B in 15..8, C in
+ * 23..16) and `chain` the level-change chain: initially 32 zero bytes, and for each sample k
+ * (k = 1, 2, ...) whose three levels differ from the previous sample's (initially all 0)
+ *   chain = SHA-256('I' 'V' 'S' 'R' || 17 || chain || be64(changes before this record) || be32(12) ||
+ *                   be64(k) || A || B || C || 0).
+ * The dense bytes a run call delivers (4 per sample: A, B, C, 0) are enough to recompute all of it,
+ * so a host can check the stream it received against this digest without any core state. */
 IVS_API ivs_status ivs_machine_state_digest(const ivs_machine *m, uint32_t domain, uint8_t out_sha256[32]);
 
 /* Loads one image of kind (IVS_KIND_*) from len bytes at bytes. Validates everything before the
