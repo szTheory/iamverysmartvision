@@ -8,6 +8,8 @@
 # Plan 05-06: the engine families tone (tone.txt, psg.tone.*, 16 plus the guest tracer), mix (mix.txt, 10) and amp
 # (amp.txt, 6), judged on the sample stream or the pure functions by psg_tone.c and psg_mix.c, and two judge
 # self-controls (psg.judge.tone-row-changed, psg.judge.mix-row-changed).
+# Plan 05-06 (Task 3): the bounds derived from the CPU model (psg.bounds.*, 5) and the audio buffer rules of the public
+# run call with a guest that makes sound (psg.buffers.*, 6).
 # The vector families wired into the suite are the ones NOT listed in data/psg/vectors-pending.ids.
 psg.regmap.matches-literal
 psg.reset.power-on-zero
@@ -95,3 +97,14 @@ psg.amp.env-shift1
 psg.tone.guest-late-period
 psg.judge.tone-row-changed
 psg.judge.mix-row-changed
+psg.bounds.unit-ticks-real-bus
+psg.bounds.unit-ticks-max
+psg.bounds.write-gap-min
+psg.bounds.memsys-bus-never-waits
+psg.bounds.slack-covers-worst-case
+psg.buffers.too-small-no-write
+psg.buffers.exact-fit
+psg.buffers.not-requested
+psg.buffers.state-independent-of-buffer
+psg.buffers.sentinel-tail
+psg.buffers.overlap

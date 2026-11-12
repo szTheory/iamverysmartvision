@@ -121,4 +121,12 @@ const char *ivs_psg_amp_vector_id(size_t i);
 int ivs_psg_amp_vector_run(size_t i);
 const ivs_test_source *ivs_psg_amp_sources(size_t *n);
 
+/* Family bounds (plan 05-06, psg_bounds.c): U, g and the audio slack derived from the CPU model. */
+extern const ivs_test_case ivs_psg_bounds_cases[];
+extern const size_t ivs_psg_bounds_count;
+
+/* Family buffers (plan 05-06, psg_buffers.c): the audio buffer rules of the public run call. */
+extern const ivs_test_case ivs_psg_buffers_cases[];
+extern const size_t ivs_psg_buffers_count;
+
 #endif

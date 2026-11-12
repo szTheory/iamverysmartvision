@@ -332,6 +332,9 @@ void ivs_machine_profile_env(const ivs_profile_desc *p, ivs_run_env *env)
      * unit of a call (U = psg.max_unit_ticks, derived and probed); the bytes per frame follow. */
     uint64_t per_frame = (frame + period - 1u) / period;
     uint64_t slack = ((uint64_t)p->psg_max_unit_ticks + period - 1u) / period + 1u;
+#ifdef IVS_FAULT_AUDIO_SLACK_ZERO
+    slack = 0u; /* named fault: no slack, so a call whose last unit overshoots can emit more than the capacity */
+#endif
     env->audio_format = IVS_OUTPUT_FORMAT_PSG_LEVELS_V1;
     env->audio_bytes_per_frame = (uint32_t)((per_frame + slack) * IVS_PSG_SAMPLE_BYTES);
   }

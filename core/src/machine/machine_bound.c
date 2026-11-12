@@ -485,6 +485,13 @@ static void ivs_bound_refuse(const ivs_machine *m, const ivs_run_request *req, i
     req->video[0] = 0u;
   }
 #endif
+#ifdef IVS_FAULT_PSG_OUTBUF_PARTIAL_WRITE
+  /* Named fault PSG_OUTBUF_PARTIAL_WRITE (plan 05-06, T-05-16): a refused run writes one byte into
+   * the caller's audio buffer (the sentinel checks of the audio refusals must see it). */
+  if (ivs_bound_req_sized(req) != 0u && req->audio != NULL && req->audio_capacity != 0u) {
+    req->audio[0] = 0u;
+  }
+#endif
   if (ivs_bound_report_ok(m, req, rep) != 0u) {
     rep->struct_size = ivs_bound_rep_bytes(rep); /* inside the v1 prefix: struct_size, reason, index */
     rep->refusal_reason = reason;
@@ -562,6 +569,12 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
     consumed = ivs_input_apply_due(im, plan.events, plan.event_count, consumed, before, entry);
 #endif
     memset(&unit, 0, sizeof unit);
+#ifdef IVS_FAULT_AUDIO_STATE_DEPENDS_ON_BUFFER
+    /* Named fault AUDIO_STATE_DEPENDS_ON_BUFFER (plan 05-06, T-05-15): the unit's PSG catch-up is undone
+     * when no buffer receives the samples, so the machine state depends on the presence of a buffer. */
+    ivs_psg_state psg_fault_save = im->psg;
+    ivs_psg_obs obs_fault_save = im->obs.audio;
+#endif
     if (ivs_machine_step_unit_sink_internal(m, &unit, &sink) != IVS_OK) {
       /* The seam refused before any write: the events applied for this unit are taken back, so
        * nothing changed and the state is the last whole boundary (review IN-01). */
@@ -573,6 +586,12 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
       internal = 1u;
       break;
     }
+#ifdef IVS_FAULT_AUDIO_STATE_DEPENDS_ON_BUFFER
+    if (sink.buf == NULL) {
+      im->psg = psg_fault_save;
+      im->obs.audio = obs_fault_save;
+    }
+#endif
 #ifdef IVS_FAULT_RUN_STOP_BEFORE_OVERSHOOT
     if (im->time_ticks > plan.target) {
       im->cpu = cpu_before;
