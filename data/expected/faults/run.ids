@@ -80,3 +80,19 @@ INPUT_STATIC_CARRY run.input.isolation run.input.|run.fuzz.|run.diag.slice run.s
 RUN_EVENT_AT_TARGET_ONLY run.input.one-event run.input.|run.fuzz. run.target.ends-at-first-boundary-ge-target
 # RUN_EVENTS_UNCHECKED: the event span overlap test (instance, report, buffers) is skipped.
 RUN_EVENTS_UNCHECKED run.input.refuse.events-inside-instance run.input.refuse. run.buffers.inside-instance
+# Struct-growth and write-log faults (plan 05-02, D-14, D-19, A-02, A-04), one site each in
+# core/src/machine/machine_bound.c.
+# RUN_REPORT_TAIL_UNGUARDED: the report is written (and its span tested) at the core's full 136
+# bytes whatever the caller's struct_size, past a v1-sized caller's struct. The report-side cases see
+# it: both v1-caller cases (a success writes the tail and struct_size comes back 136), the report-v2
+# case's 120-byte caller and, through the overlap span, the positive control of the log overlap case
+# (a v1-sized report with the log right after its 112 bytes is then refused).
+RUN_REPORT_TAIL_UNGUARDED run.struct.report-v1-caller run.struct.request-v1-caller|run.struct.report-v1-caller|run.struct.report-v2-fields|run.buffers.psglog-overlap run.info.timebase
+# RUN_REQUEST_V2_READ_UNGUARDED: psg_log and psg_log_capacity are read even when the request's
+# struct_size is the v1 size, so a v1-sized caller's poisoned bytes past its struct read as a
+# pointer and a capacity and the run is refused. Every case that runs a v1-sized (or between-sizes)
+# request sees it: run.struct.*.
+RUN_REQUEST_V2_READ_UNGUARDED run.struct.request-v1-caller run.struct. run.info.timebase
+# RUN_PSGLOG_OVERLAP_UNCHECKED: the log's overlap tests (instance, report, video, audio, events, the
+# top of the address space) are skipped, so an overlapping log is accepted.
+RUN_PSGLOG_OVERLAP_UNCHECKED run.buffers.psglog-overlap run.buffers.psglog-overlap run.buffers.psglog-null

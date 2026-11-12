@@ -69,7 +69,8 @@
  * Named faults (plan 04-07, D-07): RUN_TARGET_UNCHECKED, RUN_STOP_BEFORE_OVERSHOOT,
  * RUN_FAULT_STEPS; (plan 04-09, D-07): RUN_BUDGET_CARRY, the only static, inside its fault block;
  * (plan 04-10, D-06, D-07): RUN_CAPACITY_AFTER_STEP, OUTBUF_PARTIAL_WRITE; (plan 04-11, D-05,
- * D-16): INPUT_APPLY_AT_RUN_START, RUN_EVENTS_UNCHECKED. */
+ * D-16): INPUT_APPLY_AT_RUN_START, RUN_EVENTS_UNCHECKED; (plan 05-02, A-02, D-14):
+ * RUN_REPORT_TAIL_UNGUARDED, RUN_REQUEST_V2_READ_UNGUARDED, RUN_PSGLOG_OVERLAP_UNCHECKED. */
 #include "common/ivs_prelude.h"
 
 #include "ivs/ivs.h"
@@ -125,19 +126,37 @@ static uint32_t ivs_bound_req_sized(const ivs_run_request *req)
  * fields (plan 05-02, A-02), else NULL and 0 (the channel is not requested). req is sized. */
 static uint8_t *ivs_bound_log_ptr(const ivs_run_request *req)
 {
+#ifdef IVS_FAULT_RUN_REQUEST_V2_READ_UNGUARDED
+  /* Named fault RUN_REQUEST_V2_READ_UNGUARDED (plan 05-02, A-02): the appended request fields are
+   * read even when struct_size is the v1 size, past a v1-sized caller's struct. */
+  return req->psg_log;
+#else
   return req->struct_size >= IVS_BOUND_REQ_LOG_END ? req->psg_log : NULL;
+#endif
 }
 
 static uint64_t ivs_bound_log_cap(const ivs_run_request *req)
 {
+#ifdef IVS_FAULT_RUN_REQUEST_V2_READ_UNGUARDED
+  return req->psg_log_capacity;
+#else
   return req->struct_size >= IVS_BOUND_REQ_LOG_END ? req->psg_log_capacity : 0u;
+#endif
 }
 
 /* The bytes the core writes into rep on success or refusal: min(caller struct_size, own size)
  * (A-02, plan 05-02), the same rule as ivs_machine_info. rep is sized (stage 1). */
 static uint32_t ivs_bound_rep_bytes(const ivs_run_report *rep)
 {
+#ifdef IVS_FAULT_RUN_REPORT_TAIL_UNGUARDED
+  /* Named fault RUN_REPORT_TAIL_UNGUARDED (plan 05-02, A-02): the report is written (and its
+   * span tested) at the core's full size whatever the caller's struct_size, past a v1-sized
+   * caller's struct. */
+  (void)rep;
+  return (uint32_t)sizeof(ivs_run_report);
+#else
   return rep->struct_size < (uint32_t)sizeof(ivs_run_report) ? rep->struct_size : (uint32_t)sizeof(ivs_run_report);
+#endif
 }
 
 /* 1 when capacity holds the bytes one channel needs for a run from now to target (D-06):
@@ -293,6 +312,7 @@ static uint32_t ivs_bound_buffers(const struct ivs_machine *im, const ivs_run_re
   if (log == NULL && logn != 0u) {
     return IVS_REASON_RUN_PSGLOG_NULL;
   }
+#ifndef IVS_FAULT_RUN_PSGLOG_OVERLAP_UNCHECKED /* named fault RUN_PSGLOG_OVERLAP_UNCHECKED: the tests are skipped */
   if (ivs_bound_span_wraps(log, logn) != 0u || ivs_bound_spans_meet(log, logn, im, sizeof *im) != 0u ||
       ivs_bound_spans_meet(log, logn, rep, repn) != 0u ||
       ivs_bound_spans_meet(log, logn, req->video, req->video_capacity) != 0u ||
@@ -300,6 +320,11 @@ static uint32_t ivs_bound_buffers(const struct ivs_machine *im, const ivs_run_re
       ivs_bound_spans_meet(log, logn, req->events, ivs_bound_events_bytes(req)) != 0u) {
     return IVS_REASON_RUN_PSGLOG_OVERLAP;
   }
+#else
+  (void)im;
+  (void)rep;
+  (void)repn;
+#endif
   return IVS_REASON_NONE;
 }
 
