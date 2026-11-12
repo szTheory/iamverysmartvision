@@ -1,6 +1,7 @@
 #!/bin/sh
 # SPDX-License-Identifier: MIT
-# Step pkg-install: the installed, relocated package (PKG-01, D-33, D-34, D-37, plan 04-22).
+# Step pkg-install: the installed, relocated package and its independent consumer (PKG-01,
+# D-33..D-40, plans 04-22 and 04-23).
 # Installs the release tree that c-build already built (no third build; c-build sorts before
 # this step) into a temp prefix, moves the prefix into a path that contains a space, deletes
 # the original prefix and asserts it is gone, then checks the moved prefix:
@@ -22,22 +23,46 @@
 #              the installed archive with the unchanged allowlist.
 #   alone      tests/headers-tap.sh with the prefix include dir: every C17 case ok and every
 #              C++17 case ok or a visible `# SKIP` (D-38, Pitfall 14; no new test ids).
-#   selftest   eight in-step cases (D-40, exact inventory data/expected/pkg-selftests.ids), each on a
+#   consumer   (D-36, D-39, plan 04-23) tests/installed-consumer copied to the temp dir, configured
+#              with -DCMAKE_PREFIX_PATH=<moved prefix>, registries off and the path variables unset
+#              in a subshell, built with strict C17 flags, run on build/release/images/
+#              {boot-stub.exec,diag-cpu-1.ivsc}; exit 0 required; stdout kept as
+#              build/gate/pkg-consumer.txt and equal to data/expected/pkg-consumer.golden without
+#              its # lines; its digest.<domain> lines equal data/golden/diag-input-pass.digests.
+#   independence (D-37 d, e) `ninja -t deps`: no path under ROOT, no ivs*.h outside the moved
+#              prefix, nothing else under the temp dir but the source copy, and ivs.h,
+#              ivs_machine.h, ivs_run.h, ivs_status.h present under the prefix; `ninja -t
+#              commands`: one link command, naming <prefix>/lib/libivs_core.a and no other
+#              ivs_core archive; the compile command has the strict flags and no -isystem;
+#              ivs_DIR of the consumer cache lies under the prefix (pwd -P); `nm -P -u` of
+#              main.c.o, ivs_* names normalized, equals data/expected/pkg-consumer-calls.ids.
+#   c++ link   (D-38) tests/installed-consumer/main.cpp compiled and linked by ${CXX:-c++}
+#              -std=c++17 directly against the installed headers and archive, then run; a
+#              visible `-- pkg-cxx-link SKIP` line without a C++ compiler.
+#   selftest   ten in-step cases (D-40, exact inventory data/expected/pkg-selftests.ids), each on a
 #              copy or the deleted prefix and each required to fail for its intended reason:
 #              core-src-include, missing-symbol, ghost-decl, unprefixed, extra-file, baked-path,
 #              version-refused (the next minor, the next major and an older minor are refused;
-#              the built major.minor is found under the moved prefix), old-prefix (the deleted original is not found).
+#              the built major.minor is found under the moved prefix), old-prefix (the deleted
+#              original is not found), leak-detector (a consumer copy built with -I core/src and an
+#              internal header: it builds, and the deps checker reports pkg-leak), golden-drift
+#              (the consumer output with one digest nibble changed: pkg-golden-diff).
 # Every temp file is under one mktemp dir outside the repo, removed on exit; the step writes
-# nothing else. Logs are printed only on failure.
+# nothing else but build/gate/pkg-consumer.txt. Logs are printed only on failure.
 # Tokens: pkg-install-no-tree: <path>, pkg-install-failed: <what>, pkg-install-relocate: <what>,
 #   pkg-inventory-missing: <path>, pkg-inventory-extra: <path>, pkg-inventory-list: <what>,
 #   pkg-header-diff: <name>, pkg-archive-diff: <what>, pkg-path-leak: <path>,
 #   pkg-symbol-missing: <name>, pkg-symbol-api-drift: <detail>, pkg-symbol-namespace: <name>,
 #   pkg-symbol-tool: <what>, pkg-header-alone: <case or what>, pkg-selftest-inventory: <what>,
-#   pkg-selftest-missing: <case>, pkg-selftest-<case>: <detail>, plus core-symbols.sh's tokens.
+#   pkg-selftest-missing: <case>, pkg-selftest-<case>: <detail>, pkg-consumer-tmp: <what>,
+#   pkg-consumer-images: <paths>, pkg-consumer-copy: <what>, pkg-consumer-configure: <what>,
+#   pkg-consumer-build: <what>, pkg-consumer-run: <exit>, pkg-consumer-output: <path>,
+#   pkg-golden-diff: <what>, pkg-leak: <path>, pkg-deps-missing: <what>, pkg-link-path: <what>,
+#   pkg-consumer-flags: <what>, pkg-ivs-dir: <what>, pkg-runner-golden-diff: <what>,
+#   pkg-consumer-calls: <what>, pkg-cxx-link: <what>, plus core-symbols.sh's tokens.
 # Stats: prefix-files=<n> archive=<sha256|members> public-symbols=<declared names> defined=<defined externals>
 #   hdr-alone=<ok>/<cases> (skipped C++ cases are not ok; hdr-skip=<n> is appended when nonzero)
-#   pkg-selftest=<ok>/<total>.
+#   consumer-lines=<stdout lines of the consumer> cxx-link=<ok|skip> pkg-selftest=<ok>/<total>.
 LC_ALL=C; export LC_ALL
 : "${ROOT:?ROOT is not set}"
 : "${CHECK_DIR:?CHECK_DIR is not set}"
@@ -630,6 +655,36 @@ run_case() {
       [ ! -e "$pa" ] || { detail="the original prefix still exists"; return 1; }
       if probe old "$pa" "$vmaj.$vmin"; then detail="find_package found a package under the deleted prefix"; return 1; fi
       grep -q -F 'ivsConfig.cmake' "$T/probe/old.log" || { detail="failed without the not-found message"; return 1; }
+      ;;
+    leak-detector)
+      # A consumer copy that adds the repository's core/src include dir and a TU including an
+      # internal header: it builds (the compiler alone does not object), and the dependency
+      # checker must report pkg-leak naming that header (proves the detector, not the compiler).
+      cp -R "$ROOT/tests/installed-consumer" "$d/src" || { detail="copy"; return 1; }
+      printf '#include "common/ivs_sha256.h"\nint ivs_consumer_leak(void);\nint ivs_consumer_leak(void) { return 0; }\n' \
+        > "$d/src/leak.c"
+      printf 'target_sources(consumer PRIVATE leak.c)\ntarget_include_directories(consumer PRIVATE "${IVS_LEAK_DIR}")\n' \
+        >> "$d/src/CMakeLists.txt"
+      consumer_configure "$d/src" "$d/build" -DIVS_LEAK_DIR="$ROOT/core/src" > "$d/cfg.log" 2>&1 \
+        || { detail="configure failed: $(tail -n 3 "$d/cfg.log" | tr '\n' ' ')"; return 1; }
+      cmake --build "$d/build" > "$d/build.log" 2>&1 \
+        || { detail="the leaking copy does not build: $(tail -n 3 "$d/build.log" | tr '\n' ' ')"; return 1; }
+      if check_deps "$d/build" "$d/src" > "$d/out"; then detail="dependency check passed"; return 1; fi
+      grep -q -x -F -e "-- FAIL pkg-leak: $ROOT/core/src/common/ivs_sha256.h" "$d/out" \
+        || grep -q -x -F -e "-- FAIL pkg-leak: $proot/core/src/common/ivs_sha256.h" "$d/out" \
+        || { detail="no pkg-leak naming core/src/common/ivs_sha256.h"; return 1; }
+      ;;
+    golden-drift)
+      # The consumer output with one digest nibble changed must fail the pin (pkg-golden-diff);
+      # the unchanged output matches it (so the failure is the nibble).
+      [ -s "$cout" ] || { detail="no consumer output"; return 1; }
+      check_golden "$cout" > "$d/pos" || { detail="the unchanged output does not match the pin"; return 1; }
+      awk 'done == 0 && /^digest\./ {
+          c = substr($0, length($0), 1); $0 = substr($0, 1, length($0) - 1) (c == "0" ? "1" : "0"); done = 1
+        } { print }' "$cout" > "$d/drift.txt"
+      if cmp -s "$cout" "$d/drift.txt"; then detail="the mutation changed nothing"; return 1; fi
+      if check_golden "$d/drift.txt" > "$d/out"; then detail="golden check passed"; return 1; fi
+      grep -q -F -e '-- FAIL pkg-golden-diff:' "$d/out" || { detail="no pkg-golden-diff"; return 1; }
       ;;
     *) return 2 ;;
   esac
