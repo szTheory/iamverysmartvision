@@ -16,7 +16,7 @@ load.grom status=IVS_OK length_bytes=2048 sha256=e5a00aa9991ac8a5ee3109844d84a55
 load.cart status=IVS_OK length_bytes=176 sha256=243626a75f7592fcb904a6c2cba2de307f19f08eb484ae9f94fd0383526ee5c0
 refusal.duplicate status=IVS_E_DUPLICATE_LOAD reason=33 digest-unchanged=yes
 reset status=IVS_OK
-info phase=1 time_ticks=0 ticks_per_cpu_cycle=4 nominal_frame_ticks=59736 video_format=0 audio_format=0
+info phase=1 time_ticks=0 ticks_per_cpu_cycle=4 nominal_frame_ticks=59736 video_format=0 audio_format=1
 step.1 target_ticks=1000 stop=IVS_STOP_TARGET now_ticks=1020 overshoot_ticks=20 input_consumed=1 controller0=00000001
 step.1.cpu run_state=2 fault_reason=0 r=0000,8080,0007,0022,0000,0000,0340,501D
 step.1.mem 0200..020F=7FFF,8080,A0A0,7070,0000,0000,0000,0000,0000,0000,0000,0000,0000,0000,0000,0000
@@ -27,8 +27,8 @@ input events=2 consumed=2
 digest.cpu 8c6a8aa37cf3293d3d88f1133f3cb218d89fb96a34e8bda49e6ea750cf4dbe55
 digest.mem 1a35c3939341c2f32842b79d68d4141efd256cc162198dafaed3316f20655c2c
 digest.images 69d3b715595bdb3435c984ad72e0042fdf385b72e2687f13a4d59e8b09084e45
-digest.instance 6338be82cdc059511d8a96199e230951469cc166b3fc38eea837228ec804f8bb
-digest.composite 9022ed7a48a96f55f8b89cf98b41df236c61ef70cfa45934ae58c68268a8021e
+digest.instance 452372cdafa1238f68d00c8af9510957e232569d9ebbb0c4cb3d569c70a49088
+digest.composite 31bd1a7ea27e4cc16d199122e70b25334208cf80de79b1a3335e3d2e9ea5775f
 digest.input b18223e862aa91b5d3a82fdd7596b413954565c25b5adbc2d78dcc5dbbefdec1
 second-instance equal=yes
 result ok failures=0
