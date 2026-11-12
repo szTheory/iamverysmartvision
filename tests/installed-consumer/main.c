@@ -569,15 +569,23 @@ static void version_tie(void)
 /* The frozen v1 sizes as the installed headers declare them (plans 04-09, 04-13, 05-02): the
  * pinned v1 constants (IVS_RUN_REQUEST_V1_SIZE, IVS_RUN_REPORT_V1_SIZE, IVS_INFO_V1_SIZE) are the
  * minimum struct_size a v1-sized caller passes, and the grown sizes are the core's own (v2 request
- * and report, current info). The request's size holds pointers: 64 and 80 with the events at 48 on
+ * and report v3, info v4). The request's size holds pointers: 64 and 80 with the events at 48 on
  * LP64, a visible skip elsewhere. */
+/* Plan 06-03 (D-13, D-14, F-14): the Phase 6 constants, checked at compile time against the installed
+ * headers: the fifth stop reason, the frame format id after PSG_LEVELS_V1 and the slot header size. */
+_Static_assert(IVS_STOP_FRAME == 5u, "IVS_STOP_FRAME is 5 in the installed header");
+_Static_assert(IVS_OUTPUT_FORMAT_INDEX8_FRAMES_V1 == 2u, "IVS_OUTPUT_FORMAT_INDEX8_FRAMES_V1 is 2 in the installed header");
+_Static_assert(IVS_FRAME_HEADER_BYTES == 32u, "IVS_FRAME_HEADER_BYTES is 32 in the installed header");
+
 static void v1_sizes(void)
 {
   int lp64 = sizeof(void *) == 8u && sizeof(long) == 8u;
   int ok = IVS_RUN_REPORT_V1_SIZE == 112u && IVS_INFO_V1_SIZE == 216u && sizeof(ivs_input_event) == 32u &&
            sizeof(ivs_cpu_state_report) == 36u && offsetof(ivs_info, ticks_per_cpu_cycle) == IVS_INFO_V1_SIZE &&
-           offsetof(ivs_run_report, audio_first_index) == IVS_RUN_REPORT_V1_SIZE && sizeof(ivs_run_report) == 136u &&
-           sizeof(ivs_info) >= IVS_INFO_V1_SIZE;
+           offsetof(ivs_run_report, audio_first_index) == IVS_RUN_REPORT_V1_SIZE &&
+           offsetof(ivs_run_report, video_first_index) == 136u && sizeof(ivs_run_report) == 160u &&
+           sizeof(ivs_info) >= IVS_INFO_V1_SIZE && offsetof(ivs_info, frame_phase_ticks) == 288u &&
+           sizeof(ivs_info) == 320u;
   if (lp64) {
     ok = ok && IVS_RUN_REQUEST_V1_SIZE == 64u && offsetof(ivs_run_request, events) == 48u &&
          offsetof(ivs_run_request, psg_log) == IVS_RUN_REQUEST_V1_SIZE && sizeof(ivs_run_request) == 80u;

@@ -37,7 +37,18 @@ _Static_assert(offsetof(ivs_info, psg_log_record_bytes) == 264u, "psg_log_record
 _Static_assert(offsetof(ivs_info, psg_log_records_per_frame) == 268u, "psg_log_records_per_frame at 268");
 _Static_assert(offsetof(ivs_info, crystal_hz_num) == 272u, "crystal_hz_num at 272");
 _Static_assert(offsetof(ivs_info, crystal_hz_den) == 280u, "crystal_hz_den at 280");
-_Static_assert(sizeof(ivs_info) == 288u, "ivs_info is 288 bytes");
+/* Info v4 (plan 06-03, A-10), derived on paper: v3 ends at 288 (crystal_hz_den, a u64, at 280); v4
+ * appends frame_phase_ticks, a u64, at 288 (8-aligned), then six u32 members: video_width at 296,
+ * video_height 300, video_slot_bytes 304, video_header_bytes 308, video_slack_frames 312 and
+ * video_row_lines 316, so sizeof is 320, a multiple of 8. */
+_Static_assert(offsetof(ivs_info, frame_phase_ticks) == 288u, "info v4 tail starts at 288");
+_Static_assert(offsetof(ivs_info, video_width) == 296u, "video_width at 296");
+_Static_assert(offsetof(ivs_info, video_height) == 300u, "video_height at 300");
+_Static_assert(offsetof(ivs_info, video_slot_bytes) == 304u, "video_slot_bytes at 304");
+_Static_assert(offsetof(ivs_info, video_header_bytes) == 308u, "video_header_bytes at 308");
+_Static_assert(offsetof(ivs_info, video_slack_frames) == 312u, "video_slack_frames at 312");
+_Static_assert(offsetof(ivs_info, video_row_lines) == 316u, "video_row_lines at 316");
+_Static_assert(sizeof(ivs_info) == 320u, "ivs_info is 320 bytes (v4)");
 
 /* 1 when registry index index is usable by the machine (review WR-04). The registry, the PSG parameter
  * table and the control-line table are three generated includes, each in its own translation unit, that
@@ -332,6 +343,10 @@ ivs_status ivs_machine_info(const ivs_machine *m, ivs_info *out)
    * same figure the capacity of the public run call uses, so a caller sizes its log buffer from info). */
   r.psg_log_record_bytes = IVS_PSG_LOG_RECORD_BYTES;
   r.psg_log_records_per_frame = env.psg_log_bytes_per_frame / IVS_PSG_LOG_RECORD_BYTES;
+  /* v4 (plan 06-03, D-14, D-15): the video tail (frame_phase_ticks, width, height, slot and header bytes,
+   * slack frames, row lines) is 0 while video_format is NONE (r is zeroed above); the profile fills it
+   * from the plan that publishes the frame layout. The slack comes from the env seam. */
+  r.video_slack_frames = env.video_slack_frames; /* 0: the profile env leaves the word 0 */
   memcpy(out, &r, n);
   return IVS_OK;
 }

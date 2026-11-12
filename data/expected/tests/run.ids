@@ -81,6 +81,10 @@ run.info.v1-size-caller
 # exactly 256 bytes, a v3-sized caller the tail (0 until plans 05-06 and 05-08 fill it).
 run.info.v2-size-caller
 run.info.v3-fields
+# Plan 06-03 (A-10): ivs_info v4 appends the Phase 6 video tail at offset 288 (sizeof 320, every field 0 while
+# video_format is NONE); a v3-sized (288-byte) caller gets exactly 288 bytes.
+run.info.v4-fields
+run.info.v3-size-caller
 run.info.audio-fields
 run.info.short-refused
 run.info.oversize-refused
@@ -213,6 +217,13 @@ run.struct.report-v1-caller
 run.struct.request-v2-fields skip-ok
 run.struct.report-v2-fields
 run.struct.tail-nonzero
+# Plan 06-03 (D-14, A-10): report v3 appends video_first_index, last_frame_end_ticks and
+# next_frame_end_ticks at 136, 144, 152 (sizeof 160); a v2-sized (136-byte) caller gets the v2 fields only
+# and its bytes from 136 on are untouched, a v3-sized caller gets zeros in the tail; ivs_run_env stays 32 bytes.
+run.struct.report-v3-offsets
+run.struct.report-v2-caller
+run.struct.report-v3-caller
+run.struct.env-size
 # Frozen v1 sizes (plan 04-13, A-02, Pitfall 13): offsetof and sizeof literals of the pointer-free
 # structs and request prefix; the pointer-bearing request size is checked only with 64-bit pointers.
 run.struct.v1-sizes

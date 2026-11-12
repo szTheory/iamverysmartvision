@@ -166,7 +166,19 @@ typedef struct ivs_image_report {
  *                                (max(target - now, 0) / nominal_frame_ticks + 1))
  *   272 crystal_hz_num           the master crystal in Hz as a fraction (numerator)
  *   280 crystal_hz_den           ... denominator
- * sizeof(ivs_info) is 288. IVS_INFO_V1_SIZE stays 216. */
+ * v4 (plan 06-03, D-14, D-15, A-10): the Phase 6 video tail, appended after the v3 size of 288 and
+ * written only when struct_size covers it (a 288-byte caller gets exactly 288 bytes). Every v4
+ * field is 0 while video_format is IVS_OUTPUT_FORMAT_NONE; the profile fills them from the plan
+ * that publishes the frame layout:
+ *   288 frame_phase_ticks        master ticks of the phase of the first frame event after reset
+ *   296 video_width              positions per row of a frame slot
+ *   300 video_height             rows of a frame slot
+ *   304 video_slot_bytes         bytes of one frame slot, header included
+ *   308 video_header_bytes       bytes of the slot header (IVS_FRAME_HEADER_BYTES)
+ *   312 video_slack_frames       frame slots added to floor(D / F) + 1 in the capacity rule
+ *   316 video_row_lines          TV lines one row of a slot covers
+ * The spacing of two frame events is nominal_frame_ticks, exact for the profile (no second
+ * spacing field). sizeof(ivs_info) is 320. IVS_INFO_V1_SIZE stays 216. */
 typedef struct ivs_info {
   uint32_t struct_size;
   uint32_t phase; /* IVS_PHASE_* */
@@ -191,6 +203,14 @@ typedef struct ivs_info {
   uint32_t psg_log_records_per_frame;
   uint64_t crystal_hz_num;
   uint64_t crystal_hz_den;
+  /* ---- end of the v3 (Phase 5) size, 288 ---- */
+  uint64_t frame_phase_ticks;
+  uint32_t video_width;
+  uint32_t video_height;
+  uint32_t video_slot_bytes;
+  uint32_t video_header_bytes;
+  uint32_t video_slack_frames;
+  uint32_t video_row_lines;
 } ivs_info;
 
 /* ---- typed content loading (D-10, D-11, D-24..D-27, D-32, D-33, A-04, A-08, plan 03-10) ----

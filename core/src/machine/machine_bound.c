@@ -78,7 +78,8 @@
  * RUN_FAULT_STEPS; (plan 04-09, D-07): RUN_BUDGET_CARRY, the only static, inside its fault block;
  * (plan 04-10, D-06, D-07): RUN_CAPACITY_AFTER_STEP, OUTBUF_PARTIAL_WRITE; (plan 04-11, D-05,
  * D-16): INPUT_APPLY_AT_RUN_START, RUN_EVENTS_UNCHECKED; (plan 05-02, A-02, D-14):
- * RUN_REPORT_TAIL_UNGUARDED, RUN_REQUEST_V2_READ_UNGUARDED, RUN_PSGLOG_OVERLAP_UNCHECKED; (plan 05-06,
+ * RUN_REPORT_TAIL_UNGUARDED, RUN_REQUEST_V2_READ_UNGUARDED, RUN_PSGLOG_OVERLAP_UNCHECKED; (plan 06-03, A-02,
+ * T-06-04): RUN_REPORT_V3_TAIL_UNGUARDED; (plan 05-06,
  * D-16, T-05-15, T-05-16): AUDIO_STATE_DEPENDS_ON_BUFFER, PSG_OUTBUF_PARTIAL_WRITE. */
 #include "common/ivs_prelude.h"
 
@@ -98,7 +99,14 @@ _Static_assert(IVS_RUN_REPORT_V1_SIZE == 112u, "the pinned v1 report size is 112
 _Static_assert(offsetof(ivs_run_report, audio_first_index) == IVS_RUN_REPORT_V1_SIZE, "report v2 starts at the v1 size");
 _Static_assert(offsetof(ivs_run_report, psg_log_bytes_written) == 120u, "psg_log_bytes_written at offset 120");
 _Static_assert(offsetof(ivs_run_report, psg_log_first_index) == 128u, "psg_log_first_index at offset 128");
-_Static_assert(sizeof(ivs_run_report) == 136u, "ivs_run_report is 136 bytes (v2)");
+/* Report v3 (plan 06-03, A-10), derived on paper: v2 is 136 bytes (psg_log_first_index, a u64, at
+ * 128); v3 appends three u64 members, video_first_index at 136, last_frame_end_ticks at 144 and
+ * next_frame_end_ticks at 152, so sizeof is 160, a multiple of 8. Every member of the report is an
+ * integer type of fixed width, so the offsets and the size are the same on 32-bit and 64-bit ABIs. */
+_Static_assert(offsetof(ivs_run_report, video_first_index) == 136u, "report v3 starts at the v2 size, 136");
+_Static_assert(offsetof(ivs_run_report, last_frame_end_ticks) == 144u, "last_frame_end_ticks at offset 144");
+_Static_assert(offsetof(ivs_run_report, next_frame_end_ticks) == 152u, "next_frame_end_ticks at offset 152");
+_Static_assert(sizeof(ivs_run_report) == 160u, "ivs_run_report is 160 bytes (v3)");
 _Static_assert(offsetof(ivs_run_report, now_ticks) % 8u == 0u, "64-bit report members are 8-aligned");
 
 /* One byte past the last v2 request field: a request whose struct_size reaches it carries
@@ -665,6 +673,14 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
   }
   ivs_bound_carry_handle = (const void *)m;
   ivs_bound_carry_end = im->time_ticks;
+#endif
+#ifdef IVS_FAULT_RUN_REPORT_V3_TAIL_UNGUARDED
+  /* Named fault RUN_REPORT_V3_TAIL_UNGUARDED (plan 06-03, A-02, T-06-04): the v3 tail (offsets 136 to
+   * 160) is written whatever the caller's struct_size, so a v2-sized caller's bytes from 136 on are
+   * overwritten. */
+  if (n >= (uint32_t)offsetof(ivs_run_report, video_first_index) && n < (uint32_t)sizeof r) {
+    n = (uint32_t)sizeof r;
+  }
 #endif
   memcpy(rep, &r, n); /* never past the caller's struct (A-02): a v1-sized caller gets 112 bytes */
   return IVS_OK;

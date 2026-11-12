@@ -16,8 +16,14 @@
  *                                 pointers only: visible skip elsewhere), and a v2-sized request
  *                                 with a NULL psg_log and capacity 0 equals the v1 call.
  *   run.struct.report-v2-fields   sizeof and offsetof of the appended report fields (pointer-free,
- *                                 every ABI), and a v2-sized caller gets struct_size 136 with the
- *                                 appended fields written (0 in plan 05-02: nothing produces them).
+ *                                 every ABI), and a full caller gets struct_size 160 (the v3 size since plan 06-03) with the
+ *                                 appended fields written.
+ *   run.struct.report-v3-offsets  offsetof 136, 144, 152 and sizeof 160 of the v3 report (plan 06-03).
+ *   run.struct.report-v2-caller   a 136-byte caller gets the v2 fields only; every byte from 136 on stays
+ *                                 poison, on success and on a refusal.
+ *   run.struct.report-v3-caller   a 160-byte caller gets the v3 tail (0); a 144-byte caller only the first
+ *                                 appended field.
+ *   run.struct.env-size           sizeof(ivs_run_env) is 32 with video_slack_frames at offset 28.
  *   run.struct.tail-nonzero       a caller larger than the core's own size with a nonzero tail is
  *                                 refused RUN_TAIL, with a zero tail accepted; a caller between v1
  *                                 and v2 sizes is valid; one byte below either v1 minimum is
@@ -293,19 +299,20 @@ static int rs_report_v2_fields(void)
   rs_rep_buf r;
   uint64_t now;
   int rc = IVS_TEST_FAIL;
-  IVS_CHECK(IVS_RUN_REPORT_V1_SIZE == 112u && sizeof(ivs_run_report) == 136u);
+  IVS_CHECK(IVS_RUN_REPORT_V1_SIZE == 112u && offsetof(ivs_run_report, video_first_index) == 136u);
+  IVS_CHECK(sizeof(ivs_run_report) == 160u); /* v3 from plan 06-03; the v2 end is the offset of video_first_index */
   IVS_CHECK(offsetof(ivs_run_report, controller_now) == 96u);
   IVS_CHECK(offsetof(ivs_run_report, audio_first_index) == 112u);
   IVS_CHECK(offsetof(ivs_run_report, psg_log_bytes_written) == 120u);
   IVS_CHECK(offsetof(ivs_run_report, psg_log_first_index) == 128u);
-  IVS_CHECK(IVS_RUN_REPORT_V1_SIZE + 24u == sizeof(ivs_run_report));
+  IVS_CHECK(IVS_RUN_REPORT_V1_SIZE + 24u == offsetof(ivs_run_report, video_first_index));
   IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, RS_POISON));
   now = rs_now(x.m);
   RS_CHECK(now != UINT64_MAX);
   rs_req(&q, (uint32_t)sizeof(ivs_run_request), now + RS_SPAN);
   rs_rep(&r, (uint32_t)sizeof(ivs_run_report));
   RS_CHECK(ivs_machine_run(x.m, &q.q, &r.r) == IVS_OK);
-  RS_CHECK(r.r.struct_size == 136u);
+  RS_CHECK(r.r.struct_size == (uint32_t)sizeof(ivs_run_report));
   /* Plan 05-06: the first call starts at sample 0 (audio_first_index, the samples emitted before the
    * call), and the request has no audio buffer, so nothing is delivered (audio_bytes_written 0). Plan 05-08:
    * the request has no log buffer and stand-in program A never writes the PSG, so no record exists
@@ -437,12 +444,142 @@ done:
   return rc;
 }
 
+/* ---- run.struct.report-v3-offsets ---- */
+
+static int rs_report_v3_offsets(void)
+{
+  IVS_CHECK(offsetof(ivs_run_report, psg_log_first_index) == 128u);
+  IVS_CHECK(offsetof(ivs_run_report, video_first_index) == 136u);
+  IVS_CHECK(offsetof(ivs_run_report, last_frame_end_ticks) == 144u);
+  IVS_CHECK(offsetof(ivs_run_report, next_frame_end_ticks) == 152u);
+  IVS_CHECK(sizeof(ivs_run_report) == 160u && IVS_RUN_REPORT_V1_SIZE == 112u);
+  IVS_CHECK(sizeof(ivs_run_report) % 8u == 0u && sizeof(ivs_run_report) <= IVS_STRUCT_SIZE_MAX);
+  return IVS_TEST_PASS;
+}
+
+/* ---- run.struct.report-v2-caller ---- */
+
+/* A caller whose struct_size is 136 (the v2 size) in a poisoned larger buffer gets the v2 fields exactly
+ * as a v3-sized caller does, and every byte from 136 on stays poison, on success and on a refusal. */
+static int rs_report_v2_caller(void)
+{
+  ivs_ms_inst x;
+  ivs_ms_inst y;
+  rs_req_buf q;
+  rs_rep_buf rx;
+  rs_rep_buf ry;
+  ivs_run_snap s;
+  ivs_status st;
+  uint64_t now;
+  size_t i;
+  int rc = IVS_TEST_FAIL;
+  s.copy = NULL;
+  RS_CHECK(rs_twins(&x, &y, &now));
+  rs_req(&q, (uint32_t)sizeof(ivs_run_request), now + RS_SPAN);
+  rs_rep(&rx, 136u);
+  rs_rep(&ry, (uint32_t)sizeof(ivs_run_report));
+  RS_CHECK(ivs_machine_run(x.m, &q.q, &rx.r) == IVS_OK);
+  RS_CHECK(ivs_machine_run(y.m, &q.q, &ry.r) == IVS_OK);
+  RS_CHECK(rx.r.struct_size == 136u && ry.r.struct_size == (uint32_t)sizeof(ivs_run_report));
+  RS_CHECK(rx.r.stop_reason == IVS_STOP_TARGET && rx.r.units_executed > 0u);
+  RS_CHECK(memcmp(rx.b + 4u, ry.b + 4u, 136u - 4u) == 0);
+  for (i = 136u; i < RS_BUF; i++) {
+    if (rx.b[i] != RS_POISON) {
+      ivs_test_diag("v2 report byte %u written by a successful run", (unsigned)i);
+      goto done;
+    }
+  }
+  /* A refusal (a NULL video buffer with a capacity) writes only struct_size and refusal_reason. */
+  rs_req(&q, (uint32_t)sizeof(ivs_run_request), now + RS_SPAN);
+  q.q.video = NULL;
+  q.q.video_capacity = 8u;
+  rs_rep(&rx, 136u);
+  RS_CHECK(ivs_run_snap_take(&s, &x, 1));
+  st = ivs_machine_run(x.m, &q.q, &rx.r);
+  RS_CHECK(st == IVS_E_BAD_ARG && rx.r.refusal_reason == IVS_REASON_RUN_BUFFER_NULL && rx.r.struct_size == 136u);
+  RS_CHECK(ivs_run_snap_same(&s, &x));
+  for (i = 136u; i < RS_BUF; i++) {
+    if (rx.b[i] != RS_POISON) {
+      ivs_test_diag("v2 report byte %u written by a refusal", (unsigned)i);
+      goto done;
+    }
+  }
+  rc = IVS_TEST_PASS;
+done:
+  ivs_run_snap_free(&s);
+  ivs_ms_free(&y);
+  ivs_ms_free(&x);
+  return rc;
+}
+
+/* ---- run.struct.report-v3-caller ---- */
+
+/* A v3-sized caller gets struct_size 160 and the three appended fields written (0 until frame events
+ * exist: they were poison before the call); a caller between 136 and 160 gets only the fields its size
+ * covers; every byte past the caller's size stays poison. */
+static int rs_report_v3_caller(void)
+{
+  ivs_ms_inst x;
+  rs_req_buf q;
+  rs_rep_buf r;
+  uint64_t now;
+  size_t i;
+  int rc = IVS_TEST_FAIL;
+  IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, RS_POISON));
+  now = rs_now(x.m);
+  RS_CHECK(now != UINT64_MAX);
+  rs_req(&q, (uint32_t)sizeof(ivs_run_request), now + RS_SPAN);
+  rs_rep(&r, 160u);
+  RS_CHECK(ivs_machine_run(x.m, &q.q, &r.r) == IVS_OK);
+  RS_CHECK(r.r.struct_size == 160u && r.r.stop_reason == IVS_STOP_TARGET);
+  RS_CHECK(r.r.video_first_index == 0u && r.r.last_frame_end_ticks == 0u && r.r.next_frame_end_ticks == 0u);
+  for (i = 160u; i < RS_BUF; i++) {
+    if (r.b[i] != RS_POISON) {
+      ivs_test_diag("v3 report byte %u past the caller's size written", (unsigned)i);
+      goto done;
+    }
+  }
+  /* 144 bytes: video_first_index (offset 136) only; last_frame_end_ticks onward stay poison. */
+  now = r.r.now_ticks;
+  rs_req(&q, (uint32_t)sizeof(ivs_run_request), now + RS_SPAN);
+  rs_rep(&r, 144u);
+  RS_CHECK(ivs_machine_run(x.m, &q.q, &r.r) == IVS_OK);
+  RS_CHECK(r.r.struct_size == 144u && r.r.video_first_index == 0u);
+  RS_CHECK(r.b[144] == RS_POISON && r.b[159] == RS_POISON);
+  rc = IVS_TEST_PASS;
+done:
+  ivs_ms_free(&x);
+  return rc;
+}
+
+/* ---- run.struct.env-size ---- */
+
+/* The internal env seam keeps 32 bytes while video_slack_frames takes the former reserved word (plan
+ * 06-03); the profile's own env leaves the word 0 (no video layout yet). */
+static int rs_env_size(void)
+{
+  ivs_run_env env;
+  const ivs_profile_desc *p = ivs_profile_get(0u);
+  IVS_CHECK(sizeof(ivs_run_env) == 32u);
+  IVS_CHECK(offsetof(ivs_run_env, nominal_frame_ticks) == 16u && offsetof(ivs_run_env, psg_log_bytes_per_frame) == 24u);
+  IVS_CHECK(offsetof(ivs_run_env, video_slack_frames) == 28u);
+  IVS_CHECK(p != NULL);
+  memset(&env, 0xA5, sizeof env);
+  ivs_machine_profile_env(p, &env);
+  IVS_CHECK(env.video_slack_frames == 0u);
+  return IVS_TEST_PASS;
+}
+
 const ivs_test_case ivs_run_struct_cases[] = {
     {"run.struct.request-v1-caller", rs_request_v1_caller, NULL},
     {"run.struct.report-v1-caller", rs_report_v1_caller, NULL},
     {"run.struct.request-v2-fields", rs_request_v2_fields, RS_LP64_SKIP},
     {"run.struct.report-v2-fields", rs_report_v2_fields, NULL},
     {"run.struct.tail-nonzero", rs_tail_nonzero, NULL},
+    {"run.struct.report-v3-offsets", rs_report_v3_offsets, NULL},
+    {"run.struct.report-v2-caller", rs_report_v2_caller, NULL},
+    {"run.struct.report-v3-caller", rs_report_v3_caller, NULL},
+    {"run.struct.env-size", rs_env_size, NULL},
 };
 
 const size_t ivs_run_struct_count = sizeof ivs_run_struct_cases / sizeof ivs_run_struct_cases[0];

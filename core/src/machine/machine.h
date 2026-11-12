@@ -259,8 +259,12 @@ typedef struct ivs_run_env {
    * plain struct without a struct_size: callers build it with memset, so the appended field is
    * 0 for a caller that does not know it. */
   uint32_t psg_log_bytes_per_frame;
-  uint32_t reserved_env; /* 0 */
+  /* Plan 06-03 (D-15, A-10): the frame slots added to floor(D / F) + 1 in the video capacity rule
+   * (it takes the former reserved_env word, so the struct stays 32 bytes); callers build the env
+   * with memset, so a caller that does not know the field leaves it 0. */
+  uint32_t video_slack_frames;
 } ivs_run_env;
+_Static_assert(sizeof(ivs_run_env) == 32u, "ivs_run_env is 32 bytes");
 
 /* The real output layout of profile p (shared by ivs_machine_info and the public run call):
  * Phase 4 profiles produce nothing (formats NONE, 0 bytes per frame), and the nominal frame is

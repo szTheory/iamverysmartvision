@@ -254,6 +254,10 @@ typedef struct ivs_run_request {
  * and refusal_reason (IVS_REASON_*) are written, plus input_failing_index for a refusal of one
  * event (the IVS_REASON_INPUT_* reasons of the event stages below), and nothing at all when the
  * report itself is the cause (NULL, size, overlap).
+ * Report v3 (plan 06-03, D-14, A-10): three u64 appended at offsets 136, 144 and 152 (every member a
+ * u64, so sizeof is 160 on every ABI). They are written only when the caller's struct_size covers
+ * them (a 136-byte caller gets the v2 fields and its bytes from 136 on are untouched) and are 0
+ * until the machine publishes frame events (plan 06-03 grows the layout and changes no behaviour).
  * Growth (plan 05-02, D-19, A-04): the minimum accepted rep->struct_size is IVS_RUN_REPORT_V1_SIZE;
  * the core writes min(rep->struct_size, sizeof(ivs_run_report)) bytes, sets the written
  * struct_size to that count, and leaves every byte of a larger caller struct past it untouched.
@@ -279,7 +283,11 @@ typedef struct ivs_run_report {
   /* ---- end of the v1 size (112) ---- */
   uint64_t audio_first_index;      /* v2, offset 112: samples emitted before this call (plan 05-06) */
   uint64_t psg_log_bytes_written;  /* v2, offset 120: write-log bytes delivered into psg_log by this call (plan 05-08) */
-  uint64_t psg_log_first_index;    /* v2, offset 128: records logged before this call (plan 05-08); sizeof 136 */
+  uint64_t psg_log_first_index;    /* v2, offset 128: records logged before this call (plan 05-08) */
+  /* ---- end of the v2 size (136) ---- */
+  uint64_t video_first_index;      /* v3, offset 136: frame slots emitted before this call (0 until frame events exist) */
+  uint64_t last_frame_end_ticks;   /* v3, offset 144: end tick of the last frame event at or before machine time (0 until frame events exist) */
+  uint64_t next_frame_end_ticks;   /* v3, offset 152: end tick of the next frame event after machine time (0 until frame events exist); sizeof 160 */
 } ivs_run_report;
 
 /* Runs m to req->target_ticks (above). Refusal order (D-05), first failing class wins, every
