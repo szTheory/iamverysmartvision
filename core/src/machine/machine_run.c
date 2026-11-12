@@ -12,9 +12,9 @@
  * Only then does it apply the power-on state: system RAM, scratchpad and GRAM take the profile's
  * power-on fill (zero; the registry generator refuses any other fill), every gate opens, the CPU
  * is reset (POL-RST-01: its next step is the reset entry, whose IAB the memory system answers
- * with the profile's reset.r7), machine time is 0, the observation rows (digest domains 16..18,
- * plan 04-05) are zero and the phase is POWERED. The image slots, the
- * committed cartridge segments and the profile index are untouched. Reset is allowed from OFF and
+ * with the profile's reset.r7), machine time is 0, the observation rows (digest domains 16..19,
+ * plans 04-05 and 05-03), the PSG registers, pull-downs and device state are zero and the phase
+ * is POWERED. The image slots, the committed cartridge segments and the profile index are untouched. Reset is allowed from OFF and
  * from POWERED; from POWERED it is a power cycle that gives the same state as a first reset with
  * the same content. Nothing returns an instance to OFF (A-08 d).
  *
@@ -48,12 +48,20 @@ static void ivs_run_power_on(struct ivs_machine *im)
   memset(im->mem.sysram, 0, ram);
   memset(im->mem.scratchpad, 0, sizeof im->mem.scratchpad);
   memset(im->mem.gram, 0, sizeof im->mem.gram);
+  /* Plan 05-03 (D-04, D-16): power-on register state of the PSG is zero, both ports idle, and the
+   * device state starts at its power-on values. Storage only until plans 05-04..05-06. */
+  memset(im->mem.psg_reg, 0, sizeof im->mem.psg_reg);
+  memset(im->mem.port_pulldown, 0, sizeof im->mem.port_pulldown);
+#ifndef IVS_FAULT_PSG_STATE_NOT_RESET_ON_POWER_ON
+  ivs_psg_state_reset(&im->psg); /* named fault PSG_STATE_NOT_RESET_ON_POWER_ON skips the call */
+#endif
   ivs_memsys_set_gate_internal(&im->mem, IVS_MEMSYS_GATE_STIC_REGS, 1u);
   ivs_memsys_set_gate_internal(&im->mem, IVS_MEMSYS_GATE_GMEM, 1u);
   (void)ivs_cp1610_reset(&im->cpu);
   im->time_ticks = 0u;
   /* The observation rows (digest domains 16..18, plan 04-05, D-10) start as create leaves them:
-   * every byte zero except the input log, which starts at h0 (plan 04-11, D-15). */
+   * every byte zero except the input log, which starts at h0 (plan 04-11, D-15); plan 05-03 adds
+   * the audio level rows and the PSGLOG rows (domains 17 and 19), also zero. */
   size_t obs = sizeof im->obs;
 #ifdef IVS_FAULT_OBS_NOT_CLEARED_ON_RESET
   obs = 0u; /* the observation rows keep what they held before the reset */

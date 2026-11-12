@@ -366,6 +366,13 @@ void ivs_memsys_set_gate_internal(ivs_memsys *m, uint32_t gate, uint8_t open)
   }
 }
 
+void ivs_memsys_set_port_pulldown_internal(ivs_memsys *m, uint32_t port, uint32_t mask)
+{
+  if (port < IVS_MEMSYS_PSG_PORTS) {
+    m->port_pulldown[port] = (uint8_t)(mask & 0xFFu);
+  }
+}
+
 void ivs_memsys_poke_raw_internal(ivs_memsys *m, uint16_t addr, uint16_t value)
 {
   const ivs_profile_desc *p = &ivs_mm_profiles[m->profile];

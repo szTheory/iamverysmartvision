@@ -3,12 +3,15 @@
  * drives the serializer; it is never a memcpy of a struct, so the value depends on the field
  * values only, not on layout, padding or host byte order (machine.h states the framing).
  * Domains: 1 CPU (registers, status and flags of the embedded CPU; its reserved bytes are not
- * serialized), 2 MEM (the profile the decode uses, the gate flags and every backing array),
- * 3 IMAGES (loaded flags, the committed cartridge segment count and table, the three slot
- * records), 4 INSTANCE (profile id, run phase, machine time), 16 VIDEO and 17 AUDIO (chain and
- * record count), 18 INPUT (controller words, applied count, floor tick, chain) (plan 04-05,
- * D-10). The composite hashes the digests of domains 1..4 under a version with the domain ids
- * ("IVSSTATE"); it stays version 1 and never includes 16..18, so an observation row changes only
+ * serialized), 2 MEM (the profile the decode uses, the gate flags, every backing array and, since
+ * plan 05-03, the PSG registers and port pull-downs, D-04, A-13), 3 IMAGES (loaded flags, the
+ * committed cartridge segment count and table, the three slot records), 4 INSTANCE (profile id,
+ * run phase, machine time and, since plan 05-03, the PSG device state, D-16), 16 VIDEO (chain and
+ * record count), 17 AUDIO (chain, level-change count, emitted samples, previous levels), 18 INPUT
+ * (controller words, applied count, floor tick, chain) (plan 04-05, D-10) and 19 PSGLOG (chain
+ * and record count, plan 05-03, D-18). The composite hashes the digests of domains 1..4 under a
+ * version with the domain ids ("IVSSTATE"); it is version 2 since plan 05-03 (deliberate, D-18:
+ * guest-visible PSG state is in it) and never includes 16..19, so an observation row changes only
  * its own domain's digest (A-03).
  * Output is SHA-256 (core/src/common/ivs_sha256.c). Serialized bytes pass through a small stage
  * buffer that feeds the hash and, for the test seam ivs_machine_digest_preimage, a caller buffer
@@ -34,8 +37,8 @@
              IVS_DIGEST_KIND_UINT),                                                                     \
       IVS_DF("slot." label ".sha256", slot[i].sha256, 1u, 32u, IVS_DIGEST_IMAGES, IVS_DIGEST_KIND_UINT)
 
-/* slot[] is the last member and ends exactly at sizeof: the 113,600-byte layout has no tail
- * padding (plan 04-05; the Phase 3 layout had 4 bytes and a tail_padding row). A layout change
+/* slot[] is the last member and ends exactly at sizeof: the 113,760-byte layout has no tail
+ * padding (plans 04-05 and 05-03; the Phase 3 layout had 4 bytes and a tail_padding row). A layout change
  * that brings tail padding back must add a PAD row for it here. */
 #define IVS_MACHINE_SLOTS_END (offsetof(struct ivs_machine, slot) + sizeof(ivs_machine_slot) * IVS_SLOT_COUNT)
 _Static_assert(IVS_MACHINE_SLOTS_END == sizeof(struct ivs_machine),
@@ -47,6 +50,15 @@ _Static_assert(IVS_MACHINE_SLOTS_END == sizeof(struct ivs_machine),
 #define IVS_DF_VIDEO_DOMAIN IVS_DIGEST_AUDIO
 #else
 #define IVS_DF_VIDEO_DOMAIN IVS_DIGEST_VIDEO
+#endif
+
+/* Named fault DIGEST_PSG_ROWS_OMITTED (plan 05-03): the PSG registers, pull-downs and device state
+ * are missing from the table, so those instance bytes are covered by no row and a change in them
+ * is invisible to every digest. */
+#ifdef IVS_FAULT_DIGEST_PSG_ROWS_OMITTED
+#define IVS_DF_PSG_ROWS(...)
+#else
+#define IVS_DF_PSG_ROWS(...) __VA_ARGS__
 #endif
 
 /* In instance offset order. */
@@ -78,15 +90,35 @@ static const ivs_digest_field ivs_digest_fields[] = {
     IVS_DF("mem.exec", mem.exec, 2u, IVS_MEMSYS_EXEC_WORDS, IVS_DIGEST_MEM, IVS_DIGEST_KIND_UINT),
     IVS_DF("mem.grom", mem.grom, 2u, IVS_MEMSYS_GROM_WORDS, IVS_DIGEST_MEM, IVS_DIGEST_KIND_UINT),
     IVS_DF("mem.cart", mem.cart, 2u, IVS_MEMSYS_CART_WORDS, IVS_DIGEST_MEM, IVS_DIGEST_KIND_UINT),
-    IVS_DF("obs_pad", obs_pad, 4u, 1u, IVS_DIGEST_VIDEO, IVS_DIGEST_KIND_PAD),
+    IVS_DF_PSG_ROWS(
+        IVS_DF("mem.psg_reg", mem.psg_reg, 2u, IVS_MEMSYS_PSG_REGS, IVS_DIGEST_MEM, IVS_DIGEST_KIND_UINT),
+        IVS_DF("mem.port_pulldown", mem.port_pulldown, 1u, IVS_MEMSYS_PSG_PORTS, IVS_DIGEST_MEM,
+               IVS_DIGEST_KIND_UINT),
+        IVS_DF("mem.psg_reserved", mem.psg_reserved, 1u, 2u, IVS_DIGEST_MEM, IVS_DIGEST_KIND_PAD),
+        IVS_DF("psg.next_sample", psg.next_sample, 8u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT),
+        IVS_DF("psg.tone_counter", psg.tone_counter, 4u, 3u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT),
+        IVS_DF("psg.tone_out", psg.tone_out, 4u, 3u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT),
+        IVS_DF("psg.noise_counter", psg.noise_counter, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT),
+        IVS_DF("psg.noise_lfsr", psg.noise_lfsr, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT),
+        IVS_DF("psg.env_counter", psg.env_counter, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT),
+        IVS_DF("psg.env_level", psg.env_level, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT),
+        IVS_DF("psg.env_dir", psg.env_dir, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT),
+        IVS_DF("psg.env_held", psg.env_held, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT),
+        IVS_DF("psg.env_cycles", psg.env_cycles, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT),
+        IVS_DF("psg.reserved", psg.reserved, 4u, 3u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_PAD),)
     IVS_DF("obs.video.chain", obs.video.chain, 1u, 32u, IVS_DF_VIDEO_DOMAIN, IVS_DIGEST_KIND_UINT),
     IVS_DF("obs.video.count", obs.video.count, 8u, 1u, IVS_DF_VIDEO_DOMAIN, IVS_DIGEST_KIND_UINT),
     IVS_DF("obs.audio.chain", obs.audio.chain, 1u, 32u, IVS_DIGEST_AUDIO, IVS_DIGEST_KIND_UINT),
     IVS_DF("obs.audio.count", obs.audio.count, 8u, 1u, IVS_DIGEST_AUDIO, IVS_DIGEST_KIND_UINT),
+    IVS_DF("obs.audio.emitted", obs.audio.emitted, 8u, 1u, IVS_DIGEST_AUDIO, IVS_DIGEST_KIND_UINT),
+    IVS_DF("obs.audio.prev_levels", obs.audio.prev_levels, 4u, 1u, IVS_DIGEST_AUDIO, IVS_DIGEST_KIND_UINT),
+    IVS_DF("obs.audio.reserved", obs.audio.reserved, 4u, 1u, IVS_DIGEST_AUDIO, IVS_DIGEST_KIND_PAD),
     IVS_DF("obs.input.words", obs.input.words, 4u, 4u, IVS_DIGEST_INPUT, IVS_DIGEST_KIND_UINT),
     IVS_DF("obs.input.count", obs.input.count, 8u, 1u, IVS_DIGEST_INPUT, IVS_DIGEST_KIND_UINT),
     IVS_DF("obs.input.floor_tick", obs.input.floor_tick, 8u, 1u, IVS_DIGEST_INPUT, IVS_DIGEST_KIND_UINT),
     IVS_DF("obs.input.chain", obs.input.chain, 1u, 32u, IVS_DIGEST_INPUT, IVS_DIGEST_KIND_UINT),
+    IVS_DF("obs.psglog.chain", obs.psglog.chain, 1u, 32u, IVS_DIGEST_PSGLOG, IVS_DIGEST_KIND_UINT),
+    IVS_DF("obs.psglog.count", obs.psglog.count, 8u, 1u, IVS_DIGEST_PSGLOG, IVS_DIGEST_KIND_UINT),
     IVS_DF_SLOT(0, "exec"),
     IVS_DF_SLOT(1, "grom"),
     IVS_DF_SLOT(2, "cartridge"),
@@ -203,16 +235,16 @@ static void ivs_digest_profile(ivs_dsink *k, uint32_t index)
   ivs_dsink_bytes(k, (const uint8_t *)d->id, len);
 }
 
-/* 1 for a domain with rows: 1..4 and 16..18. */
+/* 1 for a domain with rows: 1..4 and 16..19. */
 static uint32_t ivs_digest_domain_known(uint32_t domain)
 {
   if (domain >= IVS_DIGEST_CPU && domain <= IVS_DIGEST_INSTANCE) {
     return 1u;
   }
-  return (domain >= IVS_DIGEST_VIDEO && domain <= IVS_DIGEST_INPUT) ? 1u : 0u;
+  return (domain >= IVS_DIGEST_VIDEO && domain <= IVS_DIGEST_PSGLOG) ? 1u : 0u;
 }
 
-/* The preimage of one domain (1..4 or 16..18) into k. */
+/* The preimage of one domain (1..4 or 16..19) into k. */
 static void ivs_digest_domain(const struct ivs_machine *m, uint32_t domain, ivs_dsink *k)
 {
   const uint8_t *base = (const uint8_t *)m;
@@ -290,6 +322,10 @@ ivs_status ivs_machine_state_digest(const ivs_machine *m, uint32_t domain, uint8
   ivs_dsink k;
   uint32_t i;
   uint8_t with_id = 1u;
+  uint32_t comp_version = IVS_DIGEST_COMPOSITE_VERSION;
+#ifdef IVS_FAULT_DIGEST_COMPOSITE_VERSION_STALE
+  comp_version = 1u; /* the composite keeps the Phase 4 framing although the PSG rows joined domains 2 and 4 */
+#endif
   if (out_sha256 == NULL || (domain != IVS_DIGEST_COMPOSITE && ivs_digest_domain_known(domain) == 0u)) {
     return IVS_E_BAD_ARG;
   }
@@ -314,13 +350,14 @@ ivs_status ivs_machine_state_digest(const ivs_machine *m, uint32_t domain, uint8
 #ifdef IVS_FAULT_DOMAIN_ID_DROPPED
   with_id = 0u;
 #endif
-  /* Composite version 1: domains 1..4 only, never the observation domains 16..18 (D-10, A-03). */
+  /* Composite version 2 (plan 05-03, D-18): domains 1..4 only, never the observation domains
+   * 16..19 (D-10, A-03). */
   for (i = 0u; i < 4u; i++) {
     ivs_digest_domain_sha(im, i + 1u, d[i]);
   }
   ivs_dsink_init(&k, 1u, NULL, 0u);
   ivs_dsink_bytes(&k, tag, sizeof tag);
-  ivs_dsink_uint(&k, IVS_DIGEST_COMPOSITE_VERSION, 2u);
+  ivs_dsink_uint(&k, comp_version, 2u);
   for (i = 0u; i < 4u; i++) {
     if (with_id != 0u) {
       ivs_dsink_uint(&k, i + 1u, 1u);

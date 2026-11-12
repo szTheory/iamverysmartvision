@@ -5,15 +5,31 @@
  *
  * One flat struct with no pointers: magic, profile index, run phase, a reserved word, machine
  * time, the embedded 32-byte CPU state, the memory system (gates, loaded flags, the committed
- * cartridge segment table and every backing array at the profile's worst-case capacity), an
- * explicit pad word, the observation rows (plan 04-05, D-10: the video, audio and input digest
- * domains 16..18) and one record per image slot. Every field is fixed width; the only bytes that
- * are not fields are the reserved word, the CPU's reserved bytes and the observation pad word,
- * and all of them stay zero. The instance holds no last-error or timestamp (D-08); the
- * observation counts are machine state of their domains.
- * Layout (bytes): header 24, cpu 32, mem 113,228 (ends at an offset that is 4 mod 8), pad 4,
- * obs 144, slots 3 x 56: 113,600, a multiple of 16, so there is no tail padding (machine_digest.c
- * asserts it). The previous layout (Phase 3, no obs) was 113,456 with 4 bytes of tail padding. */
+ * cartridge segment table, every backing array at the profile's worst-case capacity and the PSG
+ * registers and port pull-down masks), the PSG device state (plan 05-03, D-16), the observation
+ * rows (plan 04-05, D-10: the video, audio and input digest domains 16..18; plan 05-03, D-18:
+ * the PSG write log, domain 19) and one record per image slot. Every field is fixed width; the
+ * only bytes that are not fields are the reserved words and pads (the instance's, the CPU's, the
+ * memory system's, the PSG state's and the audio row's), and all of them stay zero. The instance
+ * holds no last-error or timestamp (D-08); the observation counts are machine state of their
+ * domains.
+ *
+ * Layout derivation (bytes; offsets from the start of the instance):
+ *   header   24   magic, profile, phase, reserved (4 each) and time_ticks (8)         0 ..    24
+ *   cpu      32                                                                      24 ..    56
+ *   mem  113,264  Phase 4: 113,228; plus psg_reg[16] u16 (32), port_pulldown[2] u8 (2)
+ *                 and psg_reserved[2] (2): +36                                       56 .. 113,320
+ *   psg       72  ivs_psg_state: next_sample u64 (8), 13 u32 state words (52) and
+ *                 reserved[3] u32 (12)                                          113,320 .. 113,392
+ *   obs      200  video 40 (chain 32, count 8), audio 56 (chain 32, count 8,
+ *                 emitted 8, prev_levels 4, reserved 4), input 64, psglog 40
+ *                 (chain 32, count 8)                                             113,392 .. 113,592
+ *   slots    168  3 x 56                                                         113,592 .. 113,760
+ * Total 113,760, a multiple of 16 (7,110 x 16), so there is no tail padding. mem now ends at
+ * 56 + 113,264 = 113,320, which is 0 mod 8: the Phase 4 obs_pad word is gone and obs (8-aligned)
+ * follows the PSG state directly (the 72-byte PSG state is what brings the total back to a
+ * multiple of 16: with 64 bytes it would end at 113,752, 8 mod 16). The previous layout (Phase 4)
+ * was 113,600; Phase 3 (no obs) was 113,456 with 4 bytes of tail padding. */
 #ifndef IVS_MACHINE_INTERNAL_H
 #define IVS_MACHINE_INTERNAL_H
 
@@ -25,10 +41,11 @@
 #include "ivs/ivs_machine.h"
 #include "ivs/ivs_run.h"
 #include "memmap/memsys.h"
+#include "psg/psg.h"
 
 #define IVS_MACHINE_MAGIC 0x4956534Du /* "IVSM" */
 #define IVS_MACHINE_ALIGN 16u
-#define IVS_MACHINE_BYTES 113600u
+#define IVS_MACHINE_BYTES 113760u
 
 /* IVS_INFO_V1_SIZE, the smallest struct_size info accepts, is public (ivs/ivs_machine.h, plan
  * 05-02): the installed consumer pins it from the installed headers. */
@@ -44,16 +61,25 @@ typedef struct ivs_machine_slot {
   uint8_t sha256[32];
 } ivs_machine_slot;
 
-/* Observation rows (plan 04-05, D-10, A-03): a chain[32] and a u64 record count for VIDEO
- * (digest domain 16) and AUDIO (17); INPUT (18) holds the controller words in force, the applied
- * event count, the input floor tick and the input chain (plan 04-11, D-15). Every row is zero at
- * create and after a reset except the INPUT chain, which then holds its start value h0
- * (ivs_input_init). Domain version 1; not part of the composite, which stays version 1 over
- * domains 1..4. */
+/* Observation rows (plan 04-05, D-10, A-03; plan 05-03, D-18): a chain[32] and a u64 record count
+ * for VIDEO (digest domain 16) and PSGLOG (19); AUDIO (17) adds the emitted-sample count and the
+ * levels of the last emitted sample (the chain is over level-change records, plan 05-06); INPUT
+ * (18) holds the controller words in force, the applied event count, the input floor tick and
+ * the input chain (plan 04-11, D-15). Every row is zero at create and after a reset except the
+ * INPUT chain, which then holds its start value h0 (ivs_input_init). Domain version 1; not part
+ * of the composite, which is version 2 over domains 1..4. */
 typedef struct ivs_machine_obs_av {
   uint8_t chain[32];
   uint64_t count;
 } ivs_machine_obs_av;
+
+typedef struct ivs_machine_obs_audio {
+  uint8_t chain[32];
+  uint64_t count;      /* level-change records chained */
+  uint64_t emitted;    /* samples emitted (with or without a buffer) */
+  uint32_t prev_levels; /* levels of the last emitted sample, channels A, B, C in bytes 0..2 */
+  uint32_t reserved;    /* 0 (PAD row) */
+} ivs_machine_obs_audio;
 
 typedef struct ivs_machine_obs_input {
   uint32_t words[4];
@@ -64,8 +90,9 @@ typedef struct ivs_machine_obs_input {
 
 typedef struct ivs_machine_obs {
   ivs_machine_obs_av video;
-  ivs_machine_obs_av audio;
+  ivs_machine_obs_audio audio;
   ivs_machine_obs_input input;
+  ivs_machine_obs_av psglog;
 } ivs_machine_obs;
 
 struct ivs_machine {
@@ -76,15 +103,18 @@ struct ivs_machine {
   uint64_t time_ticks;         /* machine time in master ticks */
   ivs_cp1610 cpu;
   ivs_memsys mem;
-  uint32_t obs_pad;    /* 0: mem ends at 4 mod 8, so this word keeps obs 8-aligned with no hole */
+  ivs_psg_state psg;   /* before obs and slot[] (plan 05-03, D-16): O(1) PSG device state */
   ivs_machine_obs obs; /* before slot[]: IVS_FAULT_DIGEST_SKIPS_IMAGE_TABLE skips rows from slot on */
   ivs_machine_slot slot[IVS_SLOT_COUNT];
 };
 
 _Static_assert(sizeof(ivs_machine_slot) == 56u, "ivs_machine_slot must be 56 bytes");
-_Static_assert(sizeof(ivs_machine_obs) == 144u, "ivs_machine_obs must be 144 bytes");
-_Static_assert(offsetof(struct ivs_machine, obs) == offsetof(struct ivs_machine, obs_pad) + 4u,
-               "no implicit hole between the observation pad word and obs");
+_Static_assert(sizeof(ivs_machine_obs_audio) == 56u, "ivs_machine_obs_audio must be 56 bytes");
+_Static_assert(sizeof(ivs_machine_obs) == 200u, "ivs_machine_obs must be 200 bytes");
+_Static_assert(offsetof(struct ivs_machine, mem) == 56u, "mem starts at 56");
+_Static_assert(offsetof(struct ivs_machine, psg) == 113320u, "psg state starts at 113,320");
+_Static_assert(offsetof(struct ivs_machine, obs) == 113392u, "obs follows the 72-byte PSG state with no hole");
+_Static_assert(offsetof(struct ivs_machine, slot) == 113592u, "slot[] follows the 200-byte obs rows with no hole");
 _Static_assert(_Alignof(struct ivs_machine) == IVS_MACHINE_ALIGN, "instance alignment is 16");
 _Static_assert(sizeof(struct ivs_machine) == IVS_MACHINE_BYTES,
                "instance size changed: review the digest field table (machine_digest.c)");
@@ -98,21 +128,24 @@ _Static_assert(sizeof(struct ivs_machine) == IVS_MACHINE_BYTES,
  * observation pad word) are declared but never serialized; their domain names the neighbour they
  * sit with. Domain preimage: "IVSD" || u8 domain || u16 IVS_DIGEST_DOMAIN_VERSION || the domain's
  * rows in table order. Composite: "IVSSTATE" || u16 IVS_DIGEST_COMPOSITE_VERSION || for domains
- * 1..4: u8 domain || its 32-byte SHA-256. Domains 16..18 (VIDEO, AUDIO, INPUT) have their own
- * digests and are not in the composite (D-10). */
+ * 1..4: u8 domain || its 32-byte SHA-256. Domains 16..19 (VIDEO, AUDIO, INPUT, PSGLOG) have their
+ * own digests and are not in the composite (D-10, D-18). Composite version 2 (plan 05-03,
+ * deliberate, D-18): the PSG registers and pull-downs (MEM) and the PSG device state (INSTANCE)
+ * joined domains 2 and 4, so guest-visible PSG state can never differ with equal composites;
+ * version 1 was the Phase 4 framing over the same four domains. */
 #define IVS_DIGEST_KIND_UINT 1u
 #define IVS_DIGEST_KIND_PROFILE 2u
 #define IVS_DIGEST_KIND_MAGIC 3u
 #define IVS_DIGEST_KIND_PAD 4u
 #define IVS_DIGEST_DOMAIN_VERSION 1u
-#define IVS_DIGEST_COMPOSITE_VERSION 1u
+#define IVS_DIGEST_COMPOSITE_VERSION 2u
 
 typedef struct ivs_digest_field {
   const char *name;
   uint32_t offset; /* offsetof(struct ivs_machine, ...) */
   uint32_t width;  /* bytes per element */
   uint32_t count;  /* elements */
-  uint8_t domain;  /* IVS_DIGEST_CPU..IVS_DIGEST_INSTANCE or IVS_DIGEST_VIDEO..IVS_DIGEST_INPUT */
+  uint8_t domain;  /* IVS_DIGEST_CPU..IVS_DIGEST_INSTANCE or IVS_DIGEST_VIDEO..IVS_DIGEST_PSGLOG */
   uint8_t kind;    /* IVS_DIGEST_KIND_* */
   uint16_t reserved;
 } ivs_digest_field;
@@ -121,7 +154,7 @@ typedef struct ivs_digest_field {
 size_t ivs_machine_digest_field_count(void);
 const ivs_digest_field *ivs_machine_digest_field(size_t i);
 
-/* Writes the preimage of domain 1..4 or 16..18 of m into buf (at most cap bytes; buf may be NULL when cap
+/* Writes the preimage of domain 1..4 or 16..19 of m into buf (at most cap bytes; buf may be NULL when cap
  * is 0) and returns its full length; 0 for NULL m or another domain. No handle check: the tests
  * pass modified copies. */
 size_t ivs_machine_digest_preimage(const struct ivs_machine *m, uint32_t domain, uint8_t *buf, size_t cap);
