@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 4
 current_phase_name: Headless Runner and Installed Consumer (Slice 0)
 status: executing
-stopped_at: Completed 04-21-PLAN.md
-last_updated: "2026-11-12T00:56:46.026Z"
+stopped_at: Completed 04-22-PLAN.md
+last_updated: "2026-11-12T01:18:16.527Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 3 complete, transitioned to Phase 4
-state_head: 8c3b8568dfa630ae67dadcd3a9e1c8d38838e6ab
+state_head: 738105a6b97b1e30fad68cf929fc9e78d365d322
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 71
-  completed_plans: 67
+  completed_plans: 68
   percent: 38
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 4 — Headless Runner and Installed Consumer (Slice 0)
-Plan: 22 of 25
+Plan: 23 of 25
 Status: Ready to execute
 Last activity: 2026-11-11 — Completed 04-03 (repo-relative fault owners, runner outcome taxonomy)
 
@@ -121,6 +121,7 @@ Progress: [████░░░░░░] 38%
 | Phase 04 P19 | 17 min | 3 tasks | 14 files |
 | Phase 04 P20 | 14 min | 3 tasks | 17 files |
 | Phase 04 P21 | 20 min | 3 tasks | 47 files |
+| Phase 04 P22 | 15 min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -280,6 +281,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 04]: 04-20: D-32 mutants are <FROM>-<TO> ids checked against the listing row; PSHR to MVO@ is MVO@ R3 via R1 (R1=8080), so R6 stays 0340
 - [Phase 04]: 04-21: golden key list (scenario.id/profile, outcome, detail, exit.code, slot.*, step.*, cpu.*, input.*, digest.cpu/mem/images/instance/composite, output counts, live-domain digests only when observed); written by ivs-run --update-golden in C and re-derived by the golden step in awk
 - [Phase 04]: 04-21: step golden judges dev vs release byte equality apart from host.calls, excluding host-dependent ids (column 4); a live domain is observed only when its report count is nonzero, else none with no digest line
+- [Phase 04]: 04-22: archive equality is whole-file sha256 on Linux, member-wise on Darwin (CMake re-runs ranlib at install); pass line archive=sha256|members
+- [Phase 04]: 04-22: version-refused also refuses an older minor (SameMinorVersion vs AnyNewerVersion) and requires the built major.minor found under the moved prefix
 
 ### Pending Todos
 
@@ -312,6 +315,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-12T00:56:45.868Z
-Stopped at: Completed 04-21-PLAN.md
+Last session: 2026-11-12T01:18:16.415Z
+Stopped at: Completed 04-22-PLAN.md
 Resume file: None
