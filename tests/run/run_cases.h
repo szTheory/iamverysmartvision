@@ -76,9 +76,9 @@ typedef int (*ivs_run_powered_fn)(ivs_ms_inst *x);
 int ivs_run_slice_halting(ivs_run_powered_fn powered);
 
 /* ---- the refusal and side-effect oracle (SP4), shared by the run families ----
- * A snapshot holds a heap copy of the whole instance storage, the composite and the seven domain
- * digests (1..4, 16..18) and info's time_ticks; a destroyed instance has no digests or info. */
-#define IVS_RUN_SNAP_DIGESTS 8u
+ * A snapshot holds a heap copy of the whole instance storage, the composite and the eight domain
+ * digests (1..4, 16..19; plan 05-03 added the PSGLOG domain) and info's time_ticks; a destroyed instance has no digests or info. */
+#define IVS_RUN_SNAP_DIGESTS 9u
 
 typedef struct ivs_run_snap {
   uint8_t *copy; /* IVS_MACHINE_BYTES of heap */
