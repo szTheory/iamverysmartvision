@@ -27,9 +27,9 @@ The profile holds the figures below, and each carries the tag shown.
 A frame is 262 scanlines of 57 CPU cycles, which is 262 x 57 = 14,934 CPU cycles (tag `tier4-community`, discrepancy C7).
 At 4 master ticks per CPU cycle that is 14,934 x 4 = 59,736 master ticks per frame (tag `inference`).
 The crystal is the nominal 3,579,545 Hz recorded as a rational in the profile (tag `tier1-primary-doc`), read only by host adapters.
-These are nominal figures for a frame with the display enabled, and the exact stall model is a separate open question.
-A frame is a timeline event and is never derived by modulo of the master-tick count.
-The API publishes the nominal frame length in master ticks as `ivs_info.nominal_frame_ticks` (59,736 on the NTSC profile), a nominal figure and not a frame event (D-09).
+The length of a frame in master ticks is constant for this profile, whatever the display state or the bus stalls: stalls and the display latch change how many CPU cycles the CPU executes inside a frame, not how long the frame is (Phase 6, D-07).
+A frame is a timeline event and is never derived by modulo of the master-tick count: the frame index and the event cursor are machine state, and the index is not a function of the tick count, a rule about state that holds although the two coincide numerically while the frame phase is 0.
+The API publishes the frame length in master ticks as `ivs_info.nominal_frame_ticks` (59,736 on the NTSC profile), which is exact for this profile; the frame event is what the run report publishes (D-09, corrected in Phase 6).
 
 ## Glossary
 
@@ -69,8 +69,10 @@ Samples per nominal frame are 59,736 master ticks divided by 16, so 3,733.5, whi
 This replaces an earlier statement of 16 PSG chip clocks per step, which the printed divide chain and the tone formula do not match.
 _Avoid_: stating the PSG step in master ticks without naming the ratio that produced the number.
 
-**Frame**: a timeline event, with a nominal NTSC length of 262 x 57 = 14,934 CPU cycles = 59,736 master ticks.
-A frame is never derived by modulo, because stalls and the display-enable state change how many CPU cycles a frame holds.
+**Frame**: a STIC timeline event of constant length `ticks_per_cpu_cycle` x `cpu_cycles_per_scanline` x `scanlines_per_frame` = 4 x 57 x 262 = 59,736 master ticks (14,934 CPU cycles at 4 master ticks per CPU cycle) for this profile.
+Frame k starts at `S_k` = `stic.frame_phase_ticks` + k x 59,736 and ends at `E_k` = `S_(k+1)`.
+Stalls and the display latch change how many CPU cycles the CPU executes inside a frame and never the length of the frame.
+The frame index and the event cursor are machine state, never derived by modulo of the tick count.
 
 ## Units in records and code
 

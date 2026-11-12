@@ -12,3 +12,6 @@ bootstub-row
 bootstub-vector
 listing-branch-target-mismatch
 listing-branch-target-missing
+listing-sdbd-operand-missing
+listing-sdbd-carry-over
+listing-sdbd-prefix-before-branch

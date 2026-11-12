@@ -43,6 +43,26 @@
       ],
       "pdf": "pdf 54",
       "note": ""
+    },
+    {
+      "id": "SDBD",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words"
+      ],
+      "pdf": "pdf 57",
+      "note": ""
+    },
+    {
+      "id": "MVII",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words"
+      ],
+      "pdf": "pdf 57",
+      "note": ""
     }
   ]
 }
