@@ -8,3 +8,6 @@ pack.trailer-diag-cpu-1
 # pack.judge.patched-word (plan 04-24, D-46): self-control of the words comparison; passes only when
 # the comparison fails on ivs_pack's dump of the first listing with its first word patched.
 pack.judge.patched-word
+# pack.c-include.write-error (review IN-08): a failed write of --c-include is the documented
+# write error line, a nonzero exit and no output file.
+pack.c-include.write-error

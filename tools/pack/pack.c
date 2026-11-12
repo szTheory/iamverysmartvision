@@ -437,8 +437,17 @@ static int pk_include(const char *out, int argc, char **argv)
     }
     fprintf(o, "};\n");
   }
-  if (fclose(o) != 0) {
-    ok = 0;
+  /* A failed earlier flush sets the error flag but need not fail fclose (review IN-08), so the
+   * flag is read first; either failure is the documented write error and removes the output. */
+  {
+    int werr = ferror(o) != 0;
+    if (fclose(o) != 0) {
+      werr = 1;
+    }
+    if (werr && ok) {
+      fprintf(stderr, "ivs_pack: write error on %s\n", out);
+      ok = 0;
+    }
   }
   if (!ok) {
     remove(out);

@@ -11,8 +11,10 @@
 # with `ivs_pack --ivsc` and requires its last 32 bytes to equal `cmake -E sha256sum` of every byte
 # before them (cut with POSIX dd, printed with od): the trailer is checked by an implementation
 # other than the core SHA-256 that ivs_pack seals it with.
-# A last case pack.judge.patched-word (plan 04-24, D-46) is a self-control of the words comparison:
+# Case pack.judge.patched-word (plan 04-24, D-46) is a self-control of the words comparison:
 # it passes only when the comparison fails on a dump with one word patched by ivs_pack --patch.
+# A last case pack.c-include.write-error (review IN-08): a failed --c-include write is the
+# documented write error line, a nonzero exit and no output file.
 # Output: the harness TAP shape (header with IVS_TEST_NONCE or none, plan, one result per case,
 # trailer) on stdout and, when IVS_TEST_OUT_DIR is set, in <dir>/pack.txt.
 # Usage: sh pack-tap.sh <source root> <ivs_pack>   Exit: 0 pass, 1 fail, 77 every case skipped.
@@ -143,6 +145,29 @@ elif [ "$(grep -c '^[<>] ' "$tmp/why")" -ne 2 ] || ! grep -q -x -F -e "< $addr $
   ok=0
   { printf 'judge-wrong-reason: the comparison failed, but not on %s alone:\n' "$addr"; cat "$tmp/why"; } > "$tmp/why.2"
   mv "$tmp/why.2" "$tmp/why"
+fi
+report
+
+# pack.c-include.write-error (review IN-08): a write that fails (here a file-size limit of one
+# 512-byte block, below the about 1.6 KiB include of a 256-byte input, with SIGXFSZ ignored so the
+# write returns an error instead of ending the process; the short stderr file stays below it) is
+# the documented `write error` line on stderr, a nonzero exit and no output file left behind.
+n=$((n + 1))
+tid=pack.c-include.write-error
+executed=$((executed + 1))
+ok=1
+i=0
+while [ "$i" -lt 32 ]; do printf 'abcdefgh'; i=$((i + 1)); done > "$tmp/inc.in"
+rm -f "$tmp/inc.out"
+if (trap '' XFSZ; ulimit -f 1 && exec "$pack" --c-include "$tmp/inc.out" "img=$tmp/inc.in") 2> "$tmp/inc.err"; then
+  ok=0
+  printf 'ivs_pack --c-include succeeded under a file-size limit of 512 bytes\n' > "$tmp/why"
+elif [ "$(cat "$tmp/inc.err")" != "ivs_pack: write error on $tmp/inc.out" ]; then
+  ok=0
+  { printf 'stderr is not the single write error line:\n'; cat "$tmp/inc.err"; } > "$tmp/why"
+elif [ -e "$tmp/inc.out" ]; then
+  ok=0
+  printf 'the failed output file was left behind\n' > "$tmp/why"
 fi
 report
 
