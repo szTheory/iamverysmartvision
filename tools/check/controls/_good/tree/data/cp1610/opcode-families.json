@@ -59,6 +59,25 @@
       "interruptible": "manual-silent",
       "cite": "S3.3.4, pdf 53",
       "note": "Example row."
+    },
+    {
+      "id": "B",
+      "mnemonic": "B",
+      "aliases": [],
+      "group": "branch",
+      "printed": "1000 S0 0000",
+      "pattern": "1000.00000",
+      "eq": [],
+      "refines": "ALL",
+      "also_encodes": [],
+      "words": 2,
+      "cycles_printed": "7/9",
+      "cycle_modifiers": [],
+      "sdbd": "not-applicable",
+      "status_bits": "none",
+      "interruptible": "manual-silent",
+      "cite": "S3.3 branch format, pdf 54; branch table, pdf 54",
+      "note": "Example branch row."
     }
   ]
 }

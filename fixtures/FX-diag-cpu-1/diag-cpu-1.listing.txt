@@ -79,7 +79,7 @@
 501B 01DB 0111 011 011  CLRR  CLRR R3             R3 = 0
 501C 00D3 0011 010 011  ADDR  ADDR R2, R3         loop: R3 = R3 + R2
 501D 0012 0000 010 010  DECR  DECR R2             R2 = R2 - 1; Z = 1 when it reaches 0
-501E 022C 1000 10 1100  BNZE  BNZE $501C          back to 501C while Z = 0
+501E 022C 1000 10 1100  BNZE  BNZE $501C -> 501C          back to 501C while Z = 0
 501F 0003 00 0000 0011  -     displacement 0003 (S=1): 5020 + ~0003 = 501C
 5020 0243 1001 000 011  MVO   MVO R3, $0204       [0204] = 0037
 5021 0204 10 0000 0100  -     address 0204

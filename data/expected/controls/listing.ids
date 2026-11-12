@@ -10,3 +10,5 @@ listing-unlisted
 bootstub-size
 bootstub-row
 bootstub-vector
+listing-branch-target-mismatch
+listing-branch-target-missing

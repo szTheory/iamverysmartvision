@@ -47,7 +47,7 @@
 # Jump arithmetic of the hand-off: target 5000 = 0101 0000 0000 0000; bits 15..10 = 010100,
 # bits 9..0 = 0000000000; second decle 11 010100 00 = 0350, third decle 0000.
 # Words used: 22 (1000-1015), 12 of them non-zero.
-1000 0200 1000 00 0000  B     B $1010           reset entry (R7 = reset.r7 = 1000); skips the vector area
+1000 0200 1000 00 0000  B     B $1010 -> 1010           reset entry (R7 = reset.r7 = 1000); skips the vector area
 1001 000E 00 0000 1110  -     displacement 000E (S=0): 1000 + 2 + 000E = 1010
 1002 0000 0000 000 000  HLT   fill (zero, unreachable)
 1003 0000 0000 000 000  HLT   fill (zero, unreachable)
@@ -66,6 +66,6 @@
 1010 0003 0000 000 011  DIS   DIS               reset code: interrupt system off
 1011 02BE 1010 111 110  MVII  MVII #$0340, R6   stack pointer at the project stack start in system RAM
 1012 0340 11 0100 0000  -     immediate 0340
-1013 0004 0000 000 100  J     J $5000           hand-off to the cartridge entry (project convention)
+1013 0004 0000 000 100  J     J $5000 -> 5000           hand-off to the cartridge entry (project convention)
 1014 0350 11 010100 00  -     second decle: BB=11 (J), target bits 15..10 = 010100, EE=00
 1015 0000 00 0000 0000  -     third decle: target bits 9..0

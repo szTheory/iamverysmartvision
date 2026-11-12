@@ -27,6 +27,7 @@ A listing is ASCII text with LF line endings (D-26).
   - `ROW`: the most specific leaf row id of `data/cp1610/opcode-families.json` for the instruction that starts on this line, or `-` for an operand word of the instruction above it (an instruction of `words` words is followed by `words - 1` operand lines).
   - `ASM`: the rest of the line, at least one token: the instruction text and notes.
 - Zero fill: an unreachable zero word carries the row of the decle it encodes (`HLT`) and the text `fill`.
+- Branch targets (plan 05-01, D-24): the `ASM` text of every branch line (rows `B`, `BC`, `BOV`, `BPL`, `BZE`, `BLT`, `BLE`, `BUSC`, `BNC`, `BNOV`, `BMI`, `BNZE`, `BGE`, `BGT`, `BESC`, `BEXT`) and of every `J` line carries `-> ADDR`, the target in four hex digits. The checker recomputes the target from the printed words: for a branch it is the address of the branch plus 2 plus the displacement word when the direction bit (bit 5 of the first decle) is 0, and the address plus 1 minus the displacement word when it is 1 (`5020 + ~0003 = 501C` for the `BNZE` of `diag-cpu-1`), modulo 65536; for `J` the bits 7..2 of the second decle are target bits 15..10 and the third decle holds bits 9..0. A printed target that differs fails with `listing-branch-target`, and a branch or jump line without the annotation fails with `listing-branch-target-missing`.
 
 The gate step `listing` (plan 04-15) checks this grammar and the row and operand rules; `tools/pack` reads the same grammar and is the only tool that turns a listing into image bytes.
 

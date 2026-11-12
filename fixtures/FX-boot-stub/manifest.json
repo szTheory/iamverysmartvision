@@ -16,8 +16,8 @@
   "outputs": [
     {
       "path": "fixtures/FX-boot-stub/boot-stub.listing.txt",
-      "sha256": "651ac71319f51a37ea9e733100c060aba1c73a70b09e66a9e830634adac6f813",
-      "size_bytes": 4812
+      "sha256": "1a2c659d2092e25cdedf75b0ae865120e427e8f64813cd5ec53d82278d1da20b",
+      "size_bytes": 4828
     }
   ],
   "licence": "MIT",

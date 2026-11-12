@@ -33,6 +33,16 @@
       ],
       "pdf": "pdf 53",
       "note": ""
+    },
+    {
+      "id": "B",
+      "verdict": "agree",
+      "fields_checked": [
+        "printed",
+        "words"
+      ],
+      "pdf": "pdf 54",
+      "note": ""
     }
   ]
 }
