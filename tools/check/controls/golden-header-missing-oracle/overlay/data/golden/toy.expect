@@ -1,0 +1,8 @@
+# The toy tier list has no original-diagnostic, so this toy predicate uses source-expectation.
+# tier: source-expectation
+# oracle:
+# scenario: toy
+# profile: intv-2609-ntsc-family-p1
+# derivation: toy predicate of the golden step's positive control (plan 04-21).
+assert reg R0 == 0001
+assert mem 0200 == 0002
