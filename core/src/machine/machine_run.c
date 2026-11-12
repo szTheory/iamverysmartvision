@@ -28,7 +28,7 @@
  * call and a seam-stepped twin leave the same INPUT row.
  * The file holds no static or global state: every value lives in the instance (D-07).
  * Named faults (plan 03-12): RESET_CLEARS_BEFORE_IMAGE_CHECK, RESET_KEEPS_RAM, STATIC_CARRY;
- * (plan 04-05): OBS_NOT_CLEARED_ON_RESET. */
+ * (plan 04-05): OBS_NOT_CLEARED_ON_RESET; (plan 06-05): STIC_STATE_NOT_RESET_ON_POWER_ON. */
 #include "common/ivs_prelude.h"
 
 #include "ivs/ivs.h"
@@ -63,7 +63,9 @@ static void ivs_run_power_on(struct ivs_machine *im)
    * record) and the device state starts at its power-on record: counters, frame_index, event_index and
    * the color-stack pointer 0, the row latches 0, mode and display latch from the profile. */
   memset(im->mem.stic_reg, 0, sizeof im->mem.stic_reg);
+#ifndef IVS_FAULT_STIC_STATE_NOT_RESET_ON_POWER_ON /* named fault STIC_STATE_NOT_RESET_ON_POWER_ON skips the call */
   ivs_stic_state_reset(&im->stic, ivs_stic_params_get(im->profile));
+#endif
   ivs_memsys_set_gate_internal(&im->mem, IVS_MEMSYS_GATE_STIC_REGS, 1u);
   ivs_memsys_set_gate_internal(&im->mem, IVS_MEMSYS_GATE_GMEM, 1u);
   (void)ivs_cp1610_reset(&im->cpu);

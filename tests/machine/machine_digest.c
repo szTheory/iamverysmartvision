@@ -5,7 +5,8 @@
  *   values were computed at authoring time with `cmake -E sha256sum` over those bytes, so the
  *   code under test never produced them.
  * - Composite framing: "IVSSTATE" || u16 version || u8 id || digest for domains 1..4, rebuilt here
- *   (version 2 since plan 05-03; the version 1 literals are quoted from
+ *   (version 3 since plan 06-05; the version 2 literals are quoted from
+ *   data/expected/digest-v2-literals.ids and the version 1 literals from
  *   data/expected/digest-v1-literals.ids where they were replaced).
  * - Coverage: every byte of struct ivs_machine is in exactly one field-table row, and every row
  *   names one of the eight domains (1..4 and the observation domains 16..19, plans 04-05, 05-03).
@@ -17,6 +18,10 @@
  *   rows, the PSG device state is INSTANCE rows (both inside composite version 2), the audio and
  *   write-log rows are observation rows outside it, and no PSG row ever moves the CPU or IMAGES
  *   digest. The INSTANCE stream with the PSG rows and the MEM tail are framed by hand here.
+ * - STIC storage (plan 06-05, D-04, D-16, A-05): the STIC register file is a MEM row, every member of the
+ *   528-byte STIC device state is an INSTANCE row (inside composite version 3), and no STIC row ever
+ *   moves the CPU or IMAGES digest; the CPU and IMAGES digests equal the version 2 pins. The INSTANCE
+ *   stream with the PSG and STIC rows and the MEM tail are framed by hand here.
  * - Observation domains (plan 04-05): a fresh and a reset instance agree on VIDEO, AUDIO and
  *   INPUT; a byte of a 16..18 row moves only its own domain; reset returns every observation byte
  *   to its create value, zero except the input chain's h0 (plan 04-11)
@@ -104,15 +109,20 @@ static struct ivs_machine *md_fresh(void)
  * and its ASCII), phase OFF (u32 0), machine time 0 (u64), then (plan 05-03, D-16, table order)
  * the PSG rows: next_sample (u64), tone_counter (u32 count 3 and three u32), tone_out (the same),
  * then the u32 rows noise_counter, noise_lfsr, env_counter, env_level, env_dir, env_held and
- * env_cycles. md_inst_stream is the head up to machine time; the PSG tail follows. */
+ * env_cycles, then (plan 06-05, D-16, table order) the STIC rows: frame_index (u64), the nine u32
+ * rows event_index, display_latch, windows_active, mode, cs_ptr, blocked_reads, blocked_writes,
+ * late_grants and grants_in_frame, then row_latch (u32 count 240 and 240 u16); reserved0 is a PAD
+ * row and is not serialized. md_inst_stream is the head up to machine time; the PSG tail (68
+ * bytes) and the STIC tail (528 bytes: 8 + 36 + 4 + 480) follow. */
 static const uint8_t md_inst_stream[47] = {
     0x49, 0x56, 0x53, 0x44, 0x04, 0x00, 0x01, 0x00, 0x00, 0x00, 0x18, 'i',  'n',  't',  'v',  '-',
     '2',  '6',  '0',  '9',  '-',  'n',  't',  's',  'c',  '-',  'f',  'a',  'm',  'i',  'l',  'y',
     '-',  'p',  '1',  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
-/* The PSG tail of a fresh instance (68 bytes) and its SHA-256 over head plus tail (computed at
- * authoring time with shasum over the hand-written bytes; before plan 05-03 the INSTANCE digest of
- * a fresh instance was 203dc162...c269 over the 47-byte head alone). */
+/* The PSG tail of a fresh instance (68 bytes). The SHA-256 below is over head, PSG tail and STIC tail
+ * (computed at plan 06-05 authoring time by an independent script over the hand-written bytes, never
+ * by the code under test; before plan 06-05 it was a3d5e13f...e230 over head and PSG tail, before plan
+ * 05-03 it was 203dc162...c269 over the 47-byte head alone). */
 static const uint8_t md_inst_psg_fresh[68] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00,
@@ -120,9 +130,14 @@ static const uint8_t md_inst_psg_fresh[68] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00,
 };
+/* The STIC tail of a fresh instance (528 bytes): all zero except the u32 count 240 of row_latch, whose
+ * last byte is at stream offset 47 (8 + 36 + 3). */
+static const uint8_t md_inst_stic_fresh[528] = {
+    [47] = 0xF0,
+};
 static const uint8_t md_inst_sha[32] = {
-    0xa3, 0xd5, 0xe1, 0x3f, 0x89, 0x91, 0x48, 0xf2, 0x52, 0xaa, 0x58, 0xe2, 0x1b, 0x76, 0xda, 0x2f,
-    0xe7, 0x6f, 0xb7, 0x62, 0xa0, 0xc1, 0x34, 0x42, 0x70, 0xd3, 0x5e, 0xd7, 0xa9, 0x90, 0xe2, 0x30,
+    0x37, 0xdb, 0xa9, 0xae, 0x7e, 0x1c, 0x13, 0xae, 0x59, 0x68, 0x92, 0x83, 0x14, 0x24, 0x30, 0xfe,
+    0x6d, 0x1a, 0x2d, 0xe5, 0xbc, 0x99, 0xf0, 0xa4, 0x95, 0xf9, 0xa1, 0x2a, 0x55, 0x7e, 0x65, 0x64,
 };
 
 /* The PSG tail of a synthetic state: next_sample 0102030405060708, tone counters 11121314,
@@ -137,9 +152,50 @@ static const uint8_t md_inst_psg_synth[68] = {
     0x81, 0x82, 0x83, 0x84, 0x00, 0x00, 0x00, 0x0f, 0x91, 0x92, 0x93, 0x94, 0xa1, 0xa2, 0xa3, 0xa4,
     0xb1, 0xb2, 0xb3, 0xb4,
 };
+/* The STIC tail of a synthetic state (plan 06-05): frame_index 1112131415161718, then the nine u32 rows
+ * 21222324, 31323334, 41424344, 51525354, 61626364, 71727374, 81828384, 91929394, A1A2A3A4 (event_index,
+ * display_latch, windows_active, mode, cs_ptr, blocked_reads, blocked_writes, late_grants,
+ * grants_in_frame), the u32 count 000000F0, then 240 u16 row-latch words, all zero except row 0 words 0 and
+ * 1 (A1B2, C3D4), row 5 word 7 (E5F6) and row 11 word 19 (0718), at stream offsets 48, 50, 262 and 526;
+ * reserved0 EEEEEEEE (not serialized). Every named word differs, so a row order or width slip shows. */
+static const uint8_t md_inst_stic_synth[528] = {
+    0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x21, 0x22, 0x23, 0x24, 0x31, 0x32, 0x33, 0x34,
+    0x41, 0x42, 0x43, 0x44, 0x51, 0x52, 0x53, 0x54, 0x61, 0x62, 0x63, 0x64, 0x71, 0x72, 0x73, 0x74,
+    0x81, 0x82, 0x83, 0x84, 0x91, 0x92, 0x93, 0x94, 0xa1, 0xa2, 0xa3, 0xa4, 0x00, 0x00, 0x00, 0xf0,
+    0xa1, 0xb2, 0xc3, 0xd4, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xe5, 0xf6, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07, 0x18,
+};
 static const uint8_t md_inst_synth_sha[32] = {
-    0xda, 0x70, 0x74, 0xfb, 0x10, 0x54, 0xcf, 0x51, 0xe3, 0xaf, 0x81, 0x61, 0xb2, 0x9b, 0x0d, 0x66,
-    0x25, 0x89, 0xcb, 0x33, 0x8e, 0x41, 0xb6, 0x05, 0x26, 0xe3, 0x14, 0xaf, 0x81, 0xf8, 0x06, 0x7a,
+    0x70, 0xdc, 0xdb, 0x97, 0xa3, 0x3a, 0xc3, 0x2e, 0x1e, 0xb4, 0xd0, 0x7a, 0xc8, 0xa3, 0xb4, 0x1d,
+    0x5e, 0x62, 0x4e, 0x1f, 0x5e, 0x36, 0x77, 0xab, 0x0d, 0x3c, 0x11, 0x3d, 0xa3, 0xb7, 0x80, 0x38,
 };
 
 /* PSGLOG preimage of a fresh instance (domain 19, plan 05-03): tag, domain 19, version 1, the
@@ -184,7 +240,7 @@ static const uint8_t md_cpus_sha[32] = {
 static int md_stream_check(const struct ivs_machine *m, uint32_t domain, const uint8_t *stream, size_t n,
                            const uint8_t sha[32])
 {
-  uint8_t buf[256];
+  uint8_t buf[768];
   uint8_t got[32];
   size_t len = ivs_machine_digest_preimage(m, domain, buf, sizeof buf);
   IVS_CHECK(len == n);
@@ -194,19 +250,20 @@ static int md_stream_check(const struct ivs_machine *m, uint32_t domain, const u
   return IVS_TEST_PASS;
 }
 
-/* head || tail into out (at most 128 bytes); returns the length. */
-static size_t md_inst_join(uint8_t out[128], const uint8_t tail[68])
+/* head || PSG tail || STIC tail into out (at most 704 bytes); returns the length (643). */
+static size_t md_inst_join(uint8_t out[704], const uint8_t psg[68], const uint8_t stic[528])
 {
   memcpy(out, md_inst_stream, sizeof md_inst_stream);
-  memcpy(out + sizeof md_inst_stream, tail, 68u);
-  return sizeof md_inst_stream + 68u;
+  memcpy(out + sizeof md_inst_stream, psg, 68u);
+  memcpy(out + sizeof md_inst_stream + 68u, stic, 528u);
+  return sizeof md_inst_stream + 68u + 528u;
 }
 
 static int md_stream_instance(void)
 {
   int rc;
-  uint8_t stream[128];
-  size_t n = md_inst_join(stream, md_inst_psg_fresh);
+  uint8_t stream[704];
+  size_t n = md_inst_join(stream, md_inst_psg_fresh, md_inst_stic_fresh);
   struct ivs_machine *m = md_fresh();
   IVS_CHECK(m != NULL);
   rc = md_stream_check(m, IVS_DIGEST_INSTANCE, stream, n, md_inst_sha);
@@ -214,13 +271,14 @@ static int md_stream_instance(void)
   return rc;
 }
 
-/* The same stream with every PSG state member set to a distinct value: the row order, the count
- * prefix of the two three-element rows, the widths and the big-endian bytes of the PSG rows. */
+/* The same stream with every PSG and STIC state member set to a distinct value: the row order, the count
+ * prefix of the two three-element rows and of row_latch, the widths and the big-endian bytes of the PSG
+ * and STIC rows, and that the STIC reserved word is not serialized. */
 static int md_stream_instance_psg(void)
 {
   int rc;
-  uint8_t stream[128];
-  size_t n = md_inst_join(stream, md_inst_psg_synth);
+  uint8_t stream[704];
+  size_t n = md_inst_join(stream, md_inst_psg_synth, md_inst_stic_synth);
   struct ivs_machine *m = md_fresh();
   IVS_CHECK(m != NULL);
   m->psg.next_sample = 0x0102030405060708ull;
@@ -238,6 +296,21 @@ static int md_stream_instance_psg(void)
   m->psg.env_held = 0xA1A2A3A4u;
   m->psg.env_cycles = 0xB1B2B3B4u;
   memset(m->psg.reserved, 0xEE, sizeof m->psg.reserved);
+  m->stic.frame_index = 0x1112131415161718ull;
+  m->stic.event_index = 0x21222324u;
+  m->stic.display_latch = 0x31323334u;
+  m->stic.windows_active = 0x41424344u;
+  m->stic.mode = 0x51525354u;
+  m->stic.cs_ptr = 0x61626364u;
+  m->stic.blocked_reads = 0x71727374u;
+  m->stic.blocked_writes = 0x81828384u;
+  m->stic.late_grants = 0x91929394u;
+  m->stic.grants_in_frame = 0xA1A2A3A4u;
+  m->stic.reserved0 = 0xEEEEEEEEu;
+  m->stic.row_latch[0][0] = 0xA1B2u;
+  m->stic.row_latch[0][1] = 0xC3D4u;
+  m->stic.row_latch[5][7] = 0xE5F6u;
+  m->stic.row_latch[11][19] = 0x0718u;
   rc = md_stream_check(m, IVS_DIGEST_INSTANCE, stream, n, md_inst_synth_sha);
   free(m);
   return rc;
@@ -347,7 +420,7 @@ static int md_composite_framing(void)
   IVS_CHECK(m != NULL);
   memcpy(pre, tag, 8u);
   pre[8] = 0x00;
-  pre[9] = 0x02; /* composite version 2 (plan 05-03, D-18) */
+  pre[9] = 0x03; /* composite version 3 (plan 06-05, D-16) */
   for (d = 1u; ok && d <= 4u; d++) {
     pre[10u + 33u * (d - 1u)] = (uint8_t)d;
     ok = ivs_machine_state_digest(m, d, &pre[11u + 33u * (d - 1u)]) == IVS_OK;
@@ -360,16 +433,17 @@ static int md_composite_framing(void)
   return IVS_TEST_PASS;
 }
 
-/* Composite version 2 (plan 05-03, D-18), rebuilt from independent pieces: the version bytes are
- * the literal 00 02; domains 1 and 4 are hashed here from the literal preimage streams (the CPU
- * head above and the INSTANCE head plus PSG tail), domains 2 and 3 from the preimage seam hashed
- * here with the repo's SHA-256 (the core's digest path is not used for any domain). The framing
- * is IVSSTATE || 00 02 || 01 || d1 || 02 || d2 || 03 || d3 || 04 || d4. */
-static int md_composite_v2_framing(void)
+/* Composite version 3 (plan 06-05, D-16), rebuilt from independent pieces: the version bytes are
+ * the literal 00 03; domains 1 and 4 are hashed here from the literal preimage streams (the CPU
+ * head above and the INSTANCE head plus PSG and STIC tails), domains 2 and 3 from the preimage seam
+ * hashed here with the repo's SHA-256 (the core's digest path is not used for any domain). The
+ * framing is IVSSTATE || 00 03 || 01 || d1 || 02 || d2 || 03 || d3 || 04 || d4: unchanged since
+ * version 2, only the content (the STIC rows) and the version moved. */
+static int md_composite_v3_framing(void)
 {
-  static const uint8_t head[10] = {'I', 'V', 'S', 'S', 'T', 'A', 'T', 'E', 0x00, 0x02};
+  static const uint8_t head[10] = {'I', 'V', 'S', 'S', 'T', 'A', 'T', 'E', 0x00, 0x03};
   uint8_t pre[10 + 4 * 33];
-  uint8_t stream[128];
+  uint8_t stream[704];
   uint8_t want[32];
   uint8_t got[32];
   uint8_t *big = malloc(MD_PRE_MAX);
@@ -397,7 +471,7 @@ static int md_composite_v2_framing(void)
   if (ok) {
     ivs_sha256_digest(big, len, &pre[77]);
   }
-  n = md_inst_join(stream, md_inst_psg_fresh);
+  n = md_inst_join(stream, md_inst_psg_fresh, md_inst_stic_fresh);
   pre[109] = 4u;
   ivs_sha256_digest(stream, n, &pre[110]);
   ok = ok && ivs_machine_state_digest(m, IVS_DIGEST_COMPOSITE, got) == IVS_OK;
@@ -410,14 +484,16 @@ static int md_composite_v2_framing(void)
 }
 
 /* Repeatability only (not an accuracy claim): the composite of a fresh instance of the profile,
- * composite version 2 (plan 05-03: the PSG rows are in domains 2 and 4 and the framing version is
- * 2). Recorded from the new tree after machine.digest.composite-v2-framing showed the composite
- * equals the framing rebuilt by hand from the literal preimage streams. The Phase 4 value
- * (composite version 1) was ac794821fa80a0230db1d21aaf86a7ecdc695ca5515aa42ceb8dc3e85ea5d137
- * (data/expected/digest-v1-literals.ids, test.fresh-composite). */
+ * composite version 3 (plan 06-05: the STIC rows are in domains 2 and 4 and the framing version is
+ * 3). Recorded from the new tree after machine.digest.composite-v3-framing showed the composite
+ * equals the framing rebuilt by hand from the literal preimage streams. The Phase 5 value
+ * (composite version 2) was 107bd1cb61bc92cc3cec4e3d3406ebe7a1a0829c5a3f4a89dfc80d704466043c
+ * (data/expected/digest-v2-literals.ids, test.fresh-composite) and the Phase 4 value (version 1)
+ * ac794821fa80a0230db1d21aaf86a7ecdc695ca5515aa42ceb8dc3e85ea5d137
+ * (data/expected/digest-v1-literals.ids). */
 static const uint8_t md_fresh_composite[32] = {
-    0x10, 0x7b, 0xd1, 0xcb, 0x61, 0xbc, 0x92, 0xcc, 0x3c, 0xec, 0x4e, 0x3d, 0x34, 0x06, 0xeb, 0xe7,
-    0xa1, 0xa0, 0x82, 0x9c, 0x5a, 0x3f, 0x4a, 0x89, 0xdf, 0xc8, 0x0d, 0x70, 0x44, 0x66, 0x04, 0x3c,
+    0x02, 0xc8, 0x60, 0x09, 0x92, 0x52, 0x14, 0x21, 0xdc, 0x0b, 0xa7, 0x92, 0x77, 0xf7, 0x93, 0x23,
+    0x95, 0x41, 0xbb, 0x96, 0xcf, 0x60, 0xac, 0x3d, 0x15, 0x18, 0xe3, 0xfa, 0x76, 0x44, 0x03, 0x69,
 };
 
 static int md_fresh_composite_case(void)
@@ -457,27 +533,34 @@ static int md_fresh_composite_case(void)
  * next_sample starts at 1 after a power-on reset and the 100 units advance the tone counters);
  * domains 1 (CPU), 2 (MEM) and 3 (IMAGES) are unchanged byte for byte (program A never touches the PSG).
  * Plan 05-07 re-recorded the composite and INSTANCE a third time (a power-on reset loads the noise seed and holds
- * the envelope; the 100 units shift the noise register); CPU, MEM and IMAGES are again byte for byte unchanged. */
+ * the envelope; the 100 units shift the noise register); CPU, MEM and IMAGES are again byte for byte unchanged.
+ * Plan 06-05 re-recorded the composite and domains 2 (MEM, which gained the STIC register rows) and 4
+ * (INSTANCE, which gained the STIC state rows) from the new tree (composite version 3); domains 1 (CPU)
+ * and 3 (IMAGES) are the version 2 values byte for byte (data/expected/digest-v2-literals.ids,
+ * test.stepped.1 and test.stepped.3), which machine.digest.cpu-images-unchanged pins separately. The
+ * version 2 composite, MEM and INSTANCE values (test.stepped.0, .2 and .4 in that file) were
+ * 61f846a1...46367a3, aafd4969...ed52a03 and 886dda2e...1831830. */
+
 static const uint8_t md_stepped[5][32] = {
     {
-        0x61, 0xf8, 0x46, 0xa1, 0x3a, 0xf9, 0x92, 0xa9, 0xb2, 0x8e, 0x01, 0xf3, 0x1d, 0xeb, 0x51, 0x50,
-        0x91, 0xe9, 0x2b, 0x3c, 0xef, 0xcb, 0xaf, 0xfd, 0x72, 0xad, 0xaa, 0x74, 0xd4, 0x63, 0x67, 0xa3,
+        0xad, 0x9a, 0xcb, 0xb6, 0xdf, 0x78, 0xff, 0x19, 0x09, 0x58, 0xd4, 0x1d, 0x49, 0x49, 0x7d, 0x77,
+        0xda, 0x99, 0x93, 0x64, 0x95, 0x86, 0xf4, 0x60, 0x32, 0x20, 0x17, 0xfb, 0x0f, 0x31, 0x4e, 0x5a,
     },
     {
         0x88, 0x10, 0x55, 0xb7, 0x67, 0x26, 0x5a, 0x9e, 0xc9, 0x3b, 0x94, 0x3e, 0xd1, 0x9e, 0x54, 0x7f,
         0x37, 0x0c, 0x0d, 0xef, 0x76, 0x47, 0x12, 0xfa, 0x32, 0xa6, 0xe0, 0x6e, 0x68, 0xce, 0x82, 0xab,
     },
     {
-        0xaa, 0xfd, 0x49, 0x69, 0x27, 0x01, 0x79, 0x26, 0x5e, 0xec, 0x31, 0xdc, 0x14, 0xf3, 0x03, 0x95,
-        0xaf, 0xc2, 0xe1, 0x66, 0xf2, 0x28, 0x7e, 0x5c, 0x26, 0x41, 0x8a, 0xff, 0x4e, 0xd5, 0x2a, 0x03,
+        0xf8, 0x5d, 0xee, 0x82, 0x93, 0xf3, 0x53, 0xc4, 0xe3, 0xc6, 0x93, 0x7c, 0xde, 0x2d, 0x07, 0xff,
+        0x3f, 0xe7, 0xbc, 0x8e, 0xdb, 0x1f, 0x49, 0xba, 0x06, 0x25, 0xe2, 0xfe, 0xc8, 0x37, 0x5b, 0xa3,
     },
     {
         0x3f, 0x42, 0x08, 0x2e, 0xef, 0x76, 0xbb, 0xfb, 0xea, 0x05, 0xc9, 0x64, 0xfc, 0xf4, 0x7a, 0x2d,
         0xd0, 0x89, 0xd9, 0x05, 0x0e, 0xe8, 0x5c, 0x2f, 0xc3, 0x28, 0xb0, 0xca, 0x83, 0x99, 0x5d, 0xfe,
     },
     {
-        0x88, 0x6d, 0xda, 0x2e, 0xcf, 0xdb, 0x7f, 0xe0, 0x95, 0x06, 0xcb, 0x8f, 0x7a, 0xd3, 0x3f, 0xd0,
-        0xa0, 0x00, 0xd3, 0xed, 0x41, 0x24, 0xa3, 0x37, 0x66, 0x0d, 0x1e, 0x14, 0xd1, 0x83, 0x18, 0x30,
+        0x81, 0x7c, 0x4d, 0xd6, 0xaa, 0x49, 0xd7, 0x71, 0x34, 0x30, 0xfd, 0x6d, 0x4e, 0x88, 0xf3, 0x8e,
+        0x6a, 0x31, 0x1c, 0xc4, 0x24, 0xa3, 0x2a, 0x83, 0x53, 0x89, 0x7d, 0x27, 0x64, 0x3d, 0x3f, 0x7c,
     },
 };
 
@@ -817,22 +900,32 @@ static int md_psg_rows_in_instance(void)
 }
 
 /* The tail of the MEM preimage with distinct register words and pull-downs, written out by hand:
- * psg_reg (u32 count 16, sixteen u16: 1000, 1111, 1222 ... 1FFF) then port_pulldown (u32 count 2,
- * A5 5A). */
-static const uint8_t md_mem_tail[42] = {
+ * psg_reg (u32 count 16, sixteen u16: 1000, 1111, 1222 ... 1FFF), port_pulldown (u32 count 2, A5 5A)
+ * and, since plan 06-05, stic_reg (u32 count 64, sixty-four u16: 5000, 5111, 5222 ... 56F9, the word i
+ * being 5000 + 111 x i in hex); psg_reserved is a PAD row and is not serialized. */
+static const uint8_t md_mem_tail[174] = {
     0x00, 0x00, 0x00, 0x10, 0x10, 0x00, 0x11, 0x11, 0x12, 0x22, 0x13, 0x33, 0x14, 0x44, 0x15, 0x55,
-    0x16, 0x66, 0x17, 0x77, 0x18, 0x88, 0x19, 0x99, 0x1A, 0xAA, 0x1B, 0xBB, 0x1C, 0xCC, 0x1D, 0xDD,
-    0x1E, 0xEE, 0x1F, 0xFF, 0x00, 0x00, 0x00, 0x02, 0xA5, 0x5A,
+    0x16, 0x66, 0x17, 0x77, 0x18, 0x88, 0x19, 0x99, 0x1a, 0xaa, 0x1b, 0xbb, 0x1c, 0xcc, 0x1d, 0xdd,
+    0x1e, 0xee, 0x1f, 0xff, 0x00, 0x00, 0x00, 0x02, 0xa5, 0x5a, 0x00, 0x00, 0x00, 0x40, 0x50, 0x00,
+    0x51, 0x11, 0x52, 0x22, 0x53, 0x33, 0x54, 0x44, 0x55, 0x55, 0x56, 0x66, 0x57, 0x77, 0x58, 0x88,
+    0x59, 0x99, 0x5a, 0xaa, 0x5b, 0xbb, 0x5c, 0xcc, 0x5d, 0xdd, 0x5e, 0xee, 0x5f, 0xff, 0x61, 0x10,
+    0x62, 0x21, 0x63, 0x32, 0x64, 0x43, 0x65, 0x54, 0x66, 0x65, 0x67, 0x76, 0x68, 0x87, 0x69, 0x98,
+    0x6a, 0xa9, 0x6b, 0xba, 0x6c, 0xcb, 0x6d, 0xdc, 0x6e, 0xed, 0x6f, 0xfe, 0x71, 0x0f, 0x72, 0x20,
+    0x73, 0x31, 0x74, 0x42, 0x75, 0x53, 0x76, 0x64, 0x77, 0x75, 0x78, 0x86, 0x79, 0x97, 0x7a, 0xa8,
+    0x7b, 0xb9, 0x7c, 0xca, 0x7d, 0xdb, 0x7e, 0xec, 0x7f, 0xfd, 0x81, 0x0e, 0x82, 0x1f, 0x83, 0x30,
+    0x84, 0x41, 0x85, 0x52, 0x86, 0x63, 0x87, 0x74, 0x88, 0x85, 0x89, 0x96, 0x8a, 0xa7, 0x8b, 0xb8,
+    0x8c, 0xc9, 0x8d, 0xda, 0x8e, 0xeb, 0x8f, 0xfc, 0x91, 0x0d, 0x92, 0x1e, 0x93, 0x2f,
 };
 
-/* Flipping any byte of psg_reg or port_pulldown changes the MEM digest and the composite and no
- * other domain (A-13: digest.mem moves in every golden), and the MEM preimage ends with the
+/* Flipping any byte of psg_reg, port_pulldown or stic_reg changes the MEM digest and the composite and
+ * no other domain (A-13, D-16: digest.mem moves in every golden), and the MEM preimage ends with the
  * hand-framed rows in table order. */
 static int md_mem_rows_psg_regs(void)
 {
   md_base b;
   size_t base_reg = offsetof(struct ivs_machine, mem.psg_reg);
   size_t base_pd = offsetof(struct ivs_machine, mem.port_pulldown);
+  size_t base_st = offsetof(struct ivs_machine, mem.stic_reg);
   size_t i;
   size_t len;
   int ok;
@@ -849,9 +942,17 @@ static int md_mem_rows_psg_regs(void)
     ok = md_changed_only(&b, IVS_DIGEST_MEM, base_pd + i, 1, 0);
     bytes[base_pd + i] ^= 0xFFu;
   }
+  for (i = 0u; ok && i < 2u * IVS_MEMSYS_STIC_REGS; i++) {
+    bytes[base_st + i] ^= 0xFFu;
+    ok = md_changed_only(&b, IVS_DIGEST_MEM, base_st + i, 1, 0);
+    bytes[base_st + i] ^= 0xFFu;
+  }
   if (ok) {
     for (i = 0u; i < IVS_MEMSYS_PSG_REGS; i++) {
       b.m->mem.psg_reg[i] = (uint16_t)(0x1000u + 0x0111u * i);
+    }
+    for (i = 0u; i < IVS_MEMSYS_STIC_REGS; i++) {
+      b.m->mem.stic_reg[i] = (uint16_t)(0x5000u + 0x0111u * i);
     }
     b.m->mem.port_pulldown[0] = 0xA5u;
     b.m->mem.port_pulldown[1] = 0x5Au;
@@ -862,6 +963,132 @@ static int md_mem_rows_psg_regs(void)
     }
   }
   md_base_free(&b);
+  IVS_CHECK(ok);
+  return IVS_TEST_PASS;
+}
+
+/* ---- STIC storage rows (plan 06-05, D-04, D-16, A-05) ---- */
+
+/* The STIC register file is one MEM row (64 x u16) and every member of the 528-byte STIC state is an
+ * INSTANCE row: eleven UINT rows (frame_index, the nine u32 members, the 240 row-latch words as one u16
+ * group) and the reserved0 PAD row, which together cover the 528 bytes of the member exactly once.
+ * Flipping the first and the last byte of each UINT row changes its domain's digest and the composite and
+ * no other domain's preimage (the CPU and IMAGES preimages included): guest-visible STIC state can never
+ * differ with equal composites. Named fault DIGEST_STIC_ROWS_OMITTED removes every one of these rows. */
+static int md_stic_rows_in_mem_and_instance(void)
+{
+  md_base b;
+  size_t n = ivs_machine_digest_field_count();
+  size_t r;
+  uint32_t mem_rows = 0u;
+  uint32_t inst_rows = 0u;
+  uint32_t pad_rows = 0u;
+  size_t covered = 0u;
+  int ok;
+  uint8_t *bytes;
+  ok = md_base_init(&b);
+  bytes = (uint8_t *)b.m;
+  for (r = 0; ok && r < n; r++) {
+    const ivs_digest_field *f = ivs_machine_digest_field(r);
+    uint32_t domain;
+    size_t first;
+    size_t last;
+    if (!md_name_has(f, "mem.stic_reg") && !md_name_has(f, "stic.")) {
+      continue;
+    }
+    domain = f->domain;
+    if (md_name_has(f, "mem.stic_reg")) {
+      ok = domain == IVS_DIGEST_MEM && f->kind == IVS_DIGEST_KIND_UINT && f->width == 2u &&
+           f->count == IVS_STIC_REG_COUNT && f->offset == (uint32_t)offsetof(struct ivs_machine, mem.stic_reg);
+      mem_rows++;
+    } else {
+      ok = domain == IVS_DIGEST_INSTANCE && f->offset >= (uint32_t)offsetof(struct ivs_machine, stic) &&
+           (size_t)f->offset + (size_t)f->width * f->count <=
+               offsetof(struct ivs_machine, stic) + sizeof(ivs_stic_state);
+      covered += (size_t)f->width * f->count;
+      if (f->kind == IVS_DIGEST_KIND_PAD) {
+        pad_rows++;
+        continue;
+      }
+      ok = ok && f->kind == IVS_DIGEST_KIND_UINT;
+      inst_rows++;
+    }
+    if (!ok) {
+      ivs_test_diag("row %s is malformed", f->name);
+      break;
+    }
+    first = f->offset;
+    last = (size_t)f->offset + (size_t)f->width * f->count - 1u;
+    bytes[first] ^= 0xFFu;
+    ok = md_changed_only(&b, domain, first, 1, 0);
+    bytes[first] ^= 0xFFu;
+    if (ok && last != first) {
+      bytes[last] ^= 0xFFu;
+      ok = md_changed_only(&b, domain, last, 1, 0);
+      bytes[last] ^= 0xFFu;
+    }
+    if (!ok) {
+      ivs_test_diag("row %s", f->name);
+    }
+  }
+  md_base_free(&b);
+  IVS_CHECK(ok);
+  IVS_CHECK(mem_rows == 1u);
+  IVS_CHECK(inst_rows == 11u);
+  IVS_CHECK(pad_rows == 1u);
+  IVS_CHECK(covered == sizeof(ivs_stic_state));
+  return IVS_TEST_PASS;
+}
+
+/* The composite version 2 pins (data/expected/digest-v2-literals.ids): the CPU and IMAGES digests of the
+ * fresh instance (test.fresh.cpu, test.fresh.images; the CPU value is also md_cpu_sha) and of content A,
+ * power-on reset and 100 units (test.stepped.1 and test.stepped.3), recorded from the tree before any STIC
+ * storage existed. The STIC rows are in MEM and INSTANCE only, so these two digests must not move: the
+ * regression proof, at the digest level, that adding STIC storage did not touch the CPU or the image
+ * table. Repeatability pins, never evidence of correctness. */
+static const uint8_t md_v2_fresh_cpu[32] = {
+    0x22, 0xeb, 0xa1, 0x26, 0x6d, 0xd6, 0x2a, 0x7e, 0x81, 0xcf, 0x15, 0x19, 0x62, 0x05, 0xb3, 0xa1,
+    0x99, 0x9d, 0x85, 0x42, 0x2e, 0xb0, 0x5e, 0x69, 0xe5, 0xcf, 0xce, 0xdd, 0x91, 0x6f, 0xdf, 0xcd,
+};
+static const uint8_t md_v2_fresh_images[32] = {
+    0x0a, 0x68, 0x37, 0xbd, 0x56, 0x0e, 0x3b, 0xce, 0x12, 0xe8, 0xb6, 0x05, 0x3d, 0x17, 0x49, 0xb7,
+    0x31, 0x87, 0x57, 0x04, 0xe4, 0x39, 0xc1, 0x63, 0x1f, 0xb2, 0xd0, 0x4f, 0x79, 0x51, 0x0f, 0xca,
+};
+static const uint8_t md_v2_stepped_cpu[32] = {
+    0x88, 0x10, 0x55, 0xb7, 0x67, 0x26, 0x5a, 0x9e, 0xc9, 0x3b, 0x94, 0x3e, 0xd1, 0x9e, 0x54, 0x7f,
+    0x37, 0x0c, 0x0d, 0xef, 0x76, 0x47, 0x12, 0xfa, 0x32, 0xa6, 0xe0, 0x6e, 0x68, 0xce, 0x82, 0xab,
+};
+static const uint8_t md_v2_stepped_images[32] = {
+    0x3f, 0x42, 0x08, 0x2e, 0xef, 0x76, 0xbb, 0xfb, 0xea, 0x05, 0xc9, 0x64, 0xfc, 0xf4, 0x7a, 0x2d,
+    0xd0, 0x89, 0xd9, 0x05, 0x0e, 0xe8, 0x5c, 0x2f, 0xc3, 0x28, 0xb0, 0xca, 0x83, 0x99, 0x5d, 0xfe,
+};
+
+/* 1 when domain of m digests to want; a mismatch is reported with the domain. */
+static int md_domain_equals(const ivs_machine *m, uint32_t domain, const uint8_t want[32], const char *what)
+{
+  uint8_t got[32];
+  if (ivs_machine_state_digest(m, domain, got) != IVS_OK || memcmp(got, want, 32u) != 0) {
+    ivs_test_diag("%s: domain %u differs from the version 2 pin", what, (unsigned)domain);
+    return 0;
+  }
+  return 1;
+}
+
+static int md_cpu_images_unchanged(void)
+{
+  ivs_ms_inst x;
+  int ok;
+  struct ivs_machine *f = md_fresh();
+  IVS_CHECK(f != NULL);
+  ok = md_domain_equals(f, IVS_DIGEST_CPU, md_v2_fresh_cpu, "fresh") &&
+       md_domain_equals(f, IVS_DIGEST_IMAGES, md_v2_fresh_images, "fresh");
+  free(f);
+  IVS_CHECK(ok);
+  IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, 0x5Au));
+  ok = ivs_ms_step(x.m, 100u, NULL);
+  ok = ok && md_domain_equals(x.m, IVS_DIGEST_CPU, md_v2_stepped_cpu, "stepped") &&
+       md_domain_equals(x.m, IVS_DIGEST_IMAGES, md_v2_stepped_images, "stepped");
+  ivs_ms_free(&x);
   IVS_CHECK(ok);
   return IVS_TEST_PASS;
 }
@@ -1170,9 +1397,10 @@ const ivs_test_case ivs_machine_digest_cases[] = {
     {"machine.digest.audio-rows", md_audio_rows, NULL},
     {"machine.digest.composite-excludes-16-18", md_composite_excludes, NULL},
     {"machine.digest.composite-framing", md_composite_framing, NULL},
-    {"machine.digest.composite-v2-framing", md_composite_v2_framing, NULL},
+    {"machine.digest.composite-v3-framing", md_composite_v3_framing, NULL},
     {"machine.digest.coverage", md_coverage, NULL},
     {"machine.digest.cpu-images-independent-of-psg", md_cpu_images_independent_of_psg, NULL},
+    {"machine.digest.cpu-images-unchanged", md_cpu_images_unchanged, NULL},
     {"machine.digest.domain-19-fresh", md_domain_19_fresh, NULL},
     {"machine.digest.fresh-composite", md_fresh_composite_case, NULL},
     {"machine.digest.mem-rows-psg-regs", md_mem_rows_psg_regs, NULL},
@@ -1188,6 +1416,7 @@ const ivs_test_case ivs_machine_digest_cases[] = {
     {"machine.digest.sensitivity-mem", md_sensitivity_mem, NULL},
     {"machine.digest.sensitivity-video", md_sensitivity_video, NULL},
     {"machine.digest.stepped-literals", md_stepped_literals, NULL},
+    {"machine.digest.stic-rows-in-mem-and-instance", md_stic_rows_in_mem_and_instance, NULL},
     {"machine.digest.stream-cpu", md_stream_cpu, NULL},
     {"machine.digest.stream-cpu-synthetic", md_stream_cpu_synthetic, NULL},
     {"machine.digest.stream-instance", md_stream_instance, NULL},

@@ -459,6 +459,120 @@ done:
   return rc;
 }
 
+/* Plan 06-05 (D-04, D-06, D-16): a power-on reset restores the STIC storage. The profile's power-on record
+ * (stic.power_on, C85) is zero registers, Foreground/Background mode and a clear display latch, so the
+ * reset state of ivs_stic_state is 528 zero bytes (frame_index 0 and event_index 0: FRAME_START of frame 0
+ * is still to be processed) and stic_reg is 128 zero bytes. A powered reference and a freshly created
+ * instance agree on both (the twin oracle: create and reset start the same state); an instance whose
+ * STIC registers and state were dirtied through the raw seam is reset again and then equals the reference
+ * byte for byte over the whole storage. The dirtied state is refused by ivs_stic_state_validate and the
+ * reset one is accepted. Named fault STIC_STATE_NOT_RESET_ON_POWER_ON skips the reset call. */
+static int mr_stic_state(void)
+{
+  static const uint8_t zero[sizeof(ivs_stic_state)] = {0};
+  ivs_ms_inst a;
+  ivs_ms_inst r;
+  ivs_ms_inst f;
+  struct ivs_machine *im;
+  struct ivs_machine *ref;
+  struct ivs_machine *fresh;
+  ivs_stic_state bad;
+  int rc = IVS_TEST_FAIL;
+  if (!ivs_ms_powered(&r, IVS_MS_CONTENT_A, 0x5Au)) {
+    return IVS_TEST_FAIL;
+  }
+  if (!ivs_ms_powered(&a, IVS_MS_CONTENT_A, 0x5Au)) {
+    ivs_ms_free(&r);
+    return IVS_TEST_FAIL;
+  }
+  if (!ivs_ms_new(&f, 0x00u)) {
+    ivs_ms_free(&a);
+    ivs_ms_free(&r);
+    return IVS_TEST_FAIL;
+  }
+  im = ivs_machine_from_handle_mut(a.m);
+  ref = ivs_machine_from_handle_mut(r.m);
+  fresh = ivs_machine_from_handle_mut(f.m);
+  if (im == NULL || ref == NULL || fresh == NULL) {
+    goto done;
+  }
+  /* The reset record, as literals. */
+  if (memcmp(&ref->stic, zero, sizeof zero) != 0 || ref->stic.mode != 0u || ref->stic.display_latch != 0u ||
+      ref->stic.event_index != 0u || ref->stic.frame_index != 0u) {
+    ivs_test_diag("reset STIC state is not the power-on record");
+    goto done;
+  }
+  for (uint32_t i = 0u; i < IVS_MEMSYS_STIC_REGS; i++) {
+    if (ref->mem.stic_reg[i] != 0u) {
+      ivs_test_diag("reset stic_reg[%u] is not 0", (unsigned)i);
+      goto done;
+    }
+  }
+  /* Create and reset start the same state (the twin oracle over the two ranges). */
+  if (memcmp(&fresh->stic, &ref->stic, sizeof ref->stic) != 0 ||
+      memcmp(fresh->mem.stic_reg, ref->mem.stic_reg, sizeof ref->mem.stic_reg) != 0) {
+    ivs_test_diag("a fresh instance and a reset instance differ in the STIC storage");
+    goto done;
+  }
+  if (ivs_stic_state_validate(&ref->stic) != IVS_OK || ivs_stic_state_validate(NULL) != IVS_E_BAD_ARG) {
+    ivs_test_diag("validate refuses the reset state or accepts NULL");
+    goto done;
+  }
+  /* The out-of-range members are refused one at a time. */
+  for (uint32_t k = 0u; k < 6u; k++) {
+    bad = ref->stic;
+    switch (k) {
+    case 0u:
+      bad.event_index = IVS_STIC_EVENT_MAX;
+      break;
+    case 1u:
+      bad.display_latch = 2u;
+      break;
+    case 2u:
+      bad.windows_active = 2u;
+      break;
+    case 3u:
+      bad.mode = 2u;
+      break;
+    case 4u:
+      bad.cs_ptr = 4u;
+      break;
+    default:
+      bad.reserved0 = 1u;
+      break;
+    }
+    if (ivs_stic_state_validate(&bad) != IVS_E_BAD_STATE) {
+      ivs_test_diag("validate accepts out-of-range member %u", (unsigned)k);
+      goto done;
+    }
+  }
+  /* Dirty both stores through the raw seam, then reset. */
+  memset(im->mem.stic_reg, 0xA5, sizeof im->mem.stic_reg);
+  memset(&im->stic, 0xA5, sizeof im->stic);
+  if (ivs_stic_state_validate(&im->stic) != IVS_E_BAD_STATE) {
+    ivs_test_diag("the dirtied STIC state is accepted");
+    goto done;
+  }
+  if (ivs_machine_reset(a.m, IVS_RESET_POWER_ON) != IVS_OK) {
+    goto done;
+  }
+  if (memcmp(&im->stic, &ref->stic, sizeof im->stic) != 0 ||
+      memcmp(im->mem.stic_reg, ref->mem.stic_reg, sizeof im->mem.stic_reg) != 0) {
+    ivs_test_diag("the STIC storage after the reset differs from the reference");
+    goto done;
+  }
+  if (memcmp(a.storage, r.storage, IVS_MACHINE_BYTES) != 0) {
+    ivs_test_diag("storage after the reset differs from the reference");
+    goto done;
+  }
+  rc = IVS_TEST_PASS;
+done:
+  ivs_ms_free(&a);
+  ivs_ms_free(&r);
+  ivs_ms_free(&f);
+  return rc;
+}
+
 const ivs_test_case ivs_machine_reset_cases[] = {
     {"machine.refuse.handle.mem-profile-mismatch", mr_damaged_mem_profile, NULL},
     {"machine.refuse.handle.profile-garbage", mr_damaged_both, NULL},
@@ -470,5 +584,6 @@ const ivs_test_case ivs_machine_reset_cases[] = {
     {"machine.reset.psg-state-cleared", mr_psg_state_cleared, NULL},
     {"machine.reset.step-program", mr_step_program, NULL},
     {"machine.reset.step-refusals", mr_step_refusals, NULL},
+    {"machine.reset.stic-state", mr_stic_state, NULL},
 };
 const size_t ivs_machine_reset_count = sizeof ivs_machine_reset_cases / sizeof ivs_machine_reset_cases[0];

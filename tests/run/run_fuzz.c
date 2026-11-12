@@ -437,7 +437,7 @@ typedef struct fv_cover {
 /* The reference of one seed at every boundary: time, the program counter before the unit, consumed
  * events, the words in force and the INPUT and CPU digests. The whole instance storage at every
  * boundary is kept beside it (fv_snap, heap): comparing the bytes is stronger than the MEM digest and
- * costs a memcmp where the digest costs a SHA-256 of the 113,760-byte instance. */
+ * costs a memcmp where the digest costs a SHA-256 of the 114,416-byte instance. */
 typedef struct fv_ref {
   uint64_t b[FZ_UNITS + 1u];
   uint32_t pc[FZ_UNITS + 1u]; /* pc[k]: the instruction the CPU runs as unit k (before it) */

@@ -45,3 +45,8 @@ golden.pkg-consumer.ctrl.digest.mem 9d8f2cb338f2004830bca2e9672ca4dc7d09ad81431c
 golden.pkg-consumer.ctrl.digest.images 3dc499c638993d029cc9222a4686a1700d815f548c028e84d04d38151ae28b4e
 golden.pkg-consumer.ctrl.digest.instance 38a60a970ccff89f5beb67731f6408f13227f633b483de0d2c8a7003f988f533
 golden.pkg-consumer.ctrl.digest.composite 796821563d91bc5309a83bffeda00345a5c3004fcb4582aba84b38d4c3933cab
+# Added in plan 06-05 task 3 (the two digests the machine.digest.cpu-images-unchanged test pins for a fresh instance), read
+# from a scratch build of the unmodified tree (the commit of the lines above, composite version 2), printed through a throwaway
+# diagnostic that was never committed. test.fresh.cpu is also the literal md_cpu_sha of tests/machine/machine_digest.c.
+test.fresh.cpu 22eba1266dd62a7e81cf15196205b3a1999d85422eb05e69e5cfcedd916fdfcd
+test.fresh.images 0a6837bd560e3bce12e8b6053d1749b731875704e439c1631fb2d04f79510fca
