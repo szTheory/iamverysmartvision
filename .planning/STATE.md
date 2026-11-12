@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 5
 current_phase_name: Hand Controllers and PSG Sound
 status: executing
-stopped_at: Completed 05-10-PLAN.md
-last_updated: "2026-11-12T12:41:12.321Z"
+stopped_at: Completed 05-11-PLAN.md
+last_updated: "2026-11-12T13:24:21.684Z"
 last_activity: 2026-11-12
 last_activity_desc: Phase 4 complete, transitioned to Phase 5
-state_head: eefc23135ba8e811f848ccbfd918c7e55451fbb8
+state_head: 689c12aa44dea8c53bebaea2a428067376a158d6
 progress:
   total_phases: 8
   completed_phases: 4
   total_plans: 83
-  completed_plans: 81
+  completed_plans: 82
   percent: 50
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 5 (Hand Controllers and PSG Sound) — EXECUTING
-Plan: 11 of 12
+Plan: 12 of 12
 Status: Ready to execute
 Last activity: 2026-11-12 — Completed 05-01 (oracle-first: sources, controller literal, PSG rules and vectors, D10 inventory)
 
@@ -136,6 +136,7 @@ Progress: [█████░░░░░] 50%
 | Phase 05 P08 | 45min | 5 tasks | 35 files |
 | Phase 5 P09 | 3h | 5 tasks | 54 files |
 | Phase 5 P10 | 4h | 5 tasks | 56 files |
+| Phase 05 P11 | 40min | 5 tasks | 44 files |
 
 ## Accumulated Context
 
@@ -319,6 +320,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 05]: 05-08: the write log record is appended after the masked store with the catch-up stamp; domain-19 index is the record count; ivs_info publishes W_log from the env so the cut fault is visible to callers
 - [Phase 5]: 05-09: audio.chain.check is - unless an audio buffer was delivered on every slice; a mismatch is harness-fail audio-chain; the golden observed rule is count-based for video, audio, input and psglog
 - [Phase 5]: 05-09: operator raw outputs are vtable hooks plus options (--audio-raw, --psg-log-out, --audio-out-max-bytes), created exclusively in hostio.c; a capture or stream assert without output buffers is a harness failure
+- [Phase 05]: 05-11: fixture pointers use R4 and R5 (only they auto-increment); derivation corrected in dated section (g), original text kept
+- [Phase 05]: 05-11: .refpcm golden written from a runner report by a documented recipe; golden step compares it with dev and release refpcm reports
 
 ### Pending Todos
 
@@ -351,6 +354,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-12T12:41:12.137Z
-Stopped at: Completed 05-10-PLAN.md
+Last session: 2026-11-12T13:24:21.477Z
+Stopped at: Completed 05-11-PLAN.md
 Resume file: None
