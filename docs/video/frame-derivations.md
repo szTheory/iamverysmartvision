@@ -1,7 +1,7 @@
-# Hand-derived frames F-A1..F-A5 and F-B1..F-B3
+# Hand-derived frames F-A1..F-A5, F-B1..F-B3, F-D1 and F-D2
 
-Project-owned derivations of the eight unit frames of plan 06-01 (D-02, D-18, D-19). Each frame is an expected index plane written from the card rules before any renderer exists: the BACKTAB words are shown in hexadecimal and binary with the fields marked, the card patterns line by line, and the resulting 8 x 8 blocks with the rule ids that decide each field.
-The rules are CR-01..CR-14 of `data/stic/rules.json` (word layouts from `data/video/cards.literal.txt`, geometry from `data/video/geometry.literal.txt`); all of them are tier 4 or inference except the printed counts, so every frame is `tier source-expectation` and carries no hardware claim.
+Project-owned derivations of the eight unit frames and the two diagnostic frames of plan 06-01 (D-02, D-18, D-19, D-20); the diagnostic frames F-D1 and F-D2 are the expected pictures of the program derived in `docs/video/diag-stic-1-derivation.md`. Each frame is an expected index plane written from the card rules before any renderer exists: the BACKTAB words are shown in hexadecimal and binary with the fields marked, the card patterns line by line, and the resulting 8 x 8 blocks with the rule ids that decide each field.
+The rules are CR-01..CR-14 of `data/stic/rules.json` (word layouts from `data/video/cards.literal.txt`, geometry from `data/video/geometry.literal.txt`); all of them are tier 4 or inference except the printed counts, so the unit frames are `tier source-expectation`, the diagnostic frames `tier original-diagnostic`, and none carries a hardware claim.
 The 8 x 8 blocks were expanded into plane text with a throwaway typing aid written from these rules (never committed, never reading the core); every expected value follows from the word fields, the pattern lines and the rules named, and the `video` step re-checks each annotated cell by pixel counts.
 The author, the blind readers and the later core share one model family: agreement between a frame and the core is a check of transcription and derivation, not an independent implementation comparison (C43).
 
@@ -192,4 +192,38 @@ The fill word has bits 13 12 11 = 0 0 0, a graphics ROM card 128 with foreground
 Stack walk from position 0 (color 3): (6,4) to position 1 (color 6); (6,5) to position 2 (color A); (6,6) to position 3 (color D); (6,7) to position 0 (color 3). Cells after the last advance keep position 0 (color 3) through the end of the frame.
 
 Resulting plane: the words of F-A3 in Color Stack mode: row 5 words (bits 13 12 11 = 0 1 1 plus bit 9 ignored) are graphics RAM cards with foreground 8 + k and no advance, so they show stack entry 0; row 6 words with bit 13 set (originally backgrounds 4..7) advance the stack at (6,4), (6,5), (6,6), (6,7); all fill words (bit 10 set only) are graphics ROM card 0 without advance and show the entry at the current position. The `sha256-text` key of the frame is the SHA-256 of the 96 lines of 159 symbols (the cut-off symbol dropped, spaces removed, upper-case hex, each line ended by LF).
+
+## F-D1: ivs-diag-stic-1, Foreground/Background path
+
+Mode `fgbg`, border 0, stack 6 A 3 D, rules CR-01 CR-02 CR-03 CR-04 CR-06 CR-08 CR-14 STIC-R13. Unlisted cells carry the fill word 0000 (00 00000000000000).
+The fill word has select 0, card 0, foreground 0 and background 0 (bits 12 13 10 9 = 0 0 0 0); the card has no image, so every fill cell is background 0 (CR-08, CR-14).
+
+| cell | word | bits 15..0 | fields | result |
+|------|------|------------|--------|--------|
+| (8,3) | 2A01 | 00 10101000000001 | fgbg fg=1 bg=5 gram card=0 | foreground 1, background 5; graphics RAM card 0: 32 foreground pixels shown of 64 drawn |
+| (8,4) | 0E0A | 00 00111000001010 | fgbg fg=2 bg=3 gram card=1 | foreground 2, background 3; graphics RAM card 1: 28 foreground pixels shown of 64 drawn |
+| (8,5) | 1A13 | 00 01101000010011 | fgbg fg=3 bg=9 gram card=2 | foreground 3, background 9; graphics RAM card 2: 8 foreground pixels shown of 64 drawn |
+| (8,6) | 381C | 00 11100000011100 | fgbg fg=4 bg=12 gram card=3 | foreground 4, background 12; graphics RAM card 3: 32 foreground pixels shown of 64 drawn |
+| (11,0) | 2C1D | 00 10110000011101 | fgbg fg=5 bg=6 gram card=3 | foreground 5, background 6; graphics RAM card 3: 32 foreground pixels shown of 64 drawn |
+| (11,19) | 1C0F | 00 01110000001111 | fgbg fg=7 bg=10 gram card=1 | foreground 7, background 10; graphics RAM card 1: 20 foreground pixels shown of 56 drawn |
+
+Resulting plane: background 0 everywhere except the six cells: the words are the six explicit BACKTAB words of the program read in Foreground/Background mode, each a graphics RAM card 0..3 (stripes, box, diagonal, checker) in the colors of its fields; the column 19 box card shows its 7 leftmost pixel columns. The `sha256-text` key of the frame is the SHA-256 of the 96 lines of 159 symbols (the cut-off symbol dropped, spaces removed, upper-case hex, each line ended by LF).
+
+## F-D2: ivs-diag-stic-1, Color Stack path
+
+Mode `cs`, border 0, stack 6 A 3 D, rules CR-01 CR-02 CR-06 CR-09 CR-10 CR-11 CR-14 STIC-R13 STIC-R14. Unlisted cells carry the fill word 0000 (00 00000000000000).
+The fill word has bits 13 12 11 = 0 0 0, a graphics ROM card 0 with foreground 0 and no advance; the card has no image, so each unlisted cell shows the stack entry at the current position (CR-09, CR-10).
+
+| cell | word | bits 15..0 | fields | result |
+|------|------|------------|--------|--------|
+| (8,3) | 2A01 | 00 10101000000001 | cs adv=1 fg=1 gram card=0 bg=10 | foreground 1, background 10, position 1; graphics RAM card 0: 32 foreground pixels shown of 64 drawn |
+| (8,4) | 0E0A | 00 00111000001010 | cs adv=0 fg=2 gram card=1 bg=10 | foreground 2, background 10, position 1; graphics RAM card 1: 28 foreground pixels shown of 64 drawn |
+| (8,5) | 1A13 | 00 01101000010011 | cs adv=0 fg=11 gram card=2 bg=10 | foreground 11, background 10, position 1; graphics RAM card 2: 8 foreground pixels shown of 64 drawn |
+| (8,6) | 381C | 00 11100000011100 | cs adv=1 fg=12 gram card=3 bg=3 | foreground 12, background 3, position 2; graphics RAM card 3: 32 foreground pixels shown of 64 drawn |
+| (11,0) | 2C1D | 00 10110000011101 | cs adv=1 fg=5 gram card=3 bg=13 | foreground 5, background 13, position 3; graphics RAM card 3: 32 foreground pixels shown of 64 drawn |
+| (11,19) | 1C0F | 00 01110000001111 | cs adv=0 fg=15 gram card=1 bg=13 | foreground 15, background 13, position 3; graphics RAM card 1: 20 foreground pixels shown of 56 drawn |
+
+Stack walk from position 0 (color 6): (8,3) to position 1 (color A); (8,6) to position 2 (color 3); (11,0) to position 3 (color D). Cells after the last advance keep position 3 (color D) through the end of the frame.
+
+Resulting plane: the same BACKTAB words read in Color Stack mode with the stack 6, A, 3, D written by the program: the fill cells show the current stack entry, the words with bit 13 set advance the stack (positions 1 at (8,3), 2 at (8,6), 3 at (11,0)), and the bits 12 and 9 of the Foreground/Background reading become foreground bit 3 and an ignored bit. The `sha256-text` key of the frame is the SHA-256 of the 96 lines of 159 symbols (the cut-off symbol dropped, spaces removed, upper-case hex, each line ended by LF).
 
