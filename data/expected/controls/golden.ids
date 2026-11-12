@@ -4,3 +4,9 @@ golden-header-missing-tier
 golden-header-missing-oracle
 golden-self-recorded-wrong-tier
 golden-empty-domain-observed
+golden-mismatch
+golden-expect-drift
+golden-dev-release-diff
+golden-user-scenario-tracked
+golden-host-dependent-unmarked
+golden-host-dependent-golden
