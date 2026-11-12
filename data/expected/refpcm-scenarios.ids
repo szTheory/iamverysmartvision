@@ -1,0 +1,10 @@
+# Reference PCM goldens (plan 05-11, D-21, D7): `<scenario-id> <rate>`, one line per scenario whose WAV
+# repeatability record data/golden/<scenario-id>.refpcm is compared by the golden step. Suite
+# runner-process (id runner-process.refpcm.<scenario-id>) runs each scenario with `--audio-wav <file>
+# --wav-rate <rate>` into a temp directory and leaves the report in
+# <IVS_TEST_OUT_DIR>/runner/<scenario-id>.refpcm.report in both presets; the golden step requires the
+# body of the golden (refpcm.rate, refpcm.frames, refpcm.sha256) to equal the same lines of the dev
+# report and of the release report. The label is "reference conversion v1, converter repeatability
+# only": the converter is not part of the raw-audio evidence, and no digest, claim or gate row depends
+# on this inventory.
+diag-ctrl-psg-pass 48000

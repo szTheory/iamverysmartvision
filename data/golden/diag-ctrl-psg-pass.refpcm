@@ -1,0 +1,7 @@
+# tier: deterministic-repeatability
+# oracle: self-recorded
+# label: reference conversion v1, converter repeatability only
+# scenario: diag-ctrl-psg-pass
+refpcm.rate 48000
+refpcm.frames 224
+refpcm.sha256 999ad54be943b95e695bc7968898a1c5f9d6c1473e5f171a1c332d8190bac247

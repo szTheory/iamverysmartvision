@@ -48,9 +48,13 @@
 #   `# scenario: <id>` (the scenario rules above apply: a FILELIST scenario, class deterministic, no
 #   `content ... user` line); body: exactly the lines `refpcm.rate` (44100 or 48000), `refpcm.frames` (a
 #   decimal) and `refpcm.sha256` (64 lower-case hex digits), in that order, and nothing else: any other key is
-#   golden-mismatch. The converter is outside the raw-audio evidence path, so a .refpcm golden is never
-#   compared with a runner report here (the comparison with a rendered WAV belongs to the plan that records
-#   one) and no digest, claim or gate row depends on it.
+#   golden-mismatch. Comparison (plan 05-11, D-21): the scenario must be a line `<id> <rate>` of
+#   data/expected/refpcm-scenarios.ids (golden-mismatch otherwise, and a line without a golden is
+#   golden-mismatch too), the golden's refpcm.rate equals that rate, and its three body lines equal the
+#   refpcm.* lines of build/gate/dev/runner/<id>.refpcm.report AND of the release report written by suite
+#   runner-process (a missing report or a differing value is golden-mismatch). The converter is outside the
+#   raw-audio evidence path: no digest, claim or gate row depends on a .refpcm golden, and the .refpcm
+#   reports are not scenario reports (the dev versus release comparison below skips them).
 # Dev versus release (Pitfall 11: one ctest run sees one tree): the union of report names in
 #   build/gate/dev/runner and build/gate/release/runner; an id absent from the inventory is
 #   golden-mismatch; an id of class `host-dependent` is skipped and counted; every other id needs
@@ -95,6 +99,15 @@ if grep -q -x -F -e "$tiers" "$FILELIST" && [ -f "$ROOT/$tiers" ]; then
   awk '/^#/ || NF == 0 { next } { print $1 }' "$ROOT/$tiers" > "$tmp/tiers"
 fi
 [ -s "$tmp/tiers" ] || bad golden-header-missing-tier "$tiers missing or empty"
+
+# Reference PCM inventory (plan 05-11): `<id> <rate>` lines.
+: > "$tmp/refinv"
+refinv=data/expected/refpcm-scenarios.ids
+if grep -q -x -F -e "$refinv" "$FILELIST" && [ -f "$ROOT/$refinv" ]; then
+  awk -v f="$refinv" '/^#/ || NF == 0 { next } NF != 2 || ($2 != "44100" && $2 != "48000") { print "BAD " f " line " FNR; next } { print $1 " " $2 }' "$ROOT/$refinv" > "$tmp/refinv.raw"
+  grep '^BAD ' "$tmp/refinv.raw" | while IFS= read -r l; do printf 'golden-mismatch %s\n' "${l#BAD }"; done >> "$find"
+  grep -v '^BAD ' "$tmp/refinv.raw" | sort -u > "$tmp/refinv"
+fi
 
 class_of() { awk -v id="$1" '$1 == id { print $2; exit }' "$tmp/inv"; }
 in_list() { grep -q -x -F -e "$1" "$FILELIST"; }
@@ -213,7 +226,29 @@ while IFS= read -r g; do
       END {
         if (n != 3 || bad1 || bad2 || bad3)
           print "golden-mismatch " g " (body must be refpcm.rate 44100|48000, refpcm.frames <n>, refpcm.sha256 <64 hex>)"
-      }' "$ROOT/$g" >> "$find"
+      }' "$ROOT/$g" > "$tmp/refgram"
+    cat "$tmp/refgram" >> "$find"
+    # The comparison with the runner's reports runs only on a golden whose grammar held.
+    if [ ! -s "$tmp/refgram" ]; then
+      ra=$(awk -v s="$scn" '$1 == s { print $2; exit }' "$tmp/refinv")
+      if [ -z "$ra" ]; then
+        bad golden-mismatch "$g (scenario $scn is not in data/expected/refpcm-scenarios.ids)"
+      else
+        awk '!/^#/ && NF' "$ROOT/$g" > "$tmp/refgold"
+        [ "$(sed -n 's/^refpcm\.rate //p' "$tmp/refgold")" = "$ra" ] \
+          || bad golden-mismatch "$g (refpcm.rate differs from the inventory rate $ra)"
+        for pr in dev release; do
+          rr="$gate/$pr/runner/$scn.refpcm.report"
+          if [ ! -f "$rr" ]; then
+            bad golden-mismatch "$g (no $pr report build/gate/$pr/runner/$scn.refpcm.report)"
+            continue
+          fi
+          awk '$1 ~ /^refpcm\./' "$rr" > "$tmp/refrep"
+          cmp -s "$tmp/refgold" "$tmp/refrep" \
+            || bad golden-mismatch "$g (body differs from the $pr refpcm report)"
+        done
+      fi
+    fi
     continue
   fi
   rep="$gate/dev/runner/$scn.report"
@@ -253,14 +288,22 @@ while IFS= read -r g; do
   cmp -s "$tmp/want" "$tmp/have" || bad golden-mismatch "$g (body differs from build/gate/dev/runner/$scn.report)"
 done < "$tmp/goldens"
 
+# Every reference PCM inventory line has its golden (plan 05-11).
+while read -r rid rrate; do
+  [ -n "$rid" ] || continue
+  in_list "data/golden/$rid.refpcm" || bad golden-mismatch "data/golden/$rid.refpcm (listed in $refinv, no golden)"
+done < "$tmp/refinv"
+
 # Dev versus release.
 : > "$tmp/ids"
 reports=0
 for p in dev release; do
   for f in "$gate/$p/runner/"*.report; do
     [ -f "$f" ] || continue
-    [ "$p" = dev ] && reports=$((reports + 1))
     n=${f##*/}
+    # The reports of the --audio-wav runs (plan 05-11) are compared with their .refpcm golden above.
+    case $n in *.refpcm.report) continue ;; esac
+    [ "$p" = dev ] && reports=$((reports + 1))
     printf '%s\n' "${n%.report}" >> "$tmp/ids"
   done
 done

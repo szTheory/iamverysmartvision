@@ -9,7 +9,7 @@
 # digest of the raw audio evidence.
 # The default scenario diag-ctrl-psg-pass (plan 05-11) is a diagnostic that writes its tone period late, and a
 # period write takes effect only after the 4096-step first reload (about 65,536 ticks) while the program halts
-# near tick 16,200, so its WAV is about 5 ms of near-silence: there is no listenable tone in any Phase 5
+# near tick 16,750 (plan 05-11 measured 16,752), so its WAV is about 5 ms of near-silence: there is no listenable tone in any Phase 5
 # artifact (a longer guest is a later phase), and the D-22 listening handoff is recorded as not performable.
 # Rights: a scenario whose text has a `content <role> user` line (the operator's own image) is REFUSED before
 # anything is built: derived audio of rights-bearing content stays out of shared records.

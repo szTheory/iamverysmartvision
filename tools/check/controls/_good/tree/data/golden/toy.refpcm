@@ -1,4 +1,4 @@
-# Toy .refpcm golden (plan 05-10): the converter's repeatability record, never compared with a runner report.
+# Toy .refpcm golden (plan 05-10, 05-11): the converter repeatability record, compared with the toy refpcm reports of build/gate.
 # tier: deterministic-repeatability
 # oracle: self-recorded
 # label: reference conversion v1, converter repeatability only

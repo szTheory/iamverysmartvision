@@ -60,6 +60,7 @@ runner-process.operator.exclusive
 runner-process.operator.max-bytes
 runner-process.operator.options
 runner-process.refpcm.wav-written
+runner-process.refpcm.diag-ctrl-psg-pass
 runner-process.listen-demo.refuses-user
 runner-process.judge.exit-mismatch
 runner-process.judge.no-report-end

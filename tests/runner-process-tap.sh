@@ -44,7 +44,9 @@
 # data/expected/runner-outcomes.ids list the same pairs; runner-process.outcomes-covered: every
 # pair has a running scenario and every scenario line names a pair.
 # Reports: when IVS_TEST_OUT_DIR is set, every scenario case that printed a report leaves it in
-# <dir>/runner/<id>.report (the golden step compares dev with release there).
+# <dir>/runner/<id>.report (the golden step compares dev with release there). Since plan 05-11 the case
+# runner-process.refpcm.<id> of each line of data/expected/refpcm-scenarios.ids also leaves the report of its
+# --audio-wav run in <dir>/runner/<id>.refpcm.report (the golden step compares the .refpcm golden with it).
 # Output: the harness TAP shape (header with IVS_TEST_NONCE or none, plan, one result per case
 # with the findings as `#` lines after a failure, trailer) on stdout and, when IVS_TEST_OUT_DIR is
 # set, in <dir>/runner-process.txt.
@@ -522,6 +524,36 @@ run_one "$tmp" op-wlone "$ivs_run" --content-dir "$opc" --wav-rate 44100 "$opscn
 [ "$rc" -eq 14 ] && [ ! -s "$tmp/runs/op-wlone.out" ] || { ok=0; why operator-wav "--wav-rate without --audio-wav: exit $rc"; }
 [ ! -e "$opo/r.wav" ] || { ok=0; why operator-wav "a usage error created a file"; }
 result runner-process.refpcm.wav-written
+# Reference PCM golden runs (plan 05-11, D-21, D7): per line `<scenario-id> <rate>` of
+# data/expected/refpcm-scenarios.ids the scenario runs with `--audio-wav <file> --wav-rate <rate>` into a
+# mktemp directory (never the repository); it must end exit 0 as the scenario inventory says, report the
+# listed refpcm.rate and leave a WAV of 44 + 2 x refpcm.frames bytes. The report is kept in
+# <IVS_TEST_OUT_DIR>/runner/<id>.refpcm.report so the golden step compares the .refpcm golden with it (dev
+# and release). One run per preset, no slicing variants.
+refpcm_inv="$root/data/expected/refpcm-scenarios.ids"
+mkdir "$tmp/refpcm" || exit 1
+while read -r rid rrate rrest; do
+  case $rid in '' | '#'*) continue ;; esac
+  ok=1
+  : > "$tmp/why"
+  if [ -z "$rrate" ] || [ -n "$rrest" ]; then
+    ok=0; why inventory "not <scenario-id> <rate>"
+  elif [ ! -f "$scen/$rid.ivss" ]; then
+    ok=0; why inventory "no scenario file data/scenarios/$rid.ivss"
+  else
+    run_one "$tmp" "refpcm-$rid" "$ivs_run" --content-dir "$content" --audio-wav "$tmp/refpcm/$rid.wav" --wav-rate "$rrate" "$scen/$rid.ivss"
+    judge "refpcm-$rid" 0 pass - "" || ok=0
+    rfr=$(op_value "refpcm-$rid" refpcm.frames)
+    rsz=$(wc -c < "$tmp/refpcm/$rid.wav" 2> /dev/null | tr -d ' ')
+    [ "$(op_value "refpcm-$rid" refpcm.rate)" = "$rrate" ] || { ok=0; why refpcm "refpcm.rate '$(op_value "refpcm-$rid" refpcm.rate)', expected $rrate"; }
+    [ -n "$rfr" ] && [ "$rfr" -gt 0 ] && [ "$rsz" = "$((44 + 2 * rfr))" ] \
+      || { ok=0; why refpcm "file size '$rsz', refpcm.frames '$rfr'"; }
+    if [ -n "$rep_dir" ] && [ -s "$tmp/runs/refpcm-$rid.out" ]; then
+      cp "$tmp/runs/refpcm-$rid.out" "$rep_dir/$rid.refpcm.report" || { printf '# cannot write %s\n' "$rep_dir/$rid.refpcm.report" >&2; exit 1; }
+    fi
+  fi
+  result "runner-process.refpcm.$rid"
+done < "$refpcm_inv"
 # The listening helper refuses a scenario with a `content ... user` line before it builds or runs anything
 # (rights: derived audio of operator content stays out of shared records): exit 2, a message naming the rule.
 : > "$tmp/why"

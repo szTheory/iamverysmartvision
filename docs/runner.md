@@ -183,7 +183,7 @@ Algorithm (pure integer, no I/O, no allocation, no real-number types, no globals
 The WAV is created exclusively (an existing path is refused) and written only through `runner/hostio.c`. Decision: the header is written after the stream is complete. The file is created with 44 reserved bytes, the PCM follows slice by slice, and the finished file is read back from offset 0 to hash it, so `refpcm.sha256` is the SHA-256 of the file as it lies on disk. A failed write, a bound hit or a missing audio buffer is a harness failure and the file is not finished (`refpcm.sha256` is `-`).
 
 `tools/listen-demo.sh [scenario-id]` is an operator helper, not a gate step: it builds the release preset, renders one scenario (default `diag-ctrl-psg-pass`) into `build/listen/<id>.wav` (gitignored; a `.wav` is never committed: `wav` is a binary extension of the files step and `*.wav` is in `.gitignore`) and prints the WAV size and `refpcm.sha256`. It refuses, before building anything (exit 2), any scenario whose text has a `content <role> user` line, because derived audio of rights-bearing content stays out of shared records.
-The helper proves the export path only (an exclusive file, its size, its hash). The WAV of the project diagnostic is about 5 ms of near-silence: the diagnostic writes its tone period late, a period write takes effect only after the 4096-step first reload (about 65536 ticks), and the program halts near tick 16200. There is no listenable-tone statement for any Phase 5 artifact: the D-22 listening handoff is recorded as not performable until a later phase has a longer guest, and a rendered file or its hash is never a claim.
+The helper proves the export path only (an exclusive file, its size, its hash). The WAV of the project diagnostic is about 5 ms of near-silence: the diagnostic writes its tone period late, a period write takes effect only after the 4096-step first reload (about 65536 ticks), and the program halts near tick 16750 (plan 05-11 measured 16752; the WAV holds 224 frames at 48000 Hz). There is no listenable-tone statement for any Phase 5 artifact: the D-22 listening handoff is recorded as not performable until a later phase has a longer guest, and a rendered file or its hash is never a claim.
 
 ## Process-level tests (suite `runner-process`)
 
@@ -195,6 +195,8 @@ The helper proves the export path only (an exclusive file, its size, its hash). 
 - Determinism: a second run, `--slice-ticks` 1 and 7, and a run from another working directory give the same report apart from `host.calls`.
 - Judge self-controls: four fake runners (wrong exit code, no `report.end`, `outcome pass` with `exit.code 10`, a changed digest) must each be rejected for that reason; one more case requires `--help`, the outcome table above and `data/expected/runner-outcomes.ids` to list the same six pairs.
 - Operator files: `--audio-raw`, `--psg-log-out` and `--audio-wav` are each written once per preset (`runner-process.operator.*`, `runner-process.refpcm.wav-written`: the file is 44 + 2 x `refpcm.frames` bytes, begins with `RIFF`, hashes to `refpcm.sha256`, and a second run with the same path is refused); `runner-process.listen-demo.refuses-user` calls the listening helper on `needs-user-exec` and requires exit 2.
+- Second diagnostic (plan 05-11, D-24): `diag-ctrl-psg-pass` (seven controller events, exit 0), `diag-ctrl-psg-nokey` (the same cartridge with no input: timeout, detail `budget`, exit 11) and `diag-ctrl-psg-order` (every event split into two `input` lines one tick apart, port 1 first: pass); five mutants of its program in `data/expected/diag-mutations-ctrl-psg.ids` (explicit `from` word, outcome `guest-fail`, `timeout` or `pass`, and exit code per row); the repeat, slicing and directory variants run for `diag-ctrl-psg-pass` only (cost cap V-16).
+- Reference PCM golden cases (`runner-process.refpcm.<id>`, plan 05-11): every line `<id> <rate>` of `data/expected/refpcm-scenarios.ids` is run with `--audio-wav` and `--wav-rate` into a temporary directory, which leaves its report in `build/gate/<preset>/runner/<id>.refpcm.report`.
 - Each scenario's report is left in `build/gate/<preset>/runner/<id>.report`.
 
 ## Goldens (`data/golden/`, D-11, plan 04-21)
@@ -220,6 +222,17 @@ build/dev/runner/ivs-run --content-dir build/dev/images --update-golden data/gol
 build/dev/runner/ivs-run --content-dir build/dev/images --update-golden data/golden/diag-input-pass.digests data/scenarios/diag-input-pass.ivss
 build/dev/runner/ivs-run --content-dir build/dev/images --update-golden data/golden/timeout-budget.digests data/scenarios/timeout-budget.ivss
 ```
+
+A `.refpcm` golden (plan 05-11, D-21) is the repeatability record of the reference PCM converter ("reference conversion v1, converter repeatability only") for one scenario: header `# tier: deterministic-repeatability`, `# oracle: self-recorded`, that `# label:` line and `# scenario: <id>`, body `refpcm.rate`, `refpcm.frames`, `refpcm.sha256` only. It is written only from a runner report, never by hand, with:
+
+```
+d=$(mktemp -d)
+build/dev/runner/ivs-run --content-dir build/dev/images --audio-wav "$d/x.wav" --wav-rate 48000 data/scenarios/diag-ctrl-psg-pass.ivss > "$d/report"
+{ printf '# tier: deterministic-repeatability\n# oracle: self-recorded\n# label: reference conversion v1, converter repeatability only\n# scenario: diag-ctrl-psg-pass\n'
+  awk '$1 ~ /^refpcm\./' "$d/report"; } > data/golden/diag-ctrl-psg-pass.refpcm
+```
+
+The step compares its three body lines with the `refpcm.*` lines of the dev report and of the release report `<id>.refpcm.report` that suite `runner-process` leaves, requires the scenario to be listed in `data/expected/refpcm-scenarios.ids` with the same rate, and calls a missing report or a differing value `golden-mismatch` (control `golden-refpcm-mismatch`). It never reads the digests golden and nothing in a digest, claim or `important-gates` row depends on it: the converter sits outside the raw-audio evidence path. The helper `tools/listen-demo.sh` on `diag-ctrl-psg-pass` prints the same WAV size and `refpcm.sha256` (492 bytes, 224 frames); the file is near-silence, so this demonstrates the export path only and makes no listenable-tone statement.
 
 The step `golden` also requires the dev and release reports of every `deterministic` scenario of `data/expected/runner-scenarios.ids` to be byte-equal apart from `host.calls` (one ctest run sees only one preset, so this is judged after both ran).
 `host-dependent` scenarios (`timeout-wall`, `cancel-signal`) are left out of that comparison and may have no golden; a scenario with `user` content has no golden either.
