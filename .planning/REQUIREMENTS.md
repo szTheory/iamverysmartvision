@@ -93,7 +93,7 @@ differentiators and all variant/peripheral profiles are v2.
 - [ ] **VID-03**: The core produces a raw palette-index framebuffer at a defined machine-time boundary with profile-defined geometry (D8); palette, scaling and presentation remain host policy.
 - [ ] **VID-04**: Foreground/Background and Color Stack card modes render hand-derived expected index frames from known BACKTAB/GRAM fixture contents (no dependency on a real GROM image in CI).
 - [ ] **VID-05**: MOBs, border, horizontal/vertical delay and collision registers are each covered by a single-feature fixture with an independently derived expected result, or explicitly listed as unknown-default-chosen.
-- [ ] **VID-06**: A side-effect-free inspection path exists so debuggers/tests can read STIC/device state without triggering read side effects.
+- [x] **VID-06**: A side-effect-free inspection path exists so debuggers/tests can read STIC/device state without triggering read side effects.
 
 ### Visible Scenario (SCN)
 
@@ -223,7 +223,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VID-03 | Phase 6 | Pending |
 | VID-04 | Phase 6 | Pending |
 | VID-05 | Phase 8 | Pending |
-| VID-06 | Phase 6 | Pending |
+| VID-06 | Phase 6 | Complete |
 | SCN-01 | Phase 7 | Pending |
 | SCN-02 | Phase 7 | Pending |
 | STA-01 | Phase 8 | Pending |
