@@ -58,6 +58,11 @@ int ivs_hostio_out_close(ivs_hostio_out *o);
  * is unknown or unlink failed). Used for the files a failed run created (review WR-01). */
 int ivs_hostio_out_remove_if_same(const ivs_hostio_out *o, const char *path);
 
+/* 1 when path (symbolic links followed, as fopen would) names the file o created, 0 when it does not or
+ * does not exist, -1 when o has no recorded identity. Review WR-02: --update-golden must not open an
+ * operator output file under another spelling. */
+int ivs_hostio_out_is_path(const ivs_hostio_out *o, const char *path);
+
 /* Reads the regular file dir/rel (rel alone when dir is NULL) into buf: opens it without
  * blocking, checks with fstat on the open descriptor that it is a regular file, then reads at
  * most cap + 1 bytes (buf must hold cap + 1). Returns an IVS_RUNNER_READ_* result: OK with *len

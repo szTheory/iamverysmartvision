@@ -15,8 +15,9 @@
  * only end by the wall cap.
  * --update-golden <file> (plan 04-21, D-11) also writes the run's repeatability golden: a header
  * (tier, oracle, scenario, profile, domains) and the report lines of the golden key list; it is run
- * by a person, never by the gate, and refuses `user` content and host-dependent outcomes. A run that ends
- * harness-fail removes the operator output files it created (review WR-01). Documented in docs/runner.md. */
+ * by a person, never by the gate, and refuses `user` content, host-dependent outcomes and a path that
+ * is one of the operator output files (review WR-02). A run that ends harness-fail removes the operator
+ * output files it created (review WR-01). Documented in docs/runner.md. */
 #include <signal.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -69,7 +70,7 @@ static const char main_usage[] =
     "  --self-signal-count <n>  test hook: raise SIGINT n times there, 1..4 (default 1);\n"
     "                       needs --self-signal-after-slices\n"
     "  --update-golden <file>  also write the run's repeatability golden (.digests) to file;\n"
-    "                       refused for `user` content and host-dependent outcomes\n"
+    "                       refused for `user` content, host-dependent outcomes and an output file's path\n"
     "  --audio-raw <file>   also write the dense audio sample bytes (4 per sample: levels A, B, C, 0)\n"
     "                       to a NEW file (an existing path is refused, exit 14, never overwritten);\n"
     "                       a run that ends harness-fail (exit 14) removes the files it created\n"
@@ -274,6 +275,9 @@ static void main_discard(ivs_hostio_out *o, const char *path, const char *option
     fprintf(stderr, "ivs-run: %s: the run failed, the incomplete output file was removed\n", option);
   }
 }
+
+/* 1 when the two option values are both given and the same string. */
+static int main_same_path(const char *a, const char *b) { return a != NULL && b != NULL && strcmp(a, b) == 0; }
 
 /* The directory part of path ("." when it has none, "/" for a file at the root). 0 when it does
  * not fit. */
@@ -592,6 +596,13 @@ int main(int argc, char **argv)
   if (have_wav_rate && audio_wav_path == NULL) {
     return main_usage_error("--wav-rate needs --audio-wav");
   }
+  /* --update-golden overwrites its file, so it must never be one of the operator output files (review WR-02):
+   * the same string is refused here, before anything is created; the same file under another spelling is
+   * refused below once the outputs exist. */
+  if (main_same_path(golden_path, audio_raw_path) || main_same_path(golden_path, psg_log_path) ||
+      main_same_path(golden_path, audio_wav_path)) {
+    return main_fail("--update-golden must not name an operator output file");
+  }
   if (!mh.self_signal_repeat) {
     mh.self_signal_count = 1u;
   }
@@ -706,6 +717,19 @@ int main(int argc, char **argv)
       free(scn);
       return MAIN_EXIT_HARNESS;
     }
+  }
+  /* The golden path against the files just created, whatever its spelling or links (review WR-02). */
+  if (golden_path != NULL && (ivs_hostio_out_is_path(&mh.audio_out, golden_path) == 1 ||
+                              ivs_hostio_out_is_path(&mh.log_out, golden_path) == 1 ||
+                              ivs_hostio_out_is_path(&mh.wav_out, golden_path) == 1)) {
+    main_discard(&mh.audio_out, audio_raw_path, NULL);
+    main_discard(&mh.log_out, psg_log_path, NULL);
+    main_discard(&mh.wav_out, audio_wav_path, NULL);
+    free(storage);
+    free(buffers);
+    free(mh.golden_buf);
+    free(scn);
+    return main_fail("--update-golden must not name an operator output file");
   }
   memset(&host, 0, sizeof host);
   host.ctx = &mh;

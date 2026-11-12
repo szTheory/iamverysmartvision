@@ -526,6 +526,33 @@ sz=$(wc -c < "$opo/k.raw" 2> /dev/null | tr -d ' ')
 [ "$sz" = 252 ] && [ "$sz" = "$(op_value op-f-keep output.audio.bytes)" ] \
   || { ok=0; why operator-failed "budget timeout: file size '$sz', expected 252 and output.audio.bytes"; }
 result runner-process.operator.failed-run
+# --update-golden never names an operator output file (review WR-02): the same string, or the same file under
+# another spelling (`./g.raw`), is refused (exit 14, one stderr line, no report), and the run's own output files
+# are not left behind; a distinct golden path works and leaves the raw file intact.
+: > "$tmp/why"
+ok=1
+mkdir "$tmp/gold" || exit 1
+printf 'ivs-run: --update-golden must not name an operator output file\n' > "$tmp/want.err"
+for opt in --audio-raw --psg-log-out --audio-wav; do
+  run_one "$tmp/gold" op-g-same "$ivs_run" --content-dir "$opc" "$opt" x.out --update-golden x.out "$opscn"
+  [ "$rc" -eq 14 ] && [ ! -s "$tmp/runs/op-g-same.out" ] \
+    || { ok=0; why operator-golden "$opt with the same string: exit $rc or a report"; }
+  cmp -s "$tmp/runs/op-g-same.err" "$tmp/want.err" || { ok=0; why operator-golden "$opt: stderr is not the one refusal line"; }
+  [ ! -e "$tmp/gold/x.out" ] || { ok=0; why operator-golden "$opt with the same string: left x.out"; }
+  run_one "$tmp/gold" op-g-alias "$ivs_run" --content-dir "$opc" "$opt" x.out --update-golden ./x.out "$opscn"
+  [ "$rc" -eq 14 ] && [ ! -s "$tmp/runs/op-g-alias.out" ] \
+    || { ok=0; why operator-golden "$opt with ./x.out: exit $rc or a report"; }
+  cmp -s "$tmp/runs/op-g-alias.err" "$tmp/want.err" || { ok=0; why operator-golden "$opt: alias stderr is not the one refusal line"; }
+  [ ! -e "$tmp/gold/x.out" ] || { ok=0; why operator-golden "$opt with ./x.out: left x.out"; }
+done
+run_one "$tmp/gold" op-g-ok "$ivs_run" --content-dir "$opc" --audio-raw g.raw --update-golden g.digests "$opscn"
+judge op-g-ok 0 pass - "" || ok=0
+sz=$(wc -c < "$tmp/gold/g.raw" 2> /dev/null | tr -d ' ')
+[ -n "$sz" ] && [ "$sz" = "$(op_value op-g-ok output.audio.bytes)" ] \
+  || { ok=0; why operator-golden "a distinct golden path: raw file size '$sz'"; }
+[ "$(sed -n '1p' "$tmp/gold/g.digests" 2> /dev/null)" = "# tier: deterministic-repeatability" ] \
+  || { ok=0; why operator-golden "a distinct golden path: no golden written"; }
+result runner-process.operator.golden-distinct
 
 # Operator WAV (plan 05-10, D-20, D-21, T-05-26): the same stand-in under --audio-wav, into the mktemp directory.
 # By hand: the report ends with refpcm.rate (48000), refpcm.frames and refpcm.sha256 right before report.end;

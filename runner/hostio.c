@@ -237,3 +237,15 @@ int ivs_hostio_out_remove_if_same(const ivs_hostio_out *o, const char *path)
   }
   return unlink(path) == 0 ? 0 : -1;
 }
+
+int ivs_hostio_out_is_path(const ivs_hostio_out *o, const char *path)
+{
+  struct stat sb;
+  if (o->ino == 0u || path == NULL) {
+    return -1;
+  }
+  if (stat(path, &sb) != 0) {
+    return 0;
+  }
+  return (uint64_t)sb.st_dev == o->dev && (uint64_t)sb.st_ino == o->ino ? 1 : 0;
+}
