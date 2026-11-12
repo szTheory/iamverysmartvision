@@ -4,12 +4,12 @@
 # PSG_TONE_HIGH_NIBBLE_UNMASKED: the coarse tone periods keep and read a whole byte instead of four bits;
 # the other coarse-register vectors, the one-store no-mirror case, the guest tracer ($0200 would read
 # $00FF) and the judge's positive control (the real row is judged under the fault) fail with it.
-PSG_TONE_HIGH_NIBBLE_UNMASKED psg.reg.tone-high-mask psg.reg.|psg.judge.mask-row- psg.reset.regs-zero
+PSG_TONE_HIGH_NIBBLE_UNMASKED psg.reg.tone-high-mask psg.reg.|psg.judge.mask-row-|psg.log. psg.reset.regs-zero
 # PSG_REG_OCTAL_AS_HEX: the amplitude registers (data sheet R10..R12, octal) land one slot low, R10 at
 # $01FA; only the vectors that write two registers or read the amplitude against a neighbour's mask see
 # it (store and load shift together, so a lone amplitude B or C round trip is consistent). From plan 05-06
 # every tone vector and the guest tracer write amplitude A at $01FB, which lands at $01FA under the fault.
-PSG_REG_OCTAL_AS_HEX psg.reg.map-amplitude psg.reg.|psg.tone.|psg.judge.tone-|psg.buffers.|psg.sample.|psg.slice.|psg.chain.|psg.amp.|psg.ampenv.|psg.env.|psg.judge.env-|psg.noise.|psg.profile. psg.reset.regs-zero
+PSG_REG_OCTAL_AS_HEX psg.reg.map-amplitude psg.reg.|psg.tone.|psg.judge.tone-|psg.buffers.|psg.sample.|psg.slice.|psg.chain.|psg.amp.|psg.ampenv.|psg.env.|psg.judge.env-|psg.noise.|psg.profile.|psg.log. psg.reset.regs-zero
 # PSG_SHAPE_READBACK_STORED: the shape register reads back what was stored instead of 0 (C75).
 PSG_SHAPE_READBACK_STORED psg.reg.shape-reads-zero psg.reg. psg.reset.regs-zero
 # Tone, mixer, amplitude and step faults (plan 05-06, AUD-01, D-09, D-10, A-08), one site each in the engine TU of
@@ -20,12 +20,12 @@ PSG_TONE_PERIOD_OFF_BY_ONE psg.tone.rate-p1 psg.tone.|psg.judge.tone-|psg.buffer
 # PSG_STEP_IS_16_CLOCKS: a chip step of 16 chip clocks (32 ticks), the glossary mistake corrected in plan 05-01:
 # a run of N x 16 ticks delivers N / 2 samples, so the sample count of every tone vector is wrong (and the byte
 # counts and the guest tone of the buffer tests with it, psg.buffers.*).
-PSG_STEP_IS_16_CLOCKS psg.tone.rate-p1 psg.tone.|psg.judge.tone-|psg.buffers.|psg.sample.|psg.slice.|psg.chain.|psg.amp.|psg.ampenv.|psg.env.|psg.judge.env-|psg.judge.noise-|psg.noise.|psg.profile.|psg.reseng. psg.mix.truth-table
+PSG_STEP_IS_16_CLOCKS psg.tone.rate-p1 psg.tone.|psg.judge.tone-|psg.buffers.|psg.sample.|psg.slice.|psg.chain.|psg.amp.|psg.ampenv.|psg.env.|psg.judge.env-|psg.judge.noise-|psg.noise.|psg.profile.|psg.reseng.|psg.log. psg.mix.truth-table
 # PSG_MIXER_SENSE_INVERTED: the enable bits are read with the opposite polarity; the AND rows of the mixer vectors
 # fail and so does every tone vector (channel A would be disabled by the clear bit of R7). The row named
 # psg.mix.truth-table (both enabled, both generators 1, out 1) is the one printed row that a polarity flip leaves at
 # out 1, so psg.mix.and-tone0 (both enabled, tone 0, out 0) is the must-fail id (open item of plan 05-06).
-PSG_MIXER_SENSE_INVERTED psg.mix.and-tone0 psg.mix.|psg.tone.|psg.judge.tone-|psg.judge.mix-|psg.buffers.|psg.sample.|psg.slice.|psg.chain.|psg.amp.|psg.ampenv.|psg.env.|psg.judge.env-|psg.noise.|psg.profile. psg.amp.fixed-15
+PSG_MIXER_SENSE_INVERTED psg.mix.and-tone0 psg.mix.|psg.tone.|psg.judge.tone-|psg.judge.mix-|psg.buffers.|psg.sample.|psg.slice.|psg.chain.|psg.amp.|psg.ampenv.|psg.env.|psg.judge.env-|psg.noise.|psg.profile.|psg.log. psg.amp.fixed-15
 # PSG_AMP_ENV_BIT_IGNORED: the amplitude select bits are ignored, the fixed level is always used.
 PSG_AMP_ENV_BIT_IGNORED psg.amp.env-mode psg.amp.|psg.ampenv.|psg.env.|psg.judge.env-|psg.profile.|psg.reseng. psg.mix.truth-table
 # Audio path faults (plan 05-06, T-05-15, T-05-16, D-16, D-17), one site each: AUDIO_SLACK_ZERO in
@@ -43,7 +43,7 @@ PSG_OUTBUF_PARTIAL_WRITE psg.buffers.too-small-no-write psg.buffers.too-small-no
 # PSG_SAMPLE_PHASE_RESET_PER_CALL (core/src/psg/psg_sample.c): the sample grid restarts at each call's first catch-up,
 # skipping the steps due before it, so what a call delivers depends on where the host slices; every test that
 # counts samples from a fresh sink sees it.
-PSG_SAMPLE_PHASE_RESET_PER_CALL psg.slice.samples-split psg.slice.|psg.sample.|psg.chain.|psg.buffers.|psg.tone.guest|psg.tone.next-reload|psg.reseng. psg.mix.truth-table
+PSG_SAMPLE_PHASE_RESET_PER_CALL psg.slice.samples-split psg.slice.|psg.sample.|psg.chain.|psg.buffers.|psg.tone.guest|psg.tone.next-reload|psg.reseng.|psg.fuzz.|psg.log. psg.mix.truth-table
 # Noise and envelope faults (plan 05-07, AUD-01, D-10, D-12, T-05-18, T-05-19), three sites each in core/src/psg/psg_noise.c and
 # core/src/psg/psg_env.c. The engine vectors run at module level on a fresh PSG, so each wrong rule fails the vector it is named for.
 # PSG_NOISE_WRONG_TAP: the other candidate mask $14000 while the profile says $12000: the period is 114,681, not the maximal 131,071.

@@ -167,16 +167,30 @@ static inline int pu_run_to_log(ivs_machine *m, uint64_t target, uint8_t *audio,
 {
   ivs_run_request q;
   uint64_t now = pu_now(m);
+  uint8_t *own = NULL;
+  int ok;
+  /* An audio buffer is always requested (a scratch one when the caller passes NULL): the samples are not the subject of
+   * the write-log tests, but a call without an audio buffer would run the named fault AUDIO_STATE_DEPENDS_ON_BUFFER
+   * quadratically over a long run. */
+  if (audio == NULL) {
+    own = malloc((size_t)pu_need(m, now, target));
+    if (own == NULL) {
+      return 0;
+    }
+    audio = own;
+  }
   memset(&q, 0, sizeof q);
   q.struct_size = (uint32_t)sizeof q;
   q.target_ticks = target;
   q.audio = audio;
-  q.audio_capacity = audio != NULL ? pu_need(m, now, target) : 0u;
+  q.audio_capacity = pu_need(m, now, target);
   q.psg_log = log;
   q.psg_log_capacity = log != NULL ? pu_log_need(m, now, target) : 0u;
   memset(rep, 0, sizeof *rep);
   rep->struct_size = (uint32_t)sizeof *rep;
-  return ivs_machine_run(m, &q, rep) == IVS_OK;
+  ok = ivs_machine_run(m, &q, rep) == IVS_OK;
+  free(own);
+  return ok;
 }
 
 /* Big-endian stores, written separately from the core. */
@@ -226,6 +240,59 @@ static inline size_t pu_prog_writer(uint16_t *w, uint32_t n)
   w[k++] = 0x0220u;
   w[k++] = 0x0001u;
   return k;
+}
+
+/* xorshift32 (the generator of run.fuzz.*, in-repo, no library randomness). */
+static inline uint32_t pu_xs(uint32_t *s)
+{
+  uint32_t x = *s;
+  x ^= x << 13;
+  x ^= x >> 17;
+  x ^= x << 5;
+  *s = x;
+  return x;
+}
+
+/* RANDOM (seeded, project-authored): tokens random tokens, then B back to $1000. Each token is one of
+ *   MVII #v, R0; MVO R0, $01F0 + a                 (direct write, 4 words)
+ *   MVII #v, R0; MVII #$01F0 + a, R3; MVO@ R0, R3   (indirect write, 5 words)
+ *   INCR R1  or  DECR R2                            (filler, 1 word)
+ * with v a random 10-bit value and a a random register 0..15; a write to the noise period never carries the period 1
+ * (a sample would then be a level change at every step). INCR R1 is 0009 and DECR R2 is 0012 (machine_standin.c).
+ * The B back needs d = k + 1 for k words before it (target = address of the B + 1 - d = $1000). w holds at least
+ * 5 x tokens + 2 words; the count is returned. */
+static inline size_t pu_prog_random(uint16_t *w, uint32_t seed, uint32_t tokens)
+{
+  uint32_t s = seed != 0u ? seed : 1u;
+  uint32_t t;
+  size_t k = 0u;
+  for (t = 0u; t < tokens; t++) {
+    uint32_t kind = pu_xs(&s) % 8u;
+    uint32_t v = pu_xs(&s) & 0x3FFu;
+    uint32_t a = pu_xs(&s) % 16u;
+    if (a == 9u && (v & 0x1Fu) == 1u) {
+      v ^= 2u;
+    }
+    if (kind < 3u) {
+      w[k++] = 0x02B8u;
+      w[k++] = (uint16_t)v;
+      w[k++] = 0x0240u;
+      w[k++] = (uint16_t)(0x01F0u + a);
+    } else if (kind < 6u) {
+      w[k++] = 0x02B8u;
+      w[k++] = (uint16_t)v;
+      w[k++] = 0x02BBu;
+      w[k++] = (uint16_t)(0x01F0u + a);
+      w[k++] = 0x0258u;
+    } else if (kind == 6u) {
+      w[k++] = 0x0009u;
+    } else {
+      w[k++] = 0x0012u;
+    }
+  }
+  w[k] = 0x0220u;
+  w[k + 1u] = (uint16_t)(k + 1u);
+  return k + 2u;
 }
 
 /* Runs m to target in calls whose targets advance by the slice sizes in turn (as pu_run_sliced), delivering the

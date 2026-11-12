@@ -605,6 +605,7 @@ static int pbf_log_safety_net(void)
   ivs_run_report rep;
   const ivs_profile_desc *prof = NULL;
   uint8_t *log = NULL;
+  uint8_t *audio = NULL;
   uint64_t cap;
   uint64_t records;
   uint32_t p;
@@ -625,9 +626,13 @@ static int pbf_log_safety_net(void)
   log = malloc((size_t)cap);
   PBF_CHECK(log != NULL);
   memset(log, PBF_SENTINEL, (size_t)cap);
+  audio = malloc((size_t)env.audio_bytes_per_frame * (PBF_WRITER_TARGET / env.nominal_frame_ticks + 1u));
+  PBF_CHECK(audio != NULL);
   memset(&q, 0, sizeof q);
   q.struct_size = (uint32_t)sizeof q;
   q.target_ticks = PBF_WRITER_TARGET;
+  q.audio = audio;
+  q.audio_capacity = (uint64_t)env.audio_bytes_per_frame * (PBF_WRITER_TARGET / env.nominal_frame_ticks + 1u);
   q.psg_log = log;
   q.psg_log_capacity = cap;
   memset(&rep, 0, sizeof rep);
@@ -651,6 +656,7 @@ static int pbf_log_safety_net(void)
   rc = IVS_TEST_PASS;
 done:
   free(log);
+  free(audio);
   if (twin.storage != NULL) {
     ivs_ms_free(&twin);
   }

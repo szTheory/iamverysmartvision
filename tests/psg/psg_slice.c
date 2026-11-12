@@ -16,7 +16,15 @@
  *   psg.slice.no-catch-up-to-target    after a call the PSG is exactly at floor(now / 16) samples, whatever the target
  *   psg.slice.interleaved-instances    two instances run in turn with calls of 700 ticks equal each run alone
  *   psg.slice.reset-between-calls      a power-on reset between calls gives audio_first_index 0 and the first run's
- *                                      bytes again */
+ *                                      bytes again
+ * Plan 05-08 (D-13, D-16, D-18): the write log is slicing invariant like the samples.
+ *   psg.slice.log-split                one call equals calls of 1, 7 and 13 ticks and the cycle 1, 7, 13, for the
+ *                                      worst-case writer and a seeded random program: concatenated log bytes,
+ *                                      concatenated samples, whole storage and every digest (domains 17 and 19
+ *                                      included) are equal and each call's psg_log_first_index is the records
+ *                                      delivered before it
+ *   psg.slice.log-first-index          three calls of unequal length: psg_log_first_index is 0, then the records of
+ *                                      the first call, then of the first two, and each call's bytes are its records */
 #include "psg_util.h"
 
 #include "psg_cases.h"
@@ -446,6 +454,120 @@ done:
   return rc;
 }
 
+/* ---- plan 05-08: the write log ---- */
+
+#define SL_LOG_TARGET 70000u
+
+static int sl_log_prog(ivs_ms_inst *x, uint32_t which)
+{
+  uint16_t w[5u * 160u + 4u];
+  uint16_t *big = NULL;
+  size_t n;
+  int ok;
+  if (which == 0u) {
+    n = pu_prog_random(w, 0x5851F42Du, 160u);
+    return ivs_ms_powered_words(x, w, n, 0x5Au);
+  }
+  big = malloc(3100u * sizeof big[0]);
+  if (big == NULL) {
+    return 0;
+  }
+  n = pu_prog_writer(big, 3000u);
+  ok = ivs_ms_powered_words(x, big, n, 0x5Au);
+  free(big);
+  return ok;
+}
+
+static int sl_log_split(void)
+{
+  static const uint64_t pats[4][3] = {{1u, 0u, 0u}, {7u, 0u, 0u}, {13u, 0u, 0u}, {1u, 7u, 13u}};
+  static const uint32_t npat[4] = {1u, 1u, 1u, 3u};
+  uint32_t which;
+  int rc = IVS_TEST_FAIL;
+  for (which = 0u; which < 2u; which++) {
+    ivs_ms_inst one;
+    uint8_t *ra = malloc(SL_BYTES);
+    uint8_t *rl = malloc(16u * 4500u);
+    uint64_t an = 0u;
+    uint64_t ln = 0u;
+    uint32_t p;
+    one.storage = NULL;
+    one.m = NULL;
+    SL_CHECK(ra != NULL && rl != NULL && sl_log_prog(&one, which));
+    SL_CHECK(pu_run_sliced_log(one.m, SL_LOG_TARGET, NULL, 0u, ra, SL_BYTES, &an, rl, 16u * 4500u, &ln));
+    SL_CHECK(an > 4u * 4000u && ln >= 16u * 600u);
+    for (p = 0u; p < 4u; p++) {
+      ivs_ms_inst x;
+      uint8_t *oa = malloc(SL_BYTES);
+      uint8_t *ol = malloc(16u * 4500u);
+      uint64_t xa = 0u;
+      uint64_t xl = 0u;
+      int ok;
+      x.storage = NULL;
+      x.m = NULL;
+      SL_CHECK(oa != NULL && ol != NULL && sl_log_prog(&x, which));
+      ok = pu_run_sliced_log(x.m, SL_LOG_TARGET, pats[p], npat[p], oa, SL_BYTES, &xa, ol, 16u * 4500u, &xl);
+      if (!ok || xa != an || xl != ln || memcmp(oa, ra, (size_t)an) != 0 || memcmp(ol, rl, (size_t)ln) != 0 ||
+          !sl_same(&x, &one)) {
+        ivs_test_diag("program %u, slice pattern %u differs from one call (ok %d, %llu log bytes, want %llu)",
+                      (unsigned)which, (unsigned)p, ok, (unsigned long long)xl, (unsigned long long)ln);
+        free(oa);
+        free(ol);
+        ivs_ms_free(&x);
+        goto done;
+      }
+      free(oa);
+      free(ol);
+      ivs_ms_free(&x);
+    }
+    free(ra);
+    free(rl);
+    ivs_ms_free(&one);
+  }
+  rc = IVS_TEST_PASS;
+done:
+  return rc;
+}
+
+static int sl_log_first_index(void)
+{
+  static const uint64_t targets[3] = {9000u, 31000u, 60000u};
+  ivs_ms_inst x;
+  uint8_t *log = NULL;
+  uint64_t before = 0u;
+  uint32_t i;
+  int rc = IVS_TEST_FAIL;
+  x.storage = NULL;
+  x.m = NULL;
+  SL_CHECK(sl_log_prog(&x, 1u));
+  log = malloc((size_t)pu_log_need(x.m, 0u, 60000u));
+  SL_CHECK(log != NULL);
+  for (i = 0u; i < 3u; i++) {
+    ivs_run_report rep;
+    uint64_t now = pu_now(x.m);
+    uint64_t j;
+    uint64_t n;
+    SL_CHECK(pu_run_to_log(x.m, targets[i], NULL, log, &rep));
+    SL_CHECK(rep.psg_log_first_index == before);
+    SL_CHECK(rep.psg_log_bytes_written % 16u == 0u && rep.psg_log_bytes_written > 0u);
+    n = rep.psg_log_bytes_written / 16u;
+    /* the records of this call are the writes in [now, new now): the writer's tick is 100 + 36 k for record k */
+    for (j = 0u; j < n; j++) {
+      SL_CHECK(pu_get_be64(log + 16u * j) == 100u + 36u * (before + j));
+      SL_CHECK(pu_get_be64(log + 16u * j) >= now);
+    }
+    before += n;
+    SL_CHECK(((struct ivs_machine *)x.m)->obs.psglog.count == before);
+  }
+  rc = IVS_TEST_PASS;
+done:
+  free(log);
+  if (x.storage != NULL) {
+    ivs_ms_free(&x);
+  }
+  return rc;
+}
+
 const ivs_test_case ivs_psg_slice_cases[] = {
     {"psg.slice.seam-equals-run", sl_seam_equals_run, NULL},
     {"psg.slice.samples-split", sl_samples_split, NULL},
@@ -455,5 +577,7 @@ const ivs_test_case ivs_psg_slice_cases[] = {
     {"psg.slice.no-catch-up-to-target", sl_no_catch_up_to_target, NULL},
     {"psg.slice.interleaved-instances", sl_interleaved, NULL},
     {"psg.slice.reset-between-calls", sl_reset_between_calls, NULL},
+    {"psg.slice.log-split", sl_log_split, NULL},
+    {"psg.slice.log-first-index", sl_log_first_index, NULL},
 };
 const size_t ivs_psg_slice_count = sizeof ivs_psg_slice_cases / sizeof ivs_psg_slice_cases[0];

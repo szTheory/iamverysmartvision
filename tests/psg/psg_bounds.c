@@ -609,16 +609,20 @@ static int pb_log_capacity_formula(void)
     ivs_run_request q;
     ivs_run_report rep;
     uint8_t *log = malloc((size_t)need);
-    PB_CHECKG(log != NULL);
+    uint8_t *audio = malloc((size_t)pu_need(x.m, 0u, 1u << 22)); /* requested, so the long run is not a counting run */
+    PB_CHECKG(log != NULL && audio != NULL);
     memset(&q, 0, sizeof q);
     q.struct_size = (uint32_t)sizeof q;
     q.target_ticks = 1u << 22;
+    q.audio = audio;
+    q.audio_capacity = pu_need(x.m, 0u, 1u << 22);
     q.psg_log = log;
     q.psg_log_capacity = need - 1u;
     memset(&rep, 0, sizeof rep);
     rep.struct_size = (uint32_t)sizeof rep;
     if (ivs_machine_run(x.m, &q, &rep) != IVS_E_BUFFER_TOO_SMALL || rep.refusal_reason != IVS_REASON_RUN_PSGLOG_SMALL) {
       free(log);
+      free(audio);
       ivs_test_diag("one byte below the capacity was not refused as PSGLOG_SMALL");
       goto done;
     }
@@ -627,9 +631,11 @@ static int pb_log_capacity_formula(void)
     rep.struct_size = (uint32_t)sizeof rep;
     if (ivs_machine_run(x.m, &q, &rep) != IVS_OK) {
       free(log);
+      free(audio);
       goto done;
     }
     free(log);
+    free(audio);
   }
   rc = IVS_TEST_PASS;
 done:

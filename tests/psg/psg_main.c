@@ -119,6 +119,8 @@ int main(int argc, char **argv)
   psg_add(ivs_psg_bounds_cases, ivs_psg_bounds_count, NULL, NULL, NULL, NULL);
   psg_add(ivs_psg_buffers_cases, ivs_psg_buffers_count, NULL, NULL, NULL, NULL);
   psg_add(ivs_psg_log_cases, ivs_psg_log_count, NULL, NULL, NULL, NULL);
+  psg_add(ivs_psg_fuzz_cases, ivs_psg_fuzz_count, NULL, NULL, NULL, NULL);
+  psg_add(ivs_psg_iso_cases, ivs_psg_iso_count, NULL, NULL, NULL, NULL);
   if (psg_total > PSG_MAX_CASES) {
     fprintf(stderr, "psg: more than %u cases; raise PSG_MAX_CASES\n", PSG_MAX_CASES);
     return 1;

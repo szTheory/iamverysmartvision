@@ -195,4 +195,11 @@ extern const size_t ivs_psg_chain_count;
 extern const ivs_test_case ivs_psg_log_cases[];
 extern const size_t ivs_psg_log_count;
 
+/* Families fuzz and iso (plan 05-08, psg_fuzz.c, psg_iso.c): seeded slicing against the one-unit-per-call reference, the
+ * interleaved-instance and reset cases of the write log. Fixed cases only. */
+extern const ivs_test_case ivs_psg_fuzz_cases[];
+extern const size_t ivs_psg_fuzz_count;
+extern const ivs_test_case ivs_psg_iso_cases[];
+extern const size_t ivs_psg_iso_count;
+
 #endif

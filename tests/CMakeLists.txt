@@ -228,7 +228,7 @@ add_custom_command(
   COMMENT "Proving that the core PSG parameters do not depend on psg.dac.levels"
   VERBATIM)
 list(APPEND IVS_PSG_VEC_GENERATED "${IVS_PSG_PROBE_INC}" "${IVS_PSG_INDEP_INC}")
-set(IVS_PSG_TEST_SOURCES psg/psg_main.c psg/psg_reg.c psg/psg_port.c psg/psg_tone.c psg/psg_mix.c psg/psg_noise.c psg/psg_env.c psg/psg_dac.c psg/psg_profile.c psg/psg_bounds.c psg/psg_buffers.c psg/psg_sample.c psg/psg_slice.c psg/psg_chain.c psg/psg_log.c machine/machine_standin.c)
+set(IVS_PSG_TEST_SOURCES psg/psg_main.c psg/psg_reg.c psg/psg_port.c psg/psg_tone.c psg/psg_mix.c psg/psg_noise.c psg/psg_env.c psg/psg_dac.c psg/psg_profile.c psg/psg_bounds.c psg/psg_buffers.c psg/psg_sample.c psg/psg_slice.c psg/psg_chain.c psg/psg_log.c psg/psg_fuzz.c psg/psg_iso.c machine/machine_standin.c)
 add_executable(ivs_tests_psg ${IVS_PSG_TEST_SOURCES} ${IVS_PSG_VEC_GENERATED})
 target_include_directories(ivs_tests_psg PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(ivs_tests_psg PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
