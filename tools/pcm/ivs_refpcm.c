@@ -54,10 +54,23 @@ int ivs_refpcm_init(ivs_refpcm_state *st, uint64_t crystal_num, uint64_t crystal
 
 size_t ivs_refpcm_out_bound(const ivs_refpcm_state *st, size_t nsamples)
 {
-  /* The callers feed at most a few thousand samples, so (nsamples + 1) * cell_units (at most 2^52 each) fits
-   * 64 bits. */
-  uint64_t cells = (uint64_t)nsamples + (st->lead_units != 0u ? 1u : 0u);
-  uint64_t whole = (cells * st->cell_units) / st->win_units;
+  /* cells * cell_units (a cell is at most 2^52 units) wraps 64 bits for a large nsamples, which would
+   * understate the bound and let feed accept an out buffer that is too small (review IN-02). A bound that
+   * cannot be computed exactly is SIZE_MAX, which feed refuses (no caller has that much room). */
+  uint64_t lead = st->lead_units != 0u ? 1u : 0u;
+  uint64_t cells;
+  uint64_t whole;
+  if ((uint64_t)nsamples > UINT64_MAX - lead) {
+    return SIZE_MAX;
+  }
+  cells = (uint64_t)nsamples + lead;
+  if (cells > UINT64_MAX / st->cell_units) {
+    return SIZE_MAX;
+  }
+  whole = (cells * st->cell_units) / st->win_units;
+  if (whole >= (uint64_t)SIZE_MAX) {
+    return SIZE_MAX;
+  }
   return (size_t)whole + 1u;
 }
 
@@ -100,11 +113,13 @@ int ivs_refpcm_feed(ivs_refpcm_state *st, const uint8_t *levels, size_t nsamples
                     size_t *produced)
 {
   size_t n = 0u;
+  size_t bound;
   *produced = 0u;
   if (nsamples == 0u) {
     return IVS_REFPCM_OK;
   }
-  if (out_capacity < ivs_refpcm_out_bound(st, nsamples)) {
+  bound = ivs_refpcm_out_bound(st, nsamples);
+  if (bound == SIZE_MAX || out_capacity < bound) { /* SIZE_MAX: the bound is not computable (review IN-02) */
     return IVS_REFPCM_E_SPACE;
   }
   for (size_t i = 0u; i < nsamples; i++) {

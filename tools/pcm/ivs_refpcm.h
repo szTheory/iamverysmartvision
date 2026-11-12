@@ -77,14 +77,17 @@ typedef struct ivs_refpcm_state {
 
 /* Starts a conversion of a stream whose master crystal is crystal_num / crystal_den Hz, one sample every
  * sample_period_ticks master ticks, to rate Hz (44100 or 48000). Ranges: 0 < num <= 2^32, 0 < den <=
- * 2^20, 0 < sample_period_ticks <= 2^16 (so every product below fits 64 bits). Every field of st is
+ * 2^20, 0 < sample_period_ticks <= 2^16 (so every per-window and per-cell product below fits 64 bits;
+ * the product of ivs_refpcm_out_bound is checked and saturates, review IN-02). Every field of st is
  * written. Returns IVS_REFPCM_OK or IVS_REFPCM_E_ARG (st is then unusable). */
 int ivs_refpcm_init(ivs_refpcm_state *st, uint64_t crystal_num, uint64_t crystal_den, uint32_t sample_period_ticks,
                     uint32_t rate);
 
 /* An upper bound of the frames that feeding nsamples input samples can produce from the current state:
  * floor((nsamples + 1) * P * den * R / num) + 1 (the +1 cell is the implicit leading one, counted until it
- * has been consumed). */
+ * has been consumed). SIZE_MAX when that product does not fit 64 bits (a huge nsamples at wide
+ * parameters): ivs_refpcm_feed refuses such a count as IVS_REFPCM_E_SPACE instead of trusting a wrapped
+ * bound. */
 size_t ivs_refpcm_out_bound(const ivs_refpcm_state *st, size_t nsamples);
 
 /* Feeds nsamples 4-byte samples (levels A, B, C, 0, so 4 * nsamples bytes) and writes the frames that

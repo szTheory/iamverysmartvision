@@ -506,6 +506,24 @@ static int rp_refusals_consume_nothing(void)
   IVS_CHECK(ivs_refpcm_feed(&st, rp_toy_levels, 1000u, out, 8u, &produced) == IVS_REFPCM_E_SPACE && produced == 0u);
   IVS_CHECK(memcmp(&st, &before, sizeof st) == 0);
   IVS_CHECK(ivs_refpcm_feed(&st, NULL, 0u, out, 0u, &produced) == IVS_REFPCM_OK && produced == 0u);
+  /* Review IN-02: at the widest accepted parameters a cell is 2^16 * 2^20 * 48,000 = 375 * 2^43 units, so
+   * (nsamples + 1) * cell wraps 64 bits from 5,594 samples on; at nsamples = 2^21 - 1 it wraps to exactly 0
+   * (375 * 2^21 * 2^43 = 375 * 2^64), which made the bound 1 frame. The bound must saturate instead, and
+   * feed must then refuse before it reads a level byte or writes a frame (levels is too small on purpose). */
+  {
+    ivs_refpcm_state wide;
+    uint8_t one[4] = {0, 0, 0, 0};
+    IVS_CHECK(ivs_refpcm_init(&wide, UINT64_C(0x100000000), UINT64_C(0x100000), 0x10000u, 48000u) == IVS_REFPCM_OK);
+    IVS_CHECK(ivs_refpcm_out_bound(&wide, 1000u) > 1000u);
+    IVS_CHECK(ivs_refpcm_out_bound(&wide, 6000u) == SIZE_MAX);
+    IVS_CHECK(ivs_refpcm_out_bound(&wide, ((size_t)1 << 21) - 1u) == SIZE_MAX);
+    IVS_CHECK(ivs_refpcm_out_bound(&wide, SIZE_MAX) == SIZE_MAX);
+    before = wide;
+    produced = 99u;
+    IVS_CHECK(ivs_refpcm_feed(&wide, one, ((size_t)1 << 21) - 1u, out, 8u, &produced) == IVS_REFPCM_E_SPACE &&
+              produced == 0u);
+    IVS_CHECK(memcmp(&wide, &before, sizeof wide) == 0);
+  }
   return IVS_TEST_PASS;
 }
 
