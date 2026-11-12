@@ -709,3 +709,129 @@ phase5-close: no-lever
 - Hosted rows since plan 05-08 (gate_s / cpu_s): 58 / 173 (05-08), 103 / 323 (05-09), 106 / 336 (05-10), 72 / 221 (05-11), 115 / 363 (05-12 head). Last-5 medians now **gate 103 s and cpu 323**, both over the triggers (90 and 280): **both fire**. One run (115 s) is close to the 120 s any-run trigger.
 - Per-step comparison of the fastest recent run (43209453151, gate 58 s) with the slowest (43237288204, gate 115 s): `c-build` 25 -> 49, `controls` 22 -> 43, `c-faults` 15 -> 37, `c-tests` 4 -> 10, `cp1610-vectors` 4 -> 7. `controls / c-build` is 0.88 in both runs and every large step roughly doubled, so the swing is runner speed (the 1.7x host variance recorded since Phase 4), not a code change; the same-day pair 72 s (05-11) and 115 s (05-12) differs by planning documents and two shell-test fixes only. `c-faults / c-build` moved from 0.60 to 0.76; the 05-12 head carries five more faults and the armed-watchdog handshake, a candidate small real growth of a few seconds.
 - **Decision (reversible):** no lever applied now, because a speed-normalised comparison shows no growth that a lever would remove and the cheapest candidate (`-g0` on the fault targets, about 5 hosted cpu-s) is below the bar. The budget stays at median gate 75 s, cpu 260. **Next step:** the first hosted rows of Phase 6 decide; if the last-5 medians are still over 90 s / 280 cpu-s after rows from at least three different runner speeds, apply `-g0` on the fault targets first, then the V-16 ordering, and consider moving the cold-build `ivs_faults` target (114 of about 515 container cpu-s) to a cached or prebuilt arrangement, which needs an owner decision because D12 bans caches.
+
+## 2026-11-12 Phase 6 start (plan 06-02): `-g0` on the fault targets, the speed-normalised metric, the checkpoints
+
+Nothing here calls `gh` or `tools/ci-record.sh`; `.planning/ci-runs.tsv` is orchestrator-owned and untouched. Local figures are from the laptop (18 cores, Apple clang 21, other work running, 1-minute load 9 to 22); container figures are `sh tools/gate-linux.sh` (Ubuntu 24.04, gcc 13.3.0, emulated amd64 on an arm64 host, 8 cores, cold build); neither is a hosted figure. Counts at plan start and end: `steps=36/36 controls=328/328 faults=193/193 tests-expected=3778 tests-executed=3776 tests-skipped=2 tests-missing=0`.
+
+### Why the raw triggers fire by runner speed, and the normalised metric
+
+The last-5 hosted medians through run 43246638522 were gate 106 s and cpu 336 against the triggers 90 and 280, and after the later rows (through 43286006804) they are gate 90 s and cpu 267. Raw seconds and cpu-seconds move with the speed of the runner that happened to pick the job (the 1.7x spread recorded since Phase 4), so the pair is read together with the speed-normalised ratio **`r = cpu_s / build_s`** of the same row: `build_s` is the hosted compile time of the same job on the same machine, so it measures the machine, and `cpu_s` divided by it is the work expressed in "machine-build-seconds". Over the rows of the last-5 set the raw cpu moves between 219 and 363 while `r` stays between 6.4 and 7.4. Every row of `.planning/ci-runs.tsv` since Phase 5 started (2026-11-11 and later, `cpu_s` and `build_s` above 0; 38 rows) follows (`gate_s` is the hosted gate step wall):
+
+| Date | Run | Conclusion | `build_s` | `gate_s` | `cpu_s` | `r` |
+|------|-----|------------|-----------|----------|---------|-----|
+| 2026-11-11 | 43058596162 | success | 28 | 62 | 164 | 5.86 |
+| 2026-11-11 | 43060935649 | success | 30 | 62 | 164 | 5.47 |
+| 2026-11-11 | 43063741813 | success | 28 | 61 | 164 | 5.86 |
+| 2026-11-11 | 43067196274 | success | 22 | 46 | 116 | 5.27 |
+| 2026-11-11 | 43070516137 | success | 25 | 54 | 147 | 5.88 |
+| 2026-11-11 | 43073575336 | success | 32 | 69 | 177 | 5.53 |
+| 2026-11-11 | 43075005155 | success | 27 | 60 | 170 | 6.30 |
+| 2026-11-11 | 43077768591 | success | 24 | 55 | 136 | 5.67 |
+| 2026-11-11 | 43094232714 | success | 29 | 62 | 179 | 6.17 |
+| 2026-11-11 | 43099862529 | success | 33 | 69 | 185 | 5.61 |
+| 2026-11-11 | 43102991214 | success | 29 | 64 | 182 | 6.28 |
+| 2026-11-11 | 43106276178 | success | 25 | 55 | 154 | 6.16 |
+| 2026-11-11 | 43113503262 | success | 24 | 52 | 150 | 6.25 |
+| 2026-11-11 | 43115430207 | success | 19 | 39 | 114 | 6.00 |
+| 2026-11-11 | 43117857552 | success | 20 | 40 | 118 | 5.90 |
+| 2026-11-11 | 43121804870 | success | 27 | 57 | 161 | 5.96 |
+| 2026-11-12 | 43124846207 | success | 29 | 67 | 211 | 7.28 |
+| 2026-11-12 | 43127157643 | success | 21 | 41 | 125 | 5.95 |
+| 2026-11-12 | 43129448676 | success | 26 | 53 | 148 | 5.69 |
+| 2026-11-12 | 43131258957 | success | 27 | 59 | 175 | 6.48 |
+| 2026-11-12 | 43133660327 | success | 28 | 59 | 179 | 6.39 |
+| 2026-11-12 | 43135732132 | success | 34 | 75 | 225 | 6.62 |
+| 2026-11-12 | 43148343848 | failure | 25 | 109 | 150 | 6.00 |
+| 2026-11-12 | 43152062835 | success | 21 | 45 | 136 | 6.48 |
+| 2026-11-12 | 43175636749 | success | 25 | 55 | 160 | 6.40 |
+| 2026-11-12 | 43178237404 | success | 36 | 81 | 252 | 7.00 |
+| 2026-11-12 | 43182282322 | success | 37 | 85 | 263 | 7.11 |
+| 2026-11-12 | 43193144083 | success | 39 | 89 | 273 | 7.00 |
+| 2026-11-12 | 43198505852 | success | 30 | 72 | 220 | 7.33 |
+| 2026-11-12 | 43202448987 | success | 33 | 78 | 231 | 7.00 |
+| 2026-11-12 | 43209453151 | success | 25 | 58 | 173 | 6.92 |
+| 2026-11-12 | 43214813968 | success | 45 | 103 | 323 | 7.18 |
+| 2026-11-12 | 43220350877 | success | 47 | 106 | 336 | 7.15 |
+| 2026-11-12 | 43227486537 | success | 33 | 72 | 221 | 6.70 |
+| 2026-11-12 | 43237288204 | success | 49 | 115 | 363 | 7.41 |
+| 2026-11-12 | 43246638522 | success | 50 | 114 | 338 | 6.76 |
+| 2026-11-12 | 43248899132 | success | 34 | 75 | 219 | 6.44 |
+| 2026-11-12 | 43286006804 | success | 36 | 90 | 267 | 7.42 |
+
+Summary of the table: minimum 5.27, median 6.30, maximum 7.42. The Phase 4 rows (2026-11-11) sit at 5.3 to 6.3 and the Phase 5 close rows at 6.4 to 7.4: `r` rose by about 1 over Phase 5, which is the real growth of the work (the 42 faults, 39 controls and three suites added) beyond machine speed. The last five rows (43227486537 to 43286006804) give `r` 6.70, 7.41, 6.76, 6.44, 7.42 (median 6.76) against raw gate medians 90 s and cpu 267. A fast runner and a slow runner differ by 1.7x on the same code in the raw columns and by under 0.2 in `r` (rows 43209453151 at 58 s and 43214813968 at 103 s: 6.92 and 7.18).
+
+### The rule for Phase 6
+
+- The raw owner triggers stay as the 05-L1 decision set them (copied, not changed): hosted gate median budget 75 s, revisit when the last-5 median is above 90 s or any run is above 120 s; hosted cpu median budget 260, revisit when the last-5 median is above 280.
+- The pair is read together with `r`: budget 7.8, revisit above 8.3 (last-5 median of successful rows). A raw trigger that fires while `r` is inside 7.8 is a runner-speed event (record the rows and keep going); a raw trigger and `r` above 8.3 together is code growth and starts the lever order below.
+- The orchestrator owns the budgets (see the request at the end of this entry).
+
+### Measured unit costs (carried into the projections)
+
+- Fault: 0.137 local cpu-s per run (checkpoint 2 of Phase 5), about 0.5 hosted cpu-s with its build (the corrected unit of 05-L1: build 0.72 plus run 0.27 container cpu-s, times the hosted over container ratio 0.51; `-g0` below lowers the build share).
+- Control: 0.185 local cpu-s; about 0.07 hosted for a pure step, about 2.2 hosted for one that reaches the C symbol layer (ten `c-purity` controls cost 4.3 to 4.5 container cpu-s each).
+- Test id: 1.5 to 3.5 ms per id and preset (`psg` 1.5 ms dev, `run` 3.5 ms dev, measured in Phase 5 checkpoint 2), release about a third of that.
+- Hosted speed varies about 1.7x between runners on identical code (the reason for `r`).
+
+### Lever applied: `-g0` on the fault targets only
+
+`tests/faults.cmake` gains `ivs_fault_nodebug(<target>)` (a `target_compile_options(... PRIVATE -g0)` after the preset's `-O1 -g`, where a later `-g0` wins on clang and gcc), called from `ivs_fault_tu_setup` (plain and owner object libraries), for `ivs_fault_plain_harness`, in `ivs_fault_suite_obj`, and for the fault executables and owner objects of `ivs_fault_exe` and `ivs_fault_exe_core_gen` (site, generator and core-generator faults). Scope check (`ninja -t commands`): `ivs_fault_ADCR_IGNORES_C` 24 compile lines with ` -g0`, a runner-owner fault (`OUTCOME_GUEST_AS_HARNESS`) 36, a sha256 fault 33, a generator fault 29; `ivs_tests_psg` in `build/dev` and in `build/release` none; the whole `build/release` graph none; no `-g0` command in `build/dev` outside targets named for faults. The pristine suites, the runner, the sanitized dev objects and every release target are unchanged, so no evidence build changed; code generation of the fault objects is unchanged (only debug information is dropped).
+
+### Before and after
+
+Method: three local and two container full gates alternated between the base and the patched `tests/faults.cmake` on the same host (the file was swapped between runs, so each run's `c-build` includes the rebuild of the changed fault objects), then a paired cold build of the `ivs_faults` target alone, because the whole-gate figures are dominated by host load (load 9 to 22) and cannot show a saving of this size.
+
+| Run | Variant | Load at start (1 min) | `gate-time total=` | `gate-cpu` user + sys | `c-faults` | `c-build` | `controls` | `c-tests` |
+|-----|---------|-----------------------|--------------------|-----------------------|------------|-----------|------------|-----------|
+| local 1 | base | 15.3 | 82 | 113.10 + 110.82 = 223.9 | 22 | 2 | 40 | 15 |
+| local 1 | `-g0` | 19.4 | 77 | 138.48 + 123.51 = 262.0 | 19 | 7 | 38 | 13 |
+| local 2 | base | 20.7 | 69 | 133.23 + 117.30 = 250.5 | 18 | 7 | 29 | 12 |
+| local 2 | `-g0` | 17.6 | 78 | 132.79 + 117.31 = 250.1 | 17 | 6 | 27 | 12 |
+| local 3 | base | 19.4 | 78 | 138.28 + 126.75 = 265.0 | 19 | 10 | 36 | 13 |
+| local 3 | `-g0` | 17.5 | 80 | 136.16 + 128.83 = 265.0 | 19 | 10 | 41 | 15 |
+| container 1 | base | 21.9 | 213 | 860.83 + 61.47 = 922.3 | 36 | 68 | 118 | 24 |
+| container 1 | `-g0` | 9.5 | 225 | 881.03 + 67.50 = 948.5 | 33 | 73 | 121 | 29 |
+| container 2 | base | 11.2 | 232 | 910.36 + 66.22 = 976.6 | 37 | 73 | 124 | 24 |
+| container 2 | `-g0` | 12.2 | 222 | 835.14 + 61.63 = 896.8 | 35 | 63 | 112 | 26 |
+
+- Whole gate: local `gate-cpu` base 223.9, 250.5, 265.0 (mean 246.5) against `-g0` 262.0, 250.1, 265.0 (mean 259.0); container base 922.3 and 976.6 (mean 949.4) against 948.5 and 896.8 (mean 922.7, minus 27 or 2.8 percent). Every difference is inside the spread between runs of the same variant (the loaded laptop moves the same tree by 40 cpu-s), so **the whole-gate measurement cannot resolve the saving; it is below noise there, as the 05-L1 estimate (about 10 container cpu-s of about 515) predicted.** The `c-faults` step (the fault runs, which do not change) reads 22, 18, 19 s against 19, 17, 19 locally and 36, 37 against 33, 35 in the container: the same noise.
+- Paired cold build of `ivs_faults` (the only place the lever acts; separate source copies and build directories per variant so no reconfigure mixes them; three rounds alternated, `-j 8`, `times` user + sys): Ubuntu 24.04 container, base 250.4, 274.7, 229.6 cpu-s (mean 251.6, wall 34, 38, 32 s) against `-g0` 229.7, 223.3, 194.9 (mean 216.0, wall 32, 32, 27 s): **minus 35.6 container cpu-s (14 percent) and about 4 s wall; each pair favours `-g0` (minus 20.7, 51.4, 34.7)**. Fault object bytes drop from 16.8 MB to 5.1 MB. Scaled by the hosted over container ratio 0.51 that is about **18 hosted cpu-s** (the pairs allow 10 to 26), about 3 times the 05-L1 estimate (which extrapolated from removing `-g` from the whole dev preset on a loaded host). On macOS (Apple clang, two rounds) the same pair reads 42.8, 52.0 cpu-s against 44.5, 47.8: no measurable difference (object bytes 10.7 MB to 4.4 MB), so the lever helps the Linux gcc build the hosted runner uses and not the laptop.
+- Evidence: the `gate:` summary line is byte-identical before and after: the six local runs share one md5, the four container runs share another (counts `steps=36/36 controls=328/328 faults=193/193 tests-expected=3778 tests-executed=3776 tests-skipped=2 tests-missing=0`), and every fault still ends with its registered verdict (the `c-faults` step and `faults-verdict` are the judges). The lever is applied because it changes no evidence and saves real hosted cpu, not because a trigger fired.
+
+- Final tree of this plan (lever plus this entry): `sh tools/gate.sh` `gate-time total=52`, `gate-cpu` 85.67 + 76.52 = 162.2; `dash tools/gate.sh` `gate-time total=54`, 90.38 + 84.00 = 174.4; `sh tools/gate-linux.sh` exit 0, last log line `gate: PASS`, `gate-time total=220`, 853.64 + 67.07 = 920.7 (the laptop was quieter for the local pair). The summary lines are byte-identical to the base runs (same md5 per platform).
+
+### Planned checkpoints for Phase 6
+
+Each checkpoint is a section of this file written by the executor of the plan named, from the gate lines of that plan's final tree and `.planning/ci-runs.tsv` as the orchestrator recorded it; it ends with the line `checkpoint-N: lever-required` or `checkpoint-N: no-lever`.
+
+| Checkpoint | Where | Cumulative adds read from the gate lines |
+|------------|-------|------------------------------------------|
+| CP-A | after plan 06-06 | faults, controls and test ids added since the counts above (`faults=193`, `controls=328`, `tests-expected=3778` at plan 06-02) |
+| CP-B | after plan 06-09 | the same, cumulative |
+| CP-C | after plan 06-12 | the same, cumulative |
+| CP-D | at plan 06-14 (phase close) | the same, cumulative, plus the full hosted row evaluation |
+
+Projection at each checkpoint (the realised overrun factor of Phase 5 is 2.0 and 231 is the Phase 5 close hosted median):
+
+`projected_last5_median_cpu = 231 + 2.0 x (0.5 x faults_added + suite_term + 0.07 x pure_controls_added + 2.2 x symbol_controls_added + 0.0034 x ids_added_both_presets)`
+
+where `suite_term` is the sum over suites of (faults in the suite x that suite's measured dev plain-run seconds), because `c-faults` reruns the whole suite executable once per fault, `ids_added_both_presets` is the added test ids counted once per preset, and the `0.5` per fault already includes its build (lower after `-g0`; the formula is kept as written so the checkpoints stay comparable with Phase 5). The checkpoint also prints `r` of the last five successful hosted rows and applies the rule above.
+
+Stop rule: if `r` of the last five hosted rows exceeds 8.3 at a checkpoint, the orchestrator creates plan 06-L1 and no further fault is added until it lands. Executors never create it and never call `gh` or `tools/ci-record.sh`.
+
+### Pre-committed lever order after `-g0` (applied only when the rule fires)
+
+1. (done here) `-g0` on the fault targets.
+2. Fault objects at `-O0` only, with an owner decision because it changes the evidence build (the fault executables would no longer be built at the dev flags the suites are proven with): about 19 hosted cpu-s.
+3. One runtime-selected fault-enabled object per owner translation unit (instead of one recompiled object per fault).
+4. Batch the `cp1610-vectors` JSON re-parse: about 2.5 hosted cpu-s.
+5. A two-job split stays the last resort because it redefines PKG-02.
+
+Not levers: dropping a control or a fault, merging checks, weakening an oracle, ccache while the gate is within budget (D12 bans caches).
+
+### Request to the orchestrator
+
+Please re-baseline the hosted budgets in view of the ratio (the 05-L1 precedent: a delegated, reversible policy decision): keep the raw triggers (gate median 75 s with trigger 90 s or any run above 120 s, cpu median 260 with trigger 280) and add `r = cpu_s / build_s` as the arbiter, budget 7.8 and revisit above 8.3, so that a runner-speed swing alone does not stop the phase. Also record `r` when the hosted rows are appended to `.planning/ci-runs.tsv`. This entry changes no budget and edits no earlier section.
+
+phase6-start: lever-applied
