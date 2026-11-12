@@ -1302,8 +1302,8 @@ static int ex_audio_assert(void)
                              "assert audio emitted != 0\n";
   fake_host h;
   char text[2048];
-  char v[RX_VALUE_CAP];
-  char count[RX_VALUE_CAP];
+  char v[64];
+  char count[32];
   int rc = IVS_TEST_FAIL;
   if (!rx_psg_run(&h, good, IVS_RUNNER_OUTCOME_PASS, 0u) || !rx_value(h.out, "output.audio.samples", count, sizeof count)) {
     goto done;
