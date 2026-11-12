@@ -313,12 +313,157 @@ check_golden() {
   fi
   return 0
 }
+pT=$(cd "$T" && pwd -P) || exit 1
+# check_deps <build dir> <consumer source copy>: the ninja dependency records of every consumer
+# object (D-37 d, Pitfall 8). Lines carry a fixed 4-space indent and the paths may hold spaces, so
+# the indent is stripped and nothing is split into fields. No path may lie under the repository
+# (logical or physical form); an ivs*.h header outside the moved prefix, or any path under the temp
+# dir other than the prefix and the source copy, is a leak too; and ivs.h, ivs_machine.h,
+# ivs_run.h and ivs_status.h must be present under the moved prefix (positive presence, so an
+# empty record cannot pass). Prints FAIL lines; leaves the prefix-relative names in $T/deps.prefix.
+check_deps() {
+  cd_rc=0
+  cd_src=$2
+  cd_psrc=$(cd "$cd_src" && pwd -P) || cd_psrc=$cd_src
+  if ! (cd "$1" && ninja -t deps) > "$T/deps.raw" 2> "$T/deps.err"; then
+    cat "$T/deps.err"
+    printf -- '-- FAIL pkg-deps-missing: %s\n' "ninja -t deps failed"
+    return 1
+  fi
+  sed -n 's/^    //p' "$T/deps.raw" > "$T/deps.list"
+  : > "$T/deps.prefix"
+  while IFS= read -r cd_p; do
+    case $cd_p in
+      "$ROOT"/*|"$proot"/*) printf -- '-- FAIL pkg-leak: %s\n' "$cd_p"; cd_rc=1; continue ;;
+      "$pb"/*) printf '%s\n' "${cd_p#"$pb"/}" >> "$T/deps.prefix"; continue ;;
+      "$ppb"/*) printf '%s\n' "${cd_p#"$ppb"/}" >> "$T/deps.prefix"; continue ;;
+      "$cd_src"/*|"$cd_psrc"/*) ;;
+      "$T"/*|"$pT"/*) printf -- '-- FAIL pkg-leak: %s\n' "$cd_p"; cd_rc=1; continue ;;
+    esac
+    case ${cd_p##*/} in
+      ivs*.h) printf -- '-- FAIL pkg-leak: %s\n' "$cd_p"; cd_rc=1 ;;
+    esac
+  done < "$T/deps.list"
+  for cd_h in ivs.h ivs_machine.h ivs_run.h ivs_status.h; do
+    if ! grep -q -x -F -e "include/ivs/$cd_h" "$T/deps.prefix"; then
+      printf -- '-- FAIL pkg-deps-missing: %s\n' "include/ivs/$cd_h under the moved prefix"
+      cd_rc=1
+    fi
+  done
+  return "$cd_rc"
+}
+# check_link <build dir>: one link command names libivs_core.a, it is <prefix>/lib/libivs_core.a
+# and no other ivs_core archive (D-37 e); the compile command of main.c.o has the strict flags
+# and no -isystem (NO_SYSTEM_FROM_IMPORTED took effect). Prints FAIL lines.
+check_link() {
+  cl_rc=0
+  if ! (cd "$1" && ninja -t commands consumer) > "$T/cmds" 2> "$T/cmds.err"; then
+    cat "$T/cmds.err"
+    printf -- '-- FAIL pkg-link-path: %s\n' "ninja -t commands failed"
+    return 1
+  fi
+  grep -F -e 'libivs_core.a' "$T/cmds" > "$T/link.line"
+  cl_n=$(grep -c . "$T/link.line")
+  if [ "$cl_n" -ne 1 ]; then
+    printf -- '-- FAIL pkg-link-path: %s\n' "$cl_n commands name libivs_core.a"
+    cl_rc=1
+  elif ! grep -q -F -e "$pb/lib/libivs_core.a" "$T/link.line" && ! grep -q -F -e "$ppb/lib/libivs_core.a" "$T/link.line"; then
+    printf -- '-- FAIL pkg-link-path: %s\n' "the link line does not name <prefix>/lib/libivs_core.a"
+    cl_rc=1
+  fi
+  cl_k=$(awk '{ n += gsub(/ivs_core/, "") } END { print n + 0 }' "$T/link.line")
+  if [ "$cl_k" -ne 1 ]; then
+    printf -- '-- FAIL pkg-link-path: %s\n' "$cl_k ivs_core names on the link line"
+    cl_rc=1
+  fi
+  grep -F -e '-o CMakeFiles/consumer.dir/main.c.o' "$T/cmds" > "$T/compile.line"
+  if [ "$(grep -c . "$T/compile.line")" -ne 1 ]; then
+    printf -- '-- FAIL pkg-consumer-flags: %s\n' "no single compile command for main.c.o"
+    cl_rc=1
+  else
+    for cl_f in -std=c17 -Wall -Wextra -Wpedantic -Wconversion -Wshadow -Werror; do
+      grep -q -F -e " $cl_f " "$T/compile.line" || { printf -- '-- FAIL pkg-consumer-flags: %s\n' "missing $cl_f"; cl_rc=1; }
+    done
+    if grep -q -F -e '-isystem' "$T/compile.line"; then
+      printf -- '-- FAIL pkg-consumer-flags: %s\n' "-isystem in the compile command"
+      cl_rc=1
+    fi
+  fi
+  return "$cl_rc"
+}
+# check_ivs_dir <build dir>: ivs_DIR of the consumer cache lies under the moved prefix, compared
+# in pwd -P form. Prints FAIL lines.
+check_ivs_dir() {
+  ci_dir=$(sed -n 's/^ivs_DIR:PATH=//p' "$1/CMakeCache.txt")
+  if [ -z "$ci_dir" ] || [ ! -d "$ci_dir" ]; then
+    printf -- '-- FAIL pkg-ivs-dir: %s\n' "ivs_DIR unset or not a directory: '$ci_dir'"
+    return 1
+  fi
+  ci_pdir=$(cd "$ci_dir" && pwd -P) || ci_pdir=
+  case $ci_pdir in
+    "$ppb"/*) return 0 ;;
+  esac
+  printf -- '-- FAIL pkg-ivs-dir: %s\n' "$ci_dir is not under the moved prefix"
+  return 1
+}
+# check_runner_golden <output>: the consumer's digest.<domain> lines equal those of the runner
+# golden of the same scenario (D-24, D-39), and its domains are exactly the golden's observed
+# ones (the composite apart). Prints FAIL lines.
+rgold="$ROOT/data/golden/diag-input-pass.digests"
+check_runner_golden() {
+  if [ ! -f "$rgold" ]; then
+    printf -- '-- FAIL pkg-runner-golden-diff: %s\n' "data/golden/diag-input-pass.digests missing"
+    return 1
+  fi
+  cr_rc=0
+  grep '^digest\.' "$rgold" | sort > "$T/rg.want"
+  grep '^digest\.' "$1" | sort > "$T/rg.have"
+  if [ ! -s "$T/rg.want" ] || ! cmp -s "$T/rg.want" "$T/rg.have"; then
+    printf -- '-- FAIL pkg-runner-golden-diff: %s\n' \
+      "golden only: $(comm -23 "$T/rg.want" "$T/rg.have" | awk '{ print $1 }' | tr '\n' ' ')consumer only: $(comm -13 "$T/rg.want" "$T/rg.have" | awk '{ print $1 }' | tr '\n' ' ')"
+    cr_rc=1
+  fi
+  sed -n 's/^# domains: //p' "$rgold" | tr ' ' '\n' | sed -n 's/=observed$//p' | sort > "$T/rg.dom.want"
+  sed -n 's/^digest\.\([a-z]*\) .*/\1/p' "$1" | grep -v -x -e composite | sort > "$T/rg.dom.have"
+  if [ ! -s "$T/rg.dom.want" ] || ! cmp -s "$T/rg.dom.want" "$T/rg.dom.have"; then
+    printf -- '-- FAIL pkg-runner-golden-diff: %s\n' \
+      "observed domains: golden $(tr '\n' ' ' < "$T/rg.dom.want")consumer $(tr '\n' ' ' < "$T/rg.dom.have")"
+    cr_rc=1
+  fi
+  return "$cr_rc"
+}
+# check_calls <object>: the ivs_* names the consumer object references (nm -u, normalized) equal
+# data/expected/pkg-consumer-calls.ids. Prints FAIL lines.
+callids="$ROOT/data/expected/pkg-consumer-calls.ids"
+check_calls() {
+  ck_rc=0
+  if [ ! -f "$callids" ]; then
+    printf -- '-- FAIL pkg-consumer-calls: %s\n' "data/expected/pkg-consumer-calls.ids missing"
+    return 1
+  fi
+  ck_dir=$(dirname "$1")
+  ck_base=$(basename "$1")
+  if ! (cd "$ck_dir" && "$NM" -P -u "./$ck_base") > "$T/calls.nm" 2> "$T/calls.nm.err"; then
+    cat "$T/calls.nm.err"
+    printf -- '-- FAIL pkg-consumer-calls: %s\n' "nm -u failed"
+    return 1
+  fi
+  norm < "$T/calls.nm" | grep '^ivs_' | sort -u > "$T/calls.have"
+  awk '/^#/ { next } NF { print $1 }' "$callids" | sort -u > "$T/calls.want"
+  [ -s "$T/calls.want" ] || { printf -- '-- FAIL pkg-consumer-calls: %s\n' "no names"; return 1; }
+  comm -23 "$T/calls.want" "$T/calls.have" > "$T/calls.missing"
+  comm -13 "$T/calls.want" "$T/calls.have" > "$T/calls.extra"
+  while IFS= read -r ck_n; do printf -- '-- FAIL pkg-consumer-calls: %s\n' "not referenced: $ck_n"; ck_rc=1; done < "$T/calls.missing"
+  while IFS= read -r ck_n; do printf -- '-- FAIL pkg-consumer-calls: %s\n' "not pinned: $ck_n"; ck_rc=1; done < "$T/calls.extra"
+  return "$ck_rc"
+}
 csrc="$T/consumer src"
 cbld="$T/consumer build"
 cout="$T/consumer.out"
 consumer_lines=0
 img_exec="$rel/images/boot-stub.exec"
 img_cart="$rel/images/diag-cpu-1.ivsc"
+consumer_built=0
 consumer_ok=0
 if [ ! -f "$img_exec" ] || [ ! -f "$img_cart" ]; then
   bad pkg-consumer-images "build/release/images/{boot-stub.exec,diag-cpu-1.ivsc}"
@@ -331,6 +476,7 @@ elif ! cmake --build "$cbld" > "$T/consumer.build.log" 2>&1; then
   cat "$T/consumer.build.log"
   bad pkg-consumer-build "strict C17 build"
 else
+  consumer_built=1
   cst=0
   "$cbld/consumer" "$img_exec" "$img_cart" > "$cout" 2> "$T/consumer.err" || cst=$?
   mkdir -p "$gate_dir" && cp "$cout" "$gate_dir/pkg-consumer.txt" 2> /dev/null || bad pkg-consumer-output "build/gate/pkg-consumer.txt"
@@ -344,6 +490,37 @@ else
   if ! check_golden "$cout"; then
     diff "$T/golden.body" "$cout" | sed 's/^/# /' | head -n 20
     rc=1
+  fi
+fi
+# Independence and agreement, from the consumer build's own records (D-37 d, e; D-39).
+if [ "$consumer_built" -eq 1 ]; then
+  check_deps "$cbld" "$csrc" || rc=1
+  check_link "$cbld" || rc=1
+  check_ivs_dir "$cbld" || rc=1
+  check_calls "$cbld/CMakeFiles/consumer.dir/main.c.o" || rc=1
+  if [ "$consumer_ok" -eq 1 ]; then
+    check_runner_golden "$cout" || rc=1
+  fi
+fi
+# Direct C++ compile and link of a tiny main against the installed headers and archive (D-38):
+# a missing extern "C" shows at link time. A visible skip without a C++ compiler.
+cxx=${CXX:-c++}
+cxx_stat=skip
+if ! command -v "$cxx" > /dev/null 2>&1; then
+  printf -- '-- pkg-cxx-link SKIP no C++ compiler (%s)\n' "$cxx"
+elif [ ! -f "$csrc/main.cpp" ]; then
+  bad pkg-cxx-link "tests/installed-consumer/main.cpp missing from the copy"
+else
+  mkdir -p "$T/cxx"
+  if ! "$cxx" -std=c++17 -pedantic -Wall -Wextra -Werror -I "$pb/include" -o "$T/cxx/cxx-consumer" "$csrc/main.cpp" \
+    "$pb/lib/libivs_core.a" > "$T/cxx/build.log" 2>&1; then
+    cat "$T/cxx/build.log"
+    bad pkg-cxx-link "compile or link against the installed archive"
+  elif ! "$T/cxx/cxx-consumer" > "$T/cxx/out" 2>&1 || ! grep -q -x -F -e 'cxx-link ok=yes' "$T/cxx/out"; then
+    cat "$T/cxx/out"
+    bad pkg-cxx-link "run"
+  else
+    cxx_stat=ok
   fi
 fi
 
@@ -479,5 +656,5 @@ else
 fi
 
 [ "$rc" -eq 0 ] || exit 1
-printf -- '-- pkg-install pass prefix-files=%s archive=%s public-symbols=%s defined=%s %s consumer-lines=%s pkg-selftest=%s/%s\n' \
-  "$files" "$archive_mode" "$pubsyms" "$defined" "$hdr_stat" "$consumer_lines" "$st_ok" "$st_total"
+printf -- '-- pkg-install pass prefix-files=%s archive=%s public-symbols=%s defined=%s %s consumer-lines=%s cxx-link=%s pkg-selftest=%s/%s\n' \
+  "$files" "$archive_mode" "$pubsyms" "$defined" "$hdr_stat" "$consumer_lines" "$cxx_stat" "$st_ok" "$st_total"

@@ -1,0 +1,17 @@
+# Owning plan 04-23 (PKG-01, D-39): the ivs_* names the installed consumer's object
+# (tests/installed-consumer/main.c) references, read with `nm -P -u` and normalized as
+# core-symbols.sh does; gate step pkg-install requires exact equality (pkg-consumer-calls), so a
+# load, run or digest call cannot be dropped from the consumer quietly. One name per line.
+ivs_api_version
+ivs_machine_cpu_state
+ivs_machine_create
+ivs_machine_destroy
+ivs_machine_info
+ivs_machine_load
+ivs_machine_peek
+ivs_machine_reset
+ivs_machine_run
+ivs_machine_state_digest
+ivs_machine_storage_requirements
+ivs_run_stop_name
+ivs_status_name
