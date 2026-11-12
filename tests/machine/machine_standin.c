@@ -238,13 +238,17 @@ int ivs_ms_powered(ivs_ms_inst *x, uint32_t content, uint8_t poison)
 int ivs_ms_powered_prog(ivs_ms_inst *x, uint32_t program, uint8_t poison)
 {
   size_t n = 0u;
+  uint8_t *cart;
   ivs_status st;
   if (!ivs_ms_new(x, poison)) {
     return 0;
   }
+  /* the cartridge is built in its own statement: its length n is an out-parameter of ivs_ms_cart, and an
+   * argument list that sets n and reads it has no defined order (gcc reads it first) */
+  cart = ivs_ms_cart(0x5000u, 16u, 0u, &n);
   if (!ivs_ms_load(x->m, IVS_KIND_EXEC, ivs_ms_exec(program), IVS_MS_EXEC_BYTES) ||
       !ivs_ms_load(x->m, IVS_KIND_GROM, ivs_ms_grom(0u), IVS_MS_GROM_BYTES) ||
-      !ivs_ms_load(x->m, IVS_KIND_CARTRIDGE, ivs_ms_cart(0x5000u, 16u, 0u, &n), n)) {
+      !ivs_ms_load(x->m, IVS_KIND_CARTRIDGE, cart, n)) {
     ivs_ms_free(x);
     return 0;
   }
