@@ -33,6 +33,8 @@
 # only when the check fails for its intended finding. runner-process.judge.outcome-uncovered (plan
 # 04-24, D-46) runs the outcomes-covered check with the first outcome's scenarios removed and
 # passes only when it fails with outcome-uncovered.
+# runner-process.watchdog (watchdog self-control): watchdogs stopped at once stay silent, a quick run
+# is not hung and a run past a 1-second limit is (see wd_start).
 # runner-process.outcomes-consistent: `ivs-run --help`, the outcome table of docs/runner.md and
 # data/expected/runner-outcomes.ids list the same pairs; runner-process.outcomes-covered: every
 # pair has a running scenario and every scenario line names a pair.
@@ -93,6 +95,39 @@ size=$(wc -c < "$tmp/build/full.ivsc" | tr -d ' ')
 [ "$size" -gt 32 ] || { printf 'runner-process-tap: container of %s bytes\n' "$size" >&2; exit 1; }
 dd if="$tmp/build/full.ivsc" of="$content/diag-cpu-1-truncated.ivsc" bs=1 count=$((size - 32)) 2> /dev/null || exit 1
 
+# wd_start <pid> <mark>: starts the watchdog of process <pid> (a background subshell, its pid in
+# _wd): after $limit seconds it writes <mark> and sends <pid> TERM. Returns only once the watchdog
+# is armed (its TERM trap set and its sleep started), reported through the FIFO <mark>.ready, so
+# wd_stop never signals it earlier. Without that handshake a stop that follows at once (a run that
+# ends in milliseconds) can reach the fresh subshell while it still has this script's inherited
+# `exit 1` TERM handler: dash (/bin/sh on Linux) records the signal, resets that handler and then
+# drops the signal, so the watchdog ran to its limit and judged a finished run `hung` (hosted run
+# 43148343848, runner-process.scenario.dead-after-refusal).
+# wd_stop: stops the watchdog started last (its sleep too) and waits for it.
+wd_start() {
+  _wp=$1; _wm=$2
+  rm -f "$_wm" "$_wm.ready"
+  mkfifo "$_wm.ready" || { printf 'runner-process-tap: mkfifo %s.ready failed\n' "$_wm" >&2; exit 1; }
+  (
+    _s=
+    trap 'if [ -n "$_s" ]; then kill "$_s" 2> /dev/null; fi; exit 0' TERM
+    sleep "$limit" &
+    _s=$!
+    : > "$_wm.ready"
+    wait "$_s"
+    : > "$_wm"
+    kill -TERM "$_wp" 2> /dev/null
+  ) > /dev/null 2>&1 < /dev/null &
+  _wd=$!
+  # Opening the FIFO blocks until the armed watchdog opens it for writing.
+  : < "$_wm.ready"
+  rm -f "$_wm.ready"
+}
+wd_stop() {
+  kill -TERM "$_wd" 2> /dev/null
+  wait "$_wd" 2> /dev/null
+}
+
 # run_one <cwd> <name> <command...>: runs the command in <cwd> with stdin /dev/null, stdout in
 # $tmp/runs/<name>.out and stderr in $tmp/runs/<name>.err; sets rc to its exit status and hung to
 # 1 when the watchdog stopped it after $limit seconds. A command ending in .sh is run with sh.
@@ -100,23 +135,12 @@ run_one() {
   _cwd=$1; _name=$2; shift 2
   case $1 in *.sh) set -- sh "$@" ;; esac
   _mark="$tmp/runs/$_name.hung"
-  rm -f "$_mark"
   (cd "$_cwd" && exec "$@") > "$tmp/runs/$_name.out" 2> "$tmp/runs/$_name.err" < /dev/null &
   _pid=$!
-  (
-    _s=
-    trap 'if [ -n "$_s" ]; then kill "$_s" 2> /dev/null; fi; exit 0' TERM
-    sleep "$limit" &
-    _s=$!
-    wait "$_s"
-    : > "$_mark"
-    kill -TERM "$_pid" 2> /dev/null
-  ) > /dev/null 2>&1 < /dev/null &
-  _wd=$!
+  wd_start "$_pid" "$_mark"
   wait "$_pid"
   rc=$?
-  kill -TERM "$_wd" 2> /dev/null
-  wait "$_wd" 2> /dev/null
+  wd_stop
   hung=0
   if [ -f "$_mark" ]; then hung=1; fi
 }
@@ -434,6 +458,40 @@ o1=
 read -r o1 e1 < "$tmp/pairs" || :
 grep -v -x -F -e "$o1 ${e1:-} run" "$tmp/scen.pairs" > "$tmp/scen.dropped" || :
 self_control outcome-uncovered outcome-uncovered check_covered "$tmp/pairs" "$tmp/scen.dropped"
+
+# Watchdog self-control (the hosted false `hung` of run 43148343848, see wd_start): 20 watchdogs
+# of a live target, each stopped at once, must leave no marker and the target alive (before the
+# FIFO handshake dash dropped most of these stops: 95 of 100 in a local Ubuntu 24.04 container);
+# a run of `true` must end with exit 0 and not hung; `sleep 30` under a 1-second limit must be
+# stopped by the watchdog (hung, exit 143). The quiet limit is 10 s and the first marker ends the
+# loop, so a regression fails in about 10 seconds.
+: > "$tmp/why"
+ok=1
+limit0=$limit
+limit=10
+sleep 100 > /dev/null 2>&1 < /dev/null &
+tgt=$!
+k=0
+while [ "$k" -lt 20 ]; do
+  wd_start "$tgt" "$tmp/runs/wd-quiet.mark"
+  wd_stop
+  if [ -f "$tmp/runs/wd-quiet.mark" ]; then
+    ok=0
+    why watchdog-quiet "a watchdog stopped at once wrote its marker (stop $((k + 1)) of 20)"
+    break
+  fi
+  k=$((k + 1))
+done
+kill -0 "$tgt" 2> /dev/null || { ok=0; why watchdog-quiet "the target of the stopped watchdogs is gone"; }
+kill "$tgt" 2> /dev/null
+wait "$tgt" 2> /dev/null
+run_one "$tmp" wd-true true
+[ "$hung" -eq 0 ] && [ "$rc" -eq 0 ] || { ok=0; why watchdog-quiet "true: exit $rc, hung $hung"; }
+limit=1
+run_one "$tmp" wd-fire sleep 30
+[ "$hung" -eq 1 ] && [ "$rc" -eq 143 ] || { ok=0; why watchdog-fire "sleep 30 under a 1 s limit: exit $rc, hung $hung"; }
+limit=$limit0
+result runner-process.watchdog
 
 {
   printf '# suite=%s nonce=%s\n' "$suite" "$nonce"

@@ -12,6 +12,8 @@
 #   disagreeing, a changed report body; plan 04-24: a removed demonstrating scenario).
 # runner-process.outcomes-consistent: --help, docs/runner.md and data/expected/runner-outcomes.ids
 #   agree; runner-process.outcomes-covered: every outcome has a running scenario.
+# runner-process.watchdog: the watchdog self-control (stopped at once it stays silent; it stops a
+#   run past its limit).
 runner-process.scenario.diag-boot-pass
 runner-process.scenario.guest-assert-mismatch
 runner-process.scenario.timeout-budget
@@ -43,3 +45,4 @@ runner-process.judge.body-differs
 runner-process.judge.outcome-uncovered
 runner-process.outcomes-consistent
 runner-process.outcomes-covered
+runner-process.watchdog
