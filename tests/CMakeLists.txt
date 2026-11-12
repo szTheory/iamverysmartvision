@@ -199,6 +199,19 @@ target_link_libraries(ivs_tests_psg PRIVATE ivs_test_harness ivs_core ivs_core_i
 add_test(NAME psg COMMAND ivs_tests_psg)
 set_tests_properties(psg PROPERTIES SKIP_RETURN_CODE 77)
 
+# Suite input (INP-01..INP-03, API-03, plan 05-05): the two hand controllers as guest-visible machine
+# input through the PSG ports, in its own executable so that its named faults rerun only it. Expected
+# values come from the controller literal and the wiki statements only (never from the profile or the
+# generated table); it reuses the machine suite's stand-in content (machine/machine_standin.c). Its named
+# faults are data/expected/faults/input.ids, whose sites sit in core/src/machine and core/src/memmap.
+set(IVS_INPUT_TEST_SOURCES input/input_main.c input/input_single.c machine/machine_standin.c)
+add_executable(ivs_tests_input ${IVS_INPUT_TEST_SOURCES})
+target_include_directories(ivs_tests_input PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/input"
+  "${CMAKE_CURRENT_BINARY_DIR}")
+target_link_libraries(ivs_tests_input PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
+add_test(NAME input COMMAND ivs_tests_input)
+set_tests_properties(input PROPERTIES SKIP_RETURN_CODE 77)
+
 # Suite cpu-fuzz (D-12, plan 02-15): the seeded robustness run; dev links the sanitizers.
 add_executable(ivs_tests_cpu_fuzz cpu/cpu_fuzz.c)
 target_link_libraries(ivs_tests_cpu_fuzz PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)

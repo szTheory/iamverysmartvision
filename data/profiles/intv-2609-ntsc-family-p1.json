@@ -561,6 +561,356 @@
       "revisit_trigger": "Phase 5 control-to-byte table, or a profile with the expansion connector",
       "decision": "D6",
       "note": "connected hand controllers; event word index = PSG port (0 = R14, 1 = R15); no Phase 4 consumer. A nonzero controller word at an index at or above this value is refused UNSUPPORTED (D-13, D-15, plan 04-12)."
+    },
+    "input.control.key_1": {
+      "value": {"lines": "$81"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.key_2": {
+      "value": {"lines": "$41"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.key_3": {
+      "value": {"lines": "$21"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.key_4": {
+      "value": {"lines": "$82"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.key_5": {
+      "value": {"lines": "$42"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.key_6": {
+      "value": {"lines": "$22"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.key_7": {
+      "value": {"lines": "$84"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.key_8": {
+      "value": {"lines": "$44"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.key_9": {
+      "value": {"lines": "$24"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.key_clear": {
+      "value": {"lines": "$88"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.key_0": {
+      "value": {"lines": "$48"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.key_enter": {
+      "value": {"lines": "$28"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.disc_n": {
+      "value": {"lines": "$04"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.disc_nne": {
+      "value": {"lines": "$14"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.disc_ne": {
+      "value": {"lines": "$16"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.disc_ene": {
+      "value": {"lines": "$06"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.disc_e": {
+      "value": {"lines": "$02"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.disc_ese": {
+      "value": {"lines": "$12"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.disc_se": {
+      "value": {"lines": "$13"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.disc_sse": {
+      "value": {"lines": "$03"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.disc_s": {
+      "value": {"lines": "$01"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.disc_ssw": {
+      "value": {"lines": "$11"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.disc_sw": {
+      "value": {"lines": "$19"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.disc_wsw": {
+      "value": {"lines": "$09"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.disc_w": {
+      "value": {"lines": "$08"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.disc_wnw": {
+      "value": {"lines": "$18"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.disc_nw": {
+      "value": {"lines": "$1C"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.disc_nnw": {
+      "value": {"lines": "$0C"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.side_top": {
+      "value": {"lines": "$A0"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.side_lower_left": {
+      "value": {"lines": "$60"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.control.side_lower_right": {
+      "value": {"lines": "$C0"},
+      "tag": "tier4-community",
+      "cite": "SRC-tilton-intv-pinouts and SRC-consolemods-intv-pinouts (controller-port pin matrix, pin-to-bit map) and SRC-intv-wiki Hand_controller.png@oldid-14808 (one value per control); one lineage",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or service manual of the hand controller, or a D10 controller reader diagnostic on owner hardware",
+      "decision": null,
+      "note": "The line mask of this control: the bits of the port byte a closed switch pulls low (the pins of the connector it grounds, mapped through the pin-to-bit map). The byte a read returns is FF XOR the OR of the masks of every closed control (input.line_model). The table is identical for both ports. Written by hand from data/input/intv-2609-ntsc-family-p1.literal.txt; the input step compares the two."
+    },
+    "input.line_model": {
+      "value": "ground-union",
+      "tag": "inference",
+      "cite": "SRC-intv-wiki Hand_controller (oldid 14808) prose: combinations clear the union of the bits of each pressed control; SRC-consolemods-intv-pinouts for the switch-to-ground wiring",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a schematic or a D10 reading of a combination of two controls on one controller",
+      "decision": null,
+      "note": "ground-union: a closed switch grounds its pins; the port byte is the idle byte with the grounded pins low, so the result of a combination is the union of the line masks (pins = FF XOR OR of the masks). Combinations the wiki calls undecodable are results of this rule, not evidence (C63 for disc positions closed together)."
+    },
+    "input.line_idle": {
+      "value": "$FF",
+      "tag": "tier4-community",
+      "cite": "SRC-intv-wiki Hand_controller (oldid 14808): an idle controller reads all ones in the low eight bits; SRC-gi-1980-catalog pdf-205 (printed on-chip pull-ups of the port)",
+      "conflict": "C16",
+      "resolving_evidence": "schematic, service manual, or D10 controller reader diagnostic",
+      "revisit_trigger": "a D10 reading of an idle controller on owner hardware",
+      "decision": null,
+      "note": "The low byte a port in input mode reads with no switch closed."
+    },
+    "input.port_output_read": {
+      "value": "latch",
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: no source read by the project gives the value a CPU read returns from a port whose direction is output",
+      "conflict": "C65",
+      "resolving_evidence": "measurement: D10 owner hardware: set each R7 direction bit, write a latch value, close a switch and read the port",
+      "revisit_trigger": "a D10 port direction probe or a source for the output-mode read",
+      "decision": null,
+      "note": "A read of a port whose R7 direction bit says output returns the stored latch (low byte) and ignores the pins; no contention is modelled. The generator accepts only the value latch."
+    },
+    "psg.mixer.port_dir_bits": {
+      "value": {"A": 6, "B": 7, "output": 1},
+      "tag": "unknown-default-chosen",
+      "cite": "SRC-gi-1980-catalog pdf-207 (printed 5-26): bits B7 and B6 of R7 are the Input Enable cells of the two ports, the sense is not printed; the community page orders the two bits the other way",
+      "conflict": "C73",
+      "resolving_evidence": "measurement: D10 port direction probe on owner hardware",
+      "revisit_trigger": "a primary data sheet of the console part or a D10 port direction probe",
+      "decision": null,
+      "note": "A and B are the bit numbers of R7 that select the direction of port 0 ($01FE) and port 1 ($01FF); output is the bit value that makes a port an output. The port read consumes it through the generated psg parameters; the read path holds no bit number."
     }
   }
 }

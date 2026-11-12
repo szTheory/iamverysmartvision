@@ -304,11 +304,18 @@ static uint16_t mr_expect(const mr_rule *u, uint16_t stored)
 
 /* Declared exception registers (the literal's x= rows, plan 05-04): the shape register $01FA, whose
  * read mask is 0 (C75), and the two port registers $01FE and $01FF, whose read follows the direction
- * bit and the pin from plan 05-05. A store to one of them is observed in the register storage of the
+ * bit and the pins (plan 05-05). A store to one of them is observed in the register storage of the
  * memory system, not through a bus read, so the width a store keeps is still measured. */
 static int mr_is_exception(uint16_t addr)
 {
   return addr == 0x01FAu || addr == 0x01FEu || addr == 0x01FFu;
+}
+
+/* The port registers, whose bus read follows the pins (plan 05-05): after power-on both ports are in
+ * input mode with no pin held low, so a read gives the idle byte 00FF whatever the store holds. */
+static int mr_is_pins(uint16_t addr)
+{
+  return addr == 0x01FEu || addr == 0x01FFu;
 }
 
 /* What a store at addr left behind, read back at obs (the read-side address of addr). */
@@ -358,17 +365,25 @@ static int mr_fresh(const ivs_mp_row *r)
 static int mr_probe_read(uint16_t addr)
 {
   const mr_rule *u = mr_rule_of(mr_row_at('R', addr));
+  uint16_t want_ff;
+  uint16_t want_00;
   MR_CHECK(u != NULL);
+  want_ff = mr_expect(u, 0xFFFFu);
+  want_00 = mr_expect(u, 0x0000u);
+  if (mr_is_pins(addr)) {
+    want_ff = 0x00FFu; /* idle pins, input mode: the byte does not depend on the stored word */
+    want_00 = 0x00FFu;
+  }
   ivs_memsys_poke_raw_internal(&mr_m, addr, 0xFFFFu);
-  if (mr_read(addr) != mr_expect(u, 0xFFFFu)) {
+  if (mr_read(addr) != want_ff) {
     ivs_test_diag("R %04X: raw FFFF reads %04X, rule gives %04X", (unsigned)addr, (unsigned)mr_read(addr),
-                  (unsigned)mr_expect(u, 0xFFFFu));
+                  (unsigned)want_ff);
     return IVS_TEST_FAIL;
   }
   ivs_memsys_poke_raw_internal(&mr_m, addr, 0x0000u);
-  if (mr_read(addr) != mr_expect(u, 0x0000u)) {
+  if (mr_read(addr) != want_00) {
     ivs_test_diag("R %04X: raw 0000 reads %04X, rule gives %04X", (unsigned)addr, (unsigned)mr_read(addr),
-                  (unsigned)mr_expect(u, 0x0000u));
+                  (unsigned)want_00);
     return IVS_TEST_FAIL;
   }
   return IVS_TEST_PASS;

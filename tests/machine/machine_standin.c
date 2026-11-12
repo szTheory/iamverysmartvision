@@ -45,18 +45,36 @@ static const uint16_t ms_prog_b[] = {0x02BAu, 0x002Au, 0x0242u, 0x0201u, 0x0012u
 static const uint16_t ms_prog_c[] = {0x02B8u, 0x03FFu, 0x0240u, 0x01F4u, 0x0281u, 0x01F4u,
                                      0x0241u, 0x0200u, 0x0220u, 0x0001u};
 
+/* Program PORTS at $1000 (plan 05-05, the hand controllers seen from a guest): read both PSG I/O
+ * ports into RAM once, then a branch to itself.
+ *   $1000 MVI $01FE, R1   $1002 MVO R1, $0200   $1004 MVI $01FF, R2   $1006 MVO R2, $0201
+ *   $1008 B $1008 (PC+2 $100A, d 1)
+ * MVI direct is 0280 + destination (MVI $01F4, R1 is 0281 01F4 above), MVO Rs, a is 0240 + source. */
+static const uint16_t ms_prog_ports[] = {0x0281u, 0x01FEu, 0x0241u, 0x0200u, 0x0282u,
+                                         0x01FFu, 0x0242u, 0x0201u, 0x0220u, 0x0001u};
+
+typedef struct ms_prog {
+  const uint16_t *words;
+  size_t n;
+} ms_prog;
+
+static const ms_prog ms_progs[IVS_MS_PROGS] = {
+    {ms_prog_a, sizeof ms_prog_a / sizeof ms_prog_a[0]},
+    {ms_prog_b, sizeof ms_prog_b / sizeof ms_prog_b[0]},
+    {ms_prog_c, sizeof ms_prog_c / sizeof ms_prog_c[0]},
+    {ms_prog_ports, sizeof ms_prog_ports / sizeof ms_prog_ports[0]},
+};
+
 uint8_t *ivs_ms_exec(uint32_t program)
 {
-  const uint16_t *prog = program == IVS_MS_PROG_C ? ms_prog_c : (program == IVS_MS_PROG_B ? ms_prog_b : ms_prog_a);
-  size_t n = program == IVS_MS_PROG_C ? sizeof ms_prog_c / sizeof ms_prog_c[0]
-             : (program == IVS_MS_PROG_B ? sizeof ms_prog_b / sizeof ms_prog_b[0] : sizeof ms_prog_a / sizeof ms_prog_a[0]);
+  const ms_prog *pg = &ms_progs[program < IVS_MS_PROGS ? program : IVS_MS_PROG_A];
   uint8_t *b = malloc(IVS_MS_EXEC_BYTES);
   uint32_t i;
   if (b == NULL) {
     return NULL;
   }
   for (i = 0u; i < IVS_MS_EXEC_BYTES / 2u; i++) {
-    uint16_t w = i < n ? prog[i] : (uint16_t)((37u * i + 11u + 5u * program) & 0x3FFu);
+    uint16_t w = i < pg->n ? pg->words[i] : (uint16_t)((37u * i + 11u + 5u * program) & 0x3FFu);
     b[2u * i] = (uint8_t)(w >> 8);
     b[2u * i + 1u] = (uint8_t)(w & 0xFFu);
   }
@@ -176,6 +194,28 @@ int ivs_ms_powered(ivs_ms_inst *x, uint32_t content, uint8_t poison)
     return 0;
   }
   if (!ivs_ms_content(x->m, content)) {
+    ivs_ms_free(x);
+    return 0;
+  }
+  st = ivs_machine_reset(x->m, IVS_RESET_POWER_ON);
+  if (st != IVS_OK) {
+    ivs_test_diag("reset refused (%s)", ivs_status_name(st));
+    ivs_ms_free(x);
+    return 0;
+  }
+  return 1;
+}
+
+int ivs_ms_powered_prog(ivs_ms_inst *x, uint32_t program, uint8_t poison)
+{
+  size_t n = 0u;
+  ivs_status st;
+  if (!ivs_ms_new(x, poison)) {
+    return 0;
+  }
+  if (!ivs_ms_load(x->m, IVS_KIND_EXEC, ivs_ms_exec(program), IVS_MS_EXEC_BYTES) ||
+      !ivs_ms_load(x->m, IVS_KIND_GROM, ivs_ms_grom(0u), IVS_MS_GROM_BYTES) ||
+      !ivs_ms_load(x->m, IVS_KIND_CARTRIDGE, ivs_ms_cart(0x5000u, 16u, 0u, &n), n)) {
     ivs_ms_free(x);
     return 0;
   }

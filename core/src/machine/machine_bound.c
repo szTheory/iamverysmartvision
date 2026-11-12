@@ -548,6 +548,7 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
       /* The seam refused before any write: the events applied for this unit are taken back, so
        * nothing changed and the state is the last whole boundary (review IN-01). */
       im->obs.input = input_before;
+      ivs_input_rederive(im); /* the masks follow the restored words (plan 05-05, T-05-12) */
       consumed = consumed_before;
       internal = 1u;
       break;

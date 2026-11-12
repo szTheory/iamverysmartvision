@@ -1,3 +1,4 @@
 # Generated files a core TU may include: <basename> <generator repo path>; the generator must accept only -DROOT=<tree> -DOUT=<file>. (plan 03-03)
 ivs_profiles.inc cmake/IvsMemmapTable.cmake
 ivs_psg_params.inc cmake/IvsPsgTable.cmake
+ivs_ctrl_lines.inc cmake/IvsCtrlTable.cmake

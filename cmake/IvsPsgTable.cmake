@@ -14,6 +14,11 @@
 #                low byte of a bus word is driven (C64). A store keeps value & wmask, a read gives the
 #                store & rmask.
 #   psg.mirrors  "none" (C74): the only value implemented.
+#   input.line_idle        "$XX" (D-02): the low byte a port in input mode reads with no switch closed.
+#   input.port_output_read "latch" (C65): the only value implemented; a port in output mode reads its latch.
+#   psg.mixer.port_dir_bits  {"A": a, "B": b, "output": o} (D-04, C73): the bit numbers 0..7 of the mixer
+#                register that select the direction of port 0 (A) and port 1 (B), and the bit value (0 or 1)
+#                that means output; A and B differ.
 # Later plans append their psg.* fields to this generator and to ivs_psg_params.
 #
 # Fail closed (message `IvsPsgTable: <profile>: <field>: <reason>`): a profile without psg.regmap
@@ -21,10 +26,12 @@
 # object, or has a missing or unknown key; an addr that is not the next of $01F0..$01FF in order
 # (a gap, a duplicate, a wrong order, or a value outside the block); a name or gi_octal of a wrong
 # shape or used twice; a mask that is not a $XXXX word or has a bit above the low byte; a mirrors
-# value other than "none".
+# value other than "none"; (plan 05-05) an input.line_idle that is not $XX, an input.port_output_read other
+# than "latch", a psg.mixer.port_dir_bits that is not an object with exactly the keys A, B and output,
+# a bit number above 7 or non-numeric, A equal to B, or an output value other than 0 or 1.
 #
-# Output: IVS_PSG_PROFILE_COUNT, ivs_psg_params_table[profile] ({reg_wmask[16]}, {reg_rmask[16]}),
-# and _Static_asserts on the counts.
+# Output: IVS_PSG_PROFILE_COUNT, ivs_psg_params_table[profile] ({reg_wmask[16]}, {reg_rmask[16]},
+# port_idle, port_output_read_latch, port_dir_bit[2], port_dir_output), and _Static_asserts on the counts.
 cmake_minimum_required(VERSION 3.25)
 
 foreach(required ROOT OUT)
@@ -88,6 +95,16 @@ function(pt_hex out s what)
   set(${out} "${v}" PARENT_SCOPE)
 endfunction()
 
+# "$XX" -> numeric value.
+function(pt_byte out s what)
+  if(NOT s MATCHES "^[$][0-9A-F][0-9A-F]$")
+    pt_fail("${what} '${s}' is not a \$XX hex byte")
+  endif()
+  string(SUBSTRING "${s}" 1 2 digits)
+  math(EXPR v "0x${digits}")
+  set(${out} "${v}" PARENT_SCOPE)
+endfunction()
+
 # Four-digit uppercase C literal of a number.
 function(pt_lit out v)
   math(EXPR h "${v}" OUTPUT_FORMAT HEXADECIMAL)
@@ -125,6 +142,56 @@ foreach(rel IN LISTS pt_profiles)
   if(NOT mirrors STREQUAL "none")
     pt_fail("value '${mirrors}' is not 'none' (only an undecoded repeat is implemented, C74)")
   endif()
+
+  # The port parameters (plan 05-05): input.line_idle, input.port_output_read, psg.mixer.port_dir_bits.
+  set(PT_CTX "${rel}: input.line_idle")
+  pt_type(t "${doc}" fields input.line_idle value)
+  if(t STREQUAL "MISSING")
+    pt_fail("missing")
+  endif()
+  pt_str(s "${doc}" "value" fields input.line_idle value)
+  pt_byte(port_idle "${s}" "value")
+  set(PT_CTX "${rel}: input.port_output_read")
+  pt_type(t "${doc}" fields input.port_output_read value)
+  if(t STREQUAL "MISSING")
+    pt_fail("missing")
+  endif()
+  pt_str(s "${doc}" "value" fields input.port_output_read value)
+  if(NOT s STREQUAL "latch")
+    pt_fail("value '${s}' is not 'latch' (only the latch read of an output port is implemented, C65)")
+  endif()
+  set(PT_CTX "${rel}: psg.mixer.port_dir_bits")
+  pt_type(t "${doc}" fields psg.mixer.port_dir_bits value)
+  if(t STREQUAL "MISSING")
+    pt_fail("missing")
+  endif()
+  if(NOT t STREQUAL "OBJECT")
+    pt_fail("value must be an object {\"A\": n, \"B\": n, \"output\": 0 or 1}")
+  endif()
+  string(JSON dobj GET "${doc}" fields psg.mixer.port_dir_bits value)
+  pt_keys("${dobj}" "value" A B output)
+  foreach(dk A B output)
+    pt_type(t "${dobj}" ${dk})
+    if(NOT t STREQUAL "NUMBER")
+      pt_fail("${dk} must be a number")
+    endif()
+    string(JSON dv GET "${dobj}" ${dk})
+    if(NOT dv MATCHES "^[0-9]$")
+      pt_fail("${dk} '${dv}' is not a bit number 0..7 (or the output value 0 or 1)")
+    endif()
+    set(dir_${dk} "${dv}")
+  endforeach()
+  if(dir_A GREATER 7 OR dir_B GREATER 7)
+    pt_fail("a direction bit number is above 7")
+  endif()
+  if(dir_A EQUAL dir_B)
+    pt_fail("A and B name the same bit ${dir_A}")
+  endif()
+  if(dir_output GREATER 1)
+    pt_fail("output '${dir_output}' is not 0 or 1")
+  endif()
+  pt_lit(idle_l "${port_idle}")
+  string(REGEX REPLACE "^0x00" "0x" idle_l "${idle_l}")
 
   # psg.regmap: sixteen consecutive records.
   set(PT_CTX "${rel}: psg.regmap")
@@ -191,7 +258,7 @@ foreach(rel IN LISTS pt_profiles)
       string(APPEND rm_c ", ${rm_l}")
     endif()
   endforeach()
-  string(APPEND table_c "  { /* ${pid} */\n    {${wm_c}},\n    {${rm_c}}\n  },\n")
+  string(APPEND table_c "  { /* ${pid} */\n    {${wm_c}},\n    {${rm_c}},\n    ${idle_l}, 1u, {${dir_A}u, ${dir_B}u}, ${dir_output}u\n  },\n")
 endforeach()
 
 set(out_c "/* Generated by cmake/IvsPsgTable.cmake from the files in data/profiles (A-06). */\n")

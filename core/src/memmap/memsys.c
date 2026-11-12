@@ -7,7 +7,11 @@
  * ram8 and stub reads are chosen defaults (C60), undriven reads are the profile fill (C5). The PSG
  * region (plan 05-04) is the device kind psg8: its register file lives in psg_reg and is read and
  * written through ivs_psg_reg_load and ivs_psg_reg_store with the masks of the profile's psg.regmap;
- * the width formula then gives the upper byte the psg8 fill, 0 (C64).
+ * the width formula then gives the upper byte the psg8 fill, 0 (C64). Plan 05-05 (D-04): the two port
+ * registers $01FE and $01FF (slots 14 and 15) read from the pins: with the direction bit of the mixer
+ * register selecting input the low byte is the idle byte XOR the port's pull-down mask
+ * (port_pulldown, set only by the input path), with it selecting output the stored latch; every bit
+ * number and the idle byte come from ivs_psg_params, a store always keeps the latch.
  *
  * Read path: rd_region[addr >> 4] names a region, the cartridge span or nothing. A region of a
  * backed device reads its backing at (addr - lo) & (size_words - 1); the cartridge span scans
@@ -101,6 +105,20 @@ static uint32_t ivs_mm_index(const ivs_mm_region *r, uint16_t addr)
   return i;
 }
 
+/* The low byte a bus read of PSG port 0 or 1 returns (D-04, plan 05-05): pure. */
+static uint16_t ivs_mm_port_read(const ivs_memsys *m, const ivs_psg_params *pp, uint32_t port)
+{
+  uint32_t mixer = ivs_psg_reg_load(pp, m->psg_reg, IVS_PSG_SLOT_MIXER);
+  uint32_t dir = (mixer >> pp->port_dir_bit[port]) & 1u;
+  uint32_t low;
+  if (dir == pp->port_dir_output && pp->port_output_read_latch != 0u) {
+    low = ivs_psg_reg_load(pp, m->psg_reg, IVS_PSG_SLOT_PORT0 + port); /* output mode: the latch */
+  } else {
+    low = (uint32_t)pp->port_idle ^ (uint32_t)m->port_pulldown[port]; /* input mode: the pins */
+  }
+  return IVS_U16(low & 0x00FFu);
+}
+
 static uint16_t ivs_mm_load(const ivs_memsys *m, uint8_t phys, uint32_t i)
 {
   switch (phys) {
@@ -116,7 +134,13 @@ static uint16_t ivs_mm_load(const ivs_memsys *m, uint8_t phys, uint32_t i)
     return m->gram[i];
   case IVS_MEMSYS_PHYS_PSG: {
     const ivs_psg_params *pp = ivs_psg_params_get(m->profile);
-    return pp != NULL ? ivs_psg_reg_load(pp, m->psg_reg, i) : 0u;
+    if (pp == NULL) {
+      return 0u;
+    }
+    if (i == IVS_PSG_SLOT_PORT0 || i == IVS_PSG_SLOT_PORT1) {
+      return ivs_mm_port_read(m, pp, i - IVS_PSG_SLOT_PORT0);
+    }
+    return ivs_psg_reg_load(pp, m->psg_reg, i);
   }
   default:
     return 0u; /* stub devices hold no state */

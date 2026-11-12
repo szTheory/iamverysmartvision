@@ -3,9 +3,6 @@
 # to be a line of data/expected/profile-fields.ids or a line here (token psg-rule-field-missing), and a line here whose
 # field is already in the profile inventory is stale (token psg-field-pending-stale): the plan that adds a field deletes
 # its line in the same commit. Plan 05-07 leaves this file with no line.
-psg.mixer.port_dir_bits 05-05
-input.line_idle 05-05
-input.port_output_read 05-05
 psg.clocks_per_step 05-06
 psg.sample_period_ticks 05-06
 psg.counter_model 05-06

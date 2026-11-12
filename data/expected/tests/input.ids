@@ -1,0 +1,4 @@
+# Suite input: the two hand controllers as guest-visible machine input through the PSG ports at $01FE and
+# $01FF (INP-01, INP-02, INP-03, API-03, plan 05-05, D-02..D-05). Expected values come from the controller
+# literal data/input/<profile>.literal.txt and the wiki statements, never from the profile or the table.
+input.anchor.wiki-key1

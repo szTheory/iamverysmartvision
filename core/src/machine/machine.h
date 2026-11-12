@@ -260,6 +260,13 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
 /* Sets in to its create and reset state: words, count and floor 0, chain h0. */
 void ivs_input_init(ivs_machine_obs_input *in);
 
+/* Derives the pull-down masks of the PSG ports (mem.port_pulldown) from the words in force and the
+ * generated control table (plan 05-05, D-03, D-04): the OR of the line masks of every set bit, for
+ * each port below the profile's input.controllers, 0 for the others. The one function that sets the
+ * masks: an applied event calls it, and the refused-step take-back calls it after restoring the
+ * words, so the invariant port_pulldown == derive(words) holds after every call. */
+void ivs_input_rederive(struct ivs_machine *im);
+
 /* The per-event stages of the run ladder (D-05, D-14), after BUFFER_TOO_SMALL: IVS_REASON_NONE
  * with *st IVS_OK and *index IVS_INPUT_INDEX_NONE, or the reason with *st and the failing index.
  * BAD_ARG pass over the whole array first (at_tick at or above 2^63, below its predecessor, below

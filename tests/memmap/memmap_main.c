@@ -181,6 +181,13 @@ static int mm_anchor(const mm_row *row, uint16_t addr)
     IVS_CHECK(mm_bus_read(addr) == mm_expect(row->kind, 0xFFFFu));
     IVS_CHECK(mm_bus_write(addr, 0x0155u));
     IVS_CHECK(mm_bus_read(addr) == mm_expect(row->kind, 0xFFFFu));
+  } else if (row->view == MM_RW && r->keep != 0u && row->kind == IVS_MEMSYS_DEVICE_PSG8
+             && (addr == 0x01FEu || addr == 0x01FFu)) {
+    /* the two port registers (plan 05-05): the store keeps the low byte, and the bus read follows the
+     * pins (input mode after power-on, none held low), so it gives the idle byte 00FF */
+    IVS_CHECK(mm_bus_write(addr, 0x1234u));
+    IVS_CHECK(mm_bus_read(addr) == 0x00FFu);
+    IVS_CHECK(ivs_memsys_psg_reg_internal(&mm_m, (uint32_t)addr - 0x01F0u) == 0x0034u);
   } else if (row->view == MM_RW && r->keep != 0u) {
     IVS_CHECK(mm_bus_write(addr, 0x1234u));
     IVS_CHECK(mm_bus_read(addr) == mm_expect(row->kind, 0x1234u));

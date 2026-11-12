@@ -58,7 +58,22 @@ add_custom_command(
   DEPENDS ${IVS_PROFILE_FILES} "${IVS_PSG_GENERATOR}"
   COMMENT "Generating the PSG parameter table"
   VERBATIM)
-add_custom_target(ivs_core_gen DEPENDS "${IVS_PROFILES_INC}" "${IVS_PSG_PARAMS_INC}")
+# Third generated include (plan 05-05, D-02): the control-to-pin table ivs_ctrl_lines[profile][31]
+# from the profile fields input.control.* by cmake/IvsCtrlTable.cmake (it also reads
+# data/expected/input-bits.ids, the pinned name set). machine_input.c is its only includer; the
+# named fault GEN_CTRL_MUTATION rebuilds that TU against a one-bit mutation of it.
+set(IVS_CTRL_LINES_INC "${IVS_CORE_GEN_DIR}/ivs_ctrl_lines.inc")
+set(IVS_CTRL_GENERATOR "${PROJECT_SOURCE_DIR}/cmake/IvsCtrlTable.cmake")
+set(IVS_INPUT_BITS_IDS "${PROJECT_SOURCE_DIR}/data/expected/input-bits.ids")
+add_custom_command(
+  OUTPUT "${IVS_CTRL_LINES_INC}"
+  COMMAND "${CMAKE_COMMAND}" -E make_directory "${IVS_CORE_GEN_DIR}"
+  COMMAND "${CMAKE_COMMAND}" "-DROOT=${PROJECT_SOURCE_DIR}" "-DOUT=${IVS_CTRL_LINES_INC}"
+          -P "${IVS_CTRL_GENERATOR}"
+  DEPENDS ${IVS_PROFILE_FILES} "${IVS_CTRL_GENERATOR}" "${IVS_INPUT_BITS_IDS}"
+  COMMENT "Generating the controller line table"
+  VERBATIM)
+add_custom_target(ivs_core_gen DEPENDS "${IVS_PROFILES_INC}" "${IVS_PSG_PARAMS_INC}" "${IVS_CTRL_LINES_INC}")
 set(IVS_CORE_GEN_TARGET ivs_core_gen)
 
 set(ivs_core_objects "")
