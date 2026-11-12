@@ -247,6 +247,18 @@ target_link_libraries(ivs_tests_psg PRIVATE ivs_test_harness ivs_core ivs_core_i
 add_test(NAME psg COMMAND ivs_tests_psg)
 set_tests_properties(psg PROPERTIES SKIP_RETURN_CODE 77)
 
+# Suite stic (VID-01, plan 06-06): the STIC register file, the access windows, the display-enable handshake and the frame
+# timeline, in its own executable so that its named faults rerun only it. The module-level cases perturb a stack copy of
+# the generated ivs_stic_params; the machine-path cases reuse the stand-in content of machine/machine_standin.c. ONE
+# source list feeds both the executable and ivs_fault_suite(stic ...) below (the psg precedent). Its named faults are
+# data/expected/faults/stic.ids, whose sites sit in core/src/stic and core/src/machine.
+set(IVS_STIC_TEST_SOURCES stic/stic_main.c stic/stic_events.c machine/machine_standin.c)
+add_executable(ivs_tests_stic ${IVS_STIC_TEST_SOURCES})
+target_include_directories(ivs_tests_stic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/stic" "${CMAKE_CURRENT_BINARY_DIR}")
+target_link_libraries(ivs_tests_stic PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
+add_test(NAME stic COMMAND ivs_tests_stic)
+set_tests_properties(stic PROPERTIES SKIP_RETURN_CODE 77)
+
 # Suite input (INP-01..INP-03, API-03, plan 05-05): the two hand controllers as guest-visible machine
 # input through the PSG ports, in its own executable so that its named faults rerun only it. Expected
 # values come from the controller literal and the wiki statements only (never from the profile or the
@@ -370,6 +382,10 @@ ivs_fault_suite(psg
   SOURCES ${IVS_PSG_TEST_SOURCES}
   INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_BINARY_DIR}"
   GENERATED ${IVS_PSG_VEC_GENERATED})
+
+ivs_fault_suite(stic
+  SOURCES ${IVS_STIC_TEST_SOURCES}
+  INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/stic" "${CMAKE_CURRENT_BINARY_DIR}")
 
 ivs_fault_suite(input
   SOURCES ${IVS_INPUT_TEST_SOURCES}

@@ -29,6 +29,7 @@
 #include <stdint.h>
 
 #include "ivs/ivs_status.h"
+#include "memmap/memsys.h"
 #include "stic/stic_params.h"
 
 #define IVS_STIC_LATCH_ROWS 12u  /* card rows with a fetch window (window 12 fetches nothing, A-05) */
@@ -61,5 +62,15 @@ void ivs_stic_state_reset(ivs_stic_state *s, const ivs_stic_params *p);
  * row latches are any value), IVS_E_BAD_STATE otherwise, IVS_E_BAD_ARG for NULL. In the style of
  * ivs_cp1610_state_validate: a Phase 8 snapshot reload refuses a state this function does not accept. */
 ivs_status ivs_stic_state_validate(const ivs_stic_state *s);
+
+/* The frame sink of the STIC (plan 06-09 delivers frames through it); opaque until then, NULL accepted. */
+typedef struct ivs_stic_sink ivs_stic_sink;
+
+/* Moves the timeline cursor of s to machine tick to_tick: applies, in order, every event of the per-frame table whose
+ * tick is at or below to_tick (the next tick is phase + frame_index x F + event_tick[event_index], from the state),
+ * opening and closing the register and graphics-memory gates of mem and deciding windows_active (stic_events.c, D-05,
+ * D-07, D-10, A-06). Idempotent for one to_tick; sink is unused in plan 06-06. */
+void ivs_stic_catch_up(const ivs_stic_params *p, ivs_stic_state *s, ivs_memsys *mem, uint64_t to_tick,
+                       ivs_stic_sink *sink);
 
 #endif

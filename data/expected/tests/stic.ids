@@ -1,0 +1,10 @@
+# Suite stic: the STIC register file, the access windows, the display-enable handshake and the frame timeline (VID-01, plan 06-06).
+# Plan 06-06 task 2: the timeline family (stic.events.*, stic.reset.*, stic.slice.*); later tasks of the plan add the access, register,
+# hook, profile and judge families.
+stic.events.table-order
+stic.events.edges
+stic.events.frame-index-is-state
+stic.events.idempotent
+stic.events.latch-cleared-at-frame-start
+stic.reset.cursor
+stic.slice.state-equal-at-every-unit-boundary

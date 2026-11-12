@@ -211,6 +211,7 @@ typedef struct ivs_machine_bus_ctx {
   struct ivs_machine *m;
   uint64_t unit_start_tick;
   const ivs_psg_params *psg;  /* the profile's PSG parameters (plan 05-06) */
+  const ivs_stic_params *stic; /* the profile's STIC parameters (plan 06-06) */
   ivs_psg_sink *sink;         /* where the samples a write's catch-up makes go (plan 05-06) */
   uint32_t ticks_per_cpu_cycle;
   uint32_t reserved; /* 0 */

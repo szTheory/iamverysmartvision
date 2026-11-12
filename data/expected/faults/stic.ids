@@ -1,0 +1,12 @@
+# suite=stic; columns: <FAULT_ID> <must-fail> <allowed-prefixes> <must-pass>
+# STIC named faults (plan 06-06, VID-01, D-05, D-07, D-10, A-06). Each id has one IVS_FAULT_<ID> site, in the owner TU
+# named below, and is caught by the test it is named for; the allowed prefixes cover every collateral failure of the suite.
+# STIC_FRAME_BY_MODULO (core/src/stic/stic_events.c): the frame index is derived as to_tick / F after the catch-up
+# instead of counted by FRAME_END events; a nonzero frame phase makes the two differ.
+STIC_FRAME_BY_MODULO stic.events.frame-index-is-state stic.events.frame-index-is-state|stic.events.idempotent stic.events.table-order
+# STIC_WINDOW_OFF_BY_ONE (core/src/stic/stic_events.c): an event is applied only when its tick is strictly below the
+# stamp, so a gate closes one tick late and an access at the close tick would still be served.
+STIC_WINDOW_OFF_BY_ONE stic.events.edges stic.events.|stic.reset.|stic.slice. stic.events.idempotent
+# STIC_CATCHUP_LAGS_UNIT (core/src/machine/machine_run.c): the step seam catches the STIC up to the unit START instead of
+# the unit end, so the gates and the cursor lag one unit behind machine time.
+STIC_CATCHUP_LAGS_UNIT stic.slice.state-equal-at-every-unit-boundary stic.slice.|stic.reset. stic.events.table-order

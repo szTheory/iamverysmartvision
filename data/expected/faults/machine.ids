@@ -122,7 +122,7 @@ PSG_STATE_NOT_RESET_ON_POWER_ON machine.reset.psg-state-cleared machine.reset.ps
 # the reset call of the STIC state struct, so a dirtied state survives a power cycle (machine.reset.stic-state
 # fails alone: the registers are still cleared by their own memset and every clean state is already zero).
 DIGEST_STIC_ROWS_OMITTED machine.digest.stic-rows-in-mem-and-instance machine.digest. machine.create.ok-info-destroy
-STIC_STATE_NOT_RESET_ON_POWER_ON machine.reset.stic-state machine.reset.stic-state machine.create.ok-info-destroy
+STIC_STATE_NOT_RESET_ON_POWER_ON machine.reset.stic-state machine.reset.stic-state|machine.reset.equivalence machine.create.ok-info-destroy
 # Review WR-04, one site each (core/src/psg/psg_regs.c, core/src/machine/machine_input.c): the generated PSG
 # parameter table (PSG_TABLE_SHORT), the generated control-line table (CTRL_TABLE_SHORT) or, plan 06-04, the
 # generated STIC parameter table (STIC_TABLE_SHORT, core/src/stic/stic_params.c) covers one
