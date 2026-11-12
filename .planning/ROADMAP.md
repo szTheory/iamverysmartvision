@@ -264,7 +264,23 @@ Plans:
   3. At a defined machine-time boundary, the core writes a raw palette-index framebuffer with profile geometry into a caller-owned buffer. Palette, scaling and presentation stay outside the core.
   4. Foreground/Background and Color Stack fixtures render index frames that match frames hand-derived from known BACKTAB/GRAM contents, with no real GROM image in CI. A named-fault control (for example, the wrong card mode) fails.
   5. Tests and debuggers can read STIC and device state through an inspection path with no read side effects. For example, inspecting $0021 does not switch Color Stack mode.
-**Plans**: TBD
+**Plans**: 0/14 plans complete in 14 sequential waves
+
+Plans:
+- [ ] 06-01-PLAN.md — Sources and oracles first (oracle plan, NO C)
+- [ ] 06-02-PLAN.md — Lever pass and the normalised metric (small, file-disjoint from every other plan)
+- [ ] 06-03-PLAN.md — ABI growth, behaviour-neutral
+- [ ] 06-04-PLAN.md — Profile growth and the STIC parameter table
+- [ ] 06-05-PLAN.md — State and digest foundation
+- [ ] 06-06-PLAN.md — STIC register file, access windows, display-enable handshake, inspection foundation and the five-region memory-map flip, with suite `stic` created, five faults and...
+- [ ] 06-07-PLAN.md — Inspection call and peek purity
+- [ ] 06-08-PLAN.md — Frame timeline lines
+- [ ] 06-09-PLAN.md — Raw framebuffer, video buffers, domain 16 live, frame stop and the runner and consumer buffer request, in the plan that makes the video layout real
+- [ ] 06-10-PLAN.md — Foreground/Background card rendering
+- [ ] 06-11-PLAN.md — Color Stack rendering and inspection completion
+- [ ] 06-12-PLAN.md — Runner and scenarios, `ivsr 3`
+- [ ] 06-13-PLAN.md — Diagnostic and end to end
+- [ ] 06-14-PLAN.md — Close-out
 
 ### Phase 7: First Visible Original Scenario
 **Goal**: An original, rights-clear program visibly responds to controller input with video and sound, run in CI through the installed consumer. This shows a playable result early, so the project does not drift into research only (conflict C26: scheduled right after the first STIC pass instead of after full STIC coverage).
