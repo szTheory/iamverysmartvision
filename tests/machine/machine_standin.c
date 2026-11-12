@@ -102,6 +102,19 @@ static const uint16_t ms_prog_tone[] = {0x02B8u, 0x003Eu, 0x0240u, 0x01F8u, 0x02
 static const uint16_t ms_prog_const[] = {0x02B8u, 0x003Fu, 0x0240u, 0x01F8u, 0x02B8u,
                                          0x000Fu, 0x0240u, 0x01FBu, 0x0220u, 0x0001u};
 
+/* Program ENV at $1000 (plan 05-07, the envelope started by a guest write): mixer R7 = $3F (tone and noise of
+ * every channel disabled, a constant 1), amplitude A = $30 (select 3: the envelope level as is), envelope period
+ * fine = 1 (coarse stays 0), then the shape register = $08 (decay, repeating), then a branch to itself. Until the
+ * shape write the generator is held at level 0 (psg.reset), so channel A is silent; the write restarts the
+ * generator: the first sample after it is level 15, then the levels fall every second step.
+ *   $1000 MVII #$3F, R0   $1002 MVO R0, $01F8   $1004 MVII #$30, R0   $1006 MVO R0, $01FB
+ *   $1008 MVII #$01, R0   $100A MVO R0, $01F3   $100C MVII #$08, R0   $100E MVO R0, $01FA
+ *   $1010 B $1010 (PC+2 $1012, d 1)
+ * Encodings as in program TONE. */
+static const uint16_t ms_prog_env[] = {0x02B8u, 0x003Fu, 0x0240u, 0x01F8u, 0x02B8u, 0x0030u, 0x0240u, 0x01FBu,
+                                       0x02B8u, 0x0001u, 0x0240u, 0x01F3u, 0x02B8u, 0x0008u, 0x0240u, 0x01FAu,
+                                       0x0220u, 0x0001u};
+
 typedef struct ms_prog {
   const uint16_t *words;
   size_t n;
@@ -116,6 +129,7 @@ static const ms_prog ms_progs[IVS_MS_PROGS] = {
     {ms_prog_poll_branch, sizeof ms_prog_poll_branch / sizeof ms_prog_poll_branch[0]},
     {ms_prog_tone, sizeof ms_prog_tone / sizeof ms_prog_tone[0]},
     {ms_prog_const, sizeof ms_prog_const / sizeof ms_prog_const[0]},
+    {ms_prog_env, sizeof ms_prog_env / sizeof ms_prog_env[0]},
 };
 
 uint8_t *ivs_ms_exec(uint32_t program)

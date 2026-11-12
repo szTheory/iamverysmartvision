@@ -13,9 +13,9 @@
 #include "ivs_test.h"
 #include "psg_cases.h"
 
-#define PSG_MAX_CASES 512u
-#define PSG_MAX_SECTIONS 16u
-#define PSG_MAX_SOURCES 16u
+#define PSG_MAX_CASES 640u
+#define PSG_MAX_SECTIONS 24u
+#define PSG_MAX_SOURCES 24u
 
 typedef struct psg_section {
   const ivs_test_case *fixed;
@@ -26,8 +26,9 @@ typedef struct psg_section {
   const ivs_test_source *(*sources)(size_t *n);
 } psg_section;
 
-/* Order: family reg (fixed, then its vectors reg and reset), port, tone, mix, amp, then the fixed
- * families of the audio path (sample, slice, chain, buffers, bounds, plan 05-06). */
+/* Order: family reg (fixed, then its vectors reg and reset), port, tone, mix, amp, then (plan 05-07) noise,
+ * env, ampenv, reseng, dac and the profile perturbation cases, then the fixed families of the audio path
+ * (sample, slice, chain, buffers, bounds, plan 05-06). */
 static psg_section psg_sections[PSG_MAX_SECTIONS];
 static size_t psg_n_sections;
 static size_t psg_total;
@@ -101,6 +102,17 @@ int main(int argc, char **argv)
           ivs_psg_mix_vector_run, ivs_psg_mix_sources);
   psg_add(ivs_psg_amp_cases, ivs_psg_amp_count, ivs_psg_amp_vector_count, ivs_psg_amp_vector_id,
           ivs_psg_amp_vector_run, ivs_psg_amp_sources);
+  psg_add(ivs_psg_noise_cases, ivs_psg_noise_count, ivs_psg_noise_vector_count, ivs_psg_noise_vector_id,
+          ivs_psg_noise_vector_run, ivs_psg_noise_sources);
+  psg_add(ivs_psg_env_cases, ivs_psg_env_count, ivs_psg_env_vector_count, ivs_psg_env_vector_id,
+          ivs_psg_env_vector_run, ivs_psg_env_sources);
+  psg_add(ivs_psg_ampenv_cases, ivs_psg_ampenv_count, ivs_psg_ampenv_vector_count, ivs_psg_ampenv_vector_id,
+          ivs_psg_ampenv_vector_run, ivs_psg_ampenv_sources);
+  psg_add(ivs_psg_reseng_cases, ivs_psg_reseng_count, ivs_psg_reseng_vector_count, ivs_psg_reseng_vector_id,
+          ivs_psg_reseng_vector_run, ivs_psg_reseng_sources);
+  psg_add(ivs_psg_dac_cases, ivs_psg_dac_count, ivs_psg_dac_vector_count, ivs_psg_dac_vector_id,
+          ivs_psg_dac_vector_run, ivs_psg_dac_sources);
+  psg_add(ivs_psg_profile_cases, ivs_psg_profile_count, NULL, NULL, NULL, NULL);
   psg_add(ivs_psg_sample_cases, ivs_psg_sample_count, NULL, NULL, NULL, NULL);
   psg_add(ivs_psg_slice_cases, ivs_psg_slice_count, NULL, NULL, NULL, NULL);
   psg_add(ivs_psg_chain_cases, ivs_psg_chain_count, NULL, NULL, NULL, NULL);

@@ -194,6 +194,13 @@ void ivs_memsys_set_gate_internal(ivs_memsys *m, uint32_t gate, uint8_t open);
  * of $01FE and $01FF, not this accessor). */
 uint16_t ivs_memsys_psg_reg_internal(const ivs_memsys *m, uint32_t idx);
 
+/* The register slot (0..15 = $01F0 + slot) that a WRITE or DW to addr reaches in the PSG register file, by the
+ * write view's own decode (plan 05-07: the machine's bus wrapper restarts the envelope after a shape write
+ * without holding an address constant), or IVS_MEMSYS_NO_SLOT when the write view does not decode addr to the
+ * PSG region. Pure. */
+#define IVS_MEMSYS_NO_SLOT 0xFFFFFFFFu
+uint32_t ivs_memsys_psg_write_slot_internal(const ivs_memsys *m, uint16_t addr);
+
 /* Internal pull-down setter (plan 05-03, D-04; called from the input path in plan 05-05): stores
  * mask as the set of low-driven pins of PSG port 0 or 1. A port at or above IVS_MEMSYS_PSG_PORTS
  * does nothing. Nothing reads the masks before plan 05-05. */

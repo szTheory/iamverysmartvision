@@ -29,6 +29,14 @@
 #                "zero", tone_output 0, tone_counter "reload-on-first-step"), psg.clock_phase_ticks (0 only),
 #                psg.write_strobe_ticks (0..255) and psg.max_unit_ticks (must equal
 #                (12 + 3 * bus.wait_limit_cpu_cycles) * ticks_per_cpu_cycle).
+#   (plan 05-07, D-10, D-11, D-12) the noise and envelope rules: psg.period_zero.noise (1..32),
+#                psg.noise.steps_per_np (1..65535), psg.noise.lfsr {"width": 1..32, "galois_mask": "$H", "seed": "$H",
+#                "out_bit": 0..width-1, "invert": 0 or 1} (mask and seed are nonzero hex words within the width: a
+#                zero seed locks the register, a mask outside the width leaves it), psg.period_zero.envelope
+#                (1..65536), psg.envelope.steps_per_ep (1..65535), psg.envelope.shape_bits {"continue": b, "attack": b,
+#                "alternate": b, "hold": b, "restart_on_write": 0 or 1} (four distinct bit numbers 0..3), and the
+#                psg.reset keys lfsr ("seed") and envelope ("held-0"). psg.dac.levels is NOT read here: the core never
+#                reads it (D-11); cmake/IvsPsgProfileProbe.cmake reads it for the tests.
 # Later plans append their psg.* fields to this generator and to ivs_psg_params.
 #
 # Fail closed (message `IvsPsgTable: <profile>: <field>: <reason>`): a profile without psg.regmap
@@ -118,6 +126,20 @@ function(pt_hex out s what)
     pt_fail("${what} '${s}' is not a \$XXXX hex word")
   endif()
   string(SUBSTRING "${s}" 1 4 digits)
+  math(EXPR v "0x${digits}")
+  set(${out} "${v}" PARENT_SCOPE)
+endfunction()
+
+# "$H" (one to eight uppercase hex digits) -> numeric value.
+function(pt_hexn out s what)
+  if(NOT s MATCHES "^[$][0-9A-F]+$")
+    pt_fail("${what} '${s}' is not a \$ followed by uppercase hex digits")
+  endif()
+  string(LENGTH "${s}" n)
+  if(n GREATER 9)
+    pt_fail("${what} '${s}' has more than eight hex digits")
+  endif()
+  string(SUBSTRING "${s}" 1 -1 digits)
   math(EXPR v "0x${digits}")
   set(${out} "${v}" PARENT_SCOPE)
 endfunction()
@@ -346,6 +368,84 @@ foreach(rel IN LISTS pt_profiles)
   if(NOT s STREQUAL "reload-on-first-step")
     pt_fail("tone_counter '${s}' is not 'reload-on-first-step'")
   endif()
+  pt_str(s "${robj}" "lfsr" lfsr)
+  if(NOT s STREQUAL "seed")
+    pt_fail("lfsr '${s}' is not 'seed' (the noise register loads its seed on a reset)")
+  endif()
+  pt_str(s "${robj}" "envelope" envelope)
+  if(NOT s STREQUAL "held-0")
+    pt_fail("envelope '${s}' is not 'held-0' (the envelope holds level 0 until the first shape write)")
+  endif()
+  # The noise and envelope rules (plan 05-07).
+  set(PT_CTX "${rel}: psg.period_zero.noise")
+  pt_uint(period_zero_noise "${doc}" "value" 32 fields psg.period_zero.noise value)
+  if(period_zero_noise EQUAL 0)
+    pt_fail("must be 1..32")
+  endif()
+  set(PT_CTX "${rel}: psg.noise.steps_per_np")
+  pt_uint(noise_steps_per_np "${doc}" "value" 65535 fields psg.noise.steps_per_np value)
+  if(noise_steps_per_np EQUAL 0)
+    pt_fail("must be at least 1")
+  endif()
+  set(PT_CTX "${rel}: psg.noise.lfsr")
+  pt_type(t "${doc}" fields psg.noise.lfsr value)
+  if(NOT t STREQUAL "OBJECT")
+    pt_fail("value must be an object {\"width\": n, \"galois_mask\": \"$H\", \"seed\": \"$H\", \"out_bit\": n, \"invert\": 0 or 1}")
+  endif()
+  string(JSON nobj GET "${doc}" fields psg.noise.lfsr value)
+  pt_keys("${nobj}" "value" width galois_mask seed out_bit invert)
+  pt_uint(noise_width "${nobj}" "width" 32 width)
+  if(noise_width EQUAL 0)
+    pt_fail("width must be 1..32")
+  endif()
+  math(EXPR noise_limit "(1 << ${noise_width})")
+  pt_str(s "${nobj}" "galois_mask" galois_mask)
+  pt_hexn(noise_mask "${s}" "galois_mask")
+  if(noise_mask EQUAL 0)
+    pt_fail("galois_mask is 0 (a mask of 0 never feeds the register back)")
+  endif()
+  if(NOT noise_mask LESS noise_limit)
+    pt_fail("galois_mask ${s} is outside the ${noise_width}-bit register")
+  endif()
+  pt_str(s "${nobj}" "seed" seed)
+  pt_hexn(noise_seed "${s}" "seed")
+  if(noise_seed EQUAL 0)
+    pt_fail("seed is 0 (a zero register is a fixed point: the generator would lock)")
+  endif()
+  if(NOT noise_seed LESS noise_limit)
+    pt_fail("seed ${s} is outside the ${noise_width}-bit register")
+  endif()
+  pt_uint(noise_out_bit "${nobj}" "out_bit" 31 out_bit)
+  if(NOT noise_out_bit LESS noise_width)
+    pt_fail("out_bit ${noise_out_bit} is not below the width ${noise_width}")
+  endif()
+  pt_uint(noise_invert "${nobj}" "invert" 1 invert)
+  set(PT_CTX "${rel}: psg.period_zero.envelope")
+  pt_uint(period_zero_env "${doc}" "value" 65536 fields psg.period_zero.envelope value)
+  if(period_zero_env EQUAL 0)
+    pt_fail("must be 1..65536")
+  endif()
+  set(PT_CTX "${rel}: psg.envelope.steps_per_ep")
+  pt_uint(env_steps_per_ep "${doc}" "value" 65535 fields psg.envelope.steps_per_ep value)
+  if(env_steps_per_ep EQUAL 0)
+    pt_fail("must be at least 1")
+  endif()
+  set(PT_CTX "${rel}: psg.envelope.shape_bits")
+  pt_type(t "${doc}" fields psg.envelope.shape_bits value)
+  if(NOT t STREQUAL "OBJECT")
+    pt_fail("value must be an object {\"continue\": b, \"attack\": b, \"alternate\": b, \"hold\": b, \"restart_on_write\": 0 or 1}")
+  endif()
+  string(JSON eobj GET "${doc}" fields psg.envelope.shape_bits value)
+  pt_keys("${eobj}" "value" continue attack alternate hold restart_on_write)
+  set(shape_seen "")
+  foreach(sk continue attack alternate hold)
+    pt_uint(shape_${sk} "${eobj}" "${sk}" 3 ${sk})
+    if(shape_${sk} IN_LIST shape_seen)
+      pt_fail("bit ${shape_${sk}} is named twice (the shape register is four bits wide: continue, attack, alternate, hold)")
+    endif()
+    list(APPEND shape_seen "${shape_${sk}}")
+  endforeach()
+  pt_uint(env_restart "${eobj}" "restart_on_write" 1 restart_on_write)
   set(PT_CTX "${rel}: psg.clock_phase_ticks")
   pt_uint(clock_phase "${doc}" "value" 65535 fields psg.clock_phase_ticks value)
   if(NOT clock_phase EQUAL 0)
@@ -433,7 +533,14 @@ foreach(rel IN LISTS pt_profiles)
     "    .write_strobe_ticks = ${write_strobe}u, .max_unit_ticks = ${max_unit}u,\n"
     "    .mixer_tone_bit = {${mixer_tone_c}}, .mixer_noise_bit = {${mixer_noise_c}},\n"
     "    .amp_fixed_mask = 15u, .amp_select_shift = ${select_lo}u, .amp_select_mask = ${amp_select_mask}u,\n"
-    "    .amp_env_shift = {${amp_shift_c}}\n  },\n")
+    "    .amp_env_shift = {${amp_shift_c}},\n"
+    "    .period_zero_noise = ${period_zero_noise}u, .noise_steps_per_np = ${noise_steps_per_np}u,\n"
+    "    .noise_galois_mask = ${noise_mask}u, .noise_seed = ${noise_seed}u,\n"
+    "    .noise_out_bit = ${noise_out_bit}u, .noise_invert = ${noise_invert}u,\n"
+    "    .period_zero_env = ${period_zero_env}u, .env_steps_per_ep = ${env_steps_per_ep}u,\n"
+    "    .env_bit_continue = ${shape_continue}u, .env_bit_attack = ${shape_attack}u,\n"
+    "    .env_bit_alternate = ${shape_alternate}u, .env_bit_hold = ${shape_hold}u,\n"
+    "    .env_restart_on_write = ${env_restart}u\n  },\n")
 endforeach()
 
 set(out_c "/* Generated by cmake/IvsPsgTable.cmake from the files in data/profiles (A-06). */\n")

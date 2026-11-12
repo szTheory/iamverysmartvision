@@ -6,8 +6,3 @@
 # wired by plan 05-04; the engine-dependent reset rows are in family reseng (reset-engine.txt) and the envelope-dependent
 # amplitude rows in ampenv, so every vector id is registered exactly when a test that evaluates its expectation exists.
 # Plan 05-07 leaves this file with no line.
-noise 05-07
-env 05-07
-dac 05-07
-ampenv 05-07
-reseng 05-07

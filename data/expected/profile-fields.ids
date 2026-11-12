@@ -99,3 +99,10 @@ psg.reset
 psg.clock_phase_ticks
 psg.write_strobe_ticks
 psg.max_unit_ticks
+psg.period_zero.noise
+psg.noise.steps_per_np
+psg.noise.lfsr
+psg.period_zero.envelope
+psg.envelope.steps_per_ep
+psg.envelope.shape_bits
+psg.dac.levels

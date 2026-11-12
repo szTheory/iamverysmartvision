@@ -11,6 +11,9 @@
  * chip steps due before the stamp are made with the old register values and the sample at the stamp
  * itself does not see the write (step first, then write, C78); the masked store then happens in
  * ivs_memsys_bus as before. Every other access is forwarded unchanged.
+ * Plan 05-07: after that store a write that landed on the PSG shape register restarts the envelope
+ * (ivs_psg_after_write, the same function ivs_psg_write calls, so a stamp-0 vector write and a guest write
+ * cannot diverge); the register slot comes from the memory system's own decode, never from an address here.
  * In plan 05-04 it forwarded every access unchanged: the masked store of a write to the PSG region
  * happens inside ivs_memsys_bus (ivs_psg_reg_store), because the memmap probe drives a bare
  * ivs_memsys with no machine and no wrapper and must measure the same behaviour. The wait reply is
@@ -24,6 +27,8 @@
 ivs_bus_reply ivs_machine_bus(void *ctx, const ivs_cp1610_access *a)
 {
   ivs_machine_bus_ctx *c = (ivs_machine_bus_ctx *)ctx;
+  uint32_t slot = IVS_MEMSYS_NO_SLOT;
+  ivs_bus_reply reply;
   if (a->kind == IVS_ACC_WRITE || a->kind == IVS_ACC_DW) {
     ivs_memsys_desc d;
     if (ivs_memsys_describe(c->m->mem.profile, IVS_MEMSYS_VIEW_W, a->addr, &d) == IVS_OK &&
@@ -31,7 +36,12 @@ ivs_bus_reply ivs_machine_bus(void *ctx, const ivs_cp1610_access *a)
       uint64_t stamp = c->unit_start_tick + (uint64_t)a->offset_cpu_cycles * (uint64_t)c->ticks_per_cpu_cycle +
                        (uint64_t)c->psg->write_strobe_ticks;
       ivs_psg_catch_up(c->psg, &c->m->psg, c->m->mem.psg_reg, &c->m->obs.audio, stamp, c->sink);
+      slot = ivs_memsys_psg_write_slot_internal(&c->m->mem, a->addr);
     }
   }
-  return ivs_memsys_bus(&c->m->mem, a);
+  reply = ivs_memsys_bus(&c->m->mem, a);
+  if (slot != IVS_MEMSYS_NO_SLOT) {
+    ivs_psg_after_write(c->psg, &c->m->psg, c->m->mem.psg_reg, slot);
+  }
+  return reply;
 }

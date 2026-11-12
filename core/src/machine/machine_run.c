@@ -57,7 +57,7 @@ static void ivs_run_power_on(struct ivs_machine *im)
   memset(im->mem.port_pulldown, 0, sizeof im->mem.port_pulldown);
 #endif
 #ifndef IVS_FAULT_PSG_STATE_NOT_RESET_ON_POWER_ON
-  ivs_psg_state_reset(&im->psg); /* named fault PSG_STATE_NOT_RESET_ON_POWER_ON skips the call */
+  ivs_psg_state_reset(ivs_psg_params_get(im->profile), &im->psg); /* named fault PSG_STATE_NOT_RESET_ON_POWER_ON skips the call */
 #endif
   ivs_memsys_set_gate_internal(&im->mem, IVS_MEMSYS_GATE_STIC_REGS, 1u);
   ivs_memsys_set_gate_internal(&im->mem, IVS_MEMSYS_GATE_GMEM, 1u);

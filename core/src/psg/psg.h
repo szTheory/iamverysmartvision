@@ -37,17 +37,19 @@ typedef struct ivs_psg_state {
   uint32_t noise_lfsr;      /* noise shift register */
   uint32_t env_counter;     /* envelope step counter */
   uint32_t env_level;       /* envelope level 0..15 */
-  uint32_t env_dir;         /* envelope direction flag */
-  uint32_t env_held;        /* envelope held flag */
-  uint32_t env_cycles;      /* envelope cycle count */
+  uint32_t env_dir;         /* envelope direction flag, 1 rising */
+  uint32_t env_held;        /* envelope held flag (1 after a reset until the first shape write) */
+  uint32_t env_cycles;      /* index 0..15 of the envelope state inside its 16-state cycle */
   uint32_t reserved[3];     /* 0 */
 } ivs_psg_state;
 
 _Static_assert(sizeof(ivs_psg_state) == 72u, "ivs_psg_state must be 72 bytes (machine.h layout)");
 
-/* Sets s to the power-on state: every member 0 except next_sample, which is 1 (the first chip
- * step is step 1, stamped sample_period_ticks); a later plan gives the noise register its seed. */
-void ivs_psg_state_reset(ivs_psg_state *s);
+/* Sets s to the power-on state (psg.reset, C77): every member 0 except next_sample, which is 1 (the first
+ * chip step is step 1, stamped sample_period_ticks), noise_lfsr, which is the seed of psg.noise.lfsr
+ * (plan 05-07), and env_held, which is 1 with level 0 (the envelope holds level 0 until the first shape
+ * write). A NULL p leaves the noise register 0. */
+void ivs_psg_state_reset(const ivs_psg_params *p, ivs_psg_state *s);
 
 /* The register file (plan 05-04, D-08): the 16 guest-visible words regs[0..15] at $01F0..$01FF
  * (the storage lives in ivs_memsys psg_reg). A store keeps value & the write mask of the register;
@@ -102,8 +104,8 @@ void ivs_psg_sink_init(ivs_psg_sink *k, uint8_t *buf, uint64_t cap);
 uint32_t ivs_psg_mix_channel(const ivs_psg_params *p, uint32_t tone, uint32_t noise, uint32_t mixer, uint32_t ch);
 
 /* Effective 4-bit level index of an amplitude register value: the fixed level (select 0) or the
- * envelope level shifted right by the select's shift (psg.amp.env_select). env_level is 0 until the
- * envelope exists (plan 05-07). */
+ * envelope level shifted right by the select's shift (psg.amp.env_select). env_level is the level of
+ * the envelope generator (plan 05-07). */
 uint32_t ivs_psg_amp_index(const ivs_psg_params *p, uint32_t amp_reg, uint32_t env_level);
 
 /* The effective tone period of channel ch (0..2): the 12-bit value of its coarse and fine
@@ -115,6 +117,33 @@ uint32_t ivs_psg_tone_period(const ivs_psg_params *p, const uint16_t *regs, uint
  * next reload; the counter runs whether or not the tone is enabled). */
 void ivs_psg_tone_step(const ivs_psg_params *p, ivs_psg_state *s, const uint16_t *regs);
 
+/* ---- noise (plan 05-07, D-10, rules PSG-R09, PSG-R10) ----
+ * ivs_psg_lfsr_next is the pure right-shifting Galois step of the profile register: if the low bit is set
+ * the value shifts right and is XORed with psg.noise.lfsr galois_mask, else it only shifts right (a value
+ * within the width stays within it). ivs_psg_noise_out is the noise bit the mixer reads: bit out_bit of
+ * the register, XORed with invert. ivs_psg_noise_period is the effective 5-bit noise period (a written 0
+ * acts as psg.period_zero.noise). ivs_psg_noise_step is one chip step: an empty counter reloads from
+ * steps_per_np x the effective period, counts down by one and shifts the register when it reaches zero
+ * (policy POL-PSG-02: the first shift of a period P is at step 2 P). */
+uint32_t ivs_psg_lfsr_next(const ivs_psg_params *p, uint32_t value);
+uint32_t ivs_psg_noise_out(const ivs_psg_params *p, uint32_t lfsr);
+uint32_t ivs_psg_noise_period(const ivs_psg_params *p, const uint16_t *regs);
+void ivs_psg_noise_step(const ivs_psg_params *p, ivs_psg_state *s, const uint16_t *regs);
+
+/* ---- envelope (plan 05-07, D-10, rules PSG-R11..R13) ----
+ * ivs_psg_env_period is the effective 16-bit envelope period (coarse at $01F7 over fine at $01F3; a
+ * written 0 acts as psg.period_zero.envelope). ivs_psg_env_restart restarts the generator for the shape
+ * value just written: level = attack ? 0 : 15 with the matching direction, state 0 of 16, held flag
+ * cleared, step counter empty (the first state lasts steps_per_ep x EP steps counted from the next step).
+ * ivs_psg_env_step is one chip step of the 16-state machine (see psg_env.c); it does nothing while the
+ * generator is held. ivs_psg_after_write is called after a register store of slot idx: a write of the
+ * shape register restarts the generator when psg.envelope.shape_bits restart_on_write is 1, and no other
+ * write has an effect on the generator (a period write never restarts it). */
+uint32_t ivs_psg_env_period(const ivs_psg_params *p, const uint16_t *regs);
+void ivs_psg_env_restart(const ivs_psg_params *p, ivs_psg_state *s, uint32_t shape);
+void ivs_psg_env_step(const ivs_psg_params *p, ivs_psg_state *s, const uint16_t *regs);
+void ivs_psg_after_write(const ivs_psg_params *p, ivs_psg_state *s, const uint16_t *regs, uint32_t idx);
+
 /* Performs every chip step k with k * sample_period_ticks <= to_tick that is not yet performed:
  * tones, mixer, amplitude, the sample into the sink and the AUDIO row. The state, the registers
  * and the row change the same whatever the sink is. */
@@ -123,8 +152,9 @@ void ivs_psg_catch_up(const ivs_psg_params *p, ivs_psg_state *s, const uint16_t 
 
 /* A register write stamped stamp: catches up to the stamp (a sample at k * sample_period_ticks sees
  * writes stamped below it: step first, then write, C78), then applies the masked store of register
- * idx. The machine's bus wrapper catches up and lets the memory system store; this is the same
- * contract for module-level use. */
+ * idx and ivs_psg_after_write (the envelope restart of plan 05-07). The machine's bus wrapper catches
+ * up, lets the memory system store and calls ivs_psg_after_write itself, so a stamp-0 vector write and
+ * a guest write cannot diverge. */
 void ivs_psg_write(const ivs_psg_params *p, ivs_psg_state *s, uint16_t *regs, ivs_psg_obs *obs, ivs_psg_sink *sink,
                    uint64_t stamp, uint32_t idx, uint32_t value);
 

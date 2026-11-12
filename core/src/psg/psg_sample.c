@@ -14,21 +14,14 @@
  * is sink independent: a NULL buffer (the counting sink) changes no machine state.
  * A register write at stamp s first catches up to s: a sample at tick k * 16 sees the writes stamped
  * below k * 16 (step first, then write, C78).
- * Noise is the constant 1 and the envelope level 0 until plan 05-07 (stub: the noise output is read
- * through ivs_psg_noise_out and the envelope level from the state).
+ * Plan 05-07: every step also runs the noise generator (psg_noise.c) and the envelope generator
+ * (psg_env.c); the mixer reads the noise bit of the register and the amplitude index the envelope level.
  * No static or global state.
  * Named faults (plan 05-06, suite psg): PSG_STEP_IS_16_CLOCKS, PSG_SAMPLE_PHASE_RESET_PER_CALL. */
 #include "common/ivs_prelude.h"
 
 #include "common/ivs_sha256.h"
 #include "psg/psg.h"
-
-/* Noise output bit: the constant 1 until plan 05-07 gives the generator (stub). */
-static uint32_t ivs_psg_noise_out(const ivs_psg_state *s)
-{
-  (void)s;
-  return 1u;
-}
 
 static void ivs_psg_put_be64(uint8_t *d, uint64_t v)
 {
@@ -75,9 +68,13 @@ static void ivs_psg_step(const ivs_psg_params *p, ivs_psg_state *s, const uint16
   uint32_t mixer = (uint32_t)regs[IVS_PSG_SLOT_MIXER];
   uint32_t levels = 0u;
   uint32_t ch;
+  uint32_t noise;
   ivs_psg_tone_step(p, s, regs);
+  ivs_psg_noise_step(p, s, regs);
+  ivs_psg_env_step(p, s, regs);
+  noise = ivs_psg_noise_out(p, s->noise_lfsr);
   for (ch = 0u; ch < 3u; ch++) {
-    uint32_t gate = ivs_psg_mix_channel(p, s->tone_out[ch], ivs_psg_noise_out(s), mixer, ch);
+    uint32_t gate = ivs_psg_mix_channel(p, s->tone_out[ch], noise, mixer, ch);
     uint32_t idx = ivs_psg_amp_index(p, (uint32_t)regs[IVS_PSG_SLOT_AMP + ch], s->env_level);
     uint32_t level = gate != 0u ? idx : 0u;
     levels |= (level & 0xFFu) << (8u * ch);
@@ -130,4 +127,5 @@ void ivs_psg_write(const ivs_psg_params *p, ivs_psg_state *s, uint16_t *regs, iv
 {
   ivs_psg_catch_up(p, s, regs, obs, stamp, sink);
   ivs_psg_reg_store(p, regs, idx, value);
+  ivs_psg_after_write(p, s, regs, idx);
 }

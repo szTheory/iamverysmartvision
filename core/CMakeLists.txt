@@ -22,7 +22,9 @@ set(IVS_CORE_SOURCES
   src/machine/machine_load.c
   src/machine/machine_run.c
   src/memmap/memsys.c
+  src/psg/psg_env.c
   src/psg/psg_mix.c
+  src/psg/psg_noise.c
   src/psg/psg_regs.c
   src/psg/psg_sample.c
   src/psg/psg_state.c

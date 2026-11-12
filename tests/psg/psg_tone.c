@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 /* Suite psg, family tone (AUD-01, plan 05-06, D-09, D-10, rules PSG-R05..R08): the tone generators of
- * the PSG, and the shared judge of the engine vectors (families tone, mix, amp).
+ * the PSG, and the shared judge of the engine vectors (families tone, mix, amp and, from plan 05-07, noise, env,
+ * ampenv and reseng; the dac table is judged by psg_dac.c).
  *
  * Expected values come from the sourced vector files only (data/psg/vectors/tone.txt, mix.txt, amp.txt,
  * turned into C includes by cmake/IvsPsgVectors.cmake, which reads neither the profile nor the core),
@@ -56,6 +57,78 @@ static uint32_t pt_level(const uint8_t *buf, uint32_t k, uint32_t c)
   return buf[4u * (k - 1u) + c];
 }
 
+/* The noise vectors that are pure functions of the profile register (plan 05-07): the period, the output bits
+ * after each shift from the seed, and the shift count of a run. The alternative candidate mask of the vector
+ * psg.noise.lfsr-alt-period is the literal 0x14000 of that vector's derive text (a perturbed copy of the
+ * parameters, never a profile value). */
+static int pt_noise_pure(const ivs_pe *v, const ivs_psg_params *p, int quiet)
+{
+  ivs_psg_params alt = *p;
+  uint32_t seed = p->noise_seed;
+  uint32_t x = seed;
+  uint32_t i;
+  if (strcmp(v->id, "psg.noise.lfsr-alt-period") == 0) {
+    alt.noise_galois_mask = 0x14000u;
+    p = &alt;
+  }
+  if (v->kind == IVS_PE_PERIOD) {
+    for (i = 1u; i <= v->n + 1u; i++) {
+      x = ivs_psg_lfsr_next(p, x);
+      if (x == seed) {
+        break;
+      }
+    }
+    if (i != v->n && !quiet) {
+      ivs_test_diag("%s: the register returns to its seed after %u shifts, vector expects %u", v->id, (unsigned)i,
+                    (unsigned)v->n);
+    }
+    return i == v->n;
+  }
+  for (i = 1u; i <= v->n_seq; i++) {
+    x = ivs_psg_lfsr_next(p, x);
+    if (ivs_psg_noise_out(p, x) != (uint32_t)v->seq[i - 1u]) {
+      if (!quiet) {
+        ivs_test_diag("%s: noise bit after shift %u is %u, vector expects %u", v->id, (unsigned)i,
+                      (unsigned)ivs_psg_noise_out(p, x), (unsigned)v->seq[i - 1u]);
+      }
+      return 0;
+    }
+  }
+  return 1;
+}
+
+/* Counts the noise register shifts in the first window steps of a run (one catch-up per step, observing the
+ * register, with the counting sink). */
+static int pt_shifts(const ivs_pe *v, const ivs_psg_params *p, int quiet)
+{
+  ivs_psg_state s;
+  ivs_psg_obs obs;
+  ivs_psg_sink sink;
+  uint16_t regs[IVS_PSG_REG_COUNT];
+  uint32_t k;
+  uint32_t shifts = 0u;
+  memset(regs, 0, sizeof regs);
+  memset(&obs, 0, sizeof obs);
+  ivs_psg_state_reset(p, &s);
+  ivs_psg_sink_init(&sink, NULL, 0u);
+  for (k = 0u; k < v->n_writes; k++) {
+    ivs_psg_write(p, &s, regs, &obs, &sink, (uint64_t)v->writes[k].step * PT_TICKS_PER_STEP,
+                  (uint32_t)v->writes[k].addr - 0x01F0u, v->writes[k].value);
+  }
+  for (k = 1u; k <= v->window; k++) {
+    uint32_t before = s.noise_lfsr;
+    ivs_psg_catch_up(p, &s, regs, &obs, (uint64_t)k * PT_TICKS_PER_STEP, &sink);
+    if (s.noise_lfsr != before) {
+      shifts += 1u;
+    }
+  }
+  if (shifts != v->n && !quiet) {
+    ivs_test_diag("%s: %u noise shifts in %u steps, vector expects %u", v->id, (unsigned)shifts,
+                  (unsigned)v->window, (unsigned)v->n);
+  }
+  return shifts == v->n;
+}
+
 int ivs_pe_eval(const ivs_pe *v, int quiet)
 {
   const ivs_psg_params *p = pt_params();
@@ -70,6 +143,15 @@ int ivs_pe_eval(const ivs_pe *v, int quiet)
   int ok = 0;
   if (p == NULL) {
     return 0;
+  }
+  if (v->kind == IVS_PE_PERIOD || (v->kind == IVS_PE_LEVEL_SEQ && v->chan == IVS_PE_CHAN_N)) {
+    return pt_noise_pure(v, p, quiet);
+  }
+  if (v->kind == IVS_PE_SHIFTS) {
+    return pt_shifts(v, p, quiet);
+  }
+  if (v->kind == IVS_PE_TABLE) {
+    return 0; /* judged by psg_dac.c against the profile table, never here */
   }
   if (v->kind == IVS_PE_GATE) {
     uint32_t got = ivs_psg_mix_channel(p, v->b, v->c, v->a, v->chan);
@@ -87,7 +169,7 @@ int ivs_pe_eval(const ivs_pe *v, int quiet)
   }
   memset(regs, 0, sizeof regs);
   memset(&obs, 0, sizeof obs);
-  ivs_psg_state_reset(&s);
+  ivs_psg_state_reset(p, &s);
   buf = malloc((size_t)4u * (size_t)v->steps + 4u);
   if (buf == NULL) {
     return 0;
@@ -105,18 +187,39 @@ int ivs_pe_eval(const ivs_pe *v, int quiet)
     }
     goto done;
   }
+  if (v->kind == IVS_PE_SILENT) {
+    for (k = 1u; k <= v->steps; k++) {
+      uint32_t c;
+      for (c = 0u; c < 3u; c++) {
+        if ((v->a & (1u << c)) != 0u && pt_level(buf, k, c) != 0u) {
+          if (!quiet) {
+            ivs_test_diag("%s: channel %c is at level %u at step %u, vector expects silence", v->id, (int)('A' + c),
+                          (unsigned)pt_level(buf, k, c), (unsigned)k);
+          }
+          goto done;
+        }
+      }
+    }
+    ok = 1;
+    goto done;
+  }
   if (v->kind == IVS_PE_LEVEL_SEQ) {
     for (k = 1u; k <= v->n_seq; k++) {
-      if (pt_level(buf, k, v->chan) != v->seq[k - 1u]) {
+      /* one level per step, or (a shape row of env.txt) one level per envelope state: level j at step stride x j */
+      uint32_t at = v->stride == 0u ? k : (k == 1u ? 1u : v->stride * (k - 1u));
+      if (at > v->steps || pt_level(buf, at, v->chan) != v->seq[k - 1u]) {
         if (!quiet) {
-          ivs_test_diag("%s: level at step %u is %u, vector expects %u", v->id, (unsigned)k,
-                        (unsigned)pt_level(buf, k, v->chan), (unsigned)v->seq[k - 1u]);
+          ivs_test_diag("%s: level at step %u is %u, vector expects %u", v->id, (unsigned)at,
+                        at <= v->steps ? (unsigned)pt_level(buf, at, v->chan) : 0u, (unsigned)v->seq[k - 1u]);
         }
         goto done;
       }
     }
     ok = 1;
     goto done;
+  }
+  if (v->base_first != 0u && v->steps != 0u) {
+    prev = pt_level(buf, 1u, v->chan); /* an envelope has no level before its first state: the level of step 1 */
   }
   for (k = 1u; k <= v->steps; k++) {
     uint32_t now = pt_level(buf, k, v->chan);

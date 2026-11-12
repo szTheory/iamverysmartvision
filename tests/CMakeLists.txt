@@ -189,7 +189,8 @@ set_tests_properties(run PROPERTIES SKIP_RETURN_CODE 77)
 set(IVS_PSG_VEC_GENERATOR "${PROJECT_SOURCE_DIR}/cmake/IvsPsgVectors.cmake")
 set(IVS_PSG_REGMAP_LITERAL "${PROJECT_SOURCE_DIR}/data/psg/intv-2609-ntsc-family-p1.regmap.literal.txt")
 set(IVS_PSG_VEC_GENERATED "")
-foreach(fam_spec "reg:regs" "reset:reset" "port:port" "tone:tone" "mix:mix" "amp:amp")
+foreach(fam_spec "reg:regs" "reset:reset" "port:port" "tone:tone" "mix:mix" "amp:amp" "noise:noise" "env:env"
+    "ampenv:ampenv" "reseng:reset-engine" "dac:dac")
   string(REPLACE ":" ";" fam_parts "${fam_spec}")
   list(GET fam_parts 0 fam)
   list(GET fam_parts 1 fam_stem)
@@ -204,7 +205,30 @@ foreach(fam_spec "reg:regs" "reset:reset" "port:port" "tone:tone" "mix:mix" "amp
     VERBATIM)
   list(APPEND IVS_PSG_VEC_GENERATED "${fam_inc}")
 endforeach()
-set(IVS_PSG_TEST_SOURCES psg/psg_main.c psg/psg_reg.c psg/psg_port.c psg/psg_tone.c psg/psg_mix.c psg/psg_bounds.c psg/psg_buffers.c psg/psg_sample.c psg/psg_slice.c psg/psg_chain.c machine/machine_standin.c)
+# Test-side reads of the profile DAC table (plan 05-07, D-11): the core never reads psg.dac.levels. The probe turns the
+# field into ivs_psg_probe.inc (psg_dac.c), and the independence script proves that two profiles differing only in
+# the table generate byte-identical core parameters (ivs_psg_dac_independence.inc, psg_profile.c).
+set(IVS_PSG_PROBE_GENERATOR "${PROJECT_SOURCE_DIR}/cmake/IvsPsgProfileProbe.cmake")
+set(IVS_PSG_INDEP_GENERATOR "${PROJECT_SOURCE_DIR}/cmake/IvsPsgDacIndependence.cmake")
+set(IVS_PSG_TABLE_GENERATOR "${PROJECT_SOURCE_DIR}/cmake/IvsPsgTable.cmake")
+file(GLOB IVS_PSG_PROFILE_FILES CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/data/profiles/*.json")
+list(SORT IVS_PSG_PROFILE_FILES)
+set(IVS_PSG_PROBE_INC "${CMAKE_CURRENT_BINARY_DIR}/ivs_psg_probe.inc")
+set(IVS_PSG_INDEP_INC "${CMAKE_CURRENT_BINARY_DIR}/ivs_psg_dac_independence.inc")
+add_custom_command(
+  OUTPUT "${IVS_PSG_PROBE_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DROOT=${PROJECT_SOURCE_DIR}" "-DOUT=${IVS_PSG_PROBE_INC}" -P "${IVS_PSG_PROBE_GENERATOR}"
+  DEPENDS ${IVS_PSG_PROFILE_FILES} "${IVS_PSG_PROBE_GENERATOR}"
+  COMMENT "Generating the PSG DAC table probe (test side)"
+  VERBATIM)
+add_custom_command(
+  OUTPUT "${IVS_PSG_INDEP_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DROOT=${PROJECT_SOURCE_DIR}" "-DOUT=${IVS_PSG_INDEP_INC}" -P "${IVS_PSG_INDEP_GENERATOR}"
+  DEPENDS ${IVS_PSG_PROFILE_FILES} "${IVS_PSG_INDEP_GENERATOR}" "${IVS_PSG_TABLE_GENERATOR}"
+  COMMENT "Proving that the core PSG parameters do not depend on psg.dac.levels"
+  VERBATIM)
+list(APPEND IVS_PSG_VEC_GENERATED "${IVS_PSG_PROBE_INC}" "${IVS_PSG_INDEP_INC}")
+set(IVS_PSG_TEST_SOURCES psg/psg_main.c psg/psg_reg.c psg/psg_port.c psg/psg_tone.c psg/psg_mix.c psg/psg_noise.c psg/psg_env.c psg/psg_dac.c psg/psg_profile.c psg/psg_bounds.c psg/psg_buffers.c psg/psg_sample.c psg/psg_slice.c psg/psg_chain.c machine/machine_standin.c)
 add_executable(ivs_tests_psg ${IVS_PSG_TEST_SOURCES} ${IVS_PSG_VEC_GENERATED})
 target_include_directories(ivs_tests_psg PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(ivs_tests_psg PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)

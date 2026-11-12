@@ -18,7 +18,12 @@
  * parameters: the sample period (master ticks per chip step), the tone period-zero value, the write
  * strobe offset, the published maximum unit length, the R7 bit of each channel's tone and noise
  * enable, and the amplitude register fields. Every value is generated from the profile; the
- * engine holds none. */
+ * engine holds none.
+ * Plan 05-07 (D-10, D-11, D-12) appends the noise and envelope parameters: the noise period-zero value,
+ * the PSG steps per noise period unit and the Galois register (mask, seed, output bit, inversion), the
+ * envelope period-zero value, the steps per envelope period unit, the four bit numbers of the shape
+ * register and the restart-on-write flag. The DAC level table (psg.dac.levels) is NOT a member: the core
+ * never reads it (D-11, D-21); a test-side generator reads it from the profile. */
 #ifndef IVS_PSG_PARAMS_H
 #define IVS_PSG_PARAMS_H
 
@@ -43,6 +48,19 @@ typedef struct ivs_psg_params {
   uint8_t amp_select_shift;              /* bit number of the low bit of the 2-bit envelope select */
   uint8_t amp_select_mask;               /* mask of the select field after the shift: 3 */
   uint8_t amp_env_shift[3];              /* right shift of the envelope level for select 1, 2, 3 */
+  uint32_t period_zero_noise;            /* the effective noise period of the value 0 (psg.period_zero.noise) */
+  uint32_t noise_steps_per_np;           /* PSG steps per noise period unit (psg.noise.steps_per_np) */
+  uint32_t noise_galois_mask;            /* right-shifting Galois mask (psg.noise.lfsr), nonzero, within the width */
+  uint32_t noise_seed;                   /* the register after a reset (psg.noise.lfsr), nonzero, within the width */
+  uint8_t noise_out_bit;                 /* the register bit that is the noise output */
+  uint8_t noise_invert;                  /* 1: the noise output is inverted */
+  uint32_t period_zero_env;              /* the effective envelope period of the value 0 (psg.period_zero.envelope) */
+  uint32_t env_steps_per_ep;             /* PSG steps per envelope period unit (psg.envelope.steps_per_ep) */
+  uint8_t env_bit_continue;              /* shape register bit numbers (psg.envelope.shape_bits) */
+  uint8_t env_bit_attack;
+  uint8_t env_bit_alternate;
+  uint8_t env_bit_hold;
+  uint8_t env_restart_on_write;          /* 1: a write to the shape register restarts the generator */
 } ivs_psg_params;
 
 /* Register slots (index = address - $01F0) the engine addresses by role: the mixer register that
@@ -50,7 +68,11 @@ typedef struct ivs_psg_params {
 #define IVS_PSG_SLOT_TONE_FINE 0u   /* tone A, B, C fine period at slots 0, 1, 2 */
 #define IVS_PSG_SLOT_TONE_COARSE 4u /* tone A, B, C coarse period (4 bits) at slots 4, 5, 6 */
 #define IVS_PSG_SLOT_AMP 11u        /* amplitude A, B, C at slots 11, 12, 13 */
+#define IVS_PSG_SLOT_ENV_FINE 3u    /* envelope period fine and coarse (16 bits) at slots 3 and 7 */
+#define IVS_PSG_SLOT_ENV_COARSE 7u
 #define IVS_PSG_SLOT_MIXER 8u
+#define IVS_PSG_SLOT_NOISE 9u       /* noise period (5 bits) */
+#define IVS_PSG_SLOT_ENV_SHAPE 10u  /* envelope shape (4 bits, reads 0) */
 #define IVS_PSG_SLOT_PORT0 14u
 #define IVS_PSG_SLOT_PORT1 15u
 

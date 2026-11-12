@@ -418,6 +418,15 @@ uint16_t ivs_memsys_psg_reg_internal(const ivs_memsys *m, uint32_t idx)
   return ivs_psg_reg_load(pp, m->psg_reg, idx);
 }
 
+uint32_t ivs_memsys_psg_write_slot_internal(const ivs_memsys *m, uint16_t addr)
+{
+  uint8_t idx = ivs_mm_wr_region[m->profile][addr >> 4u];
+  if (idx < IVS_MM_REGION_COUNT && ivs_mm_regions[idx].phys == IVS_MEMSYS_PHYS_PSG) {
+    return ivs_mm_index(&ivs_mm_regions[idx], addr) & (IVS_MEMSYS_PSG_WORDS - 1u);
+  }
+  return IVS_MEMSYS_NO_SLOT;
+}
+
 void ivs_memsys_set_port_pulldown_internal(ivs_memsys *m, uint32_t port, uint32_t mask)
 {
   if (port < IVS_MEMSYS_PSG_PORTS) {

@@ -40,7 +40,7 @@ static inline int pu_init(pu_rig *r)
 {
   memset(r, 0, sizeof *r);
   r->p = pu_params();
-  ivs_psg_state_reset(&r->s);
+  ivs_psg_state_reset(r->p, &r->s);
   return r->p != NULL;
 }
 

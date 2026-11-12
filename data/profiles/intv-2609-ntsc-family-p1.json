@@ -980,7 +980,7 @@
       "resolving_evidence": "measurement: D10 owner hardware: read the registers and capture the first samples after power-on and after a console reset",
       "revisit_trigger": "a schematic of the reset line or a D10 capture",
       "decision": null,
-      "note": "Registers zero, tone outputs 0, tone counters empty (reloaded on the first step), the noise register at its seed and the envelope held at level 0 (the last two are written by plan 05-07), both ports input."
+      "note": "Registers zero, tone outputs 0, tone counters empty (reloaded on the first step), the noise register at its seed (psg.noise.lfsr) and the envelope held at level 0 until the first shape write (psg.envelope.shape_bits), both ports input."
     },
     "psg.clock_phase_ticks": {
       "value": 0,
@@ -1011,6 +1011,105 @@
       "revisit_trigger": "when bus.wait_limit_cpu_cycles changes or a device other than the memory system can stall the bus (Phase 6)",
       "decision": null,
       "note": "The proven maximum ticks of one CPU unit, published for the audio capacity slack (D-17): s = ceil(U / P) + 1. The generator refuses a value that is not (12 + 3 x bus.wait_limit_cpu_cycles) x ticks_per_cpu_cycle."
+    },
+    "psg.period_zero.noise": {
+      "value": 32,
+      "tag": "unknown-default-chosen",
+      "cite": "no source: the data sheet pages print a 5-bit noise period and no statement about a written 0 (SRC-gi-1980-catalog pdf-207, printed 5-26); the tone and envelope rules of the same family act as the range top (SRC-intv-wiki PSG, oldid 14940), so the noise default follows by analogy",
+      "conflict": "C12",
+      "resolving_evidence": "measurement: D10 owner hardware: capture noise-only audio with the noise period register written 0 and compare the shift spacing with 64 steps",
+      "revisit_trigger": "a primary data sheet of the console part or a D10 capture",
+      "decision": null,
+      "note": "Effective noise period: value == 0 ? this field : value (the 5-bit register ranges 1..31, so 32 is the range top by analogy with the tone). A default by analogy, tagged as such; many other AY implementations treat 0 as 1 (C12)."
+    },
+    "psg.noise.steps_per_np": {
+      "value": 2,
+      "tag": "inference",
+      "cite": "SRC-gi-1980-catalog pdf-207 (printed 5-26): the noise frequency divide chain, the input clock by 16 and then by the 5-bit period; a shift register is clocked once per half period of that chain, so one shift every 2 NP steps of 8 chip clocks (inference)",
+      "conflict": "C69",
+      "resolving_evidence": "measurement: D10 owner hardware: capture a noise-only channel at two noise periods and compare the shift spacing with the profile",
+      "revisit_trigger": "when a primary source for the console part or a D10 noise capture exists",
+      "decision": null,
+      "note": "PSG steps per noise period unit: the register shifts every this-many x NP steps (NP the effective noise period). Counters are integers; there is no accumulator."
+    },
+    "psg.noise.lfsr": {
+      "value": {
+        "width": 17,
+        "galois_mask": "$12000",
+        "seed": "$00001",
+        "out_bit": 0,
+        "invert": 0
+      },
+      "tag": "unknown-default-chosen",
+      "cite": "no source for the console part: the data sheet defines a noise frequency but no register width, polynomial or seed (SRC-gi-1980-catalog pdf-207, printed 5-26); the width, mask and seed are a project default chosen for the maximal period",
+      "conflict": "C71",
+      "resolving_evidence": "measurement: D10 owner hardware: capture a noise-only channel and compare the bit pattern with the profile LFSR",
+      "revisit_trigger": "a measurement (D10 noise capture) or a data sheet of the 8914-class part",
+      "decision": null,
+      "note": "Right-shifting Galois register: if (s & 1) s = (s >> 1) ^ galois_mask else s >>= 1; the noise output bit is ((s >> out_bit) & 1) ^ invert. Mask $12000 with seed $00001 has the maximal period 131,071 (proved by psg.noise.lfsr-maximal-period). The alternative community mask $14000 is a one-field edit of galois_mask and has the non-maximal period 114,681 (tier 5 hint, SRC-intv-wiki PSG oldid 14940 names it, never a source of expected values). A zero seed locks the register, so the generator refuses it."
+    },
+    "psg.period_zero.envelope": {
+      "value": 65536,
+      "tag": "tier4-community",
+      "cite": "SRC-intv-wiki PSG (oldid 14940): an envelope period of 0 acts as 65536",
+      "conflict": "C12",
+      "resolving_evidence": "measurement: D10 owner hardware: capture the envelope with the period registers written 0",
+      "revisit_trigger": "a primary data sheet of the console part or a D10 capture",
+      "decision": null,
+      "note": "Effective envelope period: value == 0 ? this field : value, for the 16-bit period of the fine register at $01F3 and the coarse register at $01F7 (the wiki states 2 x 65536 PSG steps per state, which is steps_per_ep x 65536)."
+    },
+    "psg.envelope.steps_per_ep": {
+      "value": 2,
+      "tag": "inference",
+      "cite": "SRC-gi-1980-catalog pdf-207 and pdf-208 (printed 5-26 and 5-27): the envelope divide chain, the input clock by 256, then by the 16-bit period, and Fig. 3 names the period as the duration of one 16-state cycle; one state is 16 EP chip clocks, which is 2 EP steps of 8 chip clocks (inference)",
+      "conflict": "C72",
+      "resolving_evidence": "measurement: D10 owner hardware: capture the envelope at two periods and compare the state spacing with the profile",
+      "revisit_trigger": "when a primary source for the console part or a D10 envelope capture exists",
+      "decision": null,
+      "note": "PSG steps per envelope period unit: the envelope advances one of 16 states every this-many x EP steps (EP the effective envelope period), so one 16-state cycle is 256 EP chip clocks. The 16-state table is the engine's constant (the 32-step envelope is a different part, named in C12)."
+    },
+    "psg.envelope.shape_bits": {
+      "value": {
+        "continue": 3,
+        "attack": 2,
+        "alternate": 1,
+        "hold": 0,
+        "restart_on_write": 1
+      },
+      "tag": "inference",
+      "cite": "SRC-gi-1980-catalog pdf-208 (printed 5-27): the sixteen shapes of Fig. 3 over the four shape bits; SRC-intv-wiki PSG (oldid 14940): the envelope is reset each time the shape register is written",
+      "conflict": "C72",
+      "resolving_evidence": "measurement: D10 owner hardware: capture the envelope for each of the sixteen shapes and rewrite the shape register mid-cycle",
+      "revisit_trigger": "a primary data sheet of the console part or a D10 capture",
+      "decision": null,
+      "note": "Bit numbers of the shape register (the four bits at $01FA): continue, attack, alternate and hold, and restart_on_write (1: a write to the shape register restarts the generator at its first level with an empty step counter; a period write never restarts it). C70 names the register address. After a reset the generator holds level 0 until the first shape write (psg.reset). Start level = attack ? 0 : 15; at the end of a 16-state cycle continue 0 holds level 0, continue 1 with hold 1 holds the last level (alternate 0) or the initial level of the finished cycle (alternate 1: shape 1011 holds 15, shape 1111 holds 0), continue 1 with hold 0 restarts at the initial level (alternate 0) or reverses direction (alternate 1)."
+    },
+    "psg.dac.levels": {
+      "value": [
+        0,
+        781250,
+        946875,
+        1562500,
+        1893750,
+        3125000,
+        3787500,
+        6250000,
+        7575000,
+        12500000,
+        15150000,
+        25000000,
+        30300000,
+        50000000,
+        70700000,
+        100000000
+      ],
+      "tag": "inference",
+      "cite": "SRC-gi-1980-catalog Fig. 9 axis labels as read in the Phase 5 discuss note (levels 15..9 printed: 1.0, 0.707, 0.5, 0.303, 0.25, 0.1515, 0.125 V normalised); the text for level 0 (0 V); levels 8..1 extrapolated by the printed halving every two levels. plan 05-01 could not obtain the reprint pages: the labels are not an independent source",
+      "conflict": "C12",
+      "resolving_evidence": "measurement: D10 owner hardware: measure the analogue output voltage of each of the sixteen amplitude levels",
+      "revisit_trigger": "a measured DAC curve (D10) or a data sheet that prints the labels",
+      "decision": null,
+      "note": "Sixteen unsigned integers in units of 1e-8 of full scale, indexed by the 4-bit level 0..15. Per-entry basis: levels 15 to 9 are the printed Fig. 9 labels, levels 8 to 1 are extrapolated (level n = level n+2 divided by 2: 8 from 10, 7 from 9, 6 from 8, 5 from 7, 4 from 6, 3 from 5, 2 from 4, 1 from 3 as derived in the discuss note), level 0 is 0 from the text. The printed 0.303 and 0.1515 V labels are not on a pure 3 dB ladder: [UNK] unresolved. The sum of three channels is at most 300,000,000 and fits uint32_t. THE CORE NEVER READS THIS FIELD (D-11): raw audio is the level indices; a test-side generator (cmake/IvsPsgProfileProbe.cmake) reads it for the psg.dac.* tests, and a wrong table cannot invalidate a raw audio golden."
     }
   }
 }
