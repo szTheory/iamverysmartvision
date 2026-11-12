@@ -44,7 +44,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Evidence, Profile and Rights Foundations** - Tier vocabulary, claim ledger, discrepancy log, fixture manifest, provenance rule, first-profile record, time base and CP-1610 reference notes (completed 2026-11-09)
 - [x] **Phase 2: CP-1610 CPU Core** - Every opcode verified against page-cited, hand-derived vectors in a host-independent core with an exact inventory and one local gate command (completed 2026-11-10)
 - [x] **Phase 3: Memory Map, Content Loading and Refusal** - Profile-driven memory map, typed system-image and cartridge loading, isolated instances and a refusal matrix that never mutates prior state (completed 2026-11-11)
-- [ ] **Phase 4: Headless Runner and Installed Consumer (Slice 0)** - An original diagnostic runs end to end through the runner and a relocated installed consumer, with deterministic digests and a CI gate that mirrors the local command
+- [x] **Phase 4: Headless Runner and Installed Consumer (Slice 0)** - An original diagnostic runs end to end through the runner and a relocated installed consumer, with deterministic digests and a CI gate that mirrors the local command (completed 2026-11-11)
 - [ ] **Phase 5: Hand Controllers and PSG Sound** - Both controllers as multi-signal machine input at explicit time boundaries; PSG raw audio and a register-write log
 - [ ] **Phase 6: STIC Video First Pass** - Access windows, VBLANK/BUSRQ timing, raw index framebuffer, FG/BG and Color Stack cards, and side-effect-free inspection
 - [ ] **Phase 7: First Visible Original Scenario** - A rights-clear original program responds to controller input with video and sound through the installed consumer in CI
@@ -192,7 +192,7 @@ Plans:
   3. A run to an absolute cycle target reports any overshoot. Splitting the run into slices gives the same per-domain digests (CPU/memory, video, audio, input log), and repeated runs match. Golden files carry tier and oracle headers. An undersized output buffer is refused before any state changes.
   4. A separate consumer project, built only against the installed package in a relocated prefix, runs load, refusal, run and digest successfully.
   5. CI runs the same fast gate as the local command on every PR, shows skipped and missing items, never caches or uploads system images or rights-unknown fixtures, and records queue, setup, build and test durations for each run.
-**Plans**: 25/25 plans executed in 25 sequential waves
+**Plans**: 27/25 plans complete in 25 sequential waves
 
 Plans:
 - [x] 04-01-PLAN.md — CI measurement first: `gate-env`/`gate-cpu` lines, job summary through the EXIT trap with a selftest step, ci-parity bans (action allowlist, secrets, matrix, runs-on, timeout 5), 6 controls
@@ -315,7 +315,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 1. Evidence, Profile and Rights Foundations | 14/14 | Complete    | 2026-11-09 |
 | 2. CP-1610 CPU Core | 18/18 | Complete    | 2026-11-10 |
 | 3. Memory Map, Content Loading and Refusal | 14/14 | Complete    | 2026-11-11 |
-| 4. Headless Runner and Installed Consumer (Slice 0) | 25/25 | In Progress | - |
+| 4. Headless Runner and Installed Consumer (Slice 0) | 27/25 | Complete    | 2026-11-11 |
 | 5. Hand Controllers and PSG Sound | 0/TBD | Not started | - |
 | 6. STIC Video First Pass | 0/TBD | Not started | - |
 | 7. First Visible Original Scenario | 0/TBD | Not started | - |
