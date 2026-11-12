@@ -113,6 +113,13 @@ void ivs_psg_catch_up(const ivs_psg_params *p, ivs_psg_state *s, const uint16_t 
   if (period == 0u) {
     return;
   }
+#ifdef IVS_FAULT_PSG_SAMPLE_PHASE_RESET_PER_CALL
+  if (sink->fresh != 0u) {
+    /* named fault: the sample grid restarts at each call's first catch-up, skipping the steps due before it */
+    sink->fresh = 0u;
+    s->next_sample = to_tick / period + 1u;
+  }
+#endif
   while (s->next_sample <= to_tick / period) {
     ivs_psg_step(p, s, regs, obs, sink);
   }

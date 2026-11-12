@@ -129,4 +129,13 @@ extern const size_t ivs_psg_bounds_count;
 extern const ivs_test_case ivs_psg_buffers_cases[];
 extern const size_t ivs_psg_buffers_count;
 
+/* Families sample, slice and chain (plan 05-06, psg_sample.c, psg_slice.c, psg_chain.c): the chip-rate sample
+ * stream, its independence of slicing and the AUDIO digest chain. Fixed cases only. */
+extern const ivs_test_case ivs_psg_sample_cases[];
+extern const size_t ivs_psg_sample_count;
+extern const ivs_test_case ivs_psg_slice_cases[];
+extern const size_t ivs_psg_slice_count;
+extern const ivs_test_case ivs_psg_chain_cases[];
+extern const size_t ivs_psg_chain_count;
+
 #endif

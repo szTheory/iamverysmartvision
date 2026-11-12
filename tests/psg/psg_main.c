@@ -101,6 +101,9 @@ int main(int argc, char **argv)
           ivs_psg_mix_vector_run, ivs_psg_mix_sources);
   psg_add(ivs_psg_amp_cases, ivs_psg_amp_count, ivs_psg_amp_vector_count, ivs_psg_amp_vector_id,
           ivs_psg_amp_vector_run, ivs_psg_amp_sources);
+  psg_add(ivs_psg_sample_cases, ivs_psg_sample_count, NULL, NULL, NULL, NULL);
+  psg_add(ivs_psg_slice_cases, ivs_psg_slice_count, NULL, NULL, NULL, NULL);
+  psg_add(ivs_psg_chain_cases, ivs_psg_chain_count, NULL, NULL, NULL, NULL);
   psg_add(ivs_psg_bounds_cases, ivs_psg_bounds_count, NULL, NULL, NULL, NULL);
   psg_add(ivs_psg_buffers_cases, ivs_psg_buffers_count, NULL, NULL, NULL, NULL);
   if (psg_total > PSG_MAX_CASES) {

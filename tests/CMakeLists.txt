@@ -204,7 +204,7 @@ foreach(fam_spec "reg:regs" "reset:reset" "port:port" "tone:tone" "mix:mix" "amp
     VERBATIM)
   list(APPEND IVS_PSG_VEC_GENERATED "${fam_inc}")
 endforeach()
-set(IVS_PSG_TEST_SOURCES psg/psg_main.c psg/psg_reg.c psg/psg_port.c psg/psg_tone.c psg/psg_mix.c psg/psg_bounds.c psg/psg_buffers.c machine/machine_standin.c)
+set(IVS_PSG_TEST_SOURCES psg/psg_main.c psg/psg_reg.c psg/psg_port.c psg/psg_tone.c psg/psg_mix.c psg/psg_bounds.c psg/psg_buffers.c psg/psg_sample.c psg/psg_slice.c psg/psg_chain.c machine/machine_standin.c)
 add_executable(ivs_tests_psg ${IVS_PSG_TEST_SOURCES} ${IVS_PSG_VEC_GENERATED})
 target_include_directories(ivs_tests_psg PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(ivs_tests_psg PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)

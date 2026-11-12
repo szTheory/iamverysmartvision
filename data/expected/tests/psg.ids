@@ -108,3 +108,29 @@ psg.buffers.not-requested
 psg.buffers.state-independent-of-buffer
 psg.buffers.sentinel-tail
 psg.buffers.overlap
+# Plan 05-06 (Task 4): the sample stream (psg.sample.*, 12), slicing invariance (psg.slice.*, 8) and the AUDIO chain
+# (psg.chain.*, 4).
+psg.sample.count-formula
+psg.sample.grid-stamp
+psg.sample.byte-order
+psg.sample.record-layout
+psg.sample.levels-0-15
+psg.sample.reserved-byte-zero
+psg.sample.first-sample-index
+psg.sample.silent-after-reset
+psg.sample.absolute-grid-from-reset
+psg.sample.format-id
+psg.sample.write-effect-boundary
+psg.sample.wrapper-stamp
+psg.slice.seam-equals-run
+psg.slice.samples-split
+psg.slice.samples-slice-1
+psg.slice.tone-write-mid-slice
+psg.slice.overshoot
+psg.slice.no-catch-up-to-target
+psg.slice.interleaved-instances
+psg.slice.reset-between-calls
+psg.chain.audio-framing
+psg.chain.audio-slicing-invariant
+psg.chain.emitted-bound
+psg.chain.reset-clears
