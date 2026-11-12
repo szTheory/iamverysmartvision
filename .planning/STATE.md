@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 current_phase: 6
 current_phase_name: STIC Video First Pass
-current_plan: 6
+current_plan: 7
 status: executing
-stopped_at: Completed 06-05-PLAN.md
-last_updated: "2026-11-12T21:32:21.154Z"
+stopped_at: Completed 06-06-PLAN.md
+last_updated: "2026-11-12T22:36:02.398Z"
 last_activity: 2026-11-12
 last_activity_desc: Phase 5 complete, transitioned to Phase 6
-state_head: 97627d21abd0308edb1b975176238deaf48d90a6
+state_head: 625c4a5c41e50567c29b846350411090d023552c
 progress:
   total_phases: 8
   completed_phases: 5
   total_plans: 97
-  completed_plans: 88
+  completed_plans: 89
   percent: 63
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 6 (STIC Video First Pass) — EXECUTING
-Current Plan: 6
+Current Plan: 7
 Total Plans in Phase: 14
 Status: Ready to execute
 Last activity: 2026-11-12 — Phase 5 complete, transitioned to Phase 6
@@ -146,6 +146,7 @@ Progress: [██████░░░░] 63%
 | Phase 06 P03 | 3h | 3 tasks | 22 files |
 | Phase 06 P04 | about 4 hours | 4 tasks | 24 files |
 | Phase 6 P05 | 3h | 4 tasks | 24 files |
+| Phase 06 P06 | 9h | 5 tasks | 60 files |
 
 ## Accumulated Context
 
@@ -338,6 +339,7 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 06]: 06-03: v3 report and v4 info tails are zeroed locals copied min(struct_size, sizeof); IVS_RUN_F_STOP_ON_FRAME stays refused until 06-09
 - [Phase 06]: 06-04: STIC window, interrupt and hold figures tagged tier4-community per the timing-notes evidence table; first_start, fetch_offset and policies stay unknown-default-chosen
 - [Phase 6]: 06-05: STIC storage joins the instance (stic_reg[64] in MEM, 528-byte ivs_stic_state in INSTANCE, 12 row latches); composite version 3 with the v2 literals recorded first (21b1ad5); IVS_MACHINE_BYTES 114416; goldens moved only on digest.mem, digest.instance and digest.composite, digest.cpu and digest.images equal v2
+- [Phase 06]: 06-06: ADAR (the operand read of a direct-addressed instruction) is a read-like kind for the STIC hook; the plan text listed read, fetch, write and DW only
 
 ### Pending Todos
 
@@ -370,6 +372,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-12T21:32:20.900Z
-Stopped at: Completed 06-05-PLAN.md
+Last session: 2026-11-12T22:36:02.157Z
+Stopped at: Completed 06-06-PLAN.md
 Resume file: None
