@@ -194,3 +194,4 @@ runner.time.slice-sizes-equal
 runner.time.slices-equal
 runner.time.wall
 runner.time.wall-only-lowers
+runner.refpcm.box-exact-vector

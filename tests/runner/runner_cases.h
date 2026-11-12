@@ -44,4 +44,10 @@ size_t runner_time_count(void);
 const char *runner_time_id(size_t i);
 int runner_time_run(size_t i);
 
+/* Family refpcm (runner_refpcm.c, plan 05-10): the reference PCM converter of tools/pcm and its
+ * judge self-controls. */
+size_t runner_refpcm_count(void);
+const char *runner_refpcm_id(size_t i);
+int runner_refpcm_run(size_t i);
+
 #endif

@@ -427,17 +427,17 @@ add_custom_command(
 set(IVS_RUNNER_TEST_GENERATED "${IVS_DIAG_EXPECT_INC}" "${IVS_DIAG_EXPECT_TEXT_INC}" "${IVS_INPUT_BITS_INC}"
   "${IVS_IMAGES_INC}")
 add_executable(ivs_tests_runner runner/runner_main.c runner/runner_parse.c runner/runner_fuzz.c runner/runner_exec.c
-  runner/runner_time.c
+  runner/runner_time.c runner/runner_refpcm.c
   ${IVS_RUNNER_TEST_GENERATED})
 target_include_directories(ivs_tests_runner PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 add_dependencies(ivs_tests_runner ivs_images)
-target_link_libraries(ivs_tests_runner PRIVATE ivs_test_harness ivs_runner_lib ivs_core ivs_warnings ivs_san)
+target_link_libraries(ivs_tests_runner PRIVATE ivs_test_harness ivs_runner_lib ivs_refpcm ivs_core ivs_warnings ivs_san)
 add_test(NAME runner COMMAND ivs_tests_runner)
 set_tests_properties(runner PROPERTIES SKIP_RETURN_CODE 77)
 ivs_fault_suite(runner
   SOURCES runner/runner_main.c runner/runner_parse.c runner/runner_fuzz.c runner/runner_exec.c
-  runner/runner_time.c
-  INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/runner" "${CMAKE_CURRENT_BINARY_DIR}"
+  runner/runner_time.c runner/runner_refpcm.c "${PROJECT_SOURCE_DIR}/tools/pcm/ivs_refpcm.c"
+  INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/runner" "${PROJECT_SOURCE_DIR}/tools/pcm" "${CMAKE_CURRENT_BINARY_DIR}"
   GENERATED ${IVS_RUNNER_TEST_GENERATED}
   MODULES core runner)
 

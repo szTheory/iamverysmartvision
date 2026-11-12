@@ -34,6 +34,8 @@ add_subdirectory(core)
 add_subdirectory(runner)
 # Build-tree image tool and images (plan 04-14, D-30): sets IVS_IMAGES_DIR before tests.
 add_subdirectory(tools/pack)
+# Reference PCM converter (plan 05-10, D-21): internal static target, no install rule.
+add_subdirectory(tools/pcm)
 
 enable_testing()
 add_subdirectory(tests)
