@@ -119,8 +119,16 @@ wd_start() {
     kill -TERM "$_wp" 2> /dev/null
   ) > /dev/null 2>&1 < /dev/null &
   _wd=$!
-  # Opening the FIFO blocks until the armed watchdog opens it for writing.
-  : < "$_wm.ready"
+  # Opening the FIFO blocks until the armed watchdog opens it for writing. A signal that arrives
+  # while the open waits (the SIGCHLD of a run that ends in milliseconds) makes dash fail the open
+  # with "Interrupted system call" instead of restarting it (seen under `dash tools/gate.sh`), so
+  # the open is retried (on `true`, not the special builtin `:`, because a failed redirection on a
+  # special builtin ends a POSIX shell); the FIFO exists, so a failed open can only be that interruption.
+  _try=0
+  until true < "$_wm.ready" 2> /dev/null; do
+    _try=$((_try + 1))
+    [ "$_try" -lt 1000 ] || { printf 'runner-process-tap: cannot open %s.ready\n' "$_wm" >&2; exit 1; }
+  done
   rm -f "$_wm.ready"
 }
 wd_stop() {
