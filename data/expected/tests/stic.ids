@@ -54,3 +54,8 @@ stic.state.fields
 stic.state.no-write
 stic.state.v1-size-caller
 stic.state.struct-pins
+# Plan 06-07 task 3: the peek family (stic.peek.*): peek purity with a positive control (the roadmap example: a peek of $0021 leaves the mode unchanged).
+stic.peek.mode-unchanged-0021
+stic.peek.sweep-bytes-equal
+stic.peek.cpu-read-switches
+stic.peek.value-equals-cpu-value

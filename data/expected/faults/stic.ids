@@ -16,4 +16,7 @@ STIC_CATCHUP_LAGS_UNIT stic.slice.state-equal-at-every-unit-boundary stic.slice.
 STIC_ALIAS_NOT_HOOKED stic.alias.read-4021-switches-mode stic.alias. stic.mode.read-selects-cs
 # STIC_MODE_SWITCH_OUTSIDE_WINDOW (core/src/machine/machine_bus.c): the access effects (the display-enable strobe, the mode
 # selects) are applied even when the gate is closed, so a blocked access still changes the latch or the mode.
-STIC_MODE_SWITCH_OUTSIDE_WINDOW stic.mode.read-outside-window-no-effect stic.mode.|stic.alias.|stic.enable.|stic.window.|stic.blocked. stic.events.table-order
+STIC_MODE_SWITCH_OUTSIDE_WINDOW stic.mode.read-outside-window-no-effect stic.mode.|stic.alias.|stic.enable.|stic.window.|stic.blocked.|stic.peek. stic.events.table-order
+# STIC_MODE_SWITCH_ON_PEEK (core/src/machine/machine_inspect.c, plan 06-07): ivs_machine_peek applies the mode-select read effect for a
+# mode-select address ($0021 and its read aliases), the effect that only the CPU bus wrapper owns (A-07, T-06-09).
+STIC_MODE_SWITCH_ON_PEEK stic.peek.mode-unchanged-0021 stic.peek. stic.peek.value-equals-cpu-value

@@ -24,7 +24,8 @@
  * catch-up (the STIC is caught up at every unit end), advances no time, writes no machine byte and
  * shares no function with ivs_machine_peek: peek is the bus view (gates honoured), this is the
  * stored view (gate independent), and the read side effects (the mode select) live only in the bus
- * wrapper, so neither call can switch the mode by construction. */
+ * wrapper, so neither call can switch the mode by construction.
+ * Named fault (plan 06-07, A-07): STIC_MODE_SWITCH_ON_PEEK. */
 #include "common/ivs_prelude.h"
 
 #include <stddef.h>
@@ -167,6 +168,16 @@ ivs_status ivs_machine_peek(const ivs_machine *m, uint16_t addr, uint32_t count,
   for (i = 0u; i < count; i++) {
     uint16_t a = IVS_U16((uint32_t)addr + i);
     uint16_t v = ivs_memsys_read(&im->mem, a);
+#ifdef IVS_FAULT_STIC_MODE_SWITCH_ON_PEEK
+    {
+      /* Named fault STIC_MODE_SWITCH_ON_PEEK: a peek of a mode-select address applies the Color Stack
+       * read effect, which only the CPU path owns (A-07). */
+      const ivs_stic_params *sp = ivs_stic_params_get(im->profile);
+      if (ivs_stic_is_mode_select_addr(sp, (uint32_t)a) != 0u) {
+        ((struct ivs_machine *)(uintptr_t)im)->stic.mode = IVS_STIC_MODE_COLOR_STACK;
+      }
+    }
+#endif
 #ifdef IVS_FAULT_PEEK_GATE_IGNORED
     {
       /* Named fault PEEK_GATE_IGNORED: the backing word is read as if every gate were open (the
