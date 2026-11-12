@@ -188,14 +188,14 @@ uint32_t ivs_machine_out_overlaps(const void *out, size_t n, const void *inst, s
 
 /* ---- machine-level bus wrapper (plan 05-04, A-01, machine_bus.c) ----
  * The CPU port of every unit the machine steps: ctx is an ivs_machine_bus_ctx built per unit in the
- * step seam (the run call steps through the seam). In plan 05-04 the wrapper forwards EVERY access
- * unchanged to ivs_memsys_bus on the instance's own memory system, which keeps the masked store of
- * the PSG region (ivs_psg_reg_store); it only reserves the place where plans 05-06 and 05-08 add the
- * catch-up of the PSG to the write's tick and the write log BEFORE delegating the store. The context
- * carries the unit start tick (machine time before the step) and the master ticks per CPU cycle
- * of the profile, from which those plans stamp a write; nothing reads them yet. ivs_memsys_bus
- * itself answers wait 0 for every kind (U and g depend on it, A-03). The wrapper never touches
- * the memory system without going through ivs_memsys_bus. */
+ * step seam (the run call steps through the seam). The wrapper delegates EVERY access to
+ * ivs_memsys_bus on the instance's own memory system, which keeps the masked store of the PSG
+ * region (ivs_psg_reg_store); for a write that reaches the PSG region it first catches the PSG up to
+ * the write's tick and, after the store, appends the write-log record (plans 05-06 and 05-08, below).
+ * The context carries the unit start tick (machine time before the step) and the master ticks per CPU
+ * cycle of the profile, from which the wrapper stamps a write. ivs_memsys_bus itself answers wait 0
+ * for every kind (U and g depend on it, A-03). The wrapper never touches the memory system without
+ * going through ivs_memsys_bus. */
 typedef struct ivs_machine_bus_ctx {
   struct ivs_machine *m;
   uint64_t unit_start_tick;

@@ -103,7 +103,8 @@ typedef struct ivs_memsys {
   uint16_t grom[IVS_MEMSYS_GROM_WORDS];
   uint16_t cart[IVS_MEMSYS_CART_WORDS]; /* index addr - cart span lo */
   /* Plan 05-03 (D-04, A-13): guest-visible PSG state, MEM digest rows. Zero at create and after a
-   * power-on reset; nothing reads or writes it before plans 05-04 and 05-05. */
+   * power-on reset; written by the masked PSG store and (the pull-down masks) by the input path, read
+   * by guest reads and by the PSG engine. */
   uint16_t psg_reg[IVS_MEMSYS_PSG_REGS];
   uint8_t port_pulldown[IVS_MEMSYS_PSG_PORTS]; /* low-driven pin masks of the two ports */
   uint8_t psg_reserved[2];                     /* 0: pad to 4 bytes, no implicit hole */
@@ -205,7 +206,8 @@ uint32_t ivs_memsys_psg_write_slot_internal(const ivs_memsys *m, uint16_t addr);
 
 /* Internal pull-down setter (plan 05-03, D-04; called from the input path in plan 05-05): stores
  * mask as the set of low-driven pins of PSG port 0 or 1. A port at or above IVS_MEMSYS_PSG_PORTS
- * does nothing. Nothing reads the masks before plan 05-05. */
+ * does nothing. A guest read of a port that is in input mode returns the idle byte XOR this mask
+ * (ivs_mm_port_read in memsys.c). */
 void ivs_memsys_set_port_pulldown_internal(ivs_memsys *m, uint32_t port, uint32_t mask);
 
 /* Raw-poke seam (A-05a): stores value unmasked into the backing word of addr (read view first,

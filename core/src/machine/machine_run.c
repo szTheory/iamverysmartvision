@@ -51,7 +51,7 @@ static void ivs_run_power_on(struct ivs_machine *im)
   memset(im->mem.scratchpad, 0, sizeof im->mem.scratchpad);
   memset(im->mem.gram, 0, sizeof im->mem.gram);
   /* Plan 05-03 (D-04, D-16): power-on register state of the PSG is zero, both ports idle, and the
-   * device state starts at its power-on values. Storage only until plans 05-04..05-06. */
+   * device state starts at its power-on values. */
   memset(im->mem.psg_reg, 0, sizeof im->mem.psg_reg);
 #ifndef IVS_FAULT_INPUT_PINS_NOT_RESET /* named fault INPUT_PINS_NOT_RESET: power-on leaves the pull-down masks */
   memset(im->mem.port_pulldown, 0, sizeof im->mem.port_pulldown);
@@ -151,7 +151,8 @@ ivs_status ivs_machine_step_unit_trace_internal(ivs_machine *m, ivs_cp1610_resul
   start = im->time_ticks;
   /* The per-unit bus context (plan 05-04, A-01): the instance, the unit's start tick and the
    * profile's master ticks per CPU cycle. Built here for every unit, the run call included (it steps
-   * through this seam). Plans 05-06 and 05-08 stamp PSG writes from it; nothing reads it yet. */
+   * through this seam). The bus wrapper (machine_bus.c) stamps every PSG write from it, catches the PSG
+   * up to that stamp and appends the write-log record. */
   memset(&bus_ctx, 0, sizeof bus_ctx);
   bus_ctx.m = im;
   bus_ctx.unit_start_tick = start;

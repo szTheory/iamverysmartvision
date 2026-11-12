@@ -5,10 +5,10 @@
  * The core keeps O(1) PSG state: counters, output flags, the noise register and the envelope
  * state of the chip, and the index of the next chip step. It never samples or records (D-16).
  * The 16 guest-visible registers and the two port pull-down masks are not here: they live in the
- * memory system (ivs_memsys psg_reg and port_pulldown, D-04, MEM digest rows). Plan 05-03 only
- * stores this state: nothing advances it, so every member is 0 and stays 0 until plan 05-06.
+ * memory system (ivs_memsys psg_reg and port_pulldown, D-04, MEM digest rows). The state is zero
+ * at create and starts at its power-on values after a power-on reset (ivs_psg_state_reset).
  *
- * Plan 05-06 (D-09, D-10, D-15, D-16, D-18) makes the PSG a time-driven device: one chip step every
+ * The PSG is a time-driven device (plan 05-06, D-09, D-10, D-15, D-16, D-18): one chip step every
  * sample_period_ticks master ticks (16 on the NTSC profile), a step index starting at 1 after a
  * power-on reset (next_sample), tone counters that count down and reload, and one 4-byte sample
  * (levels A, B, C, 0) per step into a caller sink. The previous-sample levels, the emitted count and
