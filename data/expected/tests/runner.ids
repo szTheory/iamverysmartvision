@@ -210,3 +210,7 @@ runner.refpcm.pitch-within-1pct
 runner.judge.refpcm-floor-rounding
 runner.judge.refpcm-dc-state-carry
 runner.judge.refpcm-rate-drift
+runner.exec.refpcm-keys-only-with-option
+runner.exec.wav-hook
+runner.exec.wav-failures
+runner.parse.wav-rate-refused

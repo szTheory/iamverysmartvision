@@ -15,9 +15,12 @@
  *   cpu.run_state, cpu.fault_reason, input.events, input.consumed, input.controller.<0..3>,
  *   digest.<cpu|mem|images|instance|composite|video|audio|input|psglog>, output.video.bytes,
  *   output.audio.bytes, output.audio.samples, output.audio.changes, output.psglog.records,
- *   output.psglog.bytes, audio.sample_ticks, audio.chain.check, host.calls, report.end.
- * `ivsr 2` (plan 05-09, D-20, the one bump of Phase 5) adds the keys from digest.psglog on; the
- * refpcm.* keys of the reference-PCM option join the table in plan 05-10 only when it is asked for.
+ *   output.psglog.bytes, audio.sample_ticks, audio.chain.check, host.calls, [refpcm.rate,
+ *   refpcm.frames, refpcm.sha256,] report.end.
+ * `ivsr 2` (plan 05-09, D-20, the one bump of Phase 5) adds the keys from digest.psglog on. The
+ * bracketed refpcm.* group (plan 05-10, D-20, D-21) is printed ONLY when the operator asked for a WAV
+ * (--audio-wav), immediately before report.end, and never belongs to a golden: the SHA-256 is that of the
+ * WAV file bytes as written, so sha256sum of the file equals it; `-` when the host did not finish the file.
  * Named-fault sites (data/expected/faults/runner.ids) sit in this TU. */
 #include <stdint.h>
 #include <stdio.h>
@@ -565,6 +568,30 @@ int ivs_runner_report_write(const ivs_runner_record *rec, const ivs_runner_host 
   for (size_t i = 0u; i < RP_N(rp_tail); i++) {
     rp_value(rec, rp_tail[i].field, v, sizeof v);
     rp_emit(&o, rp_tail[i].key, v);
+  }
+#ifndef IVS_FAULT_RUNNER_REFPCM_KEYS_WITHOUT_OPTION
+  if (rec->refpcm_requested != 0u)
+#endif
+  {
+    /* Fault (plan 05-10, D-20): the refpcm.* keys are printed without the option (values `-`). */
+    int on = rec->refpcm_requested != 0u;
+    char hex[65];
+    (void)snprintf(v, sizeof v, "-");
+    if (on) {
+      rp_u64(v, sizeof v, rec->refpcm_rate);
+    }
+    rp_emit(&o, "refpcm.rate", v);
+    (void)snprintf(v, sizeof v, "-");
+    if (on) {
+      rp_u64(v, sizeof v, rec->refpcm_frames);
+    }
+    rp_emit(&o, "refpcm.frames", v);
+    (void)snprintf(v, sizeof v, "-");
+    if (on && rec->refpcm_sha_set != 0u) {
+      rp_hex(rec->refpcm_sha256, hex);
+      (void)snprintf(v, sizeof v, "%s", hex);
+    }
+    rp_emit(&o, "refpcm.sha256", v);
   }
   if (lines != NULL) {
     *lines = o.lines;

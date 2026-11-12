@@ -27,6 +27,7 @@
 #include "hostio.h"
 #include "ivs/ivs.h"
 #include "ivs_runner.h"
+#include "runner_sha256.h"
 
 #define MAIN_EXIT_HARNESS 14
 #define MAIN_DIR_MAX 4096u
@@ -45,6 +46,7 @@ typedef struct main_host {
   int golden_overflow;             /* the report did not fit MAIN_GOLDEN_CAP */
   ivs_hostio_out audio_out;        /* --audio-raw file (plan 05-09), fd -1 when not given */
   ivs_hostio_out log_out;          /* --psg-log-out file */
+  ivs_hostio_out wav_out;          /* --audio-wav file (plan 05-10): 44 reserved header bytes, then the PCM */
 } main_host;
 
 static const char main_usage[] =
@@ -74,6 +76,12 @@ static const char main_usage[] =
     "                       value source` (decimal), to a NEW file (same rule)\n"
     "  --audio-out-max-bytes <n>  bound of each of those files in bytes, 1..1099511627776\n"
     "                       (default 268435456); passing it is a harness failure, never a truncation\n"
+    "  --audio-wav <file>   also write the dense audio as a mono 16-bit WAV of the reference converter\n"
+    "                       (reference conversion v1, converter repeatability only) to a NEW file (same\n"
+    "                       rule); the report then ends with refpcm.rate, refpcm.frames and refpcm.sha256\n"
+    "                       (the SHA-256 of the file as written); the file is bounded by\n"
+    "                       --audio-out-max-bytes; never a golden, never a claim\n"
+    "  --wav-rate <n>       the WAV rate, 44100 or 48000 (default 48000); needs --audio-wav\n"
     "  --help               print this text and exit 0\n"
     "outcomes (outcome exit-code):\n"
     "pass 0\n"
@@ -130,6 +138,42 @@ static int mh_psg_log(void *ctx, const char *lines, size_t len)
 {
   main_host *h = ctx;
   return ivs_hostio_out_write(&h->log_out, lines, len);
+}
+
+static int mh_wav_pcm(void *ctx, const uint8_t *pcm, size_t len)
+{
+  main_host *h = ctx;
+  return ivs_hostio_out_write(&h->wav_out, pcm, len);
+}
+
+/* The header goes in front of the PCM (the 44 bytes reserved at creation), then the finished file is read
+ * back from offset 0 and hashed: the SHA-256 of the WAV file bytes as written. */
+static int mh_wav_finish(void *ctx, const uint8_t header[44], uint8_t sha256[32])
+{
+  main_host *h = ctx;
+  ivs_rsha256 c;
+  uint8_t buf[16384];
+  uint64_t off = 0u;
+  size_t got = 0u;
+  if (ivs_hostio_out_write_at(&h->wav_out, 0u, header, 44u) != 0) {
+    return -1;
+  }
+  ivs_rsha256_init(&c);
+  for (;;) {
+    if (ivs_hostio_out_read_at(&h->wav_out, off, buf, sizeof buf, &got) != 0) {
+      return -1;
+    }
+    if (got == 0u) {
+      break;
+    }
+    ivs_rsha256_update(&c, buf, got);
+    off += (uint64_t)got;
+  }
+  if (off < 44u) {
+    return -1;
+  }
+  ivs_rsha256_final(&c, sha256);
+  return 0;
 }
 
 static int mh_write(void *ctx, const char *bytes, size_t len)
@@ -189,6 +233,21 @@ static int main_number(const char *a, uint64_t lo, uint64_t hi, uint64_t *out)
 static int main_open_out(ivs_hostio_out *o, const char *path, const char *option)
 {
   int r = ivs_hostio_out_create(o, path);
+  if (r == 1) {
+    fprintf(stderr, "ivs-run: %s: output file exists, refusing to overwrite it\n", option);
+    return -1;
+  }
+  if (r != 0) {
+    fprintf(stderr, "ivs-run: %s: cannot create the output file\n", option);
+    return -1;
+  }
+  return 0;
+}
+
+/* The same, for a file that is also read back (the operator WAV, plan 05-10). */
+static int main_open_out_rw(ivs_hostio_out *o, const char *path, const char *option)
+{
+  int r = ivs_hostio_out_create_rw(o, path);
   if (r == 1) {
     fprintf(stderr, "ivs-run: %s: output file exists, refusing to overwrite it\n", option);
     return -1;
@@ -392,6 +451,7 @@ int main(int argc, char **argv)
   const char *golden_path = NULL;
   const char *audio_raw_path = NULL;
   const char *psg_log_path = NULL;
+  const char *audio_wav_path = NULL;
   char dirbuf[MAIN_DIR_MAX];
   size_t text_len = 0u;
   size_t storage_bytes;
@@ -401,9 +461,11 @@ int main(int argc, char **argv)
   int have_wall = 0;
   int have_slice = 0;
   int have_out_max = 0;
+  int have_wav_rate = 0;
   memset(&mh, 0, sizeof mh);
   mh.audio_out.fd = -1;
   mh.log_out.fd = -1;
+  mh.wav_out.fd = -1;
   memset(&opts, 0, sizeof opts);
   for (int i = 1; i < argc; i++) {
     const char *a = argv[i];
@@ -430,6 +492,12 @@ int main(int argc, char **argv)
       slot = &audio_raw_path;
     } else if (strcmp(a, "--psg-log-out") == 0) {
       slot = &psg_log_path;
+    } else if (strcmp(a, "--audio-wav") == 0) {
+      slot = &audio_wav_path;
+    } else if (strcmp(a, "--wav-rate") == 0) {
+      seen = &have_wav_rate;
+      lo = 1u;
+      hi = UINT32_MAX;
     } else if (strcmp(a, "--audio-out-max-bytes") == 0) {
       seen = &have_out_max;
       lo = 1u;
@@ -479,8 +547,13 @@ int main(int argc, char **argv)
     if (!main_number(argv[i], lo, hi, &v)) {
       return main_usage_error("option value out of range");
     }
+    if (seen == &have_wav_rate && !ivs_runner_wav_rate_valid((uint32_t)v)) {
+      return main_usage_error("--wav-rate must be 44100 or 48000");
+    }
     *seen = 1;
-    if (seen == &have_max) {
+    if (seen == &have_wav_rate) {
+      opts.wav_rate = (uint32_t)v;
+    } else if (seen == &have_max) {
       opts.max_ticks = v;
     } else if (seen == &have_wall) {
       opts.wall_timeout_ms = (uint32_t)v;
@@ -499,6 +572,9 @@ int main(int argc, char **argv)
   }
   if (mh.self_signal_repeat && !mh.self_signal) {
     return main_usage_error("--self-signal-count needs --self-signal-after-slices");
+  }
+  if (have_wav_rate && audio_wav_path == NULL) {
+    return main_usage_error("--wav-rate needs --audio-wav");
   }
   if (!mh.self_signal_repeat) {
     mh.self_signal_count = 1u;
@@ -597,6 +673,34 @@ int main(int argc, char **argv)
     free(scn);
     return MAIN_EXIT_HARNESS;
   }
+  /* The operator WAV (plan 05-10): created exclusively like the other files, 44 bytes reserved for the
+   * header (written after the stream is complete, so the file is never seen with a wrong length), then the
+   * PCM follows. A refusal abandons the files this run already created. */
+  if (audio_wav_path != NULL) {
+    static const uint8_t zero_header[44] = {0};
+    int wr = main_open_out_rw(&mh.wav_out, audio_wav_path, "--audio-wav");
+    if (wr == 0 && ivs_hostio_out_write(&mh.wav_out, zero_header, sizeof zero_header) != 0) {
+      fprintf(stderr, "ivs-run: --audio-wav: cannot write the output file\n");
+      (void)ivs_hostio_out_close(&mh.wav_out);
+      (void)ivs_hostio_out_remove(audio_wav_path);
+      wr = -1;
+    }
+    if (wr != 0) {
+      if (audio_raw_path != NULL) {
+        (void)ivs_hostio_out_close(&mh.audio_out);
+        (void)ivs_hostio_out_remove(audio_raw_path);
+      }
+      if (psg_log_path != NULL) {
+        (void)ivs_hostio_out_close(&mh.log_out);
+        (void)ivs_hostio_out_remove(psg_log_path);
+      }
+      free(storage);
+      free(buffers);
+      free(mh.golden_buf);
+      free(scn);
+      return MAIN_EXIT_HARNESS;
+    }
+  }
   memset(&host, 0, sizeof host);
   host.ctx = &mh;
   host.read_file = mh_read_file;
@@ -614,6 +718,10 @@ int main(int argc, char **argv)
   if (psg_log_path != NULL) {
     host.write_psg_log = mh_psg_log;
   }
+  if (audio_wav_path != NULL) {
+    host.write_wav_pcm = mh_wav_pcm;
+    host.finish_wav = mh_wav_finish;
+  }
   memset(&res, 0, sizeof res);
   (void)ivs_runner_execute(scn, &host, &opts, &res);
   free(storage);
@@ -626,6 +734,10 @@ int main(int argc, char **argv)
   if (psg_log_path != NULL && ivs_hostio_out_close(&mh.log_out) != 0) {
     code = MAIN_EXIT_HARNESS;
     fprintf(stderr, "ivs-run: --psg-log-out: close failed\n");
+  }
+  if (audio_wav_path != NULL && ivs_hostio_out_close(&mh.wav_out) != 0) {
+    code = MAIN_EXIT_HARNESS;
+    fprintf(stderr, "ivs-run: --audio-wav: close failed\n");
   }
   if (fflush(stdout) != 0 || ferror(stdout) || res.report_write_failed != 0u) {
     free(mh.golden_buf);

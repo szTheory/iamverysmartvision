@@ -23,7 +23,9 @@ set(IVS_RUNNER_SOURCES
 add_library(ivs_runner_lib STATIC ${IVS_RUNNER_SOURCES})
 set_target_properties(ivs_runner_lib PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF LINKER_LANGUAGE C)
 target_include_directories(ivs_runner_lib PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
-target_link_libraries(ivs_runner_lib PUBLIC ivs_core PRIVATE ivs_warnings ivs_san)
+# ivs_refpcm (tools/pcm, plan 05-10, D-21): the operator-side reference PCM converter of --audio-wav, the only
+# thing outside runner/ and core/include that the runner depends on; an internal static target, never installed.
+target_link_libraries(ivs_runner_lib PUBLIC ivs_core PRIVATE ivs_refpcm ivs_warnings ivs_san)
 
 set(IVS_RUN_SOURCES
   hostio.c

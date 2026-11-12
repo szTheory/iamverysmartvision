@@ -374,6 +374,16 @@ typedef struct ivs_runner_host {
    * a scenario cannot ask for one. */
   int (*write_audio_raw)(void *ctx, const uint8_t *bytes, size_t len);
   int (*write_psg_log)(void *ctx, const char *lines, size_t len);
+  /* Operator-only reference PCM WAV (plan 05-10, D-20, D-21; both NULL: not requested, both set: requested).
+   * The library converts each slice's delivered dense samples with the reference converter of tools/pcm
+   * ("reference conversion v1, converter repeatability only") at options.wav_rate and hands the signed
+   * 16-bit little-endian mono PCM bytes to write_wav_pcm in order (any number of calls, none when nothing was delivered). After the
+   * last slice it calls finish_wav once with the 44-byte RIFF/WAVE header of the complete stream; the host
+   * writes it in front of the PCM it was given and returns in sha256 the SHA-256 of the WAV file bytes as
+   * written (header and PCM), which the report prints as refpcm.sha256. Each returns 0, or nonzero on a
+   * write error (harness-fail `wav-out`). The library names no file: a scenario cannot ask for one. */
+  int (*write_wav_pcm)(void *ctx, const uint8_t *pcm, size_t len);
+  int (*finish_wav)(void *ctx, const uint8_t header[44], uint8_t sha256[32]);
 } ivs_runner_host;
 
 /* Slicing, budget and wall cap (D-21, plan 04-19). Every run-to is executed as slices of at most
@@ -402,7 +412,14 @@ typedef struct ivs_runner_options {
   uint64_t max_ticks;       /* machine-time ceiling, 1..IVS_RUN_TARGET_MAX; 0: the default */
   uint64_t audio_out_max_bytes; /* bytes each operator raw output may take (plan 05-09), 0: the default;
                                    exceeding it is a harness failure, never a truncation */
+  uint32_t wav_rate;            /* output rate of the operator WAV (plan 05-10): 44100 or 48000, 0: 48000; any other
+                                   value is harness-fail without a report */
+  uint32_t reserved;            /* must be 0 */
 } ivs_runner_options;
+
+/* The WAV rates the reference converter accepts (plan 05-10, D-21): 44100 and 48000 only. */
+#define IVS_RUNNER_WAV_RATE_DEFAULT 48000u
+int ivs_runner_wav_rate_valid(uint32_t rate);
 
 /* What a call returned, besides the outcome. host_calls counts read_file, read_user, now_ms and
  * cancel_requested calls (the one host-dependent report key); report_lines counts the lines
@@ -485,6 +502,11 @@ typedef struct ivs_runner_record {
   uint32_t audio_sample_ticks; /* ivs_info audio_sample_ticks; 0 when there is no machine */
   uint32_t chain_check;        /* IVS_RUNNER_CHAIN_* */
   uint64_t host_calls;
+  uint32_t refpcm_requested;   /* an operator WAV was asked for: the refpcm.* keys are printed (plan 05-10) */
+  uint32_t refpcm_rate;        /* the WAV rate */
+  uint64_t refpcm_frames;      /* PCM frames written */
+  uint32_t refpcm_sha_set;     /* refpcm_sha256 is valid (finish_wav ran and returned 0) */
+  uint8_t refpcm_sha256[32];   /* SHA-256 of the WAV file bytes as the host wrote them */
 } ivs_runner_record;
 
 /* audio.chain.check of the report: not checked (an audio buffer was not delivered on every slice
@@ -494,7 +516,9 @@ typedef struct ivs_runner_record {
 #define IVS_RUNNER_CHAIN_FAIL 2u
 
 /* Writes the report of rec through host->write_report, every key of the closed key table in
- * its fixed order: `ivsr 2` first, `report.end <n>` last (n = lines before it). Returns 0, or
+ * its fixed order: `ivsr 2` first, `report.end <n>` last (n = lines before it); only when rec asks for
+ * an operator WAV (plan 05-10) refpcm.rate, refpcm.frames and refpcm.sha256 follow host.calls, right
+ * before report.end. Returns 0, or
  * -1 on a write error; *lines gets the count of lines before report.end. */
 int ivs_runner_report_write(const ivs_runner_record *rec, const ivs_runner_host *host, uint64_t *lines);
 

@@ -436,6 +436,50 @@ run_one "$tmp" op-zero "$ivs_run" --content-dir "$opc" --audio-out-max-bytes 0 "
 [ ! -e "$opo/t1.raw" ] || { ok=0; why operator-options "a usage error created a file"; }
 result runner-process.operator.options
 
+# Operator WAV (plan 05-10, D-20, D-21, T-05-26): the same stand-in under --audio-wav, into the mktemp directory.
+# By hand: the report ends with refpcm.rate (48000), refpcm.frames and refpcm.sha256 right before report.end;
+# the file is 44 + 2 x frames bytes (a mono 16-bit RIFF/WAVE file), begins with the four bytes RIFF and the
+# header's data size field is 2 x frames; the key refpcm.sha256 is the SHA-256 of the file bytes (cmake -E
+# sha256sum); a second run with the same path is refused (exit 14, one stderr line, no report) and leaves the
+# file byte-identical; --wav-rate 8000 and a --wav-rate without --audio-wav are usage errors (exit 14, no report,
+# no file). One run per preset, no slicing variants.
+: > "$tmp/why"
+ok=1
+run_one "$tmp" op-wav "$ivs_run" --content-dir "$opc" --audio-wav "$opo/a.wav" "$opscn"
+judge op-wav 0 pass - "" || ok=0
+wframes=$(op_value op-wav refpcm.frames)
+wsz=$(wc -c < "$opo/a.wav" 2> /dev/null | tr -d ' ')
+wsha=$(cmake -E sha256sum "$opo/a.wav" 2> /dev/null | awk '{ print $1 }')
+[ "$(op_value op-wav refpcm.rate)" = 48000 ] || { ok=0; why operator-wav "refpcm.rate '$(op_value op-wav refpcm.rate)'"; }
+[ -n "$wframes" ] && [ "$wframes" -gt 0 ] && [ "$wsz" = "$((44 + 2 * wframes))" ] \
+  || { ok=0; why operator-wav "file size '$wsz', refpcm.frames '$wframes'"; }
+[ "$(od -An -tx1 -N4 "$opo/a.wav" | tr -d ' \n')" = 52494646 ] || { ok=0; why operator-wav "the first four bytes are not RIFF"; }
+[ "$wsha" = "$(op_value op-wav refpcm.sha256)" ] && [ "${#wsha}" -eq 64 ] \
+  || { ok=0; why operator-wav "sha256 of the file '$wsha', refpcm.sha256 '$(op_value op-wav refpcm.sha256)'"; }
+[ "$(tail -n 5 "$tmp/runs/op-wav.out" | sed 's/ .*//' | tr '\n' ' ')" = "host.calls refpcm.rate refpcm.frames refpcm.sha256 report.end " ] \
+  || { ok=0; why operator-wav "the refpcm keys are not right before report.end"; }
+cp "$opo/a.wav" "$opo/a.before" || exit 1
+run_one "$tmp" op-wav2 "$ivs_run" --content-dir "$opc" --audio-wav "$opo/a.wav" "$opscn"
+[ "$rc" -eq 14 ] && [ ! -s "$tmp/runs/op-wav2.out" ] || { ok=0; why operator-wav "a second run with the same path: exit $rc"; }
+printf 'ivs-run: --audio-wav: output file exists, refusing to overwrite it\n' > "$tmp/want.err"
+cmp -s "$tmp/runs/op-wav2.err" "$tmp/want.err" || { ok=0; why operator-wav "stderr is not the one refusal line"; }
+cmp -s "$opo/a.wav" "$opo/a.before" || { ok=0; why operator-wav "the existing file changed"; }
+run_one "$tmp" op-wrate "$ivs_run" --content-dir "$opc" --audio-wav "$opo/r.wav" --wav-rate 8000 "$opscn"
+[ "$rc" -eq 14 ] && [ ! -s "$tmp/runs/op-wrate.out" ] || { ok=0; why operator-wav "--wav-rate 8000: exit $rc"; }
+run_one "$tmp" op-wlone "$ivs_run" --content-dir "$opc" --wav-rate 44100 "$opscn"
+[ "$rc" -eq 14 ] && [ ! -s "$tmp/runs/op-wlone.out" ] || { ok=0; why operator-wav "--wav-rate without --audio-wav: exit $rc"; }
+[ ! -e "$opo/r.wav" ] || { ok=0; why operator-wav "a usage error created a file"; }
+result runner-process.refpcm.wav-written
+# The listening helper refuses a scenario with a `content ... user` line before it builds or runs anything
+# (rights: derived audio of operator content stays out of shared records): exit 2, a message naming the rule.
+: > "$tmp/why"
+ok=1
+run_one "$tmp" listen-user "$root/tools/listen-demo.sh" needs-user-exec
+[ "$rc" -eq 2 ] || { ok=0; why listen-demo "exit $rc, expected 2"; }
+[ ! -s "$tmp/runs/listen-user.out" ] || { ok=0; why listen-demo "output on stdout from a refusal"; }
+grep -q -e 'content .* user' "$tmp/runs/listen-user.err" || { ok=0; why listen-demo "the message does not name the content user rule"; }
+result runner-process.listen-demo.refuses-user
+
 # Judge self-controls (D-23, T-04-59): the same checks run against wrong runners, shell scripts
 # in the temp dir that replay this run's recorded reports with one defect each. A control passes
 # only when the check fails with a finding of its intended token.

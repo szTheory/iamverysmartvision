@@ -17,11 +17,14 @@
 
 #include "ivs/ivs.h"
 #include "ivs_runner.h"
+#include "ivs_refpcm.h"
 #include "runner_chain.h"
 
 /* Observation slots for the first detail of each kind (index = bit number of IVS_RUNNER_OBS_*). */
 #define EX_OBS_BITS 6u
 #define EX_READ_BUF (IVS_RUNNER_CAP_CART + 1u)
+#define EX_WAV_FRAMES 2048u /* frames of the converter chunk buffer (an out bound of at most this many per feed) */
+#define EX_WAV_CHUNK 1024u  /* input samples fed per converter call, halved until its out bound fits */
 
 typedef struct ex_state {
   const ivs_scenario *scn;
@@ -50,6 +53,16 @@ typedef struct ex_state {
   uint64_t out_max;         /* the operator's byte bound of each raw output file */
   uint64_t out_audio_bytes; /* bytes handed to write_audio_raw */
   uint64_t out_log_bytes;   /* bytes handed to write_psg_log */
+  /* Operator WAV (plan 05-10, D-21): the reference converter state, carried across slices, and the chunk
+   * buffers; wav_requested when both hooks exist, wav_started once the converter is initialised. */
+  ivs_refpcm_state rp;
+  int wav_requested;
+  int wav_started;
+  int wav_failed; /* a wav hook or the byte bound failed: the file is not finished */
+  uint32_t wav_rate;
+  uint64_t out_wav_bytes; /* PCM bytes handed to write_wav_pcm */
+  int16_t wav_pcm[EX_WAV_FRAMES];
+  uint8_t wav_bytes[2u * EX_WAV_FRAMES];
   uint32_t slices;         /* run calls that returned IVS_OK */
   uint32_t slices_audio;   /* ... of which delivered into an audio buffer */
   char detail[EX_OBS_BITS][IVS_RUNNER_DETAIL_MAX];
@@ -357,6 +370,65 @@ static int ex_psg_log_out(ex_state *x, size_t n, uint64_t first)
       x->out_log_bytes += used;
       used = 0u;
     }
+  }
+  return 0;
+}
+
+/* The WAV rates of the reference converter (plan 05-10, D-21): exactly 44100 and 48000. The option parser
+ * of main.c refuses any other --wav-rate through this function, and so does the executor. */
+int ivs_runner_wav_rate_valid(uint32_t rate)
+{
+#ifdef IVS_FAULT_RUNNER_WAV_RATE_UNCHECKED
+  /* Fault (plan 05-10, D-20): any --wav-rate value is accepted. */
+  (void)rate;
+  return 1;
+#else
+  return rate == IVS_REFPCM_RATE_44100 || rate == IVS_REFPCM_RATE_48000;
+#endif
+}
+
+/* Converts n_bytes of dense samples (4 bytes each) and hands the PCM to write_wav_pcm chunk by chunk, with the
+ * converter state carried across calls (so slicing the run never changes the output). Bounded like the raw
+ * files: the WAV may not pass the operator's byte bound, 44 header bytes included. 0, or 1 after a harness
+ * failure observation. */
+static int ex_wav_feed(ex_state *x, const uint8_t *b, size_t n_bytes)
+{
+  size_t n = n_bytes / 4u;
+  size_t off = 0u;
+  uint64_t limit = x->out_max > 44u ? x->out_max - 44u : 0u;
+  while (off < n) {
+    size_t m = n - off < EX_WAV_CHUNK ? n - off : EX_WAV_CHUNK;
+    size_t produced = 0u;
+    size_t bytes;
+    while (m > 1u && ivs_refpcm_out_bound(&x->rp, m) > EX_WAV_FRAMES) {
+      m /= 2u;
+    }
+    if (ivs_refpcm_feed(&x->rp, b + 4u * off, m, x->wav_pcm, EX_WAV_FRAMES, &produced) != IVS_REFPCM_OK) {
+      x->wav_failed = 1;
+      ex_observe(x, IVS_RUNNER_OBS_HARNESS_FAIL, "wav-convert");
+      return 1;
+    }
+    off += m;
+    if (produced == 0u) {
+      continue;
+    }
+    bytes = 2u * produced;
+    for (size_t i = 0u; i < produced; i++) {
+      uint16_t u = (uint16_t)x->wav_pcm[i];
+      x->wav_bytes[2u * i] = (uint8_t)(u & 0xFFu);
+      x->wav_bytes[2u * i + 1u] = (uint8_t)(u >> 8);
+    }
+    if ((uint64_t)bytes > limit || x->out_wav_bytes > limit - (uint64_t)bytes) {
+      x->wav_failed = 1;
+      ex_observe(x, IVS_RUNNER_OBS_HARNESS_FAIL, "wav-out-max-bytes");
+      return 1;
+    }
+    if (x->host->write_wav_pcm(x->host->ctx, x->wav_bytes, bytes) != 0) {
+      x->wav_failed = 1;
+      ex_observe(x, IVS_RUNNER_OBS_HARNESS_FAIL, "wav-out");
+      return 1;
+    }
+    x->out_wav_bytes += bytes;
   }
   return 0;
 }
@@ -688,6 +760,21 @@ static void ex_run_steps(ex_state *x, const ivs_info *info)
   }
   x->rec->audio_sample_ticks = info->audio_sample_ticks;
   x->log_record_bytes = info->psg_log_record_bytes;
+  if (x->wav_requested) {
+    /* The operator WAV needs the dense stream: no audio buffer is a harness failure, never an empty file. */
+    if (x->aud_buf == NULL || info->audio_sample_bytes != 4u) {
+      x->wav_failed = 1;
+      ex_observe(x, IVS_RUNNER_OBS_HARNESS_FAIL, "wav-without-audio");
+      return;
+    }
+    if (ivs_refpcm_init(&x->rp, info->crystal_hz_num, info->crystal_hz_den, info->audio_sample_ticks, x->wav_rate) !=
+        IVS_REFPCM_OK) {
+      x->wav_failed = 1;
+      ex_observe(x, IVS_RUNNER_OBS_HARNESS_FAIL, "wav-init");
+      return;
+    }
+    x->wav_started = 1;
+  }
   {
     /* A capture or a psglog or audio assert reads what the buffers deliver: without the buffer it
      * would read nothing and could pass vacuously (a harness failure instead). */
@@ -783,6 +870,9 @@ static void ex_run_steps(ex_state *x, const ivs_info *info)
             return;
           }
           x->out_audio_bytes += got;
+        }
+        if (x->wav_started && got != 0u && ex_wav_feed(x, x->aud_buf, got) != 0) {
+          return;
         }
         ex_capture_audio(x, x->aud_buf, got);
         ivs_runner_achain_feed(&x->chain, x->aud_buf, got);
@@ -955,7 +1045,9 @@ uint32_t ivs_runner_execute(const ivs_scenario *scn, const ivs_runner_host *host
   }
   if (scn == NULL || host == NULL || host->read_file == NULL || host->write_report == NULL ||
       (opts != NULL && (opts->flags != 0u || opts->slice_ticks > IVS_RUNNER_SLICE_TICKS_MAX ||
-                        opts->max_ticks > IVS_RUN_TARGET_MAX))) {
+                        opts->max_ticks > IVS_RUN_TARGET_MAX || opts->reserved != 0u ||
+                        (opts->wav_rate != 0u && !ivs_runner_wav_rate_valid(opts->wav_rate)))) ||
+      (host->write_wav_pcm == NULL) != (host->finish_wav == NULL)) {
     return IVS_RUNNER_OUTCOME_HARNESS_FAIL;
   }
   memset(&rec, 0, sizeof rec);
@@ -969,6 +1061,8 @@ uint32_t ivs_runner_execute(const ivs_scenario *scn, const ivs_runner_host *host
   x.wall_cap_ms = opts != NULL && opts->wall_timeout_ms != 0u ? opts->wall_timeout_ms : IVS_RUNNER_WALL_MS_DEFAULT;
   x.out_max = opts != NULL && opts->audio_out_max_bytes != 0u ? opts->audio_out_max_bytes
                                                               : IVS_RUNNER_AUDIO_OUT_MAX_DEFAULT;
+  x.wav_requested = host->write_wav_pcm != NULL;
+  x.wav_rate = opts != NULL && opts->wav_rate != 0u ? opts->wav_rate : IVS_RUNNER_WAV_RATE_DEFAULT;
   if (scn->wall_timeout_ms != 0u && scn->wall_timeout_ms < x.wall_cap_ms) {
     x.wall_cap_ms = scn->wall_timeout_ms; /* D-21: a scenario only lowers the cap */
   }
@@ -992,6 +1086,22 @@ uint32_t ivs_runner_execute(const ivs_scenario *scn, const ivs_runner_host *host
   }
   if (x.m != NULL) {
     ex_final(&x);
+  }
+  if (x.wav_requested) {
+    /* The operator WAV is finished once, whatever the scenario ended as (the file holds what the run
+     * produced), unless a hook or the byte bound already failed it. */
+    rec.refpcm_requested = 1u;
+    rec.refpcm_rate = x.wav_rate;
+    rec.refpcm_frames = x.rp.frames;
+    if (!x.wav_failed) {
+      uint8_t header[IVS_REFPCM_WAV_HEADER_BYTES];
+      if (ivs_refpcm_wav_header(header, x.wav_rate, x.rp.frames) == IVS_REFPCM_OK &&
+          host->finish_wav(host->ctx, header, rec.refpcm_sha256) == 0) {
+        rec.refpcm_sha_set = 1u;
+      } else {
+        ex_observe(&x, IVS_RUNNER_OBS_HARNESS_FAIL, "wav-out");
+      }
+    }
   }
   outcome = ivs_runner_outcome_resolve(x.observed);
   if (x.observed != 0u) {

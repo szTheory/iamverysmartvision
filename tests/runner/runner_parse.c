@@ -899,6 +899,24 @@ static int parse_error_format(void)
   return IVS_TEST_PASS;
 }
 
+/* --wav-rate (plan 05-10, D-20, D-21): exactly 44100 and 48000 are accepted. The option parser of main.c asks
+ * ivs_runner_wav_rate_valid, so the in-process judge is that function; every other value, the near misses
+ * included, is refused (a repeated option and a missing value are refused by main.c, runner-process.operator.options). */
+static int parse_wav_rate_refused(void)
+{
+  static const uint32_t refused[] = {0u,     1u,     8000u,  22050u, 44099u,      44101u,      47999u,
+                                     48001u, 88200u, 96000u, 192000u, 4294967295u};
+  IVS_CHECK(ivs_runner_wav_rate_valid(44100u) == 1);
+  IVS_CHECK(ivs_runner_wav_rate_valid(48000u) == 1);
+  for (size_t i = 0u; i < sizeof refused / sizeof refused[0]; i++) {
+    if (ivs_runner_wav_rate_valid(refused[i]) != 0) {
+      ivs_test_diag("wav rate %u was accepted", (unsigned)refused[i]);
+      return IVS_TEST_FAIL;
+    }
+  }
+  return IVS_TEST_PASS;
+}
+
 static int parse_null_args(void)
 {
   ivs_scenario s;
@@ -940,6 +958,7 @@ static const fn_case fn_cases[] = {
     {"runner.parse.reasons-named", parse_reasons_named},
     {"runner.parse.error-format", parse_error_format},
     {"runner.parse.null-args", parse_null_args},
+    {"runner.parse.wav-rate-refused", parse_wav_rate_refused},
 };
 
 #define FN_CASES (sizeof fn_cases / sizeof fn_cases[0])

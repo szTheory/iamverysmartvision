@@ -74,15 +74,17 @@ add_custom_target(ivs_faults)
 
 # ivs_fault_tu_setup(<object target> <repo-relative owner TU>): the include path and generator
 # dependency of a plain or owner copy, by module: a core TU sees core/include, core/src and the
-# core's generated directory; a runner TU sees only core/include and runner/.
+# core's generated directory; a runner TU sees only core/include and runner/ (and, since plan 05-10, the header directory tools/pcm; its
+# converter TU is compiled into the suite's own objects).
 function(ivs_fault_tu_setup target src)
   if(src MATCHES "^core/")
     target_include_directories(${target} PRIVATE
       "${PROJECT_SOURCE_DIR}/core/include" "${PROJECT_SOURCE_DIR}/core/src" "${ivs_fault_core_gen_dir}")
     add_dependencies(${target} ${ivs_fault_core_gen_target})
   elseif(src MATCHES "^runner/")
+    # plus tools/pcm: the runner includes the reference converter's header (plan 05-10, D-21)
     target_include_directories(${target} PRIVATE
-      "${PROJECT_SOURCE_DIR}/core/include" "${PROJECT_SOURCE_DIR}/runner")
+      "${PROJECT_SOURCE_DIR}/core/include" "${PROJECT_SOURCE_DIR}/runner" "${PROJECT_SOURCE_DIR}/tools/pcm")
   else()
     message(FATAL_ERROR "faults: ${src} is not under core/ or runner/")
   endif()

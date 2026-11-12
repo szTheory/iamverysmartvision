@@ -52,3 +52,10 @@ RUNNER_PSGLOG_ASSERT_IGNORED runner.exec.psglog-assert runner.exec.psglog-assert
 RUNNER_AUDIO_CHAIN_CHECK_SKIPPED runner.exec.audio-chain-check runner.exec.audio-chain-check runner.parse.diag-boot-pass
 # RUNNER_CAPTURE_OVERFLOW_SILENT: entries past the 4096-entry capture bound are dropped without a harness failure.
 RUNNER_CAPTURE_OVERFLOW_SILENT runner.exec.capture-overflow runner.exec.capture-overflow runner.parse.diag-boot-pass
+# Plan 05-10 (D-20, D-21, T-05-26), sites in runner/report.c and runner/exec.c. The refpcm.* group and the WAV rate
+# check are library functions on purpose (A-07): runner/main.c sits outside the fault framework, so the rate
+# check main.c applies to --wav-rate is ivs_runner_wav_rate_valid in exec.c.
+# RUNNER_REFPCM_KEYS_WITHOUT_OPTION: the refpcm.* keys are printed without --audio-wav, so a default report grows three lines.
+RUNNER_REFPCM_KEYS_WITHOUT_OPTION runner.exec.refpcm-keys-only-with-option runner.exec.refpcm-keys-only-with-option|runner.exec.ivsr2-keys|runner.exec.key-order runner.parse.diag-boot-pass
+# RUNNER_WAV_RATE_UNCHECKED: any --wav-rate value is accepted, so 8000 or 96000 reaches the converter.
+RUNNER_WAV_RATE_UNCHECKED runner.parse.wav-rate-refused runner.parse.wav-rate-refused|runner.exec.wav-failures runner.parse.diag-boot-pass

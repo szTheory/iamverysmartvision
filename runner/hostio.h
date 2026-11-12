@@ -33,8 +33,19 @@ typedef struct ivs_hostio_out {
  * (o is open), 1 when the path exists, -1 on any other failure (o is then closed). */
 int ivs_hostio_out_create(ivs_hostio_out *o, const char *path);
 
+/* The same exclusive create, but opened for reading and writing as well (plan 05-10, the operator WAV: the
+ * header is written in front of the PCM after the stream is complete, and the finished file is read back
+ * to hash it). Same results as ivs_hostio_out_create. */
+int ivs_hostio_out_create_rw(ivs_hostio_out *o, const char *path);
+
 /* Writes all len bytes (retrying on EINTR and short writes). Returns 0, or -1 on an error. */
 int ivs_hostio_out_write(ivs_hostio_out *o, const void *bytes, size_t len);
+
+/* Writes all len bytes at the absolute offset (the file position is unchanged) and reads up to cap bytes
+ * from the absolute offset (*got gets the count, 0 at the end of the file); retry on EINTR. Return 0, or -1
+ * on an error or an offset beyond the signed 63-bit range. Only for a file made by ivs_hostio_out_create_rw. */
+int ivs_hostio_out_write_at(ivs_hostio_out *o, uint64_t offset, const void *bytes, size_t len);
+int ivs_hostio_out_read_at(ivs_hostio_out *o, uint64_t offset, void *buf, size_t cap, size_t *got);
 
 /* Closes o (idempotent on a closed one). Returns 0, or -1 when the close failed. */
 int ivs_hostio_out_close(ivs_hostio_out *o);
