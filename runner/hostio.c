@@ -1,11 +1,17 @@
 /* SPDX-License-Identifier: MIT */
 /* Host services of ivs-run (D-17, D-21, D-22, D-23, plan 04-19): the only runner file that uses
- * POSIX, so the feature macro below precedes the first include here and nowhere else (strict C17
- * hides these names on glibc otherwise; runner-scan refuses the macro in any other runner file).
+ * POSIX, so the feature macros below precede the first include here and nowhere else (strict C17
+ * hides these names on glibc otherwise; runner-scan refuses the macros in any other runner file).
+ * _DEFAULT_SOURCE gives signal() BSD semantics on glibc (review WR-04): without it, under strict
+ * -std=c17, glibc maps signal() to the System V form (SA_RESETHAND | SA_NODEFER, no SA_RESTART),
+ * so a second SIGINT killed the process and a signal during a blocked stdout write failed it
+ * with EINTR. With it the handler stays installed and interrupted calls restart, as on Apple
+ * libc and the BSDs; signal() stays (D-23).
  * Holds: the cancel flag (the program's only global), set by a signal() handler that does nothing
  * else; the monotonic timer; bounded reads of regular files. Never reads the environment and
  * never writes a file. */
 #define _POSIX_C_SOURCE 200809L
+#define _DEFAULT_SOURCE 1
 
 #include <errno.h>
 #include <fcntl.h>

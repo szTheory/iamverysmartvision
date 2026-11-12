@@ -26,6 +26,7 @@ ivs-run [options] <scenario.ivss>
 | `--wall-timeout-ms <n>` | 1 to 4294967295 | The host wall-time cap in milliseconds (default 30000). A scenario's `wall-timeout-ms` can only lower it. |
 | `--slice-ticks <n>` | 1 to 4194304 | Master ticks per slice (default 4194304, that is 1 << 22). |
 | `--self-signal-after-slices <n>` | 0 to 4294967295 | Test hook: raise SIGINT after slice n (0: before the first slice). |
+| `--self-signal-count <n>` | 1 to 4 | Test hook: raise SIGINT n times at that point (default 1); needs `--self-signal-after-slices`. |
 | `--update-golden <file>` | a file | After the run, also write the run's repeatability golden (`.digests`, below) to the file. Refused (exit 14, one line on stderr) for a scenario with `user` content (before the run, no report) and for a host-dependent outcome (cancelled, or timeout with detail `wall`). |
 | `--help` | | Print the options and one `<outcome> <exit>` line per outcome, exit 0. |
 
@@ -136,13 +137,13 @@ Before every slice the runner checks the cancel flag once, then the host monoton
 
 - **Machine-time budget** (deterministic, may appear in goldens): the run-to bound reached where `stop halted` or `stop faulted` was expected, or the `--max-ticks` ceiling cutting a run-to short. Outcome timeout, detail `budget ...`. The ceiling cuts a run-to short only when machine time stopped below the run-to bound: the last slice ends at the first unit boundary at or after the ceiling, and when that unit carries machine time to or past the bound the run-to completed, the machine equals the uncapped one and the step is judged as usual (its stop expectation and asserts), never as a budget timeout (review WR-01).
 - **Wall-time cap** (host-dependent, never in a golden): host time since the first step reached the cap (the operator's `--wall-timeout-ms`, default 30 s, lowered by a scenario's `wall-timeout-ms`). Outcome timeout, detail `wall step=<k> cap-ms=<n>`. It protects the host against an absurd bound in an untrusted scenario.
-- **Cancellation**: a handler installed with `signal()` for SIGINT and SIGTERM sets a `volatile sig_atomic_t` flag and does nothing else; the runner reads the flag between slices. Outcome cancelled, detail `signal step=<k>`. On hosts where `signal()` resets the handler, a second signal ends the process at once.
+- **Cancellation**: a handler installed with `signal()` for SIGINT and SIGTERM sets a `volatile sig_atomic_t` flag and does nothing else; the runner reads the flag between slices. Outcome cancelled, detail `signal step=<k>`. `runner/hostio.c` defines `_DEFAULT_SOURCE` so that glibc gives `signal()` BSD semantics under strict C17, as Apple libc does: the handler stays installed, so a second signal is just another cancel request, and an interrupted system call (a blocked stdout write) restarts instead of failing with EINTR.
 
 Latency of a wall cap or a signal is at most one slice. The report of an interrupted run shows the deterministic state at the last slice boundary, with the interrupted step's asserts `not-run`.
 
 Test hooks (documented, deterministic, no sleeps and no racing signals):
 
-- `--self-signal-after-slices N` calls `raise(SIGINT)` inside the cancel check that follows slice N, so the real handler path is exercised in-process; the run ends cancelled (exit 12) whenever it has more than N slices.
+- `--self-signal-after-slices N` calls `raise(SIGINT)` inside the cancel check that follows slice N, so the real handler path is exercised in-process; the run ends cancelled (exit 12) whenever it has more than N slices. With `--self-signal-count 2` it raises SIGINT twice there: the scenario `cancel-signal-twice` must still end cancelled with a report, which proves the handler survives a first signal (review WR-04).
 - `--wall-timeout-ms 1` with a bound far beyond the guest's work can only end by the wall cap; a slower host just completes fewer slices.
 - The in-process suite (`runner.time.*`) uses a fake host: a fake monotonic timer that advances a fixed step per call and a fake cancel flag raised from a chosen check on.
 

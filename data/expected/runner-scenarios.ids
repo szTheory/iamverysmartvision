@@ -24,3 +24,4 @@ diag-input-pass 0 pass deterministic run -
 max-ticks-straddle 0 pass deterministic run --max-ticks,99
 dead-after-refusal 14 harness-fail deterministic run -
 no-run-to 14 harness-fail deterministic run -
+cancel-signal-twice 12 cancelled host-dependent run --self-signal-after-slices,1,--self-signal-count,2,--slice-ticks,4

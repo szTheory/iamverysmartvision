@@ -26,6 +26,7 @@ runner-process.scenario.diag-input-pass
 runner-process.scenario.max-ticks-straddle
 runner-process.scenario.dead-after-refusal
 runner-process.scenario.no-run-to
+runner-process.scenario.cancel-signal-twice
 runner-process.mutant.ADDI-SUBI
 runner-process.mutant.BNZE-BZE
 runner-process.mutant.PSHR-MVOAT

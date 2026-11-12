@@ -8,9 +8,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/* Installs a handler for SIGINT and SIGTERM that only sets the cancel flag, and ignores SIGPIPE
- * (a closed stdout is then a checked write error). Returns 0, or -1 when a handler could not be
- * installed. */
+/* Installs, with signal() and BSD semantics (the handler stays installed after a signal, and an
+ * interrupted system call restarts; hostio.c requests them on glibc with _DEFAULT_SOURCE), a
+ * handler for SIGINT and SIGTERM that only sets the cancel flag, so a second signal is also just
+ * a cancel request; and ignores SIGPIPE (a closed stdout is then a checked write error). Returns
+ * 0, or -1 when a handler could not be installed. */
 int ivs_hostio_install_signals(void);
 
 /* Nonzero once SIGINT or SIGTERM arrived. */
