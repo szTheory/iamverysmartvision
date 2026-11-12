@@ -4,37 +4,4 @@
 # to be deleted (tokens video-rule-field-unregistered and video-pending-stale): the owning plan deletes its lines in the same commit that
 # adds the field. Plan 06-04 adds the 33 profile fields (generator, tags, discrepancy ids); plan 06-06 adds the memory-system device
 # kind that makes memmap.device.stic14 a profile field.
-stic.bus_bits 06-04
-stic.regmap 06-04
-stic.access_effects 06-04
-stic.mode_select_addrs 06-04
-stic.alias_read_sensitive 06-04
-stic.power_on 06-04
-stic.backtab 06-04
-stic.reg_window_cpu_cycles 06-04
-stic.gmem_window_cpu_cycles 06-04
-stic.irq_line 06-04
-stic.irq_low_cpu_cycles 06-04
-stic.frame_phase_ticks 06-04
-stic.bus.count 06-04
-stic.bus.first_start_cpu_cycles 06-04
-stic.bus.pitch_cpu_cycles 06-04
-stic.bus.hold_cpu_cycles 06-04
-stic.bus.rows 06-04
-stic.bus.fetch_offset_cpu_cycles 06-04
-stic.late_grant 06-04
-stic.access_strobe_ticks 06-04
-stic.access_gating_when_off 06-04
-stic.video_slack_frames 06-04
-bus.line_sample_lag_cpu_cycles 06-04
-video.card_columns 06-04
-video.card_rows 06-04
-video.card_size_px 06-04
-video.last_card_column_px 06-04
-video.last_card_column_drop 06-04
-video.object_grid 06-04
-video.colors 06-04
-video.row_lines 06-04
-video.display_off_fill 06-04
-video.blank_value 06-04
 memmap.device.stic14 06-06

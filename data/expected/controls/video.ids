@@ -8,3 +8,5 @@ video-frame-tier-missing
 video-frame-popcount
 video-frame-hash-drift
 video-frame-unregistered
+video-field-missing
+video-pending-stale
