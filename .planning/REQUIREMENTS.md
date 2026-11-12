@@ -77,7 +77,7 @@ differentiators and all variant/peripheral profiles are v2.
 
 ### Sound — PSG (AUD)
 
-- [ ] **AUD-01**: The PSG register file, tone, noise and envelope behavior follow the verified part's documented map, with per-rule vectors; behaviors lacking a primary source are profile data with tier tags (period-0, envelope select, LFSR, DAC).
+- [x] **AUD-01**: The PSG register file, tone, noise and envelope behavior follow the verified part's documented map, with per-rule vectors; behaviors lacking a primary source are profile data with tier tags (period-0, envelope select, LFSR, DAC).
 - [ ] **AUD-02**: The core emits a cycle-stamped PSG register-write log and integer chip-rate samples as raw audio, separate from any host PCM conversion (reference PCM location per D7).
 
 ### Hand Controllers (INP)
@@ -213,7 +213,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PKG-02 | Phase 2 | Complete |
 | PKG-03 | Phase 4 | Complete |
 | PKG-04 | Phase 4 | Complete |
-| AUD-01 | Phase 5 | Pending |
+| AUD-01 | Phase 5 | Complete |
 | AUD-02 | Phase 5 | Pending |
 | INP-01 | Phase 5 | Pending |
 | INP-02 | Phase 5 | Pending |

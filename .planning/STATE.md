@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 5
 current_phase_name: Hand Controllers and PSG Sound
 status: executing
-stopped_at: Completed 05-06-PLAN.md
-last_updated: "2026-11-12T10:12:48.626Z"
+stopped_at: Completed 05-07-PLAN.md
+last_updated: "2026-11-12T10:39:16.839Z"
 last_activity: 2026-11-12
 last_activity_desc: Phase 4 complete, transitioned to Phase 5
-state_head: 78f8b5f7319f21e59234e56b004862700920a731
+state_head: 1fd2ef95decee5c0986b3218efd0b1b9e19e7b8b
 progress:
   total_phases: 8
   completed_phases: 4
   total_plans: 83
-  completed_plans: 77
+  completed_plans: 78
   percent: 50
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 5 (Hand Controllers and PSG Sound) — EXECUTING
-Plan: 7 of 12
+Plan: 8 of 12
 Status: Ready to execute
 Last activity: 2026-11-12 — Completed 05-01 (oracle-first: sources, controller literal, PSG rules and vectors, D10 inventory)
 
@@ -132,6 +132,7 @@ Progress: [█████░░░░░] 50%
 | Phase 5 P04 | 150 min | 5 tasks | 54 files |
 | Phase 5 P05 | 6h | 5 tasks | 85 files |
 | Phase 5 P06 | 5h | 5 tasks | 60 files |
+| Phase 5 P07 | 4h | 5 tasks | 37 files |
 
 ## Accumulated Context
 
@@ -308,6 +309,10 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 5]: PSG caught up to the write stamp before the masked store and to the unit end at every unit end, never to a call target (05-06)
 - [Phase 5]: Audio layout real: 4-byte samples, 15,060 bytes per frame with slack ceil(U/P)+1; U = 468 ticks derived by exhaustive probe, g = 28 ticks overall (36 instruction only) (05-06)
 - [Phase 5]: A layout whose audio format is not PSG levels, and a NULL buffer, use the counting sink: same code, same state (05-06)
+- [Phase 5]: Noise register is a profile-driven right-shifting Galois LFSR; shifts every 2 NP steps from the reload; reset loads the seed (05-07)
+- [Phase 5]: Envelope is the 16-state machine of the 16 shapes: one state per 2 EP steps, restart on a shape write through the shared write path (ivs_psg_after_write), held at level 0 after reset (05-07)
+- [Phase 5]: The DAC table psg.dac.levels is profile data the core never reads: not an ivs_psg_params member, byte-identical core parameters proven at build time (05-07)
+- [Phase 5]: Every tagged noise, envelope, period-zero and mixer parameter is proven to be data by a stack-copy perturbation test (psg.profile.*), faults hard-coding one fail exactly its test (05-07)
 
 ### Pending Todos
 
@@ -340,6 +345,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-12T10:12:48.469Z
-Stopped at: Completed 05-06-PLAN.md
+Last session: 2026-11-12T10:39:16.677Z
+Stopped at: Completed 05-07-PLAN.md
 Resume file: None
