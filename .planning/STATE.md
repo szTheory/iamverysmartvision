@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 4
 current_phase_name: Headless Runner and Installed Consumer (Slice 0)
 status: executing
-stopped_at: Completed 04-20-PLAN.md
-last_updated: "2026-11-12T00:43:25.277Z"
+stopped_at: Completed 04-21-PLAN.md
+last_updated: "2026-11-12T00:56:46.026Z"
 last_activity: 2026-11-11
 last_activity_desc: Phase 3 complete, transitioned to Phase 4
-state_head: 1e5a75fdd1cc6878fdf27953f9486dd62d272715
+state_head: 8c3b8568dfa630ae67dadcd3a9e1c8d38838e6ab
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 71
-  completed_plans: 66
+  completed_plans: 67
   percent: 38
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 4 — Headless Runner and Installed Consumer (Slice 0)
-Plan: 21 of 25
+Plan: 22 of 25
 Status: Ready to execute
 Last activity: 2026-11-11 — Completed 04-03 (repo-relative fault owners, runner outcome taxonomy)
 
@@ -120,6 +120,7 @@ Progress: [████░░░░░░] 38%
 | Phase 04 P18 | 19 min | 3 tasks | 10 files |
 | Phase 04 P19 | 17 min | 3 tasks | 14 files |
 | Phase 04 P20 | 14 min | 3 tasks | 17 files |
+| Phase 04 P21 | 20 min | 3 tasks | 47 files |
 
 ## Accumulated Context
 
@@ -277,6 +278,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 4]: 04-19: ivs-run: POSIX only in runner/hostio.c (+hostio.h); --content-dir defaults to the scenario's directory; usage errors, unreadable or refused scenarios are exit 14 with no report; --self-signal-after-slices N raises SIGINT in the cancel check after slice N
 - [Phase 04]: 04-20: scenario expectations beyond the six inventory columns live in the scenario as # expect-detail: / # expect-stderr: comments; the judge pins outcome.detail exactly and requires each outcome/exit.code pair in data/expected/runner-outcomes.ids
 - [Phase 04]: 04-20: D-32 mutants are <FROM>-<TO> ids checked against the listing row; PSHR to MVO@ is MVO@ R3 via R1 (R1=8080), so R6 stays 0340
+- [Phase 04]: 04-21: golden key list (scenario.id/profile, outcome, detail, exit.code, slot.*, step.*, cpu.*, input.*, digest.cpu/mem/images/instance/composite, output counts, live-domain digests only when observed); written by ivs-run --update-golden in C and re-derived by the golden step in awk
+- [Phase 04]: 04-21: step golden judges dev vs release byte equality apart from host.calls, excluding host-dependent ids (column 4); a live domain is observed only when its report count is nonzero, else none with no digest line
 
 ### Pending Todos
 
@@ -309,6 +312,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-12T00:43:25.078Z
-Stopped at: Completed 04-20-PLAN.md
+Last session: 2026-11-12T00:56:45.868Z
+Stopped at: Completed 04-21-PLAN.md
 Resume file: None

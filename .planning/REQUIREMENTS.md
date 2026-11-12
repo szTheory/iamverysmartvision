@@ -65,7 +65,7 @@ differentiators and all variant/peripheral profiles are v2.
 - [x] **RUN-02**: The runner distinguishes harness failure, guest failure, timeout, cancellation and missing fixture as separate outcomes.
 - [x] **RUN-03**: An exact test-inventory gate fails when a required test is missing, duplicated, unexpectedly skipped or consuming stale output, and reports executed/skipped/missing counts.
 - [ ] **RUN-04**: Each important gate has a named-fault control that is shown to fail for its intended reason.
-- [ ] **RUN-05**: Per-domain digests (CPU/memory state, raw video, raw audio, input log) are produced, and repeated runs match; golden files record their evidence tier and oracle in a header.
+- [x] **RUN-05**: Per-domain digests (CPU/memory state, raw video, raw audio, input log) are produced, and repeated runs match; golden files record their evidence tier and oracle in a header.
 - [x] **RUN-06**: At least one original, project-authored diagnostic runs end-to-end from reset (via a project boot path per D5) and reaches an expected guest-state predicate whose expected value is derived independently of the emulator.
 
 ### Packaging, Local Gate and CI (PKG)
@@ -207,7 +207,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RUN-02 | Phase 4 | Complete |
 | RUN-03 | Phase 2 | Complete |
 | RUN-04 | Phase 4 | Pending |
-| RUN-05 | Phase 4 | Pending |
+| RUN-05 | Phase 4 | Complete |
 | RUN-06 | Phase 4 | Complete |
 | PKG-01 | Phase 4 | Pending |
 | PKG-02 | Phase 2 | Complete |
