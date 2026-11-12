@@ -3,11 +3,13 @@
 # literal-map family (plan 03-06): the decode dump against the literal map, one case per row of
 # data/memmap/intv-2609-ntsc-family-p1.literal.txt (memmap.row.<view>-<LO>-<HI>), and one case
 # per gate of the literal (memmap.row-gate.<gate>-closed).
+# Plan 05-04: the PSG region is a real device; memmap.width.psg8-low-byte-upper-zero is new and the rows R and W 01F0-01FF are split by register width (the shape register and the two ports are declared exception rows of the literal).
 memmap.width.rom10-wide-reads-03ff
 memmap.width.grom8-wide-reads-00ff
 memmap.width.ram16-keeps-16
 memmap.width.ram8-truncates
 memmap.width.stub-reads-ffff
+memmap.width.psg8-low-byte-upper-zero
 memmap.width.undriven-reads-ffff
 memmap.mirror.gram-3a00
 memmap.gate.gmem-closed-blocks
@@ -63,7 +65,13 @@ memmap.row.R-0000-003F
 memmap.row.R-0040-007F
 memmap.row.R-0080-00FF
 memmap.row.R-0100-01EF
-memmap.row.R-01F0-01FF
+memmap.row.R-01F0-01F3
+memmap.row.R-01F4-01F6
+memmap.row.R-01F7-01F8
+memmap.row.R-01F9-01F9
+memmap.row.R-01FA-01FA
+memmap.row.R-01FB-01FD
+memmap.row.R-01FE-01FF
 memmap.row.R-0200-035F
 memmap.row.R-0360-0FFF
 memmap.row.R-1000-1FFF
@@ -74,7 +82,13 @@ memmap.row.R-4000-FFFF
 memmap.row.W-0000-003F
 memmap.row.W-0040-00FF
 memmap.row.W-0100-01EF
-memmap.row.W-01F0-01FF
+memmap.row.W-01F0-01F3
+memmap.row.W-01F4-01F6
+memmap.row.W-01F7-01F8
+memmap.row.W-01F9-01F9
+memmap.row.W-01FA-01FA
+memmap.row.W-01FB-01FD
+memmap.row.W-01FE-01FF
 memmap.row.W-0200-035F
 memmap.row.W-0360-37FF
 memmap.row.W-3800-3FFF
