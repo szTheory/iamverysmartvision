@@ -72,12 +72,17 @@ run_limited() {
   _pid=$!
   rm -f "$_mark.ready"
   mkfifo "$_mark.ready" || { bad c-faults-run "mkfifo"; return 1; }
+  # The parent holds the FIFO open read-write (fd 9, an open that never blocks) before the watchdog
+  # starts, and keeps it until it has read the watchdog's line, so a retried read can never lose the
+  # line (a pipe discards unread data when its last descriptor closes).
+  exec 9<> "$_mark.ready"
   (
+    exec 9>&-
     _s=
     trap 'if [ -n "$_s" ]; then kill "$_s" 2> /dev/null; fi; exit 0' TERM
     sleep "$_lim" &
     _s=$!
-    : > "$_mark.ready"
+    echo armed > "$_mark.ready"
     wait "$_s"
     : > "$_mark"
     kill -TERM "$_pid" 2> /dev/null
@@ -85,14 +90,16 @@ run_limited() {
   _wd=$!
   # Return only once the watchdog is armed (its TERM trap set), reported through the FIFO: a stop
   # that arrives before the trap exists can be dropped by dash, and the watchdog then sleeps its
-  # whole limit and reports a finished run as stopped. A signal that interrupts the blocking open
-  # makes dash fail it, so the open is retried (on `true`, a regular builtin, because a failed
-  # redirection on the special builtin `:` ends a POSIX shell).
+  # whole limit and reports a finished run as stopped. A signal that interrupts the read (a child
+  # exiting, in dash or bash) fails it, so the read is retried on the same descriptor. An earlier
+  # form opened the FIFO for reading in the retry loop: a signal arriving after the writer had been
+  # released but before the open returned lost the writer for good, and the lane waited forever.
   _try=0
-  until true < "$_mark.ready" 2> /dev/null; do
+  until read -r _armed <&9; do
     _try=$((_try + 1))
     [ "$_try" -lt 1000 ] || break
   done
+  exec 9>&-
   rm -f "$_mark.ready"
   wait "$_pid" || :
   kill -TERM "$_wd" 2> /dev/null
