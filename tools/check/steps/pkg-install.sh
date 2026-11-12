@@ -275,6 +275,78 @@ done < "$T/alone.tap"
 hdr_stat="hdr-alone=$hdr_ok/$hdr_n"
 [ "$hdr_skip" -eq 0 ] || hdr_stat="$hdr_stat hdr-skip=$hdr_skip"
 
+# 6b. The independent consumer (D-36, D-39, plan 04-23): tests/installed-consumer copied outside
+# the repository, configured against the moved prefix only, built, run on the release tree's
+# images, and its stdout compared with the pin.
+gate_dir=${IVS_GATE_DIR:-$ROOT/build/gate}
+cgold="$ROOT/data/expected/pkg-consumer.golden"
+case $T in
+  "$ROOT"/*|"$proot"/*) bad pkg-consumer-tmp "the temp dir is inside the repository"; exit 1 ;;
+esac
+# consumer_configure <src> <build> [-D...]: configure with the moved prefix as the only package
+# source; the package and path variables of the environment are unset in a subshell.
+consumer_configure() {
+  cc_src=$1
+  cc_bld=$2
+  shift 2
+  (
+    unset CMAKE_PREFIX_PATH CMAKE_MODULE_PATH CMAKE_INSTALL_PREFIX CMAKE_TOOLCHAIN_FILE ivs_DIR ivs_ROOT IVS_ROOT \
+      CPATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH OBJC_INCLUDE_PATH LIBRARY_PATH CFLAGS CPPFLAGS LDFLAGS \
+      LD_LIBRARY_PATH DYLD_LIBRARY_PATH DYLD_FALLBACK_LIBRARY_PATH DYLD_FRAMEWORK_PATH DYLD_INSERT_LIBRARIES
+    cd "$T" || exit 1
+    cmake -G Ninja -S "$cc_src" -B "$cc_bld" -DCMAKE_PREFIX_PATH="$pb" \
+      -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF -DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=OFF "$@"
+  )
+}
+# The pin without its comment header.
+golden_body() { grep -v '^#' "$cgold"; }
+# check_golden <output>: the output equals the pin body. Prints FAIL lines.
+check_golden() {
+  if [ ! -f "$cgold" ]; then
+    printf -- '-- FAIL pkg-golden-diff: %s\n' "data/expected/pkg-consumer.golden missing"
+    return 1
+  fi
+  golden_body > "$T/golden.body"
+  if ! cmp -s "$T/golden.body" "$1"; then
+    printf -- '-- FAIL pkg-golden-diff: %s\n' "consumer output differs from data/expected/pkg-consumer.golden"
+    return 1
+  fi
+  return 0
+}
+csrc="$T/consumer src"
+cbld="$T/consumer build"
+cout="$T/consumer.out"
+consumer_lines=0
+img_exec="$rel/images/boot-stub.exec"
+img_cart="$rel/images/diag-cpu-1.ivsc"
+consumer_ok=0
+if [ ! -f "$img_exec" ] || [ ! -f "$img_cart" ]; then
+  bad pkg-consumer-images "build/release/images/{boot-stub.exec,diag-cpu-1.ivsc}"
+elif ! cp -R "$ROOT/tests/installed-consumer" "$csrc"; then
+  bad pkg-consumer-copy "tests/installed-consumer"
+elif ! consumer_configure "$csrc" "$cbld" > "$T/consumer.cfg.log" 2>&1; then
+  cat "$T/consumer.cfg.log"
+  bad pkg-consumer-configure "find_package(ivs 0.1 CONFIG REQUIRED) against the moved prefix"
+elif ! cmake --build "$cbld" > "$T/consumer.build.log" 2>&1; then
+  cat "$T/consumer.build.log"
+  bad pkg-consumer-build "strict C17 build"
+else
+  cst=0
+  "$cbld/consumer" "$img_exec" "$img_cart" > "$cout" 2> "$T/consumer.err" || cst=$?
+  mkdir -p "$gate_dir" && cp "$cout" "$gate_dir/pkg-consumer.txt" 2> /dev/null || bad pkg-consumer-output "build/gate/pkg-consumer.txt"
+  consumer_lines=$(grep -c . "$cout")
+  if [ "$cst" -ne 0 ]; then
+    sed 's/^/# /' "$cout" "$T/consumer.err"
+    bad pkg-consumer-run "exit $cst"
+  else
+    consumer_ok=1
+  fi
+  if ! check_golden "$cout"; then
+    diff "$T/golden.body" "$cout" | sed 's/^/# /' | head -n 20
+    rc=1
+  fi
+fi
+
 # 7. Selftests (D-40): each case mutates a copy under $T/st/<case> (or probes the deleted
 # prefix) and must fail for its intended reason; the cases are exactly the names of
 # data/expected/pkg-selftests.ids. Controls cannot drive this step (it needs a built tree).
@@ -407,5 +479,5 @@ else
 fi
 
 [ "$rc" -eq 0 ] || exit 1
-printf -- '-- pkg-install pass prefix-files=%s archive=%s public-symbols=%s defined=%s %s pkg-selftest=%s/%s\n' \
-  "$files" "$archive_mode" "$pubsyms" "$defined" "$hdr_stat" "$st_ok" "$st_total"
+printf -- '-- pkg-install pass prefix-files=%s archive=%s public-symbols=%s defined=%s %s consumer-lines=%s pkg-selftest=%s/%s\n' \
+  "$files" "$archive_mode" "$pubsyms" "$defined" "$hdr_stat" "$consumer_lines" "$st_ok" "$st_total"
