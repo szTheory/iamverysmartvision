@@ -29,7 +29,14 @@ _Static_assert(IVS_SLOT_COUNT == 3u, "three image slots");
 _Static_assert(sizeof(ivs_image_report) == 64u, "ivs_image_report is 64 bytes");
 _Static_assert(IVS_INFO_V1_SIZE == offsetof(ivs_info, ticks_per_cpu_cycle), "ivs_info v1 ends at the timebase");
 _Static_assert(offsetof(ivs_info, nominal_frame_ticks) % 8u == 0u, "64-bit info members are 8-aligned");
-_Static_assert(sizeof(ivs_info) == 256u, "ivs_info is 256 bytes");
+_Static_assert(offsetof(ivs_info, reserved2) == 252u, "ivs_info v2 ends at reserved2 (256 bytes)");
+_Static_assert(offsetof(ivs_info, audio_sample_ticks) == 256u, "info v3 tail starts at 256");
+_Static_assert(offsetof(ivs_info, audio_sample_bytes) == 260u, "audio_sample_bytes at 260");
+_Static_assert(offsetof(ivs_info, psg_log_record_bytes) == 264u, "psg_log_record_bytes at 264");
+_Static_assert(offsetof(ivs_info, psg_log_records_per_frame) == 268u, "psg_log_records_per_frame at 268");
+_Static_assert(offsetof(ivs_info, crystal_hz_num) == 272u, "crystal_hz_num at 272");
+_Static_assert(offsetof(ivs_info, crystal_hz_den) == 280u, "crystal_hz_den at 280");
+_Static_assert(sizeof(ivs_info) == 288u, "ivs_info is 288 bytes");
 
 /* 1 when m is a live instance: the magic, and a stored profile index that is in the registry and
  * the same in the memory system (review WR-03). The instance lives in host storage, so the

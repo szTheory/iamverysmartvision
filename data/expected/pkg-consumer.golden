@@ -8,7 +8,7 @@
 # reviewed diff, regenerated from build/gate/pkg-consumer.txt after a gate run.
 ivs-consumer 1
 version package=0.1.0 header=0.1.0 api=0x000100 library=0x000100 tie=yes
-v1-sizes run_request_v1=64 events_at=48 run_request=80 run_report_v1=112 run_report=136 info_v1=216 info=256 input_event=32 cpu_state_report=36 ok=yes
+v1-sizes run_request_v1=64 events_at=48 run_request=80 run_report_v1=112 run_report=136 info_v1=216 info=288 input_event=32 cpu_state_report=36 ok=yes
 create status=IVS_OK profile=intv-2609-ntsc-family-p1
 refusal.truncated-exec status=IVS_E_MALFORMED reason=21 digest-unchanged=yes
 load.exec status=IVS_OK length_bytes=8192 sha256=2b7cfb0942d8ae38ac30fc3b5c771708de0a02c45585cdae5530ac0d1aa7c8d1

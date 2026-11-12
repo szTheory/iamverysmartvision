@@ -409,7 +409,9 @@ static int fz_struct_v1(void)
   FZ_PIN(offsetof(ivs_run_report, input_floor_tick) == 88u && offsetof(ivs_run_report, controller_now) == 96u);
 
   FZ_PIN(offsetof(ivs_info, ticks_per_cpu_cycle) == 216u && offsetof(ivs_info, nominal_frame_ticks) == 232u);
-  FZ_PIN(sizeof(ivs_info) == 256u);
+  /* The v2 (Phase 4) info ends at 256; v3 (plan 05-02) appends the Phase 5 tail up to 288. */
+  FZ_PIN(offsetof(ivs_info, reserved2) + sizeof(uint32_t) == 256u && offsetof(ivs_info, audio_sample_ticks) == 256u);
+  FZ_PIN(sizeof(ivs_info) == 288u);
 
   /* The pointer-free prefix of the request. */
   FZ_PIN(offsetof(ivs_run_request, flags) == 4u && offsetof(ivs_run_request, target_ticks) == 8u);

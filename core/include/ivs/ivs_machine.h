@@ -132,7 +132,19 @@ typedef struct ivs_image_report {
  *   244 audio_format             IVS_OUTPUT_FORMAT_*
  *   248 audio_bytes_per_frame    0 with IVS_OUTPUT_FORMAT_NONE
  *   252 reserved2                written 0
- * sizeof(ivs_info) is 256. */
+ * v3 (plan 05-02, D-15, D-19): the Phase 5 tail, appended after the v2 size of 256 and written only
+ * when struct_size covers it (a 256-byte caller gets exactly 256 bytes). Every field reads 0 until
+ * the plan that fills it: the audio fields (plan 05-06), the write-log fields (plan 05-08), the
+ * crystal passthrough (plan 05-06; the core never reads it, it only republishes the profile's
+ * figures):
+ *   256 audio_sample_ticks       master ticks between audio samples (one PSG chip step; 16)
+ *   260 audio_sample_bytes       bytes of one audio sample (4 with IVS_OUTPUT_FORMAT_PSG_LEVELS_V1)
+ *   264 psg_log_record_bytes     bytes of one write-log record (16)
+ *   268 psg_log_records_per_frame  the log capacity bound of one frame slot (psg_log_bytes_per_frame
+ *                                is record_bytes times this)
+ *   272 crystal_hz_num           the master crystal in Hz as a fraction (numerator)
+ *   280 crystal_hz_den           ... denominator
+ * sizeof(ivs_info) is 288. IVS_INFO_V1_SIZE stays 216. */
 typedef struct ivs_info {
   uint32_t struct_size;
   uint32_t phase; /* IVS_PHASE_* */
@@ -150,6 +162,13 @@ typedef struct ivs_info {
   uint32_t audio_format; /* IVS_OUTPUT_FORMAT_* */
   uint32_t audio_bytes_per_frame;
   uint32_t reserved2; /* written 0 */
+  /* ---- end of the v2 (Phase 4) size, 256 ---- */
+  uint32_t audio_sample_ticks;
+  uint32_t audio_sample_bytes;
+  uint32_t psg_log_record_bytes;
+  uint32_t psg_log_records_per_frame;
+  uint64_t crystal_hz_num;
+  uint64_t crystal_hz_den;
 } ivs_info;
 
 /* ---- typed content loading (D-10, D-11, D-24..D-27, D-32, D-33, A-04, A-08, plan 03-10) ----
@@ -233,6 +252,13 @@ typedef struct ivs_load_options {
 #define IVS_REASON_INPUT_EVENT_RESERVED 52u   /* UNSUPPORTED: an event's reserved word is nonzero */
 #define IVS_REASON_INPUT_CONTROL_RESERVED 53u /* UNSUPPORTED: a controller word has IVS_CTRL_RESERVED_MASK set */
 #define IVS_REASON_INPUT_EXTRA_CONTROLLER 54u /* UNSUPPORTED: a nonzero word at or above input.controllers */
+/* Source of a PSG write-log record (plan 05-02, D-13; the record's `source` byte): 1 a CPU write
+ * access, 2 the write of an interrupt-entry (DW) cycle. 0 and 3..255 are invalid. Pinned by
+ * data/expected/psg-log-source.ids (append-only: a source number never moves and is never reused,
+ * because recorded logs carry it). */
+#define IVS_PSGLOG_SRC_CPU_WRITE 1u
+#define IVS_PSGLOG_SRC_CPU_DW 2u
+
 /* Write-log buffer reasons of ivs_machine_run (plan 05-02, D-14): the third caller-owned buffer
  * (ivs_run_request.psg_log), checked after video and audio, before any state change. */
 #define IVS_REASON_RUN_PSGLOG_NULL 55u    /* BAD_ARG: psg_log NULL with a nonzero psg_log_capacity */

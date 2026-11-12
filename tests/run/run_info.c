@@ -11,6 +11,12 @@
  *                            is accepted, gets struct_size = v1 and the same v1 bytes as a full
  *                            caller, and every byte past its size is untouched; a mid-size caller
  *                            (through video_format) likewise.
+ *   run.info.v2-size-caller  a caller sized for v2 (256 bytes, plan 05-02) gets exactly 256 bytes and
+ *                            struct_size 256; the poisoned byte at offset 256 and every byte past
+ *                            it are untouched.
+ *   run.info.v3-fields-zero  a v3-sized caller (sizeof(ivs_info), 288) gets struct_size 288, the
+ *                            Phase 5 tail at the pinned offsets 256, 260, 264, 268, 272, 280 and,
+ *                            while no plan fills them yet, every tail field 0 over poison.
  *   run.info.short-refused   one byte below the v1 size: BAD_ARG, nothing written, the instance
  *                            storage unchanged.
  *   run.info.oversize-refused  one byte above IVS_STRUCT_SIZE_MAX: BAD_ARG, nothing written, the
@@ -146,6 +152,50 @@ done:
   return rc;
 }
 
+static int ri_v2_size_caller(void)
+{
+  ivs_ms_inst x;
+  ivs_info full;
+  ri_buf b;
+  int rc = IVS_TEST_FAIL;
+  IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, RI_POISON));
+  RI_CHECK(ri_full(x.m, &full));
+  RI_CHECK(ri_sized_caller(x.m, &full, 256u));
+  /* The byte at 256 is the first of the tail: poison stays (ri_sized_caller checks every byte from
+   * the caller's size on; this names the boundary). */
+  memset(&b, RI_POISON, sizeof b);
+  b.info.struct_size = 256u;
+  RI_CHECK(ivs_machine_info(x.m, &b.info) == IVS_OK && b.info.struct_size == 256u);
+  RI_CHECK(b.info.audio_sample_ticks == 0xA5A5A5A5u && b.info.crystal_hz_den == 0xA5A5A5A5A5A5A5A5u);
+  rc = IVS_TEST_PASS;
+done:
+  ivs_ms_free(&x);
+  return rc;
+}
+
+static int ri_v3_fields_zero(void)
+{
+  ivs_ms_inst x;
+  ivs_info a;
+  int rc = IVS_TEST_FAIL;
+  IVS_CHECK(offsetof(ivs_info, audio_sample_ticks) == 256u && offsetof(ivs_info, audio_sample_bytes) == 260u);
+  IVS_CHECK(offsetof(ivs_info, psg_log_record_bytes) == 264u && offsetof(ivs_info, psg_log_records_per_frame) == 268u);
+  IVS_CHECK(offsetof(ivs_info, crystal_hz_num) == 272u && offsetof(ivs_info, crystal_hz_den) == 280u);
+  IVS_CHECK(sizeof(ivs_info) == 288u && IVS_INFO_V1_SIZE == 216u);
+  IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, RI_POISON));
+  RI_CHECK(ri_full(x.m, &a));
+  RI_CHECK(a.struct_size == 288u);
+  /* Behaviour-neutral growth (plan 05-02): nothing fills the tail yet. Plans 05-06 and 05-08 give
+   * these their values and replace this check with the literal ones. */
+  RI_CHECK(a.audio_sample_ticks == 0u && a.audio_sample_bytes == 0u);
+  RI_CHECK(a.psg_log_record_bytes == 0u && a.psg_log_records_per_frame == 0u);
+  RI_CHECK(a.crystal_hz_num == 0u && a.crystal_hz_den == 0u);
+  rc = IVS_TEST_PASS;
+done:
+  ivs_ms_free(&x);
+  return rc;
+}
+
 static int ri_short_refused(void)
 {
   ivs_ms_inst x;
@@ -203,6 +253,8 @@ const ivs_test_case ivs_run_info_cases[] = {
     {"run.info.timebase", ri_timebase, NULL},
     {"run.info.layout-none", ri_layout_none, NULL},
     {"run.info.v1-size-caller", ri_v1_size_caller, NULL},
+    {"run.info.v2-size-caller", ri_v2_size_caller, NULL},
+    {"run.info.v3-fields-zero", ri_v3_fields_zero, NULL},
     {"run.info.short-refused", ri_short_refused, NULL},
     {"run.info.oversize-refused", ri_oversize_refused, NULL},
 };

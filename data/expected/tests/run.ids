@@ -76,6 +76,10 @@ run.stop-name.unknown
 run.info.timebase
 run.info.layout-none
 run.info.v1-size-caller
+# Plan 05-02 (D-19): ivs_info v3 appends the Phase 5 tail at offset 256; a 256-byte (v2) caller gets
+# exactly 256 bytes, a v3-sized caller the tail (0 until plans 05-06 and 05-08 fill it).
+run.info.v2-size-caller
+run.info.v3-fields-zero
 run.info.short-refused
 run.info.oversize-refused
 # Family slice (plan 04-09, D-07): programs halt (loop, HLT, TSTR follower, idle units) and fault

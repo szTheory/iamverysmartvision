@@ -20,3 +20,6 @@ api-stop-orphan
 # Input bit pins (plan 04-13, D-16).
 api-input-bit-duplicate
 api-input-bit-unpinned
+# Write-log source pins (plan 05-02, D-13).
+api-psglog-src-orphan
+api-psglog-src-unpinned

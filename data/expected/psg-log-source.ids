@@ -1,0 +1,6 @@
+# Pinned source numbers of a PSG write-log record (plan 05-02, D-13): `NAME VALUE` for every
+# `#define IVS_PSGLOG_SRC_<NAME>` of core/include/ivs/*.h, checked by the api-effects step. 1 is a CPU
+# write access, 2 the write of an interrupt-entry (DW) cycle; 0 and 3..255 are invalid. Append-only:
+# a source number never moves and is never reused (recorded logs carry it).
+IVS_PSGLOG_SRC_CPU_WRITE 1
+IVS_PSGLOG_SRC_CPU_DW 2

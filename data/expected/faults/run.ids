@@ -45,8 +45,9 @@ RUN_FAULT_STEPS run.stop.fault-sticky run.stop.|run.target.max-accepted|run.slic
 # run(now + 1) calls continue one handle).
 RUN_BUDGET_CARRY run.slice.halt.fixed-7 run.slice.|run.target.|run.overshoot.|run.single-step.|run.buffers.|run.input.|run.fuzz.|run.stub.|run.diag. run.info.timebase
 # INFO_TAIL_UNGUARDED (core/src/machine/machine.c): info writes the whole grown ivs_info whatever
-# the caller's struct_size, past a v1-sized caller's struct.
-INFO_TAIL_UNGUARDED run.info.v1-size-caller run.info.v1-size-caller run.info.timebase
+# the caller's struct_size, past a v1-sized caller's struct (from plan 05-02 also past a v2-sized
+# caller's, run.info.v2-size-caller).
+INFO_TAIL_UNGUARDED run.info.v1-size-caller run.info.v1-size-caller|run.info.v2-size-caller run.info.timebase
 # Output-buffer faults (plan 04-10, D-06, D-07), one site each in core/src/machine/machine_bound.c.
 # RUN_CAPACITY_AFTER_STEP: the BUFFER_TOO_SMALL check runs after the first unit, so an undersized
 # buffer is refused with a unit already executed (the storage and digests changed). From plan

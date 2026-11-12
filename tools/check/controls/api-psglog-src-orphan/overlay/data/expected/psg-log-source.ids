@@ -1,0 +1,5 @@
+# Toy write-log source pin of the known-good control tree (plan 05-02), plus a pin whose define no
+# header has: a removed public define must not pass silently.
+IVS_PSGLOG_SRC_CPU_WRITE 1
+IVS_PSGLOG_SRC_CPU_DW 2
+IVS_PSGLOG_SRC_GHOST 7
