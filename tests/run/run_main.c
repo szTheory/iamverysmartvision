@@ -43,5 +43,6 @@ int main(int argc, char **argv)
     return 1;
   }
   ivs_test_suite_from_cases(&suite, "run", ivs_run_all, n);
+  suite.sources = ivs_run_fuzz_sources(&suite.n_sources);
   return ivs_test_main(argc, argv, &suite);
 }

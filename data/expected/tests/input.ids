@@ -6,6 +6,9 @@
 # semantics (input.port.*), pins in the digest, take-back, reset and the invariant, and two judge self-controls.
 # Plan 05-05 task 3: the combination rows (input.combo.*, 24, each with its class of data/expected/input-policies.ids in the
 # test source) and the pair properties over all 465 unordered pairs (input.pairs.union|commutative|monotone-clear|decodable-claims).
+# Plan 05-05 task 4: the C67 instruction-granularity test (input.boundary.start-minus-1|start|start-plus-1, the poll start
+# tick observed by single-stepping), slicing invariance of the guest-visible state (input.slice.guest-visible) and the
+# interleaved-instance isolation (input.iso.interleaved-instances).
 input.idle.p0
 input.idle.p1
 input.anchor.wiki-idle
@@ -60,6 +63,11 @@ input.digest.mem-covers-pins
 input.takeback.restores-pins
 input.reset.clears-pulldown
 input.invariant.pulldown-derives-from-words
+input.boundary.start-minus-1
+input.boundary.start
+input.boundary.start-plus-1
+input.slice.guest-visible
+input.iso.interleaved-instances
 input.judge.table-row-changed
 input.judge.direction-sense-flipped
 input.single.p0.key_1

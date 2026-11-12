@@ -2,8 +2,9 @@
 # Run named faults (plan 04-06, D-08). Each id has one IVS_FAULT_<ID> site in
 # core/src/machine/machine_inspect.c (observation must not disturb what it observes).
 # PEEK_ADVANCES_TIME: every accepted peek adds one master tick to machine time; both side-effect
-# cases see the storage, the INSTANCE and composite digests and machine time change.
-PEEK_ADVANCES_TIME run.observe.no-side-effect-powered run.observe.|run.peek.|run.refuse.peek. run.cpu-state.off
+# cases see the storage, the INSTANCE and composite digests and machine time change. Plan 05-05: the
+# input-visible fuzz peeks the poller log of its reference run, so it sees the added tick too (run.fuzz.input-visible-*).
+PEEK_ADVANCES_TIME run.observe.no-side-effect-powered run.observe.|run.peek.|run.refuse.peek.|run.fuzz.input-visible- run.cpu-state.off
 # PEEK_GATE_IGNORED: peek reads the backing word as if every gate were open; only the closed-gate
 # case sees GROM and GRAM data behind gate gmem.
 PEEK_GATE_IGNORED run.peek.gated run.peek.gated run.peek.loaded-words

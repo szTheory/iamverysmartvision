@@ -160,7 +160,19 @@ add_custom_command(
   DEPENDS "${IVS_DIAG_EXPECT}" "${CMAKE_CURRENT_SOURCE_DIR}/expect-inc.cmake"
   COMMENT "Generating the diag-cpu-1 predicate include"
   VERBATIM)
-add_executable(ivs_tests_run run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_struct.c run/run_fuzz.c run/run_stub.c run/run_diag.c machine/machine_standin.c "${IVS_IMAGES_INC}" "${IVS_DIAG_EXPECT_INC}")
+# Controller probe table (plan 05-05): cmake/IvsInputProbes.cmake turns the controller literal
+# data/input/*.literal.txt (and the pinned name set) into ivs_input_probes.inc, the expected bytes of suite
+# input and of the input-visible fuzz of suite run. It reads neither the profile nor the core.
+set(IVS_INPUT_PROBE_GENERATOR "${PROJECT_SOURCE_DIR}/cmake/IvsInputProbes.cmake")
+set(IVS_INPUT_PROBE_INC "${CMAKE_CURRENT_BINARY_DIR}/ivs_input_probes.inc")
+file(GLOB IVS_INPUT_LITERALS CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/data/input/*.literal.txt")
+add_custom_command(
+  OUTPUT "${IVS_INPUT_PROBE_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DROOT=${PROJECT_SOURCE_DIR}" "-DOUT=${IVS_INPUT_PROBE_INC}" -P "${IVS_INPUT_PROBE_GENERATOR}"
+  DEPENDS ${IVS_INPUT_LITERALS} "${PROJECT_SOURCE_DIR}/data/expected/input-bits.ids" "${IVS_INPUT_PROBE_GENERATOR}"
+  COMMENT "Generating the controller probe table"
+  VERBATIM)
+add_executable(ivs_tests_run run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_struct.c run/run_fuzz.c run/run_stub.c run/run_diag.c machine/machine_standin.c "${IVS_IMAGES_INC}" "${IVS_DIAG_EXPECT_INC}" "${IVS_INPUT_PROBE_INC}")
 target_include_directories(ivs_tests_run PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_BINARY_DIR}")
 add_dependencies(ivs_tests_run ivs_images)
 target_link_libraries(ivs_tests_run PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
@@ -204,16 +216,7 @@ set_tests_properties(psg PROPERTIES SKIP_RETURN_CODE 77)
 # values come from the controller literal and the wiki statements only (never from the profile or the
 # generated table); it reuses the machine suite's stand-in content (machine/machine_standin.c). Its named
 # faults are data/expected/faults/input.ids, whose sites sit in core/src/machine and core/src/memmap.
-set(IVS_INPUT_PROBE_GENERATOR "${PROJECT_SOURCE_DIR}/cmake/IvsInputProbes.cmake")
-set(IVS_INPUT_PROBE_INC "${CMAKE_CURRENT_BINARY_DIR}/ivs_input_probes.inc")
-file(GLOB IVS_INPUT_LITERALS CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/data/input/*.literal.txt")
-add_custom_command(
-  OUTPUT "${IVS_INPUT_PROBE_INC}"
-  COMMAND "${CMAKE_COMMAND}" "-DROOT=${PROJECT_SOURCE_DIR}" "-DOUT=${IVS_INPUT_PROBE_INC}" -P "${IVS_INPUT_PROBE_GENERATOR}"
-  DEPENDS ${IVS_INPUT_LITERALS} "${PROJECT_SOURCE_DIR}/data/expected/input-bits.ids" "${IVS_INPUT_PROBE_GENERATOR}"
-  COMMENT "Generating the controller probe table"
-  VERBATIM)
-set(IVS_INPUT_TEST_SOURCES input/input_main.c input/input_single.c input/input_combo.c input/input_port.c machine/machine_standin.c)
+set(IVS_INPUT_TEST_SOURCES input/input_main.c input/input_single.c input/input_combo.c input/input_port.c input/input_slice.c machine/machine_standin.c)
 add_executable(ivs_tests_input ${IVS_INPUT_TEST_SOURCES} "${IVS_INPUT_PROBE_INC}")
 target_include_directories(ivs_tests_input PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/input"
   "${CMAKE_CURRENT_BINARY_DIR}")
@@ -325,7 +328,7 @@ ivs_fault_suite(machine
 ivs_fault_suite(run
   SOURCES run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_struct.c run/run_fuzz.c run/run_stub.c run/run_diag.c machine/machine_standin.c
   INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_BINARY_DIR}"
-  GENERATED "${IVS_IMAGES_INC}" "${IVS_DIAG_EXPECT_INC}")
+  GENERATED "${IVS_IMAGES_INC}" "${IVS_DIAG_EXPECT_INC}" "${IVS_INPUT_PROBE_INC}")
 
 ivs_fault_suite(psg
   SOURCES ${IVS_PSG_TEST_SOURCES}

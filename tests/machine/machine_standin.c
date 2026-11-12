@@ -53,6 +53,33 @@ static const uint16_t ms_prog_c[] = {0x02B8u, 0x03FFu, 0x0240u, 0x01F4u, 0x0281u
 static const uint16_t ms_prog_ports[] = {0x0281u, 0x01FEu, 0x0241u, 0x0200u, 0x0282u,
                                          0x01FFu, 0x0242u, 0x0201u, 0x0220u, 0x0001u};
 
+/* Program POLL_CONST at $1000 (plan 05-05, API-03 fuzz content B): a poller of CONSTANT cycle count per
+ * iteration. Both PSG ports are read and each byte is stored through R4, which post-increments, so RAM
+ * from $0300 holds the log: word 2j is the j-th read of $01FE, word 2j + 1 the j-th read of $01FF. No
+ * instruction depends on a value read, so the unit boundaries never depend on the input schedule.
+ *   $1000 MVII #$0300, R4   $1002 MVI $01FE, R1   $1004 MVO@ R1, R4   $1005 MVI $01FF, R2
+ *   $1007 MVO@ R2, R4       $1008 B $1002 (PC+2 $100A, d 7)
+ * MVII is 02B8 + destination (02BC for R4); MVO@ Rs, Rm is 1001 mmm sss (MVO@ R1, R2 is 0251 in
+ * data/cp1610/vectors/indirect.json), so MVO@ R1, R4 is 0261 and MVO@ R2, R4 is 0262; R4 is an
+ * auto-incrementing pointer; MVI direct as in program PORTS; the branch as in program A. */
+static const uint16_t ms_prog_poll_const[] = {0x02BCu, 0x0300u, 0x0281u, 0x01FEu, 0x0261u, 0x0282u,
+                                              0x01FFu, 0x0262u, 0x0220u, 0x0007u};
+
+/* Program POLL_BRANCH at $1000 (plan 05-05, API-03 fuzz content C): a data-dependent loop. Port 0 is
+ * read and XOR-ed with $FF (zero when no control is closed); a nonzero value takes the PRESSED path (two
+ * stores of the value to the log at R4, from $0300, then back to the read), zero takes the IDLE path (a
+ * counter in R3, then back), so the instruction sequence, the unit lengths and every later boundary
+ * depend on what the read returned.
+ *   $1000 MVII #$0300, R4   $1002 MVI $01FE, R1   $1004 XORI #$00FF, R1   $1006 BEQ $100C (d 4)
+ *   $1008 MVO@ R1, R4       $1009 MVO@ R1, R4     $100A B $1002 (PC+2 $100C, d 9)
+ *   $100C INCR R3           $100D B $1002 (PC+2 $100F, d 12)
+ * XORI #imm, Rd is 1111 111 ddd (03F9 for R1; ANDI #$8000, R1 is 03B9 in immediate.json, the
+ * operation field of XOR is the next one); BEQ is 0204 (BZE in branch.json: 0204, displacement
+ * word; forward target PC+2 + d), INCR as in program A, the backward branch as in program A. */
+static const uint16_t ms_prog_poll_branch[] = {0x02BCu, 0x0300u, 0x0281u, 0x01FEu, 0x03F9u, 0x00FFu, 0x0204u,
+                                               0x0004u, 0x0261u, 0x0261u, 0x0220u, 0x0009u, 0x000Bu, 0x0220u,
+                                               0x000Cu};
+
 typedef struct ms_prog {
   const uint16_t *words;
   size_t n;
@@ -63,6 +90,8 @@ static const ms_prog ms_progs[IVS_MS_PROGS] = {
     {ms_prog_b, sizeof ms_prog_b / sizeof ms_prog_b[0]},
     {ms_prog_c, sizeof ms_prog_c / sizeof ms_prog_c[0]},
     {ms_prog_ports, sizeof ms_prog_ports / sizeof ms_prog_ports[0]},
+    {ms_prog_poll_const, sizeof ms_prog_poll_const / sizeof ms_prog_poll_const[0]},
+    {ms_prog_poll_branch, sizeof ms_prog_poll_branch / sizeof ms_prog_poll_branch[0]},
 };
 
 uint8_t *ivs_ms_exec(uint32_t program)

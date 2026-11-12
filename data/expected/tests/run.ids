@@ -191,6 +191,15 @@ run.fuzz.seed-06
 run.fuzz.seed-07
 run.fuzz.seed-08
 run.fuzz.cases-covered
+run.fuzz.input-visible-seed-01
+run.fuzz.input-visible-seed-02
+run.fuzz.input-visible-seed-03
+run.fuzz.input-visible-seed-04
+run.fuzz.input-visible-seed-05
+run.fuzz.input-visible-seed-06
+run.fuzz.input-visible-seed-07
+run.fuzz.input-visible-seed-08
+run.fuzz.input-visible-covered
 # Family struct (plan 05-02, D-19, A-02, A-04): the pinned v1 minimums of the grown run request (v2
 # appends psg_log and psg_log_capacity) and run report (v2 appends audio_first_index,
 # psg_log_bytes_written, psg_log_first_index): a v1-sized caller in a poisoned larger buffer runs as

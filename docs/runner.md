@@ -60,6 +60,7 @@ Every directive of an accepted scenario can take effect (review WR-02, WR-03). R
 | `input` | `input at_tick=<n>\|at_cycle=<n> c0=<names\|0xHEX> c1=<names\|0xHEX>` | Controller words from that machine time on; names are the `IVS_CTRL_*` bit names without the prefix, joined by `+`. |
 
 Steps share one unit and their targets strictly increase; input lines share one unit and are nondecreasing.
+The `c0` and `c1` words are indexed by PSG port, not by player: `c0` drives the port a guest reads at `$01FE` and `c1` the port at `$01FF` (plan 05-05); an event is visible to every guest read of the unit that begins at or after its tick, and a read inside the unit that began earlier sees the old state (C67).
 `cpu-cycles` and `frames` are host conversions to master ticks through the instance's timebase (`ivs_info`); frames are nominal, not frame events (D-09).
 Every run-to stops at a CPU halt (`IVS_RUN_F_STOP_ON_HALT`), so a halt is a stop the scenario must expect.
 Caps (D-22): 64 KiB, 512 lines, 256 bytes per line, 64 steps, 64 asserts, 64 input lines.
