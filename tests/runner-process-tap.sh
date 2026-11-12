@@ -18,6 +18,22 @@
 # versus release comparison). Skip (column 5) `skip-ok` marks a scenario that needs operator content
 # the gate never has: it is judged like any other, and only a passing judgement is reported as a
 # visible `# SKIP`.
+# Outcome and exit.code must also be a pair of data/expected/runner-outcomes.ids.
+# Mutant cases (D-32): per line `<ID> <addr> <word> <clause>` of data/expected/diag-mutations.ids
+# the diagnostic is rebuilt here with `ivs_pack --ivsc ... --patch <addr>=<word>` and
+# diag-boot-pass run against it must end guest-fail (exit 10) with the detail naming <clause>; id
+# runner-process.mutant.<ID>.
+# Determinism (D-23, Pitfall 11): runner-process.repeat.<id> (a second run),
+# runner-process.slices.<id> (--slice-ticks 1 and 7) for diag-boot-pass and diag-input-pass, and
+# runner-process.cwd (diag-boot-pass from another working directory) must equal the scenario case's
+# report byte for byte apart from the host.calls line.
+# Judge self-controls (runner-process.judge.<slug>): the same checks run against four fake
+# runners (shell scripts in the temp dir replaying this run's reports with one defect: exit 0 for
+# a guest-fail, no report.end, outcome pass with exit.code 10, a changed digest line); each passes
+# only when the check fails for its intended finding.
+# runner-process.outcomes-consistent: `ivs-run --help`, the outcome table of docs/runner.md and
+# data/expected/runner-outcomes.ids list the same pairs; runner-process.outcomes-covered: every
+# pair has a running scenario and every scenario line names a pair.
 # Reports: when IVS_TEST_OUT_DIR is set, every scenario case that printed a report leaves it in
 # <dir>/runner/<id>.report (the golden step compares dev with release there).
 # Output: the harness TAP shape (header with IVS_TEST_NONCE or none, plan, one result per case
@@ -37,8 +53,11 @@ ivs_run=$(abs_file "$2") || { printf 'runner-process-tap: no %s\n' "$2" >&2; exi
 pack=$(abs_file "$3") || { printf 'runner-process-tap: no %s\n' "$3" >&2; exit 1; }
 images=$(abs_dir "$4") || { printf 'runner-process-tap: no dir %s\n' "$4" >&2; exit 1; }
 inv="$root/data/expected/runner-scenarios.ids"
+outcomes="$root/data/expected/runner-outcomes.ids"
 scen="$root/data/scenarios"
-[ -f "$inv" ] || { printf 'runner-process-tap: no %s\n' "$inv" >&2; exit 1; }
+for f in "$inv" "$outcomes"; do
+  [ -f "$f" ] || { printf 'runner-process-tap: no %s\n' "$f" >&2; exit 1; }
+done
 [ -x "$ivs_run" ] || { printf 'runner-process-tap: %s is not executable\n' "$ivs_run" >&2; exit 1; }
 [ -x "$pack" ] || { printf 'runner-process-tap: %s is not executable\n' "$pack" >&2; exit 1; }
 limit=${IVS_RUNNER_PROCESS_TIMEOUT:-60}
@@ -48,6 +67,8 @@ trap 'rm -rf "$tmp"' EXIT
 trap 'exit 1' HUP INT TERM
 
 ifs0=$IFS
+# The <outcome> <exit> pairs (D-20), one per line.
+awk '!/^#/ && NF { print $1, $2 }' "$outcomes" > "$tmp/pairs" || exit 1
 suite=runner-process
 nonce=${IVS_TEST_NONCE:-none}
 rep_dir=
@@ -98,16 +119,19 @@ run_one() {
   if [ -f "$_mark" ]; then hung=1; fi
 }
 
-# why <token> <text>: records one judge finding in $tmp/why.
-why() { printf '%s: %s\n' "$1" "$2" >> "$tmp/why"; }
+
+# why <token> <text>: records one finding in $tmp/why and sets found=1.
+found=0
+why() { printf '%s: %s\n' "$1" "$2" >> "$tmp/why"; found=1; }
 
 # judge <name> <exit> <outcome> <detail pattern> <stderr line>: judges run <name> (rc, hung and
 # $tmp/runs/<name>.{out,err}) against the expectation; <detail pattern> is a shell pattern for the
 # outcome.detail value; a non-empty <stderr line> expects no report and exactly `ivs-run: <line>`
-# on stderr. Appends findings to $tmp/why; returns 0 when there are none.
+# on stderr. The outcome and exit.code lines must also form a pair of
+# data/expected/runner-outcomes.ids. Appends findings to $tmp/why; returns 0 when it adds none.
 judge() {
   _o="$tmp/runs/$1.out"; _e="$tmp/runs/$1.err"; _x=$2; _oc=$3; _dp=$4; _sl=$5
-  : > "$tmp/why"
+  found=0
   if [ "$hung" -eq 1 ]; then why hung "still running after ${limit}s, stopped by the watchdog"; fi
   [ "$rc" = "$_x" ] || why exit-code "exit $rc, expected $_x"
   if [ -n "$_sl" ]; then
@@ -134,12 +158,15 @@ judge() {
     elif [ "$_v" != "$_oc" ]; then
       why outcome "outcome '$_v', expected '$_oc'"
     fi
-    _n=$(grep -c '^exit\.code ' "$_o")
+    _m=$(grep -c '^exit\.code ' "$_o")
     _c=$(sed -n 's/^exit\.code //p' "$_o")
-    if [ "$_n" -ne 1 ]; then
-      why exit-line "$_n exit.code lines"
+    if [ "$_m" -ne 1 ]; then
+      why exit-line "$_m exit.code lines"
     elif [ "$_c" != "$_x" ]; then
       why exit-line "exit.code '$_c', expected '$_x'"
+    fi
+    if [ "$_n" -eq 1 ] && [ "$_m" -eq 1 ] && ! grep -q -x -F -e "$_v $_c" "$tmp/pairs"; then
+      why outcome-exit-disagree "outcome '$_v' with exit.code '$_c' is no pair of runner-outcomes.ids"
     fi
     _n=$(grep -c '^outcome\.detail ' "$_o")
     _d=$(sed -n 's/^outcome\.detail //p' "$_o")
@@ -153,7 +180,58 @@ judge() {
       esac
     fi
   fi
-  [ ! -s "$tmp/why" ]
+  [ "$found" -eq 0 ]
+}
+
+# check_scenario <runner> <name> <id> <exit> <outcome> <operator-args>: runs <runner> as run
+# <name> on data/scenarios/<id>.ivss with the content dir and the operator arguments (split on
+# `,`; `-` for none) and judges it, the expected detail or stderr line taken from the scenario's
+# `# expect-detail:` or `# expect-stderr:` comment.
+check_scenario() {
+  _r=$1; _nm=$2; _f="$scen/$3.ivss"; _ex=$4; _eo=$5; _args=$6
+  _edp=$(sed -n 's/^# expect-detail: //p' "$_f")
+  _esl=$(sed -n 's/^# expect-stderr: //p' "$_f")
+  [ -n "$_edp" ] || _edp=-
+  if [ "$_args" = - ]; then
+    run_one "$tmp" "$_nm" "$_r" --content-dir "$content" "$_f"
+  else
+    # Operator arguments are words without blanks joined by `,`.
+    # shellcheck disable=SC2086
+    set -f; IFS=,; set -- $_args; IFS=$ifs0; set +f
+    run_one "$tmp" "$_nm" "$_r" --content-dir "$content" "$@" "$_f"
+  fi
+  judge "$_nm" "$_ex" "$_eo" "$_edp" "$_esl"
+}
+
+# body <report> <out>: the report without its host.calls line (the one host-dependent key).
+body() { grep -v '^host\.calls ' "$1" > "$2"; }
+# same_body <name> <reference report>: run <name>'s report equals the reference apart from
+# host.calls; records a body-differs finding otherwise.
+same_body() {
+  if [ ! -s "$2" ]; then
+    why body-differs "no reference report"
+    return 1
+  fi
+  body "$tmp/runs/$1.out" "$tmp/a.body"
+  body "$2" "$tmp/b.body"
+  if ! cmp -s "$tmp/a.body" "$tmp/b.body"; then
+    why body-differs "run $1 differs from the reference report (< run, > reference):"
+    diff "$tmp/a.body" "$tmp/b.body" | sed -n '1,12p' >> "$tmp/why"
+    return 1
+  fi
+  return 0
+}
+
+# check_repeat <cwd> <runner> <name> <id> <reference> [<operator arguments>...]: one more run of
+# the pass scenario <id> from <cwd>; it must pass the judge and equal <reference> apart from
+# host.calls.
+check_repeat() {
+  _cw=$1; _r=$2; _nm=$3; _id=$4; _ref=$5; shift 5
+  run_one "$_cw" "$_nm" "$_r" --content-dir "$content" "$@" "$scen/$_id.ivss"
+  judge "$_nm" 0 pass - ""
+  _j=$?
+  same_body "$_nm" "$_ref" || _j=1
+  return "$_j"
 }
 
 : > "$tmp/results"
@@ -184,26 +262,14 @@ while read -r id x oc class skip args rest; do
   case $id in '' | '#'*) continue ;; esac
   ok=1
   : > "$tmp/why"
-  f="$scen/$id.ivss"
   if [ -n "$rest" ] || [ -z "$args" ]; then
     ok=0; why inventory "not six columns"
   fi
   case $class in deterministic | host-dependent) ;; *) ok=0; why inventory "class '$class'" ;; esac
   case $skip in run | skip-ok) ;; *) ok=0; why inventory "skip '$skip'" ;; esac
-  [ -f "$f" ] || { ok=0; why inventory "no scenario file data/scenarios/$id.ivss"; }
+  [ -f "$scen/$id.ivss" ] || { ok=0; why inventory "no scenario file data/scenarios/$id.ivss"; }
   if [ "$ok" -eq 1 ]; then
-    dp=$(sed -n 's/^# expect-detail: //p' "$f")
-    sl=$(sed -n 's/^# expect-stderr: //p' "$f")
-    [ -n "$dp" ] || dp=-
-    if [ "$args" = - ]; then
-      run_one "$tmp" "scen-$id" "$ivs_run" --content-dir "$content" "$f"
-    else
-      # Operator arguments are words without blanks joined by `,`.
-      # shellcheck disable=SC2086
-      set -f; IFS=,; set -- $args; IFS=$ifs0; set +f
-      run_one "$tmp" "scen-$id" "$ivs_run" --content-dir "$content" "$@" "$f"
-    fi
-    judge "scen-$id" "$x" "$oc" "$dp" "$sl" || ok=0
+    check_scenario "$ivs_run" "scen-$id" "$id" "$x" "$oc" "$args" || ok=0
     if [ -n "$rep_dir" ] && [ -s "$tmp/runs/scen-$id.out" ]; then
       cp "$tmp/runs/scen-$id.out" "$rep_dir/$id.report" || { printf '# cannot write %s\n' "$rep_dir/$id.report" >&2; exit 1; }
     fi
@@ -244,54 +310,111 @@ while read -r mid addr word clause; do
   result "runner-process.mutant.$mid"
 done < "$muts"
 
-# body <report> <out>: the report without its host.calls line (the one host-dependent key).
-body() { grep -v '^host\.calls ' "$1" > "$2"; }
-# same_body <name> <reference report>: run <name>'s report equals the reference apart from
-# host.calls; records a body-differs finding otherwise.
-same_body() {
-  if [ ! -s "$2" ]; then
-    why body-differs "no reference report"
-    return 1
-  fi
-  body "$tmp/runs/$1.out" "$tmp/a.body"
-  body "$2" "$tmp/b.body"
-  if ! cmp -s "$tmp/a.body" "$tmp/b.body"; then
-    why body-differs "run $1 differs from the reference report (< run, > reference):"
-    diff "$tmp/a.body" "$tmp/b.body" | sed -n '1,12p' >> "$tmp/why"
-    return 1
-  fi
-  return 0
-}
-
 # Determinism (D-23, Pitfall 11): a second run, slice sizes 1 and 7, and a run from another
 # working directory all equal the scenario case's report apart from host.calls.
 for id in diag-boot-pass diag-input-pass; do
   ref="$tmp/runs/scen-$id.out"
   : > "$tmp/why"
   ok=1
-  run_one "$tmp" "rep-$id" "$ivs_run" --content-dir "$content" "$scen/$id.ivss"
-  judge "rep-$id" 0 pass - "" || ok=0
-  same_body "rep-$id" "$ref" || ok=0
+  check_repeat "$tmp" "$ivs_run" "rep-$id" "$id" "$ref" || ok=0
   result "runner-process.repeat.$id"
+  : > "$tmp/why"
   ok=1
-  : > "$tmp/all.why"
   for s in 1 7; do
-    run_one "$tmp" "sl$s-$id" "$ivs_run" --content-dir "$content" --slice-ticks "$s" "$scen/$id.ivss"
-    judge "sl$s-$id" 0 pass - "" || ok=0
-    cat "$tmp/why" >> "$tmp/all.why"
-    : > "$tmp/why"
-    same_body "sl$s-$id" "$ref" || ok=0
-    cat "$tmp/why" >> "$tmp/all.why"
+    check_repeat "$tmp" "$ivs_run" "sl$s-$id" "$id" "$ref" --slice-ticks "$s" || ok=0
   done
-  cp "$tmp/all.why" "$tmp/why"
   result "runner-process.slices.$id"
 done
 mkdir "$tmp/elsewhere" || exit 1
+: > "$tmp/why"
 ok=1
-run_one "$tmp/elsewhere" cwd "$ivs_run" --content-dir "$content" "$scen/diag-boot-pass.ivss"
-judge cwd 0 pass - "" || ok=0
-same_body cwd "$tmp/runs/scen-diag-boot-pass.out" || ok=0
+check_repeat "$tmp/elsewhere" "$ivs_run" cwd diag-boot-pass "$tmp/runs/scen-diag-boot-pass.out" || ok=0
 result runner-process.cwd
+
+# Judge self-controls (D-23, T-04-59): the same checks run against wrong runners, shell scripts
+# in the temp dir that replay this run's recorded reports with one defect each. A control passes
+# only when the check fails with a finding of its intended token.
+fakes="$tmp/fakes"
+mkdir "$fakes" || exit 1
+cp "$tmp/runs/scen-guest-assert-mismatch.out" "$fakes/gam.report" 2> /dev/null || : > "$fakes/gam.report"
+cp "$tmp/runs/scen-diag-boot-pass.out" "$fakes/dbp.report" 2> /dev/null || : > "$fakes/dbp.report"
+z64=0000000000000000000000000000000000000000000000000000000000000000
+{
+  printf '#!/bin/sh\n# Fake ivs-run: the guest-fail report, but exit 0.\n'
+  printf 'cat "$(dirname "$0")/gam.report"\nexit 0\n'
+} > "$fakes/exit-mismatch.sh"
+{
+  printf '#!/bin/sh\n# Fake ivs-run: the guest-fail report without its report.end line.\n'
+  printf 'sed '"'"'$d'"'"' "$(dirname "$0")/gam.report"\nexit 10\n'
+} > "$fakes/no-report-end.sh"
+{
+  printf '#!/bin/sh\n# Fake ivs-run: outcome pass with exit.code 10.\n'
+  printf 'sed '"'"'s/^outcome guest-fail$/outcome pass/'"'"' "$(dirname "$0")/gam.report"\nexit 10\n'
+} > "$fakes/outcome-exit.sh"
+{
+  printf '#!/bin/sh\n# Fake ivs-run: the pass report with a different digest.cpu.\n'
+  printf 'sed '"'"'s/^digest\\.cpu .*/digest.cpu %s/'"'"' "$(dirname "$0")/dbp.report"\nexit 0\n' "$z64"
+} > "$fakes/body.sh"
+# self_control <slug> <token> <check...>: runs the check; ok only when it fails with <token>.
+self_control() {
+  _slug=$1; _tok=$2; shift 2
+  : > "$tmp/why"
+  if "$@"; then
+    ok=0
+    : > "$tmp/why"
+    why judge-vacuous "the check accepted the fake runner of $_slug"
+  elif grep -q -e "^$_tok: " "$tmp/why"; then
+    ok=1
+  else
+    ok=0
+    { printf 'judge-wrong-reason: the check failed, but without %s:\n' "$_tok"; cat "$tmp/why"; } > "$tmp/why.2"
+    mv "$tmp/why.2" "$tmp/why"
+  fi
+  result "runner-process.judge.$_slug"
+}
+self_control exit-mismatch exit-code \
+  check_scenario "$fakes/exit-mismatch.sh" fake-exit guest-assert-mismatch 10 guest-fail -
+self_control no-report-end report-end \
+  check_scenario "$fakes/no-report-end.sh" fake-end guest-assert-mismatch 10 guest-fail -
+self_control outcome-exit-disagree outcome-exit-disagree \
+  check_scenario "$fakes/outcome-exit.sh" fake-pair guest-assert-mismatch 10 guest-fail -
+self_control body-differs body-differs \
+  check_repeat "$tmp" "$fakes/body.sh" fake-body diag-boot-pass "$tmp/runs/scen-diag-boot-pass.out"
+
+# Outcome table anti-drift (D-20): `ivs-run --help` (the lines after its `outcomes (` line),
+# the outcome table of docs/runner.md and data/expected/runner-outcomes.ids list the same
+# `<outcome> <exit>` pairs in the same order.
+: > "$tmp/why"
+ok=1
+run_one "$tmp" help "$ivs_run" --help
+[ "$rc" -eq 0 ] || { ok=0; why help "ivs-run --help exit $rc"; }
+sed -n '/^outcomes (/,$p' "$tmp/runs/help.out" | sed '1d' > "$tmp/help.pairs"
+awk -F '|' '/^## Outcomes and exit codes/ { f = 1; next } /^## / { f = 0 }
+  f && /^\| `/ { o = $2; e = $3; gsub(/[ `]/, "", o); gsub(/ /, "", e); print o, e }' \
+  "$root/docs/runner.md" > "$tmp/docs.pairs"
+[ -s "$tmp/pairs" ] || { ok=0; why outcomes "data/expected/runner-outcomes.ids lists no pair"; }
+for src in help docs; do
+  if ! cmp -s "$tmp/$src.pairs" "$tmp/pairs"; then
+    ok=0
+    why outcomes "$src pairs differ from runner-outcomes.ids (< $src, > inventory):"
+    diff "$tmp/$src.pairs" "$tmp/pairs" >> "$tmp/why"
+  fi
+done
+result runner-process.outcomes-consistent
+
+# Every outcome has a demonstrating scenario that runs (skip run), and every scenario line names a
+# pair of runner-outcomes.ids.
+: > "$tmp/why"
+ok=1
+awk '!/^#/ && NF { print $3, $2, $5 }' "$inv" > "$tmp/scen.pairs"
+while read -r o e; do
+  grep -q -x -F -e "$o $e run" "$tmp/scen.pairs" || { ok=0; why outcomes "no running scenario for $o $e"; }
+done < "$tmp/pairs"
+while read -r o e s; do
+  grep -q -x -F -e "$o $e" "$tmp/pairs" || { ok=0; why outcomes "scenario pair $o $e is not in runner-outcomes.ids"; }
+done < "$tmp/scen.pairs"
+[ -s "$tmp/pairs" ] || { ok=0; why outcomes "data/expected/runner-outcomes.ids lists no pair"; }
+result runner-process.outcomes-covered
 
 {
   printf '# suite=%s nonce=%s\n' "$suite" "$nonce"

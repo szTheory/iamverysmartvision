@@ -1,0 +1,11 @@
+# Runner outcomes and exit codes (plan 04-20, D-20): `<outcome> <exit>`, in exit-code order.
+# Suite runner-process (id runner-process.outcomes-consistent) requires `ivs-run --help` and the
+# outcome table of docs/runner.md to list exactly these pairs in this order; every report's
+# outcome and exit.code must form one of them, and every pair needs a running scenario in
+# data/expected/runner-scenarios.ids (runner-process.outcomes-covered).
+pass 0
+guest-fail 10
+timeout 11
+cancelled 12
+missing-fixture 13
+harness-fail 14

@@ -144,6 +144,17 @@ Test hooks (documented, deterministic, no sleeps and no racing signals):
 - `--wall-timeout-ms 1` with a bound far beyond the guest's work can only end by the wall cap; a slower host just completes fewer slices.
 - The in-process suite (`runner.time.*`) uses a fake host: a fake monotonic timer that advances a fixed step per call and a fake cancel flag raised from a chosen check on.
 
+## Process-level tests (suite `runner-process`)
+
+`tests/runner-process-tap.sh` (D-23, plan 04-20) drives the real `ivs-run` of each preset, so exit codes and report text are checked at the boundary a user sees.
+
+- Scenarios: every line `<id> <exit> <outcome> <class> <skip> <operator-args>` of `data/expected/runner-scenarios.ids` names `data/scenarios/<id>.ivss`; there is one demonstrating scenario per outcome of the table above, plus an expected load refusal and a two-event input schedule (`diag-input-pass`). The judge requires the exit code, `ivsr 1` first, `report.end <n>` last, one `outcome` and one `exit.code` line forming a pair of `data/expected/runner-outcomes.ids`, and the `outcome.detail` pinned by the scenario's `# expect-detail:` comment (a parse refusal pins its one stderr line with `# expect-stderr:` and prints no report).
+- `host-dependent` scenarios (`timeout-wall`, `cancel-signal`) use the two test hooks above; their reports are never compared between presets or kept as goldens. `needs-user-exec` asks for an operator EXEC the gate never has: it must end missing-fixture and is then a visible skip.
+- Mutants (D-32): the diagnostic rebuilt with one changed word (`data/expected/diag-mutations.ids`: ADDI to SUBI, BNZE to BZE, PSHR to MVO@, INCR to DECR) must end guest-fail, with the detail naming the first assert the change breaks.
+- Determinism: a second run, `--slice-ticks` 1 and 7, and a run from another working directory give the same report apart from `host.calls`.
+- Judge self-controls: four fake runners (wrong exit code, no `report.end`, `outcome pass` with `exit.code 10`, a changed digest) must each be rejected for that reason; one more case requires `--help`, the outcome table above and `data/expected/runner-outcomes.ids` to list the same six pairs.
+- Each scenario's report is left in `build/gate/<preset>/runner/<id>.report`.
+
 ## Trust model (D-22)
 
 - A scenario is untrusted inert data. The parser is a pure function with fixed caps; it allocates nothing.
