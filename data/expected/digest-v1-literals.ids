@@ -1,0 +1,37 @@
+# Phase 4 digest literals, composite version 1, recorded from the UNMODIFIED tree.
+# Owning plan 05-03 (task 1, the first commit of the plan; D-18, V-19, A-09). These are the
+# historical Phase 4 repeatability pins: values the emulator produced before any Phase 5 PSG
+# storage existed. They are NEVER evidence of correctness. Plan 05-03 task 4 compares the
+# re-blessed composite-version-2 goldens against them: digest.cpu and digest.images must be
+# equal (the PSG storage must not perturb the CPU or the images); digest.mem, digest.instance
+# and digest.composite are expected to differ (A-13), as is anything derived from them.
+# Lines: <name> <hex>; test.stepped.N is domain N (0 = composite, 1..4 = cpu, mem, images, instance) of Content A loaded,
+# power-on reset, 100 units through the step seam. Sources: tests/machine/machine_digest.c (md_fresh_composite, md_stepped;
+# each confirmed by a passing run of build/dev/tests/ivs_tests_machine --only machine.digest.)
+# and the committed goldens (read, not recomputed).
+test.fresh-composite ac794821fa80a0230db1d21aaf86a7ecdc695ca5515aa42ceb8dc3e85ea5d137
+test.stepped.0 90a23b922f2c4ab3aa5685498f540a6bd3970c1aeb7d9f1a9e3e5a7c01c19e7f
+test.stepped.1 881055b767265a9ec93b943ed19e547f370c0def764712fa32a6e06e68ce82ab
+test.stepped.2 ea7ba62a4f38ae700eca1cd59986bfbde40e278116bf209e063a29bbe1801f95
+test.stepped.3 3f42082eef76bbfbea05c964fcf47a2dd089d9050ee85c2fc328b0ca83995dfe
+test.stepped.4 fca8e62dd7d05deddd29c93f51ecfa25f55d34bd7270be8acc277ff984eb3ccb
+golden.diag-cpu-1.digest.cpu 8c6a8aa37cf3293d3d88f1133f3cb218d89fb96a34e8bda49e6ea750cf4dbe55
+golden.diag-cpu-1.digest.mem 1d935916585661ba402808c52be6b5ecbbf2ccde49eafe9789b82ff40690be81
+golden.diag-cpu-1.digest.images 69d3b715595bdb3435c984ad72e0042fdf385b72e2687f13a4d59e8b09084e45
+golden.diag-cpu-1.digest.instance 3a953773906673ca8475db178952b9ea398991b234218eb9953453f04b15bb59
+golden.diag-cpu-1.digest.composite c834c07a18c9b7467e237890be951938367bc1a4e5338e766993f8980f10b408
+golden.diag-input-pass.digest.cpu 8c6a8aa37cf3293d3d88f1133f3cb218d89fb96a34e8bda49e6ea750cf4dbe55
+golden.diag-input-pass.digest.mem 1d935916585661ba402808c52be6b5ecbbf2ccde49eafe9789b82ff40690be81
+golden.diag-input-pass.digest.images 69d3b715595bdb3435c984ad72e0042fdf385b72e2687f13a4d59e8b09084e45
+golden.diag-input-pass.digest.instance 3a953773906673ca8475db178952b9ea398991b234218eb9953453f04b15bb59
+golden.diag-input-pass.digest.composite c834c07a18c9b7467e237890be951938367bc1a4e5338e766993f8980f10b408
+golden.timeout-budget.digest.cpu 5ca68acdd4c72030c80769683eb1d5a3cf5d4b957d0b28c6d62bc383a9b6bde7
+golden.timeout-budget.digest.mem 02984e823940dd307a3cd9aad234c935ea0c0c44af6729ae2274324ee78a01d9
+golden.timeout-budget.digest.images 69d3b715595bdb3435c984ad72e0042fdf385b72e2687f13a4d59e8b09084e45
+golden.timeout-budget.digest.instance 11c92cb45e5406d7c7069f2b82e2eb8de87949387537157630e9fec185c8e25f
+golden.timeout-budget.digest.composite 3208e03efa35dcfebc96af0fc08de7d9b1dd22510eeb47a7e9474b87ea2396a1
+golden.pkg-consumer.digest.cpu 8c6a8aa37cf3293d3d88f1133f3cb218d89fb96a34e8bda49e6ea750cf4dbe55
+golden.pkg-consumer.digest.mem 1d935916585661ba402808c52be6b5ecbbf2ccde49eafe9789b82ff40690be81
+golden.pkg-consumer.digest.images 69d3b715595bdb3435c984ad72e0042fdf385b72e2687f13a4d59e8b09084e45
+golden.pkg-consumer.digest.instance 3a953773906673ca8475db178952b9ea398991b234218eb9953453f04b15bb59
+golden.pkg-consumer.digest.composite c834c07a18c9b7467e237890be951938367bc1a4e5338e766993f8980f10b408
