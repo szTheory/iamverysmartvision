@@ -68,6 +68,24 @@ Not in scope: STIC, video, bus stalls (Phase 6), host audio output or any sound 
 - **D6 note:** now guest-visible, table per D-02.
 - **D3 note:** the PSG part stays tier 4; 8910-derived rules are `inference`.
 
+## Amendments from research (override the matching text above)
+
+Research (`05-RESEARCH.md`, executed against the code) found these CONTEXT assumptions false or incomplete. These amendments are binding and win over D-01..D-28 where they differ.
+
+- **A-01 (D-13, D-16):** the bus context is `&im->mem`, which has neither the unit start tick nor ticks-per-cycle. A machine-level bus wrapper supplies them; the write-log stamp and the PSG catch-up go through it.
+- **A-02 (D-16):** catching the PSG up only at the end of a run call is not enough. The seam-stepped twin instances (compared by `memcmp` with run-call instances) require the PSG to be caught up to the unit boundary at EVERY unit end, in the step seam and in run alike.
+- **A-03 (D-14, D-17):** derived constants (executed over all 1024 decles, SDBD off and on, waits 0, 1 and 35): minimum gap between two PSG writes g = 9 CPU cycles = 36 ticks; maximum unit U = 48 ticks at wait 0 and 468 ticks with 35 waits on every wait-taking access. Publish U = 468 (`wait_limit_cpu_cycles` bound) and g = 36. The notes' illustrative g = 28, U = 608 are wrong for this code; recompute `W_log` and the audio slack `s` from these in the plan.
+- **A-04 (D-19):** the pinned-V1-size treatment applies to the report (112 bytes, `*rep = r`) and the env seam as well as the request.
+- **A-05 (D-23, V-05):** flipping `psg_regs` to `impl=real` in the memmap literal cannot happen in the oracle plan: the generator rejects it, the `memmap` suite needs a rule row and descriptor row, and the width probe needs the literal split by register width. The flip lands in the register-file plan. Likewise `data/golden/diag-ctrl-psg-1.expect` cannot be committed before its scenario and a dev report exist: plan 05-01 commits the derivation as documentation, the fixture plan commits the golden.
+- **A-06:** a second table generator (`IvsPsgTable.cmake`) is needed for the `psg.*` object fields (register map and parameters), beside `IvsCtrlTable.cmake`.
+- **A-07 (D-21):** `tools/pcm` sits outside four guards (runner-scan, the c-build unlisted-source guard, the integrity anchor, the fault modules). The plan must extend each deliberately. The symbol deny list only labels; the real guards are the install inventory and the public-symbol rule.
+- **A-08 (D-25):** the 26-fault figure is a guideline and is already exceeded by `AUDIO_STATE_DEPENDS_ON_BUFFER`; the per-plan caps (5 tasks, 8 faults, 25 controls) stay binding.
+- **A-09:** goldens are re-blessed in three or four behaviour plans (composite v2 foundation, audio live, noise/envelope, runner key list), each a classified diff.
+- **A-10 (D-23):** `refs/` does not cache the 1980/1982 GI catalogs. Plan 05-01 fetches them, verifies hashes against the registry and keeps them gitignored. Network, `pdftotext`, `pdftoppm`, `tesseract`, `qpdf`, dash and docker (`ubuntu:24.04`) are available.
+- **A-11 (D-17):** `ivs-run` never sets `host.buffers`; it works only through the NULL-plus-capacity-0 rule, so that rule's amendment lands with its test updates in the ABI plan.
+- **A-12 (D-27):** the plan shape is the research re-cut: twelve plans in eleven waves (05-01 sources and oracles with no C; 05-02 ABI growth, behaviour-neutral; 05-03 state and digest foundation with the v1 composite re-record FIRST; 05-04 PSG register file, memmap flip and suite `psg`; 05-05 input byte and port reads; 05-06 tone, mixer, amplitude, sampling, audio live; 05-07 noise and envelope; 05-08 write log; 05-09 runner and scenarios; 05-10 reference PCM converter and WAV helper; 05-11 fixture and end to end; 05-12 close-out; 05-L1 conditional lever). Hard sequencing: C-id and claim allocation before any profile field cites them; 05-02 before any plan that writes a grown struct field; 05-04 before 05-05; 05-06 before 05-08; 05-08 before 05-09; `gate-linux` before pushing the plans the research marks. `05-RESEARCH.md` "Plan Decomposition" is the authority for task counts and gates.
+- **A-13 (D-04 vs D-18):** `port_pulldown` and the PSG registers in MEM rows shift `digest.mem` in every golden; this is intended and is part of the classified composite-v2 re-bless, not an accident.
+
 ## Reconciliation (conflicts between the four notes)
 
 - **Sample record:** the audio note (4 bytes, three level bytes plus reserved) wins over the PSG note's packed `u16` (three 4-bit nibbles). Reason: a profile with a wider amplitude (the 8914's 6-bit amplitude register is unverified, C70) fits without a format change; the semantic is the same post-mixer level index.
