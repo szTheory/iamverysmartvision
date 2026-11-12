@@ -70,7 +70,7 @@ differentiators and all variant/peripheral profiles are v2.
 
 ### Packaging, Local Gate and CI (PKG)
 
-- [ ] **PKG-01**: A clean, independent consumer project builds against the *installed* package in a relocated prefix and exercises load, refusal, run and digest.
+- [x] **PKG-01**: A clean, independent consumer project builds against the *installed* package in a relocated prefix and exercises load, refusal, run and digest.
 - [x] **PKG-02**: One documented local command runs the same checks as the fast PR gate.
 - [ ] **PKG-03**: CI runs the fast gate on every PR, shows skips and missing artifacts visibly, and never caches or uploads system images or rights-unknown fixtures.
 - [ ] **PKG-04**: CI critical path (queue, setup, build, test) is measured and recorded per run so cache/concurrency/matrix changes are evidence-driven.
@@ -209,7 +209,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | RUN-04 | Phase 4 | Pending |
 | RUN-05 | Phase 4 | Complete |
 | RUN-06 | Phase 4 | Complete |
-| PKG-01 | Phase 4 | Pending |
+| PKG-01 | Phase 4 | Complete |
 | PKG-02 | Phase 2 | Complete |
 | PKG-03 | Phase 4 | Pending |
 | PKG-04 | Phase 4 | Pending |
