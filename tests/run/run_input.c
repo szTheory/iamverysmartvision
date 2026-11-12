@@ -572,35 +572,42 @@ done:
 /* BAD_ARG (INPUT_EVENTS_OVERLAP): the event array shares bytes with the video buffer (video, or
  * audio when audio is 1). The buffers come from one poisoned arena whose bytes no refusal may
  * change; the array sits in it too (a 0xA5 event is never read: the slot refuses first). Positive
- * control: the array right after the buffer runs (zeroed events). */
+ * control: the array right after the buffer runs (zeroed events). Plan 05-06: the real audio layout
+ * needs 15,060 bytes per frame, so the audio case uses a 15,060-byte buffer that ends where the
+ * array begins (the old 48-byte buffer is too small against the real layout: its positive control
+ * was BUFFER_TOO_SMALL); the video layout is NONE and the old geometry stands. */
+#define RI_AUDIO_NEED 15060u
 static int ri_refuse_overlap_buffer(int audio)
 {
   ivs_ms_inst x;
   ivs_run_request q;
   ivs_run_report r;
   uint8_t *a = NULL;
-  uint8_t keep[256];
+  uint8_t *keep = NULL;
+  size_t arena = audio ? (size_t)RI_AUDIO_NEED + 128u : 256u;
+  size_t arr = audio ? (size_t)RI_AUDIO_NEED + 4u : 64u; /* 8-aligned: the array's first byte */
   ivs_status st;
   int rc = IVS_TEST_FAIL;
   IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, RI_POISON));
-  a = aligned_alloc(16u, 256u);
-  RI_CHECK(a != NULL);
-  memset(a, RI_POISON, 256u);
-  memcpy(keep, a, sizeof keep);
-  ri_req(&q, 0u, 1000u, (const ivs_input_event *)(const void *)(a + 64u), 2u);
+  a = aligned_alloc(16u, (arena + 15u) & ~(size_t)15u);
+  keep = malloc(arena);
+  RI_CHECK(a != NULL && keep != NULL);
+  memset(a, RI_POISON, arena);
+  memcpy(keep, a, arena);
+  ri_req(&q, 0u, 1000u, (const ivs_input_event *)(const void *)(a + arr), 2u);
   if (audio) {
-    q.audio = a + 16u;
-    q.audio_capacity = 49u; /* its last byte is the array's first */
+    q.audio = a + 4u;
+    q.audio_capacity = (uint64_t)RI_AUDIO_NEED + 1u; /* its last byte is the array's first */
   } else {
     q.video = a + 112u;
     q.video_capacity = 16u; /* inside the array's 64 bytes */
   }
   RI_CHECK(ri_refused(&x, x.m, &q, NULL, IVS_E_BAD_ARG, IVS_REASON_INPUT_EVENTS_OVERLAP, IVS_INPUT_INDEX_NONE));
-  RI_CHECK(memcmp(keep, a, sizeof keep) == 0);
+  RI_CHECK(memcmp(keep, a, arena) == 0);
   /* Adjacent: the buffer ends where the array begins. */
-  memset(a + 64u, 0, 64u);
+  memset(a + arr, 0, 64u);
   if (audio) {
-    q.audio_capacity = 48u;
+    q.audio_capacity = RI_AUDIO_NEED;
   } else {
     q.video = a + 128u;
   }
@@ -610,6 +617,7 @@ static int ri_refuse_overlap_buffer(int audio)
   RI_CHECK(st == IVS_OK && r.input_consumed == 2u);
   rc = IVS_TEST_PASS;
 done:
+  free(keep);
   free(a);
   ivs_ms_free(&x);
   return rc;

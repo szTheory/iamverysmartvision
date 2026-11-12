@@ -106,7 +106,7 @@ typedef struct ivs_image_report {
 /* Output layout formats of ivs_info (D-06). NONE: the profile produces no bytes of that kind yet
  * (the size per frame is then 0). PSG_LEVELS_V1 (plan 05-02, D-15): the audio channel carries one
  * 4-byte sample per PSG chip step, level_A, level_B, level_C, 0 (post-mixer effective amplitude
- * index per channel); published by the profile from plan 05-06 on. */
+ * index per channel); published by the profile from plan 05-06 on (the real profile's audio layout). */
 #define IVS_OUTPUT_FORMAT_NONE 0u
 #define IVS_OUTPUT_FORMAT_PSG_LEVELS_V1 1u
 
@@ -135,10 +135,9 @@ typedef struct ivs_image_report {
  *   248 audio_bytes_per_frame    0 with IVS_OUTPUT_FORMAT_NONE
  *   252 reserved2                written 0
  * v3 (plan 05-02, D-15, D-19): the Phase 5 tail, appended after the v2 size of 256 and written only
- * when struct_size covers it (a 256-byte caller gets exactly 256 bytes). Every field reads 0 until
- * the plan that fills it: the audio fields (plan 05-06), the write-log fields (plan 05-08), the
- * crystal passthrough (plan 05-06; the core never reads it, it only republishes the profile's
- * figures):
+ * when struct_size covers it (a 256-byte caller gets exactly 256 bytes). The audio fields and the
+ * crystal passthrough are filled from plan 05-06 (the core never reads the crystal, it only
+ * republishes the profile's figures); the write-log fields read 0 until plan 05-08:
  *   256 audio_sample_ticks       master ticks between audio samples (one PSG chip step; 16)
  *   260 audio_sample_bytes       bytes of one audio sample (4 with IVS_OUTPUT_FORMAT_PSG_LEVELS_V1)
  *   264 psg_log_record_bytes     bytes of one write-log record (16)

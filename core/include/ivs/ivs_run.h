@@ -116,9 +116,19 @@ IVS_API ivs_status ivs_machine_peek(const ivs_machine *m, uint16_t addr, uint32_
  * whatever the layout requires (D-17, plan 05-02; a non-NULL buffer with capacity 0 against a layout
  * that needs bytes is still BUFFER_TOO_SMALL). A third channel, the PSG register-write log
  * (psg_log, psg_log_capacity; request v2), follows video and audio with
- * psg_log_bytes_per_frame from the profile's layout. Phase 4 profiles have layout NONE with 0 bytes
- * per frame, so every capacity (0 and a NULL buffer included) suffices, no byte is written and the
- * three report counts below are 0: no frame is fabricated. */
+ * psg_log_bytes_per_frame from the profile's layout. A layout with 0 bytes per frame needs nothing
+ * and gets nothing (video until plan 05-09 and the write log until plan 05-08 are such channels: no
+ * frame is fabricated). From plan 05-06 the audio layout is real: format IVS_OUTPUT_FORMAT_PSG_LEVELS_V1,
+ * one 4-byte sample (level_A, level_B, level_C, 0) per PSG chip step, stamped k * audio_sample_ticks
+ * master ticks on an absolute grid from reset, delivered into the audio buffer in order. The core
+ * catches the chip up to the end of every unit it runs (never to the target), so a call delivers
+ * the samples due up to the boundary it ends at; audio_bytes_written counts the bytes delivered and
+ * audio_first_index is the number of samples emitted before the call (the delivered streams of
+ * consecutive calls concatenate to the stream of one call). A NULL buffer with capacity 0 runs the
+ * same code against a counting sink: nothing is written and the machine state is byte-identical to a
+ * run with a buffer. The per-frame size includes a slack of ceil(U / P) + 1 samples, U the proven
+ * maximum ticks of one CPU unit and P the sample period, which covers the samples of the last
+ * unit's overshoot. */
 
 /* Input (D-12..D-15, plan 04-11). Core input is LOGICAL switch state: one uint32_t per controller,
  * indexed by PSG port (0 = R14/$01FE, 1 = R15/$01FF), never by player or side. A word holds the
@@ -257,13 +267,13 @@ typedef struct ivs_run_report {
   uint64_t units_executed;
   uint64_t video_frames_completed; /* 0 in Phase 4 */
   uint64_t video_bytes_written;    /* 0 in Phase 4 */
-  uint64_t audio_bytes_written;    /* 0 in Phase 4 */
+  uint64_t audio_bytes_written;    /* audio bytes delivered into the caller buffer (plan 05-06) */
   uint32_t input_consumed;         /* events of the request applied by this call */
   uint32_t input_failing_index;    /* the refused event, else IVS_INPUT_INDEX_NONE */
   uint64_t input_floor_tick;       /* start of the last begun unit + 1 (0 before any unit) */
   uint32_t controller_now[4];      /* the controller words in force at exit */
   /* ---- end of the v1 size (112) ---- */
-  uint64_t audio_first_index;      /* v2, offset 112: 0 until plan 05-06 fills it */
+  uint64_t audio_first_index;      /* v2, offset 112: samples emitted before this call (plan 05-06) */
   uint64_t psg_log_bytes_written;  /* v2, offset 120: 0 until plan 05-08 fills it */
   uint64_t psg_log_first_index;    /* v2, offset 128: 0 until plan 05-08 fills it; sizeof 136 */
 } ivs_run_report;

@@ -306,13 +306,21 @@ static int rs_report_v2_fields(void)
   rs_rep(&r, (uint32_t)sizeof(ivs_run_report));
   RS_CHECK(ivs_machine_run(x.m, &q.q, &r.r) == IVS_OK);
   RS_CHECK(r.r.struct_size == 136u);
-  /* Plan 05-02 is behaviour-neutral: nothing yet produces audio or log bytes, so the appended
-   * fields are written and 0 (plans 05-06 and 05-08 give them their values). */
-  RS_CHECK(r.r.audio_first_index == 0u && r.r.psg_log_bytes_written == 0u && r.r.psg_log_first_index == 0u);
-  /* A report between the v1 size and its own: only the covered bytes are written. */
+  /* Plan 05-06: the first call starts at sample 0 (audio_first_index, the samples emitted before the
+   * call), and the request has no audio buffer, so nothing is delivered (audio_bytes_written 0); the
+   * write-log fields stay 0 until plan 05-08. Plan 05-02 asserted all three appended fields 0. */
+  RS_CHECK(r.r.audio_first_index == 0u && r.r.audio_bytes_written == 0u);
+  RS_CHECK(r.r.psg_log_bytes_written == 0u && r.r.psg_log_first_index == 0u);
+  /* A report between the v1 size and its own: only the covered bytes are written. The second call
+   * enters at the first call's end, so its audio_first_index is the literal floor(now / 16) (one sample
+   * per 16 ticks, absolute grid from reset). */
+  now = r.r.now_ticks;
+  RS_CHECK(now >= RS_SPAN);
+  rs_req(&q, (uint32_t)sizeof(ivs_run_request), now + RS_SPAN);
   rs_rep(&r, 120u);
   RS_CHECK(ivs_machine_run(x.m, &q.q, &r.r) == IVS_OK);
   RS_CHECK(r.r.struct_size == 120u);
+  RS_CHECK(r.r.audio_first_index == now / 16u);
   RS_CHECK(r.b[120] == RS_POISON && r.b[135] == RS_POISON);
   rc = IVS_TEST_PASS;
 done:

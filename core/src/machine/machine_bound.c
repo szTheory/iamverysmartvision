@@ -63,14 +63,22 @@
  * the loop always terminates. The stop reason is then a pure function of the exit state: INTERNAL,
  * GUEST_FAULT, CPU_HALTED (flag), TARGET. The report is filled last; overshoot is derived. Nothing
  * outlives the call (no budget, deficit or pointer): slicing invariance holds by construction.
- * Phase 4 layouts produce no bytes, so the loop writes nothing into the output buffers and the
- * report's output counts are 0 (no frame is fabricated).
+ * Output (plan 05-06, D-15..D-17): a layout whose audio format is IVS_OUTPUT_FORMAT_PSG_LEVELS_V1 gets
+ * the PSG samples (4 bytes each, A, B, C, 0) into the caller's audio buffer: the loop passes a per-call
+ * sink over the buffer through the step seam, which catches the PSG up to every unit's end (never to
+ * the target). A layout that does not carry that format, or a NULL buffer, gets the counting sink: the
+ * same code runs, nothing is written, and the machine state is identical (named fault
+ * AUDIO_STATE_DEPENDS_ON_BUFFER). The report carries audio_bytes_written (bytes delivered) and
+ * audio_first_index (the number of samples emitted before the call, so the delivered streams of
+ * consecutive calls concatenate to the stream of one call). No video is produced yet; the video count
+ * stays 0 (no frame is fabricated).
  * The file holds no static or global state.
  * Named faults (plan 04-07, D-07): RUN_TARGET_UNCHECKED, RUN_STOP_BEFORE_OVERSHOOT,
  * RUN_FAULT_STEPS; (plan 04-09, D-07): RUN_BUDGET_CARRY, the only static, inside its fault block;
  * (plan 04-10, D-06, D-07): RUN_CAPACITY_AFTER_STEP, OUTBUF_PARTIAL_WRITE; (plan 04-11, D-05,
  * D-16): INPUT_APPLY_AT_RUN_START, RUN_EVENTS_UNCHECKED; (plan 05-02, A-02, D-14):
- * RUN_REPORT_TAIL_UNGUARDED, RUN_REQUEST_V2_READ_UNGUARDED, RUN_PSGLOG_OVERLAP_UNCHECKED. */
+ * RUN_REPORT_TAIL_UNGUARDED, RUN_REQUEST_V2_READ_UNGUARDED, RUN_PSGLOG_OVERLAP_UNCHECKED; (plan 05-06,
+ * D-16, T-05-15, T-05-16): AUDIO_STATE_DEPENDS_ON_BUFFER, PSG_OUTBUF_PARTIAL_WRITE. */
 #include "common/ivs_prelude.h"
 
 #include "ivs/ivs.h"
@@ -500,6 +508,8 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
   uint64_t units = 0u;
   uint32_t consumed = 0u;
   uint32_t n;
+  uint64_t first_index;
+  ivs_psg_sink sink;
   memset(&plan, 0, sizeof plan);
   st = ivs_bound_validate(m, req, rep, env, &plan, &reason, &index);
   if (st != IVS_OK) {
@@ -508,6 +518,14 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
   }
   im = ivs_machine_from_handle_mut(m);
   entry = im->time_ticks;
+  /* The audio sink of this call (plan 05-06): the caller's buffer when the layout carries PSG levels,
+   * else the counting sink. first_index is the emitted count at entry (the report's audio_first_index). */
+  first_index = im->obs.audio.emitted;
+  if (env->audio_format == IVS_OUTPUT_FORMAT_PSG_LEVELS_V1 && env->audio_bytes_per_frame != 0u) {
+    ivs_psg_sink_init(&sink, req->audio, req->audio_capacity);
+  } else {
+    ivs_psg_sink_init(&sink, NULL, 0u);
+  }
 #ifdef IVS_FAULT_RUN_BUDGET_CARRY
   if (ivs_bound_carry_handle == (const void *)m && ivs_bound_carry_end == entry) {
     plan.target = plan.target > ivs_bound_carry_ticks ? plan.target - ivs_bound_carry_ticks : 0u;
@@ -544,7 +562,7 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
     consumed = ivs_input_apply_due(im, plan.events, plan.event_count, consumed, before, entry);
 #endif
     memset(&unit, 0, sizeof unit);
-    if (ivs_machine_step_unit_internal(m, &unit) != IVS_OK) {
+    if (ivs_machine_step_unit_sink_internal(m, &unit, &sink) != IVS_OK) {
       /* The seam refused before any write: the events applied for this unit are taken back, so
        * nothing changed and the state is the last whole boundary (review IN-01). */
       im->obs.input = input_before;
@@ -591,7 +609,14 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
   r.overshoot_ticks = im->time_ticks > plan.target ? im->time_ticks - plan.target : 0u;
   r.elapsed_ticks = im->time_ticks - entry;
   r.units_executed = units;
-  /* Output counts (D-03): Phase 4 layouts produce no bytes, so they stay 0 (memset above). */
+  /* Output counts (D-03): no video yet; the audio bytes delivered and the sample index at entry
+   * (plan 05-06). A sample that did not fit the buffer is never expected (the capacity rule proves
+   * the room); it is an internal stop. */
+  r.audio_bytes_written = sink.written;
+  r.audio_first_index = first_index;
+  if (sink.overflow != 0u) {
+    r.stop_reason = IVS_STOP_INTERNAL;
+  }
   r.input_consumed = consumed;
   r.input_failing_index = IVS_INPUT_INDEX_NONE;
   r.input_floor_tick = im->obs.input.floor_tick;

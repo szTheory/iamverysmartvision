@@ -195,6 +195,13 @@ static void refusal(ivs_machine *m, const char *name, uint32_t kind, const uint8
   }
 }
 
+/* Bytes of video and audio the session's calls delivered (reports): the consumer supplies no output
+ * buffer (NULL with capacity 0, "not requested"), so both stay 0. A domain is observed when its
+ * delivered bytes are nonzero, the count rule of the runner golden (plan 05-06, B1): the layout in
+ * ivs_info says what a call could deliver, not what this session observed. */
+static uint64_t delivered_video_bytes;
+static uint64_t delivered_audio_bytes;
+
 /* One run call of the replay; returns the report's input_consumed (0 on a refusal). */
 static uint32_t run_step(ivs_machine *m, unsigned step, uint64_t target, const ivs_input_event *events, uint32_t count,
                          uint32_t want_stop, int print)
@@ -227,6 +234,8 @@ static uint32_t run_step(ivs_machine *m, unsigned step, uint64_t target, const i
   if (rep.stop_reason != want_stop) {
     fail("stop reason");
   }
+  delivered_video_bytes += rep.video_bytes_written;
+  delivered_audio_bytes += rep.audio_bytes_written;
   return rep.input_consumed;
 }
 
@@ -280,6 +289,8 @@ static void session(int with_refusals, int print, c_digests *d, int *observed)
   lens[1] = C_GROM_BYTES;
   lens[2] = images.cart_len;
   memset(d, 0, sizeof *d);
+  delivered_video_bytes = 0u;
+  delivered_audio_bytes = 0u;
   if (!instance_create(&x)) {
     fail("create");
     return;
@@ -359,8 +370,8 @@ static void session(int with_refusals, int print, c_digests *d, int *observed)
   for (size_t i = 0u; i < C_DOMAINS; i++) {
     observed[i] = 1;
   }
-  observed[5] = info.video_format != IVS_OUTPUT_FORMAT_NONE;
-  observed[6] = info.audio_format != IVS_OUTPUT_FORMAT_NONE;
+  observed[5] = delivered_video_bytes != 0u;
+  observed[6] = delivered_audio_bytes != 0u;
   instance_destroy(&x);
 }
 

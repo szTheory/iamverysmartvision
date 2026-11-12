@@ -5,8 +5,10 @@
  *                            equal the profile registry record, and nominal_frame_ticks equals the
  *                            literal 59736 = 262 x 57 x 4 derived in docs/time-base.md (an
  *                            independent figure, not the product the core computes).
- *   run.info.layout-none     the real profile's layout: both formats IVS_OUTPUT_FORMAT_NONE, both
- *                            sizes and reserved2 0, written over a poisoned struct.
+ *   run.info.layout-real     the real profile's layout (flipped in plan 05-06 from layout-none, which
+ *                            asserted both formats NONE and both sizes 0): video IVS_OUTPUT_FORMAT_NONE
+ *                            with 0 bytes per frame, audio IVS_OUTPUT_FORMAT_PSG_LEVELS_V1 with a
+ *                            nonzero size, reserved and reserved2 0, written over a poisoned struct.
  *   run.info.v1-size-caller  a caller sized for v1 (the Phase 3 size) with poisoned bytes after it
  *                            is accepted, gets struct_size = v1 and the same v1 bytes as a full
  *                            caller, and every byte past its size is untouched; a mid-size caller
@@ -14,9 +16,15 @@
  *   run.info.v2-size-caller  a caller sized for v2 (256 bytes, plan 05-02) gets exactly 256 bytes and
  *                            struct_size 256; the poisoned byte at offset 256 and every byte past
  *                            it are untouched.
- *   run.info.v3-fields-zero  a v3-sized caller (sizeof(ivs_info), 288) gets struct_size 288, the
- *                            Phase 5 tail at the pinned offsets 256, 260, 264, 268, 272, 280 and,
- *                            while no plan fills them yet, every tail field 0 over poison.
+ *   run.info.v3-fields       a v3-sized caller (sizeof(ivs_info), 288) gets struct_size 288, the
+ *                            Phase 5 tail at the pinned offsets 256, 260, 264, 268, 272, 280 and its
+ *                            values: audio_sample_ticks 16, audio_sample_bytes 4, the crystal
+ *                            passthrough 3579545 / 1 (plan 05-06; it replaces run.info.v3-fields-zero of
+ *                            plan 05-02, which asserted every tail field 0), the write-log fields still
+ *                            0 until plan 05-08.
+ *   run.info.audio-fields    the audio layout is the literal one: format 1 (PSG_LEVELS_V1), sample
+ *                            period 16 ticks, sample record 4 bytes and audio_bytes_per_frame 15,060 =
+ *                            4 x (ceil(59,736 / 16) + ceil(468 / 16) + 1) = 4 x (3,734 + 30 + 1).
  *   run.info.short-refused   one byte below the v1 size: BAD_ARG, nothing written, the instance
  *                            storage unchanged.
  *   run.info.oversize-refused  one byte above IVS_STRUCT_SIZE_MAX: BAD_ARG, nothing written, the
@@ -88,7 +96,7 @@ done:
   return rc;
 }
 
-static int ri_layout_none(void)
+static int ri_layout_real(void)
 {
   ivs_ms_inst x;
   ivs_info a;
@@ -96,7 +104,7 @@ static int ri_layout_none(void)
   IVS_CHECK(ivs_ms_new(&x, RI_POISON));
   RI_CHECK(ri_full(x.m, &a));
   RI_CHECK(a.video_format == IVS_OUTPUT_FORMAT_NONE && a.video_bytes_per_frame == 0u);
-  RI_CHECK(a.audio_format == IVS_OUTPUT_FORMAT_NONE && a.audio_bytes_per_frame == 0u);
+  RI_CHECK(a.audio_format == IVS_OUTPUT_FORMAT_PSG_LEVELS_V1 && a.audio_bytes_per_frame != 0u);
   RI_CHECK(a.reserved == 0u && a.reserved2 == 0u);
   rc = IVS_TEST_PASS;
 done:
@@ -173,7 +181,7 @@ done:
   return rc;
 }
 
-static int ri_v3_fields_zero(void)
+static int ri_v3_fields(void)
 {
   ivs_ms_inst x;
   ivs_info a;
@@ -185,11 +193,30 @@ static int ri_v3_fields_zero(void)
   IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, RI_POISON));
   RI_CHECK(ri_full(x.m, &a));
   RI_CHECK(a.struct_size == 288u);
-  /* Behaviour-neutral growth (plan 05-02): nothing fills the tail yet. Plans 05-06 and 05-08 give
-   * these their values and replace this check with the literal ones. */
-  RI_CHECK(a.audio_sample_ticks == 0u && a.audio_sample_bytes == 0u);
+  /* Plan 05-06: the audio fields and the crystal passthrough (literals of the data sheet's crystal and
+   * of docs/time-base.md: one PSG step is 8 chip clocks of 2 master ticks). */
+  RI_CHECK(a.audio_sample_ticks == 16u && a.audio_sample_bytes == 4u);
+  RI_CHECK(a.crystal_hz_num == 3579545u && a.crystal_hz_den == 1u);
+  /* Still 0 until plan 05-08 gives the write log its record. */
   RI_CHECK(a.psg_log_record_bytes == 0u && a.psg_log_records_per_frame == 0u);
-  RI_CHECK(a.crystal_hz_num == 0u && a.crystal_hz_den == 0u);
+  rc = IVS_TEST_PASS;
+done:
+  ivs_ms_free(&x);
+  return rc;
+}
+
+static int ri_audio_fields(void)
+{
+  ivs_ms_inst x;
+  ivs_info a;
+  int rc = IVS_TEST_FAIL;
+  IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, RI_POISON));
+  RI_CHECK(ri_full(x.m, &a));
+  RI_CHECK(a.audio_format == IVS_OUTPUT_FORMAT_PSG_LEVELS_V1);
+  RI_CHECK(a.audio_sample_ticks == 16u && a.audio_sample_bytes == 4u);
+  /* 4 x (3,734 samples of a nominal frame + 31 slack) with U = 468 ticks: see the header of this file. */
+  RI_CHECK(a.audio_bytes_per_frame == 15060u);
+  RI_CHECK(a.nominal_frame_ticks == RI_NOMINAL_FRAME_TICKS);
   rc = IVS_TEST_PASS;
 done:
   ivs_ms_free(&x);
@@ -251,10 +278,11 @@ done:
 
 const ivs_test_case ivs_run_info_cases[] = {
     {"run.info.timebase", ri_timebase, NULL},
-    {"run.info.layout-none", ri_layout_none, NULL},
+    {"run.info.layout-real", ri_layout_real, NULL},
     {"run.info.v1-size-caller", ri_v1_size_caller, NULL},
     {"run.info.v2-size-caller", ri_v2_size_caller, NULL},
-    {"run.info.v3-fields-zero", ri_v3_fields_zero, NULL},
+    {"run.info.v3-fields", ri_v3_fields, NULL},
+    {"run.info.audio-fields", ri_audio_fields, NULL},
     {"run.info.short-refused", ri_short_refused, NULL},
     {"run.info.oversize-refused", ri_oversize_refused, NULL},
 };

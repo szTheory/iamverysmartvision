@@ -517,11 +517,15 @@ done:
   return rc;
 }
 
-/* The real (Phase 4) layout through the public call: every capacity suffices, NULL with 0
- * included, no byte is written and every output count is 0, on a running and a halted CPU. */
-static int bf_real_layout_zero(void)
+/* Plan 05-06 (D-15, D-17; flipped from run.buffers.real-layout-zero of Phase 4, which asserted that
+ * every capacity suffices and no byte is written): the real layout through the public call has video
+ * NONE and a real audio layout (15,060 bytes per frame, the literal of run.info.audio-fields). Video
+ * of any capacity is accepted and gets nothing; NULL with capacity 0 for audio is "not requested" (no
+ * byte, state as with a buffer); a nonzero audio capacity below the requirement is BUFFER_TOO_SMALL
+ * with nothing changed. */
+static int bf_real_layout_audio(void)
 {
-  static const uint64_t caps[4] = {0u, 1u, 7u, BF_ARENA - BF_AUDIO_OFF};
+  static const uint64_t caps[3] = {1u, 7u, BF_ARENA - BF_AUDIO_OFF};
   ivs_ms_inst x;
   ivs_run_request q;
   ivs_run_report r;
@@ -531,11 +535,11 @@ static int bf_real_layout_zero(void)
   IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, BF_POISON));
   a = bf_arena();
   BF_CHECK(a != NULL);
-  for (i = 0u; i < 4u; i++) {
+  /* Not requested: NULL with 0, with and without a video buffer (video layout NONE needs nothing). */
+  for (i = 0u; i < 3u; i++) {
     uint64_t now = bf_now(x.m);
     ivs_status st;
-    bf_req(&q, 0u, now + 20000u, caps[i] != 0u ? a + BF_VIDEO_OFF : NULL, i == 3u ? 64u : caps[i],
-           caps[i] != 0u ? a + BF_AUDIO_OFF : NULL, caps[i]);
+    bf_req(&q, 0u, now + 20000u, i == 1u ? a + BF_VIDEO_OFF : NULL, i == 1u ? 64u : 0u, NULL, 0u);
     memset(&r, BF_POISON, sizeof r);
     r.struct_size = (uint32_t)sizeof r;
     st = ivs_machine_run(x.m, &q, &r);
@@ -543,11 +547,15 @@ static int bf_real_layout_zero(void)
     BF_CHECK(r.video_frames_completed == 0u && r.video_bytes_written == 0u && r.audio_bytes_written == 0u);
     BF_CHECK(bf_arena_kept(a));
   }
-  /* A non-NULL buffer with capacity 0 is accepted (it names no byte). */
-  bf_req(&q, 0u, bf_now(x.m) + 1000u, a + BF_VIDEO_OFF, 0u, a + BF_VIDEO_OFF, 0u);
-  memset(&r, BF_POISON, sizeof r);
-  r.struct_size = (uint32_t)sizeof r;
-  BF_CHECK(ivs_machine_run(x.m, &q, &r) == IVS_OK && r.video_bytes_written == 0u && bf_arena_kept(a));
+  /* Too small: nonzero capacities below the 15,060-byte requirement (the arena is smaller still). */
+  for (i = 0u; i < 3u; i++) {
+    uint64_t now = bf_now(x.m);
+    bf_req(&q, 0u, now + 20000u, NULL, 0u, a + BF_AUDIO_OFF, caps[i]);
+    BF_CHECK(bf_refused(&x, x.m, &q, NULL, a, IVS_E_BUFFER_TOO_SMALL, IVS_REASON_RUN_BUFFER_SMALL));
+  }
+  /* A non-NULL buffer with capacity 0 against a layout that needs bytes is also too small. */
+  bf_req(&q, 0u, bf_now(x.m) + 1000u, NULL, 0u, a + BF_AUDIO_OFF, 0u);
+  BF_CHECK(bf_refused(&x, x.m, &q, NULL, a, IVS_E_BUFFER_TOO_SMALL, IVS_REASON_RUN_BUFFER_SMALL));
   rc = IVS_TEST_PASS;
 done:
   free(a);
@@ -555,9 +563,77 @@ done:
   return rc;
 }
 
+/* The audio stream through the public call (plan 05-06): a buffer of exactly the required capacity
+ * (15,060 bytes for a run of one nominal frame or less) delivers 4 bytes per chip step, the report
+ * counts them and starts at sample 0; one byte less is BUFFER_TOO_SMALL with the instance and the
+ * buffer untouched; the next call's audio_first_index is the number of samples already emitted. Program
+ * A never touches the PSG, so every delivered byte is 0 (silence) and every byte past the delivered
+ * count is still sentinel. */
+static int bf_audio_real(void)
+{
+  enum { NEED = 15060, TAIL = 64 };
+  ivs_ms_inst x;
+  ivs_run_request q;
+  ivs_run_report r;
+  ivs_run_snap s;
+  uint8_t *buf = NULL;
+  uint64_t first;
+  uint64_t n;
+  uint64_t i;
+  int rc = IVS_TEST_FAIL;
+  s.copy = NULL;
+  IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, BF_POISON));
+  buf = malloc((size_t)NEED + TAIL);
+  BF_CHECK(buf != NULL);
+  memset(buf, BF_POISON, (size_t)NEED + TAIL);
+  /* One byte short: refused, nothing written, nothing changed. */
+  bf_req(&q, 0u, 20000u, NULL, 0u, buf, (uint64_t)NEED - 1u);
+  memset(&r, BF_POISON, sizeof r);
+  r.struct_size = (uint32_t)sizeof r;
+  BF_CHECK(ivs_run_snap_take(&s, &x, 1));
+  BF_CHECK(ivs_machine_run(x.m, &q, &r) == IVS_E_BUFFER_TOO_SMALL);
+  BF_CHECK(r.refusal_reason == IVS_REASON_RUN_BUFFER_SMALL);
+  BF_CHECK(ivs_run_snap_same(&s, &x));
+  for (i = 0u; i < (uint64_t)NEED + TAIL; i++) {
+    BF_CHECK(buf[i] == BF_POISON);
+  }
+  /* Exactly the requirement: delivered. */
+  bf_req(&q, 0u, 20000u, NULL, 0u, buf, (uint64_t)NEED);
+  memset(&r, BF_POISON, sizeof r);
+  r.struct_size = (uint32_t)sizeof r;
+  BF_CHECK(ivs_machine_run(x.m, &q, &r) == IVS_OK && r.stop_reason == IVS_STOP_TARGET);
+  BF_CHECK(r.audio_first_index == 0u);
+  n = r.now_ticks / 16u; /* one sample per 16 ticks, absolute grid: samples emitted so far */
+  BF_CHECK(r.audio_bytes_written == 4u * n && r.audio_bytes_written <= (uint64_t)NEED);
+  for (i = 0u; i < r.audio_bytes_written; i++) {
+    BF_CHECK(buf[i] == 0u);
+  }
+  for (i = r.audio_bytes_written; i < (uint64_t)NEED + TAIL; i++) {
+    BF_CHECK(buf[i] == BF_POISON);
+  }
+  /* The next call continues the stream: its first index is the samples emitted so far. */
+  first = n;
+  memset(buf, BF_POISON, (size_t)NEED + TAIL);
+  bf_req(&q, 0u, r.now_ticks + 5000u, NULL, 0u, buf, (uint64_t)NEED);
+  memset(&r, BF_POISON, sizeof r);
+  r.struct_size = (uint32_t)sizeof r;
+  BF_CHECK(ivs_machine_run(x.m, &q, &r) == IVS_OK);
+  BF_CHECK(r.audio_first_index == first);
+  BF_CHECK(r.audio_bytes_written == 4u * (r.now_ticks / 16u - first));
+  rc = IVS_TEST_PASS;
+done:
+  ivs_run_snap_free(&s);
+  free(buf);
+  ivs_ms_free(&x);
+  return rc;
+}
+
 /* The public call and the env seam with an equal env (built here from the public ivs_info layout
- * fields, not from the core's helper) give byte-equal reports and storage, call by call, over a
- * sequence of targets including one at or below now and the stop-on-halt flag. */
+ * fields, not from the core's helper) give byte-equal reports, storage and delivered audio bytes, call
+ * by call, over a sequence of targets including one at or below now and the stop-on-halt flag. Plan
+ * 05-06: the layout is real, so each call gets an audio buffer of the most any target below needs
+ * (the 120,001-tick step is three frames: 3 x 15,060 bytes). */
+#define BF_EP_AUDIO 45180u
 static int bf_entry_points_equal(void)
 {
   static const uint64_t steps[5] = {1u, 1000u, 0u, 59736u, 120001u};
@@ -569,14 +645,16 @@ static int bf_entry_points_equal(void)
   ivs_run_report rx;
   ivs_run_report ry;
   uint8_t *a = NULL;
+  uint8_t *b = NULL;
   uint32_t i;
   int rc = IVS_TEST_FAIL;
   y.storage = NULL;
   y.m = NULL;
   IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, BF_POISON));
   BF_CHECK(ivs_ms_powered(&y, IVS_MS_CONTENT_A, BF_POISON));
-  a = bf_arena();
-  BF_CHECK(a != NULL);
+  a = malloc(BF_EP_AUDIO);
+  b = malloc(BF_EP_AUDIO);
+  BF_CHECK(a != NULL && b != NULL);
   memset(&info, 0, sizeof info);
   info.struct_size = (uint32_t)sizeof info;
   BF_CHECK(ivs_machine_info(x.m, &info) == IVS_OK);
@@ -590,20 +668,24 @@ static int bf_entry_points_equal(void)
     uint64_t now = bf_now(x.m);
     ivs_status sx;
     ivs_status sy;
-    bf_req(&q, i == 4u ? IVS_RUN_F_STOP_ON_HALT : 0u, now + steps[i], a + BF_VIDEO_OFF, 32u, a + BF_AUDIO_OFF, 32u);
+    memset(a, BF_POISON, BF_EP_AUDIO);
+    memset(b, BF_POISON, BF_EP_AUDIO);
+    bf_req(&q, i == 4u ? IVS_RUN_F_STOP_ON_HALT : 0u, now + steps[i], NULL, 0u, a, BF_EP_AUDIO);
     memset(&rx, BF_POISON, sizeof rx);
     rx.struct_size = (uint32_t)sizeof rx;
     memset(&ry, BF_POISON, sizeof ry);
     ry.struct_size = (uint32_t)sizeof ry;
     sx = ivs_machine_run(x.m, &q, &rx);
+    q.audio = b;
     sy = ivs_machine_run_env_internal(y.m, &q, &ry, &e);
     BF_CHECK(sx == IVS_OK && sy == IVS_OK);
     BF_CHECK(memcmp(&rx, &ry, sizeof rx) == 0);
     BF_CHECK(memcmp(x.storage, y.storage, IVS_MACHINE_BYTES) == 0);
+    BF_CHECK(memcmp(a, b, BF_EP_AUDIO) == 0);
   }
-  BF_CHECK(bf_arena_kept(a));
   rc = IVS_TEST_PASS;
 done:
+  free(b);
   free(a);
   ivs_ms_free(&y);
   ivs_ms_free(&x);
@@ -1084,7 +1166,8 @@ const ivs_test_case ivs_run_buffers_cases[] = {
     {"run.buffers.inside-instance", bf_inside_instance, NULL},
     {"run.buffers.video-audio-overlap", bf_video_audio_overlap, NULL},
     {"run.buffers.report-overlap", bf_report_overlap, NULL},
-    {"run.buffers.real-layout-zero", bf_real_layout_zero, NULL},
+    {"run.buffers.real-layout-audio", bf_real_layout_audio, NULL},
+    {"run.buffers.audio-real", bf_audio_real, NULL},
     {"run.buffers.entry-points-equal", bf_entry_points_equal, NULL},
     {"run.prec.handle-over-buffer", bf_prec_handle_over_buffer, NULL},
     {"run.prec.unsupported-over-buffer", bf_prec_unsupported_over_buffer, NULL},

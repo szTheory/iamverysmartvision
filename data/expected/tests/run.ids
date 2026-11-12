@@ -74,12 +74,13 @@ run.stop-name.unknown
 # 59736 ticks, docs/time-base.md) and output layout (NONE, sizes 0) that ivs_machine_info appends,
 # a v1-sized (Phase 3) caller with a poisoned tail untouched, and a caller below v1 refused.
 run.info.timebase
-run.info.layout-none
+run.info.layout-real
 run.info.v1-size-caller
 # Plan 05-02 (D-19): ivs_info v3 appends the Phase 5 tail at offset 256; a 256-byte (v2) caller gets
 # exactly 256 bytes, a v3-sized caller the tail (0 until plans 05-06 and 05-08 fill it).
 run.info.v2-size-caller
-run.info.v3-fields-zero
+run.info.v3-fields
+run.info.audio-fields
 run.info.short-refused
 run.info.oversize-refused
 # Family slice (plan 04-09, D-07): programs halt (loop, HLT, TSTR follower, idle units) and fault
@@ -117,7 +118,8 @@ run.buffers.null-with-capacity
 run.buffers.inside-instance
 run.buffers.video-audio-overlap
 run.buffers.report-overlap
-run.buffers.real-layout-zero
+run.buffers.real-layout-audio
+run.buffers.audio-real
 run.buffers.entry-points-equal
 run.prec.handle-over-buffer
 run.prec.unsupported-over-buffer

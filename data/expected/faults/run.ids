@@ -28,7 +28,7 @@ RUN_TARGET_UNCHECKED run.refuse.target-above-2-63 run.refuse.target-above-2-63|r
 # From plan 04-16 the slicing replay of the real diagnostic (run.diag.slice) sees this fault, the
 # budget carry and the static input carry too (the input cases run before it, so the carried words
 # differ between its replay and its reference).
-RUN_STOP_BEFORE_OVERSHOOT run.target.ends-at-first-boundary-ge-target run.target.|run.overshoot.|run.single-step.|run.stop.halt-no-flag|run.refuse.report-inside-instance|run.refuse.tail-nonzero|run.slice.|run.buffers.|run.input.|run.fuzz.|run.stub.|run.diag. run.stop-name.known
+RUN_STOP_BEFORE_OVERSHOOT run.target.ends-at-first-boundary-ge-target run.target.|run.overshoot.|run.single-step.|run.stop.halt-no-flag|run.refuse.report-inside-instance|run.refuse.tail-nonzero|run.slice.|run.buffers.|run.input.|run.fuzz.|run.stub.|run.diag.|run.struct.report-v2-fields run.stop-name.known
 # RUN_FAULT_STEPS: a FAULTED CPU is stepped (a zero-progress unit, counted) and the stop order
 # tests the target before the fault, so a fault on the target boundary reports TARGET and later
 # calls execute a unit. Collateral: every guest-fault stop case and the 2^63 boundary on a
@@ -54,7 +54,7 @@ INFO_TAIL_UNGUARDED run.info.v1-size-caller run.info.v1-size-caller|run.info.v2-
 # buffer is refused with a unit already executed (the storage and digests changed). From plan
 # 04-11 the precedence case capacity-over-event-order then sees the per-event refusal instead;
 # from plan 05-02 so does psglog-after-audio, whose last cases need the capacity stage.
-RUN_CAPACITY_AFTER_STEP run.buffers.too-small-video run.buffers.|run.prec.capacity-over-event-order|run.prec.psglog-after-audio run.buffers.real-layout-zero
+RUN_CAPACITY_AFTER_STEP run.buffers.too-small-video run.buffers.|run.prec.capacity-over-event-order|run.prec.psglog-after-audio run.buffers.exact-fit-video
 # OUTBUF_PARTIAL_WRITE: a refused run writes one byte into the caller's video buffer (from plan
 # 04-11 also seen by the input refusal that checks its buffer arena, run.input.refuse.*).
 OUTBUF_PARTIAL_WRITE run.buffers.video-audio-overlap run.buffers.|run.prec.|run.input.refuse. run.buffers.exact-fit-video
