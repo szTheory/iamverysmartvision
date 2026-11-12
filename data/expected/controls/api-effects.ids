@@ -15,6 +15,8 @@ api-call-own-line
 api-stop-unpinned
 api-stop-renumbered
 api-reason-unpinned
+# Orphan pin (plan 04-24 gap fill, D-46): a pin line whose define no header has.
+api-stop-orphan
 # Input bit pins (plan 04-13, D-16).
 api-input-bit-duplicate
 api-input-bit-unpinned

@@ -5,3 +5,6 @@
 pack.words-boot-stub
 pack.words-diag-cpu-1
 pack.trailer-diag-cpu-1
+# pack.judge.patched-word (plan 04-24, D-46): self-control of the words comparison; passes only when
+# the comparison fails on ivs_pack's dump of the first listing with its first word patched.
+pack.judge.patched-word

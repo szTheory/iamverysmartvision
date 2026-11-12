@@ -7,14 +7,129 @@
 # vector, allowed reason prefixes, must-pass vector); a control by tools/check/run-controls.sh
 # (EXPECT token); a mutant is an in-step selftest case (pkg-selftests.ids, ci-summary-selftests.ids)
 # or a suite self-control `<suite>.judge.<slug>` / `<suite>.mutant.<slug>` that passes only when
-# its check fails for the intended reason.
+# its check fails for the intended reason. The audit behind this list is in
+# .planning/phases/04-headless-runner-and-installed-consumer/04-24-SUMMARY.md.
+
+# API-02: absolute run bound, overshoot reported, slicing invariance (suite run, runner slicing),
+# timebase growth of ivs_info, pinned stop reasons.
+run-bound fault RUN_TARGET_UNCHECKED API-02
 run-bound fault RUN_STOP_BEFORE_OVERSHOOT API-02
+run-bound fault RUN_FAULT_STEPS API-02
+run-slice fault RUN_BUDGET_CARRY API-02
+run-info fault INFO_TAIL_UNGUARDED API-02
+runner-time fault RUNNER_SLICE_DROPS_REMAINDER API-02
+api-define-pins control api-stop-unpinned API-02
+api-define-pins control api-stop-renumbered API-02
+api-define-pins control api-stop-orphan API-02
+
+# API-04: caller-owned output buffers refused before any state change; pinned refusal reasons.
 output-buffers fault RUN_CAPACITY_AFTER_STEP API-04
+output-buffers fault OUTBUF_PARTIAL_WRITE API-04
+api-define-pins control api-reason-unpinned API-04
+
+# RUN-01: scenario parse, input schedule, observation for assertions, executor and report,
+# runner confinement to the public API, the real executable judged by exit code and report.
+run-observe fault PEEK_ADVANCES_TIME RUN-01
+run-observe fault PEEK_GATE_IGNORED RUN-01
+input-timing fault INPUT_APPLY_AT_RUN_START RUN-01
+input-timing fault RUN_EVENT_AT_TARGET_ONLY RUN-01
+input-refusal fault INPUT_NO_FLOOR_CHECK RUN-01
+input-refusal fault RUN_EVENTS_UNCHECKED RUN-01
+api-define-pins control api-input-bit-unpinned RUN-01
+api-define-pins control api-input-bit-duplicate RUN-01
+runner-parse fault RUNNER_DOTDOT_ACCEPTED RUN-01
+runner-parse fault RUNNER_LINE_CAP_UNCHECKED RUN-01
 runner-exec fault RUNNER_ASSERT_ALWAYS_PASS RUN-01
+runner-exec fault RUNNER_STOP_EXPECT_IGNORED RUN-01
+runner-exec fault RUNNER_KEY_ORDER_SWAPPED RUN-01
+runner-exec fault RUNNER_OVERSHOOT_NOT_REPORTED RUN-01
+runner-scan control runner-scan-header RUN-01
+runner-scan control runner-scan-internal-include RUN-01
+runner-scan control runner-scan-posix-define RUN-01
+runner-process mutant runner-process.judge.no-report-end RUN-01
+
+# RUN-02: five outcomes kept apart (pure classifier, executor, real executable).
 runner-outcomes fault OUTCOME_GUEST_AS_HARNESS RUN-02
+runner-outcomes fault OUTCOME_TIMEOUT_AS_GUEST RUN-02
+runner-outcomes fault OUTCOME_MISSING_FIXTURE_EXIT0 RUN-02
+runner-outcomes fault OUTCOME_CANCEL_AS_TIMEOUT RUN-02
+runner-time fault RUNNER_CANCEL_IGNORED RUN-02
+runner-time fault RUNNER_WALL_AS_GUEST_FAIL RUN-02
+runner-process mutant runner-process.judge.exit-mismatch RUN-02
+runner-process mutant runner-process.judge.outcome-exit-disagree RUN-02
+runner-process mutant runner-process.judge.outcome-uncovered RUN-02
+
+# RUN-04: the fault framework over runner sources, and this registry itself.
 faults-runner-site control faults-orphan-site-runner RUN-04
+faults-runner-site control faults-missing-site-runner RUN-04
+
+# RUN-05: per-domain digests, the input log, repeat-run equality, golden headers and bodies.
+digest-domains fault DIGEST_DOMAIN_SWAPPED RUN-05
+digest-domains fault OBS_NOT_CLEARED_ON_RESET RUN-05
+input-log fault INPUT_LOG_SLICE_RELATIVE_TICK RUN-05
+input-log fault INPUT_STATIC_CARRY RUN-05
+runner-process mutant runner-process.judge.body-differs RUN-05
 golden control golden-header-missing-tier RUN-05
+golden control golden-header-missing-oracle RUN-05
+golden control golden-self-recorded-wrong-tier RUN-05
+golden control golden-empty-domain-observed RUN-05
+golden control golden-mismatch RUN-05
+golden control golden-dev-release-diff RUN-05
+golden control golden-host-dependent-unmarked RUN-05
+golden control golden-host-dependent-golden RUN-05
+golden control golden-user-scenario-tracked RUN-05
+
+# RUN-06: hand-assembled listings and boot-stub guards, image bytes equal to the listing, the
+# predicate file, and program mutations that must fail the predicate.
 listing control listing-bits-mismatch RUN-06
+listing control listing-row-mismatch RUN-06
+listing control listing-operand-count RUN-06
+listing control listing-range RUN-06
+listing control listing-header RUN-06
+listing control listing-unlisted RUN-06
+listing control bootstub-size RUN-06
+listing control bootstub-row RUN-06
+listing control bootstub-vector RUN-06
+pack mutant pack.judge.patched-word RUN-06
+golden control golden-expect-drift RUN-06
+runner-process mutant runner-process.mutant.ADDI-SUBI RUN-06
+runner-process mutant runner-process.mutant.BNZE-BZE RUN-06
+runner-process mutant runner-process.mutant.PSHR-MVOAT RUN-06
+runner-process mutant runner-process.mutant.INCR-DECR RUN-06
+
+# PKG-01: the installed, relocated package and the independent consumer.
+pkg-install mutant core-src-include PKG-01
+pkg-install mutant missing-symbol PKG-01
+pkg-install mutant ghost-decl PKG-01
+pkg-install mutant unprefixed PKG-01
+pkg-install mutant extra-file PKG-01
+pkg-install mutant baked-path PKG-01
+pkg-install mutant version-refused PKG-01
+pkg-install mutant old-prefix PKG-01
+pkg-install mutant leak-detector PKG-01
 pkg-install mutant golden-drift PKG-01
+
+# PKG-03: CI bans (no cache, upload, secrets, matrix, other runner, other timeout) and the job
+# summary that shows skips and failures.
 ci-parity control ci-parity-action-cache PKG-03
+ci-parity control ci-parity-action-upload PKG-03
+ci-parity control ci-parity-secrets PKG-03
+ci-parity control ci-parity-matrix PKG-03
+ci-parity control ci-parity-runs-on PKG-03
+ci-parity control ci-parity-timeout PKG-03
+ci-summary mutant render-headline PKG-03
+ci-summary mutant skips-none PKG-03
+ci-summary mutant skips-listed PKG-03
+ci-summary mutant fail-cap-40 PKG-03
+ci-summary mutant backticks-stripped PKG-03
+ci-summary mutant unwritable-keeps-exit PKG-03
+ci-summary mutant unset-writes-nothing PKG-03
+
+# PKG-04: the hosted run record and the gate's own CPU measurement line.
+ci-log control ci-log-header PKG-04
 ci-log control ci-log-fields PKG-04
+ci-log control ci-log-duplicate PKG-04
+ci-log control ci-log-order PKG-04
+gate-measure mutant cpu-dash-format PKG-04
+gate-measure mutant cpu-sh-format PKG-04
+gate-measure mutant cpu-garbage-unknown PKG-04

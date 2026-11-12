@@ -30,7 +30,9 @@
 # Judge self-controls (runner-process.judge.<slug>): the same checks run against four fake
 # runners (shell scripts in the temp dir replaying this run's reports with one defect: exit 0 for
 # a guest-fail, no report.end, outcome pass with exit.code 10, a changed digest line); each passes
-# only when the check fails for its intended finding.
+# only when the check fails for its intended finding. runner-process.judge.outcome-uncovered (plan
+# 04-24, D-46) runs the outcomes-covered check with the first outcome's scenarios removed and
+# passes only when it fails with outcome-uncovered.
 # runner-process.outcomes-consistent: `ivs-run --help`, the outcome table of docs/runner.md and
 # data/expected/runner-outcomes.ids list the same pairs; runner-process.outcomes-covered: every
 # pair has a running scenario and every scenario line names a pair.
@@ -404,17 +406,34 @@ result runner-process.outcomes-consistent
 
 # Every outcome has a demonstrating scenario that runs (skip run), and every scenario line names a
 # pair of runner-outcomes.ids.
+# check_covered <pairs> <scenario pairs>: every `<outcome> <exit>` line of <pairs> has a line
+# `<outcome> <exit> run` in <scenario pairs> (outcome-uncovered), every scenario line names a pair
+# (outcome-unknown) and <pairs> is not empty (outcomes). Appends findings to $tmp/why; returns 0
+# when it adds none.
+check_covered() {
+  found=0
+  while read -r o e; do
+    grep -q -x -F -e "$o $e run" "$2" || why outcome-uncovered "no running scenario for $o $e"
+  done < "$1"
+  while read -r o e s; do
+    grep -q -x -F -e "$o $e" "$1" || why outcome-unknown "scenario pair $o $e is not in runner-outcomes.ids"
+  done < "$2"
+  [ -s "$1" ] || why outcomes "data/expected/runner-outcomes.ids lists no pair"
+  [ "$found" -eq 0 ]
+}
 : > "$tmp/why"
 ok=1
 awk '!/^#/ && NF { print $3, $2, $5 }' "$inv" > "$tmp/scen.pairs"
-while read -r o e; do
-  grep -q -x -F -e "$o $e run" "$tmp/scen.pairs" || { ok=0; why outcomes "no running scenario for $o $e"; }
-done < "$tmp/pairs"
-while read -r o e s; do
-  grep -q -x -F -e "$o $e" "$tmp/pairs" || { ok=0; why outcomes "scenario pair $o $e is not in runner-outcomes.ids"; }
-done < "$tmp/scen.pairs"
-[ -s "$tmp/pairs" ] || { ok=0; why outcomes "data/expected/runner-outcomes.ids lists no pair"; }
+check_covered "$tmp/pairs" "$tmp/scen.pairs" || ok=0
 result runner-process.outcomes-covered
+
+# Judge self-control of outcomes-covered (plan 04-24, D-46): the scenario pairs without every
+# scenario of the first outcome (a demonstrating scenario removed) must fail with
+# outcome-uncovered.
+o1=
+read -r o1 e1 < "$tmp/pairs" || :
+grep -v -x -F -e "$o1 ${e1:-} run" "$tmp/scen.pairs" > "$tmp/scen.dropped" || :
+self_control outcome-uncovered outcome-uncovered check_covered "$tmp/pairs" "$tmp/scen.dropped"
 
 {
   printf '# suite=%s nonce=%s\n' "$suite" "$nonce"

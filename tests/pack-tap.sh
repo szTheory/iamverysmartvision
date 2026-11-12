@@ -11,6 +11,8 @@
 # with `ivs_pack --ivsc` and requires its last 32 bytes to equal `cmake -E sha256sum` of every byte
 # before them (cut with POSIX dd, printed with od): the trailer is checked by an implementation
 # other than the core SHA-256 that ivs_pack seals it with.
+# A last case pack.judge.patched-word (plan 04-24, D-46) is a self-control of the words comparison:
+# it passes only when the comparison fails on a dump with one word patched by ivs_pack --patch.
 # Output: the harness TAP shape (header with IVS_TEST_NONCE or none, plan, one result per case,
 # trailer) on stdout and, when IVS_TEST_OUT_DIR is set, in <dir>/pack.txt.
 # Usage: sh pack-tap.sh <source root> <ivs_pack>   Exit: 0 pass, 1 fail, 77 every case skipped.
@@ -46,6 +48,22 @@ report() {
     failed=$((failed + 1))
   fi
 }
+# The comparison of pack.words-<id>: 0 when dump $1 (ivs_pack) is non-empty and equals dump $2
+# (listing.cmake) byte for byte; otherwise 1 with the finding in $tmp/why. pack.judge.patched-word
+# runs the same function against a dump with one word patched.
+dumps_agree() {
+  if [ ! -s "$1" ]; then
+    printf 'empty word dump\n' > "$tmp/why"
+    return 1
+  fi
+  if ! cmp -s "$1" "$2"; then
+    { printf 'word dumps differ (< ivs_pack, > listing.cmake)\n'; diff "$1" "$2"; } > "$tmp/why"
+    return 1
+  fi
+  return 0
+}
+first_id=
+first_path=
 while read -r id kind path rest; do
   case $id in '' | '#'*) continue ;; esac
   n=$((n + 1))
@@ -58,14 +76,15 @@ while read -r id kind path rest; do
   elif ! "$cmake" -DROOT="$root" -DDUMP="$id" -P "$root/tools/check/listing.cmake" > "$tmp/cmake.out" 2> "$tmp/cmake.err"; then
     ok=0
     { printf 'listing.cmake failed\n'; cat "$tmp/cmake.out" "$tmp/cmake.err"; } > "$tmp/why"
-  elif [ ! -s "$tmp/pack.out" ]; then
+  elif ! dumps_agree "$tmp/pack.out" "$tmp/cmake.out"; then
     ok=0
-    printf 'empty word dump\n' > "$tmp/why"
-  elif ! cmp -s "$tmp/pack.out" "$tmp/cmake.out"; then
-    ok=0
-    { printf 'word dumps differ (< ivs_pack, > listing.cmake)\n'; diff "$tmp/pack.out" "$tmp/cmake.out"; } > "$tmp/why"
   fi
   report
+  if [ -z "$first_id" ] && [ "$ok" -eq 1 ]; then
+    first_id=$id
+    first_path=$path
+    cp "$tmp/cmake.out" "$tmp/first.cmake"
+  fi
   [ "$kind" = cart ] || continue
   n=$((n + 1))
   tid="pack.trailer-$id"
@@ -93,6 +112,39 @@ while read -r id kind path rest; do
   fi
   report
 done < "$inv"
+
+# Judge self-control (plan 04-24, D-46): pack.judge.patched-word runs the comparison of
+# pack.words-<id> on ivs_pack's dump of the first listing whose case passed, with the first word
+# patched to another value (--patch ADDR=HEX). It passes only when the comparison fails and its
+# diff shows the patched line and nothing else.
+n=$((n + 1))
+tid=pack.judge.patched-word
+executed=$((executed + 1))
+ok=1
+addr=
+word=
+if [ -n "$first_id" ]; then read -r addr word rest < "$tmp/first.cmake" || :; fi
+if [ "$word" = 0000 ]; then new=0001; else new=0000; fi
+if [ -z "$first_id" ]; then
+  ok=0
+  printf 'no pack.words case passed, so there is nothing to judge\n' > "$tmp/why"
+elif [ -z "$addr" ] || [ -z "$word" ]; then
+  ok=0
+  printf 'no first word in the dump of %s\n' "$first_id" > "$tmp/why"
+elif ! "$pack" --dump-words "$root/$first_path" --patch "$addr=$new" > "$tmp/patched.out" 2> "$tmp/pack.err"; then
+  ok=0
+  { printf 'ivs_pack --patch %s=%s failed\n' "$addr" "$new"; cat "$tmp/pack.err"; } > "$tmp/why"
+elif dumps_agree "$tmp/patched.out" "$tmp/first.cmake"; then
+  ok=0
+  printf 'judge-vacuous: the comparison accepted the dump of %s with %s patched to %s\n' \
+    "$first_id" "$addr" "$new" > "$tmp/why"
+elif [ "$(grep -c '^[<>] ' "$tmp/why")" -ne 2 ] || ! grep -q -x -F -e "< $addr $new" "$tmp/why" \
+    || ! grep -q -x -F -e "> $addr $word" "$tmp/why"; then
+  ok=0
+  { printf 'judge-wrong-reason: the comparison failed, but not on %s alone:\n' "$addr"; cat "$tmp/why"; } > "$tmp/why.2"
+  mv "$tmp/why.2" "$tmp/why"
+fi
+report
 
 {
   printf '# suite=%s nonce=%s\n' "$suite" "$nonce"

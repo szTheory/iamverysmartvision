@@ -1,0 +1,5 @@
+# Toy stop reason pin of the known-good control tree (plan 04-08), plus a pin whose define no
+# header has (plan 04-24 gap fill: a removed public define must not pass silently).
+IVS_STOP_TARGET 1
+IVS_STOP_CPU_HALTED 2
+IVS_STOP_GHOST 7
