@@ -12,6 +12,7 @@
 #include "ivs_test.h"
 #include "machine/machine.h"
 #include "machine_cases.h"
+#include "stic/stic_params.h"
 
 /* Fails the case with a diagnostic naming the line and the failed expression. */
 #define IVS_CHECK(cond)                                                                                \
@@ -384,8 +385,8 @@ static int mc_refuse_unknown_over_short(void)
  * generated includes in three translation units; a profile must have a row in each. The three counts are
  * equal, every registered profile has PSG parameters (and none exists past the end), and a machine of
  * every registered profile can be created, so no profile index reads a table past its end and no machine
- * runs with its PSG silently absent. The named faults PSG_TABLE_SHORT and CTRL_TABLE_SHORT shorten one
- * table by a profile. */
+ * runs with its PSG or STIC silently absent. The named faults PSG_TABLE_SHORT, CTRL_TABLE_SHORT and
+ * STIC_TABLE_SHORT shorten one table by a profile. */
 static int mc_tables_cover_registry(void)
 {
   uint32_t n = ivs_profile_count();
@@ -393,7 +394,9 @@ static int mc_tables_cover_registry(void)
   IVS_CHECK(n > 0u);
   IVS_CHECK(ivs_psg_params_count() == n);
   IVS_CHECK(ivs_input_profile_count() == n);
+  IVS_CHECK(ivs_stic_params_count() == n);
   IVS_CHECK(ivs_psg_params_get(n) == NULL);
+  IVS_CHECK(ivs_stic_params_get(n) == NULL);
   for (i = 0u; i < n; i++) {
     const ivs_profile_desc *d = ivs_profile_get(i);
     ivs_create_options o;
@@ -402,6 +405,7 @@ static int mc_tables_cover_registry(void)
     int ok;
     IVS_CHECK(d != NULL);
     IVS_CHECK(ivs_psg_params_get(i) != NULL);
+    IVS_CHECK(ivs_stic_params_get(i) != NULL);
     o = mc_opts(d->id);
     st = mc_exact(0xA5u);
     IVS_CHECK(st != NULL);

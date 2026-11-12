@@ -58,6 +58,11 @@ extern const size_t ivs_machine_iso_count;
 extern const ivs_test_case ivs_machine_sweep_cases[];
 extern const size_t ivs_machine_sweep_count;
 
+/* Family stic.params (plan 06-04, D-02, A-11): relation tests of the generated STIC parameter table over every
+ * registry profile (machine_stic_params.c). */
+extern const ivs_test_case ivs_machine_stic_params_cases[];
+extern const size_t ivs_machine_stic_params_count;
+
 /* ---- shared stand-in content (plan 03-12, machine_standin.c) ----
  * Instances in exact-size heap storage and generated images (D-24): IVS_MS_PROG_A, _B, _C and _PORTS
  * are hand-assembled EXEC programs at $1000 (see machine_standin.c for their decles and the

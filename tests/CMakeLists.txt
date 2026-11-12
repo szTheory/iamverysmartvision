@@ -127,7 +127,7 @@ set_tests_properties(ivsc PROPERTIES SKIP_RETURN_CODE 77)
 # table, so it compiles ivs_cart_table.inc too.
 add_executable(ivs_tests_machine machine/machine_main.c machine/machine_sha256.c machine/machine_create.c
   machine/machine_digest.c machine/machine_load.c machine/machine_refuse.c machine/machine_standin.c
-  machine/machine_reset.c machine/machine_iso.c machine/machine_sweep.c "${IVS_SHA_INC}" "${IVS_CART_INC}")
+  machine/machine_reset.c machine/machine_iso.c machine/machine_sweep.c machine/machine_stic_params.c "${IVS_SHA_INC}" "${IVS_CART_INC}")
 target_include_directories(ivs_tests_machine PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(ivs_tests_machine PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
 add_test(NAME machine COMMAND ivs_tests_machine)
@@ -357,7 +357,7 @@ ivs_fault_gen(GEN_EXPECT_MUTATION SUITE cpu-vectors OUTPUT ivs_vectors.inc
 ivs_fault_suite(machine
   SOURCES machine/machine_main.c machine/machine_sha256.c machine/machine_create.c machine/machine_digest.c
           machine/machine_load.c machine/machine_refuse.c machine/machine_standin.c machine/machine_reset.c
-          machine/machine_iso.c machine/machine_sweep.c
+          machine/machine_iso.c machine/machine_sweep.c machine/machine_stic_params.c
   INCLUDE_DIRS "${CMAKE_CURRENT_BINARY_DIR}"
   GENERATED "${IVS_SHA_INC}" "${IVS_CART_INC}")
 

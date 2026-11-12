@@ -24,6 +24,7 @@
 
 #include "ivs/ivs.h"
 #include "machine/machine.h"
+#include "stic/stic_params.h"
 
 _Static_assert(IVS_PROFILE_ID_MAX_BYTES == IVS_MEMSYS_PROFILE_ID_CAP, "profile id bound");
 _Static_assert(IVS_SLOT_COUNT == 3u, "three image slots");
@@ -51,17 +52,17 @@ _Static_assert(offsetof(ivs_info, video_row_lines) == 316u, "video_row_lines at 
 _Static_assert(sizeof(ivs_info) == 320u, "ivs_info is 320 bytes (v4)");
 
 /* 1 when registry index index is usable by the machine (review WR-04). The registry, the PSG parameter
- * table and the control-line table are three generated includes, each in its own translation unit, that
- * rely on one sorted list of profile files; nothing at compile time ties their counts. An index is
- * therefore usable only below the smallest of the three counts: the lookup refuses a profile outside
- * them (UNKNOWN_PROFILE) and the handle check refuses a stored index outside them, so no table is read
- * past its end and the PSG code never meets a missing row, which would silence the device. Test
- * machine.create.tables-cover-registry fails the gate when the three counts differ (named faults
- * PSG_TABLE_SHORT and CTRL_TABLE_SHORT). */
+ * table, the control-line table and the STIC parameter table (plan 06-04) are four generated includes, each
+ * in its own translation unit, that rely on one sorted list of profile files; nothing at compile time ties
+ * their counts. An index is therefore usable only below the smallest of the four counts: the lookup refuses
+ * a profile outside them (UNKNOWN_PROFILE) and the handle check refuses a stored index outside them, so no
+ * table is read past its end and neither the PSG nor the STIC code ever meets a missing row, which would
+ * silence the device. Test machine.create.tables-cover-registry fails the gate when the counts differ (named
+ * faults PSG_TABLE_SHORT, CTRL_TABLE_SHORT and STIC_TABLE_SHORT). */
 static uint32_t ivs_machine_profile_covered(uint32_t index)
 {
   return (uint32_t)(index < ivs_profile_count() && index < ivs_psg_params_count() &&
-                    index < ivs_input_profile_count());
+                    index < ivs_input_profile_count() && index < ivs_stic_params_count());
 }
 
 /* 1 when m is a live instance: the magic, and a stored profile index that is covered by every

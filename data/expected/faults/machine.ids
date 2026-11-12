@@ -115,9 +115,11 @@ DIGEST_PSG_ROWS_OMITTED machine.digest.coverage machine.digest. machine.create.o
 DIGEST_COMPOSITE_VERSION_STALE machine.digest.composite-v2-framing machine.digest. machine.create.ok-info-destroy
 PSG_STATE_NOT_RESET_ON_POWER_ON machine.reset.psg-state-cleared machine.reset.psg-state-cleared|machine.reset.equivalence|machine.digest.stepped-literals machine.create.ok-info-destroy
 # Review WR-04, one site each (core/src/psg/psg_regs.c, core/src/machine/machine_input.c): the generated PSG
-# parameter table (PSG_TABLE_SHORT) or the generated control-line table (CTRL_TABLE_SHORT) covers one
+# parameter table (PSG_TABLE_SHORT), the generated control-line table (CTRL_TABLE_SHORT) or, plan 06-04, the
+# generated STIC parameter table (STIC_TABLE_SHORT, core/src/stic/stic_params.c) covers one
 # profile less than the registry. The machine then refuses the profile (UNKNOWN_PROFILE at create), so
 # every case that creates an instance fails with it (machine.), and machine.create.tables-cover-registry
 # names the cause; machine.api.version needs no instance and must still pass.
 PSG_TABLE_SHORT machine.create.tables-cover-registry machine. machine.api.version
 CTRL_TABLE_SHORT machine.create.tables-cover-registry machine. machine.api.version
+STIC_TABLE_SHORT machine.create.tables-cover-registry machine. machine.api.version

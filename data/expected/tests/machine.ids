@@ -32,6 +32,9 @@
 # Review WR-02: an in struct's struct_size above IVS_STRUCT_SIZE_MAX (4096) is BAD_ARG before the
 # unknown-tail scan; exactly 4096 keeps D-04 (machine.refuse.create.size-*,
 # machine.create.size-at-max-ok, machine.refuse.load.exec.opts-{over-max,garbage-size,at-max-*}).
+# Plan 06-04 (family stic.params): relation tests of the generated STIC parameter table over every registry
+# profile: unit conversion, event table, window order, tiling within the frame, derived geometry, register file
+# shape and the power-on record. The same plan extends machine.create.tables-cover-registry with the fourth table.
 # Review WR-03: a damaged stored profile index (outside the registry, or the memory system's
 # differing) makes the handle invalid: every handle-taking call is BAD_HANDLE on a relocated copy
 # (machine.refuse.handle.*, family reset).
@@ -455,3 +458,10 @@ machine.sweep.P03-word-patterns
 machine.sweep.P04-adjacent
 machine.sweep.P06-partial
 machine.sweep.bases-complete
+machine.stic.params.unit-conversion
+machine.stic.params.event-table
+machine.stic.params.window-order
+machine.stic.params.tiling-within-frame
+machine.stic.params.geometry-derived
+machine.stic.params.regmap-shape
+machine.stic.params.power-on
