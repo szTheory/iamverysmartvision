@@ -84,6 +84,58 @@
       "depends_on": ["reset.r7", "cartridge.slots"],
       "standing": "provisional",
       "note": "Evidence: run.diag.predicate in the dev (ASan and UBSan) and release presets reads the expected values from the assert lines of data/golden/diag-cpu-1.expect, whose derivation (16-bit arithmetic, the status-bit rules of pdf 45, the GSWD layout of pdf 56, the stack direction C17 and the printed instruction and cycle tables) was committed before the program first ran on the emulator; run.diag.slice and run.diag.repeat show that the result does not depend on how the run is sliced or on the instance. Shared-misreading risk: the same author wrote the listing, the derivation and the core, so all three can share one misreading of the manual; agreement among them is not independent evidence about hardware. Excluded: R7 and the flags at the stop (HLT and interruptibility policies C40, C45, C56), machine time (regression information only), and the stack word [0340]. The cartridge entry $5000 and the stack start $0340 are project conventions (C68). reset.r7 is tier4-community and cartridge.slots is unknown-default-chosen, so the weakest-field rule keeps the claim provisional. This is a statement about the project boot stub and the project's own diagnostic only: not a statement about commercial content or any EXEC."
+    },
+    {
+      "id": "CL-0014",
+      "statement": "From a power-on reset of profile intv-2609-ntsc-family-p1 through the public API, the project boot stub (contract 1) and the project-authored diagnostic ivs-diag-ctrl-psg-1, driven by the seven controller events of data/scenarios/diag-ctrl-psg-pass.ivss, reach the hand-derived guest state and PSG write list of data/golden/diag-ctrl-psg-pass.expect: the CPU halted, the end marker at 020F, the polled port 0 table 0210-0217 and port 1 table 0220-0227, the eleven programmed PSG registers read back, and a write log of exactly the eleven writes in the derived order with the derived addresses and values.",
+      "profile": "intv-2609-ntsc-family-p1",
+      "tier": "original-diagnostic",
+      "artifact": "fixtures/FX-diag-ctrl-psg-1/diag-ctrl-psg-1.listing.txt",
+      "depends_on": [
+        "reset.r7",
+        "cartridge.slots",
+        "input.controllers",
+        "input.control.key_1",
+        "input.control.key_5",
+        "input.control.key_9",
+        "input.control.disc_n",
+        "input.control.disc_e",
+        "input.control.side_top",
+        "input.control.side_lower_left",
+        "input.line_idle",
+        "input.line_model",
+        "psg.regmap",
+        "psg.mixer.port_dir_bits",
+        "memmap.device.psg8"
+      ],
+      "standing": "provisional",
+      "note": "Evidence: the scenario diag-ctrl-psg-pass of suite runner-process in the dev (ASan and UBSan) and release presets, and the ten run.diag.ctrl-psg.* cases of suite run, read the expected values from the assert lines of data/golden/diag-ctrl-psg-pass.expect, whose derivation (docs/input/diag-ctrl-psg-1-derivation.md, plan 05-01, commit 14a1904) was committed before the program existed; the contrast scenario diag-ctrl-psg-nokey (no input: the guest stays in its poll loop), the one-tick-apart order variant, the slicing variants and five program mutants (data/expected/diag-mutations-ctrl-psg.ids, one of them a negative control) show that the diagnostic can fail for the intended reasons and that its result does not depend on slicing. Shared-misreading risk: the same author wrote the controller and register literals, the derivation, the listing and the core, so all of them can share one misreading of a source; agreement among them is not independent evidence about the original console. The controller bytes rest on two community pages that are likely one lineage (C16) and the register map on one community page (C70). Excluded on purpose: machine time (the halt tick and the 81-cycle poll loop are regression information; branch counts are policy C29), the upper byte of a port read (C64: the guest masks every read, but the register read-backs of the file assume the default upper byte 0), the read-back of the envelope shape register (C75), R7 and the flags at the stop, and every register of the CPU. The weakest-field rule keeps the claim provisional: reset.r7, input.line_idle, psg.regmap and the control rows are tier4-community, input.line_model is an inference, and cartridge.slots, psg.mixer.port_dir_bits and memmap.device.psg8 are unknown-default-chosen. This is a statement about the project boot stub and the project's own diagnostic only: not a statement about commercial content or any EXEC, and no audio quality or listening claim."
+    },
+    {
+      "id": "CL-0015",
+      "statement": "The installed package of profile intv-2609-ntsc-family-p1, consumed by the separate consumer through the installed headers and archive only, replays the seven controller events of data/scenarios/diag-ctrl-psg-pass.ivss and reproduces the runner's input, audio and write-log digests of data/golden/diag-ctrl-psg-pass.digests, with the same observed domains, the peeked port 0 byte 0x007E after the first event, and the same guest tables.",
+      "profile": "intv-2609-ntsc-family-p1",
+      "tier": "installed-host-behavior",
+      "artifact": "tests/installed-consumer/main.c",
+      "depends_on": [
+        "reset.r7",
+        "cartridge.slots",
+        "input.controllers",
+        "input.control.key_1",
+        "input.control.key_5",
+        "input.control.key_9",
+        "input.control.disc_n",
+        "input.control.disc_e",
+        "input.control.side_top",
+        "input.control.side_lower_left",
+        "input.line_idle",
+        "input.line_model",
+        "psg.regmap",
+        "psg.mixer.port_dir_bits",
+        "memmap.device.psg8"
+      ],
+      "standing": "provisional",
+      "note": "Evidence: the gate step pkg-install builds tests/installed-consumer against the moved install prefix with find_package(ivs) only, runs it on the build-tree images, requires its output to equal data/expected/pkg-consumer.golden and its ctrl.digest lines and observed-domain set to equal data/golden/diag-ctrl-psg-pass.digests (the cross-path agreement with the runner, one count rule); three in-step self-tests (ctrl-digest-drift, ctrl-domain-missing, ctrl-peek-wrong) show that a changed digest line, a missing domain and a wrong peeked value are rejected. The golden is self-recorded: the emulator produced these values, so the agreement shows that the installed package and the runner are the same machine, not that either is right. Excluded on purpose: machine time, the upper byte of a port read (C64), the shape register read-back (C75). The same weakest-field rule as CL-0014 keeps the claim provisional. This is a statement about the project boot stub, the project's own diagnostic and the packaging only: not a statement about commercial content or any EXEC."
     }
   ]
 }
