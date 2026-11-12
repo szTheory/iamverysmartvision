@@ -29,6 +29,32 @@ extern const ivs_test_case ivs_stic_events_cases[];
 extern const size_t ivs_stic_events_count;
 extern const ivs_test_case ivs_stic_access_cases[];
 extern const size_t ivs_stic_access_count;
+extern const ivs_test_case ivs_stic_reg_cases[];
+extern const size_t ivs_stic_reg_count;
+extern const ivs_test_case ivs_stic_hook_cases[];
+extern const size_t ivs_stic_hook_count;
+extern const ivs_test_case ivs_stic_profile_cases[];
+extern const size_t ivs_stic_profile_count;
+extern const ivs_test_case ivs_stic_judge_cases[];
+extern const size_t ivs_stic_judge_count;
+
+/* ---- the independent literals (stic_reg.c includes the generated ivs_stic_probe.inc, cmake/IvsSticProbes.cmake) ---- */
+typedef struct sl_reg_row {
+  uint16_t addr;
+  uint16_t cls; /* 0 stored, 1 strobe, 2 collision, 3 reserved (the register literal's class names) */
+  uint16_t wmask;
+  uint16_t rmask;
+} sl_reg_row;
+const sl_reg_row *sl_regs(void);                 /* 64 rows by address */
+uint32_t sl_hook(int write_view, uint32_t granule); /* expected hook class of a 16-word granule, 0..4095 */
+size_t sl_mode_count(void);
+uint16_t sl_mode_addr(size_t i);
+const ivs_test_source *sl_sources(size_t *n);
+
+/* Checking functions that the judges (stic_judge.c) run on corrupted copies of their oracle input. */
+uint32_t sr_table_diff_copy(uint32_t row, uint16_t wmask_delta);   /* stic_reg.c: 0 when a copy of the literal with one write mask flipped still matches */
+int sp_edge_matches(uint64_t expected);                           /* stic_profile.c: 1 when the first blocked register access is stamped at expected */
+uint64_t sp_register_edge(void);                                  /* stic_profile.c: the observed first blocked stamp of the register window */
 
 /* ---- stand-in guests (stic_progs.c) ----
  * A guest is a list of decles at $1000 (the reset entry of the stand-in EXEC), built by the helpers below; every word

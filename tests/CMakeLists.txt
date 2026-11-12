@@ -252,8 +252,18 @@ set_tests_properties(psg PROPERTIES SKIP_RETURN_CODE 77)
 # the generated ivs_stic_params; the machine-path cases reuse the stand-in content of machine/machine_standin.c. ONE
 # source list feeds both the executable and ivs_fault_suite(stic ...) below (the psg precedent). Its named faults are
 # data/expected/faults/stic.ids, whose sites sit in core/src/stic and core/src/machine.
-set(IVS_STIC_TEST_SOURCES stic/stic_main.c stic/stic_events.c stic/stic_access.c stic/stic_progs.c machine/machine_standin.c)
-add_executable(ivs_tests_stic ${IVS_STIC_TEST_SOURCES})
+# The literal probe include (cmake/IvsSticProbes.cmake): reads only the independent STIC register literal, the memory-map literal
+# and the geometry literal, never the profile or the core (plan 06-06, Task 4); stic_reg.c includes it.
+set(IVS_STICPROBE_GENERATOR "${PROJECT_SOURCE_DIR}/cmake/IvsSticProbes.cmake")
+set(IVS_STICPROBE_INC "${CMAKE_CURRENT_BINARY_DIR}/ivs_stic_probe.inc")
+file(GLOB IVS_STICPROBE_LITERALS CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/data/stic/*.regmap.literal.txt" "${PROJECT_SOURCE_DIR}/data/memmap/*.literal.txt")
+add_custom_command(
+  OUTPUT "${IVS_STICPROBE_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DROOT=${PROJECT_SOURCE_DIR}" "-DOUT=${IVS_STICPROBE_INC}" -P "${IVS_STICPROBE_GENERATOR}"
+  DEPENDS ${IVS_STICPROBE_LITERALS} "${PROJECT_SOURCE_DIR}/data/video/geometry.literal.txt" "${IVS_STICPROBE_GENERATOR}"
+  COMMENT "Generating the STIC literal probe include")
+set(IVS_STIC_TEST_SOURCES stic/stic_main.c stic/stic_events.c stic/stic_access.c stic/stic_progs.c stic/stic_reg.c stic/stic_hook.c stic/stic_profile.c stic/stic_judge.c machine/machine_standin.c)
+add_executable(ivs_tests_stic ${IVS_STIC_TEST_SOURCES} "${IVS_STICPROBE_INC}")
 target_include_directories(ivs_tests_stic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/stic" "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(ivs_tests_stic PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
 add_test(NAME stic COMMAND ivs_tests_stic)
@@ -385,7 +395,8 @@ ivs_fault_suite(psg
 
 ivs_fault_suite(stic
   SOURCES ${IVS_STIC_TEST_SOURCES}
-  INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/stic" "${CMAKE_CURRENT_BINARY_DIR}")
+  INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/stic" "${CMAKE_CURRENT_BINARY_DIR}"
+  GENERATED "${IVS_STICPROBE_INC}")
 
 ivs_fault_suite(input
   SOURCES ${IVS_INPUT_TEST_SOURCES}

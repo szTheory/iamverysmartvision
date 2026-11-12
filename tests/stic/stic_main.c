@@ -61,6 +61,10 @@ int main(int argc, char **argv)
   ivs_test_suite suite;
   stic_add(ivs_stic_events_cases, ivs_stic_events_count);
   stic_add(ivs_stic_access_cases, ivs_stic_access_count);
+  stic_add(ivs_stic_reg_cases, ivs_stic_reg_count);
+  stic_add(ivs_stic_hook_cases, ivs_stic_hook_count);
+  stic_add(ivs_stic_profile_cases, ivs_stic_profile_count);
+  stic_add(ivs_stic_judge_cases, ivs_stic_judge_count);
   if (stic_total > STIC_MAX_CASES) {
     fprintf(stderr, "stic: more than %u cases; raise STIC_MAX_CASES\n", STIC_MAX_CASES);
     return 1;
@@ -70,5 +74,6 @@ int main(int argc, char **argv)
   suite.count = stic_total;
   suite.id = stic_case_id;
   suite.run = stic_case_run;
+  suite.sources = sl_sources(&suite.n_sources);
   return ivs_test_main(argc, argv, &suite);
 }

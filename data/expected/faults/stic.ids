@@ -6,7 +6,7 @@
 STIC_FRAME_BY_MODULO stic.events.frame-index-is-state stic.events.frame-index-is-state|stic.events.idempotent stic.events.table-order
 # STIC_WINDOW_OFF_BY_ONE (core/src/stic/stic_events.c): an event is applied only when its tick is strictly below the
 # stamp, so a gate closes one tick late and an access at the close tick would still be served.
-STIC_WINDOW_OFF_BY_ONE stic.events.edges stic.events.|stic.reset.|stic.slice.|stic.window. stic.events.idempotent
+STIC_WINDOW_OFF_BY_ONE stic.events.edges stic.events.|stic.reset.|stic.slice.|stic.window.|stic.profile. stic.events.idempotent
 # STIC_CATCHUP_LAGS_UNIT (core/src/machine/machine_run.c): the step seam catches the STIC up to the unit START instead of
 # the unit end, so the gates and the cursor lag one unit behind machine time.
 STIC_CATCHUP_LAGS_UNIT stic.slice.state-equal-at-every-unit-boundary stic.slice.|stic.reset. stic.events.table-order

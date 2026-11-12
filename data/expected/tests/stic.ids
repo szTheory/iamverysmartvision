@@ -2,6 +2,7 @@
 # Plan 06-06 task 2: the timeline family (stic.events.*, stic.reset.*, stic.slice.*); later tasks of the plan add the access, register,
 # hook, profile and judge families.
 # Plan 06-06 task 3: the access family (stic.alias.*, stic.window.*, stic.blocked.*, stic.enable.seq.*, stic.mode.*): the write and read aliases, the windows, the blocked policy and its counters, the display-enable handshake and the mode select, from stand-in guests and synthesized accesses through the bus wrapper.
+# Plan 06-06 task 4: the literal-probe families (stic.table.*, stic.reg.*, stic.hook.*, stic.profile.*, stic.judge.*): the register file and the hook classes judged against the independent register, memory-map and geometry literals, the window edges as profile perturbations, and three judge self-controls.
 stic.events.table-order
 stic.events.edges
 stic.events.frame-index-is-state
@@ -34,3 +35,16 @@ stic.enable.seq.strobe-via-write-alias
 stic.mode.write-selects-fgbg
 stic.mode.read-selects-cs
 stic.mode.read-outside-window-no-effect
+stic.table.matches-literal
+stic.reg.width
+stic.reg.masks
+stic.reg.write-only-reads-ffff
+stic.reg.collision-readback
+stic.reg.reserved-drops
+stic.reg.strobe-stores-nothing
+stic.hook.completeness
+stic.profile.window-close
+stic.profile.window-open
+stic.judge.register-row-changed
+stic.judge.window-edge-moved
+stic.judge.blocked-write-applied
