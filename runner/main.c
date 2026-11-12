@@ -11,6 +11,9 @@
  * here: --self-signal-after-slices N calls raise(SIGINT) in the cancel check that follows slice N
  * (the library calls cancel_requested once before every slice), so the real handler path runs
  * with no race and no sleep; --wall-timeout-ms 1 with a long bound can only end by the wall cap.
+ * --update-golden <file> (plan 04-21, D-11) also writes the run's repeatability golden: a header
+ * (tier, oracle, scenario, profile, domains) and the report lines of the golden key list; it is run
+ * by a person, never by the gate, and refuses `user` content and host-dependent outcomes.
  * Documented in docs/runner.md. */
 #include <signal.h>
 #include <stddef.h>
@@ -25,6 +28,7 @@
 
 #define MAIN_EXIT_HARNESS 14
 #define MAIN_DIR_MAX 4096u
+#define MAIN_GOLDEN_CAP (512u * 1024u) /* report bytes kept for --update-golden */
 
 typedef struct main_host {
   const char *content_dir;
@@ -32,6 +36,9 @@ typedef struct main_host {
   int self_signal;                 /* --self-signal-after-slices given */
   uint64_t self_signal_after;      /* its N */
   uint64_t cancel_checks;          /* cancel_requested calls so far */
+  char *golden_buf;                /* report copy for --update-golden, NULL otherwise */
+  size_t golden_len;
+  int golden_overflow;             /* the report did not fit MAIN_GOLDEN_CAP */
 } main_host;
 
 static const char main_usage[] =
@@ -51,6 +58,8 @@ static const char main_usage[] =
     "  --slice-ticks <n>    master ticks per slice, 1..4194304 (default 4194304)\n"
     "  --self-signal-after-slices <n>  test hook: raise SIGINT after slice n (0: before the\n"
     "                       first slice); the run ends cancelled\n"
+    "  --update-golden <file>  also write the run's repeatability golden (.digests) to file;\n"
+    "                       refused for `user` content and host-dependent outcomes\n"
     "  --help               print this text and exit 0\n"
     "outcomes (outcome exit-code):\n"
     "pass 0\n"
@@ -97,7 +106,15 @@ static int mh_cancel(void *ctx)
 
 static int mh_write(void *ctx, const char *bytes, size_t len)
 {
-  (void)ctx;
+  main_host *h = ctx;
+  if (h->golden_buf != NULL) {
+    if (len <= MAIN_GOLDEN_CAP - h->golden_len) {
+      memcpy(h->golden_buf + h->golden_len, bytes, len);
+      h->golden_len += len;
+    } else {
+      h->golden_overflow = 1;
+    }
+  }
   return fwrite(bytes, 1u, len, stdout) == len ? 0 : -1;
 }
 
@@ -166,6 +183,144 @@ static int main_dirname(const char *path, char *out, size_t cap)
   return 1;
 }
 
+/* ---- --update-golden (plan 04-21, D-11) ---- */
+
+/* 1 when the line of length n has the key k (the text before the first space). */
+static int main_key_is(const char *line, size_t n, const char *k)
+{
+  size_t kl = strlen(k);
+  return n > kl && line[kl] == ' ' && memcmp(line, k, kl) == 0;
+}
+
+/* The value of key k in the report text, "-" when the key is absent. Points into buf; *vn gets
+ * its length. */
+static const char *main_report_value(const char *buf, size_t len, const char *k, size_t *vn)
+{
+  size_t i = 0u;
+  while (i < len) {
+    const char *nl = memchr(buf + i, '\n', len - i);
+    size_t n = nl != NULL ? (size_t)(nl - (buf + i)) : len - i;
+    if (main_key_is(buf + i, n, k)) {
+      size_t kl = strlen(k) + 1u;
+      *vn = n - kl;
+      return buf + i + kl;
+    }
+    i += n + 1u;
+  }
+  *vn = 1u;
+  return "-";
+}
+
+/* A live domain is observed when its count is a decimal number other than 0; `-` (no machine)
+ * and 0 are none, so a hash of nothing is never recorded as an observation. */
+static int main_count_observed(const char *v, size_t n)
+{
+  int nonzero = 0;
+  if (n == 0u) {
+    return 0;
+  }
+  for (size_t i = 0u; i < n; i++) {
+    if (v[i] < '0' || v[i] > '9') {
+      return 0;
+    }
+    if (v[i] != '0') {
+      nonzero = 1;
+    }
+  }
+  return nonzero;
+}
+
+/* The golden key list (docs/runner.md): scenario, outcome and exit code, slots, steps, CPU state,
+ * input and output counts, the digests of cpu, mem, images, instance and composite, and the
+ * digest of each observed live domain. Never ivsr, api.version, the exec:/grom: labels,
+ * host.calls or report.end. */
+static int main_golden_keep(const char *line, size_t n, const int live[3])
+{
+  static const char *const prefix[] = {"slot.", "step.", "cpu.", "input."};
+  static const char *const exact[] = {"scenario.id",   "scenario.profile", "outcome",
+                                      "outcome.detail", "exit.code",        "digest.cpu",
+                                      "digest.mem",     "digest.images",    "digest.instance",
+                                      "digest.composite", "output.video.bytes", "output.audio.bytes"};
+  static const char *const live_key[] = {"digest.video", "digest.audio", "digest.input"};
+  for (size_t i = 0u; i < sizeof prefix / sizeof prefix[0]; i++) {
+    size_t pl = strlen(prefix[i]);
+    if (n > pl && memcmp(line, prefix[i], pl) == 0) {
+      return 1;
+    }
+  }
+  for (size_t i = 0u; i < sizeof exact / sizeof exact[0]; i++) {
+    if (main_key_is(line, n, exact[i])) {
+      return 1;
+    }
+  }
+  for (size_t i = 0u; i < 3u; i++) {
+    if (live[i] && main_key_is(line, n, live_key[i])) {
+      return 1;
+    }
+  }
+  return 0;
+}
+
+/* Writes the .digests golden of the captured report to path. 0, or MAIN_EXIT_HARNESS after one
+ * line on stderr (host-dependent outcome, incomplete capture, write error). */
+static int main_write_golden(const char *path, const main_host *h, const ivs_scenario *scn)
+{
+  static const char *const live_count[] = {"output.video.bytes", "output.audio.bytes", "input.events"};
+  const char *buf = h->golden_buf;
+  size_t len = h->golden_len;
+  const char *v;
+  size_t vn;
+  int live[3];
+  FILE *f;
+  int ok = 1;
+  size_t i = 0u;
+  if (h->golden_overflow || len == 0u || buf[len - 1u] != '\n') {
+    return main_fail("golden refused: incomplete report");
+  }
+  /* The wall watchdog and cancellation are host-dependent and never golden (D-21). */
+  v = main_report_value(buf, len, "outcome", &vn);
+  if (vn == 9u && memcmp(v, "cancelled", 9u) == 0) {
+    return main_fail("golden refused: host-dependent outcome");
+  }
+  v = main_report_value(buf, len, "outcome.detail", &vn);
+  if (vn >= 5u && memcmp(v, "wall ", 5u) == 0) {
+    return main_fail("golden refused: host-dependent outcome");
+  }
+  for (size_t k = 0u; k < 3u; k++) {
+    v = main_report_value(buf, len, live_count[k], &vn);
+    live[k] = main_count_observed(v, vn);
+  }
+  f = fopen(path, "w");
+  if (f == NULL) {
+    return main_fail("golden write failed");
+  }
+  if (fprintf(f,
+              "# tier: deterministic-repeatability\n"
+              "# oracle: self-recorded\n"
+              "# scenario: %s\n"
+              "# profile: %s\n"
+              "# domains: cpu=observed mem=observed images=observed instance=observed video=%s audio=%s "
+              "input=%s\n"
+              "# Written by ivs-run --update-golden, never by the gate; a change is a reviewed diff\n"
+              "# (docs/runner.md). The body is the run's report filtered to the golden key list.\n",
+              scn->id, scn->profile, live[0] ? "observed" : "none", live[1] ? "observed" : "none",
+              live[2] ? "observed" : "none") < 0) {
+    ok = 0;
+  }
+  while (ok && i < len) {
+    const char *nl = memchr(buf + i, '\n', len - i);
+    size_t n = (size_t)(nl - (buf + i)) + 1u;
+    if (main_golden_keep(buf + i, n - 1u, live) && fwrite(buf + i, 1u, n, f) != n) {
+      ok = 0;
+    }
+    i += n;
+  }
+  if (fclose(f) != 0) {
+    ok = 0;
+  }
+  return ok ? 0 : main_fail("golden write failed");
+}
+
 int main(int argc, char **argv)
 {
   main_host mh;
@@ -178,6 +333,7 @@ int main(int argc, char **argv)
   uint8_t *text = NULL;
   void *storage = NULL;
   const char *scenario_path = NULL;
+  const char *golden_path = NULL;
   char dirbuf[MAIN_DIR_MAX];
   size_t text_len = 0u;
   size_t storage_bytes;
@@ -207,6 +363,8 @@ int main(int argc, char **argv)
       slot = &mh.user[IVS_SCN_ROLE_GROM];
     } else if (strcmp(a, "--cart") == 0) {
       slot = &mh.user[IVS_SCN_ROLE_CART];
+    } else if (strcmp(a, "--update-golden") == 0) {
+      slot = &golden_path;
     } else if (strcmp(a, "--max-ticks") == 0) {
       seen = &have_max;
       lo = 1u;
@@ -299,6 +457,20 @@ int main(int argc, char **argv)
     return main_fail(line);
   }
   free(text);
+  /* A golden never records operator content (D-11): refused before the run, no report. */
+  if (golden_path != NULL) {
+    for (uint32_t role = 0u; role < IVS_SCN_ROLES; role++) {
+      if (scn->content[role].kind == IVS_SCN_CONTENT_USER) {
+        free(scn);
+        return main_fail("golden refused: content user");
+      }
+    }
+    mh.golden_buf = malloc(MAIN_GOLDEN_CAP);
+    if (mh.golden_buf == NULL) {
+      free(scn);
+      return main_fail("out of memory");
+    }
+  }
 
   /* Storage: the instance (aligned by the executor), then one read buffer of the largest role. A
    * refused profile gets a token buffer, so the executor reports profile-refused itself. */
@@ -311,6 +483,7 @@ int main(int argc, char **argv)
   }
   storage = malloc(storage_bytes);
   if (storage == NULL) {
+    free(mh.golden_buf);
     free(scn);
     return main_fail("out of memory");
   }
@@ -327,13 +500,16 @@ int main(int argc, char **argv)
   memset(&res, 0, sizeof res);
   (void)ivs_runner_execute(scn, &host, &opts, &res);
   free(storage);
-  free(scn);
   code = (int)res.exit_code;
-  if (fflush(stdout) != 0 || ferror(stdout)) {
+  if (fflush(stdout) != 0 || ferror(stdout) || res.report_write_failed != 0u) {
+    free(mh.golden_buf);
+    free(scn);
     return main_fail("report write failed");
   }
-  if (res.report_write_failed != 0u) {
-    return main_fail("report write failed");
+  if (golden_path != NULL && main_write_golden(golden_path, &mh, scn) != 0) {
+    code = MAIN_EXIT_HARNESS;
   }
+  free(mh.golden_buf);
+  free(scn);
   return code;
 }

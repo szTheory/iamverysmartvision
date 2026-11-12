@@ -26,6 +26,7 @@ ivs-run [options] <scenario.ivss>
 | `--wall-timeout-ms <n>` | 1 to 4294967295 | The host wall-time cap in milliseconds (default 30000). A scenario's `wall-timeout-ms` can only lower it. |
 | `--slice-ticks <n>` | 1 to 4194304 | Master ticks per slice (default 4194304, that is 1 << 22). |
 | `--self-signal-after-slices <n>` | 0 to 4294967295 | Test hook: raise SIGINT after slice n (0: before the first slice). |
+| `--update-golden <file>` | a file | After the run, also write the run's repeatability golden (`.digests`, below) to the file. Refused (exit 14, one line on stderr) for a scenario with `user` content (before the run, no report) and for a host-dependent outcome (cancelled, or timeout with detail `wall`). |
 | `--help` | | Print the options and one `<outcome> <exit>` line per outcome, exit 0. |
 
 Every option takes its value as the next argument and may appear once; numbers are decimal digits only.
@@ -155,10 +156,34 @@ Test hooks (documented, deterministic, no sleeps and no racing signals):
 - Judge self-controls: four fake runners (wrong exit code, no `report.end`, `outcome pass` with `exit.code 10`, a changed digest) must each be rejected for that reason; one more case requires `--help`, the outcome table above and `data/expected/runner-outcomes.ids` to list the same six pairs.
 - Each scenario's report is left in `build/gate/<preset>/runner/<id>.report`.
 
+## Goldens (`data/golden/`, D-11, plan 04-21)
+
+Two kinds, each with a header the gate step `golden` checks (`tools/check/steps/golden.sh`):
+
+- `data/golden/<id>.expect`: predicates, tier `original-diagnostic`, oracle `independent-derivation`, with the derivation cites in comments. Its `assert` lines must equal the scenario's `assert` lines.
+- `data/golden/<id>.digests`: repeatability digests, tier `deterministic-repeatability`, oracle `self-recorded`. A self-recorded golden only shows that a later run repeats this one; it is no evidence that the run is right.
+
+Header lines: `# tier:` (an id of `data/expected/evidence-tiers.ids`), `# oracle:`, `# scenario:` (the scenario id), `# profile:`, and for `.digests` `# domains: cpu=observed mem=observed images=observed instance=observed video=<v> audio=<v> input=<v>`.
+A live domain (video, audio, input) is `observed` only when its report count (`output.video.bytes`, `output.audio.bytes`, `input.events`) is not 0; otherwise it is `none` and its digest line is left out, so a hash of nothing is never recorded as an observation.
+
+The body of a `.digests` golden is the run's report filtered to the golden key list, in report order: `scenario.id`, `scenario.profile`, `outcome`, `outcome.detail`, `exit.code`, every `slot.*`, `step.*`, `cpu.*` and `input.*` line, `digest.cpu`, `digest.mem`, `digest.images`, `digest.instance`, `digest.composite`, `output.video.bytes`, `output.audio.bytes`, and the digest of each observed live domain.
+Left out: `ivsr`, `api.version`, the `exec:` and `grom:` labels, `host.calls` and `report.end`.
+
+Goldens are written only by `ivs-run --update-golden <file>`, run by a person; a changed golden is a reviewed diff. The gate never writes one: the step only compares. The tracked goldens were written with:
+
+```
+build/dev/runner/ivs-run --content-dir build/dev/images --update-golden data/golden/diag-cpu-1.digests data/scenarios/diag-boot-pass.ivss
+build/dev/runner/ivs-run --content-dir build/dev/images --update-golden data/golden/diag-input-pass.digests data/scenarios/diag-input-pass.ivss
+build/dev/runner/ivs-run --content-dir build/dev/images --update-golden data/golden/timeout-budget.digests data/scenarios/timeout-budget.ivss
+```
+
+The step `golden` also requires the dev and release reports of every `deterministic` scenario of `data/expected/runner-scenarios.ids` to be byte-equal apart from `host.calls` (one ctest run sees only one preset, so this is judged after both ran).
+`host-dependent` scenarios (`timeout-wall`, `cancel-signal`) are left out of that comparison and may have no golden; a scenario with `user` content has no golden either.
+
 ## Trust model (D-22)
 
 - A scenario is untrusted inert data. The parser is a pure function with fixed caps; it allocates nothing.
 - Content paths are relative, `[A-Za-z0-9._/-]`, without `..`, a leading `/` or an empty segment, at most 200 bytes, and are resolved only under the content directory. A scenario cannot name an output file, run a command, read the environment or raise a limit; it can only lower the wall-time cap.
 - Every file (scenario and content) is opened without blocking and checked with `fstat` on the open descriptor: only a regular file is read (a FIFO or a device is missing-fixture, `not-regular`). Reads stop at the role's cap plus one byte (exec 8192, grom 2048, cartridge 131256, scenario 65536 bytes), so an oversized file costs at most cap + 1 bytes and reaches the core's own size refusal. Symbolic links inside an operator-chosen content directory are the operator's choice.
-- System images (EXEC, GROM) come only from the operator's `--exec` and `--grom` flags (and `--cart`), never from tracked data. The runner never writes, copies or caches image bytes. The project boot stub and the zero GROM are not system images; their report labels say so.
+- System images (EXEC, GROM) come only from the operator's `--exec` and `--grom` flags (and `--cart`), never from tracked data. The runner never writes, copies or caches image bytes; the one file it writes is the operator's `--update-golden` target, which holds hashes and report lines only. The project boot stub and the zero GROM are not system images; their report labels say so.
 - Storage: the instance and one read buffer in host memory, at most 64 MiB; output buffers at most 8 MiB.
