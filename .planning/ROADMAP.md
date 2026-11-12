@@ -264,13 +264,13 @@ Plans:
   3. At a defined machine-time boundary, the core writes a raw palette-index framebuffer with profile geometry into a caller-owned buffer. Palette, scaling and presentation stay outside the core.
   4. Foreground/Background and Color Stack fixtures render index frames that match frames hand-derived from known BACKTAB/GRAM contents, with no real GROM image in CI. A named-fault control (for example, the wrong card mode) fails.
   5. Tests and debuggers can read STIC and device state through an inspection path with no read side effects. For example, inspecting $0021 does not switch Color Stack mode.
-**Plans**: 3/14 plans executed in 14 sequential waves
+**Plans**: 4/14 plans executed in 14 sequential waves
 
 Plans:
 - [x] 06-01-PLAN.md — Sources and oracles first (oracle plan, NO C)
 - [x] 06-02-PLAN.md — Lever pass and the normalised metric (small, file-disjoint from every other plan)
 - [x] 06-03-PLAN.md — ABI growth, behaviour-neutral
-- [ ] 06-04-PLAN.md — Profile growth and the STIC parameter table
+- [x] 06-04-PLAN.md — Profile growth and the STIC parameter table
 - [ ] 06-05-PLAN.md — State and digest foundation
 - [ ] 06-06-PLAN.md — STIC register file, access windows, display-enable handshake, inspection foundation and the five-region memory-map flip, with suite `stic` created, five faults and...
 - [ ] 06-07-PLAN.md — Inspection call and peek purity
@@ -348,6 +348,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 3. Memory Map, Content Loading and Refusal | 14/14 | Complete    | 2026-11-11 |
 | 4. Headless Runner and Installed Consumer (Slice 0) | 27/25 | Complete    | 2026-11-11 |
 | 5. Hand Controllers and PSG Sound | 12/12 | Complete    | 2026-11-12 |
-| 6. STIC Video First Pass | 3/14 | In Progress | - |
+| 6. STIC Video First Pass | 4/14 | In Progress | - |
 | 7. First Visible Original Scenario | 0/TBD | Not started | - |
 | 8. STIC Completion, Save State and Performance Baselines | 0/TBD | Not started | - |
