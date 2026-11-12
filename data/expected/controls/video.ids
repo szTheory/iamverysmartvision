@@ -1,0 +1,4 @@
+# Negative controls for the video step (plan 06-01, D-01, D-02): one per token; the positive control is the toy verdict note, register literal, rule file and pending lists of controls/_good/tree. Task 3 adds the frame and literal controls.
+video-verdict-key-missing
+video-regmap-row-count
+video-rule-no-test

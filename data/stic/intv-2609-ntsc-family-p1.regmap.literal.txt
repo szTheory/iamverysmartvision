@@ -1,0 +1,91 @@
+# Literal STIC register-address map of profile intv-2609-ntsc-family-p1 (D-02, D-04; C81, C82, C86; plan 06-01).
+#
+# Claim tier: tier4-community for the role and address of every row that a source names, unknown-default-chosen for the rows no source
+# describes. This file is a transcription of the cached community wiki pages (SRC-intv-wiki, STIC-oldid-15008: the address table of the
+# sixty-four registers with the role of each range; Memory-Map-oldid-14847: the access column that lists $0000-$003F as readable and
+# writable). The manufacturer pages (SRC-gi-1980-catalog pdf 191..193, SRC-gi-1982-catalog pdf 462..464) print no register address
+# (docs/stic/reference-notes.md, registers-printed: no). The w and r columns of a stored row are the stored width and the read-back
+# model, both unknown-default-chosen (C86, C81): no source states the width of a register or what a read returns. A pass of the video step
+# shows that the file is well formed and tiles the address space, not that the console behaves this way.
+#
+# Independence rule: this file is written from the sources only. It is never derived from, generated from or edited to match a profile
+# field, a descriptor table or a core output it judges, and it names no profile field. Where a source and the profile differ, this file
+# keeps the source reading and the profile is the side that changes. Emulator source code is never a source for a row.
+#
+# Row grammar (one row per line, single spaces, columns in this order, sixty-four rows in ascending address order):
+#   <ADDR> role=<role> class=<stored|strobe|collision|reserved> w=<HHHH> r=<HHHH> then the source key (src, an equals sign,
+#   <SRC-id>@<locator>), then tag=<tag> and conf=C<n>
+#   ADDR   CPU word address 0000..003F, four uppercase hex digits, each exactly once.
+#   role   the function of the register: mobN-x, mobN-y, mobN-attr, mobN-collision for N = 0..7, display-enable, mode-select,
+#          color-stack-N for N = 0..3, border-color, h-delay, v-delay, border-ext, reserved.
+#   class  stored keeps a masked value, collision keeps a masked value and reads it back, strobe stores nothing and has a machine-level
+#          effect (plan 06-06), reserved stores nothing.
+#   w, r   the write mask and the read mask of the 16-bit bus word. A store keeps value AND w. A read gives (store AND r) OR (fill AND
+#          NOT r) with the undriven fill FFFF, so a row with r=0000 reads FFFF (C5, C81) and the collision rows read FC00 OR the stored
+#          bits. Bits 15 and 14 are never stored (the STIC has 14 data pins, pdf 191).
+#   src    the source id and the locator, written without a dot.
+#   tag    tier4-community or unknown-default-chosen. conf is the discrepancy id that records the open part of the row.
+0000 role=mob0-x class=stored w=07FF r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86
+0001 role=mob1-x class=stored w=07FF r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86
+0002 role=mob2-x class=stored w=07FF r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86
+0003 role=mob3-x class=stored w=07FF r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86
+0004 role=mob4-x class=stored w=07FF r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86
+0005 role=mob5-x class=stored w=07FF r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86
+0006 role=mob6-x class=stored w=07FF r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86
+0007 role=mob7-x class=stored w=07FF r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86
+0008 role=mob0-y class=stored w=0FFF r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86
+0009 role=mob1-y class=stored w=0FFF r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86
+000A role=mob2-y class=stored w=0FFF r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86
+000B role=mob3-y class=stored w=0FFF r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86
+000C role=mob4-y class=stored w=0FFF r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86
+000D role=mob5-y class=stored w=0FFF r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86
+000E role=mob6-y class=stored w=0FFF r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86
+000F role=mob7-y class=stored w=0FFF r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86
+0010 role=mob0-attr class=stored w=3FFF r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86
+0011 role=mob1-attr class=stored w=3FFF r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86
+0012 role=mob2-attr class=stored w=3FFF r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86
+0013 role=mob3-attr class=stored w=3FFF r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86
+0014 role=mob4-attr class=stored w=3FFF r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86
+0015 role=mob5-attr class=stored w=3FFF r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86
+0016 role=mob6-attr class=stored w=3FFF r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86
+0017 role=mob7-attr class=stored w=3FFF r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86
+0018 role=mob0-collision class=collision w=03FF r=03FF src=SRC-intv-wiki@Memory-Map-oldid-14847 tag=tier4-community conf=C81
+0019 role=mob1-collision class=collision w=03FF r=03FF src=SRC-intv-wiki@Memory-Map-oldid-14847 tag=tier4-community conf=C81
+001A role=mob2-collision class=collision w=03FF r=03FF src=SRC-intv-wiki@Memory-Map-oldid-14847 tag=tier4-community conf=C81
+001B role=mob3-collision class=collision w=03FF r=03FF src=SRC-intv-wiki@Memory-Map-oldid-14847 tag=tier4-community conf=C81
+001C role=mob4-collision class=collision w=03FF r=03FF src=SRC-intv-wiki@Memory-Map-oldid-14847 tag=tier4-community conf=C81
+001D role=mob5-collision class=collision w=03FF r=03FF src=SRC-intv-wiki@Memory-Map-oldid-14847 tag=tier4-community conf=C81
+001E role=mob6-collision class=collision w=03FF r=03FF src=SRC-intv-wiki@Memory-Map-oldid-14847 tag=tier4-community conf=C81
+001F role=mob7-collision class=collision w=03FF r=03FF src=SRC-intv-wiki@Memory-Map-oldid-14847 tag=tier4-community conf=C81
+0020 role=display-enable class=strobe w=0000 r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C82
+0021 role=mode-select class=strobe w=0000 r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C6
+0022 role=reserved class=reserved w=0000 r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=unknown-default-chosen conf=C81
+0023 role=reserved class=reserved w=0000 r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=unknown-default-chosen conf=C81
+0024 role=reserved class=reserved w=0000 r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=unknown-default-chosen conf=C81
+0025 role=reserved class=reserved w=0000 r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=unknown-default-chosen conf=C81
+0026 role=reserved class=reserved w=0000 r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=unknown-default-chosen conf=C81
+0027 role=reserved class=reserved w=0000 r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=unknown-default-chosen conf=C81
+0028 role=color-stack-0 class=stored w=000F r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86
+0029 role=color-stack-1 class=stored w=000F r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86
+002A role=color-stack-2 class=stored w=000F r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86
+002B role=color-stack-3 class=stored w=000F r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86
+002C role=border-color class=stored w=000F r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86
+002D role=reserved class=reserved w=0000 r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=unknown-default-chosen conf=C81
+002E role=reserved class=reserved w=0000 r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=unknown-default-chosen conf=C81
+002F role=reserved class=reserved w=0000 r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=unknown-default-chosen conf=C81
+0030 role=h-delay class=stored w=0007 r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86
+0031 role=v-delay class=stored w=0007 r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86
+0032 role=border-ext class=stored w=0003 r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=tier4-community conf=C86
+0033 role=reserved class=reserved w=0000 r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=unknown-default-chosen conf=C81
+0034 role=reserved class=reserved w=0000 r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=unknown-default-chosen conf=C81
+0035 role=reserved class=reserved w=0000 r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=unknown-default-chosen conf=C81
+0036 role=reserved class=reserved w=0000 r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=unknown-default-chosen conf=C81
+0037 role=reserved class=reserved w=0000 r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=unknown-default-chosen conf=C81
+0038 role=reserved class=reserved w=0000 r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=unknown-default-chosen conf=C81
+0039 role=reserved class=reserved w=0000 r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=unknown-default-chosen conf=C81
+003A role=reserved class=reserved w=0000 r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=unknown-default-chosen conf=C81
+003B role=reserved class=reserved w=0000 r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=unknown-default-chosen conf=C81
+003C role=reserved class=reserved w=0000 r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=unknown-default-chosen conf=C81
+003D role=reserved class=reserved w=0000 r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=unknown-default-chosen conf=C81
+003E role=reserved class=reserved w=0000 r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=unknown-default-chosen conf=C81
+003F role=reserved class=reserved w=0000 r=0000 src=SRC-intv-wiki@STIC-oldid-15008 tag=unknown-default-chosen conf=C81

@@ -1,0 +1,856 @@
+{
+  "schema_version": 1,
+  "note": "Rule inventory of the first STIC (VID-01..VID-04, VID-06; plan 06-01). STIC-R01..R36 are the register, access, timeline and frame rules and CR-01..CR-17 the card rules. Basis names how a rule is backed: tier1-literal is printed on the manufacturer pages, tier1-derived follows from printed text, tier2-bsr is the Blue Sky Rangers page, tier4-community is one community lineage, inference and default-unknown carry a resolver and a trigger in their note, project-rule is a design rule of this project. The test entries are test-id family prefixes.",
+  "rules": [
+    {
+      "id": "STIC-R01",
+      "family": "stic",
+      "statement": "The STIC is the AY-3-8900-1 for NTSC, with a STIC input clock of 3.579545 MHz, a 167 x 105 object grid of which 159 x 96 positions are visible.",
+      "basis": "tier1-literal",
+      "cite": "SRC-gi-1980-catalog@pdf191",
+      "fields": [
+        "stic.part",
+        "ticks_per_stic_clock",
+        "video.object_grid"
+      ],
+      "tests": [
+        "stic.profile."
+      ],
+      "conflict": "C11",
+      "note": "Printed on pdf 191 and 192 of the 1980 catalog and pdf 462 and 463 of the 1982 catalog. The PAL part and the STIC1A are not modelled (D-03)."
+    },
+    {
+      "id": "STIC-R02",
+      "family": "stic",
+      "statement": "The STIC data bus is 14 bits wide; bits 15 and 14 of a CPU word are never driven by the STIC.",
+      "basis": "tier1-literal",
+      "cite": "SRC-gi-1980-catalog@pdf191",
+      "fields": [
+        "stic.bus_bits",
+        "memmap.device.stic14"
+      ],
+      "tests": [
+        "stic.reg."
+      ],
+      "conflict": "C86",
+      "note": "Pins SD0..SD13 and the words 14 bit bus on pdf 191."
+    },
+    {
+      "id": "STIC-R03",
+      "family": "stic",
+      "statement": "Graphics words use the low 14 bits of a system RAM word; the top two bits of a BACKTAB word stay available to the program and round-trip.",
+      "basis": "tier1-literal",
+      "cite": "SRC-gi-1980-catalog@pdf199",
+      "fields": [
+        "stic.backtab"
+      ],
+      "tests": [
+        "stic.fetch.",
+        "video.card."
+      ],
+      "conflict": "C86",
+      "note": "Printed on pdf 199 and pdf 470 of the 1982 catalog (the lower 14 bits of each 16-bit word)."
+    },
+    {
+      "id": "STIC-R04",
+      "family": "stic",
+      "statement": "The STIC ignores its CPU control codes unless it is in CPU controlled mode.",
+      "basis": "tier1-literal",
+      "cite": "SRC-gi-1980-catalog@pdf191",
+      "fields": [
+        "engine:stic-gates"
+      ],
+      "tests": [
+        "stic.blocked."
+      ],
+      "conflict": "C83",
+      "note": "Printed on pdf 191: the CPU control bus is validated only in CPU mode."
+    },
+    {
+      "id": "STIC-R05",
+      "family": "stic",
+      "statement": "A write to a STIC register outside the register window is dropped and has no effect.",
+      "basis": "tier1-derived",
+      "cite": "SRC-gi-1980-catalog@pdf191",
+      "fields": [
+        "stic.reg_window_cpu_cycles"
+      ],
+      "tests": [
+        "stic.blocked."
+      ],
+      "conflict": "C5",
+      "note": "Follows from R04; the extent of the window is C1."
+    },
+    {
+      "id": "STIC-R06",
+      "family": "stic",
+      "statement": "Bus copy mode is entered when the system RAM decodes the interrupt acknowledge and left at the first bus acknowledge edge.",
+      "basis": "tier1-literal",
+      "cite": "SRC-gi-1980-catalog@pdf199",
+      "fields": [
+        "engine:stic-copy"
+      ],
+      "tests": [
+        "stic.window."
+      ],
+      "conflict": "C83",
+      "note": "Recorded as the alternative window hypothesis (D-05); not modelled as an event machine in Phase 6. The pure schedule of R18 and R19 is consistent with it. Printed on pdf 199 and pdf 470 of the 1982 catalog."
+    },
+    {
+      "id": "STIC-R07",
+      "family": "stic",
+      "statement": "A STIC register write needs the register window (default: the first 2,000 cycles of a frame).",
+      "basis": "inference",
+      "cite": "SRC-gi-1980-catalog@pdf199",
+      "fields": [
+        "stic.reg_window_cpu_cycles"
+      ],
+      "tests": [
+        "stic.window."
+      ],
+      "conflict": "C83",
+      "note": "resolver: an owner window-edge probe (D10-VID-06) or a primary page that prints window events. trigger: a tier 1 to 3 STIC time description or a measurement."
+    },
+    {
+      "id": "STIC-R08",
+      "family": "stic",
+      "statement": "CPU access to the graphics ROM and RAM needs the graphics-memory window (default: the first 3,780 cycles of a frame).",
+      "basis": "inference",
+      "cite": "SRC-gi-1980-catalog@pdf199",
+      "fields": [
+        "stic.gmem_window_cpu_cycles"
+      ],
+      "tests": [
+        "stic.window."
+      ],
+      "conflict": "C2",
+      "note": "resolver: an owner window-edge probe (D10-VID-06). trigger: a primary page that prints window events."
+    },
+    {
+      "id": "STIC-R09",
+      "family": "stic",
+      "statement": "Register address roles: MOB X at $00-$07, MOB Y at $08-$0F, MOB attribute at $10-$17, collision at $18-$1F, display-enable strobe at $20, mode-select strobe at $21, color stack at $28-$2B, border color at $2C, horizontal delay at $30, vertical delay at $31, border extension at $32.",
+      "basis": "tier4-community",
+      "cite": "SRC-intv-wiki@STIC-oldid-15008",
+      "fields": [
+        "stic.regmap"
+      ],
+      "tests": [
+        "stic.reg.",
+        "stic.table."
+      ],
+      "conflict": "C81",
+      "note": "One community lineage; the register-address literal is data/stic/intv-2609-ntsc-family-p1.regmap.literal.txt, written from the sources."
+    },
+    {
+      "id": "STIC-R10",
+      "family": "stic",
+      "statement": "Stored width of each register: X 11 bits, Y 12 bits, attribute 14 bits, collision 10 bits, color stack and border 4 bits, delay 3 bits, border extension 2 bits; bits above the stored width are dropped.",
+      "basis": "default-unknown",
+      "cite": "SRC-intv-wiki@STIC-oldid-15008",
+      "fields": [
+        "stic.regmap"
+      ],
+      "tests": [
+        "stic.reg."
+      ],
+      "conflict": "C86",
+      "note": "resolver: a read-back sweep on owner hardware (D10-VID-08) or a STIC register description. trigger: a tier 1 to 3 STIC document."
+    },
+    {
+      "id": "STIC-R11",
+      "family": "stic",
+      "statement": "Only the collision registers return stored data (10 bits over the undriven fill, so $FC00 or the stored value); every other register read returns the undriven fill $FFFF.",
+      "basis": "default-unknown",
+      "cite": "SRC-intv-wiki@Memory-Map-oldid-14847",
+      "fields": [
+        "stic.regmap",
+        "memmap.undriven_read"
+      ],
+      "tests": [
+        "stic.reg."
+      ],
+      "conflict": "C81",
+      "note": "resolver: a read-back of all 64 addresses on owner hardware. trigger: a tier 1 to 3 STIC register description."
+    },
+    {
+      "id": "STIC-R12",
+      "family": "stic",
+      "statement": "Reserved registers ($22-$27, $2D-$2F, $33-$3F) drop writes and read the undriven fill.",
+      "basis": "default-unknown",
+      "cite": "SRC-intv-wiki@STIC-oldid-15008",
+      "fields": [
+        "stic.regmap"
+      ],
+      "tests": [
+        "stic.reg."
+      ],
+      "conflict": "C81",
+      "note": "resolver: a read-back of all 64 addresses on owner hardware. trigger: a tier 1 to 3 STIC register description."
+    },
+    {
+      "id": "STIC-R13",
+      "family": "stic",
+      "statement": "A write to $0020 inside the register window sets the display latch for the current frame; the value is ignored.",
+      "basis": "tier4-community",
+      "cite": "SRC-intv-wiki@STIC-oldid-15008",
+      "fields": [
+        "stic.access_effects"
+      ],
+      "tests": [
+        "stic.enable."
+      ],
+      "conflict": "C82",
+      "note": "Named the active display strobe on the community page. The sustain rule (the latch is cleared at every frame start) is C6 and C82."
+    },
+    {
+      "id": "STIC-R14",
+      "family": "stic",
+      "statement": "A write to $0021 selects Foreground/Background mode and a read of $0021 selects Color Stack mode; the mode persists until the next access.",
+      "basis": "tier4-community",
+      "cite": "SRC-intv-wiki@STIC-oldid-15008",
+      "fields": [
+        "stic.access_effects"
+      ],
+      "tests": [
+        "stic.mode."
+      ],
+      "conflict": "C6",
+      "note": "Community page text; the power-on mode is C85."
+    },
+    {
+      "id": "STIC-R15",
+      "family": "stic",
+      "statement": "A read of $0020 has no effect.",
+      "basis": "default-unknown",
+      "cite": "none",
+      "fields": [
+        "stic.access_effects"
+      ],
+      "tests": [
+        "stic.enable."
+      ],
+      "conflict": "C82",
+      "note": "resolver: a D10 strobe-offset sweep (D10-VID-08). trigger: a STIC register description."
+    },
+    {
+      "id": "STIC-R16",
+      "family": "stic",
+      "statement": "Writes through the aliases $4000, $8000 and $C000 plus a register offset reach the register; a read of $4021, $8021 or $C021 selects Color Stack mode although the read view decodes to cartridge space.",
+      "basis": "tier4-community",
+      "cite": "SRC-intv-wiki@Memory-Map-oldid-14847",
+      "fields": [
+        "stic.mode_select_addrs",
+        "stic.alias_read_sensitive"
+      ],
+      "tests": [
+        "stic.alias."
+      ],
+      "conflict": "C84",
+      "note": "Memory map page; the effect decode keys on the access address before the read decode (A-07)."
+    },
+    {
+      "id": "STIC-R17",
+      "family": "stic",
+      "statement": "Reads of $0040-$007F have no effect and return no STIC data.",
+      "basis": "default-unknown",
+      "cite": "SRC-intv-wiki@Memory-Map-oldid-14847",
+      "fields": [
+        "memmap.region.stic_alias_read"
+      ],
+      "tests": [
+        "stic.alias."
+      ],
+      "conflict": "C84",
+      "note": "resolver: a D10 read of the range with a known mode. trigger: a STIC register description."
+    },
+    {
+      "id": "STIC-R18",
+      "family": "stic",
+      "statement": "The register window is the first 2,000 CPU cycles after the frame start (alternate 2,900), a pure function of the access stamp.",
+      "basis": "tier4-community",
+      "cite": "SRC-intv-wiki@Memory-Map-oldid-14847",
+      "fields": [
+        "stic.reg_window_cpu_cycles"
+      ],
+      "tests": [
+        "stic.window."
+      ],
+      "conflict": "C1",
+      "note": "The 2,000 figure is the shorter community figure; the wiki page cited gives the window in words only."
+    },
+    {
+      "id": "STIC-R19",
+      "family": "stic",
+      "statement": "The graphics-memory window is the first 3,780 CPU cycles after the frame start (alternate 3,796), a pure function of the access stamp.",
+      "basis": "tier4-community",
+      "cite": "SRC-intv-wiki@Memory-Map-oldid-14847",
+      "fields": [
+        "stic.gmem_window_cpu_cycles"
+      ],
+      "tests": [
+        "stic.window."
+      ],
+      "conflict": "C2",
+      "note": "Shorter community figure."
+    },
+    {
+      "id": "STIC-R20",
+      "family": "stic",
+      "statement": "The windows apply whether or not the display latch is set.",
+      "basis": "default-unknown",
+      "cite": "none",
+      "fields": [
+        "stic.access_gating_when_off"
+      ],
+      "tests": [
+        "stic.window."
+      ],
+      "conflict": "C94",
+      "note": "resolver: an owner power-on access probe (D10-VID-09). trigger: a STIC register description or a capture that shows unrestricted access while blank."
+    },
+    {
+      "id": "STIC-R21",
+      "family": "stic",
+      "statement": "Without an interrupt acknowledge there is no register or graphics-memory access during an active frame (copy mode alternative).",
+      "basis": "inference",
+      "cite": "SRC-gi-1980-catalog@pdf199",
+      "fields": [
+        "engine:stic-copy"
+      ],
+      "tests": [
+        "stic.window."
+      ],
+      "conflict": "C83",
+      "note": "resolver: an owner window-edge probe (D10-VID-06). trigger: a primary page that prints window events."
+    },
+    {
+      "id": "STIC-R22",
+      "family": "stic",
+      "statement": "A $0020 strobe stamped inside the register window arms the frame; a later strobe is dropped and the frame is blank.",
+      "basis": "default-unknown",
+      "cite": "none",
+      "fields": [
+        "stic.reg_window_cpu_cycles"
+      ],
+      "tests": [
+        "stic.enable."
+      ],
+      "conflict": "C82",
+      "note": "resolver: a D10 strobe-offset sweep (D10-VID-08). trigger: a STIC register description."
+    },
+    {
+      "id": "STIC-R23",
+      "family": "stic",
+      "statement": "A frame whose display latch is clear when window 0 would start is a blank frame: no bus windows, no row fetch; the frame is still produced and counted.",
+      "basis": "tier2-bsr",
+      "cite": "SRC-bsr-2609@2609-overview",
+      "fields": [
+        "stic.bus.count",
+        "video.display_off_fill"
+      ],
+      "tests": [
+        "stic.enable.",
+        "video.display-off."
+      ],
+      "conflict": "C99",
+      "note": "resolver: an owner capture of a display-off frame (D10-VID-03). trigger: a capture or a guest that depends on the content."
+    },
+    {
+      "id": "STIC-R24",
+      "family": "stic",
+      "statement": "A blocked read returns the undriven fill $FFFF with no effect; a blocked write is dropped; both are counted in the inspection state.",
+      "basis": "default-unknown",
+      "cite": "none",
+      "fields": [
+        "memmap.undriven_read"
+      ],
+      "tests": [
+        "stic.blocked.",
+        "stic.state."
+      ],
+      "conflict": "C5",
+      "note": "resolver: a D10 read of a closed region (D10-SYS-10). trigger: a primary page that prints the value."
+    },
+    {
+      "id": "STIC-R25",
+      "family": "stic",
+      "statement": "Power-on state: registers zero, Foreground/Background mode, display latch clear.",
+      "basis": "default-unknown",
+      "cite": "none",
+      "fields": [
+        "stic.power_on",
+        "power_on_fill.stic"
+      ],
+      "tests": [
+        "stic.reset."
+      ],
+      "conflict": "C85",
+      "note": "resolver: an owner power-on read-back (D10-VID-09). trigger: a STIC register description or a real system image trace."
+    },
+    {
+      "id": "STIC-R26",
+      "family": "stic",
+      "statement": "An event stamped at or below an access stamp is applied before the access (step first, then act); the access stamp is the unit start plus offset times 4 ticks plus stic.access_strobe_ticks.",
+      "basis": "project-rule",
+      "cite": "none",
+      "fields": [
+        "stic.access_strobe_ticks"
+      ],
+      "tests": [
+        "stic.events.",
+        "stic.slice."
+      ],
+      "conflict": "C94",
+      "note": "Phase 5 convention (C78) applied to the STIC; a project rule, not a hardware statement."
+    },
+    {
+      "id": "STIC-R27",
+      "family": "stic",
+      "statement": "ivs_machine_peek is the bus view and has no side effect; the STIC state report is the stored view and has no side effect.",
+      "basis": "project-rule",
+      "cite": "none",
+      "fields": [
+        "engine:stic-peek"
+      ],
+      "tests": [
+        "stic.peek.",
+        "stic.state."
+      ],
+      "conflict": "C84",
+      "note": "VID-06. Inspecting $0021 never switches the mode."
+    },
+    {
+      "id": "STIC-R28",
+      "family": "stic",
+      "statement": "Phase 6 applies only the color stack and border color registers to the picture; MOB, delay and border-extension registers are stored and not applied.",
+      "basis": "project-rule",
+      "cite": "none",
+      "fields": [
+        "stic.regmap"
+      ],
+      "tests": [
+        "stic.reg."
+      ],
+      "conflict": "C87",
+      "note": "Scope rule (REQUIREMENTS VID-04 and VID-05)."
+    },
+    {
+      "id": "STIC-R29",
+      "family": "stic",
+      "statement": "A frame is a STIC timeline event of constant length F = ticks_per_cpu_cycle x cpu_cycles_per_scanline x scanlines_per_frame = 59,736 ticks (14,934 cycles); S_k = stic.frame_phase_ticks + k x F; the frame index is machine state, never a function of the tick.",
+      "basis": "project-rule",
+      "cite": "none",
+      "fields": [
+        "ticks_per_cpu_cycle",
+        "cpu_cycles_per_scanline",
+        "scanlines_per_frame",
+        "stic.frame_phase_ticks"
+      ],
+      "tests": [
+        "stic.events.",
+        "stic.slice."
+      ],
+      "conflict": "C7",
+      "note": "D-07. The 262 and 57 are tier 4 (C7); the constancy of F and the state rule are project rules. Phase 0 is C90."
+    },
+    {
+      "id": "STIC-R30",
+      "family": "stic",
+      "statement": "INTRM is a level asserted from S_k for 3,791 CPU cycles; a unit starting at b sees the level of tick b - 4, so INTRM is seen iff S_k + 4 <= b <= S_k + 4 x 3,791.",
+      "basis": "default-unknown",
+      "cite": "none",
+      "fields": [
+        "stic.irq_line",
+        "stic.irq_low_cpu_cycles",
+        "bus.line_sample_lag_cpu_cycles"
+      ],
+      "tests": [
+        "stic.lines.",
+        "stic.irq."
+      ],
+      "conflict": "C91",
+      "note": "resolver: an owner probe of the interrupt line by cycle count (D10-SYS-03). trigger: a tier 1 to 3 STIC time description."
+    },
+    {
+      "id": "STIC-R31",
+      "family": "stic",
+      "statement": "With the display latch set, 13 bus windows per frame start at cycle 3,791 + 912 i and hold BUSRQ for 114 cycles; windows 0..11 fetch card rows 0..11 and window 12 fetches nothing; the printed bound is 13 or 14 requests per frame.",
+      "basis": "default-unknown",
+      "cite": "SRC-gi-1980-catalog@pdf191",
+      "fields": [
+        "stic.bus.count",
+        "stic.bus.first_start_cpu_cycles",
+        "stic.bus.pitch_cpu_cycles",
+        "stic.bus.hold_cpu_cycles",
+        "stic.bus.rows",
+        "stic.bus.fetch_offset_cpu_cycles"
+      ],
+      "tests": [
+        "stic.busrq.",
+        "stic.fetch.",
+        "stic.steal.",
+        "stic.bounds."
+      ],
+      "conflict": "C92",
+      "note": "resolver: an owner bus-window probe (D10-VID-07). trigger: a tier 1 to 3 STIC time description."
+    },
+    {
+      "id": "STIC-R32",
+      "family": "stic",
+      "statement": "A bus stall resumes the CPU at w + 4 x (H + 1 + L) = w + 468 ticks (117 cycles) after the window start when the grant came before the window end; a closed boundary defers the grant and the row latch is taken on schedule.",
+      "basis": "inference",
+      "cite": "SRC-gi-cp1600-um-1975@pdf36",
+      "fields": [
+        "bus.release_latency_cpu_cycles",
+        "stic.bus.hold_cpu_cycles",
+        "stic.late_grant"
+      ],
+      "tests": [
+        "stic.steal.",
+        "stic.tile."
+      ],
+      "conflict": "C52",
+      "note": "resolver: an owner bus trace (D10-VID-07). trigger: a primary page that prints the grant behaviour."
+    },
+    {
+      "id": "STIC-R33",
+      "family": "stic",
+      "statement": "The STIC is advanced to the end of every unit and to the stamp of every access that can observe or change its inputs, so nothing depends on how the host slices run calls.",
+      "basis": "project-rule",
+      "cite": "none",
+      "fields": [
+        "engine:stic-catchup"
+      ],
+      "tests": [
+        "stic.slice.",
+        "stic.events.",
+        "stic.hook."
+      ],
+      "conflict": "C94",
+      "note": "The PSG catch-up rule (Phase 5 A-02) applied to the STIC."
+    },
+    {
+      "id": "STIC-R34",
+      "family": "stic",
+      "statement": "FRAME_END(k) is processed before FRAME_START(k+1) and before an access stamped exactly E_k; frame k contains the accesses stamped strictly below E_k.",
+      "basis": "project-rule",
+      "cite": "none",
+      "fields": [
+        "engine:stic-tie"
+      ],
+      "tests": [
+        "stic.events.",
+        "video.boundary."
+      ],
+      "conflict": "C104",
+      "note": "A-06."
+    },
+    {
+      "id": "STIC-R35",
+      "family": "stic",
+      "statement": "The video capacity of a run call is video_slot_bytes x (D / F + 2), with one slack frame; the Phase 4 form (D / F + 1) is wrong when a unit crosses the target (corner now = E_k - 4, D = F - 1).",
+      "basis": "project-rule",
+      "cite": "none",
+      "fields": [
+        "stic.video_slack_frames"
+      ],
+      "tests": [
+        "video.buffers.",
+        "stic.bounds."
+      ],
+      "conflict": "C104",
+      "note": "D-15, A-08; derived in docs/stic/timing-notes.md."
+    },
+    {
+      "id": "STIC-R36",
+      "family": "stic",
+      "statement": "A frame slot is a 32-byte big-endian header (tick E_k, index, width, height, flags, reserved) plus width x height index bytes; the video digest is the per-frame chain h(n+1) = SHA-256(h(n) || slot).",
+      "basis": "project-rule",
+      "cite": "none",
+      "fields": [
+        "video.row_lines",
+        "video.blank_value"
+      ],
+      "tests": [
+        "video.slot.",
+        "video.chain."
+      ],
+      "conflict": "C10",
+      "note": "D-13 and D-16; the framing literal is data/video/chain-framing.literal.txt."
+    },
+    {
+      "id": "CR-01",
+      "family": "card",
+      "statement": "BACKTAB is 20 x 12 cards, 240 words of 14 bits at $0200-$02EF; card (r, c) is word 20 r + c.",
+      "basis": "tier1-literal",
+      "cite": "SRC-gi-1980-catalog@pdf199",
+      "fields": [
+        "stic.backtab",
+        "video.card_columns",
+        "video.card_rows"
+      ],
+      "tests": [
+        "video.layout.",
+        "video.fgbg."
+      ],
+      "conflict": "C96",
+      "note": "The extent and the address (512 decimal) are printed on pdf 199; the raster order is tier 4 and an inference from the address counter stepping 20 per row (BACKTAB page)."
+    },
+    {
+      "id": "CR-02",
+      "family": "card",
+      "statement": "Only bits 13..0 of a BACKTAB word are used; bits 15 and 14 are ignored.",
+      "basis": "tier1-literal",
+      "cite": "SRC-gi-1980-catalog@pdf199",
+      "fields": [
+        "stic.backtab"
+      ],
+      "tests": [
+        "video.card.",
+        "video.fgbg."
+      ],
+      "conflict": "C96",
+      "note": "Printed on pdf 199."
+    },
+    {
+      "id": "CR-03",
+      "family": "card",
+      "statement": "A card is 8 x 8 pixels; the 20th column shows 7 pixels, so the visible plane is 159 x 96 (width = 19 x 8 + 7); the clip side is the right edge.",
+      "basis": "tier1-literal",
+      "cite": "SRC-gi-1980-catalog@pdf191",
+      "fields": [
+        "video.card_size_px",
+        "video.last_card_column_px",
+        "video.last_card_column_drop"
+      ],
+      "tests": [
+        "video.geom.",
+        "video.card."
+      ],
+      "conflict": "C10",
+      "note": "The count of 7 is printed on pdf 191; which pixel column is dropped is tier 4 (C101)."
+    },
+    {
+      "id": "CR-04",
+      "family": "card",
+      "statement": "A card byte is one pattern row: byte 0 is the top row, bit 7 the leftmost pixel, bit 1 the foreground.",
+      "basis": "inference",
+      "cite": "SRC-bsr-2609@2609-overview",
+      "fields": [
+        "engine:stic-card"
+      ],
+      "tests": [
+        "video.card.",
+        "video.fgbg."
+      ],
+      "conflict": "C96",
+      "note": "resolver: an owner capture or a STIC description. trigger: a primary source or a capture."
+    },
+    {
+      "id": "CR-05",
+      "family": "card",
+      "statement": "Graphics ROM at $3000-$37FF and graphics RAM at $3800-$39FF, 8 bytes per card, address base + 8 x card + row.",
+      "basis": "tier4-community",
+      "cite": "SRC-intv-wiki@Memory-Map-oldid-14847",
+      "fields": [
+        "engine:stic-card"
+      ],
+      "tests": [
+        "video.card.",
+        "video.grom."
+      ],
+      "conflict": "C21",
+      "note": "Memory map page; the extent beyond $39FF is C21 and is never formed by a card."
+    },
+    {
+      "id": "CR-06",
+      "family": "card",
+      "statement": "The select bit is bit 11 in both modes: 0 is the graphics ROM and 1 the graphics RAM.",
+      "basis": "tier4-community",
+      "cite": "SRC-intv-wiki@STIC-oldid-15008",
+      "fields": [
+        "engine:stic-card"
+      ],
+      "tests": [
+        "video.card.",
+        "video.cstack."
+      ],
+      "conflict": "C96",
+      "note": "Word-format images on the community page."
+    },
+    {
+      "id": "CR-07",
+      "family": "card",
+      "statement": "A graphics RAM card number is bits 8..3 (0..63); bits 10 and 9 are ignored in Color Stack mode.",
+      "basis": "tier4-community",
+      "cite": "SRC-intv-wiki@STIC-oldid-15008",
+      "fields": [
+        "engine:stic-card"
+      ],
+      "tests": [
+        "video.card.",
+        "video.cstack."
+      ],
+      "conflict": "C103",
+      "note": "The community figure of the RAM word; mirroring versus ignoring only differs if the RAM extent changes (C21)."
+    },
+    {
+      "id": "CR-08",
+      "family": "card",
+      "statement": "Foreground/Background word: foreground = bits 2..0 (0..7), card = bits 8..3, select = bit 11, background = 8 x bit12 + 4 x bit13 + 2 x bit10 + bit9; the color stack is not read and bit 13 never advances it.",
+      "basis": "tier4-community",
+      "cite": "SRC-intv-wiki@STIC-oldid-15008",
+      "fields": [
+        "engine:stic-card"
+      ],
+      "tests": [
+        "video.fgbg.",
+        "video.card."
+      ],
+      "conflict": "C96",
+      "note": "Word-format image on the community page; the non-monotonic background bit order is the most likely transcription error and is checked by the 64-probe sweep."
+    },
+    {
+      "id": "CR-09",
+      "family": "card",
+      "statement": "Color Stack decode by bits 12 and 11: 0 0 graphics ROM card of bits 10..3 (0..255) with foreground bits 2..0; 0 1 graphics RAM card; 1 1 graphics RAM card with foreground bit 3 = bit 12 (0..15); 1 0 Colored Squares.",
+      "basis": "tier4-community",
+      "cite": "SRC-intv-wiki@STIC-oldid-15008",
+      "fields": [
+        "engine:stic-card"
+      ],
+      "tests": [
+        "video.cstack.",
+        "video.mode."
+      ],
+      "conflict": "C96",
+      "note": "Word-format images on the community page."
+    },
+    {
+      "id": "CR-10",
+      "family": "card",
+      "statement": "Color Stack background = stack[pos] after the card's advance; the stack is $0028..$002B.",
+      "basis": "tier4-community",
+      "cite": "SRC-intv-wiki@STIC-oldid-15008",
+      "fields": [
+        "engine:stic-card"
+      ],
+      "tests": [
+        "video.cstack."
+      ],
+      "conflict": "C97",
+      "note": "Page text: moves to the next entry before drawing the card."
+    },
+    {
+      "id": "CR-11",
+      "family": "card",
+      "statement": "Stack position starts at 0 at every frame render, advances (mod 4) before the card is drawn when bit 13 is set, wraps 3 to 0, has no per-row reset, and a cut-off column card advances it too.",
+      "basis": "tier4-community",
+      "cite": "SRC-intv-wiki@STIC-oldid-15008",
+      "fields": [
+        "engine:stic-card"
+      ],
+      "tests": [
+        "video.cstack."
+      ],
+      "conflict": "C97",
+      "note": "Position 0 initially, advance before draw and the wrap are on the page; the reset at every frame (C97) and the cut-off column advance (C102) are inferences."
+    },
+    {
+      "id": "CR-12",
+      "family": "card",
+      "statement": "Plane values are STIC color numbers 0..15; 0xFF is the not-displayed value; the palette is host policy.",
+      "basis": "project-rule",
+      "cite": "none",
+      "fields": [
+        "video.colors",
+        "video.blank_value"
+      ],
+      "tests": [
+        "video.color.",
+        "video.slot."
+      ],
+      "conflict": "C10",
+      "note": "D-13."
+    },
+    {
+      "id": "CR-13",
+      "family": "card",
+      "statement": "Colored Squares: four 4 x 4 quadrants with colors c0 = bits 2..0, c1 = bits 5..3, c2 = bits 8..6, c3 = 4 x bit13 + 2 x bit10 + bit9; color 7 draws stack[pos]; no advance.",
+      "basis": "tier4-community",
+      "cite": "SRC-intv-wiki@STIC-oldid-15008",
+      "fields": [
+        "engine:stic-card"
+      ],
+      "tests": [
+        "video.cstack.",
+        "video.probe."
+      ],
+      "conflict": "C98",
+      "note": "The figure labels bits 10 and 9 as 'Bits 0-1'; the order used here (bit 10 is the middle bit of c3) is the natural reading and the swap is recorded in C98."
+    },
+    {
+      "id": "CR-14",
+      "family": "card",
+      "statement": "Each card pixel is the foreground index where the pattern bit is 1 and the background index where it is 0; a card with no image data is background only.",
+      "basis": "tier4-community",
+      "cite": "SRC-intv-wiki@STIC-oldid-15008",
+      "fields": [
+        "engine:stic-card"
+      ],
+      "tests": [
+        "video.card.",
+        "video.grom."
+      ],
+      "conflict": "C96",
+      "note": "Corollary of CR-04, CR-08 and CR-10; the basis of the per-card pixel-count conservation check of the hand frames."
+    },
+    {
+      "id": "CR-15",
+      "family": "card",
+      "statement": "With the display off the plane is filled with the border color index and no BACKTAB word or pattern is read.",
+      "basis": "default-unknown",
+      "cite": "none",
+      "fields": [
+        "video.display_off_fill"
+      ],
+      "tests": [
+        "video.display-off."
+      ],
+      "conflict": "C99",
+      "note": "resolver: an owner capture of a display-off frame (D10-VID-03). trigger: a capture or a guest that depends on it."
+    },
+    {
+      "id": "CR-16",
+      "family": "card",
+      "statement": "The power-on mode is Foreground/Background.",
+      "basis": "default-unknown",
+      "cite": "none",
+      "fields": [
+        "stic.power_on"
+      ],
+      "tests": [
+        "video.mode."
+      ],
+      "conflict": "C85",
+      "note": "resolver: an owner power-on read-back (D10-VID-09). trigger: a STIC description or a real system image trace."
+    },
+    {
+      "id": "CR-17",
+      "family": "card",
+      "statement": "The picture is rendered at the frame end from the registers and graphics memory as of E_k and the 12 BACKTAB row latches, through backing accessors that consult no gate and have no effect.",
+      "basis": "project-rule",
+      "cite": "none",
+      "fields": [
+        "stic.bus.fetch_offset_cpu_cycles"
+      ],
+      "tests": [
+        "video.probe.",
+        "video.judge."
+      ],
+      "conflict": "C100",
+      "note": "D-11; a BACKTAB write while the picture is drawn tears at row granularity (C100)."
+    }
+  ]
+}
