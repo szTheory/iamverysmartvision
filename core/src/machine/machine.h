@@ -77,6 +77,10 @@ typedef struct ivs_machine_obs_av {
  * level-change records, the emitted count and the previous sample's levels. */
 typedef ivs_psg_obs ivs_machine_obs_audio;
 
+/* The PSGLOG row is the PSG module's log row (psg/psg.h, plan 05-08): chain[32] and the record count, the
+ * same 40 bytes as the VIDEO row. */
+typedef ivs_psg_logrow ivs_machine_obs_psglog;
+
 typedef struct ivs_machine_obs_input {
   uint32_t words[4];
   uint64_t count;
@@ -88,7 +92,7 @@ typedef struct ivs_machine_obs {
   ivs_machine_obs_av video;
   ivs_machine_obs_audio audio;
   ivs_machine_obs_input input;
-  ivs_machine_obs_av psglog;
+  ivs_machine_obs_psglog psglog;
 } ivs_machine_obs;
 
 struct ivs_machine {
@@ -200,6 +204,9 @@ typedef struct ivs_machine_bus_ctx {
   uint32_t ticks_per_cpu_cycle;
   uint32_t reserved; /* 0 */
 } ivs_machine_bus_ctx;
+/* Plan 05-08 (D-13, A-01): the same stamp is the tick of the write's log record (ivs_psg_log_append into
+ * m->obs.psglog and the log channel of sink), with source IVS_PSGLOG_SRC_CPU_WRITE for a WRITE access and
+ * IVS_PSGLOG_SRC_CPU_DW for the interrupt-entry write. */
 
 ivs_bus_reply ivs_machine_bus(void *ctx, const ivs_cp1610_access *a);
 
@@ -227,6 +234,13 @@ ivs_status ivs_machine_step_unit_internal(ivs_machine *m, ivs_cp1610_result *out
  * own. The machine state after the unit does not depend on the sink. sink must not be NULL. */
 ivs_status ivs_machine_step_unit_sink_internal(ivs_machine *m, ivs_cp1610_result *out, ivs_psg_sink *sink);
 
+/* The same step that also records the unit's bus accesses (plan 05-08, D-13): trace is NULL (none) or an array
+ * of at least IVS_CP1610_MAX_ACCESSES accesses that ivs_cp1610_step fills (result.n_accesses of them). The
+ * machine state, the log and the samples do not depend on it; the public and default seams pass NULL. Lets a
+ * test compare the write log with the CPU's own access trace. */
+ivs_status ivs_machine_step_unit_trace_internal(ivs_machine *m, ivs_cp1610_result *out, ivs_psg_sink *sink,
+                                                ivs_cp1610_access *trace, size_t trace_cap);
+
 /* ---- internal run env seam (D-06, plan 04-10, machine_bound.c) ----
  * The output layout a run is checked against: per channel a format (IVS_OUTPUT_FORMAT_*) and the
  * bytes one frame needs, and the nominal frame length in master ticks. The capacity a run needs
@@ -241,7 +255,7 @@ typedef struct ivs_run_env {
   uint64_t nominal_frame_ticks;
   /* Plan 05-02 (D-14, D-19): the write-log channel, appended. The log needs
    * psg_log_bytes_per_frame * (max(target - now, 0) / nominal_frame_ticks + 1) bytes like the
-   * other two channels; 0 (every profile until plan 05-08) needs nothing. The seam is an internal
+   * other two channels; 0 needs nothing (the NTSC profile publishes 16 x 2,152 = 34,432 from plan 05-08). The seam is an internal
    * plain struct without a struct_size: callers build it with memset, so the appended field is
    * 0 for a caller that does not know it. */
   uint32_t psg_log_bytes_per_frame;

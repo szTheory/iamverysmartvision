@@ -191,4 +191,8 @@ extern const size_t ivs_psg_slice_count;
 extern const ivs_test_case ivs_psg_chain_cases[];
 extern const size_t ivs_psg_chain_count;
 
+/* Family log (plan 05-08, psg_log.c): the register-write log, its framing, stamps, replay and chain. Fixed cases only. */
+extern const ivs_test_case ivs_psg_log_cases[];
+extern const size_t ivs_psg_log_count;
+
 #endif

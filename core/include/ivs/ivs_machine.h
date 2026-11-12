@@ -137,12 +137,14 @@ typedef struct ivs_image_report {
  * v3 (plan 05-02, D-15, D-19): the Phase 5 tail, appended after the v2 size of 256 and written only
  * when struct_size covers it (a 256-byte caller gets exactly 256 bytes). The audio fields and the
  * crystal passthrough are filled from plan 05-06 (the core never reads the crystal, it only
- * republishes the profile's figures); the write-log fields read 0 until plan 05-08:
+ * republishes the profile's figures); the write-log fields are filled from plan 05-08:
  *   256 audio_sample_ticks       master ticks between audio samples (one PSG chip step; 16)
  *   260 audio_sample_bytes       bytes of one audio sample (4 with IVS_OUTPUT_FORMAT_PSG_LEVELS_V1)
  *   264 psg_log_record_bytes     bytes of one write-log record (16)
- *   268 psg_log_records_per_frame  the log capacity bound of one frame slot (psg_log_bytes_per_frame
- *                                is record_bytes times this)
+ *   268 psg_log_records_per_frame  the log capacity bound of one frame slot, W_log = ceil(F / g) +
+ *                                ceil(U / g) + 1 = 2,152 on the NTSC profile (psg_log_bytes_per_frame
+ *                                is record_bytes times this; a log buffer needs that many bytes per
+ *                                (max(target - now, 0) / nominal_frame_ticks + 1))
  *   272 crystal_hz_num           the master crystal in Hz as a fraction (numerator)
  *   280 crystal_hz_den           ... denominator
  * sizeof(ivs_info) is 288. IVS_INFO_V1_SIZE stays 216. */

@@ -274,8 +274,8 @@ typedef struct ivs_run_report {
   uint32_t controller_now[4];      /* the controller words in force at exit */
   /* ---- end of the v1 size (112) ---- */
   uint64_t audio_first_index;      /* v2, offset 112: samples emitted before this call (plan 05-06) */
-  uint64_t psg_log_bytes_written;  /* v2, offset 120: 0 until plan 05-08 fills it */
-  uint64_t psg_log_first_index;    /* v2, offset 128: 0 until plan 05-08 fills it; sizeof 136 */
+  uint64_t psg_log_bytes_written;  /* v2, offset 120: write-log bytes delivered into psg_log by this call (plan 05-08) */
+  uint64_t psg_log_first_index;    /* v2, offset 128: records logged before this call (plan 05-08); sizeof 136 */
 } ivs_run_report;
 
 /* Runs m to req->target_ticks (above). Refusal order (D-05), first failing class wins, every

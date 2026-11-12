@@ -99,6 +99,8 @@ psg.reset
 psg.clock_phase_ticks
 psg.write_strobe_ticks
 psg.max_unit_ticks
+psg.min_write_gap_ticks
+psg.log_records_per_frame
 psg.period_zero.noise
 psg.noise.steps_per_np
 psg.noise.lfsr

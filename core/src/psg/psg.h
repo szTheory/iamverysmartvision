@@ -83,6 +83,11 @@ typedef struct ivs_psg_obs {
 
 _Static_assert(sizeof(ivs_psg_obs) == 56u, "ivs_psg_obs must be 56 bytes (machine.h layout)");
 
+/* Plan 05-08 (D-13, D-14, D-18): the same per-call sink also carries the write-log channel. log NULL is
+ * the counting log sink (nothing is written, the same code runs), log_cap the bytes log holds, log_written
+ * the bytes delivered, log_records the records made by the call (with or without a buffer), log_overflow 1
+ * when a record did not fit (never expected: the capacity rule and the run loop's safety net prove the room),
+ * base_tick scratch of the named fault PSG_LOG_TICK_SLICE_RELATIVE (0 otherwise). */
 typedef struct ivs_psg_sink {
   uint8_t *buf;
   uint64_t cap;
@@ -90,13 +95,46 @@ typedef struct ivs_psg_sink {
   uint64_t samples;
   uint32_t overflow;
   uint32_t fresh; /* 1 until the first catch-up of the call (named fault PSG_SAMPLE_PHASE_RESET_PER_CALL) */
+  uint8_t *log;
+  uint64_t log_cap;
+  uint64_t log_written;
+  uint64_t log_records;
+  uint64_t base_tick;
+  uint32_t log_overflow;
+  uint32_t log_reserved; /* 0 */
 } ivs_psg_sink;
 
 /* Bytes of one audio sample record: A, B, C, 0 (IVS_OUTPUT_FORMAT_PSG_LEVELS_V1). */
 #define IVS_PSG_SAMPLE_BYTES 4u
 
-/* Sets k to a sink over buf (NULL for the counting sink) holding cap bytes. */
+/* Sets k to a sink over buf (NULL for the counting sink) holding cap bytes; the write-log channel is the
+ * counting log sink until ivs_psg_sink_log is called. */
 void ivs_psg_sink_init(ivs_psg_sink *k, uint8_t *buf, uint64_t cap);
+
+/* ---- write log (plan 05-08, D-13, D-14, D-18, rules PSG-R14) ----
+ * One 16-byte record per guest write to $01F0..$01FF, written byte by byte, big-endian:
+ *   bytes 0..7 tick (u64 master tick), bytes 8..9 value (u16, the raw 16-bit bus value before masking),
+ *   byte 10 addr (the low nibble of the bus address), byte 11 source (IVS_PSGLOG_SRC_*), bytes 12..15 0.
+ * The domain-19 chain over the records (rows chain[32] and count, ivs_psg_logrow) is
+ *   chain' = SHA-256('I' 'V' 'S' 'R' || 19 || chain || be64(index) || be32(16) || record)
+ * with index = the number of records chained before this one and an initial chain of 32 zero bytes. It is
+ * updated whether or not a log buffer is present: sink->log NULL is the counting log sink. */
+#define IVS_PSG_LOG_RECORD_BYTES 16u
+
+typedef struct ivs_psg_logrow {
+  uint8_t chain[32];
+  uint64_t count;
+} ivs_psg_logrow;
+
+_Static_assert(sizeof(ivs_psg_logrow) == 40u, "ivs_psg_logrow must be 40 bytes (machine.h layout)");
+
+/* Sets the write-log channel of sink k to buf (NULL for the counting log sink) holding cap bytes. */
+void ivs_psg_sink_log(ivs_psg_sink *k, uint8_t *buf, uint64_t cap);
+
+/* Appends one record to the log row (the chain and the count) and, when the sink has a log buffer with
+ * room, to the buffer. A record that does not fit sets sink->log_overflow and is still chained. */
+void ivs_psg_log_append(ivs_psg_sink *sink, ivs_psg_logrow *row, uint64_t tick, uint32_t value, uint32_t addr,
+                        uint32_t source);
 
 /* Mixer gate of channel ch (0..2): chan = (tone | tone_disabled) & (noise | noise_disabled) with the
  * disable bits of the mixer register value, so a channel with both generators disabled is a

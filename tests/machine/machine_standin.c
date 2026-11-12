@@ -132,20 +132,32 @@ static const ms_prog ms_progs[IVS_MS_PROGS] = {
     {ms_prog_env, sizeof ms_prog_env / sizeof ms_prog_env[0]},
 };
 
-uint8_t *ivs_ms_exec(uint32_t program)
+/* An EXEC image whose first n words are words (each at most $3FF) and whose remaining words are the generated
+ * pattern of program number pad. */
+static uint8_t *ms_exec_image(const uint16_t *words, size_t n, uint32_t pad)
 {
-  const ms_prog *pg = &ms_progs[program < IVS_MS_PROGS ? program : IVS_MS_PROG_A];
   uint8_t *b = malloc(IVS_MS_EXEC_BYTES);
   uint32_t i;
   if (b == NULL) {
     return NULL;
   }
   for (i = 0u; i < IVS_MS_EXEC_BYTES / 2u; i++) {
-    uint16_t w = i < pg->n ? pg->words[i] : (uint16_t)((37u * i + 11u + 5u * program) & 0x3FFu);
+    uint16_t w = i < n ? words[i] : (uint16_t)((37u * i + 11u + 5u * pad) & 0x3FFu);
     b[2u * i] = (uint8_t)(w >> 8);
     b[2u * i + 1u] = (uint8_t)(w & 0xFFu);
   }
   return b;
+}
+
+uint8_t *ivs_ms_exec(uint32_t program)
+{
+  const ms_prog *pg = &ms_progs[program < IVS_MS_PROGS ? program : IVS_MS_PROG_A];
+  return ms_exec_image(pg->words, pg->n, program);
+}
+
+uint8_t *ivs_ms_exec_words(const uint16_t *words, size_t n)
+{
+  return ms_exec_image(words, n, 0u);
 }
 
 uint8_t *ivs_ms_grom(uint32_t seed)
@@ -320,4 +332,30 @@ int ivs_ms_digests(const ivs_machine *m, uint8_t composite[32], uint8_t cpu[32])
 {
   return ivs_machine_state_digest(m, IVS_DIGEST_COMPOSITE, composite) == IVS_OK &&
          ivs_machine_state_digest(m, IVS_DIGEST_CPU, cpu) == IVS_OK;
+}
+
+/* ivs_ms_powered_prog for a program given as words at $1000 (plan 05-08: the write-log programs and the fuzz
+ * generator build their words at run time). */
+int ivs_ms_powered_words(ivs_ms_inst *x, const uint16_t *words, size_t n, uint8_t poison)
+{
+  size_t cn = 0u;
+  uint8_t *cart;
+  ivs_status st;
+  if (!ivs_ms_new(x, poison)) {
+    return 0;
+  }
+  cart = ivs_ms_cart(0x5000u, 16u, 0u, &cn);
+  if (!ivs_ms_load(x->m, IVS_KIND_EXEC, ivs_ms_exec_words(words, n), IVS_MS_EXEC_BYTES) ||
+      !ivs_ms_load(x->m, IVS_KIND_GROM, ivs_ms_grom(0u), IVS_MS_GROM_BYTES) ||
+      !ivs_ms_load(x->m, IVS_KIND_CARTRIDGE, cart, cn)) {
+    ivs_ms_free(x);
+    return 0;
+  }
+  st = ivs_machine_reset(x->m, IVS_RESET_POWER_ON);
+  if (st != IVS_OK) {
+    ivs_test_diag("reset refused (%s)", ivs_status_name(st));
+    ivs_ms_free(x);
+    return 0;
+  }
+  return 1;
 }

@@ -37,6 +37,10 @@
 #                "alternate": b, "hold": b, "restart_on_write": 0 or 1} (four distinct bit numbers 0..3), and the
 #                psg.reset keys lfsr ("seed") and envelope ("held-0"). psg.dac.levels is NOT read here: the core never
 #                reads it (D-11); cmake/IvsPsgProfileProbe.cmake reads it for the tests.
+#   (plan 05-08, D-13, D-14, A-03) the write-log bound: psg.min_write_gap_ticks (a whole number of CPU cycles)
+#                and psg.log_records_per_frame, which must equal ceil(F / g) + ceil(U / g) + 1 with F =
+#                scanlines_per_frame x cpu_cycles_per_scanline x ticks_per_cpu_cycle and U = psg.max_unit_ticks.
+#                Both are checked here and published by the registry (IvsMemmapTable.cmake); the engine reads neither.
 # Later plans append their psg.* fields to this generator and to ivs_psg_params.
 #
 # Fail closed (message `IvsPsgTable: <profile>: <field>: <reason>`): a profile without psg.regmap
@@ -460,6 +464,28 @@ foreach(rel IN LISTS pt_profiles)
   math(EXPR want "(12 + 3 * ${wait_limit}) * ${ticks_per_cpu}")
   if(NOT max_unit EQUAL want)
     pt_fail("value ${max_unit} is not (12 + 3 * bus.wait_limit_cpu_cycles) * ticks_per_cpu_cycle (${want})")
+  endif()
+  # Plan 05-08 (D-13, D-14, A-03, C53): the write-log bound. psg.min_write_gap_ticks g is the smallest gap
+  # between two PSG-writing units (interrupt-entry units included), a whole number of CPU cycles;
+  # psg.log_records_per_frame W_log must be ceil(F / g) + ceil(U / g) + 1 with F the nominal frame in master
+  # ticks and U psg.max_unit_ticks, so a frame slot of the capacity formula can always hold its records.
+  set(PT_CTX "${rel}: psg.min_write_gap_ticks")
+  pt_uint(min_gap "${doc}" "value" 65535 fields psg.min_write_gap_ticks value)
+  if(min_gap EQUAL 0)
+    pt_fail("must be at least 1")
+  endif()
+  math(EXPR gap_rem "${min_gap} % ${ticks_per_cpu}")
+  if(NOT gap_rem EQUAL 0)
+    pt_fail("value ${min_gap} is not a whole number of CPU cycles (ticks_per_cpu_cycle ${ticks_per_cpu})")
+  endif()
+  set(PT_CTX "${rel}: psg.log_records_per_frame")
+  pt_uint(log_rpf "${doc}" "value" 65535 fields psg.log_records_per_frame value)
+  pt_uint(scan_per_frame "${doc}" "scanlines_per_frame" 65535 fields scanlines_per_frame value)
+  pt_uint(cyc_per_scan "${doc}" "cpu_cycles_per_scanline" 65535 fields cpu_cycles_per_scanline value)
+  math(EXPR frame_ticks "${scan_per_frame} * ${cyc_per_scan} * ${ticks_per_cpu}")
+  math(EXPR want_log "(${frame_ticks} + ${min_gap} - 1) / ${min_gap} + (${max_unit} + ${min_gap} - 1) / ${min_gap} + 1")
+  if(NOT log_rpf EQUAL want_log)
+    pt_fail("value ${log_rpf} is not ceil(F / g) + ceil(U / g) + 1 (${want_log}) with F ${frame_ticks}, g ${min_gap}, U ${max_unit}")
   endif()
   math(EXPR amp_select_mask "(1 << ${select_w}) - 1")
 

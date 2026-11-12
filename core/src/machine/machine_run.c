@@ -116,6 +116,12 @@ ivs_status ivs_machine_step_unit_internal(ivs_machine *m, ivs_cp1610_result *out
 
 ivs_status ivs_machine_step_unit_sink_internal(ivs_machine *m, ivs_cp1610_result *out, ivs_psg_sink *sink)
 {
+  return ivs_machine_step_unit_trace_internal(m, out, sink, NULL, 0u);
+}
+
+ivs_status ivs_machine_step_unit_trace_internal(ivs_machine *m, ivs_cp1610_result *out, ivs_psg_sink *sink,
+                                                ivs_cp1610_access *trace, size_t trace_cap)
+{
   struct ivs_machine *im;
   const ivs_profile_desc *p;
   ivs_cp1610_config cfg;
@@ -157,7 +163,7 @@ ivs_status ivs_machine_step_unit_sink_internal(ivs_machine *m, ivs_cp1610_result
   port.ebci = NULL;
   port.ctx = &bus_ctx;
   memset(&r, 0, sizeof r);
-  st = ivs_cp1610_step(&im->cpu, &cfg, &lines, &port, NULL, 0u, &r);
+  st = ivs_cp1610_step(&im->cpu, &cfg, &lines, &port, trace, trace_cap, &r);
   if (st != IVS_OK) {
     return st;
   }

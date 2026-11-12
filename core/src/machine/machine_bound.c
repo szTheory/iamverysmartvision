@@ -516,6 +516,7 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
   uint32_t consumed = 0u;
   uint32_t n;
   uint64_t first_index;
+  uint64_t log_first_index;
   ivs_psg_sink sink;
   memset(&plan, 0, sizeof plan);
   st = ivs_bound_validate(m, req, rep, env, &plan, &reason, &index);
@@ -532,6 +533,13 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
     ivs_psg_sink_init(&sink, req->audio, req->audio_capacity);
   } else {
     ivs_psg_sink_init(&sink, NULL, 0u);
+  }
+  /* The write-log channel of the same sink (plan 05-08, D-14, D-18): the caller's psg_log when the layout carries a
+   * log (psg_log_bytes_per_frame nonzero) and a buffer was requested, else the counting log sink (the same code
+   * runs and the domain-19 chain is updated either way). log_first_index is the record count at entry. */
+  log_first_index = im->obs.psglog.count;
+  if (env->psg_log_bytes_per_frame != 0u) {
+    ivs_psg_sink_log(&sink, ivs_bound_log_ptr(req), ivs_bound_log_cap(req));
   }
 #ifdef IVS_FAULT_RUN_BUDGET_CARRY
   if (ivs_bound_carry_handle == (const void *)m && ivs_bound_carry_end == entry) {
@@ -561,6 +569,14 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
     }
 #endif
     if ((plan.flags & IVS_RUN_F_STOP_ON_HALT) != 0u && im->cpu.run_state == IVS_CP1610_RS_HALTED) {
+      break;
+    }
+    /* The never-expected safety net (plan 05-08, D-14): before a unit begins one more 16-byte record must fit a
+     * requested log buffer, else the run ends with the existing INTERNAL stop at this whole boundary (state
+     * consistent, a harness failure). It fires only if W_log is cut below the real write density; a channel
+     * that is not requested (no buffer) is never checked. */
+    if (sink.log != NULL && sink.log_cap - sink.log_written < IVS_PSG_LOG_RECORD_BYTES) {
+      internal = 1u;
       break;
     }
     /* A unit will begin at before: apply every due event first (A-04, D-14); the step seam then
@@ -633,7 +649,9 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
    * the room); it is an internal stop. */
   r.audio_bytes_written = sink.written;
   r.audio_first_index = first_index;
-  if (sink.overflow != 0u) {
+  r.psg_log_bytes_written = sink.log_written;
+  r.psg_log_first_index = log_first_index;
+  if (sink.overflow != 0u || sink.log_overflow != 0u) {
     r.stop_reason = IVS_STOP_INTERNAL;
   }
   r.input_consumed = consumed;

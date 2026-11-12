@@ -102,6 +102,10 @@ int ivs_ms_powered(ivs_ms_inst *x, uint32_t content, uint8_t poison);
 /* ivs_ms_new, the EXEC program (IVS_MS_PROG_*), the GROM and cartridge of content A, then a power-on
  * reset (plan 05-05). */
 int ivs_ms_powered_prog(ivs_ms_inst *x, uint32_t program, uint8_t poison);
+/* Plan 05-08: an EXEC image from words at $1000 (heap, the caller frees), and ivs_ms_powered_prog for such a
+ * program (each word at most $3FF). */
+uint8_t *ivs_ms_exec_words(const uint16_t *words, size_t n);
+int ivs_ms_powered_words(ivs_ms_inst *x, const uint16_t *words, size_t n, uint8_t poison);
 /* Steps units units through the seam, adding their CPU cycles to *cycles when not NULL. */
 int ivs_ms_step(ivs_machine *m, uint32_t units, uint64_t *cycles);
 /* The composite and CPU digests. */

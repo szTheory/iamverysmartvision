@@ -23,3 +23,9 @@ void ivs_psg_sink_init(ivs_psg_sink *k, uint8_t *buf, uint64_t cap)
   k->cap = buf != NULL ? cap : 0u;
   k->fresh = 1u;
 }
+
+void ivs_psg_sink_log(ivs_psg_sink *k, uint8_t *buf, uint64_t cap)
+{
+  k->log = buf;
+  k->log_cap = buf != NULL ? cap : 0u;
+}

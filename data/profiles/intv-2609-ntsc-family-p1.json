@@ -1012,6 +1012,26 @@
       "decision": null,
       "note": "The proven maximum ticks of one CPU unit, published for the audio capacity slack (D-17): s = ceil(U / P) + 1. The generator refuses a value that is not (12 + 3 x bus.wait_limit_cpu_cycles) x ticks_per_cpu_cycle."
     },
+    "psg.min_write_gap_ticks": {
+      "value": 28,
+      "tag": "inference",
+      "cite": "derived from the CP-1610 cycle table and ticks_per_cpu_cycle (C53): exhaustive probe psg.bounds.write-gap-min over every decle, SDBD off and on, waits 0, 1 and 35",
+      "conflict": "C53",
+      "resolving_evidence": "test: psg.bounds.write-gap-min and psg.bounds.g-and-u (exhaustive probe through the CPU model, interrupt-entry units included)",
+      "revisit_trigger": "when the CPU cycle table changes or a device other than the memory system can raise an interrupt or stall the bus (Phase 6)",
+      "decision": null,
+      "note": "The minimum master ticks between two PSG register writes over ALL PSG-writing units, an interrupt-entry unit included: an MVO@ write at offset 4 of a 9-cycle unit followed by an interrupt-entry unit that writes at offset 2 gives 9 - 4 + 2 = 7 CPU cycles = 28 ticks. Instruction-only writers reach 9 CPU cycles = 36 ticks, the only density reachable in Phase 5 (no device raises an interrupt before Phase 6); the published bound deliberately uses 28 so Phase 6 cannot silently break it. The generator refuses a value that is not a whole number of CPU cycles."
+    },
+    "psg.log_records_per_frame": {
+      "value": 2152,
+      "tag": "inference",
+      "cite": "derived from psg.min_write_gap_ticks and psg.max_unit_ticks (C53): W_log = ceil(F / g) + ceil(U / g) + 1 = 2134 + 17 + 1; exhaustive probe psg.bounds.write-gap-min",
+      "conflict": "C53",
+      "resolving_evidence": "test: psg.bounds.g-and-u (writes in T ticks <= (T + U) / g + 1 over every opcode x SDBD x wait in {0, limit}) and psg.buffers.worst-case-writer",
+      "revisit_trigger": "when psg.min_write_gap_ticks, psg.max_unit_ticks or the nominal frame changes",
+      "decision": null,
+      "note": "Write-log records one frame slot is sized for: the capacity of a run is 16 bytes x this x (max(target - now, 0) / nominal_frame_ticks + 1). The generator refuses a value that is not ceil(F / g) + ceil(U / g) + 1 for the profile's frame F (scanlines x cycles per scanline x ticks per cycle = 59,736 ticks), g and U."
+    },
     "psg.period_zero.noise": {
       "value": 32,
       "tag": "unknown-default-chosen",

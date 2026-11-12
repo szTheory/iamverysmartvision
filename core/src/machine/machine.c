@@ -310,6 +310,10 @@ ivs_status ivs_machine_info(const ivs_machine *m, ivs_info *out)
   r.audio_sample_bytes = env.audio_format != IVS_OUTPUT_FORMAT_NONE ? IVS_PSG_SAMPLE_BYTES : 0u;
   r.crystal_hz_num = p->crystal_hz_num;
   r.crystal_hz_den = p->crystal_hz_den;
+  /* v3 (plan 05-08, D-13, D-14): the write-log record size and the records one frame slot is sized for (the
+   * same figure the capacity of the public run call uses, so a caller sizes its log buffer from info). */
+  r.psg_log_record_bytes = IVS_PSG_LOG_RECORD_BYTES;
+  r.psg_log_records_per_frame = env.psg_log_bytes_per_frame / IVS_PSG_LOG_RECORD_BYTES;
   memcpy(out, &r, n);
   return IVS_OK;
 }
@@ -320,7 +324,7 @@ void ivs_machine_profile_env(const ivs_profile_desc *p, ivs_run_env *env)
   uint64_t period = p->psg_sample_period_ticks;
   memset(env, 0, sizeof *env);
   frame = (uint64_t)p->ticks_per_cpu_cycle * (uint64_t)p->cpu_cycles_per_scanline * (uint64_t)p->scanlines_per_frame;
-  /* No video yet (plan 05-09 and later) and no write log until plan 05-08 (D-06: no frame is fabricated). */
+  /* No video yet (plan 05-09 and later); the write log layout is set at the end (plan 05-08) (D-06: no frame is fabricated). */
   env->video_format = IVS_OUTPUT_FORMAT_NONE;
   env->video_bytes_per_frame = 0u;
   env->audio_format = IVS_OUTPUT_FORMAT_NONE;
@@ -337,6 +341,12 @@ void ivs_machine_profile_env(const ivs_profile_desc *p, ivs_run_env *env)
 #endif
     env->audio_format = IVS_OUTPUT_FORMAT_PSG_LEVELS_V1;
     env->audio_bytes_per_frame = (uint32_t)((per_frame + slack) * IVS_PSG_SAMPLE_BYTES);
+  }
+  /* Plan 05-08 (D-13, D-14): the write-log layout is real. A frame slot holds psg.log_records_per_frame records
+   * (W_log = ceil(F / g) + ceil(U / g) + 1, generator-checked and probed) of 16 bytes. */
+  if (p->psg_log_records_per_frame != 0u) {
+    uint32_t records = p->psg_log_records_per_frame;
+    env->psg_log_bytes_per_frame = records * IVS_PSG_LOG_RECORD_BYTES;
   }
 }
 

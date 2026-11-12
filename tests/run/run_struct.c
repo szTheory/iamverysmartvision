@@ -307,8 +307,10 @@ static int rs_report_v2_fields(void)
   RS_CHECK(ivs_machine_run(x.m, &q.q, &r.r) == IVS_OK);
   RS_CHECK(r.r.struct_size == 136u);
   /* Plan 05-06: the first call starts at sample 0 (audio_first_index, the samples emitted before the
-   * call), and the request has no audio buffer, so nothing is delivered (audio_bytes_written 0); the
-   * write-log fields stay 0 until plan 05-08. Plan 05-02 asserted all three appended fields 0. */
+   * call), and the request has no audio buffer, so nothing is delivered (audio_bytes_written 0). Plan 05-08:
+   * the request has no log buffer and stand-in program A never writes the PSG, so no record exists
+   * (psg_log_bytes_written 0 and psg_log_first_index 0, the records before the call). Plan 05-02 asserted all
+   * three appended fields 0; the case below (RS_LOG) gives them real values. */
   RS_CHECK(r.r.audio_first_index == 0u && r.r.audio_bytes_written == 0u);
   RS_CHECK(r.r.psg_log_bytes_written == 0u && r.r.psg_log_first_index == 0u);
   /* A report between the v1 size and its own: only the covered bytes are written. The second call
@@ -322,6 +324,53 @@ static int rs_report_v2_fields(void)
   RS_CHECK(r.r.struct_size == 120u);
   RS_CHECK(r.r.audio_first_index == now / 16u);
   RS_CHECK(r.b[120] == RS_POISON && r.b[135] == RS_POISON);
+  /* RS_LOG (plan 05-08): stand-in program C writes $01F4 once (a record of 16 bytes). A first call that ends after
+   * the write reports psg_log_bytes_written 16 and psg_log_first_index 0 (no record before the call); the next call,
+   * which makes no further write, reports 0 bytes and psg_log_first_index 1 (one record before it). */
+  {
+    ivs_ms_inst c;
+    ivs_info info;
+    uint8_t *log;
+    uint64_t cap;
+    c.storage = NULL;
+    c.m = NULL;
+    memset(&info, 0, sizeof info);
+    info.struct_size = (uint32_t)sizeof info;
+    RS_CHECK(ivs_ms_powered_prog(&c, IVS_MS_PROG_C, RS_POISON));
+    RS_CHECK(ivs_machine_info(c.m, &info) == IVS_OK && info.psg_log_record_bytes == 16u);
+    cap = (uint64_t)info.psg_log_record_bytes * info.psg_log_records_per_frame * 2u;
+    log = malloc((size_t)cap);
+    if (log == NULL) {
+      ivs_ms_free(&c);
+      goto done;
+    }
+    rs_req(&q, (uint32_t)sizeof(ivs_run_request), 200u);
+    q.q.psg_log = log;
+    q.q.psg_log_capacity = cap;
+    rs_rep(&r, (uint32_t)sizeof(ivs_run_report));
+    if (ivs_machine_run(c.m, &q.q, &r.r) != IVS_OK || r.r.psg_log_bytes_written != 16u ||
+        r.r.psg_log_first_index != 0u) {
+      ivs_test_diag("first call: log bytes %llu, first index %llu", (unsigned long long)r.r.psg_log_bytes_written,
+                    (unsigned long long)r.r.psg_log_first_index);
+      free(log);
+      ivs_ms_free(&c);
+      goto done;
+    }
+    rs_req(&q, (uint32_t)sizeof(ivs_run_request), 400u);
+    q.q.psg_log = log;
+    q.q.psg_log_capacity = cap;
+    rs_rep(&r, (uint32_t)sizeof(ivs_run_report));
+    if (ivs_machine_run(c.m, &q.q, &r.r) != IVS_OK || r.r.psg_log_bytes_written != 0u ||
+        r.r.psg_log_first_index != 1u) {
+      ivs_test_diag("second call: log bytes %llu, first index %llu", (unsigned long long)r.r.psg_log_bytes_written,
+                    (unsigned long long)r.r.psg_log_first_index);
+      free(log);
+      ivs_ms_free(&c);
+      goto done;
+    }
+    free(log);
+    ivs_ms_free(&c);
+  }
   rc = IVS_TEST_PASS;
 done:
   ivs_ms_free(&x);

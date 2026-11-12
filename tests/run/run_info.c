@@ -20,8 +20,8 @@
  *                            Phase 5 tail at the pinned offsets 256, 260, 264, 268, 272, 280 and its
  *                            values: audio_sample_ticks 16, audio_sample_bytes 4, the crystal
  *                            passthrough 3579545 / 1 (plan 05-06; it replaces run.info.v3-fields-zero of
- *                            plan 05-02, which asserted every tail field 0), the write-log fields still
- *                            0 until plan 05-08.
+ *                            plan 05-02, which asserted every tail field 0), and (plan 05-08) the write-log
+ *                            fields psg_log_record_bytes 16 and psg_log_records_per_frame 2,152.
  *   run.info.audio-fields    the audio layout is the literal one: format 1 (PSG_LEVELS_V1), sample
  *                            period 16 ticks, sample record 4 bytes and audio_bytes_per_frame 15,060 =
  *                            4 x (ceil(59,736 / 16) + ceil(468 / 16) + 1) = 4 x (3,734 + 30 + 1).
@@ -197,8 +197,9 @@ static int ri_v3_fields(void)
    * of docs/time-base.md: one PSG step is 8 chip clocks of 2 master ticks). */
   RI_CHECK(a.audio_sample_ticks == 16u && a.audio_sample_bytes == 4u);
   RI_CHECK(a.crystal_hz_num == 3579545u && a.crystal_hz_den == 1u);
-  /* Still 0 until plan 05-08 gives the write log its record. */
-  RI_CHECK(a.psg_log_record_bytes == 0u && a.psg_log_records_per_frame == 0u);
+  /* Plan 05-08: the write-log layout is real: 16-byte records, 2,152 per frame slot (literals of the derivation
+   * W_log = ceil(59,736 / 28) + ceil(468 / 28) + 1 = 2,134 + 17 + 1; psg.bounds.log-capacity-formula). */
+  RI_CHECK(a.psg_log_record_bytes == 16u && a.psg_log_records_per_frame == 2152u);
   rc = IVS_TEST_PASS;
 done:
   ivs_ms_free(&x);
