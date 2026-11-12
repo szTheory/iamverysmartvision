@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 current_phase: 6
 current_phase_name: STIC Video First Pass
-current_plan: 8
+current_plan: 9
 status: executing
-stopped_at: Completed 06-07-PLAN.md
-last_updated: "2026-11-12T23:02:05.150Z"
+stopped_at: Completed 06-08-PLAN.md
+last_updated: "2026-11-12T23:43:19.283Z"
 last_activity: 2026-11-12
 last_activity_desc: Phase 5 complete, transitioned to Phase 6
-state_head: 5537e485f55940d1d889653c0f0928a16011347c
+state_head: e8669ebb05a3b746d8b43dcff50c43c0b366b9b6
 progress:
   total_phases: 8
   completed_phases: 5
   total_plans: 97
-  completed_plans: 90
+  completed_plans: 91
   percent: 63
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 6 (STIC Video First Pass) — EXECUTING
-Current Plan: 8
+Current Plan: 9
 Total Plans in Phase: 14
 Status: Ready to execute
 Last activity: 2026-11-12 — Phase 5 complete, transitioned to Phase 6
@@ -148,6 +148,7 @@ Progress: [██████░░░░] 63%
 | Phase 6 P05 | 3h | 4 tasks | 24 files |
 | Phase 06 P06 | 9h | 5 tasks | 60 files |
 | Phase 06 P07 | 2h | 4 tasks | 14 files |
+| Phase 06 P08 | 8h | 5 tasks | 30 files |
 
 ## Accumulated Context
 
@@ -342,6 +343,7 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 6]: 06-05: STIC storage joins the instance (stic_reg[64] in MEM, 528-byte ivs_stic_state in INSTANCE, 12 row latches); composite version 3 with the v2 literals recorded first (21b1ad5); IVS_MACHINE_BYTES 114416; goldens moved only on digest.mem, digest.instance and digest.composite, digest.cpu and digest.images equal v2
 - [Phase 06]: 06-06: ADAR (the operand read of a direct-addressed instruction) is a read-like kind for the STIC hook; the plan text listed read, fetch, write and DW only
 - [Phase 06]: 06-07: ivs_machine_stic_state reports all 64 stored register words (gate independent); peek stays the bus view; effects only in the bus wrapper
+- [Phase 06]: 06-08: stand-in interrupt stack in 16-bit system RAM; release-latency fault drops one cycle (stepper refuses 0)
 
 ### Pending Todos
 
@@ -374,6 +376,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-12T23:02:04.803Z
-Stopped at: Completed 06-07-PLAN.md
+Last session: 2026-11-12T23:43:18.819Z
+Stopped at: Completed 06-08-PLAN.md
 Resume file: None
