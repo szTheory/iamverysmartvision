@@ -1,0 +1,5 @@
+# Suite runner-process (plan 04-20, D-20, D-21, D-23): tests/runner-process-tap.sh runs the real
+# ivs-run of each preset. runner-process.scenario.<id>: one case per line of
+# data/expected/runner-scenarios.ids (exit code, outcome, exit.code, outcome.detail, `ivsr 1`
+# first and `report.end <n>` last).
+runner-process.scenario.diag-boot-pass

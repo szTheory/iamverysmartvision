@@ -372,3 +372,12 @@ set_tests_properties(headers PROPERTIES SKIP_RETURN_CODE 77 ENVIRONMENT "CC=${CM
 # tools/check/listing.cmake), byte for byte; two independent parsers, never the core.
 add_test(NAME pack COMMAND sh "${CMAKE_SOURCE_DIR}/tests/pack-tap.sh" "${CMAKE_SOURCE_DIR}" "$<TARGET_FILE:ivs_pack>")
 set_tests_properties(pack PROPERTIES SKIP_RETURN_CODE 77 ENVIRONMENT "CMAKE=${CMAKE_COMMAND}")
+
+# Suite runner-process (D-20, D-21, D-23, plan 04-20): the real ivs-run of this preset on every
+# scenario of data/expected/runner-scenarios.ids, judged by exit code and report text; the images
+# are this preset's build-tree outputs (IVS_IMAGES_DIR). Reports go to
+# IVS_TEST_OUT_DIR/runner/<id>.report for the golden step.
+add_test(NAME runner-process
+  COMMAND sh "${CMAKE_SOURCE_DIR}/tests/runner-process-tap.sh" "${CMAKE_SOURCE_DIR}"
+          "$<TARGET_FILE:ivs_run>" "$<TARGET_FILE:ivs_pack>" "${IVS_IMAGES_DIR}")
+set_tests_properties(runner-process PROPERTIES SKIP_RETURN_CODE 77)
