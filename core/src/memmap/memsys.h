@@ -238,11 +238,6 @@ void ivs_memsys_set_port_pulldown_internal(ivs_memsys *m, uint32_t port, uint32_
  * then write view; the cartridge span stores at addr - span lo). No backing: nothing happens. */
 void ivs_memsys_poke_raw_internal(ivs_memsys *m, uint16_t addr, uint16_t value);
 
-/* The register store of STIC register idx (0..63 = $0000 + idx) as a bus read of that register in the register
- * window gives it, ignoring the gate: (stored & read mask) | (fill & ~read mask). 0xFFFF for idx at or above
- * IVS_MEMSYS_STIC_REGS. Pure (plan 06-06). */
-uint16_t ivs_memsys_stic_reg_read_internal(const ivs_memsys *m, uint32_t idx);
-
 /* The hook class of an access of kind IVS_ACC_* at addr: FETCH, READ and ADAR (the operand read of a direct-addressed
  * instruction, which the memory system serves as a read) look in the read table, WRITE and DW in the write table, every
  * other kind is NONE. O(1), pure, depends only on the profile (plan 06-06). */

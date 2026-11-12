@@ -453,17 +453,6 @@ uint32_t ivs_memsys_hook_class_internal(const ivs_memsys *m, uint32_t kind, uint
   }
 }
 
-uint16_t ivs_memsys_stic_reg_read_internal(const ivs_memsys *m, uint32_t idx)
-{
-  const ivs_mm_device *d = &ivs_mm_devices[m->profile][IVS_MEMSYS_DEVICE_STIC14];
-  uint32_t i;
-  if (idx >= IVS_MEMSYS_STIC_REGS) {
-    return 0xFFFFu;
-  }
-  i = idx;
-  return ivs_mm_width(m->stic_reg[i], ivs_stic_params_get(m->profile)->reg_rmask[i], d->fill);
-}
-
 void ivs_memsys_set_port_pulldown_internal(ivs_memsys *m, uint32_t port, uint32_t mask)
 {
   if (port < IVS_MEMSYS_PSG_PORTS) {
