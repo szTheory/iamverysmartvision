@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 current_phase: 7
 current_phase_name: First Visible Original Scenario
-current_plan: 6
+current_plan: 7
 status: executing
-stopped_at: Completed 07-05-PLAN.md
-last_updated: "2026-11-13T21:36:34.546Z"
+stopped_at: Completed 07-06-PLAN.md
+last_updated: "2026-11-13T22:11:31.383Z"
 last_activity: 2026-11-13
 last_activity_desc: Phase 7 execution started
-state_head: 4a970013b218224e31490c434c773be0594682c6
+state_head: 5b4630f42d888393309ae9d682550d8f564d78ff
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 109
-  completed_plans: 102
+  completed_plans: 103
   percent: 75
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 7 (First Visible Original Scenario) — EXECUTING
-Current Plan: 6
+Current Plan: 7
 Total Plans in Phase: 12
 Status: Ready to execute
 Last activity: 2026-11-13 — Phase 7 execution started
@@ -161,6 +161,7 @@ Progress: [████████░░] 75%
 | Phase 7 P03 | about 32 min measured, plus reading | 3 tasks | 20 files |
 | Phase 7 P04 | about 45 min measured to the last task commit, plus reading | 4 tasks | 41 files |
 | Phase 7 P05 | about 1 h measured to the last task commit (a machine restart inside), plus reading | 4 tasks | 35 files |
+| Phase 7 P06 | 25min | 3 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -377,6 +378,9 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 7]: 07-05: the manifests step now checks recipe.sources digests and tool_sha256 (token manifest-recipe-digest-mismatch, table RECIPE_TOOL_SOURCES for ivs_asm and ivs_pack, control manifests-recipe-source-digest, 352 to 353); asm.c and pack.c are frozen by their recorded digests until a plan refreshes the manifests that name them; asm.regen-<id> regenerates every fixtures asm source and requires byte equality
 - [Phase 7]: 07-05: runner content token boot-stub-2 (kind 5, reserved file boot-stub-2.exec, exec only) labelled project boot stub contract 2, not an EXEC from the symbolic kind only; ivsr stays 3; the refusals are runner.parse.edge.* because reasons-named allows one refuse case per reason; one fuzz base names boot-stub-2 so the seeded run reaches kind 5
 - [Phase 7]: 07-05: run.stub2.path, run.stub2.handoff and run.stub2.jd-as-j (control STUB2_JD_AS_J, no core fault) count interrupt entries by single-unit stepping: JD gives one entry and R6 0341, a plain J gives more than one (179 measured once) and R6 above 0341; the prefix run.stub2. joins RUN_STOP_BEFORE_OVERSHOOT and RUN_BUDGET_CARRY, the only faults under which the family fails (faults 222/222)
+- [Phase 7]: Phase 7 plan 06: Lamp Tone written from the derivation after the oracle and blind record; form B with N=500, render reloads the last byte (+19 cycles, A8 bounds hold)
+- [Phase 7]: Phase 7 plan 06: SCN-REARM-LONG uses N=1023 (largest one-word MVII patch); section (g) stays frozen
+- [Phase 7]: Phase 7 plan 06: files-trademark-name rule scoped to fixtures, data/scenarios, data/golden, tools, tests; control writes its toy file directly under fixtures/
 
 ### Pending Todos
 
@@ -409,6 +413,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-13T21:36:34.292Z
-Stopped at: Completed 07-05-PLAN.md
+Last session: 2026-11-13T22:11:30.842Z
+Stopped at: Completed 07-06-PLAN.md
 Resume file: None
