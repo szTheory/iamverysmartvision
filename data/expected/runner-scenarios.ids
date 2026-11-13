@@ -32,3 +32,4 @@ diag-ctrl-psg-order 0 pass deterministic run -
 diag-stic-fgbg-pass 0 pass deterministic run -
 diag-stic-cstack-pass 0 pass deterministic run -
 video-assert-mismatch 10 guest-fail deterministic run -
+demo-lamp-tone-pass 0 pass deterministic run -

@@ -40,6 +40,7 @@ runner-process.scenario.diag-ctrl-psg-order
 runner-process.scenario.diag-stic-fgbg-pass
 runner-process.scenario.diag-stic-cstack-pass
 runner-process.scenario.video-assert-mismatch
+runner-process.scenario.demo-lamp-tone-pass
 runner-process.mutant.ADDI-SUBI
 runner-process.mutant.BNZE-BZE
 runner-process.mutant.PSHR-MVOAT
