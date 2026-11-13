@@ -14,6 +14,10 @@
 #   file inside repository-root fixtures/<dir>/ that its manifest does not list
 #                                       -> files-unlisted-fixture-file
 #   repository-root fixtures/<dir>/ without a manifest.json -> files-fixture-without-manifest
+#   a path under fixtures/, data/scenarios/, data/golden/, tools/ or tests/ whose text contains the console
+#   brand word in any letter case (D-29, plan 07-06: the project name rule of AGENTS.md and
+#   .planning/AUTONOMY.md made machine-checked; the scope is names of fixtures, scenarios, goldens, tools and
+#   test files, and prose inside docs is not a name) -> files-trademark-name
 # Tokens also: files-filelist-empty, files-ext-list-empty.
 # Success line: "files pass tracked=<n> binaries-listed=<k>".
 cmake_minimum_required(VERSION 3.25)
@@ -97,12 +101,21 @@ if(ntracked EQUAL 0)
   gate_fail(files-filelist-empty "FILELIST")
 endif()
 
+# The brand word is built from two halves and compared in lower case, so this file does not hold it either.
+string(CONCAT brand_word "intelli" "vision")
 set(fixture_dirs "")
 set(manifest_dirs "")
 set(nbin 0)
 foreach(p IN LISTS paths)
   if(p MATCHES "^refs/")
     gate_fail(files-tracked-refs "${p}")
+  endif()
+  if(p MATCHES "^(fixtures|data/scenarios|data/golden|tools|tests)/")
+    string(TOLOWER "${p}" p_lower)
+    string(FIND "${p_lower}" "${brand_word}" brand_at)
+    if(NOT brand_at EQUAL -1)
+      gate_fail(files-trademark-name "${p}")
+    endif()
   endif()
   get_filename_component(name "${p}" NAME)
   if(name STREQUAL ".env" OR name MATCHES "^[.]env[.]")
