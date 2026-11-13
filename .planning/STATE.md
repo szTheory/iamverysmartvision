@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 current_phase: 7
 current_phase_name: First Visible Original Scenario
-current_plan: Not started
+current_plan: 2
 status: executing
-stopped_at: Phase 7 context gathered
-last_updated: "2026-11-13T16:48:50.781Z"
+stopped_at: Completed 07-01-PLAN.md
+last_updated: "2026-11-13T17:55:52.433Z"
 last_activity: 2026-11-13
-last_activity_desc: Phase 6 complete, transitioned to Phase 7
-state_head: 903276757b0dbd901b15dbc00b9813089c1b578e
+last_activity_desc: Phase 7 execution started
+state_head: 83c6eccc8557aece310652b140d2081e2786ed4b
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 109
-  completed_plans: 97
+  completed_plans: 98
   percent: 75
 ---
 
@@ -24,15 +24,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-09)
 
 **Core value:** A deterministic, observable machine core whose every compatibility claim is bound to an exactly named profile and independent evidence — never an unqualified "it runs Intellivision games" label.
-**Current focus:** Phase 3 — Memory Map, Content Loading and Refusal
+**Current focus:** Phase 7 — First Visible Original Scenario
 
 ## Current Position
 
-Phase: 7 (First Visible Original Scenario) — READY TO EXECUTE
-Current Plan: Not started
+Phase: 7 (First Visible Original Scenario) — EXECUTING
+Current Plan: 2
 Total Plans in Phase: 12
 Status: Ready to execute
-Last activity: 2026-11-13 — Phase 6 complete, transitioned to Phase 7
+Last activity: 2026-11-13 — Phase 7 execution started
 
 Progress: [████████░░] 75%
 
@@ -156,6 +156,7 @@ Progress: [████████░░] 75%
 | Phase 6 P12 | about 6 hours | 4 tasks | 40 files |
 | Phase 6 P13 | about 3 hours | 5 tasks | 38 files |
 | Phase 6 P14 | about 3 hours | 4 tasks | 22 files |
+| Phase 7 P01 | 66 min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -356,6 +357,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 06]: Plan 06-10: renderer is row-granular and pure (graphics bytes only via ivs_memsys_stic_gfx_byte_internal); Color Stack interim pinned by video.frame.cs-not-decoded for 06-11
 - [Phase 06]: 06-11: Color Stack pointer carried through ivs_stic_render_cards_row (cs_pos); frame event stores the final pointer of a display-on frame in cs_ptr; Colored Squares implemented, cut line documented not applied
 - [Phase 6]: 06-12: golden keep list moved into the library (ivs_runner_golden_keep); ivsr 3 video row live-gated by the output.video.bytes count rule; operator video outputs mode 0600 with Phase 5 cleanup rules
+- [Phase 7]: 07-01: the queued premise (every member lookup parses the whole file) did not hold; the lever was re-aimed at lookups in the vector object, the file-sized element fetch and per-object command overhead, with identical findings (vectors.cmake -46 percent, vector-blind.cmake -50 percent instructions retired)
+- [Phase 7]: 07-01: phase7-start: lever-applied; last-five hosted r median 8.02; expected hosted saving about 2 to 3 cpu-s (not 5), headroom about 14 hosted cpu-s against the Phase 7 estimate of 10 to 19; checkpoints C-B after 07-08, C-C after 07-09, close in 07-12
 
 ### Pending Todos
 
@@ -388,6 +391,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-13T14:45:03.472Z
-Stopped at: Phase 7 context gathered
-Resume file: .planning/phases/07-first-visible-original-scenario/07-CONTEXT.md
+Last session: 2026-11-13T17:55:52.189Z
+Stopped at: Completed 07-01-PLAN.md
+Resume file: None
