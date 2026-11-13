@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 current_phase: 6
 current_phase_name: STIC Video First Pass
-current_plan: 12
+current_plan: 13
 status: executing
-stopped_at: Completed 06-11-PLAN.md
-last_updated: "2026-11-13T02:27:38.993Z"
+stopped_at: Completed 06-12-PLAN.md
+last_updated: "2026-11-13T03:26:02.406Z"
 last_activity: 2026-11-12
 last_activity_desc: Phase 5 complete, transitioned to Phase 6
-state_head: 398f3be5b2d72aeca8115b51f47540ee6484039f
+state_head: 21e8b71a9201d3a982337df422dd17a649479794
 progress:
   total_phases: 8
   completed_phases: 5
   total_plans: 97
-  completed_plans: 94
+  completed_plans: 95
   percent: 63
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 6 (STIC Video First Pass) — EXECUTING
-Current Plan: 12
+Current Plan: 13
 Total Plans in Phase: 14
 Status: Ready to execute
 Last activity: 2026-11-12 — Phase 5 complete, transitioned to Phase 6
@@ -152,6 +152,7 @@ Progress: [██████░░░░] 63%
 | Phase 06 P09 | 6h | 5 tasks | 50 files |
 | Phase 06 P10 | 2h | 4 tasks | 20 files |
 | Phase 06 P11 | 180min | 3 tasks | 28 files |
+| Phase 6 P12 | about 6 hours | 4 tasks | 40 files |
 
 ## Accumulated Context
 
@@ -351,6 +352,7 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 06]: 06-09: a flagged frame-stop call needs exactly one video slot; the pre-unit INTERNAL guard fires only when a frame could complete in the unit
 - [Phase 06]: Plan 06-10: renderer is row-granular and pure (graphics bytes only via ivs_memsys_stic_gfx_byte_internal); Color Stack interim pinned by video.frame.cs-not-decoded for 06-11
 - [Phase 06]: 06-11: Color Stack pointer carried through ivs_stic_render_cards_row (cs_pos); frame event stores the final pointer of a display-on frame in cs_ptr; Colored Squares implemented, cut line documented not applied
+- [Phase 6]: 06-12: golden keep list moved into the library (ivs_runner_golden_keep); ivsr 3 video row live-gated by the output.video.bytes count rule; operator video outputs mode 0600 with Phase 5 cleanup rules
 
 ### Pending Todos
 
@@ -383,6 +385,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-13T02:27:36.608Z
-Stopped at: Completed 06-11-PLAN.md
+Last session: 2026-11-13T03:26:01.906Z
+Stopped at: Completed 06-12-PLAN.md
 Resume file: None
