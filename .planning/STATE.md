@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 current_phase: 7
 current_phase_name: First Visible Original Scenario
-current_plan: 7
+current_plan: 8
 status: executing
-stopped_at: Completed 07-06-PLAN.md
-last_updated: "2026-11-13T22:11:31.383Z"
+stopped_at: Completed 07-07-PLAN.md
+last_updated: "2026-11-13T22:56:39.018Z"
 last_activity: 2026-11-13
 last_activity_desc: Phase 7 execution started
-state_head: 5b4630f42d888393309ae9d682550d8f564d78ff
+state_head: d533c1f25fc73e85bde324c7315d4eb2409c7467
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 109
-  completed_plans: 103
+  completed_plans: 104
   percent: 75
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 7 (First Visible Original Scenario) — EXECUTING
-Current Plan: 7
+Current Plan: 8
 Total Plans in Phase: 12
 Status: Ready to execute
 Last activity: 2026-11-13 — Phase 7 execution started
@@ -162,6 +162,7 @@ Progress: [████████░░] 75%
 | Phase 7 P04 | about 45 min measured to the last task commit, plus reading | 4 tasks | 41 files |
 | Phase 7 P05 | about 1 h measured to the last task commit (a machine restart inside), plus reading | 4 tasks | 35 files |
 | Phase 7 P06 | 25min | 3 tasks | 14 files |
+| Phase 7 P07 | 40min | 4 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -381,6 +382,9 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 7]: Phase 7 plan 06: Lamp Tone written from the derivation after the oracle and blind record; form B with N=500, render reloads the last byte (+19 cycles, A8 bounds hold)
 - [Phase 7]: Phase 7 plan 06: SCN-REARM-LONG uses N=1023 (largest one-word MVII patch); section (g) stays frozen
 - [Phase 7]: Phase 7 plan 06: files-trademark-name rule scoped to fixtures, data/scenarios, data/golden, tools, tests; control writes its toy file directly under fixtures/
+- [Phase 7]: Phase 7 plan 07: Lamp Tone scenarios and .expect files are mechanical copies of the derivation blocks (pass 55, idle 29, shift 55, swap 49 asserts); the pass .expect is the first playable-guest-progress file and passes golden-shape
+- [Phase 7]: Phase 7 plan 07: the pair judge (runner-process.pair.<idA>.<idB>, data/expected/scenario-pairs.ids) relates two reports of one run; idle is decided from input.events 0 in the report; three self-controls reject fake pairs for pair-not-different, input-not-consumed and idle-audible
+- [Phase 7]: Phase 7 plan 07: 12 runner-process cases per preset added (71 to 83 executed); local suite time dev 12.0 to 14.4 s, release 6.2 to 6.8 s; repeat, slices and cwd cover the pass scenario only
 
 ### Pending Todos
 
@@ -413,6 +417,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-13T22:11:30.842Z
-Stopped at: Completed 07-06-PLAN.md
+Last session: 2026-11-13T22:56:38.759Z
+Stopped at: Completed 07-07-PLAN.md
 Resume file: None

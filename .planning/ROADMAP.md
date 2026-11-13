@@ -294,7 +294,7 @@ Plans:
   2. A scripted input sequence changes guest state, and the run asserts a guest-state progress predicate (a register or memory marker), not a title screen or hash alone. The tier is playable guest progress, for this original program only.
   3. The same run shows the input changing raw video (the index framebuffer differs in the expected region) and raw audio (the PSG write log and samples change).
   4. The owner-local route for user-supplied EXEC/GROM is documented with digest identity checks, labelled non-redistributable and kept out of CI. Any job that refers to it prints a visible SKIPPED line, and the inventory gate counts it.
-**Plans**: 6/12 plans executed (sequential waves 1-12; amendments A-01..A-21 in 07-CONTEXT.md)
+**Plans**: 7/12 plans executed (sequential waves 1-12; amendments A-01..A-21 in 07-CONTEXT.md)
 
 Plans:
 **Wave 1**
@@ -316,7 +316,7 @@ Plans:
 - [x] 07-06-PLAN.md — W3b: Lamp Tone program, listing, redistributable manifest with recipe, image, names rule, runtime contract docs
 
 **Wave 7** *(blocked on Wave 6 completion)*
-- [ ] 07-07-PLAN.md — W4a: scenarios pass/idle/shift/swap, hand-derived .expect, goldens, metamorphic judge, repeatability
+- [x] 07-07-PLAN.md — W4a: scenarios pass/idle/shift/swap, hand-derived .expect, goldens, metamorphic judge, repeatability
 
 **Wave 8** *(blocked on Wave 7 completion)*
 - [ ] 07-08-PLAN.md — W4b: mutant inventory with fails= sets and stub-image patches, cost checkpoint C-B
@@ -389,5 +389,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 4. Headless Runner and Installed Consumer (Slice 0) | 27/25 | Complete    | 2026-11-11 |
 | 5. Hand Controllers and PSG Sound | 12/12 | Complete    | 2026-11-12 |
 | 6. STIC Video First Pass | 14/14 | Complete    | 2026-11-12 |
-| 7. First Visible Original Scenario | 6/12 | In Progress | - |
+| 7. First Visible Original Scenario | 7/12 | In Progress | - |
 | 8. STIC Completion, Save State and Performance Baselines | 0/TBD | Not started | - |
