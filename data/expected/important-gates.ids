@@ -297,6 +297,9 @@ video-frames control video-frame-hash-expect-drift VID-04
 listing-sdbd control listing-sdbd-operand-missing VID-04
 listing-sdbd control listing-sdbd-carry-over VID-04
 listing-sdbd control listing-sdbd-prefix-before-branch VID-04
+listing-sdbd control listing-sdbd-indirect-mode VID-04
+listing-sdbd control listing-sdbd-target-zero VID-04
+listing-sdbd control listing-sdbd-target-mvo VID-04
 video-judge mutant video.judge.frame-row-changed VID-04
 video-judge mutant video.judge.card-bit-flipped VID-04
 video-judge mutant video.judge.cstack-persistent-pointer VID-04

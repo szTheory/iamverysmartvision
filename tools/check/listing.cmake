@@ -22,10 +22,13 @@
 #   SDBD prefix (plan 06-01, D-20, A-04): an `SDBD` line applies to the NEXT instruction only. When that
 #   instruction is an immediate form (MVII ADDI SUBI CMPI ANDI XORI) it takes two `-` operand lines, the
 #   low byte then the high byte of the doubled operand, each at most 00FF, so its word count is 1 + 2 x
-#   operand; every other non-branch form after SDBD is accepted unchanged (the doubled read happens at run
-#   time and adds no listing word). The effect never carries past that instruction. Refused: a second SDBD
-#   directly after an SDBD, an SDBD directly before a branch or jump (B BC BOV BPL BZE BLT BLE BUSC BNC
-#   BNOV BMI BNZE BGE BGT BESC BEXT J JR), an SDBD with no instruction after it, an SDBD immediate form
+#   operand. The only other accepted target is an indirect read row (MVI@ ADD@ SUB@ CMP@ AND@ XOR@) with
+#   MMM 1..5 (bits 5..3 of the decle), one word (the doubled read happens at run time); this is the set the
+#   CPU allows (core/src/cpu/cp1610.c ivs_sdbd_target), so every other row after SDBD (MVO@, MVO, PSHR, MVOI,
+#   direct rows, register and control rows, branches and jumps, an indirect row with MMM 0 or 6) is refused.
+#   The effect never carries past that instruction. Refused: a second SDBD
+#   directly after an SDBD, an SDBD before any row that is not an SDBD target (including a branch or jump
+#   B BC BOV BPL BZE BLT BLE BUSC BNC BNOV BMI BNZE BGE BGT BESC BEXT J JR), an SDBD with no instruction after it, an SDBD immediate form
 #   with a missing or an extra operand line, and an operand byte above 00FF   listing-sdbd
 #   a word above 03FF, a non-contiguous address, an address outside the declared window, or no
 #   word line                                                                listing-range
@@ -69,7 +72,7 @@ set(LTOKENS listing-bits-mismatch listing-row-mismatch listing-operand-count lis
   listing-header listing-unlisted bootstub-size bootstub-row bootstub-vector
   listing-branch-target listing-branch-target-missing listing-sdbd)
 set(SDBD_IMMEDIATE_ROWS MVII ADDI SUBI CMPI ANDI XORI)
-set(SDBD_REFUSED_ROWS B BC BOV BPL BZE BLT BLE BUSC BNC BNOV BMI BNZE BGE BGT BESC BEXT J JR)
+set(SDBD_INDIRECT_ROWS MVI@ ADD@ SUB@ CMP@ AND@ XOR@)
 set(BRANCH_ROWS B BC BOV BPL BZE BLT BLE BUSC BNC BNOV BMI BNZE BGE BGT BESC BEXT J)
 set(HEADER_KEYS id kind contract profile window label entry stack)
 set(KINDS boot-stub cart)
@@ -460,8 +463,16 @@ function(check_listing out_n out_dump lid lkind lpath)
     if(this_target)
       if(row STREQUAL "SDBD")
         lfail(listing-sdbd "${at} SDBD directly after SDBD (a doubled prefix)")
-      elseif(row IN_LIST SDBD_REFUSED_ROWS)
+      elseif(row IN_LIST BRANCH_ROWS OR row STREQUAL "JR")
         lfail(listing-sdbd "${at} SDBD before ${row}, a branch or jump")
+      elseif(row IN_LIST SDBD_INDIRECT_ROWS)
+        # Indirect read rows read a double byte operand only with MMM 1..5 (bits 5..3 of the decle).
+        math(EXPR mmm "(${hv} >> 3) & 7")
+        if(mmm LESS 1 OR mmm GREATER 5)
+          lfail(listing-sdbd "${at} SDBD before ${row} with mode ${mmm} (only 1..5 are SDBD targets)")
+        endif()
+      elseif(NOT row IN_LIST SDBD_IMMEDIATE_ROWS)
+        lfail(listing-sdbd "${at} SDBD before ${row}, which is not an SDBD target")
       endif()
     endif()
     if(row STREQUAL "SDBD")
