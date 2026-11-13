@@ -133,7 +133,15 @@ void ivs_stic_frame_deliver(const ivs_stic_params *p, ivs_stic_state *s, const i
   uint32_t deliver;
   uint8_t *out = NULL;
   if (g.width > work_w || g.header_bytes != IVS_FRAME_HEADER_BYTES || p->video_card_h * work_w > IVS_STIC_CARDROW_MAX) {
-    return; /* a geometry the card-row working buffer cannot hold: no frame is produced (never reached by a registry profile) */
+    /* A geometry the card-row working buffer cannot hold: no frame is produced. The generator refuses such a profile
+     * (cmake/IvsSticTable.cmake), so this is never reached; if it ever is, the run ends INTERNAL through video_overflow
+     * instead of letting frame_index advance with no frame (Phase 6 review WR-03). */
+#ifndef IVS_FAULT_VIDEO_GEOMETRY_SKIP_SILENT
+    if (sink != NULL) {
+      sink->video_overflow = 1u;
+    }
+#endif
+    return;
   }
   memset(header, 0, sizeof header);
   ivs_frame_be(header + 0u, 8u, end_tick);
@@ -182,6 +190,9 @@ void ivs_stic_frame_deliver(const ivs_stic_params *p, ivs_stic_state *s, const i
 #endif
   for (cr = 0u; cr < p->video_card_rows; cr++) {
     if (ivs_stic_render_card_row(p, s, mem, displayed, cr, &cs_pos, cardrow) == 0u) {
+      if (sink != NULL) {
+        sink->video_overflow = 1u; /* unreachable for a generated profile (see above): a short frame is an INTERNAL stop, never a quiet one */
+      }
       break;
     }
     for (py = 0u; py < p->video_card_h && y < g.height; py++, y++) {

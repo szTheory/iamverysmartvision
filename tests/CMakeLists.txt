@@ -580,6 +580,11 @@ set_tests_properties(headers PROPERTIES SKIP_RETURN_CODE 77 ENVIRONMENT "CC=${CM
 add_test(NAME pack COMMAND sh "${CMAKE_SOURCE_DIR}/tests/pack-tap.sh" "${CMAKE_SOURCE_DIR}" "$<TARGET_FILE:ivs_pack>")
 set_tests_properties(pack PROPERTIES SKIP_RETURN_CODE 77 ENVIRONMENT "CMAKE=${CMAKE_COMMAND}")
 
+# Suite stic-table (VID-01, Phase 6 review WR-03): the STIC parameter generator refuses a geometry the card renderer cannot draw
+# (21 columns, 13 rows, a 7 x 8 card), each case on a scratch copy of the registered profile (cmake -P), never the repository.
+add_test(NAME stic-table COMMAND sh "${CMAKE_SOURCE_DIR}/tests/stic-table-tap.sh" "${CMAKE_SOURCE_DIR}")
+set_tests_properties(stic-table PROPERTIES SKIP_RETURN_CODE 77 ENVIRONMENT "CMAKE=${CMAKE_COMMAND}")
+
 # Suite runner-process (D-20, D-21, D-23, plan 04-20): the real ivs-run of this preset on every
 # scenario of data/expected/runner-scenarios.ids, judged by exit code and report text; the images
 # are this preset's build-tree outputs (IVS_IMAGES_DIR). Reports go to

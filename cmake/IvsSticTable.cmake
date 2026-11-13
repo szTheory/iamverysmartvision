@@ -46,6 +46,8 @@
 #   2 x psg.max_unit_ticks < F and video_slack_frames == ceil(U / F)  (the D-15 capacity rule)
 #   bus.release_latency_cpu_cycles x ticks_per_cpu_cycle <= psg.max_unit_ticks  (plan 06-08: the release unit of a bus grant is within U)
 #   backtab words == card_columns x card_rows, stic_regs spans $0000..$003F.
+#   card_columns x card_rows == 20 x 12 and card_size_px == 8 x 8 (the only geometry the card renderer draws), bus.rows <= card_rows
+#                                                                    (Phase 6 review WR-03)
 #
 # Output: IVS_STIC_PROFILE_COUNT and ivs_stic_params_table[profile] (designated initializers of the members of
 # ivs_stic_params, core/src/stic/stic_params.h) with _Static_asserts on the counts. The per-frame event table has
@@ -356,6 +358,13 @@ foreach(rel IN LISTS st_profiles)
     st_fail("video.card_columns and video.card_rows must each be at least 1")
   endif()
   st_dims(card_w card_h video.card_size_px 255)
+  # The card renderer (core/src/stic/stic_frame.c, stic_cards.c) draws only a 20 x 12 background of 8 x 8 cards: its row
+  # latch, row-word loop and working buffers are fixed. A geometry it cannot draw would pass every other relation below and
+  # then render blank frames (or none), so the generator is the one owner of the constraint (Phase 6 review WR-03).
+  set(ST_CTX "${rel}: video.card_columns")
+  if(NOT cards_x EQUAL 20 OR NOT cards_y EQUAL 12 OR NOT card_w EQUAL 8 OR NOT card_h EQUAL 8)
+    st_fail("the card renderer implements only 20 x 12 cards of 8 x 8 picture elements (got ${cards_x} x ${cards_y} of ${card_w} x ${card_h})")
+  endif()
   st_dims(grid_w grid_h video.object_grid 65535)
   st_num(colors video.colors 255)
   st_num(last_px video.last_card_column_px 255)
@@ -384,6 +393,10 @@ foreach(rel IN LISTS st_profiles)
   math(EXPR slot "${header} + ${plane}")
 
   st_field("${doc}" stic.backtab)
+  set(ST_CTX "${rel}: stic.bus.rows")
+  if(bus_rows GREATER cards_y)
+    st_fail("rows ${bus_rows} is above video.card_rows ${cards_y} (a window fetches one card row)")
+  endif()
   set(ST_CTX "${rel}: stic.backtab")
   st_type(t "${doc}" fields stic.backtab value)
   if(NOT t STREQUAL "OBJECT")

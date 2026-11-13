@@ -1,0 +1,5 @@
+# Suite stic-table: the STIC parameter generator refuses a geometry the card renderer cannot draw (Phase 6 review WR-03).
+stic-table.accepts-registered-profile
+stic-table.refuses-card-columns
+stic-table.refuses-card-rows
+stic-table.refuses-card-size

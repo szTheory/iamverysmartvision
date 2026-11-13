@@ -400,6 +400,35 @@ static int vb_capacity_overflow_guard(void)
   return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
 }
 
+/* Phase 6 review WR-03: a geometry the card-row working buffer cannot hold (33 columns of 8 x 8, 2,112 bytes above the 2,048 of the
+ * buffer) is refused by the generator and never reached by a registry profile; if a frame were still asked for, the delivery must be
+ * LOUD (video_overflow set, which ends a run INTERNAL) and must not touch the chain, the count or the caller's slot, instead of
+ * skipping silently while the frame index advances. Module-level: a stack copy of the generated parameters, no memory system
+ * (the guard returns before any card is read). */
+static int vb_unrenderable_geometry_overflows(void)
+{
+  ivs_stic_params p = *ivs_stic_params_get(SC_PROFILE);
+  ivs_stic_state s;
+  ivs_stic_video_row row;
+  ivs_stic_video_row before;
+  ivs_psg_sink k;
+  uint8_t slot[64];
+  memset(&s, 0, sizeof s);
+  ivs_video_chain_init(&row);
+  before = row;
+  p.video_card_columns = 33u;
+  memset(slot, (int)VB_POISON, sizeof slot);
+  ivs_psg_sink_init(&k, NULL, 0u);
+  k.video = slot;
+  k.video_cap = sizeof slot;
+  ivs_stic_frame_deliver(&p, &s, NULL, &row, &k, 59736u);
+  VC_CHECK(k.video_overflow == 1u);
+  VC_CHECK(k.video_frames == 0u && k.video_written == 0u);
+  VC_CHECK(memcmp(&row, &before, sizeof row) == 0);
+  VC_CHECK(vb_all(slot, sizeof slot, VB_POISON));
+  return IVS_TEST_PASS;
+}
+
 const ivs_test_case ivs_video_buffers_cases[] = {
     {"video.buffers.not-requested-equals-requested", vb_not_requested_equals_requested, NULL},
     {"video.buffers.exact-fit", vb_exact_fit, NULL},
@@ -411,5 +440,6 @@ const ivs_test_case ivs_video_buffers_cases[] = {
     {"video.buffers.sentinel", vb_sentinel, NULL},
     {"video.buffers.worst-case-two-frames", vb_worst_case_two_frames, NULL},
     {"video.buffers.capacity-overflow-guard", vb_capacity_overflow_guard, NULL},
+    {"video.buffers.unrenderable-geometry-overflows", vb_unrenderable_geometry_overflows, NULL},
 };
 const size_t ivs_video_buffers_count = sizeof ivs_video_buffers_cases / sizeof ivs_video_buffers_cases[0];

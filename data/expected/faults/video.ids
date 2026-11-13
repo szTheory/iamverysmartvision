@@ -35,3 +35,6 @@ VIDEO_20TH_COLUMN_WIDTH video.card.last-column-clip video.fgbg.|video.card.|vide
 # VIDEO_CSTACK_NO_ADVANCE (core/src/stic/stic_cards.c, plan 06-11): bit 13 of a Color Stack card never advances the color-stack pointer, so every card
 # is drawn over stack entry 0 and the frames with advance bits (F-B2, F-B3, the wrap and the restart tests) differ from their literals.
 VIDEO_CSTACK_NO_ADVANCE video.cstack.advance-before-draw video.cstack.|video.probe.|video.judge. video.geom.profile-derives-159x96
+# VIDEO_GEOMETRY_SKIP_SILENT (core/src/stic/stic_frame.c, Phase 6 review WR-03): a frame asked for under a geometry the card-row working buffer
+# cannot hold is skipped without setting video_overflow, so the frame index would advance with no frame and no INTERNAL stop.
+VIDEO_GEOMETRY_SKIP_SILENT video.buffers.unrenderable-geometry-overflows video.buffers. video.geom.profile-derives-159x96

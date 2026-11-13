@@ -31,6 +31,7 @@ video.buffers.overlap-report
 video.buffers.sentinel
 video.buffers.worst-case-two-frames
 video.buffers.capacity-overflow-guard
+video.buffers.unrenderable-geometry-overflows
 video.stop.frame-reason-order
 video.stop.no-stuck-loop-at-boundary
 video.stop.frame-flag-with-halt
