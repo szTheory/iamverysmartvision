@@ -188,6 +188,44 @@ Excluded on purpose: machine time (the stop near tick 88,500 is regression infor
 Shared-misreading risk: the author of the register literal, the card rules, the frames, the derivation, the listing and the core is the same, so all of them can share one misreading of a source; agreement among them is not independent evidence about the original console. The card layouts rest on one community page (C96), the register roles on the same page (C81), and every window and bus figure is a default (C1, C2, C92).
 No real EXEC, GROM or cartridge is involved, and nothing in this section is a statement about measured hardware.
 
+## Project program runtime contract
+
+This is the contract of a project program that sustains its own display: an assembled cartridge reached through the boot stub contract 2 (above), with the zero graphics ROM and no EXEC service (plan 07-06, D-11 to D-15, A-02, A-03, A-05, A-14). The first such program is `ivs-demo-lamp-tone-1` (next section). Every figure is a frame cycle counted from the frame start (14,934 cycles, 4 ticks each) and every rule is a project default or inference of the STIC notes (`docs/stic/reference-notes.md`, rules STIC-R07, R08, R18, R19, R22, R23, R30 to R32), not a measured finding about a console. Plans 07-07 and 07-08 turn the footguns below into scenario asserts and mutants.
+
+Entries and hand-off:
+
+- Reset: the stub starts the cartridge at `5000` with interrupts off and R6 = `0340`. A project program keeps `ENTRY EQU $5000` and `ISR EQU $5004` in its source (the tie to the stub is behavioural, A-14: a frame is displayed only if the stub's `JD $5004` lands on the program's strobe). The words between the reset branch and `5004` are fill.
+- Interrupt: every accepted interrupt enters the stub at `1004`, which executes `JD $5004`, so the routine starts at `5004` with interrupts off and one return address on the stack (R6 = `0341`). The routine saves no register and holds no state in a register; main code holds none either.
+- Idle: `EIS` followed by a branch to itself. The program never executes `HLT` (a halted CPU ignores the interrupt level, so no routine would ever start and the picture would stay blank).
+
+The routine, in this order (the contract the lamp program is written to; the order is what the scenario asserts rely on):
+
+1. The display strobe, a store to `$0020`, is the first instruction. It is stamped at about cycle 40, and the register window closes at cycle 2,000.
+2. The mode select, a store to `$0021`.
+3. The frame counter, then the deferred PSG amplitudes of the previous frame, then the port polls (once per frame), then the render of every cell the picture needs (all of them, every frame), then the PSG gate, in that order; the whole routine ends before about cycle 1,300 and its last BACKTAB store before 1,200 (the deadline of the contract is cycle 3,700 and the first row latch is at 3,848).
+4. PSG writes on change only: a changed port writes its tone period in the routine of the frame in which the change is read, the constant-level gate in the same routine, and the changed port's amplitude in the routine of the NEXT frame from a pending word, so a full release gives exact silence and a first press gives an exact constant level between two routines (A-05).
+5. Re-arm (form B, A-03): `DECR R6` drops the saved return address, `J wait` jumps to a counted delay of N iterations, then `EIS`, then the idle branch. The interrupt request is a level held for 3,791 cycles from the frame start, so `EIS` must start at or after frame cycle 3,777 (a start below it sees the level of the same frame and enters a second routine in that frame) and not later than 14,930 (the idle branch must be waiting when the next level starts). The lamp program uses N = 500, which places `EIS` near cycle 9,200 to 9,600, about 5,400 cycles from each edge.
+
+Start-up: the first `EIS` of the program is at or after frame-0 cycle 3,777, so the first routine is the routine of frame 1 and frame 0 is not displayed. The graphics RAM card comes first in the init.
+
+Footguns (each one breaks the picture or the count while other asserts can still hold; a state-only assert such as a frame counter is not progress evidence):
+
+| Footgun | Consequence |
+|---|---|
+| a plain `J` as the stub vector | with the profile default C41 = 0 the vector re-enters about 180 times per frame, R6 climbs and the strobe lands after the register window (`run.stub2.jd-as-j`) |
+| `HLT` as the idle | the routine never starts; the CPU reports halted |
+| `EIS` before cycle 3,777 | two routines per frame; the frame counter doubles |
+| `EIS` after cycle 14,930 | the routine drifts later each frame and then frames lose their routine |
+| the strobe after cycle 2,000 | the strobe is dropped and the frame is blank |
+| a graphics RAM write after frame-0 cycle 3,780 | the store is dropped without a signal and the picture is blank while the state asserts still hold |
+| a BACKTAB store after the row-0 latch (cycle 3,848; row r at 3,848 + 912 r) | the picture of the frame can show a half-written row |
+
+## ivs-demo-lamp-tone-1
+
+The first project program (plan 07-06, D-01 to D-07): `fixtures/FX-demo-lamp-tone-1/lamp-tone.asm` is the source of truth, `lamp-tone.listing.txt` is generated from it by `ivs_asm` and committed unedited (198 words at `5000`-`50C5`, the two words `5002` and `5003` being fill), and the manifest `FX-demo-lamp-tone-1` is the first program manifest with a recipe (`ivs_asm` then `ivs_pack --ivsc`; source and tool digests checked by the `manifests` step; the test `asm.regen-ivs-demo-lamp-tone-1` assembles the source again and requires byte equality). `tools/pack` builds the image `lamp-tone.ivsc` into the build tree; no image is committed.
+"Lamp Tone" draws two rows of eight lamps, one per controller port (`c0` is the word read at `$01FE`, `c1` the word at `$01FF`; never a player), as BACKTAB cells in Foreground/Background mode with one solid graphics RAM card and the color indices 1 and 2. A lamp is lit when its bit of the port byte reads 0; nothing is decoded. A changed port retunes one PSG voice (the tone period is the byte) and a constant-level gate on channel C is on while any control is closed. Guest state is at `$02F0` to `$02F7` (init marker `03C5`, frame counter, per port the last byte and a change counter, two pending amplitude words). It has no text, no graphics ROM read, no EXEC call, no data table, no moving object and no melody; the hand derivation, the six frame literals and the expected values are in `docs/video/demo-lamp-tone-1-derivation.md` (written before the program, with a blind second read), and section (k) there records the program as built.
+The scenarios `demo-lamp-tone-pass`, `-idle`, `-shift` and `-swap`, their goldens, the mutants and the installed-consumer replay come in plans 07-07 to 07-09; this plan only shows, on scratch copies of the derivation's assert blocks, that the program reaches every hand-derived value. No claim about this program is made yet.
+
 ## The project assembler ivs_asm
 
 Phase 7 re-examined the D4 trigger (D-16) and decided to build a project mini-assembler. It replaces the earlier text "when a project assembler becomes worth writing", whose rule was: more than 3 project diagnostics, a listing that needs labels or macros, or a second author (D-25). After the third diagnostic (plan 06-13) the rule had not fired, and the finding of that listing was that the checker treats data as program.
