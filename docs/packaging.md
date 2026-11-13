@@ -34,6 +34,7 @@ The prefix holds exactly these files (the list is pinned by `data/expected/pkg-i
 | `share/doc/ivs/LICENSE` | the licence |
 
 Nothing else is installed: no internal header, no runner, no image, no `pkg-config` file and no package registry entry.
+The development tools `ivs_pack` (tools/pack) and `ivs_asm` (tools/asm, the project mini-assembler, D-17) are build-only: they have no install rule, are never installed or shipped, and are not part of the core.
 The exported include directory is `${_IMPORT_PREFIX}/include`, computed from where the config file lies, so the prefix can be moved after installation.
 
 ## Consume
