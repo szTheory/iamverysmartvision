@@ -1036,3 +1036,71 @@ phase6-close: no-lever
 ### Phase 6 review-fix head hosted row (orchestrator)
 
 Run 43373151931 (head with the review fixes: 5 controls, 1 fault, 10 ids more): gate 107 s, cpu 335, build 41 s, test 66 s, `r = 8.17`. Last five hosted rows (43352432394, 43359195974, 43365038335, 43369159094, 43373151931): cpu median 335 (raw trigger 330 is crossed by 5 cpu-s), gate median 107 (trigger 110, not crossed), `r` 7.68, 9.02, 7.53, 8.02, 8.17, median **8.02** (budget 7.8, trigger 8.3: not crossed). Reading: the raw cpu trigger is crossed while the speed-normalised arbiter is not, and the three rows since 06-12 sit at 7.5 to 9.0, so the trend is flat to slightly up, not a step. Decision (delegated authority): no lever pass inside Phase 6; Phase 7 plan 1 starts with a trigger check and, if the last-five `r` median is 8.0 or above at that point, the first cheap lever (batching the `cp1610-vectors` re-parse, about 5 cpu-s, plus fault objects at `-g0` already applied) runs as its first task before new tests are added. `-O0` fault objects and the two-job split remain owner decisions.
+
+## 2026-11-13 Phase 7 start: trigger check and lever (plan 07-01)
+
+Nothing here calls `gh` or `tools/ci-record.sh`; `.planning/ci-runs.tsv` is orchestrator-owned and untouched. Local figures are from the laptop (18 cores, Apple clang 21, other work running, 1-minute load 10 to 25); container figures are Ubuntu 24.04 with cmake 3.28.3, emulated amd64 on an arm64 host; neither is a hosted figure. Counts at plan start and end: `steps=36/36 controls=344/344 faults=222/222 tests-expected=4432 tests-executed=4430 tests-skipped=2 tests-missing=0`.
+
+### Trigger check (D-34)
+
+The last five successful hosted rows of `.planning/ci-runs.tsv`, recomputed from the file (the same five as at planning time, no row was appended since):
+
+| Run | `cpu_s` | `build_s` | `r = cpu_s / build_s` |
+|-----|---------|-----------|------------------------|
+| 43352432394 | 315 | 41 | 7.68 |
+| 43359195974 | 433 | 48 | 9.02 |
+| 43365038335 | 271 | 36 | 7.53 |
+| 43369159094 | 393 | 49 | 8.02 |
+| 43373151931 | 335 | 41 | 8.17 |
+
+Median `r` **8.02** against the budget 7.8 and the trigger 8.3 (D-34): at 8.0 or above, so the first cheap lever of the queue (batching the `cp1610-vectors` JSON re-parse) ran before any Phase 7 test was added. No test, control, fault, scenario or fixture is added by this plan.
+
+### What the lever turned out to be
+
+The queued description (every `string(JSON ... GET "${doc}" ...)`, `json_type` and `vget` call parses the whole file again) was half right. `vectors.cmake` already read the members from the vector object and not from the file: the file text was parsed once per vector (the element fetch) and the vector object, about 2.5 KB of text, once per member lookup. On this machine one `string(JSON)` call costs about 120 thousand instructions of fixed command cost plus about 55 instructions per byte of the text it parses: about 260 thousand for a lookup in a vector object, about 13 million for the element fetch from the 237 KB `branch.json`. A profile of the checker found about 180 `string(JSON)` calls per vector (17.6 thousand calls for the 98 vectors of `branch.json`), 41.5 G instructions retired for the 412 vectors (about 100 million per vector), and `vector-blind.cmake` doing the same kind of work plus a second element fetch per vector (18.9 G). Changes, all in `tools/check/vectors.cmake` and `tools/review/vector-blind.cmake`:
+
+1. `vshape` takes the member list of the object it checks: a spec key that is not a member is MISSING without a lookup, a member is typed with one lookup, and the types are handed back to the caller (`VT_<key>`). The spec lists are split once (`vspecs`) instead of once per object.
+2. The vector loop fetches each member value it uses once (`VS_<key>`: the string, the number text, or the JSON text of an array or object). The later checks read those variables, or look into the JSON text of the member (`sources`, `program`, `covers`, `ebci`, `init.r`, `init.status`, `expect.r`, `expect.status`, `expect.cycles`, a few hundred bytes) and not into the whole vector object again. The `covers` walk collects the coverage tags in the same pass, and `decle_leaves` is computed once per decle value.
+3. `vector_elements` splits the printed `vectors` array into its element texts after one parse of the file, so the element fetch is no longer one file-sized lookup per vector. CMake's writer prints each element of an array of objects between a line `  {` and a line `  }` at indent 2 and escapes newlines in strings, so the text `newline, 2 spaces, }, comma, newline, 2 spaces, {` occurs only between two elements. A file that does not print that way (different count, head or tail) is refused and takes the old per-element lookup, and a split element that does not parse is looked up on its own. The helper is in both files because `vector-blind.cmake` runs as a separate script and `lib.cmake` is shared by all checkers.
+4. `vector-blind.cmake` fetches each vector object once instead of twice and skips the lookups of `bus` and of the stimulus members a vector does not have.
+
+Findings keep their tokens, detail text, emission order and `${CAP}` listing; the stats are unchanged; nothing was weakened to gain time (T-07-01).
+
+### Measurement (before and after)
+
+| Measure | Before | After |
+|---------|--------|-------|
+| `vectors.cmake`, instructions retired (laptop, `time -l`) | 41.5 G | 22.3 G (-46 percent); 26.4 G after the first task alone |
+| `vector-blind.cmake`, instructions retired | 18.9 G | 9.5 G (-50 percent) |
+| `string(JSON)` calls per vector (profile, `branch.json`) | about 180 | about 115, the file-sized one gone |
+| `cp1610-vectors` step in isolation, user plus sys cpu, three alternated runs each | 3.37, 2.98, 2.91 (median 2.98 s) | 1.82, 1.57, 1.67 (median 1.67 s, -44 percent) |
+| container, cmake 3.28.3, `vectors.cmake` user plus sys, three alternated runs | 5.85, 5.80, 6.08 (median 5.85 s) | 3.43, 3.18, 2.74 (median 3.18 s, -46 percent) |
+| container, `vector-blind.cmake`, the same runs | 2.25, 2.60, 2.79 (median 2.60 s) | 1.52, 1.28, 1.14 (median 1.28 s, -51 percent) |
+| `step-time cp1610-vectors` in the gate log (wall, laptop) | 3 s | 1 s |
+
+The base runs use a copy of the original files kept outside the tree and the same `ROOT`, `FILELIST` and `CHECK_DIR` invocation as the step; the first task alone gave 4.20, 4.63, 4.59 against 3.51, 3.36, 3.50 cpu-s on a more loaded laptop. The split engages on cmake 3.28.3 (the container figures above show the same saving), so the hosted toolchain gets the fast path.
+
+### Evidence unchanged
+
+- The `gate:` summary line of `sh tools/gate.sh` is byte-identical before and after (the same md5, 3a7b713fdf61db70b1fae10ceb49dabf, for the base run, after the first task and after the second task; counts `steps=36/36 controls=344/344 faults=222/222 tests-expected=4432 tests-executed=4430 tests-skipped=2 tests-missing=0`), and the sorted `control` lines of the log are identical, so every control of `vectors.ids` and `vectors-review.ids` still ends with its EXPECT line. The container summary line differs from the previous container log only in `ci-runs` (52 to 53) and in the tracked-file counts (`tracked`, `hygiene-files`, `files`: 2105 to 2127), the tree growth since that log.
+- The blind copies written by `vector-blind.cmake` are byte-identical (`cmp` per file, 12 files, and the stdout), on the laptop and under cmake 3.28.3.
+- A differential run of 700 mutated copies of one vector file each (member deletions, type changes, odd strings, wrong element and array shapes, status and register shapes) gave identical output, exit status and blind files from the old and the new checkers.
+
+### Hosted effect and the phase budget
+
+The queued estimate was about 5 hosted cpu-s. The measurement does not support that: the step lost 1.3 cpu-s on the laptop (2.98 to 1.67) and the two checkers lost about 4.0 emulated container cpu-s (8.5 to 4.5), so the expected hosted saving is about 2 to 3 cpu-s. The planning headroom of about 11.5 hosted cpu-s before the lever therefore becomes about 14 (not 16) against the phase estimate of 10 to 19 hosted cpu-s in `07-RESEARCH.md`: the high end is still over the line, so the checkpoints below stay the control. The hosted arbiter is the orchestrator's next recorded row; this plan reads none. What is left in the checker is about 1 G of setup, about 18 G in the vector loop (about 115 lookups, most of them in small texts, plus command overhead) and about 3 G in the coverage section; no second pass over it is queued.
+
+### Checkpoints and stop rule for Phase 7
+
+- C-B after plan 07-08, C-C after plan 07-09, and the close in plan 07-12: each is a section of this file written by the executor of that plan from the gate lines of its final tree and `.planning/ci-runs.tsv` as the orchestrator recorded it.
+- Stop rule: if the last-five median `r` is above 8.3 at a checkpoint, the orchestrator creates a lever plan and no further test case is added until it lands. Executors never create it and never call `gh` or `tools/ci-record.sh`.
+
+### Pre-committed lever order for Phase 7 (applied only when the rule fires)
+
+1. (done here) Batch the `cp1610-vectors` JSON re-parse.
+2. Run the mutant inventory on the release preset only.
+3. Fold `demo-lamp-tone-swap` or `demo-lamp-tone-shift` into repeat variants of one mutant.
+
+Owner-decision levers (fault objects at `-O0`, one runtime-selected object per owner translation unit, a two-job split) are out of scope for an executor. Not levers: dropping a mutant class, the judge or an oracle, caching (D12 bans caches).
+
+phase7-start: lever-applied
