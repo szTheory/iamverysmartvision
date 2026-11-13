@@ -17,7 +17,8 @@
  * (tier, oracle, scenario, profile, domains) and the report lines of the golden key list; it is run
  * by a person, never by the gate, and refuses `user` content, host-dependent outcomes and a path that
  * is one of the operator output files (review WR-02). A run that ends harness-fail removes the operator
- * output files it created (review WR-01). Documented in docs/runner.md. */
+ * output files it created (review WR-01) and writes no golden; the golden is written to a temporary file and
+ * renamed, so an existing one is never truncated by a failed run (Phase 6 review WR-02). Documented in docs/runner.md. */
 #include <signal.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -72,7 +73,8 @@ static const char main_usage[] =
     "  --self-signal-count <n>  test hook: raise SIGINT n times there, 1..4 (default 1);\n"
     "                       needs --self-signal-after-slices\n"
     "  --update-golden <file>  also write the run's repeatability golden (.digests) to file;\n"
-    "                       refused for `user` content, host-dependent outcomes and an output file's path\n"
+    "                       refused for `user` content, host-dependent outcomes and an output file's path;\n"
+    "                       a failed run (harness-fail) writes none and keeps an existing file\n"
     "  --audio-raw <file>   also write the dense audio sample bytes (4 per sample: levels A, B, C, 0)\n"
     "                       to a NEW file (an existing path is refused, exit 14, never overwritten);\n"
     "                       a run that ends harness-fail (exit 14) removes the files it created\n"
@@ -378,9 +380,13 @@ static int main_count_observed(const char *v, size_t n)
  * reaches it); the same list sits in tools/check/steps/golden.sh and docs/runner.md (plan 05-09, A-09). live: video, audio,
  * input, psglog. */
 #define MAIN_LIVE 4u
+/* Suffix of the temporary file the golden is written to before the rename. */
+#define MAIN_GOLDEN_TMP ".ivs-tmp"
 
 /* Writes the .digests golden of the captured report to path. 0, or MAIN_EXIT_HARNESS after one
- * line on stderr (host-dependent outcome, incomplete capture, write error). */
+ * line on stderr (host-dependent or failed outcome, incomplete capture, write error). The golden is
+ * written to a sibling temporary file and renamed over path only when the whole file was written, so a
+ * failed run or a failed write never creates, truncates or replaces a golden (Phase 6 review WR-02). */
 static int main_write_golden(const char *path, const main_host *h, const ivs_scenario *scn)
 {
   static const char *const live_count[MAIN_LIVE] = {"output.video.bytes", "output.audio.bytes", "input.events",
@@ -391,6 +397,7 @@ static int main_write_golden(const char *path, const main_host *h, const ivs_sce
   size_t vn;
   int live[MAIN_LIVE];
   FILE *f;
+  char tmp_path[4096];
   int ok = 1;
   size_t i = 0u;
   if (h->golden_overflow || len == 0u || buf[len - 1u] != '\n') {
@@ -401,6 +408,10 @@ static int main_write_golden(const char *path, const main_host *h, const ivs_sce
   if (vn == 9u && memcmp(v, "cancelled", 9u) == 0) {
     return main_fail("golden refused: host-dependent outcome");
   }
+  /* A harness failure or a missing fixture is not a result of the machine: the report is short of the run. */
+  if ((vn == 12u && memcmp(v, "harness-fail", 12u) == 0) || (vn == 15u && memcmp(v, "missing-fixture", 15u) == 0)) {
+    return main_fail("golden refused: the run failed, no golden was written");
+  }
   v = main_report_value(buf, len, "outcome.detail", &vn);
   if (vn >= 5u && memcmp(v, "wall ", 5u) == 0) {
     return main_fail("golden refused: host-dependent outcome");
@@ -409,7 +420,11 @@ static int main_write_golden(const char *path, const main_host *h, const ivs_sce
     v = main_report_value(buf, len, live_count[k], &vn);
     live[k] = main_count_observed(v, vn);
   }
-  f = fopen(path, "w");
+  if (strlen(path) + sizeof MAIN_GOLDEN_TMP > sizeof tmp_path) {
+    return main_fail("golden write failed");
+  }
+  (void)snprintf(tmp_path, sizeof tmp_path, "%s%s", path, MAIN_GOLDEN_TMP);
+  f = fopen(tmp_path, "wx");
   if (f == NULL) {
     return main_fail("golden write failed");
   }
@@ -437,7 +452,14 @@ static int main_write_golden(const char *path, const main_host *h, const ivs_sce
   if (fclose(f) != 0) {
     ok = 0;
   }
-  return ok ? 0 : main_fail("golden write failed");
+  if (ok && rename(tmp_path, path) != 0) {
+    ok = 0;
+  }
+  if (!ok) {
+    (void)remove(tmp_path);
+    return main_fail("golden write failed");
+  }
+  return 0;
 }
 
 int main(int argc, char **argv)

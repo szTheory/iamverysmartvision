@@ -690,6 +690,24 @@ run_one "$tmp" op-vf-excl "$ivs_run" --content-dir "$opc" --video-raw "$opo/f.vr
 printf 'ivs-run: --video-raw: output file exists, refusing to overwrite it\n' > "$tmp/want.err"
 cmp -s "$tmp/runs/op-vf-excl.err" "$tmp/want.err" || { ok=0; why operator-video-failed "an existing path: stderr is not the one refusal line"; }
 cmp -s "$opo/f.vraw" "$opo/f.before" || { ok=0; why operator-video-failed "the existing file changed"; }
+# --update-golden follows the same rule (Phase 6 review WR-02): a run that ends harness-fail writes no golden and leaves an existing
+# one byte-identical; no temporary file is left next to it; the retry without the bound writes the golden.
+mkdir "$tmp/gfail" || exit 1
+printf 'precious\n' > "$tmp/gfail/g.digests"
+cp "$tmp/gfail/g.digests" "$tmp/gfail/g.before" || exit 1
+run_one "$tmp/gfail" op-vf-gold "$ivs_run" --content-dir "$opc" --video-raw v.raw --video-out-max-bytes 100 --update-golden g.digests "$opvid"
+judge op-vf-gold 14 harness-fail video-out-max-bytes "" || ok=0
+cmp -s "$tmp/gfail/g.digests" "$tmp/gfail/g.before" || { ok=0; why operator-video-failed "a failed run changed the existing golden"; }
+[ ! -e "$tmp/gfail/v.raw" ] || { ok=0; why operator-video-failed "the failed golden run left v.raw"; }
+run_one "$tmp/gfail" op-vf-gold2 "$ivs_run" --content-dir "$opc" --video-raw v2.raw --video-out-max-bytes 100 --update-golden n.digests "$opvid"
+judge op-vf-gold2 14 harness-fail video-out-max-bytes "" || ok=0
+[ ! -e "$tmp/gfail/n.digests" ] || { ok=0; why operator-video-failed "a failed run wrote a new golden"; }
+[ "$(ls "$tmp/gfail" | tr '\n' ' ')" = "g.before g.digests " ] || { ok=0; why operator-video-failed "files left next to the golden: $(ls "$tmp/gfail" | tr '\n' ' ')"; }
+run_one "$tmp/gfail" op-vf-gold3 "$ivs_run" --content-dir "$opc" --update-golden g.digests "$opvid"
+judge op-vf-gold3 0 pass - "" || ok=0
+[ "$(sed -n '1p' "$tmp/gfail/g.digests" 2> /dev/null)" = "# tier: deterministic-repeatability" ] \
+  || { ok=0; why operator-video-failed "the retry did not replace the golden"; }
+[ "$(ls "$tmp/gfail" | tr '\n' ' ')" = "g.before g.digests " ] || { ok=0; why operator-video-failed "files left after the retry: $(ls "$tmp/gfail" | tr '\n' ' ')"; }
 result runner-process.operator.video-raw-failed-run
 # --update-golden never names a video output (review WR-02 copied): the same string or the same file under another spelling is
 # refused (exit 14, one stderr line, no report) and the run's own output file is not left behind.
