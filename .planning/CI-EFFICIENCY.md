@@ -1032,3 +1032,7 @@ The laptop was heavily loaded for runs 1 and 2 (1-minute load 40 to 70 on 18 cor
 - Open for the next phase (not a lever): Phase 7 adds a fourth scenario and most likely a project interrupt routine and a second visible fixture; the first hosted rows after this push are the arbiter, and the margin to the `r` trigger (7.64 against 8.3) is about 8 percent.
 
 phase6-close: no-lever
+
+### Phase 6 review-fix head hosted row (orchestrator)
+
+Run 43373151931 (head with the review fixes: 5 controls, 1 fault, 10 ids more): gate 107 s, cpu 335, build 41 s, test 66 s, `r = 8.17`. Last five hosted rows (43352432394, 43359195974, 43365038335, 43369159094, 43373151931): cpu median 335 (raw trigger 330 is crossed by 5 cpu-s), gate median 107 (trigger 110, not crossed), `r` 7.68, 9.02, 7.53, 8.02, 8.17, median **8.02** (budget 7.8, trigger 8.3: not crossed). Reading: the raw cpu trigger is crossed while the speed-normalised arbiter is not, and the three rows since 06-12 sit at 7.5 to 9.0, so the trend is flat to slightly up, not a step. Decision (delegated authority): no lever pass inside Phase 6; Phase 7 plan 1 starts with a trigger check and, if the last-five `r` median is 8.0 or above at that point, the first cheap lever (batching the `cp1610-vectors` re-parse, about 5 cpu-s, plus fault objects at `-g0` already applied) runs as its first task before new tests are added. `-O0` fault objects and the two-job split remain owner decisions.
