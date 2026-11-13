@@ -46,7 +46,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Memory Map, Content Loading and Refusal** - Profile-driven memory map, typed system-image and cartridge loading, isolated instances and a refusal matrix that never mutates prior state (completed 2026-11-11)
 - [x] **Phase 4: Headless Runner and Installed Consumer (Slice 0)** - An original diagnostic runs end to end through the runner and a relocated installed consumer, with deterministic digests and a CI gate that mirrors the local command (completed 2026-11-11)
 - [x] **Phase 5: Hand Controllers and PSG Sound** - Both controllers as multi-signal machine input at explicit time boundaries; PSG raw audio and a register-write log (completed 2026-11-12)
-- [ ] **Phase 6: STIC Video First Pass** - Access windows, VBLANK/BUSRQ timing, raw index framebuffer, FG/BG and Color Stack cards, and side-effect-free inspection
+- [x] **Phase 6: STIC Video First Pass** - Access windows, VBLANK/BUSRQ timing, raw index framebuffer, FG/BG and Color Stack cards, and side-effect-free inspection (completed 2026-11-12; all claims provisional)
 - [ ] **Phase 7: First Visible Original Scenario** - A rights-clear original program responds to controller input with video and sound through the installed consumer in CI
 - [ ] **Phase 8: STIC Completion, Save State and Performance Baselines** - Remaining STIC features, canonical snapshots, correctness-asserted benchmarks and the milestone-close record
 
@@ -280,7 +280,7 @@ Plans:
 - [x] 06-11-PLAN.md — Color Stack rendering and inspection completion
 - [x] 06-12-PLAN.md — Runner and scenarios, `ivsr 3`
 - [x] 06-13-PLAN.md — Diagnostic and end to end
-- [ ] 06-14-PLAN.md — Close-out
+- [x] 06-14-PLAN.md — Close-out: claims CL-0016..CL-0022 (provisional), final discrepancy states, important-gate registry for VID-01..VID-04 and VID-06, traceability, Decision Register notes (D8, D3, D4), CI close-out (`phase6-close: no-lever`), `06-VERIFICATION.md` with three tables
 
 ### Phase 7: First Visible Original Scenario
 **Goal**: An original, rights-clear program visibly responds to controller input with video and sound, run in CI through the installed consumer. This shows a playable result early, so the project does not drift into research only (conflict C26: scheduled right after the first STIC pass instead of after full STIC coverage).
@@ -348,6 +348,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 3. Memory Map, Content Loading and Refusal | 14/14 | Complete    | 2026-11-11 |
 | 4. Headless Runner and Installed Consumer (Slice 0) | 27/25 | Complete    | 2026-11-11 |
 | 5. Hand Controllers and PSG Sound | 12/12 | Complete    | 2026-11-12 |
-| 6. STIC Video First Pass | 13/14 | In Progress | - |
+| 6. STIC Video First Pass | 14/14 | Complete    | 2026-11-12 |
 | 7. First Visible Original Scenario | 0/TBD | Not started | - |
 | 8. STIC Completion, Save State and Performance Baselines | 0/TBD | Not started | - |
