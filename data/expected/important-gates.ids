@@ -323,3 +323,16 @@ scn-shape control golden-shape-no-progress SCN-01
 scn-differential mutant runner-process.judge.pair-video-equal SCN-01
 scn-differential mutant runner-process.judge.input-not-consumed SCN-01
 scn-differential mutant runner-process.judge.idle-audible SCN-01
+# SCN-01 (plan 07-08, D-25, D-10, A-14, A-17): the program mutants of the Lamp Tone program, one per failure class of the derivation table (g): the input decode, the progress store, the lamp complement, the amplitude value, the ungated sound (judged under the idle scenario), both re-arm edges, the late strobe, the missing EIS, the halt in the idle branch and the two stub-vector mutants (JD as J, the interrupt target tie). Each ends with its stated first failing clause and, on the channel-isolation rows, its complete failing set (the fails column). The negative row (re-arm inside the band) must still pass and is not a registry line.
+scn-mutants mutant runner-process.mutant.SCN-INPUT-PORT SCN-01
+scn-mutants mutant runner-process.mutant.SCN-PROGRESS-STORE SCN-01
+scn-mutants mutant runner-process.mutant.SCN-LAMP-COMPLEMENT SCN-01
+scn-mutants mutant runner-process.mutant.SCN-AMP-VALUE SCN-01
+scn-mutants mutant runner-process.mutant.SCN-SOUND-UNGATED SCN-01
+scn-mutants mutant runner-process.mutant.SCN-REARM-SHORT SCN-01
+scn-mutants mutant runner-process.mutant.SCN-REARM-LONG SCN-01
+scn-mutants mutant runner-process.mutant.SCN-STROBE-LATE SCN-01
+scn-mutants mutant runner-process.mutant.SCN-NO-EIS SCN-01
+scn-mutants mutant runner-process.mutant.SCN-HLT-IDLE SCN-01
+scn-mutants mutant runner-process.mutant.SCN-STUB-JD-AS-J SCN-01
+scn-mutants mutant runner-process.mutant.SCN-ISR-TIE SCN-01
