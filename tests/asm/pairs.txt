@@ -1,0 +1,331 @@
+# tests/asm/pairs.txt: the flat corpus behind the second outside check of the ivs_asm encoding table
+# (plan 07-04, D-18, T1). Run by the suite asm as: ivs_asm --pairs tests/asm/pairs.txt
+# Line form: CLASS ADDR WORDS ASM. CLASS is the row family (the suite asm reports one result per class),
+# ADDR the address the statements are assembled at (four hex digits), WORDS the expected decles as
+# comma-separated four-digit hex, ASM one or more statements separated by a semicolon and a blank.
+# Provenance: the lines below the first marker were copied once, on 2026-11-13, from the asm and program
+# fields of data/cp1610/vectors/*.json (the address is init.r[7] of each vector), keeping the vector order
+# of the files in name order. Those vectors are hand-derived from the manual pages and read a second time
+# blind (docs/cp1610/reference-notes.md, "Vector second reading"); ivs_asm never read them and no line
+# below was produced by it, so each pair is an expected value the tool did not write. A line is copied when
+# its asm text is plain statements of the dialect and every program word is at most 03FF. The only edit is
+# the operand words of an SDBD immediate pair, whose upper bits the manual marks Not Used (pdf 58) and the
+# vectors fill with filler: they are written here masked to their low byte. Left out on purpose, because the
+# dialect refuses the spelling or the vector exercises the core: a wraparound branch or a program that wraps
+# the address space, SDBD alone or before a row that is not an SDBD target, MVO@ with the source equal to
+# the pointer register 4 to 7 (pdf 55), NOPP with a displacement word, an immediate above 03FF without SDBD,
+# and MVOI (no spelling).
+# The vectors are pinned by the tests-vectors-digest token of the tests-inventory step: a deliberate vector
+# change is a visible diff, and this file is mirrored by hand then (there is no JSON parse at test time).
+# Lines under the second marker are hand cases derived from docs/cp1610/reference-notes.md: XORI is
+# 1111 111 DDD (pdf 57), ANDI 1110 111 DDD, NOPP 1000 S0 1000 with S = 0 and a displacement word 0000
+# (pdf 54), SDBD 0000 000 001, and under SDBD the immediate is a low byte word then a high byte word.
+# --- copied from the vectors ---
+branch 1000 0200,0000 B $1002
+branch 1000 0200,0010 B $1012
+branch 1000 0220,0000 B $1001
+branch 1000 0200,0010 B $1012
+branch 1000 0201,0010 BC $1012
+branch 1000 0201,0010 BC $1012
+branch 1000 0221,0010 BC $0FF1
+branch 1000 0221,0010 BC $0FF1
+branch 1000 0201,0010 BC $1012
+branch 1000 0201,0010 BC $1012
+branch 1000 0209,0010 BNC $1012
+branch 1000 0209,0010 BNC $1012
+branch 1000 0229,0010 BNC $0FF1
+branch 1000 0229,0010 BNC $0FF1
+branch 1000 0209,0010 BNC $1012
+branch 1000 0209,0010 BNC $1012
+branch 1000 0202,0010 BOV $1012
+branch 1000 0202,0010 BOV $1012
+branch 1000 0222,0010 BOV $0FF1
+branch 1000 0222,0010 BOV $0FF1
+branch 1000 0202,0010 BOV $1012
+branch 1000 0202,0010 BOV $1012
+branch 1000 020A,0010 BNOV $1012
+branch 1000 020A,0010 BNOV $1012
+branch 1000 022A,0010 BNOV $0FF1
+branch 1000 022A,0010 BNOV $0FF1
+branch 1000 020A,0010 BNOV $1012
+branch 1000 020A,0010 BNOV $1012
+branch 1000 0203,0010 BPL $1012
+branch 1000 0203,0010 BPL $1012
+branch 1000 0223,0010 BPL $0FF1
+branch 1000 0223,0010 BPL $0FF1
+branch 1000 0203,0010 BPL $1012
+branch 1000 0203,0010 BPL $1012
+branch 1000 020B,0010 BMI $1012
+branch 1000 020B,0010 BMI $1012
+branch 1000 022B,0010 BMI $0FF1
+branch 1000 022B,0010 BMI $0FF1
+branch 1000 020B,0010 BMI $1012
+branch 1000 020B,0010 BMI $1012
+branch 1000 0204,0010 BZE $1012
+branch 1000 0204,0010 BZE $1012
+branch 1000 0224,0010 BZE $0FF1
+branch 1000 0224,0010 BZE $0FF1
+branch 1000 0204,0010 BZE $1012
+branch 1000 0204,0010 BZE $1012
+branch 1000 020C,0010 BNZE $1012
+branch 1000 020C,0010 BNZE $1012
+branch 1000 022C,0010 BNZE $0FF1
+branch 1000 022C,0010 BNZE $0FF1
+branch 1000 020C,0010 BNZE $1012
+branch 1000 020C,0010 BNZE $1012
+branch 1000 0205,0010 BLT $1012
+branch 1000 0205,0010 BLT $1012
+branch 1000 0225,0010 BLT $0FF1
+branch 1000 0225,0010 BLT $0FF1
+branch 1000 0205,0010 BLT $1012
+branch 1000 0205,0010 BLT $1012
+branch 1000 020D,0010 BGE $1012
+branch 1000 020D,0010 BGE $1012
+branch 1000 022D,0010 BGE $0FF1
+branch 1000 022D,0010 BGE $0FF1
+branch 1000 020D,0010 BGE $1012
+branch 1000 020D,0010 BGE $1012
+branch 1000 0206,0010 BLE $1012
+branch 1000 0206,0010 BLE $1012
+branch 1000 0226,0010 BLE $0FF1
+branch 1000 0226,0010 BLE $0FF1
+branch 1000 0206,0010 BLE $1012
+branch 1000 0206,0010 BLE $1012
+branch 1000 020E,0010 BGT $1012
+branch 1000 020E,0010 BGT $1012
+branch 1000 022E,0010 BGT $0FF1
+branch 1000 022E,0010 BGT $0FF1
+branch 1000 020E,0010 BGT $1012
+branch 1000 020E,0010 BGT $1012
+branch 1000 0207,0010 BUSC $1012
+branch 1000 0207,0010 BUSC $1012
+branch 1000 0227,0010 BUSC $0FF1
+branch 1000 0227,0010 BUSC $0FF1
+branch 1000 0207,0010 BUSC $1012
+branch 1000 0207,0010 BUSC $1012
+branch 1000 020F,0010 BESC $1012
+branch 1000 020F,0010 BESC $1012
+branch 1000 022F,0010 BESC $0FF1
+branch 1000 022F,0010 BESC $0FF1
+branch 1000 020F,0010 BESC $1012
+branch 1000 020F,0010 BESC $1012
+branch 1000 0205,0010 BLT $1012
+branch 1000 0215,0010 BEXT $1012, 5
+branch 1000 0235,0010 BEXT $0FF1, 5
+branch 1000 023A,0010 BEXT $0FF1, 10
+branch 1000 021A,0010 BEXT $1012, 10
+branch 1000 0215,0010 BEXT $1012, 5
+branch 1000 0215,0010 BEXT $1012, 5
+control 1000 0006 CLRC
+control 1000 0006 CLRC
+control 1000 0007 SETC
+control 1000 0007 SETC
+control 1000 0002 EIS
+control 1000 0002 EIS
+control 1000 0003 DIS
+control 1000 0003 DIS
+control 1000 0000 HLT
+control 1000 0005 TCI
+control 1000 0005 TCI
+control 1000 0030 GSWD R0
+control 1000 0033 GSWD R3
+control 1000 0031 GSWD R1
+control 1000 0032 GSWD R2
+control 1000 0034 NOP 0
+control 1000 0035 NOP 1
+control 1000 0036 SIN 0
+control 1000 0037 SIN 1
+control 1000 0039 RSWD R1
+control 1000 003D RSWD R5
+control 1000 003A RSWD R2
+control 1000 0038 RSWD R0
+move 1000 0241,0200 MVO R1, $0200
+move 1000 0245,0300 MVO R5, $0300
+move 1000 0281,0200 MVI $0200, R1
+alu 1000 02C1,0200 ADD $0200, R1
+alu 1000 02C2,0200 ADD $0200, R2
+alu 1000 02C3,0200 ADD $0200, R3
+alu 1000 0301,0200 SUB $0200, R1
+alu 1000 0302,0200 SUB $0200, R2
+alu 1000 0303,0200 SUB $0200, R3
+alu 1000 0341,0200 CMP $0200, R1
+alu 1000 0342,0200 CMP $0200, R2
+alu 1000 0343,0200 CMP $0200, R3
+alu 1000 0381,0200 AND $0200, R1
+alu 1000 0382,0200 AND $0200, R2
+alu 1000 03C1,0200 XOR $0200, R1
+alu 1000 03C2,0200 XOR $0200, R2
+imm 1000 02BB,0001 MVII #$0001, R3
+imm 1000 02F9,0001 ADDI #$0001, R1
+imm 1000 02FA,0001 ADDI #$0001, R2
+imm 1000 033A,0001 SUBI #$0001, R2
+imm 1000 033B,0001 SUBI #$0001, R3
+imm 1000 0379,0003 CMPI #$0003, R1
+stack 1000 0271 PSHR R1
+stack 1000 02B2 PULR R2
+stack 1000 0273 PSHR R3
+stack 1000 02B0 PULR R0
+stack 1000 0271,02B5 PSHR R1; PULR R5
+move 1000 0251 MVO@ R1, R2
+move 1000 0260 MVO@ R0, R4
+move 1000 026B MVO@ R3, R5
+move 1000 0249 MVO@ R1, R1
+stack 1000 0276 PSHR R6
+move 1000 0291 MVI@ R2, R1
+move 1000 02A0 MVI@ R4, R0
+move 1000 02AB MVI@ R5, R3
+move 1000 028A MVI@ R1, R2
+move 1000 02A4 MVI@ R4, R4
+stack 1000 02B6 PULR R6
+alu 1000 02D1 ADD@ R2, R1
+alu 1000 02E0 ADD@ R4, R0
+alu 1000 02F3 ADD@ R6, R3
+alu 1000 02E4 ADD@ R4, R4
+alu 1000 02E9 ADD@ R5, R1
+alu 1000 0311 SUB@ R2, R1
+alu 1000 032A SUB@ R5, R2
+alu 1000 0333 SUB@ R6, R3
+alu 1000 034A CMP@ R1, R2
+alu 1000 0360 CMP@ R4, R0
+alu 1000 0373 CMP@ R6, R3
+alu 1000 0399 AND@ R3, R1
+alu 1000 03AA AND@ R5, R2
+alu 1000 03B0 AND@ R6, R0
+alu 1000 03CA XOR@ R1, R2
+alu 1000 03E3 XOR@ R4, R3
+alu 1000 03F1 XOR@ R6, R1
+control 1000 0006,0034,0034 CLRC; NOP; NOP
+jump 1000 0004,0310,0234 J $1234
+jump 1000 0004,00FC,03FF JSR R4, $FFFF
+jump 1000 0004,0321,0000 JE $2000
+jump 1000 0004,0322,0000 JD $2000
+jump 1000 0004,0010,0234 JSR R4, $1234
+jump 1000 0004,0110,0234 JSR R5, $1234
+jump 1000 0004,0210,0234 JSR R6, $1234
+jump 1000 0004,0111,0234 JSRE R5, $1234
+jump 1000 0004,0012,0234 JSRD R4, $1234
+jump 1000 0004,0300,0123 J $0123
+alu 1000 00CA ADDR R1, R2
+alu 1000 00DC ADDR R3, R4
+alu 1000 00C1 ADDR R0, R1
+alu 1000 00E8 ADDR R5, R0
+alu 1000 00F8 ADDR R7, R0
+alu 1000 00CB ADDR R1, R3
+alu 1000 00D2 ADDR R2, R2
+alu 1000 00C7 ADDR R0, R7
+alu 1000 010A SUBR R1, R2
+alu 1000 0118 SUBR R3, R0
+alu 1000 0125 SUBR R4, R5
+alu 1000 0106 SUBR R0, R6
+alu 1000 010A SUBR R1, R2
+alu 1000 011B SUBR R3, R3
+alu 1000 014A CMPR R1, R2
+alu 1000 015C CMPR R3, R4
+alu 1000 0168 CMPR R5, R0
+alu 1000 0153 CMPR R2, R3
+alu 1000 0165 CMPR R4, R5
+alu 1000 018A ANDR R1, R2
+alu 1000 019C ANDR R3, R4
+alu 1000 01A8 ANDR R5, R0
+alu 1000 01B6 ANDR R6, R6
+alu 1000 01CA XORR R1, R2
+alu 1000 01DC XORR R3, R4
+alu 1000 01C6 XORR R0, R6
+move 1000 01C9 CLRR R1
+move 1000 01F6 CLRR R6
+move 1000 01C0 CLRR R0
+alu 1000 0009 INCR R1
+alu 1000 000A INCR R2
+alu 1000 0008 INCR R0
+alu 1000 000E INCR R6
+alu 1000 0013 DECR R3
+alu 1000 0014 DECR R4
+alu 1000 0015 DECR R5
+alu 1000 0018 COMR R0
+alu 1000 0019 COMR R1
+alu 1000 001A COMR R2
+alu 1000 001E COMR R6
+alu 1000 0020 NEGR R0
+alu 1000 0021 NEGR R1
+alu 1000 0022 NEGR R2
+alu 1000 0023 NEGR R3
+alu 1000 0029 ADCR R1
+alu 1000 002A ADCR R2
+alu 1000 002B ADCR R3
+alu 1000 002C ADCR R4
+alu 1000 002D ADCR R5
+move 1000 008A MOVR R1, R2
+move 1000 009C MOVR R3, R4
+move 1000 0086 MOVR R0, R6
+move 1000 00B0 MOVR R6, R0
+move 1000 0089 TSTR R1
+move 1000 0092 TSTR R2
+move 1000 00B6 TSTR R6
+move 8000 00BF TSTR R7
+move 1000 009F JR R3
+move 1000 00A7 JR R4
+move 1000 00AF JR R5
+sdbd 1000 0001,02B9,0034,0012 SDBD; MVII #$1234, R1
+sdbd 1000 0001,02FA,00FF,00FF SDBD; ADDI #$FFFF, R2
+sdbd 1000 0001,037B,0078,0056 SDBD; CMPI #$5678, R3
+sdbd 1000 0001,0338,0001,0000 SDBD; SUBI #$0001, R0
+sdbd 1000 0001,03BC,000F,008F SDBD; ANDI #$8F0F, R4
+sdbd 1000 0001,03FD,00FF,00FF SDBD; XORI #$FFFF, R5
+sdbd 1000 0001,02A1 SDBD; MVI@ R4, R1
+sdbd 1000 0001,02EA SDBD; ADD@ R5, R2
+sdbd 1000 0001,0323 SDBD; SUB@ R4, R3
+sdbd 1000 0001,0368 SDBD; CMP@ R5, R0
+sdbd 1000 0001,03A5 SDBD; AND@ R4, R5
+sdbd 1000 0001,03E9 SDBD; XOR@ R5, R1
+sdbd 1000 0001,028A SDBD; MVI@ R1, R2
+sdbd 1000 0001,02D3 SDBD; ADD@ R2, R3
+shift 1000 0041 SWAP R1
+shift 1000 0046 SWAP R2, 2
+shift 1000 0040 SWAP R0
+shift 1000 0043 SWAP R3
+shift 1000 0044 SWAP R0, 2
+shift 1000 0049 SLL R1
+shift 1000 004E SLL R2, 2
+shift 1000 0048 SLL R0
+shift 1000 004F SLL R3, 2
+shift 1000 004D SLL R1, 2
+shift 1000 0051 RLC R1
+shift 1000 0052 RLC R2
+shift 1000 0053 RLC R3
+shift 1000 0055 RLC R1, 2
+shift 1000 0056 RLC R2, 2
+shift 1000 0054 RLC R0, 2
+shift 1000 0059 SLLC R1
+shift 1000 005E SLLC R2, 2
+shift 1000 005C SLLC R0, 2
+shift 1000 005B SLLC R3
+shift 1000 005F SLLC R3, 2
+shift 1000 0061 SLR R1
+shift 1000 0066 SLR R2, 2
+shift 1000 0060 SLR R0
+shift 1000 0063 SLR R3
+shift 1000 0065 SLR R1, 2
+shift 1000 0067 SLR R3, 2
+shift 1000 0069 SAR R1
+shift 1000 006E SAR R2, 2
+shift 1000 0068 SAR R0
+shift 1000 006B SAR R3
+shift 1000 006D SAR R1, 2
+shift 1000 0071 RRC R1
+shift 1000 0072 RRC R2
+shift 1000 0075 RRC R1, 2
+shift 1000 0076 RRC R2, 2
+shift 1000 0073 RRC R3
+shift 1000 0074 RRC R0, 2
+shift 1000 0079 SARC R1
+shift 1000 007A SARC R2
+shift 1000 007F SARC R3, 2
+shift 1000 007C SARC R0, 2
+shift 1000 007E SARC R2, 2
+# --- hand cases (not in the vector files) ---
+# XORI #$0155, R2: 1111 111 010 = 03FA, then the immediate 0155.
+imm 1000 03FA,0155 XORI #$0155, R2
+# SDBD; ANDI #$1234, R1: SDBD 0001, ANDI R1 = 1110 111 001 = 03B9, then low byte 0034 and high byte 0012.
+sdbd 1000 0001,03B9,0034,0012 SDBD; ANDI #$1234, R1
+# NOPP: 1000 00 1000 = 0208, then the displacement word 0000.
+branch 1000 0208,0000 NOPP

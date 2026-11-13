@@ -9,11 +9,16 @@
 # no image is built from it. The expected words never come from ivs_asm; they come from a listing
 # typed by hand from the manual and checked twice before this suite existed. The hand listings are
 # untouched (D-19).
+# Pairs (plan 07-04 Task 2, the second outside check): tests/asm/pairs.txt, a flat copy of hand-derived
+# asm and word pairs of the Phase 2 vectors, is assembled by one `ivs_asm --pairs` process; asm.pairs.<class>
+# passes when every pair of that class printed ok and none printed bad. No JSON is read here.
 # Ids: asm.twin-<id> per twin (boot-stub 22 words, diag-cpu-1 56, diag-ctrl-psg-1 89, diag-stic-1 133 with its
 # data table as DECLE words, which is 300 words in all); asm.repeat: one twin assembled
 # twice into two files is byte-identical, the determinism contract of the tool; asm.judge.mutated-twin is the
 # self-control of the words comparison: the comparison must fail on a twin with one register field
-# changed, and its diff must show exactly that word (judge-vacuous, judge-wrong-reason otherwise).
+# changed, and its diff must show exactly that word (judge-vacuous, judge-wrong-reason otherwise);
+# asm.judge.mutated-pair does the same for the pairs comparison (one expected word of the corpus changed:
+# exactly that pair must print bad and the exit status must be 1).
 # An id <suite>.judge.<slug> is also an important-gates mutant (tools/check/steps/important-gates.sh).
 # The sources are assembled with the working directory at the source root and relative paths, because
 # the listing prints the source path it was given (no absolute path enters any output).
@@ -151,6 +156,65 @@ else
     ok=0
     { printf 'judge-wrong-reason: the comparison failed, but not on 1011 alone:\n'; cat "$tmp/why"; } > "$tmp/why.2"
     mv "$tmp/why.2" "$tmp/why"
+  fi
+fi
+report
+
+# asm.pairs.<class> (plan 07-04 Task 2): one process over the whole corpus. The run is valid when it exits 0 or
+# 1, prints exactly one ok or bad line per corpus line and every corpus class is registered below; an invalid
+# run fails every class case with the reason. A class passes when all of its corpus lines printed ok.
+pairs=tests/asm/pairs.txt
+classes='move alu imm shift branch jump stack sdbd control'
+grep -v '^#' "$pairs" | awk 'NF' > "$tmp/pairs.lines"
+"$asm" --pairs "$pairs" > "$tmp/pairs.out" 2> "$tmp/pairs.err"
+pairs_rc=$?
+pairs_why=
+if [ "$pairs_rc" -gt 1 ]; then
+  pairs_why="ivs_asm --pairs exited $pairs_rc"
+elif [ "$(wc -l < "$tmp/pairs.out" | tr -d ' ')" != "$(wc -l < "$tmp/pairs.lines" | tr -d ' ')" ]; then
+  pairs_why="one result line per corpus line expected: $(wc -l < "$tmp/pairs.out" | tr -d ' ') results for $(wc -l < "$tmp/pairs.lines" | tr -d ' ') pairs"
+else
+  for c in $(awk '{print $1}' "$tmp/pairs.lines" | sort -u); do
+    case " $classes " in *" $c "*) ;; *) pairs_why="corpus class $c is not registered in asm-tap.sh" ;; esac
+  done
+fi
+for c in $classes; do
+  n=$((n + 1))
+  tid="asm.pairs.$c"
+  executed=$((executed + 1))
+  ok=1
+  want=$(awk -v c="$c" '$1 == c' "$tmp/pairs.lines" | wc -l | tr -d ' ')
+  got=$(awk -v c="$c" '$1 == "ok" && $2 == c' "$tmp/pairs.out" | wc -l | tr -d ' ')
+  if [ -n "$pairs_why" ]; then
+    ok=0
+    printf '%s\n' "$pairs_why" > "$tmp/why"
+  elif [ "$want" -eq 0 ] || [ "$got" -ne "$want" ]; then
+    ok=0
+    { printf 'class %s: %s pairs in the corpus, %s ok\n' "$c" "$want" "$got"; awk -v c="$c" '$1 == "bad" && $2 == c' "$tmp/pairs.out"; head -3 "$tmp/pairs.err"; } > "$tmp/why"
+  fi
+  report
+done
+
+# asm.judge.mutated-pair: the first expected word of the first corpus line is changed in a copy; the run must
+# exit 1 and print exactly one bad line, for that corpus line, with every other pair still ok.
+n=$((n + 1))
+tid=asm.judge.mutated-pair
+executed=$((executed + 1))
+ok=1
+first=$(grep -n -v '^#' "$pairs" | awk -F: 'NF > 1 && $2 != "" { print $1; exit }')
+awk -v first="$first" 'NR == first { $3 = (substr($3, 1, 1) == "0" ? "1" : "0") substr($3, 2) } { print }' "$pairs" > "$tmp/mut-pairs.txt"
+if cmp -s "$pairs" "$tmp/mut-pairs.txt"; then
+  ok=0
+  printf 'judge-vacuous: the mutation did not change the corpus\n' > "$tmp/why"
+else
+  (cd "$tmp" && "$asm" --pairs mut-pairs.txt) > "$tmp/mut.out" 2> "$tmp/mut.err"
+  mut_rc=$?
+  if [ "$mut_rc" -ne 1 ]; then
+    ok=0
+    printf 'judge-vacuous: the mutated corpus exited %s, not 1\n' "$mut_rc" > "$tmp/why"
+  elif [ "$(grep -c '^bad ' "$tmp/mut.out")" -ne 1 ] || ! grep -q "^bad [a-z]* $first " "$tmp/mut.out"; then
+    ok=0
+    { printf 'judge-wrong-reason: not exactly one bad line for corpus line %s:\n' "$first"; grep -v '^ok ' "$tmp/mut.out"; } > "$tmp/why"
   fi
 fi
 report

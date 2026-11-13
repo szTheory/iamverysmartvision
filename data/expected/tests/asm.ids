@@ -4,6 +4,10 @@
 # encoding table, D-18); the four twins cover the boot stub (22 words), diag-cpu-1 (56), diag-ctrl-psg-1 (89)
 # and diag-stic-1 (133, its pattern table written as DECLE data words): 300 hand-typed words in all.
 # asm.repeat: one twin assembled twice gives byte-identical listings (determinism of the tool).
+# asm.pairs.<class>: tests/asm/pairs.txt, the flat copy of the hand-derived asm and word pairs of the Phase 2
+# vectors plus three hand cases (the second outside check of the encoding table, D-18), assembled by one
+# ivs_asm --pairs process; one case per row family, ok when every pair of the family assembled to its words.
+# asm.judge.mutated-pair: the same self-control for the pairs comparison (one expected word changed).
 # asm.judge.mutated-twin: self-control of the words comparison; passes only when it fails on a twin
 # with one register changed and the diff shows that one word.
 asm.twin-boot-stub
@@ -12,3 +16,13 @@ asm.twin-diag-ctrl-psg-1
 asm.twin-diag-stic-1
 asm.repeat
 asm.judge.mutated-twin
+asm.pairs.move
+asm.pairs.alu
+asm.pairs.imm
+asm.pairs.shift
+asm.pairs.branch
+asm.pairs.jump
+asm.pairs.stack
+asm.pairs.sdbd
+asm.pairs.control
+asm.judge.mutated-pair

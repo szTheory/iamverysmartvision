@@ -11,7 +11,7 @@
  * cites; no other assembler or emulator source, table or output was used, and
  * data/cp1610/opcode-families.json is the checker's police, never read here (D-18).
  *
- * Usage:  ivs_asm <source.asm> <listing.txt>      ivs_asm --version
+ * Usage:  ivs_asm <source.asm> <listing.txt>      ivs_asm --pairs <pairs.txt>      ivs_asm --version
  * Source (A-15): ASCII and LF only (a tab is a blank, a CR is a refusal), one statement per line.
  *   # key: value        the leading block of these lines is the header, copied to the listing
  *                       unchanged; `# window: AAAA-BBBB` is required and bounds every word
@@ -37,7 +37,12 @@
  * one `# sym: <name> <ADDR>` line per label (never `# label:`, a header key, A-01), then one
  * `ADDR HEX4 BITS ROW ASM` line per word, with `-> ADDR` on branch and jump lines.
  * Exit status: 0 on success, 1 on any refusal: one line `ivs_asm: <token>: <source>:<line>: <detail>`
- * on stderr and no output file (the listing is written beside its target and renamed). */
+ * on stderr and no output file (the listing is written beside its target and renamed).
+ * Pairs mode (D-18, tests/asm/pairs.txt): each non-comment line is `CLASS ADDR WORDS ASM`, ADDR four hex
+ * digits, WORDS the expected decles as comma-separated four-digit hex, ASM the statements separated by
+ * `;` (a statement is what a source line holds, SDBD included). Every pair is assembled at its address
+ * with the window wide open and prints `ok CLASS LINE` or `bad CLASS LINE EXPECTED GOT` (GOT is the
+ * words, `refused` or `malformed`) on stdout; the exit status is 1 when any pair is bad. No listing. */
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -56,6 +61,7 @@
 #define AS_WORD_MAX 0x03FFu
 #define AS_ADDR_MAX 0xFFFFu
 #define AS_EXPR_MAX 0xFFFFFFu
+#define AS_PAIR_WORDS 16u
 
 /* How a mnemonic places its operands in the decle (the shape letters of as_shapes say what each is). */
 enum {
@@ -65,7 +71,7 @@ enum {
   AK_RSAME,   /* base | Rd << 3 | Rd (TSTR, CLRR) */
   AK_RR,      /* base | Rs << 3 | Rd */
   AK_SHIFT,   /* base | N << 2 | R, the count 1 or 2 optional (R0 to R3) */
-  AK_SMALL,   /* base | n, n 0 or 1 (NOP, SIN) */
+  AK_SMALL,   /* base | n, n 0 or 1, 0 when absent (NOP, SIN) */
   AK_IMM,     /* base | Rd, then the immediate (two byte words after SDBD) */
   AK_DIR_OUT, /* MVO Rs, address */
   AK_DIR_IN,  /* MVI address, Rd and the other five direct rows */
@@ -83,7 +89,7 @@ enum {
  * upper-case letter is an optional trailing operand. Pass 1 uses the kind only (syntax alone, D-17). */
 static const char *const as_shapes[] = {
   [AK_NONE] = "", [AK_R0] = "r", [AK_R3] = "r", [AK_RSAME] = "r", [AK_RR] = "rr", [AK_SHIFT] = "rN",
-  [AK_SMALL] = "n", [AK_IMM] = "#r", [AK_DIR_OUT] = "ra", [AK_DIR_IN] = "ar", [AK_IND_OUT] = "rr",
+  [AK_SMALL] = "N", [AK_IMM] = "#r", [AK_DIR_OUT] = "ra", [AK_DIR_IN] = "ar", [AK_IND_OUT] = "rr",
   [AK_IND_IN] = "rr", [AK_BRANCH] = "a", [AK_BEXT] = "an", [AK_NOPP] = "", [AK_JUMP] = "a", [AK_JSR] = "ra",
   [AK_SDBD] = "",
 };
@@ -165,6 +171,8 @@ typedef struct as_state {
   int sdbd; /* the previous statement was SDBD: this one must be its target */
   uint32_t pc;
   uint32_t nwords;
+  uint32_t wn;                        /* words put in this pass */
+  uint16_t words[AS_PAIR_WORDS];      /* the first of them, for pairs mode */
   uint32_t win_lo;
   uint32_t win_hi;
   as_sym sym[AS_MAX_SYMS];
@@ -495,6 +503,10 @@ static void as_put(unsigned word, const char *grp, const char *row)
   }
   bits[k] = '\0';
   as_out("%04X %04X %s %s ", (unsigned)as_g.pc, word, bits, row);
+  if (as_g.wn < AS_PAIR_WORDS) {
+    as_g.words[as_g.wn] = (uint16_t)word;
+  }
+  as_g.wn++;
   as_g.pc++;
 }
 
@@ -833,6 +845,7 @@ static void as_reset(void)
   as_g.pc = 0u;
   as_g.have_org = 0;
   as_g.nwords = 0u;
+  as_g.wn = 0u;
   as_g.sdbd = 0;
 }
 
@@ -947,6 +960,109 @@ static int as_path_ok(const char *p)
   return 1;
 }
 
+/* One pair: the statements of text (separated by ;) assembled from addr in both passes into as_g.words. */
+static void as_pair(uint32_t addr, const char *text)
+{
+  char stmt[AS_MAX_LINE + 1u];
+  char org[16];
+  unsigned pass;
+  as_g.failed = 0;
+  as_g.nsym = 0u;
+  as_g.win_lo = 0u;
+  as_g.win_hi = AS_ADDR_MAX;
+  (void)snprintf(org, sizeof org, "ORG $%04X", (unsigned)addr);
+  for (pass = 1u; pass <= 2u && !as_g.failed; pass++) {
+    const char *p = text;
+    as_reset();
+    memcpy(stmt, org, strlen(org) + 1u);
+    as_stmt(pass, stmt);
+    for (;;) {
+      size_t len = strcspn(p, ";");
+      memcpy(stmt, p, len);
+      stmt[len] = '\0';
+      as_trim_end(stmt);
+      as_stmt(pass, stmt);
+      if (p[len] == '\0' || as_g.failed) {
+        break;
+      }
+      p += len + 1u;
+    }
+    if (!as_g.failed && as_g.sdbd) {
+      as_fail("asm-sdbd-target", "SDBD with no instruction after it", "");
+    }
+  }
+}
+
+/* The pairs file of path: one result line per pair on stdout; 0 when every pair is ok. */
+static int as_run_pairs(const char *path)
+{
+  size_t i;
+  unsigned long bad = 0ul;
+  as_g.src = path;
+  if (!as_path_ok(path) || !as_load(path)) {
+    return 1;
+  }
+  for (i = 0u; i < as_g.nlines; i++) {
+    char work[AS_MAX_LINE + 1u];
+    char got[AS_PAIR_WORDS * 5u + 1u];
+    char *s = work;
+    char *cls;
+    char *adr;
+    char *wds;
+    const char *p;
+    const char *shown = "malformed";
+    uint32_t addr = 0u;
+    uint16_t want[AS_PAIR_WORDS];
+    size_t nw = 0u;
+    size_t g = 0u;
+    size_t k;
+    int good;
+    int same = 1;
+    memcpy(work, as_g.line[i], strlen(as_g.line[i]) + 1u);
+    if (*as_skip(work) == '\0' || *as_skip(work) == '#') {
+      continue;
+    }
+    as_g.lineno = (unsigned long)i + 1ul;
+    cls = as_next(&s);
+    adr = as_next(&s);
+    wds = as_next(&s);
+    good = cls != NULL && adr != NULL && wds != NULL && *s != '\0' && as_hex4(adr, &addr) && adr[4] == '\0';
+    p = wds;
+    while (good && *p != '\0') {
+      uint32_t w = 0u;
+      good = nw < AS_PAIR_WORDS && as_hex4(p, &w) && (p[4] == ',' || p[4] == '\0');
+      if (good) {
+        want[nw++] = (uint16_t)w;
+        p += p[4] == ',' ? 5 : 4;
+      }
+    }
+    if (good) {
+      as_pair(addr, s);
+      same = !as_g.failed && as_g.wn == nw;
+      shown = "refused";
+      for (k = 0u; !as_g.failed && k < as_g.wn && k < AS_PAIR_WORDS; k++) {
+        int d;
+        same = same && k < nw && as_g.words[k] == want[k];
+        if (k != 0u) {
+          got[g++] = ',';
+        }
+        for (d = 12; d >= 0; d -= 4) {
+          got[g++] = "0123456789ABCDEF"[(as_g.words[k] >> d) & 15u];
+        }
+      }
+      got[g] = '\0';
+      shown = as_g.failed ? shown : got;
+    }
+    if (good && same) {
+      printf("ok %s %lu\n", cls, as_g.lineno);
+    } else {
+      bad++;
+      printf("bad %s %lu %s %s\n", cls != NULL ? cls : "-", as_g.lineno, wds != NULL ? wds : "-", shown);
+    }
+  }
+  return bad == 0ul && fflush(stdout) == 0 ? 0 : 1;
+}
+
 int main(int argc, char **argv)
 {
   char tmp[AS_MAX_PATH + 8u];
@@ -956,10 +1072,13 @@ int main(int argc, char **argv)
   if (argc == 2 && strcmp(argv[1], "--version") == 0) {
     return printf("ivs_asm %s\n", AS_VERSION) > 0 && fflush(stdout) == 0 ? 0 : 1;
   }
+  if (argc == 3 && strcmp(argv[1], "--pairs") == 0) {
+    return as_run_pairs(argv[2]);
+  }
   n = argc == 3 ? strlen(argv[2]) : 0u;
   if (argc != 3 || !as_path_ok(argv[1]) || n == 0u || n > AS_MAX_PATH || strcmp(argv[1], argv[2]) == 0) {
     fprintf(stderr, "usage: ivs_asm <source.asm> <listing.txt>   (a relative source path of A-Z a-z 0-9 . _ / - "
-                    "that is not the listing path)\n       ivs_asm --version\n");
+                    "that is not the listing path)\n       ivs_asm --pairs <pairs.txt>\n       ivs_asm --version\n");
     return 1;
   }
   memcpy(tmp, argv[2], n);
