@@ -10,6 +10,8 @@ pack.words-ivs-diag-ctrl-psg-1
 pack.trailer-ivs-diag-ctrl-psg-1
 pack.words-ivs-diag-stic-1
 pack.trailer-ivs-diag-stic-1
+pack.words-ivs-demo-lamp-tone-1
+pack.trailer-ivs-demo-lamp-tone-1
 # pack.judge.patched-word (plan 04-24, D-46): self-control of the words comparison; passes only when
 # the comparison fails on ivs_pack's dump of the first listing with its first word patched.
 pack.judge.patched-word
