@@ -206,6 +206,10 @@ static int ex_read_role(ex_state *x, uint32_t role, size_t *len)
     x->rec->host_calls++;
     r = x->host->read_file(x->host->ctx, IVS_RUNNER_BOOT_STUB_FILE, cap, x->readbuf, len);
     break;
+  case IVS_SCN_CONTENT_BOOT_STUB_2:
+    x->rec->host_calls++;
+    r = x->host->read_file(x->host->ctx, IVS_RUNNER_BOOT_STUB_2_FILE, cap, x->readbuf, len);
+    break;
   case IVS_SCN_CONTENT_PATH:
     x->rec->host_calls++;
     r = x->host->read_file(x->host->ctx, c->path, cap, x->readbuf, len);
@@ -232,7 +236,8 @@ static int ex_read_role(ex_state *x, uint32_t role, size_t *len)
   return r;
 }
 
-/* The name a detail gives a role's content: path=<relpath>, path=boot-stub.exec or user. */
+/* The name a detail gives a role's content: path=<relpath>, path=boot-stub.exec, path=boot-stub-2.exec,
+ * zero-grom or user. */
 static void ex_content_name(const ex_state *x, uint32_t role, char *out, size_t cap)
 {
   const ivs_scenario_content *c = &x->scn->content[role];
@@ -240,6 +245,8 @@ static void ex_content_name(const ex_state *x, uint32_t role, char *out, size_t 
     (void)snprintf(out, cap, "user");
   } else if (c->kind == IVS_SCN_CONTENT_BOOT_STUB) {
     (void)snprintf(out, cap, "path=%s", IVS_RUNNER_BOOT_STUB_FILE);
+  } else if (c->kind == IVS_SCN_CONTENT_BOOT_STUB_2) {
+    (void)snprintf(out, cap, "path=%s", IVS_RUNNER_BOOT_STUB_2_FILE);
   } else if (c->kind == IVS_SCN_CONTENT_ZERO_GROM) {
     (void)snprintf(out, cap, "zero-grom");
   } else {

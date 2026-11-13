@@ -346,6 +346,11 @@ static uint32_t dir_content(ivs_scenario *s, const scn_line *l, uint32_t line)
       return IVS_SCN_R_BAD_CONTENT_KIND;
     }
     c->kind = IVS_SCN_CONTENT_BOOT_STUB;
+  } else if (tok_is(v, "boot-stub-2")) {
+    if (role != IVS_SCN_ROLE_EXEC) {
+      return IVS_SCN_R_BAD_CONTENT_KIND;
+    }
+    c->kind = IVS_SCN_CONTENT_BOOT_STUB_2;
   } else if (tok_is(v, "zero-grom")) {
     if (role != IVS_SCN_ROLE_GROM) {
       return IVS_SCN_R_BAD_CONTENT_KIND;

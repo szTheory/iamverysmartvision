@@ -309,15 +309,17 @@ static void rp_value(const ivs_runner_record *r, uint32_t field, char *v, size_t
     break;
   case RF_LABEL_EXEC:
     /* D-30: from the symbolic content name only, never from the bytes or a table of hashes. */
-    if (s->content[IVS_SCN_ROLE_EXEC].kind == IVS_SCN_CONTENT_BOOT_STUB) {
+    if (s->content[IVS_SCN_ROLE_EXEC].kind == IVS_SCN_CONTENT_BOOT_STUB ||
+        s->content[IVS_SCN_ROLE_EXEC].kind == IVS_SCN_CONTENT_BOOT_STUB_2) {
       char hex[65];
       const ivs_runner_slot_record *e = &r->slot[IVS_SCN_ROLE_EXEC];
+      const char *contract = s->content[IVS_SCN_ROLE_EXEC].kind == IVS_SCN_CONTENT_BOOT_STUB_2 ? " contract 2" : "";
       if (e->loaded != 0u) {
         rp_hex(e->sha256, hex);
       } else {
         (void)snprintf(hex, sizeof hex, "-");
       }
-      (void)snprintf(v, cap, "project boot stub, not an EXEC sha256=%s", hex);
+      (void)snprintf(v, cap, "project boot stub%s, not an EXEC sha256=%s", contract, hex);
     }
     break;
   case RF_LABEL_GROM:

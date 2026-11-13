@@ -56,7 +56,7 @@ Every directive of an accepted scenario can take effect (review WR-02, WR-03). R
 | `ivss` | `ivss 1` | Format version; must be first. |
 | `id` | `id <[a-z0-9-]{1,48}>` | The scenario id (printed as `scenario.id`). |
 | `profile` | `profile <[a-z0-9-]{1,64}>` | The hardware profile id the instance is created with. |
-| `content` | `content <exec\|grom\|cart> <relpath>\|user\|boot-stub\|zero-grom` | The image of a role: a relative path under the content directory; `user` (the operator's `--exec`, `--grom` or `--cart`); `boot-stub` (exec only: the project boot stub, the reserved file `boot-stub.exec` under the content directory); `zero-grom` (grom only: 2048 zero bytes made by the runner). |
+| `content` | `content <exec\|grom\|cart> <relpath>\|user\|boot-stub\|boot-stub-2\|zero-grom` | The image of a role: a relative path under the content directory; `user` (the operator's `--exec`, `--grom` or `--cart`); `boot-stub` (exec only: the project boot stub, contract 1, the reserved file `boot-stub.exec` under the content directory); `boot-stub-2` (exec only: the project boot stub, contract 2, the reserved file `boot-stub-2.exec` under the content directory; its interrupt entry hands off to the cartridge, see `docs/diagnostics.md`); `zero-grom` (grom only: 2048 zero bytes made by the runner). |
 | `expect-load` | `expect-load <role> ok\|<IVS_E_NAME> [reason <n>]` | The expected load status of a role (default `ok`); a matching refusal ends the scenario as pass, so nothing may follow it (above). |
 | `expect-sha256` | `expect-sha256 <role> <64 lower-case hex>` | The role's image must have this SHA-256 (checked by the core at load). |
 | `wall-timeout-ms` | `wall-timeout-ms <n>` | Lowers the wall-time cap (1 to 4294967295); a value above the operator's cap is ignored. |
@@ -109,7 +109,7 @@ Never printed: wall time, host paths, the environment, image bytes.
 | `outcome.detail` | `-` or one detail (below) |
 | `exit.code` | 0, 10, 11, 12, 13 or 14 |
 | `slot.<exec\|grom\|cart>.loaded`, `.length_bytes`, `.sha256`, `.status`, `.reason` | 0 or 1; bytes; 64 hex or `-`; `ok`, an `IVS_E_*` name or `-`; the load reason number or `-` |
-| `exec:` | `project boot stub, not an EXEC sha256=<hex>` (only for `content exec boot-stub`), else `-` |
+| `exec:` | `project boot stub, not an EXEC sha256=<hex>` (only for `content exec boot-stub`), `project boot stub contract 2, not an EXEC sha256=<hex>` (only for `content exec boot-stub-2`), else `-`; the label comes from the symbolic content name only, never from the bytes or a table of hashes |
 | `grom:` | `zero image, not a GROM` (only for `content grom zero-grom`), else `-` |
 | `step.<k>.target_ticks` | ticks, then `from=<n> cpu-cycles` or `from=<n> frames nominal, not frame events` for the converted units |
 | `step.<k>.now_ticks`, `.overshoot_ticks` | machine time at the step's end; `now - target` when positive, else 0 |
