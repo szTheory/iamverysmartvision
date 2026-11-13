@@ -23,6 +23,13 @@
 #   - the dev report build/gate/dev/runner/<id>.report exists (golden-mismatch);
 #   - .expect: its `assert` lines equal the scenario's `assert` lines in order, at least one, and
 #     its body holds nothing else (golden-expect-drift);
+#   - .expect with the header tier playable-guest-progress (plan 07-02, D-24, A-16): the scenario must have the
+#     shape of a progress predicate, not a title screen or a hash alone (golden-shape; the detail starts with
+#     one keyword): no-input (no `input` line), input-after-bound (the last input tick is not below the last
+#     `run-to` bound; the units must correspond: at_tick with ticks, at_cycle with cpu-cycles, else this keyword
+#     too), no-progress (no `assert mem` or `assert reg` in a step whose `run-to` bound is above the first input
+#     tick), no-frame (no `assert frame`), no-psglog (no `assert psglog`). The rule keys on the tier text of the
+#     header, not on the tier inventory; other tiers are not linted.
 #   - .digests: one `# domains:` line `cpu=observed mem=observed images=observed
 #     instance=observed video=<v> audio=<v> input=<v> psglog=<v>` with v `observed` or `none`
 #     (golden-mismatch when missing or malformed); a live domain is observed exactly when its
@@ -64,7 +71,7 @@
 # Tokens: golden-header-missing-tier, golden-header-missing-oracle,
 #   golden-self-recorded-wrong-tier, golden-empty-domain-observed, golden-mismatch,
 #   golden-expect-drift, golden-dev-release-diff, golden-user-scenario-tracked,
-#   golden-host-dependent.
+#   golden-host-dependent, golden-shape.
 # Stats: goldens=<golden files> reports=<dev reports> host-dependent=<skipped report ids>.
 LC_ALL=C; export LC_ALL
 : "${ROOT:?ROOT is not set}"
@@ -210,6 +217,44 @@ while IFS= read -r g; do
       "$ROOT/$g" > "$tmp/have"
     if [ ! -s "$tmp/want" ] || ! cmp -s "$tmp/want" "$tmp/have"; then
       bad golden-expect-drift "$g (assert lines differ from $sf)"
+    fi
+    tier_h=$(awk '/^# tier:/ { sub(/^# tier:[ \t]*/, ""); sub(/[ \t]+$/, ""); print; exit }' "$ROOT/$g")
+    if [ "$tier_h" = playable-guest-progress ]; then
+      awk -v g="$g" -v sf="$sf" '
+        function emit(kw, why) { print kw " " g " (scenario " sf ": " why ")" }
+        $1 == "input" {
+          if ($2 ~ /^at_tick=[0-9]+$/) { u = "ticks"; v = substr($2, 9) + 0 }
+          else if ($2 ~ /^at_cycle=[0-9]+$/) { u = "cpu-cycles"; v = substr($2, 10) + 0 }
+          else next
+          if (nin == 0) { iu = u; first = v; last = v }
+          else { if (u != iu) mixed = 1; if (v < first) first = v; if (v > last) last = v }
+          nin++; next
+        }
+        $1 == "run-to" {
+          nstep++; bound[nstep] = $2 + 0
+          if (nstep == 1) su = $3; else if ($3 != su) mixed = 1
+          next
+        }
+        $1 == "assert" {
+          if (nstep > 0 && ($2 == "mem" || $2 == "reg")) prog[nstep] = 1
+          if ($2 == "frame") fr = 1
+          if ($2 == "psglog") pl = 1
+        }
+        END {
+          if (nin == 0) emit("no-input", "no input line")
+          else {
+            ok = (!mixed && nstep > 0 && ((iu == "ticks" && su == "ticks") || (iu == "cpu-cycles" && su == "cpu-cycles")))
+            if (!ok) emit("input-after-bound", "the input and run-to units do not correspond, so the last input tick is not shown below the last bound")
+            else if (last >= bound[nstep]) emit("input-after-bound", "the last input " last " is not below the last run-to bound " bound[nstep])
+            else {
+              got = 0
+              for (i = 1; i <= nstep; i++) if (bound[i] > first && prog[i]) got = 1
+              if (!got) emit("no-progress", "no assert mem or assert reg in a step that ends after the first input " first)
+            }
+          }
+          if (!fr) emit("no-frame", "no assert frame")
+          if (!pl) emit("no-psglog", "no assert psglog")
+        }' "$ROOT/$sf" | while IFS= read -r shape_line; do bad golden-shape "$shape_line"; done
     fi
   fi
 

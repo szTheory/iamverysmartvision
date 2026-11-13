@@ -12,3 +12,5 @@ important-gates-bad-req-phase5
 important-gates-req-uncovered-phase6
 important-gates-unknown-id-phase6
 important-gates-bad-req-phase6
+# Plan 07-02 (A-13, A-21): SCN-01 accepted; a Phase 7 requirement without a registry line.
+important-gates-req-uncovered-phase7

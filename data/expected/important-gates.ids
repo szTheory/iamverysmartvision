@@ -314,3 +314,8 @@ diag-stic-mutants mutant runner-process.mutant.STIC-GRAM-COUNT VID-04
 stic-inspect fault STIC_MODE_SWITCH_ON_PEEK VID-06
 stic-inspect fault DIGEST_STIC_ROWS_OMITTED VID-06
 stic-inspect fault STIC_STATE_NOT_RESET_ON_POWER_ON VID-06
+
+# SCN-01 (plan 07-02, A-13): the oracle checks of the first visible original program. A declared frame pair whose planes differ outside its rectangle, and a progress predicate (tier playable-guest-progress) without an input line or without progress, are refused. Later plans append the mutant, judge and consumer lines.
+scn-video-pair control video-frame-pair-region-drift SCN-01
+scn-shape control golden-shape-no-input SCN-01
+scn-shape control golden-shape-no-progress SCN-01

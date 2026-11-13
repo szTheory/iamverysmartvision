@@ -19,3 +19,6 @@ golden-output-key-unknown
 golden-refpcm-key
 golden-refpcm-grammar
 golden-refpcm-mismatch
+# Plan 07-02 (D-24): the shape lint for a predicate file of tier playable-guest-progress (a scenario with no input line, a scenario with no progress assert after the first input).
+golden-shape-no-input
+golden-shape-no-progress

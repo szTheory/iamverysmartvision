@@ -1,0 +1,8 @@
+# tier: playable-guest-progress
+# oracle: independent-derivation
+# scenario: toy
+# profile: intv-2609-ntsc-family-p1
+# derivation: toy predicate of control golden-shape-no-progress (plan 07-02): the asserts equal the toy scenario, only the shape differs from a progress predicate.
+# frame: 0 T-1
+assert frame 0 hash == 2cf5430f1dcd07a60f134aac257553f3696208f28d5d2f32c9a68c74b8aa6354
+assert psglog count == 1
