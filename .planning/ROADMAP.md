@@ -294,7 +294,47 @@ Plans:
   2. A scripted input sequence changes guest state, and the run asserts a guest-state progress predicate (a register or memory marker), not a title screen or hash alone. The tier is playable guest progress, for this original program only.
   3. The same run shows the input changing raw video (the index framebuffer differs in the expected region) and raw audio (the PSG write log and samples change).
   4. The owner-local route for user-supplied EXEC/GROM is documented with digest identity checks, labelled non-redistributable and kept out of CI. Any job that refers to it prints a visible SKIPPED line, and the inventory gate counts it.
-**Plans**: TBD
+**Plans**: 12 plans (sequential waves 1-12; amendments A-01..A-21 in 07-CONTEXT.md)
+
+Plans:
+**Wave 1**
+- [ ] 07-01-PLAN.md — W0: CI trigger check and the cp1610-vectors re-parse lever, phase7-start entry
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 07-02-PLAN.md — W1 oracle (no C): Lamp Tone specification and derivation, frame literals F-S1..F-S6, pair-region token, shape lint, SCN-01 in important-gates, blind-read request
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 07-03-PLAN.md — W2a: ivs_asm tracer, registration like tools/pcm, suite asm with two twins and a judge
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 07-04-PLAN.md — W2b: ivs_asm complete (SDBD, DECLE/DATA, pairs corpus, four twins, pinned refusals), DATA checker rule, D4 docs, C106
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [ ] 07-05-PLAN.md — W3a: boot-stub contract 2 (JD $5004) as an assembled fixture with verified recipe, runner token boot-stub-2, run.stub2 tests
+
+**Wave 6** *(blocked on Wave 5 completion)*
+- [ ] 07-06-PLAN.md — W3b: Lamp Tone program, listing, redistributable manifest with recipe, image, names rule, runtime contract docs
+
+**Wave 7** *(blocked on Wave 6 completion)*
+- [ ] 07-07-PLAN.md — W4a: scenarios pass/idle/shift/swap, hand-derived .expect, goldens, metamorphic judge, repeatability
+
+**Wave 8** *(blocked on Wave 7 completion)*
+- [ ] 07-08-PLAN.md — W4b: mutant inventory with fails= sets and stub-image patches, cost checkpoint C-B
+
+**Wave 9** *(blocked on Wave 8 completion)*
+- [ ] 07-09-PLAN.md — W5: installed-consumer fourth replay (frame loop, region diff, audio and log decode), pkg self-tests, checkpoint C-C
+
+**Wave 10** *(blocked on Wave 9 completion)*
+- [ ] 07-10-PLAN.md — W6a: SCN-02 template scenario with counted SKIPPED line, consistency rule, owner-images page, non-redistributable manifests
+
+**Wave 11** *(blocked on Wave 10 completion)*
+- [ ] 07-11-PLAN.md — W6b: runner refuses derived audio/log outputs for user content, owner-run helper with tested refusals
+
+**Wave 12** *(blocked on Wave 11 completion)*
+- [ ] 07-12-PLAN.md — W7 close-out: claims CL-0023/CL-0024, play-word tripwire, README/PROJECT/REL-01 fixes, D4 and D11 register, verification record, phase7-close
+
+**Cross-cutting constraints:** <!-- gsd:generated -->
+- End state: `steps=36/36 controls=354/354 faults=222/222 goldens=15 tests-skipped=2 tests-missing=0` under sh, dash and the container gate
 
 ### Phase 8: STIC Completion, Save State and Performance Baselines
 **Goal**: The remaining STIC features are either covered or explicitly listed as unknown. Full machine state round-trips through one canonical snapshot format, named workloads have benchmarks that check correctness first, and the milestone closes with a release-readiness assessment of the exact tested artifact.

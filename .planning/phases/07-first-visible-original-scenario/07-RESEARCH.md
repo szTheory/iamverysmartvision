@@ -155,16 +155,19 @@ Use `ivs_pack` (no second packer); `listing.cmake` row and `-> ADDR` recomputati
 9. ASCII/CR/SPDX (F16) apply to `.asm`, twins, pairs; hygiene rejects home/scratch paths and `@` before a dotted word, also under `.planning/`.
 10. Helper scenario injection: validate each lock line as exactly 64 lower-case hex before inserting it.
 
-## Open questions and risks for planning
+## Open questions and risks for planning (RESOLVED)
 
-1. X2/X3 band and re-arm form: W1 decides with the arithmetic in the derivation.
-2. **Stub-to-program ISR tie** (discretion): (a) header key `isr` in both listings plus a `listing.cmake` cross-check (needs `HEADER_KEYS` change); (b) `ISR EQU $5004` repeated in both `.asm` plus the behavioural tie. [REC] (b) plus a mandatory mutant (stub target moved off the program's ISR must fail `frame k displayed == yes`).
-3. **Spelling** [REC]: `NAME EQU expr`, `DECLE v1, v2`, `$` hex, no local labels, explicit `SDBD`.
-4. **Mutant addressing** [REC]: absolute `<addr> <from> <to>` with the `from` check, `# sym:` lines for addresses; `label+N` only after two label-driven re-derivations.
-5. **Audio windows**: a constant-level `audio at` needs a tick multiple of `audio.sample_ticks` and the regmap rule (`docs/psg`); if no window can be made, D-22's fallback (`assert audio changes`) is a grammar change needing an explicit re-bless classification.
-6. **`owner-exec-title`** [UNK]: whether a scenario with only exec+grom user roles parses (gate ends `missing-fixture` before any run); prove parse in W6; pick `run-to <n> frames`, no asserts.
-7. **SKIPPED line vs `ci-summary`**: `keep_fails` greps `^-- FAIL ` only (`gate.sh`), so a `-- SKIPPED` line is safe there; run the ci-summary selftests after the edit.
-8. Shift probe sweep (+-1,000..10,000 ticks) is a throwaway; CI keeps +2,000. Optional discrepancy C106 for the manual's branch-range text vs the decle formula (no hardware claim). Six frame literals of 96 rows: derive as deltas of the idle frame.
+All eight questions are resolved by CONTEXT amendments or by a named plan step; each line ends with its pointer.
+
+
+1. X2/X3 band and re-arm form: W1 decides with the arithmetic in the derivation. **RESOLVED:** CONTEXT A-02 (frame-1 startup band, counter rule) and A-03 (main-loop re-arm form unless the derivation shows a wider in-ISR margin; N and band edges derived in plan 07-02 Task 2, section (b)).
+2. **Stub-to-program ISR tie** (discretion): (a) header key `isr` in both listings plus a `listing.cmake` cross-check (needs `HEADER_KEYS` change); (b) `ISR EQU $5004` repeated in both `.asm` plus the behavioural tie. [REC] (b) plus a mandatory mutant (stub target moved off the program's ISR must fail `frame k displayed == yes`). **RESOLVED:** CONTEXT A-14 adopts (b): `ISR EQU $5004` in both sources, behavioural tie, mutant `SCN-ISR-TIE` (plan 07-08); no `HEADER_KEYS` change (A-01).
+3. **Spelling** [REC]: `NAME EQU expr`, `DECLE v1, v2`, `$` hex, no local labels, explicit `SDBD`. **RESOLVED:** CONTEXT A-15 (adopted as recommended; plans 07-03 and 07-04).
+4. **Mutant addressing** [REC]: absolute `<addr> <from> <to>` with the `from` check, `# sym:` lines for addresses; `label+N` only after two label-driven re-derivations. **RESOLVED:** CONTEXT A-15 (absolute rows with the explicit `from` check; `# sym:` lines per A-01; plan 07-08).
+5. **Audio windows**: a constant-level `audio at` needs a tick multiple of `audio.sample_ticks` and the regmap rule (`docs/psg`); if no window can be made, D-22's fallback (`assert audio changes`) is a grammar change needing an explicit re-bless classification. **RESOLVED:** CONTEXT A-05 (channel C constant-level gate with deferred tone amplitude gives an exact `A=0 B=0 C=15` window; ticks multiples of 16 chosen in plan 07-02 Task 2, section (d)); the grammar fallback is not needed unless that derivation fails.
+6. **`owner-exec-title`** [UNK]: whether a scenario with only exec+grom user roles parses (gate ends `missing-fixture` before any run); prove parse in W6; pick `run-to <n> frames`, no asserts. **RESOLVED:** plan 07-10 Task 1 proves assumption A4 (the exec+grom-only template parses and ends `missing-fixture`, exit 13, detail `missing role=exec user`) with `run-to <n> frames` and no assert.
+7. **SKIPPED line vs `ci-summary`**: `keep_fails` greps `^-- FAIL ` only (`gate.sh`), so a `-- SKIPPED` line is safe there; run the ci-summary selftests after the edit. **RESOLVED:** plan 07-10 Task 1 step 2 (the SKIPPED line does not start with `-- FAIL `; the ci-summary self-tests are re-run).
+8. Shift probe sweep (+-1,000..10,000 ticks) is a throwaway; CI keeps +2,000. Optional discrepancy C106 for the manual's branch-range text vs the decle formula (no hardware claim). Six frame literals of 96 rows: derive as deltas of the idle frame. **RESOLVED:** the shift sweep stays a throwaway (CI keeps +2,000, D-06, plan 07-07); discrepancy C106 is recorded in plan 07-04 Task 4; F-S2..F-S6 are derived as deltas of F-S1 in plan 07-02.
 
 ## Environment Availability
 
