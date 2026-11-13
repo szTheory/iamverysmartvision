@@ -1151,7 +1151,9 @@ static void ex_video_chain_check(ex_state *x)
   /* Fault (plan 06-12, D-16): the chain is not compared, the check reports pass whatever was delivered. */
   ok = 1;
 #endif
-  x->rec->video_chain_check = ok ? IVS_RUNNER_CHAIN_PASS : IVS_RUNNER_CHAIN_FAIL;
+  /* Two empty chains agree by arithmetic and nothing was verified: no `pass` for a run that delivered no frame (Phase 6 review IN-04).
+   * A mismatch with no frame (the core counted frames the runner never saw) is still a failure. */
+  x->rec->video_chain_check = !ok ? IVS_RUNNER_CHAIN_FAIL : x->vchain.frames == 0u ? IVS_RUNNER_CHAIN_NONE : IVS_RUNNER_CHAIN_PASS;
   if (!ok) {
     ex_observe(x, IVS_RUNNER_OBS_HARNESS_FAIL, "video-chain");
   }

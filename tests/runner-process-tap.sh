@@ -670,6 +670,17 @@ judge op-v-empty 0 pass - "" || ok=0
 [ -f "$tmp/vempty/e.vraw" ] && [ ! -s "$tmp/vempty/e.vraw" ] || { ok=0; why operator-video-empty "the file is missing or not empty"; }
 [ "$(mode_of "$tmp/vempty/e.vraw")" = "-rw-------" ] || { ok=0; why operator-video-empty "mode '$(mode_of "$tmp/vempty/e.vraw")'"; }
 [ "$(ls "$tmp/vempty" | wc -l | tr -d ' ')" = 1 ] || { ok=0; why operator-video-empty "other files were created"; }
+# The empty file is said aloud (Phase 6 review IN-01): one stderr line, the exit code and the report unchanged; the same for --frame-ppm
+# (the PPM case of the security residual); a run that delivers frames prints no such line.
+printf 'ivs-run: --video-raw: no frame was delivered, the file is empty\n' > "$tmp/want.err"
+cmp -s "$tmp/runs/op-v-empty.err" "$tmp/want.err" || { ok=0; why operator-video-empty "--video-raw: stderr is not the one no-frame line"; }
+run_one "$tmp" op-v-empty-ppm "$ivs_run" --content-dir "$opc" --frame-ppm "$tmp/vempty/e.ppm" "$opscn"
+judge op-v-empty-ppm 0 pass - "" || ok=0
+[ -f "$tmp/vempty/e.ppm" ] && [ ! -s "$tmp/vempty/e.ppm" ] || { ok=0; why operator-video-empty "--frame-ppm: the file is missing or not empty"; }
+[ "$(mode_of "$tmp/vempty/e.ppm")" = "-rw-------" ] || { ok=0; why operator-video-empty "--frame-ppm: mode '$(mode_of "$tmp/vempty/e.ppm")'"; }
+printf 'ivs-run: --frame-ppm: no frame was delivered, the file is empty\n' > "$tmp/want.err"
+cmp -s "$tmp/runs/op-v-empty-ppm.err" "$tmp/want.err" || { ok=0; why operator-video-empty "--frame-ppm: stderr is not the one no-frame line"; }
+[ ! -s "$tmp/runs/op-v.err" ] || { ok=0; why operator-video-empty "a run that delivered frames wrote to stderr"; }
 result runner-process.operator.video-raw-empty-run
 # A run that ends harness-fail leaves no video output file (the Phase 5 rule, review WR-01): the byte bound on the raw file and on the
 # PPM (a bound below its 45806 bytes), and an existing path is refused without touching it (exclusive create); the retry without
@@ -690,6 +701,13 @@ run_one "$tmp" op-vf-excl "$ivs_run" --content-dir "$opc" --video-raw "$opo/f.vr
 printf 'ivs-run: --video-raw: output file exists, refusing to overwrite it\n' > "$tmp/want.err"
 cmp -s "$tmp/runs/op-vf-excl.err" "$tmp/want.err" || { ok=0; why operator-video-failed "an existing path: stderr is not the one refusal line"; }
 cmp -s "$opo/f.vraw" "$opo/f.before" || { ok=0; why operator-video-failed "the existing file changed"; }
+# Two outputs on one path (Phase 6 review IN-01/IN-05): refused before anything is created, with a message that names the clash and not
+# an existing file (the path was free).
+run_one "$tmp" op-vf-same "$ivs_run" --content-dir "$opc" --video-raw "$opo/same.out" --frame-ppm "$opo/same.out" "$opvid"
+[ "$rc" -eq 14 ] && [ ! -s "$tmp/runs/op-vf-same.out" ] || { ok=0; why operator-video-failed "two outputs on one path: exit $rc or a report"; }
+printf 'ivs-run: --frame-ppm: names the same path as --video-raw\n' > "$tmp/want.err"
+cmp -s "$tmp/runs/op-vf-same.err" "$tmp/want.err" || { ok=0; why operator-video-failed "two outputs on one path: stderr is not the one clash line"; }
+[ ! -e "$opo/same.out" ] || { ok=0; why operator-video-failed "two outputs on one path: a file was created"; }
 # --update-golden follows the same rule (Phase 6 review WR-02): a run that ends harness-fail writes no golden and leaves an existing
 # one byte-identical; no temporary file is left next to it; the retry without the bound writes the golden.
 mkdir "$tmp/gfail" || exit 1
@@ -725,8 +743,9 @@ for opt in --video-raw --frame-ppm; do
   [ ! -e "$tmp/gold/v.out" ] || { ok=0; why operator-video-golden "$opt with ./v.out: left v.out"; }
 done
 result runner-process.operator.video-raw-update-golden-refused
-# A frame rendered from an owner image is derived art of rights-bearing content: --frame-ppm is refused for a scenario that names
-# `content exec user` (exit 14, one stderr line, no report, no file), before anything is created.
+# A frame rendered from an owner image is derived art of rights-bearing content: --frame-ppm AND --video-raw (the same pixels as index
+# bytes; Phase 6 review IN-01) are refused for a scenario that names `content exec user` (exit 14, one stderr line, no report, no file),
+# before anything is created.
 : > "$tmp/why"
 ok=1
 printf 'ivss 1\nid operator-user\nprofile intv-2609-ntsc-family-p1\ncontent exec user\ncontent grom zero-grom\nrun-to 1000 ticks\n' > "$opc/operator-user.ivss"
@@ -735,6 +754,11 @@ run_one "$tmp" op-vu "$ivs_run" --content-dir "$opc" --frame-ppm "$opo/u.ppm" "$
 [ "$rc" -eq 14 ] && [ ! -s "$tmp/runs/op-vu.out" ] || { ok=0; why operator-video-user "exit $rc or a report"; }
 cmp -s "$tmp/runs/op-vu.err" "$tmp/want.err" || { ok=0; why operator-video-user "stderr is not the one refusal line"; }
 [ ! -e "$opo/u.ppm" ] || { ok=0; why operator-video-user "a file was created"; }
+printf 'ivs-run: --video-raw refused: content user\n' > "$tmp/want.err"
+run_one "$tmp" op-vu-raw "$ivs_run" --content-dir "$opc" --video-raw "$opo/u.vraw" "$opc/operator-user.ivss"
+[ "$rc" -eq 14 ] && [ ! -s "$tmp/runs/op-vu-raw.out" ] || { ok=0; why operator-video-user "--video-raw: exit $rc or a report"; }
+cmp -s "$tmp/runs/op-vu-raw.err" "$tmp/want.err" || { ok=0; why operator-video-user "--video-raw: stderr is not the one refusal line"; }
+[ ! -e "$opo/u.vraw" ] || { ok=0; why operator-video-user "--video-raw: a file was created"; }
 result runner-process.operator.frame-ppm-refused-user-content
 
 # Operator WAV (plan 05-10, D-20, D-21, T-05-26): the same stand-in under --audio-wav, into the mktemp directory.

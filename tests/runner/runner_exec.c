@@ -2083,7 +2083,7 @@ done:
 
 /* ivsr 3 (plan 06-12): the five video keys with their values, from the independent key table of runner.exec.key-order and
  * read here by value. A run with no machine (an unknown profile) prints 0 and `-`; a diagnostic run that ends before its first
- * frame end completes none (frames 0, geometry 159x96, row lines 2, no last tick, chain check pass over an empty chain); the
+ * frame end completes none (frames 0, geometry 159x96, row lines 2, no last tick, chain check `-`: nothing was verified, Phase 6 review IN-04); the
  * looping image over two frame ends completes two (last tick 2 x 59,736); a run without an output block cannot check the chain (`-`). */
 static int ex_report_keys_ivsr3(void)
 {
@@ -2106,7 +2106,7 @@ static int ex_report_keys_ivsr3(void)
   h.buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
   if (!rx_expect(diag, &h, IVS_RUNNER_OUTCOME_PASS, 0u) || !rx_is(h.out, "output.video.frames", "0") ||
       !rx_is(h.out, "video.geometry", "159x96") || !rx_is(h.out, "video.row_lines", "2") ||
-      !rx_is(h.out, "video.frame.last_tick", "-") || !rx_is(h.out, "video.chain.check", "pass")) {
+      !rx_is(h.out, "video.frame.last_tick", "-") || !rx_is(h.out, "video.chain.check", "-")) {
     goto done;
   }
   rx_free(&h);

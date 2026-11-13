@@ -43,6 +43,8 @@ typedef struct main_host {
   int self_signal_repeat;          /* --self-signal-count given */
   uint64_t self_signal_count;      /* its K: raises at that check (1 when not given) */
   uint64_t cancel_checks;          /* cancel_requested calls so far */
+  uint64_t video_written;          /* bytes written to the --video-raw file */
+  uint64_t ppm_written;            /* bytes written to the --frame-ppm file */
   char *golden_buf;                /* report copy for --update-golden, NULL otherwise */
   size_t golden_len;
   int golden_overflow;             /* the report did not fit MAIN_GOLDEN_CAP */
@@ -91,7 +93,9 @@ static const char main_usage[] =
     "  --wav-rate <n>       the WAV rate, 44100 or 48000 (default 48000); needs --audio-wav\n"
     "  --video-raw <file>   also write the delivered video frame slots (each with its 32-byte header, so the\n"
     "                       stream is self-describing) to a NEW file created mode 0600 (same rules: an existing\n"
-    "                       path is refused, a harness-fail run removes it); never a golden, never evidence\n"
+    "                       path is refused, a harness-fail run removes it; refused for `content <role> user`;\n"
+    "                       a run that delivers no frame leaves an empty file and says so); never a golden,\n"
+    "                       never evidence\n"
     "  --video-out-max-bytes <n>  bound of --video-raw and --frame-ppm in bytes, 1..1099511627776\n"
     "                       (default 268435456); passing it is a harness failure (exit 14), file removed\n"
     "  --frame-ppm <file>   also write the LAST delivered frame as a binary PPM (P6) in the operator preview\n"
@@ -152,13 +156,21 @@ static int mh_audio_raw(void *ctx, const uint8_t *bytes, size_t len)
 static int mh_video_raw(void *ctx, const uint8_t *bytes, size_t len)
 {
   main_host *h = ctx;
-  return ivs_hostio_out_write(&h->video_out, bytes, len);
+  int r = ivs_hostio_out_write(&h->video_out, bytes, len);
+  if (r == 0) {
+    h->video_written += (uint64_t)len;
+  }
+  return r;
 }
 
 static int mh_frame_ppm(void *ctx, const uint8_t *ppm, size_t len)
 {
   main_host *h = ctx;
-  return ivs_hostio_out_write(&h->ppm_out, ppm, len);
+  int r = ivs_hostio_out_write(&h->ppm_out, ppm, len);
+  if (r == 0) {
+    h->ppm_written += (uint64_t)len;
+  }
+  return r;
 }
 
 static int mh_psg_log(void *ctx, const char *lines, size_t len)
@@ -626,6 +638,21 @@ int main(int argc, char **argv)
       main_same_path(golden_path, frame_ppm_path)) {
     return main_fail("--update-golden must not name an operator output file");
   }
+  /* Two operator outputs on one path: refused before anything is created, naming the clash (Phase 6 review IN-05; without this the
+   * second create reported "output file exists" for a path that was free). The same file under another spelling is still caught by
+   * the exclusive create. */
+  {
+    const char *const out_path[5] = {audio_raw_path, psg_log_path, audio_wav_path, video_raw_path, frame_ppm_path};
+    static const char *const out_opt[5] = {"--audio-raw", "--psg-log-out", "--audio-wav", "--video-raw", "--frame-ppm"};
+    for (size_t a = 0u; a < 5u; a++) {
+      for (size_t b = a + 1u; b < 5u; b++) {
+        if (main_same_path(out_path[a], out_path[b])) {
+          fprintf(stderr, "ivs-run: %s: names the same path as %s\n", out_opt[b], out_opt[a]);
+          return MAIN_EXIT_HARNESS;
+        }
+      }
+    }
+  }
   if (!mh.self_signal_repeat) {
     mh.self_signal_count = 1u;
   }
@@ -667,12 +694,13 @@ int main(int argc, char **argv)
   }
   free(text);
   /* A frame rendered from an owner image is derived art of rights-bearing content: no frame export for a scenario that names
-   * `content ... user` (plan 06-12, T-06-17); refused before anything is created, no report. */
-  if (frame_ppm_path != NULL) {
+   * `content ... user` (plan 06-12, T-06-17); refused before anything is created, no report. --video-raw writes the same pixels as
+   * index bytes, so it follows the same rule (Phase 6 review IN-01). */
+  if (frame_ppm_path != NULL || video_raw_path != NULL) {
     for (uint32_t role = 0u; role < IVS_SCN_ROLES; role++) {
       if (scn->content[role].kind == IVS_SCN_CONTENT_USER) {
         free(scn);
-        return main_fail("--frame-ppm refused: content user");
+        return main_fail(frame_ppm_path != NULL ? "--frame-ppm refused: content user" : "--video-raw refused: content user");
       }
     }
   }
@@ -834,6 +862,16 @@ int main(int argc, char **argv)
   if (frame_ppm_path != NULL && ivs_hostio_out_close(&mh.ppm_out) != 0) {
     code = MAIN_EXIT_HARNESS;
     fprintf(stderr, "ivs-run: --frame-ppm: close failed\n");
+  }
+  /* A run that ends without a failure but delivered no frame leaves an empty file: say so (Phase 6 review IN-01), exit code and
+   * report unchanged. */
+  if (code != MAIN_EXIT_HARNESS) {
+    if (video_raw_path != NULL && mh.video_written == 0u) {
+      fprintf(stderr, "ivs-run: --video-raw: no frame was delivered, the file is empty\n");
+    }
+    if (frame_ppm_path != NULL && mh.ppm_written == 0u) {
+      fprintf(stderr, "ivs-run: --frame-ppm: no frame was delivered, the file is empty\n");
+    }
   }
   if (fflush(stdout) != 0 || ferror(stdout) || res.report_write_failed != 0u) {
     code = MAIN_EXIT_HARNESS;
