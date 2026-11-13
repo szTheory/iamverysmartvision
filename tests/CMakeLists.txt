@@ -145,14 +145,35 @@ set_tests_properties(machine PROPERTIES SKIP_RETURN_CODE 77)
 # Plan 04-16 adds the diagnostic container diag-cpu-1.ivsc to the include, and diag_cpu_1_expect.inc:
 # the assert lines of data/golden/diag-cpu-1.expect as X-macro lines (tests/expect-inc.cmake), so
 # run.diag.predicate reads the hand-derived values from that file instead of retyping them.
+# Plan 07-05 (D-09, A-17) adds the fifth and sixth pairs: boot_stub_2 (the project boot stub contract 2, built by
+# tools/pack) and stub2_probe, the build-time probe cartridge of the family stub2 (tests/run/stub2-probe.asm, test data,
+# not a fixture): ivs_asm turns the source into a listing in the build tree and ivs_pack --ivsc into a container there.
+# Neither the listing nor the container is committed.
+set(IVS_STUB2_PROBE_SRC "tests/run/stub2-probe.asm")
+set(IVS_STUB2_PROBE_LISTING "${CMAKE_CURRENT_BINARY_DIR}/stub2-probe.listing.txt")
+set(IVS_STUB2_PROBE_IVSC "${CMAKE_CURRENT_BINARY_DIR}/stub2-probe.ivsc")
+add_custom_command(
+  OUTPUT "${IVS_STUB2_PROBE_LISTING}"
+  COMMAND ivs_asm "${IVS_STUB2_PROBE_SRC}" "${IVS_STUB2_PROBE_LISTING}"
+  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+  DEPENDS ivs_asm "${PROJECT_SOURCE_DIR}/${IVS_STUB2_PROBE_SRC}"
+  COMMENT "Assembling the stub contract 2 probe cartridge into the build tree"
+  VERBATIM)
+add_custom_command(
+  OUTPUT "${IVS_STUB2_PROBE_IVSC}"
+  COMMAND ivs_pack --ivsc "${IVS_STUB2_PROBE_LISTING}" "${IVS_STUB2_PROBE_IVSC}"
+  DEPENDS ivs_pack "${IVS_STUB2_PROBE_LISTING}"
+  COMMENT "Packing the stub contract 2 probe cartridge into the build tree"
+  VERBATIM)
 set(IVS_IMAGES_INC "${CMAKE_CURRENT_BINARY_DIR}/ivs_images.inc")
 add_custom_command(
   OUTPUT "${IVS_IMAGES_INC}"
   COMMAND ivs_pack --c-include "${IVS_IMAGES_INC}" "boot_stub=${IVS_BOOT_STUB_EXEC}"
           "diag_cpu_1=${IVS_DIAG_CPU_1_IVSC}" "diag_ctrl_psg_1=${IVS_DIAG_CTRL_PSG_1_IVSC}"
-          "diag_stic_1=${IVS_DIAG_STIC_1_IVSC}"
+          "diag_stic_1=${IVS_DIAG_STIC_1_IVSC}" "boot_stub_2=${IVS_BOOT_STUB_2_EXEC}"
+          "stub2_probe=${IVS_STUB2_PROBE_IVSC}"
   DEPENDS ivs_pack ivs_images "${IVS_BOOT_STUB_EXEC}" "${IVS_DIAG_CPU_1_IVSC}" "${IVS_DIAG_CTRL_PSG_1_IVSC}"
-          "${IVS_DIAG_STIC_1_IVSC}"
+          "${IVS_DIAG_STIC_1_IVSC}" "${IVS_BOOT_STUB_2_EXEC}" "${IVS_STUB2_PROBE_IVSC}"
   COMMENT "Generating the build-tree image include"
   VERBATIM)
 set(IVS_DIAG_EXPECT "${PROJECT_SOURCE_DIR}/data/golden/diag-cpu-1.expect")
@@ -216,7 +237,7 @@ add_custom_command(
           "${PROJECT_SOURCE_DIR}/cmake/IvsVideoFrames.cmake"
   COMMENT "Generating the diagnostic frame literal include"
   VERBATIM)
-add_executable(ivs_tests_run run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_struct.c run/run_fuzz.c run/run_stub.c run/run_diag.c run/run_diag_ctrl.c run/run_diag_stic.c machine/machine_standin.c "${IVS_IMAGES_INC}" "${IVS_DIAG_EXPECT_INC}" "${IVS_CTRL_EXPECT_INC}" "${IVS_STIC_FGBG_EXPECT_INC}" "${IVS_STIC_CSTACK_EXPECT_INC}" "${IVS_DIAG_FRAMES_INC}" "${IVS_INPUT_PROBE_INC}")
+add_executable(ivs_tests_run run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_struct.c run/run_fuzz.c run/run_stub.c run/run_stub2.c run/run_diag.c run/run_diag_ctrl.c run/run_diag_stic.c machine/machine_standin.c "${IVS_IMAGES_INC}" "${IVS_DIAG_EXPECT_INC}" "${IVS_CTRL_EXPECT_INC}" "${IVS_STIC_FGBG_EXPECT_INC}" "${IVS_STIC_CSTACK_EXPECT_INC}" "${IVS_DIAG_FRAMES_INC}" "${IVS_INPUT_PROBE_INC}")
 target_include_directories(ivs_tests_run PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_BINARY_DIR}")
 add_dependencies(ivs_tests_run ivs_images)
 target_link_libraries(ivs_tests_run PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
@@ -445,7 +466,7 @@ ivs_fault_suite(machine
   GENERATED "${IVS_SHA_INC}" "${IVS_CART_INC}")
 
 ivs_fault_suite(run
-  SOURCES run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_struct.c run/run_fuzz.c run/run_stub.c run/run_diag.c run/run_diag_ctrl.c run/run_diag_stic.c machine/machine_standin.c
+  SOURCES run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_struct.c run/run_fuzz.c run/run_stub.c run/run_stub2.c run/run_diag.c run/run_diag_ctrl.c run/run_diag_stic.c machine/machine_standin.c
   INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_BINARY_DIR}"
   GENERATED "${IVS_IMAGES_INC}" "${IVS_DIAG_EXPECT_INC}" "${IVS_CTRL_EXPECT_INC}" "${IVS_STIC_FGBG_EXPECT_INC}" "${IVS_STIC_CSTACK_EXPECT_INC}" "${IVS_DIAG_FRAMES_INC}" "${IVS_INPUT_PROBE_INC}")
 

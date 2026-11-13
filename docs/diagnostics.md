@@ -68,6 +68,36 @@ Only these are promised: the reset path `1000, 1010, 1011, 1013, 5000` (R7 at un
 R0 to R5 and the flags at the hand-off are whatever reset leaves; a diagnostic never relies on them.
 Any change of a word is a new contract number, a new manifest note and new expected values.
 
+## The project boot stub, contract 2
+
+Contract 2 is a second image beside contract 1 (D-09, plan 07-05), for a program that serves its own interrupts.
+`fixtures/FX-boot-stub-2/boot-stub-2.asm` is the source of truth; `boot-stub-2.listing.txt` is generated from it by `ivs_asm` and committed unedited; the manifest `FX-boot-stub-2` is the first one with a recipe (tool, tool digest and source digests, checked by the `manifests` step), and the test `asm.regen-boot-stub-2` assembles the source again and requires byte equality with the committed listing.
+Its label is "project boot stub contract 2, not an EXEC", and the runner content token `boot-stub-2` selects it (the reserved file `boot-stub-2.exec`).
+Contract 1, its listing, its manifest and every golden built on it are unchanged (no re-bless); the three diagnostics keep contract 1.
+
+Contract 2 (22 words at `1000`-`1015`, 10 of them non-zero, window `1000`-`101F`):
+
+| Address | Words | Instruction | Role |
+|---|---|---|---|
+| `1000` | `0200 000E` | `B $1010` | reset entry; skips the vector area |
+| `1002` | `0000 0000` | fill | unreachable |
+| `1004` | `0004 0352 0004` | `JD $5004` | interrupt entry: hand-off to the cartridge interrupt entry with the interrupt system disabled by the same instruction |
+| `1007` | `0000` x 9 | fill | unreachable |
+| `1010` | `0003` | `DIS` | reset code: interrupt system off |
+| `1011` | `02BE 0340` | `MVII #$0340, R6` | stack pointer at the project stack start |
+| `1013` | `0004 0350 0000` | `J $5000` | hand-off to the cartridge reset entry |
+
+The reset path (`1000, 1010, 1011, 1013, 5000`, with interrupts disabled and R6 = `0340` at the hand-off) is word for word that of contract 1 (test `run.stub2.path`, which also compares the image words with the listing).
+The cartridge convention is a reset entry at `5000` and an interrupt entry at `5004`; a cartridge supplies both, and the stub provides no routine, service, table or trap of its own (the review rule below applies unchanged).
+Both addresses are project conventions, not hardware claims, and both sources state them as `ENTRY EQU $5000` and `ISR EQU $5004`.
+
+Why the vector is `JD` and not a plain `J`: under the profile default of discrepancy C41 (interrupt acceptance does not clear the enable flip-flop, `cpu.interrupt_accept_clears_intff = 0`, an unknown-default-chosen policy and not a hardware finding) the interrupt system is still enabled when the vector executes, so a vector that is a plain `J` lets the CPU accept the held interrupt request again at the next open boundary, before the routine's second instruction.
+The vector then re-enters again and again within one frame and R6 climbs by one return address per entry, while the routine proper starts only after the request falls.
+`JD` jumps and disables in one instruction, so the routine executes with interrupts off from its first instruction and re-enables them when it chooses.
+The test `run.stub2.handoff` shows the intended path with a build-time probe cartridge (`tests/run/stub2-probe.asm`, test data and not a fixture, assembled by `ivs_asm` and packed by `ivs_pack --ivsc` into the build tree): in one frame exactly one entry at `1004`, then `5004` with interrupts off and R6 = `0341`, the marker word `[02F0] = 03C5` and the counter word `[02F1] = 0001`.
+The test `run.stub2.jd-as-j` is the named control `STUB2_JD_AS_J` (A-17, no core fault): a heap copy of the image with the second vector decle changed from the `JD` form `0352` to the `J` form `0350` shows more than one entry in the frame, interrupts still on after the vector, and R6 above `0341`.
+Every expected value of these tests is a literal from the listing or the probe source.
+
 ## Review rule: no routines, no services
 
 The stub may initialise hardware to the profile's documented power-on state and hand off to the cartridge entry.
