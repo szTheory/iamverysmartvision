@@ -87,13 +87,13 @@ build/dev/runner/ivs-run --content-dir build/dev/images data/scenarios/diag-boot
 ## Report
 
 The report is flat `key value` lines, ASCII and LF, every key of the closed table below in this fixed order, all keys always present (`-` when a value does not apply) (D-19).
-The first line is `ivsr 2` and the last is `report.end <n>`, n being the number of lines before it, so a truncated report cannot read as complete.
+The first line is `ivsr 3` and the last is `report.end <n>`, n being the number of lines before it, so a truncated report cannot read as complete.
 Never printed: wall time, host paths, the environment, image bytes.
 `host.calls` is the one key that depends on the host (it counts host service calls, so it changes with the slice size); every other key is a function of the scenario, the images and the core.
 
 | Key | Value |
 |---|---|
-| `ivsr` | `2` (report format 2, plan 05-09: one bump for the audio and write-log keys) |
+| `ivsr` | `3` (report format 3, plan 06-12: one bump for the video keys; format 2, plan 05-09, added the audio and write-log keys) |
 | `scenario.id`, `scenario.profile` | scenario tokens |
 | `api.version` | `ivs_api_version()`, for example `0.1.0` |
 | `outcome` | `pass`, `guest-fail`, `timeout`, `cancelled`, `missing-fixture`, `harness-fail` |
@@ -114,6 +114,10 @@ Never printed: wall time, host paths, the environment, image bytes.
 | `output.psglog.records`, `output.psglog.bytes` | PSG write-log records and bytes delivered (16 bytes per record) |
 | `audio.sample_ticks` | master ticks between samples (`ivs_info` `audio_sample_ticks`, 16 on the NTSC profile) |
 | `audio.chain.check` | `pass` when the runner's recomputation of the AUDIO level-change chain from the delivered bytes gives the core's domain-17 digest, `fail` when it does not (the outcome is then `harness-fail`, detail `audio-chain`), `-` when an audio buffer was not delivered on every slice |
+| `output.video.frames` | frames the core completed, summed over the run calls (`video_frames_completed`, counted whether or not a video buffer was given) |
+| `video.geometry`, `video.row_lines` | `<width>x<height>` and the TV lines one row covers, from `ivs_info` (159x96 and 2 on the NTSC profile), `-` before any machine |
+| `video.frame.last_tick` | the last frame end the core reported, `-` before any frame |
+| `video.chain.check` | `pass` when the runner's recomputation of the VIDEO frame chain from the delivered slots gives the core's domain-16 digest and every slot header is consistent, `fail` when not (the outcome is then `harness-fail`, detail `video-chain`), `-` when a video buffer was not delivered on every slice |
 | `host.calls` | host service calls (read_file, read_user, now_ms, cancel_requested) |
 | `refpcm.rate`, `refpcm.frames`, `refpcm.sha256` | present ONLY when `--audio-wav` was given, immediately before `report.end`: the WAV rate, the PCM frames written, and the SHA-256 of the WAV file bytes as written (`-` for the frames and the hash when no finished file remains, that is after a harness failure), so `sha256sum` of the file equals it; never in a golden (plan 05-10) |
 | `report.end` | the number of lines before it |
@@ -189,7 +193,7 @@ The helper proves the export path only (an exclusive file, its size, its hash). 
 
 `tests/runner-process-tap.sh` (D-23, plan 04-20) drives the real `ivs-run` of each preset, so exit codes and report text are checked at the boundary a user sees.
 
-- Scenarios: every line `<id> <exit> <outcome> <class> <skip> <operator-args>` of `data/expected/runner-scenarios.ids` names `data/scenarios/<id>.ivss`; there is one demonstrating scenario per outcome of the table above, plus an expected load refusal and a two-event input schedule (`diag-input-pass`). The judge requires the exit code, `ivsr 2` first, `report.end <n>` last, one `outcome` and one `exit.code` line forming a pair of `data/expected/runner-outcomes.ids`, and the `outcome.detail` pinned by the scenario's `# expect-detail:` comment (a parse refusal pins its one stderr line with `# expect-stderr:` and prints no report).
+- Scenarios: every line `<id> <exit> <outcome> <class> <skip> <operator-args>` of `data/expected/runner-scenarios.ids` names `data/scenarios/<id>.ivss`; there is one demonstrating scenario per outcome of the table above, plus an expected load refusal and a two-event input schedule (`diag-input-pass`). The judge requires the exit code, `ivsr 3` first, `report.end <n>` last, one `outcome` and one `exit.code` line forming a pair of `data/expected/runner-outcomes.ids`, and the `outcome.detail` pinned by the scenario's `# expect-detail:` comment (a parse refusal pins its one stderr line with `# expect-stderr:` and prints no report).
 - `host-dependent` scenarios (`timeout-wall`, `cancel-signal`) use the two test hooks above; their reports are never compared between presets or kept as goldens. `needs-user-exec` asks for an operator EXEC the gate never has: it must end missing-fixture and is then a visible skip.
 - Mutants (D-32): the diagnostic rebuilt with one changed word (`data/expected/diag-mutations.ids`: ADDI to SUBI, BNZE to BZE, PSHR to MVO@, INCR to DECR) must end guest-fail, with the detail naming the first assert the change breaks.
 - Determinism: a second run, `--slice-ticks` 1 and 7, and a run from another working directory give the same report apart from `host.calls`.
@@ -211,8 +215,8 @@ A live domain (video, audio, input, psglog) is `observed` by one count-based rul
 A delivered but silent audio stream has nonzero bytes and is a real observation of silence; a run in which the guest wrote no PSG register has an empty log and `psglog=none`.
 The installed consumer decides `observed` by the same rule (delivered bytes nonzero), and the gate step `pkg-install` compares its `digest.<domain>` lines and observed set with `data/golden/diag-input-pass.digests` (plan 05-09) and, for the replay of `diag-ctrl-psg-pass` (lines prefixed `ctrl.`, plan 05-11), with `data/golden/diag-ctrl-psg-pass.digests`, audio and write log included [claim:CL-0015].
 
-The body of a `.digests` golden is the run's report filtered to the golden key list, in report order: `scenario.id`, `scenario.profile`, `outcome`, `outcome.detail`, `exit.code`, every `slot.*`, `step.*`, `cpu.*` and `input.*` line, `digest.cpu`, `digest.mem`, `digest.images`, `digest.instance`, `digest.composite`, `output.video.bytes`, `output.audio.bytes`, and for each observed live domain its keys: video `digest.video`; audio `digest.audio`, `output.audio.samples`, `output.audio.changes`, `audio.sample_ticks`; input `digest.input`; psglog `digest.psglog`, `output.psglog.records`, `output.psglog.bytes`.
-Left out: `ivsr`, `api.version`, the `exec:` and `grom:` labels, `audio.chain.check`, every `refpcm.` key, `host.calls` and `report.end`; a golden that holds a `refpcm.` key or an `output.` or `audio.` key outside this list is refused by the step.
+The body of a `.digests` golden is the run's report filtered to the golden key list, in report order: `scenario.id`, `scenario.profile`, `outcome`, `outcome.detail`, `exit.code`, every `slot.*`, `step.*`, `cpu.*` and `input.*` line, `digest.cpu`, `digest.mem`, `digest.images`, `digest.instance`, `digest.composite`, `output.video.bytes`, `output.audio.bytes`, and for each observed live domain its keys: video `digest.video`, `output.video.frames`, `video.geometry`, `video.row_lines`, `video.frame.last_tick`, `video.chain.check` (kept only while video is observed, which is the count rule: `output.video.bytes` is a decimal other than 0, so a golden whose scenario delivers no frame is unchanged); audio `digest.audio`, `output.audio.samples`, `output.audio.changes`, `audio.sample_ticks`; input `digest.input`; psglog `digest.psglog`, `output.psglog.records`, `output.psglog.bytes`.
+Left out: `ivsr`, `api.version`, the `exec:` and `grom:` labels, `audio.chain.check`, every `refpcm.` key, `host.calls` and `report.end`; a golden that holds a `refpcm.` key or an `output.`, `audio.` or `video.` key outside this list is refused by the step.
 The same list is kept in `runner/main.c` (`main_golden_keep`), `tools/check/steps/golden.sh` and here.
 
 Goldens are written only by `ivs-run --update-golden <file>`, run by a person; a changed golden is a reviewed diff. The gate never writes one: the step only compares. The tracked goldens were written with:

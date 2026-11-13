@@ -378,14 +378,14 @@ static int rx_hex64(const char *s)
   return i == 64u;
 }
 
-/* The report is complete: first line `ivsr 2`, last `report.end <lines before it>`, LF ended. */
+/* The report is complete: first line `ivsr 3`, last `report.end <lines before it>`, LF ended. */
 static int rx_complete(const char *report, const ivs_runner_result *res)
 {
   char v[RX_VALUE_CAP];
   size_t n = rx_lines(report);
   size_t len = strlen(report);
-  if (strncmp(report, "ivsr 2\n", 7u) != 0 || len == 0u || report[len - 1u] != '\n') {
-    ivs_test_diag("report does not start with ivsr 2 or end with LF");
+  if (strncmp(report, "ivsr 3\n", 7u) != 0 || len == 0u || report[len - 1u] != '\n') {
+    ivs_test_diag("report does not start with ivsr 3 or end with LF");
     return 0;
   }
   if (!rx_value(report, "report.end", v, sizeof v) || strtoull(v, NULL, 10) != (unsigned long long)(n - 1u)) {
@@ -996,7 +996,7 @@ done:
 }
 
 /* The key order of the diagnostic report, written out here independently of report.c's table
- * (ivsr 2, plan 05-09): with no output block (the keys are all present, their values `-` or 0) and
+ * (ivsr 3, plan 06-12, five video keys after audio.chain.check; ivsr 2 was plan 05-09): with no output block (the keys are all present, their values `-` or 0) and
  * with the block ivs-run gives (the same keys in the same order). */
 static int ex_key_order_with(size_t buffer_bytes)
 {
@@ -1013,7 +1013,9 @@ static int ex_key_order_with(size_t buffer_bytes)
                                      "digest.input",       "digest.psglog",      "output.video.bytes",
                                      "output.audio.bytes", "output.audio.samples", "output.audio.changes",
                                      "output.psglog.records", "output.psglog.bytes", "audio.sample_ticks",
-                                     "audio.chain.check",  "host.calls",         "report.end"};
+                                     "audio.chain.check",  "output.video.frames", "video.geometry",
+                                     "video.row_lines",    "video.frame.last_tick", "video.chain.check",
+                                     "host.calls",         "report.end"};
   char want[128][40];
   size_t n = 0u;
   fake_host h;
@@ -1075,7 +1077,7 @@ done:
 
 static int ex_key_order(void) { return ex_key_order_with(0u); }
 
-/* ivsr 2 (plan 05-09, D-20): the first line is `ivsr 2`, the key table is the pinned one also with a
+/* ivsr 3 (plan 06-12; the audio keys of ivsr 2 are plan 05-09, D-20): the first line is `ivsr 3`, the key table is the pinned one also with a
  * real output block, and the new keys carry their values: the samples are the delivered bytes over 4,
  * the log is empty for the diagnostic (it writes no PSG register), the sample period is the profile's 16
  * and the audio chain check ran and passed. */
@@ -1094,7 +1096,7 @@ static int ex_ivsr2_keys(void)
   if (!rx_expect(diag, &h, IVS_RUNNER_OUTCOME_PASS, 0u)) {
     goto done;
   }
-  if (strncmp(h.out, "ivsr 2\n", 7u) != 0 || !rx_value(h.out, "output.audio.bytes", v, sizeof v)) {
+  if (strncmp(h.out, "ivsr 3\n", 7u) != 0 || !rx_value(h.out, "output.audio.bytes", v, sizeof v)) {
     goto done;
   }
   bytes = strtoull(v, NULL, 10);
@@ -1632,7 +1634,7 @@ static int rx_tail_is(const char *report, const char *const *want, size_t n)
  * host.calls and report.end. */
 static int ex_refpcm_keys_only_with_option(void)
 {
-  static const char *const plain_tail[] = {"audio.chain.check", "host.calls", "report.end"};
+  static const char *const plain_tail[] = {"video.chain.check", "host.calls", "report.end"};
   static const char *const wav_tail[] = {"host.calls", "refpcm.rate", "refpcm.frames", "refpcm.sha256", "report.end"};
   fake_host h;
   char scn[RX_SCN_CAP];
@@ -2052,6 +2054,156 @@ done:
   return rc;
 }
 
+
+/* ivsr 3 (plan 06-12): the five video keys with their values, from the independent key table of runner.exec.key-order and
+ * read here by value. A run with no machine (an unknown profile) prints 0 and `-`; a diagnostic run that ends before its first
+ * frame end completes none (frames 0, geometry 159x96, row lines 2, no last tick, chain check pass over an empty chain); the
+ * looping image over two frame ends completes two (last tick 2 x 59,736); a run without an output block cannot check the chain (`-`). */
+static int ex_report_keys_ivsr3(void)
+{
+  fake_host h;
+  char diag[RX_SCN_CAP];
+  char scn[RX_SCN_CAP];
+  int rc = IVS_TEST_FAIL;
+  if (!rx_diag(diag, sizeof diag) || !rx_replace(diag, "profile intv-2609-ntsc-family-p1", "profile no-such-profile", scn, sizeof scn)) {
+    return IVS_TEST_FAIL;
+  }
+  fh_init(&h);
+  if (!rx_expect(scn, &h, IVS_RUNNER_OUTCOME_HARNESS_FAIL, 14u) || strncmp(h.out, "ivsr 3\n", 7u) != 0 ||
+      !rx_is(h.out, "output.video.frames", "0") || !rx_is(h.out, "video.geometry", "-") ||
+      !rx_is(h.out, "video.row_lines", "-") || !rx_is(h.out, "video.frame.last_tick", "-") ||
+      !rx_is(h.out, "video.chain.check", "-")) {
+    goto done;
+  }
+  rx_free(&h);
+  fh_init(&h);
+  h.buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
+  if (!rx_expect(diag, &h, IVS_RUNNER_OUTCOME_PASS, 0u) || !rx_is(h.out, "output.video.frames", "0") ||
+      !rx_is(h.out, "video.geometry", "159x96") || !rx_is(h.out, "video.row_lines", "2") ||
+      !rx_is(h.out, "video.frame.last_tick", "-") || !rx_is(h.out, "video.chain.check", "pass")) {
+    goto done;
+  }
+  rx_free(&h);
+  fh_init(&h);
+  if (!rx_expect(diag, &h, IVS_RUNNER_OUTCOME_PASS, 0u) || !rx_is(h.out, "video.geometry", "159x96") ||
+      !rx_is(h.out, "video.chain.check", "-")) {
+    goto done;
+  }
+  rx_free(&h);
+  fh_init(&h);
+  if (!rx_vid_run(&h, "run-to 130000 ticks\n", IVS_RUNNER_OUTCOME_PASS, 0u) || !rx_is(h.out, "output.video.frames", "2") ||
+      !rx_is(h.out, "video.frame.last_tick", "119472") || !rx_is(h.out, "video.chain.check", "pass") ||
+      !rx_is(h.out, "output.video.bytes", "30592")) {
+    goto done;
+  }
+  rc = IVS_TEST_PASS;
+done:
+  rx_free(&h);
+  return rc;
+}
+
+/* The golden key list (ivs_runner_golden_keep, used by ivs-run --update-golden) keeps the video keys only while video is observed
+ * (the count rule: output.video.bytes is a decimal other than 0): with video observed the filtered report holds digest.video and
+ * the five video keys; with video not observed none of them, and the filtered body equals the lines whose keys are on the
+ * pre-ivsr-3 list written out here (so a golden of a scenario that delivers no frame is byte-identical); audio.chain.check and
+ * video.chain.check never appear for a not-observed video, and host.calls, ivsr and report.end never. */
+static int rx_keep_text(const char *report, const int live[4], char *out, size_t cap)
+{
+  size_t used = 0u;
+  const char *p = report;
+  while (*p != '\0') {
+    const char *eol = strchr(p, '\n');
+    size_t n = eol != NULL ? (size_t)(eol - p) : strlen(p);
+    if (ivs_runner_golden_keep(p, n, live)) {
+      if (used + n + 2u > cap) {
+        return 0;
+      }
+      memcpy(out + used, p, n);
+      out[used + n] = '\n';
+      used += n + 1u;
+    }
+    p += n + (eol != NULL ? 1u : 0u);
+  }
+  out[used] = '\0';
+  return 1;
+}
+
+static int ex_golden_keys_video_live(void)
+{
+  static const char *const vkeys[] = {"digest.video ", "output.video.frames ", "video.geometry ", "video.row_lines ",
+                                      "video.frame.last_tick ", "video.chain.check "};
+  static const char *const never[] = {"ivsr ", "api.version ", "host.calls ", "report.end ", "audio.chain.check ", "refpcm."};
+  fake_host h;
+  char text[8192];
+  char diag[RX_SCN_CAP];
+  int live_on[4] = {1, 0, 0, 0};
+  int live_off[4] = {0, 0, 0, 0};
+  int rc = IVS_TEST_FAIL;
+  fh_init(&h);
+  if (!rx_vid_run(&h, "run-to 130000 ticks\n", IVS_RUNNER_OUTCOME_PASS, 0u) || !rx_keep_text(h.out, live_on, text, sizeof text)) {
+    goto done;
+  }
+  for (size_t i = 0u; i < sizeof vkeys / sizeof vkeys[0]; i++) {
+    if (strstr(text, vkeys[i]) == NULL) {
+      ivs_test_diag("observed video: golden body lacks %s", vkeys[i]);
+      goto done;
+    }
+  }
+  if (strstr(text, "\nvideo.chain.check pass\n") == NULL || strstr(text, "\nvideo.geometry 159x96\n") == NULL) {
+    goto done;
+  }
+  if (!rx_keep_text(h.out, live_off, text, sizeof text)) {
+    goto done;
+  }
+  for (size_t i = 0u; i < sizeof vkeys / sizeof vkeys[0]; i++) {
+    if (strstr(text, vkeys[i]) != NULL) {
+      ivs_test_diag("video not observed: golden body holds %s", vkeys[i]);
+      goto done;
+    }
+  }
+  rx_free(&h);
+  /* A scenario that delivers no frame: video is not observed, the body is the pre-ivsr-3 set of lines. */
+  if (!rx_diag(diag, sizeof diag)) {
+    return IVS_TEST_FAIL;
+  }
+  fh_init(&h);
+  h.buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
+  if (!rx_expect(diag, &h, IVS_RUNNER_OUTCOME_PASS, 0u) || !rx_is(h.out, "output.video.bytes", "0") ||
+      !rx_keep_text(h.out, live_off, text, sizeof text)) {
+    goto done;
+  }
+  for (const char *p = h.out; *p != '\0';) {
+    const char *eol = strchr(p, '\n');
+    size_t n = (size_t)(eol - p);
+    int old_list = 0;
+    static const char *const old_exact[] = {"scenario.id ", "scenario.profile ", "outcome ", "outcome.detail ", "exit.code ",
+                                            "digest.cpu ", "digest.mem ", "digest.images ", "digest.instance ",
+                                            "digest.composite ", "output.video.bytes ", "output.audio.bytes "};
+    static const char *const old_prefix[] = {"slot.", "step.", "cpu.", "input."};
+    int kept = ivs_runner_golden_keep(p, n, live_off);
+    for (size_t i = 0u; i < sizeof old_exact / sizeof old_exact[0]; i++) {
+      old_list = old_list || strncmp(p, old_exact[i], strlen(old_exact[i])) == 0;
+    }
+    for (size_t i = 0u; i < sizeof old_prefix / sizeof old_prefix[0]; i++) {
+      old_list = old_list || strncmp(p, old_prefix[i], strlen(old_prefix[i])) == 0;
+    }
+    if (kept != old_list) {
+      ivs_test_diag("line '%.*s': kept %d, pre-ivsr-3 list %d", (int)n, p, kept, old_list);
+      goto done;
+    }
+    p = eol + 1;
+  }
+  for (size_t i = 0u; i < sizeof never / sizeof never[0]; i++) {
+    if (strstr(text, never[i]) != NULL && strncmp(never[i], "ivsr ", 5u) != 0) {
+      goto done;
+    }
+  }
+  rc = IVS_TEST_PASS;
+done:
+  rx_free(&h);
+  return rc;
+}
+
 /* The hook contract: default rate 48000 and 44100 both give the by-hand frame count with the reference
  * header and the file hash; a run cut into slices of 7 ticks gives the same PCM and hash as one slice
  * (the converter state is carried across slices). */
@@ -2450,6 +2602,8 @@ static const ivs_test_case exec_cases[] = {
     {"runner.exec.video-chain-check", ex_video_chain_check, NULL},
     {"runner.exec.video-without-buffer", ex_video_without_buffer, NULL},
     {"runner.exec.frame-not-captured", ex_frame_not_captured, NULL},
+    {"runner.exec.report-keys-ivsr3", ex_report_keys_ivsr3, NULL},
+    {"runner.golden.keys-video-live", ex_golden_keys_video_live, NULL},
     {"runner.exec.wav-hook", ex_wav_hook, NULL},
     {"runner.exec.wav-failures", ex_wav_failures, NULL},
     {"runner.exec.key-order", ex_key_order, NULL},

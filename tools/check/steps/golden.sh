@@ -35,12 +35,13 @@
 #     dev report filtered to the golden key list (golden-mismatch); a body line whose key starts
 #     `refpcm.`, or an `output.` or `audio.` key outside the allowed list (below), is
 #     golden-mismatch with its own message (audio.chain.check and the refpcm.* keys are never
-#     written to a golden).
+#     written to a golden; video.chain.check is a live key of the video row and is written while video is observed).
 # Golden key list (the same list ivs-run --update-golden writes; docs/runner.md): scenario.id,
 #   scenario.profile, outcome, outcome.detail, exit.code, slot.*, step.*, cpu.*, input.*,
 #   digest.cpu, digest.mem, digest.images, digest.instance, digest.composite,
 #   output.video.bytes, output.audio.bytes, and for each observed live domain its keys: video
-#   digest.video; audio digest.audio, output.audio.samples, output.audio.changes,
+#   digest.video, output.video.frames, video.geometry, video.row_lines, video.frame.last_tick,
+#   video.chain.check (plan 06-12, ivsr 3); audio digest.audio, output.audio.samples, output.audio.changes,
 #   audio.sample_ticks; input digest.input; psglog digest.psglog, output.psglog.records,
 #   output.psglog.bytes; in report order.
 # .refpcm (plan 05-10): its own grammar. Header: `# tier: deterministic-repeatability`, `# oracle:
@@ -120,7 +121,7 @@ filter_report() {
     $1 ~ /^(scenario\.id|scenario\.profile|outcome|outcome\.detail|exit\.code)$/ { print; next }
     $1 ~ /^digest\.(cpu|mem|images|instance|composite)$/ { print; next }
     $1 ~ /^output\.(video|audio)\.bytes$/ { print; next }
-    ($1 == "digest.video" && v == 1) { print; next }
+    ($1 ~ /^(digest\.video|output\.video\.frames|video\.geometry|video\.row_lines|video\.frame\.last_tick|video\.chain\.check)$/ && v == 1) { print; next }
     ($1 ~ /^(digest\.audio|output\.audio\.samples|output\.audio\.changes|audio\.sample_ticks)$/ && a == 1) { print; next }
     ($1 == "digest.input" && i == 1) { print; next }
     ($1 ~ /^(digest\.psglog|output\.psglog\.records|output\.psglog\.bytes)$/ && p == 1) { print }'
@@ -269,7 +270,7 @@ while IFS= read -r g; do
   awk -v g="$g" '
     /^#/ { next }
     $1 ~ /^refpcm\./ { print "golden-mismatch " g " (refpcm key " $1 " in a .digests golden)"; next }
-    $1 ~ /^(output|audio)\./ && $1 !~ /^(output\.video\.bytes|output\.audio\.bytes|output\.audio\.samples|output\.audio\.changes|output\.psglog\.records|output\.psglog\.bytes|audio\.sample_ticks)$/ {
+    $1 ~ /^(output|audio|video)\./ && $1 !~ /^(output\.video\.bytes|output\.video\.frames|output\.audio\.bytes|output\.audio\.samples|output\.audio\.changes|output\.psglog\.records|output\.psglog\.bytes|audio\.sample_ticks|video\.geometry|video\.row_lines|video\.frame\.last_tick|video\.chain\.check)$/ {
       print "golden-mismatch " g " (output key " $1 " is not in the golden key list)" }' "$ROOT/$g" >> "$find"
   for d in video:$hv:$lv audio:$ha:$la input:$hi:$li psglog:$hp:$lp; do
     name=${d%%:*}; rest=${d#*:}; mark=${rest%%:*}; have=${rest#*:}

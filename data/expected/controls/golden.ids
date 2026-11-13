@@ -12,6 +12,9 @@ golden-host-dependent-unmarked
 golden-host-dependent-golden
 golden-domains-psglog-missing
 golden-digest-psglog-missing
+golden-domains-video-missing
+golden-digest-video-missing
+golden-video-chain-check-missing
 golden-output-key-unknown
 golden-refpcm-key
 golden-refpcm-grammar

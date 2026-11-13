@@ -244,3 +244,5 @@ runner.vchain.detects-header-width
 runner.vchain.detects-pixel-range
 runner.vchain.detects-tick-order
 runner.vchain.detects-reserved-word
+runner.exec.report-keys-ivsr3
+runner.golden.keys-video-live

@@ -1,4 +1,4 @@
-ivsr 2
+ivsr 3
 scenario.id toy-wall
 scenario.profile intv-2609-ntsc-family-p1
 outcome timeout
@@ -6,5 +6,10 @@ outcome.detail wall step=1 cap-ms=1
 exit.code 11
 step.1.now_ticks 8192
 digest.cpu 3333333333333333333333333333333333333333333333333333333333333333
+output.video.frames 0
+video.geometry -
+video.row_lines -
+video.frame.last_tick -
+video.chain.check -
 host.calls 9
-report.end 9
+report.end 14

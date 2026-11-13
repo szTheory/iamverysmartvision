@@ -352,47 +352,10 @@ static int main_count_observed(const char *v, size_t n)
   return nonzero;
 }
 
-/* The golden key list (docs/runner.md): scenario, outcome and exit code, slots, steps, CPU state,
- * input and output counts, the digests of cpu, mem, images, instance and composite, and for each
- * observed live domain its keys: video digest.video; audio digest.audio, output.audio.samples,
- * output.audio.changes and audio.sample_ticks; input digest.input; psglog digest.psglog,
- * output.psglog.records and output.psglog.bytes. Never ivsr, api.version, the exec:/grom: labels,
- * audio.chain.check, any refpcm.* key, host.calls or report.end. The same list sits in
- * tools/check/steps/golden.sh and docs/runner.md (plan 05-09, A-09). */
+/* The golden key list is ivs_runner_golden_keep (runner/report.c, plan 06-12: moved into the library so an in-process suite
+ * reaches it); the same list sits in tools/check/steps/golden.sh and docs/runner.md (plan 05-09, A-09). live: video, audio,
+ * input, psglog. */
 #define MAIN_LIVE 4u
-static int main_golden_keep(const char *line, size_t n, const int live[MAIN_LIVE])
-{
-  static const char *const prefix[] = {"slot.", "step.", "cpu.", "input."};
-  static const char *const exact[] = {"scenario.id",   "scenario.profile", "outcome",
-                                      "outcome.detail", "exit.code",        "digest.cpu",
-                                      "digest.mem",     "digest.images",    "digest.instance",
-                                      "digest.composite", "output.video.bytes", "output.audio.bytes"};
-  /* Per live domain (video, audio, input, psglog): the keys kept while it is observed. */
-  static const char *const live_key[MAIN_LIVE][4] = {
-      {"digest.video", NULL, NULL, NULL},
-      {"digest.audio", "output.audio.samples", "output.audio.changes", "audio.sample_ticks"},
-      {"digest.input", NULL, NULL, NULL},
-      {"digest.psglog", "output.psglog.records", "output.psglog.bytes", NULL}};
-  for (size_t i = 0u; i < sizeof prefix / sizeof prefix[0]; i++) {
-    size_t pl = strlen(prefix[i]);
-    if (n > pl && memcmp(line, prefix[i], pl) == 0) {
-      return 1;
-    }
-  }
-  for (size_t i = 0u; i < sizeof exact / sizeof exact[0]; i++) {
-    if (main_key_is(line, n, exact[i])) {
-      return 1;
-    }
-  }
-  for (size_t i = 0u; i < MAIN_LIVE; i++) {
-    for (size_t k = 0u; k < 4u; k++) {
-      if (live[i] && live_key[i][k] != NULL && main_key_is(line, n, live_key[i][k])) {
-        return 1;
-      }
-    }
-  }
-  return 0;
-}
 
 /* Writes the .digests golden of the captured report to path. 0, or MAIN_EXIT_HARNESS after one
  * line on stderr (host-dependent outcome, incomplete capture, write error). */
@@ -444,7 +407,7 @@ static int main_write_golden(const char *path, const main_host *h, const ivs_sce
   while (ok && i < len) {
     const char *nl = memchr(buf + i, '\n', len - i);
     size_t n = (size_t)(nl - (buf + i)) + 1u;
-    if (main_golden_keep(buf + i, n - 1u, live) && fwrite(buf + i, 1u, n, f) != n) {
+    if (ivs_runner_golden_keep(buf + i, n - 1u, live) && fwrite(buf + i, 1u, n, f) != n) {
       ok = 0;
     }
     i += n;

@@ -568,11 +568,22 @@ typedef struct ivs_runner_record {
 #define IVS_RUNNER_CHAIN_FAIL 2u
 
 /* Writes the report of rec through host->write_report, every key of the closed key table in
- * its fixed order: `ivsr 2` first, `report.end <n>` last (n = lines before it); only when rec asks for
+ * its fixed order: `ivsr 3` first, `report.end <n>` last (n = lines before it); only when rec asks for
  * an operator WAV (plan 05-10) refpcm.rate, refpcm.frames and refpcm.sha256 follow host.calls, right
  * before report.end. Returns 0, or
  * -1 on a write error; *lines gets the count of lines before report.end. */
 int ivs_runner_report_write(const ivs_runner_record *rec, const ivs_runner_host *host, uint64_t *lines);
+
+/* The golden key list (docs/runner.md, plan 06-12): 1 when the report line (n bytes without the LF) is kept in a
+ * `.digests` golden, in report order. live[0..3] are 1 for the observed live domains video, audio, input, psglog (the count
+ * rule: the domain's byte or event count is a decimal other than 0). Always kept: scenario.id, scenario.profile, outcome,
+ * outcome.detail, exit.code, every slot.*, step.*, cpu.* and input.* line, digest.cpu, digest.mem, digest.images,
+ * digest.instance, digest.composite, output.video.bytes, output.audio.bytes. Kept while the domain is observed: video
+ * digest.video, output.video.frames, video.geometry, video.row_lines, video.frame.last_tick and video.chain.check; audio
+ * digest.audio, output.audio.samples, output.audio.changes and audio.sample_ticks; input digest.input; psglog
+ * digest.psglog, output.psglog.records and output.psglog.bytes. Never ivsr, api.version, the exec: and grom: labels,
+ * audio.chain.check, any refpcm.* key, host.calls or report.end. */
+int ivs_runner_golden_keep(const char *line, size_t n, const int live[4]);
 
 /* The clause of an assert as the scenario states it (`halted == yes`, `reg R3 != 0037`, `psglog count == 4`,
  * `audio at 160 A=15 B=0 C=0`, ...), NUL-terminated into out (cap bytes); shared by the report and

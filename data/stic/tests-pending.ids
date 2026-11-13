@@ -4,6 +4,5 @@
 # to be a prefix of at least one registered id or a line here, and a line here whose prefix already has a registered id to be deleted
 # (tokens video-rule-no-test and video-pending-stale): the owner plan deletes its lines in the same commit that registers the first id.
 runner.operator. 06-12
-runner.golden. 06-12
 runner.frameppm. 06-12
 run.diag.stic. 06-13
