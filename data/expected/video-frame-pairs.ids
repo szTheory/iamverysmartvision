@@ -1,0 +1,8 @@
+# Declared frame pairs of the hand-derived frame literals (plan 07-02, D-21): one line per pair,
+#   <idA> <idB> <x> <y> <w> <h> <count>
+# idA and idB are ids of data/expected/video-frames.ids; x y w h is the rectangle in plane positions (x 0..158, y 0..95);
+# count is the number of positions at which the two planes differ. The video step (token video-frame-pair-region) requires
+# that the planes differ at exactly count positions and that every differing position lies inside the rectangle, so a response
+# frame that changes anything outside its declared region, or fewer or more positions than derived, cannot be registered.
+# The counts are derived by hand in docs/video/demo-lamp-tone-1-derivation.md section (e): 64 positions per lit lamp that the other frame shows unlit.
+F-S1 F-S2 48 32 64 8 128

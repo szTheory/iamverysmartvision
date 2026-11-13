@@ -1,4 +1,4 @@
-# Negative controls for the video step (plan 06-01, D-01, D-02): one per token; the positive control is the toy verdict note, register literal, rule file and pending lists of controls/_good/tree. Task 3 adds the frame and literal controls.
+# Negative controls for the video step (plan 06-01, D-01, D-02): one per token; the positive control is the toy verdict note, register literal, rule file and pending lists of controls/_good/tree. Task 3 adds the frame and literal controls. Plan 07-02 adds video-frame-pair-region-drift (D-21): a declared frame pair whose planes differ outside its rectangle.
 video-verdict-key-missing
 video-regmap-row-count
 video-rule-no-test
@@ -11,3 +11,4 @@ video-frame-unregistered
 video-field-missing
 video-pending-stale
 video-frame-hash-expect-drift
+video-frame-pair-region-drift
