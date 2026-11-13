@@ -1,0 +1,39 @@
+# Scenario diag-stic-cstack-pass (plan 06-13, D-20, A-04, D-19): outcome pass, exit 0. The same image as
+# diag-stic-fgbg-pass with KEY_1 closed from tick 0: the first read of 01FE returns the low byte 7E, the
+# branch is not taken, the read of 0021 selects Color Stack mode, and the same six explicit card words and
+# patterns now show through the four stack registers (data/video/frames/F-D2.frame). The asserts are the
+# hand-derived expectations of data/golden/diag-stic-cstack-pass.expect, the same lines in the same order
+# (golden-expect-drift). KEY_1 is applied at tick 0, before the program's first read.
+ivss 1
+id diag-stic-cstack-pass
+profile intv-2609-ntsc-family-p1
+content exec boot-stub
+content grom zero-grom
+content cart diag-stic-1.ivsc
+capture video 0 1
+input at_tick=0 c0=KEY_1 c1=0x0
+run-to 150000 ticks stop halted
+assert halted == yes
+assert mem 02F0 == 03C5
+assert mem 02F1 == 007E
+assert mem 02A3 == 2A01
+assert mem 02A4 == 0E0A
+assert mem 02A5 == 1A13
+assert mem 02A6 == 381C
+assert mem 02DC == 2C1D
+assert mem 02EF == 1C0F
+assert mem 0200 == 0000
+assert frame 0 displayed == yes
+assert frame 0 pixel 0 0 == 6
+assert frame 0 pixel 158 0 == 6
+assert frame 0 pixel 24 64 == 1
+assert frame 0 pixel 24 65 == 10
+assert frame 0 pixel 41 65 == 11
+assert frame 0 pixel 48 64 == 12
+assert frame 0 pixel 49 64 == 3
+assert frame 0 pixel 0 88 == 5
+assert frame 0 pixel 1 88 == 13
+assert frame 0 pixel 152 88 == 15
+assert frame 0 pixel 153 89 == 13
+assert frame 0 hash == f003c96b3a0cd25c77701694a1a1e7286b47b214e073275f6a58395fd6705f1c
+assert video count == 1

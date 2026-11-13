@@ -40,7 +40,8 @@ int main(int argc, char **argv)
       ivs_run_add(&n, ivs_run_fuzz_cases, ivs_run_fuzz_count) != 0 ||
       ivs_run_add(&n, ivs_run_stub_cases, ivs_run_stub_count) != 0 ||
       ivs_run_add(&n, ivs_run_diag_cases, ivs_run_diag_count) != 0 ||
-      ivs_run_add(&n, ivs_run_diag_ctrl_cases, ivs_run_diag_ctrl_count) != 0) {
+      ivs_run_add(&n, ivs_run_diag_ctrl_cases, ivs_run_diag_ctrl_count) != 0 ||
+      ivs_run_add(&n, ivs_run_diag_stic_cases, ivs_run_diag_stic_count) != 0) {
     return 1;
   }
   ivs_test_suite_from_cases(&suite, "run", ivs_run_all, n);

@@ -32,6 +32,10 @@
 #   video-frame-hash-drift           the sha256-text key differs from the SHA-256 of the canonical text of the plane (the plane cropped to the
 #                                    published width, spaces removed, upper-case hex, one LF-ended line per row)
 #   video-frame-unregistered         a data/video/frames/*.frame file that is not an id of data/expected/video-frames.ids, or a listed id without a file
+#   video-frame-hash-expect-drift    (plan 06-13, D-02, V6-4) a predicate file data/golden/<id>.expect with an `assert frame <n> hash == <hex>` line
+#                                    whose hash differs from the `sha256-text` key of the frame literal that its header line `# frame: <n> <frame id>`
+#                                    names, or with no such header line, or one naming a file that does not exist (the frame files are the only place
+#                                    a digest is derived; an expectation file may only repeat it)
 # Stats: stic-rows=<register rows> video-frames=<frames>.
 cmake_minimum_required(VERSION 3.25)
 
@@ -46,7 +50,7 @@ set(CAP 20)
 set(VTOKENS video-verdict-key-missing video-regmap-row-count video-regmap-row-bad video-rule-no-test
   video-rule-field-unregistered video-pending-stale video-geometry-literal video-cards-literal-rows video-chain-literal
   video-frame-dimension video-frame-symbol video-frame-tier-missing video-frame-popcount video-frame-hash-drift
-  video-frame-unregistered)
+  video-frame-unregistered video-frame-hash-expect-drift)
 set(VERDICT_KEYS registers-printed backtab-format-printed color-stack-printed display-enable-printed
   colors-numbered-printed window-lengths-printed bus-hold-printed rows-per-frame-printed visible-geometry-printed
   timing-figure-readable)
@@ -706,6 +710,52 @@ foreach(id IN LISTS FRAME_IDS)
   endif()
 endforeach()
 
+# ---- hash tie of the predicate files (plan 06-13, D-02, V6-4): the frame hash an `.expect` asserts is the sha256-text key of its literal
+paths_matching(EXPECT_FILES "^data/golden/[^/]+[.]expect$")
+set(n_hash_ties 0)
+foreach(p IN LISTS EXPECT_FILES)
+  file(READ "${ROOT}/${p}" etxt)
+  gate_lines(elines "${etxt}")
+  set(named "")
+  foreach(l IN LISTS elines)
+    gate_unprotect(l "${l}")
+    if(l MATCHES "^# frame: ([0-9]+) ([A-Za-z0-9-]+)$")
+      set(NAMED_${CMAKE_MATCH_1} "${CMAKE_MATCH_2}")
+      list(APPEND named "${CMAKE_MATCH_1}")
+    endif()
+  endforeach()
+  foreach(l IN LISTS elines)
+    gate_unprotect(l "${l}")
+    if(NOT l MATCHES "^assert frame ([0-9]+) hash == ([0-9a-f]+)$")
+      continue()
+    endif()
+    set(fidx "${CMAKE_MATCH_1}")
+    set(fhash "${CMAKE_MATCH_2}")
+    if(NOT fidx IN_LIST named)
+      pfail(video-frame-hash-expect-drift "${p} asserts the hash of frame ${fidx} and has no header line '# frame: ${fidx} <frame id>'")
+      continue()
+    endif()
+    set(fid "${NAMED_${fidx}}")
+    set(fpath "data/video/frames/${fid}.frame")
+    if(NOT EXISTS "${ROOT}/${fpath}")
+      pfail(video-frame-hash-expect-drift "${p} names ${fpath}, which does not exist")
+      continue()
+    endif()
+    file(STRINGS "${ROOT}/${fpath}" fl REGEX "^sha256-text [0-9a-f]+$")
+    set(lit "")
+    foreach(x IN LISTS fl)
+      string(REGEX REPLACE "^sha256-text " "" lit "${x}")
+    endforeach()
+    if(NOT lit STREQUAL "${fhash}")
+      pfail(video-frame-hash-expect-drift "${p} asserts frame ${fidx} hash ${fhash}, the sha256-text of ${fid} is ${lit}")
+    endif()
+    math(EXPR n_hash_ties "${n_hash_ties} + 1")
+  endforeach()
+  foreach(n IN LISTS named)
+    unset(NAMED_${n})
+  endforeach()
+endforeach()
+
 foreach(tok IN LISTS VTOKENS)
   gate_count(n "tok_${tok}")
   if(n GREATER ${CAP})
@@ -715,4 +765,5 @@ endforeach()
 
 gate_stat(stic-rows ${n_rows})
 gate_stat(video-frames ${n_frames})
+gate_stat(video-hash-ties ${n_hash_ties})
 gate_finish(videochk)

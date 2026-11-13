@@ -272,3 +272,14 @@ run.diag.ctrl-psg.marker-last
 run.diag.ctrl-psg.slicing
 run.diag.ctrl-psg.nokey-timeout
 run.diag.ctrl-psg.order-equals-pass
+# Family diag-stic (plan 06-13, D-19, D-20, D-14, A-04): ivs-diag-stic-1 behind the boot stub with the zero graphics ROM, a video buffer
+# sized from ivs_info; expected values read from the assert lines of data/golden/diag-stic-fgbg-pass.expect and diag-stic-cstack-pass.expect
+# (derived by hand in plan 06-01) and the literal frames F-D1 and F-D2, never from the core. fgbg: no input, the hand-derived state and the
+# frame F-D1 byte for byte with its text hash; cstack: KEY_1 at tick 0 and the SAME image, the state and frame F-D2; slice-invariant: slices
+# of 1, 7 and 468 ticks give the same instance bytes, frames and digests as one call; frame-stop: flagged calls (one slot each) stop FRAME then
+# CPU_HALTED and deliver the same stream; nodisplay: the strobe store patched to a reserved register gives a frame 0 delivered not displayed.
+run.diag.stic.fgbg
+run.diag.stic.cstack
+run.diag.stic.slice-invariant
+run.diag.stic.frame-stop
+run.diag.stic.nodisplay

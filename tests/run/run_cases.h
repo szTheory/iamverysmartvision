@@ -96,6 +96,12 @@ extern const size_t ivs_run_diag_count;
 extern const ivs_test_case ivs_run_diag_ctrl_cases[];
 extern const size_t ivs_run_diag_ctrl_count;
 
+/* Family diag-stic (plan 06-13, D-19, D-20, D-14): the diagnostic ivs-diag-stic-1 (display enable, graphics RAM, BACKTAB, both card
+ * modes) behind the boot stub, from reset to its hand-derived predicates (data/golden/diag-stic-fgbg-pass.expect and
+ * diag-stic-cstack-pass.expect) and the literal frames F-D1 and F-D2 through the public API (run_diag_stic.c). */
+extern const ivs_test_case ivs_run_diag_stic_cases[];
+extern const size_t ivs_run_diag_stic_count;
+
 /* ---- slicing invariance of another program (run_slice.c, plan 04-16, D-07) ----
  * powered builds a POWERED instance of a program that ends HALTED (1 on success); the function
  * runs the five slicing patterns of family slice (single, fixed-7, prime, seeded, one-call) on it

@@ -10,3 +10,4 @@ video-frame-hash-drift
 video-frame-unregistered
 video-field-missing
 video-pending-stale
+video-frame-hash-expect-drift

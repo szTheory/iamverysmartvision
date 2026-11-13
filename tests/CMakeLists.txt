@@ -187,7 +187,36 @@ add_custom_command(
   DEPENDS ${IVS_INPUT_LITERALS} "${PROJECT_SOURCE_DIR}/data/expected/input-bits.ids" "${IVS_INPUT_PROBE_GENERATOR}"
   COMMENT "Generating the controller probe table"
   VERBATIM)
-add_executable(ivs_tests_run run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_struct.c run/run_fuzz.c run/run_stub.c run/run_diag.c run/run_diag_ctrl.c machine/machine_standin.c "${IVS_IMAGES_INC}" "${IVS_DIAG_EXPECT_INC}" "${IVS_CTRL_EXPECT_INC}" "${IVS_INPUT_PROBE_INC}")
+# Plan 06-13: the predicates of the third diagnostic (the two .expect files of ivs-diag-stic-1, with the video forms of expect-inc.cmake) and the
+# two literal frames F-D1 and F-D2 (cmake/IvsVideoFrames.cmake, FRAMESET=diag), read by run.diag.stic.*.
+set(IVS_STIC_FGBG_EXPECT "${PROJECT_SOURCE_DIR}/data/golden/diag-stic-fgbg-pass.expect")
+set(IVS_STIC_FGBG_EXPECT_INC "${CMAKE_CURRENT_BINARY_DIR}/diag_stic_fgbg_pass_expect.inc")
+add_custom_command(
+  OUTPUT "${IVS_STIC_FGBG_EXPECT_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DIN=${IVS_STIC_FGBG_EXPECT}" "-DOUT=${IVS_STIC_FGBG_EXPECT_INC}"
+          -P "${CMAKE_CURRENT_SOURCE_DIR}/expect-inc.cmake"
+  DEPENDS "${IVS_STIC_FGBG_EXPECT}" "${CMAKE_CURRENT_SOURCE_DIR}/expect-inc.cmake"
+  COMMENT "Generating the diag-stic-fgbg-pass predicate include"
+  VERBATIM)
+set(IVS_STIC_CSTACK_EXPECT "${PROJECT_SOURCE_DIR}/data/golden/diag-stic-cstack-pass.expect")
+set(IVS_STIC_CSTACK_EXPECT_INC "${CMAKE_CURRENT_BINARY_DIR}/diag_stic_cstack_pass_expect.inc")
+add_custom_command(
+  OUTPUT "${IVS_STIC_CSTACK_EXPECT_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DIN=${IVS_STIC_CSTACK_EXPECT}" "-DOUT=${IVS_STIC_CSTACK_EXPECT_INC}"
+          -P "${CMAKE_CURRENT_SOURCE_DIR}/expect-inc.cmake"
+  DEPENDS "${IVS_STIC_CSTACK_EXPECT}" "${CMAKE_CURRENT_SOURCE_DIR}/expect-inc.cmake"
+  COMMENT "Generating the diag-stic-cstack-pass predicate include"
+  VERBATIM)
+set(IVS_DIAG_FRAMES_INC "${CMAKE_CURRENT_BINARY_DIR}/ivs_diag_frames.inc")
+add_custom_command(
+  OUTPUT "${IVS_DIAG_FRAMES_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DROOT=${PROJECT_SOURCE_DIR}" "-DOUT=${IVS_DIAG_FRAMES_INC}" -DFRAMESET=diag
+          -P "${PROJECT_SOURCE_DIR}/cmake/IvsVideoFrames.cmake"
+  DEPENDS "${PROJECT_SOURCE_DIR}/data/video/frames/F-D1.frame" "${PROJECT_SOURCE_DIR}/data/video/frames/F-D2.frame"
+          "${PROJECT_SOURCE_DIR}/cmake/IvsVideoFrames.cmake"
+  COMMENT "Generating the diagnostic frame literal include"
+  VERBATIM)
+add_executable(ivs_tests_run run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_struct.c run/run_fuzz.c run/run_stub.c run/run_diag.c run/run_diag_ctrl.c run/run_diag_stic.c machine/machine_standin.c "${IVS_IMAGES_INC}" "${IVS_DIAG_EXPECT_INC}" "${IVS_CTRL_EXPECT_INC}" "${IVS_STIC_FGBG_EXPECT_INC}" "${IVS_STIC_CSTACK_EXPECT_INC}" "${IVS_DIAG_FRAMES_INC}" "${IVS_INPUT_PROBE_INC}")
 target_include_directories(ivs_tests_run PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_BINARY_DIR}")
 add_dependencies(ivs_tests_run ivs_images)
 target_link_libraries(ivs_tests_run PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
@@ -416,9 +445,9 @@ ivs_fault_suite(machine
   GENERATED "${IVS_SHA_INC}" "${IVS_CART_INC}")
 
 ivs_fault_suite(run
-  SOURCES run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_struct.c run/run_fuzz.c run/run_stub.c run/run_diag.c run/run_diag_ctrl.c machine/machine_standin.c
+  SOURCES run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_struct.c run/run_fuzz.c run/run_stub.c run/run_diag.c run/run_diag_ctrl.c run/run_diag_stic.c machine/machine_standin.c
   INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_BINARY_DIR}"
-  GENERATED "${IVS_IMAGES_INC}" "${IVS_DIAG_EXPECT_INC}" "${IVS_CTRL_EXPECT_INC}" "${IVS_INPUT_PROBE_INC}")
+  GENERATED "${IVS_IMAGES_INC}" "${IVS_DIAG_EXPECT_INC}" "${IVS_CTRL_EXPECT_INC}" "${IVS_STIC_FGBG_EXPECT_INC}" "${IVS_STIC_CSTACK_EXPECT_INC}" "${IVS_DIAG_FRAMES_INC}" "${IVS_INPUT_PROBE_INC}")
 
 ivs_fault_suite(psg
   SOURCES ${IVS_PSG_TEST_SOURCES}

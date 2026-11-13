@@ -2,6 +2,7 @@
 # oracle: independent-derivation
 # scenario: diag-stic-fgbg-pass
 # profile: intv-2609-ntsc-family-p1
+# frame: 0 F-D1
 # program: fixtures/FX-diag-stic-1/diag-stic-1.listing.txt (ivs-diag-stic-1), entered through
 #   fixtures/FX-boot-stub/boot-stub.listing.txt (contract 1: J $5000 with R6 = 0340)
 #

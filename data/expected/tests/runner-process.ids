@@ -37,6 +37,9 @@ runner-process.scenario.psg-log-assert-mismatch
 runner-process.scenario.diag-ctrl-psg-pass
 runner-process.scenario.diag-ctrl-psg-nokey
 runner-process.scenario.diag-ctrl-psg-order
+runner-process.scenario.diag-stic-fgbg-pass
+runner-process.scenario.diag-stic-cstack-pass
+runner-process.scenario.video-assert-mismatch
 runner-process.mutant.ADDI-SUBI
 runner-process.mutant.BNZE-BZE
 runner-process.mutant.PSHR-MVOAT
@@ -52,6 +55,8 @@ runner-process.repeat.diag-input-pass
 runner-process.slices.diag-input-pass
 runner-process.repeat.diag-ctrl-psg-pass
 runner-process.slices.diag-ctrl-psg-pass
+runner-process.repeat.diag-stic-fgbg-pass
+runner-process.repeat.diag-stic-cstack-pass
 runner-process.cwd
 runner-process.cwd.diag-ctrl-psg-pass
 runner-process.operator.audio-raw

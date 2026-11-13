@@ -32,6 +32,8 @@
 # cost cap V-16) diag-ctrl-psg-pass, and runner-process.cwd (diag-boot-pass from another working
 # directory) and runner-process.cwd.diag-ctrl-psg-pass must equal the scenario case's report byte for
 # byte apart from the host.calls line.
+# Since plan 06-13 runner-process.repeat.diag-stic-fgbg-pass and runner-process.repeat.diag-stic-cstack-pass (the third diagnostic, one
+# more run each) are judged the same way.
 # Judge self-controls (runner-process.judge.<slug>): the same checks run against four fake
 # runners (shell scripts in the temp dir replaying this run's reports with one defect: exit 0 for
 # a guest-fail, no report.end, outcome pass with exit.code 10, a changed digest line); each passes
@@ -89,13 +91,13 @@ if [ -n "${IVS_TEST_OUT_DIR:-}" ]; then
   mkdir -p "$rep_dir" || { printf '# cannot create %s\n' "$rep_dir" >&2; exit 1; }
 fi
 
-# The content dir: copies of the build-tree images (boot stub, diag-cpu-1, and since plan 05-11 diag-ctrl-psg-1),
+# The content dir: copies of the build-tree images (boot stub, diag-cpu-1, since plan 05-11 diag-ctrl-psg-1, and since plan 06-13 diag-stic-1),
 # plus diag-cpu-1-truncated.ivsc, the diagnostic
 # container built here by ivs_pack and cut before its 32-byte trailer (POSIX dd).
 listing="$root/fixtures/FX-diag-cpu-1/diag-cpu-1.listing.txt"
 content="$tmp/content"
 mkdir "$content" "$tmp/runs" "$tmp/build" || exit 1
-for f in boot-stub.exec diag-cpu-1.ivsc diag-ctrl-psg-1.ivsc; do
+for f in boot-stub.exec diag-cpu-1.ivsc diag-ctrl-psg-1.ivsc diag-stic-1.ivsc; do
   cp "$images/$f" "$content/$f" || { printf 'runner-process-tap: no image %s/%s\n' "$images" "$f" >&2; exit 1; }
 done
 "$pack" --ivsc "$listing" "$tmp/build/full.ivsc" 2> "$tmp/build/pack.err" \
@@ -425,6 +427,15 @@ for id in diag-boot-pass diag-input-pass diag-ctrl-psg-pass; do
     check_repeat "$tmp" "$ivs_run" "sl$s-$id" "$id" "$ref" --slice-ticks "$s" || ok=0
   done
   result "runner-process.slices.$id"
+done
+# The third diagnostic (plan 06-13, cost cap V6-12): a second run of each of its two pass scenarios; the slice replays of the fgbg
+# scenario follow with the mutant block in the same plan.
+for id in diag-stic-fgbg-pass diag-stic-cstack-pass; do
+  ref="$tmp/runs/scen-$id.out"
+  : > "$tmp/why"
+  ok=1
+  check_repeat "$tmp" "$ivs_run" "rep-$id" "$id" "$ref" || ok=0
+  result "runner-process.repeat.$id"
 done
 mkdir "$tmp/elsewhere" || exit 1
 : > "$tmp/why"

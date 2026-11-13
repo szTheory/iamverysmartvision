@@ -1,0 +1,38 @@
+# Scenario video-assert-mismatch (plan 06-13, V6-10, T-06-18): outcome guest-fail, exit 10. The
+# Foreground/Background run of the third diagnostic with one deliberately wrong frame hash (the first
+# digit of the sha256-text of F-D1 changed), so the one failing clause is the frame hash assert and a
+# vacuous video assert cannot pass.
+# expect-detail: assert=24 line=37 frame 0 hash == 96b80eb73c51152ac252a1bbebcc86ead4535ac9ebdbf2a346bd8bf1b0383596 got 86b80eb73c51152ac252a1bbebcc86ead4535ac9ebdbf2a346bd8bf1b0383596
+ivss 1
+id video-assert-mismatch
+profile intv-2609-ntsc-family-p1
+content exec boot-stub
+content grom zero-grom
+content cart diag-stic-1.ivsc
+capture video 0 1
+run-to 150000 ticks stop halted
+assert halted == yes
+assert mem 02F0 == 03C5
+assert mem 02F1 == 00FF
+assert mem 02A3 == 2A01
+assert mem 02A4 == 0E0A
+assert mem 02A5 == 1A13
+assert mem 02A6 == 381C
+assert mem 02DC == 2C1D
+assert mem 02EF == 1C0F
+assert mem 0200 == 0000
+assert frame 0 displayed == yes
+assert frame 0 pixel 0 0 == 0
+assert frame 0 pixel 158 0 == 0
+assert frame 0 pixel 24 64 == 1
+assert frame 0 pixel 24 65 == 5
+assert frame 0 pixel 33 65 == 3
+assert frame 0 pixel 41 65 == 3
+assert frame 0 pixel 49 64 == 12
+assert frame 0 pixel 0 88 == 5
+assert frame 0 pixel 1 88 == 6
+assert frame 0 pixel 152 88 == 7
+assert frame 0 pixel 158 95 == 7
+assert frame 0 pixel 153 89 == 10
+assert frame 0 hash == 96b80eb73c51152ac252a1bbebcc86ead4535ac9ebdbf2a346bd8bf1b0383596
+assert video count == 1
