@@ -192,13 +192,16 @@ static int vc_display_off_fill_border(void)
   return IVS_TEST_PASS;
 }
 
-/* Every non-sentinel pixel is a color 0..15 and the sentinel is only the cut-off column, over seeded random words and graphics. */
+/* Every non-sentinel pixel is a color 0..15 and the sentinel is only the cut-off column, over seeded random words and graphics, in both modes
+ * (plan 06-11: in Color Stack mode the words include advances and Colored Squares, and the four stack values are random colors 0..15). */
 static int vc_color_range(void)
 {
   uint32_t s = 0x2545F491u;
   uint32_t i;
   uint32_t card;
   uint32_t y;
+  uint32_t mode;
+  uint32_t round;
   vf_mem_clear();
   for (card = 0u; card < 64u; card++) {
     uint8_t b[8];
@@ -210,20 +213,58 @@ static int vc_color_range(void)
     }
     vf_poke_gram_card(vf_mem(), card, b);
   }
-  for (i = 0u; i < 240u; i++) {
-    s ^= s << 13;
-    s ^= s >> 17;
-    s ^= s << 5;
-    vc_words[i] = (uint16_t)(s & 0xFFFFu);
-  }
-  vf_render_words(vc_words, 0u, vc_plane);
-  for (i = 0u; i < VF_PLANE_BYTES; i++) {
-    int cut = (i % VF_PLANE_W) == VF_PLANE_W - 1u;
-    if (cut ? vc_plane[i] != 0xFFu : vc_plane[i] > 15u) {
-      ivs_test_diag("byte %u is %u", (unsigned)i, (unsigned)vc_plane[i]);
-      return IVS_TEST_FAIL;
+  for (mode = 0u; mode < 2u; mode++) {
+    for (round = 0u; round < 4u; round++) {
+      uint32_t stack[4];
+      for (i = 0u; i < 4u; i++) {
+        s ^= s << 13;
+        s ^= s >> 17;
+        s ^= s << 5;
+        stack[i] = s & 0xFu;
+      }
+      for (i = 0u; i < 240u; i++) {
+        s ^= s << 13;
+        s ^= s >> 17;
+        s ^= s << 5;
+        vc_words[i] = (uint16_t)(s & 0xFFFFu);
+      }
+      vf_render_cs(vc_words, mode, stack, vc_plane, NULL);
+      for (i = 0u; i < VF_PLANE_BYTES; i++) {
+        int cut = (i % VF_PLANE_W) == VF_PLANE_W - 1u;
+        if (cut ? vc_plane[i] != 0xFFu : vc_plane[i] > 15u) {
+          ivs_test_diag("mode %u byte %u is %u", (unsigned)mode, (unsigned)i, (unsigned)vc_plane[i]);
+          return IVS_TEST_FAIL;
+        }
+      }
     }
   }
+  return IVS_TEST_PASS;
+}
+
+/* Four cells with the same low bits (card 5, foreground 3: $2B) and the pair of bits 12 and 11 = 00, 01, 11 and 10, in Color Stack mode over the
+ * stack {2, 5, 9, 15} and graphics RAM card 5 = 80 00 .. 00: 00 is a graphics ROM card (the zero image: all background 2), 01 a graphics RAM card (pixel
+ * (0,0) is the foreground 3), 11 a graphics RAM card with foreground 8 + 3 = 11, 10 a Colored Squares card with colors c0 = 3, c1 = 5, c2 = 0, c3 = 0
+ * (quadrants 3 5 / 0 0). No cell advances, so every background is entry 0. */
+static int vc_cs_decode(void)
+{
+  static const char *const grom[8] = {"22222222", "22222222", "22222222", "22222222", "22222222", "22222222", "22222222", "22222222"};
+  static const char *const gram01[8] = {"32222222", "22222222", "22222222", "22222222", "22222222", "22222222", "22222222", "22222222"};
+  static const char *const gram11[8] = {"B2222222", "22222222", "22222222", "22222222", "22222222", "22222222", "22222222", "22222222"};
+  static const char *const sq[8] = {"33335555", "33335555", "33335555", "33335555", "00000000", "00000000", "00000000", "00000000"};
+  static const uint8_t pat[8] = {0x80u, 0u, 0u, 0u, 0u, 0u, 0u, 0u};
+  static const uint32_t stack[4] = {2u, 5u, 9u, 15u};
+  vf_mem_clear();
+  vf_poke_gram_card(vf_mem(), 5u, pat);
+  vc_clear_words();
+  vc_words[20u * 2u + 0u] = 0x002Bu; /* b12 b11 = 00 */
+  vc_words[20u * 2u + 1u] = 0x082Bu; /* 01 */
+  vc_words[20u * 2u + 2u] = 0x182Bu; /* 11 */
+  vc_words[20u * 2u + 3u] = 0x102Bu; /* 10 */
+  vf_render_cs(vc_words, 1u, stack, vc_plane, NULL);
+  VC_CHECK(vc_block_is(2u, 0u, grom));
+  VC_CHECK(vc_block_is(2u, 1u, gram01));
+  VC_CHECK(vc_block_is(2u, 2u, gram11));
+  VC_CHECK(vc_block_is(2u, 3u, sq));
   return IVS_TEST_PASS;
 }
 
@@ -235,5 +276,6 @@ const ivs_test_case ivs_video_card_cases[] = {
     {"video.grom.zero-stub", vc_grom_zero_stub, NULL},
     {"video.display-off.fill-border", vc_display_off_fill_border, NULL},
     {"video.color.range-0-15", vc_color_range, NULL},
+    {"video.card.cs-decode", vc_cs_decode, NULL},
 };
 const size_t ivs_video_card_count = sizeof ivs_video_card_cases / sizeof ivs_video_card_cases[0];

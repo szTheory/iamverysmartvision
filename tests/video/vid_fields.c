@@ -66,8 +66,12 @@ int vid_check_cells(const vf_frame *f)
       continue;
     }
     if (is_cs) {
-      /* the bg of a Color Stack cell is a stack entry reached through the pointer, not a field of the word: only the word is checked here */
+      /* the bg of a Color Stack cell is a stack entry reached through the pointer, not a field of the word: only the word is checked here, and
+       * bits 10 and 9 of a graphics RAM word are ignored by the layout (CR-10), so a literal word may carry them (frame F-B3) */
       want = vid_encode_cs((uint32_t)adv, (uint32_t)fg, gram ? 1u : 0u, (uint32_t)card);
+      if (gram && (c->word & ~0x0600u) == want) {
+        continue;
+      }
     } else {
       want = vid_encode_fgbg((uint32_t)fg, (uint32_t)bg, gram ? 1u : 0u, (uint32_t)card);
     }

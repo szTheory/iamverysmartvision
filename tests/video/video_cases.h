@@ -159,7 +159,12 @@ int vid_check_cells(const vf_frame *f);
  * from the block the roles predict (0 is a pass; quiet 1 suppresses the diagnostics, for the judge). */
 void vpr_roles(const char *role[16]);
 uint32_t vpr_sweep(const char *const role[16], int quiet);
-/* The Color Stack single-bit sweep of one variant (cs-grom, cs-gram or cs-sq) of the literal: the number of failed probes (0 is a pass). */
-uint32_t vpr_sweep_cs(const char *variant, int quiet);
+/* The Color Stack single-bit sweep of one variant (cs-grom, cs-gram or cs-sq) of the literal: the number of failed probes (0 is a pass). With swap
+ * nonzero the roles of bit 0 and bit 1 of that variant are exchanged in a copy of the literal first (the judge). */
+uint32_t vpr_sweep_cs(const char *variant, int swap, int quiet);
+/* 1 when every bit 15..0 of the variant has a role row, and the number of rows whose role is ign into *ign. */
+int vpr_cs_roles_complete(const char *variant, uint32_t *ign);
+/* The judge of the Color Stack sweeps: 1 pass (IVS_TEST_PASS) when each variant passes true and fails with two roles swapped. */
+int vpr_cs_judge(void);
 
 #endif

@@ -5,6 +5,7 @@
  * unchanged. Stand-in guests are in stic_progs.c (decles derived in stic_cases.h); the snapshot oracle (storage, nine digests and
  * machine time) is ss_snap in stic_state.c.
  *   stic.peek.mode-unchanged-0021   a peek of $0021 and of its three read aliases inside the window leaves the mode as it was
+ *   stic.peek.sweep-bytes-equal-after-render  (plan 06-11) the same sweep with a delivered Color Stack frame present
  *   stic.peek.sweep-bytes-equal     whole-instance and digest equality around peeking every STIC-decoded address, the alias
  *                                   windows and the glyph range, in five states
  *   stic.peek.cpu-read-switches     the POSITIVE CONTROL: a CPU read of $0021 inside the window does switch to Color Stack and
@@ -179,13 +180,36 @@ static const sk_range sk_ranges[5] = {
     {0x3000u, 0x1000u, 0u}, /* the glyph range: GROM and GRAM */
 };
 
+/* Peeks every address of the sweep ranges (the STIC-decoded addresses, the alias windows and the glyph range) of the running instance x and checks
+ * after each range that the whole instance, the digests and the machine time are unchanged against the snapshot s taken before. 1 when all hold. */
+static int sk_sweep_instance(ivs_ms_inst *x, const ss_snap *s, const char *name)
+{
+  uint32_t k;
+  uint32_t i;
+  for (k = 0u; k < 5u; k++) {
+    const sk_range *g = &sk_ranges[k];
+    if (g->one_by_one != 0u) {
+      for (i = 0u; i < g->count; i++) {
+        if (ivs_machine_peek(x->m, (uint16_t)(g->lo + i), 1u, sk_buf) != IVS_OK) {
+          return 0;
+        }
+      }
+    } else if (ivs_machine_peek(x->m, g->lo, g->count, sk_buf) != IVS_OK) {
+      return 0;
+    }
+    if (!ss_snap_same(s, x)) {
+      ivs_test_diag("state %s: peeking %04X..%04X changed the machine", name, (unsigned)g->lo, (unsigned)(g->lo + g->count - 1u));
+      return 0;
+    }
+  }
+  return 1;
+}
+
 static int sk_sweep_bytes_equal(void)
 {
   ivs_ms_inst x;
   ss_snap s;
   uint32_t which;
-  uint32_t k;
-  uint32_t i;
   int rc = IVS_TEST_FAIL;
   s.copy = NULL;
   x.storage = NULL;
@@ -194,24 +218,51 @@ static int sk_sweep_bytes_equal(void)
       return IVS_TEST_FAIL;
     }
     SK_CHECK(ss_snap_take(&s, &x));
-    for (k = 0u; k < 5u; k++) {
-      const sk_range *g = &sk_ranges[k];
-      if (g->one_by_one != 0u) {
-        for (i = 0u; i < g->count; i++) {
-          SK_CHECK(ivs_machine_peek(x.m, (uint16_t)(g->lo + i), 1u, sk_buf) == IVS_OK);
-        }
-      } else {
-        SK_CHECK(ivs_machine_peek(x.m, g->lo, g->count, sk_buf) == IVS_OK);
-      }
-      if (!ss_snap_same(&s, &x)) {
-        ivs_test_diag("state %s: peeking %04X..%04X changed the machine", sk_state_name[which], (unsigned)g->lo,
-                      (unsigned)(g->lo + g->count - 1u));
-        goto done;
-      }
-    }
+    SK_CHECK(sk_sweep_instance(&x, &s, sk_state_name[which]));
     ss_snap_free(&s);
     ivs_ms_free(&x);
   }
+  rc = IVS_TEST_PASS;
+done:
+  ss_snap_free(&s);
+  if (x.storage != NULL) {
+    ivs_ms_free(&x);
+  }
+  return rc;
+}
+
+/* Plan 06-11 (VID-06): the same sweep with a DELIVERED Color Stack frame present. A guest reads $0021 (Color Stack), strobes the display and loops; the
+ * BACKTAB holds three advance cards and the four stack registers are set, and the machine is run past the first frame event (59,736 ticks), so a
+ * frame has been rendered (the chain count is 1, the report's pointer is 3, the row latches hold the BACKTAB). The sweep of every STIC-decoded, alias
+ * and glyph address must leave the whole instance (storage, so the row latches and the chain, the digests and the time) byte-identical. */
+static int sk_sweep_after_render(void)
+{
+  uint16_t w[SC_PROG_MAX];
+  size_t n = sc_w_mvi(w, 0u, 0x0021u, 1u);
+  ivs_ms_inst x;
+  ss_snap s;
+  ivs_stic_report r;
+  struct ivs_machine *im;
+  uint32_t k;
+  int rc = IVS_TEST_FAIL;
+  s.copy = NULL;
+  x.storage = NULL;
+  n = sc_w_mvo(w, n, 0u, 0x0020u);
+  n = sc_w_loop(w, n);
+  SK_CHECK(sc_guest(&x, w, n, 0u));
+  im = ivs_machine_from_handle_mut(x.m);
+  ivs_memsys_poke_raw_internal(&im->mem, 0x0200u + 21u, 0x2000u);
+  ivs_memsys_poke_raw_internal(&im->mem, 0x0200u + 105u, 0x2000u);
+  ivs_memsys_poke_raw_internal(&im->mem, 0x0200u + 189u, 0x2000u);
+  for (k = 0u; k < 4u; k++) {
+    im->mem.stic_reg[0x28u + k] = (uint16_t)(3u * k + 1u);
+  }
+  SK_CHECK(sc_run_until(&x, 60000u));
+  SK_CHECK(sk_report(&x, &r));
+  SK_CHECK(r.mode == 1u && r.cs_ptr == 3u && sk_im(&x)->obs.video.count == 1u); /* a Color Stack frame was rendered and delivered */
+  SK_CHECK(sk_im(&x)->stic.row_latch[1][1] == 0x2000u);
+  SK_CHECK(ss_snap_take(&s, &x));
+  SK_CHECK(sk_sweep_instance(&x, &s, "Color Stack with a rendered frame"));
   rc = IVS_TEST_PASS;
 done:
   ss_snap_free(&s);
@@ -359,6 +410,7 @@ static int sk_value_equals_cpu_value(void)
 const ivs_test_case ivs_stic_peek_cases[] = {
     {"stic.peek.mode-unchanged-0021", sk_mode_unchanged_0021, NULL},
     {"stic.peek.sweep-bytes-equal", sk_sweep_bytes_equal, NULL},
+    {"stic.peek.sweep-bytes-equal-after-render", sk_sweep_after_render, NULL},
     {"stic.peek.cpu-read-switches", sk_cpu_read_switches, NULL},
     {"stic.peek.value-equals-cpu-value", sk_value_equals_cpu_value, NULL},
 };

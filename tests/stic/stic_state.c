@@ -439,11 +439,56 @@ done:
   return rc;
 }
 
+/* Plan 06-11 (VID-06): the report's cs_ptr after a rendered frame equals the final pointer a frame with a known number of advances leaves. The
+ * BACKTAB holds N Color Stack cards with bit 13 set (the word 2000: graphics ROM card 0, foreground 0, advance), each advance moving the pointer by one
+ * and the pointer wrapping at 4: 3 advances end at 3, 4 advances at 0, 5 at 1. The guest reads $0021 (Color Stack), strobes and loops; the machine
+ * runs past the first frame event. A Foreground/Background run of the same BACKTAB leaves the pointer 0 (bit 13 is a background bit there). */
+static int ss_cs_ptr_run(uint32_t advances, uint32_t cs_mode, uint32_t *ptr)
+{
+  uint16_t w[SC_PROG_MAX];
+  size_t n = 0u;
+  ivs_ms_inst x;
+  ivs_stic_report r;
+  struct ivs_machine *im;
+  uint32_t k;
+  int ok = 0;
+  if (cs_mode != 0u) {
+    n = sc_w_mvi(w, n, 0x0021u, 1u);
+  }
+  n = sc_w_mvo(w, n, 0u, 0x0020u);
+  n = sc_w_loop(w, n);
+  SC_CHECK(sc_guest(&x, w, n, 0u));
+  im = ivs_machine_from_handle_mut(x.m);
+  for (k = 0u; k < advances; k++) {
+    ivs_memsys_poke_raw_internal(&im->mem, (uint16_t)(0x0200u + 7u + 13u * k), 0x2000u);
+  }
+  if (sc_run_until(&x, 60000u)) {
+    memset(&r, 0, sizeof r);
+    r.struct_size = IVS_STIC_REPORT_V1_SIZE;
+    ok = ivs_machine_stic_state(x.m, &r) == IVS_OK && im->obs.video.count == 1u && r.mode == cs_mode && r.frame_index == 1u;
+    *ptr = r.cs_ptr;
+  }
+  ivs_ms_free(&x);
+  return ok;
+}
+
+static int ss_cs_ptr_after_render(void)
+{
+  uint32_t p = 99u;
+  SC_CHECK(ss_cs_ptr_run(0u, 1u, &p) && p == 0u);
+  SC_CHECK(ss_cs_ptr_run(3u, 1u, &p) && p == 3u);
+  SC_CHECK(ss_cs_ptr_run(4u, 1u, &p) && p == 0u);
+  SC_CHECK(ss_cs_ptr_run(5u, 1u, &p) && p == 1u);
+  SC_CHECK(ss_cs_ptr_run(3u, 0u, &p) && p == 0u);
+  return IVS_TEST_PASS;
+}
+
 const ivs_test_case ivs_stic_state_cases[] = {
     {"stic.state.refusal-ladder", ss_refusal_ladder, NULL},
     {"stic.state.fields", ss_fields, NULL},
     {"stic.state.no-write", ss_no_write, NULL},
     {"stic.state.v1-size-caller", ss_v1_size_caller, NULL},
     {"stic.state.struct-pins", ss_struct_pins, NULL},
+    {"stic.state.cs-ptr-after-render", ss_cs_ptr_after_render, NULL},
 };
 const size_t ivs_stic_state_count = sizeof ivs_stic_state_cases / sizeof ivs_stic_state_cases[0];

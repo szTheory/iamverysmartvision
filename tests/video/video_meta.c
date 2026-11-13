@@ -120,9 +120,110 @@ static int vm_purity(void)
   return IVS_TEST_PASS;
 }
 
+/* Mode agreement: a Color Stack frame with no advance bits and graphics cards with foreground below 8 equals the Foreground/Background frame of
+ * the equivalent words with background = stack entry 0. 32 seeded frames over random graphics RAM, random cards 0..63 and random foregrounds
+ * 0..7, a random stack; the graphics ROM is the zero image in both. */
+static int vm_mode_agree(void)
+{
+  uint32_t k;
+  for (k = 0u; k < 32u; k++) {
+    uint32_t s = 0x7F4A7C15u ^ (0x01000193u * (k + 1u));
+    uint32_t stack[4];
+    uint32_t i;
+    vf_mem_clear();
+    vm_random_gram(&s);
+    for (i = 0u; i < 4u; i++) {
+      stack[i] = vm_next(&s) & 0xFu;
+    }
+    for (i = 0u; i < 240u; i++) {
+      uint32_t r = vm_next(&s);
+      uint32_t fg = r & 7u;
+      uint32_t card = (r >> 3) & 0x3Fu;
+      uint32_t sel = (r >> 9) & 1u;
+      vm_words[i] = (uint16_t)vid_encode_cs(0u, fg, sel, card);
+      vm_alt[i] = (uint16_t)vid_encode_fgbg(fg, stack[0], sel, card);
+    }
+    vf_render_cs(vm_words, 1u, stack, vm_a, NULL);
+    vf_render_cs(vm_alt, 0u, stack, vm_b, NULL);
+    if (memcmp(vm_a, vm_b, VF_PLANE_BYTES) != 0) {
+      ivs_test_diag("seed %u: the Color Stack frame without advances differs from the Foreground/Background frame", (unsigned)k);
+      return IVS_TEST_FAIL;
+    }
+  }
+  return IVS_TEST_PASS;
+}
+
+/* Permutation: a seeded permutation of the cells of columns 0..18 permutes their 8 x 8 blocks, in Foreground/Background mode and in Color Stack mode
+ * without advances (the pointer then never moves), and the color stack is untouched: rendering the Foreground/Background frame over two different
+ * stacks is equal (the registers are not read in that mode) and the whole memory system is unchanged by every render. */
+static int vm_permute(void)
+{
+  uint32_t k;
+  for (k = 0u; k < 16u; k++) {
+    uint32_t s = 0x2F6E2B1u ^ (0x01000193u * (k + 1u));
+    uint32_t mode = k & 1u;
+    uint32_t perm[19 * 12];
+    uint32_t stack[4];
+    uint32_t stack2[4];
+    uint32_t i;
+    vf_mem_clear();
+    vm_random_gram(&s);
+    for (i = 0u; i < 4u; i++) {
+      stack[i] = vm_next(&s) & 0xFu;
+      stack2[i] = (stack[i] + 1u) & 0xFu;
+    }
+    for (i = 0u; i < 19u * 12u; i++) {
+      perm[i] = i;
+    }
+    for (i = 19u * 12u - 1u; i > 0u; i--) {
+      uint32_t j = vm_next(&s) % (i + 1u);
+      uint32_t t = perm[i];
+      perm[i] = perm[j];
+      perm[j] = t;
+    }
+    for (i = 0u; i < 240u; i++) {
+      uint32_t r = vm_next(&s);
+      uint32_t fg = r & 7u;
+      uint32_t card = (r >> 3) & 0x3Fu;
+      uint32_t bg = (r >> 9) & 0xFu;
+      vm_words[i] = (uint16_t)(mode == 0u ? vid_encode_fgbg(fg, bg, 1u, card) : vid_encode_cs(0u, fg, 1u, card));
+      vm_alt[i] = vm_words[i];
+    }
+    for (i = 0u; i < 19u * 12u; i++) {
+      uint32_t from = 20u * (i / 19u) + (i % 19u);
+      uint32_t to = 20u * (perm[i] / 19u) + (perm[i] % 19u);
+      vm_alt[to] = vm_words[from];
+    }
+    memcpy(&vm_snap, vf_mem(), sizeof vm_snap);
+    vf_render_cs(vm_words, mode, stack, vm_a, NULL);
+    vf_render_cs(vm_alt, mode, stack, vm_b, NULL);
+    vf_render_cs(vm_words, mode, stack2, vm_c, NULL);
+    VC_CHECK(memcmp(&vm_snap, vf_mem(), sizeof vm_snap) == 0);
+    for (i = 0u; i < 19u * 12u; i++) {
+      uint32_t r = i / 19u;
+      uint32_t c = i % 19u;
+      if (mode == 0u && memcmp(vm_a, vm_c, VF_PLANE_BYTES) != 0) {
+        ivs_test_diag("seed %u: the Foreground/Background frame depends on the color stack", (unsigned)k);
+        return IVS_TEST_FAIL;
+      }
+      if (!vm_block_eq(vm_a, r, c, vm_b, perm[i] / 19u, perm[i] % 19u)) {
+        ivs_test_diag("seed %u mode %u: block (%u,%u) did not move with its word", (unsigned)k, (unsigned)mode, (unsigned)r, (unsigned)c);
+        return IVS_TEST_FAIL;
+      }
+    }
+    if (mode == 1u && memcmp(vm_a, vm_c, VF_PLANE_BYTES) == 0) {
+      ivs_test_diag("seed %u: the Color Stack frame ignores the stack", (unsigned)k); /* the control: the stack IS read in this mode */
+      return IVS_TEST_FAIL;
+    }
+  }
+  return IVS_TEST_PASS;
+}
+
 const ivs_test_case ivs_video_meta_cases[] = {
     {"video.meta.translate", vm_translate, NULL},
     {"video.meta.bits-15-14-ignored", vm_bits_15_14_ignored, NULL},
     {"video.meta.purity", vm_purity, NULL},
+    {"video.meta.mode-agree", vm_mode_agree, NULL},
+    {"video.meta.permute", vm_permute, NULL},
 };
 const size_t ivs_video_meta_count = sizeof ivs_video_meta_cases / sizeof ivs_video_meta_cases[0];

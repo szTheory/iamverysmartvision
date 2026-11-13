@@ -83,3 +83,25 @@ video.judge.card-bit-flipped
 # Plan 06-11 task 1 (VID-04, tracer): the Color Stack decode against the hand-derived frame F-B1 of plan 06-01, in the unit path and through the whole machine (a read of $0021 inside the register window selects Color Stack); the reviewed inversion of video.frame.cs-not-decoded is video.frame.cs-decoded.
 video.cstack.F-B1
 video.cstack.machine-F-B1
+# Plan 06-11 task 2 (VID-04, VID-06): frames F-B2 and F-B3 (unit) and F-B3 (machine), the Color Stack rule tests (advance before draw, the wrap, one stack across rows, the cut-off column, the restart each frame in the machine path, Colored Squares), the card decode of the four (b12, b11) pairs, the 48 single-bit probes of the three Color Stack variants, the Foreground/Background agreement and the permutation relations, the mode switch end to end, and the judges.
+video.cstack.F-B2
+video.cstack.F-B3
+video.cstack.machine-F-B3
+video.cstack.advance-before-draw
+video.cstack.advance-wrap
+video.cstack.one-stack-across-rows
+video.cstack.cutoff-column-advances
+video.cstack.reset-per-frame
+video.cstack.squares-quadrants
+video.cstack.squares-no-advance
+video.cstack.squares-stack7
+video.card.cs-decode
+video.probe.bit-roles-cs-grom
+video.probe.bit-roles-cs-gram
+video.probe.bit-roles-cs-sq
+video.meta.mode-agree
+video.meta.permute
+video.mode.switch-end-to-end
+video.mode.write-selects-next-frame
+video.judge.cstack-persistent-pointer
+video.judge.cs-roles-swapped

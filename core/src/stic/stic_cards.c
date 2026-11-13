@@ -80,6 +80,9 @@ uint32_t ivs_stic_render_cards_row(const ivs_stic_cardin *in, const uint16_t *ro
       sel = b11;
       card = b11 == 0u ? (w >> 3) & 0xFFu : (w >> 3) & 0x3Fu;
       fg = (b12 == 1u ? 8u : 0u) + (w & 7u);
+#ifdef IVS_FAULT_VIDEO_CSTACK_NO_ADVANCE
+      adv = 0u; /* named fault: bit 13 never advances the color-stack pointer */
+#endif
       if (adv != 0u) {
         pos = (pos + 1u) & 3u; /* advance BEFORE the card is drawn */
       }

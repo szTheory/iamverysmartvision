@@ -45,8 +45,14 @@ static int vj_card_bit_flipped(void)
   return IVS_TEST_PASS;
 }
 
+static int vj_cs_roles_swapped(void)
+{
+  return vpr_cs_judge();
+}
+
 const ivs_test_case ivs_video_judge_cases[] = {
     {"video.judge.frame-row-changed", vj_frame_row_changed, NULL},
     {"video.judge.card-bit-flipped", vj_card_bit_flipped, NULL},
+    {"video.judge.cs-roles-swapped", vj_cs_roles_swapped, NULL},
 };
 const size_t ivs_video_judge_count = sizeof ivs_video_judge_cases / sizeof ivs_video_judge_cases[0];

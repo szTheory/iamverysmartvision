@@ -102,3 +102,6 @@ stic.bounds.g-and-u-full-machine
 stic.bounds.log-records-per-frame-le-W
 stic.bounds.unit-ticks-le-U
 stic.bounds.no-wait-reply
+# Plan 06-11 (VID-06): inspection completed against rendering: the peek sweep with a delivered Color Stack frame present leaves the whole instance byte-identical, and the report's cs_ptr after a rendered frame equals the final pointer of a frame with a known number of advances.
+stic.peek.sweep-bytes-equal-after-render
+stic.state.cs-ptr-after-render
