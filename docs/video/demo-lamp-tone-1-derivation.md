@@ -45,3 +45,583 @@ Steps: `run-to` 200000, 440000, 640000 and 806568 ticks. The run delivers the fr
 **A10 Not done.** No halt or quit input, no text, no glyph set, no graphics ROM read, no EXEC call, no data table, no moving object, no collision, no delay register, no border or color stack write, no noise, no envelope, no tune.
 
 <!-- blind-spec-end -->
+
+## (b) Runtime arithmetic (D-12, D-13, A-02, A-03)
+
+The rules come first and the constants after them. A frame cycle is a CPU cycle counted from the frame start S_k (4 ticks per cycle, 14,934 per frame); "the routine of frame k" is the interrupt service routine that starts in frame k. Cycle counts are inference: they come from the cycle table of `data/cp1610/opcode-families.json` (cycles as printed; a branch 7 cycles not taken and 9 taken as policy C29; the SDBD pair 14 as policy C34), from the 9-cycle interrupt entry and the 12-cycle jump of the boot stub (`docs/cp1610/reference-notes.md`, an inference from the interrupt timing figure), and from the STIC figures of `docs/stic/timing-notes.md` (defaults C1 to C4 and C91 to C93). A figure that depends on the real console is not claimed.
+
+### Constants used
+
+| Constant | Value | Source |
+|----------|-------|--------|
+| Frame | 14,934 cycles = 59,736 ticks, S_k = 59,736 k | STIC-R29 |
+| Register window | a stamp in the first 2,000 cycles of a frame | STIC-R07, STIC-R18 |
+| Graphics-memory window | the first 3,780 cycles | STIC-R08, STIC-R19 |
+| Strobe | a `$0020` write inside the register window arms the frame; a later strobe is dropped | STIC-R22, STIC-R23 |
+| Interrupt level | a unit starting at frame cycle c with 1 <= c <= 3,791 sees the level; the unit starting at cycle 3,792 does not | STIC-R30 |
+| Row latch | BACKTAB row r is fetched at cycle 3,848 + 912 r | `docs/stic/timing-notes.md` |
+| Bus windows | 13 windows at cycle 3,791 + 912 i (i = 0 to 12), only while the display latch is set; the CPU resumes at the window start + 117 cycles, so a loop whose units are at most 9 cycles long loses 108 to 117 cycles per window | STIC-R31, STIC-R32 |
+| Entry | an accepted interrupt costs 9 cycles, the vector `JD $5004` 12 more; the first routine instruction starts 21 cycles after the accepting boundary | reference notes (inference), contract 2 |
+| Idle loop | a branch to itself: 9 cycles per taken branch, so a unit boundary every 9 cycles and the accepting boundary lies 1 to 9 cycles after the level starts | opcode table |
+| Instruction cycles | EIS 4; MVII 8 (SDBD pair 14); MVI 10; MVO 11; MVO@ 9; ANDI, CMPI 8; CMP, ADD, AND with a direct address 10; INCR, DECR, COMR, CLRR, TSTR, MOVR, ADCR, SLLC and SWAP (one position) 6; B, BZE, BNZE 9 taken and 7 not taken; JSR 12; JR 7; J 12 | opcode table |
+
+The first routine instruction therefore starts at frame cycle t0 = 22 to 30 (1 to 9 cycles of boundary lag, 9 of entry, 12 of the stub jump). MVI, MVII and MVO leave the flags unchanged; TSTR, CMP, CMPI, ANDI, ADD, DECR and MOVR set them (status bits of the same table), so the reference sequences below test a loaded value with TSTR before a branch.
+
+### Rule R-S, the startup band (A-02)
+
+The first `EIS` of the program starts at or after frame-0 cycle 3,777 and not later than frame-0 cycle 14,930. Then the level of frame 0 (it ends at cycle 3,791) cannot re-enter, the idle loop is waiting when the level of frame 1 starts, the first routine is the routine of frame 1 and starts at frame cycle 22 to 30, and frame 0 has no strobe: `frame 0 displayed == no`. The graphics RAM card is written first in the init so that it is complete long before the graphics-memory window of frame 0 closes (cycle 3,780).
+
+Reference init, in the order of A5 (cycles from the first cartridge instruction):
+
+| Block | Reference instructions | Cycles |
+|-------|------------------------|--------|
+| entry branch | `B` to the init code | 9 |
+| card 0 | SDBD + MVII `$3800` to R4 (14), MVII `00FF` (8), MVII 8 (8), eight times MVO@ (9) + DECR (6) + BNZE (9, the last 7) | 14 + 8 + 8 + 190 = 220 |
+| clear | MVII `0200` (8), CLRR (6), MVII 256 (8), 256 times MVO@ + DECR + BNZE (255 x 24 + 22 = 6,142) | 6,164 |
+| last bytes | MVII `00FF` (8), two MVO (22) | 30 |
+| PSG init | MVII `003C` (8), MVO (11), CLRR (6), five MVO (55) | 80 |
+| marker | MVII `03C5` (8), MVO (11) | 19 |
+| jump to the `EIS` | `B` (9) | 9 |
+| total up to the first `EIS` | | 6,531 |
+
+The cartridge starts at frame-0 cycle E0 = 33 (the stub path alone: B 9, DIS 4, MVII 8, J 12) to at most 100 (the reset sequence before the stub is a profile figure, bounded here with a margin). Hence the card is complete by cycle E0 + 229 <= 329, which is at least 3,451 cycles inside the graphics-memory window, and the first `EIS` starts at frame-0 cycle 6,564 to 6,631: 2,787 cycles above the lower edge and 8,299 below the upper edge. The init ends with a jump to the `EIS` (it does not enter the delay of the re-arm: it already lasts longer than 3,776 cycles). Frame 0 has no bus windows (no strobe, so no latch): the cycle counts of the init are stall-free.
+
+### Rule R-X, the strobe
+
+The strobe is the first action of the routine, so it is stamped when the first routine instruction (MVO, 11 cycles) completes: at frame cycle t0 + 11 = 33 to 41. The register window closes at cycle 2,000, so the margin is at least 1,959 cycles; the mode-select write (the second routine instruction) completes by cycle 52. A strobe stamped at cycle 2,000 or later is dropped and the frame is blank (STIC-R22).
+
+### Rule R-V, the render deadline
+
+Every BACKTAB word of the 16 lamps is written before the first row latch (cycle 3,848), so the picture of frame k is a function of the controller state read by the routine of frame k alone (no row can latch a half-written lamp row). The reference sequence below finishes its last BACKTAB write at frame cycle 1,151 at the latest (table below): 2,697 cycles before the first latch (and 6,345 cycles before the latch of row 4, which is the first lamp row, at 7,496). The deadline of the specification is cycle 3,700: the work of the routine ends well before it.
+
+### Rule R-E, the re-arm (A-03)
+
+Let c_E be the frame cycle at which the `EIS` of the re-arm starts (counted with the bus-window stalls). In every frame 3,777 <= c_E <= 14,930.
+
+- Lower edge. `EIS` is followed either by `PULR R7` (11 cycles, form A below) or by the branch of the idle loop (9 cycles, form B). EIS is not interruptible, so the first boundary that can accept is 15 (form A) or 13 (form B) cycles after c_E, and a unit starting at cycle 3,792 or later no longer sees the level: c_E >= 3,777 (form A, exact) or c_E >= 3,779 (form B, exact). The rule keeps the stated value 3,777 for both forms. Below it the routine re-enters in the same frame: two routines per frame, the counter doubles.
+- Upper edge. The boundaries of the idle loop lie 9 cycles apart, so a routine starts at its usual t0 (22 to 30) only if the idle loop is already waiting when the level of the next frame starts at cycle 14,935; with `EIS` and one idle branch (13 cycles) this holds for c_E <= 14,930 (14,928 in form A). Above it the routine of the next frame starts later each frame (drift); once its strobe is later than cycle 2,000 the frame is blank, and once the `EIS` itself comes after cycle 3,778 of the next frame (c_E above 18,712) that frame has no routine at all.
+
+The two forms, derived from the same two edges:
+
+| Form | Re-arm | c_E | Band | Width |
+|------|--------|-----|------|-------|
+| A | pad loop of M iterations inside the routine, then `EIS` and `PULR R7` | t0 + (W - 18) + 8 + (15 M - 2) + stalls | 3,777 to 14,928 | 11,151 cycles |
+| B | the routine ends `DECR R6`, `J wait`; `wait`: `MVII #N,R1`, N times (`DECR R1`, `BNZE`), `EIS`, then `B` to itself | t0 + W + 8 + (15 N - 2) + stalls | 3,777 to 14,930 | 11,153 cycles |
+
+W is the work of the routine up to and including `DECR R6` and `J wait` (the budget below: 1,010 to 1,242 cycles). The widths differ by 2 cycles, so neither form is wider: the S-1 note's smaller margin for the in-routine pad came from tuning the pad close to the lower edge, not from the form. The default of A-03 stands: form B, because the routine releases its stack word before the delay and the delay count is the only number that sets the position of the `EIS`.
+
+Numbers for form B (stall-free before cycle 3,791, then 108 to 117 cycles per bus window passed, 13 windows at most):
+
+- Lower edge in iterations: the quietest routine (W = 1,010, t0 = 22) gives 22 + 1,010 + 6 + 15 N >= 3,777, so N >= 183 (c_E = 3,783; N = 182 gives 3,768).
+- Upper edge in iterations: the busiest routine (W = 1,242, t0 = 30, 13 windows at 117 cycles) gives 30 + 1,242 + 6 + 15 N + 1,521 <= 14,930, so N <= 808 (N = 809 gives 14,934).
+- The chosen delay is **N = 500**. Its c_E lies between 9,186 (quietest routine, t0 = 22, 6 windows at 108 cycles) and 9,597 (busiest routine, t0 = 30, 7 windows at 117 cycles): 5,409 cycles above the lower edge and 5,333 below the upper edge, about 355 iterations of room on each side.
+- Mutant values (section (g)), chosen outside the band by more than the uncertainty of W and of the stall size: N = 100 puts c_E at 2,538 to 2,778 (999 cycles below the edge, re-entry in every frame); N = 1,150 puts c_E at 19,692 to 20,049, that is 4,758 to 5,115 cycles into the next frame, after the level has ended: that frame has no routine and only every second frame has one. The negative control N = 300 puts c_E at 5,862 to 6,129 (2,085 above the lower edge, 8,801 below the upper edge) and must still succeed.
+
+### The routine's cycle budget (the order of A6; the reference sequence of 07-06)
+
+| Step | Reference instructions | Cycles |
+|------|------------------------|--------|
+| 1 strobe | MVO `$0020` | 11 |
+| 2 mode | MVO `$0021` | 11 |
+| 3 counter | MVI, INCR, MVO | 27 |
+| 4 deferred, per port | nothing pending: MVI, TSTR, BZE taken (25); pending: MVI, TSTR, BZE not taken, DECR, MVO to the amplitude register, CLRR, MVO to the pending word (57) | 25 or 57 |
+| 5 poll, per port | no change: MVI port, ANDI `00FF`, CMP last, BZE taken (37). Change, byte not `FF`: the same with BZE not taken (35), MVO last, MVI, INCR, MVO counter (38), MVO fine period (11), MVII 1, CMPI `00FF`, BZE not taken, MVII 16, MVO pending (42): 126. Change, byte `FF`: BZE taken in the pending test: 120 | 37, 126 or 120 |
+| 6 render, per port | MVII base to R4 (8), JSR (12); subroutine: COMR, SWAP, SDBD + MVII `0801` (14), MVII 8, eight times (SLLC, MOVR, ADCR, MVO@, DECR, BNZE: 42, the last 40), JR (7) | 395 |
+| 7 gate | no change in the frame: MVI, ADD, BZE taken (29). Change: MVI, ADD, BZE not taken (27), MVI last0, AND last1, CMPI `00FF`, MVII 15, BNZE taken (closed) then MVO (56) or BNZE not taken, CLRR, MVO (60) | 29, 83 or 87 |
+| 8 re-arm | DECR R6 (6), J (12) | 18 |
+
+Per routine (W, from the first routine instruction to the end of `J wait`; the cycles from the frame start are t0 + the cumulative sum, t0 <= 30):
+
+| Frame | What the routine does | W (cycles) | Last BACKTAB write ends | Last PSG write ends |
+|-------|-----------------------|------------|--------------------------|---------------------|
+| 1 | no change, nothing pending | 1,010 | 973 | - |
+| 2 | port 0 changes (7E); gate 15 | 1,153 | 1,062 | 1,165 |
+| 3 | deferred amplitude of port 0 | 1,042 | 1,005 | 119 |
+| 4 | port 0 changes (5A); gate 15 | 1,153 | 1,062 | 1,165 |
+| 5 | deferred amplitude of port 0 | 1,042 | 1,005 | 119 |
+| 6 | port 0 changes (FF); port 1 changes (FD); gate 15 | 1,236 | 1,145 | 1,248 |
+| 7 | deferred amplitude of port 0; deferred amplitude of port 1 | 1,074 | 1,037 | 176 |
+| 8 | port 0 changes (5F); gate 15 | 1,153 | 1,062 | 1,165 |
+| 9 | deferred amplitude of port 0 | 1,042 | 1,005 | 119 |
+| 10 | port 0 changes (FF); port 1 changes (FF); gate 0 | 1,234 | 1,139 | 1,246 |
+| 11 | deferred amplitude of port 0; deferred amplitude of port 1 | 1,074 | 1,037 | 176 |
+| 12 | port 0 changes (5A); port 1 changes (9F); gate 15 | 1,242 | 1,151 | 1,254 |
+| 13 | deferred amplitude of port 0; deferred amplitude of port 1 | 1,074 | 1,037 | 176 |
+
+Minimum W = 1,010 (frame 1; no change, nothing pending), maximum W = 1,242 (frame 12). All 16 BACKTAB words are written by frame cycle 1,151 at the latest (frame 12), all PSG writes by 1,254 (the gate of frame 12), the strobe at cycle 41 at the latest, the port reads end by cycle 381. These are the bounds that A8 states with margin.
+
+### The counter rule (A-02)
+
+The counter `[02F1]` counts routines; the routine of frame k brings it to k. At a stop tick T that lies at least 10,000 ticks into frame floor(T / 59,736) (the routine has finished: it ends by cycle 1,272, tick 5,088) `[02F1]` = floor(T / 59,736): T = 200,000 gives 3, 440,000 gives 7, 640,000 gives 10 and 806,568 gives 13 = `000D` (13 x 59,736 = 776,568 and 806,568 - 776,568 = 30,000). The older reading "floor(T / 59,736) + 1" belongs to the frame-0 band (an init that reaches its `EIS` before cycle 1,900) and does not apply here.
+
+## (c) Per-event state (D-04, D-06, D-14)
+
+The script of A9, the events at 100,000 + 120,000 k ticks. The tick of each event in its frame, and its distance to the nearest sample instant (the port read of a routine ends at frame cycle 131 to 381, that is tick S_k + 524 to S_k + 1,524, so a sample instant lies within S_k + 500 and S_k + 1,600):
+
+| Event | Tick | Frame j | Offset into frame j | To the end of frame j | After the sample of frame j (at least) | Before the sample of frame j + 1 (at least) | Seen first by |
+|-------|------|---------|---------------------|-----------------------|-----------------------------------------|---------------------------------------------|---------------|
+| 1 | 100,000 | 1 | 40,264 | 19,472 | 38,664 | 19,972 | frame 2 |
+| 2 | 220,000 | 3 | 40,792 | 18,944 | 39,192 | 19,444 | frame 4 |
+| 3 | 340,000 | 5 | 41,320 | 18,416 | 39,720 | 18,916 | frame 6 |
+| 4 | 460,000 | 7 | 41,848 | 17,888 | 40,248 | 18,388 | frame 8 |
+| 5 | 580,000 | 9 | 42,376 | 17,360 | 40,776 | 17,860 | frame 10 |
+| 6 | 700,000 | 11 | 42,904 | 16,832 | 41,304 | 17,332 | frame 12 |
+
+Every event is at least 16,832 ticks from a frame end (D-06 asks for 16,800) and at least 17,332 ticks from the next sample instant, which is far above the jitter of the routine's start (8 cycles = 32 ticks) and above the 10,000 ticks that the verification note requires. An event in frame j is first seen by the routine of frame j + 1 and shown by frame j + 1.
+
+Settling rule. The rule of D-14 and the verification note (S4-2) is that no assert may depend on which of two consecutive frames shows an event. Here that dependence cannot occur, because of the distances above, and the asserts are chosen so that each response is also asserted two frames after its event: the response of event e is asserted in frame j(e) + 2 (frames 3, 5, 7, 9 and 11; each is the frame of the following event, whose own response is not yet shown, because the routine of that frame sampled before it). The last event is asserted in frame 12, the first frame that shows it, because the run bound of D-06 (806,568 ticks) delivers no later frame (frame 13 ends at tick 836,304) and its literal F-S6 would otherwise be unused; its distance to the sample instant (17,332 ticks) is the justification, and the plan SUMMARY records this as the reading of "no assert on the event frame or the next one". Frames 1, 2, 4, 6, 8 and 10 carry no assert in `pass` and `shift`. Frames 0 (not displayed) and 1 to 12 of `idle` have no event and are asserted freely.
+
+State after the routine of each frame (rules A6 and A7; the pending words are shown after the routine, so they hold the amplitudes that the next routine writes):
+
+| Frame | Start tick | Event in the frame | Bytes read (port 0 / port 1) | Row 4 | Row 7 | Last bytes | Change counters | Pending words | PSG records of the routine (log index: address, value) | Counter |
+|-------|------------|--------------------|------------------------------|-------|-------|------------|-----------------|---------------|---------------------------------------------------------|---------|
+| 0 | 0 | - | (no routine, not displayed) | - | - | FF / FF | 0 / 0 | 0000 / 0000 | init: 0 to 5 | 0000 |
+| 1 | 59,736 | event 1 | FF / FF | 11111111 | 11111111 | FF / FF | 0 / 0 | 0000 / 0000 | - | 0001 |
+| 2 | 119,472 | - | 7E / FF | 21111112 | 11111111 | 7E / FF | 1 / 0 | 0010 / 0000 | 6: 0, 007E, 7: 13, 000F | 0002 |
+| 3 | 179,208 | event 2 | 7E / FF | 21111112 | 11111111 | 7E / FF | 1 / 0 | 0000 / 0000 | 8: 11, 000F | 0003 |
+| 4 | 238,944 | - | 5A / FF | 21211212 | 11111111 | 5A / FF | 2 / 0 | 0010 / 0000 | 9: 0, 005A, 10: 13, 000F | 0004 |
+| 5 | 298,680 | event 3 | 5A / FF | 21211212 | 11111111 | 5A / FF | 2 / 0 | 0000 / 0000 | 11: 11, 000F | 0005 |
+| 6 | 358,416 | - | FF / FD | 11111111 | 11111121 | FF / FD | 3 / 1 | 0001 / 0010 | 12: 0, 00FF, 13: 1, 00FD, 14: 13, 000F | 0006 |
+| 7 | 418,152 | event 4 | FF / FD | 11111111 | 11111121 | FF / FD | 3 / 1 | 0000 / 0000 | 15: 11, 0000, 16: 12, 000F | 0007 |
+| 8 | 477,888 | - | 5F / FD | 21211111 | 11111121 | 5F / FD | 4 / 1 | 0010 / 0000 | 17: 0, 005F, 18: 13, 000F | 0008 |
+| 9 | 537,624 | event 5 | 5F / FD | 21211111 | 11111121 | 5F / FD | 4 / 1 | 0000 / 0000 | 19: 11, 000F | 0009 |
+| 10 | 597,360 | - | FF / FF | 11111111 | 11111111 | FF / FF | 5 / 2 | 0001 / 0001 | 20: 0, 00FF, 21: 1, 00FF, 22: 13, 0000 | 000A |
+| 11 | 657,096 | event 6 | FF / FF | 11111111 | 11111111 | FF / FF | 5 / 2 | 0000 / 0000 | 23: 11, 0000, 24: 12, 0000 | 000B |
+| 12 | 716,832 | - | 5A / 9F | 21211212 | 12211111 | 5A / 9F | 6 / 3 | 0010 / 0010 | 25: 0, 005A, 26: 1, 009F, 27: 13, 000F | 000C |
+| 13 | 776,568 | - | 5A / 9F | 21211212 | 12211111 | 5A / 9F | 6 / 3 | 0000 / 0000 | 28: 11, 000F, 29: 12, 000F | 000D |
+
+RAM at the four stops of `pass` (the asserted words are `02F0` to `02F5`; the pending words are listed for the blind reader):
+
+| Stop tick | Frame and offset into it | `02F0` | `02F1` | `02F2` | `02F3` | `02F4` | `02F5` | `02F6` | `02F7` | PSG records so far |
+|-----------|--------------------------|--------|--------|--------|--------|--------|--------|--------|--------|--------------------|
+| 200,000 | frame 3, +20,792 | 03C5 | 0003 | 007E | 0001 | 00FF | 0000 | 0000 | 0000 | 9 |
+| 440,000 | frame 7, +21,848 | 03C5 | 0007 | 00FF | 0003 | 00FD | 0001 | 0000 | 0000 | 17 |
+| 640,000 | frame 10, +42,640 | 03C5 | 000A | 00FF | 0005 | 00FF | 0002 | 0001 | 0001 | 23 |
+| 806,568 | frame 13, +30,000 | 03C5 | 000D | 005A | 0006 | 009F | 0003 | 0000 | 0000 | 30 |
+
+## (d) PSG and audio (D-03, D-22, A-04, A-05)
+
+PSG write list. The init writes are (log index: address, value, source `cpu-write`): 0: 8, `003C`; 1: 4, `0000`; 2: 5, `0000`; 3: 11, `0000`; 4: 12, `0000`; 5: 13, `0000`. Then, by A6 and A7, a routine writes in this order: the deferred amplitudes of the previous frame (port 0 then port 1), the fine period of each changed port (port 0 then port 1) and the gate if a port changed. The complete list of `pass` (and `shift`, which has the same events in the same frames):
+
+| Index | Frame | Address | Value | Write |
+|-------|-------|---------|-------|-------|
+| 0 | 0 | 8 | 003C | init: mixer: tones A and B on, tone C and all noise off |
+| 1 | 0 | 4 | 0000 | init: tone A coarse 0 |
+| 2 | 0 | 5 | 0000 | init: tone B coarse 0 |
+| 3 | 0 | 11 | 0000 | init: amplitude A 0 |
+| 4 | 0 | 12 | 0000 | init: amplitude B 0 |
+| 5 | 0 | 13 | 0000 | init: amplitude C 0 |
+| 6 | 2 | 0 | 007E | fine period of port 0 = the byte |
+| 7 | 2 | 13 | 000F | gate: channel C 15, a control is closed |
+| 8 | 3 | 11 | 000F | deferred amplitude of port 0 (pending 0010 minus 1) |
+| 9 | 4 | 0 | 005A | fine period of port 0 = the byte |
+| 10 | 4 | 13 | 000F | gate: channel C 15, a control is closed |
+| 11 | 5 | 11 | 000F | deferred amplitude of port 0 (pending 0010 minus 1) |
+| 12 | 6 | 0 | 00FF | fine period of port 0 = the byte |
+| 13 | 6 | 1 | 00FD | fine period of port 1 = the byte |
+| 14 | 6 | 13 | 000F | gate: channel C 15, a control is closed |
+| 15 | 7 | 11 | 0000 | deferred amplitude of port 0 (pending 0001 minus 1) |
+| 16 | 7 | 12 | 000F | deferred amplitude of port 1 (pending 0010 minus 1) |
+| 17 | 8 | 0 | 005F | fine period of port 0 = the byte |
+| 18 | 8 | 13 | 000F | gate: channel C 15, a control is closed |
+| 19 | 9 | 11 | 000F | deferred amplitude of port 0 (pending 0010 minus 1) |
+| 20 | 10 | 0 | 00FF | fine period of port 0 = the byte |
+| 21 | 10 | 1 | 00FF | fine period of port 1 = the byte |
+| 22 | 10 | 13 | 0000 | gate: channel C 0, both ports idle |
+| 23 | 11 | 11 | 0000 | deferred amplitude of port 0 (pending 0001 minus 1) |
+| 24 | 11 | 12 | 0000 | deferred amplitude of port 1 (pending 0001 minus 1) |
+| 25 | 12 | 0 | 005A | fine period of port 0 = the byte |
+| 26 | 12 | 1 | 009F | fine period of port 1 = the byte |
+| 27 | 12 | 13 | 000F | gate: channel C 15, a control is closed |
+| 28 | 13 | 11 | 000F | deferred amplitude of port 0 (pending 0010 minus 1) |
+| 29 | 13 | 12 | 000F | deferred amplitude of port 1 (pending 0010 minus 1) |
+
+Record counts: `pass` 30 and `shift` 30 (6 init records and 24 from frames 2 to 13), `swap` 30 (the same frames and the same number of writes, with the port addresses exchanged), `idle` 6 (the init only: no port ever changes, so no other write exists). The counts at the stops of `pass`: 9 at 200,000, 17 at 440,000, 23 at 640,000 and 30 at 806,568.
+
+`swap` exchanges the two words of every event; the rules are unchanged, so only the register addresses (and the port that each byte belongs to) differ, and in a frame where both ports change the writes still go port 0 then port 1. Frame by frame: the first change writes `(1, 007E)`, `(13, 000F)`; then `(12, 000F)`; `(1, 005A)`, `(13, 000F)`; `(12, 000F)`; frame 6 `(0, 00FD)`, `(1, 00FF)`, `(13, 000F)`; frame 7 `(11, 000F)`, `(12, 0000)`; frame 8 `(1, 005F)`, `(13, 000F)`; `(12, 000F)`; frame 10 `(0, 00FF)`, `(1, 00FF)`, `(13, 0000)`; frame 11 `(11, 0000)`, `(12, 0000)`; frame 12 `(0, 009F)`, `(1, 005A)`, `(13, 000F)`; frame 13 `(11, 000F)`, `(12, 000F)`.
+
+Write times (frame cycle at which the write completes, at the latest, t0 = 30; subtract 8 for t0 = 22), from the budget of section (b):
+
+| Frame | Deferred amplitude (port 0, port 1) | Fine period (port 0, port 1) | Gate |
+|-------|-------------------------------------|------------------------------|------|
+| 2, 4, 8 | - | 213, - | 1,165 |
+| 3, 5, 9 | 119, - | - | - |
+| 6 | - | 213, 333 | 1,248 |
+| 7, 11 | 119, 176 | - | - |
+| 10 | - | 213, 333 | 1,246 |
+| 12 | - | 213, 339 | 1,254 |
+| 13 | 119, 176 | - | - |
+
+A PSG write takes effect at the first sample stamped at or after it (the samples are 16 ticks apart), so a level that holds from a write is exact from the next multiple of 16 ticks on.
+
+Audio windows (levels A, B, C; a channel with amplitude 0 has level 0 whatever its tone does, and channel C, with tone and noise disabled by the mixer `003C`, has the constant level of its amplitude register):
+
+| Window | Levels | From (latest write end) | To (earliest write end) | `audio at` ticks | Distance inside |
+|--------|--------|-------------------------|-------------------------|------------------|-----------------|
+| L0 before the first change | A=0 B=0 C=0 | tick 0 (the init writes are zeros) | gate of frame 2: S_2 + 4 x 1,157 = 124,100 | 100,000 | 24,100 to the end |
+| L1 first gate | A=0 B=0 C=15 | gate of frame 2: S_2 + 4 x 1,165 = 124,132 | amplitude A of frame 3: S_3 + 4 x 111 = 179,652 | 140,000 and 160,000 | 15,868 from the start, 19,652 to the end |
+| L2 after the release | A=0 B=0 C=0 | amplitude B of frame 11: S_11 + 4 x 176 = 657,800 | gate of frame 12: S_12 + 4 x 1,246 = 721,816 | 690,000 | 32,200 and 31,816 |
+| L3 last gate | A=0 B=0 C=15 | gate of frame 12: S_12 + 4 x 1,254 = 721,848 | amplitude A of frame 13: S_13 + 4 x 111 = 777,012 | 740,000 and 760,000 | 18,152 from the start, 17,012 to the end |
+
+L2 holds because the gate of frame 10 (C to 0) precedes the deferred zero amplitudes of frame 11 (A and B to 0); between the gate of frame 10 and the amplitude writes of frame 11 the tone channels still sound, which is why no tick of that interval is asserted. Every asserted tick is a multiple of 16 (`audio at` requires the real sample period) and at least 10,000 ticks inside its window, and the same ticks and levels hold for `shift` and `swap` (the windows move by at most 200 ticks). The idle program has a single window, silence from tick 0 to the end (`audio at` 100,000, 400,000 and 800,000 all 0, 0, 0).
+
+What is not asserted. The phase of a tone (the tick of an edge after an amplitude write) needs cycle-exact accounting and is never asserted; the levels of a tone-enabled channel with a non-zero amplitude are therefore not asserted either: channel A sounds from the amplitude write of frame 3 to that of frame 7 and from frame 9 to frame 11, channel B from frame 7 to frame 11, and both from frame 13 on, so every tick between L1 and L2 and every tick after the end of L3 is outside the asserted windows. `audio emitted` is not asserted: the stop of each step lies at the end of the instruction under way, which is not a hand-known tick, and 806,568 is not a multiple of the sample period of 16 ticks (50,410.5 samples), so the count has no exact hand-derived value; a stop that fell exactly on a multiple of 16 would deliver (tick / 16) samples (the 0-based sample i is stamped (i + 1) x 16).
+
+## (e) Frames (D-21)
+
+The lamp patterns, from the controller literal and the lamp rule (lamp i shows bit 7 minus i of the port byte, index 2 when the bit is 0, index 1 otherwise):
+
+| Byte | Binary | Lit lamps | Pattern, lamp 0 to 7 | Control(s) |
+|------|--------|-----------|----------------------|------------|
+| `FF` | 1111 1111 | none | 11111111 | idle |
+| `7E` | 0111 1110 | 0, 7 | 21111112 | KEY_1 (cleared `81`) |
+| `5A` | 0101 1010 | 0, 2, 5, 7 | 21211212 | KEY_1 with KEY_9 (cleared `81` OR `24` = `A5`) |
+| `FD` | 1111 1101 | 6 | 11111121 | DISC_E (cleared `02`) |
+| `5F` | 0101 1111 | 0, 2 | 21211111 | SIDE_TOP (cleared `A0`) |
+| `9F` | 1001 1111 | 1, 2 | 12211111 | SIDE_LOWER_LEFT (cleared `60`) |
+
+The six literals (each is the idle literal F-S1 with the lit lamp blocks replaced: a lit lamp changes the 64 positions of its 8 x 8 block from index 1 to index 2; every other position is index 0; the plane has no blank position, so every frame can be hash-asserted):
+
+| Id | Port 0 byte | Port 1 byte | Row 4 | Row 7 | `sha256-text` |
+|----|-------------|-------------|-------|-------|---------------|
+| F-S1 | `FF` | `FF` | 11111111 | 11111111 | `269b8753dd3b8e011b3fc674e071664433ae997b5f05a8227f8569eb3a1e8e70` |
+| F-S2 | `7E` | `FF` | 21111112 | 11111111 | `63c0aacc9a452441a1b643f469d04077bb3359a347c7d431f6dda3e2975c5d52` |
+| F-S3 | `5A` | `FF` | 21211212 | 11111111 | `4fc93ff3fe0a0522d9ae5e9d9400fe078ea9c721f7379b63ab7b9e1f8d41ef64` |
+| F-S4 | `FF` | `FD` | 11111111 | 11111121 | `26654c1135e93dea59c99e5c36693598dd80f5aee6fcfb806f4a84d9dbdf492d` |
+| F-S5 | `5F` | `FD` | 21211111 | 11111121 | `82ecc9acb8774af7f86649f35362509a6396e82a726ae6e8c0dd958cecf85446` |
+| F-S6 | `5A` | `9F` | 21211212 | 12211111 | `a7b9889b136cf47b2586def7f992c7caaf19c451e043a9a676b2f838bd91c2d7` |
+
+Declared pairs (`data/expected/video-frame-pairs.ids`, checked by the `video` step; a lamp that is lit in one frame and unlit in the other differs at 64 positions):
+
+| Pair | Rectangle x y w h | Lamps that differ | Count |
+|------|-------------------|-------------------|-------|
+| F-S1 F-S2 | 48 32 64 8 | row 4: 0, 7 | 128 |
+| F-S1 F-S3 | 48 32 64 8 | row 4: 0, 2, 5, 7 | 256 |
+| F-S2 F-S3 | 48 32 64 8 | row 4: 2, 5 | 128 |
+| F-S1 F-S4 | 48 56 64 8 | row 7: 6 | 64 |
+| F-S1 F-S5 | 48 32 64 32 | row 4: 0, 2; row 7: 6 | 192 |
+| F-S1 F-S6 | 48 32 64 32 | row 4: 0, 2, 5, 7; row 7: 1, 2 | 384 |
+| F-S5 F-S6 | 48 32 64 32 | row 4: 5, 7; row 7: 1, 2, 6 | 320 |
+
+The rectangle of the two-row pairs is the bounding box of the two lamp rows (y 32 to 63); the 24 rows between them are equal in both frames.
+
+Pixel probes (inside a lamp block, never on an edge): lamp i of port 0 at (51 + 8 i, 35) and of port 1 at (51 + 8 i, 59); outside probes (0, 0), (158, 95) and (50, 45) (a cell of row 5, column 6).
+
+Frame to literal, for the hash asserts (`# frame: <n> <id>` header lines of the predicate files): in `pass` and `shift`: 3 F-S2, 5 F-S3, 7 F-S4, 9 F-S5, 11 F-S1, 12 F-S6; in `idle`: 1, 6 and 12 all F-S1. `swap` asserts pixels only (no literal for the exchanged pictures, A-16).
+
+## (f) Assert blocks (A-06, A-08)
+
+Each block holds exactly the `input`, `run-to` and `assert` lines of its scenario in scenario order (the other scenario lines are `ivss 1`, the id, the profile, the three `content` lines and the three `capture` lines `capture video 0 13`, `capture psglog` and `capture audio`). Lines starting with `#` inside the fences are explanations and are not scenario lines. Every block has at most 56 asserts. The order inside the last step is progress words, then frames, then the PSG log, then audio, so the first failing clause names the channel. The assert number j of a step line is the position of the assert in the block (the report numbers asserts scenario-wide from 1).
+
+Counts: `pass` 55 asserts, `idle` 29, `shift` 55, `swap` 49.
+
+`demo-lamp-tone-pass` (tier `playable-guest-progress` [nc], once its predicate file exists; 55 asserts):
+
+<!-- asserts-begin demo-lamp-tone-pass -->
+```text
+# frame: 3 F-S2
+# frame: 5 F-S3
+# frame: 7 F-S4
+# frame: 9 F-S5
+# frame: 11 F-S1
+# frame: 12 F-S6
+input at_tick=100000 c0=KEY_1 c1=0x0
+input at_tick=220000 c0=KEY_1+KEY_9 c1=0x0
+input at_tick=340000 c0=0x0 c1=DISC_E
+input at_tick=460000 c0=SIDE_TOP c1=DISC_E
+input at_tick=580000 c0=0x0 c1=0x0
+input at_tick=700000 c0=KEY_1+KEY_9 c1=SIDE_LOWER_LEFT
+run-to 200000 ticks
+assert halted == no
+assert mem 02F0 == 03C5
+assert mem 02F1 == 0003
+assert mem 02F2 == 007E
+assert mem 02F3 == 0001
+assert mem 02F4 == 00FF
+assert mem 02F5 == 0000
+run-to 440000 ticks
+assert halted == no
+assert mem 02F0 == 03C5
+assert mem 02F1 == 0007
+assert mem 02F2 == 00FF
+assert mem 02F3 == 0003
+assert mem 02F4 == 00FD
+assert mem 02F5 == 0001
+run-to 640000 ticks
+assert halted == no
+assert mem 02F0 == 03C5
+assert mem 02F1 == 000A
+assert mem 02F2 == 00FF
+assert mem 02F3 == 0005
+assert mem 02F4 == 00FF
+assert mem 02F5 == 0002
+run-to 806568 ticks
+assert halted == no
+assert mem 02F0 == 03C5
+assert mem 02F1 == 000D
+assert mem 02F2 == 005A
+assert mem 02F3 == 0006
+assert mem 02F4 == 009F
+assert mem 02F5 == 0003
+assert frame 0 displayed == no
+assert frame 3 displayed == yes
+assert frame 12 displayed == yes
+assert frame 3 hash == 63c0aacc9a452441a1b643f469d04077bb3359a347c7d431f6dda3e2975c5d52
+assert frame 5 hash == 4fc93ff3fe0a0522d9ae5e9d9400fe078ea9c721f7379b63ab7b9e1f8d41ef64
+assert frame 7 hash == 26654c1135e93dea59c99e5c36693598dd80f5aee6fcfb806f4a84d9dbdf492d
+assert frame 9 hash == 82ecc9acb8774af7f86649f35362509a6396e82a726ae6e8c0dd958cecf85446
+assert frame 11 hash == 269b8753dd3b8e011b3fc674e071664433ae997b5f05a8227f8569eb3a1e8e70
+assert frame 12 hash == a7b9889b136cf47b2586def7f992c7caaf19c451e043a9a676b2f838bd91c2d7
+assert frame 3 pixel 51 35 == 2
+assert frame 3 pixel 59 35 == 1
+assert frame 12 pixel 59 59 == 2
+assert frame 12 pixel 158 95 == 0
+assert video count == 13
+assert psglog count == 30
+assert psglog 0 addr=8 value=003C source=cpu-write
+assert psglog 6 addr=0 value=007E source=cpu-write
+assert psglog 7 addr=13 value=000F source=cpu-write
+assert psglog 8 addr=11 value=000F source=cpu-write
+assert psglog 22 addr=13 value=0000 source=cpu-write
+assert psglog 26 addr=1 value=009F source=cpu-write
+assert audio at 100000 A=0 B=0 C=0
+assert audio at 140000 A=0 B=0 C=15
+assert audio at 160000 A=0 B=0 C=15
+assert audio at 690000 A=0 B=0 C=0
+assert audio at 740000 A=0 B=0 C=15
+assert audio at 760000 A=0 B=0 C=15
+```
+<!-- asserts-end demo-lamp-tone-pass -->
+
+`demo-lamp-tone-idle` (tier `original-diagnostic`, no input line by design; 29 asserts):
+
+<!-- asserts-begin demo-lamp-tone-idle -->
+```text
+# frame: 1 F-S1
+# frame: 6 F-S1
+# frame: 12 F-S1
+run-to 806568 ticks
+assert halted == no
+assert mem 02F0 == 03C5
+assert mem 02F1 == 000D
+assert mem 02F2 == 00FF
+assert mem 02F3 == 0000
+assert mem 02F4 == 00FF
+assert mem 02F5 == 0000
+assert mem 02F6 == 0000
+assert mem 02F7 == 0000
+assert frame 0 displayed == no
+assert frame 1 displayed == yes
+assert frame 12 displayed == yes
+assert frame 1 hash == 269b8753dd3b8e011b3fc674e071664433ae997b5f05a8227f8569eb3a1e8e70
+assert frame 6 hash == 269b8753dd3b8e011b3fc674e071664433ae997b5f05a8227f8569eb3a1e8e70
+assert frame 12 hash == 269b8753dd3b8e011b3fc674e071664433ae997b5f05a8227f8569eb3a1e8e70
+assert frame 6 pixel 51 35 == 1
+assert frame 6 pixel 107 59 == 1
+assert frame 6 pixel 50 45 == 0
+assert video count == 13
+assert psglog count == 6
+assert psglog 0 addr=8 value=003C source=cpu-write
+assert psglog 1 addr=4 value=0000 source=cpu-write
+assert psglog 2 addr=5 value=0000 source=cpu-write
+assert psglog 3 addr=11 value=0000 source=cpu-write
+assert psglog 4 addr=12 value=0000 source=cpu-write
+assert psglog 5 addr=13 value=0000 source=cpu-write
+assert audio at 100000 A=0 B=0 C=0
+assert audio at 400000 A=0 B=0 C=0
+assert audio at 800000 A=0 B=0 C=0
+```
+<!-- asserts-end demo-lamp-tone-idle -->
+
+`demo-lamp-tone-shift` (every event +2,000 ticks, the pass assert lines unchanged; the events stay in the same frames, at least 14,832 ticks from a frame end; 55 asserts; no predicate file of its own):
+
+<!-- asserts-begin demo-lamp-tone-shift -->
+```text
+# frame: 3 F-S2
+# frame: 5 F-S3
+# frame: 7 F-S4
+# frame: 9 F-S5
+# frame: 11 F-S1
+# frame: 12 F-S6
+input at_tick=102000 c0=KEY_1 c1=0x0
+input at_tick=222000 c0=KEY_1+KEY_9 c1=0x0
+input at_tick=342000 c0=0x0 c1=DISC_E
+input at_tick=462000 c0=SIDE_TOP c1=DISC_E
+input at_tick=582000 c0=0x0 c1=0x0
+input at_tick=702000 c0=KEY_1+KEY_9 c1=SIDE_LOWER_LEFT
+run-to 200000 ticks
+assert halted == no
+assert mem 02F0 == 03C5
+assert mem 02F1 == 0003
+assert mem 02F2 == 007E
+assert mem 02F3 == 0001
+assert mem 02F4 == 00FF
+assert mem 02F5 == 0000
+run-to 440000 ticks
+assert halted == no
+assert mem 02F0 == 03C5
+assert mem 02F1 == 0007
+assert mem 02F2 == 00FF
+assert mem 02F3 == 0003
+assert mem 02F4 == 00FD
+assert mem 02F5 == 0001
+run-to 640000 ticks
+assert halted == no
+assert mem 02F0 == 03C5
+assert mem 02F1 == 000A
+assert mem 02F2 == 00FF
+assert mem 02F3 == 0005
+assert mem 02F4 == 00FF
+assert mem 02F5 == 0002
+run-to 806568 ticks
+assert halted == no
+assert mem 02F0 == 03C5
+assert mem 02F1 == 000D
+assert mem 02F2 == 005A
+assert mem 02F3 == 0006
+assert mem 02F4 == 009F
+assert mem 02F5 == 0003
+assert frame 0 displayed == no
+assert frame 3 displayed == yes
+assert frame 12 displayed == yes
+assert frame 3 hash == 63c0aacc9a452441a1b643f469d04077bb3359a347c7d431f6dda3e2975c5d52
+assert frame 5 hash == 4fc93ff3fe0a0522d9ae5e9d9400fe078ea9c721f7379b63ab7b9e1f8d41ef64
+assert frame 7 hash == 26654c1135e93dea59c99e5c36693598dd80f5aee6fcfb806f4a84d9dbdf492d
+assert frame 9 hash == 82ecc9acb8774af7f86649f35362509a6396e82a726ae6e8c0dd958cecf85446
+assert frame 11 hash == 269b8753dd3b8e011b3fc674e071664433ae997b5f05a8227f8569eb3a1e8e70
+assert frame 12 hash == a7b9889b136cf47b2586def7f992c7caaf19c451e043a9a676b2f838bd91c2d7
+assert frame 3 pixel 51 35 == 2
+assert frame 3 pixel 59 35 == 1
+assert frame 12 pixel 59 59 == 2
+assert frame 12 pixel 158 95 == 0
+assert video count == 13
+assert psglog count == 30
+assert psglog 0 addr=8 value=003C source=cpu-write
+assert psglog 6 addr=0 value=007E source=cpu-write
+assert psglog 7 addr=13 value=000F source=cpu-write
+assert psglog 8 addr=11 value=000F source=cpu-write
+assert psglog 22 addr=13 value=0000 source=cpu-write
+assert psglog 26 addr=1 value=009F source=cpu-write
+assert audio at 100000 A=0 B=0 C=0
+assert audio at 140000 A=0 B=0 C=15
+assert audio at 160000 A=0 B=0 C=15
+assert audio at 690000 A=0 B=0 C=0
+assert audio at 740000 A=0 B=0 C=15
+assert audio at 760000 A=0 B=0 C=15
+```
+<!-- asserts-end demo-lamp-tone-shift -->
+
+`demo-lamp-tone-swap` (each event's `c0` and `c1` exchanged; the counters, last bytes, log addresses and the row of the pixel probes exchange; three steps; 49 asserts; no predicate file of its own):
+
+<!-- asserts-begin demo-lamp-tone-swap -->
+```text
+# no frame literal: the exchanged pictures are asserted by pixel probes only
+input at_tick=100000 c0=0x0 c1=KEY_1
+input at_tick=220000 c0=0x0 c1=KEY_1+KEY_9
+input at_tick=340000 c0=DISC_E c1=0x0
+input at_tick=460000 c0=DISC_E c1=SIDE_TOP
+input at_tick=580000 c0=0x0 c1=0x0
+input at_tick=700000 c0=SIDE_LOWER_LEFT c1=KEY_1+KEY_9
+run-to 200000 ticks
+assert halted == no
+assert mem 02F1 == 0003
+assert mem 02F2 == 00FF
+assert mem 02F3 == 0000
+assert mem 02F4 == 007E
+assert mem 02F5 == 0001
+run-to 640000 ticks
+assert halted == no
+assert mem 02F1 == 000A
+assert mem 02F2 == 00FF
+assert mem 02F3 == 0002
+assert mem 02F4 == 00FF
+assert mem 02F5 == 0005
+run-to 806568 ticks
+assert halted == no
+assert mem 02F0 == 03C5
+assert mem 02F1 == 000D
+assert mem 02F2 == 009F
+assert mem 02F3 == 0003
+assert mem 02F4 == 005A
+assert mem 02F5 == 0006
+assert frame 0 displayed == no
+assert frame 12 displayed == yes
+assert frame 3 pixel 51 59 == 2
+assert frame 3 pixel 107 59 == 2
+assert frame 3 pixel 59 35 == 1
+assert frame 5 pixel 67 59 == 2
+assert frame 7 pixel 99 35 == 2
+assert frame 9 pixel 99 35 == 2
+assert frame 9 pixel 51 59 == 2
+assert frame 11 pixel 59 35 == 1
+assert frame 12 pixel 59 35 == 2
+assert frame 12 pixel 51 35 == 1
+assert frame 12 pixel 51 59 == 2
+assert video count == 13
+assert psglog count == 30
+assert psglog 6 addr=1 value=007E source=cpu-write
+assert psglog 8 addr=12 value=000F source=cpu-write
+assert psglog 12 addr=0 value=00FD source=cpu-write
+assert psglog 13 addr=1 value=00FF source=cpu-write
+assert psglog 15 addr=11 value=000F source=cpu-write
+assert psglog 16 addr=12 value=0000 source=cpu-write
+assert psglog 25 addr=0 value=009F source=cpu-write
+assert psglog 26 addr=1 value=005A source=cpu-write
+assert psglog 29 addr=12 value=000F source=cpu-write
+assert audio at 100000 A=0 B=0 C=0
+assert audio at 140000 A=0 B=0 C=15
+assert audio at 160000 A=0 B=0 C=15
+assert audio at 690000 A=0 B=0 C=0
+assert audio at 740000 A=0 B=0 C=15
+assert audio at 760000 A=0 B=0 C=15
+```
+<!-- asserts-end demo-lamp-tone-swap -->
+
+Derivation of the swapped values: the port 0 bytes of the swapped run are FF, FF, FD, FD, FF, 9F and the port 1 bytes 7E, 5A, FF, 5F, FF, 5A for events 1 to 6, so the change counters end at 3 (port 0: FF to FD, FD to FF, FF to 9F) and 6 (port 1), the last bytes at `009F` and `005A`, and the first change writes the fine period of port 1 (address 1) and the pending amplitude of port 1 (address 12) in the next frame. Frame 3 shows row 7 as 21111112 (lamps 0 and 7 lit) with row 4 idle; frame 5 shows row 7 as 21211212; frame 7 shows row 4 as 11111121; frame 9 shows row 4 as 11111121 and row 7 as 21211111; frame 11 is idle; frame 12 shows row 4 as 12211111 and row 7 as 21211212.
+
+## (g) Mutant table (D-25)
+
+One class per row; the clause is the first failing assert of the scenario judged (the assert number is the one of section (f), `k.j` is step k and assert j). Addresses and `from` words are filled by plan 07-08 from the generated listing; the edit column states the intended one-word patch. A channel-isolation row also carries `fails=`, the complete set of failing asserts (the report lists the asserts of the first failing step only, so a mutant that fails step 1 lists step-1 asserts).
+
+| ID | Class | Intended edit (one word) | Scenario | First failing clause | `fails=` | Why |
+|----|-------|--------------------------|----------|----------------------|----------|-----|
+| SCN-INPUT-PORT | input decode | the operand of the port 0 read, `$01FE` becomes `$01FF` | pass | 1.4 `mem 02F2 == 007E`, got `00FF` | (first clause only) | port 0 then reads `c1`, which is idle until event 3 |
+| SCN-PROGRESS-STORE | progress write | the operand of the port 0 change-counter store, `$02F3` becomes `$02F8` | pass | 1.5 `mem 02F3 == 0001`, got `0000` | 1.5 | only the counter assert of step 1 fails; the other words, the frames and the log are untouched |
+| SCN-LAMP-COMPLEMENT | video write | the `COMR` of the render subroutine removed (replaced by a word that leaves R1 unchanged) | pass | 4.32 `frame 3 hash == ...` | 4.32 to 4.40 (the six hashes and the pixel probes 38 to 40) | every lamp is inverted; guest words, log and audio are untouched, `displayed` and the outside probe still hold |
+| SCN-AMP-VALUE | sound value | the gate amplitude immediate, `15` becomes `14` | pass | 4.46 `psglog 7 addr=13 value=000F` | 4.46, 4.51, 4.52, 4.54, 4.55 (the log record and the four gate-window levels C=15) | the gate writes `000E`; the other records, the frames, the silent windows and the guest words still hold |
+| SCN-SOUND-UNGATED | sound gate | the `BZE` that skips the gate when no port changed replaced by `NOPP` | idle | 1.20 `psglog count == 6`, got `19` | 1.20 | the gate (value 0) is written in all 13 routines, an extra record each; guest state, frames and silence still hold, so only the idle log assert shows it |
+| SCN-REARM-SHORT | interrupt re-arm | the delay N = 500 becomes 100 | pass | 1.3 `mem 02F1 == 0003`, got `0006` | (first clause only) | two routines per frame (R-E lower edge) |
+| SCN-REARM-LONG | interrupt re-arm | N = 500 becomes 1,150 | pass | 1.3 `mem 02F1 == 0003`, got `0002` | (first clause only) | only every second frame has a routine (R-E upper edge) |
+| SCN-STROBE-LATE | strobe | the operand of the strobe, `$0020` becomes `$0022` (a reserved register: the write is dropped, as a strobe after the register window is) | pass | 4.30 `frame 3 displayed == yes` | 4.30 to 4.40 (the two `displayed` asserts, the six hashes, the pixel probes 38 to 40) | no frame is ever displayed (plane filled with the border index 0); guest words, log, audio and the outside probe hold |
+| SCN-NO-EIS | missing `EIS` | the `EIS` of the re-arm replaced by a word with no effect | pass | 1.3 `mem 02F1 == 0003`, got `0000` | (first clause only) | no interrupt is ever accepted; `halted == no` and the marker still hold, so liveness alone is not progress |
+| SCN-HLT-IDLE | `HLT` idle | the idle branch replaced by `HLT` | pass | step 1 stop mismatch: `stop step=1 line=<n> expected=target got=halted` (outcome guest-fail, exit 10) | (stop clause) | a halted CPU ignores the interrupt level; the run stops at the halt before the first routine |
+| SCN-STUB-JD-AS-J | stub vector | the stub-2 vector `JD $5004` becomes the plain `J $5004` (the word that carries the disable code is patched, through `ivs_pack --exec --patch`; plan 07-08 reads the words from the stub-2 listing) | pass | 4.30 `frame 3 displayed == yes` | (first clause only) | the vector re-enters about 180 times per frame, the routine body starts after the level has ended, the strobe lies past cycle 3,791 and is dropped; the counter and the other words still hold, so the counter alone cannot catch it |
+| SCN-ISR-TIE | stub target | the address of the stub-2 vector jump becomes `$5006` instead of `$5004` (the second routine instruction; patched through `ivs_pack --exec --patch`) | pass | 4.30 `frame 3 displayed == yes` | (first clause only) | the routine starts after its strobe; everything else is intact |
+| SCN-REARM-NEGATIVE | negative control | N = 500 becomes 300 (inside the band) | pass | none: outcome pass, exit 0 | - | shows that no assert is tuned to a tick or to the chosen N |
+
+The rows fall in these channels: guest state (INPUT-PORT, PROGRESS-STORE, the two re-arm rows, NO-EIS), video (LAMP-COMPLEMENT, STROBE-LATE, the two stub rows), sound (AMP-VALUE, SOUND-UNGATED), liveness (HLT-IDLE). The negative row is the control for the whole table: asserts that fail only when a tick or N is tuned would fail it.
+
+## (h) Claims (D-27, A-07)
+
+Allocation. The next free claim ids are CL-0023 and CL-0024 (the inventory ends at CL-0022). Neither exists yet: plan 07-12 writes them to `data/claims.json` and `data/expected/claims.ids`; this section fixes the tier, the artifact and the wording in advance.
+
+- CL-0023, tier `playable-guest-progress`, standing provisional, artifact `data/golden/demo-lamp-tone-pass.expect`. Statement: "For profile intv-2609-ntsc-family-p1, through the project boot stub contract 2 (the image boot-stub-2: cartridge reset entry $5000, cartridge interrupt entry $5004), the zero graphics ROM and no EXEC image, the project-authored program ivs-demo-lamp-tone-1 responds to the scripted controller input of data/scenarios/demo-lamp-tone-pass.ivss: the guest memory markers and counters reach the hand-derived values at four steps, the raw index frames equal the hand-derived literals F-S1 to F-S6 and differ from the idle literal exactly in the declared lamp rectangles, the PSG write log equals the hand-derived records and the raw samples equal the hand-derived constant levels in the stated windows; the same cartridge with no input stays at the idle literal with an init-only write log and silence. This is playable guest progress, for this original program only." [nc]
+- CL-0024, tier `installed-host-behavior`, standing provisional, artifact `tests/installed-consumer/main.c`. Statement: the installed package, consumed by the separate consumer through the installed headers and archive only, replays the scenario demo-lamp-tone-pass frame by frame and reproduces the runner's digests, its observed domains (all nine), the region difference between the idle and the response frame and the hand-derived write-log records and levels.
+
+The only wording for the new tier is the phrase in the statement above [nc]. Forbidden in README, `docs/` and release notes: the tier word alone, any verb form built on it, any statement that a console or commercial content is covered, any statement that a person saw the picture or heard the sound. The note of CL-0023 prints these exclusions: the expected values are hand derived by the author of the program with a blind second read (shared misreading is possible); the controller byte table, the STIC rules and the PSG rules are tier 4 or inference, so the claim is only as strong as its weakest field and stays provisional; the frames are index frames, not pictures, and no palette is claimed; no person has looked at the picture or listened to the sound; no timing figure (input latency, frame pacing, tone pitch or tone phase) is claimed; no commercial content and no real EXEC or GROM image was used (D11 is open and no result exists); no hardware was measured (D10); moving objects, collisions and delay registers are not covered (Phase 8). The claim is named per program: a second program is a second claim. The self-recorded repeatability digests are cited in the note as repeatability only.
+
+## (i) Rights checklist (D-28, D-36)
+
+- No third-party glyph set, font, tune, jingle, sound effect or picture: the only graphics data is the solid card (eight bytes `FF`) and the two color indices 1 and 2, which are not art; the lamp layout is this file's own.
+- The tone is whatever byte the controls produce (the period equals the byte); no melody, scale or table exists.
+- No EXEC call, no graphics ROM read (the zero ROM is the project's own 2,048 zero bytes), no cartridge header in the format that an EXEC reads; the program makes no statement about a real EXEC (D11 is not performed).
+- No data table at all: the program has no `DATA` row (A-10).
+- No text of any datasheet, manual, catalog or page is quoted; sources are cited by id and page in the reference notes only.
+- The listing is written from this document only: nothing is copied or adapted from another emulator, assembler, test program or title, and no recalled pattern is used. Any later edit of the program from a recalled third-party program is a review failure.
+- Names are functional and brand-free: `ivs-demo-lamp-tone-1`, `FX-demo-lamp-tone-1`, `demo-lamp-tone-pass`, `-idle`, `-shift`, `-swap`; none contains a console, company, product, character or nickname word.
+- The run uses only project-made bytes: the stub image `boot-stub-2`, the zero ROM and the program image built from the project's own source; no image is committed (the source and the generated listing are).
+- Licence MIT with the evidence of the existing fixtures; the manifest attestation (plan 07-06) states the points above.
+
+## (j) Open items for the blind reader
+
+Two readings deserve an explicit second look (S-1 open item 6): (1) the lamp builder: the instruction SLLC shifts a register left one position and sets the carry from the bit shifted out of bit 15, and ADCR adds the carry to a register, so the complemented and byte-swapped port byte yields the lamps from the most significant bit down; the specification only needs that lamp i shows bit 7 minus i, lit when the bit reads 0; (2) a lit lamp is a cleared bit: an idle port reads `FF` and shows no lit lamp, and KEY_1 (cleared `81`) reads `7E` and lights lamps 0 and 7. Further points the reader should check or mark unknown: the claim that the routine of frame k shows in frame k (A8 states the cycle bounds; the tick of each event is given in A9); the constant level of a channel with tone and noise disabled equals its amplitude (PSG-R15 and PSG-R16 are tier 4 or inference); the deferred amplitude (a changed port's tone amplitude is written by the next frame's routine); the exact set of audio ticks where the levels are derivable (a tick inside a tone window, for example 200,000 and 500,000, has no derivable level); whether the pairs of section (e) differ exactly in the stated rectangles with the stated counts. The orchestrator compares the answers with sections (c) to (f), resolves each disagreement from the specification and the manuals and records the result in the record file named by the request.
