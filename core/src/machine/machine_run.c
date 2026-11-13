@@ -179,11 +179,11 @@ ivs_status ivs_machine_step_unit_trace_internal(ivs_machine *m, ivs_cp1610_resul
    * previous unit), and the function never advances it. */
   {
     uint64_t lag = (uint64_t)bus_ctx.stic->line_sample_lag_ticks;
-    uint64_t sample = start;
-#ifndef IVS_FAULT_STIC_LINE_LAG_IGNORED
-    sample = start - lag; /* named fault STIC_LINE_LAG_IGNORED: the lines are sampled at the unit start, without the lag */
-#endif
     if (start >= lag) {
+      uint64_t sample = start - lag;
+#ifdef IVS_FAULT_STIC_LINE_LAG_IGNORED
+      sample = start; /* named fault STIC_LINE_LAG_IGNORED: the lines are sampled at the unit start, without the lag */
+#endif
       levels = ivs_stic_lines(bus_ctx.stic, &im->stic, sample);
     } else {
       levels.intrm = 0u;

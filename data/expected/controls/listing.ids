@@ -18,3 +18,4 @@ listing-sdbd-prefix-before-branch
 listing-sdbd-target-mvo
 listing-sdbd-target-zero
 listing-sdbd-indirect-mode
+listing-operand-count-after-sdbd
