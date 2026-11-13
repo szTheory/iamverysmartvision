@@ -10,6 +10,10 @@
 # lines and observed domains (video and audio observed, the write log and the input not) must equal data/golden/diag-stic-fgbg-pass.digests
 # (the replay of diag-stic-fgbg-pass: first slot header, hand-derived pixels, a frame-stop second pass; again additions only). The step drops these # lines before comparing. A change is a
 # reviewed diff, regenerated from build/gate/pkg-consumer.txt after a gate run.
+# Plan 07-09 (D-26, SCN-01) adds the fourth replay, of data/scenarios/demo-lamp-tone-pass.ivss (lines prefixed scn.), run on boot-stub-2.exec and
+# lamp-tone.ivsc (gate step pkg-install): the project boot stub contract 2, the zero GROM and the original program, the six input events and the guest
+# words at the four stops. Its scn.digest.<domain> lines and observed domains (all nine: video, audio, input and the write log observed) must equal
+# data/golden/demo-lamp-tone-pass.digests; the new lines are additions only.
 ivs-consumer 1
 version package=0.1.0 header=0.1.0 api=0x000100 library=0x000100 tie=yes
 v1-sizes run_request_v1=64 events_at=48 run_request=80 run_report_v1=112 run_report=160 info_v1=216 info=320 input_event=32 cpu_state_report=36 ok=yes
@@ -85,4 +89,25 @@ stic.digest.composite 7e03f25a7445517cf39e34e90e1ec791f91dc2d9e3e0f94407a0bb8fa1
 stic.digest.video fb654eb9b209718c316e3396dd1c3123b3c5b917400b918bb957bf139603d033
 stic.digest.audio 6509dee809b36addad039722800e9ef11d30711a4762dcbb812c7f94590b5307
 stic.second-instance equal=yes
+scn.load.exec status=IVS_OK length_bytes=8192 sha256=a2cea795516799811a3ed1df9020d8ed80b90a5a2322d4e5feac38f350538660
+scn.load.cart status=IVS_OK length_bytes=460 sha256=ac0ad987da1330101f423b294b6c24ea14de36f43f6b2dae82cd91d32b8e0ba8
+scn.step.1 target_ticks=200000 stop=IVS_STOP_TARGET now_ticks=200024 overshoot_ticks=24 input_consumed=1 controller0=00000001
+scn.step.1.mem 02F0..02F5=03C5,0003,007E,0001,00FF,0000
+scn.step.2 target_ticks=440000 stop=IVS_STOP_TARGET now_ticks=440012 overshoot_ticks=12 input_consumed=2 controller0=00000000
+scn.step.2.mem 02F0..02F5=03C5,0007,00FF,0003,00FD,0001
+scn.step.3 target_ticks=640000 stop=IVS_STOP_TARGET now_ticks=640004 overshoot_ticks=4 input_consumed=2 controller0=00000000
+scn.step.3.mem 02F0..02F5=03C5,000A,00FF,0005,00FF,0002
+scn.step.4 target_ticks=806568 stop=IVS_STOP_TARGET now_ticks=806568 overshoot_ticks=0 input_consumed=1 controller0=00000101
+scn.step.4.mem 02F0..02F5=03C5,000D,005A,0006,009F,0003
+scn.input events=6 consumed=6
+scn.digest.cpu 1ac14963e046e4c5c2eaf14fede2671dd2f6b42e0aa2edfa717862889ad292ab
+scn.digest.mem 0b23446d3b97b6b440100df6a122efbf9247a3ee3b314e4c881e0376ed3d4172
+scn.digest.images 09679d87b9851e20d6c32494887429c18be14d9182252de2a881a4633a38ad48
+scn.digest.instance 627a4c963a2f0cc121b82fdd7dc7e940f54442c41789e4056be4d538359e0cf7
+scn.digest.composite 7f71d668beded13af2893c0dbb9b37cbf23aeaa8a37c042b16912d5db0536909
+scn.digest.video 66c5747555074a7a8fe1455e331930b3f3d84e06cd6dbb5c92fb490d8fd85546
+scn.digest.audio 71f2939b1e35360b55177d983cd64a3f8248256375c13e4a12c716fcc2245490
+scn.digest.input 832906ce775d32a98ae607386ce4bbcdd4d08017e3b914b6089e50a5364c7761
+scn.digest.psglog d224205dad483db6c04d991424051d794aedd1db3ab67546fd44b6626a0c9407
+scn.second-instance equal=yes
 result ok failures=0

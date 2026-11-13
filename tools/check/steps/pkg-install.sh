@@ -468,16 +468,19 @@ check_one_golden() {
   return "$cr_rc"
 }
 # check_runner_golden <output>: the replay of diag-input-pass against its golden, (plan 05-11) the
-# replay of diag-ctrl-psg-pass (lines prefixed ctrl.) against data/golden/diag-ctrl-psg-pass.digests, and (plan 06-13) the
-# replay of diag-stic-fgbg-pass (lines prefixed stic.) against data/golden/diag-stic-fgbg-pass.digests.
+# replay of diag-ctrl-psg-pass (lines prefixed ctrl.) against data/golden/diag-ctrl-psg-pass.digests, (plan 06-13) the
+# replay of diag-stic-fgbg-pass (lines prefixed stic.) against data/golden/diag-stic-fgbg-pass.digests, and (plan 07-09) the
+# replay of demo-lamp-tone-pass (lines prefixed scn.) against data/golden/demo-lamp-tone-pass.digests.
 rgold="$ROOT/data/golden/diag-input-pass.digests"
 rgold2="$ROOT/data/golden/diag-ctrl-psg-pass.digests"
 rgold3="$ROOT/data/golden/diag-stic-fgbg-pass.digests"
+rgold4="$ROOT/data/golden/demo-lamp-tone-pass.digests"
 check_runner_golden() {
   crg_rc=0
   check_one_golden "$rgold" "" "$1" || crg_rc=1
   check_one_golden "$rgold2" "ctrl\\." "$1" || crg_rc=1
   check_one_golden "$rgold3" "stic\\." "$1" || crg_rc=1
+  check_one_golden "$rgold4" "scn\\." "$1" || crg_rc=1
   return "$crg_rc"
 }
 # check_calls <object>: the ivs_* names the consumer object references (nm -u, normalized) equal
@@ -513,10 +516,13 @@ img_exec="$rel/images/boot-stub.exec"
 img_cart="$rel/images/diag-cpu-1.ivsc"
 img_cart2="$rel/images/diag-ctrl-psg-1.ivsc"
 img_cart3="$rel/images/diag-stic-1.ivsc"
+img_exec2="$rel/images/boot-stub-2.exec"
+img_cart4="$rel/images/lamp-tone.ivsc"
 consumer_built=0
 consumer_ok=0
-if [ ! -f "$img_exec" ] || [ ! -f "$img_cart" ] || [ ! -f "$img_cart2" ] || [ ! -f "$img_cart3" ]; then
-  bad pkg-consumer-images "build/release/images/{boot-stub.exec,diag-cpu-1.ivsc,diag-ctrl-psg-1.ivsc,diag-stic-1.ivsc}"
+if [ ! -f "$img_exec" ] || [ ! -f "$img_cart" ] || [ ! -f "$img_cart2" ] || [ ! -f "$img_cart3" ] || [ ! -f "$img_exec2" ] \
+  || [ ! -f "$img_cart4" ]; then
+  bad pkg-consumer-images "build/release/images/{boot-stub.exec,diag-cpu-1.ivsc,diag-ctrl-psg-1.ivsc,diag-stic-1.ivsc,boot-stub-2.exec,lamp-tone.ivsc}"
 elif ! cp -R "$ROOT/tests/installed-consumer" "$csrc"; then
   bad pkg-consumer-copy "tests/installed-consumer"
 elif ! consumer_configure "$csrc" "$cbld" > "$T/consumer.cfg.log" 2>&1; then
@@ -528,7 +534,7 @@ elif ! cmake --build "$cbld" > "$T/consumer.build.log" 2>&1; then
 else
   consumer_built=1
   cst=0
-  "$cbld/consumer" "$img_exec" "$img_cart" "$img_cart2" "$img_cart3" > "$cout" 2> "$T/consumer.err" || cst=$?
+  "$cbld/consumer" "$img_exec" "$img_cart" "$img_cart2" "$img_cart3" "$img_exec2" "$img_cart4" > "$cout" 2> "$T/consumer.err" || cst=$?
   mkdir -p "$gate_dir" && cp "$cout" "$gate_dir/pkg-consumer.txt" 2> /dev/null || bad pkg-consumer-output "build/gate/pkg-consumer.txt"
   consumer_lines=$(grep -c . "$cout")
   if [ "$cst" -ne 0 ]; then

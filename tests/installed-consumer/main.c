@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: MIT */
 /* The independent consumer of the installed ivs package (PKG-01, D-34, D-39, plan 04-23).
  * Built only through find_package(ivs) against the installed, relocated prefix (gate step
- * pkg-install). Usage: consumer <boot-stub.exec> <diag-cpu-1.ivsc> <diag-ctrl-psg-1.ivsc> <diag-stic-1.ivsc>; the
+ * pkg-install). Usage: consumer <boot-stub.exec> <diag-cpu-1.ivsc> <diag-ctrl-psg-1.ivsc> <diag-stic-1.ivsc>
+ * <boot-stub-2.exec> <lamp-tone.ivsc> (six images, argc 7); the
  * images come from the build tree's tools/pack output and the 2048-byte zero GROM is made here, so
  * the program embeds no content bytes. It replays the runner scenario
  * data/scenarios/diag-input-pass.ivss through the public API alone:
@@ -40,6 +41,11 @@
  * printed per observed domain, observed by the count rule (a domain is observed when its delivered byte or event count is nonzero: video
  * and audio here, the write log and the input events not), and they equal data/golden/diag-stic-fgbg-pass.digests. The consumer
  * has no SHA-256 code: the chain recompute stays in the runner.
+ * Plan 07-09 (D-26, D-21, D-22, SCN-01) adds a fourth replay, of data/scenarios/demo-lamp-tone-pass.ivss, whose lines carry the prefix `scn.`:
+ * the original program "Lamp Tone" entered through the project boot stub contract 2 (boot-stub-2.exec as the EXEC role, the zero GROM, the
+ * program as the cartridge), the six input events of the scenario (both controller words each), four run-to steps that never stop at a halt, the
+ * guest words at each stop and one scn.digest.<domain> line per observed domain (all nine here), equal to data/golden/demo-lamp-tone-pass.digests.
+ * Every expected figure the replay checks is a named constant below with the section of docs/video/demo-lamp-tone-1-derivation.md it comes from.
  * Stdout is pinned by data/expected/pkg-consumer.golden and its digest lines must equal those of
  * data/golden/diag-input-pass.digests. Exit 0 only when every check held; a failed check prints
  * a `FAIL <what>` line. No path, time or address is printed (the output is host independent).
@@ -63,6 +69,10 @@
 #define C_STIC_TARGET 150000u    /* the run-to bound of data/scenarios/diag-stic-fgbg-pass.ivss */
 #define C_STIC_FIRST_TICK 59736u /* E_0: the end of frame 0 */
 #define C_STIC_FRAMES_MAX 4u
+/* Plan 07-09: the fourth replay's counts (docs/video/demo-lamp-tone-1-derivation.md, A9 of section (a)). */
+#define C_SCN_EVENTS 6u /* the six controller events of the scripted run */
+#define C_SCN_STEPS 4u  /* the four run-to bounds */
+#define C_SCN_WORDS 6u  /* the guest words 02F0..02F5 */
 
 typedef struct c_images {
   uint8_t exec[C_EXEC_BYTES + 1u];
@@ -74,6 +84,10 @@ typedef struct c_images {
   size_t cart2_len;
   uint8_t cart3[C_CART_MAX + 1u]; /* the third diagnostic (plan 06-13) */
   size_t cart3_len;
+  uint8_t exec2[C_EXEC_BYTES + 1u]; /* the project boot stub, contract 2 (plan 07-09) */
+  size_t exec2_len;
+  uint8_t cart4[C_CART_MAX + 1u]; /* the original program (plan 07-09) */
+  size_t cart4_len;
 } c_images;
 
 typedef struct c_digests {
@@ -930,6 +944,153 @@ static void stic_session(int print, c_digests *d, int *observed)
   run_prefix = "";
 }
 
+/* ---- the fourth replay (plan 07-09): data/scenarios/demo-lamp-tone-pass.ivss ---- */
+
+/* The six controller events of the scripted run (derivation, section (a), A9): tick, controller 0 word, controller 1 word. */
+static void scn_events(ivs_input_event *ev)
+{
+  memset(ev, 0, C_SCN_EVENTS * sizeof ev[0]);
+  ev[0].at_tick = 100000u;
+  ev[0].controller[0] = IVS_CTRL_KEY_1;
+  ev[1].at_tick = 220000u;
+  ev[1].controller[0] = IVS_CTRL_KEY_1 | IVS_CTRL_KEY_9;
+  ev[2].at_tick = 340000u;
+  ev[2].controller[1] = IVS_CTRL_DISC_E;
+  ev[3].at_tick = 460000u;
+  ev[3].controller[0] = IVS_CTRL_SIDE_TOP;
+  ev[3].controller[1] = IVS_CTRL_DISC_E;
+  ev[4].at_tick = 580000u;
+  ev[5].at_tick = 700000u;
+  ev[5].controller[0] = IVS_CTRL_KEY_1 | IVS_CTRL_KEY_9;
+  ev[5].controller[1] = IVS_CTRL_SIDE_LOWER_LEFT;
+}
+
+/* The four run-to bounds and the guest words 02F0..02F5 at each stop (derivation, section (c), "RAM at the four stops of pass": the init marker,
+ * the frame counter, then per port the last byte and the change counter). */
+typedef struct c_scn_stop {
+  uint64_t target;
+  uint16_t w[C_SCN_WORDS];
+} c_scn_stop;
+static const c_scn_stop c_scn_stops[C_SCN_STEPS] = {{200000u, {0x03C5u, 0x0003u, 0x007Eu, 0x0001u, 0x00FFu, 0x0000u}},
+                                                    {440000u, {0x03C5u, 0x0007u, 0x00FFu, 0x0003u, 0x00FDu, 0x0001u}},
+                                                    {640000u, {0x03C5u, 0x000Au, 0x00FFu, 0x0005u, 0x00FFu, 0x0002u}},
+                                                    {806568u, {0x03C5u, 0x000Du, 0x005Au, 0x0006u, 0x009Fu, 0x0003u}}};
+
+/* A powered instance of the fourth replay: the project boot stub contract 2 as the EXEC role, zero GROM, the original program as the
+ * cartridge, power-on reset. 1 on success. */
+static int scn_powered(c_instance *x, int print)
+{
+  ivs_load_report lr;
+  ivs_status st;
+  static const uint32_t kinds[3] = {IVS_KIND_EXEC, IVS_KIND_GROM, IVS_KIND_CARTRIDGE};
+  static const char *const kind_name[3] = {"exec", "grom", "cart"};
+  const uint8_t *bytes[3];
+  size_t lens[3];
+  bytes[0] = images.exec2;
+  bytes[1] = images.grom;
+  bytes[2] = images.cart4;
+  lens[0] = images.exec2_len;
+  lens[1] = C_GROM_BYTES;
+  lens[2] = images.cart4_len;
+  if (!instance_create(x)) {
+    fail("scn create");
+    return 0;
+  }
+  for (size_t i = 0u; i < 3u; i++) {
+    st = load(x->m, kinds[i], bytes[i], lens[i], &lr);
+    if (print && i != 1u) {
+      printf("scn.load.%s status=%s length_bytes=%u sha256=", kind_name[i], status_token(st), (unsigned)lr.image.length_bytes);
+      print_hex(lr.image.sha256, sizeof lr.image.sha256);
+      printf("\n");
+    }
+    if (st != IVS_OK) {
+      fail("scn load");
+      instance_destroy(x);
+      return 0;
+    }
+  }
+  st = ivs_machine_reset(x->m, IVS_RESET_POWER_ON);
+  if (st != IVS_OK) {
+    fail("scn reset");
+    instance_destroy(x);
+    return 0;
+  }
+  return 1;
+}
+
+/* The replay of demo-lamp-tone-pass on a fresh instance: the six events, four run-to steps (the program never halts, so every stop is the
+ * target), the guest words at each stop, the digests into d and the observed set into observed by the count rule: video, audio and the write
+ * log by delivered bytes, the input domain when events were applied. */
+static void scn_session(int print, c_digests *d, int *observed)
+{
+  c_instance x;
+  ivs_info info;
+  ivs_status st;
+  ivs_input_event ev[C_SCN_EVENTS];
+  uint16_t w[C_SCN_WORDS];
+  uint32_t consumed = 0u;
+  memset(d, 0, sizeof *d);
+  delivered_video_bytes = 0u;
+  delivered_audio_bytes = 0u;
+  delivered_psglog_bytes = 0u;
+  delivered_frames = 0u;
+  run_prefix = "scn.";
+  scn_events(ev);
+  if (!scn_powered(&x, print)) {
+    run_prefix = "";
+    return;
+  }
+  memset(&info, 0, sizeof info);
+  info.struct_size = (uint32_t)sizeof info;
+  st = ivs_machine_info(x.m, &info);
+  if (st != IVS_OK || info.video_format != IVS_OUTPUT_FORMAT_INDEX8_FRAMES_V1 || info.video_slot_bytes == 0u) {
+    fail("scn info");
+    instance_destroy(&x);
+    run_prefix = "";
+    return;
+  }
+  for (unsigned k = 0u; k < C_SCN_STEPS; k++) {
+    consumed += run_step(x.m, k + 1u, c_scn_stops[k].target, &ev[consumed], C_SCN_EVENTS - consumed, IVS_STOP_TARGET, print);
+    if (consumed > C_SCN_EVENTS) {
+      fail("scn input_consumed");
+      consumed = C_SCN_EVENTS;
+    }
+    st = ivs_machine_peek(x.m, 0x02F0u, C_SCN_WORDS, w);
+    if (st != IVS_OK) {
+      fail("scn peek words");
+      continue;
+    }
+    if (print) {
+      printf("scn.step.%u.mem 02F0..02F5=", k + 1u);
+      for (size_t i = 0u; i < C_SCN_WORDS; i++) {
+        printf("%s%04X", i == 0u ? "" : ",", (unsigned)w[i]);
+      }
+      printf("\n");
+    }
+    if (memcmp(w, c_scn_stops[k].w, sizeof w) != 0) {
+      fail("scn guest words");
+    }
+  }
+  if (print) {
+    printf("scn.input events=%u consumed=%u\n", (unsigned)C_SCN_EVENTS, (unsigned)consumed);
+  }
+  if (consumed != C_SCN_EVENTS) {
+    fail("scn input consumed total");
+  }
+  if (!digest_all(x.m, d)) {
+    fail("scn digest");
+  }
+  for (size_t i = 0u; i < C_DOMAINS; i++) {
+    observed[i] = 1;
+  }
+  observed[5] = delivered_video_bytes != 0u;
+  observed[6] = delivered_audio_bytes != 0u;
+  observed[7] = consumed != 0u;
+  observed[8] = delivered_psglog_bytes != 0u;
+  instance_destroy(&x);
+  run_prefix = "";
+}
+
 static void version_tie(void)
 {
   uint32_t lib = ivs_api_version();
@@ -994,8 +1155,8 @@ int main(int argc, char **argv)
   int observed[C_DOMAINS];
   int observed2[C_DOMAINS];
   int equal;
-  if (argc != 5) {
-    fprintf(stderr, "usage: consumer <boot-stub.exec> <diag-cpu-1.ivsc> <diag-ctrl-psg-1.ivsc> <diag-stic-1.ivsc>\n");
+  if (argc != 7) {
+    fprintf(stderr, "usage: consumer <boot-stub.exec> <diag-cpu-1.ivsc> <diag-ctrl-psg-1.ivsc> <diag-stic-1.ivsc> <boot-stub-2.exec> <lamp-tone.ivsc>\n");
     return 2;
   }
   if (!read_image(argv[1], images.exec, C_EXEC_BYTES, &images.exec_len) || images.exec_len == 0u) {
@@ -1012,6 +1173,14 @@ int main(int argc, char **argv)
   }
   if (!read_image(argv[4], images.cart3, C_CART_MAX, &images.cart3_len)) {
     fprintf(stderr, "consumer: cannot read the third cartridge image\n");
+    return 2;
+  }
+  if (!read_image(argv[5], images.exec2, C_EXEC_BYTES, &images.exec2_len) || images.exec2_len == 0u) {
+    fprintf(stderr, "consumer: cannot read the second EXEC image\n");
+    return 2;
+  }
+  if (!read_image(argv[6], images.cart4, C_CART_MAX, &images.cart4_len)) {
+    fprintf(stderr, "consumer: cannot read the fourth cartridge image\n");
     return 2;
   }
   memset(images.grom, 0, sizeof images.grom);
@@ -1068,6 +1237,23 @@ int main(int argc, char **argv)
   printf("stic.second-instance equal=%s\n", equal ? "yes" : "no");
   if (!equal) {
     fail("stic second instance");
+  }
+  /* The fourth replay (plan 07-09): its digests carry the prefix `scn.`; the lines of the three earlier replays stay as they were. */
+  memset(observed, 0, sizeof observed);
+  memset(observed2, 0, sizeof observed2);
+  scn_session(1, &first, observed);
+  for (size_t i = 0u; i < C_DOMAINS; i++) {
+    if (observed[i]) {
+      printf("scn.digest.%s ", c_domain_name[i]);
+      print_hex(first.sha[i], sizeof first.sha[i]);
+      printf("\n");
+    }
+  }
+  scn_session(0, &second, observed2);
+  equal = memcmp(&first, &second, sizeof first) == 0 && memcmp(observed, observed2, sizeof observed) == 0;
+  printf("scn.second-instance equal=%s\n", equal ? "yes" : "no");
+  if (!equal) {
+    fail("scn second instance");
   }
   printf("result %s failures=%d\n", failures == 0 ? "ok" : "fail", failures);
   return failures == 0 ? 0 : 1;
