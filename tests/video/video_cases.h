@@ -40,6 +40,8 @@ extern const ivs_test_case ivs_video_probe_cases[];
 extern const size_t ivs_video_probe_count;
 extern const ivs_test_case ivs_video_meta_cases[];
 extern const size_t ivs_video_meta_count;
+extern const ivs_test_case ivs_video_cstack_cases[];
+extern const size_t ivs_video_cstack_count;
 extern const ivs_test_case ivs_video_judge_cases[];
 extern const size_t ivs_video_judge_count;
 
@@ -70,6 +72,10 @@ size_t vp_prog_off(uint16_t *w);
 size_t vp_prog_border(uint16_t *w, uint32_t value);
 /* MVO R0, $0020 once (the display-enable strobe in the register window of frame 0), then [DIS] B self. */
 size_t vp_prog_strobe_once(uint16_t *w);
+/* MVI $0021, R1 (a read inside the register window: the mode becomes Color Stack), then the strobe once and [DIS] B self (9 words); and
+ * the same read then a strobe in an endless loop (MVO R0, $0020 and a branch back: every frame is displayed). */
+size_t vp_prog_cs_strobe_once(uint16_t *w);
+size_t vp_prog_cs_strobe_loop(uint16_t *w);
 
 
 /* ---- the hand-derived frames and the card bit roles (plan 06-10; cmake/IvsVideoFrames.cmake -> ivs_video_frames.inc, video_fgbg.c) ----
@@ -128,6 +134,11 @@ void vf_mem_clear(void);
 void vf_poke_gram_card(ivs_memsys *m, uint32_t card, const uint8_t b[8]);
 void vf_poke_gram(ivs_memsys *m, const vf_frame *f);
 void vf_render_words(const uint16_t *words, uint32_t mode, uint8_t *plane);
+/* The same with the four color-stack values (NULL is four zeros) and the final pointer of the render (NULL when not wanted). */
+void vf_render_cs(const uint16_t *words, uint32_t mode, const uint32_t stack[4], uint8_t *plane, uint32_t *final_pos);
+/* The frame tests of video_fgbg.c shared with video_cstack.c: frame index i of the generated table of the given mode, unit path and machine path. */
+int vf_unit(uint32_t i, uint32_t mode);
+int vf_machine(uint32_t i, uint32_t mode);
 void vf_render_frame(const vf_frame *f, uint8_t *plane);
 /* The index of the first byte at which got (stride gs) differs from exp (stride es) over w columns and h rows, or -1; and the printout of
  * the card that holds it (two 8 x 8 blocks with the word, the annotation, the vector name and the literal line number). */
@@ -138,6 +149,9 @@ void vf_report(const vf_frame *f, const uint8_t *got, uint32_t gs, const uint8_t
 void vf_text_sha(const uint8_t *plane, uint32_t stride, uint32_t w, char *hex);
 /* The test-side word-versus-fields encoder (vid_fields.c, encode direction only; no include from core/src). */
 uint32_t vid_encode_fgbg(uint32_t fg, uint32_t bg, uint32_t sel, uint32_t card);
+/* The Color Stack word of a graphics ROM card (sel 0, fg 0..7) or graphics RAM card (sel 1, fg 0..15, bit 12 is foreground bit 3), from the roles of
+ * the cs-grom and cs-gram rows of data/video/cards.literal.txt; adv sets bit 13. */
+uint32_t vid_encode_cs(uint32_t adv, uint32_t fg, uint32_t sel, uint32_t card);
 /* Checks every listed cell word of f against its annotation; a mismatch is reported as FIXTURE (not a renderer failure); 1 when all match. */
 int vid_check_cells(const vf_frame *f);
 
@@ -145,5 +159,7 @@ int vid_check_cells(const vf_frame *f);
  * from the block the roles predict (0 is a pass; quiet 1 suppresses the diagnostics, for the judge). */
 void vpr_roles(const char *role[16]);
 uint32_t vpr_sweep(const char *const role[16], int quiet);
+/* The Color Stack single-bit sweep of one variant (cs-grom, cs-gram or cs-sq) of the literal: the number of failed probes (0 is a pass). */
+uint32_t vpr_sweep_cs(const char *variant, int quiet);
 
 #endif

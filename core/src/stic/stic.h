@@ -14,7 +14,7 @@
  *   display_latch    u32  at  12   0 or 1, the display-enable handshake of the current frame (D-06)
  *   windows_active   u32  at  16   0 or 1, decided at the first window of the frame from the latch
  *   mode             u32  at  20   0 Foreground/Background, 1 Color Stack (persistent, D-06)
- *   cs_ptr           u32  at  24   color-stack pointer 0..3, reset to 0 each frame
+ *   cs_ptr           u32  at  24   color-stack pointer 0..3: the final pointer of the last display-on frame rendered (each render starts at 0)
  *   blocked_reads    u32  at  28   reads refused by a closed gate (D-06), saturating
  *   blocked_writes   u32  at  32   writes dropped by a closed gate (D-06), saturating
  *   late_grants      u32  at  36   bus windows that ended without a grant (T-6)
@@ -117,33 +117,43 @@ typedef struct ivs_stic_cardin {
 
 /* Pure card renderer (stic_cards.c; no static or global data, no allocation, no state kept between calls). Row form: renders the 20
  * BACKTAB words row_words[0..19] of ONE card row into out, the 8 pixel rows of the 160-wide working plane (1,280 bytes, stride 160).
- * Foreground/Background word (W = word and $3FFF, bits 15..14 ignored): sel = bit 11 (0 graphics ROM, 1 graphics RAM), card = bits
+ * W = word and $3FFF (bits 15..14 ignored). Foreground/Background word: sel = bit 11 (0 graphics ROM, 1 graphics RAM), card = bits
  * 8..3, fg = bits 2..0, bg = 8 x bit 12 + 4 x bit 13 + 2 x bit 10 + bit 9; the pixel of graphics byte y at x is fg when bit 7 - x is
- * set, else bg; in column 19 the pixel x = 7 is IVS_PIXEL_BLANK (the cut-off column, clip side right). The graphics bytes come only
- * from ivs_memsys_stic_gfx_byte_internal. A Color Stack frame is IVS_PIXEL_BLANK everywhere until plan 06-11. Returns the bytes
- * written (1,280). */
-uint32_t ivs_stic_render_cards_row(const ivs_stic_cardin *in, const uint16_t *row_words, const ivs_memsys *mem, uint8_t *out);
+ * set, else bg. Color Stack word, by the pair of bits 12 and 11: 00 graphics ROM card (card = bits 10..3, fg = bits 2..0), 01 graphics
+ * RAM card (card = bits 8..3, fg = bits 2..0), 11 graphics RAM card with fg = 8 + bits 2..0, 10 Colored Squares (four 4 x 4 quadrants,
+ * colors bits 2..0, 5..3, 8..6 and 4 x b13 + 2 x b10 + b9, color 7 the current stack entry); a card layout has bit 13 advance the
+ * pointer, pos = (pos + 1) mod 4, before the card is drawn, and draws its background from in->stack[pos]. cs_pos carries the pointer
+ * in and out (the caller starts a frame at 0 and passes the same variable for the 12 rows; the Foreground/Background mode leaves it
+ * unchanged). In column 19 the pixel x = 7 is IVS_PIXEL_BLANK (the cut-off column, clip side right). The graphics bytes come only from
+ * ivs_memsys_stic_gfx_byte_internal. Returns the bytes written (1,280). */
+uint32_t ivs_stic_render_cards_row(const ivs_stic_cardin *in, const uint16_t *row_words, const ivs_memsys *mem, uint32_t *cs_pos, uint8_t *out);
 
-/* Plane form: the 240 BACKTAB words (cell r, c is word 20 r + c) into the 160 x 96 working plane plane (15,360 bytes, caller-owned).
- * Returns the bytes written. The unit-path tests use it; the machine renders one card row at a time (no 15 KB stack frame). */
-uint32_t ivs_stic_render_cards(const ivs_stic_cardin *in, const uint16_t *words, const ivs_memsys *mem, uint8_t *plane);
+/* Plane form: the 240 BACKTAB words (cell r, c is word 20 r + c) into the 160 x 96 working plane plane (15,360 bytes, caller-owned),
+ * the color-stack pointer starting at 0. When cs_final is not NULL it receives the final pointer 0..3. Returns the bytes written. The
+ * unit-path tests use it; the machine renders one card row at a time (no 15 KB stack frame). */
+uint32_t ivs_stic_render_cards(const ivs_stic_cardin *in, const uint16_t *words, const ivs_memsys *mem, uint32_t *cs_final, uint8_t *plane);
 
 /* Fills out with the pixel rows of card row cr (0 .. card_rows - 1), row stride card_columns x card_w: a display-off frame (displayed
  * 0) with the border color index (stic_reg 0x2C & 0xF, video.display_off_fill border, C99); a display-on Foreground/Background frame
- * through ivs_stic_render_cards_row from s->row_latch and the registers; a display-on Color Stack frame with IVS_PIXEL_BLANK until plan
- * 06-11. Returns the bytes filled (card_h x working width), 0 when one card row does not fit IVS_STIC_CARDROW_MAX. */
+ * through ivs_stic_render_cards_row from s->row_latch and the registers, in the mode of s; a display-on Color Stack frame carries the
+ * pointer cs_pos (in and out) across the rows. Returns the bytes filled (card_h x working width), 0 when one card row does not fit
+ * IVS_STIC_CARDROW_MAX. */
 uint32_t ivs_stic_render_card_row(const ivs_stic_params *p, const ivs_stic_state *s, const ivs_memsys *mem, uint32_t displayed, uint32_t cr,
-                                  uint8_t *out);
+                                  uint32_t *cs_pos, uint8_t *out);
 
 /* The whole working plane, card row by card row, into a caller-owned buffer of at least IVS_STIC_PLANE_MAX bytes (a test and review
  * entry point; the frame writer below streams card rows instead). Returns the bytes filled, 0 when the plane does not fit. */
 uint32_t ivs_stic_render_plane(const ivs_stic_params *p, const ivs_stic_state *s, const ivs_memsys *mem, uint32_t displayed, uint8_t *plane);
+/* Same as ivs_stic_render_plane, and also stores the final color-stack pointer in *cs_final when it is not NULL. */
+uint32_t ivs_stic_render_plane_cs(const ivs_stic_params *p, const ivs_stic_state *s, const ivs_memsys *mem, uint32_t displayed, uint8_t *plane,
+                                  uint32_t *cs_final);
 
-/* Completes the frame that ends at end_tick: renders it from the state and the register file, frames the 32-byte header (be64 tick,
+/* Completes the frame that ends at end_tick: renders it from the state and the register file (a display-on frame leaves the final
+ * color-stack pointer of its render in s->cs_ptr, plan 06-11; a display-off frame leaves it), frames the 32-byte header (be64 tick,
  * be64 index = row->count, be32 width, be32 height, be32 flags with bit 0 set when s->windows_active, be32 0), advances the chain
  * and the count of row whether or not a buffer is present, and copies the slot to sink->video when it has room (else sets
  * video_overflow). sink NULL is the counting channel. Called by the FRAME_END handler of ivs_stic_catch_up at the event. */
-void ivs_stic_frame_deliver(const ivs_stic_params *p, const ivs_stic_state *s, const ivs_memsys *mem, ivs_stic_video_row *row,
+void ivs_stic_frame_deliver(const ivs_stic_params *p, ivs_stic_state *s, const ivs_memsys *mem, ivs_stic_video_row *row,
                             ivs_stic_sink *sink, uint64_t end_tick);
 
 /* Moves the timeline cursor of s to machine tick to_tick: applies, in order, every event of the per-frame table whose

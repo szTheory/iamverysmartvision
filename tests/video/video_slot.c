@@ -173,9 +173,12 @@ static int vs_display_on_fgbg_decoded(void)
   return IVS_TEST_PASS;
 }
 
-/* Interim pin for plan 06-11 to invert: a display-on Color Stack frame is still every position not displayed (IVS_PIXEL_BLANK). The mode
- * is set directly in the instance state (the mode persists across frames, D-06), so no mode-select read is needed. */
-static int vs_cs_not_decoded(void)
+/* Reviewed inversion (plan 06-11, VID-04): video.frame.cs-not-decoded pinned the interim display-on Color Stack frame (every position
+ * IVS_PIXEL_BLANK) until the Color Stack decode existed. A display-on Color Stack frame is now decoded: with BACKTAB, graphics memory and
+ * the four color-stack registers all zero every word is a graphics ROM card 0 (the zero image) with foreground 0, no advance, so the
+ * background is stack entry 0 = color 0 at every published position (and none is the not-displayed sentinel), and the pointer ends at 0.
+ * The mode is set directly in the instance state (the mode persists across frames, D-06), so no mode-select read is needed. */
+static int vs_cs_decoded(void)
 {
   vp_run r;
   uint16_t w[SC_PROG_MAX];
@@ -183,8 +186,9 @@ static int vs_cs_not_decoded(void)
   VC_CHECK(vp_new(&r, w, n, 3u * VS_SLOT));
   ivs_machine_from_handle_mut(r.x.m)->stic.mode = 1u;
   VC_CHECK(vp_until(&r, VS_E1));
-  VC_CHECK(vs_plane_all(r.buf, (uint8_t)IVS_PIXEL_BLANK));
+  VC_CHECK(vs_plane_all(r.buf, 0u));
   VC_CHECK(vs_be(r.buf + 24u, 4u) == IVS_FRAME_F_DISPLAYED);
+  VC_CHECK(vp_im(&r)->stic.cs_ptr == 0u);
   vp_free(&r);
   return IVS_TEST_PASS;
 }
@@ -321,7 +325,7 @@ const ivs_test_case ivs_video_slot_cases[] = {
     {"video.slot.displayed-flag-follows-latch", vs_displayed_flag_follows_latch, NULL},
     {"video.frame.count-equals-events", vs_count_equals_events, NULL},
     {"video.frame.display-on-fgbg-decoded", vs_display_on_fgbg_decoded, NULL},
-    {"video.frame.cs-not-decoded", vs_cs_not_decoded, NULL},
+    {"video.frame.cs-decoded", vs_cs_decoded, NULL},
     {"video.noop.null-buffer", vs_noop_null_buffer, NULL},
     {"video.chain.framing-oracle", vs_chain_framing_oracle, NULL},
     {"video.chain.recompute-from-slots", vs_chain_recompute_from_slots, NULL},

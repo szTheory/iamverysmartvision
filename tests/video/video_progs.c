@@ -70,3 +70,25 @@ size_t vp_prog_strobe_once(uint16_t *w)
   w[n++] = 0x0003u; /* DIS */
   return sc_w_loop(w, n);
 }
+
+/* MVI $0021, R1 is the two decles 0281 0021 (MVI at 0280 + d with d = 1, then the address, tests/stic/stic_cases.h); the read lands inside
+ * the register window of frame 0 and selects Color Stack. Then MVO R0, $0020 (0240 0020), DIS (0003) and B self (0220 0001): 8 words. */
+size_t vp_prog_cs_strobe_once(uint16_t *w)
+{
+  size_t n = sc_w_mvi(w, 0u, 0x0021u, 1u);
+  n = sc_w_mvo(w, n, 0u, 0x0020u);
+  w[n++] = 0x0003u; /* DIS */
+  return sc_w_loop(w, n);
+}
+
+/* The read once, then MVO R0, $0020 and B back to the MVO (0220 then 2: the branch displacement of sc_w_bback, from the word after the branch
+ * decle): the strobe repeats in every frame, so every frame is displayed. */
+size_t vp_prog_cs_strobe_loop(uint16_t *w)
+{
+  size_t n = sc_w_mvi(w, 0u, 0x0021u, 1u);
+  size_t start = n;
+  n = sc_w_mvo(w, n, 0u, 0x0020u);
+  w[n] = 0x0220u;
+  w[n + 1u] = (uint16_t)(n + 1u - start);
+  return n + 2u;
+}

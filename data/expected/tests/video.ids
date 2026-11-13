@@ -14,7 +14,7 @@ video.slot.blank-frame-border-fill
 video.slot.displayed-flag-follows-latch
 video.frame.count-equals-events
 video.frame.display-on-fgbg-decoded
-video.frame.cs-not-decoded
+video.frame.cs-decoded
 video.noop.null-buffer
 video.chain.framing-oracle
 video.chain.recompute-from-slots
@@ -57,7 +57,7 @@ video.fuzz.seed06
 video.fuzz.seed07
 video.fuzz.seed08
 video.iso.interleaved-instances
-# Plan 06-10 task 1 (VID-04): the pure Foreground/Background card renderer against the hand-derived frame F-A1 of plan 06-01, in the unit path and through the whole machine; the reviewed inversion of video.frame.display-on-not-decoded is video.frame.display-on-fgbg-decoded, and video.frame.cs-not-decoded pins the Color Stack interim for plan 06-11.
+# Plan 06-10 task 1 (VID-04): the pure Foreground/Background card renderer against the hand-derived frame F-A1 of plan 06-01, in the unit path and through the whole machine; the reviewed inversion of video.frame.display-on-not-decoded is video.frame.display-on-fgbg-decoded, and video.frame.cs-not-decoded pinned the Color Stack interim (inverted into video.frame.cs-decoded by plan 06-11).
 video.fgbg.F-A1
 video.fgbg.machine-F-A1
 # Plan 06-10 task 2 (VID-04): the remaining frames F-A2..F-A5 (unit path) and F-A3, F-A5 (machine path), the card pixel rules (bit order, row order, 16 colors, the cut-off 20th column, the zero graphics ROM, the display-off border fill, the color range), the 16-bit single-probe role sweep against data/video/cards.literal.txt, the metamorphic relations and the two judges.
@@ -80,3 +80,6 @@ video.meta.bits-15-14-ignored
 video.meta.purity
 video.judge.frame-row-changed
 video.judge.card-bit-flipped
+# Plan 06-11 task 1 (VID-04, tracer): the Color Stack decode against the hand-derived frame F-B1 of plan 06-01, in the unit path and through the whole machine (a read of $0021 inside the register window selects Color Stack); the reviewed inversion of video.frame.cs-not-decoded is video.frame.cs-decoded.
+video.cstack.F-B1
+video.cstack.machine-F-B1

@@ -22,6 +22,20 @@ uint32_t vid_encode_fgbg(uint32_t fg, uint32_t bg, uint32_t sel, uint32_t card)
   return w;
 }
 
+uint32_t vid_encode_cs(uint32_t adv, uint32_t fg, uint32_t sel, uint32_t card)
+{
+  uint32_t w = fg & 7u;
+  w |= (adv & 1u) << 13;
+  if (sel == 0u) {
+    w |= (card & 0xFFu) << 3; /* cs-grom: bits 10..3 the card, bit 12 and bit 11 zero */
+  } else {
+    w |= (card & 0x3Fu) << 3; /* cs-gram: bits 8..3 the card, bit 11 set, bit 12 foreground bit 3 */
+    w |= 1u << 11;
+    w |= ((fg >> 3) & 1u) << 12;
+  }
+  return w;
+}
+
 /* The unsigned number after key (for example "fg=") in s, or -1 when key is absent. */
 static long vid_field(const char *s, const char *key)
 {
@@ -44,12 +58,19 @@ int vid_check_cells(const vf_frame *f)
     int gram = strstr(c->ann, " gram ") != NULL;
     int grom = strstr(c->ann, " grom ") != NULL;
     uint32_t want;
-    if (strncmp(c->ann, "fgbg ", 5u) != 0 || fg < 0 || bg < 0 || card < 0 || gram == grom) {
-      ivs_test_diag("FIXTURE: %s line %u: annotation outside the fgbg grammar: %s", f->name, (unsigned)c->line, c->ann);
+    int is_cs = strncmp(c->ann, "cs ", 3u) == 0;
+    long adv = vid_field(c->ann, "adv=");
+    if ((strncmp(c->ann, "fgbg ", 5u) != 0 && !is_cs) || fg < 0 || bg < 0 || card < 0 || gram == grom || (is_cs && adv < 0)) {
+      ivs_test_diag("FIXTURE: %s line %u: annotation outside the fgbg and cs grammar: %s", f->name, (unsigned)c->line, c->ann);
       ok = 0;
       continue;
     }
-    want = vid_encode_fgbg((uint32_t)fg, (uint32_t)bg, gram ? 1u : 0u, (uint32_t)card);
+    if (is_cs) {
+      /* the bg of a Color Stack cell is a stack entry reached through the pointer, not a field of the word: only the word is checked here */
+      want = vid_encode_cs((uint32_t)adv, (uint32_t)fg, gram ? 1u : 0u, (uint32_t)card);
+    } else {
+      want = vid_encode_fgbg((uint32_t)fg, (uint32_t)bg, gram ? 1u : 0u, (uint32_t)card);
+    }
     if (want != c->word) {
       ivs_test_diag("FIXTURE: %s line %u: cell (%u,%u) word %04X but its annotation encodes %04X (%s)", f->name, (unsigned)c->line,
                     (unsigned)c->r, (unsigned)c->c, (unsigned)c->word, (unsigned)want, c->ann);

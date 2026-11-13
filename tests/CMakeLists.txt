@@ -281,17 +281,17 @@ add_custom_command(
   COMMAND "${CMAKE_COMMAND}" "-DROOT=${PROJECT_SOURCE_DIR}" "-DOUT=${IVS_VIDEOLIT_INC}" -P "${IVS_VIDEOLIT_GENERATOR}"
   DEPENDS "${PROJECT_SOURCE_DIR}/data/video/geometry.literal.txt" "${PROJECT_SOURCE_DIR}/data/video/chain-framing.literal.txt" "${IVS_VIDEOLIT_GENERATOR}"
   COMMENT "Generating the video literal include")
-# The frame literal include (cmake/IvsVideoFrames.cmake, plan 06-10): reads only data/video/frames/F-A1..F-A5.frame and
+# The frame literal include (cmake/IvsVideoFrames.cmake, plan 06-10): reads only data/video/frames/F-A1..F-A5 and F-B1..F-B3 (.frame) and
 # data/video/cards.literal.txt, never the profile or the core; the expected frames are the hand-derived literals.
 set(IVS_VIDEOFRAMES_GENERATOR "${PROJECT_SOURCE_DIR}/cmake/IvsVideoFrames.cmake")
 set(IVS_VIDEOFRAMES_INC "${CMAKE_CURRENT_BINARY_DIR}/ivs_video_frames.inc")
-file(GLOB IVS_VIDEOFRAMES_LITERALS CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/data/video/frames/F-A*.frame")
+file(GLOB IVS_VIDEOFRAMES_LITERALS CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/data/video/frames/F-[AB]*.frame")
 add_custom_command(
   OUTPUT "${IVS_VIDEOFRAMES_INC}"
   COMMAND "${CMAKE_COMMAND}" "-DROOT=${PROJECT_SOURCE_DIR}" "-DOUT=${IVS_VIDEOFRAMES_INC}" -P "${IVS_VIDEOFRAMES_GENERATOR}"
   DEPENDS ${IVS_VIDEOFRAMES_LITERALS} "${PROJECT_SOURCE_DIR}/data/video/cards.literal.txt" "${IVS_VIDEOFRAMES_GENERATOR}"
   COMMENT "Generating the video frame literal include")
-set(IVS_VIDEO_TEST_SOURCES video/video_main.c video/video_geom.c video/video_slot.c video/video_buffers.c video/video_stop.c video/video_slice.c video/video_progs.c video/video_fgbg.c video/vid_fields.c video/video_card.c video/video_probe.c video/video_meta.c video/video_judge.c stic/stic_progs.c machine/machine_standin.c)
+set(IVS_VIDEO_TEST_SOURCES video/video_main.c video/video_geom.c video/video_slot.c video/video_buffers.c video/video_stop.c video/video_slice.c video/video_progs.c video/video_fgbg.c video/vid_fields.c video/video_card.c video/video_probe.c video/video_meta.c video/video_judge.c video/video_cstack.c stic/stic_progs.c machine/machine_standin.c)
 add_executable(ivs_tests_video ${IVS_VIDEO_TEST_SOURCES} "${IVS_VIDEOLIT_INC}" "${IVS_VIDEOFRAMES_INC}")
 target_include_directories(ivs_tests_video PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/stic" "${CMAKE_CURRENT_SOURCE_DIR}/video" "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(ivs_tests_video PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)

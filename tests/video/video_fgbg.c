@@ -75,12 +75,21 @@ void vf_poke_gram(ivs_memsys *m, const vf_frame *f)
   }
 }
 
-void vf_render_words(const uint16_t *words, uint32_t mode, uint8_t *plane)
+void vf_render_cs(const uint16_t *words, uint32_t mode, const uint32_t stack[4], uint8_t *plane, uint32_t *final_pos)
 {
   ivs_stic_cardin in;
+  uint32_t k;
   memset(&in, 0, sizeof in);
   in.mode = mode;
-  (void)ivs_stic_render_cards(&in, words, &vf_m, plane);
+  for (k = 0u; k < 4u; k++) {
+    in.stack[k] = stack != NULL ? stack[k] : 0u;
+  }
+  (void)ivs_stic_render_cards(&in, words, &vf_m, final_pos, plane);
+}
+
+void vf_render_words(const uint16_t *words, uint32_t mode, uint8_t *plane)
+{
+  vf_render_cs(words, mode, NULL, plane, NULL);
 }
 
 void vf_words(const vf_frame *f, uint16_t *words)
@@ -100,7 +109,7 @@ void vf_render_frame(const vf_frame *f, uint8_t *plane)
   vf_mem_clear();
   vf_poke_gram(&vf_m, f);
   vf_words(f, words);
-  vf_render_words(words, f->mode, plane);
+  vf_render_cs(words, f->mode, f->stack, plane, NULL);
 }
 
 void vf_expected(const vf_frame *f, uint8_t *exp)
@@ -215,12 +224,12 @@ static int vf_fixture_ok(const vf_frame *f)
   return 1;
 }
 
-/* Unit path: the frame literal through ivs_stic_render_cards. */
-static int vf_unit(uint32_t i)
+/* Unit path: the frame literal through ivs_stic_render_cards (mode 0 Foreground/Background, 1 Color Stack; the literal states its mode). */
+int vf_unit(uint32_t i, uint32_t mode)
 {
   const vf_frame *f = vf_frame_get(i);
   long d;
-  VC_CHECK(f != NULL && f->mode == 0u && f->display == 1u);
+  VC_CHECK(f != NULL && f->mode == mode && f->display == 1u);
   VC_CHECK(vf_fixture_ok(f));
   vf_render_frame(f, vf_got);
   d = vf_first_diff(vf_got, VF_PLANE_W, vf_exp, VF_PLANE_W, VF_PLANE_W, VF_PLANE_H);
@@ -233,18 +242,18 @@ static int vf_unit(uint32_t i)
 
 /* Machine path: raw pokes into a created instance, a strobe stand-in (MVO R0, $0020 then DIS and B self: 6 words, derived in
  * tests/stic/stic_cases.h and video_progs.c), the first frame event, and the DELIVERED slot plane. */
-static int vf_machine(uint32_t i)
+int vf_machine(uint32_t i, uint32_t mode)
 {
   const vf_frame *f = vf_frame_get(i);
   vp_run r;
   uint16_t w[SC_PROG_MAX];
   uint16_t words[240];
-  size_t n = vp_prog_strobe_once(w);
+  size_t n = mode == 1u ? vp_prog_cs_strobe_once(w) : vp_prog_strobe_once(w);
   struct ivs_machine *im;
   char hex[65];
   uint32_t k;
   long d;
-  VC_CHECK(f != NULL && f->mode == 0u && f->display == 1u);
+  VC_CHECK(f != NULL && f->mode == mode && f->display == 1u);
   VC_CHECK(vf_fixture_ok(f));
   VC_CHECK(vp_new(&r, w, n, 2u * VF_SLOT));
   im = ivs_machine_from_handle_mut(r.x.m);
@@ -254,6 +263,10 @@ static int vf_machine(uint32_t i)
     ivs_memsys_poke_raw_internal(&im->mem, (uint16_t)(VF_BACKTAB_BASE + k), words[k]);
   }
   vf_poke_gram(&im->mem, f);
+  for (k = 0u; k < 4u; k++) {
+    im->mem.stic_reg[0x28u + k] = (uint16_t)f->stack[k]; /* the four color-stack registers (read only in Color Stack mode) */
+  }
+  im->mem.stic_reg[0x2Cu] = (uint16_t)f->border;
   if (!vp_until(&r, VF_E0)) {
     vp_free(&r);
     return IVS_TEST_FAIL;
@@ -261,6 +274,11 @@ static int vf_machine(uint32_t i)
   if (r.sink.video_frames != 1u || r.sink.video_written != VF_SLOT) {
     ivs_test_diag("%s: frames %u written %u, expected 1 and %u", f->name, (unsigned)r.sink.video_frames, (unsigned)r.sink.video_written,
                   (unsigned)VF_SLOT);
+    vp_free(&r);
+    return IVS_TEST_FAIL;
+  }
+  if (mode == 1u && vp_im(&r)->stic.mode != 1u) {
+    ivs_test_diag("%s: the read of $0021 did not leave the instance in Color Stack mode", f->name);
     vp_free(&r);
     return IVS_TEST_FAIL;
   }
@@ -282,42 +300,42 @@ static int vf_machine(uint32_t i)
 
 static int vf_unit_a1(void)
 {
-  return vf_unit(0u);
+  return vf_unit(0u, 0u);
 }
 
 static int vf_unit_a2(void)
 {
-  return vf_unit(1u);
+  return vf_unit(1u, 0u);
 }
 
 static int vf_unit_a3(void)
 {
-  return vf_unit(2u);
+  return vf_unit(2u, 0u);
 }
 
 static int vf_unit_a4(void)
 {
-  return vf_unit(3u);
+  return vf_unit(3u, 0u);
 }
 
 static int vf_unit_a5(void)
 {
-  return vf_unit(4u);
+  return vf_unit(4u, 0u);
 }
 
 static int vf_machine_a1(void)
 {
-  return vf_machine(0u);
+  return vf_machine(0u, 0u);
 }
 
 static int vf_machine_a3(void)
 {
-  return vf_machine(2u);
+  return vf_machine(2u, 0u);
 }
 
 static int vf_machine_a5(void)
 {
-  return vf_machine(4u);
+  return vf_machine(4u, 0u);
 }
 
 const ivs_test_case ivs_video_fgbg_cases[] = {

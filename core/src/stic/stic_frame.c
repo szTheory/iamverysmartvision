@@ -13,10 +13,10 @@
  * buffer is present, so the machine state never depends on a buffer and a sliced run equals one call (the chain is per frame, not per
  * call).
  *
- * Render (plan 06-10): a display-off frame is filled with the border color index (stic_reg 0x2C and 0xF, video.display_off_fill border,
- * C99); a display-on Foreground/Background frame is decoded card row by card row from the row latches and the registers by the pure
- * renderer of stic_cards.c; a display-on Color Stack frame is filled with IVS_PIXEL_BLANK, every position not displayed (interim until
- * plan 06-11), so it can never be mistaken for a rendered picture.
+ * Render (plans 06-10 and 06-11): a display-off frame is filled with the border color index (stic_reg 0x2C and 0xF,
+ * video.display_off_fill border, C99); a display-on frame, Foreground/Background or Color Stack, is decoded card row by card row from
+ * the row latches and the registers by the pure renderer of stic_cards.c, the color-stack pointer carried across the rows from 0; the
+ * final pointer of a display-on frame is stored in s->cs_ptr (observable through the plan 06-07 report, not cleared at frame start).
  *
  * Named faults (plan 06-09): VIDEO_STATE_DEPENDS_ON_BUFFER (with no buffer the chain and the count do not advance),
  * VIDEO_CHAIN_FRAMING_STRUCT_HASH (the chain hashes an image of a struct instead of the framed bytes). The file holds no static or
@@ -57,7 +57,7 @@ void ivs_video_chain_init(ivs_stic_video_row *row)
 }
 
 uint32_t ivs_stic_render_card_row(const ivs_stic_params *p, const ivs_stic_state *s, const ivs_memsys *mem, uint32_t displayed, uint32_t cr,
-                                  uint8_t *out)
+                                  uint32_t *cs_pos, uint8_t *out)
 {
   uint32_t work = p->video_card_columns * p->video_card_w * p->video_card_h;
   uint8_t fill;
@@ -73,7 +73,7 @@ uint32_t ivs_stic_render_card_row(const ivs_stic_params *p, const ivs_stic_state
       for (k = 0u; k < 4u; k++) {
         in.stack[k] = (uint32_t)mem->stic_reg[IVS_STIC_REG_STACK0 + k] & 0xFu;
       }
-      return ivs_stic_render_cards_row(&in, s->row_latch[cr], mem, out);
+      return ivs_stic_render_cards_row(&in, s->row_latch[cr], mem, cs_pos, out);
     }
     fill = (uint8_t)p->video_blank_value; /* a geometry the card decoder does not draw: every position not displayed */
   } else {
@@ -83,19 +83,29 @@ uint32_t ivs_stic_render_card_row(const ivs_stic_params *p, const ivs_stic_state
   return work;
 }
 
-uint32_t ivs_stic_render_plane(const ivs_stic_params *p, const ivs_stic_state *s, const ivs_memsys *mem, uint32_t displayed, uint8_t *plane)
+uint32_t ivs_stic_render_plane_cs(const ivs_stic_params *p, const ivs_stic_state *s, const ivs_memsys *mem, uint32_t displayed, uint8_t *plane,
+                                  uint32_t *cs_final)
 {
   uint32_t row_bytes = p->video_card_columns * p->video_card_w * p->video_card_h;
+  uint32_t pos = 0u;
   uint32_t cr;
   if (row_bytes * p->video_card_rows > IVS_STIC_PLANE_MAX) {
     return 0u;
   }
   for (cr = 0u; cr < p->video_card_rows; cr++) {
-    if (ivs_stic_render_card_row(p, s, mem, displayed, cr, plane + (size_t)cr * row_bytes) == 0u) {
+    if (ivs_stic_render_card_row(p, s, mem, displayed, cr, &pos, plane + (size_t)cr * row_bytes) == 0u) {
       return 0u;
     }
   }
+  if (cs_final != NULL) {
+    *cs_final = pos;
+  }
   return row_bytes * p->video_card_rows;
+}
+
+uint32_t ivs_stic_render_plane(const ivs_stic_params *p, const ivs_stic_state *s, const ivs_memsys *mem, uint32_t displayed, uint8_t *plane)
+{
+  return ivs_stic_render_plane_cs(p, s, mem, displayed, plane, NULL);
 }
 
 /* Writes v big-endian into n bytes at out, one byte at a time. */
@@ -107,7 +117,7 @@ static void ivs_frame_be(uint8_t *out, uint32_t n, uint64_t v)
   }
 }
 
-void ivs_stic_frame_deliver(const ivs_stic_params *p, const ivs_stic_state *s, const ivs_memsys *mem, ivs_stic_video_row *row,
+void ivs_stic_frame_deliver(const ivs_stic_params *p, ivs_stic_state *s, const ivs_memsys *mem, ivs_stic_video_row *row,
                             ivs_stic_sink *sink, uint64_t end_tick)
 {
   uint8_t cardrow[IVS_STIC_CARDROW_MAX];
@@ -119,6 +129,7 @@ void ivs_stic_frame_deliver(const ivs_stic_params *p, const ivs_stic_state *s, c
   uint32_t cr;
   uint32_t py;
   uint32_t y = 0u;
+  uint32_t cs_pos = 0u; /* the color-stack pointer restarts at 0 for every frame render (D-06) */
   uint32_t deliver;
   uint8_t *out = NULL;
   if (g.width > work_w || g.header_bytes != IVS_FRAME_HEADER_BYTES || p->video_card_h * work_w > IVS_STIC_CARDROW_MAX) {
@@ -170,7 +181,7 @@ void ivs_stic_frame_deliver(const ivs_stic_params *p, const ivs_stic_state *s, c
   ivs_sha256_update(&ctx, header, sizeof header);
 #endif
   for (cr = 0u; cr < p->video_card_rows; cr++) {
-    if (ivs_stic_render_card_row(p, s, mem, displayed, cr, cardrow) == 0u) {
+    if (ivs_stic_render_card_row(p, s, mem, displayed, cr, &cs_pos, cardrow) == 0u) {
       break;
     }
     for (py = 0u; py < p->video_card_h && y < g.height; py++, y++) {
@@ -183,6 +194,9 @@ void ivs_stic_frame_deliver(const ivs_stic_params *p, const ivs_stic_state *s, c
   }
   ivs_sha256_final(&ctx, row->chain);
   row->count += 1u;
+  if (displayed != 0u) {
+    s->cs_ptr = cs_pos & 3u; /* the final pointer of the frame just rendered; a display-off frame leaves it as it was */
+  }
   if (sink != NULL) {
     sink->video_frames += 1u;
     if (deliver != 0u) {
