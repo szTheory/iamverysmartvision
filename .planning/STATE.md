@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 current_phase: 7
 current_phase_name: First Visible Original Scenario
-current_plan: 3
+current_plan: 4
 status: executing
-stopped_at: Completed 07-02-PLAN.md
-last_updated: "2026-11-13T18:51:47.399Z"
+stopped_at: Completed 07-03-PLAN.md
+last_updated: "2026-11-13T19:36:32.837Z"
 last_activity: 2026-11-13
 last_activity_desc: Phase 7 execution started
-state_head: 4e0febef675c2e81fe38d6c0caf353625218b1eb
+state_head: b51ccbec8a43008d099b5c5f0afbf17c179b49dd
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 109
-  completed_plans: 99
+  completed_plans: 100
   percent: 75
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 7 (First Visible Original Scenario) — EXECUTING
-Current Plan: 3
+Current Plan: 4
 Total Plans in Phase: 12
 Status: Ready to execute
 Last activity: 2026-11-13 — Phase 7 execution started
@@ -158,6 +158,7 @@ Progress: [████████░░] 75%
 | Phase 6 P14 | about 3 hours | 4 tasks | 22 files |
 | Phase 7 P01 | 66 min | 3 tasks | 3 files |
 | Phase 7 P02 | about 50 min measured, plus reading | 4 tasks | 47 files |
+| Phase 7 P03 | about 32 min measured, plus reading | 3 tasks | 20 files |
 
 ## Accumulated Context
 
@@ -363,6 +364,9 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 7]: 07-02: oracle first and no C; re-arm form B (main-loop wait) with N = 500 in a band N 183 to 808, mutants N = 100 and 1,150, negative control N = 300; first EIS at frame-0 cycle 6,564 to 6,631 (frame-1 band)
 - [Phase 7]: 07-02: channel C is the constant-level gate (mixer 003C) with the tone amplitude deferred one frame through pending words 02F6/02F7; PSG init is 6 writes; 30 PSG records for pass; exact audio windows at ticks 100000, 140000, 160000, 690000, 740000, 760000
 - [Phase 7]: 07-02: the settling rule is a time distance (events at least 16,832 ticks from a frame end), so frames 3, 5, 7, 9, 11 and 12 are asserted in pass; SCN-01 accepted by important-gates; the blind second read is requested and plan 07-06 waits for its record
+- [Phase 7]: 07-03: ivs_asm is one C17 file of 806 lines (hard stop 1,200) with a shape-driven operand parser, 19 mnemonics and 17 of the 20 refusal tokens; registered like tools/pcm, never installed; the three tokens left (asm-imm-range, asm-sdbd-target, asm-decle-range) arrive with SDBD and DECLE in 07-04
+- [Phase 7]: 07-03: the twins of the boot stub (22 words) and diag-cpu-1 (56 words) reproduce the hand listings word for word and column for column; no hand slip, no escape; the comparison is shown able to fail (asm.judge.mutated-twin); suite asm costs 0.05 s release, 0.63 s dev
+- [Phase 7]: 07-03: file and usage errors carry no token; the source path must be relative; the header must carry a window; forecast asm.c size after 07-04 is about 975 lines, lever is table packing
 
 ### Pending Todos
 
@@ -395,6 +399,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-13T18:51:46.589Z
-Stopped at: Completed 07-02-PLAN.md
+Last session: 2026-11-13T19:36:32.613Z
+Stopped at: Completed 07-03-PLAN.md
 Resume file: None
