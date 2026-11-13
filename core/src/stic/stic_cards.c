@@ -13,7 +13,11 @@
  * The graphics bytes come ONLY from ivs_memsys_stic_gfx_byte_internal (the pure backing accessor: no gate, no undriven fill, no access
  * record), never the CPU view, so a closed graphics window cannot leak the undriven fill into a pixel and rendering has no read side
  * effect. The graphics ROM is the zero image in every CI run (D-19: no GROM in CI or in any fixture), so a graphics ROM card renders as
- * its background only. */
+ * its background only.
+ *
+ * Named faults (plan 06-10): VIDEO_WRONG_CARD_MODE (the mode sense is inverted, a Foreground/Background frame is decoded as Color
+ * Stack), VIDEO_CARD_BIT_ORDER_REVERSED (bit 0 of a graphics byte is the leftmost pixel), VIDEO_GRAM_GROM_SELECT_SWAPPED (the sense of
+ * bit 11 is inverted), VIDEO_20TH_COLUMN_WIDTH (column 19 shows its 8th pixel). */
 #include "common/ivs_prelude.h"
 
 #include "stic/stic.h"
@@ -31,6 +35,9 @@ uint32_t ivs_stic_render_cards_row(const ivs_stic_cardin *in, const uint16_t *ro
   uint32_t y;
   uint32_t x;
   uint32_t fg_mode_ok = in->mode == IVS_STIC_MODE_FGBG ? 1u : 0u;
+#ifdef IVS_FAULT_VIDEO_WRONG_CARD_MODE
+  fg_mode_ok = fg_mode_ok == 0u ? 1u : 0u; /* named fault: the mode sense is inverted */
+#endif
   if (fg_mode_ok == 0u) {
     memset(out, (int)IVS_PIXEL_BLANK, IVS_CARD_ROW_BYTES); /* Color Stack: not decoded here (plan 06-11) */
     return IVS_CARD_ROW_BYTES;
@@ -41,16 +48,27 @@ uint32_t ivs_stic_render_cards_row(const ivs_stic_cardin *in, const uint16_t *ro
     uint32_t card = (w >> 3) & 0x3Fu;
     uint32_t fg = w & 7u;
     uint32_t bg = 8u * ((w >> 12) & 1u) + 4u * ((w >> 13) & 1u) + 2u * ((w >> 10) & 1u) + ((w >> 9) & 1u);
+#ifdef IVS_FAULT_VIDEO_GRAM_GROM_SELECT_SWAPPED
+    sel = sel ^ 1u; /* named fault: the sense of bit 11 is inverted */
+#endif
     for (y = 0u; y < IVS_CARD_H; y++) {
       uint32_t byte = (uint32_t)ivs_memsys_stic_gfx_byte_internal(mem, sel, card, y);
       uint8_t *dst = out + (size_t)y * IVS_CARD_PLANE_W + (size_t)c * IVS_CARD_W;
       for (x = 0u; x < IVS_CARD_W; x++) {
+#ifdef IVS_FAULT_VIDEO_CARD_BIT_ORDER_REVERSED
+        uint32_t bit = (byte >> x) & 1u; /* named fault: bit 0 is the leftmost pixel */
+#else
         uint32_t bit = (byte >> (7u - x)) & 1u;
+#endif
         dst[x] = (uint8_t)(bit != 0u ? fg : bg);
       }
+#ifdef IVS_FAULT_VIDEO_20TH_COLUMN_WIDTH
+      /* named fault: column 19 shows its 8th pixel (the 7-pixel cut-off is not applied) */
+#else
       if (c == IVS_CARD_COLS - 1u) {
         dst[7] = (uint8_t)IVS_PIXEL_BLANK; /* the cut-off pixel of the 7-pixel last column */
       }
+#endif
     }
   }
   return IVS_CARD_ROW_BYTES;
