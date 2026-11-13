@@ -285,13 +285,49 @@ static int vf_unit_a1(void)
   return vf_unit(0u);
 }
 
+static int vf_unit_a2(void)
+{
+  return vf_unit(1u);
+}
+
+static int vf_unit_a3(void)
+{
+  return vf_unit(2u);
+}
+
+static int vf_unit_a4(void)
+{
+  return vf_unit(3u);
+}
+
+static int vf_unit_a5(void)
+{
+  return vf_unit(4u);
+}
+
 static int vf_machine_a1(void)
 {
   return vf_machine(0u);
 }
 
+static int vf_machine_a3(void)
+{
+  return vf_machine(2u);
+}
+
+static int vf_machine_a5(void)
+{
+  return vf_machine(4u);
+}
+
 const ivs_test_case ivs_video_fgbg_cases[] = {
     {"video.fgbg.F-A1", vf_unit_a1, NULL},
+    {"video.fgbg.F-A2", vf_unit_a2, NULL},
+    {"video.fgbg.F-A3", vf_unit_a3, NULL},
+    {"video.fgbg.F-A4", vf_unit_a4, NULL},
+    {"video.fgbg.F-A5", vf_unit_a5, NULL},
     {"video.fgbg.machine-F-A1", vf_machine_a1, NULL},
+    {"video.fgbg.machine-F-A3", vf_machine_a3, NULL},
+    {"video.fgbg.machine-F-A5", vf_machine_a5, NULL},
 };
 const size_t ivs_video_fgbg_count = sizeof ivs_video_fgbg_cases / sizeof ivs_video_fgbg_cases[0];

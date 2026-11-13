@@ -60,3 +60,23 @@ video.iso.interleaved-instances
 # Plan 06-10 task 1 (VID-04): the pure Foreground/Background card renderer against the hand-derived frame F-A1 of plan 06-01, in the unit path and through the whole machine; the reviewed inversion of video.frame.display-on-not-decoded is video.frame.display-on-fgbg-decoded, and video.frame.cs-not-decoded pins the Color Stack interim for plan 06-11.
 video.fgbg.F-A1
 video.fgbg.machine-F-A1
+# Plan 06-10 task 2 (VID-04): the remaining frames F-A2..F-A5 (unit path) and F-A3, F-A5 (machine path), the card pixel rules (bit order, row order, 16 colors, the cut-off 20th column, the zero graphics ROM, the display-off border fill, the color range), the 16-bit single-probe role sweep against data/video/cards.literal.txt, the metamorphic relations and the two judges.
+video.fgbg.F-A2
+video.fgbg.F-A3
+video.fgbg.F-A4
+video.fgbg.F-A5
+video.fgbg.machine-F-A3
+video.fgbg.machine-F-A5
+video.card.bit-order
+video.card.row-order
+video.card.colors-0-15
+video.card.last-column-clip
+video.grom.zero-stub
+video.display-off.fill-border
+video.color.range-0-15
+video.probe.bit-roles-fgbg
+video.meta.translate
+video.meta.bits-15-14-ignored
+video.meta.purity
+video.judge.frame-row-changed
+video.judge.card-bit-flipped

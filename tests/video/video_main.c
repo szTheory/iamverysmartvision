@@ -85,6 +85,10 @@ int main(int argc, char **argv)
   video_add(ivs_video_stop_cases, ivs_video_stop_count);
   video_add(ivs_video_slice_cases, ivs_video_slice_count);
   video_add(ivs_video_fgbg_cases, ivs_video_fgbg_count);
+  video_add(ivs_video_card_cases, ivs_video_card_count);
+  video_add(ivs_video_probe_cases, ivs_video_probe_count);
+  video_add(ivs_video_meta_cases, ivs_video_meta_count);
+  video_add(ivs_video_judge_cases, ivs_video_judge_count);
   if (video_total > VIDEO_MAX_CASES) {
     fprintf(stderr, "video: more than %u cases; raise VIDEO_MAX_CASES\n", VIDEO_MAX_CASES);
     return 1;

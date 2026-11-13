@@ -34,6 +34,14 @@ extern const ivs_test_case ivs_video_slice_cases[];
 extern const size_t ivs_video_slice_count;
 extern const ivs_test_case ivs_video_fgbg_cases[];
 extern const size_t ivs_video_fgbg_count;
+extern const ivs_test_case ivs_video_card_cases[];
+extern const size_t ivs_video_card_count;
+extern const ivs_test_case ivs_video_probe_cases[];
+extern const size_t ivs_video_probe_count;
+extern const ivs_test_case ivs_video_meta_cases[];
+extern const size_t ivs_video_meta_count;
+extern const ivs_test_case ivs_video_judge_cases[];
+extern const size_t ivs_video_judge_count;
 
 /* ---- the independent literals (video_geom.c includes the generated ivs_video_lit.inc) ---- */
 const uint8_t *vl_h(uint32_t k);           /* the chain value h0, h1 or h2 (32 bytes) */
@@ -132,5 +140,10 @@ void vf_text_sha(const uint8_t *plane, uint32_t stride, uint32_t w, char *hex);
 uint32_t vid_encode_fgbg(uint32_t fg, uint32_t bg, uint32_t sel, uint32_t card);
 /* Checks every listed cell word of f against its annotation; a mismatch is reported as FIXTURE (not a renderer failure); 1 when all match. */
 int vid_check_cells(const vf_frame *f);
+
+/* The fgbg bit roles by bit (video_probe.c) and the single-bit sweep over a role table: the number of probes whose rendered block differs
+ * from the block the roles predict (0 is a pass; quiet 1 suppresses the diagnostics, for the judge). */
+void vpr_roles(const char *role[16]);
+uint32_t vpr_sweep(const char *const role[16], int quiet);
 
 #endif
