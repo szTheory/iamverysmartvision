@@ -33,3 +33,6 @@ diag-stic-fgbg-pass 0 pass deterministic run -
 diag-stic-cstack-pass 0 pass deterministic run -
 video-assert-mismatch 10 guest-fail deterministic run -
 demo-lamp-tone-pass 0 pass deterministic run -
+demo-lamp-tone-idle 0 pass deterministic run -
+demo-lamp-tone-shift 0 pass deterministic run -
+demo-lamp-tone-swap 0 pass deterministic run -

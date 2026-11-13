@@ -1,0 +1,49 @@
+# Scenario demo-lamp-tone-idle (plan 07-07, D-23, D-05, D-22, A-16): outcome pass, exit 0. The same program,
+# stub, zero graphics ROM, bound and captures as demo-lamp-tone-pass with no input line, so both
+# controller ports read FF for the whole run. The program stays at the idle picture (the literal F-S1:
+# no lamp lit), the PSG write log holds the six init records only and the audio is silent. The asserts are
+# the hand-derived expectations of data/golden/demo-lamp-tone-idle.expect (derivation in
+# docs/video/demo-lamp-tone-1-derivation.md, written before the program): the same lines in the same order
+# as the committed idle block of that document, and the same as the .expect (golden-expect-drift). This is
+# the control of the metamorphic judge: it differs from demo-lamp-tone-pass in the video, audio, psglog,
+# input and memory digests, so the response of the pass run comes from the scripted input. It asserts
+# the idle literals, not the no-key timeout of the diagnostics, and it never halts.
+ivss 1
+id demo-lamp-tone-idle
+profile intv-2609-ntsc-family-p1
+content exec boot-stub-2
+content grom zero-grom
+content cart lamp-tone.ivsc
+capture video 0 13
+capture psglog
+capture audio
+run-to 806568 ticks
+assert halted == no
+assert mem 02F0 == 03C5
+assert mem 02F1 == 000D
+assert mem 02F2 == 00FF
+assert mem 02F3 == 0000
+assert mem 02F4 == 00FF
+assert mem 02F5 == 0000
+assert mem 02F6 == 0000
+assert mem 02F7 == 0000
+assert frame 0 displayed == no
+assert frame 1 displayed == yes
+assert frame 12 displayed == yes
+assert frame 1 hash == 269b8753dd3b8e011b3fc674e071664433ae997b5f05a8227f8569eb3a1e8e70
+assert frame 6 hash == 269b8753dd3b8e011b3fc674e071664433ae997b5f05a8227f8569eb3a1e8e70
+assert frame 12 hash == 269b8753dd3b8e011b3fc674e071664433ae997b5f05a8227f8569eb3a1e8e70
+assert frame 6 pixel 51 35 == 1
+assert frame 6 pixel 107 59 == 1
+assert frame 6 pixel 50 45 == 0
+assert video count == 13
+assert psglog count == 6
+assert psglog 0 addr=8 value=003C source=cpu-write
+assert psglog 1 addr=4 value=0000 source=cpu-write
+assert psglog 2 addr=5 value=0000 source=cpu-write
+assert psglog 3 addr=11 value=0000 source=cpu-write
+assert psglog 4 addr=12 value=0000 source=cpu-write
+assert psglog 5 addr=13 value=0000 source=cpu-write
+assert audio at 100000 A=0 B=0 C=0
+assert audio at 400000 A=0 B=0 C=0
+assert audio at 800000 A=0 B=0 C=0
