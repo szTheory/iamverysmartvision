@@ -3,7 +3,7 @@
 # is caught by the test it is named for; the allowed prefixes cover every collateral failure of the suite.
 # VIDEO_STATE_DEPENDS_ON_BUFFER (core/src/stic/stic_frame.c): a frame completed with no video buffer does not advance the chain or the
 # count, so the machine state depends on the presence of a buffer.
-VIDEO_STATE_DEPENDS_ON_BUFFER video.noop.null-buffer video.noop.|video.buffers. video.geom.profile-derives-159x96
+VIDEO_STATE_DEPENDS_ON_BUFFER video.noop.null-buffer video.noop.|video.buffers.|video.boundary.|video.stop.|video.fuzz. video.geom.profile-derives-159x96
 # VIDEO_CHAIN_FRAMING_STRUCT_HASH (core/src/stic/stic_frame.c): the chain step hashes an image of a struct (host byte order, padding)
 # instead of the framed big-endian header bytes.
 VIDEO_CHAIN_FRAMING_STRUCT_HASH video.chain.framing-oracle video.chain. video.geom.profile-derives-159x96
@@ -17,3 +17,7 @@ VIDEO_CAP_PLUS_ONE video.buffers.worst-case-two-frames video.buffers. video.geom
 # VIDEO_OUTBUF_PARTIAL_WRITE (core/src/machine/machine_bound.c, plan 06-09, T-06-12): a refused run writes one byte into the caller's
 # video buffer (the sentinel checks of the refusal tests see it).
 VIDEO_OUTBUF_PARTIAL_WRITE video.buffers.undersized-refused video.buffers. video.geom.profile-derives-159x96
+# VIDEO_FRAME_AT_CALL_END (core/src/machine/machine_bound.c, plan 06-09, A-06): the last frame a call delivered is re-rendered from the registers
+# as they are at the END OF THE CALL instead of keeping the picture taken at its frame event, so a border store stamped after the event shows in
+# the frame that ended before it.
+VIDEO_FRAME_AT_CALL_END video.boundary.write-straddling video.boundary. video.geom.profile-derives-159x96

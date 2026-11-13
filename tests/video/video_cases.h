@@ -28,6 +28,10 @@ extern const ivs_test_case ivs_video_slot_cases[];
 extern const size_t ivs_video_slot_count;
 extern const ivs_test_case ivs_video_buffers_cases[];
 extern const size_t ivs_video_buffers_count;
+extern const ivs_test_case ivs_video_stop_cases[];
+extern const size_t ivs_video_stop_count;
+extern const ivs_test_case ivs_video_slice_cases[];
+extern const size_t ivs_video_slice_count;
 
 /* ---- the independent literals (video_geom.c includes the generated ivs_video_lit.inc) ---- */
 const uint8_t *vl_h(uint32_t k);           /* the chain value h0, h1 or h2 (32 bytes) */

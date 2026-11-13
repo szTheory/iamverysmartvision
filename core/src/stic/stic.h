@@ -95,6 +95,10 @@ typedef struct ivs_stic_geom {
 } ivs_stic_geom;
 ivs_stic_geom ivs_stic_geom_derive(const ivs_stic_params *p);
 
+/* The tick at which the frame in progress ends: frame_phase_ticks + (frame_index + 1) x frame_ticks, from the state (plan 06-09, D-14, A-06;
+ * never derived from a time by division). The effective target of a run with IVS_RUN_F_STOP_ON_FRAME is min(target, this). */
+uint64_t ivs_stic_next_frame_end(const ivs_stic_params *p, const ivs_stic_state *s);
+
 /* The working plane the renderer fills: card_columns x card_w by card_rows x card_h index bytes (160 x 96 = 15,360 for the first
  * profile); the published rows are the first width bytes of each row. The core never holds the whole plane on its stack (a 15 KB frame
  * pulls in the platform stack probe, a forbidden import): it renders one card row at a time, card_h pixel rows of the working width,

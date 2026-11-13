@@ -14,8 +14,8 @@
  *   2. BAD_HANDLE    NULL or invalid handle;
  *   3. BAD_ARG       rep overlaps the storage of the (valid) instance, uintptr_t differences only
  *                    (ivs_machine_span_overlaps; nothing written);
- *   4. UNSUPPORTED   req: an unknown flag (IVS_RUN_F_STOP_ON_FRAME included until the frame stop
- *                    is implemented: any bit other than IVS_RUN_F_STOP_ON_HALT), then a nonzero
+ *   4. UNSUPPORTED   req: an unknown flag (any bit other than IVS_RUN_F_STOP_ON_HALT and
+ *                    IVS_RUN_F_STOP_ON_FRAME, plan 06-09), then a nonzero
  *                    byte past the core's own size of a larger struct (the tail rule is rebased on
  *                    sizeof, plan 05-02), then a nonzero reserved_in (INPUT_RESERVED_IN, plan 04-11);
  *   4b. BAD_ARG      output buffers (D-05 slot, plan 04-10): a NULL buffer with a nonzero
@@ -37,7 +37,8 @@
  *   7. BUFFER_TOO_SMALL  a video, audio (RUN_BUFFER_SMALL) or write-log (RUN_PSGLOG_SMALL)
  *                    capacity below the env's requirement for this run, bytes_per_frame *
  *                    (max(target - now, 0) / nominal_frame_ticks + 1) (D-06), before the first
- *                    unit. A NULL buffer with capacity 0 means the channel is not requested and
+ *                    unit; for video plus video_slack_frames frames (plan 06-09, D-15), or exactly
+ *                    one slot with IVS_RUN_F_STOP_ON_FRAME, the target being the effective one. A NULL buffer with capacity 0 means the channel is not requested and
  *                    needs nothing (D-17, plan 05-02);
  *   8. BAD_ARG       the events, whole array (machine_input.c, ivs_input_check): an at_tick at or
  *                    above 2^63 (INPUT_TICK_RANGE), below its predecessor (INPUT_UNSORTED) or below
@@ -62,7 +63,9 @@
  * stepped; with IVS_RUN_F_STOP_ON_HALT a HALTED CPU is not stepped; a unit the seam refuses, or a
  * unit that does not advance machine time, ends the loop (INTERNAL unless the CPU is FAULTED), so
  * the loop always terminates. The stop reason is then a pure function of the exit state: INTERNAL,
- * GUEST_FAULT, CPU_HALTED (flag), TARGET. The report is filled last; overshoot is derived. Nothing
+ * GUEST_FAULT, CPU_HALTED (flag), FRAME (flag, a frame completed in the call), TARGET. The loop runs to the effective target
+ * (plan 06-09: the caller's target, or with IVS_RUN_F_STOP_ON_FRAME the smaller of it and the end of the frame in progress) and a flagged
+ * call ends at the first unit boundary that completed a frame. The report is filled last; overshoot is derived against the caller's target. Nothing
  * outlives the call (no budget, deficit or pointer): slicing invariance holds by construction.
  * Output (plan 05-06, D-15..D-17): a layout whose audio format is IVS_OUTPUT_FORMAT_PSG_LEVELS_V1 gets
  * the PSG samples (4 bytes each, A, B, C, 0) into the caller's audio buffer: the loop passes a per-call
@@ -71,8 +74,11 @@
  * same code runs, nothing is written, and the machine state is identical (named fault
  * AUDIO_STATE_DEPENDS_ON_BUFFER). The report carries audio_bytes_written (bytes delivered) and
  * audio_first_index (the number of samples emitted before the call, so the delivered streams of
- * consecutive calls concatenate to the stream of one call). No video is produced yet; the video count
- * stays 0 (no frame is fabricated).
+ * consecutive calls concatenate to the stream of one call). Video (plan 06-09): a layout whose video format is
+ * IVS_OUTPUT_FORMAT_INDEX8_FRAMES_V1 gets one slot per completed frame into the caller's video buffer through the same per-call sink (the
+ * counting video sink without a buffer: the same code runs and the domain-16 chain advances either way, named fault
+ * VIDEO_STATE_DEPENDS_ON_BUFFER); the report carries video_frames_completed, video_bytes_written and the v3 frame fields. A never-expected
+ * guard before a unit that could complete a frame ends the run INTERNAL when a requested buffer cannot hold one more slot.
  * The file holds no static or global state.
  * Named faults (plan 04-07, D-07): RUN_TARGET_UNCHECKED, RUN_STOP_BEFORE_OVERSHOOT,
  * RUN_FAULT_STEPS; (plan 04-09, D-07): RUN_BUDGET_CARRY, the only static, inside its fault block;
@@ -126,7 +132,8 @@ static uint64_t ivs_bound_carry_ticks;
 
 /* What the commit loop needs from a validated request. */
 typedef struct ivs_bound_plan {
-  uint64_t target;
+  uint64_t target; /* the caller's target: overshoot is measured against it */
+  uint64_t limit;  /* the effective target the loop runs to: target, or min(target, E_next) with IVS_RUN_F_STOP_ON_FRAME (plan 06-09, D-14) */
   const ivs_input_event *events;
   uint32_t event_count;
   uint32_t flags;
@@ -213,17 +220,38 @@ static uint32_t ivs_bound_fits(const void *buf, uint64_t capacity, uint32_t byte
   return capacity >= frames * bytes_per_frame ? 1u : 0u;
 }
 
+/* The effective target of a call (plan 06-09, D-14, A-02, A-06): the caller's target, or with IVS_RUN_F_STOP_ON_FRAME the smaller of it and the
+ * end of the frame in progress, E_next = phase + (frame_index + 1) x F taken from the STIC state (never from a division), so the call behaves as
+ * run(T') and a flagged call with IVS_RUN_TARGET_MAX is bounded by one frame, not by the target. */
+static uint64_t ivs_bound_limit(const struct ivs_machine *im, uint32_t flags, uint64_t target)
+{
+  if ((flags & IVS_RUN_F_STOP_ON_FRAME) != 0u) {
+    uint64_t next = ivs_stic_next_frame_end(ivs_stic_params_get(im->profile), &im->stic);
+    if (next < target) {
+      return next;
+    }
+  }
+  return target;
+}
+
 /* IVS_REASON_NONE when the three channels hold what the run from now to target needs under env
  * (video, audio, psg_log in that order), else the first short channel's reason: RUN_BUFFER_SMALL
  * for video or audio, RUN_PSGLOG_SMALL for the write log. */
 static uint32_t ivs_bound_capacity_reason(const ivs_run_request *req, const ivs_run_env *env, uint64_t target,
-                                          uint64_t now)
+                                          uint64_t now, uint32_t flagged)
 {
   uint32_t vslack = env->video_slack_frames;
 #ifdef IVS_FAULT_VIDEO_CAP_PLUS_ONE
   vslack = 0u; /* named fault: the Phase 4 + 1 formula, which a call that crosses the target can exceed by one frame */
 #endif
-  if (ivs_bound_fits(req->video, req->video_capacity, env->video_bytes_per_frame, env->nominal_frame_ticks, target, now,
+  uint64_t vtarget = target;
+  if (flagged != 0u) {
+    /* IVS_RUN_F_STOP_ON_FRAME (plan 06-09, D-14): at most one frame completes in a flagged call (the loop stops at the first), so the
+     * video channel needs exactly one slot, whatever the target; the slack and the frame count do not apply. */
+    vtarget = now;
+    vslack = 0u;
+  }
+  if (ivs_bound_fits(req->video, req->video_capacity, env->video_bytes_per_frame, env->nominal_frame_ticks, vtarget, now,
                      vslack) == 0u ||
       ivs_bound_fits(req->audio, req->audio_capacity, env->audio_bytes_per_frame, env->nominal_frame_ticks, target, now,
                      0u) == 0u) {
@@ -415,7 +443,7 @@ static ivs_status ivs_bound_validate(const ivs_machine *m, const ivs_run_request
     return IVS_E_BAD_ARG;
   }
   /* 4. UNSUPPORTED: unknown flags, then a nonzero tail of a larger request. */
-  if ((req->flags & ~IVS_RUN_F_STOP_ON_HALT) != 0u) {
+  if ((req->flags & ~(IVS_RUN_F_STOP_ON_HALT | IVS_RUN_F_STOP_ON_FRAME)) != 0u) {
     *reason = IVS_REASON_RUN_FLAGS;
     return IVS_E_UNSUPPORTED;
   }
@@ -453,7 +481,8 @@ static ivs_status ivs_bound_validate(const ivs_machine *m, const ivs_run_request
 #endif
   /* 7. BUFFER_TOO_SMALL: the output capacities against the env's requirement, before any unit. */
 #ifndef IVS_FAULT_RUN_CAPACITY_AFTER_STEP /* named fault: the check moves after the first unit */
-  *reason = ivs_bound_capacity_reason(req, env, req->target_ticks, im->time_ticks);
+  *reason = ivs_bound_capacity_reason(req, env, ivs_bound_limit(im, req->flags, req->target_ticks), im->time_ticks,
+                                      (req->flags & IVS_RUN_F_STOP_ON_FRAME) != 0u ? 1u : 0u);
   if (*reason != IVS_REASON_NONE) {
     return IVS_E_BUFFER_TOO_SMALL;
   }
@@ -468,14 +497,15 @@ static ivs_status ivs_bound_validate(const ivs_machine *m, const ivs_run_request
     return st;
   }
   plan->target = req->target_ticks;
+  plan->limit = ivs_bound_limit(im, req->flags, req->target_ticks);
   plan->events = req->events;
   plan->event_count = req->event_count;
   plan->flags = req->flags;
   return IVS_OK;
 }
 
-/* The stop reason of an exit state (pure: fault, then halt with the flag, then target). */
-static uint32_t ivs_bound_stop(const struct ivs_machine *im, uint32_t flags, uint64_t target)
+/* The stop reason of an exit state (pure: fault, then halt with the flag, then frame with the flag, then target). */
+static uint32_t ivs_bound_stop(const struct ivs_machine *im, uint32_t flags, uint64_t target, uint64_t frames)
 {
 #ifdef IVS_FAULT_RUN_FAULT_STEPS /* and the stop order tests the target first */
   if (im->time_ticks >= target) {
@@ -487,6 +517,9 @@ static uint32_t ivs_bound_stop(const struct ivs_machine *im, uint32_t flags, uin
   }
   if ((flags & IVS_RUN_F_STOP_ON_HALT) != 0u && im->cpu.run_state == IVS_CP1610_RS_HALTED) {
     return IVS_STOP_CPU_HALTED;
+  }
+  if ((flags & IVS_RUN_F_STOP_ON_FRAME) != 0u && frames != 0u) {
+    return IVS_STOP_FRAME; /* a frame completed in this call (a target equal to the frame end reports FRAME, not TARGET) */
   }
   (void)target;
   return IVS_STOP_TARGET;
@@ -552,6 +585,7 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
   uint32_t n;
   uint64_t first_index;
   uint64_t log_first_index;
+  uint64_t video_first_index;
   ivs_psg_sink sink;
   memset(&plan, 0, sizeof plan);
   st = ivs_bound_validate(m, req, rep, env, &plan, &reason, &index);
@@ -573,6 +607,7 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
    * log (psg_log_bytes_per_frame nonzero) and a buffer was requested, else the counting log sink (the same code
    * runs and the domain-19 chain is updated either way). log_first_index is the record count at entry. */
   log_first_index = im->obs.psglog.count;
+  video_first_index = im->obs.video.count; /* the frames completed before this call (report v3) */
   if (env->psg_log_bytes_per_frame != 0u) {
     ivs_psg_sink_log(&sink, ivs_bound_log_ptr(req), ivs_bound_log_cap(req));
   }
@@ -585,6 +620,7 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
 #ifdef IVS_FAULT_RUN_BUDGET_CARRY
   if (ivs_bound_carry_handle == (const void *)m && ivs_bound_carry_end == entry) {
     plan.target = plan.target > ivs_bound_carry_ticks ? plan.target - ivs_bound_carry_ticks : 0u;
+    plan.limit = ivs_bound_limit(im, plan.flags, plan.target);
   }
 #endif
 #ifdef IVS_FAULT_INPUT_APPLY_AT_RUN_START
@@ -594,7 +630,7 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
     consumed = ivs_input_apply_due(im, plan.events, plan.event_count, 0u, plan.target - 1u, entry);
   }
 #endif
-  while (im->time_ticks < plan.target) {
+  while (im->time_ticks < plan.limit) {
     ivs_cp1610_result unit;
     uint64_t before = im->time_ticks;
     ivs_machine_obs_input input_before = im->obs.input; /* restored if the seam refuses (IN-01) */
@@ -658,7 +694,7 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
     }
 #endif
 #ifdef IVS_FAULT_RUN_STOP_BEFORE_OVERSHOOT
-    if (im->time_ticks > plan.target) {
+    if (im->time_ticks > plan.limit) {
       im->cpu = cpu_before;
       im->time_ticks = before;
       break;
@@ -669,13 +705,16 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
     /* Named fault RUN_CAPACITY_AFTER_STEP (plan 04-10, D-06, D-07): the capacity check runs after
      * the first unit, so an undersized buffer is refused with that unit already executed. */
     if (units == 1u) {
-      uint32_t small = ivs_bound_capacity_reason(req, env, plan.target, entry);
+      uint32_t small = ivs_bound_capacity_reason(req, env, plan.limit, entry, (plan.flags & IVS_RUN_F_STOP_ON_FRAME) != 0u ? 1u : 0u);
       if (small != IVS_REASON_NONE) {
         ivs_bound_refuse(m, req, rep, small, IVS_INPUT_INDEX_NONE);
         return IVS_E_BUFFER_TOO_SMALL;
       }
     }
 #endif
+    if ((plan.flags & IVS_RUN_F_STOP_ON_FRAME) != 0u && sink.video_frames != 0u) {
+      break; /* at most one frame completes per flagged call: the loop ends at the unit boundary that completed it */
+    }
     if (im->time_ticks == before) {
       /* No progress: never loop on it. A FAULTED CPU (a zero-cycle fault unit) is a guest stop. */
       internal = im->cpu.run_state == IVS_CP1610_RS_FAULTED ? 0u : 1u;
@@ -685,7 +724,7 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
   n = ivs_bound_rep_bytes(rep); /* before rep is written: the caller's size, capped at our own */
   memset(&r, 0, sizeof r);
   r.struct_size = n;
-  r.stop_reason = internal != 0u ? IVS_STOP_INTERNAL : ivs_bound_stop(im, plan.flags, plan.target);
+  r.stop_reason = internal != 0u ? IVS_STOP_INTERNAL : ivs_bound_stop(im, plan.flags, plan.target, sink.video_frames);
   r.refusal_reason = IVS_REASON_NONE;
   r.cpu_run_state = im->cpu.run_state;
   r.cpu_fault_reason = im->cpu.fault_reason;
@@ -696,6 +735,9 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
   /* Output counts (D-03): no video yet; the audio bytes delivered and the sample index at entry
    * (plan 05-06). A sample that did not fit the buffer is never expected (the capacity rule proves
    * the room); it is an internal stop. */
+  r.video_first_index = video_first_index;
+  r.last_frame_end_ticks = sink.video_frames != 0u ? ivs_stic_next_frame_end(ivs_stic_params_get(im->profile), &im->stic) - (uint64_t)ivs_stic_params_get(im->profile)->frame_ticks : 0u;
+  r.next_frame_end_ticks = ivs_stic_next_frame_end(ivs_stic_params_get(im->profile), &im->stic);
   r.video_frames_completed = sink.video_frames;
   r.video_bytes_written = sink.video_written;
   r.audio_bytes_written = sink.written;
@@ -722,6 +764,21 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
    * overwritten. */
   if (n >= (uint32_t)offsetof(ivs_run_report, video_first_index) && n < (uint32_t)sizeof r) {
     n = (uint32_t)sizeof r;
+  }
+#endif
+#ifdef IVS_FAULT_VIDEO_FRAME_AT_CALL_END
+  /* Named fault VIDEO_FRAME_AT_CALL_END (plan 06-09, A-06): every frame this call delivered is re-rendered from the registers as they are
+   * at the END OF THE CALL instead of keeping the picture taken at its frame event, so a register write stamped after the event shows in the
+   * frame that ended before it. Only the plane of a display-off slot is re-taken (its fill is the border color index). */
+  if (sink.video != NULL && sink.video_frames != 0u && env->video_bytes_per_frame > IVS_FRAME_HEADER_BYTES) {
+    uint64_t slot = (uint64_t)env->video_bytes_per_frame;
+    uint64_t off;
+    for (off = 0u; off + slot <= sink.video_written; off += slot) {
+      uint8_t *one = sink.video + off;
+      if ((one[27] & 1u) == 0u) { /* flags (be32 at 24): bit 0 is the low byte's bit 0 */
+        memset(one + IVS_FRAME_HEADER_BYTES, (int)(im->mem.stic_reg[0x2Cu] & 0xFu), (size_t)(slot - IVS_FRAME_HEADER_BYTES));
+      }
+    }
   }
 #endif
   memcpy(rep, &r, n); /* never past the caller's struct (A-02): a v1-sized caller gets 112 bytes */

@@ -514,8 +514,8 @@ done:
 
 /* ---- run.struct.report-v3-caller ---- */
 
-/* A v3-sized caller gets struct_size 160 and the three appended fields written (0 until frame events
- * exist: they were poison before the call); a caller between 136 and 160 gets only the fields its size
+/* A v3-sized caller gets struct_size 160 and the three appended fields written (the values of a live
+ * timeline since plan 06-09; they were poison before the call); a caller between 136 and 160 gets only the fields its size
  * covers; every byte past the caller's size stays poison. */
 static int rs_report_v3_caller(void)
 {
@@ -532,7 +532,9 @@ static int rs_report_v3_caller(void)
   rs_rep(&r, 160u);
   RS_CHECK(ivs_machine_run(x.m, &q.q, &r.r) == IVS_OK);
   RS_CHECK(r.r.struct_size == 160u && r.r.stop_reason == IVS_STOP_TARGET);
-  RS_CHECK(r.r.video_first_index == 0u && r.r.last_frame_end_ticks == 0u && r.r.next_frame_end_ticks == 0u);
+  /* Plan 06-09 (a reviewed edit; the tail was 0 until the frame events were published): no frame ended in this call, so the first index and
+   * the last frame end are 0 and the end of the frame in progress is 59,736. */
+  RS_CHECK(r.r.video_first_index == 0u && r.r.last_frame_end_ticks == 0u && r.r.next_frame_end_ticks == 59736u);
   for (i = 160u; i < RS_BUF; i++) {
     if (r.b[i] != RS_POISON) {
       ivs_test_diag("v3 report byte %u past the caller's size written", (unsigned)i);
@@ -570,6 +572,37 @@ static int rs_env_size(void)
   return IVS_TEST_PASS;
 }
 
+/* run.struct.report-v3-live (plan 06-09): the three v3 fields at their pinned offsets 136, 144 and 152 carry the live values after a flagged
+ * run to the first frame end (index 0, last end 59,736, next end 119,472), read as raw bytes at the offsets, and a v2-sized caller gets none
+ * of them (its bytes from 136 stay poison). */
+static int rs_report_v3_live(void)
+{
+  ivs_ms_inst x;
+  ivs_run_request q;
+  rs_rep_buf r;
+  uint64_t v[3];
+  int rc = IVS_TEST_FAIL;
+  IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, RS_POISON));
+  memset(&q, 0, sizeof q);
+  q.struct_size = (uint32_t)sizeof q;
+  q.flags = IVS_RUN_F_STOP_ON_FRAME;
+  q.target_ticks = IVS_RUN_TARGET_MAX;
+  rs_rep(&r, 136u); /* a v2-sized caller */
+  RS_CHECK(ivs_machine_run(x.m, &q, &r.r) == IVS_OK && r.r.stop_reason == IVS_STOP_FRAME);
+  RS_CHECK(r.b[136] == RS_POISON && r.b[152] == RS_POISON && r.b[159] == RS_POISON);
+  q.target_ticks = IVS_RUN_TARGET_MAX;
+  rs_rep(&r, 160u);
+  RS_CHECK(ivs_machine_run(x.m, &q, &r.r) == IVS_OK && r.r.stop_reason == IVS_STOP_FRAME);
+  memcpy(&v[0], r.b + 136u, 8u);
+  memcpy(&v[1], r.b + 144u, 8u);
+  memcpy(&v[2], r.b + 152u, 8u);
+  RS_CHECK(v[0] == 1u && v[1] == 2u * 59736u && v[2] == 3u * 59736u); /* the first call completed frame 0, this one frame 1 */
+  rc = IVS_TEST_PASS;
+done:
+  ivs_ms_free(&x);
+  return rc;
+}
+
 const ivs_test_case ivs_run_struct_cases[] = {
     {"run.struct.request-v1-caller", rs_request_v1_caller, NULL},
     {"run.struct.report-v1-caller", rs_report_v1_caller, NULL},
@@ -580,6 +613,7 @@ const ivs_test_case ivs_run_struct_cases[] = {
     {"run.struct.report-v2-caller", rs_report_v2_caller, NULL},
     {"run.struct.report-v3-caller", rs_report_v3_caller, NULL},
     {"run.struct.env-size", rs_env_size, NULL},
+    {"run.struct.report-v3-live", rs_report_v3_live, NULL},
 };
 
 const size_t ivs_run_struct_count = sizeof ivs_run_struct_cases / sizeof ivs_run_struct_cases[0];

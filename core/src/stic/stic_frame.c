@@ -28,6 +28,12 @@
 /* The border color register of the STIC register file (stic.regmap, $2C). */
 #define IVS_STIC_REG_BORDER 0x2Cu
 
+uint64_t ivs_stic_next_frame_end(const ivs_stic_params *p, const ivs_stic_state *s)
+{
+  /* E_next = phase + (frame_index + 1) x F, from the state: the frame index is a count of FRAME_END events, never now / F (D-07). */
+  return (uint64_t)p->frame_phase_ticks + (s->frame_index + 1u) * (uint64_t)p->frame_ticks;
+}
+
 ivs_stic_geom ivs_stic_geom_derive(const ivs_stic_params *p)
 {
   ivs_stic_geom g;

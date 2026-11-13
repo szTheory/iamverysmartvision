@@ -1,6 +1,7 @@
 # Suite video: the raw framebuffer slot, its per-frame chain, the video buffer rules, the frame stop and the geometry (VID-03, plan 06-09).
 # Plan 06-09 task 1: the geometry family (video.geom.*) and the slot family (video.layout.*, video.slot.*, video.frame.*, video.noop.*, video.chain.*): the first display-off frames delivered as slots whose header, plane and chain step equal the independently framed literal, with and without a buffer.
 # Plan 06-09 task 2: the buffers family (video.buffers.*) through the public call with the real layout, and video.geom.info-matches-profile: the capacity law slot x (floor(D / F) + 1 + slack), not-requested equals requested, refusals that write nothing, the constructed two-frame corner and the 64-bit guard.
+# Plan 06-09 task 3: the stop family (video.stop.*), the boundary family (video.boundary.*, with the border-register write swept across the frame end), the slicing, fuzz and isolation families (video.slice.*, video.fuzz.seed01..08, video.iso.*) through the public call with IVS_RUN_F_STOP_ON_FRAME and report v3.
 video.geom.profile-derives-159x96
 video.geom.literal-matches-page
 video.geom.reversal-one-field
@@ -29,3 +30,29 @@ video.buffers.overlap-report
 video.buffers.sentinel
 video.buffers.worst-case-two-frames
 video.buffers.capacity-overflow-guard
+video.stop.frame-reason-order
+video.stop.no-stuck-loop-at-boundary
+video.stop.frame-flag-with-halt
+video.stop.flagged-equals-run-T-prime
+video.stop.target-below-next-end
+video.stop.flag-with-pending-input-event
+video.boundary.event-minus-1
+video.boundary.event
+video.boundary.event-plus-1
+video.boundary.write-straddling
+video.slice.one-call-equals-slices-near-events
+video.slice.7
+video.slice.468
+video.slice.4096
+video.slice.seeded
+video.slice.2-22
+video.slice.frame-stop-sequence
+video.fuzz.seed01
+video.fuzz.seed02
+video.fuzz.seed03
+video.fuzz.seed04
+video.fuzz.seed05
+video.fuzz.seed06
+video.fuzz.seed07
+video.fuzz.seed08
+video.iso.interleaved-instances

@@ -939,18 +939,108 @@ done:
   return rc;
 }
 
-/* UNSUPPORTED (RUN_FLAGS): IVS_RUN_F_STOP_ON_FRAME (value 2) alone and with the stop-on-halt bit; the
- * frame stop is refused as an unknown flag until it is implemented (plan 06-09 inverts this test). */
-static int rb_refuse_flags_frame(void)
+/* Plan 06-09 (D-14, A-02; a REVIEWED CHANGE): the Phase 4 test run.refuse.flags-frame-reserved, which refused IVS_RUN_F_STOP_ON_FRAME (value 2,
+ * alone and with the stop-on-halt bit) as an unknown flag, is inverted into the positive run.flags.stop-on-frame-* ids below. The generic
+ * bad-flag sites already use bit 4 (RUN_TEST_BAD_FLAG), so an unknown bit is still refused (run.refuse.flags-unknown).
+ * The frame events of the stand-in content are the timeline events of the profile: E_k = (k + 1) x 59,736 ticks (the page's frame, the chain
+ * literal's first tick), frame_phase_ticks 0. One run call with a flag and an optional video buffer. */
+#define RB_E0 59736u
+static ivs_status rb_flag_run(ivs_ms_inst *x, uint32_t flags, uint64_t target, uint8_t *video, uint64_t cap, ivs_run_report *r)
+{
+  ivs_run_request q;
+  memset(&q, 0, sizeof q);
+  q.struct_size = (uint32_t)sizeof q;
+  q.flags = flags;
+  q.target_ticks = target;
+  q.video = video;
+  q.video_capacity = cap;
+  memset(r, 0, sizeof *r);
+  r->struct_size = (uint32_t)sizeof *r;
+  return ivs_machine_run(x->m, &q, r);
+}
+
+/* The flag is accepted alone and with the stop-on-halt bit; a call whose target lies below the frame end is a plain run to the target. */
+static int rb_flags_stop_on_frame_accepted(void)
 {
   ivs_ms_inst x;
-  rb_req_buf q;
+  ivs_run_report r;
   int rc = IVS_TEST_FAIL;
   IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, RB_POISON));
-  rb_req(&q, RB_V1_REQ, IVS_RUN_F_STOP_ON_FRAME, 1000u);
-  RB_CHECK(rb_refused(&x, 1, x.m, &q.q, RB_V1_REP, IVS_E_UNSUPPORTED, IVS_REASON_RUN_FLAGS));
-  rb_req(&q, RB_V1_REQ, IVS_RUN_F_STOP_ON_FRAME | IVS_RUN_F_STOP_ON_HALT, 1000u);
-  RB_CHECK(rb_refused(&x, 1, x.m, &q.q, RB_V1_REP, IVS_E_UNSUPPORTED, IVS_REASON_RUN_FLAGS));
+  RB_CHECK(rb_flag_run(&x, IVS_RUN_F_STOP_ON_FRAME, 1000u, NULL, 0u, &r) == IVS_OK && r.stop_reason == IVS_STOP_TARGET);
+  RB_CHECK(r.video_frames_completed == 0u && r.now_ticks >= 1000u);
+  RB_CHECK(rb_flag_run(&x, IVS_RUN_F_STOP_ON_FRAME | IVS_RUN_F_STOP_ON_HALT, 2000u, NULL, 0u, &r) == IVS_OK);
+  RB_CHECK(r.stop_reason == IVS_STOP_TARGET || r.stop_reason == IVS_STOP_CPU_HALTED);
+  rc = IVS_TEST_PASS;
+done:
+  ivs_ms_free(&x);
+  return rc;
+}
+
+/* A flagged call with the largest target stops at the first frame end (the effective target is the smaller of the two) and needs exactly one
+ * slot: capacity one byte short is BUFFER_TOO_SMALL, exactly one slot is accepted and filled (the target of 2^63 would otherwise demand an
+ * astronomical capacity, T-06-13). */
+static int rb_flags_stop_on_frame_clamps_target(void)
+{
+  enum { SLOT = 15296 };
+  ivs_ms_inst x;
+  ivs_run_report r;
+  uint8_t *v = malloc((size_t)SLOT + 32u);
+  int rc = IVS_TEST_FAIL;
+  IVS_CHECK(v != NULL);
+  memset(v, RB_POISON, (size_t)SLOT + 32u);
+  if (!ivs_ms_powered(&x, IVS_MS_CONTENT_A, RB_POISON)) {
+    free(v);
+    return IVS_TEST_FAIL;
+  }
+  RB_CHECK(rb_flag_run(&x, IVS_RUN_F_STOP_ON_FRAME, IVS_RUN_TARGET_MAX, v, (uint64_t)SLOT - 1u, &r) == IVS_E_BUFFER_TOO_SMALL);
+  RB_CHECK(r.refusal_reason == IVS_REASON_RUN_BUFFER_SMALL && v[0] == RB_POISON);
+  RB_CHECK(rb_flag_run(&x, IVS_RUN_F_STOP_ON_FRAME, IVS_RUN_TARGET_MAX, v, (uint64_t)SLOT + 32u, &r) == IVS_OK);
+  RB_CHECK(r.stop_reason == IVS_STOP_FRAME && r.video_frames_completed == 1u && r.video_bytes_written == SLOT);
+  RB_CHECK(r.now_ticks >= RB_E0 && r.now_ticks < RB_E0 + 1000u && r.elapsed_ticks == r.now_ticks);
+  RB_CHECK(r.overshoot_ticks == 0u); /* overshoot stays against the caller's target (2^63) */
+  RB_CHECK(v[SLOT] == RB_POISON);
+  rc = IVS_TEST_PASS;
+done:
+  ivs_ms_free(&x);
+  free(v);
+  return rc;
+}
+
+/* The exit-state order: a target equal to the frame end reports FRAME (not TARGET); a target below it with no unit crossing the frame end
+ * reports TARGET; a halted CPU reports CPU_HALTED before FRAME (the stop-on-halt bit is set and the CPU is halted at once). */
+static int rb_flags_stop_reason_frame(void)
+{
+  ivs_ms_inst x;
+  ivs_run_report r;
+  int rc = IVS_TEST_FAIL;
+  IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, RB_POISON));
+  RB_CHECK(rb_flag_run(&x, IVS_RUN_F_STOP_ON_FRAME, 30000u, NULL, 0u, &r) == IVS_OK && r.stop_reason == IVS_STOP_TARGET);
+  RB_CHECK(rb_flag_run(&x, IVS_RUN_F_STOP_ON_FRAME, RB_E0, NULL, 0u, &r) == IVS_OK);
+  RB_CHECK(r.stop_reason == IVS_STOP_FRAME && r.video_frames_completed == 1u && r.now_ticks >= RB_E0);
+  /* the same target without the flag is TARGET (the frame completes either way) */
+  rc = IVS_TEST_PASS;
+done:
+  ivs_ms_free(&x);
+  return rc;
+}
+
+/* Report v3: video_first_index is the number of frames completed before the call, last_frame_end_ticks the E of the last frame the call
+ * completed (0 when none), next_frame_end_ticks the end of the frame in progress at exit; three flagged calls to the third frame end. */
+static int rb_flags_report_v3_fields(void)
+{
+  ivs_ms_inst x;
+  ivs_run_report r;
+  uint32_t k;
+  int rc = IVS_TEST_FAIL;
+  IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, RB_POISON));
+  RB_CHECK(rb_flag_run(&x, IVS_RUN_F_STOP_ON_FRAME, 100u, NULL, 0u, &r) == IVS_OK); /* a call that completes no frame */
+  RB_CHECK(r.video_first_index == 0u && r.last_frame_end_ticks == 0u && r.next_frame_end_ticks == RB_E0 && r.video_frames_completed == 0u);
+  for (k = 0u; k < 3u; k++) {
+    RB_CHECK(rb_flag_run(&x, IVS_RUN_F_STOP_ON_FRAME, IVS_RUN_TARGET_MAX, NULL, 0u, &r) == IVS_OK);
+    RB_CHECK(r.stop_reason == IVS_STOP_FRAME && r.video_frames_completed == 1u && r.video_bytes_written == 0u);
+    RB_CHECK(r.video_first_index == k);
+    RB_CHECK(r.last_frame_end_ticks == (uint64_t)(k + 1u) * RB_E0 && r.next_frame_end_ticks == (uint64_t)(k + 2u) * RB_E0);
+  }
   rc = IVS_TEST_PASS;
 done:
   ivs_ms_free(&x);
@@ -1240,7 +1330,10 @@ const ivs_test_case ivs_run_bound_cases[] = {
     {"run.refuse.bad-handle", rb_refuse_bad_handle, NULL},
     {"run.refuse.report-inside-instance", rb_refuse_report_inside, NULL},
     {"run.refuse.flags-unknown", rb_refuse_flags_unknown, NULL},
-    {"run.refuse.flags-frame-reserved", rb_refuse_flags_frame, NULL},
+    {"run.flags.stop-on-frame-accepted", rb_flags_stop_on_frame_accepted, NULL},
+    {"run.flags.stop-on-frame-clamps-target", rb_flags_stop_on_frame_clamps_target, NULL},
+    {"run.flags.stop-reason-frame", rb_flags_stop_reason_frame, NULL},
+    {"run.flags.report-v3-fields", rb_flags_report_v3_fields, NULL},
     {"run.refuse.tail-nonzero", rb_refuse_tail, NULL},
     {"run.refuse.state-off", rb_refuse_state_off, NULL},
     {"run.refuse.target-above-2-63", rb_refuse_target_range, NULL},

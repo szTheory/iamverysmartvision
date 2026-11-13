@@ -59,7 +59,10 @@ run.refuse.struct-size-report
 run.refuse.bad-handle
 run.refuse.report-inside-instance
 run.refuse.flags-unknown
-run.refuse.flags-frame-reserved
+run.flags.stop-on-frame-accepted
+run.flags.stop-on-frame-clamps-target
+run.flags.stop-reason-frame
+run.flags.report-v3-fields
 run.refuse.tail-nonzero
 run.refuse.state-off
 run.refuse.target-above-2-63
@@ -225,6 +228,7 @@ run.struct.report-v3-offsets
 run.struct.report-v2-caller
 run.struct.report-v3-caller
 run.struct.env-size
+run.struct.report-v3-live
 # Frozen v1 sizes (plan 04-13, A-02, Pitfall 13): offsetof and sizeof literals of the pointer-free
 # structs and request prefix; the pointer-bearing request size is checked only with 64-bit pointers.
 run.struct.v1-sizes
