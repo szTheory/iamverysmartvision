@@ -940,3 +940,49 @@ The speed-normalised arbiter, read from `.planning/ci-runs.tsv` (successful rows
 Reading: no lever is required before plan 06-10 by the rule in force (`r` under 8.3; the raw projection of 280.4 is the raw trigger, which the rule reads together with `r`). The margin is thin: plan 06-10 adds the card renderer and its fault set (about the cost of this plan's video suite), so the orchestrator should read `r` from the first hosted row of this plan and, if the median reaches 8.3, run the lever queue of the 06-07 review before 06-10 (batching the `cp1610-vectors` re-parse, about 5 cpu-s, is the cheap one; `-O0` fault objects remain an owner decision). The container gate figure of this plan is in its SUMMARY.
 
 checkpointB: no-lever
+
+## 2026-11-12 Phase 6 checkpoint C (plan 06-12)
+
+Measured on the final tree of plan 06-12 (laptop, 18 cores, Apple clang 21; local figures, not hosted ones). Nothing here calls `gh` or touches `.planning/ci-runs.tsv`; plan 06-L1 is not created by the executor.
+
+### Cumulative adds since the plan 06-02 counts (`faults=193 controls=328 tests-expected=3778`)
+
+| Item | At plan 06-02 | Now (`gate:` line) | Added |
+|------|---------------|--------------------|-------|
+| faults | 193 | 221 | 28 (machine +3, run +1, runner +2, stic +11, video +11) |
+| controls | 328 | 335 | 7 (six pure step controls, three of them from this plan, and `core-symbols-palette-defined`, which reaches the C symbol layer) |
+| test ids (`tests-expected`, both presets) | 3778 | 4382 | 604 (this plan: 4,304 at the start, +78) |
+| `steps` / `api-calls` | 36/36 / 15 | 36/36 / 15 | 0 / 0 |
+
+(The plan text quotes the controls range 316 to 335 and the faults range 193 to 221; the gate line at plan 06-02 reads 328 controls, the base used here, as at the earlier checkpoints.)
+
+### Local gate, four `sh`/`dash` runs on the final tree (same summary line apart from the tracked-file counts)
+
+| Run | `gate-time total` | `gate-cpu` user + sys | load at the end (1 min) | five largest `step-time` lines (s) |
+|-----|-------------------|-----------------------|-------------------------|------------------------------------|
+| sh 1 | 258 | 177.4 + 195.5 = 372.8 | 36 | controls 189, c-tests 75, c-faults 73, c-purity 26, hygiene 14 |
+| dash | 170 | 175.2 + 177.8 = 353.0 | 33 | controls 100, c-faults 49, c-tests 34, c-purity 15, hygiene 11 |
+| sh 2 | 162 | 176.5 + 177.0 = 353.5 | 25 | controls 82, c-faults 38, c-tests 32, c-purity 20, hygiene 11 |
+| sh 3 | 142 | 171.3 + 170.5 = 341.8 | 21 | controls 90, c-faults 39, c-tests 27, c-purity 16, hygiene 9 |
+
+The laptop was loaded by other agents for the whole session (1-minute load 21 to 36 on an 18-core machine), so every step is stretched; the quieter runs (sh 3: 142 s, 342 cpu-s, c-faults 39 s for 221 faults) are the honest local figures, against 90 to 107 s and 242 to 252 cpu-s at checkpoint B (when the laptop was quieter) and 73 to 76 s at checkpoint A. The growth since checkpoint B is 7 faults, 3 controls and 154 ids; the `controls` step (335 controls, each on a fresh tree copy) is the largest step in every run.
+
+`runner-process` ctest time (the process-level suite, which the five new operator cases and the changed header check join; the slice-1 and slice-7 replays stay limited to one scenario in plan 06-13): dev 15.0 s, release 8.0 s, at a load of 13 to 27 (first run in this session 23.7 s at a higher load). The new operator cases add two runs of the 130,000-tick looping scenario per preset and a few of the 3,000-tick one.
+
+### Suite plain-run times (dev preset, best of three, laptop loaded)
+
+`runner` 1.37 s (240 ids; it now holds the video chain re-hash against real core slots and the 130,000-tick scenarios), `stic` 0.70 s, `video` 0.40 s, `machine` 1.07 s, `run` 1.28 s. The two new runner faults rerun the `runner` suite once each (2 x 1.37 s).
+
+### Projection (formula of the Phase 6 start section)
+
+`projected_last5_median_cpu = 231 + 2.0 x (0.5 x faults_added + suite_term + 0.07 x pure_controls_added + 2.2 x symbol_controls_added + 0.0034 x ids_added_both_presets)`
+
+- `0.5 x faults_added = 0.5 x 28 = 14.00`
+- `suite_term` = machine 3 x 1.07 + run 1 x 1.28 + runner 2 x 1.37 + stic 11 x 0.70 + video 11 x 0.40 = 3.21 + 1.28 + 2.74 + 7.70 + 4.40 = 19.33 (each fault reruns the whole suite executable once, dev preset, loaded-laptop figures, so this term is on the high side)
+- `0.07 x pure_controls_added = 0.07 x 6 = 0.42`; `2.2 x symbol_controls_added = 2.2 x 1 = 2.20`
+- `0.0034 x ids_added_both_presets = 0.0034 x 604 = 2.05`
+- Sum 38.00; `231 + 2.0 x 38.00 = 307.0`, above the raw cpu trigger of 280 and 7 over the re-baselined hosted cpu budget of 300 (checkpoint B projected 280.4 for 21 faults and 432 ids; the 7 faults, 3 controls and 154 ids since, and the heavier suite times of a loaded laptop, account for the step).
+
+The speed-normalised arbiter, read from `.planning/ci-runs.tsv` (successful rows, last five: runs 43325371818, 43331294071, 43341351141, 43346071659, 43352432394): `r = cpu_s / build_s` is 7.88, 7.90, 5.95, 7.64 and 7.68, median **7.68** against the budget median 7.8 and the revisit trigger 8.3 (cpu 378, 387, 262, 321, 315 over build 48, 49, 44, 42, 41): not tripped. The last three hosted rows, which already contain plans 06-09 to 06-11, are at or under the budget, so the raw projection of 307 over-states the hosted cost (it uses the Phase 5 overrun factor 2.0 and loaded-laptop suite times); the arbiter is the normalised metric, as the 06-07 review recorded. This plan's own hosted cost is two faults on the runner suite (about 2 x 0.5 + 2 x 1.37 hosted-scale seconds), three controls (pure, 0.07 each) and 78 ids, about 2.0 x (1.0 + 2.74 + 0.21 + 0.27) = 8.4 cpu-s on the 315 of the last row (under 3 percent), so `r` is expected to stay near 7.7 to 7.9. The orchestrator should still read `r` from the first hosted row of this plan: at 8.3 or above the lever queue of the 06-07 review (batching the `cp1610-vectors` re-parse, about 5 cpu-s; `-O0` fault objects remain an owner decision) runs before plan 06-13 adds its two goldens and the diagnostic scenarios. The container gate figure of this plan is in its SUMMARY.
+
+checkpointC: no-lever
