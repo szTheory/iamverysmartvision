@@ -1104,3 +1104,50 @@ The queued estimate was about 5 hosted cpu-s. The measurement does not support t
 Owner-decision levers (fault objects at `-O0`, one runtime-selected object per owner translation unit, a two-job split) are out of scope for an executor. Not levers: dropping a mutant class, the judge or an oracle, caching (D12 bans caches).
 
 phase7-start: lever-applied
+
+## 2026-11-13 Phase 7 checkpoint C-B (plan 07-08)
+
+Nothing here calls `gh` or `tools/ci-record.sh`; `.planning/ci-runs.tsv` is orchestrator-owned and untouched (54 lines, the newest row is still run 43373151931, the head of the Phase 6 review fixes: no hosted row exists for any Phase 7 commit). Local figures are laptop figures (18 cores, Apple clang 21, other work running, 1-minute load 8 to 20 during the timings below); none is a hosted figure. Counts at the end of this plan: `steps=36/36 controls=354/354 faults=222/222 goldens=15 tests-expected=4596 tests-executed=4594 tests-skipped=2 tests-missing=0` (plan 07-07 ended at `tests-expected=4570`, plan 07-06 at `4546`).
+
+### Cases added by the heaviest wave (W4)
+
+| Plan | Cases per preset | What |
+|------|------------------|------|
+| 07-07 | 12 | 4 scenarios, 2 pair judgements, 3 repeatability, 3 judge self-controls |
+| 07-08 | 13 | 12 Lamp Tone mutants and 1 negative row (`runner-process.mutant.SCN-*`) |
+
+w4-cases: 25 per preset (S-4 ceiling 19; +6 = second re-arm edge and five locked runtime mutant classes, D-25, A-03, A-14, A-17)
+
+`tests-expected` moved 4546 to 4570 (07-07, 12 cases x 2 presets) to 4596 (07-08, 13 x 2): +50 for the wave. This plan adds 0 controls and 0 faults (the mutants are suite cases and registry lines). The phase's pure controls so far: 10 of the planned 13 (A-11: 07-02 four, 07-03 two, 07-04 two, 07-05 one, 07-06 one; 07-10 two and 07-12 one are to come), `controls` 344 to 354; faults stay 222. No mutant class was dropped and no check was weakened to save time.
+
+### Local suite time of `tests/runner-process-tap.sh`
+
+| Measure | dev | release |
+|---------|-----|---------|
+| before 07-07 (tree of `a34dda1`, median of three, from the 07-07 SUMMARY) | 12.03 s | 6.24 s |
+| after 07-07 (tree of `d533c1f`, median of three, from the 07-07 SUMMARY) | 14.42 s | 6.78 s |
+| start of this plan (tree of `e6565b4`, 84 ok cases, three runs 12.29, 13.54, 14.45 / 6.78, 6.83, 6.87, load about 20) | 13.54 s | 6.83 s |
+| after this plan (tree of `647365a`, 97 ok cases, three runs 16.59, 17.38, 17.85 / 7.49, 7.47, 7.61, load about 12) | 17.38 s | 7.49 s |
+| alternated pairs in one session (the script of `e6565b4` against the script of this plan on the same tree, three each, medians: dev 15.33 to 17.84, release 6.85 to 7.67) | +2.5 s | +0.8 s |
+
+Reading: the 13 new cases cost about 0.19 s each on dev and 0.06 s each on release (alternated pairs), about three times more on the ASan and UBSan preset. Over the wave the suite grew from 12.03 s to 17.38 s on dev (+5.4 s, both plans; the machine load differed between the sessions, so the alternated pairs above are the cleaner delta) and from 6.24 s to 7.49 s on release (+1.3 s). A mutant case is one `ivs_pack` call (the `--dump-words` read is once per inventory, not per row) and one `ivs-run` of a full scenario: 0.06 s on dev for the pass scenario, plus the per-run harness (watchdog arming, report judgement).
+
+### Hosted rows and the rule (D-34)
+
+The last five successful hosted rows of `.planning/ci-runs.tsv`, recomputed from the file with awk (the same five as at the Phase 7 start entry; no row was appended since):
+
+| Run | `cpu_s` | `build_s` | `r = cpu_s / build_s` |
+|-----|---------|-----------|------------------------|
+| 43352432394 | 315 | 41 | 7.68 |
+| 43359195974 | 433 | 48 | 9.02 |
+| 43365038335 | 271 | 36 | 7.53 |
+| 43369159094 | 393 | 49 | 8.02 |
+| 43373151931 | 335 | 41 | 8.17 |
+
+Median `r` **8.02** (8.0204), budget 7.8, revisit line 8.3: the median does not exceed 8.3. None of the five rows includes a Phase 7 commit (the newest, run 43373151931, is the Phase 6 review-fix head; no plan 07-07 or 07-08 commit has been pushed, `git merge-base --is-ancestor` of the first 07-08 commit against each of the five shas is false), so the projection is the median plus the whole wave: 8.02 + 25 case-pairs x 0.7 hosted cpu-s (the S-4 upper unit cost) / 41 (`build_s` of the newest row, run 43373151931) = 8.02 + 17.5 / 41 = 8.02 + 0.43 = **8.45**. The projection exceeds 8.3, so by the rule of this checkpoint the answer is `lever-required`; it is not softened.
+
+### Decision
+
+Lever (2) of the pre-committed order of the Phase 7 start entry is the planned fallback: run the mutant inventories on the release preset only. It is created by the orchestrator as a lever plan (an executor never creates it). No further test case is added by any plan until that lever plan lands. [inference] The cases to move are the 29 `runner-process.mutant.*` cases per preset (16 of earlier phases and the 13 of this plan); this plan's measurement suggests the dev half is about three quarters of a mutant case's cost, so the lever would remove only part of the projected 17.5 hosted cpu-s of the wave, and the lever plan has to measure its effect, not assume it: the hosted rows after the push are the arbiter. Lever (3) (fold `demo-lamp-tone-swap` or `-shift` into repeat variants of one mutant) stays queued behind it. Not levers: dropping a mutant class, the judge or an oracle, caching.
+
+checkpointB-07: lever-required
