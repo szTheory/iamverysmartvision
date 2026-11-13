@@ -106,13 +106,13 @@ static int ri_layout_real(void)
   int rc = IVS_TEST_FAIL;
   IVS_CHECK(ivs_ms_new(&x, RI_POISON));
   RI_CHECK(ri_full(x.m, &a));
-  RI_CHECK(a.video_format == IVS_OUTPUT_FORMAT_NONE && a.video_bytes_per_frame == 0u);
+  /* Plan 06-09 (a reviewed edit; plan 06-03 pinned NONE and a zero tail): the video layout is real, one raw slot per frame. */
+  RI_CHECK(a.video_format == IVS_OUTPUT_FORMAT_INDEX8_FRAMES_V1 && a.video_bytes_per_frame == 15296u);
   RI_CHECK(a.audio_format == IVS_OUTPUT_FORMAT_PSG_LEVELS_V1 && a.audio_bytes_per_frame != 0u);
   RI_CHECK(a.reserved == 0u && a.reserved2 == 0u);
-  /* Plan 06-03: the v4 tail is 0 while video_format is NONE (the poisoned struct must come back zeroed). */
-  RI_CHECK(a.frame_phase_ticks == 0u && a.video_width == 0u && a.video_height == 0u);
-  RI_CHECK(a.video_slot_bytes == 0u && a.video_header_bytes == 0u && a.video_slack_frames == 0u);
-  RI_CHECK(a.video_row_lines == 0u);
+  RI_CHECK(a.frame_phase_ticks == 0u && a.video_width == 159u && a.video_height == 96u);
+  RI_CHECK(a.video_slot_bytes == 15296u && a.video_header_bytes == 32u && a.video_slack_frames == 1u);
+  RI_CHECK(a.video_row_lines == 2u);
   rc = IVS_TEST_PASS;
 done:
   ivs_ms_free(&x);
@@ -213,8 +213,8 @@ done:
   return rc;
 }
 
-/* run.info.v4-fields (plan 06-03, A-10): the pinned offsets and size of the Phase 6 tail, and every
- * field 0 while video_format is NONE, whatever the struct held before. */
+/* run.info.v4-fields (plan 06-03, A-10): the pinned offsets and size of the Phase 6 tail; plan 06-09 (reviewed edit)
+ * the real values, whatever the struct held before. */
 static int ri_v4_fields(void)
 {
   ivs_ms_inst x;
@@ -227,10 +227,12 @@ static int ri_v4_fields(void)
   IVS_CHECK(IVS_INFO_V1_SIZE == 216u);
   IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, RI_POISON));
   RI_CHECK(ri_full(x.m, &a));
-  RI_CHECK(a.struct_size == 320u && a.video_format == IVS_OUTPUT_FORMAT_NONE);
-  RI_CHECK(a.frame_phase_ticks == 0u && a.video_width == 0u && a.video_height == 0u);
-  RI_CHECK(a.video_slot_bytes == 0u && a.video_header_bytes == 0u && a.video_slack_frames == 0u);
-  RI_CHECK(a.video_row_lines == 0u);
+  /* Plan 06-09 (a reviewed edit): the real values; the literals are the numbers of data/video/geometry.literal.txt (159 x 96, header
+   * 32, slot 15,296, 2 TV lines per display row) and the owner's slack of one frame. */
+  RI_CHECK(a.struct_size == 320u && a.video_format == IVS_OUTPUT_FORMAT_INDEX8_FRAMES_V1);
+  RI_CHECK(a.frame_phase_ticks == 0u && a.video_width == 159u && a.video_height == 96u);
+  RI_CHECK(a.video_slot_bytes == 15296u && a.video_header_bytes == 32u && a.video_slack_frames == 1u);
+  RI_CHECK(a.video_row_lines == 2u);
   RI_CHECK(ri_sized_caller(x.m, &a, 320u));
   rc = IVS_TEST_PASS;
 done:

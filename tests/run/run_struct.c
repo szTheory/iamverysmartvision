@@ -566,7 +566,7 @@ static int rs_env_size(void)
   IVS_CHECK(p != NULL);
   memset(&env, 0xA5, sizeof env);
   ivs_machine_profile_env(p, &env);
-  IVS_CHECK(env.video_slack_frames == 0u);
+  IVS_CHECK(env.video_slack_frames == 1u); /* plan 06-09 (a reviewed edit): the profile's env carries the owner's slack of one frame */
   return IVS_TEST_PASS;
 }
 

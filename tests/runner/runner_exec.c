@@ -1707,6 +1707,60 @@ static int rx_wav_run(fake_host *h, const char *scn, uint32_t rate, uint64_t sli
   return 1;
 }
 
+/* runner.exec.buffers-video-slack (plan 06-09, A-03): the runner sizes the video channel as slot x (slice / F + 1 + slack) with the slack
+ * read from ivs_info v4, so every slice (1 tick, 7 ticks, the default 4,194,304) runs under the real video layout instead of failing
+ * BUFFER_TOO_SMALL. The default slice needs 4,194,304 / 59,736 = 70 + 1 = 71 audio and log slots and 72 video slots: video 72 x 15,296 =
+ * 1,101,312 bytes, audio 71 x 15,060 = 1,069,260, log 71 x 34,432 = 2,444,672, in all 4,615,244, re-derived here from the layout's
+ * published per-frame figures; a block of exactly that size runs and one byte less is a harness failure buffers-too-small. */
+static int ex_buffers_video_slack(void)
+{
+  static const uint64_t slices[3] = {1u, 7u, 0u};
+  const uint64_t slot = 15296u;
+  const uint64_t audio = 15060u;
+  const uint64_t log = 34432u;
+  const uint64_t frame = 59736u;
+  const uint64_t def_slots = 4194304u / frame + 1u;
+  const uint64_t total = slot * (def_slots + 1u) + audio * def_slots + log * def_slots;
+  fake_host h;
+  char scn[RX_SCN_CAP];
+  int rc = IVS_TEST_FAIL;
+  rx_psg_image();
+  if (!rx_psg_scenario(scn, sizeof scn, "run-to 3000 ticks\n")) {
+    return IVS_TEST_FAIL;
+  }
+  if (def_slots != 71u || slot * (def_slots + 1u) != 1101312u || total != 4615244u || total >= IVS_RUNNER_BUFFERS_MAX) {
+    ivs_test_diag("derived total %llu", (unsigned long long)total);
+    return IVS_TEST_FAIL;
+  }
+  for (size_t i = 0u; i < 3u; i++) {
+    fh_init(&h);
+    fh_add(&h, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
+    h.buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
+    h.slice_ticks = slices[i];
+    if (!rx_expect(scn, &h, IVS_RUNNER_OUTCOME_PASS, 0u)) {
+      goto done;
+    }
+    rx_free(&h);
+  }
+  fh_init(&h);
+  fh_add(&h, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
+  h.buffer_bytes = (size_t)total;
+  if (!rx_expect(scn, &h, IVS_RUNNER_OUTCOME_PASS, 0u)) {
+    goto done;
+  }
+  rx_free(&h);
+  fh_init(&h);
+  fh_add(&h, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
+  h.buffer_bytes = (size_t)total - 1u;
+  if (!rx_expect(scn, &h, IVS_RUNNER_OUTCOME_HARNESS_FAIL, 14u) || !rx_is(h.out, "outcome.detail", "buffers-too-small")) {
+    goto done;
+  }
+  rc = IVS_TEST_PASS;
+done:
+  rx_free(&h);
+  return rc;
+}
+
 /* The hook contract: default rate 48000 and 44100 both give the by-hand frame count with the reference
  * header and the file hash; a run cut into slices of 7 ticks gives the same PCM and hash as one slice
  * (the converter state is carried across slices). */
@@ -2099,6 +2153,7 @@ static const ivs_test_case exec_cases[] = {
     {"runner.exec.operator-files-hook", ex_operator_files_hook, NULL},
     {"runner.exec.out-max-bytes", ex_out_max_bytes, NULL},
     {"runner.exec.refpcm-keys-only-with-option", ex_refpcm_keys_only_with_option, NULL},
+    {"runner.exec.buffers-video-slack", ex_buffers_video_slack, NULL},
     {"runner.exec.wav-hook", ex_wav_hook, NULL},
     {"runner.exec.wav-failures", ex_wav_failures, NULL},
     {"runner.exec.key-order", ex_key_order, NULL},

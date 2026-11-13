@@ -346,10 +346,22 @@ ivs_status ivs_machine_info(const ivs_machine *m, ivs_info *out)
    * same figure the capacity of the public run call uses, so a caller sizes its log buffer from info). */
   r.psg_log_record_bytes = IVS_PSG_LOG_RECORD_BYTES;
   r.psg_log_records_per_frame = env.psg_log_bytes_per_frame / IVS_PSG_LOG_RECORD_BYTES;
-  /* v4 (plan 06-03, D-14, D-15): the video tail (frame_phase_ticks, width, height, slot and header bytes,
-   * slack frames, row lines) is 0 while video_format is NONE (r is zeroed above); the profile fills it
-   * from the plan that publishes the frame layout. The slack comes from the env seam. */
-  r.video_slack_frames = env.video_slack_frames; /* 0: the profile env leaves the word 0 */
+  /* v4 (plan 06-09, D-12, D-14, D-15): the video tail, republished from the generated STIC parameters through the same derivation the
+   * frame writer uses (ivs_stic_geom_derive): the frame phase, the published width and height, the slot and header bytes, the slack
+   * frames of the capacity rule (the env seam) and the TV lines of one display row. A profile with no STIC row publishes 0. */
+  {
+    const ivs_stic_params *sp = ivs_machine_profile_covered(im->profile) != 0u ? ivs_stic_params_get(im->profile) : NULL;
+    if (sp != NULL && env.video_format != IVS_OUTPUT_FORMAT_NONE) {
+      ivs_stic_geom g = ivs_stic_geom_derive(sp);
+      r.frame_phase_ticks = sp->frame_phase_ticks;
+      r.video_width = g.width;
+      r.video_height = g.height;
+      r.video_slot_bytes = g.slot_bytes;
+      r.video_header_bytes = g.header_bytes;
+      r.video_row_lines = sp->video_row_lines;
+    }
+  }
+  r.video_slack_frames = env.video_slack_frames;
   memcpy(out, &r, n);
   return IVS_OK;
 }
@@ -360,9 +372,26 @@ void ivs_machine_profile_env(const ivs_profile_desc *p, ivs_run_env *env)
   uint64_t period = p->psg_sample_period_ticks;
   memset(env, 0, sizeof *env);
   frame = (uint64_t)p->ticks_per_cpu_cycle * (uint64_t)p->cpu_cycles_per_scanline * (uint64_t)p->scanlines_per_frame;
-  /* No video yet (plan 05-09 and later); the write log layout is set at the end (plan 05-08) (D-06: no frame is fabricated). */
+  /* Plan 06-09 (D-13, D-15, A-03): the video layout is real for a profile with a STIC parameter row. One slot per frame of
+   * header + width x height bytes, derived at run time from the primary geometry inputs (ivs_stic_geom_derive), and the slack frames
+   * of the capacity rule (a call can complete floor(D / F) + 2 frame events, so the requirement is slot x (floor(D / F) + 1 + slack)
+   * with slack 1). A registry profile without a parameter row publishes no video (nothing is fabricated, D-06). */
   env->video_format = IVS_OUTPUT_FORMAT_NONE;
   env->video_bytes_per_frame = 0u;
+  {
+    uint32_t i;
+    for (i = 0u; i < ivs_profile_count(); i++) {
+      if (ivs_profile_get(i) == p) {
+        const ivs_stic_params *sp = ivs_machine_profile_covered(i) != 0u ? ivs_stic_params_get(i) : NULL;
+        if (sp != NULL) {
+          env->video_format = IVS_OUTPUT_FORMAT_INDEX8_FRAMES_V1;
+          env->video_bytes_per_frame = ivs_stic_geom_derive(sp).slot_bytes;
+          env->video_slack_frames = sp->video_slack_frames;
+        }
+        break;
+      }
+    }
+  }
   env->audio_format = IVS_OUTPUT_FORMAT_NONE;
   env->audio_bytes_per_frame = 0u;
   env->nominal_frame_ticks = frame;

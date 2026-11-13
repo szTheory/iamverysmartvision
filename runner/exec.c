@@ -685,12 +685,12 @@ static void ex_step_asserts(ex_state *x, uint32_t k)
 
 /* ---- steps ---- */
 
-/* Cuts the host's buffer block into the three output channels (plan 05-09, A-11, D-17): each gets
- * bytes_per_frame * (slice_ticks / nominal_frame_ticks + 1) bytes, the most a slice of slice_ticks
- * can require (ivs_run.h), where the per-frame bytes come from ivs_info (video; audio; the log's
- * record bytes times its records per frame). A channel whose layout needs 0 bytes is not requested
- * (NULL with capacity 0). No block: nothing is requested. 0 when the block cannot hold the three
- * (a harness failure, never a truncation). */
+/* Cuts the host's buffer block into the three output channels (plan 05-09, A-11, D-17; plan 06-09, A-03): audio and the log each get
+ * bytes_per_frame * (slice_ticks / nominal_frame_ticks + 1) bytes, the most a slice of slice_ticks can require (ivs_run.h), and video
+ * gets video_bytes_per_frame * (slice_ticks / nominal_frame_ticks + 1 + video_slack_frames), the slack read from ivs_info v4 (a call
+ * can complete one frame more than the Phase 4 count). The per-frame bytes come from ivs_info (video; audio; the log's record bytes
+ * times its records per frame). A channel whose layout needs 0 bytes is not requested (NULL with capacity 0). No block: nothing is
+ * requested. 0 when the block cannot hold the three (a harness failure, never a truncation). */
 static int ex_plan_buffers(ex_state *x, const ivs_info *info)
 {
   uint64_t slots = x->slice_ticks / info->nominal_frame_ticks + 1u;
@@ -706,7 +706,8 @@ static int ex_plan_buffers(ex_state *x, const ivs_info *info)
   per[1] = info->audio_bytes_per_frame;
   per[2] = (uint64_t)info->psg_log_record_bytes * (uint64_t)info->psg_log_records_per_frame;
   for (size_t i = 0u; i < 3u; i++) {
-    need[i] = per[i] * slots; /* at most 2^32 * 2^32 / 1: slots is below 2^23 for a slice of 2^22 ticks */
+    uint64_t n = i == 0u ? slots + (uint64_t)info->video_slack_frames : slots; /* the video channel carries the slack frames */
+    need[i] = per[i] * n; /* at most 2^32 * 2^32 / 1: slots is below 2^23 for a slice of 2^22 ticks */
     if (need[i] > block || total > block - need[i]) {
       return 0;
     }

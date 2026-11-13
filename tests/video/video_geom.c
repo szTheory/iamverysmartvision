@@ -92,10 +92,40 @@ static int vg_generated_equals_derive(void)
   return IVS_TEST_PASS;
 }
 
+/* ivs_info v4 republishes the surface the page names and the generated parameters carry: format, bytes per frame, width, height, slot and
+ * header bytes, the slack frames, the TV lines of one display row and the frame phase; the env of the public run call agrees. */
+static int vg_info_matches_profile(void)
+{
+  const ivs_stic_params *p = ivs_stic_params_get(SC_PROFILE);
+  ivs_ms_inst x;
+  ivs_info a;
+  ivs_run_env env;
+  VC_CHECK(ivs_ms_new(&x, 0x5Au));
+  memset(&a, 0xA5, sizeof a);
+  a.struct_size = (uint32_t)sizeof a;
+  if (ivs_machine_info(x.m, &a) != IVS_OK) {
+    ivs_ms_free(&x);
+    return IVS_TEST_FAIL;
+  }
+  memset(&env, 0, sizeof env);
+  ivs_machine_profile_env(ivs_profile_get(SC_PROFILE), &env);
+  ivs_ms_free(&x);
+  VC_CHECK(a.video_format == IVS_OUTPUT_FORMAT_INDEX8_FRAMES_V1 && a.video_bytes_per_frame == VL_GEO_SLOT_BYTES);
+  VC_CHECK(a.video_width == VL_GEO_WIDTH && a.video_height == VL_GEO_HEIGHT);
+  VC_CHECK(a.video_slot_bytes == VL_GEO_SLOT_BYTES && a.video_header_bytes == VL_GEO_HEADER_BYTES);
+  VC_CHECK(a.video_row_lines == VL_GEO_ROW_LINES);
+  VC_CHECK(a.video_slack_frames == p->video_slack_frames && a.video_slack_frames == 1u);
+  VC_CHECK(a.frame_phase_ticks == p->frame_phase_ticks && a.nominal_frame_ticks == p->frame_ticks);
+  VC_CHECK(env.video_format == a.video_format && env.video_bytes_per_frame == a.video_bytes_per_frame);
+  VC_CHECK(env.video_slack_frames == a.video_slack_frames && env.nominal_frame_ticks == a.nominal_frame_ticks);
+  return IVS_TEST_PASS;
+}
+
 const ivs_test_case ivs_video_geom_cases[] = {
     {"video.geom.profile-derives-159x96", vg_profile_derives, NULL},
     {"video.geom.literal-matches-page", vg_literal_matches_page, NULL},
     {"video.geom.reversal-one-field", vg_reversal_one_field, NULL},
+    {"video.geom.info-matches-profile", vg_info_matches_profile, NULL},
     {"video.geom.generated-equals-derive", vg_generated_equals_derive, NULL},
 };
 const size_t ivs_video_geom_count = sizeof ivs_video_geom_cases / sizeof ivs_video_geom_cases[0];

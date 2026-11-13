@@ -1,8 +1,10 @@
 # Suite video: the raw framebuffer slot, its per-frame chain, the video buffer rules, the frame stop and the geometry (VID-03, plan 06-09).
 # Plan 06-09 task 1: the geometry family (video.geom.*) and the slot family (video.layout.*, video.slot.*, video.frame.*, video.noop.*, video.chain.*): the first display-off frames delivered as slots whose header, plane and chain step equal the independently framed literal, with and without a buffer.
+# Plan 06-09 task 2: the buffers family (video.buffers.*) through the public call with the real layout, and video.geom.info-matches-profile: the capacity law slot x (floor(D / F) + 1 + slack), not-requested equals requested, refusals that write nothing, the constructed two-frame corner and the 64-bit guard.
 video.geom.profile-derives-159x96
 video.geom.literal-matches-page
 video.geom.reversal-one-field
+video.geom.info-matches-profile
 video.geom.generated-equals-derive
 video.layout.bytes
 video.slot.header-bytes
@@ -17,3 +19,13 @@ video.chain.recompute-from-slots
 video.chain.index-continuity
 video.chain.reset-clears
 video.chain.init-h0-create-and-reset
+video.buffers.not-requested-equals-requested
+video.buffers.exact-fit
+video.buffers.undersized-refused
+video.buffers.null-nonzero
+video.buffers.overlap-instance
+video.buffers.overlap-audio
+video.buffers.overlap-report
+video.buffers.sentinel
+video.buffers.worst-case-two-frames
+video.buffers.capacity-overflow-guard

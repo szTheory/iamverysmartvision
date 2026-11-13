@@ -18,7 +18,7 @@ load.grom status=IVS_OK length_bytes=2048 sha256=e5a00aa9991ac8a5ee3109844d84a55
 load.cart status=IVS_OK length_bytes=176 sha256=243626a75f7592fcb904a6c2cba2de307f19f08eb484ae9f94fd0383526ee5c0
 refusal.duplicate status=IVS_E_DUPLICATE_LOAD reason=33 digest-unchanged=yes
 reset status=IVS_OK
-info phase=1 time_ticks=0 ticks_per_cpu_cycle=4 nominal_frame_ticks=59736 video_format=0 audio_format=1
+info phase=1 time_ticks=0 ticks_per_cpu_cycle=4 nominal_frame_ticks=59736 video_format=2 audio_format=1
 step.1 target_ticks=1000 stop=IVS_STOP_TARGET now_ticks=1020 overshoot_ticks=20 input_consumed=1 controller0=00000001
 step.1.cpu run_state=2 fault_reason=0 r=0000,8080,0007,0022,0000,0000,0340,501D
 step.1.mem 0200..020F=7FFF,8080,A0A0,7070,0000,0000,0000,0000,0000,0000,0000,0000,0000,0000,0000,0000

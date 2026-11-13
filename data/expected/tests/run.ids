@@ -124,6 +124,7 @@ run.buffers.inside-instance
 run.buffers.video-audio-overlap
 run.buffers.report-overlap
 run.buffers.real-layout-audio
+run.buffers.video-real
 run.buffers.audio-real
 run.buffers.entry-points-equal
 run.prec.handle-over-buffer

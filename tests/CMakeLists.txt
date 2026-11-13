@@ -281,7 +281,7 @@ add_custom_command(
   COMMAND "${CMAKE_COMMAND}" "-DROOT=${PROJECT_SOURCE_DIR}" "-DOUT=${IVS_VIDEOLIT_INC}" -P "${IVS_VIDEOLIT_GENERATOR}"
   DEPENDS "${PROJECT_SOURCE_DIR}/data/video/geometry.literal.txt" "${PROJECT_SOURCE_DIR}/data/video/chain-framing.literal.txt" "${IVS_VIDEOLIT_GENERATOR}"
   COMMENT "Generating the video literal include")
-set(IVS_VIDEO_TEST_SOURCES video/video_main.c video/video_geom.c video/video_slot.c video/video_progs.c stic/stic_progs.c machine/machine_standin.c)
+set(IVS_VIDEO_TEST_SOURCES video/video_main.c video/video_geom.c video/video_slot.c video/video_buffers.c video/video_progs.c stic/stic_progs.c machine/machine_standin.c)
 add_executable(ivs_tests_video ${IVS_VIDEO_TEST_SOURCES} "${IVS_VIDEOLIT_INC}")
 target_include_directories(ivs_tests_video PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/stic" "${CMAKE_CURRENT_SOURCE_DIR}/video" "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(ivs_tests_video PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)

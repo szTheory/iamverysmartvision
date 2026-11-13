@@ -211,6 +211,7 @@ runner.judge.refpcm-floor-rounding
 runner.judge.refpcm-dc-state-carry
 runner.judge.refpcm-rate-drift
 runner.exec.refpcm-keys-only-with-option
+runner.exec.buffers-video-slack
 runner.exec.wav-hook
 runner.exec.wav-failures
 runner.parse.wav-rate-refused

@@ -177,14 +177,16 @@ static uint32_t ivs_bound_rep_bytes(const ivs_run_report *rep)
 }
 
 /* 1 when capacity holds the bytes one channel needs for a run from now to target (D-06):
- * bytes_per_frame * (max(target - now, 0) / frame + 1). Nothing is needed at 0 bytes per frame;
+ * bytes_per_frame * (max(target - now, 0) / frame + 1 + slack), the slack being the layout's video_slack_frames for the video
+ * channel (plan 06-09, D-15, A-08: a call can complete floor(D / F) + 2 frame events, so the Phase 4 + 1 is not enough) and 0 for
+ * audio and the log, whose formulas stay as they were. Nothing is needed at 0 bytes per frame;
  * a frame of 0 ticks, or a product above UINT64_MAX, can never be met. target is at most 2^63
  * here (OUT_OF_RANGE ran first); the frame count is still guarded against wrapping.
  * D-17 (plan 05-02): a NULL buffer with capacity 0 means the channel is not requested, so it needs
  * nothing whatever the layout says; a nonzero capacity below the requirement is still refused, and
  * so is a non-NULL buffer of capacity 0 against a layout that needs bytes (Phase 4 behaviour). */
 static uint32_t ivs_bound_fits(const void *buf, uint64_t capacity, uint32_t bytes_per_frame, uint64_t frame,
-                               uint64_t target, uint64_t now)
+                               uint64_t target, uint64_t now, uint32_t slack)
 {
   uint64_t frames;
   if (buf == NULL && capacity == 0u) {
@@ -201,6 +203,10 @@ static uint32_t ivs_bound_fits(const void *buf, uint64_t capacity, uint32_t byte
     return 0u; /* unreachable below 2^63, kept so the + 1 can never wrap */
   }
   frames += 1u;
+  if (slack > UINT64_MAX - frames) {
+    return 0u; /* unreachable for a real layout; keeps the slack addition from wrapping */
+  }
+  frames += slack;
   if (frames > UINT64_MAX / bytes_per_frame) {
     return 0u;
   }
@@ -213,14 +219,18 @@ static uint32_t ivs_bound_fits(const void *buf, uint64_t capacity, uint32_t byte
 static uint32_t ivs_bound_capacity_reason(const ivs_run_request *req, const ivs_run_env *env, uint64_t target,
                                           uint64_t now)
 {
-  if (ivs_bound_fits(req->video, req->video_capacity, env->video_bytes_per_frame, env->nominal_frame_ticks, target,
-                     now) == 0u ||
-      ivs_bound_fits(req->audio, req->audio_capacity, env->audio_bytes_per_frame, env->nominal_frame_ticks, target,
-                     now) == 0u) {
+  uint32_t vslack = env->video_slack_frames;
+#ifdef IVS_FAULT_VIDEO_CAP_PLUS_ONE
+  vslack = 0u; /* named fault: the Phase 4 + 1 formula, which a call that crosses the target can exceed by one frame */
+#endif
+  if (ivs_bound_fits(req->video, req->video_capacity, env->video_bytes_per_frame, env->nominal_frame_ticks, target, now,
+                     vslack) == 0u ||
+      ivs_bound_fits(req->audio, req->audio_capacity, env->audio_bytes_per_frame, env->nominal_frame_ticks, target, now,
+                     0u) == 0u) {
     return IVS_REASON_RUN_BUFFER_SMALL;
   }
   if (ivs_bound_fits(ivs_bound_log_ptr(req), ivs_bound_log_cap(req), env->psg_log_bytes_per_frame,
-                     env->nominal_frame_ticks, target, now) == 0u) {
+                     env->nominal_frame_ticks, target, now, 0u) == 0u) {
     return IVS_REASON_RUN_PSGLOG_SMALL;
   }
   return IVS_REASON_NONE;
@@ -494,6 +504,13 @@ static void ivs_bound_refuse(const ivs_machine *m, const ivs_run_request *req, i
     req->video[0] = 0u;
   }
 #endif
+#ifdef IVS_FAULT_VIDEO_OUTBUF_PARTIAL_WRITE
+  /* Named fault VIDEO_OUTBUF_PARTIAL_WRITE (plan 06-09, T-06-12): a refused run writes one byte into the caller's video buffer, the
+   * frame channel of the real layout (the sentinel checks of video.buffers.undersized-refused must see it). */
+  if (ivs_bound_req_sized(req) != 0u && req->video != NULL && req->video_capacity != 0u) {
+    req->video[0] = 0u;
+  }
+#endif
 #ifdef IVS_FAULT_PSG_OUTBUF_PARTIAL_WRITE
   /* Named fault PSG_OUTBUF_PARTIAL_WRITE (plan 05-06, T-05-16): a refused run writes one byte into
    * the caller's audio buffer (the sentinel checks of the audio refusals must see it). */
@@ -508,6 +525,15 @@ static void ivs_bound_refuse(const ivs_machine *m, const ivs_run_request *req, i
       rep->input_failing_index = index;
     }
   }
+}
+
+/* 1 when a unit that begins at tick start could complete a frame: the next frame end (phase + (frame_index + 1) x F, from the STIC
+ * state) is at or below start plus the profile's longest unit. */
+static uint32_t ivs_bound_frame_possible(const struct ivs_machine *im, uint64_t start)
+{
+  const ivs_stic_params *sp = ivs_stic_params_get(im->profile);
+  uint64_t next = (uint64_t)sp->frame_phase_ticks + (im->stic.frame_index + 1u) * (uint64_t)sp->frame_ticks;
+  return next <= start + (uint64_t)ivs_profile_get(im->profile)->psg_max_unit_ticks ? 1u : 0u;
 }
 
 ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *req, ivs_run_report *rep,
@@ -550,6 +576,12 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
   if (env->psg_log_bytes_per_frame != 0u) {
     ivs_psg_sink_log(&sink, ivs_bound_log_ptr(req), ivs_bound_log_cap(req));
   }
+  /* The video channel of the same sink (plan 06-09, D-13, D-16): the caller's video buffer when the layout carries frames
+   * (video_bytes_per_frame nonzero) and a buffer was requested, else the counting video sink (the same code runs and the domain-16
+   * chain advances either way). Frames are counted whether or not a buffer is given. */
+  if (env->video_format == IVS_OUTPUT_FORMAT_INDEX8_FRAMES_V1 && env->video_bytes_per_frame != 0u) {
+    ivs_psg_sink_video(&sink, req->video, req->video_capacity);
+  }
 #ifdef IVS_FAULT_RUN_BUDGET_CARRY
   if (ivs_bound_carry_handle == (const void *)m && ivs_bound_carry_end == entry) {
     plan.target = plan.target > ivs_bound_carry_ticks ? plan.target - ivs_bound_carry_ticks : 0u;
@@ -585,6 +617,14 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
      * consistent, a harness failure). It fires only if W_log is cut below the real write density; a channel
      * that is not requested (no buffer) is never checked. */
     if (sink.log != NULL && sink.log_cap - sink.log_written < IVS_PSG_LOG_RECORD_BYTES) {
+      internal = 1u;
+      break;
+    }
+    /* The never-expected safety net of the video channel (plan 06-09, D-15): before a unit that could complete a frame (the next
+     * frame end is within one longest unit of the unit start) a requested buffer must hold one more slot, else the run ends with
+     * the INTERNAL stop at this whole boundary. It fires only if the capacity rule is cut below the real frame count. */
+    if (sink.video != NULL && env->video_bytes_per_frame != 0u && sink.video_cap - sink.video_written < env->video_bytes_per_frame &&
+        ivs_bound_frame_possible(im, before) != 0u) {
       internal = 1u;
       break;
     }
@@ -656,11 +696,13 @@ ivs_status ivs_machine_run_env_internal(ivs_machine *m, const ivs_run_request *r
   /* Output counts (D-03): no video yet; the audio bytes delivered and the sample index at entry
    * (plan 05-06). A sample that did not fit the buffer is never expected (the capacity rule proves
    * the room); it is an internal stop. */
+  r.video_frames_completed = sink.video_frames;
+  r.video_bytes_written = sink.video_written;
   r.audio_bytes_written = sink.written;
   r.audio_first_index = first_index;
   r.psg_log_bytes_written = sink.log_written;
   r.psg_log_first_index = log_first_index;
-  if (sink.overflow != 0u || sink.log_overflow != 0u) {
+  if (sink.overflow != 0u || sink.log_overflow != 0u || sink.video_overflow != 0u) {
     r.stop_reason = IVS_STOP_INTERNAL;
   }
   r.input_consumed = consumed;

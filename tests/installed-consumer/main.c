@@ -213,8 +213,9 @@ static void refusal(ivs_machine *m, const char *name, uint32_t kind, const uint8
 }
 
 /* Bytes of video, audio and write log the session's calls delivered (reports): the replay requests the
- * audio and the log through buffers sized from ivs_info, as the runner does (plan 05-09), and video
- * not at all (its layout is NONE). A domain is observed when its delivered bytes are nonzero, the
+ * audio, the log and (plan 06-09) the video frames through buffers sized from ivs_info, as the runner does
+ * (plan 05-09; video: video_bytes_per_frame x (slots + video_slack_frames), the slack from ivs_info v4, never
+ * a hard-coded size). A domain is observed when its delivered bytes are nonzero, the
  * count rule of the runner golden (B1): the layout in ivs_info says what a call could deliver, not
  * what this session observed. */
 static uint64_t delivered_video_bytes;
@@ -226,7 +227,8 @@ static const char *run_prefix = "";
 
 /* One run call of the replay; returns the report's input_consumed (0 on a refusal). The audio and
  * log capacities are bytes_per_frame * ((target - now) / nominal_frame_ticks + 1) from ivs_info, the
- * most the call can require (ivs_run.h). */
+ * most the call can require (ivs_run.h); the video capacity adds the layout's slack frames (a call can
+ * complete one frame event more than that count). */
 static uint32_t run_step(ivs_machine *m, unsigned step, uint64_t target, const ivs_input_event *events, uint32_t count,
                          uint32_t want_stop, int print)
 {
@@ -236,6 +238,7 @@ static uint32_t run_step(ivs_machine *m, unsigned step, uint64_t target, const i
   ivs_status st;
   uint8_t *audio = NULL;
   uint8_t *plog = NULL;
+  uint8_t *video = NULL;
   uint64_t slots;
   memset(&info, 0, sizeof info);
   info.struct_size = (uint32_t)sizeof info;
@@ -251,6 +254,11 @@ static uint32_t run_step(ivs_machine *m, unsigned step, uint64_t target, const i
   q.target_ticks = target;
   q.events = count > 0u ? events : NULL;
   q.event_count = count;
+  if (info.video_bytes_per_frame != 0u) {
+    q.video_capacity = (uint64_t)info.video_bytes_per_frame * (slots + (uint64_t)info.video_slack_frames);
+    video = malloc((size_t)q.video_capacity);
+    q.video = video;
+  }
   if (info.audio_bytes_per_frame != 0u) {
     q.audio_capacity = (uint64_t)info.audio_bytes_per_frame * slots;
     audio = malloc((size_t)q.audio_capacity);
@@ -261,7 +269,9 @@ static uint32_t run_step(ivs_machine *m, unsigned step, uint64_t target, const i
     plog = malloc((size_t)q.psg_log_capacity);
     q.psg_log = plog;
   }
-  if ((q.audio_capacity != 0u && audio == NULL) || (q.psg_log_capacity != 0u && plog == NULL)) {
+  if ((q.video_capacity != 0u && video == NULL) || (q.audio_capacity != 0u && audio == NULL) ||
+      (q.psg_log_capacity != 0u && plog == NULL)) {
+    free(video);
     free(audio);
     free(plog);
     fail("buffers");
@@ -270,6 +280,7 @@ static uint32_t run_step(ivs_machine *m, unsigned step, uint64_t target, const i
   memset(&rep, 0, sizeof rep);
   rep.struct_size = (uint32_t)sizeof rep;
   st = ivs_machine_run(m, &q, &rep);
+  free(video);
   free(audio);
   free(plog);
   if (st != IVS_OK) {
