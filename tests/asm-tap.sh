@@ -9,7 +9,8 @@
 # no image is built from it. The expected words never come from ivs_asm; they come from a listing
 # typed by hand from the manual and checked twice before this suite existed. The hand listings are
 # untouched (D-19).
-# Ids: asm.twin-<id> per twin (boot-stub 22 words, diag-cpu-1 56 words); asm.repeat: one twin assembled
+# Ids: asm.twin-<id> per twin (boot-stub 22 words, diag-cpu-1 56, diag-ctrl-psg-1 89, diag-stic-1 133 with its
+# data table as DECLE words, which is 300 words in all); asm.repeat: one twin assembled
 # twice into two files is byte-identical, the determinism contract of the tool; asm.judge.mutated-twin is the
 # self-control of the words comparison: the comparison must fail on a twin with one register field
 # changed, and its diff must show exactly that word (judge-vacuous, judge-wrong-reason otherwise).
@@ -39,7 +40,9 @@ nonce=${IVS_TEST_NONCE:-none}
 
 # <id> <twin source> <hand listing>, one per line.
 twins='boot-stub tests/asm/twins/boot-stub.asm fixtures/FX-boot-stub/boot-stub.listing.txt
-diag-cpu-1 tests/asm/twins/diag-cpu-1.asm fixtures/FX-diag-cpu-1/diag-cpu-1.listing.txt'
+diag-cpu-1 tests/asm/twins/diag-cpu-1.asm fixtures/FX-diag-cpu-1/diag-cpu-1.listing.txt
+diag-ctrl-psg-1 tests/asm/twins/diag-ctrl-psg-1.asm fixtures/FX-diag-ctrl-psg-1/diag-ctrl-psg-1.listing.txt
+diag-stic-1 tests/asm/twins/diag-stic-1.asm fixtures/FX-diag-stic-1/diag-stic-1.listing.txt'
 
 : > "$tmp/results"
 n=0
