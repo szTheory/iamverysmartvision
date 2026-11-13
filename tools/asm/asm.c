@@ -1015,7 +1015,7 @@ static int as_run_pairs(const char *path)
   }
   for (i = 0u; i < as_g.nlines; i++) {
     char work[AS_MAX_LINE + 1u];
-    char got[AS_PAIR_WORDS * 5u + 1u];
+    char got[AS_PAIR_WORDS * 5u + 1u] = {0};
     char *s = work;
     char *cls;
     char *adr;
@@ -1023,7 +1023,7 @@ static int as_run_pairs(const char *path)
     const char *p;
     const char *shown = "malformed";
     uint32_t addr = 0u;
-    uint16_t want[AS_PAIR_WORDS];
+    uint16_t want[AS_PAIR_WORDS] = {0u};
     size_t nw = 0u;
     size_t g = 0u;
     size_t k;
@@ -1052,13 +1052,13 @@ static int as_run_pairs(const char *path)
       same = !as_g.failed && as_g.wn == nw;
       shown = "refused";
       for (k = 0u; !as_g.failed && k < as_g.wn && k < AS_PAIR_WORDS; k++) {
-        int d;
+        unsigned d;
         same = same && k < nw && as_g.words[k] == want[k];
         if (k != 0u) {
           got[g++] = ',';
         }
-        for (d = 12; d >= 0; d -= 4) {
-          got[g++] = "0123456789ABCDEF"[(as_g.words[k] >> d) & 15u];
+        for (d = 16u; d > 0u; d -= 4u) {
+          got[g++] = "0123456789ABCDEF"[((unsigned)as_g.words[k] >> (d - 4u)) & 15u];
         }
       }
       got[g] = '\0';
