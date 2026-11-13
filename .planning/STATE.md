@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 current_phase: 7
 current_phase_name: First Visible Original Scenario
-current_plan: 4
+current_plan: 5
 status: executing
-stopped_at: Completed 07-03-PLAN.md
-last_updated: "2026-11-13T19:36:32.837Z"
+stopped_at: Completed 07-04-PLAN.md
+last_updated: "2026-11-13T20:23:53.028Z"
 last_activity: 2026-11-13
 last_activity_desc: Phase 7 execution started
-state_head: b51ccbec8a43008d099b5c5f0afbf17c179b49dd
+state_head: 06875830c13efa9dbf35982baa31d25e61370150
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 109
-  completed_plans: 100
+  completed_plans: 101
   percent: 75
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 7 (First Visible Original Scenario) — EXECUTING
-Current Plan: 4
+Current Plan: 5
 Total Plans in Phase: 12
 Status: Ready to execute
 Last activity: 2026-11-13 — Phase 7 execution started
@@ -159,6 +159,7 @@ Progress: [████████░░] 75%
 | Phase 7 P01 | 66 min | 3 tasks | 3 files |
 | Phase 7 P02 | about 50 min measured, plus reading | 4 tasks | 47 files |
 | Phase 7 P03 | about 32 min measured, plus reading | 3 tasks | 20 files |
+| Phase 7 P04 | about 45 min measured to the last task commit, plus reading | 4 tasks | 41 files |
 
 ## Accumulated Context
 
@@ -367,6 +368,10 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 7]: 07-03: ivs_asm is one C17 file of 806 lines (hard stop 1,200) with a shape-driven operand parser, 19 mnemonics and 17 of the 20 refusal tokens; registered like tools/pcm, never installed; the three tokens left (asm-imm-range, asm-sdbd-target, asm-decle-range) arrive with SDBD and DECLE in 07-04
 - [Phase 7]: 07-03: the twins of the boot stub (22 words) and diag-cpu-1 (56 words) reproduce the hand listings word for word and column for column; no hand slip, no escape; the comparison is shown able to fail (asm.judge.mutated-twin); suite asm costs 0.05 s release, 0.63 s dev
 - [Phase 7]: 07-03: file and usage errors carry no token; the source path must be relative; the header must carry a window; forecast asm.c size after 07-04 is about 975 lines, lever is table packing
+- [Phase 7]: 07-04: ivs_asm is complete at 1,137 lines (hard stop 1,200): 78 spellings cover 73 of 74 leaf rows (not MVOI), explicit SDBD, DECLE with row DATA, 20 pinned refusal tokens with one case each; hand slips found by the twins 0, table errors found by the corpus 0
+- [Phase 7]: 07-04: tests/asm/pairs.txt has 304 pairs (301 copied from the Phase 2 vectors with SDBD immediate operand words masked to the low byte, three hand cases), all agree at the first run; the four twins reproduce all 300 hand-typed words; asm-imm-range made reachable by widening the evaluator to 0 to 16777215 with per-use limits
+- [Phase 7]: 07-04: listing.cmake gains the DATA row rule with two controls (350 to 352) and the toy listing holds one DATA word; docs/diagnostics.md documents the decision, grammar, generated listing form, explicit SDBD and twin discipline; discrepancy C106 records the printed branch range against the decle arithmetic (105 to 106)
+- [Phase 7]: 07-04: a gcc-only -Wsign-conversion error in the pairs result line was found by the container gate and fixed in b05a222; suite asm has 45 cases (dev about 3 s, release about 0.4 s on a loaded laptop)
 
 ### Pending Todos
 
@@ -399,6 +404,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-13T19:36:32.613Z
-Stopped at: Completed 07-03-PLAN.md
+Last session: 2026-11-13T20:23:52.815Z
+Stopped at: Completed 07-04-PLAN.md
 Resume file: None
