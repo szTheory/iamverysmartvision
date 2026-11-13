@@ -141,6 +141,7 @@ set_tests_properties(machine PROPERTIES SKIP_RETURN_CODE 77)
 # images that tools/pack writes (target ivs_images, IVS_IMAGES_DIR), turned into a C include by
 # ivs_pack --c-include here. Nothing in it is committed.
 # Plan 05-11 adds the third pair diag_ctrl_psg_1 (the second diagnostic, D-24) to the include.
+# Plan 06-13 adds the fourth pair diag_stic_1 (the third diagnostic, D-20).
 # Plan 04-16 adds the diagnostic container diag-cpu-1.ivsc to the include, and diag_cpu_1_expect.inc:
 # the assert lines of data/golden/diag-cpu-1.expect as X-macro lines (tests/expect-inc.cmake), so
 # run.diag.predicate reads the hand-derived values from that file instead of retyping them.
@@ -149,7 +150,9 @@ add_custom_command(
   OUTPUT "${IVS_IMAGES_INC}"
   COMMAND ivs_pack --c-include "${IVS_IMAGES_INC}" "boot_stub=${IVS_BOOT_STUB_EXEC}"
           "diag_cpu_1=${IVS_DIAG_CPU_1_IVSC}" "diag_ctrl_psg_1=${IVS_DIAG_CTRL_PSG_1_IVSC}"
+          "diag_stic_1=${IVS_DIAG_STIC_1_IVSC}"
   DEPENDS ivs_pack ivs_images "${IVS_BOOT_STUB_EXEC}" "${IVS_DIAG_CPU_1_IVSC}" "${IVS_DIAG_CTRL_PSG_1_IVSC}"
+          "${IVS_DIAG_STIC_1_IVSC}"
   COMMENT "Generating the build-tree image include"
   VERBATIM)
 set(IVS_DIAG_EXPECT "${PROJECT_SOURCE_DIR}/data/golden/diag-cpu-1.expect")

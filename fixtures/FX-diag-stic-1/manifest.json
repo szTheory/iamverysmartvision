@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "id": "FX-diag-stic-1",
+  "kind": "original-source",
+  "committed": true,
+  "path": "fixtures/FX-diag-stic-1/diag-stic-1.listing.txt",
+  "local_path": null,
+  "source": {
+    "origin": "project-authored diagnostic listing ivs-diag-stic-1 (plan 06-13, D-20)",
+    "pin": null,
+    "accessed": null,
+    "holder": "project contributors"
+  },
+  "recipe": null,
+  "inputs": [],
+  "outputs": [
+    {
+      "path": "fixtures/FX-diag-stic-1/diag-stic-1.listing.txt",
+      "sha256": "9e456ac3a2dde266429ffb9595ff092802f8a37760dcc502dad80c3f5dfb08d1",
+      "size_bytes": 14629
+    }
+  ],
+  "licence": "MIT",
+  "licence_evidence": {
+    "url": "LICENSE",
+    "text_sha256": "aeb83b57ece8dbf61992ea3bd58952f17e30959787fc6c9f82451f17baa67c26",
+    "accessed": "2026-11-11"
+  },
+  "copyright": [
+    "Copyright (c) 2026 iamverysmartvision contributors"
+  ],
+  "notices": [],
+  "redistributable": "yes",
+  "allowed_use": [
+    "local-test",
+    "ci",
+    "repo"
+  ],
+  "rights_review": {
+    "status": "author-attested",
+    "by": "project contributors",
+    "date": "2026-11-12"
+  },
+  "derived_from": [],
+  "note": "project-authored diagnostic; built .ivsc lives only in the build tree; its identity hash is pinned by the golden. The listing is a hand-assembled annotated text listing (D-20, D4): every word is derived by hand from the manual pages it cites and from docs/video/diag-stic-1-derivation.md (plan 06-01, committed before the program), with no assembler and nothing copied from another implementation; the card patterns are project-authored geometric shapes. tools/pack builds the one-segment IVSC v1 container from it into build/<preset>/images/diag-stic-1.ivsc; no container is committed. Its expected guest state and frames are derived by hand in the derivation document, in data/video/frames/F-D1.frame and F-D2.frame and in data/golden/diag-stic-fgbg-pass.expect. No measured-hardware claim and no owner EXEC or GROM: the project boot stub only. Any edit of the listing refreshes the outputs entry (cmake -E sha256sum and size) in the same commit."
+}
