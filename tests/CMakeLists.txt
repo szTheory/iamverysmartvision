@@ -580,6 +580,14 @@ set_tests_properties(headers PROPERTIES SKIP_RETURN_CODE 77 ENVIRONMENT "CC=${CM
 add_test(NAME pack COMMAND sh "${CMAKE_SOURCE_DIR}/tests/pack-tap.sh" "${CMAKE_SOURCE_DIR}" "$<TARGET_FILE:ivs_pack>")
 set_tests_properties(pack PROPERTIES SKIP_RETURN_CODE 77 ENVIRONMENT "CMAKE=${CMAKE_COMMAND}")
 
+# Suite asm (D-16 to D-19, plan 07-03): the project mini-assembler against the hand-assembled listings.
+# Each twin under tests/asm/twins/ is assembled by ivs_asm and its words, read back by ivs_pack
+# --dump-words, must equal ivs_pack's words of the committed hand listing; asm.judge.mutated-twin shows
+# the comparison can fail. ivs_asm reads only its source and writes only its listing; no core is involved.
+add_test(NAME asm COMMAND sh "${CMAKE_SOURCE_DIR}/tests/asm-tap.sh" "${CMAKE_SOURCE_DIR}" "$<TARGET_FILE:ivs_asm>"
+  "$<TARGET_FILE:ivs_pack>")
+set_tests_properties(asm PROPERTIES SKIP_RETURN_CODE 77)
+
 # Suite stic-table (VID-01, Phase 6 review WR-03): the STIC parameter generator refuses a geometry the card renderer cannot draw
 # (21 columns, 13 rows, a 7 x 8 card), each case on a scratch copy of the registered profile (cmake -P), never the repository.
 add_test(NAME stic-table COMMAND sh "${CMAKE_SOURCE_DIR}/tests/stic-table-tap.sh" "${CMAKE_SOURCE_DIR}")
