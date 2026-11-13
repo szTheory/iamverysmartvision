@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 current_phase: 7
 current_phase_name: First Visible Original Scenario
-current_plan: 5
+current_plan: 6
 status: executing
-stopped_at: Completed 07-04-PLAN.md
-last_updated: "2026-11-13T20:23:53.028Z"
+stopped_at: Completed 07-05-PLAN.md
+last_updated: "2026-11-13T21:36:34.546Z"
 last_activity: 2026-11-13
 last_activity_desc: Phase 7 execution started
-state_head: 06875830c13efa9dbf35982baa31d25e61370150
+state_head: 4a970013b218224e31490c434c773be0594682c6
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 109
-  completed_plans: 101
+  completed_plans: 102
   percent: 75
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 7 (First Visible Original Scenario) — EXECUTING
-Current Plan: 5
+Current Plan: 6
 Total Plans in Phase: 12
 Status: Ready to execute
 Last activity: 2026-11-13 — Phase 7 execution started
@@ -160,6 +160,7 @@ Progress: [████████░░] 75%
 | Phase 7 P02 | about 50 min measured, plus reading | 4 tasks | 47 files |
 | Phase 7 P03 | about 32 min measured, plus reading | 3 tasks | 20 files |
 | Phase 7 P04 | about 45 min measured to the last task commit, plus reading | 4 tasks | 41 files |
+| Phase 7 P05 | about 1 h measured to the last task commit (a machine restart inside), plus reading | 4 tasks | 35 files |
 
 ## Accumulated Context
 
@@ -372,6 +373,10 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 7]: 07-04: tests/asm/pairs.txt has 304 pairs (301 copied from the Phase 2 vectors with SDBD immediate operand words masked to the low byte, three hand cases), all agree at the first run; the four twins reproduce all 300 hand-typed words; asm-imm-range made reachable by widening the evaluator to 0 to 16777215 with per-use limits
 - [Phase 7]: 07-04: listing.cmake gains the DATA row rule with two controls (350 to 352) and the toy listing holds one DATA word; docs/diagnostics.md documents the decision, grammar, generated listing form, explicit SDBD and twin discipline; discrepancy C106 records the printed branch range against the decle arithmetic (105 to 106)
 - [Phase 7]: 07-04: a gcc-only -Wsign-conversion error in the pairs result line was found by the container gate and fixed in b05a222; suite asm has 45 cases (dev about 3 s, release about 0.4 s on a loaded laptop)
+- [Phase 7]: 07-05: boot stub contract 2 (FX-boot-stub-2) is assembled by ivs_asm from boot-stub-2.asm (ISR EQU 5004, JD ISR at 1004) with the reset path word for word that of contract 1; assumption A6 holds (a JD word decodes as row J, so the stub guards and bootstub-rows.ids are unchanged); contract 1, the three diagnostics, every golden and scenario are byte-identical
+- [Phase 7]: 07-05: the manifests step now checks recipe.sources digests and tool_sha256 (token manifest-recipe-digest-mismatch, table RECIPE_TOOL_SOURCES for ivs_asm and ivs_pack, control manifests-recipe-source-digest, 352 to 353); asm.c and pack.c are frozen by their recorded digests until a plan refreshes the manifests that name them; asm.regen-<id> regenerates every fixtures asm source and requires byte equality
+- [Phase 7]: 07-05: runner content token boot-stub-2 (kind 5, reserved file boot-stub-2.exec, exec only) labelled project boot stub contract 2, not an EXEC from the symbolic kind only; ivsr stays 3; the refusals are runner.parse.edge.* because reasons-named allows one refuse case per reason; one fuzz base names boot-stub-2 so the seeded run reaches kind 5
+- [Phase 7]: 07-05: run.stub2.path, run.stub2.handoff and run.stub2.jd-as-j (control STUB2_JD_AS_J, no core fault) count interrupt entries by single-unit stepping: JD gives one entry and R6 0341, a plain J gives more than one (179 measured once) and R6 above 0341; the prefix run.stub2. joins RUN_STOP_BEFORE_OVERSHOOT and RUN_BUDGET_CARRY, the only faults under which the family fails (faults 222/222)
 
 ### Pending Todos
 
@@ -404,6 +409,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-13T20:23:52.815Z
-Stopped at: Completed 07-04-PLAN.md
+Last session: 2026-11-13T21:36:34.292Z
+Stopped at: Completed 07-05-PLAN.md
 Resume file: None
