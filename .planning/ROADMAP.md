@@ -264,7 +264,7 @@ Plans:
   3. At a defined machine-time boundary, the core writes a raw palette-index framebuffer with profile geometry into a caller-owned buffer. Palette, scaling and presentation stay outside the core.
   4. Foreground/Background and Color Stack fixtures render index frames that match frames hand-derived from known BACKTAB/GRAM contents, with no real GROM image in CI. A named-fault control (for example, the wrong card mode) fails.
   5. Tests and debuggers can read STIC and device state through an inspection path with no read side effects. For example, inspecting $0021 does not switch Color Stack mode.
-**Plans**: 13/14 plans executed in 14 sequential waves
+**Plans**: 14/14 plans in 14 sequential waves (all Phase 6 claims, CL-0016 to CL-0022, are provisional; owner hardware items are handed off, not performed; VID-05 is Phase 8)
 
 Plans:
 - [x] 06-01-PLAN.md — Sources and oracles first (oracle plan, NO C)

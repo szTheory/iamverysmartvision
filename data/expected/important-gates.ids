@@ -231,3 +231,83 @@ refpcm-judge mutant runner.judge.refpcm-dc-state-carry AUD-02
 refpcm-judge mutant runner.judge.refpcm-rate-drift AUD-02
 refpcm-golden control golden-refpcm-mismatch AUD-02
 pkg-install mutant ctrl-domain-missing AUD-02
+
+# Phase 6 (plan 06-14) extends the registry to VID-01 VID-02 VID-03 VID-04 VID-06 (section below the Phase 5 lines).
+# Every id below was resolved against the inventories (faults, controls, pkg-selftests, and the suite judge and mutant ids).
+# The STIC and video claims CL-0016 to CL-0022 are provisional and none is at the measured tier; this registry names the
+# mechanisms that stop a silent pass, not evidence about a console.
+
+# VID-01: register file, aliases, display-enable handshake, access windows and blocked-access policy.
+stic-windows fault STIC_WINDOW_OFF_BY_ONE VID-01
+stic-windows mutant stic.judge.window-edge-moved VID-01
+stic-registers fault STIC_ALIAS_NOT_HOOKED VID-01
+stic-registers mutant stic.judge.register-row-changed VID-01
+stic-registers mutant stic.judge.blocked-write-applied VID-01
+stic-handshake fault STIC_MODE_SWITCH_OUTSIDE_WINDOW VID-01
+stic-timeline fault STIC_FRAME_BY_MODULO VID-01
+stic-timeline fault STIC_CATCHUP_LAGS_UNIT VID-01
+stic-table fault STIC_TABLE_SHORT VID-01
+video-step control video-verdict-key-missing VID-01
+video-step control video-regmap-row-count VID-01
+video-step control video-rule-no-test VID-01
+video-step control video-field-missing VID-01
+video-step control video-pending-stale VID-01
+memmap-flip control memmap-exception-unknown VID-01
+
+# VID-02: the VBLANK interrupt and the bus-steal windows at profile-defined machine times, with their effect on CPU progress.
+stic-lines fault STIC_LINE_LAG_IGNORED VID-02
+stic-lines fault STIC_IRQ_LEVEL_NEVER_RELEASED VID-02
+stic-steal fault STIC_BUSRQ_WHEN_DISPLAY_OFF VID-02
+stic-steal fault STIC_GRANT_RELEASE_LATENCY_DROPPED VID-02
+stic-steal mutant stic.judge.late-grant-latched VID-02
+stic-fetch fault STIC_BACKTAB_WRITE_NOT_HOOKED VID-02
+
+# VID-03: the raw framebuffer at a defined machine-time boundary into a caller-owned buffer, with the per-frame chain,
+# through the runner and the installed package; palette and scaling stay outside the core.
+video-buffers fault VIDEO_CAP_PLUS_ONE VID-03
+video-buffers fault VIDEO_OUTBUF_PARTIAL_WRITE VID-03
+video-buffers fault VIDEO_STATE_DEPENDS_ON_BUFFER VID-03
+video-boundary fault VIDEO_FRAME_AT_CALL_END VID-03
+video-boundary fault STIC_EVENT_ORDER_START_BEFORE_END VID-03
+video-chain fault VIDEO_CHAIN_FRAMING_STRUCT_HASH VID-03
+run-report fault RUN_REPORT_V3_TAIL_UNGUARDED VID-03
+runner-video fault RUNNER_VIDEO_ASSERT_IGNORED VID-03
+runner-video fault RUNNER_VIDEO_CHAIN_UNCHECKED VID-03
+raw-video-separate control core-symbols-palette-defined VID-03
+video-golden control golden-domains-video-missing VID-03
+video-golden control golden-digest-video-missing VID-03
+video-golden control golden-video-chain-check-missing VID-03
+pkg-install mutant stic-domain-missing VID-03
+pkg-install mutant stic-digest-drift VID-03
+
+# VID-04: Foreground/Background and Color Stack frames equal the hand-derived frames; the literal frames, the diagnostic
+# listing and the end-to-end mutants each fail for their intended reason.
+video-cards fault VIDEO_WRONG_CARD_MODE VID-04
+video-cards fault VIDEO_CARD_BIT_ORDER_REVERSED VID-04
+video-cards fault VIDEO_GRAM_GROM_SELECT_SWAPPED VID-04
+video-cards fault VIDEO_20TH_COLUMN_WIDTH VID-04
+video-cards fault VIDEO_CSTACK_NO_ADVANCE VID-04
+video-frames control video-frame-dimension VID-04
+video-frames control video-frame-symbol VID-04
+video-frames control video-frame-tier-missing VID-04
+video-frames control video-frame-popcount VID-04
+video-frames control video-frame-hash-drift VID-04
+video-frames control video-frame-unregistered VID-04
+video-frames control video-frame-hash-expect-drift VID-04
+listing-sdbd control listing-sdbd-operand-missing VID-04
+listing-sdbd control listing-sdbd-carry-over VID-04
+listing-sdbd control listing-sdbd-prefix-before-branch VID-04
+video-judge mutant video.judge.frame-row-changed VID-04
+video-judge mutant video.judge.card-bit-flipped VID-04
+video-judge mutant video.judge.cstack-persistent-pointer VID-04
+diag-stic-mutants mutant runner-process.mutant.STIC-CARD-BYTE VID-04
+diag-stic-mutants mutant runner-process.mutant.STIC-BG-FG-SWAP VID-04
+diag-stic-mutants mutant runner-process.mutant.STIC-WORD-MOVED VID-04
+diag-stic-mutants mutant runner-process.mutant.STIC-ENABLE-ADDR VID-04
+diag-stic-mutants mutant runner-process.mutant.STIC-MODE-SENSE VID-04
+diag-stic-mutants mutant runner-process.mutant.STIC-GRAM-COUNT VID-04
+
+# VID-06: the side-effect-free inspection path (a peek never switches the mode; the state and the digest cover the STIC rows).
+stic-inspect fault STIC_MODE_SWITCH_ON_PEEK VID-06
+stic-inspect fault DIGEST_STIC_ROWS_OMITTED VID-06
+stic-inspect fault STIC_STATE_NOT_RESET_ON_POWER_ON VID-06

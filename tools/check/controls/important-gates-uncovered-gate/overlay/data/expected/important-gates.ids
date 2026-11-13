@@ -16,3 +16,9 @@ toy-core control toy-control INP-03
 toy-slicing mutant toy-selftest API-03
 toy-psg fault GOOD_FAULT AUD-01
 toy-log fault GOOD_RUNNER AUD-02
+# Phase 6 (plan 06-14): one toy line per Phase 6 requirement.
+toy-regs fault GOOD_FAULT VID-01
+toy-steal fault GOOD_FAULT2 VID-02
+toy-video control toy-control VID-03
+toy-frames fault GOOD_RUNNER VID-04
+toy-inspect mutant toy-selftest VID-06
