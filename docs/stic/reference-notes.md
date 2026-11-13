@@ -148,13 +148,13 @@ Resolver kinds: `measurement:` only where a D10 line exists (C82, C83, C85, C89,
 | C93 | late grant and row-latch instant | T C84 | test: stic.steal.* (06-08) |
 | C94 | access-stamp instant, windows with display off | T C85 | test: stic.window.* (06-06) |
 | C95 | usable-cycle aggregates | T C86 | pending: plausibility record |
-| C96 | card word layout | CV-1 | pending: STIC description or D11 run |
-| C97 | Color Stack advance timing and frame reset | CV-2 | pending |
-| C98 | Colored Squares decode | CV-3 | pending |
+| C96 | card word layout | CV-1 | implemented default, provisional (one community lineage); test: video.fgbg.*, video.cstack.F-B*, video.probe.bit-roles-* (06-10, 06-11); pending: STIC description or D11 run |
+| C97 | Color Stack advance timing and frame reset | CV-2 | implemented default, provisional: advance before draw, wrap 3 to 0, one stack across rows, restart at 0 every frame render; test: video.cstack.advance-*, video.cstack.reset-per-frame, video.cstack.one-stack-across-rows, video.mode.* (06-11); pending: a hardware reference |
+| C98 | Colored Squares decode | CV-3 | implemented default, provisional (the order of the two low bits of the fourth color is the recorded open reading); test: video.cstack.squares-*, video.card.cs-decode, video.probe.bit-roles-cs-sq (06-11); the documented cut line is in docs/video/frame-derivations.md; pending: a hardware reference |
 | C99 | display-off content | CV-4 | measurement: D10-VID-03 |
 | C100 | BACKTAB fetch time, mid-frame writes | CV-5 | measurement: D10-VID-05 |
 | C101 | which 7 pixels of column 19 | CV-7 | measurement: D10-VID-02 |
-| C102 | cut-off column advances the stack | CV-8 | test: video.cstack.* (06-11) |
+| C102 | cut-off column advances the stack | CV-8 | implemented default, provisional (inference); test: video.cstack.cutoff-column-advances, video.cstack.F-B2 (06-11) |
 | C103 | graphics RAM bits 10..9 | CV-9 | test: video.card.* (06-10) |
 | C104 | frame boundary tie rule | frame note | test: video.boundary.* (06-09) |
 | C105 | border, window origin, row line count | frame note | pending: Phase 8 |

@@ -218,7 +218,7 @@ typedef struct vpc_dec {
   uint32_t q[4];
 } vpc_dec;
 
-static void vpc_decode(const char *const role[VPC_VARIANTS][16], uint32_t word, vpc_dec *d)
+static void vpc_decode(const char *role[VPC_VARIANTS][16], uint32_t word, vpc_dec *d)
 {
   uint32_t b;
   uint32_t b12 = (word >> 12) & 1u;
@@ -248,7 +248,7 @@ static uint32_t vpc_byte(uint32_t card, uint32_t y)
 }
 
 /* The probe cell (5, 9) holds the word; one pixel of the next cell (5, 10), a fill cell, shows the pointer after it. 1 when both match the roles. */
-static int vpc_one(const char *const role[VPC_VARIANTS][16], uint32_t word, const char *what, uint32_t bit, int quiet)
+static int vpc_one(const char *role[VPC_VARIANTS][16], uint32_t word, const char *what, uint32_t bit, int quiet)
 {
   vpc_dec d;
   uint32_t pos;
