@@ -256,7 +256,7 @@ Plans:
 **Mode:** mvp
 **Depends on**: Phase 4 (does not need Phase 5; scheduled after it because PSG carries less uncertainty)
 **Requirements**: VID-01, VID-02, VID-03, VID-04, VID-06
-**Decision gates**: D8 (architecture + evidence, open, C10) decides raw framebuffer geometry (159 vs 160 visible columns, nominal grid). D3 must pin the STIC part (C11). D10 (owner gate): disputed timing (C1-C4) stays `unknown-default-chosen` unless the owner authorizes hardware measurement.
+**Decision gates**: D8 (architecture + evidence, C10) decided raw framebuffer geometry as 159 x 96 (delegated decision, reversible by one profile field). D3 pinned the STIC part (C11). D10 (owner gate): disputed timing (C1-C4) stays `unknown-default-chosen` unless the owner authorizes hardware measurement.
 **Research flags**: NEEDS RESEARCH, the strongest flag in this roadmap. The STIC primary sections (GI 1980 p.5-10, GI 1982 p.9-43) still need detailed extraction. Conflicts C1-C7, C10 and C21 apply, and row-granular versus frame-granular rendering (PIT-9) must be decided early.
 **Success Criteria** (what must be TRUE):
   1. STIC register accesses inside the profile's access windows take effect, and accesses outside them follow the profile's blocked-access policy. The display-enable handshake works. Every timing constant used has a tier tag, and disputed values are logged as `unknown-default-chosen`.
@@ -264,7 +264,7 @@ Plans:
   3. At a defined machine-time boundary, the core writes a raw palette-index framebuffer with profile geometry into a caller-owned buffer. Palette, scaling and presentation stay outside the core.
   4. Foreground/Background and Color Stack fixtures render index frames that match frames hand-derived from known BACKTAB/GRAM contents, with no real GROM image in CI. A named-fault control (for example, the wrong card mode) fails.
   5. Tests and debuggers can read STIC and device state through an inspection path with no read side effects. For example, inspecting $0021 does not switch Color Stack mode.
-**Plans**: 14/14 plans in 14 sequential waves (all Phase 6 claims, CL-0016 to CL-0022, are provisional; owner hardware items are handed off, not performed; VID-05 is Phase 8)
+**Plans**: 14/14 plans complete in 14 sequential waves (all Phase 6 claims, CL-0016 to CL-0022, are provisional; owner hardware items are handed off, not performed; VID-05 is Phase 8)
 
 Plans:
 - [x] 06-01-PLAN.md — Sources and oracles first (oracle plan, NO C)
