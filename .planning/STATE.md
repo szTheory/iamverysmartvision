@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 current_phase: 7
 current_phase_name: First Visible Original Scenario
-current_plan: 2
+current_plan: 3
 status: executing
-stopped_at: Completed 07-01-PLAN.md
-last_updated: "2026-11-13T17:55:52.433Z"
+stopped_at: Completed 07-02-PLAN.md
+last_updated: "2026-11-13T18:51:47.399Z"
 last_activity: 2026-11-13
 last_activity_desc: Phase 7 execution started
-state_head: 83c6eccc8557aece310652b140d2081e2786ed4b
+state_head: 4e0febef675c2e81fe38d6c0caf353625218b1eb
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 109
-  completed_plans: 98
+  completed_plans: 99
   percent: 75
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 7 (First Visible Original Scenario) — EXECUTING
-Current Plan: 2
+Current Plan: 3
 Total Plans in Phase: 12
 Status: Ready to execute
 Last activity: 2026-11-13 — Phase 7 execution started
@@ -157,6 +157,7 @@ Progress: [████████░░] 75%
 | Phase 6 P13 | about 3 hours | 5 tasks | 38 files |
 | Phase 6 P14 | about 3 hours | 4 tasks | 22 files |
 | Phase 7 P01 | 66 min | 3 tasks | 3 files |
+| Phase 7 P02 | about 50 min measured, plus reading | 4 tasks | 47 files |
 
 ## Accumulated Context
 
@@ -359,6 +360,9 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 6]: 06-12: golden keep list moved into the library (ivs_runner_golden_keep); ivsr 3 video row live-gated by the output.video.bytes count rule; operator video outputs mode 0600 with Phase 5 cleanup rules
 - [Phase 7]: 07-01: the queued premise (every member lookup parses the whole file) did not hold; the lever was re-aimed at lookups in the vector object, the file-sized element fetch and per-object command overhead, with identical findings (vectors.cmake -46 percent, vector-blind.cmake -50 percent instructions retired)
 - [Phase 7]: 07-01: phase7-start: lever-applied; last-five hosted r median 8.02; expected hosted saving about 2 to 3 cpu-s (not 5), headroom about 14 hosted cpu-s against the Phase 7 estimate of 10 to 19; checkpoints C-B after 07-08, C-C after 07-09, close in 07-12
+- [Phase 7]: 07-02: oracle first and no C; re-arm form B (main-loop wait) with N = 500 in a band N 183 to 808, mutants N = 100 and 1,150, negative control N = 300; first EIS at frame-0 cycle 6,564 to 6,631 (frame-1 band)
+- [Phase 7]: 07-02: channel C is the constant-level gate (mixer 003C) with the tone amplitude deferred one frame through pending words 02F6/02F7; PSG init is 6 writes; 30 PSG records for pass; exact audio windows at ticks 100000, 140000, 160000, 690000, 740000, 760000
+- [Phase 7]: 07-02: the settling rule is a time distance (events at least 16,832 ticks from a frame end), so frames 3, 5, 7, 9, 11 and 12 are asserted in pass; SCN-01 accepted by important-gates; the blind second read is requested and plan 07-06 waits for its record
 
 ### Pending Todos
 
@@ -391,6 +395,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-13T17:55:52.189Z
-Stopped at: Completed 07-01-PLAN.md
+Last session: 2026-11-13T18:51:46.589Z
+Stopped at: Completed 07-02-PLAN.md
 Resume file: None

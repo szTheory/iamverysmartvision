@@ -294,14 +294,14 @@ Plans:
   2. A scripted input sequence changes guest state, and the run asserts a guest-state progress predicate (a register or memory marker), not a title screen or hash alone. The tier is playable guest progress, for this original program only.
   3. The same run shows the input changing raw video (the index framebuffer differs in the expected region) and raw audio (the PSG write log and samples change).
   4. The owner-local route for user-supplied EXEC/GROM is documented with digest identity checks, labelled non-redistributable and kept out of CI. Any job that refers to it prints a visible SKIPPED line, and the inventory gate counts it.
-**Plans**: 1/12 plans executed (sequential waves 1-12; amendments A-01..A-21 in 07-CONTEXT.md)
+**Plans**: 2/12 plans executed (sequential waves 1-12; amendments A-01..A-21 in 07-CONTEXT.md)
 
 Plans:
 **Wave 1**
 - [x] 07-01-PLAN.md — W0: CI trigger check and the cp1610-vectors re-parse lever, phase7-start entry
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 07-02-PLAN.md — W1 oracle (no C): Lamp Tone specification and derivation, frame literals F-S1..F-S6, pair-region token, shape lint, SCN-01 in important-gates, blind-read request
+- [x] 07-02-PLAN.md — W1 oracle (no C): Lamp Tone specification and derivation, frame literals F-S1..F-S6, pair-region token, shape lint, SCN-01 in important-gates, blind-read request
 
 **Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 07-03-PLAN.md — W2a: ivs_asm tracer, registration like tools/pcm, suite asm with two twins and a judge
@@ -389,5 +389,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 4. Headless Runner and Installed Consumer (Slice 0) | 27/25 | Complete    | 2026-11-11 |
 | 5. Hand Controllers and PSG Sound | 12/12 | Complete    | 2026-11-12 |
 | 6. STIC Video First Pass | 14/14 | Complete    | 2026-11-12 |
-| 7. First Visible Original Scenario | 1/12 | In Progress | - |
+| 7. First Visible Original Scenario | 2/12 | In Progress | - |
 | 8. STIC Completion, Save State and Performance Baselines | 0/TBD | Not started | - |
