@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 current_phase: 6
 current_phase_name: STIC Video First Pass
-current_plan: 9
+current_plan: 10
 status: executing
-stopped_at: Completed 06-08-PLAN.md
-last_updated: "2026-11-12T23:43:19.283Z"
+stopped_at: Completed 06-09-PLAN.md
+last_updated: "2026-11-13T00:43:49.211Z"
 last_activity: 2026-11-12
 last_activity_desc: Phase 5 complete, transitioned to Phase 6
-state_head: e8669ebb05a3b746d8b43dcff50c43c0b366b9b6
+state_head: a303622b2e59719a1b9681179f4fa7cd252b3aad
 progress:
   total_phases: 8
   completed_phases: 5
   total_plans: 97
-  completed_plans: 91
+  completed_plans: 92
   percent: 63
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 6 (STIC Video First Pass) — EXECUTING
-Current Plan: 9
+Current Plan: 10
 Total Plans in Phase: 14
 Status: Ready to execute
 Last activity: 2026-11-12 — Phase 5 complete, transitioned to Phase 6
@@ -149,6 +149,7 @@ Progress: [██████░░░░] 63%
 | Phase 06 P06 | 9h | 5 tasks | 60 files |
 | Phase 06 P07 | 2h | 4 tasks | 14 files |
 | Phase 06 P08 | 8h | 5 tasks | 30 files |
+| Phase 06 P09 | 6h | 5 tasks | 50 files |
 
 ## Accumulated Context
 
@@ -344,6 +345,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 06]: 06-06: ADAR (the operand read of a direct-addressed instruction) is a read-like kind for the STIC hook; the plan text listed read, fetch, write and DW only
 - [Phase 06]: 06-07: ivs_machine_stic_state reports all 64 stored register words (gate independent); peek stays the bus view; effects only in the bus wrapper
 - [Phase 06]: 06-08: stand-in interrupt stack in 16-bit system RAM; release-latency fault drops one cycle (stepper refuses 0)
+- [Phase 06]: 06-09: the core renders one card row at a time (the platform stack probe of a 15 KB plane is a forbidden import); ivs_stic_render_plane is a caller-buffer entry point
+- [Phase 06]: 06-09: a flagged frame-stop call needs exactly one video slot; the pre-unit INTERNAL guard fires only when a frame could complete in the unit
 
 ### Pending Todos
 
@@ -376,6 +379,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-12T23:43:18.819Z
-Stopped at: Completed 06-08-PLAN.md
+Last session: 2026-11-13T00:43:48.202Z
+Stopped at: Completed 06-09-PLAN.md
 Resume file: None

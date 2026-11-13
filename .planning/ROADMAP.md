@@ -264,7 +264,7 @@ Plans:
   3. At a defined machine-time boundary, the core writes a raw palette-index framebuffer with profile geometry into a caller-owned buffer. Palette, scaling and presentation stay outside the core.
   4. Foreground/Background and Color Stack fixtures render index frames that match frames hand-derived from known BACKTAB/GRAM contents, with no real GROM image in CI. A named-fault control (for example, the wrong card mode) fails.
   5. Tests and debuggers can read STIC and device state through an inspection path with no read side effects. For example, inspecting $0021 does not switch Color Stack mode.
-**Plans**: 8/14 plans executed in 14 sequential waves
+**Plans**: 9/14 plans executed in 14 sequential waves
 
 Plans:
 - [x] 06-01-PLAN.md — Sources and oracles first (oracle plan, NO C)
@@ -275,7 +275,7 @@ Plans:
 - [x] 06-06-PLAN.md — STIC register file, access windows, display-enable handshake, inspection foundation and the five-region memory-map flip, with suite `stic` created, five faults and...
 - [x] 06-07-PLAN.md — Inspection call and peek purity
 - [x] 06-08-PLAN.md — Frame timeline lines
-- [ ] 06-09-PLAN.md — Raw framebuffer, video buffers, domain 16 live, frame stop and the runner and consumer buffer request, in the plan that makes the video layout real
+- [x] 06-09-PLAN.md — Raw framebuffer, video buffers, domain 16 live, frame stop and the runner and consumer buffer request, in the plan that makes the video layout real
 - [ ] 06-10-PLAN.md — Foreground/Background card rendering
 - [ ] 06-11-PLAN.md — Color Stack rendering and inspection completion
 - [ ] 06-12-PLAN.md — Runner and scenarios, `ivsr 3`
@@ -348,6 +348,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 3. Memory Map, Content Loading and Refusal | 14/14 | Complete    | 2026-11-11 |
 | 4. Headless Runner and Installed Consumer (Slice 0) | 27/25 | Complete    | 2026-11-11 |
 | 5. Hand Controllers and PSG Sound | 12/12 | Complete    | 2026-11-12 |
-| 6. STIC Video First Pass | 8/14 | In Progress | - |
+| 6. STIC Video First Pass | 9/14 | In Progress | - |
 | 7. First Visible Original Scenario | 0/TBD | Not started | - |
 | 8. STIC Completion, Save State and Performance Baselines | 0/TBD | Not started | - |
