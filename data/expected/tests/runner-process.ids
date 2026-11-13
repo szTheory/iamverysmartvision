@@ -65,6 +65,8 @@ runner-process.mutant.STIC-ENABLE-ADDR
 runner-process.mutant.STIC-MODE-SENSE
 runner-process.mutant.STIC-GRAM-COUNT
 runner-process.mutant.STIC-PAD-NEGATIVE
+runner-process.mutant.SCN-LAMP-COMPLEMENT
+runner-process.mutant.SCN-STUB-JD-AS-J
 runner-process.repeat.diag-boot-pass
 runner-process.slices.diag-boot-pass
 runner-process.repeat.diag-input-pass

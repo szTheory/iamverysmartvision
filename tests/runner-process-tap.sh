@@ -36,6 +36,15 @@
 # more run each) and runner-process.slices.diag-stic-fgbg-pass (--slice-ticks 1 and 7, that scenario only) are judged the same way. Its
 # program mutations (data/expected/diag-mutations-stic.ids, ids runner-process.mutant.STIC-*) have a scenario column and comma-joined
 # address, from and to lists, judged by the same run_mutant.
+# Since plan 07-08 (D-25, D-10, D-13, A-03, A-14, A-17, W4b) the Lamp Tone mutants of data/expected/diag-mutations-scn.ids (ids
+# runner-process.mutant.SCN-*) are judged by the same run_mutant, with three additions. Every mutant directory also holds
+# boot-stub-2.exec (the Lamp Tone scenarios enter through the boot stub contract 2). A row whose addresses all lie in the stub window
+# 1000-101F patches that image instead of the cartridge: it is rebuilt with `ivs_pack --exec <stub-2 listing> <out> --patch ADDR=HEX`
+# after the same explicit from check against `ivs_pack --dump-words` of the stub listing, and the cartridge stays the unpatched copy
+# (a row with addresses in both places is an inventory finding). An optional last column `fails=<k.j,...>` states the complete set of
+# failing asserts: the `step.<k>.assert.<j> fail` lines of the report, in report order, must equal the list exactly (finding fails-set),
+# besides the first-clause judgement of outcome.detail. A clause that ends in ` got <value>` pins the value, a clause that starts with
+# `stop ` is the detail of a stop mismatch (the halt mutant).
 # Since plan 07-07 (D-23, D-06, A-16, W4a) the four scenarios demo-lamp-tone-{pass,idle,shift,swap} are scenario cases like the others, and:
 # runner-process.pair.<idA>.<idB>: the metamorphic judge, one case per line `<idA> <idB> differ=<keys> equal=<keys>` of
 # data/expected/scenario-pairs.ids (either list may be `-`, keys are report keys such as digest.video). It reads the two reports this
@@ -408,22 +417,45 @@ patch_args() {
   awk -v a="$1" -v w="$2" 'BEGIN { n = split(a, A, ","); split(w, W, ","); for (i = 1; i <= n; i++) printf "--patch %s=%s ", A[i], W[i] }'
 }
 
-# run_mutant <id> <listing> <cart file name> <scenario id> <addr> <to> <exit> <outcome> <detail pattern>:
-# rebuilds the cartridge from <listing> in a fresh directory with the one word patched, runs the
-# scenario against it and judges the stated exit code, outcome and detail. Sets $ok, adds to $tmp/why.
+# run_mutant <id> <listing> <cart file name> <scenario id> <addr> <to> <exit> <outcome> <detail pattern> [stub]:
+# rebuilds the cartridge from <listing> in a fresh directory with the words patched, runs the
+# scenario against it and judges the stated exit code, outcome and detail. Sets $ok and $ran (1 once
+# the scenario was run), adds to $tmp/why. With a tenth argument `stub` <listing> is the listing of the
+# boot stub contract 2 and the patched image is boot-stub-2.exec, rebuilt with `ivs_pack --exec` (plan
+# 07-08, A-14, A-17), while the cartridge <cart file name> stays the unpatched copy; otherwise the
+# cartridge is rebuilt and boot-stub-2.exec is the unpatched copy (the directory always holds both stubs).
 run_mutant() {
   _mid=$1; _ml=$2; _mc=$3; _ms=$4; _ma=$5; _mw=$6; _mx=$7; _mo=$8; _mp=$9
+  ran=0
+  if [ "${10:-cart}" = stub ]; then
+    _mimg=boot-stub-2.exec; _mflag=--exec; _mkeep=$_mc
+  else
+    _mimg=$_mc; _mflag=--ivsc; _mkeep=boot-stub-2.exec
+  fi
   md="$tmp/mut-$_mid"
-  if ! mkdir "$md" || ! cp "$content/boot-stub.exec" "$md/boot-stub.exec"; then
+  if ! mkdir "$md" || ! cp "$content/boot-stub.exec" "$md/boot-stub.exec" || ! cp "$content/$_mkeep" "$md/$_mkeep"; then
     ok=0; why temp "cannot prepare $md"
-  elif ! "$pack" --ivsc "$_ml" "$md/$_mc" $(patch_args "$_ma" "$_mw") > "$tmp/why.pack" 2>&1; then
+  elif ! "$pack" "$_mflag" "$_ml" "$md/$_mimg" $(patch_args "$_ma" "$_mw") > "$tmp/why.pack" 2>&1; then
     ok=0; why pack "ivs_pack --patch $_ma=$_mw failed: $(cat "$tmp/why.pack")"
-  elif cmp -s "$md/$_mc" "$content/$_mc"; then
-    ok=0; why pack "the patch $_ma=$_mw leaves the container unchanged"
+  elif cmp -s "$md/$_mimg" "$content/$_mimg"; then
+    ok=0; why pack "the patch $_ma=$_mw leaves the image unchanged"
   else
     run_one "$tmp" "mut-$_mid" "$ivs_run" --content-dir "$md" "$scen/$_ms.ivss"
+    ran=1
     judge "mut-$_mid" "$_mx" "$_mo" "$_mp" "" || ok=0
   fi
+}
+
+# check_fails <name> <list> (plan 07-08, D-25): the asserts that run <name> reported `fail`, as the comma-joined `<step>.<assert>` of
+# the lines `step.<k>.assert.<j> fail ...` of its report in report order, equal <list> exactly. Appends a fails-set finding and returns
+# 1 otherwise (also for a report that is missing or has no failing assert).
+check_fails() {
+  _fg=$(awk '$1 ~ /^step[.][0-9]+[.]assert[.][0-9]+$/ && $2 == "fail" { split($1, P, "."); printf "%s%s.%s", (n++ ? "," : ""), P[2], P[4] }' "$tmp/runs/$1.out" 2> /dev/null)
+  if [ "$_fg" != "$2" ]; then
+    why fails-set "the failing asserts are '$_fg', expected '$2'"
+    return 1
+  fi
+  return 0
 }
 
 # Program mutations (D-32): per line `<ID> <addr> <word> <clause>` of
@@ -519,6 +551,80 @@ while read -r mid scn addrs froms tos rest; do
   fi
   result "runner-process.mutant.$mid"
 done < "$muts3"
+
+# Program mutations of the first original program (plan 07-08, D-25, D-10, D-13, A-14, A-17): per line
+# `<ID> <scenario> <addr list> <from list> <to list> <clause> <outcome> <exit> [fails=<k.j,...>]` of data/expected/diag-mutations-scn.ids
+# (the lists are comma-joined). The word at each <addr> of the unpatched listing (ivs_pack --dump-words) must be its <from>: of the Lamp Tone
+# listing for a program address, of the boot stub contract 2 listing when every address lies in the stub window 1000-101F (a row with
+# addresses in both is an inventory finding). The stated outcome (guest-fail 10, timeout 11 or pass 0) of the named scenario is judged
+# against outcome.detail; with `fails=` the complete set of failing asserts is judged too (check_fails).
+listing4="$root/fixtures/FX-demo-lamp-tone-1/lamp-tone.listing.txt"
+listing4s="$root/fixtures/FX-boot-stub-2/boot-stub-2.listing.txt"
+muts4="$root/data/expected/diag-mutations-scn.ids"
+"$pack" --dump-words "$listing4" > "$tmp/words4" 2> /dev/null || : > "$tmp/words4"
+"$pack" --dump-words "$listing4s" > "$tmp/words4s" 2> /dev/null || : > "$tmp/words4s"
+while read -r mid scn addrs froms tos rest; do
+  case $mid in '' | '#'*) continue ;; esac
+  ok=1
+  ran=0
+  : > "$tmp/why"
+  fails=
+  case ${rest##* } in
+    fails=*) fails=${rest##* }; rest=${rest% *}; fails=${fails#fails=} ;;
+  esac
+  mx=${rest##* }
+  rest=${rest% *}
+  mo=${rest##* }
+  clause=${rest% *}
+  # the image the row patches: stub when every address lies in 1000-101F, cart when none does, mixed otherwise
+  win=$(awk -v a="$addrs" 'BEGIN { n = split(a, A, ","); s = 0; c = 0
+    for (i = 1; i <= n; i++) { if (A[i] >= "1000" && A[i] <= "101F") s++; else c++ }
+    print (s > 0 && c > 0) ? "mixed" : ((s > 0) ? "stub" : "cart") }')
+  if [ "$win" = stub ]; then wfile="$tmp/words4s"; else wfile="$tmp/words4"; fi
+  # each address word of the unpatched listing equals its from word, and the three lists have one length
+  bad=$(awk -v a="$addrs" -v f="$froms" -v t="$tos" '
+    NR == FNR { w[$1] = $2; next }
+    END {
+      na = split(a, A, ","); nf = split(f, F, ","); nt = split(t, T, ",")
+      if (na != nf || na != nt) { print "lists of different lengths"; exit }
+      for (i = 1; i <= na; i++) if (w[A[i]] != F[i]) print "the word at " A[i] " is " w[A[i]] ", expected from " F[i]
+    }' "$wfile" /dev/null)
+  fbad=$(printf '%s\n' "$fails" | awk 'NF && $0 !~ /^[0-9]+[.][0-9]+(,[0-9]+[.][0-9]+)*$/ { print "bad" }')
+  if [ -z "$mx" ] || [ -z "$mo" ] || [ -z "$clause" ] || [ "$clause" = "$rest" ]; then
+    ok=0; why inventory "not <ID> <scenario> <addr list> <from list> <to list> <clause> <outcome> <exit> [fails=<k.j,...>]"
+  elif [ ! -f "$scen/$scn.ivss" ]; then
+    ok=0; why inventory "no scenario file data/scenarios/$scn.ivss"
+  elif [ -n "$fbad" ]; then
+    ok=0; why inventory "fails=$fails is not a comma-joined list of <step>.<assert>"
+  elif [ -n "$fails" ] && [ "$mo" != guest-fail ]; then
+    ok=0; why inventory "fails= needs the outcome guest-fail"
+  elif [ "$win" = mixed ]; then
+    ok=0; why inventory "addresses $addrs lie in both the boot stub window 1000-101F and the program"
+  elif [ -n "$bad" ]; then
+    ok=0; why listing "$bad"
+  else
+    case $mo in
+      guest-fail)
+        case $clause in
+          'stop '*) mp=$clause ;;
+          *' got '*) mp="assert=* line=* $clause" ;;
+          *) mp="assert=* line=* $clause got *" ;;
+        esac ;;
+      timeout) mp="budget step=* line=* expected=halted got=target" ;;
+      pass) mp=- ;;
+      *) mp=; ok=0; why inventory "outcome '$mo' is not guest-fail, timeout or pass" ;;
+    esac
+    if [ "$ok" -eq 1 ]; then
+      if [ "$win" = stub ]; then
+        run_mutant "$mid" "$listing4s" lamp-tone.ivsc "$scn" "$addrs" "$tos" "$mx" "$mo" "$mp" stub
+      else
+        run_mutant "$mid" "$listing4" lamp-tone.ivsc "$scn" "$addrs" "$tos" "$mx" "$mo" "$mp"
+      fi
+      if [ "$ran" -eq 1 ] && [ -n "$fails" ]; then check_fails "mut-$mid" "$fails" || ok=0; fi
+    fi
+  fi
+  result "runner-process.mutant.$mid"
+done < "$muts4"
 
 # Determinism (D-23, Pitfall 11): a second run, slice sizes 1 and 7, and a run from another
 # working directory all equal the scenario case's report apart from host.calls.

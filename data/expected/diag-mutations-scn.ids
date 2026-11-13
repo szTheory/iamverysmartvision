@@ -1,0 +1,42 @@
+# Program mutations of the first original program, Lamp Tone (plan 07-08, D-25, D-10, D-13, A-03, A-14, A-17). Classes and intended
+# clauses: section (g) of docs/video/demo-lamp-tone-1-derivation.md (written before the program); word addresses: the generated listing
+# fixtures/FX-demo-lamp-tone-1/lamp-tone.listing.txt (its `# sym:` lines) and section (k) of the derivation.
+# `<ID> <scenario> <addr list> <from list> <to list> <clause> <outcome> <exit> [fails=<k.j,...>]`; the three lists are comma-joined (a
+# single word is a list of one), the clause is everything between the fifth column and the last two (or last three) columns and may hold
+# blanks. Suite runner-process (id runner-process.mutant.<ID>) builds each mutant in its temp dir with
+# `ivs_pack --ivsc <lamp-tone listing> <out> --patch <addr>=<to>` (one --patch per list element) and runs data/scenarios/<scenario>.ivss
+# against it with the real ivs-run. As in data/expected/diag-mutations-stic.ids the <from> word is explicit: the loop checks that the word
+# at each <addr> of the unpatched listing, as ivs_pack decodes it (--dump-words), equals its <from> before patching, so a listing edit that
+# moves an instruction fails the case instead of mutating something else. The suite also requires the patched container to differ from the
+# unpatched one.
+#
+# Stub-window rule (A-14, A-17): a row whose addresses all lie in 1000-101F (the window of the boot stub contract 2) patches the stub
+# image instead: `ivs_pack --exec fixtures/FX-boot-stub-2/boot-stub-2.listing.txt <out> --patch <addr>=<to>`, with the from check made
+# against the stub listing, and the cartridge stays the unpatched copy. A row with addresses in both places is an inventory finding.
+# No mutant is committed as an image; every patched image lives in the suite's temp directory.
+#
+# <outcome> is guest-fail (exit 10: outcome.detail is `assert=<j> line=<n> <clause> got <actual>`, the FIRST failing assert in the order of
+# the scenario, or `stop step=<k> line=<n> expected=target got=<stop>` when the scenario's stop expectation fails), timeout (exit 11:
+# detail `budget ...`, clause `budget`) or pass (exit 0, detail `-`, clause `-`, the negative row). A clause that ends in ` got <value>`
+# also pins the value the assert read (the value of the derivation's table); a clause that starts with `stop ` is the stop detail. The
+# assert numbers are those of the report (`step.<k>.assert.<j>`, <j> counting across the steps of the scenario, as in the derivation).
+# A mutant that could lengthen a loop is never judged by luck: every scenario is bounded by run-to ticks, so a lengthened or stopped loop
+# ends at its first failing assert or stop mismatch, as the clause states.
+#
+# Optional last column fails=<k.j,...> (channel isolation, D-25): the complete set of failing asserts, as `<step>.<assert>` in report
+# order, comma-joined. The suite compares it with the `step.<k>.assert.<j> fail` lines of the report exactly (finding fails-set), besides
+# the first-clause judgement. It states what the mutant does NOT break: a mutant of one channel fails the asserts of that channel only.
+# The report lists the asserts of the steps run: a scenario stops at its first failing step, so a set belongs to that step.
+#
+# Words hand-derived from the instruction encodings in the listing and data/cp1610/opcode-families.json (the second decle of a jump
+# holds the return register in bits 9..8, the address bits 15..10 in bits 7..2 and the interrupt flag in bits 1..0: 10 is disable, 00 is
+# none) and read from the unpatched listings with ivs_pack --dump-words:
+#   SCN-LAMP-COMPLEMENT  507E   0019  0034  COMR R1 (the complement of the lamp byte) becomes NOP (6 cycles as well): every lamp is inverted;
+#                                          guest words, write log and audio are untouched, so the video asserts alone fail: the six frame
+#                                          hashes and the three lit-lamp pixel probes (4.32 to 4.40); `displayed` and the outside probe hold
+#   SCN-STUB-JD-AS-J     1005   0352  0350  the second decle of the stub vector, `J` with disable code, loses the disable (J $5004 plain, the
+#                                          reset vector at 1014 has the same word 0350): the vector re-enters while the level lasts, the
+#                                          routine body starts after the level has ended, the strobe is dropped and no frame is displayed;
+#                                          the counter and every guest word asserted before it still hold (D-10)
+SCN-LAMP-COMPLEMENT demo-lamp-tone-pass 507E 0019 0034 frame 3 hash == 63c0aacc9a452441a1b643f469d04077bb3359a347c7d431f6dda3e2975c5d52 guest-fail 10 fails=4.32,4.33,4.34,4.35,4.36,4.37,4.38,4.39,4.40
+SCN-STUB-JD-AS-J demo-lamp-tone-pass 1005 0352 0350 frame 3 displayed == yes got no guest-fail 10
