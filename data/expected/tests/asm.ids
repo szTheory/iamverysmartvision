@@ -14,12 +14,16 @@
 # half of the displacement boundary (03FF accepted, 0400 is asm.neg.asm-branch-range).
 # asm.judge.mutated-twin: self-control of the words comparison; passes only when it fails on a twin
 # with one register changed and the diff shows that one word.
+# asm.regen-<listing id> (plan 07-05, D-19): one case per fixtures/*/*.asm in the tree; the source is assembled
+# again and the result must equal the committed listing byte for byte (the listing id is the # id: header line
+# of the source, the committed path comes from data/expected/listings.ids). The first is stub contract 2.
 asm.twin-boot-stub
 asm.twin-diag-cpu-1
 asm.twin-diag-ctrl-psg-1
 asm.twin-diag-stic-1
 asm.repeat
 asm.judge.mutated-twin
+asm.regen-boot-stub-2
 asm.pairs.move
 asm.pairs.alu
 asm.pairs.imm

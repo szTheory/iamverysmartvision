@@ -26,6 +26,8 @@
 # changed, and its diff must show exactly that word (judge-vacuous, judge-wrong-reason otherwise);
 # asm.judge.mutated-pair does the same for the pairs comparison (one expected word of the corpus changed:
 # exactly that pair must print bad and the exit status must be 1).
+# asm.regen-<listing id> (plan 07-05 Task 1, D-19): per fixtures/*/*.asm in the tree, the source is assembled again and
+# the result must equal the committed listing byte for byte, and the words ivs_pack reads from both must agree.
 # An id <suite>.judge.<slug> is also an important-gates mutant (tools/check/steps/important-gates.sh).
 # The sources are assembled with the working directory at the source root and relative paths, because
 # the listing prints the source path it was given (no absolute path enters any output).
@@ -166,6 +168,47 @@ else
   fi
 fi
 report
+
+# asm.regen-<listing id> (plan 07-05 Task 1, D-19): one case per fixtures/*/*.asm in the tree. The source is the
+# truth and its listing is generated and committed, so the listing must be exactly what the tool writes now: the
+# source is assembled with the working directory at the source root and its relative path (the listing prints the
+# path it was given), the result must equal the committed listing byte for byte, and the words ivs_pack reads from
+# both must agree. The listing id is the `# id:` header line of the source and the committed listing is the path
+# data/expected/listings.ids gives for that id, so a source without a registered listing, or a listing nobody
+# regenerates, fails here. A source added without its asm.regen-<id> line in data/expected/tests/asm.ids is
+# tests-unlisted, and a registered id with no source is tests-missing.
+find fixtures -type f -name '*.asm' | sort > "$tmp/regen.srcs"
+while read -r src; do
+  [ -n "$src" ] || continue
+  rid=$(sed -n 's/^# id: //p' "$src" | head -n 1)
+  rlst=$(awk -v id="$rid" '!/^#/ && NF >= 3 && $1 == id { print $3; exit }' data/expected/listings.ids)
+  n=$((n + 1))
+  tid="asm.regen-$rid"
+  executed=$((executed + 1))
+  ok=1
+  rm -f "$tmp/regen.listing" "$tmp/regen.listing.tmp"
+  if [ -z "$rid" ]; then
+    ok=0
+    printf '%s has no # id: header line\n' "$src" > "$tmp/why"
+  elif [ -z "$rlst" ] || [ ! -f "$rlst" ]; then
+    ok=0
+    printf 'data/expected/listings.ids names no committed listing for the id %s of %s\n' "$rid" "$src" > "$tmp/why"
+  elif ! "$asm" "$src" "$tmp/regen.listing" 2> "$tmp/asm.err"; then
+    ok=0
+    { printf 'ivs_asm failed on %s\n' "$src"; cat "$tmp/asm.err"; } > "$tmp/why"
+  elif ! cmp -s "$tmp/regen.listing" "$rlst"; then
+    ok=0
+    { printf 'the listing generated from %s differs from the committed %s (< generated, > committed)\n' "$src" "$rlst"
+      diff "$tmp/regen.listing" "$rlst"; } > "$tmp/why"
+  elif ! "$pack" --dump-words "$tmp/regen.listing" > "$tmp/regen.words" 2> "$tmp/pack.err" \
+      || ! "$pack" --dump-words "$rlst" > "$tmp/regen.words.committed" 2> "$tmp/pack.err"; then
+    ok=0
+    { printf 'ivs_pack failed on a listing of %s\n' "$src"; cat "$tmp/pack.err"; } > "$tmp/why"
+  elif ! dumps_agree "$tmp/regen.words" "$tmp/regen.words.committed"; then
+    ok=0
+  fi
+  report
+done < "$tmp/regen.srcs"
 
 # asm.pairs.<class> (plan 07-04 Task 2): one process over the whole corpus. The run is valid when it exits 0 or
 # 1, prints exactly one ok or bad line per corpus line and every corpus class is registered below; an invalid

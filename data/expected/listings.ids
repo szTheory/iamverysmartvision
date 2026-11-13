@@ -2,6 +2,7 @@
 # step checks; kind is boot-stub (also the D-29 anti-HLE guards) or cart. Every tracked
 # *.listing.txt outside tools/check/controls/ must be listed here.
 boot-stub boot-stub fixtures/FX-boot-stub/boot-stub.listing.txt
+boot-stub-2 boot-stub fixtures/FX-boot-stub-2/boot-stub-2.listing.txt
 diag-cpu-1 cart fixtures/FX-diag-cpu-1/diag-cpu-1.listing.txt
 ivs-diag-ctrl-psg-1 cart fixtures/FX-diag-ctrl-psg-1/diag-ctrl-psg-1.listing.txt
 ivs-diag-stic-1 cart fixtures/FX-diag-stic-1/diag-stic-1.listing.txt

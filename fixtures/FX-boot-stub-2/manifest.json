@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "id": "FX-boot-stub-2",
+  "kind": "original-source",
+  "committed": true,
+  "path": "fixtures/FX-boot-stub-2/boot-stub-2.listing.txt",
+  "local_path": null,
+  "source": {
+    "origin": "project-authored boot stub source, contract 2 (plan 07-05, D-09, D-10)",
+    "pin": null,
+    "accessed": null,
+    "holder": "project contributors"
+  },
+  "recipe": {
+    "tool": "ivs_asm",
+    "tool_version": "ivs_asm 1",
+    "tool_sha256": "d4bb9f47937f18c309cae2a482d7275a4651fe2c2a3669fc52af63e2fe5c1954",
+    "tool_licence": "MIT",
+    "command": "ivs_asm fixtures/FX-boot-stub-2/boot-stub-2.asm fixtures/FX-boot-stub-2/boot-stub-2.listing.txt; ivs_pack --exec fixtures/FX-boot-stub-2/boot-stub-2.listing.txt build/<preset>/images/boot-stub-2.exec",
+    "sources": [
+      {
+        "path": "fixtures/FX-boot-stub-2/boot-stub-2.asm",
+        "sha256": "6453b3e688237e2a3c8081cb3c4fe3c25b4b7344042b760c88a2bb6f2369b67b"
+      },
+      {
+        "path": "tools/asm/asm.c",
+        "sha256": "d4bb9f47937f18c309cae2a482d7275a4651fe2c2a3669fc52af63e2fe5c1954"
+      },
+      {
+        "path": "tools/pack/pack.c",
+        "sha256": "f760d50eb6cb6f627bebc677ff08628b902253aa0712c9677576116885e56095"
+      }
+    ]
+  },
+  "inputs": [],
+  "outputs": [
+    {
+      "path": "fixtures/FX-boot-stub-2/boot-stub-2.asm",
+      "sha256": "6453b3e688237e2a3c8081cb3c4fe3c25b4b7344042b760c88a2bb6f2369b67b",
+      "size_bytes": 2541
+    },
+    {
+      "path": "fixtures/FX-boot-stub-2/boot-stub-2.listing.txt",
+      "sha256": "7dcc555283a7ea01afd98f8a5df3b400b337409d1a939d175c5eceed3d1e50cf",
+      "size_bytes": 1209
+    }
+  ],
+  "licence": "MIT",
+  "licence_evidence": {
+    "url": "LICENSE",
+    "text_sha256": "aeb83b57ece8dbf61992ea3bd58952f17e30959787fc6c9f82451f17baa67c26",
+    "accessed": "2026-11-11"
+  },
+  "copyright": ["Copyright (c) 2026 iamverysmartvision contributors"],
+  "notices": [],
+  "redistributable": "yes",
+  "allowed_use": ["local-test", "ci", "repo", "release"],
+  "rights_review": {
+    "status": "author-attested",
+    "by": "project contributors",
+    "date": "2026-11-13"
+  },
+  "derived_from": [],
+  "note": "project boot stub contract 2, not an EXEC; never used as proof of EXEC compatibility; built images live only in the build tree. Order of the evidence: the contract is derived in docs/diagnostics.md (the boot stub contract 2 section), boot-stub-2.asm is the source of truth, and boot-stub-2.listing.txt is generated from it by ivs_asm (the project mini-assembler, plan 07-03 and 07-04) and committed unedited; a suite test regenerates it and requires byte equality. The reset path is word for word that of contract 1 (fixtures/FX-boot-stub); the interrupt entry is the single instruction JD to the cartridge interrupt entry 5004. Nothing is copied from another implementation or assembler and no third-party byte is present. tools/pack builds the 8192-byte EXEC image from the listing into build/<preset>/images/boot-stub-2.exec; no image is committed. recipe.sources and tool_sha256 are verified by the manifests step: any edit of the source, of tools/asm/asm.c or of tools/pack/pack.c refreshes the recipe digests, and any edit of the listing or the source refreshes the outputs entries (cmake -E sha256sum and size), in the same commit."
+}
