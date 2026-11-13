@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "note": "Toy STIC rule inventory of the known-good control tree (plan 06-01).",
+  "rules": [
+    {
+      "id": "STIC-R01",
+      "family": "stic",
+      "statement": "Toy rule with a literal basis.",
+      "basis": "tier1-literal",
+      "cite": "SRC-bsr-2609@toy-page",
+      "fields": [
+        "engine:toy",
+        "stic.toymissing"
+      ],
+      "tests": [
+        "stic.toy."
+      ],
+      "conflict": "C1",
+      "note": ""
+    },
+    {
+      "id": "CR-01",
+      "family": "card",
+      "statement": "Toy rule with a default basis.",
+      "basis": "default-unknown",
+      "cite": "none",
+      "fields": [
+        "engine:toy"
+      ],
+      "tests": [
+        "stic.toy."
+      ],
+      "conflict": "C1",
+      "note": "Toy default. resolver: a toy measurement. trigger: a toy observation."
+    }
+  ]
+}

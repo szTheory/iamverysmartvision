@@ -360,7 +360,7 @@ static const refuse_case refuse_cases[] = {
      TXT(HDR "content exec boot-stub\ncontent cart a.ivsc\nexpect-load exec IVS_E_MALFORMED\nrun-to 1 ticks\n")},
     {"runner.parse.refuse.no-run-to", IVS_SCN_R_NO_RUN_TO, 0u, TXT(HDR "content exec boot-stub\n")},
     /* Plan 05-09: capture and the stream asserts (one case per new reason). */
-    {"runner.parse.refuse.bad-capture", IVS_SCN_R_BAD_CAPTURE, 4u, TXT(HDR "capture video\n" RUN0)},
+    {"runner.parse.refuse.bad-capture", IVS_SCN_R_BAD_CAPTURE, 4u, TXT(HDR "capture colors\n" RUN0)},
     {"runner.parse.refuse.duplicate-capture", IVS_SCN_R_DUPLICATE_CAPTURE, 5u,
      TXT(HDR "capture psglog\ncapture psglog\n" RUN0)},
     {"runner.parse.refuse.bad-psglog-assert", IVS_SCN_R_BAD_PSGLOG_ASSERT, 6u,
@@ -369,6 +369,32 @@ static const refuse_case refuse_cases[] = {
      TXT(HDR "capture audio\n" RUN0 "assert audio at 16 A=1 B=2\n")},
     {"runner.parse.refuse.assert-without-capture", IVS_SCN_R_ASSERT_WITHOUT_CAPTURE, 5u,
      TXT(HDR RUN0 "assert psglog 0 addr=1\n")},
+    /* Plan 06-12: capture video and the frame and video asserts (one case per new reason, then the edges). */
+    {"runner.parse.refuse.bad-capture-video", IVS_SCN_R_BAD_CAPTURE_VIDEO, 4u, TXT(HDR "capture video 0 0\n" RUN0)},
+    {"runner.parse.capture-video-count-17", IVS_SCN_R_BAD_CAPTURE_VIDEO, 4u, TXT(HDR "capture video 0 17\n" RUN0)},
+    {"runner.parse.capture-video-first-out-of-range", IVS_SCN_R_BAD_CAPTURE_VIDEO, 4u,
+     TXT(HDR "capture video 2147483648 1\n" RUN0)},
+    {"runner.parse.capture-video-not-a-number", IVS_SCN_R_BAD_CAPTURE_VIDEO, 4u, TXT(HDR "capture video x 1\n" RUN0)},
+    {"runner.parse.capture-video-arity", IVS_SCN_R_BAD_ARITY, 4u, TXT(HDR "capture video 0\n" RUN0)},
+    {"runner.parse.capture-video-duplicate", IVS_SCN_R_DUPLICATE_CAPTURE, 5u,
+     TXT(HDR "capture video 0 1\ncapture video 1 1\n" RUN0)},
+    {"runner.parse.refuse.bad-frame-assert", IVS_SCN_R_BAD_FRAME_ASSERT, 6u,
+     TXT(HDR "capture video 0 1\n" RUN0 "assert frame 0 pixel 0 0 == 16\n")},
+    {"runner.parse.assert-frame-bad-operator", IVS_SCN_R_BAD_FRAME_ASSERT, 6u,
+     TXT(HDR "capture video 0 1\n" RUN0 "assert frame 0 pixel 0 0 = 1\n")},
+    {"runner.parse.assert-frame-pixel-arity", IVS_SCN_R_BAD_FRAME_ASSERT, 6u,
+     TXT(HDR "capture video 0 1\n" RUN0 "assert frame 0 pixel 0 == 1\n")},
+    {"runner.parse.assert-frame-hash-short", IVS_SCN_R_BAD_FRAME_ASSERT, 6u,
+     TXT(HDR "capture video 0 1\n" RUN0 "assert frame 0 hash == abcd\n")},
+    {"runner.parse.assert-frame-displayed-value", IVS_SCN_R_BAD_FRAME_ASSERT, 6u,
+     TXT(HDR "capture video 0 1\n" RUN0 "assert frame 0 displayed == maybe\n")},
+    {"runner.parse.assert-frame-unknown-form", IVS_SCN_R_BAD_FRAME_ASSERT, 6u,
+     TXT(HDR "capture video 0 1\n" RUN0 "assert frame 0 palette == 1\n")},
+    {"runner.parse.assert-frame-without-capture", IVS_SCN_R_ASSERT_WITHOUT_CAPTURE, 5u,
+     TXT(HDR RUN0 "assert frame 0 pixel 0 0 == 0\n")},
+    {"runner.parse.refuse.bad-video-assert", IVS_SCN_R_BAD_VIDEO_ASSERT, 5u, TXT(HDR RUN0 "assert video count == x\n")},
+    {"runner.parse.assert-video-chain-short", IVS_SCN_R_BAD_VIDEO_ASSERT, 5u, TXT(HDR RUN0 "assert video chain == abcd\n")},
+    {"runner.parse.assert-video-unknown-form", IVS_SCN_R_BAD_VIDEO_ASSERT, 5u, TXT(HDR RUN0 "assert video frames == 1\n")},
     /* Further refusals of covered tokens. */
     {"runner.parse.edge.capture-arity", IVS_SCN_R_BAD_ARITY, 4u, TXT(HDR "capture\n" RUN0)},
     {"runner.parse.edge.capture-extra-token", IVS_SCN_R_BAD_ARITY, 5u, TXT(HDR RUN0 "capture psglog extra\n")},
@@ -738,6 +764,43 @@ static int parse_accept_capture_forms(void)
   return IVS_TEST_PASS;
 }
 
+#define H64 "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
+/* Plan 06-12: capture video and every frame and video assert form with their fields (a hash is lower-case hex, a pixel is a
+ * decimal 0 to 15 or blank, the frame number 0 to 2^31 - 1). */
+static int parse_accept_capture_video_forms(void)
+{
+  ivs_scenario s;
+  const ivs_scenario_assert *a;
+  IVS_CHECK(parse_ok(HDR RUN0 "assert frame 0 pixel 158 95 != blank\n"
+                              "assert frame 2147483647 pixel 0 0 == 15\n"
+                              "assert frame 1 hash == " H64 "\n"
+                              "assert frame 1 displayed != yes\n"
+                              "assert video count == 2\n"
+                              "assert video chain != " H64 "\n"
+                              "capture video 3 16\n",
+                     &s));
+  IVS_CHECK(s.capture == IVS_SCN_CAPTURE_VIDEO && s.capture_line[2] == 11u && s.video_first == 3u && s.video_count == 16u);
+  IVS_CHECK(s.n_asserts == 6u);
+  a = &s.asserts[0];
+  IVS_CHECK(a->subject == IVS_SCN_SUBJ_FRAME && a->form == IVS_SCN_FORM_PIXEL && a->op == IVS_SCN_OP_NE && a->num == 0u &&
+            a->index == 158u && a->addr == 95u && a->level[0] == IVS_SCN_PIXEL_BLANK);
+  a = &s.asserts[1];
+  IVS_CHECK(a->num == 2147483647u && a->level[0] == 15u && a->op == IVS_SCN_OP_EQ);
+  a = &s.asserts[2];
+  IVS_CHECK(a->form == IVS_SCN_FORM_HASH && a->num == 1u && a->sha256[0] == 0x01u && a->sha256[31] == 0xEFu);
+  a = &s.asserts[3];
+  IVS_CHECK(a->form == IVS_SCN_FORM_DISPLAYED && a->op == IVS_SCN_OP_NE && a->value == 1u);
+  a = &s.asserts[4];
+  IVS_CHECK(a->subject == IVS_SCN_SUBJ_VIDEO && a->form == IVS_SCN_FORM_COUNT && a->num == 2u);
+  a = &s.asserts[5];
+  IVS_CHECK(a->subject == IVS_SCN_SUBJ_VIDEO && a->form == IVS_SCN_FORM_CHAIN && a->op == IVS_SCN_OP_NE);
+  /* The smallest window and a video count or chain assert without any capture. */
+  IVS_CHECK(parse_ok(HDR "capture video 0 1\n" RUN0, &s) && s.video_first == 0u && s.video_count == 1u);
+  IVS_CHECK(parse_ok(HDR RUN0 "assert video count == 0\n", &s) && s.capture == 0u && s.video_count == 0u);
+  return IVS_TEST_PASS;
+}
+
 static int parse_accept_input(void)
 {
   ivs_scenario s;
@@ -952,6 +1015,7 @@ static const fn_case fn_cases[] = {
     {"runner.parse.accept.assert", parse_accept_assert},
     {"runner.parse.accept.input", parse_accept_input},
     {"runner.parse.accept.capture-forms", parse_accept_capture_forms},
+    {"runner.parse.accept.capture-video-forms", parse_accept_capture_video_forms},
     {"runner.parse.accept.caps", parse_accept_caps},
     {"runner.parse.accept.refusal-last-role", parse_accept_refusal_last_role},
     {"runner.parse.input-names-complete", parse_input_names_complete},
@@ -1027,6 +1091,24 @@ static const char fuzz_base_capture[] =
     "assert digest psglog != e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\n"
     "assert digest audio == e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\n";
 
+/* Plan 06-12: a base with the video capture and every frame and video assert form. */
+static const char fuzz_base_video[] =
+    "# video base\n"
+    "ivss 1\n"
+    "id video-1\n"
+    "profile intv-2609-ntsc-family-p1\n"
+    "content exec boot-stub\n"
+    "content grom zero-grom\n"
+    "capture video 0 2\n"
+    "run-to 130000 ticks\n"
+    "assert video count == 2\n"
+    "assert frame 0 displayed == no\n"
+    "assert frame 0 pixel 0 0 == 0\n"
+    "assert frame 1 pixel 158 95 != blank\n"
+    "assert frame 1 hash == 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n"
+    "assert video chain != 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n"
+    "assert digest video != e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\n";
+
 int runner_parse_base(size_t i, const char **text, size_t *len)
 {
   switch (i) {
@@ -1045,6 +1127,10 @@ int runner_parse_base(size_t i, const char **text, size_t *len)
   case 3u:
     *text = fuzz_base_capture;
     *len = sizeof fuzz_base_capture - 1u;
+    return 1;
+  case 4u:
+    *text = fuzz_base_video;
+    *len = sizeof fuzz_base_video - 1u;
     return 1;
   default:
     return 0;

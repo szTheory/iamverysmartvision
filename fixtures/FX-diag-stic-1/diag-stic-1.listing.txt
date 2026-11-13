@@ -1,0 +1,220 @@
+# id: ivs-diag-stic-1
+# kind: cart
+# profile: intv-2609-ntsc-family-p1
+# window: 5000-5084
+# label: ivs-diag-stic-1, the third project-authored diagnostic (display enable, graphics RAM, BACKTAB, both card modes)
+# entry: 5000
+# stack: 0340
+#
+# Project-authored diagnostic (D-20), MIT like the rest of the repository. tools/pack builds it
+# into one IVSC v1 segment at 5000 (133 words) in the build tree; no image is committed. It is
+# entered through the project boot stub (fixtures/FX-boot-stub/boot-stub.listing.txt, contract 1,
+# unchanged), which jumps to 5000 with R6 = 0340 and interrupts disabled; the program has no
+# interrupt service routine, calls no EXEC routine and reads no graphics ROM, so the display is
+# not sustained and exactly one picture, frame 0, exists. Both numbers are project conventions
+# with no hardware or first-party source (discrepancy C68), so the program sets every register it
+# uses before using it. The program, the cycle budget, the six explicit words and the card patterns
+# are derived in docs/video/diag-stic-1-derivation.md (committed before this listing existed); the
+# expected frames are data/video/frames/F-D1.frame (Foreground/Background) and F-D2.frame (Color
+# Stack), and the expected state is the header of data/golden/diag-stic-fgbg-pass.expect.
+#
+# Sections:
+#   a  5000-500B  read port 0 (01FE), keep the low byte, record it at 02F1, and select Color Stack
+#                 mode (a read of 0021) only when the low byte is not FF (a key is closed). One
+#                 branch, so one image serves both modes (the scenario supplies KEY_1 at tick 0).
+#   b  500C-500D  the display-enable strobe (a store to 0020; the value written is ignored).
+#   c1 500E-501B  the four color stack registers 0028..002B get 6, A, 3, D (used by Color Stack
+#                 mode only; written in both modes).
+#   c2 501C-502A  copy the 32 bytes of the pattern table at 5065 to graphics RAM 3800..381F
+#                 (cards 0 to 3) through R4 (source) and R5 (destination).
+#   d  502B-5033  fill the 240 BACKTAB words 0200..02EF with 0000.
+#   e  5034-5057  six explicit card words, each a 14-bit value, so each is SDBD, MVII, MVO:
+#                 02A3 = 2A01, 02A4 = 0E0A, 02A5 = 1A13, 02A6 = 381C, 02DC = 2C1D, 02EF = 1C0F.
+#   f  5058-505C  counted delay (R1 = 900 = 0384) so the stop comes between the first and the
+#                 second frame end, with display on and with the strobe removed.
+#   g  505D-5064  the end marker 03C5 written last at 02F0, then HLT and three TSTR R0 followers
+#                 (docs/diagnostics.md, "Endings need a follower").
+#   data 5065-5084  the 32 pattern bytes, one decle each (the 10-bit word holds an 8-bit byte):
+#                 card 0 stripes FF 00 FF 00 FF 00 FF 00; card 1 box FF 81 81 81 81 81 81 FF;
+#                 card 2 diagonal 80 40 20 10 08 04 02 01; card 3 checker AA 55 AA 55 AA 55 AA 55.
+#                 Project-authored geometric shapes only; no letter shape and no pattern recalled
+#                 from a real graphics ROM. The listing checker decodes every word as a program
+#                 word, so each table line carries the row of the decle it encodes, and the three
+#                 decles 04, 02, 01 of card 2 are the one three-decle jump the checker sees in the
+#                 table (printed with its recomputed target, never executed: the table lies behind
+#                 the three followers).
+#
+# Line grammar (D-26): ADDR HEX4 BITS ROW ASM, as in the boot stub listing. ROW is the leaf row of
+# data/cp1610/opcode-families.json or - for an operand word. Every branch line carries `-> ADDR`
+# (docs/diagnostics.md, "Branch targets"). Every immediate above 03FF is written SDBD, MVII with
+# its low byte then its high byte (the listing-sdbd rule of docs/diagnostics.md).
+#
+# Derivation of the encodings (hand-assembled; no assembler; nothing copied from another
+# implementation; "pdf N" is a page of the GI CP-1600 Microprocessor Users Manual,
+# SRC-gi-cp1600-um-1975; register numbers are 3-bit fields, R0 = 000 ... R7 = 111):
+#   MVI   1010 000 DDD then the address word (direct table, pdf 55): R0 gives 0280.
+#   MVO   1001 000 SSS then the address word (direct table, pdf 55): R0 gives 0240.
+#   MVII  1010 111 DDD then the immediate word (immediate table, pdf 57): R0 02B8, R1 02B9,
+#         R4 02BC, R5 02BD. After SDBD the operand is two decles, low byte then high byte (SDBD
+#         table, pdf 58).
+#   SDBD  0000 000 001 (control table, pdf 56; Fig 3.3.4, pdf 51): 0001. It applies to the next
+#         instruction only.
+#   ANDI  1110 111 DDD (immediate table, pdf 57): R0 gives 03B8.
+#   CMPI  1101 111 SSS (immediate table, pdf 57): R0 gives 0378; it sets Z when the register
+#         equals the immediate.
+#   CLRR  0111 DDD DDD (register-register table, pdf 53): R0 gives 01C0. DECR 0000 010 DDD: R1 is
+#         0011. TSTR 0010 SSS SSS: R0 is 0080. HLT 0000 000 000.
+#   MVO@  1001 MMM SSS with MMM = 100 for R4 and 101 for R5, post-incremented (indirect table,
+#         pdf 55; Fig 3.2.1, pdf 46): MVO@ R0,R4 is 0260, MVO@ R0,R5 is 0268.
+#   MVI@  1010 MMM DDD (indirect table, pdf 55): MVI@ R4,R0 is 1010 100 000 = 02A0, R4 post-
+#         incremented.
+#   BZE   1000 S0 0100 and BNZE 1000 S0 1100, then the displacement word; S = 0 forward: PC + 2
+#         plus the displacement; S = 1 backward: PC + 1 minus the displacement (branch table,
+#         pdf 54): BZE forward 0204, BNZE backward 022C.
+# Branch arithmetic:
+#   BZE at 5008 (skip the mode select): PC + 2 = 500A, target 500C = 500A + 0002, so d = 0002.
+#   BNZE at 5029 (copy loop): PC + 1 = 502A, 502A - d = 5026, so d = 0004.
+#   BNZE at 5032 (fill loop): PC + 1 = 5033, 5033 - d = 5030, so d = 0003.
+#   BNZE at 505B (delay loop): PC + 1 = 505C, 505C - d = 505A, so d = 0002.
+#   The jump decode of the table at 507A: second decle 0002, bits 7..2 = 000000, third decle 0001,
+#   target 0001.
+# Cycles (regression information; the branch counts are policy C29; the full budget with the
+# bus windows is section (c) of docs/video/diag-stic-1-derivation.md): the program runs about
+# 20,716 cycles with no bus window (fill loop 5,758, delay 13,506), the HLT unit starting at tick
+# 82,864 with the display off and between 87,388 and 88,948 ticks with the display on. No
+# assertion depends on these numbers; only the margins to the frame ends 59,736 and 119,472 are
+# a requirement of the design.
+# Words used: 133 (5000-5084), 5 listed branches (4 in code, 1 in the data table).
+5000 0280 1010 000 000   MVI   MVI $01FE, R0       a: read controller port 0 (the first read, tick 0 side)
+5001 01FE 01 1111 1110   -     address 01FE
+5002 03B8 1110 111 000   ANDI  ANDI #$00FF, R0     keep the low byte
+5003 00FF 00 1111 1111   -     immediate 00FF
+5004 0240 1001 000 000   MVO   MVO R0, $02F1       record the port byte at [02F1] (outside BACKTAB)
+5005 02F1 10 1111 0001   -     address 02F1
+5006 0378 1101 111 000   CMPI  CMPI #$00FF, R0     Z = 1 when no key is closed (low byte FF)
+5007 00FF 00 1111 1111   -     immediate 00FF
+5008 0204 1000 00 0100   BZE   BZE $500C -> 500C   no key: skip the Color Stack mode select
+5009 0002 00 0000 0010   -     displacement 0002 (S=0): 500A + 0002 = 500C
+500A 0280 1010 000 000   MVI   MVI $0021, R0       key closed: a read of 0021 selects Color Stack mode
+500B 0021 00 0010 0001   -     address 0021
+500C 0240 1001 000 000   MVO   MVO R0, $0020       b: display-enable strobe (the value written is ignored)
+500D 0020 00 0010 0000   -     address 0020
+500E 02BD 1010 111 101   MVII  MVII #$0028, R5     c1: R5 = first color stack register
+500F 0028 00 0010 1000   -     immediate 0028
+5010 02B8 1010 111 000   MVII  MVII #$0006, R0     stack entry 0
+5011 0006 00 0000 0110   -     immediate 0006
+5012 0268 1001 101 000   MVO@  MVO@ R0, R5         store at [R5], R5 = R5 + 1
+5013 02B8 1010 111 000   MVII  MVII #$000A, R0     stack entry 1
+5014 000A 00 0000 1010   -     immediate 000A
+5015 0268 1001 101 000   MVO@  MVO@ R0, R5         store at [R5], R5 = R5 + 1
+5016 02B8 1010 111 000   MVII  MVII #$0003, R0     stack entry 2
+5017 0003 00 0000 0011   -     immediate 0003
+5018 0268 1001 101 000   MVO@  MVO@ R0, R5         store at [R5], R5 = R5 + 1
+5019 02B8 1010 111 000   MVII  MVII #$000D, R0     stack entry 3
+501A 000D 00 0000 1101   -     immediate 000D
+501B 0268 1001 101 000   MVO@  MVO@ R0, R5         store at [R5], R5 = R5 + 1
+501C 0001 0000 000 001   SDBD  SDBD                c2: the next immediate is a 16-bit word (two decles)
+501D 02BC 1010 111 100   MVII  MVII #$5065, R4     R4 = the pattern table
+501E 0065 00 0110 0101   -     low byte 65
+501F 0050 00 0101 0000   -     high byte 50
+5020 0001 0000 000 001   SDBD  SDBD
+5021 02BD 1010 111 101   MVII  MVII #$3800, R5     R5 = graphics RAM card 0
+5022 0000 00 0000 0000   -     low byte 00
+5023 0038 00 0011 1000   -     high byte 38
+5024 02B9 1010 111 001   MVII  MVII #$0020, R1     R1 = 32 bytes to copy
+5025 0020 00 0010 0000   -     immediate 0020
+5026 02A0 1010 100 000   MVI@  MVI@ R4, R0         copy loop: read [R4], R4 = R4 + 1
+5027 0268 1001 101 000   MVO@  MVO@ R0, R5         write [R5], R5 = R5 + 1
+5028 0011 0000 010 001   DECR  DECR R1
+5029 022C 1000 10 1100   BNZE  BNZE $5026 -> 5026  back while R1 is not zero
+502A 0004 00 0000 0100   -     displacement 0004 (S=1): 502A - 0004 = 5026
+502B 01C0 0111 000 000   CLRR  CLRR R0             d: fill word 0000
+502C 02BC 1010 111 100   MVII  MVII #$0200, R4     R4 = first BACKTAB word
+502D 0200 10 0000 0000   -     immediate 0200
+502E 02B9 1010 111 001   MVII  MVII #$00F0, R1     R1 = 240 words
+502F 00F0 00 1111 0000   -     immediate 00F0
+5030 0260 1001 100 000   MVO@  MVO@ R0, R4         fill loop: write [R4], R4 = R4 + 1
+5031 0011 0000 010 001   DECR  DECR R1
+5032 022C 1000 10 1100   BNZE  BNZE $5030 -> 5030  back while R1 is not zero
+5033 0003 00 0000 0011   -     displacement 0003 (S=1): 5033 - 0003 = 5030
+5034 0001 0000 000 001   SDBD  SDBD                e: word 2A01 at cell (8,3)
+5035 02B8 1010 111 000   MVII  MVII #$2A01, R0
+5036 0001 00 0000 0001   -     low byte 01
+5037 002A 00 0010 1010   -     high byte 2A
+5038 0240 1001 000 000   MVO   MVO R0, $02A3
+5039 02A3 10 1010 0011   -     address 02A3
+503A 0001 0000 000 001   SDBD  SDBD                word 0E0A at cell (8,4)
+503B 02B8 1010 111 000   MVII  MVII #$0E0A, R0
+503C 000A 00 0000 1010   -     low byte 0A
+503D 000E 00 0000 1110   -     high byte 0E
+503E 0240 1001 000 000   MVO   MVO R0, $02A4
+503F 02A4 10 1010 0100   -     address 02A4
+5040 0001 0000 000 001   SDBD  SDBD                word 1A13 at cell (8,5)
+5041 02B8 1010 111 000   MVII  MVII #$1A13, R0
+5042 0013 00 0001 0011   -     low byte 13
+5043 001A 00 0001 1010   -     high byte 1A
+5044 0240 1001 000 000   MVO   MVO R0, $02A5
+5045 02A5 10 1010 0101   -     address 02A5
+5046 0001 0000 000 001   SDBD  SDBD                word 381C at cell (8,6)
+5047 02B8 1010 111 000   MVII  MVII #$381C, R0
+5048 001C 00 0001 1100   -     low byte 1C
+5049 0038 00 0011 1000   -     high byte 38
+504A 0240 1001 000 000   MVO   MVO R0, $02A6
+504B 02A6 10 1010 0110   -     address 02A6
+504C 0001 0000 000 001   SDBD  SDBD                word 2C1D at cell (11,0)
+504D 02B8 1010 111 000   MVII  MVII #$2C1D, R0
+504E 001D 00 0001 1101   -     low byte 1D
+504F 002C 00 0010 1100   -     high byte 2C
+5050 0240 1001 000 000   MVO   MVO R0, $02DC
+5051 02DC 10 1101 1100   -     address 02DC
+5052 0001 0000 000 001   SDBD  SDBD                word 1C0F at cell (11,19)
+5053 02B8 1010 111 000   MVII  MVII #$1C0F, R0
+5054 000F 00 0000 1111   -     low byte 0F
+5055 001C 00 0001 1100   -     high byte 1C
+5056 0240 1001 000 000   MVO   MVO R0, $02EF
+5057 02EF 10 1110 1111   -     address 02EF
+5058 02B9 1010 111 001   MVII  MVII #$0384, R1     f: delay count 900
+5059 0384 11 1000 0100   -     immediate 0384
+505A 0011 0000 010 001   DECR  DECR R1             delay loop
+505B 022C 1000 10 1100   BNZE  BNZE $505A -> 505A  back while R1 is not zero
+505C 0002 00 0000 0010   -     displacement 0002 (S=1): 505C - 0002 = 505A
+505D 02B8 1010 111 000   MVII  MVII #$03C5, R0     g: end marker
+505E 03C5 11 1100 0101   -     immediate 03C5
+505F 0240 1001 000 000   MVO   MVO R0, $02F0       [02F0] = 03C5, written last
+5060 02F0 10 1111 0000   -     address 02F0
+5061 0000 0000 000 000   HLT   HLT                 sets the stop latch; the next instruction still runs
+5062 0080 0010 000 000   TSTR  TSTR R0             follower 1
+5063 0080 0010 000 000   TSTR  TSTR R0             follower 2
+5064 0080 0010 000 000   TSTR  TSTR R0             follower 3
+5065 00FF 0011 111 111   ADDR  data: card 0 row 0 stripes FF (decodes as ADDR R7, R7; never executed)
+5066 0000 0000 000 000   HLT   data: card 0 row 1 00 (decodes as HLT)
+5067 00FF 0011 111 111   ADDR  data: card 0 row 2 FF
+5068 0000 0000 000 000   HLT   data: card 0 row 3 00
+5069 00FF 0011 111 111   ADDR  data: card 0 row 4 FF
+506A 0000 0000 000 000   HLT   data: card 0 row 5 00
+506B 00FF 0011 111 111   ADDR  data: card 0 row 6 FF
+506C 0000 0000 000 000   HLT   data: card 0 row 7 00
+506D 00FF 0011 111 111   ADDR  data: card 1 row 0 box FF
+506E 0081 0010 000 001   MOVR  data: card 1 row 1 81 (decodes as MOVR R0, R1)
+506F 0081 0010 000 001   MOVR  data: card 1 row 2 81
+5070 0081 0010 000 001   MOVR  data: card 1 row 3 81
+5071 0081 0010 000 001   MOVR  data: card 1 row 4 81
+5072 0081 0010 000 001   MOVR  data: card 1 row 5 81
+5073 0081 0010 000 001   MOVR  data: card 1 row 6 81
+5074 00FF 0011 111 111   ADDR  data: card 1 row 7 FF
+5075 0080 0010 000 000   TSTR  data: card 2 row 0 diagonal 80 (decodes as TSTR R0)
+5076 0040 0001 000 000   SWAP  data: card 2 row 1 40 (decodes as SWAP)
+5077 0020 0000 100 000   NEGR  data: card 2 row 2 20 (decodes as NEGR R0)
+5078 0010 0000 010 000   DECR  data: card 2 row 3 10 (decodes as DECR R0)
+5079 0008 0000 001 000   INCR  data: card 2 row 4 08 (decodes as INCR R0)
+507A 0004 0000 000 100   J     J $0001 -> 0001 data: card 2 row 5 04 (decodes as a 3-decle jump, never executed)
+507B 0002 00 0000 0010   -     data: card 2 row 6 02 (the jump's second decle)
+507C 0001 00 0000 0001   -     data: card 2 row 7 01 (the jump's third decle)
+507D 00AA 0010 101 010   MOVR  data: card 3 row 0 checker AA (decodes as MOVR R5, R2)
+507E 0055 0001 010 101   RLC   data: card 3 row 1 55 (decodes as RLC)
+507F 00AA 0010 101 010   MOVR  data: card 3 row 2 AA
+5080 0055 0001 010 101   RLC   data: card 3 row 3 55
+5081 00AA 0010 101 010   MOVR  data: card 3 row 4 AA
+5082 0055 0001 010 101   RLC   data: card 3 row 5 55
+5083 00AA 0010 101 010   MOVR  data: card 3 row 6 AA
+5084 0055 0001 010 101   RLC   data: card 3 row 7 55

@@ -1,0 +1,24 @@
+# Toy registry of control important-gates-bad-req-phase6 (plan 06-14): the good toy registry plus a
+# line whose requirement is a Phase 6 id outside the five accepted ones (VID-05 belongs to Phase 8).
+toy-bound fault GOOD_FAULT API-02
+toy-buffers fault GOOD_FAULT API-04
+toy-runner fault GOOD_RUNNER RUN-01
+toy-outcomes fault GOOD_FAULT2 RUN-02
+toy-registry control toy-control RUN-04
+toy-golden control toy-control RUN-05
+toy-listing control toy-control RUN-06
+toy-package mutant toy-selftest PKG-01
+toy-ci control toy-control PKG-03
+toy-log control toy-control PKG-04
+toy-input fault GOOD_FAULT INP-01
+toy-combos fault GOOD_FAULT2 INP-02
+toy-core control toy-control INP-03
+toy-slicing mutant toy-selftest API-03
+toy-psg fault GOOD_FAULT AUD-01
+toy-log fault GOOD_RUNNER AUD-02
+toy-regs fault GOOD_FAULT VID-01
+toy-steal fault GOOD_FAULT2 VID-02
+toy-video control toy-control VID-03
+toy-frames fault GOOD_RUNNER VID-04
+toy-inspect mutant toy-selftest VID-06
+toy-video fault GOOD_FAULT VID-05

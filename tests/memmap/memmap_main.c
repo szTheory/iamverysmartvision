@@ -38,6 +38,9 @@ static const mm_rule mm_rules[] = {
     {IVS_MEMSYS_DEVICE_RAM16, 0xFFFFu, 0x0000u, 1u}, /* 16-bit system RAM */
     {IVS_MEMSYS_DEVICE_STUB, 0x0000u, 0xFFFFu, 0u},  /* no state, undriven value (C60) */
     {IVS_MEMSYS_DEVICE_PSG8, 0x00FFu, 0x0000u, 1u},  /* PSG register, low byte, upper byte 0 (C64) */
+    /* plan 06-06 (C81): the STIC register file; the rule is the device default of a write-only register (read mask 0,
+     * reads FFFF); the per-register widths are judged by the rows of memmap_rows.c and by suite stic */
+    {IVS_MEMSYS_DEVICE_STIC14, 0x0000u, 0xFFFFu, 1u},
 };
 
 #define MM_UNDRIVEN 0xFFFFu
@@ -78,19 +81,19 @@ typedef struct mm_row {
 } mm_row;
 
 static const mm_row mm_rows[] = {
-    {"stic-regs", MM_RW, IVS_MEMSYS_DEVICE_STUB, 0x0000u, 0x003Fu, 0u, 0u},
-    {"stic-alias-read", MM_R, IVS_MEMSYS_DEVICE_STUB, 0x0040u, 0x007Fu, 0u, 0u},
+    {"stic-regs", MM_RW, IVS_MEMSYS_DEVICE_STIC14, 0x0000u, 0x003Fu, 0u, 0u},
+    {"stic-alias-read", MM_R, IVS_MEMSYS_DEVICE_STIC14, 0x0040u, 0x007Fu, 0u, 0u},
     {"scratchpad", MM_RW, IVS_MEMSYS_DEVICE_RAM8, 0x0100u, 0x01EFu, 0u, 0u},
     {"psg-regs", MM_RW, IVS_MEMSYS_DEVICE_PSG8, 0x01F0u, 0x01FFu, 0u, 0u},
     {"sysram", MM_RW, IVS_MEMSYS_DEVICE_RAM16, 0x0200u, 0x035Fu, 0u, 0u},
     {"exec", MM_R, IVS_MEMSYS_DEVICE_ROM10, 0x1000u, 0x1FFFu, 0u, 0u},
     {"grom", MM_R, IVS_MEMSYS_DEVICE_GROM8, 0x3000u, 0x37FFu, 0u, 0u},
     {"gram", MM_RW, IVS_MEMSYS_DEVICE_RAM8, 0x3800u, 0x3FFFu, 0u, 512u},
-    {"stic-alias-w4", MM_W, IVS_MEMSYS_DEVICE_STUB, 0x4000u, 0x403Fu, 0u, 0u},
+    {"stic-alias-w4", MM_W, IVS_MEMSYS_DEVICE_STIC14, 0x4000u, 0x403Fu, 0u, 0u},
     {"gram-alias-w7", MM_W, IVS_MEMSYS_DEVICE_RAM8, 0x7800u, 0x7FFFu, 0x3800u, 512u},
-    {"stic-alias-w8", MM_W, IVS_MEMSYS_DEVICE_STUB, 0x8000u, 0x803Fu, 0u, 0u},
+    {"stic-alias-w8", MM_W, IVS_MEMSYS_DEVICE_STIC14, 0x8000u, 0x803Fu, 0u, 0u},
     {"gram-alias-wb", MM_W, IVS_MEMSYS_DEVICE_RAM8, 0xB800u, 0xBFFFu, 0x3800u, 512u},
-    {"stic-alias-wc", MM_W, IVS_MEMSYS_DEVICE_STUB, 0xC000u, 0xC03Fu, 0u, 0u},
+    {"stic-alias-wc", MM_W, IVS_MEMSYS_DEVICE_STIC14, 0xC000u, 0xC03Fu, 0u, 0u},
     {"gram-alias-wf", MM_W, IVS_MEMSYS_DEVICE_RAM8, 0xF800u, 0xFFFFu, 0x3800u, 512u},
 };
 #define MM_ROWS (sizeof mm_rows / sizeof mm_rows[0])
@@ -176,6 +179,23 @@ static int mm_anchor(const mm_row *row, uint16_t addr)
   const mm_rule *r = mm_rule_of(row->kind);
   IVS_CHECK(r != NULL);
   IVS_CHECK(mm_init_loaded());
+  if (row->kind == IVS_MEMSYS_DEVICE_STIC14) {
+    /* plan 06-06: the register file. Register $00 (lo of every STIC row) keeps 11 bits and reads FFFF (write-only), the
+     * register $3F (hi) is reserved and keeps nothing; the read alias mirrors the file, the write aliases reach it
+     * and read as the cartridge span (undriven here). The stored word is read through the raw state of the system. */
+    uint32_t reg = (uint32_t)addr & 0x3Fu;
+    uint16_t want = reg == 0u ? 0x0234u : 0x0000u;
+    if (row->view == MM_R) {
+      IVS_CHECK(mm_bus_write(addr, 0x1234u));
+      IVS_CHECK(mm_bus_read(addr) == MM_UNDRIVEN);
+      IVS_CHECK(mm_m.stic_reg[reg] == 0x0000u);
+    } else {
+      IVS_CHECK(mm_bus_write(addr, 0x1234u));
+      IVS_CHECK(mm_m.stic_reg[reg] == want);
+      IVS_CHECK(mm_bus_read(addr) == MM_UNDRIVEN);
+    }
+    return IVS_TEST_PASS;
+  }
   if (row->view == MM_R && r->keep == 0u && row->kind != IVS_MEMSYS_DEVICE_STUB) {
     ivs_memsys_poke_raw_internal(&mm_m, addr, 0xFFFFu);
     IVS_CHECK(mm_bus_read(addr) == mm_expect(row->kind, 0xFFFFu));
@@ -247,15 +267,26 @@ static int mm_width_ram8(void)
   return IVS_TEST_PASS;
 }
 
-static int mm_width_stub(void)
+/* The STIC register file is a real device (stic14, plan 06-06, C81): a write-only register keeps its masked bits and
+ * reads the undriven fill, a collision register reads FC00 OR its stored bits, a strobe or reserved register keeps
+ * nothing, and the read alias at $0040 mirrors the file. */
+static int mm_width_stic14(void)
 {
   IVS_CHECK(mm_init());
   IVS_CHECK(mm_bus_write(0x0001u, 0x1234u));
   IVS_CHECK(mm_bus_read(0x0001u) == 0xFFFFu);
+  IVS_CHECK(mm_m.stic_reg[1] == 0x0234u);
   IVS_CHECK(mm_bus_write(0x0002u, 0x00AAu));
   IVS_CHECK(mm_bus_read(0x0002u) == 0xFFFFu);
   ivs_memsys_poke_raw_internal(&mm_m, 0x0003u, 0x1234u);
   IVS_CHECK(mm_bus_read(0x0003u) == 0xFFFFu);
+  IVS_CHECK(mm_bus_write(0x0018u, 0x00FFu)); /* tracer: a CPU write reads back through the collision path */
+  IVS_CHECK(mm_bus_read(0x0018u) == 0xFCFFu);
+  IVS_CHECK(mm_bus_read(0x0058u) == 0xFCFFu); /* the read alias mirrors the register file */
+  IVS_CHECK(mm_bus_write(0x0020u, 0x1234u));
+  IVS_CHECK(mm_m.stic_reg[0x20] == 0x0000u);
+  IVS_CHECK(mm_bus_write(0x4019u, 0x03A5u)); /* a write alias reaches the same file */
+  IVS_CHECK(mm_bus_read(0x0019u) == 0xFFA5u); /* FC00 OR the stored 03A5 */
   return IVS_TEST_PASS;
 }
 
@@ -533,11 +564,11 @@ static int mm_bus_read_write_kinds(void)
 
 /* ---- introspection seam and registry (A-05b, D-03) ---- */
 
-static int mm_describe_stub_vs_undriven(void)
+static int mm_describe_stic_vs_undriven(void)
 {
   ivs_memsys_desc d;
   IVS_CHECK(ivs_memsys_describe(0u, IVS_MEMSYS_VIEW_R, 0x0000u, &d) == IVS_OK);
-  IVS_CHECK(d.device == IVS_MEMSYS_DEVICE_STUB && d.impl == IVS_MEMSYS_IMPL_STUB);
+  IVS_CHECK(d.device == IVS_MEMSYS_DEVICE_STIC14 && d.impl == IVS_MEMSYS_IMPL_REAL);
   IVS_CHECK(strcmp(d.phys_name, "stic") == 0 && d.gate == IVS_MEMSYS_GATE_STIC_REGS);
   IVS_CHECK(ivs_memsys_describe(0u, IVS_MEMSYS_VIEW_R, 0x01F0u, &d) == IVS_OK);
   IVS_CHECK(d.device == IVS_MEMSYS_DEVICE_PSG8 && d.impl == IVS_MEMSYS_IMPL_REAL);
@@ -585,7 +616,7 @@ static const ivs_test_case mm_fixed[] = {
     {"memmap.width.grom8-wide-reads-00ff", mm_width_grom8, NULL},
     {"memmap.width.ram16-keeps-16", mm_width_ram16, NULL},
     {"memmap.width.ram8-truncates", mm_width_ram8, NULL},
-    {"memmap.width.stub-reads-ffff", mm_width_stub, NULL},
+    {"memmap.width.stic14-registers", mm_width_stic14, NULL},
     {"memmap.width.psg8-low-byte-upper-zero", mm_width_psg8, NULL},
     {"memmap.width.undriven-reads-ffff", mm_width_undriven, NULL},
     {"memmap.mirror.gram-3a00", mm_mirror_gram_3a00, NULL},
@@ -607,7 +638,7 @@ static const ivs_test_case mm_fixed[] = {
     {"memmap.bus.iab-interrupt", mm_bus_iab_interrupt, NULL},
     {"memmap.bus.no-data-kinds", mm_bus_no_data_kinds, NULL},
     {"memmap.bus.read-write-kinds", mm_bus_read_write_kinds, NULL},
-    {"memmap.describe.stub-vs-undriven", mm_describe_stub_vs_undriven, NULL},
+    {"memmap.describe.stic-vs-undriven", mm_describe_stic_vs_undriven, NULL},
     {"memmap.registry.first-profile", mm_registry_first_profile, NULL},
 };
 #define MM_FIXED (sizeof mm_fixed / sizeof mm_fixed[0])

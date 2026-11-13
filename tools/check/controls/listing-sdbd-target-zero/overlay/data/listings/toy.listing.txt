@@ -1,0 +1,14 @@
+# id: toy
+# kind: cart
+# window: 5000-5007
+#
+# Known-good control tree listing (plan 04-15): rows of the toy family table.
+# Plan 05-01 adds one annotated branch: B at 5003 with displacement 0001 goes to 5003 + 2 + 1 = 5006.
+5000 03FF 11 1111 1111  ONES  toy word
+5001 0000 0000 000 000  ZERO  toy word
+5002 0155 01 0101 0101  ALL   toy word
+5003 0200 1000 00 0000  B     B $5006 -> 5006  toy branch
+5004 0001 00 0000 0001  -     displacement 0001 (S=0): 5003 + 2 + 0001 = 5006
+# Phase 6 review WR-01: an SDBD before a row that is not an SDBD target (the toy ZERO word).
+5005 0001 00 0000 0001  SDBD  toy prefix
+5006 0000 0000 000 000  ZERO  toy word (not an SDBD target)

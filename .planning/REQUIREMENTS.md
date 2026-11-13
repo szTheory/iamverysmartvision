@@ -88,12 +88,12 @@ differentiators and all variant/peripheral profiles are v2.
 
 ### Video — STIC (VID)
 
-- [ ] **VID-01**: STIC register access, display-enable handshake and VBLANK access windows follow profile timing constants, with blocked accesses following the profile's documented policy.
-- [ ] **VID-02**: The VBLANK interrupt and BUSRQ/BUSAK bus-steal events occur at profile-defined machine times and their effect on CPU progress is tested.
-- [ ] **VID-03**: The core produces a raw palette-index framebuffer at a defined machine-time boundary with profile-defined geometry (D8); palette, scaling and presentation remain host policy.
-- [ ] **VID-04**: Foreground/Background and Color Stack card modes render hand-derived expected index frames from known BACKTAB/GRAM fixture contents (no dependency on a real GROM image in CI).
+- [x] **VID-01**: STIC register access, display-enable handshake and VBLANK access windows follow profile timing constants, with blocked accesses following the profile's documented policy.
+- [x] **VID-02**: The VBLANK interrupt and BUSRQ/BUSAK bus-steal events occur at profile-defined machine times and their effect on CPU progress is tested.
+- [x] **VID-03**: The core produces a raw palette-index framebuffer at a defined machine-time boundary with profile-defined geometry (D8); palette, scaling and presentation remain host policy.
+- [x] **VID-04**: Foreground/Background and Color Stack card modes render hand-derived expected index frames from known BACKTAB/GRAM fixture contents (no dependency on a real GROM image in CI).
 - [ ] **VID-05**: MOBs, border, horizontal/vertical delay and collision registers are each covered by a single-feature fixture with an independently derived expected result, or explicitly listed as unknown-default-chosen.
-- [ ] **VID-06**: A side-effect-free inspection path exists so debuggers/tests can read STIC/device state without triggering read side effects.
+- [x] **VID-06**: A side-effect-free inspection path exists so debuggers/tests can read STIC/device state without triggering read side effects.
 
 ### Visible Scenario (SCN)
 
@@ -218,12 +218,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INP-01 | Phase 5 | Complete |
 | INP-02 | Phase 5 | Complete |
 | INP-03 | Phase 5 | Complete |
-| VID-01 | Phase 6 | Pending |
-| VID-02 | Phase 6 | Pending |
-| VID-03 | Phase 6 | Pending |
-| VID-04 | Phase 6 | Pending |
+| VID-01 | Phase 6 | Complete |
+| VID-02 | Phase 6 | Complete |
+| VID-03 | Phase 6 | Complete |
+| VID-04 | Phase 6 | Complete |
 | VID-05 | Phase 8 | Pending |
-| VID-06 | Phase 6 | Pending |
+| VID-06 | Phase 6 | Complete |
 | SCN-01 | Phase 7 | Pending |
 | SCN-02 | Phase 7 | Pending |
 | STA-01 | Phase 8 | Pending |
@@ -233,6 +233,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 **Phase 5 close-out note (plan 05-12):** INP-01, INP-02, INP-03, API-03, AUD-01 and AUD-02 are marked complete because the gate evidence in `.planning/phases/05-hand-controllers-and-psg-sound/05-VERIFICATION.md` exists, and only on these terms. Every claim behind them (CL-0009 to CL-0015) is `provisional` and none is at the `measured-hardware` tier (D10): the controller byte table is a tier 4 community literal (C16) with a blind second read that agrees on 31 of 31 rows, the PSG rules are read from AY-3-8910 pages and applied to an AY-3-8914-class part by inference (C11, C69), and the electrical combinations (C63) and port edge cases (C64 to C66) are labelled defaults. Owner hardware items (32 listed in `data/expected/d10-measurements.ids`, D10 and D11) are handed off and not performed; no listening handoff exists because no Phase 5 artifact has a listenable tone (D-22, deferred).
 
+**Phase 6 close-out note (plan 06-14):** VID-01, VID-02, VID-03, VID-04 and VID-06 are marked complete because the gate evidence in `.planning/phases/06-stic-video-first-pass/06-VERIFICATION.md` exists, and only on these terms. Every claim behind them (CL-0016 to CL-0022) is `provisional` and none is at the `measured-hardware` tier (D10): the STIC register map, the card word layout and the Color Stack rules are tier 4 community literals (one lineage, C81, C96, C97) with blind second reads that agree on 64 of 64 register roles, 62 of 64 card bit roles (2 convention differences), 10 of 10 frames and 14 of 20 geometry keys; the access windows, bus-steal schedule, interrupt width and power-on state are labelled policy defaults proven by perturbation and accounting identities, never as expected values (C1 to C7, C82 to C95); the 159 versus 160 column choice (C10, D8) is one profile field. VID-05 (MOBs, border, delay, collision) stays Pending for Phase 8. Owner hardware items (42 listed in `data/expected/d10-measurements.ids`, D10 and D11) are handed off and not performed; the optional look at an exported frame is not evidence.
+
 **Coverage:**
 - v1 requirements: 50 total
 - Mapped to phases: 50
@@ -240,4 +242,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-11-09*
-*Last updated: 2026-11-12 after Phase 5 close-out (plan 05-12)*
+*Last updated: 2026-11-12 after Phase 6 close-out (plan 06-14)*

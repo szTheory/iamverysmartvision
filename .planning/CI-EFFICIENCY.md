@@ -709,3 +709,330 @@ phase5-close: no-lever
 - Hosted rows since plan 05-08 (gate_s / cpu_s): 58 / 173 (05-08), 103 / 323 (05-09), 106 / 336 (05-10), 72 / 221 (05-11), 115 / 363 (05-12 head). Last-5 medians now **gate 103 s and cpu 323**, both over the triggers (90 and 280): **both fire**. One run (115 s) is close to the 120 s any-run trigger.
 - Per-step comparison of the fastest recent run (43209453151, gate 58 s) with the slowest (43237288204, gate 115 s): `c-build` 25 -> 49, `controls` 22 -> 43, `c-faults` 15 -> 37, `c-tests` 4 -> 10, `cp1610-vectors` 4 -> 7. `controls / c-build` is 0.88 in both runs and every large step roughly doubled, so the swing is runner speed (the 1.7x host variance recorded since Phase 4), not a code change; the same-day pair 72 s (05-11) and 115 s (05-12) differs by planning documents and two shell-test fixes only. `c-faults / c-build` moved from 0.60 to 0.76; the 05-12 head carries five more faults and the armed-watchdog handshake, a candidate small real growth of a few seconds.
 - **Decision (reversible):** no lever applied now, because a speed-normalised comparison shows no growth that a lever would remove and the cheapest candidate (`-g0` on the fault targets, about 5 hosted cpu-s) is below the bar. The budget stays at median gate 75 s, cpu 260. **Next step:** the first hosted rows of Phase 6 decide; if the last-5 medians are still over 90 s / 280 cpu-s after rows from at least three different runner speeds, apply `-g0` on the fault targets first, then the V-16 ordering, and consider moving the cold-build `ivs_faults` target (114 of about 515 container cpu-s) to a cached or prebuilt arrangement, which needs an owner decision because D12 bans caches.
+
+## 2026-11-12 Phase 6 start (plan 06-02): `-g0` on the fault targets, the speed-normalised metric, the checkpoints
+
+Nothing here calls `gh` or `tools/ci-record.sh`; `.planning/ci-runs.tsv` is orchestrator-owned and untouched. Local figures are from the laptop (18 cores, Apple clang 21, other work running, 1-minute load 9 to 22); container figures are `sh tools/gate-linux.sh` (Ubuntu 24.04, gcc 13.3.0, emulated amd64 on an arm64 host, 8 cores, cold build); neither is a hosted figure. Counts at plan start and end: `steps=36/36 controls=328/328 faults=193/193 tests-expected=3778 tests-executed=3776 tests-skipped=2 tests-missing=0`.
+
+### Why the raw triggers fire by runner speed, and the normalised metric
+
+The last-5 hosted medians through run 43246638522 were gate 106 s and cpu 336 against the triggers 90 and 280, and after the later rows (through 43286006804) they are gate 90 s and cpu 267. Raw seconds and cpu-seconds move with the speed of the runner that happened to pick the job (the 1.7x spread recorded since Phase 4), so the pair is read together with the speed-normalised ratio **`r = cpu_s / build_s`** of the same row: `build_s` is the hosted compile time of the same job on the same machine, so it measures the machine, and `cpu_s` divided by it is the work expressed in "machine-build-seconds". Over the rows of the last-5 set the raw cpu moves between 219 and 363 while `r` stays between 6.4 and 7.4. Every row of `.planning/ci-runs.tsv` since Phase 5 started (2026-11-11 and later, `cpu_s` and `build_s` above 0; 38 rows) follows (`gate_s` is the hosted gate step wall):
+
+| Date | Run | Conclusion | `build_s` | `gate_s` | `cpu_s` | `r` |
+|------|-----|------------|-----------|----------|---------|-----|
+| 2026-11-11 | 43058596162 | success | 28 | 62 | 164 | 5.86 |
+| 2026-11-11 | 43060935649 | success | 30 | 62 | 164 | 5.47 |
+| 2026-11-11 | 43063741813 | success | 28 | 61 | 164 | 5.86 |
+| 2026-11-11 | 43067196274 | success | 22 | 46 | 116 | 5.27 |
+| 2026-11-11 | 43070516137 | success | 25 | 54 | 147 | 5.88 |
+| 2026-11-11 | 43073575336 | success | 32 | 69 | 177 | 5.53 |
+| 2026-11-11 | 43075005155 | success | 27 | 60 | 170 | 6.30 |
+| 2026-11-11 | 43077768591 | success | 24 | 55 | 136 | 5.67 |
+| 2026-11-11 | 43094232714 | success | 29 | 62 | 179 | 6.17 |
+| 2026-11-11 | 43099862529 | success | 33 | 69 | 185 | 5.61 |
+| 2026-11-11 | 43102991214 | success | 29 | 64 | 182 | 6.28 |
+| 2026-11-11 | 43106276178 | success | 25 | 55 | 154 | 6.16 |
+| 2026-11-11 | 43113503262 | success | 24 | 52 | 150 | 6.25 |
+| 2026-11-11 | 43115430207 | success | 19 | 39 | 114 | 6.00 |
+| 2026-11-11 | 43117857552 | success | 20 | 40 | 118 | 5.90 |
+| 2026-11-11 | 43121804870 | success | 27 | 57 | 161 | 5.96 |
+| 2026-11-12 | 43124846207 | success | 29 | 67 | 211 | 7.28 |
+| 2026-11-12 | 43127157643 | success | 21 | 41 | 125 | 5.95 |
+| 2026-11-12 | 43129448676 | success | 26 | 53 | 148 | 5.69 |
+| 2026-11-12 | 43131258957 | success | 27 | 59 | 175 | 6.48 |
+| 2026-11-12 | 43133660327 | success | 28 | 59 | 179 | 6.39 |
+| 2026-11-12 | 43135732132 | success | 34 | 75 | 225 | 6.62 |
+| 2026-11-12 | 43148343848 | failure | 25 | 109 | 150 | 6.00 |
+| 2026-11-12 | 43152062835 | success | 21 | 45 | 136 | 6.48 |
+| 2026-11-12 | 43175636749 | success | 25 | 55 | 160 | 6.40 |
+| 2026-11-12 | 43178237404 | success | 36 | 81 | 252 | 7.00 |
+| 2026-11-12 | 43182282322 | success | 37 | 85 | 263 | 7.11 |
+| 2026-11-12 | 43193144083 | success | 39 | 89 | 273 | 7.00 |
+| 2026-11-12 | 43198505852 | success | 30 | 72 | 220 | 7.33 |
+| 2026-11-12 | 43202448987 | success | 33 | 78 | 231 | 7.00 |
+| 2026-11-12 | 43209453151 | success | 25 | 58 | 173 | 6.92 |
+| 2026-11-12 | 43214813968 | success | 45 | 103 | 323 | 7.18 |
+| 2026-11-12 | 43220350877 | success | 47 | 106 | 336 | 7.15 |
+| 2026-11-12 | 43227486537 | success | 33 | 72 | 221 | 6.70 |
+| 2026-11-12 | 43237288204 | success | 49 | 115 | 363 | 7.41 |
+| 2026-11-12 | 43246638522 | success | 50 | 114 | 338 | 6.76 |
+| 2026-11-12 | 43248899132 | success | 34 | 75 | 219 | 6.44 |
+| 2026-11-12 | 43286006804 | success | 36 | 90 | 267 | 7.42 |
+
+Summary of the table: minimum 5.27, median 6.30, maximum 7.42. The Phase 4 rows (2026-11-11) sit at 5.3 to 6.3 and the Phase 5 close rows at 6.4 to 7.4: `r` rose by about 1 over Phase 5, which is the real growth of the work (the 42 faults, 39 controls and three suites added) beyond machine speed. The last five rows (43227486537 to 43286006804) give `r` 6.70, 7.41, 6.76, 6.44, 7.42 (median 6.76) against raw gate medians 90 s and cpu 267. A fast runner and a slow runner differ by 1.7x on the same code in the raw columns and by under 0.2 in `r` (rows 43209453151 at 58 s and 43214813968 at 103 s: 6.92 and 7.18).
+
+### The rule for Phase 6
+
+- The raw owner triggers stay as the 05-L1 decision set them (copied, not changed): hosted gate median budget 75 s, revisit when the last-5 median is above 90 s or any run is above 120 s; hosted cpu median budget 260, revisit when the last-5 median is above 280.
+- The pair is read together with `r`: budget 7.8, revisit above 8.3 (last-5 median of successful rows). A raw trigger that fires while `r` is inside 7.8 is a runner-speed event (record the rows and keep going); a raw trigger and `r` above 8.3 together is code growth and starts the lever order below.
+- The orchestrator owns the budgets (see the request at the end of this entry).
+
+### Measured unit costs (carried into the projections)
+
+- Fault: 0.137 local cpu-s per run (checkpoint 2 of Phase 5), about 0.5 hosted cpu-s with its build (the corrected unit of 05-L1: build 0.72 plus run 0.27 container cpu-s, times the hosted over container ratio 0.51; `-g0` below lowers the build share).
+- Control: 0.185 local cpu-s; about 0.07 hosted for a pure step, about 2.2 hosted for one that reaches the C symbol layer (ten `c-purity` controls cost 4.3 to 4.5 container cpu-s each).
+- Test id: 1.5 to 3.5 ms per id and preset (`psg` 1.5 ms dev, `run` 3.5 ms dev, measured in Phase 5 checkpoint 2), release about a third of that.
+- Hosted speed varies about 1.7x between runners on identical code (the reason for `r`).
+
+### Lever applied: `-g0` on the fault targets only
+
+`tests/faults.cmake` gains `ivs_fault_nodebug(<target>)` (a `target_compile_options(... PRIVATE -g0)` after the preset's `-O1 -g`, where a later `-g0` wins on clang and gcc), called from `ivs_fault_tu_setup` (plain and owner object libraries), for `ivs_fault_plain_harness`, in `ivs_fault_suite_obj`, and for the fault executables and owner objects of `ivs_fault_exe` and `ivs_fault_exe_core_gen` (site, generator and core-generator faults). Scope check (`ninja -t commands`): `ivs_fault_ADCR_IGNORES_C` 24 compile lines with ` -g0`, a runner-owner fault (`OUTCOME_GUEST_AS_HARNESS`) 36, a sha256 fault 33, a generator fault 29; `ivs_tests_psg` in `build/dev` and in `build/release` none; the whole `build/release` graph none; no `-g0` command in `build/dev` outside targets named for faults. The pristine suites, the runner, the sanitized dev objects and every release target are unchanged, so no evidence build changed; code generation of the fault objects is unchanged (only debug information is dropped).
+
+### Before and after
+
+Method: three local and two container full gates alternated between the base and the patched `tests/faults.cmake` on the same host (the file was swapped between runs, so each run's `c-build` includes the rebuild of the changed fault objects), then a paired cold build of the `ivs_faults` target alone, because the whole-gate figures are dominated by host load (load 9 to 22) and cannot show a saving of this size.
+
+| Run | Variant | Load at start (1 min) | `gate-time total=` | `gate-cpu` user + sys | `c-faults` | `c-build` | `controls` | `c-tests` |
+|-----|---------|-----------------------|--------------------|-----------------------|------------|-----------|------------|-----------|
+| local 1 | base | 15.3 | 82 | 113.10 + 110.82 = 223.9 | 22 | 2 | 40 | 15 |
+| local 1 | `-g0` | 19.4 | 77 | 138.48 + 123.51 = 262.0 | 19 | 7 | 38 | 13 |
+| local 2 | base | 20.7 | 69 | 133.23 + 117.30 = 250.5 | 18 | 7 | 29 | 12 |
+| local 2 | `-g0` | 17.6 | 78 | 132.79 + 117.31 = 250.1 | 17 | 6 | 27 | 12 |
+| local 3 | base | 19.4 | 78 | 138.28 + 126.75 = 265.0 | 19 | 10 | 36 | 13 |
+| local 3 | `-g0` | 17.5 | 80 | 136.16 + 128.83 = 265.0 | 19 | 10 | 41 | 15 |
+| container 1 | base | 21.9 | 213 | 860.83 + 61.47 = 922.3 | 36 | 68 | 118 | 24 |
+| container 1 | `-g0` | 9.5 | 225 | 881.03 + 67.50 = 948.5 | 33 | 73 | 121 | 29 |
+| container 2 | base | 11.2 | 232 | 910.36 + 66.22 = 976.6 | 37 | 73 | 124 | 24 |
+| container 2 | `-g0` | 12.2 | 222 | 835.14 + 61.63 = 896.8 | 35 | 63 | 112 | 26 |
+
+- Whole gate: local `gate-cpu` base 223.9, 250.5, 265.0 (mean 246.5) against `-g0` 262.0, 250.1, 265.0 (mean 259.0); container base 922.3 and 976.6 (mean 949.4) against 948.5 and 896.8 (mean 922.7, minus 27 or 2.8 percent). Every difference is inside the spread between runs of the same variant (the loaded laptop moves the same tree by 40 cpu-s), so **the whole-gate measurement cannot resolve the saving; it is below noise there, as the 05-L1 estimate (about 10 container cpu-s of about 515) predicted.** The `c-faults` step (the fault runs, which do not change) reads 22, 18, 19 s against 19, 17, 19 locally and 36, 37 against 33, 35 in the container: the same noise.
+- Paired cold build of `ivs_faults` (the only place the lever acts; separate source copies and build directories per variant so no reconfigure mixes them; three rounds alternated, `-j 8`, `times` user + sys): Ubuntu 24.04 container, base 250.4, 274.7, 229.6 cpu-s (mean 251.6, wall 34, 38, 32 s) against `-g0` 229.7, 223.3, 194.9 (mean 216.0, wall 32, 32, 27 s): **minus 35.6 container cpu-s (14 percent) and about 4 s wall; each pair favours `-g0` (minus 20.7, 51.4, 34.7)**. Fault object bytes drop from 16.8 MB to 5.1 MB. Scaled by the hosted over container ratio 0.51 that is about **18 hosted cpu-s** (the pairs allow 10 to 26), about 3 times the 05-L1 estimate (which extrapolated from removing `-g` from the whole dev preset on a loaded host). On macOS (Apple clang, two rounds) the same pair reads 42.8, 52.0 cpu-s against 44.5, 47.8: no measurable difference (object bytes 10.7 MB to 4.4 MB), so the lever helps the Linux gcc build the hosted runner uses and not the laptop.
+- Evidence: the `gate:` summary line is byte-identical before and after: the six local runs share one md5, the four container runs share another (counts `steps=36/36 controls=328/328 faults=193/193 tests-expected=3778 tests-executed=3776 tests-skipped=2 tests-missing=0`), and every fault still ends with its registered verdict (the `c-faults` step and `faults-verdict` are the judges). The lever is applied because it changes no evidence and saves real hosted cpu, not because a trigger fired.
+
+- Final tree of this plan (lever plus this entry): `sh tools/gate.sh` `gate-time total=52`, `gate-cpu` 85.67 + 76.52 = 162.2; `dash tools/gate.sh` `gate-time total=54`, 90.38 + 84.00 = 174.4; `sh tools/gate-linux.sh` exit 0, last log line `gate: PASS`, `gate-time total=220`, 853.64 + 67.07 = 920.7 (the laptop was quieter for the local pair). The summary lines are byte-identical to the base runs (same md5 per platform).
+
+### Planned checkpoints for Phase 6
+
+Each checkpoint is a section of this file written by the executor of the plan named, from the gate lines of that plan's final tree and `.planning/ci-runs.tsv` as the orchestrator recorded it; it ends with the line `checkpoint-N: lever-required` or `checkpoint-N: no-lever`.
+
+| Checkpoint | Where | Cumulative adds read from the gate lines |
+|------------|-------|------------------------------------------|
+| CP-A | after plan 06-06 | faults, controls and test ids added since the counts above (`faults=193`, `controls=328`, `tests-expected=3778` at plan 06-02) |
+| CP-B | after plan 06-09 | the same, cumulative |
+| CP-C | after plan 06-12 | the same, cumulative |
+| CP-D | at plan 06-14 (phase close) | the same, cumulative, plus the full hosted row evaluation |
+
+Projection at each checkpoint (the realised overrun factor of Phase 5 is 2.0 and 231 is the Phase 5 close hosted median):
+
+`projected_last5_median_cpu = 231 + 2.0 x (0.5 x faults_added + suite_term + 0.07 x pure_controls_added + 2.2 x symbol_controls_added + 0.0034 x ids_added_both_presets)`
+
+where `suite_term` is the sum over suites of (faults in the suite x that suite's measured dev plain-run seconds), because `c-faults` reruns the whole suite executable once per fault, `ids_added_both_presets` is the added test ids counted once per preset, and the `0.5` per fault already includes its build (lower after `-g0`; the formula is kept as written so the checkpoints stay comparable with Phase 5). The checkpoint also prints `r` of the last five successful hosted rows and applies the rule above.
+
+Stop rule: if `r` of the last five hosted rows exceeds 8.3 at a checkpoint, the orchestrator creates plan 06-L1 and no further fault is added until it lands. Executors never create it and never call `gh` or `tools/ci-record.sh`.
+
+### Pre-committed lever order after `-g0` (applied only when the rule fires)
+
+1. (done here) `-g0` on the fault targets.
+2. Fault objects at `-O0` only, with an owner decision because it changes the evidence build (the fault executables would no longer be built at the dev flags the suites are proven with): about 19 hosted cpu-s.
+3. One runtime-selected fault-enabled object per owner translation unit (instead of one recompiled object per fault).
+4. Batch the `cp1610-vectors` JSON re-parse: about 2.5 hosted cpu-s.
+5. A two-job split stays the last resort because it redefines PKG-02.
+
+Not levers: dropping a control or a fault, merging checks, weakening an oracle, ccache while the gate is within budget (D12 bans caches).
+
+### Request to the orchestrator
+
+Please re-baseline the hosted budgets in view of the ratio (the 05-L1 precedent: a delegated, reversible policy decision): keep the raw triggers (gate median 75 s with trigger 90 s or any run above 120 s, cpu median 260 with trigger 280) and add `r = cpu_s / build_s` as the arbiter, budget 7.8 and revisit above 8.3, so that a runner-speed swing alone does not stop the phase. Also record `r` when the hosted rows are appended to `.planning/ci-runs.tsv`. This entry changes no budget and edits no earlier section.
+
+phase6-start: lever-applied
+
+## 2026-11-12 Phase 6 budget re-baseline after lever pass 06-02 (orchestrator)
+
+- Lever 06-02 (`-g0` on fault-only targets) is applied and measured (about 18 hosted cpu-s saved on the cold `ivs_faults` build, no evidence change). The normalised metric `r = cpu_s / build_s` separates code growth from runner speed: over the 38 hosted rows it sits between 5.27 and 7.42 (median 6.30) and rose from 5.3-6.3 in Phase 4 to 6.4-7.4 at the Phase 5 close.
+- Raw rows are dominated by runner speed (1.7x spread for equal code), so the raw medians no longer say whether the code got costlier. **Decision (delegated under AUTONOMY section 1; policy, reversible):** the arbiter for code cost is `r`: budget median 7.8, revisit trigger when the last-5 median `r` exceeds 8.3. The raw hosted budgets are re-baselined to the observed band so they stop firing on speed alone: median `gate_s` 90 s with a trigger at a last-5 median above 110 s or any run above 130 s; median `cpu_s` 300 with a trigger at a last-5 median above 330. The 5-minute job timeout is unchanged. No evidence is dropped and no check moves out of the gate.
+- Levers still queued in order (06-02 entry): fault objects at `-O0` (owner decision, changes the evidence build), one runtime-selected object per owner TU, batching the `cp1610-vectors` re-parse, a two-job split (owner decision under D12).
+
+## 2026-11-12 Phase 6 checkpoint A (plan 06-06)
+
+Measured on the final tree of plan 06-06 (laptop, 18 cores, Apple clang 21, other work running; local figures, not hosted ones). Nothing here calls `gh` or touches `.planning/ci-runs.tsv`; plan 06-L1 is not created by the executor.
+
+### Cumulative adds since the plan 06-02 counts (`faults=193 controls=328 tests-expected=3778`)
+
+| Item | At plan 06-02 | Now (`gate:` line) | Added |
+|------|---------------|--------------------|-------|
+| faults | 193 | 202 | 9 (machine +3, run +1, stic +5) |
+| controls | 328 | 331 | 3 (memmap +1, video +2; all pure step controls, no symbol control) |
+| test ids (`tests-expected`, both presets) | 3778 | 3984 | 206 |
+| `steps` / `profile-keys` | 36/36 / 142 at plan 06-06 start | 36/36 / 143 | 0 / 1 |
+
+(The plan text quotes the controls range 316 to 331; the gate line at plan 06-02 reads 328, which is the base used here, so the controls term is 3, not 15.)
+
+### Local gate, three `sh tools/gate.sh` runs and one `dash tools/gate.sh` run (same summary line, same md5)
+
+| Run | `gate-time total` | `gate-cpu` user + sys | five largest `step-time` lines (s) |
+|-----|-------------------|-----------------------|------------------------------------|
+| A | 73 | 119.3 + 108.1 = 227.4 | controls 29, c-faults 19, c-tests 12, c-purity 7, hygiene 5 |
+| B | 76 | 120.2 + 109.2 = 229.5 | controls 30, c-faults 20, c-tests 12, c-purity 6, hygiene 5 |
+| C | 139 | 158.2 + 155.9 = 314.1 | controls 50, c-faults 30, c-tests 28, cp1610-vectors 13, c-purity 11 |
+| dash | 107 | 153.5 + 150.7 = 304.2 | controls 58, c-faults 33, c-tests 19, c-purity 12, hygiene 7 |
+
+Runs A and B are the quiet runs; C and the dash run ran while the laptop was loaded by another process (every step slower by the same factor, the summary line identical), so the honest local figure is A and B: 73 to 76 s and about 228 cpu-s, against a Phase 6 start of the same order (06-05: 145 s on a loaded laptop, 96 to 150 s measured this session on the same tree family). The `c-faults` step is 19 to 20 s for 202 faults (about 0.1 s per fault, the new small translation units `stic_events.c`, `stic_regs.c` and the one-line sites in `machine_run.c` and `machine_bus.c` recompile and relink in about that time, so they cost no more than the average fault).
+
+### Suite plain-run times (dev preset, three runs each)
+
+- `stic` (45 ids): dev 0.09, 0.09, 0.10 s; release below the clock resolution (0.00 s). Per-plan target after plan 06-06: at most 0.8 s dev; met by a factor of eight.
+- `machine` (409 ids) 0.96 s and `run` 0.92 s, dev (the two other suites that gained faults since plan 06-02).
+
+### Projection (formula of the Phase 6 start section)
+
+`projected_last5_median_cpu = 231 + 2.0 x (0.5 x faults_added + suite_term + 0.07 x pure_controls_added + 2.2 x symbol_controls_added + 0.0034 x ids_added_both_presets)`
+
+- `0.5 x faults_added = 0.5 x 9 = 4.50`
+- `suite_term` = machine 3 x 0.96 + run 1 x 0.92 + stic 5 x 0.09 = 2.88 + 0.92 + 0.45 = 4.25 (each fault reruns the whole suite executable once, dev preset)
+- `0.07 x pure_controls_added = 0.07 x 3 = 0.21`; `2.2 x symbol_controls_added = 0`
+- `0.0034 x ids_added_both_presets = 0.0034 x 206 = 0.70`
+- Sum 9.66; `231 + 2.0 x 9.66 = 250.3` against the 280 trigger (and the re-baselined hosted cpu budget of 300): 29.7 cpu-s of headroom to the trigger.
+
+The speed-normalised arbiter `r = cpu_s / build_s` is read from `.planning/ci-runs.tsv` by the orchestrator when it records the hosted row of this plan; this plan adds no workflow, matrix or cache change and one generator step input (the probe include of the `stic` suite), so no change of `r` is expected beyond the added suite and faults counted above.
+
+checkpointA: no-lever
+
+## 2026-11-12 Phase 6 trigger review after plan 06-07 (orchestrator)
+
+- Last-5 hosted medians: gate 115 s and cpu 345 (raw triggers 110 / 330: both over). Normalised metric `r = cpu_s / build_s` for the last five rows: 7.67, 7.49, 7.97, 7.98, 7.88, median **7.88** against the budget 7.8 and the revisit trigger 8.3: under the arbiter's trigger. The last three Phase 5 rows read 6.4 to 7.4, so r has drifted up about 10 percent over plans 06-03 to 06-07 (faults 193 to 203, ids 3778 to about 4000): a small real growth on top of runner speed.
+- Decision: no lever now (arbiter not tripped); the next candidate in order is the 06-02 queue (fault objects at `-O0` is an owner decision; batching the `cp1610-vectors` re-parse, about 5 cpu-s, is the cheap one). If the median r exceeds 8.3 at checkpoint B (after 06-09) a lever pass runs before 06-10.
+
+## 2026-11-12 Phase 6 checkpoint B (plan 06-09)
+
+Measured on the final tree of plan 06-09 (laptop, 18 cores, Apple clang 21; local figures, not hosted ones). Nothing here calls `gh` or touches `.planning/ci-runs.tsv`; plan 06-L1 is not created by the executor.
+
+### Cumulative adds since the plan 06-02 counts (`faults=193 controls=328 tests-expected=3778`)
+
+| Item | At plan 06-02 | Now (`gate:` line) | Added |
+|------|---------------|--------------------|-------|
+| faults | 193 | 214 | 21 (machine +3, run +1, stic +11, video +6) |
+| controls | 328 | 332 | 4 (three pure step controls and `core-symbols-palette-defined`, which reaches the C symbol layer) |
+| test ids (`tests-expected`, both presets) | 3778 | 4210 | 432 (this plan: 4,088 at the start, +122) |
+| `steps` / `profile-keys` / `api-calls` | 36/36 / 142 / 15 | 36/36 / 143 / 15 | 0 / 1 / 0 |
+
+(The plan text quotes the controls range 316 to 332 and the faults range 193 to 214; the gate line at plan 06-02 reads 328 controls, the base used here.)
+
+### Local gate, three `sh tools/gate.sh` runs on the final tree (same summary line, same md5), and two earlier runs at the Task 3 and Task 4 commits
+
+| Run | `gate-time total` | `gate-cpu` user + sys | load at the end (1 min) | five largest `step-time` lines (s) |
+|-----|-------------------|-----------------------|-------------------------|------------------------------------|
+| final 1 | 157 | 153.6 + 156.8 = 310.4 | 63 | controls 79, c-faults 41, c-tests 24, c-purity 21, hygiene-history 11 |
+| final 2 | 212 | 165.2 + 162.7 = 327.9 | 120 | c-faults 75, controls 66, c-tests 23, cp1610-vectors 19, c-purity 13 |
+| final 3 | 168 | 166.0 + 170.3 = 336.3 | 56 | controls 85, c-faults 61, c-tests 21, c-purity 15, hygiene 10 |
+| Task 3 commit | 90 | 128.5 + 113.9 = 242.4 | lower | controls 29, c-faults 25, c-tests 15, c-purity 8, hygiene-history 6 |
+| Task 4 commit | 107 | 125.2 + 126.5 = 251.7 | lower | controls 37, c-faults 24, c-tests 21, hygiene 10, c-purity 10 |
+
+The three final runs ran while other agents loaded the laptop to a 1-minute load of 55 to 120 (the machine has 18 cores), so every step is stretched by the same factor and the three figures are not a speed measurement; the two earlier runs, taken when the laptop was quieter, are the honest local figures: 90 to 107 s and 242 to 252 cpu-s, against 73 to 76 s and 228 cpu-s at checkpoint A (the growth is the 12 faults, one symbol-layer control and 226 ids added since). `c-faults` is 24 to 25 s for 214 faults on the quieter runs (checkpoint A: 19 to 20 s for 202): about 0.4 s per added fault (5 s for 12), above the 0.1 s per fault of the earlier small units because three of the sites sit in `machine_bound.c`, the largest core unit, and each fault reruns its whole suite.
+
+### Suite plain-run times
+
+- Quiet laptop (this session, Task 1 to Task 3 commits): `video` (54 ids) dev 0.26 s (the plan's target is at most 0.8 s with its 6 faults: met), release 0.02 s; `stic` (97 ids) dev 0.45 s release 0.18 s (06-08 figure, target 2.0 s).
+- Loaded laptop at the time of the final runs (best of three, load 55): `video` dev 0.64 s release 0.15 s; `stic` dev 0.95 s release 0.31 s; `machine` dev 1.76 s release 0.90 s; `run` dev 1.57 s release 0.76 s. These are about twice the quiet figures (the quiet `machine` and `run` figures of checkpoint A are 0.96 s and 0.92 s).
+- One 71-slot slice of video SHA-256 (the default slice of 4,194,304 ticks completes 70 frame events; 71 slots of 15,296 bytes plus the 32-byte chain input each, 1,086,016 bytes hashed through the incremental interface): 9.1 ms at `-O2` and 38.3 ms at `-O0` on the loaded laptop. The video chain costs nothing in the gate itself, because no gate scenario reaches its first frame end; it matters only to a host that runs long slices.
+
+### Projection (formula of the Phase 6 start section)
+
+`projected_last5_median_cpu = 231 + 2.0 x (0.5 x faults_added + suite_term + 0.07 x pure_controls_added + 2.2 x symbol_controls_added + 0.0034 x ids_added_both_presets)`
+
+- `0.5 x faults_added = 0.5 x 21 = 10.50`
+- `suite_term` = machine 3 x 0.96 + run 1 x 0.92 + stic 11 x 0.45 + video 6 x 0.26 = 2.88 + 0.92 + 4.95 + 1.56 = 10.31 (each fault reruns the whole suite executable once, dev preset, quiet figures)
+- `0.07 x pure_controls_added = 0.07 x 3 = 0.21`; `2.2 x symbol_controls_added = 2.2 x 1 = 2.20`
+- `0.0034 x ids_added_both_presets = 0.0034 x 432 = 1.47`
+- Sum 24.69; `231 + 2.0 x 24.69 = 280.4`, on the raw cpu trigger of 280 and 19.6 under the re-baselined hosted cpu budget of 300.
+
+The speed-normalised arbiter, read from `.planning/ci-runs.tsv` (successful rows, last five: runs 43305635550, 43311565235, 43321727175, 43325371818, 43331294071): `r = cpu_s / build_s` is 7.49, 7.97, 7.98, 7.88 and 7.90, median **7.90** against the budget 7.8 and the revisit trigger 8.3 (raw gate seconds 92, 93, 121, 121, 124 and cpu 277, 287, 375, 378, 387: the raw medians are over the raw triggers, as the 06-07 review recorded, and the arbiter says that is runner speed, not growth beyond the budget). Expected movement from this plan alone: it adds 6 faults, 1 symbol-layer control and 122 ids, about 2.0 x (0.5 x 6 + 6 x 0.26 + 2.2 + 0.0034 x 122) = 14.4 hosted cpu-s on the 387 of the last row (3.7 percent) and about one build second on 49 (2 percent), so the next hosted `r` is expected near 8.0 (range 7.9 to 8.2), under 8.3 by a margin of 0.1 to 0.4.
+
+Reading: no lever is required before plan 06-10 by the rule in force (`r` under 8.3; the raw projection of 280.4 is the raw trigger, which the rule reads together with `r`). The margin is thin: plan 06-10 adds the card renderer and its fault set (about the cost of this plan's video suite), so the orchestrator should read `r` from the first hosted row of this plan and, if the median reaches 8.3, run the lever queue of the 06-07 review before 06-10 (batching the `cp1610-vectors` re-parse, about 5 cpu-s, is the cheap one; `-O0` fault objects remain an owner decision). The container gate figure of this plan is in its SUMMARY.
+
+checkpointB: no-lever
+
+## 2026-11-12 Phase 6 checkpoint C (plan 06-12)
+
+Measured on the final tree of plan 06-12 (laptop, 18 cores, Apple clang 21; local figures, not hosted ones). Nothing here calls `gh` or touches `.planning/ci-runs.tsv`; plan 06-L1 is not created by the executor.
+
+### Cumulative adds since the plan 06-02 counts (`faults=193 controls=328 tests-expected=3778`)
+
+| Item | At plan 06-02 | Now (`gate:` line) | Added |
+|------|---------------|--------------------|-------|
+| faults | 193 | 221 | 28 (machine +3, run +1, runner +2, stic +11, video +11) |
+| controls | 328 | 335 | 7 (six pure step controls, three of them from this plan, and `core-symbols-palette-defined`, which reaches the C symbol layer) |
+| test ids (`tests-expected`, both presets) | 3778 | 4382 | 604 (this plan: 4,304 at the start, +78) |
+| `steps` / `api-calls` | 36/36 / 15 | 36/36 / 15 | 0 / 0 |
+
+(The plan text quotes the controls range 316 to 335 and the faults range 193 to 221; the gate line at plan 06-02 reads 328 controls, the base used here, as at the earlier checkpoints.)
+
+### Local gate, four `sh`/`dash` runs on the final tree (same summary line apart from the tracked-file counts)
+
+| Run | `gate-time total` | `gate-cpu` user + sys | load at the end (1 min) | five largest `step-time` lines (s) |
+|-----|-------------------|-----------------------|-------------------------|------------------------------------|
+| sh 1 | 258 | 177.4 + 195.5 = 372.8 | 36 | controls 189, c-tests 75, c-faults 73, c-purity 26, hygiene 14 |
+| dash | 170 | 175.2 + 177.8 = 353.0 | 33 | controls 100, c-faults 49, c-tests 34, c-purity 15, hygiene 11 |
+| sh 2 | 162 | 176.5 + 177.0 = 353.5 | 25 | controls 82, c-faults 38, c-tests 32, c-purity 20, hygiene 11 |
+| sh 3 | 142 | 171.3 + 170.5 = 341.8 | 21 | controls 90, c-faults 39, c-tests 27, c-purity 16, hygiene 9 |
+
+The laptop was loaded by other agents for the whole session (1-minute load 21 to 36 on an 18-core machine), so every step is stretched; the quieter runs (sh 3: 142 s, 342 cpu-s, c-faults 39 s for 221 faults) are the honest local figures, against 90 to 107 s and 242 to 252 cpu-s at checkpoint B (when the laptop was quieter) and 73 to 76 s at checkpoint A. The growth since checkpoint B is 7 faults, 3 controls and 154 ids; the `controls` step (335 controls, each on a fresh tree copy) is the largest step in every run.
+
+`runner-process` ctest time (the process-level suite, which the five new operator cases and the changed header check join; the slice-1 and slice-7 replays stay limited to one scenario in plan 06-13): dev 15.0 s, release 8.0 s, at a load of 13 to 27 (first run in this session 23.7 s at a higher load). The new operator cases add two runs of the 130,000-tick looping scenario per preset and a few of the 3,000-tick one.
+
+### Suite plain-run times (dev preset, best of three, laptop loaded)
+
+`runner` 1.37 s (240 ids; it now holds the video chain re-hash against real core slots and the 130,000-tick scenarios), `stic` 0.70 s, `video` 0.40 s, `machine` 1.07 s, `run` 1.28 s. The two new runner faults rerun the `runner` suite once each (2 x 1.37 s).
+
+### Projection (formula of the Phase 6 start section)
+
+`projected_last5_median_cpu = 231 + 2.0 x (0.5 x faults_added + suite_term + 0.07 x pure_controls_added + 2.2 x symbol_controls_added + 0.0034 x ids_added_both_presets)`
+
+- `0.5 x faults_added = 0.5 x 28 = 14.00`
+- `suite_term` = machine 3 x 1.07 + run 1 x 1.28 + runner 2 x 1.37 + stic 11 x 0.70 + video 11 x 0.40 = 3.21 + 1.28 + 2.74 + 7.70 + 4.40 = 19.33 (each fault reruns the whole suite executable once, dev preset, loaded-laptop figures, so this term is on the high side)
+- `0.07 x pure_controls_added = 0.07 x 6 = 0.42`; `2.2 x symbol_controls_added = 2.2 x 1 = 2.20`
+- `0.0034 x ids_added_both_presets = 0.0034 x 604 = 2.05`
+- Sum 38.00; `231 + 2.0 x 38.00 = 307.0`, above the raw cpu trigger of 280 and 7 over the re-baselined hosted cpu budget of 300 (checkpoint B projected 280.4 for 21 faults and 432 ids; the 7 faults, 3 controls and 154 ids since, and the heavier suite times of a loaded laptop, account for the step).
+
+The speed-normalised arbiter, read from `.planning/ci-runs.tsv` (successful rows, last five: runs 43325371818, 43331294071, 43341351141, 43346071659, 43352432394): `r = cpu_s / build_s` is 7.88, 7.90, 5.95, 7.64 and 7.68, median **7.68** against the budget median 7.8 and the revisit trigger 8.3 (cpu 378, 387, 262, 321, 315 over build 48, 49, 44, 42, 41): not tripped. The last three hosted rows, which already contain plans 06-09 to 06-11, are at or under the budget, so the raw projection of 307 over-states the hosted cost (it uses the Phase 5 overrun factor 2.0 and loaded-laptop suite times); the arbiter is the normalised metric, as the 06-07 review recorded. This plan's own hosted cost is two faults on the runner suite (about 2 x 0.5 + 2 x 1.37 hosted-scale seconds), three controls (pure, 0.07 each) and 78 ids, about 2.0 x (1.0 + 2.74 + 0.21 + 0.27) = 8.4 cpu-s on the 315 of the last row (under 3 percent), so `r` is expected to stay near 7.7 to 7.9. The orchestrator should still read `r` from the first hosted row of this plan: at 8.3 or above the lever queue of the 06-07 review (batching the `cp1610-vectors` re-parse, about 5 cpu-s; `-O0` fault objects remain an owner decision) runs before plan 06-13 adds its two goldens and the diagnostic scenarios. The container gate figure of this plan is in its SUMMARY.
+
+checkpointC: no-lever
+
+### Plan 06-12 hosted row review (orchestrator)
+
+Run 43359195974 (head of plan 06-12): gate 131 s, cpu 433, build 48 s, test 83 s. Single-row `r = 433 / 48 = 9.02`, above the 8.3 trigger; last-five `r` is 7.90, 5.95, 7.64, 7.68, 9.02, median **7.68** (not tripped). The plan was projected to add under 3 percent, but test_s rose 60 to 83 s (38 percent) with the same build time, which the plan's own change (two faults, three pure controls, 78 ids) does not explain, so a noisy runner is the working hypothesis. Decision: no lever pass on one sample (the trigger is defined on the last-five median); the next hosted row, from plan 06-13, is the confirmation. If that row is also at or above 8.3, run the 06-07 lever queue (batch the `cp1610-vectors` re-parse, then the owner-decision `-O0` fault objects) before plan 06-14. Recorded so the outlier is not silently absorbed.
+
+### Plan 06-13 hosted row review (orchestrator)
+
+Run 43365038335 (head of plan 06-13, which adds the fourth image, three scenarios, seven mutant cases and the consumer third replay): gate 87 s, cpu 271, build 36 s, test about 51 s, `r = 271 / 36 = 7.53`. This confirms the 06-12 row (`r` 9.02) was runner noise: the last-five `r` is 7.64, 7.68, 9.02, 7.53 and the row before, median about 7.64, under the 8.3 trigger. No lever pass is needed; the lever queue stays queued. Raw gate 87 s and cpu 271 are under the raw budgets (90 and 300).
+
+## 2026-11-12 - Phase 6 close-out (plan 06-14): D-45 evaluation, checkpoint D and the normalised metric
+
+Local figures are from the laptop (18 cores, Apple clang 21, other work running, 1-minute load 40 to 70 during runs 1 and 2 and lower during run 3); they are not hosted figures. Nothing here calls `gh` or touches `.planning/ci-runs.tsv`: the hosted rows are those the orchestrator recorded. Plan 06-L1 was never created and this plan does not create it.
+
+### Counts
+
+- Phase 5 end (the start of Phase 6, plan 06-02 base for the checkpoints in brackets): `steps=35/35 controls=316/316 [328 at 06-02] faults=193/193 tests-expected=3778`. Phase 6 end: `steps=36/36 controls=339/339 faults=221/221 tests-expected=4422 tests-executed=4420 tests-skipped=2 tests-missing=0`, `claims=22 provisional=21`, `discrepancies=105 d10-items=42`, `listings=4 pkg-selftest=15/15 consumer-lines=76 video-hash-ties=2`, important-gate registry `gates=71 lines=238` (Phase 5 end: `gates=48 lines=175`).
+- What grew since the Phase 5 end: one step (`video`), 23 controls (316 to 339; plan 06-14 added 3), 28 faults (193 to 221: machine 3, run 1, runner 2, stic 11, video 11), two new suites (`stic` and `video`) plus the grown `run`, `runner`, `runner-process`, `machine` and `memmap` suites (644 test ids over both presets), the generator inputs for the `stic.*` and `video.*` profile fields, the fourth image and three scenarios with seven mutant cases (06-13), and the third installed-consumer replay (`consumer-lines` 43 to 76, `pkg-selftest` 13 to 15).
+
+### Local measurement (`sh tools/gate.sh`, three runs; `dash tools/gate.sh` once)
+
+| Run | `gate-time total=` | `gate-cpu` user + sys | Five largest `step-time` (seconds) |
+|-----|--------------------|-----------------------|-------------------------------------|
+| sh 1 (data-only tree of task 1) | 244 | 181.5 + 196.7 = 378.2 | controls 128, c-faults 93, c-tests 35, c-purity 17, c-build 17 |
+| sh 2 (task 2 tree, registry and controls) | 178 | 178.5 + 188.1 = 366.6 | controls 93, c-faults 42, c-tests 39, c-purity 16, hygiene-history 13 |
+| dash (same tree as sh 2) | 145 | 171.8 + 162.4 = 334.2 | controls 72, c-faults 41, c-tests 31, c-purity 12, hygiene 9 |
+| sh 3 (task 3 tree, Decision Register and this section) | 118 | 170.4 + 157.0 = 327.4 | controls 50, c-faults 31, c-tests 26, c-purity 11, hygiene 9 |
+
+The laptop was heavily loaded for runs 1 and 2 (1-minute load 40 to 70 on 18 cores), so those steps are stretched (run 1 had a c-faults step of 93 s that the same code takes 31 to 42 s in the others); the quieter runs, 118 to 178 s and 327 to 367 cpu-s, are the honest local figures and match checkpoint C (142 to 258 s, 342 to 373 cpu-s), run 3 being the lightest-loaded of the phase's close-out. The `controls` step (339 controls, each on a fresh tree copy) is the largest step in every run; plan 06-14 added three pure controls (about 0.07 cpu-s each) and a registry that the `important-gates` step reads in well under a second, so its own local cost is not measurable against the load. `c-faults` is 41 to 42 s for 221 faults when the machine is not stalled (checkpoint C: 38 to 39 s at 221).
+
+### Hosted rows and the rule
+
+- `.planning/ci-runs.tsv` holds 51 hosted rows, 14 of them since the Phase 5 close (run 43246638522, head 68e7d06), all successful. Since then: `gate_s` 75 to 131 (median of the 14: 98), `cpu_s` 210 to 433 (median 301), `r = cpu_s / build_s` 5.95 to 9.02.
+- Last five rows (runs at plans 06-12 and 06-13 and the three before): 43341351141, 43346071659, 43352432394, 43359195974, 43365038335. `gate_s` 95, 102, 101, 131, 87, median **101**. `cpu_s` 262, 321, 315, 433, 271, median **315**. `build_s` 44, 42, 41, 48, 36. `r` 5.95, 7.64, 7.68, 9.02, 7.53, median **7.64**.
+- The arbiter is the set the orchestrator re-baselined in the entry `Phase 6 budget re-baseline after lever pass 06-02` (and copied into the Phase 6 start section as the rule for Phase 6): gate median budget 90 s, trigger a last-5 median above 110 s or any run above 130 s; cpu median budget 300, trigger a last-5 median above 330; `r` budget 7.8, revisit above 8.3. The plan text quotes the older figures (gate budget 75 s with trigger 90 s or any run above 120 s, cpu budget 260 with trigger 280); this evaluation uses the re-baselined ones and reads the older ones beside them.
+- Result against the re-baselined rule: last-5 `gate_s` median 101 is under 110; last-5 `cpu_s` median 315 is above the budget (300) and under the trigger (330); `r` median 7.64 is inside the budget (7.8) and under the revisit line (8.3). One run exceeded the any-run bound: 43359195974 at 131 s, one second above 130. It is judged runner noise: a single sample, the next row (43365038335) is 87 s on a tree that is larger (plan 06-13 added scenarios, mutants and a replay); the row has the slowest `build_s` of the five (48 against 41 and 36 on its neighbours) and its `test_s` rose from 60 to 83 against a change of two faults, three pure controls and 78 ids that cannot account for it; its single-row `r` of 9.02 is above 8.3 but both neighbours are at 7.68 and 7.53, and the trigger is defined on the median. The orchestrator reviews recorded in this file after the 06-12 and 06-13 rows say the same. Read against the older figures the raw triggers would fire (median 101 above 90, a 131 s run above 120, cpu median 315 above 280); the rule says a raw trigger that fires while `r` is inside the budget is a runner-speed event, and `r` is inside it.
+- Four rows of the Phase 6 run are above the `r` budget of 7.8 (7.97, 7.98, 7.88 and 7.90, at plans 06-07 to 06-09) and none above the revisit line except the one noisy row; the later rows fell back to 7.5 to 7.7. Over the whole phase `r` drifted from 6.4 to 7.4 at the Phase 5 close to about 7.6, a small real growth (faults, ids, the second consumer replay) on top of runner speed, still under 8.3.
+
+### Projection and checkpoints
+
+- Cumulative adds since the plan 06-02 counts (`faults=193 controls=328 tests-expected=3778`): faults +28, controls +11 (10 pure, 1 reaching the C symbol layer), ids +644. `projected_last5_median_cpu = 231 + 2.0 x (0.5 x 28 + suite_term + 0.07 x 10 + 2.2 x 1 + 0.0034 x 644)` with `suite_term` 19.33 (carried from checkpoint C: no suite gained a fault in plans 06-13 and 06-14) = `231 + 2.0 x (14.00 + 19.33 + 0.70 + 2.20 + 2.19)` = `231 + 2.0 x 38.42` = **307.8**, above the cpu budget of 300 and under the trigger of 330 (and over the old 280, the line that the re-baseline superseded). The raw projection uses the Phase 5 overrun factor and loaded-laptop suite times, so it is the pessimistic figure; the hosted median read from rows is 315 and the arbiter `r` is 7.64.
+- Checkpoint A (plan 06-06): `checkpointA: no-lever`. Checkpoint B (plan 06-09): `checkpointB: no-lever`. Checkpoint C (plan 06-12): `checkpointC: no-lever`. Checkpoint D (this plan): no lever, on the evaluation above.
+- Plan 06-L1 was not created (the orchestrator's stop rule, `r` of the last five above 8.3, never held). The only lever of the phase was plan 06-02, `-g0` on the fault targets only (about 18 hosted cpu-s saved on the cold `ivs_faults` build, no evidence change). Plan 06-14 creates no plan and calls no tool that reads the hosted API.
+- Pre-committed lever order if the rule fires after this phase (unchanged): (1) batch the `cp1610-vectors` JSON re-parse (about 2.5 to 5 hosted cpu-s, no evidence change), (2) fault objects at `-O0` (owner decision, because it changes the evidence build, about 19 hosted cpu-s), (3) one runtime-selected fault-enabled object per owner translation unit, (4) a two-job split only as the last resort (it redefines PKG-02, owner decision under D12). Not levers: dropping a control or a fault, merging checks, weakening an oracle, ccache while the gate is within budget (D12 bans caches).
+- Open for the next phase (not a lever): Phase 7 adds a fourth scenario and most likely a project interrupt routine and a second visible fixture; the first hosted rows after this push are the arbiter, and the margin to the `r` trigger (7.64 against 8.3) is about 8 percent.
+
+phase6-close: no-lever
+
+### Phase 6 review-fix head hosted row (orchestrator)
+
+Run 43373151931 (head with the review fixes: 5 controls, 1 fault, 10 ids more): gate 107 s, cpu 335, build 41 s, test 66 s, `r = 8.17`. Last five hosted rows (43352432394, 43359195974, 43365038335, 43369159094, 43373151931): cpu median 335 (raw trigger 330 is crossed by 5 cpu-s), gate median 107 (trigger 110, not crossed), `r` 7.68, 9.02, 7.53, 8.02, 8.17, median **8.02** (budget 7.8, trigger 8.3: not crossed). Reading: the raw cpu trigger is crossed while the speed-normalised arbiter is not, and the three rows since 06-12 sit at 7.5 to 9.0, so the trend is flat to slightly up, not a step. Decision (delegated authority): no lever pass inside Phase 6; Phase 7 plan 1 starts with a trigger check and, if the last-five `r` median is 8.0 or above at that point, the first cheap lever (batching the `cp1610-vectors` re-parse, about 5 cpu-s, plus fault objects at `-g0` already applied) runs as its first task before new tests are added. `-O0` fault objects and the two-job split remain owner decisions.

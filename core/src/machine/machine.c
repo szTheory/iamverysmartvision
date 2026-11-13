@@ -24,6 +24,7 @@
 
 #include "ivs/ivs.h"
 #include "machine/machine.h"
+#include "stic/stic_params.h"
 
 _Static_assert(IVS_PROFILE_ID_MAX_BYTES == IVS_MEMSYS_PROFILE_ID_CAP, "profile id bound");
 _Static_assert(IVS_SLOT_COUNT == 3u, "three image slots");
@@ -37,20 +38,31 @@ _Static_assert(offsetof(ivs_info, psg_log_record_bytes) == 264u, "psg_log_record
 _Static_assert(offsetof(ivs_info, psg_log_records_per_frame) == 268u, "psg_log_records_per_frame at 268");
 _Static_assert(offsetof(ivs_info, crystal_hz_num) == 272u, "crystal_hz_num at 272");
 _Static_assert(offsetof(ivs_info, crystal_hz_den) == 280u, "crystal_hz_den at 280");
-_Static_assert(sizeof(ivs_info) == 288u, "ivs_info is 288 bytes");
+/* Info v4 (plan 06-03, A-10), derived on paper: v3 ends at 288 (crystal_hz_den, a u64, at 280); v4
+ * appends frame_phase_ticks, a u64, at 288 (8-aligned), then six u32 members: video_width at 296,
+ * video_height 300, video_slot_bytes 304, video_header_bytes 308, video_slack_frames 312 and
+ * video_row_lines 316, so sizeof is 320, a multiple of 8. */
+_Static_assert(offsetof(ivs_info, frame_phase_ticks) == 288u, "info v4 tail starts at 288");
+_Static_assert(offsetof(ivs_info, video_width) == 296u, "video_width at 296");
+_Static_assert(offsetof(ivs_info, video_height) == 300u, "video_height at 300");
+_Static_assert(offsetof(ivs_info, video_slot_bytes) == 304u, "video_slot_bytes at 304");
+_Static_assert(offsetof(ivs_info, video_header_bytes) == 308u, "video_header_bytes at 308");
+_Static_assert(offsetof(ivs_info, video_slack_frames) == 312u, "video_slack_frames at 312");
+_Static_assert(offsetof(ivs_info, video_row_lines) == 316u, "video_row_lines at 316");
+_Static_assert(sizeof(ivs_info) == 320u, "ivs_info is 320 bytes (v4)");
 
 /* 1 when registry index index is usable by the machine (review WR-04). The registry, the PSG parameter
- * table and the control-line table are three generated includes, each in its own translation unit, that
- * rely on one sorted list of profile files; nothing at compile time ties their counts. An index is
- * therefore usable only below the smallest of the three counts: the lookup refuses a profile outside
- * them (UNKNOWN_PROFILE) and the handle check refuses a stored index outside them, so no table is read
- * past its end and the PSG code never meets a missing row, which would silence the device. Test
- * machine.create.tables-cover-registry fails the gate when the three counts differ (named faults
- * PSG_TABLE_SHORT and CTRL_TABLE_SHORT). */
+ * table, the control-line table and the STIC parameter table (plan 06-04) are four generated includes, each
+ * in its own translation unit, that rely on one sorted list of profile files; nothing at compile time ties
+ * their counts. An index is therefore usable only below the smallest of the four counts: the lookup refuses
+ * a profile outside them (UNKNOWN_PROFILE) and the handle check refuses a stored index outside them, so no
+ * table is read past its end and neither the PSG nor the STIC code ever meets a missing row, which would
+ * silence the device. Test machine.create.tables-cover-registry fails the gate when the counts differ (named
+ * faults PSG_TABLE_SHORT, CTRL_TABLE_SHORT and STIC_TABLE_SHORT). */
 static uint32_t ivs_machine_profile_covered(uint32_t index)
 {
   return (uint32_t)(index < ivs_profile_count() && index < ivs_psg_params_count() &&
-                    index < ivs_input_profile_count());
+                    index < ivs_input_profile_count() && index < ivs_stic_params_count());
 }
 
 /* 1 when m is a live instance: the magic, and a stored profile index that is covered by every
@@ -248,7 +260,9 @@ ivs_status ivs_machine_create(const ivs_create_options *opts, void *storage, siz
   im->phase = IVS_PHASE_OFF;
   im->time_ticks = 0u;
   (void)ivs_memsys_init(&im->mem, index);
+  ivs_stic_state_reset(&im->stic, ivs_stic_params_get(index)); /* plan 06-05: a row exists, the profile is covered */
   ivs_input_init(&im->obs.input); /* the input log starts at h0 (plan 04-11, D-15) */
+  ivs_video_chain_init(&im->obs.video); /* the video chain starts at h0 (plan 06-09, D-16) */
   for (i = 0u; i < IVS_SLOT_COUNT; i++) {
     im->slot[i].kind = i + 1u;
   }
@@ -332,6 +346,22 @@ ivs_status ivs_machine_info(const ivs_machine *m, ivs_info *out)
    * same figure the capacity of the public run call uses, so a caller sizes its log buffer from info). */
   r.psg_log_record_bytes = IVS_PSG_LOG_RECORD_BYTES;
   r.psg_log_records_per_frame = env.psg_log_bytes_per_frame / IVS_PSG_LOG_RECORD_BYTES;
+  /* v4 (plan 06-09, D-12, D-14, D-15): the video tail, republished from the generated STIC parameters through the same derivation the
+   * frame writer uses (ivs_stic_geom_derive): the frame phase, the published width and height, the slot and header bytes, the slack
+   * frames of the capacity rule (the env seam) and the TV lines of one display row. A profile with no STIC row publishes 0. */
+  {
+    const ivs_stic_params *sp = ivs_machine_profile_covered(im->profile) != 0u ? ivs_stic_params_get(im->profile) : NULL;
+    if (sp != NULL && env.video_format != IVS_OUTPUT_FORMAT_NONE) {
+      ivs_stic_geom g = ivs_stic_geom_derive(sp);
+      r.frame_phase_ticks = sp->frame_phase_ticks;
+      r.video_width = g.width;
+      r.video_height = g.height;
+      r.video_slot_bytes = g.slot_bytes;
+      r.video_header_bytes = g.header_bytes;
+      r.video_row_lines = sp->video_row_lines;
+    }
+  }
+  r.video_slack_frames = env.video_slack_frames;
   memcpy(out, &r, n);
   return IVS_OK;
 }
@@ -342,9 +372,26 @@ void ivs_machine_profile_env(const ivs_profile_desc *p, ivs_run_env *env)
   uint64_t period = p->psg_sample_period_ticks;
   memset(env, 0, sizeof *env);
   frame = (uint64_t)p->ticks_per_cpu_cycle * (uint64_t)p->cpu_cycles_per_scanline * (uint64_t)p->scanlines_per_frame;
-  /* No video yet (plan 05-09 and later); the write log layout is set at the end (plan 05-08) (D-06: no frame is fabricated). */
+  /* Plan 06-09 (D-13, D-15, A-03): the video layout is real for a profile with a STIC parameter row. One slot per frame of
+   * header + width x height bytes, derived at run time from the primary geometry inputs (ivs_stic_geom_derive), and the slack frames
+   * of the capacity rule (a call can complete floor(D / F) + 2 frame events, so the requirement is slot x (floor(D / F) + 1 + slack)
+   * with slack 1). A registry profile without a parameter row publishes no video (nothing is fabricated, D-06). */
   env->video_format = IVS_OUTPUT_FORMAT_NONE;
   env->video_bytes_per_frame = 0u;
+  {
+    uint32_t i;
+    for (i = 0u; i < ivs_profile_count(); i++) {
+      if (ivs_profile_get(i) == p) {
+        const ivs_stic_params *sp = ivs_machine_profile_covered(i) != 0u ? ivs_stic_params_get(i) : NULL;
+        if (sp != NULL) {
+          env->video_format = IVS_OUTPUT_FORMAT_INDEX8_FRAMES_V1;
+          env->video_bytes_per_frame = ivs_stic_geom_derive(sp).slot_bytes;
+          env->video_slack_frames = sp->video_slack_frames;
+        }
+        break;
+      }
+    }
+  }
   env->audio_format = IVS_OUTPUT_FORMAT_NONE;
   env->audio_bytes_per_frame = 0u;
   env->nominal_frame_ticks = frame;

@@ -1,19 +1,20 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 6
-current_phase_name: STIC Video First Pass
+current_phase: 7
+current_phase_name: First Visible Original Scenario
+current_plan: Not started
 status: planning
-stopped_at: Phase 5 complete, ready to plan Phase 6
-last_updated: "2026-11-12T15:31:06.934Z"
-last_activity: 2026-11-12
-last_activity_desc: Phase 5 complete, transitioned to Phase 6
-state_head: df4dc207204678dc0bf2faa68cc1e7c2ede64aff
+stopped_at: Phase 6 complete, ready to plan Phase 7
+last_updated: "2026-11-13T05:39:58.952Z"
+last_activity: 2026-11-13
+last_activity_desc: Phase 6 complete, transitioned to Phase 7
+state_head: 8001e5a6719e9cc3f14b3d7dcbe2b13f3c45b177
 progress:
   total_phases: 8
-  completed_phases: 5
-  total_plans: 83
-  completed_plans: 83
-  percent: 63
+  completed_phases: 6
+  total_plans: 97
+  completed_plans: 97
+  percent: 75
 ---
 
 # Project State
@@ -27,17 +28,18 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 
 ## Current Position
 
-Phase: 6 — STIC Video First Pass
-Plan: Not started
+Phase: 7 — First Visible Original Scenario
+Current Plan: Not started
+Total Plans in Phase: 14
 Status: Ready to plan
-Last activity: 2026-11-12 — Phase 5 complete, transitioned to Phase 6
+Last activity: 2026-11-13 — Phase 6 complete, transitioned to Phase 7
 
-Progress: [██████░░░░] 63%
+Progress: [████████░░] 75%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 85
+- Total plans completed: 99
 - Average duration: -
 - Total execution time: -
 
@@ -50,6 +52,7 @@ Progress: [██████░░░░] 63%
 | 3 | 14 | - | - |
 | 4 | 27 | - | - |
 | 5 | 12 | - | - |
+| 6 | 14 | - | - |
 
 *Updated after each plan completion*
 **Per-Plan Metrics:**
@@ -139,6 +142,20 @@ Progress: [██████░░░░] 63%
 | Phase 5 P10 | 4h | 5 tasks | 56 files |
 | Phase 05 P11 | 40min | 5 tasks | 44 files |
 | Phase 05 P12 | 55min | 4 tasks | 30 files |
+| Phase 6 P01 | about 5 hours | 5 tasks | 96 files |
+| Phase 6 P02 | 2h | 3 tasks | 2 files |
+| Phase 06 P03 | 3h | 3 tasks | 22 files |
+| Phase 06 P04 | about 4 hours | 4 tasks | 24 files |
+| Phase 6 P05 | 3h | 4 tasks | 24 files |
+| Phase 06 P06 | 9h | 5 tasks | 60 files |
+| Phase 06 P07 | 2h | 4 tasks | 14 files |
+| Phase 06 P08 | 8h | 5 tasks | 30 files |
+| Phase 06 P09 | 6h | 5 tasks | 50 files |
+| Phase 06 P10 | 2h | 4 tasks | 20 files |
+| Phase 06 P11 | 180min | 3 tasks | 28 files |
+| Phase 6 P12 | about 6 hours | 4 tasks | 40 files |
+| Phase 6 P13 | about 3 hours | 5 tasks | 38 files |
+| Phase 6 P14 | about 3 hours | 4 tasks | 22 files |
 
 ## Accumulated Context
 
@@ -325,6 +342,20 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 05]: 05-11: fixture pointers use R4 and R5 (only they auto-increment); derivation corrected in dated section (g), original text kept
 - [Phase 05]: 05-11: .refpcm golden written from a runner report by a documented recipe; golden step compares it with dev and release refpcm reports
 - [Phase 05]: 05-12: C73 text aligned to the profile tag unknown-default-chosen; the D-22 listening check recorded as deferred (no listenable tone), not handed off; AUD-01 confirmed complete with the C11 caveat
+- [Phase 6]: 06-01: page-reading verdict: BACKTAB address and 14-bit use are tier 1 (partial), registers, windows and bus hold are tier 4 or defaults; allocation table fixes C81..C105 and CL-0016..CL-0022
+- [Phase 6]: 06-01: the diagnostic reads one BACKTAB word set in both modes and is derived against the frame-0 timeline before its listing (133 words, 4 branches, margins in docs/video/diag-stic-1-derivation.md)
+- [Phase 6]: 06-02: -g0 on fault-only targets applied (paired cold fault build minus 35.6 container cpu-s, about 18 hosted, no evidence change); r = cpu_s / build_s recorded beside raw triggers (budget 7.8, revisit above 8.3)
+- [Phase 06]: 06-03: v3 report and v4 info tails are zeroed locals copied min(struct_size, sizeof); IVS_RUN_F_STOP_ON_FRAME stays refused until 06-09
+- [Phase 06]: 06-04: STIC window, interrupt and hold figures tagged tier4-community per the timing-notes evidence table; first_start, fetch_offset and policies stay unknown-default-chosen
+- [Phase 6]: 06-05: STIC storage joins the instance (stic_reg[64] in MEM, 528-byte ivs_stic_state in INSTANCE, 12 row latches); composite version 3 with the v2 literals recorded first (21b1ad5); IVS_MACHINE_BYTES 114416; goldens moved only on digest.mem, digest.instance and digest.composite, digest.cpu and digest.images equal v2
+- [Phase 06]: 06-06: ADAR (the operand read of a direct-addressed instruction) is a read-like kind for the STIC hook; the plan text listed read, fetch, write and DW only
+- [Phase 06]: 06-07: ivs_machine_stic_state reports all 64 stored register words (gate independent); peek stays the bus view; effects only in the bus wrapper
+- [Phase 06]: 06-08: stand-in interrupt stack in 16-bit system RAM; release-latency fault drops one cycle (stepper refuses 0)
+- [Phase 06]: 06-09: the core renders one card row at a time (the platform stack probe of a 15 KB plane is a forbidden import); ivs_stic_render_plane is a caller-buffer entry point
+- [Phase 06]: 06-09: a flagged frame-stop call needs exactly one video slot; the pre-unit INTERNAL guard fires only when a frame could complete in the unit
+- [Phase 06]: Plan 06-10: renderer is row-granular and pure (graphics bytes only via ivs_memsys_stic_gfx_byte_internal); Color Stack interim pinned by video.frame.cs-not-decoded for 06-11
+- [Phase 06]: 06-11: Color Stack pointer carried through ivs_stic_render_cards_row (cs_pos); frame event stores the final pointer of a display-on frame in cs_ptr; Colored Squares implemented, cut line documented not applied
+- [Phase 6]: 06-12: golden keep list moved into the library (ivs_runner_golden_keep); ivsr 3 video row live-gated by the output.video.bytes count rule; operator video outputs mode 0600 with Phase 5 cleanup rules
 
 ### Pending Todos
 
@@ -357,6 +388,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-12T14:19:37.955Z
-Stopped at: Phase 5 complete, ready to plan Phase 6
+Last session: 2026-11-13T03:26:01.906Z
+Stopped at: Phase 6 complete, ready to plan Phase 7
 Resume file: None

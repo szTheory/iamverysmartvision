@@ -46,7 +46,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Memory Map, Content Loading and Refusal** - Profile-driven memory map, typed system-image and cartridge loading, isolated instances and a refusal matrix that never mutates prior state (completed 2026-11-11)
 - [x] **Phase 4: Headless Runner and Installed Consumer (Slice 0)** - An original diagnostic runs end to end through the runner and a relocated installed consumer, with deterministic digests and a CI gate that mirrors the local command (completed 2026-11-11)
 - [x] **Phase 5: Hand Controllers and PSG Sound** - Both controllers as multi-signal machine input at explicit time boundaries; PSG raw audio and a register-write log (completed 2026-11-12)
-- [ ] **Phase 6: STIC Video First Pass** - Access windows, VBLANK/BUSRQ timing, raw index framebuffer, FG/BG and Color Stack cards, and side-effect-free inspection
+- [x] **Phase 6: STIC Video First Pass** - Access windows, VBLANK/BUSRQ timing, raw index framebuffer, FG/BG and Color Stack cards, and side-effect-free inspection (completed 2026-11-12; all claims provisional)
 - [ ] **Phase 7: First Visible Original Scenario** - A rights-clear original program responds to controller input with video and sound through the installed consumer in CI
 - [ ] **Phase 8: STIC Completion, Save State and Performance Baselines** - Remaining STIC features, canonical snapshots, correctness-asserted benchmarks and the milestone-close record
 
@@ -64,7 +64,7 @@ exit, until the gate is resolved by its named authority.
 | D5 System-image policy and project boot stub | Owner | Delegated decision 2026-11-11 (PROJECT.md; Phase 3 D-24) | Phase 3 (refusal); before Phase 4 (boot) |
 | D6 Controller core-input representation (C14) | Owner + architecture | Delegated decision 2026-11-11 (PROJECT.md; Phase 4 D-25, D-12, D-41) | While Phase 4 shapes the API; before Phase 5 starts |
 | D7 Reference PCM location (C23) | Architecture | Delegated decision 2026-11-12 (PROJECT.md; Phase 5 D-21: outside the core, `tools/pcm`, runner `--audio-wav` only) | Phase 5 |
-| D8 Raw framebuffer geometry (C10) | Architecture + evidence | Open | During Phase 6 |
+| D8 Raw framebuffer geometry (C10) | Architecture + evidence | Delegated decision 2026-11-12 (PROJECT.md; Phase 6 D-12: 159 x 96, width from `video.last_card_column_px`, reversible by one profile field) | Phase 6 |
 | D9 License, visibility, naming/trademark, publication | Owner gate | Delegated decision 2026-11-09 (PROJECT.md) | Before any external publication; CI hosting (Phase 4) and the milestone release assessment (Phase 8) touch it |
 | D10 Physical hardware measurement | Owner gate | Open | Before any measured-tier claim (Phase 5 onward) |
 | D11 Owner-local real EXEC/GROM runs | Owner gate | Open | Before SCN-02 can be claimed (Phase 7) |
@@ -256,7 +256,7 @@ Plans:
 **Mode:** mvp
 **Depends on**: Phase 4 (does not need Phase 5; scheduled after it because PSG carries less uncertainty)
 **Requirements**: VID-01, VID-02, VID-03, VID-04, VID-06
-**Decision gates**: D8 (architecture + evidence, open, C10) decides raw framebuffer geometry (159 vs 160 visible columns, nominal grid). D3 must pin the STIC part (C11). D10 (owner gate): disputed timing (C1-C4) stays `unknown-default-chosen` unless the owner authorizes hardware measurement.
+**Decision gates**: D8 (architecture + evidence, C10) decided raw framebuffer geometry as 159 x 96 (delegated decision, reversible by one profile field). D3 pinned the STIC part (C11). D10 (owner gate): disputed timing (C1-C4) stays `unknown-default-chosen` unless the owner authorizes hardware measurement.
 **Research flags**: NEEDS RESEARCH, the strongest flag in this roadmap. The STIC primary sections (GI 1980 p.5-10, GI 1982 p.9-43) still need detailed extraction. Conflicts C1-C7, C10 and C21 apply, and row-granular versus frame-granular rendering (PIT-9) must be decided early.
 **Success Criteria** (what must be TRUE):
   1. STIC register accesses inside the profile's access windows take effect, and accesses outside them follow the profile's blocked-access policy. The display-enable handshake works. Every timing constant used has a tier tag, and disputed values are logged as `unknown-default-chosen`.
@@ -264,7 +264,23 @@ Plans:
   3. At a defined machine-time boundary, the core writes a raw palette-index framebuffer with profile geometry into a caller-owned buffer. Palette, scaling and presentation stay outside the core.
   4. Foreground/Background and Color Stack fixtures render index frames that match frames hand-derived from known BACKTAB/GRAM contents, with no real GROM image in CI. A named-fault control (for example, the wrong card mode) fails.
   5. Tests and debuggers can read STIC and device state through an inspection path with no read side effects. For example, inspecting $0021 does not switch Color Stack mode.
-**Plans**: TBD
+**Plans**: 14/14 plans complete in 14 sequential waves (all Phase 6 claims, CL-0016 to CL-0022, are provisional; owner hardware items are handed off, not performed; VID-05 is Phase 8)
+
+Plans:
+- [x] 06-01-PLAN.md — Sources and oracles first (oracle plan, NO C)
+- [x] 06-02-PLAN.md — Lever pass and the normalised metric (small, file-disjoint from every other plan)
+- [x] 06-03-PLAN.md — ABI growth, behaviour-neutral
+- [x] 06-04-PLAN.md — Profile growth and the STIC parameter table
+- [x] 06-05-PLAN.md — State and digest foundation
+- [x] 06-06-PLAN.md — STIC register file, access windows, display-enable handshake, inspection foundation and the five-region memory-map flip, with suite `stic` created, five faults and...
+- [x] 06-07-PLAN.md — Inspection call and peek purity
+- [x] 06-08-PLAN.md — Frame timeline lines
+- [x] 06-09-PLAN.md — Raw framebuffer, video buffers, domain 16 live, frame stop and the runner and consumer buffer request, in the plan that makes the video layout real
+- [x] 06-10-PLAN.md — Foreground/Background card rendering
+- [x] 06-11-PLAN.md — Color Stack rendering and inspection completion
+- [x] 06-12-PLAN.md — Runner and scenarios, `ivsr 3`
+- [x] 06-13-PLAN.md — Diagnostic and end to end
+- [x] 06-14-PLAN.md — Close-out: claims CL-0016..CL-0022 (provisional), final discrepancy states, important-gate registry for VID-01..VID-04 and VID-06, traceability, Decision Register notes (D8, D3, D4), CI close-out (`phase6-close: no-lever`), `06-VERIFICATION.md` with three tables
 
 ### Phase 7: First Visible Original Scenario
 **Goal**: An original, rights-clear program visibly responds to controller input with video and sound, run in CI through the installed consumer. This shows a playable result early, so the project does not drift into research only (conflict C26: scheduled right after the first STIC pass instead of after full STIC coverage).
@@ -332,6 +348,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 3. Memory Map, Content Loading and Refusal | 14/14 | Complete    | 2026-11-11 |
 | 4. Headless Runner and Installed Consumer (Slice 0) | 27/25 | Complete    | 2026-11-11 |
 | 5. Hand Controllers and PSG Sound | 12/12 | Complete    | 2026-11-12 |
-| 6. STIC Video First Pass | 0/TBD | Not started | - |
+| 6. STIC Video First Pass | 14/14 | Complete    | 2026-11-12 |
 | 7. First Visible Original Scenario | 0/TBD | Not started | - |
 | 8. STIC Completion, Save State and Performance Baselines | 0/TBD | Not started | - |

@@ -1,5 +1,5 @@
 # Owner-evidence inventory (plan 05-01, D-26, D-28). One line per item that needs physical hardware (D10) or an owner system image (D11).
-# Format: <id> | <discrepancy id> | <what the owner records> | <anchor in docs/input/d10-procedure.md>
+# Format: <id> | <discrepancy id> | <what the owner records> | <anchor in docs/input/d10-procedure.md, or docs/stic/d10-procedure.md for the D10-VID items and D11-EXEC-03>
 # Rules (checked by the discrepancies step, tools/check/kinds/discrepancy.cmake): every open or partial discrepancy whose resolver starts
 # `measurement:` is named by at least one line (token discrepancies-d10-missing); a line names an existing discrepancy, and a D10 line names one
 # that is open or partial (token discrepancies-d10-unknown; D11 lines are checked for existence only). Keep a line free of semicolons and brackets.
@@ -36,3 +36,13 @@ D10-PSG-10 | C74 | address-map probe around the register block and one block per
 D10-PSG-11 | C73 | effect of each R7 direction bit on whether a port follows the pins | #psg-direction
 D11-EXEC-01 | C32 | owner system image reading the controllers through the real startup program | #owner-exec
 D11-EXEC-02 | C20 | commercial game input and audio with the owner system image, placement of the second program half | #owner-exec
+D10-VID-01 | C10 | whether a 160th picture column is displayed, from a card edge with a known pattern | #stic-geometry
+D10-VID-02 | C101 | which 7 of the 8 pixels of a column-19 card are displayed, with markers in pixel 6 and pixel 7 | #stic-geometry
+D10-VID-03 | C99 | picture output while the display is not enabled | #stic-display-off
+D10-VID-04 | C89 | relation of the vertical blank interrupt to the end of the picture | #stic-frame-edge
+D10-VID-05 | C100 | effect of a BACKTAB write during active display, one row boundary at a time | #stic-backtab-write
+D10-VID-06 | C83 | register and graphics-memory window lengths and the window mechanism, by edge probes | #stic-window-probes
+D10-VID-07 | C92 | number, spacing and hold of the bus windows per frame, by cycle count | #stic-bus-windows
+D10-VID-08 | C82 | display-latch persistence and strobe semantics, with strobes at swept offsets | #stic-strobe
+D10-VID-09 | C85 | STIC register state and mode after power-on and after a console reset | #stic-power-on
+D11-EXEC-03 | C20 | a real system image drawing its title screen through the project STIC, image never committed | #owner-exec

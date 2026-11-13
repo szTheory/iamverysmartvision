@@ -1,0 +1,32 @@
+# Literal framing of the raw video chain for the first two display-off frames of profile intv-2609-ntsc-family-p1 (D-13, D-16; plan 06-01).
+#
+# This file is an independent recipe, not hardware evidence: the values are repeatability of a hand-framed byte string computed with POSIX
+# sh, printf, head, cat and cmake -E sha256sum, never with the core, the runner or a generated include. They are the expected values of
+# the first display-off scenario of plan 06-09 (a frame with the display never strobed, a plane filled with the border color index 0).
+#
+# Framing of one slot (big-endian, 32-byte header then the plane): be64(tick) || be64(index) || be32(width) || be32(height) ||
+# be32(flags) || be32(0) || plane, flags bit 0 = displayed. For the display-off frames flags is 0, width is 159, height is 96 and the
+# plane is 15,264 bytes of 00 (the border color index 0). Slot 0 is the frame that ends at tick 59,736 (hex 000000000000E958), slot 1 the
+# frame that ends at tick 119,472 (hex 000000000001D2B0). The chain is h0 = SHA-256 of the 16 ASCII bytes IVS-VIDEO-LOG-V1 and
+# h(n+1) = SHA-256(h(n) as 32 raw bytes || slot n).
+#
+# Recipe (POSIX sh and dash, no xxd; run in an empty scratch directory; the function sha prints the lowercase hex digest):
+#   be()       { _w=$1; _v=$2; _s=; while [ "$_w" -gt 0 ]; do _w=$((_w - 1)); _b=$(( (_v >> (8 * _w)) & 255 ));
+#                _s="$_s$(printf '\\%03o' "$_b")"; done; printf "$_s"; }
+#   hexbytes() { _h=$1; while [ -n "$_h" ]; do _p=${_h%"${_h#??}"}; _h=${_h#??}; printf "$(printf '\\%03o' "$((0x$_p))")"; done; }
+#   sha()      { cmake -E sha256sum "$1" | cut -d' ' -f1; }
+#   head -c 15264 /dev/zero > plane
+#   slot()     { { be 8 "$1"; be 8 "$2"; be 4 159; be 4 96; be 4 0; be 4 0; cat plane; } > "$3"; }
+#   printf 'IVS-VIDEO-LOG-V1' > tag; h0=$(sha tag); slot 59736 0 slot0; slot 119472 1 slot1
+#   { hexbytes "$h0"; cat slot0; } > in1; h1=$(sha in1); { hexbytes "$h1"; cat slot1; } > in2; h2=$(sha in2)
+# The recipe was run under sh and dash with the same result and the values were re-derived with a second tool outside the repository.
+#
+# Row grammar: <key> <value> then tag=derived-by-recipe, src=none and conf=none. Keys: h0, h1, h2 (64 lowercase hex digits), slot0-header
+# and slot1-header (the 32 header bytes as 64 upper-case hex digits), slot0-sha256 and slot1-sha256 (the digest of the whole slot of 15,296 bytes).
+h0 bd02693aa284146e9442ca285d6e746d17e5d5fbcf88de5f7a4d0f1819e384ca tag=derived-by-recipe src=none conf=none
+h1 ee89150bb843ef9ac5c148c22bb3d5ddb9f8249bbc1ca20158d4b3b305e5f4ec tag=derived-by-recipe src=none conf=none
+h2 4cb3788af5c5743ae6d5ba3fdd22c6317c50c4432817acf20f577c6d8974df4a tag=derived-by-recipe src=none conf=none
+slot0-header 000000000000E95800000000000000000000009F000000600000000000000000 tag=derived-by-recipe src=none conf=none
+slot1-header 000000000001D2B000000000000000010000009F000000600000000000000000 tag=derived-by-recipe src=none conf=none
+slot0-sha256 60ebceabc6cb293fce783768944acc9fd29b2f747fe9e4aa4302a1ab4dabf363 tag=derived-by-recipe src=none conf=none
+slot1-sha256 816381fc9cc71dcf3cf42c513528ac18b88e355c64027be513b9f80a3a9e214c tag=derived-by-recipe src=none conf=none

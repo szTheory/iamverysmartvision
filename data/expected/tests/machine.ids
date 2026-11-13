@@ -32,6 +32,12 @@
 # Review WR-02: an in struct's struct_size above IVS_STRUCT_SIZE_MAX (4096) is BAD_ARG before the
 # unknown-tail scan; exactly 4096 keeps D-04 (machine.refuse.create.size-*,
 # machine.create.size-at-max-ok, machine.refuse.load.exec.opts-{over-max,garbage-size,at-max-*}).
+# Plan 06-04 (family stic.params): relation tests of the generated STIC parameter table over every registry
+# profile: unit conversion, event table, window order, tiling within the frame, derived geometry, register file
+# shape and the power-on record. The same plan extends machine.create.tables-cover-registry with the fourth table.
+# Plan 06-05 addition (composite version 3, STIC storage): machine.digest.composite-v3-framing (renamed from
+# composite-v2-framing), stic-rows-in-mem-and-instance, cpu-images-unchanged (the CPU and IMAGES digests equal
+# the version 2 pins of data/expected/digest-v2-literals.ids), machine.reset.stic-state and machine.layout.sizes.
 # Review WR-03: a damaged stored profile index (outside the registry, or the memory system's
 # differing) makes the handle invalid: every handle-taking call is BAD_HANDLE on a relocated copy
 # (machine.refuse.handle.*, family reset).
@@ -71,6 +77,7 @@ machine.create.static-storage
 machine.create.tables-cover-registry
 machine.create.tail-zero-ok
 machine.destroy.scrubs
+machine.layout.sizes
 machine.refuse.create.flags-1
 machine.refuse.create.flags-over-unknown-profile
 machine.refuse.create.id-63-unknown
@@ -112,9 +119,10 @@ machine.status.names
 machine.digest.audio-rows
 machine.digest.composite-excludes-16-18
 machine.digest.composite-framing
-machine.digest.composite-v2-framing
+machine.digest.composite-v3-framing
 machine.digest.coverage
 machine.digest.cpu-images-independent-of-psg
+machine.digest.cpu-images-unchanged
 machine.digest.domain-19-fresh
 machine.digest.fresh-composite
 machine.digest.mem-rows-psg-regs
@@ -130,11 +138,13 @@ machine.digest.sensitivity-instance
 machine.digest.sensitivity-mem
 machine.digest.sensitivity-video
 machine.digest.stepped-literals
+machine.digest.stic-rows-in-mem-and-instance
 machine.digest.stream-cpu
 machine.digest.stream-cpu-synthetic
 machine.digest.stream-instance
 machine.digest.stream-instance-psg
 machine.digest.video-fresh
+machine.digest.video-h0-create-and-reset
 machine.refuse.digest.destroyed
 machine.refuse.digest.domain-20
 machine.refuse.digest.domain-5
@@ -383,6 +393,7 @@ machine.reset.power-cycle-one-way
 machine.reset.psg-state-cleared
 machine.reset.step-program
 machine.reset.step-refusals
+machine.reset.stic-state
 machine.reset.clears-observation
 machine.refuse.handle.mem-profile-mismatch
 machine.refuse.handle.profile-garbage
@@ -455,3 +466,10 @@ machine.sweep.P03-word-patterns
 machine.sweep.P04-adjacent
 machine.sweep.P06-partial
 machine.sweep.bases-complete
+machine.stic.params.unit-conversion
+machine.stic.params.event-table
+machine.stic.params.window-order
+machine.stic.params.tiling-within-frame
+machine.stic.params.geometry-derived
+machine.stic.params.regmap-shape
+machine.stic.params.power-on

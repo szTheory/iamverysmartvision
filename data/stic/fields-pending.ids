@@ -1,0 +1,6 @@
+# Profile fields that the Phase 6 STIC and video rules name and the profile does not have yet (plan 06-01, D-04, D-23).
+# One line per field: `<field> <owning plan>`. The video step requires every field of a rule of data/stic/rules.json that is not
+# `engine:<name>` to be a line of data/expected/profile-fields.ids or a line here, and a line here whose field is already in the profile
+# to be deleted (tokens video-rule-field-unregistered and video-pending-stale): the owning plan deletes its lines in the same commit that
+# adds the field. Plan 06-04 adds the 33 profile fields (generator, tags, discrepancy ids); plan 06-06 adds the memory-system device
+# kind that makes memmap.device.stic14 a profile field.

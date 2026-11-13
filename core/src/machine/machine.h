@@ -5,31 +5,35 @@
  *
  * One flat struct with no pointers: magic, profile index, run phase, a reserved word, machine
  * time, the embedded 32-byte CPU state, the memory system (gates, loaded flags, the committed
- * cartridge segment table, every backing array at the profile's worst-case capacity and the PSG
- * registers and port pull-down masks), the PSG device state (plan 05-03, D-16), the observation
- * rows (plan 04-05, D-10: the video, audio and input digest domains 16..18; plan 05-03, D-18:
- * the PSG write log, domain 19) and one record per image slot. Every field is fixed width; the
- * only bytes that are not fields are the reserved words and pads (the instance's, the CPU's, the
- * memory system's, the PSG state's and the audio row's), and all of them stay zero. The instance
+ * cartridge segment table, every backing array at the profile's worst-case capacity, the PSG
+ * registers and port pull-down masks and the STIC register file), the PSG device state (plan 05-03,
+ * D-16), the STIC device state (plan 06-05, D-04, D-16, A-05), the observation rows (plan 04-05,
+ * D-10: the video, audio and input digest domains 16..18; plan 05-03, D-18: the PSG write log,
+ * domain 19) and one record per image slot. Every field is fixed width; the only bytes that are
+ * not fields are the reserved words and pads (the instance's, the CPU's, the memory system's, the
+ * PSG state's, the STIC state's and the audio row's), and all of them stay zero. The instance
  * holds no last-error or timestamp (D-08); the observation counts are machine state of their
  * domains.
  *
- * Layout derivation (bytes; offsets from the start of the instance):
+ * Layout derivation (bytes; offsets from the start of the instance; derived on paper before the
+ * code, plan 06-05, A-05):
  *   header   24   magic, profile, phase, reserved (4 each) and time_ticks (8)         0 ..    24
  *   cpu      32                                                                      24 ..    56
- *   mem  113,264  Phase 4: 113,228; plus psg_reg[16] u16 (32), port_pulldown[2] u8 (2)
- *                 and psg_reserved[2] (2): +36                                       56 .. 113,320
+ *   mem  113,392  Phase 5: 113,264; plus stic_reg[64] u16 (128), words $0000..$003F  56 .. 113,448
  *   psg       72  ivs_psg_state: next_sample u64 (8), 13 u32 state words (52) and
- *                 reserved[3] u32 (12)                                          113,320 .. 113,392
+ *                 reserved[3] u32 (12)                                          113,448 .. 113,520
+ *   stic     528  ivs_stic_state (stic/stic.h): frame_index u64 at 0, u32 members at 8, 12, 16, 20,
+ *                 24, 28, 32, 36, 40 and reserved0 at 44, row_latch[12][20] u16 (480) at 48;
+ *                 12 rows, not 13: window 12 fetches nothing (A-05)              113,520 .. 114,048
  *   obs      200  video 40 (chain 32, count 8), audio 56 (chain 32, count 8,
  *                 emitted 8, prev_levels 4, reserved 4), input 64, psglog 40
- *                 (chain 32, count 8)                                             113,392 .. 113,592
- *   slots    168  3 x 56                                                         113,592 .. 113,760
- * Total 113,760, a multiple of 16 (7,110 x 16), so there is no tail padding. mem now ends at
- * 56 + 113,264 = 113,320, which is 0 mod 8: the Phase 4 obs_pad word is gone and obs (8-aligned)
- * follows the PSG state directly (the 72-byte PSG state is what brings the total back to a
- * multiple of 16: with 64 bytes it would end at 113,752, 8 mod 16). The previous layout (Phase 4)
- * was 113,600; Phase 3 (no obs) was 113,456 with 4 bytes of tail padding. */
+ *                 (chain 32, count 8)                                             114,048 .. 114,248
+ *   slots    168  3 x 56                                                         114,248 .. 114,416
+ * Total 114,416, a multiple of 16 (7,151 x 16), so there is no tail padding. mem ends at
+ * 56 + 113,392 = 113,448 (0 mod 8), the PSG state ends at 113,520 (0 mod 8, the u64 of the STIC
+ * state starts there), the STIC state ends at 114,048 (0 mod 8) and obs (8-aligned) follows with no
+ * hole. The previous layout (Phase 5) was 113,760; Phase 4 was 113,600; Phase 3 (no obs) was 113,456
+ * with 4 bytes of tail padding. */
 #ifndef IVS_MACHINE_INTERNAL_H
 #define IVS_MACHINE_INTERNAL_H
 
@@ -42,10 +46,11 @@
 #include "ivs/ivs_run.h"
 #include "memmap/memsys.h"
 #include "psg/psg.h"
+#include "stic/stic.h"
 
 #define IVS_MACHINE_MAGIC 0x4956534Du /* "IVSM" */
 #define IVS_MACHINE_ALIGN 16u
-#define IVS_MACHINE_BYTES 113760u
+#define IVS_MACHINE_BYTES 114416u
 
 /* IVS_INFO_V1_SIZE, the smallest struct_size info accepts, is public (ivs/ivs_machine.h, plan
  * 05-02): the installed consumer pins it from the installed headers. */
@@ -67,11 +72,15 @@ typedef struct ivs_machine_slot {
  * (18) holds the controller words in force, the applied event count, the input floor tick and
  * the input chain (plan 04-11, D-15). Every row is zero at create and after a reset except the
  * INPUT chain, which then holds its start value h0 (ivs_input_init). Domain version 1; not part
- * of the composite, which is version 2 over domains 1..4. */
+ * of the composite, which is version 3 over domains 1..4. */
 typedef struct ivs_machine_obs_av {
   uint8_t chain[32];
   uint64_t count;
 } ivs_machine_obs_av;
+
+/* Plan 06-09 (D-16): the VIDEO row is the STIC module's row type (stic/stic.h, the same 40 bytes): the per-frame chain, h0 = SHA-256
+ * of the 16 ASCII bytes IVS-VIDEO-LOG-V1 after create and after every power-on reset (ivs_video_chain_init). */
+_Static_assert(sizeof(ivs_stic_video_row) == sizeof(ivs_machine_obs_av), "the VIDEO row and the machine row are the same 40 bytes");
 
 /* The AUDIO row is the PSG module's observation struct (psg/psg.h, plan 05-06): the chain over the
  * level-change records, the emitted count and the previous sample's levels. */
@@ -89,7 +98,7 @@ typedef struct ivs_machine_obs_input {
 } ivs_machine_obs_input;
 
 typedef struct ivs_machine_obs {
-  ivs_machine_obs_av video;
+  ivs_stic_video_row video;
   ivs_machine_obs_audio audio;
   ivs_machine_obs_input input;
   ivs_machine_obs_psglog psglog;
@@ -104,17 +113,21 @@ struct ivs_machine {
   ivs_cp1610 cpu;
   ivs_memsys mem;
   ivs_psg_state psg;   /* before obs and slot[] (plan 05-03, D-16): O(1) PSG device state */
+  ivs_stic_state stic; /* before obs and slot[] (plan 06-05, D-04, D-16): O(1) STIC device state, 528 bytes */
   ivs_machine_obs obs; /* before slot[]: IVS_FAULT_DIGEST_SKIPS_IMAGE_TABLE skips rows from slot on */
   ivs_machine_slot slot[IVS_SLOT_COUNT];
 };
 
 _Static_assert(sizeof(ivs_machine_slot) == 56u, "ivs_machine_slot must be 56 bytes");
 _Static_assert(sizeof(ivs_machine_obs_audio) == 56u, "ivs_machine_obs_audio must be 56 bytes");
+_Static_assert(sizeof(ivs_stic_state) == 528u, "ivs_stic_state must be 528 bytes");
 _Static_assert(sizeof(ivs_machine_obs) == 200u, "ivs_machine_obs must be 200 bytes");
 _Static_assert(offsetof(struct ivs_machine, mem) == 56u, "mem starts at 56");
-_Static_assert(offsetof(struct ivs_machine, psg) == 113320u, "psg state starts at 113,320");
-_Static_assert(offsetof(struct ivs_machine, obs) == 113392u, "obs follows the 72-byte PSG state with no hole");
-_Static_assert(offsetof(struct ivs_machine, slot) == 113592u, "slot[] follows the 200-byte obs rows with no hole");
+_Static_assert(IVS_MEMSYS_STIC_REGS == IVS_STIC_REG_COUNT, "the STIC register file of the memory system covers the 64 registers");
+_Static_assert(offsetof(struct ivs_machine, psg) == 113448u, "psg state starts at 113,448 (mem ends there)");
+_Static_assert(offsetof(struct ivs_machine, stic) == 113520u, "stic state follows the 72-byte PSG state, 0 mod 8");
+_Static_assert(offsetof(struct ivs_machine, obs) == 114048u, "obs follows the 528-byte STIC state with no hole");
+_Static_assert(offsetof(struct ivs_machine, slot) == 114248u, "slot[] follows the 200-byte obs rows with no hole");
 _Static_assert(_Alignof(struct ivs_machine) == IVS_MACHINE_ALIGN, "instance alignment is 16");
 _Static_assert(sizeof(struct ivs_machine) == IVS_MACHINE_BYTES,
                "instance size changed: review the digest field table (machine_digest.c)");
@@ -129,16 +142,18 @@ _Static_assert(sizeof(struct ivs_machine) == IVS_MACHINE_BYTES,
  * sit with. Domain preimage: "IVSD" || u8 domain || u16 IVS_DIGEST_DOMAIN_VERSION || the domain's
  * rows in table order. Composite: "IVSSTATE" || u16 IVS_DIGEST_COMPOSITE_VERSION || for domains
  * 1..4: u8 domain || its 32-byte SHA-256. Domains 16..19 (VIDEO, AUDIO, INPUT, PSGLOG) have their
- * own digests and are not in the composite (D-10, D-18). Composite version 2 (plan 05-03,
- * deliberate, D-18): the PSG registers and pull-downs (MEM) and the PSG device state (INSTANCE)
- * joined domains 2 and 4, so guest-visible PSG state can never differ with equal composites;
- * version 1 was the Phase 4 framing over the same four domains. */
+ * own digests and are not in the composite (D-10, D-18). Composite version 3 (plan 06-05,
+ * deliberate, D-16): the STIC register file (MEM) and the STIC device state (INSTANCE) joined
+ * domains 2 and 4, so guest-visible STIC state can never differ with equal composites; the framing
+ * is unchanged, the row content changed and the version is in the preimage. Version 2 (plan 05-03,
+ * D-18) added the PSG registers and pull-downs (MEM) and the PSG device state (INSTANCE); version 1
+ * was the Phase 4 framing over the same four domains. */
 #define IVS_DIGEST_KIND_UINT 1u
 #define IVS_DIGEST_KIND_PROFILE 2u
 #define IVS_DIGEST_KIND_MAGIC 3u
 #define IVS_DIGEST_KIND_PAD 4u
 #define IVS_DIGEST_DOMAIN_VERSION 1u
-#define IVS_DIGEST_COMPOSITE_VERSION 2u
+#define IVS_DIGEST_COMPOSITE_VERSION 3u
 
 typedef struct ivs_digest_field {
   const char *name;
@@ -200,6 +215,7 @@ typedef struct ivs_machine_bus_ctx {
   struct ivs_machine *m;
   uint64_t unit_start_tick;
   const ivs_psg_params *psg;  /* the profile's PSG parameters (plan 05-06) */
+  const ivs_stic_params *stic; /* the profile's STIC parameters (plan 06-06) */
   ivs_psg_sink *sink;         /* where the samples a write's catch-up makes go (plan 05-06) */
   uint32_t ticks_per_cpu_cycle;
   uint32_t reserved; /* 0 */
@@ -259,8 +275,12 @@ typedef struct ivs_run_env {
    * plain struct without a struct_size: callers build it with memset, so the appended field is
    * 0 for a caller that does not know it. */
   uint32_t psg_log_bytes_per_frame;
-  uint32_t reserved_env; /* 0 */
+  /* Plan 06-03 (D-15, A-10): the frame slots added to floor(D / F) + 1 in the video capacity rule
+   * (it takes the former reserved_env word, so the struct stays 32 bytes); callers build the env
+   * with memset, so a caller that does not know the field leaves it 0. */
+  uint32_t video_slack_frames;
 } ivs_run_env;
+_Static_assert(sizeof(ivs_run_env) == 32u, "ivs_run_env is 32 bytes");
 
 /* The real output layout of profile p (shared by ivs_machine_info and the public run call):
  * Phase 4 profiles produce nothing (formats NONE, 0 bytes per frame), and the nominal frame is

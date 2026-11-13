@@ -1,16 +1,18 @@
 # tier: deterministic-repeatability
 # oracle: regression pin, emulator is oracle
 # Owning plan 04-23 (PKG-01, D-39): the stdout of tests/installed-consumer, built only against the
-# installed, relocated package and run on build/release/images/boot-stub.exec, diag-cpu-1.ivsc and (plan 05-11)
-# diag-ctrl-psg-1.ivsc (gate step pkg-install). Self-consistent, not independent: the emulator produced these values.
+# installed, relocated package and run on build/release/images/boot-stub.exec, diag-cpu-1.ivsc, (plan 05-11)
+# diag-ctrl-psg-1.ivsc and (plan 06-13) diag-stic-1.ivsc (gate step pkg-install). Self-consistent, not independent: the emulator produced these values.
 # The digest.<domain> lines must also equal data/golden/diag-input-pass.digests (cross-path
 # agreement with the runner); since plan 05-11 its ctrl.digest.<domain> lines and observed domains must equal
 # data/golden/diag-ctrl-psg-pass.digests (the replay of diag-ctrl-psg-pass through the installed headers, the
-# peeked $01FE after the first event is 0x007E, the new lines are additions only). The step drops these # lines before comparing. A change is a
+# peeked $01FE after the first event is 0x007E, the new lines are additions only); since plan 06-13 its stic.digest.<domain>
+# lines and observed domains (video and audio observed, the write log and the input not) must equal data/golden/diag-stic-fgbg-pass.digests
+# (the replay of diag-stic-fgbg-pass: first slot header, hand-derived pixels, a frame-stop second pass; again additions only). The step drops these # lines before comparing. A change is a
 # reviewed diff, regenerated from build/gate/pkg-consumer.txt after a gate run.
 ivs-consumer 1
 version package=0.1.0 header=0.1.0 api=0x000100 library=0x000100 tie=yes
-v1-sizes run_request_v1=64 events_at=48 run_request=80 run_report_v1=112 run_report=136 info_v1=216 info=288 input_event=32 cpu_state_report=36 ok=yes
+v1-sizes run_request_v1=64 events_at=48 run_request=80 run_report_v1=112 run_report=160 info_v1=216 info=320 input_event=32 cpu_state_report=36 ok=yes
 create status=IVS_OK profile=intv-2609-ntsc-family-p1
 refusal.truncated-exec status=IVS_E_MALFORMED reason=21 digest-unchanged=yes
 load.exec status=IVS_OK length_bytes=8192 sha256=2b7cfb0942d8ae38ac30fc3b5c771708de0a02c45585cdae5530ac0d1aa7c8d1
@@ -18,7 +20,7 @@ load.grom status=IVS_OK length_bytes=2048 sha256=e5a00aa9991ac8a5ee3109844d84a55
 load.cart status=IVS_OK length_bytes=176 sha256=243626a75f7592fcb904a6c2cba2de307f19f08eb484ae9f94fd0383526ee5c0
 refusal.duplicate status=IVS_E_DUPLICATE_LOAD reason=33 digest-unchanged=yes
 reset status=IVS_OK
-info phase=1 time_ticks=0 ticks_per_cpu_cycle=4 nominal_frame_ticks=59736 video_format=0 audio_format=1
+info phase=1 time_ticks=0 ticks_per_cpu_cycle=4 nominal_frame_ticks=59736 video_format=2 audio_format=1
 step.1 target_ticks=1000 stop=IVS_STOP_TARGET now_ticks=1020 overshoot_ticks=20 input_consumed=1 controller0=00000001
 step.1.cpu run_state=2 fault_reason=0 r=0000,8080,0007,0022,0000,0000,0340,501D
 step.1.mem 0200..020F=7FFF,8080,A0A0,7070,0000,0000,0000,0000,0000,0000,0000,0000,0000,0000,0000,0000
@@ -26,11 +28,14 @@ step.2 target_ticks=16000 stop=IVS_STOP_CPU_HALTED now_ticks=2084 overshoot_tick
 step.2.cpu run_state=3 fault_reason=0 r=03C5,8080,0000,0037,0201,0037,0340,5036
 step.2.mem 0200..020F=7FFF,8080,A0A0,7070,0037,0037,0340,0201,7FFF,0000,0000,0000,0000,0000,0000,03C5
 input events=2 consumed=2
+stic-state mode=0 latch=0 windows=0 regs-window=1 gmem-window=1 event=1 frame=0 blocked=0/0
+stic-state.refusal.null status=IVS_E_BAD_ARG
+stic-state.refusal.small status=IVS_E_BAD_ARG written=no
 digest.cpu 8c6a8aa37cf3293d3d88f1133f3cb218d89fb96a34e8bda49e6ea750cf4dbe55
-digest.mem 1a35c3939341c2f32842b79d68d4141efd256cc162198dafaed3316f20655c2c
+digest.mem 6ff06f9c2861d40901606baef86ac7b5d2c7527f3f42f9a148636d8ff3cd7757
 digest.images 69d3b715595bdb3435c984ad72e0042fdf385b72e2687f13a4d59e8b09084e45
-digest.instance 37bdfbc7e2a6c50c9acc67eefc6f39334578b37879d0219dda92d9c476cfd4d5
-digest.composite 40fac93480accffcf975075f6519c739dd9c1e3ea0eec22fc87785e73a840a42
+digest.instance 082ff48343762750e151681d1d76e36b93eae02da6e738c9f2e5956220846312
+digest.composite eb893b66dd893ff853a31b65421821a8d9b939f45ca2e5c2b6297abdde5f2a14
 digest.audio 6dc304749b42d364796e08346e078bf439f6befc8fd30f478a06a52fd3df31ab
 digest.input b18223e862aa91b5d3a82fdd7596b413954565c25b5adbc2d78dcc5dbbefdec1
 second-instance equal=yes
@@ -42,12 +47,42 @@ ctrl.input events=7 consumed=7
 ctrl.mem 020F=03C5
 ctrl.mem 0210..0227=00FF,007E,00FF,005A,00FF,00FB,005B,001D,0000,0000,0000,0000,0000,0000,0000,0000,00FF,00FD,009F,00FF,0000,0000,0000,0000
 ctrl.digest.cpu d87bcb165ae1b160349184422a90987b49b0fc5a508081891dba1dea7f86497f
-ctrl.digest.mem 9d8f2cb338f2004830bca2e9672ca4dc7d09ad81431cf6d8b76b92815905e5a5
+ctrl.digest.mem 4d183e248bcf804eea0f2b6d26b9cb27e0b3f90a17d6a87314c061393707743e
 ctrl.digest.images 3dc499c638993d029cc9222a4686a1700d815f548c028e84d04d38151ae28b4e
-ctrl.digest.instance 38a60a970ccff89f5beb67731f6408f13227f633b483de0d2c8a7003f988f533
-ctrl.digest.composite 796821563d91bc5309a83bffeda00345a5c3004fcb4582aba84b38d4c3933cab
+ctrl.digest.instance 3970fede40206de20398c133857eea52e59be57f95f6679de59fbd7d8b89a493
+ctrl.digest.composite 228ac6083103048fd20285b9176e55653779f4bd5156b33b6e9976f065f1adfc
 ctrl.digest.audio 49389f1090b6aea5d68d0c73afa47ba2c5f6771cda2f81d2df4062be6fd675ad
 ctrl.digest.input 31ef954649ec4809c873897c4e09145b95bfc48846d1ba1b78ee14372d25aacf
 ctrl.digest.psglog c98733eb428f93eb33bfe5c67e7f23b8444e73b1a8f6b432f39409260c470922
 ctrl.second-instance equal=yes
+stic.load.cart status=IVS_OK length_bytes=330 sha256=70927bdc0b21e2db8ff740dab7905748f856478261ed0e5e65ea8b746739327c
+stic.step.1 target_ticks=150000 stop=IVS_STOP_CPU_HALTED now_ticks=88476 overshoot_ticks=0 input_consumed=0 controller0=00000000
+stic.input events=0 consumed=0
+stic.video frames=1 bytes=15296 slot_bytes=15296 header_bytes=32 width=159 height=96
+stic.slot0 index=0 tick=59736 width=159 height=96 flags=1 reserved=0
+stic.pixels checked=12 mismatches=0
+stic.rect cell=8,4 x=32 y=64 w=8 h=8 fg=2 bg=3 mismatches=0
+stic.rect cell=11,19 x=152 y=88 w=7 h=8 fg=7 bg=10 mismatches=0
+stic.continuity frames=1 index=ok ticks=increasing
+stic.mem 02F0=03C5
+stic.mem 02F1=00FF
+stic.mem 02A3=2A01
+stic.mem 02A4=0E0A
+stic.mem 02A5=1A13
+stic.mem 02A6=381C
+stic.mem 02DC=2C1D
+stic.mem 02EF=1C0F
+stic.mem 0200=0000
+stic.stic-state mode=0 latch=0 windows=0 regs-window=0 gmem-window=0 event=7 frame=1 blocked=0/0
+stic.frame-stop.1 stop=IVS_STOP_FRAME now_ticks=59744 frames=1 frame0-equal=yes
+stic.frame-stop.2 stop=IVS_STOP_CPU_HALTED now_ticks=88476 frames=0
+stic.frame-stop.digests equal=yes
+stic.digest.cpu cbcd0c3c91ec8c03829098646d37465e9b47b7c6dc6e7169e1e8fa381c8b7e98
+stic.digest.mem 80ff41888c6a1371251a2f481ccd1de8434a3a078d81db2fe73bffd17c724ead
+stic.digest.images aedf63b9fc52547a1a84f7f9ffaa4daf89ad8413233e79a3f482ccab6d00b1c3
+stic.digest.instance 8d7e39807c353474144cf4e3860318fec596f5c15b4d975a4e8559e8d6b98f31
+stic.digest.composite 7e03f25a7445517cf39e34e90e1ec791f91dc2d9e3e0f94407a0bb8fa1b83a7b
+stic.digest.video fb654eb9b209718c316e3396dd1c3123b3c5b917400b918bb957bf139603d033
+stic.digest.audio 6509dee809b36addad039722800e9ef11d30711a4762dcbb812c7f94590b5307
+stic.second-instance equal=yes
 result ok failures=0

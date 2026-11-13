@@ -14,6 +14,11 @@
 #include "ivs_test.h"
 #include "machine_cases.h"
 
+/* A flag bit no run accepts (plan 06-03, research mechanism 16): the refusal tests that need "an
+ * arbitrary unsupported flag" use this bit, so that bit 1 (IVS_RUN_F_STOP_ON_FRAME, refused as unknown
+ * until the frame stop is implemented) keeps one dedicated test, run.refuse.flags-frame-reserved. */
+#define RUN_TEST_BAD_FLAG 4u
+
 /* Family observe (plan 04-06, D-08): ivs_machine_cpu_state and ivs_machine_peek, their
  * side-effect freedom and their refusals (run_observe.c). */
 extern const ivs_test_case ivs_run_observe_cases[];
@@ -90,6 +95,12 @@ extern const size_t ivs_run_diag_count;
  * (data/golden/diag-ctrl-psg-pass.expect) through the public API (run_diag_ctrl.c). */
 extern const ivs_test_case ivs_run_diag_ctrl_cases[];
 extern const size_t ivs_run_diag_ctrl_count;
+
+/* Family diag-stic (plan 06-13, D-19, D-20, D-14): the diagnostic ivs-diag-stic-1 (display enable, graphics RAM, BACKTAB, both card
+ * modes) behind the boot stub, from reset to its hand-derived predicates (data/golden/diag-stic-fgbg-pass.expect and
+ * diag-stic-cstack-pass.expect) and the literal frames F-D1 and F-D2 through the public API (run_diag_stic.c). */
+extern const ivs_test_case ivs_run_diag_stic_cases[];
+extern const size_t ivs_run_diag_stic_count;
 
 /* ---- slicing invariance of another program (run_slice.c, plan 04-16, D-07) ----
  * powered builds a POWERED instance of a program that ends HALTED (1 on success); the function

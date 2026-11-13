@@ -18,7 +18,12 @@
  * Layout: 76 bytes of header, then 113,152 bytes of backing (sysram, scratchpad, gram, exec,
  * grom, cart, each u16), then (plan 05-03, D-04) the guest-visible PSG words: 16 registers of
  * 16 bits (32 bytes), the two port pull-down masks (2 bytes) and an explicit 2-byte pad: 113,264
- * bytes in all, divisible by 8. Since plan 05-04 the PSG region ($01F0-$01FF) is the real device
+ * bytes in all, divisible by 8; plan 06-05 (D-04, D-16) appends the 64 STIC register words (128
+ * bytes), 113,392 bytes in all, divisible by 16. Plan 06-06 (D-04, A-01): the five STIC regions are the real device kind
+ * stic14: a read gives the register word under the register's read mask of the generated ivs_stic_params with the
+ * undriven fill above it, a store keeps value & the register's write mask (a strobe or reserved register stores
+ * nothing); side effects (the display-enable strobe, the mode select) live in the machine's bus wrapper, never here,
+ * so a peek can never switch a mode. Since plan 05-04 the PSG region ($01F0-$01FF) is the real device
  * kind psg8: a read gives the register store under the profile's read mask (psg.regmap) with
  * bits 15..8 zero, a store keeps value & the write mask, through ivs_psg_reg_load and
  * ivs_psg_reg_store (psg/psg.h). */
@@ -41,6 +46,7 @@
 #define IVS_MEMSYS_PSG_WORDS 16u /* PSG register words: the backing of the psg region (plan 05-04) */
 #define IVS_MEMSYS_PSG_REGS IVS_MEMSYS_PSG_WORDS
 #define IVS_MEMSYS_PSG_PORTS 2u /* PSG I/O ports: R14 = port 0, R15 = port 1 (D-04) */
+#define IVS_MEMSYS_STIC_REGS 64u /* STIC register words $0000..$003F (plan 06-05, D-04; machine.h ties it to IVS_STIC_REG_COUNT) */
 #define IVS_MEMSYS_EXEC_BYTES 8192u /* raw EXEC image: 4096 big-endian words (D-26) */
 #define IVS_MEMSYS_GROM_BYTES 2048u /* raw GROM image (D-26) */
 #define IVS_MEMSYS_PROFILE_ID_CAP 64u
@@ -53,7 +59,19 @@
 #define IVS_MEMSYS_DEVICE_RAM16 4u
 #define IVS_MEMSYS_DEVICE_STUB 5u
 #define IVS_MEMSYS_DEVICE_PSG8 6u /* plan 05-04: byte-wide PSG register file, upper byte 0 (C64) */
-#define IVS_MEMSYS_DEVICE_KINDS 7u
+#define IVS_MEMSYS_DEVICE_STIC14 7u /* plan 06-06: the 14-bit STIC register file, per-register masks (stic.regmap) */
+#define IVS_MEMSYS_DEVICE_KINDS 8u
+
+/* Hook classes (plan 06-06, D-04, D-05, A-07): one per 16-word granule and view, generated from the profile. The machine's
+ * bus wrapper hooks an access whose class is STIC_REGS, GMEM, BACKTAB or STIC_ALIAS_READ; PSG (1) is the class the wrapper
+ * already serves through its own write-view decode. STIC_ALIAS_READ exists in the read view only: the granules that hold a
+ * read-sensitive mode-select address outside the STIC register span, which the read view decodes to the cartridge. */
+#define IVS_MEMSYS_HOOK_NONE 0u
+#define IVS_MEMSYS_HOOK_PSG 1u
+#define IVS_MEMSYS_HOOK_STIC_REGS 2u
+#define IVS_MEMSYS_HOOK_GMEM 3u
+#define IVS_MEMSYS_HOOK_BACKTAB 4u
+#define IVS_MEMSYS_HOOK_STIC_ALIAS_READ 5u
 
 /* Gates (D-19): open after init; the internal setter closes them. */
 #define IVS_MEMSYS_GATE_NONE 0u
@@ -108,9 +126,15 @@ typedef struct ivs_memsys {
   uint16_t psg_reg[IVS_MEMSYS_PSG_REGS];
   uint8_t port_pulldown[IVS_MEMSYS_PSG_PORTS]; /* low-driven pin masks of the two ports */
   uint8_t psg_reserved[2];                     /* 0: pad to 4 bytes, no implicit hole */
+  /* Plan 06-05 (D-04, D-16): the guest-visible STIC register file, words $0000..$003F, MEM digest rows.
+   * Zero at create and after a power-on reset (the profile's registers record is "zero"); the 24 reserved
+   * slots stay 0 for good. Nothing reads or writes it until the device plan (06-06). */
+  uint16_t stic_reg[IVS_MEMSYS_STIC_REGS];
 } ivs_memsys;
 
-_Static_assert(sizeof(ivs_memsys) == 113264u, "ivs_memsys must be 113,264 bytes (machine.h layout)");
+/* 113,264 (Phase 5) + 64 x 2 = 113,392, a multiple of 16 (7,087 x 16): psg_reserved ends 4-aligned, so the
+ * u16 array follows with no hole and nothing trails it. */
+_Static_assert(sizeof(ivs_memsys) == 113392u, "ivs_memsys must be 113,392 bytes (machine.h layout)");
 
 /* A system-image slot descriptor (D-24, D-26): units of unit_bits each, loaded at base. */
 typedef struct ivs_slot_desc {
@@ -213,6 +237,21 @@ void ivs_memsys_set_port_pulldown_internal(ivs_memsys *m, uint32_t port, uint32_
 /* Raw-poke seam (A-05a): stores value unmasked into the backing word of addr (read view first,
  * then write view; the cartridge span stores at addr - span lo). No backing: nothing happens. */
 void ivs_memsys_poke_raw_internal(ivs_memsys *m, uint16_t addr, uint16_t value);
+
+/* The STIC's own view of one background memory word (plan 06-08, D-11): word i of BACKTAB is system RAM word $0200 + i for i below
+ * 240, read from the backing store with no gate, no fill and no access record (never the CPU view). Any other index gives 0. */
+uint16_t ivs_memsys_stic_backtab_word_internal(const ivs_memsys *m, uint32_t i);
+
+/* The STIC's own view of one graphics byte (plan 06-10, D-18, D-19): row y (0 top .. 7) of card `card` in the graphics ROM (sel 0,
+ * grom[(card x 8 + y) and 2047]) or the graphics RAM (sel 1, gram[(card x 8 + y) and 511]), the backing word masked to 8 bits. Pure and
+ * const: no gate, no undriven fill, no access record, no cost, never the CPU view, so a closed graphics window cannot leak the fill
+ * into a pixel and rendering has no read side effect. Any sel other than 1 reads the graphics ROM. */
+uint8_t ivs_memsys_stic_gfx_byte_internal(const ivs_memsys *m, uint32_t sel, uint32_t card, uint32_t y);
+
+/* The hook class of an access of kind IVS_ACC_* at addr: FETCH, READ and ADAR (the operand read of a direct-addressed
+ * instruction, which the memory system serves as a read) look in the read table, WRITE and DW in the write table, every
+ * other kind is NONE. O(1), pure, depends only on the profile (plan 06-06). */
+uint32_t ivs_memsys_hook_class_internal(const ivs_memsys *m, uint32_t kind, uint32_t addr);
 
 /* Decode introspection (A-05b). view is IVS_MEMSYS_VIEW_R or IVS_MEMSYS_VIEW_W. Returns IVS_OK,
  * or BAD_ARG for NULL out, a bad profile index or a bad view (out untouched). */

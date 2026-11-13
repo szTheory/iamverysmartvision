@@ -1,0 +1,4 @@
+# Toy pending profile fields of the known-good control tree (plan 06-01).
+stic.toypending 06-04
+# Control video-pending-stale: model is a field of the toy profile, so its pending line is stale.
+model 06-04

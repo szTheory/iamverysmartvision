@@ -3,7 +3,9 @@
 # name per line; the step runs exactly these and fails on a name it does not know
 # (pkg-selftest-missing). The last two (leak-detector, golden-drift) concern the consumer (04-23); plan 05-11
 # adds three for the replay of diag-ctrl-psg-pass: ctrl-digest-drift (a ctrl.digest nibble changed), ctrl-domain-missing
-# (the ctrl.digest.psglog line dropped) and ctrl-peek-wrong (the peeked $01FE changed from 0x007E).
+# (the ctrl.digest.psglog line dropped) and ctrl-peek-wrong (the peeked $01FE changed from 0x007E). Plan 06-13 adds
+# two for the replay of diag-stic-fgbg-pass: stic-domain-missing (the stic.digest.video line dropped) and stic-digest-drift (a
+# stic.digest nibble changed).
 core-src-include
 missing-symbol
 ghost-decl
@@ -17,3 +19,5 @@ golden-drift
 ctrl-digest-drift
 ctrl-domain-missing
 ctrl-peek-wrong
+stic-domain-missing
+stic-digest-drift

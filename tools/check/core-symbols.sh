@@ -35,12 +35,16 @@
 #   DAC-table use, may live in ivs_core. core-symbols-deny.txt labels those four words, but the real guards
 #   are this rule and the exact install inventory (data/expected/pkg-install-files.ids), because the deny
 #   list only labels imports.
+# Second defined-symbol rule (plan 06-09, D-12, D-13; always on): the archive must not DEFINE a symbol, global or file-local, whose name contains
+#   palette, rgb, ppm or framepreview in any letter case (the same nm, type and Darwin-label handling as above): the core produces raw
+#   palette indices only, so no palette, RGB conversion, PPM writer or frame-preview code may live in ivs_core. The deny list labels the same
+#   four classes for imports; the real guards are this rule and the exact install inventory.
 # Tokens: core-symbols-forbidden: <name>[ (<category>)], core-symbols-missing: <file>,
 #   core-symbols-bitcode: <file>, core-symbols-lto: <file>, core-symbols-nm-failed: <file>,
 #   core-symbols-no-definitions: <file>, core-symbols-list-missing: <list>,
 #   core-symbols-list-empty: <list>, core-symbols-deny-in-allow: <name>,
 #   core-symbols-writable: <symbol> (<type>) in <file>,
-#   core-symbols-pcm-defined: <symbol> in <file>.
+#   core-symbols-pcm-defined: <symbol> in <file>, core-symbols-palette-defined: <symbol> in <file>.
 # Pass: -- core-symbols pass external=<imports not defined inside the input> defined=<n>.
 LC_ALL=C; export LC_ALL
 NM=${NM:-nm}
@@ -156,6 +160,17 @@ for f in "$@"; do
       if (tolower(n) ~ /(refpcm|resample|wav|pcm)/) print n
     }' "$tmp/a.raw" | sort -u > "$tmp/p.one"
   while IFS= read -r w; do bad core-symbols-pcm-defined "$w in $f"; done < "$tmp/p.one"
+  awk -v darwin="$darwin" '
+    NF < 2 { next }
+    $1 ~ /:$/ { next }
+    {
+      n = $1; t = $2
+      if (darwin && n ~ /^[lL]/) next
+      if (t ~ /^[uUwWvV]$/) next
+      sub(/@.*/, "", n); if (darwin && n ~ /^_/) n = substr(n, 2)
+      if (tolower(n) ~ /(palette|rgb|ppm|framepreview)/) print n
+    }' "$tmp/a.raw" | sort -u > "$tmp/q.one"
+  while IFS= read -r w; do bad core-symbols-palette-defined "$w in $f"; done < "$tmp/q.one"
   if [ "$writable" -eq 1 ]; then
     awk -v darwin="$darwin" '
       NF < 2 { next }

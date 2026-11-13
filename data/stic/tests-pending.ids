@@ -1,0 +1,5 @@
+# Test-id families that the Phase 6 STIC and video rules name and no suite registers yet (plan 06-01, D-23).
+# One line per family prefix: `<family-prefix> <owning plan>`; a prefix is dotted and ends in a dot, and the owner is the first plan that
+# registers an id of the family in data/expected/tests/*.ids. The video step requires every test entry of a rule of data/stic/rules.json
+# to be a prefix of at least one registered id or a line here, and a line here whose prefix already has a registered id to be deleted
+# (tokens video-rule-no-test and video-pending-stale): the owner plan deletes its lines in the same commit that registers the first id.

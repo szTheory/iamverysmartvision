@@ -30,6 +30,13 @@ set(IVS_CORE_SOURCES
   src/psg/psg_sample.c
   src/psg/psg_state.c
   src/psg/psg_tone.c
+  src/stic/stic_cards.c
+  src/stic/stic_events.c
+  src/stic/stic_frame.c
+  src/stic/stic_lines.c
+  src/stic/stic_params.c
+  src/stic/stic_regs.c
+  src/stic/stic_state.c
 )
 
 # Generated core include (D-16, H2 a, plan 03-04): the memory map, device records and profile
@@ -79,7 +86,22 @@ add_custom_command(
   DEPENDS ${IVS_PROFILE_FILES} "${IVS_CTRL_GENERATOR}" "${IVS_INPUT_BITS_IDS}"
   COMMENT "Generating the controller line table"
   VERBATIM)
-add_custom_target(ivs_core_gen DEPENDS "${IVS_PROFILES_INC}" "${IVS_PSG_PARAMS_INC}" "${IVS_CTRL_LINES_INC}")
+# Fourth generated include (plan 06-04, A-11): the STIC parameter table (windows, bus windows, the per-frame
+# event table, the register masks, the derived video geometry) from the profile fields stic.*, video.* and
+# bus.line_sample_lag_cpu_cycles by cmake/IvsSticTable.cmake, fail closed. stic_params.c is its only includer
+# and data/expected/core-generated.ids lists it with its generator.
+set(IVS_STIC_PARAMS_INC "${IVS_CORE_GEN_DIR}/ivs_stic_params.inc")
+set(IVS_STIC_GENERATOR "${PROJECT_SOURCE_DIR}/cmake/IvsSticTable.cmake")
+add_custom_command(
+  OUTPUT "${IVS_STIC_PARAMS_INC}"
+  COMMAND "${CMAKE_COMMAND}" -E make_directory "${IVS_CORE_GEN_DIR}"
+  COMMAND "${CMAKE_COMMAND}" "-DROOT=${PROJECT_SOURCE_DIR}" "-DOUT=${IVS_STIC_PARAMS_INC}"
+          -P "${IVS_STIC_GENERATOR}"
+  DEPENDS ${IVS_PROFILE_FILES} "${IVS_STIC_GENERATOR}"
+  COMMENT "Generating the STIC parameter table"
+  VERBATIM)
+add_custom_target(ivs_core_gen DEPENDS "${IVS_PROFILES_INC}" "${IVS_PSG_PARAMS_INC}" "${IVS_CTRL_LINES_INC}"
+  "${IVS_STIC_PARAMS_INC}")
 set(IVS_CORE_GEN_TARGET ivs_core_gen)
 
 set(ivs_core_objects "")

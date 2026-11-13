@@ -26,11 +26,13 @@
 #   consumer   (D-36, D-39, plan 04-23) tests/installed-consumer copied to the temp dir, configured
 #              with -DCMAKE_PREFIX_PATH=<moved prefix>, registries off and the path variables unset
 #              in a subshell, built with strict C17 flags, run on build/release/images/
-#              {boot-stub.exec,diag-cpu-1.ivsc,diag-ctrl-psg-1.ivsc}; exit 0 required; stdout kept as
+#              {boot-stub.exec,diag-cpu-1.ivsc,diag-ctrl-psg-1.ivsc,diag-stic-1.ivsc}; exit 0 required; stdout kept as
 #              build/gate/pkg-consumer.txt and equal to data/expected/pkg-consumer.golden without
 #              its # lines; its digest.<domain> lines equal data/golden/diag-input-pass.digests, and
 #              (plan 05-11, D-19) its ctrl.digest.<domain> lines and observed domains equal
-#              data/golden/diag-ctrl-psg-pass.digests (audio and psglog observed, the composite aside).
+#              data/golden/diag-ctrl-psg-pass.digests (audio and psglog observed, the composite aside), and (plan 06-13,
+#              D-17, D-20) its stic.digest.<domain> lines and observed domains equal data/golden/diag-stic-fgbg-pass.digests
+#              (the third replay: video and audio observed, psglog and input not, the composite aside).
 #   independence (D-37 d, e) `ninja -t deps`: no path under ROOT, no ivs*.h outside the moved
 #              prefix, nothing else under the temp dir but the source copy, and ivs.h,
 #              ivs_machine.h, ivs_run.h, ivs_status.h present under the prefix; `ninja -t
@@ -41,7 +43,7 @@
 #   c++ link   (D-38) tests/installed-consumer/main.cpp compiled and linked by ${CXX:-c++}
 #              -std=c++17 directly against the installed headers and archive, then run; a
 #              visible `-- pkg-cxx-link SKIP` line without a C++ compiler.
-#   selftest   thirteen in-step cases (D-40, exact inventory data/expected/pkg-selftests.ids), each on a
+#   selftest   fifteen in-step cases (D-40, exact inventory data/expected/pkg-selftests.ids), each on a
 #              copy or the deleted prefix and each required to fail for its intended reason:
 #              core-src-include, missing-symbol, ghost-decl, unprefixed, extra-file, baked-path,
 #              version-refused (the next minor, the next major and an older minor are refused;
@@ -51,7 +53,9 @@
 #              (the consumer output with one digest nibble changed: pkg-golden-diff), and, from plan
 #              05-11, ctrl-digest-drift (one ctrl.digest nibble changed: pkg-runner-golden-diff),
 #              ctrl-domain-missing (the ctrl.digest.psglog line dropped: pkg-runner-golden-diff) and
-#              ctrl-peek-wrong (the peeked $01FE changed: pkg-golden-diff).
+#              ctrl-peek-wrong (the peeked $01FE changed: pkg-golden-diff), and, from plan 06-13, stic-domain-missing (the
+#              stic.digest.video line dropped: the observed domains differ) and stic-digest-drift (one stic.digest nibble
+#              changed: pkg-runner-golden-diff).
 # Every temp file is under one mktemp dir outside the repo, removed on exit; the step writes
 # nothing else but build/gate/pkg-consumer.txt. Logs are printed only on failure.
 # Tokens: pkg-install-no-tree: <path>, pkg-install-failed: <what>, pkg-install-relocate: <what>,
@@ -463,14 +467,17 @@ check_one_golden() {
   fi
   return "$cr_rc"
 }
-# check_runner_golden <output>: the replay of diag-input-pass against its golden, and (plan 05-11) the
-# replay of diag-ctrl-psg-pass (lines prefixed ctrl.) against data/golden/diag-ctrl-psg-pass.digests.
+# check_runner_golden <output>: the replay of diag-input-pass against its golden, (plan 05-11) the
+# replay of diag-ctrl-psg-pass (lines prefixed ctrl.) against data/golden/diag-ctrl-psg-pass.digests, and (plan 06-13) the
+# replay of diag-stic-fgbg-pass (lines prefixed stic.) against data/golden/diag-stic-fgbg-pass.digests.
 rgold="$ROOT/data/golden/diag-input-pass.digests"
 rgold2="$ROOT/data/golden/diag-ctrl-psg-pass.digests"
+rgold3="$ROOT/data/golden/diag-stic-fgbg-pass.digests"
 check_runner_golden() {
   crg_rc=0
   check_one_golden "$rgold" "" "$1" || crg_rc=1
   check_one_golden "$rgold2" "ctrl\\." "$1" || crg_rc=1
+  check_one_golden "$rgold3" "stic\\." "$1" || crg_rc=1
   return "$crg_rc"
 }
 # check_calls <object>: the ivs_* names the consumer object references (nm -u, normalized) equal
@@ -505,10 +512,11 @@ consumer_lines=0
 img_exec="$rel/images/boot-stub.exec"
 img_cart="$rel/images/diag-cpu-1.ivsc"
 img_cart2="$rel/images/diag-ctrl-psg-1.ivsc"
+img_cart3="$rel/images/diag-stic-1.ivsc"
 consumer_built=0
 consumer_ok=0
-if [ ! -f "$img_exec" ] || [ ! -f "$img_cart" ] || [ ! -f "$img_cart2" ]; then
-  bad pkg-consumer-images "build/release/images/{boot-stub.exec,diag-cpu-1.ivsc,diag-ctrl-psg-1.ivsc}"
+if [ ! -f "$img_exec" ] || [ ! -f "$img_cart" ] || [ ! -f "$img_cart2" ] || [ ! -f "$img_cart3" ]; then
+  bad pkg-consumer-images "build/release/images/{boot-stub.exec,diag-cpu-1.ivsc,diag-ctrl-psg-1.ivsc,diag-stic-1.ivsc}"
 elif ! cp -R "$ROOT/tests/installed-consumer" "$csrc"; then
   bad pkg-consumer-copy "tests/installed-consumer"
 elif ! consumer_configure "$csrc" "$cbld" > "$T/consumer.cfg.log" 2>&1; then
@@ -520,7 +528,7 @@ elif ! cmake --build "$cbld" > "$T/consumer.build.log" 2>&1; then
 else
   consumer_built=1
   cst=0
-  "$cbld/consumer" "$img_exec" "$img_cart" "$img_cart2" > "$cout" 2> "$T/consumer.err" || cst=$?
+  "$cbld/consumer" "$img_exec" "$img_cart" "$img_cart2" "$img_cart3" > "$cout" 2> "$T/consumer.err" || cst=$?
   mkdir -p "$gate_dir" && cp "$cout" "$gate_dir/pkg-consumer.txt" 2> /dev/null || bad pkg-consumer-output "build/gate/pkg-consumer.txt"
   consumer_lines=$(grep -c . "$cout")
   if [ "$cst" -ne 0 ]; then
@@ -734,6 +742,27 @@ run_case() {
       if cmp -s "$cout" "$d/peek.txt"; then detail="the mutation changed nothing"; return 1; fi
       if check_golden "$d/peek.txt" > "$d/out"; then detail="golden check passed"; return 1; fi
       grep -q -F -e '-- FAIL pkg-golden-diff:' "$d/out" || { detail="no pkg-golden-diff"; return 1; }
+      ;;
+    stic-digest-drift)
+      # One nibble of a stic.digest line changed must fail the comparison with the runner golden of
+      # diag-stic-fgbg-pass (pkg-runner-golden-diff); the unchanged output matches it.
+      [ -s "$cout" ] || { detail="no consumer output"; return 1; }
+      check_one_golden "$rgold3" "stic\\." "$cout" > "$d/pos" || { detail="the unchanged output does not match the runner golden"; return 1; }
+      awk 'done == 0 && /^stic\.digest\./ {
+          c = substr($0, length($0), 1); $0 = substr($0, 1, length($0) - 1) (c == "0" ? "1" : "0"); done = 1
+        } { print }' "$cout" > "$d/drift.txt"
+      if cmp -s "$cout" "$d/drift.txt"; then detail="the mutation changed nothing"; return 1; fi
+      if check_one_golden "$rgold3" "stic\\." "$d/drift.txt" > "$d/out"; then detail="runner golden check passed"; return 1; fi
+      grep -q -F -e '-- FAIL pkg-runner-golden-diff:' "$d/out" || { detail="no pkg-runner-golden-diff"; return 1; }
+      ;;
+    stic-domain-missing)
+      # The stic.digest.video line dropped (a consumer that never read a frame) must fail the comparison:
+      # the observed domains differ from the golden's.
+      [ -s "$cout" ] || { detail="no consumer output"; return 1; }
+      grep -v '^stic\.digest\.video ' "$cout" > "$d/missing.txt"
+      if cmp -s "$cout" "$d/missing.txt"; then detail="the output has no stic.digest.video line"; return 1; fi
+      if check_one_golden "$rgold3" "stic\\." "$d/missing.txt" > "$d/out"; then detail="runner golden check passed"; return 1; fi
+      grep -q -F -e 'stic.observed domains' "$d/out" || { detail="no observed-domains finding"; return 1; }
       ;;
     *) return 2 ;;
   esac

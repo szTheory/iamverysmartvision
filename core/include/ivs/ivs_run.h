@@ -65,6 +65,54 @@ typedef struct ivs_cpu_state_report {
  * overlapping the instance storage). Nothing is written on a refusal. */
 IVS_API ivs_status ivs_machine_cpu_state(const ivs_machine *m, ivs_cpu_state_report *out);
 
+/* Out: the stored view of the STIC (plan 06-07, D-04, VID-06): what the device holds now, never what
+ * a CPU read of an address returns. Every member is a u32, a u64 or a u16, so the offsets below are
+ * the same on every ABI; the v1 size is IVS_STIC_REPORT_V1_SIZE bytes, reserved members are 0.
+ *   struct_size        0  written as the v1 size
+ *   mode               4  0 Foreground/Background, 1 Color Stack
+ *   display_latch      8  0 or 1, the display-enable handshake of the frame in progress
+ *   windows_active    12  0 or 1, decided from the latch at the first window of the frame
+ *   cs_ptr            16  the Color Stack pointer 0..3 as of the last rendered frame; each render starts at 0
+ *   regs_window_open  20  0 or 1, the register access gate at machine time now
+ *   gmem_window_open  24  0 or 1, the graphics-memory access gate at machine time now
+ *   event_index       28  the cursor into the per-frame event table
+ *   frame_index       32  u64, the frame in progress (counted, never derived from time)
+ *   frame_start_tick  40  u64, the master tick at which the frame in progress started
+ *   blocked_reads     48  reads refused by a closed gate, saturating
+ *   blocked_writes    52  writes dropped by a closed gate, saturating
+ *   late_grants       56  bus windows that ended without a grant
+ *   reserved0         60  0
+ *   regs              64  64 u16 words, the STORED register words (no read mask, no gate), words 0..63
+ *   reserved         192  4 u32, 0
+ * The report is the inspection path of the STIC: it never triggers a read side effect, so looking at
+ * the mode select address cannot change the mode (the CPU read path owns that effect). */
+#define IVS_STIC_REPORT_V1_SIZE 208u
+typedef struct ivs_stic_report {
+  uint32_t struct_size;
+  uint32_t mode;
+  uint32_t display_latch;
+  uint32_t windows_active;
+  uint32_t cs_ptr;
+  uint32_t regs_window_open;
+  uint32_t gmem_window_open;
+  uint32_t event_index;
+  uint64_t frame_index;
+  uint64_t frame_start_tick;
+  uint32_t blocked_reads;
+  uint32_t blocked_writes;
+  uint32_t late_grants;
+  uint32_t reserved0;
+  uint16_t regs[64];
+  uint32_t reserved[4];
+} ivs_stic_report;
+
+/* Copies the stored STIC view into *out; the instance is not written, no time advances and no catch-up
+ * runs (the STIC is already caught up at every unit end); valid OFF and POWERED. Refusal order: BAD_ARG
+ * (out NULL, or out->struct_size below the v1 size or above IVS_STRUCT_SIZE_MAX); BAD_HANDLE; BAD_ARG (out
+ * overlapping the instance storage). Nothing is written on a refusal; on success min of struct_size and
+ * the v1 size bytes are written, last. */
+IVS_API ivs_status ivs_machine_stic_state(const ivs_machine *m, ivs_stic_report *out);
+
 /* Reads count 16-bit words at addr, addr + 1, ... into out[0..count-1]; the caller supplies at
  * least count words at out (there is no capacity argument). Each word is what a CPU read at that
  * address returns now: decode, width mask, closed gates and undriven space included (a closed
@@ -89,7 +137,10 @@ IVS_API ivs_status ivs_machine_peek(const ivs_machine *m, uint16_t addr, uint32_
 
 /* Run flags (ivs_run_request.flags). Any other bit is UNSUPPORTED. */
 #define IVS_RUN_F_STOP_ON_HALT 1u   /* stop at the first boundary where the CPU is HALTED */
-#define IVS_RUN_F_RESERVED_FRAME 2u /* reserved for a frame stop; UNSUPPORTED until Phase 6 */
+#define IVS_RUN_F_STOP_ON_FRAME 2u  /* stop at the end of the frame in progress (plan 06-09, D-14): the effective target is
+                                     * the smaller of target_ticks and the frame end (next_frame_end_ticks of the report), the
+                                     * call behaves as a run to that target, at most one frame completes and the video buffer
+                                     * needs exactly one slot, whatever the target (IVS_RUN_TARGET_MAX included) */
 
 /* Largest accepted target: 2^63 master ticks; a target above it is OUT_OF_RANGE. */
 #define IVS_RUN_TARGET_MAX 0x8000000000000000u
@@ -99,11 +150,18 @@ IVS_API ivs_status ivs_machine_peek(const ivs_machine *m, uint16_t addr, uint32_
  * step was refused or made no progress: a harness failure, the state is the last whole
  * boundary; for a refused step the INPUT row included, since the events applied for that unit
  * are taken back and not counted in input_consumed), GUEST_FAULT (the CPU is FAULTED), CPU_HALTED (only with IVS_RUN_F_STOP_ON_HALT: the
- * CPU is HALTED), TARGET (machine time reached the target). */
+ * CPU is HALTED), FRAME (only with IVS_RUN_F_STOP_ON_FRAME: a frame completed in this call, at the
+ * boundary the call ends at; a target equal to the frame end reports FRAME), TARGET (machine time reached the target). The exit-state
+ * order is INTERNAL, GUEST_FAULT, CPU_HALTED (flag), FRAME (flag set and a frame completed), TARGET. Overshoot is measured against the
+ * caller's target, not the effective one. Report v3 (plan 06-09): video_first_index is the number of frames completed before the call,
+ * last_frame_end_ticks the frame end of the last frame this call completed (0 when none), next_frame_end_ticks the end of the frame in
+ * progress at exit, video_frames_completed counts the frames completed whether or not a buffer was given, and video_bytes_written
+ * counts only delivered bytes. */
 #define IVS_STOP_TARGET 1u
 #define IVS_STOP_CPU_HALTED 2u
 #define IVS_STOP_GUEST_FAULT 3u
 #define IVS_STOP_INTERNAL 4u
+#define IVS_STOP_FRAME 5u
 
 /* Output buffers (D-02, D-03, D-06, plan 04-10). Video and audio go to caller-owned buffers named
  * in the request; the core keeps no pointer after the call. The profile's output layout (ivs_info:
@@ -114,10 +172,23 @@ IVS_API ivs_status ivs_machine_peek(const ivs_machine *m, uint16_t addr, uint32_
  * capacity below it is BUFFER_TOO_SMALL with nothing changed; a buffer may be NULL only with
  * capacity 0, and that pair means "channel not requested": no check, no byte, no state change
  * whatever the layout requires (D-17, plan 05-02; a non-NULL buffer with capacity 0 against a layout
- * that needs bytes is still BUFFER_TOO_SMALL). A third channel, the PSG register-write log
+ * that needs bytes is still BUFFER_TOO_SMALL). Video rule (plan 06-03, D-15) for a published video
+ * layout (video_format IVS_OUTPUT_FORMAT_INDEX8_FRAMES_V1; the frames are timeline events, not
+ * a modulo of time):
+ *   required = video_bytes_per_frame * (floor(D / F) + 1 + video_slack_frames)
+ * with D = max(target_ticks - now, 0), F = nominal_frame_ticks and the slack published as
+ * video_slack_frames (ivs_info v4). The Phase 4 "+ 1" is not enough for frames that are timeline
+ * events: a call from now to target completes the frames whose end lies after now and at most
+ * target + U - 1 (U the proven maximum ticks of one unit), which is at most floor(D / F) + 2 of
+ * them, so one extra slot is reserved. Audio and write-log capacities keep their formulas; a NULL buffer with
+ * capacity 0 means not requested, nothing is checked and nothing is written. nominal_frame_ticks
+ * is, for the profile that publishes frame events, the exact spacing of two frame events (the name
+ * is historical); for a profile without a video layout it is the product of the timebase fields.
+ * A third channel, the PSG register-write log
  * (psg_log, psg_log_capacity; request v2), follows video and audio with
  * psg_log_bytes_per_frame from the profile's layout. A layout with 0 bytes per frame needs nothing
- * and gets nothing (video, until Phase 6, is such a channel: no frame is fabricated). From plan 05-06 the audio layout is real: format IVS_OUTPUT_FORMAT_PSG_LEVELS_V1,
+ * and gets nothing. From plan 06-09 the video layout is real: format IVS_OUTPUT_FORMAT_INDEX8_FRAMES_V1, one slot of video_slot_bytes (header and
+ * raw index plane) per completed frame, delivered at the frame event and chained into digest domain 16. From plan 05-06 the audio layout is real: format IVS_OUTPUT_FORMAT_PSG_LEVELS_V1,
  * one 4-byte sample (level_A, level_B, level_C, 0) per PSG chip step, stamped k * audio_sample_ticks
  * master ticks on an absolute grid from reset, delivered into the audio buffer in order. The core
  * catches the chip up to the end of every unit it runs (never to the target), so a call delivers
@@ -249,6 +320,10 @@ typedef struct ivs_run_request {
  * and refusal_reason (IVS_REASON_*) are written, plus input_failing_index for a refusal of one
  * event (the IVS_REASON_INPUT_* reasons of the event stages below), and nothing at all when the
  * report itself is the cause (NULL, size, overlap).
+ * Report v3 (plan 06-03, D-14, A-10): three u64 appended at offsets 136, 144 and 152 (every member a
+ * u64, so sizeof is 160 on every ABI). They are written only when the caller's struct_size covers
+ * them (a 136-byte caller gets the v2 fields and its bytes from 136 on are untouched) and are 0
+ * until the machine publishes frame events (plan 06-03 grows the layout and changes no behaviour).
  * Growth (plan 05-02, D-19, A-04): the minimum accepted rep->struct_size is IVS_RUN_REPORT_V1_SIZE;
  * the core writes min(rep->struct_size, sizeof(ivs_run_report)) bytes, sets the written
  * struct_size to that count, and leaves every byte of a larger caller struct past it untouched.
@@ -274,7 +349,11 @@ typedef struct ivs_run_report {
   /* ---- end of the v1 size (112) ---- */
   uint64_t audio_first_index;      /* v2, offset 112: samples emitted before this call (plan 05-06) */
   uint64_t psg_log_bytes_written;  /* v2, offset 120: write-log bytes delivered into psg_log by this call (plan 05-08) */
-  uint64_t psg_log_first_index;    /* v2, offset 128: records logged before this call (plan 05-08); sizeof 136 */
+  uint64_t psg_log_first_index;    /* v2, offset 128: records logged before this call (plan 05-08) */
+  /* ---- end of the v2 size (136) ---- */
+  uint64_t video_first_index;      /* v3, offset 136: frame slots emitted before this call (0 until frame events exist) */
+  uint64_t last_frame_end_ticks;   /* v3, offset 144: end tick of the last frame event at or before machine time (0 until frame events exist) */
+  uint64_t next_frame_end_ticks;   /* v3, offset 152: end tick of the next frame event after machine time (0 until frame events exist); sizeof 160 */
 } ivs_run_report;
 
 /* Runs m to req->target_ticks (above). Refusal order (D-05), first failing class wins, every
@@ -286,7 +365,8 @@ typedef struct ivs_run_report {
  *                 (nothing written);
  *   BAD_HANDLE    NULL or invalid handle (IVS_REASON_HANDLE);
  *   BAD_ARG       rep overlaps the instance storage (nothing written);
- *   UNSUPPORTED   an unknown or reserved flag (RUN_FLAGS), then a nonzero byte past the core's own
+ *   UNSUPPORTED   any flag bit other than IVS_RUN_F_STOP_ON_HALT and
+ *                 IVS_RUN_F_STOP_ON_FRAME (RUN_FLAGS), then a nonzero byte past the core's own
  *                 sizeof of a larger request (RUN_TAIL), then a nonzero reserved_in
  *                 (INPUT_RESERVED_IN);
  *   BAD_ARG       output buffers: a NULL buffer with a nonzero capacity (RUN_BUFFER_NULL), then a

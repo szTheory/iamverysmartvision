@@ -352,6 +352,33 @@
       ]
     },
     {
+      "name": "ivs_machine_stic_state",
+      "header": "core/include/ivs/ivs_run.h",
+      "on_ok": "Writes the stored STIC view (mode, display latch, windows active, Color Stack pointer, the two access gate bits, the event cursor, the frame index and frame start tick, the blocked and late-grant counters and the 64 register words) into *out with struct_size set to the v1 size (208); bytes of a larger caller struct past it are untouched. The instance is not written, machine time does not advance and no catch-up runs (D-04); valid OFF and POWERED.",
+      "precedence": [
+        {"status": "IVS_E_BAD_ARG", "checks": "out NULL, or out->struct_size below the v1 size or above IVS_STRUCT_SIZE_MAX", "pinned_by": ["stic.state.refusal-ladder", "stic.state.v1-size-caller"]},
+        {"status": "IVS_E_BAD_HANDLE", "checks": "NULL or invalid handle", "pinned_by": ["stic.state.refusal-ladder"]},
+        {"status": "IVS_E_BAD_ARG", "checks": "out overlapping the storage of the (valid) instance (uintptr_t arithmetic)", "pinned_by": ["stic.state.refusal-ladder"]}
+      ],
+      "notes": [
+        "Side-effect free by contract (D-04, VID-06, plan 06-07): a const instance, no machine time advance, no write to the instance, no function shared with ivs_machine_peek. The report is the stored view; the read side effects of the STIC (the mode select) live only in the bus wrapper. Out parameter rule as for ivs_machine_cpu_state."
+      ],
+      "refusals": [
+        {
+          "status": "IVS_E_BAD_ARG",
+          "effect": "none",
+          "outs": "nothing written: *out keeps its bytes",
+          "tests": ["stic.state.refusal-ladder", "stic.state.v1-size-caller"]
+        },
+        {
+          "status": "IVS_E_BAD_HANDLE",
+          "effect": "none",
+          "outs": "nothing written: *out keeps its bytes",
+          "tests": ["stic.state.refusal-ladder"]
+        }
+      ]
+    },
+    {
       "name": "ivs_machine_peek",
       "header": "core/include/ivs/ivs_run.h",
       "on_ok": "Writes count words into out[0..count-1], each what a CPU read at addr + i returns now (decode, width mask, closed gates and undriven space included). The instance is not written and machine time does not advance (D-08); valid OFF and POWERED. addr + count == 0x10000 is accepted.",
@@ -393,7 +420,7 @@
         {"status": "IVS_E_BAD_ARG", "checks": "req NULL (RUN_NULL_ARG); req struct_size below IVS_RUN_REQUEST_V1_SIZE or above IVS_STRUCT_SIZE_MAX (RUN_STRUCT_SIZE); rep NULL or its struct_size below IVS_RUN_REPORT_V1_SIZE or above the cap (nothing written)", "pinned_by": ["run.prec.arg-over-handle", "run.struct.tail-nonzero"]},
         {"status": "IVS_E_BAD_HANDLE", "checks": "NULL or invalid handle (IVS_REASON_HANDLE)", "pinned_by": ["run.prec.handle-over-overlap"]},
         {"status": "IVS_E_BAD_ARG", "checks": "the report overlaps the storage of the (valid) instance (uintptr_t arithmetic; nothing written)", "pinned_by": ["run.prec.overlap-over-unsupported"]},
-        {"status": "IVS_E_UNSUPPORTED", "checks": "an unknown or reserved flag (IVS_RUN_F_RESERVED_FRAME until Phase 6; RUN_FLAGS), then a nonzero byte past the core's own request size of a larger request (RUN_TAIL; rebased on sizeof, plan 05-02), then a nonzero reserved_in (INPUT_RESERVED_IN, plan 04-11)", "pinned_by": ["run.prec.flags-over-tail", "run.prec.unsupported-over-state", "run.prec.unsupported-over-buffer", "run.prec.unsupported-over-events"]},
+        {"status": "IVS_E_UNSUPPORTED", "checks": "any flag bit other than IVS_RUN_F_STOP_ON_HALT and IVS_RUN_F_STOP_ON_FRAME (value 2, accepted since plan 06-09: the effective target is the smaller of the target and the frame end; RUN_FLAGS), then a nonzero byte past the core's own request size of a larger request (RUN_TAIL; rebased on sizeof, plan 05-02), then a nonzero reserved_in (INPUT_RESERVED_IN, plan 04-11)", "pinned_by": ["run.prec.flags-over-tail", "run.prec.unsupported-over-state", "run.prec.unsupported-over-buffer", "run.prec.unsupported-over-events"]},
         {"status": "IVS_E_BAD_ARG", "checks": "output buffers (the D-05 buffer slot): a NULL buffer with a nonzero capacity (RUN_BUFFER_NULL), then a buffer of capacity bytes overlapping the instance storage, the other buffer or the report (RUN_BUFFER_OVERLAP; uintptr_t differences with 64-bit lengths); then the write log (plan 05-02, D-14), after video and audio: psg_log NULL with a nonzero psg_log_capacity (RUN_PSGLOG_NULL), then psg_log past the top of the address space or overlapping the instance storage, the report, the video buffer, the audio buffer or the event array (RUN_PSGLOG_OVERLAP)", "pinned_by": ["run.prec.handle-over-buffer", "run.prec.buffer-over-state", "run.prec.buffer-over-events", "run.prec.psglog-after-audio"]},
         {"status": "IVS_E_BAD_ARG", "checks": "event arguments (the D-05 event slot, plan 04-11): events NULL with event_count above 0 (INPUT_EVENTS_NULL), event_count above IVS_INPUT_EVENTS_MAX = 65536 (INPUT_EVENT_COUNT), then the event_count x 32 bytes at events overlapping the instance storage, the report, the video buffer or the audio buffer (INPUT_EVENTS_OVERLAP; uintptr_t differences with 64-bit lengths); no event is read", "pinned_by": ["run.prec.events-over-state"]},
         {"status": "IVS_E_BAD_STATE", "checks": "the machine is OFF (RUN_STATE_OFF)", "pinned_by": ["run.prec.state-over-range"]},
@@ -426,7 +453,7 @@
           "status": "IVS_E_UNSUPPORTED",
           "effect": "none",
           "outs": "rep: struct_size and refusal_reason RUN_FLAGS, RUN_TAIL, INPUT_RESERVED_IN, INPUT_EVENT_FLAGS, INPUT_EVENT_RESERVED, INPUT_CONTROL_RESERVED or INPUT_EXTRA_CONTROLLER, plus input_failing_index for the last four",
-          "tests": ["run.refuse.flags-unknown", "run.refuse.flags-frame-reserved", "run.refuse.tail-nonzero", "run.prec.flags-over-tail", "run.prec.unsupported-over-state", "run.prec.unsupported-over-buffer", "run.input.refuse.reserved-in-nonzero", "run.input.refuse.control-reserved", "run.input.refuse.event-flags", "run.input.refuse.event-reserved", "run.input.refuse.extra-controller-word", "run.prec.unsupported-over-events"]
+          "tests": ["run.refuse.flags-unknown", "run.flags.stop-on-frame-accepted", "run.flags.stop-reason-frame", "run.refuse.tail-nonzero", "run.prec.flags-over-tail", "run.prec.unsupported-over-state", "run.prec.unsupported-over-buffer", "run.input.refuse.reserved-in-nonzero", "run.input.refuse.control-reserved", "run.input.refuse.event-flags", "run.input.refuse.event-reserved", "run.input.refuse.extra-controller-word", "run.prec.unsupported-over-events"]
         },
         {
           "status": "IVS_E_BAD_STATE",

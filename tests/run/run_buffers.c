@@ -331,7 +331,10 @@ static int bf_zero_layout(void)
     r.struct_size = (uint32_t)sizeof r;
     st = bf_call(x.m, &q, &r, &e);
     BF_CHECK(st == IVS_OK && r.stop_reason == IVS_STOP_TARGET && r.now_ticks >= now + BF_SPAN);
-    BF_CHECK(r.video_frames_completed == 0u && r.video_bytes_written == 0u && r.audio_bytes_written == 0u);
+    /* Plan 06-09 (a reviewed edit): frames are counted whether or not a buffer is given (the three calls span 60,000 ticks, so the
+     * third completes the frame that ends at 59,736); no byte is delivered because none is requested. */
+    BF_CHECK(r.video_frames_completed == (r.now_ticks / 59736u) - (now / 59736u) && r.video_bytes_written == 0u &&
+             r.audio_bytes_written == 0u);
   }
   rc = IVS_TEST_PASS;
 done:
@@ -535,16 +538,21 @@ static int bf_real_layout_audio(void)
   IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, BF_POISON));
   a = bf_arena();
   BF_CHECK(a != NULL);
-  /* Not requested: NULL with 0, with and without a video buffer (video layout NONE needs nothing). */
+  /* Not requested: NULL with 0 (three repetitions of one call; a video buffer of any size now needs the real layout's capacity). */
   for (i = 0u; i < 3u; i++) {
     uint64_t now = bf_now(x.m);
     ivs_status st;
-    bf_req(&q, 0u, now + 20000u, i == 1u ? a + BF_VIDEO_OFF : NULL, i == 1u ? 64u : 0u, NULL, 0u);
+    /* Plan 06-09 (a reviewed edit): the video layout is real, so a small video buffer is no longer accepted; video is not requested
+     * (NULL with capacity 0) in all three variants and the run ends before the first frame end (59,736 ticks). */
+    bf_req(&q, 0u, now + 20000u, NULL, 0u, NULL, 0u);
     memset(&r, BF_POISON, sizeof r);
     r.struct_size = (uint32_t)sizeof r;
     st = ivs_machine_run(x.m, &q, &r);
     BF_CHECK(st == IVS_OK && r.stop_reason == IVS_STOP_TARGET && r.units_executed > 0u);
-    BF_CHECK(r.video_frames_completed == 0u && r.video_bytes_written == 0u && r.audio_bytes_written == 0u);
+    /* Plan 06-09 (a reviewed edit): frames are counted whether or not a buffer is given (the three calls span 60,000 ticks, so the
+     * third completes the frame that ends at 59,736); no byte is delivered because none is requested. */
+    BF_CHECK(r.video_frames_completed == (r.now_ticks / 59736u) - (now / 59736u) && r.video_bytes_written == 0u &&
+             r.audio_bytes_written == 0u);
     BF_CHECK(bf_arena_kept(a));
   }
   /* Too small: nonzero capacities below the 15,060-byte requirement (the arena is smaller still). */
@@ -754,7 +762,7 @@ static int bf_prec_unsupported_over_buffer(void)
   BF_CHECK(a != NULL);
   bf_req(&q, 4u, BF_SPAN, NULL, 8u, NULL, 0u);
   BF_CHECK(bf_refused(&x, x.m, &q, NULL, a, IVS_E_UNSUPPORTED, IVS_REASON_RUN_FLAGS));
-  bf_req(&q, IVS_RUN_F_RESERVED_FRAME, BF_SPAN, NULL, 0u, NULL, 8u);
+  bf_req(&q, RUN_TEST_BAD_FLAG, BF_SPAN, NULL, 0u, NULL, 8u);
   BF_CHECK(bf_refused(&x, x.m, &q, NULL, a, IVS_E_UNSUPPORTED, IVS_REASON_RUN_FLAGS));
   memset(&big, 0, sizeof big);
   bf_req(&big.q, 0u, BF_SPAN, x.storage + bf_inside_off(), 8u, NULL, 0u);
@@ -868,6 +876,45 @@ static int bf_null_zero_not_requested(void)
   rc = IVS_TEST_PASS;
 done:
   ivs_ms_free(&y);
+  ivs_ms_free(&x);
+  return rc;
+}
+
+/* run.buffers.video-real (plan 06-09, D-13, D-15, A-08): the real video layout through the public call. The slot is 15,296 bytes and the
+ * requirement of a run of D ticks is slot x (floor(D / 59,736) + 1 + 1): a run of 20,000 ticks needs 2 slots, one byte less is
+ * BUFFER_TOO_SMALL with nothing written; exactly 2 slots is accepted and, since no frame ends inside 20,000 ticks, delivers nothing; a run
+ * across the frame end at 59,736 delivers one slot (3 slots needed) whose header carries tick 59,736 and index 0. */
+static int bf_video_real(void)
+{
+  enum { SLOT = 15296, TWO = 2 * SLOT, THREE = 3 * SLOT };
+  ivs_ms_inst x;
+  ivs_run_request q;
+  ivs_run_report r;
+  uint8_t *v = NULL;
+  uint32_t i;
+  int rc = IVS_TEST_FAIL;
+  IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, BF_POISON));
+  v = malloc((size_t)THREE + 64u);
+  BF_CHECK(v != NULL);
+  memset(v, BF_POISON, (size_t)THREE + 64u);
+  bf_req(&q, 0u, bf_now(x.m) + 20000u, v, TWO - 1u, NULL, 0u);
+  BF_CHECK(bf_refused(&x, x.m, &q, NULL, v, IVS_E_BUFFER_TOO_SMALL, IVS_REASON_RUN_BUFFER_SMALL));
+  bf_req(&q, 0u, bf_now(x.m) + 20000u, v, TWO, NULL, 0u);
+  memset(&r, BF_POISON, sizeof r);
+  r.struct_size = (uint32_t)sizeof r;
+  BF_CHECK(ivs_machine_run(x.m, &q, &r) == IVS_OK && r.video_frames_completed == 0u && r.video_bytes_written == 0u);
+  for (i = 0u; i < (uint32_t)THREE + 64u; i++) {
+    BF_CHECK(v[i] == BF_POISON);
+  }
+  bf_req(&q, 0u, 70000u, v, THREE, NULL, 0u);
+  memset(&r, BF_POISON, sizeof r);
+  r.struct_size = (uint32_t)sizeof r;
+  BF_CHECK(ivs_machine_run(x.m, &q, &r) == IVS_OK && r.video_frames_completed == 1u && r.video_bytes_written == SLOT);
+  BF_CHECK(v[0] == 0u && v[6] == 0xE9u && v[7] == 0x58u && v[8] == 0u && v[15] == 0u && v[19] == 159u && v[23] == 96u);
+  BF_CHECK(v[SLOT] == BF_POISON && v[(size_t)THREE + 63u] == BF_POISON);
+  rc = IVS_TEST_PASS;
+done:
+  free(v);
   ivs_ms_free(&x);
   return rc;
 }
@@ -1167,6 +1214,7 @@ const ivs_test_case ivs_run_buffers_cases[] = {
     {"run.buffers.video-audio-overlap", bf_video_audio_overlap, NULL},
     {"run.buffers.report-overlap", bf_report_overlap, NULL},
     {"run.buffers.real-layout-audio", bf_real_layout_audio, NULL},
+    {"run.buffers.video-real", bf_video_real, NULL},
     {"run.buffers.audio-real", bf_audio_real, NULL},
     {"run.buffers.entry-points-equal", bf_entry_points_equal, NULL},
     {"run.prec.handle-over-buffer", bf_prec_handle_over_buffer, NULL},

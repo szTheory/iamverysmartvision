@@ -78,6 +78,44 @@
       "interruptible": "manual-silent",
       "cite": "S3.3 branch format, pdf 54; branch table, pdf 54",
       "note": "Example branch row."
+    },
+    {
+      "id": "SDBD",
+      "mnemonic": "SDBD",
+      "aliases": [],
+      "group": "internal-control",
+      "printed": "0000 000 001",
+      "pattern": "0000000001",
+      "eq": [],
+      "refines": "ALL",
+      "also_encodes": [],
+      "words": 1,
+      "cycles_printed": "4",
+      "cycle_modifiers": [],
+      "sdbd": "not-applicable",
+      "status_bits": "none",
+      "interruptible": "manual-silent",
+      "cite": "S3.3 branch format, pdf 54; branch table, pdf 54",
+      "note": "Example prefix row (plan 06-01)."
+    },
+    {
+      "id": "MVII",
+      "mnemonic": "MVII",
+      "aliases": [],
+      "group": "immediate",
+      "printed": "1010 111 DDD",
+      "pattern": "1010111...",
+      "eq": [],
+      "refines": "ALL",
+      "also_encodes": [],
+      "words": 2,
+      "cycles_printed": "8",
+      "cycle_modifiers": [],
+      "sdbd": "not-applicable",
+      "status_bits": "none",
+      "interruptible": "manual-silent",
+      "cite": "S3.3 branch format, pdf 54; branch table, pdf 54",
+      "note": "Example immediate row (plan 06-01)."
     }
   ]
 }

@@ -12,6 +12,7 @@
 #include "ivs_test.h"
 #include "machine/machine.h"
 #include "machine_cases.h"
+#include "stic/stic_params.h"
 
 /* Fails the case with a diagnostic naming the line and the failed expression. */
 #define IVS_CHECK(cond)                                                                                \
@@ -384,8 +385,8 @@ static int mc_refuse_unknown_over_short(void)
  * generated includes in three translation units; a profile must have a row in each. The three counts are
  * equal, every registered profile has PSG parameters (and none exists past the end), and a machine of
  * every registered profile can be created, so no profile index reads a table past its end and no machine
- * runs with its PSG silently absent. The named faults PSG_TABLE_SHORT and CTRL_TABLE_SHORT shorten one
- * table by a profile. */
+ * runs with its PSG or STIC silently absent. The named faults PSG_TABLE_SHORT, CTRL_TABLE_SHORT and
+ * STIC_TABLE_SHORT shorten one table by a profile. */
 static int mc_tables_cover_registry(void)
 {
   uint32_t n = ivs_profile_count();
@@ -393,7 +394,9 @@ static int mc_tables_cover_registry(void)
   IVS_CHECK(n > 0u);
   IVS_CHECK(ivs_psg_params_count() == n);
   IVS_CHECK(ivs_input_profile_count() == n);
+  IVS_CHECK(ivs_stic_params_count() == n);
   IVS_CHECK(ivs_psg_params_get(n) == NULL);
+  IVS_CHECK(ivs_stic_params_get(n) == NULL);
   for (i = 0u; i < n; i++) {
     const ivs_profile_desc *d = ivs_profile_get(i);
     ivs_create_options o;
@@ -402,6 +405,7 @@ static int mc_tables_cover_registry(void)
     int ok;
     IVS_CHECK(d != NULL);
     IVS_CHECK(ivs_psg_params_get(i) != NULL);
+    IVS_CHECK(ivs_stic_params_get(i) != NULL);
     o = mc_opts(d->id);
     st = mc_exact(0xA5u);
     IVS_CHECK(st != NULL);
@@ -799,6 +803,46 @@ static int mc_api_version(void)
   return IVS_TEST_PASS;
 }
 
+/* Plan 06-05 (D-04, D-16, A-05, A-11): the layout numbers, as literals derived on paper in the layout
+ * comment of machine/machine.h (not read back from the code under test): ivs_memsys is 113,264 + 64 x 2 =
+ * 113,392 bytes, the STIC state is 8 + 10 x 4 + 12 x 20 x 2 = 528 bytes, the instance is 114,416 = 16 x 7,151
+ * bytes with psg at 113,448, stic at 113,520 (0 mod 8), obs at 114,048 and the slot records at 114,248. The
+ * state members sit at their derived offsets, and the requirements call reports the instance size. */
+static int mc_layout_sizes(void)
+{
+  ivs_storage_requirements r;
+  IVS_CHECK(sizeof(ivs_memsys) == 113392u);
+  IVS_CHECK(sizeof(ivs_memsys) % 16u == 0u);
+  IVS_CHECK(sizeof(ivs_stic_state) == 528u);
+  IVS_CHECK(sizeof(struct ivs_machine) == 114416u);
+  IVS_CHECK(IVS_MACHINE_BYTES == 114416u && 114416u == 16u * 7151u);
+  IVS_CHECK(offsetof(struct ivs_machine, mem) == 56u);
+  IVS_CHECK(offsetof(struct ivs_machine, psg) == 113448u);
+  IVS_CHECK(offsetof(struct ivs_machine, stic) == 113520u);
+  IVS_CHECK(offsetof(struct ivs_machine, stic) % 8u == 0u);
+  IVS_CHECK(offsetof(struct ivs_machine, obs) == 114048u);
+  IVS_CHECK(offsetof(struct ivs_machine, slot) == 114248u);
+  IVS_CHECK(offsetof(struct ivs_machine, mem.stic_reg) == 56u + 113264u);
+  IVS_CHECK(offsetof(ivs_stic_state, frame_index) == 0u);
+  IVS_CHECK(offsetof(ivs_stic_state, event_index) == 8u);
+  IVS_CHECK(offsetof(ivs_stic_state, display_latch) == 12u);
+  IVS_CHECK(offsetof(ivs_stic_state, windows_active) == 16u);
+  IVS_CHECK(offsetof(ivs_stic_state, mode) == 20u);
+  IVS_CHECK(offsetof(ivs_stic_state, cs_ptr) == 24u);
+  IVS_CHECK(offsetof(ivs_stic_state, blocked_reads) == 28u);
+  IVS_CHECK(offsetof(ivs_stic_state, blocked_writes) == 32u);
+  IVS_CHECK(offsetof(ivs_stic_state, late_grants) == 36u);
+  IVS_CHECK(offsetof(ivs_stic_state, grants_in_frame) == 40u);
+  IVS_CHECK(offsetof(ivs_stic_state, reserved0) == 44u);
+  IVS_CHECK(offsetof(ivs_stic_state, row_latch) == 48u);
+  IVS_CHECK(sizeof(((ivs_stic_state *)0)->row_latch) == 480u);
+  memset(&r, 0xA5, sizeof r);
+  r.struct_size = (uint32_t)sizeof r;
+  IVS_CHECK(ivs_machine_storage_requirements(MC_PROFILE, &r) == IVS_OK);
+  IVS_CHECK(r.size_bytes == 114416u);
+  return IVS_TEST_PASS;
+}
+
 const ivs_test_case ivs_machine_create_cases[] = {
     {"machine.api.version", mc_api_version, NULL},
     {"machine.create.info-larger-out", mc_info_larger_out, NULL},
@@ -812,6 +856,7 @@ const ivs_test_case ivs_machine_create_cases[] = {
     {"machine.create.tables-cover-registry", mc_tables_cover_registry, NULL},
     {"machine.create.tail-zero-ok", mc_tail_zero_ok, NULL},
     {"machine.destroy.scrubs", mc_destroy_scrubs, NULL},
+    {"machine.layout.sizes", mc_layout_sizes, NULL},
     {"machine.refuse.create.flags-1", mc_refuse_flags_1, NULL},
     {"machine.refuse.create.flags-over-unknown-profile", mc_refuse_flags_over_unknown, NULL},
     {"machine.refuse.create.id-63-unknown", mc_refuse_id_63_unknown, NULL},

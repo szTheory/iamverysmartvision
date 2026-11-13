@@ -16,12 +16,15 @@
  *   run.info.v2-size-caller  a caller sized for v2 (256 bytes, plan 05-02) gets exactly 256 bytes and
  *                            struct_size 256; the poisoned byte at offset 256 and every byte past
  *                            it are untouched.
- *   run.info.v3-fields       a v3-sized caller (sizeof(ivs_info), 288) gets struct_size 288, the
+ *   run.info.v3-fields       a full caller (sizeof(ivs_info), 320 since plan 06-03) gets struct_size 320, the
  *                            Phase 5 tail at the pinned offsets 256, 260, 264, 268, 272, 280 and its
  *                            values: audio_sample_ticks 16, audio_sample_bytes 4, the crystal
  *                            passthrough 3579545 / 1 (plan 05-06; it replaces run.info.v3-fields-zero of
  *                            plan 05-02, which asserted every tail field 0), and (plan 05-08) the write-log
  *                            fields psg_log_record_bytes 16 and psg_log_records_per_frame 2,152.
+ *   run.info.v4-fields       the Phase 6 tail (plan 06-03): offsets 288, 296, 300, 304, 308, 312, 316, sizeof
+ *                            320, every field 0 while video_format is NONE.
+ *   run.info.v3-size-caller  a v3-sized caller (288 bytes) gets exactly 288 bytes; the v4 tail is untouched.
  *   run.info.audio-fields    the audio layout is the literal one: format 1 (PSG_LEVELS_V1), sample
  *                            period 16 ticks, sample record 4 bytes and audio_bytes_per_frame 15,060 =
  *                            4 x (ceil(59,736 / 16) + ceil(468 / 16) + 1) = 4 x (3,734 + 30 + 1).
@@ -103,9 +106,13 @@ static int ri_layout_real(void)
   int rc = IVS_TEST_FAIL;
   IVS_CHECK(ivs_ms_new(&x, RI_POISON));
   RI_CHECK(ri_full(x.m, &a));
-  RI_CHECK(a.video_format == IVS_OUTPUT_FORMAT_NONE && a.video_bytes_per_frame == 0u);
+  /* Plan 06-09 (a reviewed edit; plan 06-03 pinned NONE and a zero tail): the video layout is real, one raw slot per frame. */
+  RI_CHECK(a.video_format == IVS_OUTPUT_FORMAT_INDEX8_FRAMES_V1 && a.video_bytes_per_frame == 15296u);
   RI_CHECK(a.audio_format == IVS_OUTPUT_FORMAT_PSG_LEVELS_V1 && a.audio_bytes_per_frame != 0u);
   RI_CHECK(a.reserved == 0u && a.reserved2 == 0u);
+  RI_CHECK(a.frame_phase_ticks == 0u && a.video_width == 159u && a.video_height == 96u);
+  RI_CHECK(a.video_slot_bytes == 15296u && a.video_header_bytes == 32u && a.video_slack_frames == 1u);
+  RI_CHECK(a.video_row_lines == 2u);
   rc = IVS_TEST_PASS;
 done:
   ivs_ms_free(&x);
@@ -189,10 +196,10 @@ static int ri_v3_fields(void)
   IVS_CHECK(offsetof(ivs_info, audio_sample_ticks) == 256u && offsetof(ivs_info, audio_sample_bytes) == 260u);
   IVS_CHECK(offsetof(ivs_info, psg_log_record_bytes) == 264u && offsetof(ivs_info, psg_log_records_per_frame) == 268u);
   IVS_CHECK(offsetof(ivs_info, crystal_hz_num) == 272u && offsetof(ivs_info, crystal_hz_den) == 280u);
-  IVS_CHECK(sizeof(ivs_info) == 288u && IVS_INFO_V1_SIZE == 216u);
+  IVS_CHECK(sizeof(ivs_info) == 320u && IVS_INFO_V1_SIZE == 216u);
   IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, RI_POISON));
   RI_CHECK(ri_full(x.m, &a));
-  RI_CHECK(a.struct_size == 288u);
+  RI_CHECK(a.struct_size == 320u); /* sizeof(ivs_info) is the v4 size from plan 06-03; the v3 caller is run.info.v3-size-caller */
   /* Plan 05-06: the audio fields and the crystal passthrough (literals of the data sheet's crystal and
    * of docs/time-base.md: one PSG step is 8 chip clocks of 2 master ticks). */
   RI_CHECK(a.audio_sample_ticks == 16u && a.audio_sample_bytes == 4u);
@@ -200,6 +207,56 @@ static int ri_v3_fields(void)
   /* Plan 05-08: the write-log layout is real: 16-byte records, 2,152 per frame slot (literals of the derivation
    * W_log = ceil(59,736 / 28) + ceil(468 / 28) + 1 = 2,134 + 17 + 1; psg.bounds.log-capacity-formula). */
   RI_CHECK(a.psg_log_record_bytes == 16u && a.psg_log_records_per_frame == 2152u);
+  rc = IVS_TEST_PASS;
+done:
+  ivs_ms_free(&x);
+  return rc;
+}
+
+/* run.info.v4-fields (plan 06-03, A-10): the pinned offsets and size of the Phase 6 tail; plan 06-09 (reviewed edit)
+ * the real values, whatever the struct held before. */
+static int ri_v4_fields(void)
+{
+  ivs_ms_inst x;
+  ivs_info a;
+  int rc = IVS_TEST_FAIL;
+  IVS_CHECK(offsetof(ivs_info, frame_phase_ticks) == 288u && offsetof(ivs_info, video_width) == 296u);
+  IVS_CHECK(offsetof(ivs_info, video_height) == 300u && offsetof(ivs_info, video_slot_bytes) == 304u);
+  IVS_CHECK(offsetof(ivs_info, video_header_bytes) == 308u && offsetof(ivs_info, video_slack_frames) == 312u);
+  IVS_CHECK(offsetof(ivs_info, video_row_lines) == 316u && sizeof(ivs_info) == 320u);
+  IVS_CHECK(IVS_INFO_V1_SIZE == 216u);
+  IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, RI_POISON));
+  RI_CHECK(ri_full(x.m, &a));
+  /* Plan 06-09 (a reviewed edit): the real values; the literals are the numbers of data/video/geometry.literal.txt (159 x 96, header
+   * 32, slot 15,296, 2 TV lines per display row) and the owner's slack of one frame. */
+  RI_CHECK(a.struct_size == 320u && a.video_format == IVS_OUTPUT_FORMAT_INDEX8_FRAMES_V1);
+  RI_CHECK(a.frame_phase_ticks == 0u && a.video_width == 159u && a.video_height == 96u);
+  RI_CHECK(a.video_slot_bytes == 15296u && a.video_header_bytes == 32u && a.video_slack_frames == 1u);
+  RI_CHECK(a.video_row_lines == 2u);
+  RI_CHECK(ri_sized_caller(x.m, &a, 320u));
+  rc = IVS_TEST_PASS;
+done:
+  ivs_ms_free(&x);
+  return rc;
+}
+
+/* run.info.v3-size-caller (plan 06-03, A-02): a caller sized for v3 (288 bytes) gets exactly 288 bytes
+ * and struct_size 288; the poisoned bytes from 288 on (the v4 tail) are untouched. */
+static int ri_v3_size_caller(void)
+{
+  ivs_ms_inst x;
+  ivs_info full;
+  ri_buf b;
+  int rc = IVS_TEST_FAIL;
+  IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, RI_POISON));
+  RI_CHECK(ri_full(x.m, &full));
+  RI_CHECK(ri_sized_caller(x.m, &full, 288u));
+  memset(&b, RI_POISON, sizeof b);
+  b.info.struct_size = 288u;
+  RI_CHECK(ivs_machine_info(x.m, &b.info) == IVS_OK && b.info.struct_size == 288u);
+  RI_CHECK(b.info.crystal_hz_num == 3579545u && b.info.crystal_hz_den == 1u);
+  RI_CHECK(b.info.frame_phase_ticks == 0xA5A5A5A5A5A5A5A5u && b.info.video_width == 0xA5A5A5A5u);
+  RI_CHECK(b.info.video_row_lines == 0xA5A5A5A5u);
   rc = IVS_TEST_PASS;
 done:
   ivs_ms_free(&x);
@@ -283,6 +340,8 @@ const ivs_test_case ivs_run_info_cases[] = {
     {"run.info.v1-size-caller", ri_v1_size_caller, NULL},
     {"run.info.v2-size-caller", ri_v2_size_caller, NULL},
     {"run.info.v3-fields", ri_v3_fields, NULL},
+    {"run.info.v4-fields", ri_v4_fields, NULL},
+    {"run.info.v3-size-caller", ri_v3_size_caller, NULL},
     {"run.info.audio-fields", ri_audio_fields, NULL},
     {"run.info.short-refused", ri_short_refused, NULL},
     {"run.info.oversize-refused", ri_oversize_refused, NULL},

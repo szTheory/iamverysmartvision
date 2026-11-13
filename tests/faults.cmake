@@ -72,6 +72,15 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${ivs_fault_files
 
 add_custom_target(ivs_faults)
 
+# ivs_fault_nodebug(<target>): -g0 on a fault-only target (lever pass, plan 06-02, D-21). The
+# preset's `-O1 -g` comes first on the command line and a later `-g0` wins on clang and gcc, so
+# the fault objects and executables carry no debug information: code generation is unchanged, only
+# the compile time and the object size drop. Never applied to a pristine suite, the runner or a
+# release target (no evidence build changes); the fault executables are not debugged.
+function(ivs_fault_nodebug target)
+  target_compile_options(${target} PRIVATE -g0)
+endfunction()
+
 # ivs_fault_tu_setup(<object target> <repo-relative owner TU>): the include path and generator
 # dependency of a plain or owner copy, by module: a core TU sees core/include, core/src and the
 # core's generated directory; a runner TU sees only core/include and runner/ (and, since plan 05-10, the header directory tools/pcm; its
@@ -90,6 +99,7 @@ function(ivs_fault_tu_setup target src)
   endif()
   target_link_libraries(${target} PRIVATE ivs_warnings)
   set_target_properties(${target} PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF)
+  ivs_fault_nodebug(${target})
 endfunction()
 
 # Plain object copies of every owner TU and of the harness library.
@@ -103,6 +113,7 @@ add_library(ivs_fault_plain_harness OBJECT EXCLUDE_FROM_ALL harness/ivs_test.c h
 target_include_directories(ivs_fault_plain_harness PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/harness" "${PROJECT_SOURCE_DIR}/core/include" "${PROJECT_SOURCE_DIR}/core/src")
 target_link_libraries(ivs_fault_plain_harness PRIVATE ivs_warnings)
+ivs_fault_nodebug(ivs_fault_plain_harness)
 
 # One plain object library per suite that a faults file names (created on first use).
 function(ivs_fault_suite_obj suite)
@@ -116,6 +127,7 @@ function(ivs_fault_suite_obj suite)
     "${CMAKE_CURRENT_SOURCE_DIR}/harness" "${PROJECT_SOURCE_DIR}/core/include" "${PROJECT_SOURCE_DIR}/core/src")
   target_link_libraries(ivs_fault_suite_obj_${suite} PRIVATE ivs_warnings)
   set_target_properties(ivs_fault_suite_obj_${suite} PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF)
+  ivs_fault_nodebug(ivs_fault_suite_obj_${suite})
 endfunction()
 
 # ivs_fault_exe(<ID> <suite> <owner-src or empty> <generated dir or empty> <generated file or empty>)
@@ -172,6 +184,7 @@ function(ivs_fault_exe id suite owner gen_dir gen_file)
   endif()
   target_link_libraries(ivs_fault_${id} PRIVATE ivs_warnings)
   set_target_properties(ivs_fault_${id} PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF)
+  ivs_fault_nodebug(ivs_fault_${id})
   add_dependencies(ivs_faults ivs_fault_${id})
 endfunction()
 
@@ -191,6 +204,7 @@ function(ivs_fault_exe_core_gen id suite consumer gen_dir gen_file)
         "${PROJECT_SOURCE_DIR}/core/include" "${PROJECT_SOURCE_DIR}/core/src" "${ivs_fault_core_gen_dir}")
       target_link_libraries(ivs_fault_obj_${id} PRIVATE ivs_warnings)
       set_target_properties(ivs_fault_obj_${id} PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF)
+      ivs_fault_nodebug(ivs_fault_obj_${id})
       list(APPEND objs "$<TARGET_OBJECTS:ivs_fault_obj_${id}>")
     else()
       list(APPEND objs "$<TARGET_OBJECTS:ivs_fault_plain_${stem}>")
@@ -200,6 +214,7 @@ function(ivs_fault_exe_core_gen id suite consumer gen_dir gen_file)
   add_executable(ivs_fault_${id} EXCLUDE_FROM_ALL "$<TARGET_OBJECTS:ivs_fault_suite_obj_${suite}>" ${objs})
   set_target_properties(ivs_fault_${id} PROPERTIES LINKER_LANGUAGE C INTERPROCEDURAL_OPTIMIZATION OFF)
   target_link_libraries(ivs_fault_${id} PRIVATE ivs_warnings)
+  ivs_fault_nodebug(ivs_fault_${id})
   add_dependencies(ivs_faults ivs_fault_${id})
 endfunction()
 

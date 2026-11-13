@@ -1,0 +1,31 @@
+# STIC and card rule inventory (VID-01..VID-04, VID-06, D-02, D-22; plan 06-01). Records are the elements of rules; ids are STIC-Rnn
+# (register, access, timeline and frame rules) and CR-nn (card rules, family card).
+# Every rule has a statement, a basis, a source locator, the profile field paths or engine markers it will read, the test-id family
+# prefixes that will cover it, a discrepancy id and a note. The cross-checks of the fields and test families against the profile and the
+# suites (with the pending lists) are in tools/check/video.cmake; the field syntax, the cite, the discrepancy id and the resolver and
+# trigger text of a rule whose basis is inference or default-unknown are checked by the hook (kinds/stic-rule.cmake).
+file data/stic/rules.json
+topkeys schema_version note rules
+top schema_version NUMBER
+top note STRING
+top rules ARRAY
+array rules
+idkey id
+inventory data/expected/stic-rules.ids
+keys id family statement basis cite fields tests conflict note
+req id STRING
+req family STRING
+req statement STRING
+req basis STRING
+req cite STRING
+req fields ARRAY
+req tests ARRAY
+req conflict STRING
+req note STRING
+nonblank statement
+nonblank cite
+match id ^(STIC-R[0-9][0-9]|CR-[0-9][0-9])$
+match family ^(stic|card)$
+match basis ^(tier1-literal|tier1-derived|tier2-bsr|tier4-community|inference|project-rule|default-unknown)$
+match conflict ^C[0-9]+$
+hook stic-rule

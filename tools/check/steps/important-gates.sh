@@ -7,13 +7,14 @@
 # vacuously (inventory, digest or golden comparison, outcome classifier, refusal/no-state-change
 # check, verdict over producer output), or its failure class escaped once. Each such gate has a
 # named mechanism that is shown to fail for its intended reason elsewhere in the gate; this step
-# checks that the registry names only mechanisms that exist and covers every Phase 4 and Phase 5
-# requirement (plan 05-12 added the Phase 5 set).
+# checks that the registry names only mechanisms that exist and covers every Phase 4, Phase 5 and
+# Phase 6 requirement (plan 05-12 added the Phase 5 set, plan 06-14 the Phase 6 set).
 # Registry: data/expected/important-gates.ids, '#' lines and blank lines skipped, then one line
 #   <gate> <fault|control|mutant> <id> <REQ>
 # per (gate, mechanism, id, requirement). <gate> is a free name of lower-case letters, digits and
 # '-'; <REQ> is one of the Phase 4 requirements API-02 API-04 RUN-01 RUN-02 RUN-04 RUN-05 RUN-06
-# PKG-01 PKG-03 PKG-04 or one of the Phase 5 requirements INP-01 INP-02 INP-03 API-03 AUD-01 AUD-02.
+# PKG-01 PKG-03 PKG-04, one of the Phase 5 requirements INP-01 INP-02 INP-03 API-03 AUD-01 AUD-02 or one
+# of the Phase 6 requirements VID-01 VID-02 VID-03 VID-04 VID-06 (VID-05 belongs to Phase 8 and is rejected).
 # Resolution of <id> by mechanism:
 #   fault    first column of any data/expected/faults/*.ids (judged by faults-verdict);
 #   control  first column of any data/expected/controls/*.ids (run by tools/check/run-controls.sh);
@@ -21,8 +22,8 @@
 #            (in-step selftests), or a test id `<suite>.judge.<slug>` or `<suite>.mutant.<slug>`
 #            of any data/expected/tests/*.ids (suite self-controls, judged by tests-inventory).
 # Tokens: important-gates-unknown-id: line <n> (not 4 columns, unknown mechanism, bad gate name,
-#   or a requirement outside the Phase 4 and Phase 5 sets) or <mechanism> <id> line <n> (the id is in no
-#   inventory of its mechanism); important-gates-uncovered-gate: <REQ> (a Phase 4 or Phase 5
+#   or a requirement outside the Phase 4, Phase 5 and Phase 6 sets) or <mechanism> <id> line <n> (the id is in no
+#   inventory of its mechanism); important-gates-uncovered-gate: <REQ> (a Phase 4, Phase 5 or Phase 6
 #   requirement with no registry line; also the registry file missing).
 # Stats: gates=<distinct gate names> lines=<registry lines>.
 LC_ALL=C; export LC_ALL
@@ -67,7 +68,7 @@ awk -v knownf="$tmp/known" -v find="$find" -v stats="$tmp/stats" '
   BEGIN {
     while ((getline l < knownf) > 0) known[l] = 1
     close(knownf)
-    nreq = split("API-02 API-04 RUN-01 RUN-02 RUN-04 RUN-05 RUN-06 PKG-01 PKG-03 PKG-04 INP-01 INP-02 INP-03 API-03 AUD-01 AUD-02", reqs, " ")
+    nreq = split("API-02 API-04 RUN-01 RUN-02 RUN-04 RUN-05 RUN-06 PKG-01 PKG-03 PKG-04 INP-01 INP-02 INP-03 API-03 AUD-01 AUD-02 VID-01 VID-02 VID-03 VID-04 VID-06", reqs, " ")
     for (i = 1; i <= nreq; i++) accepted[reqs[i]] = 1
     lines = 0; ngates = 0
   }

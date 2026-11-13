@@ -127,7 +127,7 @@ set_tests_properties(ivsc PROPERTIES SKIP_RETURN_CODE 77)
 # table, so it compiles ivs_cart_table.inc too.
 add_executable(ivs_tests_machine machine/machine_main.c machine/machine_sha256.c machine/machine_create.c
   machine/machine_digest.c machine/machine_load.c machine/machine_refuse.c machine/machine_standin.c
-  machine/machine_reset.c machine/machine_iso.c machine/machine_sweep.c "${IVS_SHA_INC}" "${IVS_CART_INC}")
+  machine/machine_reset.c machine/machine_iso.c machine/machine_sweep.c machine/machine_stic_params.c "${IVS_SHA_INC}" "${IVS_CART_INC}")
 target_include_directories(ivs_tests_machine PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(ivs_tests_machine PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
 add_test(NAME machine COMMAND ivs_tests_machine)
@@ -141,6 +141,7 @@ set_tests_properties(machine PROPERTIES SKIP_RETURN_CODE 77)
 # images that tools/pack writes (target ivs_images, IVS_IMAGES_DIR), turned into a C include by
 # ivs_pack --c-include here. Nothing in it is committed.
 # Plan 05-11 adds the third pair diag_ctrl_psg_1 (the second diagnostic, D-24) to the include.
+# Plan 06-13 adds the fourth pair diag_stic_1 (the third diagnostic, D-20).
 # Plan 04-16 adds the diagnostic container diag-cpu-1.ivsc to the include, and diag_cpu_1_expect.inc:
 # the assert lines of data/golden/diag-cpu-1.expect as X-macro lines (tests/expect-inc.cmake), so
 # run.diag.predicate reads the hand-derived values from that file instead of retyping them.
@@ -149,7 +150,9 @@ add_custom_command(
   OUTPUT "${IVS_IMAGES_INC}"
   COMMAND ivs_pack --c-include "${IVS_IMAGES_INC}" "boot_stub=${IVS_BOOT_STUB_EXEC}"
           "diag_cpu_1=${IVS_DIAG_CPU_1_IVSC}" "diag_ctrl_psg_1=${IVS_DIAG_CTRL_PSG_1_IVSC}"
+          "diag_stic_1=${IVS_DIAG_STIC_1_IVSC}"
   DEPENDS ivs_pack ivs_images "${IVS_BOOT_STUB_EXEC}" "${IVS_DIAG_CPU_1_IVSC}" "${IVS_DIAG_CTRL_PSG_1_IVSC}"
+          "${IVS_DIAG_STIC_1_IVSC}"
   COMMENT "Generating the build-tree image include"
   VERBATIM)
 set(IVS_DIAG_EXPECT "${PROJECT_SOURCE_DIR}/data/golden/diag-cpu-1.expect")
@@ -184,7 +187,36 @@ add_custom_command(
   DEPENDS ${IVS_INPUT_LITERALS} "${PROJECT_SOURCE_DIR}/data/expected/input-bits.ids" "${IVS_INPUT_PROBE_GENERATOR}"
   COMMENT "Generating the controller probe table"
   VERBATIM)
-add_executable(ivs_tests_run run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_struct.c run/run_fuzz.c run/run_stub.c run/run_diag.c run/run_diag_ctrl.c machine/machine_standin.c "${IVS_IMAGES_INC}" "${IVS_DIAG_EXPECT_INC}" "${IVS_CTRL_EXPECT_INC}" "${IVS_INPUT_PROBE_INC}")
+# Plan 06-13: the predicates of the third diagnostic (the two .expect files of ivs-diag-stic-1, with the video forms of expect-inc.cmake) and the
+# two literal frames F-D1 and F-D2 (cmake/IvsVideoFrames.cmake, FRAMESET=diag), read by run.diag.stic.*.
+set(IVS_STIC_FGBG_EXPECT "${PROJECT_SOURCE_DIR}/data/golden/diag-stic-fgbg-pass.expect")
+set(IVS_STIC_FGBG_EXPECT_INC "${CMAKE_CURRENT_BINARY_DIR}/diag_stic_fgbg_pass_expect.inc")
+add_custom_command(
+  OUTPUT "${IVS_STIC_FGBG_EXPECT_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DIN=${IVS_STIC_FGBG_EXPECT}" "-DOUT=${IVS_STIC_FGBG_EXPECT_INC}"
+          -P "${CMAKE_CURRENT_SOURCE_DIR}/expect-inc.cmake"
+  DEPENDS "${IVS_STIC_FGBG_EXPECT}" "${CMAKE_CURRENT_SOURCE_DIR}/expect-inc.cmake"
+  COMMENT "Generating the diag-stic-fgbg-pass predicate include"
+  VERBATIM)
+set(IVS_STIC_CSTACK_EXPECT "${PROJECT_SOURCE_DIR}/data/golden/diag-stic-cstack-pass.expect")
+set(IVS_STIC_CSTACK_EXPECT_INC "${CMAKE_CURRENT_BINARY_DIR}/diag_stic_cstack_pass_expect.inc")
+add_custom_command(
+  OUTPUT "${IVS_STIC_CSTACK_EXPECT_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DIN=${IVS_STIC_CSTACK_EXPECT}" "-DOUT=${IVS_STIC_CSTACK_EXPECT_INC}"
+          -P "${CMAKE_CURRENT_SOURCE_DIR}/expect-inc.cmake"
+  DEPENDS "${IVS_STIC_CSTACK_EXPECT}" "${CMAKE_CURRENT_SOURCE_DIR}/expect-inc.cmake"
+  COMMENT "Generating the diag-stic-cstack-pass predicate include"
+  VERBATIM)
+set(IVS_DIAG_FRAMES_INC "${CMAKE_CURRENT_BINARY_DIR}/ivs_diag_frames.inc")
+add_custom_command(
+  OUTPUT "${IVS_DIAG_FRAMES_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DROOT=${PROJECT_SOURCE_DIR}" "-DOUT=${IVS_DIAG_FRAMES_INC}" -DFRAMESET=diag
+          -P "${PROJECT_SOURCE_DIR}/cmake/IvsVideoFrames.cmake"
+  DEPENDS "${PROJECT_SOURCE_DIR}/data/video/frames/F-D1.frame" "${PROJECT_SOURCE_DIR}/data/video/frames/F-D2.frame"
+          "${PROJECT_SOURCE_DIR}/cmake/IvsVideoFrames.cmake"
+  COMMENT "Generating the diagnostic frame literal include"
+  VERBATIM)
+add_executable(ivs_tests_run run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_struct.c run/run_fuzz.c run/run_stub.c run/run_diag.c run/run_diag_ctrl.c run/run_diag_stic.c machine/machine_standin.c "${IVS_IMAGES_INC}" "${IVS_DIAG_EXPECT_INC}" "${IVS_CTRL_EXPECT_INC}" "${IVS_STIC_FGBG_EXPECT_INC}" "${IVS_STIC_CSTACK_EXPECT_INC}" "${IVS_DIAG_FRAMES_INC}" "${IVS_INPUT_PROBE_INC}")
 target_include_directories(ivs_tests_run PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_BINARY_DIR}")
 add_dependencies(ivs_tests_run ivs_images)
 target_link_libraries(ivs_tests_run PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
@@ -246,6 +278,57 @@ target_include_directories(ivs_tests_psg PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/ma
 target_link_libraries(ivs_tests_psg PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
 add_test(NAME psg COMMAND ivs_tests_psg)
 set_tests_properties(psg PROPERTIES SKIP_RETURN_CODE 77)
+
+# Suite stic (VID-01, plan 06-06): the STIC register file, the access windows, the display-enable handshake and the frame
+# timeline, in its own executable so that its named faults rerun only it. The module-level cases perturb a stack copy of
+# the generated ivs_stic_params; the machine-path cases reuse the stand-in content of machine/machine_standin.c. ONE
+# source list feeds both the executable and ivs_fault_suite(stic ...) below (the psg precedent). Its named faults are
+# data/expected/faults/stic.ids, whose sites sit in core/src/stic and core/src/machine.
+# The literal probe include (cmake/IvsSticProbes.cmake): reads only the independent STIC register literal, the memory-map literal
+# and the geometry literal, never the profile or the core (plan 06-06, Task 4); stic_reg.c includes it.
+set(IVS_STICPROBE_GENERATOR "${PROJECT_SOURCE_DIR}/cmake/IvsSticProbes.cmake")
+set(IVS_STICPROBE_INC "${CMAKE_CURRENT_BINARY_DIR}/ivs_stic_probe.inc")
+file(GLOB IVS_STICPROBE_LITERALS CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/data/stic/*.regmap.literal.txt" "${PROJECT_SOURCE_DIR}/data/memmap/*.literal.txt")
+add_custom_command(
+  OUTPUT "${IVS_STICPROBE_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DROOT=${PROJECT_SOURCE_DIR}" "-DOUT=${IVS_STICPROBE_INC}" -P "${IVS_STICPROBE_GENERATOR}"
+  DEPENDS ${IVS_STICPROBE_LITERALS} "${PROJECT_SOURCE_DIR}/data/video/geometry.literal.txt" "${IVS_STICPROBE_GENERATOR}"
+  COMMENT "Generating the STIC literal probe include")
+set(IVS_STIC_TEST_SOURCES stic/stic_main.c stic/stic_events.c stic/stic_access.c stic/stic_progs.c stic/stic_reg.c stic/stic_hook.c stic/stic_profile.c stic/stic_judge.c stic/stic_state.c stic/stic_peek.c stic/stic_lines.c stic/stic_irq.c stic/stic_busrq.c stic/stic_fetch.c stic/stic_tile.c stic/stic_slice.c stic/stic_fuzz.c stic/stic_iso.c stic/stic_bounds.c machine/machine_standin.c)
+add_executable(ivs_tests_stic ${IVS_STIC_TEST_SOURCES} "${IVS_STICPROBE_INC}")
+target_include_directories(ivs_tests_stic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/stic" "${CMAKE_CURRENT_BINARY_DIR}")
+target_link_libraries(ivs_tests_stic PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
+add_test(NAME stic COMMAND ivs_tests_stic)
+set_tests_properties(stic PROPERTIES SKIP_RETURN_CODE 77)
+
+# Suite video (VID-03, plan 06-09): the raw framebuffer slot, its per-frame chain, the video buffer rules, the frame stop and the
+# geometry. ONE source list feeds both the executable and ivs_fault_suite(video ...) (the psg and stic precedent); the stand-in guest
+# builders of suite stic (stic/stic_progs.c) are reused. Its named faults are data/expected/faults/video.ids, whose sites sit in
+# core/src/stic and core/src/machine. The literal include (cmake/IvsVideoLiterals.cmake) reads only the geometry and chain-framing
+# literals, never the profile or the core.
+set(IVS_VIDEOLIT_GENERATOR "${PROJECT_SOURCE_DIR}/cmake/IvsVideoLiterals.cmake")
+set(IVS_VIDEOLIT_INC "${CMAKE_CURRENT_BINARY_DIR}/ivs_video_lit.inc")
+add_custom_command(
+  OUTPUT "${IVS_VIDEOLIT_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DROOT=${PROJECT_SOURCE_DIR}" "-DOUT=${IVS_VIDEOLIT_INC}" -P "${IVS_VIDEOLIT_GENERATOR}"
+  DEPENDS "${PROJECT_SOURCE_DIR}/data/video/geometry.literal.txt" "${PROJECT_SOURCE_DIR}/data/video/chain-framing.literal.txt" "${IVS_VIDEOLIT_GENERATOR}"
+  COMMENT "Generating the video literal include")
+# The frame literal include (cmake/IvsVideoFrames.cmake, plan 06-10): reads only data/video/frames/F-A1..F-A5 and F-B1..F-B3 (.frame) and
+# data/video/cards.literal.txt, never the profile or the core; the expected frames are the hand-derived literals.
+set(IVS_VIDEOFRAMES_GENERATOR "${PROJECT_SOURCE_DIR}/cmake/IvsVideoFrames.cmake")
+set(IVS_VIDEOFRAMES_INC "${CMAKE_CURRENT_BINARY_DIR}/ivs_video_frames.inc")
+file(GLOB IVS_VIDEOFRAMES_LITERALS CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/data/video/frames/F-[AB]*.frame")
+add_custom_command(
+  OUTPUT "${IVS_VIDEOFRAMES_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DROOT=${PROJECT_SOURCE_DIR}" "-DOUT=${IVS_VIDEOFRAMES_INC}" -P "${IVS_VIDEOFRAMES_GENERATOR}"
+  DEPENDS ${IVS_VIDEOFRAMES_LITERALS} "${PROJECT_SOURCE_DIR}/data/video/cards.literal.txt" "${IVS_VIDEOFRAMES_GENERATOR}"
+  COMMENT "Generating the video frame literal include")
+set(IVS_VIDEO_TEST_SOURCES video/video_main.c video/video_geom.c video/video_slot.c video/video_buffers.c video/video_stop.c video/video_slice.c video/video_progs.c video/video_fgbg.c video/vid_fields.c video/video_card.c video/video_probe.c video/video_meta.c video/video_judge.c video/video_cstack.c stic/stic_progs.c machine/machine_standin.c)
+add_executable(ivs_tests_video ${IVS_VIDEO_TEST_SOURCES} "${IVS_VIDEOLIT_INC}" "${IVS_VIDEOFRAMES_INC}")
+target_include_directories(ivs_tests_video PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/stic" "${CMAKE_CURRENT_SOURCE_DIR}/video" "${CMAKE_CURRENT_BINARY_DIR}")
+target_link_libraries(ivs_tests_video PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
+add_test(NAME video COMMAND ivs_tests_video)
+set_tests_properties(video PROPERTIES SKIP_RETURN_CODE 77)
 
 # Suite input (INP-01..INP-03, API-03, plan 05-05): the two hand controllers as guest-visible machine
 # input through the PSG ports, in its own executable so that its named faults rerun only it. Expected
@@ -357,19 +440,29 @@ ivs_fault_gen(GEN_EXPECT_MUTATION SUITE cpu-vectors OUTPUT ivs_vectors.inc
 ivs_fault_suite(machine
   SOURCES machine/machine_main.c machine/machine_sha256.c machine/machine_create.c machine/machine_digest.c
           machine/machine_load.c machine/machine_refuse.c machine/machine_standin.c machine/machine_reset.c
-          machine/machine_iso.c machine/machine_sweep.c
+          machine/machine_iso.c machine/machine_sweep.c machine/machine_stic_params.c
   INCLUDE_DIRS "${CMAKE_CURRENT_BINARY_DIR}"
   GENERATED "${IVS_SHA_INC}" "${IVS_CART_INC}")
 
 ivs_fault_suite(run
-  SOURCES run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_struct.c run/run_fuzz.c run/run_stub.c run/run_diag.c run/run_diag_ctrl.c machine/machine_standin.c
+  SOURCES run/run_main.c run/run_observe.c run/run_bound.c run/run_info.c run/run_slice.c run/run_buffers.c run/run_input.c run/run_struct.c run/run_fuzz.c run/run_stub.c run/run_diag.c run/run_diag_ctrl.c run/run_diag_stic.c machine/machine_standin.c
   INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_BINARY_DIR}"
-  GENERATED "${IVS_IMAGES_INC}" "${IVS_DIAG_EXPECT_INC}" "${IVS_CTRL_EXPECT_INC}" "${IVS_INPUT_PROBE_INC}")
+  GENERATED "${IVS_IMAGES_INC}" "${IVS_DIAG_EXPECT_INC}" "${IVS_CTRL_EXPECT_INC}" "${IVS_STIC_FGBG_EXPECT_INC}" "${IVS_STIC_CSTACK_EXPECT_INC}" "${IVS_DIAG_FRAMES_INC}" "${IVS_INPUT_PROBE_INC}")
 
 ivs_fault_suite(psg
   SOURCES ${IVS_PSG_TEST_SOURCES}
   INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_BINARY_DIR}"
   GENERATED ${IVS_PSG_VEC_GENERATED})
+
+ivs_fault_suite(stic
+  SOURCES ${IVS_STIC_TEST_SOURCES}
+  INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/stic" "${CMAKE_CURRENT_BINARY_DIR}"
+  GENERATED "${IVS_STICPROBE_INC}")
+
+ivs_fault_suite(video
+  SOURCES ${IVS_VIDEO_TEST_SOURCES}
+  INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/stic" "${CMAKE_CURRENT_SOURCE_DIR}/video" "${CMAKE_CURRENT_BINARY_DIR}"
+  GENERATED "${IVS_VIDEOLIT_INC}" "${IVS_VIDEOFRAMES_INC}")
 
 ivs_fault_suite(input
   SOURCES ${IVS_INPUT_TEST_SOURCES}
@@ -439,7 +532,7 @@ add_custom_command(
 set(IVS_RUNNER_TEST_GENERATED "${IVS_DIAG_EXPECT_INC}" "${IVS_DIAG_EXPECT_TEXT_INC}" "${IVS_INPUT_BITS_INC}"
   "${IVS_IMAGES_INC}" "${IVS_PSG_PROBE_INC}")
 add_executable(ivs_tests_runner runner/runner_main.c runner/runner_parse.c runner/runner_fuzz.c runner/runner_exec.c
-  runner/runner_time.c runner/runner_refpcm.c
+  runner/runner_time.c runner/runner_refpcm.c runner/runner_vchain.c
   ${IVS_RUNNER_TEST_GENERATED})
 target_include_directories(ivs_tests_runner PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 add_dependencies(ivs_tests_runner ivs_images)
@@ -448,7 +541,7 @@ add_test(NAME runner COMMAND ivs_tests_runner)
 set_tests_properties(runner PROPERTIES SKIP_RETURN_CODE 77)
 ivs_fault_suite(runner
   SOURCES runner/runner_main.c runner/runner_parse.c runner/runner_fuzz.c runner/runner_exec.c
-  runner/runner_time.c runner/runner_refpcm.c "${PROJECT_SOURCE_DIR}/tools/pcm/ivs_refpcm.c"
+  runner/runner_time.c runner/runner_refpcm.c runner/runner_vchain.c "${PROJECT_SOURCE_DIR}/tools/pcm/ivs_refpcm.c"
   INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/runner" "${PROJECT_SOURCE_DIR}/tools/pcm" "${CMAKE_CURRENT_BINARY_DIR}"
   GENERATED ${IVS_RUNNER_TEST_GENERATED}
   MODULES core runner)
@@ -486,6 +579,11 @@ set_tests_properties(headers PROPERTIES SKIP_RETURN_CODE 77 ENVIRONMENT "CC=${CM
 # tools/check/listing.cmake), byte for byte; two independent parsers, never the core.
 add_test(NAME pack COMMAND sh "${CMAKE_SOURCE_DIR}/tests/pack-tap.sh" "${CMAKE_SOURCE_DIR}" "$<TARGET_FILE:ivs_pack>")
 set_tests_properties(pack PROPERTIES SKIP_RETURN_CODE 77 ENVIRONMENT "CMAKE=${CMAKE_COMMAND}")
+
+# Suite stic-table (VID-01, Phase 6 review WR-03): the STIC parameter generator refuses a geometry the card renderer cannot draw
+# (21 columns, 13 rows, a 7 x 8 card), each case on a scratch copy of the registered profile (cmake -P), never the repository.
+add_test(NAME stic-table COMMAND sh "${CMAKE_SOURCE_DIR}/tests/stic-table-tap.sh" "${CMAKE_SOURCE_DIR}")
+set_tests_properties(stic-table PROPERTIES SKIP_RETURN_CODE 77 ENVIRONMENT "CMAKE=${CMAKE_COMMAND}")
 
 # Suite runner-process (D-20, D-21, D-23, plan 04-20): the real ivs-run of this preset on every
 # scenario of data/expected/runner-scenarios.ids, judged by exit code and report text; the images

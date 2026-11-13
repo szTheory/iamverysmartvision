@@ -9,10 +9,10 @@
 # Row grammar (documented in the header of every literal file):
 #   <R|W> <LO>-<HI> <device> w=<bits> impl=<real|stub|none> mirror=<words|-> gate=<name|->
 #   src=<SRC-id>@<locator> tag=<tag> [conf=C<n>] [x=<name>]
-# The optional last column x= declares an exception row (plan 05-04): x=reads-zero or x=pins (the
-# header of the literal says what each means); impl=real with w=0 is accepted only with
-# x=reads-zero or x=pins (a read view that does not return the stored word, plan 05-05). Any other x
-# value is a memmap-literal-grammar finding.
+# The optional last column x= declares an exception row (plan 05-04): x=reads-zero, x=pins or x=strobe
+# (plan 06-06; the header of the literal says what each means); impl=real with w=0 is accepted only with
+# x=reads-zero, x=pins or x=strobe (a read view that does not return the stored word, plan 05-05, or a
+# register that stores nothing). Any other x value is a memmap-literal-grammar finding.
 # Rules and tokens (every finding is `-- FAIL <token>: <file> ...`; at most 20 per token are
 # listed, then one line with the exact total):
 #   every data/profiles/<id>.json has data/memmap/<id>.literal.txt   memmap-literal-missing
@@ -21,7 +21,7 @@
 #   digits with LO <= HI, device in {stic scratchpad psg sysram exec grom gram cart undriven},
 #   w 0..16, impl real|stub|none, mirror - or a positive power of two, gate - or one of
 #   {stic-regs gmem}; consistency: undriven <=> impl=none, undriven has w=0 mirror=- gate=-,
-#   stub has w=0, real has w>0 (or w=0 with x=reads-zero or x=pins)  memmap-literal-grammar
+#   stub has w=0, real has w>0 (or w=0 with x=reads-zero, x=pins or x=strobe)  memmap-literal-grammar
 #   per view the rows (sorted by LO) tile 0000-FFFF: a gap            memmap-literal-hole
 #   ... two rows sharing an address                                   memmap-literal-overlap
 #   src=none on a row that is not undriven, not tagged
@@ -307,12 +307,12 @@ foreach(rel IN LISTS LITERALS)
         string(APPEND bad " impl=none on a driven device")
       elseif(impl STREQUAL "stub" AND NOT w EQUAL 0)
         string(APPEND bad " impl=stub needs w=0")
-      elseif(impl STREQUAL "real" AND w EQUAL 0 AND NOT tx STREQUAL "x=reads-zero" AND NOT tx STREQUAL "x=pins")
-        string(APPEND bad " impl=real needs w>0 (or x=reads-zero or x=pins)")
+      elseif(impl STREQUAL "real" AND w EQUAL 0 AND NOT tx STREQUAL "x=reads-zero" AND NOT tx STREQUAL "x=pins" AND NOT tx STREQUAL "x=strobe")
+        string(APPEND bad " impl=real needs w>0 (or x=reads-zero, x=pins or x=strobe)")
       endif()
     endif()
-    if(NOT tx STREQUAL "" AND NOT tx MATCHES "^x=(reads-zero|pins)$")
-      string(APPEND bad " x column '${tx}' is not x=reads-zero or x=pins")
+    if(NOT tx STREQUAL "" AND NOT tx MATCHES "^x=(reads-zero|pins|strobe)$")
+      string(APPEND bad " x column '${tx}' is not x=reads-zero, x=pins or x=strobe")
     endif()
     if(NOT bad STREQUAL "")
       string(STRIP "${bad}" bad)

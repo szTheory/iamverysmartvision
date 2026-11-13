@@ -1,0 +1,40 @@
+# suite=video; columns: <FAULT_ID> <must-fail> <allowed-prefixes> <must-pass>
+# Video named faults (plan 06-09, VID-03, D-13, D-15, D-16, A-06). Each id has one IVS_FAULT_<ID> site, in the owner TU named below, and
+# is caught by the test it is named for; the allowed prefixes cover every collateral failure of the suite.
+# VIDEO_STATE_DEPENDS_ON_BUFFER (core/src/stic/stic_frame.c): a frame completed with no video buffer does not advance the chain or the
+# count, so the machine state depends on the presence of a buffer.
+VIDEO_STATE_DEPENDS_ON_BUFFER video.noop.null-buffer video.noop.|video.buffers.|video.boundary.|video.stop.|video.fuzz. video.geom.profile-derives-159x96
+# VIDEO_CHAIN_FRAMING_STRUCT_HASH (core/src/stic/stic_frame.c): the chain step hashes an image of a struct (host byte order, padding)
+# instead of the framed big-endian header bytes.
+VIDEO_CHAIN_FRAMING_STRUCT_HASH video.chain.framing-oracle video.chain. video.geom.profile-derives-159x96
+# STIC_EVENT_ORDER_START_BEFORE_END (core/src/stic/stic_events.c): FRAME_START of the next frame (which clears the display decision) is
+# applied before FRAME_END is rendered, so a displayed frame is delivered with its displayed flag clear.
+STIC_EVENT_ORDER_START_BEFORE_END video.slot.displayed-flag-follows-latch video.slot.|video.frame.|video.fgbg.|video.cstack.|video.mode. video.geom.profile-derives-159x96
+# VIDEO_CAP_PLUS_ONE (core/src/machine/machine_bound.c, plan 06-09, D-15, A-08): the video capacity stage ignores video_slack_frames and
+# applies the Phase 4 + 1 formula, which a call that starts just below a frame event and ends on a unit that crosses the target exceeds
+# by one frame.
+VIDEO_CAP_PLUS_ONE video.buffers.worst-case-two-frames video.buffers. video.geom.profile-derives-159x96
+# VIDEO_OUTBUF_PARTIAL_WRITE (core/src/machine/machine_bound.c, plan 06-09, T-06-12): a refused run writes one byte into the caller's
+# video buffer (the sentinel checks of the refusal tests see it).
+VIDEO_OUTBUF_PARTIAL_WRITE video.buffers.undersized-refused video.buffers. video.geom.profile-derives-159x96
+# VIDEO_FRAME_AT_CALL_END (core/src/machine/machine_bound.c, plan 06-09, A-06): the last frame a call delivered is re-rendered from the registers
+# as they are at the END OF THE CALL instead of keeping the picture taken at its frame event, so a border store stamped after the event shows in
+# the frame that ended before it.
+VIDEO_FRAME_AT_CALL_END video.boundary.write-straddling video.boundary. video.geom.profile-derives-159x96
+# VIDEO_WRONG_CARD_MODE (core/src/stic/stic_cards.c, plan 06-10, VID-04, D-18): the mode sense is inverted, so a Foreground/Background frame is
+# decoded as Color Stack (every position not displayed until plan 06-11) and every card frame fails.
+VIDEO_WRONG_CARD_MODE video.fgbg.F-A1 video.fgbg.|video.frame.|video.card.|video.grom.|video.color.|video.probe.|video.judge.|video.cstack.|video.meta. video.geom.profile-derives-159x96
+# VIDEO_CARD_BIT_ORDER_REVERSED (core/src/stic/stic_cards.c, plan 06-10): bit 0 of a graphics byte is the leftmost pixel instead of bit 7.
+VIDEO_CARD_BIT_ORDER_REVERSED video.card.bit-order video.fgbg.|video.card.|video.probe.|video.judge.|video.cstack. video.geom.profile-derives-159x96
+# VIDEO_GRAM_GROM_SELECT_SWAPPED (core/src/stic/stic_cards.c, plan 06-10): the sense of select bit 11 is inverted, so graphics RAM cards read the
+# (zero) graphics ROM and graphics ROM cards read graphics RAM.
+VIDEO_GRAM_GROM_SELECT_SWAPPED video.fgbg.F-A3 video.fgbg.|video.card.|video.grom.|video.probe.|video.judge.|video.cstack. video.geom.profile-derives-159x96
+# VIDEO_20TH_COLUMN_WIDTH (core/src/stic/stic_cards.c, plan 06-10): column 19 shows its 8th pixel (the 7-pixel cut-off is not applied), so the plane
+# has no sentinel and the published 159 columns shift nothing but the working plane differs.
+VIDEO_20TH_COLUMN_WIDTH video.card.last-column-clip video.fgbg.|video.card.|video.color.|video.judge.|video.cstack. video.geom.profile-derives-159x96
+# VIDEO_CSTACK_NO_ADVANCE (core/src/stic/stic_cards.c, plan 06-11): bit 13 of a Color Stack card never advances the color-stack pointer, so every card
+# is drawn over stack entry 0 and the frames with advance bits (F-B2, F-B3, the wrap and the restart tests) differ from their literals.
+VIDEO_CSTACK_NO_ADVANCE video.cstack.advance-before-draw video.cstack.|video.probe.|video.judge. video.geom.profile-derives-159x96
+# VIDEO_GEOMETRY_SKIP_SILENT (core/src/stic/stic_frame.c, Phase 6 review WR-03): a frame asked for under a geometry the card-row working buffer
+# cannot hold is skipped without setting video_overflow, so the frame index would advance with no frame and no INTERNAL stop.
+VIDEO_GEOMETRY_SKIP_SILENT video.buffers.unrenderable-geometry-overflows video.buffers. video.geom.profile-derives-159x96

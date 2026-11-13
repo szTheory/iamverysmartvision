@@ -59,3 +59,8 @@ RUNNER_CAPTURE_OVERFLOW_SILENT runner.exec.capture-overflow runner.exec.capture-
 RUNNER_REFPCM_KEYS_WITHOUT_OPTION runner.exec.refpcm-keys-only-with-option runner.exec.refpcm-keys-only-with-option|runner.exec.ivsr2-keys|runner.exec.key-order runner.parse.diag-boot-pass
 # RUNNER_WAV_RATE_UNCHECKED: any --wav-rate value is accepted, so 8000 or 96000 reaches the converter.
 RUNNER_WAV_RATE_UNCHECKED runner.parse.wav-rate-refused runner.parse.wav-rate-refused|runner.exec.wav-failures runner.parse.diag-boot-pass
+# Plan 06-12 (D-16, D-17), sites in runner/exec.c.
+# RUNNER_VIDEO_ASSERT_IGNORED: an `assert frame` always passes, so a wrong pixel, hash or displayed flag is not caught.
+RUNNER_VIDEO_ASSERT_IGNORED runner.exec.video-assert runner.exec.video-assert runner.parse.diag-boot-pass
+# RUNNER_VIDEO_CHAIN_UNCHECKED: video.chain.check reports pass without recomputing, so a corrupted delivered stream passes.
+RUNNER_VIDEO_CHAIN_UNCHECKED runner.exec.video-chain-check runner.exec.video-chain-check runner.parse.diag-boot-pass

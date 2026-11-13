@@ -1,0 +1,25 @@
+ivsr 3
+scenario.id toy
+scenario.profile intv-2609-ntsc-family-p1
+api.version 0.1.0
+outcome pass
+outcome.detail -
+exit.code 0
+exec: project boot stub, not an EXEC sha256=4444444444444444444444444444444444444444444444444444444444444444
+step.1.stop_reason halted
+step.1.assert.1 pass reg R0 == 0001 got 0001
+step.1.assert.2 pass mem 0200 == 0002 got 0002
+cpu.run_state halted
+input.events 0
+digest.cpu 1111111111111111111111111111111111111111111111111111111111111111
+digest.mem 2222222222222222222222222222222222222222222222222222222222222222
+digest.video 6666666666666666666666666666666666666666666666666666666666666666
+output.video.bytes 30592
+output.audio.bytes 0
+output.video.frames 2
+video.geometry 159x96
+video.row_lines 2
+video.frame.last_tick 119472
+video.chain.check pass
+host.calls 5
+report.end 24

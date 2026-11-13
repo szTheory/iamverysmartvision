@@ -50,4 +50,10 @@ size_t runner_refpcm_count(void);
 const char *runner_refpcm_id(size_t i);
 int runner_refpcm_run(size_t i);
 
+
+/* Family vchain (runner_vchain.c, plan 06-12): the runner's own recomputation of the video frame chain and its slot checks. */
+size_t runner_vchain_count(void);
+const char *runner_vchain_id(size_t i);
+int runner_vchain_run(size_t i);
+
 #endif

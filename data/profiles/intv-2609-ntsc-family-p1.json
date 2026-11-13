@@ -63,7 +63,7 @@
       "resolving_evidence": null,
       "revisit_trigger": null,
       "decision": null,
-      "note": "STIC1A is not modelled. Research-era reading, not re-read in phase 1."
+      "note": "Re-read in plan 06-01 (pdf 191 and 192 of the 1980 catalog, pdf 462 and 463 of the 1982 catalog). STIC1A and the PAL AY-3-8900 are not modelled."
     },
     "psg.part": {
       "value": "AY-3-8914-class, Intellivision register map at $01F0-$01FF",
@@ -364,29 +364,39 @@
       "cite": "none-found: no source documents STIC register reads for a device the core does not implement yet",
       "conflict": "C60",
       "resolving_evidence": "measurement: D10 read-back of STIC register reads on owner hardware",
-      "revisit_trigger": "when the STIC phase (6) implements the device",
+      "revisit_trigger": "when an extension device is decoded before it is implemented",
       "decision": null,
-      "note": "A stub region is decoded and named but holds no state: reads give the undriven value and writes are dropped (D-19). Only the STIC regions use it since plan 05-04; the PSG region is a real device (psg8)."
+      "note": "A stub region is decoded and named but holds no state: reads give the undriven value and writes are dropped (D-19). No region uses it since plan 06-06 (the STIC regions are the real device stic14); the record stays for a later extension stub that holds no state."
+    },
+    "memmap.device.stic14": {
+      "value": {"bits": 14, "rmask": "$3FFF", "fill": "$FFFF", "store": "keep"},
+      "tag": "unknown-default-chosen",
+      "cite": "SRC-gi-1980-catalog pdf 191 (printed 5-10) and SRC-gi-1982-catalog pdf 462: the STIC data bus is 14 bits wide (S00 to S013), so bits 15 and 14 of a stored or read word are never driven by it; none-found for what a read of a register returns on a 2609",
+      "conflict": "C81",
+      "resolving_evidence": "measurement: D10 read-back of STIC register reads on owner hardware",
+      "revisit_trigger": "a tier 1 to 3 source for the STIC register read-back, or a D10 read-back on owner hardware",
+      "decision": null,
+      "note": "Device kind stic14 (plan 06-06, D-04): the 64 STIC registers are one backed word each. The record is the device default; the per-register masks of stic.regmap refine it: a store keeps value & the register's write mask, a read gives (stored & the read mask) | (fill & ~the read mask) with this fill, so a write-only register reads $FFFF and a collision register reads $FC00 OR its stored bits."
     },
     "memmap.region.stic_regs": {
-      "value": {"view": "RW", "lo": "$0000", "hi": "$003F", "device": "stub", "size_words": 64, "gate": "stic-regs", "impl": "stub"},
+      "value": {"view": "RW", "lo": "$0000", "hi": "$003F", "device": "stic14", "size_words": 64, "gate": "stic-regs", "impl": "real"},
       "tag": "tier4-community",
       "cite": "SRC-intv-wiki (Memory Map, oldid 14847) for $0000-$003F; SRC-gi-1980-catalog printed 5-10 to 5-12 (pdf 191 to 193) gives no CPU register addresses",
       "conflict": "C21",
       "resolving_evidence": "pending: a tier 1 to 3 address source, or a D10 decode probe on owner hardware",
       "revisit_trigger": "when a tier 1 to 3 source or a hardware probe gives the decode",
       "decision": null,
-      "note": "STIC registers; the device arrives in Phase 6."
+      "note": "STIC registers, the real device stic14 since plan 06-06: a store keeps value & the register's write mask, a read gives the register store under its read mask with the undriven fill above (stic.regmap)."
     },
     "memmap.region.stic_alias_read": {
-      "value": {"view": "R", "lo": "$0040", "hi": "$007F", "device": "stub", "size_words": 64, "gate": "stic-regs", "impl": "stub"},
+      "value": {"view": "R", "lo": "$0040", "hi": "$007F", "device": "stic14", "size_words": 64, "gate": "stic-regs", "impl": "real"},
       "tag": "tier4-community",
       "cite": "SRC-intv-wiki (Memory Map, oldid 14847) for the read-only alias at $0040-$007F",
       "conflict": "C21",
       "resolving_evidence": "pending: a tier 1 to 3 address source, or a D10 decode probe on owner hardware",
       "revisit_trigger": "when a tier 1 to 3 source or a hardware probe gives the decode",
       "decision": null,
-      "note": "Read view only."
+      "note": "Read view only; it mirrors the register file ($0040 reads register $00 and so on), so a read there gives what the same register reads."
     },
     "memmap.region.scratchpad": {
       "value": {"view": "RW", "lo": "$0100", "hi": "$01EF", "device": "ram8", "size_words": 256, "gate": "none", "impl": "real"},
@@ -449,7 +459,7 @@
       "note": "Extent 2048 words mirrored over a 512-word backing."
     },
     "memmap.region.stic_alias_w4": {
-      "value": {"view": "W", "lo": "$4000", "hi": "$403F", "device": "stub", "size_words": 64, "gate": "stic-regs", "impl": "stub"},
+      "value": {"view": "W", "lo": "$4000", "hi": "$403F", "device": "stic14", "size_words": 64, "gate": "stic-regs", "impl": "real"},
       "tag": "inference",
       "cite": "SRC-intv-wiki (Memory Map, oldid 14847) for the write-only alias at $4000-$403F; gate stic-regs is an inference: the alias reaches the same STIC registers as $0000-$003F, so it shares their access window (data/memmap/intv-2609-ntsc-family-p1.literal.txt header, D-18)",
       "conflict": "C61",
@@ -468,7 +478,7 @@
       "note": "Writes reach the GRAM backing; reads come from the cartridge span."
     },
     "memmap.region.stic_alias_w8": {
-      "value": {"view": "W", "lo": "$8000", "hi": "$803F", "device": "stub", "size_words": 64, "gate": "stic-regs", "impl": "stub"},
+      "value": {"view": "W", "lo": "$8000", "hi": "$803F", "device": "stic14", "size_words": 64, "gate": "stic-regs", "impl": "real"},
       "tag": "inference",
       "cite": "SRC-intv-wiki (Memory Map, oldid 14847) for the write-only alias at $8000-$803F; gate stic-regs is an inference: the alias reaches the same STIC registers as $0000-$003F, so it shares their access window (data/memmap/intv-2609-ntsc-family-p1.literal.txt header, D-18)",
       "conflict": "C61",
@@ -487,7 +497,7 @@
       "note": "Writes reach the GRAM backing; reads come from the cartridge span."
     },
     "memmap.region.stic_alias_wc": {
-      "value": {"view": "W", "lo": "$C000", "hi": "$C03F", "device": "stub", "size_words": 64, "gate": "stic-regs", "impl": "stub"},
+      "value": {"view": "W", "lo": "$C000", "hi": "$C03F", "device": "stic14", "size_words": 64, "gate": "stic-regs", "impl": "real"},
       "tag": "inference",
       "cite": "SRC-intv-wiki (Memory Map, oldid 14847) for the write-only alias at $C000-$C03F; gate stic-regs is an inference: the alias reaches the same STIC registers as $0000-$003F, so it shares their access window (data/memmap/intv-2609-ntsc-family-p1.literal.txt header, D-18)",
       "conflict": "C61",
@@ -1008,7 +1018,7 @@
       "cite": "derived from bus.wait_limit_cpu_cycles (C53): (12 + 3 x 35) CPU cycles x ticks_per_cpu_cycle; the maximum unit on the real bus (wait 0) is 12 CPU cycles",
       "conflict": "C53",
       "resolving_evidence": "test: psg.bounds.unit-ticks-max and psg.bounds.unit-ticks-real-bus (exhaustive probe through the CPU model)",
-      "revisit_trigger": "when bus.wait_limit_cpu_cycles changes or a device other than the memory system can stall the bus (Phase 6)",
+      "revisit_trigger": "when bus.wait_limit_cpu_cycles changes or a stall unit can exceed U (the generator refuses bus.release_latency_cpu_cycles x ticks_per_cpu_cycle above U; stic.bounds.g-and-u-full-machine and stic.bounds.unit-ticks-le-U re-prove U with the bus windows live)",
       "decision": null,
       "note": "The proven maximum ticks of one CPU unit, published for the audio capacity slack (D-17): s = ceil(U / P) + 1. The generator refuses a value that is not (12 + 3 x bus.wait_limit_cpu_cycles) x ticks_per_cpu_cycle."
     },
@@ -1018,9 +1028,9 @@
       "cite": "derived from the CP-1610 cycle table and ticks_per_cpu_cycle (C53): exhaustive probe psg.bounds.write-gap-min over every decle, SDBD off and on, waits 0, 1 and 35",
       "conflict": "C53",
       "resolving_evidence": "test: psg.bounds.write-gap-min and psg.bounds.g-and-u (exhaustive probe through the CPU model, interrupt-entry units included)",
-      "revisit_trigger": "when the CPU cycle table changes or a device other than the memory system can raise an interrupt or stall the bus (Phase 6)",
+      "revisit_trigger": "when the CPU cycle table changes or a device other than the memory system or the STIC schedule of plan 06-08 can raise an interrupt or stall the bus (stic.bounds.g-and-u-full-machine re-proves the gap with the STIC lines live)",
       "decision": null,
-      "note": "The minimum master ticks between two PSG register writes over ALL PSG-writing units, an interrupt-entry unit included: an MVO@ write at offset 4 of a 9-cycle unit followed by an interrupt-entry unit that writes at offset 2 gives 9 - 4 + 2 = 7 CPU cycles = 28 ticks. Instruction-only writers reach 9 CPU cycles = 36 ticks, the only density reachable in Phase 5 (no device raises an interrupt before Phase 6); the published bound deliberately uses 28 so Phase 6 cannot silently break it. The generator refuses a value that is not a whole number of CPU cycles."
+      "note": "The minimum master ticks between two PSG register writes over ALL PSG-writing units, an interrupt-entry unit included: an MVO@ write at offset 4 of a 9-cycle unit followed by an interrupt-entry unit that writes at offset 2 gives 9 - 4 + 2 = 7 CPU cycles = 28 ticks. Instruction-only writers reach 9 CPU cycles = 36 ticks, the only density reachable by instructions alone; the published bound deliberately uses 28 so an interrupt source cannot silently break it. Phase 6 (plan 06-08) drives the VBLANK interrupt level and the bus-request windows: a bus-grant stall only lengthens the time between two writes, and stic.bounds.g-and-u-full-machine re-proves the gap through the full machine. The generator refuses a value that is not a whole number of CPU cycles."
     },
     "psg.log_records_per_frame": {
       "value": 2152,
@@ -1030,7 +1040,7 @@
       "resolving_evidence": "test: psg.bounds.g-and-u (writes in T ticks <= (T + U) / g + 1 over every opcode x SDBD x wait in {0, limit}) and psg.buffers.worst-case-writer",
       "revisit_trigger": "when psg.min_write_gap_ticks, psg.max_unit_ticks or the nominal frame changes",
       "decision": null,
-      "note": "Write-log records one frame slot is sized for: the capacity of a run is 16 bytes x this x (max(target - now, 0) / nominal_frame_ticks + 1). The generator refuses a value that is not ceil(F / g) + ceil(U / g) + 1 for the profile's frame F (scanlines x cycles per scanline x ticks per cycle = 59,736 ticks), g and U."
+      "note": "Write-log records one frame slot is sized for: the capacity of a run is 16 bytes x this x (max(target - now, 0) / nominal_frame_ticks + 1). The generator refuses a value that is not ceil(F / g) + ceil(U / g) + 1 for the profile's frame F (scanlines x cycles per scanline x ticks per cycle = 59,736 ticks), g and U. Plan 06-08 re-proves the bound through the full machine with the STIC lines live: stic.bounds.log-records-per-frame-le-W measures the densest reachable writer (back-to-back non-interruptible MVO@ stores, never stalled by a bus window) at 1,660 records in a span of one frame, with the display on and off, below this value."
     },
     "psg.period_zero.noise": {
       "value": 32,
@@ -1130,6 +1140,406 @@
       "revisit_trigger": "a measured DAC curve (D10) or a data sheet that prints the labels",
       "decision": null,
       "note": "Sixteen unsigned integers in units of 1e-8 of full scale, indexed by the 4-bit level 0..15. Per-entry basis: levels 15 to 9 are the printed Fig. 9 labels, levels 8 to 1 are extrapolated (level n = level n+2 divided by 2: 8 from 10, 7 from 9, 6 from 8, 5 from 7, 4 from 6, 3 from 5, 2 from 4, 1 from 3 as derived in the discuss note), level 0 is 0 from the text. The printed 0.303 and 0.1515 V labels are not on a pure 3 dB ladder: [UNK] unresolved. The sum of three channels is at most 300,000,000 and fits uint32_t. THE CORE NEVER READS THIS FIELD (D-11): raw audio is the level indices; a test-side generator (cmake/IvsPsgProfileProbe.cmake) reads it for the psg.dac.* tests, and a wrong table cannot invalidate a raw audio golden."
+    },
+    "stic.bus_bits": {
+      "value": 14,
+      "tag": "tier1-primary-doc",
+      "cite": "SRC-gi-1980-catalog pdf 191 (printed 5-10) and SRC-gi-1982-catalog pdf 462: the STIC data bus is 14 bits wide (pins S00 to S013); bits 15 and 14 of a bus word are never driven by it",
+      "conflict": null,
+      "resolving_evidence": null,
+      "revisit_trigger": null,
+      "decision": null,
+      "note": "Rule STIC-R02. The device kind memmap.device.stic14 (plan 06-06) refines the per-register masks of stic.regmap."
+    },
+    "stic.regmap": {
+      "value": [
+        {"addr": "$0000", "name": "mob0-x", "class": "stored", "wmask": "$07FF", "rmask": "$0000"},
+        {"addr": "$0001", "name": "mob1-x", "class": "stored", "wmask": "$07FF", "rmask": "$0000"},
+        {"addr": "$0002", "name": "mob2-x", "class": "stored", "wmask": "$07FF", "rmask": "$0000"},
+        {"addr": "$0003", "name": "mob3-x", "class": "stored", "wmask": "$07FF", "rmask": "$0000"},
+        {"addr": "$0004", "name": "mob4-x", "class": "stored", "wmask": "$07FF", "rmask": "$0000"},
+        {"addr": "$0005", "name": "mob5-x", "class": "stored", "wmask": "$07FF", "rmask": "$0000"},
+        {"addr": "$0006", "name": "mob6-x", "class": "stored", "wmask": "$07FF", "rmask": "$0000"},
+        {"addr": "$0007", "name": "mob7-x", "class": "stored", "wmask": "$07FF", "rmask": "$0000"},
+        {"addr": "$0008", "name": "mob0-y", "class": "stored", "wmask": "$0FFF", "rmask": "$0000"},
+        {"addr": "$0009", "name": "mob1-y", "class": "stored", "wmask": "$0FFF", "rmask": "$0000"},
+        {"addr": "$000A", "name": "mob2-y", "class": "stored", "wmask": "$0FFF", "rmask": "$0000"},
+        {"addr": "$000B", "name": "mob3-y", "class": "stored", "wmask": "$0FFF", "rmask": "$0000"},
+        {"addr": "$000C", "name": "mob4-y", "class": "stored", "wmask": "$0FFF", "rmask": "$0000"},
+        {"addr": "$000D", "name": "mob5-y", "class": "stored", "wmask": "$0FFF", "rmask": "$0000"},
+        {"addr": "$000E", "name": "mob6-y", "class": "stored", "wmask": "$0FFF", "rmask": "$0000"},
+        {"addr": "$000F", "name": "mob7-y", "class": "stored", "wmask": "$0FFF", "rmask": "$0000"},
+        {"addr": "$0010", "name": "mob0-attr", "class": "stored", "wmask": "$3FFF", "rmask": "$0000"},
+        {"addr": "$0011", "name": "mob1-attr", "class": "stored", "wmask": "$3FFF", "rmask": "$0000"},
+        {"addr": "$0012", "name": "mob2-attr", "class": "stored", "wmask": "$3FFF", "rmask": "$0000"},
+        {"addr": "$0013", "name": "mob3-attr", "class": "stored", "wmask": "$3FFF", "rmask": "$0000"},
+        {"addr": "$0014", "name": "mob4-attr", "class": "stored", "wmask": "$3FFF", "rmask": "$0000"},
+        {"addr": "$0015", "name": "mob5-attr", "class": "stored", "wmask": "$3FFF", "rmask": "$0000"},
+        {"addr": "$0016", "name": "mob6-attr", "class": "stored", "wmask": "$3FFF", "rmask": "$0000"},
+        {"addr": "$0017", "name": "mob7-attr", "class": "stored", "wmask": "$3FFF", "rmask": "$0000"},
+        {"addr": "$0018", "name": "mob0-collision", "class": "collision", "wmask": "$03FF", "rmask": "$03FF"},
+        {"addr": "$0019", "name": "mob1-collision", "class": "collision", "wmask": "$03FF", "rmask": "$03FF"},
+        {"addr": "$001A", "name": "mob2-collision", "class": "collision", "wmask": "$03FF", "rmask": "$03FF"},
+        {"addr": "$001B", "name": "mob3-collision", "class": "collision", "wmask": "$03FF", "rmask": "$03FF"},
+        {"addr": "$001C", "name": "mob4-collision", "class": "collision", "wmask": "$03FF", "rmask": "$03FF"},
+        {"addr": "$001D", "name": "mob5-collision", "class": "collision", "wmask": "$03FF", "rmask": "$03FF"},
+        {"addr": "$001E", "name": "mob6-collision", "class": "collision", "wmask": "$03FF", "rmask": "$03FF"},
+        {"addr": "$001F", "name": "mob7-collision", "class": "collision", "wmask": "$03FF", "rmask": "$03FF"},
+        {"addr": "$0020", "name": "display-enable", "class": "strobe", "wmask": "$0000", "rmask": "$0000"},
+        {"addr": "$0021", "name": "mode-select", "class": "strobe", "wmask": "$0000", "rmask": "$0000"},
+        {"addr": "$0022", "name": "reserved", "class": "reserved", "wmask": "$0000", "rmask": "$0000"},
+        {"addr": "$0023", "name": "reserved", "class": "reserved", "wmask": "$0000", "rmask": "$0000"},
+        {"addr": "$0024", "name": "reserved", "class": "reserved", "wmask": "$0000", "rmask": "$0000"},
+        {"addr": "$0025", "name": "reserved", "class": "reserved", "wmask": "$0000", "rmask": "$0000"},
+        {"addr": "$0026", "name": "reserved", "class": "reserved", "wmask": "$0000", "rmask": "$0000"},
+        {"addr": "$0027", "name": "reserved", "class": "reserved", "wmask": "$0000", "rmask": "$0000"},
+        {"addr": "$0028", "name": "color-stack-0", "class": "stored", "wmask": "$000F", "rmask": "$0000"},
+        {"addr": "$0029", "name": "color-stack-1", "class": "stored", "wmask": "$000F", "rmask": "$0000"},
+        {"addr": "$002A", "name": "color-stack-2", "class": "stored", "wmask": "$000F", "rmask": "$0000"},
+        {"addr": "$002B", "name": "color-stack-3", "class": "stored", "wmask": "$000F", "rmask": "$0000"},
+        {"addr": "$002C", "name": "border-color", "class": "stored", "wmask": "$000F", "rmask": "$0000"},
+        {"addr": "$002D", "name": "reserved", "class": "reserved", "wmask": "$0000", "rmask": "$0000"},
+        {"addr": "$002E", "name": "reserved", "class": "reserved", "wmask": "$0000", "rmask": "$0000"},
+        {"addr": "$002F", "name": "reserved", "class": "reserved", "wmask": "$0000", "rmask": "$0000"},
+        {"addr": "$0030", "name": "h-delay", "class": "stored", "wmask": "$0007", "rmask": "$0000"},
+        {"addr": "$0031", "name": "v-delay", "class": "stored", "wmask": "$0007", "rmask": "$0000"},
+        {"addr": "$0032", "name": "border-ext", "class": "stored", "wmask": "$0003", "rmask": "$0000"},
+        {"addr": "$0033", "name": "reserved", "class": "reserved", "wmask": "$0000", "rmask": "$0000"},
+        {"addr": "$0034", "name": "reserved", "class": "reserved", "wmask": "$0000", "rmask": "$0000"},
+        {"addr": "$0035", "name": "reserved", "class": "reserved", "wmask": "$0000", "rmask": "$0000"},
+        {"addr": "$0036", "name": "reserved", "class": "reserved", "wmask": "$0000", "rmask": "$0000"},
+        {"addr": "$0037", "name": "reserved", "class": "reserved", "wmask": "$0000", "rmask": "$0000"},
+        {"addr": "$0038", "name": "reserved", "class": "reserved", "wmask": "$0000", "rmask": "$0000"},
+        {"addr": "$0039", "name": "reserved", "class": "reserved", "wmask": "$0000", "rmask": "$0000"},
+        {"addr": "$003A", "name": "reserved", "class": "reserved", "wmask": "$0000", "rmask": "$0000"},
+        {"addr": "$003B", "name": "reserved", "class": "reserved", "wmask": "$0000", "rmask": "$0000"},
+        {"addr": "$003C", "name": "reserved", "class": "reserved", "wmask": "$0000", "rmask": "$0000"},
+        {"addr": "$003D", "name": "reserved", "class": "reserved", "wmask": "$0000", "rmask": "$0000"},
+        {"addr": "$003E", "name": "reserved", "class": "reserved", "wmask": "$0000", "rmask": "$0000"},
+        {"addr": "$003F", "name": "reserved", "class": "reserved", "wmask": "$0000", "rmask": "$0000"}
+      ],
+      "tag": "tier4-community",
+      "cite": "SRC-intv-wiki (STIC, oldid 15008) for the sixty-four addresses and the role of each range; SRC-intv-wiki (Memory Map, oldid 14847) for the readable and writable access column; SRC-gi-1980-catalog pdf 191 (printed 5-10) prints no register address (docs/stic/reference-notes.md, registers-printed: no)",
+      "conflict": "C81",
+      "resolving_evidence": "pending: a tier 1 to 3 STIC register description, or the Phase 7 reader diagnostic on owner hardware (D10 read-back of all 64 addresses)",
+      "revisit_trigger": "a primary register description, a D10 read-back or a Phase 7 reader diagnostic run on owner hardware",
+      "decision": null,
+      "note": "One record per CPU address in ascending order $0000..$003F; name is the role of the literal, class is stored, strobe, collision or reserved. wmask: a store keeps value & wmask; rmask: a read gives (store & rmask) | (fill & ~rmask) with the undriven fill $FFFF, so rmask $0000 reads $FFFF and the collision rows read $FC00 | the stored bits (C81, C5). The stored widths and the bits above them are C86 (unknown-default-chosen, the literal rows carry the tier of each row: 32 stored, 8 collision, 2 strobe and 22 reserved rows). The collision clear-on-read is C87 (Phase 8). Transcribed by hand from data/stic/intv-2609-ntsc-family-p1.regmap.literal.txt, which stays the judge: plan 06-06 compares the two (stic.table.matches-literal)."
+    },
+    "stic.access_effects": {
+      "value": [
+        {"addr": "$0020", "access": "W", "effect": "arm"},
+        {"addr": "$0020", "access": "R", "effect": "none"},
+        {"addr": "$0021", "access": "W", "effect": "mode_fgbg"},
+        {"addr": "$0021", "access": "R", "effect": "mode_cs"}
+      ],
+      "tag": "tier4-community",
+      "cite": "SRC-intv-wiki (STIC, oldid 15008): a write of $0020 enables the display for the frame, a write of $0021 selects Foreground/Background and a read of $0021 selects Color Stack; docs/stic/reference-notes.md rules STIC-R13 to STIC-R15",
+      "conflict": "C82",
+      "resolving_evidence": "measurement: D10-VID-08 owner diagnostic with strobes at swept offsets and a frame capture",
+      "revisit_trigger": "a D10 strobe sweep or a primary register description",
+      "decision": null,
+      "note": "Rows per register and access kind (a read is READ or FETCH, a write is WRITE or DW; every other register and access has no effect, collision clear-on-read is C87). The read of $0020 having no effect is unknown-default-chosen (STIC-R15, C82); the alias reads are C84 (stic.mode_select_addrs). Effects happen only if the register gate is open at the access stamp."
+    },
+    "stic.mode_select_addrs": {
+      "value": ["$0021", "$4021", "$8021", "$C021"],
+      "tag": "tier4-community",
+      "cite": "SRC-intv-wiki (Memory Map, oldid 14847): the aliases of $0021 at $4021, $8021 and $C021 are sensitive to reads",
+      "conflict": "C84",
+      "resolving_evidence": "test: stic.alias.* (plan 06-06) exercise the default and its reversal; measurement: a D10 read of the aliases with a known mode",
+      "revisit_trigger": "a cartridge that legitimately maps data at $8021 or $C021 working on hardware, or a D10 alias read",
+      "decision": null,
+      "note": "The explicit effect decode of the mode switch, independent of the read-view region of the address (a read of $4021 decodes to cartridge space and the CPU receives the cartridge value). $0061 and the rest of $0040..$007F have no effect (unknown-default-chosen, C84). The generator refuses an address outside every memmap.region.stic_* range."
+    },
+    "stic.alias_read_sensitive": {
+      "value": 1,
+      "tag": "tier4-community",
+      "cite": "SRC-intv-wiki (Memory Map, oldid 14847): the aliases are sensitive to both reads and writes; docs/stic/reference-notes.md rule STIC-R16",
+      "conflict": "C84",
+      "resolving_evidence": "test: stic.alias.* (plan 06-06) exercise both values; measurement: a D10 alias read",
+      "revisit_trigger": "a cartridge that legitimately maps data at an alias address working on hardware, or a D10 alias read",
+      "decision": null,
+      "note": "1: a read of an address of stic.mode_select_addrs switches the mode; 0 disables the alias read effect (the register address $0021 itself always switches). Stored as a number because the profile schema has no boolean value type."
+    },
+    "stic.power_on": {
+      "value": {"registers": "zero", "mode": "fgbg", "display_latch": 0},
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: no source documents the STIC state at power-on (power_on_fill.stic holds the register contents); zero registers, Foreground/Background mode and a clear display latch are the chosen defaults",
+      "conflict": "C85",
+      "resolving_evidence": "measurement: D10-VID-09 owner power-on read-back and first frames",
+      "revisit_trigger": "a power-on read-back, a source that documents the state, or an owner EXEC run that depends on it",
+      "decision": null,
+      "note": "registers is zero (the generator accepts only zero; power_on_fill.stic is the register fill), mode is fgbg or color-stack, display_latch is 0 or 1. The frame phase at power-on is stic.frame_phase_ticks (C90)."
+    },
+    "stic.backtab": {
+      "value": {"lo": "$0200", "words": 240},
+      "tag": "tier1-primary-doc",
+      "cite": "SRC-gi-1980-catalog pdf 199 (printed 5-18): the system RAM holds the background memory at 512 to 863 with the graphics words in the first 240; SRC-gi-1980-catalog pdf 191 (printed 5-10): 20 x 12 cards, 240 background words of 14 bits",
+      "conflict": null,
+      "resolving_evidence": null,
+      "revisit_trigger": null,
+      "decision": null,
+      "note": "Rules STIC-R03, CR-01, CR-02: the extent and the 14-bit use are printed; the word layouts are tier 4 (C96). The generator refuses a word count other than video.card_columns times video.card_rows."
+    },
+    "stic.reg_window_cpu_cycles": {
+      "value": 2000,
+      "tag": "tier4-community",
+      "cite": "SRC-community-emu-docs: about 2000 CPU cycles after the VBLANK interrupt; SRC-intv-wiki gives about 2900 (the alternate)",
+      "conflict": "C1",
+      "resolving_evidence": "measurement: D10-VID-06 owner probe of the window edges by cycle count with an original diagnostic",
+      "revisit_trigger": "a D10 window probe, or a primary page that prints the window events",
+      "decision": null,
+      "note": "STIC register access window length from the frame start, in CPU cycles (alternate 2,900); the shorter figure is the conservative bound. Opens at FRAME_START and closes at REG_CLOSE (rules STIC-R18, STIC-R22). The mechanism (a pure function of the access stamp rather than the bus copy mode) is C83. Proven by tests to be followed, never to be right (D-02)."
+    },
+    "stic.gmem_window_cpu_cycles": {
+      "value": 3780,
+      "tag": "tier4-community",
+      "cite": "SRC-community-emu-docs: between about 3780 and 3790 CPU cycles; SRC-intv-wiki gives about 3796 (the alternate)",
+      "conflict": "C2",
+      "resolving_evidence": "measurement: D10-VID-06 owner probe of the window edges by cycle count with an original diagnostic",
+      "revisit_trigger": "a D10 window probe, or a primary page that prints the window events",
+      "decision": null,
+      "note": "Graphics memory (GROM and GRAM) access window length from the frame start, in CPU cycles (alternate 3,796); the shorter figure is the conservative bound (rule STIC-R19). Closes at GMEM_CLOSE."
+    },
+    "stic.irq_line": {
+      "value": "INTRM",
+      "tag": "tier4-community",
+      "cite": "SRC-intv-wiki (STIC, oldid 15008) and SRC-community-emu-docs: the vertical blank request drives the maskable interrupt line; the STIC wiring is not in the manufacturer catalog",
+      "conflict": "C91",
+      "resolving_evidence": "test: stic.lines.* (plan 06-08) follow the profile field; measurement: a D10 line-edge probe",
+      "revisit_trigger": "a schematic, a D10 line probe, or a primary page that prints the interrupt wiring",
+      "decision": null,
+      "note": "The CPU line the vertical blank request drives. The generator accepts only INTRM (the maskable interrupt request, a level; acceptance does not clear it, C41)."
+    },
+    "stic.irq_low_cpu_cycles": {
+      "value": 3791,
+      "tag": "tier4-community",
+      "cite": "SRC-intv-wiki (STIC, oldid 15008): the interrupt request is held for 3791 CPU cycles from the frame start; SRC-community-emu-docs gives 2907 and a commented 2920 (the alternates)",
+      "conflict": "C3",
+      "resolving_evidence": "measurement: D10 owner-gated probe by cycle count; affects whether a CPU can miss the interrupt",
+      "revisit_trigger": "a D10 line probe or a primary source that prints the interrupt width",
+      "decision": null,
+      "note": "CPU cycles from the frame start for which INTRM is asserted (alternates 2,907 and 2,920); C91 records the line source and release. The generator refuses a width above the frame."
+    },
+    "stic.frame_phase_ticks": {
+      "value": 0,
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: no source relates power-on to the frame; the first frame starts at machine time zero",
+      "conflict": "C90",
+      "resolving_evidence": "test: stic.profile.* (plan 06-06) perturb the field and follow the moved timeline; measurement: D10 power-on capture",
+      "revisit_trigger": "a D10 capture of the first frame against power-on, or a source that documents the relation",
+      "decision": null,
+      "note": "Master ticks from machine time zero to the first frame start S_0 (S_k = phase + k x F). A nonzero phase is allowed and means the interval before S_0 schedules nothing: the access gates stay open and no line is driven. The generator refuses a phase of F or more."
+    },
+    "stic.bus.count": {
+      "value": 13,
+      "tag": "unknown-default-chosen",
+      "cite": "SRC-gi-1980-catalog pdf 191 (printed 5-10) and SRC-gi-1982-catalog pdf 462: thirteen or fourteen second-sync requests per frame; thirteen is the chosen member of that set",
+      "conflict": "C92",
+      "resolving_evidence": "measurement: D10-VID-07 owner bus-window probe of count, spacing and hold",
+      "revisit_trigger": "a D10 bus-window probe or a primary page that prints the window train",
+      "decision": null,
+      "note": "Bus windows (BUSRQ pulses) per frame: windows 0..11 fetch card rows and window 12 fetches nothing in this model. Fourteen at the same pitch does not fit the frame; it needs a shifted start (the picture offset, Phase 8). C4 records the hold and the alternates."
+    },
+    "stic.bus.first_start_cpu_cycles": {
+      "value": 3791,
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: assumed equal to stic.irq_low_cpu_cycles (graphic time starts when the request ends)",
+      "conflict": "C92",
+      "resolving_evidence": "measurement: D10-VID-07 owner bus-window probe",
+      "revisit_trigger": "a D10 bus-window probe or a primary page that prints the first window",
+      "decision": null,
+      "note": "CPU cycles from the frame start to the start of bus window 0."
+    },
+    "stic.bus.pitch_cpu_cycles": {
+      "value": 912,
+      "tag": "inference",
+      "cite": "SRC-gi-1980-catalog pdf 191 (printed 5-10): sixteen lines per card row (tier 1 text) times SRC-community-emu-docs 57 CPU cycles per line (cpu_cycles_per_scanline, C7)",
+      "conflict": "C92",
+      "resolving_evidence": "measurement: D10-VID-07 owner bus-window probe",
+      "revisit_trigger": "a D10 bus-window probe or a change of cpu_cycles_per_scanline",
+      "decision": null,
+      "note": "CPU cycles between the starts of two bus windows: 16 lines x 57 cycles."
+    },
+    "stic.bus.hold_cpu_cycles": {
+      "value": 114,
+      "tag": "tier4-community",
+      "cite": "SRC-intv-wiki: the bus request is held for 114 CPU cycles; SRC-community-emu-docs gives 110, and 57 for the first window with 44 for the last (alternates)",
+      "conflict": "C4",
+      "resolving_evidence": "measurement: D10-VID-07 owner probe by cycle count",
+      "revisit_trigger": "a D10 bus-window probe or a primary page that prints the hold",
+      "decision": null,
+      "note": "CPU cycles a bus window holds BUSRQ (alternates 110, the pair 57 and 44, and 114 with a 57-cycle acknowledge deadline). The generator refuses windows that overlap (pitch below hold)."
+    },
+    "stic.bus.rows": {
+      "value": 12,
+      "tag": "tier1-primary-doc",
+      "cite": "SRC-gi-1980-catalog pdf 191 (printed 5-10) and SRC-gi-1982-catalog pdf 462: twelve card rows in the background",
+      "conflict": null,
+      "resolving_evidence": null,
+      "revisit_trigger": null,
+      "decision": null,
+      "note": "Card rows fetched by the windows: window i fetches row i for i below this value. The generator refuses more rows than windows."
+    },
+    "stic.bus.fetch_offset_cpu_cycles": {
+      "value": 57,
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: the row latch is taken one line after the window start by choice, equal to the acknowledge deadline of C4",
+      "conflict": "C93",
+      "resolving_evidence": "test: stic.steal.* (plan 06-08) exercise the latch instant; measurement: D10-VID-05 and D10-VID-07",
+      "revisit_trigger": "a D10 BACKTAB-write probe or a primary page that prints the fetch instant",
+      "decision": null,
+      "note": "CPU cycles after a window start at which the card row is latched (ROW_FETCH). The generator refuses an offset above the hold."
+    },
+    "stic.late_grant": {
+      "value": "fetch-at-schedule",
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: no source says what the STIC does when the CPU grants the bus late",
+      "conflict": "C93",
+      "resolving_evidence": "test: stic.steal.* (plan 06-08) exercise late grants; measurement: D10-VID-07",
+      "revisit_trigger": "a D10 bus trace of a late grant",
+      "decision": null,
+      "note": "Policy selector: the row latch is taken at its scheduled instant whether or not the grant has happened, and a late-grant counter is kept. The generator accepts only fetch-at-schedule, the one policy the engine implements."
+    },
+    "stic.access_strobe_ticks": {
+      "value": 0,
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: no source gives the instant within a CPU cycle at which an access is tested against a window",
+      "conflict": "C94",
+      "resolving_evidence": "test: stic.window.* (plan 06-06) pin the default and its reversal",
+      "revisit_trigger": "a D10 window-edge probe",
+      "decision": null,
+      "note": "Master ticks added to the start of an access to give the stamp that is tested against the windows."
+    },
+    "stic.access_gating_when_off": {
+      "value": "apply",
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: no source says whether the windows apply while the display latch is clear",
+      "conflict": "C94",
+      "resolving_evidence": "test: stic.window.* (plan 06-06) pin the default; measurement: D10-VID-08",
+      "revisit_trigger": "a D10 access probe with the display not enabled",
+      "decision": null,
+      "note": "Policy selector: the windows apply whatever the display latch is. The generator accepts only apply, the one policy the engine implements."
+    },
+    "stic.video_slack_frames": {
+      "value": 1,
+      "tag": "inference",
+      "cite": "project rule D-15 (docs/stic/timing-notes.md, closed forms: capacity): a call completes at most floor(D / F) + 2 frame events because the largest unit U is below the frame F",
+      "conflict": null,
+      "resolving_evidence": "test: run.* capacity tests (plan 06-09) construct the corner now = E_k - 4, D = F - 1",
+      "revisit_trigger": "when psg.max_unit_ticks grows to the frame length or a device other than the memory system can stall the bus for longer",
+      "decision": "D-15",
+      "note": "The frames beyond floor(D / F) + 1 the output capacity rule reserves. The generator refuses a value other than ceil(U / F) with U = psg.max_unit_ticks (and refuses 2U >= F)."
+    },
+    "bus.line_sample_lag_cpu_cycles": {
+      "value": 1,
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: the machine layer samples the lines once per interruptible boundary at unit end minus one CPU cycle (POL-LINE-01)",
+      "conflict": "C38",
+      "resolving_evidence": "test: the Phase 2 interrupt boundary vectors and stic.lines.* (plan 06-08); measurement: D10 line-edge probe",
+      "revisit_trigger": "a D10 line-edge probe or a source that documents the sampling point",
+      "decision": null,
+      "note": "Promotes POL-LINE-01 (C38) to a field: a unit that starts at tick b sees the levels of tick b minus this lag in CPU cycles."
+    },
+    "video.card_columns": {
+      "value": 20,
+      "tag": "tier1-primary-doc",
+      "cite": "SRC-gi-1980-catalog pdf 191 (printed 5-10) and SRC-gi-1982-catalog pdf 462: a background of 20 x 12 cards",
+      "conflict": null,
+      "resolving_evidence": null,
+      "revisit_trigger": null,
+      "decision": null,
+      "note": "Cards per row of the background; the renderer produces this many columns and crops to the published width."
+    },
+    "video.card_rows": {
+      "value": 12,
+      "tag": "tier1-primary-doc",
+      "cite": "SRC-gi-1980-catalog pdf 191 (printed 5-10) and SRC-gi-1982-catalog pdf 462: a background of 20 x 12 cards",
+      "conflict": null,
+      "resolving_evidence": null,
+      "revisit_trigger": null,
+      "decision": null,
+      "note": "Card rows of the background."
+    },
+    "video.card_size_px": {
+      "value": {"w": 8, "h": 8},
+      "tag": "tier1-primary-doc",
+      "cite": "SRC-gi-1980-catalog pdf 191 (printed 5-10): cards of 8 x 8 picture elements",
+      "conflict": null,
+      "resolving_evidence": null,
+      "revisit_trigger": null,
+      "decision": null,
+      "note": "Picture elements of one card: width w and height h."
+    },
+    "video.object_grid": {
+      "value": {"w": 167, "h": 105},
+      "tag": "tier1-primary-doc",
+      "cite": "SRC-gi-1980-catalog pdf 191 (printed 5-10) and SRC-gi-1982-catalog pdf 462: the 167 x 105 object grid of which 159 x 96 positions are visible",
+      "conflict": null,
+      "resolving_evidence": null,
+      "revisit_trigger": null,
+      "decision": null,
+      "note": "The nominal grid; consumed only by sanity checks (C105): the published width and height must fit inside it."
+    },
+    "video.colors": {
+      "value": 16,
+      "tag": "tier1-primary-doc",
+      "cite": "SRC-gi-1980-catalog pdf 191 (printed 5-10): 16 selectable colors",
+      "conflict": null,
+      "resolving_evidence": null,
+      "revisit_trigger": null,
+      "decision": null,
+      "note": "Color indices 0..15; the display-off blank value must be outside this range of cut-off values."
+    },
+    "video.last_card_column_px": {
+      "value": 7,
+      "tag": "tier1-primary-doc",
+      "cite": "SRC-gi-1980-catalog pdf 191 (printed 5-10) and SRC-gi-1982-catalog pdf 462: the 20th card column is 7 picture elements wide; 159 of 167 positions are visible",
+      "conflict": "C10",
+      "resolving_evidence": "measurement: D10-VID-01 owner capture of a card edge showing whether a 160th column is displayed",
+      "revisit_trigger": "a D10 capture of a card edge or a primary page that prints the 20th column",
+      "decision": "D8",
+      "note": "Width = (video.card_columns - 1) x video.card_size_px.w + this value = 159. The one-field reversal of C10 is 8, which gives 160 with no other edit (decision D8, D-12)."
+    },
+    "video.last_card_column_drop": {
+      "value": "right",
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: which 7 of the 8 pixels of a card in the 20th column are displayed is not printed; the right edge is clipped by choice",
+      "conflict": "C101",
+      "resolving_evidence": "measurement: D10-VID-02 owner capture of a card with markers in pixel 6 and pixel 7 of column 19",
+      "revisit_trigger": "a D10 capture or a primary page that prints the clipped side",
+      "decision": null,
+      "note": "Policy selector: pixel 7 of every card of column 19 is not displayed. The generator accepts only right, the one policy the renderer implements."
+    },
+    "video.row_lines": {
+      "value": 2,
+      "tag": "inference",
+      "cite": "SRC-gi-1980-catalog pdf 191 (printed 5-10) pdf 193 (printed 5-12): 96 display rows over 192 active lines, so two television lines per display row",
+      "conflict": "C105",
+      "resolving_evidence": "pending: Phase 8 border and delay rules, or a capture",
+      "revisit_trigger": "when Phase 8 models the border and the picture offset",
+      "decision": null,
+      "note": "Television lines per display row; published as metadata, no pixel depends on it."
+    },
+    "video.display_off_fill": {
+      "value": "border",
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: no source documents the output while the display is not enabled",
+      "conflict": "C99",
+      "resolving_evidence": "measurement: D10-VID-03 owner capture of the output while the display is not enabled",
+      "revisit_trigger": "a D10 capture of a display-off frame",
+      "decision": null,
+      "note": "Policy selector: a display-off frame is produced, flagged not displayed, with every position filled with the border color index. The generator accepts only border."
+    },
+    "video.blank_value": {
+      "value": 255,
+      "tag": "delegated-decision",
+      "cite": "none: project pixel format D-13 (data/video/geometry.literal.txt, row not-displayed-sentinel): 0xFF marks a position that is not displayed",
+      "conflict": "C99",
+      "resolving_evidence": null,
+      "revisit_trigger": "when a host needs a different not-displayed marker or a frame format version is added",
+      "decision": "D-13",
+      "note": "The not-displayed sentinel of the index plane (IVS_PIXEL_BLANK). The generator refuses a value below video.colors."
     }
   }
 }

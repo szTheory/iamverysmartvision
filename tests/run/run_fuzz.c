@@ -54,8 +54,8 @@
  * run.struct.v1-sizes: from plan 04-13 the v1 sizes of the Phase 4 public structs are frozen and
  * the A-02 growth rule applies to them (a new field goes after the v1 size and the minimum
  * struct_size stays the v1 size). Pinned here by offsetof and sizeof literals: the pointer-free
- * ivs_input_event (32), ivs_cpu_state_report (36), ivs_run_report (112) and ivs_info (v1 216,
- * whole 256), the pointer-free prefix of ivs_run_request (video at 16), and every size within
+ * ivs_input_event (32), ivs_cpu_state_report (36), ivs_run_report (v1 112, whole 160) and ivs_info (v1 216,
+ * whole 320), the pointer-free prefix of ivs_run_request (video at 16), and every size within
  * IVS_STRUCT_SIZE_MAX (Pitfall 13). run.struct.v1-sizes-lp64: the pointer-bearing ivs_run_request
  * is 64 bytes with events at 48 where pointers are 64-bit; elsewhere a visible skip. */
 #include <stddef.h>
@@ -437,7 +437,7 @@ typedef struct fv_cover {
 /* The reference of one seed at every boundary: time, the program counter before the unit, consumed
  * events, the words in force and the INPUT and CPU digests. The whole instance storage at every
  * boundary is kept beside it (fv_snap, heap): comparing the bytes is stronger than the MEM digest and
- * costs a memcmp where the digest costs a SHA-256 of the 113,760-byte instance. */
+ * costs a memcmp where the digest costs a SHA-256 of the 114,416-byte instance. */
 typedef struct fv_ref {
   uint64_t b[FZ_UNITS + 1u];
   uint32_t pc[FZ_UNITS + 1u]; /* pc[k]: the instruction the CPU runs as unit k (before it) */
@@ -729,18 +729,21 @@ static int fz_struct_v1(void)
   FZ_PIN(offsetof(ivs_cpu_state_report, r) == 12u && offsetof(ivs_cpu_state_report, s) == 28u);
   FZ_PIN(offsetof(ivs_cpu_state_report, intr_enabled) == 32u && offsetof(ivs_cpu_state_report, reserved) == 33u);
 
-  /* The v1 report is the pinned constant, a prefix of the grown (v2, 136-byte) struct (plan 05-02). */
+  /* The v1 report is the pinned constant, a prefix of the grown (v2, 136-byte; v3 from plan 06-03, 160-byte)
+   * struct (plan 05-02). */
   FZ_PIN(IVS_RUN_REPORT_V1_SIZE == 112u && offsetof(ivs_run_report, audio_first_index) == IVS_RUN_REPORT_V1_SIZE);
-  FZ_PIN(sizeof(ivs_run_report) == 136u);
+  FZ_PIN(offsetof(ivs_run_report, video_first_index) == 136u && sizeof(ivs_run_report) == 160u);
   FZ_PIN(offsetof(ivs_run_report, reserved) == 20u && offsetof(ivs_run_report, now_ticks) == 24u);
   FZ_PIN(offsetof(ivs_run_report, units_executed) == 48u && offsetof(ivs_run_report, audio_bytes_written) == 72u);
   FZ_PIN(offsetof(ivs_run_report, input_consumed) == 80u && offsetof(ivs_run_report, input_failing_index) == 84u);
   FZ_PIN(offsetof(ivs_run_report, input_floor_tick) == 88u && offsetof(ivs_run_report, controller_now) == 96u);
 
   FZ_PIN(offsetof(ivs_info, ticks_per_cpu_cycle) == 216u && offsetof(ivs_info, nominal_frame_ticks) == 232u);
-  /* The v2 (Phase 4) info ends at 256; v3 (plan 05-02) appends the Phase 5 tail up to 288. */
+  /* The v2 (Phase 4) info ends at 256; v3 (plan 05-02) appends the Phase 5 tail up to 288; v4 (plan 06-03)
+   * appends the Phase 6 video tail from 288 up to 320. */
   FZ_PIN(offsetof(ivs_info, reserved2) + sizeof(uint32_t) == 256u && offsetof(ivs_info, audio_sample_ticks) == 256u);
-  FZ_PIN(sizeof(ivs_info) == 288u);
+  FZ_PIN(offsetof(ivs_info, crystal_hz_den) + sizeof(uint64_t) == 288u && offsetof(ivs_info, frame_phase_ticks) == 288u);
+  FZ_PIN(sizeof(ivs_info) == 320u);
 
   /* The pointer-free prefix of the request. */
   FZ_PIN(offsetof(ivs_run_request, flags) == 4u && offsetof(ivs_run_request, target_ticks) == 8u);

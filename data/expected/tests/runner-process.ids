@@ -1,7 +1,7 @@
 # Suite runner-process (plan 04-20, D-20, D-21, D-23, D-32): tests/runner-process-tap.sh runs the
 # real ivs-run of each preset.
 # runner-process.scenario.<id>: one case per line of data/expected/runner-scenarios.ids (exit
-#   code, outcome, exit.code, outcome.detail, `ivsr 2` first and `report.end <n>` last);
+#   code, outcome, exit.code, outcome.detail, `ivsr 3` first and `report.end <n>` last);
 #   needs-user-exec needs an operator EXEC the gate never has and is a visible skip.
 # runner-process.mutant.<ID>: one case per program mutation of data/expected/diag-mutations.ids,
 #   guest-fail naming its clause (D-32), and (plan 05-11) one per row of
@@ -37,6 +37,9 @@ runner-process.scenario.psg-log-assert-mismatch
 runner-process.scenario.diag-ctrl-psg-pass
 runner-process.scenario.diag-ctrl-psg-nokey
 runner-process.scenario.diag-ctrl-psg-order
+runner-process.scenario.diag-stic-fgbg-pass
+runner-process.scenario.diag-stic-cstack-pass
+runner-process.scenario.video-assert-mismatch
 runner-process.mutant.ADDI-SUBI
 runner-process.mutant.BNZE-BZE
 runner-process.mutant.PSHR-MVOAT
@@ -46,12 +49,22 @@ runner-process.mutant.TONE-HIGH-VALUE
 runner-process.mutant.PORT1-STORE-ADDR
 runner-process.mutant.ANDI-TO-MVII
 runner-process.mutant.DELAY-COUNT-CHANGED
+runner-process.mutant.STIC-CARD-BYTE
+runner-process.mutant.STIC-BG-FG-SWAP
+runner-process.mutant.STIC-WORD-MOVED
+runner-process.mutant.STIC-ENABLE-ADDR
+runner-process.mutant.STIC-MODE-SENSE
+runner-process.mutant.STIC-GRAM-COUNT
+runner-process.mutant.STIC-PAD-NEGATIVE
 runner-process.repeat.diag-boot-pass
 runner-process.slices.diag-boot-pass
 runner-process.repeat.diag-input-pass
 runner-process.slices.diag-input-pass
 runner-process.repeat.diag-ctrl-psg-pass
 runner-process.slices.diag-ctrl-psg-pass
+runner-process.repeat.diag-stic-fgbg-pass
+runner-process.repeat.diag-stic-cstack-pass
+runner-process.slices.diag-stic-fgbg-pass
 runner-process.cwd
 runner-process.cwd.diag-ctrl-psg-pass
 runner-process.operator.audio-raw
@@ -61,6 +74,11 @@ runner-process.operator.max-bytes
 runner-process.operator.options
 runner-process.operator.failed-run
 runner-process.operator.golden-distinct
+runner-process.operator.video-raw
+runner-process.operator.video-raw-empty-run
+runner-process.operator.video-raw-failed-run
+runner-process.operator.video-raw-update-golden-refused
+runner-process.operator.frame-ppm-refused-user-content
 runner-process.refpcm.wav-written
 runner-process.refpcm.diag-ctrl-psg-pass
 runner-process.listen-demo.refuses-user

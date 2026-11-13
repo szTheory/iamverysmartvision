@@ -1,4 +1,4 @@
-ivsr 2
+ivsr 3
 scenario.id toy
 scenario.profile intv-2609-ntsc-family-p1
 api.version 0.1.0
@@ -19,5 +19,10 @@ output.video.bytes 0
 output.audio.bytes 0
 output.psglog.records 2
 output.psglog.bytes 32
+output.video.frames 0
+video.geometry -
+video.row_lines -
+video.frame.last_tick -
+video.chain.check -
 host.calls 3
-report.end 19
+report.end 24

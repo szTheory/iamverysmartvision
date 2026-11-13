@@ -7,7 +7,7 @@
 #   ivs-run --content-dir <content> <operator-args split on ,> <root>/data/scenarios/<id>.ivss
 # where <content> is this run's temp copy of the build-tree images dir; id
 # runner-process.scenario.<id>. The judge requires the inventory's exit code; a report whose first
-# line is `ivsr 2` and whose last is `report.end <n>` (n = the lines before it, LF-terminated);
+# line is `ivsr 3` and whose last is `report.end <n>` (n = the lines before it, LF-terminated);
 # exactly one `outcome` and one `exit.code` line equal to the inventory's; and `outcome.detail`
 # equal to the scenario's `# expect-detail: <text>` comment line (`-` without one). A scenario
 # with a `# expect-stderr: <text>` comment line must instead print no report and exactly the line
@@ -32,6 +32,10 @@
 # cost cap V-16) diag-ctrl-psg-pass, and runner-process.cwd (diag-boot-pass from another working
 # directory) and runner-process.cwd.diag-ctrl-psg-pass must equal the scenario case's report byte for
 # byte apart from the host.calls line.
+# Since plan 06-13 runner-process.repeat.diag-stic-fgbg-pass, runner-process.repeat.diag-stic-cstack-pass (the third diagnostic, one
+# more run each) and runner-process.slices.diag-stic-fgbg-pass (--slice-ticks 1 and 7, that scenario only) are judged the same way. Its
+# program mutations (data/expected/diag-mutations-stic.ids, ids runner-process.mutant.STIC-*) have a scenario column and comma-joined
+# address, from and to lists, judged by the same run_mutant.
 # Judge self-controls (runner-process.judge.<slug>): the same checks run against four fake
 # runners (shell scripts in the temp dir replaying this run's reports with one defect: exit 0 for
 # a guest-fail, no report.end, outcome pass with exit.code 10, a changed digest line); each passes
@@ -89,13 +93,13 @@ if [ -n "${IVS_TEST_OUT_DIR:-}" ]; then
   mkdir -p "$rep_dir" || { printf '# cannot create %s\n' "$rep_dir" >&2; exit 1; }
 fi
 
-# The content dir: copies of the build-tree images (boot stub, diag-cpu-1, and since plan 05-11 diag-ctrl-psg-1),
+# The content dir: copies of the build-tree images (boot stub, diag-cpu-1, since plan 05-11 diag-ctrl-psg-1, and since plan 06-13 diag-stic-1),
 # plus diag-cpu-1-truncated.ivsc, the diagnostic
 # container built here by ivs_pack and cut before its 32-byte trailer (POSIX dd).
 listing="$root/fixtures/FX-diag-cpu-1/diag-cpu-1.listing.txt"
 content="$tmp/content"
 mkdir "$content" "$tmp/runs" "$tmp/build" || exit 1
-for f in boot-stub.exec diag-cpu-1.ivsc diag-ctrl-psg-1.ivsc; do
+for f in boot-stub.exec diag-cpu-1.ivsc diag-ctrl-psg-1.ivsc diag-stic-1.ivsc; do
   cp "$images/$f" "$content/$f" || { printf 'runner-process-tap: no image %s/%s\n' "$images" "$f" >&2; exit 1; }
 done
 "$pack" --ivsc "$listing" "$tmp/build/full.ivsc" 2> "$tmp/build/pack.err" \
@@ -201,7 +205,7 @@ judge() {
     why no-report "empty stdout"
   else
     _first=$(sed -n '1p' "$_o")
-    [ "$_first" = "ivsr 2" ] || why header "first line '$_first', expected 'ivsr 2'"
+    [ "$_first" = "ivsr 3" ] || why header "first line '$_first', expected 'ivsr 3'"
     _nr=$(awk 'END { print NR }' "$_o")
     _nl=$(wc -l < "$_o" | tr -d ' ')
     _last=$(sed -n '$p' "$_o")
@@ -340,6 +344,12 @@ while read -r id x oc class skip args rest; do
   fi
 done < "$inv"
 
+# patch_args <addr list> <word list>: one `--patch ADDR=HEX` per element of the two comma-joined lists (a single word is a list of
+# one; tokens hold only hex digits, so the unquoted use of the output in run_mutant splits it safely).
+patch_args() {
+  awk -v a="$1" -v w="$2" 'BEGIN { n = split(a, A, ","); split(w, W, ","); for (i = 1; i <= n; i++) printf "--patch %s=%s ", A[i], W[i] }'
+}
+
 # run_mutant <id> <listing> <cart file name> <scenario id> <addr> <to> <exit> <outcome> <detail pattern>:
 # rebuilds the cartridge from <listing> in a fresh directory with the one word patched, runs the
 # scenario against it and judges the stated exit code, outcome and detail. Sets $ok, adds to $tmp/why.
@@ -348,7 +358,7 @@ run_mutant() {
   md="$tmp/mut-$_mid"
   if ! mkdir "$md" || ! cp "$content/boot-stub.exec" "$md/boot-stub.exec"; then
     ok=0; why temp "cannot prepare $md"
-  elif ! "$pack" --ivsc "$_ml" "$md/$_mc" --patch "$_ma=$_mw" > "$tmp/why.pack" 2>&1; then
+  elif ! "$pack" --ivsc "$_ml" "$md/$_mc" $(patch_args "$_ma" "$_mw") > "$tmp/why.pack" 2>&1; then
     ok=0; why pack "ivs_pack --patch $_ma=$_mw failed: $(cat "$tmp/why.pack")"
   elif cmp -s "$md/$_mc" "$content/$_mc"; then
     ok=0; why pack "the patch $_ma=$_mw leaves the container unchanged"
@@ -411,6 +421,47 @@ while read -r mid addr from to rest; do
   result "runner-process.mutant.$mid"
 done < "$muts2"
 
+# Program mutations of the third diagnostic (plan 06-13, D-20, V6-9, V6-12): per line
+# `<ID> <scenario> <addr list> <from list> <to list> <clause> <outcome> <exit>` of data/expected/diag-mutations-stic.ids (the lists are
+# comma-joined); the word at each <addr> of the unpatched listing (ivs_pack --dump-words) must be its <from>, and the stated outcome
+# (guest-fail 10, timeout 11 or pass 0) of the named scenario is judged.
+listing3="$root/fixtures/FX-diag-stic-1/diag-stic-1.listing.txt"
+muts3="$root/data/expected/diag-mutations-stic.ids"
+"$pack" --dump-words "$listing3" > "$tmp/words3" 2> /dev/null || : > "$tmp/words3"
+while read -r mid scn addrs froms tos rest; do
+  case $mid in '' | '#'*) continue ;; esac
+  ok=1
+  : > "$tmp/why"
+  mx=${rest##* }
+  rest=${rest% *}
+  mo=${rest##* }
+  clause=${rest% *}
+  # each address word of the unpatched listing equals its from word, and the three lists have one length
+  bad=$(awk -v a="$addrs" -v f="$froms" -v t="$tos" '
+    NR == FNR { w[$1] = $2; next }
+    END {
+      na = split(a, A, ","); nf = split(f, F, ","); nt = split(t, T, ",")
+      if (na != nf || na != nt) { print "lists of different lengths"; exit }
+      for (i = 1; i <= na; i++) if (w[A[i]] != F[i]) print "the word at " A[i] " is " w[A[i]] ", expected from " F[i]
+    }' "$tmp/words3" /dev/null)
+  if [ -z "$mx" ] || [ -z "$mo" ] || [ -z "$clause" ] || [ "$clause" = "$rest" ]; then
+    ok=0; why inventory "not <ID> <scenario> <addr list> <from list> <to list> <clause> <outcome> <exit>"
+  elif [ ! -f "$scen/$scn.ivss" ]; then
+    ok=0; why inventory "no scenario file data/scenarios/$scn.ivss"
+  elif [ -n "$bad" ]; then
+    ok=0; why listing "$bad"
+  else
+    case $mo in
+      guest-fail) mp="assert=* line=* $clause got *" ;;
+      timeout) mp="budget step=* line=* expected=halted got=target" ;;
+      pass) mp=- ;;
+      *) mp=; ok=0; why inventory "outcome '$mo' is not guest-fail, timeout or pass" ;;
+    esac
+    [ "$ok" -eq 1 ] && run_mutant "$mid" "$listing3" diag-stic-1.ivsc "$scn" "$addrs" "$tos" "$mx" "$mo" "$mp"
+  fi
+  result "runner-process.mutant.$mid"
+done < "$muts3"
+
 # Determinism (D-23, Pitfall 11): a second run, slice sizes 1 and 7, and a run from another
 # working directory all equal the scenario case's report apart from host.calls.
 for id in diag-boot-pass diag-input-pass diag-ctrl-psg-pass; do
@@ -426,6 +477,21 @@ for id in diag-boot-pass diag-input-pass diag-ctrl-psg-pass; do
   done
   result "runner-process.slices.$id"
 done
+# The third diagnostic (plan 06-13, cost cap V6-12): a second run of each of its two pass scenarios, and the slice replays
+# (--slice-ticks 1 and 7) of the Foreground/Background scenario ONLY (about 4,100 slices at 1 tick, at most 150,000 ticks).
+for id in diag-stic-fgbg-pass diag-stic-cstack-pass; do
+  ref="$tmp/runs/scen-$id.out"
+  : > "$tmp/why"
+  ok=1
+  check_repeat "$tmp" "$ivs_run" "rep-$id" "$id" "$ref" || ok=0
+  result "runner-process.repeat.$id"
+done
+: > "$tmp/why"
+ok=1
+for s in 1 7; do
+  check_repeat "$tmp" "$ivs_run" "sl$s-diag-stic-fgbg-pass" diag-stic-fgbg-pass "$tmp/runs/scen-diag-stic-fgbg-pass.out" --slice-ticks "$s" || ok=0
+done
+result runner-process.slices.diag-stic-fgbg-pass
 mkdir "$tmp/elsewhere" || exit 1
 : > "$tmp/why"
 ok=1
@@ -568,6 +634,132 @@ sz=$(wc -c < "$tmp/gold/g.raw" 2> /dev/null | tr -d ' ')
 [ "$(sed -n '1p' "$tmp/gold/g.digests" 2> /dev/null)" = "# tier: deterministic-repeatability" ] \
   || { ok=0; why operator-golden "a distinct golden path: no golden written"; }
 result runner-process.operator.golden-distinct
+
+# Operator-only video outputs (plan 06-12, D-17, T-06-16, T-06-17): the same project-authored looping stand-in, run to tick
+# 130000 (two frame ends, at 59736 and 119472), under --video-raw and --frame-ppm into the mktemp directory. By hand: two slots
+# of 32 + 159 x 96 = 15296 bytes, so the raw file is 30592 bytes and equals output.video.bytes, the first slot's index field
+# (bytes 8 to 15) is 0 and the second slot's (offset 15296 + 8) ends in 01; the PPM starts `P6`, `159 96`, `255` (14 bytes)
+# and holds 3 x 15264 pixel bytes (45806 in all); both files are created mode 0600 (ls -l shows -rw-------).
+opvid="$opc/operator-vid.ivss"
+printf 'ivss 1\nid operator-vid\nprofile intv-2609-ntsc-family-p1\ncontent exec psg-prog.exec\ncontent grom zero-grom\nrun-to 130000 ticks\n' > "$opvid"
+mode_of() { ls -l "$1" 2> /dev/null | cut -c1-10; }
+: > "$tmp/why"
+ok=1
+run_one "$tmp" op-v "$ivs_run" --content-dir "$opc" --video-raw "$opo/v.vraw" --frame-ppm "$opo/v.ppm" "$opvid"
+judge op-v 0 pass - "" || ok=0
+sz=$(wc -c < "$opo/v.vraw" 2> /dev/null | tr -d ' ')
+[ "$sz" = 30592 ] && [ "$sz" = "$(op_value op-v output.video.bytes)" ] \
+  || { ok=0; why operator-video "raw file size '$sz', output.video.bytes '$(op_value op-v output.video.bytes)'"; }
+[ "$(od -An -tx1 -j8 -N8 "$opo/v.vraw" | tr -d ' \n')" = 0000000000000000 ] \
+  || { ok=0; why operator-video "the first slot's index field is not 0"; }
+[ "$(od -An -tx1 -j15304 -N8 "$opo/v.vraw" | tr -d ' \n')" = 0000000000000001 ] \
+  || { ok=0; why operator-video "the second slot's index field is not 1"; }
+[ "$(mode_of "$opo/v.vraw")" = "-rw-------" ] || { ok=0; why operator-video "--video-raw mode '$(mode_of "$opo/v.vraw")', expected -rw-------"; }
+psz=$(wc -c < "$opo/v.ppm" 2> /dev/null | tr -d ' ')
+[ "$psz" = 45806 ] || { ok=0; why operator-video "ppm size '$psz', expected 45806"; }
+[ "$(head -c 14 "$opo/v.ppm" | od -An -tx1 | tr -d ' \n')" = 50360a3135392039360a3235350a ] \
+  || { ok=0; why operator-video "the ppm header is not P6, 159 96, 255"; }
+[ "$(mode_of "$opo/v.ppm")" = "-rw-------" ] || { ok=0; why operator-video "--frame-ppm mode '$(mode_of "$opo/v.ppm")', expected -rw-------"; }
+result runner-process.operator.video-raw
+# A scenario that delivers no frame (tick 3000) leaves an empty file, still mode 0600, and nothing else is created.
+: > "$tmp/why"
+ok=1
+mkdir "$tmp/vempty" || exit 1
+run_one "$tmp" op-v-empty "$ivs_run" --content-dir "$opc" --video-raw "$tmp/vempty/e.vraw" "$opscn"
+judge op-v-empty 0 pass - "" || ok=0
+[ -f "$tmp/vempty/e.vraw" ] && [ ! -s "$tmp/vempty/e.vraw" ] || { ok=0; why operator-video-empty "the file is missing or not empty"; }
+[ "$(mode_of "$tmp/vempty/e.vraw")" = "-rw-------" ] || { ok=0; why operator-video-empty "mode '$(mode_of "$tmp/vempty/e.vraw")'"; }
+[ "$(ls "$tmp/vempty" | wc -l | tr -d ' ')" = 1 ] || { ok=0; why operator-video-empty "other files were created"; }
+# The empty file is said aloud (Phase 6 review IN-01): one stderr line, the exit code and the report unchanged; the same for --frame-ppm
+# (the PPM case of the security residual); a run that delivers frames prints no such line.
+printf 'ivs-run: --video-raw: no frame was delivered, the file is empty\n' > "$tmp/want.err"
+cmp -s "$tmp/runs/op-v-empty.err" "$tmp/want.err" || { ok=0; why operator-video-empty "--video-raw: stderr is not the one no-frame line"; }
+run_one "$tmp" op-v-empty-ppm "$ivs_run" --content-dir "$opc" --frame-ppm "$tmp/vempty/e.ppm" "$opscn"
+judge op-v-empty-ppm 0 pass - "" || ok=0
+[ -f "$tmp/vempty/e.ppm" ] && [ ! -s "$tmp/vempty/e.ppm" ] || { ok=0; why operator-video-empty "--frame-ppm: the file is missing or not empty"; }
+[ "$(mode_of "$tmp/vempty/e.ppm")" = "-rw-------" ] || { ok=0; why operator-video-empty "--frame-ppm: mode '$(mode_of "$tmp/vempty/e.ppm")'"; }
+printf 'ivs-run: --frame-ppm: no frame was delivered, the file is empty\n' > "$tmp/want.err"
+cmp -s "$tmp/runs/op-v-empty-ppm.err" "$tmp/want.err" || { ok=0; why operator-video-empty "--frame-ppm: stderr is not the one no-frame line"; }
+[ ! -s "$tmp/runs/op-v.err" ] || { ok=0; why operator-video-empty "a run that delivered frames wrote to stderr"; }
+result runner-process.operator.video-raw-empty-run
+# A run that ends harness-fail leaves no video output file (the Phase 5 rule, review WR-01): the byte bound on the raw file and on the
+# PPM (a bound below its 45806 bytes), and an existing path is refused without touching it (exclusive create); the retry without
+# the bound then succeeds into the same path.
+: > "$tmp/why"
+ok=1
+run_one "$tmp" op-vf-raw "$ivs_run" --content-dir "$opc" --video-raw "$opo/f.vraw" --video-out-max-bytes 100 "$opvid"
+judge op-vf-raw 14 harness-fail video-out-max-bytes "" || ok=0
+[ ! -e "$opo/f.vraw" ] || { ok=0; why operator-video-failed "--video-raw: the failed run left f.vraw"; }
+run_one "$tmp" op-vf-ppm "$ivs_run" --content-dir "$opc" --frame-ppm "$opo/f.ppm" --video-out-max-bytes 1000 "$opvid"
+judge op-vf-ppm 14 harness-fail frame-ppm-out-max-bytes "" || ok=0
+[ ! -e "$opo/f.ppm" ] || { ok=0; why operator-video-failed "--frame-ppm: the failed run left f.ppm"; }
+run_one "$tmp" op-vf-retry "$ivs_run" --content-dir "$opc" --video-raw "$opo/f.vraw" "$opvid"
+judge op-vf-retry 0 pass - "" || ok=0
+cp "$opo/f.vraw" "$opo/f.before" || exit 1
+run_one "$tmp" op-vf-excl "$ivs_run" --content-dir "$opc" --video-raw "$opo/f.vraw" "$opvid"
+[ "$rc" -eq 14 ] && [ ! -s "$tmp/runs/op-vf-excl.out" ] || { ok=0; why operator-video-failed "an existing path: exit $rc or a report"; }
+printf 'ivs-run: --video-raw: output file exists, refusing to overwrite it\n' > "$tmp/want.err"
+cmp -s "$tmp/runs/op-vf-excl.err" "$tmp/want.err" || { ok=0; why operator-video-failed "an existing path: stderr is not the one refusal line"; }
+cmp -s "$opo/f.vraw" "$opo/f.before" || { ok=0; why operator-video-failed "the existing file changed"; }
+# Two outputs on one path (Phase 6 review IN-01/IN-05): refused before anything is created, with a message that names the clash and not
+# an existing file (the path was free).
+run_one "$tmp" op-vf-same "$ivs_run" --content-dir "$opc" --video-raw "$opo/same.out" --frame-ppm "$opo/same.out" "$opvid"
+[ "$rc" -eq 14 ] && [ ! -s "$tmp/runs/op-vf-same.out" ] || { ok=0; why operator-video-failed "two outputs on one path: exit $rc or a report"; }
+printf 'ivs-run: --frame-ppm: names the same path as --video-raw\n' > "$tmp/want.err"
+cmp -s "$tmp/runs/op-vf-same.err" "$tmp/want.err" || { ok=0; why operator-video-failed "two outputs on one path: stderr is not the one clash line"; }
+[ ! -e "$opo/same.out" ] || { ok=0; why operator-video-failed "two outputs on one path: a file was created"; }
+# --update-golden follows the same rule (Phase 6 review WR-02): a run that ends harness-fail writes no golden and leaves an existing
+# one byte-identical; no temporary file is left next to it; the retry without the bound writes the golden.
+mkdir "$tmp/gfail" || exit 1
+printf 'precious\n' > "$tmp/gfail/g.digests"
+cp "$tmp/gfail/g.digests" "$tmp/gfail/g.before" || exit 1
+run_one "$tmp/gfail" op-vf-gold "$ivs_run" --content-dir "$opc" --video-raw v.raw --video-out-max-bytes 100 --update-golden g.digests "$opvid"
+judge op-vf-gold 14 harness-fail video-out-max-bytes "" || ok=0
+cmp -s "$tmp/gfail/g.digests" "$tmp/gfail/g.before" || { ok=0; why operator-video-failed "a failed run changed the existing golden"; }
+[ ! -e "$tmp/gfail/v.raw" ] || { ok=0; why operator-video-failed "the failed golden run left v.raw"; }
+run_one "$tmp/gfail" op-vf-gold2 "$ivs_run" --content-dir "$opc" --video-raw v2.raw --video-out-max-bytes 100 --update-golden n.digests "$opvid"
+judge op-vf-gold2 14 harness-fail video-out-max-bytes "" || ok=0
+[ ! -e "$tmp/gfail/n.digests" ] || { ok=0; why operator-video-failed "a failed run wrote a new golden"; }
+[ "$(ls "$tmp/gfail" | tr '\n' ' ')" = "g.before g.digests " ] || { ok=0; why operator-video-failed "files left next to the golden: $(ls "$tmp/gfail" | tr '\n' ' ')"; }
+run_one "$tmp/gfail" op-vf-gold3 "$ivs_run" --content-dir "$opc" --update-golden g.digests "$opvid"
+judge op-vf-gold3 0 pass - "" || ok=0
+[ "$(sed -n '1p' "$tmp/gfail/g.digests" 2> /dev/null)" = "# tier: deterministic-repeatability" ] \
+  || { ok=0; why operator-video-failed "the retry did not replace the golden"; }
+[ "$(ls "$tmp/gfail" | tr '\n' ' ')" = "g.before g.digests " ] || { ok=0; why operator-video-failed "files left after the retry: $(ls "$tmp/gfail" | tr '\n' ' ')"; }
+result runner-process.operator.video-raw-failed-run
+# --update-golden never names a video output (review WR-02 copied): the same string or the same file under another spelling is
+# refused (exit 14, one stderr line, no report) and the run's own output file is not left behind.
+: > "$tmp/why"
+ok=1
+printf 'ivs-run: --update-golden must not name an operator output file\n' > "$tmp/want.err"
+for opt in --video-raw --frame-ppm; do
+  run_one "$tmp/gold" op-vg-same "$ivs_run" --content-dir "$opc" "$opt" v.out --update-golden v.out "$opvid"
+  [ "$rc" -eq 14 ] && [ ! -s "$tmp/runs/op-vg-same.out" ] || { ok=0; why operator-video-golden "$opt with the same string: exit $rc or a report"; }
+  cmp -s "$tmp/runs/op-vg-same.err" "$tmp/want.err" || { ok=0; why operator-video-golden "$opt: stderr is not the one refusal line"; }
+  [ ! -e "$tmp/gold/v.out" ] || { ok=0; why operator-video-golden "$opt with the same string: left v.out"; }
+  run_one "$tmp/gold" op-vg-alias "$ivs_run" --content-dir "$opc" "$opt" v.out --update-golden ./v.out "$opvid"
+  [ "$rc" -eq 14 ] && [ ! -s "$tmp/runs/op-vg-alias.out" ] || { ok=0; why operator-video-golden "$opt with ./v.out: exit $rc or a report"; }
+  cmp -s "$tmp/runs/op-vg-alias.err" "$tmp/want.err" || { ok=0; why operator-video-golden "$opt: alias stderr is not the one refusal line"; }
+  [ ! -e "$tmp/gold/v.out" ] || { ok=0; why operator-video-golden "$opt with ./v.out: left v.out"; }
+done
+result runner-process.operator.video-raw-update-golden-refused
+# A frame rendered from an owner image is derived art of rights-bearing content: --frame-ppm AND --video-raw (the same pixels as index
+# bytes; Phase 6 review IN-01) are refused for a scenario that names `content exec user` (exit 14, one stderr line, no report, no file),
+# before anything is created.
+: > "$tmp/why"
+ok=1
+printf 'ivss 1\nid operator-user\nprofile intv-2609-ntsc-family-p1\ncontent exec user\ncontent grom zero-grom\nrun-to 1000 ticks\n' > "$opc/operator-user.ivss"
+printf 'ivs-run: --frame-ppm refused: content user\n' > "$tmp/want.err"
+run_one "$tmp" op-vu "$ivs_run" --content-dir "$opc" --frame-ppm "$opo/u.ppm" "$opc/operator-user.ivss"
+[ "$rc" -eq 14 ] && [ ! -s "$tmp/runs/op-vu.out" ] || { ok=0; why operator-video-user "exit $rc or a report"; }
+cmp -s "$tmp/runs/op-vu.err" "$tmp/want.err" || { ok=0; why operator-video-user "stderr is not the one refusal line"; }
+[ ! -e "$opo/u.ppm" ] || { ok=0; why operator-video-user "a file was created"; }
+printf 'ivs-run: --video-raw refused: content user\n' > "$tmp/want.err"
+run_one "$tmp" op-vu-raw "$ivs_run" --content-dir "$opc" --video-raw "$opo/u.vraw" "$opc/operator-user.ivss"
+[ "$rc" -eq 14 ] && [ ! -s "$tmp/runs/op-vu-raw.out" ] || { ok=0; why operator-video-user "--video-raw: exit $rc or a report"; }
+cmp -s "$tmp/runs/op-vu-raw.err" "$tmp/want.err" || { ok=0; why operator-video-user "--video-raw: stderr is not the one refusal line"; }
+[ ! -e "$opo/u.vraw" ] || { ok=0; why operator-video-user "--video-raw: a file was created"; }
+result runner-process.operator.frame-ppm-refused-user-content
 
 # Operator WAV (plan 05-10, D-20, D-21, T-05-26): the same stand-in under --audio-wav, into the mktemp directory.
 # By hand: the report ends with refpcm.rate (48000), refpcm.frames and refpcm.sha256 right before report.end;

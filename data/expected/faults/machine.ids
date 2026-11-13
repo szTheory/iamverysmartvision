@@ -32,7 +32,7 @@ DIGEST_SKIPS_IMAGE_TABLE machine.digest.sensitivity-images machine.digest. machi
 DIGEST_LITTLE_ENDIAN machine.digest.stream-cpu-synthetic machine.digest. machine.create.ok-info-destroy
 DIGEST_INCLUDES_PADDING machine.digest.padding-ignored machine.digest. machine.create.ok-info-destroy
 DOMAIN_ID_DROPPED machine.digest.composite-framing machine.digest. machine.create.ok-info-destroy
-CART_REPORT_TRAILER_DIGEST machine.load.cart-whole-digest-not-trailer machine.load.cart-ok|machine.load.cart-whole-digest-not-trailer|machine.load.expect-|machine.digest.stepped-literals machine.create.ok-info-destroy
+CART_REPORT_TRAILER_DIGEST machine.load.cart-whole-digest-not-trailer machine.load.cart-ok|machine.load.cart-whole-digest-not-trailer|machine.load.expect-|machine.digest.stepped-literals|machine.digest.cpu-images-unchanged machine.create.ok-info-destroy
 UNLOAD_KEEPS_IMAGE machine.load.exec-unload-fresh machine.load.|machine.sweep. machine.create.ok-info-destroy
 CART_SPAN_END_INCLUSIVE machine.load.cart-span-end machine.load.cart-span-end machine.create.ok-info-destroy
 # Ordering and typing faults (plan 03-11, D-10, D-37), one site each in machine_load.c, each
@@ -54,7 +54,7 @@ DUPLICATE_REPLACES machine.refuse.load.exec.duplicate-load.s machine.refuse.load
 LEN_TRUNCATED_32 machine.refuse.load.exec.len-wrap-heap.f machine.refuse.load.exec.len-wrap- machine.load.exec-ok
 ROM_DECLE_MASKED_NOT_REFUSED machine.refuse.load.exec.wide-word-first.f machine.refuse.load.exec.wide-word- machine.load.exec-ok
 CHECK_ORDER_MALFORMED_FIRST machine.prec.oversized-over-malformed machine.refuse.load.|machine.prec.|machine.iso.cross-load machine.load.exec-ok
-CART_COPY_BEFORE_VALIDATE machine.refuse.load.cart.feature-bit-0.f machine.refuse.load.cart.|machine.prec.cart-|machine.load.cart-|machine.load.expect-mismatch|machine.digest.stepped-literals machine.load.exec-ok
+CART_COPY_BEFORE_VALIDATE machine.refuse.load.cart.feature-bit-0.f machine.refuse.load.cart.|machine.prec.cart-|machine.load.cart-|machine.load.expect-mismatch|machine.digest.stepped-literals|machine.digest.cpu-images-unchanged machine.load.exec-ok
 OVERLAP_BEFORE_LENGTH machine.prec.oversized-over-overlap machine.refuse.load.|machine.prec. machine.load.exec-ok
 REPORT_INSIDE_UNCHECKED machine.refuse.load.exec.report-inside.f machine.refuse.load.exec.report-inside.|machine.refuse.load.cart.report-inside. machine.load.exec-ok
 # Lifecycle and isolation faults (plan 03-12, D-37): STATE_CHECK_OMITTED (machine_load.c) lets a
@@ -100,24 +100,35 @@ HANDLE_TRUSTS_PROFILE machine.refuse.handle.profile-out-of-range machine.refuse.
 # From plan 04-11 a unit sets the input floor (INPUT row), so a power cycle that keeps the rows
 # also differs from a first reset: machine.reset.equivalence fails by the same rule. From plan
 # 05-03 machine.reset.psg-state-cleared dirties every observation row too, so it fails here as well.
-OBS_NOT_CLEARED_ON_RESET machine.reset.clears-observation machine.reset.clears-observation|machine.reset.equivalence|machine.reset.psg-state-cleared machine.digest.video-fresh
+OBS_NOT_CLEARED_ON_RESET machine.reset.clears-observation machine.reset.clears-observation|machine.reset.equivalence|machine.reset.psg-state-cleared|machine.digest.video-h0-create-and-reset machine.digest.video-fresh
 DIGEST_DOMAIN_SWAPPED machine.digest.composite-excludes-16-18 machine.digest. machine.reset.clears-observation
 # PSG storage faults (plan 05-03, D-04, D-16, D-18, A-13), one site each. DIGEST_PSG_ROWS_OMITTED
 # (machine_digest.c) removes the PSG register, pull-down and device-state rows from the field
 # table, so those instance bytes are covered by no row (machine.digest.coverage reports them) and
 # the PSG-row sensitivity cases see no change; DIGEST_COMPOSITE_VERSION_STALE (machine_digest.c)
-# keeps the Phase 4 composite framing version 1 (machine.digest.composite-v2-framing and every
-# composite literal fail by the same rule); PSG_STATE_NOT_RESET_ON_POWER_ON (machine_run.c) skips
+# keeps the previous composite framing (plan 06-05: version 2 under the define, since the composite is now
+# version 3; machine.digest.composite-v3-framing and every composite literal fail by the same rule); PSG_STATE_NOT_RESET_ON_POWER_ON (machine_run.c) skips
 # the reset call of the PSG state struct, so a dirtied state survives a power cycle (from plan 05-06 the
 # state also starts at step 1, so a machine that skipped the call steps from 0 and the stepped
 # literals and the reset equivalence of two powered instances differ too).
 DIGEST_PSG_ROWS_OMITTED machine.digest.coverage machine.digest. machine.create.ok-info-destroy
-DIGEST_COMPOSITE_VERSION_STALE machine.digest.composite-v2-framing machine.digest. machine.create.ok-info-destroy
+DIGEST_COMPOSITE_VERSION_STALE machine.digest.composite-v3-framing machine.digest. machine.create.ok-info-destroy
 PSG_STATE_NOT_RESET_ON_POWER_ON machine.reset.psg-state-cleared machine.reset.psg-state-cleared|machine.reset.equivalence|machine.digest.stepped-literals machine.create.ok-info-destroy
+# STIC storage faults (plan 06-05, D-04, D-16), one site each. DIGEST_STIC_ROWS_OMITTED (machine_digest.c)
+# removes the STIC register and device-state rows from the field table, so those instance bytes are covered by
+# no row (machine.digest.coverage reports them) and no flipped STIC byte changes a digest
+# (machine.digest.stic-rows-in-mem-and-instance names the cause; the MEM and INSTANCE preimage literals and the
+# composite pins fail by the same rule, machine.digest.). STIC_STATE_NOT_RESET_ON_POWER_ON (machine_run.c) skips
+# the reset call of the STIC state struct, so a dirtied state survives a power cycle (machine.reset.stic-state
+# fails alone: the registers are still cleared by their own memset and every clean state is already zero).
+DIGEST_STIC_ROWS_OMITTED machine.digest.stic-rows-in-mem-and-instance machine.digest. machine.create.ok-info-destroy
+STIC_STATE_NOT_RESET_ON_POWER_ON machine.reset.stic-state machine.reset.stic-state|machine.reset.equivalence machine.create.ok-info-destroy
 # Review WR-04, one site each (core/src/psg/psg_regs.c, core/src/machine/machine_input.c): the generated PSG
-# parameter table (PSG_TABLE_SHORT) or the generated control-line table (CTRL_TABLE_SHORT) covers one
+# parameter table (PSG_TABLE_SHORT), the generated control-line table (CTRL_TABLE_SHORT) or, plan 06-04, the
+# generated STIC parameter table (STIC_TABLE_SHORT, core/src/stic/stic_params.c) covers one
 # profile less than the registry. The machine then refuses the profile (UNKNOWN_PROFILE at create), so
 # every case that creates an instance fails with it (machine.), and machine.create.tables-cover-registry
 # names the cause; machine.api.version needs no instance and must still pass.
 PSG_TABLE_SHORT machine.create.tables-cover-registry machine. machine.api.version
 CTRL_TABLE_SHORT machine.create.tables-cover-registry machine. machine.api.version
+STIC_TABLE_SHORT machine.create.tables-cover-registry machine. machine.api.version

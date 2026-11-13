@@ -9,8 +9,8 @@
       "status": "open",
       "default_policy": "unknown-default-chosen: the profile treats the window as a parameter and uses the shorter documented figure (about 2000 CPU cycles) as the conservative bound until the edges are probed.",
       "resolver": "measurement: D10 owner-gated probe of the window edges by cycle count with an original diagnostic",
-      "evidence": "",
-      "note": "Seeded from the research source-conflict table."
+      "evidence": "Phase 6 final (plan 06-14): carried by profile field stic.reg_window_cpu_cycles = 2000 (alternate 2900), applied by the catch-up in core/src/stic/stic_events.c; one-field reversal in the profile; exercised by stic.profile.window-close, stic.profile.window-open, stic.window.applies-when-display-off, stic.enable.seq.strobe-in-window, stic.enable.seq.strobe-outside-window-dropped, the self-control stic.judge.window-edge-moved and the fault STIC_WINDOW_OFF_BY_ONE.",
+      "note": "Seeded from the research source-conflict table. Plan 06-01 (D-05): the profile will hold the register window as stic.reg_window_cpu_cycles = 2,000 (alternate 2,900); the windows are a pure function of the access stamp (C83) and apply whatever the display latch is (C94). Tests: stic.window.* and stic.profile.*."
     },
     {
       "id": "C2",
@@ -19,8 +19,8 @@
       "status": "open",
       "default_policy": "unknown-default-chosen: the profile uses the shorter figure (about 3780 CPU cycles) as the conservative bound.",
       "resolver": "measurement: D10 owner-gated probe of the window edges by cycle count with an original diagnostic",
-      "evidence": "",
-      "note": "Seeded from the research source-conflict table."
+      "evidence": "Phase 6 final (plan 06-14): carried by profile field stic.gmem_window_cpu_cycles = 3780 (alternate 3796), applied by core/src/stic/stic_events.c to the graphics memory gates; exercised by stic.window.gmem-edges, stic.blocked.gram-read, stic.blocked.gram-write, stic.blocked.grom-read, stic.blocked.counters.",
+      "note": "Seeded from the research source-conflict table. Plan 06-01 (D-05): stic.gmem_window_cpu_cycles = 3,780 (alternate 3,796); the memory system gates follow the windows at catch-up. Tests: stic.window.*. The bus copy mode reading of the system RAM page is the recorded alternative (C83)."
     },
     {
       "id": "C3",
@@ -29,8 +29,8 @@
       "status": "open",
       "default_policy": "unknown-default-chosen: the profile uses 3791 CPU cycles from the wiki and records 2907 as the alternate; no model behaviour depends on the figure until the interrupt hold is modelled.",
       "resolver": "measurement: D10 owner-gated probe by cycle count; affects whether a CPU can miss the interrupt",
-      "evidence": "",
-      "note": "Seeded from the research source-conflict table."
+      "evidence": "Phase 6 final (plan 06-14): carried by profile field stic.irq_low_cpu_cycles = 3791 (alternate 2907), read by ivs_stic_lines in core/src/stic/stic_lines.c; exercised by stic.irq.one-per-frame, stic.irq.open-boundary-only, stic.lines.pure-of-start-tick and the fault STIC_IRQ_LEVEL_NEVER_RELEASED.",
+      "note": "Seeded from the research source-conflict table. Plan 06-01 (D-08): the dependency is now named: the interrupt hold is modelled as stic.irq_low_cpu_cycles = 3,791 (C91); a unit sees the level of one cycle earlier (C38). Tests: stic.lines.*, stic.irq.*."
     },
     {
       "id": "C4",
@@ -39,8 +39,8 @@
       "status": "open",
       "default_policy": "unknown-default-chosen: the profile uses the wiki figures (114 and about 57 CPU cycles) and records the alternates.",
       "resolver": "measurement: D10 owner-gated probe by cycle count",
-      "evidence": "",
-      "note": "Seeded from the research source-conflict table."
+      "evidence": "Phase 6 final (plan 06-14): carried by profile field stic.bus.hold_cpu_cycles = 114 (alternates 110 and 57 plus 44), read by ivs_stic_lines in core/src/stic/stic_lines.c; the stall is the stepper's own bus-grant sequence; exercised by stic.busrq.hold-from-profile, stic.busrq.closed-form-resume, stic.busrq.count-per-frame, stic.steal.accounting.",
+      "note": "Seeded from the research source-conflict table. Plan 06-01 (D-09): the hold is stic.bus.hold_cpu_cycles = 114 (alternates 110 and the pair 57 and 44); the acknowledge deadline of about 57 is the default row-latch instant (C93); the window table is C92. Tests: stic.busrq.*, stic.steal.*."
     },
     {
       "id": "C5",
@@ -49,8 +49,8 @@
       "status": "open",
       "default_policy": "unknown-default-chosen: the value is a tagged profile parameter; unmapped reads return $FFFF and no value is claimed for inaccessible STIC or GROM/GRAM reads. Blocked and undriven reads are the profile field memmap.undriven_read.",
       "resolver": "pending: profile policy for inaccessible reads, then a diagnostic in the STIC phase",
-      "evidence": "",
-      "note": "Seeded from the research source-conflict table."
+      "evidence": "Phase 6 final (plan 06-14): carried by profile field memmap.undriven_read (fill $FFFF) and the blocked counters of ivs_stic_count_blocked in core/src/stic/stic_regs.c; blocked writes are dropped; exercised by stic.blocked.reg-read, stic.blocked.reg-write, stic.blocked.gram-read, stic.blocked.grom-read, stic.blocked.counters, memmap.width.undriven-reads-ffff and the self-control stic.judge.blocked-write-applied.",
+      "note": "Seeded from the research source-conflict table. Plan 06-01 (D-06): STIC blocked reads use the same fill $FFFF and blocked writes are dropped; both are counted in the inspection state (rule STIC-R24). Tests: stic.blocked.*."
     },
     {
       "id": "C6",
@@ -59,8 +59,8 @@
       "status": "open",
       "default_policy": "unknown-default-chosen: $0020 is the display-enable strobe per the wiki reading, and a read of $0021 switches color-stack mode; both are tagged.",
       "resolver": "measurement: D10 diagnostic on hardware later",
-      "evidence": "",
-      "note": "Seeded from the research source-conflict table."
+      "evidence": "Phase 6 final (plan 06-14): carried by profile rows stic.access_effects (the strobe at $0020, the mode selects) and stic.mode_select_addrs, applied by ivs_stic_effect in core/src/stic/stic_regs.c; exercised by stic.enable.seq.strobe-in-window, stic.enable.seq.strobe-outside-window-dropped, stic.enable.seq.second-strobe, stic.enable.seq.latch-cleared-at-frame-start, stic.enable.seq.reset-clears, stic.mode.write-selects-fgbg, stic.mode.read-selects-cs.",
+      "note": "Seeded from the research source-conflict table. Plan 06-01 (D-06): the strobe sustain rule is the latch cleared at every frame start (C82); a read of $0021 selects Color Stack mode and persists (rule STIC-R14, alias reads C84, power-on mode C85). Tests: stic.enable.*, stic.mode.*."
     },
     {
       "id": "C7",
@@ -69,8 +69,8 @@
       "status": "open",
       "default_policy": "unknown-default-chosen: 14,934 CPU cycles per nominal frame (59,736 master ticks) as profile data; the variation with display state is a model requirement and never a bare constant.",
       "resolver": "pending: a tier 1 to 3 source for the frame geometry, or a measurement (D10)",
-      "evidence": "",
-      "note": "Seeded from the research source-conflict table. Profile fields scanlines_per_frame and cpu_cycles_per_scanline reference this entry."
+      "evidence": "Phase 6 final (plan 06-14): carried by profile fields scanlines_per_frame, cpu_cycles_per_scanline, ticks_per_cpu_cycle and stic.frame_phase_ticks, which derive the frame length and the event table of core/src/stic/stic_events.c; executed cycles per frame are an output (C95); exercised by stic.events.edges, stic.events.table-order, stic.events.frame-index-is-state, stic.tile.units-equal-elapsed, stic.steal.accounting, video.frame.count-equals-events and the fault STIC_FRAME_BY_MODULO.",
+      "note": "Seeded from the research source-conflict table. Profile fields scanlines_per_frame and cpu_cycles_per_scanline reference this entry. Plan 06-01 (D-07): the display-dependent loss of CPU cycles is now a model, not a constant: the frame length F = 59,736 ticks is constant and the executed cycles are an output (C95); 262 lines versus the 262.5 of studio signals is a note, not a change. Tests: stic.events.*, stic.steal.*."
     },
     {
       "id": "C8",
@@ -96,11 +96,11 @@
       "id": "C10",
       "topic": "Visible geometry and raw framebuffer",
       "sources": "The 1980 catalog (SRC-gi-1980-catalog) states 159 x 96 visible positions for the -1 part and a 7-pixel 20th column; this is the strongest source. A 160-column nominal grid appears in SRC-bsr-2609. Other community material says the STIC1A shows a 160th column and quotes 192 vertical by 160 horizontal. Vertically, 192 active lines versus 96 pixel rows of 2 lines each.",
-      "status": "open",
-      "default_policy": "unknown-default-chosen: the profile holds the full nominal grid with a not-displayed marker so either reading is expressible, leaning to 159 visible columns from the tier 1 source.",
-      "resolver": "pending: D8 raw framebuffer definition",
-      "evidence": "",
-      "note": "Seeded from the research source-conflict table."
+      "status": "partial",
+      "default_policy": "unknown-default-chosen: the profile publishes 159 visible columns (width = 19 x 8 + video.last_card_column_px with the field 7, a tier 1 count from the 1980 catalog pdf 191 and the 1982 catalog pdf 462) and 96 rows; a 160-column reading is the one-field reversal (video.last_card_column_px = 8); the not-displayed value 0xFF marks a position that is not displayed.",
+      "resolver": "measurement: D10-VID-01 owner capture of a card edge showing whether a 160th column is displayed",
+      "evidence": "Phase 6 final (plan 06-14): carried by profile fields video.last_card_column_px = 7 and video.card_columns, which derive the published width 159 in core/src/stic/stic_frame.c; the one-field reversal is video.last_card_column_px = 8; exercised by video.geom.profile-derives-159x96, video.geom.reversal-one-field, video.geom.literal-matches-page, video.geom.generated-equals-derive, video.card.last-column-clip and the fault VIDEO_20TH_COLUMN_WIDTH. Decision D8 in the Decision Register; the status stays partial and the resolver is the owner capture D10-VID-01.",
+      "note": "Seeded from the research source-conflict table. Plan 06-01 (D-12, decision D8): decided on tier 1 grounds, status partial. Related new unknowns have their own entries: which 7 pixels C101, blank output C99, tie rule C104, border and window origin C105."
     },
     {
       "id": "C11",
@@ -209,8 +209,8 @@
       "status": "open",
       "default_policy": "unknown-default-chosen: GRAM at $3800-$39FF mirrored to $3FFF and STIC decode over $0000-$007F, both tagged and minor.",
       "resolver": "measurement: D10 read-back of GRAM writes at $3800-$3FFF and of STIC register reads at $0000-$007F on owner hardware; the Phase 3 memory-map tests only check consistency with the chosen default",
-      "evidence": "",
-      "note": "Seeded from the research source-conflict table."
+      "evidence": "Phase 6 final (plan 06-14): carried by the 64-row register literal and the alias set of the profile (stic.regmap, stic.access_effects) and the GRAM mirror of the memory map; exercised by stic.alias.write-4000, stic.alias.write-8000, stic.alias.write-C000, stic.alias.read-0040, memmap.mirror.gram-3a00, memmap.anchor.stic-regs-lo, memmap.anchor.stic-regs-hi, memmap.anchor.gram-hi and the fault STIC_ALIAS_NOT_HOOKED.",
+      "note": "Seeded from the research source-conflict table. Plan 06-01 (D-04, A-01): the STIC decode range and alias set are modelled by the register literal (64 rows) and C84; the card path never forms an address above $39FF. Tests: stic.alias.*."
     },
     {
       "id": "C22",
@@ -379,8 +379,8 @@
       "status": "open",
       "default_policy": "unknown-default-chosen: the machine layer samples the lines once per interruptible boundary at unit end minus one CPU cycle (POL-LINE-01); the CPU only receives the sampled values.",
       "resolver": "test: phase-2 interrupt boundary vectors; measurement: D10 line-edge probe; revisit in Phase 6 STIC races",
-      "evidence": "SRC-gi-cp1600-um-1975 pdf 22 (interrupt entry); pdf 36 (bus request timing).",
-      "note": "A machine-layer rule: the CPU never sees ticks (D-05)."
+      "evidence": "SRC-gi-cp1600-um-1975 pdf 22 (interrupt entry); pdf 36 (bus request timing). Phase 6 final (plan 06-14): carried by profile field bus.line_sample_lag_cpu_cycles = 1 (4 ticks), applied at every unit start by the machine step seam and ivs_stic_lines in core/src/stic/stic_lines.c; the stepper is unchanged; exercised by stic.lines.sampling-lag, stic.lines.pure-of-start-tick, stic.irq.eis-late-misses and the fault STIC_LINE_LAG_IGNORED.",
+      "note": "A machine-layer rule: the CPU never sees ticks (D-05). Plan 06-01 (D-08): POL-LINE-01 is promoted to the profile field bus.line_sample_lag_cpu_cycles = 1 (lag 4 ticks) with the same status; the INTRM and BUSRQ predicates are in docs/stic/timing-notes.md."
     },
     {
       "id": "C39",
@@ -409,8 +409,8 @@
       "status": "open",
       "default_policy": "unknown-default-chosen: interrupt acceptance does not clear INTFF, and JE takes effect before the boundary test (POL-INT-03); profile field cpu.interrupt_accept_clears_intff = 0, with vectors for both values.",
       "resolver": "test: phase-2 interrupt-entry vectors for both flag values; measurement: D10 repeated-interrupt probe",
-      "evidence": "SRC-gi-cp1600-um-1975 pdf 22; pdf 56 (EIS, DIS, TCI); pdf 52 (JE, JD).",
-      "note": "Profile field cpu.interrupt_accept_clears_intff holds 0 (false) as a JSON number."
+      "evidence": "SRC-gi-cp1600-um-1975 pdf 22; pdf 56 (EIS, DIS, TCI); pdf 52 (JE, JD). Phase 6 final (plan 06-14): carried by profile field cpu.interrupt_accept_clears_intff = 0; the consequence is stated in docs/stic/timing-notes.md (a service routine that does not start with DIS is re-entered at every open boundary while the level is held, about 250 entries per frame); exercised by stic.irq.level-held-reentry-c41-0, stic.irq.dis-first-isr-one-entry, stic.irq.c41-both-values, stic.irq.dis-blocks (in-process stand-in routines). The diagnostic ivs-diag-stic-1 has no interrupt routine at all (the boot stub has none), so the DIS-first rule is exercised by the stand-ins only and a project interrupt routine is a Phase 7 need.",
+      "note": "Profile field cpu.interrupt_accept_clears_intff holds 0 (false) as a JSON number. Plan 06-01 (D-08): consequence stated: with a level held 3,791 cycles and the flip-flop not cleared on acceptance, a service routine that does not start with DIS is re-entered at every open boundary until the level falls (about 250 entries per frame); every Phase 6 original diagnostic routine is DIS-first, and a vector family covers both field values."
     },
     {
       "id": "C42",
@@ -519,8 +519,8 @@
       "status": "open",
       "default_policy": "unknown-default-chosen: BUSRQ release latency is 2 CPU cycles (inference); prev_interruptible survives a bus grant and the grant leads into the interrupt test, not into a fetch (POL-BUS-01, A-02); profile field bus.release_latency_cpu_cycles = 2.",
       "resolver": "test: phase-2 bus-grant vectors with BUSRQ and INTR together; measurement: D10 bus trace",
-      "evidence": "SRC-gi-cp1600-um-1975 pdf 22; pdf 36.",
-      "note": "Confidence about 60 percent."
+      "evidence": "SRC-gi-cp1600-um-1975 pdf 22; pdf 36. Phase 6 final (plan 06-14): carried by profile field bus.release_latency_cpu_cycles = 2 (inference), part of the closed form w + 468 ticks of a bus window and of the 13 cycles per frame per added cycle of latency; exercised by stic.busrq.closed-form-resume, stic.busrq.halted-grants, stic.bounds.g-and-u-full-machine, stic.steal.accounting, stic.tile.units-equal-elapsed and the fault STIC_GRANT_RELEASE_LATENCY_DROPPED.",
+      "note": "Confidence about 60 percent. Plan 06-01 (D-09, A-09): load-bearing from Phase 6: every added cycle of release latency adds 13 cycles per frame; the closed form w + 4 x (H + 1 + L) = w + 468 ticks. Tests: stic.steal.*, stic.tile.*."
     },
     {
       "id": "C53",
@@ -599,8 +599,8 @@
       "status": "partial",
       "default_policy": "unknown-default-chosen: scratchpad and GRAM upper byte read 0; stub registers read the undriven fill FFFF",
       "resolver": "measurement: D10 read-back of scratchpad, GRAM, PSG and STIC register reads on owner hardware",
-      "evidence": "SRC-gi-1980-catalog printed 5-13, pdf 194; printed 5-16, pdf 197; printed 5-21, pdf 202 (the tier 1 zero applies to the GI mask ROM and GROM parts only).",
-      "note": "Raised by plan 03-04 (D-23). Profile fields memmap.device.ram8 and memmap.device.stub reference this entry."
+      "evidence": "SRC-gi-1980-catalog printed 5-13, pdf 194; printed 5-16, pdf 197; printed 5-21, pdf 202 (the tier 1 zero applies to the GI mask ROM and GROM parts only). Phase 6 final (plan 06-14): carried by profile fields memmap.device.ram8, memmap.device.stub and, for the STIC registers, memmap.device.stic14 (read value $FFFF except the collision registers); exercised by stic.reg.write-only-reads-ffff, stic.reg.collision-readback, memmap.width.stic14-registers, memmap.width.undriven-reads-ffff.",
+      "note": "Raised by plan 03-04 (D-23). Profile fields memmap.device.ram8 and memmap.device.stub reference this entry. Plan 06-01: STIC registers: see C81 (read-back) and C86 (widths); the register literal records every row."
     },
     {
       "id": "C61",
@@ -609,8 +609,8 @@
       "status": "open",
       "default_policy": "unknown-default-chosen: reads return cartridge ROM when a segment is loaded there, else the undriven fill; writes reach the alias device (GRAM backing or the stub STIC registers) whether or not a segment is loaded",
       "resolver": "measurement: D10 write and read-back through an alias address with and without a cartridge segment on owner hardware",
-      "evidence": "",
-      "note": "Raised by plan 03-04 (D-23). The alias regions of the profile reference this entry."
+      "evidence": "Phase 6 final (plan 06-14): carried by the alias regions of the profile and the read view of the memory system (a loaded segment is read, the alias device is written); exercised by stic.alias.read-4021-returns-read-view-value, stic.alias.write-4000, stic.alias.write-8000, stic.alias.write-C000, memmap.cart.under-gram-alias.",
+      "note": "Raised by plan 03-04 (D-23). The alias regions of the profile reference this entry. Plan 06-01: the alias read sensitivity of the mode-select addresses is C84; the alias window set is part of the register literal."
     },
     {
       "id": "C62",
@@ -801,6 +801,256 @@
       "resolver": "test: the second blind read of data/psg/intv-2609-ntsc-family-p1.regmap.literal.txt and the psg-vectors step (rule PSG-R02)",
       "evidence": "Phase 5 close-out (plan 05-12): the transcription hazard is guarded by profile field psg.regmap (both numberings in every row of data/psg/intv-2609-ntsc-family-p1.regmap.literal.txt) and rule PSG-R02 through psg.regmap.matches-literal and the gate step psg-vectors. The blind second read of the register literal (read with regs) is recorded: 28 vectors, 27 agree and 1 is not comparable because the blinded copy omitted a read address (docs/psg/second-read-record-regs.md); no disagreement.",
       "note": "Raised by plan 05-01 (D-12). A transcription hazard, not a hardware question."
+    },
+    {
+      "id": "C81",
+      "topic": "STIC register read-back: which registers return data and which bits",
+      "sources": "No manufacturer page prints a register address or a read behaviour (Plan 06-01 re-read pdf 191, 192, 193 and 199 of SRC-gi-1980-catalog and pdf 462, 463, 464 and 470 of SRC-gi-1982-catalog: structure and electrical data only). The community pages call $0000-$003F readable and state the collision registers are read by interrupt routines (SRC-intv-wiki, STIC-oldid-15008, Memory-Map-oldid-14847); the data on another board that returns $00FF is a single report.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: every register is write-only and reads the undriven fill $FFFF except the collision registers $18-$1F, which read $FC00 OR the stored 10 bits; reserved addresses read the fill.",
+      "resolver": "pending: a tier 1 to 3 STIC register description, or the Phase 7 reader diagnostic on owner hardware (read-back of all 64 addresses)",
+      "evidence": "Phase 6 final (plan 06-14): carried by the rmask and fill of each row of the register literal (data/stic/intv-2609-ntsc-family-p1.regmap.literal.txt) and memmap.device.stic14; default: write-only registers read $FFFF; exercised by stic.reg.write-only-reads-ffff, stic.reg.collision-readback, stic.reg.reserved-drops, stic.reg.masks, stic.table.matches-literal and the self-control stic.judge.register-row-changed.",
+      "note": "Raised by plan 06-01 (D-22, A-11). Extends C60. One rmask field per register changes the default. Source note ids: register note C81."
+    },
+    {
+      "id": "C82",
+      "topic": "Display-enable strobe at $0020: read effect, deadline, late strobe and per-frame re-strobe",
+      "sources": "The community page names $0020 the active display strobe (SRC-intv-wiki, STIC-oldid-15008); no source states whether a read strobes, how long after the frame start a strobe is accepted, or whether one strobe lasts more than a frame.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: a write to $0020 inside the register window sets the display latch for the current frame and the latch is cleared at every frame start; a read of $0020 has no effect; the value written is ignored; a strobe outside the window is dropped.",
+      "resolver": "measurement: D10-VID-08 owner diagnostic with strobes at swept offsets and a frame capture",
+      "evidence": "Phase 6 final (plan 06-14): carried by profile rows stic.access_effects and the display latch cleared at every frame start by core/src/stic/stic_events.c; exercised by stic.enable.seq.strobe-in-window, stic.enable.seq.strobe-outside-window-dropped, stic.enable.seq.second-strobe, stic.enable.seq.latch-cleared-at-frame-start, stic.enable.seq.strobe-via-write-alias, stic.reg.strobe-stores-nothing.",
+      "note": "Raised by plan 06-01 (D-22, A-11). Extends C6. Source note ids: register note C82."
+    },
+    {
+      "id": "C83",
+      "topic": "Mechanism of the register and graphics-memory access windows",
+      "sources": "The system RAM page (SRC-gi-1980-catalog pdf 199, SRC-gi-1982-catalog pdf 470) prints a bus copy mode entered on the interrupt acknowledge and left at the first bus acknowledge edge, and the STIC page (pdf 191) says the CPU control bus is ignored outside CPU mode; the community windows are lengths in cycles (C1, C2). Neither page prints how the two relate.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: a pure frame-position schedule: the register window is the first 2,000 cycles of a frame and the graphics-memory window the first 3,780, whatever the display state (D-05); the bus copy mode event machine is the recorded alternative.",
+      "resolver": "measurement: D10-VID-06 owner edge probes of the register and graphics-memory windows",
+      "evidence": "Phase 6 final (plan 06-14): carried by the pure frame-position schedule of core/src/stic/stic_events.c with stic.reg_window_cpu_cycles and stic.gmem_window_cpu_cycles; the event machine is the recorded alternative; exercised by stic.events.edges, stic.window.applies-when-display-off, stic.profile.window-close, stic.profile.window-open and the self-control stic.judge.window-edge-moved.",
+      "note": "Raised by plan 06-01 (D-22, A-11). Links C1, C2, C3. Reversal: a primary page that prints window events, or the D10 result. Source note ids: register note C83."
+    },
+    {
+      "id": "C84",
+      "topic": "Alias sensitivity of the STIC registers and the mode-select strobe",
+      "sources": "The memory map page says a read of $4021, $8021 or $C021 during the first vertical blank period selects Color Stack mode although the CPU gets no STIC data, lists $0040-$007F as STIC-responsive read only, and the alias writes as register writes (SRC-intv-wiki, Memory-Map-oldid-14847).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: a read of $0021, $4021, $8021 or $C021 selects Color Stack mode through stic.mode_select_addrs; alias writes reach the register; reads of $0040-$007F have no effect; stic.alias_read_sensitive = 1.",
+      "resolver": "test: stic.alias.* exercise the default (stic.alias_read_sensitive = 1); the other field value is range-checked only",
+      "evidence": "Phase 6 final (plan 06-14): carried by profile fields stic.mode_select_addrs and stic.alias_read_sensitive (= 1), applied by ivs_stic_effect in core/src/stic/stic_regs.c on the access address before decode (A-07); exercised by stic.alias.read-4021-switches-mode, stic.alias.read-0040, stic.alias.read-4021-returns-read-view-value, stic.alias.read-non-member-granule-neighbour-no-effect, stic.peek.cpu-read-switches, stic.peek.mode-unchanged-0021, stic.hook.completeness and the faults STIC_ALIAS_NOT_HOOKED and STIC_MODE_SWITCH_ON_PEEK. The default value 1 is what the tests run; the value 0 of the field is only range-checked in the machine suite, not exercised end to end.",
+      "note": "Raised by plan 06-01 (D-22, A-11). Extends C21 and C61. Source note ids: register note C84."
+    },
+    {
+      "id": "C85",
+      "topic": "Power-on state of the STIC: registers, mode and display latch",
+      "sources": "No source states the state after power-on or reset. The Blue Sky Rangers page says the display is blacked out while the system program runs (SRC-bsr-2609).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: registers zero, Foreground/Background mode, display latch clear, frame phase zero; the STIC is reset with the machine.",
+      "resolver": "measurement: D10-VID-09 owner power-on read-back and first frames",
+      "evidence": "Phase 6 final (plan 06-14): carried by profile row stic.power_on (registers zero, Foreground/Background, latch clear) applied by ivs_stic_state_reset in core/src/stic/stic_state.c; exercised by stic.reset.cursor, stic.enable.seq.reset-clears, stic.state.fields and the fault STIC_STATE_NOT_RESET_ON_POWER_ON.",
+      "note": "Raised by plan 06-01 (D-22, A-11). Merges the register note's blank-display and power-on items and the card note's power-on mode (CV-6)."
+    },
+    {
+      "id": "C86",
+      "topic": "Stored widths and unknown bits of the STIC registers",
+      "sources": "The community register diagrams show some bits as unknown (MOB X bits 11..13, the upper bits of Y and attribute) and the delay width is not stated (SRC-intv-wiki, STIC-oldid-15008). The 14 data pins of the STIC are printed (pdf 191).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: the stored widths of the register literal: X 11 bits, Y 12, attribute 14, collision 10, color stack and border 4, delay 3, border extension 2; bits above are dropped and cannot be seen through the bus.",
+      "resolver": "pending: a tier 1 to 3 STIC register description, or a read-back sweep on owner hardware",
+      "evidence": "Phase 6 final (plan 06-14): carried by the stored widths of the register literal, enforced by the register file in core/src/stic/stic_regs.c; exercised by stic.reg.width, stic.reg.masks, stic.reg.reserved-drops.",
+      "note": "Raised by plan 06-01 (D-22, A-11). Only the inspection report and the digest see the widths. Source note ids: register note C86."
+    },
+    {
+      "id": "C87",
+      "topic": "Collision register behaviour: clear on read, sticky set and the self bit",
+      "sources": "No source read states when collision bits are set or cleared; Phase 6 has no object to collide (SRC-intv-wiki, STIC-oldid-15008).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: the collision registers store written values only; set, clear and sticky rules belong to Phase 8 (VID-05).",
+      "resolver": "pending: Phase 8 collision rules and a tier 1 to 3 STIC description",
+      "evidence": "Phase 6 final (plan 06-14): carried by the register literal stores written values for the collision rows; no set, clear or sticky rule exists in the core; exercised by stic.reg.collision-readback (stored value only); the behaviour itself is Phase 8 (VID-05) and has no test.",
+      "note": "Raised by plan 06-01 (D-22, A-11). Source note ids: register note C87."
+    },
+    {
+      "id": "C88",
+      "topic": "Register decay when interrupts are not taken",
+      "sources": "A single community statement that the registers lose their values when the interrupt is not serviced; no second source.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: not modelled: register values persist.",
+      "resolver": "pending: a D10 long-run probe, or a second source",
+      "evidence": "Phase 6 final (plan 06-14): carried by nothing: register decay is not modelled; exercised by no test; register values persist because nothing changes them.",
+      "note": "Raised by plan 06-01 (D-22, A-11). Source note ids: register note C88."
+    },
+    {
+      "id": "C89",
+      "topic": "Order of the interrupt request, SR1 and the frame start",
+      "sources": "The STIC page prints that SR1 occurs once per frame and says STIC time is complete at that point; the system RAM page says the STIC issues an interrupt request at the end of the active picture (pdf 191, 199). No page prints the interval between them.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: the interrupt request, SR1 and the frame start are one instant, S_k.",
+      "resolver": "measurement: D10-VID-04 owner capture of the relation of the interrupt to the end of the picture",
+      "evidence": "Phase 6 final (plan 06-14): carried by the single instant S_k of the event table in core/src/stic/stic_events.c (FRAME_END of one frame and FRAME_START of the next share the tick); exercised by stic.events.table-order, stic.events.edges and the fault STIC_EVENT_ORDER_START_BEFORE_END.",
+      "note": "Raised by plan 06-01 (D-22, A-11). Source note ids: register note C89."
+    },
+    {
+      "id": "C90",
+      "topic": "Frame phase at power-on",
+      "sources": "Nothing relates power-on or reset to the position inside a frame.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: stic.frame_phase_ticks = 0: the first frame starts at machine time zero.",
+      "resolver": "test: stic.events.frame-index-is-state and stic.tile.units-equal-elapsed follow stic.frame_phase_ticks and its perturbation",
+      "evidence": "Phase 6 final (plan 06-14): carried by profile field stic.frame_phase_ticks = 0 (an unknown-default-chosen field), added to every event tick by core/src/stic/stic_events.c; exercised by stic.events.frame-index-is-state (runs a phase of two thirds of a frame), stic.tile.units-equal-elapsed.",
+      "note": "Raised by plan 06-01 (D-22, A-11). Source note ids: timing note C81."
+    },
+    {
+      "id": "C91",
+      "topic": "VBLANK interrupt line source, width and release",
+      "sources": "The width of 3,791 cycles is the C3 community figure (alternates 2,907 and 2,920); the STIC page prints SR1 as a short pulse, so the level is the board's latch of it; which event releases the request is not printed.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: INTRM is a level asserted for 3,791 cycles from each frame start whatever the display latch, sampled with a lag of one cycle; acceptance does not clear it (C41).",
+      "resolver": "test: stic.lines.* and stic.irq.* follow the profile fields and their perturbation",
+      "evidence": "Phase 6 final (plan 06-14): carried by profile fields stic.irq_line and stic.irq_low_cpu_cycles with bus.line_sample_lag_cpu_cycles, evaluated by ivs_stic_lines in core/src/stic/stic_lines.c; exercised by stic.lines.pure-of-start-tick, stic.lines.sampling-lag, stic.irq.one-per-frame, stic.irq.open-boundary-only, stic.irq.dis-blocks.",
+      "note": "Raised by plan 06-01 (D-22, A-11). Extends C3. Source note ids: timing note C82."
+    },
+    {
+      "id": "C92",
+      "topic": "Bus-window table: count, first start, pitch, hold and which rows",
+      "sources": "The pages print 13 or 14 bus requests per frame (pdf 191, 462); the first start, the 912-cycle pitch (16 lines of 57 cycles) and the 114-cycle hold are community and inference figures (C4, C7).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: 13 windows starting at cycle 3,791 + 912 i, each holding the request 114 cycles; windows 0..11 fetch card rows and window 12 fetches nothing.",
+      "resolver": "measurement: D10-VID-07 owner bus-window probe of count, spacing and hold",
+      "evidence": "Phase 6 final (plan 06-14): carried by profile fields stic.bus.count (13), stic.bus.first_start_cpu_cycles, stic.bus.pitch_cpu_cycles (912), stic.bus.hold_cpu_cycles and stic.bus.rows (12), used by core/src/stic/stic_events.c and stic_lines.c; exercised by stic.busrq.count-per-frame, stic.busrq.hold-from-profile, stic.busrq.closed-form-resume, stic.busrq.none-when-display-off, stic.fetch.rows-latched-at-schedule and the faults STIC_BUSRQ_WHEN_DISPLAY_OFF and STIC_TABLE_SHORT.",
+      "note": "Raised by plan 06-01 (D-22, A-11). Extends C4. Source note ids: timing note C83."
+    },
+    {
+      "id": "C93",
+      "topic": "Late-grant behaviour and the row-latch instant",
+      "sources": "No source says what the STIC does when the CPU is not granted inside a window (a run of non-interruptible instructions).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: the STIC does not wait: the row latch is taken at its scheduled instant (57 cycles after the window start) and a late grant counter is kept.",
+      "resolver": "test: stic.busrq.late-grant-counter and stic.fetch.* exercise late grants and the latch instant",
+      "evidence": "Phase 6 final (plan 06-14): carried by profile fields stic.late_grant (fetch-at-schedule) and stic.bus.fetch_offset_cpu_cycles (57) with the late-grant counter of the state; exercised by stic.busrq.late-grant-counter, stic.fetch.rows-latched-at-schedule, stic.fetch.display-off-no-latch and the self-control stic.judge.late-grant-latched.",
+      "note": "Raised by plan 06-01 (D-22, A-11). Source note ids: timing note C84."
+    },
+    {
+      "id": "C94",
+      "topic": "Access-stamp instant and whether the windows apply while the display is off",
+      "sources": "The community window figures are stated relative to the vertical blank, not to the display state; the same community text says access is unrestricted while the display is blank.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: stic.access_strobe_ticks = 0 and stic.access_gating_when_off = apply: the windows apply whatever the display latch is; events at or below the stamp apply before the access.",
+      "resolver": "test: stic.window.* and stic.profile.window-* pin the default and its one-field reversal",
+      "evidence": "Phase 6 final (plan 06-14): carried by profile fields stic.access_strobe_ticks = 0 and stic.access_gating_when_off = apply, read by the catch-up in core/src/stic/stic_events.c; exercised by stic.window.applies-when-display-off, stic.window.gmem-edges, stic.profile.window-close, stic.profile.window-open.",
+      "note": "Raised by plan 06-01 (D-22, A-11). Extends C78 to the STIC. Source note ids: timing note C85."
+    },
+    {
+      "id": "C95",
+      "topic": "Usable CPU cycles per display frame (plausibility record)",
+      "sources": "Community aggregates of about 13,518 and 13,572 cycles with the display on and 14,934 with it off.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: none: the figure is an output of the model (the instruction mix and the bus windows) and never a constant or a field; the planned totals sit within about 0.9 percent of the aggregates.",
+      "resolver": "pending: a D10 capture of executed cycles per frame; recorded for plausibility only",
+      "evidence": "Phase 6 final (plan 06-14): carried by the model itself: the executed cycles per frame come from the instruction stream and the bus windows, no field or constant carries them; exercised by stic.steal.accounting, stic.steal.usable-within-community-tolerance, stic.tile.units-equal-elapsed (plausibility only, never an expected value).",
+      "note": "Raised by plan 06-01 (D-22, A-11). Source note ids: timing note C86."
+    },
+    {
+      "id": "C96",
+      "topic": "Card word layout rests on one community lineage",
+      "sources": "The Foreground/Background, Color Stack and Colored Squares word layouts are the figures of one community page (SRC-intv-wiki, STIC-oldid-15008); the manufacturer pages print only that graphics use the low 14 bits (pdf 199).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: the layout of data/video/cards.literal.txt: Foreground/Background background bits (12, 13, 10, 9), select bit 11, card bits 8..3, foreground bits 2..0; Color Stack decode by bits 12 and 11; bit order byte 0 top, bit 7 leftmost.",
+      "resolver": "pending: a tier 1 to 3 STIC description, a die or board study, or an owner run with a real system image (D11-EXEC-03)",
+      "evidence": "Phase 6 final (plan 06-14): carried by data/video/cards.literal.txt (rules CR-01 to CR-14) and the renderer core/src/stic/stic_cards.c; exercised by video.card.bit-order, video.card.row-order, video.card.cs-decode, video.probe.bit-roles-fgbg, video.probe.bit-roles-cs-grom, video.probe.bit-roles-cs-gram, video.probe.bit-roles-cs-sq, the self-control video.judge.card-bit-flipped and the faults VIDEO_CARD_BIT_ORDER_REVERSED and VIDEO_WRONG_CARD_MODE.",
+      "note": "Raised by plan 06-01 (D-22, A-11). Source note ids: card note CV-1."
+    },
+    {
+      "id": "C97",
+      "topic": "Color Stack advance timing and reset at every frame",
+      "sources": "The community page says the stack starts at its first entry and moves to the next entry before the card is rendered, wrapping after the last; whether the position resets at every frame is stated only by a community emulator text.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: advance before draw, wrap 3 to 0, position 0 at the start of every frame render.",
+      "resolver": "pending: a tier 1 to 3 STIC description or a capture with a real system image",
+      "evidence": "Phase 6 final (plan 06-14): carried by the Color Stack rules of core/src/stic/stic_cards.c (advance before draw, wrap 3 to 0, pointer reset at every frame render); exercised by video.cstack.advance-before-draw, video.cstack.advance-wrap, video.cstack.reset-per-frame, video.cstack.one-stack-across-rows, the self-control video.judge.cstack-persistent-pointer and the fault VIDEO_CSTACK_NO_ADVANCE.",
+      "note": "Raised by plan 06-01 (D-22, A-11). Source note ids: card note CV-2."
+    },
+    {
+      "id": "C98",
+      "topic": "Colored Squares decode",
+      "sources": "One figure and one paragraph of the community page; the figure labels the third color's two low bits as 'Bits 0-1' where the Foreground/Background figure writes 'Bits 1 - 0' (SRC-intv-wiki, STIC-oldid-15008).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: implemented as the card table says: c3 = 4 x bit 13 + 2 x bit 10 + bit 9, color 7 draws the current stack color, no advance; the swapped reading of bits 10 and 9 is the recorded alternative.",
+      "resolver": "pending: a tier 1 to 3 STIC description or a capture with a real system image",
+      "evidence": "Phase 6 final (plan 06-14): carried by the Colored Squares decode of core/src/stic/stic_cards.c (c3 = 4 x bit 13 + 2 x bit 10 + bit 9); no Phase 6 hand frame uses it; exercised by video.cstack.squares-quadrants, video.cstack.squares-no-advance, video.cstack.squares-stack7, video.probe.bit-roles-cs-sq (bit roles only, no frame literal).",
+      "note": "Raised by plan 06-01 (D-22, A-11). Source note ids: card note CV-3. No Phase 6 hand frame uses Colored Squares."
+    },
+    {
+      "id": "C99",
+      "topic": "Content of a display-off frame and the blank value",
+      "sources": "The Blue Sky Rangers page says the display is blacked out while the system program runs from BACKTAB (SRC-bsr-2609); nothing says which value the picture has.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: a display-off frame is produced, flagged not displayed, with every position filled with the border color index (video.display_off_fill = border); the not-displayed sentinel 0xFF is used only for the cut-off position.",
+      "resolver": "measurement: D10-VID-03 owner capture of the output while the display is not enabled",
+      "evidence": "Phase 6 final (plan 06-14): carried by profile field video.display_off_fill = border and video.blank_value (0xFF), applied by the slot writer in core/src/stic/stic_frame.c; exercised by video.display-off.fill-border, video.slot.blank-frame-border-fill, video.slot.displayed-flag-follows-latch.",
+      "note": "Raised by plan 06-01 (D-22, A-11). Source note ids: card note CV-4."
+    },
+    {
+      "id": "C100",
+      "topic": "When BACKTAB is read and mid-frame BACKTAB writes",
+      "sources": "The system RAM page prints that a row of 20 words is loaded per card row at a bus request (pdf 199); the time of each load inside the window is not printed.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: BACKTAB is latched per bus window into 12 row latches at the row-latch instant and the picture is rendered at the frame end; a write during active display tears at row granularity.",
+      "resolver": "measurement: D10-VID-05 owner capture of a BACKTAB write during active display",
+      "evidence": "Phase 6 final (plan 06-14): carried by row latches taken at the row-latch instant of each bus window by core/src/stic/stic_events.c; the picture is rendered at the frame end; exercised by stic.fetch.rows-latched-at-schedule, stic.fetch.write-after-latch-tears, stic.fetch.backtab-straddle and the fault STIC_BACKTAB_WRITE_NOT_HOOKED.",
+      "note": "Raised by plan 06-01 (D-22, A-11). Source note ids: card note CV-5."
+    },
+    {
+      "id": "C101",
+      "topic": "Which 7 pixels of the 20th card column are displayed",
+      "sources": "The page prints that the 20th column is 7 pixels wide (pdf 191); the Blue Sky Rangers page and the community page say the rightmost column is not displayed (SRC-bsr-2609, SRC-intv-wiki).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: the right edge is clipped: pixel 7 of every card in column 19 is not displayed (video.last_card_column_drop = right).",
+      "resolver": "measurement: D10-VID-02 owner capture of a card with markers in pixel 6 and pixel 7 of column 19",
+      "evidence": "Phase 6 final (plan 06-14): carried by profile field video.last_card_column_drop = right, applied by core/src/stic/stic_cards.c (pixel 7 of column 19 is the not-displayed value); exercised by video.card.last-column-clip, video.fgbg.F-A3, video.cstack.cutoff-column-advances and the fault VIDEO_20TH_COLUMN_WIDTH.",
+      "note": "Raised by plan 06-01 (D-22, A-11). Partial update to C10, not a reopening. Source note ids: card note CV-7."
+    },
+    {
+      "id": "C102",
+      "topic": "The cut-off column card advances the Color Stack",
+      "sources": "The system RAM page prints that all 240 words are fetched (pdf 199); nothing says whether the cut-off column card is processed like the others.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: yes: the card of column 19 advances the stack although only 7 of its pixels are displayed.",
+      "resolver": "test: video.cstack.cutoff-column-advances pins the default with a single-feature frame",
+      "evidence": "Phase 6 final (plan 06-14): carried by the Color Stack advance of the cut-off column in core/src/stic/stic_cards.c; exercised by video.cstack.cutoff-column-advances.",
+      "note": "Raised by plan 06-01 (D-22, A-11). Source note ids: card note CV-8."
+    },
+    {
+      "id": "C103",
+      "topic": "Graphics RAM card field bits 10 and 9: ignored or mirrored",
+      "sources": "The community Color Stack figure for graphics RAM cards marks bits 10 and 9 as ignored by the STIC (SRC-intv-wiki, STIC-oldid-15008); with 512 bytes of RAM ignoring and mirroring are the same for 64 cards.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: bits 10 and 9 are ignored for a graphics RAM card in Color Stack mode.",
+      "resolver": "test: video.card.cs-decode and video.probe.bit-roles-cs-gram pin the default with a bit probe",
+      "evidence": "Phase 6 final (plan 06-14): carried by the Color Stack graphics RAM card decode of core/src/stic/stic_cards.c (bits 10 and 9 ignored); exercised by video.card.cs-decode, video.probe.bit-roles-cs-gram and the self-control video.judge.cs-roles-swapped.",
+      "note": "Raised by plan 06-01 (D-22, A-11). Differs only if the RAM extent changes (C21). Source note ids: card note CV-9."
+    },
+    {
+      "id": "C104",
+      "topic": "Frame boundary tie rule",
+      "sources": "Nothing prints which frame an access stamped exactly at the frame end belongs to.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: FRAME_END(k) is processed before FRAME_START(k+1) and before an access stamped E_k, so that access lands in frame k + 1 (A-06).",
+      "resolver": "test: video.boundary.* pin the tie at E_k - 1, E_k and E_k + 1",
+      "evidence": "Phase 6 final (plan 06-14): carried by the event order of core/src/stic/stic_events.c (FRAME_END before FRAME_START and before an access stamped E_k); exercised by video.boundary.event-minus-1, video.boundary.event, video.boundary.event-plus-1, video.boundary.write-straddling and the faults STIC_EVENT_ORDER_START_BEFORE_END and VIDEO_FRAME_AT_CALL_END.",
+      "note": "Raised by plan 06-01 (D-22, A-11). Source note ids: frame note, timing note T-8."
+    },
+    {
+      "id": "C105",
+      "topic": "Border outside the window, the window origin in the 167 x 105 grid and the row line count",
+      "sources": "The pages print the 167 x 105 grid and 159 x 96 visible positions (pdf 191) but not where the window sits or what the border looks like; the 2 TV lines per display row come from a figure showing 16 lines per card row and the 8-row card.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: no border and no margin are published; video.object_grid is consumed only by sanity checks; video.row_lines = 2 is metadata.",
+      "resolver": "pending: Phase 8 border and delay rules, or a capture",
+      "evidence": "Phase 6 final (plan 06-14): carried by profile fields video.object_grid (sanity only) and video.row_lines = 2 (metadata); no border and no origin exist in the core; exercised by video.geom.profile-derives-159x96, video.geom.literal-matches-page, video.geom.info-matches-profile (the published figures only).",
+      "note": "Raised by plan 06-01 (D-22, A-11). Source note ids: frame note, VID-05 scope."
     }
   ]
 }

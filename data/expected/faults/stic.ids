@@ -1,0 +1,38 @@
+# suite=stic; columns: <FAULT_ID> <must-fail> <allowed-prefixes> <must-pass>
+# STIC named faults (plan 06-06, VID-01, D-05, D-07, D-10, A-06). Each id has one IVS_FAULT_<ID> site, in the owner TU
+# named below, and is caught by the test it is named for; the allowed prefixes cover every collateral failure of the suite.
+# STIC_FRAME_BY_MODULO (core/src/stic/stic_events.c): the frame index is derived as to_tick / F after the catch-up
+# instead of counted by FRAME_END events; a nonzero frame phase makes the two differ.
+STIC_FRAME_BY_MODULO stic.events.frame-index-is-state stic.events.frame-index-is-state|stic.events.idempotent stic.events.table-order
+# STIC_WINDOW_OFF_BY_ONE (core/src/stic/stic_events.c): an event is applied only when its tick is strictly below the
+# stamp, so a gate closes one tick late and an access at the close tick would still be served.
+STIC_WINDOW_OFF_BY_ONE stic.events.edges stic.events.|stic.reset.|stic.slice.|stic.window.|stic.profile.|stic.fetch. stic.events.idempotent
+# STIC_CATCHUP_LAGS_UNIT (core/src/machine/machine_run.c): the step seam catches the STIC up to the unit START instead of
+# the unit end, so the gates and the cursor lag one unit behind machine time.
+STIC_CATCHUP_LAGS_UNIT stic.slice.state-equal-at-every-unit-boundary stic.slice.|stic.reset.|stic.busrq. stic.events.table-order
+# STIC_ALIAS_NOT_HOOKED (core/src/machine/machine_bus.c): the STIC_ALIAS_READ hook class is treated as NONE, so a read of a
+# mode-select alias address ($4021, $8021, $C021), which the read view decodes to the cartridge, never reaches the STIC:
+# no mode switch inside the window and no blocked count outside it.
+STIC_ALIAS_NOT_HOOKED stic.alias.read-4021-switches-mode stic.alias. stic.mode.read-selects-cs
+# STIC_MODE_SWITCH_OUTSIDE_WINDOW (core/src/machine/machine_bus.c): the access effects (the display-enable strobe, the mode
+# selects) are applied even when the gate is closed, so a blocked access still changes the latch or the mode.
+STIC_MODE_SWITCH_OUTSIDE_WINDOW stic.mode.read-outside-window-no-effect stic.mode.|stic.alias.|stic.enable.|stic.window.|stic.blocked.|stic.peek. stic.events.table-order
+# STIC_MODE_SWITCH_ON_PEEK (core/src/machine/machine_inspect.c, plan 06-07): ivs_machine_peek applies the mode-select read effect for a
+# mode-select address ($0021 and its read aliases), the effect that only the CPU bus wrapper owns (A-07, T-06-09).
+STIC_MODE_SWITCH_ON_PEEK stic.peek.mode-unchanged-0021 stic.peek. stic.peek.value-equals-cpu-value
+# Plan 06-08 (D-08, D-09, A-09): the frame timeline lines.
+# STIC_LINE_LAG_IGNORED (core/src/machine/machine_run.c): the seam samples the STIC lines at the unit start, without the sampling lag.
+STIC_LINE_LAG_IGNORED stic.lines.sampling-lag stic.lines.|stic.busrq.|stic.steal. stic.lines.pure-of-start-tick
+# STIC_IRQ_LEVEL_NEVER_RELEASED (core/src/stic/stic_lines.c): INTRM stays asserted to the frame end, so a DIS-first service routine
+# that re-enables before the frame end is entered again.
+STIC_IRQ_LEVEL_NEVER_RELEASED stic.irq.one-per-frame stic.irq.|stic.lines.|stic.bounds. stic.lines.sampling-lag
+# STIC_BUSRQ_WHEN_DISPLAY_OFF (core/src/stic/stic_lines.c): windows_active is ignored, so a frame whose display latch was never strobed
+# still drives the 13 bus requests.
+STIC_BUSRQ_WHEN_DISPLAY_OFF stic.busrq.none-when-display-off stic.busrq.|stic.lines.|stic.slice.|stic.regress.|stic.bounds. stic.busrq.closed-form-resume
+# STIC_GRANT_RELEASE_LATENCY_DROPPED (core/src/machine/machine_run.c): the CPU configuration the machine builds takes the release
+# latency of a bus grant one cycle short of bus.release_latency_cpu_cycles (the stepper refuses a configuration of 0, so the site
+# drops one cycle and not all of them).
+STIC_GRANT_RELEASE_LATENCY_DROPPED stic.busrq.closed-form-resume stic.busrq.|stic.steal. stic.busrq.hold-from-profile
+# STIC_BACKTAB_WRITE_NOT_HOOKED (core/src/machine/machine_bus.c, plan 06-08): the BACKTAB hook class is treated as NONE, so a store to
+# background memory is not preceded by a STIC catch-up and a row fetch due before the store's stamp is applied after the store.
+STIC_BACKTAB_WRITE_NOT_HOOKED stic.fetch.backtab-straddle stic.fetch. stic.fetch.display-off-no-latch

@@ -2,3 +2,4 @@
 ivs_profiles.inc cmake/IvsMemmapTable.cmake
 ivs_psg_params.inc cmake/IvsPsgTable.cmake
 ivs_ctrl_lines.inc cmake/IvsCtrlTable.cmake
+ivs_stic_params.inc cmake/IvsSticTable.cmake

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 /* Runner report writer (D-19, D-30, plan 04-18). The report is flat `key value` lines, ASCII and
  * LF, every key of the closed key table below in its fixed order (all keys always present, `-`
- * when a value does not apply): `ivsr 2` first and `report.end <n>` last, n being the number of
+ * when a value does not apply): `ivsr 3` first and `report.end <n>` last, n being the number of
  * lines before it, so a truncated report cannot read as complete. The tables are the whole key
  * set; the writer prints nothing else. Never printed: wall time, host paths, the environment,
  * image bytes. Values echoed from the scenario (id, profile, a relative content path in a
@@ -15,9 +15,14 @@
  *   cpu.run_state, cpu.fault_reason, input.events, input.consumed, input.controller.<0..3>,
  *   digest.<cpu|mem|images|instance|composite|video|audio|input|psglog>, output.video.bytes,
  *   output.audio.bytes, output.audio.samples, output.audio.changes, output.psglog.records,
- *   output.psglog.bytes, audio.sample_ticks, audio.chain.check, host.calls, [refpcm.rate,
+ *   output.psglog.bytes, audio.sample_ticks, audio.chain.check, output.video.frames, video.geometry,
+ *   video.row_lines, video.frame.last_tick, video.chain.check, host.calls, [refpcm.rate,
  *   refpcm.frames, refpcm.sha256,] report.end.
- * `ivsr 2` (plan 05-09, D-20, the one bump of Phase 5) adds the keys from digest.psglog on. The
+ * `ivsr 2` (plan 05-09, D-20, the one bump of Phase 5) adds the keys from digest.psglog on; `ivsr 3` (plan 06-12, D-17, the
+ * one bump of Phase 6) adds the five video keys after audio.chain.check: output.video.frames (frames the core completed,
+ * summed over the run calls), video.geometry (<width>x<height> of ivs_info, `-` before any machine or without a video layout),
+ * video.row_lines, video.frame.last_tick (the last frame end the core reported, `-` before any frame) and video.chain.check
+ * (pass, fail or `-`: the runner recomputed the frame chain from the delivered slots and compared it with the core's domain 16). The
  * bracketed refpcm.* group (plan 05-10, D-20, D-21) is printed ONLY when the operator asked for a WAV
  * (--audio-wav), immediately before report.end, and never belongs to a golden: the SHA-256 is that of the
  * WAV file bytes as written, so sha256sum of the file equals it; `-` when the host did not finish the file.
@@ -66,6 +71,11 @@
 #define RF_OUT_PSG_BYTES 66u
 #define RF_AUDIO_SAMPLE_TICKS 67u
 #define RF_AUDIO_CHAIN 68u
+#define RF_OUT_VIDEO_FRAMES 70u
+#define RF_VIDEO_GEOMETRY 71u
+#define RF_VIDEO_ROW_LINES 72u
+#define RF_VIDEO_LAST_TICK 73u
+#define RF_VIDEO_CHAIN 74u
 
 typedef struct rp_key {
   const char *key;
@@ -126,6 +136,11 @@ static const rp_key rp_tail[] = {
     {"output.psglog.bytes", RF_OUT_PSG_BYTES},
     {"audio.sample_ticks", RF_AUDIO_SAMPLE_TICKS},
     {"audio.chain.check", RF_AUDIO_CHAIN},
+    {"output.video.frames", RF_OUT_VIDEO_FRAMES},
+    {"video.geometry", RF_VIDEO_GEOMETRY},
+    {"video.row_lines", RF_VIDEO_ROW_LINES},
+    {"video.frame.last_tick", RF_VIDEO_LAST_TICK},
+    {"video.chain.check", RF_VIDEO_CHAIN},
     {"host.calls", RF_HOST_CALLS},
 };
 
@@ -270,7 +285,7 @@ static void rp_value(const ivs_runner_record *r, uint32_t field, char *v, size_t
   (void)snprintf(v, cap, "-");
   switch (field) {
   case RF_IVSR:
-    (void)snprintf(v, cap, "2");
+    (void)snprintf(v, cap, "3");
     break;
   case RF_SCN_ID:
     (void)snprintf(v, cap, "%s", s->id);
@@ -353,6 +368,29 @@ static void rp_value(const ivs_runner_record *r, uint32_t field, char *v, size_t
     (void)snprintf(v, cap, "%s", r->chain_check == IVS_RUNNER_CHAIN_PASS   ? "pass"
                                  : r->chain_check == IVS_RUNNER_CHAIN_FAIL ? "fail"
                                                                            : "-");
+    break;
+  case RF_OUT_VIDEO_FRAMES:
+    rp_u64(v, cap, r->video_frames);
+    break;
+  case RF_VIDEO_GEOMETRY:
+    if (r->video_width != 0u) {
+      (void)snprintf(v, cap, "%ux%u", (unsigned)r->video_width, (unsigned)r->video_height);
+    }
+    break;
+  case RF_VIDEO_ROW_LINES:
+    if (r->video_width != 0u) {
+      rp_u64(v, cap, r->video_row_lines);
+    }
+    break;
+  case RF_VIDEO_LAST_TICK:
+    if (r->video_have_frame != 0u) {
+      rp_u64(v, cap, r->video_last_tick);
+    }
+    break;
+  case RF_VIDEO_CHAIN:
+    (void)snprintf(v, cap, "%s", r->video_chain_check == IVS_RUNNER_CHAIN_PASS   ? "pass"
+                                 : r->video_chain_check == IVS_RUNNER_CHAIN_FAIL ? "fail"
+                                                                                 : "-");
     break;
   case RF_HOST_CALLS:
     rp_u64(v, cap, r->host_calls);
@@ -449,6 +487,48 @@ static void rp_step_value(const ivs_scenario_step *st, const ivs_runner_step_rec
   }
 }
 
+/* 1 when the line of n bytes has the key k (the text before the first space). */
+static int rp_key_is(const char *line, size_t n, const char *k)
+{
+  size_t kl = strlen(k);
+  return n > kl && line[kl] == ' ' && memcmp(line, k, kl) == 0;
+}
+
+int ivs_runner_golden_keep(const char *line, size_t n, const int live[4])
+{
+  static const char *const prefix[] = {"slot.", "step.", "cpu.", "input."};
+  static const char *const exact[] = {"scenario.id",      "scenario.profile",  "outcome",
+                                      "outcome.detail",   "exit.code",         "digest.cpu",
+                                      "digest.mem",       "digest.images",     "digest.instance",
+                                      "digest.composite", "output.video.bytes", "output.audio.bytes"};
+  /* Per live domain (video, audio, input, psglog): the keys kept while it is observed. */
+  static const char *const live_key[4][6] = {
+      {"digest.video", "output.video.frames", "video.geometry", "video.row_lines", "video.frame.last_tick",
+       "video.chain.check"},
+      {"digest.audio", "output.audio.samples", "output.audio.changes", "audio.sample_ticks", NULL, NULL},
+      {"digest.input", NULL, NULL, NULL, NULL, NULL},
+      {"digest.psglog", "output.psglog.records", "output.psglog.bytes", NULL, NULL, NULL}};
+  for (size_t i = 0u; i < sizeof prefix / sizeof prefix[0]; i++) {
+    size_t pl = strlen(prefix[i]);
+    if (n > pl && memcmp(line, prefix[i], pl) == 0) {
+      return 1;
+    }
+  }
+  for (size_t i = 0u; i < sizeof exact / sizeof exact[0]; i++) {
+    if (rp_key_is(line, n, exact[i])) {
+      return 1;
+    }
+  }
+  for (size_t i = 0u; i < 4u; i++) {
+    for (size_t k = 0u; k < 6u; k++) {
+      if (live[i] && live_key[i][k] != NULL && rp_key_is(line, n, live_key[i][k])) {
+        return 1;
+      }
+    }
+  }
+  return 0;
+}
+
 static const char *rp_source_token(uint32_t src)
 {
   return src == IVS_PSGLOG_SRC_CPU_WRITE ? "cpu-write" : src == IVS_PSGLOG_SRC_CPU_DW ? "cpu-dw" : "unknown";
@@ -502,6 +582,31 @@ void ivs_runner_assert_clause(const ivs_scenario_assert *a, char *out, size_t ca
     } else {
       (void)snprintf(out, cap, "audio at %llu A=%u B=%u C=%u", (unsigned long long)a->num, (unsigned)a->level[0],
                      (unsigned)a->level[1], (unsigned)a->level[2]);
+    }
+    break;
+  case IVS_SCN_SUBJ_FRAME:
+    if (a->form == IVS_SCN_FORM_PIXEL) {
+      if (a->level[0] == IVS_SCN_PIXEL_BLANK) {
+        (void)snprintf(out, cap, "frame %llu pixel %u %u %s blank", (unsigned long long)a->num, (unsigned)a->index,
+                       (unsigned)a->addr, op);
+      } else {
+        (void)snprintf(out, cap, "frame %llu pixel %u %u %s %u", (unsigned long long)a->num, (unsigned)a->index,
+                       (unsigned)a->addr, op, (unsigned)a->level[0]);
+      }
+    } else if (a->form == IVS_SCN_FORM_HASH) {
+      rp_hex(a->sha256, hex);
+      (void)snprintf(out, cap, "frame %llu hash %s %s", (unsigned long long)a->num, op, hex);
+    } else {
+      (void)snprintf(out, cap, "frame %llu displayed %s %s", (unsigned long long)a->num, op,
+                     a->value != 0u ? "yes" : "no");
+    }
+    break;
+  case IVS_SCN_SUBJ_VIDEO:
+    if (a->form == IVS_SCN_FORM_COUNT) {
+      (void)snprintf(out, cap, "video count %s %llu", op, (unsigned long long)a->num);
+    } else {
+      rp_hex(a->sha256, hex);
+      (void)snprintf(out, cap, "video chain %s %s", op, hex);
     }
     break;
   default:

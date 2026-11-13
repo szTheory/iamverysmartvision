@@ -577,6 +577,9 @@ done:
  * array begins (the old 48-byte buffer is too small against the real layout: its positive control
  * was BUFFER_TOO_SMALL); the video layout is NONE and the old geometry stands. */
 #define RI_AUDIO_NEED 15060u
+/* Plan 06-09 (a reviewed edit): the video layout is real, so the adjacent video case needs the whole requirement of a run to tick 1,000:
+ * two slots (floor(1000 / 59,736) + 1 + the slack of one frame) of 15,296 bytes. */
+#define RI_VIDEO_NEED 30592u
 static int ri_refuse_overlap_buffer(int audio)
 {
   ivs_ms_inst x;
@@ -584,8 +587,10 @@ static int ri_refuse_overlap_buffer(int audio)
   ivs_run_report r;
   uint8_t *a = NULL;
   uint8_t *keep = NULL;
-  size_t arena = audio ? (size_t)RI_AUDIO_NEED + 128u : 256u;
-  size_t arr = audio ? (size_t)RI_AUDIO_NEED + 4u : 64u; /* 8-aligned: the array's first byte */
+  size_t need = audio ? (size_t)RI_AUDIO_NEED : (size_t)RI_VIDEO_NEED;
+  size_t arena = need + 128u;
+  size_t off = audio ? 4u : 8u; /* where the buffer starts; the array follows it and must be 8-aligned (15,060 + 4 and 30,592 + 8) */
+  size_t arr = need + off;
   ivs_status st;
   int rc = IVS_TEST_FAIL;
   IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, RI_POISON));
@@ -596,11 +601,11 @@ static int ri_refuse_overlap_buffer(int audio)
   memcpy(keep, a, arena);
   ri_req(&q, 0u, 1000u, (const ivs_input_event *)(const void *)(a + arr), 2u);
   if (audio) {
-    q.audio = a + 4u;
+    q.audio = a + off;
     q.audio_capacity = (uint64_t)RI_AUDIO_NEED + 1u; /* its last byte is the array's first */
   } else {
-    q.video = a + 112u;
-    q.video_capacity = 16u; /* inside the array's 64 bytes */
+    q.video = a + off;
+    q.video_capacity = (uint64_t)RI_VIDEO_NEED + 1u; /* its last byte is the array's first */
   }
   RI_CHECK(ri_refused(&x, x.m, &q, NULL, IVS_E_BAD_ARG, IVS_REASON_INPUT_EVENTS_OVERLAP, IVS_INPUT_INDEX_NONE));
   RI_CHECK(memcmp(keep, a, arena) == 0);
@@ -609,7 +614,7 @@ static int ri_refuse_overlap_buffer(int audio)
   if (audio) {
     q.audio_capacity = RI_AUDIO_NEED;
   } else {
-    q.video = a + 128u;
+    q.video_capacity = RI_VIDEO_NEED;
   }
   memset(&r, RI_POISON, sizeof r);
   r.struct_size = (uint32_t)sizeof r;
@@ -873,7 +878,7 @@ static int ri_prec_unsupported_over_events(void)
   ivs_run_request q;
   int rc = IVS_TEST_FAIL;
   IVS_CHECK(ivs_ms_powered(&x, IVS_MS_CONTENT_A, RI_POISON));
-  ri_req(&q, IVS_RUN_F_RESERVED_FRAME, 1000u, NULL, 1u);
+  ri_req(&q, RUN_TEST_BAD_FLAG, 1000u, NULL, 1u);
   RI_CHECK(ri_refused(&x, x.m, &q, NULL, IVS_E_UNSUPPORTED, IVS_REASON_RUN_FLAGS, IVS_INPUT_INDEX_NONE));
   ri_req(&q, 0u, 1000u, NULL, 1u);
   q.reserved_in = 1u;

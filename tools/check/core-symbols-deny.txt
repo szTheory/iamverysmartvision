@@ -53,3 +53,7 @@ refpcm pcm
 resample pcm
 wav pcm
 pcm pcm
+palette palette
+rgb palette
+ppm palette
+framepreview palette

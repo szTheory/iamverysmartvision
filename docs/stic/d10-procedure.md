@@ -1,0 +1,62 @@
+# Owner evidence procedure for the STIC (D10 and D11)
+
+This page tells the owner what to run, what to capture and in which format, for the items `D10-VID-01..09` and `D11-EXEC-03` of `data/expected/d10-measurements.ids`.
+Nothing here has been done: the project records these items as missing evidence and hands them off, and no claim uses the measured-hardware tier (D10, D24 of Phase 6).
+A run with an owner system image is D11 and is also not performed; the images are rights-bearing and stay local.
+No Phase 6 scenario uses an owner image.
+The general record format and the owner-evidence rules are those of `docs/input/d10-procedure.md`; this page adds the video items.
+
+## Record format
+
+One text file per item, named by the item id (`D10-VID-04.txt`), with the lines `item`, `date`, `console`, `method`, `result` and `note` in the order of `docs/input/d10-procedure.md`.
+Record raw values (register values in hexadecimal, cycle counts in decimal, captured pixel colors as the numbers 0..15 of the project table or as a photo the owner keeps) and never the expected value.
+
+## Reader cartridge
+
+The program that exercises the STIC on hardware (a small original cartridge that strobes the display at chosen cycle offsets, draws known cards and prints values) is a Phase 7 deliverable, because it needs the controller path and the cartridge boot.
+Until it exists these items can only be done with equipment that reads the buses directly.
+Everything below describes what the program or the equipment must record.
+
+## Geometry
+
+### stic-geometry
+
+Items `D10-VID-01` and `D10-VID-02`: draw a card whose pattern has a marker in pixel 0, pixel 6 and pixel 7 in the last card column and in the first column, capture one frame, and record whether a picture column exists to the right of pixel 6, which of the eight pixel columns is missing when only seven are displayed, and the width in pixels of the visible area.
+
+## Display state
+
+### stic-display-off
+
+Item `D10-VID-03`: with the display strobe never written, record what the picture output is (a solid color, which color, the border color) for at least two frames, and whether the value changes when the border color register is written.
+
+### stic-power-on
+
+Item `D10-VID-09`: right after power-on and again after a console reset, read the 64 STIC addresses and record the values; record the card mode that a Foreground/Background word and a Color Stack word produce before any mode access, and whether the display is shown.
+
+### stic-strobe
+
+Item `D10-VID-08`: write the display strobe at a sweep of cycle offsets after the vertical-blank interrupt and record, for each offset, whether the frame is displayed; then write it once and record whether the next frames are displayed without another write; also read the strobe address and record whether the read arms the display.
+
+## Frame edge and timing
+
+### stic-frame-edge
+
+Item `D10-VID-04`: record the cycle count from the interrupt to the last picture line and to the first picture line of the next frame, with the interrupt routine counting cycles from its first instruction.
+
+### stic-window-probes
+
+Item `D10-VID-06`: at a sweep of cycle offsets after the interrupt, read and write a register, a graphics RAM word and a graphics ROM word, and record for each access whether it worked; record the offset at which each region stops and starts working, and whether the result changes with the display strobed or not.
+
+### stic-bus-windows
+
+Item `D10-VID-07`: with the display on, record the number of times per frame the bus is requested, the spacing between requests in cycles and the number of cycles each request holds, from a trace of the bus request line or from a counting loop.
+
+### stic-backtab-write
+
+Item `D10-VID-05`: write one BACKTAB word at chosen cycle offsets inside the picture and record, for each offset, which card rows show the old and which the new word in the same frame and in the next.
+
+## Owner system image
+
+### owner-exec
+
+Item `D11-EXEC-03`: run the owner's own system image through the project STIC with the display on and record whether its title screen is drawn as on the console (cards, colors, the 159 visible columns); the image is never committed and no result here is published without the owner's decision.

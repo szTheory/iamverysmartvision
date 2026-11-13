@@ -58,9 +58,9 @@
       "profile": "intv-2609-ntsc-family-p1",
       "tier": "source-expectation",
       "artifact": "data/memmap/intv-2609-ntsc-family-p1.literal.txt",
-      "depends_on": ["memmap.undriven_read", "memmap.device.rom10", "memmap.device.grom8", "memmap.device.ram16", "memmap.device.ram8", "memmap.device.psg8", "memmap.device.stub", "memmap.region.stic_regs", "memmap.region.stic_alias_read", "memmap.region.scratchpad", "memmap.region.psg_regs", "memmap.region.sysram", "memmap.region.exec", "memmap.region.grom", "memmap.region.gram", "memmap.region.stic_alias_w4", "memmap.region.gram_alias_w7", "memmap.region.stic_alias_w8", "memmap.region.gram_alias_wb", "memmap.region.stic_alias_wc", "memmap.region.gram_alias_wf", "memmap.cart_span"],
+      "depends_on": ["memmap.undriven_read", "memmap.device.rom10", "memmap.device.grom8", "memmap.device.ram16", "memmap.device.ram8", "memmap.device.psg8", "memmap.device.stub", "memmap.device.stic14", "memmap.region.stic_regs", "memmap.region.stic_alias_read", "memmap.region.scratchpad", "memmap.region.psg_regs", "memmap.region.sysram", "memmap.region.exec", "memmap.region.grom", "memmap.region.gram", "memmap.region.stic_alias_w4", "memmap.region.gram_alias_w7", "memmap.region.stic_alias_w8", "memmap.region.gram_alias_wb", "memmap.region.stic_alias_wc", "memmap.region.gram_alias_wf", "memmap.cart_span"],
       "standing": "provisional",
-      "note": "Evidence: case memmap.dump.matches-literal of suite memmap writes the decode dump of all 65,536 addresses in both views, and the memmap gate step compares the dev and release dumps with the literal (plan 03-06). A pass shows transcription consistency between the literal map and the runtime decode, not hardware truth. Widths, RAM and ROM mirrors and the boundaries where they change are behavioural; the device, impl and gate columns and the mirror of stub and undriven rows are declarative labels from ivs_memsys_describe. Several depended-on fields are tier4-community, inference or unknown-default-chosen (C5, C11, C20, C21, C60, C61, C62, C64, C70, C75), so the claim is provisional; a D10 decode probe on owner hardware would raise it. Plan 05-04: the PSG region became a real device (psg8, upper byte 0, C64); its register rows are split by width and carry C70 and C75, and the shape register and the two port registers are declared exception rows whose store is observed in the register storage."
+      "note": "Evidence: case memmap.dump.matches-literal of suite memmap writes the decode dump of all 65,536 addresses in both views, and the memmap gate step compares the dev and release dumps with the literal (plan 03-06). A pass shows transcription consistency between the literal map and the runtime decode, not hardware truth. Widths, RAM and ROM mirrors and the boundaries where they change are behavioural; the device, impl and gate columns and the mirror of stub and undriven rows are declarative labels from ivs_memsys_describe. Several depended-on fields are tier4-community, inference or unknown-default-chosen (C5, C11, C20, C21, C60, C61, C62, C64, C70, C75), so the claim is provisional; a D10 decode probe on owner hardware would raise it. Plan 05-04: the PSG region became a real device (psg8, upper byte 0, C64); its register rows are split by width and carry C70 and C75, and the shape register and the two port registers are declared exception rows whose store is observed in the register storage. Plan 06-06: the five STIC regions became the real device stic14 (A-01); their rows are split by the register widths of the independent register literal, the write-only stored registers are x=reads-zero rows, the two strobe registers are a new declared exception x=strobe (nothing is stored, the access has a machine-level effect), the collision registers read $FC00 OR their stored bits, and the read alias of $0040 mirrors the register file."
     },
     {
       "id": "CL-0007",
@@ -289,6 +289,159 @@
       ],
       "standing": "provisional",
       "note": "Evidence: the gate step pkg-install builds tests/installed-consumer against the moved install prefix with find_package(ivs) only, runs it on the build-tree images, requires its output to equal data/expected/pkg-consumer.golden and its ctrl.digest lines and observed-domain set to equal data/golden/diag-ctrl-psg-pass.digests (the cross-path agreement with the runner, one count rule); three in-step self-tests (ctrl-digest-drift, ctrl-domain-missing, ctrl-peek-wrong) show that a changed digest line, a missing domain and a wrong peeked value are rejected. The golden is self-recorded: the emulator produced these values, so the agreement shows that the installed package and the runner are the same machine, not that either is right. Excluded on purpose: machine time, the upper byte of a port read (C64), the shape register read-back (C75). The same weakest-field rule as CL-0014 keeps the claim provisional. This is a statement about the project boot stub, the project's own diagnostic and the packaging only: not a statement about commercial content or any EXEC."
+    },
+    {
+      "id": "CL-0016",
+      "statement": "The STIC register file of profile intv-2609-ntsc-family-p1, namely the 64 addresses of the project's register literal with their stored widths, the write-only read value, the collision read-back, the aliases at $4000, $8000 and $C000, the mode-select reads and the display-enable handshake, behaves as that literal states; the numeric access windows are policy figures and excluded.",
+      "profile": "intv-2609-ntsc-family-p1",
+      "tier": "source-expectation",
+      "artifact": "data/stic/intv-2609-ntsc-family-p1.regmap.literal.txt",
+      "depends_on": [
+        "stic.bus_bits",
+        "stic.regmap",
+        "stic.access_effects",
+        "stic.mode_select_addrs",
+        "stic.alias_read_sensitive",
+        "stic.power_on",
+        "stic.reg_window_cpu_cycles",
+        "stic.gmem_window_cpu_cycles",
+        "stic.access_strobe_ticks",
+        "stic.access_gating_when_off",
+        "memmap.device.stic14"
+      ],
+      "standing": "provisional",
+      "note": "Oracle: the register literal (64 rows, plan 06-01 oracle commit eae8ca5, committed before any STIC code) read by the table test stic.table.matches-literal, the row tests stic.reg.*, stic.alias.*, stic.mode.*, stic.enable.seq.*, stic.blocked.* and stic.window.*, the memmap anchors memmap.anchor.stic-*, and the self-controls stic.judge.register-row-changed, stic.judge.window-edge-moved and stic.judge.blocked-write-applied. Shared-misreading risk: one author wrote the literal, the tests and the core, and the register map, the strobe and the alias reads rest on one community lineage (tier 4: the wiki STIC page, revision 15008, and the memory map page), so agreement among them is not independent evidence about the console. Blind second reads (plan 06-01 request, records dated 2026-11-12, tier word source-expectation, second-read): 64 of 64 register rows agree on role and class; the write and read masks are answered unknown by design (128 cells), so they are policy rows (C81, C86) and not second-read evidence. Excluded on purpose: the numeric windows (2,000 and 3,780 CPU cycles, C1, C2, C83, C94), the strobe sustain rule (C82), the power-on state (C85), collision behaviour (C87) and register decay (C88). The weakest-field rule keeps the claim provisional: stic.regmap, stic.access_effects, stic.mode_select_addrs and the window fields are tier4-community and stic.power_on, stic.access_strobe_ticks, stic.access_gating_when_off and memmap.device.stic14 are unknown-default-chosen. No measured tier is used (D10)."
+    },
+    {
+      "id": "CL-0017",
+      "statement": "For profile intv-2609-ntsc-family-p1 the VBLANK interrupt level and the bus-request windows occur at the times of the schedule printed in the timing note, with tile machine time exactly and the same instance bytes under any slicing of a run, and the number of bus windows that a frame can hold lies within the printed bound of 13 or 14.",
+      "profile": "intv-2609-ntsc-family-p1",
+      "tier": "deterministic-repeatability",
+      "artifact": "docs/stic/timing-notes.md",
+      "depends_on": [
+        "ticks_per_cpu_cycle",
+        "scanlines_per_frame",
+        "cpu_cycles_per_scanline",
+        "stic.frame_phase_ticks",
+        "stic.irq_line",
+        "stic.irq_low_cpu_cycles",
+        "stic.bus.count",
+        "stic.bus.first_start_cpu_cycles",
+        "stic.bus.pitch_cpu_cycles",
+        "stic.bus.hold_cpu_cycles",
+        "stic.bus.rows",
+        "stic.bus.fetch_offset_cpu_cycles",
+        "stic.late_grant",
+        "bus.release_latency_cpu_cycles",
+        "bus.line_sample_lag_cpu_cycles"
+      ],
+      "standing": "provisional",
+      "note": "Oracle: closed forms and accounting identities written in the timing note before the code (a bus window starting at tick w resumes the CPU at w + 468, the event ticks 8,000, 15,120, 15,164 and 15,392 + 3,648 i inside a frame of 59,736 ticks, units tiling elapsed time), checked by stic.events.*, stic.irq.*, stic.busrq.*, stic.steal.*, stic.tile.units-equal-elapsed, stic.bounds.* (the bounds re-proof through the full machine with driven BUSRQ) and the slicing family stic.slice.one-call-vs-*, with the self-control stic.judge.late-grant-latched. Shared-misreading risk: the schedule is the author's reading of community figures (one lineage, tier 4) and inferences, so the tests prove that the model follows its own schedule and is repeatable, never that the console does. The tier is repeatability on purpose: no timing figure here comes from a tier 1 page. The policy numbers (windows, hold 114, interrupt width 3,791, release latency 2, power-on frame phase) are proven by perturbation of the profile fields and by accounting identities, never as expected values (C1, C3, C4, C7, C38, C52, C89 to C95). Excluded on purpose: the executed cycles per frame, which are an output of the model (C95), PAL and the STIC1A, and any statement about the instruction mix of commercial content. No blind second read covers timing (the four records are for registers, cards, frames and geometry). The weakest-field rule keeps the claim provisional (tier4-community, inference and unknown-default-chosen fields). No measured tier is used (D10)."
+    },
+    {
+      "id": "CL-0018",
+      "statement": "For profile intv-2609-ntsc-family-p1 the raw framebuffer has the published geometry of 159 by 96 positions with one byte per position, the published slot layout and the per-frame digest chain, and it is delivered at the frame event into a caller-owned buffer; palette, scaling and aspect are absent from the core.",
+      "profile": "intv-2609-ntsc-family-p1",
+      "tier": "source-expectation",
+      "artifact": "data/video/geometry.literal.txt",
+      "depends_on": [
+        "stic.backtab",
+        "stic.video_slack_frames",
+        "video.card_columns",
+        "video.card_rows",
+        "video.card_size_px",
+        "video.object_grid",
+        "video.colors",
+        "video.last_card_column_px",
+        "video.last_card_column_drop",
+        "video.row_lines",
+        "video.display_off_fill",
+        "video.blank_value"
+      ],
+      "standing": "provisional",
+      "note": "Oracle: the geometry literal (plan 06-01, commit eae8ca5) and the printed chain framing literal data/video/chain-framing.literal.txt, read by video.geom.*, video.layout.bytes, video.slot.*, video.chain.* (the chain recomputed from the delivered slots and from the printf recipe), video.buffers.*, video.boundary.*, video.stop.* and video.noop.null-buffer. Scope of the tier: the geometry counts (20 by 12 cards, 8 by 8 pixels, 7 pixels in the last column, 159 by 96 visible positions of a 167 by 105 grid, 16 colors) are source-expectation from the 1980 and 1982 catalog pages; the layout (header size, slot size, the capacity arithmetic) and the chain are repeatability, because no source states them. Shared-misreading risk: one author, one model family and the same pages for the count that sets 159 against 160 (C10, decision D8, one-field reversal video.last_card_column_px = 8). Blind second reads (plan 06-01 request, records dated 2026-11-12, tier word source-expectation, second-read): geometry: 20 keys read, 14 agree on value after spelling normalisation, 6 answered unknown (row-lines, header-bytes, slot-bytes, display-off-fill and two derived keys), 0 disagreements on a sourced value. Excluded on purpose: which 7 pixels are shown (C101), the border and window origin (C105), the content of a display-off frame (C99) and the row line count. The weakest-field rule keeps the claim provisional (video.row_lines is an inference, video.last_card_column_drop, video.display_off_fill and stic.video_slack_frames are policy). No measured tier is used (D10)."
+    },
+    {
+      "id": "CL-0019",
+      "statement": "For profile intv-2609-ntsc-family-p1 the Foreground/Background and Color Stack frames the core delivers equal the hand-derived frames of the project for the listed BACKTAB and graphics RAM contents, with the stated bit order, row order, last-column clip and Color Stack advance.",
+      "profile": "intv-2609-ntsc-family-p1",
+      "tier": "source-expectation",
+      "artifact": "docs/video/frame-derivations.md",
+      "depends_on": [
+        "stic.backtab",
+        "stic.mode_select_addrs",
+        "video.card_columns",
+        "video.card_rows",
+        "video.card_size_px",
+        "video.colors",
+        "video.last_card_column_px",
+        "video.last_card_column_drop",
+        "video.display_off_fill",
+        "video.blank_value"
+      ],
+      "standing": "provisional",
+      "note": "Oracle: ten frame literals data/video/frames/F-A1..F-A5, F-B1..F-B3, F-D1 and F-D2 and the card table data/video/cards.literal.txt, derived by hand with a conservation check (plan 06-01, commit eae8ca5), compared by video.fgbg.*, video.cstack.*, video.card.*, video.probe.* (the 64-probe bit-role sweeps), video.meta.* and the machine-level video.fgbg.machine-* and video.cstack.machine-*; the self-controls video.judge.frame-row-changed, video.judge.card-bit-flipped, video.judge.cstack-persistent-pointer and video.judge.cs-roles-swapped, and the five card-rendering faults of the VID-04 registry lines show the comparison can fail. Shared-misreading risk: the card word layout, the bit order and the Color Stack rules rest on one community lineage (C96, C97, C103) and the same author wrote the literals and the renderer. Blind second reads (plan 06-01 request, records dated 2026-11-12, tier word source-expectation, second-read): frames: 10 read, 10 identical to the committed plane (the header carried the decoded fields, so this re-derives the plane, not the BACKTAB bit decode); cards: 64 bit-role rows read, 62 agree and 2 are a convention difference (the select bit 11 of the GROM and GRAM Color Stack words, recorded as a role against a fixed value, same semantics). Excluded on purpose: Colored Squares has no hand frame (C98), no GROM glyph data is used (the glyphs are project-authored bitmaps written by tests), no collision, no object plane (VID-05, Phase 8), no border (C105) and the display-off fill (C99). The weakest-field rule keeps the claim provisional (video.last_card_column_drop and video.display_off_fill are unknown-default-chosen; the Color Stack and card rules are community-sourced). No measured tier is used (D10)."
+    },
+    {
+      "id": "CL-0020",
+      "statement": "From a power-on reset of profile intv-2609-ntsc-family-p1 through the project boot stub (contract 1), the project-authored diagnostic ivs-diag-stic-1 reaches the hand-derived guest state and the hand-derived frame of data/video/frames in Foreground/Background mode and in Color Stack mode, the mode being selected by one controller input at tick 0.",
+      "profile": "intv-2609-ntsc-family-p1",
+      "tier": "original-diagnostic",
+      "artifact": "fixtures/FX-diag-stic-1/diag-stic-1.listing.txt",
+      "depends_on": [
+        "reset.r7",
+        "cartridge.slots",
+        "input.controllers",
+        "stic.regmap",
+        "stic.access_effects",
+        "stic.mode_select_addrs",
+        "stic.backtab",
+        "stic.power_on",
+        "stic.reg_window_cpu_cycles",
+        "stic.gmem_window_cpu_cycles",
+        "video.last_card_column_px",
+        "video.display_off_fill"
+      ],
+      "standing": "provisional",
+      "note": "Evidence: the scenarios diag-stic-fgbg-pass and diag-stic-cstack-pass of suite runner-process (release and dev presets) and the five run.diag.stic.* cases of suite run, whose assert lines in data/golden/diag-stic-fgbg-pass.expect and data/golden/diag-stic-cstack-pass.expect come from docs/video/diag-stic-1-derivation.md (plan 06-01, commit eae8ca5, committed before the program); the contrast scenario video-assert-mismatch (guest-fail 10), six program mutants and one negative control (data/expected/diag-mutations-stic.ids) and a patched-strobe run show the diagnostic can fail for the intended reasons. Order caveat stated exactly in the 06-13 summary: the three scenarios were run once before the .expect files were committed and no assert line changed afterwards; the .digests goldens are self-recorded. The listing is hand-assembled (D4) and its checker decodes the data table as code, so the listing proves the words, not their meaning as data. Shared-misreading risk: the same author wrote the derivation, the listing, the frame literals and the core; the frames F-D1 and F-D2 were blind second-read (10 of 10 frames identical across the family) but the reading shares one model family and the same pages. Excluded on purpose: machine time (the derivation's cycle budget ran 31 cycles above the observed run without the strobe, an inference gap, and no budget figure is asserted), a sustained picture (the boot stub has no interrupt routine, so exactly one picture exists), R7 and the flags at the stop, commercial content and any EXEC. The weakest-field rule keeps the claim provisional. No measured tier is used (D10, D11)."
+    },
+    {
+      "id": "CL-0021",
+      "statement": "Inspecting STIC state through the public peek and state calls of an instance has no side effect on that instance: the bytes of the instance, its digests and its subsequent run are equal with and without the inspection, including a peek of the mode-select addresses.",
+      "profile": "intv-2609-ntsc-family-p1",
+      "tier": "deterministic-repeatability",
+      "artifact": "docs/stic/reference-notes.md",
+      "depends_on": [
+        "stic.regmap",
+        "stic.access_effects",
+        "stic.mode_select_addrs",
+        "stic.alias_read_sensitive"
+      ],
+      "standing": "provisional",
+      "note": "Oracle: whole-instance byte equality with a positive control (a CPU read of the mode-select address does switch the mode, stic.peek.cpu-read-switches), by stic.peek.mode-unchanged-0021, stic.peek.sweep-bytes-equal, stic.peek.sweep-bytes-equal-after-render, stic.peek.value-equals-cpu-value, stic.state.no-write, stic.state.fields, stic.state.refusal-ladder and stic.state.cs-ptr-after-render, with the fault STIC_MODE_SWITCH_ON_PEEK. Shared-misreading risk: low for the statement itself (a property of the project's own code, not of a console), but the mode-select read effect that the positive control uses rests on one community lineage (C84). Excluded on purpose: any statement about what the console does when a program reads these addresses, and the inspection of other devices. The weakest-field rule keeps the claim provisional (stic.regmap, stic.access_effects, stic.mode_select_addrs and stic.alias_read_sensitive are tier4-community). No measured tier is used (D10)."
+    },
+    {
+      "id": "CL-0022",
+      "statement": "The installed package of profile intv-2609-ntsc-family-p1, consumed by the separate consumer through the installed headers and archive only, replays the diagnostic scenario diag-stic-fgbg-pass and reproduces the runner's frame digest, observed domains and the pixels of the delivered frame for CL-0020.",
+      "profile": "intv-2609-ntsc-family-p1",
+      "tier": "installed-host-behavior",
+      "artifact": "tests/installed-consumer/main.c",
+      "depends_on": [
+        "reset.r7",
+        "cartridge.slots",
+        "input.controllers",
+        "stic.regmap",
+        "stic.access_effects",
+        "stic.mode_select_addrs",
+        "stic.backtab",
+        "stic.power_on",
+        "stic.reg_window_cpu_cycles",
+        "stic.gmem_window_cpu_cycles",
+        "video.last_card_column_px",
+        "video.display_off_fill"
+      ],
+      "standing": "provisional",
+      "note": "Evidence: the gate step pkg-install builds tests/installed-consumer against the moved install prefix with find_package(ivs) only, runs it on the build-tree images, requires its output to equal data/expected/pkg-consumer.golden and its stic.digest lines and observed-domain set to equal data/golden/diag-stic-fgbg-pass.digests (the cross-path agreement with the runner, one count rule), and checks that the two earlier replays still show video not observed; two in-step self-tests (stic-domain-missing, stic-digest-drift) show a dropped digest line and a changed one are rejected. The golden is self-recorded: the emulator produced these values, so the agreement shows that the installed package and the runner are the same machine, not that either is right. Excluded on purpose: machine time, a sustained picture, and any statement about commercial content or any EXEC. The same weakest-field rule as CL-0020 keeps the claim provisional. No measured tier is used (D10, D11)."
     }
   ]
 }

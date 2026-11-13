@@ -7,3 +7,8 @@ important-gates-uncovered-gate
 important-gates-req-uncovered-phase5
 important-gates-unknown-id-phase5
 important-gates-bad-req-phase5
+# Plan 06-14 (RUN-04 extended): a Phase 6 requirement without a registry line, a Phase 6 line naming an unknown id,
+# and a line naming a Phase 6 requirement outside the five (VID-05 belongs to Phase 8).
+important-gates-req-uncovered-phase6
+important-gates-unknown-id-phase6
+important-gates-bad-req-phase6

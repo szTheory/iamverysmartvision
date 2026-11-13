@@ -110,6 +110,25 @@ typedef struct ivs_image_report {
 #define IVS_OUTPUT_FORMAT_NONE 0u
 #define IVS_OUTPUT_FORMAT_PSG_LEVELS_V1 1u
 
+/* IVS_OUTPUT_FORMAT_INDEX8_FRAMES_V1 (plan 06-03, D-13): the video channel carries one slot per
+ * completed frame event. A slot is IVS_FRAME_HEADER_BYTES (32) header bytes written byte by byte,
+ * big-endian, then height rows of width bytes, row-major from the top-left, one byte per position
+ * holding a STIC color number 0..IVS_PIXEL_COLOR_MAX or IVS_PIXEL_BLANK for a position that is not
+ * displayed, no padding:
+ *   offset 0   be64 tick     machine tick of the frame event the slot belongs to
+ *   offset 8   be64 index    frame index, counted from reset
+ *   offset 16  be32 width    positions per row
+ *   offset 20  be32 height   rows
+ *   offset 24  be32 flags    bit 0 (IVS_FRAME_F_DISPLAYED): the display was enabled for the frame
+ *   offset 28  be32 reserved written 0
+ * No profile publishes this format yet (video_format stays NONE); the constants exist so the
+ * layout is pinned before any plan writes a slot. */
+#define IVS_OUTPUT_FORMAT_INDEX8_FRAMES_V1 2u
+#define IVS_FRAME_HEADER_BYTES 32u
+#define IVS_FRAME_F_DISPLAYED 1u
+#define IVS_PIXEL_BLANK 0xFFu
+#define IVS_PIXEL_COLOR_MAX 15u
+
 /* The v1 (Phase 3) size of ivs_info (A-02, plan 04-09; public since plan 05-02): the smallest
  * struct_size ivs_machine_info accepts. Fields after it are written only when the caller's
  * struct_size covers them. machine.c ties it to offsetof(ivs_info, ticks_per_cpu_cycle). */
@@ -128,8 +147,9 @@ typedef struct ivs_image_report {
  *   224 scanlines_per_frame      nominal
  *   228 video_format             IVS_OUTPUT_FORMAT_*
  *   232 nominal_frame_ticks      ticks_per_cpu_cycle * cpu_cycles_per_scanline *
- *                                scanlines_per_frame; nominal_frame_ticks is nominal, not a frame
- *                                event (D-09): frames are timeline events, never a modulo of time
+ *                                scanlines_per_frame; for a profile that publishes frame events
+ *                                (plan 06-03, D-14) this is the exact spacing of two frame events;
+ *                                frames are timeline events, never a modulo of time (D-09)
  *   240 video_bytes_per_frame    0 with IVS_OUTPUT_FORMAT_NONE
  *   244 audio_format             IVS_OUTPUT_FORMAT_*
  *   248 audio_bytes_per_frame    0 with IVS_OUTPUT_FORMAT_NONE
@@ -147,7 +167,19 @@ typedef struct ivs_image_report {
  *                                (max(target - now, 0) / nominal_frame_ticks + 1))
  *   272 crystal_hz_num           the master crystal in Hz as a fraction (numerator)
  *   280 crystal_hz_den           ... denominator
- * sizeof(ivs_info) is 288. IVS_INFO_V1_SIZE stays 216. */
+ * v4 (plan 06-03, D-14, D-15, A-10): the Phase 6 video tail, appended after the v3 size of 288 and
+ * written only when struct_size covers it (a 288-byte caller gets exactly 288 bytes). Every v4
+ * field is 0 while video_format is IVS_OUTPUT_FORMAT_NONE; the profile fills them from the plan
+ * that publishes the frame layout:
+ *   288 frame_phase_ticks        master ticks of the phase of the first frame event after reset
+ *   296 video_width              positions per row of a frame slot
+ *   300 video_height             rows of a frame slot
+ *   304 video_slot_bytes         bytes of one frame slot, header included
+ *   308 video_header_bytes       bytes of the slot header (IVS_FRAME_HEADER_BYTES)
+ *   312 video_slack_frames       frame slots added to floor(D / F) + 1 in the capacity rule
+ *   316 video_row_lines          TV lines one row of a slot covers
+ * The spacing of two frame events is nominal_frame_ticks, exact for the profile (no second
+ * spacing field). sizeof(ivs_info) is 320. IVS_INFO_V1_SIZE stays 216. */
 typedef struct ivs_info {
   uint32_t struct_size;
   uint32_t phase; /* IVS_PHASE_* */
@@ -172,6 +204,14 @@ typedef struct ivs_info {
   uint32_t psg_log_records_per_frame;
   uint64_t crystal_hz_num;
   uint64_t crystal_hz_den;
+  /* ---- end of the v3 (Phase 5) size, 288 ---- */
+  uint64_t frame_phase_ticks;
+  uint32_t video_width;
+  uint32_t video_height;
+  uint32_t video_slot_bytes;
+  uint32_t video_header_bytes;
+  uint32_t video_slack_frames;
+  uint32_t video_row_lines;
 } ivs_info;
 
 /* ---- typed content loading (D-10, D-11, D-24..D-27, D-32, D-33, A-04, A-08, plan 03-10) ----
@@ -323,7 +363,14 @@ IVS_API ivs_status ivs_machine_info(const ivs_machine *m, ivs_info *out);
  *   chain = SHA-256('I' 'V' 'S' 'R' || 17 || chain || be64(changes before this record) || be32(12) ||
  *                   be64(k) || A || B || C || 0).
  * The dense bytes a run call delivers (4 per sample: A, B, C, 0) are enough to recompute all of it,
- * so a host can check the stream it received against this digest without any core state. */
+ * so a host can check the stream it received against this digest without any core state.
+ * Domain 16 (VIDEO, plan 06-03, documentation only; outside the composite): a per-frame chain over
+ * the slots a run call delivers (IVS_OUTPUT_FORMAT_INDEX8_FRAMES_V1, the slot layout beside that
+ * constant). h0 is the SHA-256 of the 16 ASCII bytes 'IVS-VIDEO-LOG-V1', and h(n+1) =
+ * SHA-256(h(n) || slot bytes) for the n-th completed frame, the slot bytes being the 32-byte header
+ * and the pixel rows exactly as delivered, so a host recomputes the chain from the slots it received;
+ * the count is the number of frames chained. Nothing is delivered and nothing is chained until a
+ * profile publishes frame events. */
 IVS_API ivs_status ivs_machine_state_digest(const ivs_machine *m, uint32_t domain, uint8_t out_sha256[32]);
 
 /* Loads one image of kind (IVS_KIND_*) from len bytes at bytes. Validates everything before the

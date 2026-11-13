@@ -1,0 +1,3 @@
+# Control memmap-exception-unknown (plan 06-06): an unknown exception name in the x column is refused.
+R 0000-FFFF undriven w=0 impl=none mirror=- gate=- src=none tag=unknown-default-chosen conf=C1 x=bogus
+W 0000-FFFF undriven w=0 impl=none mirror=- gate=- src=none tag=unknown-default-chosen conf=C1

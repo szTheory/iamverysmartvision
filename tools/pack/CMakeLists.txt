@@ -55,7 +55,19 @@ add_custom_command(
   DEPENDS ivs_pack "${IVS_DIAG_CTRL_PSG_1_LISTING}"
   COMMENT "Packing the diag-ctrl-psg-1 listing into the build tree"
   VERBATIM)
-add_custom_target(ivs_images ALL DEPENDS "${IVS_BOOT_STUB_EXEC}" "${IVS_DIAG_CPU_1_IVSC}" "${IVS_DIAG_CTRL_PSG_1_IVSC}")
+set(IVS_DIAG_STIC_1_LISTING "${PROJECT_SOURCE_DIR}/fixtures/FX-diag-stic-1/diag-stic-1.listing.txt")
+set(IVS_DIAG_STIC_1_IVSC "${IVS_IMAGES_DIR}/diag-stic-1.ivsc")
+set(IVS_DIAG_STIC_1_IVSC "${IVS_DIAG_STIC_1_IVSC}" PARENT_SCOPE)
+
+add_custom_command(
+  OUTPUT "${IVS_DIAG_STIC_1_IVSC}"
+  COMMAND "${CMAKE_COMMAND}" -E make_directory "${IVS_IMAGES_DIR}"
+  COMMAND ivs_pack --ivsc "${IVS_DIAG_STIC_1_LISTING}" "${IVS_DIAG_STIC_1_IVSC}"
+  DEPENDS ivs_pack "${IVS_DIAG_STIC_1_LISTING}"
+  COMMENT "Packing the diag-stic-1 listing into the build tree"
+  VERBATIM)
+add_custom_target(ivs_images ALL DEPENDS "${IVS_BOOT_STUB_EXEC}" "${IVS_DIAG_CPU_1_IVSC}" "${IVS_DIAG_CTRL_PSG_1_IVSC}"
+  "${IVS_DIAG_STIC_1_IVSC}")
 
 set(listed "")
 foreach(src IN LISTS IVS_PACK_SOURCES)

@@ -6,12 +6,13 @@
 # Plan 05-04: the PSG region became a real 16-word device, so MEM_MIRROR_MASK (which halves the backing index
 # of every region) also breaks the PSG literal rows and the neighbour probe of the $0200 write row; plan 05-05
 # adds the PSG anchor probe (the port registers read the pins, so their anchor also sees the halved index)
-# and the read-view neighbour probe of the $0200 row.
+# and the read-view neighbour probe of the $0200 row. Plan 06-06: the STIC regions are real 64-word devices, so the halved index also breaks every
+# STIC literal row (the rows at $0000-$00FF and the three write aliases), the STIC anchors and the stic-regs gate case.
 GEN_MAP_MUTATION memmap.anchor.sysram-lo memmap.anchor.sysram-|memmap.describe.|memmap.dump.|memmap.row. memmap.bus.iab-reset
 MEM_UNDRIVEN_ZERO memmap.unloaded.exec-reads-ffff memmap.unloaded.|memmap.width.undriven-|memmap.gate.|memmap.cart.|memmap.anchor.stic-alias-w|memmap.anchor.gram-alias-w|memmap.row.|memmap.row-gate. memmap.bus.iab-reset
 MEM_CART_END_INCLUSIVE memmap.cart.above-5001 memmap.cart. memmap.bus.iab-reset
 MEM_WO_READS_DEVICE memmap.anchor.gram-alias-w7-lo memmap.anchor.gram-alias-w|memmap.unloaded.cart-|memmap.cart. memmap.bus.iab-reset
-MEM_MIRROR_MASK memmap.mirror.gram-3a00 memmap.mirror.|memmap.dump.|memmap.row.R-01F|memmap.row.W-01F|memmap.row.W-0200-|memmap.row.R-0200-|memmap.anchor.psg- memmap.bus.iab-reset
+MEM_MIRROR_MASK memmap.mirror.gram-3a00 memmap.mirror.|memmap.dump.|memmap.row.R-01F|memmap.row.W-01F|memmap.row.W-0200-|memmap.row.R-0200-|memmap.anchor.psg-|memmap.row.R-00|memmap.row.W-00|memmap.row.W-4|memmap.row.W-8|memmap.row.W-C|memmap.row-gate.stic-|memmap.anchor.stic- memmap.bus.iab-reset
 MEM_IAB_VECTOR_SWAPPED memmap.bus.iab-reset memmap.bus.iab- memmap.anchor.exec-lo
 MEM_ROM_NO_MASK memmap.row.R-1000-1FFF memmap.row.|memmap.width.|memmap.anchor.|memmap.dump. memmap.bus.iab-reset
 MEM_RAM8_NO_TRUNC memmap.row.W-0100-01EF memmap.row.|memmap.row-gate. memmap.bus.iab-reset

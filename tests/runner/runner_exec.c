@@ -23,17 +23,19 @@
 
 #include "ivs/ivs.h"
 #include "ivs_refpcm.h"
+#include "frame_export.h"
 #include "ivs_runner.h"
 #include "ivs_test.h"
 #include "runner_cases.h"
 #include "runner_chain.h"
 #include "runner_sha256.h"
+#include "runner_vchain.h"
 
 #include "ivs_images.inc"
 
 #define FH_MAX_FILES 4u
 #define FH_OUT_CAP (256u * 1024u)
-#define FH_STORAGE (512u * 1024u)
+#define FH_STORAGE (1024u * 1024u)
 #define RX_SCN_CAP 8192u
 #define RX_VALUE_CAP 512u
 #define RX_SCN_CAPTURE_CAP 4096u
@@ -74,6 +76,16 @@ typedef struct fake_host {
   uint8_t wav_hdr[44]; /* the header the finish hook received */
   uint32_t wav_finishes;
   uint8_t wav_sha[32]; /* what the finish hook returned: SHA-256 of header and PCM as a file */
+  int want_vraw;       /* install the raw video hook (plan 06-12) */
+  int corrupt_video;   /* the video hook flips one delivered byte before the chain check reads it */
+  uint64_t vraw_bytes; /* bytes the video hook received */
+  uint64_t video_out_max; /* options.video_out_max_bytes (0: the default) */
+  int fail_vraw;       /* the raw video hook fails */
+  int want_ppm;        /* install the frame export hook (plan 06-12) */
+  int fail_ppm;        /* the frame export hook fails */
+  uint32_t ppm_calls;
+  size_t ppm_len;      /* bytes of the last PPM the hook received */
+  uint8_t ppm_bytes[IVS_RUNNER_PPM_MAX];
 } fake_host;
 
 static int fh_read(void *ctx, const char *relpath, size_t cap, uint8_t *buf, size_t *len)
@@ -99,6 +111,21 @@ static int fh_read(void *ctx, const char *relpath, size_t cap, uint8_t *buf, siz
 
 static int fh_cancel(void *ctx) { return ((fake_host *)ctx)->cancel; }
 
+/* The operator-only raw video hook (plan 06-12): counts what it receives and, when asked, flips the low bit of the first
+ * delivered byte in the host's own block (the executor then reads a corrupted stream). */
+static int fh_video_raw(void *ctx, const uint8_t *bytes, size_t len)
+{
+  fake_host *h = ctx;
+  if (h->fail_vraw) {
+    return -1;
+  }
+  h->vraw_bytes += len;
+  if (h->corrupt_video && h->buffers != NULL && bytes >= h->buffers) {
+    h->buffers[bytes - h->buffers] ^= 0x01u;
+  }
+  return 0;
+}
+
 /* The operator-only raw audio hook of the vtable: counts what it receives and, when asked, flips the
  * low bit of the first byte in the host's own block (the executor then reads a corrupted stream). */
 static int fh_audio_raw(void *ctx, const uint8_t *bytes, size_t len)
@@ -109,6 +136,19 @@ static int fh_audio_raw(void *ctx, const uint8_t *bytes, size_t len)
   if (h->corrupt_audio && h->buffers != NULL && bytes >= h->buffers) {
     h->buffers[bytes - h->buffers] ^= 0x01u;
   }
+  return 0;
+}
+
+/* The operator frame export hook (plan 06-12): keeps the PPM bytes. */
+static int fh_frame_ppm(void *ctx, const uint8_t *ppm, size_t len)
+{
+  fake_host *h = ctx;
+  h->ppm_calls++;
+  if (h->fail_ppm || len > sizeof h->ppm_bytes) {
+    return -1;
+  }
+  memcpy(h->ppm_bytes, ppm, len);
+  h->ppm_len = len;
   return 0;
 }
 
@@ -257,6 +297,12 @@ static uint32_t rx_exec(const char *text, fake_host *h, ivs_runner_result *res)
   if (h->want_log) {
     host.write_psg_log = fh_psg_log;
   }
+  if (h->want_vraw) {
+    host.write_video_raw = fh_video_raw;
+  }
+  if (h->want_ppm) {
+    host.write_frame_ppm = fh_frame_ppm;
+  }
   if (h->want_wav) {
     host.write_wav_pcm = fh_wav_pcm;
     host.finish_wav = fh_wav_finish;
@@ -272,10 +318,11 @@ static uint32_t rx_exec(const char *text, fake_host *h, ivs_runner_result *res)
     host.buffers = h->buffers;
     host.buffer_bytes = h->buffer_bytes;
   }
-  if (h->out_max != 0u || h->wav_rate != 0u || h->slice_ticks != 0u) {
+  if (h->out_max != 0u || h->wav_rate != 0u || h->slice_ticks != 0u || h->video_out_max != 0u) {
     ivs_runner_options o;
     memset(&o, 0, sizeof o);
     o.audio_out_max_bytes = h->out_max;
+    o.video_out_max_bytes = h->video_out_max;
     o.wav_rate = h->wav_rate;
     o.slice_ticks = h->slice_ticks;
     out = ivs_runner_execute(s, &host, &o, res);
@@ -357,14 +404,14 @@ static int rx_hex64(const char *s)
   return i == 64u;
 }
 
-/* The report is complete: first line `ivsr 2`, last `report.end <lines before it>`, LF ended. */
+/* The report is complete: first line `ivsr 3`, last `report.end <lines before it>`, LF ended. */
 static int rx_complete(const char *report, const ivs_runner_result *res)
 {
   char v[RX_VALUE_CAP];
   size_t n = rx_lines(report);
   size_t len = strlen(report);
-  if (strncmp(report, "ivsr 2\n", 7u) != 0 || len == 0u || report[len - 1u] != '\n') {
-    ivs_test_diag("report does not start with ivsr 2 or end with LF");
+  if (strncmp(report, "ivsr 3\n", 7u) != 0 || len == 0u || report[len - 1u] != '\n') {
+    ivs_test_diag("report does not start with ivsr 3 or end with LF");
     return 0;
   }
   if (!rx_value(report, "report.end", v, sizeof v) || strtoull(v, NULL, 10) != (unsigned long long)(n - 1u)) {
@@ -975,7 +1022,7 @@ done:
 }
 
 /* The key order of the diagnostic report, written out here independently of report.c's table
- * (ivsr 2, plan 05-09): with no output block (the keys are all present, their values `-` or 0) and
+ * (ivsr 3, plan 06-12, five video keys after audio.chain.check; ivsr 2 was plan 05-09): with no output block (the keys are all present, their values `-` or 0) and
  * with the block ivs-run gives (the same keys in the same order). */
 static int ex_key_order_with(size_t buffer_bytes)
 {
@@ -992,7 +1039,9 @@ static int ex_key_order_with(size_t buffer_bytes)
                                      "digest.input",       "digest.psglog",      "output.video.bytes",
                                      "output.audio.bytes", "output.audio.samples", "output.audio.changes",
                                      "output.psglog.records", "output.psglog.bytes", "audio.sample_ticks",
-                                     "audio.chain.check",  "host.calls",         "report.end"};
+                                     "audio.chain.check",  "output.video.frames", "video.geometry",
+                                     "video.row_lines",    "video.frame.last_tick", "video.chain.check",
+                                     "host.calls",         "report.end"};
   char want[128][40];
   size_t n = 0u;
   fake_host h;
@@ -1054,7 +1103,7 @@ done:
 
 static int ex_key_order(void) { return ex_key_order_with(0u); }
 
-/* ivsr 2 (plan 05-09, D-20): the first line is `ivsr 2`, the key table is the pinned one also with a
+/* ivsr 3 (plan 06-12; the audio keys of ivsr 2 are plan 05-09, D-20): the first line is `ivsr 3`, the key table is the pinned one also with a
  * real output block, and the new keys carry their values: the samples are the delivered bytes over 4,
  * the log is empty for the diagnostic (it writes no PSG register), the sample period is the profile's 16
  * and the audio chain check ran and passed. */
@@ -1073,7 +1122,7 @@ static int ex_ivsr2_keys(void)
   if (!rx_expect(diag, &h, IVS_RUNNER_OUTCOME_PASS, 0u)) {
     goto done;
   }
-  if (strncmp(h.out, "ivsr 2\n", 7u) != 0 || !rx_value(h.out, "output.audio.bytes", v, sizeof v)) {
+  if (strncmp(h.out, "ivsr 3\n", 7u) != 0 || !rx_value(h.out, "output.audio.bytes", v, sizeof v)) {
     goto done;
   }
   bytes = strtoull(v, NULL, 10);
@@ -1611,7 +1660,7 @@ static int rx_tail_is(const char *report, const char *const *want, size_t n)
  * host.calls and report.end. */
 static int ex_refpcm_keys_only_with_option(void)
 {
-  static const char *const plain_tail[] = {"audio.chain.check", "host.calls", "report.end"};
+  static const char *const plain_tail[] = {"video.chain.check", "host.calls", "report.end"};
   static const char *const wav_tail[] = {"host.calls", "refpcm.rate", "refpcm.frames", "refpcm.sha256", "report.end"};
   fake_host h;
   char scn[RX_SCN_CAP];
@@ -1705,6 +1754,639 @@ static int rx_wav_run(fake_host *h, const char *scn, uint32_t rate, uint64_t sli
     return 0;
   }
   return 1;
+}
+
+/* runner.exec.buffers-video-slack (plan 06-09, A-03): the runner sizes the video channel as slot x (slice / F + 1 + slack) with the slack
+ * read from ivs_info v4, so every slice (1 tick, 7 ticks, the default 4,194,304) runs under the real video layout instead of failing
+ * BUFFER_TOO_SMALL. The default slice needs 4,194,304 / 59,736 = 70 + 1 = 71 audio and log slots and 72 video slots: video 72 x 15,296 =
+ * 1,101,312 bytes, audio 71 x 15,060 = 1,069,260, log 71 x 34,432 = 2,444,672, in all 4,615,244, re-derived here from the layout's
+ * published per-frame figures; a block of exactly that size runs and one byte less is a harness failure buffers-too-small. */
+static int ex_buffers_video_slack(void)
+{
+  static const uint64_t slices[3] = {1u, 7u, 0u};
+  const uint64_t slot = 15296u;
+  const uint64_t audio = 15060u;
+  const uint64_t log = 34432u;
+  const uint64_t frame = 59736u;
+  const uint64_t def_slots = 4194304u / frame + 1u;
+  const uint64_t total = slot * (def_slots + 1u) + audio * def_slots + log * def_slots;
+  fake_host h;
+  char scn[RX_SCN_CAP];
+  int rc = IVS_TEST_FAIL;
+  rx_psg_image();
+  if (!rx_psg_scenario(scn, sizeof scn, "run-to 3000 ticks\n")) {
+    return IVS_TEST_FAIL;
+  }
+  if (def_slots != 71u || slot * (def_slots + 1u) != 1101312u || total != 4615244u || total >= IVS_RUNNER_BUFFERS_MAX) {
+    ivs_test_diag("derived total %llu", (unsigned long long)total);
+    return IVS_TEST_FAIL;
+  }
+  for (size_t i = 0u; i < 3u; i++) {
+    fh_init(&h);
+    fh_add(&h, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
+    h.buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
+    h.slice_ticks = slices[i];
+    if (!rx_expect(scn, &h, IVS_RUNNER_OUTCOME_PASS, 0u)) {
+      goto done;
+    }
+    rx_free(&h);
+  }
+  fh_init(&h);
+  fh_add(&h, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
+  h.buffer_bytes = (size_t)total;
+  if (!rx_expect(scn, &h, IVS_RUNNER_OUTCOME_PASS, 0u)) {
+    goto done;
+  }
+  rx_free(&h);
+  fh_init(&h);
+  fh_add(&h, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
+  h.buffer_bytes = (size_t)total - 1u;
+  if (!rx_expect(scn, &h, IVS_RUNNER_OUTCOME_HARNESS_FAIL, 14u) || !rx_is(h.out, "outcome.detail", "buffers-too-small")) {
+    goto done;
+  }
+  rc = IVS_TEST_PASS;
+done:
+  rx_free(&h);
+  return rc;
+}
+
+
+/* ---- video capture, frame and video asserts, the video chain check (plan 06-12, D-16, D-17) ---- */
+
+/* SHA-256 of the canonical text form of a display-off frame with the border color 0: 96 lines of 159 `0` digits, LF ended
+ * (typed from `printf` and `shasum -a 256` over that text, independent of the runner's helper). */
+static const char rx_vid_hash0[] = "0aff949bb8caff5803ed97a99d08d2ea999639170d09add9f2ff661b854fc314";
+/* The chain after two display-off frames of border 0: h2 of data/video/chain-framing.literal.txt (derived there by recipe). */
+static const char rx_vid_h2[] = "4cb3788af5c5743ae6d5ba3fdd22c6317c50c4432817acf20f577c6d8974df4a";
+static const char rx_vid_bad[] = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+#define RX_VID_BYTES 30592u /* two slots of 15,296 */
+
+/* The looping stand-in (display never enabled: border-colored, undisplayed frames) under a real output block (h was initialised
+ * by the caller, with its hooks and options) with the
+ * scenario body after the content lines (the run-to line is line 7 when the body starts with a capture line, the first
+ * assert is then line 8). */
+static int rx_vid_run(fake_host *h, const char *body, uint32_t outcome, uint32_t exit_code)
+{
+  char scn[RX_SCN_CAP];
+  rx_psg_image();
+  if (!rx_psg_scenario(scn, sizeof scn, body)) {
+    return 0;
+  }
+  fh_add(h, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
+  h->buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
+  return rx_expect(scn, h, outcome, exit_code);
+}
+
+/* The tracer: capture video 0 1 across the first frame end of the looping image and a pixel assert, then a window of two
+ * frames, the delivered bytes seen by the operator hook, and the same asserts with the run cut into slices of 50,000 ticks (the chain
+ * continues across calls with first indexes 0 and 1: no harness failure). */
+static int ex_video_capture(void)
+{
+  fake_host h;
+  int rc = IVS_TEST_FAIL;
+  char v[RX_VALUE_CAP];
+  fh_init(&h);
+  if (!rx_vid_run(&h, "capture video 0 1\nrun-to 70000 ticks\nassert frame 0 pixel 0 0 == 0\n", IVS_RUNNER_OUTCOME_PASS, 0u)) {
+    goto done;
+  }
+  if (!rx_is(h.out, "step.1.assert.1", "pass frame 0 pixel 0 0 == 0 got 0") || !rx_is(h.out, "output.video.bytes", "15296")) {
+    goto done;
+  }
+  rx_free(&h);
+  fh_init(&h);
+  h.want_vraw = 1;
+  {
+    char scn[RX_SCN_CAP];
+    rx_psg_image();
+    if (!rx_psg_scenario(scn, sizeof scn,
+                         "capture video 0 2\nrun-to 130000 ticks\nassert video count == 2\nassert frame 0 pixel 0 0 == 0\n"
+                         "assert frame 1 pixel 158 95 == 0\nassert frame 1 displayed == no\n")) {
+      goto done;
+    }
+    fh_add(&h, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
+    h.buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
+    if (!rx_expect(scn, &h, IVS_RUNNER_OUTCOME_PASS, 0u) || h.vraw_bytes != RX_VID_BYTES ||
+        !rx_is(h.out, "output.video.bytes", "30592") || !rx_is(h.out, "step.1.assert.3", "pass frame 1 pixel 158 95 == 0 got 0")) {
+      goto done;
+    }
+    rx_free(&h);
+    fh_init(&h);
+    fh_add(&h, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
+    h.buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
+    h.slice_ticks = 50000u;
+    if (!rx_expect(scn, &h, IVS_RUNNER_OUTCOME_PASS, 0u) || !rx_value(h.out, "output.video.bytes", v, sizeof v) ||
+        strcmp(v, "30592") != 0) {
+      goto done;
+    }
+  }
+  rc = IVS_TEST_PASS;
+done:
+  rx_free(&h);
+  return rc;
+}
+
+/* Every assert form passes and fails for the right reason: pixel (an equal, an unequal and the blank form), hash (the
+ * literal text hash, a wrong one), displayed, count and chain; a failure is a guest-fail naming the clause and the value
+ * read. The blank refusal of the hash helper is shown on a synthetic plane. */
+static int ex_video_assert(void)
+{
+  fake_host h;
+  char body[2048];
+  int rc = IVS_TEST_FAIL;
+  uint8_t plane[4 * 2];
+  uint8_t sha[32];
+  (void)snprintf(body, sizeof body,
+                 "capture video 0 2\nrun-to 130000 ticks\n"
+                 "assert frame 0 pixel 5 5 == 0\nassert frame 0 pixel 5 5 != blank\nassert frame 1 pixel 5 5 != 1\n"
+                 "assert frame 0 hash == %s\nassert frame 1 hash != %s\nassert frame 0 displayed == no\n"
+                 "assert frame 1 displayed != yes\nassert video count == 2\nassert video count != 3\n"
+                 "assert video chain == %s\nassert video chain != %s\n",
+                 rx_vid_hash0, rx_vid_bad, rx_vid_h2, rx_vid_bad);
+  fh_init(&h);
+  if (!rx_vid_run(&h, body, IVS_RUNNER_OUTCOME_PASS, 0u) ||
+      !rx_is(h.out, "step.1.assert.4", "pass frame 0 hash == 0aff949bb8caff5803ed97a99d08d2ea999639170d09add9f2ff661b854fc314 got "
+                                       "0aff949bb8caff5803ed97a99d08d2ea999639170d09add9f2ff661b854fc314") ||
+      !rx_is(h.out, "step.1.assert.6", "pass frame 0 displayed == no got no") ||
+      !rx_is(h.out, "step.1.assert.8", "pass video count == 2 got 2")) {
+    goto done;
+  }
+  rx_free(&h);
+  /* The failing forms, one scenario each: the clause and the value read (lines: the first assert is line 8). */
+  {
+    static const struct {
+      const char *assert_line;
+      const char *detail;
+    } fails[] = {
+        {"assert frame 0 pixel 0 0 == 1\n", "assert=1 line=8 frame 0 pixel 0 0 == 1 got 0"},
+        {"assert frame 1 displayed == yes\n", "assert=1 line=8 frame 1 displayed == yes got no"},
+        {"assert video count == 3\n", "assert=1 line=8 video count == 3 got 2"},
+    };
+    for (size_t i = 0u; i < sizeof fails / sizeof fails[0]; i++) {
+      (void)snprintf(body, sizeof body, "capture video 0 2\nrun-to 130000 ticks\n%s", fails[i].assert_line);
+      fh_init(&h);
+      if (!rx_vid_run(&h, body, IVS_RUNNER_OUTCOME_GUEST_FAIL, 10u) || !rx_is(h.out, "outcome.detail", fails[i].detail)) {
+        goto done;
+      }
+      rx_free(&h);
+    }
+    (void)snprintf(body, sizeof body, "capture video 0 2\nrun-to 130000 ticks\nassert frame 0 hash == %s\n", rx_vid_bad);
+    fh_init(&h);
+    if (!rx_vid_run(&h, body, IVS_RUNNER_OUTCOME_GUEST_FAIL, 10u) || !rx_starts(h.out, "outcome.detail", "assert=1 line=8 frame 0 hash == 0123") ||
+        strstr(h.out, "got 0aff949bb8caff58") == NULL) {
+      goto done;
+    }
+    rx_free(&h);
+    (void)snprintf(body, sizeof body, "capture video 0 2\nrun-to 130000 ticks\nassert video chain == %s\n", rx_vid_bad);
+    fh_init(&h);
+    if (!rx_vid_run(&h, body, IVS_RUNNER_OUTCOME_GUEST_FAIL, 10u) || strstr(h.out, rx_vid_h2) == NULL) {
+      goto done;
+    }
+    rx_free(&h);
+    /* A pixel outside the published plane is a harness failure, not a vacuous != pass. */
+    fh_init(&h);
+    if (!rx_vid_run(&h, "capture video 0 1\nrun-to 70000 ticks\nassert frame 0 pixel 159 0 != 3\n", IVS_RUNNER_OUTCOME_HARNESS_FAIL, 14u) ||
+        !rx_is(h.out, "outcome.detail", "frame-pixel-range assert=1 line=8")) {
+      goto done;
+    }
+  }
+  /* The text hash helper refuses a plane with a blank position (the hash form has no digit for it) and equals the
+   * hand text hash for a 4 x 2 plane of digits (typed: `01AF` and `FA10`, LF ended). */
+  memset(plane, 0, sizeof plane);
+  plane[1] = 1u;
+  plane[2] = 10u;
+  plane[3] = 15u;
+  plane[4] = 15u;
+  plane[5] = 10u;
+  plane[6] = 1u;
+  plane[7] = 0u;
+  {
+    ivs_rsha256 c;
+    uint8_t want[32];
+    static const char text[] = "01AF\nFA10\n";
+    ivs_rsha256_init(&c);
+    ivs_rsha256_update(&c, (const uint8_t *)text, sizeof text - 1u);
+    ivs_rsha256_final(&c, want);
+    if (ivs_runner_frame_text_sha256(plane, 4u, 2u, sha) != 0 || memcmp(sha, want, 32u) != 0) {
+      goto done;
+    }
+  }
+  plane[3] = IVS_PIXEL_BLANK;
+  if (ivs_runner_frame_text_sha256(plane, 4u, 2u, sha) != 1) {
+    goto done;
+  }
+  rc = IVS_TEST_PASS;
+done:
+  rx_free(&h);
+  return rc;
+}
+
+/* The runner recomputes the chain from the delivered slots and the core's domain 16 agrees (an uncorrupted run is a pass); with a host
+ * that flips a delivered byte before the check reads it the check disagrees: harness-fail, detail video-chain, exit 14
+ * (the check is a comparison, not a label). */
+static int ex_video_chain_check(void)
+{
+  fake_host h;
+  int rc = IVS_TEST_FAIL;
+  fh_init(&h);
+  h.want_vraw = 1;
+  if (!rx_vid_run(&h, "run-to 130000 ticks\nassert video chain == 4cb3788af5c5743ae6d5ba3fdd22c6317c50c4432817acf20f577c6d8974df4a\n",
+                  IVS_RUNNER_OUTCOME_PASS, 0u)) {
+    goto done;
+  }
+  rx_free(&h);
+  fh_init(&h);
+  h.want_vraw = 1;
+  h.corrupt_video = 1;
+  {
+    char scn[RX_SCN_CAP];
+    rx_psg_image();
+    if (!rx_psg_scenario(scn, sizeof scn, "run-to 130000 ticks\n")) {
+      goto done;
+    }
+    fh_add(&h, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
+    h.buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
+    if (!rx_expect(scn, &h, IVS_RUNNER_OUTCOME_HARNESS_FAIL, 14u) || !rx_is(h.out, "outcome.detail", "video-chain")) {
+      goto done;
+    }
+  }
+  rc = IVS_TEST_PASS;
+done:
+  rx_free(&h);
+  return rc;
+}
+
+/* A capture, a frame assert or a video assert run without a delivered video buffer is a harness failure, never a vacuous
+ * pass; a run that asks for none of them still passes without a buffer. */
+static int ex_video_without_buffer(void)
+{
+  static const char *const bodies[] = {"capture video 0 1\nrun-to 70000 ticks\n", "run-to 70000 ticks\nassert video count == 0\n",
+                                       "run-to 70000 ticks\nassert video chain != 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n"};
+  fake_host h;
+  char scn[RX_SCN_CAP];
+  int rc = IVS_TEST_FAIL;
+  rx_psg_image();
+  for (size_t i = 0u; i < sizeof bodies / sizeof bodies[0]; i++) {
+    if (!rx_psg_scenario(scn, sizeof scn, bodies[i])) {
+      return IVS_TEST_FAIL;
+    }
+    fh_init(&h);
+    fh_add(&h, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
+    if (!rx_expect(scn, &h, IVS_RUNNER_OUTCOME_HARNESS_FAIL, 14u) ||
+        !rx_is(h.out, "outcome.detail", "stream-without-buffer target=video")) {
+      goto done;
+    }
+    rx_free(&h);
+  }
+  if (!rx_psg_scenario(scn, sizeof scn, "run-to 70000 ticks\n")) {
+    return IVS_TEST_FAIL;
+  }
+  fh_init(&h);
+  fh_add(&h, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
+  if (!rx_expect(scn, &h, IVS_RUNNER_OUTCOME_PASS, 0u)) {
+    goto done;
+  }
+  rc = IVS_TEST_PASS;
+done:
+  rx_free(&h);
+  return rc;
+}
+
+/* An asserted frame outside the capture window, or one that was never delivered, is a harness failure naming the assert; the
+ * hash-needs-colors-only refusal is exercised on a synthetic plane in runner.exec.video-assert. */
+static int ex_frame_not_captured(void)
+{
+  fake_host h;
+  int rc = IVS_TEST_FAIL;
+  fh_init(&h);
+  if (!rx_vid_run(&h, "capture video 1 1\nrun-to 130000 ticks\nassert frame 0 pixel 0 0 == 0\n", IVS_RUNNER_OUTCOME_HARNESS_FAIL, 14u) ||
+      !rx_is(h.out, "outcome.detail", "frame-not-captured assert=1 line=8")) {
+    goto done;
+  }
+  rx_free(&h);
+  fh_init(&h);
+  if (!rx_vid_run(&h, "capture video 0 16\nrun-to 130000 ticks\nassert frame 5 displayed == no\n", IVS_RUNNER_OUTCOME_HARNESS_FAIL, 14u) ||
+      !rx_is(h.out, "outcome.detail", "frame-not-captured assert=1 line=8")) {
+    goto done;
+  }
+  rx_free(&h);
+  /* The window frame that was delivered is readable: frame 1 of the window 1..1. */
+  fh_init(&h);
+  if (!rx_vid_run(&h, "capture video 1 1\nrun-to 130000 ticks\nassert frame 1 pixel 0 0 == 0\n", IVS_RUNNER_OUTCOME_PASS, 0u)) {
+    goto done;
+  }
+  rc = IVS_TEST_PASS;
+done:
+  rx_free(&h);
+  return rc;
+}
+
+
+/* ivsr 3 (plan 06-12): the five video keys with their values, from the independent key table of runner.exec.key-order and
+ * read here by value. A run with no machine (an unknown profile) prints 0 and `-`; a diagnostic run that ends before its first
+ * frame end completes none (frames 0, geometry 159x96, row lines 2, no last tick, chain check `-`: nothing was verified, Phase 6 review IN-04); the
+ * looping image over two frame ends completes two (last tick 2 x 59,736); a run without an output block cannot check the chain (`-`). */
+static int ex_report_keys_ivsr3(void)
+{
+  fake_host h;
+  char diag[RX_SCN_CAP];
+  char scn[RX_SCN_CAP];
+  int rc = IVS_TEST_FAIL;
+  if (!rx_diag(diag, sizeof diag) || !rx_replace(diag, "profile intv-2609-ntsc-family-p1", "profile no-such-profile", scn, sizeof scn)) {
+    return IVS_TEST_FAIL;
+  }
+  fh_init(&h);
+  if (!rx_expect(scn, &h, IVS_RUNNER_OUTCOME_HARNESS_FAIL, 14u) || strncmp(h.out, "ivsr 3\n", 7u) != 0 ||
+      !rx_is(h.out, "output.video.frames", "0") || !rx_is(h.out, "video.geometry", "-") ||
+      !rx_is(h.out, "video.row_lines", "-") || !rx_is(h.out, "video.frame.last_tick", "-") ||
+      !rx_is(h.out, "video.chain.check", "-")) {
+    goto done;
+  }
+  rx_free(&h);
+  fh_init(&h);
+  h.buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
+  if (!rx_expect(diag, &h, IVS_RUNNER_OUTCOME_PASS, 0u) || !rx_is(h.out, "output.video.frames", "0") ||
+      !rx_is(h.out, "video.geometry", "159x96") || !rx_is(h.out, "video.row_lines", "2") ||
+      !rx_is(h.out, "video.frame.last_tick", "-") || !rx_is(h.out, "video.chain.check", "-")) {
+    goto done;
+  }
+  rx_free(&h);
+  fh_init(&h);
+  if (!rx_expect(diag, &h, IVS_RUNNER_OUTCOME_PASS, 0u) || !rx_is(h.out, "video.geometry", "159x96") ||
+      !rx_is(h.out, "video.chain.check", "-")) {
+    goto done;
+  }
+  rx_free(&h);
+  fh_init(&h);
+  if (!rx_vid_run(&h, "run-to 130000 ticks\n", IVS_RUNNER_OUTCOME_PASS, 0u) || !rx_is(h.out, "output.video.frames", "2") ||
+      !rx_is(h.out, "video.frame.last_tick", "119472") || !rx_is(h.out, "video.chain.check", "pass") ||
+      !rx_is(h.out, "output.video.bytes", "30592")) {
+    goto done;
+  }
+  rc = IVS_TEST_PASS;
+done:
+  rx_free(&h);
+  return rc;
+}
+
+/* The golden key list (ivs_runner_golden_keep, used by ivs-run --update-golden) keeps the video keys only while video is observed
+ * (the count rule: output.video.bytes is a decimal other than 0): with video observed the filtered report holds digest.video and
+ * the five video keys; with video not observed none of them, and the filtered body equals the lines whose keys are on the
+ * pre-ivsr-3 list written out here (so a golden of a scenario that delivers no frame is byte-identical); audio.chain.check and
+ * video.chain.check never appear for a not-observed video, and host.calls, ivsr and report.end never. */
+static int rx_keep_text(const char *report, const int live[4], char *out, size_t cap)
+{
+  size_t used = 0u;
+  const char *p = report;
+  while (*p != '\0') {
+    const char *eol = strchr(p, '\n');
+    size_t n = eol != NULL ? (size_t)(eol - p) : strlen(p);
+    if (ivs_runner_golden_keep(p, n, live)) {
+      if (used + n + 2u > cap) {
+        return 0;
+      }
+      memcpy(out + used, p, n);
+      out[used + n] = '\n';
+      used += n + 1u;
+    }
+    p += n + (eol != NULL ? 1u : 0u);
+  }
+  out[used] = '\0';
+  return 1;
+}
+
+static int ex_golden_keys_video_live(void)
+{
+  static const char *const vkeys[] = {"digest.video ", "output.video.frames ", "video.geometry ", "video.row_lines ",
+                                      "video.frame.last_tick ", "video.chain.check "};
+  static const char *const never[] = {"ivsr ", "api.version ", "host.calls ", "report.end ", "audio.chain.check ", "refpcm."};
+  fake_host h;
+  char text[8192];
+  char diag[RX_SCN_CAP];
+  int live_on[4] = {1, 0, 0, 0};
+  int live_off[4] = {0, 0, 0, 0};
+  int rc = IVS_TEST_FAIL;
+  fh_init(&h);
+  if (!rx_vid_run(&h, "run-to 130000 ticks\n", IVS_RUNNER_OUTCOME_PASS, 0u) || !rx_keep_text(h.out, live_on, text, sizeof text)) {
+    goto done;
+  }
+  for (size_t i = 0u; i < sizeof vkeys / sizeof vkeys[0]; i++) {
+    if (strstr(text, vkeys[i]) == NULL) {
+      ivs_test_diag("observed video: golden body lacks %s", vkeys[i]);
+      goto done;
+    }
+  }
+  if (strstr(text, "\nvideo.chain.check pass\n") == NULL || strstr(text, "\nvideo.geometry 159x96\n") == NULL) {
+    goto done;
+  }
+  if (!rx_keep_text(h.out, live_off, text, sizeof text)) {
+    goto done;
+  }
+  for (size_t i = 0u; i < sizeof vkeys / sizeof vkeys[0]; i++) {
+    if (strstr(text, vkeys[i]) != NULL) {
+      ivs_test_diag("video not observed: golden body holds %s", vkeys[i]);
+      goto done;
+    }
+  }
+  rx_free(&h);
+  /* A scenario that delivers no frame: video is not observed, the body is the pre-ivsr-3 set of lines. */
+  if (!rx_diag(diag, sizeof diag)) {
+    return IVS_TEST_FAIL;
+  }
+  fh_init(&h);
+  h.buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
+  if (!rx_expect(diag, &h, IVS_RUNNER_OUTCOME_PASS, 0u) || !rx_is(h.out, "output.video.bytes", "0") ||
+      !rx_keep_text(h.out, live_off, text, sizeof text)) {
+    goto done;
+  }
+  for (const char *p = h.out; *p != '\0';) {
+    const char *eol = strchr(p, '\n');
+    size_t n = (size_t)(eol - p);
+    int old_list = 0;
+    static const char *const old_exact[] = {"scenario.id ", "scenario.profile ", "outcome ", "outcome.detail ", "exit.code ",
+                                            "digest.cpu ", "digest.mem ", "digest.images ", "digest.instance ",
+                                            "digest.composite ", "output.video.bytes ", "output.audio.bytes "};
+    static const char *const old_prefix[] = {"slot.", "step.", "cpu.", "input."};
+    int kept = ivs_runner_golden_keep(p, n, live_off);
+    for (size_t i = 0u; i < sizeof old_exact / sizeof old_exact[0]; i++) {
+      old_list = old_list || strncmp(p, old_exact[i], strlen(old_exact[i])) == 0;
+    }
+    for (size_t i = 0u; i < sizeof old_prefix / sizeof old_prefix[0]; i++) {
+      old_list = old_list || strncmp(p, old_prefix[i], strlen(old_prefix[i])) == 0;
+    }
+    if (kept != old_list) {
+      ivs_test_diag("line '%.*s': kept %d, pre-ivsr-3 list %d", (int)n, p, kept, old_list);
+      goto done;
+    }
+    p = eol + 1;
+  }
+  for (size_t i = 0u; i < sizeof never / sizeof never[0]; i++) {
+    if (strstr(text, never[i]) != NULL && strncmp(never[i], "ivsr ", 5u) != 0) {
+      goto done;
+    }
+  }
+  rc = IVS_TEST_PASS;
+done:
+  rx_free(&h);
+  return rc;
+}
+
+
+/* ---- operator-only video outputs (plan 06-12, D-17, T-06-16, T-06-17): the hooks of the vtable, in process ---- */
+
+/* The raw video hook receives every delivered slot (two of 15,296 bytes) before the chain check reads them; the byte bound is a harness
+ * failure (video-out-max-bytes) and never a partial write: at exactly the delivered size the run passes, one byte less ends it
+ * before anything reached the hook; a failing hook is video-out. */
+static int ex_operator_video_raw_hook(void)
+{
+  fake_host h;
+  int rc = IVS_TEST_FAIL;
+  fh_init(&h);
+  h.want_vraw = 1;
+  if (!rx_vid_run(&h, "run-to 130000 ticks\n", IVS_RUNNER_OUTCOME_PASS, 0u) || h.vraw_bytes != RX_VID_BYTES) {
+    goto done;
+  }
+  rx_free(&h);
+  fh_init(&h);
+  h.want_vraw = 1;
+  h.video_out_max = RX_VID_BYTES;
+  if (!rx_vid_run(&h, "run-to 130000 ticks\n", IVS_RUNNER_OUTCOME_PASS, 0u) || h.vraw_bytes != RX_VID_BYTES) {
+    goto done;
+  }
+  rx_free(&h);
+  fh_init(&h);
+  h.want_vraw = 1;
+  h.video_out_max = RX_VID_BYTES - 1u;
+  if (!rx_vid_run(&h, "run-to 130000 ticks\n", IVS_RUNNER_OUTCOME_HARNESS_FAIL, 14u) ||
+      !rx_is(h.out, "outcome.detail", "video-out-max-bytes") || h.vraw_bytes != 0u) {
+    goto done;
+  }
+  rx_free(&h);
+  fh_init(&h);
+  h.want_vraw = 1;
+  h.fail_vraw = 1;
+  if (!rx_vid_run(&h, "run-to 130000 ticks\n", IVS_RUNNER_OUTCOME_HARNESS_FAIL, 14u) ||
+      !rx_is(h.out, "outcome.detail", "video-out")) {
+    goto done;
+  }
+  rc = IVS_TEST_PASS;
+done:
+  rx_free(&h);
+  return rc;
+}
+
+/* The frame export gets the PPM of the LAST delivered frame once, after the run: `P6`, `159 96`, `255`, then 3 x 15,264 bytes (45,806 in
+ * all; a display-off frame of border 0 is all black through the preview palette); no frame, no call; the write error, the byte
+ * bound (smaller than the file) and a scenario that names `content exec user` are harness failures with their own details, the last
+ * one before anything runs. */
+static int ex_operator_frame_ppm(void)
+{
+  static const char hdr[] = "P6\n159 96\n255\n";
+  fake_host h;
+  char scn[RX_SCN_CAP];
+  int rc = IVS_TEST_FAIL;
+  fh_init(&h);
+  h.want_ppm = 1;
+  if (!rx_vid_run(&h, "run-to 130000 ticks\n", IVS_RUNNER_OUTCOME_PASS, 0u) || h.ppm_calls != 1u || h.ppm_len != 45806u ||
+      memcmp(h.ppm_bytes, hdr, sizeof hdr - 1u) != 0) {
+    ivs_test_diag("ppm calls %u len %zu", (unsigned)h.ppm_calls, h.ppm_len);
+    goto done;
+  }
+  for (size_t i = sizeof hdr - 1u; i < h.ppm_len; i++) {
+    if (h.ppm_bytes[i] != 0u) {
+      ivs_test_diag("byte %zu of the ppm is %u, want black", i, (unsigned)h.ppm_bytes[i]);
+      goto done;
+    }
+  }
+  rx_free(&h);
+  fh_init(&h);
+  h.want_ppm = 1;
+  if (!rx_vid_run(&h, "run-to 3000 ticks\n", IVS_RUNNER_OUTCOME_PASS, 0u) || h.ppm_calls != 0u) {
+    goto done;
+  }
+  rx_free(&h);
+  fh_init(&h);
+  h.want_ppm = 1;
+  h.fail_ppm = 1;
+  if (!rx_vid_run(&h, "run-to 130000 ticks\n", IVS_RUNNER_OUTCOME_HARNESS_FAIL, 14u) ||
+      !rx_is(h.out, "outcome.detail", "frame-ppm-out")) {
+    goto done;
+  }
+  rx_free(&h);
+  fh_init(&h);
+  h.want_ppm = 1;
+  h.video_out_max = 45805u;
+  if (!rx_vid_run(&h, "run-to 130000 ticks\n", IVS_RUNNER_OUTCOME_HARNESS_FAIL, 14u) ||
+      !rx_is(h.out, "outcome.detail", "frame-ppm-out-max-bytes") || h.ppm_calls != 0u) {
+    goto done;
+  }
+  rx_free(&h);
+  /* content exec user: a frame from an owner image is derived art of rights-bearing content. */
+  (void)snprintf(scn, sizeof scn, "ivss 1\nid ppm-user\nprofile intv-2609-ntsc-family-p1\ncontent exec user\ncontent grom zero-grom\nrun-to 130000 ticks\n");
+  fh_init(&h);
+  h.want_ppm = 1;
+  h.buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
+  if (!rx_expect(scn, &h, IVS_RUNNER_OUTCOME_HARNESS_FAIL, 14u) || !rx_is(h.out, "outcome.detail", "frame-ppm-user-content") ||
+      h.ppm_calls != 0u) {
+    goto done;
+  }
+  rc = IVS_TEST_PASS;
+done:
+  rx_free(&h);
+  return rc;
+}
+
+/* The preview palette: the sixteen color indices and the blank value map to seventeen distinct triples (a viewer can tell every
+ * index and a blank position apart), an entry outside it is refused, and the first entry is black. */
+static int ex_frameppm_palette_covers_16(void)
+{
+  uint8_t a[3];
+  uint8_t b[3];
+  IVS_CHECK(IVS_FRAMEPPM_PALETTE_ENTRIES == 17u);
+  for (uint32_t i = 0u; i < IVS_FRAMEPPM_PALETTE_ENTRIES; i++) {
+    IVS_CHECK(ivs_frameppm_palette(i, a) == 1);
+    for (uint32_t j = i + 1u; j < IVS_FRAMEPPM_PALETTE_ENTRIES; j++) {
+      IVS_CHECK(ivs_frameppm_palette(j, b) == 1);
+      if (memcmp(a, b, 3u) == 0) {
+        ivs_test_diag("palette entries %u and %u are the same triple", (unsigned)i, (unsigned)j);
+        return IVS_TEST_FAIL;
+      }
+    }
+  }
+  IVS_CHECK(ivs_frameppm_palette(17u, a) == 0 && ivs_frameppm_palette(0u, a) == 1 && a[0] == 0u && a[1] == 0u && a[2] == 0u);
+  return IVS_TEST_PASS;
+}
+
+/* The PPM bytes of small planes by hand: 2 x 2 positions 0, 5, blank, 15 give `P6\n2 2\n255\n` (11 bytes) then four triples
+ * (the palette entries of those indices); the bound is header plus 3 x positions (45,806 for 159 x 96, 11 + 12 for 2 x 2, 0 for an empty
+ * plane, SIZE_MAX when it cannot fit); a short output, a bad pixel and bad arguments are refused and write nothing. */
+static int ex_frameppm_header_and_size(void)
+{
+  static const uint8_t plane[4] = {0u, 5u, IVS_PIXEL_BLANK, 15u};
+  uint8_t out[64];
+  uint8_t rgb[3];
+  size_t w = 0u;
+  static const char hdr[] = "P6\n2 2\n255\n";
+  IVS_CHECK(ivs_frameppm_bound(159u, 96u) == 45806u && ivs_frameppm_bound(2u, 2u) == 23u && ivs_frameppm_bound(0u, 5u) == 0u &&
+            ivs_frameppm_bound(5u, 0u) == 0u && ivs_frameppm_bound(4294967295u, 4294967295u) == SIZE_MAX);
+  memset(out, 0xEE, sizeof out);
+  IVS_CHECK(ivs_frameppm_convert(plane, 2u, 2u, out, sizeof out, &w) == IVS_FRAMEPPM_OK && w == 23u);
+  IVS_CHECK(memcmp(out, hdr, sizeof hdr - 1u) == 0 && out[23] == 0xEEu);
+  for (size_t i = 0u; i < 4u; i++) {
+    uint32_t e = plane[i] == IVS_PIXEL_BLANK ? 16u : plane[i];
+    IVS_CHECK(ivs_frameppm_palette(e, rgb) == 1 && memcmp(out + 11u + 3u * i, rgb, 3u) == 0);
+  }
+  memset(out, 0xEE, sizeof out);
+  IVS_CHECK(ivs_frameppm_convert(plane, 2u, 2u, out, 22u, &w) == IVS_FRAMEPPM_E_SPACE && w == 0u && out[0] == 0xEEu);
+  {
+    uint8_t bad[4] = {0u, 16u, 0u, 0u};
+    IVS_CHECK(ivs_frameppm_convert(bad, 2u, 2u, out, sizeof out, &w) == IVS_FRAMEPPM_E_PIXEL && w == 0u);
+    bad[1] = 254u;
+    IVS_CHECK(ivs_frameppm_convert(bad, 2u, 2u, out, sizeof out, &w) == IVS_FRAMEPPM_E_PIXEL);
+  }
+  IVS_CHECK(ivs_frameppm_convert(NULL, 2u, 2u, out, sizeof out, &w) == IVS_FRAMEPPM_E_ARG &&
+            ivs_frameppm_convert(plane, 0u, 2u, out, sizeof out, &w) == IVS_FRAMEPPM_E_ARG &&
+            ivs_frameppm_convert(plane, 2u, 2u, out, sizeof out, NULL) == IVS_FRAMEPPM_E_ARG);
+  return IVS_TEST_PASS;
 }
 
 /* The hook contract: default rate 48000 and 44100 both give the by-hand frame count with the reference
@@ -2099,6 +2781,18 @@ static const ivs_test_case exec_cases[] = {
     {"runner.exec.operator-files-hook", ex_operator_files_hook, NULL},
     {"runner.exec.out-max-bytes", ex_out_max_bytes, NULL},
     {"runner.exec.refpcm-keys-only-with-option", ex_refpcm_keys_only_with_option, NULL},
+    {"runner.exec.buffers-video-slack", ex_buffers_video_slack, NULL},
+    {"runner.exec.video-capture", ex_video_capture, NULL},
+    {"runner.exec.video-assert", ex_video_assert, NULL},
+    {"runner.exec.video-chain-check", ex_video_chain_check, NULL},
+    {"runner.exec.video-without-buffer", ex_video_without_buffer, NULL},
+    {"runner.exec.frame-not-captured", ex_frame_not_captured, NULL},
+    {"runner.exec.report-keys-ivsr3", ex_report_keys_ivsr3, NULL},
+    {"runner.operator.video-raw-hook-and-byte-cap", ex_operator_video_raw_hook, NULL},
+    {"runner.operator.frame-ppm-bytes-and-refusals", ex_operator_frame_ppm, NULL},
+    {"runner.frameppm.palette-covers-16", ex_frameppm_palette_covers_16, NULL},
+    {"runner.frameppm.header-and-size", ex_frameppm_header_and_size, NULL},
+    {"runner.golden.keys-video-live", ex_golden_keys_video_live, NULL},
     {"runner.exec.wav-hook", ex_wav_hook, NULL},
     {"runner.exec.wav-failures", ex_wav_failures, NULL},
     {"runner.exec.key-order", ex_key_order, NULL},

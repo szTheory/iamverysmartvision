@@ -4,5 +4,7 @@
 # scenario: toy
 # profile: intv-2609-ntsc-family-p1
 # derivation: toy predicate of the golden step's positive control (plan 04-21).
+# frame: 0 T-1
 assert reg R0 == 0001
 assert mem 0200 == 0002
+assert frame 0 hash == 2cf5430f1dcd07a60f134aac257553f3696208f28d5d2f32c9a68c74b8aa6354

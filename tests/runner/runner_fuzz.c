@@ -78,6 +78,14 @@ static const char *const fuzz_tokens[] = {"..",
                                           "assert ",
                                           "capture psglog\n",
                                           "capture audio\n",
+                                          "capture video 0 16\n",
+                                          "capture video 2147483647 1\n",
+                                          "assert frame 0 pixel 158 95 == blank\n",
+                                          "assert frame 1 hash != 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n",
+                                          "assert frame 0 displayed == no\n",
+                                          "assert video count == 2\n",
+                                          "assert video chain == 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n",
+                                          "pixel ", "hash ", "displayed ", "chain ", "blank", "frame ", "video ",
                                           "assert psglog count == 3\n",
                                           "assert psglog 0 tick=100 addr=11 value=000F source=cpu-write\n",
                                           "assert audio emitted != 0\n",
@@ -347,7 +355,7 @@ static int fuzz_valid(fuzz_ctx *f, const ivs_scenario *s)
     const ivs_scenario_assert *a = &s->asserts[i];
     FUZZ_CHECK(f, a->step < s->n_steps && (i == 0u || a->step >= s->asserts[i - 1u].step));
     FUZZ_CHECK(f, a->op == IVS_SCN_OP_EQ || a->op == IVS_SCN_OP_NE);
-    FUZZ_CHECK(f, a->subject >= IVS_SCN_SUBJ_HALTED && a->subject <= IVS_SCN_SUBJ_AUDIO);
+    FUZZ_CHECK(f, a->subject >= IVS_SCN_SUBJ_HALTED && a->subject <= IVS_SCN_SUBJ_VIDEO);
     FUZZ_CHECK(f, a->subject != IVS_SCN_SUBJ_HALTED || a->value <= 1u);
     FUZZ_CHECK(f, a->subject != IVS_SCN_SUBJ_REG || a->index <= 7u);
     FUZZ_CHECK(f, a->addr_lo <= a->addr_hi);
@@ -361,13 +369,24 @@ static int fuzz_valid(fuzz_ctx *f, const ivs_scenario *s)
                                                          (s->capture & IVS_SCN_CAPTURE_PSGLOG) != 0u));
       FUZZ_CHECK(f, a->form != IVS_SCN_FORM_RECORD ||
                         ((a->fields & IVS_SCN_FIELD_SOURCE) == 0u || a->source == 1u || a->source == 2u));
+    } else if (a->subject == IVS_SCN_SUBJ_FRAME) {
+      /* Plan 06-12: a frame assert names a form, its capture directive stands somewhere in the file. */
+      FUZZ_CHECK(f, (s->capture & IVS_SCN_CAPTURE_VIDEO) != 0u && a->num <= 0x7FFFFFFFu);
+      FUZZ_CHECK(f, a->form == IVS_SCN_FORM_PIXEL || a->form == IVS_SCN_FORM_HASH || a->form == IVS_SCN_FORM_DISPLAYED);
+      FUZZ_CHECK(f, a->form != IVS_SCN_FORM_PIXEL || (a->index <= 65535u && a->addr <= 65535u &&
+                                                       (a->level[0] <= 15u || a->level[0] == IVS_SCN_PIXEL_BLANK)));
+      FUZZ_CHECK(f, a->form != IVS_SCN_FORM_DISPLAYED || a->value <= 1u);
+    } else if (a->subject == IVS_SCN_SUBJ_VIDEO) {
+      FUZZ_CHECK(f, a->form == IVS_SCN_FORM_COUNT || a->form == IVS_SCN_FORM_CHAIN);
     } else if (a->subject == IVS_SCN_SUBJ_AUDIO) {
       FUZZ_CHECK(f, a->form == IVS_SCN_FORM_EMITTED || a->form == IVS_SCN_FORM_AT);
       FUZZ_CHECK(f, a->form != IVS_SCN_FORM_AT || ((s->capture & IVS_SCN_CAPTURE_AUDIO) != 0u && a->level[0] <= 255u &&
                                                     a->level[1] <= 255u && a->level[2] <= 255u));
     }
   }
-  FUZZ_CHECK(f, (s->capture & ~(IVS_SCN_CAPTURE_PSGLOG | IVS_SCN_CAPTURE_AUDIO)) == 0u);
+  FUZZ_CHECK(f, (s->capture & ~(IVS_SCN_CAPTURE_PSGLOG | IVS_SCN_CAPTURE_AUDIO | IVS_SCN_CAPTURE_VIDEO)) == 0u);
+  FUZZ_CHECK(f, ((s->capture & IVS_SCN_CAPTURE_VIDEO) != 0u) == (s->capture_line[2] != 0u));
+  FUZZ_CHECK(f, ((s->capture & IVS_SCN_CAPTURE_VIDEO) != 0u) == (s->video_count >= 1u && s->video_count <= IVS_SCN_CAPTURE_VIDEO_MAX));
   FUZZ_CHECK(f, ((s->capture & IVS_SCN_CAPTURE_PSGLOG) != 0u) == (s->capture_line[0] != 0u));
   FUZZ_CHECK(f, ((s->capture & IVS_SCN_CAPTURE_AUDIO) != 0u) == (s->capture_line[1] != 0u));
   FUZZ_CHECK(f, (s->n_inputs == 0u) == (s->input_unit == 0u));
