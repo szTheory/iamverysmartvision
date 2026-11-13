@@ -7,7 +7,7 @@ The machine core keeps no host time; timeouts and cancellation exist only in the
 Layout (D-17): the library `ivs_runner_lib` (`runner/scenario.c` parser, `runner/exec.c` executor, `runner/report.c` report writer, `runner/outcome.c` outcome mapping) and the thin executable built from `runner/main.c` (options, exit code) and `runner/hostio.c` (the only file that uses POSIX: files, the monotonic timer, signals).
 One process handles one scenario on one instance; several scenarios mean several invocations.
 The program keeps no global state except the cancel flag.
-The runner provides one output block of at most 8 MiB and cuts it per slice into the video, audio and PSG write-log buffers from `ivs_info` (`bytes_per_frame * (slice_ticks / nominal_frame_ticks + 1)` for each channel; about 3.5 MB at the default slice), so every scenario delivers audio and the log through the public run call; the files of the three options above are written in `runner/hostio.c` only, and an operator file belongs outside the repository.
+The runner provides one output block of at most 8 MiB and cuts it per slice into the video, audio and PSG write-log buffers from `ivs_info` (`bytes_per_frame * (slice_ticks / nominal_frame_ticks + 1)` for audio and the log; video is `video_bytes_per_frame * (slice_ticks / nominal_frame_ticks + 1 + video_slack_frames)`, because a call can complete one frame event more than that count; the video slot is the 32-byte header plus 159 x 96 index bytes, 15,296 bytes, with a slack of one frame; at the default slice of 4,194,304 ticks that is 72 video slots of 15,296 bytes, 1,101,312 bytes, and 4,615,244 bytes for the three channels, inside the 8 MiB block; a slice of 1 tick gets two video slots), so every scenario delivers audio and the log through the public run call and a run that crosses a frame end delivers its slot; the files of the three options above are written in `runner/hostio.c` only, and an operator file belongs outside the repository.
 
 The runner is not installed (D-24): it is built in both presets (`build/<preset>/runner/ivs-run`) for the gate, and the install package and the installed consumer do not need it.
 
@@ -109,7 +109,7 @@ Never printed: wall time, host paths, the environment, image bytes.
 | `cpu.run_state`, `cpu.fault_reason` | `unreset`, `reset-pending`, `running`, `halted` or `faulted`; `none` or a fault token |
 | `input.events`, `input.consumed`, `input.controller.<0..3>` | counts; 8 upper-case hex digits, or `-` before any run |
 | `digest.cpu`, `.mem`, `.images`, `.instance`, `.composite`, `.video`, `.audio`, `.input`, `.psglog` | 64 lower-case hex |
-| `output.video.bytes`, `output.audio.bytes` | byte counts delivered through the output buffers (video is 0 until Phase 6; audio is the dense sample stream, 4 bytes per sample) |
+| `output.video.bytes`, `output.audio.bytes` | byte counts delivered through the output buffers (video is the sum of the delivered frame slots, 0 for a run that ends before its first frame end at tick 59,736; audio is the dense sample stream, 4 bytes per sample) |
 | `output.audio.samples`, `output.audio.changes` | delivered audio bytes over 4; the level-change records the runner itself counted from the delivered bytes |
 | `output.psglog.records`, `output.psglog.bytes` | PSG write-log records and bytes delivered (16 bytes per record) |
 | `audio.sample_ticks` | master ticks between samples (`ivs_info` `audio_sample_ticks`, 16 on the NTSC profile) |
