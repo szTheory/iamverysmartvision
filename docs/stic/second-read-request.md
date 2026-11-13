@@ -1,6 +1,6 @@
 # STIC second-read request
 
-State: `pending: blind reads not yet run`.
+State: `done: blind reads recorded` (2026-11-12, plan 06-14 corrected this line): the four records `docs/stic/second-read-record-regs.md`, `-cards.md`, `-frames.md` and `-geometry.md` exist (registers 64 of 64 rows agree on role and class with 128 mask cells answered unknown, card bit roles 62 of 64 agree with 2 convention differences, frames 10 of 10 identical, geometry 14 of 20 keys agree on value with 6 answered unknown and 0 disagreements on a sourced value).
 This request is written in plan 06-01, the oracle plan that precedes every implementation plan of Phase 6; the blinded copies are built and the readers started by the orchestrator afterwards, and no reader output is committed in plan 06-01.
 
 ## What is to be blind-read
