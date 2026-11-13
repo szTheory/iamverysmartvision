@@ -990,3 +990,7 @@ checkpointC: no-lever
 ### Plan 06-12 hosted row review (orchestrator)
 
 Run 43359195974 (head of plan 06-12): gate 131 s, cpu 433, build 48 s, test 83 s. Single-row `r = 433 / 48 = 9.02`, above the 8.3 trigger; last-five `r` is 7.90, 5.95, 7.64, 7.68, 9.02, median **7.68** (not tripped). The plan was projected to add under 3 percent, but test_s rose 60 to 83 s (38 percent) with the same build time, which the plan's own change (two faults, three pure controls, 78 ids) does not explain, so a noisy runner is the working hypothesis. Decision: no lever pass on one sample (the trigger is defined on the last-five median); the next hosted row, from plan 06-13, is the confirmation. If that row is also at or above 8.3, run the 06-07 lever queue (batch the `cp1610-vectors` re-parse, then the owner-decision `-O0` fault objects) before plan 06-14. Recorded so the outlier is not silently absorbed.
+
+### Plan 06-13 hosted row review (orchestrator)
+
+Run 43365038335 (head of plan 06-13, which adds the fourth image, three scenarios, seven mutant cases and the consumer third replay): gate 87 s, cpu 271, build 36 s, test about 51 s, `r = 271 / 36 = 7.53`. This confirms the 06-12 row (`r` 9.02) was runner noise: the last-five `r` is 7.64, 7.68, 9.02, 7.53 and the row before, median about 7.64, under the 8.3 trigger. No lever pass is needed; the lever queue stays queued. Raw gate 87 s and cpu 271 are under the raw budgets (90 and 300).
