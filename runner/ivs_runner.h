@@ -78,6 +78,17 @@ uint32_t ivs_runner_outcome_resolve(uint32_t observed_mask);
  *   assert audio at <tick> A=<n> B=<n> C=<n>   (the levels of the sample stamped <tick>; the tick
  *       must be a multiple of the real audio_sample_ticks, checked at run time; needs
  *       `capture audio`)
+ *   capture video <first> <count>              (plan 06-12: keep the delivered frames with index first ..
+ *       first + count - 1, count 1 to 16, for the frame asserts below; once, anywhere after `ivss 1`)
+ *   assert frame <n> pixel <x> <y> ==|!= <0..15|blank>   (a position of the published plane of frame n)
+ *   assert frame <n> hash ==|!= <64 hex>       (SHA-256 of the canonical text form of frame n: height lines
+ *       of width upper-case hex digits, each ending in LF; a frame with a blank position cannot be
+ *       hash-asserted, harness failure hash-needs-colors-only)
+ *   assert frame <n> displayed ==|!= yes|no    (the displayed flag of the slot header)
+ *       (the three frame forms need `capture video` and frame n inside its window, else the run ends
+ *       harness-fail frame-not-captured)
+ *   assert video count ==|!= <n>               (frames delivered so far)
+ *   assert video chain ==|!= <64 hex>          (the chain value the runner recomputed after the last delivered frame)
  *   input at_tick=<n>|at_cycle=<n> c0=<names|0xHEX> c1=<names|0xHEX>
  * Header directives (id, profile, content, expect-load, expect-sha256, wall-timeout-ms) come
  * before the first run-to; singletons (per role for content and expect-*) appear once. Steps
@@ -89,7 +100,7 @@ uint32_t ivs_runner_outcome_resolve(uint32_t observed_mask);
  * the reserved bit 31 is refused. `at_frame=` is refused until Phase 6. Numbers are decimal
  * digits only (no sign); HHHH and AAAA are four upper-case hex digits. A scenario names no
  * output file, no rate and no system image path. Caps: 64 KiB, 512 lines, 256 bytes per line (LF
- * not counted), 64 steps, 64 asserts, 64 input lines, 4096 capture entries per target. */
+ * not counted), 64 steps, 64 asserts, 64 input lines, 4096 capture entries per target, 16 captured video frames. */
 #define IVS_SCN_MAX_BYTES 65536u
 #define IVS_SCN_MAX_LINES 512u
 #define IVS_SCN_MAX_LINE_BYTES 256u
@@ -97,6 +108,7 @@ uint32_t ivs_runner_outcome_resolve(uint32_t observed_mask);
 #define IVS_SCN_MAX_ASSERTS 64u
 #define IVS_SCN_MAX_INPUTS 64u
 #define IVS_SCN_CAPTURE_MAX 4096u /* entries kept per capture target (plan 05-09, D-20) */
+#define IVS_SCN_CAPTURE_VIDEO_MAX 16u /* frames kept by `capture video` (plan 06-12, D-17) */
 #define IVS_SCN_MAX_PATH 200u
 #define IVS_SCN_MAX_ID 48u
 #define IVS_SCN_MAX_PROFILE 64u
@@ -135,18 +147,26 @@ uint32_t ivs_runner_outcome_resolve(uint32_t observed_mask);
 #define IVS_SCN_SUBJ_DIGEST 5u
 #define IVS_SCN_SUBJ_PSGLOG 6u
 #define IVS_SCN_SUBJ_AUDIO 7u
+#define IVS_SCN_SUBJ_FRAME 8u /* plan 06-12 (appended) */
+#define IVS_SCN_SUBJ_VIDEO 9u
 /* The form of a PSGLOG or AUDIO assert (ivs_scenario_assert.form), and the fields a record form
  * names (ivs_scenario_assert.fields), and the capture targets (ivs_scenario.capture bits). */
 #define IVS_SCN_FORM_COUNT 1u   /* psglog count */
 #define IVS_SCN_FORM_RECORD 2u  /* psglog <i> fields */
 #define IVS_SCN_FORM_EMITTED 3u /* audio emitted */
 #define IVS_SCN_FORM_AT 4u      /* audio at <tick> A B C */
+#define IVS_SCN_FORM_PIXEL 5u     /* frame <n> pixel <x> <y>; value in level[0] (IVS_SCN_PIXEL_BLANK: blank) */
+#define IVS_SCN_FORM_HASH 6u      /* frame <n> hash; sha256 */
+#define IVS_SCN_FORM_DISPLAYED 7u /* frame <n> displayed; value 1 yes, 0 no */
+#define IVS_SCN_FORM_CHAIN 8u     /* video chain; sha256 (video count reuses IVS_SCN_FORM_COUNT) */
+#define IVS_SCN_PIXEL_BLANK 0xFFu /* the blank value in the level[0] of a pixel assert */
 #define IVS_SCN_FIELD_TICK 0x1u
 #define IVS_SCN_FIELD_ADDR 0x2u
 #define IVS_SCN_FIELD_VALUE 0x4u
 #define IVS_SCN_FIELD_SOURCE 0x8u
 #define IVS_SCN_CAPTURE_PSGLOG 0x1u
 #define IVS_SCN_CAPTURE_AUDIO 0x2u
+#define IVS_SCN_CAPTURE_VIDEO 0x4u
 #define IVS_SCN_OP_EQ 1u
 #define IVS_SCN_OP_NE 2u
 
@@ -207,7 +227,11 @@ uint32_t ivs_runner_outcome_resolve(uint32_t observed_mask);
 #define IVS_SCN_R_BAD_PSGLOG_ASSERT 47u    /* a malformed `assert psglog` (form, index, field, value) */
 #define IVS_SCN_R_BAD_AUDIO_ASSERT 48u     /* a malformed `assert audio` */
 #define IVS_SCN_R_ASSERT_WITHOUT_CAPTURE 49u /* a record or `at` assert with no capture of its target */
-#define IVS_SCN_R_COUNT 50u
+/* Plan 06-12 (appended): the video capture and the frame and video asserts. */
+#define IVS_SCN_R_BAD_CAPTURE_VIDEO 50u    /* `capture video` with arguments out of range or count above 16 */
+#define IVS_SCN_R_BAD_FRAME_ASSERT 51u     /* a malformed `assert frame` */
+#define IVS_SCN_R_BAD_VIDEO_ASSERT 52u     /* a malformed `assert video` */
+#define IVS_SCN_R_COUNT 53u
 
 typedef struct ivs_scenario_content {
   uint32_t kind; /* IVS_SCN_CONTENT_* */
@@ -237,7 +261,7 @@ typedef struct ivs_scenario_assert {
   uint32_t step;      /* index of the run-to this checkpoint follows */
   uint32_t subject;   /* IVS_SCN_SUBJ_* */
   uint32_t op;        /* IVS_SCN_OP_* */
-  uint32_t index;     /* register number (REG) or IVS_DIGEST_* domain (DIGEST) */
+  uint32_t index;     /* register number (REG) or IVS_DIGEST_* domain (DIGEST); FRAME pixel: x */
   uint16_t addr_lo;   /* MEM, MEM_RANGE */
   uint16_t addr_hi;   /* MEM_RANGE; equals addr_lo for MEM */
   uint16_t value;     /* HALTED (1 yes, 0 no), REG, MEM, MEM_RANGE; PSGLOG record: the raw value */
@@ -245,11 +269,12 @@ typedef struct ivs_scenario_assert {
   /* Plan 05-09 (PSGLOG and AUDIO subjects). index is the record number of a PSGLOG record form. */
   uint32_t form;      /* IVS_SCN_FORM_* */
   uint32_t fields;    /* PSGLOG record: IVS_SCN_FIELD_* named; AUDIO at: 0x7 (A, B, C) */
-  uint32_t addr;      /* PSGLOG record: addr= (0..15) */
+  uint32_t addr;      /* PSGLOG record: addr= (0..15); FRAME pixel: y */
   uint32_t source;    /* PSGLOG record: source= (IVS_PSGLOG_SRC_*) */
-  uint32_t level[3];  /* AUDIO at: A, B, C (0..255) */
+  uint32_t level[3];  /* AUDIO at: A, B, C (0..255); FRAME pixel: level[0] the color 0..15 or IVS_SCN_PIXEL_BLANK */
   uint32_t reserved;
-  uint64_t num;       /* PSGLOG count and AUDIO emitted: the number; record: tick=; at: the tick */
+  uint64_t num;       /* PSGLOG count and AUDIO emitted: the number; record: tick=; at: the tick; FRAME: the frame
+                         number n; VIDEO count: the number */
 } ivs_scenario_assert;
 
 typedef struct ivs_scenario_input {
@@ -273,7 +298,9 @@ typedef struct ivs_scenario {
   uint32_t n_inputs;
   ivs_scenario_input inputs[IVS_SCN_MAX_INPUTS];
   uint32_t capture;         /* IVS_SCN_CAPTURE_* bits (plan 05-09) */
-  uint32_t capture_line[2]; /* line of `capture psglog`, `capture audio` (0: none) */
+  uint32_t capture_line[3]; /* line of `capture psglog`, `capture audio`, `capture video` (0: none) */
+  uint32_t video_first;     /* `capture video`: the first frame index kept (plan 06-12) */
+  uint32_t video_count;     /* ... and how many (1..IVS_SCN_CAPTURE_VIDEO_MAX); 0 without the directive */
 } ivs_scenario;
 
 typedef struct ivs_scenario_error {
@@ -324,9 +351,11 @@ const char *ivs_scenario_input_name(uint32_t i, uint32_t *mask);
 #define IVS_RUNNER_CAP_CART 131256u
 #define IVS_RUNNER_STORAGE_MAX (64u * 1024u * 1024u) /* D-22: storage cap */
 /* Host storage the captures need after the instance and the read buffer (plan 05-09): 4096 write-log
- * records of 16 bytes and 4096 audio level-change entries of 12 bytes. Only a scenario with a
- * capture directive needs it. */
-#define IVS_RUNNER_CAPTURE_BYTES (IVS_SCN_CAPTURE_MAX * 16u + IVS_SCN_CAPTURE_MAX * 12u)
+ * records of 16 bytes, 4096 audio level-change entries of 12 bytes and, from plan 06-12, 16 video slots of
+ * 15,296 bytes (244,736). Only a scenario with a capture directive needs it. */
+#define IVS_RUNNER_VIDEO_SLOT_MAX 15296u /* bytes of one video slot the capture store holds (32 + 159 x 96) */
+#define IVS_RUNNER_CAPTURE_BYTES \
+  (IVS_SCN_CAPTURE_MAX * 16u + IVS_SCN_CAPTURE_MAX * 12u + IVS_SCN_CAPTURE_VIDEO_MAX * IVS_RUNNER_VIDEO_SLOT_MAX)
 #define IVS_RUNNER_BUFFERS_MAX (8u * 1024u * 1024u)  /* D-22: output buffer cap */
 #define IVS_RUNNER_BOOT_STUB_FILE "boot-stub.exec"   /* reserved name under the content dir */
 
@@ -384,6 +413,14 @@ typedef struct ivs_runner_host {
    * write error (harness-fail `wav-out`). The library names no file: a scenario cannot ask for one. */
   int (*write_wav_pcm)(void *ctx, const uint8_t *pcm, size_t len);
   int (*finish_wav)(void *ctx, const uint8_t header[44], uint8_t sha256[32]);
+  /* Operator-only raw video output (plan 06-12, D-17; NULL: not requested). write_video_raw gets the frame
+   * slots each slice delivered (header and rows exactly as the core wrote them, so the stream is
+   * self-describing), in order, before the video chain check reads them. Returns 0, or nonzero on a write
+   * error (harness-fail `video-out`); the byte bound is options.video_out_max_bytes (harness-fail
+   * `video-out-max-bytes`). The library names no file: a scenario cannot ask for one. A frame export
+   * (write_frame_ppm) takes the last delivered frame after the run and is never evidence. */
+  int (*write_video_raw)(void *ctx, const uint8_t *bytes, size_t len);
+  int (*write_frame_ppm)(void *ctx, const uint8_t *plane, uint32_t width, uint32_t height);
 } ivs_runner_host;
 
 /* Slicing, budget and wall cap (D-21, plan 04-19). Every run-to is executed as slices of at most
@@ -402,6 +439,7 @@ typedef struct ivs_runner_host {
 #define IVS_RUNNER_MAX_TICKS_DEFAULT UINT64_C(1099511627776)  /* 1 << 40 master ticks */
 #define IVS_RUNNER_WALL_MS_DEFAULT 30000u                    /* D-22: default wall cap */
 #define IVS_RUNNER_AUDIO_OUT_MAX_DEFAULT UINT64_C(268435456) /* 256 MiB: default bound of an operator raw output */
+#define IVS_RUNNER_VIDEO_OUT_MAX_DEFAULT UINT64_C(268435456) /* 256 MiB: default bound of --video-raw (plan 06-12) */
 
 /* Executor options (may be NULL: every default). A value outside its range is harness-fail
  * without a report. */
@@ -415,6 +453,7 @@ typedef struct ivs_runner_options {
   uint32_t wav_rate;            /* output rate of the operator WAV (plan 05-10): 44100 or 48000, 0: 48000; any other
                                    value is harness-fail without a report */
   uint32_t reserved;            /* must be 0 */
+  uint64_t video_out_max_bytes; /* bytes the operator raw video output may take (plan 06-12), 0: the default */
 } ivs_runner_options;
 
 /* The WAV rates the reference converter accepts (plan 05-10, D-21): 44100 and 48000 only. */
@@ -502,6 +541,19 @@ typedef struct ivs_runner_record {
   uint32_t audio_sample_ticks; /* ivs_info audio_sample_ticks; 0 when there is no machine */
   uint32_t chain_check;        /* IVS_RUNNER_CHAIN_* */
   uint64_t host_calls;
+  /* Plan 06-12 (ivsr 3): the video keys. video_frames sums video_frames_completed of every run call; the
+   * geometry and row lines come from ivs_info (0 before any machine); video_last_tick is the last frame
+   * end the report named (video_have_frame 0 before any frame); video_delivered counts delivered slots. */
+  uint64_t video_frames;
+  uint64_t video_delivered;
+  uint64_t video_last_tick;
+  uint32_t video_have_frame;
+  uint32_t video_width;
+  uint32_t video_height;
+  uint32_t video_row_lines;
+  uint32_t video_chain_check; /* IVS_RUNNER_CHAIN_* */
+  uint32_t video_reserved;
+  uint8_t video_chain[32];    /* the chain value the runner recomputed */
   uint32_t refpcm_requested;   /* an operator WAV was asked for: the refpcm.* keys are printed (plan 05-10) */
   uint32_t refpcm_rate;        /* the WAV rate */
   uint64_t refpcm_frames;      /* PCM frames written; printed only when refpcm_sha_set (else `-`) */

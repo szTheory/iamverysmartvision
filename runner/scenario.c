@@ -15,7 +15,7 @@
 #include "ivs/ivs.h"
 #include "ivs_runner.h"
 
-#define SCN_TOKS 8u /* longest directive has 7 tokens (assert audio at, assert psglog with four fields); an 8th marks "too many" */
+#define SCN_TOKS 9u /* longest directive has 8 tokens (assert frame pixel); a 9th marks "too many" */
 
 typedef struct scn_tok {
   const uint8_t *p;
@@ -651,11 +651,112 @@ static uint32_t assert_audio(ivs_scenario_assert *a, const scn_line *l)
   return IVS_SCN_R_NONE;
 }
 
+/* `assert frame <n> pixel <x> <y> ==|!= <0..15|blank>`, `assert frame <n> hash ==|!= <64 hex>` and
+ * `assert frame <n> displayed ==|!= yes|no` (plan 06-12). Any malformation is bad-frame-assert; the
+ * frame number is the slot's index (at most 2^31 - 1, so it is also a valid `capture video` first). */
+static uint32_t assert_frame(ivs_scenario_assert *a, const scn_line *l)
+{
+  uint64_t n = 0u;
+  uint64_t x = 0u;
+  uint64_t y = 0u;
+  uint64_t v = 0u;
+  a->subject = IVS_SCN_SUBJ_FRAME;
+  if (l->n < 4u || parse_dec(l->t[2], &n) != IVS_SCN_R_NONE || n > 0x7FFFFFFFu) {
+    return IVS_SCN_R_BAD_FRAME_ASSERT;
+  }
+  a->num = n;
+  if (tok_is(l->t[3], "pixel")) {
+    if (l->n != 8u || parse_dec(l->t[4], &x) != IVS_SCN_R_NONE || x > 65535u || parse_dec(l->t[5], &y) != IVS_SCN_R_NONE ||
+        y > 65535u || parse_op(l->t[6], &a->op) != IVS_SCN_R_NONE) {
+      return IVS_SCN_R_BAD_FRAME_ASSERT;
+    }
+    if (tok_is(l->t[7], "blank")) {
+      v = IVS_SCN_PIXEL_BLANK;
+    } else if (parse_dec(l->t[7], &v) != IVS_SCN_R_NONE || v > 15u) {
+      return IVS_SCN_R_BAD_FRAME_ASSERT;
+    }
+    a->form = IVS_SCN_FORM_PIXEL;
+    a->index = (uint32_t)x;
+    a->addr = (uint32_t)y;
+    a->level[0] = (uint32_t)v;
+    return IVS_SCN_R_NONE;
+  }
+  if (tok_is(l->t[3], "hash")) {
+    if (l->n != 6u || parse_op(l->t[4], &a->op) != IVS_SCN_R_NONE || !parse_sha256(l->t[5], a->sha256)) {
+      return IVS_SCN_R_BAD_FRAME_ASSERT;
+    }
+    a->form = IVS_SCN_FORM_HASH;
+    return IVS_SCN_R_NONE;
+  }
+  if (tok_is(l->t[3], "displayed")) {
+    if (l->n != 6u || parse_op(l->t[4], &a->op) != IVS_SCN_R_NONE) {
+      return IVS_SCN_R_BAD_FRAME_ASSERT;
+    }
+    if (tok_is(l->t[5], "yes")) {
+      a->value = 1u;
+    } else if (!tok_is(l->t[5], "no")) {
+      return IVS_SCN_R_BAD_FRAME_ASSERT;
+    }
+    a->form = IVS_SCN_FORM_DISPLAYED;
+    return IVS_SCN_R_NONE;
+  }
+  return IVS_SCN_R_BAD_FRAME_ASSERT;
+}
+
+/* `assert video count ==|!= <n>` and `assert video chain ==|!= <64 hex>` (plan 06-12). */
+static uint32_t assert_video(ivs_scenario_assert *a, const scn_line *l)
+{
+  uint64_t n = 0u;
+  a->subject = IVS_SCN_SUBJ_VIDEO;
+  if (l->n != 5u || parse_op(l->t[3], &a->op) != IVS_SCN_R_NONE) {
+    return IVS_SCN_R_BAD_VIDEO_ASSERT;
+  }
+  if (tok_is(l->t[2], "count")) {
+    if (parse_dec(l->t[4], &n) != IVS_SCN_R_NONE) {
+      return IVS_SCN_R_BAD_VIDEO_ASSERT;
+    }
+    a->form = IVS_SCN_FORM_COUNT;
+    a->num = n;
+    return IVS_SCN_R_NONE;
+  }
+  if (tok_is(l->t[2], "chain") && parse_sha256(l->t[4], a->sha256)) {
+    a->form = IVS_SCN_FORM_CHAIN;
+    return IVS_SCN_R_NONE;
+  }
+  return IVS_SCN_R_BAD_VIDEO_ASSERT;
+}
+
+/* `capture video <first> <count>` (plan 06-12): the frames with index first .. first + count - 1 are kept, count 1 to
+ * IVS_SCN_CAPTURE_VIDEO_MAX; once, anywhere after the header. */
+static uint32_t dir_capture_video(ivs_scenario *s, const scn_line *l, uint32_t line)
+{
+  uint64_t first = 0u;
+  uint64_t count = 0u;
+  if (l->n != 4u) {
+    return IVS_SCN_R_BAD_ARITY;
+  }
+  if (parse_dec(l->t[2], &first) != IVS_SCN_R_NONE || parse_dec(l->t[3], &count) != IVS_SCN_R_NONE || first > 0x7FFFFFFFu ||
+      count == 0u || count > IVS_SCN_CAPTURE_VIDEO_MAX) {
+    return IVS_SCN_R_BAD_CAPTURE_VIDEO;
+  }
+  if ((s->capture & IVS_SCN_CAPTURE_VIDEO) != 0u) {
+    return IVS_SCN_R_DUPLICATE_CAPTURE;
+  }
+  s->capture |= IVS_SCN_CAPTURE_VIDEO;
+  s->capture_line[2] = line;
+  s->video_first = (uint32_t)first;
+  s->video_count = (uint32_t)count;
+  return IVS_SCN_R_NONE;
+}
+
 /* `capture psglog|audio`: once per target, anywhere after the header (plan 05-09). */
 static uint32_t dir_capture(ivs_scenario *s, const scn_line *l, uint32_t line)
 {
   uint32_t bit;
   uint32_t idx;
+  if (l->n >= 2u && tok_is(l->t[1], "video")) {
+    return dir_capture_video(s, l, line);
+  }
   if (l->n != 2u) {
     return IVS_SCN_R_BAD_ARITY;
   }
@@ -755,11 +856,20 @@ static uint32_t dir_assert(ivs_scenario *s, const scn_line *l, uint32_t line)
     } else if (!parse_hex4(l->t[4], &a.value)) {
       return IVS_SCN_R_BAD_VALUE;
     }
-  } else if (tok_is(l->t[1], "psglog") || tok_is(l->t[1], "audio")) {
+  } else if (tok_is(l->t[1], "psglog") || tok_is(l->t[1], "audio") || tok_is(l->t[1], "frame") ||
+             tok_is(l->t[1], "video")) {
     if (l->n < 3u) {
       return IVS_SCN_R_BAD_ARITY;
     }
-    r = tok_is(l->t[1], "psglog") ? assert_psglog(&a, l) : assert_audio(&a, l);
+    if (tok_is(l->t[1], "psglog")) {
+      r = assert_psglog(&a, l);
+    } else if (tok_is(l->t[1], "audio")) {
+      r = assert_audio(&a, l);
+    } else if (tok_is(l->t[1], "frame")) {
+      r = assert_frame(&a, l);
+    } else {
+      r = assert_video(&a, l);
+    }
     if (r != IVS_SCN_R_NONE) {
       return r;
     }
@@ -935,7 +1045,8 @@ static uint32_t scn_check_capture(const ivs_scenario *s, uint32_t *line)
   for (uint32_t i = 0u; i < s->n_asserts; i++) {
     const ivs_scenario_assert *a = &s->asserts[i];
     if ((a->form == IVS_SCN_FORM_RECORD && (s->capture & IVS_SCN_CAPTURE_PSGLOG) == 0u) ||
-        (a->form == IVS_SCN_FORM_AT && (s->capture & IVS_SCN_CAPTURE_AUDIO) == 0u)) {
+        (a->form == IVS_SCN_FORM_AT && (s->capture & IVS_SCN_CAPTURE_AUDIO) == 0u) ||
+        (a->subject == IVS_SCN_SUBJ_FRAME && (s->capture & IVS_SCN_CAPTURE_VIDEO) == 0u)) {
       *line = a->line;
       return IVS_SCN_R_ASSERT_WITHOUT_CAPTURE;
     }
@@ -1189,6 +1300,12 @@ const char *ivs_scenario_reason_name(uint32_t reason)
     return "bad-audio-assert";
   case IVS_SCN_R_ASSERT_WITHOUT_CAPTURE:
     return "assert-without-capture";
+  case IVS_SCN_R_BAD_CAPTURE_VIDEO:
+    return "bad-capture-video";
+  case IVS_SCN_R_BAD_FRAME_ASSERT:
+    return "bad-frame-assert";
+  case IVS_SCN_R_BAD_VIDEO_ASSERT:
+    return "bad-video-assert";
   default:
     return "unknown";
   }

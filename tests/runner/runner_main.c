@@ -253,7 +253,11 @@ static const char *runner_case_id(const void *data, size_t i)
   if (i < runner_time_count()) {
     return runner_time_id(i);
   }
-  return runner_refpcm_id(i - runner_time_count());
+  i -= runner_time_count();
+  if (i < runner_refpcm_count()) {
+    return runner_refpcm_id(i);
+  }
+  return runner_vchain_id(i - runner_refpcm_count());
 }
 
 static int runner_case_run(const void *data, size_t i)
@@ -278,7 +282,11 @@ static int runner_case_run(const void *data, size_t i)
   if (i < runner_time_count()) {
     return runner_time_run(i);
   }
-  return runner_refpcm_run(i - runner_time_count());
+  i -= runner_time_count();
+  if (i < runner_refpcm_count()) {
+    return runner_refpcm_run(i);
+  }
+  return runner_vchain_run(i - runner_refpcm_count());
 }
 
 int main(int argc, char **argv)
@@ -287,7 +295,7 @@ int main(int argc, char **argv)
   memset(&suite, 0, sizeof suite);
   suite.name = "runner";
   suite.count = OUTCOME_CASES + runner_parse_count() + runner_fuzz_count() + runner_exec_count() +
-                runner_time_count() + runner_refpcm_count();
+                runner_time_count() + runner_refpcm_count() + runner_vchain_count();
   suite.id = runner_case_id;
   suite.run = runner_case_run;
   return ivs_test_main(argc, argv, &suite);

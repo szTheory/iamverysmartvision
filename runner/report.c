@@ -504,6 +504,31 @@ void ivs_runner_assert_clause(const ivs_scenario_assert *a, char *out, size_t ca
                      (unsigned)a->level[1], (unsigned)a->level[2]);
     }
     break;
+  case IVS_SCN_SUBJ_FRAME:
+    if (a->form == IVS_SCN_FORM_PIXEL) {
+      if (a->level[0] == IVS_SCN_PIXEL_BLANK) {
+        (void)snprintf(out, cap, "frame %llu pixel %u %u %s blank", (unsigned long long)a->num, (unsigned)a->index,
+                       (unsigned)a->addr, op);
+      } else {
+        (void)snprintf(out, cap, "frame %llu pixel %u %u %s %u", (unsigned long long)a->num, (unsigned)a->index,
+                       (unsigned)a->addr, op, (unsigned)a->level[0]);
+      }
+    } else if (a->form == IVS_SCN_FORM_HASH) {
+      rp_hex(a->sha256, hex);
+      (void)snprintf(out, cap, "frame %llu hash %s %s", (unsigned long long)a->num, op, hex);
+    } else {
+      (void)snprintf(out, cap, "frame %llu displayed %s %s", (unsigned long long)a->num, op,
+                     a->value != 0u ? "yes" : "no");
+    }
+    break;
+  case IVS_SCN_SUBJ_VIDEO:
+    if (a->form == IVS_SCN_FORM_COUNT) {
+      (void)snprintf(out, cap, "video count %s %llu", op, (unsigned long long)a->num);
+    } else {
+      rp_hex(a->sha256, hex);
+      (void)snprintf(out, cap, "video chain %s %s", op, hex);
+    }
+    break;
   default:
     (void)snprintf(out, cap, "unknown");
     break;
