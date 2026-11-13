@@ -55,7 +55,6 @@
 #define AS_MAX_LINES 4096u
 #define AS_MAX_WORDS 4096u
 #define AS_MAX_SYMS 256u
-#define AS_MAX_HEADER 32u
 #define AS_MAX_PATH 200u
 #define AS_NAME_MAX 31u
 #define AS_WORD_MAX 0x03FFu
@@ -912,14 +911,21 @@ static int as_load(const char *path)
   return !as_g.failed;
 }
 
-/* The leading header block: `# key: value` lines (key lower-case letters, value not empty). The
- * `window` line is required, once, as AAAA-BBBB. */
+/* The keys of the header grammar of the listing checker (docs/diagnostics.md); the window key is the fifth. */
+static const char *const as_hkeys[] = {"id", "kind", "contract", "profile", "window", "label", "entry", "stack"};
+#define AS_NKEYS (sizeof as_hkeys / sizeof as_hkeys[0])
+#define AS_WINDOW_KEY 4u
+
+/* The leading header block: `# key: value` lines (key lower-case letters, value not empty), each key one of
+ * as_hkeys and given once. The `window` line is required, as AAAA-BBBB. */
 static void as_header(void)
 {
-  int have_window = 0;
+  unsigned seen = 0u;
   for (; as_g.nhdr < as_g.nlines && !as_g.failed; as_g.nhdr++) {
     const char *s = as_g.line[as_g.nhdr];
     size_t k = 2u;
+    size_t key = AS_NKEYS;
+    size_t i;
     as_g.lineno = (unsigned long)as_g.nhdr + 1ul;
     while (s[0] == '#' && s[1] == ' ' && s[k] >= 'a' && s[k] <= 'z') {
       k++;
@@ -927,18 +933,23 @@ static void as_header(void)
     if (s[0] != '#' || s[1] != ' ' || k == 2u || s[k] != ':' || s[k + 1u] != ' ' || s[k + 2u] == '\0') {
       break;
     }
-    if (as_g.nhdr == AS_MAX_HEADER) {
-      as_fail("asm-limit", "more than 32 header lines", "");
-    } else if (k == 8u && strncmp(s + 2, "window", 6u) == 0) {
-      const char *v = s + 10;
-      if (have_window || strlen(v) != 9u || v[4] != '-' || !as_hex4(v, &as_g.win_lo) || !as_hex4(v + 5, &as_g.win_hi)
-          || as_g.win_lo > as_g.win_hi) {
-        as_fail("asm-header", "window given twice or not AAAA-BBBB (low to high): ", v);
-      }
-      have_window = 1;
+    for (i = 0u; i < AS_NKEYS; i++) {
+      key = strlen(as_hkeys[i]) == k - 2u && strncmp(s + 2, as_hkeys[i], k - 2u) == 0 ? i : key;
     }
+    if (key == AS_NKEYS) {
+      as_fail("asm-header", "a header key is one of id kind contract profile window label entry stack: ", s + 2);
+    } else if (((seen >> key) & 1u) != 0u) {
+      as_fail("asm-header", "header key given twice: ", s + 2);
+    } else if (key == AS_WINDOW_KEY) {
+      const char *v = s + 10;
+      if (strlen(v) != 9u || v[4] != '-' || !as_hex4(v, &as_g.win_lo) || !as_hex4(v + 5, &as_g.win_hi)
+          || as_g.win_lo > as_g.win_hi) {
+        as_fail("asm-header", "the window is AAAA-BBBB (low to high): ", v);
+      }
+    }
+    seen |= 1u << key;
   }
-  if (!have_window && !as_g.failed) {
+  if ((seen & (1u << AS_WINDOW_KEY)) == 0u && !as_g.failed) {
     as_g.lineno = 1ul;
     as_fail("asm-header", "no '# window: AAAA-BBBB' header line", "");
   }

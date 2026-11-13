@@ -1,0 +1,27 @@
+# Refusal tokens of ivs_asm (plan 07-04, T5, D-17): one token per line, the exact set the tool can print.
+# A refusal is one stderr line `ivs_asm: <token>: <source>:<line>: <detail>`, exit status 1, no output file.
+# The suite asm (tests/asm-tap.sh) pins this list three ways: every token has exactly one case
+# asm.neg.<token> (a source tests/asm/neg/<token>.asm, or one built at run time for asm-syntax, a CR line
+# end, and asm-limit, a line above 255 bytes); every token the source tools/asm/asm.c can print is in this
+# list; and every file in tests/asm/neg names a token of this list. Adjust it only with a reason in the
+# summary of the plan that changes it.
+asm-syntax
+asm-mnemonic
+asm-operand-count
+asm-operand-kind
+asm-register
+asm-symbol-undefined
+asm-symbol-duplicate
+asm-symbol-reserved
+asm-expr
+asm-imm-range
+asm-imm-sdbd
+asm-sdbd-target
+asm-direct-range
+asm-branch-range
+asm-decle-range
+asm-org
+asm-window
+asm-spelling
+asm-header
+asm-limit

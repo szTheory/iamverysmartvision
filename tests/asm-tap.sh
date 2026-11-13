@@ -12,6 +12,13 @@
 # Pairs (plan 07-04 Task 2, the second outside check): tests/asm/pairs.txt, a flat copy of hand-derived
 # asm and word pairs of the Phase 2 vectors, is assembled by one `ivs_asm --pairs` process; asm.pairs.<class>
 # passes when every pair of that class printed ok and none printed bad. No JSON is read here.
+# Refusals (plan 07-04 Task 3, T5): data/expected/asm-tokens.ids pins the tokens of ivs_asm. asm.neg.<token> runs
+# the one source of that token (tests/asm/neg/<token>.asm; asm-syntax, a CR line end, and asm-limit, a line
+# above 255 bytes, are built here at run time because a tracked file may hold no CR) and requires exit 1, no
+# stdout, exactly one stderr line `ivs_asm: <token>: ...` and no output file. asm.neg-coverage fails when the
+# pinned tokens differ from the tokens tools/asm/asm.c can print or a file under tests/asm/neg names no pinned
+# token. asm.var.<slug> are further sources for tokens with several spellings or orders; asm.boundary.branch-03ff
+# is the accepted half of the displacement boundary (the refused half, 0400, is asm.neg.asm-branch-range).
 # Ids: asm.twin-<id> per twin (boot-stub 22 words, diag-cpu-1 56, diag-ctrl-psg-1 89, diag-stic-1 133 with its
 # data table as DECLE words, which is 300 words in all); asm.repeat: one twin assembled
 # twice into two files is byte-identical, the determinism contract of the tool; asm.judge.mutated-twin is the
@@ -216,6 +223,116 @@ else
     ok=0
     { printf 'judge-wrong-reason: not exactly one bad line for corpus line %s:\n' "$first"; grep -v '^ok ' "$tmp/mut.out"; } > "$tmp/why"
   fi
+fi
+report
+
+# ---- Refusals (plan 07-04 Task 3, T5) ----
+grep -v '^#' data/expected/asm-tokens.ids | awk 'NF { print $1 }' > "$tmp/tokens"
+mkdir -p "$tmp/gen"
+neg_head='# id: neg\n# kind: cart\n# window: 5000-5FFF\n        ORG   $5000\n'
+{ printf '%b' "$neg_head"; printf '        HLT\r\n'; } > "$tmp/gen/asm-syntax.asm"
+{ printf '%b' "$neg_head"; awk 'BEGIN { printf "; "; for (i = 0; i < 300; i++) printf "x"; printf "\n" }'; } > "$tmp/gen/asm-limit.asm"
+# 0 when ivs_asm run in directory $2 on the source $3 (a relative path) refuses it with exactly the token $1 on one
+# stderr line, exit status 1, nothing on stdout and no output file; otherwise 1 with the finding in $tmp/why.
+neg_run() {
+  rm -f "$tmp/neg.listing" "$tmp/neg.listing.tmp"
+  (cd "$2" && "$asm" "$3" "$tmp/neg.listing") > "$tmp/neg.out" 2> "$tmp/neg.err" < /dev/null
+  neg_rc=$?
+  if [ "$neg_rc" -ne 1 ]; then
+    printf 'expected exit 1 with the token %s, got exit %s\n' "$1" "$neg_rc" > "$tmp/why"
+  elif [ -s "$tmp/neg.out" ]; then
+    printf 'a refusal wrote on stdout\n' > "$tmp/why"
+  elif [ "$(wc -l < "$tmp/neg.err" | tr -d ' ')" -ne 1 ] || ! grep -q "^ivs_asm: $1: " "$tmp/neg.err"; then
+    { printf 'expected exactly one stderr line ivs_asm: %s: ..., got:\n' "$1"; cat "$tmp/neg.err"; } > "$tmp/why"
+  elif [ -e "$tmp/neg.listing" ] || [ -e "$tmp/neg.listing.tmp" ]; then
+    printf 'a refusal left an output file\n' > "$tmp/why"
+  else
+    return 0
+  fi
+  return 1
+}
+while read -r tok; do
+  [ -n "$tok" ] || continue
+  n=$((n + 1))
+  tid="asm.neg.$tok"
+  executed=$((executed + 1))
+  ok=1
+  if [ -f "tests/asm/neg/$tok.asm" ]; then
+    neg_run "$tok" "$PWD" "tests/asm/neg/$tok.asm" || ok=0
+  elif [ -f "$tmp/gen/$tok.asm" ]; then
+    neg_run "$tok" "$tmp/gen" "$tok.asm" || ok=0
+  else
+    ok=0
+    printf 'no case for the pinned token %s\n' "$tok" > "$tmp/why"
+  fi
+  report
+done < "$tmp/tokens"
+
+# asm.neg-coverage: the pinned tokens are the tokens the source can print, once each, and every file of
+# tests/asm/neg is the one case of a pinned token (never of a token that is built at run time).
+n=$((n + 1))
+tid=asm.neg-coverage
+executed=$((executed + 1))
+ok=1
+: > "$tmp/why"
+sort "$tmp/tokens" > "$tmp/tokens.sorted"
+sort -u "$tmp/tokens" | cmp -s - "$tmp/tokens.sorted" || { ok=0; printf 'a token is pinned twice\n' >> "$tmp/why"; }
+grep -v '^asm-[a-z-][a-z-]*$' "$tmp/tokens" | sed 's/^/malformed token: /' >> "$tmp/why"
+grep -o '"asm-[a-z-]*"' tools/asm/asm.c | tr -d '"' | sort -u > "$tmp/src.tokens"
+if ! cmp -s "$tmp/src.tokens" "$tmp/tokens.sorted"; then
+  ok=0
+  { printf 'tokens printed by tools/asm/asm.c (<) against pinned tokens (>)\n'; diff "$tmp/src.tokens" "$tmp/tokens.sorted"; } >> "$tmp/why"
+fi
+for f in tests/asm/neg/*; do
+  b=${f##*/}
+  t=${b%.asm}
+  if [ "$t" = "$b" ] || ! grep -q -x -F -e "$t" "$tmp/tokens"; then
+    ok=0
+    printf '%s names no pinned token\n' "$f" >> "$tmp/why"
+  elif [ -f "$tmp/gen/$b" ]; then
+    ok=0
+    printf '%s duplicates the case built at run time\n' "$f" >> "$tmp/why"
+  fi
+done
+[ ! -s "$tmp/why" ] || ok=0
+report
+
+# asm.var.<slug>: more sources for tokens with several causes or orders, `slug|token|source lines` (the
+# header and ORG of the negative sources are put in front; \n separates lines).
+variants='spelling-pshr|asm-spelling|        MVO@  R1, R6
+spelling-tstr|asm-spelling|        MOVR  R1, R1
+spelling-jr|asm-spelling|        MOVR  R1, R7
+spelling-clrr|asm-spelling|        XORR  R1, R1
+spelling-immediate|asm-spelling|        MVI@  R7, R1
+sdbd-at-end|asm-sdbd-target|        SDBD
+sdbd-stack-mode|asm-sdbd-target|        SDBD\n        MVI@  R6, R1'
+printf '%s\n' "$variants" > "$tmp/variants"
+while IFS='|' read -r slug tok body; do
+  [ -n "$slug" ] || continue
+  n=$((n + 1))
+  tid="asm.var.$slug"
+  executed=$((executed + 1))
+  ok=1
+  { printf '%b' "$neg_head"; printf '%b\n' "$body"; } > "$tmp/gen/var-$slug.asm"
+  if ! grep -q -x -F -e "$tok" "$tmp/tokens"; then
+    ok=0
+    printf 'the variant names the unpinned token %s\n' "$tok" > "$tmp/why"
+  else
+    neg_run "$tok" "$tmp/gen" "var-$slug.asm" || ok=0
+  fi
+  report
+done < "$tmp/variants"
+
+# asm.boundary.branch-03ff: the displacement 03FF is accepted: the branch at 5000 to 5401 is the words 0200 and 03FF.
+n=$((n + 1))
+tid=asm.boundary.branch-03ff
+executed=$((executed + 1))
+ok=1
+if ! "$asm" tests/asm/pos/branch-03ff.asm "$tmp/pos.listing" 2> "$tmp/why"; then
+  ok=0
+elif ! grep -q '^5000 0200 ' "$tmp/pos.listing" || ! grep -q '^5001 03FF ' "$tmp/pos.listing"; then
+  ok=0
+  printf 'the listing of the 03FF boundary source lacks the words 5000 0200 and 5001 03FF\n' > "$tmp/why"
 fi
 report
 
