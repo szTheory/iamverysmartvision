@@ -155,16 +155,36 @@ static int vs_count_equals_events(void)
   return IVS_TEST_PASS;
 }
 
-/* Interim (plan 06-10 inverts it as a reviewed change): until the card decoder exists a display-on frame is every position not
- * displayed, IVS_PIXEL_BLANK, so it can never be mistaken for a rendered picture. */
-static int vs_display_on_not_decoded(void)
+/* Reviewed inversion (plan 06-10, VID-04): video.frame.display-on-not-decoded pinned the interim display-on frame (every position not
+ * displayed, IVS_PIXEL_BLANK) until the card decoder existed. A display-on Foreground/Background frame is now decoded: with BACKTAB and
+ * graphics memory all zero every word is foreground 0, background 0, graphics ROM card 0 (the zero image), so every published position
+ * is color 0 (and none is the not-displayed sentinel); frame 1 is display off and is the border color 0. The expected values come from
+ * the card rules (data/video/cards.literal.txt), not from a run. */
+static int vs_display_on_fgbg_decoded(void)
 {
   vp_run r;
   uint16_t w[SC_PROG_MAX];
   size_t n = vp_prog_strobe_once(w);
   VC_CHECK(vs_run(&r, w, n, 3u, VS_E1));
-  VC_CHECK(vs_plane_all(r.buf, (uint8_t)IVS_PIXEL_BLANK));
+  VC_CHECK(vs_plane_all(r.buf, 0u));
   VC_CHECK(vs_plane_all(r.buf + VS_SLOT, 0u)); /* frame 1 is display off: the border color 0 */
+  VC_CHECK(vs_be(r.buf + 24u, 4u) == IVS_FRAME_F_DISPLAYED);
+  vp_free(&r);
+  return IVS_TEST_PASS;
+}
+
+/* Interim pin for plan 06-11 to invert: a display-on Color Stack frame is still every position not displayed (IVS_PIXEL_BLANK). The mode
+ * is set directly in the instance state (the mode persists across frames, D-06), so no mode-select read is needed. */
+static int vs_cs_not_decoded(void)
+{
+  vp_run r;
+  uint16_t w[SC_PROG_MAX];
+  size_t n = vp_prog_strobe_once(w);
+  VC_CHECK(vp_new(&r, w, n, 3u * VS_SLOT));
+  ivs_machine_from_handle_mut(r.x.m)->stic.mode = 1u;
+  VC_CHECK(vp_until(&r, VS_E1));
+  VC_CHECK(vs_plane_all(r.buf, (uint8_t)IVS_PIXEL_BLANK));
+  VC_CHECK(vs_be(r.buf + 24u, 4u) == IVS_FRAME_F_DISPLAYED);
   vp_free(&r);
   return IVS_TEST_PASS;
 }
@@ -300,7 +320,8 @@ const ivs_test_case ivs_video_slot_cases[] = {
     {"video.slot.blank-frame-border-fill", vs_blank_frame_border_fill, NULL},
     {"video.slot.displayed-flag-follows-latch", vs_displayed_flag_follows_latch, NULL},
     {"video.frame.count-equals-events", vs_count_equals_events, NULL},
-    {"video.frame.display-on-not-decoded", vs_display_on_not_decoded, NULL},
+    {"video.frame.display-on-fgbg-decoded", vs_display_on_fgbg_decoded, NULL},
+    {"video.frame.cs-not-decoded", vs_cs_not_decoded, NULL},
     {"video.noop.null-buffer", vs_noop_null_buffer, NULL},
     {"video.chain.framing-oracle", vs_chain_framing_oracle, NULL},
     {"video.chain.recompute-from-slots", vs_chain_recompute_from_slots, NULL},

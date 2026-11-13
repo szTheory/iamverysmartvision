@@ -30,6 +30,7 @@ set(IVS_CORE_SOURCES
   src/psg/psg_sample.c
   src/psg/psg_state.c
   src/psg/psg_tone.c
+  src/stic/stic_cards.c
   src/stic/stic_events.c
   src/stic/stic_frame.c
   src/stic/stic_lines.c

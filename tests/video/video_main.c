@@ -56,6 +56,26 @@ static int video_case_run(const void *data, size_t i)
   return c != NULL ? c->fn() : IVS_TEST_FAIL;
 }
 
+/* The `# source` lines: the geometry and chain-framing literals (video_geom.c) then the frame and card literals (video_fgbg.c). */
+static ivs_test_source video_sources[16];
+static void video_collect_sources(ivs_test_suite *suite)
+{
+  size_t n1 = 0u;
+  size_t n2 = 0u;
+  const ivs_test_source *a = vl_source_table(&n1);
+  const ivs_test_source *b = vf_source_table(&n2);
+  size_t i;
+  size_t n = 0u;
+  for (i = 0u; i < n1 && n < 16u; i++) {
+    video_sources[n++] = a[i];
+  }
+  for (i = 0u; i < n2 && n < 16u; i++) {
+    video_sources[n++] = b[i];
+  }
+  suite->sources = video_sources;
+  suite->n_sources = n;
+}
+
 int main(int argc, char **argv)
 {
   ivs_test_suite suite;
@@ -64,6 +84,7 @@ int main(int argc, char **argv)
   video_add(ivs_video_buffers_cases, ivs_video_buffers_count);
   video_add(ivs_video_stop_cases, ivs_video_stop_count);
   video_add(ivs_video_slice_cases, ivs_video_slice_count);
+  video_add(ivs_video_fgbg_cases, ivs_video_fgbg_count);
   if (video_total > VIDEO_MAX_CASES) {
     fprintf(stderr, "video: more than %u cases; raise VIDEO_MAX_CASES\n", VIDEO_MAX_CASES);
     return 1;
@@ -73,6 +94,6 @@ int main(int argc, char **argv)
   suite.count = video_total;
   suite.id = video_case_id;
   suite.run = video_case_run;
-  suite.sources = vl_source_table(&suite.n_sources);
+  video_collect_sources(&suite);
   return ivs_test_main(argc, argv, &suite);
 }

@@ -465,6 +465,13 @@ uint16_t ivs_memsys_stic_backtab_word_internal(const ivs_memsys *m, uint32_t i)
   return i < 240u ? m->sysram[i] : 0u;
 }
 
+uint8_t ivs_memsys_stic_gfx_byte_internal(const ivs_memsys *m, uint32_t sel, uint32_t card, uint32_t y)
+{
+  uint32_t i = card * 8u + y;
+  uint32_t w = sel == 1u ? (uint32_t)m->gram[i & (IVS_MEMSYS_GRAM_WORDS - 1u)] : (uint32_t)m->grom[i & (IVS_MEMSYS_GROM_WORDS - 1u)];
+  return (uint8_t)(w & 0xFFu);
+}
+
 void ivs_memsys_poke_raw_internal(ivs_memsys *m, uint16_t addr, uint16_t value)
 {
   const ivs_profile_desc *p = &ivs_mm_profiles[m->profile];

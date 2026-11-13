@@ -9,7 +9,7 @@ VIDEO_STATE_DEPENDS_ON_BUFFER video.noop.null-buffer video.noop.|video.buffers.|
 VIDEO_CHAIN_FRAMING_STRUCT_HASH video.chain.framing-oracle video.chain. video.geom.profile-derives-159x96
 # STIC_EVENT_ORDER_START_BEFORE_END (core/src/stic/stic_events.c): FRAME_START of the next frame (which clears the display decision) is
 # applied before FRAME_END is rendered, so a displayed frame is delivered with its displayed flag clear.
-STIC_EVENT_ORDER_START_BEFORE_END video.slot.displayed-flag-follows-latch video.slot.|video.frame. video.geom.profile-derives-159x96
+STIC_EVENT_ORDER_START_BEFORE_END video.slot.displayed-flag-follows-latch video.slot.|video.frame.|video.fgbg. video.geom.profile-derives-159x96
 # VIDEO_CAP_PLUS_ONE (core/src/machine/machine_bound.c, plan 06-09, D-15, A-08): the video capacity stage ignores video_slack_frames and
 # applies the Phase 4 + 1 formula, which a call that starts just below a frame event and ends on a unit that crosses the target exceeds
 # by one frame.

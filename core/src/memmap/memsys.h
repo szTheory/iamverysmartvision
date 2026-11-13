@@ -242,6 +242,12 @@ void ivs_memsys_poke_raw_internal(ivs_memsys *m, uint16_t addr, uint16_t value);
  * 240, read from the backing store with no gate, no fill and no access record (never the CPU view). Any other index gives 0. */
 uint16_t ivs_memsys_stic_backtab_word_internal(const ivs_memsys *m, uint32_t i);
 
+/* The STIC's own view of one graphics byte (plan 06-10, D-18, D-19): row y (0 top .. 7) of card `card` in the graphics ROM (sel 0,
+ * grom[(card x 8 + y) and 2047]) or the graphics RAM (sel 1, gram[(card x 8 + y) and 511]), the backing word masked to 8 bits. Pure and
+ * const: no gate, no undriven fill, no access record, no cost, never the CPU view, so a closed graphics window cannot leak the fill
+ * into a pixel and rendering has no read side effect. Any sel other than 1 reads the graphics ROM. */
+uint8_t ivs_memsys_stic_gfx_byte_internal(const ivs_memsys *m, uint32_t sel, uint32_t card, uint32_t y);
+
 /* The hook class of an access of kind IVS_ACC_* at addr: FETCH, READ and ADAR (the operand read of a direct-addressed
  * instruction, which the memory system serves as a read) look in the read table, WRITE and DW in the write table, every
  * other kind is NONE. O(1), pure, depends only on the profile (plan 06-06). */

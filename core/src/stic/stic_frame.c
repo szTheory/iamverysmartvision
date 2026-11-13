@@ -13,9 +13,10 @@
  * buffer is present, so the machine state never depends on a buffer and a sliced run equals one call (the chain is per frame, not per
  * call).
  *
- * Render, interim (until the card decoder of plan 06-10): a display-off frame is filled with the border color index (stic_reg 0x2C and
- * 0xF, video.display_off_fill border, C99); a display-on frame is filled with IVS_PIXEL_BLANK, every position not displayed, so a
- * display-on frame can never be mistaken for a rendered picture. Plan 06-10 inverts the display-on case as a reviewed change.
+ * Render (plan 06-10): a display-off frame is filled with the border color index (stic_reg 0x2C and 0xF, video.display_off_fill border,
+ * C99); a display-on Foreground/Background frame is decoded card row by card row from the row latches and the registers by the pure
+ * renderer of stic_cards.c; a display-on Color Stack frame is filled with IVS_PIXEL_BLANK, every position not displayed (interim until
+ * plan 06-11), so it can never be mistaken for a rendered picture.
  *
  * Named faults (plan 06-09): VIDEO_STATE_DEPENDS_ON_BUFFER (with no buffer the chain and the count do not advance),
  * VIDEO_CHAIN_FRAMING_STRUCT_HASH (the chain hashes an image of a struct instead of the framed bytes). The file holds no static or
@@ -27,6 +28,8 @@
 
 /* The border color register of the STIC register file (stic.regmap, $2C). */
 #define IVS_STIC_REG_BORDER 0x2Cu
+/* The first of the four color-stack registers ($28..$2B). */
+#define IVS_STIC_REG_STACK0 0x28u
 
 uint64_t ivs_stic_next_frame_end(const ivs_stic_params *p, const ivs_stic_state *s)
 {
@@ -53,16 +56,26 @@ void ivs_video_chain_init(ivs_stic_video_row *row)
   ivs_sha256_digest((const uint8_t *)tag, sizeof tag - 1u, row->chain);
 }
 
-uint32_t ivs_stic_render_card_row(const ivs_stic_params *p, const ivs_memsys *mem, uint32_t displayed, uint32_t cr, uint8_t *out)
+uint32_t ivs_stic_render_card_row(const ivs_stic_params *p, const ivs_stic_state *s, const ivs_memsys *mem, uint32_t displayed, uint32_t cr,
+                                  uint8_t *out)
 {
   uint32_t work = p->video_card_columns * p->video_card_w * p->video_card_h;
   uint8_t fill;
-  (void)cr; /* the interim fill is the same for every card row; the card decoder of plan 06-10 reads the row's BACKTAB latch */
   if (work > IVS_STIC_CARDROW_MAX) {
     return 0u;
   }
   if (displayed != 0u) {
-    fill = (uint8_t)p->video_blank_value; /* interim: no card decoder yet, every position is not displayed */
+    if (p->video_card_columns == IVS_STIC_ROW_WORDS && p->video_card_w == 8u && p->video_card_h == 8u && cr < IVS_STIC_LATCH_ROWS) {
+      ivs_stic_cardin in;
+      uint32_t k;
+      in.mode = s->mode;
+      in.border = (uint32_t)mem->stic_reg[IVS_STIC_REG_BORDER] & 0xFu;
+      for (k = 0u; k < 4u; k++) {
+        in.stack[k] = (uint32_t)mem->stic_reg[IVS_STIC_REG_STACK0 + k] & 0xFu;
+      }
+      return ivs_stic_render_cards_row(&in, s->row_latch[cr], mem, out);
+    }
+    fill = (uint8_t)p->video_blank_value; /* a geometry the card decoder does not draw: every position not displayed */
   } else {
     fill = (uint8_t)(mem->stic_reg[IVS_STIC_REG_BORDER] & 0xFu); /* display off: the border color index */
   }
@@ -70,7 +83,7 @@ uint32_t ivs_stic_render_card_row(const ivs_stic_params *p, const ivs_memsys *me
   return work;
 }
 
-uint32_t ivs_stic_render_plane(const ivs_stic_params *p, const ivs_memsys *mem, uint32_t displayed, uint8_t *plane)
+uint32_t ivs_stic_render_plane(const ivs_stic_params *p, const ivs_stic_state *s, const ivs_memsys *mem, uint32_t displayed, uint8_t *plane)
 {
   uint32_t row_bytes = p->video_card_columns * p->video_card_w * p->video_card_h;
   uint32_t cr;
@@ -78,7 +91,7 @@ uint32_t ivs_stic_render_plane(const ivs_stic_params *p, const ivs_memsys *mem, 
     return 0u;
   }
   for (cr = 0u; cr < p->video_card_rows; cr++) {
-    if (ivs_stic_render_card_row(p, mem, displayed, cr, plane + (size_t)cr * row_bytes) == 0u) {
+    if (ivs_stic_render_card_row(p, s, mem, displayed, cr, plane + (size_t)cr * row_bytes) == 0u) {
       return 0u;
     }
   }
@@ -157,7 +170,7 @@ void ivs_stic_frame_deliver(const ivs_stic_params *p, const ivs_stic_state *s, c
   ivs_sha256_update(&ctx, header, sizeof header);
 #endif
   for (cr = 0u; cr < p->video_card_rows; cr++) {
-    if (ivs_stic_render_card_row(p, mem, displayed, cr, cardrow) == 0u) {
+    if (ivs_stic_render_card_row(p, s, mem, displayed, cr, cardrow) == 0u) {
       break;
     }
     for (py = 0u; py < p->video_card_h && y < g.height; py++, y++) {

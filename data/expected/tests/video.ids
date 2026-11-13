@@ -13,7 +13,8 @@ video.slot.plane-stride
 video.slot.blank-frame-border-fill
 video.slot.displayed-flag-follows-latch
 video.frame.count-equals-events
-video.frame.display-on-not-decoded
+video.frame.display-on-fgbg-decoded
+video.frame.cs-not-decoded
 video.noop.null-buffer
 video.chain.framing-oracle
 video.chain.recompute-from-slots
@@ -56,3 +57,6 @@ video.fuzz.seed06
 video.fuzz.seed07
 video.fuzz.seed08
 video.iso.interleaved-instances
+# Plan 06-10 task 1 (VID-04): the pure Foreground/Background card renderer against the hand-derived frame F-A1 of plan 06-01, in the unit path and through the whole machine; the reviewed inversion of video.frame.display-on-not-decoded is video.frame.display-on-fgbg-decoded, and video.frame.cs-not-decoded pins the Color Stack interim for plan 06-11.
+video.fgbg.F-A1
+video.fgbg.machine-F-A1
