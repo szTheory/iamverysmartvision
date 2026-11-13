@@ -1,7 +1,11 @@
 # Suite asm (D-16 to D-19, plan 07-03): the project mini-assembler ivs_asm against the hand-assembled
 # listings. asm.twin-<id>: the twin source under tests/asm/twins/ assembles to words that ivs_pack
 # --dump-words reads exactly as it reads the committed hand listing (the third outside check of the
-# encoding table, D-18). asm.judge.mutated-twin: self-control of that comparison; passes only when it
-# fails on a twin with one register changed and the diff shows that one word.
+# encoding table, D-18); the twins cover the boot stub (22 words) and diag-cpu-1 (56 words).
+# asm.repeat: one twin assembled twice gives byte-identical listings (determinism of the tool).
+# asm.judge.mutated-twin: self-control of the words comparison; passes only when it fails on a twin
+# with one register changed and the diff shows that one word.
 asm.twin-boot-stub
+asm.twin-diag-cpu-1
+asm.repeat
 asm.judge.mutated-twin

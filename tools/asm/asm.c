@@ -270,10 +270,12 @@ static uint32_t as_term(const char **pp)
     }
     name[n < AS_NAME_MAX ? n : AS_NAME_MAX] = '\0';
     s = n > AS_NAME_MAX ? NULL : as_find(name);
-    if (s != NULL) {
-      v = s->value;
+    if (n > AS_NAME_MAX) {
+      as_fail("asm-syntax", "symbol name above 31 characters: ", *pp);
+    } else if (s == NULL) {
+      as_fail("asm-symbol-undefined", "no such symbol: ", name);
     } else {
-      as_fail(n > AS_NAME_MAX ? "asm-syntax" : "asm-symbol-undefined", "no such symbol: ", *pp);
+      v = s->value;
     }
   } else {
     as_fail("asm-expr", "number or symbol expected at: ", p);

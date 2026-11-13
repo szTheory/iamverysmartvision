@@ -9,8 +9,8 @@
 # no image is built from it. The expected words never come from ivs_asm; they come from a listing
 # typed by hand from the manual and checked twice before this suite existed. The hand listings are
 # untouched (D-19).
-# Ids: asm.twin-<id> per twin; asm.repeat (plan 07-03 Task 2): one twin assembled twice into two
-# files is byte-identical, the determinism contract of the tool; asm.judge.mutated-twin is the
+# Ids: asm.twin-<id> per twin (boot-stub 22 words, diag-cpu-1 56 words); asm.repeat: one twin assembled
+# twice into two files is byte-identical, the determinism contract of the tool; asm.judge.mutated-twin is the
 # self-control of the words comparison: the comparison must fail on a twin with one register field
 # changed, and its diff must show exactly that word (judge-vacuous, judge-wrong-reason otherwise).
 # An id <suite>.judge.<slug> is also an important-gates mutant (tools/check/steps/important-gates.sh).
@@ -37,8 +37,9 @@ cd "$root" || exit 1
 suite=asm
 nonce=${IVS_TEST_NONCE:-none}
 
-# <id> <twin source> <hand listing>, one per line. Word totals: boot-stub 22, diag-cpu-1 56.
-twins='boot-stub tests/asm/twins/boot-stub.asm fixtures/FX-boot-stub/boot-stub.listing.txt'
+# <id> <twin source> <hand listing>, one per line.
+twins='boot-stub tests/asm/twins/boot-stub.asm fixtures/FX-boot-stub/boot-stub.listing.txt
+diag-cpu-1 tests/asm/twins/diag-cpu-1.asm fixtures/FX-diag-cpu-1/diag-cpu-1.listing.txt'
 
 : > "$tmp/results"
 n=0
@@ -105,6 +106,22 @@ while read -r id twin hand; do
     first_id=$id
   fi
 done < "$tmp/twins"
+
+# asm.repeat (determinism, plan 07-03 Task 2): the diag-cpu-1 twin assembled twice, in this preset's
+# ivs_asm, into two files that are byte-identical and not empty (a source of 56 words, one label and one
+# backward branch); the listing holds no time, host or path byte beyond the relative source path given.
+n=$((n + 1))
+tid=asm.repeat
+executed=$((executed + 1))
+ok=1
+if ! "$asm" tests/asm/twins/diag-cpu-1.asm "$tmp/rep1.listing" 2> "$tmp/why" \
+    || ! "$asm" tests/asm/twins/diag-cpu-1.asm "$tmp/rep2.listing" 2>> "$tmp/why"; then
+  ok=0
+elif [ ! -s "$tmp/rep1.listing" ] || ! cmp -s "$tmp/rep1.listing" "$tmp/rep2.listing"; then
+  ok=0
+  { printf 'two assemblies of the same twin differ or are empty:\n'; diff "$tmp/rep1.listing" "$tmp/rep2.listing"; } > "$tmp/why"
+fi
+report
 
 # asm.judge.mutated-twin: the comparison of asm.twin-boot-stub run on a copy of the boot stub twin
 # whose reset code loads R5 instead of R6 (MVII #STACK, R6 is 02BE at 1011, the same line with R5 is
