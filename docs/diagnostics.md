@@ -7,8 +7,8 @@ A label [INF] marks a design reason; every other line is a rule.
 ## What a project diagnostic is
 
 A project diagnostic is a small guest program written for this project, whose expected end state is derived by hand from the manual tables and arithmetic, never from the emulator under test (D-25, D-27).
-Its source of truth is a hand-assembled, annotated text listing: one line per 10-bit word, with the word in hex and in bits, the opcode row it encodes and the instruction text.
-No assembler is a build, gate, CI or release dependency, and no code, table or comment of another implementation or assembler is copied into a listing.
+Its source of truth is a hand-assembled, annotated text listing: one line per 10-bit word, with the word in hex and in bits, the opcode row it encodes and the instruction text. A fixture written with the project assembler has an `.asm` source as its source of truth and a generated listing (section "The project assembler"); the four listings of Phases 4 to 6 stay hand-assembled.
+No third-party assembler is a build, gate, CI or release dependency, and no code, table or comment of another implementation or assembler is copied into a listing or into the project assembler. The project assembler `ivs_asm` is a build-only tool of this tree, never installed and never shipped.
 Every word is derived by hand from the project's CP-1610 notes (`docs/cp1610/`, `data/cp1610/opcode-families.json`) and the manual pages each listing cites; the Phase 2 vector rows (`data/cp1610/vectors/*.json`) give a second, independent statement of each encoding.
 
 Listings are committed as text under `fixtures/FX-<id>/` with a fixture manifest (`docs/fixture-manifest.md`).
@@ -24,11 +24,12 @@ A listing is ASCII text with LF line endings (D-26).
   - `ADDR`: four hex digits, the word address. Word lines are contiguous from the first one and stay inside the window.
   - `HEX4`: four hex digits, the word; at most `03FF`.
   - `BITS`: groups of binary digits, 10 digits in total, whose value equals `HEX4`. An instruction word is split at its printed field boundaries (as in the vector JSON `program` strings), an operand word as 2+4+4 or at its printed fields.
-  - `ROW`: the most specific leaf row id of `data/cp1610/opcode-families.json` for the instruction that starts on this line, or `-` for an operand word of the instruction above it (an instruction of `words` words is followed by `words - 1` operand lines).
+  - `ROW`: the most specific leaf row id of `data/cp1610/opcode-families.json` for the instruction that starts on this line, or `-` for an operand word of the instruction above it (an instruction of `words` words is followed by `words - 1` operand lines), or `DATA` for a data word (below).
   - `ASM`: the rest of the line, at least one token: the instruction text and notes.
 - Zero fill: an unreachable zero word carries the row of the decle it encodes (`HLT`) and the text `fill`.
 - Branch targets (plan 05-01, D-24): the `ASM` text of every branch line (rows `B`, `BC`, `BOV`, `BPL`, `BZE`, `BLT`, `BLE`, `BUSC`, `BNC`, `BNOV`, `BMI`, `BNZE`, `BGE`, `BGT`, `BESC`, `BEXT`) and of every `J` line carries `-> ADDR`, the target in four hex digits. The checker recomputes the target from the printed words: for a branch it is the address of the branch plus 2 plus the displacement word when the direction bit (bit 5 of the first decle) is 0, and the address plus 1 minus the displacement word when it is 1 (`5020 + ~0003 = 501C` for the `BNZE` of `diag-cpu-1`), modulo 65536; for `J` the bits 7..2 of the second decle are target bits 15..10 and the third decle holds bits 9..0. A printed target that differs fails with `listing-branch-target`, and a branch or jump line without the annotation fails with `listing-branch-target-missing`.
 - The `SDBD` prefix (plan 06-01, D-20, A-04; token `listing-sdbd`): an `SDBD` line applies to the next instruction only. When that instruction is an immediate form (`MVII`, `ADDI`, `SUBI`, `CMPI`, `ANDI`, `XORI`) it is followed by two `-` operand lines instead of one, the low byte and then the high byte of the doubled operand, each at most `00FF`, so the word count of the pair is 1 + 2 x operand and every later address follows from that. The effect never carries past that one instruction: an extra operand line, a second `SDBD` directly after an `SDBD`, an `SDBD` before any row that is not an SDBD target (a branch or jump, `MVO@`, `MVO`, `PSHR`, `MVOI`, a direct or register row, an indirect read row with mode 0 or 6), an `SDBD` that nothing follows and a missing operand line all fail with `listing-sdbd`. The accepted targets are the six immediate rows and the six indirect read rows (`MVI@`, `ADD@`, `SUB@`, `CMP@`, `AND@`, `XOR@`) with mode 1 to 5, the set the CPU itself allows (a prefix before anything else ends the guest in a fault); the indirect forms take one word each, because the doubled read happens at run time and adds no listing word. The decode order of the checker (low byte first) is compared with `ivs_pack --dump-words` by `tests/pack-tap.sh` once plan 06-13 adds the first listing with an `SDBD` line; until then the order rests on the Phase 2 vector rows and is not testable against the packer. The earlier diagnostics keep using no `SDBD`.
+- Data rows (plan 07-04, A-10): a word line whose `ROW` is `DATA` is a data word written by `ivs_asm` for a `DECLE` line, with the text `DECLE $XXXX`. The checker gives it no leaf-row label and no branch target, and it takes no operand lines; it is still checked for `listing-bits-mismatch` and `listing-range`. It is refused with `listing-operand-count` while the instruction above it still lacks operand lines and with `listing-sdbd` directly after an `SDBD` line (a data word is not an `SDBD` target), and a boot stub may not hold one (`bootstub-row`). Two controls, `listing-data-in-operand-slot` and `listing-data-after-sdbd`, show both refusals, and the pristine toy listing of the controls holds one valid `DATA` word. No committed fixture listing uses `DATA` yet: the scenario program has no table (D-01), and the legacy third listing keeps its pattern table as words decoded as code.
 
 The gate step `listing` (plan 04-15) checks this grammar and the row and operand rules; `tools/pack` reads the same grammar and is the only tool that turns a listing into image bytes.
 
@@ -157,11 +158,59 @@ Excluded on purpose: machine time (the stop near tick 88,500 is regression infor
 Shared-misreading risk: the author of the register literal, the card rules, the frames, the derivation, the listing and the core is the same, so all of them can share one misreading of a source; agreement among them is not independent evidence about the original console. The card layouts rest on one community page (C96), the register roles on the same page (C81), and every window and bus figure is a default (C1, C2, C92).
 No real EXEC, GROM or cartridge is involved, and nothing in this section is a statement about measured hardware.
 
-## When a project assembler becomes worth writing
+## The project assembler ivs_asm
 
-Listings stay hand-assembled until one of these holds (D-25): more than 3 project diagnostics exist, a listing needs labels or macros, or a second author writes listings.
-After the third diagnostic (plan 06-13) there are three diagnostics (`diag-cpu-1`, `diag-ctrl-psg-1` and `diag-stic-1`; the boot stub is not a diagnostic and the stand-in programs of the test suites are test code), which is not more than 3, so D4 stands by its letter and the three listings are hand-assembled. Phase 7 re-examines the trigger: a fourth diagnostic, or any listing that needs labels or macros, is the point to weigh the project assembler (D-24).
-Effort data of the third diagnostic (plan 06-13, recorded for that decision):
+Phase 7 re-examined the D4 trigger (D-16) and decided to build a project mini-assembler. It replaces the earlier text "when a project assembler becomes worth writing", whose rule was: more than 3 project diagnostics, a listing that needs labels or macros, or a second author (D-25). After the third diagnostic (plan 06-13) the rule had not fired, and the finding of that listing was that the checker treats data as program.
+
+### The decision
+
+- The trigger fired on three independent counts: a fourth project-authored program (the scenario program of Phase 7), labels (the interrupt entry reached from the boot stub, loop heads, table-address immediates), and a program of more than 8 branches (the rule of plan 06-13 fires by its letter on the branch count; the word count of 132 to 136 would not fire it).
+- The break-even on Phase 7 alone is neutral (R-5). The tool is adopted for a structural reason, not an arithmetic one: labels and the reference from the stub to the program, and about five single-feature fixtures that Phase 8 needs.
+- `ivs_asm` generates the committed listing grammar of this document plus the one row token `DATA`. `ivs_pack` is unchanged and reads the generated listing like any other, and the checks of the `listing` step and the `pack` suite apply to it as to a hand listing.
+- It is one C17 file, `tools/asm/asm.c`, registered like `tools/pack` and `tools/pcm`, never installed or shipped, with no dependency. Its encoding table is hand-written from `docs/cp1610/reference-notes.md` and the manual pages that file cites. No third-party assembler or emulator source, table or output was read or run, and `data/cp1610/opcode-families.json` is the checker's police, never an input of the tool.
+
+### Source grammar (A-15)
+
+The source is ASCII with LF line endings (a CR byte is a refusal), one statement per line, at most 255 bytes per line, 4,096 lines, 4,096 words, 256 symbols and 131,072 bytes (`asm-limit`).
+
+- Header: the leading block of `# key: value` lines is copied to the listing unchanged. The keys are those of the listing header (`id`, `kind`, `contract`, `profile`, `window`, `label`, `entry`, `stack`), each at most once; `# window: AAAA-BBBB` is required and every word must lie inside it (`asm-window`).
+- `; text` is a comment. `label:` defines a global label (case-sensitive, at most 31 characters, defined once); `NAME EQU expr` defines a constant from earlier symbols; `ORG expr` sets the address, forward only (the first `ORG` comes before any word or label), and the gap is filled with zero words (row `HLT`, text `fill`); `DECLE v1, v2, ...` writes data words of at most `03FF`; `SDBD` is the prefix of the next instruction.
+- Operands are a register `R0` to `R7`, an immediate `#expr`, or a bare expression (a direct address, a branch or jump target, a shift count). An expression is numbers (`$` and one to four hex digits, or decimal up to 65535) and symbols joined by `+` and `-`, evaluated left to right with every partial result 0 to 16777215; each use then limits its own value: an immediate and an address or target at most 65535, a direct address and a data word at most `03FF`.
+- Spellings are those of the vector files and the listings: `MVII #$0006, R0`, `MVI $01FE, R0`, `MVO R0, $0200`, `MVO@ R0, R5` (source first, pointer second), `MVI@ R4, R0` (pointer first), `SLL R1` or `SLL R1, 2`, `JSR R5, target`, `BEXT target, code`, `NOP` or `NOP 1`, `JE`, `JD`, `JSRE`, `JSRD`. `MVOI` has no spelling: its operand word is the cell it overwrites.
+- Not in the language, on purpose: macros, includes, conditional assembly, local labels, parentheses and precedence, string directives, relocation, a linker, auto-SDBD, spelling aliases, cycle counting.
+- Two-pass assembly: pass 1 gives every statement its address from syntax alone (an immediate after `SDBD` is three words), pass 2 resolves values, so there is no size fixpoint.
+
+### Encoding rules that are refusals
+
+- Explicit `SDBD` only: the prefix must be followed by an immediate row (`MVII`, `ADDI`, `SUBI`, `CMPI`, `ANDI`, `XORI`), whose 16-bit operand is then written as a low byte word and a high byte word, or by an indirect read row (`MVI@`, `ADD@`, `SUB@`, `CMP@`, `AND@`, `XOR@`) through `R1` to `R5`; anything else after `SDBD`, or an `SDBD` with nothing after it, is `asm-sdbd-target`, the same rule as the checker's `listing-sdbd`. An immediate above `03FF` without the prefix is `asm-imm-sdbd`, including a forward label resolved in pass 2; above `FFFF` it is `asm-imm-range`.
+- A direct address above `03FF` is `asm-direct-range`; a data word above `03FF` is `asm-decle-range`.
+- A spelling whose decle belongs to another leaf row is `asm-spelling` and names the row to write: `MOVR R1, R1` is `TSTR R1`, `MOVR R1, R7` is `JR R1`, `XORR R1, R1` is `CLRR R1`, `MVI@ R6, R1` is `PULR R1`, `MVO@ R1, R6` is `PSHR R1`, and an indirect register `R7` is the immediate row.
+- Branch displacement: forward `target - (pc + 2)`, backward `(pc + 1) - target` with the direction bit set, the formula the checker uses for the printed `-> ADDR`; the displacement is one decle, at most `03FF` (`asm-branch-range`, which also refuses a target above `FFFF`: the tool never relies on the wraparound of C50). The manual prints the range of `B` as +1025 to -1024; the decle arithmetic gives a forward reach of `pc + 1025` and a backward reach of `pc - 1022`, and the assembler follows the decle limit. The difference is discrepancy C106, with no hardware claim.
+- Every refusal is one stderr line `ivs_asm: <token>: <source>:<line>: <detail>`, exit status 1 and no output file. The 20 tokens are pinned in `data/expected/asm-tokens.ids`, each with its own case in the suite `asm`.
+
+### Generated listing
+
+The generated listing has the header lines of the source, then one comment line `# generated by ivs_asm from <path>; edit the source, not this file` (the path is the relative path the tool was given), then one comment line `# sym: <name> <ADDR>` for each label, then the word lines of the grammar above. A label is never written as `# label:`, which is a header key (A-01). Branch and jump lines carry `-> ADDR`; the bits of an instruction word are grouped as the printed fields (4+3+3, 4+2+4 for a branch, 2+6+2 for the second decle of a jump), of an operand word as 2+4+4. The tool writes the listing beside its target and renames it, so a refusal leaves no file, and its output holds no time, host or absolute-path byte.
+
+### What polices the table (D-18)
+
+The expected values never come from the tool. Three outside checks police the hand-written table, all in the suite `asm` under the existing `c-tests` step:
+
+- The row check of the `listing` step recomputes the leaf row of every decle of every generated listing from `data/cp1610/opcode-families.json`, together with the bits, operand-line, range and branch-target rules.
+- `tests/asm/pairs.txt` is a flat copy, made once, of the asm and word pairs of the Phase 2 vectors (304 pairs in nine row families, SDBD immediate pairs masked to their low bytes, three hand cases), so there is no JSON parse at test time; the vectors are pinned by the `tests-vectors-digest` token, so a deliberate change of a vector is a visible diff to mirror by hand.
+- Four twins under `tests/asm/twins/` reproduce the 300 hand-typed words of the four hand listings (the boot stub 22, `diag-cpu-1` 56, `diag-ctrl-psg-1` 89, `diag-stic-1` 133 with its pattern table written as `DECLE`), compared through `ivs_pack --dump-words` of the generated and the committed listing; self-controls show that both comparisons can fail.
+
+### Twin discipline
+
+The four legacy listings, their manifests and their goldens are untouched. A twin is test data with no manifest and nothing is built from it. A twin is promoted to the source of truth, with a manifest `recipe`, only when its legacy listing next needs an edit (then the two change in the same commit or the twin takes over). A fixture written with the assembler commits its `.asm` and the generated listing, and a suite case regenerates the listing and requires byte equality.
+
+### What reverses the decision
+
+Two encoding errors found only by a run (not by the row check, the pairs or the twins), the source above 1,200 lines, or a request for macros, includes or conditionals: stop and hand-assemble the affected listing, or decide whether the program is too large for this approach.
+
+### Effort data behind the decision
+
+Effort data of the third diagnostic (plan 06-13), recorded for that decision:
 
 - Words derived: 133 in the listing (101 of code and 32 of pattern data), 220 lines with its header; the derivation `docs/video/diag-stic-1-derivation.md` is 126 lines (121 written in plan 06-01 and a dated as-built section), and the six explicit words and the cycle budget were its main cost.
 - Branches: 4 in the program, 1 more in the data table (the decode of the pattern decles `04 02 01`); the limit is 8.
@@ -169,4 +218,10 @@ Effort data of the third diagnostic (plan 06-13, recorded for that decision):
 - Errors found only by a run (escapes): 0. The first run through `ivs-run` matched both hand-derived frame hashes (F-D1 and F-D2) without a change to the listing, a scenario assert or a frame literal. The cycle budget of the derivation was 31 cycles above the observed program without the strobe (82,740 ticks observed for the start of the `HLT` unit against 82,864 derived), a budget inference and not an assembly error; the margins of 4,000 ticks hold with room (23,000 ticks after frame 0 and 36,700 before frame 1 without the strobe, 28,700 and 31,000 with it).
 - The crossing rule of the derivation (any one fires it): the listing exceeds 170 words or needs more than 8 branches (133 and 5: not fired); a hand-assembly error survives the checker and is found only by a run (no escape: not fired); a second STIC cartridge is needed (one image serves both modes and every mutant is a one- or two-word patch of it: not fired); a second author edits a listing (no: not fired). The rule is not crossed.
 - The finding for the grammar: the checker treats data as program, so a data table costs a row label per decle and may decode as a multi-decle instruction; a directive for data words would remove that, and is the one thing this diagnostic would ask of an assembler.
-Then a small project-owned assembler written from the manual is the option to weigh; the asm/program pairs of the Phase 2 vectors are its ready test corpus.
+The finding for the grammar was met by the `DATA` row and the `DECLE` directive above.
+
+Effort data of the assembler (plan 07-04, recorded for the review of this decision at Phase 8):
+
+- Size: `tools/asm/asm.c` is 1,137 lines, above the planned 700 to 900 and below the stop of 1,200; 78 spellings cover 73 of the 74 leaf rows of the family table (all but `MVOI`) and the five jump forms that are row `J`.
+- Hand slips found by the twins: 0; encoding errors found only by a run: 0; `asm-imm-sdbd` refusals met while writing a real source: 0 (the three twins that use `SDBD` write it by hand). The pairs corpus found no table error at its first run.
+- Cost: the suite `asm` has 45 cases and starts one process per case; 2,000 random mutations of the four twins through the sanitizer build gave 873 accepted and 1,127 refused sources, no crash and no refusal that printed other than one line or left a file.

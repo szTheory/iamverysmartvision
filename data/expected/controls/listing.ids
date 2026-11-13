@@ -1,6 +1,8 @@
 # Negative controls for the listing step (plan 04-15, D-26, D-29): one per token. The positive
 # control is the toy cart listing of controls/_good/tree; the bootstub-* controls overlay a toy
 # boot stub, its inventory line and a toy-stub profile with the two vector fields.
+# Plan 07-04 (A-10): the positive toy listing holds one valid DATA word; listing-data-in-operand-slot and
+# listing-data-after-sdbd are the two places a DATA word is refused (operand pending, directly after SDBD).
 listing-bits-mismatch
 listing-row-mismatch
 listing-operand-count
@@ -19,3 +21,5 @@ listing-sdbd-target-mvo
 listing-sdbd-target-zero
 listing-sdbd-indirect-mode
 listing-operand-count-after-sdbd
+listing-data-in-operand-slot
+listing-data-after-sdbd

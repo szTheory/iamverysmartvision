@@ -1,6 +1,6 @@
 # id: toy
 # kind: cart
-# window: 5000-5008
+# window: 5000-5009
 #
 # Known-good control tree listing (plan 04-15): rows of the toy family table.
 # Plan 05-01 adds one annotated branch: B at 5003 with displacement 0001 goes to 5003 + 2 + 1 = 5006.
@@ -14,3 +14,5 @@
 5006 02B8 10 1011 1000  MVII  MVII #$1234, R0 (doubled operand)
 5007 0034 00 0011 0100  -     low byte 34
 5008 0012 00 0001 0010  -     high byte 12
+# Plan 07-04 (A-10): one data word, row DATA, outside every operand slot and not after SDBD: it skips the leaf-row label (DATA is no row of the family table) and is still checked for bits and range.
+5009 00FF 00 1111 1111  DATA  DECLE $00FF

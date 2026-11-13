@@ -1,0 +1,9 @@
+# id: toy
+# kind: cart
+# window: 5000-5002
+#
+# Plan 07-04 (A-10, T-07-08): a DATA word where the operand word of MVII is due. The row DATA skips the
+# leaf-row label but never stands in for an operand line, so the instruction above it still lacks one.
+5000 02B8 10 1011 1000  MVII  MVII #$0012, R0
+5001 0012 00 0001 0010  DATA  DECLE $0012 (a data word where the operand word is due)
+5002 03FF 11 1111 1111  ONES  toy word

@@ -1,0 +1,8 @@
+# id: toy
+# kind: cart
+# window: 5000-5001
+#
+# Plan 07-04 (A-10, T-07-08): a DATA word directly after an SDBD line. SDBD applies to the next instruction
+# only and a data word is not an SDBD target.
+5000 0001 00 0000 0001  SDBD  toy prefix
+5001 00FF 00 1111 1111  DATA  DECLE $00FF (a data word right after the prefix)

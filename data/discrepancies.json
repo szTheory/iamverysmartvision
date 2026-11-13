@@ -1051,6 +1051,16 @@
       "resolver": "pending: Phase 8 border and delay rules, or a capture",
       "evidence": "Phase 6 final (plan 06-14): carried by profile fields video.object_grid (sanity only) and video.row_lines = 2 (metadata); no border and no origin exist in the core; exercised by video.geom.profile-derives-159x96, video.geom.literal-matches-page, video.geom.info-matches-profile (the published figures only).",
       "note": "Raised by plan 06-01 (D-22, A-11). Source note ids: frame note, VID-05 scope."
+    },
+    {
+      "id": "C106",
+      "topic": "Printed branch range against the decle arithmetic (the limit of the project assembler)",
+      "sources": "The branch table prints the range of the unconditional branch as +1025 to -1024 (SRC-gi-cp1600-um-1975 pdf 54). With the 10-bit displacement decle (at most 03FF) and the stated formulas a forward branch reaches the address of the branch plus 2 plus 1023, which is plus 1025, and a backward branch reaches the address plus 1 minus 1023, which is minus 1022; the printed minus 1024 is not reproduced and the base of the printed numbers is not stated.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: the project assembler ivs_asm follows the decle limit in both directions (a displacement above 03FF is refused with asm-branch-range) and uses neither the printed range nor any wider displacement; the core derives a branch target from the printed formula only (C50) and has no range rule.",
+      "resolver": "test: asm.boundary.branch-03ff (03FF accepted) and asm.neg.asm-branch-range (0400 refused) pin the assembler limit only; a statement of the base of the printed range in the manual, or the D10 branch probe named under C50, would say whether the printed minus 1024 is a different range or a different base",
+      "evidence": "Plan 07-04 (D-17): tools/asm/asm.c computes the displacement as target minus (pc + 2) forward and (pc + 1) minus target backward, each at most 03FF, the formula the listing checker uses for the printed target; docs/diagnostics.md.",
+      "note": "Raised by plan 07-04 (07-DISCUSS-assembler.md S3-6 and open item 7). Neighbour of C50. No hardware claim: it records only that the printed text and the decle arithmetic differ."
     }
   ]
 }

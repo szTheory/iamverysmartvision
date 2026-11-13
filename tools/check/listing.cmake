@@ -16,6 +16,11 @@
 #   the ROW of an instruction line is not a most specific (leaf) row of its decle in
 #   data/cp1610/opcode-families.json (vectors.cmake decle_leaves rule; a label check only)
 #                                                                            listing-row-mismatch
+#   data rows (plan 07-04, A-10): a word line whose ROW is DATA (written by ivs_asm for a DECLE) is a
+#   data word, not an instruction: it skips the leaf-row label and carries no branch target, and it
+#   takes no operand lines. It is refused while the instruction above it still lacks operand lines
+#   (listing-operand-count) and directly after an SDBD line (listing-sdbd: not an SDBD target), is still
+#   subject to listing-bits-mismatch and listing-range, and a boot stub may not hold one (bootstub-row).
 #   an instruction of `words` w is not followed by exactly w - 1 `-` operand lines, or a `-` line
 #   follows no instruction (the one exception is the immediate form after an SDBD line, below)
 #                                                                            listing-operand-count
@@ -480,11 +485,13 @@ function(check_listing out_n out_dump lid lkind lpath)
     endif()
     set(after_target ${prev_target})
     set(prev_target ${this_target})
-    math(EXPR d "${hv} & 1023")
-    decle_leaves(leaves ${d})
-    if(NOT row IN_LIST leaves)
-      string(REPLACE ";" "," leaves_txt "${leaves}")
-      lfail(listing-row-mismatch "${at} ${row} (decle ${h_up} is labelled by: ${leaves_txt})")
+    if(NOT row STREQUAL "DATA")
+      math(EXPR d "${hv} & 1023")
+      decle_leaves(leaves ${d})
+      if(NOT row IN_LIST leaves)
+        string(REPLACE ";" "," leaves_txt "${leaves}")
+        lfail(listing-row-mismatch "${at} ${row} (decle ${h_up} is labelled by: ${leaves_txt})")
+      endif()
     endif()
     if(row IN_LIST BRANCH_ROWS)
       math(EXPR widx "${nwords} - 1")
