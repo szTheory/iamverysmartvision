@@ -1,0 +1,12 @@
+# Metamorphic pair inventory (plan 07-07, D-23, D-06, A-16), read by the suite runner-process (tests/runner-process-tap.sh).
+# Grammar: `<idA> <idB> differ=<k,..> equal=<k,..>`, four columns, either list may be `-` but not both. The ids name two lines of
+# data/expected/runner-scenarios.ids (class deterministic); the keys are report keys (docs/runner.md, Report). The judge reads the two
+# reports its own run made, so it needs no expected value and no golden: every differ key must hold two different values and every equal
+# key two equal values. For each scenario of a pair it also requires input.consumed equal to input.events when the scenario has input,
+# and output.audio.changes 0 when it has none (an idle run is silent). One case per line: runner-process.pair.<idA>.<idB>.
+# demo-lamp-tone-pass against demo-lamp-tone-idle: the scripted input is the only difference, so the video, audio, write-log, input and
+# memory digests all differ (a program or core that ignores input fails the line).
+# demo-lamp-tone-pass against demo-lamp-tone-shift: every event 2,000 ticks later in the same frames, so the delivered frames are
+# byte-identical (D-06); the other digests are not related here (the input digest differs by construction).
+demo-lamp-tone-pass demo-lamp-tone-idle differ=digest.video,digest.audio,digest.psglog,digest.input,digest.mem equal=-
+demo-lamp-tone-pass demo-lamp-tone-shift differ=- equal=digest.video

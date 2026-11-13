@@ -11,6 +11,11 @@
 #   runner-process.cwd (run from another directory): byte-equal reports apart from host.calls;
 #   the slicing, repeat and directory variants cover diag-boot-pass, diag-input-pass and, since plan
 #   05-11 (cost cap V-16), diag-ctrl-psg-pass (runner-process.cwd.diag-ctrl-psg-pass).
+# Plan 07-07 (D-23, D-06, A-16): the four scenarios demo-lamp-tone-{pass,idle,shift,swap} are scenario cases;
+#   runner-process.repeat/slices/cwd.demo-lamp-tone-pass repeat the pass scenario only (cost cap);
+#   runner-process.pair.<idA>.<idB>: the metamorphic judge, one case per line of data/expected/scenario-pairs.ids (two reports of the
+#   same run related by differ and equal keys, input.consumed equal to input.events, an idle run silent);
+#   runner-process.judge.pair-video-equal, .input-not-consumed and .idle-audible: fake report pairs that the pair judge must reject.
 # runner-process.judge.<slug>: judge self-controls, each passing only when the judge fails a fake
 #   runner for its intended reason (exit code, missing report.end, outcome and exit.code
 #   disagreeing, a changed report body; plan 04-24: a removed demonstrating scenario).
@@ -71,6 +76,11 @@ runner-process.repeat.diag-stic-cstack-pass
 runner-process.slices.diag-stic-fgbg-pass
 runner-process.cwd
 runner-process.cwd.diag-ctrl-psg-pass
+runner-process.repeat.demo-lamp-tone-pass
+runner-process.slices.demo-lamp-tone-pass
+runner-process.cwd.demo-lamp-tone-pass
+runner-process.pair.demo-lamp-tone-pass.demo-lamp-tone-idle
+runner-process.pair.demo-lamp-tone-pass.demo-lamp-tone-shift
 runner-process.operator.audio-raw
 runner-process.operator.psg-log
 runner-process.operator.exclusive
@@ -91,6 +101,9 @@ runner-process.judge.no-report-end
 runner-process.judge.outcome-exit-disagree
 runner-process.judge.body-differs
 runner-process.judge.outcome-uncovered
+runner-process.judge.pair-video-equal
+runner-process.judge.input-not-consumed
+runner-process.judge.idle-audible
 runner-process.outcomes-consistent
 runner-process.outcomes-covered
 runner-process.watchdog

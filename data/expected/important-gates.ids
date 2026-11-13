@@ -319,3 +319,7 @@ stic-inspect fault STIC_STATE_NOT_RESET_ON_POWER_ON VID-06
 scn-video-pair control video-frame-pair-region-drift SCN-01
 scn-shape control golden-shape-no-input SCN-01
 scn-shape control golden-shape-no-progress SCN-01
+# SCN-01 (plan 07-07, T-07-17): the metamorphic judge. A pass run whose video digest equals the idle run's (the response is not in the frames), a scenario whose scripted input was not consumed (events after the last bound or ignored), and an idle run that is audible are each refused by the pair judge; each self-control passes only when the judge rejects its fake report pair for that reason.
+scn-differential mutant runner-process.judge.pair-video-equal SCN-01
+scn-differential mutant runner-process.judge.input-not-consumed SCN-01
+scn-differential mutant runner-process.judge.idle-audible SCN-01

@@ -36,6 +36,16 @@
 # more run each) and runner-process.slices.diag-stic-fgbg-pass (--slice-ticks 1 and 7, that scenario only) are judged the same way. Its
 # program mutations (data/expected/diag-mutations-stic.ids, ids runner-process.mutant.STIC-*) have a scenario column and comma-joined
 # address, from and to lists, judged by the same run_mutant.
+# Since plan 07-07 (D-23, D-06, A-16, W4a) the four scenarios demo-lamp-tone-{pass,idle,shift,swap} are scenario cases like the others, and:
+# runner-process.pair.<idA>.<idB>: the metamorphic judge, one case per line `<idA> <idB> differ=<keys> equal=<keys>` of
+# data/expected/scenario-pairs.ids (either list may be `-`, keys are report keys such as digest.video). It reads the two reports this
+# run just made (no expected value, no golden): every `differ` key has two different values, every `equal` key two equal values, and
+# for each scenario of the pair `input.consumed == input.events` when it has input and `output.audio.changes 0` when it has none
+# (the idle run is silent). A pair line without both reports, a missing key, a vacuous line (`-` and `-`) or an unknown scenario id
+# is a finding. runner-process.repeat.demo-lamp-tone-pass, runner-process.slices.demo-lamp-tone-pass (--slice-ticks 1 and 7) and
+# runner-process.cwd.demo-lamp-tone-pass repeat the pass scenario only (cost cap). Three judge self-controls with fake report pairs,
+# runner-process.judge.pair-video-equal, runner-process.judge.input-not-consumed and runner-process.judge.idle-audible, pass only when
+# the pair judge rejects the fake for its stated token (pair-not-different, input-not-consumed, idle-audible).
 # Judge self-controls (runner-process.judge.<slug>): the same checks run against four fake
 # runners (shell scripts in the temp dir replaying this run's reports with one defect: exit 0 for
 # a guest-fail, no report.end, outcome pass with exit.code 10, a changed digest line); each passes
@@ -93,7 +103,7 @@ if [ -n "${IVS_TEST_OUT_DIR:-}" ]; then
   mkdir -p "$rep_dir" || { printf '# cannot create %s\n' "$rep_dir" >&2; exit 1; }
 fi
 
-# The content dir: copies of the build-tree images (boot stub, since plan 07-05 boot-stub-2 (no scenario uses it yet), diag-cpu-1, since plan 05-11 diag-ctrl-psg-1, since plan 06-13 diag-stic-1, and since plan 07-06 lamp-tone (no scenario uses it yet)),
+# The content dir: copies of the build-tree images (boot stub, since plan 07-05 boot-stub-2, diag-cpu-1, since plan 05-11 diag-ctrl-psg-1, since plan 06-13 diag-stic-1, and since plan 07-06 lamp-tone; the four demo-lamp-tone scenarios of plan 07-07 use the last two),
 # plus diag-cpu-1-truncated.ivsc, the diagnostic
 # container built here by ivs_pack and cut before its 32-byte trailer (POSIX dd).
 listing="$root/fixtures/FX-diag-cpu-1/diag-cpu-1.listing.txt"
@@ -295,6 +305,54 @@ check_repeat() {
   _j=$?
   same_body "$_nm" "$_ref" || _j=1
   return "$_j"
+}
+
+# rkey <report> <key>: the value of the first line `<key> <value>` of a report ('' when the key is absent).
+rkey() { awk -v k="$2" '$1 == k { print $2; exit }' "$1"; }
+
+# check_pair <idA> <idB> <reportA> <reportB> <differ list> <equal list> (plan 07-07, D-23, A-16): the metamorphic judge of one line of
+# data/expected/scenario-pairs.ids on two reports of this run. Every key of the comma-joined differ list has two different values
+# (pair-not-different), every key of the equal list two equal values (pair-not-equal), a key absent from a report is pair-missing-key and
+# a missing or empty report is pair-no-report; for each scenario of the pair, input.consumed must equal input.events when there is input
+# (input-not-consumed) and a scenario with no input must deliver output.audio.changes 0 (idle-audible). Appends findings to $tmp/why;
+# returns 0 when it adds none.
+check_pair() {
+  _pa=$1; _pb=$2; _ra=$3; _rb=$4; _pd=$5; _pe=$6
+  found=0
+  if [ ! -s "$_ra" ] || [ ! -s "$_rb" ]; then
+    why pair-no-report "no report for $_pa or $_pb"
+    return 1
+  fi
+  for _kind in differ equal; do
+    if [ "$_kind" = differ ]; then _kl=$_pd; else _kl=$_pe; fi
+    [ "$_kl" != - ] || continue
+    set -f; IFS=,; set -- $_kl; IFS=$ifs0; set +f
+    for _k in "$@"; do
+      _va=$(rkey "$_ra" "$_k")
+      _vb=$(rkey "$_rb" "$_k")
+      if [ -z "$_va" ] || [ -z "$_vb" ]; then
+        why pair-missing-key "$_k is absent from the report of $_pa or $_pb"
+      elif [ "$_kind" = differ ] && [ "$_va" = "$_vb" ]; then
+        why pair-not-different "$_k is equal in $_pa and $_pb ($_va)"
+      elif [ "$_kind" = equal ] && [ "$_va" != "$_vb" ]; then
+        why pair-not-equal "$_k differs between $_pa and $_pb"
+      fi
+    done
+  done
+  for _sp in "$_pa:$_ra" "$_pb:$_rb"; do
+    _sid=${_sp%%:*}; _sr=${_sp#*:}
+    _ev=$(rkey "$_sr" input.events)
+    _co=$(rkey "$_sr" input.consumed)
+    _ch=$(rkey "$_sr" output.audio.changes)
+    if [ -z "$_ev" ] || [ -z "$_co" ] || [ -z "$_ch" ]; then
+      why pair-missing-key "input.events, input.consumed or output.audio.changes is absent from the report of $_sid"
+    elif [ "$_ev" != 0 ] && [ "$_co" != "$_ev" ]; then
+      why input-not-consumed "$_sid: input.consumed $_co, input.events $_ev"
+    elif [ "$_ev" = 0 ] && [ "$_ch" != 0 ]; then
+      why idle-audible "$_sid has no input but output.audio.changes is $_ch"
+    fi
+  done
+  [ "$found" -eq 0 ]
 }
 
 : > "$tmp/results"
@@ -501,6 +559,54 @@ result runner-process.cwd
 ok=1
 check_repeat "$tmp/elsewhere" "$ivs_run" cwd2 diag-ctrl-psg-pass "$tmp/runs/scen-diag-ctrl-psg-pass.out" || ok=0
 result runner-process.cwd.diag-ctrl-psg-pass
+
+# The Lamp Tone pass scenario (plan 07-07, D-23, cost cap: that scenario only): a second run, the slice replays (--slice-ticks 1 and 7)
+# and a run from another working directory equal the scenario case's report apart from host.calls.
+id=demo-lamp-tone-pass
+ref="$tmp/runs/scen-$id.out"
+: > "$tmp/why"
+ok=1
+check_repeat "$tmp" "$ivs_run" "rep-$id" "$id" "$ref" || ok=0
+result "runner-process.repeat.$id"
+: > "$tmp/why"
+ok=1
+for s in 1 7; do
+  check_repeat "$tmp" "$ivs_run" "sl$s-$id" "$id" "$ref" --slice-ticks "$s" || ok=0
+done
+result "runner-process.slices.$id"
+: > "$tmp/why"
+ok=1
+check_repeat "$tmp/elsewhere" "$ivs_run" "cwd3" "$id" "$ref" || ok=0
+result "runner-process.cwd.$id"
+
+# The metamorphic judge (plan 07-07, D-23, D-06, A-16): per line `<idA> <idB> differ=<keys> equal=<keys>` of
+# data/expected/scenario-pairs.ids, the reports of the two scenario cases above are related to each other (no expected value).
+pairs="$root/data/expected/scenario-pairs.ids"
+while read -r pa pb pdiff peq prest; do
+  case $pa in '' | '#'*) continue ;; esac
+  ok=1
+  : > "$tmp/why"
+  pdl=; pel=
+  case $pdiff in differ=*) pdl=${pdiff#differ=} ;; *) ok=0; why inventory "third column is not differ=<keys>" ;; esac
+  case $peq in equal=*) pel=${peq#equal=} ;; *) ok=0; why inventory "fourth column is not equal=<keys>" ;; esac
+  [ -z "$prest" ] || { ok=0; why inventory "more than four columns"; }
+  for _l in "$pdl" "$pel"; do
+    case $_l in
+      -) ;;
+      '' | *[!a-z0-9.,]* | ,* | *, | *,,*) ok=0; why inventory "key list '$_l' is not - or comma-joined report keys" ;;
+    esac
+  done
+  [ "$pdl$pel" != "--" ] || { ok=0; why inventory "differ=- equal=- judges nothing"; }
+  for _i in "$pa" "$pb"; do
+    awk -v i="$_i" '$1 == i && $4 == "deterministic" { f = 1 } END { exit !f }' "$inv" \
+      || { ok=0; why inventory "scenario $_i is not a deterministic line of data/expected/runner-scenarios.ids"; }
+  done
+  [ "$pa" != "$pb" ] || { ok=0; why inventory "a pair of one scenario"; }
+  if [ "$ok" -eq 1 ]; then
+    check_pair "$pa" "$pb" "$tmp/runs/scen-$pa.out" "$tmp/runs/scen-$pb.out" "$pdl" "$pel" || ok=0
+  fi
+  result "runner-process.pair.$pa.$pb"
+done < "$pairs"
 
 # Operator-only raw outputs (plan 05-09, D-20, T-05-23): a project-authored EXEC stand-in (nine words
 # at $1000: mixer R7 = $3F, then amplitude A = $0F, $00, $07, then a branch to itself; encodings as
@@ -936,6 +1042,25 @@ o1=
 read -r o1 e1 < "$tmp/pairs" || :
 grep -v -x -F -e "$o1 ${e1:-} run" "$tmp/scen.pairs" > "$tmp/scen.dropped" || :
 self_control outcome-uncovered outcome-uncovered check_covered "$tmp/pairs" "$tmp/scen.dropped"
+
+# Judge self-controls of the metamorphic pair judge (plan 07-07, D-23, T-07-17): fake report pairs made from this run's reports of
+# demo-lamp-tone-pass and demo-lamp-tone-idle, each with one defect, must be rejected by check_pair for the stated token, using the
+# differ and equal lists of the pass and idle line of data/expected/scenario-pairs.ids.
+lt_pass="$tmp/runs/scen-demo-lamp-tone-pass.out"
+lt_idle="$tmp/runs/scen-demo-lamp-tone-idle.out"
+lt_d=$(awk '$1 == "demo-lamp-tone-pass" && $2 == "demo-lamp-tone-idle" { sub(/^differ=/, "", $3); print $3; exit }' "$pairs")
+lt_e=$(awk '$1 == "demo-lamp-tone-pass" && $2 == "demo-lamp-tone-idle" { sub(/^equal=/, "", $4); print $4; exit }' "$pairs")
+lt_v=$(rkey "$lt_pass" digest.video)
+lt_ev=$(rkey "$lt_pass" input.events)
+awk -v v="$lt_v" '$1 == "digest.video" { print $1, v; next } { print }' "$lt_idle" > "$fakes/idle-video-equal.report" 2> /dev/null || : > "$fakes/idle-video-equal.report"
+awk -v c="$((${lt_ev:-0} - 1))" '$1 == "input.consumed" { print $1, c; next } { print }' "$lt_pass" > "$fakes/pass-not-consumed.report" 2> /dev/null || : > "$fakes/pass-not-consumed.report"
+awk '$1 == "output.audio.changes" { print $1, 3; next } { print }' "$lt_idle" > "$fakes/idle-audible.report" 2> /dev/null || : > "$fakes/idle-audible.report"
+self_control pair-video-equal pair-not-different \
+  check_pair demo-lamp-tone-pass demo-lamp-tone-idle "$lt_pass" "$fakes/idle-video-equal.report" "${lt_d:-}" "${lt_e:-}"
+self_control input-not-consumed input-not-consumed \
+  check_pair demo-lamp-tone-pass demo-lamp-tone-idle "$fakes/pass-not-consumed.report" "$lt_idle" "${lt_d:-}" "${lt_e:-}"
+self_control idle-audible idle-audible \
+  check_pair demo-lamp-tone-pass demo-lamp-tone-idle "$lt_pass" "$fakes/idle-audible.report" "${lt_d:-}" "${lt_e:-}"
 
 # Watchdog self-control (the hosted false `hung` of run 43148343848, see wd_start): 20 watchdogs
 # of a live target, each stopped at once, must leave no marker and the target alive (before the
