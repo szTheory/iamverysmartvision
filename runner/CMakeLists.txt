@@ -13,6 +13,7 @@
 
 set(IVS_RUNNER_SOURCES
   exec.c
+  frame_export.c
   outcome.c
   report.c
   runner_chain.c

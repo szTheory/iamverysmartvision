@@ -246,3 +246,7 @@ runner.vchain.detects-tick-order
 runner.vchain.detects-reserved-word
 runner.exec.report-keys-ivsr3
 runner.golden.keys-video-live
+runner.operator.video-raw-hook-and-byte-cap
+runner.operator.frame-ppm-bytes-and-refusals
+runner.frameppm.palette-covers-16
+runner.frameppm.header-and-size

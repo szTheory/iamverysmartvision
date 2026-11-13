@@ -30,15 +30,21 @@ typedef struct ivs_hostio_out {
   uint64_t ino; /* it survives the close, so a later removal can tell the file from a replacement */
 } ivs_hostio_out;
 
-/* Creates path for writing with O_CREAT | O_EXCL (mode 0644 before the umask): an existing path of any
+/* The creation modes (before the umask) of an operator output: the audio outputs keep 0644; the video outputs of plan 06-12
+ * are created 0600 (decided deliberately for those two files, review residual IN-05; a frame or a raw stream can be derived
+ * from content the operator owns). Octal values as plain numbers so main.c needs no POSIX header. */
+#define IVS_HOSTIO_MODE_SHARED 0644u
+#define IVS_HOSTIO_MODE_PRIVATE 0600u
+
+/* Creates path for writing with O_CREAT | O_EXCL (the given mode before the umask): an existing path of any
  * kind, a dangling symbolic link included, is refused and never overwritten or truncated. Returns 0
  * (o is open), 1 when the path exists, -1 on any other failure (o is then closed). */
-int ivs_hostio_out_create(ivs_hostio_out *o, const char *path);
+int ivs_hostio_out_create(ivs_hostio_out *o, const char *path, unsigned int mode);
 
 /* The same exclusive create, but opened for reading and writing as well (plan 05-10, the operator WAV: the
  * header is written in front of the PCM after the stream is complete, and the finished file is read back
  * to hash it). Same results as ivs_hostio_out_create. */
-int ivs_hostio_out_create_rw(ivs_hostio_out *o, const char *path);
+int ivs_hostio_out_create_rw(ivs_hostio_out *o, const char *path, unsigned int mode);
 
 /* Writes all len bytes (retrying on EINTR and short writes). Returns 0, or -1 on an error. */
 int ivs_hostio_out_write(ivs_hostio_out *o, const void *bytes, size_t len);

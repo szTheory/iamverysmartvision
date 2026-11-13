@@ -61,6 +61,11 @@ runner-process.operator.max-bytes
 runner-process.operator.options
 runner-process.operator.failed-run
 runner-process.operator.golden-distinct
+runner-process.operator.video-raw
+runner-process.operator.video-raw-empty-run
+runner-process.operator.video-raw-failed-run
+runner-process.operator.video-raw-update-golden-refused
+runner-process.operator.frame-ppm-refused-user-content
 runner-process.refpcm.wav-written
 runner-process.refpcm.diag-ctrl-psg-pass
 runner-process.listen-demo.refuses-user

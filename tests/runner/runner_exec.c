@@ -23,6 +23,7 @@
 
 #include "ivs/ivs.h"
 #include "ivs_refpcm.h"
+#include "frame_export.h"
 #include "ivs_runner.h"
 #include "ivs_test.h"
 #include "runner_cases.h"
@@ -79,6 +80,12 @@ typedef struct fake_host {
   int corrupt_video;   /* the video hook flips one delivered byte before the chain check reads it */
   uint64_t vraw_bytes; /* bytes the video hook received */
   uint64_t video_out_max; /* options.video_out_max_bytes (0: the default) */
+  int fail_vraw;       /* the raw video hook fails */
+  int want_ppm;        /* install the frame export hook (plan 06-12) */
+  int fail_ppm;        /* the frame export hook fails */
+  uint32_t ppm_calls;
+  size_t ppm_len;      /* bytes of the last PPM the hook received */
+  uint8_t ppm_bytes[IVS_RUNNER_PPM_MAX];
 } fake_host;
 
 static int fh_read(void *ctx, const char *relpath, size_t cap, uint8_t *buf, size_t *len)
@@ -109,6 +116,9 @@ static int fh_cancel(void *ctx) { return ((fake_host *)ctx)->cancel; }
 static int fh_video_raw(void *ctx, const uint8_t *bytes, size_t len)
 {
   fake_host *h = ctx;
+  if (h->fail_vraw) {
+    return -1;
+  }
   h->vraw_bytes += len;
   if (h->corrupt_video && h->buffers != NULL && bytes >= h->buffers) {
     h->buffers[bytes - h->buffers] ^= 0x01u;
@@ -126,6 +136,19 @@ static int fh_audio_raw(void *ctx, const uint8_t *bytes, size_t len)
   if (h->corrupt_audio && h->buffers != NULL && bytes >= h->buffers) {
     h->buffers[bytes - h->buffers] ^= 0x01u;
   }
+  return 0;
+}
+
+/* The operator frame export hook (plan 06-12): keeps the PPM bytes. */
+static int fh_frame_ppm(void *ctx, const uint8_t *ppm, size_t len)
+{
+  fake_host *h = ctx;
+  h->ppm_calls++;
+  if (h->fail_ppm || len > sizeof h->ppm_bytes) {
+    return -1;
+  }
+  memcpy(h->ppm_bytes, ppm, len);
+  h->ppm_len = len;
   return 0;
 }
 
@@ -276,6 +299,9 @@ static uint32_t rx_exec(const char *text, fake_host *h, ivs_runner_result *res)
   }
   if (h->want_vraw) {
     host.write_video_raw = fh_video_raw;
+  }
+  if (h->want_ppm) {
+    host.write_frame_ppm = fh_frame_ppm;
   }
   if (h->want_wav) {
     host.write_wav_pcm = fh_wav_pcm;
@@ -1795,7 +1821,8 @@ static const char rx_vid_h2[] = "4cb3788af5c5743ae6d5ba3fdd22c6317c50c4432817acf
 static const char rx_vid_bad[] = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 #define RX_VID_BYTES 30592u /* two slots of 15,296 */
 
-/* The looping stand-in (display never enabled: border-colored, undisplayed frames) under a real output block with the
+/* The looping stand-in (display never enabled: border-colored, undisplayed frames) under a real output block (h was initialised
+ * by the caller, with its hooks and options) with the
  * scenario body after the content lines (the run-to line is line 7 when the body starts with a capture line, the first
  * assert is then line 8). */
 static int rx_vid_run(fake_host *h, const char *body, uint32_t outcome, uint32_t exit_code)
@@ -1805,7 +1832,6 @@ static int rx_vid_run(fake_host *h, const char *body, uint32_t outcome, uint32_t
   if (!rx_psg_scenario(scn, sizeof scn, body)) {
     return 0;
   }
-  fh_init(h);
   fh_add(h, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
   h->buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
   return rx_expect(scn, h, outcome, exit_code);
@@ -2202,6 +2228,165 @@ static int ex_golden_keys_video_live(void)
 done:
   rx_free(&h);
   return rc;
+}
+
+
+/* ---- operator-only video outputs (plan 06-12, D-17, T-06-16, T-06-17): the hooks of the vtable, in process ---- */
+
+/* The raw video hook receives every delivered slot (two of 15,296 bytes) before the chain check reads them; the byte bound is a harness
+ * failure (video-out-max-bytes) and never a partial write: at exactly the delivered size the run passes, one byte less ends it
+ * before anything reached the hook; a failing hook is video-out. */
+static int ex_operator_video_raw_hook(void)
+{
+  fake_host h;
+  int rc = IVS_TEST_FAIL;
+  fh_init(&h);
+  h.want_vraw = 1;
+  if (!rx_vid_run(&h, "run-to 130000 ticks\n", IVS_RUNNER_OUTCOME_PASS, 0u) || h.vraw_bytes != RX_VID_BYTES) {
+    goto done;
+  }
+  rx_free(&h);
+  fh_init(&h);
+  h.want_vraw = 1;
+  h.video_out_max = RX_VID_BYTES;
+  if (!rx_vid_run(&h, "run-to 130000 ticks\n", IVS_RUNNER_OUTCOME_PASS, 0u) || h.vraw_bytes != RX_VID_BYTES) {
+    goto done;
+  }
+  rx_free(&h);
+  fh_init(&h);
+  h.want_vraw = 1;
+  h.video_out_max = RX_VID_BYTES - 1u;
+  if (!rx_vid_run(&h, "run-to 130000 ticks\n", IVS_RUNNER_OUTCOME_HARNESS_FAIL, 14u) ||
+      !rx_is(h.out, "outcome.detail", "video-out-max-bytes") || h.vraw_bytes != 0u) {
+    goto done;
+  }
+  rx_free(&h);
+  fh_init(&h);
+  h.want_vraw = 1;
+  h.fail_vraw = 1;
+  if (!rx_vid_run(&h, "run-to 130000 ticks\n", IVS_RUNNER_OUTCOME_HARNESS_FAIL, 14u) ||
+      !rx_is(h.out, "outcome.detail", "video-out")) {
+    goto done;
+  }
+  rc = IVS_TEST_PASS;
+done:
+  rx_free(&h);
+  return rc;
+}
+
+/* The frame export gets the PPM of the LAST delivered frame once, after the run: `P6`, `159 96`, `255`, then 3 x 15,264 bytes (45,806 in
+ * all; a display-off frame of border 0 is all black through the preview palette); no frame, no call; the write error, the byte
+ * bound (smaller than the file) and a scenario that names `content exec user` are harness failures with their own details, the last
+ * one before anything runs. */
+static int ex_operator_frame_ppm(void)
+{
+  static const char hdr[] = "P6\n159 96\n255\n";
+  fake_host h;
+  char scn[RX_SCN_CAP];
+  int rc = IVS_TEST_FAIL;
+  fh_init(&h);
+  h.want_ppm = 1;
+  if (!rx_vid_run(&h, "run-to 130000 ticks\n", IVS_RUNNER_OUTCOME_PASS, 0u) || h.ppm_calls != 1u || h.ppm_len != 45806u ||
+      memcmp(h.ppm_bytes, hdr, sizeof hdr - 1u) != 0) {
+    ivs_test_diag("ppm calls %u len %zu", (unsigned)h.ppm_calls, h.ppm_len);
+    goto done;
+  }
+  for (size_t i = sizeof hdr - 1u; i < h.ppm_len; i++) {
+    if (h.ppm_bytes[i] != 0u) {
+      ivs_test_diag("byte %zu of the ppm is %u, want black", i, (unsigned)h.ppm_bytes[i]);
+      goto done;
+    }
+  }
+  rx_free(&h);
+  fh_init(&h);
+  h.want_ppm = 1;
+  if (!rx_vid_run(&h, "run-to 3000 ticks\n", IVS_RUNNER_OUTCOME_PASS, 0u) || h.ppm_calls != 0u) {
+    goto done;
+  }
+  rx_free(&h);
+  fh_init(&h);
+  h.want_ppm = 1;
+  h.fail_ppm = 1;
+  if (!rx_vid_run(&h, "run-to 130000 ticks\n", IVS_RUNNER_OUTCOME_HARNESS_FAIL, 14u) ||
+      !rx_is(h.out, "outcome.detail", "frame-ppm-out")) {
+    goto done;
+  }
+  rx_free(&h);
+  fh_init(&h);
+  h.want_ppm = 1;
+  h.video_out_max = 45805u;
+  if (!rx_vid_run(&h, "run-to 130000 ticks\n", IVS_RUNNER_OUTCOME_HARNESS_FAIL, 14u) ||
+      !rx_is(h.out, "outcome.detail", "frame-ppm-out-max-bytes") || h.ppm_calls != 0u) {
+    goto done;
+  }
+  rx_free(&h);
+  /* content exec user: a frame from an owner image is derived art of rights-bearing content. */
+  (void)snprintf(scn, sizeof scn, "ivss 1\nid ppm-user\nprofile intv-2609-ntsc-family-p1\ncontent exec user\ncontent grom zero-grom\nrun-to 130000 ticks\n");
+  fh_init(&h);
+  h.want_ppm = 1;
+  h.buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
+  if (!rx_expect(scn, &h, IVS_RUNNER_OUTCOME_HARNESS_FAIL, 14u) || !rx_is(h.out, "outcome.detail", "frame-ppm-user-content") ||
+      h.ppm_calls != 0u) {
+    goto done;
+  }
+  rc = IVS_TEST_PASS;
+done:
+  rx_free(&h);
+  return rc;
+}
+
+/* The preview palette: the sixteen color indices and the blank value map to seventeen distinct triples (a viewer can tell every
+ * index and a blank position apart), an entry outside it is refused, and the first entry is black. */
+static int ex_frameppm_palette_covers_16(void)
+{
+  uint8_t a[3];
+  uint8_t b[3];
+  IVS_CHECK(IVS_FRAMEPPM_PALETTE_ENTRIES == 17u);
+  for (uint32_t i = 0u; i < IVS_FRAMEPPM_PALETTE_ENTRIES; i++) {
+    IVS_CHECK(ivs_frameppm_palette(i, a) == 1);
+    for (uint32_t j = i + 1u; j < IVS_FRAMEPPM_PALETTE_ENTRIES; j++) {
+      IVS_CHECK(ivs_frameppm_palette(j, b) == 1);
+      if (memcmp(a, b, 3u) == 0) {
+        ivs_test_diag("palette entries %u and %u are the same triple", (unsigned)i, (unsigned)j);
+        return IVS_TEST_FAIL;
+      }
+    }
+  }
+  IVS_CHECK(ivs_frameppm_palette(17u, a) == 0 && ivs_frameppm_palette(0u, a) == 1 && a[0] == 0u && a[1] == 0u && a[2] == 0u);
+  return IVS_TEST_PASS;
+}
+
+/* The PPM bytes of small planes by hand: 2 x 2 positions 0, 5, blank, 15 give `P6\n2 2\n255\n` (11 bytes) then four triples
+ * (the palette entries of those indices); the bound is header plus 3 x positions (45,806 for 159 x 96, 11 + 12 for 2 x 2, 0 for an empty
+ * plane, SIZE_MAX when it cannot fit); a short output, a bad pixel and bad arguments are refused and write nothing. */
+static int ex_frameppm_header_and_size(void)
+{
+  static const uint8_t plane[4] = {0u, 5u, IVS_PIXEL_BLANK, 15u};
+  uint8_t out[64];
+  uint8_t rgb[3];
+  size_t w = 0u;
+  static const char hdr[] = "P6\n2 2\n255\n";
+  IVS_CHECK(ivs_frameppm_bound(159u, 96u) == 45806u && ivs_frameppm_bound(2u, 2u) == 23u && ivs_frameppm_bound(0u, 5u) == 0u &&
+            ivs_frameppm_bound(5u, 0u) == 0u && ivs_frameppm_bound(4294967295u, 4294967295u) == SIZE_MAX);
+  memset(out, 0xEE, sizeof out);
+  IVS_CHECK(ivs_frameppm_convert(plane, 2u, 2u, out, sizeof out, &w) == IVS_FRAMEPPM_OK && w == 23u);
+  IVS_CHECK(memcmp(out, hdr, sizeof hdr - 1u) == 0 && out[23] == 0xEEu);
+  for (size_t i = 0u; i < 4u; i++) {
+    uint32_t e = plane[i] == IVS_PIXEL_BLANK ? 16u : plane[i];
+    IVS_CHECK(ivs_frameppm_palette(e, rgb) == 1 && memcmp(out + 11u + 3u * i, rgb, 3u) == 0);
+  }
+  memset(out, 0xEE, sizeof out);
+  IVS_CHECK(ivs_frameppm_convert(plane, 2u, 2u, out, 22u, &w) == IVS_FRAMEPPM_E_SPACE && w == 0u && out[0] == 0xEEu);
+  {
+    uint8_t bad[4] = {0u, 16u, 0u, 0u};
+    IVS_CHECK(ivs_frameppm_convert(bad, 2u, 2u, out, sizeof out, &w) == IVS_FRAMEPPM_E_PIXEL && w == 0u);
+    bad[1] = 254u;
+    IVS_CHECK(ivs_frameppm_convert(bad, 2u, 2u, out, sizeof out, &w) == IVS_FRAMEPPM_E_PIXEL);
+  }
+  IVS_CHECK(ivs_frameppm_convert(NULL, 2u, 2u, out, sizeof out, &w) == IVS_FRAMEPPM_E_ARG &&
+            ivs_frameppm_convert(plane, 0u, 2u, out, sizeof out, &w) == IVS_FRAMEPPM_E_ARG &&
+            ivs_frameppm_convert(plane, 2u, 2u, out, sizeof out, NULL) == IVS_FRAMEPPM_E_ARG);
+  return IVS_TEST_PASS;
 }
 
 /* The hook contract: default rate 48000 and 44100 both give the by-hand frame count with the reference
@@ -2603,6 +2788,10 @@ static const ivs_test_case exec_cases[] = {
     {"runner.exec.video-without-buffer", ex_video_without_buffer, NULL},
     {"runner.exec.frame-not-captured", ex_frame_not_captured, NULL},
     {"runner.exec.report-keys-ivsr3", ex_report_keys_ivsr3, NULL},
+    {"runner.operator.video-raw-hook-and-byte-cap", ex_operator_video_raw_hook, NULL},
+    {"runner.operator.frame-ppm-bytes-and-refusals", ex_operator_frame_ppm, NULL},
+    {"runner.frameppm.palette-covers-16", ex_frameppm_palette_covers_16, NULL},
+    {"runner.frameppm.header-and-size", ex_frameppm_header_and_size, NULL},
     {"runner.golden.keys-video-live", ex_golden_keys_video_live, NULL},
     {"runner.exec.wav-hook", ex_wav_hook, NULL},
     {"runner.exec.wav-failures", ex_wav_failures, NULL},

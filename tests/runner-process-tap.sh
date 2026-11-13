@@ -569,6 +569,90 @@ sz=$(wc -c < "$tmp/gold/g.raw" 2> /dev/null | tr -d ' ')
   || { ok=0; why operator-golden "a distinct golden path: no golden written"; }
 result runner-process.operator.golden-distinct
 
+# Operator-only video outputs (plan 06-12, D-17, T-06-16, T-06-17): the same project-authored looping stand-in, run to tick
+# 130000 (two frame ends, at 59736 and 119472), under --video-raw and --frame-ppm into the mktemp directory. By hand: two slots
+# of 32 + 159 x 96 = 15296 bytes, so the raw file is 30592 bytes and equals output.video.bytes, the first slot's index field
+# (bytes 8 to 15) is 0 and the second slot's (offset 15296 + 8) ends in 01; the PPM starts `P6`, `159 96`, `255` (14 bytes)
+# and holds 3 x 15264 pixel bytes (45806 in all); both files are created mode 0600 (ls -l shows -rw-------).
+opvid="$opc/operator-vid.ivss"
+printf 'ivss 1\nid operator-vid\nprofile intv-2609-ntsc-family-p1\ncontent exec psg-prog.exec\ncontent grom zero-grom\nrun-to 130000 ticks\n' > "$opvid"
+mode_of() { ls -l "$1" 2> /dev/null | cut -c1-10; }
+: > "$tmp/why"
+ok=1
+run_one "$tmp" op-v "$ivs_run" --content-dir "$opc" --video-raw "$opo/v.vraw" --frame-ppm "$opo/v.ppm" "$opvid"
+judge op-v 0 pass - "" || ok=0
+sz=$(wc -c < "$opo/v.vraw" 2> /dev/null | tr -d ' ')
+[ "$sz" = 30592 ] && [ "$sz" = "$(op_value op-v output.video.bytes)" ] \
+  || { ok=0; why operator-video "raw file size '$sz', output.video.bytes '$(op_value op-v output.video.bytes)'"; }
+[ "$(od -An -tx1 -j8 -N8 "$opo/v.vraw" | tr -d ' \n')" = 0000000000000000 ] \
+  || { ok=0; why operator-video "the first slot's index field is not 0"; }
+[ "$(od -An -tx1 -j15304 -N8 "$opo/v.vraw" | tr -d ' \n')" = 0000000000000001 ] \
+  || { ok=0; why operator-video "the second slot's index field is not 1"; }
+[ "$(mode_of "$opo/v.vraw")" = "-rw-------" ] || { ok=0; why operator-video "--video-raw mode '$(mode_of "$opo/v.vraw")', expected -rw-------"; }
+psz=$(wc -c < "$opo/v.ppm" 2> /dev/null | tr -d ' ')
+[ "$psz" = 45806 ] || { ok=0; why operator-video "ppm size '$psz', expected 45806"; }
+[ "$(head -c 14 "$opo/v.ppm" | od -An -tx1 | tr -d ' \n')" = 50360a3135392039360a3235350a ] \
+  || { ok=0; why operator-video "the ppm header is not P6, 159 96, 255"; }
+[ "$(mode_of "$opo/v.ppm")" = "-rw-------" ] || { ok=0; why operator-video "--frame-ppm mode '$(mode_of "$opo/v.ppm")', expected -rw-------"; }
+result runner-process.operator.video-raw
+# A scenario that delivers no frame (tick 3000) leaves an empty file, still mode 0600, and nothing else is created.
+: > "$tmp/why"
+ok=1
+mkdir "$tmp/vempty" || exit 1
+run_one "$tmp" op-v-empty "$ivs_run" --content-dir "$opc" --video-raw "$tmp/vempty/e.vraw" "$opscn"
+judge op-v-empty 0 pass - "" || ok=0
+[ -f "$tmp/vempty/e.vraw" ] && [ ! -s "$tmp/vempty/e.vraw" ] || { ok=0; why operator-video-empty "the file is missing or not empty"; }
+[ "$(mode_of "$tmp/vempty/e.vraw")" = "-rw-------" ] || { ok=0; why operator-video-empty "mode '$(mode_of "$tmp/vempty/e.vraw")'"; }
+[ "$(ls "$tmp/vempty" | wc -l | tr -d ' ')" = 1 ] || { ok=0; why operator-video-empty "other files were created"; }
+result runner-process.operator.video-raw-empty-run
+# A run that ends harness-fail leaves no video output file (the Phase 5 rule, review WR-01): the byte bound on the raw file and on the
+# PPM (a bound below its 45806 bytes), and an existing path is refused without touching it (exclusive create); the retry without
+# the bound then succeeds into the same path.
+: > "$tmp/why"
+ok=1
+run_one "$tmp" op-vf-raw "$ivs_run" --content-dir "$opc" --video-raw "$opo/f.vraw" --video-out-max-bytes 100 "$opvid"
+judge op-vf-raw 14 harness-fail video-out-max-bytes "" || ok=0
+[ ! -e "$opo/f.vraw" ] || { ok=0; why operator-video-failed "--video-raw: the failed run left f.vraw"; }
+run_one "$tmp" op-vf-ppm "$ivs_run" --content-dir "$opc" --frame-ppm "$opo/f.ppm" --video-out-max-bytes 1000 "$opvid"
+judge op-vf-ppm 14 harness-fail frame-ppm-out-max-bytes "" || ok=0
+[ ! -e "$opo/f.ppm" ] || { ok=0; why operator-video-failed "--frame-ppm: the failed run left f.ppm"; }
+run_one "$tmp" op-vf-retry "$ivs_run" --content-dir "$opc" --video-raw "$opo/f.vraw" "$opvid"
+judge op-vf-retry 0 pass - "" || ok=0
+cp "$opo/f.vraw" "$opo/f.before" || exit 1
+run_one "$tmp" op-vf-excl "$ivs_run" --content-dir "$opc" --video-raw "$opo/f.vraw" "$opvid"
+[ "$rc" -eq 14 ] && [ ! -s "$tmp/runs/op-vf-excl.out" ] || { ok=0; why operator-video-failed "an existing path: exit $rc or a report"; }
+printf 'ivs-run: --video-raw: output file exists, refusing to overwrite it\n' > "$tmp/want.err"
+cmp -s "$tmp/runs/op-vf-excl.err" "$tmp/want.err" || { ok=0; why operator-video-failed "an existing path: stderr is not the one refusal line"; }
+cmp -s "$opo/f.vraw" "$opo/f.before" || { ok=0; why operator-video-failed "the existing file changed"; }
+result runner-process.operator.video-raw-failed-run
+# --update-golden never names a video output (review WR-02 copied): the same string or the same file under another spelling is
+# refused (exit 14, one stderr line, no report) and the run's own output file is not left behind.
+: > "$tmp/why"
+ok=1
+printf 'ivs-run: --update-golden must not name an operator output file\n' > "$tmp/want.err"
+for opt in --video-raw --frame-ppm; do
+  run_one "$tmp/gold" op-vg-same "$ivs_run" --content-dir "$opc" "$opt" v.out --update-golden v.out "$opvid"
+  [ "$rc" -eq 14 ] && [ ! -s "$tmp/runs/op-vg-same.out" ] || { ok=0; why operator-video-golden "$opt with the same string: exit $rc or a report"; }
+  cmp -s "$tmp/runs/op-vg-same.err" "$tmp/want.err" || { ok=0; why operator-video-golden "$opt: stderr is not the one refusal line"; }
+  [ ! -e "$tmp/gold/v.out" ] || { ok=0; why operator-video-golden "$opt with the same string: left v.out"; }
+  run_one "$tmp/gold" op-vg-alias "$ivs_run" --content-dir "$opc" "$opt" v.out --update-golden ./v.out "$opvid"
+  [ "$rc" -eq 14 ] && [ ! -s "$tmp/runs/op-vg-alias.out" ] || { ok=0; why operator-video-golden "$opt with ./v.out: exit $rc or a report"; }
+  cmp -s "$tmp/runs/op-vg-alias.err" "$tmp/want.err" || { ok=0; why operator-video-golden "$opt: alias stderr is not the one refusal line"; }
+  [ ! -e "$tmp/gold/v.out" ] || { ok=0; why operator-video-golden "$opt with ./v.out: left v.out"; }
+done
+result runner-process.operator.video-raw-update-golden-refused
+# A frame rendered from an owner image is derived art of rights-bearing content: --frame-ppm is refused for a scenario that names
+# `content exec user` (exit 14, one stderr line, no report, no file), before anything is created.
+: > "$tmp/why"
+ok=1
+printf 'ivss 1\nid operator-user\nprofile intv-2609-ntsc-family-p1\ncontent exec user\ncontent grom zero-grom\nrun-to 1000 ticks\n' > "$opc/operator-user.ivss"
+printf 'ivs-run: --frame-ppm refused: content user\n' > "$tmp/want.err"
+run_one "$tmp" op-vu "$ivs_run" --content-dir "$opc" --frame-ppm "$opo/u.ppm" "$opc/operator-user.ivss"
+[ "$rc" -eq 14 ] && [ ! -s "$tmp/runs/op-vu.out" ] || { ok=0; why operator-video-user "exit $rc or a report"; }
+cmp -s "$tmp/runs/op-vu.err" "$tmp/want.err" || { ok=0; why operator-video-user "stderr is not the one refusal line"; }
+[ ! -e "$opo/u.ppm" ] || { ok=0; why operator-video-user "a file was created"; }
+result runner-process.operator.frame-ppm-refused-user-content
+
 # Operator WAV (plan 05-10, D-20, D-21, T-05-26): the same stand-in under --audio-wav, into the mktemp directory.
 # By hand: the report ends with refpcm.rate (48000), refpcm.frames and refpcm.sha256 right before report.end;
 # the file is 44 + 2 x frames bytes (a mono 16-bit RIFF/WAVE file), begins with the four bytes RIFF and the

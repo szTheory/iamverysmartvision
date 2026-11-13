@@ -48,6 +48,8 @@ typedef struct main_host {
   ivs_hostio_out audio_out;        /* --audio-raw file (plan 05-09), fd -1 when not given */
   ivs_hostio_out log_out;          /* --psg-log-out file */
   ivs_hostio_out wav_out;          /* --audio-wav file (plan 05-10): 44 reserved header bytes, then the PCM */
+  ivs_hostio_out video_out;        /* --video-raw file (plan 06-12): the delivered slots, mode 0600 */
+  ivs_hostio_out ppm_out;          /* --frame-ppm file (plan 06-12): the last frame as a PPM, mode 0600 */
 } main_host;
 
 static const char main_usage[] =
@@ -85,6 +87,14 @@ static const char main_usage[] =
     "                       (the SHA-256 of the file as written); the file is bounded by\n"
     "                       --audio-out-max-bytes; never a golden, never a claim\n"
     "  --wav-rate <n>       the WAV rate, 44100 or 48000 (default 48000); needs --audio-wav\n"
+    "  --video-raw <file>   also write the delivered video frame slots (each with its 32-byte header, so the\n"
+    "                       stream is self-describing) to a NEW file created mode 0600 (same rules: an existing\n"
+    "                       path is refused, a harness-fail run removes it); never a golden, never evidence\n"
+    "  --video-out-max-bytes <n>  bound of --video-raw and --frame-ppm in bytes, 1..1099511627776\n"
+    "                       (default 268435456); passing it is a harness failure (exit 14), file removed\n"
+    "  --frame-ppm <file>   also write the LAST delivered frame as a binary PPM (P6) in the operator preview\n"
+    "                       palette (not STIC colour data) to a NEW file created mode 0600; refused for a\n"
+    "                       scenario with `content <role> user`; an exported frame is never evidence\n"
     "  --help               print this text and exit 0\n"
     "outcomes (outcome exit-code):\n"
     "pass 0\n"
@@ -135,6 +145,18 @@ static int mh_audio_raw(void *ctx, const uint8_t *bytes, size_t len)
 {
   main_host *h = ctx;
   return ivs_hostio_out_write(&h->audio_out, bytes, len);
+}
+
+static int mh_video_raw(void *ctx, const uint8_t *bytes, size_t len)
+{
+  main_host *h = ctx;
+  return ivs_hostio_out_write(&h->video_out, bytes, len);
+}
+
+static int mh_frame_ppm(void *ctx, const uint8_t *ppm, size_t len)
+{
+  main_host *h = ctx;
+  return ivs_hostio_out_write(&h->ppm_out, ppm, len);
 }
 
 static int mh_psg_log(void *ctx, const char *lines, size_t len)
@@ -233,9 +255,9 @@ static int main_number(const char *a, uint64_t lo, uint64_t hi, uint64_t *out)
 }
 
 /* Creates the operator output file exclusively (hostio.c). 0, or -1 after one line on stderr. */
-static int main_open_out(ivs_hostio_out *o, const char *path, const char *option)
+static int main_open_out(ivs_hostio_out *o, const char *path, const char *option, unsigned int mode)
 {
-  int r = ivs_hostio_out_create(o, path);
+  int r = ivs_hostio_out_create(o, path, mode);
   if (r == 1) {
     fprintf(stderr, "ivs-run: %s: output file exists, refusing to overwrite it\n", option);
     return -1;
@@ -250,7 +272,7 @@ static int main_open_out(ivs_hostio_out *o, const char *path, const char *option
 /* The same, for a file that is also read back (the operator WAV, plan 05-10). */
 static int main_open_out_rw(ivs_hostio_out *o, const char *path, const char *option)
 {
-  int r = ivs_hostio_out_create_rw(o, path);
+  int r = ivs_hostio_out_create_rw(o, path, IVS_HOSTIO_MODE_SHARED);
   if (r == 1) {
     fprintf(stderr, "ivs-run: %s: output file exists, refusing to overwrite it\n", option);
     return -1;
@@ -435,6 +457,8 @@ int main(int argc, char **argv)
   const char *audio_raw_path = NULL;
   const char *psg_log_path = NULL;
   const char *audio_wav_path = NULL;
+  const char *video_raw_path = NULL;
+  const char *frame_ppm_path = NULL;
   char dirbuf[MAIN_DIR_MAX];
   size_t text_len = 0u;
   size_t storage_bytes;
@@ -445,10 +469,13 @@ int main(int argc, char **argv)
   int have_slice = 0;
   int have_out_max = 0;
   int have_wav_rate = 0;
+  int have_vout_max = 0;
   memset(&mh, 0, sizeof mh);
   mh.audio_out.fd = -1;
   mh.log_out.fd = -1;
   mh.wav_out.fd = -1;
+  mh.video_out.fd = -1;
+  mh.ppm_out.fd = -1;
   memset(&opts, 0, sizeof opts);
   for (int i = 1; i < argc; i++) {
     const char *a = argv[i];
@@ -477,6 +504,14 @@ int main(int argc, char **argv)
       slot = &psg_log_path;
     } else if (strcmp(a, "--audio-wav") == 0) {
       slot = &audio_wav_path;
+    } else if (strcmp(a, "--video-raw") == 0) {
+      slot = &video_raw_path;
+    } else if (strcmp(a, "--frame-ppm") == 0) {
+      slot = &frame_ppm_path;
+    } else if (strcmp(a, "--video-out-max-bytes") == 0) {
+      seen = &have_vout_max;
+      lo = 1u;
+      hi = UINT64_C(1099511627776);
     } else if (strcmp(a, "--wav-rate") == 0) {
       seen = &have_wav_rate;
       lo = 1u;
@@ -544,6 +579,8 @@ int main(int argc, char **argv)
       opts.slice_ticks = v;
     } else if (seen == &have_out_max) {
       opts.audio_out_max_bytes = v;
+    } else if (seen == &have_vout_max) {
+      opts.video_out_max_bytes = v;
     } else if (seen == &mh.self_signal_repeat) {
       mh.self_signal_count = v;
     } else {
@@ -563,7 +600,8 @@ int main(int argc, char **argv)
    * the same string is refused here, before anything is created; the same file under another spelling is
    * refused below once the outputs exist. */
   if (main_same_path(golden_path, audio_raw_path) || main_same_path(golden_path, psg_log_path) ||
-      main_same_path(golden_path, audio_wav_path)) {
+      main_same_path(golden_path, audio_wav_path) || main_same_path(golden_path, video_raw_path) ||
+      main_same_path(golden_path, frame_ppm_path)) {
     return main_fail("--update-golden must not name an operator output file");
   }
   if (!mh.self_signal_repeat) {
@@ -606,6 +644,16 @@ int main(int argc, char **argv)
     return main_fail(line);
   }
   free(text);
+  /* A frame rendered from an owner image is derived art of rights-bearing content: no frame export for a scenario that names
+   * `content ... user` (plan 06-12, T-06-17); refused before anything is created, no report. */
+  if (frame_ppm_path != NULL) {
+    for (uint32_t role = 0u; role < IVS_SCN_ROLES; role++) {
+      if (scn->content[role].kind == IVS_SCN_CONTENT_USER) {
+        free(scn);
+        return main_fail("--frame-ppm refused: content user");
+      }
+    }
+  }
   /* A golden never records operator content (D-11): refused before the run, no report. */
   if (golden_path != NULL) {
     for (uint32_t role = 0u; role < IVS_SCN_ROLES; role++) {
@@ -645,14 +693,14 @@ int main(int argc, char **argv)
 
   /* The operator's raw outputs, created exclusively before the run: an existing path is refused with
    * one line and exit 14, nothing is overwritten (plan 05-09, T-05-23). */
-  if (audio_raw_path != NULL && main_open_out(&mh.audio_out, audio_raw_path, "--audio-raw") != 0) {
+  if (audio_raw_path != NULL && main_open_out(&mh.audio_out, audio_raw_path, "--audio-raw", IVS_HOSTIO_MODE_SHARED) != 0) {
     free(storage);
     free(buffers);
     free(mh.golden_buf);
     free(scn);
     return MAIN_EXIT_HARNESS;
   }
-  if (psg_log_path != NULL && main_open_out(&mh.log_out, psg_log_path, "--psg-log-out") != 0) {
+  if (psg_log_path != NULL && main_open_out(&mh.log_out, psg_log_path, "--psg-log-out", IVS_HOSTIO_MODE_SHARED) != 0) {
     main_discard(&mh.audio_out, audio_raw_path, NULL);
     free(storage);
     free(buffers);
@@ -681,13 +729,32 @@ int main(int argc, char **argv)
       return MAIN_EXIT_HARNESS;
     }
   }
-  /* The golden path against the files just created, whatever its spelling or links (review WR-02). */
-  if (golden_path != NULL && (ivs_hostio_out_is_path(&mh.audio_out, golden_path) == 1 ||
-                              ivs_hostio_out_is_path(&mh.log_out, golden_path) == 1 ||
-                              ivs_hostio_out_is_path(&mh.wav_out, golden_path) == 1)) {
+  /* The operator's video outputs (plan 06-12): the same exclusive create, created mode 0600; a refusal abandons the files
+   * this run already created (review WR-01 form). */
+  if ((video_raw_path != NULL && main_open_out(&mh.video_out, video_raw_path, "--video-raw", IVS_HOSTIO_MODE_PRIVATE) != 0) ||
+      (frame_ppm_path != NULL && main_open_out(&mh.ppm_out, frame_ppm_path, "--frame-ppm", IVS_HOSTIO_MODE_PRIVATE) != 0)) {
     main_discard(&mh.audio_out, audio_raw_path, NULL);
     main_discard(&mh.log_out, psg_log_path, NULL);
     main_discard(&mh.wav_out, audio_wav_path, NULL);
+    main_discard(&mh.video_out, video_raw_path, NULL);
+    main_discard(&mh.ppm_out, frame_ppm_path, NULL);
+    free(storage);
+    free(buffers);
+    free(mh.golden_buf);
+    free(scn);
+    return MAIN_EXIT_HARNESS;
+  }
+  /* The golden path against the files just created, whatever its spelling or links (review WR-02). */
+  if (golden_path != NULL && (ivs_hostio_out_is_path(&mh.audio_out, golden_path) == 1 ||
+                              ivs_hostio_out_is_path(&mh.log_out, golden_path) == 1 ||
+                              ivs_hostio_out_is_path(&mh.wav_out, golden_path) == 1 ||
+                              ivs_hostio_out_is_path(&mh.video_out, golden_path) == 1 ||
+                              ivs_hostio_out_is_path(&mh.ppm_out, golden_path) == 1)) {
+    main_discard(&mh.audio_out, audio_raw_path, NULL);
+    main_discard(&mh.log_out, psg_log_path, NULL);
+    main_discard(&mh.wav_out, audio_wav_path, NULL);
+    main_discard(&mh.video_out, video_raw_path, NULL);
+    main_discard(&mh.ppm_out, frame_ppm_path, NULL);
     free(storage);
     free(buffers);
     free(mh.golden_buf);
@@ -715,6 +782,12 @@ int main(int argc, char **argv)
     host.write_wav_pcm = mh_wav_pcm;
     host.finish_wav = mh_wav_finish;
   }
+  if (video_raw_path != NULL) {
+    host.write_video_raw = mh_video_raw;
+  }
+  if (frame_ppm_path != NULL) {
+    host.write_frame_ppm = mh_frame_ppm;
+  }
   memset(&res, 0, sizeof res);
   (void)ivs_runner_execute(scn, &host, &opts, &res);
   free(storage);
@@ -732,6 +805,14 @@ int main(int argc, char **argv)
     code = MAIN_EXIT_HARNESS;
     fprintf(stderr, "ivs-run: --audio-wav: close failed\n");
   }
+  if (video_raw_path != NULL && ivs_hostio_out_close(&mh.video_out) != 0) {
+    code = MAIN_EXIT_HARNESS;
+    fprintf(stderr, "ivs-run: --video-raw: close failed\n");
+  }
+  if (frame_ppm_path != NULL && ivs_hostio_out_close(&mh.ppm_out) != 0) {
+    code = MAIN_EXIT_HARNESS;
+    fprintf(stderr, "ivs-run: --frame-ppm: close failed\n");
+  }
   if (fflush(stdout) != 0 || ferror(stdout) || res.report_write_failed != 0u) {
     code = MAIN_EXIT_HARNESS;
     fprintf(stderr, "ivs-run: report write failed\n");
@@ -745,6 +826,8 @@ int main(int argc, char **argv)
     main_discard(&mh.audio_out, audio_raw_path, "--audio-raw");
     main_discard(&mh.log_out, psg_log_path, "--psg-log-out");
     main_discard(&mh.wav_out, audio_wav_path, "--audio-wav");
+    main_discard(&mh.video_out, video_raw_path, "--video-raw");
+    main_discard(&mh.ppm_out, frame_ppm_path, "--frame-ppm");
   }
   free(mh.golden_buf);
   free(scn);

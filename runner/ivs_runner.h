@@ -354,6 +354,7 @@ const char *ivs_scenario_input_name(uint32_t i, uint32_t *mask);
  * records of 16 bytes, 4096 audio level-change entries of 12 bytes and, from plan 06-12, 16 video slots of
  * 15,296 bytes (244,736). Only a scenario with a capture directive needs it. */
 #define IVS_RUNNER_VIDEO_SLOT_MAX 15296u /* bytes of one video slot the capture store holds (32 + 159 x 96) */
+#define IVS_RUNNER_PPM_MAX 46000u        /* bytes the executor reserves for the PPM of one frame (the bound of 159 x 96 is 45,806) */
 #define IVS_RUNNER_CAPTURE_BYTES \
   (IVS_SCN_CAPTURE_MAX * 16u + IVS_SCN_CAPTURE_MAX * 12u + IVS_SCN_CAPTURE_VIDEO_MAX * IVS_RUNNER_VIDEO_SLOT_MAX)
 #define IVS_RUNNER_BUFFERS_MAX (8u * 1024u * 1024u)  /* D-22: output buffer cap */
@@ -417,10 +418,14 @@ typedef struct ivs_runner_host {
    * slots each slice delivered (header and rows exactly as the core wrote them, so the stream is
    * self-describing), in order, before the video chain check reads them. Returns 0, or nonzero on a write
    * error (harness-fail `video-out`); the byte bound is options.video_out_max_bytes (harness-fail
-   * `video-out-max-bytes`). The library names no file: a scenario cannot ask for one. A frame export
-   * (write_frame_ppm) takes the last delivered frame after the run and is never evidence. */
+   * `video-out-max-bytes`). The library names no file: a scenario cannot ask for one. write_frame_ppm
+   * (operator-only, NULL: not requested) gets once, after the last slice, the bytes of the binary PPM (P6) of the LAST
+   * delivered frame (runner/frame_export.h: the operator preview palette, not STIC colour data); it is called only
+   * when a frame was delivered, never for a scenario that names `content ... user` (that run is a harness failure,
+   * `frame-ppm-user-content`, before anything runs), and its size counts against options.video_out_max_bytes
+   * (`frame-ppm-out-max-bytes`); a write error is harness-fail `frame-ppm-out`. An exported frame is never evidence. */
   int (*write_video_raw)(void *ctx, const uint8_t *bytes, size_t len);
-  int (*write_frame_ppm)(void *ctx, const uint8_t *plane, uint32_t width, uint32_t height);
+  int (*write_frame_ppm)(void *ctx, const uint8_t *ppm, size_t len);
 } ivs_runner_host;
 
 /* Slicing, budget and wall cap (D-21, plan 04-19). Every run-to is executed as slices of at most

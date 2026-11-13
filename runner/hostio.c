@@ -124,7 +124,7 @@ int ivs_hostio_read(const char *dir, const char *rel, size_t cap, uint8_t *buf, 
   return got > cap ? IVS_RUNNER_READ_TOO_LARGE : IVS_RUNNER_READ_OK;
 }
 
-static int hostio_out_create(ivs_hostio_out *o, const char *path, int access)
+static int hostio_out_create(ivs_hostio_out *o, const char *path, int access, unsigned int mode)
 {
   struct stat sb;
   int fd;
@@ -134,7 +134,7 @@ static int hostio_out_create(ivs_hostio_out *o, const char *path, int access)
   if (path == NULL || path[0] == '\0') {
     return -1;
   }
-  fd = open(path, access | O_CREAT | O_EXCL | O_NOCTTY, 0644);
+  fd = open(path, access | O_CREAT | O_EXCL | O_NOCTTY, (mode_t)mode);
   if (fd < 0) {
     return errno == EEXIST ? 1 : -1;
   }
@@ -150,9 +150,15 @@ static int hostio_out_create(ivs_hostio_out *o, const char *path, int access)
   return 0;
 }
 
-int ivs_hostio_out_create(ivs_hostio_out *o, const char *path) { return hostio_out_create(o, path, O_WRONLY); }
+int ivs_hostio_out_create(ivs_hostio_out *o, const char *path, unsigned int mode)
+{
+  return hostio_out_create(o, path, O_WRONLY, mode);
+}
 
-int ivs_hostio_out_create_rw(ivs_hostio_out *o, const char *path) { return hostio_out_create(o, path, O_RDWR); }
+int ivs_hostio_out_create_rw(ivs_hostio_out *o, const char *path, unsigned int mode)
+{
+  return hostio_out_create(o, path, O_RDWR, mode);
+}
 
 int ivs_hostio_out_write_at(ivs_hostio_out *o, uint64_t offset, const void *bytes, size_t len)
 {

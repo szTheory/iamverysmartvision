@@ -18,6 +18,7 @@
 #include "ivs/ivs.h"
 #include "ivs_runner.h"
 #include "ivs_refpcm.h"
+#include "frame_export.h"
 #include "runner_chain.h"
 #include "runner_vchain.h"
 
@@ -74,6 +75,9 @@ typedef struct ex_state {
   uint32_t vid_height;
   uint64_t out_video_max;    /* the operator's byte bound of the raw video file */
   uint64_t out_video_bytes;  /* bytes handed to write_video_raw */
+  int have_last_slot;        /* last_slot holds the last delivered frame (kept only for an operator frame export) */
+  uint8_t last_slot[IVS_RUNNER_VIDEO_SLOT_MAX];
+  uint8_t ppm[IVS_RUNNER_PPM_MAX];
   uint32_t slices;         /* run calls that returned IVS_OK */
   uint32_t slices_audio;   /* ... of which delivered into an audio buffer */
   uint32_t slices_video;   /* ... of which delivered into a video buffer */
@@ -1047,6 +1051,12 @@ static void ex_run_steps(ex_state *x, const ivs_info *info)
           x->out_video_bytes += vgot;
         }
         ex_capture_video(x, x->vid_buf, vgot);
+        if (x->host->write_frame_ppm != NULL && x->vid_slot_bytes != 0u && x->vid_slot_bytes <= IVS_RUNNER_VIDEO_SLOT_MAX &&
+            vgot >= x->vid_slot_bytes) {
+          /* The last whole slot of this slice is the last frame delivered so far. */
+          memcpy(x->last_slot, x->vid_buf + (vgot / x->vid_slot_bytes - 1u) * x->vid_slot_bytes, x->vid_slot_bytes);
+          x->have_last_slot = 1;
+        }
         (void)ivs_runner_vchain_feed(&x->vchain, x->vid_buf, vgot, rep.video_first_index);
         x->slices_video++;
       }
@@ -1147,6 +1157,31 @@ static void ex_video_chain_check(ex_state *x)
   }
 }
 
+/* The operator's frame export (plan 06-12): the last delivered frame as a PPM through write_frame_ppm, once, after the run. A frame
+ * that is not a plane of color indices, a size above the buffer or the byte bound, and a write error are harness failures. */
+static void ex_frame_ppm(ex_state *x)
+{
+  size_t written = 0u;
+  size_t bound;
+  if (x->host->write_frame_ppm == NULL || !x->have_last_slot || (x->observed & IVS_RUNNER_OBS_HARNESS_FAIL) != 0u) {
+    return;
+  }
+  bound = ivs_frameppm_bound(x->vid_width, x->vid_height);
+  if (bound == 0u || bound > sizeof x->ppm ||
+      ivs_frameppm_convert(x->last_slot + IVS_FRAME_HEADER_BYTES, x->vid_width, x->vid_height, x->ppm, sizeof x->ppm, &written) !=
+          IVS_FRAMEPPM_OK) {
+    ex_observe(x, IVS_RUNNER_OBS_HARNESS_FAIL, "frame-ppm-convert");
+    return;
+  }
+  if ((uint64_t)written > x->out_video_max) {
+    ex_observe(x, IVS_RUNNER_OBS_HARNESS_FAIL, "frame-ppm-out-max-bytes");
+    return;
+  }
+  if (x->host->write_frame_ppm(x->host->ctx, x->ppm, written) != 0) {
+    ex_observe(x, IVS_RUNNER_OBS_HARNESS_FAIL, "frame-ppm-out");
+  }
+}
+
 /* Final observation for the report: CPU state and every digest domain. */
 static void ex_final(ex_state *x)
 {
@@ -1228,6 +1263,17 @@ static int ex_create(ex_state *x)
   return 1;
 }
 
+/* 1 when any role of the scenario is `content <role> user`. */
+static int ex_names_user_content(const ivs_scenario *scn)
+{
+  for (uint32_t role = 0u; role < IVS_SCN_ROLES; role++) {
+    if (scn->content[role].kind == IVS_SCN_CONTENT_USER) {
+      return 1;
+    }
+  }
+  return 0;
+}
+
 uint32_t ivs_runner_execute(const ivs_scenario *scn, const ivs_runner_host *host, const ivs_runner_options *opts,
                             ivs_runner_result *result)
 {
@@ -1267,7 +1313,10 @@ uint32_t ivs_runner_execute(const ivs_scenario *scn, const ivs_runner_host *host
   if (scn->wall_timeout_ms != 0u && scn->wall_timeout_ms < x.wall_cap_ms) {
     x.wall_cap_ms = scn->wall_timeout_ms; /* D-21: a scenario only lowers the cap */
   }
-  if (ex_create(&x) && ex_load_all(&x)) {
+  if (host->write_frame_ppm != NULL && ex_names_user_content(scn)) {
+    /* A frame rendered from an owner image is derived art of rights-bearing content: no export (T-06-17). */
+    ex_observe(&x, IVS_RUNNER_OBS_HARNESS_FAIL, "frame-ppm-user-content");
+  } else if (ex_create(&x) && ex_load_all(&x)) {
     ivs_status st = ivs_machine_reset(x.m, IVS_RESET_POWER_ON);
     if (st != IVS_OK) {
       char d[IVS_RUNNER_DETAIL_MAX];
@@ -1290,6 +1339,7 @@ uint32_t ivs_runner_execute(const ivs_scenario *scn, const ivs_runner_host *host
   }
   if (x.m != NULL) {
     ex_final(&x);
+    ex_frame_ppm(&x);
   }
   if (x.wav_requested) {
     /* The operator WAV is finished once, whatever the scenario ended as (the file holds what the run
