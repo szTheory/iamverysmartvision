@@ -32,8 +32,10 @@
 # cost cap V-16) diag-ctrl-psg-pass, and runner-process.cwd (diag-boot-pass from another working
 # directory) and runner-process.cwd.diag-ctrl-psg-pass must equal the scenario case's report byte for
 # byte apart from the host.calls line.
-# Since plan 06-13 runner-process.repeat.diag-stic-fgbg-pass and runner-process.repeat.diag-stic-cstack-pass (the third diagnostic, one
-# more run each) are judged the same way.
+# Since plan 06-13 runner-process.repeat.diag-stic-fgbg-pass, runner-process.repeat.diag-stic-cstack-pass (the third diagnostic, one
+# more run each) and runner-process.slices.diag-stic-fgbg-pass (--slice-ticks 1 and 7, that scenario only) are judged the same way. Its
+# program mutations (data/expected/diag-mutations-stic.ids, ids runner-process.mutant.STIC-*) have a scenario column and comma-joined
+# address, from and to lists, judged by the same run_mutant.
 # Judge self-controls (runner-process.judge.<slug>): the same checks run against four fake
 # runners (shell scripts in the temp dir replaying this run's reports with one defect: exit 0 for
 # a guest-fail, no report.end, outcome pass with exit.code 10, a changed digest line); each passes
@@ -342,6 +344,12 @@ while read -r id x oc class skip args rest; do
   fi
 done < "$inv"
 
+# patch_args <addr list> <word list>: one `--patch ADDR=HEX` per element of the two comma-joined lists (a single word is a list of
+# one; tokens hold only hex digits, so the unquoted use of the output in run_mutant splits it safely).
+patch_args() {
+  awk -v a="$1" -v w="$2" 'BEGIN { n = split(a, A, ","); split(w, W, ","); for (i = 1; i <= n; i++) printf "--patch %s=%s ", A[i], W[i] }'
+}
+
 # run_mutant <id> <listing> <cart file name> <scenario id> <addr> <to> <exit> <outcome> <detail pattern>:
 # rebuilds the cartridge from <listing> in a fresh directory with the one word patched, runs the
 # scenario against it and judges the stated exit code, outcome and detail. Sets $ok, adds to $tmp/why.
@@ -350,7 +358,7 @@ run_mutant() {
   md="$tmp/mut-$_mid"
   if ! mkdir "$md" || ! cp "$content/boot-stub.exec" "$md/boot-stub.exec"; then
     ok=0; why temp "cannot prepare $md"
-  elif ! "$pack" --ivsc "$_ml" "$md/$_mc" --patch "$_ma=$_mw" > "$tmp/why.pack" 2>&1; then
+  elif ! "$pack" --ivsc "$_ml" "$md/$_mc" $(patch_args "$_ma" "$_mw") > "$tmp/why.pack" 2>&1; then
     ok=0; why pack "ivs_pack --patch $_ma=$_mw failed: $(cat "$tmp/why.pack")"
   elif cmp -s "$md/$_mc" "$content/$_mc"; then
     ok=0; why pack "the patch $_ma=$_mw leaves the container unchanged"
@@ -413,6 +421,47 @@ while read -r mid addr from to rest; do
   result "runner-process.mutant.$mid"
 done < "$muts2"
 
+# Program mutations of the third diagnostic (plan 06-13, D-20, V6-9, V6-12): per line
+# `<ID> <scenario> <addr list> <from list> <to list> <clause> <outcome> <exit>` of data/expected/diag-mutations-stic.ids (the lists are
+# comma-joined); the word at each <addr> of the unpatched listing (ivs_pack --dump-words) must be its <from>, and the stated outcome
+# (guest-fail 10, timeout 11 or pass 0) of the named scenario is judged.
+listing3="$root/fixtures/FX-diag-stic-1/diag-stic-1.listing.txt"
+muts3="$root/data/expected/diag-mutations-stic.ids"
+"$pack" --dump-words "$listing3" > "$tmp/words3" 2> /dev/null || : > "$tmp/words3"
+while read -r mid scn addrs froms tos rest; do
+  case $mid in '' | '#'*) continue ;; esac
+  ok=1
+  : > "$tmp/why"
+  mx=${rest##* }
+  rest=${rest% *}
+  mo=${rest##* }
+  clause=${rest% *}
+  # each address word of the unpatched listing equals its from word, and the three lists have one length
+  bad=$(awk -v a="$addrs" -v f="$froms" -v t="$tos" '
+    NR == FNR { w[$1] = $2; next }
+    END {
+      na = split(a, A, ","); nf = split(f, F, ","); nt = split(t, T, ",")
+      if (na != nf || na != nt) { print "lists of different lengths"; exit }
+      for (i = 1; i <= na; i++) if (w[A[i]] != F[i]) print "the word at " A[i] " is " w[A[i]] ", expected from " F[i]
+    }' "$tmp/words3" /dev/null)
+  if [ -z "$mx" ] || [ -z "$mo" ] || [ -z "$clause" ] || [ "$clause" = "$rest" ]; then
+    ok=0; why inventory "not <ID> <scenario> <addr list> <from list> <to list> <clause> <outcome> <exit>"
+  elif [ ! -f "$scen/$scn.ivss" ]; then
+    ok=0; why inventory "no scenario file data/scenarios/$scn.ivss"
+  elif [ -n "$bad" ]; then
+    ok=0; why listing "$bad"
+  else
+    case $mo in
+      guest-fail) mp="assert=* line=* $clause got *" ;;
+      timeout) mp="budget step=* line=* expected=halted got=target" ;;
+      pass) mp=- ;;
+      *) mp=; ok=0; why inventory "outcome '$mo' is not guest-fail, timeout or pass" ;;
+    esac
+    [ "$ok" -eq 1 ] && run_mutant "$mid" "$listing3" diag-stic-1.ivsc "$scn" "$addrs" "$tos" "$mx" "$mo" "$mp"
+  fi
+  result "runner-process.mutant.$mid"
+done < "$muts3"
+
 # Determinism (D-23, Pitfall 11): a second run, slice sizes 1 and 7, and a run from another
 # working directory all equal the scenario case's report apart from host.calls.
 for id in diag-boot-pass diag-input-pass diag-ctrl-psg-pass; do
@@ -428,8 +477,8 @@ for id in diag-boot-pass diag-input-pass diag-ctrl-psg-pass; do
   done
   result "runner-process.slices.$id"
 done
-# The third diagnostic (plan 06-13, cost cap V6-12): a second run of each of its two pass scenarios; the slice replays of the fgbg
-# scenario follow with the mutant block in the same plan.
+# The third diagnostic (plan 06-13, cost cap V6-12): a second run of each of its two pass scenarios, and the slice replays
+# (--slice-ticks 1 and 7) of the Foreground/Background scenario ONLY (about 4,100 slices at 1 tick, at most 150,000 ticks).
 for id in diag-stic-fgbg-pass diag-stic-cstack-pass; do
   ref="$tmp/runs/scen-$id.out"
   : > "$tmp/why"
@@ -437,6 +486,12 @@ for id in diag-stic-fgbg-pass diag-stic-cstack-pass; do
   check_repeat "$tmp" "$ivs_run" "rep-$id" "$id" "$ref" || ok=0
   result "runner-process.repeat.$id"
 done
+: > "$tmp/why"
+ok=1
+for s in 1 7; do
+  check_repeat "$tmp" "$ivs_run" "sl$s-diag-stic-fgbg-pass" diag-stic-fgbg-pass "$tmp/runs/scen-diag-stic-fgbg-pass.out" --slice-ticks "$s" || ok=0
+done
+result runner-process.slices.diag-stic-fgbg-pass
 mkdir "$tmp/elsewhere" || exit 1
 : > "$tmp/why"
 ok=1

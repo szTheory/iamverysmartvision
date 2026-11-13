@@ -49,6 +49,13 @@ runner-process.mutant.TONE-HIGH-VALUE
 runner-process.mutant.PORT1-STORE-ADDR
 runner-process.mutant.ANDI-TO-MVII
 runner-process.mutant.DELAY-COUNT-CHANGED
+runner-process.mutant.STIC-CARD-BYTE
+runner-process.mutant.STIC-BG-FG-SWAP
+runner-process.mutant.STIC-WORD-MOVED
+runner-process.mutant.STIC-ENABLE-ADDR
+runner-process.mutant.STIC-MODE-SENSE
+runner-process.mutant.STIC-GRAM-COUNT
+runner-process.mutant.STIC-PAD-NEGATIVE
 runner-process.repeat.diag-boot-pass
 runner-process.slices.diag-boot-pass
 runner-process.repeat.diag-input-pass
@@ -57,6 +64,7 @@ runner-process.repeat.diag-ctrl-psg-pass
 runner-process.slices.diag-ctrl-psg-pass
 runner-process.repeat.diag-stic-fgbg-pass
 runner-process.repeat.diag-stic-cstack-pass
+runner-process.slices.diag-stic-fgbg-pass
 runner-process.cwd
 runner-process.cwd.diag-ctrl-psg-pass
 runner-process.operator.audio-raw

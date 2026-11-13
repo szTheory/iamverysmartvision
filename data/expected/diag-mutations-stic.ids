@@ -1,0 +1,46 @@
+# Program mutations of the third original diagnostic (plan 06-13, D-20, V6-9, V6-12):
+# `<ID> <scenario> <addr list> <from list> <to list> <clause> <outcome> <exit>`; the three lists are comma-joined (a single word is a list
+# of one), the clause is everything between the fifth column and the last two (it may hold blanks). Suite runner-process (id
+# runner-process.mutant.<ID>) builds each mutant in its temp dir with
+# `ivs_pack --ivsc fixtures/FX-diag-stic-1/diag-stic-1.listing.txt <out> --patch <addr>=<to>` (one --patch per list element) and runs
+# data/scenarios/<scenario>.ivss against it with the real ivs-run (the scenario column is new in this inventory: the Color Stack scenario
+# suits the mode-sense mutant, the Foreground/Background scenario every other one). As in data/expected/diag-mutations-ctrl-psg.ids the
+# <from> word is explicit: the loop checks that the word at each <addr> of the unpatched listing, as ivs_pack decodes it (--dump-words),
+# equals its <from> before patching, so a listing edit that moves an instruction fails the case instead of mutating something else.
+# <outcome> is guest-fail (exit 10: outcome.detail is `assert=<j> line=<n> <clause> got <actual>`, the FIRST failing assert in the order of
+# the scenario), timeout (exit 11: detail `budget step=<n> line=<n> expected=halted got=target`, the machine-time bound; <clause> is
+# `budget`) or pass (exit 0, detail `-`, the negative mutant; <clause> is `-`). A mutant whose loop could run forever is never listed as
+# guest-fail: none of the six below can (every patched count stays positive and every patched branch stays forward or keeps its counter).
+#
+# Words hand-derived from the encodings in the listing header, data/cp1610/opcode-families.json and the card bit roles of
+# data/video/cards.literal.txt (Foreground/Background word: foreground bits 2..0, card bits 8..3, graphics RAM select bit 11, background
+# bits 13 12 10 9 as bg2 bg3 bg1 bg0), and the listing addresses:
+#   ID               addr       from       to         what changes                                   first clause it breaks
+#   STIC-CARD-BYTE   506D       00FF       007F       pattern byte of card 1 row 0, FF to 7F: the     frame 0 pixel 152 88 == 7
+#                                                     leftmost position of that row becomes
+#                                                     background (cell (11,19) shows 10 at x 152)
+#   STIC-BG-FG-SWAP  5036,5037  0001,002A  0005,000A  the BACKTAB word 2A01 (foreground 1, background  mem 02A3 == 2A01
+#                                                     5, card 0) becomes 0A05 (foreground 5,
+#                                                     background 1): both bytes of the immediate
+#   STIC-WORD-MOVED  5057       02EF       02EE       the store of the word 1C0F goes one column to    mem 02EF == 1C0F
+#                                                     the left (02EE), so cell (11,19) stays 0000
+#   STIC-ENABLE-ADDR 500D       0020       0022       the display-enable store goes to the reserved    frame 0 displayed == yes
+#                                                     register 0022: frame 0 is delivered not
+#                                                     displayed
+#   STIC-MODE-SENSE  5008       0204       020C       BZE becomes BNZE (same forward displacement):    frame 0 pixel 0 0 == 6
+#                                                     with KEY_1 the Color Stack read is skipped,
+#                                                     so the other mode's frame results
+#   STIC-GRAM-COUNT  5025       0020       001F       the copy count 32 becomes 31 (the loop stays    frame 0 hash == <the F-D1 text hash>
+#                                                     bounded): the last pattern byte (card 3 row 7)
+#                                                     is not copied, a card differs, no asserted
+#                                                     pixel lies on that row so the hash names it
+#   STIC-PAD-NEGATIVE 5059      0384       0320       negative mutant: the delay count 900 becomes     none: only the halt tick
+#                                                     800, which moves the halt by about 6,000 ticks   moves, inside the margins
+#                                                     and keeps it inside the margins (pass, exit 0)
+STIC-CARD-BYTE diag-stic-fgbg-pass 506D 00FF 007F frame 0 pixel 152 88 == 7 guest-fail 10
+STIC-BG-FG-SWAP diag-stic-fgbg-pass 5036,5037 0001,002A 0005,000A mem 02A3 == 2A01 guest-fail 10
+STIC-WORD-MOVED diag-stic-fgbg-pass 5057 02EF 02EE mem 02EF == 1C0F guest-fail 10
+STIC-ENABLE-ADDR diag-stic-fgbg-pass 500D 0020 0022 frame 0 displayed == yes guest-fail 10
+STIC-MODE-SENSE diag-stic-cstack-pass 5008 0204 020C frame 0 pixel 0 0 == 6 guest-fail 10
+STIC-GRAM-COUNT diag-stic-fgbg-pass 5025 0020 001F frame 0 hash == 86b80eb73c51152ac252a1bbebcc86ead4535ac9ebdbf2a346bd8bf1b0383596 guest-fail 10
+STIC-PAD-NEGATIVE diag-stic-fgbg-pass 5059 0384 0320 - pass 0
