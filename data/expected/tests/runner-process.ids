@@ -20,6 +20,8 @@
 #   runner-process.judge.pair-video-equal, .input-not-consumed and .idle-audible: fake report pairs that the pair judge must reject.
 # Plan 07-08 (D-25, A-14, A-17): runner-process.mutant.SCN-*, one case per row of data/expected/diag-mutations-scn.ids (12 mutants and one
 #   negative row of the Lamp Tone program; stub-window rows patch boot-stub-2.exec; a fails column states the complete failing set).
+# Plan 07-11 (D-31, T-07-29): runner-process.refuse-user.audio-raw, .psg-log-out and .audio-wav: each option is refused for a scenario with a
+#   `content ... user` line (exit 14, one stderr line `<option> refused: content user`, no report, no file).
 # runner-process.judge.<slug>: judge self-controls, each passing only when the judge fails a fake
 #   runner for its intended reason (exit code, missing report.end, outcome and exit.code
 #   disagreeing, a changed report body; plan 04-24: a removed demonstrating scenario).
@@ -111,6 +113,9 @@ runner-process.operator.video-raw-empty-run
 runner-process.operator.video-raw-failed-run
 runner-process.operator.video-raw-update-golden-refused
 runner-process.operator.frame-ppm-refused-user-content
+runner-process.refuse-user.audio-raw
+runner-process.refuse-user.psg-log-out
+runner-process.refuse-user.audio-wav
 runner-process.refpcm.wav-written
 runner-process.refpcm.diag-ctrl-psg-pass
 runner-process.listen-demo.refuses-user

@@ -972,6 +972,31 @@ run_one "$tmp" op-vu-raw "$ivs_run" --content-dir "$opc" --video-raw "$opo/u.vra
 cmp -s "$tmp/runs/op-vu-raw.err" "$tmp/want.err" || { ok=0; why operator-video-user "--video-raw: stderr is not the one refusal line"; }
 [ ! -e "$opo/u.vraw" ] || { ok=0; why operator-video-user "--video-raw: a file was created"; }
 result runner-process.operator.frame-ppm-refused-user-content
+# The three derived audio outputs follow the same rule (plan 07-11, D-31, T-07-29): --audio-raw, --psg-log-out and --audio-wav are each
+# refused for that scenario with exit 14, exactly one stderr line `ivs-run: <option> refused: content user`, no report and no file,
+# before any output is created. refuse_user <slug> <option> <path> is the case runner-process.refuse-user.<slug>; the audio-raw case
+# also gives all three options at once and requires the first of the fixed order (--audio-raw, --psg-log-out, --audio-wav) to be named
+# and none of the three files to exist.
+refuse_user() {
+  : > "$tmp/why"
+  ok=1
+  printf 'ivs-run: %s refused: content user\n' "$2" > "$tmp/want.err"
+  run_one "$tmp" "refuse-user-$1" "$ivs_run" --content-dir "$opc" "$2" "$3" "$opc/operator-user.ivss"
+  [ "$rc" -eq 14 ] && [ "$hung" -eq 0 ] && [ ! -s "$tmp/runs/refuse-user-$1.out" ] || { ok=0; why refuse-user "$2: exit $rc, hung $hung or a report"; }
+  cmp -s "$tmp/runs/refuse-user-$1.err" "$tmp/want.err" || { ok=0; why refuse-user "$2: stderr is not the one refusal line"; }
+  [ ! -e "$3" ] || { ok=0; why refuse-user "$2: a file was created"; }
+  if [ "$1" = audio-raw ]; then
+    run_one "$tmp" refuse-user-all "$ivs_run" --content-dir "$opc" --audio-wav "$opo/ru-all.wav" --psg-log-out "$opo/ru-all.log" \
+      --audio-raw "$opo/ru-all.raw" "$opc/operator-user.ivss"
+    [ "$rc" -eq 14 ] && [ "$hung" -eq 0 ] && [ ! -s "$tmp/runs/refuse-user-all.out" ] || { ok=0; why refuse-user "all three: exit $rc, hung $hung or a report"; }
+    cmp -s "$tmp/runs/refuse-user-all.err" "$tmp/want.err" || { ok=0; why refuse-user "all three: stderr is not the one --audio-raw line"; }
+    [ ! -e "$opo/ru-all.wav" ] && [ ! -e "$opo/ru-all.log" ] && [ ! -e "$opo/ru-all.raw" ] || { ok=0; why refuse-user "all three: a file was created"; }
+  fi
+  result "runner-process.refuse-user.$1"
+}
+refuse_user audio-raw --audio-raw "$opo/ru.raw"
+refuse_user psg-log-out --psg-log-out "$opo/ru.log"
+refuse_user audio-wav --audio-wav "$opo/ru.wav"
 
 # Operator WAV (plan 05-10, D-20, D-21, T-05-26): the same stand-in under --audio-wav, into the mktemp directory.
 # By hand: the report ends with refpcm.rate (48000), refpcm.frames and refpcm.sha256 right before report.end;

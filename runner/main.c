@@ -704,6 +704,20 @@ int main(int argc, char **argv)
       }
     }
   }
+  /* The sound of an owner image is derived material of rights-bearing content too: the PCM bytes, the PSG write log and the WAV of a
+   * scenario that names `content ... user` are refused like the frame outputs above (plan 07-11, D-31, T-07-29; the Phase 5 audio
+   * options had no such refusal). Refused before any storage or file is created, no report; when several of the three options are
+   * given the first of this fixed order is named. */
+  if (audio_raw_path != NULL || psg_log_path != NULL || audio_wav_path != NULL) {
+    for (uint32_t role = 0u; role < IVS_SCN_ROLES; role++) {
+      if (scn->content[role].kind == IVS_SCN_CONTENT_USER) {
+        free(scn);
+        return main_fail(audio_raw_path != NULL   ? "--audio-raw refused: content user"
+                         : psg_log_path != NULL ? "--psg-log-out refused: content user"
+                                                : "--audio-wav refused: content user");
+      }
+    }
+  }
   /* A golden never records operator content (D-11): refused before the run, no report. */
   if (golden_path != NULL) {
     for (uint32_t role = 0u; role < IVS_SCN_ROLES; role++) {
