@@ -12,11 +12,12 @@
 #   digits, two spaces and exec or grom; a missing runner or template. No output-file option is passed to the runner.
 # Exit: 2 refusal; 77 neither image exists (SKIPPED line on stdout); otherwise the exit code of ivs-run, whose report is on stdout.
 LC_ALL=C; export LC_ALL
+unset CDPATH   # a set CDPATH would let cd resolve a relative directory somewhere else and print it
 die() { printf 'owner-run: %s\n' "$1" >&2; exit 2; }
 [ -z "${CI:-}" ] && [ -z "${GITHUB_ACTIONS:-}" ] || die 'refusing to run in CI (CI or GITHUB_ACTIONS is set): owner images are never used there'
 usage='usage: owner-run.sh [--preset dev|release] [--record] <exec-image> <grom-image>'
 case $0 in */*) here=${0%/*} ;; *) here=. ;; esac
-root=$(cd -P "$here/.." 2> /dev/null && pwd -P) || die 'cannot find the repository root'
+root=$(cd -P -- "$here/.." 2> /dev/null && pwd -P) || die 'cannot find the repository root'
 preset=release; record=0
 while [ "$#" -gt 0 ]; do
   case $1 in
@@ -34,7 +35,9 @@ if [ ! -e "$ex" ] && [ ! -e "$gr" ]; then
 fi
 for p in "$ex" "$gr"; do
   case $p in */*) d=${p%/*} ;; *) d=. ;; esac
-  d=$(cd -P "${d:-/}" 2> /dev/null && pwd -P) || d=
+  # `--` ends the options of cd (a directory named -x is a directory); a directory that cannot be entered is never a pass: no file can be
+  # read in it either, so the exact-size check below refuses the image.
+  d=$(cd -P -- "${d:-/}" 2> /dev/null && pwd -P) || continue
   case $d/ in "$root/refs/"*) ;; "$root/"*) die "an image is inside the work tree outside refs/: $p" ;; esac
 done
 sized() { [ -f "$2" ] && [ "$(wc -c < "$2" | tr -d ' ')" = "$3" ] || die "the $1 image is not a regular file of exactly $3 bytes"; }
@@ -70,7 +73,7 @@ tpl=$root/data/scenarios/owner-exec-title.ivss
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/owner-run.XXXXXX" 2> /dev/null) || die 'cannot make a temporary directory'
 trap 'rm -rf "$tmp"' EXIT
 trap 'exit 1' HUP INT TERM
-case $(cd -P "$tmp" && pwd -P)/ in "$root/"*) die 'TMPDIR is inside the work tree' ;; esac
+case $(cd -P -- "$tmp" && pwd -P)/ in "$root/"*) die 'TMPDIR is inside the work tree' ;; esac
 awk -v e="$de" -v g="$dg" '{ print } /^# owner-run: expect-sha256 lines are inserted after this line$/ { print "expect-sha256 exec " e; print "expect-sha256 grom " g }' \
   "$tpl" > "$tmp/scn.ivss"
 [ "$(grep -c '^expect-sha256 ' "$tmp/scn.ivss")" -eq 2 ] || die 'the template has no marker line'

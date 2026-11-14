@@ -1086,8 +1086,8 @@ result runner-process.listen-demo.refuses-user
 # set empty for every case except the two environment cases (the container and hosted gates set CI).
 # By hand, the sizes are EXEC 8192 and GROM 2048 bytes; a lock is `<64 lower-case hex>  exec` and `<64 lower-case hex>  grom`; the nine cases:
 # usage (exit 2), ci-env and github-actions-env (exit 2, checked before the absent-images skip), in-tree-path (exit 2: a path whose physical
-# directory is inside the root but not under refs/, also by a `..` spelling), wrong-size (exit 2: too short, too long, a missing image of
-# two), missing-lock (exit 2; then --record writes the lock and a second --record refuses to replace it), bad-lock-line (exit 2, one token per defect), no-images-skip (exit 77 and the SKIPPED line, even
+# directory is inside the root but not under refs/, also by a `..` spelling and for a directory named -x), wrong-size (exit 2: too short, too long, a missing image of
+# two, an image in a missing directory), missing-lock (exit 2; then --record writes the lock and a second --record refuses to replace it), bad-lock-line (exit 2, one token per defect), no-images-skip (exit 77 and the SKIPPED line, even
 # when the directory of a path does not exist) and identity-mismatch (zero-filled files and a lock of 64 zero digits: the core's
 # expect-sha256 refuses at load, exit 14, the report names IVS_E_DIGEST_MISMATCH, nothing was executed and nothing else was written).
 or_tmpd="$tmp/or-tmpdir"
@@ -1181,6 +1181,13 @@ or_judge tree 2 '' "owner-run: an image is inside the work tree outside refs/: $
 or_img "$sr/refs/e.bin" 8192
 or_run tree '' '' "$sr/refs/e.bin" "$sr/refs/../data/own/g.bin"
 or_judge tree 2 '' "owner-run: an image is inside the work tree outside refs/: $sr/refs/../data/own/g.bin" || ok=0
+# A relative path whose directory is named like an option (-x) is a directory, not an option of cd: it resolves inside the root and is refused
+# (an unresolved directory used to pass this check and reach the lock).
+mkdir "$sr/-x"
+or_img "$sr/-x/e.bin" 8192
+or_img "$sr/-x/g.bin" 2048
+run_one "$sr" or-tree env "CI=" "GITHUB_ACTIONS=" "TMPDIR=$or_tmpd" sh "$sr/tools/owner-run.sh" -x/e.bin -x/g.bin
+or_judge tree 2 '' 'owner-run: an image is inside the work tree outside refs/: -x/e.bin' || ok=0
 or_end
 result runner-process.owner-run.in-tree-path
 
@@ -1199,6 +1206,8 @@ or_judge size 2 '' "$or_exec_msg" || ok=0
 or_run size '' '' "$sr/refs/e.bin" "$sr/refs/long.bin"
 or_judge size 2 '' "$or_grom_msg" || ok=0
 or_run size '' '' "$sr/refs/e.bin" "$sr/refs/none.bin"
+or_judge size 2 '' "$or_grom_msg" || ok=0
+or_run size '' '' "$sr/refs/e.bin" "$sr/refs/nodir/g.bin"
 or_judge size 2 '' "$or_grom_msg" || ok=0
 or_end
 result runner-process.owner-run.wrong-size
