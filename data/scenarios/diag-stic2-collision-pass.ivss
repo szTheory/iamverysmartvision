@@ -1,0 +1,41 @@
+# Scenario diag-stic2-collision-pass (plan 08-07, D-04, D-05, D-10): outcome pass, exit 0. The program ivs-diag-stic-2 through
+# the project boot stub contract 2 with the zero graphics ROM and KEY_5 closed from tick 0: the first read of 01FE returns the
+# low byte BD, so the program runs the three collision scenes (scene 7 in frame 1: three overlaps of MOB pairs and one overlap
+# with set card pixels; scene 8 in frame 2: every MOB apart; scene 9 from frame 3: each MOB alone, over fill, a solid block or a
+# color block), clears the collision registers in frames 1 and 3 and reads them out in frames 3 and 4. The asserts are the
+# hand-derived expectations of data/golden/diag-stic2-collision-pass.expect (derivation in docs/video/diag-stic-2-derivation.md,
+# sections (c), (d) and (f), written before the program): the same lines in the same order as the committed block of that
+# document, and the same as the .expect (golden-expect-drift). The range assert on 030C to 030F is one assert line of the
+# grammar. It never halts.
+ivss 1
+id diag-stic2-collision-pass
+profile intv-2609-ntsc-family-p1
+content exec boot-stub-2
+content grom zero-grom
+content cart diag-stic-2.ivsc
+capture video 0 10
+input at_tick=0 c0=KEY_5 c1=0x0
+run-to 640000 ticks
+assert halted == no
+assert mem 02F0 == 03C5
+assert mem 02F1 == 000A
+assert mem 02F2 == 00BD
+assert mem 02F3 == 0009
+assert frame 0 displayed == no
+assert frame 4 displayed == yes
+assert mem 0300 == 0002
+assert mem 0301 == 0001
+assert mem 0302 == 0008
+assert mem 0303 == 0004
+assert mem 0304 == 0000
+assert mem 0305 == 0000
+assert mem 0306 == 0100
+assert mem 0307 == 0000
+assert mem 0308 == 0000
+assert mem 0309 == 0100
+assert mem 030A == 0100
+assert mem 030B == 0000
+assert mem 030C..030F == 0000
+assert frame 5 pixel 108 52 == 5
+assert frame 5 pixel 132 52 == 6
+assert video count == 10

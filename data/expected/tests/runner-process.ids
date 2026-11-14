@@ -60,6 +60,11 @@ runner-process.scenario.demo-lamp-tone-idle
 runner-process.scenario.demo-lamp-tone-shift
 runner-process.scenario.demo-lamp-tone-swap
 runner-process.scenario.diag-stic2-idle-pass
+runner-process.scenario.diag-stic2-mob-pass
+runner-process.scenario.diag-stic2-border-pass
+runner-process.scenario.diag-stic2-hdelay-pass
+runner-process.scenario.diag-stic2-vdelay-pass
+runner-process.scenario.diag-stic2-collision-pass
 runner-process.scenario.owner-exec-title skip-ok
 runner-process.mutant.ADDI-SUBI
 runner-process.mutant.BNZE-BZE
@@ -106,6 +111,8 @@ runner-process.slices.demo-lamp-tone-pass
 runner-process.cwd.demo-lamp-tone-pass
 runner-process.pair.demo-lamp-tone-pass.demo-lamp-tone-idle
 runner-process.pair.demo-lamp-tone-pass.demo-lamp-tone-shift
+runner-process.pair.diag-stic2-idle-pass.diag-stic2-mob-pass
+runner-process.pair.diag-stic2-idle-pass.diag-stic2-border-pass
 runner-process.operator.audio-raw
 runner-process.operator.psg-log
 runner-process.operator.exclusive
