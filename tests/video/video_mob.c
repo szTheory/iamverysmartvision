@@ -622,6 +622,7 @@ static int vm_prio_clear_front(void)
 #define VM_BASE_TALLSET 3u /* tall mode on, cards 4 and 5: the card number bit 0 must change nothing */
 #define VM_BASE_ROM 4u     /* graphics ROM, a generated pattern in which every card differs from every other, card number 0x55 */
 #define VM_BASE_PRIO 5u    /* a solid MOB over the card block, priority bit clear */
+#define VM_BASE_TWO 6u     /* two overlapping solid MOBs: MOB 0 without the interaction bit, MOB 1 with it (the collision registers can show the bit of MOB 0) */
 
 static void vm_base_scene(uint32_t base)
 {
@@ -655,17 +656,23 @@ static void vm_base_scene(uint32_t base)
       xw = 0x0200u + 88u;
       yw = 0x0100u + 56u;
       break;
+    case VM_BASE_TWO:
+      /* MOB 1: visible, interaction enable set (X word bit 8), X 44 and Y 44, solid card 0, color 5: it overlaps MOB 0 (X 40, Y 40) on the plane
+       * positions x 36..39, y 36..39. MOB 0 keeps its interaction bit clear, so no collision bit is set until a flip sets that bit. */
+      vm_put(1u, 0x0300u + 44u, 0x0100u + 44u, 0x0805u);
+      break;
     default:
       break;
   }
   vm_put(0u, xw, yw, aw);
 }
 
-/* The base state and the observability a role asks for. A bit is OBSERVABLE when flipping that single bit from the base state changes the plane;
- * the sweep requires the plane to change exactly when the literal's role is not ign (in the row's own base state), with the one exemption of the
- * interaction-enable bit of the X register (rule R44: it acts only through collision accumulation, which does not exist until plan 08-05, so here
- * it must leave the plane unchanged, exempt: collision-only, see 08-05). *want is 1 when a change is required, 0 when none may occur; 2 is an
- * unknown role (a fixture failure). */
+/* The base state and the observability a role asks for. A bit is OBSERVABLE when flipping that single bit from the base state changes the plane or
+ * changes any of the collision registers $0018 to $001F after the frame (plan 08-05: the registers are the second observation channel); the sweep
+ * requires an observable change exactly when the literal's role is not ign (in the row's own base state). The interaction-enable bit of the X
+ * register (rule R44) acts only through the collision registers, so its row asks for a change of the collision registers and none of the plane, in
+ * its two-MOB base state (the exemption of plan 08-04 is gone). *want is 1 when an observable change is required, 0 when none may occur, 3 when a
+ * change of the collision registers only is required; 2 is an unknown role (a fixture failure). */
 static uint32_t vm_base_for(const vm_role *r, uint32_t *want, uint32_t *second_base)
 {
   const char *role = r->role;
@@ -677,8 +684,8 @@ static uint32_t vm_base_for(const vm_role *r, uint32_t *want, uint32_t *second_b
     return VM_BASE_STAIRS;
   }
   if (strcmp(r->reg, "mobx") == 0 && strcmp(role, "intr") == 0) {
-    *want = 0u; /* exempt: collision-only, see 08-05 */
-    return VM_BASE_SOLID;
+    *want = 3u; /* the collision registers change and the plane does not (R44) */
+    return VM_BASE_TWO;
   }
   if (strncmp(role, "pos", 3u) == 0 || strcmp(role, "visb") == 0 || strcmp(role, "xsize") == 0 || strncmp(role, "color", 5u) == 0 ||
       strcmp(role, "sel") == 0) {
@@ -712,19 +719,50 @@ static uint32_t vm_reg_index(const char *reg)
   return strcmp(reg, "mobx") == 0 ? 0u : (strcmp(reg, "moby") == 0 ? VM_REG_Y : VM_REG_A);
 }
 
-/* 1 when flipping bit `bit` of register index idx from base state `base` changes the 160 x 96 plane. */
-static int vm_flip_changes(uint32_t base, uint32_t idx, uint32_t bit)
+/* The eight collision registers after one displayed frame of the scene in vm_mem and vm_state (plan 08-05): they are cleared first, the frame is
+ * delivered through ivs_stic_frame_deliver (which ORs the collision of the frame into the register file) and read back masked with 03FF, then cleared
+ * again, so the scene is left as it was. */
+static void vm_collision_regs(const ivs_stic_params *p, uint16_t out[8])
+{
+  ivs_stic_state st = vm_state;
+  ivs_stic_video_row row;
+  uint32_t k;
+  for (k = 0u; k < 8u; k++) {
+    vm_mem.stic_reg[0x18u + k] = 0u;
+  }
+  st.windows_active = 1u;
+  ivs_video_chain_init(&row);
+  ivs_stic_frame_deliver(p, &st, &vm_mem, &row, NULL, 59736u);
+  for (k = 0u; k < 8u; k++) {
+    out[k] = (uint16_t)(vm_mem.stic_reg[0x18u + k] & 0x03FFu);
+    vm_mem.stic_reg[0x18u + k] = 0u;
+  }
+}
+
+#define VM_EFFECT_PLANE 1 /* the plane changed */
+#define VM_EFFECT_COLL 2  /* a collision register changed */
+
+/* The effect of flipping bit `bit` of register index idx from base state `base`: a bit mask of VM_EFFECT_PLANE and VM_EFFECT_COLL (0 none), or -1 when
+ * a render fails. */
+static int vm_flip_effect(uint32_t base, uint32_t idx, uint32_t bit)
 {
   const ivs_stic_params *p = ivs_stic_params_get(SC_PROFILE);
+  uint16_t before[8];
+  uint16_t after[8];
+  int effect = 0;
   vm_base_scene(base);
   if (p == NULL || vm_render(p, 1u, vm_exp) != VF_PLANE_BYTES) {
     return -1;
   }
+  vm_collision_regs(p, before);
   vm_mem.stic_reg[idx] = (uint16_t)(vm_mem.stic_reg[idx] ^ (1u << bit));
   if (vm_render(p, 1u, vm_plane) != VF_PLANE_BYTES) {
     return -1;
   }
-  return memcmp(vm_plane, vm_exp, VF_PLANE_BYTES) != 0 ? 1 : 0;
+  vm_collision_regs(p, after);
+  effect |= memcmp(vm_plane, vm_exp, VF_PLANE_BYTES) != 0 ? VM_EFFECT_PLANE : 0;
+  effect |= memcmp(before, after, sizeof before) != 0 ? VM_EFFECT_COLL : 0;
+  return effect;
 }
 
 /* The sweep over the n rows of a role table; the number of rows whose observed effect disagrees with the role (0 is a pass). quiet suppresses the
@@ -745,17 +783,18 @@ static uint32_t vm_sweep(const vm_role *t, size_t n, int quiet)
       bad += 1u;
       continue;
     }
-    seen = vm_flip_changes(base, vm_reg_index(t[i].reg), t[i].bit);
-    if (seen < 0 || (uint32_t)seen != want) {
+    seen = vm_flip_effect(base, vm_reg_index(t[i].reg), t[i].bit);
+    if (seen < 0 || (want == 0u && seen != 0) || (want == 1u && seen == 0) || (want == 3u && seen != VM_EFFECT_COLL)) {
       if (!quiet) {
-        ivs_test_diag("%s bit %u (role %s): flipping it %s the plane, the literal says it %s", t[i].reg, (unsigned)t[i].bit, t[i].role,
-                      seen == 1 ? "changes" : "leaves", want == 1u ? "changes it" : "leaves it");
+        ivs_test_diag("%s bit %u (role %s): flipping it changes %s, the literal says it %s", t[i].reg, (unsigned)t[i].bit, t[i].role,
+                      seen == 0 ? "nothing" : (seen == VM_EFFECT_PLANE ? "the plane" : (seen == VM_EFFECT_COLL ? "the collision registers" : "both")),
+                      want == 0u ? "changes nothing" : (want == 3u ? "changes the collision registers only" : "changes the picture or the collision registers"));
       }
       bad += 1u;
       continue;
     }
     if (second != 99u) {
-      int again = vm_flip_changes(second, vm_reg_index(t[i].reg), t[i].bit);
+      int again = vm_flip_effect(second, vm_reg_index(t[i].reg), t[i].bit);
       if (again != 0) { /* card number bit 0 in tall mode, and every ignored bit in the second base */
         if (!quiet) {
           ivs_test_diag("%s bit %u (role %s): flipping it must change nothing in its second base state", t[i].reg, (unsigned)t[i].bit, t[i].role);

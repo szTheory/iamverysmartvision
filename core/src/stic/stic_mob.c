@@ -7,8 +7,8 @@
  * one community description (D-01): nothing here is a statement about a console.
  *
  * Registers (the register-address literal of data/stic): MOB i has the X word at 0x00 + i, the Y word at 0x08 + i and the attribute word at 0x10 + i.
- *   X word: bits 7..0 the X coordinate (0 disables the MOB, R37), bit 8 the interaction enable (collision, plan 08-05, no effect here),
- *           bit 9 visible, bit 10 double width (R38).
+ *   X word: bits 7..0 the X coordinate (0 disables the MOB, R37), bit 8 the interaction enable (collision only, R44: it never changes the
+ *           picture), bit 9 visible, bit 10 double width (R38).
  *   Y word: bits 6..0 the Y coordinate (0 is not special, R37), bit 7 tall mode, bits 9 and 8 the Y size code, bit 10 X flip, bit 11 Y flip.
  *   Attribute word: bits 2..0 color, bits 10..3 card number, bit 11 graphics RAM (1) or ROM (0), bit 12 color bit 3, bit 13 priority.
  *
@@ -23,6 +23,11 @@
  * Order (R41, R42, R43): among the MOBs that have a set pattern pixel on a position the one with the lower index owns it; the priority
  * bit does not change that. An owner with the priority bit clear is drawn in front of the card layer; an owner with the priority bit set
  * is hidden by the card layer where the card has an on pixel (video_mob_prio_hides 0, the default) or on every card pixel (1).
+ *
+ * Collision (plan 08-05, rule STIC-R44): ivs_stic_collide_lines evaluates the set pattern pixels of the MOBs with the act flag (interaction
+ * enable set and X coordinate not 0; the visible bit is not required) on every television line it is given, with the same pattern decode as
+ * the overlay (ivs_stic_mob_line_byte), and records in hit[] which MOBs share a position. It is pure and keeps no state: the accumulation
+ * array belongs to the caller (stic_frame.c) and the frame end ORs it into the register file.
  *
  * Named faults (plan 08-04, one #ifdef site each, data/expected/faults/video.ids): MOB_PRIORITY_SWAP (the higher index owns an overlap of two
  * MOBs, caught by video.mob.front-lower-index) and MOB_FLIP_SWAPPED (the X flip and Y flip bits are exchanged, caught by video.mob.frame-mirror).
@@ -49,6 +54,7 @@ uint32_t ivs_stic_mob_decode(const ivs_stic_params *p, const ivs_memsys *mem, iv
     ivs_stic_mob *m = &out[i];
     memset(m, 0, sizeof *m);
     m->on = (uint8_t)((xc != 0u && ((xw >> 9) & 1u) != 0u) ? 1u : 0u);
+    m->act = (uint8_t)((xc != 0u && ((xw >> 8) & 1u) != 0u) ? 1u : 0u); /* R44: the interaction enable, not the visible bit */
     m->left = (int16_t)((int32_t)xc - (int32_t)p->video_mob_origin_x);
     m->top = (int16_t)((int32_t)p->video_row_lines * ((int32_t)yc - (int32_t)p->video_mob_origin_y));
     m->zx = (uint8_t)(((xw >> 10) & 1u) != 0u ? 2u : 1u);
@@ -69,6 +75,31 @@ uint32_t ivs_stic_mob_decode(const ivs_stic_params *p, const ivs_memsys *mem, iv
   return n;
 }
 
+/* The pattern byte that MOB m shows on television line `line` (the Y flip, the pair of cards of a tall MOB and the card number applied), bit 7
+ * the leftmost pattern pixel before the X flip, or -1 when the MOB has no pattern row on that line. Pure; the one decode of the overlay and
+ * of the collision evaluation, so the two cannot disagree about where a pattern pixel is. */
+static int32_t ivs_stic_mob_line_byte(const ivs_memsys *mem, const ivs_stic_mob *m, int32_t line)
+{
+  int32_t rel = line - (int32_t)m->top;
+  uint32_t r;
+  uint32_t card;
+  if (rel < 0) {
+    return -1;
+  }
+  r = (uint32_t)rel / (uint32_t)m->lpr;
+  if (r >= (uint32_t)m->rows) {
+    return -1;
+  }
+  if ((m->flags & IVS_STIC_MOB_F_YFLIP) != 0u) {
+    r = (uint32_t)m->rows - 1u - r; /* R39: all the pattern rows reversed, 16 for a tall MOB */
+  }
+  card = (uint32_t)m->card;
+  if ((m->flags & IVS_STIC_MOB_F_TALL) != 0u) {
+    card = (card & ~1u) | (r >> 3); /* R40: the upper eight rows from the even card, the lower eight from the odd card */
+  }
+  return (int32_t)ivs_memsys_stic_gfx_byte_internal(mem, m->sel, card, r & 7u);
+}
+
 void ivs_stic_overlay_mobs_row(const ivs_stic_params *p, const ivs_memsys *mem, const ivs_stic_mob *mobs, uint32_t plane_y, const uint8_t *on_row,
                                uint8_t *row)
 {
@@ -80,9 +111,7 @@ void ivs_stic_overlay_mobs_row(const ivs_stic_params *p, const ivs_memsys *mem, 
   for (j = 0u; j < IVS_STIC_MOBS; j++) {
     uint32_t i = j; /* the lower index first: the first MOB with a set pixel on a position owns it */
     const ivs_stic_mob *m;
-    int32_t rel;
-    uint32_t r;
-    uint32_t card;
+    int32_t lb;
     uint32_t byte;
     uint32_t c;
 #ifdef IVS_FAULT_MOB_PRIORITY_SWAP
@@ -92,22 +121,11 @@ void ivs_stic_overlay_mobs_row(const ivs_stic_params *p, const ivs_memsys *mem, 
     if (m->on == 0u) {
       continue;
     }
-    rel = line - (int32_t)m->top;
-    if (rel < 0) {
+    lb = ivs_stic_mob_line_byte(mem, m, line);
+    if (lb < 0) {
       continue;
     }
-    r = (uint32_t)rel / (uint32_t)m->lpr;
-    if (r >= (uint32_t)m->rows) {
-      continue;
-    }
-    if ((m->flags & IVS_STIC_MOB_F_YFLIP) != 0u) {
-      r = (uint32_t)m->rows - 1u - r; /* R39: all the pattern rows reversed, 16 for a tall MOB */
-    }
-    card = (uint32_t)m->card;
-    if ((m->flags & IVS_STIC_MOB_F_TALL) != 0u) {
-      card = (card & ~1u) | (r >> 3); /* R40: the upper eight rows from the even card, the lower eight from the odd card */
-    }
-    byte = (uint32_t)ivs_memsys_stic_gfx_byte_internal(mem, m->sel, card, r & 7u);
+    byte = (uint32_t)lb;
     for (c = 0u; c < 8u; c++) {
       uint32_t pc = (m->flags & IVS_STIC_MOB_F_XFLIP) != 0u ? 7u - c : c; /* R39: the pattern column after the mirror */
       uint32_t k;
@@ -134,6 +152,63 @@ void ivs_stic_overlay_mobs_row(const ivs_stic_params *p, const ivs_memsys *mem, 
           }
         }
         row[ux] = m->color;
+      }
+    }
+  }
+}
+
+void ivs_stic_collide_lines(const ivs_stic_params *p, const ivs_memsys *mem, const ivs_stic_mob *mobs, int32_t first_line, uint32_t nlines,
+                            uint32_t hit[IVS_STIC_MOBS])
+{
+  uint8_t who[IVS_STIC_ROW_WORDS * 8u]; /* per working column, one bit per MOB that has a set pattern pixel there on the line under test */
+  int32_t width = (int32_t)p->video_width;
+  uint32_t l;
+  for (l = 0u; l < nlines; l++) {
+    int32_t line = first_line + (int32_t)l;
+    uint32_t used = 0u;
+    int32_t x;
+    uint32_t i;
+    memset(who, 0, sizeof who);
+    for (i = 0u; i < IVS_STIC_MOBS; i++) {
+      const ivs_stic_mob *m = &mobs[i];
+      int32_t lb;
+      uint32_t c;
+      if (m->act == 0u) {
+        continue;
+      }
+      lb = ivs_stic_mob_line_byte(mem, m, line);
+      if (lb < 0) {
+        continue;
+      }
+      for (c = 0u; c < 8u; c++) {
+        uint32_t pc = (m->flags & IVS_STIC_MOB_F_XFLIP) != 0u ? 7u - c : c; /* R39: the pattern column after the mirror */
+        uint32_t k;
+        if ((((uint32_t)lb >> (7u - pc)) & 1u) == 0u) {
+          continue;
+        }
+        for (k = 0u; k < (uint32_t)m->zx; k++) {
+          x = (int32_t)m->left + (int32_t)((uint32_t)m->zx * c + k);
+          if (x < 0 || x >= width) {
+            continue;
+          }
+          who[x] = (uint8_t)(who[x] | (1u << i));
+          used |= 1u << i;
+        }
+      }
+    }
+    if ((used & (used - 1u)) == 0u) {
+      continue; /* no MOB or one MOB has a pixel on this line: nothing can overlap */
+    }
+    for (x = 0; x < width; x++) {
+      uint32_t w = who[x];
+      uint32_t j;
+      if ((w & (w - 1u)) == 0u) {
+        continue; /* no MOB or a single MOB at this position */
+      }
+      for (j = 0u; j < IVS_STIC_MOBS; j++) {
+        if (((w >> j) & 1u) != 0u) {
+          hit[j] |= w & ~(1u << j); /* the bit of every other MOB here; the own bit j is never set */
+        }
       }
     }
   }

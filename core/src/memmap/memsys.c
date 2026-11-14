@@ -423,6 +423,14 @@ void ivs_memsys_set_gate_internal(ivs_memsys *m, uint32_t gate, uint8_t open)
   }
 }
 
+void ivs_memsys_stic_collision_or_internal(ivs_memsys *m, uint32_t k, uint32_t bits)
+{
+  if (k < IVS_MEMSYS_STIC_COLLISION_COUNT) {
+    uint32_t r = IVS_MEMSYS_STIC_COLLISION_FIRST + k;
+    m->stic_reg[r] = IVS_U16((uint32_t)m->stic_reg[r] | (bits & 0x03FFu));
+  }
+}
+
 uint16_t ivs_memsys_psg_reg_internal(const ivs_memsys *m, uint32_t idx)
 {
   return ivs_psg_reg_load(ivs_psg_params_get(m->profile), m->psg_reg, idx); /* a row exists, see ivs_memsys_init */

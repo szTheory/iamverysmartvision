@@ -20,6 +20,9 @@
  * Plan 08-04: each card row goes through ivs_stic_compose_card_row (this file), which renders the card row and overlays the moving objects
  * of stic_mob.c on its plane rows; the streamed slot and the whole plane (ivs_stic_render_plane_cs) share that one path, so they are equal
  * by construction. With every MOB register at 0 the composition returns the card row untouched.
+ * Plan 08-05 (collision, D-06): ivs_stic_frame_deliver takes a non-const memory system, accumulates the collision of the frame in a local
+ * uint32_t[8] while it composes the card rows (ivs_stic_collide_lines) and ORs it into the collision registers of the register file at the
+ * end of the frame, with or without a video buffer (named fault COLLISION_NOT_STICKY: the write-back assigns instead of ORing).
  *
  * Named faults (plan 06-09): VIDEO_STATE_DEPENDS_ON_BUFFER (with no buffer the chain and the count do not advance),
  * VIDEO_CHAIN_FRAMING_STRUCT_HASH (the chain hashes an image of a struct instead of the framed bytes). The file holds no static or
@@ -100,31 +103,44 @@ uint32_t ivs_stic_render_card_row(const ivs_stic_params *p, const ivs_stic_state
 }
 
 uint32_t ivs_stic_compose_card_row(const ivs_stic_params *p, const ivs_stic_state *s, const ivs_memsys *mem, uint32_t displayed, uint32_t cr,
-                                   uint32_t *cs_pos, uint8_t *out)
+                                   uint32_t *cs_pos, uint8_t *out, uint32_t *hit)
 {
   ivs_stic_mob mobs[IVS_STIC_MOBS];
   uint8_t on_mask[IVS_STIC_ROW_WORDS * 8u]; /* the on pixels of the card layer of this card row, 20 bytes per plane row */
   uint32_t work_w = p->video_card_columns * p->video_card_w;
   uint32_t n = ivs_stic_render_card_row(p, s, mem, displayed, cr, cs_pos, out);
   uint32_t k;
+  uint32_t n_on;
+  uint32_t n_act = 0u;
   uint32_t need_mask = 0u;
   if (n == 0u || displayed == 0u || ivs_stic_cards_drawable(p, cr) == 0u) {
     return n; /* a display-off row is the border fill and draws no MOB */
   }
-  if (ivs_stic_mob_decode(p, mem, mobs) == 0u) {
-    return n; /* no MOB is on: the row is exactly the card layer (every MOB register at its reset value draws nothing) */
-  }
+  n_on = ivs_stic_mob_decode(p, mem, mobs);
   for (k = 0u; k < IVS_STIC_MOBS; k++) {
+    n_act += mobs[k].act;
     need_mask |= (mobs[k].on != 0u && (mobs[k].flags & IVS_STIC_MOB_F_PRIO) != 0u) ? 1u : 0u;
+  }
+  if (hit == NULL) {
+    n_act = 0u; /* the whole-plane entry points do not evaluate collision */
+  }
+  if (n_on == 0u && n_act == 0u) {
+    return n; /* no MOB is on or interacts: the row is exactly the card layer (every MOB register at its reset value draws nothing) */
   }
   if (need_mask != 0u) { /* the on pixels of the card layer matter only to a MOB with the priority bit set */
     ivs_stic_cardin in;
     ivs_stic_cardin_get(s, mem, &in);
     (void)ivs_stic_cards_on_row(&in, s->row_latch[cr], mem, on_mask);
   }
-  for (k = 0u; k < p->video_card_h; k++) {
-    ivs_stic_overlay_mobs_row(p, mem, mobs, cr * p->video_card_h + k, need_mask != 0u ? on_mask + (size_t)k * IVS_STIC_ROW_WORDS : NULL,
-                              out + (size_t)k * work_w);
+  if (n_on != 0u) {
+    for (k = 0u; k < p->video_card_h; k++) {
+      ivs_stic_overlay_mobs_row(p, mem, mobs, cr * p->video_card_h + k, need_mask != 0u ? on_mask + (size_t)k * IVS_STIC_ROW_WORDS : NULL,
+                                out + (size_t)k * work_w);
+    }
+  }
+  if (n_act != 0u) {
+    /* plan 08-05: the television lines of this card row, video_row_lines per plane row */
+    ivs_stic_collide_lines(p, mem, mobs, (int32_t)(cr * p->video_card_h * p->video_row_lines), p->video_card_h * p->video_row_lines, hit);
   }
   return n;
 }
@@ -139,7 +155,7 @@ uint32_t ivs_stic_render_plane_cs(const ivs_stic_params *p, const ivs_stic_state
     return 0u;
   }
   for (cr = 0u; cr < p->video_card_rows; cr++) {
-    if (ivs_stic_compose_card_row(p, s, mem, displayed, cr, &pos, plane + (size_t)cr * row_bytes) == 0u) {
+    if (ivs_stic_compose_card_row(p, s, mem, displayed, cr, &pos, plane + (size_t)cr * row_bytes, NULL) == 0u) {
       return 0u;
     }
   }
@@ -163,17 +179,19 @@ static void ivs_frame_be(uint8_t *out, uint32_t n, uint64_t v)
   }
 }
 
-void ivs_stic_frame_deliver(const ivs_stic_params *p, ivs_stic_state *s, const ivs_memsys *mem, ivs_stic_video_row *row,
-                            ivs_stic_sink *sink, uint64_t end_tick)
+void ivs_stic_frame_deliver(const ivs_stic_params *p, ivs_stic_state *s, ivs_memsys *mem, ivs_stic_video_row *row, ivs_stic_sink *sink,
+                            uint64_t end_tick)
 {
   uint8_t cardrow[IVS_STIC_CARDROW_MAX];
   uint8_t header[IVS_FRAME_HEADER_BYTES];
+  uint32_t hit[IVS_STIC_MOBS]; /* plan 08-05: the collision of this frame, bit j of hit[i] = MOB i and MOB j share a position */
   ivs_sha256 ctx;
   ivs_stic_geom g = ivs_stic_geom_derive(p);
   uint32_t work_w = p->video_card_columns * p->video_card_w;
   uint32_t displayed = s->windows_active != 0u ? 1u : 0u;
   uint32_t cr;
   uint32_t py;
+  uint32_t i;
   uint32_t y = 0u;
   uint32_t cs_pos = 0u; /* the color-stack pointer restarts at 0 for every frame render (D-06) */
   uint32_t deliver;
@@ -190,6 +208,7 @@ void ivs_stic_frame_deliver(const ivs_stic_params *p, ivs_stic_state *s, const i
     return;
   }
   memset(header, 0, sizeof header);
+  memset(hit, 0, sizeof hit);
   ivs_frame_be(header + 0u, 8u, end_tick);
   ivs_frame_be(header + 8u, 8u, row->count);
   ivs_frame_be(header + 16u, 4u, g.width);
@@ -235,7 +254,7 @@ void ivs_stic_frame_deliver(const ivs_stic_params *p, ivs_stic_state *s, const i
   ivs_sha256_update(&ctx, header, sizeof header);
 #endif
   for (cr = 0u; cr < p->video_card_rows; cr++) {
-    if (ivs_stic_compose_card_row(p, s, mem, displayed, cr, &cs_pos, cardrow) == 0u) {
+    if (ivs_stic_compose_card_row(p, s, mem, displayed, cr, &cs_pos, cardrow, hit) == 0u) {
       if (sink != NULL) {
         sink->video_overflow = 1u; /* unreachable for a generated profile (see above): a short frame is an INTERNAL stop, never a quiet one */
       }
@@ -253,6 +272,14 @@ void ivs_stic_frame_deliver(const ivs_stic_params *p, ivs_stic_state *s, const i
   row->count += 1u;
   if (displayed != 0u) {
     s->cs_ptr = cs_pos & 3u; /* the final pointer of the frame just rendered; a display-off frame leaves it as it was */
+  }
+  /* The collision of the frame goes into the register file here, at the end of the frame, whatever the sink is (D-06): the OR is not
+   * conditional on a buffer, so the machine state does not depend on one. The picture above was a function of the registers as they were
+   * before this OR, and a CPU read stamped inside the frame never saw these bits (the register window closes long before the frame end). */
+  for (i = 0u; i < IVS_STIC_MOBS; i++) {
+    if (hit[i] != 0u) {
+      ivs_memsys_stic_collision_or_internal(mem, i, hit[i]);
+    }
   }
   if (sink != NULL) {
     sink->video_frames += 1u;
