@@ -354,6 +354,103 @@ size_t ivs_snapshot_schema_line_count(void);
 size_t ivs_snapshot_schema_line(size_t i, char *buf, size_t cap);
 void ivs_snapshot_schema_digest(uint8_t out[32]);
 
+/* ---- the IVSN v1 layout (plan 08-12, D-13, docs/formats/ivsn-v1.md "Layout") ----
+ * Moved here from machine_snapshot.c without changing a byte: the writer (machine_snapshot.c) and the reader
+ * (machine_snapshot_read.c) are held to one set of numbers. The offsets are counted from the first byte of the container;
+ * IVS_SNAP_SECTIONS is the section count, IVS_SNAP_ENTRY_BYTES the size of one section table entry, IVS_SNAP_SLOT_BYTES the size of
+ * one image slot record. The header is IVS_SNAP_HEADER_BYTES long and the SHA-256 trailer IVS_SNAP_TRAILER_BYTES. The first bytes
+ * (the magic, 0 to 7) are written and compared by the two files themselves. */
+#define IVS_SNAP_SECTIONS 7u
+#define IVS_SNAP_ENTRY_BYTES 44u
+#define IVS_SNAP_SLOT_BYTES 40u
+#define IVS_SNAP_OFF_FORMAT 8u
+#define IVS_SNAP_OFF_FLAGS 10u
+#define IVS_SNAP_OFF_TOTAL 12u
+#define IVS_SNAP_OFF_SCHEMA 16u
+#define IVS_SNAP_OFF_COUNT 20u
+#define IVS_SNAP_OFF_SCHEMA_DIGEST 24u
+#define IVS_SNAP_OFF_PROFILE_ID 56u
+#define IVS_SNAP_OFF_PARAMS 120u
+#define IVS_SNAP_OFF_SLOTS 152u
+#define IVS_SNAP_OFF_COMPOSITE 272u
+#define IVS_SNAP_OFF_TABLE 304u
+#define IVS_SNAP_HEADER_BYTES 612u
+#define IVS_SNAP_TRAILER_BYTES 32u
+_Static_assert(IVS_SNAP_OFF_SCHEMA_DIGEST + 32u == IVS_SNAP_OFF_PROFILE_ID, "the schema digest is 32 bytes");
+_Static_assert(IVS_SNAP_OFF_PROFILE_ID + IVS_PROFILE_ID_MAX_BYTES == IVS_SNAP_OFF_PARAMS, "the profile id field is 64 bytes");
+_Static_assert(IVS_SNAP_OFF_PARAMS + 32u == IVS_SNAP_OFF_SLOTS, "the parameter digest is 32 bytes");
+_Static_assert(IVS_SNAP_OFF_SLOTS + IVS_SLOT_COUNT * IVS_SNAP_SLOT_BYTES == IVS_SNAP_OFF_COMPOSITE, "three slot records of 40 bytes");
+_Static_assert(IVS_SNAP_OFF_COMPOSITE + 32u == IVS_SNAP_OFF_TABLE, "the composite digest is 32 bytes");
+_Static_assert(IVS_SNAP_OFF_TABLE + IVS_SNAP_SECTIONS * IVS_SNAP_ENTRY_BYTES == IVS_SNAP_HEADER_BYTES, "seven section entries of 44 bytes");
+
+/* The seven sections, in table order: the domains that hold STATE rows (1 CPU, 2 MEM, 4 INSTANCE, 16 VIDEO, 17 AUDIO, 18 INPUT, 19
+ * PSGLOG). Domain 3 (IMAGES) holds none, so it has no section. Defined in machine_snapshot.c. */
+extern const uint8_t ivs_snap_domain[IVS_SNAP_SECTIONS];
+
+/* The length in bytes of section index (0 to IVS_SNAP_SECTIONS - 1) and the total of a container of this build, derived from the
+ * digest field table alone, so no instance is needed: a section is the 7-byte frame plus, for each STATE row of its domain, the row's
+ * width times its count plus 4 bytes of count when the count is above 1 (docs/formats/ivsn-v1.md "Size derivation"). 0 for an index
+ * at or above IVS_SNAP_SECTIONS. The total is the header, the seven sections and the trailer. The counting pass of the writer
+ * (ivs_machine_state_preimage with no buffer) gives the same numbers for any instance, and a test holds both to the literals. */
+uint32_t ivs_snapshot_section_derived_length(uint32_t index);
+uint64_t ivs_snapshot_derived_total(void);
+
+/* ---- the IVSN v1 reader (plan 08-12, D-13, D-14, D-16; machine_snapshot_read.c) ----
+ * What the reader knows about a container after one pass over it, with no pointer into the buffer: status and reason of the first
+ * failing class of the check order (docs/formats/ivsn-v1.md "Check order", steps 2 to 5 and the id form of step 6), the byte offset
+ * and section index of the defect, which header facts could be read before the refusal (known), and, after a success, every field
+ * of the header and the section table. The reader never touches an instance. */
+#define IVS_SNAP_KNOWN_FORMAT 1u /* format_version and flags were read (the supplied length is at least 12) */
+#define IVS_SNAP_KNOWN_TOTAL 2u  /* total_bytes was read (at least 16) */
+#define IVS_SNAP_KNOWN_SCHEMA 4u /* schema_version and section_count were read (at least 24) */
+
+typedef struct ivs_snap_slot_view {
+  uint32_t loaded;
+  uint32_t length_bytes;
+  uint8_t sha256[32];
+} ivs_snap_slot_view;
+
+typedef struct ivs_snap_section_view {
+  uint32_t domain;
+  uint32_t offset;
+  uint32_t length;
+  uint8_t digest[32];
+} ivs_snap_section_view;
+
+typedef struct ivs_snap_view {
+  ivs_status status;      /* IVS_OK, or the status the refusal travels with */
+  uint32_t reason;        /* 0, or an IVS_REASON_SNAP_ number */
+  uint64_t byte_offset;   /* where the defect was seen (0 after a success) */
+  uint32_t section_index; /* the table entry a defect concerns, else IVS_SEGMENT_NONE */
+  uint32_t known;         /* IVS_SNAP_KNOWN_* */
+  uint32_t format_version;
+  uint32_t flags;
+  uint32_t schema_version;
+  uint32_t section_count;
+  uint64_t total_bytes;
+  uint32_t profile_id_length;                      /* after a success: the bytes before the first NUL */
+  uint8_t profile_id[IVS_PROFILE_ID_MAX_BYTES];    /* after a success: the 64 bytes of the field */
+  uint8_t params_sha256[32];
+  uint8_t composite_sha256[32];
+  ivs_snap_slot_view slot[IVS_SLOT_COUNT];
+  ivs_snap_section_view section[IVS_SNAP_SECTIONS];
+} ivs_snap_view;
+
+/* Validates the len bytes at buf in the order of the specification up to and including the trailer and the form of the profile id:
+ * the length bound (OVERSIZED before any byte is read), the smallest length, the magic, the format version, the flags, the schema
+ * version and digest (UNSUPPORTED), the claimed total against the length and the derived size, the section count, the section table
+ * (known domains, strictly ascending, zero bytes zero, adjacent, the last end 32 bytes before the total) and the SHA-256 trailer, then
+ * the form of the profile id. The first failing class wins; every offset and length is compared with the supplied length before the
+ * byte it names is read, and a length is a 64-bit value. v is always written (v->status is the result); buf may be NULL only for len 0
+ * and the caller has decided the argument classes (ivs_snapshot_arg_reason) before. No instance, no allocation. */
+ivs_status ivs_snapshot_read(const uint8_t *buf, uint64_t len, ivs_snap_view *v);
+
+/* The argument classes of the calls that read a snapshot and fill a report: 0, or the reason of the first failing class, in the
+ * order of the specification: IVS_REASON_SNAP_BUF_NULL for a NULL buf with a len above 0, IVS_REASON_SNAP_REPORT_OVERLAP for the
+ * rep_bytes bytes at rep overlapping the buffer. A length above IVS_SNAPSHOT_MAX_BYTES names no bytes the reader will read, so the
+ * overlap is judged over the first IVS_SNAPSHOT_MAX_BYTES bytes only. */
+uint32_t ivs_snapshot_arg_reason(const uint8_t *buf, uint64_t len, const void *rep, size_t rep_bytes);
+
 /* Derives the pull-down masks of the PSG ports (mem.port_pulldown) from the words in force and the
  * generated control table (plan 05-05, D-03, D-04): the OR of the line masks of every set bit, for
  * each port below the profile's input.controllers, 0 for the others. The one function that sets the

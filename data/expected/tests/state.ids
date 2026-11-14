@@ -21,3 +21,11 @@ state.save.no-image-bytes
 state.save.canonical-stream-literal
 state.save.read-only-fixed-size
 state.judge.header-literal-corrupt
+# Plan 08-12 Task 1: the instance-free reader and ivs_snapshot_describe (D-13, D-14, D-16). The refusal matrix is written from the specification, not from the
+# reader: a success echoes the identity of the snapshot, the argument classes and the unusable report, the length bound and the total the snapshot states, the
+# header (magic, versions, flags, schema, section count) with the order among them, and the trailer after the structure.
+state.read.describe-ok
+state.read.describe-refuse-args
+state.read.describe-refuse-length
+state.read.describe-refuse-header
+state.read.describe-refuse-trailer

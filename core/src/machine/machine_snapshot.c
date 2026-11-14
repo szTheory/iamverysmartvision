@@ -28,29 +28,9 @@
 #include "ivs/ivs.h"
 #include "machine/machine.h"
 
-/* ---- the pinned layout ---- */
-#define IVS_SNAP_SECTIONS 7u
-#define IVS_SNAP_ENTRY_BYTES 44u
-#define IVS_SNAP_SLOT_BYTES 40u
-#define IVS_SNAP_OFF_FORMAT 8u
-#define IVS_SNAP_OFF_FLAGS 10u
-#define IVS_SNAP_OFF_TOTAL 12u
-#define IVS_SNAP_OFF_SCHEMA 16u
-#define IVS_SNAP_OFF_COUNT 20u
-#define IVS_SNAP_OFF_SCHEMA_DIGEST 24u
-#define IVS_SNAP_OFF_PROFILE_ID 56u
-#define IVS_SNAP_OFF_PARAMS 120u
-#define IVS_SNAP_OFF_SLOTS 152u
-#define IVS_SNAP_OFF_COMPOSITE 272u
-#define IVS_SNAP_OFF_TABLE 304u
-#define IVS_SNAP_HEADER_BYTES 612u
-#define IVS_SNAP_TRAILER_BYTES 32u
-_Static_assert(IVS_SNAP_OFF_SCHEMA_DIGEST + 32u == IVS_SNAP_OFF_PROFILE_ID, "the schema digest is 32 bytes");
-_Static_assert(IVS_SNAP_OFF_PROFILE_ID + IVS_PROFILE_ID_MAX_BYTES == IVS_SNAP_OFF_PARAMS, "the profile id field is 64 bytes");
-_Static_assert(IVS_SNAP_OFF_PARAMS + 32u == IVS_SNAP_OFF_SLOTS, "the parameter digest is 32 bytes");
-_Static_assert(IVS_SNAP_OFF_SLOTS + IVS_SLOT_COUNT * IVS_SNAP_SLOT_BYTES == IVS_SNAP_OFF_COMPOSITE, "three slot records of 40 bytes");
-_Static_assert(IVS_SNAP_OFF_COMPOSITE + 32u == IVS_SNAP_OFF_TABLE, "the composite digest is 32 bytes");
-_Static_assert(IVS_SNAP_OFF_TABLE + IVS_SNAP_SECTIONS * IVS_SNAP_ENTRY_BYTES == IVS_SNAP_HEADER_BYTES, "seven section entries of 44 bytes");
+/* ---- the pinned layout ----
+ * The offsets, the section count and the header and trailer sizes are in machine.h since plan 08-12, shared with the reader
+ * (machine_snapshot_read.c): one set of numbers for the writer and the reader. */
 
 /* ivs_snapshot_report v1 (ivs/ivs_state.h): every offset and the size are pinned; all members are u32, u64, bytes or image reports. */
 _Static_assert(sizeof(ivs_snapshot_report) == 360u, "ivs_snapshot_report v1 is 360 bytes");
@@ -68,9 +48,43 @@ _Static_assert(offsetof(ivs_snapshot_report, profile_params_sha256) == 104u, "sn
 _Static_assert(offsetof(ivs_snapshot_report, composite_sha256) == 136u, "snapshot report composite_sha256 at 136");
 _Static_assert(offsetof(ivs_snapshot_report, slots) == 168u, "snapshot report slots at 168");
 
-/* The seven sections, in table order: the domains that hold STATE rows. Domain 3 (IMAGES) holds none, so it has no section. */
-static const uint8_t ivs_snap_domain[IVS_SNAP_SECTIONS] = {IVS_DIGEST_CPU,   IVS_DIGEST_MEM,   IVS_DIGEST_INSTANCE, IVS_DIGEST_VIDEO,
-                                                          IVS_DIGEST_AUDIO, IVS_DIGEST_INPUT, IVS_DIGEST_PSGLOG};
+/* The seven sections, in table order: the domains that hold STATE rows. Domain 3 (IMAGES) holds none, so it has no section. Declared in
+ * machine.h (the reader compares the section table of a container with it). */
+const uint8_t ivs_snap_domain[IVS_SNAP_SECTIONS] = {IVS_DIGEST_CPU,   IVS_DIGEST_MEM,   IVS_DIGEST_INSTANCE, IVS_DIGEST_VIDEO,
+                                                    IVS_DIGEST_AUDIO, IVS_DIGEST_INPUT, IVS_DIGEST_PSGLOG};
+
+/* The derived section lengths (plan 08-12): from the descriptors of the digest field table alone, with no instance. A section is the
+ * 7-byte frame (IVSD, the domain, the domain version) and, for each STATE row of the domain, width times count, plus 4 bytes of count
+ * when the count is above 1: the rule of the state-only walk, restated from the specification. */
+#define IVS_SNAP_FRAME_BYTES 7u
+
+uint32_t ivs_snapshot_section_derived_length(uint32_t index)
+{
+  uint64_t n = IVS_SNAP_FRAME_BYTES;
+  size_t rows = ivs_machine_digest_field_count();
+  size_t r;
+  if (index >= IVS_SNAP_SECTIONS) {
+    return 0u;
+  }
+  for (r = 0u; r < rows; r++) {
+    const ivs_digest_field *f = ivs_machine_digest_field(r);
+    if (f == NULL || f->domain != ivs_snap_domain[index] || f->snap != IVS_SNAP_STATE || f->kind != IVS_DIGEST_KIND_UINT) {
+      continue;
+    }
+    n += (uint64_t)f->width * f->count + (f->count > 1u ? 4u : 0u);
+  }
+  return (uint32_t)n;
+}
+
+uint64_t ivs_snapshot_derived_total(void)
+{
+  uint64_t total = (uint64_t)IVS_SNAP_HEADER_BYTES + (uint64_t)IVS_SNAP_TRAILER_BYTES;
+  uint32_t i;
+  for (i = 0u; i < IVS_SNAP_SECTIONS; i++) {
+    total += ivs_snapshot_section_derived_length(i);
+  }
+  return total;
+}
 
 /* ---- the profile parameter digest (Task 1) ---- */
 

@@ -557,6 +557,57 @@
           "tests": ["state.save.refusal-ladder"]
         }
       ]
+    },
+    {
+      "name": "ivs_snapshot_describe",
+      "header": "core/include/ivs/ivs_state.h",
+      "on_ok": "Checks the len bytes at buf in the order of docs/formats/ivsn-v1.md up to and including the SHA-256 trailer and the form of the profile id, without any instance, and writes the full v1 report: reason 0, the format and schema versions, total_bytes (4,299 for the first profile), byte_offset 0, section_index 0xFFFFFFFF, kind 0, the profile id, the parameter digest and the composite digest of the writer and the three image slot records (kind slot index plus one, loaded, length_bytes and SHA-256 as the snapshot states them). Nothing is read past len, nothing is allocated, nothing but the report is written and the call touches no file or clock (plan 08-12, D-13, D-14).",
+      "precedence": [
+        {"status": "IVS_E_BAD_ARG", "checks": "rep NULL, or rep->struct_size below IVS_SNAPSHOT_REPORT_V1_SIZE or above IVS_STRUCT_SIZE_MAX (nothing written)", "pinned_by": ["state.read.describe-refuse-args"]},
+        {"status": "IVS_E_BAD_ARG", "checks": "buf NULL with len above 0 (reason 58), then the report overlapping the first min(len, IVS_SNAPSHOT_MAX_BYTES) bytes of buf (reason 59)", "pinned_by": ["state.read.describe-refuse-args"]},
+        {"status": "IVS_E_OVERSIZED", "checks": "len above IVS_SNAPSHOT_MAX_BYTES, before any byte of buf is read (reason 60)", "pinned_by": ["state.read.describe-refuse-length"]},
+        {"status": "IVS_E_MALFORMED", "checks": "len below the smallest container (reason 61)", "pinned_by": ["state.read.describe-refuse-length"]},
+        {"status": "IVS_E_MALFORMED", "checks": "the magic differs (reason 62)", "pinned_by": ["state.read.describe-refuse-header"]},
+        {"status": "IVS_E_UNSUPPORTED", "checks": "the format version (63), the flags (64), the schema version (65) or the schema digest (66) is not the one of this build, in that order", "pinned_by": ["state.read.describe-refuse-header"]},
+        {"status": "IVS_E_MALFORMED", "checks": "the total the snapshot states is above len (reason 61), or below len or different from the size this build derives (reason 67)", "pinned_by": ["state.read.describe-refuse-length"]},
+        {"status": "IVS_E_MALFORMED", "checks": "the section count is not 7 (reason 68)", "pinned_by": ["state.read.describe-refuse-header"]},
+        {"status": "IVS_E_DIGEST_MISMATCH", "checks": "the SHA-256 trailer differs from the digest of every earlier byte (reason 70); checked after the structure, so a structural defect with a wrong trailer is the structural reason", "pinned_by": ["state.read.describe-refuse-trailer"]}
+      ],
+      "notes": [
+        "Instance-free: no handle, no instance. The reader never reads a byte past len and every length and offset in the bytes is compared with len before the byte it names is read; the section table check (reason 69) and the form of the profile id (reason 71) come after the header checks and before and after the trailer as docs/formats/ivsn-v1.md says. A refusal by an unusable report struct writes nothing. Every other refusal writes only reason, byte_offset, section_index and the header facts the supplied length let it read (format_version at 12 bytes, total_bytes at 16, schema_version at 24); every other member of the report keeps the caller's value. The report is a v1 out struct of 360 bytes: a caller struct larger than that keeps its tail. The snapshot is exact-build state: describe says what a snapshot claims to be, never that it restores."
+      ],
+      "refusals": [
+        {
+          "status": "IVS_E_BAD_ARG",
+          "effect": "none",
+          "outs": "rep unusable: nothing written. A NULL buf with len above 0 or a report overlapping the buffer: only reason (58 or 59), byte_offset 0 and section_index 0xFFFFFFFF are written into the report; the buffer is never read",
+          "tests": ["state.read.describe-refuse-args"]
+        },
+        {
+          "status": "IVS_E_OVERSIZED",
+          "effect": "none",
+          "outs": "only reason 60, byte_offset IVS_SNAPSHOT_MAX_BYTES and section_index 0xFFFFFFFF are written into the report; no byte of buf is read",
+          "tests": ["state.read.describe-refuse-length"]
+        },
+        {
+          "status": "IVS_E_MALFORMED",
+          "effect": "none",
+          "outs": "only reason, byte_offset, section_index and the readable header facts (format_version, total_bytes, schema_version) are written into the report; buf is never changed",
+          "tests": ["state.read.describe-refuse-length", "state.read.describe-refuse-header", "state.read.describe-refuse-trailer"]
+        },
+        {
+          "status": "IVS_E_UNSUPPORTED",
+          "effect": "none",
+          "outs": "only reason (63 to 66), byte_offset of the field, section_index 0xFFFFFFFF and the header facts, with the version of the snapshot, are written into the report; buf is never changed",
+          "tests": ["state.read.describe-refuse-header"]
+        },
+        {
+          "status": "IVS_E_DIGEST_MISMATCH",
+          "effect": "none",
+          "outs": "only reason 70, byte_offset of the trailer (total minus 32), section_index 0xFFFFFFFF and the header facts are written into the report; buf is never changed",
+          "tests": ["state.read.describe-refuse-trailer"]
+        }
+      ]
     }
   ]
 }

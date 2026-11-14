@@ -2,7 +2,8 @@
 /* Public snapshot API (plan 08-11, D-12, D-13, D-14; the container is specified in docs/formats/ivsn-v1.md). A snapshot is the state of
  * one instance at a unit boundary of a powered machine, written as bytes into a buffer the host owns. The core allocates nothing,
  * reads no clock and opens no file: it takes no path, no name and no slot, and the host decides where the bytes go, if anywhere
- * (D-19). Describe and restore are added by later plans of the same phase with their own call records.
+ * (D-19). The instance-free describe call is here (plan 08-12); restore is added by a later plan of the same phase with its own call
+ * record.
  *
  * What a snapshot holds: the sections of the machine state in the one wire byte order of the project, big-endian, assembled field
  * by field, so the bytes do not depend on the byte order of the host, on the padding of a struct or on the layout of the instance;
@@ -43,16 +44,35 @@ extern "C" {
 /* The v1 size of ivs_snapshot_report, the smallest struct_size the calls that fill it accept (append-only growth). */
 #define IVS_SNAPSHOT_REPORT_V1_SIZE 360u
 
-/* Out: what is known about a snapshot, by the calls that read one. The size and save calls below do not fill it; it is defined here
- * so that the layout is pinned before the calls that use it exist. All members are u32, u64, bytes or the image report of
- * ivs/ivs_machine.h, so the struct has no pointer and no padding. Offsets in bytes:
+/* Refusal reasons of the calls that read a snapshot (plan 08-12, D-14; ivs_snapshot_report.reason). Each reason travels with the one
+ * status named in its comment. The numbers continue the list of ivs/ivs_machine.h, are pinned in data/expected/api-reasons.ids and are
+ * append-only. The section of docs/formats/ivsn-v1.md on the refusal reasons gives each meaning; the reasons from 72 on are added by
+ * the restore call. */
+#define IVS_REASON_SNAP_BUF_NULL 58u        /* BAD_ARG: a NULL buffer with a length above 0 */
+#define IVS_REASON_SNAP_REPORT_OVERLAP 59u  /* BAD_ARG: the report overlaps the buffer */
+#define IVS_REASON_SNAP_OVERSIZED 60u       /* OVERSIZED: the length is above IVS_SNAPSHOT_MAX_BYTES, refused before any byte is read */
+#define IVS_REASON_SNAP_TRUNCATED 61u       /* MALFORMED: the length is below the smallest container, or the total it states is above it */
+#define IVS_REASON_SNAP_MAGIC 62u           /* MALFORMED: the magic differs; the byte offset of the first difference is reported */
+#define IVS_REASON_SNAP_FORMAT_VERSION 63u  /* UNSUPPORTED: a format version other than IVS_SNAPSHOT_FORMAT_VERSION */
+#define IVS_REASON_SNAP_FLAGS 64u           /* UNSUPPORTED: a flag bit is set */
+#define IVS_REASON_SNAP_SCHEMA_VERSION 65u  /* UNSUPPORTED: a schema version other than IVS_SNAPSHOT_SCHEMA_VERSION */
+#define IVS_REASON_SNAP_SCHEMA_DIGEST 66u   /* UNSUPPORTED: the schema digest differs from the one of this build */
+#define IVS_REASON_SNAP_TOTAL_LENGTH 67u    /* MALFORMED: the total it states is below the length or differs from the size this build derives */
+#define IVS_REASON_SNAP_SECTION_COUNT 68u   /* MALFORMED: a section count other than 7 */
+#define IVS_REASON_SNAP_SECTION_TABLE 69u   /* MALFORMED: an unknown, duplicate or out of order domain, or an offset or length that does not fit */
+#define IVS_REASON_SNAP_TRAILER 70u         /* DIGEST_MISMATCH: the trailer differs from the SHA-256 of every earlier byte */
+#define IVS_REASON_SNAP_PROFILE_ID_FORM 71u /* MALFORMED: the profile id has no NUL, a byte after the NUL, or a byte that is not printable ASCII */
+
+/* Out: what is known about a snapshot, by the calls that read one (ivs_snapshot_describe below). The size and save calls do not fill
+ * it. All members are u32, u64, bytes or the image report of ivs/ivs_machine.h, so the struct has no pointer and no padding. Offsets
+ * in bytes:
  *   struct_size            0  u32
  *   reason                 4  u32, an IVS_REASON_ number of a refusal, 0 for none
  *   format_version         8  u32, the version field of the snapshot when it was read
  *   schema_version        12  u32, the schema version field of the snapshot when it was read
  *   total_bytes           16  u64, the total length the snapshot states
  *   byte_offset           24  u64, where in the snapshot a defect was seen
- *   section_index         32  u32, the section a defect concerns, or 0xFFFFFFFF
+ *   section_index         32  u32, the section table entry a defect concerns, or 0xFFFFFFFF (the value of IVS_SEGMENT_NONE)
  *   kind                  36  u32, an image slot kind a defect concerns, or 0
  *   profile_id            40  64 bytes, the profile id of the snapshot, NUL padded
  *   profile_params_sha256 104  32 bytes, the parameter digest of the profile tables of the writer
@@ -96,6 +116,37 @@ IVS_API ivs_status ivs_machine_snapshot_size(const ivs_machine *m, uint64_t *out
  * Only the refusal BUFFER_TOO_SMALL writes anything, and only *out_written: no refusal writes a byte of buf. On success exactly
  * *out_written bytes of buf are written and no byte past them. */
 IVS_API ivs_status ivs_machine_snapshot_save(const ivs_machine *m, uint8_t *buf, uint64_t cap, uint64_t *out_written);
+
+/* What the len bytes at buf claim to be, without an instance (plan 08-12, D-13, D-14): checks the container in the order of the
+ * specification up to and including the SHA-256 trailer and the form of the profile id, never reads a byte past len and never writes
+ * anything but the report. A host calls it to learn what a snapshot is, for example that another version made it, before it has an
+ * instance to restore into. It does not say that the snapshot restores into any machine: the profile, the images and the content are
+ * judged by restore. The first failing class wins:
+ *   BAD_ARG           rep is NULL, or its struct_size is below IVS_SNAPSHOT_REPORT_V1_SIZE or above IVS_STRUCT_SIZE_MAX;
+ *   BAD_ARG           buf is NULL with len above 0 (IVS_REASON_SNAP_BUF_NULL);
+ *   BAD_ARG           the report overlaps the buffer (IVS_REASON_SNAP_REPORT_OVERLAP); a len above IVS_SNAPSHOT_MAX_BYTES counts as
+ *                     IVS_SNAPSHOT_MAX_BYTES for this test, since no byte past that bound is read;
+ *   OVERSIZED         len is above IVS_SNAPSHOT_MAX_BYTES, refused before any byte is read (IVS_REASON_SNAP_OVERSIZED);
+ *   MALFORMED         the length, the magic, the total it states, the section count, the section table or the profile id has a defect
+ *                     (IVS_REASON_SNAP_TRUNCATED, _MAGIC, _TOTAL_LENGTH, _SECTION_COUNT, _SECTION_TABLE, _PROFILE_ID_FORM);
+ *   UNSUPPORTED       the format version, the flags, the schema version or the schema digest is not the one of this build
+ *                     (IVS_REASON_SNAP_FORMAT_VERSION, _FLAGS, _SCHEMA_VERSION, _SCHEMA_DIGEST);
+ *   DIGEST_MISMATCH   the trailer differs from the SHA-256 of every earlier byte (IVS_REASON_SNAP_TRAILER).
+ * The trailer is checked after the structure, so a defect of the structure with a wrong trailer is reported as the defect of the
+ * structure, and the form of the profile id is checked after the trailer. The reader looks at the first IVS_SNAPSHOT_MAX_BYTES bytes
+ * at most. The report: a refusal by an unusable report struct writes nothing. Every other refusal writes only these members of the
+ * report. reason. byte_offset, the offset of the defect: the length for a truncation, 0 for a refusal by an argument,
+ * IVS_SNAPSHOT_MAX_BYTES for OVERSIZED, the offset of the first differing byte for the magic and otherwise the offset of the field that
+ * failed. section_index, the table entry that a section table defect concerns and otherwise 0xFFFFFFFF. And, only when len let the bytes
+ * be read, format_version when len is at least 12, total_bytes (the total the snapshot states) when len is at least 16 and
+ * schema_version when len is at least 24; these are read from the bytes as they stand, whatever the defect, so a host can say that
+ * another version made a snapshot. Every other member keeps the value the caller gave it, and so does struct_size. On success the
+ * report is written in full: the smaller of struct_size and the v1 size in bytes, with struct_size set to that count. It holds
+ * reason 0, the two versions, total_bytes, byte_offset 0, section_index 0xFFFFFFFF, kind 0, the profile id, the parameter digest and
+ * the composite digest of the writer, and the three image slot records (struct_size the size of an image report, kind the slot index
+ * plus one, loaded, length_bytes and sha256 as the snapshot states them, every other member 0). Nothing in the report says anything
+ * about any instance. */
+IVS_API ivs_status ivs_snapshot_describe(const uint8_t *buf, uint64_t len, ivs_snapshot_report *rep);
 
 #ifdef __cplusplus
 }

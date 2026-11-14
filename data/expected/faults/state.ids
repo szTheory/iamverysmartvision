@@ -10,3 +10,10 @@ SNAPSHOT_PAD_SERIALIZED state.size.derived-and-constant state. state.literal.par
 # SNAPSHOT_IMAGE_BYTES_EMBEDDED (core/src/machine/machine_digest.c): the state-only filter also admits the IMAGE rows, so the snapshot walk serializes the three
 # image arrays (the rights-bearing bytes of whatever was loaded) like any STATE row; the snapshot then holds recognisable 16-byte windows of an image.
 SNAPSHOT_IMAGE_BYTES_EMBEDDED state.save.no-image-bytes state. state.literal.params-digest
+# SNAPSHOT_TRAILER_UNCHECKED (core/src/machine/machine_snapshot_read.c): the reader skips the comparison of the SHA-256 trailer, so a container with a damaged
+# trailer or a damaged byte that only the trailer covers is accepted instead of refused DIGEST_MISMATCH 70.
+SNAPSHOT_TRAILER_UNCHECKED state.read.describe-refuse-trailer state. state.read.describe-ok
+# SNAPSHOT_LENGTH_TRUSTED (core/src/machine/machine_snapshot_read.c): the reader does not refuse a total above the supplied length, so the later checks use the
+# claim (the trailer is read at the claim, past the bytes supplied: the buffers of a fault build carry a zeroed tail) and a truncated snapshot is no longer
+# reported as truncated.
+SNAPSHOT_LENGTH_TRUSTED state.read.describe-refuse-length state. state.read.describe-ok
