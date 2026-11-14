@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 current_phase: 8
 current_phase_name: STIC Completion, Save State and Performance Baselines
-current_plan: 9
+current_plan: 10
 status: executing
-stopped_at: Completed 08-08-PLAN.md
-last_updated: "2026-11-14T11:57:44.385Z"
+stopped_at: Completed 08-09-PLAN.md
+last_updated: "2026-11-14T13:38:57.257Z"
 last_activity: 2026-11-14
 last_activity_desc: Phase 8 execution started
-state_head: 88e6abe8f77955b5da69da618469f9c2594fc427
+state_head: 02899e1b1814ea678cc4cd78568534779a012873
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 130
-  completed_plans: 117
+  completed_plans: 118
   percent: 88
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 8 (STIC Completion, Save State and Performance Baselines) — EXECUTING
-Current Plan: 9
+Current Plan: 10
 Total Plans in Phase: 21
 Status: Ready to execute
 Last activity: 2026-11-14 — Phase 8 execution started
@@ -176,6 +176,7 @@ Progress: [█████████░] 88%
 | Phase 08 P06 | about 45 min | 3 tasks | 19 files |
 | Phase 08 P07 | about 75 min | 3 tasks | 35 files |
 | Phase 08 P08 | about 55 min | 3 tasks | 25 files |
+| Phase 8 P09 | about 50 min | 3 tasks | 37 files |
 
 ## Accumulated Context
 
@@ -431,6 +432,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 08]: 08-07: the six STIC2 program mutants run their scenario only on a Release build (fifth argument of runner-process, a genex) and are judged statically otherwise, same ids and no skip-ok (D-40); the program follows A5 to the letter, so the frame counter relies on the zero power-on RAM default (open item for the owner: an explicit store would be a new oracle commit)
 - [Phase 8]: 08-08: the own bit of a collision register on a CPU write is an explicit unknown-default-chosen pin (the source says it reads 0, the default keeps the write mask 03FF; frozen Phase 6 literal and tests unchanged, PD-7 amended by an addition to the derivation); collision on the undelayed scene and the zero power-on RAM frame counter are claim exclusions and assumptions, not oracle changes
 - [Phase 8]: 08-08: checkpoint A reads lever-required (median r 7.78, projection 8.06 to 8.18 against the 8.0 rule of the orchestrator): no further test id, fault or control in waves B and C until the orchestrator answers; lever (2) is queued as the first task of the next wave; the D-36 split trigger is the orchestrator's decision
+- [Phase 8]: 08-09: wave B opens oracle first and with no C: the state gate step (38) holds the digest field table text, the 88-row hidden-state checklist (STATE 51, IMAGE_BEARING 3, BOUND 28, PAD 6; magic is BOUND), the 18 hard-point cuts and the hand-derived schema literal with its SHA-256 pin; IVSN v1 is 612 + 3,655 + 32 = 4,299 bytes and its eight machine-level digests are informational (D-41); one witness per row and every cut used (the plan examples left four cuts without a row)
+- [Phase 8]: 08-09: the blind read of the checklist (member list from the struct headers, class definitions only) is requested in docs/state/checklist-second-read-request.md with first line pending; the orchestrator builds the blinded files and runs the reader, plan 08-10 starts only when the record docs/state/checklist-second-read-record.md says state: closed; STA-01 and STA-02 stay Pending
 
 ### Pending Todos
 
@@ -463,6 +466,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-14T11:57:44.001Z
-Stopped at: Completed 08-08-PLAN.md
+Last session: 2026-11-14T13:38:56.859Z
+Stopped at: Completed 08-09-PLAN.md
 Resume file: None
