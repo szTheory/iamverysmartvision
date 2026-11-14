@@ -2,19 +2,19 @@
 gsd_state_version: "1.0"
 current_phase: 8
 current_phase_name: STIC Completion, Save State and Performance Baselines
-current_plan: 3
+current_plan: 4
 status: executing
-stopped_at: Completed 08-02-PLAN.md
-last_updated: "2026-11-14T07:18:34.245Z"
+stopped_at: Completed 08-03-PLAN.md
+last_updated: "2026-11-14T08:08:17.241Z"
 last_activity: 2026-11-14
 last_activity_desc: Phase 8 execution started
-state_head: bc7f33c220b88ddc324229d27673e23ebea9e619
+state_head: 641a12e3a1059b242cc88a3ee4308e3f58d9b36d
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 130
-  completed_plans: 111
-  percent: 85
+  completed_plans: 112
+  percent: 86
 ---
 
 # Project State
@@ -29,12 +29,12 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 8 (STIC Completion, Save State and Performance Baselines) — EXECUTING
-Current Plan: 3
+Current Plan: 4
 Total Plans in Phase: 21
 Status: Ready to execute
 Last activity: 2026-11-14 — Phase 8 execution started
 
-Progress: [█████████░] 85%
+Progress: [█████████░] 86%
 
 ## Performance Metrics
 
@@ -170,6 +170,7 @@ Progress: [█████████░] 85%
 | Phase 7 P12 | 58min | 3 tasks | 19 files |
 | Phase 8 P01 | about 55 min measured, plus reading | 3 tasks | 42 files |
 | Phase 8 P02 | 31min | 3 tasks | 16 files |
+| Phase 08 P03 | about 3h | 3 tasks | 41 files |
 
 ## Accumulated Context
 
@@ -413,6 +414,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 8]: 08-02: history findings are pinned by (token, short sha) pair in data/expected/hygiene-history-pinned.ids; a new pair fails the release check, no pass verdict is printed, the baseline file is untouched
 - [Phase 8]: 08-02: any commit that changes data/claims.json regenerates the CHANGELOG claim table in the same commit; --release and --publish halt on release-changelog-section-missing until plans 08-20 and 08-21 write the 0.1.0 section
 - [Phase 8]: 08-02: the release rehearsal accepts one named Darwin host effect (ranlib restamp of the first member header of lib/libivs_core.a) and requires byte-equal install archives on Linux
+- [Phase 08]: 08-03: the oracle derives the delayed frames with shift-tolerant card cells (no grammar construct beyond the plan); F-M4 to F-M6 are hashed under the pinned defaults PD-8 and PD-9, carried by the claim exclusions
+- [Phase 08]: 08-03: collision truth table reads sticky bits in the routines of frames 3 and 4 and writes only zero to a collision register; no row depends on a read side effect or a nonzero write
 
 ### Pending Todos
 
@@ -445,6 +448,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-14T07:18:33.884Z
-Stopped at: Completed 08-02-PLAN.md
+Last session: 2026-11-14T08:08:16.882Z
+Stopped at: Completed 08-03-PLAN.md
 Resume file: None
