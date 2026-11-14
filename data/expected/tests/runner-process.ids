@@ -2,7 +2,9 @@
 # real ivs-run of each preset.
 # runner-process.scenario.<id>: one case per line of data/expected/runner-scenarios.ids (exit
 #   code, outcome, exit.code, outcome.detail, `ivsr 3` first and `report.end <n>` last);
-#   needs-user-exec needs an operator EXEC the gate never has and is a visible skip.
+#   needs-user-exec needs an operator EXEC the gate never has and is a visible skip; since plan 07-10
+#   (D-31) so is owner-exec-title, the template of the owner-local route (docs/owner-images.md), and the
+#   gate prints one `-- SKIPPED <preset>/<suite>/<id>: <reason>` line per skipped id and preset.
 # runner-process.mutant.<ID>: one case per program mutation of data/expected/diag-mutations.ids,
 #   guest-fail naming its clause (D-32), and (plan 05-11) one per row of
 #   data/expected/diag-mutations-ctrl-psg.ids, judged by the outcome and exit code of the row
@@ -51,6 +53,7 @@ runner-process.scenario.demo-lamp-tone-pass
 runner-process.scenario.demo-lamp-tone-idle
 runner-process.scenario.demo-lamp-tone-shift
 runner-process.scenario.demo-lamp-tone-swap
+runner-process.scenario.owner-exec-title skip-ok
 runner-process.mutant.ADDI-SUBI
 runner-process.mutant.BNZE-BZE
 runner-process.mutant.PSHR-MVOAT

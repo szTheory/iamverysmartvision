@@ -36,3 +36,4 @@ demo-lamp-tone-pass 0 pass deterministic run -
 demo-lamp-tone-idle 0 pass deterministic run -
 demo-lamp-tone-shift 0 pass deterministic run -
 demo-lamp-tone-swap 0 pass deterministic run -
+owner-exec-title 13 missing-fixture deterministic skip-ok -

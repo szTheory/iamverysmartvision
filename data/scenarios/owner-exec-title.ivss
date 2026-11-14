@@ -1,0 +1,21 @@
+# Scenario owner-exec-title (plan 07-10, D-30, D-31, A-18): outcome missing-fixture, exit 13, skip-ok.
+# TEMPLATE of the owner-local route (docs/owner-images.md). It asks for the operator's own EXEC and
+# graphics ROM images (`content exec user`, `content grom user`) and names no cartridge. The gate never
+# passes an operator image, so here it ends missing-fixture and the suite reports a visible, counted
+# skip. CI never runs this scenario with images: a copy with `expect-sha256` lines is made by the owner's
+# helper in a temporary directory (plan 07-11), never in the tree.
+# The scenario states no result. It carries no `assert` line that encodes a title picture, a frame hash
+# or a guest value: a real EXEC image is not the project's to describe (D-32, D11 not performed), so the
+# run only attempts the sequence and the report records what happened. No image, digest or hash of an
+# operator is named or pinned here.
+# The bound is 600 frames, which is 35,841,600 ticks of machine time (59,736 ticks per frame): a
+# deliberately generous count so that a power-up and title sequence of an operator image is attempted,
+# not a claim of how long any image needs. The bound is also the budget: the run ends at it.
+# expect-detail: missing role=exec user
+ivss 1
+id owner-exec-title
+profile intv-2609-ntsc-family-p1
+content exec user
+content grom user
+# owner-run: expect-sha256 lines are inserted after this line
+run-to 600 frames
