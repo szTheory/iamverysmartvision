@@ -22,7 +22,7 @@ reserved PAD - state.restore.poisoned-target-equals-source -
 time_ticks STATE HP-FRAME-MID state.cut.stic-points ROW
 cpu.r STATE HP-INT-ENTRY state.cut.cpu-points ROW
 cpu.status STATE HP-HLT state.cut.cpu-points ROW
-cpu.intff STATE HP-CLOSED state.cut.cpu-points ROW
+cpu.intff STATE HP-FRAME-MID state.cut.stic-points ROW
 cpu.dbd STATE HP-SDBD state.cut.cpu-points ROW
 cpu.prev_interruptible STATE HP-OPEN state.cut.cpu-points ROW
 cpu.run_state STATE HP-HALTED state.cut.cpu-points ROW
@@ -59,7 +59,7 @@ psg.env_cycles STATE HP-ENV-MID state.cut.device-points ROW
 psg.reserved PAD - state.restore.poisoned-target-equals-source -
 stic.frame_index STATE HP-FRAME-MID state.cut.stic-points ROW
 stic.event_index STATE HP-FRAME-MID state.cut.stic-points ROW
-stic.display_latch STATE HP-FRAME-MID state.cut.stic-points ROW
+stic.display_latch STATE HP-CLOSED state.cut.cpu-points ROW
 stic.windows_active STATE HP-FRAME-MID state.cut.stic-points ROW
 stic.mode STATE HP-LATCH state.cut.stic-points ROW
 stic.cs_ptr STATE HP-LATCH state.cut.stic-points ROW
