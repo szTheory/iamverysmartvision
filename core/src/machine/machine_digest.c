@@ -304,6 +304,11 @@ static void ivs_digest_domain(const struct ivs_machine *m, uint32_t domain, ivs_
     if (f->domain != domain) {
       continue;
     }
+#ifdef IVS_FAULT_SNAPSHOT_PAD_SERIALIZED
+    /* Named fault SNAPSHOT_PAD_SERIALIZED (plan 08-11): the snapshot walk also writes the bytes of every PAD row, in table position,
+     * so a section grows by its reserved words and the sizes derived on paper no longer hold. */
+    if (k->state_only != 0u && f->kind == IVS_DIGEST_KIND_PAD) ivs_dsink_bytes(k, base + f->offset, (size_t)f->width * f->count);
+#endif
     if (k->state_only != 0u && f->snap != IVS_SNAP_STATE) {
       continue; /* the snapshot walk: IMAGE, BOUND and PAD rows are never serialized */
     }

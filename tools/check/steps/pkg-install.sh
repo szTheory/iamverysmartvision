@@ -38,7 +38,7 @@
 #              replay, of the original program on the project boot stub contract 2: every domain observed, the composite aside).
 #   independence (D-37 d, e) `ninja -t deps`: no path under ROOT, no ivs*.h outside the moved
 #              prefix, nothing else under the temp dir but the source copy, and ivs.h,
-#              ivs_machine.h, ivs_run.h, ivs_status.h present under the prefix; `ninja -t
+#              ivs_machine.h, ivs_run.h, ivs_state.h, ivs_status.h present under the prefix; `ninja -t
 #              commands`: one link command, naming <prefix>/lib/libivs_core.a and no other
 #              ivs_core archive; the compile command has the strict flags and no -isystem;
 #              ivs_DIR of the consumer cache lies under the prefix (pwd -P); `nm -P -u` of
@@ -357,7 +357,7 @@ pT=$(cd "$T" && pwd -P) || exit 1
 # the indent is stripped and nothing is split into fields. No path may lie under the repository
 # (logical or physical form); an ivs*.h header outside the moved prefix, or any path under the temp
 # dir other than the prefix and the source copy, is a leak too; and ivs.h, ivs_machine.h,
-# ivs_run.h and ivs_status.h must be present under the moved prefix (positive presence, so an
+# ivs_run.h, ivs_state.h (plan 08-11) and ivs_status.h must be present under the moved prefix (positive presence, so an
 # empty record cannot pass). Prints FAIL lines; leaves the prefix-relative names in $T/deps.prefix.
 check_deps() {
   cd_rc=0
@@ -382,7 +382,7 @@ check_deps() {
       ivs*.h) printf -- '-- FAIL pkg-leak: %s\n' "$cd_p"; cd_rc=1 ;;
     esac
   done < "$T/deps.list"
-  for cd_h in ivs.h ivs_machine.h ivs_run.h ivs_status.h; do
+  for cd_h in ivs.h ivs_machine.h ivs_run.h ivs_state.h ivs_status.h; do
     if ! grep -q -x -F -e "include/ivs/$cd_h" "$T/deps.prefix"; then
       printf -- '-- FAIL pkg-deps-missing: %s\n' "include/ivs/$cd_h under the moved prefix"
       cd_rc=1

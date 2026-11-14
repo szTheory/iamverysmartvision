@@ -5,6 +5,7 @@
 include/ivs/ivs.h
 include/ivs/ivs_machine.h
 include/ivs/ivs_run.h
+include/ivs/ivs_state.h
 include/ivs/ivs_status.h
 lib/cmake/ivs/ivsConfig.cmake
 lib/cmake/ivs/ivsConfigVersion.cmake

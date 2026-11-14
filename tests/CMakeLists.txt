@@ -398,7 +398,7 @@ add_custom_command(
   DEPENDS "${IVS_IVSN_SCHEMA_LITERAL}" "${IVS_IVSN_LITERALS_GENERATOR}"
   COMMENT "Generating the IVSN schema literal include"
   VERBATIM)
-set(IVS_STATE_TEST_SOURCES state/state_main.c state/state_literal.c machine/machine_standin.c)
+set(IVS_STATE_TEST_SOURCES state/state_main.c state/state_literal.c state/state_save.c machine/machine_standin.c)
 add_executable(ivs_tests_state ${IVS_STATE_TEST_SOURCES} "${IVS_IVSN_LITERALS_INC}" "${IVS_IVSN_SCHEMA_INC}")
 target_include_directories(ivs_tests_state PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/state"
   "${CMAKE_CURRENT_BINARY_DIR}")
@@ -439,11 +439,14 @@ set_tests_properties(harness PROPERTIES SKIP_RETURN_CODE 77)
 # data/expected/faults/*.ids file is described once here; tests/faults.cmake reads it to build
 # that suite's fault executables from its own test sources with plain flags.
 # ivs_fault_suite(<suite> SOURCES <test .c> INCLUDE_DIRS <dirs> GENERATED <generated files>
-#                 [MODULES <modules>])
+#                 [MODULES <modules>] [FAULT_DEFINITIONS <macros>])
 # MODULES (D-24, plan 04-03) names the owner-TU modules whose plain copies the suite's fault
 # executables link: core (the default) or core runner (the runner library needs the core).
+# FAULT_DEFINITIONS (plan 08-11, D-40, D-37) names macros defined for the suite's test sources in the fault
+# executables only; the normal executable of the suite never sees them. A suite whose heavy ids would make every
+# fault run expensive uses one to run a reduced point set under it (suite state: IVS_STATE_FAULT_RUN).
 function(ivs_fault_suite suite)
-  cmake_parse_arguments(PARSE_ARGV 1 arg "" "" "SOURCES;INCLUDE_DIRS;GENERATED;MODULES")
+  cmake_parse_arguments(PARSE_ARGV 1 arg "" "" "SOURCES;INCLUDE_DIRS;GENERATED;MODULES;FAULT_DEFINITIONS")
   if(NOT suite MATCHES "^[a-z0-9][a-z0-9-]*$" OR NOT arg_SOURCES OR arg_UNPARSED_ARGUMENTS)
     message(FATAL_ERROR "ivs_fault_suite(${suite}): bad suite name or arguments")
   endif()
@@ -461,6 +464,7 @@ function(ivs_fault_suite suite)
   set(IVS_FAULT_SUITE_${suite}_INCLUDE_DIRS "${arg_INCLUDE_DIRS}" PARENT_SCOPE)
   set(IVS_FAULT_SUITE_${suite}_GENERATED "${arg_GENERATED}" PARENT_SCOPE)
   set(IVS_FAULT_SUITE_${suite}_MODULES "${arg_MODULES}" PARENT_SCOPE)
+  set(IVS_FAULT_SUITE_${suite}_FAULT_DEFINITIONS "${arg_FAULT_DEFINITIONS}" PARENT_SCOPE)
 endfunction()
 # Generator-path controls (GEN_<NAME> fault ids, no source site): the generator script writes
 # <OUTPUT> with one mutation (-DMUTATE=<must-fail id>, -DOUT=<fault dir>/<OUTPUT> are added by
@@ -542,6 +546,15 @@ ivs_fault_gen(GEN_CTRL_MUTATION SUITE input OUTPUT ivs_ctrl_lines.inc
   ARGS "-DROOT=${PROJECT_SOURCE_DIR}" "-DMUTATE=key_1"
   DEPENDS ${IVS_PROFILE_FILES} "${IVS_CTRL_GENERATOR}" "${PROJECT_SOURCE_DIR}/data/expected/input-bits.ids"
   CONSUMER core:src/machine/machine_input.c)
+
+# Suite state (plan 08-11): ONE source list feeds the executable above and the fault executables. The fault executables are compiled
+# with IVS_STATE_FAULT_RUN (FAULT_DEFINITIONS): every fault re-runs the whole suite unsanitized, so an id that is not the must-fail id of
+# any fault runs a reduced point set under it (state_cases.h, ST_FAULT_STRIDE), while the normal executable and the must-fail ids run it all.
+ivs_fault_suite(state
+  SOURCES ${IVS_STATE_TEST_SOURCES}
+  INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/state" "${CMAKE_CURRENT_BINARY_DIR}"
+  GENERATED "${IVS_IVSN_LITERALS_INC}" "${IVS_IVSN_SCHEMA_INC}"
+  FAULT_DEFINITIONS IVS_STATE_FAULT_RUN)
 
 ivs_fault_suite(memmap
   SOURCES memmap/memmap_main.c memmap/memmap_rows.c

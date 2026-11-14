@@ -1,0 +1,9 @@
+# suite=state; columns: <FAULT_ID> <must-fail> <allowed-prefixes> <must-pass>
+# State named faults (plans 08-11 to 08-15, STA-01, STA-02, D-16). Each id has one IVS_FAULT_<ID> site, in the owner TU named below, and is caught by the
+# test it is named for; the allowed prefixes cover every collateral failure of the suite (every id of the suite starts with state.).
+# SNAPSHOT_LITTLE_ENDIAN (core/src/machine/machine_snapshot.c): the integer writer of the container header writes the least significant byte first, so the
+# header no longer reads like the bytes derived on paper (the first 24 bytes of the literal, the section table) although every length stays right.
+SNAPSHOT_LITTLE_ENDIAN state.literal.header-structure state. state.size.derived-and-constant
+# SNAPSHOT_PAD_SERIALIZED (core/src/machine/machine_digest.c): the state-only walk of the snapshot also writes the bytes of every PAD row, so the sections
+# grow by their reserved words and the lengths derived on paper (35, 2,761, 615, 51, 63, 79, 51) no longer hold.
+SNAPSHOT_PAD_SERIALIZED state.size.derived-and-constant state. state.literal.params-digest

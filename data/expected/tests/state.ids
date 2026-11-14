@@ -7,3 +7,10 @@
 # state.fuzz. (the seeded corruption family) and state.judge. (self-controls: the comparison of a family can fail).
 # Plan 08-11 Task 1: the profile parameter digest against its literal and an independent rebuild of its preimage.
 state.literal.params-digest
+# Plan 08-11 Task 2: the writer and the two public calls. The size and its derivation (the 4,299 bytes of the literal, the same for every powered instance),
+# the structure of the container against the literals (header prefix, section table, schema digest, profile id, parameter digest, slot records, digests,
+# trailer), the schema text of the live table against the hand-derived literal, and the refusal ladder of snapshot size and snapshot save.
+state.size.derived-and-constant
+state.literal.header-structure
+state.literal.schema-digest
+state.save.refusal-ladder

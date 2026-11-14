@@ -342,6 +342,18 @@ const uint8_t *ivs_ctrl_table_digest(uint32_t profile_index);
  * the text of a cite. machine_snapshot.c. */
 ivs_status ivs_snapshot_params_digest(uint32_t profile_index, uint8_t out[32]);
 
+/* The schema text of the snapshot (plan 08-11, D-13, docs/formats/ivsn-v1.md "Schema digest"; machine_snapshot.c): the canonical
+ * descriptor of the digest field table, built from the rows themselves. Line 0 is IVSSCHEMA followed by the schema version; line i
+ * for 1 <= i <= the row count is row i - 1 as `<name> <width> <count> <domain> <kind> <class>` with decimal numbers, the kind as UINT,
+ * PROFILE, MAGIC or PAD and the class as STATE, IMAGE_BEARING, BOUND or PAD, without a newline. ivs_snapshot_schema_line_count is the
+ * row count plus one. ivs_snapshot_schema_line writes line i into buf (NUL terminated, at most cap - 1 characters) and returns its
+ * length, 0 for a line past the last, a NULL buf or a cap of 0. ivs_snapshot_schema_digest is the SHA-256 of every line followed by a
+ * newline, which is the exact byte text of data/state/schema.literal.txt; the writer puts it into the header of every snapshot and
+ * the test of the suite state holds it to the hand-pinned digest of plan 08-09. */
+size_t ivs_snapshot_schema_line_count(void);
+size_t ivs_snapshot_schema_line(size_t i, char *buf, size_t cap);
+void ivs_snapshot_schema_digest(uint8_t out[32]);
+
 /* Derives the pull-down masks of the PSG ports (mem.port_pulldown) from the words in force and the
  * generated control table (plan 05-05, D-03, D-04): the OR of the line masks of every set bit, for
  * each port below the profile's input.controllers, 0 for the others. The one function that sets the

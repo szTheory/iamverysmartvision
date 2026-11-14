@@ -482,6 +482,81 @@
       "precedence": [],
       "notes": [],
       "refusals": []
+    },
+    {
+      "name": "ivs_machine_snapshot_size",
+      "header": "core/include/ivs/ivs_state.h",
+      "on_ok": "Writes the exact length in bytes of a snapshot of the instance (4,299 for the first profile, the same for every powered instance of one profile and one build) to *out_bytes (plan 08-11, D-13, D-14). The instance is not written, machine time does not advance, nothing is allocated and the call touches no file or clock.",
+      "precedence": [
+        {"status": "IVS_E_BAD_ARG", "checks": "out_bytes NULL", "pinned_by": ["state.save.refusal-ladder"]},
+        {"status": "IVS_E_BAD_HANDLE", "checks": "NULL or invalid handle", "pinned_by": ["state.save.refusal-ladder"]},
+        {"status": "IVS_E_BAD_ARG", "checks": "out_bytes overlapping the storage of the (valid) instance (uintptr_t arithmetic)", "pinned_by": ["state.save.refusal-ladder"]},
+        {"status": "IVS_E_BAD_STATE", "checks": "the machine is OFF: a snapshot point is a unit boundary of a powered machine", "pinned_by": ["state.save.refusal-ladder"]}
+      ],
+      "notes": [
+        "Side-effect free by contract (D-14): a const instance. The length is derived from the digest field table (the lengths of the seven state-only walks plus the header and the trailer), and state.size.derived-and-constant holds it to the 4,299 bytes derived on paper in plan 08-09. Out parameter rule as for ivs_machine_state_digest; the overlap is tested after BAD_HANDLE, against a valid instance only."
+      ],
+      "refusals": [
+        {
+          "status": "IVS_E_BAD_ARG",
+          "effect": "none",
+          "outs": "nothing written: *out_bytes keeps its value",
+          "tests": ["state.save.refusal-ladder"]
+        },
+        {
+          "status": "IVS_E_BAD_HANDLE",
+          "effect": "none",
+          "outs": "nothing written: *out_bytes keeps its value",
+          "tests": ["state.save.refusal-ladder"]
+        },
+        {
+          "status": "IVS_E_BAD_STATE",
+          "effect": "none",
+          "outs": "nothing written: *out_bytes keeps its value",
+          "tests": ["state.save.refusal-ladder"]
+        }
+      ]
+    },
+    {
+      "name": "ivs_machine_snapshot_save",
+      "header": "core/include/ivs/ivs_state.h",
+      "on_ok": "Writes the IVSN v1 snapshot of the instance into the cap bytes at buf: exactly *out_written bytes (4,299 for the first profile), big-endian, field by field, with the seven state-only sections, the profile id and parameter digest, the three slot identities (loaded flag, SHA-256 and length, never an image byte), the schema digest, the composite and section digests and a SHA-256 trailer (plan 08-11, D-12, D-13, D-14). The instance is not written, machine time does not advance, nothing is allocated and the call touches no file or clock; two saves of one instance are byte-identical.",
+      "precedence": [
+        {"status": "IVS_E_BAD_ARG", "checks": "out_written NULL, buf NULL with cap above 0, or out_written inside the cap bytes at buf", "pinned_by": ["state.save.refusal-ladder"]},
+        {"status": "IVS_E_BAD_HANDLE", "checks": "NULL or invalid handle", "pinned_by": ["state.save.refusal-ladder"]},
+        {"status": "IVS_E_BAD_ARG", "checks": "out_written or the cap bytes at buf overlapping the storage of the (valid) instance, or the cap bytes running past the top of the address space (uintptr_t arithmetic, 64-bit lengths)", "pinned_by": ["state.save.refusal-ladder"]},
+        {"status": "IVS_E_BAD_STATE", "checks": "the machine is OFF", "pinned_by": ["state.save.refusal-ladder"]},
+        {"status": "IVS_E_BUFFER_TOO_SMALL", "checks": "cap below the exact length of the snapshot", "pinned_by": ["state.save.refusal-ladder"]}
+      ],
+      "notes": [
+        "Everything that can refuse is decided before the first byte of buf is written, so no refusal writes into buf. BUFFER_TOO_SMALL is the one refusal that writes an out parameter: *out_written is set to the exact length, so a call with cap 0 asks for the size (ivs_machine_snapshot_size gives the same number). Out parameter rule as for ivs_machine_state_digest."
+      ],
+      "refusals": [
+        {
+          "status": "IVS_E_BAD_ARG",
+          "effect": "none",
+          "outs": "nothing written: *out_written keeps its value and no byte of buf changes",
+          "tests": ["state.save.refusal-ladder"]
+        },
+        {
+          "status": "IVS_E_BAD_HANDLE",
+          "effect": "none",
+          "outs": "nothing written: *out_written keeps its value and no byte of buf changes",
+          "tests": ["state.save.refusal-ladder"]
+        },
+        {
+          "status": "IVS_E_BAD_STATE",
+          "effect": "none",
+          "outs": "nothing written: *out_written keeps its value and no byte of buf changes",
+          "tests": ["state.save.refusal-ladder"]
+        },
+        {
+          "status": "IVS_E_BUFFER_TOO_SMALL",
+          "effect": "none",
+          "outs": "*out_written is set to the exact length of the snapshot; no byte of buf changes",
+          "tests": ["state.save.refusal-ladder"]
+        }
+      ]
     }
   ]
 }

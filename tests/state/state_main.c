@@ -59,6 +59,7 @@ static int state_case_run(const void *data, size_t i)
 int main(int argc, char **argv)
 {
   ivs_test_suite suite;
+  state_add(ivs_state_save_cases, ivs_state_save_count);
   state_add(ivs_state_literal_cases, ivs_state_literal_count);
   if (state_total > STATE_MAX_CASES) {
     fprintf(stderr, "state: more than %u cases; raise STATE_MAX_CASES\n", STATE_MAX_CASES);

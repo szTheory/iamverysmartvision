@@ -23,6 +23,16 @@
     }                                                                                                  \
   } while (0)
 
+/* Records a failed condition in an ok flag, so that a case can free what it holds before it returns. The condition is always evaluated
+ * (it may hold a call), and every failure is reported, not only the first. */
+#define ST_REQ(okv, cond)                                                                              \
+  do {                                                                                                 \
+    if (!(cond)) {                                                                                     \
+      ivs_test_diag("check failed at line %d: %s", __LINE__, #cond);                                   \
+      (okv) = 0;                                                                                       \
+    }                                                                                                  \
+  } while (0)
+
 /* Fault-run cost rule (D-40, D-37, plan 08-11): the fault executables of this suite are compiled with IVS_STATE_FAULT_RUN (the
  * FAULT_DEFINITIONS of ivs_fault_suite(state ...)); the normal executable never is. Every named fault re-runs the whole suite
  * unsanitized, so a heavy id that is not the must-fail id of any fault runs a reduced point set under it (every 16th offset or row, a
@@ -63,10 +73,26 @@ int ivsn_lit_hex(const char *key, uint8_t *out, size_t n);
 size_t ivsn_schema_line_count(void);
 const char *ivsn_schema_line(size_t i);
 
+/* The seven sections of a snapshot in table order: the domain ids and the names of the keys of data/expected/ivsn-literals.ids
+ * (section-bytes.<name>, section-offset.<name>). */
+#define ST_SECTIONS 7u
+extern const uint8_t st_section_domain[ST_SECTIONS];
+extern const char *const st_section_name[ST_SECTIONS];
+
+/* The structure comparison of a snapshot (state_literal.c, plan 08-11): every number it expects comes from the literals of
+ * data/expected/ivsn-literals.ids or from the live instance m the snapshot was taken from, never from the writer. Returns 0 when
+ * every comparison holds; otherwise the number of the first comparison that fails (1 the length, 2 the header prefix, 3 a section
+ * table entry, 4 the schema digest, 5 the profile id, 6 the parameter digest, 7 a slot record, 8 the composite digest, 9 a section
+ * digest, 10 the trailer, 11 the bytes of a section) and sets *what to a static text that says which. The comparison is a function of
+ * the bytes it is given, so a test can hand it a damaged copy and require a nonzero result (state.judge.header-literal-corrupt). */
+int st_structure_diff(const uint8_t *snap, size_t len, const ivs_machine *m, const char **what);
+
 /* The data files this suite read, for the `# source` lines of the result file (the gate step tests-inventory re-hashes them). */
 const ivs_test_source *ivs_state_sources(size_t *n);
 
 extern const ivs_test_case ivs_state_literal_cases[];
 extern const size_t ivs_state_literal_count;
+extern const ivs_test_case ivs_state_save_cases[];
+extern const size_t ivs_state_save_count;
 
 #endif
