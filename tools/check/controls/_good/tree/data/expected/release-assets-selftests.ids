@@ -1,0 +1,6 @@
+# Toy inventory of the known-good control tree (plan 08-01): the release-assets step reads its selftest cases here.
+source-extra-member
+source-missing-member
+install-extra-member
+rom-member
+outer-name-pass

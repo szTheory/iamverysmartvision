@@ -1,0 +1,8 @@
+# Owning plan 08-01 (D-32): cases of the release-assets step, the selftest of tools/check/release-assets.sh.
+# One case name per line; the step runs exactly these and fails on a name it does not know.
+# Every case but outer-name-pass must fail for its intended token; outer-name-pass must pass.
+source-extra-member
+source-missing-member
+install-extra-member
+rom-member
+outer-name-pass

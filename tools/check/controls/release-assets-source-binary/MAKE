@@ -1,0 +1,2 @@
+# A toy tracked path whose last extension is on the binary list (plan 08-01, D-32): the source archive of a release is git ls-files.
+write data/x/diag.rom x
