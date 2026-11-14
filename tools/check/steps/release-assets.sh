@@ -26,9 +26,21 @@
 #         version-agree-pass       tag, header and package all 0.1.0: passes (the positive case)
 #         changelog-section-missing a CHANGELOG with only an Unreleased section has no 0.1.0 section
 #         changelog-section-pass   a CHANGELOG with a section headed ## [0.1.0] - draft passes
+#       A last case, readiness-selftest, is listed only in the real inventory (the toy tree has no
+#       readiness script): it runs tools/release-readiness.sh --selftest and requires its last line
+#       selftest 4/4; a missing script while the case is listed is release-selftest-missing.
+#   (c) holds the claim table of the release notes to the claim ledger (plan 08-02, D-27): when
+#       CHANGELOG.md is in FILELIST, the lines strictly between the markers claims-table-begin and
+#       claims-table-end must equal, byte for byte, the output of tools/check/claims-table.cmake on ROOT
+#       (the table is rendered from data/claims.json, never typed), so a commit that changes
+#       data/claims.json regenerates the table in the same commit; and when tools/release.sh is in
+#       FILELIST but CHANGELOG.md is not, the release has no notes file.
 # Reads ROOT, CHECK_DIR and FILELIST only. Every temp file is under one mktemp dir removed on exit.
 # Tokens: release-assets-source-binary: <path>, release-assets-ext-list: <what>,
-#   release-selftest-inventory: <what>, release-selftest-missing: <case>, release-selftest-<case>: <detail>.
+#   release-selftest-inventory: <what>, release-selftest-missing: <case>, release-selftest-<case>: <detail>,
+#   release-changelog-claims-drift: CHANGELOG.md (the detail is markers when the marker pair is not exactly
+#   one begin line followed by one end line), release-changelog-missing: CHANGELOG.md, and the tokens of
+#   claims-table.cmake when it cannot render (release-claims-measured-hardware, release-claims-unreadable).
 # Stats: release-selftest=<ok>/<total>.
 LC_ALL=C; export LC_ALL
 : "${ROOT:?ROOT is not set}"
@@ -202,6 +214,15 @@ run_case() {
       runchg "$c" 0.1.0
       wantpass "$c" 'release-assets changelog ok 0.1.0' || return 1
       ;;
+    readiness-selftest)
+      rd="$ROOT/tools/release-readiness.sh"
+      [ -f "$rd" ] || return 2
+      mkdir -p "$tmp/$c" || { detail="cannot build the inputs"; return 1; }
+      rd_st=0
+      sh "$rd" --selftest > "$tmp/$c/lib.out" 2>&1 < /dev/null || rd_st=$?
+      [ "$rd_st" -eq 0 ] || { detail="readiness selftest exit $rd_st, want 0"; return 1; }
+      [ "$(tail -n 1 "$tmp/$c/lib.out")" = 'selftest 4/4' ] || { detail="last line is not 'selftest 4/4'"; return 1; }
+      ;;
     *) return 2 ;;
   esac
   return 0
@@ -229,6 +250,31 @@ while IFS= read -r name; do
     *) bad "release-selftest-$name" "$detail" ;;
   esac
 done < "$tmp/cases"
+
+# (c) The claim table of CHANGELOG.md against the claim ledger, and the notes file of a release.
+if grep -q -x -F 'CHANGELOG.md' "$FILELIST" && [ -f "$ROOT/CHANGELOG.md" ]; then
+  rendered=1
+  cmake -DROOT="$ROOT" -P "$CHECK_DIR/claims-table.cmake" > "$tmp/table.want" 2> "$tmp/table.err" < /dev/null || rendered=0
+  if [ "$rendered" -eq 0 ]; then
+    # The generator prints its findings on stdout: one line per finding, token first.
+    if grep -q '^release-claims-' "$tmp/table.want"; then
+      sed -n 's/^\(release-claims-[a-z-]*: .*\)$/-- FAIL \1/p' "$tmp/table.want" | sed -n '1,20p'
+    else
+      bad release-claims-unreadable "claims-table.cmake"
+    fi
+    rc=1
+  elif awk -v b='<!-- claims-table-begin -->' -v e='<!-- claims-table-end -->' '
+    $0 == b { if (st != 0) bad = 1; st = 1; next }
+    $0 == e { if (st != 1) bad = 1; st = 2; next }
+    st == 1 { print }
+    END { if (st != 2 || bad) exit 3 }' "$ROOT/CHANGELOG.md" > "$tmp/table.have"; then
+    cmp -s "$tmp/table.want" "$tmp/table.have" || bad release-changelog-claims-drift "CHANGELOG.md"
+  else
+    bad release-changelog-claims-drift "CHANGELOG.md markers"
+  fi
+elif grep -q -x -F 'tools/release.sh' "$FILELIST"; then
+  bad release-changelog-missing "CHANGELOG.md"
+fi
 
 [ "$rc" -eq 0 ] || exit 1
 printf -- '-- release-assets pass release-selftest=%s/%s\n' "$ok" "$total"

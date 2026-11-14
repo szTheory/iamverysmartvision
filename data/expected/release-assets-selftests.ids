@@ -12,3 +12,5 @@ version-tag-form
 version-agree-pass
 changelog-section-missing
 changelog-section-pass
+# Owning plan 08-02: the readiness script selftest (real inventory only; the toy tree has no readiness script).
+readiness-selftest

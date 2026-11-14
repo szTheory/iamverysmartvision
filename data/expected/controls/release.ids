@@ -1,2 +1,4 @@
 # Owning plan 08-01: release asset controls (D-32).
 release-assets-source-binary
+# Owning plan 08-02: the CHANGELOG claim table is rendered from data/claims.json (D-27).
+release-assets-claims-drift

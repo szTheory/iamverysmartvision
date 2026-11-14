@@ -33,4 +33,35 @@ iamverysmartvision is a working name and has not been cleared as a trademark.
 iamverysmartvision is not affiliated with or endorsed by Mattel, Intellivision Entertainment, Atari or any other rights holder.
 "Intellivision" and related names are trademarks of their respective owners.
 
-<!-- claims-table: rendered by plan 08-02 -->
+The claim table below is rendered from `data/claims.json`; a claim stands as provisional unless the table says established.
+
+<!-- claims-table-begin -->
+| Claim | Tier | Standing | Artifact |
+|---|---|---|---|
+| CL-0001 | source-expectation | provisional | docs/cp1610/reference-notes.md |
+| CL-0002 | source-expectation | established | data/profiles/intv-2609-ntsc-family-p1.json |
+| CL-0003 | source-expectation | provisional | data/profiles/intv-2609-ntsc-family-p1.json |
+| CL-0004 | source-expectation | provisional | docs/cp1610/reference-notes.md |
+| CL-0005 | source-expectation | provisional | data/cp1610/opcode-families.json |
+| CL-0006 | source-expectation | provisional | data/memmap/intv-2609-ntsc-family-p1.literal.txt |
+| CL-0007 | source-expectation | provisional | docs/formats/ivsc-v1.md |
+| CL-0008 | original-diagnostic | provisional | fixtures/FX-diag-cpu-1/diag-cpu-1.listing.txt |
+| CL-0009 | source-expectation | provisional | data/input/intv-2609-ntsc-family-p1.literal.txt |
+| CL-0010 | source-expectation | provisional | data/input/intv-2609-ntsc-family-p1.literal.txt |
+| CL-0011 | deterministic-repeatability | provisional | docs/input/controller-notes.md |
+| CL-0012 | source-expectation | provisional | data/psg/rules.json |
+| CL-0013 | deterministic-repeatability | provisional | docs/psg/reference-notes.md |
+| CL-0014 | original-diagnostic | provisional | fixtures/FX-diag-ctrl-psg-1/diag-ctrl-psg-1.listing.txt |
+| CL-0015 | installed-host-behavior | provisional | tests/installed-consumer/main.c |
+| CL-0016 | source-expectation | provisional | data/stic/intv-2609-ntsc-family-p1.regmap.literal.txt |
+| CL-0017 | deterministic-repeatability | provisional | docs/stic/timing-notes.md |
+| CL-0018 | source-expectation | provisional | data/video/geometry.literal.txt |
+| CL-0019 | source-expectation | provisional | docs/video/frame-derivations.md |
+| CL-0020 | original-diagnostic | provisional | fixtures/FX-diag-stic-1/diag-stic-1.listing.txt |
+| CL-0021 | deterministic-repeatability | provisional | docs/stic/reference-notes.md |
+| CL-0022 | installed-host-behavior | provisional | tests/installed-consumer/main.c |
+| CL-0023 | playable-guest-progress | provisional | data/golden/demo-lamp-tone-pass.expect |
+| CL-0024 | installed-host-behavior | provisional | tests/installed-consumer/main.c |
+
+Claims: 24 in total, 23 provisional, 1 established; none at tier measured-hardware.
+<!-- claims-table-end -->
