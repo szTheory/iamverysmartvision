@@ -62,6 +62,9 @@ The claim table below is rendered from `data/claims.json`; a claim stands as pro
 | CL-0022 | installed-host-behavior | provisional | tests/installed-consumer/main.c |
 | CL-0023 | playable-guest-progress | provisional | data/golden/demo-lamp-tone-pass.expect |
 | CL-0024 | installed-host-behavior | provisional | tests/installed-consumer/main.c |
+| CL-0025 | source-expectation | provisional | tests/video/video_mob.c |
+| CL-0026 | source-expectation | provisional | tests/video/video_collision.c |
+| CL-0027 | original-diagnostic | provisional | fixtures/FX-diag-stic-2/diag-stic-2.listing.txt |
 
-Claims: 24 in total, 23 provisional, 1 established; none at tier measured-hardware.
+Claims: 27 in total, 26 provisional, 1 established; none at tier measured-hardware.
 <!-- claims-table-end -->
