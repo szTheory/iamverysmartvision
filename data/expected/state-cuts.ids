@@ -1,0 +1,30 @@
+# The named hard-point cuts of the snapshot suite (plan 08-09, D-17, D-38). One line per cut: `<cut-id> <program> <pinned-tick> <family>`.
+# The cut ids and their predicates over the instance after a unit are defined in docs/state/hard-points.md; the hidden-state checklist
+# data/expected/state-checklist.ids names one of these ids as the witness of every STATE row, and the gate step state requires every cut here
+# to be the witness of at least one row (token state-cut-unused) and every witness there to be a cut here (token state-witness-unknown).
+# program: P-SDBD, P-HLT, P-FAULT, P-LATCH and P-PSG are the stand-in guests of docs/state/hard-points.md; lamp-idle and lamp-pass are the runs of
+#   the scenarios demo-lamp-tone-idle and demo-lamp-tone-pass; diag-stic-2-collision is the scenario diag-stic2-collision-pass (controller word BD
+#   at tick 0); none means that the cut is taken before any unit runs (HP-RESETPEND). The continuation of a none cut is the lamp-idle run.
+# pinned-tick: the exact token pending-08-14 until plan 08-14 finds the first unit boundary where the predicate holds (a witness scan over the
+#   step seam), writes the decimal machine tick here and re-proves it with a witness test. The ticks are self-recorded repeatability pins, never
+#   evidence of correctness.
+# family: the test family that compares the cut: cpu-points (state.cut.cpu-points), stic-points (state.cut.stic-points) or device-points
+#   (state.cut.device-points).
+HP-SDBD P-SDBD pending-08-14 cpu-points
+HP-STEAL-A lamp-idle pending-08-14 cpu-points
+HP-STEAL-B lamp-idle pending-08-14 cpu-points
+HP-STEAL-C lamp-idle pending-08-14 cpu-points
+HP-OPEN lamp-idle pending-08-14 cpu-points
+HP-CLOSED lamp-idle pending-08-14 cpu-points
+HP-INT-ENTRY lamp-idle pending-08-14 cpu-points
+HP-HLT P-HLT pending-08-14 cpu-points
+HP-HALTED P-HLT pending-08-14 cpu-points
+HP-FAULTED P-FAULT pending-08-14 cpu-points
+HP-RESETPEND none pending-08-14 cpu-points
+HP-FRAME-MID lamp-idle pending-08-14 stic-points
+HP-LATCH P-LATCH pending-08-14 stic-points
+HP-MOB diag-stic-2-collision pending-08-14 stic-points
+HP-PSG-MID P-PSG pending-08-14 device-points
+HP-ENV-MID P-PSG pending-08-14 device-points
+HP-INPUT lamp-pass pending-08-14 device-points
+HP-LOG lamp-pass pending-08-14 device-points

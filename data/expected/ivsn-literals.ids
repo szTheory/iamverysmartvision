@@ -1,0 +1,8 @@
+# Literals of the IVSN v1 snapshot container and its schema (plan 08-09, D-13, D-38). Hand-derived on paper before any serializer exists:
+# these are repeatability pins of a project-written text, never evidence that the text is correct. The container is specified in
+# docs/formats/ivsn-v1.md; each line is `<key> <value>`.
+# schema-digest-sha256 is the SHA-256 of the exact bytes of data/state/schema.literal.txt (the canonical descriptor text of the 88 rows of
+# the digest field table, the preimage of the schema digest in the container header). The gate step state recomputes it with cmake -E
+# sha256sum (token state-schema-stale), so a change of the literal without a deliberate re-pin fails the gate; plan 08-11 requires the
+# writer to produce the same digest from the table.
+schema-digest-sha256 6cd4932f5ebf0b0fc2377555ca079d0313bb27a4df1a4fda9e15f37c6eb1d193

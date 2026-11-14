@@ -5,7 +5,7 @@
 # ivs-asm-sources.txt, plan 07-03) for the toy sources and has the target ivs_faults the dev tree builds; it compiles nothing.
 cmake_minimum_required(VERSION 3.25)
 project(toy LANGUAGES C)
-file(WRITE "${CMAKE_BINARY_DIR}/ivs-core-sources.txt" "core/src/cpu/good.c\n")
+file(WRITE "${CMAKE_BINARY_DIR}/ivs-core-sources.txt" "core/src/cpu/good.c\ncore/src/machine/machine_digest.c\n")
 file(WRITE "${CMAKE_BINARY_DIR}/ivs-runner-sources.txt" "runner/good.c\nrunner/hostio.c\n")
 file(WRITE "${CMAKE_BINARY_DIR}/ivs-pack-sources.txt" "")
 file(WRITE "${CMAKE_BINARY_DIR}/ivs-pcm-sources.txt" "tools/pcm/good.c\n")

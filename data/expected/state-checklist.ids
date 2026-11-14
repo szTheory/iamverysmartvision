@@ -1,0 +1,105 @@
+# The hidden-state checklist of the machine instance (plan 08-09, D-11, D-16, D-17, D-38): one line for every row of the digest field table in
+# core/src/machine/machine_digest.c (88 rows, in table order), derived by reading the struct headers and the table before any serializer
+# exists. The narrative, the per-row reasons and the adversarial list are in docs/state/hidden-state-checklist.md; the cuts are defined in
+# docs/state/hard-points.md and listed in data/expected/state-cuts.ids; the descriptor text of the rows is data/state/schema.literal.txt.
+# Columns: `<row> <class> <witness> <test> <sweep>`.
+# class (D-11): STATE is serialized and restored byte for byte; IMAGE_BEARING (mem.exec, mem.grom, mem.cart) holds the loaded image arrays,
+#   is never serialized (rights) and never written by restore; BOUND is identity checked against the live instance, never serialized and
+#   never written by restore (the handle magic, the two profile indices, the four image-structure rows of the memory system and the 21
+#   slot rows); PAD is a reserved word, never serialized and zeroed by restore. Every row has exactly one class.
+# witness: for a STATE row a cut id of data/expected/state-cuts.ids at which the row is non-default and changes the continuation or an
+#   output; `-` for every other class.
+# test: for a STATE row the cut test of the witness cut's family (state.cut.cpu-points, state.cut.stic-points or state.cut.device-points);
+#   for the other classes the test that carries the class (rights, identity, canonical pad). A test id is registered in data/expected/tests
+#   or is a line of data/state/tests-pending.ids with the plan that registers it (the step state checks both).
+# sweep: for a STATE row `ROW` (the row is covered by the runtime row-omission sweep of plan 08-14 at its witness cut) or the word EXEMPT, a colon
+#   and a reason (words joined by underscores, at least three, with an argument in the narrative that the row cannot diverge at any cut); `-` for the
+#   other classes. The number of exemptions at this plan is zero.
+magic BOUND - state.restore.refuse-identity-profile -
+profile BOUND - state.restore.refuse-identity-profile -
+phase STATE HP-FRAME-MID state.cut.stic-points ROW
+reserved PAD - state.restore.poisoned-target-equals-source -
+time_ticks STATE HP-FRAME-MID state.cut.stic-points ROW
+cpu.r STATE HP-INT-ENTRY state.cut.cpu-points ROW
+cpu.status STATE HP-HLT state.cut.cpu-points ROW
+cpu.intff STATE HP-CLOSED state.cut.cpu-points ROW
+cpu.dbd STATE HP-SDBD state.cut.cpu-points ROW
+cpu.prev_interruptible STATE HP-OPEN state.cut.cpu-points ROW
+cpu.run_state STATE HP-HALTED state.cut.cpu-points ROW
+cpu.halt_pending STATE HP-HLT state.cut.cpu-points ROW
+cpu.fault_reason STATE HP-FAULTED state.cut.cpu-points ROW
+cpu.busak STATE HP-STEAL-A state.cut.cpu-points ROW
+cpu.reserved PAD - state.restore.poisoned-target-equals-source -
+mem.profile BOUND - state.restore.refuse-identity-profile -
+mem.gate_open STATE HP-RESETPEND state.cut.cpu-points ROW
+mem.exec_loaded BOUND - state.restore.refuse-identity-slots -
+mem.grom_loaded BOUND - state.restore.refuse-identity-slots -
+mem.cart_count BOUND - state.restore.refuse-identity-slots -
+mem.cart_seg BOUND - state.restore.refuse-identity-slots -
+mem.sysram STATE HP-LATCH state.cut.stic-points ROW
+mem.scratchpad STATE HP-SDBD state.cut.cpu-points ROW
+mem.gram STATE HP-LATCH state.cut.stic-points ROW
+mem.exec IMAGE_BEARING - state.save.no-image-bytes -
+mem.grom IMAGE_BEARING - state.save.no-image-bytes -
+mem.cart IMAGE_BEARING - state.save.no-image-bytes -
+mem.psg_reg STATE HP-PSG-MID state.cut.device-points ROW
+mem.port_pulldown STATE HP-INPUT state.cut.device-points ROW
+mem.psg_reserved PAD - state.restore.poisoned-target-equals-source -
+mem.stic_reg STATE HP-MOB state.cut.stic-points ROW
+psg.next_sample STATE HP-PSG-MID state.cut.device-points ROW
+psg.tone_counter STATE HP-PSG-MID state.cut.device-points ROW
+psg.tone_out STATE HP-PSG-MID state.cut.device-points ROW
+psg.noise_counter STATE HP-PSG-MID state.cut.device-points ROW
+psg.noise_lfsr STATE HP-PSG-MID state.cut.device-points ROW
+psg.env_counter STATE HP-ENV-MID state.cut.device-points ROW
+psg.env_level STATE HP-ENV-MID state.cut.device-points ROW
+psg.env_dir STATE HP-ENV-MID state.cut.device-points ROW
+psg.env_held STATE HP-ENV-MID state.cut.device-points ROW
+psg.env_cycles STATE HP-ENV-MID state.cut.device-points ROW
+psg.reserved PAD - state.restore.poisoned-target-equals-source -
+stic.frame_index STATE HP-FRAME-MID state.cut.stic-points ROW
+stic.event_index STATE HP-FRAME-MID state.cut.stic-points ROW
+stic.display_latch STATE HP-FRAME-MID state.cut.stic-points ROW
+stic.windows_active STATE HP-FRAME-MID state.cut.stic-points ROW
+stic.mode STATE HP-LATCH state.cut.stic-points ROW
+stic.cs_ptr STATE HP-LATCH state.cut.stic-points ROW
+stic.blocked_reads STATE HP-LATCH state.cut.stic-points ROW
+stic.blocked_writes STATE HP-LATCH state.cut.stic-points ROW
+stic.late_grants STATE HP-STEAL-B state.cut.cpu-points ROW
+stic.grants_in_frame STATE HP-STEAL-C state.cut.cpu-points ROW
+stic.reserved0 PAD - state.restore.poisoned-target-equals-source -
+stic.row_latch STATE HP-LATCH state.cut.stic-points ROW
+obs.video.chain STATE HP-FRAME-MID state.cut.stic-points ROW
+obs.video.count STATE HP-FRAME-MID state.cut.stic-points ROW
+obs.audio.chain STATE HP-PSG-MID state.cut.device-points ROW
+obs.audio.count STATE HP-PSG-MID state.cut.device-points ROW
+obs.audio.emitted STATE HP-PSG-MID state.cut.device-points ROW
+obs.audio.prev_levels STATE HP-PSG-MID state.cut.device-points ROW
+obs.audio.reserved PAD - state.restore.poisoned-target-equals-source -
+obs.input.words STATE HP-INPUT state.cut.device-points ROW
+obs.input.count STATE HP-INPUT state.cut.device-points ROW
+obs.input.floor_tick STATE HP-INPUT state.cut.device-points ROW
+obs.input.chain STATE HP-INPUT state.cut.device-points ROW
+obs.psglog.chain STATE HP-LOG state.cut.device-points ROW
+obs.psglog.count STATE HP-LOG state.cut.device-points ROW
+slot.exec.kind BOUND - state.restore.refuse-identity-slots -
+slot.exec.loaded BOUND - state.restore.refuse-identity-slots -
+slot.exec.length_bytes BOUND - state.restore.refuse-identity-slots -
+slot.exec.length_units BOUND - state.restore.refuse-identity-slots -
+slot.exec.unit_bits BOUND - state.restore.refuse-identity-slots -
+slot.exec.base_addr BOUND - state.restore.refuse-identity-slots -
+slot.exec.sha256 BOUND - state.restore.refuse-identity-slots -
+slot.grom.kind BOUND - state.restore.refuse-identity-slots -
+slot.grom.loaded BOUND - state.restore.refuse-identity-slots -
+slot.grom.length_bytes BOUND - state.restore.refuse-identity-slots -
+slot.grom.length_units BOUND - state.restore.refuse-identity-slots -
+slot.grom.unit_bits BOUND - state.restore.refuse-identity-slots -
+slot.grom.base_addr BOUND - state.restore.refuse-identity-slots -
+slot.grom.sha256 BOUND - state.restore.refuse-identity-slots -
+slot.cartridge.kind BOUND - state.restore.refuse-identity-slots -
+slot.cartridge.loaded BOUND - state.restore.refuse-identity-slots -
+slot.cartridge.length_bytes BOUND - state.restore.refuse-identity-slots -
+slot.cartridge.length_units BOUND - state.restore.refuse-identity-slots -
+slot.cartridge.unit_bits BOUND - state.restore.refuse-identity-slots -
+slot.cartridge.base_addr BOUND - state.restore.refuse-identity-slots -
+slot.cartridge.sha256 BOUND - state.restore.refuse-identity-slots -

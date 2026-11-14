@@ -1,0 +1,12 @@
+# Test ids that the hidden-state checklist (data/expected/state-checklist.ids) names and no suite registers yet (plan 08-09, D-38).
+# One line per id: `<test-id> <owner-plan>`; the owner is the plan that first registers the id in data/expected/tests/*.ids, one of 08-11 to 08-17.
+# The gate step state requires every test id of the checklist to be registered or listed here (token state-test-unknown), an owner inside
+# 08-11 to 08-17 (state-pending-owner) and a line here whose id is already registered to be deleted (state-pending-stale): the owner plan
+# deletes its lines in the same commit that registers the id.
+state.cut.cpu-points 08-14
+state.cut.stic-points 08-14
+state.cut.device-points 08-14
+state.save.no-image-bytes 08-11
+state.restore.refuse-identity-profile 08-13
+state.restore.refuse-identity-slots 08-13
+state.restore.poisoned-target-equals-source 08-13

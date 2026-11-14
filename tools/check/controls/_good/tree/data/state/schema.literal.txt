@@ -1,0 +1,8 @@
+IVSSCHEMA 1
+toy.magic 4 1 4 MAGIC BOUND
+toy.counter 4 1 1 UINT STATE
+toy.ram 2 16 2 UINT STATE
+toy.image 2 64 2 UINT IMAGE_BEARING
+toy.pad 4 1 1 PAD PAD
+toy.slot.exec.loaded 4 1 3 UINT BOUND
+toy.slot.exec.sha256 1 32 3 UINT BOUND
