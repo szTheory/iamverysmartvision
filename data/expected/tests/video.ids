@@ -123,3 +123,9 @@ video.mob.prio-clear-front
 video.mob.register-bit-roles
 video.mob.stream-equals-plane
 video.mob.slice-invariant
+# Plan 08-04 task 3 (VID-05, D-02, T-08-14): the three pinned defaults, each asserted and then flipped in a stack copy of the parameters (video.mob.default-pinned.*: the priority-bit case against the card on pixels, and the two half-height sampling frames F-M8 and F-M9, used only here), and the two judges that show the frame comparison and the register-bit sweep can fail.
+video.mob.default-pinned.prio-set
+video.mob.default-pinned.sampling-y1x
+video.mob.default-pinned.sampling-8x16
+video.judge.mob-frame-corrupt
+video.judge.mob-role-swapped

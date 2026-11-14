@@ -38,3 +38,7 @@ VIDEO_CSTACK_NO_ADVANCE video.cstack.advance-before-draw video.cstack.|video.pro
 # VIDEO_GEOMETRY_SKIP_SILENT (core/src/stic/stic_frame.c, Phase 6 review WR-03): a frame asked for under a geometry the card-row working buffer
 # cannot hold is skipped without setting video_overflow, so the frame index would advance with no frame and no INTERNAL stop.
 VIDEO_GEOMETRY_SKIP_SILENT video.buffers.unrenderable-geometry-overflows video.buffers. video.geom.profile-derives-159x96
+# MOB_PRIORITY_SWAP (core/src/stic/stic_mob.c, plan 08-04, VID-05, R41): where the visible pixels of two MOBs coincide the MOB with the HIGHER index is shown instead of the lower, so the overlap of two MOBs reads the other color; every frame of the family with an overlap (F-M3) fails.
+MOB_PRIORITY_SWAP video.mob.front-lower-index video.mob. video.geom.profile-derives-159x96
+# MOB_FLIP_SWAPPED (core/src/stic/stic_mob.c, plan 08-04, VID-05, R39): the X flip bit and the Y flip bit of the Y word are exchanged, so a MOB drawn mirrored left to right is turned upside down and the reverse; the frame of the three flipped MOBs (F-M2) fails.
+MOB_FLIP_SWAPPED video.mob.frame-mirror video.mob. video.geom.profile-derives-159x96

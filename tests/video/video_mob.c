@@ -673,6 +673,7 @@ static uint32_t vm_base_for(const vm_role *r, uint32_t *want, uint32_t *second_b
   *second_base = 99u;
   if (strcmp(role, "ign") == 0) {
     *want = 0u;
+    *second_base = VM_BASE_PRIO; /* an ignored bit must change nothing in either base: the staircase and the MOB over the card block */
     return VM_BASE_STAIRS;
   }
   if (strcmp(r->reg, "mobx") == 0 && strcmp(role, "intr") == 0) {
@@ -755,9 +756,9 @@ static uint32_t vm_sweep(const vm_role *t, size_t n, int quiet)
     }
     if (second != 99u) {
       int again = vm_flip_changes(second, vm_reg_index(t[i].reg), t[i].bit);
-      if (again != 0) { /* card number bit 0 in tall mode */
+      if (again != 0) { /* card number bit 0 in tall mode, and every ignored bit in the second base */
         if (!quiet) {
-          ivs_test_diag("%s bit %u (role %s): in tall mode flipping it must change nothing", t[i].reg, (unsigned)t[i].bit, t[i].role);
+          ivs_test_diag("%s bit %u (role %s): flipping it must change nothing in its second base state", t[i].reg, (unsigned)t[i].bit, t[i].role);
         }
         bad += 1u;
       }
@@ -976,6 +977,135 @@ done:
   return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
 }
 
+/* ---- the pinned defaults (D-02, T-08-14): each test asserts the default and then changes ONE field of a stack copy of ivs_stic_params and
+ * requires a different plane, so no default can pass as a confirmed behavior. A field value other than the two selectors is refused by the
+ * generator, so only these two values are exercised. ---- */
+
+/* 1 when planes a and b differ in at least one published position. */
+static int vm_planes_differ(const uint8_t *a, const uint8_t *b)
+{
+  uint32_t y;
+  uint32_t x;
+  for (y = 0u; y < VF_PLANE_H; y++) {
+    for (x = 0u; x < VF_PLANE_W - 1u; x++) {
+      if (a[y * VF_PLANE_W + x] != b[y * VF_PLANE_W + x]) {
+        return 1;
+      }
+    }
+  }
+  return 0;
+}
+
+/* ---- video.mob.default-pinned.prio-set: a MOB with the priority bit set (R43, C107, field video.mob_prio_hides) ---- */
+
+static int vm_pin_prio_set(void)
+{
+  const ivs_stic_params *p = vm_scene(&vm_frames[0]);
+  ivs_stic_params q;
+  /* A solid MOB of color 4 with the priority bit set (attribute 2804) covers x 80..87, y 48..55, which holds the 5 x 5 on pixels of the card cell
+   * (6, 10) (color 2) over the background color 1 of every other position. Default (0): the on pixels hide the MOB and the 39 other positions
+   * show it through the card background; flip (1): every card pixel hides it, so the MOB is never shown. */
+  VC_CHECK(p != NULL && p->video_mob_prio_hides == 0u);
+  vm_put(0u, 0x0200u + 88u, 0x0100u + 56u, VM_A_SOLID + 0x2000u);
+  VC_CHECK(vm_render(p, 1u, vm_plane) == VF_PLANE_BYTES);
+  VC_CHECK(vm_count(4u) == 39u && vm_count(2u) == 25u);
+  VC_CHECK(vm_plane[48u * VF_PLANE_W + 80u] == 2u && vm_plane[52u * VF_PLANE_W + 84u] == 2u); /* the on pixels hide the MOB */
+  VC_CHECK(vm_plane[48u * VF_PLANE_W + 85u] == 4u && vm_plane[53u * VF_PLANE_W + 80u] == 4u && vm_plane[55u * VF_PLANE_W + 87u] == 4u); /* through the background */
+  q = *p;
+  q.video_mob_prio_hides = 1u; /* the one-field flip */
+  memcpy(vm_exp, vm_plane, VF_PLANE_BYTES);
+  VC_CHECK(vm_render(&q, 1u, vm_plane) == VF_PLANE_BYTES);
+  VC_CHECK(vm_planes_differ(vm_plane, vm_exp));
+  VC_CHECK(vm_count(4u) == 0u && vm_count(2u) == 25u);
+  return IVS_TEST_PASS;
+}
+
+/* ---- the two sampling pins (R50, C108, field video.mob_line_sample): a Y size code that puts two pattern rows into one plane row ---- */
+
+/* The literal f rendered under the default and compared position by position (and by hash), then rendered again with the line sample flipped to 1. */
+static int vm_pin_sampling(const vm_frame *f, uint32_t xw, uint32_t yw, uint32_t aw)
+{
+  const ivs_stic_params *p;
+  ivs_stic_params q;
+  VC_CHECK(vm_fixture_ok(f));
+  p = vm_scene(f);
+  VC_CHECK(p != NULL && p->video_mob_line_sample == 0u);
+  vm_put(0u, xw, yw, aw);
+  VC_CHECK(vm_render(p, 1u, vm_plane) == VF_PLANE_BYTES);
+  VC_CHECK(vm_matches(f)); /* the even line: the published plane row y shows the television line 2 y */
+  q = *p;
+  q.video_mob_line_sample = 1u; /* the one-field flip: the odd line */
+  memcpy(vm_exp, vm_plane, VF_PLANE_BYTES);
+  VC_CHECK(vm_render(&q, 1u, vm_plane) == VF_PLANE_BYTES);
+  VC_CHECK(vm_planes_differ(vm_plane, vm_exp));
+  return IVS_TEST_PASS;
+}
+
+static int vm_pin_sampling_y1x(void)
+{
+  /* F-M8: X 32 (2x) and Y 32 (size code 00, one television line per pattern row), the staircase card 1, color 4 */
+  return vm_pin_sampling(&vm_frames[8], 0x0600u + 32u, 32u, VM_A_STAIRS);
+}
+
+static int vm_pin_sampling_8x16(void)
+{
+  /* F-M9: X 48 (1x), Y 32 with the tall bit (size code 00), the cards 4 and 5, color 4 */
+  return vm_pin_sampling(&vm_frames[9], 0x0200u + 48u, 0x0080u + 32u, VM_A_TALL4);
+}
+
+/* ---- the judges: a comparison that cannot fail proves nothing ---- */
+
+/* video.judge.mob-frame-corrupt: a copy of the literal F-M1 with one expected position changed makes the comparison report a mismatch at exactly
+ * that position (and the hash comparison fail), and the uncorrupted copy passes. */
+static int vm_judge_frame_corrupt(void)
+{
+  const vm_frame *f = &vm_frames[1];
+  const ivs_stic_params *p;
+  static const uint32_t at[3][2] = {{150u, 90u}, {0u, 0u}, {158u, 95u}}; /* a MOB position, the first and the last published position */
+  char hex[65];
+  uint32_t k;
+  uint32_t skipped = 0u;
+  VC_CHECK(vm_fixture_ok(f));
+  p = vm_scene(f);
+  VC_CHECK(p != NULL);
+  vm_put(0u, 0x069Eu, 0x0162u, 0x080Cu);
+  VC_CHECK(vm_render(p, 1u, vm_plane) == VF_PLANE_BYTES);
+  vm_expected(f, vm_exp);
+  VC_CHECK(vm_first_diff(vm_plane, vm_exp, &skipped) == -1); /* the control passes */
+  for (k = 0u; k < 3u; k++) {
+    uint32_t i = at[k][1] * VF_PLANE_W + at[k][0];
+    uint8_t saved = vm_exp[i];
+    vm_exp[i] = (uint8_t)(saved ^ 1u);
+    VC_CHECK(vm_first_diff(vm_plane, vm_exp, &skipped) == (long)(at[k][1] * (VF_PLANE_W - 1u) + at[k][0])); /* reported at the corrupted position */
+    vf_text_sha(vm_exp, VF_PLANE_W, VF_PLANE_W - 1u, hex);
+    VC_CHECK(strcmp(hex, f->sha_text) != 0); /* and the hash of the corrupted copy is not the literal's */
+    vm_exp[i] = saved;
+  }
+  vm_exp[150u * 0u + 5u * VF_PLANE_W + 5u] = 0xFFu; /* a wildcard position is skipped, never compared */
+  VC_CHECK(vm_first_diff(vm_plane, vm_exp, &skipped) == -1 && skipped == 1u);
+  return IVS_TEST_PASS;
+}
+
+/* video.judge.mob-role-swapped: a copy of the role table with the roles of a used bit and an ignored bit exchanged makes the register-bit sweep
+ * fail (and the true table passes): the sweep reads its roles from the table, so a wrong literal is caught. */
+static int vm_judge_role_swapped(void)
+{
+  static vm_role copy[48];
+  static const uint32_t pairs[3][2] = {{10u, 11u}, {16u + 10u, 16u + 12u}, {32u + 13u, 32u + 14u}}; /* xsize and ign, xflip and ign, prio and ign */
+  uint32_t k;
+  VC_CHECK(vm_sweep(vm_roles, 48u, 1) == 0u); /* the control passes */
+  for (k = 0u; k < 3u; k++) {
+    const char *tmp;
+    memcpy(copy, vm_roles, sizeof copy);
+    VC_CHECK(strcmp(copy[pairs[k][0]].role, "ign") != 0 && strcmp(copy[pairs[k][1]].role, "ign") == 0);
+    tmp = copy[pairs[k][0]].role;
+    copy[pairs[k][0]].role = copy[pairs[k][1]].role;
+    copy[pairs[k][1]].role = tmp;
+    VC_CHECK(vm_sweep(copy, 48u, 1) >= 2u); /* both rows now disagree with the plane */
+  }
+  return IVS_TEST_PASS;
+}
+
 const ivs_test_case ivs_video_mob_cases[] = {
     {"video.mob.base-neutral", vm_base_neutral, NULL},
     {"video.mob.frame-placement-clip", vm_frame_placement_clip, NULL},
@@ -992,6 +1122,11 @@ const ivs_test_case ivs_video_mob_cases[] = {
     {"video.mob.register-bit-roles", vm_register_bit_roles, NULL},
     {"video.mob.stream-equals-plane", vm_stream_equals_plane, NULL},
     {"video.mob.slice-invariant", vm_slice_invariant, NULL},
+    {"video.mob.default-pinned.prio-set", vm_pin_prio_set, NULL},
+    {"video.mob.default-pinned.sampling-y1x", vm_pin_sampling_y1x, NULL},
+    {"video.mob.default-pinned.sampling-8x16", vm_pin_sampling_8x16, NULL},
+    {"video.judge.mob-frame-corrupt", vm_judge_frame_corrupt, NULL},
+    {"video.judge.mob-role-swapped", vm_judge_role_swapped, NULL},
 };
 const size_t ivs_video_mob_count = sizeof ivs_video_mob_cases / sizeof ivs_video_mob_cases[0];
 

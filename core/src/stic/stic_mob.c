@@ -23,6 +23,9 @@
  * Order (R41, R42, R43): among the MOBs that have a set pattern pixel on a position the one with the lower index owns it; the priority
  * bit does not change that. An owner with the priority bit clear is drawn in front of the card layer; an owner with the priority bit set
  * is hidden by the card layer where the card has an on pixel (video_mob_prio_hides 0, the default) or on every card pixel (1).
+ *
+ * Named faults (plan 08-04, one #ifdef site each, data/expected/faults/video.ids): MOB_PRIORITY_SWAP (the higher index owns an overlap of two
+ * MOBs, caught by video.mob.front-lower-index) and MOB_FLIP_SWAPPED (the X flip and Y flip bits are exchanged, caught by video.mob.frame-mirror).
  */
 #include "common/ivs_prelude.h"
 
@@ -55,7 +58,12 @@ uint32_t ivs_stic_mob_decode(const ivs_stic_params *p, const ivs_memsys *mem, iv
     m->card = (uint8_t)((aw >> 3) & (m->sel != 0u ? 0x3Fu : 0xFFu));
     m->color = (uint8_t)((aw & 7u) + 8u * ((aw >> 12) & 1u)); /* R40: the low three bits plus 8 times bit 12 */
     m->flags = (uint8_t)((((yw >> 7) & 1u) != 0u ? IVS_STIC_MOB_F_TALL : 0u) | (((aw >> 13) & 1u) != 0u ? IVS_STIC_MOB_F_PRIO : 0u));
+#ifdef IVS_FAULT_MOB_FLIP_SWAPPED
+    /* named fault MOB_FLIP_SWAPPED: the X flip and Y flip bits are exchanged */
+    m->flags = (uint8_t)(m->flags | (((yw >> 11) & 1u) != 0u ? IVS_STIC_MOB_F_XFLIP : 0u) | (((yw >> 10) & 1u) != 0u ? IVS_STIC_MOB_F_YFLIP : 0u));
+#else
     m->flags = (uint8_t)(m->flags | (((yw >> 10) & 1u) != 0u ? IVS_STIC_MOB_F_XFLIP : 0u) | (((yw >> 11) & 1u) != 0u ? IVS_STIC_MOB_F_YFLIP : 0u));
+#endif
     n += m->on;
   }
   return n;
@@ -77,6 +85,9 @@ void ivs_stic_overlay_mobs_row(const ivs_stic_params *p, const ivs_memsys *mem, 
     uint32_t card;
     uint32_t byte;
     uint32_t c;
+#ifdef IVS_FAULT_MOB_PRIORITY_SWAP
+    i = IVS_STIC_MOBS - 1u - j; /* named fault MOB_PRIORITY_SWAP: the higher index owns an overlap */
+#endif
     m = &mobs[i];
     if (m->on == 0u) {
       continue;
