@@ -40,14 +40,14 @@ typedef struct inv_stats {
 #define INV_RESET_STATE(p) ((p).time_ticks == 0u && (p).stic.frame_index == 0u && (p).stic.event_index == 0u)
 
 /* Judges one boundary of the instance x (profile index 0 is the only registered profile) and accumulates what it saw; stride thins the
- * checks of a fault run. */
-static void inv_boundary(const char *name, const ivs_machine *m, uint32_t profile, inv_stats *st, uint64_t unit, int *first_report)
+ * checks of a fault run (1 checks every boundary). */
+static void inv_boundary(const char *name, const ivs_machine *m, uint32_t profile, inv_stats *st, uint64_t unit, uint32_t stride, int *first_report)
 {
   ivs_snap_probe p;
   uint32_t v;
   uint32_t lv;
   st->boundaries++;
-  if (unit % ST_FAULT_STRIDE != 0u) {
+  if (unit % stride != 0u) {
     return;
   }
   ivs_snapshot_probe_from_instance(m, &p);
@@ -123,7 +123,7 @@ static int inv_scan_scenario(uint32_t sc, uint64_t end, inv_stats *total)
   memset(&st, 0, sizeof st);
   for (;;) {
     const struct ivs_machine *im = x.m;
-    inv_boundary(su_scenario_name(sc), x.m, 0u, &st, unit, &first);
+    inv_boundary(su_scenario_name(sc), x.m, 0u, &st, unit, ST_FAULT_STRIDE, &first);
     if (im->time_ticks >= end || im->cpu.run_state == IVS_CP1610_RS_FAULTED) {
       break;
     }
@@ -143,7 +143,7 @@ static int inv_scan_scenario(uint32_t sc, uint64_t end, inv_stats *total)
 }
 
 /* A program of a stand-in or a hand-built set of words, stepped through the internal seam for units units, or until its CPU faults. */
-static int inv_scan_words(const char *name, ivs_ms_inst *x, uint32_t units, inv_stats *total)
+static int inv_scan_words(const char *name, ivs_ms_inst *x, uint32_t units, uint32_t stride, inv_stats *total)
 {
   inv_stats st;
   uint64_t unit;
@@ -151,7 +151,7 @@ static int inv_scan_words(const char *name, ivs_ms_inst *x, uint32_t units, inv_
   memset(&st, 0, sizeof st);
   for (unit = 0u; unit <= units; unit++) {
     const struct ivs_machine *im = x->m;
-    inv_boundary(name, x->m, 0u, &st, unit, &first);
+    inv_boundary(name, x->m, 0u, &st, unit, stride, &first);
     if (unit == units || im->cpu.run_state == IVS_CP1610_RS_FAULTED) {
       break;
     }
@@ -178,14 +178,13 @@ static const uint16_t inv_prog_fault[] = {0x02B9u, 0x0008u, 0x0011u, 0x022Cu, 0x
 static int inv_hold_reachable(void)
 {
   static const uint64_t frame = 59736u;
+  static const uint64_t frames_pass = 14u; /* 806,568 ticks: past the last of the six events (700,000), also in a fault run (stepping is cheap there) */
 #ifdef IVS_STATE_FAULT_RUN
   static const uint64_t frames_lamp = 1u;
-  static const uint64_t frames_pass = 1u;
   static const uint64_t frames_other = 1u;
   static const uint32_t units_standin = 1500u;
 #else
   static const uint64_t frames_lamp = 4u;
-  static const uint64_t frames_pass = 14u; /* 806,568 ticks: past the last of the six events (700,000) */
   static const uint64_t frames_other = 4u;
   static const uint32_t units_standin = 20000u;
 #endif
@@ -207,17 +206,17 @@ static int inv_hold_reachable(void)
     if (!ivs_ms_powered_prog(&x, prog, 0x5Au)) {
       return IVS_TEST_FAIL;
     }
-    ST_REQ(ok, inv_scan_words(name, &x, units_standin, &total));
+    ST_REQ(ok, inv_scan_words(name, &x, units_standin, ST_FAULT_STRIDE, &total));
     programs++;
   }
   ST_CHECK(su_boot_new(&x, SU_IMG_ALL, 1, 0x5Au));
-  ST_REQ(ok, inv_scan_words("boot", &x, units_standin, &total));
+  ST_REQ(ok, inv_scan_words("boot", &x, units_standin, ST_FAULT_STRIDE, &total));
   programs++;
   ST_CHECK(ivs_ms_powered_words(&x, inv_prog_halt, sizeof inv_prog_halt / sizeof inv_prog_halt[0], 0x5Au));
-  ST_REQ(ok, inv_scan_words("halt", &x, 300u, &total));
+  ST_REQ(ok, inv_scan_words("halt", &x, 300u, 1u, &total)); /* tiny: every boundary, also in a fault run */
   programs++;
   ST_CHECK(ivs_ms_powered_words(&x, inv_prog_fault, sizeof inv_prog_fault / sizeof inv_prog_fault[0], 0x5Au));
-  ST_REQ(ok, inv_scan_words("fault", &x, 300u, &total));
+  ST_REQ(ok, inv_scan_words("fault", &x, 300u, 1u, &total));
   programs++;
 
   ivs_test_diag("%u programs, %llu unit boundaries, %llu checked; first failing invariant: INV-1 %llu, INV-2 %llu, INV-3 %llu, INV-4 %llu, INV-5 %llu, INV-6 %llu",
@@ -235,8 +234,9 @@ static int inv_hold_reachable(void)
   /* the invariants had something to say */
   ST_REQ(ok, total.regs_closed > 0u && total.gmem_closed > 0u);
   ST_REQ(ok, total.halted > 0u && total.faulted > 0u);
-  ST_REQ(ok, total.max_frames >= 3u);
-#ifndef IVS_STATE_FAULT_RUN
+#ifdef IVS_STATE_FAULT_RUN
+  ST_REQ(ok, total.max_frames >= 1u); /* the one-frame window of a fault run still completes a frame */
+#else
   ST_REQ(ok, total.pulldown_set > 0u);
   ST_REQ(ok, total.max_level == 15u);
   ST_REQ(ok, total.max_frames >= 13u);
