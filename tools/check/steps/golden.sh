@@ -63,6 +63,11 @@
 #   runner-process (a missing report or a differing value is golden-mismatch). The converter is outside the
 #   raw-audio evidence path: no digest, claim or gate row depends on a .refpcm golden, and the .refpcm
 #   reports are not scenario reports (the dev versus release comparison below skips them).
+# User content versus skip (plan 07-10, D-31, T-07-24): over every data/scenarios/*.ivss in FILELIST and every row of
+#   the inventory, a scenario with a `content <role> user` line must have column 5 `skip-ok`
+#   (golden-user-content-not-skip-ok: it would otherwise be an ordinary test needing an image the gate never has),
+#   and a `skip-ok` row must name a scenario with such a line (golden-skip-ok-without-user-content: a skip that
+#   hides an ordinary test). A row that is absent from the inventory counts as not skip-ok.
 # Dev versus release (Pitfall 11: one ctest run sees one tree): the union of report names in
 #   build/gate/dev/runner and build/gate/release/runner; an id absent from the inventory is
 #   golden-mismatch; an id of class `host-dependent` is skipped and counted; every other id needs
@@ -71,7 +76,7 @@
 # Tokens: golden-header-missing-tier, golden-header-missing-oracle,
 #   golden-self-recorded-wrong-tier, golden-empty-domain-observed, golden-mismatch,
 #   golden-expect-drift, golden-dev-release-diff, golden-user-scenario-tracked,
-#   golden-host-dependent, golden-shape.
+#   golden-host-dependent, golden-shape, golden-user-content-not-skip-ok, golden-skip-ok-without-user-content.
 # Stats: goldens=<golden files> reports=<dev reports> host-dependent=<skipped report ids>.
 LC_ALL=C; export LC_ALL
 : "${ROOT:?ROOT is not set}"
@@ -90,6 +95,7 @@ tiers=data/expected/evidence-tiers.ids
 
 # Inventory: `<id> <class>`; six columns, class deterministic or host-dependent.
 : > "$tmp/inv"
+: > "$tmp/invskip"
 if grep -q -x -F -e "$inv" "$FILELIST" && [ -f "$ROOT/$inv" ]; then
   awk -v f="$inv" '
     /^#/ || NF == 0 { next }
@@ -99,6 +105,11 @@ if grep -q -x -F -e "$inv" "$FILELIST" && [ -f "$ROOT/$inv" ]; then
     { print $1 " " $4 }' "$ROOT/$inv" > "$tmp/inv.raw"
   grep '^BAD ' "$tmp/inv.raw" | while IFS= read -r l; do printf 'golden-mismatch %s\n' "${l#BAD }"; done >> "$find"
   grep -v '^BAD ' "$tmp/inv.raw" | sort -u > "$tmp/inv"
+  # `<id> <skip>` (column 5) of the rows that pass the six-column check, for the user-content rule below.
+  awk '
+    /^#/ || NF == 0 { next }
+    NF != 6 || ($4 != "deterministic" && $4 != "host-dependent") { next }
+    { print $1 " " $5 }' "$ROOT/$inv" | sort -u > "$tmp/invskip"
 else
   bad golden-mismatch "$inv missing"
 fi
@@ -333,6 +344,30 @@ while IFS= read -r g; do
   awk '/^#/ { next } { print }' "$ROOT/$g" > "$tmp/have"
   cmp -s "$tmp/want" "$tmp/have" || bad golden-mismatch "$g (body differs from build/gate/dev/runner/$scn.report)"
 done < "$tmp/goldens"
+
+# User-content consistency (plan 07-10, D-31, T-07-24): a scenario with a `content <role> user` line needs an
+# operator image the gate never has, so its inventory row must be `skip-ok` (column 5), and every `skip-ok` row
+# must name a scenario with such a line. Both directions, over every FILELIST scenario and every inventory row.
+: > "$tmp/useroc"
+grep -E '^data/scenarios/[^/]+[.]ivss$' "$FILELIST" | while IFS= read -r sf; do
+  [ -f "$ROOT/$sf" ] || continue
+  sid=${sf#data/scenarios/}; sid=${sid%.ivss}
+  if awk '$1 == "content" && $3 == "user" { f = 1 } END { exit !f }' "$ROOT/$sf"; then
+    printf '%s\n' "$sid" >> "$tmp/useroc"
+  fi
+done
+sort -u "$tmp/useroc" -o "$tmp/useroc"
+while IFS= read -r sid; do
+  [ -n "$sid" ] || continue
+  sk=$(awk -v id="$sid" '$1 == id { print $2; exit }' "$tmp/invskip")
+  [ "$sk" = skip-ok ] \
+    || bad golden-user-content-not-skip-ok "$sid (data/scenarios/$sid.ivss has a content ... user line, its row in $inv has column 5 '${sk:-absent}', not skip-ok)"
+done < "$tmp/useroc"
+while read -r sid sk; do
+  [ "$sk" = skip-ok ] || continue
+  grep -q -x -F -e "$sid" "$tmp/useroc" \
+    || bad golden-skip-ok-without-user-content "$sid (its row in $inv is skip-ok, data/scenarios/$sid.ivss has no content ... user line)"
+done < "$tmp/invskip"
 
 # Every reference PCM inventory line has its golden (plan 05-11).
 while read -r rid rrate; do

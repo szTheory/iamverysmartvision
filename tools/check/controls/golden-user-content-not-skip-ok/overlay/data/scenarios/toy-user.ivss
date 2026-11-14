@@ -1,0 +1,9 @@
+# Toy scenario of the golden step's user-content control (plan 07-10, D-31): it names an operator image
+# (`content exec user`) but its toy inventory row says `run`, not `skip-ok`, so the gate would treat it as an
+# ordinary test that needs an image it never has. It has no golden and no report; only the inventory rule sees it.
+ivss 1
+id toy-user
+profile intv-2609-ntsc-family-p1
+content exec user
+content grom zero-grom
+run-to 100 cpu-cycles stop halted

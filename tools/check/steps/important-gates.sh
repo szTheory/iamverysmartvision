@@ -9,14 +9,15 @@
 # named mechanism that is shown to fail for its intended reason elsewhere in the gate; this step
 # checks that the registry names only mechanisms that exist and covers every Phase 4, Phase 5,
 # Phase 6 and Phase 7 requirement (plan 05-12 added the Phase 5 set, plan 06-14 the Phase 6 set, plan 07-02
-# the Phase 7 requirement SCN-01; SCN-02 is accepted by plan 07-10 together with its first registry lines).
+# the Phase 7 requirement SCN-01, plan 07-10 SCN-02 together with its first registry lines).
 # Registry: data/expected/important-gates.ids, '#' lines and blank lines skipped, then one line
 #   <gate> <fault|control|mutant> <id> <REQ>
 # per (gate, mechanism, id, requirement). <gate> is a free name of lower-case letters, digits and
 # '-'; <REQ> is one of the Phase 4 requirements API-02 API-04 RUN-01 RUN-02 RUN-04 RUN-05 RUN-06
 # PKG-01 PKG-03 PKG-04, one of the Phase 5 requirements INP-01 INP-02 INP-03 API-03 AUD-01 AUD-02 or one
 # of the Phase 6 requirements VID-01 VID-02 VID-03 VID-04 VID-06 (VID-05 belongs to Phase 8 and is rejected), or the
-# Phase 7 requirement SCN-01 (SCN-02 is not accepted yet). The accepted set is also the must-be-covered set, so a plan
+# Phase 7 requirements SCN-01 and SCN-02 (A-13: SCN-02 is the owner-local EXEC/GROM route; its mechanisms are the two
+# user-content consistency controls of the golden step). The accepted set is also the must-be-covered set, so a plan
 # that accepts a requirement also appends one toy line for it to the toy registry and to every control that overlays a
 # whole-file toy registry.
 # Resolution of <id> by mechanism:
@@ -72,7 +73,7 @@ awk -v knownf="$tmp/known" -v find="$find" -v stats="$tmp/stats" '
   BEGIN {
     while ((getline l < knownf) > 0) known[l] = 1
     close(knownf)
-    nreq = split("API-02 API-04 RUN-01 RUN-02 RUN-04 RUN-05 RUN-06 PKG-01 PKG-03 PKG-04 INP-01 INP-02 INP-03 API-03 AUD-01 AUD-02 VID-01 VID-02 VID-03 VID-04 VID-06 SCN-01", reqs, " ")
+    nreq = split("API-02 API-04 RUN-01 RUN-02 RUN-04 RUN-05 RUN-06 PKG-01 PKG-03 PKG-04 INP-01 INP-02 INP-03 API-03 AUD-01 AUD-02 VID-01 VID-02 VID-03 VID-04 VID-06 SCN-01 SCN-02", reqs, " ")
     for (i = 1; i <= nreq; i++) accepted[reqs[i]] = 1
     lines = 0; ngates = 0
   }
