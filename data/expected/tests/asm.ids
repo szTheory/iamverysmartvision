@@ -63,4 +63,6 @@ asm.var.spelling-clrr
 asm.var.spelling-immediate
 asm.var.sdbd-at-end
 asm.var.sdbd-stack-mode
+asm.var.sdbd-label
+asm.var.sdbd-label-alone
 asm.boundary.branch-03ff

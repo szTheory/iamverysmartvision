@@ -14,7 +14,7 @@
   "recipe": {
     "tool": "ivs_asm",
     "tool_version": "ivs_asm 1",
-    "tool_sha256": "d4bb9f47937f18c309cae2a482d7275a4651fe2c2a3669fc52af63e2fe5c1954",
+    "tool_sha256": "0db882e42a44d43ca84e4cd65ebdc529da5eb5f0c1af67a76b17151f46bbe793",
     "tool_licence": "MIT",
     "command": "ivs_asm fixtures/FX-boot-stub-2/boot-stub-2.asm fixtures/FX-boot-stub-2/boot-stub-2.listing.txt; ivs_pack --exec fixtures/FX-boot-stub-2/boot-stub-2.listing.txt build/<preset>/images/boot-stub-2.exec",
     "sources": [
@@ -24,7 +24,7 @@
       },
       {
         "path": "tools/asm/asm.c",
-        "sha256": "d4bb9f47937f18c309cae2a482d7275a4651fe2c2a3669fc52af63e2fe5c1954"
+        "sha256": "0db882e42a44d43ca84e4cd65ebdc529da5eb5f0c1af67a76b17151f46bbe793"
       },
       {
         "path": "tools/pack/pack.c",

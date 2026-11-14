@@ -799,6 +799,9 @@ static void as_stmt(unsigned pass, char *s)
     label = w;
     if (pass == 1u && !as_g.have_org) {
       as_fail("asm-org", "ORG must come before the first label: ", label);
+    } else if (pass == 1u && as_g.sdbd) {
+      /* The label would bind to the word after the prefix, so a jump to it runs the instruction without SDBD. */
+      as_fail("asm-sdbd-target", "a label may not sit between SDBD and its instruction: ", label);
     } else if (pass == 1u) {
       as_define(label, as_g.pc, 1);
     }
@@ -1087,6 +1090,11 @@ int main(int argc, char **argv)
     return as_run_pairs(argv[2]);
   }
   n = argc == 3 ? strlen(argv[2]) : 0u;
+  if (argc == 3 && as_path_ok(argv[1]) && n > AS_MAX_PATH) {
+    /* Only the temporary name next to the listing is sized from this bound; say so, not the source path rules. */
+    fprintf(stderr, "ivs_asm: the listing path is longer than %u bytes\n", AS_MAX_PATH);
+    return 1;
+  }
   if (argc != 3 || !as_path_ok(argv[1]) || n == 0u || n > AS_MAX_PATH || strcmp(argv[1], argv[2]) == 0) {
     fprintf(stderr, "usage: ivs_asm <source.asm> <listing.txt>   (a relative source path of A-Z a-z 0-9 . _ / - "
                     "that is not the listing path)\n       ivs_asm --pairs <pairs.txt>\n       ivs_asm --version\n");

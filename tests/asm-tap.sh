@@ -348,7 +348,9 @@ spelling-jr|asm-spelling|        MOVR  R1, R7
 spelling-clrr|asm-spelling|        XORR  R1, R1
 spelling-immediate|asm-spelling|        MVI@  R7, R1
 sdbd-at-end|asm-sdbd-target|        SDBD
-sdbd-stack-mode|asm-sdbd-target|        SDBD\n        MVI@  R6, R1'
+sdbd-stack-mode|asm-sdbd-target|        SDBD\n        MVI@  R6, R1
+sdbd-label|asm-sdbd-target|        SDBD\nlbl:    MVII  #$1234, R0
+sdbd-label-alone|asm-sdbd-target|        SDBD\nlbl:\n        MVII  #$1234, R0'
 printf '%s\n' "$variants" > "$tmp/variants"
 while IFS='|' read -r slug tok body; do
   [ -n "$slug" ] || continue
