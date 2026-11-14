@@ -2,19 +2,19 @@
 gsd_state_version: "1.0"
 current_phase: 8
 current_phase_name: STIC Completion, Save State and Performance Baselines
-current_plan: 5
+current_plan: 6
 status: executing
-stopped_at: Completed 08-04-PLAN.md
-last_updated: "2026-11-14T08:59:29.058Z"
+stopped_at: Completed 08-05-PLAN.md
+last_updated: "2026-11-14T09:47:58.186Z"
 last_activity: 2026-11-14
 last_activity_desc: Phase 8 execution started
-state_head: 7323b7e786ccc6a77308ac26ab47222e6d5ce46d
+state_head: 25575761a693f6dc0752f1006a564a51e6984e8b
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 130
-  completed_plans: 113
-  percent: 87
+  completed_plans: 114
+  percent: 88
 ---
 
 # Project State
@@ -29,12 +29,12 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 8 (STIC Completion, Save State and Performance Baselines) — EXECUTING
-Current Plan: 5
+Current Plan: 6
 Total Plans in Phase: 21
 Status: Ready to execute
 Last activity: 2026-11-14 — Phase 8 execution started
 
-Progress: [█████████░] 87%
+Progress: [█████████░] 88%
 
 ## Performance Metrics
 
@@ -172,6 +172,7 @@ Progress: [█████████░] 87%
 | Phase 8 P02 | 31min | 3 tasks | 16 files |
 | Phase 08 P03 | about 3h | 3 tasks | 41 files |
 | Phase 08 P04 | about 45 min | 3 tasks | 26 files |
+| Phase 08 P05 | about 50 min | 3 tasks | 22 files |
 
 ## Accumulated Context
 
@@ -419,6 +420,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 08]: 08-03: collision truth table reads sticky bits in the routines of frames 3 and 4 and writes only zero to a collision register; no row depends on a read side effect or a nonzero write
 - [Phase 08]: 08-04: the MOB overlay gives a position to the lowest index with a set pixel and only then tests the owner's priority bit against the card layer (a hidden owner still blocks a higher index); part of the pinned priority behavior, nothing asserts it
 - [Phase 08]: 08-04: the composition is one path (ivs_stic_compose_card_row) shared by the streamed slot and the whole plane; with every MOB register zero it returns the card row untouched, and the vertical-delay carry of plan 08-06 must not be a stack buffer in the deliver frame (the chain deliver, compose, overlay is 3,040 bytes at -O0)
+- [Phase 08]: 08-05: collision is evaluated per television line over the 167 x 105 object grid (ivs_stic_collide_lines per card row inside the one composition path, ivs_stic_collide_edges for the grid lines above and below the plane), accumulated in a local uint32_t[8] and ORed into the register file at the frame end by ivs_memsys_stic_collision_or_internal; the grid has no column right of the plane, so the border bit never comes from the right edge
+- [Phase 08]: 08-05: the own bit of a collision register is never set by the frame writer, but a CPU write of it is still stored (write mask 03FF kept as the plan and the Phase 6 tests say); rule STIC-R44's own-bit write rule is an open item for the owner of the regmap literal
 
 ### Pending Todos
 
@@ -451,6 +454,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-14T08:59:28.726Z
-Stopped at: Completed 08-04-PLAN.md
+Last session: 2026-11-14T09:47:57.814Z
+Stopped at: Completed 08-05-PLAN.md
 Resume file: None
