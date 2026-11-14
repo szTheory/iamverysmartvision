@@ -1,20 +1,20 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 7
-current_phase_name: First Visible Original Scenario
-current_plan: 12
-status: verifying
-stopped_at: Completed 07-12-PLAN.md
-last_updated: "2026-11-14T02:23:41.694Z"
-last_activity: 2026-11-13
-last_activity_desc: Phase 7 execution started
-state_head: e503f608402144a78d9bf1a1fc27ac6f83d3d070
+current_phase: 8
+current_phase_name: STIC Completion, Save State and Performance Baselines
+current_plan: 2
+status: executing
+stopped_at: Completed 08-01-PLAN.md
+last_updated: "2026-11-14T06:44:21.617Z"
+last_activity: 2026-11-14
+last_activity_desc: Phase 8 execution started
+state_head: 9f0e4d20ce88ffb7331801bacf44893495cb292a
 progress:
   total_phases: 8
   completed_phases: 7
-  total_plans: 109
-  completed_plans: 109
-  percent: 88
+  total_plans: 130
+  completed_plans: 110
+  percent: 85
 ---
 
 # Project State
@@ -24,17 +24,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-09)
 
 **Core value:** A deterministic, observable machine core whose every compatibility claim is bound to an exactly named profile and independent evidence — never an unqualified "it runs Intellivision games" label.
-**Current focus:** Phase 7 — First Visible Original Scenario
+**Current focus:** Phase 8 — STIC Completion, Save State and Performance Baselines
 
 ## Current Position
 
-Phase: 7 (First Visible Original Scenario) — EXECUTING
-Current Plan: 12
-Total Plans in Phase: 12
-Status: Phase complete — ready for verification
-Last activity: 2026-11-13 — Phase 7 execution started
+Phase: 8 (STIC Completion, Save State and Performance Baselines) — EXECUTING
+Current Plan: 2
+Total Plans in Phase: 21
+Status: Ready to execute
+Last activity: 2026-11-14 — Phase 8 execution started
 
-Progress: [█████████░] 88%
+Progress: [█████████░] 85%
 
 ## Performance Metrics
 
@@ -168,6 +168,7 @@ Progress: [█████████░] 88%
 | Phase 7 P10 | 32min | 4 tasks | 34 files |
 | Phase 7 P11 | 38min | 3 tasks | 7 files |
 | Phase 7 P12 | 58min | 3 tasks | 19 files |
+| Phase 8 P01 | about 55 min measured, plus reading | 3 tasks | 42 files |
 
 ## Accumulated Context
 
@@ -403,6 +404,10 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 7]: Phase 7 plan 12: CL-0023 (playable-guest-progress) and CL-0024 (installed-host-behavior) are provisional by the weakest-field rule, the only allowed wording is 'playable guest progress, for this original program only', and plays and playable are text tripwire claim words (the tier identifier is exempt; control text-untagged-playable, controls 356 to 357)
 - [Phase 7]: Phase 7 plan 12: SCN-01 and SCN-02 close on 07-VERIFICATION.md (V1 to V20 automated, H7-1 to H7-5 handed off); SCN-02 is complete on documented-route terms only, D11 stays open and not performed, no claim and no tier; README and packaging state the source-only release posture; D4 records ivs_asm
 - [Phase 7]: Phase 7 plan 12: phase7-close: no-lever (last-five hosted median r 7.78 against budget 7.8 and trigger 8.3; gate 146 s and cpu median 335 fire on the slowest build_s of the file, a runner-speed event); final gates sh, dash and container PASS with controls=357/357 faults=222/222 claims=24 provisional=23 tests-skipped=4
+- [Phase 8]: 08-01: the new gate step release-assets is step 37 and the later state step becomes 38 (08-CONTEXT D-38 numbered it 37); the step scans FILELIST for binary extensions and selftests tools/check/release-assets.sh on five synthetic-archive cases (four must fail for their token, outer-name-pass must pass)
+- [Phase 8]: 08-01: the release asset check is content-based: archive members are judged (prefix, path, extra, missing, binary extension from binary-ext.txt), never the outer name, and the binary rule does not depend on the list (a listed .rom member is still refused)
+- [Phase 8]: 08-01: release.yml is held by a per-file ci-parity exemption table (strict tag glob, job-level contents write only there, two run lines, GITHUB_TOKEN only, timeout 15) with nine new controls; tools/release.sh refuses --publish outside GitHub Actions and with --no-gate, and gh is reached only after every check
+- [Phase 8]: 08-01: phase8-start: no-lever (last-five median r 7.78 against line 8.3; projection about 7.84 with the measured additions: release-assets costs 0.33 local cpu-s per run and runs three times in a gate); the GNU tar path of release.sh is rehearsed only in an emulated Ubuntu container, the Darwin install archive is not byte-reproducible (ranlib restamp)
 
 ### Pending Todos
 
@@ -435,6 +440,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-14T02:23:40.946Z
-Stopped at: Completed 07-12-PLAN.md
+Last session: 2026-11-14T06:44:21.231Z
+Stopped at: Completed 08-01-PLAN.md
 Resume file: None
