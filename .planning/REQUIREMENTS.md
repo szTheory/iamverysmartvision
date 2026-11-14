@@ -92,7 +92,7 @@ differentiators and all variant/peripheral profiles are v2.
 - [x] **VID-02**: The VBLANK interrupt and BUSRQ/BUSAK bus-steal events occur at profile-defined machine times and their effect on CPU progress is tested.
 - [x] **VID-03**: The core produces a raw palette-index framebuffer at a defined machine-time boundary with profile-defined geometry (D8); palette, scaling and presentation remain host policy.
 - [x] **VID-04**: Foreground/Background and Color Stack card modes render hand-derived expected index frames from known BACKTAB/GRAM fixture contents (no dependency on a real GROM image in CI).
-- [ ] **VID-05**: MOBs, border, horizontal/vertical delay and collision registers are each covered by a single-feature fixture with an independently derived expected result, or explicitly listed as unknown-default-chosen.
+- [x] **VID-05**: MOBs, border, horizontal/vertical delay and collision registers are each covered by a single-feature fixture with an independently derived expected result, or explicitly listed as unknown-default-chosen.
 - [x] **VID-06**: A side-effect-free inspection path exists so debuggers/tests can read STIC/device state without triggering read side effects.
 
 ### Visible Scenario (SCN)
@@ -222,7 +222,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VID-02 | Phase 6 | Complete |
 | VID-03 | Phase 6 | Complete |
 | VID-04 | Phase 6 | Complete |
-| VID-05 | Phase 8 | Pending |
+| VID-05 | Phase 8 | Complete |
 | VID-06 | Phase 6 | Complete |
 | SCN-01 | Phase 7 | Complete |
 | SCN-02 | Phase 7 | Complete |
@@ -237,6 +237,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 **Phase 7 close-out note (plan 07-12):** SCN-01 and SCN-02 are marked complete because the gate evidence in `.planning/phases/07-first-visible-original-scenario/07-VERIFICATION.md` exists (V1 to V20), and only on these terms. SCN-01: the original program Lamp Tone (tracked source, MIT, `redistributable: yes`, assembled by the project's `ivs_asm`) runs in the gate through the runner and through the independently built installed consumer, and reaches a hand-derived guest-state progress predicate under scripted input, with the raw video, the PSG write log and the raw samples each asserted; its two claims, CL-0023 (`playable-guest-progress`, the only wording is "playable guest progress, for this original program only") and CL-0024 (`installed-host-behavior`), are `provisional` (tier 4 and inference fields, hand-derived expectations by the author of the program and the core with one blind second read, no timing claimed, index frames not pictures, nobody looked or listened) and none is at the `measured-hardware` tier (D10). SCN-02 is complete on documented-route terms only (the Phase 5 and 6 precedent): the owner-local route, its identity layers, the non-redistributable manifests, the counted SKIPPED template scenario and the tested refusals of the owner-run helper and the runner exist, but D11 is open and not performed, so there is no claim-ledger entry and no tier for any real-EXEC result. Owner hand-offs (listening, viewing frames, the D10 items, the D11 run, publication) are listed in the record, are not evidence and were not performed.
 
+**Phase 8 wave A close-out note (plan 08-08):** VID-05 is marked complete because the gate evidence of plans 08-03 to 08-08 exists (the hand-derived oracle `docs/video/diag-stic-2-derivation.md` with the ten frames F-M0 to F-M9 and a blind second read, the renderer, collision, delay and border-extension tests, the original program `ivs-diag-stic-2` with six scenarios and six program mutants, and the VID-05 lines of the important-gates registry), and only on these terms. The three claims behind it (CL-0025, CL-0026, CL-0027) are `provisional`, at the tiers `source-expectation` and `original-diagnostic` and no higher, and none is at the `measured-hardware` tier (D10): every rule rests on one tier 4 community lineage (no tier 1 to 3 page prints any MOB, delay, collision or border-extension bit), the expected values are hand derived by the author of the program and the core with a blind second read of the same model family (C43), and nobody looked at a picture. The pinned remainder is listed and not hidden: C107 to C110 and the C87 pins (the priority-set pixel rule, half-height publication, strip unit and strip against delay, exposed-area content, a MOB in the exposed area, the delay range, collision at X 0, at the edge, off screen and with the display off, the read with no side effect, and the own bit on a CPU write), each with a profile field or a held-by-absence test that flips it, a claim exclusion and an owner hand-off; the five hand-offs D10-VID-10 to D10-VID-14 are handed off and not performed; collision is evaluated on the undelayed scene and the frame counter of the diagnostic relies on the zero power-on RAM default, both stated in the notes; the published plane stays 159 by 96 (D8). Owner hardware items (47 listed in `data/expected/d10-measurements.ids`, D10 and D11) are handed off and not performed.
+
 **Coverage:**
 - v1 requirements: 50 total
 - Mapped to phases: 50
@@ -244,4 +246,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-11-09*
-*Last updated: 2026-11-12 after Phase 6 close-out (plan 06-14)*
+*Last updated: 2026-11-14 after the Phase 8 wave A close-out (plan 08-08)*

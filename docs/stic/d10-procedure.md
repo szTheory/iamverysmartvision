@@ -69,7 +69,7 @@ Item `D10-VID-11`: draw one object with the priority bit set over a card with se
 
 ### stic-delay-area
 
-Item `D10-VID-12`: with the border extension bits clear, set the horizontal delay and the vertical delay to each of 1 to 7 and record the colors of the exposed columns and rows, whether an object placed there is shown and the delay value at which the register stops following the written value; also count the bus requests and the usable cycles per frame at vertical delay 0 and above.
+Item `D10-VID-12`: with the border extension bits clear, set the horizontal delay and the vertical delay to each of 1 to 7 and record the colors of the exposed columns and rows, whether an object placed there is shown and the delay value at which the register stops following the written value; also count the bus requests and the usable cycles per frame at vertical delay 0 and above, and, with two overlapping objects and a nonzero delay, record whether the collision bits follow the delayed or the undelayed positions.
 
 ### stic-border-extension
 

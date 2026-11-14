@@ -687,7 +687,7 @@
     {
       "id": "STIC-R44",
       "family": "stic",
-      "statement": "Collision bits: register 0x18 + n bit m (m 0 to 7, m not n) is set when a set pixel of MOB n and a set pixel of MOB m lie on the same position and both MOBs have the interaction bit set; bit 8 is set when a set pixel of MOB n lies on a set background pixel (card foreground, colored-squares colors 0 to 6 but not 7) and MOB n has the interaction bit set; the visible bit is not required; the own bit of a MOB never reads 1; the bits are sticky until the CPU clears them, even when the interaction bit is cleared later; they are evaluated at the end of each displayed frame and ORed into the register file with or without a video buffer, and a CPU write of 0 clears a register.",
+      "statement": "Collision bits: register 0x18 + n bit m (m 0 to 7, m not n) is set when a set pixel of MOB n and a set pixel of MOB m lie on the same position and both MOBs have the interaction bit set; bit 8 is set when a set pixel of MOB n lies on a set background pixel (card foreground, colored-squares colors 0 to 6 but not 7) and MOB n has the interaction bit set; the visible bit is not required; the own bit of a MOB is never set by the frame writer; the bits are sticky until the CPU clears them, even when the interaction bit is cleared later; they are evaluated at the end of each displayed frame and ORed into the register file with or without a video buffer, and a CPU write of 0 clears a register.",
       "basis": "tier4-community",
       "cite": "SRC-community-emu-docs@programming-stic-mob-controls",
       "fields": [
@@ -698,7 +698,7 @@
         "stic.reg."
       ],
       "conflict": "C87",
-      "note": "One lineage. The source says a MOB interacts with another MOB without saying pixel or bounding box: the truth table uses solid cards so that both readings agree. Writing bit X of the register of MOB Y does not change bit Y of the register of MOB X, and the own bit reads 0 whatever the CPU writes: plan 08-05 changes the stored view of the collision rows for that (the write mask of register n loses bit n); the guest masks reads with 03FF (D-08)."
+      "note": "One lineage. The source says a MOB interacts with another MOB without saying pixel or bounding box: the truth table uses solid cards so that both readings agree. Writing bit X of the register of MOB Y does not change bit Y of the register of MOB X. The source also says the own bit reads 0 when the CPU writes it (SRC-community-emu-docs@programming-stic-mob-controls); the project keeps the write mask 03FF, so a CPU write of the own bit is stored and read back: a pinned default of tag unknown-default-chosen (decided in plan 08-08; the Phase 6 register literal and its tests stay unchanged), no scenario and no frame depends on it because the guest writes only 0, resolver measurement D10-VID-10. The guest masks reads with 03FF (D-08)."
     },
     {
       "id": "STIC-R45",
