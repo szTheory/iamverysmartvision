@@ -79,12 +79,20 @@
 # Output: the harness TAP shape (header with IVS_TEST_NONCE or none, plan, one result per case
 # with the findings as `#` lines after a failure, trailer) on stdout and, when IVS_TEST_OUT_DIR is
 # set, in <dir>/runner-process.txt.
-# Usage: sh runner-process-tap.sh <source root> <ivs-run> <ivs_pack> <images dir>
+# Since plan 08-07 (D-10, D-37, D-40): runner-process.mutant.STIC2-*, one case per row of data/expected/diag-mutations-stic2.ids (six one-word
+# mutants of the program ivs-diag-stic-2, the same row grammar as the SCN rows, a `fails=` set on every row), in a sibling loop of the SCN loop.
+# The optional fifth argument is the build configuration (`$<CONFIG>` of tests/CMakeLists.txt). With `Release` each row builds the patched
+# cartridge, runs its scenario and judges outcome, first clause and fails set like the SCN rows. With any other value (the sanitized Debug
+# preset) or none, each row performs its static checks only (the word at every address of the unpatched listing equals its `from`, the three
+# lists have one length, the patch changes the image, the scenario file exists, `fails=` is well formed) and is reported ok without running the
+# scenario: the ids are the same in both presets, no id is skip-ok and tests-skipped does not move (D-40).
+# Usage: sh runner-process-tap.sh <source root> <ivs-run> <ivs_pack> <images dir> [<build configuration>]
 # Exit: 0 pass, 1 fail, 77 every case skipped.
 # Env: IVS_TEST_NONCE, IVS_TEST_OUT_DIR, IVS_RUNNER_PROCESS_TIMEOUT.
 LC_ALL=C; export LC_ALL
-usage='usage: sh runner-process-tap.sh <source root> <ivs-run> <ivs_pack> <images dir>'
-[ "$#" -eq 4 ] || { printf '%s\n' "$usage" >&2; exit 1; }
+usage='usage: sh runner-process-tap.sh <source root> <ivs-run> <ivs_pack> <images dir> [<build configuration>]'
+[ "$#" -eq 4 ] || [ "$#" -eq 5 ] || { printf '%s\n' "$usage" >&2; exit 1; }
+config=${5:-}
 # Absolute paths: the cwd case runs from another directory.
 abs_dir() { (cd "$1" 2> /dev/null && pwd -P); }
 abs_file() { _d=$(abs_dir "$(dirname "$1")") && printf '%s/%s\n' "$_d" "$(basename "$1")"; }
@@ -630,6 +638,84 @@ while read -r mid scn addrs froms tos rest; do
   fi
   result "runner-process.mutant.$mid"
 done < "$muts4"
+
+# Program mutations of the second original program (plan 08-07, D-10, D-37, D-40): per line
+# `<ID> <scenario> <addr list> <from list> <to list> <clause> <outcome> <exit> [fails=<k.j,...>]` of data/expected/diag-mutations-stic2.ids, the
+# grammar of the scn inventory above (a sibling loop of it: the stic and scn loops are not edited). The word at each <addr> of the unpatched
+# listing of ivs-diag-stic-2 (ivs_pack --dump-words) must be its <from>. When the fifth argument of this script, the build configuration, is
+# Release the row is run and judged like a scn row (outcome and exit code of the named scenario against outcome.detail, then with `fails=` the
+# complete set of failing asserts, check_fails). In any other configuration the row is judged statically (patch_changes_image and the checks
+# above) and reported ok without running the scenario; the ids and their number are the same in both presets, and none is skip-ok.
+# patch_changes_image <id> <listing> <cart file name> <addr list> <word list>: the static half of run_mutant: builds the patched cartridge in a
+# fresh directory and requires it to differ from the unpatched copy in the content dir; nothing is run. Sets $ok, adds to $tmp/why.
+patch_changes_image() {
+  _pd="$tmp/mutstat-$1"
+  if ! mkdir "$_pd"; then
+    ok=0; why temp "cannot prepare $_pd"
+  elif ! "$pack" --ivsc "$2" "$_pd/$3" $(patch_args "$4" "$5") > "$tmp/why.pack" 2>&1; then
+    ok=0; why pack "ivs_pack --patch $4=$5 failed: $(cat "$tmp/why.pack")"
+  elif cmp -s "$_pd/$3" "$content/$3"; then
+    ok=0; why pack "the patch $4=$5 leaves the image unchanged"
+  fi
+}
+listing5="$root/fixtures/FX-diag-stic-2/diag-stic-2.listing.txt"
+muts5="$root/data/expected/diag-mutations-stic2.ids"
+"$pack" --dump-words "$listing5" > "$tmp/words5" 2> /dev/null || : > "$tmp/words5"
+while read -r mid scn addrs froms tos rest; do
+  case $mid in '' | '#'*) continue ;; esac
+  ok=1
+  ran=0
+  : > "$tmp/why"
+  fails=
+  case ${rest##* } in
+    fails=*) fails=${rest##* }; rest=${rest% *}; fails=${fails#fails=} ;;
+  esac
+  mx=${rest##* }
+  rest=${rest% *}
+  mo=${rest##* }
+  clause=${rest% *}
+  # each address word of the unpatched listing equals its from word, and the three lists have one length
+  bad=$(awk -v a="$addrs" -v f="$froms" -v t="$tos" '
+    NR == FNR { w[$1] = $2; next }
+    END {
+      na = split(a, A, ","); nf = split(f, F, ","); nt = split(t, T, ",")
+      if (na != nf || na != nt) { print "lists of different lengths"; exit }
+      for (i = 1; i <= na; i++) if (w[A[i]] != F[i]) print "the word at " A[i] " is " w[A[i]] ", expected from " F[i]
+    }' "$tmp/words5" /dev/null)
+  fbad=$(printf '%s\n' "$fails" | awk 'NF && $0 !~ /^[0-9]+[.][0-9]+(,[0-9]+[.][0-9]+)*$/ { print "bad" }')
+  if [ -z "$mx" ] || [ -z "$mo" ] || [ -z "$clause" ] || [ "$clause" = "$rest" ]; then
+    ok=0; why inventory "not <ID> <scenario> <addr list> <from list> <to list> <clause> <outcome> <exit> [fails=<k.j,...>]"
+  elif [ ! -f "$scen/$scn.ivss" ]; then
+    ok=0; why inventory "no scenario file data/scenarios/$scn.ivss"
+  elif [ -n "$fbad" ]; then
+    ok=0; why inventory "fails=$fails is not a comma-joined list of <step>.<assert>"
+  elif [ -n "$fails" ] && [ "$mo" != guest-fail ]; then
+    ok=0; why inventory "fails= needs the outcome guest-fail"
+  elif [ -n "$bad" ]; then
+    ok=0; why listing "$bad"
+  else
+    case $mo in
+      guest-fail)
+        case $clause in
+          'stop '*) mp=$clause ;;
+          *' got '*) mp="assert=* line=* $clause" ;;
+          *) mp="assert=* line=* $clause got *" ;;
+        esac ;;
+      timeout) mp="budget step=* line=* expected=halted got=target" ;;
+      pass) mp=- ;;
+      *) mp=; ok=0; why inventory "outcome '$mo' is not guest-fail, timeout or pass" ;;
+    esac
+    if [ "$ok" -eq 1 ]; then
+      if [ "$config" = Release ]; then
+        run_mutant "$mid" "$listing5" diag-stic-2.ivsc "$scn" "$addrs" "$tos" "$mx" "$mo" "$mp"
+        if [ "$ran" -eq 1 ] && [ -n "$fails" ]; then check_fails "mut-$mid" "$fails" || ok=0; fi
+      else
+        patch_changes_image "$mid" "$listing5" diag-stic-2.ivsc "$addrs" "$tos"
+      fi
+    fi
+  fi
+  result "runner-process.mutant.$mid"
+done < "$muts5"
 
 # Determinism (D-23, Pitfall 11): a second run, slice sizes 1 and 7, and a run from another
 # working directory all equal the scenario case's report apart from host.calls.

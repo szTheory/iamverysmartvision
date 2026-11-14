@@ -628,8 +628,10 @@ set_tests_properties(stic-table PROPERTIES SKIP_RETURN_CODE 77 ENVIRONMENT "CMAK
 # Suite runner-process (D-20, D-21, D-23, plan 04-20): the real ivs-run of this preset on every
 # scenario of data/expected/runner-scenarios.ids, judged by exit code and report text; the images
 # are this preset's build-tree outputs (IVS_IMAGES_DIR). Reports go to
-# IVS_TEST_OUT_DIR/runner/<id>.report for the golden step.
+# IVS_TEST_OUT_DIR/runner/<id>.report for the golden step. The fifth argument is the build configuration of the preset
+# (plan 08-07, D-10, D-37, D-40): the six STIC2 program mutants run their scenario only in a Release build and are judged
+# statically in any other (the same ids, no skip-ok).
 add_test(NAME runner-process
   COMMAND sh "${CMAKE_SOURCE_DIR}/tests/runner-process-tap.sh" "${CMAKE_SOURCE_DIR}"
-          "$<TARGET_FILE:ivs_run>" "$<TARGET_FILE:ivs_pack>" "${IVS_IMAGES_DIR}")
+          "$<TARGET_FILE:ivs_run>" "$<TARGET_FILE:ivs_pack>" "${IVS_IMAGES_DIR}" "$<CONFIG>")
 set_tests_properties(runner-process PROPERTIES SKIP_RETURN_CODE 77)
