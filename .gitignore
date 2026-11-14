@@ -28,3 +28,8 @@
 /build/
 /build-*/
 .DS_Store
+
+# Owner-local system-image dumps (plan 07-10, D-30): a GROM or generic image dump must not be committed by accident.
+# (`*.exec` is not listed: boot-stub-2.exec is a build-tree name, and ignoring it would only hide a mistaken tracked stub from git status.)
+*.grom
+*.img

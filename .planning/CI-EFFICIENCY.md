@@ -1036,3 +1036,214 @@ phase6-close: no-lever
 ### Phase 6 review-fix head hosted row (orchestrator)
 
 Run 43373151931 (head with the review fixes: 5 controls, 1 fault, 10 ids more): gate 107 s, cpu 335, build 41 s, test 66 s, `r = 8.17`. Last five hosted rows (43352432394, 43359195974, 43365038335, 43369159094, 43373151931): cpu median 335 (raw trigger 330 is crossed by 5 cpu-s), gate median 107 (trigger 110, not crossed), `r` 7.68, 9.02, 7.53, 8.02, 8.17, median **8.02** (budget 7.8, trigger 8.3: not crossed). Reading: the raw cpu trigger is crossed while the speed-normalised arbiter is not, and the three rows since 06-12 sit at 7.5 to 9.0, so the trend is flat to slightly up, not a step. Decision (delegated authority): no lever pass inside Phase 6; Phase 7 plan 1 starts with a trigger check and, if the last-five `r` median is 8.0 or above at that point, the first cheap lever (batching the `cp1610-vectors` re-parse, about 5 cpu-s, plus fault objects at `-g0` already applied) runs as its first task before new tests are added. `-O0` fault objects and the two-job split remain owner decisions.
+
+## 2026-11-13 Phase 7 start: trigger check and lever (plan 07-01)
+
+Nothing here calls `gh` or `tools/ci-record.sh`; `.planning/ci-runs.tsv` is orchestrator-owned and untouched. Local figures are from the laptop (18 cores, Apple clang 21, other work running, 1-minute load 10 to 25); container figures are Ubuntu 24.04 with cmake 3.28.3, emulated amd64 on an arm64 host; neither is a hosted figure. Counts at plan start and end: `steps=36/36 controls=344/344 faults=222/222 tests-expected=4432 tests-executed=4430 tests-skipped=2 tests-missing=0`.
+
+### Trigger check (D-34)
+
+The last five successful hosted rows of `.planning/ci-runs.tsv`, recomputed from the file (the same five as at planning time, no row was appended since):
+
+| Run | `cpu_s` | `build_s` | `r = cpu_s / build_s` |
+|-----|---------|-----------|------------------------|
+| 43352432394 | 315 | 41 | 7.68 |
+| 43359195974 | 433 | 48 | 9.02 |
+| 43365038335 | 271 | 36 | 7.53 |
+| 43369159094 | 393 | 49 | 8.02 |
+| 43373151931 | 335 | 41 | 8.17 |
+
+Median `r` **8.02** against the budget 7.8 and the trigger 8.3 (D-34): at 8.0 or above, so the first cheap lever of the queue (batching the `cp1610-vectors` JSON re-parse) ran before any Phase 7 test was added. No test, control, fault, scenario or fixture is added by this plan.
+
+### What the lever turned out to be
+
+The queued description (every `string(JSON ... GET "${doc}" ...)`, `json_type` and `vget` call parses the whole file again) was half right. `vectors.cmake` already read the members from the vector object and not from the file: the file text was parsed once per vector (the element fetch) and the vector object, about 2.5 KB of text, once per member lookup. On this machine one `string(JSON)` call costs about 120 thousand instructions of fixed command cost plus about 55 instructions per byte of the text it parses: about 260 thousand for a lookup in a vector object, about 13 million for the element fetch from the 237 KB `branch.json`. A profile of the checker found about 180 `string(JSON)` calls per vector (17.6 thousand calls for the 98 vectors of `branch.json`), 41.5 G instructions retired for the 412 vectors (about 100 million per vector), and `vector-blind.cmake` doing the same kind of work plus a second element fetch per vector (18.9 G). Changes, all in `tools/check/vectors.cmake` and `tools/review/vector-blind.cmake`:
+
+1. `vshape` takes the member list of the object it checks: a spec key that is not a member is MISSING without a lookup, a member is typed with one lookup, and the types are handed back to the caller (`VT_<key>`). The spec lists are split once (`vspecs`) instead of once per object.
+2. The vector loop fetches each member value it uses once (`VS_<key>`: the string, the number text, or the JSON text of an array or object). The later checks read those variables, or look into the JSON text of the member (`sources`, `program`, `covers`, `ebci`, `init.r`, `init.status`, `expect.r`, `expect.status`, `expect.cycles`, a few hundred bytes) and not into the whole vector object again. The `covers` walk collects the coverage tags in the same pass, and `decle_leaves` is computed once per decle value.
+3. `vector_elements` splits the printed `vectors` array into its element texts after one parse of the file, so the element fetch is no longer one file-sized lookup per vector. CMake's writer prints each element of an array of objects between a line `  {` and a line `  }` at indent 2 and escapes newlines in strings, so the text `newline, 2 spaces, }, comma, newline, 2 spaces, {` occurs only between two elements. A file that does not print that way (different count, head or tail) is refused and takes the old per-element lookup, and a split element that does not parse is looked up on its own. The helper is in both files because `vector-blind.cmake` runs as a separate script and `lib.cmake` is shared by all checkers.
+4. `vector-blind.cmake` fetches each vector object once instead of twice and skips the lookups of `bus` and of the stimulus members a vector does not have.
+
+Findings keep their tokens, detail text, emission order and `${CAP}` listing; the stats are unchanged; nothing was weakened to gain time (T-07-01).
+
+### Measurement (before and after)
+
+| Measure | Before | After |
+|---------|--------|-------|
+| `vectors.cmake`, instructions retired (laptop, `time -l`) | 41.5 G | 22.3 G (-46 percent); 26.4 G after the first task alone |
+| `vector-blind.cmake`, instructions retired | 18.9 G | 9.5 G (-50 percent) |
+| `string(JSON)` calls per vector (profile, `branch.json`) | about 180 | about 115, the file-sized one gone |
+| `cp1610-vectors` step in isolation, user plus sys cpu, three alternated runs each | 3.37, 2.98, 2.91 (median 2.98 s) | 1.82, 1.57, 1.67 (median 1.67 s, -44 percent) |
+| container, cmake 3.28.3, `vectors.cmake` user plus sys, three alternated runs | 5.85, 5.80, 6.08 (median 5.85 s) | 3.43, 3.18, 2.74 (median 3.18 s, -46 percent) |
+| container, `vector-blind.cmake`, the same runs | 2.25, 2.60, 2.79 (median 2.60 s) | 1.52, 1.28, 1.14 (median 1.28 s, -51 percent) |
+| `step-time cp1610-vectors` in the gate log (wall, laptop) | 3 s | 1 s |
+
+The base runs use a copy of the original files kept outside the tree and the same `ROOT`, `FILELIST` and `CHECK_DIR` invocation as the step; the first task alone gave 4.20, 4.63, 4.59 against 3.51, 3.36, 3.50 cpu-s on a more loaded laptop. The split engages on cmake 3.28.3 (the container figures above show the same saving), so the hosted toolchain gets the fast path.
+
+### Evidence unchanged
+
+- The `gate:` summary line of `sh tools/gate.sh` is byte-identical before and after (the same md5, 3a7b713fdf61db70b1fae10ceb49dabf, for the base run, after the first task and after the second task; counts `steps=36/36 controls=344/344 faults=222/222 tests-expected=4432 tests-executed=4430 tests-skipped=2 tests-missing=0`), and the sorted `control` lines of the log are identical, so every control of `vectors.ids` and `vectors-review.ids` still ends with its EXPECT line. The container summary line differs from the previous container log only in `ci-runs` (52 to 53) and in the tracked-file counts (`tracked`, `hygiene-files`, `files`: 2105 to 2127), the tree growth since that log.
+- The blind copies written by `vector-blind.cmake` are byte-identical (`cmp` per file, 12 files, and the stdout), on the laptop and under cmake 3.28.3.
+- A differential run of 700 mutated copies of one vector file each (member deletions, type changes, odd strings, wrong element and array shapes, status and register shapes) gave identical output, exit status and blind files from the old and the new checkers.
+
+### Hosted effect and the phase budget
+
+The queued estimate was about 5 hosted cpu-s. The measurement does not support that: the step lost 1.3 cpu-s on the laptop (2.98 to 1.67) and the two checkers lost about 4.0 emulated container cpu-s (8.5 to 4.5), so the expected hosted saving is about 2 to 3 cpu-s. The planning headroom of about 11.5 hosted cpu-s before the lever therefore becomes about 14 (not 16) against the phase estimate of 10 to 19 hosted cpu-s in `07-RESEARCH.md`: the high end is still over the line, so the checkpoints below stay the control. The hosted arbiter is the orchestrator's next recorded row; this plan reads none. What is left in the checker is about 1 G of setup, about 18 G in the vector loop (about 115 lookups, most of them in small texts, plus command overhead) and about 3 G in the coverage section; no second pass over it is queued.
+
+### Checkpoints and stop rule for Phase 7
+
+- C-B after plan 07-08, C-C after plan 07-09, and the close in plan 07-12: each is a section of this file written by the executor of that plan from the gate lines of its final tree and `.planning/ci-runs.tsv` as the orchestrator recorded it.
+- Stop rule: if the last-five median `r` is above 8.3 at a checkpoint, the orchestrator creates a lever plan and no further test case is added until it lands. Executors never create it and never call `gh` or `tools/ci-record.sh`.
+
+### Pre-committed lever order for Phase 7 (applied only when the rule fires)
+
+1. (done here) Batch the `cp1610-vectors` JSON re-parse.
+2. Run the mutant inventory on the release preset only.
+3. Fold `demo-lamp-tone-swap` or `demo-lamp-tone-shift` into repeat variants of one mutant.
+
+Owner-decision levers (fault objects at `-O0`, one runtime-selected object per owner translation unit, a two-job split) are out of scope for an executor. Not levers: dropping a mutant class, the judge or an oracle, caching (D12 bans caches).
+
+phase7-start: lever-applied
+
+## 2026-11-13 Phase 7 checkpoint C-B (plan 07-08)
+
+Nothing here calls `gh` or `tools/ci-record.sh`; `.planning/ci-runs.tsv` is orchestrator-owned and untouched (54 lines, the newest row is still run 43373151931, the head of the Phase 6 review fixes: no hosted row exists for any Phase 7 commit). Local figures are laptop figures (18 cores, Apple clang 21, other work running, 1-minute load 8 to 20 during the timings below); none is a hosted figure. Counts at the end of this plan: `steps=36/36 controls=354/354 faults=222/222 goldens=15 tests-expected=4596 tests-executed=4594 tests-skipped=2 tests-missing=0` (plan 07-07 ended at `tests-expected=4570`, plan 07-06 at `4546`).
+
+### Cases added by the heaviest wave (W4)
+
+| Plan | Cases per preset | What |
+|------|------------------|------|
+| 07-07 | 12 | 4 scenarios, 2 pair judgements, 3 repeatability, 3 judge self-controls |
+| 07-08 | 13 | 12 Lamp Tone mutants and 1 negative row (`runner-process.mutant.SCN-*`) |
+
+w4-cases: 25 per preset (S-4 ceiling 19; +6 = second re-arm edge and five locked runtime mutant classes, D-25, A-03, A-14, A-17)
+
+`tests-expected` moved 4546 to 4570 (07-07, 12 cases x 2 presets) to 4596 (07-08, 13 x 2): +50 for the wave. This plan adds 0 controls and 0 faults (the mutants are suite cases and registry lines). The phase's pure controls so far: 10 of the planned 13 (A-11: 07-02 four, 07-03 two, 07-04 two, 07-05 one, 07-06 one; 07-10 two and 07-12 one are to come), `controls` 344 to 354; faults stay 222. No mutant class was dropped and no check was weakened to save time.
+
+### Local suite time of `tests/runner-process-tap.sh`
+
+| Measure | dev | release |
+|---------|-----|---------|
+| before 07-07 (tree of `a34dda1`, median of three, from the 07-07 SUMMARY) | 12.03 s | 6.24 s |
+| after 07-07 (tree of `d533c1f`, median of three, from the 07-07 SUMMARY) | 14.42 s | 6.78 s |
+| start of this plan (tree of `e6565b4`, 84 ok cases, three runs 12.29, 13.54, 14.45 / 6.78, 6.83, 6.87, load about 20) | 13.54 s | 6.83 s |
+| after this plan (tree of `647365a`, 97 ok cases, three runs 16.59, 17.38, 17.85 / 7.49, 7.47, 7.61, load about 12) | 17.38 s | 7.49 s |
+| alternated pairs in one session (the script of `e6565b4` against the script of this plan on the same tree, three each, medians: dev 15.33 to 17.84, release 6.85 to 7.67) | +2.5 s | +0.8 s |
+
+Reading: the 13 new cases cost about 0.19 s each on dev and 0.06 s each on release (alternated pairs), about three times more on the ASan and UBSan preset. Over the wave the suite grew from 12.03 s to 17.38 s on dev (+5.4 s, both plans; the machine load differed between the sessions, so the alternated pairs above are the cleaner delta) and from 6.24 s to 7.49 s on release (+1.3 s). A mutant case is one `ivs_pack` call (the `--dump-words` read is once per inventory, not per row) and one `ivs-run` of a full scenario: 0.06 s on dev for the pass scenario, plus the per-run harness (watchdog arming, report judgement).
+
+### Hosted rows and the rule (D-34)
+
+The last five successful hosted rows of `.planning/ci-runs.tsv`, recomputed from the file with awk (the same five as at the Phase 7 start entry; no row was appended since):
+
+| Run | `cpu_s` | `build_s` | `r = cpu_s / build_s` |
+|-----|---------|-----------|------------------------|
+| 43352432394 | 315 | 41 | 7.68 |
+| 43359195974 | 433 | 48 | 9.02 |
+| 43365038335 | 271 | 36 | 7.53 |
+| 43369159094 | 393 | 49 | 8.02 |
+| 43373151931 | 335 | 41 | 8.17 |
+
+Median `r` **8.02** (8.0204), budget 7.8, revisit line 8.3: the median does not exceed 8.3. None of the five rows includes a Phase 7 commit (the newest, run 43373151931, is the Phase 6 review-fix head; no plan 07-07 or 07-08 commit has been pushed, `git merge-base --is-ancestor` of the first 07-08 commit against each of the five shas is false), so the projection is the median plus the whole wave: 8.02 + 25 case-pairs x 0.7 hosted cpu-s (the S-4 upper unit cost) / 41 (`build_s` of the newest row, run 43373151931) = 8.02 + 17.5 / 41 = 8.02 + 0.43 = **8.45**. The projection exceeds 8.3, so by the rule of this checkpoint the answer is `lever-required`; it is not softened.
+
+### Decision
+
+Lever (2) of the pre-committed order of the Phase 7 start entry is the planned fallback: run the mutant inventories on the release preset only. It is created by the orchestrator as a lever plan (an executor never creates it). No further test case is added by any plan until that lever plan lands. [inference] The cases to move are the 29 `runner-process.mutant.*` cases per preset (16 of earlier phases and the 13 of this plan); this plan's measurement suggests the dev half is about three quarters of a mutant case's cost, so the lever would remove only part of the projected 17.5 hosted cpu-s of the wave, and the lever plan has to measure its effect, not assume it: the hosted rows after the push are the arbiter. Lever (3) (fold `demo-lamp-tone-swap` or `-shift` into repeat variants of one mutant) stays queued behind it. Not levers: dropping a mutant class, the judge or an oracle, caching.
+
+checkpointB-07: lever-required
+
+### Checkpoint C-B resolution (orchestrator, hosted row 43528527276)
+
+The recorded `lever-required` came from the branch of the rule that applies when no hosted row contains plan 07-08's commits (projection 8.45). The orchestrator pushed the phase branch and opened a draft pull request, so the other branch of the same rule now applies. Run 43528527276 (head 785dce0, the head of plan 07-08, so it contains plans 07-01 to 07-08 including the lever of 07-01 and all 25 W4 case pairs): gate 91 s, cpu 286, build 37 s, test 54 s, `r = 286 / 37 = 7.73`. Last five hosted rows (43359195974, 43365038335, 43369159094, 43373151931, 43528527276): `r` 9.02, 7.53, 8.02, 8.17, 7.73, median **8.02**, which does not exceed 8.3; the median is the projection when a row already includes the plan, so the answer by the rule is no lever. Raw: gate 91 s and cpu 286 are under the re-baselined budgets (90 s median / 300 cpu) apart from one second. Reading: the measured hosted cost of the 25 case pairs is far below the 17.5 cpu-s of the S-4 upper unit cost; it is one row, so the trend is not settled. Decision (delegated authority): lever (2) is not run now and stays queued; plan 07-09 (checkpoint C-C) re-reads the last five and runs the lever before any further case if the median exceeds 8.3. The `checkpointB-07: lever-required` line above is left as the executor wrote it, as the record of the rule's first answer.
+
+## 2026-11-13 Phase 7 checkpoint C-C (plan 07-09)
+
+Nothing here calls `gh` or `tools/ci-record.sh`; `.planning/ci-runs.tsv` is orchestrator-owned and untouched (55 lines; the newest row is run 43528527276, head 785dce0, the head of plan 07-08). Local figures are laptop figures (18 cores, Apple clang 21, other work running, 1-minute load 7 to 10 during the timings below); container figures are Ubuntu 24.04 with cmake 3.28.3 and gcc 13.3.0, emulated amd64 on an arm64 host; neither is a hosted figure. Counts at the end of this plan: `steps=36/36 controls=354/354 faults=222/222 goldens=15 pkg-selftest=17/17 tests-expected=4596 tests-executed=4594 tests-skipped=2 tests-missing=0`.
+
+### What this plan added to the gate
+
+One more replay in the installed consumer (the original program run through the installed headers: three machine runs of 806,568 ticks per consumer start, 13 frames each) and two in-step self-tests of the `pkg-install` step (each a `grep` and an `awk` over the consumer output). No process case, control, fault or test id: `tests-expected` stays 4596, `controls` 354, `faults` 222. The consumer source grew from 1,074 to 1,767 lines and its output from 76 to 135 lines; it is compiled once per gate run with the strict flags.
+
+### Local time of the `pkg-install` step
+
+The step in isolation (`ROOT` and `CHECK_DIR` set, the release tree built), three runs on the tree before this plan and six on the tree after it (real, then user plus sys cpu-s):
+
+| Measure | Before (tree of 290f057) | After (tree of 5ee7d13) |
+|---------|--------------------------|--------------------------|
+| real s | 2.40, 2.41, 2.23 (median 2.40) | 2.33, 2.24, 2.21 and, later at a higher load, 2.55, 2.53, 2.48 (median 2.41) |
+| user plus sys cpu-s | 2.40, 2.40, 2.28 (median 2.40) | 2.41, 2.33, 2.30 and 2.60, 2.61, 2.54 (median 2.50) |
+| `step-time pkg-install` in the local gate log | not kept | 2 s (wall, whole seconds) |
+| container `step-time pkg-install` (wall) | not recorded (the container log of plan 07-08 was overwritten by the first container run of this plan) | 9 s after the tracer task, 11 s after the second task, 14 s on the final tree (two local gates ran at the same time) |
+
+Reading: the step is dominated by the install, the relocation, the consumer's configure and build and the 17 self-tests (about 2.3 s); the replay and its 59 new output lines add a few hundredths of a second of machine time. The difference between the sessions (the second group of after runs at load 7.6 against 6.9) is as large as the whole difference between the trees, so the honest bound is a rise of at most 0.33 cpu-s (largest after run 2.61 against smallest before run 2.28), probably under 0.1. The container wall figures include process start and package unpacking under emulation and move by seconds between runs.
+
+### Hosted rows and the rule (D-34)
+
+The last five successful hosted rows of `.planning/ci-runs.tsv`, recomputed from the file with awk:
+
+| Run | `cpu_s` | `build_s` | `r = cpu_s / build_s` |
+|-----|---------|-----------|------------------------|
+| 43359195974 | 433 | 48 | 9.02 |
+| 43365038335 | 271 | 36 | 7.53 |
+| 43369159094 | 393 | 49 | 8.02 |
+| 43373151931 | 335 | 41 | 8.17 |
+| 43528527276 | 286 | 37 | 7.73 |
+
+Median `r` **8.02** (8.0204), budget 7.8, revisit line 8.3. The rule is that of C-B: `lever-required` when the last-five median exceeds 8.3, or when the projection exceeds 8.3; the projection is that median if at least one of the five rows already includes this plan's commits, else that median plus this plan's measured hosted addition divided by the `build_s` of the newest row. The newest row, 43528527276, includes plans 07-01 to 07-08 (its head 785dce0 is an ancestor of this plan's commits; none of this plan's commits is an ancestor of it, checked with `git merge-base --is-ancestor`), so the second branch applies. This plan's addition, at the bound above: at most 0.33 local cpu-s, times 1.675 (the hosted `cpu_s` 286 of the newest row over the 170.8 local gate cpu-s of this plan's final tree, `gate-cpu user=92.17 sys=78.59`) is at most 0.55 hosted cpu-s, divided by 37 is at most 0.015. Projection **8.04** (8.0353), under 8.3. The median does not exceed 8.3 and the projection does not exceed 8.3, so the answer is no lever.
+
+Forward note (information, not an input of the line): the SCN-02 plans still to come add process cases that do not exist yet, 1 in plan 07-10 (the template scenario) and 13 in plan 07-11 (3 refusals, 9 helper cases, 1 judge self-control), 14 case-pairs in all. At the S-4 upper unit cost (0.7 hosted cpu-s each) they would add 14 x 0.7 / 37 = 0.26 and bring the projection to about 8.30, on the line. That unit cost is a bound and not an expectation: the wave it was last applied to, the 25 case-pairs of plans 07-07 and 07-08 (17.5 hosted cpu-s at that cost, +0.43 in `r`), is in the row 43528527276 and that row shows `r` 7.73, below the previous four; one row does not settle the trend (the five rows spread from 7.53 to 9.02). Plan 07-12 measures the SCN-02 share and re-reads the last five after the push of plans 07-10 and 07-11; the stop rule stands (a median above 8.3 means a lever plan from the orchestrator and no further test case until it lands).
+
+### Decision
+
+No lever now. Lever (2) of the pre-committed order (mutant inventories on the release preset only) stays queued behind the stop rule, with lever (3) (fold `demo-lamp-tone-swap` or `-shift` into repeat variants of one mutant) behind it; nothing was dropped and no check was weakened to save time.
+
+checkpointC-07: no-lever
+
+## 2026-11-13 Phase 7 close-out (plan 07-12): D-34 evaluation and the close line
+
+Nothing here calls `gh` or `tools/ci-record.sh`; `.planning/ci-runs.tsv` is orchestrator-owned and untouched by this plan (56 lines: the header, 53 successful rows and 2 failures; the newest row is run 43540936641, head 93c8040, the head of plan 07-11). Local figures are laptop figures (18 cores, Apple clang 21, other work running, 1-minute load 23 to 58 during the runs below, so the wall times are stretched); container figures are Ubuntu 24.04 with cmake 3.28.3 and gcc 13.3.0, emulated amd64 on an arm64 host; neither is a hosted figure.
+
+### Counts
+
+- Phase 6 end and Phase 7 start: `steps=36/36 controls=344/344 faults=222/222 tests-expected=4432 tests-executed=4430 tests-skipped=2 tests-missing=0`, `claims=22 provisional=21`, important-gate registry `gates=71 lines=241`.
+- Phase 7 end: `steps=36/36 controls=357/357 faults=222/222 tests-expected=4624 tests-executed=4620 tests-skipped=4 tests-missing=0`, `claims=24 provisional=23`, `gates=77 lines=264`, `goldens=15`, `manifests=10`, `listings=6 listing-words=520`, `consumer-lines=135 pkg-selftest=17/17`.
+- What grew: 13 pure controls (344 to 357; A-11: 07-02 four, 07-03 two, 07-04 two, 07-05 one, 07-06 one, 07-10 two, 07-12 one), no fault, no step and no job; 96 test ids per preset (192 over both presets): a new suite `asm` (47), `runner-process` 72 to 111 (+39: 25 of the W4 slice, 1 template scenario, 13 SCN-02 cases), `runner` +4, `run` +3, `pack` +3; the fourth installed-consumer replay (`consumer-lines` 76 to 135, `pkg-selftest` 15 to 17); two skipped ids per preset (`tests-skipped` 2 to 4). The one change of this plan to the gate itself is the `text` step: `plays` and `playable` joined the claim words, and only the files that contain the tier identifier pass through one extra `sed`. Measured in isolation, three alternating pairs of the step on the final tree: about 1.04 local cpu-s before and 1.10 after, so about +0.06 local cpu-s (+0.10 hosted at the factor 1.675 of checkpoint C-C); a first variant that ran `sed` on every file cost about +0.2 and was replaced for that reason.
+
+### Local measurement (`sh tools/gate.sh` and `dash tools/gate.sh`; container once)
+
+| Run | `gate-time total=` | `gate-cpu` user + sys | Largest `step-time` (seconds) |
+|-----|--------------------|-----------------------|-------------------------------|
+| sh, tree of task 1 (claims, tripwire, control) | 84 | 123.8 + 106.2 = 230.0 | controls 29, c-tests 21, c-faults 19, pkg-install 4 |
+| dash, same tree | 111 | 171.2 + 147.4 = 318.6 | controls 37, c-tests 29, c-faults 27, c-purity 9 |
+| sh, final shell of task 1 (container gate running at the same time) | 130 | 156.6 + 138.7 = 295.3 | controls 40, c-tests 34, c-faults 25, c-purity 8 |
+| sh, tree of task 2 (public text and planning records) | 176 | 180.0 + 176.8 = 356.8 | controls 56, c-faults 48, c-tests 41, hygiene 13 |
+| dash, same tree | 188 | 181.5 + 178.6 = 360.1 | controls 56, c-faults 60, c-tests 44, c-purity 14 |
+| container (gcc 13.3.0, tree of task 1) | 429 | emulated, not comparable | controls 201, c-tests 71, c-faults 62, c-purity 40, c-build 117 |
+
+The quietest run (84 s, 230 cpu-s) is the honest local figure for a tree of this size and is of the size of the Phase 6 close (118 to 178 s, 327 to 367 cpu-s) or below it; the later runs show the load of the machine (load average 23 to 58), not the plan, since task 2 changed no code and no check. The final-tree runs of task 3 are in the SUMMARY of plan 07-12.
+
+### Hosted rows and the rule (D-34)
+
+The last five successful hosted rows of `.planning/ci-runs.tsv`, recomputed from the file with awk:
+
+| Run | head | `gate_s` | `cpu_s` | `build_s` | `r = cpu_s / build_s` |
+|-----|------|----------|---------|-----------|------------------------|
+| 43365038335 | 4b35708 | 87 | 271 | 36 | 7.53 |
+| 43369159094 | 5186399 | 125 | 393 | 49 | 8.02 |
+| 43373151931 | db60a0b (Phase 6 review-fix head) | 107 | 335 | 41 | 8.17 |
+| 43528527276 | 785dce0 (head of plan 07-08) | 91 | 286 | 37 | 7.73 |
+| 43540936641 | 93c8040 (head of plan 07-11) | 146 | 467 | 60 | 7.78 |
+
+- Median `r` **7.78** (7.7833) against the budget 7.8 and the revisit line 8.3 (D-34). The median `gate_s` is 107 (trigger above 110) and the median `cpu_s` is 335 (trigger above 330).
+- Two raw triggers fire on the newest row: its `gate_s` of 146 is above the any-run bound of 130 s, and the cpu median of 335 is above 330. The rule of the Phase 6 start entry reads them with `r`: a raw trigger that fires while `r` is inside the budget is a runner-speed event, and a raw trigger together with `r` above 8.3 is code growth. Here `r` is 7.78, so it is a runner-speed event: run 43540936641 has the largest `build_s` of the 53 successful rows (60 s; the next largest is 50, and the row before it is 37), every time of the row is stretched alike (`build_s` 60 against 37, `test_s` 86 against 54, `gate_s` 146 against 91, `cpu_s` 467 against 286: the ratios are 1.62, 1.59, 1.60 and 1.63) and `r` moved from 7.73 to 7.78. It is one row; the next rows are the arbiter.
+- Reading of the forward note of checkpoint C-C: it bounded the SCN-02 plans at about +0.26 in `r` (14 case pairs at the S-4 upper unit cost of 0.7 hosted cpu-s). Row 43540936641 contains plans 07-09 to 07-11 (the fourth replay, the template scenario and the 13 helper and refusal cases, 14 case pairs in all) and `r` rose by 0.05 against the row of plan 07-08, about 3 hosted cpu-s in all; the unit cost bound was high by an order of magnitude. This is one row against one row, with a runner that is 1.6 times slower, so it is not a trend.
+- Projection for this plan: the row contains plans 07-01 to 07-11, so the projection is the median plus this plan's addition. This plan adds one pure control (about 0.07 local cpu-s at the unit cost of the Phase 6 start entry) and the `text` change above (about 0.06), 0.13 local cpu-s, times 1.675 is about 0.22 hosted cpu-s, divided by 60 is 0.004: projection **7.79**, under 8.3.
+
+### Phase 7 summary of the cost story
+
+- Checkpoint lines, as written by their plans: `checkpointB-07: lever-required` (plan 07-08, from the branch of the rule that applies when no hosted row contains the plan; resolved to no lever by the orchestrator on row 43528527276, `r` 7.73, median 8.02) and `checkpointC-07: no-lever` (plan 07-09, projection 8.04); the start entry of plan 07-01 ended `phase7-start: lever-applied` (the `cp1610-vectors` re-parse batch: about 2 to 3 hosted cpu-s saved, measured 1.3 local cpu-s on the step and about 4 emulated container cpu-s on the two checkers).
+- The last-five median `r` read 8.02 at the Phase 7 start and C-B and C-C, and reads 7.78 now with every plan of the phase in the newest row; the Phase 6 close read 7.64. No plan was blocked by the stop rule, no lever plan was created, nothing was dropped and no check was weakened to save time. The wave estimates of `07-RESEARCH.md` (10 to 19 hosted cpu-s) were an upper bound: the two rows recorded after the waves (7.73 after plan 07-08, 7.78 after plan 07-11) show no step in `r` against the 7.5 to 8.2 of the rows before, with the one-row caveat.
+- The margin is thin at the budget and wide at the trigger: `r` 7.78 against 7.8 is 0.3 percent, against 8.3 it is 6.7 percent. Pre-committed lever order if the rule fires after this phase (unchanged): (2) run the mutant inventories on the release preset only, (3) fold `demo-lamp-tone-swap` or `-shift` into repeat variants of one mutant, then the owner-decision levers (fault objects at `-O0`, one runtime-selected object per owner translation unit, a two-job split under D12). Not levers: dropping a mutant class, the judge or an oracle, caching.
+- Open for Phase 8 (not a lever): Phase 8 adds about five single-feature fixtures built with `ivs_asm` (MOBs, border, delay registers, collision), snapshots and benchmarks; the first hosted rows after this push are the arbiter, and a row at a normal runner speed is needed to tell whether 7.78 is the level or a high reading.
+
+phase7-close: no-lever

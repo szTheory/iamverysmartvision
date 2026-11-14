@@ -8,6 +8,7 @@ claims-duplicate-id
 claims-empty
 claims-inventory-empty
 text-untagged-claim-word
+text-untagged-playable
 text-missing-claim-ref
 text-undocumented-tier
 text-no-files

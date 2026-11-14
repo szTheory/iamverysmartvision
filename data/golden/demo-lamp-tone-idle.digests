@@ -1,0 +1,89 @@
+# tier: deterministic-repeatability
+# oracle: self-recorded
+# scenario: demo-lamp-tone-idle
+# profile: intv-2609-ntsc-family-p1
+# domains: cpu=observed mem=observed images=observed instance=observed video=observed audio=observed input=none psglog=observed
+# Written by ivs-run --update-golden, never by the gate; a change is a reviewed diff
+# (docs/runner.md). The body is the run's report filtered to the golden key list.
+scenario.id demo-lamp-tone-idle
+scenario.profile intv-2609-ntsc-family-p1
+outcome pass
+outcome.detail -
+exit.code 0
+slot.exec.loaded 1
+slot.exec.length_bytes 8192
+slot.exec.sha256 a2cea795516799811a3ed1df9020d8ed80b90a5a2322d4e5feac38f350538660
+slot.exec.status ok
+slot.exec.reason 0
+slot.grom.loaded 1
+slot.grom.length_bytes 2048
+slot.grom.sha256 e5a00aa9991ac8a5ee3109844d84a55583bd20572ad3ffcd42792f3c36b183ad
+slot.grom.status ok
+slot.grom.reason 0
+slot.cart.loaded 1
+slot.cart.length_bytes 460
+slot.cart.sha256 ac0ad987da1330101f423b294b6c24ea14de36f43f6b2dae82cd91d32b8e0ba8
+slot.cart.status ok
+slot.cart.reason 0
+step.1.target_ticks 806568
+step.1.now_ticks 806568
+step.1.overshoot_ticks 0
+step.1.stop_reason target
+step.1.expected_stop target
+step.1.assert.1 pass halted == no got no
+step.1.assert.2 pass mem 02F0 == 03C5 got 03C5
+step.1.assert.3 pass mem 02F1 == 000D got 000D
+step.1.assert.4 pass mem 02F2 == 00FF got 00FF
+step.1.assert.5 pass mem 02F3 == 0000 got 0000
+step.1.assert.6 pass mem 02F4 == 00FF got 00FF
+step.1.assert.7 pass mem 02F5 == 0000 got 0000
+step.1.assert.8 pass mem 02F6 == 0000 got 0000
+step.1.assert.9 pass mem 02F7 == 0000 got 0000
+step.1.assert.10 pass frame 0 displayed == no got no
+step.1.assert.11 pass frame 1 displayed == yes got yes
+step.1.assert.12 pass frame 12 displayed == yes got yes
+step.1.assert.13 pass frame 1 hash == 269b8753dd3b8e011b3fc674e071664433ae997b5f05a8227f8569eb3a1e8e70 got 269b8753dd3b8e011b3fc674e071664433ae997b5f05a8227f8569eb3a1e8e70
+step.1.assert.14 pass frame 6 hash == 269b8753dd3b8e011b3fc674e071664433ae997b5f05a8227f8569eb3a1e8e70 got 269b8753dd3b8e011b3fc674e071664433ae997b5f05a8227f8569eb3a1e8e70
+step.1.assert.15 pass frame 12 hash == 269b8753dd3b8e011b3fc674e071664433ae997b5f05a8227f8569eb3a1e8e70 got 269b8753dd3b8e011b3fc674e071664433ae997b5f05a8227f8569eb3a1e8e70
+step.1.assert.16 pass frame 6 pixel 51 35 == 1 got 1
+step.1.assert.17 pass frame 6 pixel 107 59 == 1 got 1
+step.1.assert.18 pass frame 6 pixel 50 45 == 0 got 0
+step.1.assert.19 pass video count == 13 got 13
+step.1.assert.20 pass psglog count == 6 got 6
+step.1.assert.21 pass psglog 0 addr=8 value=003C source=cpu-write got tick=25900 addr=8 value=003C source=cpu-write
+step.1.assert.22 pass psglog 1 addr=4 value=0000 source=cpu-write got tick=25968 addr=4 value=0000 source=cpu-write
+step.1.assert.23 pass psglog 2 addr=5 value=0000 source=cpu-write got tick=26012 addr=5 value=0000 source=cpu-write
+step.1.assert.24 pass psglog 3 addr=11 value=0000 source=cpu-write got tick=26056 addr=11 value=0000 source=cpu-write
+step.1.assert.25 pass psglog 4 addr=12 value=0000 source=cpu-write got tick=26100 addr=12 value=0000 source=cpu-write
+step.1.assert.26 pass psglog 5 addr=13 value=0000 source=cpu-write got tick=26144 addr=13 value=0000 source=cpu-write
+step.1.assert.27 pass audio at 100000 A=0 B=0 C=0 got A=0 B=0 C=0
+step.1.assert.28 pass audio at 400000 A=0 B=0 C=0 got A=0 B=0 C=0
+step.1.assert.29 pass audio at 800000 A=0 B=0 C=0 got A=0 B=0 C=0
+cpu.run_state running
+cpu.fault_reason none
+input.events 0
+input.consumed 0
+input.controller.0 00000000
+input.controller.1 00000000
+input.controller.2 00000000
+input.controller.3 00000000
+digest.cpu 6ebf8379729c233b5d46bc295cf4f1a56d1033a32e966e31b60c3b82f6093613
+digest.mem 7924cea7cdbb0a903c217d952419fb5f152f908a52dd60e7be132c16fda4dfbd
+digest.images 09679d87b9851e20d6c32494887429c18be14d9182252de2a881a4633a38ad48
+digest.instance 73c16aa3668abcec6588904a492f0708864356c0d892dbe635e9be4d6413a98e
+digest.composite fed08780f4cfc6fb7e06a149018bf24d72357967a7a791f4f25c18bedf4d4f7b
+digest.video ff984bb105c626f3aa5ad2a82a0e516cf5ad3a301c43b5c745d0096181bc8d6e
+digest.audio 6b11bf70bfb8dee6e576e3e8cc80b1e676af1660e4027f14f91fe452c3c58a95
+digest.psglog 0a56d85c7d6a4520f73cefba74ffbc1bb9c476386a74ac7d229d3fd42f53fb53
+output.video.bytes 198848
+output.audio.bytes 201640
+output.audio.samples 50410
+output.audio.changes 0
+output.psglog.records 6
+output.psglog.bytes 96
+audio.sample_ticks 16
+output.video.frames 13
+video.geometry 159x96
+video.row_lines 2
+video.frame.last_tick 776568
+video.chain.check pass

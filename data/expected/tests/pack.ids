@@ -3,12 +3,15 @@
 # byte. pack.trailer-<id> (plan 04-16): the IVSC trailer of a cart listing equals cmake -E sha256sum
 # of the container minus its last 32 bytes.
 pack.words-boot-stub
+pack.words-boot-stub-2
 pack.words-diag-cpu-1
 pack.trailer-diag-cpu-1
 pack.words-ivs-diag-ctrl-psg-1
 pack.trailer-ivs-diag-ctrl-psg-1
 pack.words-ivs-diag-stic-1
 pack.trailer-ivs-diag-stic-1
+pack.words-ivs-demo-lamp-tone-1
+pack.trailer-ivs-demo-lamp-tone-1
 # pack.judge.patched-word (plan 04-24, D-46): self-control of the words comparison; passes only when
 # the comparison fails on ivs_pack's dump of the first listing with its first word patched.
 pack.judge.patched-word

@@ -79,9 +79,11 @@ static const char main_usage[] =
     "                       a failed run (harness-fail) writes none and keeps an existing file\n"
     "  --audio-raw <file>   also write the dense audio sample bytes (4 per sample: levels A, B, C, 0)\n"
     "                       to a NEW file (an existing path is refused, exit 14, never overwritten);\n"
-    "                       a run that ends harness-fail (exit 14) removes the files it created\n"
+    "                       a run that ends harness-fail (exit 14) removes the files it created;\n"
+    "                       refused for `content <role> user`\n"
     "  --psg-log-out <file>  also write one ASCII line per PSG write-log record, `index tick addr\n"
-    "                       value source` (decimal), to a NEW file (same rule)\n"
+    "                       value source` (decimal), to a NEW file (same rules, including the refusal\n"
+    "                       for `content <role> user`)\n"
     "  --audio-out-max-bytes <n>  bound of each of those files in bytes, 1..1099511627776\n"
     "                       (default 268435456); passing it is a harness failure (exit 14) and the\n"
     "                       files of that run are removed, never a truncation on disk\n"
@@ -89,7 +91,8 @@ static const char main_usage[] =
     "                       (reference conversion v1, converter repeatability only) to a NEW file (same\n"
     "                       rule); the report then ends with refpcm.rate, refpcm.frames and refpcm.sha256\n"
     "                       (the SHA-256 of the file as written); the file is bounded by\n"
-    "                       --audio-out-max-bytes; never a golden, never a claim\n"
+    "                       --audio-out-max-bytes; refused for `content <role> user`; never a golden,\n"
+    "                       never a claim\n"
     "  --wav-rate <n>       the WAV rate, 44100 or 48000 (default 48000); needs --audio-wav\n"
     "  --video-raw <file>   also write the delivered video frame slots (each with its 32-byte header, so the\n"
     "                       stream is self-describing) to a NEW file created mode 0600 (same rules: an existing\n"
@@ -701,6 +704,20 @@ int main(int argc, char **argv)
       if (scn->content[role].kind == IVS_SCN_CONTENT_USER) {
         free(scn);
         return main_fail(frame_ppm_path != NULL ? "--frame-ppm refused: content user" : "--video-raw refused: content user");
+      }
+    }
+  }
+  /* The sound of an owner image is derived material of rights-bearing content too: the PCM bytes, the PSG write log and the WAV of a
+   * scenario that names `content ... user` are refused like the frame outputs above (plan 07-11, D-31, T-07-29; the Phase 5 audio
+   * options had no such refusal). Refused before any storage or file is created, no report; when several of the three options are
+   * given the first of this fixed order is named. */
+  if (audio_raw_path != NULL || psg_log_path != NULL || audio_wav_path != NULL) {
+    for (uint32_t role = 0u; role < IVS_SCN_ROLES; role++) {
+      if (scn->content[role].kind == IVS_SCN_CONTENT_USER) {
+        free(scn);
+        return main_fail(audio_raw_path != NULL   ? "--audio-raw refused: content user"
+                         : psg_log_path != NULL ? "--psg-log-out refused: content user"
+                                                : "--audio-wav refused: content user");
       }
     }
   }

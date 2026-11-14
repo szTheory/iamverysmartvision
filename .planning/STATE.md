@@ -2,19 +2,19 @@
 gsd_state_version: "1.0"
 current_phase: 7
 current_phase_name: First Visible Original Scenario
-current_plan: Not started
-status: planning
-stopped_at: Phase 6 complete, ready to plan Phase 7
-last_updated: "2026-11-13T05:39:58.952Z"
+current_plan: 12
+status: verifying
+stopped_at: Completed 07-12-PLAN.md
+last_updated: "2026-11-14T02:23:41.694Z"
 last_activity: 2026-11-13
-last_activity_desc: Phase 6 complete, transitioned to Phase 7
-state_head: 8001e5a6719e9cc3f14b3d7dcbe2b13f3c45b177
+last_activity_desc: Phase 7 execution started
+state_head: e503f608402144a78d9bf1a1fc27ac6f83d3d070
 progress:
   total_phases: 8
-  completed_phases: 6
-  total_plans: 97
-  completed_plans: 97
-  percent: 75
+  completed_phases: 7
+  total_plans: 109
+  completed_plans: 109
+  percent: 88
 ---
 
 # Project State
@@ -24,17 +24,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-09)
 
 **Core value:** A deterministic, observable machine core whose every compatibility claim is bound to an exactly named profile and independent evidence — never an unqualified "it runs Intellivision games" label.
-**Current focus:** Phase 3 — Memory Map, Content Loading and Refusal
+**Current focus:** Phase 7 — First Visible Original Scenario
 
 ## Current Position
 
-Phase: 7 — First Visible Original Scenario
-Current Plan: Not started
-Total Plans in Phase: 14
-Status: Ready to plan
-Last activity: 2026-11-13 — Phase 6 complete, transitioned to Phase 7
+Phase: 7 (First Visible Original Scenario) — EXECUTING
+Current Plan: 12
+Total Plans in Phase: 12
+Status: Phase complete — ready for verification
+Last activity: 2026-11-13 — Phase 7 execution started
 
-Progress: [████████░░] 75%
+Progress: [█████████░] 88%
 
 ## Performance Metrics
 
@@ -156,6 +156,18 @@ Progress: [████████░░] 75%
 | Phase 6 P12 | about 6 hours | 4 tasks | 40 files |
 | Phase 6 P13 | about 3 hours | 5 tasks | 38 files |
 | Phase 6 P14 | about 3 hours | 4 tasks | 22 files |
+| Phase 7 P01 | 66 min | 3 tasks | 3 files |
+| Phase 7 P02 | about 50 min measured, plus reading | 4 tasks | 47 files |
+| Phase 7 P03 | about 32 min measured, plus reading | 3 tasks | 20 files |
+| Phase 7 P04 | about 45 min measured to the last task commit, plus reading | 4 tasks | 41 files |
+| Phase 7 P05 | about 1 h measured to the last task commit (a machine restart inside), plus reading | 4 tasks | 35 files |
+| Phase 7 P06 | 25min | 3 tasks | 14 files |
+| Phase 7 P07 | 40min | 4 tasks | 14 files |
+| Phase 7 P08 | 40min | 3 tasks | 5 files |
+| Phase 7 P09 | 35min | 3 tasks | 7 files |
+| Phase 7 P10 | 32min | 4 tasks | 34 files |
+| Phase 7 P11 | 38min | 3 tasks | 7 files |
+| Phase 7 P12 | 58min | 3 tasks | 19 files |
 
 ## Accumulated Context
 
@@ -356,6 +368,41 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 06]: Plan 06-10: renderer is row-granular and pure (graphics bytes only via ivs_memsys_stic_gfx_byte_internal); Color Stack interim pinned by video.frame.cs-not-decoded for 06-11
 - [Phase 06]: 06-11: Color Stack pointer carried through ivs_stic_render_cards_row (cs_pos); frame event stores the final pointer of a display-on frame in cs_ptr; Colored Squares implemented, cut line documented not applied
 - [Phase 6]: 06-12: golden keep list moved into the library (ivs_runner_golden_keep); ivsr 3 video row live-gated by the output.video.bytes count rule; operator video outputs mode 0600 with Phase 5 cleanup rules
+- [Phase 7]: 07-01: the queued premise (every member lookup parses the whole file) did not hold; the lever was re-aimed at lookups in the vector object, the file-sized element fetch and per-object command overhead, with identical findings (vectors.cmake -46 percent, vector-blind.cmake -50 percent instructions retired)
+- [Phase 7]: 07-01: phase7-start: lever-applied; last-five hosted r median 8.02; expected hosted saving about 2 to 3 cpu-s (not 5), headroom about 14 hosted cpu-s against the Phase 7 estimate of 10 to 19; checkpoints C-B after 07-08, C-C after 07-09, close in 07-12
+- [Phase 7]: 07-02: oracle first and no C; re-arm form B (main-loop wait) with N = 500 in a band N 183 to 808, mutants N = 100 and 1,150, negative control N = 300; first EIS at frame-0 cycle 6,564 to 6,631 (frame-1 band)
+- [Phase 7]: 07-02: channel C is the constant-level gate (mixer 003C) with the tone amplitude deferred one frame through pending words 02F6/02F7; PSG init is 6 writes; 30 PSG records for pass; exact audio windows at ticks 100000, 140000, 160000, 690000, 740000, 760000
+- [Phase 7]: 07-02: the settling rule is a time distance (events at least 16,832 ticks from a frame end), so frames 3, 5, 7, 9, 11 and 12 are asserted in pass; SCN-01 accepted by important-gates; the blind second read is requested and plan 07-06 waits for its record
+- [Phase 7]: 07-03: ivs_asm is one C17 file of 806 lines (hard stop 1,200) with a shape-driven operand parser, 19 mnemonics and 17 of the 20 refusal tokens; registered like tools/pcm, never installed; the three tokens left (asm-imm-range, asm-sdbd-target, asm-decle-range) arrive with SDBD and DECLE in 07-04
+- [Phase 7]: 07-03: the twins of the boot stub (22 words) and diag-cpu-1 (56 words) reproduce the hand listings word for word and column for column; no hand slip, no escape; the comparison is shown able to fail (asm.judge.mutated-twin); suite asm costs 0.05 s release, 0.63 s dev
+- [Phase 7]: 07-03: file and usage errors carry no token; the source path must be relative; the header must carry a window; forecast asm.c size after 07-04 is about 975 lines, lever is table packing
+- [Phase 7]: 07-04: ivs_asm is complete at 1,137 lines (hard stop 1,200): 78 spellings cover 73 of 74 leaf rows (not MVOI), explicit SDBD, DECLE with row DATA, 20 pinned refusal tokens with one case each; hand slips found by the twins 0, table errors found by the corpus 0
+- [Phase 7]: 07-04: tests/asm/pairs.txt has 304 pairs (301 copied from the Phase 2 vectors with SDBD immediate operand words masked to the low byte, three hand cases), all agree at the first run; the four twins reproduce all 300 hand-typed words; asm-imm-range made reachable by widening the evaluator to 0 to 16777215 with per-use limits
+- [Phase 7]: 07-04: listing.cmake gains the DATA row rule with two controls (350 to 352) and the toy listing holds one DATA word; docs/diagnostics.md documents the decision, grammar, generated listing form, explicit SDBD and twin discipline; discrepancy C106 records the printed branch range against the decle arithmetic (105 to 106)
+- [Phase 7]: 07-04: a gcc-only -Wsign-conversion error in the pairs result line was found by the container gate and fixed in b05a222; suite asm has 45 cases (dev about 3 s, release about 0.4 s on a loaded laptop)
+- [Phase 7]: 07-05: boot stub contract 2 (FX-boot-stub-2) is assembled by ivs_asm from boot-stub-2.asm (ISR EQU 5004, JD ISR at 1004) with the reset path word for word that of contract 1; assumption A6 holds (a JD word decodes as row J, so the stub guards and bootstub-rows.ids are unchanged); contract 1, the three diagnostics, every golden and scenario are byte-identical
+- [Phase 7]: 07-05: the manifests step now checks recipe.sources digests and tool_sha256 (token manifest-recipe-digest-mismatch, table RECIPE_TOOL_SOURCES for ivs_asm and ivs_pack, control manifests-recipe-source-digest, 352 to 353); asm.c and pack.c are frozen by their recorded digests until a plan refreshes the manifests that name them; asm.regen-<id> regenerates every fixtures asm source and requires byte equality
+- [Phase 7]: 07-05: runner content token boot-stub-2 (kind 5, reserved file boot-stub-2.exec, exec only) labelled project boot stub contract 2, not an EXEC from the symbolic kind only; ivsr stays 3; the refusals are runner.parse.edge.* because reasons-named allows one refuse case per reason; one fuzz base names boot-stub-2 so the seeded run reaches kind 5
+- [Phase 7]: 07-05: run.stub2.path, run.stub2.handoff and run.stub2.jd-as-j (control STUB2_JD_AS_J, no core fault) count interrupt entries by single-unit stepping: JD gives one entry and R6 0341, a plain J gives more than one (179 measured once) and R6 above 0341; the prefix run.stub2. joins RUN_STOP_BEFORE_OVERSHOOT and RUN_BUDGET_CARRY, the only faults under which the family fails (faults 222/222)
+- [Phase 7]: Phase 7 plan 06: Lamp Tone written from the derivation after the oracle and blind record; form B with N=500, render reloads the last byte (+19 cycles, A8 bounds hold)
+- [Phase 7]: Phase 7 plan 06: SCN-REARM-LONG uses N=1023 (largest one-word MVII patch); section (g) stays frozen
+- [Phase 7]: Phase 7 plan 06: files-trademark-name rule scoped to fixtures, data/scenarios, data/golden, tools, tests; control writes its toy file directly under fixtures/
+- [Phase 7]: Phase 7 plan 07: Lamp Tone scenarios and .expect files are mechanical copies of the derivation blocks (pass 55, idle 29, shift 55, swap 49 asserts); the pass .expect is the first playable-guest-progress file and passes golden-shape
+- [Phase 7]: Phase 7 plan 07: the pair judge (runner-process.pair.<idA>.<idB>, data/expected/scenario-pairs.ids) relates two reports of one run; idle is decided from input.events 0 in the report; three self-controls reject fake pairs for pair-not-different, input-not-consumed and idle-audible
+- [Phase 7]: Phase 7 plan 07: 12 runner-process cases per preset added (71 to 83 executed); local suite time dev 12.0 to 14.4 s, release 6.2 to 6.8 s; repeat, slices and cwd cover the pass scenario only
+- [Phase 7]: Phase 7 plan 08: 12 Lamp Tone mutants and one negative row judged on the first clause (with the value read pinned where the derivation states it) and, on the isolation rows, on the complete failing set (fails= column); stub-window rows patch boot-stub-2.exec through ivs_pack --exec
+- [Phase 7]: Phase 7 plan 08: SCN-HLT-IDLE patches both words of the two-word idle branch (a halt takes effect after the next instruction; a left-over displacement word ran as SDBD and faulted); SCN-REARM-LONG is N=1023
+- [Phase 7]: Phase 7 plan 08: checkpointB-07: lever-required (projection 8.02 + 25 x 0.7 / 41 = 8.45 above 8.3); lever (2), mutant inventories on the release preset only, for the orchestrator; no further test case until it lands
+- [Phase 7]: Phase 7 plan 09: the installed consumer replays demo-lamp-tone-pass (prefix scn., six image arguments) and agrees with the runner golden on all nine digest lines and the observed set; it checks slot headers, six lamp pictures, seven declared pair diffs, audio windows and 30 write-log records with its own code, and a 14-call STOP_ON_FRAME loop must end with the same streams and digests
+- [Phase 7]: Phase 7 plan 09: the audio window starts are the latest-write bounds of specification A8 (gate before cycle 1,300, deferred amplitude before cycle 250), because the as-built gate write is 14 cycles after the reference figures of derivation section (d); the oracle is untouched
+- [Phase 7]: Phase 7 plan 09: checkpointC-07: no-lever (last-five median 8.02, projection 8.04; pkg-install step cost within load noise, at most +0.33 local cpu-s); forward bound for the SCN-02 cases about 8.30 at the S-4 upper unit cost, re-read at the close
+- [Phase 7]: Phase 7 plan 10: owner-exec-title is the template of the owner-local route (content exec user and grom user, no cartridge, no assert, run-to 600 frames); skip-ok rows take tests-skipped 2 to 4 and tests-inventory prints one -- SKIPPED line per skipped id and preset; SCN-02 stays Pending until the helper of plan 07-11 and the 07-12 close-out
+- [Phase 7]: Phase 7 plan 10: the golden step ties user content to skip-ok in both directions (golden-user-content-not-skip-ok, golden-skip-ok-without-user-content, controls 354 to 356); SCN-02 is an accepted and covered important-gates requirement; FX-owner-exec and FX-owner-grom are uncommitted redistributable-no manifests (manifests 8 to 10, effective-no 1 to 3); no digest and no image enter the tree, D11 not performed
+- [Phase 7]: Phase 7 plan 11: ivs-run refuses --audio-raw, --psg-log-out and --audio-wav for a scenario with user content (exit 14, one line, no file, before any storage), so all six derived outputs are refused; tools/owner-run.sh (80 lines) refuses CI, an in-tree path outside refs/, a wrong size and a missing or malformed lock (exit 2), prints the SKIPPED line with exit 77 when no image exists, and hands the runner a temp copy of the template with expect-sha256 lines from the owner's lock (--record writes the lock and refuses to replace one)
+- [Phase 7]: Phase 7 plan 11: nine runner-process.owner-run.* cases and the self-control runner-process.judge.owner-run-refusal test every helper refusal, the skip and the identity mismatch on a copy of the helper in a scratch root outside the work tree with zero-filled files only (tests-expected 4598 to 4624, gates 77, lines 264); SCN-02 stays Pending for the 07-12 close-out; cost about 3.0 local cpu-s, projection at most 8.25 under the 8.3 trigger, lever (2) still queued; D11 not performed
+- [Phase 7]: Phase 7 plan 12: CL-0023 (playable-guest-progress) and CL-0024 (installed-host-behavior) are provisional by the weakest-field rule, the only allowed wording is 'playable guest progress, for this original program only', and plays and playable are text tripwire claim words (the tier identifier is exempt; control text-untagged-playable, controls 356 to 357)
+- [Phase 7]: Phase 7 plan 12: SCN-01 and SCN-02 close on 07-VERIFICATION.md (V1 to V20 automated, H7-1 to H7-5 handed off); SCN-02 is complete on documented-route terms only, D11 stays open and not performed, no claim and no tier; README and packaging state the source-only release posture; D4 records ivs_asm
+- [Phase 7]: Phase 7 plan 12: phase7-close: no-lever (last-five hosted median r 7.78 against budget 7.8 and trigger 8.3; gate 146 s and cpu median 335 fire on the slowest build_s of the file, a runner-speed event); final gates sh, dash and container PASS with controls=357/357 faults=222/222 claims=24 provisional=23 tests-skipped=4
 
 ### Pending Todos
 
@@ -388,6 +435,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-13T03:26:01.906Z
-Stopped at: Phase 6 complete, ready to plan Phase 7
+Last session: 2026-11-14T02:23:40.946Z
+Stopped at: Completed 07-12-PLAN.md
 Resume file: None

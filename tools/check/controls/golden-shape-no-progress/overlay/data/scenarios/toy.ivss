@@ -1,0 +1,13 @@
+# Toy scenario of control golden-shape-no-progress (plan 07-02, D-24): the tier of its predicate file is playable-guest-progress, so the shape lint applies.
+ivss 1
+id toy
+profile intv-2609-ntsc-family-p1
+content exec boot-stub
+content grom zero-grom
+content cart toy.ivsc
+capture video 0 1
+capture psglog
+input at_cycle=10 c0=KEY_1 c1=0x0
+run-to 100 cpu-cycles stop halted
+assert frame 0 hash == 2cf5430f1dcd07a60f134aac257553f3696208f28d5d2f32c9a68c74b8aa6354
+assert psglog count == 1

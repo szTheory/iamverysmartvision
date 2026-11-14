@@ -1,0 +1,2 @@
+# Toy pair of control video-frame-pair-region-drift (plan 07-02): the rectangle is one column too narrow, so the differing positions of column 158 lie outside it.
+T-1 T-3 152 88 6 8 9

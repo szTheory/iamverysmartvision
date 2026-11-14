@@ -25,3 +25,6 @@ toy-steal fault GOOD_FAULT2 VID-02
 toy-video control toy-control VID-03
 toy-frames fault GOOD_RUNNER VID-04
 toy-inspect mutant toy-selftest VID-06
+# Phase 7 (plan 07-02): one toy line per Phase 7 requirement.
+toy-scene control toy-control SCN-01
+toy-owner control toy-control SCN-02

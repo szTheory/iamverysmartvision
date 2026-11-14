@@ -1,0 +1,2 @@
+# A toy fixtures/ file whose name holds the console brand word in mixed case (D-29, plan 07-06).
+write fixtures/IntelliVision-toy.txt x

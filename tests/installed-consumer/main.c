@@ -1,7 +1,8 @@
 /* SPDX-License-Identifier: MIT */
 /* The independent consumer of the installed ivs package (PKG-01, D-34, D-39, plan 04-23).
  * Built only through find_package(ivs) against the installed, relocated prefix (gate step
- * pkg-install). Usage: consumer <boot-stub.exec> <diag-cpu-1.ivsc> <diag-ctrl-psg-1.ivsc> <diag-stic-1.ivsc>; the
+ * pkg-install). Usage: consumer <boot-stub.exec> <diag-cpu-1.ivsc> <diag-ctrl-psg-1.ivsc> <diag-stic-1.ivsc>
+ * <boot-stub-2.exec> <lamp-tone.ivsc> (six images, argc 7); the
  * images come from the build tree's tools/pack output and the 2048-byte zero GROM is made here, so
  * the program embeds no content bytes. It replays the runner scenario
  * data/scenarios/diag-input-pass.ivss through the public API alone:
@@ -40,6 +41,17 @@
  * printed per observed domain, observed by the count rule (a domain is observed when its delivered byte or event count is nonzero: video
  * and audio here, the write log and the input events not), and they equal data/golden/diag-stic-fgbg-pass.digests. The consumer
  * has no SHA-256 code: the chain recompute stays in the runner.
+ * Plan 07-09 (D-26, D-21, D-22, SCN-01) adds a fourth replay, of data/scenarios/demo-lamp-tone-pass.ivss, whose lines carry the prefix `scn.`:
+ * the original program "Lamp Tone" entered through the project boot stub contract 2 (boot-stub-2.exec as the EXEC role, the zero GROM, the
+ * program as the cartridge), the six input events of the scenario (both controller words each), four run-to steps that never stop at a halt, the
+ * guest words at each stop and one scn.digest.<domain> line per observed domain (all nine here), equal to data/golden/demo-lamp-tone-pass.digests.
+ * Every expected figure the replay checks is a named constant below with the section of docs/video/demo-lamp-tone-1-derivation.md it comes from.
+ * The replay also checks, through code that shares nothing with the runner (D-21, D-22): the 13 delivered slot headers (frame 0 not displayed,
+ * the others displayed), the six lamp pictures read from the index planes, a region diff over the seven declared frame pairs (the positions
+ * that differ inside and outside each declared rectangle: outside 0, inside the declared count), the 4-byte audio samples (silence before the
+ * first gate write, A=0 B=0 C=15 inside the gate windows and at the scenario's six audio ticks), and the 16-byte write-log records (the
+ * register, value and frame of all 30 writes). A second pass on a fresh machine runs frame by frame with IVS_RUN_F_STOP_ON_FRAME, one video
+ * slot of capacity per call, resubmitting the unconsumed suffix of the events, and must end with the same streams and digests (scn.frame-stop).
  * Stdout is pinned by data/expected/pkg-consumer.golden and its digest lines must equal those of
  * data/golden/diag-input-pass.digests. Exit 0 only when every check held; a failed check prints
  * a `FAIL <what>` line. No path, time or address is printed (the output is host independent).
@@ -63,6 +75,10 @@
 #define C_STIC_TARGET 150000u    /* the run-to bound of data/scenarios/diag-stic-fgbg-pass.ivss */
 #define C_STIC_FIRST_TICK 59736u /* E_0: the end of frame 0 */
 #define C_STIC_FRAMES_MAX 4u
+/* Plan 07-09: the fourth replay's counts (docs/video/demo-lamp-tone-1-derivation.md, A9 of section (a)). */
+#define C_SCN_EVENTS 6u /* the six controller events of the scripted run */
+#define C_SCN_STEPS 4u  /* the four run-to bounds */
+#define C_SCN_WORDS 6u  /* the guest words 02F0..02F5 */
 
 typedef struct c_images {
   uint8_t exec[C_EXEC_BYTES + 1u];
@@ -74,6 +90,10 @@ typedef struct c_images {
   size_t cart2_len;
   uint8_t cart3[C_CART_MAX + 1u]; /* the third diagnostic (plan 06-13) */
   size_t cart3_len;
+  uint8_t exec2[C_EXEC_BYTES + 1u]; /* the project boot stub, contract 2 (plan 07-09) */
+  size_t exec2_len;
+  uint8_t cart4[C_CART_MAX + 1u]; /* the original program (plan 07-09) */
+  size_t cart4_len;
 } c_images;
 
 typedef struct c_digests {
@@ -242,6 +262,30 @@ static uint64_t delivered_frames;
 static int keep_video;
 static uint8_t *kept_video;
 static uint64_t kept_video_n;
+/* Plan 07-09: the same for the audio samples and the write-log bytes of the fourth replay. */
+static int keep_audio;
+static uint8_t *kept_audio;
+static uint64_t kept_audio_n;
+static int keep_plog;
+static uint8_t *kept_plog;
+static uint64_t kept_plog_n;
+
+/* Appends add bytes of src to the heap buffer *buf that holds *n bytes. Returns 1 on success (add 0 is a success that touches nothing). */
+static int keep_bytes(uint8_t **buf, uint64_t *n, const uint8_t *src, uint64_t add)
+{
+  uint8_t *grown;
+  if (add == 0u) {
+    return 1;
+  }
+  grown = realloc(*buf, (size_t)(*n + add));
+  if (grown == NULL) {
+    return 0;
+  }
+  memcpy(grown + *n, src, (size_t)add);
+  *buf = grown;
+  *n += add;
+  return 1;
+}
 /* The line prefix of run_step's printed lines: empty for the diag-input-pass replay, `ctrl.` for the
  * diag-ctrl-psg-pass replay (plan 05-11). */
 static const char *run_prefix = "";
@@ -310,6 +354,12 @@ static uint32_t run_step(ivs_machine *m, unsigned step, uint64_t target, const i
       memcpy(kept_video + kept_video_n, video, (size_t)rep.video_bytes_written);
       kept_video_n += rep.video_bytes_written;
     }
+  }
+  if (st == IVS_OK && keep_audio && !keep_bytes(&kept_audio, &kept_audio_n, audio, rep.audio_bytes_written)) {
+    fail("audio keep");
+  }
+  if (st == IVS_OK && keep_plog && !keep_bytes(&kept_plog, &kept_plog_n, plog, rep.psg_log_bytes_written)) {
+    fail("psglog keep");
   }
   free(video);
   free(audio);
@@ -930,6 +980,624 @@ static void stic_session(int print, c_digests *d, int *observed)
   run_prefix = "";
 }
 
+/* ---- the fourth replay (plan 07-09): data/scenarios/demo-lamp-tone-pass.ivss ---- */
+
+/* The expected figures of this replay come from docs/video/demo-lamp-tone-1-derivation.md, written before the program, and from nothing the
+ * runner or the core produced: sections (a) A8 and A9 (frame length, events, steps), (c) (guest words), (d) (write list and audio windows)
+ * and (e) (lamp patterns, frame to literal, declared pairs). The checks below read the delivered bytes through the public run call only
+ * (slot headers, index planes, 4-byte audio samples, 16-byte write-log records) and share no code with the runner; there is no SHA-256 here. */
+#define C_SCN_FRAME_TICKS 59736u /* A8: a frame lasts 59,736 ticks */
+#define C_SCN_FRAMES 13u         /* capture video 0 13: the frames whose end tick is at or below 806,568 (frames 0 to 12) */
+#define C_SCN_CALLS_MAX 32u      /* the frame loop's guard: 13 frame stops and one target stop are expected */
+#define C_SCN_LAMP_X 48u         /* A3: both lamp rows start at x = 48 and hold 8 lamps of 8 positions */
+#define C_SCN_LAMP_ROW0_Y 32u    /* A3: port 0, y = 32 to 39 */
+#define C_SCN_LAMP_ROW1_Y 56u    /* A3: port 1, y = 56 to 63 */
+#define C_SCN_PSG_RECORDS 30u    /* section (d): 6 init records and 24 from frames 2 to 13 */
+#define C_SCN_PSG_RECORD_BYTES 16u
+#define C_SCN_PSG_PRINTED 8u     /* the first records are printed, all 30 are checked */
+
+/* The six controller events of the scripted run (A9): tick, controller 0 word, controller 1 word. */
+static void scn_events(ivs_input_event *ev)
+{
+  memset(ev, 0, C_SCN_EVENTS * sizeof ev[0]);
+  ev[0].at_tick = 100000u;
+  ev[0].controller[0] = IVS_CTRL_KEY_1;
+  ev[1].at_tick = 220000u;
+  ev[1].controller[0] = IVS_CTRL_KEY_1 | IVS_CTRL_KEY_9;
+  ev[2].at_tick = 340000u;
+  ev[2].controller[1] = IVS_CTRL_DISC_E;
+  ev[3].at_tick = 460000u;
+  ev[3].controller[0] = IVS_CTRL_SIDE_TOP;
+  ev[3].controller[1] = IVS_CTRL_DISC_E;
+  ev[4].at_tick = 580000u;
+  ev[5].at_tick = 700000u;
+  ev[5].controller[0] = IVS_CTRL_KEY_1 | IVS_CTRL_KEY_9;
+  ev[5].controller[1] = IVS_CTRL_SIDE_LOWER_LEFT;
+}
+
+/* The four run-to bounds and the guest words 02F0..02F5 at each stop (section (c), "RAM at the four stops of pass": the init marker, the frame
+ * counter, then per port the last byte and the change counter). */
+typedef struct c_scn_stop {
+  uint64_t target;
+  uint16_t w[C_SCN_WORDS];
+} c_scn_stop;
+static const c_scn_stop c_scn_stops[C_SCN_STEPS] = {{200000u, {0x03C5u, 0x0003u, 0x007Eu, 0x0001u, 0x00FFu, 0x0000u}},
+                                                    {440000u, {0x03C5u, 0x0007u, 0x00FFu, 0x0003u, 0x00FDu, 0x0001u}},
+                                                    {640000u, {0x03C5u, 0x000Au, 0x00FFu, 0x0005u, 0x00FFu, 0x0002u}},
+                                                    {806568u, {0x03C5u, 0x000Du, 0x005Au, 0x0006u, 0x009Fu, 0x0003u}}};
+
+/* Section (e), frame to literal and lamp patterns: the delivered frames 3, 5, 7, 9, 11 and 12 of the pass scenario are the literals F-S2,
+ * F-S3, F-S4, F-S5, F-S1 and F-S6. A digit is the color index of a lamp, left to right (2 lit, 1 unlit); every position outside the two lamp
+ * rows is index 0. */
+typedef struct c_scn_frame {
+  uint32_t slot; /* the delivered slot index, equal to the frame number */
+  const char *lit0;
+  const char *lit1;
+} c_scn_frame;
+static const c_scn_frame c_scn_frame_lamps[] = {{3u, "21111112", "11111111"},  {5u, "21211212", "11111111"},  {7u, "11111111", "11111121"},
+                                                {9u, "21211111", "11111121"},  {11u, "11111111", "11111111"}, {12u, "21211212", "12211111"}};
+#define C_SCN_N_LAMP_FRAMES (sizeof c_scn_frame_lamps / sizeof c_scn_frame_lamps[0])
+
+/* Section (e), declared pairs (the lines of data/expected/video-frame-pairs.ids): the two delivered slots, the rectangle x y w h and the number
+ * of positions at which the two planes differ (64 per lamp that one frame lights and the other does not). */
+typedef struct c_scn_pair {
+  const char *name;
+  uint32_t slot_a;
+  uint32_t slot_b;
+  uint32_t x;
+  uint32_t y;
+  uint32_t w;
+  uint32_t h;
+  uint32_t count;
+} c_scn_pair;
+static const c_scn_pair c_scn_pairs[] = {{"F-S1,F-S2", 11u, 3u, 48u, 32u, 64u, 8u, 128u},  {"F-S1,F-S3", 11u, 5u, 48u, 32u, 64u, 8u, 256u},
+                                         {"F-S2,F-S3", 3u, 5u, 48u, 32u, 64u, 8u, 128u},   {"F-S1,F-S4", 11u, 7u, 48u, 56u, 64u, 8u, 64u},
+                                         {"F-S1,F-S5", 11u, 9u, 48u, 32u, 64u, 32u, 192u}, {"F-S1,F-S6", 11u, 12u, 48u, 32u, 64u, 32u, 384u},
+                                         {"F-S5,F-S6", 9u, 12u, 48u, 32u, 64u, 32u, 320u}};
+#define C_SCN_N_PAIRS (sizeof c_scn_pairs / sizeof c_scn_pairs[0])
+
+/* The pixel probes of the scenario (section (e), probes inside a lamp block and two outside): delivered slot, x, y, color index. */
+typedef struct c_scn_probe {
+  uint32_t slot;
+  uint32_t x;
+  uint32_t y;
+  uint32_t v;
+} c_scn_probe;
+static const c_scn_probe c_scn_probes[] = {{3u, 51u, 35u, 2u}, {3u, 59u, 35u, 1u}, {12u, 59u, 59u, 2u}, {12u, 158u, 95u, 0u}};
+#define C_SCN_N_PROBES (sizeof c_scn_probes / sizeof c_scn_probes[0])
+
+/* Section (d), the audio windows (levels A, B, C; a channel whose amplitude is 0 has level 0 whatever its tone does and channel C, with tone and
+ * noise disabled, holds the level of its amplitude register): the window holds from the latest end of the write that starts it to the earliest end
+ * of the write that ends it, in ticks. The sample i is stamped (i + 1) x 16; a sample belongs to a window when from <= stamp < to.
+ * The ends are the earliest-write figures of section (d). The starts are the latest-write bounds that the specification itself states (A8: the
+ * deferred amplitude writes end before cycle 250 and the gate write before cycle 1,300 of the frame, a cycle is 4 ticks), not the tighter
+ * reference-sequence figures of section (d) (1,165, 1,254 and 176), because the program as built writes its gate 14 cycles after the reference
+ * sequence (section (k): the routine starts at cycle 29 and the render loads each last byte once more); the six audio-at ticks of the scenario lie
+ * at least 15,000 ticks inside either choice. */
+#define C_SCN_CYCLE_TICKS 4u    /* A8: 14,934 cycles of 4 ticks per frame */
+#define C_SCN_DEFER_LATEST 250u /* A8: the deferred amplitude writes end before this frame cycle */
+#define C_SCN_GATE_LATEST 1300u /* A8: the gate write ends before this frame cycle */
+typedef struct c_scn_window {
+  const char *name;
+  uint64_t from;
+  uint64_t to;
+  uint8_t level[3];
+} c_scn_window;
+static const c_scn_window c_scn_windows[] = {
+    {"L0", 0u, 124100u, {0u, 0u, 0u}}, /* the init writes are zeros; ends before the gate of frame 2 (S_2 + 4 x 1,157) */
+    {"L1", 2u * C_SCN_FRAME_TICKS + C_SCN_CYCLE_TICKS * C_SCN_GATE_LATEST, 179652u, {0u, 0u, 15u}},   /* gate of frame 2 to amplitude A of frame 3 */
+    {"L2", 11u * C_SCN_FRAME_TICKS + C_SCN_CYCLE_TICKS * C_SCN_DEFER_LATEST, 721816u, {0u, 0u, 0u}}, /* amplitude B of frame 11 to gate of frame 12 */
+    {"L3", 12u * C_SCN_FRAME_TICKS + C_SCN_CYCLE_TICKS * C_SCN_GATE_LATEST, 777012u, {0u, 0u, 15u}}}; /* gate of frame 12 to amplitude A of frame 13 */
+#define C_SCN_N_WINDOWS (sizeof c_scn_windows / sizeof c_scn_windows[0])
+/* The audio-at asserts of the scenario (every tick is a multiple of 16 and inside a window of the table above). */
+typedef struct c_scn_at {
+  uint64_t tick;
+  uint8_t level[3];
+} c_scn_at;
+static const c_scn_at c_scn_ats[] = {{100000u, {0u, 0u, 0u}}, {140000u, {0u, 0u, 15u}}, {160000u, {0u, 0u, 15u}},
+                                     {690000u, {0u, 0u, 0u}}, {740000u, {0u, 0u, 15u}}, {760000u, {0u, 0u, 15u}}};
+#define C_SCN_N_ATS (sizeof c_scn_ats / sizeof c_scn_ats[0])
+
+/* Section (d), the complete write list of pass: the frame of each write, the register (the low nibble of its bus address) and the 16-bit value,
+ * in log order. Every record is a CPU write (source 1). */
+typedef struct c_scn_rec {
+  uint32_t frame;
+  uint32_t addr;
+  uint32_t value;
+} c_scn_rec;
+static const c_scn_rec c_scn_recs[C_SCN_PSG_RECORDS] = {
+    {0u, 8u, 0x003Cu},  {0u, 4u, 0x0000u},  {0u, 5u, 0x0000u},  {0u, 11u, 0x0000u}, {0u, 12u, 0x0000u}, {0u, 13u, 0x0000u},
+    {2u, 0u, 0x007Eu},  {2u, 13u, 0x000Fu}, {3u, 11u, 0x000Fu}, {4u, 0u, 0x005Au},  {4u, 13u, 0x000Fu}, {5u, 11u, 0x000Fu},
+    {6u, 0u, 0x00FFu},  {6u, 1u, 0x00FDu},  {6u, 13u, 0x000Fu}, {7u, 11u, 0x0000u}, {7u, 12u, 0x000Fu}, {8u, 0u, 0x005Fu},
+    {8u, 13u, 0x000Fu}, {9u, 11u, 0x000Fu}, {10u, 0u, 0x00FFu}, {10u, 1u, 0x00FFu}, {10u, 13u, 0x0000u}, {11u, 11u, 0x0000u},
+    {11u, 12u, 0x0000u}, {12u, 0u, 0x005Au}, {12u, 1u, 0x009Fu}, {12u, 13u, 0x000Fu}, {13u, 11u, 0x000Fu}, {13u, 12u, 0x000Fu}};
+
+/* A powered instance of the fourth replay: the project boot stub contract 2 as the EXEC role, zero GROM, the original program as the
+ * cartridge, power-on reset. 1 on success. */
+static int scn_powered(c_instance *x, int print)
+{
+  ivs_load_report lr;
+  ivs_status st;
+  static const uint32_t kinds[3] = {IVS_KIND_EXEC, IVS_KIND_GROM, IVS_KIND_CARTRIDGE};
+  static const char *const kind_name[3] = {"exec", "grom", "cart"};
+  const uint8_t *bytes[3];
+  size_t lens[3];
+  bytes[0] = images.exec2;
+  bytes[1] = images.grom;
+  bytes[2] = images.cart4;
+  lens[0] = images.exec2_len;
+  lens[1] = C_GROM_BYTES;
+  lens[2] = images.cart4_len;
+  if (!instance_create(x)) {
+    fail("scn create");
+    return 0;
+  }
+  for (size_t i = 0u; i < 3u; i++) {
+    st = load(x->m, kinds[i], bytes[i], lens[i], &lr);
+    if (print && i != 1u) {
+      printf("scn.load.%s status=%s length_bytes=%u sha256=", kind_name[i], status_token(st), (unsigned)lr.image.length_bytes);
+      print_hex(lr.image.sha256, sizeof lr.image.sha256);
+      printf("\n");
+    }
+    if (st != IVS_OK) {
+      fail("scn load");
+      instance_destroy(x);
+      return 0;
+    }
+  }
+  st = ivs_machine_reset(x->m, IVS_RESET_POWER_ON);
+  if (st != IVS_OK) {
+    fail("scn reset");
+    instance_destroy(x);
+    return 0;
+  }
+  return 1;
+}
+
+/* Positions of the planes of two delivered slots that differ, split by the rectangle of the pair (D-21: the region diff of the consumer). */
+static void scn_slot_diff(const uint8_t *a, const uint8_t *b, const ivs_info *info, const c_scn_pair *p, uint32_t *inside, uint32_t *outside)
+{
+  uint32_t in = 0u;
+  uint32_t out = 0u;
+  for (uint32_t y = 0u; y < info->video_height; y++) {
+    for (uint32_t x = 0u; x < info->video_width; x++) {
+      size_t o = (size_t)info->video_header_bytes + (size_t)y * info->video_width + x;
+      if (a[o] != b[o]) {
+        if (x >= p->x && x < p->x + p->w && y >= p->y && y < p->y + p->h) {
+          in++;
+        } else {
+          out++;
+        }
+      }
+    }
+  }
+  *inside = in;
+  *outside = out;
+}
+
+/* Positions of the plane of a delivered slot whose color index differs from the lamp picture: lamp i of a row shows the digit i of its pattern
+ * in its 8 x 8 block, every other position is index 0. */
+static uint32_t scn_lamp_mismatches(const uint8_t *slot, const ivs_info *info, const c_scn_frame *f)
+{
+  uint32_t bad = 0u;
+  for (uint32_t y = 0u; y < info->video_height; y++) {
+    for (uint32_t x = 0u; x < info->video_width; x++) {
+      uint32_t want = 0u;
+      if (x >= C_SCN_LAMP_X && x < C_SCN_LAMP_X + 64u) {
+        if (y >= C_SCN_LAMP_ROW0_Y && y < C_SCN_LAMP_ROW0_Y + 8u) {
+          want = (uint32_t)(f->lit0[(x - C_SCN_LAMP_X) / 8u] - '0');
+        } else if (y >= C_SCN_LAMP_ROW1_Y && y < C_SCN_LAMP_ROW1_Y + 8u) {
+          want = (uint32_t)(f->lit1[(x - C_SCN_LAMP_X) / 8u] - '0');
+        }
+      }
+      if (slot[(size_t)info->video_header_bytes + (size_t)y * info->video_width + x] != want) {
+        bad++;
+      }
+    }
+  }
+  return bad;
+}
+
+/* The checks of the kept frame stream: slot headers (index, tick, geometry, displayed flag, reserved), the six lamp pictures, the seven declared
+ * pair diffs, the pixel probes. Prints the pinned lines when print is set. */
+static void scn_check_frames(const ivs_info *info, int print)
+{
+  uint64_t slot = info->video_slot_bytes;
+  uint32_t head_bad = 0u;
+  uint32_t probe_bad = 0u;
+  char shown[2u * C_SCN_FRAMES];
+  int cont = 1;
+  memset(shown, 0, sizeof shown);
+  if (slot == 0u || delivered_frames != C_SCN_FRAMES || kept_video_n != delivered_frames * slot) {
+    fail("scn video bytes");
+    return;
+  }
+  if (print) {
+    printf("scn.video frames=%llu bytes=%llu slot_bytes=%llu header_bytes=%u width=%u height=%u\n", (unsigned long long)delivered_frames,
+           (unsigned long long)kept_video_n, (unsigned long long)slot, (unsigned)info->video_header_bytes, (unsigned)info->video_width,
+           (unsigned)info->video_height);
+  }
+  for (uint32_t k = 0u; k < C_SCN_FRAMES; k++) {
+    const uint8_t *sk = kept_video + (size_t)(k * slot);
+    /* Slot k is frame k: it ends at tick (k + 1) x 59,736, the index is k, frame 0 is not displayed (A5: no routine runs in it) and frames 1 to
+     * 12 are (A8: from frame 1 on one routine runs in every frame and a frame is displayed exactly when its routine ran the strobe). */
+    uint32_t want_flags = k == 0u ? 0u : IVS_FRAME_F_DISPLAYED;
+    if (be64(sk) != (uint64_t)(k + 1u) * C_SCN_FRAME_TICKS || be64(sk + 8) != k || be32(sk + 16) != info->video_width ||
+        be32(sk + 20) != info->video_height || be32(sk + 24) != want_flags || be32(sk + 28) != 0u) {
+      head_bad++;
+    }
+    if (k > 0u && be64(sk) <= be64(sk - (size_t)slot)) {
+      cont = 0;
+    }
+    shown[2u * k] = (be32(sk + 24) & IVS_FRAME_F_DISPLAYED) != 0u ? '1' : '0';
+    shown[2u * k + 1u] = k + 1u < C_SCN_FRAMES ? ',' : '\0';
+  }
+  if (head_bad != 0u || !cont) {
+    fail("scn slot header");
+  }
+  if (print) {
+    printf("scn.slots frames=%u header-mismatches=%u displayed=%s index=%s ticks=%s\n", (unsigned)C_SCN_FRAMES, (unsigned)head_bad, shown,
+           cont ? "ok" : "bad", cont ? "increasing" : "bad");
+  }
+  for (size_t i = 0u; i < C_SCN_N_LAMP_FRAMES; i++) {
+    const c_scn_frame *f = &c_scn_frame_lamps[i];
+    uint32_t bad = scn_lamp_mismatches(kept_video + (size_t)(f->slot * slot), info, f);
+    if (bad != 0u) {
+      fail("scn lamps");
+    }
+    if (print) {
+      printf("scn.lamps slot=%u row0=%s row1=%s mismatches=%u\n", (unsigned)f->slot, f->lit0, f->lit1, (unsigned)bad);
+    }
+  }
+  for (size_t i = 0u; i < C_SCN_N_PAIRS; i++) {
+    const c_scn_pair *p = &c_scn_pairs[i];
+    uint32_t inside = 0u;
+    uint32_t outside = 0u;
+    scn_slot_diff(kept_video + (size_t)(p->slot_a * slot), kept_video + (size_t)(p->slot_b * slot), info, p, &inside, &outside);
+    if (inside != p->count || outside != 0u) {
+      fail("scn diff");
+    }
+    if (print) {
+      printf("scn.diff pair=%s slots=%u,%u rect=%u,%u,%u,%u inside=%u outside=%u\n", p->name, (unsigned)p->slot_a, (unsigned)p->slot_b,
+             (unsigned)p->x, (unsigned)p->y, (unsigned)p->w, (unsigned)p->h, (unsigned)inside, (unsigned)outside);
+    }
+  }
+  for (size_t i = 0u; i < C_SCN_N_PROBES; i++) {
+    const c_scn_probe *p = &c_scn_probes[i];
+    const uint8_t *sk = kept_video + (size_t)(p->slot * slot);
+    if (p->x >= info->video_width || p->y >= info->video_height ||
+        sk[(size_t)info->video_header_bytes + (size_t)p->y * info->video_width + p->x] != p->v) {
+      probe_bad++;
+    }
+  }
+  if (probe_bad != 0u) {
+    fail("scn pixels");
+  }
+  if (print) {
+    printf("scn.pixels checked=%zu mismatches=%u\n", (size_t)C_SCN_N_PROBES, (unsigned)probe_bad);
+  }
+}
+
+/* The audio checks (D-22): the delivered 4-byte samples (level A, B, C, 0) decoded here. Every sample has the fourth byte 0 and levels at most 15;
+ * every sample inside a window of section (d) holds the window's levels (silence before the first gate write, A=0 B=0 C=15 inside the gate
+ * windows); the scenario's six audio-at ticks read the levels they assert. */
+static void scn_check_audio(const ivs_info *info, int print)
+{
+  uint64_t period = info->audio_sample_ticks;
+  uint64_t n;
+  uint32_t shape_bad = 0u;
+  uint32_t at_bad = 0u;
+  if (period == 0u || info->audio_sample_bytes != 4u || kept_audio_n == 0u || kept_audio_n % 4u != 0u) {
+    fail("scn audio shape");
+    return;
+  }
+  n = kept_audio_n / 4u;
+  for (uint64_t i = 0u; i < n; i++) {
+    const uint8_t *s = kept_audio + (size_t)(i * 4u);
+    if (s[0] > 15u || s[1] > 15u || s[2] > 15u || s[3] != 0u) {
+      shape_bad++;
+    }
+  }
+  if (shape_bad != 0u) {
+    fail("scn audio samples");
+  }
+  if (print) {
+    printf("scn.audio samples=%llu bytes=%llu sample_ticks=%llu shape-mismatches=%u\n", (unsigned long long)n,
+           (unsigned long long)kept_audio_n, (unsigned long long)period, (unsigned)shape_bad);
+  }
+  for (size_t k = 0u; k < C_SCN_N_WINDOWS; k++) {
+    const c_scn_window *w = &c_scn_windows[k];
+    uint64_t inside = 0u;
+    uint64_t bad = 0u;
+    for (uint64_t i = 0u; i < n; i++) {
+      uint64_t stamp = (i + 1u) * period;
+      if (stamp >= w->from && stamp < w->to) {
+        const uint8_t *s = kept_audio + (size_t)(i * 4u);
+        inside++;
+        if (s[0] != w->level[0] || s[1] != w->level[1] || s[2] != w->level[2]) {
+          bad++;
+        }
+      }
+    }
+    if (inside == 0u || bad != 0u) {
+      fail("scn audio window");
+    }
+    if (print) {
+      printf("scn.audio.window %s from=%llu to=%llu A=%u B=%u C=%u samples=%llu mismatches=%llu\n", w->name, (unsigned long long)w->from,
+             (unsigned long long)w->to, (unsigned)w->level[0], (unsigned)w->level[1], (unsigned)w->level[2], (unsigned long long)inside,
+             (unsigned long long)bad);
+    }
+  }
+  for (size_t k = 0u; k < C_SCN_N_ATS; k++) {
+    const c_scn_at *a = &c_scn_ats[k];
+    uint64_t i = a->tick / period - 1u;
+    const uint8_t *s = i < n ? kept_audio + (size_t)(i * 4u) : NULL;
+    if (a->tick % period != 0u || s == NULL || s[0] != a->level[0] || s[1] != a->level[1] || s[2] != a->level[2]) {
+      at_bad++;
+    } else if (print) {
+      printf("scn.audio.at %llu A=%u B=%u C=%u\n", (unsigned long long)a->tick, (unsigned)s[0], (unsigned)s[1], (unsigned)s[2]);
+    }
+  }
+  if (at_bad != 0u) {
+    fail("scn audio at");
+  }
+}
+
+/* The write-log checks (D-22): the delivered 16-byte records decoded here (bytes 0 to 7 the master tick, 8 and 9 the 16-bit value, 10 the
+ * register, 11 the source, 12 to 15 zero, all big-endian). Each of the 30 records of section (d) has the derived register and value, source 1 (a
+ * CPU write) and a tick inside the frame the list names. */
+static void scn_check_psglog(const ivs_info *info, int print)
+{
+  uint32_t bad = 0u;
+  uint64_t n;
+  if (info->psg_log_record_bytes != C_SCN_PSG_RECORD_BYTES || kept_plog_n != (uint64_t)C_SCN_PSG_RECORDS * C_SCN_PSG_RECORD_BYTES) {
+    fail("scn psglog shape");
+    return;
+  }
+  n = kept_plog_n / C_SCN_PSG_RECORD_BYTES;
+  for (uint32_t i = 0u; i < C_SCN_PSG_RECORDS; i++) {
+    const uint8_t *r = kept_plog + (size_t)i * C_SCN_PSG_RECORD_BYTES;
+    uint64_t tick = be64(r);
+    uint32_t value = ((uint32_t)r[8] << 8) | (uint32_t)r[9];
+    uint32_t frame = (uint32_t)(tick / C_SCN_FRAME_TICKS);
+    if (frame != c_scn_recs[i].frame || r[10] != c_scn_recs[i].addr || value != c_scn_recs[i].value || r[11] != IVS_PSGLOG_SRC_CPU_WRITE ||
+        be32(r + 12) != 0u || (i > 0u && tick < be64(r - C_SCN_PSG_RECORD_BYTES))) {
+      bad++;
+    }
+    if (print && i < C_SCN_PSG_PRINTED) {
+      printf("scn.psglog.rec %u frame=%u addr=%u value=%04X source=%u\n", (unsigned)i, (unsigned)frame, (unsigned)r[10], (unsigned)value,
+             (unsigned)r[11]);
+    }
+  }
+  if (bad != 0u) {
+    fail("scn psglog records");
+  }
+  if (print) {
+    printf("scn.psglog records=%llu bytes=%llu record_bytes=%u checked=%u mismatches=%u\n", (unsigned long long)n,
+           (unsigned long long)kept_plog_n, (unsigned)info->psg_log_record_bytes, (unsigned)C_SCN_PSG_RECORDS, (unsigned)bad);
+  }
+}
+
+/* The host-style frame loop (D-26): a fresh machine run call by call with IVS_RUN_F_STOP_ON_FRAME, one video slot of capacity per call, the
+ * audio and write-log buffers sized from ivs_info, the unconsumed suffix of the events resubmitted on each call. Thirteen calls stop at a frame
+ * end (the frames 0 to 12 end at or below the last bound) and the fourteenth at the target. The concatenated streams must equal the single-run
+ * pass (kept_video, kept_audio, kept_plog) and the end digests must equal want. */
+static void scn_frame_stop_pass(const c_digests *want)
+{
+  c_instance x;
+  ivs_input_event ev[C_SCN_EVENTS];
+  c_digests got;
+  uint8_t *vid = NULL;
+  uint8_t *aud = NULL;
+  uint8_t *wlg = NULL;
+  uint64_t vid_n = 0u;
+  uint64_t aud_n = 0u;
+  uint64_t wlg_n = 0u;
+  uint64_t now = 0u;
+  uint32_t consumed = 0u;
+  uint32_t calls = 0u;
+  uint32_t frame_stops = 0u;
+  int at_target = 0;
+  int ok = 1;
+  int same_streams;
+  int same_digests;
+  scn_events(ev);
+  if (!scn_powered(&x, 0)) {
+    return;
+  }
+  while (ok && !at_target && calls < C_SCN_CALLS_MAX) {
+    ivs_run_request q;
+    ivs_run_report rep;
+    ivs_info ci;
+    ivs_status st;
+    uint8_t *cv = NULL;
+    uint8_t *ca = NULL;
+    uint8_t *cl = NULL;
+    uint64_t slots;
+    memset(&ci, 0, sizeof ci);
+    ci.struct_size = (uint32_t)sizeof ci;
+    st = ivs_machine_info(x.m, &ci);
+    if (st != IVS_OK || ci.nominal_frame_ticks == 0u || ci.video_slot_bytes == 0u || ci.audio_bytes_per_frame == 0u ||
+        ci.psg_log_record_bytes == 0u) {
+      ok = 0;
+      break;
+    }
+    slots = (c_scn_stops[C_SCN_STEPS - 1u].target > ci.time_ticks ? c_scn_stops[C_SCN_STEPS - 1u].target - ci.time_ticks : 0u) /
+                ci.nominal_frame_ticks + 1u;
+    memset(&q, 0, sizeof q);
+    q.struct_size = (uint32_t)sizeof q;
+    q.flags = IVS_RUN_F_STOP_ON_HALT | IVS_RUN_F_STOP_ON_FRAME;
+    q.target_ticks = c_scn_stops[C_SCN_STEPS - 1u].target;
+    q.events = consumed < C_SCN_EVENTS ? &ev[consumed] : NULL;
+    q.event_count = C_SCN_EVENTS - consumed;
+    q.video_capacity = ci.video_slot_bytes;
+    cv = malloc((size_t)q.video_capacity);
+    q.video = cv;
+    q.audio_capacity = (uint64_t)ci.audio_bytes_per_frame * slots;
+    ca = malloc((size_t)q.audio_capacity);
+    q.audio = ca;
+    q.psg_log_capacity = (uint64_t)ci.psg_log_record_bytes * ci.psg_log_records_per_frame * slots;
+    cl = malloc((size_t)q.psg_log_capacity);
+    q.psg_log = cl;
+    memset(&rep, 0, sizeof rep);
+    rep.struct_size = (uint32_t)sizeof rep;
+    if (cv == NULL || ca == NULL || cl == NULL) {
+      ok = 0;
+    } else {
+      st = ivs_machine_run(x.m, &q, &rep);
+      if (st != IVS_OK) {
+        ok = 0;
+      } else {
+        calls++;
+        consumed += rep.input_consumed;
+        now = rep.now_ticks;
+        if (!keep_bytes(&vid, &vid_n, cv, rep.video_bytes_written) || !keep_bytes(&aud, &aud_n, ca, rep.audio_bytes_written) ||
+            !keep_bytes(&wlg, &wlg_n, cl, rep.psg_log_bytes_written)) {
+          ok = 0;
+        }
+        if (rep.stop_reason == IVS_STOP_FRAME) {
+          frame_stops++;
+          if (rep.video_frames_completed != 1u || rep.video_bytes_written != ci.video_slot_bytes) {
+            ok = 0;
+          }
+        } else if (rep.stop_reason == IVS_STOP_TARGET) {
+          at_target = 1;
+        } else {
+          ok = 0;
+        }
+      }
+    }
+    free(cv);
+    free(ca);
+    free(cl);
+  }
+  memset(&got, 0, sizeof got);
+  same_digests = digest_all(x.m, &got) && memcmp(&got, want, sizeof got) == 0;
+  same_streams = vid_n == kept_video_n && aud_n == kept_audio_n && wlg_n == kept_plog_n &&
+                 (vid_n == 0u || memcmp(vid, kept_video, (size_t)vid_n) == 0) &&
+                 (aud_n == 0u || memcmp(aud, kept_audio, (size_t)aud_n) == 0) &&
+                 (wlg_n == 0u || memcmp(wlg, kept_plog, (size_t)wlg_n) == 0);
+  printf("scn.frame-stop calls=%u frames=%u consumed=%u now_ticks=%llu\n", (unsigned)calls, (unsigned)frame_stops, (unsigned)consumed,
+         (unsigned long long)now);
+  printf("scn.frame-stop equal=%s\n", ok && at_target && same_streams && same_digests ? "yes" : "no");
+  if (!ok || !at_target || frame_stops != C_SCN_FRAMES || calls != C_SCN_FRAMES + 1u || consumed != C_SCN_EVENTS) {
+    fail("scn frame-stop calls");
+  }
+  if (!same_streams) {
+    fail("scn frame-stop streams");
+  }
+  if (!same_digests) {
+    fail("scn frame-stop digests");
+  }
+  free(vid);
+  free(aud);
+  free(wlg);
+  instance_destroy(&x);
+}
+
+/* The replay of demo-lamp-tone-pass on a fresh instance: the six events, four run-to steps (the program never halts, so every stop is the
+ * target), the guest words at each stop, the independent checks above, and (first instance only) the frame loop. The digests go into d and the
+ * observed set into observed by the count rule: video, audio and the write log by delivered bytes, the input domain when events were applied. */
+static void scn_session(int print, c_digests *d, int *observed)
+{
+  c_instance x;
+  ivs_info info;
+  ivs_status st;
+  ivs_input_event ev[C_SCN_EVENTS];
+  uint16_t w[C_SCN_WORDS];
+  uint32_t consumed = 0u;
+  memset(d, 0, sizeof *d);
+  delivered_video_bytes = 0u;
+  delivered_audio_bytes = 0u;
+  delivered_psglog_bytes = 0u;
+  delivered_frames = 0u;
+  kept_video_n = 0u;
+  kept_audio_n = 0u;
+  kept_plog_n = 0u;
+  keep_video = 1;
+  keep_audio = 1;
+  keep_plog = 1;
+  run_prefix = "scn.";
+  scn_events(ev);
+  if (!scn_powered(&x, print)) {
+    keep_video = 0;
+    keep_audio = 0;
+    keep_plog = 0;
+    run_prefix = "";
+    return;
+  }
+  memset(&info, 0, sizeof info);
+  info.struct_size = (uint32_t)sizeof info;
+  st = ivs_machine_info(x.m, &info);
+  if (st != IVS_OK || info.video_format != IVS_OUTPUT_FORMAT_INDEX8_FRAMES_V1 || info.video_slot_bytes == 0u) {
+    fail("scn info");
+    instance_destroy(&x);
+    keep_video = 0;
+    keep_audio = 0;
+    keep_plog = 0;
+    run_prefix = "";
+    return;
+  }
+  for (unsigned k = 0u; k < C_SCN_STEPS; k++) {
+    consumed += run_step(x.m, k + 1u, c_scn_stops[k].target, &ev[consumed], C_SCN_EVENTS - consumed, IVS_STOP_TARGET, print);
+    if (consumed > C_SCN_EVENTS) {
+      fail("scn input_consumed");
+      consumed = C_SCN_EVENTS;
+    }
+    st = ivs_machine_peek(x.m, 0x02F0u, C_SCN_WORDS, w);
+    if (st != IVS_OK) {
+      fail("scn peek words");
+      continue;
+    }
+    if (print) {
+      printf("scn.step.%u.mem 02F0..02F5=", k + 1u);
+      for (size_t i = 0u; i < C_SCN_WORDS; i++) {
+        printf("%s%04X", i == 0u ? "" : ",", (unsigned)w[i]);
+      }
+      printf("\n");
+    }
+    if (memcmp(w, c_scn_stops[k].w, sizeof w) != 0) {
+      fail("scn guest words");
+    }
+  }
+  if (print) {
+    printf("scn.input events=%u consumed=%u\n", (unsigned)C_SCN_EVENTS, (unsigned)consumed);
+  }
+  if (consumed != C_SCN_EVENTS) {
+    fail("scn input consumed total");
+  }
+  scn_check_frames(&info, print);
+  scn_check_audio(&info, print);
+  scn_check_psglog(&info, print);
+  if (!digest_all(x.m, d)) {
+    fail("scn digest");
+  }
+  for (size_t i = 0u; i < C_DOMAINS; i++) {
+    observed[i] = 1;
+  }
+  observed[5] = delivered_video_bytes != 0u;
+  observed[6] = delivered_audio_bytes != 0u;
+  observed[7] = consumed != 0u;
+  observed[8] = delivered_psglog_bytes != 0u;
+  if (print) {
+    scn_frame_stop_pass(d);
+  }
+  instance_destroy(&x);
+  keep_video = 0;
+  keep_audio = 0;
+  keep_plog = 0;
+  free(kept_video);
+  free(kept_audio);
+  free(kept_plog);
+  kept_video = NULL;
+  kept_audio = NULL;
+  kept_plog = NULL;
+  kept_video_n = 0u;
+  kept_audio_n = 0u;
+  kept_plog_n = 0u;
+  run_prefix = "";
+}
+
 static void version_tie(void)
 {
   uint32_t lib = ivs_api_version();
@@ -994,8 +1662,8 @@ int main(int argc, char **argv)
   int observed[C_DOMAINS];
   int observed2[C_DOMAINS];
   int equal;
-  if (argc != 5) {
-    fprintf(stderr, "usage: consumer <boot-stub.exec> <diag-cpu-1.ivsc> <diag-ctrl-psg-1.ivsc> <diag-stic-1.ivsc>\n");
+  if (argc != 7) {
+    fprintf(stderr, "usage: consumer <boot-stub.exec> <diag-cpu-1.ivsc> <diag-ctrl-psg-1.ivsc> <diag-stic-1.ivsc> <boot-stub-2.exec> <lamp-tone.ivsc>\n");
     return 2;
   }
   if (!read_image(argv[1], images.exec, C_EXEC_BYTES, &images.exec_len) || images.exec_len == 0u) {
@@ -1012,6 +1680,14 @@ int main(int argc, char **argv)
   }
   if (!read_image(argv[4], images.cart3, C_CART_MAX, &images.cart3_len)) {
     fprintf(stderr, "consumer: cannot read the third cartridge image\n");
+    return 2;
+  }
+  if (!read_image(argv[5], images.exec2, C_EXEC_BYTES, &images.exec2_len) || images.exec2_len == 0u) {
+    fprintf(stderr, "consumer: cannot read the second EXEC image\n");
+    return 2;
+  }
+  if (!read_image(argv[6], images.cart4, C_CART_MAX, &images.cart4_len)) {
+    fprintf(stderr, "consumer: cannot read the fourth cartridge image\n");
     return 2;
   }
   memset(images.grom, 0, sizeof images.grom);
@@ -1068,6 +1744,23 @@ int main(int argc, char **argv)
   printf("stic.second-instance equal=%s\n", equal ? "yes" : "no");
   if (!equal) {
     fail("stic second instance");
+  }
+  /* The fourth replay (plan 07-09): its digests carry the prefix `scn.`; the lines of the three earlier replays stay as they were. */
+  memset(observed, 0, sizeof observed);
+  memset(observed2, 0, sizeof observed2);
+  scn_session(1, &first, observed);
+  for (size_t i = 0u; i < C_DOMAINS; i++) {
+    if (observed[i]) {
+      printf("scn.digest.%s ", c_domain_name[i]);
+      print_hex(first.sha[i], sizeof first.sha[i]);
+      printf("\n");
+    }
+  }
+  scn_session(0, &second, observed2);
+  equal = memcmp(&first, &second, sizeof first) == 0 && memcmp(observed, observed2, sizeof observed) == 0;
+  printf("scn.second-instance equal=%s\n", equal ? "yes" : "no");
+  if (!equal) {
+    fail("scn second instance");
   }
   printf("result %s failures=%d\n", failures == 0 ? "ok" : "fail", failures);
   return failures == 0 ? 0 : 1;

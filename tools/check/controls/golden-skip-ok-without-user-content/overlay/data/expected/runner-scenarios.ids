@@ -1,0 +1,4 @@
+# Toy runner scenarios (plan 07-10): `<id> <exit> <outcome> <class> <skip> <operator-args>`; toy-wall is marked
+# `skip-ok` although its scenario has no `content ... user` line (a skip that would hide an ordinary test).
+toy 0 pass deterministic run -
+toy-wall 11 timeout host-dependent skip-ok --wall-timeout-ms,1

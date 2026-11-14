@@ -47,7 +47,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 4: Headless Runner and Installed Consumer (Slice 0)** - An original diagnostic runs end to end through the runner and a relocated installed consumer, with deterministic digests and a CI gate that mirrors the local command (completed 2026-11-11)
 - [x] **Phase 5: Hand Controllers and PSG Sound** - Both controllers as multi-signal machine input at explicit time boundaries; PSG raw audio and a register-write log (completed 2026-11-12)
 - [x] **Phase 6: STIC Video First Pass** - Access windows, VBLANK/BUSRQ timing, raw index framebuffer, FG/BG and Color Stack cards, and side-effect-free inspection (completed 2026-11-12; all claims provisional)
-- [ ] **Phase 7: First Visible Original Scenario** - A rights-clear original program responds to controller input with video and sound through the installed consumer in CI
+- [x] **Phase 7: First Visible Original Scenario** - A rights-clear original program responds to controller input with video and sound through the installed consumer in CI (completed 2026-11-13; both claims provisional, D11 open and not performed)
 - [ ] **Phase 8: STIC Completion, Save State and Performance Baselines** - Remaining STIC features, canonical snapshots, correctness-asserted benchmarks and the milestone-close record
 
 ## Decision Gate Timeline
@@ -60,14 +60,14 @@ exit, until the gate is resolved by its named authority.
 | D1 Language/build (C17 + CMake recommended; Rust alternative) | Owner | Delegated decision 2026-11-09 (PROJECT.md) | Before Phase 2 starts |
 | D2 CPU-cycle unit, time base, crystal constant | Architecture | Delegated decision 2026-11-09 (PROJECT.md) | During Phase 1 (FND-07); before Phase 2 |
 | D3 First profile (2609 NTSC recommended; revision, STIC/PSG parts, power-on policy) | Owner | Delegated decision 2026-11-09 (PROJECT.md) | Before Phase 1 exits |
-| D4 Fixture assembler policy | Owner (licence) + architecture | Delegated decision 2026-11-11 (PROJECT.md; Phase 4 D-25, D-12, D-41) | Before Phase 4 starts |
+| D4 Fixture assembler policy | Owner (licence) + architecture | Delegated decision 2026-11-11 (PROJECT.md; Phase 4 D-25, D-12, D-41); re-evaluated in Phase 7 (D-16, D-19): project mini-assembler `ivs_asm`, never shipped | Before Phase 4 starts |
 | D5 System-image policy and project boot stub | Owner | Delegated decision 2026-11-11 (PROJECT.md; Phase 3 D-24) | Phase 3 (refusal); before Phase 4 (boot) |
 | D6 Controller core-input representation (C14) | Owner + architecture | Delegated decision 2026-11-11 (PROJECT.md; Phase 4 D-25, D-12, D-41) | While Phase 4 shapes the API; before Phase 5 starts |
 | D7 Reference PCM location (C23) | Architecture | Delegated decision 2026-11-12 (PROJECT.md; Phase 5 D-21: outside the core, `tools/pcm`, runner `--audio-wav` only) | Phase 5 |
 | D8 Raw framebuffer geometry (C10) | Architecture + evidence | Delegated decision 2026-11-12 (PROJECT.md; Phase 6 D-12: 159 x 96, width from `video.last_card_column_px`, reversible by one profile field) | Phase 6 |
 | D9 License, visibility, naming/trademark, publication | Owner gate | Delegated decision 2026-11-09 (PROJECT.md) | Before any external publication; CI hosting (Phase 4) and the milestone release assessment (Phase 8) touch it |
 | D10 Physical hardware measurement | Owner gate | Open | Before any measured-tier claim (Phase 5 onward) |
-| D11 Owner-local real EXEC/GROM runs | Owner gate | Open | Before SCN-02 can be claimed (Phase 7) |
+| D11 Owner-local real EXEC/GROM runs | Owner gate | Open, not performed (SCN-02 is complete on documented-route terms; no result, claim or tier) | Before any real-EXEC result is recorded |
 | D12 CI shape (C24) | Architecture | Delegated decision 2026-11-11 (PROJECT.md; Phase 4 D-25, D-12, D-41) | Before Phase 4 exits |
 | D13 LibFuturo adapter / shared-contract change | Owner gate | Deferred | Not before a real consumer exists; outside this milestone |
 
@@ -294,7 +294,47 @@ Plans:
   2. A scripted input sequence changes guest state, and the run asserts a guest-state progress predicate (a register or memory marker), not a title screen or hash alone. The tier is playable guest progress, for this original program only.
   3. The same run shows the input changing raw video (the index framebuffer differs in the expected region) and raw audio (the PSG write log and samples change).
   4. The owner-local route for user-supplied EXEC/GROM is documented with digest identity checks, labelled non-redistributable and kept out of CI. Any job that refers to it prints a visible SKIPPED line, and the inventory gate counts it.
-**Plans**: TBD
+**Plans**: 12/12 plans complete (sequential waves 1-12; amendments A-01..A-21 in 07-CONTEXT.md)
+
+Plans:
+**Wave 1**
+- [x] 07-01-PLAN.md — W0: CI trigger check and the cp1610-vectors re-parse lever, phase7-start entry
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [x] 07-02-PLAN.md — W1 oracle (no C): Lamp Tone specification and derivation, frame literals F-S1..F-S6, pair-region token, shape lint, SCN-01 in important-gates, blind-read request
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [x] 07-03-PLAN.md — W2a: ivs_asm tracer, registration like tools/pcm, suite asm with two twins and a judge
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [x] 07-04-PLAN.md — W2b: ivs_asm complete (SDBD, DECLE/DATA, pairs corpus, four twins, pinned refusals), DATA checker rule, D4 docs, C106
+
+**Wave 5** *(blocked on Wave 4 completion)*
+- [x] 07-05-PLAN.md — W3a: boot-stub contract 2 (JD $5004) as an assembled fixture with verified recipe, runner token boot-stub-2, run.stub2 tests
+
+**Wave 6** *(blocked on Wave 5 completion)*
+- [x] 07-06-PLAN.md — W3b: Lamp Tone program, listing, redistributable manifest with recipe, image, names rule, runtime contract docs
+
+**Wave 7** *(blocked on Wave 6 completion)*
+- [x] 07-07-PLAN.md — W4a: scenarios pass/idle/shift/swap, hand-derived .expect, goldens, metamorphic judge, repeatability
+
+**Wave 8** *(blocked on Wave 7 completion)*
+- [x] 07-08-PLAN.md — W4b: mutant inventory with fails= sets and stub-image patches, cost checkpoint C-B
+
+**Wave 9** *(blocked on Wave 8 completion)*
+- [x] 07-09-PLAN.md — W5: installed-consumer fourth replay (frame loop, region diff, audio and log decode), pkg self-tests, checkpoint C-C
+
+**Wave 10** *(blocked on Wave 9 completion)*
+- [x] 07-10-PLAN.md — W6a: SCN-02 template scenario with counted SKIPPED line, consistency rule, owner-images page, non-redistributable manifests
+
+**Wave 11** *(blocked on Wave 10 completion)*
+- [x] 07-11-PLAN.md — W6b: runner refuses derived audio/log outputs for user content, owner-run helper with tested refusals
+
+**Wave 12** *(blocked on Wave 11 completion)*
+- [x] 07-12-PLAN.md — W7 close-out: claims CL-0023/CL-0024, play-word tripwire, README/PROJECT/REL-01 fixes, D4 and D11 register, verification record, phase7-close
+
+**Cross-cutting constraints:** <!-- gsd:generated -->
+- End state: `steps=36/36 controls=357/357 faults=222/222 goldens=15 tests-skipped=4 tests-missing=0` under sh, dash and the container gate
 
 ### Phase 8: STIC Completion, Save State and Performance Baselines
 **Goal**: The remaining STIC features are either covered or explicitly listed as unknown. Full machine state round-trips through one canonical snapshot format, named workloads have benchmarks that check correctness first, and the milestone closes with a release-readiness assessment of the exact tested artifact.
@@ -349,5 +389,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 4. Headless Runner and Installed Consumer (Slice 0) | 27/25 | Complete    | 2026-11-11 |
 | 5. Hand Controllers and PSG Sound | 12/12 | Complete    | 2026-11-12 |
 | 6. STIC Video First Pass | 14/14 | Complete    | 2026-11-12 |
-| 7. First Visible Original Scenario | 0/TBD | Not started | - |
+| 7. First Visible Original Scenario | 12/12 | Complete    | 2026-11-13 |
 | 8. STIC Completion, Save State and Performance Baselines | 0/TBD | Not started | - |

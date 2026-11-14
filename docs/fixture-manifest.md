@@ -20,7 +20,7 @@ The file is ASCII JSON with LF line endings.
 | `path` | string or null | In-repo path of the primary output when `committed` is `true` (it must be listed in `outputs`), otherwise `null`. |
 | `local_path` | string or null | Gitignored local path under `refs/` where a developer may keep the bytes, or `null`. |
 | `source` | object | `origin` (string), `pin`, `accessed`, `holder` (string or null; `accessed` is `YYYY-MM-DD`). |
-| `recipe` | object or null | How the bytes are built: `tool`, `tool_version`, `tool_sha256`, `tool_licence`, `command`, `sources[{path, sha256}]`. `null` for material that is not built. |
+| `recipe` | object or null | How the bytes are built: `tool`, `tool_version`, `tool_sha256`, `tool_licence`, `command`, `sources[{path, sha256}]`. `null` for material that is not built. For a committed manifest the sources and `tool_sha256` are hashed and compared (see Rules). |
 | `inputs` | array of string | Free-text references to inputs (paths or ids); may be empty. |
 | `outputs` | array of object | `{path, sha256, size_bytes}` for every file the entry accounts for; empty when no bytes are tracked. |
 | `licence` | string | An SPDX expression, a `LicenseRef-*` identifier, or `NOASSERTION`. The checker validates the character set only. |
@@ -57,6 +57,7 @@ A record that says `yes` but fails the computed rule is reported as `manifest-ye
 
 - `committed: true`, or an `allowed_use` containing `repo` or `release`, requires effective `yes` (`manifest-committed-not-redistributable`).
 - A committed manifest must list at least one output, and every listed output must exist with the recorded `size_bytes` and `sha256` (`manifest-missing-output`, `manifest-digest-mismatch`).
+- A non-null `recipe` of a committed manifest requires every `sources` entry to exist with its recorded `sha256`, and `tool_sha256` to equal the digest of the `sources` entry that is the tool's own source: `tools/asm/asm.c` for `ivs_asm`, `tools/pack/pack.c` for `ivs_pack` (`manifest-recipe-digest-mismatch`). A tool the checker does not list, or a tool source missing from `sources`, is the same finding, so a changed tool or source cannot hide behind a stale recipe.
 - Outputs of an uncommitted manifest must not be tracked (`manifest-uncommitted-output-tracked`).
 - Flipping `redistributable` to `yes` needs licence evidence, a rights review that is not `unreviewed`, and an explicit reviewer.
 - The `files` gate step additionally refuses any tracked file under `refs/`, any tracked `.env` file, any tracked ROM, PDF or image-like file that is not a committed output of an effective `yes` manifest, and any file inside a fixture directory that its manifest does not list.

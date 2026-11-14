@@ -94,6 +94,7 @@ static const char *const fuzz_tokens[] = {"..",
                                           "input ",
                                           "content cart ",
                                           "content exec boot-stub\n",
+                                          "content exec boot-stub-2\n",
                                           "expect-load cart IVS_E_OVERSIZED reason 0\n",
                                           "expect-sha256 cart ",
                                           "wall-timeout-ms 0\n",
@@ -317,10 +318,11 @@ static int fuzz_valid(fuzz_ctx *f, const ivs_scenario *s)
   for (i = 0u; i < IVS_SCN_ROLES; i++) {
     const ivs_scenario_content *c = &s->content[i];
     const ivs_scenario_expect *e = &s->expect[i];
-    FUZZ_CHECK(f, c->kind <= IVS_SCN_CONTENT_ZERO_GROM);
+    FUZZ_CHECK(f, c->kind <= IVS_SCN_CONTENT_BOOT_STUB_2);
     FUZZ_CHECK(f, c->kind != IVS_SCN_CONTENT_PATH || path_ok(c->path));
     FUZZ_CHECK(f, c->kind == IVS_SCN_CONTENT_PATH || c->path[0] == '\0');
     FUZZ_CHECK(f, c->kind != IVS_SCN_CONTENT_BOOT_STUB || i == IVS_SCN_ROLE_EXEC);
+    FUZZ_CHECK(f, c->kind != IVS_SCN_CONTENT_BOOT_STUB_2 || i == IVS_SCN_ROLE_EXEC);
     FUZZ_CHECK(f, c->kind != IVS_SCN_CONTENT_ZERO_GROM || i == IVS_SCN_ROLE_GROM);
     FUZZ_CHECK(f, c->kind != IVS_SCN_CONTENT_NONE || (e->load_set == 0u && e->sha_set == 0u));
     FUZZ_CHECK(f, e->load_status <= 0 && (e->load_status == 0 || strcmp(ivs_status_name(e->load_status),

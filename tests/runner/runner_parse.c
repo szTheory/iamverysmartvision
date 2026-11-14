@@ -442,6 +442,8 @@ static const refuse_case refuse_cases[] = {
     {"runner.parse.edge.dotdot-inside", IVS_SCN_R_PATH_DOTDOT, 4u, TXT(HDR "content cart a/../../b.ivsc\n")},
     {"runner.parse.edge.trailing-slash", IVS_SCN_R_PATH_EMPTY_SEGMENT, 4u, TXT(HDR "content cart dir/\n")},
     {"runner.parse.edge.zero-grom-as-cart", IVS_SCN_R_BAD_CONTENT_KIND, 4u, TXT(HDR "content cart zero-grom\n")},
+    {"runner.parse.edge.boot-stub-2-as-cart", IVS_SCN_R_BAD_CONTENT_KIND, 4u, TXT(HDR "content cart boot-stub-2\n")},
+    {"runner.parse.edge.boot-stub-2-as-grom", IVS_SCN_R_BAD_CONTENT_KIND, 4u, TXT(HDR "content grom boot-stub-2\n")},
     {"runner.parse.edge.reason-with-ok", IVS_SCN_R_BAD_TOKEN, 5u, TXT(HDR "content cart a.ivsc\nexpect-load cart ok reason 1\n")},
     {"runner.parse.edge.reason-zero", IVS_SCN_R_OUT_OF_RANGE, 5u,
      TXT(HDR "content cart a.ivsc\nexpect-load cart IVS_E_MALFORMED reason 0\n")},
@@ -604,6 +606,28 @@ static int parse_accept_content(void)
   IVS_CHECK(s.content[IVS_SCN_ROLE_EXEC].kind == IVS_SCN_CONTENT_BOOT_STUB);
   IVS_CHECK(s.content[IVS_SCN_ROLE_GROM].kind == IVS_SCN_CONTENT_ZERO_GROM);
   IVS_CHECK(strcmp(s.content[IVS_SCN_ROLE_CART].path, "./a.b") == 0);
+  return IVS_TEST_PASS;
+}
+
+/* Plan 07-05 (D-09, D-20): the content token boot-stub-2 selects the project boot stub contract 2, for the exec
+ * role only; the contract 1 token keeps its own kind (no grammar change, no ivsr bump). The refusals for the
+ * other roles are runner.parse.edge.boot-stub-2-as-cart and runner.parse.edge.boot-stub-2-as-grom. */
+static int parse_accept_boot_stub_2(void)
+{
+  ivs_scenario s;
+  IVS_CHECK(IVS_SCN_CONTENT_BOOT_STUB_2 == 5u && IVS_SCN_CONTENT_BOOT_STUB == 3u);
+  IVS_CHECK(parse_ok(HDR "content exec boot-stub-2\ncontent grom zero-grom\ncontent cart ./a.b\n" RUN0, &s));
+  IVS_CHECK(s.content[IVS_SCN_ROLE_EXEC].kind == IVS_SCN_CONTENT_BOOT_STUB_2);
+  IVS_CHECK(s.content[IVS_SCN_ROLE_EXEC].line == 4u && s.content[IVS_SCN_ROLE_EXEC].path[0] == '\0');
+  IVS_CHECK(s.content[IVS_SCN_ROLE_GROM].kind == IVS_SCN_CONTENT_ZERO_GROM);
+  IVS_CHECK(s.content[IVS_SCN_ROLE_CART].kind == IVS_SCN_CONTENT_PATH);
+  IVS_CHECK(strcmp(s.content[IVS_SCN_ROLE_CART].path, "./a.b") == 0);
+  IVS_CHECK(parse_ok(HDR "content exec boot-stub\n" RUN0, &s));
+  IVS_CHECK(s.content[IVS_SCN_ROLE_EXEC].kind == IVS_SCN_CONTENT_BOOT_STUB);
+  /* A longer name is a relative path, not a stub token. */
+  IVS_CHECK(parse_ok(HDR "content exec boot-stub-3\n" RUN0, &s));
+  IVS_CHECK(s.content[IVS_SCN_ROLE_EXEC].kind == IVS_SCN_CONTENT_PATH);
+  IVS_CHECK(strcmp(s.content[IVS_SCN_ROLE_EXEC].path, "boot-stub-3") == 0);
   return IVS_TEST_PASS;
 }
 
@@ -1008,6 +1032,7 @@ static const fn_case fn_cases[] = {
     {"runner.parse.accept.id", parse_accept_id},
     {"runner.parse.accept.profile", parse_accept_profile},
     {"runner.parse.accept.content", parse_accept_content},
+    {"runner.parse.accept.boot-stub-2", parse_accept_boot_stub_2},
     {"runner.parse.accept.expect-load", parse_accept_expect_load},
     {"runner.parse.accept.expect-sha256", parse_accept_expect_sha256},
     {"runner.parse.accept.wall-timeout-ms", parse_accept_wall_timeout},
@@ -1091,13 +1116,14 @@ static const char fuzz_base_capture[] =
     "assert digest psglog != e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\n"
     "assert digest audio == e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\n";
 
-/* Plan 06-12: a base with the video capture and every frame and video assert form. */
+/* Plan 06-12: a base with the video capture and every frame and video assert form. Plan 07-05: its exec role
+ * names boot-stub-2, so the fuzz run reaches the content kind 5 and its exec-only rule (the other bases keep boot-stub). */
 static const char fuzz_base_video[] =
     "# video base\n"
     "ivss 1\n"
     "id video-1\n"
     "profile intv-2609-ntsc-family-p1\n"
-    "content exec boot-stub\n"
+    "content exec boot-stub-2\n"
     "content grom zero-grom\n"
     "capture video 0 2\n"
     "run-to 130000 ticks\n"

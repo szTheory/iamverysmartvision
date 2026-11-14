@@ -17,6 +17,9 @@
 #   tests-truncated, tests-plan-mismatch, tests-failed, tests-suite-missing,
 #   tests-inventory-empty, tests-ctest-drift, tests-vectors-digest.
 # Stats: tests-expected=<ids x presets> tests-executed=<n> tests-skipped=<k> tests-missing=0.
+# Output (plan 07-10, D-31): before the pass line (and before any FAIL line) one line
+#   `-- SKIPPED <preset>/<suite>/<id>: <reason>` per skipped id and preset, the reason being the text
+#   after `# SKIP` in the result line; the number of such lines equals `tests-skipped=`.
 LC_ALL=C; export LC_ALL
 : "${ROOT:?ROOT is not set}"
 : "${CHECK_DIR:?CHECK_DIR is not set}"
@@ -58,6 +61,7 @@ fi
 executed=0
 skipped=0
 : > "$tmp/sources"
+: > "$tmp/skipped.lines"
 for p in $presets; do
   # ctest -N listing against the suite set.
   if [ -f "$gate/$p/ctest-list.txt" ]; then
@@ -111,7 +115,12 @@ for p in $presets; do
         if (num + 0 != n) { tok("tests-plan-mismatch", tag " (result " num " out of sequence)") }
         if (id in seen) { tok("tests-duplicate", tag "/" id) }
         seen[id] = 1
-        if (skip) { nskip++; print "SKIP " id } else { nexec++; print "RUN " id }
+        if (skip) {
+          r = ""
+          for (i = 6; i <= NF; i++) r = r (i > 6 ? " " : "") $i
+          if (r == "") r = "no reason given"
+          nskip++; print "SKIP " id " " r
+        } else { nexec++; print "RUN " id }
         next
       }
       NF { tok("tests-truncated", tag " (unparsed line " NR ")") }
@@ -134,7 +143,14 @@ for p in $presets; do
       set +f
       case $1 in
         RUN) printf '%s\n' "$2" >> "$tmp/have" ;;
-        SKIP) printf '%s\n' "$2" >> "$tmp/have"; printf '%s\n' "$2" >> "$tmp/skips" ;;
+        SKIP)
+          printf '%s\n' "$2" >> "$tmp/have"
+          printf '%s\n' "$2" >> "$tmp/skips"
+          # The reason is everything after the id: the text after `# SKIP` in the result line.
+          r=${l#SKIP }
+          r=${r#* }
+          printf '%s/%s/%s: %s\n' "$p" "$s" "$2" "$r" >> "$tmp/skipped.lines"
+          ;;
         SOURCE) printf '%s %s\n' "$2" "$3" >> "$tmp/sources" ;;
         SUMMARY) executed=$((executed + $2)); skipped=$((skipped + $3)) ;;
         *) bad "$1" "${l#* }" ;;
@@ -164,6 +180,13 @@ while IFS= read -r l; do
   got=${got%% *}
   [ "$got" = "$want" ] || bad tests-vectors-digest "$path"
 done < "$tmp/sources"
+
+# One visible line per skipped id and preset (plan 07-10, D-31), in the order preset, suite, id of
+# the loop above; not a finding and not a FAIL line, so the gate's FAIL summary ignores it. The
+# `tests-skipped=` token below counts the same ids.
+while IFS= read -r l; do
+  printf -- '-- SKIPPED %s\n' "$l"
+done < "$tmp/skipped.lines"
 
 if [ -s "$find" ]; then
   sort -u "$find" | while IFS= read -r l; do

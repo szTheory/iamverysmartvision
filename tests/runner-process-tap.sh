@@ -36,6 +36,30 @@
 # more run each) and runner-process.slices.diag-stic-fgbg-pass (--slice-ticks 1 and 7, that scenario only) are judged the same way. Its
 # program mutations (data/expected/diag-mutations-stic.ids, ids runner-process.mutant.STIC-*) have a scenario column and comma-joined
 # address, from and to lists, judged by the same run_mutant.
+# Since plan 07-08 (D-25, D-10, D-13, A-03, A-14, A-17, W4b) the Lamp Tone mutants of data/expected/diag-mutations-scn.ids (ids
+# runner-process.mutant.SCN-*) are judged by the same run_mutant, with three additions. Every mutant directory also holds
+# boot-stub-2.exec (the Lamp Tone scenarios enter through the boot stub contract 2). A row whose addresses all lie in the stub window
+# 1000-101F patches that image instead of the cartridge: it is rebuilt with `ivs_pack --exec <stub-2 listing> <out> --patch ADDR=HEX`
+# after the same explicit from check against `ivs_pack --dump-words` of the stub listing, and the cartridge stays the unpatched copy
+# (a row with addresses in both places is an inventory finding). An optional last column `fails=<k.j,...>` states the complete set of
+# failing asserts: the `step.<k>.assert.<j> fail` lines of the report, in report order, must equal the list exactly (finding fails-set),
+# besides the first-clause judgement of outcome.detail. A clause that ends in ` got <value>` pins the value, a clause that starts with
+# `stop ` is the detail of a stop mismatch (the halt mutant).
+# Since plan 07-07 (D-23, D-06, A-16, W4a) the four scenarios demo-lamp-tone-{pass,idle,shift,swap} are scenario cases like the others, and:
+# runner-process.pair.<idA>.<idB>: the metamorphic judge, one case per line `<idA> <idB> differ=<keys> equal=<keys>` of
+# data/expected/scenario-pairs.ids (either list may be `-`, keys are report keys such as digest.video). It reads the two reports this
+# run just made (no expected value, no golden): every `differ` key has two different values, every `equal` key two equal values, and
+# for each scenario of the pair `input.consumed == input.events` when it has input and `output.audio.changes 0` when it has none
+# (the idle run is silent). A pair line without both reports, a missing key, a vacuous line (`-` and `-`) or an unknown scenario id
+# is a finding. runner-process.repeat.demo-lamp-tone-pass, runner-process.slices.demo-lamp-tone-pass (--slice-ticks 1 and 7) and
+# runner-process.cwd.demo-lamp-tone-pass repeat the pass scenario only (cost cap). Three judge self-controls with fake report pairs,
+# runner-process.judge.pair-video-equal, runner-process.judge.input-not-consumed and runner-process.judge.idle-audible, pass only when
+# the pair judge rejects the fake for its stated token (pair-not-different, input-not-consumed, idle-audible).
+# Since plan 07-11 (D-31, T-07-26 to T-07-29): runner-process.refuse-user.audio-raw, .psg-log-out and .audio-wav (each option refused for a
+# scenario with a `content ... user` line: exit 14, the one line `ivs-run: <option> refused: content user`, no report, no file) and the nine
+# runner-process.owner-run.* cases of the owner-local helper tools/owner-run.sh (refusal, skip and identity cases on a copy of the helper in a
+# scratch root outside the work tree, project-made zero-filled files only; see the comment above them), with the judge self-control
+# runner-process.judge.owner-run-refusal (a fake helper that exits 0 where it must refuse is rejected).
 # Judge self-controls (runner-process.judge.<slug>): the same checks run against four fake
 # runners (shell scripts in the temp dir replaying this run's reports with one defect: exit 0 for
 # a guest-fail, no report.end, outcome pass with exit.code 10, a changed digest line); each passes
@@ -93,13 +117,13 @@ if [ -n "${IVS_TEST_OUT_DIR:-}" ]; then
   mkdir -p "$rep_dir" || { printf '# cannot create %s\n' "$rep_dir" >&2; exit 1; }
 fi
 
-# The content dir: copies of the build-tree images (boot stub, diag-cpu-1, since plan 05-11 diag-ctrl-psg-1, and since plan 06-13 diag-stic-1),
+# The content dir: copies of the build-tree images (boot stub, since plan 07-05 boot-stub-2, diag-cpu-1, since plan 05-11 diag-ctrl-psg-1, since plan 06-13 diag-stic-1, and since plan 07-06 lamp-tone; the four demo-lamp-tone scenarios of plan 07-07 use the last two),
 # plus diag-cpu-1-truncated.ivsc, the diagnostic
 # container built here by ivs_pack and cut before its 32-byte trailer (POSIX dd).
 listing="$root/fixtures/FX-diag-cpu-1/diag-cpu-1.listing.txt"
 content="$tmp/content"
 mkdir "$content" "$tmp/runs" "$tmp/build" || exit 1
-for f in boot-stub.exec diag-cpu-1.ivsc diag-ctrl-psg-1.ivsc diag-stic-1.ivsc; do
+for f in boot-stub.exec boot-stub-2.exec diag-cpu-1.ivsc diag-ctrl-psg-1.ivsc diag-stic-1.ivsc lamp-tone.ivsc; do
   cp "$images/$f" "$content/$f" || { printf 'runner-process-tap: no image %s/%s\n' "$images" "$f" >&2; exit 1; }
 done
 "$pack" --ivsc "$listing" "$tmp/build/full.ivsc" 2> "$tmp/build/pack.err" \
@@ -297,6 +321,54 @@ check_repeat() {
   return "$_j"
 }
 
+# rkey <report> <key>: the value of the first line `<key> <value>` of a report ('' when the key is absent).
+rkey() { awk -v k="$2" '$1 == k { print $2; exit }' "$1"; }
+
+# check_pair <idA> <idB> <reportA> <reportB> <differ list> <equal list> (plan 07-07, D-23, A-16): the metamorphic judge of one line of
+# data/expected/scenario-pairs.ids on two reports of this run. Every key of the comma-joined differ list has two different values
+# (pair-not-different), every key of the equal list two equal values (pair-not-equal), a key absent from a report is pair-missing-key and
+# a missing or empty report is pair-no-report; for each scenario of the pair, input.consumed must equal input.events when there is input
+# (input-not-consumed) and a scenario with no input must deliver output.audio.changes 0 (idle-audible). Appends findings to $tmp/why;
+# returns 0 when it adds none.
+check_pair() {
+  _pa=$1; _pb=$2; _ra=$3; _rb=$4; _pd=$5; _pe=$6
+  found=0
+  if [ ! -s "$_ra" ] || [ ! -s "$_rb" ]; then
+    why pair-no-report "no report for $_pa or $_pb"
+    return 1
+  fi
+  for _kind in differ equal; do
+    if [ "$_kind" = differ ]; then _kl=$_pd; else _kl=$_pe; fi
+    [ "$_kl" != - ] || continue
+    set -f; IFS=,; set -- $_kl; IFS=$ifs0; set +f
+    for _k in "$@"; do
+      _va=$(rkey "$_ra" "$_k")
+      _vb=$(rkey "$_rb" "$_k")
+      if [ -z "$_va" ] || [ -z "$_vb" ]; then
+        why pair-missing-key "$_k is absent from the report of $_pa or $_pb"
+      elif [ "$_kind" = differ ] && [ "$_va" = "$_vb" ]; then
+        why pair-not-different "$_k is equal in $_pa and $_pb ($_va)"
+      elif [ "$_kind" = equal ] && [ "$_va" != "$_vb" ]; then
+        why pair-not-equal "$_k differs between $_pa and $_pb"
+      fi
+    done
+  done
+  for _sp in "$_pa:$_ra" "$_pb:$_rb"; do
+    _sid=${_sp%%:*}; _sr=${_sp#*:}
+    _ev=$(rkey "$_sr" input.events)
+    _co=$(rkey "$_sr" input.consumed)
+    _ch=$(rkey "$_sr" output.audio.changes)
+    if [ -z "$_ev" ] || [ -z "$_co" ] || [ -z "$_ch" ]; then
+      why pair-missing-key "input.events, input.consumed or output.audio.changes is absent from the report of $_sid"
+    elif [ "$_ev" != 0 ] && [ "$_co" != "$_ev" ]; then
+      why input-not-consumed "$_sid: input.consumed $_co, input.events $_ev"
+    elif [ "$_ev" = 0 ] && [ "$_ch" != 0 ]; then
+      why idle-audible "$_sid has no input but output.audio.changes is $_ch"
+    fi
+  done
+  [ "$found" -eq 0 ]
+}
+
 : > "$tmp/results"
 n=0
 executed=0
@@ -350,22 +422,45 @@ patch_args() {
   awk -v a="$1" -v w="$2" 'BEGIN { n = split(a, A, ","); split(w, W, ","); for (i = 1; i <= n; i++) printf "--patch %s=%s ", A[i], W[i] }'
 }
 
-# run_mutant <id> <listing> <cart file name> <scenario id> <addr> <to> <exit> <outcome> <detail pattern>:
-# rebuilds the cartridge from <listing> in a fresh directory with the one word patched, runs the
-# scenario against it and judges the stated exit code, outcome and detail. Sets $ok, adds to $tmp/why.
+# run_mutant <id> <listing> <cart file name> <scenario id> <addr> <to> <exit> <outcome> <detail pattern> [stub]:
+# rebuilds the cartridge from <listing> in a fresh directory with the words patched, runs the
+# scenario against it and judges the stated exit code, outcome and detail. Sets $ok and $ran (1 once
+# the scenario was run), adds to $tmp/why. With a tenth argument `stub` <listing> is the listing of the
+# boot stub contract 2 and the patched image is boot-stub-2.exec, rebuilt with `ivs_pack --exec` (plan
+# 07-08, A-14, A-17), while the cartridge <cart file name> stays the unpatched copy; otherwise the
+# cartridge is rebuilt and boot-stub-2.exec is the unpatched copy (the directory always holds both stubs).
 run_mutant() {
   _mid=$1; _ml=$2; _mc=$3; _ms=$4; _ma=$5; _mw=$6; _mx=$7; _mo=$8; _mp=$9
+  ran=0
+  if [ "${10:-cart}" = stub ]; then
+    _mimg=boot-stub-2.exec; _mflag=--exec; _mkeep=$_mc
+  else
+    _mimg=$_mc; _mflag=--ivsc; _mkeep=boot-stub-2.exec
+  fi
   md="$tmp/mut-$_mid"
-  if ! mkdir "$md" || ! cp "$content/boot-stub.exec" "$md/boot-stub.exec"; then
+  if ! mkdir "$md" || ! cp "$content/boot-stub.exec" "$md/boot-stub.exec" || ! cp "$content/$_mkeep" "$md/$_mkeep"; then
     ok=0; why temp "cannot prepare $md"
-  elif ! "$pack" --ivsc "$_ml" "$md/$_mc" $(patch_args "$_ma" "$_mw") > "$tmp/why.pack" 2>&1; then
+  elif ! "$pack" "$_mflag" "$_ml" "$md/$_mimg" $(patch_args "$_ma" "$_mw") > "$tmp/why.pack" 2>&1; then
     ok=0; why pack "ivs_pack --patch $_ma=$_mw failed: $(cat "$tmp/why.pack")"
-  elif cmp -s "$md/$_mc" "$content/$_mc"; then
-    ok=0; why pack "the patch $_ma=$_mw leaves the container unchanged"
+  elif cmp -s "$md/$_mimg" "$content/$_mimg"; then
+    ok=0; why pack "the patch $_ma=$_mw leaves the image unchanged"
   else
     run_one "$tmp" "mut-$_mid" "$ivs_run" --content-dir "$md" "$scen/$_ms.ivss"
+    ran=1
     judge "mut-$_mid" "$_mx" "$_mo" "$_mp" "" || ok=0
   fi
+}
+
+# check_fails <name> <list> (plan 07-08, D-25): the asserts that run <name> reported `fail`, as the comma-joined `<step>.<assert>` of
+# the lines `step.<k>.assert.<j> fail ...` of its report in report order, equal <list> exactly. Appends a fails-set finding and returns
+# 1 otherwise (also for a report that is missing or has no failing assert).
+check_fails() {
+  _fg=$(awk '$1 ~ /^step[.][0-9]+[.]assert[.][0-9]+$/ && $2 == "fail" { split($1, P, "."); printf "%s%s.%s", (n++ ? "," : ""), P[2], P[4] }' "$tmp/runs/$1.out" 2> /dev/null)
+  if [ "$_fg" != "$2" ]; then
+    why fails-set "the failing asserts are '$_fg', expected '$2'"
+    return 1
+  fi
+  return 0
 }
 
 # Program mutations (D-32): per line `<ID> <addr> <word> <clause>` of
@@ -462,6 +557,80 @@ while read -r mid scn addrs froms tos rest; do
   result "runner-process.mutant.$mid"
 done < "$muts3"
 
+# Program mutations of the first original program (plan 07-08, D-25, D-10, D-13, A-14, A-17): per line
+# `<ID> <scenario> <addr list> <from list> <to list> <clause> <outcome> <exit> [fails=<k.j,...>]` of data/expected/diag-mutations-scn.ids
+# (the lists are comma-joined). The word at each <addr> of the unpatched listing (ivs_pack --dump-words) must be its <from>: of the Lamp Tone
+# listing for a program address, of the boot stub contract 2 listing when every address lies in the stub window 1000-101F (a row with
+# addresses in both is an inventory finding). The stated outcome (guest-fail 10, timeout 11 or pass 0) of the named scenario is judged
+# against outcome.detail; with `fails=` the complete set of failing asserts is judged too (check_fails).
+listing4="$root/fixtures/FX-demo-lamp-tone-1/lamp-tone.listing.txt"
+listing4s="$root/fixtures/FX-boot-stub-2/boot-stub-2.listing.txt"
+muts4="$root/data/expected/diag-mutations-scn.ids"
+"$pack" --dump-words "$listing4" > "$tmp/words4" 2> /dev/null || : > "$tmp/words4"
+"$pack" --dump-words "$listing4s" > "$tmp/words4s" 2> /dev/null || : > "$tmp/words4s"
+while read -r mid scn addrs froms tos rest; do
+  case $mid in '' | '#'*) continue ;; esac
+  ok=1
+  ran=0
+  : > "$tmp/why"
+  fails=
+  case ${rest##* } in
+    fails=*) fails=${rest##* }; rest=${rest% *}; fails=${fails#fails=} ;;
+  esac
+  mx=${rest##* }
+  rest=${rest% *}
+  mo=${rest##* }
+  clause=${rest% *}
+  # the image the row patches: stub when every address lies in 1000-101F, cart when none does, mixed otherwise
+  win=$(awk -v a="$addrs" 'BEGIN { n = split(a, A, ","); s = 0; c = 0
+    for (i = 1; i <= n; i++) { if (A[i] >= "1000" && A[i] <= "101F") s++; else c++ }
+    print (s > 0 && c > 0) ? "mixed" : ((s > 0) ? "stub" : "cart") }')
+  if [ "$win" = stub ]; then wfile="$tmp/words4s"; else wfile="$tmp/words4"; fi
+  # each address word of the unpatched listing equals its from word, and the three lists have one length
+  bad=$(awk -v a="$addrs" -v f="$froms" -v t="$tos" '
+    NR == FNR { w[$1] = $2; next }
+    END {
+      na = split(a, A, ","); nf = split(f, F, ","); nt = split(t, T, ",")
+      if (na != nf || na != nt) { print "lists of different lengths"; exit }
+      for (i = 1; i <= na; i++) if (w[A[i]] != F[i]) print "the word at " A[i] " is " w[A[i]] ", expected from " F[i]
+    }' "$wfile" /dev/null)
+  fbad=$(printf '%s\n' "$fails" | awk 'NF && $0 !~ /^[0-9]+[.][0-9]+(,[0-9]+[.][0-9]+)*$/ { print "bad" }')
+  if [ -z "$mx" ] || [ -z "$mo" ] || [ -z "$clause" ] || [ "$clause" = "$rest" ]; then
+    ok=0; why inventory "not <ID> <scenario> <addr list> <from list> <to list> <clause> <outcome> <exit> [fails=<k.j,...>]"
+  elif [ ! -f "$scen/$scn.ivss" ]; then
+    ok=0; why inventory "no scenario file data/scenarios/$scn.ivss"
+  elif [ -n "$fbad" ]; then
+    ok=0; why inventory "fails=$fails is not a comma-joined list of <step>.<assert>"
+  elif [ -n "$fails" ] && [ "$mo" != guest-fail ]; then
+    ok=0; why inventory "fails= needs the outcome guest-fail"
+  elif [ "$win" = mixed ]; then
+    ok=0; why inventory "addresses $addrs lie in both the boot stub window 1000-101F and the program"
+  elif [ -n "$bad" ]; then
+    ok=0; why listing "$bad"
+  else
+    case $mo in
+      guest-fail)
+        case $clause in
+          'stop '*) mp=$clause ;;
+          *' got '*) mp="assert=* line=* $clause" ;;
+          *) mp="assert=* line=* $clause got *" ;;
+        esac ;;
+      timeout) mp="budget step=* line=* expected=halted got=target" ;;
+      pass) mp=- ;;
+      *) mp=; ok=0; why inventory "outcome '$mo' is not guest-fail, timeout or pass" ;;
+    esac
+    if [ "$ok" -eq 1 ]; then
+      if [ "$win" = stub ]; then
+        run_mutant "$mid" "$listing4s" lamp-tone.ivsc "$scn" "$addrs" "$tos" "$mx" "$mo" "$mp" stub
+      else
+        run_mutant "$mid" "$listing4" lamp-tone.ivsc "$scn" "$addrs" "$tos" "$mx" "$mo" "$mp"
+      fi
+      if [ "$ran" -eq 1 ] && [ -n "$fails" ]; then check_fails "mut-$mid" "$fails" || ok=0; fi
+    fi
+  fi
+  result "runner-process.mutant.$mid"
+done < "$muts4"
+
 # Determinism (D-23, Pitfall 11): a second run, slice sizes 1 and 7, and a run from another
 # working directory all equal the scenario case's report apart from host.calls.
 for id in diag-boot-pass diag-input-pass diag-ctrl-psg-pass; do
@@ -501,6 +670,54 @@ result runner-process.cwd
 ok=1
 check_repeat "$tmp/elsewhere" "$ivs_run" cwd2 diag-ctrl-psg-pass "$tmp/runs/scen-diag-ctrl-psg-pass.out" || ok=0
 result runner-process.cwd.diag-ctrl-psg-pass
+
+# The Lamp Tone pass scenario (plan 07-07, D-23, cost cap: that scenario only): a second run, the slice replays (--slice-ticks 1 and 7)
+# and a run from another working directory equal the scenario case's report apart from host.calls.
+id=demo-lamp-tone-pass
+ref="$tmp/runs/scen-$id.out"
+: > "$tmp/why"
+ok=1
+check_repeat "$tmp" "$ivs_run" "rep-$id" "$id" "$ref" || ok=0
+result "runner-process.repeat.$id"
+: > "$tmp/why"
+ok=1
+for s in 1 7; do
+  check_repeat "$tmp" "$ivs_run" "sl$s-$id" "$id" "$ref" --slice-ticks "$s" || ok=0
+done
+result "runner-process.slices.$id"
+: > "$tmp/why"
+ok=1
+check_repeat "$tmp/elsewhere" "$ivs_run" "cwd3" "$id" "$ref" || ok=0
+result "runner-process.cwd.$id"
+
+# The metamorphic judge (plan 07-07, D-23, D-06, A-16): per line `<idA> <idB> differ=<keys> equal=<keys>` of
+# data/expected/scenario-pairs.ids, the reports of the two scenario cases above are related to each other (no expected value).
+pairs="$root/data/expected/scenario-pairs.ids"
+while read -r pa pb pdiff peq prest; do
+  case $pa in '' | '#'*) continue ;; esac
+  ok=1
+  : > "$tmp/why"
+  pdl=; pel=
+  case $pdiff in differ=*) pdl=${pdiff#differ=} ;; *) ok=0; why inventory "third column is not differ=<keys>" ;; esac
+  case $peq in equal=*) pel=${peq#equal=} ;; *) ok=0; why inventory "fourth column is not equal=<keys>" ;; esac
+  [ -z "$prest" ] || { ok=0; why inventory "more than four columns"; }
+  for _l in "$pdl" "$pel"; do
+    case $_l in
+      -) ;;
+      '' | *[!a-z0-9.,]* | ,* | *, | *,,*) ok=0; why inventory "key list '$_l' is not - or comma-joined report keys" ;;
+    esac
+  done
+  [ "$pdl$pel" != "--" ] || { ok=0; why inventory "differ=- equal=- judges nothing"; }
+  for _i in "$pa" "$pb"; do
+    awk -v i="$_i" '$1 == i && $4 == "deterministic" { f = 1 } END { exit !f }' "$inv" \
+      || { ok=0; why inventory "scenario $_i is not a deterministic line of data/expected/runner-scenarios.ids"; }
+  done
+  [ "$pa" != "$pb" ] || { ok=0; why inventory "a pair of one scenario"; }
+  if [ "$ok" -eq 1 ]; then
+    check_pair "$pa" "$pb" "$tmp/runs/scen-$pa.out" "$tmp/runs/scen-$pb.out" "$pdl" "$pel" || ok=0
+  fi
+  result "runner-process.pair.$pa.$pb"
+done < "$pairs"
 
 # Operator-only raw outputs (plan 05-09, D-20, T-05-23): a project-authored EXEC stand-in (nine words
 # at $1000: mixer R7 = $3F, then amplitude A = $0F, $00, $07, then a branch to itself; encodings as
@@ -760,6 +977,31 @@ run_one "$tmp" op-vu-raw "$ivs_run" --content-dir "$opc" --video-raw "$opo/u.vra
 cmp -s "$tmp/runs/op-vu-raw.err" "$tmp/want.err" || { ok=0; why operator-video-user "--video-raw: stderr is not the one refusal line"; }
 [ ! -e "$opo/u.vraw" ] || { ok=0; why operator-video-user "--video-raw: a file was created"; }
 result runner-process.operator.frame-ppm-refused-user-content
+# The three derived audio outputs follow the same rule (plan 07-11, D-31, T-07-29): --audio-raw, --psg-log-out and --audio-wav are each
+# refused for that scenario with exit 14, exactly one stderr line `ivs-run: <option> refused: content user`, no report and no file,
+# before any output is created. refuse_user <slug> <option> <path> is the case runner-process.refuse-user.<slug>; the audio-raw case
+# also gives all three options at once and requires the first of the fixed order (--audio-raw, --psg-log-out, --audio-wav) to be named
+# and none of the three files to exist.
+refuse_user() {
+  : > "$tmp/why"
+  ok=1
+  printf 'ivs-run: %s refused: content user\n' "$2" > "$tmp/want.err"
+  run_one "$tmp" "refuse-user-$1" "$ivs_run" --content-dir "$opc" "$2" "$3" "$opc/operator-user.ivss"
+  [ "$rc" -eq 14 ] && [ "$hung" -eq 0 ] && [ ! -s "$tmp/runs/refuse-user-$1.out" ] || { ok=0; why refuse-user "$2: exit $rc, hung $hung or a report"; }
+  cmp -s "$tmp/runs/refuse-user-$1.err" "$tmp/want.err" || { ok=0; why refuse-user "$2: stderr is not the one refusal line"; }
+  [ ! -e "$3" ] || { ok=0; why refuse-user "$2: a file was created"; }
+  if [ "$1" = audio-raw ]; then
+    run_one "$tmp" refuse-user-all "$ivs_run" --content-dir "$opc" --audio-wav "$opo/ru-all.wav" --psg-log-out "$opo/ru-all.log" \
+      --audio-raw "$opo/ru-all.raw" "$opc/operator-user.ivss"
+    [ "$rc" -eq 14 ] && [ "$hung" -eq 0 ] && [ ! -s "$tmp/runs/refuse-user-all.out" ] || { ok=0; why refuse-user "all three: exit $rc, hung $hung or a report"; }
+    cmp -s "$tmp/runs/refuse-user-all.err" "$tmp/want.err" || { ok=0; why refuse-user "all three: stderr is not the one --audio-raw line"; }
+    [ ! -e "$opo/ru-all.wav" ] && [ ! -e "$opo/ru-all.log" ] && [ ! -e "$opo/ru-all.raw" ] || { ok=0; why refuse-user "all three: a file was created"; }
+  fi
+  result "runner-process.refuse-user.$1"
+}
+refuse_user audio-raw --audio-raw "$opo/ru.raw"
+refuse_user psg-log-out --psg-log-out "$opo/ru.log"
+refuse_user audio-wav --audio-wav "$opo/ru.wav"
 
 # Operator WAV (plan 05-10, D-20, D-21, T-05-26): the same stand-in under --audio-wav, into the mktemp directory.
 # By hand: the report ends with refpcm.rate (48000), refpcm.frames and refpcm.sha256 right before report.end;
@@ -834,6 +1076,221 @@ run_one "$tmp" listen-user "$root/tools/listen-demo.sh" needs-user-exec
 [ ! -s "$tmp/runs/listen-user.out" ] || { ok=0; why listen-demo "output on stdout from a refusal"; }
 grep -q -e 'content .* user' "$tmp/runs/listen-user.err" || { ok=0; why listen-demo "the message does not name the content user rule"; }
 result runner-process.listen-demo.refuses-user
+
+# The owner-local helper (plan 07-11, D-31, T-07-26 to T-07-28; docs/owner-images.md): its refusal, skip and identity cases, judged by exit
+# code and one line of text, with no owner image anywhere: the only files are project-made zero-filled files of the exact sizes. Hermetic
+# by construction: every case runs a COPY of the helper in a fresh scratch root (mktemp -d under this run's temp directory, outside the work
+# tree), so the helper's own root, from its $0, is the scratch root and nothing of the repository can be read or written. The scratch root
+# holds its own refs/ (locks and files written by the case), a copy of the template scenario and a link build/release/runner/ivs-run to the
+# runner under test. The helper's TMPDIR is a directory outside every scratch root: a leftover there is a finding. CI and GITHUB_ACTIONS are
+# set empty for every case except the two environment cases (the container and hosted gates set CI).
+# By hand, the sizes are EXEC 8192 and GROM 2048 bytes; a lock is `<64 lower-case hex>  exec` and `<64 lower-case hex>  grom`; the nine cases:
+# usage (exit 2), ci-env and github-actions-env (exit 2, checked before the absent-images skip), in-tree-path (exit 2: a path whose physical
+# directory is inside the root but not under refs/, also by a `..` spelling and for a directory named -x), wrong-size (exit 2: too short, too long, a missing image of
+# two, an image in a missing directory), missing-lock (exit 2; then --record writes the lock and a second --record refuses to replace it), bad-lock-line (exit 2, one token per defect), no-images-skip (exit 77 and the SKIPPED line, even
+# when the directory of a path does not exist) and identity-mismatch (zero-filled files and a lock of 64 zero digits: the core's
+# expect-sha256 refuses at load, exit 14, the report names IVS_E_DIGEST_MISMATCH, nothing was executed and nothing else was written).
+or_tmpd="$tmp/or-tmpdir"
+mkdir "$or_tmpd" || exit 1
+or_ci_msg='owner-run: refusing to run in CI (CI or GITHUB_ACTIONS is set): owner images are never used there'
+or_usage_msg='owner-run: usage: owner-run.sh [--preset dev|release] [--record] <exec-image> <grom-image>'
+or_lock_msg='owner-run: bad lock line: want 64 lower-case hex digits, two spaces, exec or grom'
+or_z=$(printf '%064d' 0)
+# or_scratch: a fresh scratch root in $sr.
+or_scratch() {
+  sr=$(mktemp -d "$tmp/owner-run-root.XXXXXX") || exit 1
+  mkdir -p "$sr/tools" "$sr/data/scenarios" "$sr/build/release/runner" "$sr/refs" || exit 1
+  cp "$root/tools/owner-run.sh" "$sr/tools/owner-run.sh" || exit 1
+  cp "$scen/owner-exec-title.ivss" "$sr/data/scenarios/owner-exec-title.ivss" || exit 1
+  ln -s "$ivs_run" "$sr/build/release/runner/ivs-run" || exit 1
+}
+# or_img <path> <bytes>: a project-made zero-filled file.
+or_img() { dd if=/dev/zero of="$1" bs="$2" count=1 2> /dev/null || exit 1; }
+# or_run <name> <CI> <GITHUB_ACTIONS> <helper arguments...>: the scratch copy as run or-<name> (its TMPDIR is $or_tmpd unless $or_tmp is set).
+or_run() {
+  _on=$1; _oc=$2; _og=$3; shift 3
+  run_one "$tmp" "or-$_on" env "CI=$_oc" "GITHUB_ACTIONS=$_og" "TMPDIR=${or_tmp:-$or_tmpd}" sh "$sr/tools/owner-run.sh" "$@"
+}
+# or_same <file> <line>: 0 when the file holds exactly the one LF-terminated line <line>, or nothing when <line> is empty (shell builtins only,
+# no process per check: these cases are cost-capped).
+or_same() {
+  _l1=; _l2=; _r1=0; _r2=0
+  { IFS= read -r _l1 || _r1=1; IFS= read -r _l2 || _r2=1; } < "$1"
+  if [ -z "$2" ]; then
+    [ "$_r1" -eq 1 ] && [ -z "$_l1" ]
+  else
+    [ "$_r1" -eq 0 ] && [ "$_l1" = "$2" ] && [ "$_r2" -eq 1 ] && [ -z "$_l2" ]
+  fi
+}
+# or_judge <name> <exit> <stdout line> <stderr line>: run or-<name> ended with the exit code, was not hung and wrote exactly that one stdout
+# line and that one stderr line ('' for none). Findings owner-run-hung, owner-run-exit, owner-run-stdout, owner-run-stderr; returns 0 when
+# it adds none.
+or_judge() {
+  found=0
+  [ "$hung" -eq 0 ] || why owner-run-hung "still running after ${limit}s, stopped by the watchdog"
+  [ "$rc" = "$2" ] || why owner-run-exit "exit $rc, expected $2"
+  or_same "$tmp/runs/or-$1.out" "$3" || why owner-run-stdout "stdout is not exactly: $3 (got: $(sed -n '1,2p' "$tmp/runs/or-$1.out"))"
+  or_same "$tmp/runs/or-$1.err" "$4" || why owner-run-stderr "stderr is not exactly: $4 (got: $(sed -n '1,2p' "$tmp/runs/or-$1.err"))"
+  [ "$found" -eq 0 ]
+}
+# or_end: ends a case: nothing may be left in the helper's TMPDIR (finding owner-run-tmpdir), and the scratch root is removed.
+or_end() {
+  if [ -n "$(ls -A "$or_tmpd")" ]; then
+    ok=0; why owner-run-tmpdir "left in the helper's TMPDIR: $(ls -A "$or_tmpd")"
+    rm -rf "$or_tmpd"; mkdir "$or_tmpd"
+  fi
+  rm -rf "$sr"
+}
+
+: > "$tmp/why"
+ok=1
+or_scratch
+or_run usage '' ''
+or_judge usage 2 '' "$or_usage_msg" || ok=0
+or_run usage '' '' --preset bogus "$sr/refs/a" "$sr/refs/b"
+or_judge usage 2 '' "$or_usage_msg" || ok=0
+or_end
+result runner-process.owner-run.usage
+
+# Both environment variables refuse, and before the absent-images skip (the two paths do not exist, so an unchecked environment would skip).
+: > "$tmp/why"
+ok=1
+or_scratch
+or_run ci true '' "$sr/refs/a" "$sr/refs/b"
+or_judge ci 2 '' "$or_ci_msg" || ok=0
+or_end
+result runner-process.owner-run.ci-env
+: > "$tmp/why"
+ok=1
+or_scratch
+or_run gha '' true "$sr/refs/a" "$sr/refs/b"
+or_judge gha 2 '' "$or_ci_msg" || ok=0
+or_end
+result runner-process.owner-run.github-actions-env
+
+# An image whose physical directory is inside the root but not under refs/ (also reached through a `..` spelling, and with only one image
+# there) is refused.
+: > "$tmp/why"
+ok=1
+or_scratch
+mkdir "$sr/data/own"
+or_img "$sr/data/own/e.bin" 8192
+or_img "$sr/data/own/g.bin" 2048
+or_run tree '' '' "$sr/data/own/e.bin" "$sr/data/own/g.bin"
+or_judge tree 2 '' "owner-run: an image is inside the work tree outside refs/: $sr/data/own/e.bin" || ok=0
+or_img "$sr/refs/e.bin" 8192
+or_run tree '' '' "$sr/refs/e.bin" "$sr/refs/../data/own/g.bin"
+or_judge tree 2 '' "owner-run: an image is inside the work tree outside refs/: $sr/refs/../data/own/g.bin" || ok=0
+# A relative path whose directory is named like an option (-x) is a directory, not an option of cd: it resolves inside the root and is refused
+# (an unresolved directory used to pass this check and reach the lock).
+mkdir "$sr/-x"
+or_img "$sr/-x/e.bin" 8192
+or_img "$sr/-x/g.bin" 2048
+run_one "$sr" or-tree env "CI=" "GITHUB_ACTIONS=" "TMPDIR=$or_tmpd" sh "$sr/tools/owner-run.sh" -x/e.bin -x/g.bin
+or_judge tree 2 '' 'owner-run: an image is inside the work tree outside refs/: -x/e.bin' || ok=0
+or_end
+result runner-process.owner-run.in-tree-path
+
+# Not a regular file of the exact size: too short, too long, a missing image of two (not the skip).
+: > "$tmp/why"
+ok=1
+or_scratch
+or_exec_msg='owner-run: the exec image is not a regular file of exactly 8192 bytes'
+or_grom_msg='owner-run: the grom image is not a regular file of exactly 2048 bytes'
+or_img "$sr/refs/short.bin" 8191
+or_img "$sr/refs/e.bin" 8192
+or_img "$sr/refs/long.bin" 2049
+or_img "$sr/refs/g.bin" 2048
+or_run size '' '' "$sr/refs/short.bin" "$sr/refs/g.bin"
+or_judge size 2 '' "$or_exec_msg" || ok=0
+or_run size '' '' "$sr/refs/e.bin" "$sr/refs/long.bin"
+or_judge size 2 '' "$or_grom_msg" || ok=0
+or_run size '' '' "$sr/refs/e.bin" "$sr/refs/none.bin"
+or_judge size 2 '' "$or_grom_msg" || ok=0
+or_run size '' '' "$sr/refs/e.bin" "$sr/refs/nodir/g.bin"
+or_judge size 2 '' "$or_grom_msg" || ok=0
+or_end
+result runner-process.owner-run.wrong-size
+
+# Right-sized files and no lock.
+: > "$tmp/why"
+ok=1
+or_scratch
+or_img "$sr/refs/e.bin" 8192
+or_img "$sr/refs/g.bin" 2048
+or_run nolock '' '' "$sr/refs/e.bin" "$sr/refs/g.bin"
+or_judge nolock 2 '' 'owner-run: no lock refs/owner-images.sha256 (write it with --record)' || ok=0
+# --record writes the lock from the two files (the digests of 8192 and of 2048 zero bytes, pinned here from an independent tool) and goes on;
+# a TMPDIR that does not exist ends it right after the write, before anything is executed. A second --record refuses to replace the lock.
+or_tmp="$tmp/no-such-dir"
+or_run record '' '' --record "$sr/refs/e.bin" "$sr/refs/g.bin"
+or_tmp=
+or_judge record 2 '' 'owner-run: cannot make a temporary directory' || ok=0
+printf '%s\n' '9f1dcbc35c350d6027f98be0f5c8b43b42ca52b7604459c0c42be3aa88913d47  exec' 'e5a00aa9991ac8a5ee3109844d84a55583bd20572ad3ffcd42792f3c36b183ad  grom' \
+  > "$tmp/or.want"
+cmp -s "$sr/refs/owner-images.sha256" "$tmp/or.want" || { ok=0; why owner-run-record "the recorded lock is not the digests of the two zero-filled files"; }
+or_run record '' '' --record "$sr/refs/e.bin" "$sr/refs/g.bin"
+or_judge record 2 '' 'owner-run: refs/owner-images.sha256 exists: remove it to record again' || ok=0
+or_end
+result runner-process.owner-run.missing-lock
+
+# A lock line must be exactly 64 lower-case hex digits, two spaces and exec or grom, once each; one defect per run, one token each.
+: > "$tmp/why"
+ok=1
+or_scratch
+or_img "$sr/refs/e.bin" 8192
+or_img "$sr/refs/g.bin" 2048
+or_up=A$(printf '%063d' 0)
+or_short=$(printf '%063d' 0)
+# or_badlock <expected stderr line> <lock line>...: writes the lock (one argument per line) and runs the helper once.
+or_badlock() {
+  or_want=$1; shift
+  printf '%s\n' "$@" > "$sr/refs/owner-images.sha256"
+  or_run lock '' '' "$sr/refs/e.bin" "$sr/refs/g.bin"
+  or_judge lock 2 '' "$or_want" || ok=0
+}
+or_badlock "$or_lock_msg" "$or_up  exec" "$or_z  grom"
+or_badlock "$or_lock_msg" "$or_short  exec" "$or_z  grom"
+or_badlock "$or_lock_msg" "$or_z exec" "$or_z  grom"
+or_badlock 'owner-run: bad lock line: the role is not exec or grom' "$or_z  exec" "$or_z  cart"
+or_badlock 'owner-run: bad lock: exec or grom is missing' "$or_z  exec"
+or_end
+result runner-process.owner-run.bad-lock-line
+
+# Neither image exists: the SKIPPED line and exit 77, checked before any path or file check (a directory that does not exist is no refusal).
+: > "$tmp/why"
+ok=1
+or_scratch
+or_run skip '' '' "$sr/refs/none-a" "$sr/refs/none-b"
+or_judge skip 77 'SKIPPED owner-run: no operator images (D11)' '' || ok=0
+or_run skip '' '' "$sr/no-such-dir/a" "$sr/no-such-dir/b"
+or_judge skip 77 'SKIPPED owner-run: no operator images (D11)' '' || ok=0
+or_end
+result runner-process.owner-run.no-images-skip
+
+# A lock that does not match the loaded bytes: zero-filled project files of the exact sizes and a lock of 64 zero digits. The helper passes
+# the lock digests to the core as expect-sha256 lines and the core refuses at load (IVS_E_DIGEST_MISMATCH), so the report says so, nothing was
+# executed (cpu.run_state unreset), the banner is the first stdout line, stderr is empty and the scratch root holds no file but its own.
+: > "$tmp/why"
+ok=1
+or_scratch
+or_img "$sr/refs/e.bin" 8192
+or_img "$sr/refs/g.bin" 2048
+printf '%s  exec\n%s  grom\n' "$or_z" "$or_z" > "$sr/refs/owner-images.sha256"
+or_run mismatch '' '' "$sr/refs/e.bin" "$sr/refs/g.bin"
+[ "$rc" -eq 14 ] && [ "$hung" -eq 0 ] || { ok=0; why owner-run-exit "exit $rc (hung $hung), expected 14"; }
+[ ! -s "$tmp/runs/or-mismatch.err" ] || { ok=0; why owner-run-stderr "stderr is not empty"; }
+[ "$(sed -n '1p' "$tmp/runs/or-mismatch.out")" = "OWNER-LOCAL RUN (D11): inputs are the owner's, not redistributable, not run in CI, not evidence, no claim" ] \
+  || { ok=0; why owner-run-banner "the first stdout line is not the banner"; }
+grep -q '^outcome\.detail load-refused role=exec status=IVS_E_DIGEST_MISMATCH' "$tmp/runs/or-mismatch.out" \
+  || { ok=0; why owner-run-identity "the report does not name the digest mismatch at load"; }
+grep -q -x 'cpu.run_state unreset' "$tmp/runs/or-mismatch.out" || { ok=0; why owner-run-identity "the machine was run"; }
+find "$sr" ! -type d | sed "s|^$sr/||" | sort > "$tmp/or.files"
+printf '%s\n' build/release/runner/ivs-run data/scenarios/owner-exec-title.ivss refs/e.bin refs/g.bin refs/owner-images.sha256 tools/owner-run.sh \
+  | sort > "$tmp/or.want"
+cmp -s "$tmp/or.files" "$tmp/or.want" || { ok=0; why owner-run-files "the scratch root holds other files: $(tr '\n' ' ' < "$tmp/or.files")"; }
+or_end
+result runner-process.owner-run.identity-mismatch
 
 # Judge self-controls (D-23, T-04-59): the same checks run against wrong runners, shell scripts
 # in the temp dir that replay this run's recorded reports with one defect each. A control passes
@@ -936,6 +1393,38 @@ o1=
 read -r o1 e1 < "$tmp/pairs" || :
 grep -v -x -F -e "$o1 ${e1:-} run" "$tmp/scen.pairs" > "$tmp/scen.dropped" || :
 self_control outcome-uncovered outcome-uncovered check_covered "$tmp/pairs" "$tmp/scen.dropped"
+
+# Judge self-controls of the metamorphic pair judge (plan 07-07, D-23, T-07-17): fake report pairs made from this run's reports of
+# demo-lamp-tone-pass and demo-lamp-tone-idle, each with one defect, must be rejected by check_pair for the stated token, using the
+# differ and equal lists of the pass and idle line of data/expected/scenario-pairs.ids.
+lt_pass="$tmp/runs/scen-demo-lamp-tone-pass.out"
+lt_idle="$tmp/runs/scen-demo-lamp-tone-idle.out"
+lt_d=$(awk '$1 == "demo-lamp-tone-pass" && $2 == "demo-lamp-tone-idle" { sub(/^differ=/, "", $3); print $3; exit }' "$pairs")
+lt_e=$(awk '$1 == "demo-lamp-tone-pass" && $2 == "demo-lamp-tone-idle" { sub(/^equal=/, "", $4); print $4; exit }' "$pairs")
+lt_v=$(rkey "$lt_pass" digest.video)
+lt_ev=$(rkey "$lt_pass" input.events)
+awk -v v="$lt_v" '$1 == "digest.video" { print $1, v; next } { print }' "$lt_idle" > "$fakes/idle-video-equal.report" 2> /dev/null || : > "$fakes/idle-video-equal.report"
+awk -v c="$((${lt_ev:-0} - 1))" '$1 == "input.consumed" { print $1, c; next } { print }' "$lt_pass" > "$fakes/pass-not-consumed.report" 2> /dev/null || : > "$fakes/pass-not-consumed.report"
+awk '$1 == "output.audio.changes" { print $1, 3; next } { print }' "$lt_idle" > "$fakes/idle-audible.report" 2> /dev/null || : > "$fakes/idle-audible.report"
+self_control pair-video-equal pair-not-different \
+  check_pair demo-lamp-tone-pass demo-lamp-tone-idle "$lt_pass" "$fakes/idle-video-equal.report" "${lt_d:-}" "${lt_e:-}"
+self_control input-not-consumed input-not-consumed \
+  check_pair demo-lamp-tone-pass demo-lamp-tone-idle "$fakes/pass-not-consumed.report" "$lt_idle" "${lt_d:-}" "${lt_e:-}"
+self_control idle-audible idle-audible \
+  check_pair demo-lamp-tone-pass demo-lamp-tone-idle "$lt_pass" "$fakes/idle-audible.report" "${lt_d:-}" "${lt_e:-}"
+
+# Judge self-control of the owner-helper cases (plan 07-11, D-31): a fake helper in its own scratch root that exits 0 where the real one must
+# refuse (CI set) is rejected by or_judge for its exit code.
+or_fake() {
+  or_scratch
+  printf '#!/bin/sh\nexit 0\n' > "$sr/tools/owner-run.sh"
+  or_run fake true '' "$sr/refs/a" "$sr/refs/b"
+  or_judge fake 2 '' "$or_ci_msg"
+  _fj=$?
+  or_end
+  return "$_fj"
+}
+self_control owner-run-refusal owner-run-exit or_fake
 
 # Watchdog self-control (the hosted false `hung` of run 43148343848, see wd_start): 20 watchdogs
 # of a live target, each stopped at once, must leave no marker and the target alive (before the

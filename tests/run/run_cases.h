@@ -84,6 +84,12 @@ extern const size_t ivs_run_fuzz_count;
 extern const ivs_test_case ivs_run_stub_cases[];
 extern const size_t ivs_run_stub_count;
 
+/* Family stub2 (plan 07-05, D-09, D-10, A-09, A-17): the project boot stub contract 2 from the build-tree image of
+ * tools/pack, from reset to the cartridge entry, the JD hand-off at the interrupt entry with a build-time probe
+ * cartridge, and the plain J form shown to re-enter (run_stub2.c). */
+extern const ivs_test_case ivs_run_stub2_cases[];
+extern const size_t ivs_run_stub2_count;
+
 /* Family diag (plan 04-16, D-27, D-31, RUN-06): the diagnostic ivs-diag-cpu-1 behind the boot stub,
  * from reset to its hand-derived predicate (data/golden/diag-cpu-1.expect) through the public API
  * (run_diag.c). */

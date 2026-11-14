@@ -8,7 +8,11 @@
 #   manifest-id-dir-mismatch, manifest-duplicate-id, manifest-id-missing, manifest-id-extra,
 #   manifest-inventory-empty, manifest-inventory-missing, manifest-yes-without-evidence,
 #   manifest-committed-not-redistributable, manifest-unknown-derived, manifest-missing-output,
-#   manifest-digest-mismatch, manifest-uncommitted-output-tracked.
+#   manifest-digest-mismatch, manifest-uncommitted-output-tracked, manifest-recipe-digest-mismatch.
+# manifest-recipe-digest-mismatch (plan 07-05, D-29, A-12): in a committed manifest with a non-null
+#   recipe, every recipe.sources path must exist with its recorded sha256, and recipe.tool_sha256 must
+#   equal the digest of the sources entry that is the tool's own source (RECIPE_TOOL_SOURCES below);
+#   a tool that is not registered there, or whose source is not listed, is the same finding.
 # Success line: "manifests pass manifests=<n> effective-yes=<a> effective-no=<b>".
 # Limit: a hash proves identity, not rights; duplicate JSON keys are not detectable.
 cmake_minimum_required(VERSION 3.25)
@@ -27,6 +31,10 @@ set(KINDS original-source original-built third-party-test system-image third-par
 set(USES local-test ci repo release)
 set(REVIEWS owner-confirmed author-attested unreviewed)
 set(REDIST yes no unknown)
+# recipe.tool name -> repo-relative path of that tool's own source (plan 07-05, D-29): the digest of
+# this file is what recipe.tool_sha256 must equal. A new build tool is registered here, in the commit
+# that gives its first manifest a recipe.
+set(RECIPE_TOOL_SOURCES "ivs_asm=tools/asm/asm.c" "ivs_pack=tools/pack/pack.c")
 
 # Presence, type and allowed keys of one object. ARGN holds "key:TYPE|TYPE" specs;
 # every listed key is required and every other member is an unknown key.
@@ -326,6 +334,70 @@ function(check_manifest path doc)
         gate_fail(manifest-uncommitted-output-tracked "${lbl} ${op}")
       endif()
     endforeach()
+  endif()
+
+  # Recipe bytes (plan 07-05, D-29, A-12): the sources of a non-null recipe exist with their recorded
+  # digests, and tool_sha256 is the digest of the tool's own source entry, so a changed tool or
+  # source cannot hide behind a stale recipe. Committed manifests only (an uncommitted manifest names
+  # material that is not in the tree).
+  json_type(rct "${doc}" recipe)
+  if(committed AND rct STREQUAL "OBJECT")
+    string(JSON rdoc GET "${doc}" recipe)
+    set(src_paths "")
+    set(src_actual "")
+    json_type(srt "${rdoc}" sources)
+    if(srt STREQUAL "ARRAY")
+      string(JSON nrs LENGTH "${rdoc}" sources)
+      if(nrs GREATER 0)
+        math(EXPR lrs "${nrs} - 1")
+        foreach(i RANGE 0 ${lrs})
+          json_type(spt "${rdoc}" sources ${i} path)
+          json_type(sht "${rdoc}" sources ${i} sha256)
+          if(NOT spt STREQUAL "STRING" OR NOT sht STREQUAL "STRING")
+            continue()
+          endif()
+          string(JSON sp GET "${rdoc}" sources ${i} path)
+          string(JSON ssha GET "${rdoc}" sources ${i} sha256)
+          string(TOLOWER "${ssha}" ssha)
+          path_ok(ok "${sp}")
+          if(NOT ok OR NOT EXISTS "${ROOT}/${sp}")
+            gate_fail(manifest-recipe-digest-mismatch "${lbl} ${sp} (source missing)")
+            continue()
+          endif()
+          file(SHA256 "${ROOT}/${sp}" asha)
+          if(NOT asha STREQUAL ssha)
+            gate_fail(manifest-recipe-digest-mismatch "${lbl} ${sp}")
+          endif()
+          list(APPEND src_paths "${sp}")
+          list(APPEND src_actual "${asha}")
+        endforeach()
+      endif()
+    endif()
+    json_type(tnt "${rdoc}" tool)
+    json_type(tht "${rdoc}" tool_sha256)
+    if(tnt STREQUAL "STRING" AND tht STREQUAL "STRING")
+      string(JSON tool GET "${rdoc}" tool)
+      string(JSON tsha GET "${rdoc}" tool_sha256)
+      string(TOLOWER "${tsha}" tsha)
+      set(tool_src "")
+      foreach(pair IN LISTS RECIPE_TOOL_SOURCES)
+        string(REGEX MATCH "^([^=]+)=(.+)$" _pm "${pair}")
+        if("${CMAKE_MATCH_1}" STREQUAL "${tool}")
+          set(tool_src "${CMAKE_MATCH_2}")
+        endif()
+      endforeach()
+      list(FIND src_paths "${tool_src}" ti)
+      if(tool_src STREQUAL "")
+        gate_fail(manifest-recipe-digest-mismatch "${lbl} tool ${tool} has no registered tool source")
+      elseif(ti LESS 0)
+        gate_fail(manifest-recipe-digest-mismatch "${lbl} sources do not list ${tool_src}, the source of ${tool}")
+      else()
+        list(GET src_actual ${ti} tool_actual)
+        if(NOT tsha STREQUAL tool_actual)
+          gate_fail(manifest-recipe-digest-mismatch "${lbl} tool_sha256 is not the digest of ${tool_src}")
+        endif()
+      endif()
+    endif()
   endif()
 endfunction()
 

@@ -55,8 +55,9 @@ uint32_t ivs_runner_outcome_resolve(uint32_t observed_mask);
  *   ivss 1
  *   id <[a-z0-9-]{1,48}>
  *   profile <[a-z0-9-]{1,64}>
- *   content <exec|grom|cart> <relpath>|user|boot-stub|zero-grom   (boot-stub: exec only,
- *       zero-grom: grom only; relpath: [A-Za-z0-9._/-]{1,200}, no `..`, no leading `/`, no
+ *   content <exec|grom|cart> <relpath>|user|boot-stub|boot-stub-2|zero-grom   (boot-stub and
+ *       boot-stub-2: exec only, the project boot stub contracts 1 and 2; zero-grom: grom only;
+ *       relpath: [A-Za-z0-9._/-]{1,200}, no `..`, no leading `/`, no
  *       empty segment; resolved later by the executor under --content-dir only)
  *   expect-load <role> ok|<IVS_E_NAME> [reason <n>]   (after that role's content line)
  *   expect-sha256 <role> <64 lower-case hex>           (after that role's content line)
@@ -126,6 +127,7 @@ uint32_t ivs_runner_outcome_resolve(uint32_t observed_mask);
 #define IVS_SCN_CONTENT_USER 2u
 #define IVS_SCN_CONTENT_BOOT_STUB 3u
 #define IVS_SCN_CONTENT_ZERO_GROM 4u
+#define IVS_SCN_CONTENT_BOOT_STUB_2 5u /* plan 07-05, D-09: the project boot stub contract 2, exec only */
 
 /* run-to units and stop expectations (a run-to without `stop` expects target). */
 #define IVS_SCN_UNIT_TICKS 1u
@@ -335,7 +337,8 @@ const char *ivs_scenario_input_name(uint32_t i, uint32_t *mask);
  * stop expectation or assert. It then writes the report through host->write_report and
  * returns the outcome (an IVS_RUNNER_OUTCOME_* value).
  * Content: `boot-stub` reads the reserved file boot-stub.exec under the content dir (the label
- * comes from the symbolic name only, never from the bytes or a hash table, D-30); `zero-grom`
+ * comes from the symbolic name only, never from the bytes or a hash table, D-30); `boot-stub-2`
+ * is the same for contract 2 (reserved file boot-stub-2.exec, plan 07-05, D-09); `zero-grom`
  * is 2048 zero bytes made in the runner; a relpath goes to host->read_file; `user` goes to
  * host->read_user (missing-fixture when that is NULL or has no operator image).
  * Units: cpu-cycles and frames bounds and at_cycle input times are converted with the
@@ -359,6 +362,7 @@ const char *ivs_scenario_input_name(uint32_t i, uint32_t *mask);
   (IVS_SCN_CAPTURE_MAX * 16u + IVS_SCN_CAPTURE_MAX * 12u + IVS_SCN_CAPTURE_VIDEO_MAX * IVS_RUNNER_VIDEO_SLOT_MAX)
 #define IVS_RUNNER_BUFFERS_MAX (8u * 1024u * 1024u)  /* D-22: output buffer cap */
 #define IVS_RUNNER_BOOT_STUB_FILE "boot-stub.exec"   /* reserved name under the content dir */
+#define IVS_RUNNER_BOOT_STUB_2_FILE "boot-stub-2.exec" /* reserved name of contract 2 (plan 07-05) */
 
 /* Host read results. MISSING and NOT_REGULAR are missing-fixture; TOO_LARGE means the file has
  * more than cap bytes (the host returns the first cap + 1 in buf, which the executor hands to

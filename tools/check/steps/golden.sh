@@ -23,6 +23,13 @@
 #   - the dev report build/gate/dev/runner/<id>.report exists (golden-mismatch);
 #   - .expect: its `assert` lines equal the scenario's `assert` lines in order, at least one, and
 #     its body holds nothing else (golden-expect-drift);
+#   - .expect with the header tier playable-guest-progress (plan 07-02, D-24, A-16): the scenario must have the
+#     shape of a progress predicate, not a title screen or a hash alone (golden-shape; the detail starts with
+#     one keyword): no-input (no `input` line), input-after-bound (the last input tick is not below the last
+#     `run-to` bound; the units must correspond: at_tick with ticks, at_cycle with cpu-cycles, else this keyword
+#     too), no-progress (no `assert mem` or `assert reg` in a step whose `run-to` bound is above the first input
+#     tick), no-frame (no `assert frame`), no-psglog (no `assert psglog`). The rule keys on the tier text of the
+#     header, not on the tier inventory; other tiers are not linted.
 #   - .digests: one `# domains:` line `cpu=observed mem=observed images=observed
 #     instance=observed video=<v> audio=<v> input=<v> psglog=<v>` with v `observed` or `none`
 #     (golden-mismatch when missing or malformed); a live domain is observed exactly when its
@@ -56,6 +63,11 @@
 #   runner-process (a missing report or a differing value is golden-mismatch). The converter is outside the
 #   raw-audio evidence path: no digest, claim or gate row depends on a .refpcm golden, and the .refpcm
 #   reports are not scenario reports (the dev versus release comparison below skips them).
+# User content versus skip (plan 07-10, D-31, T-07-24): over every data/scenarios/*.ivss in FILELIST and every row of
+#   the inventory, a scenario with a `content <role> user` line must have column 5 `skip-ok`
+#   (golden-user-content-not-skip-ok: it would otherwise be an ordinary test needing an image the gate never has),
+#   and a `skip-ok` row must name a scenario with such a line (golden-skip-ok-without-user-content: a skip that
+#   hides an ordinary test). A row that is absent from the inventory counts as not skip-ok.
 # Dev versus release (Pitfall 11: one ctest run sees one tree): the union of report names in
 #   build/gate/dev/runner and build/gate/release/runner; an id absent from the inventory is
 #   golden-mismatch; an id of class `host-dependent` is skipped and counted; every other id needs
@@ -64,7 +76,7 @@
 # Tokens: golden-header-missing-tier, golden-header-missing-oracle,
 #   golden-self-recorded-wrong-tier, golden-empty-domain-observed, golden-mismatch,
 #   golden-expect-drift, golden-dev-release-diff, golden-user-scenario-tracked,
-#   golden-host-dependent.
+#   golden-host-dependent, golden-shape, golden-user-content-not-skip-ok, golden-skip-ok-without-user-content.
 # Stats: goldens=<golden files> reports=<dev reports> host-dependent=<skipped report ids>.
 LC_ALL=C; export LC_ALL
 : "${ROOT:?ROOT is not set}"
@@ -83,6 +95,7 @@ tiers=data/expected/evidence-tiers.ids
 
 # Inventory: `<id> <class>`; six columns, class deterministic or host-dependent.
 : > "$tmp/inv"
+: > "$tmp/invskip"
 if grep -q -x -F -e "$inv" "$FILELIST" && [ -f "$ROOT/$inv" ]; then
   awk -v f="$inv" '
     /^#/ || NF == 0 { next }
@@ -92,6 +105,11 @@ if grep -q -x -F -e "$inv" "$FILELIST" && [ -f "$ROOT/$inv" ]; then
     { print $1 " " $4 }' "$ROOT/$inv" > "$tmp/inv.raw"
   grep '^BAD ' "$tmp/inv.raw" | while IFS= read -r l; do printf 'golden-mismatch %s\n' "${l#BAD }"; done >> "$find"
   grep -v '^BAD ' "$tmp/inv.raw" | sort -u > "$tmp/inv"
+  # `<id> <skip>` (column 5) of the rows that pass the six-column check, for the user-content rule below.
+  awk '
+    /^#/ || NF == 0 { next }
+    NF != 6 || ($4 != "deterministic" && $4 != "host-dependent") { next }
+    { print $1 " " $5 }' "$ROOT/$inv" | sort -u > "$tmp/invskip"
 else
   bad golden-mismatch "$inv missing"
 fi
@@ -211,6 +229,44 @@ while IFS= read -r g; do
     if [ ! -s "$tmp/want" ] || ! cmp -s "$tmp/want" "$tmp/have"; then
       bad golden-expect-drift "$g (assert lines differ from $sf)"
     fi
+    tier_h=$(awk '/^# tier:/ { sub(/^# tier:[ \t]*/, ""); sub(/[ \t]+$/, ""); print; exit }' "$ROOT/$g")
+    if [ "$tier_h" = playable-guest-progress ]; then
+      awk -v g="$g" -v sf="$sf" '
+        function emit(kw, why) { print kw " " g " (scenario " sf ": " why ")" }
+        $1 == "input" {
+          if ($2 ~ /^at_tick=[0-9]+$/) { u = "ticks"; v = substr($2, 9) + 0 }
+          else if ($2 ~ /^at_cycle=[0-9]+$/) { u = "cpu-cycles"; v = substr($2, 10) + 0 }
+          else next
+          if (nin == 0) { iu = u; first = v; last = v }
+          else { if (u != iu) mixed = 1; if (v < first) first = v; if (v > last) last = v }
+          nin++; next
+        }
+        $1 == "run-to" {
+          nstep++; bound[nstep] = $2 + 0
+          if (nstep == 1) su = $3; else if ($3 != su) mixed = 1
+          next
+        }
+        $1 == "assert" {
+          if (nstep > 0 && ($2 == "mem" || $2 == "reg")) prog[nstep] = 1
+          if ($2 == "frame") fr = 1
+          if ($2 == "psglog") pl = 1
+        }
+        END {
+          if (nin == 0) emit("no-input", "no input line")
+          else {
+            ok = (!mixed && nstep > 0 && ((iu == "ticks" && su == "ticks") || (iu == "cpu-cycles" && su == "cpu-cycles")))
+            if (!ok) emit("input-after-bound", "the input and run-to units do not correspond, so the last input tick is not shown below the last bound")
+            else if (last >= bound[nstep]) emit("input-after-bound", "the last input " last " is not below the last run-to bound " bound[nstep])
+            else {
+              got = 0
+              for (i = 1; i <= nstep; i++) if (bound[i] > first && prog[i]) got = 1
+              if (!got) emit("no-progress", "no assert mem or assert reg in a step that ends after the first input " first)
+            }
+          }
+          if (!fr) emit("no-frame", "no assert frame")
+          if (!pl) emit("no-psglog", "no assert psglog")
+        }' "$ROOT/$sf" | while IFS= read -r shape_line; do bad golden-shape "$shape_line"; done
+    fi
   fi
 
   if [ "$kind" = refpcm ]; then
@@ -288,6 +344,30 @@ while IFS= read -r g; do
   awk '/^#/ { next } { print }' "$ROOT/$g" > "$tmp/have"
   cmp -s "$tmp/want" "$tmp/have" || bad golden-mismatch "$g (body differs from build/gate/dev/runner/$scn.report)"
 done < "$tmp/goldens"
+
+# User-content consistency (plan 07-10, D-31, T-07-24): a scenario with a `content <role> user` line needs an
+# operator image the gate never has, so its inventory row must be `skip-ok` (column 5), and every `skip-ok` row
+# must name a scenario with such a line. Both directions, over every FILELIST scenario and every inventory row.
+: > "$tmp/useroc"
+grep -E '^data/scenarios/[^/]+[.]ivss$' "$FILELIST" | while IFS= read -r sf; do
+  [ -f "$ROOT/$sf" ] || continue
+  sid=${sf#data/scenarios/}; sid=${sid%.ivss}
+  if awk '$1 == "content" && $3 == "user" { f = 1 } END { exit !f }' "$ROOT/$sf"; then
+    printf '%s\n' "$sid" >> "$tmp/useroc"
+  fi
+done
+sort -u "$tmp/useroc" -o "$tmp/useroc"
+while IFS= read -r sid; do
+  [ -n "$sid" ] || continue
+  sk=$(awk -v id="$sid" '$1 == id { print $2; exit }' "$tmp/invskip")
+  [ "$sk" = skip-ok ] \
+    || bad golden-user-content-not-skip-ok "$sid (data/scenarios/$sid.ivss has a content ... user line, its row in $inv has column 5 '${sk:-absent}', not skip-ok)"
+done < "$tmp/useroc"
+while read -r sid sk; do
+  [ "$sk" = skip-ok ] || continue
+  grep -q -x -F -e "$sid" "$tmp/useroc" \
+    || bad golden-skip-ok-without-user-content "$sid (its row in $inv is skip-ok, data/scenarios/$sid.ivss has no content ... user line)"
+done < "$tmp/invskip"
 
 # Every reference PCM inventory line has its golden (plan 05-11).
 while read -r rid rrate; do

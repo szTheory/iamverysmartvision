@@ -4,6 +4,7 @@ manifests-yes-without-evidence
 manifests-misspelled-key
 manifests-missing-key
 manifests-digest-mismatch
+manifests-recipe-source-digest
 files-unlisted-fixture-file
 files-tracked-refs-file
 files-unlisted-binary
@@ -14,3 +15,4 @@ manifests-id-missing
 manifests-uncommitted-output-tracked
 manifests-derived-from-unknown
 files-fixture-without-manifest
+files-trademark-name

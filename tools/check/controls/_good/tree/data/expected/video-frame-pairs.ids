@@ -1,0 +1,3 @@
+# Toy frame pair of the known-good control tree (plan 07-02, D-21): T-3 is T-1 with the foreground of the cell (11,19) one color lower,
+# so the two planes differ at the 9 visible foreground positions of that cell, all inside the rectangle x 152..158, y 88..95.
+T-1 T-3 152 88 7 8 9

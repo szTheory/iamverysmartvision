@@ -19,3 +19,9 @@ golden-output-key-unknown
 golden-refpcm-key
 golden-refpcm-grammar
 golden-refpcm-mismatch
+# Plan 07-02 (D-24): the shape lint for a predicate file of tier playable-guest-progress (a scenario with no input line, a scenario with no progress assert after the first input).
+golden-shape-no-input
+golden-shape-no-progress
+# Plan 07-10 (D-31, T-07-24): the user-content consistency rule, one control per direction (a scenario with a content user line whose inventory row is not skip-ok; a skip-ok row whose scenario has no such line).
+golden-user-content-not-skip-ok
+golden-skip-ok-without-user-content

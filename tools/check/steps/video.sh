@@ -6,7 +6,7 @@
 # cross-checks of rule fields and test families against the profile, the suites and the pending lists, the geometry, card
 # and chain literals and the hand-derived frames with their conservation and drift keys.
 # Tokens: stic-rule-* (kinds/stic-rule.cmake and the generic record tokens of records.cmake), video-* (video.cmake).
-# Stats: stic-rules=<rules> stic-rows=<register rows> video-frames=<frames> video-hash-ties=<hash asserts tied to a frame literal>.
+# Stats: stic-rules=<rules> stic-rows=<register rows> video-frames=<frames> video-hash-ties=<hash asserts tied to a frame literal> video-frame-pairs=<declared frame pairs>.
 LC_ALL=C; export LC_ALL
 : "${ROOT:?ROOT is not set}"
 : "${CHECK_DIR:?CHECK_DIR is not set}"

@@ -1,7 +1,8 @@
 # Owning plan 04-04: runner source hygiene (D-23, A-07): runner-scan include, internal-include
-# and feature-macro confinement; integrity SPDX/ASCII coverage of runner/ and tools/(pack|cart|pcm)/.
+# and feature-macro confinement; integrity SPDX/ASCII coverage of runner/ and tools/(pack|cart|pcm|asm)/.
 # Plan 05-10 (D-21, A-07) adds the tools/pcm controls: SPDX, the c-build unlisted-source guard, the
 # runner-scan allowance of exactly the include operand ivs_refpcm.h.
+# Plan 07-03 (D-17) adds the same two guards for tools/asm: SPDX and the c-build unlisted-source guard.
 integrity-missing-spdx-runner
 integrity-missing-spdx-tools-c
 integrity-non-ascii-runner
@@ -10,4 +11,6 @@ runner-scan-internal-include
 runner-scan-posix-define
 integrity-missing-spdx-tools-pcm
 c-build-unlisted-pcm-source
+integrity-missing-spdx-tools-asm
+c-build-unlisted-asm-source
 runner-scan-header-tools-other

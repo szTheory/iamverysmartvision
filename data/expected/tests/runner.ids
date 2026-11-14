@@ -28,6 +28,7 @@ runner.parse.accept.ivss
 runner.parse.accept.id
 runner.parse.accept.profile
 runner.parse.accept.content
+runner.parse.accept.boot-stub-2
 runner.parse.accept.expect-load
 runner.parse.accept.expect-sha256
 runner.parse.accept.wall-timeout-ms
@@ -94,6 +95,8 @@ runner.parse.edge.inline-hash
 runner.parse.edge.dotdot-inside
 runner.parse.edge.trailing-slash
 runner.parse.edge.zero-grom-as-cart
+runner.parse.edge.boot-stub-2-as-cart
+runner.parse.edge.boot-stub-2-as-grom
 runner.parse.edge.reason-with-ok
 runner.parse.edge.reason-zero
 runner.parse.edge.wall-zero
@@ -137,6 +140,7 @@ runner.exec.no-paths
 runner.exec.not-regular
 runner.exec.overshoot
 runner.exec.repeat-identical
+runner.exec.boot-stub-2
 runner.exec.sha-match
 runner.exec.sha-mismatch
 runner.exec.stop-internal
@@ -250,3 +254,6 @@ runner.operator.video-raw-hook-and-byte-cap
 runner.operator.frame-ppm-bytes-and-refusals
 runner.frameppm.palette-covers-16
 runner.frameppm.header-and-size
+# Plan 07-05 (D-09, D-20): the content token boot-stub-2 (stub contract 2, exec role only): runner.parse.accept.boot-stub-2,
+# runner.parse.edge.boot-stub-2-as-cart and -as-grom (bad-content-kind), runner.exec.boot-stub-2 (the reserved file and the label from the
+# symbolic kind only); the fuzz invariant of runner.fuzz.seed-NN moved to the new maximum kind.

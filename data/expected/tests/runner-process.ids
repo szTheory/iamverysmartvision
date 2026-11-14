@@ -2,7 +2,9 @@
 # real ivs-run of each preset.
 # runner-process.scenario.<id>: one case per line of data/expected/runner-scenarios.ids (exit
 #   code, outcome, exit.code, outcome.detail, `ivsr 3` first and `report.end <n>` last);
-#   needs-user-exec needs an operator EXEC the gate never has and is a visible skip.
+#   needs-user-exec needs an operator EXEC the gate never has and is a visible skip; since plan 07-10
+#   (D-31) so is owner-exec-title, the template of the owner-local route (docs/owner-images.md), and the
+#   gate prints one `-- SKIPPED <preset>/<suite>/<id>: <reason>` line per skipped id and preset.
 # runner-process.mutant.<ID>: one case per program mutation of data/expected/diag-mutations.ids,
 #   guest-fail naming its clause (D-32), and (plan 05-11) one per row of
 #   data/expected/diag-mutations-ctrl-psg.ids, judged by the outcome and exit code of the row
@@ -11,6 +13,19 @@
 #   runner-process.cwd (run from another directory): byte-equal reports apart from host.calls;
 #   the slicing, repeat and directory variants cover diag-boot-pass, diag-input-pass and, since plan
 #   05-11 (cost cap V-16), diag-ctrl-psg-pass (runner-process.cwd.diag-ctrl-psg-pass).
+# Plan 07-07 (D-23, D-06, A-16): the four scenarios demo-lamp-tone-{pass,idle,shift,swap} are scenario cases;
+#   runner-process.repeat/slices/cwd.demo-lamp-tone-pass repeat the pass scenario only (cost cap);
+#   runner-process.pair.<idA>.<idB>: the metamorphic judge, one case per line of data/expected/scenario-pairs.ids (two reports of the
+#   same run related by differ and equal keys, input.consumed equal to input.events, an idle run silent);
+#   runner-process.judge.pair-video-equal, .input-not-consumed and .idle-audible: fake report pairs that the pair judge must reject.
+# Plan 07-08 (D-25, A-14, A-17): runner-process.mutant.SCN-*, one case per row of data/expected/diag-mutations-scn.ids (12 mutants and one
+#   negative row of the Lamp Tone program; stub-window rows patch boot-stub-2.exec; a fails column states the complete failing set).
+# Plan 07-11 (D-31, T-07-29): runner-process.refuse-user.audio-raw, .psg-log-out and .audio-wav: each option is refused for a scenario with a
+#   `content ... user` line (exit 14, one stderr line `<option> refused: content user`, no report, no file).
+# Plan 07-11 (D-31, T-07-26 to T-07-28): runner-process.owner-run.<case>, the nine cases of the owner-local helper tools/owner-run.sh (usage,
+#   ci-env, github-actions-env, in-tree-path, wrong-size, missing-lock, bad-lock-line, no-images-skip, identity-mismatch), each on a copy of the
+#   helper in a scratch root outside the work tree with project-made zero-filled files only; runner-process.judge.owner-run-refusal rejects a
+#   fake helper that exits 0 where it must refuse.
 # runner-process.judge.<slug>: judge self-controls, each passing only when the judge fails a fake
 #   runner for its intended reason (exit code, missing report.end, outcome and exit.code
 #   disagreeing, a changed report body; plan 04-24: a removed demonstrating scenario).
@@ -40,6 +55,11 @@ runner-process.scenario.diag-ctrl-psg-order
 runner-process.scenario.diag-stic-fgbg-pass
 runner-process.scenario.diag-stic-cstack-pass
 runner-process.scenario.video-assert-mismatch
+runner-process.scenario.demo-lamp-tone-pass
+runner-process.scenario.demo-lamp-tone-idle
+runner-process.scenario.demo-lamp-tone-shift
+runner-process.scenario.demo-lamp-tone-swap
+runner-process.scenario.owner-exec-title skip-ok
 runner-process.mutant.ADDI-SUBI
 runner-process.mutant.BNZE-BZE
 runner-process.mutant.PSHR-MVOAT
@@ -56,6 +76,19 @@ runner-process.mutant.STIC-ENABLE-ADDR
 runner-process.mutant.STIC-MODE-SENSE
 runner-process.mutant.STIC-GRAM-COUNT
 runner-process.mutant.STIC-PAD-NEGATIVE
+runner-process.mutant.SCN-INPUT-PORT
+runner-process.mutant.SCN-PROGRESS-STORE
+runner-process.mutant.SCN-LAMP-COMPLEMENT
+runner-process.mutant.SCN-AMP-VALUE
+runner-process.mutant.SCN-SOUND-UNGATED
+runner-process.mutant.SCN-REARM-SHORT
+runner-process.mutant.SCN-REARM-LONG
+runner-process.mutant.SCN-STROBE-LATE
+runner-process.mutant.SCN-NO-EIS
+runner-process.mutant.SCN-HLT-IDLE
+runner-process.mutant.SCN-STUB-JD-AS-J
+runner-process.mutant.SCN-ISR-TIE
+runner-process.mutant.SCN-REARM-NEGATIVE
 runner-process.repeat.diag-boot-pass
 runner-process.slices.diag-boot-pass
 runner-process.repeat.diag-input-pass
@@ -67,6 +100,11 @@ runner-process.repeat.diag-stic-cstack-pass
 runner-process.slices.diag-stic-fgbg-pass
 runner-process.cwd
 runner-process.cwd.diag-ctrl-psg-pass
+runner-process.repeat.demo-lamp-tone-pass
+runner-process.slices.demo-lamp-tone-pass
+runner-process.cwd.demo-lamp-tone-pass
+runner-process.pair.demo-lamp-tone-pass.demo-lamp-tone-idle
+runner-process.pair.demo-lamp-tone-pass.demo-lamp-tone-shift
 runner-process.operator.audio-raw
 runner-process.operator.psg-log
 runner-process.operator.exclusive
@@ -79,14 +117,30 @@ runner-process.operator.video-raw-empty-run
 runner-process.operator.video-raw-failed-run
 runner-process.operator.video-raw-update-golden-refused
 runner-process.operator.frame-ppm-refused-user-content
+runner-process.refuse-user.audio-raw
+runner-process.refuse-user.psg-log-out
+runner-process.refuse-user.audio-wav
 runner-process.refpcm.wav-written
 runner-process.refpcm.diag-ctrl-psg-pass
 runner-process.listen-demo.refuses-user
+runner-process.owner-run.usage
+runner-process.owner-run.ci-env
+runner-process.owner-run.github-actions-env
+runner-process.owner-run.in-tree-path
+runner-process.owner-run.wrong-size
+runner-process.owner-run.missing-lock
+runner-process.owner-run.bad-lock-line
+runner-process.owner-run.no-images-skip
+runner-process.owner-run.identity-mismatch
 runner-process.judge.exit-mismatch
 runner-process.judge.no-report-end
 runner-process.judge.outcome-exit-disagree
 runner-process.judge.body-differs
 runner-process.judge.outcome-uncovered
+runner-process.judge.pair-video-equal
+runner-process.judge.input-not-consumed
+runner-process.judge.idle-audible
+runner-process.judge.owner-run-refusal
 runner-process.outcomes-consistent
 runner-process.outcomes-covered
 runner-process.watchdog

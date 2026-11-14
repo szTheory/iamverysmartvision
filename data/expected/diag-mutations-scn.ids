@@ -1,0 +1,87 @@
+# Program mutations of the first original program, Lamp Tone (plan 07-08, D-25, D-10, D-13, A-03, A-14, A-17). Classes and intended
+# clauses: section (g) of docs/video/demo-lamp-tone-1-derivation.md (written before the program); word addresses: the generated listing
+# fixtures/FX-demo-lamp-tone-1/lamp-tone.listing.txt (its `# sym:` lines) and section (k) of the derivation.
+# `<ID> <scenario> <addr list> <from list> <to list> <clause> <outcome> <exit> [fails=<k.j,...>]`; the three lists are comma-joined (a
+# single word is a list of one), the clause is everything between the fifth column and the last two (or last three) columns and may hold
+# blanks. Suite runner-process (id runner-process.mutant.<ID>) builds each mutant in its temp dir with
+# `ivs_pack --ivsc <lamp-tone listing> <out> --patch <addr>=<to>` (one --patch per list element) and runs data/scenarios/<scenario>.ivss
+# against it with the real ivs-run. As in data/expected/diag-mutations-stic.ids the <from> word is explicit: the loop checks that the word
+# at each <addr> of the unpatched listing, as ivs_pack decodes it (--dump-words), equals its <from> before patching, so a listing edit that
+# moves an instruction fails the case instead of mutating something else. The suite also requires the patched container to differ from the
+# unpatched one.
+#
+# Stub-window rule (A-14, A-17): a row whose addresses all lie in 1000-101F (the window of the boot stub contract 2) patches the stub
+# image instead: `ivs_pack --exec fixtures/FX-boot-stub-2/boot-stub-2.listing.txt <out> --patch <addr>=<to>`, with the from check made
+# against the stub listing, and the cartridge stays the unpatched copy. A row with addresses in both places is an inventory finding.
+# No mutant is committed as an image; every patched image lives in the suite's temp directory.
+#
+# <outcome> is guest-fail (exit 10: outcome.detail is `assert=<j> line=<n> <clause> got <actual>`, the FIRST failing assert in the order of
+# the scenario, or `stop step=<k> line=<n> expected=target got=<stop>` when the scenario's stop expectation fails), timeout (exit 11:
+# detail `budget ...`, clause `budget`) or pass (exit 0, detail `-`, clause `-`, the negative row). A clause that ends in ` got <value>`
+# also pins the value the assert read (the value of the derivation's table); a clause that starts with `stop ` is the stop detail. The
+# assert numbers are those of the report (`step.<k>.assert.<j>`, <j> counting across the steps of the scenario, as in the derivation).
+# A mutant that could lengthen a loop is never judged by luck: every scenario is bounded by run-to ticks, so a lengthened or stopped loop
+# ends at its first failing assert or stop mismatch, as the clause states; no row needs the timeout outcome.
+#
+# Optional last column fails=<k.j,...> (channel isolation, D-25): the complete set of failing asserts, as `<step>.<assert>` in report
+# order, comma-joined. The suite compares it with the `step.<k>.assert.<j> fail` lines of the report exactly (finding fails-set), besides
+# the first-clause judgement. It states what the mutant does NOT break: a mutant of one channel fails the asserts of that channel only.
+# The report lists the asserts of the steps run: a scenario stops at its first failing step, so a set belongs to that step.
+#
+# Words hand-derived from the instruction encodings in the listing and data/cp1610/opcode-families.json (NOP 0034, NOPP 0208 as the
+# two-word form of a branch that is never taken, HLT 0000; the second decle of a jump holds the return register in bits 9..8, the address
+# bits 15..10 in bits 7..2 and the interrupt flag in bits 1..0: 10 is disable, 00 is none) and read from the unpatched listings with
+# ivs_pack --dump-words. The intended clause of each row is the one of the derivation's table (g); the values after `got` are the ones it
+# states. Two points where the table needed an as-built reading (section (k) of the derivation, plan 07-06):
+#   - SCN-REARM-LONG: the delay immediate is one 10-bit word, so N = 1,150 cannot be written by one --patch; N = 1,023 (03FF) is the
+#     largest value and gives the same first failing clause and value (section (k), "Notes for the mutant plan").
+#   - SCN-HLT-IDLE: the idle branch is a two-word instruction (0220 and its displacement 0001). A halt takes effect after the NEXT
+#     instruction has run, so HLT with the displacement word left in place runs that word as an SDBD prefix and the next word as its
+#     target (a fault, `got=faulted`); both words are replaced by HLT, which is the idle branch replaced by a halt.
+#   ID                  addr       from       to         what changes
+#   SCN-INPUT-PORT       5024   01FE  01FF  the operand of the port 0 read becomes the port 1 address: port 0 then reads the other controller,
+#                                          idle until event 3, so the first changed byte of step 1 is never seen (1.4, 1.5 fail)
+#   SCN-PROGRESS-STORE   5031   02F3  02F8  the operand of the port 0 change-counter store moves to an unused word: only the counter assert of
+#                                          step 1 fails; the other words, the frames and the log are untouched (channel isolation)
+#   SCN-LAMP-COMPLEMENT  507E   0019  0034  COMR R1 (the complement of the lamp byte) becomes NOP (6 cycles as well): every lamp is inverted;
+#                                          guest words, write log and audio are untouched, so the video asserts alone fail: the six frame
+#                                          hashes and the three lit-lamp pixel probes (4.32 to 4.40); `displayed` and the outside probe hold
+#   SCN-AMP-VALUE        5074   000F  000E  the gate amplitude immediate 15 becomes 14: the gate record and the four gate-window levels of
+#                                          channel C fail (4.46, 4.51, 4.52, 4.54, 4.55); the other records, frames, silent windows and
+#                                          guest words hold. Judged under the pass scenario
+#   SCN-SOUND-UNGATED    506B   0204  0208  the BZE that skips the gate when no port changed becomes NOPP (same length, never taken): the gate
+#                                          (value 0) is written in every routine, so the idle log has 19 records instead of 6; judged under
+#                                          the IDLE scenario, so the idle control is shown able to fail; guest state, frames and silence hold
+#   SCN-REARM-SHORT      508F   01F4  0064  the delay N = 500 becomes 100 (below the lower edge of rule R-E): two routines per frame, the
+#                                          frame counter reads 6 where 3 is derived
+#   SCN-REARM-LONG       508F   01F4  03FF  N = 500 becomes 1,023 (above the upper edge): only every second frame has a routine, the frame
+#                                          counter reads 2 where 3 is derived
+#   SCN-STROBE-LATE      5005   0020  0022  the operand of the display strobe becomes the reserved register 0022: the write is dropped, as a
+#                                          strobe after the register window is, and no frame is ever displayed (4.30 to 4.40: the two
+#                                          `displayed` asserts, six hashes, three pixel probes); guest words, log, audio, outside probe hold
+#   SCN-NO-EIS           5093   0002  0034  the EIS of the re-arm becomes NOP: no interrupt is ever accepted; `halted == no` and the marker
+#                                          still hold, so liveness alone is not progress (the frame counter stays 0)
+#   SCN-HLT-IDLE         5094,5095  0220,0001  0000,0000  the idle branch (both words) becomes HLT: a halted CPU ignores the interrupt
+#                                          level, the run stops at the halt (frame 0) before the first routine, so step 1 ends with a stop
+#                                          mismatch instead of reaching its bound
+#   SCN-STUB-JD-AS-J     1005   0352  0350  the second decle of the stub vector, `J` with disable code, loses the disable (J $5004 plain, the
+#                                          reset vector at 1014 has the same word 0350): the vector re-enters while the level lasts, the
+#                                          routine body starts after the level has ended, the strobe is dropped and no frame is displayed;
+#                                          the counter and every guest word asserted before it still hold (D-10)
+#   SCN-ISR-TIE          1006   0004  0006  the third decle of the stub vector, the target bits 9..0, becomes 6: the vector jumps to the
+#                                          second routine instruction (5006), the strobe at 5004 never runs, and nothing else is wrong (A-14)
+#   SCN-REARM-NEGATIVE   508F   01F4  012C  negative row: N = 500 becomes 300, inside the band: only the timing of the re-arm moves, so no
+#                                          assert fails (pass, exit 0); an assert tuned to a tick or to N would fail it
+SCN-INPUT-PORT demo-lamp-tone-pass 5024 01FE 01FF mem 02F2 == 007E got 00FF guest-fail 10
+SCN-PROGRESS-STORE demo-lamp-tone-pass 5031 02F3 02F8 mem 02F3 == 0001 got 0000 guest-fail 10 fails=1.5
+SCN-LAMP-COMPLEMENT demo-lamp-tone-pass 507E 0019 0034 frame 3 hash == 63c0aacc9a452441a1b643f469d04077bb3359a347c7d431f6dda3e2975c5d52 guest-fail 10 fails=4.32,4.33,4.34,4.35,4.36,4.37,4.38,4.39,4.40
+SCN-AMP-VALUE demo-lamp-tone-pass 5074 000F 000E psglog 7 addr=13 value=000F source=cpu-write guest-fail 10 fails=4.46,4.51,4.52,4.54,4.55
+SCN-SOUND-UNGATED demo-lamp-tone-idle 506B 0204 0208 psglog count == 6 got 19 guest-fail 10 fails=1.20
+SCN-REARM-SHORT demo-lamp-tone-pass 508F 01F4 0064 mem 02F1 == 0003 got 0006 guest-fail 10
+SCN-REARM-LONG demo-lamp-tone-pass 508F 01F4 03FF mem 02F1 == 0003 got 0002 guest-fail 10
+SCN-STROBE-LATE demo-lamp-tone-pass 5005 0020 0022 frame 3 displayed == yes got no guest-fail 10 fails=4.30,4.31,4.32,4.33,4.34,4.35,4.36,4.37,4.38,4.39,4.40
+SCN-NO-EIS demo-lamp-tone-pass 5093 0002 0034 mem 02F1 == 0003 got 0000 guest-fail 10
+SCN-HLT-IDLE demo-lamp-tone-pass 5094,5095 0220,0001 0000,0000 stop step=1 line=* expected=target got=halted guest-fail 10
+SCN-STUB-JD-AS-J demo-lamp-tone-pass 1005 0352 0350 frame 3 displayed == yes got no guest-fail 10
+SCN-ISR-TIE demo-lamp-tone-pass 1006 0004 0006 frame 3 displayed == yes got no guest-fail 10
+SCN-REARM-NEGATIVE demo-lamp-tone-pass 508F 01F4 012C - pass 0

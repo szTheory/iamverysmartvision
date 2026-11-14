@@ -1,0 +1,5 @@
+# Toy runner scenarios (plan 07-10): `<id> <exit> <outcome> <class> <skip> <operator-args>`; toy-user has a
+# `content exec user` line but its column 5 is `run`.
+toy 0 pass deterministic run -
+toy-wall 11 timeout host-dependent run --wall-timeout-ms,1
+toy-user 13 missing-fixture deterministic run -

@@ -2611,6 +2611,51 @@ done:
   return rc;
 }
 
+/* Plan 07-05 (D-09, D-20, D-30): the content token boot-stub-2 reads the reserved file boot-stub-2.exec
+ * and the report labels it from the symbolic kind only. The host serves the contract 1 image bytes under
+ * the contract 2 name on purpose (the stub 2 image is built in plan 07-05 Task 3): the label must say
+ * contract 2 although the bytes are the other image, which a label read from the bytes or from a table of
+ * hashes would get wrong. Only the exec: line, the slot lines and the outcome detail are compared (no
+ * whole report, no line count, and no assert, psglog, audio, video or WAV path). */
+static int ex_boot_stub_2(void)
+{
+  static const char content2[] = "content exec boot-stub-2\n"
+                                 "content grom zero-grom\n"
+                                 "content cart diag-cpu-1.ivsc\n";
+  fake_host h;
+  char scn[RX_SCN_CAP];
+  char v[RX_VALUE_CAP];
+  char want[RX_VALUE_CAP + 64u];
+  int rc = IVS_TEST_FAIL;
+  if (!rx_scn(scn, sizeof scn, content2, "run-to 2 cpu-cycles\n")) {
+    return IVS_TEST_FAIL;
+  }
+  /* Only the contract 1 file is served: the contract 2 scenario names its own reserved file. */
+  fh_init(&h);
+  if (!rx_expect(scn, &h, IVS_RUNNER_OUTCOME_MISSING_FIXTURE, 13u) ||
+      !rx_is(h.out, "outcome.detail", "missing role=exec path=boot-stub-2.exec")) {
+    goto done;
+  }
+  rx_free(&h);
+  fh_init(&h);
+  h.files[0].name = "boot-stub-2.exec";
+  if (!rx_expect(scn, &h, IVS_RUNNER_OUTCOME_PASS, 0u) || !rx_is(h.out, "slot.exec.loaded", "1") ||
+      !rx_is(h.out, "slot.exec.status", "ok") || !rx_is(h.out, "slot.exec.length_bytes", "8192")) {
+    goto done;
+  }
+  if (!rx_value(h.out, "slot.exec.sha256", v, sizeof v) || !rx_hex64(v)) {
+    goto done;
+  }
+  (void)snprintf(want, sizeof want, "project boot stub contract 2, not an EXEC sha256=%s", v);
+  if (!rx_is(h.out, "exec:", want)) {
+    goto done;
+  }
+  rc = IVS_TEST_PASS;
+done:
+  rx_free(&h);
+  return rc;
+}
+
 /* A target inside a unit: the run ends past it and the overshoot line is now - target, above 0. */
 static int ex_overshoot(void)
 {
@@ -2801,6 +2846,7 @@ static const ivs_test_case exec_cases[] = {
     {"runner.exec.not-regular", ex_not_regular, NULL},
     {"runner.exec.overshoot", ex_overshoot, NULL},
     {"runner.exec.repeat-identical", ex_repeat_identical, NULL},
+    {"runner.exec.boot-stub-2", ex_boot_stub_2, NULL},
     {"runner.exec.sha-match", ex_sha_match, NULL},
     {"runner.exec.sha-mismatch", ex_sha_mismatch, NULL},
     {"runner.exec.stop-internal", ex_stop_internal, NULL},

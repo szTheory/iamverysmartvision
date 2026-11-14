@@ -36,6 +36,8 @@ add_subdirectory(runner)
 add_subdirectory(tools/pack)
 # Reference PCM converter (plan 05-10, D-21): internal static target, no install rule.
 add_subdirectory(tools/pcm)
+# Project mini-assembler (plan 07-03, D-17): build-only executable, no install rule.
+add_subdirectory(tools/asm)
 
 enable_testing()
 add_subdirectory(tests)

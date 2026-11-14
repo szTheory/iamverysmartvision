@@ -1,0 +1,68 @@
+# Suite asm (D-16 to D-19, plan 07-03): the project mini-assembler ivs_asm against the hand-assembled
+# listings. asm.twin-<id>: the twin source under tests/asm/twins/ assembles to words that ivs_pack
+# --dump-words reads exactly as it reads the committed hand listing (the third outside check of the
+# encoding table, D-18); the four twins cover the boot stub (22 words), diag-cpu-1 (56), diag-ctrl-psg-1 (89)
+# and diag-stic-1 (133, its pattern table written as DECLE data words): 300 hand-typed words in all.
+# asm.repeat: one twin assembled twice gives byte-identical listings (determinism of the tool).
+# asm.pairs.<class>: tests/asm/pairs.txt, the flat copy of the hand-derived asm and word pairs of the Phase 2
+# vectors plus three hand cases (the second outside check of the encoding table, D-18), assembled by one
+# ivs_asm --pairs process; one case per row family, ok when every pair of the family assembled to its words.
+# asm.judge.mutated-pair: the same self-control for the pairs comparison (one expected word changed).
+# asm.neg.<token>: one refusal case per pinned token of data/expected/asm-tokens.ids (exit 1, one stderr line
+# with exactly that token, no output file); asm.neg-coverage fails when the pinned tokens and the tokens the
+# source can print differ; asm.var.<slug> are further refusal sources; asm.boundary.branch-03ff is the accepted
+# half of the displacement boundary (03FF accepted, 0400 is asm.neg.asm-branch-range).
+# asm.judge.mutated-twin: self-control of the words comparison; passes only when it fails on a twin
+# with one register changed and the diff shows that one word.
+# asm.regen-<listing id> (plan 07-05, D-19): one case per fixtures/*/*.asm in the tree; the source is assembled
+# again and the result must equal the committed listing byte for byte (the listing id is the # id: header line
+# of the source, the committed path comes from data/expected/listings.ids). The first is stub contract 2.
+asm.twin-boot-stub
+asm.twin-diag-cpu-1
+asm.twin-diag-ctrl-psg-1
+asm.twin-diag-stic-1
+asm.repeat
+asm.judge.mutated-twin
+asm.regen-boot-stub-2
+asm.regen-ivs-demo-lamp-tone-1
+asm.pairs.move
+asm.pairs.alu
+asm.pairs.imm
+asm.pairs.shift
+asm.pairs.branch
+asm.pairs.jump
+asm.pairs.stack
+asm.pairs.sdbd
+asm.pairs.control
+asm.judge.mutated-pair
+asm.neg.asm-syntax
+asm.neg.asm-mnemonic
+asm.neg.asm-operand-count
+asm.neg.asm-operand-kind
+asm.neg.asm-register
+asm.neg.asm-symbol-undefined
+asm.neg.asm-symbol-duplicate
+asm.neg.asm-symbol-reserved
+asm.neg.asm-expr
+asm.neg.asm-imm-range
+asm.neg.asm-imm-sdbd
+asm.neg.asm-sdbd-target
+asm.neg.asm-direct-range
+asm.neg.asm-branch-range
+asm.neg.asm-decle-range
+asm.neg.asm-org
+asm.neg.asm-window
+asm.neg.asm-spelling
+asm.neg.asm-header
+asm.neg.asm-limit
+asm.neg-coverage
+asm.var.spelling-pshr
+asm.var.spelling-tstr
+asm.var.spelling-jr
+asm.var.spelling-clrr
+asm.var.spelling-immediate
+asm.var.sdbd-at-end
+asm.var.sdbd-stack-mode
+asm.var.sdbd-label
+asm.var.sdbd-label-alone
+asm.boundary.branch-03ff
