@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 current_phase: 7
 current_phase_name: First Visible Original Scenario
-current_plan: 11
+current_plan: 12
 status: executing
-stopped_at: Completed 07-10-PLAN.md
-last_updated: "2026-11-14T00:44:41.121Z"
+stopped_at: Completed 07-11-PLAN.md
+last_updated: "2026-11-14T01:26:18.690Z"
 last_activity: 2026-11-13
 last_activity_desc: Phase 7 execution started
-state_head: bdf0e503b72fb41f50a816b77eba129af6fd517f
+state_head: a147b63e452e0cf8afd5b3d5fb550817af165228
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 109
-  completed_plans: 107
+  completed_plans: 108
   percent: 75
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 7 (First Visible Original Scenario) — EXECUTING
-Current Plan: 11
+Current Plan: 12
 Total Plans in Phase: 12
 Status: Ready to execute
 Last activity: 2026-11-13 — Phase 7 execution started
@@ -166,6 +166,7 @@ Progress: [████████░░] 75%
 | Phase 7 P08 | 40min | 3 tasks | 5 files |
 | Phase 7 P09 | 35min | 3 tasks | 7 files |
 | Phase 7 P10 | 32min | 4 tasks | 34 files |
+| Phase 7 P11 | 38min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -396,6 +397,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 7]: Phase 7 plan 09: checkpointC-07: no-lever (last-five median 8.02, projection 8.04; pkg-install step cost within load noise, at most +0.33 local cpu-s); forward bound for the SCN-02 cases about 8.30 at the S-4 upper unit cost, re-read at the close
 - [Phase 7]: Phase 7 plan 10: owner-exec-title is the template of the owner-local route (content exec user and grom user, no cartridge, no assert, run-to 600 frames); skip-ok rows take tests-skipped 2 to 4 and tests-inventory prints one -- SKIPPED line per skipped id and preset; SCN-02 stays Pending until the helper of plan 07-11 and the 07-12 close-out
 - [Phase 7]: Phase 7 plan 10: the golden step ties user content to skip-ok in both directions (golden-user-content-not-skip-ok, golden-skip-ok-without-user-content, controls 354 to 356); SCN-02 is an accepted and covered important-gates requirement; FX-owner-exec and FX-owner-grom are uncommitted redistributable-no manifests (manifests 8 to 10, effective-no 1 to 3); no digest and no image enter the tree, D11 not performed
+- [Phase 7]: Phase 7 plan 11: ivs-run refuses --audio-raw, --psg-log-out and --audio-wav for a scenario with user content (exit 14, one line, no file, before any storage), so all six derived outputs are refused; tools/owner-run.sh (80 lines) refuses CI, an in-tree path outside refs/, a wrong size and a missing or malformed lock (exit 2), prints the SKIPPED line with exit 77 when no image exists, and hands the runner a temp copy of the template with expect-sha256 lines from the owner's lock (--record writes the lock and refuses to replace one)
+- [Phase 7]: Phase 7 plan 11: nine runner-process.owner-run.* cases and the self-control runner-process.judge.owner-run-refusal test every helper refusal, the skip and the identity mismatch on a copy of the helper in a scratch root outside the work tree with zero-filled files only (tests-expected 4598 to 4624, gates 77, lines 264); SCN-02 stays Pending for the 07-12 close-out; cost about 3.0 local cpu-s, projection at most 8.25 under the 8.3 trigger, lever (2) still queued; D11 not performed
 
 ### Pending Todos
 
@@ -428,6 +431,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-14T00:44:40.754Z
-Stopped at: Completed 07-10-PLAN.md
+Last session: 2026-11-14T01:26:17.758Z
+Stopped at: Completed 07-11-PLAN.md
 Resume file: None
