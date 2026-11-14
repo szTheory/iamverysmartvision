@@ -810,7 +810,7 @@
       "default_policy": "unknown-default-chosen: every register is write-only and reads the undriven fill $FFFF except the collision registers $18-$1F, which read $FC00 OR the stored 10 bits; reserved addresses read the fill.",
       "resolver": "pending: a tier 1 to 3 STIC register description, or the Phase 7 reader diagnostic on owner hardware (read-back of all 64 addresses)",
       "evidence": "Phase 6 final (plan 06-14): carried by the rmask and fill of each row of the register literal (data/stic/intv-2609-ntsc-family-p1.regmap.literal.txt) and memmap.device.stic14; default: write-only registers read $FFFF; exercised by stic.reg.write-only-reads-ffff, stic.reg.collision-readback, stic.reg.reserved-drops, stic.reg.masks, stic.table.matches-literal and the self-control stic.judge.register-row-changed.",
-      "note": "Raised by plan 06-01 (D-22, A-11). Extends C60. One rmask field per register changes the default. Source note ids: register note C81."
+      "note": "Raised by plan 06-01 (D-22, A-11). Extends C60. One rmask field per register changes the default. Source note ids: register note C81. Plan 08-03 (D-08) adds, logged only and not acted on: a later reverse-engineering note of the same author as the community register description (one lineage, observation of one other board) says bits 15 and 14 of STIC register reads are 0 and the other unimplemented bits read 1, with one exception in a reserved address; the guests of this project mask every collision read with 03FF. The MOB register bit roles are the rows of data/video/mob.literal.txt (conf C81, one lineage)."
     },
     {
       "id": "C82",
@@ -865,12 +865,12 @@
     {
       "id": "C87",
       "topic": "Collision register behaviour: clear on read, sticky set and the self bit",
-      "sources": "No source read states when collision bits are set or cleared; Phase 6 has no object to collide (SRC-intv-wiki, STIC-oldid-15008).",
+      "sources": "No manufacturer or first-party page prints when collision bits are set or cleared (SRC-gi-1980-catalog pdf 191 to 193, SRC-bsr-2609: the existence of three interaction classes only). The register description of the community lineage (SRC-community-emu-docs, read raw in plan 08-03) gives the bit roles, the sticky rule, the own-bit rule and the interaction-enable rule, and says nothing about a clear on read, a MOB at X 0, the border bit, off-screen positions or a display-off frame.",
       "status": "open",
-      "default_policy": "unknown-default-chosen: the collision registers store written values only; set, clear and sticky rules belong to Phase 8 (VID-05).",
-      "resolver": "pending: Phase 8 collision rules and a tier 1 to 3 STIC description",
-      "evidence": "Phase 6 final (plan 06-14): carried by the register literal stores written values for the collision rows; no set, clear or sticky rule exists in the core; exercised by stic.reg.collision-readback (stored value only); the behaviour itself is Phase 8 (VID-05) and has no test.",
-      "note": "Raised by plan 06-01 (D-22, A-11). Source note ids: register note C87."
+      "default_policy": "unknown-default-chosen: collision bits are computed at the end of a displayed frame and ORed into the register file with or without a video buffer; a CPU write replaces the register (the own bit always reads 0) and a read has no side effect; a MOB with X 0 does not interact, the border bit (bit 9) is a pixel inside the object grid outside the plane, off-screen collisions are detected and a display-off frame evaluates none (rules STIC-R44 and STIC-R45).",
+      "resolver": "measurement: D10-VID-10",
+      "evidence": "Plan 08-03 (oracle plan, no code): the collision truth table, section (d) of docs/video/diag-stic-2-derivation.md, and the pinned-default rows PD-3 to PD-7 of its section (i), written before any renderer; the behaviour and its tests land in plan 08-05 (video.collision.*, the pinned ids video.collision.read-no-effect and video.collision.cpu-write-replaces among them) and their final ids are written by plan 08-08.",
+      "note": "Raised by plan 06-01 (D-22, A-11). Source note ids: register note C87. Updated by plan 08-03 (D-06, D-09): the resolver is now the owner hand-off D10-VID-10 and the rules STIC-R44 and STIC-R45 pin the default."
     },
     {
       "id": "C88",
@@ -917,9 +917,9 @@
       "topic": "Bus-window table: count, first start, pitch, hold and which rows",
       "sources": "The pages print 13 or 14 bus requests per frame (pdf 191, 462); the first start, the 912-cycle pitch (16 lines of 57 cycles) and the 114-cycle hold are community and inference figures (C4, C7).",
       "status": "open",
-      "default_policy": "unknown-default-chosen: 13 windows starting at cycle 3,791 + 912 i, each holding the request 114 cycles; windows 0..11 fetch card rows and window 12 fetches nothing.",
+      "default_policy": "unknown-default-chosen: 13 windows starting at cycle 3,791 + 912 i, each holding the request 114 cycles; windows 0..11 fetch card rows and window 12 fetches nothing. No dependence of the schedule on the vertical delay is pinned (D-07): the schedule is the same for every vertical delay value.",
       "resolver": "measurement: D10-VID-07 owner bus-window probe of count, spacing and hold",
-      "evidence": "Phase 6 final (plan 06-14): carried by profile fields stic.bus.count (13), stic.bus.first_start_cpu_cycles, stic.bus.pitch_cpu_cycles (912), stic.bus.hold_cpu_cycles and stic.bus.rows (12), used by core/src/stic/stic_events.c and stic_lines.c; exercised by stic.busrq.count-per-frame, stic.busrq.hold-from-profile, stic.busrq.closed-form-resume, stic.busrq.none-when-display-off, stic.fetch.rows-latched-at-schedule and the faults STIC_BUSRQ_WHEN_DISPLAY_OFF and STIC_TABLE_SHORT.",
+      "evidence": "Phase 6 final (plan 06-14): carried by profile fields stic.bus.count (13), stic.bus.first_start_cpu_cycles, stic.bus.pitch_cpu_cycles (912), stic.bus.hold_cpu_cycles and stic.bus.rows (12), used by core/src/stic/stic_events.c and stic_lines.c; exercised by stic.busrq.count-per-frame, stic.busrq.hold-from-profile, stic.busrq.closed-form-resume, stic.busrq.none-when-display-off, stic.fetch.rows-latched-at-schedule and the faults STIC_BUSRQ_WHEN_DISPLAY_OFF and STIC_TABLE_SHORT. Plan 08-03 adds the pin: the community interrupt notes give about 13,518 usable cycles per frame at vertical delay 0 and about 13,572 above 0 (SRC-community-emu-docs, read raw), the printed pages say 13 or 14 requests per frame depending on picture offset; the core keeps 13 windows, the test video.vdelay.no-bus-window-change (plan 08-06) pins that a vertical delay changes no line level, and the owner hand-off D10-VID-12 (item C110) records the measurement of the windows against vertical delay.",
       "note": "Raised by plan 06-01 (D-22, A-11). Extends C4. Source note ids: timing note C83."
     },
     {
@@ -1047,9 +1047,9 @@
       "topic": "Border outside the window, the window origin in the 167 x 105 grid and the row line count",
       "sources": "The pages print the 167 x 105 grid and 159 x 96 visible positions (pdf 191) but not where the window sits or what the border looks like; the 2 TV lines per display row come from a figure showing 16 lines per card row and the 8-row card.",
       "status": "open",
-      "default_policy": "unknown-default-chosen: no border and no margin are published; video.object_grid is consumed only by sanity checks; video.row_lines = 2 is metadata.",
+      "default_policy": "unknown-default-chosen: the published plane is the 159 x 96 window; the object-field origin (8 positions left, 8 above) is applied to MOBs and the delay shifts everything (rules STIC-R37 and STIC-R46), the border-extension strips are painted (STIC-R48); the area outside the window and any border outside it are not published; video.object_grid stays a sanity field and video.row_lines = 2 is metadata.",
       "resolver": "pending: Phase 8 border and delay rules, or a capture",
-      "evidence": "Phase 6 final (plan 06-14): carried by profile fields video.object_grid (sanity only) and video.row_lines = 2 (metadata); no border and no origin exist in the core; exercised by video.geom.profile-derives-159x96, video.geom.literal-matches-page, video.geom.info-matches-profile (the published figures only).",
+      "evidence": "Phase 6 final (plan 06-14): carried by profile fields video.object_grid (sanity only) and video.row_lines = 2 (metadata); no border and no origin exist in the core; exercised by video.geom.profile-derives-159x96, video.geom.literal-matches-page, video.geom.info-matches-profile (the published figures only). Plan 08-03 (oracle): the origin, the delay and the border extension are now modelled by the rules STIC-R37, STIC-R46 and STIC-R48 and derived in docs/video/diag-stic-2-derivation.md; the area outside the window stays pending (the resolver is unchanged).",
       "note": "Raised by plan 06-01 (D-22, A-11). Source note ids: frame note, VID-05 scope."
     },
     {
@@ -1061,6 +1061,46 @@
       "resolver": "test: asm.boundary.branch-03ff (03FF accepted) and asm.neg.asm-branch-range (0400 refused) pin the assembler limit only; a statement of the base of the printed range in the manual, or the D10 branch probe named under C50, would say whether the printed minus 1024 is a different range or a different base",
       "evidence": "Plan 07-04 (D-17): tools/asm/asm.c computes the displacement as target minus (pc + 2) forward and (pc + 1) minus target backward, each at most 03FF, the formula the listing checker uses for the printed target; docs/diagnostics.md.",
       "note": "Raised by plan 07-04 (07-DISCUSS-assembler.md S3-6 and open item 7). Neighbour of C50. No hardware claim: it records only that the printed text and the decle arithmetic differ."
+    },
+    {
+      "id": "C107",
+      "topic": "Priority bit set: which background card pixels hide a MOB",
+      "sources": "The register description of the community lineage says a MOB with the priority bit set appears behind the background cards and that the ordering applies to the visible pixels of the MOB only (SRC-community-emu-docs, read raw in plan 08-03). It does not say whether a card pixel that is off (background color) hides the MOB. No manufacturer or first-party page prints a priority rule (SRC-gi-1980-catalog pdf 191 to 193, SRC-bsr-2609).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: a MOB with the priority bit set is hidden only where the background card pixel is on (card foreground, colored-squares colors 0 to 6); where the card pixel is off the MOB pixel shows (profile field video.mob_prio_hides = on-pixels; the flip all-pixels hides it behind every card pixel).",
+      "resolver": "measurement: D10-VID-11",
+      "evidence": "Plan 08-03 (oracle plan, no code): the rule and the pinned-default rows PD-1 of docs/video/diag-stic-2-derivation.md section (i) are written before any renderer; the pinned-default tests land in plans 08-04 to 08-07 and their final ids are written by plan 08-08. No frame, assert or marker depends on this case: no program scenario sets the priority bit.",
+      "note": "Raised by plan 08-03 (D-02, D-09, rule STIC-R43). One lineage; tier 4 only."
+    },
+    {
+      "id": "C108",
+      "topic": "Half-height MOB pixels, the line-resolved model and the published 159 x 96 plane",
+      "sources": "The community lineage says a MOB is displayed with half pixels vertically when both Y size bits are clear, that is one TV line per pattern row, and the printed row is 2 lines (SRC-community-emu-docs, SRC-intv-wiki STIC-oldid-15008; C105 row-lines). The published plane has one row per 2 lines (D8), so a half-height pattern row has no plane row of its own.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: MOBs are rendered and collisions evaluated per TV line (16 lines per card row); the published plane takes the even line of each pair (profile field video.mob_line_sample = even; the flip odd takes the odd line); the Y zooms 2x, 4x and 8x are not affected.",
+      "resolver": "measurement: D10-VID-14",
+      "evidence": "Plan 08-03 (oracle plan, no code): the rule and the pinned-default rows PD-2 of docs/video/diag-stic-2-derivation.md section (i) are written before any renderer; the pinned-default tests land in plans 08-04 to 08-07 and their final ids are written by plan 08-08. Frames F-M8 and F-M9 are the two pinned sampling frames, used by in-process tests only and never asserted by a scenario hash.",
+      "note": "Raised by plan 08-03 (D-03, rules STIC-R38 and STIC-R50). Reversal: an owner or host need for 192-line output reopens D8."
+    },
+    {
+      "id": "C109",
+      "topic": "Border extension: strip unit and strip against delay",
+      "sources": "The register description says the extension bits block out an 8-pixel wide area along the left or top edge with the border color so that the blank areas of the object field are never visible (SRC-community-emu-docs, read raw in plan 08-03). It does not say whether the top strip is 8 plane rows or 8 lines, nor whether a strip moves with the delay.",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: the left strip is 8 plane columns and the top strip 8 plane rows (profile field video.border_ext_strip = 8x8; the flip 8x4 makes the top strip 4 plane rows), both fixed to the display (video.border_follows_delay = no; the flip yes moves the strips with the delay).",
+      "resolver": "measurement: D10-VID-13",
+      "evidence": "Plan 08-03 (oracle plan, no code): the rule and the pinned-default rows PD-8 and PD-9 of docs/video/diag-stic-2-derivation.md section (i) are written before any renderer; the pinned-default tests land in plans 08-04 to 08-07 and their final ids are written by plan 08-08. The frames F-M4, F-M5 and F-M6 are derived under the defaults (the stated purpose of the strips reads that way) and the claim excludes the pins.",
+      "note": "Raised by plan 08-03 (D-02, rules STIC-R48 and STIC-R49)."
+    },
+    {
+      "id": "C110",
+      "topic": "Delay: content of the exposed area, MOBs in it and the delay range",
+      "sources": "The register description says the delay registers make the blank areas of the object field visible and that the blank area is filled with the background color as the display mode defines it (SRC-community-emu-docs, read raw in plan 08-03), which does not name one color index in either mode. A reverse-engineering note of the same author lists whether MOBs are visible in the rows exposed by vertical delay as still to be measured. The delay range is the stored width of the register literal (3 bits, C86).",
+      "status": "open",
+      "default_policy": "unknown-default-chosen: the exposed columns and rows are published as not displayed (profile field video.delay_exposed_fill = not-displayed; the flip border publishes the border color), a MOB is not drawn there (video.delay_mob_in_exposed = not-drawn; the flip drawn), the delay is 0 to 7 and a vertical delay does not change the bus-window schedule (C92).",
+      "resolver": "measurement: D10-VID-12",
+      "evidence": "Plan 08-03 (oracle plan, no code): the rule and the pinned-default rows PD-10 to PD-13 of docs/video/diag-stic-2-derivation.md section (i) are written before any renderer; the pinned-default tests land in plans 08-04 to 08-07 and their final ids are written by plan 08-08. Frame F-M7 shows the exposed rectangles as unknown and has no hash.",
+      "note": "Raised by plan 08-03 (D-02, D-07, rules STIC-R46 and STIC-R47). Neighbour of C92."
     }
   ]
 }

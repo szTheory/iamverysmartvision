@@ -19,7 +19,9 @@
 #                                    plane-bytes = width x height, slot-bytes = header-bytes + plane-bytes, width-formula, the visible area
 #                                    within the grid, backtab-words = card-columns x card-rows)
 #   video-cards-literal-rows         data/video/cards.literal.txt without exactly 64 rows of the grammar, one per (variant, bit),
-#                                    each variant with sixteen bits, a role outside the role set, bits 15 and 14 not ign
+#                                    each variant with sixteen bits, a role outside the role set, bits 15 and 14 not ign; the same grammar for
+#                                    data/video/mob.literal.txt (plan 08-03: exactly 48 rows, one per (register, bit) of mobx, moby and moba,
+#                                    every bit above the stored width of its register ign, a source id of data/expected/sources.ids)
 #   video-chain-literal              data/video/chain-framing.literal.txt: a row outside the grammar, a missing key, a digest that is not
 #                                    64 lowercase hex digits, h0 that is not the SHA-256 of IVS-VIDEO-LOG-V1, or a slot header whose
 #                                    tick, index, width, height, flags or reserved field disagrees with the geometry literal
@@ -377,9 +379,12 @@ if(EXISTS "${ROOT}/data/video/geometry.literal.txt")
   check_geometry("data/video/geometry.literal.txt")
 endif()
 
-# ---- card bit-role literal (D-18)
-if(EXISTS "${ROOT}/data/video/cards.literal.txt")
-  set(p "data/video/cards.literal.txt")
+# ---- card and MOB bit-role literals (D-18; plan 08-03, D-05)
+# One row grammar for both literals: `<variant> <bit 0..15> <role> src=<SRC-id>@<locator> tag=tier4-community conf=C<n>`, every (variant, bit) once,
+# every bit from the first `ign` bit of its variant upward `ign`, the exact row count, and the source id in data/expected/sources.ids.
+#   p            the repository-relative file; variants  the list of variants (registers);  variant_re and role_re  the alternations of the grammar
+#   want_rows    the exact number of rows;          ign_from  a list of `<variant>:<first bit that must be ign>`
+function(check_role_literal p variants variant_re role_re want_rows ign_from)
   file(READ "${ROOT}/${p}" txt)
   gate_lines(lines "${txt}")
   set(n 0)
@@ -390,7 +395,7 @@ if(EXISTS "${ROOT}/data/video/cards.literal.txt")
       continue()
     endif()
     math(EXPR n "${n} + 1")
-    if(NOT l MATCHES "^(fgbg|cs-grom|cs-gram|cs-sq) ([0-9]+) (ign|fg[0-3]|bg[0-3]|card[0-7]|sel|adv|fixed[01]|sq[0-3]c[0-2]) src=(SRC-[a-z0-9-]+)@[A-Za-z0-9._,-]+ tag=tier4-community conf=C[0-9]+$")
+    if(NOT l MATCHES "^(${variant_re}) ([0-9]+) (${role_re}) src=(SRC-[a-z0-9-]+)@[A-Za-z0-9._,-]+ tag=tier4-community conf=C[0-9]+$")
       pfail(video-cards-literal-rows "${p}: row ${n} outside the grammar: ${l}")
       continue()
     endif()
@@ -403,7 +408,13 @@ if(EXISTS "${ROOT}/data/video/cards.literal.txt")
     if(bit GREATER 15)
       pfail(video-cards-literal-rows "${p}: row ${n} bit ${bit} is above 15")
     endif()
-    if(bit GREATER 13 AND NOT role STREQUAL "ign")
+    set(ign_first 16)
+    foreach(entry IN LISTS ign_from)
+      if(entry MATCHES "^${variant}:([0-9]+)$")
+        set(ign_first "${CMAKE_MATCH_1}")
+      endif()
+    endforeach()
+    if(bit GREATER_EQUAL ign_first AND NOT role STREQUAL "ign")
       pfail(video-cards-literal-rows "${p}: ${variant} bit ${bit} is ${role}, expected ign")
     endif()
     if("${variant}:${bit}" IN_LIST seen)
@@ -411,16 +422,26 @@ if(EXISTS "${ROOT}/data/video/cards.literal.txt")
     endif()
     list(APPEND seen "${variant}:${bit}")
   endforeach()
-  if(NOT n EQUAL 64)
-    pfail(video-cards-literal-rows "${p} has ${n} rows, expected 64")
+  if(NOT n EQUAL ${want_rows})
+    pfail(video-cards-literal-rows "${p} has ${n} rows, expected ${want_rows}")
   endif()
-  foreach(variant fgbg cs-grom cs-gram cs-sq)
+  foreach(variant IN LISTS variants)
     foreach(bit RANGE 0 15)
       if(NOT "${variant}:${bit}" IN_LIST seen)
         pfail(video-cards-literal-rows "${p}: ${variant} bit ${bit} is missing")
       endif()
     endforeach()
   endforeach()
+endfunction()
+
+if(EXISTS "${ROOT}/data/video/cards.literal.txt")
+  check_role_literal("data/video/cards.literal.txt" "fgbg;cs-grom;cs-gram;cs-sq" "fgbg|cs-grom|cs-gram|cs-sq"
+    "ign|fg[0-3]|bg[0-3]|card[0-7]|sel|adv|fixed[01]|sq[0-3]c[0-2]" 64 "fgbg:14;cs-grom:14;cs-gram:14;cs-sq:14")
+endif()
+# The MOB register roles (plan 08-03): X 11 bits, Y 12 bits, attribute 14 bits, as in the register-address literal; 48 rows.
+if(EXISTS "${ROOT}/data/video/mob.literal.txt")
+  check_role_literal("data/video/mob.literal.txt" "mobx;moby;moba" "mobx|moby|moba"
+    "ign|pos[0-7]|intr|visb|xsize|yres|ysiz2|ysiz4|xflip|yflip|color[0-3]|card[0-7]|sel|prio" 48 "mobx:11;moby:12;moba:14")
 endif()
 
 # ---- chain framing literal (D-13, D-16)

@@ -1,6 +1,6 @@
 # Owner evidence procedure for the STIC (D10 and D11)
 
-This page tells the owner what to run, what to capture and in which format, for the items `D10-VID-01..09` and `D11-EXEC-03` of `data/expected/d10-measurements.ids`.
+This page tells the owner what to run, what to capture and in which format, for the items `D10-VID-01..14` and `D11-EXEC-03` of `data/expected/d10-measurements.ids`.
 Nothing here has been done: the project records these items as missing evidence and hands them off, and no claim uses the measured-hardware tier (D10, D24 of Phase 6).
 A run with an owner system image is D11 and is also not performed; the images are rights-bearing and stay local.
 No Phase 6 scenario uses an owner image.
@@ -54,6 +54,30 @@ Item `D10-VID-07`: with the display on, record the number of times per frame the
 ### stic-backtab-write
 
 Item `D10-VID-05`: write one BACKTAB word at chosen cycle offsets inside the picture and record, for each offset, which card rows show the old and which the new word in the same frame and in the next.
+
+## Moving objects, collision, delay and border extension
+
+These five items belong to Phase 8 (the STIC completion). Each is the owner hand-off of one pinned default of `docs/video/diag-stic-2-derivation.md` section (i); none is done, no result exists and no claim rests on any of them.
+
+### stic-collision
+
+Item `D10-VID-10`: with the display on and two or more objects set up, record the collision registers in the next interrupt after a frame in which the objects overlap, after a read, after a write of zero and after a write of another value; record whether a read changes the register, and the value read after a write of the bit of the register's own object. Repeat with one object at X coordinate 0, with an object at the plane edge and partly outside the plane, with two objects overlapping outside the plane and with the display not strobed for the frame, and record which bits are set.
+
+### stic-mob-priority
+
+Item `D10-VID-11`: draw one object with the priority bit set over a card with set pixels and over a card with only background pixels, capture the frame and record, per pixel, whether the object or the card shows; repeat with the priority bit clear.
+
+### stic-delay-area
+
+Item `D10-VID-12`: with the border extension bits clear, set the horizontal delay and the vertical delay to each of 1 to 7 and record the colors of the exposed columns and rows, whether an object placed there is shown and the delay value at which the register stops following the written value; also count the bus requests and the usable cycles per frame at vertical delay 0 and above.
+
+### stic-border-extension
+
+Item `D10-VID-13`: with each extension bit set alone and both set, record the number of columns and of rows that show the border color, with delay 0 and with a nonzero delay, and whether an object under a strip is shown.
+
+### stic-half-height
+
+Item `D10-VID-14`: draw one object with the Y size bits clear and another in tall mode with the Y size bits clear, using a card whose rows differ, capture the picture line by line and record which pattern row each television line shows.
 
 ## Owner system image
 
