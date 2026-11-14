@@ -99,6 +99,7 @@ int main(int argc, char **argv)
   video_add(ivs_video_mob_cases, ivs_video_mob_count);
   video_add(ivs_video_collision_cases, ivs_video_collision_count);
   video_add(ivs_video_border_cases, ivs_video_border_count);
+  video_add(ivs_video_delay_cases, ivs_video_delay_count);
   if (video_total > VIDEO_MAX_CASES) {
     fprintf(stderr, "video: more than %u cases; raise VIDEO_MAX_CASES\n", VIDEO_MAX_CASES);
     return 1;

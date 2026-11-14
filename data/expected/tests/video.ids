@@ -154,3 +154,11 @@ video.border.strips-left-top
 video.border.over-cards-and-mobs
 video.border.colour-from-reg-2c
 video.border.ext-bits-independent
+# Plan 08-06 task 2 (VID-05, D-02, D-03, D-07, rules STIC-R46 and R47): the delay registers $0030 and $0031 shift the cards and the MOBs together, one plane position per step, right and down, clipped at the plane edges, to the frozen frames F-M5 and F-M6 and to counts and rows derived by hand (video.hdelay., video.vdelay.); a vertical delay carries the band of rows across every card row boundary; the bus-window schedule and the machine do not depend on the vertical delay (with the one-field control that shows the sweep can fail); the streamed slot equals the whole plane and the call sizes 1, 7, 468 and 97 change no byte (video.delay.).
+video.hdelay.shift-right-cards-and-mobs
+video.hdelay.clip-right
+video.vdelay.shift-down-cards-and-mobs
+video.vdelay.straddle-card-rows
+video.vdelay.no-bus-window-change
+video.delay.stream-equals-plane
+video.delay.slice-invariant

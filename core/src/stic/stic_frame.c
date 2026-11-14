@@ -26,8 +26,13 @@
  *
  * Plan 08-06 (border extension, delay; D-02, D-03, D-07): the plane rows of a frame, streamed or whole, come out of ONE row generator
  * (ivs_stic_rows below) that composes the card rows in order into a single card-row buffer and finishes each plane row in place: the delay
- * shift (a later task of the plan) and the two border-extension strips, painted last over cards and MOBs. No second buffer and no carry exist:
- * a vertical delay only changes which source row feeds which output row, and every source row is consumed once, in order.
+ * shift (rule STIC-R46: cards and MOBs move together, one plane position per step, right for the horizontal register and down for the vertical
+ * register, clipped at the plane edges) and the two border-extension strips (rule STIC-R48, painted last over cards and MOBs). No second buffer and
+ * no carry exist: output row y shows source row y - v, so a vertical delay only changes which source row feeds which output row, every source row
+ * is consumed once and in order, and the bottom v source rows are never published. The columns and rows a delay exposes show the not-displayed
+ * value unless a profile field says otherwise (rule STIC-R47). Collision is evaluated on the undelayed scene (the card layer and the MOBs together),
+ * so a delay never changes a collision bit, and nothing here reads a delay register for timing: the schedule of stic_events.c and stic_lines.c is a
+ * function of the profile and the state only (D-07, C92).
  *
  * Named faults (plan 06-09): VIDEO_STATE_DEPENDS_ON_BUFFER (with no buffer the chain and the count do not advance),
  * VIDEO_CHAIN_FRAMING_STRUCT_HASH (the chain hashes an image of a struct instead of the framed bytes). The file holds no static or
@@ -155,6 +160,9 @@ uint32_t ivs_stic_compose_card_row(const ivs_stic_params *p, const ivs_stic_stat
 
 /* The registers of the border extension and the color of the strips ($32 bits 1..0 and $2C, the last masked to 4 bits as everywhere). */
 #define IVS_STIC_REG_BORDER_EXT 0x32u
+/* The delay registers (stic.regmap $30 and $31, written under the mask 0007): the horizontal delay in plane columns and the vertical delay in plane rows. */
+#define IVS_STIC_REG_DELAY_H 0x30u
+#define IVS_STIC_REG_DELAY_V 0x31u
 
 /* The generator of the plane rows of one frame: the source card rows are composed in order into one card-row buffer (buf, caller-owned,
  * IVS_STIC_CARDROW_MAX bytes) and each output row is finished in place. y is the next output plane row, cr the next card row to compose. */
@@ -170,6 +178,8 @@ typedef struct ivs_stic_rows {
   uint32_t height;    /* plane rows */
   uint32_t ext;       /* the border-extension register, bit 0 the left strip and bit 1 the top strip */
   uint32_t border;    /* the border color index, the color of the strips */
+  int32_t sh;         /* the horizontal delay: output column x shows source column x - sh (positive moves the picture right) */
+  int32_t sv;         /* the vertical delay: output row y shows source row y - sv (positive moves the picture down) */
   uint32_t y;
   uint32_t cr;
   uint32_t failed;    /* 1 when a card row could not be composed: the row generator stops */
@@ -192,6 +202,8 @@ static void ivs_stic_rows_init(ivs_stic_rows *r, const ivs_stic_params *p, const
     /* a display-off frame is the border fill and a geometry the card decoder does not draw is blank: neither takes the strips */
     r->ext = (uint32_t)mem->stic_reg[IVS_STIC_REG_BORDER_EXT] & 3u;
     r->border = (uint32_t)mem->stic_reg[IVS_STIC_REG_BORDER] & 0xFu;
+    r->sh = (int32_t)((uint32_t)mem->stic_reg[IVS_STIC_REG_DELAY_H] & 7u); /* the three-bit register width is the delay range (held by absence) */
+    r->sv = (int32_t)((uint32_t)mem->stic_reg[IVS_STIC_REG_DELAY_V] & 7u);
   }
 }
 
@@ -208,12 +220,14 @@ static uint32_t ivs_stic_rows_compose_to(ivs_stic_rows *r, uint32_t last)
   return 1u;
 }
 
-/* Paints the extension strips of the plane row y over the published columns of row (rule STIC-R48, painted last over cards and MOBs): bit 1 the
- * first video_border_ext_rows rows entirely, bit 0 the first video_border_ext_cols columns of every row. The cut-off column is never painted. */
-static void ivs_stic_rows_strips(const ivs_stic_rows *r, uint8_t *row, uint32_t y)
+/* Paints the extension strips of the plane row pr over the published columns of row (rule STIC-R48, painted last over cards and MOBs): bit 1 the
+ * first video_border_ext_rows rows entirely, bit 0 the first video_border_ext_cols columns of every row. The cut-off column is never painted. pr is
+ * the row index of the coordinate system the strip lives in: the output row for a strip fixed to the display, the source row for a strip that
+ * follows the delay (video_border_follows_delay). */
+static void ivs_stic_rows_strips(const ivs_stic_rows *r, uint8_t *row, uint32_t pr)
 {
   uint32_t width = r->p->video_width;
-  if ((r->ext & 2u) != 0u && y < r->p->video_border_ext_rows) {
+  if ((r->ext & 2u) != 0u && pr < r->p->video_border_ext_rows) {
     memset(row, (int)r->border, width);
     return;
   }
@@ -222,26 +236,100 @@ static void ivs_stic_rows_strips(const ivs_stic_rows *r, uint8_t *row, uint32_t 
   }
 }
 
-/* The next finished plane row (work_w bytes, valid until the next call), or NULL when the frame is complete or a card row failed (r->failed). The
- * call that finds every row delivered composes whatever card rows are left, so the collision accumulation and the final color-stack pointer cover
- * the whole frame. */
+/* The value of the positions a delay exposes (rule STIC-R47, pinned): the not-displayed value, or the border color with video_delay_exposed_fill. */
+static uint8_t ivs_stic_rows_exposed_value(const ivs_stic_rows *r)
+{
+  return r->p->video_delay_exposed_fill != 0u ? (uint8_t)r->border : (uint8_t)r->p->video_blank_value;
+}
+
+/* The published columns [lo, hi) of an output row take the source columns [lo - sh, hi - sh): a positive delay moves the picture right and exposes
+ * the columns [0, sh), a negative one (the named fault only) moves it left and exposes [width + sh, width). The cut-off column is not touched. */
+static void ivs_stic_rows_shift(const ivs_stic_rows *r, uint8_t *row, int32_t *lo_out, int32_t *hi_out)
+{
+  int32_t width = (int32_t)r->p->video_width;
+  int32_t lo = r->sh > 0 ? r->sh : 0;
+  int32_t hi = r->sh < 0 ? width + r->sh : width;
+  uint8_t fill = ivs_stic_rows_exposed_value(r);
+  memmove(row + lo, row + (lo - r->sh), (size_t)(hi - lo));
+  memset(row, (int)fill, (size_t)lo);
+  memset(row + hi, (int)fill, (size_t)(width - hi));
+  *lo_out = lo;
+  *hi_out = hi;
+}
+
+/* The pinned remainder of the exposed area (video_delay_mob_in_exposed 1, rule STIC-R47): the MOB pixels that the delay shifts out of the margin of
+ * the object field into the exposed columns [0, lo) and [hi, width) of an output row (all published columns for a row that is itself exposed) are
+ * drawn there. The MOBs are decoded again and moved by the delay (left by sh, top by sv plane rows of video_row_lines lines), overlaid on a scratch
+ * copy of the row at output row y, and only the exposed columns are copied back. The MOBs of the source plane are not touched. */
+static void ivs_stic_rows_mob_margin(const ivs_stic_rows *r, uint8_t *row, uint32_t y, int32_t lo, int32_t hi)
+{
+  ivs_stic_mob mobs[IVS_STIC_MOBS];
+  uint8_t tmp[IVS_STIC_ROW_WORDS * 8u];
+  int32_t width = (int32_t)r->p->video_width;
+  uint32_t k;
+  if (r->work_w > sizeof tmp) {
+    return; /* unreachable for a geometry the card decoder draws (20 columns of 8 positions) */
+  }
+  (void)ivs_stic_mob_decode(r->p, r->mem, mobs);
+  for (k = 0u; k < IVS_STIC_MOBS; k++) {
+    mobs[k].left = (int16_t)(mobs[k].left + r->sh);
+    mobs[k].top = (int16_t)(mobs[k].top + (int32_t)r->p->video_row_lines * r->sv);
+  }
+  memcpy(tmp, row, r->work_w);
+  ivs_stic_overlay_mobs_row(r->p, r->mem, mobs, y, NULL, tmp);
+  memcpy(row, tmp, (size_t)lo);
+  memcpy(row + hi, tmp + hi, (size_t)(width - hi));
+}
+
+/* The next finished plane row (work_w bytes, valid until the next call), or NULL when the frame is complete or a card row failed (r->failed). Output
+ * row y is the source row y - sv with its columns moved by sh; a row with no source row (the top rows a positive vertical delay exposes) is the
+ * exposed value, and the strips come last. Source rows are consumed in order, each once, so the one card-row buffer is all the storage there is; the
+ * call that finds every row delivered composes whatever card rows are left, so the collision accumulation and the final color-stack pointer cover the
+ * whole frame. */
 static const uint8_t *ivs_stic_rows_next(ivs_stic_rows *r)
 {
+  const ivs_stic_params *p = r->p;
   uint32_t y = r->y;
+  int32_t sy;
+  int32_t lo = 0;
+  int32_t hi = (int32_t)p->video_width;
   uint8_t *row;
   if (r->failed != 0u) {
     return NULL;
   }
   if (y >= r->height) {
-    (void)ivs_stic_rows_compose_to(r, r->p->video_card_rows);
+    (void)ivs_stic_rows_compose_to(r, p->video_card_rows);
     return NULL;
   }
-  if (ivs_stic_rows_compose_to(r, y / r->p->video_card_h) == 0u) {
-    return NULL;
-  }
-  row = r->buf + (size_t)(y % r->p->video_card_h) * r->work_w;
-  if (r->ext != 0u) {
-    ivs_stic_rows_strips(r, row, y);
+  sy = (int32_t)y - r->sv;
+  if (sy < 0 || sy >= (int32_t)r->height) {
+    /* no source row feeds this output row: it is exposed (the card-row buffer holds no source row that is still to be published here) */
+    row = r->buf;
+    memset(row, (int)ivs_stic_rows_exposed_value(r), p->video_width);
+    memset(row + p->video_width, (int)p->video_blank_value, r->work_w - p->video_width);
+    if (p->video_delay_mob_in_exposed != 0u) {
+      ivs_stic_rows_mob_margin(r, row, y, (int32_t)p->video_width, (int32_t)p->video_width);
+    }
+    if (r->ext != 0u && p->video_border_follows_delay == 0u) {
+      ivs_stic_rows_strips(r, row, y);
+    }
+  } else {
+    if (ivs_stic_rows_compose_to(r, (uint32_t)sy / p->video_card_h) == 0u) {
+      return NULL;
+    }
+    row = r->buf + (size_t)((uint32_t)sy % p->video_card_h) * r->work_w;
+    if (r->ext != 0u && p->video_border_follows_delay != 0u) {
+      ivs_stic_rows_strips(r, row, (uint32_t)sy); /* a strip that follows the delay is painted on the undelayed row and moves with it */
+    }
+    if (r->sh != 0) {
+      ivs_stic_rows_shift(r, row, &lo, &hi);
+      if (p->video_delay_mob_in_exposed != 0u) {
+        ivs_stic_rows_mob_margin(r, row, y, lo, hi);
+      }
+    }
+    if (r->ext != 0u && p->video_border_follows_delay == 0u) {
+      ivs_stic_rows_strips(r, row, y);
+    }
   }
   r->y = y + 1u;
   return row;

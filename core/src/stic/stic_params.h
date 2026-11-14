@@ -141,6 +141,14 @@ typedef struct ivs_stic_params {
    * strip (bit 1). The left width of 8 is the derivable core; the top height (default 8, the pinned unit PD-8) is the pinned part. */
   uint32_t video_border_ext_cols;
   uint32_t video_border_ext_rows;
+  /* Delay (plan 08-06, D-02, rules STIC-R47 and R49; stic_frame.c): the generator reads video.border_follows_delay, video.delay_exposed_fill and
+   * video.delay_mob_in_exposed (each 0 or 1, unknown-default-chosen, C109 and C110): border_follows_delay says whether the strips move with the delay
+   * (default 0, fixed to the display); delay_exposed_fill what the columns and rows a delay exposes show (0 the not-displayed value video_blank_value,
+   * never a color; 1 the border color index); delay_mob_in_exposed whether the MOB pixels of the object-field margin that a delay shifts into the
+   * exposed area are drawn there (default 0, no). The delay range is the three-bit register width and is held by absence. */
+  uint32_t video_border_follows_delay;
+  uint32_t video_delay_exposed_fill;
+  uint32_t video_delay_mob_in_exposed;
   uint32_t video_display_off_fill;
 } ivs_stic_params;
 

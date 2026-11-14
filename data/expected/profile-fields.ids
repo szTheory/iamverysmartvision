@@ -149,4 +149,7 @@ video.collision_border_bit
 video.collision_offscreen
 video.collision_display_off
 video.border_ext_strip
+video.border_follows_delay
+video.delay_exposed_fill
+video.delay_mob_in_exposed
 video.blank_value

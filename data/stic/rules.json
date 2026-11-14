@@ -423,7 +423,7 @@
     {
       "id": "STIC-R28",
       "family": "stic",
-      "statement": "The color stack and border color registers are applied to the picture, the MOB registers are applied by the rules STIC-R37 to R43 and R50 (plan 08-04) and the border-extension register by the rules STIC-R48 and R49 (plan 08-06); the delay registers are stored and not applied until the end of plan 08-06.",
+      "statement": "Superseded by STIC-R37 to STIC-R50: the color stack and border color registers are applied to the picture, and since plan 08-06 every other register of the 64-word register file that has a picture effect (the MOB registers, the collision registers, the delay registers and the border-extension register) is applied by those rules; no register of the file is stored and not applied.",
       "basis": "project-rule",
       "cite": "none",
       "fields": [
@@ -433,7 +433,7 @@
         "stic.reg."
       ],
       "conflict": "C87",
-      "note": "Scope rule (REQUIREMENTS VID-04 and VID-05). Phase 6 stated that MOB, delay and border-extension registers are stored and not applied; plan 08-04 rewords it in the commit that makes the MOB registers draw (the collision registers follow in plan 08-05) and plan 08-06 rewords it again in the commit that makes the border-extension register draw; the commit that applies the delay registers turns it into a superseded-by statement."
+      "note": "Scope rule (REQUIREMENTS VID-04 and VID-05). Phase 6 stated that MOB, delay and border-extension registers are stored and not applied; plan 08-04 rewords it in the commit that makes the MOB registers draw (the collision registers follow in plan 08-05) and plan 08-06 rewords it again in the commit that makes the border-extension register draw and turns it into a superseded-by statement in the commit that applies the delay registers (the rule id and its inventory line stay)."
     },
     {
       "id": "STIC-R29",

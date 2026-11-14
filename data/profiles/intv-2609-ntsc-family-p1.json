@@ -1611,6 +1611,36 @@
       "decision": null,
       "note": "The size of the two border-extension strips in plane positions: cols is the width of the left strip (extension bit 0) and rows the height of the top strip (extension bit 1). Each member is 1 to 15. The left strip width of 8 is the derivable core (rule STIC-R48); the top strip unit of 8 plane rows (a strip of 8 television lines would be 4 plane rows) is the pinned part (PD-8). Frames F-M4, F-M5 and F-M6 are derived under 8 by 8."
     },
+    "video.border_follows_delay": {
+      "value": 0,
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: the lineage does not say whether the strips move with the delay (rule STIC-R49); its stated purpose, that the blank areas are never visible, holds for delays up to 7 only for a strip that is fixed to the display",
+      "conflict": "C109",
+      "resolving_evidence": "measurement: D10-VID-13 owner capture of the strips with a nonzero delay",
+      "revisit_trigger": "a D10 capture of a border-extension strip with a nonzero delay",
+      "decision": null,
+      "note": "Policy selector 0 or 1: with 0 the strips are fixed to the display (painted after the delay shift, over the exposed area); with 1 they are painted on the undelayed picture and move with it, so the exposed area is not covered. Frames F-M5 and F-M6 are derived under 0; their probes avoid the positions this selector moves."
+    },
+    "video.delay_exposed_fill": {
+      "value": 0,
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: the lineage says the blank area is filled with the background color as the display mode defines it, which names no single color index (rule STIC-R47)",
+      "conflict": "C110",
+      "resolving_evidence": "measurement: D10-VID-12 owner capture of the exposed area with the extension bits clear",
+      "revisit_trigger": "a D10 capture of the area exposed by a delay or a primary page that prints its content",
+      "decision": null,
+      "note": "Policy selector 0 or 1: the plane columns 0 to h - 1 and rows 0 to v - 1 that a delay of h columns and v rows exposes are published as the not-displayed value video.blank_value (0, the default, never a color) or as the border color index (1), unless an extension strip covers them. Frame F-M7 shows these positions as unknown."
+    },
+    "video.delay_mob_in_exposed": {
+      "value": 0,
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: the lineage does not say whether a MOB is drawn in the area a delay exposes (rule STIC-R47)",
+      "conflict": "C110",
+      "resolving_evidence": "measurement: D10-VID-12 owner capture of a MOB placed in the exposed area",
+      "revisit_trigger": "a D10 capture of a MOB in the area exposed by a delay",
+      "decision": null,
+      "note": "Policy selector 0 or 1: with 0 a MOB is not drawn in the exposed columns and rows, so only the part of the object field that lies inside the published plane is shifted into view; with 1 the pattern pixels of a MOB in the margin of the object field (the 8 positions left of and above the plane) are shifted into the exposed area and drawn there. No frame, assert or marker depends on the case."
+    },
     "video.blank_value": {
       "value": 255,
       "tag": "delegated-decision",

@@ -78,6 +78,11 @@ if [ -f "$pf" ]; then
   keys=$(grep -c . "$tmp/paths")
   while IFS= read -r p; do
     seg=${p##*.}
+    # Plan 08-06: the word delay in these three video selectors names the delay registers of the picture chip, a shift in plane positions, and each field is
+    # a 0 or 1 policy selector, not a duration or an offset in time; the names are fixed by the oracle (docs/video/diag-stic-2-derivation.md section (i)).
+    case $p in
+      video.border_follows_delay|video.delay_exposed_fill|video.delay_mob_in_exposed) continue ;;
+    esac
     case "_${seg}_" in
       *_window_*|*_offset_*|*_hold_*|*_duration_*|*_delay_*|*_period_*|*_latency_*|*_interval_*|*_timeout_*)
         case $seg in
