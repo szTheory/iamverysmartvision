@@ -431,3 +431,5 @@ Open items for the blind reader (readings that rest on one sentence of one sourc
 ## (k) As built (plan 08-07)
 
 (Appended by plan 08-07 after the blind-read record; empty here.)
+
+Blind-read corrections (appended by plan 08-04, which checked them before writing any renderer code): the record `docs/video/diag-stic-2-second-read-record.md` lists two corrections, both specification wording. A5 step 3 now clears `$0200` to `$02EF` (the BACKTAB only, so the selector word at `$02F2` survives), and A11 now says that no collision comes from a position outside the plane and that the MOB of mob scene 1 is clipped at the plane edge. Both edits sit in the commit that closed the blind read. The blind-spec range of section (a) differs from the one hashed in the plan 08-03 summary (`b73a15b9288729ed5c053d1570fa0b5ff2ab7a6b58f6e1f15d58d672e09102ed`) only in those two lines. No frame literal, hash, pair, assert or derived value changed; the record carries the line `corrections-applied: yes` from this commit on.

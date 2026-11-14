@@ -3,6 +3,7 @@ oracle-commit: 641a12e3a1059b242cc88a3ee4308e3f58d9b36d
 corrections: 2
 correction: (a)-A5 step 3 `$0200` to `$02FF` -> `$0200` to `$02EF`
 correction: (a)-A11 `no MOB or collision outside the plane` -> `no collision from a position outside the plane` with the clipped-MOB clarification
+corrections-applied: yes
 
 # STIC 2 blind second-read record
 
