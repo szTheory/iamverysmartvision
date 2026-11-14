@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 current_phase: 8
 current_phase_name: STIC Completion, Save State and Performance Baselines
-current_plan: 11
+current_plan: 12
 status: executing
-stopped_at: Completed 08-10-PLAN.md
-last_updated: "2026-11-14T14:25:14.657Z"
+stopped_at: Completed 08-11-PLAN.md
+last_updated: "2026-11-14T15:13:24.682Z"
 last_activity: 2026-11-14
 last_activity_desc: Phase 8 execution started
-state_head: e49bd7874de6159ead0f7db7642a530cb1f8cb3a
+state_head: b0c5048b5cea217938bb35c84b8631fe8c4e457c
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 130
-  completed_plans: 119
+  completed_plans: 120
   percent: 88
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 8 (STIC Completion, Save State and Performance Baselines) — EXECUTING
-Current Plan: 11
+Current Plan: 12
 Total Plans in Phase: 21
 Status: Ready to execute
 Last activity: 2026-11-14 — Phase 8 execution started
@@ -178,6 +178,7 @@ Progress: [█████████░] 88%
 | Phase 08 P08 | about 55 min | 3 tasks | 25 files |
 | Phase 8 P09 | about 50 min | 3 tasks | 37 files |
 | Phase 8 P10 | about 80 min | 3 tasks | 17 files |
+| Phase 8 P11 | about 70 min | 3 tasks | 28 files |
 
 ## Accumulated Context
 
@@ -437,6 +438,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 8]: 08-09: the blind read of the checklist (member list from the struct headers, class definitions only) is requested in docs/state/checklist-second-read-request.md with first line pending; the orchestrator builds the blinded files and runs the reader, plan 08-10 starts only when the record docs/state/checklist-second-read-record.md says state: closed; STA-01 and STA-02 stay Pending
 - [Phase 8]: 08-10: the digest field table is the single serializer: every one of the 88 rows carries its snapshot class in the former reserved member (now snap, same size), written as the seventh argument of the row macro and held equal to the checklist by the state step; one filter line after the domain test and a state-only sink flag give ivs_machine_state_preimage (lengths 35, 2761, 615, 51, 63, 79, 51 as derived on paper); the digest path leaves the flag 0, so no digest literal, golden or DIGEST fault site moved (8 sites before and after)
 - [Phase 8]: 08-10: ivs_psg_state_validate carries every bound derived from the chip step functions (three more than the plan listed: the noise counter, the running-envelope level relation, held implies counter 0), refuses the all-zero state of an OFF instance (save is refused while OFF), and is shown true of the grid, 52 engine vectors and the nine stand-in programs; the Lamp Tone runs reach it only in the round trip of plan 08-12
+- [Phase 8]: 08-11: the IVSN v1 writer reproduces the oracle of plan 08-09 in every figure: header 612, sections 35, 2761, 615, 51, 63, 79, 51 at 612, 647, 3408, 4023, 4074, 4137, 4216, trailer at 4267, total 4299, and the schema digest 6cd4932f...b193 built from the live table descriptors equals the hand-pinned literal; the profile parameter digest 89ad6507...0522 hashes four per-profile constants over generator table text with the comments removed (a cite edit moved none, a value edit moved exactly one)
+- [Phase 8]: 08-11: ivs/ivs_state.h adds ivs_machine_snapshot_size and ivs_machine_snapshot_save (refusal order arguments, handle, overlap, OFF, capacity; nothing written into the buffer on a refusal; out_written inside the buffer and a capacity past the address space are BAD_ARG); no image byte is ever written (state.save.no-image-bytes, fault SNAPSHOT_IMAGE_BYTES_EMBEDDED); the stepped boot snapshot is pinned (5000 units) and identical in the dev and release presets; IVS_E_STATE_MISMATCH stays with plan 08-13; STA-01 and STA-02 stay Pending
 
 ### Pending Todos
 
@@ -469,6 +472,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-14T14:25:14.161Z
-Stopped at: Completed 08-10-PLAN.md
+Last session: 2026-11-14T15:13:24.177Z
+Stopped at: Completed 08-11-PLAN.md
 Resume file: None
