@@ -334,7 +334,7 @@ Plans:
 - [x] 07-12-PLAN.md — W7 close-out: claims CL-0023/CL-0024, play-word tripwire, README/PROJECT/REL-01 fixes, D4 and D11 register, verification record, phase7-close
 
 **Cross-cutting constraints:** <!-- gsd:generated -->
-- End state: `steps=36/36 controls=354/354 faults=222/222 goldens=15 tests-skipped=2 tests-missing=0` under sh, dash and the container gate
+- End state: `steps=36/36 controls=357/357 faults=222/222 goldens=15 tests-skipped=4 tests-missing=0` under sh, dash and the container gate
 
 ### Phase 8: STIC Completion, Save State and Performance Baselines
 **Goal**: The remaining STIC features are either covered or explicitly listed as unknown. Full machine state round-trips through one canonical snapshot format, named workloads have benchmarks that check correctness first, and the milestone closes with a release-readiness assessment of the exact tested artifact.
