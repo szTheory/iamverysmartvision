@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 current_phase: 7
 current_phase_name: First Visible Original Scenario
-current_plan: 10
+current_plan: 11
 status: executing
-stopped_at: Completed 07-09-PLAN.md
-last_updated: "2026-11-14T00:12:06.758Z"
+stopped_at: Completed 07-10-PLAN.md
+last_updated: "2026-11-14T00:44:41.121Z"
 last_activity: 2026-11-13
 last_activity_desc: Phase 7 execution started
-state_head: 3248f06e7d7a1e461d16d1ac2e3868540b4750fb
+state_head: bdf0e503b72fb41f50a816b77eba129af6fd517f
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 109
-  completed_plans: 106
+  completed_plans: 107
   percent: 75
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 7 (First Visible Original Scenario) — EXECUTING
-Current Plan: 10
+Current Plan: 11
 Total Plans in Phase: 12
 Status: Ready to execute
 Last activity: 2026-11-13 — Phase 7 execution started
@@ -165,6 +165,7 @@ Progress: [████████░░] 75%
 | Phase 7 P07 | 40min | 4 tasks | 14 files |
 | Phase 7 P08 | 40min | 3 tasks | 5 files |
 | Phase 7 P09 | 35min | 3 tasks | 7 files |
+| Phase 7 P10 | 32min | 4 tasks | 34 files |
 
 ## Accumulated Context
 
@@ -393,6 +394,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 7]: Phase 7 plan 09: the installed consumer replays demo-lamp-tone-pass (prefix scn., six image arguments) and agrees with the runner golden on all nine digest lines and the observed set; it checks slot headers, six lamp pictures, seven declared pair diffs, audio windows and 30 write-log records with its own code, and a 14-call STOP_ON_FRAME loop must end with the same streams and digests
 - [Phase 7]: Phase 7 plan 09: the audio window starts are the latest-write bounds of specification A8 (gate before cycle 1,300, deferred amplitude before cycle 250), because the as-built gate write is 14 cycles after the reference figures of derivation section (d); the oracle is untouched
 - [Phase 7]: Phase 7 plan 09: checkpointC-07: no-lever (last-five median 8.02, projection 8.04; pkg-install step cost within load noise, at most +0.33 local cpu-s); forward bound for the SCN-02 cases about 8.30 at the S-4 upper unit cost, re-read at the close
+- [Phase 7]: Phase 7 plan 10: owner-exec-title is the template of the owner-local route (content exec user and grom user, no cartridge, no assert, run-to 600 frames); skip-ok rows take tests-skipped 2 to 4 and tests-inventory prints one -- SKIPPED line per skipped id and preset; SCN-02 stays Pending until the helper of plan 07-11 and the 07-12 close-out
+- [Phase 7]: Phase 7 plan 10: the golden step ties user content to skip-ok in both directions (golden-user-content-not-skip-ok, golden-skip-ok-without-user-content, controls 354 to 356); SCN-02 is an accepted and covered important-gates requirement; FX-owner-exec and FX-owner-grom are uncommitted redistributable-no manifests (manifests 8 to 10, effective-no 1 to 3); no digest and no image enter the tree, D11 not performed
 
 ### Pending Todos
 
@@ -425,6 +428,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-14T00:12:06.405Z
-Stopped at: Completed 07-09-PLAN.md
+Last session: 2026-11-14T00:44:40.754Z
+Stopped at: Completed 07-10-PLAN.md
 Resume file: None
