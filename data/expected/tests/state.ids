@@ -29,3 +29,14 @@ state.read.describe-refuse-args
 state.read.describe-refuse-length
 state.read.describe-refuse-header
 state.read.describe-refuse-trailer
+# Plan 08-12 Task 2: the rest of the matrix. The section table (reason 69 with the index of the entry, every row resealed so that it is the table that is refused), the form
+# of the profile id (reason 71 after the trailer; an empty or unregistered id of good form is accepted), the sweep of every length from 0 to the total plus one from a heap
+# buffer of exactly that length, the exact footprint of the report on refusals and successes, the report struct rule (the v1 size, a larger caller struct, an unusable
+# struct_size), the check that every one of the fourteen reasons is expected and produced by some row, and the judge: the matrix runner can fail.
+state.read.describe-refuse-section-table
+state.read.describe-profile-id-forms
+state.read.describe-heap-exact
+state.read.describe-writes-only-report
+state.read.describe-report-v1-size-caller
+state.read.reasons-covered
+state.judge.matrix-expectation-corrupt

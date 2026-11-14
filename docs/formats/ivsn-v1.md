@@ -269,3 +269,48 @@ The value was produced by the writer, so it is a repeatability pin and nothing m
 
 `state.save.no-image-bytes` also holds that each of the three slot SHA-256 values occurs exactly once in the snapshot, at its slot record, and that two instances that differ only in their image arrays give snapshots that differ only in the slot records, the composite and section digests and the trailer.
 `state.judge.header-literal-corrupt` applies the comparison of the structure test to damaged copies (one byte of each field, the length, the trailer) and requires each to be reported by the comparison that names the field.
+
+## As built (plan 08-12)
+
+This section is appended after the sections above, which are the oracle of plan 08-09 and are not edited: it records what the reader of plan 08-12 does when it is held to them.
+The reader is `core/src/machine/machine_snapshot_read.c`; its public face is `ivs_snapshot_describe` in `core/include/ivs/ivs_state.h`; the reasons 58 to 71 are defined there and pinned in `data/expected/api-reasons.ids`; the cases are the family `state.read.` and the self-control `state.judge.matrix-expectation-corrupt` (`tests/state/state_read.c`, ids in `data/expected/tests/state.ids`).
+Restore is not part of this plan: the reasons 72 to 81 and steps 6 to 9 of the check order above are still [planned].
+The layout constants (the header offsets, the section count, the header and trailer sizes, the domain table) moved from `machine_snapshot.c` into `machine.h` without changing a byte, so the writer and the reader share one set of numbers.
+
+**The check order as produced.** The reader implements steps 2 to 5 of the check order above and the form of the profile id of step 6, in the order of the specification; the first failing class wins.
+
+| Step | Check | Reason, status |
+|---|---|---|
+| args | the report struct (NULL, struct_size below 360 or above 4096) | BAD_ARG, nothing written |
+| args | a NULL buffer with a length above 0; then the report overlapping the buffer | 58, 59 BAD_ARG |
+| 2 | a length above 16,384, before any byte is read | 60 OVERSIZED |
+| 2 | a length below 644 | 61 MALFORMED |
+| 3 | the magic (eight bytes), format version, flags, schema version, schema digest | 62 MALFORMED; 63, 64, 65, 66 UNSUPPORTED |
+| 3 | the total the bytes state above the length; below it or different from the size this build derives | 61; 67 MALFORMED |
+| 3 | the section count | 68 MALFORMED |
+| 4 | the section table, entry by entry | 69 MALFORMED |
+| 5 | the SHA-256 trailer | 70 DIGEST_MISMATCH |
+| 6 (form) | the form of the profile id | 71 MALFORMED |
+
+**What is reported with a refusal.** The byte offset is the first differing byte for the magic, the supplied length for a truncation (also when the total is above it), the bound 16,384 for OVERSIZED, 0 for the two argument reasons, the offset of the failing field for the header reasons (8, 10, 16, 24, 12, 20), the start of the trailer for 70, and the first offending byte of the profile id for 71 (the last byte of the field, offset 119, when the id has no NUL).
+For a section table defect the section index is the first entry, in order, whose rule fails (the domain, the three zero bytes, the offset against the end of the entry before, the length against the end of the payload) and the byte offset is the offset of that field (the entry start, the first nonzero zero byte, +4 for the offset, +8 for the length); when every entry holds and the last section does not end at the trailer start the entry is the last one and the field its length.
+Every other reason reports section index 0xFFFFFFFF.
+A refusal writes only reason, byte offset, section index and the header facts the supplied length let it read (format version from 12 bytes, total from 16, schema version from 24), read from the bytes as they stand whatever the defect; it keeps struct_size and every other member of the caller's report.
+A success writes the 360 bytes of the v1 report and keeps the tail of a larger caller struct.
+
+**Where the code and the plan text differ, and which is right.** The specification is the contract; where plan 08-12 reads differently the code follows the specification.
+1. The form of the profile id (71) is judged after the trailer (step 6 follows step 5), so a bad id with a stale trailer is reported as 70. The prose of the plan listed the form before the trailer; the specification and the numbering of the reasons (70 before 71) put it after.
+2. The reader does not compare the length of each section with the length derived from the table of the build. Step 4 of the specification covers known domains, order, offsets and lengths that fit, adjacency and the sum; the comparison with the derived lengths is step 8 of restore, reason 80. A length that is one more or less than derived breaks adjacency or the end of the last section and is reason 69 in every row of the matrix; a pair of changes that chain and keep the sum is accepted by describe (two rows) and is left to restore, so that reason 80 stays reachable. The total is compared with the size the build derives from the descriptors of the table (`ivs_snapshot_derived_total`), with no instance.
+3. A length above the bound counts as the bound for the overlap rule of the report (the overlap is judged over the first 16,384 bytes at most), so that an absurd length is OVERSIZED and not an overlap.
+4. An empty profile id and an unregistered id of good form are accepted by describe (the specification lists only three defects for 71 and only restore consults the registry).
+5. The three image slot records of a success carry struct_size of an image report, the kind (slot index plus one), loaded, length and SHA-256 as the snapshot states them, and 0 in every other member; describe does not judge them (restore does).
+
+**The matrix.** Rows per reason (a row is one call): 58: 7, 59: 5, 60: 11, 61: 36, 62: 13, 63: 7, 64: 18, 65: 12, 66: 35, 67: 14, 68: 12, 69: 92, 70: 95, 71: 24, and 23 rows that are accepted (the snapshot as written, informational fields changed with a valid trailer, an empty, unregistered or 63 byte id, chained section lengths), 404 rows in all.
+Every row is run twice, into a report poisoned with 0xA5 and with 0x5A, and the whole report is compared with the one the contract allows; the sweep `state.read.describe-heap-exact` describes every length from 0 to the total plus one (4,301 lengths) from a heap buffer of exactly that length, and the self-control corrupts one expectation of each family in turn and requires the runner to report that row.
+
+**The named faults.**
+
+| Fault | Site | What the test that catches it shows |
+|---|---|---|
+| SNAPSHOT_TRAILER_UNCHECKED | `machine_snapshot_read.c`, the trailer comparison | `state.read.describe-refuse-trailer` finds a damaged trailer and damaged bytes that only the trailer covers accepted instead of reason 70 |
+| SNAPSHOT_LENGTH_TRUSTED | `machine_snapshot_read.c`, the refusal of a total above the supplied length | `state.read.describe-refuse-length` finds a truncated snapshot reported with another reason (the buffers of a fault build carry a zeroed tail, so the reader reads defined bytes and fails by its status) |
