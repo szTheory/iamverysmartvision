@@ -60,14 +60,14 @@ exit, until the gate is resolved by its named authority.
 | D1 Language/build (C17 + CMake recommended; Rust alternative) | Owner | Delegated decision 2026-11-09 (PROJECT.md) | Before Phase 2 starts |
 | D2 CPU-cycle unit, time base, crystal constant | Architecture | Delegated decision 2026-11-09 (PROJECT.md) | During Phase 1 (FND-07); before Phase 2 |
 | D3 First profile (2609 NTSC recommended; revision, STIC/PSG parts, power-on policy) | Owner | Delegated decision 2026-11-09 (PROJECT.md) | Before Phase 1 exits |
-| D4 Fixture assembler policy | Owner (licence) + architecture | Delegated decision 2026-11-11 (PROJECT.md; Phase 4 D-25, D-12, D-41) | Before Phase 4 starts |
+| D4 Fixture assembler policy | Owner (licence) + architecture | Delegated decision 2026-11-11 (PROJECT.md; Phase 4 D-25, D-12, D-41); re-evaluated in Phase 7 (D-16, D-19): project mini-assembler `ivs_asm`, never shipped | Before Phase 4 starts |
 | D5 System-image policy and project boot stub | Owner | Delegated decision 2026-11-11 (PROJECT.md; Phase 3 D-24) | Phase 3 (refusal); before Phase 4 (boot) |
 | D6 Controller core-input representation (C14) | Owner + architecture | Delegated decision 2026-11-11 (PROJECT.md; Phase 4 D-25, D-12, D-41) | While Phase 4 shapes the API; before Phase 5 starts |
 | D7 Reference PCM location (C23) | Architecture | Delegated decision 2026-11-12 (PROJECT.md; Phase 5 D-21: outside the core, `tools/pcm`, runner `--audio-wav` only) | Phase 5 |
 | D8 Raw framebuffer geometry (C10) | Architecture + evidence | Delegated decision 2026-11-12 (PROJECT.md; Phase 6 D-12: 159 x 96, width from `video.last_card_column_px`, reversible by one profile field) | Phase 6 |
 | D9 License, visibility, naming/trademark, publication | Owner gate | Delegated decision 2026-11-09 (PROJECT.md) | Before any external publication; CI hosting (Phase 4) and the milestone release assessment (Phase 8) touch it |
 | D10 Physical hardware measurement | Owner gate | Open | Before any measured-tier claim (Phase 5 onward) |
-| D11 Owner-local real EXEC/GROM runs | Owner gate | Open | Before SCN-02 can be claimed (Phase 7) |
+| D11 Owner-local real EXEC/GROM runs | Owner gate | Open, not performed (SCN-02 is complete on documented-route terms; no result, claim or tier) | Before any real-EXEC result is recorded |
 | D12 CI shape (C24) | Architecture | Delegated decision 2026-11-11 (PROJECT.md; Phase 4 D-25, D-12, D-41) | Before Phase 4 exits |
 | D13 LibFuturo adapter / shared-contract change | Owner gate | Deferred | Not before a real consumer exists; outside this milestone |
 

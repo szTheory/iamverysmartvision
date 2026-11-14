@@ -108,7 +108,7 @@ differentiators and all variant/peripheral profiles are v2.
 
 ### Milestone and Release Practice (REL)
 
-- [ ] **REL-01**: Each milestone close records main green, open-PR triage, updated rolling roadmap and lessons, and a release-readiness assessment for the exact tested commit/artifact (rights, package contents, qualification, authority); publication itself remains an owner gate (D9).
+- [ ] **REL-01**: Each milestone close records main green, open-PR triage, updated rolling roadmap and lessons, and a release-readiness assessment for the exact tested commit/artifact (rights, package contents, qualification, authority); publication follows the delegated release flow (D9, `.planning/AUTONOMY.md` section 5; the licence is MIT and is not an open owner gate).
 
 ## v2 Requirements
 
@@ -163,14 +163,14 @@ Open decisions referenced by requirements. None are decided by this document.
 | D1 | Implementation language/build (C17 + CMake recommended; Rust alternative) | Delegated decision 2026-11-09 (PROJECT.md) | First code phase |
 | D2 | CPU-cycle unit, time base, crystal constant | Delegated decision 2026-11-09 (PROJECT.md) | CPU phase |
 | D3 | First profile: 2609 NTSC recommended; revision, STIC/PSG parts, power-on RAM policy | Delegated decision 2026-11-09 (PROJECT.md) | Foundations exit |
-| D4 | Fixture assembler policy (pinned dev-only `as1600` + cross-check vs project mini-assembler) | Owner (license) + architecture — open | Runner phase |
+| D4 | Fixture assembler policy (pinned dev-only `as1600` + cross-check vs project mini-assembler) | Delegated decision 2026-11-11 (Phase 4 D-25: hand-assembled listings); re-evaluated in Phase 7 (D-16, D-19): project mini-assembler `ivs_asm`, never shipped, `PROJECT.md` | Runner phase; Phase 7 |
 | D5 | System-image policy: user-supplied EXEC/GROM only; project boot stub for CI, labelled "not an EXEC" | Decided in Phase 3 (D-24, delegated) | Loader / runner phases |
 | D6 | Controller core-input representation (logical lossless vs electrical per port) | Owner + architecture — open (conflict C14) | Core API skeleton |
 | D7 | Reference PCM location (core observation layer vs host) | Architecture — open | Sound phase |
 | D8 | Raw framebuffer geometry (159 vs 160 visible, nominal grid) | Architecture + evidence — open | Video phase |
 | D9 | License, repository visibility, naming/trademark, publication | Delegated decision 2026-11-09 (PROJECT.md) | Any external publication |
 | D10 | Physical hardware measurement | Owner gate | Any measured-tier claim |
-| D11 | Owner-local real EXEC/GROM runs | Owner gate | SCN-02 |
+| D11 | Owner-local real EXEC/GROM runs | Owner gate — open, not performed (SCN-02 documented route only: no result, claim or tier) | Any real-EXEC result |
 | D12 | CI shape (job count, sanitizers, fuzz schedule) | Architecture — open | Runner/CI phase |
 | D13 | LibFuturo adapter / shared-contract change | Owner gate | Not before a real consumer |
 

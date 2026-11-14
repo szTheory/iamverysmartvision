@@ -74,6 +74,16 @@ Three values must agree, and the consumer prints all three on its `version` line
 
 A host that compares `ivs_api_version()` with `IVS_API_VERSION` at start-up detects a header and library mismatch.
 
+## Release content (D-33)
+
+This is the statement for the next release notes. It describes what a release contains; it makes no claim of its own.
+
+- The release carries the installed package (the `ivs::core` archive, its headers and the CMake package files, from the release preset only) and the source tarball of the tested commit.
+- The first original program, `ivs-demo-lamp-tone-1`, ships only as tracked source (`fixtures/FX-demo-lamp-tone-1/lamp-tone.asm` and its generated listing, MIT licence, manifest `redistributable: yes`). No program image is committed or released.
+- Neither the runner (`ivs-run`), nor `ivs_pack`, nor `ivs_asm` is installed or shipped, so nothing downloadable is runnable yet: a reader builds the runner and the image tools from the source tarball.
+- No EXEC, GROM or commercial content is in a release, and none was used by any check. The owner-local route for user-supplied images (`docs/owner-images.md`) is not part of a release and has not been performed (D11).
+- Claims in the notes are stated as profile, evidence tier and artifact: the program is playable guest progress, for this original program only [claim:CL-0023], and its installed-package replay is [claim:CL-0024]; both are provisional.
+
 ## What the gate step checks
 
 `pkg-install` (in `tools/check/steps/pkg-install.sh`) installs `build/release` into a temporary prefix, moves the prefix into a path that contains a space and deletes the original, then:

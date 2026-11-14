@@ -43,6 +43,9 @@ A claim names exactly one of them.
 - `measured-hardware` means an owner-approved physical measurement of real hardware backs the claim (D10), and no claim uses it yet.
 - `deterministic-repeatability` means repeated executions give identical output, which establishes repeatability and not accuracy.
 - `playable-guest-progress` means a guest program makes observable progress on the named profile.
+  CL-0023 is its only use: the original program `ivs-demo-lamp-tone-1` under one scripted controller input, with guest state, raw video and raw audio each asserted against hand-derived values.
+  The tier says nothing about a console, a commercial title, an EXEC or GROM image, input latency or frame pacing, tone pitch, or whether a person saw or heard anything, and it names one program: a second program is a second claim.
+  In prose the only allowed wording is "playable guest progress, for this original program only" with `[claim:CL-0023]` on the same line, and the tier id written as an identifier.
 - `installed-host-behavior` means the installed package, consumed by a separate host program, behaves as stated.
 
 ## Claim ledger
@@ -73,7 +76,8 @@ The tier `measured-hardware` fails with `claim-measured-without-d10` until the o
 ## Citing claims in prose
 
 A statement in `README.md` or in a document under `docs/` that uses a claim word cites a claim on the same line, in the form `[claim:CL-NNNN]` with a real id.
-The claim words are those matched by the tripwire in the text step.
+The claim words are those matched by the tripwire in the text step: supports, compatible, passes, accurate, verified, runs, plays and playable. [nc]
+The tier id `playable-guest-progress` written as an identifier is not a claim word (the text step removes that exact string from a line before matching); any other use of plays or playable cites a claim or carries the waiver. [nc]
 A line that must use a claim word as rule text, such as a line that explains the tripwire, carries the waiver `[nc]` instead.
 Every cited id must exist in `data/expected/claims.ids`, or the text step fails with `text-unknown-claim-ref`.
 A line using a claim word without either form fails with `text-claim-untagged`.

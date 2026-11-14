@@ -73,9 +73,10 @@ ID-tagged requirements live in `.planning/REQUIREMENTS.md`.
   device output inside the core — host-layer responsibilities.
 - Unqualified compatibility labels or percentage claims — contradicts Core
   Value.
-- Public release, license selection, repository visibility, trademark
-  clearance and physical hardware testing without explicit owner action —
-  these are owner gates.
+- Trademark clearance, physical hardware testing, owner-local EXEC/GROM runs
+  and third-party content without explicit owner action — these are owner
+  gates. The licence (MIT), repository visibility and release publication are
+  delegated decisions (D9, `.planning/AUTONOMY.md`), no longer owner gates.
 
 ## Context
 
@@ -149,7 +150,7 @@ owner decision.
 | Routine reversible GSD work runs autonomously (config `mode: yolo`, `auto_advance: true`) | AGENTS.md / config |
 | Bootstrap stops at project initialization — no phase planning or implementation | START-HERE / kickoff prompt |
 | Third-party ROMs/manuals/overlays treated as rights-bearing | AGENTS.md |
-| Release, license, visibility, third-party content, external qualification and hardware testing are explicit owner gates | PROJECT-SEED (superseded in part by the next row) |
+| Release, license, visibility, third-party content, external qualification and hardware testing are explicit owner gates | PROJECT-SEED (superseded in part by the next row: the licence is MIT, visibility is public and release publication follows the delegated flow, D9; third-party content, external qualification, physical measurement and owner-local EXEC runs remain owner gates) |
 | Autonomous operation: decision gates are delegated to researched recommendations (recorded below as "Delegated decision"); public GitHub repo via `gh`, frequent releases, green `main` and PR auto-triage are authorized. Third-party content, PII/credentials, physical measurement, owner-local EXEC runs, destructive history changes and the trademark name stay hard stops | Owner, 2026-11-09 — `.planning/AUTONOMY.md` |
 | Discuss = per-decision subagent fan-out (multi-lens, adversarial, primary sources) → one coherent auto-selected recommendation; "another copy-paste is better than another dependency" | Owner, 2026-11-09 — `.planning/AUTONOMY.md` §2 |
 | Verification shifts left toward zero human UAT; CI only for checks with recurring value; review CI efficiency after every run | Owner, 2026-11-09 — `.planning/AUTONOMY.md` §3–4 |
@@ -168,11 +169,13 @@ These come from a researched fan-out recommendation that was auto-adopted. Each 
 | D5 | System images are user-supplied only; project boot stub through the EXEC slot; no built-in/HLE image (Phase 3 D-24) | Permission to redistribute an image, or owner wants a labelled HLE |
 | D-cart | Core cartridge format is the project container IVSC v1 (`docs/formats/ivsc-v1.md`); `.rom`/`.bin+.cfg` importers live outside core and later (Phase 3 D-29) | Owner wants third-party cartridges in this milestone, or a permissive full `.rom` spec |
 
-| D4 | Fixture assembler policy: hand-assembled annotated decle listings with a listing checker; no assembler as a build/gate/CI/release dependency; as1600 rejected (GPL), libasm optional non-gating cross-check (Phase 4 D-25) | A diagnostic count above 3, labels/macros, or a second author: build a project mini-assembler |
+| D4 | Fixture assembler policy: project mini-assembler `ivs_asm` (C, `tools/asm/asm.c`, never installed or shipped, no dependency) generates the committed listing from a project-syntax `.asm` source (the source of truth, committed with the generated listing, both named in the fixture manifest with the recipe); the listing stays checked by the `listing` step and the pack suite (`ivs_pack` unchanged); the four legacy listings stay hand-assembled and are reproduced byte for byte by `.asm` twins kept as test data; as1600 rejected (GPL), libasm an optional non-gating cross-check (Phase 4 D-25, re-evaluated in Phase 7 D-16, D-19; Delegated decision, owner authorization 2026-11-09) | Reversal evidence: two encoding escapes found only by a run, the tool passing 1,200 lines of source, a call for macros, or a program so small that the tool costs more than it saves; then stop and hand-assemble (the generated listings remain valid, hand-checkable artifacts) |
 | D6 | Controller core input is logical switch state per PSG port; the electrical byte is derived in-core from profile data (Phase 4 D-12) | Evidence the output is not a function of switch state plus port drive, or a need for raw port injection |
 | D7 | Reference PCM is outside the core and outside every installed artifact: a pure integer converter in `tools/pcm/` is linked only by the runner's operator-side `--audio-wav` and its own tests; raw audio is per-channel level samples every 16 master ticks plus a cycle-stamped write log (Phase 5 D-15, D-21) | An adapter that needs bit-identical PCM across hosts (promote to an installed `ivs::refpcm` target, still outside the core) |
 | D8 | Framebuffer geometry: the raw framebuffer of `intv-2609-ntsc-family-p1` is 159 x 96 display rows (19 x 8 + `video.last_card_column_px` = 7 columns by 12 x 8 rows; the tier 1 count from the GI 1980 and 1982 catalog pages, 159 of a 167 x 105 grid), one byte per position holding the 4-bit STIC color number 0..15 or `0xFF` for a position not displayed; a slot of a 32-byte header plus the plane (15,296 bytes) per frame, completed at the frame event (`E_k`), delivered into a caller-owned buffer (NULL plus 0 means not requested) with the run flag `IVS_RUN_F_STOP_ON_FRAME` and a per-frame digest chain (domain 16); palette, scaling, aspect and border painting stay outside the core (Phase 6 D-12..D-17; Delegated decision, owner authorization 2026-11-09, decided 2026-11-12) | One-field reversal: `video.last_card_column_px` = 8 gives 160 columns, then re-bless the goldens as one classified diff; or a new format id if pixels outside the window are wanted (hardware or primary-page evidence, D10-VID-01, C10 stays `partial`, C101, C105) |
 | D12 | CI shape: one ubuntu-24.04 job, no matrix, no cache, no artifacts, no macOS leg, job summary from the gate, run record file (Phase 4 D-41..D-45) | An Apple-only failure reaching main, a shared library, or a median hosted gate above budget after levers |
+| D10 | Physical hardware measurement: OPEN, a hard stop and not performed; the 42 items of `data/expected/d10-measurements.ids` are handed off and no claim uses the `measured-hardware` tier | Owner-approved measurement evidence (D10), ingested per `docs/input/d10-procedure.md` and `docs/stic/d10-procedure.md` |
+| D11 | Owner-local run of a real EXEC and GROM image through the runner (the SCN-02 route, `docs/owner-images.md`): OPEN, a hard stop and not performed; SCN-02 is complete on documented-route terms only (the route page, a counted skipped template scenario, the owner-run helper with tested refusals, the refusal of derived audio and log output for user content, manifests labelled not redistributable); no EXEC or GROM digest is recorded, and no result, claim or tier exists | The owner runs the helper with their own images (never committed, never in CI) and records the outcome as D11 items; documented redistribution permission would be needed before any image or digest enters the repository |
 
 D4, D6 and D12 were decided by the fan-out protocol on 2026-11-11; D7 on 2026-11-12 (Phase 5), D8 on 2026-11-12 (Phase 6) (Delegated decision, owner authorization 2026-11-09).
 
@@ -189,6 +192,14 @@ Phase 6 notes on the register above (plan 06-14, 2026-11-12; Delegated decision,
 - **D3 (note):** the STIC is pinned as the AY-3-8900-1 NTSC part (profile field `stic.part`, tier 1, CL-0002). The geometry counts, the 14-bit bus width, the 12 rows and the 240 BACKTAB words are tier 1 (GI 1980 and 1982 catalog pages); the register map, the strobe and alias behaviour, the access windows, the interrupt width, the bus-window table and the card word layout are tier 4 community material, inference or labelled defaults, so register-level behaviour is tier 4 and every claim that depends on it (CL-0016 to CL-0022) is `provisional`. The PAL AY-3-8900 part and the STIC1A variant are out of scope. A tier 1 to 3 register description or a D10 capture is the resolver.
 - **D4 (note):** D4 stands after the third original diagnostic (`ivs-diag-stic-1`, 133 hand-assembled words: 101 code and 32 pattern data, five listed branches, a listing of 220 lines; the derivation was committed before the listing). The crossing rule of plan 06-13 was evaluated and not crossed (more than 170 words or more than 8 branches: no; an error found only by a run: none; a second STIC cartridge: no; a second author: no), and a count of three is not above three. Effort data: zero errors caught by the listing checker, two slips caught by hand before it, zero escapes found by a run. Caveats recorded with it: the checker decodes a data table as program (a data directive is the one thing this diagnostic asks of an assembler), the boot stub has no interrupt routine so exactly one picture exists (a project interrupt routine is a Phase 7 need), the derivation's cycle budget ran 31 cycles above the observed run (an inference gap), and the `BITS` column came from a scratch formatter so the `listing-bits-mismatch` check was not exercised by it. The project mini-assembler decision is expected to be re-evaluated at the start of Phase 7, when a fourth diagnostic, labels or macros, or the interrupt routine make the trigger fire.
 
+Phase 7 notes on the register above (plan 07-12, 2026-11-13; Delegated decision, owner authorization 2026-11-09; nothing here is a new owner decision and each row is reversible by the evidence in its last column):
+
+- **D4 (re-evaluated, decided: build `ivs_asm`):** the D4 trigger fired on three independent counts at the Phase 7 start (a fourth project-authored program, labels for the interrupt entry and the loop heads, and a program of about ten branches), so the project mini-assembler of the D4 reversal clause was built (Phase 7 D-16, D-17, D-19; plans 07-03 and 07-04). The D4 row above carries the wording. Effort data: 1,137 lines of C (hard stop 1,200); an encoding table written from `docs/cp1610/reference-notes.md` and the cited manual pages with no outside code; checked by the listing step against `data/cp1610/opcode-families.json`, a corpus of 304 hand-derived pairs, byte-for-byte twins of the four legacy listings and the pinned refusals; the Lamp Tone source (110 statements, 198 words, 17 labels, 15 relative branches, 3 absolute jump targets) assembled at the first attempt with zero encoding errors caught, zero escapes found by a run and zero hand slips, so the reversal evidence (two escapes found only by a run) is absent. `tools/asm/asm.c` and `tools/pack/pack.c` are pinned by the recipe digests of the manifests.
+- **D5 (extended):** the project boot stub gained a second contract (`boot-stub-2`: cartridge reset entry `$5000`, cartridge interrupt entry `$5004`, a `JD` at the interrupt vector); contract 1 is unchanged, so no earlier diagnostic, golden or mutant moved. It is still a stub, not an EXEC.
+- **SCN-01 and the first playable-tier claim:** the original program Lamp Tone (`ivs-demo-lamp-tone-1`, fixture `FX-demo-lamp-tone-1`, MIT, `redistributable: yes`, tracked source only) is recorded by CL-0023 (tier `playable-guest-progress`) and CL-0024 (tier `installed-host-behavior`), both provisional by the weakest-field rule; the only allowed wording is "playable guest progress, for this original program only". No person has looked at the picture or listened to the sound, no timing is claimed, no commercial content or real EXEC or GROM is involved, and nothing was measured (D10).
+- **SCN-02 and D11:** SCN-02 is complete on documented-route terms (Phase 5 and 6 close-out precedent); D11 stays open and not performed, so there is no claim-ledger entry and no tier for any real-EXEC result, and no known EXEC or GROM digest is recorded in the repository.
+- **D9 (applied to stale text):** the licence is MIT and release publication is a delegated flow; the lines that still called the licence an owner gate (the Out of Scope list, the owner-gate row above, REL-01) were corrected at the Phase 7 transition. A release ships the program only as tracked source; neither the runner nor `ivs_pack` nor `ivs_asm` is installed, so nothing downloadable is runnable yet (`docs/packaging.md`, "Release content").
+
 D5 and the cartridge format were decided by the fan-out protocol on 2026-11-11 (Delegated decision, owner authorization 2026-11-09). D6, D7, D8 and D12 were not decided in Phase 1 and are decided by the fan-out protocol when their phase needs them; D10 and D11 remain hard stops with evidence marked missing (D-05).
 
 ### Recommendations (not owner decisions)
@@ -197,7 +208,7 @@ D5 and the cartridge format were decided by the fan-out protocol on 2026-11-11 (
 |----------------|-----------|--------|
 | Early end-to-end slice: one explicitly named Master Component profile + original diagnostic fixture + independent headless consumer | Exercises core, runner, fixture provenance and consumer boundary together | — Pending owner/discussion |
 | 2609-family Master Component as the candidate first profile | Original NTSC console; best-documented; MAME/jzIntv/manuals all reference it | — Pending (revision/region not chosen) |
-| Keep one playable/homebrew scenario visible early | Prevent research-only drift | — Pending (title/fixture not chosen) |
+| Keep one playable/homebrew scenario visible early | Prevent research-only drift | ✓ Phase 7: the original program Lamp Tone (tracked source, CL-0023), no third-party title |
 | Original source-built diagnostics over third-party test ROMs | No cleared conformance suite found | — Pending |
 
 ### GSD-generated decisions (reversible defaults)
@@ -228,7 +239,8 @@ D5 and the cartridge format were decided by the fan-out protocol on 2026-11-11 (
 10. First consumer and supported runtime/platforms; whether/when to pursue a
     LibFuturo adapter.
 11. Dependency policy details, new-code license, repository visibility, release
-    artifacts, performance targets.
+    artifacts, performance targets. (Licence MIT and visibility public: D9;
+    release content: `docs/packaging.md`; performance targets remain open.)
 
 ## Evolution
 
@@ -250,4 +262,4 @@ This document evolves at phase transitions and milestone boundaries.
    of exact tested artifact targeted when rights/readiness/authority permit
 
 ---
-*Last updated: 2026-11-09 after initialization*
+*Last updated: 2026-11-13 after Phase 7 close-out (plan 07-12)*
