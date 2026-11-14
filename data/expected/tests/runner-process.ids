@@ -59,6 +59,7 @@ runner-process.scenario.demo-lamp-tone-pass
 runner-process.scenario.demo-lamp-tone-idle
 runner-process.scenario.demo-lamp-tone-shift
 runner-process.scenario.demo-lamp-tone-swap
+runner-process.scenario.diag-stic2-idle-pass
 runner-process.scenario.owner-exec-title skip-ok
 runner-process.mutant.ADDI-SUBI
 runner-process.mutant.BNZE-BZE

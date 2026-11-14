@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "id": "FX-diag-stic-2",
+  "kind": "original-source",
+  "committed": true,
+  "path": "fixtures/FX-diag-stic-2/diag-stic-2.listing.txt",
+  "local_path": null,
+  "source": {
+    "origin": "project-authored program ivs-diag-stic-2, the single-feature diagnostic of moving objects, collision, delay and border extension, source diag-stic-2.asm (plan 08-07, D-04, D-05, D-10)",
+    "pin": null,
+    "accessed": null,
+    "holder": "project contributors"
+  },
+  "recipe": {
+    "tool": "ivs_asm",
+    "tool_version": "ivs_asm 1",
+    "tool_sha256": "0db882e42a44d43ca84e4cd65ebdc529da5eb5f0c1af67a76b17151f46bbe793",
+    "tool_licence": "MIT",
+    "command": "ivs_asm fixtures/FX-diag-stic-2/diag-stic-2.asm fixtures/FX-diag-stic-2/diag-stic-2.listing.txt; ivs_pack --ivsc fixtures/FX-diag-stic-2/diag-stic-2.listing.txt build/<preset>/images/diag-stic-2.ivsc",
+    "sources": [
+      {
+        "path": "fixtures/FX-diag-stic-2/diag-stic-2.asm",
+        "sha256": "ad43a4ef605e639b68506de3e31bbcae046985daf5ca5d414043abc8033526d4"
+      },
+      {
+        "path": "tools/asm/asm.c",
+        "sha256": "0db882e42a44d43ca84e4cd65ebdc529da5eb5f0c1af67a76b17151f46bbe793"
+      },
+      {
+        "path": "tools/pack/pack.c",
+        "sha256": "f760d50eb6cb6f627bebc677ff08628b902253aa0712c9677576116885e56095"
+      }
+    ]
+  },
+  "inputs": [],
+  "outputs": [
+    {
+      "path": "fixtures/FX-diag-stic-2/diag-stic-2.asm",
+      "sha256": "ad43a4ef605e639b68506de3e31bbcae046985daf5ca5d414043abc8033526d4",
+      "size_bytes": 14396
+    },
+    {
+      "path": "fixtures/FX-diag-stic-2/diag-stic-2.listing.txt",
+      "sha256": "aa9142870631e2fc029062996713ad5d4ba84b8be8a17de0f29a743265ad04cb",
+      "size_bytes": 36059
+    }
+  ],
+  "licence": "MIT",
+  "licence_evidence": {
+    "url": "LICENSE",
+    "text_sha256": "aeb83b57ece8dbf61992ea3bd58952f17e30959787fc6c9f82451f17baa67c26",
+    "accessed": "2026-11-11"
+  },
+  "copyright": ["Copyright (c) 2026 iamverysmartvision contributors"],
+  "notices": [],
+  "redistributable": "yes",
+  "allowed_use": ["local-test", "ci", "repo", "release"],
+  "rights_review": {
+    "status": "author-attested",
+    "by": "project contributors",
+    "date": "2026-11-14"
+  },
+  "derived_from": [],
+  "note": "project-authored program, the second redistributable original program; built images live only in the build tree and are never committed. Third-party attestation (D-04, D-05): the program contains no third-party glyph, font, tune, jingle or picture, no EXEC call and no graphics ROM read, and no text; the three graphics RAM cards are geometric shapes authored here (a solid block of eight bytes FF, a staircase of eight bytes, and a 5 x 5 block of five bytes F8 and three zero bytes), the colour numbers and the Colored Squares words are plain numbers, and the ten scene tables hold only the register values written in the derivation (project-authored, not art); nothing is read from the controller beyond the one selector byte. Order of the evidence (D-05): the specification and every expected value were derived by hand in docs/video/diag-stic-2-derivation.md (oracle commit 641a12e3a1059b242cc88a3ee4308e3f58d9b36d) and read blind by an isolated reader (docs/video/diag-stic-2-second-read-record.md, commits 1f6e19c and 9250265, two wording corrections, no derived value changed) before this source was written; diag-stic-2.asm is the source of truth and is written from section (a) of that derivation only (A1 to A11 with the corrected A5), and diag-stic-2.listing.txt is generated from it by ivs_asm (the project mini-assembler) and committed unedited; a suite test regenerates it and requires byte equality. Nothing is copied or adapted from another implementation, assembler, test program or title. tools/pack builds the one-segment IVSC v1 image from the listing into build/<preset>/images/diag-stic-2.ivsc. It runs through the project boot stub contract 2 (boot-stub-2) with the zero graphics ROM; no measured-hardware claim and no owner EXEC or GROM image. recipe.sources and tool_sha256 are verified by the manifests step: any edit of the source, of tools/asm/asm.c or of tools/pack/pack.c refreshes the recipe digests, and any edit of the listing or the source refreshes the outputs entries (cmake -E sha256sum and size), in the same commit."
+}
