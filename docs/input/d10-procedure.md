@@ -24,7 +24,7 @@ Files with owner data stay in the owner's own storage until the owner decides wh
 
 ## Reader cartridge
 
-The reading program (a small original diagnostic that polls the two ports and prints the bytes on screen) is a Phase 7 deliverable, because it needs the video chip to show values.
+The reading program (a small original diagnostic that polls the two ports and prints the bytes on screen) is not written yet. It is deferred beyond Phase 7: no Phase 7 requirement needs it, and it is revisited when the D10 evidence is collected. The original program of Phase 7, Lamp Tone, is a scenario program and not a reader cartridge.
 Until it exists the controller items can only be done with equipment that reads the port pins directly.
 Everything below describes what the program or the equipment must record.
 
@@ -106,3 +106,4 @@ Set each direction bit of the mixer register in turn and record whether the port
 ### owner-exec
 
 Items `D11-*`: run the owner's own system image against the controller and sound items above and record what the real startup program reads; the image is never committed and no result here is published without the owner's decision.
+The owner-local route, its three identity checks and what it does not do are on `docs/owner-images.md`.

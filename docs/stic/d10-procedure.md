@@ -13,7 +13,7 @@ Record raw values (register values in hexadecimal, cycle counts in decimal, capt
 
 ## Reader cartridge
 
-The program that exercises the STIC on hardware (a small original cartridge that strobes the display at chosen cycle offsets, draws known cards and prints values) is a Phase 7 deliverable, because it needs the controller path and the cartridge boot.
+The program that exercises the STIC on hardware (a small original cartridge that strobes the display at chosen cycle offsets, draws known cards and prints values) is not written yet. It is deferred beyond Phase 7: no Phase 7 requirement needs it, and it is revisited when the D10 evidence is collected. The original program of Phase 7, Lamp Tone, is a scenario program and not a reader cartridge.
 Until it exists these items can only be done with equipment that reads the buses directly.
 Everything below describes what the program or the equipment must record.
 
@@ -60,3 +60,4 @@ Item `D10-VID-05`: write one BACKTAB word at chosen cycle offsets inside the pic
 ### owner-exec
 
 Item `D11-EXEC-03`: run the owner's own system image through the project STIC with the display on and record whether its title screen is drawn as on the console (cards, colors, the 159 visible columns); the image is never committed and no result here is published without the owner's decision.
+The owner-local route, its three identity checks and what it does not do are on `docs/owner-images.md`.
