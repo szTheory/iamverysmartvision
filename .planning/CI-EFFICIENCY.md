@@ -1247,3 +1247,53 @@ The last five successful hosted rows of `.planning/ci-runs.tsv`, recomputed from
 - Open for Phase 8 (not a lever): Phase 8 adds about five single-feature fixtures built with `ivs_asm` (MOBs, border, delay registers, collision), snapshots and benchmarks; the first hosted rows after this push are the arbiter, and a row at a normal runner speed is needed to tell whether 7.78 is the level or a high reading.
 
 phase7-close: no-lever
+
+## 2026-11-14 Phase 8 start: trigger check and wave budget (plan 08-01)
+
+Nothing here calls `gh` or `tools/ci-record.sh`; `.planning/ci-runs.tsv` is orchestrator-owned and untouched (58 lines: the header, 55 successful rows and 2 failures; no row was appended since planning). Local figures are laptop figures (18 cores, Apple clang 21, other work running, 1-minute load 10 to 14 during the measurements below); they are not hosted figures. Counts at plan start: `steps=36/36 controls=357/357 faults=222/222 tests-expected=4628 tests-executed=4624 tests-skipped=4 tests-missing=0 ci-uses=1 ci-workflows=1 pkg-selftest=17/17`; at plan end: `steps=37/37 controls=366/366 faults=222/222 tests-expected=4628 tests-executed=4624 tests-skipped=4 tests-missing=0 ci-uses=2 ci-workflows=2 release-selftest=5/5 pkg-selftest=17/17`.
+
+### Trigger check (D-36, D-37)
+
+The last five successful hosted rows of `.planning/ci-runs.tsv`, recomputed from the file with awk (`r = cpu_s / build_s`):
+
+| Run | `cpu_s` | `build_s` | `gate_s` | `r` |
+|-----|---------|-----------|----------|-----|
+| 43373151931 | 335 | 41 | 107 | 8.17 |
+| 43528527276 | 286 | 37 | 91 | 7.73 |
+| 43540936641 | 467 | 60 | 146 | 7.78 |
+| 43546632092 | 343 | 41 | 107 | 8.37 |
+| 43551481419 | 288 | 40 | 96 | 7.20 |
+
+Median `r` **7.78** (7.7833), the same as at planning time, against the budget 7.8 and the revisit line 8.3: below the line, so no lever is required to start Phase 8. Two of the five rows read 8.17 and 8.37 and one reads 7.20; the spread is runner speed more than code, which is why the rule reads the median of the normalised metric and not a single row.
+
+### Wave budget of D-37 (unchanged by this plan)
+
+No new job, matrix or cache in Phase 8. Estimated additions: wave A (STIC, plans 08-03 to 08-08) about +8.7 hosted cpu-s, wave B (snapshot and state, plans 08-09 to 08-15) +12 to 16, the benchmark tool about +0.4 local and nothing hosted (the clock never runs in the gate); combined median `r` about 8.1 to 8.2 against the line 8.3. Mitigations built into the plans: mutants and the snapshot point sweep on the release preset only, counted by arithmetic and not as `skip-ok` ids (D-40).
+
+### This plan's own additions (measured)
+
+Step costs in isolation, user plus sys cpu from `/usr/bin/time -p sh tools/check/steps/<step>.sh` with the gate's `ROOT`, `CHECK_DIR` and a `git ls-files -co --exclude-standard` file list, three alternated runs each:
+
+| Step | Runs (cpu-s) | Median |
+|------|--------------|--------|
+| `release-assets` (the tree scan plus the five-case selftest on synthetic archives) | 0.31, 0.34, 0.33 | 0.33 |
+| `ci-parity`, before (one workflow file) | 0.01, 0.01, 0.01 | 0.01 |
+| `ci-parity`, after (two workflow files, the per-file branch) | 0.03, 0.03, 0.03 | 0.03 |
+
+What the plan adds to one gate run: the step `release-assets` runs three times (the real tree, its positive control `_good/release-assets` on the toy tree, and the negative control `release-assets-source-binary`; the selftest is the whole cost, so each run costs the same 0.33), about 1.0 local cpu-s; eight pure controls (seven `ci-parity` controls and `text-changelog-untagged`) at the Phase 6 unit cost of about 0.07 local cpu-s, about 0.56; the `ci-parity` step itself +0.02. Total about 1.6 local cpu-s, times the factor 1.675 of checkpoint C-C of Phase 7 is about 2.6 hosted cpu-s, divided by the median hosted `build_s` of 41 s is about +0.06 in `r`: projected median about **7.84**, 0.04 above the 7.8 budget, inside the 8.1 to 8.2 phase projection above and under the 8.3 line. The plan text estimated this slice at about 1.4 hosted cpu-s; the difference is the selftest cost of the step, which the estimate counted once and the control machinery runs three times. The gate-level `gate-cpu` of the local `sh` runs of this plan (282 cpu-s at the plan start, 274 after the first task, 266 after the second) moves with the machine load, not with the plan, so the isolated step figures above are the measurement. The release script is not part of the gate: a dry run of `sh tools/release.sh --no-gate` took about 1.5 s wall on this laptop (two archives, the content check, the consumer build and run).
+
+### Checkpoints and stop rule for Phase 8
+
+- End of wave A in plan 08-08 (`checkpointA-08`), mid wave B after the restore plan 08-13 (`checkpointB-08`), end of wave B in plan 08-15 (`checkpointC-08`), and the close (`phase8-close`): each is a section of this file written by the executor of that plan from the gate lines of its final tree and `.planning/ci-runs.tsv` as the orchestrator recorded it.
+- Stop rule: a last-five median `r` above 8.3 at a checkpoint means the orchestrator creates a lever plan and no further test case is added until it lands. Executors never create it and never call `gh` or `tools/ci-record.sh`. The split trigger of D-36 applies as well: wave A over 9 plans, or a `lever-required` line, moves Phase 9 to wave B, the benchmarks and the close.
+
+### Pre-committed lever order for Phase 8 (applied only when the rule fires)
+
+2. (already built into wave A by design) Mutant inventories on the release preset only, so the wave A mutants cost nothing on the dev preset.
+3. Fold `demo-lamp-tone-swap` or `demo-lamp-tone-shift` into repeat variants of one mutant.
+
+Then the owner-decision levers (fault objects at `-O0`, one runtime-selected object per owner translation unit, a two-job split under D12), which are out of scope for an executor.
+
+Not levers: dropping an oracle, a judge or a pinned-default test, caching (D12 bans caches).
+
+phase8-start: no-lever
