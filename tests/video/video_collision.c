@@ -883,6 +883,200 @@ done:
   return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
 }
 
+/* ---- the pinned defaults (D-02, T-08-14, rules STIC-R44 and R45): each test asserts the default behavior and then changes ONE field of a stack copy of
+ * ivs_stic_params and requires a different result, so no default can pass as a confirmed behavior. Only the two values 0 and 1 of a selector are
+ * exercised (the generator refuses any other). No assert of any other id depends on one of these pins: they are `pinned: not asserted` rows of the oracle. ---- */
+
+/* Programs MOB i with raw X and Y words (the attribute is the solid card 0, color 4): a test that needs an X coordinate of 0 cannot go through vk_solid. */
+static void vk_raw(uint32_t i, uint32_t xw, uint32_t yw)
+{
+  vk_mobw w;
+  w.x = (uint16_t)xw;
+  w.y = (uint16_t)yw;
+  w.a = VK_A_SOLID;
+  vk_put(i, &w);
+}
+
+/* The register C0 after one displayed frame, delivered under the parameters pp, of a fresh scene with no Colored Squares whose only MOB is MOB 0 with the
+ * words xw and yw (visible, interaction enable set where the word says so). */
+static uint32_t vk_c0_alone(const ivs_stic_params *pp, uint32_t xw, uint32_t yw)
+{
+  if (vk_scene(0) == NULL) {
+    return 0xFFFFu;
+  }
+  vk_raw(0u, xw, yw);
+  vk_frame(pp, 1u);
+  return vk_reg(0u);
+}
+
+/* ---- video.collision.default-pinned.x0: a MOB with X coordinate 0 (PD-3, field video.collision_x0_interacts) ---- */
+
+static int vk_pin_x0(void)
+{
+  const ivs_stic_params *p = vk_scene(0);
+  ivs_stic_params q;
+  uint32_t d0;
+  uint32_t d1;
+  uint32_t f0;
+  uint32_t f1;
+  VC_CHECK(p != NULL && p->video_collision_x0_interacts == 0u);
+  /* MOB0: X word 0700 (visible, interaction enable, double width, X coordinate 0) at Y 56: it covers the plane columns -8..7 on the plane rows 48..55;
+   * MOB1 is the solid 8 x 8 MOB at (0, 48), columns 0..7. They share the plane columns 0..7. Default: a MOB with X coordinate 0 does not interact. */
+  vk_raw(0u, 0x0700u, 0x0100u | 56u);
+  vk_solid(1u, 0u, 48u, 0u, 1u, 1u);
+  vk_frame(p, 1u);
+  d0 = vk_reg(0u);
+  d1 = vk_reg(1u);
+  VC_CHECK(d0 == 0u && d1 == 0u);
+  /* the one-field flip: the same scene delivered under a copy with the field set to 1 */
+  q = *p;
+  q.video_collision_x0_interacts = 1u;
+  VC_CHECK(vk_scene(0) != NULL);
+  vk_raw(0u, 0x0700u, 0x0100u | 56u);
+  vk_solid(1u, 0u, 48u, 0u, 1u, 1u);
+  vk_frame(&q, 1u);
+  f0 = vk_reg(0u);
+  f1 = vk_reg(1u);
+  if (f0 == d0 || (f0 & 0x0002u) == 0u || f1 != 0x0001u) {
+    ivs_test_diag("with the field flipped C0 is %04X and C1 %04X (default %04X %04X): the flip must make the MOB at X 0 collide", (unsigned)f0, (unsigned)f1,
+                  (unsigned)d0, (unsigned)d1);
+    return IVS_TEST_FAIL;
+  }
+  /* the control that the field governs X coordinate 0 only: with the X coordinate 1 the same MOB collides under the default */
+  VC_CHECK(vk_scene(0) != NULL);
+  vk_raw(0u, 0x0701u, 0x0100u | 56u);
+  vk_solid(1u, 0u, 48u, 0u, 1u, 1u);
+  vk_frame(p, 1u);
+  VC_CHECK((vk_reg(0u) & 0x0002u) != 0u && vk_reg(1u) == 0x0001u);
+  return IVS_TEST_PASS;
+}
+
+/* ---- video.collision.default-pinned.border-bit: a pixel inside the object grid and outside the plane sets bit 9 (PD-4, field video.collision_border_bit) ---- */
+
+static int vk_pin_border_bit(void)
+{
+  const ivs_stic_params *p = ivs_stic_params_get(SC_PROFILE);
+  ivs_stic_params q;
+  VC_CHECK(p != NULL && p->video_collision_border_bit == 1u);
+  q = *p;
+  q.video_collision_border_bit = 0u;
+  /* A solid 8 x 8 MOB with the interaction bit (X word 0300 plus the X coordinate, Y word 0100 plus the Y coordinate). The object grid is 167 x 105
+   * positions: it starts 8 columns left of and 8 rows above the plane, so it reaches the plane's last column (158) and one row below the plane's last
+   * row (95), that is plane row 96. Default (1): a MOB pixel in the grid and outside the plane sets bit 9 (0200) and nothing else here, which happens
+   * at the left, top and bottom edges and never at the right edge (the grid ends where the plane does); a MOB inside the plane, or wholly outside the
+   * grid, sets nothing. */
+  VC_CHECK(vk_c0_alone(p, 0x0300u + 4u, 0x0100u + 28u) == 0x0200u);   /* X 4: columns -4..3, the left edge */
+  VC_CHECK(vk_c0_alone(p, 0x0300u + 28u, 0x0100u + 4u) == 0x0200u);   /* Y 4: rows -4..3, the top edge */
+  VC_CHECK(vk_c0_alone(p, 0x0300u + 28u, 0x0100u + 101u) == 0x0200u); /* Y 101: rows 93..100, row 96 is the one grid row below the plane */
+  VC_CHECK(vk_c0_alone(p, 0x0300u + 28u, 0x0100u + 28u) == 0u);       /* wholly inside the plane */
+  VC_CHECK(vk_c0_alone(p, 0x0300u + 164u, 0x0100u + 28u) == 0u);      /* X 164: columns 156..163: 156..158 are in the plane, 159.. are right of the grid */
+  VC_CHECK(vk_c0_alone(p, 0x0300u + 167u, 0x0100u + 28u) == 0u);      /* X 167: columns 159..166, right of the grid */
+  VC_CHECK(vk_c0_alone(p, 0x0300u + 28u, 0x0100u + 105u) == 0u);      /* Y 105: rows 97..104, below the grid */
+  /* the one-field flip: with the field 0 the three edge cases set no bit */
+  VC_CHECK(vk_c0_alone(&q, 0x0300u + 4u, 0x0100u + 28u) == 0u);
+  VC_CHECK(vk_c0_alone(&q, 0x0300u + 28u, 0x0100u + 4u) == 0u);
+  VC_CHECK(vk_c0_alone(&q, 0x0300u + 28u, 0x0100u + 101u) == 0u);
+  return IVS_TEST_PASS;
+}
+
+/* ---- video.collision.default-pinned.offscreen: MOB against MOB outside the plane (PD-5, field video.collision_offscreen) ---- */
+
+static int vk_pin_offscreen(void)
+{
+  const ivs_stic_params *p = vk_scene(0);
+  ivs_stic_params q;
+  uint32_t d0;
+  uint32_t d1;
+  uint32_t f0;
+  uint32_t f1;
+  VC_CHECK(p != NULL && p->video_collision_offscreen == 1u);
+  /* Two solid MOBs at Y 0, so their rows are -8..-1, wholly above the plane and inside the object grid, at the plane columns 20..27 and 24..31: they
+   * share the columns 24..27 outside the plane. Default (1): MOB against MOB is evaluated over the whole grid, so the pair collides (and each pixel is
+   * in the grid and outside the plane: bit 9 too under the default of the border field). */
+  vk_solid(0u, 20u, (uint32_t)-8, 0u, 1u, 1u);
+  vk_solid(1u, 24u, (uint32_t)-8, 0u, 1u, 1u);
+  vk_frame(p, 1u);
+  d0 = vk_reg(0u);
+  d1 = vk_reg(1u);
+  VC_CHECK((d0 & 0x0002u) != 0u && (d1 & 0x0001u) != 0u);
+  /* the one-field flip: only the plane is evaluated for MOB against MOB, so the pair above the plane does not collide */
+  q = *p;
+  q.video_collision_offscreen = 0u;
+  VC_CHECK(vk_scene(0) != NULL);
+  vk_solid(0u, 20u, (uint32_t)-8, 0u, 1u, 1u);
+  vk_solid(1u, 24u, (uint32_t)-8, 0u, 1u, 1u);
+  vk_frame(&q, 1u);
+  f0 = vk_reg(0u);
+  f1 = vk_reg(1u);
+  if (f0 == d0 || (f0 & 0x0002u) != 0u || (f1 & 0x0001u) != 0u) {
+    ivs_test_diag("with the field flipped C0 is %04X and C1 %04X (default %04X %04X): the pair outside the plane must not collide", (unsigned)f0,
+                  (unsigned)f1, (unsigned)d0, (unsigned)d1);
+    return IVS_TEST_FAIL;
+  }
+  /* the control that the field governs the outside only: a pair inside the plane collides under both values */
+  VC_CHECK(vk_scene(0) != NULL);
+  vk_solid(0u, 30u, 20u, 0u, 1u, 1u);
+  vk_solid(1u, 34u, 24u, 0u, 1u, 1u);
+  vk_frame(&q, 1u);
+  VC_CHECK((vk_reg(0u) & 0x0002u) != 0u && (vk_reg(1u) & 0x0001u) != 0u);
+  return IVS_TEST_PASS;
+}
+
+/* ---- video.collision.default-pinned.display-off: a frame with the display off (PD-6, field video.collision_display_off) ---- */
+
+static int vk_pin_display_off(void)
+{
+  const ivs_stic_params *p = vk_scene(0);
+  ivs_stic_params q;
+  uint32_t k;
+  VC_CHECK(p != NULL && p->video_collision_display_off == 0u);
+  /* The overlap of scene 7's MOB0 and MOB1, delivered as a frame with the display off. Default (0): no bit is set. The control: the same scene displayed
+   * sets the bits under the default. The one-field flip: the frame with the display off sets them. */
+  vk_solid(0u, 30u, 20u, 1u, 1u, 1u);
+  vk_solid(1u, 38u, 24u, 1u, 1u, 1u);
+  vk_frame(p, 0u);
+  for (k = 0u; k < VK_MOBS; k++) {
+    VC_CHECK(vk_reg(k) == 0u);
+  }
+  VC_CHECK(vk_scene(0) != NULL);
+  vk_solid(0u, 30u, 20u, 1u, 1u, 1u);
+  vk_solid(1u, 38u, 24u, 1u, 1u, 1u);
+  vk_frame(p, 1u);
+  VC_CHECK(vk_reg(0u) == 0x0002u && vk_reg(1u) == 0x0001u);
+  q = *p;
+  q.video_collision_display_off = 1u;
+  VC_CHECK(vk_scene(0) != NULL);
+  vk_solid(0u, 30u, 20u, 1u, 1u, 1u);
+  vk_solid(1u, 38u, 24u, 1u, 1u, 1u);
+  vk_frame(&q, 0u);
+  if (vk_reg(0u) != 0x0002u || vk_reg(1u) != 0x0001u) {
+    ivs_test_diag("with the field flipped a frame with the display off left C0 %04X and C1 %04X, expected 0002 and 0001", (unsigned)vk_reg(0u),
+                  (unsigned)vk_reg(1u));
+    return IVS_TEST_FAIL;
+  }
+  return IVS_TEST_PASS;
+}
+
+/* ---- video.judge.collision-truth-table-corrupt: the comparison of the table can fail ---- */
+
+/* A copy of the transcribed table with one expected word changed makes the comparison report exactly that row (one disagreement), and the uncorrupted
+ * table reports none: the verdict of video.collision.truth-table is a comparison of values, not a constant. */
+static int vk_judge_truth_table_corrupt(void)
+{
+  static vk_trow copy[16];
+  static const uint32_t at[4] = {0u, 6u, 11u, 15u};    /* T1, T7, T12, T16: a set bit, the background bit, a clear row, the last row */
+  static const uint32_t flip[4] = {0x0001u, 0x0100u, 0x0100u, 0x0002u};
+  uint32_t k;
+  VC_CHECK(vk_table_diff(vk_table, 16u, 1) == 0u); /* the control passes */
+  for (k = 0u; k < 4u; k++) {
+    memcpy(copy, vk_table, sizeof copy);
+    copy[at[k]].expect ^= flip[k];
+    VC_CHECK(copy[at[k]].expect != vk_table[at[k]].expect);
+    VC_CHECK(vk_table_diff(copy, 16u, 1) == 1u);
+  }
+  return IVS_TEST_PASS;
+}
+
 const ivs_test_case ivs_video_collision_cases[] = {
     {"video.collision.mob-mob-bits", vk_mob_mob_bits, NULL},
     {"video.collision.or-at-frame-end", vk_or_at_frame_end, NULL},
@@ -896,5 +1090,10 @@ const ivs_test_case ivs_video_collision_cases[] = {
     {"video.collision.cpu-write-replaces", vk_cpu_write_replaces, NULL},
     {"video.collision.read-no-effect", vk_read_no_effect, NULL},
     {"video.collision.slice-invariant", vk_slice_invariant, NULL},
+    {"video.collision.default-pinned.x0", vk_pin_x0, NULL},
+    {"video.collision.default-pinned.border-bit", vk_pin_border_bit, NULL},
+    {"video.collision.default-pinned.offscreen", vk_pin_offscreen, NULL},
+    {"video.collision.default-pinned.display-off", vk_pin_display_off, NULL},
+    {"video.judge.collision-truth-table-corrupt", vk_judge_truth_table_corrupt, NULL},
 };
 const size_t ivs_video_collision_count = sizeof ivs_video_collision_cases / sizeof ivs_video_collision_cases[0];

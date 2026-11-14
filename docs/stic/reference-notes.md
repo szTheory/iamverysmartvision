@@ -139,7 +139,7 @@ Resolver kinds: `measurement:` only where a D10 line exists (C82, C83, C85, C89,
 | C84 | alias sensitivity | R C84 | test: stic.alias.* (06-06) |
 | C85 | power-on state and mode | R C85, CV-6 | measurement: D10-VID-09 |
 | C86 | stored widths and unknown bits | R C86 | pending: STIC register description |
-| C87 | collision registers | R C87 | pending: Phase 8 |
+| C87 | collision registers | R C87 | measurement: D10-VID-10 |
 | C88 | register decay | R C88 | pending: D10 long run |
 | C89 | order of interrupt request, SR1 and frame start | R C89 | measurement: D10-VID-04 |
 | C90 | frame phase at power-on | T C81 | test: stic.profile.* (06-06) |
@@ -186,6 +186,16 @@ The procedure anchors are in `docs/stic/d10-procedure.md`.
 
 Rules: STIC-R01..STIC-R36 and CR-01..CR-17. Frames: F-A1..F-A5 and F-B1..F-B3 (unit frames, `tier source-expectation`), F-D1 and F-D2 (diagnostic frames, `tier original-diagnostic`).
 Profile fields and test-id families the rules name but the profile and the suites do not have yet are in `data/stic/fields-pending.ids` and `data/stic/tests-pending.ids`, each line with its owner plan.
+
+## Collision registers (plan 08-05)
+
+What the collision registers `$0018` to `$001F` hold since the frame writer fills them. No tier 1 to 3 page prints any collision bit: every statement below rests on one community lineage (rules STIC-R44 and STIC-R45, discrepancy C87, owner hand-off D10-VID-10) and none is a statement about a console. Labels as above.
+
+- [INF] The registers are no longer written by the CPU alone: at the end of every displayed frame the frame writer ORs the collision of that frame into the register file (`ivs_memsys_stic_collision_or_internal`, masked to 10 bits, no gate, no counter), with or without a video buffer. The earlier reading that the collision registers store only what the CPU wrote holds for a run in which no MOB has the interaction bit.
+- [INF] The bits belong to the frame that ended: a CPU read stamped inside that frame cannot see them (the register window closes long before the frame end), a read in the register window of the next frame can. A CPU write replaces the register under the 10-bit mask and a write of 0 clears it; a CPU read has no side effect. The bits live in the register file the instance already holds, so the device state, the digest rows and every committed golden are unchanged.
+- [INF] Derivable core (rule STIC-R44, held by the truth table of `docs/video/diag-stic-2-derivation.md` section (d) and the test family `video.collision.`): MOB against MOB and MOB against a set background pixel (card foreground, Colored Squares colors 0 to 6, not 7), the interaction bit required on the colliding MOBs, the visible bit not required, the own bit never set by the frame writer, bits sticky across frames, evaluated per television line so that the answer does not depend on the half-height sampling default.
+- [UNK] Pinned remainder (rule STIC-R45, four profile fields tagged unknown-default-chosen, each with a `default-pinned` test that flips it): a MOB with X coordinate 0 does not interact (`video.collision_x0_interacts`), a MOB pixel inside the 167 x 105 object grid and outside the 159 x 96 plane sets bit 9 (`video.collision_border_bit`), MOB against MOB is evaluated over the whole grid (`video.collision_offscreen`), a frame with the display off evaluates nothing (`video.collision_display_off`). The grid has no column right of the plane and one row below it.
+- [UNK] The community description also says that a MOB's own bit reads 0 whatever the CPU writes. The write mask of the collision rows stays `03FF` here (the Phase 6 literal and its tests are unchanged), so a CPU write of the own bit is stored: an open item for a later plan, which no oracle row depends on (the program of the oracle writes only zero).
 
 ## Inspection path (plan 06-07)
 

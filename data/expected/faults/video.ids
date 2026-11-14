@@ -42,3 +42,5 @@ VIDEO_GEOMETRY_SKIP_SILENT video.buffers.unrenderable-geometry-overflows video.b
 MOB_PRIORITY_SWAP video.mob.front-lower-index video.mob. video.geom.profile-derives-159x96
 # MOB_FLIP_SWAPPED (core/src/stic/stic_mob.c, plan 08-04, VID-05, R39): the X flip bit and the Y flip bit of the Y word are exchanged, so a MOB drawn mirrored left to right is turned upside down and the reverse; the frame of the three flipped MOBs (F-M2) fails.
 MOB_FLIP_SWAPPED video.mob.frame-mirror video.mob. video.geom.profile-derives-159x96
+# COLLISION_NOT_STICKY (core/src/stic/stic_frame.c, plan 08-05, VID-05, R44, D-06): the write-back at the end of a frame assigns the frame's collision bits to the registers instead of ORing them in, so a frame in which nothing overlaps clears every bit and the bits are not sticky; the frame sequence of the sticky test, the table read after a second frame and the guest that reads a register after a frame without overlap fail.
+COLLISION_NOT_STICKY video.collision.sticky-across-frames video.collision.|video.judge. video.geom.profile-derives-159x96

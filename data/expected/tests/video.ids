@@ -143,3 +143,9 @@ video.collision.sticky-across-frames
 video.collision.cpu-write-replaces
 video.collision.read-no-effect
 video.collision.slice-invariant
+# Plan 08-05 task 3 (VID-05, D-02, D-10, T-08-14): the four pinned collision behaviors, each asserted under its default and then flipped in a stack copy of the parameters (video.collision.default-pinned.*: a MOB at X coordinate 0, the border bit and the object-grid bounds, MOB against MOB outside the plane, a frame with the display off), and the judge that shows the truth-table comparison can fail.
+video.collision.default-pinned.x0
+video.collision.default-pinned.border-bit
+video.collision.default-pinned.offscreen
+video.collision.default-pinned.display-off
+video.judge.collision-truth-table-corrupt

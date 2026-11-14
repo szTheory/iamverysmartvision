@@ -285,11 +285,19 @@ void ivs_stic_frame_deliver(const ivs_stic_params *p, ivs_stic_state *s, ivs_mem
   /* The collision of the frame goes into the register file here, at the end of the frame, whatever the sink is (D-06): the OR is not
    * conditional on a buffer, so the machine state does not depend on one. The picture above was a function of the registers as they were
    * before this OR, and a CPU read stamped inside the frame never saw these bits (the register window closes long before the frame end). */
+#ifdef IVS_FAULT_COLLISION_NOT_STICKY
+  /* named fault COLLISION_NOT_STICKY: the write-back assigns the frame's bits to the registers instead of ORing them in, so a frame in which nothing
+   * overlaps clears every bit and nothing is sticky */
+  for (i = 0u; i < IVS_STIC_MOBS; i++) {
+    mem->stic_reg[IVS_MEMSYS_STIC_COLLISION_FIRST + i] = (uint16_t)(hit[i] & 0x03FFu);
+  }
+#else
   for (i = 0u; i < IVS_STIC_MOBS; i++) {
     if (hit[i] != 0u) {
       ivs_memsys_stic_collision_or_internal(mem, i, hit[i]);
     }
   }
+#endif
   if (sink != NULL) {
     sink->video_frames += 1u;
     if (deliver != 0u) {
