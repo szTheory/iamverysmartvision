@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 current_phase: 8
 current_phase_name: STIC Completion, Save State and Performance Baselines
-current_plan: 7
+current_plan: 8
 status: executing
-stopped_at: Completed 08-06-PLAN.md
-last_updated: "2026-11-14T10:33:57.274Z"
+stopped_at: Completed 08-07-PLAN.md
+last_updated: "2026-11-14T11:15:35.219Z"
 last_activity: 2026-11-14
 last_activity_desc: Phase 8 execution started
-state_head: 63934ca04aab06da4bb57d9c4c522fe587f22ec8
+state_head: 3821cfd4d5d46428bd6d97c7cec49dbc2dd981c3
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 130
-  completed_plans: 115
+  completed_plans: 116
   percent: 88
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 8 (STIC Completion, Save State and Performance Baselines) — EXECUTING
-Current Plan: 7
+Current Plan: 8
 Total Plans in Phase: 21
 Status: Ready to execute
 Last activity: 2026-11-14 — Phase 8 execution started
@@ -174,6 +174,7 @@ Progress: [█████████░] 88%
 | Phase 08 P04 | about 45 min | 3 tasks | 26 files |
 | Phase 08 P05 | about 50 min | 3 tasks | 22 files |
 | Phase 08 P06 | about 45 min | 3 tasks | 19 files |
+| Phase 08 P07 | about 75 min | 3 tasks | 35 files |
 
 ## Accumulated Context
 
@@ -425,6 +426,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 08]: 08-05: the own bit of a collision register is never set by the frame writer, but a CPU write of it is still stored (write mask 03FF kept as the plan and the Phase 6 tests say); rule STIC-R44's own-bit write rule is an open item for the owner of the regmap literal
 - [Phase 08]: 08-06: the plane rows of a frame, streamed or whole, come out of one row generator (ivs_stic_rows): source card rows composed in order into the one card-row buffer, output row y is source row y - v finished in place (delay shift, exposed area, MOB margin, strips painted last); no carry buffer or re-render exists, the deliver frame is 2,528 bytes at -O0 and the chain deliver, rows_next, compose, collide is 3,536
 - [Phase 08]: 08-06: collision is evaluated on the undelayed scene (an unpinned choice, stated in stic_frame.c and the reference notes); the three delay selectors video.border_follows_delay, video.delay_exposed_fill and video.delay_mob_in_exposed are exempted by name from the glossary duration-suffix rule (the word names the picture delay registers, not a time): the orchestrator confirms the exemption or renames the fields
+- [Phase 08]: 08-07: the scene words of ivs-diag-stic-2 are ten tables of 27 words (two decles per word) written by a loop of eight groups of three plus three straight words, so the longest routine (selector BD, frame 3) ends its register work at frame cycle 1,634 (bound 1,900, window close 2,000); a table word is two decles, so a mutant patches the decle that carries the change (STIC2-MOB-X-ZERO leaves X word 0600, X coordinate 0)
+- [Phase 08]: 08-07: the six STIC2 program mutants run their scenario only on a Release build (fifth argument of runner-process, a genex) and are judged statically otherwise, same ids and no skip-ok (D-40); the program follows A5 to the letter, so the frame counter relies on the zero power-on RAM default (open item for the owner: an explicit store would be a new oracle commit)
 
 ### Pending Todos
 
@@ -457,6 +460,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-14T10:33:56.902Z
-Stopped at: Completed 08-06-PLAN.md
+Last session: 2026-11-14T11:15:34.841Z
+Stopped at: Completed 08-07-PLAN.md
 Resume file: None
