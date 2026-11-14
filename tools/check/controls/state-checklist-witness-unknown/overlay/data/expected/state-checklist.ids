@@ -1,0 +1,9 @@
+# Toy hidden-state checklist of the known-good control tree (plan 08-09): one line for each row of the toy table of core/src/machine/machine_digest.c.
+# The cited test ids exist in data/expected/tests/toy.ids or in data/state/tests-pending.ids.
+toy.magic BOUND - cpu.ZERO.alpha -
+toy.counter STATE HP-TOY-X cpu.ZERO.alpha ROW
+toy.ram STATE HP-TOY-B state.toy.pending EXEMPT:toy_row_has_no_reader
+toy.image IMAGE_BEARING - cpu.ZERO.alpha -
+toy.pad PAD - cpu.ZERO.beta -
+toy.slot.exec.loaded BOUND - cpu.ZERO.beta -
+toy.slot.exec.sha256 BOUND - cpu.ZERO.beta -

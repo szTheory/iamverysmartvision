@@ -6,3 +6,35 @@
 # sha256sum (token state-schema-stale), so a change of the literal without a deliberate re-pin fails the gate; plan 08-11 requires the
 # writer to produce the same digest from the table.
 schema-digest-sha256 6cd4932f5ebf0b0fc2377555ca079d0313bb27a4df1a4fda9e15f37c6eb1d193
+#
+# Plan 08-09 task 2: the sizes of the container, derived on paper from the table text (docs/formats/ivsn-v1.md, "Size derivation"). A section is
+# 7 bytes of frame (the text IVSD, the domain, the domain version) plus its STATE rows; an array row costs 4 bytes of count plus count x width.
+# header-bytes: 24 fixed bytes + 32 schema digest + 64 profile id + 32 parameter digest + 3 x 40 slot records + 32 composite digest + 7 x 44 section entries.
+header-bytes 612
+# trailer-bytes: one SHA-256 over every earlier byte.
+trailer-bytes 32
+# section-bytes.<name>: CPU 7 + (4 + 8 x 2) + 8 x 1 = 35; MEM 7 + 8 + 1028 + 516 + 1028 + 36 + 6 + 132 = 2761; INSTANCE 7 + 12 + 68 + 528 = 615;
+# VIDEO 7 + 36 + 8 = 51; AUDIO 7 + 36 + 8 + 8 + 4 = 63; INPUT 7 + 20 + 8 + 8 + 36 = 79; PSGLOG 7 + 36 + 8 = 51.
+section-bytes.cpu 35
+section-bytes.mem 2761
+section-bytes.instance 615
+section-bytes.video 51
+section-bytes.audio 63
+section-bytes.input 79
+section-bytes.psglog 51
+# sections-total-bytes: 35 + 2761 + 615 + 51 + 63 + 79 + 51.
+sections-total-bytes 3655
+# total-bytes: 612 + 3655 + 32.
+total-bytes 4299
+# section-offset.<name>: 612 plus the lengths of the sections before it, in the order cpu, mem, instance, video, audio, input, psglog; the trailer starts at 4267.
+section-offset.cpu 612
+section-offset.mem 647
+section-offset.instance 3408
+section-offset.video 4023
+section-offset.audio 4074
+section-offset.input 4137
+section-offset.psglog 4216
+trailer-offset 4267
+# header-prefix-hex: the first 24 header bytes, written by hand: the magic 89 49 56 53 4E 0D 0A 1A, format version 0001, flags 0000, total_bytes 000010CB (4299),
+# schema version 00000001 and section count 00000007.
+header-prefix-hex 894956534E0D0A1A00010000000010CB0000000100000007

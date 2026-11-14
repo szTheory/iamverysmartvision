@@ -1,3 +1,8 @@
 # Negative controls for the state step (plan 08-09, D-38, T-08-24, T-08-25): one per failure token; the positive control is the toy digest field table, checklist, cuts, schema literal, literal pin and pending list of controls/_good/tree.
 # Plan 08-09 task 1 adds the first, task 2 adds five more; each overlays one file of the toy tree and expects the step to fail for that reason alone.
 state-checklist-row-missing
+state-checklist-line-extra
+state-checklist-witness-unknown
+state-checklist-test-unknown
+state-checklist-exempt-no-reason
+state-schema-literal-stale
