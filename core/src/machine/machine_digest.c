@@ -15,27 +15,41 @@
  * its own domain's digest (A-03).
  * Output is SHA-256 (core/src/common/ivs_sha256.c). Serialized bytes pass through a small stage
  * buffer that feeds the hash and, for the test seam ivs_machine_digest_preimage, a caller buffer
- * (no function pointer). */
+ * (no function pointer).
+ * Plan 08-10 (D-11): this table is also the single serializer of the snapshot. Each row carries a snapshot
+ * class in its last member (snap: IVS_SNAP_STATE, IMAGE, BOUND or PAD, machine.h; the classes of
+ * docs/formats/ivsn-v1.md), written in the table as the seventh argument of the row macro and held equal to
+ * data/expected/state-checklist.ids by the gate step state. The walker has one filter for it, a state-only
+ * flag of the sink placed right after the domain test: with the flag set a row whose class is not STATE is
+ * skipped, so the walk yields the "IVSD" frame and the STATE rows only, which are the bytes of the section of
+ * that domain (ivs_machine_state_preimage, the only caller that sets the flag). The digest entry points leave
+ * the flag 0, so every digest byte is what it was before the column existed. */
 #include "common/ivs_prelude.h"
 
 #include "common/ivs_sha256.h"
 #include "machine/machine.h"
 
-#define IVS_DF(name, member, width, count, domain, kind)                                               \
-  {name, (uint32_t)offsetof(struct ivs_machine, member), width, count, domain, kind, 0u}
+/* The last argument is the snapshot class of the row (IVS_SNAP_*, machine.h): the row is also its own
+ * description for the snapshot code, so there is no second table to keep in step with this one. */
+#define IVS_DF(name, member, width, count, domain, kind, snap)                                         \
+  {name, (uint32_t)offsetof(struct ivs_machine, member), width, count, domain, kind, snap}
 
+/* The slot records are identity of what is loaded: every row of the macro is BOUND. */
 #define IVS_DF_SLOT(i, label)                                                                           \
-  IVS_DF("slot." label ".kind", slot[i].kind, 4u, 1u, IVS_DIGEST_IMAGES, IVS_DIGEST_KIND_UINT),            \
-      IVS_DF("slot." label ".loaded", slot[i].loaded, 4u, 1u, IVS_DIGEST_IMAGES, IVS_DIGEST_KIND_UINT),    \
+  IVS_DF("slot." label ".kind", slot[i].kind, 4u, 1u, IVS_DIGEST_IMAGES, IVS_DIGEST_KIND_UINT,            \
+         IVS_SNAP_BOUND),                                                                               \
+      IVS_DF("slot." label ".loaded", slot[i].loaded, 4u, 1u, IVS_DIGEST_IMAGES, IVS_DIGEST_KIND_UINT,    \
+             IVS_SNAP_BOUND),                                                                           \
       IVS_DF("slot." label ".length_bytes", slot[i].length_bytes, 4u, 1u, IVS_DIGEST_IMAGES,               \
-             IVS_DIGEST_KIND_UINT),                                                                     \
+             IVS_DIGEST_KIND_UINT, IVS_SNAP_BOUND),                                                     \
       IVS_DF("slot." label ".length_units", slot[i].length_units, 4u, 1u, IVS_DIGEST_IMAGES,               \
-             IVS_DIGEST_KIND_UINT),                                                                     \
+             IVS_DIGEST_KIND_UINT, IVS_SNAP_BOUND),                                                     \
       IVS_DF("slot." label ".unit_bits", slot[i].unit_bits, 4u, 1u, IVS_DIGEST_IMAGES,                     \
-             IVS_DIGEST_KIND_UINT),                                                                     \
+             IVS_DIGEST_KIND_UINT, IVS_SNAP_BOUND),                                                     \
       IVS_DF("slot." label ".base_addr", slot[i].base_addr, 4u, 1u, IVS_DIGEST_IMAGES,                     \
-             IVS_DIGEST_KIND_UINT),                                                                     \
-      IVS_DF("slot." label ".sha256", slot[i].sha256, 1u, 32u, IVS_DIGEST_IMAGES, IVS_DIGEST_KIND_UINT)
+             IVS_DIGEST_KIND_UINT, IVS_SNAP_BOUND),                                                     \
+      IVS_DF("slot." label ".sha256", slot[i].sha256, 1u, 32u, IVS_DIGEST_IMAGES, IVS_DIGEST_KIND_UINT,    \
+             IVS_SNAP_BOUND)
 
 /* slot[] is the last member and ends exactly at sizeof: the 114,416-byte layout has no tail
  * padding (plans 04-05, 05-03 and 06-05; the Phase 3 layout had 4 bytes and a tail_padding row). A layout change
@@ -72,83 +86,83 @@ _Static_assert(IVS_MACHINE_SLOTS_END == sizeof(struct ivs_machine),
 
 /* In instance offset order. */
 static const ivs_digest_field ivs_digest_fields[] = {
-    IVS_DF("magic", magic, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_MAGIC),
-    IVS_DF("profile", profile, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_PROFILE),
-    IVS_DF("phase", phase, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT),
-    IVS_DF("reserved", reserved, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_PAD),
-    IVS_DF("time_ticks", time_ticks, 8u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT),
-    IVS_DF("cpu.r", cpu.r, 2u, 8u, IVS_DIGEST_CPU, IVS_DIGEST_KIND_UINT),
-    IVS_DF("cpu.status", cpu.status, 1u, 1u, IVS_DIGEST_CPU, IVS_DIGEST_KIND_UINT),
-    IVS_DF("cpu.intff", cpu.intff, 1u, 1u, IVS_DIGEST_CPU, IVS_DIGEST_KIND_UINT),
-    IVS_DF("cpu.dbd", cpu.dbd, 1u, 1u, IVS_DIGEST_CPU, IVS_DIGEST_KIND_UINT),
-    IVS_DF("cpu.prev_interruptible", cpu.prev_interruptible, 1u, 1u, IVS_DIGEST_CPU, IVS_DIGEST_KIND_UINT),
-    IVS_DF("cpu.run_state", cpu.run_state, 1u, 1u, IVS_DIGEST_CPU, IVS_DIGEST_KIND_UINT),
-    IVS_DF("cpu.halt_pending", cpu.halt_pending, 1u, 1u, IVS_DIGEST_CPU, IVS_DIGEST_KIND_UINT),
-    IVS_DF("cpu.fault_reason", cpu.fault_reason, 1u, 1u, IVS_DIGEST_CPU, IVS_DIGEST_KIND_UINT),
-    IVS_DF("cpu.busak", cpu.busak, 1u, 1u, IVS_DIGEST_CPU, IVS_DIGEST_KIND_UINT),
-    IVS_DF("cpu.reserved", cpu.reserved, 1u, 8u, IVS_DIGEST_CPU, IVS_DIGEST_KIND_PAD),
-    IVS_DF("mem.profile", mem.profile, 4u, 1u, IVS_DIGEST_MEM, IVS_DIGEST_KIND_PROFILE),
-    IVS_DF("mem.gate_open", mem.gate_open, 1u, 4u, IVS_DIGEST_MEM, IVS_DIGEST_KIND_UINT),
-    IVS_DF("mem.exec_loaded", mem.exec_loaded, 1u, 1u, IVS_DIGEST_IMAGES, IVS_DIGEST_KIND_UINT),
-    IVS_DF("mem.grom_loaded", mem.grom_loaded, 1u, 1u, IVS_DIGEST_IMAGES, IVS_DIGEST_KIND_UINT),
-    IVS_DF("mem.cart_count", mem.cart_count, 2u, 1u, IVS_DIGEST_IMAGES, IVS_DIGEST_KIND_UINT),
-    IVS_DF("mem.cart_seg", mem.cart_seg, 2u, 2u * IVS_MEMSYS_CART_SEGMENTS, IVS_DIGEST_IMAGES, IVS_DIGEST_KIND_UINT),
-    IVS_DF("mem.sysram", mem.sysram, 2u, IVS_MEMSYS_SYSRAM_WORDS, IVS_DIGEST_MEM, IVS_DIGEST_KIND_UINT),
-    IVS_DF("mem.scratchpad", mem.scratchpad, 2u, IVS_MEMSYS_SCRATCHPAD_WORDS, IVS_DIGEST_MEM, IVS_DIGEST_KIND_UINT),
-    IVS_DF("mem.gram", mem.gram, 2u, IVS_MEMSYS_GRAM_WORDS, IVS_DIGEST_MEM, IVS_DIGEST_KIND_UINT),
-    IVS_DF("mem.exec", mem.exec, 2u, IVS_MEMSYS_EXEC_WORDS, IVS_DIGEST_MEM, IVS_DIGEST_KIND_UINT),
-    IVS_DF("mem.grom", mem.grom, 2u, IVS_MEMSYS_GROM_WORDS, IVS_DIGEST_MEM, IVS_DIGEST_KIND_UINT),
-    IVS_DF("mem.cart", mem.cart, 2u, IVS_MEMSYS_CART_WORDS, IVS_DIGEST_MEM, IVS_DIGEST_KIND_UINT),
+    IVS_DF("magic", magic, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_MAGIC, IVS_SNAP_BOUND),
+    IVS_DF("profile", profile, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_PROFILE, IVS_SNAP_BOUND),
+    IVS_DF("phase", phase, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+    IVS_DF("reserved", reserved, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_PAD, IVS_SNAP_PAD),
+    IVS_DF("time_ticks", time_ticks, 8u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+    IVS_DF("cpu.r", cpu.r, 2u, 8u, IVS_DIGEST_CPU, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+    IVS_DF("cpu.status", cpu.status, 1u, 1u, IVS_DIGEST_CPU, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+    IVS_DF("cpu.intff", cpu.intff, 1u, 1u, IVS_DIGEST_CPU, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+    IVS_DF("cpu.dbd", cpu.dbd, 1u, 1u, IVS_DIGEST_CPU, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+    IVS_DF("cpu.prev_interruptible", cpu.prev_interruptible, 1u, 1u, IVS_DIGEST_CPU, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+    IVS_DF("cpu.run_state", cpu.run_state, 1u, 1u, IVS_DIGEST_CPU, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+    IVS_DF("cpu.halt_pending", cpu.halt_pending, 1u, 1u, IVS_DIGEST_CPU, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+    IVS_DF("cpu.fault_reason", cpu.fault_reason, 1u, 1u, IVS_DIGEST_CPU, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+    IVS_DF("cpu.busak", cpu.busak, 1u, 1u, IVS_DIGEST_CPU, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+    IVS_DF("cpu.reserved", cpu.reserved, 1u, 8u, IVS_DIGEST_CPU, IVS_DIGEST_KIND_PAD, IVS_SNAP_PAD),
+    IVS_DF("mem.profile", mem.profile, 4u, 1u, IVS_DIGEST_MEM, IVS_DIGEST_KIND_PROFILE, IVS_SNAP_BOUND),
+    IVS_DF("mem.gate_open", mem.gate_open, 1u, 4u, IVS_DIGEST_MEM, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+    IVS_DF("mem.exec_loaded", mem.exec_loaded, 1u, 1u, IVS_DIGEST_IMAGES, IVS_DIGEST_KIND_UINT, IVS_SNAP_BOUND),
+    IVS_DF("mem.grom_loaded", mem.grom_loaded, 1u, 1u, IVS_DIGEST_IMAGES, IVS_DIGEST_KIND_UINT, IVS_SNAP_BOUND),
+    IVS_DF("mem.cart_count", mem.cart_count, 2u, 1u, IVS_DIGEST_IMAGES, IVS_DIGEST_KIND_UINT, IVS_SNAP_BOUND),
+    IVS_DF("mem.cart_seg", mem.cart_seg, 2u, 2u * IVS_MEMSYS_CART_SEGMENTS, IVS_DIGEST_IMAGES, IVS_DIGEST_KIND_UINT, IVS_SNAP_BOUND),
+    IVS_DF("mem.sysram", mem.sysram, 2u, IVS_MEMSYS_SYSRAM_WORDS, IVS_DIGEST_MEM, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+    IVS_DF("mem.scratchpad", mem.scratchpad, 2u, IVS_MEMSYS_SCRATCHPAD_WORDS, IVS_DIGEST_MEM, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+    IVS_DF("mem.gram", mem.gram, 2u, IVS_MEMSYS_GRAM_WORDS, IVS_DIGEST_MEM, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+    IVS_DF("mem.exec", mem.exec, 2u, IVS_MEMSYS_EXEC_WORDS, IVS_DIGEST_MEM, IVS_DIGEST_KIND_UINT, IVS_SNAP_IMAGE),
+    IVS_DF("mem.grom", mem.grom, 2u, IVS_MEMSYS_GROM_WORDS, IVS_DIGEST_MEM, IVS_DIGEST_KIND_UINT, IVS_SNAP_IMAGE),
+    IVS_DF("mem.cart", mem.cart, 2u, IVS_MEMSYS_CART_WORDS, IVS_DIGEST_MEM, IVS_DIGEST_KIND_UINT, IVS_SNAP_IMAGE),
     IVS_DF_PSG_ROWS(
-        IVS_DF("mem.psg_reg", mem.psg_reg, 2u, IVS_MEMSYS_PSG_REGS, IVS_DIGEST_MEM, IVS_DIGEST_KIND_UINT),
+        IVS_DF("mem.psg_reg", mem.psg_reg, 2u, IVS_MEMSYS_PSG_REGS, IVS_DIGEST_MEM, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
         IVS_DF("mem.port_pulldown", mem.port_pulldown, 1u, IVS_MEMSYS_PSG_PORTS, IVS_DIGEST_MEM,
-               IVS_DIGEST_KIND_UINT),
-        IVS_DF("mem.psg_reserved", mem.psg_reserved, 1u, 2u, IVS_DIGEST_MEM, IVS_DIGEST_KIND_PAD),)
+               IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+        IVS_DF("mem.psg_reserved", mem.psg_reserved, 1u, 2u, IVS_DIGEST_MEM, IVS_DIGEST_KIND_PAD, IVS_SNAP_PAD),)
     /* Plan 06-05 (D-04, D-16): the STIC register file joins MEM beside psg_reg (instance offset order: it
      * follows psg_reserved and precedes the PSG state), the STIC device state joins INSTANCE after the
      * PSG state; every row sits before obs and slot[] (a fault that skips rows from slot on must not
      * hide them). The row_latch words are one u16 row group, count 240 (12 x 20). */
     IVS_DF_STIC_ROWS(
-        IVS_DF("mem.stic_reg", mem.stic_reg, 2u, IVS_MEMSYS_STIC_REGS, IVS_DIGEST_MEM, IVS_DIGEST_KIND_UINT),)
+        IVS_DF("mem.stic_reg", mem.stic_reg, 2u, IVS_MEMSYS_STIC_REGS, IVS_DIGEST_MEM, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),)
     IVS_DF_PSG_ROWS(
-        IVS_DF("psg.next_sample", psg.next_sample, 8u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT),
-        IVS_DF("psg.tone_counter", psg.tone_counter, 4u, 3u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT),
-        IVS_DF("psg.tone_out", psg.tone_out, 4u, 3u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT),
-        IVS_DF("psg.noise_counter", psg.noise_counter, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT),
-        IVS_DF("psg.noise_lfsr", psg.noise_lfsr, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT),
-        IVS_DF("psg.env_counter", psg.env_counter, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT),
-        IVS_DF("psg.env_level", psg.env_level, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT),
-        IVS_DF("psg.env_dir", psg.env_dir, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT),
-        IVS_DF("psg.env_held", psg.env_held, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT),
-        IVS_DF("psg.env_cycles", psg.env_cycles, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT),
-        IVS_DF("psg.reserved", psg.reserved, 4u, 3u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_PAD),)
+        IVS_DF("psg.next_sample", psg.next_sample, 8u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+        IVS_DF("psg.tone_counter", psg.tone_counter, 4u, 3u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+        IVS_DF("psg.tone_out", psg.tone_out, 4u, 3u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+        IVS_DF("psg.noise_counter", psg.noise_counter, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+        IVS_DF("psg.noise_lfsr", psg.noise_lfsr, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+        IVS_DF("psg.env_counter", psg.env_counter, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+        IVS_DF("psg.env_level", psg.env_level, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+        IVS_DF("psg.env_dir", psg.env_dir, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+        IVS_DF("psg.env_held", psg.env_held, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+        IVS_DF("psg.env_cycles", psg.env_cycles, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+        IVS_DF("psg.reserved", psg.reserved, 4u, 3u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_PAD, IVS_SNAP_PAD),)
     IVS_DF_STIC_ROWS(
-        IVS_DF("stic.frame_index", stic.frame_index, 8u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT),
-        IVS_DF("stic.event_index", stic.event_index, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT),
-        IVS_DF("stic.display_latch", stic.display_latch, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT),
-        IVS_DF("stic.windows_active", stic.windows_active, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT),
-        IVS_DF("stic.mode", stic.mode, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT),
-        IVS_DF("stic.cs_ptr", stic.cs_ptr, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT),
-        IVS_DF("stic.blocked_reads", stic.blocked_reads, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT),
-        IVS_DF("stic.blocked_writes", stic.blocked_writes, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT),
-        IVS_DF("stic.late_grants", stic.late_grants, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT),
-        IVS_DF("stic.grants_in_frame", stic.grants_in_frame, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT),
-        IVS_DF("stic.reserved0", stic.reserved0, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_PAD),
+        IVS_DF("stic.frame_index", stic.frame_index, 8u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+        IVS_DF("stic.event_index", stic.event_index, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+        IVS_DF("stic.display_latch", stic.display_latch, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+        IVS_DF("stic.windows_active", stic.windows_active, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+        IVS_DF("stic.mode", stic.mode, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+        IVS_DF("stic.cs_ptr", stic.cs_ptr, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+        IVS_DF("stic.blocked_reads", stic.blocked_reads, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+        IVS_DF("stic.blocked_writes", stic.blocked_writes, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+        IVS_DF("stic.late_grants", stic.late_grants, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+        IVS_DF("stic.grants_in_frame", stic.grants_in_frame, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+        IVS_DF("stic.reserved0", stic.reserved0, 4u, 1u, IVS_DIGEST_INSTANCE, IVS_DIGEST_KIND_PAD, IVS_SNAP_PAD),
         IVS_DF("stic.row_latch", stic.row_latch, 2u, IVS_STIC_LATCH_ROWS * IVS_STIC_ROW_WORDS, IVS_DIGEST_INSTANCE,
-               IVS_DIGEST_KIND_UINT),)
-    IVS_DF("obs.video.chain", obs.video.chain, 1u, 32u, IVS_DF_VIDEO_DOMAIN, IVS_DIGEST_KIND_UINT),
-    IVS_DF("obs.video.count", obs.video.count, 8u, 1u, IVS_DF_VIDEO_DOMAIN, IVS_DIGEST_KIND_UINT),
-    IVS_DF("obs.audio.chain", obs.audio.chain, 1u, 32u, IVS_DIGEST_AUDIO, IVS_DIGEST_KIND_UINT),
-    IVS_DF("obs.audio.count", obs.audio.count, 8u, 1u, IVS_DIGEST_AUDIO, IVS_DIGEST_KIND_UINT),
-    IVS_DF("obs.audio.emitted", obs.audio.emitted, 8u, 1u, IVS_DIGEST_AUDIO, IVS_DIGEST_KIND_UINT),
-    IVS_DF("obs.audio.prev_levels", obs.audio.prev_levels, 4u, 1u, IVS_DIGEST_AUDIO, IVS_DIGEST_KIND_UINT),
-    IVS_DF("obs.audio.reserved", obs.audio.reserved, 4u, 1u, IVS_DIGEST_AUDIO, IVS_DIGEST_KIND_PAD),
-    IVS_DF("obs.input.words", obs.input.words, 4u, 4u, IVS_DIGEST_INPUT, IVS_DIGEST_KIND_UINT),
-    IVS_DF("obs.input.count", obs.input.count, 8u, 1u, IVS_DIGEST_INPUT, IVS_DIGEST_KIND_UINT),
-    IVS_DF("obs.input.floor_tick", obs.input.floor_tick, 8u, 1u, IVS_DIGEST_INPUT, IVS_DIGEST_KIND_UINT),
-    IVS_DF("obs.input.chain", obs.input.chain, 1u, 32u, IVS_DIGEST_INPUT, IVS_DIGEST_KIND_UINT),
-    IVS_DF("obs.psglog.chain", obs.psglog.chain, 1u, 32u, IVS_DIGEST_PSGLOG, IVS_DIGEST_KIND_UINT),
-    IVS_DF("obs.psglog.count", obs.psglog.count, 8u, 1u, IVS_DIGEST_PSGLOG, IVS_DIGEST_KIND_UINT),
+               IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),)
+    IVS_DF("obs.video.chain", obs.video.chain, 1u, 32u, IVS_DF_VIDEO_DOMAIN, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+    IVS_DF("obs.video.count", obs.video.count, 8u, 1u, IVS_DF_VIDEO_DOMAIN, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+    IVS_DF("obs.audio.chain", obs.audio.chain, 1u, 32u, IVS_DIGEST_AUDIO, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+    IVS_DF("obs.audio.count", obs.audio.count, 8u, 1u, IVS_DIGEST_AUDIO, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+    IVS_DF("obs.audio.emitted", obs.audio.emitted, 8u, 1u, IVS_DIGEST_AUDIO, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+    IVS_DF("obs.audio.prev_levels", obs.audio.prev_levels, 4u, 1u, IVS_DIGEST_AUDIO, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+    IVS_DF("obs.audio.reserved", obs.audio.reserved, 4u, 1u, IVS_DIGEST_AUDIO, IVS_DIGEST_KIND_PAD, IVS_SNAP_PAD),
+    IVS_DF("obs.input.words", obs.input.words, 4u, 4u, IVS_DIGEST_INPUT, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+    IVS_DF("obs.input.count", obs.input.count, 8u, 1u, IVS_DIGEST_INPUT, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+    IVS_DF("obs.input.floor_tick", obs.input.floor_tick, 8u, 1u, IVS_DIGEST_INPUT, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+    IVS_DF("obs.input.chain", obs.input.chain, 1u, 32u, IVS_DIGEST_INPUT, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+    IVS_DF("obs.psglog.chain", obs.psglog.chain, 1u, 32u, IVS_DIGEST_PSGLOG, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
+    IVS_DF("obs.psglog.count", obs.psglog.count, 8u, 1u, IVS_DIGEST_PSGLOG, IVS_DIGEST_KIND_UINT, IVS_SNAP_STATE),
     IVS_DF_SLOT(0, "exec"),
     IVS_DF_SLOT(1, "grom"),
     IVS_DF_SLOT(2, "cartridge"),
@@ -179,6 +193,7 @@ typedef struct ivs_dsink {
   size_t flushed; /* bytes flushed so far */
   uint32_t used;  /* bytes in stage */
   uint8_t hash;
+  uint8_t state_only; /* 1: the walk skips every row whose class is not STATE (ivs_machine_state_preimage only) */
   uint8_t stage[IVS_DSINK_STAGE];
 } ivs_dsink;
 
@@ -289,6 +304,9 @@ static void ivs_digest_domain(const struct ivs_machine *m, uint32_t domain, ivs_
     if (f->domain != domain) {
       continue;
     }
+    if (k->state_only != 0u && f->snap != IVS_SNAP_STATE) {
+      continue; /* the snapshot walk: IMAGE, BOUND and PAD rows are never serialized */
+    }
 #ifdef IVS_FAULT_DIGEST_SKIPS_RAM
     if (f->offset == (uint32_t)offsetof(struct ivs_machine, mem.sysram)) continue;
 #endif
@@ -330,6 +348,19 @@ size_t ivs_machine_digest_preimage(const struct ivs_machine *m, uint32_t domain,
     return 0u;
   }
   ivs_dsink_init(&k, 0u, buf, buf == NULL ? 0u : cap);
+  ivs_digest_domain(m, domain, &k);
+  ivs_dsink_flush(&k);
+  return k.flushed;
+}
+
+size_t ivs_machine_state_preimage(const struct ivs_machine *m, uint32_t domain, uint8_t *buf, size_t cap)
+{
+  ivs_dsink k;
+  if (m == NULL || ivs_digest_domain_known(domain) == 0u) {
+    return 0u;
+  }
+  ivs_dsink_init(&k, 0u, buf, buf == NULL ? 0u : cap);
+  k.state_only = 1u;
   ivs_digest_domain(m, domain, &k);
   ivs_dsink_flush(&k);
   return k.flushed;

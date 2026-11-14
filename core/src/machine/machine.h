@@ -155,6 +155,19 @@ _Static_assert(sizeof(struct ivs_machine) == IVS_MACHINE_BYTES,
 #define IVS_DIGEST_DOMAIN_VERSION 1u
 #define IVS_DIGEST_COMPOSITE_VERSION 3u
 
+/* Snapshot class of a row (plan 08-10, D-11, docs/formats/ivsn-v1.md "Classes"): the table is the single
+ * serializer, so each row also says what a snapshot does with it. STATE: written into the section of its
+ * domain by the snapshot and restored byte for byte. IMAGE: the read-only image arrays of a loaded system or
+ * cartridge image, never serialized (rights), never written by a restore. BOUND: the identity of the instance
+ * or of what is loaded into it (the magic, the registry index, the structure of the loaded images and the
+ * three slot records), never serialized, checked against the live target and never written by a restore.
+ * PAD: a reserved word, never serialized, zeroed by a restore. The digest ignores the class: every digest
+ * byte is what it was before the column existed. The values are the member snap of ivs_digest_field. */
+#define IVS_SNAP_STATE 1u
+#define IVS_SNAP_IMAGE 2u
+#define IVS_SNAP_BOUND 3u
+#define IVS_SNAP_PAD 4u
+
 typedef struct ivs_digest_field {
   const char *name;
   uint32_t offset; /* offsetof(struct ivs_machine, ...) */
@@ -162,8 +175,9 @@ typedef struct ivs_digest_field {
   uint32_t count;  /* elements */
   uint8_t domain;  /* IVS_DIGEST_CPU..IVS_DIGEST_INSTANCE or IVS_DIGEST_VIDEO..IVS_DIGEST_PSGLOG */
   uint8_t kind;    /* IVS_DIGEST_KIND_* */
-  uint16_t reserved;
+  uint16_t snap;   /* IVS_SNAP_*: the snapshot class (the former reserved member, plan 08-10; same size) */
 } ivs_digest_field;
+_Static_assert(sizeof(ivs_digest_field) == sizeof(const char *) + 16u, "snap took the place of the reserved member: the row struct did not grow");
 
 /* The field table (coverage seam for the tests). */
 size_t ivs_machine_digest_field_count(void);
@@ -173,6 +187,13 @@ const ivs_digest_field *ivs_machine_digest_field(size_t i);
  * is 0) and returns its full length; 0 for NULL m or another domain. No handle check: the tests
  * pass modified copies. */
 size_t ivs_machine_digest_preimage(const struct ivs_machine *m, uint32_t domain, uint8_t *buf, size_t cap);
+
+/* The same walk with the state-only filter set (plan 08-10, D-11): the "IVSD" frame of the domain and the rows
+ * of class IVS_SNAP_STATE only, in table order, encoded exactly as the digest encodes them. These are the bytes
+ * the section of that domain holds in a snapshot (plan 08-11). Same contract as ivs_machine_digest_preimage:
+ * the full length, 0 for NULL m or an unknown domain, no handle check. Domain 3 (IMAGES) has no STATE row, so
+ * its preimage is the frame alone. Never public: declared here and nowhere under core/include. */
+size_t ivs_machine_state_preimage(const struct ivs_machine *m, uint32_t domain, uint8_t *buf, size_t cap);
 
 /* Writes the public report of one slot record (shared by ivs_machine_info and the load report,
  * A-08 f). */
