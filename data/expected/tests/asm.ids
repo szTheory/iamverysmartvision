@@ -25,6 +25,7 @@ asm.repeat
 asm.judge.mutated-twin
 asm.regen-boot-stub-2
 asm.regen-ivs-demo-lamp-tone-1
+asm.regen-ivs-diag-stic-2
 asm.pairs.move
 asm.pairs.alu
 asm.pairs.imm

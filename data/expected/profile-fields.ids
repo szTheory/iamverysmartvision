@@ -141,4 +141,15 @@ video.last_card_column_px
 video.last_card_column_drop
 video.row_lines
 video.display_off_fill
+video.mob_field_origin
+video.mob_line_sample
+video.mob_prio_hides
+video.collision_x0_interacts
+video.collision_border_bit
+video.collision_offscreen
+video.collision_display_off
+video.border_ext_strip
+video.border_follows_delay
+video.delay_exposed_fill
+video.delay_mob_in_exposed
 video.blank_value

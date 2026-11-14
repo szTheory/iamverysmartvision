@@ -423,7 +423,7 @@
     {
       "id": "STIC-R28",
       "family": "stic",
-      "statement": "Phase 6 applies only the color stack and border color registers to the picture; MOB, delay and border-extension registers are stored and not applied.",
+      "statement": "Superseded by STIC-R37 to STIC-R50: the color stack and border color registers are applied to the picture, and since plan 08-06 every other register of the 64-word register file that has a picture effect (the MOB registers, the collision registers, the delay registers and the border-extension register) is applied by those rules; no register of the file is stored and not applied.",
       "basis": "project-rule",
       "cite": "none",
       "fields": [
@@ -433,7 +433,7 @@
         "stic.reg."
       ],
       "conflict": "C87",
-      "note": "Scope rule (REQUIREMENTS VID-04 and VID-05)."
+      "note": "Scope rule (REQUIREMENTS VID-04 and VID-05). Phase 6 stated that MOB, delay and border-extension registers are stored and not applied; plan 08-04 rewords it in the commit that makes the MOB registers draw (the collision registers follow in plan 08-05) and plan 08-06 rewords it again in the commit that makes the border-extension register draw and turns it into a superseded-by statement in the commit that applies the delay registers (the rule id and its inventory line stay)."
     },
     {
       "id": "STIC-R29",
@@ -578,6 +578,227 @@
       ],
       "conflict": "C10",
       "note": "D-13 and D-16; the framing literal is data/video/chain-framing.literal.txt."
+    },
+    {
+      "id": "STIC-R37",
+      "family": "stic",
+      "statement": "A MOB whose X coordinate (register bits 7..0) is not 0 shows pattern pixel (c, r) at object-field position (X + c, Y + r); the object field starts 8 positions left of and 8 positions above the published plane, so a plane position is the field position minus 8 in both axes; a MOB with X coordinate 0 is disabled; Y coordinate 0 is not special; positions outside the 159 x 96 plane are not published.",
+      "basis": "tier4-community",
+      "cite": "SRC-community-emu-docs@programming-stic-object-field",
+      "fields": [
+        "video.mob_field_origin"
+      ],
+      "tests": [
+        "video.mob."
+      ],
+      "conflict": "C105",
+      "note": "One lineage; the corner case is X = 1 and Y = 1, where only the last pixel of the last pattern row lies on plane position (0, 0). The offset of 8 agrees with the printed 167 x 105 object grid against the 159 x 96 visible positions (SRC-gi-1980-catalog pdf 191, 8 columns and 9 rows outside), which is a corroboration of the offset and not a proof. The field video.mob_field_origin holds the pair (8, 8)."
+    },
+    {
+      "id": "STIC-R38",
+      "family": "stic",
+      "statement": "X size set doubles the width (each pattern column covers 2 plane columns); the Y size code (tall bit, Y size 4 bit, Y size 2 bit) gives the displayed height in plane rows: tall clear, 8 pattern rows over 4, 8, 16 or 32 plane rows; tall set, 16 pattern rows from two cards over 8, 16, 32 or 64 plane rows; a code that gives one, two or four plane rows per pattern row (tall clear: 8, 16, 32 plane rows; tall set: 16, 32, 64 plane rows) is published exactly, the two codes that put two pattern rows into one plane row (tall clear 4 plane rows, tall set 8 plane rows) are R50.",
+      "basis": "tier4-community",
+      "cite": "SRC-community-emu-docs@programming-stic-mob-controls",
+      "fields": [
+        "engine:stic-mob"
+      ],
+      "tests": [
+        "video.mob."
+      ],
+      "conflict": "C108",
+      "note": "One lineage; SRC-intv-wiki@STIC-oldid-15008 states the X stretch of 2x and the Y stretches of 2x, 4x and 8x in prose. In the project's names the Y zooms 2x, 4x and 8x are the codes with 1, 2 and 4 plane rows per pattern row (tall clear) and are sampling-invariant."
+    },
+    {
+      "id": "STIC-R39",
+      "family": "stic",
+      "statement": "X flip shows the pattern columns in reverse order, Y flip shows the pattern rows in reverse order (all 16 rows of a tall MOB), both together give the half turn; the zoom applies to each pattern pixel after the flip.",
+      "basis": "tier4-community",
+      "cite": "SRC-community-emu-docs@programming-stic-mob-controls",
+      "fields": [
+        "engine:stic-mob"
+      ],
+      "tests": [
+        "video.mob."
+      ],
+      "conflict": "C81",
+      "note": "One lineage; the checks use an asymmetric card so that a flip changes the picture, and the number of set pixels is conserved by every flip and zoom."
+    },
+    {
+      "id": "STIC-R40",
+      "family": "stic",
+      "statement": "The MOB color is the low three attribute bits plus 8 times attribute bit 12 (0..15); the card number is attribute bits 10..3 and bit 11 selects graphics RAM (1) or ROM (0); for a graphics RAM card the card number is bits 8..3 (0..63); in tall mode the card number bit 0 is ignored and the upper 8 rows come from the even card and the lower 8 rows from the odd card; a pattern bit 1 is a visible pixel of the MOB color and a bit 0 shows what is behind; a MOB whose visible bit is clear has no visible pixel.",
+      "basis": "tier4-community",
+      "cite": "SRC-community-emu-docs@programming-stic-mob-attribute-register",
+      "fields": [
+        "engine:stic-mob"
+      ],
+      "tests": [
+        "video.mob."
+      ],
+      "conflict": "C81",
+      "note": "One lineage; the card rows are read through the same backing accessor as the background cards (CR-04, CR-05, CR-07)."
+    },
+    {
+      "id": "STIC-R41",
+      "family": "stic",
+      "statement": "Where the visible pixels of two MOBs coincide the MOB with the lower index is shown; the priority bit does not change the order of two MOBs; a clear pattern pixel is not a visible pixel and shows the MOB behind it.",
+      "basis": "tier4-community",
+      "cite": "SRC-community-emu-docs@programming-stic-mob-controls",
+      "fields": [
+        "engine:stic-mob"
+      ],
+      "tests": [
+        "video.mob."
+      ],
+      "conflict": "C81",
+      "note": "One lineage; the checks use two overlapping MOBs of different colors and a card with set and clear pixels in the overlap."
+    },
+    {
+      "id": "STIC-R42",
+      "family": "stic",
+      "statement": "A MOB whose priority bit is clear is shown in front of every background card pixel.",
+      "basis": "tier4-community",
+      "cite": "SRC-community-emu-docs@programming-stic-mob-controls",
+      "fields": [
+        "engine:stic-mob"
+      ],
+      "tests": [
+        "video.mob."
+      ],
+      "conflict": "C81",
+      "note": "One lineage; the clear case only. The set case is R43."
+    },
+    {
+      "id": "STIC-R43",
+      "family": "stic",
+      "statement": "Pinned: a MOB whose priority bit is set is shown behind the background cards, and the background card pixels that hide it are the on pixels (card foreground, colored-squares colors 0 to 6) and not the off pixels, so the MOB shows through the card background (default of the field video.mob_prio_hides: on-pixels; flip: all-pixels).",
+      "basis": "default-unknown",
+      "cite": "SRC-community-emu-docs@programming-stic-mob-controls",
+      "fields": [
+        "video.mob_prio_hides"
+      ],
+      "tests": [
+        "video.mob."
+      ],
+      "conflict": "C107",
+      "note": "resolver: measurement D10-VID-11; trigger: a D10 capture of a MOB with the priority bit set against foreground and background card pixels. The source says the ordering applies to the visible pixels of the MOB only and does not say whether a card pixel that is off hides it; no frame, assert or marker depends on the case."
+    },
+    {
+      "id": "STIC-R44",
+      "family": "stic",
+      "statement": "Collision bits: register 0x18 + n bit m (m 0 to 7, m not n) is set when a set pixel of MOB n and a set pixel of MOB m lie on the same position and both MOBs have the interaction bit set; bit 8 is set when a set pixel of MOB n lies on a set background pixel (card foreground, colored-squares colors 0 to 6 but not 7) and MOB n has the interaction bit set; the visible bit is not required; the own bit of a MOB is never set by the frame writer; the bits are sticky until the CPU clears them, even when the interaction bit is cleared later; they are evaluated at the end of each displayed frame and ORed into the register file with or without a video buffer, and a CPU write of 0 clears a register.",
+      "basis": "tier4-community",
+      "cite": "SRC-community-emu-docs@programming-stic-mob-controls",
+      "fields": [
+        "engine:stic-collision"
+      ],
+      "tests": [
+        "video.collision.",
+        "stic.reg."
+      ],
+      "conflict": "C87",
+      "note": "One lineage. The source says a MOB interacts with another MOB without saying pixel or bounding box: the truth table uses solid cards so that both readings agree. Writing bit X of the register of MOB Y does not change bit Y of the register of MOB X. The source also says the own bit reads 0 when the CPU writes it (SRC-community-emu-docs@programming-stic-mob-controls); the project keeps the write mask 03FF, so a CPU write of the own bit is stored and read back: a pinned default of tag unknown-default-chosen (decided in plan 08-08; the Phase 6 register literal and its tests stay unchanged), no scenario and no frame depends on it because the guest writes only 0, resolver measurement D10-VID-10. The guest masks reads with 03FF (D-08)."
+    },
+    {
+      "id": "STIC-R45",
+      "family": "stic",
+      "statement": "Pinned: a MOB with X coordinate 0 does not interact (field video.collision_x0_interacts, default no); the border bit (bit 9) is set by a pixel of an interacting MOB that lies inside the 167 x 105 object grid and outside the 159 x 96 plane (video.collision_border_bit, default grid-outside-plane); MOB collisions are detected over the whole object field including off-screen positions (video.collision_offscreen, default detected); a frame with the display off evaluates no collision (video.collision_display_off, default none); a read of a collision register has no side effect and a CPU write replaces the register value masked to 10 bits.",
+      "basis": "default-unknown",
+      "cite": "SRC-community-emu-docs@programming-stic-mob-controls",
+      "fields": [
+        "video.collision_x0_interacts",
+        "video.collision_border_bit",
+        "video.collision_offscreen",
+        "video.collision_display_off"
+      ],
+      "tests": [
+        "video.collision.",
+        "stic.reg."
+      ],
+      "conflict": "C87",
+      "note": "resolver: measurement D10-VID-10; trigger: a D10 capture of the collision registers with a MOB at X 0, at the plane edge and outside the plane, with the display off, and a read-clear-read sequence. The last two pins need no new profile field: video.collision.read-no-effect (flip: the existing field stic.mode_select_addrs extended with a collision address makes a read switch the mode) and video.collision.cpu-write-replaces. No scenario assert and no frame depends on any of them."
+    },
+    {
+      "id": "STIC-R46",
+      "family": "stic",
+      "statement": "The horizontal delay register (3 bits) moves the object field right and the vertical delay register (3 bits) moves it down against the displayed area, one plane position per step: every card pixel and every MOB pixel is drawn dh positions right and dv positions down of its undelayed position, and content moved past the right or the bottom edge of the plane is not published.",
+      "basis": "tier4-community",
+      "cite": "SRC-community-emu-docs@programming-stic-object-field",
+      "fields": [
+        "engine:stic-delay"
+      ],
+      "tests": [
+        "video.hdelay.",
+        "video.vdelay.",
+        "stic.reg."
+      ],
+      "conflict": "C105",
+      "note": "One lineage; SRC-bsr-2609 says the background scrolls one pixel at a time and the objects move with it. The width of 3 bits is the stored width of the register literal (R10) and is not an independent statement."
+    },
+    {
+      "id": "STIC-R47",
+      "family": "stic",
+      "statement": "Pinned: the plane columns 0 to dh - 1 and rows 0 to dv - 1 show the blank outer area of the object field and are published as not displayed (video.delay_exposed_fill, default not-displayed, flip border); a MOB is not drawn in the exposed columns or rows (video.delay_mob_in_exposed, default not-drawn, flip drawn); the delay range is the three-bit register width; vertical delay does not change the bus-window schedule (C92).",
+      "basis": "default-unknown",
+      "cite": "SRC-community-emu-docs@programming-stic-object-field",
+      "fields": [
+        "video.delay_exposed_fill",
+        "video.delay_mob_in_exposed"
+      ],
+      "tests": [
+        "video.hdelay.",
+        "video.vdelay.",
+        "stic.reg."
+      ],
+      "conflict": "C110",
+      "note": "resolver: measurement D10-VID-12; trigger: a D10 capture of the exposed area with the extension bits clear and a MOB placed in it, and of the bus windows against vertical delay (C92). The source says the blank area is filled with the background color as the display mode defines it, which does not name one color index; the frame F-M7 therefore shows these positions as unknown."
+    },
+    {
+      "id": "STIC-R48",
+      "family": "stic",
+      "statement": "Border extension bit 0 paints the plane columns 0 to 7 (every row) and bit 1 the plane rows 0 to 7 (every column) with the border color after cards, MOBs and delay, so everything under a strip is hidden and the blank area exposed by a delay of at most 7 is covered.",
+      "basis": "tier4-community",
+      "cite": "SRC-community-emu-docs@programming-stic-object-field",
+      "fields": [
+        "video.border_ext_strip"
+      ],
+      "tests": [
+        "video.border."
+      ],
+      "conflict": "C105",
+      "note": "One lineage; the strips are 8 positions wide in the unit of the source's own pixel, the plane position. That the strip hides a MOB is the reading of the source's word blocked out and is checked in frame F-M4."
+    },
+    {
+      "id": "STIC-R49",
+      "family": "stic",
+      "statement": "Pinned: the top strip is 8 plane rows (a strip of 8 lines would be 4 plane rows) and both strips are fixed to the display and do not move with the delay (video.border_ext_strip default 8x8, flip 8x4; video.border_follows_delay default no, flip yes).",
+      "basis": "default-unknown",
+      "cite": "SRC-community-emu-docs@programming-stic-object-field",
+      "fields": [
+        "video.border_ext_strip",
+        "video.border_follows_delay"
+      ],
+      "tests": [
+        "video.border."
+      ],
+      "conflict": "C109",
+      "note": "resolver: measurement D10-VID-13; trigger: a D10 capture of the top strip height and of a strip with a nonzero delay. The frames F-M4, F-M5 and F-M6 are derived under these defaults (the source says the strips make the blank areas never visible, which a strip of fewer than 7 rows or one that follows the delay would not); the claim excludes them."
+    },
+    {
+      "id": "STIC-R50",
+      "family": "stic",
+      "statement": "Pinned: MOBs are rendered and collision is evaluated per TV line (16 lines per card row), a MOB pixel at the Y size code 0 and a tall MOB at code 0 being one line high, and the published 159 x 96 plane takes the even line of each pair (video.mob_line_sample, default even, flip odd).",
+      "basis": "default-unknown",
+      "cite": "SRC-community-emu-docs@programming-stic-mob-controls",
+      "fields": [
+        "video.mob_line_sample"
+      ],
+      "tests": [
+        "video.mob."
+      ],
+      "conflict": "C108",
+      "note": "resolver: measurement D10-VID-14; trigger: a D10 capture of a half-height MOB line by line. Frames F-M8 and F-M9 are the two pinned sampling frames and are used by in-process tests only; the zooms 2x, 4x and 8x do not depend on it."
     },
     {
       "id": "CR-01",

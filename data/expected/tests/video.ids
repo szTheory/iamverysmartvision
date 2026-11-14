@@ -106,3 +106,67 @@ video.mode.switch-end-to-end
 video.mode.write-selects-next-frame
 video.judge.cstack-persistent-pointer
 video.judge.cs-roles-swapped
+# Plan 08-04 task 1 (VID-05, D-01 to D-03, D-05): the moving-object renderer against the frozen oracle frames F-M0 and F-M1 (video.mob.*): neutrality with every MOB register zero, the placement and clipping of one MOB at 2x, the object-field origin table and the generated profile members.
+video.mob.base-neutral
+video.mob.frame-placement-clip
+video.mob.field-origin-8-8
+video.mob.params-match-profile
+# Plan 08-04 task 2 (VID-05, R37 to R43): the full MOB semantics against F-M2 and F-M3 and hand-derived shapes (video.mob.*): the X size, the Y size codes, tall mode with the card number bit 0 ignored, the flips, the fourth color bit, MOB over MOB by the lower index, MOB over a card with the priority bit clear, the 48-row register-bit sweep from the literal (the interaction-enable bit is observed through the collision registers from plan 08-05), the streamed slot equal to the whole plane and the invariance of a MOB run under call sizes 1, 7, 468 and 97.
+video.mob.zoom-x2
+video.mob.zoom-y2-y4-y8
+video.mob.size-8x16
+video.mob.frame-mirror
+video.mob.colour-bit12
+video.mob.frame-priority-colour
+video.mob.front-lower-index
+video.mob.prio-clear-front
+video.mob.register-bit-roles
+video.mob.stream-equals-plane
+video.mob.slice-invariant
+# Plan 08-04 task 3 (VID-05, D-02, T-08-14): the three pinned defaults, each asserted and then flipped in a stack copy of the parameters (video.mob.default-pinned.*: the priority-bit case against the card on pixels, and the two half-height sampling frames F-M8 and F-M9, used only here), and the two judges that show the frame comparison and the register-bit sweep can fail.
+video.mob.default-pinned.prio-set
+video.mob.default-pinned.sampling-y1x
+video.mob.default-pinned.sampling-8x16
+video.judge.mob-frame-corrupt
+video.judge.mob-role-swapped
+# Plan 08-05 task 1 (VID-05, D-06, rule STIC-R44): the collision registers $0018 to $001F, tracer: two overlapping MOBs set the bit of the other MOB and never their own, the bits go into the register file at the frame end and are never visible inside the frame they describe (a CPU write of 0 then clears), and the register file, the chain and the whole machine do not depend on a video buffer (video.collision.*).
+video.collision.mob-mob-bits
+video.collision.or-at-frame-end
+video.collision.buffer-independent
+# Plan 08-05 task 2 (VID-05, D-02, D-06, D-08, rules STIC-R44 and R45): the rest of the derivable collision core against the truth table of derivation section (d) (rows T1 to T16, each run from a fresh scene) and hand-derived shapes (video.collision.*): the background bit from set card pixels and Colored Squares colors 0 to 6 (not 7), the own bit never set, the interaction bit required on the colliding MOBs, the visible bit not required, sticky bits across frames that nothing overlaps in (and ORed, not assigned), a CPU write that replaces under the 10-bit mask, a read with no effect (and the flip of the existing mode-select list that shows the check can fail), and the invariance of a colliding run under call sizes 1, 7, 468 and 97.
+video.collision.truth-table
+video.collision.mob-background-bit8
+video.collision.own-bit-never-set
+video.collision.intr-required
+video.collision.visibility-not-required
+video.collision.sticky-across-frames
+video.collision.cpu-write-replaces
+video.collision.read-no-effect
+video.collision.slice-invariant
+# Plan 08-05 task 3 (VID-05, D-02, D-10, T-08-14): the four pinned collision behaviors, each asserted under its default and then flipped in a stack copy of the parameters (video.collision.default-pinned.*: a MOB at X coordinate 0, the border bit and the object-grid bounds, MOB against MOB outside the plane, a frame with the display off), and the judge that shows the truth-table comparison can fail.
+video.collision.default-pinned.x0
+video.collision.default-pinned.border-bit
+video.collision.default-pinned.offscreen
+video.collision.default-pinned.display-off
+video.judge.collision-truth-table-corrupt
+# Plan 08-06 task 1 (VID-05, D-02, rules STIC-R48 and R49): the border-extension strips, tracer: register $0032 bit 0 paints the 8 left columns and bit 1 the top rows of the plane in the border color of $002C, over cards and MOBs, never in the cut-off column, to the frozen frame F-M4 and to rectangles and counts derived by hand (video.border.*).
+video.border.strips-left-top
+video.border.over-cards-and-mobs
+video.border.colour-from-reg-2c
+video.border.ext-bits-independent
+# Plan 08-06 task 2 (VID-05, D-02, D-03, D-07, rules STIC-R46 and R47): the delay registers $0030 and $0031 shift the cards and the MOBs together, one plane position per step, right and down, clipped at the plane edges, to the frozen frames F-M5 and F-M6 and to counts and rows derived by hand (video.hdelay., video.vdelay.); a vertical delay carries the band of rows across every card row boundary; the bus-window schedule and the machine do not depend on the vertical delay (with the one-field control that shows the sweep can fail); the streamed slot equals the whole plane and the call sizes 1, 7, 468 and 97 change no byte (video.delay.).
+video.hdelay.shift-right-cards-and-mobs
+video.hdelay.clip-right
+video.vdelay.shift-down-cards-and-mobs
+video.vdelay.straddle-card-rows
+video.vdelay.no-bus-window-change
+video.delay.stream-equals-plane
+video.delay.slice-invariant
+# Plan 08-06 task 3 (VID-05, D-02, D-10, T-08-17): the six pinned delay and strip behaviors, each asserted under its default and then flipped in a stack copy of the parameters (video.border.default-pinned.*: the top strip unit, whether the strips follow the delay; video.hdelay.default-pinned.range with the register width held by the existing register self-controls; video.hdelay. and video.vdelay.default-pinned.exposed-area against the known positions of the in-process frame F-M7; video.vdelay.default-pinned.mob-in-exposed), and the judge that shows the frame comparison of the delay can fail.
+video.border.default-pinned.top-strip-unit
+video.border.default-pinned.follows-delay
+video.hdelay.default-pinned.range
+video.hdelay.default-pinned.exposed-area
+video.vdelay.default-pinned.exposed-area
+video.vdelay.default-pinned.mob-in-exposed
+video.judge.delay-frame-corrupt

@@ -48,6 +48,7 @@ Row 11 latches at cycle 3,848 + 10,032 = 13,880 (tick 55,520).
 Window 12 starts at cycle 3,791 + 10,944 = 14,735 (tick 58,940) and ends at cycle 14,849 (tick 59,396); it steals time and fetches nothing in Phase 6.
 The frame ends 14,934 - 14,849 = 85 cycles (340 ticks) after the last window.
 A fourteenth regular window at the same pitch would start at cycle 3,791 + 13 x 912 = 15,647, outside the frame of 14,934 cycles, so "fourteen" needs a different window placement (Phase 8, the picture offset) and is not modelled here.
+The window train does not depend on the vertical delay register `$0031`: [UNK] the schedule above is a pure function of the profile and the frame position, the register file is not an input of the line levels (`ivs_stic_lines`) or of the event table, and the test `video.vdelay.no-bus-window-change` shows equal line levels, equal cursor and latches over one frame and an equal machine for the vertical delay 0 and 7, with a one-field control that moves the first window. A community source states about 13,572 usable cycles per frame with the vertical delay above 0 against 13,518 at 0; that is a pinned default here (discrepancy C92, owner hand-off D10-VID-12) and not a finding. [nc]
 
 ## Closed forms
 

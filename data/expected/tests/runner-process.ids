@@ -59,6 +59,12 @@ runner-process.scenario.demo-lamp-tone-pass
 runner-process.scenario.demo-lamp-tone-idle
 runner-process.scenario.demo-lamp-tone-shift
 runner-process.scenario.demo-lamp-tone-swap
+runner-process.scenario.diag-stic2-idle-pass
+runner-process.scenario.diag-stic2-mob-pass
+runner-process.scenario.diag-stic2-border-pass
+runner-process.scenario.diag-stic2-hdelay-pass
+runner-process.scenario.diag-stic2-vdelay-pass
+runner-process.scenario.diag-stic2-collision-pass
 runner-process.scenario.owner-exec-title skip-ok
 runner-process.mutant.ADDI-SUBI
 runner-process.mutant.BNZE-BZE
@@ -89,6 +95,15 @@ runner-process.mutant.SCN-HLT-IDLE
 runner-process.mutant.SCN-STUB-JD-AS-J
 runner-process.mutant.SCN-ISR-TIE
 runner-process.mutant.SCN-REARM-NEGATIVE
+# Plan 08-07 (D-10, D-37, D-40): runner-process.mutant.STIC2-*, one case per row of data/expected/diag-mutations-stic2.ids (six one-word mutants of
+#   ivs-diag-stic-2, each with its failing-assert set). In a Release build the row runs its scenario; in any other build it is judged statically
+#   (listing word, patch, scenario file, fails= form) and reported ok without a run, so the six ids are the same in both presets and none is skip-ok.
+runner-process.mutant.STIC2-SELECTOR-COMPARE
+runner-process.mutant.STIC2-MOB-X-ZERO
+runner-process.mutant.STIC2-FLIP-BIT
+runner-process.mutant.STIC2-BORDER-EXT-DROPPED
+runner-process.mutant.STIC2-DELAY-VALUE
+runner-process.mutant.STIC2-COLLIDE-APART
 runner-process.repeat.diag-boot-pass
 runner-process.slices.diag-boot-pass
 runner-process.repeat.diag-input-pass
@@ -105,6 +120,8 @@ runner-process.slices.demo-lamp-tone-pass
 runner-process.cwd.demo-lamp-tone-pass
 runner-process.pair.demo-lamp-tone-pass.demo-lamp-tone-idle
 runner-process.pair.demo-lamp-tone-pass.demo-lamp-tone-shift
+runner-process.pair.diag-stic2-idle-pass.diag-stic2-mob-pass
+runner-process.pair.diag-stic2-idle-pass.diag-stic2-border-pass
 runner-process.operator.audio-raw
 runner-process.operator.psg-log
 runner-process.operator.exclusive

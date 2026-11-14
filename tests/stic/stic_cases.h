@@ -93,6 +93,9 @@ uint64_t sp_register_edge(void);                                  /* stic_profil
  * so a delay of N is MVII #N, R1 / DECR R1 / BNZE back (5 words, N iterations). No guest has more than 24 words. */
 #define SC_PROG_MAX 24u
 size_t sc_w_mvii(uint16_t *w, size_t n, uint32_t r, uint32_t imm);
+/* A 16-bit immediate (plan 08-04, the moving-object registers hold values above $3FF): SDBD, MVII #imm, Rd (four words: 0001, 02B8 + d, the low
+ * byte, the high byte; sdbd.json cpu.MVII.sdbd-low-high), as the address loader of sc_w_mvo does for R3. */
+size_t sc_w_mvii16(uint16_t *w, size_t n, uint32_t r, uint32_t imm);
 size_t sc_w_mvo(uint16_t *w, size_t n, uint32_t r, uint32_t addr);
 size_t sc_w_mvi(uint16_t *w, size_t n, uint32_t addr, uint32_t r);
 size_t sc_w_delay(uint16_t *w, size_t n, uint32_t count);

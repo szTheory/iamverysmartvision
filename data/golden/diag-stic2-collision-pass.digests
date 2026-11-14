@@ -1,0 +1,81 @@
+# tier: deterministic-repeatability
+# oracle: self-recorded
+# scenario: diag-stic2-collision-pass
+# profile: intv-2609-ntsc-family-p1
+# domains: cpu=observed mem=observed images=observed instance=observed video=observed audio=observed input=observed psglog=none
+# Written by ivs-run --update-golden, never by the gate; a change is a reviewed diff
+# (docs/runner.md). The body is the run's report filtered to the golden key list.
+scenario.id diag-stic2-collision-pass
+scenario.profile intv-2609-ntsc-family-p1
+outcome pass
+outcome.detail -
+exit.code 0
+slot.exec.loaded 1
+slot.exec.length_bytes 8192
+slot.exec.sha256 a2cea795516799811a3ed1df9020d8ed80b90a5a2322d4e5feac38f350538660
+slot.exec.status ok
+slot.exec.reason 0
+slot.grom.loaded 1
+slot.grom.length_bytes 2048
+slot.grom.sha256 e5a00aa9991ac8a5ee3109844d84a55583bd20572ad3ffcd42792f3c36b183ad
+slot.grom.status ok
+slot.grom.reason 0
+slot.cart.loaded 1
+slot.cart.length_bytes 1796
+slot.cart.sha256 47d8b3721fdb1478d2d77f22195b7561473c7dcfc6827f7c60dd49cac4bb7aa0
+slot.cart.status ok
+slot.cart.reason 0
+step.1.target_ticks 640000
+step.1.now_ticks 640004
+step.1.overshoot_ticks 4
+step.1.stop_reason target
+step.1.expected_stop target
+step.1.assert.1 pass halted == no got no
+step.1.assert.2 pass mem 02F0 == 03C5 got 03C5
+step.1.assert.3 pass mem 02F1 == 000A got 000A
+step.1.assert.4 pass mem 02F2 == 00BD got 00BD
+step.1.assert.5 pass mem 02F3 == 0009 got 0009
+step.1.assert.6 pass frame 0 displayed == no got no
+step.1.assert.7 pass frame 4 displayed == yes got yes
+step.1.assert.8 pass mem 0300 == 0002 got 0002
+step.1.assert.9 pass mem 0301 == 0001 got 0001
+step.1.assert.10 pass mem 0302 == 0008 got 0008
+step.1.assert.11 pass mem 0303 == 0004 got 0004
+step.1.assert.12 pass mem 0304 == 0000 got 0000
+step.1.assert.13 pass mem 0305 == 0000 got 0000
+step.1.assert.14 pass mem 0306 == 0100 got 0100
+step.1.assert.15 pass mem 0307 == 0000 got 0000
+step.1.assert.16 pass mem 0308 == 0000 got 0000
+step.1.assert.17 pass mem 0309 == 0100 got 0100
+step.1.assert.18 pass mem 030A == 0100 got 0100
+step.1.assert.19 pass mem 030B == 0000 got 0000
+step.1.assert.20 pass mem 030C..030F == 0000 got 0000
+step.1.assert.21 pass frame 5 pixel 108 52 == 5 got 5
+step.1.assert.22 pass frame 5 pixel 132 52 == 6 got 6
+step.1.assert.23 pass video count == 10 got 10
+cpu.run_state running
+cpu.fault_reason none
+input.events 1
+input.consumed 1
+input.controller.0 00000010
+input.controller.1 00000000
+input.controller.2 00000000
+input.controller.3 00000000
+digest.cpu 865d30286a82466989ce00f752ee977dcb20e2de28a05d570a52b26849381471
+digest.mem daee4273e9afdfc6efb086d8748ac483fe17d570a94a9b9d78a5e2d6fd78e881
+digest.images 4c284a65e3fdb9754daf20b6377f2b850cb3d6782d10d047356b4a56af47091a
+digest.instance 978dc71790bf7a35fd1abd8d87db1adba9ca83e08345eef92806ecedcc2f1a20
+digest.composite d5f722823f03db3997e48665bf92b2d4f12f933c74ad2c838ce9af364e6a4ae0
+digest.video 8e392429bfc4404eeafe1d6bcb8dd3373c60bed048ddf71c61c8e7f2d685c86f
+digest.audio d407502ef80f3cd84cfe726a7988206bc676e8ed29ae24840613ba466724d7e6
+digest.input 6b7d615a5df6e271379a083e1d51b6333a176a1f2c91ae1368a848f120c85019
+output.video.bytes 152960
+output.audio.bytes 160000
+output.audio.samples 40000
+output.audio.changes 0
+audio.sample_ticks 16
+output.video.frames 10
+video.geometry 159x96
+video.row_lines 2
+video.frame.last_tick 597360
+video.chain.check pass

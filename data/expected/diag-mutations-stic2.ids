@@ -1,0 +1,42 @@
+# Program mutations of the second original program, ivs-diag-stic-2 (plan 08-07, D-10, D-37, D-40). Classes, the intended edit of each
+# mutant and the first failing clause: section (g) of docs/video/diag-stic-2-derivation.md (written before the program); word addresses:
+# the generated listing fixtures/FX-diag-stic-2/diag-stic-2.listing.txt (its `# sym:` lines) and section (k) of the derivation.
+# `<ID> <scenario> <addr list> <from list> <to list> <clause> <outcome> <exit> [fails=<k.j,...>]`: the grammar of
+# data/expected/diag-mutations-scn.ids (the three lists are comma-joined, a single word is a list of one; the clause is everything between
+# the fifth column and the last two or three columns and may hold blanks; a clause that ends in ` got <value>` pins the value the assert
+# read; `fails=` is the complete set of failing asserts as `<step>.<assert>` in report order). Suite runner-process (id
+# runner-process.mutant.<ID>) builds each mutant in its temp dir with `ivs_pack --ivsc <listing> <out> --patch <addr>=<to>` and runs
+# data/scenarios/<scenario>.ivss against it with the real ivs-run, in a sibling loop of the SCN loop of tests/runner-process-tap.sh. The
+# <from> word is explicit: the loop checks that the word at each <addr> of the unpatched listing, as ivs_pack decodes it (--dump-words),
+# equals its <from> before patching, so a listing edit that moves a word fails the case instead of mutating something else.
+#
+# Release preset only (D-10, D-37, D-40): the test receives the build configuration as a fifth argument. In a Release build every row is
+# run and judged (the first failing assert against outcome.detail and the whole `fails=` set against the report). In any other build
+# (the sanitized Debug preset) each row performs its static checks only: the word at every address of the unpatched listing equals its
+# <from>, the three lists have one length, the patch changes the image, the scenario file exists and `fails=` is well formed; it is
+# reported ok without running the scenario. The ids are the same in both presets, no id is skip-ok (that would raise tests-skipped) and the
+# container gate runs the Release preset, so the full judgement runs on both platforms. The reason is cost (lever 2 of D-37): the sanitized
+# build is the slow one and its six extra ten-frame runs buy nothing the Release run does not already prove.
+#
+# One word of the program image per mutant. Every scene table word is two decles, the low byte first, so a mutant of a table word patches the
+# decle that carries the changed bits; the effect is the one the derivation states. No mutant is committed as an image; every patched image
+# lives in the suite's temp directory. Every scenario is bounded by run-to ticks, so a mutant ends at its first failing assert (guest-fail,
+# exit 10), never in a timeout.
+#
+#   STIC2-SELECTOR-COMPARE   5010  007E -> 007F   the compare constant of the mob selector: the selector matches no scene, the program behaves
+#                                                  as idle (scene 0 stored at 02F3, the idle picture in every frame)
+#   STIC2-MOB-X-ZERO         517C  009E -> 0000   the low decle of the X word 069E of MOB0 in scene 1: the word becomes 0600, whose X
+#                                                  coordinate is 0, so the MOB is disabled and frame 2 is the idle picture F-M0
+#   STIC2-FLIP-BIT           51C3  0006 -> 000A   the high decle of the Y word 0620 of MOB0 in scene 2: the word becomes 0A20, the Y flip
+#                                                  instead of the X flip, the same pixels in other places (the probes of frame 5 still hold)
+#   STIC2-BORDER-EXT-DROPPED 5252  0003 -> 0002   the low decle of the border extension word of scene 4: only the top strip is left
+#   STIC2-DELAY-VALUE        5284  0003 -> 0004   the low decle of the horizontal delay word of scene 5: everything moves one position more
+#   STIC2-COLLIDE-APART      52C2  002E -> 0080   the low decle of the X word 072E of MOB1 in scene 7: the word becomes 0780, away from MOB0
+#                                                  (and onto MOB4), so the read-outs of C0 and C1 and C4 change; the derivation's first
+#                                                  clause is the first of them, 0300 (T1)
+STIC2-SELECTOR-COMPARE diag-stic2-mob-pass 5010 007E 007F mem 02F3 == 0003 got 0000 guest-fail 10 fails=1.5,1.9,1.10,1.11,1.12,1.14,1.15,1.16,1.17,1.18,1.19,1.20
+STIC2-MOB-X-ZERO diag-stic2-mob-pass 517C 009E 0000 frame 2 hash == a00823f4684b712a38cfdf239e93a63d8f585a58526f568e38b4156148d07b43 got 17df47dfad24a8f419dff876ce3f1d970dd1f0e914b1e8ce3638fbc9904ab39c guest-fail 10 fails=1.9,1.12,1.14
+STIC2-FLIP-BIT diag-stic2-mob-pass 51C3 0006 000A frame 5 hash == 222a489123b6c1e16cf56eaf93d58d6c2ae7e6a2c52024ef1dfe26e0e2b8f8d2 guest-fail 10 fails=1.10
+STIC2-BORDER-EXT-DROPPED diag-stic2-border-pass 5252 0003 0002 frame 5 hash == 49b089730cf6c3b17e52f9b6aea588a258c9c5a8c28139ff5e4045dc5f4f5fa2 guest-fail 10 fails=1.8
+STIC2-DELAY-VALUE diag-stic2-hdelay-pass 5284 0003 0004 frame 5 hash == ba0f9f71bfdb607d1f1bd7362363acee3bde45e728f4fc45de27442b6c1d4f92 guest-fail 10 fails=1.8,1.9,1.10
+STIC2-COLLIDE-APART diag-stic2-collision-pass 52C2 002E 0080 mem 0300 == 0002 got 0000 guest-fail 10 fails=1.8,1.9,1.12

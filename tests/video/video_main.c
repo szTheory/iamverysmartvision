@@ -56,21 +56,27 @@ static int video_case_run(const void *data, size_t i)
   return c != NULL ? c->fn() : IVS_TEST_FAIL;
 }
 
-/* The `# source` lines: the geometry and chain-framing literals (video_geom.c) then the frame and card literals (video_fgbg.c). */
-static ivs_test_source video_sources[16];
+/* The `# source` lines: the geometry and chain-framing literals (video_geom.c), the frame and card literals (video_fgbg.c), then the moving-object
+ * literals and the profile (video_mob.c). */
+static ivs_test_source video_sources[32];
 static void video_collect_sources(ivs_test_suite *suite)
 {
   size_t n1 = 0u;
   size_t n2 = 0u;
+  size_t n3 = 0u;
   const ivs_test_source *a = vl_source_table(&n1);
   const ivs_test_source *b = vf_source_table(&n2);
+  const ivs_test_source *c = vm_source_table(&n3);
   size_t i;
   size_t n = 0u;
-  for (i = 0u; i < n1 && n < 16u; i++) {
+  for (i = 0u; i < n1 && n < 32u; i++) {
     video_sources[n++] = a[i];
   }
-  for (i = 0u; i < n2 && n < 16u; i++) {
+  for (i = 0u; i < n2 && n < 32u; i++) {
     video_sources[n++] = b[i];
+  }
+  for (i = 0u; i < n3 && n < 32u; i++) {
+    video_sources[n++] = c[i];
   }
   suite->sources = video_sources;
   suite->n_sources = n;
@@ -90,6 +96,10 @@ int main(int argc, char **argv)
   video_add(ivs_video_meta_cases, ivs_video_meta_count);
   video_add(ivs_video_judge_cases, ivs_video_judge_count);
   video_add(ivs_video_cstack_cases, ivs_video_cstack_count);
+  video_add(ivs_video_mob_cases, ivs_video_mob_count);
+  video_add(ivs_video_collision_cases, ivs_video_collision_count);
+  video_add(ivs_video_border_cases, ivs_video_border_count);
+  video_add(ivs_video_delay_cases, ivs_video_delay_count);
   if (video_total > VIDEO_MAX_CASES) {
     fprintf(stderr, "video: more than %u cases; raise VIDEO_MAX_CASES\n", VIDEO_MAX_CASES);
     return 1;

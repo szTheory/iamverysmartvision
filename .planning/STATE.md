@@ -1,19 +1,19 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 7
-current_phase_name: First Visible Original Scenario
-current_plan: 12
-status: verifying
-stopped_at: Completed 07-12-PLAN.md
-last_updated: "2026-11-14T02:23:41.694Z"
-last_activity: 2026-11-13
-last_activity_desc: Phase 7 execution started
-state_head: e503f608402144a78d9bf1a1fc27ac6f83d3d070
+current_phase: 8
+current_phase_name: STIC Completion, Save State and Performance Baselines
+current_plan: 9
+status: executing
+stopped_at: Completed 08-08-PLAN.md
+last_updated: "2026-11-14T11:57:44.385Z"
+last_activity: 2026-11-14
+last_activity_desc: Phase 8 execution started
+state_head: 88e6abe8f77955b5da69da618469f9c2594fc427
 progress:
   total_phases: 8
   completed_phases: 7
-  total_plans: 109
-  completed_plans: 109
+  total_plans: 130
+  completed_plans: 117
   percent: 88
 ---
 
@@ -24,15 +24,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-09)
 
 **Core value:** A deterministic, observable machine core whose every compatibility claim is bound to an exactly named profile and independent evidence — never an unqualified "it runs Intellivision games" label.
-**Current focus:** Phase 7 — First Visible Original Scenario
+**Current focus:** Phase 8 — STIC Completion, Save State and Performance Baselines
 
 ## Current Position
 
-Phase: 7 (First Visible Original Scenario) — EXECUTING
-Current Plan: 12
-Total Plans in Phase: 12
-Status: Phase complete — ready for verification
-Last activity: 2026-11-13 — Phase 7 execution started
+Phase: 8 (STIC Completion, Save State and Performance Baselines) — EXECUTING
+Current Plan: 9
+Total Plans in Phase: 21
+Status: Ready to execute
+Last activity: 2026-11-14 — Phase 8 execution started
 
 Progress: [█████████░] 88%
 
@@ -168,6 +168,14 @@ Progress: [█████████░] 88%
 | Phase 7 P10 | 32min | 4 tasks | 34 files |
 | Phase 7 P11 | 38min | 3 tasks | 7 files |
 | Phase 7 P12 | 58min | 3 tasks | 19 files |
+| Phase 8 P01 | about 55 min measured, plus reading | 3 tasks | 42 files |
+| Phase 8 P02 | 31min | 3 tasks | 16 files |
+| Phase 08 P03 | about 3h | 3 tasks | 41 files |
+| Phase 08 P04 | about 45 min | 3 tasks | 26 files |
+| Phase 08 P05 | about 50 min | 3 tasks | 22 files |
+| Phase 08 P06 | about 45 min | 3 tasks | 19 files |
+| Phase 08 P07 | about 75 min | 3 tasks | 35 files |
+| Phase 08 P08 | about 55 min | 3 tasks | 25 files |
 
 ## Accumulated Context
 
@@ -403,6 +411,26 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 7]: Phase 7 plan 12: CL-0023 (playable-guest-progress) and CL-0024 (installed-host-behavior) are provisional by the weakest-field rule, the only allowed wording is 'playable guest progress, for this original program only', and plays and playable are text tripwire claim words (the tier identifier is exempt; control text-untagged-playable, controls 356 to 357)
 - [Phase 7]: Phase 7 plan 12: SCN-01 and SCN-02 close on 07-VERIFICATION.md (V1 to V20 automated, H7-1 to H7-5 handed off); SCN-02 is complete on documented-route terms only, D11 stays open and not performed, no claim and no tier; README and packaging state the source-only release posture; D4 records ivs_asm
 - [Phase 7]: Phase 7 plan 12: phase7-close: no-lever (last-five hosted median r 7.78 against budget 7.8 and trigger 8.3; gate 146 s and cpu median 335 fire on the slowest build_s of the file, a runner-speed event); final gates sh, dash and container PASS with controls=357/357 faults=222/222 claims=24 provisional=23 tests-skipped=4
+- [Phase 8]: 08-01: the new gate step release-assets is step 37 and the later state step becomes 38 (08-CONTEXT D-38 numbered it 37); the step scans FILELIST for binary extensions and selftests tools/check/release-assets.sh on five synthetic-archive cases (four must fail for their token, outer-name-pass must pass)
+- [Phase 8]: 08-01: the release asset check is content-based: archive members are judged (prefix, path, extra, missing, binary extension from binary-ext.txt), never the outer name, and the binary rule does not depend on the list (a listed .rom member is still refused)
+- [Phase 8]: 08-01: release.yml is held by a per-file ci-parity exemption table (strict tag glob, job-level contents write only there, two run lines, GITHUB_TOKEN only, timeout 15) with nine new controls; tools/release.sh refuses --publish outside GitHub Actions and with --no-gate, and gh is reached only after every check
+- [Phase 8]: 08-01: phase8-start: no-lever (last-five median r 7.78 against line 8.3; projection about 7.84 with the measured additions: release-assets costs 0.33 local cpu-s per run and runs three times in a gate); the GNU tar path of release.sh is rehearsed only in an emulated Ubuntu container, the Darwin install archive is not byte-reproducible (ranlib restamp)
+- [Phase 8]: 08-02: version policy is three separate numbers; tag == IVS_API_VERSION macros == installed PACKAGE_VERSION is checked by a mode of tools/check/release-assets.sh that the release-assets gate step proves able to fail
+- [Phase 8]: 08-02: history findings are pinned by (token, short sha) pair in data/expected/hygiene-history-pinned.ids; a new pair fails the release check, no pass verdict is printed, the baseline file is untouched
+- [Phase 8]: 08-02: any commit that changes data/claims.json regenerates the CHANGELOG claim table in the same commit; --release and --publish halt on release-changelog-section-missing until plans 08-20 and 08-21 write the 0.1.0 section
+- [Phase 8]: 08-02: the release rehearsal accepts one named Darwin host effect (ranlib restamp of the first member header of lib/libivs_core.a) and requires byte-equal install archives on Linux
+- [Phase 08]: 08-03: the oracle derives the delayed frames with shift-tolerant card cells (no grammar construct beyond the plan); F-M4 to F-M6 are hashed under the pinned defaults PD-8 and PD-9, carried by the claim exclusions
+- [Phase 08]: 08-03: collision truth table reads sticky bits in the routines of frames 3 and 4 and writes only zero to a collision register; no row depends on a read side effect or a nonzero write
+- [Phase 08]: 08-04: the MOB overlay gives a position to the lowest index with a set pixel and only then tests the owner's priority bit against the card layer (a hidden owner still blocks a higher index); part of the pinned priority behavior, nothing asserts it
+- [Phase 08]: 08-04: the composition is one path (ivs_stic_compose_card_row) shared by the streamed slot and the whole plane; with every MOB register zero it returns the card row untouched, and the vertical-delay carry of plan 08-06 must not be a stack buffer in the deliver frame (the chain deliver, compose, overlay is 3,040 bytes at -O0)
+- [Phase 08]: 08-05: collision is evaluated per television line over the 167 x 105 object grid (ivs_stic_collide_lines per card row inside the one composition path, ivs_stic_collide_edges for the grid lines above and below the plane), accumulated in a local uint32_t[8] and ORed into the register file at the frame end by ivs_memsys_stic_collision_or_internal; the grid has no column right of the plane, so the border bit never comes from the right edge
+- [Phase 08]: 08-05: the own bit of a collision register is never set by the frame writer, but a CPU write of it is still stored (write mask 03FF kept as the plan and the Phase 6 tests say); rule STIC-R44's own-bit write rule is an open item for the owner of the regmap literal
+- [Phase 08]: 08-06: the plane rows of a frame, streamed or whole, come out of one row generator (ivs_stic_rows): source card rows composed in order into the one card-row buffer, output row y is source row y - v finished in place (delay shift, exposed area, MOB margin, strips painted last); no carry buffer or re-render exists, the deliver frame is 2,528 bytes at -O0 and the chain deliver, rows_next, compose, collide is 3,536
+- [Phase 08]: 08-06: collision is evaluated on the undelayed scene (an unpinned choice, stated in stic_frame.c and the reference notes); the three delay selectors video.border_follows_delay, video.delay_exposed_fill and video.delay_mob_in_exposed are exempted by name from the glossary duration-suffix rule (the word names the picture delay registers, not a time): the orchestrator confirms the exemption or renames the fields
+- [Phase 08]: 08-07: the scene words of ivs-diag-stic-2 are ten tables of 27 words (two decles per word) written by a loop of eight groups of three plus three straight words, so the longest routine (selector BD, frame 3) ends its register work at frame cycle 1,634 (bound 1,900, window close 2,000); a table word is two decles, so a mutant patches the decle that carries the change (STIC2-MOB-X-ZERO leaves X word 0600, X coordinate 0)
+- [Phase 08]: 08-07: the six STIC2 program mutants run their scenario only on a Release build (fifth argument of runner-process, a genex) and are judged statically otherwise, same ids and no skip-ok (D-40); the program follows A5 to the letter, so the frame counter relies on the zero power-on RAM default (open item for the owner: an explicit store would be a new oracle commit)
+- [Phase 8]: 08-08: the own bit of a collision register on a CPU write is an explicit unknown-default-chosen pin (the source says it reads 0, the default keeps the write mask 03FF; frozen Phase 6 literal and tests unchanged, PD-7 amended by an addition to the derivation); collision on the undelayed scene and the zero power-on RAM frame counter are claim exclusions and assumptions, not oracle changes
+- [Phase 8]: 08-08: checkpoint A reads lever-required (median r 7.78, projection 8.06 to 8.18 against the 8.0 rule of the orchestrator): no further test id, fault or control in waves B and C until the orchestrator answers; lever (2) is queued as the first task of the next wave; the D-36 split trigger is the orchestrator's decision
 
 ### Pending Todos
 
@@ -435,6 +463,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-14T02:23:40.946Z
-Stopped at: Completed 07-12-PLAN.md
+Last session: 2026-11-14T11:57:44.001Z
+Stopped at: Completed 08-08-PLAN.md
 Resume file: None

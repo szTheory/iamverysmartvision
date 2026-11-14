@@ -46,3 +46,8 @@ D10-VID-07 | C92 | number, spacing and hold of the bus windows per frame, by cyc
 D10-VID-08 | C82 | display-latch persistence and strobe semantics, with strobes at swept offsets | #stic-strobe
 D10-VID-09 | C85 | STIC register state and mode after power-on and after a console reset | #stic-power-on
 D11-EXEC-03 | C20 | a real system image drawing its title screen through the project STIC, image never committed | #owner-exec
+D10-VID-10 | C87 | collision read, clear and set instant, own bit after a CPU write, X of 0, border bit, offscreen and display-off cases | #stic-collision
+D10-VID-11 | C107 | priority against foreground and background pixels | #stic-mob-priority
+D10-VID-12 | C110 | delay range, exposed area content, collision under delay and bus windows against vertical delay | #stic-delay-area
+D10-VID-13 | C109 | border-extension strip units and behaviour with delay | #stic-border-extension
+D10-VID-14 | C108 | half-height pixel structure of a MOB | #stic-half-height

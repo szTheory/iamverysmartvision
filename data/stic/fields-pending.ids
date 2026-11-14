@@ -4,3 +4,4 @@
 # to be deleted (tokens video-rule-field-unregistered and video-pending-stale): the owning plan deletes its lines in the same commit that
 # adds the field. Plan 06-04 adds the 33 profile fields (generator, tags, discrepancy ids); plan 06-06 adds the memory-system device
 # kind that makes memmap.device.stic14 a profile field.
+# Plan 08-03 (VID-05 oracle plan): the profile fields of the rules STIC-R37 to STIC-R50; each owner plan deletes its lines in the commit that adds the field (one tier 4 field, ten pinned defaults).

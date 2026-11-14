@@ -1531,6 +1531,116 @@
       "decision": null,
       "note": "Policy selector: a display-off frame is produced, flagged not displayed, with every position filled with the border color index. The generator accepts only border."
     },
+    "video.mob_field_origin": {
+      "value": {"x": 8, "y": 8},
+      "tag": "tier4-community",
+      "cite": "SRC-community-emu-docs@programming-stic-object-field (rule STIC-R37): the object field starts 8 positions left of and 8 positions above the published plane; corroborated, not proved, by the printed 167 x 105 object grid against the 159 x 96 visible positions (SRC-gi-1980-catalog pdf 191)",
+      "conflict": "C105",
+      "resolving_evidence": "measurement: a D10 capture of a MOB at X 1 and Y 1 showing which plane position the lower right pattern pixel takes",
+      "revisit_trigger": "a D10 capture of a MOB at the object-field corner or a primary page that prints the object-field origin",
+      "decision": null,
+      "note": "The offset in plane positions between the object field and the published plane: a MOB whose X coordinate is X puts its first pattern column on plane column X - x (and its Y coordinate Y puts its first pattern row on plane row Y - y). Each member is 0 to 15. One tier 4 lineage; no frame depends on a value other than 8."
+    },
+    "video.mob_line_sample": {
+      "value": 0,
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: the lineage gives one television line per pattern row at the smallest Y size and a printed row of 2 lines, and does not say which line of a pair the published plane takes (rule STIC-R50)",
+      "conflict": "C108",
+      "resolving_evidence": "measurement: D10-VID-14 owner capture of a half-height MOB line by line",
+      "revisit_trigger": "a D10 capture of a half-height MOB or a primary page that prints the Y size 0 behavior",
+      "decision": null,
+      "note": "Policy selector 0 or 1: the published plane row y shows television line 2 y + this value of the line-resolved MOB model (0 the even line, 1 the odd line). Only the two Y size codes that put two pattern rows into one plane row depend on it (frames F-M8 and F-M9, in-process tests only); the zooms 2x, 4x and 8x do not."
+    },
+    "video.mob_prio_hides": {
+      "value": 0,
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: the lineage orders a MOB with the priority bit set behind the cards and does not say whether a card pixel that is off hides it (rule STIC-R43)",
+      "conflict": "C107",
+      "resolving_evidence": "measurement: D10-VID-11 owner capture of a MOB with the priority bit set against foreground and background card pixels",
+      "revisit_trigger": "a D10 capture of a MOB with the priority bit set or a primary page that prints the priority ordering",
+      "decision": null,
+      "note": "Policy selector 0 or 1: with 0 a MOB pixel whose MOB has the priority bit set is hidden only by a card on pixel (card foreground, colored squares colors 0 to 6) and shows through a card background pixel; with 1 it is hidden by every card pixel, so such a MOB is never shown. No frame, assert or marker depends on the case."
+    },
+    "video.collision_x0_interacts": {
+      "value": 0,
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: the lineage says a MOB with X coordinate 0 is not displayed and says nothing about whether it interacts (rule STIC-R45)",
+      "conflict": "C87",
+      "resolving_evidence": "measurement: D10-VID-10 owner capture of the collision registers with a MOB at X coordinate 0",
+      "revisit_trigger": "a D10 capture of the collision registers with a MOB at X coordinate 0 or a primary page that prints the rule",
+      "decision": null,
+      "note": "Policy selector 0 or 1: with 0 a MOB whose X coordinate is 0 does not take part in collision (no bit, from it or against it); with 1 it interacts at the position its X coordinate gives (plane column -8). No oracle row, frame or scenario depends on it: the collision scenario has no MOB at X coordinate 0."
+    },
+    "video.collision_border_bit": {
+      "value": 1,
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: the lineage names a border bit (bit 9) of the collision registers and does not say which pixels set it (rule STIC-R45); the printed 167 x 105 object grid against the 159 x 96 visible positions (SRC-gi-1980-catalog pdf 191) is the only geometry",
+      "conflict": "C87",
+      "resolving_evidence": "measurement: D10-VID-10 owner capture of the collision registers with a MOB at the plane edge and outside the plane",
+      "revisit_trigger": "a D10 capture of the collision registers with a MOB straddling the plane edge or a primary page that prints the border bit",
+      "decision": null,
+      "note": "Policy selector 0 or 1: with 1 a set pixel of an interacting MOB that lies inside the object grid and outside the published plane sets bit 9 of its collision register; with 0 bit 9 is never set. No oracle row depends on it: every rectangle of the collision scenario lies inside the plane."
+    },
+    "video.collision_offscreen": {
+      "value": 1,
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: the lineage does not say whether MOBs collide where they are not displayed (rule STIC-R45)",
+      "conflict": "C87",
+      "resolving_evidence": "measurement: D10-VID-10 owner capture of the collision registers with two MOBs overlapping outside the plane",
+      "revisit_trigger": "a D10 capture of two MOBs overlapping outside the published plane or a primary page that prints the rule",
+      "decision": null,
+      "note": "Policy selector 0 or 1: with 1 the MOB against MOB bits are evaluated over the whole object grid, including the positions left of, above and below the published plane; with 0 only over the published plane. No oracle row depends on it: no collision scene has a MOB outside the plane."
+    },
+    "video.collision_display_off": {
+      "value": 0,
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: the lineage does not say whether collision is evaluated in a frame whose display is off (rule STIC-R45)",
+      "conflict": "C87",
+      "resolving_evidence": "measurement: D10-VID-10 owner capture of the collision registers in a frame with the display off",
+      "revisit_trigger": "a D10 capture of the collision registers with the display disabled or a primary page that prints the rule",
+      "decision": null,
+      "note": "Policy selector 0 or 1: with 0 a frame with the display off sets no collision bit and draws no MOB; with 1 the MOBs of such a frame are evaluated for collision against each other and against the border (there is no card layer in that frame). No oracle row depends on it: frame 0 of the collision scenario is not displayed and no row reads a bit set there."
+    },
+    "video.border_ext_strip": {
+      "value": {"cols": 8, "rows": 8},
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: the lineage states the strip width of 8 plane positions for the left edge and draws, without printing the unit of the top strip, only the delay at its maximum (rule STIC-R49)",
+      "conflict": "C109",
+      "resolving_evidence": "measurement: D10-VID-13 owner capture of the top strip height and of a strip with a nonzero delay",
+      "revisit_trigger": "a D10 capture of a border-extension strip or a primary page that prints the strip units",
+      "decision": null,
+      "note": "The size of the two border-extension strips in plane positions: cols is the width of the left strip (extension bit 0) and rows the height of the top strip (extension bit 1). Each member is 1 to 15. The left strip width of 8 is the derivable core (rule STIC-R48); the top strip unit of 8 plane rows (a strip of 8 television lines would be 4 plane rows) is the pinned part (PD-8). Frames F-M4, F-M5 and F-M6 are derived under 8 by 8."
+    },
+    "video.border_follows_delay": {
+      "value": 0,
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: the lineage does not say whether the strips move with the delay (rule STIC-R49); its stated purpose, that the blank areas are never visible, holds for delays up to 7 only for a strip that is fixed to the display",
+      "conflict": "C109",
+      "resolving_evidence": "measurement: D10-VID-13 owner capture of the strips with a nonzero delay",
+      "revisit_trigger": "a D10 capture of a border-extension strip with a nonzero delay",
+      "decision": null,
+      "note": "Policy selector 0 or 1: with 0 the strips are fixed to the display (painted after the delay shift, over the exposed area); with 1 they are painted on the undelayed picture and move with it, so the exposed area is not covered. Frames F-M5 and F-M6 are derived under 0; their probes avoid the positions this selector moves."
+    },
+    "video.delay_exposed_fill": {
+      "value": 0,
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: the lineage says the blank area is filled with the background color as the display mode defines it, which names no single color index (rule STIC-R47)",
+      "conflict": "C110",
+      "resolving_evidence": "measurement: D10-VID-12 owner capture of the exposed area with the extension bits clear",
+      "revisit_trigger": "a D10 capture of the area exposed by a delay or a primary page that prints its content",
+      "decision": null,
+      "note": "Policy selector 0 or 1: the plane columns 0 to h - 1 and rows 0 to v - 1 that a delay of h columns and v rows exposes are published as the not-displayed value video.blank_value (0, the default, never a color) or as the border color index (1), unless an extension strip covers them. Frame F-M7 shows these positions as unknown."
+    },
+    "video.delay_mob_in_exposed": {
+      "value": 0,
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: the lineage does not say whether a MOB is drawn in the area a delay exposes (rule STIC-R47)",
+      "conflict": "C110",
+      "resolving_evidence": "measurement: D10-VID-12 owner capture of a MOB placed in the exposed area",
+      "revisit_trigger": "a D10 capture of a MOB in the area exposed by a delay",
+      "decision": null,
+      "note": "Policy selector 0 or 1: with 0 a MOB is not drawn in the exposed columns and rows, so only the part of the object field that lies inside the published plane is shifted into view; with 1 the pattern pixels of a MOB in the margin of the object field (the 8 positions left of and above the plane) are shifted into the exposed area and drawn there. No frame, assert or marker depends on the case."
+    },
     "video.blank_value": {
       "value": 255,
       "tag": "delegated-decision",

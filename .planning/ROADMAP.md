@@ -349,7 +349,28 @@ Plans:
   3. Snapshot, restore and run gives the same result as an uninterrupted run at mid-frame, mid-SDBD and mid-bus-steal points, and tests cover every item on the written hidden-state checklist.
   4. For each named workload, the benchmark runner reports throughput only after it has asserted the correct output digest. Throughput, end-to-end latency and CI time are reported separately.
   5. The milestone-close record shows main green, open PRs triaged, the rolling roadmap and lessons updated, and a release-readiness assessment (rights, package contents, qualification, authority) for the exact tested commit and artifact. Nothing is published without owner gate D9.
-**Plans**: TBD
+**Plans**: 8/21 plans executed
+- [x] 08-01-PLAN.md
+- [x] 08-02-PLAN.md
+- [x] 08-03-PLAN.md
+- [x] 08-04-PLAN.md
+- [x] 08-05-PLAN.md
+- [x] 08-06-PLAN.md
+- [x] 08-07-PLAN.md
+- [x] 08-08-PLAN.md
+- [ ] 08-09-PLAN.md
+- [ ] 08-10-PLAN.md
+- [ ] 08-11-PLAN.md
+- [ ] 08-12-PLAN.md
+- [ ] 08-13-PLAN.md
+- [ ] 08-14-PLAN.md
+- [ ] 08-15-PLAN.md
+- [ ] 08-16-PLAN.md
+- [ ] 08-17-PLAN.md
+- [ ] 08-18-PLAN.md
+- [ ] 08-19-PLAN.md
+- [ ] 08-20-PLAN.md
+- [ ] 08-21-PLAN.md
 
 ## Coverage
 
@@ -390,4 +411,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 5. Hand Controllers and PSG Sound | 12/12 | Complete    | 2026-11-12 |
 | 6. STIC Video First Pass | 14/14 | Complete    | 2026-11-12 |
 | 7. First Visible Original Scenario | 12/12 | Complete    | 2026-11-13 |
-| 8. STIC Completion, Save State and Performance Baselines | 0/TBD | Not started | - |
+| 8. STIC Completion, Save State and Performance Baselines | 8/21 | In Progress | - |

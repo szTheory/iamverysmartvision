@@ -344,3 +344,23 @@ scn2-user-content control golden-user-content-not-skip-ok SCN-02
 scn2-user-content control golden-skip-ok-without-user-content SCN-02
 # SCN-02 (plan 07-11, D-31, T-07-26 to T-07-28): the refusal, skip and identity cases of the owner-local helper (runner-process.owner-run.*) share one case judge; its self-control feeds that judge a fake helper that exits 0 where the real one must refuse, so a judge that accepted a vacuous refusal would fail the suite.
 scn2-owner-run mutant runner-process.judge.owner-run-refusal SCN-02
+
+# VID-05 (plan 08-08, D-10, D-43 retarget 2): the STIC completion (moving objects, collision registers, border extension and delay) is held by named mechanisms that each fail for their intended reason elsewhere in the gate. Eighteen lines over six gates. The two MOB faults (the order of two MOBs on one position, the two flip bits exchanged), the sticky-collision fault and the delay-direction fault; the four judges that each corrupt one expected value of a frame or of the truth table and require the comparison to notice; the six one-word program mutants of ivs-diag-stic-2 (judged in full on the Release build, static checks on the sanitized build, the same ids in both presets); and the four frame-grammar controls that keep an unknown cell, a MOB record and a hash out of evidence unless declared.
+vid05-mob-faults fault MOB_PRIORITY_SWAP VID-05
+vid05-mob-faults fault MOB_FLIP_SWAPPED VID-05
+vid05-collision-fault fault COLLISION_NOT_STICKY VID-05
+vid05-delay-fault fault DELAY_DIRECTION VID-05
+vid05-judges mutant video.judge.mob-frame-corrupt VID-05
+vid05-judges mutant video.judge.mob-role-swapped VID-05
+vid05-judges mutant video.judge.collision-truth-table-corrupt VID-05
+vid05-judges mutant video.judge.delay-frame-corrupt VID-05
+vid05-program-mutants mutant runner-process.mutant.STIC2-SELECTOR-COMPARE VID-05
+vid05-program-mutants mutant runner-process.mutant.STIC2-MOB-X-ZERO VID-05
+vid05-program-mutants mutant runner-process.mutant.STIC2-FLIP-BIT VID-05
+vid05-program-mutants mutant runner-process.mutant.STIC2-BORDER-EXT-DROPPED VID-05
+vid05-program-mutants mutant runner-process.mutant.STIC2-DELAY-VALUE VID-05
+vid05-program-mutants mutant runner-process.mutant.STIC2-COLLIDE-APART VID-05
+vid05-frame-grammar control video-frame-unknown-outside-region VID-05
+vid05-frame-grammar control video-frame-mob-count VID-05
+vid05-frame-grammar control video-frame-hash-none-without-unknown VID-05
+vid05-frame-grammar control video-frame-pair-unknown VID-05

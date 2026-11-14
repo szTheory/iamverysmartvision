@@ -34,6 +34,7 @@ set(IVS_CORE_SOURCES
   src/stic/stic_events.c
   src/stic/stic_frame.c
   src/stic/stic_lines.c
+  src/stic/stic_mob.c
   src/stic/stic_params.c
   src/stic/stic_regs.c
   src/stic/stic_state.c

@@ -1,0 +1,15 @@
+# Owning plan 08-02 (D-33): the six findings of sh tools/hygiene.sh --history that are accepted without a
+# history rewrite, one "<token> <10-character commit sha>" pair per line. Read by tools/release-readiness.sh.
+# Disposition: a delegated decision (accepted without a rewrite). The matched text of each is the shape of a
+# scratch-directory path, not a private path with identifying content. A rewrite is an owner-only hard stop and
+# would not purge the pull-request refs. The history baseline file (tools/check/hygiene-baseline.txt) is never
+# moved and no rule is widened. A finding that is not on this list, whatever its token, fails the release check
+# (a token alone never matches: the pair does). The owner may veto this disposition and choose a rewrite.
+# The sixth line names the reachable commit of the message finding; the Phase 4 and 7 records name another
+# commit with the same subject that is on no branch.
+hygiene-history-home-path eaa832e3d3
+hygiene-history-home-path 92c4dc7d37
+hygiene-history-home-path b78af4fb9f
+hygiene-history-home-path cccdfefdce
+hygiene-history-home-path 345c48dd7f
+hygiene-message-home-path 955c13fa02

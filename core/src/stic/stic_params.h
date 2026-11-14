@@ -115,6 +115,40 @@ typedef struct ivs_stic_params {
   uint32_t video_row_lines;
   uint32_t video_last_column_px;
   uint32_t video_blank_value;
+  /* Moving objects (plan 08-04, D-02, D-03; rules STIC-R37, R43, R50; stic_mob.c): the generator reads them from video.mob_field_origin,
+   * video.mob_line_sample and video.mob_prio_hides (fail closed). origin_x and origin_y (0..15) are the plane positions between the
+   * object field and the published plane: a MOB whose X coordinate is X puts its first pattern column on plane column X - origin_x
+   * (tier4-community, the pair 8 and 8). line_sample (0 or 1, below video_row_lines) is the television line of a plane row that the
+   * line-resolved model publishes: plane row y shows line video_row_lines x y + line_sample (default 0, the even line,
+   * unknown-default-chosen, C108). prio_hides (0 or 1) says what hides a MOB whose priority bit is set: 0 the card on pixels only, 1
+   * every card pixel (default 0, unknown-default-chosen, C107). */
+  uint32_t video_mob_origin_x;
+  uint32_t video_mob_origin_y;
+  uint32_t video_mob_line_sample;
+  uint32_t video_mob_prio_hides;
+  /* Collision (plan 08-05, D-02, rules STIC-R44 and R45; stic_mob.c, stic_frame.c): the four pinned selectors, each 0 or 1 (the generator reads
+   * video.collision_x0_interacts, video.collision_border_bit, video.collision_offscreen and video.collision_display_off and fails closed), all
+   * unknown-default-chosen (C87): x0_interacts says whether a MOB with X coordinate 0 takes part in collision (default 0, no); border_bit whether a set
+   * pixel of an interacting MOB inside the object grid and outside the plane sets bit 9 (default 1); offscreen whether MOB against MOB is evaluated
+   * over the whole object grid and not only over the plane (default 1); display_off whether a frame with the display off evaluates collision at all
+   * (default 0, no). */
+  uint32_t video_collision_x0_interacts;
+  uint32_t video_collision_border_bit;
+  uint32_t video_collision_offscreen;
+  uint32_t video_collision_display_off;
+  /* Border extension (plan 08-06, D-02, rules STIC-R48 and R49; stic_frame.c): the generator reads video.border_ext_strip {cols, rows} (each 1..15,
+   * unknown-default-chosen, C109): the width in plane columns of the left strip (extension register bit 0) and the height in plane rows of the top
+   * strip (bit 1). The left width of 8 is the derivable core; the top height (default 8, the pinned unit PD-8) is the pinned part. */
+  uint32_t video_border_ext_cols;
+  uint32_t video_border_ext_rows;
+  /* Delay (plan 08-06, D-02, rules STIC-R47 and R49; stic_frame.c): the generator reads video.border_follows_delay, video.delay_exposed_fill and
+   * video.delay_mob_in_exposed (each 0 or 1, unknown-default-chosen, C109 and C110): border_follows_delay says whether the strips move with the delay
+   * (default 0, fixed to the display); delay_exposed_fill what the columns and rows a delay exposes show (0 the not-displayed value video_blank_value,
+   * never a color; 1 the border color index); delay_mob_in_exposed whether the MOB pixels of the object-field margin that a delay shifts into the
+   * exposed area are drawn there (default 0, no). The delay range is the three-bit register width and is held by absence. */
+  uint32_t video_border_follows_delay;
+  uint32_t video_delay_exposed_fill;
+  uint32_t video_delay_mob_in_exposed;
   uint32_t video_display_off_fill;
 } ivs_stic_params;
 
