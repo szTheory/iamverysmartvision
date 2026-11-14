@@ -24,3 +24,5 @@ toy-inspect mutant toy-selftest VID-06
 # Phase 7 (plan 07-02): one toy line per Phase 7 requirement.
 toy-scene control toy-control SCN-01
 toy-owner control toy-control SCN-02
+# Phase 8 (plan 08-08): one toy line for the Phase 8 requirement VID-05.
+toy-vid05 fault GOOD_FAULT VID-05
