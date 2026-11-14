@@ -7,3 +7,6 @@ SNAPSHOT_LITTLE_ENDIAN state.literal.header-structure state. state.size.derived-
 # SNAPSHOT_PAD_SERIALIZED (core/src/machine/machine_digest.c): the state-only walk of the snapshot also writes the bytes of every PAD row, so the sections
 # grow by their reserved words and the lengths derived on paper (35, 2,761, 615, 51, 63, 79, 51) no longer hold.
 SNAPSHOT_PAD_SERIALIZED state.size.derived-and-constant state. state.literal.params-digest
+# SNAPSHOT_IMAGE_BYTES_EMBEDDED (core/src/machine/machine_digest.c): the state-only filter also admits the IMAGE rows, so the snapshot walk serializes the three
+# image arrays (the rights-bearing bytes of whatever was loaded) like any STATE row; the snapshot then holds recognisable 16-byte windows of an image.
+SNAPSHOT_IMAGE_BYTES_EMBEDDED state.save.no-image-bytes state. state.literal.params-digest

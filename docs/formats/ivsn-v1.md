@@ -217,3 +217,55 @@ The section itself starts at byte 612 with `49 56 53 44 01 00 01` (the text IVSD
 Plan 08-15 adds a seeded family of corruption cases to the gate and a libFuzzer target outside it.
 The cases are exhaustive over the 4,299 bytes: every truncation length, every single-byte flip (refused by the trailer or by its header field), every single-byte flip with the trailer recomputed (reaching the validators), every single-bit flip of the header, length and section table lies, version and flag values, the forms of the profile id, flipped parameter and slot identities, and each derived invariant violated one at a time.
 For every case the status is one of the documented set and matches the reason, a refusal leaves the whole instance byte-identical, an acceptance re-encodes canonically (with the eight digest fields of "Digests" as the only exception) and a second attempt gives the same result.
+
+## As built (plan 08-11)
+
+This section is appended after the sections above, which are the oracle of plan 08-09 and are not edited: it records what the writer of plan 08-11 produced when it was held to them.
+The writer is `core/src/machine/machine_snapshot.c`; the public header is `core/include/ivs/ivs_state.h` with `ivs_machine_snapshot_size` and `ivs_machine_snapshot_save`; the suite is `state` (`tests/state/`, ids in `data/expected/tests/state.ids`).
+Describe and restore are not part of this plan: the reasons 58 to 81 and the check order above are still [planned].
+
+**Figures against the oracle.** The code was written after the derivation and compared with it; no figure had to be changed.
+
+| Domain | Section | Oracle length | Writer length | Oracle offset | Writer offset |
+|---|---|---|---|---|---|
+| 1 | CPU | 35 | 35 | 612 | 612 |
+| 2 | MEM | 2,761 | 2,761 | 647 | 647 |
+| 4 | INSTANCE | 615 | 615 | 3,408 | 3,408 |
+| 16 | VIDEO | 51 | 51 | 4,023 | 4,023 |
+| 17 | AUDIO | 63 | 63 | 4,074 | 4,074 |
+| 18 | INPUT | 79 | 79 | 4,137 | 4,137 |
+| 19 | PSGLOG | 51 | 51 | 4,216 | 4,216 |
+
+The header is 612 bytes, the sections sum to 3,655, the trailer starts at 4,267 and the container is 4,299 bytes, for a reset instance, for an instance stepped 100, 3,333 and 9,999 units, for the second stand-in content, for an instance without a cartridge and after a run of several frames with a video buffer.
+The schema digest that the writer computes from the live descriptors of the table is `6cd4932f5ebf0b0fc2377555ca079d0313bb27a4df1a4fda9e15f37c6eb1d193`, the SHA-256 of `data/state/schema.literal.txt`: the hand derivation and the code agree on all 88 descriptor lines.
+The test `state.literal.schema-digest` compares the lines first and names the first differing line, because a disagreement is a finding about the derivation or the code and never a reason to change the literal.
+
+**Profile parameter digest.** Each of the four generators (`cmake/IvsMemmapTable.cmake`, `IvsPsgTable.cmake`, `IvsSticTable.cmake`, `IvsCtrlTable.cmake`) emits, after every byte it wrote before, one 32-byte constant per profile: the SHA-256 of the table text it wrote for that profile with the block comments removed, so no cite, tag or provenance string of the profile file is in it.
+`ivs_snapshot_params_digest` hashes the four ASCII bytes `IVSP`, the big-endian u16 1 and the four constants in the order memory map, PSG, STIC, controller (134 bytes).
+Its value for the registered profile is `89ad65073a3e357acbdd687f6a29016457864a1666b953e9327b7559dc0c0522`, pinned as `params-digest-sha256` in `data/expected/ivsn-literals.ids` as a repeatability pin of the current profile files, never as evidence that the tables are right.
+The value was first computed by a scratch script outside the tree from the generated includes, and the test also rebuilds the preimage from the specification alone.
+An edit of one cite string of the profile file changed none of the four constants, an edit of one table value changed exactly the constant of its table.
+
+**The report struct.** `ivs_snapshot_report` v1 is 360 bytes (`IVS_SNAPSHOT_REPORT_V1_SIZE`): struct_size at 0, reason 4, format_version 8, schema_version 12, total_bytes 16, byte_offset 24, section_index 32, kind 36, profile_id 40 (64 bytes), profile_params_sha256 104, composite_sha256 136, three image reports at 168.
+The size and save calls do not fill it; it is pinned now so that the layout exists before describe and restore use it.
+
+**The two calls.** The refusal order is the one above for the writer half: argument pointers (BAD_ARG), handle (BAD_HANDLE), buffer or output overlapping the instance (BAD_ARG), OFF (BAD_STATE), capacity (BUFFER_TOO_SMALL, which writes the exact size to `out_written` and never a byte of the buffer).
+Two cases are refused BAD_ARG in the first and third classes that the plan text did not list: an `out_written` that lies inside the `cap` bytes of the buffer (a successful call would overwrite the container with the length), and a capacity that reaches past the top of the address space (such a span names no real object, as for the buffers of the run call).
+Everything that can refuse is decided before the first byte of the buffer is written, so a refusal never changes the buffer.
+
+**The status band.** The section "Refusal reasons" above says that the status `IVS_E_STATE_MISMATCH` (-24) is added by plan 08-11. The writer has no refusal that needs it: the first call that can return it is restore, so it is added by plan 08-13 together with the narrowing of the reserved band, and the status count stays 14 here.
+
+**The stepped snapshot literal.** `stepped-snapshot-sha256` in `data/expected/ivsn-literals.ids` is the SHA-256 of the whole snapshot of a stand-in boot program stepped 5,000 units after the power-on reset (the PSG writes of the stand-in tone program, then the RAM loop of the first stand-in program, both from decles already derived in `tests/machine/machine_standin.c`).
+The state that the 5,000 units reach, asserted by the test, is: 43,338 CPU cycles and 173,352 master ticks (two frames completed, a cut in the third), the PSG registers and system RAM written, the audio chain moved and four write-log records.
+The value was produced by the writer, so it is a repeatability pin and nothing more; because the same value is compared in the dev build (sanitized, `-O1`) and in the release build (`-O2`), the snapshot bytes are identical across the two builds.
+
+**The named faults.**
+
+| Fault | Site | What the test that catches it shows |
+|---|---|---|
+| SNAPSHOT_LITTLE_ENDIAN | `machine_snapshot.c`, the integer writer of the header | `state.literal.header-structure` reads a header that is not the 24 bytes derived on paper, while every length stays right |
+| SNAPSHOT_PAD_SERIALIZED | `machine_digest.c`, the state-only walk | `state.size.derived-and-constant` finds sections longer than the literals by their reserved words (CPU 43 against 35, MEM 2,763 against 2,761, INSTANCE 635 against 615, AUDIO 67 against 63) |
+| SNAPSHOT_IMAGE_BYTES_EMBEDDED | `machine_digest.c`, the state-only filter | `state.save.no-image-bytes` finds 16-byte windows of the image arrays in the snapshot (the MEM section grows from 2,761 to 113,365 bytes) and state bytes that depend on the images |
+
+`state.save.no-image-bytes` also holds that each of the three slot SHA-256 values occurs exactly once in the snapshot, at its slot record, and that two instances that differ only in their image arrays give snapshots that differ only in the slot records, the composite and section digests and the trailer.
+`state.judge.header-literal-corrupt` applies the comparison of the structure test to damaged copies (one byte of each field, the length, the trailer) and requires each to be reported by the comparison that names the field.

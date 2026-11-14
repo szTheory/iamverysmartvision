@@ -14,3 +14,10 @@ state.size.derived-and-constant
 state.literal.header-structure
 state.literal.schema-digest
 state.save.refusal-ladder
+# Plan 08-11 Task 3: the rights property of the container (no window of an image array, each slot digest once, the state bytes independent of the images),
+# the canonical stream (the pinned SHA-256 of the stepped boot snapshot, repeatable and identical in both presets), read-only and fixed size, and the judge
+# (the structure comparison of state.literal.header-structure can fail).
+state.save.no-image-bytes
+state.save.canonical-stream-literal
+state.save.read-only-fixed-size
+state.judge.header-literal-corrupt

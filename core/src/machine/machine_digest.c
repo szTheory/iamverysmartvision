@@ -301,6 +301,7 @@ static void ivs_digest_domain(const struct ivs_machine *m, uint32_t domain, ivs_
   for (r = 0; r < IVS_DIGEST_FIELD_COUNT; r++) {
     const ivs_digest_field *f = &ivs_digest_fields[r];
     uint32_t e;
+    uint16_t cls;
     if (f->domain != domain) {
       continue;
     }
@@ -309,7 +310,13 @@ static void ivs_digest_domain(const struct ivs_machine *m, uint32_t domain, ivs_
      * so a section grows by its reserved words and the sizes derived on paper no longer hold. */
     if (k->state_only != 0u && f->kind == IVS_DIGEST_KIND_PAD) ivs_dsink_bytes(k, base + f->offset, (size_t)f->width * f->count);
 #endif
-    if (k->state_only != 0u && f->snap != IVS_SNAP_STATE) {
+    cls = f->snap;
+#ifdef IVS_FAULT_SNAPSHOT_IMAGE_BYTES_EMBEDDED
+    /* Named fault SNAPSHOT_IMAGE_BYTES_EMBEDDED (plan 08-11): the state-only filter also admits the IMAGE rows, so the snapshot walk
+     * serializes the three image arrays (rights-bearing bytes of whatever was loaded) like any STATE row. */
+    if (cls == IVS_SNAP_IMAGE) cls = IVS_SNAP_STATE;
+#endif
+    if (k->state_only != 0u && cls != IVS_SNAP_STATE) {
       continue; /* the snapshot walk: IMAGE, BOUND and PAD rows are never serialized */
     }
 #ifdef IVS_FAULT_DIGEST_SKIPS_RAM
