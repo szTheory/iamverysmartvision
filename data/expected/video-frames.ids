@@ -1,5 +1,5 @@
 # Hand-derived frame ids (plan 06-01, D-02): the exact set of data/video/frames/*.frame (ten: F-A1..F-A5, F-B1..F-B3 and the diagnostic frames F-D1 and F-D2;
-# plan 07-02 adds F-S1 to F-S6, the lamp frames of the program ivs-demo-lamp-tone-1).
+# plan 07-02 adds F-S1 to F-S6, the lamp frames of the program ivs-demo-lamp-tone-1; plan 08-03 adds F-M0 to F-M9, the frames of the program ivs-diag-stic-2).
 F-A1
 F-A2
 F-A3
@@ -16,3 +16,13 @@ F-S3
 F-S4
 F-S5
 F-S6
+F-M0
+F-M1
+F-M2
+F-M3
+F-M4
+F-M5
+F-M6
+F-M7
+F-M8
+F-M9
