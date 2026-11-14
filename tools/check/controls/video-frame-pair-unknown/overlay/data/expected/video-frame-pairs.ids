@@ -1,0 +1,4 @@
+# Toy frame pairs of the control video-frame-pair-unknown (plan 08-03, D-05): the known-good pair T-1 T-3 and a second pair that names T-4,
+# a frame with an unknown region, which cannot be paired (the planes of such a frame are not all evidence).
+T-1 T-3 152 88 7 8 9
+T-1 T-4 16 16 32 32 64
