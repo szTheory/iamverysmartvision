@@ -329,6 +329,19 @@ void ivs_input_init(ivs_machine_obs_input *in);
  * below this count (ivs_machine_profile_covered, machine.c). */
 uint32_t ivs_input_profile_count(void);
 
+/* Plan 08-11 (D-13): the 32-byte body digest of the controller line row of registry profile index (the SHA-256 of the table text
+ * cmake/IvsCtrlTable.cmake writes for that profile, comments removed: no cite, tag or provenance text is in it), or NULL for an
+ * index at or above the number of profiles the generated table holds. The pointer names constant data. */
+const uint8_t *ivs_ctrl_table_digest(uint32_t profile_index);
+
+/* The profile parameter digest of a snapshot (plan 08-11, D-13, docs/formats/ivsn-v1.md "Profile identity"): the SHA-256 over the
+ * four ASCII bytes IVSP, a big-endian u16 version 1 and the four body digests in the order memory map, PSG, STIC, controller
+ * (ivs_memmap_table_digest, ivs_psg_table_digest, ivs_stic_table_digest, ivs_ctrl_table_digest). IVS_OK, or IVS_E_BAD_ARG for a
+ * NULL out or an index for which one of the four tables has no row (nothing is written then). No table is hashed at run time:
+ * the four constants are generated, only the 134 bytes of the preimage are hashed here. It binds the numbers of the profile tables, never
+ * the text of a cite. machine_snapshot.c. */
+ivs_status ivs_snapshot_params_digest(uint32_t profile_index, uint8_t out[32]);
+
 /* Derives the pull-down masks of the PSG ports (mem.port_pulldown) from the words in force and the
  * generated control table (plan 05-05, D-03, D-04): the OR of the line masks of every set bit, for
  * each port below the profile's input.controllers, 0 for the others. The one function that sets the

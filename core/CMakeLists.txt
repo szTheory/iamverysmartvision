@@ -21,6 +21,7 @@ set(IVS_CORE_SOURCES
   src/machine/machine_inspect.c
   src/machine/machine_load.c
   src/machine/machine_run.c
+  src/machine/machine_snapshot.c
   src/memmap/memsys.c
   src/psg/psg_env.c
   src/psg/psg_mix.c

@@ -375,6 +375,37 @@ target_link_libraries(ivs_tests_input PRIVATE ivs_test_harness ivs_core ivs_core
 add_test(NAME input COMMAND ivs_tests_input)
 set_tests_properties(input PROPERTIES SKIP_RETURN_CODE 77)
 
+# Suite state (STA-01, STA-02, plans 08-11 to 08-15, D-16): the IVSN v1 snapshot container and the machine state it carries, in its own
+# executable so that its named faults rerun only it. Expected values come from the hand-derived literals of plan 08-09 only
+# (data/expected/ivsn-literals.ids and data/state/schema.literal.txt), turned into C includes by tests/ivsn-literals-inc.cmake so that no
+# number is retyped, never from the profile or the code under test. It reuses the machine suite's stand-in content
+# (machine/machine_standin.c). ONE source list feeds both the executable and ivs_fault_suite(state ...) below (the psg and stic
+# precedent). Its named faults are data/expected/faults/state.ids, whose sites sit in core/src/machine.
+set(IVS_IVSN_LITERALS_GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/ivsn-literals-inc.cmake")
+set(IVS_IVSN_LITERALS_IDS "${PROJECT_SOURCE_DIR}/data/expected/ivsn-literals.ids")
+set(IVS_IVSN_SCHEMA_LITERAL "${PROJECT_SOURCE_DIR}/data/state/schema.literal.txt")
+set(IVS_IVSN_LITERALS_INC "${CMAKE_CURRENT_BINARY_DIR}/ivsn_literals.inc")
+set(IVS_IVSN_SCHEMA_INC "${CMAKE_CURRENT_BINARY_DIR}/ivsn_schema.inc")
+add_custom_command(
+  OUTPUT "${IVS_IVSN_LITERALS_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DIN=${IVS_IVSN_LITERALS_IDS}" "-DOUT=${IVS_IVSN_LITERALS_INC}" -P "${IVS_IVSN_LITERALS_GENERATOR}"
+  DEPENDS "${IVS_IVSN_LITERALS_IDS}" "${IVS_IVSN_LITERALS_GENERATOR}"
+  COMMENT "Generating the IVSN literal include"
+  VERBATIM)
+add_custom_command(
+  OUTPUT "${IVS_IVSN_SCHEMA_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DIN=${IVS_IVSN_SCHEMA_LITERAL}" "-DOUT=${IVS_IVSN_SCHEMA_INC}" -DFORM=schema -P "${IVS_IVSN_LITERALS_GENERATOR}"
+  DEPENDS "${IVS_IVSN_SCHEMA_LITERAL}" "${IVS_IVSN_LITERALS_GENERATOR}"
+  COMMENT "Generating the IVSN schema literal include"
+  VERBATIM)
+set(IVS_STATE_TEST_SOURCES state/state_main.c state/state_literal.c machine/machine_standin.c)
+add_executable(ivs_tests_state ${IVS_STATE_TEST_SOURCES} "${IVS_IVSN_LITERALS_INC}" "${IVS_IVSN_SCHEMA_INC}")
+target_include_directories(ivs_tests_state PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/state"
+  "${CMAKE_CURRENT_BINARY_DIR}")
+target_link_libraries(ivs_tests_state PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
+add_test(NAME state COMMAND ivs_tests_state)
+set_tests_properties(state PROPERTIES SKIP_RETURN_CODE 77)
+
 # Suite cpu-fuzz (D-12, plan 02-15): the seeded robustness run; dev links the sanitizers.
 add_executable(ivs_tests_cpu_fuzz cpu/cpu_fuzz.c)
 target_link_libraries(ivs_tests_cpu_fuzz PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)

@@ -68,6 +68,14 @@ const ivs_profile_desc *ivs_profile_get(uint32_t index)
   return &ivs_mm_profiles[index];
 }
 
+const uint8_t *ivs_memmap_table_digest(uint32_t profile_index)
+{
+  if (profile_index >= IVS_MM_PROFILE_COUNT) {
+    return NULL;
+  }
+  return ivs_mm_body_digest[profile_index];
+}
+
 int ivs_memsys_init(ivs_memsys *m, uint32_t profile)
 {
   /* A profile without a row in the PSG parameter table is refused here, so every access to the PSG

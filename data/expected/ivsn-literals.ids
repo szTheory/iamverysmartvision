@@ -38,3 +38,12 @@ trailer-offset 4267
 # header-prefix-hex: the first 24 header bytes, written by hand: the magic 89 49 56 53 4E 0D 0A 1A, format version 0001, flags 0000, total_bytes 000010CB (4299),
 # schema version 00000001 and section count 00000007.
 header-prefix-hex 894956534E0D0A1A00010000000010CB0000000100000007
+#
+# Plan 08-11 Task 1 (appended; every line above is frozen oracle data of plan 08-09 and is not edited): the profile parameter digest of the registered
+# profile, the SHA-256 over the four ASCII bytes IVSP, a big-endian u16 1 and the four table body digests in the order memory map, PSG, STIC, controller
+# (docs/formats/ivsn-v1.md, "Profile identity"). Each body digest is the SHA-256 of the text that the generator of that table writes for the profile, with
+# its comments removed: a cite, tag or provenance string of a profile file is in none of them. Repeatability only: this is a repeatability pin of the
+# current profile files, never evidence that the tables are right (a changed table value changes it on purpose, a changed cite string changes nothing).
+# The value was first computed by a scratch script outside the tree from the generated includes; the test state.literal.params-digest holds the core to
+# it and to a second rebuild of the preimage.
+params-digest-sha256 89ad65073a3e357acbdd687f6a29016457864a1666b953e9327b7559dc0c0522

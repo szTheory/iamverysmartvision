@@ -189,6 +189,12 @@ typedef struct ivs_memsys_desc {
 uint32_t ivs_profile_count(void);
 const ivs_profile_desc *ivs_profile_get(uint32_t index);
 
+/* Plan 08-11 (D-13): the 32-byte body digest of the memory-map tables of registry profile index (the SHA-256 of the table text
+ * cmake/IvsMemmapTable.cmake writes for that profile, comments removed: no cite, tag or provenance text is in it), or NULL for an
+ * index at or above the profile count. The pointer names constant data; the digest is a constant of the build, never computed at
+ * run time. The snapshot parameter digest (ivs_snapshot_params_digest, machine.h) hashes it. */
+const uint8_t *ivs_memmap_table_digest(uint32_t profile_index);
+
 /* Zero-fills m, selects the profile and opens every gate. BAD_ARG for NULL or a bad index. */
 int ivs_memsys_init(ivs_memsys *m, uint32_t profile);
 

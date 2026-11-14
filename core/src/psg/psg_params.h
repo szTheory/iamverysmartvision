@@ -89,4 +89,10 @@ uint32_t ivs_psg_params_count(void);
  * quietly absent. */
 const ivs_psg_params *ivs_psg_params_get(uint32_t profile);
 
+/* Plan 08-11 (D-13): the 32-byte body digest of the PSG parameter row of registry profile index (the SHA-256 of the table text
+ * cmake/IvsPsgTable.cmake writes for that profile, comments removed: no cite, tag or provenance text is in it), or NULL for an
+ * index at or above the number of profiles the generated table holds. The pointer names constant data. The snapshot parameter
+ * digest (ivs_snapshot_params_digest, machine.h) hashes it. */
+const uint8_t *ivs_psg_table_digest(uint32_t profile_index);
+
 #endif

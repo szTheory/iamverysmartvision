@@ -1,0 +1,9 @@
+# Suite state (STA-01, STA-02, plans 08-11 to 08-15, D-16, D-38): the IVSN v1 snapshot container and the machine state it carries, held to the
+# hand-derived literals of plan 08-09 (data/expected/ivsn-literals.ids, data/state/schema.literal.txt, docs/formats/ivsn-v1.md) and never to the
+# code under test. Plans 08-11 to 08-15 add their ids here, each in the commit that registers the test (and, where the id is named by the hidden-state
+# checklist, deletes its line of data/state/tests-pending.ids in the same commit). Family prefixes: state.size. (the size and its derivation),
+# state.literal. (bytes and digests against the literals), state.save. (the writer: refusals, rights, canonical form), state.read. (the instance-free
+# reader), state.restore. (restore), state.witness. (the hard-point witnesses), state.cut. (the cut round trips), state.sweep. (the row sweeps),
+# state.fuzz. (the seeded corruption family) and state.judge. (self-controls: the comparison of a family can fail).
+# Plan 08-11 Task 1: the profile parameter digest against its literal and an independent rebuild of its preimage.
+state.literal.params-digest

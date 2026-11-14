@@ -51,6 +51,14 @@ uint32_t ivs_input_profile_count(void)
 #endif
 }
 
+const uint8_t *ivs_ctrl_table_digest(uint32_t profile_index)
+{
+  if (profile_index >= IVS_CTRL_PROFILE_COUNT) {
+    return NULL;
+  }
+  return ivs_ctrl_body_digest[profile_index];
+}
+
 /* The pull-down mask of one controller word: the OR of the line masks of every set bit (D-03). The
  * word is read as 31 independent switches; the core never resolves a combination. */
 static uint32_t ivs_input_pins(uint32_t profile, uint32_t word)
