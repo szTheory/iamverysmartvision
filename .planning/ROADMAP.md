@@ -47,7 +47,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 4: Headless Runner and Installed Consumer (Slice 0)** - An original diagnostic runs end to end through the runner and a relocated installed consumer, with deterministic digests and a CI gate that mirrors the local command (completed 2026-11-11)
 - [x] **Phase 5: Hand Controllers and PSG Sound** - Both controllers as multi-signal machine input at explicit time boundaries; PSG raw audio and a register-write log (completed 2026-11-12)
 - [x] **Phase 6: STIC Video First Pass** - Access windows, VBLANK/BUSRQ timing, raw index framebuffer, FG/BG and Color Stack cards, and side-effect-free inspection (completed 2026-11-12; all claims provisional)
-- [ ] **Phase 7: First Visible Original Scenario** - A rights-clear original program responds to controller input with video and sound through the installed consumer in CI
+- [x] **Phase 7: First Visible Original Scenario** - A rights-clear original program responds to controller input with video and sound through the installed consumer in CI (completed 2026-11-13; both claims provisional, D11 open and not performed)
 - [ ] **Phase 8: STIC Completion, Save State and Performance Baselines** - Remaining STIC features, canonical snapshots, correctness-asserted benchmarks and the milestone-close record
 
 ## Decision Gate Timeline
@@ -294,7 +294,7 @@ Plans:
   2. A scripted input sequence changes guest state, and the run asserts a guest-state progress predicate (a register or memory marker), not a title screen or hash alone. The tier is playable guest progress, for this original program only.
   3. The same run shows the input changing raw video (the index framebuffer differs in the expected region) and raw audio (the PSG write log and samples change).
   4. The owner-local route for user-supplied EXEC/GROM is documented with digest identity checks, labelled non-redistributable and kept out of CI. Any job that refers to it prints a visible SKIPPED line, and the inventory gate counts it.
-**Plans**: 11/12 plans executed (sequential waves 1-12; amendments A-01..A-21 in 07-CONTEXT.md)
+**Plans**: 12/12 plans complete (sequential waves 1-12; amendments A-01..A-21 in 07-CONTEXT.md)
 
 Plans:
 **Wave 1**
@@ -331,7 +331,7 @@ Plans:
 - [x] 07-11-PLAN.md — W6b: runner refuses derived audio/log outputs for user content, owner-run helper with tested refusals
 
 **Wave 12** *(blocked on Wave 11 completion)*
-- [ ] 07-12-PLAN.md — W7 close-out: claims CL-0023/CL-0024, play-word tripwire, README/PROJECT/REL-01 fixes, D4 and D11 register, verification record, phase7-close
+- [x] 07-12-PLAN.md — W7 close-out: claims CL-0023/CL-0024, play-word tripwire, README/PROJECT/REL-01 fixes, D4 and D11 register, verification record, phase7-close
 
 **Cross-cutting constraints:** <!-- gsd:generated -->
 - End state: `steps=36/36 controls=354/354 faults=222/222 goldens=15 tests-skipped=2 tests-missing=0` under sh, dash and the container gate
@@ -389,5 +389,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 4. Headless Runner and Installed Consumer (Slice 0) | 27/25 | Complete    | 2026-11-11 |
 | 5. Hand Controllers and PSG Sound | 12/12 | Complete    | 2026-11-12 |
 | 6. STIC Video First Pass | 14/14 | Complete    | 2026-11-12 |
-| 7. First Visible Original Scenario | 11/12 | In Progress | - |
+| 7. First Visible Original Scenario | 12/12 | Complete    | 2026-11-13 |
 | 8. STIC Completion, Save State and Performance Baselines | 0/TBD | Not started | - |

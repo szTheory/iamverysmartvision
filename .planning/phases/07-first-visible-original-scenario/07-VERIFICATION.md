@@ -2,7 +2,7 @@
 phase: 07-first-visible-original-scenario
 recorded: 2026-11-13
 recorded_by: executor of plan 07-12 (not an independent verifier run)
-status: automated-evidence-recorded
+status: passed
 requirements: [SCN-01, SCN-02]
 ---
 
@@ -10,7 +10,7 @@ requirements: [SCN-01, SCN-02]
 
 **Phase goal:** An original, rights-clear program visibly responds to controller input with video and sound, run in CI through the installed consumer. The result is stated as playable guest progress, for this original program only, and nothing stronger.
 **Recorded:** 2026-11-13, by the executor of plan 07-12 from the gate output of the final tree, the inventories and `git log`. It is the first version of the record; a verifier run may replace its figures with its own, as in `06-VERIFICATION.md`. Every command named here was run by the executor, and the executor is the same model family that wrote the derivation, the program and the core.
-**Standing of the evidence:** the two Phase 7 claims, CL-0023 (tier `playable-guest-progress`) and CL-0024 (tier `installed-host-behavior`), are `provisional` by the weakest-field rule (the controller byte table, the STIC rules and the PSG rules are tier 4 or inference fields), and no claim uses the `measured-hardware` tier (`data/claims.json`: 24 claims, 23 provisional, the one established claim is the Phase 1 CL-0002). The status line above means the automated evidence exists and was run; it does not mean that any console behaves as modelled, that a person looked at the picture or listened to the sound, or that any real EXEC or GROM image was run.
+**Standing of the evidence:** the two Phase 7 claims, CL-0023 (tier `playable-guest-progress`) and CL-0024 (tier `installed-host-behavior`), are `provisional` by the weakest-field rule (the controller byte table, the STIC rules and the PSG rules are tier 4 or inference fields), and no claim uses the `measured-hardware` tier (`data/claims.json`: 24 claims, 23 provisional, the one established claim is the Phase 1 CL-0002). `status: passed` means the automated evidence exists, was run on the final tree and holds, with the handed-off items and the accepted caveats below; it does not mean that any console behaves as modelled, that a person looked at the picture or listened to the sound, or that any real EXEC or GROM image was run.
 **Human gate:** none blocks the phase goal. The goal and the four success criteria ask for documented, tested, tier-tagged behaviour of an original program, not for measured hardware or an owner-local EXEC run; the owner items in table 2 are non-blocking missing evidence (D10, D11), as in the Phase 4 to 6 records.
 
 ## Gate and suite results (final tree of plan 07-12)

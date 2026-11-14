@@ -3,18 +3,18 @@ gsd_state_version: "1.0"
 current_phase: 7
 current_phase_name: First Visible Original Scenario
 current_plan: 12
-status: executing
-stopped_at: Completed 07-11-PLAN.md
-last_updated: "2026-11-14T01:26:18.690Z"
+status: verifying
+stopped_at: Completed 07-12-PLAN.md
+last_updated: "2026-11-14T02:23:41.694Z"
 last_activity: 2026-11-13
 last_activity_desc: Phase 7 execution started
-state_head: a147b63e452e0cf8afd5b3d5fb550817af165228
+state_head: e503f608402144a78d9bf1a1fc27ac6f83d3d070
 progress:
   total_phases: 8
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 109
-  completed_plans: 108
-  percent: 75
+  completed_plans: 109
+  percent: 88
 ---
 
 # Project State
@@ -31,10 +31,10 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 Phase: 7 (First Visible Original Scenario) — EXECUTING
 Current Plan: 12
 Total Plans in Phase: 12
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-11-13 — Phase 7 execution started
 
-Progress: [████████░░] 75%
+Progress: [█████████░] 88%
 
 ## Performance Metrics
 
@@ -167,6 +167,7 @@ Progress: [████████░░] 75%
 | Phase 7 P09 | 35min | 3 tasks | 7 files |
 | Phase 7 P10 | 32min | 4 tasks | 34 files |
 | Phase 7 P11 | 38min | 3 tasks | 7 files |
+| Phase 7 P12 | 58min | 3 tasks | 19 files |
 
 ## Accumulated Context
 
@@ -399,6 +400,9 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 7]: Phase 7 plan 10: the golden step ties user content to skip-ok in both directions (golden-user-content-not-skip-ok, golden-skip-ok-without-user-content, controls 354 to 356); SCN-02 is an accepted and covered important-gates requirement; FX-owner-exec and FX-owner-grom are uncommitted redistributable-no manifests (manifests 8 to 10, effective-no 1 to 3); no digest and no image enter the tree, D11 not performed
 - [Phase 7]: Phase 7 plan 11: ivs-run refuses --audio-raw, --psg-log-out and --audio-wav for a scenario with user content (exit 14, one line, no file, before any storage), so all six derived outputs are refused; tools/owner-run.sh (80 lines) refuses CI, an in-tree path outside refs/, a wrong size and a missing or malformed lock (exit 2), prints the SKIPPED line with exit 77 when no image exists, and hands the runner a temp copy of the template with expect-sha256 lines from the owner's lock (--record writes the lock and refuses to replace one)
 - [Phase 7]: Phase 7 plan 11: nine runner-process.owner-run.* cases and the self-control runner-process.judge.owner-run-refusal test every helper refusal, the skip and the identity mismatch on a copy of the helper in a scratch root outside the work tree with zero-filled files only (tests-expected 4598 to 4624, gates 77, lines 264); SCN-02 stays Pending for the 07-12 close-out; cost about 3.0 local cpu-s, projection at most 8.25 under the 8.3 trigger, lever (2) still queued; D11 not performed
+- [Phase 7]: Phase 7 plan 12: CL-0023 (playable-guest-progress) and CL-0024 (installed-host-behavior) are provisional by the weakest-field rule, the only allowed wording is 'playable guest progress, for this original program only', and plays and playable are text tripwire claim words (the tier identifier is exempt; control text-untagged-playable, controls 356 to 357)
+- [Phase 7]: Phase 7 plan 12: SCN-01 and SCN-02 close on 07-VERIFICATION.md (V1 to V20 automated, H7-1 to H7-5 handed off); SCN-02 is complete on documented-route terms only, D11 stays open and not performed, no claim and no tier; README and packaging state the source-only release posture; D4 records ivs_asm
+- [Phase 7]: Phase 7 plan 12: phase7-close: no-lever (last-five hosted median r 7.78 against budget 7.8 and trigger 8.3; gate 146 s and cpu median 335 fire on the slowest build_s of the file, a runner-speed event); final gates sh, dash and container PASS with controls=357/357 faults=222/222 claims=24 provisional=23 tests-skipped=4
 
 ### Pending Todos
 
@@ -431,6 +435,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-14T01:26:17.758Z
-Stopped at: Completed 07-11-PLAN.md
+Last session: 2026-11-14T02:23:40.946Z
+Stopped at: Completed 07-12-PLAN.md
 Resume file: None
