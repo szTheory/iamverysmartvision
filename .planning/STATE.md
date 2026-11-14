@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 current_phase: 8
 current_phase_name: STIC Completion, Save State and Performance Baselines
-current_plan: 2
+current_plan: 3
 status: executing
-stopped_at: Completed 08-01-PLAN.md
-last_updated: "2026-11-14T06:44:21.617Z"
+stopped_at: Completed 08-02-PLAN.md
+last_updated: "2026-11-14T07:18:34.245Z"
 last_activity: 2026-11-14
 last_activity_desc: Phase 8 execution started
-state_head: 9f0e4d20ce88ffb7331801bacf44893495cb292a
+state_head: bc7f33c220b88ddc324229d27673e23ebea9e619
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 130
-  completed_plans: 110
+  completed_plans: 111
   percent: 85
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 8 (STIC Completion, Save State and Performance Baselines) — EXECUTING
-Current Plan: 2
+Current Plan: 3
 Total Plans in Phase: 21
 Status: Ready to execute
 Last activity: 2026-11-14 — Phase 8 execution started
@@ -169,6 +169,7 @@ Progress: [█████████░] 85%
 | Phase 7 P11 | 38min | 3 tasks | 7 files |
 | Phase 7 P12 | 58min | 3 tasks | 19 files |
 | Phase 8 P01 | about 55 min measured, plus reading | 3 tasks | 42 files |
+| Phase 8 P02 | 31min | 3 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -408,6 +409,10 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 8]: 08-01: the release asset check is content-based: archive members are judged (prefix, path, extra, missing, binary extension from binary-ext.txt), never the outer name, and the binary rule does not depend on the list (a listed .rom member is still refused)
 - [Phase 8]: 08-01: release.yml is held by a per-file ci-parity exemption table (strict tag glob, job-level contents write only there, two run lines, GITHUB_TOKEN only, timeout 15) with nine new controls; tools/release.sh refuses --publish outside GitHub Actions and with --no-gate, and gh is reached only after every check
 - [Phase 8]: 08-01: phase8-start: no-lever (last-five median r 7.78 against line 8.3; projection about 7.84 with the measured additions: release-assets costs 0.33 local cpu-s per run and runs three times in a gate); the GNU tar path of release.sh is rehearsed only in an emulated Ubuntu container, the Darwin install archive is not byte-reproducible (ranlib restamp)
+- [Phase 8]: 08-02: version policy is three separate numbers; tag == IVS_API_VERSION macros == installed PACKAGE_VERSION is checked by a mode of tools/check/release-assets.sh that the release-assets gate step proves able to fail
+- [Phase 8]: 08-02: history findings are pinned by (token, short sha) pair in data/expected/hygiene-history-pinned.ids; a new pair fails the release check, no pass verdict is printed, the baseline file is untouched
+- [Phase 8]: 08-02: any commit that changes data/claims.json regenerates the CHANGELOG claim table in the same commit; --release and --publish halt on release-changelog-section-missing until plans 08-20 and 08-21 write the 0.1.0 section
+- [Phase 8]: 08-02: the release rehearsal accepts one named Darwin host effect (ranlib restamp of the first member header of lib/libivs_core.a) and requires byte-equal install archives on Linux
 
 ### Pending Todos
 
@@ -440,6 +445,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-14T06:44:21.231Z
-Stopped at: Completed 08-01-PLAN.md
+Last session: 2026-11-14T07:18:33.884Z
+Stopped at: Completed 08-02-PLAN.md
 Resume file: None
