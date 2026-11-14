@@ -1155,3 +1155,46 @@ checkpointB-07: lever-required
 ### Checkpoint C-B resolution (orchestrator, hosted row 43528527276)
 
 The recorded `lever-required` came from the branch of the rule that applies when no hosted row contains plan 07-08's commits (projection 8.45). The orchestrator pushed the phase branch and opened a draft pull request, so the other branch of the same rule now applies. Run 43528527276 (head 785dce0, the head of plan 07-08, so it contains plans 07-01 to 07-08 including the lever of 07-01 and all 25 W4 case pairs): gate 91 s, cpu 286, build 37 s, test 54 s, `r = 286 / 37 = 7.73`. Last five hosted rows (43359195974, 43365038335, 43369159094, 43373151931, 43528527276): `r` 9.02, 7.53, 8.02, 8.17, 7.73, median **8.02**, which does not exceed 8.3; the median is the projection when a row already includes the plan, so the answer by the rule is no lever. Raw: gate 91 s and cpu 286 are under the re-baselined budgets (90 s median / 300 cpu) apart from one second. Reading: the measured hosted cost of the 25 case pairs is far below the 17.5 cpu-s of the S-4 upper unit cost; it is one row, so the trend is not settled. Decision (delegated authority): lever (2) is not run now and stays queued; plan 07-09 (checkpoint C-C) re-reads the last five and runs the lever before any further case if the median exceeds 8.3. The `checkpointB-07: lever-required` line above is left as the executor wrote it, as the record of the rule's first answer.
+
+## 2026-11-13 Phase 7 checkpoint C-C (plan 07-09)
+
+Nothing here calls `gh` or `tools/ci-record.sh`; `.planning/ci-runs.tsv` is orchestrator-owned and untouched (55 lines; the newest row is run 43528527276, head 785dce0, the head of plan 07-08). Local figures are laptop figures (18 cores, Apple clang 21, other work running, 1-minute load 7 to 10 during the timings below); container figures are Ubuntu 24.04 with cmake 3.28.3 and gcc 13.3.0, emulated amd64 on an arm64 host; neither is a hosted figure. Counts at the end of this plan: `steps=36/36 controls=354/354 faults=222/222 goldens=15 pkg-selftest=17/17 tests-expected=4596 tests-executed=4594 tests-skipped=2 tests-missing=0`.
+
+### What this plan added to the gate
+
+One more replay in the installed consumer (the original program run through the installed headers: three machine runs of 806,568 ticks per consumer start, 13 frames each) and two in-step self-tests of the `pkg-install` step (each a `grep` and an `awk` over the consumer output). No process case, control, fault or test id: `tests-expected` stays 4596, `controls` 354, `faults` 222. The consumer source grew from 1,074 to 1,767 lines and its output from 76 to 135 lines; it is compiled once per gate run with the strict flags.
+
+### Local time of the `pkg-install` step
+
+The step in isolation (`ROOT` and `CHECK_DIR` set, the release tree built), three runs on the tree before this plan and six on the tree after it (real, then user plus sys cpu-s):
+
+| Measure | Before (tree of 290f057) | After (tree of 5ee7d13) |
+|---------|--------------------------|--------------------------|
+| real s | 2.40, 2.41, 2.23 (median 2.40) | 2.33, 2.24, 2.21 and, later at a higher load, 2.55, 2.53, 2.48 (median 2.41) |
+| user plus sys cpu-s | 2.40, 2.40, 2.28 (median 2.40) | 2.41, 2.33, 2.30 and 2.60, 2.61, 2.54 (median 2.50) |
+| `step-time pkg-install` in the local gate log | not kept | 2 s (wall, whole seconds) |
+| container `step-time pkg-install` (wall) | not recorded (the container log of plan 07-08 was overwritten by the first container run of this plan) | 9 s after the tracer task, 11 s after the second task, 14 s on the final tree (two local gates ran at the same time) |
+
+Reading: the step is dominated by the install, the relocation, the consumer's configure and build and the 17 self-tests (about 2.3 s); the replay and its 59 new output lines add a few hundredths of a second of machine time. The difference between the sessions (the second group of after runs at load 7.6 against 6.9) is as large as the whole difference between the trees, so the honest bound is a rise of at most 0.33 cpu-s (largest after run 2.61 against smallest before run 2.28), probably under 0.1. The container wall figures include process start and package unpacking under emulation and move by seconds between runs.
+
+### Hosted rows and the rule (D-34)
+
+The last five successful hosted rows of `.planning/ci-runs.tsv`, recomputed from the file with awk:
+
+| Run | `cpu_s` | `build_s` | `r = cpu_s / build_s` |
+|-----|---------|-----------|------------------------|
+| 43359195974 | 433 | 48 | 9.02 |
+| 43365038335 | 271 | 36 | 7.53 |
+| 43369159094 | 393 | 49 | 8.02 |
+| 43373151931 | 335 | 41 | 8.17 |
+| 43528527276 | 286 | 37 | 7.73 |
+
+Median `r` **8.02** (8.0204), budget 7.8, revisit line 8.3. The rule is that of C-B: `lever-required` when the last-five median exceeds 8.3, or when the projection exceeds 8.3; the projection is that median if at least one of the five rows already includes this plan's commits, else that median plus this plan's measured hosted addition divided by the `build_s` of the newest row. The newest row, 43528527276, includes plans 07-01 to 07-08 (its head 785dce0 is an ancestor of this plan's commits; none of this plan's commits is an ancestor of it, checked with `git merge-base --is-ancestor`), so the second branch applies. This plan's addition, at the bound above: at most 0.33 local cpu-s, times 1.675 (the hosted `cpu_s` 286 of the newest row over the 170.8 local gate cpu-s of this plan's final tree, `gate-cpu user=92.17 sys=78.59`) is at most 0.55 hosted cpu-s, divided by 37 is at most 0.015. Projection **8.04** (8.0353), under 8.3. The median does not exceed 8.3 and the projection does not exceed 8.3, so the answer is no lever.
+
+Forward note (information, not an input of the line): the SCN-02 plans still to come add process cases that do not exist yet, 1 in plan 07-10 (the template scenario) and 13 in plan 07-11 (3 refusals, 9 helper cases, 1 judge self-control), 14 case-pairs in all. At the S-4 upper unit cost (0.7 hosted cpu-s each) they would add 14 x 0.7 / 37 = 0.26 and bring the projection to about 8.30, on the line. That unit cost is a bound and not an expectation: the wave it was last applied to, the 25 case-pairs of plans 07-07 and 07-08 (17.5 hosted cpu-s at that cost, +0.43 in `r`), is in the row 43528527276 and that row shows `r` 7.73, below the previous four; one row does not settle the trend (the five rows spread from 7.53 to 9.02). Plan 07-12 measures the SCN-02 share and re-reads the last five after the push of plans 07-10 and 07-11; the stop rule stands (a median above 8.3 means a lever plan from the orchestrator and no further test case until it lands).
+
+### Decision
+
+No lever now. Lever (2) of the pre-committed order (mutant inventories on the release preset only) stays queued behind the stop rule, with lever (3) (fold `demo-lamp-tone-swap` or `-shift` into repeat variants of one mutant) behind it; nothing was dropped and no check was weakened to save time.
+
+checkpointC-07: no-lever

@@ -336,3 +336,6 @@ scn-mutants mutant runner-process.mutant.SCN-NO-EIS SCN-01
 scn-mutants mutant runner-process.mutant.SCN-HLT-IDLE SCN-01
 scn-mutants mutant runner-process.mutant.SCN-STUB-JD-AS-J SCN-01
 scn-mutants mutant runner-process.mutant.SCN-ISR-TIE SCN-01
+# SCN-01 (plan 07-09, D-26, T-07-21): the installed-consumer replay of the pass scenario. The consumer's scn.digest lines and observed domains are compared with the runner golden of demo-lamp-tone-pass; a consumer that never read the audio samples (a dropped scn.digest.audio line) and a consumer whose video digest differs from the runner's (a changed scn.digest.video nibble) are each refused by the pkg-install step.
+pkg-install mutant scn-domain-missing SCN-01
+pkg-install mutant scn-digest-drift SCN-01
