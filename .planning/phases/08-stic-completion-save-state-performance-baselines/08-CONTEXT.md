@@ -96,3 +96,13 @@ No rights-bearing bytes; no "Intellivision" in names; no absolute home or scratc
 - Optimization of SHA-256 frame hashing (evidence design; revisit only with a measured need).
 - D10, D11, history rewrite, name clearance: owner items.
 </deferred>
+
+## Planning resolutions (orchestrator, after research)
+
+- **D-38:** A new `state` gate step (steps 36 to 37) holds the checklist and hard-point verification; no existing checker is stretched.
+- **D-39:** `bench-lamp-snapshot` is a row in a `workloads.tsv` (workload table read by `ivs-bench`), not a runner scenario. The other bench workloads stay ordinary scenarios (D-23).
+- **D-40:** "Release-only" sweeps do not become `skip-ok` ids (that would raise `tests-skipped`). The point set shrinks inside one test id on the dev/sanitizer preset and runs fully on release.
+- **D-41:** Restore verifies the SHA-256 trailer and structure before commit; per-section digests stay a test oracle (composite digest compared after restore).
+- **D-42:** The `git.create_tag` change in `.planning/config.json` is an orchestrator-only commit. Executors never stage `.planning/config.json` or `.planning/state.json`.
+- **D-43:** Seven gate checks break at Phase 8 commits and each gets its same-commit retarget (api-effects status band, important-gates requirement list, video checker grammar for `-` cells and MOB rule ids, ci-parity per-file branch for `release.yml`, text.sh scope for `CHANGELOG.md`, c-build tools/bench inventory, pkg-install header set); see `08-RESEARCH.md` section on registration ledger.
+- **D-44:** Plan numbering: 08-01..08-02 release machinery (D1), 08-03..08-08 STIC (A), 08-09..08-15 state (B), optional 08-16 file options, then benchmarks (C), then stale-text sweep and close-out (D). Cost checkpoints at the end of A, mid B and the end of B.
