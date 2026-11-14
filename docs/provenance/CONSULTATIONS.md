@@ -16,13 +16,12 @@ Add one row for each reading, with the value re-derived from a tier 1 to 3 sourc
 ## Statements
 
 GPL emulator source was never opened for implementation.
-The second row above is the only reading of files from the GPL fork.
-It was for licence determination only.
+The second row above is the only reading of files from the GPL fork for licence determination.
+The three rows of 2026-11-14 are readings of documentation text files of the fork and of one public document, for semantics that no tier 1 to 3 page prints; no source file was opened.
 No GPL emulator source was opened in this phase.
 
 The first row is a research-era reading, made before the no-copy rule was recorded.
 Nothing from it was copied, ported or paraphrased.
 Each value that the project now uses from that area cites a tier 1 to 3 source instead.
 
-Plan 08-03 (2026-11-14) adds the three rows above: documentation text files of the GPL fork and the public reverse-engineering notes of the same author, read as plain text for the semantics that no tier 1 to 3 page prints.
-No emulator source was opened, no text, table or figure was copied, and the cached copies stay in the gitignored directory refs/stic.
+Plan 08-03 (2026-11-14) adds the three rows above. No emulator source was opened, no text, table or figure was copied, and the cached copies stay in the gitignored directory refs/stic.
