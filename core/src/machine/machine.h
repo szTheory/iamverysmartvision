@@ -336,6 +336,13 @@ uint32_t ivs_input_profile_count(void);
  * words, so the invariant port_pulldown == derive(words) holds after every call. */
 void ivs_input_rederive(struct ivs_machine *im);
 
+/* The pure form of the derivation (plan 08-10, D-15): the two pull-down masks that the words words[0..3] give for the
+ * registry profile profile_index, written to out[0] and out[1], with no read or write of any instance. ivs_input_rederive is
+ * this function applied to the words in force and stored into the memory system, so a restore can derive the masks of a
+ * decoded snapshot, compare them with the stored ones and refuse a snapshot whose masks differ before it writes anything.
+ * A profile_index at or above ivs_input_profile_count() gives two zero masks (a live machine never holds one). */
+void ivs_input_derive(uint32_t profile_index, const uint32_t words[4], uint8_t out[2]);
+
 /* The per-event stages of the run ladder (D-05, D-14), after BUFFER_TOO_SMALL: IVS_REASON_NONE
  * with *st IVS_OK and *index IVS_INPUT_INDEX_NONE, or the reason with *st and the failing index.
  * BAD_ARG pass over the whole array first (at_tick at or above 2^63, below its predecessor, below

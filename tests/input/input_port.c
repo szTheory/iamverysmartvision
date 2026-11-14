@@ -21,11 +21,17 @@
  *   input.reset.clears-pulldown             a power-on reset clears the pull-down masks
  *   input.invariant.pulldown-derives-from-words  port_pulldown equals the OR of the literal's masks of the
  *                                           words in force, after every call
+ *   input.derive.pure-equals-rederive       (plan 08-10, D-15) ivs_input_derive, the pure form of the derivation (no instance
+ *                                           argument), equals the OR of the literal's masks per port, equals the masks an
+ *                                           instance holds after ivs_input_rederive, and an out-of-range profile index gives
+ *                                           zeros: over the zero word, every single control, every pair of controls (465), the
+ *                                           word with every control closed, the reserved-bit words and a pseudo-random sample
  *   input.judge.direction-sense-flipped     the direction predicate rejects the opposite R7 sense
  * Expected bytes come from the controller literal records and the wiki anchors, never from the
  * profile or the core's table. The latch and direction rules are policy rows (tags above), not hardware
  * evidence. */
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "input_cases.h"
@@ -470,6 +476,125 @@ done:
   return ok;
 }
 
+/* ---- the pure derivation (plan 08-10, D-15) ---- */
+
+/* A pseudo-random word (a 32-bit LCG; the constants of the usual numerical recipe, so no value is chosen by hand). */
+static uint32_t ip_next(uint32_t *state)
+{
+  *state = *state * 1664525u + 1013904223u;
+  return *state;
+}
+
+/* One word set for the sweep: 0, each control alone, each pair of controls, every control closed, the reserved bit alone and with
+ * a control, all ones, and n pseudo-random words. The set is built into out (capacity cap); returns its size (0 when cap is short). */
+static size_t ip_derive_words(uint32_t *out, size_t cap)
+{
+  size_t n = 0u;
+  size_t a;
+  size_t b;
+  uint32_t seed = 0x1D872B41u;
+  uint32_t all = 0u;
+  for (a = 0u; a < ivs_ip_count; a++) {
+    all |= ip_word(ivs_ip_ctls[a].bit);
+  }
+  if (cap < 1u + ivs_ip_count + ivs_ip_count * (ivs_ip_count - 1u) / 2u + 4u + 600u) {
+    return 0u;
+  }
+  out[n++] = 0u;
+  for (a = 0u; a < ivs_ip_count; a++) {
+    out[n++] = ip_word(ivs_ip_ctls[a].bit);
+  }
+  for (a = 0u; a < ivs_ip_count; a++) {
+    for (b = a + 1u; b < ivs_ip_count; b++) {
+      out[n++] = ip_word(ivs_ip_ctls[a].bit) | ip_word(ivs_ip_ctls[b].bit);
+    }
+  }
+  out[n++] = all;
+  out[n++] = 0x80000000u;                                 /* the reserved bit alone: no control, no pin */
+  out[n++] = 0x80000000u | ip_word(ivs_ip_ctls[0].bit);   /* with one control */
+  out[n++] = 0xFFFFFFFFu;
+  for (a = 0u; a < 600u; a++) {
+    out[n++] = ip_next(&seed);
+  }
+  return n;
+}
+
+#define IP_DERIVE_MAX 1200u
+
+static int ip_derive_pure_equals_rederive(void)
+{
+  uint32_t *set = malloc(IP_DERIVE_MAX * sizeof set[0]);
+  uint8_t *before = malloc(IVS_MACHINE_BYTES);
+  ii_rig r;
+  size_t n = 0u;
+  size_t i;
+  uint32_t profile = 0u;
+  int open = 0;
+  int rc = IVS_TEST_FAIL;
+  memset(&r, 0, sizeof r);
+  if (set == NULL || before == NULL) {
+    goto done;
+  }
+  n = ip_derive_words(set, IP_DERIVE_MAX);
+  II_CHECK(n > 0u);
+  II_CHECK(ii_rig_open(&r, IVS_MS_PROG_A));
+  open = 1;
+  profile = ii_im(&r)->profile;
+  for (i = 0u; i < n; i++) {
+    struct ivs_machine *im = ii_im(&r);
+    uint32_t w[4];
+    uint8_t out[2];
+    uint32_t p;
+    w[0] = set[i];
+    w[1] = set[(i * 7u + 3u) % n]; /* the two ports get different words, in every combination over the sweep */
+    w[2] = 0xFFFFFFFFu;            /* words past the profile's controllers are never read */
+    w[3] = set[(i + 1u) % n];
+    /* the instance is brought to the state rederive gives for the words in force, and a copy is kept */
+    memcpy(im->obs.input.words, w, sizeof w);
+    ivs_input_rederive(im);
+    memcpy(before, im, IVS_MACHINE_BYTES);
+    out[0] = 0xEEu;
+    out[1] = 0xEEu;
+    ivs_input_derive(profile, w, out);
+    II_CHECK(memcmp(before, im, IVS_MACHINE_BYTES) == 0); /* the instance is not written by the pure form */
+    for (p = 0u; p < 2u; p++) {
+      /* the literal's OR of the masks, and what rederive stored in the instance */
+      if ((uint32_t)out[p] != ip_derive(w[p]) || out[p] != im->mem.port_pulldown[p]) {
+        ivs_test_diag("word %08X on port %u: derive %02X, the literal %02X, the instance %02X", (unsigned)w[p], (unsigned)p,
+                      (unsigned)out[p], (unsigned)ip_derive(w[p]), (unsigned)im->mem.port_pulldown[p]);
+        goto done;
+      }
+    }
+  }
+  /* a profile index outside the generated table: two zero masks, whatever the words */
+  {
+    uint32_t w[4] = {0xFFFFFFFFu, 0xFFFFFFFFu, 0xFFFFFFFFu, 0xFFFFFFFFu};
+    uint32_t bad[3];
+    uint32_t k;
+    bad[0] = ivs_input_profile_count();
+    bad[1] = ivs_input_profile_count() + 1u;
+    bad[2] = 0xFFFFFFFFu;
+    for (k = 0u; k < 3u; k++) {
+      uint8_t out[2] = {0xEEu, 0xEEu};
+      ivs_input_derive(bad[k], w, out);
+      II_CHECK(out[0] == 0u && out[1] == 0u);
+    }
+    {
+      uint8_t out[2] = {0xEEu, 0xEEu};
+      ivs_input_derive(profile, w, out); /* and the real profile with every control closed is not zero */
+      II_CHECK(out[0] != 0u && out[1] != 0u);
+    }
+  }
+  rc = IVS_TEST_PASS;
+done:
+  if (open) {
+    ii_rig_close(&r);
+  }
+  free(set);
+  free(before);
+  return rc;
+}
+
 static int ip_judge_direction_sense_flipped(void)
 {
   if (!ip_direction_predicate(1u)) {
@@ -498,6 +623,7 @@ static const ivs_test_case ip_cases[] = {
     {"input.takeback.restores-pins", ip_takeback_restores_pins, NULL},
     {"input.reset.clears-pulldown", ip_reset_clears_pulldown, NULL},
     {"input.invariant.pulldown-derives-from-words", ip_invariant_pulldown_derives_from_words, NULL},
+    {"input.derive.pure-equals-rederive", ip_derive_pure_equals_rederive, NULL},
     {"input.judge.direction-sense-flipped", ip_judge_direction_sense_flipped, NULL},
 };
 

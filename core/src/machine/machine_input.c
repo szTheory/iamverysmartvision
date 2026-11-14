@@ -77,18 +77,39 @@ static uint32_t ivs_input_pins(uint32_t profile, uint32_t word)
   return pins;
 }
 
-void ivs_input_rederive(struct ivs_machine *im)
+void ivs_input_derive(uint32_t profile_index, const uint32_t words[4], uint8_t out[2])
 {
-  uint32_t controllers = ivs_profile_get(im->profile)->input_controllers;
+  const ivs_profile_desc *d;
+  uint32_t controllers;
   uint32_t p;
+  out[0] = 0u;
+  out[1] = 0u;
+  if (profile_index >= ivs_input_profile_count()) {
+    return;
+  }
+  d = ivs_profile_get(profile_index);
+  if (d == NULL) {
+    return;
+  }
+  controllers = d->input_controllers;
   for (p = 0u; p < IVS_MEMSYS_PSG_PORTS; p++) {
     /* ports at or above input.controllers stay idle (their words are refused nonzero) */
-    uint32_t pins = p < controllers ? ivs_input_pins(im->profile, im->obs.input.words[p]) : 0u;
+    uint32_t pins = p < controllers ? ivs_input_pins(profile_index, words[p]) : 0u;
+    out[p] = (uint8_t)(pins & 0xFFu); /* the memory system keeps the low byte (ivs_memsys_set_port_pulldown_internal) */
+  }
+}
+
+void ivs_input_rederive(struct ivs_machine *im)
+{
+  uint8_t masks[IVS_MEMSYS_PSG_PORTS];
+  uint32_t p;
+  ivs_input_derive(im->profile, im->obs.input.words, masks);
+  for (p = 0u; p < IVS_MEMSYS_PSG_PORTS; p++) {
     uint32_t port = p;
 #ifdef IVS_FAULT_CTRL_PORTS_SWAPPED
     port = 1u - p; /* named fault CTRL_PORTS_SWAPPED: the word of port 0 pulls down port 1 and back */
 #endif
-    ivs_memsys_set_port_pulldown_internal(&im->mem, port, pins);
+    ivs_memsys_set_port_pulldown_internal(&im->mem, port, masks[p]);
   }
 }
 
