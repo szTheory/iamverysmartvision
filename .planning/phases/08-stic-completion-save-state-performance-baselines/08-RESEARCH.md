@@ -278,14 +278,14 @@ Not applicable (no external ecosystem). Internal precedent: Phase 7 W1-W7 patter
 | A6 | `tar --sort` and `gzip -n` give byte-identical archives on the hosted image | 4 | rehearsal in the container shows it; draft release proves it |
 | A7 | The six pinned history findings are complete (the scan's tail had not finished) | 4 | a new finding blocks the release (P2) until it is explained; see Open Question 6 |
 
-## Open Questions
-1. **A new `state` step or an extension of an existing checker?** Known: steps are the script set equal to `gate-steps/*.ids` (`steps=36/36`). Recommendation: new step; update the ROADMAP end-state line in 08-21.
-2. **Is `bench-lamp-snapshot` a scenario?** Known: `ivs-run` has no cadence option. Recommendation: workloads.tsv row only (3.3).
-3. **Hook semantics.** Recommendation: reset-then-restore in the runner (3.4); optional comma list of ticks only if 08-17 needs the cadence.
-4. **Release-only accounting (H12).** Recommendation: reduce inside the case; use `skip-ok` only for whole ids.
-5. **Restore-time verification of section digests (A4).** Recommendation: decide in B1 when the format is written.
-6. **Full `--history` result.** Known: six findings, listed in section 4, with 955c13f (not 4ccc9bb) as the message finding. Unclear: whether the identity and file-name tail of the scan adds any (the run was still going at 9 minutes). Recommendation: 08-21 pastes one complete run into section J, the pinned list is by (token, short sha) pairs, and the release check runs the full scan only at release time (it is a publication step, not a gate step).
-7. **Which discrepancy and claim numbers.** C107 and CL-0025 are free [OBS: last are C106 and CL-0024]; the state claim number is the planner's.
+## Open Questions (RESOLVED)
+1. **A new `state` step or an extension of an existing checker?** Known: steps are the script set equal to `gate-steps/*.ids` (`steps=36/36`). Recommendation: new step; update the ROADMAP end-state line in 08-21. RESOLVED: new `state` step (D-38), step 38 after `release-assets`.
+2. **Is `bench-lamp-snapshot` a scenario?** Known: `ivs-run` has no cadence option. Recommendation: workloads.tsv row only (3.3). RESOLVED: workloads.tsv row only (D-39).
+3. **Hook semantics.** Recommendation: reset-then-restore in the runner (3.4); optional comma list of ticks only if 08-17 needs the cadence. RESOLVED: plan 08-16 fixes save, reset, restore at every multiple of n, flag bit, cap 64.
+4. **Release-only accounting (H12).** Recommendation: reduce inside the case; use `skip-ok` only for whole ids. RESOLVED: reduce the point set inside one id, no skip-ok (D-40).
+5. **Restore-time verification of section digests (A4).** Recommendation: decide in B1 when the format is written. RESOLVED: trailer and structure verified before commit, section digests stay a test oracle (D-41).
+6. **Full `--history` result.** Known: six findings, listed in section 4, with 955c13f (not 4ccc9bb) as the message finding. Unclear: whether the identity and file-name tail of the scan adds any (the run was still going at 9 minutes). Recommendation: 08-21 pastes one complete run into section J, the pinned list is by (token, short sha) pairs, and the release check runs the full scan only at release time (it is a publication step, not a gate step). RESOLVED: plan 08-21 runs the full scan; a finding off the pinned list stops it (D-33).
+7. **Which discrepancy and claim numbers.** C107 and CL-0025 are free [OBS: last are C106 and CL-0024]; the state claim number is the planner's. RESOLVED: C107..C110 and CL-0025..CL-0027 in wave A, CL-0028 for state (plans 08-03, 08-08, 08-17).
 
 ## Environment Availability
 | Dependency | Required by | Available | Version | Fallback |
