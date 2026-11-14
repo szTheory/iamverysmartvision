@@ -17,6 +17,9 @@
  * video.display_off_fill border, C99); a display-on frame, Foreground/Background or Color Stack, is decoded card row by card row from
  * the row latches and the registers by the pure renderer of stic_cards.c, the color-stack pointer carried across the rows from 0; the
  * final pointer of a display-on frame is stored in s->cs_ptr (observable through the plan 06-07 report, not cleared at frame start).
+ * Plan 08-04: each card row goes through ivs_stic_compose_card_row (this file), which renders the card row and overlays the moving objects
+ * of stic_mob.c on its plane rows; the streamed slot and the whole plane (ivs_stic_render_plane_cs) share that one path, so they are equal
+ * by construction. With every MOB register at 0 the composition returns the card row untouched.
  *
  * Named faults (plan 06-09): VIDEO_STATE_DEPENDS_ON_BUFFER (with no buffer the chain and the count do not advance),
  * VIDEO_CHAIN_FRAMING_STRUCT_HASH (the chain hashes an image of a struct instead of the framed bytes). The file holds no static or
@@ -56,6 +59,24 @@ void ivs_video_chain_init(ivs_stic_video_row *row)
   ivs_sha256_digest((const uint8_t *)tag, sizeof tag - 1u, row->chain);
 }
 
+/* 1 when the card decoder draws card row cr under the geometry of p (20 x 12 cards of 8 x 8 positions): the one condition under which a
+ * display-on row is decoded from the row latches and moving objects are overlaid. */
+static uint32_t ivs_stic_cards_drawable(const ivs_stic_params *p, uint32_t cr)
+{
+  return (p->video_card_columns == IVS_STIC_ROW_WORDS && p->video_card_w == 8u && p->video_card_h == 8u && cr < IVS_STIC_LATCH_ROWS) ? 1u : 0u;
+}
+
+/* The inputs of the card renderer from the mode of s and the border and color-stack registers of mem, each masked to 4 bits. */
+static void ivs_stic_cardin_get(const ivs_stic_state *s, const ivs_memsys *mem, ivs_stic_cardin *in)
+{
+  uint32_t k;
+  in->mode = s->mode;
+  in->border = (uint32_t)mem->stic_reg[IVS_STIC_REG_BORDER] & 0xFu;
+  for (k = 0u; k < 4u; k++) {
+    in->stack[k] = (uint32_t)mem->stic_reg[IVS_STIC_REG_STACK0 + k] & 0xFu;
+  }
+}
+
 uint32_t ivs_stic_render_card_row(const ivs_stic_params *p, const ivs_stic_state *s, const ivs_memsys *mem, uint32_t displayed, uint32_t cr,
                                   uint32_t *cs_pos, uint8_t *out)
 {
@@ -65,14 +86,9 @@ uint32_t ivs_stic_render_card_row(const ivs_stic_params *p, const ivs_stic_state
     return 0u;
   }
   if (displayed != 0u) {
-    if (p->video_card_columns == IVS_STIC_ROW_WORDS && p->video_card_w == 8u && p->video_card_h == 8u && cr < IVS_STIC_LATCH_ROWS) {
+    if (ivs_stic_cards_drawable(p, cr) != 0u) {
       ivs_stic_cardin in;
-      uint32_t k;
-      in.mode = s->mode;
-      in.border = (uint32_t)mem->stic_reg[IVS_STIC_REG_BORDER] & 0xFu;
-      for (k = 0u; k < 4u; k++) {
-        in.stack[k] = (uint32_t)mem->stic_reg[IVS_STIC_REG_STACK0 + k] & 0xFu;
-      }
+      ivs_stic_cardin_get(s, mem, &in);
       return ivs_stic_render_cards_row(&in, s->row_latch[cr], mem, cs_pos, out);
     }
     fill = (uint8_t)p->video_blank_value; /* a geometry the card decoder does not draw: every position not displayed */
@@ -81,6 +97,31 @@ uint32_t ivs_stic_render_card_row(const ivs_stic_params *p, const ivs_stic_state
   }
   memset(out, fill, work);
   return work;
+}
+
+uint32_t ivs_stic_compose_card_row(const ivs_stic_params *p, const ivs_stic_state *s, const ivs_memsys *mem, uint32_t displayed, uint32_t cr,
+                                   uint32_t *cs_pos, uint8_t *out)
+{
+  ivs_stic_mob mobs[IVS_STIC_MOBS];
+  uint8_t on_mask[IVS_STIC_ROW_WORDS * 8u]; /* the on pixels of the card layer of this card row, 20 bytes per plane row */
+  uint32_t work_w = p->video_card_columns * p->video_card_w;
+  uint32_t n = ivs_stic_render_card_row(p, s, mem, displayed, cr, cs_pos, out);
+  uint32_t k;
+  if (n == 0u || displayed == 0u || ivs_stic_cards_drawable(p, cr) == 0u) {
+    return n; /* a display-off row is the border fill and draws no MOB */
+  }
+  if (ivs_stic_mob_decode(p, mem, mobs) == 0u) {
+    return n; /* no MOB is on: the row is exactly the card layer (every MOB register at its reset value draws nothing) */
+  }
+  {
+    ivs_stic_cardin in;
+    ivs_stic_cardin_get(s, mem, &in);
+    (void)ivs_stic_cards_on_row(&in, s->row_latch[cr], mem, on_mask);
+  }
+  for (k = 0u; k < p->video_card_h; k++) {
+    ivs_stic_overlay_mobs_row(p, mem, mobs, cr * p->video_card_h + k, on_mask + (size_t)k * IVS_STIC_ROW_WORDS, out + (size_t)k * work_w);
+  }
+  return n;
 }
 
 uint32_t ivs_stic_render_plane_cs(const ivs_stic_params *p, const ivs_stic_state *s, const ivs_memsys *mem, uint32_t displayed, uint8_t *plane,
@@ -93,7 +134,7 @@ uint32_t ivs_stic_render_plane_cs(const ivs_stic_params *p, const ivs_stic_state
     return 0u;
   }
   for (cr = 0u; cr < p->video_card_rows; cr++) {
-    if (ivs_stic_render_card_row(p, s, mem, displayed, cr, &pos, plane + (size_t)cr * row_bytes) == 0u) {
+    if (ivs_stic_compose_card_row(p, s, mem, displayed, cr, &pos, plane + (size_t)cr * row_bytes) == 0u) {
       return 0u;
     }
   }
@@ -189,7 +230,7 @@ void ivs_stic_frame_deliver(const ivs_stic_params *p, ivs_stic_state *s, const i
   ivs_sha256_update(&ctx, header, sizeof header);
 #endif
   for (cr = 0u; cr < p->video_card_rows; cr++) {
-    if (ivs_stic_render_card_row(p, s, mem, displayed, cr, &cs_pos, cardrow) == 0u) {
+    if (ivs_stic_compose_card_row(p, s, mem, displayed, cr, &cs_pos, cardrow) == 0u) {
       if (sink != NULL) {
         sink->video_overflow = 1u; /* unreachable for a generated profile (see above): a short frame is an INTERNAL stop, never a quiet one */
       }

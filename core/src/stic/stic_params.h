@@ -115,6 +115,17 @@ typedef struct ivs_stic_params {
   uint32_t video_row_lines;
   uint32_t video_last_column_px;
   uint32_t video_blank_value;
+  /* Moving objects (plan 08-04, D-02, D-03; rules STIC-R37, R43, R50; stic_mob.c): the generator reads them from video.mob_field_origin,
+   * video.mob_line_sample and video.mob_prio_hides (fail closed). origin_x and origin_y (0..15) are the plane positions between the
+   * object field and the published plane: a MOB whose X coordinate is X puts its first pattern column on plane column X - origin_x
+   * (tier4-community, the pair 8 and 8). line_sample (0 or 1, below video_row_lines) is the television line of a plane row that the
+   * line-resolved model publishes: plane row y shows line video_row_lines x y + line_sample (default 0, the even line,
+   * unknown-default-chosen, C108). prio_hides (0 or 1) says what hides a MOB whose priority bit is set: 0 the card on pixels only, 1
+   * every card pixel (default 0, unknown-default-chosen, C107). */
+  uint32_t video_mob_origin_x;
+  uint32_t video_mob_origin_y;
+  uint32_t video_mob_line_sample;
+  uint32_t video_mob_prio_hides;
   uint32_t video_display_off_fill;
 } ivs_stic_params;
 

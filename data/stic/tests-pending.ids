@@ -4,7 +4,6 @@
 # to be a prefix of at least one registered id or a line here, and a line here whose prefix already has a registered id to be deleted
 # (tokens video-rule-no-test and video-pending-stale): the owner plan deletes its lines in the same commit that registers the first id.
 # Plan 08-03 (VID-05 oracle plan): the families of the rules STIC-R37 to STIC-R50, owned by the plans that write the renderer, the collision logic and the delay and strips.
-video.mob. 08-04
 video.collision. 08-05
 video.border. 08-06
 video.hdelay. 08-06

@@ -95,7 +95,7 @@ Counts of the 53 rules: 8 tier1-literal (STIC-R01 to R04, R06, CR-01 to CR-03), 
 | STIC-R25 | default-unknown | none | C85 | Power-on state: registers zero, Foreground/Background mode, display latch clear. |
 | STIC-R26 | project-rule | none | C94 | An event stamped at or below an access stamp is applied before the access (step first, then ... |
 | STIC-R27 | project-rule | none | C84 | ivs_machine_peek is the bus view and has no side effect; the STIC state report is the stored ... |
-| STIC-R28 | project-rule | none | C87 | Phase 6 applies only the color stack and border color registers to the picture; MOB, delay ... |
+| STIC-R28 | project-rule | none | C87 | The color stack and border color registers are applied to the picture, and the MOB registers are applied by STIC-R37 to R43 ... |
 | STIC-R29 | project-rule | none | C7 | A frame is a STIC timeline event of constant length F = ticks_per_cpu_cycle x ... |
 | STIC-R30 | default-unknown | none | C91 | INTRM is a level asserted from S_k for 3,791 CPU cycles; a unit starting at b sees the level ... |
 | STIC-R31 | default-unknown | SRC-gi-1980-catalog@pdf191 | C92 | With the display latch set, 13 bus windows per frame start at cycle 3,791 + 912 i and hold ... |

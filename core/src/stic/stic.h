@@ -128,6 +128,13 @@ typedef struct ivs_stic_cardin {
  * ivs_memsys_stic_gfx_byte_internal. Returns the bytes written (1,280). */
 uint32_t ivs_stic_render_cards_row(const ivs_stic_cardin *in, const uint16_t *row_words, const ivs_memsys *mem, uint32_t *cs_pos, uint8_t *out);
 
+/* Pure sibling of ivs_stic_render_cards_row (plan 08-04, rules STIC-R43 and R44; same inputs, the same graphics accessor, no state): the on-pixel
+ * mask of the card layer of ONE card row, mask[8 x 20] bytes: byte (20 y + c) holds the eight positions of card column c on pixel row y of
+ * the card row, bit 7 the leftmost, a set bit an on pixel. An on pixel is a set pixel of a graphics card (Foreground/Background and Color
+ * Stack layouts) or a pixel of a Colored Squares quadrant of color 0 to 6 (color 7 is not on); the cut-off pixel of column 19 is not on. Only
+ * in->mode is used (the colors are not needed). Returns the bytes written (160). */
+uint32_t ivs_stic_cards_on_row(const ivs_stic_cardin *in, const uint16_t *row_words, const ivs_memsys *mem, uint8_t *mask);
+
 /* Plane form: the 240 BACKTAB words (cell r, c is word 20 r + c) into the 160 x 96 working plane plane (15,360 bytes, caller-owned),
  * the color-stack pointer starting at 0. When cs_final is not NULL it receives the final pointer 0..3. Returns the bytes written. The
  * unit-path tests use it; the machine renders one card row at a time (no 15 KB stack frame). */
@@ -140,6 +147,46 @@ uint32_t ivs_stic_render_cards(const ivs_stic_cardin *in, const uint16_t *words,
  * IVS_STIC_CARDROW_MAX. */
 uint32_t ivs_stic_render_card_row(const ivs_stic_params *p, const ivs_stic_state *s, const ivs_memsys *mem, uint32_t displayed, uint32_t cr,
                                   uint32_t *cs_pos, uint8_t *out);
+
+/* The moving objects (plan 08-04, D-01, D-02, D-03; stic_mob.c, rules STIC-R37 to R43 and R50): eight MOBs, each decoded from its three
+ * registers (X word at 0x00 + i, Y word at 0x08 + i, attribute word at 0x10 + i of the register file) into a small value struct, and an
+ * overlay of those MOBs onto one plane row of colors. The model is line-resolved (video_row_lines television lines per plane row, 16 per
+ * card row): pattern row r of a MOB covers lpr television lines, the plane row y publishes television line video_row_lines x y +
+ * video_mob_line_sample, and a zoom of 2x, 4x or 8x is an lpr of 2, 4 or 8. Pure: no static or global data, only memcpy/memset-class
+ * imports, graphics bytes only through ivs_memsys_stic_gfx_byte_internal. */
+#define IVS_STIC_MOBS 8u
+typedef struct ivs_stic_mob {
+  int16_t left;   /* plane column of the first pattern column: X coordinate - video_mob_origin_x (negative when left of the plane) */
+  int16_t top;    /* television line of the first pattern row: video_row_lines x (Y coordinate - video_mob_origin_y) */
+  uint8_t on;     /* 1 when the X coordinate (register bits 7..0) is not 0 and the visible bit is set */
+  uint8_t zx;     /* plane columns per pattern column: 1, or 2 when the X size bit is set */
+  uint8_t lpr;    /* television lines per pattern row: 1, 2, 4 or 8 */
+  uint8_t rows;   /* pattern rows: 8, or 16 in tall mode */
+  uint8_t sel;    /* 1 graphics RAM, 0 graphics ROM */
+  uint8_t card;   /* the card number of the first (upper) card, bits 10..3 of the attribute word (bits 8..3 for graphics RAM) */
+  uint8_t color;  /* the MOB color */
+  uint8_t flags;  /* IVS_STIC_MOB_F_* */
+} ivs_stic_mob;
+#define IVS_STIC_MOB_F_XFLIP 1u
+#define IVS_STIC_MOB_F_YFLIP 2u
+#define IVS_STIC_MOB_F_TALL 4u
+#define IVS_STIC_MOB_F_PRIO 8u
+
+/* Decodes the three registers of every MOB from the register file of mem into out[IVS_STIC_MOBS] (every member written) and returns the
+ * number of MOBs with the on flag. A register at its reset value 0 decodes to a MOB that is not on. */
+uint32_t ivs_stic_mob_decode(const ivs_stic_params *p, const ivs_memsys *mem, ivs_stic_mob *out);
+
+/* Overlays the MOBs of mobs[IVS_STIC_MOBS] onto plane row plane_y (0 .. height - 1) of the working plane: row is that plane row of the
+ * working width (160 bytes); on_row is the 20-byte on-pixel mask of the same plane row (ivs_stic_cards_on_row layout), or NULL when no
+ * MOB with the priority bit is on. Positions at or beyond video_width are never written. */
+void ivs_stic_overlay_mobs_row(const ivs_stic_params *p, const ivs_memsys *mem, const ivs_stic_mob *mobs, uint32_t plane_y, const uint8_t *on_row,
+                               uint8_t *row);
+
+/* Card row plus moving objects (plan 08-04, one composition path for the streamed slot and the whole plane): fills out as
+ * ivs_stic_render_card_row does, then overlays the MOBs of the register file on each of the card_h plane rows of the card row. A display-off
+ * row, a geometry the card decoder does not draw and a row with no MOB on are returned exactly as ivs_stic_render_card_row gives them. */
+uint32_t ivs_stic_compose_card_row(const ivs_stic_params *p, const ivs_stic_state *s, const ivs_memsys *mem, uint32_t displayed, uint32_t cr,
+                                   uint32_t *cs_pos, uint8_t *out);
 
 /* The whole working plane, card row by card row, into a caller-owned buffer of at least IVS_STIC_PLANE_MAX bytes (a test and review
  * entry point; the frame writer below streams card rows instead). Returns the bytes filled, 0 when the plane does not fit. */

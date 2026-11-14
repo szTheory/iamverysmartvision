@@ -141,4 +141,7 @@ video.last_card_column_px
 video.last_card_column_drop
 video.row_lines
 video.display_off_fill
+video.mob_field_origin
+video.mob_line_sample
+video.mob_prio_hides
 video.blank_value

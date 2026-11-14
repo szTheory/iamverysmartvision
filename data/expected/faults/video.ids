@@ -23,12 +23,12 @@ VIDEO_OUTBUF_PARTIAL_WRITE video.buffers.undersized-refused video.buffers. video
 VIDEO_FRAME_AT_CALL_END video.boundary.write-straddling video.boundary. video.geom.profile-derives-159x96
 # VIDEO_WRONG_CARD_MODE (core/src/stic/stic_cards.c, plan 06-10, VID-04, D-18): the mode sense is inverted, so a Foreground/Background frame is
 # decoded as Color Stack (every position not displayed until plan 06-11) and every card frame fails.
-VIDEO_WRONG_CARD_MODE video.fgbg.F-A1 video.fgbg.|video.frame.|video.card.|video.grom.|video.color.|video.probe.|video.judge.|video.cstack.|video.meta. video.geom.profile-derives-159x96
+VIDEO_WRONG_CARD_MODE video.fgbg.F-A1 video.fgbg.|video.frame.|video.card.|video.grom.|video.color.|video.probe.|video.judge.|video.cstack.|video.meta.|video.mob. video.geom.profile-derives-159x96
 # VIDEO_CARD_BIT_ORDER_REVERSED (core/src/stic/stic_cards.c, plan 06-10): bit 0 of a graphics byte is the leftmost pixel instead of bit 7.
-VIDEO_CARD_BIT_ORDER_REVERSED video.card.bit-order video.fgbg.|video.card.|video.probe.|video.judge.|video.cstack. video.geom.profile-derives-159x96
+VIDEO_CARD_BIT_ORDER_REVERSED video.card.bit-order video.fgbg.|video.card.|video.probe.|video.judge.|video.cstack.|video.mob. video.geom.profile-derives-159x96
 # VIDEO_GRAM_GROM_SELECT_SWAPPED (core/src/stic/stic_cards.c, plan 06-10): the sense of select bit 11 is inverted, so graphics RAM cards read the
 # (zero) graphics ROM and graphics ROM cards read graphics RAM.
-VIDEO_GRAM_GROM_SELECT_SWAPPED video.fgbg.F-A3 video.fgbg.|video.card.|video.grom.|video.probe.|video.judge.|video.cstack. video.geom.profile-derives-159x96
+VIDEO_GRAM_GROM_SELECT_SWAPPED video.fgbg.F-A3 video.fgbg.|video.card.|video.grom.|video.probe.|video.judge.|video.cstack.|video.mob. video.geom.profile-derives-159x96
 # VIDEO_20TH_COLUMN_WIDTH (core/src/stic/stic_cards.c, plan 06-10): column 19 shows its 8th pixel (the 7-pixel cut-off is not applied), so the plane
 # has no sentinel and the published 159 columns shift nothing but the working plane differs.
 VIDEO_20TH_COLUMN_WIDTH video.card.last-column-clip video.fgbg.|video.card.|video.color.|video.judge.|video.cstack. video.geom.profile-derives-159x96

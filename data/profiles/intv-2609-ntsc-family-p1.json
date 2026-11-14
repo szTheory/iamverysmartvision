@@ -1531,6 +1531,36 @@
       "decision": null,
       "note": "Policy selector: a display-off frame is produced, flagged not displayed, with every position filled with the border color index. The generator accepts only border."
     },
+    "video.mob_field_origin": {
+      "value": {"x": 8, "y": 8},
+      "tag": "tier4-community",
+      "cite": "SRC-community-emu-docs@programming-stic-object-field (rule STIC-R37): the object field starts 8 positions left of and 8 positions above the published plane; corroborated, not proved, by the printed 167 x 105 object grid against the 159 x 96 visible positions (SRC-gi-1980-catalog pdf 191)",
+      "conflict": "C105",
+      "resolving_evidence": "measurement: a D10 capture of a MOB at X 1 and Y 1 showing which plane position the lower right pattern pixel takes",
+      "revisit_trigger": "a D10 capture of a MOB at the object-field corner or a primary page that prints the object-field origin",
+      "decision": null,
+      "note": "The offset in plane positions between the object field and the published plane: a MOB whose X coordinate is X puts its first pattern column on plane column X - x (and its Y coordinate Y puts its first pattern row on plane row Y - y). Each member is 0 to 15. One tier 4 lineage; no frame depends on a value other than 8."
+    },
+    "video.mob_line_sample": {
+      "value": 0,
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: the lineage gives one television line per pattern row at the smallest Y size and a printed row of 2 lines, and does not say which line of a pair the published plane takes (rule STIC-R50)",
+      "conflict": "C108",
+      "resolving_evidence": "measurement: D10-VID-14 owner capture of a half-height MOB line by line",
+      "revisit_trigger": "a D10 capture of a half-height MOB or a primary page that prints the Y size 0 behavior",
+      "decision": null,
+      "note": "Policy selector 0 or 1: the published plane row y shows television line 2 y + this value of the line-resolved MOB model (0 the even line, 1 the odd line). Only the two Y size codes that put two pattern rows into one plane row depend on it (frames F-M8 and F-M9, in-process tests only); the zooms 2x, 4x and 8x do not."
+    },
+    "video.mob_prio_hides": {
+      "value": 0,
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: the lineage orders a MOB with the priority bit set behind the cards and does not say whether a card pixel that is off hides it (rule STIC-R43)",
+      "conflict": "C107",
+      "resolving_evidence": "measurement: D10-VID-11 owner capture of a MOB with the priority bit set against foreground and background card pixels",
+      "revisit_trigger": "a D10 capture of a MOB with the priority bit set or a primary page that prints the priority ordering",
+      "decision": null,
+      "note": "Policy selector 0 or 1: with 0 a MOB pixel whose MOB has the priority bit set is hidden only by a card on pixel (card foreground, colored squares colors 0 to 6) and shows through a card background pixel; with 1 it is hidden by every card pixel, so such a MOB is never shown. No frame, assert or marker depends on the case."
+    },
     "video.blank_value": {
       "value": 255,
       "tag": "delegated-decision",

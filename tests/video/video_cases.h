@@ -44,6 +44,8 @@ extern const ivs_test_case ivs_video_cstack_cases[];
 extern const size_t ivs_video_cstack_count;
 extern const ivs_test_case ivs_video_judge_cases[];
 extern const size_t ivs_video_judge_count;
+extern const ivs_test_case ivs_video_mob_cases[];
+extern const size_t ivs_video_mob_count;
 
 /* ---- the independent literals (video_geom.c includes the generated ivs_video_lit.inc) ---- */
 const uint8_t *vl_h(uint32_t k);           /* the chain value h0, h1 or h2 (32 bytes) */
@@ -115,6 +117,27 @@ typedef struct vf_role {
   const char *role;
 } vf_role;
 
+/* A vm_frame is one hand-derived frame literal of the moving-object oracle (plan 08-04; cmake/IvsVideoFrames.cmake with FRAMESET=mob ->
+ * ivs_mob_frames.inc, tests/video/video_mob.c): the fields of a vf_frame plus the number of `unknown` rectangles. The plane lines hold
+ * 160 symbols with `-` kept as the wildcard (a position inside an unknown rectangle, and the cut-off pixel of column 19), and sha_text is empty
+ * for a frame whose literal says `sha256-text none`. The table vm_frames is separate from vf_frames, so no loop of the card families sees it. */
+typedef struct vm_frame {
+  const char *name;
+  uint32_t mode;
+  uint32_t display;
+  uint32_t border;
+  uint32_t stack[4];
+  uint32_t fill;
+  uint32_t n_cells;
+  const vf_cell *cells;
+  uint32_t n_gram;
+  const vf_gram *gram;
+  const char *const *plane;
+  const char *sha_text;
+  uint32_t n_unknown;
+  uint32_t plane_line;
+} vm_frame;
+
 #define VF_PLANE_W 160u
 #define VF_PLANE_H 96u
 #define VF_PLANE_BYTES (VF_PLANE_W * VF_PLANE_H)
@@ -125,6 +148,8 @@ uint32_t vf_frame_count(void);
 const vf_frame *vf_frame_get(uint32_t i);
 const vf_role *vf_role_table(size_t *n);
 const ivs_test_source *vf_source_table(size_t *n);
+/* The sources of the moving-object include (video_mob.c): the ten F-M literals and the profile. */
+const ivs_test_source *vm_source_table(size_t *n);
 /* The expected 160 x 96 plane of a frame literal (the symbol - is IVS_PIXEL_BLANK) and its 240 BACKTAB words (the fill word, then the cells). */
 void vf_expected(const vf_frame *f, uint8_t *exp);
 void vf_words(const vf_frame *f, uint16_t *words);

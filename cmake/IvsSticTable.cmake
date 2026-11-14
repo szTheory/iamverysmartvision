@@ -31,6 +31,9 @@
 #                  stic.video_slack_frames. The generator does NOT read data/video/geometry.literal.txt: the
 #                  width is DERIVED as (card_columns - 1) x card_w + last_card_column_px, so a one-field reversal
 #                  of last_card_column_px to 8 gives 160 with no literal edited (the literal is compared by tests).
+#   moving objects (plan 08-04, rules STIC-R37, R43, R50) video.mob_field_origin {x, y} (each 0..15), video.mob_line_sample (0 or 1,
+#                  below video.row_lines) and video.mob_prio_hides (0 or 1): the offset of the object field against the published
+#                  plane and the two pinned selectors of the renderer (core/src/stic/stic_mob.c).
 #
 # Fail closed (message `IvsSticTable: <profile>: <field>: <reason>`): a missing field, a field of a wrong type or
 # outside its range, an unknown or missing record key, a tag of tier5-emulator-hint, an unknown-default-chosen field
@@ -370,6 +373,23 @@ foreach(rel IN LISTS st_profiles)
   st_num(last_px video.last_card_column_px 255)
   st_num(row_lines video.row_lines 255)
   st_num(blank video.blank_value 255)
+  # ---- moving objects: the object-field offset in plane positions and the two pinned selectors (plan 08-04)
+  st_field("${doc}" video.mob_field_origin)
+  set(ST_CTX "${rel}: video.mob_field_origin")
+  st_type(t "${doc}" fields video.mob_field_origin value)
+  if(NOT t STREQUAL "OBJECT")
+    st_fail("value must be an object {\"x\": n, \"y\": n}")
+  endif()
+  string(JSON mob_obj GET "${doc}" fields video.mob_field_origin value)
+  st_keys("${mob_obj}" "value" x y)
+  st_uint(mob_ox "${mob_obj}" "x" 15 x)
+  st_uint(mob_oy "${mob_obj}" "y" 15 y)
+  st_num(mob_sample video.mob_line_sample 1)
+  st_num(mob_prio video.mob_prio_hides 1)
+  set(ST_CTX "${rel}: video.mob_line_sample")
+  if(NOT mob_sample LESS row_lines)
+    st_fail("value ${mob_sample} is not below video.row_lines ${row_lines}: the sampled line must be one of the lines of a plane row")
+  endif()
   set(ST_CTX "${rel}: video.colors")
   if(colors EQUAL 0)
     st_fail("must be at least 1")
@@ -686,6 +706,8 @@ foreach(rel IN LISTS st_profiles)
     "    .video_plane_bytes = ${plane}u, .video_header_bytes = ${header}u, .video_slot_bytes = ${slot}u,\n"
     "    .video_slack_frames = ${slack}u, .video_row_lines = ${row_lines}u,\n"
     "    .video_last_column_px = ${last_px}u, .video_blank_value = ${blank}u,\n"
+    "    .video_mob_origin_x = ${mob_ox}u, .video_mob_origin_y = ${mob_oy}u,\n"
+    "    .video_mob_line_sample = ${mob_sample}u, .video_mob_prio_hides = ${mob_prio}u,\n"
     "    .video_display_off_fill = IVS_STIC_FILL_BORDER\n  },\n")
 endforeach()
 

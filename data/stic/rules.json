@@ -423,7 +423,7 @@
     {
       "id": "STIC-R28",
       "family": "stic",
-      "statement": "Phase 6 applies only the color stack and border color registers to the picture; MOB, delay and border-extension registers are stored and not applied.",
+      "statement": "The color stack and border color registers are applied to the picture, and the MOB registers are applied by the rules STIC-R37 to R43 and R50 (plan 08-04); the delay and border-extension registers are stored and not applied until plan 08-06.",
       "basis": "project-rule",
       "cite": "none",
       "fields": [
@@ -433,7 +433,7 @@
         "stic.reg."
       ],
       "conflict": "C87",
-      "note": "Scope rule (REQUIREMENTS VID-04 and VID-05)."
+      "note": "Scope rule (REQUIREMENTS VID-04 and VID-05). Phase 6 stated that MOB, delay and border-extension registers are stored and not applied; plan 08-04 rewords it in the commit that makes the MOB registers draw (the collision registers follow in plan 08-05)."
     },
     {
       "id": "STIC-R29",

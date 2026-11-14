@@ -106,3 +106,8 @@ video.mode.switch-end-to-end
 video.mode.write-selects-next-frame
 video.judge.cstack-persistent-pointer
 video.judge.cs-roles-swapped
+# Plan 08-04 task 1 (VID-05, D-01 to D-03, D-05): the moving-object renderer against the frozen oracle frames F-M0 and F-M1 (video.mob.*): neutrality with every MOB register zero, the placement and clipping of one MOB at 2x, the object-field origin table and the generated profile members.
+video.mob.base-neutral
+video.mob.frame-placement-clip
+video.mob.field-origin-8-8
+video.mob.params-match-profile
