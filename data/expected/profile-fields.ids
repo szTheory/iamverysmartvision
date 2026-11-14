@@ -144,4 +144,8 @@ video.display_off_fill
 video.mob_field_origin
 video.mob_line_sample
 video.mob_prio_hides
+video.collision_x0_interacts
+video.collision_border_bit
+video.collision_offscreen
+video.collision_display_off
 video.blank_value

@@ -34,6 +34,8 @@
 #   moving objects (plan 08-04, rules STIC-R37, R43, R50) video.mob_field_origin {x, y} (each 0..15), video.mob_line_sample (0 or 1,
 #                  below video.row_lines) and video.mob_prio_hides (0 or 1): the offset of the object field against the published
 #                  plane and the two pinned selectors of the renderer (core/src/stic/stic_mob.c).
+#   collision (plan 08-05, rules STIC-R44 and R45) video.collision_x0_interacts, video.collision_border_bit, video.collision_offscreen and
+#                  video.collision_display_off (each 0 or 1): the four pinned behaviours of the collision registers (stic_mob.c, stic_frame.c).
 #
 # Fail closed (message `IvsSticTable: <profile>: <field>: <reason>`): a missing field, a field of a wrong type or
 # outside its range, an unknown or missing record key, a tag of tier5-emulator-hint, an unknown-default-chosen field
@@ -386,6 +388,11 @@ foreach(rel IN LISTS st_profiles)
   st_uint(mob_oy "${mob_obj}" "y" 15 y)
   st_num(mob_sample video.mob_line_sample 1)
   st_num(mob_prio video.mob_prio_hides 1)
+  # ---- collision: the four pinned selectors of the registers $0018..$001F (plan 08-05, rules STIC-R44 and R45), each 0 or 1
+  st_num(coll_x0 video.collision_x0_interacts 1)
+  st_num(coll_border video.collision_border_bit 1)
+  st_num(coll_off video.collision_offscreen 1)
+  st_num(coll_dispoff video.collision_display_off 1)
   set(ST_CTX "${rel}: video.mob_line_sample")
   if(NOT mob_sample LESS row_lines)
     st_fail("value ${mob_sample} is not below video.row_lines ${row_lines}: the sampled line must be one of the lines of a plane row")
@@ -708,6 +715,8 @@ foreach(rel IN LISTS st_profiles)
     "    .video_last_column_px = ${last_px}u, .video_blank_value = ${blank}u,\n"
     "    .video_mob_origin_x = ${mob_ox}u, .video_mob_origin_y = ${mob_oy}u,\n"
     "    .video_mob_line_sample = ${mob_sample}u, .video_mob_prio_hides = ${mob_prio}u,\n"
+    "    .video_collision_x0_interacts = ${coll_x0}u, .video_collision_border_bit = ${coll_border}u,\n"
+    "    .video_collision_offscreen = ${coll_off}u, .video_collision_display_off = ${coll_dispoff}u,\n"
     "    .video_display_off_fill = IVS_STIC_FILL_BORDER\n  },\n")
 endforeach()
 

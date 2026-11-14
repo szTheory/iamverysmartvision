@@ -24,10 +24,15 @@
  * bit does not change that. An owner with the priority bit clear is drawn in front of the card layer; an owner with the priority bit set
  * is hidden by the card layer where the card has an on pixel (video_mob_prio_hides 0, the default) or on every card pixel (1).
  *
- * Collision (plan 08-05, rule STIC-R44): ivs_stic_collide_lines evaluates the set pattern pixels of the MOBs with the act flag (interaction
- * enable set and X coordinate not 0; the visible bit is not required) on every television line it is given, with the same pattern decode as
- * the overlay (ivs_stic_mob_line_byte), and records in hit[] which MOBs share a position. It is pure and keeps no state: the accumulation
- * array belongs to the caller (stic_frame.c) and the frame end ORs it into the register file.
+ * Collision (plan 08-05, rules STIC-R44 and R45): ivs_stic_collide_lines evaluates the set pattern pixels of the MOBs with the act flag
+ * (interaction enable set; X coordinate not 0 unless video_collision_x0_interacts; the visible bit is not required) on every television line
+ * it is given, with the same pattern decode as the overlay (ivs_stic_mob_line_byte), over the object grid (video_grid_w x video_grid_h
+ * positions, the plane inside it at video_mob_origin_x and video_mob_origin_y), and records in hit[i]: bit j when MOB i and MOB j share a
+ * position (inside the plane, or anywhere in the grid with video_collision_offscreen), bit 8 when a set pixel of MOB i lies on an on pixel of
+ * the card layer (on_rows, the on-pixel mask of ivs_stic_cards_on_row) and bit 9 when it lies in the grid and outside the plane
+ * (video_collision_border_bit). A MOB's own bit is never set. ivs_stic_collide_edges covers the television lines of the grid that no card row
+ * owns (above and below the plane), or the whole grid for a frame with the display off (video_collision_display_off). Both are pure and keep no
+ * state: the accumulation array belongs to the caller (stic_frame.c) and the frame end ORs it into the register file.
  *
  * Named faults (plan 08-04, one #ifdef site each, data/expected/faults/video.ids): MOB_PRIORITY_SWAP (the higher index owns an overlap of two
  * MOBs, caught by video.mob.front-lower-index) and MOB_FLIP_SWAPPED (the X flip and Y flip bits are exchanged, caught by video.mob.frame-mirror).
@@ -54,7 +59,8 @@ uint32_t ivs_stic_mob_decode(const ivs_stic_params *p, const ivs_memsys *mem, iv
     ivs_stic_mob *m = &out[i];
     memset(m, 0, sizeof *m);
     m->on = (uint8_t)((xc != 0u && ((xw >> 9) & 1u) != 0u) ? 1u : 0u);
-    m->act = (uint8_t)((xc != 0u && ((xw >> 8) & 1u) != 0u) ? 1u : 0u); /* R44: the interaction enable, not the visible bit */
+    /* R44: the interaction enable, not the visible bit; R45, pinned (video_collision_x0_interacts, default 0): a MOB with X coordinate 0 does not interact */
+    m->act = (uint8_t)(((xc != 0u || p->video_collision_x0_interacts != 0u) && ((xw >> 8) & 1u) != 0u) ? 1u : 0u);
     m->left = (int16_t)((int32_t)xc - (int32_t)p->video_mob_origin_x);
     m->top = (int16_t)((int32_t)p->video_row_lines * ((int32_t)yc - (int32_t)p->video_mob_origin_y));
     m->zx = (uint8_t)(((xw >> 10) & 1u) != 0u ? 2u : 1u);
@@ -157,17 +163,41 @@ void ivs_stic_overlay_mobs_row(const ivs_stic_params *p, const ivs_memsys *mem, 
   }
 }
 
+/* The columns of the collision work row: plane column x is index x + IVS_STIC_COLL_XOFF; the grid is clamped to this window (the object-field
+ * origin is 0 to 15 positions, the first profile's grid reaches plane column 158). */
+#define IVS_STIC_COLL_XOFF 16
+#define IVS_STIC_COLL_COLS 192
+/* The most television lines ivs_stic_collide_edges evaluates in one pass (the first profile's whole grid is 105 x 2 = 210 lines): a bound for a
+ * profile whose grid is absurdly tall, so the loop is bounded by a constant and not by a profile value. */
+#define IVS_STIC_COLL_LINES_MAX 1024
+
 void ivs_stic_collide_lines(const ivs_stic_params *p, const ivs_memsys *mem, const ivs_stic_mob *mobs, int32_t first_line, uint32_t nlines,
-                            uint32_t hit[IVS_STIC_MOBS])
+                            const uint8_t *on_rows, uint32_t hit[IVS_STIC_MOBS])
 {
-  uint8_t who[IVS_STIC_ROW_WORDS * 8u]; /* per working column, one bit per MOB that has a set pattern pixel there on the line under test */
+  uint8_t who[IVS_STIC_COLL_COLS]; /* per grid column, one bit per MOB that has a set pattern pixel there on the line under test */
+  int32_t rl = (int32_t)p->video_row_lines;
   int32_t width = (int32_t)p->video_width;
+  int32_t plane_lines = (int32_t)p->video_height * rl;
+  int32_t fx0 = -(int32_t)p->video_mob_origin_x; /* the grid's first plane column and one past its last */
+  int32_t fx1 = (int32_t)p->video_grid_w - (int32_t)p->video_mob_origin_x;
+  int32_t fy0 = -(int32_t)p->video_mob_origin_y * rl; /* the grid's first television line and one past its last */
+  int32_t fy1 = ((int32_t)p->video_grid_h - (int32_t)p->video_mob_origin_y) * rl;
   uint32_t l;
+  if (fx0 < -IVS_STIC_COLL_XOFF) {
+    fx0 = -IVS_STIC_COLL_XOFF;
+  }
+  if (fx1 > IVS_STIC_COLL_COLS - IVS_STIC_COLL_XOFF) {
+    fx1 = IVS_STIC_COLL_COLS - IVS_STIC_COLL_XOFF;
+  }
   for (l = 0u; l < nlines; l++) {
     int32_t line = first_line + (int32_t)l;
+    int32_t in_plane_line = (line >= 0 && line < plane_lines) ? 1 : 0;
     uint32_t used = 0u;
     int32_t x;
     uint32_t i;
+    if (line < fy0 || line >= fy1) {
+      continue; /* a line outside the object grid is not evaluated */
+    }
     memset(who, 0, sizeof who);
     for (i = 0u; i < IVS_STIC_MOBS; i++) {
       const ivs_stic_mob *m = &mobs[i];
@@ -188,28 +218,77 @@ void ivs_stic_collide_lines(const ivs_stic_params *p, const ivs_memsys *mem, con
         }
         for (k = 0u; k < (uint32_t)m->zx; k++) {
           x = (int32_t)m->left + (int32_t)((uint32_t)m->zx * c + k);
-          if (x < 0 || x >= width) {
-            continue;
+          if (x < fx0 || x >= fx1) {
+            continue; /* outside the object grid */
           }
-          who[x] = (uint8_t)(who[x] | (1u << i));
+          who[x + IVS_STIC_COLL_XOFF] = (uint8_t)(who[x + IVS_STIC_COLL_XOFF] | (1u << i));
           used |= 1u << i;
         }
       }
     }
-    if ((used & (used - 1u)) == 0u) {
-      continue; /* no MOB or one MOB has a pixel on this line: nothing can overlap */
+    if (used == 0u) {
+      continue;
     }
-    for (x = 0; x < width; x++) {
-      uint32_t w = who[x];
+    for (x = fx0; x < fx1; x++) {
+      uint32_t w = who[x + IVS_STIC_COLL_XOFF];
       uint32_t j;
-      if ((w & (w - 1u)) == 0u) {
-        continue; /* no MOB or a single MOB at this position */
+      int32_t inside;
+      if (w == 0u) {
+        continue;
       }
+      inside = (in_plane_line != 0 && x >= 0 && x < width) ? 1 : 0;
       for (j = 0u; j < IVS_STIC_MOBS; j++) {
-        if (((w >> j) & 1u) != 0u) {
+        if (((w >> j) & 1u) == 0u) {
+          continue;
+        }
+        if ((w & (w - 1u)) != 0u && (inside != 0 || p->video_collision_offscreen != 0u)) {
           hit[j] |= w & ~(1u << j); /* the bit of every other MOB here; the own bit j is never set */
+        }
+        if (inside != 0) {
+          if (on_rows != NULL) {
+            uint32_t pr = (uint32_t)((line - first_line) / rl); /* the plane row of this line inside the card row */
+            if ((on_rows[pr * IVS_STIC_ROW_WORDS + ((uint32_t)x >> 3)] & (0x80u >> ((uint32_t)x & 7u))) != 0u) {
+              hit[j] |= 0x100u; /* bit 8: a set MOB pixel on an on pixel of the card layer */
+            }
+          }
+        } else if (p->video_collision_border_bit != 0u) {
+          hit[j] |= 0x200u; /* bit 9, pinned: a set MOB pixel inside the object grid and outside the plane */
         }
       }
     }
+  }
+}
+
+void ivs_stic_collide_edges(const ivs_stic_params *p, const ivs_memsys *mem, uint32_t whole, uint32_t hit[IVS_STIC_MOBS])
+{
+  ivs_stic_mob mobs[IVS_STIC_MOBS];
+  int32_t rl = (int32_t)p->video_row_lines;
+  int32_t plane_lines = (int32_t)p->video_height * rl;
+  int32_t fy0 = -(int32_t)p->video_mob_origin_y * rl;
+  int32_t fy1 = ((int32_t)p->video_grid_h - (int32_t)p->video_mob_origin_y) * rl;
+  uint32_t i;
+  uint32_t n_act = 0u;
+  (void)ivs_stic_mob_decode(p, mem, mobs);
+  for (i = 0u; i < IVS_STIC_MOBS; i++) {
+    n_act += mobs[i].act;
+  }
+  if (n_act == 0u) {
+    return;
+  }
+  if (fy1 - fy0 > IVS_STIC_COLL_LINES_MAX) {
+    fy1 = fy0 + IVS_STIC_COLL_LINES_MAX;
+  }
+  if (whole != 0u) {
+    int32_t n = fy1 - fy0;
+    if (n > 0) {
+      ivs_stic_collide_lines(p, mem, mobs, fy0, (uint32_t)n, NULL, hit); /* a frame with the display off: no card layer, every line of the grid */
+    }
+    return;
+  }
+  if (fy0 < 0) {
+    ivs_stic_collide_lines(p, mem, mobs, fy0, (uint32_t)(-fy0), NULL, hit); /* the grid lines above the plane */
+  }
+  if (fy1 > plane_lines) {
+    ivs_stic_collide_lines(p, mem, mobs, plane_lines, (uint32_t)(fy1 - plane_lines), NULL, hit); /* the grid lines below the plane */
   }
 }

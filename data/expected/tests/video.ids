@@ -133,3 +133,13 @@ video.judge.mob-role-swapped
 video.collision.mob-mob-bits
 video.collision.or-at-frame-end
 video.collision.buffer-independent
+# Plan 08-05 task 2 (VID-05, D-02, D-06, D-08, rules STIC-R44 and R45): the rest of the derivable collision core against the truth table of derivation section (d) (rows T1 to T16, each run from a fresh scene) and hand-derived shapes (video.collision.*): the background bit from set card pixels and Colored Squares colors 0 to 6 (not 7), the own bit never set, the interaction bit required on the colliding MOBs, the visible bit not required, sticky bits across frames that nothing overlaps in (and ORed, not assigned), a CPU write that replaces under the 10-bit mask, a read with no effect (and the flip of the existing mode-select list that shows the check can fail), and the invariance of a colliding run under call sizes 1, 7, 468 and 97.
+video.collision.truth-table
+video.collision.mob-background-bit8
+video.collision.own-bit-never-set
+video.collision.intr-required
+video.collision.visibility-not-required
+video.collision.sticky-across-frames
+video.collision.cpu-write-replaces
+video.collision.read-no-effect
+video.collision.slice-invariant

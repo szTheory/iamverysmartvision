@@ -127,7 +127,8 @@ uint32_t ivs_stic_compose_card_row(const ivs_stic_params *p, const ivs_stic_stat
   if (n_on == 0u && n_act == 0u) {
     return n; /* no MOB is on or interacts: the row is exactly the card layer (every MOB register at its reset value draws nothing) */
   }
-  if (need_mask != 0u) { /* the on pixels of the card layer matter only to a MOB with the priority bit set */
+  need_mask |= n_act != 0u ? 1u : 0u; /* the on pixels of the card layer matter to a MOB with the priority bit set and to the background collision bit */
+  if (need_mask != 0u) {
     ivs_stic_cardin in;
     ivs_stic_cardin_get(s, mem, &in);
     (void)ivs_stic_cards_on_row(&in, s->row_latch[cr], mem, on_mask);
@@ -140,7 +141,7 @@ uint32_t ivs_stic_compose_card_row(const ivs_stic_params *p, const ivs_stic_stat
   }
   if (n_act != 0u) {
     /* plan 08-05: the television lines of this card row, video_row_lines per plane row */
-    ivs_stic_collide_lines(p, mem, mobs, (int32_t)(cr * p->video_card_h * p->video_row_lines), p->video_card_h * p->video_row_lines, hit);
+    ivs_stic_collide_lines(p, mem, mobs, (int32_t)(cr * p->video_card_h * p->video_row_lines), p->video_card_h * p->video_row_lines, on_mask, hit);
   }
   return n;
 }
@@ -272,6 +273,14 @@ void ivs_stic_frame_deliver(const ivs_stic_params *p, ivs_stic_state *s, ivs_mem
   row->count += 1u;
   if (displayed != 0u) {
     s->cs_ptr = cs_pos & 3u; /* the final pointer of the frame just rendered; a display-off frame leaves it as it was */
+  }
+  /* The grid lines that no card row owns (above and below the plane) take part in collision too (R45, pinned: the border bit and the off-screen
+   * MOB against MOB bits); a frame with the display off evaluates nothing unless video_collision_display_off asks for it, and then over the whole
+   * grid with no card layer. */
+  if (displayed != 0u && ivs_stic_cards_drawable(p, 0u) != 0u) {
+    ivs_stic_collide_edges(p, mem, 0u, hit);
+  } else if (displayed == 0u && p->video_collision_display_off != 0u) {
+    ivs_stic_collide_edges(p, mem, 1u, hit);
   }
   /* The collision of the frame goes into the register file here, at the end of the frame, whatever the sink is (D-06): the OR is not
    * conditional on a buffer, so the machine state does not depend on one. The picture above was a function of the registers as they were

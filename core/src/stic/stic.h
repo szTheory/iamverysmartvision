@@ -184,13 +184,20 @@ uint32_t ivs_stic_mob_decode(const ivs_stic_params *p, const ivs_memsys *mem, iv
 void ivs_stic_overlay_mobs_row(const ivs_stic_params *p, const ivs_memsys *mem, const ivs_stic_mob *mobs, uint32_t plane_y, const uint8_t *on_row,
                                uint8_t *row);
 
-/* Collision of the MOBs on television lines first_line .. first_line + nlines - 1 (plan 08-05, rule STIC-R44; stic_mob.c; pure, no static or
- * global data): for every line the set pattern pixels of the MOBs with the act flag are placed on their plane columns and every position that
- * two MOBs share sets, in hit[i], the bit j of MOB i (and the bit i of MOB j). hit[IVS_STIC_MOBS] is OR-accumulated (the caller zeroes it
- * once per frame); a MOB's own bit is never set. The evaluation is per television line (video_row_lines lines per plane row), so the
- * answer does not depend on video_mob_line_sample. */
+/* Collision of the MOBs on television lines first_line .. first_line + nlines - 1 (plan 08-05, rules STIC-R44 and R45; stic_mob.c; pure, no
+ * static or global data): for every line the set pattern pixels of the MOBs with the act flag are placed on their plane columns over the object grid
+ * (video_grid_w x video_grid_h positions, the plane inside it at video_mob_origin_x and video_mob_origin_y) and every position gives, in
+ * hit[IVS_STIC_MOBS] (OR-accumulated, the caller zeroes it once per frame): for each MOB i there, the bit j of every other MOB j there (a position
+ * inside the plane, or any grid position when video_collision_offscreen); bit 8 when the position holds an on pixel of the card layer (on_rows,
+ * the 20-byte-per-plane-row on-pixel mask of ivs_stic_cards_on_row for the plane rows of the card row that first_line starts, or NULL when there
+ * is no card layer on these lines); bit 9 (video_collision_border_bit) when the position is in the grid and outside the plane. A MOB's own bit is
+ * never set. The evaluation is per television line (video_row_lines lines per plane row), so the answer does not depend on video_mob_line_sample. */
 void ivs_stic_collide_lines(const ivs_stic_params *p, const ivs_memsys *mem, const ivs_stic_mob *mobs, int32_t first_line, uint32_t nlines,
-                            uint32_t hit[IVS_STIC_MOBS]);
+                            const uint8_t *on_rows, uint32_t hit[IVS_STIC_MOBS]);
+/* The television lines of the object grid that no card row owns (the lines above and below the plane), decoded from the register file of mem and
+ * evaluated by ivs_stic_collide_lines with no card layer; with whole nonzero (a frame with the display off, video_collision_display_off) every line
+ * of the grid. Nothing is evaluated when no MOB has the act flag. */
+void ivs_stic_collide_edges(const ivs_stic_params *p, const ivs_memsys *mem, uint32_t whole, uint32_t hit[IVS_STIC_MOBS]);
 
 /* Card row plus moving objects (plan 08-04, one composition path for the streamed slot and the whole plane): fills out as
  * ivs_stic_render_card_row does, then overlays the MOBs of the register file on each of the card_h plane rows of the card row. A display-off

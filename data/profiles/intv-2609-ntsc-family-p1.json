@@ -1561,6 +1561,46 @@
       "decision": null,
       "note": "Policy selector 0 or 1: with 0 a MOB pixel whose MOB has the priority bit set is hidden only by a card on pixel (card foreground, colored squares colors 0 to 6) and shows through a card background pixel; with 1 it is hidden by every card pixel, so such a MOB is never shown. No frame, assert or marker depends on the case."
     },
+    "video.collision_x0_interacts": {
+      "value": 0,
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: the lineage says a MOB with X coordinate 0 is not displayed and says nothing about whether it interacts (rule STIC-R45)",
+      "conflict": "C87",
+      "resolving_evidence": "measurement: D10-VID-10 owner capture of the collision registers with a MOB at X coordinate 0",
+      "revisit_trigger": "a D10 capture of the collision registers with a MOB at X coordinate 0 or a primary page that prints the rule",
+      "decision": null,
+      "note": "Policy selector 0 or 1: with 0 a MOB whose X coordinate is 0 does not take part in collision (no bit, from it or against it); with 1 it interacts at the position its X coordinate gives (plane column -8). No oracle row, frame or scenario depends on it: the collision scenario has no MOB at X coordinate 0."
+    },
+    "video.collision_border_bit": {
+      "value": 1,
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: the lineage names a border bit (bit 9) of the collision registers and does not say which pixels set it (rule STIC-R45); the printed 167 x 105 object grid against the 159 x 96 visible positions (SRC-gi-1980-catalog pdf 191) is the only geometry",
+      "conflict": "C87",
+      "resolving_evidence": "measurement: D10-VID-10 owner capture of the collision registers with a MOB at the plane edge and outside the plane",
+      "revisit_trigger": "a D10 capture of the collision registers with a MOB straddling the plane edge or a primary page that prints the border bit",
+      "decision": null,
+      "note": "Policy selector 0 or 1: with 1 a set pixel of an interacting MOB that lies inside the object grid and outside the published plane sets bit 9 of its collision register; with 0 bit 9 is never set. No oracle row depends on it: every rectangle of the collision scenario lies inside the plane."
+    },
+    "video.collision_offscreen": {
+      "value": 1,
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: the lineage does not say whether MOBs collide where they are not displayed (rule STIC-R45)",
+      "conflict": "C87",
+      "resolving_evidence": "measurement: D10-VID-10 owner capture of the collision registers with two MOBs overlapping outside the plane",
+      "revisit_trigger": "a D10 capture of two MOBs overlapping outside the published plane or a primary page that prints the rule",
+      "decision": null,
+      "note": "Policy selector 0 or 1: with 1 the MOB against MOB bits are evaluated over the whole object grid, including the positions left of, above and below the published plane; with 0 only over the published plane. No oracle row depends on it: no collision scene has a MOB outside the plane."
+    },
+    "video.collision_display_off": {
+      "value": 0,
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: the lineage does not say whether collision is evaluated in a frame whose display is off (rule STIC-R45)",
+      "conflict": "C87",
+      "resolving_evidence": "measurement: D10-VID-10 owner capture of the collision registers in a frame with the display off",
+      "revisit_trigger": "a D10 capture of the collision registers with the display disabled or a primary page that prints the rule",
+      "decision": null,
+      "note": "Policy selector 0 or 1: with 0 a frame with the display off sets no collision bit and draws no MOB; with 1 the MOBs of such a frame are evaluated for collision against each other and against the border (there is no card layer in that frame). No oracle row depends on it: frame 0 of the collision scenario is not displayed and no row reads a bit set there."
+    },
     "video.blank_value": {
       "value": 255,
       "tag": "delegated-decision",

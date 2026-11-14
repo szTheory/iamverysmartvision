@@ -126,6 +126,16 @@ typedef struct ivs_stic_params {
   uint32_t video_mob_origin_y;
   uint32_t video_mob_line_sample;
   uint32_t video_mob_prio_hides;
+  /* Collision (plan 08-05, D-02, rules STIC-R44 and R45; stic_mob.c, stic_frame.c): the four pinned selectors, each 0 or 1 (the generator reads
+   * video.collision_x0_interacts, video.collision_border_bit, video.collision_offscreen and video.collision_display_off and fails closed), all
+   * unknown-default-chosen (C87): x0_interacts says whether a MOB with X coordinate 0 takes part in collision (default 0, no); border_bit whether a set
+   * pixel of an interacting MOB inside the object grid and outside the plane sets bit 9 (default 1); offscreen whether MOB against MOB is evaluated
+   * over the whole object grid and not only over the plane (default 1); display_off whether a frame with the display off evaluates collision at all
+   * (default 0, no). */
+  uint32_t video_collision_x0_interacts;
+  uint32_t video_collision_border_bit;
+  uint32_t video_collision_offscreen;
+  uint32_t video_collision_display_off;
   uint32_t video_display_off_fill;
 } ivs_stic_params;
 
