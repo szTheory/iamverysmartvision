@@ -55,6 +55,11 @@
 # runner-process.cwd.demo-lamp-tone-pass repeat the pass scenario only (cost cap). Three judge self-controls with fake report pairs,
 # runner-process.judge.pair-video-equal, runner-process.judge.input-not-consumed and runner-process.judge.idle-audible, pass only when
 # the pair judge rejects the fake for its stated token (pair-not-different, input-not-consumed, idle-audible).
+# Since plan 07-11 (D-31, T-07-26 to T-07-29): runner-process.refuse-user.audio-raw, .psg-log-out and .audio-wav (each option refused for a
+# scenario with a `content ... user` line: exit 14, the one line `ivs-run: <option> refused: content user`, no report, no file) and the nine
+# runner-process.owner-run.* cases of the owner-local helper tools/owner-run.sh (refusal, skip and identity cases on a copy of the helper in a
+# scratch root outside the work tree, project-made zero-filled files only; see the comment above them), with the judge self-control
+# runner-process.judge.owner-run-refusal (a fake helper that exits 0 where it must refuse is rejected).
 # Judge self-controls (runner-process.judge.<slug>): the same checks run against four fake
 # runners (shell scripts in the temp dir replaying this run's reports with one defect: exit 0 for
 # a guest-fail, no report.end, outcome pass with exit.code 10, a changed digest line); each passes
@@ -1072,6 +1077,212 @@ run_one "$tmp" listen-user "$root/tools/listen-demo.sh" needs-user-exec
 grep -q -e 'content .* user' "$tmp/runs/listen-user.err" || { ok=0; why listen-demo "the message does not name the content user rule"; }
 result runner-process.listen-demo.refuses-user
 
+# The owner-local helper (plan 07-11, D-31, T-07-26 to T-07-28; docs/owner-images.md): its refusal, skip and identity cases, judged by exit
+# code and one line of text, with no owner image anywhere: the only files are project-made zero-filled files of the exact sizes. Hermetic
+# by construction: every case runs a COPY of the helper in a fresh scratch root (mktemp -d under this run's temp directory, outside the work
+# tree), so the helper's own root, from its $0, is the scratch root and nothing of the repository can be read or written. The scratch root
+# holds its own refs/ (locks and files written by the case), a copy of the template scenario and a link build/release/runner/ivs-run to the
+# runner under test. The helper's TMPDIR is a directory outside every scratch root: a leftover there is a finding. CI and GITHUB_ACTIONS are
+# set empty for every case except the two environment cases (the container and hosted gates set CI).
+# By hand, the sizes are EXEC 8192 and GROM 2048 bytes; a lock is `<64 lower-case hex>  exec` and `<64 lower-case hex>  grom`; the nine cases:
+# usage (exit 2), ci-env and github-actions-env (exit 2, checked before the absent-images skip), in-tree-path (exit 2: a path whose physical
+# directory is inside the root but not under refs/, also by a `..` spelling), wrong-size (exit 2: too short, too long, a missing image of
+# two), missing-lock (exit 2; then --record writes the lock and a second --record refuses to replace it), bad-lock-line (exit 2, one token per defect), no-images-skip (exit 77 and the SKIPPED line, even
+# when the directory of a path does not exist) and identity-mismatch (zero-filled files and a lock of 64 zero digits: the core's
+# expect-sha256 refuses at load, exit 14, the report names IVS_E_DIGEST_MISMATCH, nothing was executed and nothing else was written).
+or_tmpd="$tmp/or-tmpdir"
+mkdir "$or_tmpd" || exit 1
+or_ci_msg='owner-run: refusing to run in CI (CI or GITHUB_ACTIONS is set): owner images are never used there'
+or_usage_msg='owner-run: usage: owner-run.sh [--preset dev|release] [--record] <exec-image> <grom-image>'
+or_lock_msg='owner-run: bad lock line: want 64 lower-case hex digits, two spaces, exec or grom'
+or_z=$(printf '%064d' 0)
+# or_scratch: a fresh scratch root in $sr.
+or_scratch() {
+  sr=$(mktemp -d "$tmp/owner-run-root.XXXXXX") || exit 1
+  mkdir -p "$sr/tools" "$sr/data/scenarios" "$sr/build/release/runner" "$sr/refs" || exit 1
+  cp "$root/tools/owner-run.sh" "$sr/tools/owner-run.sh" || exit 1
+  cp "$scen/owner-exec-title.ivss" "$sr/data/scenarios/owner-exec-title.ivss" || exit 1
+  ln -s "$ivs_run" "$sr/build/release/runner/ivs-run" || exit 1
+}
+# or_img <path> <bytes>: a project-made zero-filled file.
+or_img() { dd if=/dev/zero of="$1" bs="$2" count=1 2> /dev/null || exit 1; }
+# or_run <name> <CI> <GITHUB_ACTIONS> <helper arguments...>: the scratch copy as run or-<name> (its TMPDIR is $or_tmpd unless $or_tmp is set).
+or_run() {
+  _on=$1; _oc=$2; _og=$3; shift 3
+  run_one "$tmp" "or-$_on" env "CI=$_oc" "GITHUB_ACTIONS=$_og" "TMPDIR=${or_tmp:-$or_tmpd}" sh "$sr/tools/owner-run.sh" "$@"
+}
+# or_same <file> <line>: 0 when the file holds exactly the one LF-terminated line <line>, or nothing when <line> is empty (shell builtins only,
+# no process per check: these cases are cost-capped).
+or_same() {
+  _l1=; _l2=; _r1=0; _r2=0
+  { IFS= read -r _l1 || _r1=1; IFS= read -r _l2 || _r2=1; } < "$1"
+  if [ -z "$2" ]; then
+    [ "$_r1" -eq 1 ] && [ -z "$_l1" ]
+  else
+    [ "$_r1" -eq 0 ] && [ "$_l1" = "$2" ] && [ "$_r2" -eq 1 ] && [ -z "$_l2" ]
+  fi
+}
+# or_judge <name> <exit> <stdout line> <stderr line>: run or-<name> ended with the exit code, was not hung and wrote exactly that one stdout
+# line and that one stderr line ('' for none). Findings owner-run-hung, owner-run-exit, owner-run-stdout, owner-run-stderr; returns 0 when
+# it adds none.
+or_judge() {
+  found=0
+  [ "$hung" -eq 0 ] || why owner-run-hung "still running after ${limit}s, stopped by the watchdog"
+  [ "$rc" = "$2" ] || why owner-run-exit "exit $rc, expected $2"
+  or_same "$tmp/runs/or-$1.out" "$3" || why owner-run-stdout "stdout is not exactly: $3 (got: $(sed -n '1,2p' "$tmp/runs/or-$1.out"))"
+  or_same "$tmp/runs/or-$1.err" "$4" || why owner-run-stderr "stderr is not exactly: $4 (got: $(sed -n '1,2p' "$tmp/runs/or-$1.err"))"
+  [ "$found" -eq 0 ]
+}
+# or_end: ends a case: nothing may be left in the helper's TMPDIR (finding owner-run-tmpdir), and the scratch root is removed.
+or_end() {
+  if [ -n "$(ls -A "$or_tmpd")" ]; then
+    ok=0; why owner-run-tmpdir "left in the helper's TMPDIR: $(ls -A "$or_tmpd")"
+    rm -rf "$or_tmpd"; mkdir "$or_tmpd"
+  fi
+  rm -rf "$sr"
+}
+
+: > "$tmp/why"
+ok=1
+or_scratch
+or_run usage '' ''
+or_judge usage 2 '' "$or_usage_msg" || ok=0
+or_run usage '' '' --preset bogus "$sr/refs/a" "$sr/refs/b"
+or_judge usage 2 '' "$or_usage_msg" || ok=0
+or_end
+result runner-process.owner-run.usage
+
+# Both environment variables refuse, and before the absent-images skip (the two paths do not exist, so an unchecked environment would skip).
+: > "$tmp/why"
+ok=1
+or_scratch
+or_run ci true '' "$sr/refs/a" "$sr/refs/b"
+or_judge ci 2 '' "$or_ci_msg" || ok=0
+or_end
+result runner-process.owner-run.ci-env
+: > "$tmp/why"
+ok=1
+or_scratch
+or_run gha '' true "$sr/refs/a" "$sr/refs/b"
+or_judge gha 2 '' "$or_ci_msg" || ok=0
+or_end
+result runner-process.owner-run.github-actions-env
+
+# An image whose physical directory is inside the root but not under refs/ (also reached through a `..` spelling, and with only one image
+# there) is refused.
+: > "$tmp/why"
+ok=1
+or_scratch
+mkdir "$sr/data/own"
+or_img "$sr/data/own/e.bin" 8192
+or_img "$sr/data/own/g.bin" 2048
+or_run tree '' '' "$sr/data/own/e.bin" "$sr/data/own/g.bin"
+or_judge tree 2 '' "owner-run: an image is inside the work tree outside refs/: $sr/data/own/e.bin" || ok=0
+or_img "$sr/refs/e.bin" 8192
+or_run tree '' '' "$sr/refs/e.bin" "$sr/refs/../data/own/g.bin"
+or_judge tree 2 '' "owner-run: an image is inside the work tree outside refs/: $sr/refs/../data/own/g.bin" || ok=0
+or_end
+result runner-process.owner-run.in-tree-path
+
+# Not a regular file of the exact size: too short, too long, a missing image of two (not the skip).
+: > "$tmp/why"
+ok=1
+or_scratch
+or_exec_msg='owner-run: the exec image is not a regular file of exactly 8192 bytes'
+or_grom_msg='owner-run: the grom image is not a regular file of exactly 2048 bytes'
+or_img "$sr/refs/short.bin" 8191
+or_img "$sr/refs/e.bin" 8192
+or_img "$sr/refs/long.bin" 2049
+or_img "$sr/refs/g.bin" 2048
+or_run size '' '' "$sr/refs/short.bin" "$sr/refs/g.bin"
+or_judge size 2 '' "$or_exec_msg" || ok=0
+or_run size '' '' "$sr/refs/e.bin" "$sr/refs/long.bin"
+or_judge size 2 '' "$or_grom_msg" || ok=0
+or_run size '' '' "$sr/refs/e.bin" "$sr/refs/none.bin"
+or_judge size 2 '' "$or_grom_msg" || ok=0
+or_end
+result runner-process.owner-run.wrong-size
+
+# Right-sized files and no lock.
+: > "$tmp/why"
+ok=1
+or_scratch
+or_img "$sr/refs/e.bin" 8192
+or_img "$sr/refs/g.bin" 2048
+or_run nolock '' '' "$sr/refs/e.bin" "$sr/refs/g.bin"
+or_judge nolock 2 '' 'owner-run: no lock refs/owner-images.sha256 (write it with --record)' || ok=0
+# --record writes the lock from the two files (the digests of 8192 and of 2048 zero bytes, pinned here from an independent tool) and goes on;
+# a TMPDIR that does not exist ends it right after the write, before anything is executed. A second --record refuses to replace the lock.
+or_tmp="$tmp/no-such-dir"
+or_run record '' '' --record "$sr/refs/e.bin" "$sr/refs/g.bin"
+or_tmp=
+or_judge record 2 '' 'owner-run: cannot make a temporary directory' || ok=0
+printf '%s\n' '9f1dcbc35c350d6027f98be0f5c8b43b42ca52b7604459c0c42be3aa88913d47  exec' 'e5a00aa9991ac8a5ee3109844d84a55583bd20572ad3ffcd42792f3c36b183ad  grom' \
+  > "$tmp/or.want"
+cmp -s "$sr/refs/owner-images.sha256" "$tmp/or.want" || { ok=0; why owner-run-record "the recorded lock is not the digests of the two zero-filled files"; }
+or_run record '' '' --record "$sr/refs/e.bin" "$sr/refs/g.bin"
+or_judge record 2 '' 'owner-run: refs/owner-images.sha256 exists: remove it to record again' || ok=0
+or_end
+result runner-process.owner-run.missing-lock
+
+# A lock line must be exactly 64 lower-case hex digits, two spaces and exec or grom, once each; one defect per run, one token each.
+: > "$tmp/why"
+ok=1
+or_scratch
+or_img "$sr/refs/e.bin" 8192
+or_img "$sr/refs/g.bin" 2048
+or_up=A$(printf '%063d' 0)
+or_short=$(printf '%063d' 0)
+# or_badlock <expected stderr line> <lock line>...: writes the lock (one argument per line) and runs the helper once.
+or_badlock() {
+  or_want=$1; shift
+  printf '%s\n' "$@" > "$sr/refs/owner-images.sha256"
+  or_run lock '' '' "$sr/refs/e.bin" "$sr/refs/g.bin"
+  or_judge lock 2 '' "$or_want" || ok=0
+}
+or_badlock "$or_lock_msg" "$or_up  exec" "$or_z  grom"
+or_badlock "$or_lock_msg" "$or_short  exec" "$or_z  grom"
+or_badlock "$or_lock_msg" "$or_z exec" "$or_z  grom"
+or_badlock 'owner-run: bad lock line: the role is not exec or grom' "$or_z  exec" "$or_z  cart"
+or_badlock 'owner-run: bad lock: exec or grom is missing' "$or_z  exec"
+or_end
+result runner-process.owner-run.bad-lock-line
+
+# Neither image exists: the SKIPPED line and exit 77, checked before any path or file check (a directory that does not exist is no refusal).
+: > "$tmp/why"
+ok=1
+or_scratch
+or_run skip '' '' "$sr/refs/none-a" "$sr/refs/none-b"
+or_judge skip 77 'SKIPPED owner-run: no operator images (D11)' '' || ok=0
+or_run skip '' '' "$sr/no-such-dir/a" "$sr/no-such-dir/b"
+or_judge skip 77 'SKIPPED owner-run: no operator images (D11)' '' || ok=0
+or_end
+result runner-process.owner-run.no-images-skip
+
+# A lock that does not match the loaded bytes: zero-filled project files of the exact sizes and a lock of 64 zero digits. The helper passes
+# the lock digests to the core as expect-sha256 lines and the core refuses at load (IVS_E_DIGEST_MISMATCH), so the report says so, nothing was
+# executed (cpu.run_state unreset), the banner is the first stdout line, stderr is empty and the scratch root holds no file but its own.
+: > "$tmp/why"
+ok=1
+or_scratch
+or_img "$sr/refs/e.bin" 8192
+or_img "$sr/refs/g.bin" 2048
+printf '%s  exec\n%s  grom\n' "$or_z" "$or_z" > "$sr/refs/owner-images.sha256"
+or_run mismatch '' '' "$sr/refs/e.bin" "$sr/refs/g.bin"
+[ "$rc" -eq 14 ] && [ "$hung" -eq 0 ] || { ok=0; why owner-run-exit "exit $rc (hung $hung), expected 14"; }
+[ ! -s "$tmp/runs/or-mismatch.err" ] || { ok=0; why owner-run-stderr "stderr is not empty"; }
+[ "$(sed -n '1p' "$tmp/runs/or-mismatch.out")" = "OWNER-LOCAL RUN (D11): inputs are the owner's, not redistributable, not run in CI, not evidence, no claim" ] \
+  || { ok=0; why owner-run-banner "the first stdout line is not the banner"; }
+grep -q '^outcome\.detail load-refused role=exec status=IVS_E_DIGEST_MISMATCH' "$tmp/runs/or-mismatch.out" \
+  || { ok=0; why owner-run-identity "the report does not name the digest mismatch at load"; }
+grep -q -x 'cpu.run_state unreset' "$tmp/runs/or-mismatch.out" || { ok=0; why owner-run-identity "the machine was run"; }
+find "$sr" ! -type d | sed "s|^$sr/||" | sort > "$tmp/or.files"
+printf '%s\n' build/release/runner/ivs-run data/scenarios/owner-exec-title.ivss refs/e.bin refs/g.bin refs/owner-images.sha256 tools/owner-run.sh \
+  | sort > "$tmp/or.want"
+cmp -s "$tmp/or.files" "$tmp/or.want" || { ok=0; why owner-run-files "the scratch root holds other files: $(tr '\n' ' ' < "$tmp/or.files")"; }
+or_end
+result runner-process.owner-run.identity-mismatch
+
 # Judge self-controls (D-23, T-04-59): the same checks run against wrong runners, shell scripts
 # in the temp dir that replay this run's recorded reports with one defect each. A control passes
 # only when the check fails with a finding of its intended token.
@@ -1192,6 +1403,19 @@ self_control input-not-consumed input-not-consumed \
   check_pair demo-lamp-tone-pass demo-lamp-tone-idle "$fakes/pass-not-consumed.report" "$lt_idle" "${lt_d:-}" "${lt_e:-}"
 self_control idle-audible idle-audible \
   check_pair demo-lamp-tone-pass demo-lamp-tone-idle "$lt_pass" "$fakes/idle-audible.report" "${lt_d:-}" "${lt_e:-}"
+
+# Judge self-control of the owner-helper cases (plan 07-11, D-31): a fake helper in its own scratch root that exits 0 where the real one must
+# refuse (CI set) is rejected by or_judge for its exit code.
+or_fake() {
+  or_scratch
+  printf '#!/bin/sh\nexit 0\n' > "$sr/tools/owner-run.sh"
+  or_run fake true '' "$sr/refs/a" "$sr/refs/b"
+  or_judge fake 2 '' "$or_ci_msg"
+  _fj=$?
+  or_end
+  return "$_fj"
+}
+self_control owner-run-refusal owner-run-exit or_fake
 
 # Watchdog self-control (the hosted false `hung` of run 43148343848, see wd_start): 20 watchdogs
 # of a live target, each stopped at once, must leave no marker and the target alive (before the
