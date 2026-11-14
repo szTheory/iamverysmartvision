@@ -23,3 +23,6 @@ RESTORE_PROFILE_UNCHECKED state.restore.refuse-identity-profile state. state.rea
 # RESTORE_IMAGE_DIGEST_UNCHECKED (core/src/machine/machine_snapshot_restore.c): restore does not compare the SHA-256 and the length of a slot that is loaded on both
 # sides, so a snapshot taken with other images is accepted into an instance that holds these.
 RESTORE_IMAGE_DIGEST_UNCHECKED state.restore.refuse-identity-slots state. state.read.describe-ok
+# RESTORE_MUTATES_BEFORE_VALIDATE (core/src/machine/machine_snapshot_restore.c): the CPU rows are committed into the instance before the STIC validators run, so a snapshot
+# that a STIC validator refuses has already changed the instance; the whole-instance comparison over every refusal row sees it.
+RESTORE_MUTATES_BEFORE_VALIDATE state.restore.atomic-every-refusal state. state.read.describe-ok

@@ -21,6 +21,9 @@
 #define SU_TAIL 0u
 #endif
 
+/* The build-tree images (tools/pack, ivs_pack --c-include): the boot stub contracts 1 and 2 and the three diagnostic cartridges. */
+#include "ivs_state_images.inc"
+
 /* The stand-in boot program, the same 23 decles as state_save.c (each derived in tests/machine/machine_standin.c from the printed vector
  * rows of the CP1610 manual): four PSG writes (mixer $3E, amplitude A $0F, tone A fine period 1 and coarse 0), then R1 = $0155 and the
  * loop that stores R1 at $0200 and adds 1 forever. */
@@ -107,7 +110,7 @@ int su_nine_digests(const ivs_machine *m, uint8_t out[9][32])
   return 1;
 }
 
-void state_poison(ivs_machine *m)
+void su_poison(ivs_machine *m, uint8_t byte)
 {
   uint8_t *b = (uint8_t *)m;
   size_t n = ivs_machine_digest_field_count();
@@ -115,9 +118,14 @@ void state_poison(ivs_machine *m)
   for (i = 0u; i < n; i++) {
     const ivs_digest_field *f = ivs_machine_digest_field(i);
     if (f != NULL && (f->snap == IVS_SNAP_STATE || f->snap == IVS_SNAP_PAD)) {
-      memset(b + f->offset, 0xA5, (size_t)f->width * f->count);
+      memset(b + f->offset, byte, (size_t)f->width * f->count);
     }
   }
+}
+
+void state_poison(ivs_machine *m)
+{
+  su_poison(m, 0xA5u);
 }
 
 int su_snapshot(const ivs_machine *m, uint8_t *buf, size_t cap, size_t *n)
@@ -528,4 +536,117 @@ uint32_t su_run_rows(su_run *u, const su_tab *t)
     free(h);
   }
   return bad;
+}
+
+/* ---- the scenario programs ---- */
+
+typedef struct su_scn {
+  const char *name;
+  const uint8_t *exec;
+  size_t exec_n;
+  const uint8_t *cart;
+  size_t cart_n;
+  uint32_t n_events;
+  ivs_input_event ev[6];
+} su_scn;
+
+#define SU_EV(t, c0, c1) {(t), 0u, 0u, {(c0), (c1), 0u, 0u}}
+
+/* The events of data/scenarios/demo-lamp-tone-pass.ivss, in its order and at its ticks (c0 is the port read at $01FE, c1 the port read at
+ * $01FF), and the selector words of the diag-stic scenarios (KEY_n closed from tick 0). */
+static const su_scn su_scns[SU_SC_COUNT] = {
+    {"lamp-idle", ivs_img_boot_stub_2, IVS_IMG_BOOT_STUB_2_BYTES, ivs_img_lamp_tone, IVS_IMG_LAMP_TONE_BYTES, 0u, {{0}}},
+    {"lamp-pass", ivs_img_boot_stub_2, IVS_IMG_BOOT_STUB_2_BYTES, ivs_img_lamp_tone, IVS_IMG_LAMP_TONE_BYTES, 6u,
+     {SU_EV(100000u, IVS_CTRL_KEY_1, 0u), SU_EV(220000u, IVS_CTRL_KEY_1 | IVS_CTRL_KEY_9, 0u), SU_EV(340000u, 0u, IVS_CTRL_DISC_E),
+      SU_EV(460000u, IVS_CTRL_SIDE_TOP, IVS_CTRL_DISC_E), SU_EV(580000u, 0u, 0u),
+      SU_EV(700000u, IVS_CTRL_KEY_1 | IVS_CTRL_KEY_9, IVS_CTRL_SIDE_LOWER_LEFT)}},
+    {"stub2", ivs_img_boot_stub_2, IVS_IMG_BOOT_STUB_2_BYTES, NULL, 0u, 0u, {{0}}},
+    {"stic1-fgbg", ivs_img_boot_stub, IVS_IMG_BOOT_STUB_BYTES, ivs_img_diag_stic_1, IVS_IMG_DIAG_STIC_1_BYTES, 0u, {{0}}},
+    {"stic1-cstack", ivs_img_boot_stub, IVS_IMG_BOOT_STUB_BYTES, ivs_img_diag_stic_1, IVS_IMG_DIAG_STIC_1_BYTES, 1u,
+     {SU_EV(0u, IVS_CTRL_KEY_1, 0u)}},
+    {"stic2-idle", ivs_img_boot_stub_2, IVS_IMG_BOOT_STUB_2_BYTES, ivs_img_diag_stic_2, IVS_IMG_DIAG_STIC_2_BYTES, 0u, {{0}}},
+    {"stic2-mob", ivs_img_boot_stub_2, IVS_IMG_BOOT_STUB_2_BYTES, ivs_img_diag_stic_2, IVS_IMG_DIAG_STIC_2_BYTES, 1u,
+     {SU_EV(0u, IVS_CTRL_KEY_1, 0u)}},
+    {"stic2-border", ivs_img_boot_stub_2, IVS_IMG_BOOT_STUB_2_BYTES, ivs_img_diag_stic_2, IVS_IMG_DIAG_STIC_2_BYTES, 1u,
+     {SU_EV(0u, IVS_CTRL_KEY_2, 0u)}},
+    {"stic2-hdelay", ivs_img_boot_stub_2, IVS_IMG_BOOT_STUB_2_BYTES, ivs_img_diag_stic_2, IVS_IMG_DIAG_STIC_2_BYTES, 1u,
+     {SU_EV(0u, IVS_CTRL_KEY_3, 0u)}},
+    {"stic2-vdelay", ivs_img_boot_stub_2, IVS_IMG_BOOT_STUB_2_BYTES, ivs_img_diag_stic_2, IVS_IMG_DIAG_STIC_2_BYTES, 1u,
+     {SU_EV(0u, IVS_CTRL_KEY_4, 0u)}},
+    {"stic2-collision", ivs_img_boot_stub_2, IVS_IMG_BOOT_STUB_2_BYTES, ivs_img_diag_stic_2, IVS_IMG_DIAG_STIC_2_BYTES, 1u,
+     {SU_EV(0u, IVS_CTRL_KEY_5, 0u)}},
+};
+
+const char *su_scenario_name(uint32_t sc)
+{
+  return sc < SU_SC_COUNT ? su_scns[sc].name : "";
+}
+
+const ivs_input_event *su_scenario_events(uint32_t sc, uint32_t *count)
+{
+  if (sc >= SU_SC_COUNT || su_scns[sc].n_events == 0u) {
+    *count = 0u;
+    return NULL;
+  }
+  *count = su_scns[sc].n_events;
+  return su_scns[sc].ev;
+}
+
+static uint8_t *su_copy(const uint8_t *src, size_t n)
+{
+  uint8_t *b = (uint8_t *)malloc(n);
+  if (b != NULL) {
+    memcpy(b, src, n);
+  }
+  return b;
+}
+
+int su_scenario_new(ivs_ms_inst *x, uint32_t sc, int power)
+{
+  const su_scn *s;
+  int ok;
+  if (sc >= SU_SC_COUNT) {
+    return 0;
+  }
+  s = &su_scns[sc];
+  if (!ivs_ms_new(x, 0x5Au)) {
+    return 0;
+  }
+  ok = ivs_ms_load(x->m, IVS_KIND_EXEC, su_copy(s->exec, s->exec_n), s->exec_n) &&
+       ivs_ms_load(x->m, IVS_KIND_GROM, (uint8_t *)calloc(IVS_MS_GROM_BYTES, 1u), IVS_MS_GROM_BYTES);
+  if (ok && s->cart != NULL) {
+    ok = ivs_ms_load(x->m, IVS_KIND_CARTRIDGE, su_copy(s->cart, s->cart_n), s->cart_n);
+  }
+  if (ok && power != 0) {
+    ok = ivs_machine_reset(x->m, IVS_RESET_POWER_ON) == IVS_OK;
+  }
+  if (!ok) {
+    ivs_ms_free(x);
+    return 0;
+  }
+  return 1;
+}
+
+int su_run_to(ivs_machine *m, uint64_t target, const ivs_input_event *ev, uint32_t n, uint32_t *consumed)
+{
+  ivs_run_request q;
+  ivs_run_report r;
+  memset(&q, 0, sizeof q);
+  q.struct_size = (uint32_t)sizeof q;
+  q.target_ticks = target;
+  q.events = n > *consumed ? ev + *consumed : NULL;
+  q.event_count = n > *consumed ? n - *consumed : 0u;
+  memset(&r, 0, sizeof r);
+  r.struct_size = (uint32_t)sizeof r;
+  if (ivs_machine_run(m, &q, &r) != IVS_OK) {
+    return 0;
+  }
+  *consumed += r.input_consumed;
+  return 1;
+}
+
+int su_run_unit(ivs_machine *m, const ivs_input_event *ev, uint32_t n, uint32_t *consumed)
+{
+  const struct ivs_machine *im = m;
+  return su_run_to(m, im->time_ticks + 1u, ev, n, consumed);
 }

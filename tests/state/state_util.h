@@ -33,6 +33,35 @@ int su_boot_new(ivs_ms_inst *x, uint32_t images, int power, uint8_t poison);
 /* su_boot_new with all three images, powered, and then units units stepped through the seam. */
 int su_boot_stepped(ivs_ms_inst *x, uint32_t units, uint8_t poison);
 
+/* ---- the scenario programs (the build-tree images of tools/pack, ivs_state_images.inc) ----
+ * A powered instance for the programs the cut and sweep families run: the project boot stub (contract 2, or contract 1 for the first
+ * STIC diagnostic) as the EXEC image, the zero graphics ROM the scenarios use and the program's own cartridge, with the input events of the
+ * scenario's `input` lines. Nothing here is committed: the images are the bytes tools/pack wrote into the build tree. */
+#define SU_SC_LAMP_IDLE 0u   /* Lamp Tone, no input */
+#define SU_SC_LAMP_PASS 1u   /* Lamp Tone with the six events of demo-lamp-tone-pass */
+#define SU_SC_STUB2 2u       /* the boot stub contract 2 alone, no cartridge */
+#define SU_SC_STIC1_FGBG 3u  /* the first STIC diagnostic, no input */
+#define SU_SC_STIC1_CSTACK 4u /* the first STIC diagnostic, KEY_1 from tick 0 */
+#define SU_SC_STIC2_IDLE 5u  /* the second STIC diagnostic, no selector */
+#define SU_SC_STIC2_MOB 6u   /* the second STIC diagnostic, selector KEY_1 .. KEY_5 (borders, delays, collision) */
+#define SU_SC_STIC2_BORDER 7u
+#define SU_SC_STIC2_HDELAY 8u
+#define SU_SC_STIC2_VDELAY 9u
+#define SU_SC_STIC2_COLLISION 10u
+#define SU_SC_COUNT 11u
+
+const char *su_scenario_name(uint32_t sc);
+/* The events of the scenario (NULL and 0 for none). */
+const ivs_input_event *su_scenario_events(uint32_t sc, uint32_t *count);
+/* A new instance with the scenario's images loaded, and a power-on reset when power is not 0. 1 on success; freed on failure. */
+int su_scenario_new(ivs_ms_inst *x, uint32_t sc, int power);
+/* Runs one unit boundary through the public run call (target one tick past machine time, buffers not requested), passing the events
+ * from index *consumed on and advancing *consumed by the number the call applied: the way a host that resubmits its events from the
+ * applied-event count steps a machine. 1 when the call returned OK. */
+int su_run_unit(ivs_machine *m, const ivs_input_event *ev, uint32_t n, uint32_t *consumed);
+/* Runs the public call to target ticks (no buffers) with the events from *consumed on; 1 when it returned OK. */
+int su_run_to(ivs_machine *m, uint64_t target, const ivs_input_event *ev, uint32_t n, uint32_t *consumed);
+
 /* ---- oracles ---- */
 
 /* The nine digests of an instance (the composite and the eight domains), 9 x 32 bytes, by the public call. 1 on success. */
@@ -43,6 +72,8 @@ int su_nine_digests(const ivs_machine *m, uint8_t out[9][32]);
  * profile indices, the committed image structure, the slot records) and the IMAGE rows (the three image arrays) are left as they are, so
  * the instance stays a valid handle of the same images. A restore that misses any row leaves 0xA5 behind. */
 void state_poison(ivs_machine *m);
+/* The same with another byte (two different poisons expose a row whose source bytes happen to equal one of them). */
+void su_poison(ivs_machine *m, uint8_t byte);
 
 /* The snapshot of m into buf (cap bytes), its length in *n. 1 when the save returned OK. */
 int su_snapshot(const ivs_machine *m, uint8_t *buf, size_t cap, size_t *n);

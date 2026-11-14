@@ -54,3 +54,15 @@ state.restore.refuse-content-validators
 state.restore.refuse-content-invariants
 state.restore.profile-id-seam
 state.restore.reasons-covered
+# Plan 08-13 Task 2: restore into a poisoned target equals the source (the whole instance, the pad bytes and the nine digests, with two poison bytes), a snapshot goes into any
+# instance of the profile whose slots match (OFF, reset, far on, poisoned, halted, faulted), restore sets POWERED and writes no BOUND or IMAGE row, every refusal of every
+# matrix leaves a poisoned non-trivial target byte-identical (the id that RESTORE_MUTATES_BEFORE_VALIDATE must fail), the invariants INV-1 to INV-6 hold at every unit boundary
+# of real programs (the Lamp Tone, the diagnostics, the boot stub, the stand-ins, a halting and a faulting program), the eight digest fields of the header are informational,
+# and the judge: the matrix runner and the atomicity oracle can fail.
+state.restore.poisoned-target-equals-source
+state.restore.same-profile-any-instance
+state.restore.sets-powered
+state.restore.atomic-every-refusal
+state.restore.invariants-hold-reachable
+state.restore.digest-fields-informational
+state.judge.refusal-expectation-corrupt

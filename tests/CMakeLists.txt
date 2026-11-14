@@ -398,8 +398,20 @@ add_custom_command(
   DEPENDS "${IVS_IVSN_SCHEMA_LITERAL}" "${IVS_IVSN_LITERALS_GENERATOR}"
   COMMENT "Generating the IVSN schema literal include"
   VERBATIM)
-set(IVS_STATE_TEST_SOURCES state/state_main.c state/state_literal.c state/state_save.c state/state_read.c state/state_util.c state/state_restore.c machine/machine_standin.c)
-add_executable(ivs_tests_state ${IVS_STATE_TEST_SOURCES} "${IVS_IVSN_LITERALS_INC}" "${IVS_IVSN_SCHEMA_INC}")
+# Plan 08-13: the programs the restore and reachability families run (the Lamp Tone, the first STIC diagnostic and the second one, with the two
+# project boot stubs they are entered through): the bytes of the build-tree images that tools/pack writes, turned into a C include by
+# ivs_pack --c-include. A second include, separate from the run suite's ivs_images.inc (which is not edited); nothing in it is committed.
+set(IVS_STATE_IMAGES_INC "${CMAKE_CURRENT_BINARY_DIR}/ivs_state_images.inc")
+add_custom_command(
+  OUTPUT "${IVS_STATE_IMAGES_INC}"
+  COMMAND ivs_pack --c-include "${IVS_STATE_IMAGES_INC}" "boot_stub=${IVS_BOOT_STUB_EXEC}" "boot_stub_2=${IVS_BOOT_STUB_2_EXEC}"
+          "lamp_tone=${IVS_LAMP_TONE_IVSC}" "diag_stic_1=${IVS_DIAG_STIC_1_IVSC}" "diag_stic_2=${IVS_DIAG_STIC_2_IVSC}"
+  DEPENDS ivs_pack ivs_images "${IVS_BOOT_STUB_EXEC}" "${IVS_BOOT_STUB_2_EXEC}" "${IVS_LAMP_TONE_IVSC}" "${IVS_DIAG_STIC_1_IVSC}"
+          "${IVS_DIAG_STIC_2_IVSC}"
+  COMMENT "Generating the build-tree image include of the state suite"
+  VERBATIM)
+set(IVS_STATE_TEST_SOURCES state/state_main.c state/state_literal.c state/state_save.c state/state_read.c state/state_util.c state/state_restore.c state/state_invariants.c machine/machine_standin.c)
+add_executable(ivs_tests_state ${IVS_STATE_TEST_SOURCES} "${IVS_IVSN_LITERALS_INC}" "${IVS_IVSN_SCHEMA_INC}" "${IVS_STATE_IMAGES_INC}")
 target_include_directories(ivs_tests_state PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/state"
   "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(ivs_tests_state PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
@@ -553,7 +565,7 @@ ivs_fault_gen(GEN_CTRL_MUTATION SUITE input OUTPUT ivs_ctrl_lines.inc
 ivs_fault_suite(state
   SOURCES ${IVS_STATE_TEST_SOURCES}
   INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/state" "${CMAKE_CURRENT_BINARY_DIR}"
-  GENERATED "${IVS_IVSN_LITERALS_INC}" "${IVS_IVSN_SCHEMA_INC}"
+  GENERATED "${IVS_IVSN_LITERALS_INC}" "${IVS_IVSN_SCHEMA_INC}" "${IVS_STATE_IMAGES_INC}"
   FAULT_DEFINITIONS IVS_STATE_FAULT_RUN)
 
 ivs_fault_suite(memmap

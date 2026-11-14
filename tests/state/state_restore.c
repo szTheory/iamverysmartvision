@@ -744,7 +744,7 @@ static void rs_arena_free(rs_arena *a)
   memset(a, 0, sizeof *a);
 }
 
-static int rs_arena_new(rs_arena *a)
+static int rs_arena_new(rs_arena *a, int poisoned)
 {
   memset(a, 0, sizeof *a);
   a->base = (uint8_t *)aligned_alloc(IVS_MACHINE_ALIGN, (size_t)RS_GAP + IVS_MACHINE_BYTES + RS_GAP);
@@ -759,6 +759,9 @@ static int rs_arena_new(rs_arena *a)
   if (!su_boot_at(a->inst, SU_IMG_ALL, 1, &a->m) || !ivs_ms_step(a->m, 300u, NULL)) {
     rs_arena_free(a);
     return 0;
+  }
+  if (poisoned) {
+    state_poison(a->m);
   }
   memcpy(a->orig, a->inst, IVS_MACHINE_BYTES);
   return 1;
@@ -804,7 +807,7 @@ static int rs_arg_call(const char *name, rs_arena *a, ivs_machine *handle, const
 }
 
 /* The argument rows against the arena instance (also run by the atomicity sweep of the second task on poisoned instances). */
-static int rs_args(uint32_t *produced)
+static int rs_args(uint32_t *produced, int poisoned)
 {
   rs_arena a;
   su_rep rep;
@@ -813,7 +816,7 @@ static int rs_args(uint32_t *produced)
   uint8_t *big = NULL;
   size_t n;
   int ok = 1;
-  if (!rs_base_get() || !rs_arena_new(&a)) {
+  if (!rs_base_get() || !rs_arena_new(&a, poisoned)) {
     return 0;
   }
   n = rs_snap_n;
@@ -959,7 +962,7 @@ static int rs_args(uint32_t *produced)
 
 static int rs_refuse_args(void)
 {
-  return rs_args(NULL) ? IVS_TEST_PASS : IVS_TEST_FAIL;
+  return rs_args(NULL, 0) ? IVS_TEST_PASS : IVS_TEST_FAIL;
 }
 
 /* ---- the seam: the comparison of the profile id (reason 73) ---- */
@@ -1069,7 +1072,7 @@ static int rs_reasons_covered(void)
   for (i = 0u; i < RS_FAMILIES; i++) {
     bad += rs_run_family(&rs_families[i], 0, 0, &produced);
   }
-  ok &= rs_args(&produced);
+  ok &= rs_args(&produced, 0);
   ST_CHECK(bad == 0u);
   if (rs_seam_rows(1)) {
     produced |= RS_BIT(73u); /* the seam judges a registered id that differs from the instance's: the comparison behind reason 73 */
@@ -1157,6 +1160,455 @@ static int rs_roundtrip_fixed_point(void)
   return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
 }
 
+/* ---- restore into a poisoned target equals the source ---- */
+
+/* The whole instances byte-identical and the nine digests equal; label names the situation in the diagnostic. */
+static int rs_equal_instances(const char *label, const ivs_ms_inst *want, const ivs_ms_inst *got)
+{
+  uint8_t dw[9][32];
+  uint8_t dg[9][32];
+  int ok = 1;
+  ST_REQ(ok, su_nine_digests(want->m, dw) && su_nine_digests(got->m, dg));
+  ST_REQ(ok, memcmp(dw, dg, sizeof dw) == 0);
+  if (memcmp(want->storage, got->storage, IVS_MACHINE_BYTES) != 0) {
+    size_t i = 0u;
+    size_t rows = ivs_machine_digest_field_count();
+    while (((const uint8_t *)want->storage)[i] == ((const uint8_t *)got->storage)[i]) {
+      i++;
+    }
+    for (size_t r = 0u; r < rows; r++) {
+      const ivs_digest_field *f = ivs_machine_digest_field(r);
+      if (f != NULL && i >= f->offset && i < f->offset + (size_t)f->width * f->count) {
+        ivs_test_diag("%s: the instances differ at byte %u, row %s", label, (unsigned)i, f->name);
+        break;
+      }
+    }
+    ok = 0;
+  }
+  return ok;
+}
+
+/* The cuts of state.restore.poisoned-target-equals-source: a scenario (or the stand-in boot program, scenario SU_SC_COUNT) run through the
+ * public call to a tick, so each is a unit boundary reached the way a host reaches it. */
+typedef struct rs_cut {
+  uint32_t scenario;
+  uint64_t ticks;
+} rs_cut;
+
+static int rs_cut_source(ivs_ms_inst *x, uint32_t scenario, uint64_t ticks, uint32_t *consumed)
+{
+  const ivs_input_event *ev;
+  uint32_t n = 0u;
+  *consumed = 0u;
+  if (scenario == SU_SC_COUNT ? !su_boot_new(x, SU_IMG_ALL, 1, 0x5Au) : !su_scenario_new(x, scenario, 1)) {
+    return 0;
+  }
+  ev = scenario == SU_SC_COUNT ? NULL : su_scenario_events(scenario, &n);
+  if (ticks > 0u && !su_run_to(x->m, ticks, ev, n, consumed)) {
+    ivs_ms_free(x);
+    return 0;
+  }
+  return 1;
+}
+
+/* state.restore.poisoned-target-equals-source (D-15, D-16, the table-free oracle): at each cut, a snapshot of the source is restored into a
+ * target of the same images whose STATE and PAD rows were filled with a poison byte through the offset, width and count of the digest field
+ * table: afterwards the WHOLE target instance is byte-identical to the source (the pad bytes too, because restore zeroes them), the nine
+ * digests are equal, and a snapshot of the target is the snapshot again. A restore that misses any row leaves poison behind; the test runs
+ * with two different poison bytes, so a row whose source bytes happen to equal one of them is still seen with the other, and a target
+ * that is all zero (where a skipped row would look restored) is never used. */
+static int rs_poisoned_target(void)
+{
+  static const rs_cut cuts[] = {
+      {SU_SC_COUNT, 1u},        {SU_SC_COUNT, 59735u},   {SU_SC_COUNT, 59736u},    {SU_SC_COUNT, 70000u},  {SU_SC_COUNT, 119472u},
+      {SU_SC_COUNT, 173352u},   {SU_SC_LAMP_IDLE, 100000u}, {SU_SC_LAMP_IDLE, 200000u}, {SU_SC_LAMP_IDLE, 400000u},
+      {SU_SC_LAMP_PASS, 250000u}, {SU_SC_LAMP_PASS, 350000u}, {SU_SC_STIC2_MOB, 70000u}, {SU_SC_STIC2_COLLISION, 130000u},
+  };
+  static const uint8_t poison[2] = {0xA5u, 0x5Au};
+  size_t c;
+  int ok = 1;
+  for (c = 0u; c < sizeof cuts / sizeof cuts[0]; c++) {
+    ivs_ms_inst src;
+    uint8_t snap[IVS_SNAPSHOT_MAX_BYTES];
+    uint8_t again[IVS_SNAPSHOT_MAX_BYTES];
+    size_t n = 0u;
+    size_t n2 = 0u;
+    uint32_t consumed = 0u;
+    uint32_t k;
+    char label[64];
+    if (!rs_cut_source(&src, cuts[c].scenario, cuts[c].ticks, &consumed) || !su_snapshot(src.m, snap, sizeof snap, &n)) {
+      return IVS_TEST_FAIL;
+    }
+    for (k = 0u; k < 2u; k++) {
+      ivs_ms_inst dst;
+      ivs_status st;
+      int built = cuts[c].scenario == SU_SC_COUNT ? su_boot_new(&dst, SU_IMG_ALL, 1, 0x33u) : su_scenario_new(&dst, cuts[c].scenario, 1);
+      (void)snprintf(label, sizeof label, "cut %u (%s at %llu), poison %02X", (unsigned)c,
+                     cuts[c].scenario == SU_SC_COUNT ? "boot" : su_scenario_name(cuts[c].scenario), (unsigned long long)cuts[c].ticks,
+                     (unsigned)poison[k]);
+      if (!built) {
+        ivs_ms_free(&src);
+        return IVS_TEST_FAIL;
+      }
+      su_poison(dst.m, poison[k]);
+      ST_REQ(ok, memcmp(src.storage, dst.storage, IVS_MACHINE_BYTES) != 0);
+      st = ivs_machine_snapshot_restore(dst.m, snap, n, NULL);
+      ST_REQ(ok, st == IVS_OK);
+      ST_REQ(ok, rs_equal_instances(label, &src, &dst));
+      ST_REQ(ok, su_snapshot(dst.m, again, sizeof again, &n2) && n2 == n && memcmp(snap, again, n) == 0);
+      ivs_ms_free(&dst);
+    }
+    ivs_ms_free(&src);
+  }
+  return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
+}
+
+/* ---- any instance of the same profile and images ---- */
+
+/* Restores a snapshot of src into dst and requires the whole instance to equal src afterwards, the machine POWERED. */
+static int rs_restore_into(const char *label, const ivs_ms_inst *src, ivs_ms_inst *dst)
+{
+  uint8_t snap[IVS_SNAPSHOT_MAX_BYTES];
+  size_t n = 0u;
+  ivs_info info;
+  int ok = 1;
+  if (!su_snapshot(src->m, snap, sizeof snap, &n)) {
+    ivs_test_diag("%s: no snapshot of the source", label);
+    return 0;
+  }
+  ST_REQ(ok, ivs_machine_snapshot_restore(dst->m, snap, n, NULL) == IVS_OK);
+  memset(&info, 0, sizeof info);
+  info.struct_size = (uint32_t)sizeof info;
+  ST_REQ(ok, ivs_machine_info(dst->m, &info) == IVS_OK && info.phase == IVS_PHASE_POWERED);
+  ST_REQ(ok, rs_equal_instances(label, src, dst));
+  return ok;
+}
+
+/* The loop-then-HLT and loop-then-fault programs of tests/run/run_slice.c (derived there from the vector rows). */
+static const uint16_t rs_prog_halt[] = {0x02B9u, 0x0008u, 0x0011u, 0x022Cu, 0x0002u, 0x0000u, 0x0089u};
+static const uint16_t rs_prog_fault[] = {0x02B9u, 0x0008u, 0x0011u, 0x022Cu, 0x0002u, 0x0264u};
+
+/* A powered instance of the words, run by the seam for units units. */
+static int rs_words_at(ivs_ms_inst *x, const uint16_t *words, size_t n, uint32_t units)
+{
+  if (!ivs_ms_powered_words(x, words, n, 0x5Au)) {
+    return 0;
+  }
+  if (units > 0u && !ivs_ms_step(x->m, units, NULL)) {
+    ivs_ms_free(x);
+    return 0;
+  }
+  return 1;
+}
+
+/* state.restore.same-profile-any-instance (D-14): a snapshot goes into any instance of the profile whose slots match, whatever that instance
+ * was doing: an OFF instance with the images loaded (the fresh target), a powered one at its reset, one at another tick, one far on, a
+ * poisoned one, one whose CPU is halted and one whose CPU has faulted; and a halted or faulted source goes into a running target. After each
+ * restore the whole target equals the source byte for byte and the machine is POWERED. */
+static int rs_same_profile_any_instance(void)
+{
+  ivs_ms_inst src;
+  int ok = 1;
+  uint32_t k;
+  /* the boot program at 5000 units into targets in other states */
+  ST_CHECK(su_boot_stepped(&src, SU_BOOT_UNITS, 0x5Au));
+  for (k = 0u; k < 6u; k++) {
+    static const char *const names[6] = {"an OFF instance with the images", "a powered instance at its reset", "a powered instance at 777 units",
+                                         "a powered instance far on", "a poisoned OFF instance", "a poisoned powered instance"};
+    ivs_ms_inst dst;
+    int built = k == 0u || k == 4u ? su_boot_new(&dst, SU_IMG_ALL, 0, 0x33u)
+                                   : su_boot_stepped(&dst, k == 1u ? 0u : (k == 2u ? 777u : (k == 3u ? 30000u : 400u)), 0x33u);
+    if (!built) {
+      ivs_ms_free(&src);
+      return IVS_TEST_FAIL;
+    }
+    if (k >= 4u) {
+      state_poison(dst.m);
+    }
+    ST_REQ(ok, rs_restore_into(names[k], &src, &dst));
+    ivs_ms_free(&dst);
+  }
+  ivs_ms_free(&src);
+  /* the halting program: a running source into a halted target, and the halted source into a running target */
+  {
+    ivs_ms_inst run;
+    ivs_ms_inst halted;
+    size_t n = sizeof rs_prog_halt / sizeof rs_prog_halt[0];
+    ST_CHECK(rs_words_at(&run, rs_prog_halt, n, 3u));
+    ST_CHECK(rs_words_at(&halted, rs_prog_halt, n, 60u));
+    ST_REQ(ok, ((const struct ivs_machine *)halted.m)->cpu.run_state == IVS_CP1610_RS_HALTED);
+    ST_REQ(ok, rs_restore_into("a running source into a halted target", &run, &halted));
+    ST_REQ(ok, ((const struct ivs_machine *)halted.m)->cpu.run_state != IVS_CP1610_RS_HALTED);
+    ivs_ms_free(&run);
+    ivs_ms_free(&halted);
+    ST_CHECK(rs_words_at(&run, rs_prog_halt, n, 3u));
+    ST_CHECK(rs_words_at(&halted, rs_prog_halt, n, 60u));
+    ST_REQ(ok, rs_restore_into("a halted source into a running target", &halted, &run));
+    ST_REQ(ok, ((const struct ivs_machine *)run.m)->cpu.run_state == IVS_CP1610_RS_HALTED);
+    ivs_ms_free(&run);
+    ivs_ms_free(&halted);
+  }
+  /* the faulting program: a source at the fault boundary into a running target, and a running source into the faulted target */
+  {
+    ivs_ms_inst run;
+    ivs_ms_inst faulted;
+    size_t n = sizeof rs_prog_fault / sizeof rs_prog_fault[0];
+    uint32_t units = 0u;
+    ST_CHECK(rs_words_at(&faulted, rs_prog_fault, n, 0u));
+    while (((const struct ivs_machine *)faulted.m)->cpu.run_state != IVS_CP1610_RS_FAULTED && units < 200u) {
+      ST_CHECK(ivs_ms_step(faulted.m, 1u, NULL));
+      units++;
+    }
+    ST_REQ(ok, ((const struct ivs_machine *)faulted.m)->cpu.run_state == IVS_CP1610_RS_FAULTED);
+    ST_CHECK(rs_words_at(&run, rs_prog_fault, n, 3u));
+    ST_REQ(ok, rs_restore_into("a faulted source into a running target", &faulted, &run));
+    ST_REQ(ok, ((const struct ivs_machine *)run.m)->cpu.run_state == IVS_CP1610_RS_FAULTED);
+    ivs_ms_free(&run);
+    ST_CHECK(rs_words_at(&run, rs_prog_fault, n, 3u));
+    ST_REQ(ok, rs_restore_into("a running source into a faulted target", &run, &faulted));
+    ST_REQ(ok, ((const struct ivs_machine *)faulted.m)->cpu.run_state != IVS_CP1610_RS_FAULTED);
+    ivs_ms_free(&run);
+    ivs_ms_free(&faulted);
+  }
+  return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
+}
+
+/* ---- restore sets the phase and writes nothing that identifies the instance ---- */
+
+/* state.restore.sets-powered (D-14, D-11): the target is OFF with its images loaded; after the restore it is POWERED, and every row of class
+ * BOUND (the magic, the profile indices, the committed image structure, the three slot records) and of class IMAGE (the three image arrays)
+ * is byte-identical to what it was before (read from the digest field table as data), while the STATE rows now equal the source's. The
+ * restored machine then runs through the public call. A snapshot is also refused by an instance whose images are missing and by one whose
+ * slots differ, and that refusal leaves the phase alone. */
+static int rs_sets_powered(void)
+{
+  ivs_ms_inst src;
+  ivs_ms_inst dst;
+  ivs_info info;
+  uint8_t snap[IVS_SNAPSHOT_MAX_BYTES];
+  uint8_t *before;
+  size_t n = 0u;
+  size_t rows = ivs_machine_digest_field_count();
+  size_t r;
+  uint32_t classes = 0u;
+  uint32_t consumed = 0u;
+  int ok = 1;
+  ST_CHECK(su_boot_stepped(&src, SU_BOOT_UNITS, 0x5Au) && su_snapshot(src.m, snap, sizeof snap, &n));
+  ST_CHECK(su_boot_new(&dst, SU_IMG_ALL, 0, 0x33u));
+  before = (uint8_t *)malloc(IVS_MACHINE_BYTES);
+  ST_CHECK(before != NULL);
+  memcpy(before, dst.storage, IVS_MACHINE_BYTES);
+  memset(&info, 0, sizeof info);
+  info.struct_size = (uint32_t)sizeof info;
+  ST_REQ(ok, ivs_machine_info(dst.m, &info) == IVS_OK && info.phase == IVS_PHASE_OFF);
+  ST_REQ(ok, ivs_machine_snapshot_restore(dst.m, snap, n, NULL) == IVS_OK);
+  ST_REQ(ok, ivs_machine_info(dst.m, &info) == IVS_OK && info.phase == IVS_PHASE_POWERED);
+  for (r = 0u; r < rows; r++) {
+    const ivs_digest_field *f = ivs_machine_digest_field(r);
+    size_t bytes;
+    if (f == NULL || (f->snap != IVS_SNAP_BOUND && f->snap != IVS_SNAP_IMAGE)) {
+      continue;
+    }
+    bytes = (size_t)f->width * f->count;
+    classes++;
+    if (memcmp(before + f->offset, (const uint8_t *)dst.storage + f->offset, bytes) != 0) {
+      ivs_test_diag("the row %s (class %s) was changed by the restore", f->name, f->snap == IVS_SNAP_BOUND ? "BOUND" : "IMAGE");
+      ok = 0;
+    }
+  }
+  ST_REQ(ok, classes == 31u); /* 28 BOUND rows and 3 IMAGE rows */
+  ST_REQ(ok, rs_equal_instances("the OFF target after the restore", &src, &dst));
+  ST_REQ(ok, su_run_to(dst.m, ((const struct ivs_machine *)dst.m)->time_ticks + 5000u, NULL, 0u, &consumed));
+  ivs_ms_free(&dst);
+  /* a target without its EXEC image is refused and stays OFF */
+  ST_CHECK(su_boot_new(&dst, SU_IMG_GROM | SU_IMG_CART, 0, 0x33u));
+  memcpy(before, dst.storage, IVS_MACHINE_BYTES);
+  ST_REQ(ok, ivs_machine_snapshot_restore(dst.m, snap, n, NULL) == IVS_E_MISSING_SYSTEM_IMAGE);
+  ST_REQ(ok, memcmp(before, dst.storage, IVS_MACHINE_BYTES) == 0);
+  ST_REQ(ok, ivs_machine_info(dst.m, &info) == IVS_OK && info.phase == IVS_PHASE_OFF);
+  free(before);
+  ivs_ms_free(&dst);
+  ivs_ms_free(&src);
+  return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
+}
+
+/* ---- every refusal leaves the whole instance untouched ---- */
+
+/* state.restore.atomic-every-refusal (D-15, D-16, T-08-31): the refusal matrices of this file, every row of every family and the argument
+ * rows, are run against POISONED non-trivial targets (their STATE and PAD rows hold 0xA5, so a write of any kind is seen at once): after
+ * every refusal the whole target instance is byte-identical to what it was and the nine digests are unchanged. This is the id that the
+ * fault RESTORE_MUTATES_BEFORE_VALIDATE must fail: the matrices hold rows that only a STIC validator refuses, and a restore that commits
+ * the CPU rows first has changed the target when it gets there. */
+static int rs_atomic_every_refusal(void)
+{
+  uint32_t bad = 0u;
+  size_t i;
+  uint32_t produced = 0u;
+  for (i = 0u; i < RS_FAMILIES; i++) {
+    bad += rs_run_family(&rs_families[i], 1, 1, &produced);
+  }
+  if (!rs_args(&produced, 1)) {
+    bad++;
+  }
+  return bad == 0u ? IVS_TEST_PASS : IVS_TEST_FAIL;
+}
+
+/* ---- the digest fields of the header are informational ---- */
+
+/* state.restore.digest-fields-informational (D-41): the eight digest fields of the header (the composite and the seven section digests) are
+ * not authenticated by restore. A snapshot whose eight fields were flipped and whose trailer was recomputed is accepted; afterwards the
+ * target's real digests equal the SAVED instance's real digests, not the flipped ones the header holds; and a snapshot of the target is the
+ * original snapshot, which differs from the accepted bytes in exactly those eight fields and the trailer (the one exception of the
+ * canonical re-encode rule of the corruption family). The same holds with a single field flipped. */
+static int rs_digest_fields_informational(void)
+{
+  ivs_ms_inst src;
+  ivs_ms_inst dst;
+  uint8_t snap[IVS_SNAPSHOT_MAX_BYTES];
+  uint8_t bent[IVS_SNAPSHOT_MAX_BYTES];
+  uint8_t again[IVS_SNAPSHOT_MAX_BYTES];
+  uint8_t real[9][32];
+  uint8_t got[9][32];
+  size_t n = 0u;
+  size_t n2 = 0u;
+  size_t i;
+  uint32_t e;
+  int ok = 1;
+  ST_CHECK(su_boot_stepped(&src, SU_BOOT_UNITS, 0x5Au) && su_snapshot(src.m, snap, sizeof snap, &n));
+  ST_CHECK(su_nine_digests(src.m, real));
+  for (e = 0u; e < 2u; e++) {
+    ST_CHECK(su_boot_stepped(&dst, 250u, 0x33u));
+    memcpy(bent, snap, n);
+    if (e == 0u) {
+      for (i = 0u; i < 32u; i++) {
+        bent[272u + i] ^= 0xFFu; /* the composite */
+      }
+      for (i = 0u; i < ST_SECTIONS; i++) {
+        uint32_t j;
+        for (j = 0u; j < 32u; j++) {
+          bent[304u + 44u * (uint32_t)i + 12u + j] ^= 0xFFu; /* the digest of section i */
+        }
+      }
+    } else {
+      bent[304u + 44u * 1u + 12u + 7u] ^= 0x01u; /* one byte of the MEM section digest only */
+    }
+    su_reseal(bent, n);
+    ST_REQ(ok, ivs_machine_snapshot_restore(dst.m, bent, n, NULL) == IVS_OK);
+    ST_REQ(ok, su_nine_digests(dst.m, got));
+    ST_REQ(ok, memcmp(got, real, sizeof got) == 0); /* the real digests of the source */
+    ST_REQ(ok, memcmp(got[0], bent + 272u, 32u) != 0 || e == 1u); /* and not the composite the header says */
+    for (i = 0u; i < ST_SECTIONS && e == 0u; i++) {
+      uint32_t dom = st_section_domain[i];
+      ST_REQ(ok, memcmp(got[dom <= 4u ? dom : (dom == 16u ? 5u : (dom == 17u ? 6u : (dom == 18u ? 7u : 8u)))], bent + 304u + 44u * i + 12u, 32u) != 0);
+    }
+    ST_REQ(ok, su_snapshot(dst.m, again, sizeof again, &n2) && n2 == n && memcmp(again, snap, n) == 0);
+    /* the accepted bytes and the re-encode differ in the digest fields and the trailer only */
+    for (i = 0u; i < n; i++) {
+      int in_digest = (i >= 272u && i < 304u);
+      uint32_t j;
+      for (j = 0u; j < ST_SECTIONS; j++) {
+        if (i >= 304u + 44u * j + 12u && i < 304u + 44u * j + 44u) {
+          in_digest = 1;
+        }
+      }
+      if (bent[i] != again[i] && !in_digest && i < n - 32u) {
+        ivs_test_diag("byte %u differs outside the digest fields", (unsigned)i);
+        ok = 0;
+        break;
+      }
+    }
+    ivs_ms_free(&dst);
+  }
+  ivs_ms_free(&src);
+  return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
+}
+
+/* ---- the judge: the matrix runner and the atomicity oracle can fail ---- */
+
+/* state.judge.refusal-expectation-corrupt: the runner of the restore matrices can fail. For every family and for three rows of it (the
+ * first, a middle one and the last), one expectation is corrupted in a copy of the row in turn (the byte offset, the section index, the
+ * reason to one with another status) and the runner must report exactly that row: an unchanged row passes, a corrupted one fails. And the
+ * atomicity oracle itself can fail: a byte of the target instance is changed behind the runner's back and the next row must report it. */
+static int rs_judge_refusal(void)
+{
+  size_t fi;
+  int ok = 1;
+  if (!rs_base_get()) {
+    return IVS_TEST_FAIL;
+  }
+  for (fi = 0u; fi < RS_FAMILIES; fi++) {
+    su_tab t;
+    uint32_t pick;
+    if (!su_tab_init(&t, rs_families[fi].cap)) {
+      return IVS_TEST_FAIL;
+    }
+    rs_families[fi].build(&t);
+    for (pick = 0u; pick < 3u; pick++) {
+      size_t k = pick == 0u ? 0u : (pick == 1u ? t.n / 2u : t.n - 1u);
+      uint32_t kind;
+      for (kind = 0u; kind < 4u; kind++) {
+        su_tab one;
+        su_run u;
+        uint32_t bad;
+        if (!su_tab_init(&one, 1u)) {
+          su_tab_free(&t);
+          return IVS_TEST_FAIL;
+        }
+        one.row[0] = t.row[k];
+        one.n = 1u;
+        switch (kind) {
+        case 1u:
+          one.row[0].off += 1u;
+          break;
+        case 2u:
+          one.row[0].sec ^= 1u;
+          break;
+        case 3u:
+          one.row[0].reason = one.row[0].reason == 62u ? 63u : 62u;
+          break;
+        default:
+          break;
+        }
+        su_run_init(&u, rs_snap, rs_snap_n, 0);
+        u.digests = 0;
+        u.quiet = 1;
+        bad = su_run_rows(&u, &one);
+        if ((kind == 0u && bad != 0u) || (kind != 0u && bad != 1u)) {
+          ivs_test_diag("family %s row %u (%s), corruption %u: the runner reports %u failing rows", rs_families[fi].name, (unsigned)k,
+                        t.row[k].name, (unsigned)kind, (unsigned)bad);
+          ok = 0;
+        }
+        su_run_free(&u);
+        su_tab_free(&one);
+      }
+    }
+    su_tab_free(&t);
+  }
+  /* the atomicity oracle: change a byte of the target between two rows */
+  {
+    su_tab full;
+    su_tab one;
+    su_run u;
+    uint32_t bad;
+    ST_CHECK(su_tab_init(&full, 64u) && su_tab_init(&one, 1u));
+    rs_build_structure(&full);
+    one.row[0] = full.row[0];
+    one.n = 1u;
+    su_run_init(&u, rs_snap, rs_snap_n, 0);
+    u.digests = 1;
+    u.quiet = 1;
+    bad = su_run_rows(&u, &one);
+    ST_REQ(ok, bad == 0u);
+    ((uint8_t *)u.target[one.row[0].tsel].storage)[IVS_MACHINE_BYTES / 2u] ^= 0xFFu;
+    bad = su_run_rows(&u, &one);
+    ST_REQ(ok, bad == 1u);
+    su_run_free(&u);
+    su_tab_free(&one);
+    su_tab_free(&full);
+  }
+  return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
+}
+
 const ivs_test_case ivs_state_restore_cases[] = {
     {"state.restore.roundtrip-fixed-point", rs_roundtrip_fixed_point, NULL},
     {"state.restore.refuse-args", rs_refuse_args, NULL},
@@ -1167,5 +1619,11 @@ const ivs_test_case ivs_state_restore_cases[] = {
     {"state.restore.refuse-content-invariants", rs_refuse_content_invariants, NULL},
     {"state.restore.profile-id-seam", rs_profile_id_seam, NULL},
     {"state.restore.reasons-covered", rs_reasons_covered, NULL},
+    {"state.restore.poisoned-target-equals-source", rs_poisoned_target, NULL},
+    {"state.restore.same-profile-any-instance", rs_same_profile_any_instance, NULL},
+    {"state.restore.sets-powered", rs_sets_powered, NULL},
+    {"state.restore.atomic-every-refusal", rs_atomic_every_refusal, NULL},
+    {"state.restore.digest-fields-informational", rs_digest_fields_informational, NULL},
+    {"state.judge.refusal-expectation-corrupt", rs_judge_refusal, NULL},
 };
 const size_t ivs_state_restore_count = sizeof ivs_state_restore_cases / sizeof ivs_state_restore_cases[0];

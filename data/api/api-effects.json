@@ -658,7 +658,7 @@
           "status": "IVS_E_MALFORMED",
           "effect": "none",
           "outs": "only reason (61 to 71, 77 to 80), byte_offset, section_index and the readable header facts are written into the report (kind too for a slot record range error); buf is never changed",
-          "tests": ["state.restore.refuse-structure", "state.restore.refuse-identity-slots", "state.restore.refuse-content-validators", "state.restore.refuse-content-invariants"]
+          "tests": ["state.restore.refuse-structure", "state.restore.refuse-identity-slots", "state.restore.refuse-content-validators", "state.restore.refuse-content-invariants", "state.restore.atomic-every-refusal"]
         },
         {
           "status": "IVS_E_UNSUPPORTED",
@@ -688,7 +688,7 @@
           "status": "IVS_E_STATE_MISMATCH",
           "effect": "none",
           "outs": "only reason (73, 74 or 76), byte_offset of the field (the profile id, the parameter digest or the field of the slot record), section_index 0xFFFFFFFF, kind for a slot (the slot kind) and the header facts are written into the report; buf is never changed",
-          "tests": ["state.restore.refuse-identity-profile", "state.restore.refuse-identity-slots", "state.restore.profile-id-seam"]
+          "tests": ["state.restore.refuse-identity-profile", "state.restore.refuse-identity-slots", "state.restore.profile-id-seam", "state.restore.atomic-every-refusal"]
         }
       ]
     }

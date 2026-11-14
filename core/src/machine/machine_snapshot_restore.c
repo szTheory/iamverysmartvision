@@ -37,7 +37,8 @@
  * The invariants (INV-1 to INV-6) are functions of the probe, shared with the live-instance probe builder so that a test can prove each
  * one true on every unit boundary of real programs before it is allowed to refuse a snapshot (state.restore.invariants-hold-reachable).
  * Named faults (plan 08-13, suite state), one site each below: RESTORE_PROFILE_UNCHECKED (the profile id, parameter digest and registry
- * checks are skipped) and RESTORE_IMAGE_DIGEST_UNCHECKED (the SHA-256 and length comparison of a slot loaded on both sides is skipped).
+ * checks are skipped), RESTORE_IMAGE_DIGEST_UNCHECKED (the SHA-256 and length comparison of a slot loaded on both sides is skipped) and
+ * RESTORE_MUTATES_BEFORE_VALIDATE (the CPU rows are committed before the STIC validators run).
  * This file holds no static or global writable state, allocates nothing, reads no clock and opens no file; its frame is well under 4 KB. */
 #include "common/ivs_prelude.h"
 
@@ -596,7 +597,7 @@ void ivs_snapshot_probe_from_instance(const struct ivs_machine *m, ivs_snap_prob
 }
 
 /* Step 8, reasons 78 and 79 on the decoded probe. The range rules (INV-1 and INV-5) first, each naming where its struct or scalar was
- * read, then the derived rules (INV-2, INV-3, INV-4 and INV-6). im gives the registry profile. */
+ * read, then the derived rules (INV-2, INV-3, INV-4 and INV-6). im gives the registry profile; it is not const only because the named fault below commits into it. */
 static ivs_status ivs_snap_check_probe(struct ivs_machine *im, const ivs_snap_probe *pr, const ivs_snap_loc loc[IVS_SNAP_REGIONS],
                                        ivs_snap_refusal *r)
 {
@@ -615,6 +616,11 @@ static ivs_status ivs_snap_check_probe(struct ivs_machine *im, const ivs_snap_pr
   if (ivs_snap_inv1_psg(pr, pp) == 0u) {
     return ivs_snap_refuse(r, IVS_E_MALFORMED, IVS_REASON_SNAP_FIELD_RANGE, loc[IVS_SNAP_R_PSG].off, loc[IVS_SNAP_R_PSG].section, 0u);
   }
+#ifdef IVS_FAULT_RESTORE_MUTATES_BEFORE_VALIDATE
+  /* Named fault RESTORE_MUTATES_BEFORE_VALIDATE (plan 08-13): the CPU rows are committed before the STIC validators run, so a snapshot that
+   * a STIC validator refuses has already changed the instance. */
+  im->cpu = pr->cpu;
+#endif
   if (ivs_snap_inv1_stic(pr, sp) == 0u) {
     return ivs_snap_refuse(r, IVS_E_MALFORMED, IVS_REASON_SNAP_FIELD_RANGE, loc[IVS_SNAP_R_STIC].off, loc[IVS_SNAP_R_STIC].section, 0u);
   }
