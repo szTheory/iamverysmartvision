@@ -32,7 +32,7 @@
  * is consumed once and in order, and the bottom v source rows are never published. The columns and rows a delay exposes show the not-displayed
  * value unless a profile field says otherwise (rule STIC-R47). Collision is evaluated on the undelayed scene (the card layer and the MOBs together),
  * so a delay never changes a collision bit, and nothing here reads a delay register for timing: the schedule of stic_events.c and stic_lines.c is a
- * function of the profile and the state only (D-07, C92).
+ * function of the profile and the state only (D-07, C92). Named fault DELAY_DIRECTION (plan 08-06): both delays shift the opposite way, left and up.
  *
  * Named faults (plan 06-09): VIDEO_STATE_DEPENDS_ON_BUFFER (with no buffer the chain and the count do not advance),
  * VIDEO_CHAIN_FRAMING_STRUCT_HASH (the chain hashes an image of a struct instead of the framed bytes). The file holds no static or
@@ -204,6 +204,10 @@ static void ivs_stic_rows_init(ivs_stic_rows *r, const ivs_stic_params *p, const
     r->border = (uint32_t)mem->stic_reg[IVS_STIC_REG_BORDER] & 0xFu;
     r->sh = (int32_t)((uint32_t)mem->stic_reg[IVS_STIC_REG_DELAY_H] & 7u); /* the three-bit register width is the delay range (held by absence) */
     r->sv = (int32_t)((uint32_t)mem->stic_reg[IVS_STIC_REG_DELAY_V] & 7u);
+#ifdef IVS_FAULT_DELAY_DIRECTION
+    r->sh = -r->sh; /* named fault DELAY_DIRECTION: both delays shift the opposite way (left and up), so the exposed area is on the right and below */
+    r->sv = -r->sv;
+#endif
   }
 }
 

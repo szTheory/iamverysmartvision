@@ -162,3 +162,11 @@ video.vdelay.straddle-card-rows
 video.vdelay.no-bus-window-change
 video.delay.stream-equals-plane
 video.delay.slice-invariant
+# Plan 08-06 task 3 (VID-05, D-02, D-10, T-08-17): the six pinned delay and strip behaviors, each asserted under its default and then flipped in a stack copy of the parameters (video.border.default-pinned.*: the top strip unit, whether the strips follow the delay; video.hdelay.default-pinned.range with the register width held by the existing register self-controls; video.hdelay. and video.vdelay.default-pinned.exposed-area against the known positions of the in-process frame F-M7; video.vdelay.default-pinned.mob-in-exposed), and the judge that shows the frame comparison of the delay can fail.
+video.border.default-pinned.top-strip-unit
+video.border.default-pinned.follows-delay
+video.hdelay.default-pinned.range
+video.hdelay.default-pinned.exposed-area
+video.vdelay.default-pinned.exposed-area
+video.vdelay.default-pinned.mob-in-exposed
+video.judge.delay-frame-corrupt

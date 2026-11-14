@@ -519,6 +519,216 @@ done:
   return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
 }
 
+/* ---- the pinned defaults (D-02, T-08-17): each test asserts the default and then changes ONE field of a stack copy of ivs_stic_params (or, for the range,
+ * holds the width of the register) and requires a different plane. ---- */
+
+/* video.hdelay.default-pinned.range: the delay range is the three-bit register width (R47, PD-12, C110, resolver D10-VID-12). There is no field for it: the
+ * width is a row of the register literal (write mask 0007 of $0030 and $0031), so the one-field controls are the existing self-control
+ * stic.judge.register-row-changed (a changed register row makes the comparison fail), stic.reg.masks (the write masks of the 64 registers) and
+ * stic.table.matches-literal (the generated table equals the literal). This test asserts the masked behavior through the renderer: a CPU store keeps only
+ * the low three bits (a store of 8 reads and applies as 0, of 11 as 3, of 15 as 7), a word poked into the register file past the write mask applies
+ * under the same three bits, and the largest delay (7) is covered by the strips of 8 (no blank position is published with both strips). Each applied delay
+ * d moves the marked pixel (80, 48) of card 2 to (80 + d, 48) under the horizontal register and to (80, 48 + d) under the vertical one and exposes d columns
+ * (96 x d published positions) or d rows (159 x d). */
+static int vd_pin_range(void)
+{
+  static const uint32_t words[] = {0u, 1u, 2u, 3u, 4u, 5u, 6u, 7u, 8u, 9u, 11u, 15u, 0x13u, 0xFFFFu};
+  uint32_t reg;
+  uint32_t t;
+  uint32_t via;
+  for (reg = VD_H_REG; reg <= VD_V_REG; reg++) {
+    for (t = 0u; t < sizeof words / sizeof words[0]; t++) {
+      for (via = 0u; via < 2u; via++) {
+        uint32_t d = words[t] & 7u;
+        const ivs_stic_params *p = vd_scene0(0u, 0u);
+        VC_CHECK(p != NULL);
+        if (via == 0u) {
+          ivs_memsys_write(vm_mem_get(), (uint16_t)reg, (uint16_t)words[t]); /* the CPU store, under the write mask 0007 */
+          VC_CHECK(vm_mem_get()->stic_reg[reg] == (uint16_t)d);
+        } else {
+          vm_mem_get()->stic_reg[reg] = (uint16_t)words[t]; /* a raw word past the write mask: the renderer applies the low three bits only */
+        }
+        VC_CHECK(vm_render(p, 1u, vm_plane_buf()) == VF_PLANE_BYTES);
+        VC_CHECK(vm_count(2u) == 25u);
+        if (reg == VD_H_REG) {
+          VC_CHECK(vd_at(80u + d, 48u) == 2u && vm_count(VD_BLANK) == 96u * d);
+        } else {
+          VC_CHECK(vd_at(80u, 48u + d) == 2u && vm_count(VD_BLANK) == 159u * d);
+        }
+      }
+    }
+  }
+  /* the largest delay in both registers with both strips: the exposed columns 0..6 and rows 0..6 lie under the strips (the stated purpose of the strips) */
+  {
+    const ivs_stic_params *p = vd_scene0(7u, 7u);
+    VC_CHECK(p != NULL);
+    vm_mem_get()->stic_reg[VD_EXT_REG] = 3u;
+    VC_CHECK(vm_render(p, 1u, vm_plane_buf()) == VF_PLANE_BYTES);
+    VC_CHECK(vm_count(VD_BLANK) == 0u && vd_at(0u, 0u) == 8u && vd_at(7u, 7u) == 8u && vd_at(8u, 8u) == 1u);
+  }
+  return IVS_TEST_PASS;
+}
+
+/* The in-process frame F-M7 (both delays, no strip) rendered with the parameters p; the literal compared on its known positions, which must hold under
+ * the default and under the flip alike (the flip changes only the unknown positions). */
+static int vd_render_fm7(const ivs_stic_params *p, uint32_t *skipped)
+{
+  const vm_frame *f = vm_frame_get(7u);
+  (void)vd_scene_fm(7u);
+  vm_expected(f, vm_exp_buf());
+  return vm_render(p, 1u, vm_plane_buf()) == VF_PLANE_BYTES && vm_first_diff(vm_plane_buf(), vm_exp_buf(), skipped) == -1;
+}
+
+/* The exposed area pinned by F-M7 (R47, PD-10, C110, field video.delay_exposed_fill, resolver D10-VID-12): the area a delay exposes is the not-displayed
+ * value by default and the border color with the field flipped. focus 0 is the exposed columns (`unknown 0 0 2 96`: x 0 and 1 of every row, 192
+ * positions), focus 1 the exposed rows (`unknown 2 0 157 3`: y 0 to 2 of x 2 to 158, 471 positions); the known positions next to them are the literal's. */
+static int vd_exposed_pin(uint32_t focus)
+{
+  const vm_frame *f = vm_frame_get(7u);
+  const ivs_stic_params *p = ivs_stic_params_get(SC_PROFILE);
+  ivs_stic_params q;
+  uint8_t *base = vm_exp_buf();
+  uint32_t skipped = 0u;
+  uint32_t x;
+  uint32_t y;
+  uint32_t diff = 0u;
+  VC_CHECK(f != NULL && p != NULL && p->video_delay_exposed_fill == 0u && vm_fixture_ok(f));
+  VC_CHECK(vd_render_fm7(p, &skipped));
+  VC_CHECK(skipped == 192u + 471u); /* the two unknown rectangles of the literal */
+  /* the default: the not-displayed value in every unknown position and nowhere else */
+  VC_CHECK(vm_count(VD_BLANK) == 663u);
+  if (focus == 0u) {
+    for (y = 0u; y < VF_PLANE_H; y++) {
+      VC_CHECK(vd_at(0u, y) == VD_BLANK && vd_at(1u, y) == VD_BLANK);
+    }
+    for (y = 3u; y < VF_PLANE_H; y++) {
+      VC_CHECK(vd_at(2u, y) == 1u); /* the first known column: the card color, shifted in */
+    }
+  } else {
+    for (x = 2u; x < VF_PLANE_W - 1u; x++) {
+      VC_CHECK(vd_at(x, 0u) == VD_BLANK && vd_at(x, 1u) == VD_BLANK && vd_at(x, 2u) == VD_BLANK && vd_at(x, 3u) == 1u);
+    }
+  }
+  memcpy(base, vm_plane_buf(), VF_PLANE_BYTES);
+  q = *p;
+  q.video_delay_exposed_fill = 1u; /* the one-field flip: the border color (8) instead of the not-displayed value */
+  VC_CHECK(vd_render_fm7(&q, &skipped)); /* the known positions are unchanged */
+  VC_CHECK(vm_planes_differ(vm_plane_buf(), base));
+  VC_CHECK(vm_count(8u) == 663u && vm_count(VD_BLANK) == 0u);
+  for (y = 0u; y < VF_PLANE_H; y++) {
+    for (x = 0u; x < VF_PLANE_W - 1u; x++) {
+      diff += vd_at(x, y) != base[y * VF_PLANE_W + x] ? 1u : 0u;
+    }
+  }
+  VC_CHECK(diff == 663u); /* the flip changes exactly the exposed positions */
+  if (focus == 0u) {
+    for (y = 0u; y < VF_PLANE_H; y++) {
+      VC_CHECK(vd_at(0u, y) == 8u && vd_at(1u, y) == 8u && vd_at(2u, y >= 3u ? y : 3u) == 1u);
+    }
+  } else {
+    for (x = 2u; x < VF_PLANE_W - 1u; x++) {
+      VC_CHECK(vd_at(x, 0u) == 8u && vd_at(x, 2u) == 8u && vd_at(x, 3u) == 1u);
+    }
+  }
+  return IVS_TEST_PASS;
+}
+
+static int vd_pin_hdelay_exposed(void)
+{
+  return vd_exposed_pin(0u);
+}
+
+static int vd_pin_vdelay_exposed(void)
+{
+  return vd_exposed_pin(1u);
+}
+
+/* video.vdelay.default-pinned.mob-in-exposed: a MOB in the exposed area (R47, PD-11, C110, field video.delay_mob_in_exposed, resolver D10-VID-12). A solid
+ * color 4 MOB whose pattern lies partly in the margin of the object field (8 positions above and left of the plane) is shifted into the exposed area by the
+ * delay: the pixels that come from inside the plane are drawn, the pixels from the margin are not drawn by default (the exposed positions stay the
+ * not-displayed value) and are drawn with the field flipped. Derived by hand (R37, R46), 8 x 8 positions of the pattern:
+ *   vertical: X 20, Y 5 (x 12..19, source rows -3..4), delay 3 rows: output rows 0..7; rows 0..2 are exposed: default 5 x 8 = 40 positions, flip 64
+ *   horizontal: X 5, Y 40 (source columns -3..4, rows 32..39), delay 3 columns: output columns 0..7; columns 0..2 are exposed: default 40, flip 64 */
+static int vd_pin_mob_in_exposed(void)
+{
+  const ivs_stic_params *p;
+  ivs_stic_params q;
+  uint32_t x;
+  uint32_t y;
+  uint32_t part;
+  for (part = 0u; part < 2u; part++) {
+    p = vd_scene0(part == 0u ? 0u : 3u, part == 0u ? 3u : 0u);
+    VC_CHECK(p != NULL && p->video_delay_mob_in_exposed == 0u);
+    if (part == 0u) {
+      vm_put(0u, 0x0200u + 20u, 0x0100u + 5u, 0x0804u);
+    } else {
+      vm_put(0u, 0x0200u + 5u, 0x0100u + 40u, 0x0804u);
+    }
+    VC_CHECK(vm_render(p, 1u, vm_plane_buf()) == VF_PLANE_BYTES);
+    VC_CHECK(vm_count(4u) == 40u); /* the default: only the pixels from inside the plane */
+    if (part == 0u) {
+      for (x = 12u; x <= 19u; x++) {
+        VC_CHECK(vd_at(x, 0u) == VD_BLANK && vd_at(x, 2u) == VD_BLANK && vd_at(x, 3u) == 4u && vd_at(x, 7u) == 4u && vd_at(x, 8u) == 1u);
+      }
+    } else {
+      for (y = 32u; y <= 39u; y++) {
+        VC_CHECK(vd_at(0u, y) == VD_BLANK && vd_at(2u, y) == VD_BLANK && vd_at(3u, y) == 4u && vd_at(7u, y) == 4u && vd_at(8u, y) == 1u);
+      }
+    }
+    memcpy(vm_exp_buf(), vm_plane_buf(), VF_PLANE_BYTES);
+    q = *p;
+    q.video_delay_mob_in_exposed = 1u; /* the one-field flip */
+    VC_CHECK(vm_render(&q, 1u, vm_plane_buf()) == VF_PLANE_BYTES);
+    VC_CHECK(vm_planes_differ(vm_plane_buf(), vm_exp_buf()));
+    VC_CHECK(vm_count(4u) == 64u);
+    if (part == 0u) {
+      for (x = 12u; x <= 19u; x++) {
+        VC_CHECK(vd_at(x, 0u) == 4u && vd_at(x, 2u) == 4u && vd_at(x, 3u) == 4u && vd_at(x, 7u) == 4u && vd_at(x, 8u) == 1u);
+      }
+      VC_CHECK(vd_at(11u, 0u) == VD_BLANK && vd_at(20u, 1u) == VD_BLANK); /* the rest of the exposed rows stays the not-displayed value */
+    } else {
+      for (y = 32u; y <= 39u; y++) {
+        VC_CHECK(vd_at(0u, y) == 4u && vd_at(2u, y) == 4u && vd_at(3u, y) == 4u && vd_at(7u, y) == 4u && vd_at(8u, y) == 1u);
+      }
+      VC_CHECK(vd_at(0u, 31u) == VD_BLANK && vd_at(1u, 40u) == VD_BLANK);
+    }
+  }
+  return IVS_TEST_PASS;
+}
+
+/* ---- the judge: a comparison that cannot fail proves nothing ---- */
+
+/* video.judge.delay-frame-corrupt: a copy of the literal F-M5 with one expected position changed makes the comparison report a mismatch at exactly that
+ * position (and the hash comparison fail), and the uncorrupted copy passes: the comparison of video.hdelay.shift-right-cards-and-mobs can fail. The
+ * positions are a MOB pixel moved by the delay, a strip position, a card pixel moved by the delay and the last published position. */
+static int vd_judge_frame_corrupt(void)
+{
+  const vm_frame *f = vm_frame_get(5u);
+  const ivs_stic_params *p;
+  static const uint32_t at[4][2] = {{63u, 40u}, {0u, 0u}, {83u, 48u}, {158u, 95u}};
+  uint8_t *exp = vm_exp_buf();
+  char hex[65];
+  uint32_t k;
+  uint32_t skipped = 0u;
+  VC_CHECK(f != NULL && vm_fixture_ok(f));
+  p = vd_scene_fm(5u);
+  VC_CHECK(p != NULL && vm_render(p, 1u, vm_plane_buf()) == VF_PLANE_BYTES);
+  vm_expected(f, exp);
+  VC_CHECK(vm_first_diff(vm_plane_buf(), exp, &skipped) == -1); /* the control passes */
+  for (k = 0u; k < 4u; k++) {
+    uint32_t i = at[k][1] * VF_PLANE_W + at[k][0];
+    uint8_t saved = exp[i];
+    exp[i] = (uint8_t)(saved ^ 1u);
+    VC_CHECK(vm_first_diff(vm_plane_buf(), exp, &skipped) == (long)(at[k][1] * (VF_PLANE_W - 1u) + at[k][0])); /* reported at the corrupted position */
+    vf_text_sha(exp, VF_PLANE_W, VF_PLANE_W - 1u, hex);
+    VC_CHECK(strcmp(hex, f->sha_text) != 0); /* and the hash of the corrupted copy is not the literal's */
+    exp[i] = saved;
+  }
+  exp[5u * VF_PLANE_W + 5u] = 0xFFu; /* a wildcard position is skipped, never compared */
+  VC_CHECK(vm_first_diff(vm_plane_buf(), exp, &skipped) == -1 && skipped == 1u);
+  return IVS_TEST_PASS;
+}
+
 const ivs_test_case ivs_video_delay_cases[] = {
     {"video.hdelay.shift-right-cards-and-mobs", vd_hdelay_shift, NULL},
     {"video.hdelay.clip-right", vd_hdelay_clip_right, NULL},
@@ -527,5 +737,10 @@ const ivs_test_case ivs_video_delay_cases[] = {
     {"video.vdelay.no-bus-window-change", vd_no_bus_window_change, NULL},
     {"video.delay.stream-equals-plane", vd_stream_equals_plane, NULL},
     {"video.delay.slice-invariant", vd_slice_invariant, NULL},
+    {"video.hdelay.default-pinned.range", vd_pin_range, NULL},
+    {"video.hdelay.default-pinned.exposed-area", vd_pin_hdelay_exposed, NULL},
+    {"video.vdelay.default-pinned.exposed-area", vd_pin_vdelay_exposed, NULL},
+    {"video.vdelay.default-pinned.mob-in-exposed", vd_pin_mob_in_exposed, NULL},
+    {"video.judge.delay-frame-corrupt", vd_judge_frame_corrupt, NULL},
 };
 const size_t ivs_video_delay_count = sizeof ivs_video_delay_cases / sizeof ivs_video_delay_cases[0];

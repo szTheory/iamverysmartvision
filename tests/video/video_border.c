@@ -222,10 +222,93 @@ static int vb_ext_bits_independent(void)
   return IVS_TEST_PASS;
 }
 
+/* ---- the pinned defaults (D-02, T-08-17): each test asserts the default and then changes ONE field of a stack copy of ivs_stic_params and requires a
+ * different plane, so no default can pass as a confirmed behavior. The generator refuses a value other than the ones exercised here. ---- */
+
+/* video.border.default-pinned.top-strip-unit: the top strip is 8 plane rows (R49, C109, field video.border_ext_strip, resolver D10-VID-13). The default
+ * reproduces F-M4 (both strips, rows 0 to 7 painted). With the unit changed to 4 rows in a copy, the rows 4 to 7 of every column are no longer painted:
+ * of the 159 x 4 = 636 positions of those rows, the ones outside the left strip (x 8 to 158, 151 columns) show the card layer, 151 x 4 = 604 positions
+ * of color 1 (the MOB of F-M4 shows only from the row 8 down), and the left strip still holds its 8 columns. */
+static int vb_pin_top_strip_unit(void)
+{
+  const vm_frame *f = vm_frame_get(4u);
+  const ivs_stic_params *p;
+  ivs_stic_params q;
+  uint8_t *base = vm_exp_buf();
+  uint32_t x;
+  uint32_t y;
+  VC_CHECK(f != NULL && vm_fixture_ok(f));
+  p = vm_scene(f);
+  VC_CHECK(p != NULL && p->video_border_ext_rows == 8u && p->video_border_ext_cols == 8u);
+  vm_put(0u, 0x060Cu, 0x010Cu, 0x080Cu);
+  vm_mem_get()->stic_reg[VB_EXT_REG] = 0x0003u;
+  VC_CHECK(vm_render(p, 1u, vm_plane_buf()) == VF_PLANE_BYTES);
+  VC_CHECK(vm_matches(f)); /* the default: the top strip is 8 rows, the literal F-M4 */
+  memcpy(base, vm_plane_buf(), VF_PLANE_BYTES);
+  q = *p;
+  q.video_border_ext_rows = 4u; /* the one-field flip: a top strip of 4 plane rows (8 television lines) */
+  VC_CHECK(vm_render(&q, 1u, vm_plane_buf()) == VF_PLANE_BYTES);
+  VC_CHECK(vm_planes_differ(vm_plane_buf(), base));
+  for (y = 0u; y < VF_PLANE_H; y++) {
+    for (x = 0u; x < VF_PLANE_W - 1u; x++) {
+      uint32_t strip = (x < 8u || y < 4u) ? 1u : 0u;
+      if (strip != 0u && vb_at(x, y) != 8u) {
+        ivs_test_diag("top strip of 4 rows: strip position (%u,%u) is %u, expected 8", (unsigned)x, (unsigned)y, (unsigned)vb_at(x, y));
+        return IVS_TEST_FAIL;
+      }
+    }
+  }
+  VC_CHECK(vb_at(8u, 4u) == 1u && vb_at(100u, 7u) == 1u && vb_at(158u, 4u) == 1u && vb_at(100u, 3u) == 8u); /* rows 4 to 7 show the card layer now */
+  return IVS_TEST_PASS;
+}
+
+/* video.border.default-pinned.follows-delay: the strips are fixed to the display (R49, C109, field video.border_follows_delay, resolver D10-VID-13). The
+ * default reproduces F-M5 (horizontal delay 3: the strip is the columns 0 to 7) and F-M6 (vertical delay 3: the strip is the rows 0 to 7). With the field
+ * flipped in a copy the strips are painted on the undelayed picture and move with it: under the horizontal delay 3 the left strip covers the columns 3
+ * to 10 and the columns 0 to 2 are exposed (the not-displayed value, in every row, also the rows of the top strip); under the vertical delay 3 the top
+ * strip covers the rows 3 to 10 and the rows 0 to 2 are exposed. The probes were derived by hand from R46 and R49. */
+static int vb_pin_follows_delay(void)
+{
+  uint32_t k;
+  for (k = 5u; k <= 6u; k++) {
+    const vm_frame *f = vm_frame_get(k);
+    const ivs_stic_params *p;
+    ivs_stic_params q;
+    uint8_t *base = vm_exp_buf();
+    VC_CHECK(f != NULL && vm_fixture_ok(f));
+    p = vm_scene(f);
+    VC_CHECK(p != NULL && p->video_border_follows_delay == 0u);
+    vm_put(0u, 0x0644u, 0x0130u, 0x080Cu); /* scene 5 and scene 6 of the program: MOB0 0644 0130 080C */
+    vm_mem_get()->stic_reg[0x30u] = (uint16_t)(k == 5u ? 3u : 0u);
+    vm_mem_get()->stic_reg[0x31u] = (uint16_t)(k == 6u ? 3u : 0u);
+    vm_mem_get()->stic_reg[VB_EXT_REG] = 0x0003u;
+    VC_CHECK(vm_render(p, 1u, vm_plane_buf()) == VF_PLANE_BYTES);
+    VC_CHECK(vm_matches(f)); /* the default: the literal, strips on the display */
+    memcpy(base, vm_plane_buf(), VF_PLANE_BYTES);
+    q = *p;
+    q.video_border_follows_delay = 1u; /* the one-field flip */
+    VC_CHECK(vm_render(&q, 1u, vm_plane_buf()) == VF_PLANE_BYTES);
+    VC_CHECK(vm_planes_differ(vm_plane_buf(), base));
+    if (k == 5u) {
+      /* the left strip is x 3..10 now, rows 0..95; the top strip rows 0..7 is shifted too, so x 0..2 of every row is exposed */
+      VC_CHECK(vb_at(0u, 50u) == 0xFFu && vb_at(2u, 50u) == 0xFFu && vb_at(3u, 50u) == 8u && vb_at(10u, 50u) == 8u && vb_at(11u, 50u) == 1u);
+      VC_CHECK(vb_at(0u, 3u) == 0xFFu && vb_at(3u, 3u) == 8u && vb_at(100u, 3u) == 8u && vb_at(100u, 8u) == 1u);
+      VC_CHECK(base[0] == 8u && vb_at(0u, 0u) == 0xFFu); /* the corner (0, 0) is the strip under the default and exposed under the flip */
+    } else {
+      /* the top strip is y 3..10 now, every column; the left strip rows 0..7 is shifted too, so y 0..2 of every column is exposed */
+      VC_CHECK(vb_at(50u, 0u) == 0xFFu && vb_at(50u, 2u) == 0xFFu && vb_at(50u, 3u) == 8u && vb_at(50u, 10u) == 8u && vb_at(50u, 11u) == 1u);
+      VC_CHECK(vb_at(0u, 0u) == 0xFFu && vb_at(0u, 20u) == 8u && vb_at(7u, 20u) == 8u && vb_at(8u, 20u) == 1u);
+    }
+  }
+  return IVS_TEST_PASS;
+}
+
 const ivs_test_case ivs_video_border_cases[] = {
     {"video.border.strips-left-top", vb_strips_left_top, NULL},
     {"video.border.over-cards-and-mobs", vb_over_cards_and_mobs, NULL},
     {"video.border.colour-from-reg-2c", vb_colour_from_reg, NULL},
     {"video.border.ext-bits-independent", vb_ext_bits_independent, NULL},
+    {"video.border.default-pinned.top-strip-unit", vb_pin_top_strip_unit, NULL},
+    {"video.border.default-pinned.follows-delay", vb_pin_follows_delay, NULL},
 };
 const size_t ivs_video_border_count = sizeof ivs_video_border_cases / sizeof ivs_video_border_cases[0];
