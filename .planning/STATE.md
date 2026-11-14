@@ -2,19 +2,19 @@
 gsd_state_version: "1.0"
 current_phase: 8
 current_phase_name: STIC Completion, Save State and Performance Baselines
-current_plan: 4
+current_plan: 5
 status: executing
-stopped_at: Completed 08-03-PLAN.md
-last_updated: "2026-11-14T08:08:17.241Z"
+stopped_at: Completed 08-04-PLAN.md
+last_updated: "2026-11-14T08:59:29.058Z"
 last_activity: 2026-11-14
 last_activity_desc: Phase 8 execution started
-state_head: 641a12e3a1059b242cc88a3ee4308e3f58d9b36d
+state_head: 7323b7e786ccc6a77308ac26ab47222e6d5ce46d
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 130
-  completed_plans: 112
-  percent: 86
+  completed_plans: 113
+  percent: 87
 ---
 
 # Project State
@@ -29,12 +29,12 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 8 (STIC Completion, Save State and Performance Baselines) — EXECUTING
-Current Plan: 4
+Current Plan: 5
 Total Plans in Phase: 21
 Status: Ready to execute
 Last activity: 2026-11-14 — Phase 8 execution started
 
-Progress: [█████████░] 86%
+Progress: [█████████░] 87%
 
 ## Performance Metrics
 
@@ -171,6 +171,7 @@ Progress: [█████████░] 86%
 | Phase 8 P01 | about 55 min measured, plus reading | 3 tasks | 42 files |
 | Phase 8 P02 | 31min | 3 tasks | 16 files |
 | Phase 08 P03 | about 3h | 3 tasks | 41 files |
+| Phase 08 P04 | about 45 min | 3 tasks | 26 files |
 
 ## Accumulated Context
 
@@ -416,6 +417,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 8]: 08-02: the release rehearsal accepts one named Darwin host effect (ranlib restamp of the first member header of lib/libivs_core.a) and requires byte-equal install archives on Linux
 - [Phase 08]: 08-03: the oracle derives the delayed frames with shift-tolerant card cells (no grammar construct beyond the plan); F-M4 to F-M6 are hashed under the pinned defaults PD-8 and PD-9, carried by the claim exclusions
 - [Phase 08]: 08-03: collision truth table reads sticky bits in the routines of frames 3 and 4 and writes only zero to a collision register; no row depends on a read side effect or a nonzero write
+- [Phase 08]: 08-04: the MOB overlay gives a position to the lowest index with a set pixel and only then tests the owner's priority bit against the card layer (a hidden owner still blocks a higher index); part of the pinned priority behavior, nothing asserts it
+- [Phase 08]: 08-04: the composition is one path (ivs_stic_compose_card_row) shared by the streamed slot and the whole plane; with every MOB register zero it returns the card row untouched, and the vertical-delay carry of plan 08-06 must not be a stack buffer in the deliver frame (the chain deliver, compose, overlay is 3,040 bytes at -O0)
 
 ### Pending Todos
 
@@ -448,6 +451,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-14T08:08:16.882Z
-Stopped at: Completed 08-03-PLAN.md
+Last session: 2026-11-14T08:59:28.726Z
+Stopped at: Completed 08-04-PLAN.md
 Resume file: None
