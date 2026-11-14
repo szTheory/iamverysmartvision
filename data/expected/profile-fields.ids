@@ -148,4 +148,5 @@ video.collision_x0_interacts
 video.collision_border_bit
 video.collision_offscreen
 video.collision_display_off
+video.border_ext_strip
 video.blank_value

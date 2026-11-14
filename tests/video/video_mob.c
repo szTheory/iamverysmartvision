@@ -19,7 +19,6 @@
 #include "video_cases.h"
 #include "ivs_mob_frames.inc"
 
-#define VM_FRAMES 10u
 #define VM_FIRST_MOB_REG 0u
 #define VM_REG_Y 8u
 #define VM_REG_A 16u
@@ -28,6 +27,30 @@ static ivs_memsys vm_mem;
 static ivs_stic_state vm_state;
 static uint8_t vm_plane[VF_PLANE_BYTES];
 static uint8_t vm_exp[VF_PLANE_BYTES];
+
+/* The shared scene of the families that hold the moving-object frames (plan 08-06: video_border.c and video_delay.c use the same scene, the
+ * same renderer entry and the same comparison against F-M4 to F-M7): the frame literal i, and the static memory system, STIC state, rendered
+ * plane and expected plane. */
+const vm_frame *vm_frame_get(uint32_t i)
+{
+  return i < VM_FRAMES ? &vm_frames[i] : NULL;
+}
+ivs_memsys *vm_mem_get(void)
+{
+  return &vm_mem;
+}
+ivs_stic_state *vm_state_get(void)
+{
+  return &vm_state;
+}
+uint8_t *vm_plane_buf(void)
+{
+  return vm_plane;
+}
+uint8_t *vm_exp_buf(void)
+{
+  return vm_exp;
+}
 
 /* The three program cards of derivation A2 (a card is 8 pattern bytes, byte y is pixel row y from the top, bit 7 the leftmost pixel). */
 static const uint8_t vm_card_solid[8] = {0xFFu, 0xFFu, 0xFFu, 0xFFu, 0xFFu, 0xFFu, 0xFFu, 0xFFu};
@@ -48,7 +71,7 @@ static uint8_t vm_symbol(char ch)
 }
 
 /* The expected 160 x 96 plane of a literal (the wildcard `-` is 0xFF). */
-static void vm_expected(const vm_frame *f, uint8_t *exp)
+void vm_expected(const vm_frame *f, uint8_t *exp)
 {
   uint32_t y;
   uint32_t x;
@@ -61,7 +84,7 @@ static void vm_expected(const vm_frame *f, uint8_t *exp)
 
 /* The scene of literal f with every MOB register at its reset value: graphics RAM cards 0 and 1 of the program and the cards of the
  * literal, the BACKTAB words into the row latches, the mode, the color stack and the border. The parameters of the profile are returned. */
-static const ivs_stic_params *vm_scene(const vm_frame *f)
+const ivs_stic_params *vm_scene(const vm_frame *f)
 {
   uint32_t i;
   uint32_t k;
@@ -89,21 +112,21 @@ static const ivs_stic_params *vm_scene(const vm_frame *f)
 }
 
 /* Programs MOB i (X word, Y word, attribute word of the derivation's scene table). */
-static void vm_put(uint32_t i, uint32_t xw, uint32_t yw, uint32_t aw)
+void vm_put(uint32_t i, uint32_t xw, uint32_t yw, uint32_t aw)
 {
   vm_mem.stic_reg[VM_FIRST_MOB_REG + i] = (uint16_t)xw;
   vm_mem.stic_reg[VM_REG_Y + i] = (uint16_t)yw;
   vm_mem.stic_reg[VM_REG_A + i] = (uint16_t)aw;
 }
 
-static uint32_t vm_render(const ivs_stic_params *p, uint32_t displayed, uint8_t *plane)
+uint32_t vm_render(const ivs_stic_params *p, uint32_t displayed, uint8_t *plane)
 {
   return ivs_stic_render_plane(p, &vm_state, &vm_mem, displayed, plane);
 }
 
 /* The index of the first published position (x below 159) at which got differs from the literal plane exp, a `-` position being skipped,
  * or -1; *skipped counts the skipped positions of the published columns. */
-static long vm_first_diff(const uint8_t *got, const uint8_t *exp, uint32_t *skipped)
+long vm_first_diff(const uint8_t *got, const uint8_t *exp, uint32_t *skipped)
 {
   uint32_t y;
   uint32_t x;
@@ -133,7 +156,7 @@ static void vm_report(const vm_frame *f, const uint8_t *got, const uint8_t *exp,
 
 /* The fixture checks of a literal before it judges anything: a hashed literal has no wildcard in the published columns and its plane hashes to
  * its own sha256-text; a literal with `unknown` rectangles has a wildcard and no hash. 1 when consistent (a failure is FIXTURE, not a renderer). */
-static int vm_fixture_ok(const vm_frame *f)
+int vm_fixture_ok(const vm_frame *f)
 {
   char hex[65];
   uint32_t y;
@@ -161,7 +184,7 @@ static int vm_fixture_ok(const vm_frame *f)
 }
 
 /* Compares the rendered plane in vm_plane with literal f (positions, then the hash of the published columns when the literal has one). */
-static int vm_matches(const vm_frame *f)
+int vm_matches(const vm_frame *f)
 {
   uint32_t skipped = 0u;
   long d = vm_first_diff(vm_plane, vm_exp, &skipped);
@@ -367,7 +390,7 @@ static int vm_params_match_profile(void)
 /* ---- helpers of the shape tests ---- */
 
 /* The positions of the published columns that hold color col in the rendered plane. */
-static uint32_t vm_count(uint32_t col)
+uint32_t vm_count(uint32_t col)
 {
   uint32_t y;
   uint32_t x;
@@ -823,8 +846,6 @@ static int vm_register_bit_roles(void)
 
 /* ---- video.mob.stream-equals-plane: the streamed slot of ivs_stic_frame_deliver is the whole plane of ivs_stic_render_plane ---- */
 
-#define VM_SLOT_BYTES 15296u
-#define VM_F 59736u
 
 /* The F-M3 scene programmed on a fresh memory system (the registers of vm_frame_priority_colour, from derivation A7). */
 static const ivs_stic_params *vm_scene_f3(void)
@@ -882,8 +903,6 @@ static int vm_stream_equals_plane(void)
 
 /* ---- video.mob.slice-invariant: the host's call sizes change no byte of a run that draws MOBs ---- */
 
-#define VM_TOTAL (3u * VM_F + 4000u)
-#define VM_CAP ((uint64_t)VM_SLOT_BYTES * 5u)
 
 /* The stand-in guest (decles derived in tests/stic/stic_cases.h): the three graphics RAM cards of derivation A2 written byte by byte, the nine MOB
  * registers of the F-M3 scene (derivation A7, scene 3; none when with_mobs is 0), a read of $0021 (Color Stack), then the display strobe in an
@@ -936,7 +955,7 @@ static uint64_t vm_now(const ivs_ms_inst *x)
 
 /* Runs the guest of w[0..n) to VM_TOTAL in calls of `slice` ticks (0: one call), appending every delivered slot to out; the instance is left in x
  * for the whole-storage comparison. The delivered byte count, or (uint64_t)-1 on a failure. */
-static uint64_t vm_run_sliced(ivs_ms_inst *x, const uint16_t *w, size_t n, uint64_t slice, uint8_t *out)
+uint64_t vm_run_sliced(ivs_ms_inst *x, const uint16_t *w, size_t n, uint64_t slice, uint8_t *out)
 {
   static uint8_t tmp[VM_SLOT_BYTES * 5u];
   uint64_t got = 0u;
@@ -956,7 +975,7 @@ static uint64_t vm_run_sliced(ivs_ms_inst *x, const uint16_t *w, size_t n, uint6
   return got;
 }
 
-static int vm_slice_one(uint64_t slice, uint8_t *ref, uint64_t ref_bytes, const ivs_ms_inst *a, const uint16_t *w, size_t n)
+int vm_slice_one(uint64_t slice, uint8_t *ref, uint64_t ref_bytes, const ivs_ms_inst *a, const uint16_t *w, size_t n)
 {
   ivs_ms_inst b;
   static uint8_t out[VM_SLOT_BYTES * 5u];
@@ -1021,7 +1040,7 @@ done:
  * generator, so only these two values are exercised. ---- */
 
 /* 1 when planes a and b differ in at least one published position. */
-static int vm_planes_differ(const uint8_t *a, const uint8_t *b)
+int vm_planes_differ(const uint8_t *a, const uint8_t *b)
 {
   uint32_t y;
   uint32_t x;

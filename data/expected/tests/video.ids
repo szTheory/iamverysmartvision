@@ -149,3 +149,8 @@ video.collision.default-pinned.border-bit
 video.collision.default-pinned.offscreen
 video.collision.default-pinned.display-off
 video.judge.collision-truth-table-corrupt
+# Plan 08-06 task 1 (VID-05, D-02, rules STIC-R48 and R49): the border-extension strips, tracer: register $0032 bit 0 paints the 8 left columns and bit 1 the top rows of the plane in the border color of $002C, over cards and MOBs, never in the cut-off column, to the frozen frame F-M4 and to rectangles and counts derived by hand (video.border.*).
+video.border.strips-left-top
+video.border.over-cards-and-mobs
+video.border.colour-from-reg-2c
+video.border.ext-bits-independent

@@ -1601,6 +1601,16 @@
       "decision": null,
       "note": "Policy selector 0 or 1: with 0 a frame with the display off sets no collision bit and draws no MOB; with 1 the MOBs of such a frame are evaluated for collision against each other and against the border (there is no card layer in that frame). No oracle row depends on it: frame 0 of the collision scenario is not displayed and no row reads a bit set there."
     },
+    "video.border_ext_strip": {
+      "value": {"cols": 8, "rows": 8},
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: the lineage states the strip width of 8 plane positions for the left edge and draws, without printing the unit of the top strip, only the delay at its maximum (rule STIC-R49)",
+      "conflict": "C109",
+      "resolving_evidence": "measurement: D10-VID-13 owner capture of the top strip height and of a strip with a nonzero delay",
+      "revisit_trigger": "a D10 capture of a border-extension strip or a primary page that prints the strip units",
+      "decision": null,
+      "note": "The size of the two border-extension strips in plane positions: cols is the width of the left strip (extension bit 0) and rows the height of the top strip (extension bit 1). Each member is 1 to 15. The left strip width of 8 is the derivable core (rule STIC-R48); the top strip unit of 8 plane rows (a strip of 8 television lines would be 4 plane rows) is the pinned part (PD-8). Frames F-M4, F-M5 and F-M6 are derived under 8 by 8."
+    },
     "video.blank_value": {
       "value": 255,
       "tag": "delegated-decision",

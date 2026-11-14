@@ -136,6 +136,11 @@ typedef struct ivs_stic_params {
   uint32_t video_collision_border_bit;
   uint32_t video_collision_offscreen;
   uint32_t video_collision_display_off;
+  /* Border extension (plan 08-06, D-02, rules STIC-R48 and R49; stic_frame.c): the generator reads video.border_ext_strip {cols, rows} (each 1..15,
+   * unknown-default-chosen, C109): the width in plane columns of the left strip (extension register bit 0) and the height in plane rows of the top
+   * strip (bit 1). The left width of 8 is the derivable core; the top height (default 8, the pinned unit PD-8) is the pinned part. */
+  uint32_t video_border_ext_cols;
+  uint32_t video_border_ext_rows;
   uint32_t video_display_off_fill;
 } ivs_stic_params;
 

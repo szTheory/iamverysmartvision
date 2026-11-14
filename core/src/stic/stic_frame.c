@@ -24,6 +24,11 @@
  * uint32_t[8] while it composes the card rows (ivs_stic_collide_lines) and ORs it into the collision registers of the register file at the
  * end of the frame, with or without a video buffer (named fault COLLISION_NOT_STICKY: the write-back assigns instead of ORing).
  *
+ * Plan 08-06 (border extension, delay; D-02, D-03, D-07): the plane rows of a frame, streamed or whole, come out of ONE row generator
+ * (ivs_stic_rows below) that composes the card rows in order into a single card-row buffer and finishes each plane row in place: the delay
+ * shift (a later task of the plan) and the two border-extension strips, painted last over cards and MOBs. No second buffer and no carry exist:
+ * a vertical delay only changes which source row feeds which output row, and every source row is consumed once, in order.
+ *
  * Named faults (plan 06-09): VIDEO_STATE_DEPENDS_ON_BUFFER (with no buffer the chain and the count do not advance),
  * VIDEO_CHAIN_FRAMING_STRUCT_HASH (the chain hashes an image of a struct instead of the framed bytes). The file holds no static or
  * global state. */
@@ -146,19 +151,123 @@ uint32_t ivs_stic_compose_card_row(const ivs_stic_params *p, const ivs_stic_stat
   return n;
 }
 
+/* ---- the plane row generator (plan 08-06) ---- */
+
+/* The registers of the border extension and the color of the strips ($32 bits 1..0 and $2C, the last masked to 4 bits as everywhere). */
+#define IVS_STIC_REG_BORDER_EXT 0x32u
+
+/* The generator of the plane rows of one frame: the source card rows are composed in order into one card-row buffer (buf, caller-owned,
+ * IVS_STIC_CARDROW_MAX bytes) and each output row is finished in place. y is the next output plane row, cr the next card row to compose. */
+typedef struct ivs_stic_rows {
+  const ivs_stic_params *p;
+  const ivs_stic_state *s;
+  const ivs_memsys *mem;
+  uint32_t *cs_pos;   /* the color-stack pointer carried across the card rows */
+  uint32_t *hit;      /* the collision accumulation of the frame, NULL for the whole-plane entry points */
+  uint8_t *buf;       /* one composed card row, then its rows finished in place */
+  uint32_t displayed;
+  uint32_t work_w;    /* the working width of a plane row */
+  uint32_t height;    /* plane rows */
+  uint32_t ext;       /* the border-extension register, bit 0 the left strip and bit 1 the top strip */
+  uint32_t border;    /* the border color index, the color of the strips */
+  uint32_t y;
+  uint32_t cr;
+  uint32_t failed;    /* 1 when a card row could not be composed: the row generator stops */
+} ivs_stic_rows;
+
+static void ivs_stic_rows_init(ivs_stic_rows *r, const ivs_stic_params *p, const ivs_stic_state *s, const ivs_memsys *mem, uint32_t displayed,
+                               uint32_t *cs_pos, uint32_t *hit, uint8_t *buf)
+{
+  memset(r, 0, sizeof *r);
+  r->p = p;
+  r->s = s;
+  r->mem = mem;
+  r->cs_pos = cs_pos;
+  r->hit = hit;
+  r->buf = buf;
+  r->displayed = displayed;
+  r->work_w = p->video_card_columns * p->video_card_w;
+  r->height = p->video_card_rows * p->video_card_h;
+  if (displayed != 0u && ivs_stic_cards_drawable(p, 0u) != 0u) {
+    /* a display-off frame is the border fill and a geometry the card decoder does not draw is blank: neither takes the strips */
+    r->ext = (uint32_t)mem->stic_reg[IVS_STIC_REG_BORDER_EXT] & 3u;
+    r->border = (uint32_t)mem->stic_reg[IVS_STIC_REG_BORDER] & 0xFu;
+  }
+}
+
+/* Composes the card rows up to and including card row last (never twice, never past the last card row); 0 and r->failed when one fails. */
+static uint32_t ivs_stic_rows_compose_to(ivs_stic_rows *r, uint32_t last)
+{
+  while (r->cr <= last && r->cr < r->p->video_card_rows) {
+    if (ivs_stic_compose_card_row(r->p, r->s, r->mem, r->displayed, r->cr, r->cs_pos, r->buf, r->hit) == 0u) {
+      r->failed = 1u;
+      return 0u;
+    }
+    r->cr += 1u;
+  }
+  return 1u;
+}
+
+/* Paints the extension strips of the plane row y over the published columns of row (rule STIC-R48, painted last over cards and MOBs): bit 1 the
+ * first video_border_ext_rows rows entirely, bit 0 the first video_border_ext_cols columns of every row. The cut-off column is never painted. */
+static void ivs_stic_rows_strips(const ivs_stic_rows *r, uint8_t *row, uint32_t y)
+{
+  uint32_t width = r->p->video_width;
+  if ((r->ext & 2u) != 0u && y < r->p->video_border_ext_rows) {
+    memset(row, (int)r->border, width);
+    return;
+  }
+  if ((r->ext & 1u) != 0u) {
+    memset(row, (int)r->border, r->p->video_border_ext_cols < width ? r->p->video_border_ext_cols : width);
+  }
+}
+
+/* The next finished plane row (work_w bytes, valid until the next call), or NULL when the frame is complete or a card row failed (r->failed). The
+ * call that finds every row delivered composes whatever card rows are left, so the collision accumulation and the final color-stack pointer cover
+ * the whole frame. */
+static const uint8_t *ivs_stic_rows_next(ivs_stic_rows *r)
+{
+  uint32_t y = r->y;
+  uint8_t *row;
+  if (r->failed != 0u) {
+    return NULL;
+  }
+  if (y >= r->height) {
+    (void)ivs_stic_rows_compose_to(r, r->p->video_card_rows);
+    return NULL;
+  }
+  if (ivs_stic_rows_compose_to(r, y / r->p->video_card_h) == 0u) {
+    return NULL;
+  }
+  row = r->buf + (size_t)(y % r->p->video_card_h) * r->work_w;
+  if (r->ext != 0u) {
+    ivs_stic_rows_strips(r, row, y);
+  }
+  r->y = y + 1u;
+  return row;
+}
+
 uint32_t ivs_stic_render_plane_cs(const ivs_stic_params *p, const ivs_stic_state *s, const ivs_memsys *mem, uint32_t displayed, uint8_t *plane,
                                   uint32_t *cs_final)
 {
+  uint8_t buf[IVS_STIC_CARDROW_MAX];
+  ivs_stic_rows rows;
   uint32_t row_bytes = p->video_card_columns * p->video_card_w * p->video_card_h;
   uint32_t pos = 0u;
-  uint32_t cr;
-  if (row_bytes * p->video_card_rows > IVS_STIC_PLANE_MAX) {
+  uint32_t y;
+  if (row_bytes * p->video_card_rows > IVS_STIC_PLANE_MAX || row_bytes > IVS_STIC_CARDROW_MAX) {
     return 0u;
   }
-  for (cr = 0u; cr < p->video_card_rows; cr++) {
-    if (ivs_stic_compose_card_row(p, s, mem, displayed, cr, &pos, plane + (size_t)cr * row_bytes, NULL) == 0u) {
+  ivs_stic_rows_init(&rows, p, s, mem, displayed, &pos, NULL, buf);
+  for (y = 0u; y < rows.height; y++) {
+    const uint8_t *src = ivs_stic_rows_next(&rows);
+    if (src == NULL) {
       return 0u;
     }
+    memcpy(plane + (size_t)y * rows.work_w, src, rows.work_w);
+  }
+  if (ivs_stic_rows_next(&rows) != NULL || rows.failed != 0u) {
+    return 0u;
   }
   if (cs_final != NULL) {
     *cs_final = pos;
@@ -187,11 +296,10 @@ void ivs_stic_frame_deliver(const ivs_stic_params *p, ivs_stic_state *s, ivs_mem
   uint8_t header[IVS_FRAME_HEADER_BYTES];
   uint32_t hit[IVS_STIC_MOBS]; /* plan 08-05: the collision of this frame, bit j of hit[i] = MOB i and MOB j share a position */
   ivs_sha256 ctx;
+  ivs_stic_rows rows;
   ivs_stic_geom g = ivs_stic_geom_derive(p);
   uint32_t work_w = p->video_card_columns * p->video_card_w;
   uint32_t displayed = s->windows_active != 0u ? 1u : 0u;
-  uint32_t cr;
-  uint32_t py;
   uint32_t i;
   uint32_t y = 0u;
   uint32_t cs_pos = 0u; /* the color-stack pointer restarts at 0 for every frame render (D-06) */
@@ -254,21 +362,21 @@ void ivs_stic_frame_deliver(const ivs_stic_params *p, ivs_stic_state *s, ivs_mem
 #else
   ivs_sha256_update(&ctx, header, sizeof header);
 #endif
-  for (cr = 0u; cr < p->video_card_rows; cr++) {
-    if (ivs_stic_compose_card_row(p, s, mem, displayed, cr, &cs_pos, cardrow, hit) == 0u) {
+  ivs_stic_rows_init(&rows, p, s, mem, displayed, &cs_pos, hit, cardrow);
+  for (y = 0u; y < g.height; y++) {
+    const uint8_t *src = ivs_stic_rows_next(&rows);
+    if (src == NULL) {
       if (sink != NULL) {
         sink->video_overflow = 1u; /* unreachable for a generated profile (see above): a short frame is an INTERNAL stop, never a quiet one */
       }
       break;
     }
-    for (py = 0u; py < p->video_card_h && y < g.height; py++, y++) {
-      const uint8_t *src = cardrow + (size_t)py * work_w;
-      ivs_sha256_update(&ctx, src, g.width);
-      if (deliver != 0u) {
-        memcpy(out + g.header_bytes + (size_t)y * g.stride, src, g.width);
-      }
+    ivs_sha256_update(&ctx, src, g.width);
+    if (deliver != 0u) {
+      memcpy(out + g.header_bytes + (size_t)y * g.stride, src, g.width);
     }
   }
+  (void)ivs_stic_rows_next(&rows); /* every row is out: this call composes whatever card rows are left (collision and the color-stack pointer cover the frame) */
   ivs_sha256_final(&ctx, row->chain);
   row->count += 1u;
   if (displayed != 0u) {
