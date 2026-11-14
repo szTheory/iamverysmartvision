@@ -1,6 +1,7 @@
 #!/bin/sh
 # SPDX-License-Identifier: MIT
-# Step ci-parity: CI runs exactly the local gate, SHA-pinned and read-only (D-23).
+# Step ci-parity: CI runs exactly the local gate, SHA-pinned and read-only (D-23), and the one
+# release workflow is held to its own exemption table (plan 08-01, D-32).
 # Reads ROOT, CHECK_DIR and FILELIST only. Every check runs before the step exits.
 # Inspected files: every FILELIST path under .github/workflows/, not only gate.yml.
 # Rules, line based (no YAML parser, no dependency); every line is read with comments and
@@ -17,13 +18,26 @@
 #   - a top-level `permissions:` block holding only `contents: read` exists in every workflow
 #     and any other `permissions` key (job level) is a block holding only `contents: read`
 #   - no flow-style `{` mapping outside `${{ ... }}` expressions (it would hide keys from the scan)
+# Per-file exemption table, keyed by file name (D-32): .github/workflows/release.yml only (the `isrel`
+# branch of the awk program) differs from the rules above, and no other file gets any exemption:
+#   - trigger: `on` holds only `push:` holding only `tags:` holding exactly one item, the strict glob
+#     `v[0-9]*.[0-9]*.[0-9]*` (D-31: a milestone label such as v1.0 must not match); any other key under
+#     `on`, a wider or second tag item, or no tag item is `ci-parity-release-trigger`
+#   - a job-level `permissions:` block holding only `contents: write` is allowed (the top-level block
+#     must still hold only `contents: read`)
+#   - the `run:` allowlist is `cmake --version` and `sh tools/release.sh --publish`; `sh tools/gate.sh`
+#     is not required there (ci-parity-missing-gate stays gate.yml-only)
+#   - the only secret reference allowed is `secrets.GITHUB_TOKEN`
+#   - the job `release` has a job-level `timeout-minutes: 15`, and no `timeout-minutes` anywhere in the
+#     file has another value
 # Limits: anchors, multi-document YAML and block-scalar bodies are not interpreted; a line inside
 # a `run: |` body that looks like a key is reported (fail closed).
 # Tokens: ci-parity-missing-workflow, ci-parity-missing-gate, ci-parity-extra-run: <file>:<line>,
 #   ci-unpinned-action: <file>:<line>, ci-permissions: <file>[:<line>],
 #   ci-parity-continue-on-error, ci-parity-conditional, ci-parity-pull-request-target,
 #   ci-parity-flow-style, ci-parity-action-not-allowed, ci-parity-secrets, ci-parity-matrix,
-#   ci-parity-runs-on (each <file>:<line>), ci-parity-timeout: <file>[:<line>].
+#   ci-parity-runs-on (each <file>:<line>), ci-parity-timeout: <file>[:<line>],
+#   ci-parity-release-trigger: <file>:<line> (line 0: no tag item).
 # Stats: ci-uses=<n> (count of pinned uses: lines), ci-workflows=<n>.
 LC_ALL=C; export LC_ALL
 : "${ROOT:?ROOT is not set}"
@@ -51,7 +65,9 @@ while IFS= read -r p; do
     function indent_of(s,   m) { match(s, /^ */); return RLENGTH }
     function emit(tok, n) { printf "%s %s:%d\n", tok, file, n }
     BEGIN { sq = sprintf("%c", 39); uses = 0; gate = 0; topperm = 0; inperm = 0; permind = -1; permtop = 0; permok = 1; permseen = 0
-      isgate = (file == ".github/workflows/gate.yml"); injobs = 0; jobind = -1; curjob = ""; jkind = -1; gatetimeout = 0; badtimeout = 0 }
+      isgate = (file == ".github/workflows/gate.yml"); isrel = (file == ".github/workflows/release.yml")
+      injobs = 0; jobind = -1; curjob = ""; jkind = -1; gatetimeout = 0; badtimeout = 0
+      inon = 0; on1 = -1; on2 = -1; inpush = 0; intags = 0; ntags = 0 }
     {
       raw = $0
       ind = indent_of(raw)
@@ -82,7 +98,11 @@ while IFS= read -r p; do
       gsub(/["\t ]/, "", key)
       gsub(sq, "", key)
       if (body ~ /pull_request_target/) emit("ci-parity-pull-request-target", NR)
-      if (line ~ /secrets[.[]/ || key == "secrets") emit("ci-parity-secrets", NR)
+      # In release.yml the one secret reference allowed is secrets.GITHUB_TOKEN (a trailing blank keeps
+      # the match from reading a longer name such as GITHUB_TOKEN_X as the allowed one).
+      sline = line " "
+      if (isrel) gsub(/secrets[.]GITHUB_TOKEN[^A-Za-z0-9_]/, " ", sline)
+      if (sline ~ /secrets[.[]/ || key == "secrets") emit("ci-parity-secrets", NR)
       # Job tracking: a top-level key resets; under jobs, the first indent is the job-name level and
       # the first deeper line of a job sets its job-level key indent.
       if (ind == 0) { injobs = (key == "jobs"); curjob = ""; jobind = -1 }
@@ -91,15 +111,42 @@ while IFS= read -r p; do
         if (ind == jobind) { curjob = key; jkind = -1 }
         else if (curjob != "" && jkind < 0) jkind = ind
       }
-      if (key == "timeout-minutes" && isgate) {
+      # release.yml trigger (D-31): on -> push -> tags -> exactly one item, the strict glob.
+      if (isrel) {
+        if (ind == 0) {
+          inon = (key == "on"); on1 = -1; on2 = -1; inpush = 0; intags = 0
+          if (inon && val != "") emit("ci-parity-release-trigger", NR)
+        } else if (inon) {
+          if (on1 < 0) on1 = ind
+          if (ind == on1) {
+            inpush = (key == "push"); intags = 0; on2 = -1
+            if (!inpush || val != "") emit("ci-parity-release-trigger", NR)
+          } else if (inpush) {
+            if (on2 < 0) on2 = ind
+            if (ind == on2) {
+              intags = (key == "tags")
+              if (!intags || val != "") emit("ci-parity-release-trigger", NR)
+            } else if (intags) {
+              if (line ~ /^[ \t]*-([ \t]|$)/ && key == "v[0-9]*.[0-9]*.[0-9]*") ntags++
+              else emit("ci-parity-release-trigger", NR)
+            }
+          }
+        }
+      }
+      if (key == "timeout-minutes" && (isgate || isrel)) {
         tv = val
         gsub(/["\t ]/, "", tv)
         gsub(sq, "", tv)
-        if (tv != "5") { badtimeout = 1; emit("ci-parity-timeout", NR) }
-        else if (injobs && curjob == "gate" && ind == jkind) gatetimeout = 1
+        if (isgate) { wantt = "5"; wantjob = "gate" } else { wantt = "15"; wantjob = "release" }
+        if (tv != wantt) { badtimeout = 1; emit("ci-parity-timeout", NR) }
+        else if (injobs && curjob == wantjob && ind == jkind) gatetimeout = 1
       }
       if (inperm) {
-        if (key == "contents" && val == "read") { permseen = 1 }
+        # The top-level block holds only contents: read; in release.yml the job-level block holds only
+        # contents: write; in every other file a job-level block holds only contents: read.
+        okval = "read"
+        if (isrel && !permtop) okval = "write"
+        if (key == "contents" && val == okval) { permseen = 1 }
         else { permok = 0; emit("ci-permissions", NR) }
         next
       }
@@ -110,7 +157,11 @@ while IFS= read -r p; do
         else emit("ci-permissions", NR)
       }
       else if (key == "run") {
-        if (val == "sh tools/gate.sh") gate++
+        if (isrel) {
+          if (val == "sh tools/release.sh --publish" || val == "cmake --version") { }
+          else emit("ci-parity-extra-run", NR)
+        }
+        else if (val == "sh tools/gate.sh") gate++
         else if (val == "cmake --version") { }
         else emit("ci-parity-extra-run", NR)
       }
@@ -135,7 +186,8 @@ while IFS= read -r p; do
     }
     END {
       if (inperm && permtop && permok && permseen) topperm = 1
-      if (isgate && !gatetimeout && !badtimeout) printf "ci-parity-timeout %s\n", file
+      if ((isgate || isrel) && !gatetimeout && !badtimeout) printf "ci-parity-timeout %s\n", file
+      if (isrel && ntags != 1) printf "ci-parity-release-trigger %s:0\n", file
       printf "USES %d GATE %d TOPPERM %d\n", uses, gate, topperm
     }
   ' "$ROOT/$p" > "$tmp/awk.out"

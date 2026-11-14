@@ -1,3 +1,10 @@
 # Owning plan 01-13: CI parity controls.
 ci-parity-missing-gate
 ci-parity-unpinned-action
+ci-parity-release-extra-run
+ci-parity-release-pull-request
+ci-parity-release-tag-wide
+ci-parity-release-secret
+ci-parity-release-top-write
+ci-parity-gate-job-write
+ci-parity-release-no-tag-trigger
