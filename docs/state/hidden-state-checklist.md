@@ -175,3 +175,19 @@ Each item of the design review (08-DISCUSS-state 7.3) with the mechanism that an
 ## Editing the checklist
 
 After the blind second read, the checklist, the schema literal and the container classes change only by the `correction:` lines of `docs/state/checklist-second-read-record.md`, applied by plan 08-10 in its first commit. A later plan that finds a defect (a weak witness, a dead row) records it in an appended note and changes the line with the reason, never silently.
+
+## The derived invariants as decided by plan 08-13 (appended note)
+
+The section "The derived invariants" above is the oracle of plan 08-09 and is not edited.
+Plan 08-13 held each rule against the live instances of real programs at every unit boundary (`state.restore.invariants-hold-reachable`: 23 programs, 411,075 boundaries; the programs and the counts are in "As built (plan 08-13)" of `docs/formats/ivsn-v1.md`), and the status of each `[candidate]` mark above is:
+
+| Rule | Status | Note |
+|---|---|---|
+| INV-1 | kept | judged as a range rule (reason 78) with INV-5, because it is the three device validators and the event cursor |
+| INV-2 | corrected | the clause "the next STIC event tick is above `time_ticks`" has one exception, the reset state (machine time 0, frame 0, event 0) where the first event has not been applied yet; the other clauses and the gate flags hold as written |
+| INV-3 | kept, strengthened | the previous audio levels are three four-bit levels and a fourth byte of 0 (the stricter form implies "at most 15" and is derived from the step code; no reachable state forced the change) |
+| INV-4 | kept | |
+| INV-5 | kept | judged with INV-1 as a range rule (reason 78) |
+| INV-6 | kept | the candidate `obs.video.count == stic.frame_index` holds at every boundary of every program |
+
+No rule was dropped. The status of the hidden-state rows (the witness cuts, the sweep) is the work of plan 08-14.

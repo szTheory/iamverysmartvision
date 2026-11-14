@@ -314,3 +314,73 @@ Every row is run twice, into a report poisoned with 0xA5 and with 0x5A, and the 
 |---|---|---|
 | SNAPSHOT_TRAILER_UNCHECKED | `machine_snapshot_read.c`, the trailer comparison | `state.read.describe-refuse-trailer` finds a damaged trailer and damaged bytes that only the trailer covers accepted instead of reason 70 |
 | SNAPSHOT_LENGTH_TRUSTED | `machine_snapshot_read.c`, the refusal of a total above the supplied length | `state.read.describe-refuse-length` finds a truncated snapshot reported with another reason (the buffers of a fault build carry a zeroed tail, so the reader reads defined bytes and fails by its status) |
+
+## As built (plan 08-13)
+
+This section is appended after the sections above, which are the oracle of plan 08-09 and are not edited: it records what restore of plan 08-13 does when it is held to them, and what the programs decided about the derived invariants.
+Restore is `core/src/machine/machine_snapshot_restore.c`; its public face is `ivs_machine_snapshot_restore` in `core/include/ivs/ivs_state.h`; the status `IVS_E_STATE_MISMATCH` (-24) and the reasons 72 to 81 are defined there and in `ivs_status.h` and pinned in `data/expected/api-statuses.ids` and `data/expected/api-reasons.ids` (the reserved band is -25 to -31 from this plan); the cases are the family `state.restore.` and the self-control `state.judge.refusal-expectation-corrupt` (`tests/state/state_restore.c`, `tests/state/state_invariants.c`, `tests/state/state_util.c`, ids in `data/expected/tests/state.ids`).
+Steps 6 to 9 of the check order above are now implemented; STA-01 and STA-02 stay open until the hard-point suite of plan 08-14 exists.
+
+**The check order as produced.** The reader of plan 08-12 is called unchanged, so steps 2 to 6 (the form of the id) are exactly the table of "As built (plan 08-12)"; restore adds the arguments before it and the layers after it.
+
+| Step | Check | Reason, status |
+|---|---|---|
+| 1 | the report struct (not NULL with struct_size below 360 or above 4,096) | BAD_ARG, nothing written |
+| 1 | a NULL buffer with a length above 0; then the report overlapping the first min(len, 16,384) bytes of the buffer | 58, 59 BAD_ARG |
+| 1 | a NULL or invalid handle (the report gets the reason IVS_REASON_HANDLE) | BAD_HANDLE |
+| 1 | the first min(len, 16,384) bytes of the buffer, or the report, overlapping the storage of the valid instance (the report is not written when it is the one that overlaps) | 81 BAD_ARG |
+| 2 to 6 | the container, as describe judges it | 60 to 71 |
+| 6 | the profile id registered; the id equal to the instance's; the parameter digest equal to this build's | 72 UNKNOWN_PROFILE; 73, 74 STATE_MISMATCH |
+| 7 | per slot in the order EXEC, GROM, cartridge: a loaded flag above 1, or an empty record that holds a length or a digest; a slot loaded in the snapshot and not in the instance; a slot loaded only in the instance, or loaded on both sides with another SHA-256 or length | 78 MALFORMED; 75 MISSING_SYSTEM_IMAGE; 76 STATE_MISMATCH |
+| 8 | every section length equal to the derived length | 80 |
+| 8 | every array row announces the count of the table | 77 |
+| 8 | the frame of each section (IVSD, the domain, the domain version 1); the CPU, PSG and STIC states through their validators and the event cursor; the phase POWERED; machine time at most 2^63 | 78 |
+| 8 | the derived invariants INV-2, INV-3, INV-4 and INV-6 | 79 |
+| 9 | the commit: every STATE row decoded into the instance, every PAD row zeroed, no BOUND or IMAGE row written, the phase becomes the snapshot's POWERED | none: it cannot refuse |
+
+Every refusal of steps 1 to 8 leaves the whole instance byte-identical and writes only the report: the sections are decoded into a probe of a few hundred bytes (`ivs_snap_probe`: the CPU, PSG and STIC structs, the input row and the few scalars the invariants read) and judged there, and the commit has no refusal path.
+A refusal writes reason, byte offset, section index and the header facts the length let the reader see, as describe does, and the slot kind for a refusal about a slot; a success writes the full v1 report exactly as describe does.
+The byte offset is the field of the slot record (75, 76, and 78 about a record), the id field (72, 73), the parameter digest field (74), the length field of the section table entry (80), the count prefix of the array row (77), the byte of the frame (78 about a frame), and for 78 and 79 about a struct or scalar the offset in the container of its first element (the section index says which section): the CPU, the phase, machine time, the PSG state and the STIC state for 78, and the STIC state (INV-2), the PSG state (INV-3), the input row (INV-4) and the video count (INV-6) for 79.
+
+**Where the code and the plan text differ, and which is right.** The specification is the contract; where plan 08-13 reads differently the code follows the specification and the difference is recorded here.
+1. INV-1 (the three validators and the event cursor) and INV-5 (the phase and the range of machine time) are judged as range rules, reason 78, as the plan text lists them with the validators; INV-2, INV-3, INV-4 and INV-6 are the derived rules of reason 79. The one function `ivs_snapshot_invariants` evaluates all six, in the order 1, 2, 3, 4, 5, 6, and judges a live instance with the same code.
+2. The check of step 7 against the recorded IMAGES domain digest is not made: a snapshot has no IMAGES section (the three slot records are its whole image structure), so there is nothing recorded to compare with the live structure; the slot identities are what is compared.
+3. The record of a slot must be a record a writer makes: a loaded flag above 1, or an empty record that holds a length or a digest, is reason 78 at the slot (the instance zeroes a slot when it is empty). It is judged slot by slot together with the comparison of that slot, so the first failing slot in the order EXEC, GROM, cartridge decides.
+4. The frame of each section (IVSD, the domain of the table entry, the domain version 1) is checked: the reader does not look at it and a snapshot with another frame would not re-encode canonically. A wrong frame byte is reason 78 at that byte.
+5. Step 8 is ordered as the specification orders it (the lengths 80 first, then the counts 77, then the ranges 78, then the invariants 79); the prose of the plan names 77 before 80.
+6. The comparison of the event cursor with the event count of the profile (INV-1) is the same bound as the validator's own limit for the registered profile (16 events, the table maximum), so the rows that exercise one exercise the other.
+
+**The derived invariants, decided by the programs.** `state.restore.invariants-hold-reachable` builds the live probe of a running instance and judges it with the function restore uses, at every unit boundary of 23 programs: the Lamp Tone with no input (4 frames, 11,104 boundaries) and with the six events of its scenario (14 frames, 42,229), the boot stub contract 2 alone (7,469), the first STIC diagnostic without and with its selector (41,729 and 41,722), the second STIC diagnostic with no selector and with each of the five selector words (11,086, 11,089, 11,071, 11,080, 11,065 and 11,100), the nine stand-in programs of the machine suite and the boot program (20,001 each), a program that halts (301) and one that ends in a guest fault (20): 411,075 boundaries in all, reached through the public run call one unit at a time with the events resubmitted from the applied-event count (the programs with input) or through the internal step seam.
+No invariant is violated at any of them. The states the programs reach give each invariant something to say: the register gate closed at 362,123 boundaries and the graphics gate at 319,106, a held key with a pull-down at 129,365, a halted CPU at 75,510 and a faulted one at 1, the audio level 15, 14 frames completed, and the reset state (machine time 0, the cursor at the very start) at exactly 23 boundaries, one per program.
+
+| Rule | Status | The state that decided it |
+|---|---|---|
+| INV-1 | kept | the validators and the event cursor hold at every boundary, including the halted and the faulted CPU |
+| INV-2 | corrected | at the reset state (machine time 0, frame 0, event 0) the first event, at tick 0, has not been applied: the timeline is caught up at the end of every unit and never at the reset, so "the next event is above machine time" fails there. The rule keeps that clause for every state but that one (23 boundaries, one per program); the previous-event clause and the gate flags hold at the reset state as written |
+| INV-3 | kept, strengthened | the sample index, the emitted count and the registers' masks hold as written; the previous levels hold the form of the specification ("the bytes are at most 15") at every boundary, and the rule kept is the stricter one derived from the step code (three four-bit levels in the low three bytes and a fourth byte of 0, the sample being A, B, C, 0): no reachable state forced the change, a state with a fourth byte of 1 is one no step makes |
+| INV-4 | kept | the words, the pull-downs derived from them and the input floor hold at every boundary of the Lamp Tone with its six events and of the diagnostics with a selector |
+| INV-5 | kept | a snapshot is of a POWERED machine and machine time stays below 2^63 |
+| INV-6 | kept | the candidate `obs.video.count == stic.frame_index` holds at every boundary of every program (frames reach 14): it is decided true and is kept |
+
+The probes that show each rule can refuse (a change of one rule in the working tree, each caught by the ids named for it) are in the summary of the plan.
+The correction of INV-2 and the strengthening of INV-3 are recorded here and in the code (`ivs_snap_inv2`, `ivs_snap_inv3`), as the plan requires, and the oracle sections of this document above are not edited.
+
+**The digest fields (D-41).** Restore does not authenticate the composite digest or the seven section digests of the header, and does not recompute them: `state.restore.digest-fields-informational` accepts a snapshot whose eight digest fields were flipped and whose trailer was recomputed, and afterwards the target's real digests are the saved instance's real digests, not the header's.
+A snapshot of the restored target then differs from the accepted bytes in exactly the eight fields and the trailer, which is the one exception of the canonical re-encode rule named in "Digests" above.
+The trailer is integrity, not authenticity: a hostile snapshot with a recomputed trailer is refused by the validators and the invariants (the rows of `state.restore.refuse-content-validators` and `state.restore.refuse-content-invariants` are all resealed).
+
+**The profile id seam.** With one registered profile a second registered id cannot be built through the public API, so reason 73 (the id is registered and differs from the instance's) cannot be produced by an API row.
+The comparison is the pure function `ivs_snapshot_profile_id_matches(view, descriptor)`, and `state.restore.profile-id-seam` is a seam test, not an API test: it gives the function a synthetic descriptor (equal, different in the first or the last byte, a prefix, longer, empty, 63 bytes, another case).
+The API rows reach reason 72 (an unregistered id, with the forms of a prefix, a longer id and another case) and 74 (a flipped parameter digest); `state.restore.reasons-covered` counts reason 73 through the seam rows and says so.
+
+**The matrices.** The refusal rows are written from this specification and the header of `ivs_state.h`, and the position of every member they change is found from the digest field table read as data, never from the restore code: 17 rows of the container structure through restore (one per reason 60 to 71 and the order of the classes), 18 of the profile, 37 of the slots (each of three slots with the flag, the empty record, the missing image and the flipped digest and length, and the order of slots and classes), 81 of the content ranges, counts and lengths (the CPU validator rule by rule, the PSG bounds at their first refused value, the STIC members, the scalars, the section frames, the array counts of every section and the chained section lengths) and 27 of the invariants, 180 rows against four targets (powered, without a cartridge, OFF without EXEC, OFF without GROM), plus 20 argument rows written as code.
+Every row is run twice into a report poisoned 0xA5 and 0x5A and the whole 400-byte caller struct is compared with the report the contract allows; the whole target instance must be byte-identical afterwards, and `state.restore.atomic-every-refusal` repeats the whole set against poisoned non-trivial targets with the nine digests.
+`state.restore.poisoned-target-equals-source` restores 13 cuts of the boot program, the Lamp Tone and two diagnostics into targets whose STATE and PAD rows hold a poison byte (two different bytes in turn) and requires the whole instance, the pad bytes and the nine digests to equal the source.
+
+**The named faults.**
+
+| Fault | Site | What the test that catches it shows |
+|---|---|---|
+| RESTORE_PROFILE_UNCHECKED | `machine_snapshot_restore.c`, the identity checks of step 6 | `state.restore.refuse-identity-profile` finds an unregistered id and a flipped parameter digest accepted |
+| RESTORE_IMAGE_DIGEST_UNCHECKED | `machine_snapshot_restore.c`, the SHA-256 and length comparison of a slot loaded on both sides | `state.restore.refuse-identity-slots` finds a snapshot taken with other images accepted |
+| RESTORE_MUTATES_BEFORE_VALIDATE | `machine_snapshot_restore.c`, the CPU rows committed before the STIC validators | `state.restore.atomic-every-refusal` finds a target changed by a refusal that only a STIC validator makes |
