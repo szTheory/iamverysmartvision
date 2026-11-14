@@ -2,6 +2,9 @@
 # SPDX-License-Identifier: MIT
 # Step text: claim-language tripwire (R1), claim-reference resolution and tier ids documented.
 # Scans README.md and docs/**/*.md from FILELIST only. Findings are reported in sorted order.
+# Claim words (D-27): supports, compatible, passes, accurate, verified, runs, plays, playable. The tier identifier
+#   playable-guest-progress is an identifier, not a claim word: that exact string is removed from a line before
+#   it is matched (the only exemption); any other use of plays or playable needs a claim tag or the waiver.
 # Tokens: text-no-files, text-claim-untagged: <file>:<line>, text-unknown-claim-ref: <id>,
 #   text-undocumented-tier: <id>, text-claims-inventory-missing, text-evidence-doc-missing.
 # Stats: docs=<n> claim-refs=<n>.
@@ -29,12 +32,25 @@ if [ "$docs" -eq 0 ]; then
 fi
 
 # (a) R1 claim-word tripwire: a claim word needs a claim tag or the [nc] waiver on the same line.
+# The tier identifier is removed from a line before the match (sed keeps the line numbers: it never joins or drops a
+# line). Only the files that contain the identifier pass through sed: one grep -l over all scanned files finds them,
+# so the other files cost no extra process.
+nl='
+'
+set --
+while IFS= read -r f; do set -- "$@" "$f"; done < "$tmp/scan"
+idfiles=$( (cd "$ROOT" && grep -a -l -F -e playable-guest-progress -- "$@") 2> /dev/null || true )
+claim_hits() {
+  grep -a -n -i -w -E 'supports|compatible|passes|accurate|verified|runs|plays|playable' \
+    | grep -a -v -E '\[claim:CL-[0-9]{4}\]|\[nc\]' \
+    | sed -n 's/^\([0-9][0-9]*\):.*/\1/p'
+}
 : > "$tmp/untagged"
 while IFS= read -r f; do
-  grep -a -n -i -w -E 'supports|compatible|passes|accurate|verified|runs' "$ROOT/$f" \
-    | grep -a -v -E '\[claim:CL-[0-9]{4}\]|\[nc\]' \
-    | sed -n 's/^\([0-9][0-9]*\):.*/\1/p' \
-    | while IFS= read -r n; do printf '%s:%s\n' "$f" "$n"; done >> "$tmp/untagged"
+  case "$nl$idfiles$nl" in
+    *"$nl$f$nl"*) sed 's/playable-guest-progress//g' < "$ROOT/$f" | claim_hits ;;
+    *) claim_hits < "$ROOT/$f" ;;
+  esac | while IFS= read -r n; do printf '%s:%s\n' "$f" "$n"; done >> "$tmp/untagged"
 done < "$tmp/scan"
 sort -t: -k1,1 -k2,2n "$tmp/untagged" | while IFS= read -r loc; do
   printf -- '-- FAIL text-claim-untagged: %s\n' "$loc"
