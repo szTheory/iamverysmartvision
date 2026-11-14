@@ -96,5 +96,7 @@ extern const ivs_test_case ivs_state_save_cases[];
 extern const size_t ivs_state_save_count;
 extern const ivs_test_case ivs_state_read_cases[];
 extern const size_t ivs_state_read_count;
+extern const ivs_test_case ivs_state_restore_cases[];
+extern const size_t ivs_state_restore_count;
 
 #endif

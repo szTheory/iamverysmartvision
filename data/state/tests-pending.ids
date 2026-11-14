@@ -6,6 +6,4 @@
 state.cut.cpu-points 08-14
 state.cut.stic-points 08-14
 state.cut.device-points 08-14
-state.restore.refuse-identity-profile 08-13
-state.restore.refuse-identity-slots 08-13
 state.restore.poisoned-target-equals-source 08-13

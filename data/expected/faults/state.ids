@@ -17,3 +17,9 @@ SNAPSHOT_TRAILER_UNCHECKED state.read.describe-refuse-trailer state. state.read.
 # claim (the trailer is read at the claim, past the bytes supplied: the buffers of a fault build carry a zeroed tail) and a truncated snapshot is no longer
 # reported as truncated.
 SNAPSHOT_LENGTH_TRUSTED state.read.describe-refuse-length state. state.read.describe-ok
+# RESTORE_PROFILE_UNCHECKED (core/src/machine/machine_snapshot_restore.c): restore skips the profile id, the parameter digest and the registry checks, so a
+# snapshot of an unregistered id or of other profile tables is accepted into the instance.
+RESTORE_PROFILE_UNCHECKED state.restore.refuse-identity-profile state. state.read.describe-ok
+# RESTORE_IMAGE_DIGEST_UNCHECKED (core/src/machine/machine_snapshot_restore.c): restore does not compare the SHA-256 and the length of a slot that is loaded on both
+# sides, so a snapshot taken with other images is accepted into an instance that holds these.
+RESTORE_IMAGE_DIGEST_UNCHECKED state.restore.refuse-identity-slots state. state.read.describe-ok

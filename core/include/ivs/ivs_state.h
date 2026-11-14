@@ -2,8 +2,8 @@
 /* Public snapshot API (plan 08-11, D-12, D-13, D-14; the container is specified in docs/formats/ivsn-v1.md). A snapshot is the state of
  * one instance at a unit boundary of a powered machine, written as bytes into a buffer the host owns. The core allocates nothing,
  * reads no clock and opens no file: it takes no path, no name and no slot, and the host decides where the bytes go, if anywhere
- * (D-19). The instance-free describe call is here (plan 08-12); restore is added by a later plan of the same phase with its own call
- * record.
+ * (D-19). The instance-free describe call is here (plan 08-12) and so is restore (plan 08-13), the one call of this header that writes
+ * an instance.
  *
  * What a snapshot holds: the sections of the machine state in the one wire byte order of the project, big-endian, assembled field
  * by field, so the bytes do not depend on the byte order of the host, on the padding of a struct or on the layout of the instance;
@@ -46,8 +46,8 @@ extern "C" {
 
 /* Refusal reasons of the calls that read a snapshot (plan 08-12, D-14; ivs_snapshot_report.reason). Each reason travels with the one
  * status named in its comment. The numbers continue the list of ivs/ivs_machine.h, are pinned in data/expected/api-reasons.ids and are
- * append-only. The section of docs/formats/ivsn-v1.md on the refusal reasons gives each meaning; the reasons from 72 on are added by
- * the restore call. */
+ * append-only. The section of docs/formats/ivsn-v1.md on the refusal reasons gives each meaning; the reasons from 72 on are those of
+ * restore (plan 08-13), which judges what a snapshot means for one instance. */
 #define IVS_REASON_SNAP_BUF_NULL 58u        /* BAD_ARG: a NULL buffer with a length above 0 */
 #define IVS_REASON_SNAP_REPORT_OVERLAP 59u  /* BAD_ARG: the report overlaps the buffer */
 #define IVS_REASON_SNAP_OVERSIZED 60u       /* OVERSIZED: the length is above IVS_SNAPSHOT_MAX_BYTES, refused before any byte is read */
@@ -62,6 +62,16 @@ extern "C" {
 #define IVS_REASON_SNAP_SECTION_TABLE 69u   /* MALFORMED: an unknown, duplicate or out of order domain, or an offset or length that does not fit */
 #define IVS_REASON_SNAP_TRAILER 70u         /* DIGEST_MISMATCH: the trailer differs from the SHA-256 of every earlier byte */
 #define IVS_REASON_SNAP_PROFILE_ID_FORM 71u /* MALFORMED: the profile id has no NUL, a byte after the NUL, or a byte that is not printable ASCII */
+#define IVS_REASON_SNAP_UNKNOWN_PROFILE 72u      /* UNKNOWN_PROFILE: the profile id of the snapshot is not registered in this build */
+#define IVS_REASON_SNAP_PROFILE_MISMATCH 73u     /* STATE_MISMATCH: the profile id is registered and differs from the one of the instance */
+#define IVS_REASON_SNAP_PROFILE_PARAMS 74u       /* STATE_MISMATCH: the parameter digest of the snapshot differs from the one of this build */
+#define IVS_REASON_SNAP_SLOT_MISSING 75u         /* MISSING_SYSTEM_IMAGE: a slot the snapshot has loaded is empty in the instance */
+#define IVS_REASON_SNAP_SLOT_MISMATCH 76u        /* STATE_MISMATCH: a slot is loaded on both sides with another identity, or loaded only in the instance */
+#define IVS_REASON_SNAP_ROW_COUNT 77u            /* MALFORMED: the count of an array row differs from the count of the table */
+#define IVS_REASON_SNAP_FIELD_RANGE 78u          /* MALFORMED: a decoded value fails its range or the validator of its device */
+#define IVS_REASON_SNAP_INVARIANT 79u            /* MALFORMED: a derived invariant of the state does not hold */
+#define IVS_REASON_SNAP_SECTION_LENGTH 80u       /* MALFORMED: a section length differs from the length this build derives for it */
+#define IVS_REASON_SNAP_ARG_OVERLAP_INSTANCE 81u /* BAD_ARG: the buffer or the report overlaps the storage of the instance */
 
 /* Out: what is known about a snapshot, by the calls that read one (ivs_snapshot_describe below). The size and save calls do not fill
  * it. All members are u32, u64, bytes or the image report of ivs/ivs_machine.h, so the struct has no pointer and no padding. Offsets
@@ -147,6 +157,47 @@ IVS_API ivs_status ivs_machine_snapshot_save(const ivs_machine *m, uint8_t *buf,
  * plus one, loaded, length_bytes and sha256 as the snapshot states them, every other member 0). Nothing in the report says anything
  * about any instance. */
 IVS_API ivs_status ivs_snapshot_describe(const uint8_t *buf, uint64_t len, ivs_snapshot_report *rep);
+
+/* Restores the snapshot in the len bytes at buf into the instance m (plan 08-13, D-14, D-15, D-41): the state of the instance becomes the
+ * state the snapshot holds, and the machine is POWERED, whatever it was before (an OFF instance with its images loaded is the normal
+ * fresh target, a POWERED one is rewound). The core validates everything before it writes the first byte of the instance and then
+ * commits with copies that cannot fail, so a refusal leaves every byte of the instance as it was and writes only the report. A snapshot
+ * belongs to one profile, one build and the three images it was taken with: the images are never part of a snapshot, so the host loads
+ * the same images into the target first. Restore never writes the handle, the profile of the instance, the three image slots or the
+ * image arrays. Nothing is allocated, no clock is read and no file is opened. The host keeps what is outside the instance: its output
+ * buffers, and the input events, which it resubmits from the count of events the restored instance has applied.
+ * The first failing class wins, in this order:
+ *   BAD_ARG                rep is not NULL and its struct_size is below IVS_SNAPSHOT_REPORT_V1_SIZE or above IVS_STRUCT_SIZE_MAX, and
+ *                          nothing is written;
+ *   BAD_ARG                buf is NULL with len above 0 (IVS_REASON_SNAP_BUF_NULL), or the report overlaps the buffer
+ *                          (IVS_REASON_SNAP_REPORT_OVERLAP), judged over the first IVS_SNAPSHOT_MAX_BYTES bytes at most;
+ *   BAD_HANDLE             a NULL or invalid handle;
+ *   BAD_ARG                the buffer or the report overlaps the storage of the valid instance (IVS_REASON_SNAP_ARG_OVERLAP_INSTANCE);
+ *   the container          exactly the checks of ivs_snapshot_describe, in its order: OVERSIZED, MALFORMED, UNSUPPORTED and
+ *                          DIGEST_MISMATCH with the reasons IVS_REASON_SNAP_OVERSIZED to IVS_REASON_SNAP_PROFILE_ID_FORM;
+ *   UNKNOWN_PROFILE        the profile id is not registered in this build (IVS_REASON_SNAP_UNKNOWN_PROFILE);
+ *   STATE_MISMATCH         the id differs from the one of the instance (IVS_REASON_SNAP_PROFILE_MISMATCH), or the parameter digest of the
+ *                          profile tables differs from the one of this build (IVS_REASON_SNAP_PROFILE_PARAMS);
+ *   per image slot         in the order EXEC, GROM, cartridge: a loaded flag above 1, or an empty slot record that holds a length or a
+ *                          digest, is MALFORMED (IVS_REASON_SNAP_FIELD_RANGE); a slot the snapshot has loaded and the instance has not is
+ *                          MISSING_SYSTEM_IMAGE (IVS_REASON_SNAP_SLOT_MISSING); a slot loaded only in the instance, or loaded on both
+ *                          sides with another SHA-256 or length, is STATE_MISMATCH (IVS_REASON_SNAP_SLOT_MISMATCH);
+ *   MALFORMED              a section length that differs from the derived one (IVS_REASON_SNAP_SECTION_LENGTH), then a row count that
+ *                          differs from the table (IVS_REASON_SNAP_ROW_COUNT), then a value out of range, a section frame that is not
+ *                          its frame, or a CPU, STIC or PSG state its validator refuses, a phase other than POWERED or a machine time
+ *                          above 2 to the power 63 (IVS_REASON_SNAP_FIELD_RANGE), then a derived invariant that does not hold
+ *                          (IVS_REASON_SNAP_INVARIANT).
+ * There is no BAD_STATE: restore is allowed in every phase. The digest fields of the header (the composite and the seven section digests)
+ * are informational and not checked, and the trailer is a checksum, never a proof of who wrote the snapshot: a snapshot whose trailer was
+ * recomputed is judged by the checks above, not by the checksum.
+ * The report is optional: rep may be NULL. A refusal writes the members of ivs_snapshot_report as ivs_snapshot_describe does (reason,
+ * byte_offset, section_index and the header facts the length let it read, struct_size and every other member kept) and, for a refusal
+ * about an image slot, kind as well: the kind of the slot, 1 for EXEC, 2 for GROM and 3 for the cartridge, with the byte offset of the
+ * field of that slot record that failed. The byte offset of a refusal about the content is the offset in the snapshot of the first byte of
+ * the field, the array count or the section that failed. A refusal by an unusable report struct, and a refusal while the report overlaps
+ * the instance, write nothing. A refusal by an invalid handle writes the reason IVS_REASON_HANDLE. On success the report is written in
+ * full as describe writes it. */
+IVS_API ivs_status ivs_machine_snapshot_restore(ivs_machine *m, const uint8_t *buf, uint64_t len, ivs_snapshot_report *rep);
 
 #ifdef __cplusplus
 }

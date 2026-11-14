@@ -56,8 +56,6 @@ const uint8_t ivs_snap_domain[IVS_SNAP_SECTIONS] = {IVS_DIGEST_CPU,   IVS_DIGEST
 /* The derived section lengths (plan 08-12): from the descriptors of the digest field table alone, with no instance. A section is the
  * 7-byte frame (IVSD, the domain, the domain version) and, for each STATE row of the domain, width times count, plus 4 bytes of count
  * when the count is above 1: the rule of the state-only walk, restated from the specification. */
-#define IVS_SNAP_FRAME_BYTES 7u
-
 uint32_t ivs_snapshot_section_derived_length(uint32_t index)
 {
   uint64_t n = IVS_SNAP_FRAME_BYTES;

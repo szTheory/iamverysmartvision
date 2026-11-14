@@ -771,13 +771,14 @@ static const mc_status_name mc_statuses[] = {
     MC_ST(IVS_E_MISSING_SYSTEM_IMAGE),
     MC_ST(IVS_E_DUPLICATE_LOAD),
     MC_ST(IVS_E_DIGEST_MISMATCH),
+    MC_ST(IVS_E_STATE_MISMATCH),
 };
 
 static int mc_status_names(void)
 {
-  static const ivs_status unknown[] = {-6, -15, -24, -31, 1, -1000};
+  static const ivs_status unknown[] = {-6, -15, -25, -31, 1, -1000};
   size_t i;
-  IVS_CHECK(sizeof mc_statuses / sizeof mc_statuses[0] == 14u);
+  IVS_CHECK(sizeof mc_statuses / sizeof mc_statuses[0] == 15u);
   for (i = 0; i < sizeof mc_statuses / sizeof mc_statuses[0]; i++) {
     const char *got = ivs_status_name(mc_statuses[i].value);
     if (got == NULL || strcmp(got, mc_statuses[i].name) != 0) {

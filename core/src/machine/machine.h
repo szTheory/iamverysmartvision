@@ -44,6 +44,7 @@
 #include "cpu/cp1610.h"
 #include "ivs/ivs_machine.h"
 #include "ivs/ivs_run.h"
+#include "ivs/ivs_state.h"
 #include "memmap/memsys.h"
 #include "psg/psg.h"
 #include "stic/stic.h"
@@ -376,6 +377,7 @@ void ivs_snapshot_schema_digest(uint8_t out[32]);
 #define IVS_SNAP_OFF_TABLE 304u
 #define IVS_SNAP_HEADER_BYTES 612u
 #define IVS_SNAP_TRAILER_BYTES 32u
+#define IVS_SNAP_FRAME_BYTES 7u /* the frame of a section: IVSD, the domain (1 byte) and the domain version (2 bytes); moved here by plan 08-13 */
 _Static_assert(IVS_SNAP_OFF_SCHEMA_DIGEST + 32u == IVS_SNAP_OFF_PROFILE_ID, "the schema digest is 32 bytes");
 _Static_assert(IVS_SNAP_OFF_PROFILE_ID + IVS_PROFILE_ID_MAX_BYTES == IVS_SNAP_OFF_PARAMS, "the profile id field is 64 bytes");
 _Static_assert(IVS_SNAP_OFF_PARAMS + 32u == IVS_SNAP_OFF_SLOTS, "the parameter digest is 32 bytes");
@@ -450,6 +452,54 @@ ivs_status ivs_snapshot_read(const uint8_t *buf, uint64_t len, ivs_snap_view *v)
  * rep_bytes bytes at rep overlapping the buffer. A length above IVS_SNAPSHOT_MAX_BYTES names no bytes the reader will read, so the
  * overlap is judged over the first IVS_SNAPSHOT_MAX_BYTES bytes only. */
 uint32_t ivs_snapshot_arg_reason(const uint8_t *buf, uint64_t len, const void *rep, size_t rep_bytes);
+
+/* The two report writers shared by describe and restore (plan 08-13; machine_snapshot_read.c). A refusal writes only the members the
+ * contract of ivs/ivs_state.h lists: the reason, the byte offset and the section index of the view and, for each header fact the
+ * supplied length let the reader see, that fact (the view's known flags); every other member, struct_size included, keeps the caller's
+ * value. A success writes the 360 bytes of the v1 report in full from an accepted view and keeps the tail of a larger caller struct. */
+void ivs_snap_report_refusal(ivs_snapshot_report *rep, const ivs_snap_view *v);
+void ivs_snap_report_success(ivs_snapshot_report *rep, const ivs_snap_view *v);
+
+/* ---- the IVSN v1 restore (plan 08-13, D-14, D-15, D-41; machine_snapshot_restore.c) ----
+ * The probe: the small part of the state a restore decodes into BEFORE it writes the first byte of the instance, so that the validators
+ * and the derived invariants judge a snapshot with no write. It holds the device structs (CPU 32 bytes, PSG 72, STIC 528), the input
+ * observation row and the few scalars, arrays and counters the invariants read (the clock, the phase, the gate flags, the PSG register
+ * words, the port pull-downs, the video count, the emitted audio sample count and the previous audio levels): well under a kilobyte. A
+ * member the invariants never read is not here. The padding rows of every struct are zero in a probe, as in any instance. */
+typedef struct ivs_snap_probe {
+  uint64_t time_ticks;
+  uint32_t phase;
+  ivs_cp1610 cpu;
+  ivs_psg_state psg;
+  ivs_stic_state stic;
+  ivs_machine_obs_input input;
+  uint16_t psg_reg[IVS_MEMSYS_PSG_REGS];
+  uint8_t gate_open[4];
+  uint8_t port_pulldown[IVS_MEMSYS_PSG_PORTS];
+  uint64_t video_count;
+  uint64_t audio_emitted;
+  uint32_t audio_prev_levels;
+} ivs_snap_probe;
+_Static_assert(sizeof(ivs_snap_probe) <= 1024u, "the restore probe stays well under a kilobyte");
+
+/* Fills p (every member, padding rows zero) from the live instance m, so that the one invariant function judges an instance and a decoded
+ * snapshot alike. */
+void ivs_snapshot_probe_from_instance(const struct ivs_machine *m, ivs_snap_probe *p);
+
+/* The derived invariants INV-1 to INV-6 of docs/formats/ivsn-v1.md as one function of the probe and of the registry profile (the profile
+ * parameters of the PSG, the STIC and the controllers): 0 when every invariant holds, else the number 1 to 6 of the first one that does
+ * not, checked in the order INV-1 (the three device validators and the event cursor), INV-2 (the STIC timeline against machine time
+ * and the gate flags), INV-3 (the PSG sample index, the audio row, the previous levels and the register masks), INV-4 (the controller
+ * words, the pull-downs and the input floor), INV-5 (the phase and the clock range) and INV-6 (the video count against the frame
+ * index). Restore judges INV-1 and INV-5 as range rules (reason 78) and INV-2, INV-3, INV-4 and INV-6 as derived rules (reason 79); the
+ * same function judges a live instance in the test that proves each invariant true on every unit boundary of real programs. A
+ * profile index that is not registered is invariant 1. */
+uint32_t ivs_snapshot_invariants(const ivs_snap_probe *p, uint32_t profile_index);
+
+/* 1 when the profile id of a view (profile_id_length bytes before the NUL, NUL padded to 64) is exactly the id of the descriptor d, 0 for
+ * a different id, an id that is a prefix of the other and an id that is longer: the comparison of restore step 73, a pure function so
+ * that a test can give it a synthetic descriptor (the registry holds one profile, so no second registered id exists to build). */
+uint32_t ivs_snapshot_profile_id_matches(const ivs_snap_view *v, const ivs_profile_desc *d);
 
 /* Derives the pull-down masks of the PSG ports (mem.port_pulldown) from the words in force and the
  * generated control table (plan 05-05, D-03, D-04): the OR of the line masks of every set bit, for

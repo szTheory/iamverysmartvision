@@ -40,3 +40,17 @@ state.read.describe-writes-only-report
 state.read.describe-report-v1-size-caller
 state.read.reasons-covered
 state.judge.matrix-expectation-corrupt
+# Plan 08-13 Task 1: restore (D-14, D-15, D-16, D-41). The round trip is a fixed point at several cuts of the stand-in boot run; every refusal class has rows written from
+# the specification (the arguments, the container structure through restore, the identity of the profile and of the three image slots, the content: the device
+# validators and the scalar ranges, the array counts, the section lengths and the derived invariants), each with the exact status, reason, byte offset, section index
+# and slot kind, and each leaving the whole instance byte-identical; the comparison of the profile id is a pure seam function (a seam test, not an API test: one
+# registered profile means no second registered id can be built); and every one of the reasons 58 to 81 is produced by some row.
+state.restore.roundtrip-fixed-point
+state.restore.refuse-args
+state.restore.refuse-structure
+state.restore.refuse-identity-profile
+state.restore.refuse-identity-slots
+state.restore.refuse-content-validators
+state.restore.refuse-content-invariants
+state.restore.profile-id-seam
+state.restore.reasons-covered

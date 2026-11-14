@@ -254,8 +254,8 @@ uint32_t ivs_snapshot_arg_reason(const uint8_t *buf, uint64_t len, const void *r
 }
 
 /* A refusal into the report: only the members the contract of ivs/ivs_state.h lists, and the header facts the supplied length let the
- * reader see. Every other member of the report, and struct_size, keep the caller's value. */
-static void ivs_snap_report_refusal(ivs_snapshot_report *rep, const ivs_snap_view *v)
+ * reader see. Every other member of the report, and struct_size, keep the caller's value. Shared with restore (plan 08-13). */
+void ivs_snap_report_refusal(ivs_snapshot_report *rep, const ivs_snap_view *v)
 {
   rep->reason = v->reason;
   rep->byte_offset = v->byte_offset;
@@ -271,13 +271,39 @@ static void ivs_snap_report_refusal(ivs_snapshot_report *rep, const ivs_snap_vie
   }
 }
 
+/* The success report: the 360 bytes of the v1 report from an accepted view, built in a local and copied whole, so a caller struct larger
+ * than the v1 size keeps its tail. Shared with restore (plan 08-13). */
+void ivs_snap_report_success(ivs_snapshot_report *rep, const ivs_snap_view *v)
+{
+  ivs_snapshot_report r;
+  uint32_t i;
+  memset(&r, 0, sizeof r);
+  r.struct_size = IVS_SNAPSHOT_REPORT_V1_SIZE;
+  r.reason = IVS_REASON_NONE;
+  r.format_version = v->format_version;
+  r.schema_version = v->schema_version;
+  r.total_bytes = v->total_bytes;
+  r.byte_offset = 0u;
+  r.section_index = IVS_SEGMENT_NONE;
+  r.kind = 0u;
+  memcpy(r.profile_id, v->profile_id, IVS_PROFILE_ID_MAX_BYTES);
+  memcpy(r.profile_params_sha256, v->params_sha256, 32u);
+  memcpy(r.composite_sha256, v->composite_sha256, 32u);
+  for (i = 0u; i < IVS_SLOT_COUNT; i++) {
+    r.slots[i].struct_size = (uint32_t)sizeof r.slots[i];
+    r.slots[i].kind = i + 1u;
+    r.slots[i].loaded = v->slot[i].loaded;
+    r.slots[i].length_bytes = v->slot[i].length_bytes;
+    memcpy(r.slots[i].sha256, v->slot[i].sha256, 32u);
+  }
+  memcpy(rep, &r, IVS_SNAPSHOT_REPORT_V1_SIZE);
+}
+
 ivs_status ivs_snapshot_describe(const uint8_t *buf, uint64_t len, ivs_snapshot_report *rep)
 {
   ivs_snap_view v;
-  ivs_snapshot_report r;
   ivs_status st;
   uint32_t reason;
-  uint32_t i;
   if (rep == NULL || rep->struct_size < IVS_SNAPSHOT_REPORT_V1_SIZE || rep->struct_size > IVS_STRUCT_SIZE_MAX) {
     return IVS_E_BAD_ARG; /* an unusable report: nothing is written */
   }
@@ -295,25 +321,6 @@ ivs_status ivs_snapshot_describe(const uint8_t *buf, uint64_t len, ivs_snapshot_
     ivs_snap_report_refusal(rep, &v);
     return st;
   }
-  memset(&r, 0, sizeof r);
-  r.struct_size = IVS_SNAPSHOT_REPORT_V1_SIZE;
-  r.reason = IVS_REASON_NONE;
-  r.format_version = v.format_version;
-  r.schema_version = v.schema_version;
-  r.total_bytes = v.total_bytes;
-  r.byte_offset = 0u;
-  r.section_index = IVS_SEGMENT_NONE;
-  r.kind = 0u;
-  memcpy(r.profile_id, v.profile_id, IVS_PROFILE_ID_MAX_BYTES);
-  memcpy(r.profile_params_sha256, v.params_sha256, 32u);
-  memcpy(r.composite_sha256, v.composite_sha256, 32u);
-  for (i = 0u; i < IVS_SLOT_COUNT; i++) {
-    r.slots[i].struct_size = (uint32_t)sizeof r.slots[i];
-    r.slots[i].kind = i + 1u;
-    r.slots[i].loaded = v.slot[i].loaded;
-    r.slots[i].length_bytes = v.slot[i].length_bytes;
-    memcpy(r.slots[i].sha256, v.slot[i].sha256, 32u);
-  }
-  memcpy(rep, &r, IVS_SNAPSHOT_REPORT_V1_SIZE);
+  ivs_snap_report_success(rep, &v);
   return IVS_OK;
 }
