@@ -1198,3 +1198,52 @@ Forward note (information, not an input of the line): the SCN-02 plans still to 
 No lever now. Lever (2) of the pre-committed order (mutant inventories on the release preset only) stays queued behind the stop rule, with lever (3) (fold `demo-lamp-tone-swap` or `-shift` into repeat variants of one mutant) behind it; nothing was dropped and no check was weakened to save time.
 
 checkpointC-07: no-lever
+
+## 2026-11-13 Phase 7 close-out (plan 07-12): D-34 evaluation and the close line
+
+Nothing here calls `gh` or `tools/ci-record.sh`; `.planning/ci-runs.tsv` is orchestrator-owned and untouched by this plan (56 lines: the header, 53 successful rows and 2 failures; the newest row is run 43540936641, head 93c8040, the head of plan 07-11). Local figures are laptop figures (18 cores, Apple clang 21, other work running, 1-minute load 23 to 58 during the runs below, so the wall times are stretched); container figures are Ubuntu 24.04 with cmake 3.28.3 and gcc 13.3.0, emulated amd64 on an arm64 host; neither is a hosted figure.
+
+### Counts
+
+- Phase 6 end and Phase 7 start: `steps=36/36 controls=344/344 faults=222/222 tests-expected=4432 tests-executed=4430 tests-skipped=2 tests-missing=0`, `claims=22 provisional=21`, important-gate registry `gates=71 lines=241`.
+- Phase 7 end: `steps=36/36 controls=357/357 faults=222/222 tests-expected=4624 tests-executed=4620 tests-skipped=4 tests-missing=0`, `claims=24 provisional=23`, `gates=77 lines=264`, `goldens=15`, `manifests=10`, `listings=6 listing-words=520`, `consumer-lines=135 pkg-selftest=17/17`.
+- What grew: 13 pure controls (344 to 357; A-11: 07-02 four, 07-03 two, 07-04 two, 07-05 one, 07-06 one, 07-10 two, 07-12 one), no fault, no step and no job; 96 test ids per preset (192 over both presets): a new suite `asm` (47), `runner-process` 72 to 111 (+39: 25 of the W4 slice, 1 template scenario, 13 SCN-02 cases), `runner` +4, `run` +3, `pack` +3; the fourth installed-consumer replay (`consumer-lines` 76 to 135, `pkg-selftest` 15 to 17); two skipped ids per preset (`tests-skipped` 2 to 4). The one change of this plan to the gate itself is the `text` step: `plays` and `playable` joined the claim words, and only the files that contain the tier identifier pass through one extra `sed`. Measured in isolation, three alternating pairs of the step on the final tree: about 1.04 local cpu-s before and 1.10 after, so about +0.06 local cpu-s (+0.10 hosted at the factor 1.675 of checkpoint C-C); a first variant that ran `sed` on every file cost about +0.2 and was replaced for that reason.
+
+### Local measurement (`sh tools/gate.sh` and `dash tools/gate.sh`; container once)
+
+| Run | `gate-time total=` | `gate-cpu` user + sys | Largest `step-time` (seconds) |
+|-----|--------------------|-----------------------|-------------------------------|
+| sh, tree of task 1 (claims, tripwire, control) | 84 | 123.8 + 106.2 = 230.0 | controls 29, c-tests 21, c-faults 19, pkg-install 4 |
+| dash, same tree | 111 | 171.2 + 147.4 = 318.6 | controls 37, c-tests 29, c-faults 27, c-purity 9 |
+| sh, final shell of task 1 (container gate running at the same time) | 130 | 156.6 + 138.7 = 295.3 | controls 40, c-tests 34, c-faults 25, c-purity 8 |
+| sh, tree of task 2 (public text and planning records) | 176 | 180.0 + 176.8 = 356.8 | controls 56, c-faults 48, c-tests 41, hygiene 13 |
+| dash, same tree | 188 | 181.5 + 178.6 = 360.1 | controls 56, c-faults 60, c-tests 44, c-purity 14 |
+| container (gcc 13.3.0, tree of task 1) | 429 | emulated, not comparable | controls 201, c-tests 71, c-faults 62, c-purity 40, c-build 117 |
+
+The quietest run (84 s, 230 cpu-s) is the honest local figure for a tree of this size and is of the size of the Phase 6 close (118 to 178 s, 327 to 367 cpu-s) or below it; the later runs show the load of the machine (load average 23 to 58), not the plan, since task 2 changed no code and no check. The final-tree runs of task 3 are in the SUMMARY of plan 07-12.
+
+### Hosted rows and the rule (D-34)
+
+The last five successful hosted rows of `.planning/ci-runs.tsv`, recomputed from the file with awk:
+
+| Run | head | `gate_s` | `cpu_s` | `build_s` | `r = cpu_s / build_s` |
+|-----|------|----------|---------|-----------|------------------------|
+| 43365038335 | 4b35708 | 87 | 271 | 36 | 7.53 |
+| 43369159094 | 5186399 | 125 | 393 | 49 | 8.02 |
+| 43373151931 | db60a0b (Phase 6 review-fix head) | 107 | 335 | 41 | 8.17 |
+| 43528527276 | 785dce0 (head of plan 07-08) | 91 | 286 | 37 | 7.73 |
+| 43540936641 | 93c8040 (head of plan 07-11) | 146 | 467 | 60 | 7.78 |
+
+- Median `r` **7.78** (7.7833) against the budget 7.8 and the revisit line 8.3 (D-34). The median `gate_s` is 107 (trigger above 110) and the median `cpu_s` is 335 (trigger above 330).
+- Two raw triggers fire on the newest row: its `gate_s` of 146 is above the any-run bound of 130 s, and the cpu median of 335 is above 330. The rule of the Phase 6 start entry reads them with `r`: a raw trigger that fires while `r` is inside the budget is a runner-speed event, and a raw trigger together with `r` above 8.3 is code growth. Here `r` is 7.78, so it is a runner-speed event: run 43540936641 has the largest `build_s` of the 53 successful rows (60 s; the next largest is 50, and the row before it is 37), every time of the row is stretched alike (`build_s` 60 against 37, `test_s` 86 against 54, `gate_s` 146 against 91, `cpu_s` 467 against 286: the ratios are 1.62, 1.59, 1.60 and 1.63) and `r` moved from 7.73 to 7.78. It is one row; the next rows are the arbiter.
+- Reading of the forward note of checkpoint C-C: it bounded the SCN-02 plans at about +0.26 in `r` (14 case pairs at the S-4 upper unit cost of 0.7 hosted cpu-s). Row 43540936641 contains plans 07-09 to 07-11 (the fourth replay, the template scenario and the 13 helper and refusal cases, 14 case pairs in all) and `r` rose by 0.05 against the row of plan 07-08, about 3 hosted cpu-s in all; the unit cost bound was high by an order of magnitude. This is one row against one row, with a runner that is 1.6 times slower, so it is not a trend.
+- Projection for this plan: the row contains plans 07-01 to 07-11, so the projection is the median plus this plan's addition. This plan adds one pure control (about 0.07 local cpu-s at the unit cost of the Phase 6 start entry) and the `text` change above (about 0.06), 0.13 local cpu-s, times 1.675 is about 0.22 hosted cpu-s, divided by 60 is 0.004: projection **7.79**, under 8.3.
+
+### Phase 7 summary of the cost story
+
+- Checkpoint lines, as written by their plans: `checkpointB-07: lever-required` (plan 07-08, from the branch of the rule that applies when no hosted row contains the plan; resolved to no lever by the orchestrator on row 43528527276, `r` 7.73, median 8.02) and `checkpointC-07: no-lever` (plan 07-09, projection 8.04); the start entry of plan 07-01 ended `phase7-start: lever-applied` (the `cp1610-vectors` re-parse batch: about 2 to 3 hosted cpu-s saved, measured 1.3 local cpu-s on the step and about 4 emulated container cpu-s on the two checkers).
+- The last-five median `r` read 8.02 at the Phase 7 start and C-B and C-C, and reads 7.78 now with every plan of the phase in the newest row; the Phase 6 close read 7.64. No plan was blocked by the stop rule, no lever plan was created, nothing was dropped and no check was weakened to save time. The wave estimates of `07-RESEARCH.md` (10 to 19 hosted cpu-s) were an upper bound: the two rows recorded after the waves (7.73 after plan 07-08, 7.78 after plan 07-11) show no step in `r` against the 7.5 to 8.2 of the rows before, with the one-row caveat.
+- The margin is thin at the budget and wide at the trigger: `r` 7.78 against 7.8 is 0.3 percent, against 8.3 it is 6.7 percent. Pre-committed lever order if the rule fires after this phase (unchanged): (2) run the mutant inventories on the release preset only, (3) fold `demo-lamp-tone-swap` or `-shift` into repeat variants of one mutant, then the owner-decision levers (fault objects at `-O0`, one runtime-selected object per owner translation unit, a two-job split under D12). Not levers: dropping a mutant class, the judge or an oracle, caching.
+- Open for Phase 8 (not a lever): Phase 8 adds about five single-feature fixtures built with `ivs_asm` (MOBs, border, delay registers, collision), snapshots and benchmarks; the first hosted rows after this push are the arbiter, and a row at a normal runner speed is needed to tell whether 7.78 is the level or a high reading.
+
+phase7-close: no-lever
