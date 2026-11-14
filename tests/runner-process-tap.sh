@@ -86,6 +86,17 @@
 # preset) or none, each row performs its static checks only (the word at every address of the unpatched listing equals its `from`, the three
 # lists have one length, the patch changes the image, the scenario file exists, `fails=` is well formed) and is reported ok without running the
 # scenario: the ids are the same in both presets, no id is skip-ok and tests-skipped does not move (D-40).
+# Since plan 08-lever2 (cost lever 2 of the Phase 8 stop rule, checkpoint A-08): the same rule holds for EVERY mutant inventory of this script
+# (diag-mutations.ids, -ctrl-psg.ids, -stic.ids, -scn.ids and -stic2.ids, 35 ids): the one function mutant_case decides between the full run
+# (Release: run_mutant, outcome, first clause and fails set judged as before) and the static judgement (any other configuration, the sanitized
+# Debug preset, or none). The static judgement is the static half of the full one and every part of it can fail: the checks of the loop of the
+# row (inventory form, the word at each address of the unpatched listing equals its from, list lengths, fails= form, outcome vocabulary) and,
+# in mutant_case, the scenario file exists, the stated outcome and exit code are a pair of runner-outcomes.ids, the assert that the first
+# clause names exists as a line `assert <text>` of the scenario, and the patch builds and changes the image (the boot stub image for a row in
+# the stub window). The ids and their number are the same in both presets, no id is skip-ok, `tests-skipped` does not move. What the static
+# judgement cannot see (a patched program that no longer fails its scenario) is judged by the Release run of the same gate. A comment line
+# `# mutants: configuration=<c> full=<n> static=<m>` before the trailer makes the mode of every run visible. A judgement that needs the
+# sanitized build to be meaningful would stay a full run on both presets; none of the 35 does (every one is judged by exit code and report).
 # Usage: sh runner-process-tap.sh <source root> <ivs-run> <ivs_pack> <images dir> [<build configuration>]
 # Exit: 0 pass, 1 fail, 77 every case skipped.
 # Env: IVS_TEST_NONCE, IVS_TEST_OUT_DIR, IVS_RUNNER_PROCESS_TIMEOUT.
@@ -471,6 +482,58 @@ check_fails() {
   return 0
 }
 
+# patch_changes_image <id> <listing> <image file name> <addr list> <word list> [stub]: the static half of run_mutant (plan 08-07, moved here
+# and generalised by plan 08-lever2): builds the patched image in a fresh directory, with `ivs_pack --ivsc` or, with a sixth argument `stub`,
+# `ivs_pack --exec`, and requires it to differ from the unpatched copy in the content dir; nothing is run. Sets $ok, adds to $tmp/why.
+patch_changes_image() {
+  _pd="$tmp/mutstat-$1"
+  if [ "${6:-cart}" = stub ]; then _pf=--exec; else _pf=--ivsc; fi
+  if ! mkdir "$_pd"; then
+    ok=0; why temp "cannot prepare $_pd"
+  elif ! "$pack" "$_pf" "$2" "$_pd/$3" $(patch_args "$4" "$5") > "$tmp/why.pack" 2>&1; then
+    ok=0; why pack "ivs_pack --patch $4=$5 failed: $(cat "$tmp/why.pack")"
+  elif cmp -s "$_pd/$3" "$content/$3"; then
+    ok=0; why pack "the patch $4=$5 leaves the image unchanged"
+  fi
+}
+
+# mutant_case <id> <listing> <cart file name> <scenario id> <addr list> <to list> <exit> <outcome> <detail pattern> [stub] (plan 08-lever2, D-40):
+# the arguments of run_mutant, and the one place that decides what a row of any mutant inventory costs. With the build configuration Release
+# (the fifth argument of this script) it is run_mutant: the full run and the judgement of outcome, exit code and detail. In any other
+# configuration (the sanitized Debug preset) it is the static judgement, which runs nothing: the scenario file exists, the stated outcome
+# and exit code are a pair of runner-outcomes.ids, the assert that the first clause names (the detail pattern of a guest-fail row, cut to
+# `assert <text>` without its ` got <value>`) is a line of the scenario file, and the patch builds and changes the image. The caller has
+# already judged the inventory form, the from words and the list lengths. Sets $ok, $ran (1 only after a run) and the counters of the
+# diagnostic line at the end of the output.
+mut_full=0
+mut_static=0
+mutant_case() {
+  if [ "$config" = Release ]; then
+    mut_full=$((mut_full + 1))
+    run_mutant "$@"
+    return 0
+  fi
+  mut_static=$((mut_static + 1))
+  ran=0
+  _cmi=$1; _cml=$2; _cmc=$3; _cms=$4; _cma=$5; _cmw=$6; _cmx=$7; _cmo=$8; _cmp=$9
+  if [ "${10:-cart}" = stub ]; then _cmimg=boot-stub-2.exec; _cmk=stub; else _cmimg=$_cmc; _cmk=cart; fi
+  if [ ! -f "$scen/$_cms.ivss" ]; then
+    ok=0; why inventory "no scenario file data/scenarios/$_cms.ivss"
+  elif ! grep -q -x -F -e "$_cmo $_cmx" "$tmp/pairs"; then
+    ok=0; why inventory "outcome '$_cmo' with exit '$_cmx' is no pair of runner-outcomes.ids"
+  else
+    case $_cmp in
+      'assert=* line=* '*)
+        _cmt=${_cmp#'assert=* line=* '}
+        _cmt=${_cmt% got *}
+        if ! grep -q -x -F -e "assert $_cmt" "$scen/$_cms.ivss"; then
+          ok=0; why clause "the scenario $_cms has no line 'assert $_cmt'"
+        fi ;;
+    esac
+    if [ "$ok" -eq 1 ]; then patch_changes_image "$_cmi" "$_cml" "$_cmimg" "$_cma" "$_cmw" "$_cmk"; fi
+  fi
+}
+
 # Program mutations (D-32): per line `<ID> <addr> <word> <clause>` of
 # data/expected/diag-mutations.ids, the diagnostic patched at <addr> (whose listing row must be
 # the <from> of <from>-<to>) must end guest-fail naming <clause>.
@@ -487,7 +550,7 @@ while read -r mid addr word clause; do
   elif [ "$row" != "$from" ]; then
     ok=0; why listing "row at $addr is '$row', expected '$from'"
   else
-    run_mutant "$mid" "$listing" diag-cpu-1.ivsc diag-boot-pass "$addr" "$word" 10 guest-fail "assert=* line=* $clause got *"
+    mutant_case "$mid" "$listing" diag-cpu-1.ivsc diag-boot-pass "$addr" "$word" 10 guest-fail "assert=* line=* $clause got *"
   fi
   result "runner-process.mutant.$mid"
 done < "$muts"
@@ -519,7 +582,7 @@ while read -r mid addr from to rest; do
       pass) mp=- ;;
       *) mp=; ok=0; why inventory "outcome '$mo' is not guest-fail, timeout or pass" ;;
     esac
-    [ "$ok" -eq 1 ] && run_mutant "$mid" "$listing2" diag-ctrl-psg-1.ivsc diag-ctrl-psg-pass "$addr" "$to" "$mx" "$mo" "$mp"
+    [ "$ok" -eq 1 ] && mutant_case "$mid" "$listing2" diag-ctrl-psg-1.ivsc diag-ctrl-psg-pass "$addr" "$to" "$mx" "$mo" "$mp"
   fi
   result "runner-process.mutant.$mid"
 done < "$muts2"
@@ -560,7 +623,7 @@ while read -r mid scn addrs froms tos rest; do
       pass) mp=- ;;
       *) mp=; ok=0; why inventory "outcome '$mo' is not guest-fail, timeout or pass" ;;
     esac
-    [ "$ok" -eq 1 ] && run_mutant "$mid" "$listing3" diag-stic-1.ivsc "$scn" "$addrs" "$tos" "$mx" "$mo" "$mp"
+    [ "$ok" -eq 1 ] && mutant_case "$mid" "$listing3" diag-stic-1.ivsc "$scn" "$addrs" "$tos" "$mx" "$mo" "$mp"
   fi
   result "runner-process.mutant.$mid"
 done < "$muts3"
@@ -629,9 +692,9 @@ while read -r mid scn addrs froms tos rest; do
     esac
     if [ "$ok" -eq 1 ]; then
       if [ "$win" = stub ]; then
-        run_mutant "$mid" "$listing4s" lamp-tone.ivsc "$scn" "$addrs" "$tos" "$mx" "$mo" "$mp" stub
+        mutant_case "$mid" "$listing4s" lamp-tone.ivsc "$scn" "$addrs" "$tos" "$mx" "$mo" "$mp" stub
       else
-        run_mutant "$mid" "$listing4" lamp-tone.ivsc "$scn" "$addrs" "$tos" "$mx" "$mo" "$mp"
+        mutant_case "$mid" "$listing4" lamp-tone.ivsc "$scn" "$addrs" "$tos" "$mx" "$mo" "$mp"
       fi
       if [ "$ran" -eq 1 ] && [ -n "$fails" ]; then check_fails "mut-$mid" "$fails" || ok=0; fi
     fi
@@ -641,23 +704,12 @@ done < "$muts4"
 
 # Program mutations of the second original program (plan 08-07, D-10, D-37, D-40): per line
 # `<ID> <scenario> <addr list> <from list> <to list> <clause> <outcome> <exit> [fails=<k.j,...>]` of data/expected/diag-mutations-stic2.ids, the
-# grammar of the scn inventory above (a sibling loop of it: the stic and scn loops are not edited). The word at each <addr> of the unpatched
-# listing of ivs-diag-stic-2 (ivs_pack --dump-words) must be its <from>. When the fifth argument of this script, the build configuration, is
-# Release the row is run and judged like a scn row (outcome and exit code of the named scenario against outcome.detail, then with `fails=` the
-# complete set of failing asserts, check_fails). In any other configuration the row is judged statically (patch_changes_image and the checks
-# above) and reported ok without running the scenario; the ids and their number are the same in both presets, and none is skip-ok.
-# patch_changes_image <id> <listing> <cart file name> <addr list> <word list>: the static half of run_mutant: builds the patched cartridge in a
-# fresh directory and requires it to differ from the unpatched copy in the content dir; nothing is run. Sets $ok, adds to $tmp/why.
-patch_changes_image() {
-  _pd="$tmp/mutstat-$1"
-  if ! mkdir "$_pd"; then
-    ok=0; why temp "cannot prepare $_pd"
-  elif ! "$pack" --ivsc "$2" "$_pd/$3" $(patch_args "$4" "$5") > "$tmp/why.pack" 2>&1; then
-    ok=0; why pack "ivs_pack --patch $4=$5 failed: $(cat "$tmp/why.pack")"
-  elif cmp -s "$_pd/$3" "$content/$3"; then
-    ok=0; why pack "the patch $4=$5 leaves the image unchanged"
-  fi
-}
+# grammar of the scn inventory above (a sibling loop of it). The word at each <addr> of the unpatched listing of ivs-diag-stic-2
+# (ivs_pack --dump-words) must be its <from>. When the fifth argument of this script, the build configuration, is Release the row is run and
+# judged like a scn row (outcome and exit code of the named scenario against outcome.detail, then with `fails=` the complete set of failing
+# asserts, check_fails). In any other configuration the row is judged statically by mutant_case (the checks above plus patch_changes_image)
+# and reported ok without running the scenario; the ids and their number are the same in both presets, and none is skip-ok. Since plan
+# 08-lever2 the choice between the two lives in mutant_case, shared with the four loops above.
 listing5="$root/fixtures/FX-diag-stic-2/diag-stic-2.listing.txt"
 muts5="$root/data/expected/diag-mutations-stic2.ids"
 "$pack" --dump-words "$listing5" > "$tmp/words5" 2> /dev/null || : > "$tmp/words5"
@@ -706,12 +758,8 @@ while read -r mid scn addrs froms tos rest; do
       *) mp=; ok=0; why inventory "outcome '$mo' is not guest-fail, timeout or pass" ;;
     esac
     if [ "$ok" -eq 1 ]; then
-      if [ "$config" = Release ]; then
-        run_mutant "$mid" "$listing5" diag-stic-2.ivsc "$scn" "$addrs" "$tos" "$mx" "$mo" "$mp"
-        if [ "$ran" -eq 1 ] && [ -n "$fails" ]; then check_fails "mut-$mid" "$fails" || ok=0; fi
-      else
-        patch_changes_image "$mid" "$listing5" diag-stic-2.ivsc "$addrs" "$tos"
-      fi
+      mutant_case "$mid" "$listing5" diag-stic-2.ivsc "$scn" "$addrs" "$tos" "$mx" "$mo" "$mp"
+      if [ "$ran" -eq 1 ] && [ -n "$fails" ]; then check_fails "mut-$mid" "$fails" || ok=0; fi
     fi
   fi
   result "runner-process.mutant.$mid"
@@ -1558,6 +1606,7 @@ result runner-process.watchdog
   printf '# suite=%s nonce=%s\n' "$suite" "$nonce"
   printf '1..%s\n' "$n"
   cat "$tmp/results"
+  printf '# mutants: configuration=%s full=%s static=%s\n' "${config:-none}" "$mut_full" "$mut_static"
   printf '# suite=%s executed=%s skipped=%s failed=%s\n' "$suite" "$executed" "$skipped" "$failed"
 } > "$tmp/tap"
 cat "$tmp/tap"
