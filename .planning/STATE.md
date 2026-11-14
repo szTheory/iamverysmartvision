@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 current_phase: 7
 current_phase_name: First Visible Original Scenario
-current_plan: 9
+current_plan: 10
 status: executing
-stopped_at: Completed 07-08-PLAN.md
-last_updated: "2026-11-13T23:28:38.282Z"
+stopped_at: Completed 07-09-PLAN.md
+last_updated: "2026-11-14T00:12:06.758Z"
 last_activity: 2026-11-13
 last_activity_desc: Phase 7 execution started
-state_head: c330b373700c1033d6f2e2ad4cbfff0ef483b658
+state_head: 3248f06e7d7a1e461d16d1ac2e3868540b4750fb
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 109
-  completed_plans: 105
+  completed_plans: 106
   percent: 75
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 7 (First Visible Original Scenario) — EXECUTING
-Current Plan: 9
+Current Plan: 10
 Total Plans in Phase: 12
 Status: Ready to execute
 Last activity: 2026-11-13 — Phase 7 execution started
@@ -164,6 +164,7 @@ Progress: [████████░░] 75%
 | Phase 7 P06 | 25min | 3 tasks | 14 files |
 | Phase 7 P07 | 40min | 4 tasks | 14 files |
 | Phase 7 P08 | 40min | 3 tasks | 5 files |
+| Phase 7 P09 | 35min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -389,6 +390,9 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 7]: Phase 7 plan 08: 12 Lamp Tone mutants and one negative row judged on the first clause (with the value read pinned where the derivation states it) and, on the isolation rows, on the complete failing set (fails= column); stub-window rows patch boot-stub-2.exec through ivs_pack --exec
 - [Phase 7]: Phase 7 plan 08: SCN-HLT-IDLE patches both words of the two-word idle branch (a halt takes effect after the next instruction; a left-over displacement word ran as SDBD and faulted); SCN-REARM-LONG is N=1023
 - [Phase 7]: Phase 7 plan 08: checkpointB-07: lever-required (projection 8.02 + 25 x 0.7 / 41 = 8.45 above 8.3); lever (2), mutant inventories on the release preset only, for the orchestrator; no further test case until it lands
+- [Phase 7]: Phase 7 plan 09: the installed consumer replays demo-lamp-tone-pass (prefix scn., six image arguments) and agrees with the runner golden on all nine digest lines and the observed set; it checks slot headers, six lamp pictures, seven declared pair diffs, audio windows and 30 write-log records with its own code, and a 14-call STOP_ON_FRAME loop must end with the same streams and digests
+- [Phase 7]: Phase 7 plan 09: the audio window starts are the latest-write bounds of specification A8 (gate before cycle 1,300, deferred amplitude before cycle 250), because the as-built gate write is 14 cycles after the reference figures of derivation section (d); the oracle is untouched
+- [Phase 7]: Phase 7 plan 09: checkpointC-07: no-lever (last-five median 8.02, projection 8.04; pkg-install step cost within load noise, at most +0.33 local cpu-s); forward bound for the SCN-02 cases about 8.30 at the S-4 upper unit cost, re-read at the close
 
 ### Pending Todos
 
@@ -421,6 +425,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-13T23:28:38.027Z
-Stopped at: Completed 07-08-PLAN.md
+Last session: 2026-11-14T00:12:06.405Z
+Stopped at: Completed 07-09-PLAN.md
 Resume file: None
