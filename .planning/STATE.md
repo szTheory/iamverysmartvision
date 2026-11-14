@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 current_phase: 8
 current_phase_name: STIC Completion, Save State and Performance Baselines
-current_plan: 8
+current_plan: 9
 status: executing
-stopped_at: Completed 08-07-PLAN.md
-last_updated: "2026-11-14T11:15:35.219Z"
+stopped_at: Completed 08-08-PLAN.md
+last_updated: "2026-11-14T11:57:44.385Z"
 last_activity: 2026-11-14
 last_activity_desc: Phase 8 execution started
-state_head: 3821cfd4d5d46428bd6d97c7cec49dbc2dd981c3
+state_head: 88e6abe8f77955b5da69da618469f9c2594fc427
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 130
-  completed_plans: 116
+  completed_plans: 117
   percent: 88
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 8 (STIC Completion, Save State and Performance Baselines) — EXECUTING
-Current Plan: 8
+Current Plan: 9
 Total Plans in Phase: 21
 Status: Ready to execute
 Last activity: 2026-11-14 — Phase 8 execution started
@@ -175,6 +175,7 @@ Progress: [█████████░] 88%
 | Phase 08 P05 | about 50 min | 3 tasks | 22 files |
 | Phase 08 P06 | about 45 min | 3 tasks | 19 files |
 | Phase 08 P07 | about 75 min | 3 tasks | 35 files |
+| Phase 08 P08 | about 55 min | 3 tasks | 25 files |
 
 ## Accumulated Context
 
@@ -428,6 +429,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 08]: 08-06: collision is evaluated on the undelayed scene (an unpinned choice, stated in stic_frame.c and the reference notes); the three delay selectors video.border_follows_delay, video.delay_exposed_fill and video.delay_mob_in_exposed are exempted by name from the glossary duration-suffix rule (the word names the picture delay registers, not a time): the orchestrator confirms the exemption or renames the fields
 - [Phase 08]: 08-07: the scene words of ivs-diag-stic-2 are ten tables of 27 words (two decles per word) written by a loop of eight groups of three plus three straight words, so the longest routine (selector BD, frame 3) ends its register work at frame cycle 1,634 (bound 1,900, window close 2,000); a table word is two decles, so a mutant patches the decle that carries the change (STIC2-MOB-X-ZERO leaves X word 0600, X coordinate 0)
 - [Phase 08]: 08-07: the six STIC2 program mutants run their scenario only on a Release build (fifth argument of runner-process, a genex) and are judged statically otherwise, same ids and no skip-ok (D-40); the program follows A5 to the letter, so the frame counter relies on the zero power-on RAM default (open item for the owner: an explicit store would be a new oracle commit)
+- [Phase 8]: 08-08: the own bit of a collision register on a CPU write is an explicit unknown-default-chosen pin (the source says it reads 0, the default keeps the write mask 03FF; frozen Phase 6 literal and tests unchanged, PD-7 amended by an addition to the derivation); collision on the undelayed scene and the zero power-on RAM frame counter are claim exclusions and assumptions, not oracle changes
+- [Phase 8]: 08-08: checkpoint A reads lever-required (median r 7.78, projection 8.06 to 8.18 against the 8.0 rule of the orchestrator): no further test id, fault or control in waves B and C until the orchestrator answers; lever (2) is queued as the first task of the next wave; the D-36 split trigger is the orchestrator's decision
 
 ### Pending Todos
 
@@ -460,6 +463,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-14T11:15:34.841Z
-Stopped at: Completed 08-07-PLAN.md
+Last session: 2026-11-14T11:57:44.001Z
+Stopped at: Completed 08-08-PLAN.md
 Resume file: None
