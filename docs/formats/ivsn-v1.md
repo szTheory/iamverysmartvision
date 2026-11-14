@@ -305,7 +305,7 @@ A success writes the 360 bytes of the v1 report and keeps the tail of a larger c
 4. An empty profile id and an unregistered id of good form are accepted by describe (the specification lists only three defects for 71 and only restore consults the registry).
 5. The three image slot records of a success carry struct_size of an image report, the kind (slot index plus one), loaded, length and SHA-256 as the snapshot states them, and 0 in every other member; describe does not judge them (restore does).
 
-**The matrix.** Rows per reason (a row is one call): 58: 7, 59: 5, 60: 11, 61: 36, 62: 13, 63: 7, 64: 18, 65: 12, 66: 35, 67: 14, 68: 12, 69: 92, 70: 95, 71: 24, and 23 rows that are accepted (the snapshot as written, informational fields changed with a valid trailer, an empty, unregistered or 63 byte id, chained section lengths), 404 rows in all.
+**The matrix.** Rows per reason (a row is one call): 58: 7, 59: 5, 60: 11, 61: 36, 62: 13, 63: 7, 64: 18, 65: 12, 66: 35, 67: 14, 68: 12, 69: 92, 70: 95, 71: 24, that is 381 refusal rows, and 25 rows that are accepted (the snapshot as written, informational fields changed with a valid trailer, an empty, unregistered or 63 byte id, chained section lengths, and two argument rows that place the report beside the buffer), 406 rows in all.
 Every row is run twice, into a report poisoned with 0xA5 and with 0x5A, and the whole report is compared with the one the contract allows; the sweep `state.read.describe-heap-exact` describes every length from 0 to the total plus one (4,301 lengths) from a heap buffer of exactly that length, and the self-control corrupts one expectation of each family in turn and requires the runner to report that row.
 
 **The named faults.**
