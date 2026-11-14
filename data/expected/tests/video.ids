@@ -111,3 +111,15 @@ video.mob.base-neutral
 video.mob.frame-placement-clip
 video.mob.field-origin-8-8
 video.mob.params-match-profile
+# Plan 08-04 task 2 (VID-05, R37 to R43): the full MOB semantics against F-M2 and F-M3 and hand-derived shapes (video.mob.*): the X size, the Y size codes, tall mode with the card number bit 0 ignored, the flips, the fourth color bit, MOB over MOB by the lower index, MOB over a card with the priority bit clear, the 48-row register-bit sweep from the literal (the interaction-enable bit exempt until plan 08-05), the streamed slot equal to the whole plane and the invariance of a MOB run under call sizes 1, 7, 468 and 97.
+video.mob.zoom-x2
+video.mob.zoom-y2-y4-y8
+video.mob.size-8x16
+video.mob.frame-mirror
+video.mob.colour-bit12
+video.mob.frame-priority-colour
+video.mob.front-lower-index
+video.mob.prio-clear-front
+video.mob.register-bit-roles
+video.mob.stream-equals-plane
+video.mob.slice-invariant

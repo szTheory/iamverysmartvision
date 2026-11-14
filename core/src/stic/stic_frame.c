@@ -107,19 +107,24 @@ uint32_t ivs_stic_compose_card_row(const ivs_stic_params *p, const ivs_stic_stat
   uint32_t work_w = p->video_card_columns * p->video_card_w;
   uint32_t n = ivs_stic_render_card_row(p, s, mem, displayed, cr, cs_pos, out);
   uint32_t k;
+  uint32_t need_mask = 0u;
   if (n == 0u || displayed == 0u || ivs_stic_cards_drawable(p, cr) == 0u) {
     return n; /* a display-off row is the border fill and draws no MOB */
   }
   if (ivs_stic_mob_decode(p, mem, mobs) == 0u) {
     return n; /* no MOB is on: the row is exactly the card layer (every MOB register at its reset value draws nothing) */
   }
-  {
+  for (k = 0u; k < IVS_STIC_MOBS; k++) {
+    need_mask |= (mobs[k].on != 0u && (mobs[k].flags & IVS_STIC_MOB_F_PRIO) != 0u) ? 1u : 0u;
+  }
+  if (need_mask != 0u) { /* the on pixels of the card layer matter only to a MOB with the priority bit set */
     ivs_stic_cardin in;
     ivs_stic_cardin_get(s, mem, &in);
     (void)ivs_stic_cards_on_row(&in, s->row_latch[cr], mem, on_mask);
   }
   for (k = 0u; k < p->video_card_h; k++) {
-    ivs_stic_overlay_mobs_row(p, mem, mobs, cr * p->video_card_h + k, on_mask + (size_t)k * IVS_STIC_ROW_WORDS, out + (size_t)k * work_w);
+    ivs_stic_overlay_mobs_row(p, mem, mobs, cr * p->video_card_h + k, need_mask != 0u ? on_mask + (size_t)k * IVS_STIC_ROW_WORDS : NULL,
+                              out + (size_t)k * work_w);
   }
   return n;
 }

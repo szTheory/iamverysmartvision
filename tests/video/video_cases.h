@@ -138,6 +138,13 @@ typedef struct vm_frame {
   uint32_t plane_line;
 } vm_frame;
 
+/* One row of data/video/mob.literal.txt: the register (mobx, moby or moba), the bit 0..15 and its role (video_mob.c; the register-bit sweep). */
+typedef struct vm_role {
+  const char *reg;
+  uint32_t bit;
+  const char *role;
+} vm_role;
+
 #define VF_PLANE_W 160u
 #define VF_PLANE_H 96u
 #define VF_PLANE_BYTES (VF_PLANE_W * VF_PLANE_H)

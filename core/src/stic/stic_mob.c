@@ -23,9 +23,7 @@
  * Order (R41, R42, R43): among the MOBs that have a set pattern pixel on a position the one with the lower index owns it; the priority
  * bit does not change that. An owner with the priority bit clear is drawn in front of the card layer; an owner with the priority bit set
  * is hidden by the card layer where the card has an on pixel (video_mob_prio_hides 0, the default) or on every card pixel (1).
- *
- * Named faults (plan 08-04, one #ifdef site each): MOB_PRIORITY_SWAP (the higher index owns an overlap), MOB_FLIP_SWAPPED (the X and Y
- * flip bits are exchanged). */
+ */
 #include "common/ivs_prelude.h"
 
 #include "stic/stic.h"
@@ -51,11 +49,13 @@ uint32_t ivs_stic_mob_decode(const ivs_stic_params *p, const ivs_memsys *mem, iv
     m->left = (int16_t)((int32_t)xc - (int32_t)p->video_mob_origin_x);
     m->top = (int16_t)((int32_t)p->video_row_lines * ((int32_t)yc - (int32_t)p->video_mob_origin_y));
     m->zx = (uint8_t)(((xw >> 10) & 1u) != 0u ? 2u : 1u);
-    m->lpr = (uint8_t)(((yw >> 8) & 1u) != 0u ? 2u : 1u);
-    m->rows = 8u;
+    m->lpr = (uint8_t)(1u << ((yw >> 8) & 3u)); /* the Y size code: 1, 2, 4 or 8 television lines per pattern row (R38) */
+    m->rows = (uint8_t)(((yw >> 7) & 1u) != 0u ? 16u : 8u); /* tall mode: two stacked cards (R40) */
     m->sel = (uint8_t)((aw >> 11) & 1u);
     m->card = (uint8_t)((aw >> 3) & (m->sel != 0u ? 0x3Fu : 0xFFu));
-    m->color = (uint8_t)(aw & 7u);
+    m->color = (uint8_t)((aw & 7u) + 8u * ((aw >> 12) & 1u)); /* R40: the low three bits plus 8 times bit 12 */
+    m->flags = (uint8_t)((((yw >> 7) & 1u) != 0u ? IVS_STIC_MOB_F_TALL : 0u) | (((aw >> 13) & 1u) != 0u ? IVS_STIC_MOB_F_PRIO : 0u));
+    m->flags = (uint8_t)(m->flags | (((yw >> 10) & 1u) != 0u ? IVS_STIC_MOB_F_XFLIP : 0u) | (((yw >> 11) & 1u) != 0u ? IVS_STIC_MOB_F_YFLIP : 0u));
     n += m->on;
   }
   return n;
@@ -64,18 +64,20 @@ uint32_t ivs_stic_mob_decode(const ivs_stic_params *p, const ivs_memsys *mem, iv
 void ivs_stic_overlay_mobs_row(const ivs_stic_params *p, const ivs_memsys *mem, const ivs_stic_mob *mobs, uint32_t plane_y, const uint8_t *on_row,
                                uint8_t *row)
 {
-  uint8_t claimed[IVS_STIC_ROW_WORDS]; /* one bit per plane column: a MOB with a lower index already owns the position */
+  uint8_t claimed[IVS_STIC_ROW_WORDS]; /* one bit per plane column: a MOB with a lower index already owns the position (R41) */
   int32_t line = (int32_t)(p->video_row_lines * plane_y + p->video_mob_line_sample);
   int32_t width = (int32_t)p->video_width;
-  uint32_t i;
-  (void)on_row; /* the priority bit is decoded by a later task of plan 08-04 */
+  uint32_t j;
   memset(claimed, 0, sizeof claimed);
-  for (i = 0u; i < IVS_STIC_MOBS; i++) {
-    const ivs_stic_mob *m = &mobs[i];
+  for (j = 0u; j < IVS_STIC_MOBS; j++) {
+    uint32_t i = j; /* the lower index first: the first MOB with a set pixel on a position owns it */
+    const ivs_stic_mob *m;
     int32_t rel;
     uint32_t r;
+    uint32_t card;
     uint32_t byte;
     uint32_t c;
+    m = &mobs[i];
     if (m->on == 0u) {
       continue;
     }
@@ -87,22 +89,40 @@ void ivs_stic_overlay_mobs_row(const ivs_stic_params *p, const ivs_memsys *mem, 
     if (r >= (uint32_t)m->rows) {
       continue;
     }
-    byte = (uint32_t)ivs_memsys_stic_gfx_byte_internal(mem, m->sel, m->card, r);
+    if ((m->flags & IVS_STIC_MOB_F_YFLIP) != 0u) {
+      r = (uint32_t)m->rows - 1u - r; /* R39: all the pattern rows reversed, 16 for a tall MOB */
+    }
+    card = (uint32_t)m->card;
+    if ((m->flags & IVS_STIC_MOB_F_TALL) != 0u) {
+      card = (card & ~1u) | (r >> 3); /* R40: the upper eight rows from the even card, the lower eight from the odd card */
+    }
+    byte = (uint32_t)ivs_memsys_stic_gfx_byte_internal(mem, m->sel, card, r & 7u);
     for (c = 0u; c < 8u; c++) {
+      uint32_t pc = (m->flags & IVS_STIC_MOB_F_XFLIP) != 0u ? 7u - c : c; /* R39: the pattern column after the mirror */
       uint32_t k;
-      if (((byte >> (7u - c)) & 1u) == 0u) {
+      if (((byte >> (7u - pc)) & 1u) == 0u) {
         continue;
       }
       for (k = 0u; k < (uint32_t)m->zx; k++) {
         int32_t x = (int32_t)m->left + (int32_t)((uint32_t)m->zx * c + k);
+        uint32_t ux;
+        uint32_t bit;
         if (x < 0 || x >= width) {
           continue;
         }
-        if (((claimed[(uint32_t)x >> 3] >> (7u - ((uint32_t)x & 7u))) & 1u) != 0u) {
+        ux = (uint32_t)x;
+        bit = 0x80u >> (ux & 7u);
+        if ((claimed[ux >> 3] & bit) != 0u) {
           continue;
         }
-        claimed[(uint32_t)x >> 3] = (uint8_t)(claimed[(uint32_t)x >> 3] | (0x80u >> ((uint32_t)x & 7u)));
-        row[x] = m->color;
+        claimed[ux >> 3] = (uint8_t)(claimed[ux >> 3] | bit);
+        if ((m->flags & IVS_STIC_MOB_F_PRIO) != 0u) {
+          /* R43, pinned: a MOB with the priority bit set is hidden by the card on pixels (video_mob_prio_hides 0) or by every card pixel (1) */
+          if (p->video_mob_prio_hides != 0u || (on_row != NULL && (on_row[ux >> 3] & bit) != 0u)) {
+            continue;
+          }
+        }
+        row[ux] = m->color;
       }
     }
   }

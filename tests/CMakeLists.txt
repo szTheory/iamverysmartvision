@@ -345,14 +345,15 @@ add_custom_command(
   DEPENDS ${IVS_VIDEOFRAMES_LITERALS} "${PROJECT_SOURCE_DIR}/data/video/cards.literal.txt" "${IVS_VIDEOFRAMES_GENERATOR}"
   COMMENT "Generating the video frame literal include")
 # The moving-object frame include (cmake/IvsVideoFrames.cmake with FRAMESET=mob, plan 08-04): reads only the ten hand-derived literals
-# data/video/frames/F-M0..F-M9 (.frame) and the three video.mob_* profile values; the table is kept apart from vf_frames[] (video_mob.c only).
+# data/video/frames/F-M0..F-M9 (.frame), the MOB bit-role literal data/video/mob.literal.txt and the three video.mob_* profile values; the table
+# is kept apart from vf_frames[] (video_mob.c only).
 set(IVS_VIDEOMOB_INC "${CMAKE_CURRENT_BINARY_DIR}/ivs_mob_frames.inc")
 file(GLOB IVS_VIDEOMOB_LITERALS CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/data/video/frames/F-M*.frame")
 file(GLOB IVS_VIDEOMOB_PROFILES CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/data/profiles/*.json")
 add_custom_command(
   OUTPUT "${IVS_VIDEOMOB_INC}"
   COMMAND "${CMAKE_COMMAND}" "-DROOT=${PROJECT_SOURCE_DIR}" "-DOUT=${IVS_VIDEOMOB_INC}" -DFRAMESET=mob -P "${IVS_VIDEOFRAMES_GENERATOR}"
-  DEPENDS ${IVS_VIDEOMOB_LITERALS} ${IVS_VIDEOMOB_PROFILES} "${IVS_VIDEOFRAMES_GENERATOR}"
+  DEPENDS ${IVS_VIDEOMOB_LITERALS} ${IVS_VIDEOMOB_PROFILES} "${PROJECT_SOURCE_DIR}/data/video/mob.literal.txt" "${IVS_VIDEOFRAMES_GENERATOR}"
   COMMENT "Generating the moving-object frame literal include")
 set(IVS_VIDEO_TEST_SOURCES video/video_main.c video/video_geom.c video/video_slot.c video/video_buffers.c video/video_stop.c video/video_slice.c video/video_progs.c video/video_fgbg.c video/vid_fields.c video/video_card.c video/video_probe.c video/video_meta.c video/video_judge.c video/video_cstack.c video/video_mob.c stic/stic_progs.c machine/machine_standin.c)
 add_executable(ivs_tests_video ${IVS_VIDEO_TEST_SOURCES} "${IVS_VIDEOLIT_INC}" "${IVS_VIDEOFRAMES_INC}" "${IVS_VIDEOMOB_INC}")
