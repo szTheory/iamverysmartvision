@@ -97,6 +97,7 @@ A plain dry run and the gate do not need the section.
 - The member check (`tools/check/release-assets.sh source|install`) judges the members of an archive and never its outer file name: the source members must equal the tracked file list, the install members must equal `data/expected/pkg-install-files.ids`, and no member may have an extension on `tools/check/binary-ext.txt`.
 - Only after every check does the script create the release, as a draft pre-release with the two archives and `SHA256SUMS`. A person reads the draft and publishes it; nothing is published from this repository outside GitHub Actions, and `--publish` is refused anywhere else (exit 2).
 - `sh tools/release.sh` without `--publish` is a dry run that never calls the GitHub CLI and leaves the three assets under `build/release-assets`.
+- `sh tools/release-rehearse.sh` rehearses the job locally, again without the GitHub CLI: it repeats the dry run, requires the two source archives to be byte-equal, reports whether the two install archives are equal, and tries the tag glob of the workflow on sample tags. `sh tools/release-readiness.sh` prints the computable sections of the milestone close record (identity, the claim table rendered from `data/claims.json`, the rights and package audit, hygiene); it only reads the repository.
 
 ## Release content (D-33)
 
