@@ -2,18 +2,24 @@
 # SPDX-License-Identifier: MIT
 # Release job script (plan 08-01, D-29, D-32): the single run line of .github/workflows/release.yml.
 #
-#   sh tools/release.sh [--publish] [--no-gate] [--tag vX.Y.Z] [--out DIR]
+#   sh tools/release.sh [--publish] [--release] [--no-gate] [--tag vX.Y.Z] [--out DIR]
 #
 # Default is a dry run that never touches the GitHub CLI. It builds, in order: the tag, the gate
 # (unless --no-gate), the deterministic source archive (git archive with the prefix ivs-<tag>/, then
-# gzip -n), the install archive of the release preset (cmake --install into a staging prefix, members
-# sorted, mtime fixed to the commit time, owner 0), the content check of both archives
+# gzip -n), the install archive of the release preset (cmake --install into a staging prefix, the
+# version agreement of the tag, the IVS_API_VERSION macros and the installed ivsConfigVersion.cmake
+# (tools/check/release-assets.sh version, plan 08-02, D-30), members sorted, mtime fixed to the commit
+# time, owner 0), the content check of both archives
 # (tools/check/release-assets.sh: members equal git ls-files and data/expected/pkg-install-files.ids, no
 # binary extension on any member), SHA256SUMS (cmake -E sha256sum), and the installed consumer built
 # against the very install archive that ships and compared with data/expected/pkg-consumer.golden.
 #   --publish  only inside GitHub Actions (GITHUB_ACTIONS=true, else exit 2), never with --no-gate: after
 #              every check, creates the release as a draft pre-release with the gh CLI
 #              (--draft --prerelease --verify-tag --latest=false). It is the only path that calls gh.
+#   --release  a dry run that also applies the release-only checks: first of all, before the gate or any
+#              asset, CHANGELOG.md must hold a section for the version of the header macros
+#              (tools/check/release-assets.sh changelog; the run halts with exit 1 when it does not).
+#              --publish implies --release. A plain dry run does not need the section.
 #   --no-gate  skip tools/gate.sh; needs build/release and its images (local rehearsal only).
 #   --tag T    the tag, strictly v<digits>.<digits>.<digits>; default GITHUB_REF_NAME, else v plus the
 #              three IVS_API_VERSION macros of core/include/ivs/ivs.h.
@@ -27,18 +33,20 @@
 LC_ALL=C; export LC_ALL
 
 usage() {
-  sed -n '3,26p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '3,32p' "$0" | sed 's/^# \{0,1\}//'
 }
 refuse() { printf 'release: refused: %s\n' "$1" >&2; exit 2; }
 fail() { printf 'release: FAIL: %s\n' "$1" >&2; exit 1; }
 
 publish=0
+release=0
 nogate=0
 tag=
 out=
 while [ "$#" -gt 0 ]; do
   case $1 in
     --publish) publish=1 ;;
+    --release) release=1 ;;
     --no-gate) nogate=1 ;;
     --tag)
       [ "$#" -ge 2 ] || { usage >&2; exit 2; }
@@ -60,6 +68,7 @@ done
 if [ "$publish" -eq 1 ]; then
   [ "${GITHUB_ACTIONS:-}" = true ] || refuse "--publish only runs inside GitHub Actions"
   [ "$nogate" -eq 0 ] || refuse "--publish does not skip the gate"
+  release=1
 fi
 
 here=$(cd "$(dirname "$0")" && pwd) || exit 2
@@ -70,15 +79,31 @@ for tool in git tar gzip awk cmake; do
 done
 if [ "$publish" -eq 1 ]; then command -v gh > /dev/null 2>&1 || refuse "gh not found"; fi
 
+# The software version of the header macros (D-30): the one source of the version. The tag, the installed
+# package and the CHANGELOG section are each held against it.
+hdr=core/include/ivs/ivs.h
+vmaj=$(sed -n 's/^#define IVS_API_VERSION_MAJOR \([0-9][0-9]*\)[uU]\{0,1\}$/\1/p' "$hdr")
+vmin=$(sed -n 's/^#define IVS_API_VERSION_MINOR \([0-9][0-9]*\)[uU]\{0,1\}$/\1/p' "$hdr")
+vpat=$(sed -n 's/^#define IVS_API_VERSION_PATCH \([0-9][0-9]*\)[uU]\{0,1\}$/\1/p' "$hdr")
+hdrver=
+if [ -n "$vmaj" ] && [ -n "$vmin" ] && [ -n "$vpat" ]; then hdrver=$vmaj.$vmin.$vpat; fi
+
+# (0) The release-only check comes first, before the gate or any asset (--release, and --publish which
+# implies it): CHANGELOG.md must hold a section for the version of the header macros. A plain dry run
+# does not need it and stays green without it.
+if [ "$release" -eq 1 ]; then
+  [ -n "$hdrver" ] || refuse "cannot read the IVS_API_VERSION macros of $hdr"
+  if ! sh tools/check/release-assets.sh changelog "$hdrver" CHANGELOG.md; then
+    printf 'release halted: CHANGELOG.md has no section for %s\n' "$hdrver" >&2
+    exit 1
+  fi
+fi
+
 # (a) The tag.
 if [ -z "$tag" ]; then tag=${GITHUB_REF_NAME:-}; fi
 if [ -z "$tag" ]; then
-  hdr=core/include/ivs/ivs.h
-  vmaj=$(sed -n 's/^#define IVS_API_VERSION_MAJOR \([0-9][0-9]*\)[uU]\{0,1\}$/\1/p' "$hdr")
-  vmin=$(sed -n 's/^#define IVS_API_VERSION_MINOR \([0-9][0-9]*\)[uU]\{0,1\}$/\1/p' "$hdr")
-  vpat=$(sed -n 's/^#define IVS_API_VERSION_PATCH \([0-9][0-9]*\)[uU]\{0,1\}$/\1/p' "$hdr")
-  [ -n "$vmaj" ] && [ -n "$vmin" ] && [ -n "$vpat" ] || refuse "cannot read the IVS_API_VERSION macros of $hdr"
-  tag=v$vmaj.$vmin.$vpat
+  [ -n "$hdrver" ] || refuse "cannot read the IVS_API_VERSION macros of $hdr"
+  tag=v$hdrver
 fi
 printf '%s\n' "$tag" | grep -E -q '^v[0-9]+[.][0-9]+[.][0-9]+$' || refuse "the tag '$tag' is not v<digits>.<digits>.<digits>"
 version=${tag#v}
@@ -116,7 +141,8 @@ elif [ -e "$out" ] && { [ ! -d "$out" ] || [ -n "$(ls -A "$out")" ]; }; then
 fi
 mkdir -p "$out" || exit 2
 
-printf 'release: tag %s, publish=%s, gate=%s\n' "$tag" "$publish" "$([ "$nogate" -eq 1 ] && echo skipped || echo run)"
+printf 'release: tag %s, publish=%s, release-checks=%s, gate=%s\n' "$tag" "$publish" "$release" \
+  "$([ "$nogate" -eq 1 ] && echo skipped || echo run)"
 if [ -n "$(git status --porcelain --untracked-files=no 2> /dev/null)" ]; then
   printf 'release: note: tracked files differ from HEAD; the assets are built from HEAD\n'
 fi
@@ -149,6 +175,11 @@ mkdir -p "$stage" || exit 2
 if ! cmake --install "$rel" --prefix "$stage/$inst_dir" > "$work/install.log" 2>&1; then
   cat "$work/install.log"
   fail "cmake --install $rel"
+fi
+# The version agreement (D-30, T-08-05): tag == header macros == the version of the installed package,
+# on the staged prefix, before the install archive is written.
+if ! sh tools/check/release-assets.sh version "$tag" "$hdr" "$stage/$inst_dir/lib/cmake/ivs/ivsConfigVersion.cmake"; then
+  fail "the tag, the header macros and the installed package do not agree on the version"
 fi
 if tar --version 2> /dev/null | head -n 1 | grep -q 'GNU tar'; then
   tar_mode=gnu-tar

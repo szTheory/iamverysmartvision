@@ -1,8 +1,14 @@
 # Owning plan 08-01 (D-32): cases of the release-assets step, the selftest of tools/check/release-assets.sh.
 # One case name per line; the step runs exactly these and fails on a name it does not know.
-# Every case but outer-name-pass must fail for its intended token; outer-name-pass must pass.
+# Every case but outer-name-pass, version-agree-pass and changelog-section-pass must fail for its intended token;
+# those three are the positive cases and must pass. The five last cases belong to plan 08-02 (D-30).
 source-extra-member
 source-missing-member
 install-extra-member
 rom-member
 outer-name-pass
+version-skew
+version-tag-form
+version-agree-pass
+changelog-section-missing
+changelog-section-pass

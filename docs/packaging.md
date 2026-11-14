@@ -62,7 +62,12 @@ A shared build would export no symbol until `IVS_API` is defined (visibility or 
 
 ## Version rule
 
-The version has one source: the `IVS_API_VERSION_MAJOR`, `_MINOR` and `_PATCH` macros of `ivs.h`, which the root `CMakeLists.txt` parses before `project()` (D-34).
+Three separate numbers exist, and none stands for another (D-30):
+
+- The software version is the `IVS_API_VERSION_MAJOR`, `_MINOR` and `_PATCH` macros of `ivs.h` (0.1.0 today). The root `CMakeLists.txt` parses them before `project()` (D-34), so this is the one place the software version is written.
+- The installed package version is the `PACKAGE_VERSION` of the installed `lib/cmake/ivs/ivsConfigVersion.cmake`. It is `ivs_VERSION` as a consumer sees it, and it equals the software version because the root `CMakeLists.txt` hands the parsed macros to `project()`.
+- The GSD milestone label and the data-format versions (the container, frame header and scenario grammar numbers) are other numbers. They move by their own rules and never name a tag or a release.
+
 The config version file uses `SameMinorVersion`: `find_package(ivs 0.1)` accepts any 0.1.x and refuses 0.0, 0.2 and 1.
 Before 1.0 a minor step may change the API; struct sizes and the append-only status and reason numbers let additions land without a break.
 
@@ -73,6 +78,25 @@ Three values must agree, and the consumer prints all three on its `version` line
 - `ivs_api_version()`, the packed version the archive was built with.
 
 A host that compares `ivs_api_version()` with `IVS_API_VERSION` at start-up detects a header and library mismatch.
+
+### The release check
+
+A release tag has exactly the form `v<digits>.<digits>.<digits>` (`v0.1.0`; `v1.0`, `vfoo` and `1.0.0` are refused).
+`tools/release.sh` calls `sh tools/check/release-assets.sh version <tag> core/include/ivs/ivs.h <staged prefix>/lib/cmake/ivs/ivsConfigVersion.cmake` on the staged install, before the install archive is written.
+The tag, the header macros and the installed package version must be equal; a skew or an ill-formed tag stops the script with the finding printed (`release-version-skew`, `release-version-tag-form`).
+When no tag is given the script derives it from the header macros, so a dry run of a clean tree always agrees.
+The gate step `release-assets` keeps this check alive: its in-step selftest feeds the library a skewed tag, an ill-formed tag and an agreeing triple on synthetic inputs and requires two refusals and one acceptance.
+
+A second release-only check concerns the notes: `sh tools/check/release-assets.sh changelog <version> CHANGELOG.md` requires a section headed `## [<version>]`, and `tools/release.sh --release` (implied by `--publish`) halts first, before the gate or any asset, when the section is absent.
+A plain dry run and the gate do not need the section.
+
+### Release workflow
+
+- A push of a tag with the strict form above starts `.github/workflows/release.yml`; nothing else does, and a milestone label such as v1.0 does not match its trigger.
+- The one job calls `sh tools/release.sh --publish`. The script performs the gate, builds the source archive of the tested commit and the install archive, checks the members of both archives, writes `SHA256SUMS` and builds the installed consumer against the very install archive that ships, comparing its output with `data/expected/pkg-consumer.golden`.
+- The member check (`tools/check/release-assets.sh source|install`) judges the members of an archive and never its outer file name: the source members must equal the tracked file list, the install members must equal `data/expected/pkg-install-files.ids`, and no member may have an extension on `tools/check/binary-ext.txt`.
+- Only after every check does the script create the release, as a draft pre-release with the two archives and `SHA256SUMS`. A person reads the draft and publishes it; nothing is published from this repository outside GitHub Actions, and `--publish` is refused anywhere else (exit 2).
+- `sh tools/release.sh` without `--publish` is a dry run that never calls the GitHub CLI and leaves the three assets under `build/release-assets`.
 
 ## Release content (D-33)
 
@@ -101,7 +125,7 @@ Only the consumer's stdout is kept, as `build/gate/pkg-consumer.txt`; everything
 ## What the gate step does not prove
 
 - Independence of the build graph and of paths, not of the toolchain or the author: the consumer is compiled by the same compiler, on the same machine and from the same hands as the package.
-  A package built on one host and consumed on another is not exercised; a consumer check against a published release archive belongs to release packaging, which is outside this phase.
+  A package built on one host and consumed on another is not exercised: the release job builds its consumer against the install archive on the same host that built the archive (see Release workflow).
 - Agreement of two paths through the same core, not correctness: the consumer and the runner compute the same digests through the same library, so a core defect would appear in both.
   The digests are self-recorded repeatability values; independent expected values live in the scenario assertions and the CPU vectors.
 - The figures that the fourth replay checks beyond the digests (region diff, lamp pictures, audio levels, write-log records) are a hand derivation written by the author of the program and of the core; agreement shows that the program does what its specification says, not what a console does.

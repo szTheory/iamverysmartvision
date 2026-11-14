@@ -17,6 +17,15 @@
 #         rom-member            a .rom member that the list itself names is still refused (the binary
 #                               rule does not depend on the list)
 #         outer-name-pass       a clean archive whose outer name is ivs-test.tar.gz passes
+#       Five cases (plan 08-02, D-30) judge the version and changelog modes on synthetic inputs, each
+#       a header with the three IVS_API_VERSION defines plus a config version file with a
+#       PACKAGE_VERSION line, or a CHANGELOG.md:
+#         version-skew             a tag that differs from the header, and a package version that
+#                                  differs from the header, are each reported with both values
+#         version-tag-form         the tag v1.0 is refused for its form
+#         version-agree-pass       tag, header and package all 0.1.0: passes (the positive case)
+#         changelog-section-missing a CHANGELOG with only an Unreleased section has no 0.1.0 section
+#         changelog-section-pass   a CHANGELOG with a section headed ## [0.1.0] - draft passes
 # Reads ROOT, CHECK_DIR and FILELIST only. Every temp file is under one mktemp dir removed on exit.
 # Tokens: release-assets-source-binary: <path>, release-assets-ext-list: <what>,
 #   release-selftest-inventory: <what>, release-selftest-missing: <case>, release-selftest-<case>: <detail>.
@@ -97,6 +106,33 @@ wantfail() {
   return 0
 }
 
+# mkver <case> <header version> <config version>: a synthetic ivs.h with the three version defines (the u
+# suffix as in the real header) and a synthetic config version file, in $tmp/<case>.
+mkver() {
+  mv_case=$1
+  mkdir -p "$tmp/$mv_case" || return 1
+  mv_rest=${2#*.}
+  printf '#define IVS_API_VERSION_MAJOR %su\n#define IVS_API_VERSION_MINOR %su\n#define IVS_API_VERSION_PATCH %su\n' \
+    "${2%%.*}" "${mv_rest%%.*}" "${mv_rest#*.}" > "$tmp/$mv_case/ivs.h" || return 1
+  printf 'set(PACKAGE_VERSION "%s")\n' "$3" > "$tmp/$mv_case/ivsConfigVersion.cmake"
+}
+# runver <case> <tag>: the version mode on the synthetic inputs; output in $tmp/<case>/lib.out, status in $lib_st.
+runver() {
+  lib_st=0
+  sh "$helper" version "$2" "$tmp/$1/ivs.h" "$tmp/$1/ivsConfigVersion.cmake" > "$tmp/$1/lib.out" 2>&1 || lib_st=$?
+}
+# runchg <case> <version>: the changelog mode on $tmp/<case>/CHANGELOG.md.
+runchg() {
+  lib_st=0
+  sh "$helper" changelog "$2" "$tmp/$1/CHANGELOG.md" > "$tmp/$1/lib.out" 2>&1 || lib_st=$?
+}
+# wantpass <case> <line>: the last library run exited 0 and printed exactly this line.
+wantpass() {
+  [ "$lib_st" -eq 0 ] || { detail="library exit $lib_st, want 0"; return 1; }
+  grep -q -x -F -e "$2" "$tmp/$1/lib.out" || { detail="no line '$2'"; return 1; }
+  return 0
+}
+
 # Runs case $1: status 0 behaved as stated, 1 did not ($detail says why), 2 unknown case.
 run_case() {
   detail=
@@ -134,6 +170,37 @@ run_case() {
       runlib "$c" install ivs-test.tar.gz ivs-test include/ivs/ivs.h lib/libivs_core.a
       [ "$lib_st" -eq 0 ] || { detail="library exit $lib_st, want 0 for a clean archive named .tar.gz"; return 1; }
       grep -q -x -F -e 'release-assets install ok members=2' "$tmp/$c/lib.out" || { detail="no ok line"; return 1; }
+      ;;
+    version-skew)
+      mkver "$c" 0.1.0 0.1.0 || { detail="cannot build the inputs"; return 1; }
+      runver "$c" v0.1.1
+      wantfail "$c" 'release-version-skew: tag 0.1.1 differs from header 0.1.0' || return 1
+      mkver "$c" 0.1.0 0.1.1 || { detail="cannot build the inputs"; return 1; }
+      runver "$c" v0.1.0
+      wantfail "$c" 'release-version-skew: header 0.1.0 differs from package 0.1.1' || return 1
+      ;;
+    version-tag-form)
+      mkver "$c" 0.1.0 0.1.0 || { detail="cannot build the inputs"; return 1; }
+      runver "$c" v1.0
+      wantfail "$c" 'release-version-tag-form: v1.0' || return 1
+      ;;
+    version-agree-pass)
+      mkver "$c" 0.1.0 0.1.0 || { detail="cannot build the inputs"; return 1; }
+      runver "$c" v0.1.0
+      wantpass "$c" 'release-assets version ok 0.1.0' || return 1
+      ;;
+    changelog-section-missing)
+      mkdir -p "$tmp/$c" || { detail="cannot build the inputs"; return 1; }
+      printf '# Changelog\n\n## [Unreleased]\n\nnotes\n' > "$tmp/$c/CHANGELOG.md" || { detail="cannot build the inputs"; return 1; }
+      runchg "$c" 0.1.0
+      wantfail "$c" 'release-changelog-section-missing: 0.1.0' || return 1
+      ;;
+    changelog-section-pass)
+      mkdir -p "$tmp/$c" || { detail="cannot build the inputs"; return 1; }
+      printf '# Changelog\n\n## [Unreleased]\n\nnotes\n\n## [0.1.0] - draft\n\nnotes\n' > "$tmp/$c/CHANGELOG.md" \
+        || { detail="cannot build the inputs"; return 1; }
+      runchg "$c" 0.1.0
+      wantpass "$c" 'release-assets changelog ok 0.1.0' || return 1
       ;;
     *) return 2 ;;
   esac

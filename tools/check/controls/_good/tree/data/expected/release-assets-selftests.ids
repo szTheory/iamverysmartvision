@@ -4,3 +4,8 @@ source-missing-member
 install-extra-member
 rom-member
 outer-name-pass
+version-skew
+version-tag-form
+version-agree-pass
+changelog-section-missing
+changelog-section-pass
