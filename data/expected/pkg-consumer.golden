@@ -14,6 +14,10 @@
 # lamp-tone.ivsc (gate step pkg-install): the project boot stub contract 2, the zero GROM and the original program, the six input events and the guest
 # words at the four stops. Its scn.digest.<domain> lines and observed domains (all nine: video, audio, input and the write log observed) must equal
 # data/golden/demo-lamp-tone-pass.digests; the new lines are additions only.
+# That replay also checks, through code that shares nothing with the runner (D-21, D-22): the 13 delivered slot headers, the six lamp pictures read from the
+# index planes, the seven declared frame-pair diffs (outside 0, inside the declared count), the audio samples (silence before the first gate write, A=0 B=0
+# C=15 inside the gate windows), the 30 write-log records, and a frame-by-frame second pass (IVS_RUN_F_STOP_ON_FRAME) whose streams and digests must equal the
+# single run (scn.frame-stop).
 ivs-consumer 1
 version package=0.1.0 header=0.1.0 api=0x000100 library=0x000100 tie=yes
 v1-sizes run_request_v1=64 events_at=48 run_request=80 run_report_v1=112 run_report=160 info_v1=216 info=320 input_event=32 cpu_state_report=36 ok=yes
@@ -100,6 +104,44 @@ scn.step.3.mem 02F0..02F5=03C5,000A,00FF,0005,00FF,0002
 scn.step.4 target_ticks=806568 stop=IVS_STOP_TARGET now_ticks=806568 overshoot_ticks=0 input_consumed=1 controller0=00000101
 scn.step.4.mem 02F0..02F5=03C5,000D,005A,0006,009F,0003
 scn.input events=6 consumed=6
+scn.video frames=13 bytes=198848 slot_bytes=15296 header_bytes=32 width=159 height=96
+scn.slots frames=13 header-mismatches=0 displayed=0,1,1,1,1,1,1,1,1,1,1,1,1 index=ok ticks=increasing
+scn.lamps slot=3 row0=21111112 row1=11111111 mismatches=0
+scn.lamps slot=5 row0=21211212 row1=11111111 mismatches=0
+scn.lamps slot=7 row0=11111111 row1=11111121 mismatches=0
+scn.lamps slot=9 row0=21211111 row1=11111121 mismatches=0
+scn.lamps slot=11 row0=11111111 row1=11111111 mismatches=0
+scn.lamps slot=12 row0=21211212 row1=12211111 mismatches=0
+scn.diff pair=F-S1,F-S2 slots=11,3 rect=48,32,64,8 inside=128 outside=0
+scn.diff pair=F-S1,F-S3 slots=11,5 rect=48,32,64,8 inside=256 outside=0
+scn.diff pair=F-S2,F-S3 slots=3,5 rect=48,32,64,8 inside=128 outside=0
+scn.diff pair=F-S1,F-S4 slots=11,7 rect=48,56,64,8 inside=64 outside=0
+scn.diff pair=F-S1,F-S5 slots=11,9 rect=48,32,64,32 inside=192 outside=0
+scn.diff pair=F-S1,F-S6 slots=11,12 rect=48,32,64,32 inside=384 outside=0
+scn.diff pair=F-S5,F-S6 slots=9,12 rect=48,32,64,32 inside=320 outside=0
+scn.pixels checked=4 mismatches=0
+scn.audio samples=50410 bytes=201640 sample_ticks=16 shape-mismatches=0
+scn.audio.window L0 from=0 to=124100 A=0 B=0 C=0 samples=7756 mismatches=0
+scn.audio.window L1 from=124672 to=179652 A=0 B=0 C=15 samples=3437 mismatches=0
+scn.audio.window L2 from=658096 to=721816 A=0 B=0 C=0 samples=3983 mismatches=0
+scn.audio.window L3 from=722032 to=777012 A=0 B=0 C=15 samples=3437 mismatches=0
+scn.audio.at 100000 A=0 B=0 C=0
+scn.audio.at 140000 A=0 B=0 C=15
+scn.audio.at 160000 A=0 B=0 C=15
+scn.audio.at 690000 A=0 B=0 C=0
+scn.audio.at 740000 A=0 B=0 C=15
+scn.audio.at 760000 A=0 B=0 C=15
+scn.psglog.rec 0 frame=0 addr=8 value=003C source=1
+scn.psglog.rec 1 frame=0 addr=4 value=0000 source=1
+scn.psglog.rec 2 frame=0 addr=5 value=0000 source=1
+scn.psglog.rec 3 frame=0 addr=11 value=0000 source=1
+scn.psglog.rec 4 frame=0 addr=12 value=0000 source=1
+scn.psglog.rec 5 frame=0 addr=13 value=0000 source=1
+scn.psglog.rec 6 frame=2 addr=0 value=007E source=1
+scn.psglog.rec 7 frame=2 addr=13 value=000F source=1
+scn.psglog records=30 bytes=480 record_bytes=16 checked=30 mismatches=0
+scn.frame-stop calls=14 frames=13 consumed=6 now_ticks=806568
+scn.frame-stop equal=yes
 scn.digest.cpu 1ac14963e046e4c5c2eaf14fede2671dd2f6b42e0aa2edfa717862889ad292ab
 scn.digest.mem 0b23446d3b97b6b440100df6a122efbf9247a3ee3b314e4c881e0376ed3d4172
 scn.digest.images 09679d87b9851e20d6c32494887429c18be14d9182252de2a881a4633a38ad48

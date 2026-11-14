@@ -5,7 +5,8 @@
 # adds three for the replay of diag-ctrl-psg-pass: ctrl-digest-drift (a ctrl.digest nibble changed), ctrl-domain-missing
 # (the ctrl.digest.psglog line dropped) and ctrl-peek-wrong (the peeked $01FE changed from 0x007E). Plan 06-13 adds
 # two for the replay of diag-stic-fgbg-pass: stic-domain-missing (the stic.digest.video line dropped) and stic-digest-drift (a
-# stic.digest nibble changed).
+# stic.digest nibble changed). Plan 07-09 adds two for the replay of demo-lamp-tone-pass: scn-domain-missing (the scn.digest.audio
+# line dropped) and scn-digest-drift (a scn.digest.video nibble changed).
 core-src-include
 missing-symbol
 ghost-decl
@@ -21,3 +22,5 @@ ctrl-domain-missing
 ctrl-peek-wrong
 stic-domain-missing
 stic-digest-drift
+scn-domain-missing
+scn-digest-drift
