@@ -342,3 +342,5 @@ pkg-install mutant scn-digest-drift SCN-01
 # SCN-02 (plan 07-10, A-13, D-31, T-07-24): the owner-local route keeps owner content out of the gate. A scenario with a content user line whose inventory row is not skip-ok (it would be an ordinary test needing an image the gate never has), and a skip-ok row whose scenario has no such line (a skip that hides an ordinary test), are each refused by the golden step.
 scn2-user-content control golden-user-content-not-skip-ok SCN-02
 scn2-user-content control golden-skip-ok-without-user-content SCN-02
+# SCN-02 (plan 07-11, D-31, T-07-26 to T-07-28): the refusal, skip and identity cases of the owner-local helper (runner-process.owner-run.*) share one case judge; its self-control feeds that judge a fake helper that exits 0 where the real one must refuse, so a judge that accepted a vacuous refusal would fail the suite.
+scn2-owner-run mutant runner-process.judge.owner-run-refusal SCN-02

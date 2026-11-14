@@ -39,13 +39,39 @@ The ignore patterns are `/refs/`, `*.bin`, `*.grom` and `*.img`.
 ## Identity: three layers
 
 1. **Shape.** The core checks the size and the word range at load (above). Automatic.
-2. **Owner digest lock.** The owner writes `refs/owner-images.sha256` with one line per role, a SHA-256 digest of 64 hex digits, two spaces, then `exec` or `grom` (the form of `cmake -E sha256sum`). The lock is a convenience for the owner's own reproducibility: it states which bytes the owner meant, and it states nothing about rights. The project records no digest of any EXEC or GROM image.
+2. **Owner digest lock.** The owner writes `refs/owner-images.sha256` with one line per role, a SHA-256 digest of 64 lower-case hex digits, two spaces, then `exec` or `grom` (the form of `cmake -E sha256sum`); the helper's `--record` writes it from the two images. The lock is a convenience for the owner's own reproducibility: it states which bytes the owner meant, and it states nothing about rights. The project records no digest of any EXEC or GROM image.
 3. **Core check at load.** The template scenario `data/scenarios/owner-exec-title.ivss` carries a marker comment line. The owner works on a temporary copy of the template, outside the work tree, and inserts after that marker two header lines taken from the lock: `expect-sha256 exec <digest>` and `expect-sha256 grom <digest>`. The core then compares its own digest of the loaded bytes with the stated one, so there is no gap between a read by the owner's tool and the read by the runner. A mismatch ends the run as a refusal (`unexpected-refusal`, exit 14).
 
-The helper `tools/owner-run.sh` of plan 07-11 does the three steps in one place.
-It refuses when a CI environment is set, when an image path lies inside the work tree but outside `refs/`, when a file has the wrong size, and when the lock is missing, and it works on its temporary copy of the template only.
-When no images exist it prints `SKIPPED owner-run: no operator images (D11)` and exits 77 (the skip exit code of the repository's test conventions).
-Until it exists the same three steps are done by hand.
+## The helper
+
+`sh tools/owner-run.sh [--preset dev|release] [--record] <exec-image> <grom-image>` does the three steps in one place.
+It is an operator tool, not a gate step, and CI never calls it.
+The runner of the chosen preset (default `release`) must be built first, for example with `cmake --build --preset release`.
+It checks the following in this order and stops at the first refusal with one line on stderr and exit 2, except for the skip:
+
+1. The environment: `CI` or `GITHUB_ACTIONS` set to anything but the empty string.
+2. The arguments: an unknown option, a preset other than `dev` or `release`, or not exactly two image paths.
+3. When neither image path exists it prints `SKIPPED owner-run: no operator images (D11)` on stdout and exits 77, the skip exit code of the repository's test conventions. This comes before every path and file check, so a path that does not exist is never refused as a wrong shape.
+4. The location: an image whose physical directory lies inside the work tree but not under `refs/` is refused, because a careless staging command would pick it up there. A directory outside the work tree is fine.
+5. The shape: each image must be a regular file of exactly 8192 bytes (EXEC) or 2048 bytes (GROM). One missing image of two is refused here, not skipped.
+6. The lock `refs/owner-images.sha256` must exist, and every line must be exactly 64 lower-case hex digits, two spaces, then `exec` or `grom`, once each.
+7. The runner of the preset and the template scenario must exist.
+
+It then inserts the two `expect-sha256` lines after the marker of the template into a copy made in a fresh `mktemp -d` directory outside the work tree (a `TMPDIR` inside the work tree is refused), prints the banner
+
+`OWNER-LOCAL RUN (D11): inputs are the owner's, not redistributable, not run in CI, not evidence, no claim`
+
+starts `ivs-run --exec <exec-image> --grom <grom-image>` on that copy and removes the copy when it exits.
+The helper's exit code is the runner's (`docs/runner.md`), and the report is on stdout for the owner to read.
+The helper gives the runner no output-file option, so no frame, sound, log or golden file is written.
+A lock that does not match the loaded bytes ends the run at load: the core refuses with `IVS_E_DIGEST_MISMATCH` (exit 14) and nothing is executed.
+
+`--record` writes the lock from the two images (`cmake -E sha256sum`) and goes on with the run.
+That is the owner's statement of which bytes are meant, taken at that moment, and it says nothing about rights.
+It refuses to replace an existing lock: remove the file first to record again.
+
+The gate tests each refusal, the skip and the identity mismatch (`runner-process.owner-run.*`) on a copy of the helper inside a scratch directory outside the work tree, with zero-filled files made by the test and never an owner image.
+The tests read and write nothing of the real `refs/`.
 
 ## The template scenario and the gate
 
@@ -56,8 +82,7 @@ A rule of the `golden` step keeps the route out of ordinary tests: a scenario wi
 Without an owner run the outcome vocabulary is only this skip.
 With an owner run it is `pass` (the run reached its bound), `guest-fail` (the machine halted or faulted early, a fact about the run and not a judgement of the image) or a refusal (identity or shape).
 
-The runner also refuses frame, video and golden output for such a scenario (`--frame-ppm`, `--video-raw` and `--update-golden`), so no picture or golden derived from the images is written.
-Plan 07-11 adds the same refusal for `--audio-raw`, `--psg-log-out` and `--audio-wav`; until it lands, do not pass those three options with owner images.
+The runner refuses frame, video, golden and sound output for such a scenario (`--frame-ppm`, `--video-raw`, `--update-golden`, `--audio-raw`, `--psg-log-out` and `--audio-wav`), each with exit 14 and one line on stderr, before any file is created, so no picture, golden, sample, write log or WAV derived from the images is written.
 
 ## Record keeping
 
