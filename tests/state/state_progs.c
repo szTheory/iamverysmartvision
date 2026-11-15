@@ -15,7 +15,8 @@
  *   HP-FAULTED    1,540      the fault boundary (tick 540) plus 1,000
  *   HP-RESETPEND  119,472    two frames of the Lamp Tone after the reset
  *   the lamp cuts, HP-LATCH, HP-MOB 238,944   four frames: the cuts lie in frame 1 or 2, so two or more frames complete after the cut
- *   HP-PSG-MID, HP-ENV-MID, HP-LOG 119,472    two frames
+ *   HP-PSG-MID    238,944    four frames (the cut is at tick 66,336: the first reload of the tone counters is at tick 65,536, see docs/state/hard-points.md)
+ *   HP-ENV-MID, HP-LOG 119,472    two frames
  * A cut at or after its end tick is a defect of this table, and the witness ids say so. */
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,12 +38,30 @@ static const uint16_t sc_p_hlt[] = {0x02B9u, 0x0003u, 0x0240u, 0x0020u, 0x0011u,
 /* P-FAULT (6 words): MVII #8, R1; loop: DECR R1; BNZE loop; MVO@ R4, R4 (a refused encoding: a sticky guest fault). */
 static const uint16_t sc_p_fault[] = {0x02B9u, 0x0008u, 0x0011u, 0x022Cu, 0x0002u, 0x0264u};
 
+/* P-LATCH (35 words): MVI $0021, R1 (the read selects Color Stack); SDBD, MVII #$0801, R2; MVO R2, $02F0; SDBD, MVII #$2000, R1; MVO R1, $0201;
+ * SDBD, MVII #$3800, R5; MVII #$FF, R1; MVO@ R1, R5 (GRAM card 0); loop: MVI $02F0, R2; XORI #3, R2; MVO R2, $02F0; MVO R2, $0200 (BACKTAB word 0);
+ * MVO R0, $0020 (the display strobe); MVI $0000, R3 (a register read, blocked outside the window); B loop. The loop is 70 cycles. */
+static const uint16_t sc_p_latch[] = {0x0281u, 0x0021u, 0x0001u, 0x02BAu, 0x0001u, 0x0008u, 0x0242u, 0x02F0u, 0x0001u, 0x02B9u, 0x0000u, 0x0020u,
+                                      0x0241u, 0x0201u, 0x0001u, 0x02BDu, 0x0000u, 0x0038u, 0x02B9u, 0x00FFu, 0x0269u, 0x0282u, 0x02F0u, 0x03FAu,
+                                      0x0003u, 0x0242u, 0x02F0u, 0x0242u, 0x0200u, 0x0240u, 0x0020u, 0x0283u, 0x0000u, 0x0220u, 0x000Du};
+
+/* P-PSG (60 words): the mixer, the noise period, the tone A and B fine periods ($40 and $23), CLRR and the coarse periods 0, amplitude A the
+ * envelope ($10), amplitude B 10, the envelope period fine $10 and coarse 0, the shape 8 (a repeating decay); a wait of 200 iterations; the tone
+ * periods rewritten ($31 and $57); a second wait; B self. */
+static const uint16_t sc_p_psg[] = {0x02B8u, 0x0034u, 0x0240u, 0x01F8u, 0x02B8u, 0x0005u, 0x0240u, 0x01F9u, 0x02B8u, 0x0040u, 0x0240u, 0x01F0u,
+                                    0x02B8u, 0x0023u, 0x0240u, 0x01F1u, 0x01C0u, 0x0240u, 0x01F4u, 0x0240u, 0x01F5u, 0x02B8u, 0x0010u, 0x0240u,
+                                    0x01FBu, 0x02B8u, 0x000Au, 0x0240u, 0x01FCu, 0x02B8u, 0x0010u, 0x0240u, 0x01F3u, 0x01C0u, 0x0240u, 0x01F7u,
+                                    0x02B8u, 0x0008u, 0x0240u, 0x01FAu, 0x02B9u, 0x00C8u, 0x0011u, 0x022Cu, 0x0002u, 0x02B8u, 0x0031u, 0x0240u,
+                                    0x01F0u, 0x02B8u, 0x0057u, 0x0240u, 0x01F1u, 0x02B9u, 0x00C8u, 0x0011u, 0x022Cu, 0x0002u, 0x0220u, 0x0001u};
+
 #define SC_N(a) (sizeof(a) / sizeof((a)[0]))
 
 static const sc_run sc_runs[] = {
     {"P-SDBD", SC_NO_SCENARIO, sc_p_sdbd, SC_N(sc_p_sdbd)},
     {"P-HLT", SC_NO_SCENARIO, sc_p_hlt, SC_N(sc_p_hlt)},
     {"P-FAULT", SC_NO_SCENARIO, sc_p_fault, SC_N(sc_p_fault)},
+    {"P-LATCH", SC_NO_SCENARIO, sc_p_latch, SC_N(sc_p_latch)},
+    {"P-PSG", SC_NO_SCENARIO, sc_p_psg, SC_N(sc_p_psg)},
     {"lamp-idle", SU_SC_LAMP_IDLE, NULL, 0u},
     {"lamp-pass", SU_SC_LAMP_PASS, NULL, 0u},
     {"diag-stic-2-collision", SU_SC_STIC2_COLLISION, NULL, 0u},
@@ -128,7 +147,7 @@ static const sc_end sc_ends[] = {
     {"HP-FRAME-MID", 4u * SC_FRAME},
     {"HP-LATCH", 4u * SC_FRAME},
     {"HP-MOB", 4u * SC_FRAME},
-    {"HP-PSG-MID", 2u * SC_FRAME},
+    {"HP-PSG-MID", 4u * SC_FRAME},
     {"HP-ENV-MID", 2u * SC_FRAME},
     {"HP-INPUT", 4u * SC_FRAME},
     {"HP-LOG", 2u * SC_FRAME},

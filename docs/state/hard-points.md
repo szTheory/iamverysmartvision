@@ -259,3 +259,29 @@ The first interrupt of the Lamp Tone run is the one of frame 1 and its vector ju
 
 The end ticks E of the uninterrupted references (the arithmetic is in `tests/state/state_progs.c`) are 1,000 (HP-SDBD), 4 frames = 238,944 (the lamp cuts), 70,000 (HP-HLT, HP-HALTED: frame 0 ends at 59,736), 1,540 (HP-FAULTED: 540 + 1,000) and 119,472 (HP-RESETPEND).
 Each comparison of `state.cut.cpu-points` restores the snapshot of the cut into a target whose STATE and PAD rows hold the byte `0xA5`, compares the whole target instance and the nine digests with the source at once, continues to E with fresh buffers and resubmitted events, and compares the concatenated video, audio and PSG log streams, the first-index fields, the final instance, the digests and the public reports with the uninterrupted run; every cut of the family agrees, and `state.judge.cut-compare-detects-divergence` shows the comparison is able to fail.
+
+## As built (plan 08-14, task 2): the seven stic and device ticks, the latch program, the writer-side fault
+
+The seven remaining cuts were found by the same scan and pinned; `state.witness.stic-points` and `state.witness.device-points` re-prove them as the cpu ids do. Every program holds as derived in the sections above: no decle was changed, and five of the seven ticks agree with the arithmetic of the document within the window it gave. [nc]
+
+| Cut | Program | Tick | Units from the reset | End tick E | Cross-check |
+|---|---|---|---|---|---|
+| HP-FRAME-MID | lamp-idle | 96,652 | 3,545 | 238,944 | frame cycle 9,229 (96,652 - 59,736 = 36,916 ticks): after the row 5 fetch (cycle 8,408) and after the re-arm EIS unit, which lies at frame cycles 9,186 to 9,597 |
+| HP-LATCH | P-LATCH | 75,456 | 3,232 | 238,944 | frame cycle 3,930: the row 0 fetch is at cycle 3,848 and the loop stores the toggling word every 70 cycles, so the latched word differs from the BACKTAB word within one pass of the fetch |
+| HP-MOB | diag-stic-2-collision | 153,104 | 6,499 | 238,944 | frame 2 cycle 8,408 (153,104 - 119,472 = 33,632 ticks): exactly the row 5 fetch, the first boundary of frame 2 whose cursor is in 9 to 15 and whose collision words (ORed in at the end of frame 1) are nonzero |
+| HP-PSG-MID | P-PSG | 66,336 | 1,976 | 238,944 | see the note below: the first boundary after step 4,145 (tick 66,320) |
+| HP-ENV-MID | P-PSG | 1,320 | 39 | 119,472 | the shape write is at cycle about 197 (tick about 790); the first boundary with a cycle index and a level between 1 and 14 is 1,320, inside the document's "a few thousand ticks" |
+| HP-INPUT | lamp-pass | 100,064 | 3,741 | 238,944 | the first event is at tick 100,000 and applies at the first unit that starts at or after it (the previous boundary is 99,992); the idle unit is 36 ticks: the boundary after it, 100,064 |
+| HP-LOG | lamp-pass | 25,920 | 810 | 119,472 | the first PSG register write of the initialisation, before the first EIS at frame-0 cycle 6,564 (tick 26,256) and the document's bound of tick 26,500 |
+
+End ticks are the arithmetic of `tests/state/state_progs.c` (four frames, 238,944, for the cuts of frames 1 and 2, two frames for the cuts of frame 0).
+
+Correction of an expectation of this document (an appended note; the predicate and the program are unchanged): HP-PSG-MID was expected near tick 13,000 ("within a few chip steps" of the second rewrite).
+The scan finds the predicate at tick 66,336.
+The reason is the tone convention of `core/src/psg/psg_tone.c` (policy POL-PSG-02): a counter is empty at the reset and is loaded from the effective period on the first chip step that finds it empty, here step 1 (tick 16), when the period registers still hold 0, so all three counters load the period-zero value 4,096; they count down for 4,096 steps (tick 65,536), toggle all three outputs, and only then reload from the registers, which by now hold the second pair of periods (49 and 87).
+A period write takes effect at the next reload, so the counters cannot show the rewritten periods earlier, and the outputs of tones A and B first differ when tone A toggles again 49 steps after the reload: step 4,145, tick 66,320, with the boundary after it at 66,336.
+The program is as designed (the periods are written twice and the counters at the cut cannot be derived from machine time, which is what the cut witnesses); only the tick of the expectation was wrong, because the arithmetic of that section did not apply the reload rule.
+
+The cut `HP-LATCH` is a designed cut: at tick 75,456 the latched first word of row 0 differs from the BACKTAB word, the mode is Color Stack and the pointer is 1.
+`state.cut.latch-not-recomputed` restores the snapshot of that cut twice into poisoned targets: the real restore continues to the reference exactly (the first video slot after the cut is the reference's byte for byte), and the variant, in which `stic.row_latch` is rebuilt from the twelve BACKTAB rows instead of restored, renders the first slot after the cut differently (8 of 15,296 bytes: the first pixel row of card 0, whose foreground color is the toggled value), so the program discriminates a restore that recomputes the latch.
+The fault `SNAPSHOT_STIC_ROWS_OMITTED` (the state-only walk skips the STIC rows) is caught by `state.cut.stic-points`: the snapshot's sections are shorter than the derived lengths and its total no longer equals the derived total, so the restore refuses it.

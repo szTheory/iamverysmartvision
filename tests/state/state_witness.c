@@ -128,6 +128,7 @@ typedef struct sc_def {
   const char *after;  /* the cut whose first occurrence the scan starts after, or NULL */
   int (*state)(sc_ctx *c);
   int (*unit)(const sc_ctx *c); /* NULL when the cut needs nothing from the unit just run */
+  int seam_only;                /* 1: the unit part reads the unit result, known only when stepped through the seam */
   const char *rule;
 } sc_def;
 
@@ -233,28 +234,112 @@ static int sc_st_resetpend(sc_ctx *c)
   return m->cpu.run_state == IVS_CP1610_RS_RESET_PENDING && m->time_ticks == 0u;
 }
 
+
+/* ---- the stic and device cuts ---- */
+
+/* The event cursor of a frame in progress: after the fetch of row 5 (index 8 applied, the cursor at 9) and before FRAME_END (index 15). */
+#define SC_CURSOR_MID(m) ((m)->stic.event_index >= 9u && (m)->stic.event_index <= 15u)
+
+/* HP-FRAME-MID: a displayed frame at least 1, windows decided, the fetches of rows 0 to 5 applied and FRAME_END not, the interrupt enable set. */
+static int sc_st_frame_mid(sc_ctx *c)
+{
+  const struct ivs_machine *m = sc_im(c);
+  return m->stic.frame_index >= 1u && m->stic.display_latch == 1u && m->stic.windows_active == 1u && SC_CURSOR_MID(m) && m->cpu.intff == 1u;
+}
+
+/* HP-LATCH: a Color Stack frame (mode 1, pointer nonzero) with row 0 fetched, whose latched first word is no longer the BACKTAB word. */
+static int sc_st_latch(sc_ctx *c)
+{
+  const struct ivs_machine *m = sc_im(c);
+  return m->stic.frame_index >= 1u && m->stic.mode == IVS_STIC_MODE_COLOR_STACK && m->stic.cs_ptr != 0u && m->stic.display_latch == 1u &&
+         m->stic.windows_active == 1u && m->stic.event_index >= 4u && m->stic.row_latch[0][0] != m->mem.sysram[0];
+}
+
+/* HP-MOB: mid-frame with a MOB, border or delay register (words 0x00 to 0x17) and a collision register (words 0x18 to 0x1F) nonzero. */
+static int sc_st_mob(sc_ctx *c)
+{
+  const struct ivs_machine *m = sc_im(c);
+  uint32_t i;
+  uint16_t mob = 0u;
+  uint16_t coll = 0u;
+  for (i = 0u; i < 0x18u; i++) {
+    mob = (uint16_t)(mob | m->mem.stic_reg[i]);
+  }
+  for (i = 0x18u; i < 0x20u; i++) {
+    coll = (uint16_t)(coll | m->mem.stic_reg[i]);
+  }
+  return m->stic.frame_index >= 1u && m->stic.windows_active == 1u && SC_CURSOR_MID(m) && mob != 0u && coll != 0u;
+}
+
+/* HP-PSG-MID: both tone periods rewritten, the noise and tone A counters nonzero and the tone outputs of A and B different. */
+static int sc_st_psg_mid(sc_ctx *c)
+{
+  const struct ivs_machine *m = sc_im(c);
+  return m->mem.psg_reg[0] == 0x31u && m->mem.psg_reg[1] == 0x57u && m->psg.noise_counter != 0u && m->psg.tone_counter[0] != 0u &&
+         m->psg.tone_out[0] != m->psg.tone_out[1];
+}
+
+/* HP-ENV-MID: a repeating envelope in progress: not held, a cycle index and a level between 1 and 14. */
+static int sc_st_env_mid(sc_ctx *c)
+{
+  const struct ivs_machine *m = sc_im(c);
+  return m->psg.env_held == 0u && m->psg.env_cycles >= 1u && m->psg.env_cycles <= 14u && m->psg.env_level >= 1u && m->psg.env_level <= 14u;
+}
+
+/* HP-INPUT: one event applied, a pull-down in force, the floor above 0 and one event of the host's array still to be submitted. */
+static int sc_st_input(sc_ctx *c)
+{
+  const struct ivs_machine *m = sc_im(c);
+  return m->obs.input.count == 1u && (m->mem.port_pulldown[0] | m->mem.port_pulldown[1]) != 0u && m->obs.input.floor_tick > 0u &&
+         c->consumed < c->nev;
+}
+
+/* HP-LOG: the log holds records and the unit just run wrote one (the count moved during it): a write whose stamp lies in the last unit. */
+static int sc_st_log(sc_ctx *c)
+{
+  return sc_im(c)->obs.psglog.count > 0u;
+}
+static int sc_un_log(const sc_ctx *c)
+{
+  return sc_im(c)->obs.psglog.count > c->prev_log_count;
+}
+
 static const sc_def sc_defs[] = {
-    {"HP-SDBD", NULL, sc_st_sdbd, NULL,
+    {"HP-SDBD", NULL, sc_st_sdbd, NULL, 0,
      "the first boundary with cpu.dbd 1 and the CPU RUNNING (the SDBD unit has just run); arithmetic: reset entry 5 + MVII 8 + MVO 11 + SDBD 4 = 28 cycles, tick 112"},
-    {"HP-STEAL-A", NULL, sc_st_steal_a, sc_un_steal_a,
+    {"HP-STEAL-A", NULL, sc_st_steal_a, sc_un_steal_a, 1,
      "the first bus grant unit that raises BUSAK in a displayed frame (frame at least 1)"},
-    {"HP-STEAL-B", "HP-STEAL-A", sc_st_steal_b, sc_un_steal_b,
+    {"HP-STEAL-B", "HP-STEAL-A", sc_st_steal_b, sc_un_steal_b, 1,
      "the first mid-hold grant unit after HP-STEAL-A with at least one window of the frame already granted"},
-    {"HP-STEAL-C", "HP-STEAL-B", sc_st_steal_c, sc_un_steal_c,
+    {"HP-STEAL-C", "HP-STEAL-B", sc_st_steal_c, sc_un_steal_c, 1,
      "the first release unit (BUS_RELEASED) after HP-STEAL-B, BUSAK down, prev_interruptible 1"},
-    {"HP-OPEN", NULL, sc_st_open, NULL,
+    {"HP-OPEN", NULL, sc_st_open, NULL, 0,
      "the first open boundary with the interrupt enable set at which the next unit is an interrupt entry"},
-    {"HP-CLOSED", "HP-INT-ENTRY", sc_st_closed, sc_un_closed,
+    {"HP-CLOSED", "HP-INT-ENTRY", sc_st_closed, sc_un_closed, 1,
      "the first closed boundary after HP-INT-ENTRY that follows an instruction with INTRM asserted, the display latch set and the windows not yet decided"},
-    {"HP-INT-ENTRY", NULL, sc_st_int_entry, sc_un_int_entry,
+    {"HP-INT-ENTRY", NULL, sc_st_int_entry, sc_un_int_entry, 1,
      "the first interrupt entry unit of the run: R6 one above its earlier value, R7 $1004, a closed boundary"},
-    {"HP-HLT", NULL, sc_st_hlt, NULL,
+    {"HP-HLT", NULL, sc_st_hlt, NULL, 0,
      "the first boundary with the stop latch set and the CPU RUNNING (the HLT unit has just run); arithmetic: 93 cycles, tick 372"},
-    {"HP-HALTED", NULL, sc_st_halted, NULL,
+    {"HP-HALTED", NULL, sc_st_halted, NULL, 0,
      "the first boundary with the CPU HALTED and BUSRQ asserted for the next unit (a bus window due while halted)"},
-    {"HP-FAULTED", NULL, sc_st_faulted, NULL,
+    {"HP-FAULTED", NULL, sc_st_faulted, NULL, 0,
      "the first boundary with the CPU FAULTED and a nonzero fault reason; arithmetic: 135 cycles, tick 540"},
-    {"HP-RESETPEND", NULL, sc_st_resetpend, NULL, "the boundary at tick 0 right after the power-on reset: the CPU RESET_PENDING, no unit run"},
+    {"HP-RESETPEND", NULL, sc_st_resetpend, NULL, 0, "the boundary at tick 0 right after the power-on reset: the CPU RESET_PENDING, no unit run"},
+    {"HP-FRAME-MID", NULL, sc_st_frame_mid, NULL, 0,
+     "the first boundary of a displayed frame at least 1 with the windows decided, the event cursor between 9 and 15 (rows 0 to 5 fetched, FRAME_END not) and the interrupt enable set"},
+    {"HP-LATCH", NULL, sc_st_latch, NULL, 0,
+     "the first boundary of a Color Stack frame at least 1 after the fetch of row 0 at which the latched first word differs from the BACKTAB word"},
+    {"HP-MOB", NULL, sc_st_mob, NULL, 0,
+     "the first mid-frame boundary of a frame at least 1 with a MOB, border or delay register and a collision register nonzero"},
+    {"HP-PSG-MID", NULL, sc_st_psg_mid, NULL, 0,
+     "the first boundary after both tone periods were rewritten with the noise and tone A counters nonzero and the tone outputs of A and B different"},
+    {"HP-ENV-MID", NULL, sc_st_env_mid, NULL, 0,
+     "the first boundary with the envelope not held, a cycle index and a level between 1 and 14"},
+    {"HP-INPUT", NULL, sc_st_input, NULL, 0,
+     "the first boundary with one event applied, a pull-down in force, the floor above 0 and one event still to be submitted"},
+    {"HP-LOG", NULL, sc_st_log, sc_un_log, 0,
+     "the first boundary at which the PSG log holds records and the unit just run appended one"},
 };
 
 static const sc_def *sc_def_find(const char *id)
@@ -279,7 +364,7 @@ const char *sc_cut_rule(const sc_cut *c)
 /* The whole predicate at the boundary the context is at. */
 static int sc_holds(sc_ctx *c, const sc_def *d)
 {
-  if (d->unit != NULL && (!c->seam || !c->have_last || !d->unit(c))) {
+  if (d->unit != NULL && (!c->have_last || (d->seam_only && !c->seam) || !d->unit(c))) {
     return 0;
   }
   return d->state(c);
@@ -336,6 +421,11 @@ int sc_witness_find(const sc_cut *cut, uint64_t *tick, uint64_t *units, uint8_t 
   return sc_find_from(d, cut, 0u, 0, tick, units, storage);
 }
 
+static uint64_t m_count(const ivs_machine *m)
+{
+  return ((const struct ivs_machine *)m)->obs.input.count;
+}
+
 int sc_witness_state_holds(const sc_cut *cut, const ivs_machine *m)
 {
   const sc_def *d = sc_def_find(cut->id);
@@ -349,6 +439,10 @@ int sc_witness_state_holds(const sc_cut *cut, const ivs_machine *m)
   c.x.m = (ivs_machine *)(uintptr_t)m;
   c.x.storage = (uint8_t *)(uintptr_t)m;
   c.run = sc_run_find(cut->program);
+  if (c.run != NULL) {
+    c.ev = sc_events(c.run, &c.nev); /* a host that resubmits its events from the applied count: the count is the instance's */
+  }
+  c.consumed = (uint32_t)m_count(m);
   r = d->state(&c);
   free(c.probe);
   return r;
@@ -452,7 +546,19 @@ static int sc_witness_cpu(void)
   return sc_witness_family("cpu-points");
 }
 
+static int sc_witness_stic(void)
+{
+  return sc_witness_family("stic-points");
+}
+
+static int sc_witness_device(void)
+{
+  return sc_witness_family("device-points");
+}
+
 const ivs_test_case ivs_state_witness_cases[] = {
     {"state.witness.cpu-points", sc_witness_cpu, NULL},
+    {"state.witness.stic-points", sc_witness_stic, NULL},
+    {"state.witness.device-points", sc_witness_device, NULL},
 };
 const size_t ivs_state_witness_count = sizeof ivs_state_witness_cases / sizeof ivs_state_witness_cases[0];

@@ -319,6 +319,13 @@ static void ivs_digest_domain(const struct ivs_machine *m, uint32_t domain, ivs_
     if (k->state_only != 0u && cls != IVS_SNAP_STATE) {
       continue; /* the snapshot walk: IMAGE, BOUND and PAD rows are never serialized */
     }
+#ifdef IVS_FAULT_SNAPSHOT_STIC_ROWS_OMITTED
+    /* Named fault SNAPSHOT_STIC_ROWS_OMITTED (plan 08-14): the state-only walk skips the STIC rows (the register file and the STIC device
+     * state), as DIGEST_STIC_ROWS_OMITTED models for the digests, so the sections of a snapshot lack them and nothing is left to restore the
+     * display state from. */
+    if (k->state_only != 0u && (f->offset == (uint32_t)offsetof(struct ivs_machine, mem.stic_reg) ||
+                                (f->offset >= (uint32_t)offsetof(struct ivs_machine, stic) && f->offset < (uint32_t)offsetof(struct ivs_machine, obs)))) continue;
+#endif
 #ifdef IVS_FAULT_DIGEST_SKIPS_RAM
     if (f->offset == (uint32_t)offsetof(struct ivs_machine, mem.sysram)) continue;
 #endif

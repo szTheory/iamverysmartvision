@@ -74,3 +74,11 @@ state.judge.refusal-expectation-corrupt
 state.witness.cpu-points
 state.cut.cpu-points
 state.judge.cut-compare-detects-divergence
+# Plan 08-14 Task 2: the stic and device cuts (mid-frame, the designed latch program, the MOB cut of the second diagnostic, the PSG and envelope mid-phase, input, log) are
+# re-proved by their witness ids and compared with the uninterrupted run by their cut ids (state.cut.stic-points is the must-fail id of SNAPSHOT_STIC_ROWS_OMITTED and always runs
+# the whole set); state.cut.latch-not-recomputed shows that the latch program discriminates a restore that recomputes stic.row_latch from the BACKTAB words.
+state.witness.stic-points
+state.witness.device-points
+state.cut.stic-points
+state.cut.device-points
+state.cut.latch-not-recomputed

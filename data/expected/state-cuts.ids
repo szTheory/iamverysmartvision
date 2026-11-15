@@ -21,10 +21,10 @@ HP-HLT P-HLT 372 cpu-points
 HP-HALTED P-HLT 15168 cpu-points
 HP-FAULTED P-FAULT 540 cpu-points
 HP-RESETPEND none 0 cpu-points
-HP-FRAME-MID lamp-idle pending-08-14 stic-points
-HP-LATCH P-LATCH pending-08-14 stic-points
-HP-MOB diag-stic-2-collision pending-08-14 stic-points
-HP-PSG-MID P-PSG pending-08-14 device-points
-HP-ENV-MID P-PSG pending-08-14 device-points
-HP-INPUT lamp-pass pending-08-14 device-points
-HP-LOG lamp-pass pending-08-14 device-points
+HP-FRAME-MID lamp-idle 96652 stic-points
+HP-LATCH P-LATCH 75456 stic-points
+HP-MOB diag-stic-2-collision 153104 stic-points
+HP-PSG-MID P-PSG 66336 device-points
+HP-ENV-MID P-PSG 1320 device-points
+HP-INPUT lamp-pass 100064 device-points
+HP-LOG lamp-pass 25920 device-points

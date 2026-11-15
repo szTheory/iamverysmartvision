@@ -267,6 +267,16 @@ uint32_t sc_cut_compare(const char *label, const sc_run *run, uint64_t tick, uin
     goto done;
   }
   if (info != NULL) {
+    const struct ivs_machine *sm = src.m;
+    uint32_t w;
+    for (w = 0u; w < 0x18u; w++) {
+      info->mob |= sm->mem.stic_reg[w];
+    }
+    for (w = 0x18u; w < 0x20u; w++) {
+      info->coll |= sm->mem.stic_reg[w];
+    }
+    info->pulldown = (uint32_t)sm->mem.port_pulldown[0] | (uint32_t)sm->mem.port_pulldown[1];
+    info->slot_bytes = ref->info.video_slot_bytes;
     ivs_sha256_digest(snap, n, info->snap_sha);
     info->units1 = l1.units;
     info->vbytes1 = l1.vbytes;
@@ -391,8 +401,31 @@ done:
 
 /* ---- the ids ---- */
 
-/* The cuts of a family through the comparison. */
-static int sc_cut_family(const char *family)
+/* What a cut must show besides equality (the plan's per-cut checks): that the state of the cut is the one its predicate names, so that equality
+ * is not the equality of two empty things. 1 when it holds. */
+static int sc_cut_extra(const sc_cut *c, const sc_cmp_info *i)
+{
+  const char *id = c->id;
+  if (strcmp(id, "HP-FRAME-MID") == 0 || strcmp(id, "HP-LATCH") == 0) {
+    return i->vbytes2 >= i->slot_bytes; /* a video slot completed after the restore, compared byte for byte with the reference's */
+  }
+  if (strcmp(id, "HP-MOB") == 0) {
+    return i->mob != 0u && i->coll != 0u && i->vbytes2 >= i->slot_bytes; /* MOB registers and a sticky collision bit, and the slot */
+  }
+  if (strcmp(id, "HP-INPUT") == 0) {
+    return i->consumed1 == 1u && i->pulldown != 0u; /* one event applied, a pull-down in force; the other events are resubmitted from the count */
+  }
+  if (strcmp(id, "HP-LOG") == 0) {
+    return i->lbytes1 > 0u; /* the log has records before the cut: the record index continues */
+  }
+  if (strcmp(id, "HP-PSG-MID") == 0 || strcmp(id, "HP-ENV-MID") == 0) {
+    return i->abytes1 > 0u && i->abytes2 > 0u; /* audio samples on both sides of the cut */
+  }
+  return 1;
+}
+
+/* The cuts of a family through the comparison. full: the must-fail id of a fault runs every cut with the whole window in a fault run. */
+static int sc_cut_family(const char *family, int full)
 {
   size_t i;
   size_t n = 0u;
@@ -408,7 +441,7 @@ static int sc_cut_family(const char *family)
     }
     n++;
     /* the fault-run reduced point set: every fourth cut (the must-fail id of no fault, D-40) */
-    if (ST_FAULT_STRIDE > 1u && (n - 1u) % 4u != 0u) {
+    if (!full && ST_FAULT_STRIDE > 1u && (n - 1u) % 4u != 0u) {
       continue;
     }
     run = sc_run_find(c->program);
@@ -417,7 +450,7 @@ static int sc_cut_family(const char *family)
       ok = 0;
       continue;
     }
-    end = sc_window_end(c->tick, sc_cut_end(c), 0);
+    end = sc_window_end(c->tick, sc_cut_end(c), full);
     f = sc_cut_compare(c->id, run, c->tick, end, SC_T_NONE, 0, &info);
     ivs_test_diag("cut %s: tick %llu, end %llu, %llu + %llu units, video %llu + %llu bytes, audio %llu + %llu, log %llu + %llu, events %u before the cut%s", c->id,
                   (unsigned long long)info.tick, (unsigned long long)info.end, (unsigned long long)info.units1, (unsigned long long)info.units2,
@@ -425,6 +458,11 @@ static int sc_cut_family(const char *family)
                   (unsigned long long)info.abytes2, (unsigned long long)info.lbytes1, (unsigned long long)info.lbytes2, (unsigned)info.consumed1,
                   f == 0u ? "" : " FAILED");
     ST_REQ(ok, f == 0u);
+    if (f == 0u && !sc_cut_extra(c, &info)) {
+      ivs_test_diag("cut %s: the state of the cut is not the state its predicate names (MOB %04X, collision %04X, pull-downs %02X, events %u)", c->id,
+                    (unsigned)info.mob, (unsigned)info.coll, (unsigned)info.pulldown, (unsigned)info.consumed1);
+      ok = 0;
+    }
   }
   sc_ref_free();
   ST_REQ(ok, n > 0u);
@@ -433,7 +471,97 @@ static int sc_cut_family(const char *family)
 
 static int sc_cut_cpu(void)
 {
-  return sc_cut_family("cpu-points");
+  return sc_cut_family("cpu-points", 0);
+}
+
+static int sc_cut_stic(void)
+{
+  return sc_cut_family("stic-points", 1); /* the must-fail id of SNAPSHOT_STIC_ROWS_OMITTED: always the full set */
+}
+
+static int sc_cut_device(void)
+{
+  return sc_cut_family("device-points", 0);
+}
+
+/* state.cut.latch-not-recomputed (D-17, HP-LATCH): P-LATCH stores a changing value into a word of an already latched row after its fetch, in a
+ * Color Stack frame, so the latched copy stic.row_latch differs from the current BACKTAB word at the cut. The snapshot is restored twice into
+ * poisoned targets: the real restore equals the reference (state.cut.stic-points shows that); the variant target is the real one with
+ * stic.row_latch recomputed from the BACKTAB words (what a restore that derives the latch would leave), and its continuation must differ from
+ * the reference in the first video slot completed after the cut, which renders row 0 from the latch. If the variant happened to equal the
+ * reference the program would not discriminate a recomputing restore, and the test fails. */
+static int sc_latch_not_recomputed(void)
+{
+  const sc_cut *c = sc_cut_find("HP-LATCH");
+  const sc_run *run = c != NULL ? sc_run_find(c->program) : NULL;
+  const sc_ref *ref;
+  uint64_t end;
+  ivs_ms_inst src;
+  ivs_ms_inst real;
+  ivs_ms_inst var;
+  sc_leg l1;
+  sc_leg lr;
+  sc_leg lv;
+  uint8_t *snap;
+  size_t n = 0u;
+  uint32_t slot;
+  uint32_t differing = 0u;
+  uint32_t r;
+  uint32_t k;
+  int ok = 1;
+  ST_CHECK(run != NULL && c->tick != SC_PENDING);
+  end = sc_window_end(c->tick, sc_cut_end(c), 0);
+  ref = sc_ref_get(run, end);
+  ST_CHECK(ref != NULL);
+  slot = ref->info.video_slot_bytes;
+  snap = (uint8_t *)malloc(IVS_SNAPSHOT_MAX_BYTES);
+  ST_CHECK(snap != NULL);
+  memset(&l1, 0, sizeof l1);
+  memset(&lr, 0, sizeof lr);
+  memset(&lv, 0, sizeof lv);
+  if (!sc_new(&src, run, 1) || !sc_run_leg(src.m, c->tick, NULL, 0u, 0u, &l1) || ((const struct ivs_machine *)src.m)->time_ticks != c->tick ||
+      !su_snapshot(src.m, snap, IVS_SNAPSHOT_MAX_BYTES, &n) || !sc_new(&real, run, 1) || !sc_new(&var, run, 1)) {
+    ivs_test_diag("the HP-LATCH run could not be set up");
+    free(snap);
+    return IVS_TEST_FAIL;
+  }
+  state_poison(real.m);
+  state_poison(var.m);
+  ST_REQ(ok, ivs_machine_snapshot_restore(real.m, snap, n, NULL) == IVS_OK);
+  ST_REQ(ok, ivs_machine_snapshot_restore(var.m, snap, n, NULL) == IVS_OK);
+  {
+    struct ivs_machine *v = (struct ivs_machine *)var.m;
+    for (r = 0u; r < 12u; r++) {
+      for (k = 0u; k < 20u; k++) {
+        v->stic.row_latch[r][k] = v->mem.sysram[r * 20u + k]; /* the latch rebuilt from the BACKTAB words, not restored */
+      }
+    }
+  }
+  ST_REQ(ok, memcmp(real.storage, src.storage, IVS_MACHINE_BYTES) == 0);
+  ST_REQ(ok, memcmp(var.storage, src.storage, IVS_MACHINE_BYTES) != 0); /* the cut has a latch that BACKTAB cannot give back */
+  ST_REQ(ok, sc_run_leg(real.m, end, NULL, 0u, 0u, &lr) && sc_run_leg(var.m, end, NULL, 0u, 0u, &lv));
+  if (ok) {
+    const uint8_t *want = ref->leg.video + l1.vbytes;
+    ST_REQ(ok, lr.vbytes >= slot && lv.vbytes >= slot && lr.vbytes == ref->leg.vbytes - l1.vbytes && lv.vbytes == lr.vbytes);
+    if (lr.vbytes >= slot && lv.vbytes >= slot) {
+      for (k = 0u; k < slot; k++) {
+        differing += (uint32_t)(lv.video[k] != want[k]);
+      }
+      ST_REQ(ok, memcmp(lr.video, want, (size_t)lr.vbytes) == 0);              /* the real restore: the slots are the reference's */
+      ST_REQ(ok, differing > 0u);                                              /* the recomputing variant: the first slot is not */
+      ivs_test_diag("the first video slot after the cut: the real restore equals the reference, the recomputed latch differs in %u of %u bytes", (unsigned)differing,
+                    (unsigned)slot);
+    }
+  }
+  sc_leg_free(&l1);
+  sc_leg_free(&lr);
+  sc_leg_free(&lv);
+  ivs_ms_free(&src);
+  ivs_ms_free(&real);
+  ivs_ms_free(&var);
+  free(snap);
+  sc_ref_free();
+  return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
 }
 
 /* state.judge.cut-compare-detects-divergence: the comparison is run with a target that was changed on purpose after the restore (one byte of
@@ -467,6 +595,9 @@ static int sc_judge_cut_compare(void)
 
 const ivs_test_case ivs_state_cut_cases[] = {
     {"state.cut.cpu-points", sc_cut_cpu, NULL},
+    {"state.cut.stic-points", sc_cut_stic, NULL},
+    {"state.cut.device-points", sc_cut_device, NULL},
+    {"state.cut.latch-not-recomputed", sc_latch_not_recomputed, NULL},
     {"state.judge.cut-compare-detects-divergence", sc_judge_cut_compare, NULL},
 };
 const size_t ivs_state_cut_count = sizeof ivs_state_cut_cases / sizeof ivs_state_cut_cases[0];

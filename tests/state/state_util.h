@@ -302,6 +302,9 @@ typedef struct sc_cmp_info {
   uint64_t units1, units2;
   uint64_t vbytes1, vbytes2, abytes1, abytes2, lbytes1, lbytes2;
   uint32_t consumed1;
+  uint32_t slot_bytes;     /* video_slot_bytes of ivs_info */
+  uint32_t mob, coll;      /* the OR of the STIC register words 0x00 to 0x17 and 0x18 to 0x1F of the source at the cut */
+  uint32_t pulldown;       /* the OR of the two port pull-down masks of the source at the cut */
   uint8_t snap_sha[32];
 } sc_cmp_info;
 /* label names the case in the diagnostics; quiet suppresses them (the judge runs corrupted comparisons). */

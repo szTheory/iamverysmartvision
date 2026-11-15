@@ -26,3 +26,8 @@ RESTORE_IMAGE_DIGEST_UNCHECKED state.restore.refuse-identity-slots state. state.
 # RESTORE_MUTATES_BEFORE_VALIDATE (core/src/machine/machine_snapshot_restore.c): the CPU rows are committed into the instance before the STIC validators run, so a snapshot
 # that a STIC validator refuses has already changed the instance; the whole-instance comparison over every refusal row sees it.
 RESTORE_MUTATES_BEFORE_VALIDATE state.restore.atomic-every-refusal state. state.read.describe-ok
+# SNAPSHOT_STIC_ROWS_OMITTED (core/src/machine/machine_digest.c): the state-only walk of the snapshot skips the STIC rows (the register file and the STIC device state), as
+# DIGEST_STIC_ROWS_OMITTED models for the digests: the sections lack them, the lengths derived on paper no longer hold and nothing is left to restore the display state from;
+# the cut comparison of the stic points is the test that must see it. The must-pass id is the witness id of the same cuts: it reads no snapshot, so it stays green when the
+# sections are wrong (state.read.describe-refuse-args, the id the plan named, builds on a valid snapshot and fails with the rest of the reader and writer ids).
+SNAPSHOT_STIC_ROWS_OMITTED state.cut.stic-points state. state.witness.stic-points
