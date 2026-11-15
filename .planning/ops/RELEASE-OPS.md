@@ -48,3 +48,23 @@ The first release is a draft pre-release created by the workflow and published b
 ## (g) The 0.1.0 section of CHANGELOG.md
 
 The `## [0.1.0]` section is the stage-1 draft written by plans 08-20 and 08-21. Until it exists, `sh tools/release.sh --release`, `--publish` and `sh tools/release-readiness.sh --release` halt on `release-changelog-section-missing: 0.1.0` by design, and the plain gate, the plain dry run and the plain rehearsal stay green. Before tagging, the orchestrator runs `sh tools/release-rehearse.sh --release` and expects it to finish with `rehearse: ok`.
+
+## (h) The stage 2 check and the order of the orchestrator's actions (plan 08-21)
+
+The close record `.planning/phases/08-stic-completion-save-state-performance-baselines/08-MILESTONE-CLOSE.md` holds every fact that exists only after the merge as a literal placeholder: the word stage2 inside angle brackets. The records pull request proves that none remains with the command below, run from the repository root; it prints each remaining line and exits 1, and it exits 0 when the record is complete. If the milestone tool has archived the phase directory, use the path of the record under `.planning/milestones/`. The explanatory text of the record never writes the literal, so the grep finds only real placeholders.
+
+```sh
+f=.planning/phases/08-stic-completion-save-state-performance-baselines/08-MILESTONE-CLOSE.md
+if grep -n '<stage2>' "$f"; then echo "stage2 placeholders remain"; exit 1; fi
+```
+
+The order of the orchestrator's actions, as the record needs them. None is an executor action, and at the Phase 8 close none was started because the owner paused the flow after Phase 8 (relayed by the orchestrator).
+
+1. Merge the Phase 8 pull request with green CI. The merge commit is the artifact commit of section A.
+2. Record the push run on the merge commit with `tools/ci-record.sh` (an `event=push` row of `.planning/ci-runs.tsv`); this gives the lines of section B.
+3. Open the `gsd/records-m1-close` branch and make the `git.create_tag` change of item a as its first commit, alone, before the milestone tool is used.
+4. Read GitHub once with `sh tools/release-readiness.sh --hosted` (five read-only calls); this gives the counts and dispositions of section C and the ruleset read, and the immutable-release setting of hand-off H8-6 is read at the same time.
+5. Tag `v0.1.0` on the artifact commit, let the workflow create the draft, read it with `gh release view --json`, and check P1 to P8 (item d); publish only if all hold, otherwise the decision line reads `READY, NOT PUBLISHED: blocked by P<n>` with the evidence that clears it.
+6. Fill every placeholder of the record (sections A, B, C, I and K), run the check above until it prints nothing, and run `sh tools/gate.sh` on the records branch.
+7. Mark REL-01 complete in `.planning/REQUIREMENTS.md` (the checkbox and the traceability row, with a note that stage 2 is recorded), record the release in `.planning/STATE.md` (`.planning/AUTONOMY.md` section 5, step 6) and write the CI-efficiency entry for the release workflow.
+8. Merge the records pull request; then run the milestone audit, the milestone completion on a records branch and the cleanup (`08-DISCUSS-release.md` section 5).
