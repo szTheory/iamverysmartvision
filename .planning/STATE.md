@@ -474,15 +474,13 @@ None yet.
 
 ### Blockers/Concerns
 
-Gates resolved as delegated decisions (owner authorization 2026-11-09, `.planning/AUTONOMY.md`; see PROJECT.md Decision Register):
-- D1 C17 + CMake; D2 master tick (u64); D3 `intv-2609-ntsc-family-p1`; D9 MIT + public repo after hygiene check.
+Decision gates (PROJECT.md Decision Register; owner authorization 2026-11-09, `.planning/AUTONOMY.md`):
+- Delegated decisions, recorded: D1 C17 + CMake; D2 master tick (u64); D3 `intv-2609-ntsc-family-p1`; D4 fixture assembler policy (Phase 4, re-evaluated in Phase 7: `ivs_asm`); D5 system images user-supplied only with a project boot stub (Phase 3); D6 logical controller input (Phase 4); D7 reference PCM outside the core (Phase 5); D8 159 x 96 framebuffer (Phase 6); D9 MIT, public repository, publication through the delegated release flow; D12 one hosted job, no matrix (Phase 4).
+- Hard stops (not delegated), open and not performed: D10 physical measurement and D11 owner-local EXEC/GROM runs; evidence is marked missing and work continues.
+- Deferred: D13 (LibFuturo adapter or shared-contract change), not before a real consumer exists.
+- The persistence policy (open question 8) was decided in Phase 8 (plan 08-17) as a delegated decision: bytes only from the core, files are a host's policy, exact-build and not archival. Performance targets (open question 11): PRF-01 sets none.
 
-D5 decided 2026-11-11 by the fan-out protocol (Phase 3 D-24, PROJECT.md Decision Register).
-Still open, decided by fan-out protocol when their phase needs them: D4 (Phase 4), D6 (Phase 4/5), D7 (Phase 5), D8 (Phase 6), D12 (Phase 4), D13 (deferred).
-Hard stops (not delegated): D10 physical measurement, D11 owner-local EXEC/GROM runs — evidence marked missing, work continues.
-
-
-Other open questions: cartridge import format (OQ4, Phase 3), first scenario title/program (OQ9, Phase 7). Persistence policy (OQ8) was decided in plan 08-17 as a delegated decision (bytes only from the core, files are a host's policy, exact-build and not archival).
+Open questions that remain: unusual cartridge memory maps and further import formats (OQ4; IVSC v1 is the one format, others are v2), IntelliVoice, ECS, Intellivision II and clones (OQ6; a later roadmap decision), the first consumer and any LibFuturo adapter (OQ10; D13 deferred). The first scenario program (OQ9) was decided in Phase 7 (Lamp Tone).
 
 Concerns:
 - 8 phases exceeds `standard` granularity guidance (4-6); justified by five high-uncertainty subsystems (PIT-18). Revisit at milestone discussion.

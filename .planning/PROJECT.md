@@ -21,7 +21,40 @@ unqualified "it runs Intellivision games" label.
 
 ### Validated
 
-(None yet — ship to validate)
+Each capability below is complete on documented terms (requirement text met by
+gate evidence, recorded in the phase VERIFICATION record and the REQUIREMENTS
+close-out notes), its claims are provisional (one claim, CL-0002, is
+established) and nothing was measured on hardware: D10 and D11 are not
+performed. REL-01 is excluded until its second stage (the records pull request
+after the merge, Phase 8 D-28). The Active list below is kept as written at
+kickoff.
+
+- Evidence, profile and rights foundations (FND-01..07, Phase 1): complete on
+  documented terms, claims provisional, nothing measured.
+- CP-1610 CPU (CPU-01..05, Phase 2): complete on documented terms, claims
+  provisional, nothing measured.
+- Memory map, content loading and refusal (MEM-01..05, Phase 3): complete on
+  documented terms, claims provisional, nothing measured.
+- Core contract and host independence (API-01..06, Phases 2 to 5): complete on
+  documented terms, claims provisional, nothing measured.
+- Headless runner and verification (RUN-01..06, Phases 2 and 4): complete on
+  documented terms, claims provisional, nothing measured.
+- Packaging, local gate and CI (PKG-01..04, Phases 2 and 4): complete on
+  documented terms, claims provisional, nothing measured.
+- Hand controllers (INP-01..03, Phase 5): complete on documented terms, claims
+  provisional, nothing measured.
+- PSG sound (AUD-01, AUD-02, Phase 5): complete on documented terms, claims
+  provisional, nothing measured.
+- STIC video (VID-01..06, Phases 6 and 8): complete on documented terms, claims
+  provisional, nothing measured; the unresolved STIC behaviours stay on the
+  `unknown-default-chosen` list of the discrepancy log.
+- Visible original scenario (SCN-01, SCN-02, Phase 7): complete on documented
+  terms, claims provisional, nothing measured; SCN-02 is the documented
+  owner-local route only, with no real EXEC or GROM run (D11 not performed).
+- Snapshots, restore and performance baselines (STA-01, STA-02, PRF-01,
+  Phase 8): complete on documented terms, claims provisional, nothing
+  measured; the committed benchmark baseline is informational because it was
+  taken on a host that was not idle.
 
 ### Active
 
@@ -176,6 +209,8 @@ These come from a researched fan-out recommendation that was auto-adopted. Each 
 | D12 | CI shape: one ubuntu-24.04 job, no matrix, no cache, no artifacts, no macOS leg, job summary from the gate, run record file (Phase 4 D-41..D-45) | An Apple-only failure reaching main, a shared library, or a median hosted gate above budget after levers |
 | D10 | Physical hardware measurement: OPEN, a hard stop and not performed; the 42 items of `data/expected/d10-measurements.ids` are handed off and no claim uses the `measured-hardware` tier | Owner-approved measurement evidence (D10), ingested per `docs/input/d10-procedure.md` and `docs/stic/d10-procedure.md` |
 | D11 | Owner-local run of a real EXEC and GROM image through the runner (the SCN-02 route, `docs/owner-images.md`): OPEN, a hard stop and not performed; SCN-02 is complete on documented-route terms only (the route page, a counted skipped template scenario, the owner-run helper with tested refusals, the refusal of derived audio and log output for user content, manifests labelled not redistributable); no EXEC or GROM digest is recorded, and no result, claim or tier exists | The owner runs the helper with their own images (never committed, never in CI) and records the outcome as D11 items; documented redistribution permission would be needed before any image or digest enters the repository |
+| OQ8 | Snapshot persistence policy (open question 8; Phase 8 D-19, plan 08-17; Delegated decision, owner authorization 2026-11-09): the core returns bytes and nothing else, so it writes no file and chooses no name, slot, location, compression, encryption or autosave, and no machine behaviour depends on a file; where a snapshot goes is a host's policy, with no default save location; the runner has no snapshot file option in this phase (`--snapshot-out` and `--snapshot-in` are deferred and, when added, are runner-only, take an explicit path and are refused for a `content user` scenario); the container IVSN v1 is exact-build and not archival (one pair of format version and schema version per build, any other pair refused as unsupported, no migration before 1.0); `.ivsn` is rights-bearing by name | Reversal evidence: a consumer that needs archival snapshots (a migration story and a versioning policy), a default location, or battery-backed cartridge RAM; reversible by adding sections and raising the section count and the schema version together |
+| OQ11 | Performance targets (open question 11; Phase 8 PRF-01; Delegated decision, owner authorization 2026-11-09): PRF-01 sets none. The benchmark tool asserts a workload's digest before it reports any figure, a figure is repeatability-only information about one build on one host and never a claim, no check compares a figure with a threshold, and Phase 8 optimized nothing; the committed baseline record is informational | Reversal evidence: a consumer states a frame-rate need (then a target, a workload that represents it and a baseline taken on an idle host) |
 
 D4, D6 and D12 were decided by the fan-out protocol on 2026-11-11; D7 on 2026-11-12 (Phase 5), D8 on 2026-11-12 (Phase 6) (Delegated decision, owner authorization 2026-11-09).
 
@@ -200,16 +235,16 @@ Phase 7 notes on the register above (plan 07-12, 2026-11-13; Delegated decision,
 - **SCN-02 and D11:** SCN-02 is complete on documented-route terms (Phase 5 and 6 close-out precedent); D11 stays open and not performed, so there is no claim-ledger entry and no tier for any real-EXEC result, and no known EXEC or GROM digest is recorded in the repository.
 - **D9 (applied to stale text):** the licence is MIT and release publication is a delegated flow; the lines that still called the licence an owner gate (the Out of Scope list, the owner-gate row above, REL-01) were corrected at the Phase 7 transition. A release ships the program only as tracked source; neither the runner nor `ivs_pack` nor `ivs_asm` is installed, so nothing downloadable is runnable yet (`docs/packaging.md`, "Release content").
 
-D5 and the cartridge format were decided by the fan-out protocol on 2026-11-11 (Delegated decision, owner authorization 2026-11-09). D6, D7, D8 and D12 were not decided in Phase 1 and are decided by the fan-out protocol when their phase needs them; D10 and D11 remain hard stops with evidence marked missing (D-05).
+D5 and the cartridge format were decided by the fan-out protocol on 2026-11-11 (Delegated decision, owner authorization 2026-11-09). D6, D7, D8 and D12 were not decided in Phase 1; each was decided by the fan-out protocol in the phase that needed it (rows above). D10 and D11 remain hard stops with evidence marked missing (D-05) and were not performed.
 
 ### Recommendations (not owner decisions)
 
 | Recommendation | Rationale | Status |
 |----------------|-----------|--------|
-| Early end-to-end slice: one explicitly named Master Component profile + original diagnostic fixture + independent headless consumer | Exercises core, runner, fixture provenance and consumer boundary together | — Pending owner/discussion |
-| 2609-family Master Component as the candidate first profile | Original NTSC console; best-documented; MAME/jzIntv/manuals all reference it | — Pending (revision/region not chosen) |
+| Early end-to-end slice: one explicitly named Master Component profile + original diagnostic fixture + independent headless consumer | Exercises core, runner, fixture provenance and consumer boundary together | ✓ Phase 4: Slice 0, an original diagnostic through the runner and the relocated installed consumer |
+| 2609-family Master Component as the candidate first profile | Original NTSC console; best-documented; MAME/jzIntv/manuals all reference it | ✓ Adopted as D3, `intv-2609-ntsc-family-p1` (delegated decision); a board revision stays unmeasured (D10) |
 | Keep one playable/homebrew scenario visible early | Prevent research-only drift | ✓ Phase 7: the original program Lamp Tone (tracked source, CL-0023), no third-party title |
-| Original source-built diagnostics over third-party test ROMs | No cleared conformance suite found | — Pending |
+| Original source-built diagnostics over third-party test ROMs | No cleared conformance suite found | ✓ Applied: project-authored diagnostics and the Lamp Tone program, no third-party test ROM |
 
 ### GSD-generated decisions (reversible defaults)
 
@@ -234,13 +269,15 @@ D5 and the cartridge format were decided by the fan-out protocol on 2026-11-11 (
 7. Implementation language and build system; public API/ABI; error, ownership
    and versioning policy.
 8. Debugger/headless runner shape; save-state and battery-backed persistence.
+   (Persistence policy decided in Phase 8: Decision Register row OQ8.)
 9. Initial original/cleared fixture and independent oracle; first playable or
    homebrew scenario.
 10. First consumer and supported runtime/platforms; whether/when to pursue a
     LibFuturo adapter.
 11. Dependency policy details, new-code license, repository visibility, release
     artifacts, performance targets. (Licence MIT and visibility public: D9;
-    release content: `docs/packaging.md`; performance targets remain open.)
+    release content: `docs/packaging.md`; performance targets: PRF-01 sets none,
+    Decision Register row OQ11.)
 
 ## Evolution
 
@@ -262,4 +299,4 @@ This document evolves at phase transitions and milestone boundaries.
    of exact tested artifact targeted when rights/readiness/authority permit
 
 ---
-*Last updated: 2026-11-13 after Phase 7 close-out (plan 07-12)*
+*Last updated: 2026-11-15 after the Phase 8 stale-text sweep (plan 08-20)*

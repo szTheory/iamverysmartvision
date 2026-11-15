@@ -15,8 +15,9 @@ differentiators and all variant/peripheral profiles are v2.
   are *parameters*, not silent decisions. Where a requirement depends on an
   open decision it names the decision (`D#`, see "Decision Gates").
 - "Profile" means an explicitly named hardware/content configuration recorded
-  as data with per-field provenance tags. The recommended first profile is the
-  2609-family NTSC Master Component (recommendation, not an owner decision).
+  as data with per-field provenance tags. The first profile is the
+  2609-family NTSC Master Component, `intv-2609-ntsc-family-p1` (delegated
+  decision D3, recorded in PROJECT.md).
 - "Evidence tier" means one of: source expectation, public vector, original
   diagnostic, independent-implementation comparison, measured hardware,
   deterministic repeatability, playable guest progress, installed-host
@@ -156,7 +157,7 @@ Deferred. Tracked, not in the current roadmap. Each becomes its own profile/slic
 
 ## Decision Gates
 
-Open decisions referenced by requirements. None are decided by this document.
+Decisions referenced by requirements. This document decides none of them; the status column says where each was decided. D1 to D9 and D12 are delegated decisions, D10 and D11 are open owner hard stops that were not performed, and D13 is deferred.
 
 | # | Decision | Status | Needed before |
 |---|----------|--------|---------------|
@@ -164,14 +165,14 @@ Open decisions referenced by requirements. None are decided by this document.
 | D2 | CPU-cycle unit, time base, crystal constant | Delegated decision 2026-11-09 (PROJECT.md) | CPU phase |
 | D3 | First profile: 2609 NTSC recommended; revision, STIC/PSG parts, power-on RAM policy | Delegated decision 2026-11-09 (PROJECT.md) | Foundations exit |
 | D4 | Fixture assembler policy (pinned dev-only `as1600` + cross-check vs project mini-assembler) | Delegated decision 2026-11-11 (Phase 4 D-25: hand-assembled listings); re-evaluated in Phase 7 (D-16, D-19): project mini-assembler `ivs_asm`, never shipped, `PROJECT.md` | Runner phase; Phase 7 |
-| D5 | System-image policy: user-supplied EXEC/GROM only; project boot stub for CI, labelled "not an EXEC" | Decided in Phase 3 (D-24, delegated) | Loader / runner phases |
-| D6 | Controller core-input representation (logical lossless vs electrical per port) | Owner + architecture — open (conflict C14) | Core API skeleton |
-| D7 | Reference PCM location (core observation layer vs host) | Architecture — open | Sound phase |
-| D8 | Raw framebuffer geometry (159 vs 160 visible, nominal grid) | Architecture + evidence — open | Video phase |
-| D9 | License, repository visibility, naming/trademark, publication | Delegated decision 2026-11-09 (PROJECT.md) | Any external publication |
+| D5 | System-image policy: user-supplied EXEC/GROM only; project boot stub for CI, labelled "not an EXEC" | Delegated decision 2026-11-11 (PROJECT.md; Phase 3 D-24) | Loader / runner phases |
+| D6 | Controller core-input representation (logical lossless vs electrical per port) | Delegated decision 2026-11-11 (PROJECT.md; Phase 4 D-12, D-25, D-41): logical switch state per PSG port | Core API skeleton |
+| D7 | Reference PCM location (core observation layer vs host) | Delegated decision 2026-11-12 (PROJECT.md; Phase 5 D-15, D-21): outside the core, `tools/pcm`, runner `--audio-wav` only | Sound phase |
+| D8 | Raw framebuffer geometry (159 vs 160 visible, nominal grid) | Delegated decision 2026-11-12 (PROJECT.md; Phase 6 D-12): 159 x 96, reversible by one profile field | Video phase |
+| D9 | License, repository visibility, naming/trademark, publication | Delegated decision 2026-11-09 (PROJECT.md); the delegated release flow (`.planning/AUTONOMY.md` section 5) applies at the Phase 8 milestone close | Any external publication |
 | D10 | Physical hardware measurement | Owner gate | Any measured-tier claim |
 | D11 | Owner-local real EXEC/GROM runs | Owner gate — open, not performed (SCN-02 documented route only: no result, claim or tier) | Any real-EXEC result |
-| D12 | CI shape (job count, sanitizers, fuzz schedule) | Architecture — open | Runner/CI phase |
+| D12 | CI shape (job count, sanitizers, fuzz schedule) | Delegated decision 2026-11-11 (PROJECT.md; Phase 4 D-41 to D-45): one ubuntu-24.04 job, no matrix | Runner/CI phase |
 | D13 | LibFuturo adapter / shared-contract change | Owner gate | Not before a real consumer |
 
 ## Traceability
@@ -250,4 +251,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-11-09*
-*Last updated: 2026-11-14 after the Phase 8 wave B close-out (plan 08-17)*
+*Last updated: 2026-11-15 after the Phase 8 stale-text sweep (plan 08-20), ahead of the Phase 8 close-out (plan 08-21)*
