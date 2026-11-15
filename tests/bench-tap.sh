@@ -7,6 +7,8 @@
 # bench.verify.<workload>: `--verify-only --workload <id>` exits 0 with nothing on stderr and prints the format line `bench-format 1`,
 # the header and exactly one row of status `verified` for that workload, whose scenario column is the one the table names, whose
 # tier column is repeatability-only, whose ci_time column is the pointer text, and whose throughput and latency columns are empty.
+# bench.verify.bench-lamp-snapshot (plan 08-19) is the same case for the row of the table that runs the idle scenario with the round-trip
+# hook, and its static counts must equal those of the idle row. bench.workloads.table-consistent (plan 08-19) reads files only.
 # bench.mutant.refuse-mutated-golden (D-22, D-25): a golden copied to a scratch directory with one hex digit of a digest line changed
 # makes the tool exit 15 with the bench-refuse line naming the mutated key and a row of status refused without any measurement, in a
 # verification-only run and in a run of one timed iteration (the timed path must stay unreachable). bench.refuse.wrong-ticks: a
@@ -91,13 +93,15 @@ tsv_check() {
   ' "$1"
 }
 
-# verify_case <workload> <scenario>: bench.verify.<workload>.
+# verify_case <workload> <scenario> [<peer>]: bench.verify.<workload>. The output is kept as $tmp/v.<workload>.out. With a peer (a workload
+# verified earlier by this suite, plan 08-19), the static columns ticks_per_iter, cpu_cycles_per_iter and frames_per_iter (11 to 13) of
+# the row must equal those of the peer's row: the snapshot workload runs the scenario of the idle workload.
 verify_case() {
   n=$((n + 1))
   tid="bench.verify.$1"
   executed=$((executed + 1))
   ok=1
-  "$bench" --verify-only --root "$root" --content-dir "$content" --workload "$1" > "$tmp/v.out" 2> "$tmp/v.err"
+  "$bench" --verify-only --root "$root" --content-dir "$content" --workload "$1" > "$tmp/v.$1.out" 2> "$tmp/v.err"
   rc=$?
   if [ "$rc" -ne 0 ]; then
     ok=0
@@ -106,8 +110,16 @@ verify_case() {
     ok=0
     { printf 'stderr is not empty\n'; cat "$tmp/v.err"; } > "$tmp/why"
   else
-    tsv_check "$tmp/v.out" 1 verified "$1" "$2" > "$tmp/why"
+    tsv_check "$tmp/v.$1.out" 1 verified "$1" "$2" > "$tmp/why"
     if [ -s "$tmp/why" ]; then ok=0; fi
+    if [ "$ok" -eq 1 ] && [ -n "${3:-}" ]; then
+      _mine=$(sed -n 3p "$tmp/v.$1.out" | cut -f11-13)
+      _peer=$(sed -n 3p "$tmp/v.$3.out" | cut -f11-13)
+      if [ -z "$_mine" ] || [ "$_mine" != "$_peer" ]; then
+        ok=0
+        printf 'ticks_per_iter, cpu_cycles_per_iter and frames_per_iter differ from those of %s: [%s] against [%s]\n' "$3" "$_mine" "$_peer" > "$tmp/why"
+      fi
+    fi
   fi
   report
 }
@@ -116,6 +128,10 @@ verify_case bench-lamp-idle bench-lamp-idle
 verify_case bench-lamp-input bench-lamp-input
 # The cold workload reuses the existing scenario demo-lamp-tone-pass and its golden: its scenario column names that scenario.
 verify_case bench-lamp-cold demo-lamp-tone-pass
+# The snapshot workload (plan 08-19, D-39) is a row of the table over the idle scenario with a round-trip cadence: its verification is
+# the idle golden itself, so a save, reset and restore every 30 frames that changed the report would be refused here, before any
+# figure; its three static counts equal those of the idle row.
+verify_case bench-lamp-snapshot bench-lamp-idle bench-lamp-idle
 
 # ---- plan 08-18, Task 3: the refusal cases, the format proof and the self-control of the absence check ----
 
@@ -350,6 +366,94 @@ if [ "$(cat "$tmp/j.s18")" != "ns_per_guest_cycle holds a value: 16.60" ]; then
   printf 'judge-vacuous: the value in ns_per_guest_cycle was not reported alone: %s\n' "$(cat "$tmp/j.s18")" >> "$tmp/why"
 fi
 if [ -s "$tmp/why" ]; then ok=0; fi
+report
+
+# ---- plan 08-19: the consistency of the workload table ----
+
+# table_findings <table file>: the rules of bench.workloads.table-consistent over a workload table, one finding per line (any output is
+# failure). Per row: seven tab-separated columns; a unique workload id; the scenario has a file data/scenarios/<scenario>.ivss, is a line
+# of data/expected/runner-scenarios.ids (the inventory in $inv) and has a golden data/golden/<scenario>.digests; warmup and iterations
+# are positive integers; roundtrip_ticks is 0 or at least one 64th of the run length (the runner's cut cap is 64); ticks equals the last
+# step.<k>.now_ticks of the golden. For the table: every bench-* line of the inventory is the scenario of some row (no unregistered
+# workload) and a comment line lists the columns. Nothing is run: files and text only.
+table_findings() {
+  _tab=$(printf '\t')
+  _ids=' '
+  _scns=' '
+  _hdr=0
+  _rows=0
+  while IFS=$_tab read -r _wl _scn _warm _iter _rt _ticks _note; do
+    case $_wl in
+      '#'*"workload scenario warmup iterations roundtrip_ticks ticks note"*) _hdr=1; continue ;;
+      '#'*|'') continue ;;
+    esac
+    _rows=$((_rows + 1))
+    case $_note in
+      '') printf '%s: fewer than 7 tab-separated columns\n' "$_wl"; continue ;;
+      *"$_tab"*) printf '%s: more than 7 tab-separated columns\n' "$_wl"; continue ;;
+    esac
+    case $_ids in *" $_wl "*) printf '%s: workload id appears twice\n' "$_wl" ;; esac
+    _ids="$_ids$_wl "
+    _scns="$_scns$_scn "
+    [ -f "$root/data/scenarios/$_scn.ivss" ] || printf '%s: no scenario file data/scenarios/%s.ivss\n' "$_wl" "$_scn"
+    case $inv in *" $_scn "*) ;; *) printf '%s: scenario %s is not a line of data/expected/runner-scenarios.ids\n' "$_wl" "$_scn" ;; esac
+    _gt=
+    if [ -f "$root/data/golden/$_scn.digests" ]; then
+      [ -f "$tmp/gt.$_scn" ] || golden_ticks "$_scn" > "$tmp/gt.$_scn"
+      read -r _gt < "$tmp/gt.$_scn"
+      [ -n "$_gt" ] || printf '%s: the golden holds no step.<k>.now_ticks line\n' "$_wl"
+    else
+      printf '%s: no golden data/golden/%s.digests\n' "$_wl" "$_scn"
+    fi
+    case $_warm in ''|*[!0-9]*|0|0*) printf '%s: warmup is not a positive integer: %s\n' "$_wl" "$_warm" ;; esac
+    case $_iter in ''|*[!0-9]*|0|0*) printf '%s: iterations is not a positive integer: %s\n' "$_wl" "$_iter" ;; esac
+    case $_ticks in
+      ''|*[!0-9]*) printf '%s: ticks is not a decimal number: %s\n' "$_wl" "$_ticks" ;;
+      *) if [ -n "$_gt" ] && [ "$_ticks" != "$_gt" ]; then
+           printf '%s: ticks %s differs from the final machine time %s of the golden\n' "$_wl" "$_ticks" "$_gt"
+         fi ;;
+    esac
+    case $_rt in
+      ''|*[!0-9]*) printf '%s: roundtrip_ticks is not a decimal number: %s\n' "$_wl" "$_rt" ;;
+      0) ;;
+      *) case $_ticks in
+           ''|*[!0-9]*) ;;
+           *) if [ "${#_rt}" -gt 15 ] || [ "${#_ticks}" -gt 15 ] || [ $((_rt * 64)) -lt "$_ticks" ]; then
+                printf '%s: roundtrip_ticks %s is not 0 and not at least one 64th of the run length %s\n' "$_wl" "$_rt" "$_ticks"
+              fi ;;
+         esac ;;
+    esac
+  done < "$1"
+  [ "$_rows" -gt 0 ] || printf 'the table holds no workload row\n'
+  [ "$_hdr" -eq 1 ] || printf 'no comment line lists the columns\n'
+  for _b in $inv; do
+    case $_b in
+      bench-*) case $_scns in *" $_b "*) ;; *) printf 'bench scenario %s has no workload row\n' "$_b" ;; esac ;;
+    esac
+  done
+}
+
+# bench.workloads.table-consistent (D-23): the rules of table_findings hold for data/bench/workloads.tsv. The judge is part of the case:
+# three scratch tables each broken in one way (a wrong ticks column, a missing row of a bench scenario, a cadence below one 64th of the
+# run) must each produce a finding that names that rule, so the rules are shown able to fail.
+n=$((n + 1))
+tid=bench.workloads.table-consistent
+executed=$((executed + 1))
+ok=1
+inv=" $(awk '/^#/ { next } NF { print $1 }' "$root/data/expected/runner-scenarios.ids" | tr '\n' ' ')"
+table_findings "$root/data/bench/workloads.tsv" > "$tmp/why"
+if [ -s "$tmp/why" ]; then ok=0; fi
+tab="$root/data/bench/workloads.tsv"
+awk -F '\t' -v OFS='\t' '/^#/ { print; next } !d { $6 = $6 + 1; d = 1 } { print }' "$tab" > "$tmp/m-ticks.tsv"
+awk -F '\t' '$1 != "bench-lamp-input"' "$tab" > "$tmp/m-row.tsv"
+awk -F '\t' -v OFS='\t' '/^#/ { print; next } $1 == "bench-lamp-snapshot" { $5 = 1 } { print }' "$tab" > "$tmp/m-cadence.tsv"
+for m in ticks:'differs from the final machine time' row:'has no workload row' cadence:'roundtrip_ticks 1 is not 0'; do
+  table_findings "$tmp/m-${m%%:*}.tsv" > "$tmp/m.out"
+  if ! grep -q -F "${m#*:}" "$tmp/m.out"; then
+    ok=0
+    printf 'judge-vacuous: the scratch table m-%s produced no finding that names %s\n' "${m%%:*}" "${m#*:}" >> "$tmp/why"
+  fi
+done
 report
 
 {

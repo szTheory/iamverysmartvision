@@ -15,6 +15,9 @@
  * iteration are compared with iteration 0 after the timed span (a difference is a refusal and no row of measurements). W and N are
  * fixed per workload in the table, never a time budget. Statistics: the median of the per-iteration wall times (the mean of the two
  * middle values for an even N), their maximum, the first timed iteration, and the CPU time of the whole timed loop divided by N.
+ * A row with a non-zero roundtrip_ticks (the snapshot workload, plan 08-19, D-39) passes that cadence to every execution through
+ * IVS_RUNNER_OPT_ROUNDTRIP: its golden is the one of its scenario, so a save, reset and restore that changed the report is refused
+ * like any other mismatch, and a run in which the hook made no cut is a harness failure.
  *
  * Output (D-24): TSV on stdout, the line `bench-format 1`, one header line, one row per workload; three groups that never merge:
  * provenance and static, throughput, latency, then the pointer column ci_time (CI time is never measured here). The tier column is
@@ -555,10 +558,6 @@ static int bench_load_workload(const char *root, const char *golden_dir, bench_w
     (void)bench_err(w->id, "the scenario id differs from the scenario column");
     goto done;
   }
-  if (w->roundtrip_ticks != 0u) {
-    (void)bench_err(w->id, "roundtrip_ticks other than 0 is not supported by this tool yet (plan 08-19)");
-    goto done;
-  }
   if (bench_join(path, sizeof path, golden_dir, "/", w->scenario) != 0 || strlen(path) + 9u >= sizeof path) {
     (void)bench_err(w->id, "golden path too long");
     goto done;
@@ -800,6 +799,12 @@ static int bench_run(const char *content_dir, int verify_only, const bench_workl
   int rc = BENCH_FAIL;
   memset(&c, 0, sizeof c);
   memset(&opts, 0, sizeof opts);
+  if (w->roundtrip_ticks != 0u) {
+    /* The snapshot workload (plan 08-19, D-39): the same options on every execution of the workload, iteration 0, warmup and timed
+     * iterations alike, so the round trip (save, reset, restore at the cadence) is part of what is verified and of what is timed. */
+    opts.flags = IVS_RUNNER_OPT_ROUNDTRIP;
+    opts.roundtrip_ticks = w->roundtrip_ticks;
+  }
   c.content_dir = content_dir;
   c.report = malloc(BENCH_REPORT_CAP);
   filt = malloc(BENCH_REPORT_CAP);
@@ -843,6 +848,11 @@ static int bench_run(const char *content_dir, int verify_only, const bench_workl
   if (ticks != w->ticks) {
     (void)snprintf(detail, sizeof detail, "table=%" PRIu64 " run=%" PRIu64, w->ticks, ticks);
     rc = bench_refuse(w, "ticks-mismatch", detail);
+    goto done;
+  }
+  if (w->roundtrip_ticks != 0u && res.roundtrip_cuts == 0u) {
+    /* A cadence beyond the run would leave a snapshot workload that measures nothing about snapshots: never a silent no-op. */
+    (void)bench_err(w->id, "the round-trip hook made no cut (roundtrip_ticks is beyond the run, or the hook was not requested)");
     goto done;
   }
 
