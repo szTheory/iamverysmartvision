@@ -17,17 +17,29 @@ requirements: [VID-05, STA-01, STA-02, PRF-01, REL-01]
 
 ## Gate and suite results (final tree of plan 08-21)
 
-Local figures are laptop figures, the container is Ubuntu 24.04 (gcc 13.3.0, cmake 3.28.3) emulated amd64 on an arm64 host; none is a hosted figure, and the three are never mixed with the hosted rows of `.planning/ci-runs.tsv`.
+Local figures are laptop figures, the container is Ubuntu 24.04 (gcc 13.3.0, cmake 3.28.3) emulated amd64 on an arm64 host; none is a hosted figure, and the three are never mixed with the hosted rows of `.planning/ci-runs.tsv`. The three lines are from runs on the tree of the Task 2 commit `6fcc396`, which holds every file outside `.planning/` in its final form; the Task 3 and closing commits change only `.planning/` text, and the runs on the closing tree are in the SUMMARY of plan 08-21.
 
 | Command | Result |
 |---------|--------|
-| `sh tools/gate.sh` (local laptop) | written by Task 3 |
-| `dash tools/gate.sh` (local laptop) | written by Task 3 |
-| `GATE_LINUX_PLATFORM= sh tools/gate-linux.sh` (container) | written by Task 3 |
+| `sh tools/gate.sh` (local laptop) | `gate: PASS`, the counts of the closing line below; 0 `-- FAIL` lines, four `-- SKIPPED` lines; `gate-time total=86`, `gate-cpu user=154.31 sys=134.87` |
+| `dash tools/gate.sh` (local laptop) | the identical summary line (equal token for token), 0 `-- FAIL` lines; `gate-time total=89`, `gate-cpu user=154.17 sys=137.45` |
+| `GATE_LINUX_PLATFORM= sh tools/gate-linux.sh` (container) | `gate: PASS` with the same counts, 0 `-- FAIL` lines, four `-- SKIPPED` lines; `gate-time total=349`, `gate-cpu user=1277.54 sys=84.25` (emulated amd64) |
 | `sh tools/release-readiness.sh --selftest` | `selftest 4/4` (a measured-hardware claim, a history finding that is not pinned, the pinned findings, a dirty tree) |
 | `sh tools/release-readiness.sh --allow-dirty --history` (local laptop, in the background, head `407d668`) | exit 0; 6 findings, 6 accepted by the recorded disposition, 0 new; 253 s of wall time; pasted whole into section J of `08-MILESTONE-CLOSE.md`. This is not a pass of the history check: the scan itself exits 1 |
 | `sh tools/release-readiness.sh --allow-dirty --release` (head `407d668`) | `P4: ok` |
 | `sh tools/release-rehearse.sh --no-gate --release` (local laptop, head `34b12fd`) | `rehearse: ok`; source archives byte-equal, install archives `equal-except-ranlib-stamp` (the Darwin ranlib stamp, byte equality is decided on Linux), the tag glob `v[0-9]*.[0-9]*.[0-9]*` matches `v0.1.0` and `v1.2.3` and not `v1.0`, `v0.1`, `vfoo`, `v`, `1.0.0` |
+
+The summary line of `sh tools/gate.sh` on the final tree, verbatim (the dash line is identical token for token; the container line has the same counts and differs from it in four host-dependent tokens only: `archive`, `cc`, `core-imports` and `refs-verified`):
+
+```
+gate: PASS steps=38/38 controls=380/380 api-calls=19 api-statuses=15 api-rows=61 pinned-defines=120 cc=AppleClang c-presets=2 fault-runs=235 core-imports=7 purity-selftest=7/7 ctest-runs=2 ci-runs=64 ci-uses=2 ci-workflows=2 ci-summary-selftest=11/11 claims=28 provisional=27 cp1610-rows=74 patterns=1024 unclaimed=0 ambiguous=0 coincidences=1 agree=71 resolved=3 vectors=412 source=291 policy=121 rows-pending=0 policies-pending=0 bus-figure-pages=35 blind-files=12 second-read=12/12 scanned=665 waived=0 discrepancies=110 pending-resolvers=20 open=101 d10-items=47 faults=235/235 tracked=2489 binaries-listed=0 terms=9 doc-files=59 profile-keys=154 goldens=29 reports=32 host-dependent=3 mode=tree hygiene-files=2489 history-commits=1 gates=90 lines=306 input-rows=31 input-policies=11 input-profile-fields=31 files=2489 listings=7 listing-words=1386 manifests=11 effective-yes=8 effective-no=3 literal-rows=80 views=2 dump-lines=160 prefix-files=11 archive=members public-symbols=19 defined=141 hdr-alone=10/10 consumer-lines=164 cxx-link=ok pkg-selftest=19/19 records=154 fields=154 unknown-fields=47 psg-rules=21 psg-vectors=120 psg-policies=12 release-selftest=11/11 runner-files=16 cases=8 sources=12 refs-verified=3/4 state-rows=88 state-cuts=18 tests-expected=4958 tests-executed=4954 tests-skipped=4 tests-missing=0 docs=60 claim-refs=26 stic-rules=67 stic-rows=64 video-frames=26 video-hash-ties=18 video-frame-pairs=9 tags=10 tiers=8
+```
+
+The summary line of the container gate, verbatim:
+
+```
+gate: PASS steps=38/38 controls=380/380 api-calls=19 api-statuses=15 api-rows=61 pinned-defines=120 cc=GNU c-presets=2 fault-runs=235 core-imports=5 purity-selftest=7/7 ctest-runs=2 ci-runs=64 ci-uses=2 ci-workflows=2 ci-summary-selftest=11/11 claims=28 provisional=27 cp1610-rows=74 patterns=1024 unclaimed=0 ambiguous=0 coincidences=1 agree=71 resolved=3 vectors=412 source=291 policy=121 rows-pending=0 policies-pending=0 bus-figure-pages=35 blind-files=12 second-read=12/12 scanned=665 waived=0 discrepancies=110 pending-resolvers=20 open=101 d10-items=47 faults=235/235 tracked=2489 binaries-listed=0 terms=9 doc-files=59 profile-keys=154 goldens=29 reports=32 host-dependent=3 mode=tree hygiene-files=2489 history-commits=1 gates=90 lines=306 input-rows=31 input-policies=11 input-profile-fields=31 files=2489 listings=7 listing-words=1386 manifests=11 effective-yes=8 effective-no=3 literal-rows=80 views=2 dump-lines=160 prefix-files=11 archive=sha256 public-symbols=19 defined=141 hdr-alone=10/10 consumer-lines=164 cxx-link=ok pkg-selftest=19/19 records=154 fields=154 unknown-fields=47 psg-rules=21 psg-vectors=120 psg-policies=12 release-selftest=11/11 runner-files=16 cases=8 sources=12 refs-verified=0/4 state-rows=88 state-cuts=18 tests-expected=4958 tests-executed=4954 tests-skipped=4 tests-missing=0 docs=60 claim-refs=26 stic-rules=67 stic-rows=64 video-frames=26 video-hash-ties=18 video-frame-pairs=9 tags=10 tiers=8
+```
 
 ## Goal achievement
 

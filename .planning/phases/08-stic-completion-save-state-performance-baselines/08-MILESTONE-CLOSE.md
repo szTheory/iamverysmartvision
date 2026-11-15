@@ -35,11 +35,32 @@
 
 ## B. Main green
 
-**Local gates on the final tree of plan 08-21.** Quoted verbatim from Task 3 of this plan, once they exist; the first two are local laptop figures and the third is the container (Ubuntu 24.04, gcc 13.3.0, emulated amd64). None is a hosted figure. [nc]
+**Local gates on the final tree of plan 08-21.** Quoted verbatim from the final gates run by Task 3 of this plan on the tree of the Task 2 commit `6fcc396`, which holds every file outside `.planning/` in its final form (the Task 3 and closing commits change only `.planning/` text; the runs on the closing tree are in the SUMMARY of plan 08-21); the first two are local laptop figures and the third is the container (Ubuntu 24.04, gcc 13.3.0, emulated amd64). None is a hosted figure. [nc]
 
-- `sh tools/gate.sh` (local laptop): written by Task 3
-- `dash tools/gate.sh` (local laptop): written by Task 3
-- `GATE_LINUX_PLATFORM= sh tools/gate-linux.sh` (container): written by Task 3
+- `sh tools/gate.sh` (local laptop): 0 lines with -- FAIL, 4 lines with -- SKIPPED; the gate-cpu, gate-time and summary lines of its output, verbatim:
+
+```
+gate-cpu user=154.31 sys=134.87
+gate-time total=86
+gate: PASS steps=38/38 controls=380/380 api-calls=19 api-statuses=15 api-rows=61 pinned-defines=120 cc=AppleClang c-presets=2 fault-runs=235 core-imports=7 purity-selftest=7/7 ctest-runs=2 ci-runs=64 ci-uses=2 ci-workflows=2 ci-summary-selftest=11/11 claims=28 provisional=27 cp1610-rows=74 patterns=1024 unclaimed=0 ambiguous=0 coincidences=1 agree=71 resolved=3 vectors=412 source=291 policy=121 rows-pending=0 policies-pending=0 bus-figure-pages=35 blind-files=12 second-read=12/12 scanned=665 waived=0 discrepancies=110 pending-resolvers=20 open=101 d10-items=47 faults=235/235 tracked=2489 binaries-listed=0 terms=9 doc-files=59 profile-keys=154 goldens=29 reports=32 host-dependent=3 mode=tree hygiene-files=2489 history-commits=1 gates=90 lines=306 input-rows=31 input-policies=11 input-profile-fields=31 files=2489 listings=7 listing-words=1386 manifests=11 effective-yes=8 effective-no=3 literal-rows=80 views=2 dump-lines=160 prefix-files=11 archive=members public-symbols=19 defined=141 hdr-alone=10/10 consumer-lines=164 cxx-link=ok pkg-selftest=19/19 records=154 fields=154 unknown-fields=47 psg-rules=21 psg-vectors=120 psg-policies=12 release-selftest=11/11 runner-files=16 cases=8 sources=12 refs-verified=3/4 state-rows=88 state-cuts=18 tests-expected=4958 tests-executed=4954 tests-skipped=4 tests-missing=0 docs=60 claim-refs=26 stic-rules=67 stic-rows=64 video-frames=26 video-hash-ties=18 video-frame-pairs=9 tags=10 tiers=8
+```
+
+- `dash tools/gate.sh` (local laptop): 0 lines with -- FAIL; the same three lines, verbatim (the summary line equals the one of sh, token for token):
+
+```
+gate-cpu user=154.17 sys=137.45
+gate-time total=89
+gate: PASS steps=38/38 controls=380/380 api-calls=19 api-statuses=15 api-rows=61 pinned-defines=120 cc=AppleClang c-presets=2 fault-runs=235 core-imports=7 purity-selftest=7/7 ctest-runs=2 ci-runs=64 ci-uses=2 ci-workflows=2 ci-summary-selftest=11/11 claims=28 provisional=27 cp1610-rows=74 patterns=1024 unclaimed=0 ambiguous=0 coincidences=1 agree=71 resolved=3 vectors=412 source=291 policy=121 rows-pending=0 policies-pending=0 bus-figure-pages=35 blind-files=12 second-read=12/12 scanned=665 waived=0 discrepancies=110 pending-resolvers=20 open=101 d10-items=47 faults=235/235 tracked=2489 binaries-listed=0 terms=9 doc-files=59 profile-keys=154 goldens=29 reports=32 host-dependent=3 mode=tree hygiene-files=2489 history-commits=1 gates=90 lines=306 input-rows=31 input-policies=11 input-profile-fields=31 files=2489 listings=7 listing-words=1386 manifests=11 effective-yes=8 effective-no=3 literal-rows=80 views=2 dump-lines=160 prefix-files=11 archive=members public-symbols=19 defined=141 hdr-alone=10/10 consumer-lines=164 cxx-link=ok pkg-selftest=19/19 records=154 fields=154 unknown-fields=47 psg-rules=21 psg-vectors=120 psg-policies=12 release-selftest=11/11 runner-files=16 cases=8 sources=12 refs-verified=3/4 state-rows=88 state-cuts=18 tests-expected=4958 tests-executed=4954 tests-skipped=4 tests-missing=0 docs=60 claim-refs=26 stic-rules=67 stic-rows=64 video-frames=26 video-hash-ties=18 video-frame-pairs=9 tags=10 tiers=8
+```
+
+- `GATE_LINUX_PLATFORM= sh tools/gate-linux.sh` (container, Ubuntu 24.04, emulated amd64): 0 lines with -- FAIL, 4 lines with -- SKIPPED; the same three lines, verbatim:
+
+```
+gate-cpu user=1277.54 sys=84.25
+gate-time total=349
+gate: PASS steps=38/38 controls=380/380 api-calls=19 api-statuses=15 api-rows=61 pinned-defines=120 cc=GNU c-presets=2 fault-runs=235 core-imports=5 purity-selftest=7/7 ctest-runs=2 ci-runs=64 ci-uses=2 ci-workflows=2 ci-summary-selftest=11/11 claims=28 provisional=27 cp1610-rows=74 patterns=1024 unclaimed=0 ambiguous=0 coincidences=1 agree=71 resolved=3 vectors=412 source=291 policy=121 rows-pending=0 policies-pending=0 bus-figure-pages=35 blind-files=12 second-read=12/12 scanned=665 waived=0 discrepancies=110 pending-resolvers=20 open=101 d10-items=47 faults=235/235 tracked=2489 binaries-listed=0 terms=9 doc-files=59 profile-keys=154 goldens=29 reports=32 host-dependent=3 mode=tree hygiene-files=2489 history-commits=1 gates=90 lines=306 input-rows=31 input-policies=11 input-profile-fields=31 files=2489 listings=7 listing-words=1386 manifests=11 effective-yes=8 effective-no=3 literal-rows=80 views=2 dump-lines=160 prefix-files=11 archive=sha256 public-symbols=19 defined=141 hdr-alone=10/10 consumer-lines=164 cxx-link=ok pkg-selftest=19/19 records=154 fields=154 unknown-fields=47 psg-rules=21 psg-vectors=120 psg-policies=12 release-selftest=11/11 runner-files=16 cases=8 sources=12 refs-verified=0/4 state-rows=88 state-cuts=18 tests-expected=4958 tests-executed=4954 tests-skipped=4 tests-missing=0 docs=60 claim-refs=26 stic-rules=67 stic-rows=64 video-frames=26 video-hash-ties=18 video-frame-pairs=9 tags=10 tiers=8
+```
+
 
 **Hosted rows recorded by the orchestrator before the merge.** These are hosted figures of the event `pull_request`, all with conclusion `success`; they are the last five rows of `.planning/ci-runs.tsv` (an uncommitted working-tree file that the orchestrator keeps and no executor stages), `r = cpu_s / build_s`. They are not the push run on `main`, which exists only after the merge. [nc]
 
@@ -59,7 +80,7 @@ The median of the five `r` values is 7.80 against the budget 7.8 and the revisit
 - head sha of that run (it must equal the artifact commit of section A): `<stage2>`
 - event `push` and conclusion: `<stage2>`
 - the row appended to `.planning/ci-runs.tsv` for the push event, and its `r`: `<stage2>`
-- cost close of Phase 8 (the `phase8-close` line of `.planning/CI-EFFICIENCY.md`): written by Task 3
+- cost close of Phase 8: the line `phase8-close: no-lever` of the entry "Phase 8 close-out (plan 08-21)" in `.planning/CI-EFFICIENCY.md` (median `r` 7.80 of the last five hosted pull request rows against the budget 7.8 and the line 8.3)
 
 ## C. Open pull requests and issues
 
