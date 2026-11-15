@@ -1,0 +1,12 @@
+# A person-written record of ONE run of ivs-bench on one host class (plan 08-19, D-24): never an assertion of any check; no check compares a number with it.
+# Reading rule (docs/bench.md): compare a figure only with one of the same host class, build_id, workload row and counts; CPU time for trend, wall time for latency; tier repeatability-only, never a claim.
+# The host, idle and date lines below are the recorder's statements and are kept as taken; read the idle line before trusting any figure.
+# host: darwin arm64, 18 cpus
+# idle: not idle: load average 5.96 on 18 cpus (one virtual machine process near 1 core and desktop services running); single-threaded run at 98 percent of one core
+# date: 2026-11-15
+bench-format 1
+workload	status	scenario	tier	build_id	optimized	sanitizers	ncpu	warmup	iterations	ticks_per_iter	cpu_cycles_per_iter	frames_per_iter	thr_cycles_per_s_wall	thr_cycles_per_s_cpu	thr_frames_per_s	realtime_x	ns_per_guest_cycle	lat_first_ms	lat_median_ms	lat_max_ms	ci_time
+bench-lamp-idle	measured	bench-lamp-idle	repeatability-only	AppleClang-21.0.0.21000101-Release-866bf148412a	1	off	18	3	15	7168352	1792088	120	65663491	66518986	4396.89	73.376	15.23	25.751	27.292	29.313	see-ci-runs.tsv
+bench-lamp-input	measured	bench-lamp-input	repeatability-only	AppleClang-21.0.0.21000101-Release-866bf148412a	1	off	18	3	15	7168352	1792088	120	61509799	61805515	4118.76	68.735	16.26	28.929	29.135	30.395	see-ci-runs.tsv
+bench-lamp-cold	measured	demo-lamp-tone-pass	repeatability-only	AppleClang-21.0.0.21000101-Release-866bf148412a	1	off	18	2	30	806568	201642	13	48705797	48958473	3140.10	54.427	20.53	4.082	4.140	4.637	see-ci-runs.tsv
+bench-lamp-snapshot	measured	bench-lamp-idle	repeatability-only	AppleClang-21.0.0.21000101-Release-866bf148412a	1	off	18	3	15	7168352	1792088	120	62708657	63080071	4199.03	70.074	15.95	28.372	28.578	29.981	see-ci-runs.tsv

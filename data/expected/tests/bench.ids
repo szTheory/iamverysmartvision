@@ -22,3 +22,7 @@ bench.judge.refuse-has-no-timing
 # bench.workloads.table-consistent (plan 08-19, D-23): the workload table is consistent with the scenario inventory, the scenario files
 #   and the goldens (files and text only, nothing is run); three scratch tables broken one way each show that the rules can fail.
 bench.workloads.table-consistent
+# bench.baseline.record-format (plan 08-19, D-24, T-08-43): every committed data/bench/baseline-*.tsv has the format line, the exact
+#   header, the three provenance comment lines, one measured row per workload of the table in order (optimized 1, sanitizers off, the
+#   table counts, positive figures, the ci_time pointer); four broken scratch records show the rules can fail; no number is compared.
+bench.baseline.record-format

@@ -9,6 +9,8 @@
 # tier column is repeatability-only, whose ci_time column is the pointer text, and whose throughput and latency columns are empty.
 # bench.verify.bench-lamp-snapshot (plan 08-19) is the same case for the row of the table that runs the idle scenario with the round-trip
 # hook, and its static counts must equal those of the idle row. bench.workloads.table-consistent (plan 08-19) reads files only.
+# bench.baseline.record-format (plan 08-19, D-24) judges the FORMAT of every committed data/bench/baseline-*.tsv (files only); it never
+# compares a number with a threshold and never judges the idle statement.
 # bench.mutant.refuse-mutated-golden (D-22, D-25): a golden copied to a scratch directory with one hex digit of a digest line changed
 # makes the tool exit 15 with the bench-refuse line naming the mutated key and a row of status refused without any measurement, in a
 # verification-only run and in a run of one timed iteration (the timed path must stay unreachable). bench.refuse.wrong-ticks: a
@@ -454,6 +456,111 @@ for m in ticks:'differs from the final machine time' row:'has no workload row' c
     printf 'judge-vacuous: the scratch table m-%s produced no finding that names %s\n' "${m%%:*}" "${m#*:}" >> "$tmp/why"
   fi
 done
+report
+
+# ---- plan 08-19, Task 3: the format of the committed baseline records ----
+
+# baseline_findings <record> <table>: the format rules of a person-written baseline record (data/bench/baseline-<os>-<arch>.tsv) against
+# the workload table, one finding per line (any output is failure). The first non-comment line is `bench-format 1` and the next is the
+# exact header; exactly one `# host:`, one `# idle:` and one `# date:` line, each with text, none holding a path, an at sign, a tilde,
+# a URL or a dotted-quad address, the date an ISO date; one row per workload of the table in table order with the table's workload,
+# scenario, warmup, iterations and ticks, status measured, tier repeatability-only, optimized 1, sanitizers off, one build_id and one
+# ncpu for the whole record, a positive count in the static counts and a positive number in every throughput and latency column, and
+# the ci_time pointer. No number is compared with a threshold and the idle statement is not judged: a record that says the host was
+# not idle is a valid record that says so.
+baseline_findings() {
+  awk -F '\t' -v cols="$cols" -v tabfile="$2" '
+    function bad(m) { print m }
+    function pos(v) { return v ~ /^[0-9]+([.][0-9]+)?$/ && v + 0 > 0 }
+    function plain(name, v) {
+      if (v == "") bad("the # " name ": line has no text")
+      if (v ~ /[\/\\~@]/ || v ~ /:\/\// || v ~ /[0-9]+[.][0-9]+[.][0-9]+[.][0-9]+/) bad("the # " name ": line holds a path, an at sign, a tilde, a URL or an address")
+    }
+    BEGIN {
+      nc = split(cols, c, " ")
+      FS = "\t"
+      while ((getline l < tabfile) > 0) {
+        if (l ~ /^#/ || l == "") continue
+        split(l, f, "\t")
+        nw++; wid[nw] = f[1]; wscn[nw] = f[2]; wwarm[nw] = f[3]; witer[nw] = f[4]; wticks[nw] = f[6]
+      }
+      close(tabfile)
+    }
+    /^# host:/ { nh++; v = $0; sub(/^# host:[ ]*/, "", v); plain("host", v); next }
+    /^# idle:/ { ni++; v = $0; sub(/^# idle:[ ]*/, "", v); plain("idle", v); next }
+    /^# date:/ { nd++; v = $0; sub(/^# date:[ ]*/, "", v); if (v !~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/) bad("the # date: line is not an ISO date: " v); next }
+    /^#/ { next }
+    {
+      k++
+      if (k == 1) { if ($0 != "bench-format 1") bad("the first non-comment line is not the format line: " $0); next }
+      if (k == 2) {
+        if (NF != nc) { bad("the header has " NF " fields, not " nc); next }
+        for (i = 1; i <= nc; i++) if ($i != c[i]) bad("header column " i " is " $i ", not " c[i])
+        next
+      }
+      r = k - 2
+      if (NF != nc) { bad("row " r " has " NF " fields, not " nc); next }
+      if (r > nw) { bad("row " r " (" $1 ") has no workload in the table"); next }
+      if ($1 != wid[r]) bad("row " r ": workload is " $1 ", the table says " wid[r])
+      if ($3 != wscn[r]) bad("row " r ": scenario is " $3 ", the table says " wscn[r])
+      if ($2 != "measured") bad("row " r ": status is " $2 ", not measured")
+      if ($4 != "repeatability-only") bad("row " r ": tier is " $4)
+      if ($5 == "") bad("row " r ": build_id is empty")
+      if (r == 1) { build = $5; ncpu = $8 } else {
+        if ($5 != build) bad("row " r ": build_id differs from row 1")
+        if ($8 != ncpu) bad("row " r ": ncpu differs from row 1")
+      }
+      if ($6 != "1") bad("row " r ": optimized is " $6 ", not 1")
+      if ($7 != "off") bad("row " r ": sanitizers is " $7 ", not off")
+      if ($8 !~ /^[0-9]+$/ || $8 + 0 < 1) bad("row " r ": ncpu is not a positive count: " $8)
+      if ($9 != wwarm[r]) bad("row " r ": warmup is " $9 ", the table says " wwarm[r])
+      if ($10 != witer[r]) bad("row " r ": iterations is " $10 ", the table says " witer[r])
+      if ($11 != wticks[r]) bad("row " r ": ticks_per_iter is " $11 ", the table says " wticks[r])
+      for (i = 12; i <= 13; i++) if ($i !~ /^[0-9]+$/ || $i + 0 < 1) bad("row " r ": " c[i] " is not a positive count: " $i)
+      for (i = 14; i <= 21; i++) if (!pos($i)) bad("row " r ": " c[i] " is not a positive number: " $i)
+      if ($22 != "see-ci-runs.tsv") bad("row " r ": ci_time is " $22)
+    }
+    END {
+      if (nh != 1) bad("the record holds " (nh + 0) " # host: lines, not 1")
+      if (ni != 1) bad("the record holds " (ni + 0) " # idle: lines, not 1")
+      if (nd != 1) bad("the record holds " (nd + 0) " # date: lines, not 1")
+      if (k - 2 != nw) bad("the record holds " (k > 2 ? k - 2 : 0) " rows, the table " nw)
+    }
+  ' "$1"
+}
+
+# bench.baseline.record-format (D-24, T-08-43): every committed data/bench/baseline-*.tsv (at least one) satisfies baseline_findings.
+# The rules are shown able to fail inside the case: four scratch copies of the first record, each broken in one way (a refused row,
+# a missing host line, an unoptimized row, a zero figure), must each produce the finding of their rule. Files and text only: the tool
+# is not run and no number is compared with a threshold.
+n=$((n + 1))
+tid=bench.baseline.record-format
+executed=$((executed + 1))
+ok=1
+: > "$tmp/why"
+nrec=0
+first=
+for f in "$root"/data/bench/baseline-*.tsv; do
+  [ -f "$f" ] || continue
+  nrec=$((nrec + 1))
+  [ -n "$first" ] || first=$f
+  baseline_findings "$f" "$root/data/bench/workloads.tsv" | sed "s|^|${f##*/}: |" >> "$tmp/why"
+done
+if [ "$nrec" -eq 0 ]; then
+  printf 'no data/bench/baseline-*.tsv record is committed\n' >> "$tmp/why"
+else
+  awk -F '\t' -v OFS='\t' '/^#/ { print; next } { k++ } k == 4 { $2 = "refused" } { print }' "$first" > "$tmp/b-refused.tsv"
+  grep -v '^# host:' "$first" > "$tmp/b-nohost.tsv"
+  awk -F '\t' -v OFS='\t' '/^#/ { print; next } { k++ } k == 3 { $6 = 0 } { print }' "$first" > "$tmp/b-unopt.tsv"
+  awk -F '\t' -v OFS='\t' '/^#/ { print; next } { k++ } k == 3 { $15 = 0 } { print }' "$first" > "$tmp/b-zero.tsv"
+  for m in refused:'status is refused, not measured' nohost:'holds 0 # host: lines' unopt:'optimized is 0' zero:'thr_cycles_per_s_cpu is not a positive number'; do
+    baseline_findings "$tmp/b-${m%%:*}.tsv" "$root/data/bench/workloads.tsv" > "$tmp/m.out"
+    if ! grep -q -F "${m#*:}" "$tmp/m.out"; then
+      printf 'judge-vacuous: the scratch record b-%s produced no finding that names: %s\n' "${m%%:*}" "${m#*:}" >> "$tmp/why"
+    fi
+  done
+fi
+if [ -s "$tmp/why" ]; then ok=0; fi
 report
 
 {
