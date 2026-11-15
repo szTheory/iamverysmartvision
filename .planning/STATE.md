@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 current_phase: 8
 current_phase_name: STIC Completion, Save State and Performance Baselines
-current_plan: 19
+current_plan: 20
 status: executing
-stopped_at: Completed 08-18-PLAN.md
-last_updated: "2026-11-15T13:44:00.000Z"
+stopped_at: Completed 08-19-PLAN.md
+last_updated: "2026-11-15T15:10:00.000Z"
 last_activity: 2026-11-14
 last_activity_desc: Phase 8 execution started
-state_head: ef2032d619b0cb2e645edbfb9c371665b130bccf
+state_head: 4dd5f565e6d3cbf1c04babd54fd7da303ce77c2f
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 130
-  completed_plans: 127
+  completed_plans: 128
   percent: 88
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 8 (STIC Completion, Save State and Performance Baselines) — EXECUTING
-Current Plan: 19
+Current Plan: 20
 Total Plans in Phase: 21
 Status: Ready to execute
 Last activity: 2026-11-14 — Phase 8 execution started
@@ -186,6 +186,7 @@ Progress: [█████████░] 88%
 | Phase 8 P16 | about 75 min | 3 tasks | 17 files |
 | Phase 8 P17 | about 40 min | 3 tasks | 30 files |
 | Phase 8 P18 | about 120 min | 3 tasks | 22 files |
+| Phase 8 P19 | about 150 min (two sessions, the baseline input taken between them) | 3 tasks | 22 files |
 
 ## Accumulated Context
 
@@ -463,6 +464,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 8]: 08-17: important-gates.sh accepts STA-01 and STA-02 and the registry names 22 mechanisms over six gates (nine faults, six judges, seven controls; gates 83 to 89, lines 282 to 304) with one toy line per requirement in each of the ten toy registries and no CHECK, EXPECT or FORBID file changed; STA-01 and STA-02 are marked complete in REQUIREMENTS on stated terms (provisional claim, one build and one profile, same-family blind reader, nine exempt rows, informational digests, no file persistence, file options deferred, applied-event count without a getter, nothing measured); PRF-01 and REL-01 stay Pending
 - [Phase 8]: 08-18: ivs-bench (tools/bench, target ivs_bench, two C17 files: bench.c in ISO C and bench_host.c, the only file with the monotonic clock and the process CPU time) verifies iteration 0 of every workload against the committed golden through ivs_runner_golden_keep and against the final tick of the workload table before any clock is read, and refuses a mismatch with `bench-refuse`, exit 15 and a row with every numeric column empty; TSV `bench-format 1` in three groups plus the ci_time pointer, tier repeatability-only; --verify-only reads no clock and is the only mode the gate runs; workloads bench-lamp-idle (120 frames), bench-lamp-input (64 events: the six of demo-lamp-tone-pass verbatim, 58 self-recorded, 32 moved by the settling rule) and bench-lamp-cold (the existing demo-lamp-tone-pass) in data/bench/workloads.tsv with two new scenarios and goldens (goldens 27 to 29); suite bench with 8 ids, shown able to fail against two broken stand-ins of the tool; control c-build-unlisted-bench-source (controls 379 to 380); no file under core/ or runner/ changed, no claim, no threshold; PRF-01 stays Pending until plan 08-19
 - [Phase 8]: 08-18: cost: the bench suite adds about 1.94 local cpu-s (dev 1.69, release 0.25) and the two scenario ids 0.38, in all about 2.3 local (3.9 hosted, about +0.075 in r): the checkpoint C bound of about 0.4 local for the remaining plans is exceeded, the projection reads about 7.94 by the last-five median 7.86 and stays under 8.3; the cost is process start-up under the sanitizers (15 launches of about 0.09 cpu-s); trims are named in the 08-18 SUMMARY and not applied
+- [Phase 8]: 08-19: bench-lamp-snapshot is a row of data/bench/workloads.tsv over the idle scenario (cadence 1,792,080 ticks, three cuts in the 120-frame run) and ivs-bench hands the cadence to every execution through IVS_RUNNER_OPT_ROUNDTRIP, so its digest precondition is the idle golden: a save, reset and restore every 30 frames must reproduce the idle report before any figure is printed; a run in which the hook made no cut is a harness failure of the tool; ids bench.verify.bench-lamp-snapshot, bench.workloads.table-consistent (with three broken scratch tables) and bench.baseline.record-format (with four broken scratch records); docs/bench.md says what a figure is and is not (repeatability-only, never evidence, never a claim; lat_first_ms is the first timed iteration of a warm process; about 43 percent of a verified run is SHA-256); important-gates.sh accepts PRF-01 with two lines under the gate prf01-digest-first (gates 89 to 90, lines 304 to 306) and each of the ten toy registries covers it; no claim row for a benchmark
+- [Phase 8]: 08-19: the baseline record data/bench/baseline-darwin-arm64.tsv is the orchestrator's release-preset input unchanged under a three-line comment block, host class darwin arm64 18 cpus, 2026-11-15, and it was taken on a host that was NOT idle (load average 5.96 on 18 cpus, kept verbatim on its idle line), so it is informational and an idle-host record replaces it by a reviewed change; only its format is checked and no number is compared with a threshold; PRF-01 is marked complete on stated terms (named workloads verified before any figure, refusal control, separate groups, CI time a pointer, no threshold, no optimization in Phase 8, no claim, repeatability-only); REL-01 stays Pending; cost of the plan about 0.33 local cpu-s (+0.011 in r), projection about 7.95 by the median, under 8.3
 - [Phase 8]: 08-17: cost checkpoint C reads the median of the last five hosted rows, 7.98 (rows 8.17, 7.98, 7.28, 7.86, 8.29; the newest row 1a27cdd contains wave B as far as plan 08-16): checkpointC-08 no-lever by the rule, with the readings at the lines stated (newest row plus the remaining additions 8.30, median row counted 8.18 to 8.29), wave B measured at about 21.4 hosted cpu-s (suite state 3.30 dev and 1.94 release, nine fault runs 5.50 under the target of about 6), the remaining plans bound to about 0.4 local cpu-s, the lever order (3) next and the first trims named
 
 ### Pending Todos
@@ -496,6 +499,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-15T04:25:00.000Z
-Stopped at: Completed 08-17-PLAN.md
+Last session: 2026-11-15T15:10:00.000Z
+Stopped at: Completed 08-19-PLAN.md
 Resume file: None
