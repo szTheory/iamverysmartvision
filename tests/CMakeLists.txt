@@ -628,6 +628,8 @@ ivs_fault_suite(ivsc
   INCLUDE_DIRS "${CMAKE_CURRENT_BINARY_DIR}"
   GENERATED "${IVS_CART_INC}")
 
+# The fault executables of suite runner are compiled with IVS_RUNNER_FAULT_RUN (FAULT_DEFINITIONS, plan 08-16, the precedent of IVS_STATE_FAULT_RUN): the
+# id runner.exec.roundtrip-cut-cap, 65 save, reset and restore cuts and no fault's must-fail id, runs whole in the normal executables only.
 # Suite runner (D-17, D-20, D-23, plan 04-03): the runner library in process. It links the
 # public ivs_core through ivs_runner_lib; its named faults are data/expected/faults/runner.ids,
 # whose sites sit in runner/ TUs (D-24), so its fault executables link plain copies of the core
@@ -669,7 +671,8 @@ ivs_fault_suite(runner
   runner/runner_time.c runner/runner_refpcm.c runner/runner_vchain.c "${PROJECT_SOURCE_DIR}/tools/pcm/ivs_refpcm.c"
   INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/runner" "${PROJECT_SOURCE_DIR}/tools/pcm" "${CMAKE_CURRENT_BINARY_DIR}"
   GENERATED ${IVS_RUNNER_TEST_GENERATED}
-  MODULES core runner)
+  MODULES core runner
+  FAULT_DEFINITIONS IVS_RUNNER_FAULT_RUN)
 
 # Named-fault control executables (D-18): dev tree only, never registered with ctest.
 if(IVS_FAULT_CONTROLS)

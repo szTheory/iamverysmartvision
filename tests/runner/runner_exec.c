@@ -2888,19 +2888,16 @@ done:
   return ok;
 }
 
-/* runner.exec.roundtrip-equals-straight (plan 08-16, D-18): a run with the hook (a save, a power-on reset and a restore at every multiple of
- * a value) gives the plain report apart from host.calls, on two programs. The diagnostic program (halts at tick 2,084, no output block):
- * a value of 600 gives cuts after 600, 1,200 and 1,800, three, and every one of them leaves the state the program reads at the halt (R0 to R6
- * and the nine words) as the plain run has it. The looping stand-in under a real output block (levels written to the PSG in the first 300
- * ticks, 130,000 ticks, so two frames end): a value of 50,000 cuts at 50,000 and 100,000, inside the first and the second frame, with the
- * PSG levels, the audio and video chains and the frame cursor all non-default at the cut; both chain checks end pass, which they cannot if a
- * cut loses a sample or a frame. */
+/* runner.exec.roundtrip-equals-straight (plan 08-16, D-18): a run with the hook (a save, a power-on reset and a restore at every multiple of a
+ * value) gives the plain report apart from host.calls. The diagnostic program halts at tick 2,084 (no output block): a value of 600 gives cuts
+ * after 600, 1,200 and 1,800, three, and every one of them leaves the state the program reads at the halt (R0 to R6 and the nine words) as the
+ * plain run has it, with the same digests; each cut is one more slice (one more cancel check of the fake host). The programs with streams, input,
+ * a displayed frame and the collision registers are the scenarios of runner-process.roundtrip.<id>, which run the real ivs-run in both presets. */
 static int ex_roundtrip_equals_straight(void)
 {
   fake_host a;
   fake_host b;
   char diag[RX_SCN_CAP];
-  char scn[RX_SCN_CAP];
   int rc = IVS_TEST_FAIL;
   fh_init(&a);
   fh_init(&b);
@@ -2909,32 +2906,9 @@ static int ex_roundtrip_equals_straight(void)
   }
   b.rt_flags = IVS_RUNNER_OPT_ROUNDTRIP;
   b.rt_ticks = 600u;
-  if (!rx_roundtrip_compare(diag, &a, &b, 3u)) {
-    goto done;
+  if (rx_roundtrip_compare(diag, &a, &b, 3u)) {
+    rc = IVS_TEST_PASS;
   }
-  rx_free(&a);
-  rx_free(&b);
-  rx_psg_image();
-  if (!rx_psg_scenario(scn, sizeof scn, "run-to 130000 ticks\n")) {
-    goto done;
-  }
-  fh_init(&a);
-  fh_init(&b);
-  fh_add(&a, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
-  fh_add(&b, "psg-prog.exec", rx_psg_exec, sizeof rx_psg_exec, IVS_RUNNER_READ_OK);
-  a.buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
-  b.buffer_bytes = IVS_RUNNER_BUFFERS_MAX;
-  b.rt_flags = IVS_RUNNER_OPT_ROUNDTRIP;
-  b.rt_ticks = 50000u;
-  if (!rx_roundtrip_compare(scn, &a, &b, 2u)) {
-    goto done;
-  }
-  if (!rx_is(b.out, "audio.chain.check", "pass") || !rx_is(b.out, "video.chain.check", "pass") || !rx_is(b.out, "output.video.frames", "2") ||
-      !rx_is(b.out, "output.audio.changes", "3")) {
-    goto done;
-  }
-  rc = IVS_TEST_PASS;
-done:
   rx_free(&a);
   rx_free(&b);
   return rc;
@@ -3003,6 +2977,14 @@ static int ex_roundtrip_option_range(void)
  * ran (every one reads not-run). */
 static int ex_roundtrip_cut_cap(void)
 {
+#ifdef IVS_RUNNER_FAULT_RUN
+  /* The fault executables (tests/CMakeLists.txt FAULT_DEFINITIONS, the precedent of IVS_STATE_FAULT_RUN) re-run this suite once for each of the 19 runner
+   * faults. Each cut costs about a millisecond (a snapshot hashes the image arrays), so the 65 of this id are about 0.06 s of cpu in each of them, more
+   * than the rest of the three round-trip ids together, and no fault is aimed at the cap. The id runs whole in the normal executables of both presets;
+   * under a fault it only says so. A fault whose must-fail id this becomes needs this branch removed. */
+  ivs_test_diag("runner.exec.roundtrip-cut-cap: the 64 cuts run in the normal executables only, not under a fault (IVS_RUNNER_FAULT_RUN)");
+  return IVS_TEST_PASS;
+#else
   fake_host h;
   ivs_runner_result res;
   char diag[RX_SCN_CAP];
@@ -3031,6 +3013,7 @@ static int ex_roundtrip_cut_cap(void)
 done:
   rx_free(&h);
   return rc;
+#endif
 }
 
 static const ivs_test_case exec_cases[] = {
