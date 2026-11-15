@@ -107,3 +107,15 @@ state.fuzz.byte-flips-resealed
 state.fuzz.header-bit-flips
 state.fuzz.length-and-table-lies
 state.fuzz.semantic-lies
+# Plan 08-15 Task 3: the rest of the family. Saturated counters (a hand built snapshot with every 32-bit counter at 0xFFFFFFFF and every free 64-bit count at 2^64 - 1, and one with the machine
+# time at its largest and the frame index, video count, PSG sample index and emitted count moved with it, which restore accepts, re-encodes canonically and whose machine runs to 2^63);
+# a fixed-seed random family of multi-byte mutations, half resealed, judged by a model of the container layer written from the layout table; every family again through the instance-free
+# describe on heap buffers of exactly the input size (the model is the expectation); a destroyed, NULL and damaged handle, buffers and reports that overlap the instance, and the arguments
+# before the handle; two attempts on identically reset targets for every class of the family; and the self-control of the checker (a wrong expectation, an acceptance and a refusal the wrong
+# way round, a classifier row with the wrong reason, and a byte of the target, the report or the re-encoded section changed behind the checker's back are each reported).
+state.fuzz.saturated-counters
+state.fuzz.random-resealed
+state.fuzz.describe-heap
+state.fuzz.different-handle
+state.fuzz.second-attempt-identical
+state.judge.fuzz-invariant-detects

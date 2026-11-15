@@ -384,3 +384,62 @@ Every row is run twice into a report poisoned 0xA5 and 0x5A and the whole 400-by
 | RESTORE_PROFILE_UNCHECKED | `machine_snapshot_restore.c`, the identity checks of step 6 | `state.restore.refuse-identity-profile` finds an unregistered id and a flipped parameter digest accepted |
 | RESTORE_IMAGE_DIGEST_UNCHECKED | `machine_snapshot_restore.c`, the SHA-256 and length comparison of a slot loaded on both sides | `state.restore.refuse-identity-slots` finds a snapshot taken with other images accepted |
 | RESTORE_MUTATES_BEFORE_VALIDATE | `machine_snapshot_restore.c`, the CPU rows committed before the STIC validators | `state.restore.atomic-every-refusal` finds a target changed by a refusal that only a STIC validator makes |
+
+## Fuzzing (as built, plan 08-15)
+
+This section is appended below the sections above, which are the oracle of plan 08-09 and are not edited: it records what the corruption family of plan 08-15 does with the snapshot and with the check order, the invariants it holds on every case, the places where it accepts a changed byte and why, and the libFuzzer target outside the gate.
+The family is `tests/state/state_fuzz.c` (ids `state.fuzz.` and `state.judge.fuzz-invariant-detects`, listed in `data/expected/tests/state.ids`); the target is `tests/fuzz/fuzz_snapshot.c`.
+
+**The input.** One valid snapshot of 4,299 bytes: a Lamp Tone instance with the first of its input events applied, stopped at the first unit boundary at or after machine time 156,400 (frame 2, in the middle of the frame), so that the counters, the RAM, the latched card rows, the pull-downs and the observation rows are not default.
+It is restored into a Lamp Tone instance of the same three images whose STATE and PAD rows hold a poison byte; the instance is put back from a baseline copy after every accepted case.
+The generator of the random cases is an in-repo xorshift with a fixed seed; nothing reads a host source of randomness or time.
+
+**The invariants of every case.** The status is one of the documented set and is the one its reason travels with; the outcome is one the case's expectation allows; a refusal leaves every byte of the 114,416-byte instance equal to the baseline copy and writes only the report (a 400-byte caller struct poisoned 0xA5 or 0x5A alternately: every byte the contract does not name keeps its poison, and the header facts are those of the bytes the length let the reader see); an acceptance writes no byte outside the STATE and PAD rows of the digest field table, zeroes every PAD row, and leaves the state-only preimage of each section that differs from the valid snapshot's equal to the input's section.
+On a bounded subset of the accepted cases (the first 16 of an id and every 97th) all seven sections are compared, the report equals the report `ivs_snapshot_describe` writes for the same bytes, a full save of the restored instance equals the input bytes except the eight informational digest fields and the trailer (the exception of "Digests": the check copies those ranges from the input and recomputes the trailer before it compares), and the restored machine executes 6,000 ticks through the public run call.
+A case may run twice, once with each poison, on a target put back from the baseline: the status, the reason, the offset, the section, the slot kind and the instance after an acceptance are identical.
+The expectation of a flipped byte is a position classifier written from the Layout table and the Check order, never from the reader or from restore.
+
+| Class of the byte | Trailer left as it was | Trailer recomputed |
+|---|---|---|
+| magic, format version, flags, schema version, schema digest, section count | 62, 63, 64, 65, 66, 68 at the field | the same |
+| total_bytes | 61 when the flipped total is above the length (offset the length), else 67 (offset 12) | the same |
+| section table entry: domain, reserved bytes, offset, length | 69 | 69 |
+| profile id, parameter digest | 70 | 71 at the first offending byte, or 72 for a well formed id that is not registered; 74 |
+| slot record: loaded flag, SHA-256, length | 70 | 78 at the flag or the length (kind of the slot), 76 at the SHA-256 or the length |
+| composite digest, the seven section digests | 70 | accepted (informational) |
+| frame of a section, count prefix of an array row | 70 | 78 at the byte, 77 at the prefix |
+| value of a row | 70 | accepted, 78 or 79 (a free row: always accepted) |
+| trailer | 70 | the flip is repaired: the valid snapshot, accepted |
+
+**What the ids hold.** The counts are those of the normal build; a fault run takes every 16th point of each sweep.
+
+| Id | Cases | Outcome |
+|---|---|---|
+| `state.fuzz.truncations` | 4,299 (every length from 0 to the size minus one) | all refused, 61 at the supplied length |
+| `state.fuzz.byte-flips` | 8,598 (every offset, XOR 0xFF and XOR 0x01) | all refused, 61 to 70 by the table above |
+| `state.fuzz.byte-flips-resealed` | 3,190 (XOR 0xFF at every offset of the header, the frames, the counts, the constrained rows and the trailer and at the first 8, the last 8 and every 4th element of the long free rows, XOR 0x01 at every offset but the free rows) | 1,258 refused, 1,932 accepted |
+| `state.fuzz.header-bit-flips` | 3,968 (all eight bits of every header byte that is not a digest byte, one rotating bit of each of the 416 digest bytes; each with and without the reseal) | 3,712 refused, 256 accepted |
+| `state.fuzz.length-and-table-lies` | 126 (the totals, the supplied length, the versions, each flag bit, the schema version, the section counts, the magic, the section table, the forms of the profile id, the parameter digest and the three slot records) | all refused, with the reason and the offset the specification gives |
+| `state.fuzz.semantic-lies` | 28 (each derived invariant and device validator violated alone, with a valid trailer) | all refused, 78 or 79 at the first element of the struct the rule concerns |
+| `state.fuzz.saturated-counters` | 2 (every 32-bit counter at 0xFFFFFFFF and every free 64-bit count at 2^64 - 1; machine time at its largest with the frame index, the video count, the PSG sample index and the emitted count moved with it) | both accepted; the second machine reaches 2^63 |
+| `state.fuzz.random-resealed` | 1,200 (one to eight bytes set to random values, every second case with the trailer recomputed and 15 of 16 of its bytes in the payload) | 777 refused, 423 accepted; the expectation is a model of the container layer written from the Layout table |
+| `state.fuzz.describe-heap` | 4,484 (the families above through the instance-free describe on a heap buffer of exactly the input size) | status, reason, offset and section equal the model's, the report is written as the contract says |
+| `state.fuzz.different-handle` | 10 (a NULL, destroyed and damaged handle, three buffers and one report that overlap the instance, the arguments before the handle) | BAD_HANDLE with the reason 29 and no byte of the buffer read, BAD_ARG 58 and 81, nothing written to an overlapped report |
+| `state.fuzz.second-attempt-identical` | 623 cases, each twice | identical |
+| `state.judge.fuzz-invariant-detects` | the checker against a wrong expectation, an acceptance and a refusal the wrong way round, a wrong offset, a classifier row of each of the 19 classes with the wrong reason, and a byte of the target, of the report or of the re-encoded section changed behind its back | each is reported, and the untampered control of each is not |
+
+The second value (XOR 0x01) is not taken for the bytes of a free row, and the interior of a long free row (the system and scratchpad RAM words, the graphics RAM words, the latched card rows) is taken at every 4th element, with the first 8 and the last 8: XOR 0xFF flips every bit of a byte, the valid snapshot's own round trip shows each bit restored as it was, and a free row is one array decoded by one loop, so what the omitted flips would show is the boundary elements, which are taken.
+A byte of a 32-byte digest is compared or ignored as a whole, so the bit sweep takes one bit of each digest byte (rotating with the offset) and the byte sweeps take both values of every one.
+Both choices are made for the cost of the gate (plan 08-15, the cost stop rule of the phase), not because the checks differ.
+
+**Accepted by design.** A flip that ends in an acceptance is one of: a free row, which the specification names (counters, chains, RAM words and the latched card rows; here `cpu.r`, `mem.sysram`, `mem.scratchpad`, `mem.gram`, `stic.row_latch`, the four STIC counters, the four chains and the three free counts) and which every flip changed without a refusal; an informational digest (D-41); the repaired trailer; or a value that lands on another value of the row's range that no rule connects to the rest of the state (a Boolean member 0 for 1, a PSG counter or level inside its bounds, the color stack pointer inside 0 to 3, an audio level at most 15, an input floor at most machine time, a PSG register bit inside its write mask, a CPU run state HALTED for RUNNING).
+No such value is a validator gap that this plan could close from a proof about reachable states.
+
+**The known acceptances.** Two behaviors are pinned and not closed.
+The STIC register words (`mem.stic_reg`, 64 words) are stored masked by the write path of the memory system, so a word with a bit outside the write mask of its register is a state no step makes; no validator or invariant refuses it and all 256 flips of the sweep are accepted (the test pins this, so a later validator is a conscious change).
+Machine time is not tied to a unit boundary: a snapshot whose time differs by one tick from the saved one is accepted when the sample index, the frame cursor and the input floor still agree with it.
+Closing either needs a new invariant proved on the reachable states of the programs of plan 08-13 and a change to the core; both are open items, with a restored machine of each accepted case executing without a sanitizer report (the bounded subset).
+
+**The libFuzzer target.** `tests/fuzz/fuzz_snapshot.c` builds only when the cache option `IVS_ENABLE_LIBFUZZER` is ON (it joins the block of `ivs_fuzz_ivsc` in `tests/CMakeLists.txt`, `EXCLUDE_FROM_ALL`), is registered with no ctest, gate step or CI job, and needs a clang with the libFuzzer runtime (a Homebrew LLVM or a Linux clang; Apple clang has none).
+The input is a control byte (bit 0: recompute the trailer) and the snapshot bytes, copied to a heap buffer of exactly their size; the target restores into a live instance of the stand-in content that is put back from a baseline copy, holds the invariants above and aborts on a violation, and the header of the file gives the recipe, the corpus seed (`IVS_SNAPSHOT_FUZZ_SEED`) and the sanitizer choice.
+A crash input is the snapshot of a machine that executed guest code, so it is never committed.

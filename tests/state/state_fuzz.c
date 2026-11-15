@@ -31,6 +31,7 @@
 #include "common/ivs_sha256.h"
 #include "ivs/ivs.h"
 #include "machine/machine.h"
+#include "psg/psg_params.h"
 #include "state_cases.h"
 #include "state_util.h"
 
@@ -122,6 +123,9 @@ typedef struct fz_fixture {
   uint8_t row_known[FZ_MAXROWS];
   uint32_t row_sec[FZ_MAXROWS];
   uint32_t row_count_off[FZ_MAXROWS]; /* the container offset of the count prefix of an array row, else 0 */
+  uint32_t row_start[FZ_MAXROWS];     /* the container offset of the first element */
+  uint32_t row_width[FZ_MAXROWS];
+  uint32_t row_elems[FZ_MAXROWS];
 } fz_fixture;
 
 static fz_fixture fz;
@@ -253,6 +257,9 @@ static int fz_layout(void)
         pos += 4u;
       }
       vlen = f->width * f->count;
+      fz.row_start[row] = pos;
+      fz.row_width[row] = f->width;
+      fz.row_elems[row] = f->count;
       for (j = 0u; j < vlen; j++) {
         fz.pk_kind[pos + j] = FZ_K_VALUE;
         fz.pk_row[pos + j] = (uint8_t)row;
@@ -313,6 +320,7 @@ static int fz_get(void)
 #define FZ_T_REPORT 3u   /* a byte of the report is changed after the call */
 #define FZ_T_PREIMAGE 4u /* a byte of the re-encoded section is changed before the comparison */
 
+struct fz_lab;
 typedef struct fz_ctx {
   const char *name;
   int quiet;
@@ -329,6 +337,7 @@ typedef struct fz_ctx {
   uint32_t row_ref[FZ_MAXROWS];
   uint32_t row_acc[FZ_MAXROWS];
   uint32_t full_saves;
+  void (*on_accept)(struct fz_ctx *, const struct fz_lab *); /* called on the restored target of the first attempt of an accepted case */
 } fz_ctx;
 
 static void fz_ctx_init(fz_ctx *c, const char *name)
@@ -534,12 +543,16 @@ static int fz_check(fz_ctx *c, const char *what, uint64_t a, uint32_t m, const u
           fz_fail(c, &lab, "accepted, but the specification says it is refused");
         }
       }
-      fz_accepted_checks(c, &lab, h, readable, subset);
+      /* the two attempts are compared right after the call, before the checks that may run the machine */
       if (attempts == 2u && k == 0u) {
         memcpy(fz.after, fz.tgt.storage, IVS_MACHINE_BYTES);
       }
       if (attempts == 2u && k == 1u && memcmp(fz.after, fz.tgt.storage, IVS_MACHINE_BYTES) != 0) {
         fz_fail(c, &lab, "the second attempt left another instance than the first");
+      }
+      fz_accepted_checks(c, &lab, h, readable, subset);
+      if (k == 0u && c->on_accept != NULL) {
+        c->on_accept(c, &lab);
       }
       memcpy(fz.tgt.storage, fz.baseline, IVS_MACHINE_BYTES);
     } else {
@@ -801,36 +814,62 @@ static uint32_t fz_classify(uint32_t k, uint8_t mask, int sealed, fz_exp *e)
 
 /* ---- the sweeps ---- */
 
-/* The point set of a sweep: every one in a normal build, every 16th in a fault run. */
-static int fz_keep(uint32_t i)
+/* The point set of a sweep. The ids that are sweeps take every index (first 0, stride 1); state.fuzz.second-attempt-identical takes a thinned
+ * set of every class and runs each case twice. In a fault run (IVS_STATE_FAULT_RUN) every stride is multiplied by 16 (D-40, D-37): a reduced
+ * point set, never a different check. */
+typedef struct fz_plan {
+  uint32_t first;
+  uint32_t stride;
+  int twice;
+} fz_plan;
+
+static const fz_plan fz_full = {0u, 1u, 0};
+
+static int fz_pick(const fz_plan *p, uint32_t i)
 {
-  return ST_FAULT_STRIDE == 1u || i % ST_FAULT_STRIDE == 0u;
+  uint32_t step = p->stride * ST_FAULT_STRIDE;
+  return i >= p->first && (i - p->first) % step == 0u;
 }
 
-/* state.fuzz.truncations: every length from 0 to the size minus one, through restore on a heap buffer of exactly that length. The check order
- * gives a defined refusal for each: below the smallest container and above it alike the reader says the snapshot is truncated (61) with the
- * supplied length as the offset, because the total the bytes state is above the length. */
-static int fz_truncations(void)
+/* The truncations: every length from 0 to the size minus one, through restore on a heap buffer of exactly that length. The check order gives a
+ * defined refusal for each: below the smallest container and above it alike the reader says the snapshot is truncated (61) with the supplied
+ * length as the offset, because the total the bytes state is above the length. */
+static void fz_run_truncations(fz_ctx *c, const fz_plan *p)
 {
-  fz_ctx c;
   size_t len;
-  int ok;
-  ST_CHECK(fz_get());
-  fz_ctx_init(&c, "state.fuzz.truncations");
   for (len = 0u; len < fz.n; len++) {
     fz_exp e;
-    if (!fz_keep((uint32_t)len)) {
+    if (!fz_pick(p, (uint32_t)len)) {
       continue;
     }
     fz_exp_one(&e, 61u, FZ_X_OFF | FZ_X_SEC | FZ_X_KIND, len, FZ_NONE, 0u);
-    (void)fz_check(&c, "length", len, 0u, fz.snap, len, len, &e, -1, -1, (uint32_t)len, 0);
+    (void)fz_check(c, "length", len, 0u, fz.snap, len, len, &e, -1, -1, (uint32_t)len, p->twice);
   }
+}
+
+static int fz_truncations(void)
+{
+  fz_ctx c;
+  int ok;
+  ST_CHECK(fz_get());
+  fz_ctx_init(&c, "state.fuzz.truncations");
+  fz_run_truncations(&c, &fz_full);
   ok = fz_finish(&c);
-  if (c.accepted != 0u || c.seen != FZ_BIT(61u)) {
+  if (c.accepted != 0u || (ST_FAULT_STRIDE == 1u && c.seen != FZ_BIT(61u))) {
     ivs_test_diag("%s: a truncation was accepted or ended in another reason (seen %06X)", c.name, (unsigned)c.seen);
     ok = IVS_TEST_FAIL;
   }
   return ok;
+}
+
+/* The valid snapshot with one byte XOR mask, resealed when sealed. */
+static void fz_make_flip(uint8_t *work, uint32_t k, uint8_t mask, int sealed)
+{
+  memcpy(work, fz.snap, fz.n);
+  work[k] = (uint8_t)(work[k] ^ mask);
+  if (sealed) {
+    su_reseal(work, fz.n);
+  }
 }
 
 /* A flip of one byte of the valid snapshot, resealed or not, checked against the classifier. */
@@ -840,11 +879,7 @@ static void fz_flip_case(fz_ctx *c, uint32_t k, uint8_t mask, int sealed, uint32
   fz_exp e;
   uint32_t cls;
   int row = -1;
-  memcpy(work, fz.snap, fz.n);
-  work[k] = (uint8_t)(work[k] ^ mask);
-  if (sealed) {
-    su_reseal(work, fz.n);
-  }
+  fz_make_flip(work, k, mask, sealed);
   cls = fz_classify(k, mask, sealed, &e);
   if (k >= FZ_HDR && k < fz.n - IVS_SNAP_TRAILER_BYTES && fz.pk_kind[k] == FZ_K_VALUE) {
     row = (int)fz.pk_row[k];
@@ -852,25 +887,60 @@ static void fz_flip_case(fz_ctx *c, uint32_t k, uint8_t mask, int sealed, uint32
   (void)fz_check(c, sealed ? "resealed byte" : "byte", k, mask, work, fz.n, fz.n, &e, (int)cls, row, psel, twice);
 }
 
-/* state.fuzz.byte-flips: every offset flipped (XOR 0xFF and XOR 0x01) with the trailer NOT resealed is refused, with the reason of the first
- * check that fails: the header fields by their own reasons, everything the structure does not look at by the trailer (70). */
-static int fz_byte_flips(void)
+/* The bytes of the free rows that the resealed sweep takes. A free row is an array of identical elements decoded and stored by one loop, so a
+ * long one (more than 64 bytes: the RAM words, the graphics RAM, the latched card rows) is taken at its first 8 and its last 8 elements and at
+ * every 4th element in between, every byte of each taken element; a short one (the registers, the counters, the chains) is taken whole. The
+ * boundary elements are where a loop that drops or doubles an element shows, and the interior is the one loop (plan 08-15, cost stop rule). */
+static int fz_free_taken(uint32_t k)
+{
+  uint32_t row = fz.pk_row[k];
+  uint32_t e;
+  if (fz.row_width[row] * fz.row_elems[row] <= 64u) {
+    return 1;
+  }
+  e = (k - fz.row_start[row]) / fz.row_width[row];
+  return e < 8u || e + 8u >= fz.row_elems[row] || e % 4u == 0u;
+}
+
+/* The byte flips: every offset flipped (XOR 0xFF and XOR 0x01).
+ * With the trailer NOT resealed (sealed 0) each is refused, with the reason of the first check that fails: the header fields by their own
+ * reasons, everything the structure does not look at by the trailer (70).
+ * With the trailer RECOMPUTED (sealed 1) the flip is judged by the checks after the trailer: the header fields by their own reasons as before,
+ * the profile id by its form (71) or the registry (72), the parameter digest (74), the slot records (76, 78), the informational digests
+ * (accepted), the frame of a section (78), a count prefix (77) and the values (accepted, or 78 or 79). A flip of the trailer is repaired by the
+ * reseal and is the valid snapshot. An accepted case must re-encode canonically (fz_accepted_checks) and, for a row the specification calls
+ * free, every flip must be accepted. The second value of a byte of a free row adds nothing to the first when resealed: XOR 0xFF flips every
+ * bit of the byte, so with the valid snapshot's own round trip every bit of it is shown restored as 0 and as 1; the constrained rows, the frames,
+ * the counts and the header take both, and the interior of a long free row is sampled (fz_free_taken; plan 08-15, cost stop rule). */
+static void fz_run_flips(fz_ctx *c, const fz_plan *p, int sealed)
 {
   static const uint8_t masks[2] = {0xFFu, 0x01u};
-  fz_ctx c;
   uint32_t k;
-  int ok;
-  ST_CHECK(fz_get());
-  fz_ctx_init(&c, "state.fuzz.byte-flips");
   for (k = 0u; k < (uint32_t)fz.n; k++) {
     uint32_t j;
-    if (!fz_keep(k)) {
+    if (!fz_pick(p, k)) {
       continue;
     }
     for (j = 0u; j < 2u; j++) {
-      fz_flip_case(&c, k, masks[j], 0, k + j, 0);
+      if (sealed && j == 1u && k >= FZ_HDR && k < (uint32_t)fz.n - IVS_SNAP_TRAILER_BYTES && fz.pk_kind[k] == FZ_K_VALUE && fz.row_free[fz.pk_row[k]]) {
+        continue;
+      }
+      if (sealed && k >= FZ_HDR && k < (uint32_t)fz.n - IVS_SNAP_TRAILER_BYTES && fz.pk_kind[k] == FZ_K_VALUE && fz.row_free[fz.pk_row[k]] &&
+          !fz_free_taken(k)) {
+        continue;
+      }
+      fz_flip_case(c, k, masks[j], sealed, k + j, p->twice);
     }
   }
+}
+
+static int fz_byte_flips(void)
+{
+  fz_ctx c;
+  int ok;
+  ST_CHECK(fz_get());
+  fz_ctx_init(&c, "state.fuzz.byte-flips");
+  fz_run_flips(&c, &fz_full, 0);
   ok = fz_finish(&c);
   if (c.accepted != 0u) {
     ivs_test_diag("%s: a flip with the trailer left as it was was accepted", c.name);
@@ -879,12 +949,7 @@ static int fz_byte_flips(void)
   return ok;
 }
 
-
-/* state.fuzz.byte-flips-resealed: every offset flipped (XOR 0xFF and XOR 0x01) with the trailer RECOMPUTED, so the flip is judged by the
- * checks after the trailer: the header fields by their own reasons as before, the profile id by its form (71) or the registry (72), the
- * parameter digest (74), the slot records (76, 78), the informational digests (accepted), the frame of a section (78), a count prefix (77) and
- * the values (accepted, or 78 or 79). A flip of the trailer is repaired by the reseal and is the valid snapshot. An accepted case must
- * re-encode canonically (fz_accepted_checks) and, for a row the specification calls free, every flip must be accepted. */
+/* The refused and accepted counts of the payload rows of an id, as lines of the diagnostics. */
 static void fz_print_rows(const fz_ctx *c)
 {
   char line[360];
@@ -899,8 +964,8 @@ static void fz_print_rows(const fz_ctx *c)
       at = 0u;
     }
     {
-      int w = snprintf(line + at, sizeof line - at, "%s%s %u/%u; ", fz.row_free[i] ? "free " : (fz.row_known[i] ? "known " : ""), fz.row_name[i], (unsigned)c->row_ref[i],
-                       (unsigned)c->row_acc[i]);
+      int w = snprintf(line + at, sizeof line - at, "%s%s %u/%u; ", fz.row_free[i] ? "free " : (fz.row_known[i] ? "known " : ""), fz.row_name[i],
+                       (unsigned)c->row_ref[i], (unsigned)c->row_acc[i]);
       if (w > 0) {
         at += (size_t)w;
       }
@@ -911,34 +976,23 @@ static void fz_print_rows(const fz_ctx *c)
   }
 }
 
+#define FZ_SEEN_RESEALED                                                                                                                 \
+  (FZ_BIT(61u) | FZ_BIT(62u) | FZ_BIT(63u) | FZ_BIT(64u) | FZ_BIT(65u) | FZ_BIT(66u) | FZ_BIT(67u) | FZ_BIT(68u) | FZ_BIT(69u) | FZ_BIT(71u) | \
+   FZ_BIT(72u) | FZ_BIT(74u) | FZ_BIT(76u) | FZ_BIT(77u) | FZ_BIT(78u) | FZ_BIT(79u))
+#define FZ_SEEN_BITS                                                                                                                     \
+  (FZ_BIT(61u) | FZ_BIT(62u) | FZ_BIT(63u) | FZ_BIT(64u) | FZ_BIT(65u) | FZ_BIT(66u) | FZ_BIT(67u) | FZ_BIT(68u) | FZ_BIT(69u) | FZ_BIT(70u) | \
+   FZ_BIT(71u) | FZ_BIT(72u) | FZ_BIT(74u) | FZ_BIT(76u) | FZ_BIT(78u))
+
 static int fz_byte_flips_resealed(void)
 {
-  static const uint8_t masks[2] = {0xFFu, 0x01u};
   fz_ctx c;
-  uint32_t k;
   int ok;
   ST_CHECK(fz_get());
   fz_ctx_init(&c, "state.fuzz.byte-flips-resealed");
-  for (k = 0u; k < (uint32_t)fz.n; k++) {
-    uint32_t j;
-    if (!fz_keep(k)) {
-      continue;
-    }
-    for (j = 0u; j < 2u; j++) {
-      /* the second value of a byte of a free row adds nothing to the first: XOR 0xFF flips every bit of the byte, so with the valid snapshot's
-       * own round trip every bit of it is shown restored as 0 and as 1; the constrained rows, the frames, the counts and the header take both
-       * (plan 08-15, cost stop rule) */
-      if (j == 1u && k >= FZ_HDR && k < (uint32_t)fz.n - IVS_SNAP_TRAILER_BYTES && fz.pk_kind[k] == FZ_K_VALUE && fz.row_free[fz.pk_row[k]]) {
-        continue;
-      }
-      fz_flip_case(&c, k, masks[j], 1, k + j, 0);
-    }
-  }
+  fz_run_flips(&c, &fz_full, 1);
   fz_print_rows(&c);
   ok = fz_finish(&c);
-  ok |= fz_seen(&c, FZ_BIT(61u) | FZ_BIT(62u) | FZ_BIT(63u) | FZ_BIT(64u) | FZ_BIT(65u) | FZ_BIT(66u) | FZ_BIT(67u) | FZ_BIT(68u) | FZ_BIT(69u) |
-                        FZ_BIT(71u) | FZ_BIT(72u) | FZ_BIT(74u) | FZ_BIT(76u) | FZ_BIT(77u) | FZ_BIT(78u) | FZ_BIT(79u),
-                1);
+  ok |= fz_seen(&c, FZ_SEEN_RESEALED, 1);
   return ok;
 }
 
@@ -959,35 +1013,37 @@ static int fz_digest_byte(uint32_t k)
   return k >= IVS_SNAP_OFF_TABLE && k < FZ_HDR && (k - IVS_SNAP_OFF_TABLE) % IVS_SNAP_ENTRY_BYTES >= 12u;
 }
 
-/* state.fuzz.header-bit-flips: every single bit of the 612 byte header that is not a bit of a digest (the digests take one bit per byte), with the
- * trailer left as it was and with it recomputed, through the same classifier. */
-static int fz_header_bit_flips(void)
+/* The single-bit flips of the 612 byte header that are not bits of a digest (the digests take one bit per byte), with the trailer left as it was and
+ * with it recomputed, through the same classifier. A byte of a 32 byte digest (the schema digest, the parameter digest, the three slot SHA-256, the
+ * composite and the seven section digests) is compared or ignored as a whole, so every bit of it ends alike: one bit per byte, rotating with the
+ * offset, so that all eight bit positions occur in every digest (every byte of every digest takes XOR 0xFF and XOR 0x01 in the byte sweeps). */
+static void fz_run_header_bits(fz_ctx *c, const fz_plan *p)
 {
-  fz_ctx c;
   uint32_t k;
-  int ok;
-  ST_CHECK(fz_get());
-  fz_ctx_init(&c, "state.fuzz.header-bit-flips");
   for (k = 0u; k < FZ_HDR; k++) {
     uint32_t b;
-    if (!fz_keep(k)) {
+    if (!fz_pick(p, k)) {
       continue;
     }
     for (b = 0u; b < 8u; b++) {
-      /* a byte of a 32 byte digest (the schema digest, the parameter digest, the three slot SHA-256, the composite and the seven section
-       * digests) is compared or ignored as a whole, so every bit of it ends alike: one bit per byte, rotating with the offset, so that all
-       * eight bit positions occur in every digest (every byte of every digest takes XOR 0xFF and XOR 0x01 in the byte sweeps) */
       if (fz_digest_byte(k) && b != k % 8u) {
         continue;
       }
-      fz_flip_case(&c, k, (uint8_t)(1u << b), 0, k + b, 0);
-      fz_flip_case(&c, k, (uint8_t)(1u << b), 1, k + b + 1u, 0);
+      fz_flip_case(c, k, (uint8_t)(1u << b), 0, k + b, p->twice);
+      fz_flip_case(c, k, (uint8_t)(1u << b), 1, k + b + 1u, p->twice);
     }
   }
+}
+
+static int fz_header_bit_flips(void)
+{
+  fz_ctx c;
+  int ok;
+  ST_CHECK(fz_get());
+  fz_ctx_init(&c, "state.fuzz.header-bit-flips");
+  fz_run_header_bits(&c, &fz_full);
   ok = fz_finish(&c);
-  ok |= fz_seen(&c, FZ_BIT(61u) | FZ_BIT(62u) | FZ_BIT(63u) | FZ_BIT(64u) | FZ_BIT(65u) | FZ_BIT(66u) | FZ_BIT(67u) | FZ_BIT(68u) | FZ_BIT(69u) |
-                        FZ_BIT(70u) | FZ_BIT(71u) | FZ_BIT(72u) | FZ_BIT(74u) | FZ_BIT(76u) | FZ_BIT(78u),
-                1);
+  ok |= fz_seen(&c, FZ_SEEN_BITS, 1);
   return ok;
 }
 
@@ -1018,8 +1074,31 @@ static su_row *fz_lie(su_tab *t, uint32_t reason, uint64_t off, uint32_t sec, ui
   return r;
 }
 
-/* Runs the rows: each is a copy of the valid snapshot with the row's patches, resealed when the row says so, handed to restore as a heap buffer of
- * its supplied length with the length it claims, and judged against the row's own (status, reason, offset, section, kind). */
+/* The bytes of a row: a copy of the valid snapshot with the row's patches, resealed when the row says so; the length supplied (a heap buffer of
+ * that many bytes) and the length claimed. work is IVS_SNAPSHOT_MAX_BYTES + 64 bytes. */
+static void fz_row_bytes(const su_row *w, uint8_t *work, size_t *readable, uint64_t *claimed)
+{
+  size_t i;
+  memset(work, 0, IVS_SNAPSHOT_MAX_BYTES + 64u);
+  memcpy(work, fz.snap, fz.n);
+  for (i = 0u; i < w->np; i++) {
+    uint8_t *b = &work[w->p[i].off];
+    *b = w->p[i].op == 1u ? (uint8_t)(*b ^ w->p[i].v) : w->p[i].v;
+  }
+  if (w->reseal != 0u) {
+    su_reseal(work, fz.n);
+  }
+  if (w->big_len != 0u) {
+    *readable = 1u;
+    *claimed = w->big_len;
+  } else {
+    *readable = w->trunc != 0u ? (size_t)w->trunc : fz.n;
+    *claimed = *readable;
+  }
+}
+
+/* Runs the rows: each is handed to restore as a heap buffer of its supplied length with the length it claims, and judged against the row's own
+ * (status, reason, offset, section, kind). */
 static void fz_run_tab(fz_ctx *c, const su_tab *t, uint32_t psel0, int twice)
 {
   static uint8_t work[IVS_SNAPSHOT_MAX_BYTES + 64u];
@@ -1032,25 +1111,9 @@ static void fz_run_tab(fz_ctx *c, const su_tab *t, uint32_t psel0, int twice)
   for (r = 0u; r < t->n; r++) {
     const su_row *w = &t->row[r];
     fz_exp e;
-    size_t i;
     size_t readable;
     uint64_t claimed;
-    memset(work, 0, sizeof work);
-    memcpy(work, fz.snap, fz.n);
-    for (i = 0u; i < w->np; i++) {
-      uint8_t *b = &work[w->p[i].off];
-      *b = w->p[i].op == 1u ? (uint8_t)(*b ^ w->p[i].v) : w->p[i].v;
-    }
-    if (w->reseal != 0u) {
-      su_reseal(work, fz.n);
-    }
-    if (w->big_len != 0u) {
-      readable = 1u;
-      claimed = w->big_len;
-    } else {
-      readable = w->trunc != 0u ? (size_t)w->trunc : fz.n;
-      claimed = readable;
-    }
+    fz_row_bytes(w, work, &readable, &claimed);
     memset(&e, 0, sizeof e);
     e.reasons = w->reason != 0u ? FZ_BIT(w->reason) : 0u;
     e.accept = (uint8_t)(w->reason == 0u);
@@ -1280,10 +1343,10 @@ static void fz_build_lies(su_tab *t)
 }
 
 
-/* The profile id forms that change the whole field: the id bytes from index 0 (the rest of the field NUL), the trailer recomputed or not, and the
+/* The profile id forms that change the whole field, and the empty buffer: the id bytes from index 0 (the rest of the field NUL), the trailer recomputed or not, and the
  * outcome the specification gives: 71 at the first offending byte (the last byte of the field when there is no NUL), 72 for a well formed id that
  * is not the registered one, 70 when the trailer is stale. */
-static void fz_id_forms(fz_ctx *c)
+static void fz_id_forms(fz_ctx *c, int twice)
 {
   static const struct {
     const char *label;
@@ -1322,11 +1385,17 @@ static void fz_id_forms(fz_ctx *c)
     } else {
       fz_exp_one(&e, 72u, FZ_X_OFF | FZ_X_SEC | FZ_X_KIND, IVS_SNAP_OFF_PROFILE_ID, FZ_NONE, 0u);
     }
-    (void)fz_check(c, rows[i].label, i, 0u, work, fz.n, fz.n, &e, -1, -1, i, 0);
+    (void)fz_check(c, rows[i].label, i, 0u, work, fz.n, fz.n, &e, -1, -1, i, twice);
+  }
+  /* the buffer of length 0 (a heap buffer of one byte that the call must not read) */
+  {
+    fz_exp e;
+    fz_exp_one(&e, 61u, FZ_X_OFF | FZ_X_SEC | FZ_X_KIND, 0u, FZ_NONE, 0u);
+    (void)fz_check(c, "a buffer of length 0", 0u, 0u, fz.snap, 0u, 0u, &e, -1, -1, 1u, twice);
   }
 }
 
-static int fz_run_lies(const char *name, void (*build)(su_tab *), size_t cap, int twice, int expect_all_refused, void (*extra)(fz_ctx *))
+static int fz_run_lies(const char *name, void (*build)(su_tab *), size_t cap, int twice, int expect_all_refused, void (*extra)(fz_ctx *, int))
 {
   fz_ctx c;
   su_tab t;
@@ -1337,7 +1406,7 @@ static int fz_run_lies(const char *name, void (*build)(su_tab *), size_t cap, in
   build(&t);
   fz_run_tab(&c, &t, 0u, twice);
   if (extra != NULL) {
-    extra(&c);
+    extra(&c, twice);
   }
   ok = fz_finish(&c);
   if (expect_all_refused && c.accepted != 0u) {
@@ -1508,6 +1577,827 @@ static int fz_semantic_lies(void)
   return fz_run_lies("state.fuzz.semantic-lies", fz_build_semantic, 128u, 0, 1, NULL);
 }
 
+/* ---- the model of the container layer (steps 2 to 6 of the Check order, read from the specification) ----
+ * The position classifier above says what ONE flipped byte must end in. A mutation of several bytes, or a whole-length lie, needs the rules
+ * themselves: this is a second, small reader written from the Layout table, the Check order and the "As built" notes of the specification (never
+ * from machine_snapshot_read.c). It gives the reason, the offset and the section of the first check that fails, or reason 0 when the container is
+ * good; the random family and the describe sweep use it. When the reader may name another entry for the same defect (an out of order domain) the
+ * model says so by checking the reason only. */
+typedef struct fz_model {
+  uint32_t reason;
+  uint64_t off;
+  uint32_t sec;
+  uint8_t xmask;
+} fz_model;
+
+static void fz_model_set(fz_model *m, uint32_t reason, uint64_t off, uint32_t sec, uint8_t xmask)
+{
+  m->reason = reason;
+  m->off = off;
+  m->sec = sec;
+  m->xmask = xmask;
+}
+
+static int fz_known_domain(uint8_t d)
+{
+  uint32_t i;
+  for (i = 0u; i < ST_SECTIONS; i++) {
+    if (st_section_domain[i] == d) {
+      return 1;
+    }
+  }
+  return 0;
+}
+
+static void fz_model_run(const uint8_t *b, uint64_t len, fz_model *m)
+{
+  const uint8_t xall = FZ_X_OFF | FZ_X_SEC | FZ_X_KIND;
+  uint64_t total;
+  uint64_t payload_end;
+  uint64_t prev_end;
+  uint8_t last_dom = 0u;
+  uint8_t dig[32];
+  uint32_t i;
+  fz_model_set(m, 0u, 0u, FZ_NONE, xall);
+  if (len > IVS_SNAPSHOT_MAX_BYTES) {
+    fz_model_set(m, 60u, IVS_SNAPSHOT_MAX_BYTES, FZ_NONE, xall);
+    return;
+  }
+  if (len < FZ_HDR + IVS_SNAP_TRAILER_BYTES) {
+    fz_model_set(m, 61u, len, FZ_NONE, xall);
+    return;
+  }
+  for (i = 0u; i < 8u; i++) {
+    if (b[i] != fz.snap[i]) {
+      fz_model_set(m, 62u, i, FZ_NONE, xall);
+      return;
+    }
+  }
+  if (su_get(b + IVS_SNAP_OFF_FORMAT, 2u) != su_get(fz.snap + IVS_SNAP_OFF_FORMAT, 2u)) {
+    fz_model_set(m, 63u, IVS_SNAP_OFF_FORMAT, FZ_NONE, xall);
+    return;
+  }
+  if (su_get(b + IVS_SNAP_OFF_FLAGS, 2u) != 0u) {
+    fz_model_set(m, 64u, IVS_SNAP_OFF_FLAGS, FZ_NONE, xall);
+    return;
+  }
+  if (su_get(b + IVS_SNAP_OFF_SCHEMA, 4u) != su_get(fz.snap + IVS_SNAP_OFF_SCHEMA, 4u)) {
+    fz_model_set(m, 65u, IVS_SNAP_OFF_SCHEMA, FZ_NONE, xall);
+    return;
+  }
+  if (memcmp(b + IVS_SNAP_OFF_SCHEMA_DIGEST, fz.snap + IVS_SNAP_OFF_SCHEMA_DIGEST, 32u) != 0) {
+    fz_model_set(m, 66u, IVS_SNAP_OFF_SCHEMA_DIGEST, FZ_NONE, xall);
+    return;
+  }
+  total = su_get(b + IVS_SNAP_OFF_TOTAL, 4u);
+  if (total > len) {
+    fz_model_set(m, 61u, len, FZ_NONE, xall);
+    return;
+  }
+  if (total != len || total != fz.n) {
+    fz_model_set(m, 67u, IVS_SNAP_OFF_TOTAL, FZ_NONE, xall);
+    return;
+  }
+  if (su_get(b + IVS_SNAP_OFF_COUNT, 4u) != ST_SECTIONS) {
+    fz_model_set(m, 68u, IVS_SNAP_OFF_COUNT, FZ_NONE, xall);
+    return;
+  }
+  payload_end = len - IVS_SNAP_TRAILER_BYTES;
+  prev_end = FZ_HDR;
+  for (i = 0u; i < ST_SECTIONS; i++) {
+    const uint8_t *e = b + IVS_SNAP_OFF_TABLE + i * IVS_SNAP_ENTRY_BYTES;
+    uint32_t eo = IVS_SNAP_OFF_TABLE + i * IVS_SNAP_ENTRY_BYTES;
+    uint64_t off;
+    uint64_t l;
+    uint32_t j;
+    if (!fz_known_domain(e[0]) || e[0] <= last_dom) {
+      fz_model_set(m, 69u, eo, i, 0u);
+      return;
+    }
+    for (j = 1u; j < 4u; j++) {
+      if (e[j] != 0u) {
+        fz_model_set(m, 69u, eo + j, i, xall);
+        return;
+      }
+    }
+    off = su_get(e + 4u, 4u);
+    l = su_get(e + 8u, 4u);
+    if (off != prev_end) {
+      fz_model_set(m, 69u, eo + 4u, i, xall);
+      return;
+    }
+    if (off + l > payload_end) {
+      fz_model_set(m, 69u, eo + 8u, i, xall);
+      return;
+    }
+    prev_end = off + l;
+    last_dom = e[0];
+  }
+  if (prev_end != payload_end) {
+    fz_model_set(m, 69u, IVS_SNAP_OFF_TABLE + 6u * IVS_SNAP_ENTRY_BYTES + 8u, 6u, xall);
+    return;
+  }
+  ivs_sha256_digest(b, (size_t)payload_end, dig);
+  if (memcmp(dig, b + payload_end, 32u) != 0) {
+    fz_model_set(m, 70u, payload_end, FZ_NONE, xall);
+    return;
+  }
+  {
+    const uint8_t *id = b + IVS_SNAP_OFF_PROFILE_ID;
+    uint32_t nul = 64u;
+    for (i = 0u; i < 64u; i++) {
+      if (id[i] == 0u) {
+        nul = i;
+        break;
+      }
+    }
+    if (nul == 64u) {
+      fz_model_set(m, 71u, IVS_SNAP_OFF_PROFILE_ID + 63u, FZ_NONE, xall);
+      return;
+    }
+    for (i = 0u; i < 64u; i++) {
+      if ((i < nul && (id[i] < 0x20u || id[i] > 0x7Eu)) || (i > nul && id[i] != 0u)) {
+        fz_model_set(m, 71u, IVS_SNAP_OFF_PROFILE_ID + i, FZ_NONE, xall);
+        return;
+      }
+    }
+  }
+}
+
+/* What a mutated input may end in, from the model: the exact refusal when the container is bad; when it is good, an acceptance or a refusal of
+ * the identity or the content (72 to 80: the profile id is looked up, the parameter digest, the slots, the counts, the ranges, the invariants). */
+#define FZ_BITS_72_80 (FZ_BIT(72u) | FZ_BIT(73u) | FZ_BIT(74u) | FZ_BIT(75u) | FZ_BIT(76u) | FZ_BIT(77u) | FZ_BIT(78u) | FZ_BIT(79u) | FZ_BIT(80u))
+
+static void fz_exp_from_model(fz_exp *e, const fz_model *m)
+{
+  memset(e, 0, sizeof *e);
+  if (m->reason != 0u) {
+    fz_exp_one(e, m->reason, m->xmask, m->off, m->sec, 0u);
+  } else {
+    e->accept = 1u;
+    e->reasons = FZ_BITS_72_80;
+  }
+}
+
+/* ---- the seeded random family ---- */
+#define FZ_RANDOM_SEED UINT64_C(0x9E3779B97F4A7C15)
+#define FZ_RANDOM_CASES 1200u
+
+static uint64_t fz_xorshift(uint64_t *st)
+{
+  uint64_t x = *st;
+  x ^= x << 13;
+  x ^= x >> 7;
+  x ^= x << 17;
+  *st = x;
+  return x;
+}
+
+/* The i-th case: one to eight bytes of the valid snapshot set to random values at random offsets; the odd cases are resealed and put 15 of 16 of
+ * their bytes in the payload, so that the validators and the invariants are reached. The generator state advances the same way whatever is done
+ * with the case, so every consumer of the first N cases sees the same N. */
+static void fz_rand_case(uint64_t *st, uint32_t i, uint8_t *work, int *sealed)
+{
+  uint32_t count = 1u + (uint32_t)(fz_xorshift(st) % 8u);
+  uint32_t k;
+  *sealed = (int)(i & 1u);
+  memcpy(work, fz.snap, fz.n);
+  for (k = 0u; k < count; k++) {
+    uint64_t r = fz_xorshift(st);
+    uint32_t lo = 0u;
+    uint32_t span = (uint32_t)fz.n;
+    if (*sealed && (r >> 60) != 0u) {
+      lo = FZ_HDR;
+      span = (uint32_t)fz.n - IVS_SNAP_TRAILER_BYTES - FZ_HDR;
+    }
+    work[lo + (uint32_t)((r >> 8) % span)] = (uint8_t)(r >> 32);
+  }
+  if (*sealed) {
+    su_reseal(work, fz.n);
+  }
+}
+
+static void fz_run_random(fz_ctx *c, uint32_t cases, const fz_plan *p)
+{
+  static uint8_t work[IVS_SNAPSHOT_MAX_BYTES];
+  uint64_t st = FZ_RANDOM_SEED;
+  uint32_t i;
+  for (i = 0u; i < cases; i++) {
+    int sealed;
+    fz_rand_case(&st, i, work, &sealed);
+    if (fz_pick(p, i)) {
+      fz_model m;
+      fz_exp e;
+      fz_model_run(work, fz.n, &m);
+      fz_exp_from_model(&e, &m);
+      (void)fz_check(c, sealed ? "random resealed case" : "random case", i, 0u, work, fz.n, fz.n, &e, -1, -1, i, p->twice);
+    }
+  }
+}
+
+/* state.fuzz.random-resealed: FZ_RANDOM_CASES multi-byte mutations from a fixed seed, half of them resealed, through the model of the container.
+ * N is chosen by arithmetic and the measured time: about 70 microseconds a case, under 0.1 s an id. */
+static int fz_random_resealed(void)
+{
+  fz_ctx c;
+  int ok;
+  ST_CHECK(fz_get());
+  fz_ctx_init(&c, "state.fuzz.random-resealed");
+  fz_run_random(&c, FZ_RANDOM_CASES, &fz_full);
+  ok = fz_finish(&c);
+  if (ST_FAULT_STRIDE == 1u && (c.accepted == 0u || c.refused == 0u || (c.seen & (FZ_BIT(62u) | FZ_BIT(70u) | FZ_BIT(78u))) == 0u)) {
+    ivs_test_diag("%s: the random set is vacuous (%llu accepted, %llu refused, reasons %06X)", c.name, (unsigned long long)c.accepted,
+                  (unsigned long long)c.refused, (unsigned)c.seen);
+    ok = IVS_TEST_FAIL;
+  }
+  return ok;
+}
+
+/* ---- the instance-free describe sweep ---- */
+
+/* What describe writes on success, from the bytes of the container: the v1 report of 360 bytes (the struct and the rest of a larger caller struct
+ * kept as it was). */
+static void fz_expect_success_report(uint8_t exp[SU_CALLER], const uint8_t *b)
+{
+  ivs_snapshot_report r;
+  uint32_t i;
+  memset(&r, 0, sizeof r);
+  r.struct_size = IVS_SNAPSHOT_REPORT_V1_SIZE;
+  r.format_version = (uint32_t)su_get(b + IVS_SNAP_OFF_FORMAT, 2u);
+  r.schema_version = (uint32_t)su_get(b + IVS_SNAP_OFF_SCHEMA, 4u);
+  r.total_bytes = su_get(b + IVS_SNAP_OFF_TOTAL, 4u);
+  r.section_index = FZ_NONE;
+  memcpy(r.profile_id, b + IVS_SNAP_OFF_PROFILE_ID, IVS_PROFILE_ID_MAX_BYTES);
+  memcpy(r.profile_params_sha256, b + IVS_SNAP_OFF_PARAMS, 32u);
+  memcpy(r.composite_sha256, b + IVS_SNAP_OFF_COMPOSITE, 32u);
+  for (i = 0u; i < 3u; i++) {
+    const uint8_t *rec = b + IVS_SNAP_OFF_SLOTS + i * IVS_SNAP_SLOT_BYTES;
+    r.slots[i].struct_size = (uint32_t)sizeof r.slots[i];
+    r.slots[i].kind = i + 1u;
+    r.slots[i].loaded = (uint32_t)su_get(rec, 4u);
+    r.slots[i].length_bytes = (uint32_t)su_get(rec + 36u, 4u);
+    memcpy(r.slots[i].sha256, rec + 4u, 32u);
+  }
+  memcpy(exp, &r, IVS_SNAPSHOT_REPORT_V1_SIZE);
+}
+
+/* One input through ivs_snapshot_describe on a heap buffer of exactly readable bytes (claimed is what the call is told): the status and the
+ * report against the model of the container. The call needs no instance, so under the sanitizer of the dev preset any read past the supplied
+ * length is an error. */
+static int fz_dcheck(fz_ctx *c, const char *what, uint64_t a, uint32_t m, const uint8_t *bytes, size_t readable, uint64_t claimed, uint32_t psel)
+{
+  fz_lab lab;
+  su_rep rep;
+  uint8_t exp[SU_CALLER];
+  uint8_t pbyte = (psel & 1u) != 0u ? 0x5Au : 0xA5u;
+  uint8_t *h;
+  fz_model mod;
+  ivs_status st;
+  ivs_status want;
+  lab.what = what;
+  lab.a = a;
+  lab.m = m;
+  c->case_bad = 0;
+  c->attempts++;
+  h = su_heap_copy(bytes, readable);
+  if (h == NULL) {
+    fz_fail(c, &lab, "out of memory");
+    c->bad++;
+    return 0;
+  }
+  memset(&rep, pbyte, sizeof rep);
+  rep.r.struct_size = SU_CALLER;
+  memcpy(exp, rep.b, sizeof exp);
+  st = ivs_snapshot_describe(h, claimed, &rep.r);
+  fz_model_run(bytes, claimed, &mod);
+  if (mod.reason == 0u) {
+    want = IVS_OK;
+    fz_expect_success_report(exp, bytes);
+    c->accepted++;
+  } else {
+    uint64_t off = (mod.xmask & FZ_X_OFF) != 0u ? mod.off : rep.r.byte_offset;
+    uint32_t sec = (mod.xmask & FZ_X_SEC) != 0u ? mod.sec : rep.r.section_index;
+    want = su_status_of(mod.reason);
+    su_expect_report(exp, h, mod.reason == 60u ? 0u : readable, mod.reason, off, sec, 0u);
+    c->refused++;
+    c->seen |= FZ_BIT(mod.reason);
+  }
+  if (st != want) {
+    fz_fail(c, &lab, "describe says %s, the model says %s (reason %u)", ivs_status_name(st), ivs_status_name(want), (unsigned)mod.reason);
+  }
+  if (memcmp(rep.b, exp, sizeof exp) != 0) {
+    size_t i = 0u;
+    while (rep.b[i] == exp[i]) {
+      i++;
+    }
+    fz_fail(c, &lab, "report byte %u is %02X, the model's contract says %02X (reason %u)", (unsigned)i, (unsigned)rep.b[i], (unsigned)exp[i],
+            (unsigned)mod.reason);
+  }
+  if (readable > 0u && memcmp(h, bytes, readable) != 0) {
+    fz_fail(c, &lab, "describe changed the supplied bytes");
+  }
+  free(h);
+  if (c->case_bad) {
+    c->bad++;
+  }
+  return !c->case_bad;
+}
+
+/* The rows of a table through describe. */
+static void fz_describe_tab(fz_ctx *c, const su_tab *t)
+{
+  static uint8_t work[IVS_SNAPSHOT_MAX_BYTES + 64u];
+  size_t r;
+  for (r = 0u; r < t->n; r++) {
+    size_t readable;
+    uint64_t claimed;
+    fz_row_bytes(&t->row[r], work, &readable, &claimed);
+    (void)fz_dcheck(c, t->row[r].name, r, 0u, work, readable, claimed, (uint32_t)r);
+  }
+}
+
+/* state.fuzz.describe-heap: the sweeps of the family through the instance-free describe call: a third of the lengths, every byte of the header
+ * and every 13th byte of the payload with XOR 0xFF with the trailer left and recomputed, every 5th byte of the header with all its bits, every row
+ * of the lies and the semantic rows, the first 250 random cases. The model is the expectation of every one: the status and the reason are the reader's, and the
+ * report is written as the contract says. */
+static int fz_describe_heap(void)
+{
+  static uint8_t work[IVS_SNAPSHOT_MAX_BYTES];
+  fz_ctx c;
+  su_tab t;
+  uint64_t st = FZ_RANDOM_SEED;
+  uint32_t k;
+  size_t len;
+  int ok;
+  ST_CHECK(fz_get());
+  fz_ctx_init(&c, "state.fuzz.describe-heap");
+  for (len = 0u; len < fz.n; len += 3u) {
+    if (fz_pick(&fz_full, (uint32_t)len / 3u)) {
+      (void)fz_dcheck(&c, "length", len, 0u, fz.snap, len, len, (uint32_t)len);
+    }
+  }
+  for (k = 0u; k < (uint32_t)fz.n; k++) {
+    uint32_t sealed;
+    uint32_t every = k < FZ_HDR ? 1u : (k < (uint32_t)fz.n - IVS_SNAP_TRAILER_BYTES ? 13u : 1u);
+    if (!fz_pick(&fz_full, k) || k % every != 0u) {
+      continue;
+    }
+    for (sealed = 0u; sealed < 2u; sealed++) {
+      fz_make_flip(work, k, 0xFFu, (int)sealed);
+      (void)fz_dcheck(&c, sealed ? "resealed byte" : "byte", k, 0xFFu, work, fz.n, fz.n, k + sealed);
+    }
+  }
+  for (k = 0u; k < FZ_HDR; k += 5u) {
+    uint32_t b;
+    uint32_t sealed;
+    if (!fz_pick(&fz_full, k / 5u)) {
+      continue;
+    }
+    for (b = 0u; b < 8u; b++) {
+      if (fz_digest_byte(k) && b != k % 8u) {
+        continue;
+      }
+      for (sealed = 0u; sealed < 2u; sealed++) {
+        fz_make_flip(work, k, (uint8_t)(1u << b), (int)sealed);
+        (void)fz_dcheck(&c, sealed ? "resealed bit" : "bit", k, 1u << b, work, fz.n, fz.n, k + b + sealed);
+      }
+    }
+  }
+  ST_CHECK(su_tab_init(&t, FZ_TAB_CAP));
+  fz_build_lies(&t);
+  fz_describe_tab(&c, &t);
+  su_tab_free(&t);
+  ST_CHECK(su_tab_init(&t, 128u));
+  fz_build_semantic(&t);
+  fz_describe_tab(&c, &t);
+  su_tab_free(&t);
+  for (k = 0u; k < 250u; k++) {
+    int sealed;
+    fz_rand_case(&st, k, work, &sealed);
+    (void)fz_dcheck(&c, "random case", k, 0u, work, fz.n, fz.n, k);
+  }
+  ok = fz_finish(&c);
+  if (ST_FAULT_STRIDE == 1u && (c.accepted == 0u || (c.seen & (FZ_BIT(60u) | FZ_BIT(61u) | FZ_BIT(62u) | FZ_BIT(69u) | FZ_BIT(70u) | FZ_BIT(71u))) !=
+                                                    (FZ_BIT(60u) | FZ_BIT(61u) | FZ_BIT(62u) | FZ_BIT(69u) | FZ_BIT(70u) | FZ_BIT(71u)))) {
+    ivs_test_diag("%s: reasons seen %06X, accepted %llu: the sweep is vacuous", c.name, (unsigned)c.seen, (unsigned long long)c.accepted);
+    ok = IVS_TEST_FAIL;
+  }
+  return ok;
+}
+
+/* ---- saturated counters ---- */
+
+/* Puts the big-endian value v into the elements of a row of a snapshot in place. */
+static int fz_put_row(uint8_t *work, const char *row, uint32_t elem, uint32_t width, uint64_t v)
+{
+  uint32_t sec = 0u;
+  uint32_t off = 0u;
+  uint32_t cnt = 0u;
+  if (!su_row_pos(row, &sec, &off, &cnt)) {
+    ivs_test_diag("no STATE row '%s' in the field table", row);
+    return 0;
+  }
+  su_put(work + off + elem * width, v, width);
+  return 1;
+}
+
+/* After the acceptance of the snapshot with the clock at its largest: the machine runs to the last tick a run may ask for. */
+static void fz_run_to_last_tick(fz_ctx *c, const struct fz_lab *lab)
+{
+  uint32_t consumed = 0u;
+  const struct ivs_machine *im = fz.tgt.m;
+  if (!su_run_to(fz.tgt.m, (uint64_t)1u << 63, NULL, 0u, &consumed)) {
+    fz_fail(c, lab, "a run from the largest clock refuses");
+  } else if (im->time_ticks < ((uint64_t)1u << 63)) {
+    fz_fail(c, lab, "a run to 2^63 stopped at %llu", (unsigned long long)im->time_ticks);
+  }
+}
+
+/* state.fuzz.saturated-counters: a hand built snapshot with the saturated values 0xFFFFFFFF of every 32-bit counter member (the STIC blocked and
+ * late-grant counters and the grants in the frame) and 2^64 - 1 in every free 64-bit count (the audio, input and write-log counts: the applied-event
+ * count among them), and one with the clock at its largest, the frame index and the video count, the PSG sample index and the emitted count moved by
+ * the same number of frames so that every derived invariant holds, which restore must accept and re-encode canonically; then the machine of the
+ * second runs to the end of time (2^63). */
+static void fz_run_saturated(fz_ctx *c, int twice)
+{
+  static uint8_t work[IVS_SNAPSHOT_MAX_BYTES];
+  fz_exp e;
+  uint32_t sec = 0u;
+  uint32_t off = 0u;
+  uint32_t cnt = 0u;
+  uint64_t t0;
+  uint64_t f0;
+  uint64_t ns0;
+  uint64_t em0;
+  uint64_t d;
+  uint32_t period = 16u;
+  const ivs_psg_params *pp = ivs_psg_params_get(st_profile_index());
+  memset(&e, 0, sizeof e);
+  e.accept = 1u;
+  memcpy(work, fz.snap, fz.n);
+  if (!(fz_put_row(work, "stic.blocked_reads", 0u, 4u, 0xFFFFFFFFu) && fz_put_row(work, "stic.blocked_writes", 0u, 4u, 0xFFFFFFFFu) &&
+        fz_put_row(work, "stic.late_grants", 0u, 4u, 0xFFFFFFFFu) && fz_put_row(work, "stic.grants_in_frame", 0u, 4u, 0xFFFFFFFFu) &&
+        fz_put_row(work, "obs.audio.count", 0u, 8u, UINT64_MAX) && fz_put_row(work, "obs.input.count", 0u, 8u, UINT64_MAX) &&
+        fz_put_row(work, "obs.psglog.count", 0u, 8u, UINT64_MAX))) {
+    c->bad++;
+    return;
+  }
+  su_reseal(work, fz.n);
+  (void)fz_check(c, "saturated counters", 0u, 0u, work, fz.n, fz.n, &e, -1, -1, 0u, twice);
+  /* the clock at its largest: whole frames moved, an even number so that the PSG sample index (one per 16 ticks, a frame is 3,733.5 of them) moves by
+   * a whole number */
+  if (pp != NULL && pp->sample_period_ticks != 0u) {
+    period = pp->sample_period_ticks;
+  }
+  (void)su_row_pos("time_ticks", &sec, &off, &cnt);
+  t0 = su_get(fz.snap + off, 8u);
+  (void)su_row_pos("stic.frame_index", &sec, &off, &cnt);
+  f0 = su_get(fz.snap + off, 8u);
+  (void)su_row_pos("psg.next_sample", &sec, &off, &cnt);
+  ns0 = su_get(fz.snap + off, 8u);
+  (void)su_row_pos("obs.audio.emitted", &sec, &off, &cnt);
+  em0 = su_get(fz.snap + off, 8u);
+  d = (((uint64_t)1u << 63) - t0) / SC_FRAME;
+  d &= ~(uint64_t)1u;
+  if (period != 16u || (uint64_t)SC_FRAME * 2u % period != 0u || d < 2u) {
+    ivs_test_diag("%s: the clock case needs a sample period of 16 ticks and an even number of frames", c->name);
+    c->bad++;
+    return;
+  }
+  memcpy(work, fz.snap, fz.n);
+  if (!(fz_put_row(work, "time_ticks", 0u, 8u, t0 + d * SC_FRAME) && fz_put_row(work, "stic.frame_index", 0u, 8u, f0 + d) &&
+        fz_put_row(work, "obs.video.count", 0u, 8u, f0 + d) && fz_put_row(work, "psg.next_sample", 0u, 8u, ns0 + d * SC_FRAME / period) &&
+        fz_put_row(work, "obs.audio.emitted", 0u, 8u, em0 + d * SC_FRAME / period))) {
+    c->bad++;
+    return;
+  }
+  su_reseal(work, fz.n);
+  c->on_accept = fz_run_to_last_tick;
+  (void)fz_check(c, "the clock at its largest", d, 0u, work, fz.n, fz.n, &e, -1, -1, 1u, twice);
+  c->on_accept = NULL;
+}
+
+static int fz_saturated_counters(void)
+{
+  fz_ctx c;
+  int ok;
+  ST_CHECK(fz_get());
+  fz_ctx_init(&c, "state.fuzz.saturated-counters");
+  fz_run_saturated(&c, 0);
+  ok = fz_finish(&c);
+  if (c.accepted != 2u && ST_FAULT_STRIDE == 1u) {
+    ivs_test_diag("%s: %llu of the 2 hand built snapshots were accepted", c.name, (unsigned long long)c.accepted);
+    ok = IVS_TEST_FAIL;
+  }
+  return ok;
+}
+
+/* ---- the different handle and argument cases ---- */
+
+#define FZ_GAP 8192u
+
+typedef struct fz_arena {
+  uint8_t *base;
+  uint8_t *inst; /* the storage of the instance: base + FZ_GAP, IVS_MACHINE_BYTES long */
+  uint8_t *ref;  /* the instance as the call found it */
+  ivs_machine *m;
+} fz_arena;
+
+static void fz_arena_free(fz_arena *a)
+{
+  free(a->base);
+  free(a->ref);
+  memset(a, 0, sizeof *a);
+}
+
+static int fz_arena_new(fz_arena *a)
+{
+  memset(a, 0, sizeof *a);
+  a->base = (uint8_t *)aligned_alloc(IVS_MACHINE_ALIGN, (size_t)FZ_GAP + IVS_MACHINE_BYTES + FZ_GAP);
+  a->ref = (uint8_t *)malloc(IVS_MACHINE_BYTES);
+  if (a->base == NULL || a->ref == NULL) {
+    fz_arena_free(a);
+    return 0;
+  }
+  memset(a->base, 0x5A, (size_t)FZ_GAP + IVS_MACHINE_BYTES + FZ_GAP);
+  a->inst = a->base + FZ_GAP;
+  if (!su_boot_at(a->inst, SU_IMG_ALL, 1, &a->m) || !ivs_ms_step(a->m, 300u, NULL)) {
+    fz_arena_free(a);
+    return 0;
+  }
+  return 1;
+}
+
+/* One call with a handle or an argument that is wrong: the status, the 400 byte report against the one the contract allows (a refusal by an
+ * argument or the handle reads no byte of the buffer, so no header fact is written; with written 0 nothing may change), and the instance the
+ * call could have touched against the bytes it had before. */
+static int fz_hcall(fz_ctx *c, const char *what, uint32_t idx, ivs_machine *handle, const uint8_t *buf, uint64_t len, uint8_t *rep_mem, int written,
+                    ivs_status want, uint32_t reason, const uint8_t *watch, size_t watch_n, uint32_t psel)
+{
+  fz_lab lab;
+  uint8_t exp[SU_CALLER];
+  static uint8_t before[IVS_MACHINE_BYTES];
+  ivs_status st;
+  c->case_bad = 0;
+  c->attempts++;
+  lab.what = what;
+  lab.a = idx;
+  lab.m = 0u;
+  if (rep_mem != NULL) {
+    memset(rep_mem, (psel & 1u) != 0u ? 0x5A : 0xA5, SU_CALLER);
+    {
+      uint32_t ssz = SU_CALLER;
+      memcpy(rep_mem + offsetof(ivs_snapshot_report, struct_size), &ssz, sizeof ssz);
+    }
+    memcpy(exp, rep_mem, sizeof exp);
+    if (written) {
+      su_expect_report(exp, buf, 0u, reason, 0u, FZ_NONE, 0u);
+    }
+  }
+  if (watch != NULL && watch_n <= sizeof before) {
+    memcpy(before, watch, watch_n);
+  }
+  st = ivs_machine_snapshot_restore(handle, buf, len, rep_mem != NULL ? (ivs_snapshot_report *)(void *)rep_mem : NULL);
+  if (st != want) {
+    fz_fail(c, &lab, "status %s, the contract says %s", ivs_status_name(st), ivs_status_name(want));
+  }
+  if (rep_mem != NULL && memcmp(rep_mem, exp, sizeof exp) != 0) {
+    size_t i = 0u;
+    while (rep_mem[i] == exp[i]) {
+      i++;
+    }
+    fz_fail(c, &lab, "report byte %u is %02X, the contract says %02X", (unsigned)i, (unsigned)rep_mem[i], (unsigned)exp[i]);
+  }
+  if (watch != NULL && watch_n <= sizeof before && memcmp(before, watch, watch_n) != 0) {
+    fz_fail(c, &lab, "the instance bytes changed by a refusal");
+  }
+  c->refused++;
+  if (reason >= 58u && reason <= 81u) {
+    c->seen |= FZ_BIT(reason);
+  }
+  if (c->case_bad) {
+    c->bad++;
+  }
+  return !c->case_bad;
+}
+
+/* state.fuzz.different-handle: restore into a destroyed handle, a NULL handle, an instance whose magic or stored profile index is damaged
+ * (BAD_HANDLE with the reason IVS_REASON_HANDLE, and no byte of the buffer is read first: the buffer is one byte and the length claimed is the
+ * size of a snapshot, so a read past it is an error under the sanitizer), a buffer overlapping the instance (BAD_ARG, reason 81, nothing read
+ * first), a report overlapping the instance (nothing written) and the order of the classes (the arguments before the handle). */
+static int fz_different_handle(void)
+{
+  fz_ctx c;
+  fz_arena a;
+  su_rep rep;
+  uint8_t *one;
+  ivs_ms_inst dead;
+  uint32_t i = 0u;
+  int ok;
+  ST_CHECK(fz_get());
+  fz_ctx_init(&c, "state.fuzz.different-handle");
+  ST_CHECK(fz_arena_new(&a));
+  one = su_heap_copy(fz.snap, 1u);
+  if (one == NULL) {
+    fz_arena_free(&a);
+    return IVS_TEST_FAIL;
+  }
+  (void)fz_hcall(&c, "a NULL handle", i, NULL, one, fz.n, rep.b, 1, IVS_E_BAD_HANDLE, IVS_REASON_HANDLE, NULL, 0u, i);
+  i++;
+  if (su_scenario_new(&dead, SU_SC_STUB2, 1)) {
+    ok = ivs_machine_destroy(dead.m) == IVS_OK;
+    (void)fz_hcall(&c, "a destroyed handle", i, dead.m, one, fz.n, rep.b, 1, IVS_E_BAD_HANDLE, IVS_REASON_HANDLE, NULL, 0u, i);
+    i++;
+    if (!ok) {
+      fz_fail(&c, &(fz_lab){"destroy", 0u, 0u}, "the instance could not be destroyed");
+    }
+    ivs_ms_free(&dead);
+  } else {
+    c.bad++;
+  }
+  {
+    static const struct {
+      const char *label;
+      int what; /* 0: the magic, 1: the stored profile index, 2: the profile index in the memory system */
+    } dmg[] = {{"a handle whose magic is damaged", 0}, {"a handle whose stored profile index is out of range", 1},
+               {"a handle whose memory system holds another profile index", 2}};
+    uint32_t j;
+    for (j = 0u; j < 3u; j++) {
+      if (!su_scenario_new(&dead, SU_SC_STUB2, 1)) {
+        c.bad++;
+        continue;
+      }
+      {
+        struct ivs_machine *im = (struct ivs_machine *)(void *)dead.storage;
+        if (dmg[j].what == 0) {
+          dead.storage[0] ^= 0x01u;
+        } else if (dmg[j].what == 1) {
+          im->profile = 0x7FFFFFFFu;
+        } else {
+          im->mem.profile ^= 0x01u;
+        }
+      }
+      (void)fz_hcall(&c, dmg[j].label, i, dead.m, one, fz.n, rep.b, 1, IVS_E_BAD_HANDLE, IVS_REASON_HANDLE, NULL, 0u, i);
+      i++;
+      ivs_ms_free(&dead);
+    }
+  }
+  /* the arguments come before the handle: a NULL buffer with a length is reason 58 even for a NULL handle */
+  (void)fz_hcall(&c, "a NULL buffer with a length and a NULL handle", i, NULL, NULL, 10u, rep.b, 1, IVS_E_BAD_ARG, 58u, NULL, 0u, i);
+  i++;
+  /* a buffer that overlaps the instance: inside it, across its start and across its end; the instance is compared whole */
+  {
+    static const long delta[3] = {3000, -100, (long)IVS_MACHINE_BYTES - 100};
+    static const char *const label[3] = {"the buffer inside the instance", "the buffer across the start of the instance",
+                                         "the buffer across the end of the instance"};
+    uint32_t j;
+    for (j = 0u; j < 3u; j++) {
+      memcpy(a.ref, a.inst, IVS_MACHINE_BYTES);
+      (void)fz_hcall(&c, label[j], i, a.m, a.inst + delta[j], fz.n, rep.b, 1, IVS_E_BAD_ARG, 81u, a.inst, IVS_MACHINE_BYTES, i);
+      if (memcmp(a.ref, a.inst, IVS_MACHINE_BYTES) != 0) {
+        fz_fail(&c, &(fz_lab){label[j], i, 0u}, "the instance changed");
+      }
+      i++;
+    }
+  }
+  /* a report that overlaps the instance: nothing is written, so the instance stays as it is, report struct included */
+  {
+    uint8_t *at = a.inst + ((offsetof(struct ivs_machine, mem.sysram) + 64u + 7u) & ~(size_t)7u);
+    uint8_t *good = su_heap_copy(fz.snap, fz.n);
+    uint32_t ssz = SU_CALLER;
+    memcpy(at + offsetof(ivs_snapshot_report, struct_size), &ssz, sizeof ssz);
+    memcpy(a.ref, a.inst, IVS_MACHINE_BYTES);
+    if (good != NULL) {
+      ivs_status st = ivs_machine_snapshot_restore(a.m, good, fz.n, (ivs_snapshot_report *)(void *)at);
+      c.attempts++;
+      c.refused++;
+      if (st != IVS_E_BAD_ARG || memcmp(a.ref, a.inst, IVS_MACHINE_BYTES) != 0) {
+        fz_fail(&c, &(fz_lab){"the report inside the instance", i, 0u}, "status %s or the instance changed", ivs_status_name(st));
+        c.bad++;
+      }
+      c.seen |= FZ_BIT(81u);
+      free(good);
+    }
+    i++;
+  }
+  free(one);
+  fz_arena_free(&a);
+  ok = fz_finish(&c);
+  if (ST_FAULT_STRIDE == 1u && (c.seen & (FZ_BIT(58u) | FZ_BIT(81u))) != (FZ_BIT(58u) | FZ_BIT(81u))) {
+    ok = IVS_TEST_FAIL;
+  }
+  return ok;
+}
+
+/* ---- two attempts on identically reset targets ---- */
+
+/* state.fuzz.second-attempt-identical: every class of the family (the truncations, the flips with the trailer left and recomputed, the header
+ * bits, the lies, the semantic lies, the random cases and the two saturated snapshots) with a thinned point set, each case run twice, with the other
+ * poison in the report, on a target put back from the baseline: the status, the reason, the offset, the section and the slot kind are identical,
+ * and after an acceptance the two restored instances are byte-identical. */
+static int fz_second_attempt(void)
+{
+  static const fz_plan pt = {0u, 97u, 1};
+  static const fz_plan pf = {3u, 59u, 1};
+  static const fz_plan ps = {5u, 43u, 1};
+  static const fz_plan ph = {7u, 29u, 1};
+  static const fz_plan pr = {0u, 8u, 1};
+  fz_ctx c;
+  su_tab t;
+  int ok;
+  ST_CHECK(fz_get());
+  fz_ctx_init(&c, "state.fuzz.second-attempt-identical");
+  fz_run_truncations(&c, &pt);
+  fz_run_flips(&c, &pf, 0);
+  fz_run_flips(&c, &ps, 1);
+  fz_run_header_bits(&c, &ph);
+  ST_CHECK(su_tab_init(&t, FZ_TAB_CAP));
+  fz_build_lies(&t);
+  fz_run_tab(&c, &t, 0u, 1);
+  fz_id_forms(&c, 1);
+  su_tab_free(&t);
+  ST_CHECK(su_tab_init(&t, 128u));
+  fz_build_semantic(&t);
+  fz_run_tab(&c, &t, 0u, 1);
+  su_tab_free(&t);
+  fz_run_random(&c, 400u, &pr);
+  fz_run_saturated(&c, 1);
+  ok = fz_finish(&c);
+  if (ST_FAULT_STRIDE == 1u && (c.accepted == 0u || c.refused == 0u)) {
+    ok = IVS_TEST_FAIL;
+  }
+  return ok;
+}
+
+/* ---- the self-control of the checker ---- */
+
+/* One case run on its own with a context that does not print: returns the number of cases that failed (0 or 1). */
+static uint64_t fz_judge_run(uint32_t tamper, const uint8_t *bytes, size_t len, const fz_exp *e)
+{
+  fz_ctx c;
+  fz_ctx_init(&c, "judge");
+  c.quiet = 1;
+  c.tamper = tamper;
+  (void)fz_check(&c, "judge case", 0u, 0u, bytes, len, len, e, -1, -1, 0u, 0);
+  return c.bad;
+}
+
+/* state.judge.fuzz-invariant-detects: the checker has failed before it is trusted. Each control runs a case the checker must pass, then the same
+ * case with something wrong: an expectation that names another reason, or an acceptance where a refusal is expected and the other way round, a
+ * position class with the wrong reason (the classifier row of a real offset corrupted), a wrong offset, a byte of the restored target changed after an
+ * accepted case, a byte of the re-encoded section changed, a byte of the target changed after a refusal, a byte of the report changed. The
+ * untampered run of each is reported as passing and the tampered one as failing. */
+static int fz_judge(void)
+{
+  static uint8_t work[IVS_SNAPSHOT_MAX_BYTES];
+  fz_exp good;
+  fz_exp bad;
+  int ok = 1;
+  uint32_t k;
+  ST_CHECK(fz_get());
+  /* a refusal: the byte 300 of the table flipped and the trailer left: the trailer (70) at the start of the trailer */
+  fz_make_flip(work, 300u, 0xFFu, 0);
+  (void)fz_classify(300u, 0xFFu, 0, &good);
+  ST_REQ(ok, fz_judge_run(FZ_T_NONE, work, fz.n, &good) == 0u);
+  bad = good;
+  bad.reasons = FZ_BIT(69u);
+  ST_REQ(ok, fz_judge_run(FZ_T_NONE, work, fz.n, &bad) == 1u); /* a classifier row with the wrong reason */
+  bad = good;
+  bad.off += 1u;
+  ST_REQ(ok, fz_judge_run(FZ_T_NONE, work, fz.n, &bad) == 1u); /* a wrong offset */
+  bad = good;
+  bad.reasons = 0u;
+  bad.accept = 1u;
+  ST_REQ(ok, fz_judge_run(FZ_T_NONE, work, fz.n, &bad) == 1u); /* an acceptance expected where the case is refused */
+  ST_REQ(ok, fz_judge_run(FZ_T_REFUSAL, work, fz.n, &good) == 1u); /* a byte of the target changed after a refusal */
+  ST_REQ(ok, fz_judge_run(FZ_T_REPORT, work, fz.n, &good) == 1u);  /* a byte of the report changed */
+  /* an acceptance: the valid snapshot as it is */
+  memcpy(work, fz.snap, fz.n);
+  memset(&good, 0, sizeof good);
+  good.accept = 1u;
+  ST_REQ(ok, fz_judge_run(FZ_T_NONE, work, fz.n, &good) == 0u);
+  bad = good;
+  bad.accept = 0u;
+  bad.reasons = FZ_BIT(70u);
+  ST_REQ(ok, fz_judge_run(FZ_T_NONE, work, fz.n, &bad) == 1u); /* a refusal expected where the case is accepted */
+  ST_REQ(ok, fz_judge_run(FZ_T_ACCEPT, work, fz.n, &good) == 1u);   /* a byte of the restored target changed */
+  ST_REQ(ok, fz_judge_run(FZ_T_PREIMAGE, work, fz.n, &good) == 1u); /* a byte of the re-encoded section changed */
+  ST_REQ(ok, fz_judge_run(FZ_T_REPORT, work, fz.n, &good) == 1u);   /* a byte of the report of an acceptance changed (the first accepted case is on the subset) */
+  /* every class of the classifier fails when its reason is wrong: one offset of each class */
+  for (k = 0u; k < FZ_NCLASS && ok; k++) {
+    static const uint32_t at[FZ_NCLASS] = {3u, 8u, 10u, 14u, 18u, 22u, 40u, 70u, 130u, 155u, 170u, 190u, 280u, 310u, 330u, 614u, 620u, 1000u, 4280u};
+    fz_exp e;
+    uint32_t cls;
+    fz_make_flip(work, at[k], 0xFFu, 0);
+    cls = fz_classify(at[k], 0xFFu, 0, &e);
+    ST_REQ(ok, cls == k);
+    ST_REQ(ok, fz_judge_run(FZ_T_NONE, work, fz.n, &e) == 0u);
+    e.reasons = (e.reasons << 1) != 0u ? (e.reasons << 1) : FZ_BIT(58u);
+    ST_REQ(ok, fz_judge_run(FZ_T_NONE, work, fz.n, &e) == 1u);
+  }
+  return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
+}
+
 const ivs_test_case ivs_state_fuzz_cases[] = {
     {"state.fuzz.truncations", fz_truncations, NULL},
     {"state.fuzz.byte-flips", fz_byte_flips, NULL},
@@ -1515,5 +2405,11 @@ const ivs_test_case ivs_state_fuzz_cases[] = {
     {"state.fuzz.header-bit-flips", fz_header_bit_flips, NULL},
     {"state.fuzz.length-and-table-lies", fz_length_and_table_lies, NULL},
     {"state.fuzz.semantic-lies", fz_semantic_lies, NULL},
+    {"state.fuzz.saturated-counters", fz_saturated_counters, NULL},
+    {"state.fuzz.random-resealed", fz_random_resealed, NULL},
+    {"state.fuzz.describe-heap", fz_describe_heap, NULL},
+    {"state.fuzz.different-handle", fz_different_handle, NULL},
+    {"state.fuzz.second-attempt-identical", fz_second_attempt, NULL},
+    {"state.judge.fuzz-invariant-detects", fz_judge, NULL},
 };
 const size_t ivs_state_fuzz_count = sizeof ivs_state_fuzz_cases / sizeof ivs_state_fuzz_cases[0];

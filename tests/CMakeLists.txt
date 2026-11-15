@@ -468,6 +468,14 @@ if(IVS_ENABLE_LIBFUZZER)
   target_compile_options(ivs_fuzz_ivsc PRIVATE "-fsanitize=${IVS_LIBFUZZER_SANITIZERS}" -fno-omit-frame-pointer)
   target_link_options(ivs_fuzz_ivsc PRIVATE "-fsanitize=${IVS_LIBFUZZER_SANITIZERS}")
   target_link_libraries(ivs_fuzz_ivsc PRIVATE ivs_warnings)
+  # Plan 08-15 (D-20): the snapshot target, the reader and restore into a live instance of the stand-in content (it links the core library and the
+  # stand-in helpers of the tests, so build the core with -fsanitize=fuzzer-no-link to instrument it; recipe in tests/fuzz/fuzz_snapshot.c).
+  # Outside the gate, never registered with ctest, never in CI.
+  add_executable(ivs_fuzz_snapshot EXCLUDE_FROM_ALL fuzz/fuzz_snapshot.c machine/machine_standin.c)
+  target_include_directories(ivs_fuzz_snapshot PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine")
+  target_compile_options(ivs_fuzz_snapshot PRIVATE "-fsanitize=${IVS_LIBFUZZER_SANITIZERS}" -fno-omit-frame-pointer)
+  target_link_options(ivs_fuzz_snapshot PRIVATE "-fsanitize=${IVS_LIBFUZZER_SANITIZERS}")
+  target_link_libraries(ivs_fuzz_snapshot PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings)
 endif()
 
 # Suite harness: self-test of the harness library alone (compiled in directly, no core).
