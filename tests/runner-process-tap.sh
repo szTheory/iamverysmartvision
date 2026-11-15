@@ -847,13 +847,67 @@ check_repeat "$tmp/elsewhere" "$ivs_run" "cwd3" "$id" "$ref" || ok=0
 result "runner-process.cwd.$id"
 
 # The round-trip hook (plan 08-16, D-18): a run with --roundtrip-at-ticks saves, resets and restores the machine at every multiple of the value,
-# and must still give the scenario's plain report apart from host.calls, with at least the stated number of cuts (check_roundtrip).
-# diag-boot-pass halts at tick 2,084 (data/golden/diag-cpu-1.digests step.1.now_ticks): the value 600 cuts at the first unit boundary at or after
-# 600, 1,200 and 1,800 (three cuts, 2,400 lies past the halt), the least that gives two inside the run.
+# and must still give the scenario's plain report apart from host.calls, with at least the stated number of cuts (check_roundtrip). Each value
+# is derived by arithmetic from the run length of the scenario's golden (the last step.<k>.now_ticks, or the run-to bound of a scenario that never
+# halts); the frame is 59,736 master ticks and no value is a multiple of it, so no cut sits on a frame boundary by accident. A cut is made at the
+# first unit boundary at or after a multiple, never at the end of a run-to, and a multiple that is a step bound or an input tick is avoided.
+#   diag-boot-pass       halts at tick 2,084 (data/golden/diag-cpu-1.digests step.1.now_ticks): 600 cuts after 600, 1,200 and 1,800 (three; 2,400 lies
+#                        past the halt), the fewest that gives two inside the run. No display.
+#   diag-ctrl-psg-pass   halts at tick 16,752 with seven input events at ticks 4,000 to 8,800: 5,000 cuts after 5,000, 10,000 and 15,000 (three), the first
+#                        between the second and the third event (two applied, a pull-down in force), the other two after the last event (8,800). No display
+#                        (the run ends inside frame 0, which ends at 59,736).
+#   diag-stic-fgbg-pass  halts at tick 88,476, the display on from frame 0 (the golden delivers one frame, ending at 59,736): 20,000 cuts after 20,000, 40,000,
+#                        60,000 and 80,000 (four): two inside the displayed frame 0 (at 20,000 and 40,000), one 264 ticks into frame 1 (66 CPU cycles, inside
+#                        the interrupt service of the frame end, not on the boundary) and one 20,264 ticks into frame 1.
+#   demo-lamp-tone-pass  the four run-to bounds 200,000, 440,000, 640,000 and 806,568 (step.4.now_ticks 806,568), six input events at ticks 100,000 to 700,000:
+#                        90,000 cuts after 90,000 (frame 1, 30,264 ticks in, the first displayed frame), 180,000 (frame 3, 792 ticks in: inside the routine
+#                        of the frame), 270,000, 360,000 (frame 6, 1,584 in), 450,000, 540,000, 630,000 and 720,000 (eight; 810,000 lies past the end). No multiple is a step
+#                        bound (the cut at the end of a run-to is never made) or an input tick.
+#   diag-stic2-collision-pass  the one run-to bound 640,000 (step.1.now_ticks 640,004), the program never halts, the display on from frame 1: 150,000 cuts after
+#                        150,000 (frame 2, which spans 119,472 to 179,207: 30,528 ticks in, so in the frame whose collision registers C0 to C7 are 0002 0001 0008
+#                        0004 0000 0000 0100 0000, set at the end of frame 1, and whose scene 8 MOB words the routine of frame 2 wrote), 300,000 (frame 5, 1,320 in: inside
+#                        its routine), 450,000 (frame 7, 31,848 in) and 600,000 (frame 10, 2,640 in) (four). The scenario's own asserts judge what the cut in
+#                        frame 2 carried: the guest reads C0 to C7 in the routine of frame 3 and stores them at 0300 to 0307, and the asserts mem 0300 == 0002,
+#                        0301 == 0001, 0302 == 0008, 0303 == 0004, 0306 == 0100 (and 0304, 0305, 0307 == 0000) hold in the report of the hook run only if the
+#                        restore brought the collision bits and the registers back; the frame 5 pixel asserts and video count judge the MOB scenes after the cuts.
 : > "$tmp/why"
 ok=1
 check_roundtrip "$ivs_run" diag-boot-pass 600 2 || ok=0
 result runner-process.roundtrip.diag-boot-pass
+: > "$tmp/why"
+ok=1
+check_roundtrip "$ivs_run" diag-ctrl-psg-pass 5000 2 || ok=0
+result runner-process.roundtrip.diag-ctrl-psg-pass
+: > "$tmp/why"
+ok=1
+check_roundtrip "$ivs_run" diag-stic-fgbg-pass 20000 2 || ok=0
+result runner-process.roundtrip.diag-stic-fgbg-pass
+: > "$tmp/why"
+ok=1
+check_roundtrip "$ivs_run" demo-lamp-tone-pass 90000 2 || ok=0
+result runner-process.roundtrip.demo-lamp-tone-pass
+: > "$tmp/why"
+ok=1
+check_roundtrip "$ivs_run" diag-stic2-collision-pass 150000 2 || ok=0
+result runner-process.roundtrip.diag-stic2-collision-pass
+# The refusals of the option (plan 08-16, D-18): a zero, one above IVS_RUN_TARGET_MAX (9223372036854775808) as decimal digits, a missing value (the option
+# last on the line) and the option twice are each a usage error: exit 14, no report on stdout, and on stderr the one message line of every usage error followed by
+# the usage text (the usage block names the option).
+: > "$tmp/why"
+ok=1
+rt_refuse() {
+  _rn=$1; _rm=$2; shift 2
+  run_one "$tmp" "rt-refuse-$_rn" "$ivs_run" --content-dir "$content" "$@"
+  [ "$rc" -eq 14 ] && [ "$hung" -eq 0 ] && [ ! -s "$tmp/runs/rt-refuse-$_rn.out" ] || { ok=0; why roundtrip-refuse "$_rn: exit $rc, hung $hung or a report"; }
+  [ "$(sed -n 1p "$tmp/runs/rt-refuse-$_rn.err")" = "ivs-run: $_rm" ] || { ok=0; why roundtrip-refuse "$_rn: the first stderr line is not 'ivs-run: $_rm'"; }
+  [ "$(sed -n 2p "$tmp/runs/rt-refuse-$_rn.err")" = 'usage: ivs-run [options] <scenario.ivss>' ] || { ok=0; why roundtrip-refuse "$_rn: the usage text does not follow"; }
+  grep -q -F -e '--roundtrip-at-ticks <n>' "$tmp/runs/rt-refuse-$_rn.err" || { ok=0; why roundtrip-refuse "$_rn: the usage text does not name the option"; }
+}
+rt_refuse zero 'option value out of range' --roundtrip-at-ticks 0 "$scen/diag-boot-pass.ivss"
+rt_refuse above-max 'option value out of range' --roundtrip-at-ticks 9223372036854775809 "$scen/diag-boot-pass.ivss"
+rt_refuse no-value 'option without a value' "$scen/diag-boot-pass.ivss" --roundtrip-at-ticks
+rt_refuse twice 'option given twice' --roundtrip-at-ticks 600 --roundtrip-at-ticks 700 "$scen/diag-boot-pass.ivss"
+result runner-process.roundtrip.refuse-range
 
 # The metamorphic judge (plan 07-07, D-23, D-06, A-16): per line `<idA> <idB> differ=<keys> equal=<keys>` of
 # data/expected/scenario-pairs.ids, the reports of the two scenario cases above are related to each other (no expected value).
@@ -1506,6 +1560,35 @@ self_control outcome-exit-disagree outcome-exit-disagree \
   check_scenario "$fakes/outcome-exit.sh" fake-pair guest-assert-mismatch 10 guest-fail -
 self_control body-differs body-differs \
   check_repeat "$tmp" "$fakes/body.sh" fake-body diag-boot-pass "$tmp/runs/scen-diag-boot-pass.out"
+# Judge self-control of the round-trip comparison (plan 08-16, D-18): check_roundtrip must be shown to fail before it is trusted, twice. A fake runner
+# that replays the report of ANOTHER scenario (diag-ctrl-psg-pass) for the hook run must be rejected for body-differs (the comparison with the plain
+# report fails on a report that differs); a fake that replays the plain report unchanged, as a hook that never cut would, must be rejected for
+# roundtrip-no-cut (equal reports are not enough: host.calls must show the cuts).
+cp "$tmp/runs/scen-diag-ctrl-psg-pass.out" "$fakes/cps.report" 2> /dev/null || : > "$fakes/cps.report"
+{
+  printf '#!/bin/sh\n# Fake ivs-run: the report of another scenario.\n'
+  printf 'cat "$(dirname "$0")/cps.report"\nexit 0\n'
+} > "$fakes/rt-other.sh"
+{
+  printf '#!/bin/sh\n# Fake ivs-run: the plain report, as if the hook had never cut.\n'
+  printf 'cat "$(dirname "$0")/dbp.report"\nexit 0\n'
+} > "$fakes/rt-nocut.sh"
+: > "$tmp/rt.bad"
+rt_control() {
+  _rtok=$1; shift
+  : > "$tmp/why"
+  if "$@"; then
+    printf 'judge-vacuous: the check accepted the fake runner of %s\n' "$_rtok" >> "$tmp/rt.bad"
+  elif ! grep -q -e "^$_rtok: " "$tmp/why"; then
+    { printf 'judge-wrong-reason: the check failed, but without %s:\n' "$_rtok"; cat "$tmp/why"; } >> "$tmp/rt.bad"
+  fi
+}
+rt_control body-differs check_roundtrip "$fakes/rt-other.sh" diag-boot-pass 600 2
+rt_control roundtrip-no-cut check_roundtrip "$fakes/rt-nocut.sh" diag-boot-pass 600 2
+cp "$tmp/rt.bad" "$tmp/why"
+ok=1
+[ ! -s "$tmp/rt.bad" ] || ok=0
+result runner-process.judge.roundtrip-differs
 
 # Outcome table anti-drift (D-20): `ivs-run --help` (the lines after its `outcomes (` line),
 # the outcome table of docs/runner.md and data/expected/runner-outcomes.ids list the same

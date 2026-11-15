@@ -119,8 +119,18 @@ runner-process.repeat.demo-lamp-tone-pass
 runner-process.slices.demo-lamp-tone-pass
 runner-process.cwd.demo-lamp-tone-pass
 # Plan 08-16 (D-18): runner-process.roundtrip.<id>, the scenario run with ivs-run --roundtrip-at-ticks <n> (a save, a power-on reset and a restore at every
-#   multiple of n) must give the plain report apart from host.calls and must have cut (host.calls grows by two per cut).
+#   multiple of n) must give the plain report apart from host.calls and must have cut (host.calls grows by two per cut): five scenarios, diag-boot-pass,
+#   diag-ctrl-psg-pass, diag-stic-fgbg-pass, demo-lamp-tone-pass and diag-stic2-collision-pass (the process-level witness of the MOB, border, delay and
+#   collision state), each with a value derived by arithmetic from its run length (see tests/runner-process-tap.sh);
+#   runner-process.roundtrip.refuse-range: zero, one above the maximum, a missing value and a repeated option are each exit 14 with the message line and the usage
+#   text on stderr and no report; runner-process.judge.roundtrip-differs: the comparison fails on a report of another scenario (body-differs) and on a hook run
+#   that did not cut (roundtrip-no-cut).
 runner-process.roundtrip.diag-boot-pass
+runner-process.roundtrip.diag-ctrl-psg-pass
+runner-process.roundtrip.diag-stic-fgbg-pass
+runner-process.roundtrip.demo-lamp-tone-pass
+runner-process.roundtrip.diag-stic2-collision-pass
+runner-process.roundtrip.refuse-range
 runner-process.pair.demo-lamp-tone-pass.demo-lamp-tone-idle
 runner-process.pair.demo-lamp-tone-pass.demo-lamp-tone-shift
 runner-process.pair.diag-stic2-idle-pass.diag-stic2-mob-pass
@@ -161,6 +171,7 @@ runner-process.judge.pair-video-equal
 runner-process.judge.input-not-consumed
 runner-process.judge.idle-audible
 runner-process.judge.owner-run-refusal
+runner-process.judge.roundtrip-differs
 runner-process.outcomes-consistent
 runner-process.outcomes-covered
 runner-process.watchdog
