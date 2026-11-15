@@ -55,6 +55,7 @@ key-decisions:
 
 duration: about 9 hours elapsed on a loaded laptop (nine sh gate runs of 1.5 to 2.5 minutes, one dash run, one container run)
 completed: 2026-11-12
+requirements-completed: [VID-01]  # backfilled by plan 08-20 from the plan requirements field; closure evidence is the phase VERIFICATION record, not this line
 ---
 
 # Phase 6 Plan 06: STIC register file, windows, handshake, hook tables and suite stic Summary

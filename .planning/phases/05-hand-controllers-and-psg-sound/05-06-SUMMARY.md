@@ -66,6 +66,7 @@ key-decisions:
 
 duration: about 5 h including eleven gate runs
 completed: 2026-11-12
+requirements-completed: [AUD-01, AUD-02]  # backfilled by plan 08-20 from the plan requirements field; closure evidence is the phase VERIFICATION record, not this line
 ---
 
 # Phase 5 Plan 06: Tone, mixer, amplitude, sampling, audio live Summary

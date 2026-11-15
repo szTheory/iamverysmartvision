@@ -39,6 +39,7 @@ key-files:
 
 duration: about 8 hours elapsed on a loaded laptop (seven sh gate runs, one dash run, one container run)
 completed: 2026-11-12
+requirements-completed: [VID-02]  # backfilled by plan 08-20 from the plan requirements field; closure evidence is the phase VERIFICATION record, not this line
 ---
 
 # Phase 6 Plan 08: frame timeline lines, row latches, late grants, bounds re-proof Summary

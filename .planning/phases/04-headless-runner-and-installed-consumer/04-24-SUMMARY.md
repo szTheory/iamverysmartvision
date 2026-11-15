@@ -55,6 +55,7 @@ key-decisions:
 
 duration: about 35 min of edits plus gates (first task commit 20:30, last 20:50), plus one container gate
 completed: 2026-11-11
+requirements-completed: [RUN-04]  # backfilled by plan 08-20 from the plan requirements field; closure evidence is the phase VERIFICATION record, not this line
 ---
 
 # Phase 4 Plan 24: the important-gate registry Summary

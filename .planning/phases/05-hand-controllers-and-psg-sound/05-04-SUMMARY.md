@@ -74,6 +74,7 @@ key-decisions:
 
 duration: about 2 h 30 min including six gate runs and the checkpoint measurements
 completed: 2026-11-12
+requirements-completed: [AUD-01]  # backfilled by plan 08-20 from the plan requirements field; closure evidence is the phase VERIFICATION record, not this line
 ---
 
 # Phase 5 Plan 04: PSG register file, memmap flip and suite psg Summary

@@ -65,6 +65,7 @@ key-decisions:
 
 duration: about 55 minutes of edits and runs (08:30 to 09:20 local), most of it waiting on gate runs under a host load of 8 to 60
 completed: 2026-11-12
+requirements-completed: [INP-01, INP-02, INP-03, API-03, AUD-01, AUD-02]  # backfilled by plan 08-20 from the plan requirements field; closure evidence is the phase VERIFICATION record, not this line
 ---
 
 # Phase 5 Plan 12: close-out Summary

@@ -58,6 +58,7 @@ key-decisions:
 
 duration: about 20 min of edits and gates (first commit 19:51, last 19:55), plus one container gate
 completed: 2026-11-11
+requirements-completed: [RUN-05]  # backfilled by plan 08-20 from the plan requirements field; closure evidence is the phase VERIFICATION record, not this line
 ---
 
 # Phase 4 Plan 21: goldens and the golden step Summary

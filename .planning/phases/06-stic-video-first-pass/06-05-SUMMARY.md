@@ -50,6 +50,7 @@ key-decisions:
 
 duration: about 3 hours elapsed on a loaded laptop (five gate runs of 2.5 to 3 minutes each plus the container gate)
 completed: 2026-11-12
+requirements-completed: [VID-01, VID-06]  # backfilled by plan 08-20 from the plan requirements field; closure evidence is the phase VERIFICATION record, not this line
 ---
 
 # Phase 6 Plan 05: state and digest foundation, composite v3, golden re-bless 1 Summary

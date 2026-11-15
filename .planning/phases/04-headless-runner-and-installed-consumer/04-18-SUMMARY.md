@@ -54,6 +54,7 @@ key-decisions:
 
 duration: about 19 min of edits and gates (first commit 18:51, last 19:04), plus two container gates
 completed: 2026-11-11
+requirements-completed: [RUN-01, RUN-02, RUN-05]  # backfilled by plan 08-20 from the plan requirements field; closure evidence is the phase VERIFICATION record, not this line
 ---
 
 # Phase 4 Plan 18: Runner executor and report writer Summary

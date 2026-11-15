@@ -59,6 +59,7 @@ key-decisions:
 
 duration: about 17 min of edits and gates (first commit 19:11, last 19:23), plus one container gate
 completed: 2026-11-11
+requirements-completed: [RUN-01, RUN-02]  # backfilled by plan 08-20 from the plan requirements field; closure evidence is the phase VERIFICATION record, not this line
 ---
 
 # Phase 4 Plan 19: ivs-run executable, slicing, timeouts and cancellation Summary

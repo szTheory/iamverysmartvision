@@ -66,6 +66,7 @@ key-decisions:
 
 duration: about 3 h of edits plus about a dozen gate runs
 completed: 2026-11-12
+requirements-completed: [AUD-02, API-03]  # backfilled by plan 08-20 from the plan requirements field; closure evidence is the phase VERIFICATION record, not this line
 ---
 
 # Phase 5 Plan 09: Runner and scenarios Summary
