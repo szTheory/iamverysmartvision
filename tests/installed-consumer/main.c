@@ -52,6 +52,16 @@
  * first gate write, A=0 B=0 C=15 inside the gate windows and at the scenario's six audio ticks), and the 16-byte write-log records (the
  * register, value and frame of all 30 writes). A second pass on a fresh machine runs frame by frame with IVS_RUN_F_STOP_ON_FRAME, one video
  * slot of capacity per call, resubmitting the unconsumed suffix of the events, and must end with the same streams and digests (scn.frame-stop).
+ * Plan 08-16 (D-18, STA-02) adds a fifth replay, of the same scenario, whose lines carry the prefix `snap.`: the snapshot calls through the installed
+ * headers and archive only (no new image argument). Machine A runs the first two steps of the fourth replay and a further run to a tick in the middle of
+ * frame 7 (a constant derived by arithmetic, checked against the machine); ivs_machine_snapshot_size and ivs_machine_snapshot_save write its snapshot
+ * into a buffer of exactly the reported size (no size is hard-coded); ivs_snapshot_describe reads the same bytes without an instance (the profile id,
+ * the total and the three image slots equal the machine's); machine B (the same images) is dirtied by an idle run to another tick, refuses a damaged copy
+ * of the snapshot (the trailer, the target unchanged) and restores the real one with ivs_machine_snapshot_restore, after which its nine digests and its
+ * CPU and STIC reports equal A's and a save of B is the snapshot; B then runs on through the last two steps with the events resubmitted from the applied
+ * count A's calls reported. The streams of the two legs, concatenated, pass the checks of the fourth replay, the nine final digests are those of the
+ * straight run and equal data/golden/demo-lamp-tone-pass.digests through the prefix `snap.` like the `scn.` lines, and a second instance repeats it.
+ * That agreement is one core agreeing with itself, not an independent oracle. No timing, no path and no file.
  * Stdout is pinned by data/expected/pkg-consumer.golden and its digest lines must equal those of
  * data/golden/diag-input-pass.digests. Exit 0 only when every check held; a failed check prints
  * a `FAIL <what>` line. No path, time or address is printed (the output is host independent).
@@ -1598,6 +1608,367 @@ static void scn_session(int print, c_digests *d, int *observed)
   run_prefix = "";
 }
 
+/* ---- the fifth replay (plan 08-16, D-18): the snapshot calls through the installed package, on the same scenario ---- */
+
+/* A snapshot of the original program, taken in the middle of a frame and restored into a machine that a different run dirtied, through the public API
+ * alone (ivs.h pulls in the snapshot header). Machine A runs the first two steps of the fourth replay (the same events, the same guest words), then a
+ * further run to C_SNAP_CUT_TARGET, and is saved; machine B (the same three images, powered, then run on the idle input to another tick) takes the
+ * snapshot, and runs on from there through the last two steps with the events resubmitted from the applied count A reported. The streams the two legs
+ * delivered, concatenated, pass the checks of the fourth replay (they share nothing with the runner), the nine final digests are those of the straight
+ * run, and the lines printed carry the prefix `snap.`. The agreement with the runner is agreement of one core with itself, not an independent oracle.
+ *
+ * The cut. Frame k spans 59,736 k to 59,736 k + 59,735 (A8), so 7 x 59,736 = 418,152 and the target 450,000 is 31,848 ticks into frame 7: 27,888 ticks
+ * before its end at 477,888 and 31,848 after its start, at least 10,000 from either, and 450,000 is not a multiple of 59,736. The run ends at the first unit
+ * boundary at or after the target (the overshoots of the fourth replay's steps are 24, 12 and 4 ticks), so the cut stays inside the frame. It is above the
+ * stop of the second step (440,012) and below the fourth event (460,000): exactly the events at 100,000, 220,000 and 340,000 are applied at the cut, three,
+ * and the other three are the host's to resubmit. The replay checks these figures against the machine rather than trusting them. */
+#define C_SNAP_CUT_TARGET 450000u
+#define C_SNAP_CUT_EVENTS 3u
+#define C_SNAP_MIN_EDGE 10000u /* the cut lies at least this many ticks from either end of its frame */
+/* The tick machine B is run to before it takes the snapshot, on the idle input (no event): frame 5 spans 298,680 to 358,415, a different frame, time and
+ * input log from the cut. */
+#define C_SNAP_DIRTY_TARGET 300000u
+
+/* One idle run of m to target, outside the bookkeeping of the replay: the delivered counts and the kept streams the checks read are put back as they
+ * were, so dirtying a machine adds nothing to the streams of the replay. */
+static void snap_dirty_run(ivs_machine *m, uint64_t target)
+{
+  uint64_t video = delivered_video_bytes;
+  uint64_t audio = delivered_audio_bytes;
+  uint64_t plog = delivered_psglog_bytes;
+  uint64_t frames = delivered_frames;
+  int kv = keep_video;
+  int ka = keep_audio;
+  int kp = keep_plog;
+  keep_video = 0;
+  keep_audio = 0;
+  keep_plog = 0;
+  (void)run_step(m, 0u, target, NULL, 0u, IVS_STOP_TARGET, 0);
+  keep_video = kv;
+  keep_audio = ka;
+  keep_plog = kp;
+  delivered_video_bytes = video;
+  delivered_audio_bytes = audio;
+  delivered_psglog_bytes = plog;
+  delivered_frames = frames;
+}
+
+/* The guest words 02F0..02F5 at the stop of step k + 1 against the constants of the fourth replay; prints the pinned line. */
+static void snap_check_words(const ivs_machine *m, unsigned k, int print)
+{
+  uint16_t w[C_SCN_WORDS];
+  ivs_status st = ivs_machine_peek(m, 0x02F0u, C_SCN_WORDS, w);
+  if (st != IVS_OK) {
+    fail("snap peek words");
+    return;
+  }
+  if (print) {
+    printf("snap.step.%u.mem 02F0..02F5=", k + 1u);
+    for (size_t i = 0u; i < C_SCN_WORDS; i++) {
+      printf("%s%04X", i == 0u ? "" : ",", (unsigned)w[i]);
+    }
+    printf("\n");
+  }
+  if (memcmp(w, c_scn_stops[k].w, sizeof w) != 0) {
+    fail("snap guest words");
+  }
+}
+
+/* 1 when both instances answer the CPU and the STIC inspection calls and the two reports of each are equal (the reports have no padding, so memcmp). */
+static int snap_reports_equal(const ivs_machine *a, const ivs_machine *b, int *cpu_equal, int *stic_equal)
+{
+  ivs_cpu_state_report ca;
+  ivs_cpu_state_report cb;
+  ivs_stic_report sa;
+  ivs_stic_report sb;
+  memset(&ca, 0, sizeof ca);
+  memset(&cb, 0, sizeof cb);
+  ca.struct_size = (uint32_t)sizeof ca;
+  cb.struct_size = (uint32_t)sizeof cb;
+  memset(&sa, 0, sizeof sa);
+  memset(&sb, 0, sizeof sb);
+  sa.struct_size = IVS_STIC_REPORT_V1_SIZE;
+  sb.struct_size = IVS_STIC_REPORT_V1_SIZE;
+  *cpu_equal = 0;
+  *stic_equal = 0;
+  if (ivs_machine_cpu_state(a, &ca) != IVS_OK || ivs_machine_cpu_state(b, &cb) != IVS_OK) {
+    return 0;
+  }
+  if (ivs_machine_stic_state(a, &sa) != IVS_OK || ivs_machine_stic_state(b, &sb) != IVS_OK) {
+    return 0;
+  }
+  *cpu_equal = memcmp(&ca, &cb, sizeof ca) == 0;
+  *stic_equal = memcmp(&sa, &sb, sizeof sa) == 0;
+  return 1;
+}
+
+/* The replay. d gets the nine final digests of machine B and observed the domains by the count rule; straight is the nine digests of the fourth replay's
+ * straight run, which B's must equal. print selects the pinned output (the first instance only). */
+static void snap_session(int print, c_digests *d, int *observed, const c_digests *straight)
+{
+  c_instance a;
+  c_instance b;
+  ivs_info info;
+  ivs_input_event ev[C_SCN_EVENTS];
+  c_digests da;
+  c_digests db;
+  c_digests dp;
+  ivs_snapshot_report dr;
+  ivs_snapshot_report rr;
+  uint8_t *snap = NULL;
+  uint8_t *again = NULL;
+  uint8_t *damaged = NULL;
+  uint64_t size = 0u;
+  uint64_t written = 0u;
+  uint64_t cut_now;
+  uint64_t offset;
+  uint32_t consumed = 0u;
+  uint32_t got;
+  uint32_t at_cut;
+  ivs_status st;
+  int head;
+  int slots_ok;
+  int comp_ok;
+  int dirty;
+  int refused;
+  int restored;
+  int dig_equal;
+  int cpu_equal;
+  int stic_equal;
+  int fixed;
+  int same;
+  memset(d, 0, sizeof *d);
+  memset(&a, 0, sizeof a);
+  memset(&b, 0, sizeof b);
+  delivered_video_bytes = 0u;
+  delivered_audio_bytes = 0u;
+  delivered_psglog_bytes = 0u;
+  delivered_frames = 0u;
+  kept_video_n = 0u;
+  kept_audio_n = 0u;
+  kept_plog_n = 0u;
+  keep_video = 1;
+  keep_audio = 1;
+  keep_plog = 1;
+  run_prefix = "snap.";
+  scn_events(ev);
+  if (!scn_powered(&a, 0)) {
+    goto done;
+  }
+  memset(&info, 0, sizeof info);
+  info.struct_size = (uint32_t)sizeof info;
+  st = ivs_machine_info(a.m, &info);
+  if (st != IVS_OK || info.video_format != IVS_OUTPUT_FORMAT_INDEX8_FRAMES_V1 || info.video_slot_bytes == 0u) {
+    fail("snap info");
+    goto done;
+  }
+  /* Machine A: the first two steps of the fourth replay, then the run to the cut. */
+  for (unsigned k = 0u; k < 2u; k++) {
+    got = run_step(a.m, k + 1u, c_scn_stops[k].target, &ev[consumed], C_SCN_EVENTS - consumed, IVS_STOP_TARGET, print);
+    consumed += got;
+    if (consumed > C_SCN_EVENTS) {
+      fail("snap input_consumed");
+      goto done;
+    }
+    snap_check_words(a.m, k, print);
+  }
+  got = run_step(a.m, 3u, C_SNAP_CUT_TARGET, &ev[consumed], C_SCN_EVENTS - consumed, IVS_STOP_TARGET, 0);
+  consumed += got;
+  at_cut = consumed;
+  memset(&info, 0, sizeof info);
+  info.struct_size = (uint32_t)sizeof info;
+  st = ivs_machine_info(a.m, &info);
+  if (st != IVS_OK) {
+    fail("snap info at the cut");
+    goto done;
+  }
+  cut_now = info.time_ticks;
+  offset = cut_now % C_SCN_FRAME_TICKS;
+  if (cut_now < C_SNAP_CUT_TARGET || cut_now <= c_scn_stops[1].target || offset < C_SNAP_MIN_EDGE || C_SCN_FRAME_TICKS - offset < C_SNAP_MIN_EDGE ||
+      at_cut != C_SNAP_CUT_EVENTS) {
+    fail("snap cut position");
+  }
+  if (print) {
+    printf("snap.cut target_ticks=%u now_ticks=%llu frame=%llu frame_offset=%llu input_applied=%u\n", (unsigned)C_SNAP_CUT_TARGET,
+           (unsigned long long)cut_now, (unsigned long long)(cut_now / C_SCN_FRAME_TICKS), (unsigned long long)offset, (unsigned)at_cut);
+  }
+  /* The snapshot of A: the exact length from the library, a buffer of exactly that size, the instance-free description of the same bytes. */
+  if (!digest_all(a.m, &da)) {
+    fail("snap digests of the cut");
+    goto done;
+  }
+  st = ivs_machine_snapshot_size(a.m, &size);
+  if (st != IVS_OK || size == 0u || size > IVS_SNAPSHOT_MAX_BYTES) {
+    fail("snap size");
+    goto done;
+  }
+  snap = malloc((size_t)size);
+  again = malloc((size_t)size);
+  damaged = malloc((size_t)size);
+  if (snap == NULL || again == NULL || damaged == NULL) {
+    fail("snap buffers");
+    goto done;
+  }
+  st = ivs_machine_snapshot_save(a.m, snap, size, &written);
+  if (st != IVS_OK || written != size) {
+    fail("snap save");
+    goto done;
+  }
+  if (print) {
+    printf("snap.size bytes=%llu\n", (unsigned long long)size);
+  }
+  memset(&dr, 0xA5, sizeof dr);
+  dr.struct_size = (uint32_t)sizeof dr;
+  st = ivs_snapshot_describe(snap, size, &dr);
+  head = st == IVS_OK && dr.reason == 0u && dr.struct_size == (uint32_t)sizeof dr && dr.format_version == IVS_SNAPSHOT_FORMAT_VERSION &&
+         dr.schema_version == IVS_SNAPSHOT_SCHEMA_VERSION && dr.total_bytes == size && memchr(dr.profile_id, '\0', sizeof dr.profile_id) != NULL &&
+         strcmp(dr.profile_id, C_PROFILE) == 0;
+  slots_ok = 1;
+  for (size_t i = 0u; i < 3u; i++) {
+    slots_ok = slots_ok && dr.slots[i].kind == (uint32_t)(i + 1u) && dr.slots[i].loaded == info.slots[i].loaded &&
+               dr.slots[i].length_bytes == info.slots[i].length_bytes && memcmp(dr.slots[i].sha256, info.slots[i].sha256, 32u) == 0;
+  }
+  comp_ok = memcmp(dr.composite_sha256, da.sha[4], 32u) == 0;
+  if (print) {
+    printf("snap.describe status=%s reason=%u format=%u schema=%u total=%llu profile=%s slots-equal-machine=%s composite-equal-machine=%s\n",
+           status_token(st), (unsigned)dr.reason, (unsigned)dr.format_version, (unsigned)dr.schema_version, (unsigned long long)dr.total_bytes,
+           head ? dr.profile_id : "-", slots_ok ? "yes" : "no", comp_ok ? "yes" : "no");
+  }
+  if (!head || !slots_ok || !comp_ok) {
+    fail("snap describe");
+  }
+  /* Machine B: the same images, powered, dirtied by an idle run to another tick, so the target is poisoned through the public API only. */
+  if (!scn_powered(&b, 0)) {
+    goto done;
+  }
+  snap_dirty_run(b.m, C_SNAP_DIRTY_TARGET);
+  if (!digest_all(b.m, &dp)) {
+    fail("snap digests of the dirty target");
+    goto done;
+  }
+  dirty = memcmp(da.sha[0], dp.sha[0], 32u) != 0 && memcmp(da.sha[1], dp.sha[1], 32u) != 0 && memcmp(da.sha[3], dp.sha[3], 32u) != 0 &&
+          memcmp(da.sha[4], dp.sha[4], 32u) != 0;
+  if (print) {
+    printf("snap.dirty target_ticks=%u cpu-mem-instance-composite-differ=%s\n", (unsigned)C_SNAP_DIRTY_TARGET, dirty ? "yes" : "no");
+  }
+  if (!dirty) {
+    fail("snap dirty target");
+  }
+  /* A damaged copy (one payload byte flipped) is refused by its trailer and leaves the dirty target as it was. */
+  memcpy(damaged, snap, (size_t)size);
+  damaged[(size_t)(size / 2u)] ^= 0x01u;
+  memset(&rr, 0, sizeof rr);
+  rr.struct_size = (uint32_t)sizeof rr;
+  st = ivs_machine_snapshot_restore(b.m, damaged, size, &rr);
+  if (!digest_all(b.m, &db)) {
+    fail("snap digests after the refusal");
+    goto done;
+  }
+  refused = st == IVS_E_DIGEST_MISMATCH && rr.reason == IVS_REASON_SNAP_TRAILER && memcmp(&db, &dp, sizeof db) == 0;
+  if (print) {
+    printf("snap.refusal.damaged status=%s reason=%u digest-unchanged=%s\n", status_token(st), (unsigned)rr.reason,
+           memcmp(&db, &dp, sizeof db) == 0 ? "yes" : "no");
+  }
+  if (!refused) {
+    fail("snap refusal");
+  }
+  /* The restore: the report is the one describe wrote, and the state is A's at once, through the nine digests and the two inspection reports. */
+  memset(&rr, 0xA5, sizeof rr);
+  rr.struct_size = (uint32_t)sizeof rr;
+  st = ivs_machine_snapshot_restore(b.m, snap, size, &rr);
+  restored = st == IVS_OK && rr.reason == 0u && memcmp(&rr, &dr, sizeof rr) == 0;
+  if (print) {
+    printf("snap.restore status=%s reason=%u total=%llu report-equals-describe=%s\n", status_token(st), (unsigned)rr.reason,
+           (unsigned long long)rr.total_bytes, restored ? "yes" : "no");
+  }
+  if (!restored) {
+    fail("snap restore");
+    goto done;
+  }
+  dig_equal = digest_all(b.m, &db) && memcmp(&da, &db, sizeof da) == 0;
+  same = snap_reports_equal(a.m, b.m, &cpu_equal, &stic_equal);
+  if (print) {
+    printf("snap.restore.immediate digests-equal=%s cpu-equal=%s stic-equal=%s\n", dig_equal ? "yes" : "no", same && cpu_equal ? "yes" : "no",
+           same && stic_equal ? "yes" : "no");
+  }
+  if (!dig_equal || !same || !cpu_equal || !stic_equal) {
+    fail("snap state after restore");
+  }
+  /* The fixed point: a save of B is the snapshot it was restored from. */
+  written = 0u;
+  st = ivs_machine_snapshot_save(b.m, again, size, &written);
+  fixed = st == IVS_OK && written == size && memcmp(snap, again, (size_t)size) == 0;
+  if (print) {
+    printf("snap.fixed-point equal=%s\n", fixed ? "yes" : "no");
+  }
+  if (!fixed) {
+    fail("snap fixed point");
+  }
+  /* B goes on through the last two steps. The events are resubmitted from the applied count A's calls reported (the host keeps it next to the snapshot;
+   * the instance does not report it, but its input digest equal to A's above and the final input digest equal to the straight run's say that B's own count
+   * is the same). */
+  for (unsigned k = 2u; k < C_SCN_STEPS; k++) {
+    got = run_step(b.m, k + 1u, c_scn_stops[k].target, &ev[consumed], C_SCN_EVENTS - consumed, IVS_STOP_TARGET, print);
+    consumed += got;
+    if (consumed > C_SCN_EVENTS) {
+      fail("snap input_consumed");
+      goto done;
+    }
+    snap_check_words(b.m, k, print);
+  }
+  if (print) {
+    printf("snap.input events=%u applied-at-cut=%u resubmitted-from=%u consumed=%u\n", (unsigned)C_SCN_EVENTS, (unsigned)at_cut, (unsigned)at_cut,
+           (unsigned)consumed);
+  }
+  if (consumed != C_SCN_EVENTS) {
+    fail("snap input consumed total");
+  }
+  /* The streams of the two legs, concatenated in the kept buffers, against the independent checks of the fourth replay. */
+  scn_check_frames(&info, 0);
+  scn_check_audio(&info, 0);
+  scn_check_psglog(&info, 0);
+  if (print) {
+    printf("snap.streams frames=%llu video_bytes=%llu audio_bytes=%llu psglog_bytes=%llu\n", (unsigned long long)delivered_frames,
+           (unsigned long long)kept_video_n, (unsigned long long)kept_audio_n, (unsigned long long)kept_plog_n);
+  }
+  if (!digest_all(b.m, d)) {
+    fail("snap digest");
+  }
+  same = memcmp(d, straight, sizeof *d) == 0;
+  if (print) {
+    printf("snap.equal-straight equal=%s\n", same ? "yes" : "no");
+  }
+  if (!same) {
+    fail("snap equal straight");
+  }
+  for (size_t i = 0u; i < C_DOMAINS; i++) {
+    observed[i] = 1;
+  }
+  observed[5] = delivered_video_bytes != 0u;
+  observed[6] = delivered_audio_bytes != 0u;
+  observed[7] = consumed != 0u;
+  observed[8] = delivered_psglog_bytes != 0u;
+done:
+  instance_destroy(&a);
+  instance_destroy(&b);
+  free(snap);
+  free(again);
+  free(damaged);
+  keep_video = 0;
+  keep_audio = 0;
+  keep_plog = 0;
+  free(kept_video);
+  free(kept_audio);
+  free(kept_plog);
+  kept_video = NULL;
+  kept_audio = NULL;
+  kept_plog = NULL;
+  kept_video_n = 0u;
+  kept_audio_n = 0u;
+  kept_plog_n = 0u;
+  run_prefix = "";
+}
+
 static void version_tie(void)
 {
   uint32_t lib = ivs_api_version();
@@ -1659,6 +2030,7 @@ int main(int argc, char **argv)
 {
   c_digests first;
   c_digests second;
+  c_digests straight;
   int observed[C_DOMAINS];
   int observed2[C_DOMAINS];
   int equal;
@@ -1761,6 +2133,25 @@ int main(int argc, char **argv)
   printf("scn.second-instance equal=%s\n", equal ? "yes" : "no");
   if (!equal) {
     fail("scn second instance");
+  }
+  /* The fifth replay (plan 08-16): its digests carry the prefix `snap.`; the lines of the four earlier replays stay as they were. The digests of the
+   * straight run it must end with are those the fourth replay just produced. */
+  memcpy(&straight, &first, sizeof straight);
+  memset(observed, 0, sizeof observed);
+  memset(observed2, 0, sizeof observed2);
+  snap_session(1, &first, observed, &straight);
+  for (size_t i = 0u; i < C_DOMAINS; i++) {
+    if (observed[i]) {
+      printf("snap.digest.%s ", c_domain_name[i]);
+      print_hex(first.sha[i], sizeof first.sha[i]);
+      printf("\n");
+    }
+  }
+  snap_session(0, &second, observed2, &straight);
+  equal = memcmp(&first, &second, sizeof first) == 0 && memcmp(observed, observed2, sizeof observed) == 0;
+  printf("snap.second-instance equal=%s\n", equal ? "yes" : "no");
+  if (!equal) {
+    fail("snap second instance");
   }
   printf("result %s failures=%d\n", failures == 0 ? "ok" : "fail", failures);
   return failures == 0 ? 0 : 1;

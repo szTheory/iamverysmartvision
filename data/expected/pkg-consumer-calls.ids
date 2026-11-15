@@ -1,7 +1,8 @@
 # Owning plan 04-23 (PKG-01, D-39): the ivs_* names the installed consumer's object
 # (tests/installed-consumer/main.c) references, read with `nm -P -u` and normalized as
 # core-symbols.sh does; gate step pkg-install requires exact equality (pkg-consumer-calls), so a
-# load, run or digest call cannot be dropped from the consumer quietly. One name per line.
+# load, run or digest call cannot be dropped from the consumer quietly. One name per line. Plan 08-16 adds the four snapshot calls of the fifth replay
+# (ivs_machine_snapshot_size, _save and _restore, and the instance-free ivs_snapshot_describe).
 ivs_api_version
 ivs_machine_cpu_state
 ivs_machine_create
@@ -11,8 +12,12 @@ ivs_machine_load
 ivs_machine_peek
 ivs_machine_reset
 ivs_machine_run
+ivs_machine_snapshot_restore
+ivs_machine_snapshot_save
+ivs_machine_snapshot_size
 ivs_machine_state_digest
 ivs_machine_stic_state
 ivs_machine_storage_requirements
 ivs_run_stop_name
+ivs_snapshot_describe
 ivs_status_name

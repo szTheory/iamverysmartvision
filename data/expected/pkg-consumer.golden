@@ -18,6 +18,14 @@
 # index planes, the seven declared frame-pair diffs (outside 0, inside the declared count), the audio samples (silence before the first gate write, A=0 B=0
 # C=15 inside the gate windows), the 30 write-log records, and a frame-by-frame second pass (IVS_RUN_F_STOP_ON_FRAME) whose streams and digests must equal the
 # single run (scn.frame-stop).
+# Plan 08-16 (D-18, STA-02) adds the fifth replay, of the same scenario through the snapshot calls (lines prefixed snap., run on the same six images, nothing new on the
+# command line): machine A runs the first two steps and a run to a tick in the middle of frame 7 (snap.cut), saves (snap.size), and ivs_snapshot_describe reads the bytes
+# without an instance (snap.describe); machine B, dirtied by an idle run to tick 300,000 (snap.dirty), refuses a damaged copy by its trailer and is left as it was
+# (snap.refusal.damaged), restores the real one (snap.restore), equals A at once through the nine digests and the CPU and STIC reports (snap.restore.immediate) and saves
+# the same bytes again (snap.fixed-point), then runs the last two steps with the events resubmitted from the applied count A reported (snap.input). The streams of the two
+# legs, concatenated, pass the checks of the fourth replay (snap.streams), the end digests equal those of the straight run (snap.equal-straight) and its
+# snap.digest.<domain> lines and observed domains (all nine) must equal data/golden/demo-lamp-tone-pass.digests like the scn. lines; the new lines are additions only.
+# Repeatability output of the installed package, not an oracle: the core agrees with itself.
 ivs-consumer 1
 version package=0.1.0 header=0.1.0 api=0x000100 library=0x000100 tie=yes
 v1-sizes run_request_v1=64 events_at=48 run_request=80 run_report_v1=112 run_report=160 info_v1=216 info=320 input_event=32 cpu_state_report=36 ok=yes
@@ -152,4 +160,33 @@ scn.digest.audio 71f2939b1e35360b55177d983cd64a3f8248256375c13e4a12c716fcc224549
 scn.digest.input 832906ce775d32a98ae607386ce4bbcdd4d08017e3b914b6089e50a5364c7761
 scn.digest.psglog d224205dad483db6c04d991424051d794aedd1db3ab67546fd44b6626a0c9407
 scn.second-instance equal=yes
+snap.step.1 target_ticks=200000 stop=IVS_STOP_TARGET now_ticks=200024 overshoot_ticks=24 input_consumed=1 controller0=00000001
+snap.step.1.mem 02F0..02F5=03C5,0003,007E,0001,00FF,0000
+snap.step.2 target_ticks=440000 stop=IVS_STOP_TARGET now_ticks=440012 overshoot_ticks=12 input_consumed=2 controller0=00000000
+snap.step.2.mem 02F0..02F5=03C5,0007,00FF,0003,00FD,0001
+snap.cut target_ticks=450000 now_ticks=450032 frame=7 frame_offset=31880 input_applied=3
+snap.size bytes=4299
+snap.describe status=IVS_OK reason=0 format=1 schema=1 total=4299 profile=intv-2609-ntsc-family-p1 slots-equal-machine=yes composite-equal-machine=yes
+snap.dirty target_ticks=300000 cpu-mem-instance-composite-differ=yes
+snap.refusal.damaged status=IVS_E_DIGEST_MISMATCH reason=70 digest-unchanged=yes
+snap.restore status=IVS_OK reason=0 total=4299 report-equals-describe=yes
+snap.restore.immediate digests-equal=yes cpu-equal=yes stic-equal=yes
+snap.fixed-point equal=yes
+snap.step.3 target_ticks=640000 stop=IVS_STOP_TARGET now_ticks=640004 overshoot_ticks=4 input_consumed=2 controller0=00000000
+snap.step.3.mem 02F0..02F5=03C5,000A,00FF,0005,00FF,0002
+snap.step.4 target_ticks=806568 stop=IVS_STOP_TARGET now_ticks=806568 overshoot_ticks=0 input_consumed=1 controller0=00000101
+snap.step.4.mem 02F0..02F5=03C5,000D,005A,0006,009F,0003
+snap.input events=6 applied-at-cut=3 resubmitted-from=3 consumed=6
+snap.streams frames=13 video_bytes=198848 audio_bytes=201640 psglog_bytes=480
+snap.equal-straight equal=yes
+snap.digest.cpu 1ac14963e046e4c5c2eaf14fede2671dd2f6b42e0aa2edfa717862889ad292ab
+snap.digest.mem 0b23446d3b97b6b440100df6a122efbf9247a3ee3b314e4c881e0376ed3d4172
+snap.digest.images 09679d87b9851e20d6c32494887429c18be14d9182252de2a881a4633a38ad48
+snap.digest.instance 627a4c963a2f0cc121b82fdd7dc7e940f54442c41789e4056be4d538359e0cf7
+snap.digest.composite 7f71d668beded13af2893c0dbb9b37cbf23aeaa8a37c042b16912d5db0536909
+snap.digest.video 66c5747555074a7a8fe1455e331930b3f3d84e06cd6dbb5c92fb490d8fd85546
+snap.digest.audio 71f2939b1e35360b55177d983cd64a3f8248256375c13e4a12c716fcc2245490
+snap.digest.input 832906ce775d32a98ae607386ce4bbcdd4d08017e3b914b6089e50a5364c7761
+snap.digest.psglog d224205dad483db6c04d991424051d794aedd1db3ab67546fd44b6626a0c9407
+snap.second-instance equal=yes
 result ok failures=0
