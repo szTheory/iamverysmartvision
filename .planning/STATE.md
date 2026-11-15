@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 current_phase: 8
 current_phase_name: STIC Completion, Save State and Performance Baselines
-current_plan: 13
+current_plan: 14
 status: executing
-stopped_at: Completed 08-12-PLAN.md
-last_updated: "2026-11-14T16:25:30.000Z"
+stopped_at: Completed 08-13-PLAN.md
+last_updated: "2026-11-14T17:40:00.000Z"
 last_activity: 2026-11-14
 last_activity_desc: Phase 8 execution started
-state_head: 713c5d83e67c83d6eb0a2cf79e980547c0ea0dc7
+state_head: e0754ab531babf3a119206611dad1e78171ce827
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 130
-  completed_plans: 121
+  completed_plans: 122
   percent: 88
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 8 (STIC Completion, Save State and Performance Baselines) — EXECUTING
-Current Plan: 13
+Current Plan: 14
 Total Plans in Phase: 21
 Status: Ready to execute
 Last activity: 2026-11-14 — Phase 8 execution started
@@ -180,6 +180,7 @@ Progress: [█████████░] 88%
 | Phase 8 P10 | about 80 min | 3 tasks | 17 files |
 | Phase 8 P11 | about 70 min | 3 tasks | 28 files |
 | Phase 8 P12 | about 55 min | 2 tasks | 17 files |
+| Phase 8 P13 | about 60 min | 3 tasks | 25 files |
 
 ## Accumulated Context
 
@@ -443,6 +444,9 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 8]: 08-11: ivs/ivs_state.h adds ivs_machine_snapshot_size and ivs_machine_snapshot_save (refusal order arguments, handle, overlap, OFF, capacity; nothing written into the buffer on a refusal; out_written inside the buffer and a capacity past the address space are BAD_ARG); no image byte is ever written (state.save.no-image-bytes, fault SNAPSHOT_IMAGE_BYTES_EMBEDDED); the stepped boot snapshot is pinned (5000 units) and identical in the dev and release presets; IVS_E_STATE_MISMATCH stays with plan 08-13; STA-01 and STA-02 stay Pending
 - [Phase 8]: 08-12: ivs_snapshot_describe is the instance-free face of a separate reader (machine_snapshot_read.c, the layout constants moved into machine.h without changing a byte): it checks the container in the order of the specification up to the trailer and the form of the profile id (the length bound before any read, magic, versions, schema, total against the length and the derived size, section count, the section table entry by entry, the trailer, then the id form), with the 14 reasons 58 to 71 on five statuses; where the plan prose read differently the specification won: the id form is judged after the trailer and the section lengths are not compared with the derived lengths by the reader (restore does, reason 80, so it stays reachable)
 - [Phase 8]: 08-12: a refusal writes only reason, byte_offset, section_index and the header facts the supplied length let it read (versions from 12 and 24 bytes, total from 16) and keeps struct_size and every other member, a success writes the 360 bytes and keeps a larger caller's tail; the matrix of 406 rows (381 refusals and 25 accepted rows) is written from the specification, each row runs twice into a 400-byte report poisoned 0xA5 and 0x5A, the sweep of every length from 0 to 4300 uses exact heap buffers under the dev sanitizer (a fault build adds a zeroed tail), every reason is expected and produced by a row, and a self-control corrupts one expectation per family; faults SNAPSHOT_TRAILER_UNCHECKED and SNAPSHOT_LENGTH_TRUSTED fail exactly their ids; STA-01 and STA-02 stay Pending
+- [Phase 8]: 08-13: ivs_machine_snapshot_restore validates everything into a probe (the CPU, PSG and STIC structs, the input row and the few scalars the invariants read, about 800 bytes) and then commits with a table-driven pass that cannot refuse: STATE rows decoded, PAD rows zeroed, no BOUND or IMAGE row written, the phase becomes POWERED; the check order is the specification's (arguments, handle, overlap 81, the reader 60 to 71, profile 72 73 74, slots 78 75 76, lengths 80, counts 77, frames and ranges 78, derived invariants 79); IVS_E_STATE_MISMATCH (-24) is added in one change with the reserved band narrowed to -25..-31, the ten reasons 72 to 81 are pinned and the call has 9 refusal rows
+- [Phase 8]: 08-13: the matrices are written from the specification (180 table rows against four targets and 20 argument rows, each run twice into a poisoned 400-byte report compared whole, the whole target instance byte-identical afterwards, repeated against poisoned non-trivial targets with the nine digests), a restore into a poisoned target equals the source byte for byte at 13 cuts, three faults fail the id named for them, and the invariants were held against 411,075 unit boundaries of 23 programs: INV-2 corrected (the reset state), INV-3 strengthened (previous levels three four-bit levels and a byte of 0), INV-6 kept (decided true), none dropped
+- [Phase 8]: 08-13: cost checkpoint B reads the median of the last five hosted rows, 7.98 (row c57328a contains plans 08-09 to 08-12): checkpointB-08 no-lever, with the margin to 8.0 (0.02) and the reading about 8.16 to 8.27 at the end of wave B stated; the wave B additions are priced by measurement (suite state 2.17 dev and 1.05 release cpu-s, 8 fault runs 5.87, the nine digests of the atomicity sweep the first trim); STA-01 and STA-02 stay Pending until the hard-point suite of plan 08-14
 
 ### Pending Todos
 
@@ -475,6 +479,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-14T16:25:30.000Z
-Stopped at: Completed 08-12-PLAN.md
+Last session: 2026-11-14T17:40:00.000Z
+Stopped at: Completed 08-13-PLAN.md
 Resume file: None
