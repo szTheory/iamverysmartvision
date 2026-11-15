@@ -450,10 +450,27 @@ typedef struct ivs_runner_host {
 #define IVS_RUNNER_AUDIO_OUT_MAX_DEFAULT UINT64_C(268435456) /* 256 MiB: default bound of an operator raw output */
 #define IVS_RUNNER_VIDEO_OUT_MAX_DEFAULT UINT64_C(268435456) /* 256 MiB: default bound of --video-raw (plan 06-12) */
 
+/* The round-trip hook (plan 08-16, D-18, 08-RESEARCH 3.4): a test hook of the executor, not a scenario feature. With
+ * flags holding IVS_RUNNER_OPT_ROUNDTRIP and roundtrip_ticks = n in 1..IVS_RUN_TARGET_MAX, the executor performs, at the first unit
+ * boundary at or after every multiple k times n of machine time (k = 1, 2, ...), exactly this: ivs_machine_snapshot_save into an
+ * executor-owned buffer, ivs_machine_reset (power-on, public API only, so the machine holds its defaults at the cut and a field that
+ * is not default there and is not restored makes the report diverge), then ivs_machine_snapshot_restore of the bytes just written, and
+ * goes on. The slice that would cross a multiple is shortened to end on it; a cut changes no slice's result, so the report of every
+ * scenario equals its plain report apart from host.calls (one more slice is one more cancel and clock check). No cut is made at the
+ * end of a run-to (the stop was not the target, or machine time reached the bound): a cut is made only when the slice loop goes on.
+ * A multiple that machine time passed without a cut (at the end of a run-to, or inside one unit that spans several multiples) moves
+ * the next multiple past machine time. More than IVS_RUNNER_ROUNDTRIP_MAX_CUTS cuts in one run are a harness failure (detail
+ * `roundtrip-cut-cap`), so a tiny value cannot turn a scenario into millions of snapshots; a failed save, reset or restore is a
+ * harness failure (details `roundtrip-save`, `roundtrip-reset`, `roundtrip-restore`). The snapshot lives only in the executor's
+ * state for the life of the run: nothing writes it to a file or a report, so the hook is allowed for a scenario that names
+ * `content ... user`. The report has no key for it. */
+#define IVS_RUNNER_OPT_ROUNDTRIP 1u
+#define IVS_RUNNER_ROUNDTRIP_MAX_CUTS 64u
+
 /* Executor options (may be NULL: every default). A value outside its range is harness-fail
  * without a report. */
 typedef struct ivs_runner_options {
-  uint32_t flags;           /* must be 0 */
+  uint32_t flags;           /* 0, or IVS_RUNNER_OPT_ROUNDTRIP; any other bit is harness-fail */
   uint32_t wall_timeout_ms; /* the operator's wall cap; 0: IVS_RUNNER_WALL_MS_DEFAULT */
   uint64_t slice_ticks;     /* 1..IVS_RUNNER_SLICE_TICKS_MAX; 0: IVS_RUNNER_SLICE_TICKS_MAX */
   uint64_t max_ticks;       /* machine-time ceiling, 1..IVS_RUN_TARGET_MAX; 0: the default */
@@ -463,6 +480,8 @@ typedef struct ivs_runner_options {
                                    value is harness-fail without a report */
   uint32_t reserved;            /* must be 0 */
   uint64_t video_out_max_bytes; /* bytes the operator raw video output may take (plan 06-12), 0: the default */
+  uint64_t roundtrip_ticks;     /* plan 08-16: the multiple of the round-trip hook, 1..IVS_RUN_TARGET_MAX with
+                                   IVS_RUNNER_OPT_ROUNDTRIP in flags, 0 without it (any other pairing is harness-fail) */
 } ivs_runner_options;
 
 /* The WAV rates the reference converter accepts (plan 05-10, D-21): 44100 and 48000 only. */
@@ -472,7 +491,9 @@ int ivs_runner_wav_rate_valid(uint32_t rate);
 /* What a call returned, besides the outcome. host_calls counts read_file, read_user, now_ms and
  * cancel_requested calls (the one host-dependent report key); report_lines counts the lines
  * before report.end; report_write_failed is 1 when write_report failed (the outcome is then
- * harness-fail whatever the report's outcome line says). */
+ * harness-fail whatever the report's outcome line says); roundtrip_cuts (plan 08-16) is the number of
+ * save, reset and restore cuts the round-trip hook made, 0 without the hook: a reading for tests, never
+ * a report key. */
 typedef struct ivs_runner_result {
   uint32_t outcome;
   uint32_t exit_code;
@@ -480,6 +501,7 @@ typedef struct ivs_runner_result {
   uint64_t report_lines;
   uint32_t report_write_failed;
   uint32_t reserved;
+  uint64_t roundtrip_cuts;
 } ivs_runner_result;
 
 /* Runs scn (a successful ivs_scenario_parse result) and writes its report. Returns the outcome

@@ -5,7 +5,9 @@
  * executed as slices of ivs_machine_run calls (plan 04-19, D-21: at most slice_ticks each, the
  * unconsumed input suffix resubmitted each call, cancellation and the wall cap checked before
  * every slice, the max_ticks ceiling a deterministic budget), always with IVS_RUN_F_STOP_ON_HALT
- * so a halt is a stop the scenario must expect. The outcome is the
+ * so a halt is a stop the scenario must expect. With the round-trip hook (plan 08-16, D-18, ivs_runner.h) the slice
+ * loop also saves, resets and restores the machine at every multiple of an operator value, without changing the
+ * report. The outcome is the
  * pure precedence of ivs_runner_outcome_resolve over what the run observed (outcome.c), except a
  * load refusal that matches expect-load, which the executor decides as pass before that call.
  * C rule (hosted-only hazard): one call per statement when one argument reads state another
@@ -81,6 +83,13 @@ typedef struct ex_state {
   uint32_t slices;         /* run calls that returned IVS_OK */
   uint32_t slices_audio;   /* ... of which delivered into an audio buffer */
   uint32_t slices_video;   /* ... of which delivered into a video buffer */
+  /* The round-trip hook (plan 08-16, D-18): rt_ticks is options.roundtrip_ticks (0: no hook), rt_next the next multiple of it that
+   * machine time has not reached, rt_cuts the cuts made, rt_buf the snapshot of the cut: executor-owned, written by the save and read
+   * by the restore of the same cut, never written to a file or a report. */
+  uint64_t rt_ticks;
+  uint64_t rt_next;
+  uint32_t rt_cuts;
+  uint8_t rt_buf[IVS_SNAPSHOT_MAX_BYTES];
   char detail[EX_OBS_BITS][IVS_RUNNER_DETAIL_MAX];
 } ex_state;
 
@@ -187,6 +196,67 @@ static int ex_between_slices(ex_state *x, uint32_t k)
 #endif
   }
   return cancel || wall;
+}
+
+/* 1 when the round-trip pair of the options is valid (plan 08-16, D-18): only the one flag bit may be set, the flag requires
+ * roundtrip_ticks in 1..IVS_RUN_TARGET_MAX and the flag clear requires it 0. */
+static int ex_roundtrip_options_valid(const ivs_runner_options *o)
+{
+  if ((o->flags & ~(uint32_t)IVS_RUNNER_OPT_ROUNDTRIP) != 0u) {
+    return 0;
+  }
+  if ((o->flags & IVS_RUNNER_OPT_ROUNDTRIP) != 0u) {
+    return o->roundtrip_ticks >= 1u && o->roundtrip_ticks <= IVS_RUN_TARGET_MAX;
+  }
+  return o->roundtrip_ticks == 0u;
+}
+
+/* One cut of the round-trip hook (plan 08-16, D-18): snapshot of the machine into the executor's buffer, power-on reset, restore of
+ * the bytes just written. The three calls are public API only; each is its own statement and its status is read before the next. Returns
+ * 1 to go on, 0 after a harness failure was observed (the cap, or a refused save, reset or restore). */
+static int ex_roundtrip_cut(ex_state *x)
+{
+  uint64_t written = 0u;
+  ivs_status st;
+  if (x->rt_cuts >= IVS_RUNNER_ROUNDTRIP_MAX_CUTS) {
+    ex_observe(x, IVS_RUNNER_OBS_HARNESS_FAIL, "roundtrip-cut-cap");
+    return 0;
+  }
+  st = ivs_machine_snapshot_save(x->m, x->rt_buf, (uint64_t)sizeof x->rt_buf, &written);
+  if (st != IVS_OK) {
+    ex_observe(x, IVS_RUNNER_OBS_HARNESS_FAIL, "roundtrip-save");
+    return 0;
+  }
+  st = ivs_machine_reset(x->m, IVS_RESET_POWER_ON);
+  if (st != IVS_OK) {
+    ex_observe(x, IVS_RUNNER_OBS_HARNESS_FAIL, "roundtrip-reset");
+    return 0;
+  }
+  st = ivs_machine_snapshot_restore(x->m, x->rt_buf, written, NULL);
+  if (st != IVS_OK) {
+    ex_observe(x, IVS_RUNNER_OBS_HARNESS_FAIL, "roundtrip-restore");
+    return 0;
+  }
+  x->rt_cuts++;
+  return 1;
+}
+
+/* After a slice: when machine time reached the next multiple of the hook, that multiple moves past machine time (so a unit that spans
+ * several multiples, or a run-to that ended on one, cuts or skips once) and, when the slice loop goes on, the cut is made. The shortened
+ * slice of ex_run_steps ends the slice on the multiple (at the first unit boundary at or after it); this runs after every slice and does
+ * nothing without the hook. Returns 0 after a harness failure was observed. */
+static int ex_roundtrip_after_slice(ex_state *x, int more)
+{
+  uint64_t q;
+  if (x->rt_ticks == 0u || x->now < x->rt_next) {
+    return 1;
+  }
+  q = x->now / x->rt_ticks + 1u;
+  x->rt_next = q > UINT64_MAX / x->rt_ticks ? UINT64_MAX : q * x->rt_ticks;
+  if (!more) {
+    return 1;
+  }
+  return ex_roundtrip_cut(x);
 }
 
 /* Reads the bytes of one role into x->readbuf; returns an IVS_RUNNER_READ_* result and the
@@ -969,6 +1039,7 @@ static void ex_run_steps(ex_state *x, const ivs_info *info)
       ivs_run_request q;
       ivs_run_report rep;
       ivs_status rs;
+      int more;
       if (ex_between_slices(x, k)) {
         return;
       }
@@ -982,6 +1053,9 @@ static void ex_run_steps(ex_state *x, const ivs_info *info)
       q.struct_size = (uint32_t)sizeof q;
       q.flags = IVS_RUN_F_STOP_ON_HALT;
       q.target_ticks = (x->now < limit && limit - x->now > x->slice_ticks) ? x->now + x->slice_ticks : limit;
+      if (x->rt_ticks != 0u && x->rt_next > x->now && q.target_ticks > x->rt_next) {
+        q.target_ticks = x->rt_next; /* the round-trip hook (plan 08-16): the slice that would cross a multiple ends on it */
+      }
       q.video = x->vid_buf;
       q.video_capacity = x->vid_cap;
       q.audio = x->aud_buf;
@@ -1081,7 +1155,11 @@ static void ex_run_steps(ex_state *x, const ivs_info *info)
       if ((x->observed & IVS_RUNNER_OBS_HARNESS_FAIL) != 0u) {
         return;
       }
-      if (stop != IVS_STOP_TARGET || x->now >= limit) {
+      more = stop == IVS_STOP_TARGET && x->now < limit;
+      if (!ex_roundtrip_after_slice(x, more)) {
+        return;
+      }
+      if (!more) {
         break;
       }
     }
@@ -1298,7 +1376,7 @@ uint32_t ivs_runner_execute(const ivs_scenario *scn, const ivs_runner_host *host
     result->exit_code = ivs_runner_exit_code(IVS_RUNNER_OUTCOME_HARNESS_FAIL);
   }
   if (scn == NULL || host == NULL || host->read_file == NULL || host->write_report == NULL ||
-      (opts != NULL && (opts->flags != 0u || opts->slice_ticks > IVS_RUNNER_SLICE_TICKS_MAX ||
+      (opts != NULL && (!ex_roundtrip_options_valid(opts) || opts->slice_ticks > IVS_RUNNER_SLICE_TICKS_MAX ||
                         opts->max_ticks > IVS_RUN_TARGET_MAX || opts->reserved != 0u ||
                         (opts->wav_rate != 0u && !ivs_runner_wav_rate_valid(opts->wav_rate)))) ||
       (host->write_wav_pcm == NULL) != (host->finish_wav == NULL)) {
@@ -1319,6 +1397,10 @@ uint32_t ivs_runner_execute(const ivs_scenario *scn, const ivs_runner_host *host
                                                                     : IVS_RUNNER_VIDEO_OUT_MAX_DEFAULT;
   x.wav_requested = host->write_wav_pcm != NULL;
   x.wav_rate = opts != NULL && opts->wav_rate != 0u ? opts->wav_rate : IVS_RUNNER_WAV_RATE_DEFAULT;
+  if (opts != NULL && (opts->flags & IVS_RUNNER_OPT_ROUNDTRIP) != 0u) {
+    x.rt_ticks = opts->roundtrip_ticks; /* validated above: 1..IVS_RUN_TARGET_MAX */
+    x.rt_next = x.rt_ticks;             /* the first multiple, k = 1 */
+  }
   if (scn->wall_timeout_ms != 0u && scn->wall_timeout_ms < x.wall_cap_ms) {
     x.wall_cap_ms = scn->wall_timeout_ms; /* D-21: a scenario only lowers the cap */
   }
@@ -1397,6 +1479,7 @@ uint32_t ivs_runner_execute(const ivs_scenario *scn, const ivs_runner_host *host
     result->host_calls = rec.host_calls;
     result->report_lines = lines;
     result->report_write_failed = wrote != 0 ? 1u : 0u;
+    result->roundtrip_cuts = x.rt_cuts;
   }
   return outcome;
 }

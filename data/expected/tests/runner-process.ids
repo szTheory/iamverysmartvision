@@ -118,6 +118,9 @@ runner-process.cwd.diag-ctrl-psg-pass
 runner-process.repeat.demo-lamp-tone-pass
 runner-process.slices.demo-lamp-tone-pass
 runner-process.cwd.demo-lamp-tone-pass
+# Plan 08-16 (D-18): runner-process.roundtrip.<id>, the scenario run with ivs-run --roundtrip-at-ticks <n> (a save, a power-on reset and a restore at every
+#   multiple of n) must give the plain report apart from host.calls and must have cut (host.calls grows by two per cut).
+runner-process.roundtrip.diag-boot-pass
 runner-process.pair.demo-lamp-tone-pass.demo-lamp-tone-idle
 runner-process.pair.demo-lamp-tone-pass.demo-lamp-tone-shift
 runner-process.pair.diag-stic2-idle-pass.diag-stic2-mob-pass

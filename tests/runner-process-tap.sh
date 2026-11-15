@@ -343,6 +343,28 @@ check_repeat() {
 # rkey <report> <key>: the value of the first line `<key> <value>` of a report ('' when the key is absent).
 rkey() { awk -v k="$2" '$1 == k { print $2; exit }' "$1"; }
 
+# check_roundtrip <runner> <id> <ticks> <min cuts> (plan 08-16, D-18): one more run of the pass scenario <id> with `--roundtrip-at-ticks <ticks>`:
+# it must pass the judge and equal the scenario case's report apart from host.calls (check_repeat, finding body-differs), and the hook must
+# have cut: every cut is one more slice and the runner makes one cancel check and one clock check per slice, so host.calls of the hook run
+# exceeds the plain run's by at least twice <min cuts> (finding roundtrip-no-cut). Without that second condition a hook that never cut would
+# pass the first one. <ticks> is derived by arithmetic from the scenario's run length (its golden's last step.<k>.now_ticks), see the cases below.
+check_roundtrip() {
+  _rr=$1; _rid=$2; _rtk=$3; _rmc=$4
+  _rref="$tmp/runs/scen-$_rid.out"
+  check_repeat "$tmp" "$_rr" "rt-$_rid" "$_rid" "$_rref" --roundtrip-at-ticks "$_rtk"
+  _rj=$?
+  _rhc=$(rkey "$tmp/runs/rt-$_rid.out" host.calls)
+  _rpc=$(rkey "$_rref" host.calls)
+  case $_rhc$_rpc in
+    '' | *[!0-9]*) why roundtrip-no-cut "host.calls is not a number in a report of $_rid"; return 1 ;;
+  esac
+  if [ -z "$_rhc" ] || [ -z "$_rpc" ] || [ $((_rhc - _rpc)) -lt $((2 * _rmc)) ]; then
+    why roundtrip-no-cut "host.calls $_rhc against the plain run's $_rpc: fewer than $_rmc cuts (two host calls each)"
+    _rj=1
+  fi
+  return "$_rj"
+}
+
 # check_pair <idA> <idB> <reportA> <reportB> <differ list> <equal list> (plan 07-07, D-23, A-16): the metamorphic judge of one line of
 # data/expected/scenario-pairs.ids on two reports of this run. Every key of the comma-joined differ list has two different values
 # (pair-not-different), every key of the equal list two equal values (pair-not-equal), a key absent from a report is pair-missing-key and
@@ -823,6 +845,15 @@ result "runner-process.slices.$id"
 ok=1
 check_repeat "$tmp/elsewhere" "$ivs_run" "cwd3" "$id" "$ref" || ok=0
 result "runner-process.cwd.$id"
+
+# The round-trip hook (plan 08-16, D-18): a run with --roundtrip-at-ticks saves, resets and restores the machine at every multiple of the value,
+# and must still give the scenario's plain report apart from host.calls, with at least the stated number of cuts (check_roundtrip).
+# diag-boot-pass halts at tick 2,084 (data/golden/diag-cpu-1.digests step.1.now_ticks): the value 600 cuts at the first unit boundary at or after
+# 600, 1,200 and 1,800 (three cuts, 2,400 lies past the halt), the least that gives two inside the run.
+: > "$tmp/why"
+ok=1
+check_roundtrip "$ivs_run" diag-boot-pass 600 2 || ok=0
+result runner-process.roundtrip.diag-boot-pass
 
 # The metamorphic judge (plan 07-07, D-23, D-06, A-16): per line `<idA> <idB> differ=<keys> equal=<keys>` of
 # data/expected/scenario-pairs.ids, the reports of the two scenario cases above are related to each other (no expected value).
