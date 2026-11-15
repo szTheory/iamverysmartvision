@@ -108,5 +108,8 @@ extern const size_t ivs_state_cut_count;
 /* Plan 08-14 task 3: the runtime row-omission sweep (state_sweep.c). */
 extern const ivs_test_case ivs_state_sweep_cases[];
 extern const size_t ivs_state_sweep_count;
+/* Plan 08-15: the seeded corruption family over restore and describe (state_fuzz.c). */
+extern const ivs_test_case ivs_state_fuzz_cases[];
+extern const size_t ivs_state_fuzz_count;
 
 #endif

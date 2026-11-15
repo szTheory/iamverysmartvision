@@ -91,3 +91,10 @@ state.cut.fixed-point-and-canonical
 state.cut.slicing-independent
 state.sweep.row-omission
 state.judge.row-sweep-detects-omission
+# Plan 08-15 Task 1 (D-16, D-20): the seeded corruption family. One valid snapshot of 4,299 bytes (a Lamp Tone instance with an input event applied, stopped in the middle of its third
+# frame) is damaged in every way the family lists, and every case runs through one checker: a documented (status, reason) pair, a refusal leaves the whole target instance equal to its
+# baseline copy and writes only the report, an acceptance re-encodes canonically. The position classifier is written from the layout table of docs/formats/ivsn-v1.md. The truncations
+# are every length from 0 to the size minus one (the reader says truncated with the supplied length as the offset); the byte flips are every offset with XOR 0xFF and XOR 0x01 and the
+# trailer left as it was (refused by the header field or by the trailer).
+state.fuzz.truncations
+state.fuzz.byte-flips

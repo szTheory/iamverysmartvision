@@ -439,7 +439,7 @@ add_custom_command(
   DEPENDS "${IVS_STATE_NOTES_IDS}" "${IVS_STATE_CUTS_GENERATOR}"
   COMMENT "Generating the sweep notes include"
   VERBATIM)
-set(IVS_STATE_TEST_SOURCES state/state_main.c state/state_literal.c state/state_save.c state/state_read.c state/state_util.c state/state_restore.c state/state_invariants.c state/state_progs.c state/state_witness.c state/state_cut.c state/state_sweep.c machine/machine_standin.c)
+set(IVS_STATE_TEST_SOURCES state/state_main.c state/state_literal.c state/state_save.c state/state_read.c state/state_util.c state/state_restore.c state/state_invariants.c state/state_progs.c state/state_witness.c state/state_cut.c state/state_sweep.c state/state_fuzz.c machine/machine_standin.c)
 add_executable(ivs_tests_state ${IVS_STATE_TEST_SOURCES} "${IVS_IVSN_LITERALS_INC}" "${IVS_IVSN_SCHEMA_INC}" "${IVS_STATE_IMAGES_INC}" "${IVS_STATE_CUTS_INC}" "${IVS_STATE_CHECKLIST_INC}" "${IVS_STATE_NOTES_INC}")
 target_include_directories(ivs_tests_state PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/state"
   "${CMAKE_CURRENT_BINARY_DIR}")
