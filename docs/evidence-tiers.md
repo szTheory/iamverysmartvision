@@ -45,6 +45,8 @@ A claim names exactly one of them.
 - `independent-implementation-comparison` means an independently written implementation agrees, and agreement with a shared core does not count.
 - `measured-hardware` means an owner-approved physical measurement of real hardware backs the claim (D10), and no claim uses it yet.
 - `deterministic-repeatability` means repeated executions give identical output, which establishes repeatability and not accuracy.
+  Since plan 08-17 [claim:CL-0028] is of this tier for the snapshot of the machine: a snapshot taken at one of the 18 named hard points of `docs/state/hard-points.md`, restored into a poisoned or dirtied target and continued equals the uninterrupted run (the three streams, the nine state digests and the instance bytes), and the named classes of bad snapshots are refused with the instance unchanged, for one build and one profile.
+  It is provisional, and its note lists what it excludes on purpose: any claim across builds or versions, any hardware or timing statement, the informational digests of the header (not authenticated) and the trailer (integrity, not authenticity), a big-endian host, file persistence, and any EXEC or GROM image (D10 and D11 are not performed).
 - `playable-guest-progress` means a guest program makes observable progress on the named profile.
   CL-0023 is its only use: the original program `ivs-demo-lamp-tone-1` under one scripted controller input, with guest state, raw video and raw audio each asserted against hand-derived values.
   The tier says nothing about a console, a commercial title, an EXEC or GROM image, input latency or frame pacing, tone pitch, or whether a person saw or heard anything, and it names one program: a second program is a second claim.
