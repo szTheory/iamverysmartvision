@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 current_phase: 8
 current_phase_name: STIC Completion, Save State and Performance Baselines
-current_plan: 15
+current_plan: 16
 status: executing
-stopped_at: Completed 08-14-PLAN.md
-last_updated: "2026-11-14T20:40:00.000Z"
+stopped_at: Completed 08-15-PLAN.md
+last_updated: "2026-11-14T22:30:00.000Z"
 last_activity: 2026-11-14
 last_activity_desc: Phase 8 execution started
-state_head: 22215de8a8f71375568bdb1f329306303910c839
+state_head: 6d2b4b86db4775f408edd0bd42be23e2036dedf8
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 130
-  completed_plans: 123
+  completed_plans: 124
   percent: 88
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 8 (STIC Completion, Save State and Performance Baselines) — EXECUTING
-Current Plan: 15
+Current Plan: 16
 Total Plans in Phase: 21
 Status: Ready to execute
 Last activity: 2026-11-14 — Phase 8 execution started
@@ -182,6 +182,7 @@ Progress: [█████████░] 88%
 | Phase 8 P12 | about 55 min | 2 tasks | 17 files |
 | Phase 8 P13 | about 60 min | 3 tasks | 25 files |
 | Phase 8 P14 | about 150 min | 3 tasks | 22 files |
+| Phase 8 P15 | about 65 min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -450,6 +451,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 8]: 08-13: cost checkpoint B reads the median of the last five hosted rows, 7.98 (row c57328a contains plans 08-09 to 08-12): checkpointB-08 no-lever, with the margin to 8.0 (0.02) and the reading about 8.16 to 8.27 at the end of wave B stated; the wave B additions are priced by measurement (suite state 2.17 dev and 1.05 release cpu-s, 8 fault runs 5.87, the nine digests of the atomicity sweep the first trim); STA-01 and STA-02 stay Pending until the hard-point suite of plan 08-14
 - [Phase 8]: 08-14: the hard-point suite: 18 cuts found by a witness scan over the step seam, pinned in data/expected/state-cuts.ids through a generated include and re-proved by three witness ids (first occurrence equals the pin, the public run call ends exactly on it with the scan's bytes, the instance part of the predicate holds); the comparison restores each cut into a 0xA5-poisoned target and compares the whole instance and the nine digests at once, then the concatenated video, audio and PSG log streams, the first indexes, the run and public reports and the final instance with the uninterrupted run; every cut agrees; the designed latch program discriminates a restore that recomputes stic.row_latch (8 of 15,296 bytes differ); the fault SNAPSHOT_STIC_ROWS_OMITTED is caught by state.cut.stic-points (its must-pass id is state.witness.stic-points); the snapshot at every cut is a fixed point and independent of slicing and the SHA-256 at three cuts is pinned and equal in the dev and release presets
 - [Phase 8]: 08-14: the runtime row-omission sweep puts each of the 51 STATE rows back at its witness cut with other values (the complement first, each candidate judged by the restore's validators and invariants): 39 rows diverge in behaviour, 3 in a public report only, 9 are exempt (four chains, obs.input.count, obs.input.words, psg.env_level, stic.cs_ptr, stic.late_grants) with an argument each; it found weak witnesses and the cuts were corrected (HP-STEAL-A the boundary before the first grant 74,928, HP-STEAL-B the boundary before a release 79,008, P-PSG a triangle envelope so env_dir is non-default, HP-ENV-MID 9,504) while the frozen checklist was left untouched: the amendments are the appended notes data/expected/state-sweep-notes.ids (an edit of the checklist file was refused by the permission system); the cost stop rule did not fire (about 3.2 hosted cpu-s added, the nine fault runs sum to 6.7 local cpu-s); STA-02 stays Pending until plans 08-16 and 08-17
+- [Phase 8]: 08-15: the corruption and fuzz family (state_fuzz.c, 12 ids, no core change, no fault, no control): every case runs through one checker (a documented status and reason pair, a refusal leaves the whole 114,416-byte target equal to a baseline copy and writes only a poisoned 400-byte report, an acceptance writes only STATE and PAD rows, zeroes the PAD rows and re-encodes every changed section, on a bounded subset all seven sections, a full save with the eight informational digest fields and the trailer taken from the input, the report of describe and a 6,000-tick run, two attempts identical) and its expectation is written from docs/formats/ivsn-v1.md: a position classifier of 19 classes for a single flipped byte (reason, offset, section and slot kind) and a model of the container layer for several bytes or a lie about the length; the classifier agreed with the code on 8,598 unsealed, 8,598 resealed and 9,792 header-bit flips at the first run and the model on 4,484 describe cases
+- [Phase 8]: 08-15: truncations 4,299 and byte flips 8,598 all refused; resealed flips 3,190 (1,258 refused, 1,932 accepted), header bits 3,968, 126 length and table lies, 28 semantic lies, saturated counters and the clock at its largest (the machine reaches 2^63), 1,200 seeded random cases, 4,484 describe cases on heap buffers of exactly the input size, 10 handle cases, 623 cases twice, and a judge of 49 controls; the plan's literal sets (8,598 resealed attempts and 9,792 header bit cases) were run once in a scratch edit and pass, and are not built (+1.3 dev and +0.8 release cpu-s); two acceptances are pinned and recorded, not closed (the STIC register words are not checked against their write masks, machine time is not tied to a unit boundary); the libFuzzer target fuzz_snapshot.c was built with Homebrew LLVM 21 and ran 100,000 times from one valid snapshot without a violation; the cost stop rule did not fire (suite +1.55 dev, +1.00 release, fault runs +1.0 to 1.4: about 6.2 hosted cpu-s, the projection about 8.13 to 8.21 against the line 8.3); STA-01 and STA-02 stay Pending until plan 08-17
 
 ### Pending Todos
 
@@ -482,6 +485,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-14T20:40:00.000Z
-Stopped at: Completed 08-14-PLAN.md
+Last session: 2026-11-14T22:30:00.000Z
+Stopped at: Completed 08-15-PLAN.md
 Resume file: None
