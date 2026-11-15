@@ -3,17 +3,17 @@ gsd_state_version: "1.0"
 current_phase: 8
 current_phase_name: STIC Completion, Save State and Performance Baselines
 current_plan: 21
-status: executing
-stopped_at: Completed 08-20-PLAN.md
-last_updated: "2026-11-15T15:52:00.000Z"
-last_activity: 2026-11-14
-last_activity_desc: Phase 8 execution started
-state_head: d4788f9bf0667fece43233c2ee2bd6a40e6bc121
+status: verifying
+stopped_at: Completed 08-21-PLAN.md
+last_updated: "2026-11-15T16:33:00.000Z"
+last_activity: 2026-11-15
+last_activity_desc: Phase 8 plans complete (plan 08-21, stage 1 of REL-01); the release flow is paused by the owner's decision after Phase 8 (relayed by the orchestrator)
+state_head: 8501f00a6e3c8f4ca16eb5968df1c506c3fc131a
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 130
-  completed_plans: 129
+  completed_plans: 130
   percent: 88
 ---
 
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 
 ## Current Position
 
-Phase: 8 (STIC Completion, Save State and Performance Baselines) — EXECUTING
+Phase: 8 (STIC Completion, Save State and Performance Baselines) — ALL 21 PLANS COMPLETE; verification and stage 2 of REL-01 pending
 Current Plan: 21
 Total Plans in Phase: 21
-Status: Ready to execute
-Last activity: 2026-11-14 — Phase 8 execution started
+Status: Plans complete; REL-01 is recorded at stage 1 only (stage 2 is the orchestrator's, after the merge); the release flow is not started, paused by the owner's decision after Phase 8 (relayed by the orchestrator)
+Last activity: 2026-11-15 — plan 08-21 complete (the milestone close record stage 1, the verification record, the cost close `phase8-close: no-lever`)
 
 Progress: [█████████░] 88%
 
@@ -188,6 +188,7 @@ Progress: [█████████░] 88%
 | Phase 8 P18 | about 120 min | 3 tasks | 22 files |
 | Phase 8 P19 | about 150 min (two sessions, the baseline input taken between them) | 3 tasks | 22 files |
 | Phase 8 P20 | about 45 min | 3 tasks | 51 files |
+| Phase 8 P21 | about 65 min (estimated: no start time was taken) | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -470,6 +471,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 8]: 08-17: cost checkpoint C reads the median of the last five hosted rows, 7.98 (rows 8.17, 7.98, 7.28, 7.86, 8.29; the newest row 1a27cdd contains wave B as far as plan 08-16): checkpointC-08 no-lever by the rule, with the readings at the lines stated (newest row plus the remaining additions 8.30, median row counted 8.18 to 8.29), wave B measured at about 21.4 hosted cpu-s (suite state 3.30 dev and 1.94 release, nine fault runs 5.50 under the target of about 6), the remaining plans bound to about 0.4 local cpu-s, the lever order (3) next and the first trims named
 - [Phase 8]: 08-20: the stale-text sweep fixed false statements before the tag: the README sentence that no release exists (now a tense-free statement that releases are pre-releases of an exact tested commit and that publication follows the delegated release flow), the installed file counts and the Release content of docs/packaging.md, the CHANGELOG section [0.1.0] (the former Unreleased body, eleven files and five headers), the digest composite version 3 in one header comment and one call record, the ROADMAP, REQUIREMENTS, STATE and PROJECT statements that showed D1 to D9 and D12 open, the Phase 8 plan list, the PROJECT validated list on recorded terms (REL-01 excluded) and the register rows OQ8 (persistence) and OQ11 (performance targets), and Phase 7 lessons 13 to 18 in PLAN-LESSONS; no count, test id, fault, control or golden moved (steps=38/38 controls=380/380 faults=235/235 goldens=29 tests-expected=4958 tests-executed=4954 tests-skipped=4)
 - [Phase 8]: 08-20: requirements-completed was backfilled into the 39 SUMMARY files of Phases 4 to 7 that lacked it (the plan's own requirements field verbatim, one added line each); the three-source check over Phases 1 to 7 reads 45 requirements and 0 findings (11 requirements of Phases 5 and 6 had no SUMMARY before); 08-ACCEPTED-DEBT.md records the six draft validations, the STATE deferred items, the open review items of Phases 4 to 7 and the items deferred out of Phase 8 (the snapshot file options, 192-line video publication, libFuzzer in CI, SHA-256 frame-hash optimization, D10, D11, a history rewrite, name clearance); it changes no requirement mark and no claim; REL-01 stays Pending (D-28)
+- [Phase 8]: 08-21: stage 1 of REL-01 is recorded and REL-01 stays Pending: 08-MILESTONE-CLOSE.md holds the eleven sections A to K with A, F, G and J pasted from tools/release-readiness.sh (the full history scan: six findings, all six on the pinned list and printed with their recorded disposition, none new, never recorded as a pass; 253 s of wall time on the head of plan 08-20), 08-VERIFICATION.md follows the Phase 7 layout (status human_needed: SC1 to SC4 hold on recorded terms, SC5 at stage 1; 20 V-rows with the commits read from git log), every fact that exists only after the merge is the literal placeholder (the push run, the open pull request and issue counts, the ruleset read, the artifact commit and the release decision), and the release is not started: paused by the owner's decision after Phase 8, relayed by the orchestrator, so no tag, draft, release, push or gh call exists
+- [Phase 8]: 08-21: the Decision Register gained four rows (the draft pre-release D-29, the three version numbers D-30, the milestone tool's tag step D-31 and D-42, the history disposition D-33 with the owner-veto note), PLAN-LESSONS gained lessons 19 to 24, the STATE deferred items were refreshed from 08-ACCEPTED-DEBT.md, and RELEASE-OPS.md item h holds the grep that proves no placeholder remains and the order of the orchestrator's stage 2 actions; cost close phase8-close no-lever (the last-five median r is 7.80 against the budget 7.8 and the line 8.3; the five rows contain wave B and the newest contains every plan through 08-20; both raw triggers fire and r sits at the budget, read as runner speed with the stated caveat)
 
 ### Pending Todos
 
@@ -488,11 +491,10 @@ Open questions that remain: unusual cartridge memory maps and further import for
 Concerns:
 - 8 phases exceeds `standard` granularity guidance (4-6); justified by five high-uncertainty subsystems (PIT-18). Revisit at milestone discussion.
 - No tier-1 AY-3-8914 datasheet found; STIC timing constants disputed (C1-C4); controller matrix from one LOW source (C16).
+- The release flow after Phase 8 (the merge, stage 2 of REL-01, the milestone audit and completion, the tag, the draft and its publication, the cleanup) is not started: the owner paused it after Phase 8 (relayed by the orchestrator). No tag, draft or release exists; `git.create_tag` still reads `true` in the working-tree copy of `.planning/config.json` (D-42: an orchestrator-only change).
 
 ## Deferred Items
 
-| Category | Item | Status | Deferred At | Milestone |
-|----------|------|--------|-------------|-----------|
 Refreshed by plan 08-21 from `.planning/phases/08-stic-completion-save-state-performance-baselines/08-ACCEPTED-DEBT.md`. Phase 8 resolved none of the four earlier rows, so none is removed; each keeps its status and gets the milestone it now waits for. The "Milestone" column says when the item is next looked at, and "next milestone" means the one that follows the first.
 
 | Category | Item | Status | Deferred At | Milestone |
@@ -516,6 +518,6 @@ Refreshed by plan 08-21 from `.planning/phases/08-stic-completion-save-state-per
 
 ## Session Continuity
 
-Last session: 2026-11-15T15:52:00.000Z
-Stopped at: Completed 08-20-PLAN.md
+Last session: 2026-11-15T16:33:00.000Z
+Stopped at: Completed 08-21-PLAN.md
 Resume file: None

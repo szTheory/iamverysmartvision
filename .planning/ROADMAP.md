@@ -355,7 +355,7 @@ Plans:
   3. Snapshot, restore and run gives the same result as an uninterrupted run at mid-frame, mid-SDBD and mid-bus-steal points, and tests cover every item on the written hidden-state checklist.
   4. For each named workload, the benchmark runner reports throughput only after it has asserted the correct output digest. Throughput, end-to-end latency and CI time are reported separately.
   5. The milestone-close record shows main green, open PRs triaged, the rolling roadmap and lessons updated, and a release-readiness assessment (rights, package contents, qualification, authority) for the exact tested commit and artifact. Publication follows the delegated release flow: a draft pre-release of that commit is published only after pre-publication checks P1 to P8, with the working name stated as not cleared and D10 and D11 stated as not performed.
-**Plans**: 20/21 plans executed, 21 plans in 21 sequential waves (waves D1 release machinery, A STIC, B snapshot and state, C benchmarks, D stale-text sweep and close-out; D-44 in 08-CONTEXT.md)
+**Plans**: 21/21 plans executed, 21 plans in 21 sequential waves (waves D1 release machinery, A STIC, B snapshot and state, C benchmarks, D stale-text sweep and close-out; D-44 in 08-CONTEXT.md). REL-01 is recorded at stage 1 only: stage 2 (the push run on the merge commit, the pull request and issue counts, the ruleset read, the release decision) is the orchestrator's after the merge, and the release flow is paused by the owner's decision after Phase 8 (relayed)
 
 Plans:
 - [x] 08-01-PLAN.md — Release machinery, first half: content-based release asset checker and its gate step, tag-triggered release workflow under a ci-parity exemption table, the release script, CHANGELOG under the claim scan, the Phase 8 start cost entry
@@ -378,7 +378,7 @@ Plans:
 - [x] 08-18-PLAN.md — ivs-bench, the digest-first benchmark tool: idle, input and cold workloads, verify suite, negative control of the refusal
 - [x] 08-19-PLAN.md — Snapshot benchmark workload, benchmark document, PRF-01 accepted and marked complete on stated terms, baseline record and its format id
 - [x] 08-20-PLAN.md — Stale-text sweep: false statements fixed before the tag, requirements-completed backfilled for Phases 4 to 7, six draft validations and the deferrals recorded as accepted tech debt
-- [ ] 08-21-PLAN.md — Milestone close-out, stage 1: Phase 8 verification record, close record sections A to K, phase8-close cost entry, Decision Register rows, Phase 8 lessons, refreshed deferred items
+- [x] 08-21-PLAN.md — Milestone close-out, stage 1: Phase 8 verification record, close record sections A to K, phase8-close cost entry, Decision Register rows, Phase 8 lessons, refreshed deferred items
 
 **Cross-cutting constraints:**
 - End state: `steps=38/38 controls=380/380 faults=235/235 goldens=29 tests-skipped=4 tests-missing=0` under sh, dash and the container gate
@@ -422,4 +422,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 5. Hand Controllers and PSG Sound | 12/12 | Complete    | 2026-11-12 |
 | 6. STIC Video First Pass | 14/14 | Complete    | 2026-11-12 |
 | 7. First Visible Original Scenario | 12/12 | Complete    | 2026-11-13 |
-| 8. STIC Completion, Save State and Performance Baselines | 20/21 | In Progress | - |
+| 8. STIC Completion, Save State and Performance Baselines | 21/21 | In Progress | - |
