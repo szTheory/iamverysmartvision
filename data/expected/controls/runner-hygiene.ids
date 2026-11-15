@@ -3,6 +3,7 @@
 # Plan 05-10 (D-21, A-07) adds the tools/pcm controls: SPDX, the c-build unlisted-source guard, the
 # runner-scan allowance of exactly the include operand ivs_refpcm.h.
 # Plan 07-03 (D-17) adds the same two guards for tools/asm: SPDX and the c-build unlisted-source guard.
+# Plan 08-18 (D-21) adds tools/bench to the SPDX pattern and the c-build unlisted-source guard (c-build-unlisted-bench-source, the last line).
 integrity-missing-spdx-runner
 integrity-missing-spdx-tools-c
 integrity-non-ascii-runner
@@ -14,3 +15,4 @@ c-build-unlisted-pcm-source
 integrity-missing-spdx-tools-asm
 c-build-unlisted-asm-source
 runner-scan-header-tools-other
+c-build-unlisted-bench-source

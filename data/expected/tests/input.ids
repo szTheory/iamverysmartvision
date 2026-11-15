@@ -63,6 +63,7 @@ input.digest.mem-covers-pins
 input.takeback.restores-pins
 input.reset.clears-pulldown
 input.invariant.pulldown-derives-from-words
+input.derive.pure-equals-rederive
 input.boundary.start-minus-1
 input.boundary.start
 input.boundary.start-plus-1

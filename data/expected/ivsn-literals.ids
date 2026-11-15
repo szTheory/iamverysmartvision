@@ -1,0 +1,63 @@
+# Literals of the IVSN v1 snapshot container and its schema (plan 08-09, D-13, D-38). Hand-derived on paper before any serializer exists:
+# these are repeatability pins of a project-written text, never evidence that the text is correct. The container is specified in
+# docs/formats/ivsn-v1.md; each line is `<key> <value>`.
+# schema-digest-sha256 is the SHA-256 of the exact bytes of data/state/schema.literal.txt (the canonical descriptor text of the 88 rows of
+# the digest field table, the preimage of the schema digest in the container header). The gate step state recomputes it with cmake -E
+# sha256sum (token state-schema-stale), so a change of the literal without a deliberate re-pin fails the gate; plan 08-11 requires the
+# writer to produce the same digest from the table.
+schema-digest-sha256 6cd4932f5ebf0b0fc2377555ca079d0313bb27a4df1a4fda9e15f37c6eb1d193
+#
+# Plan 08-09 task 2: the sizes of the container, derived on paper from the table text (docs/formats/ivsn-v1.md, "Size derivation"). A section is
+# 7 bytes of frame (the text IVSD, the domain, the domain version) plus its STATE rows; an array row costs 4 bytes of count plus count x width.
+# header-bytes: 24 fixed bytes + 32 schema digest + 64 profile id + 32 parameter digest + 3 x 40 slot records + 32 composite digest + 7 x 44 section entries.
+header-bytes 612
+# trailer-bytes: one SHA-256 over every earlier byte.
+trailer-bytes 32
+# section-bytes.<name>: CPU 7 + (4 + 8 x 2) + 8 x 1 = 35; MEM 7 + 8 + 1028 + 516 + 1028 + 36 + 6 + 132 = 2761; INSTANCE 7 + 12 + 68 + 528 = 615;
+# VIDEO 7 + 36 + 8 = 51; AUDIO 7 + 36 + 8 + 8 + 4 = 63; INPUT 7 + 20 + 8 + 8 + 36 = 79; PSGLOG 7 + 36 + 8 = 51.
+section-bytes.cpu 35
+section-bytes.mem 2761
+section-bytes.instance 615
+section-bytes.video 51
+section-bytes.audio 63
+section-bytes.input 79
+section-bytes.psglog 51
+# sections-total-bytes: 35 + 2761 + 615 + 51 + 63 + 79 + 51.
+sections-total-bytes 3655
+# total-bytes: 612 + 3655 + 32.
+total-bytes 4299
+# section-offset.<name>: 612 plus the lengths of the sections before it, in the order cpu, mem, instance, video, audio, input, psglog; the trailer starts at 4267.
+section-offset.cpu 612
+section-offset.mem 647
+section-offset.instance 3408
+section-offset.video 4023
+section-offset.audio 4074
+section-offset.input 4137
+section-offset.psglog 4216
+trailer-offset 4267
+# header-prefix-hex: the first 24 header bytes, written by hand: the magic 89 49 56 53 4E 0D 0A 1A, format version 0001, flags 0000, total_bytes 000010CB (4299),
+# schema version 00000001 and section count 00000007.
+header-prefix-hex 894956534E0D0A1A00010000000010CB0000000100000007
+#
+# Plan 08-11 Task 1 (appended; every line above is frozen oracle data of plan 08-09 and is not edited): the profile parameter digest of the registered
+# profile, the SHA-256 over the four ASCII bytes IVSP, a big-endian u16 1 and the four table body digests in the order memory map, PSG, STIC, controller
+# (docs/formats/ivsn-v1.md, "Profile identity"). Each body digest is the SHA-256 of the text that the generator of that table writes for the profile, with
+# its comments removed: a cite, tag or provenance string of a profile file is in none of them. Repeatability only: this is a repeatability pin of the
+# current profile files, never evidence that the tables are right (a changed table value changes it on purpose, a changed cite string changes nothing).
+# The value was first computed by a scratch script outside the tree from the generated includes; the test state.literal.params-digest holds the core to
+# it and to a second rebuild of the preimage.
+params-digest-sha256 89ad65073a3e357acbdd687f6a29016457864a1666b953e9327b7559dc0c0522
+#
+# Plan 08-11 Task 3 (appended; every line above is frozen oracle data of plan 08-09 and is not edited): the SHA-256 of the whole snapshot of the stepped
+# stand-in boot program, 5000 units after the power-on reset of the project profile with the three stand-in images loaded (the program is in
+# tests/state/state_save.c: the PSG writes of the stand-in tone program, then the RAM loop of the first stand-in program; the cut lies in the middle of
+# the third frame, after a write to every array the program touches). Repeatability only, a self-recorded value, never evidence of correctness:
+# the value was produced by the writer it holds to account, and it passes unchanged in the dev and the release preset, which shows that the snapshot
+# bytes are identical across the two builds. The test state.save.canonical-stream-literal compares it.
+stepped-snapshot-sha256 087a15d3fce834b1d944bbbd74385d029e42eb4a4f9f0fbb322d754df0755b6b
+# Plan 08-14 (D-12, 08-DISCUSS-state 7.3 item 7): the SHA-256 of the snapshot bytes at three hard-point cuts of data/expected/state-cuts.ids, found by running the instance to the
+# pinned tick of the cut and saving: repeatability only, self-recorded, never evidence of correctness. The dev and release presets and every host build must give the same bytes,
+# which state.cut.fixed-point-and-canonical checks; the keys are the cut ids in lower case.
+cut-snapshot-sha256.hp-frame-mid 9dc4ae7e20a746b4b8d6638cb14305ce3a8d4ec9bd4da872916353272c68567f
+cut-snapshot-sha256.hp-latch 63507cb48fa4bbf42cfebb99e07fa5d722db44797641c3404118c1a9826cee1d
+cut-snapshot-sha256.hp-mob 27e98b02b605d6f201d2745ebf35c3e2a137d62cc9d892b9d0eb7322f09bc768

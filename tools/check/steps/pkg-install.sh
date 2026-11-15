@@ -35,10 +35,13 @@
 #              D-17, D-20) its stic.digest.<domain> lines and observed domains equal data/golden/diag-stic-fgbg-pass.digests
 #              (the third replay: video and audio observed, psglog and input not, the composite aside), and (plan 07-09, D-26)
 #              its scn.digest.<domain> lines and observed domains equal data/golden/demo-lamp-tone-pass.digests (the fourth
-#              replay, of the original program on the project boot stub contract 2: every domain observed, the composite aside).
+#              replay, of the original program on the project boot stub contract 2: every domain observed, the composite aside), and
+#              (plan 08-16, D-18) its snap.digest.<domain> lines and observed domains equal the same runner golden (the fifth replay: a
+#              snapshot of that program taken mid-frame and restored into a machine another run dirtied, through the public snapshot calls
+#              only; its end digests are those of the straight run, every domain observed, the composite aside).
 #   independence (D-37 d, e) `ninja -t deps`: no path under ROOT, no ivs*.h outside the moved
 #              prefix, nothing else under the temp dir but the source copy, and ivs.h,
-#              ivs_machine.h, ivs_run.h, ivs_status.h present under the prefix; `ninja -t
+#              ivs_machine.h, ivs_run.h, ivs_state.h, ivs_status.h present under the prefix; `ninja -t
 #              commands`: one link command, naming <prefix>/lib/libivs_core.a and no other
 #              ivs_core archive; the compile command has the strict flags and no -isystem;
 #              ivs_DIR of the consumer cache lies under the prefix (pwd -P); `nm -P -u` of
@@ -46,7 +49,7 @@
 #   c++ link   (D-38) tests/installed-consumer/main.cpp compiled and linked by ${CXX:-c++}
 #              -std=c++17 directly against the installed headers and archive, then run; a
 #              visible `-- pkg-cxx-link SKIP` line without a C++ compiler.
-#   selftest   seventeen in-step cases (D-40, exact inventory data/expected/pkg-selftests.ids), each on a
+#   selftest   nineteen in-step cases (D-40, exact inventory data/expected/pkg-selftests.ids), each on a
 #              copy or the deleted prefix and each required to fail for its intended reason:
 #              core-src-include, missing-symbol, ghost-decl, unprefixed, extra-file, baked-path,
 #              version-refused (the next minor, the next major and an older minor are refused;
@@ -59,7 +62,9 @@
 #              ctrl-peek-wrong (the peeked $01FE changed: pkg-golden-diff), and, from plan 06-13, stic-domain-missing (the
 #              stic.digest.video line dropped: the observed domains differ) and stic-digest-drift (one stic.digest nibble
 #              changed: pkg-runner-golden-diff), and, from plan 07-09, scn-domain-missing (the scn.digest.audio line dropped: the
-#              observed domains differ) and scn-digest-drift (one scn.digest.video nibble changed: pkg-runner-golden-diff).
+#              observed domains differ) and scn-digest-drift (one scn.digest.video nibble changed: pkg-runner-golden-diff), and, from plan
+#              08-16, snap-domain-missing (the snap.digest.audio line dropped: the observed domains differ) and snap-digest-drift (one
+#              snap.digest.video nibble changed: pkg-runner-golden-diff).
 # Every temp file is under one mktemp dir outside the repo, removed on exit; the step writes
 # nothing else but build/gate/pkg-consumer.txt. Logs are printed only on failure.
 # Tokens: pkg-install-no-tree: <path>, pkg-install-failed: <what>, pkg-install-relocate: <what>,
@@ -357,7 +362,7 @@ pT=$(cd "$T" && pwd -P) || exit 1
 # the indent is stripped and nothing is split into fields. No path may lie under the repository
 # (logical or physical form); an ivs*.h header outside the moved prefix, or any path under the temp
 # dir other than the prefix and the source copy, is a leak too; and ivs.h, ivs_machine.h,
-# ivs_run.h and ivs_status.h must be present under the moved prefix (positive presence, so an
+# ivs_run.h, ivs_state.h (plan 08-11) and ivs_status.h must be present under the moved prefix (positive presence, so an
 # empty record cannot pass). Prints FAIL lines; leaves the prefix-relative names in $T/deps.prefix.
 check_deps() {
   cd_rc=0
@@ -382,7 +387,7 @@ check_deps() {
       ivs*.h) printf -- '-- FAIL pkg-leak: %s\n' "$cd_p"; cd_rc=1 ;;
     esac
   done < "$T/deps.list"
-  for cd_h in ivs.h ivs_machine.h ivs_run.h ivs_status.h; do
+  for cd_h in ivs.h ivs_machine.h ivs_run.h ivs_state.h ivs_status.h; do
     if ! grep -q -x -F -e "include/ivs/$cd_h" "$T/deps.prefix"; then
       printf -- '-- FAIL pkg-deps-missing: %s\n' "include/ivs/$cd_h under the moved prefix"
       cd_rc=1
@@ -474,17 +479,20 @@ check_one_golden() {
 # check_runner_golden <output>: the replay of diag-input-pass against its golden, (plan 05-11) the
 # replay of diag-ctrl-psg-pass (lines prefixed ctrl.) against data/golden/diag-ctrl-psg-pass.digests, (plan 06-13) the
 # replay of diag-stic-fgbg-pass (lines prefixed stic.) against data/golden/diag-stic-fgbg-pass.digests, and (plan 07-09) the
-# replay of demo-lamp-tone-pass (lines prefixed scn.) against data/golden/demo-lamp-tone-pass.digests.
+# replay of demo-lamp-tone-pass (lines prefixed scn.) against data/golden/demo-lamp-tone-pass.digests, and (plan 08-16) the fifth replay, the
+# snapshot of the same program (lines prefixed snap.), against the same runner golden.
 rgold="$ROOT/data/golden/diag-input-pass.digests"
 rgold2="$ROOT/data/golden/diag-ctrl-psg-pass.digests"
 rgold3="$ROOT/data/golden/diag-stic-fgbg-pass.digests"
 rgold4="$ROOT/data/golden/demo-lamp-tone-pass.digests"
+rgold5="$rgold4"
 check_runner_golden() {
   crg_rc=0
   check_one_golden "$rgold" "" "$1" || crg_rc=1
   check_one_golden "$rgold2" "ctrl\\." "$1" || crg_rc=1
   check_one_golden "$rgold3" "stic\\." "$1" || crg_rc=1
   check_one_golden "$rgold4" "scn\\." "$1" || crg_rc=1
+  check_one_golden "$rgold5" "snap\\." "$1" || crg_rc=1
   return "$crg_rc"
 }
 # check_calls <object>: the ivs_* names the consumer object references (nm -u, normalized) equal
@@ -794,6 +802,27 @@ run_case() {
       if cmp -s "$cout" "$d/missing.txt"; then detail="the output has no scn.digest.audio line"; return 1; fi
       if check_one_golden "$rgold4" "scn\\." "$d/missing.txt" > "$d/out"; then detail="runner golden check passed"; return 1; fi
       grep -q -F -e 'scn.observed domains' "$d/out" || { detail="no observed-domains finding"; return 1; }
+      ;;
+    snap-digest-drift)
+      # One nibble of the snap.digest.video line changed must fail the comparison with the runner golden of
+      # demo-lamp-tone-pass (pkg-runner-golden-diff); the unchanged output matches it (plan 08-16).
+      [ -s "$cout" ] || { detail="no consumer output"; return 1; }
+      check_one_golden "$rgold5" "snap\\." "$cout" > "$d/pos" || { detail="the unchanged output does not match the runner golden"; return 1; }
+      awk 'done == 0 && /^snap\.digest\.video / {
+          c = substr($0, length($0), 1); $0 = substr($0, 1, length($0) - 1) (c == "0" ? "1" : "0"); done = 1
+        } { print }' "$cout" > "$d/drift.txt"
+      if cmp -s "$cout" "$d/drift.txt"; then detail="the mutation changed nothing"; return 1; fi
+      if check_one_golden "$rgold5" "snap\\." "$d/drift.txt" > "$d/out"; then detail="runner golden check passed"; return 1; fi
+      grep -q -F -e '-- FAIL pkg-runner-golden-diff:' "$d/out" || { detail="no pkg-runner-golden-diff"; return 1; }
+      ;;
+    snap-domain-missing)
+      # The snap.digest.audio line dropped (a consumer that never read the audio samples of the two legs) must fail the comparison:
+      # the observed domains differ from the golden's (plan 08-16).
+      [ -s "$cout" ] || { detail="no consumer output"; return 1; }
+      grep -v '^snap\.digest\.audio ' "$cout" > "$d/missing.txt"
+      if cmp -s "$cout" "$d/missing.txt"; then detail="the output has no snap.digest.audio line"; return 1; fi
+      if check_one_golden "$rgold5" "snap\\." "$d/missing.txt" > "$d/out"; then detail="runner golden check passed"; return 1; fi
+      grep -q -F -e 'snap.observed domains' "$d/out" || { detail="no observed-domains finding"; return 1; }
       ;;
     *) return 2 ;;
   esac

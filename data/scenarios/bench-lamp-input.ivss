@@ -1,0 +1,80 @@
+# Scenario bench-lamp-input (plan 08-18, D-23, D-39): a benchmark workload, not a test of behaviour. The same program, boot stub, zero
+# graphics ROM and run length as bench-lamp-idle (Lamp Tone, 120 frames), with 64 input events, the scenario cap. The first six input
+# lines are the six events of demo-lamp-tone-pass character for character, so that prefix is anchored by the hand-derived asserts of
+# that scenario (data/golden/demo-lamp-tone-pass.expect); the other 58 are self-recorded repeatability only: from tick 820,000 at a
+# spacing of 110,000 ticks, alternating the six controller word pairs of the pass scenario in order, each event moved by the smallest
+# amount that puts it at least 16,800 ticks from a frame boundary of 59,736 ticks (the settling rule of
+# docs/video/demo-lamp-tone-1-derivation.md), all before the last bound. It has no assert and no capture: its only oracle is the
+# self-recorded repeatability golden data/golden/bench-lamp-input.digests (tier deterministic-repeatability), which tools/bench/bench.c
+# compares with its own report before it reads a clock. A throughput figure printed for it is never a claim.
+ivss 1
+id bench-lamp-input
+profile intv-2609-ntsc-family-p1
+content exec boot-stub-2
+content grom zero-grom
+content cart lamp-tone.ivsc
+input at_tick=100000 c0=KEY_1 c1=0x0
+input at_tick=220000 c0=KEY_1+KEY_9 c1=0x0
+input at_tick=340000 c0=0x0 c1=DISC_E
+input at_tick=460000 c0=SIDE_TOP c1=DISC_E
+input at_tick=580000 c0=0x0 c1=0x0
+input at_tick=700000 c0=KEY_1+KEY_9 c1=SIDE_LOWER_LEFT
+input at_tick=819504 c0=KEY_1 c1=0x0
+input at_tick=930000 c0=KEY_1+KEY_9 c1=0x0
+input at_tick=1040000 c0=0x0 c1=DISC_E
+input at_tick=1151784 c0=SIDE_TOP c1=DISC_E
+input at_tick=1271256 c0=0x0 c1=0x0
+input at_tick=1357128 c0=KEY_1+KEY_9 c1=SIDE_LOWER_LEFT
+input at_tick=1476600 c0=KEY_1 c1=0x0
+input at_tick=1590000 c0=KEY_1+KEY_9 c1=0x0
+input at_tick=1700000 c0=0x0 c1=DISC_E
+input at_tick=1810000 c0=SIDE_TOP c1=DISC_E
+input at_tick=1928352 c0=0x0 c1=0x0
+input at_tick=2014224 c0=KEY_1+KEY_9 c1=SIDE_LOWER_LEFT
+input at_tick=2133696 c0=KEY_1 c1=0x0
+input at_tick=2250000 c0=KEY_1+KEY_9 c1=0x0
+input at_tick=2360000 c0=0x0 c1=DISC_E
+input at_tick=2470000 c0=SIDE_TOP c1=DISC_E
+input at_tick=2585448 c0=0x0 c1=0x0
+input at_tick=2704920 c0=KEY_1+KEY_9 c1=SIDE_LOWER_LEFT
+input at_tick=2790792 c0=KEY_1 c1=0x0
+input at_tick=2910000 c0=KEY_1+KEY_9 c1=0x0
+input at_tick=3020000 c0=0x0 c1=DISC_E
+input at_tick=3130000 c0=SIDE_TOP c1=DISC_E
+input at_tick=3242544 c0=0x0 c1=0x0
+input at_tick=3362016 c0=KEY_1+KEY_9 c1=SIDE_LOWER_LEFT
+input at_tick=3447888 c0=KEY_1 c1=0x0
+input at_tick=3567360 c0=KEY_1+KEY_9 c1=0x0
+input at_tick=3680000 c0=0x0 c1=DISC_E
+input at_tick=3790000 c0=SIDE_TOP c1=DISC_E
+input at_tick=3900000 c0=0x0 c1=0x0
+input at_tick=4019112 c0=KEY_1+KEY_9 c1=SIDE_LOWER_LEFT
+input at_tick=4104984 c0=KEY_1 c1=0x0
+input at_tick=4224456 c0=KEY_1+KEY_9 c1=0x0
+input at_tick=4340000 c0=0x0 c1=DISC_E
+input at_tick=4450000 c0=SIDE_TOP c1=DISC_E
+input at_tick=4560000 c0=0x0 c1=0x0
+input at_tick=4676208 c0=KEY_1+KEY_9 c1=SIDE_LOWER_LEFT
+input at_tick=4795680 c0=KEY_1 c1=0x0
+input at_tick=4881552 c0=KEY_1+KEY_9 c1=0x0
+input at_tick=5000000 c0=0x0 c1=DISC_E
+input at_tick=5110000 c0=SIDE_TOP c1=DISC_E
+input at_tick=5220000 c0=0x0 c1=0x0
+input at_tick=5333304 c0=KEY_1+KEY_9 c1=SIDE_LOWER_LEFT
+input at_tick=5452776 c0=KEY_1 c1=0x0
+input at_tick=5538648 c0=KEY_1+KEY_9 c1=0x0
+input at_tick=5658120 c0=0x0 c1=DISC_E
+input at_tick=5770000 c0=SIDE_TOP c1=DISC_E
+input at_tick=5880000 c0=0x0 c1=0x0
+input at_tick=5990400 c0=KEY_1+KEY_9 c1=SIDE_LOWER_LEFT
+input at_tick=6109872 c0=KEY_1 c1=0x0
+input at_tick=6195744 c0=KEY_1+KEY_9 c1=0x0
+input at_tick=6315216 c0=0x0 c1=DISC_E
+input at_tick=6430000 c0=SIDE_TOP c1=DISC_E
+input at_tick=6540000 c0=0x0 c1=0x0
+input at_tick=6650000 c0=KEY_1+KEY_9 c1=SIDE_LOWER_LEFT
+input at_tick=6766968 c0=KEY_1 c1=0x0
+input at_tick=6886440 c0=KEY_1+KEY_9 c1=0x0
+input at_tick=6972312 c0=0x0 c1=DISC_E
+input at_tick=7090000 c0=SIDE_TOP c1=DISC_E
+run-to 120 frames

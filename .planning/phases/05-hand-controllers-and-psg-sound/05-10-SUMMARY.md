@@ -67,6 +67,7 @@ key-decisions:
 
 duration: about 4 h of edits plus 7 gate runs (3 sh, 1 dash, 1 container)
 completed: 2026-11-12
+requirements-completed: [AUD-02]  # backfilled by plan 08-20 from the plan requirements field; closure evidence is the phase VERIFICATION record, not this line
 ---
 
 # Phase 5 Plan 10: Reference PCM converter and WAV helper Summary

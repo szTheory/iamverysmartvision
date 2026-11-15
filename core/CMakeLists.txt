@@ -21,6 +21,9 @@ set(IVS_CORE_SOURCES
   src/machine/machine_inspect.c
   src/machine/machine_load.c
   src/machine/machine_run.c
+  src/machine/machine_snapshot.c
+  src/machine/machine_snapshot_read.c
+  src/machine/machine_snapshot_restore.c
   src/memmap/memsys.c
   src/psg/psg_env.c
   src/psg/psg_mix.c
@@ -34,6 +37,7 @@ set(IVS_CORE_SOURCES
   src/stic/stic_events.c
   src/stic/stic_frame.c
   src/stic/stic_lines.c
+  src/stic/stic_mob.c
   src/stic/stic_params.c
   src/stic/stic_regs.c
   src/stic/stic_state.c

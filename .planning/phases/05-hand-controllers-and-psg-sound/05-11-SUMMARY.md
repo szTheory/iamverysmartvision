@@ -64,6 +64,7 @@ key-decisions:
 
 duration: about 40 min of edits (07:47 to 08:18 for the six commits) plus 12 gate runs (6 sh, 3 dash, 1 container, 2 failed on a stale golden and a docs word)
 completed: 2026-11-12
+requirements-completed: [INP-01, INP-02, INP-03, API-03, AUD-01, AUD-02]  # backfilled by plan 08-20 from the plan requirements field; closure evidence is the phase VERIFICATION record, not this line
 ---
 
 # Phase 5 Plan 11: fixture ivs-diag-ctrl-psg-1 and end to end Summary

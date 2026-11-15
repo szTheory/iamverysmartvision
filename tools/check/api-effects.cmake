@@ -16,7 +16,7 @@
 #   names (a reused number)                                          api-status-renumbered
 #   a name on one side only (header define without a pin line, or a pin line without a define)
 #                                                                    api-status-unpinned
-#   a defined or pinned value in the reserved band -24..-31          api-status-reserved
+#   a defined or pinned value in the reserved band -25..-31          api-status-reserved
 #   an IVS_API declaration whose function is not a JSON call (or an IVS_API line without a
 #   parsable `name(`)                                                api-call-undocumented
 #   a JSON call that no IVS_API line declares                        api-call-undeclared
@@ -156,8 +156,8 @@ foreach(side H P)
   set(seen "")
   foreach(nm IN LISTS ${side}_NAMES)
     set(v "${${side}_VAL_${nm}}")
-    if(v GREATER_EQUAL -31 AND v LESS_EQUAL -24)
-      afail(api-status-reserved "${nm} = ${v} in ${where} (-24..-31 are reserved)")
+    if(v GREATER_EQUAL -31 AND v LESS_EQUAL -25)
+      afail(api-status-reserved "${nm} = ${v} in ${where} (-25..-31 are reserved)")
     endif()
     if("v${v}" IN_LIST seen)
       afail(api-status-renumbered "${nm} reuses value ${v} in ${where}")

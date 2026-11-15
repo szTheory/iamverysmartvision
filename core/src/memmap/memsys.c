@@ -68,6 +68,14 @@ const ivs_profile_desc *ivs_profile_get(uint32_t index)
   return &ivs_mm_profiles[index];
 }
 
+const uint8_t *ivs_memmap_table_digest(uint32_t profile_index)
+{
+  if (profile_index >= IVS_MM_PROFILE_COUNT) {
+    return NULL;
+  }
+  return ivs_mm_body_digest[profile_index];
+}
+
 int ivs_memsys_init(ivs_memsys *m, uint32_t profile)
 {
   /* A profile without a row in the PSG parameter table is refused here, so every access to the PSG
@@ -420,6 +428,14 @@ void ivs_memsys_set_gate_internal(ivs_memsys *m, uint32_t gate, uint8_t open)
 {
   if (gate != IVS_MEMSYS_GATE_NONE && gate < IVS_MEMSYS_GATES) {
     m->gate_open[gate] = (uint8_t)(open != 0u);
+  }
+}
+
+void ivs_memsys_stic_collision_or_internal(ivs_memsys *m, uint32_t k, uint32_t bits)
+{
+  if (k < IVS_MEMSYS_STIC_COLLISION_COUNT) {
+    uint32_t r = IVS_MEMSYS_STIC_COLLISION_FIRST + k;
+    m->stic_reg[r] = IVS_U16((uint32_t)m->stic_reg[r] | (bits & 0x03FFu));
   }
 }
 

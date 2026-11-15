@@ -48,6 +48,7 @@ key-decisions:
 
 duration: about 4 hours elapsed, most of it five gate runs on a loaded laptop (see Final gate)
 completed: 2026-11-12
+requirements-completed: [VID-01, VID-03]  # backfilled by plan 08-20 from the plan requirements field; closure evidence is the phase VERIFICATION record, not this line
 ---
 
 # Phase 6 Plan 04: profile growth and the STIC parameter table Summary

@@ -16,15 +16,19 @@ phases are working outlines: they will be re-planned at milestone and phase
 discussion against current evidence and owner decisions (AGENTS.md: inspect
 state, fan out by lenses, adversarial pass, keep a rolling roadmap).
 **GSD milestones and software versions are separate.** Finishing this milestone
-does not mean a release. A release covers only the exact tested artifact, and
-only when rights, package readiness, qualification and owner authority allow it
-(REL-01, D9).
+does not mean a release. A release covers only the exact tested artifact.
+Publication follows the delegated release flow (`.planning/AUTONOMY.md`
+section 5, D9) and its pre-publication checks; the working name is not
+trademark-cleared, which is stated as a caveat (REL-01).
 
 **Decision status.** The Decision Gates (D1-D13) are defined in
-`.planning/REQUIREMENTS.md`, and none is decided by this roadmap. Where a phase
-mentions C17/CMake or the 2609 NTSC Master Component, those are research
-**recommendations**, not owner decisions. The implementation language (D1) and
-the first profile (D3) are still **open owner decisions**.
+`.planning/REQUIREMENTS.md`, and none is decided by this roadmap. D1 to D9 and
+D12 are **delegated decisions** recorded in the PROJECT.md Decision Register
+(owner authorization 2026-11-09, `.planning/AUTONOMY.md`). D10 (physical
+measurement) and D11 (owner-local real EXEC and GROM runs) are **open owner
+hard stops** and were not performed. D13 is **deferred**. The C17/CMake choice
+and the 2609 NTSC Master Component began as research recommendations and became
+decisions only through that register.
 
 **Granularity note.** The config asks for `standard` granularity, which usually
 means 4-6 phases. This roadmap has 8. It keeps the research's dependency order
@@ -52,8 +56,10 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ## Decision Gate Timeline
 
-None of these are decided. "Before" means the phase cannot start, or cannot
-exit, until the gate is resolved by its named authority.
+D1 to D9 and D12 are delegated decisions (recorded in PROJECT.md); D10 and D11
+are open owner hard stops and were not performed; D13 is deferred. "Before"
+means the phase could not start, or cannot exit, until the gate is resolved by
+its named authority.
 
 | Gate | Authority | Status | Must be resolved |
 |------|-----------|--------|------------------|
@@ -65,7 +71,7 @@ exit, until the gate is resolved by its named authority.
 | D6 Controller core-input representation (C14) | Owner + architecture | Delegated decision 2026-11-11 (PROJECT.md; Phase 4 D-25, D-12, D-41) | While Phase 4 shapes the API; before Phase 5 starts |
 | D7 Reference PCM location (C23) | Architecture | Delegated decision 2026-11-12 (PROJECT.md; Phase 5 D-21: outside the core, `tools/pcm`, runner `--audio-wav` only) | Phase 5 |
 | D8 Raw framebuffer geometry (C10) | Architecture + evidence | Delegated decision 2026-11-12 (PROJECT.md; Phase 6 D-12: 159 x 96, width from `video.last_card_column_px`, reversible by one profile field) | Phase 6 |
-| D9 License, visibility, naming/trademark, publication | Owner gate | Delegated decision 2026-11-09 (PROJECT.md) | Before any external publication; CI hosting (Phase 4) and the milestone release assessment (Phase 8) touch it |
+| D9 License, visibility, naming/trademark, publication | Delegated (MIT, public repository, working name kept); trademark clearance stays an owner item | Delegated decision 2026-11-09 (PROJECT.md); the delegated release flow (AUTONOMY.md section 5) applies at the Phase 8 milestone close | Before any external publication; CI hosting (Phase 4) and the milestone release assessment (Phase 8) touch it |
 | D10 Physical hardware measurement | Owner gate | Open | Before any measured-tier claim (Phase 5 onward) |
 | D11 Owner-local real EXEC/GROM runs | Owner gate | Open, not performed (SCN-02 is complete on documented-route terms; no result, claim or tier) | Before any real-EXEC result is recorded |
 | D12 CI shape (C24) | Architecture | Delegated decision 2026-11-11 (PROJECT.md; Phase 4 D-25, D-12, D-41) | Before Phase 4 exits |
@@ -78,7 +84,7 @@ exit, until the gate is resolved by its named authority.
 **Mode:** mvp
 **Depends on**: Nothing (first phase)
 **Requirements**: FND-01, FND-02, FND-03, FND-04, FND-05, FND-06, FND-07
-**Decision gates**: D3 (owner, open). This must be resolved before the phase exits, because FND-01 cannot be completed for an unselected profile. 2609 NTSC is recommended but not decided. D2 (architecture, open) is resolved inside this phase through FND-07. D1 (owner, open) is recorded here and must be resolved before Phase 2 starts. D9 (owner gate) is recorded, and until it is decided `redistributable` defaults to unknown, treated as no.
+**Decision gates**: D3 (owner, open). This must be resolved before the phase exits, because FND-01 cannot be completed for an unselected profile. 2609 NTSC is recommended but not decided. D2 (architecture, open) is resolved inside this phase through FND-07. D1 (owner, open) is recorded here and must be resolved before Phase 2 starts. D9 (owner gate) is recorded, and until it is decided `redistributable` defaults to unknown, treated as no. **Status at the end of Phase 8:** D1, D2, D3 and D9 are delegated decisions (2026-11-09, PROJECT.md); the wording above is the plan-time position.
 **Research flags**: NEEDS TARGETED RESEARCH, time-boxed per PIT-18. Read the GI CP-1600 manual (May 1975) PDF directly, not the OCR transcription, for opcode, cycle, reset/MSYNC, stack direction (C17) and interruptibility (C19). Extract GI 1980/1982 catalog data for the STIC -1 part and the PSG part identity (C11). Search for an AY-3-8914 datasheet. Correct the known bootstrap source defects (404 owner manual, iFixit HTML viewer).
 **Success Criteria** (what must be TRUE):
   1. A reviewer can open the first-profile record and find model, revision, region/video timing, STIC part, PSG part, reset/power-on policy and cartridge arrangement. Every field has a provenance/tier tag, unknown fields say `unknown-default-chosen` instead of being blank, and the record cites the owner decision (D3) that selected the profile.
@@ -184,7 +190,7 @@ Plans:
 **Mode:** mvp
 **Depends on**: Phase 3
 **Requirements**: API-02, API-04, RUN-01, RUN-02, RUN-04, RUN-05, RUN-06, PKG-01, PKG-03, PKG-04
-**Decision gates**: D4 (owner licence + architecture, open) must be resolved before the first guest fixture is built. D5 is decided (Phase 3, D-24: user-supplied images only; the project boot stub is authored in this phase and labelled "not an EXEC", C25, C27). D12 (architecture, open) decides CI shape. D6 (owner + architecture, open, C14) should be settled while this phase shapes the public API, and must be settled before Phase 5. D9 (owner gate): hosted CI needs a repository host and a visibility choice, and the phase must not assume public visibility.
+**Decision gates**: D4 (owner licence + architecture, open) must be resolved before the first guest fixture is built. D5 is decided (Phase 3, D-24: user-supplied images only; the project boot stub is authored in this phase and labelled "not an EXEC", C25, C27). D12 (architecture, open) decides CI shape. D6 (owner + architecture, open, C14) should be settled while this phase shapes the public API, and must be settled before Phase 5. D9 (owner gate): hosted CI needs a repository host and a visibility choice, and the phase must not assume public visibility. **Status at the end of Phase 8:** D4, D5, D6, D9 and D12 are delegated decisions (PROJECT.md); the wording above is the plan-time position.
 **Research flags**: STANDARD PATTERNS for install/export packaging, the relocated consumer and the runner, in whatever build system D1 selects. NEEDS RESEARCH on the EXEC-less reset story (open question 3) and the boot-stub contract.
 **Success Criteria** (what must be TRUE):
   1. A scripted scenario (content, profile, input schedule, run bound) on fresh state reports machine time, stop reason, raw outputs and guest-state assertions. The original diagnostic reaches a guest-state predicate whose expected value was derived independently of the emulator (tier: original diagnostic), and its boot path is labelled "project boot stub, not an EXEC".
@@ -226,7 +232,7 @@ Plans:
 **Mode:** mvp
 **Depends on**: Phase 4
 **Requirements**: INP-01, INP-02, INP-03, API-03, AUD-01, AUD-02
-**Decision gates**: D6 (owner + architecture, open, C14) must be resolved before this phase starts. D7 (architecture, open, C23) decides where reference PCM lives. D3 must pin the PSG part (C11). D10 (owner gate): no measured-tier claim about the controller matrix without owner-approved measurement.
+**Decision gates**: D6 (owner + architecture, open, C14) must be resolved before this phase starts. D7 (architecture, open, C23) decides where reference PCM lives. D3 must pin the PSG part (C11). D10 (owner gate): no measured-tier claim about the controller matrix without owner-approved measurement. **Status at the end of Phase 8:** D3, D6 and D7 are delegated decisions (PROJECT.md); D10 stays an open owner hard stop and was not performed.
 **Research flags**: NEEDS RESEARCH. AY-3-8914 register map and behavior: no tier-1 datasheet has been found, so any 8910-derived rule is labelled and audited rule by rule (C12). The controller electrical matrix rests on one LOW-confidence source (C16). Side-button count and coding (C15) need confirming against a schematic.
 **Success Criteria** (what must be TRUE):
   1. For each player, every one of the 12 keypad keys, 16 disc directions and side-action inputs, tested individually, gives the profile's documented read value at the PSG I/O port, and each value carries a tier tag.
@@ -287,7 +293,7 @@ Plans:
 **Mode:** mvp
 **Depends on**: Phase 5, Phase 6
 **Requirements**: SCN-01, SCN-02
-**Decision gates**: The scenario program and title are not chosen (open question 9; owner/discussion). A project-authored program is recommended because it avoids third-party rights. D11 (owner gate, open): SCN-02 can document the owner-local EXEC/GROM route, but no real-EXEC result is claimed unless the owner chooses to run it. D4 governs how the program is assembled. D9 applies only if third-party homebrew or publication is considered.
+**Decision gates**: The scenario program and title are not chosen (open question 9; owner/discussion). A project-authored program is recommended because it avoids third-party rights. D11 (owner gate, open): SCN-02 can document the owner-local EXEC/GROM route, but no real-EXEC result is claimed unless the owner chooses to run it. D4 governs how the program is assembled. D9 applies only if third-party homebrew or publication is considered. **Status at the end of Phase 8:** the program is the original Lamp Tone (decided in Phase 7); D4 and D9 are delegated decisions; D11 stays an open owner hard stop and was not performed.
 **Research flags**: NEEDS RESEARCH only if third-party homebrew is considered (Geese licence conflict C28; IntyBASIC output notices unresolved; 4-Tris must not be vendored). Any visible host stays outside the core build graph (host choice unknown; a reference host frontend is v2 TOOL-04).
 **Success Criteria** (what must be TRUE):
   1. The program's source, recipe, digests and license are in the fixture manifest as `redistributable: yes`, and CI builds and runs it through the installed consumer.
@@ -341,15 +347,41 @@ Plans:
 **Mode:** mvp
 **Depends on**: Phase 7
 **Requirements**: VID-05, STA-01, STA-02, PRF-01, REL-01
-**Decision gates**: D9 (owner gate, open): license, visibility, naming and any publication. REL-01 records readiness only; it does not publish. D10 (owner gate): collision or timing claims at the measured tier need owner-approved measurement. Persistence policy (open question 8) is decided by owner and architecture. D13 stays deferred and does not enter this milestone.
+**Decision gates**: D9 (delegated decision): the licence is MIT, the repository is public, and publication follows the delegated release flow of `.planning/AUTONOMY.md` section 5. REL-01 records readiness for the exact commit; a draft pre-release is created by the release workflow and published by the orchestrator only after pre-publication checks P1 to P8 (green main, hygiene, rights, version agreement, notes, history disposition, release machinery and a read-only check of the draft). D10 (owner hard stop, not performed): collision or timing claims at the measured tier need owner-approved measurement. D11 (owner hard stop, not performed): no run with real EXEC or GROM images. The persistence policy (open question 8) was decided in Phase 8 as a delegated decision: bytes only from the core, files are a host's policy, exact-build and not archival. D13 stays deferred and does not enter this milestone.
 **Research flags**: NEEDS RESEARCH on collision semantics, MOB priority and vertical delay. MAME marks collisions TBD, so a datasheet or measurement is needed. STANDARD PATTERNS for canonical serialization and hashing. Whether the hidden-state checklist is complete is an inference and must be checked by tests.
 **Success Criteria** (what must be TRUE):
   1. MOBs, border, horizontal/vertical delay and collision registers each have a single-feature fixture with an independently derived expected result, or appear on an explicit `unknown-default-chosen` list in the discrepancy log.
   2. Snapshots carry format version, profile identity and system-image digests, and the same canonical, endianness-independent serializer produces the state digests. Restoring a corrupted, wrong-version or mismatched-profile snapshot is refused before any state changes.
   3. Snapshot, restore and run gives the same result as an uninterrupted run at mid-frame, mid-SDBD and mid-bus-steal points, and tests cover every item on the written hidden-state checklist.
   4. For each named workload, the benchmark runner reports throughput only after it has asserted the correct output digest. Throughput, end-to-end latency and CI time are reported separately.
-  5. The milestone-close record shows main green, open PRs triaged, the rolling roadmap and lessons updated, and a release-readiness assessment (rights, package contents, qualification, authority) for the exact tested commit and artifact. Nothing is published without owner gate D9.
-**Plans**: TBD
+  5. The milestone-close record shows main green, open PRs triaged, the rolling roadmap and lessons updated, and a release-readiness assessment (rights, package contents, qualification, authority) for the exact tested commit and artifact. Publication follows the delegated release flow: a draft pre-release of that commit is published only after pre-publication checks P1 to P8, with the working name stated as not cleared and D10 and D11 stated as not performed.
+**Plans**: 21/21 plans executed, 21 plans in 21 sequential waves (waves D1 release machinery, A STIC, B snapshot and state, C benchmarks, D stale-text sweep and close-out; D-44 in 08-CONTEXT.md). REL-01 is recorded at stage 1 only: stage 2 (the push run on the merge commit, the pull request and issue counts, the ruleset read, the release decision) is the orchestrator's after the merge, and the release flow is paused by the owner's decision after Phase 8 (relayed)
+
+Plans:
+- [x] 08-01-PLAN.md — Release machinery, first half: content-based release asset checker and its gate step, tag-triggered release workflow under a ci-parity exemption table, the release script, CHANGELOG under the claim scan, the Phase 8 start cost entry
+- [x] 08-02-PLAN.md — Release machinery, second half: version policy check, read-only readiness generator, claim table rendered from the claim ledger and gated, pinned history disposition, local release rehearsal
+- [x] 08-03-PLAN.md — VID-05 oracle before any code (no C): extended frame grammar, MOB bit-role literal, rules STIC-R37 to R50, ten hand-derived frames, blind-read request
+- [x] 08-04-PLAN.md — Pure MOB renderer held to the frozen oracle: video.mob. family, two named faults, three pinned defaults
+- [x] 08-05-PLAN.md — Collision registers held to the frozen oracle: per-line accumulation ORed in at the frame end, truth-table judge, one named fault
+- [x] 08-06-PLAN.md — Border extension and horizontal and vertical delay held to the frozen oracle: one plane row generator, four pinned profile fields, the fourth core fault
+- [x] 08-07-PLAN.md — Original diagnostic program ivs-diag-stic-2: five single-feature scenarios and an idle control, hand-derived predicates and goldens, pair lines, six release-only mutants
+- [x] 08-08-PLAN.md — STIC close-out: claims CL-0025 to CL-0027 (provisional), VID-05 accepted by the important-gates registry and marked complete on recorded terms, cost checkpoint A
+- [x] 08-09-PLAN.md — State oracle before any serializer: the state gate step, the 88-row hidden-state checklist, 18 hard-point cuts, the schema literal, the IVSN v1 specification, blind-read request
+- [x] 08-10-PLAN.md — Digest field table walker refactor, behaviour-neutral: snapshot class on all 88 rows, state-only walker filter, internal state preimage seam
+- [x] 08-11-PLAN.md — IVSN v1 snapshot writer and the public ivs_state.h (size and save): table body digests, rights window test, three named faults
+- [x] 08-12-PLAN.md — IVSN v1 state reader: instance-free ivs_snapshot_describe, reasons 58 to 71, refusal matrix, heap-exact sweep
+- [x] 08-13-PLAN.md — IVSN v1 restore: ivs_machine_snapshot_restore, IVS_E_STATE_MISMATCH, poisoned-target equivalence, atomicity sweep, derived invariants, cost checkpoint B
+- [x] 08-14-PLAN.md — Hard-point suite of the save state: 18 named cuts found by a witness scan, comparison oracle against the uninterrupted run, designed latch program, row-omission sweep
+- [x] 08-15-PLAN.md — Corruption and fuzz family of the save state: position classifier, exhaustive truncations and byte flips, seeded random family against a model
+- [x] 08-16-PLAN.md — Host surfaces of the save state: the ivs-run round-trip hook with process cases and a self-control, the fifth installed-consumer replay of the snapshot calls
+- [x] 08-17-PLAN.md — State wave close-out: the snapshot extension as a rights-bearing binary by name, claim CL-0028 (provisional), STA-01 and STA-02 accepted and marked complete, persistence-policy text, cost checkpoint C
+- [x] 08-18-PLAN.md — ivs-bench, the digest-first benchmark tool: idle, input and cold workloads, verify suite, negative control of the refusal
+- [x] 08-19-PLAN.md — Snapshot benchmark workload, benchmark document, PRF-01 accepted and marked complete on stated terms, baseline record and its format id
+- [x] 08-20-PLAN.md — Stale-text sweep: false statements fixed before the tag, requirements-completed backfilled for Phases 4 to 7, six draft validations and the deferrals recorded as accepted tech debt
+- [x] 08-21-PLAN.md — Milestone close-out, stage 1: Phase 8 verification record, close record sections A to K, phase8-close cost entry, Decision Register rows, Phase 8 lessons, refreshed deferred items
+
+**Cross-cutting constraints:**
+- End state: `steps=38/38 controls=380/380 faults=235/235 goldens=29 tests-skipped=4 tests-missing=0` under sh, dash and the container gate
 
 ## Coverage
 
@@ -390,4 +422,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 5. Hand Controllers and PSG Sound | 12/12 | Complete    | 2026-11-12 |
 | 6. STIC Video First Pass | 14/14 | Complete    | 2026-11-12 |
 | 7. First Visible Original Scenario | 12/12 | Complete    | 2026-11-13 |
-| 8. STIC Completion, Save State and Performance Baselines | 0/TBD | Not started | - |
+| 8. STIC Completion, Save State and Performance Baselines | 21/21 | In Progress | - |

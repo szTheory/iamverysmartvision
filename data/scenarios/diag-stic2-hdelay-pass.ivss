@@ -1,0 +1,28 @@
+# Scenario diag-stic2-hdelay-pass (plan 08-07, D-04, D-05, D-10): outcome pass, exit 0. The program ivs-diag-stic-2 through the
+# project boot stub contract 2 with the zero graphics ROM and KEY_3 closed from tick 0: the first read of 01FE returns the low
+# byte DE, so the program writes scene 5 in every frame (one MOB, the horizontal delay register at 0003 and the border extension
+# register at 0003). The asserts are the hand-derived expectations of data/golden/diag-stic2-hdelay-pass.expect (derivation in
+# docs/video/diag-stic-2-derivation.md, section (f), written before the program): the same lines in the same order as the
+# committed block of that document, and the same as the .expect (golden-expect-drift). The hash and the probes are derived under
+# the pinned defaults PD-8 and PD-9 (derivation, section (i)); the probes avoid the positions those pins move. It never halts.
+ivss 1
+id diag-stic2-hdelay-pass
+profile intv-2609-ntsc-family-p1
+content exec boot-stub-2
+content grom zero-grom
+content cart diag-stic-2.ivsc
+capture video 0 10
+input at_tick=0 c0=KEY_3 c1=0x0
+run-to 640000 ticks
+assert halted == no
+assert mem 02F0 == 03C5
+assert mem 02F1 == 000A
+assert mem 02F2 == 00DE
+assert mem 02F3 == 0005
+assert frame 0 displayed == no
+assert frame 5 displayed == yes
+assert frame 5 hash == ba0f9f71bfdb607d1f1bd7362363acee3bde45e728f4fc45de27442b6c1d4f92
+assert frame 5 pixel 63 40 == 4
+assert frame 5 pixel 83 48 == 2
+assert frame 5 pixel 155 50 == 1
+assert video count == 10

@@ -1,13 +1,14 @@
 #!/bin/sh
 # SPDX-License-Identifier: MIT
 # Step text: claim-language tripwire (R1), claim-reference resolution and tier ids documented.
-# Scans README.md and docs/**/*.md from FILELIST only. Findings are reported in sorted order.
+# Scans README.md, CHANGELOG.md and docs/**/*.md from FILELIST only (CHANGELOG.md since plan 08-01, D-32: the
+#   release notes are the most public claim text of the project). Findings are reported in sorted order.
 # Claim words (D-27): supports, compatible, passes, accurate, verified, runs, plays, playable. The tier identifier
 #   playable-guest-progress is an identifier, not a claim word: that exact string is removed from a line before
 #   it is matched (the only exemption); any other use of plays or playable needs a claim tag or the waiver.
 # Tokens: text-no-files, text-claim-untagged: <file>:<line>, text-unknown-claim-ref: <id>,
 #   text-undocumented-tier: <id>, text-claims-inventory-missing, text-evidence-doc-missing.
-# Stats: docs=<n> claim-refs=<n>.
+# Stats: docs=<n> (scanned files, CHANGELOG.md included) claim-refs=<n>.
 LC_ALL=C; export LC_ALL
 : "${ROOT:?ROOT is not set}"
 : "${CHECK_DIR:?CHECK_DIR is not set}"
@@ -19,9 +20,9 @@ bt='`'
 rc=0
 bad() { printf -- '-- FAIL %s: %s\n' "$1" "$2"; rc=1; }
 
-# Scanned files: README.md plus docs/**/*.md, as listed in FILELIST, that exist.
+# Scanned files: README.md, CHANGELOG.md plus docs/**/*.md, as listed in FILELIST, that exist.
 : > "$tmp/scan"
-grep -E '^(README\.md|docs/.*\.md)$' "$FILELIST" | sort -u > "$tmp/cand"
+grep -E '^(README\.md|CHANGELOG\.md|docs/.*\.md)$' "$FILELIST" | sort -u > "$tmp/cand"
 while IFS= read -r f; do
   [ -f "$ROOT/$f" ] && printf '%s\n' "$f" >> "$tmp/scan"
 done < "$tmp/cand"

@@ -59,6 +59,14 @@
 #include "psg_cases.h"
 #include "psg_util.h"
 
+/* The engine vector rows of the families whose expectations run on a chip: the register programs that psg.state.validate replays
+ * (plan 08-10). The generated includes are the ones the family files read; their source lists are not used here. */
+#include "ivs_psg_vectors_ampenv.inc"
+#include "ivs_psg_vectors_env.inc"
+#include "ivs_psg_vectors_noise.inc"
+#include "ivs_psg_vectors_reseng.inc"
+#include "ivs_psg_vectors_tone.inc"
+
 #define PB_CHECK(cond)                                                                                 \
   do {                                                                                                 \
     if (!(cond)) {                                                                                     \
@@ -704,6 +712,336 @@ done:
   return rc;
 }
 
+/* ---- psg.state.validate (plan 08-10, D-15, D-16): the range check of a decoded PSG state ----
+ * ivs_psg_state_validate (psg_state.c, bounds and their proofs in psg.h) is what the restore of plan 08-13 asks before it writes
+ * anything. A false bound refuses a real snapshot, a missing bound admits an unreachable state, so this case does three things.
+ * (1) Reachable states: the reset state, then the state after every chip step of a grid of register programs (the extremes of
+ *     every period register, all sixteen envelope shapes, long runs that pass the first reload of the 12-bit tone counter, of the
+ *     5-bit noise counter and of the 16-bit envelope counter), after every step of every engine vector the suite already
+ *     judges (ampenv, env, noise, reseng, tone: their register writes replayed one chip step at a time), and after every unit
+ *     of every stand-in program on a full machine (the unit boundaries are where a snapshot is taken), is accepted. The counters
+ *     are also seen at the literal bound: the bounds are met, not only respected. The literals below are the NTSC profile's own
+ *     figures (period-zero values 4096, 32 and 65536, two steps per noise or envelope unit, the 17-bit register with mask $12000
+ *     and seed 1), asserted against the parameters first so a profile edit shows here.
+ * (2) Each bound refuses: one member of a valid state is moved just past its bound (and, where a bound is an edge, to the
+ *     edge, which is accepted).
+ * (3) The arguments: NULL parameters or state is BAD_ARG, the all-zero state of an OFF instance is BAD_STATE.
+ * The Lamp Tone idle and pass scenarios are runner-level programs (their images are not part of this suite): the stand-in
+ * programs here and the engine vectors are the programs of this suite; the in-process round trip of plan 08-12 runs the
+ * validator on the states of the lamp runs. */
+#define PB_TONE_BOUND 4096u      /* tone_counter < 4096: max(0xFFF, period_zero_tone 4096) */
+#define PB_NOISE_BOUND 64u       /* noise_counter < 64: 2 steps per unit x max(31, period_zero_noise 32) */
+#define PB_ENV_BOUND 131072u     /* env_counter < 131072: 2 steps per unit x max(65535, period_zero_env 65536) */
+#define PB_LFSR_LIMIT 0x20000u   /* noise_lfsr < 2^17: the bit length of $12000 | 1 */
+
+typedef struct pb_seen {
+  uint32_t tone;
+  uint32_t noise;
+  uint32_t env;
+  uint32_t level;
+  uint32_t cycles;
+} pb_seen;
+
+static void pb_seen_note(pb_seen *m, const ivs_psg_state *s)
+{
+  uint32_t i;
+  for (i = 0u; i < 3u; i++) {
+    if (s->tone_counter[i] > m->tone) {
+      m->tone = s->tone_counter[i];
+    }
+  }
+  if (s->noise_counter > m->noise) {
+    m->noise = s->noise_counter;
+  }
+  if (s->env_counter > m->env) {
+    m->env = s->env_counter;
+  }
+  if (s->env_level > m->level) {
+    m->level = s->env_level;
+  }
+  if (s->env_cycles > m->cycles) {
+    m->cycles = s->env_cycles;
+  }
+}
+
+/* 1 when the state is accepted; the diagnostic names the context. */
+static int pb_state_ok(const ivs_psg_params *p, const ivs_psg_state *s, pb_seen *m, const char *what, uint64_t at)
+{
+  if (ivs_psg_state_validate(p, s) != IVS_OK) {
+    ivs_test_diag("%s: the state at %llu is refused (tone %u %u %u, noise %u, lfsr %x, env counter %u, level %u, dir %u, held %u, cycles %u)",
+                  what, (unsigned long long)at, (unsigned)s->tone_counter[0], (unsigned)s->tone_counter[1],
+                  (unsigned)s->tone_counter[2], (unsigned)s->noise_counter, (unsigned)s->noise_lfsr, (unsigned)s->env_counter,
+                  (unsigned)s->env_level, (unsigned)s->env_dir, (unsigned)s->env_held, (unsigned)s->env_cycles);
+    return 0;
+  }
+  pb_seen_note(m, s);
+  return 1;
+}
+
+/* One grid point: the three tone periods derived from tone_p (channel A tone_p, B its complement, C 0 or 1), the noise and envelope
+ * periods, the mixer, the amplitude registers on the envelope, then the shape write; steps single chip steps, the state judged
+ * after the reset, after the setup writes and after every step. 1 when every state is accepted. */
+static int pb_walk(const ivs_psg_params *p, uint32_t tone_p, uint32_t noise_p, uint32_t env_p, uint32_t shape, uint32_t mixer,
+                   uint32_t steps, pb_seen *m)
+{
+  pu_rig r;
+  ivs_psg_sink k;
+  uint64_t tps = p->sample_period_ticks;
+  uint32_t t;
+  uint32_t c;
+  uint32_t period[3];
+  memset(&r, 0, sizeof r);
+  r.p = p;
+  ivs_psg_state_reset(p, &r.s);
+  ivs_psg_sink_init(&k, NULL, 0u);
+  if (!pb_state_ok(p, &r.s, m, "reset", 0u)) {
+    return 0;
+  }
+  period[0] = tone_p;
+  period[1] = tone_p ^ 0xFFFu;
+  period[2] = tone_p == 0u ? 0u : 1u;
+  for (c = 0u; c < 3u; c++) {
+    pu_write(&r, &k, 0u, IVS_PSG_SLOT_TONE_FINE + c, period[c] & 0xFFu);
+    pu_write(&r, &k, 0u, IVS_PSG_SLOT_TONE_COARSE + c, (period[c] >> 8) & 0x0Fu);
+    pu_write(&r, &k, 0u, IVS_PSG_SLOT_AMP + c, 0x1Fu);
+  }
+  pu_write(&r, &k, 0u, IVS_PSG_SLOT_NOISE, noise_p);
+  pu_write(&r, &k, 0u, IVS_PSG_SLOT_ENV_FINE, env_p & 0xFFu);
+  pu_write(&r, &k, 0u, IVS_PSG_SLOT_ENV_COARSE, (env_p >> 8) & 0xFFu);
+  pu_write(&r, &k, 0u, IVS_PSG_SLOT_MIXER, mixer);
+  pu_write(&r, &k, 0u, IVS_PSG_SLOT_ENV_SHAPE, shape);
+  if (!pb_state_ok(p, &r.s, m, "after the setup writes", 0u)) {
+    return 0;
+  }
+  for (t = 1u; t <= steps; t++) {
+    pu_run(&r, &k, (uint64_t)t * tps);
+    if (!pb_state_ok(p, &r.s, m, "walk", t)) {
+      ivs_test_diag("tone %x noise %u env %x shape %u mixer %x", (unsigned)tone_p, (unsigned)noise_p, (unsigned)env_p,
+                    (unsigned)shape, (unsigned)mixer);
+      return 0;
+    }
+  }
+  return 1;
+}
+
+/* Replays the register programs of n vector rows one chip step at a time (a write at step s is applied after the chip step s,
+ * as ivs_pe_eval does), judging the state after every step. */
+static int pb_vector_rows(const ivs_psg_params *p, const ivs_pe *rows, size_t n, pb_seen *m, uint64_t *steps_run)
+{
+  uint64_t tps = p->sample_period_ticks;
+  size_t i;
+  for (i = 0u; i < n; i++) {
+    const ivs_pe *v = &rows[i];
+    pu_rig r;
+    ivs_psg_sink k;
+    uint32_t t;
+    uint32_t w;
+    if (v->n_writes == 0u || v->steps == 0u) {
+      continue;
+    }
+    memset(&r, 0, sizeof r);
+    r.p = p;
+    ivs_psg_state_reset(p, &r.s);
+    ivs_psg_sink_init(&k, NULL, 0u);
+    for (t = 0u; t <= v->steps; t++) {
+      for (w = 0u; w < v->n_writes; w++) {
+        if (v->writes[w].step == t) {
+          pu_write(&r, &k, (uint64_t)t * tps, (uint32_t)v->writes[w].addr - 0x01F0u, v->writes[w].value);
+        }
+      }
+      if (!pb_state_ok(p, &r.s, m, v->id, t)) {
+        return 0;
+      }
+      if (t < v->steps) {
+        pu_run(&r, &k, (uint64_t)(t + 1u) * tps);
+        *steps_run += 1u;
+      }
+    }
+  }
+  return 1;
+}
+
+/* One stand-in program on a full machine, the PSG state judged after every unit. */
+static int pb_machine_units(uint32_t program, uint32_t units, pb_seen *m)
+{
+  ivs_ms_inst x;
+  uint32_t u;
+  int ok;
+  x.storage = NULL;
+  x.m = NULL;
+  if (!ivs_ms_powered_prog(&x, program, 0x5Au)) {
+    return 0;
+  }
+  ok = 1;
+  for (u = 0u; ok && u < units; u++) {
+    const struct ivs_machine *im = ivs_machine_from_handle(x.m);
+    ok = im != NULL && ivs_ms_step(x.m, 1u, NULL) != 0 && pb_state_ok(ivs_psg_params_get(im->profile), &im->psg, m, "stand-in program", u);
+    if (!ok) {
+      ivs_test_diag("program %u, unit %u", (unsigned)program, (unsigned)u);
+    }
+  }
+  ivs_ms_free(&x);
+  return ok;
+}
+
+/* 1 when v is refused with BAD_STATE. */
+static int pb_refused(const ivs_psg_params *p, const ivs_psg_state *s, const char *what)
+{
+  if (ivs_psg_state_validate(p, s) != IVS_E_BAD_STATE) {
+    ivs_test_diag("%s: not refused", what);
+    return 0;
+  }
+  return 1;
+}
+
+static int pb_accepted(const ivs_psg_params *p, const ivs_psg_state *s, const char *what)
+{
+  if (ivs_psg_state_validate(p, s) != IVS_OK) {
+    ivs_test_diag("%s: refused", what);
+    return 0;
+  }
+  return 1;
+}
+
+static int pb_state_validate(void)
+{
+  static const uint32_t tones[] = {0u, 1u, 2u, 0xFFFu};
+  static const uint32_t noises[] = {0u, 1u, 31u};
+  static const uint32_t envs[] = {1u, 2u, 3u};
+  const ivs_psg_params *p = ivs_psg_params_get(pb_profile_index());
+  pb_seen seen;
+  ivs_psg_state base;
+  ivs_psg_state b;
+  uint64_t vector_steps = 0u;
+  uint32_t ti;
+  uint32_t ni;
+  uint32_t ei;
+  uint32_t shape;
+  uint32_t i;
+  PB_CHECK(p != NULL);
+  /* the figures the literals above stand for */
+  PB_CHECK(p->period_zero_tone == 4096u && p->period_zero_noise == 32u && p->period_zero_env == 65536u);
+  PB_CHECK(p->noise_steps_per_np == 2u && p->env_steps_per_ep == 2u && p->noise_galois_mask == 0x12000u && p->noise_seed == 1u);
+  memset(&seen, 0, sizeof seen);
+  /* (1a) the grid: every shape, three envelope periods, four tone and three noise period sets, 160 chip steps each */
+  for (shape = 0u; shape < 16u; shape++) {
+    for (ei = 0u; ei < sizeof envs / sizeof envs[0]; ei++) {
+      for (ti = 0u; ti < sizeof tones / sizeof tones[0]; ti++) {
+        for (ni = 0u; ni < sizeof noises / sizeof noises[0]; ni++) {
+          PB_CHECK(pb_walk(p, tones[ti], noises[ni], envs[ei], shape, (shape & 1u) != 0u ? 0x00u : 0x38u, 160u, &seen));
+        }
+      }
+    }
+  }
+  /* (1b) the long runs: past the first reload of each counter at its largest period (the tone counter wraps at 4096 steps,
+   * the envelope counter reaches its first state change at 2 x 65536 = 131,072 steps), a rising and a falling shape */
+  PB_CHECK(pb_walk(p, 0u, 0u, 0u, 0x0Cu, 0x00u, 140000u, &seen));
+  PB_CHECK(pb_walk(p, 0xFFFu, 31u, 0xFFFFu, 0x08u, 0x00u, 9000u, &seen));
+  /* the counters were seen at their literal bound, the level and the cycle at 15 */
+  PB_CHECK(seen.tone == PB_TONE_BOUND - 1u);
+  PB_CHECK(seen.noise == PB_NOISE_BOUND - 1u);
+  PB_CHECK(seen.env == PB_ENV_BOUND - 1u);
+  PB_CHECK(seen.level == 15u && seen.cycles == 15u);
+  /* (1c) the engine vectors */
+  PB_CHECK(pb_vector_rows(p, ivs_pe_ampenv, IVS_PV_ampenv_COUNT, &seen, &vector_steps));
+  PB_CHECK(pb_vector_rows(p, ivs_pe_env, IVS_PV_env_COUNT, &seen, &vector_steps));
+  PB_CHECK(pb_vector_rows(p, ivs_pe_noise, IVS_PV_noise_COUNT, &seen, &vector_steps));
+  PB_CHECK(pb_vector_rows(p, ivs_pe_reseng, IVS_PV_reseng_COUNT, &seen, &vector_steps));
+  PB_CHECK(pb_vector_rows(p, ivs_pe_tone, IVS_PV_tone_COUNT, &seen, &vector_steps));
+  PB_CHECK(vector_steps > 100000u); /* the replay really ran (the envelope vectors alone are about 330,000 steps) */
+  /* (1d) every stand-in program on a full machine, after every unit */
+  for (i = 0u; i < IVS_MS_PROGS; i++) {
+    PB_CHECK(pb_machine_units(i, 6000u, &seen));
+  }
+  /* (2) a valid base: a rising shape with a short period, 40 steps in (not held, mid cycle) */
+  {
+    pu_rig r;
+    ivs_psg_sink k;
+    memset(&r, 0, sizeof r);
+    r.p = p;
+    ivs_psg_state_reset(p, &r.s);
+    ivs_psg_sink_init(&k, NULL, 0u);
+    pu_write(&r, &k, 0u, IVS_PSG_SLOT_ENV_FINE, 1u);
+    pu_write(&r, &k, 0u, IVS_PSG_SLOT_NOISE, 3u);
+    pu_write(&r, &k, 0u, IVS_PSG_SLOT_ENV_SHAPE, 0x0Cu); /* continue, attack: a rising sawtooth */
+    pu_run(&r, &k, 40u * (uint64_t)p->sample_period_ticks);
+    base = r.s;
+  }
+  PB_CHECK(pb_accepted(p, &base, "the base state"));
+  PB_CHECK(base.env_held == 0u && base.env_level != 0u && base.env_level < 15u); /* mid cycle, so the relation is live */
+  for (i = 0u; i < 3u; i++) {
+    b = base;
+    b.tone_counter[i] = PB_TONE_BOUND - 1u;
+    PB_CHECK(pb_accepted(p, &b, "a tone counter at its bound"));
+    b.tone_counter[i] = PB_TONE_BOUND;
+    PB_CHECK(pb_refused(p, &b, "a tone counter past its bound"));
+    b = base;
+    b.tone_out[i] = 2u;
+    PB_CHECK(pb_refused(p, &b, "a tone output flag of 2"));
+    b = base;
+    b.reserved[i] = 1u;
+    PB_CHECK(pb_refused(p, &b, "a nonzero reserved word"));
+  }
+  b = base;
+  b.noise_counter = PB_NOISE_BOUND - 1u;
+  PB_CHECK(pb_accepted(p, &b, "the noise counter at its bound"));
+  b.noise_counter = PB_NOISE_BOUND;
+  PB_CHECK(pb_refused(p, &b, "the noise counter past its bound"));
+  b = base;
+  b.noise_lfsr = PB_LFSR_LIMIT - 1u;
+  PB_CHECK(pb_accepted(p, &b, "the noise register at its width"));
+  b.noise_lfsr = PB_LFSR_LIMIT;
+  PB_CHECK(pb_refused(p, &b, "the noise register past its width"));
+  b.noise_lfsr = 0u;
+  PB_CHECK(pb_refused(p, &b, "the noise register at the lock-up value"));
+  b = base;
+  b.env_counter = PB_ENV_BOUND - 1u;
+  PB_CHECK(pb_accepted(p, &b, "the envelope counter at its bound"));
+  b.env_counter = PB_ENV_BOUND;
+  PB_CHECK(pb_refused(p, &b, "the envelope counter past its bound"));
+  b = base;
+  b.env_level = 16u;
+  PB_CHECK(pb_refused(p, &b, "an envelope level of 16"));
+  b = base;
+  b.env_cycles = 16u;
+  PB_CHECK(pb_refused(p, &b, "an envelope cycle index of 16"));
+  b = base;
+  b.env_dir = 2u;
+  PB_CHECK(pb_refused(p, &b, "an envelope direction of 2"));
+  b = base;
+  b.env_held = 2u;
+  PB_CHECK(pb_refused(p, &b, "an envelope held flag of 2"));
+  /* the relation of a running envelope: one level off, or the direction flipped, is refused; a held generator is free of it */
+  b = base;
+  b.env_level += 1u;
+  PB_CHECK(pb_refused(p, &b, "a level that does not follow the cycle index"));
+  b = base;
+  b.env_dir ^= 1u;
+  PB_CHECK(pb_refused(p, &b, "a direction that does not follow the level"));
+  b = base;
+  b.env_held = 1u;
+  b.env_counter = 0u;
+  b.env_level = 7u;
+  b.env_cycles = 3u;
+  PB_CHECK(pb_accepted(p, &b, "a held generator at a free level"));
+  b.env_counter = 1u;
+  PB_CHECK(pb_refused(p, &b, "a held generator with a running counter"));
+  b = base;
+  b.next_sample = 1u;
+  PB_CHECK(pb_accepted(p, &b, "the first chip step pending"));
+  b.next_sample = 0u;
+  PB_CHECK(pb_refused(p, &b, "no chip step pending"));
+  /* (3) the arguments and the state of an OFF instance */
+  PB_CHECK(ivs_psg_state_validate(NULL, &base) == IVS_E_BAD_ARG);
+  PB_CHECK(ivs_psg_state_validate(p, NULL) == IVS_E_BAD_ARG);
+  PB_CHECK(ivs_psg_state_validate(NULL, NULL) == IVS_E_BAD_ARG);
+  memset(&b, 0, sizeof b);
+  PB_CHECK(pb_refused(p, &b, "the all-zero state of an OFF instance"));
+  ivs_psg_state_reset(p, &b);
+  PB_CHECK(pb_accepted(p, &b, "the reset state"));
+  return IVS_TEST_PASS;
+}
+
 const ivs_test_case ivs_psg_bounds_cases[] = {
     {"psg.bounds.unit-ticks-real-bus", pb_unit_ticks_real_bus, NULL},
     {"psg.bounds.unit-ticks-max", pb_unit_ticks_max, NULL},
@@ -713,5 +1051,6 @@ const ivs_test_case ivs_psg_bounds_cases[] = {
     {"psg.bounds.g-and-u", pb_g_and_u, NULL},
     {"psg.bounds.log-capacity-formula", pb_log_capacity_formula, NULL},
     {"psg.bounds.log-bound-at-g", pb_log_bound_at_g, NULL},
+    {"psg.state.validate", pb_state_validate, NULL},
 };
 const size_t ivs_psg_bounds_count = sizeof ivs_psg_bounds_cases / sizeof ivs_psg_bounds_cases[0];

@@ -1,0 +1,13 @@
+# Benchmark workload table (plan 08-18, D-21 to D-24, D-39): read by tools/bench/bench.c (ivs-bench), never by the gate.
+# One workload per line, seven columns separated by one TAB each (the last column is free text):
+#   workload scenario warmup iterations roundtrip_ticks ticks note
+# workload: the id printed in the first column of a row of the output; scenario: the id of a scenario of data/scenarios whose
+# repeatability golden data/golden/<scenario>.digests the tool compares with its own report before it reads a clock; warmup and
+# iterations: the fixed untimed and timed iteration counts (never a wall-time budget); roundtrip_ticks: 0, or the cadence of the
+# round-trip hook (save, reset and restore at every multiple of it, plan 08-16) that the tool passes to every execution of the
+# workload (plan 08-19: the snapshot workload); ticks: the final machine time of the golden (its last step.<k>.now_ticks), checked
+# against the run; note: what the workload exercises. No workload is labelled cpu-bound: none is (08-DISCUSS-perf 2.3).
+bench-lamp-idle	bench-lamp-idle	3	15	0	7168352	idle display, full machine
+bench-lamp-input	bench-lamp-input	3	15	0	7168352	64 input events
+bench-lamp-cold	demo-lamp-tone-pass	2	30	0	806568	existing scenario, start-up and load latency
+bench-lamp-snapshot	bench-lamp-idle	3	15	1792080	7168352	save, reset and restore every 30 frames; digest equals bench-lamp-idle; the figures include the snapshot cost

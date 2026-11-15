@@ -52,6 +52,7 @@ key-decisions:
 
 duration: about 5 hours of edits plus eleven gate runs (frames and derivations were generated with a throwaway typing aid kept outside the repository)
 completed: 2026-11-12
+requirements-completed: []  # backfilled by plan 08-20 from the plan requirements field; closure evidence is the phase VERIFICATION record, not this line
 ---
 
 # Phase 6 Plan 01: sources and oracles Summary

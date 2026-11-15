@@ -28,7 +28,8 @@
  * Named faults (plan 06-10): VIDEO_WRONG_CARD_MODE (the mode sense is inverted, a Foreground/Background frame is decoded as Color
  * Stack), VIDEO_CARD_BIT_ORDER_REVERSED (bit 0 of a graphics byte is the leftmost pixel), VIDEO_GRAM_GROM_SELECT_SWAPPED (the sense of
  * bit 11 is inverted), VIDEO_20TH_COLUMN_WIDTH (column 19 shows its 8th pixel). Plan 06-11: VIDEO_CSTACK_NO_ADVANCE (bit 13 never
- * advances the color-stack pointer). */
+ * advances the color-stack pointer). Plan 08-04 adds the pure sibling ivs_stic_cards_on_row (the on-pixel mask of the card layer for
+ * the moving-object overlay, STIC-R43 and R44) and leaves ivs_stic_render_cards_row unchanged. */
 #include "common/ivs_prelude.h"
 
 #include "stic/stic.h"
@@ -123,6 +124,48 @@ uint32_t ivs_stic_render_cards_row(const ivs_stic_cardin *in, const uint16_t *ro
   }
   *cs_pos = pos;
   return IVS_CARD_ROW_BYTES;
+}
+
+uint32_t ivs_stic_cards_on_row(const ivs_stic_cardin *in, const uint16_t *row_words, const ivs_memsys *mem, uint8_t *mask)
+{
+  uint32_t c;
+  uint32_t y;
+  uint32_t cs_mode = in->mode == IVS_STIC_MODE_COLOR_STACK ? 1u : 0u;
+  for (c = 0u; c < IVS_CARD_COLS; c++) {
+    uint32_t w = (uint32_t)row_words[c] & 0x3FFFu;
+    uint32_t b12 = (w >> 12) & 1u;
+    uint32_t b11 = (w >> 11) & 1u;
+    uint32_t squares = 0u;
+    uint32_t sel = b11;
+    uint32_t card = (w >> 3) & 0x3Fu;
+    uint32_t q[4] = {0u, 0u, 0u, 0u};
+    if (cs_mode != 0u) {
+      if (b12 == 1u && b11 == 0u) {
+        squares = 1u;
+        q[0] = w & 7u;
+        q[1] = (w >> 3) & 7u;
+        q[2] = (w >> 6) & 7u;
+        q[3] = 4u * ((w >> 13) & 1u) + 2u * ((w >> 10) & 1u) + ((w >> 9) & 1u);
+      } else if (b11 == 0u) {
+        card = (w >> 3) & 0xFFu; /* a graphics ROM card of the Color Stack word uses bits 10..3 */
+      }
+    }
+    for (y = 0u; y < IVS_CARD_H; y++) {
+      uint32_t byte;
+      if (squares != 0u) {
+        uint32_t ql = q[(y >> 2) * 2u];
+        uint32_t qr = q[(y >> 2) * 2u + 1u];
+        byte = (ql != 7u ? 0xF0u : 0u) | (qr != 7u ? 0x0Fu : 0u); /* colors 0 to 6 are on pixels, color 7 is not */
+      } else {
+        byte = (uint32_t)ivs_memsys_stic_gfx_byte_internal(mem, sel, card, y);
+      }
+      if (c == IVS_CARD_COLS - 1u) {
+        byte &= 0xFEu; /* the cut-off pixel of the 7-pixel last column is not displayed, so not an on pixel */
+      }
+      mask[(size_t)y * IVS_CARD_COLS + c] = (uint8_t)byte;
+    }
+  }
+  return IVS_CARD_COLS * IVS_CARD_H;
 }
 
 uint32_t ivs_stic_render_cards(const ivs_stic_cardin *in, const uint16_t *words, const ivs_memsys *mem, uint32_t *cs_final, uint8_t *plane)

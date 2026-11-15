@@ -5,6 +5,7 @@
 # that the planes differ at exactly count positions and that every differing position lies inside the rectangle, so a response
 # frame that changes anything outside its declared region, or fewer or more positions than derived, cannot be registered.
 # The counts are derived by hand in docs/video/demo-lamp-tone-1-derivation.md section (e): 64 positions per lit lamp that the other frame shows unlit.
+# Plan 08-03 adds the two pairs of the program ivs-diag-stic-2, derived by hand in docs/video/diag-stic-2-derivation.md sections (b) and (e): a frame with an unknown region (F-M7) is never paired.
 F-S1 F-S2 48 32 64 8 128
 F-S1 F-S3 48 32 64 8 256
 F-S2 F-S3 48 32 64 8 128
@@ -12,3 +13,5 @@ F-S1 F-S4 48 56 64 8 64
 F-S1 F-S5 48 32 64 32 192
 F-S1 F-S6 48 32 64 32 384
 F-S5 F-S6 48 32 64 32 320
+F-M0 F-M1 150 90 9 6 38
+F-M0 F-M4 0 0 159 96 2012

@@ -44,6 +44,14 @@ extern const ivs_test_case ivs_video_cstack_cases[];
 extern const size_t ivs_video_cstack_count;
 extern const ivs_test_case ivs_video_judge_cases[];
 extern const size_t ivs_video_judge_count;
+extern const ivs_test_case ivs_video_mob_cases[];
+extern const size_t ivs_video_mob_count;
+extern const ivs_test_case ivs_video_collision_cases[];
+extern const size_t ivs_video_collision_count;
+extern const ivs_test_case ivs_video_border_cases[];
+extern const size_t ivs_video_border_count;
+extern const ivs_test_case ivs_video_delay_cases[];
+extern const size_t ivs_video_delay_count;
 
 /* ---- the independent literals (video_geom.c includes the generated ivs_video_lit.inc) ---- */
 const uint8_t *vl_h(uint32_t k);           /* the chain value h0, h1 or h2 (32 bytes) */
@@ -115,6 +123,34 @@ typedef struct vf_role {
   const char *role;
 } vf_role;
 
+/* A vm_frame is one hand-derived frame literal of the moving-object oracle (plan 08-04; cmake/IvsVideoFrames.cmake with FRAMESET=mob ->
+ * ivs_mob_frames.inc, tests/video/video_mob.c): the fields of a vf_frame plus the number of `unknown` rectangles. The plane lines hold
+ * 160 symbols with `-` kept as the wildcard (a position inside an unknown rectangle, and the cut-off pixel of column 19), and sha_text is empty
+ * for a frame whose literal says `sha256-text none`. The table vm_frames is separate from vf_frames, so no loop of the card families sees it. */
+typedef struct vm_frame {
+  const char *name;
+  uint32_t mode;
+  uint32_t display;
+  uint32_t border;
+  uint32_t stack[4];
+  uint32_t fill;
+  uint32_t n_cells;
+  const vf_cell *cells;
+  uint32_t n_gram;
+  const vf_gram *gram;
+  const char *const *plane;
+  const char *sha_text;
+  uint32_t n_unknown;
+  uint32_t plane_line;
+} vm_frame;
+
+/* One row of data/video/mob.literal.txt: the register (mobx, moby or moba), the bit 0..15 and its role (video_mob.c; the register-bit sweep). */
+typedef struct vm_role {
+  const char *reg;
+  uint32_t bit;
+  const char *role;
+} vm_role;
+
 #define VF_PLANE_W 160u
 #define VF_PLANE_H 96u
 #define VF_PLANE_BYTES (VF_PLANE_W * VF_PLANE_H)
@@ -125,6 +161,41 @@ uint32_t vf_frame_count(void);
 const vf_frame *vf_frame_get(uint32_t i);
 const vf_role *vf_role_table(size_t *n);
 const ivs_test_source *vf_source_table(size_t *n);
+/* The sources of the moving-object include (video_mob.c): the ten F-M literals and the profile. */
+const ivs_test_source *vm_source_table(size_t *n);
+/* The moving-object scene shared by the families video.mob., video.border., video.hdelay., video.vdelay. and video.delay. (video_mob.c, plan 08-06):
+ * frame literal i of F-M0..F-M9 (NULL beyond), the static memory system and STIC state a scene is built in, the rendered and the expected plane
+ * (160 x 96 bytes each, the `-` wildcard is 0xFF). vm_scene builds the cards, the BACKTAB, the color stack and the border of literal f on a fresh
+ * memory system with every MOB register at its reset value and returns the profile parameters; vm_put programs MOB i; vm_render renders the whole
+ * plane through ivs_stic_render_plane in the state of the scene; vm_expected expands a literal into an expected plane; vm_fixture_ok checks a
+ * literal before it judges anything (hash and wildcard rules); vm_matches compares the rendered plane with the literal (positions, a wildcard
+ * skipped, then the hash when the literal has one); vm_first_diff is the position comparison alone. */
+#define VM_FRAMES 10u
+const vm_frame *vm_frame_get(uint32_t i);
+ivs_memsys *vm_mem_get(void);
+ivs_stic_state *vm_state_get(void);
+uint8_t *vm_plane_buf(void);
+uint8_t *vm_exp_buf(void);
+const ivs_stic_params *vm_scene(const vm_frame *f);
+void vm_put(uint32_t i, uint32_t xw, uint32_t yw, uint32_t aw);
+uint32_t vm_render(const ivs_stic_params *p, uint32_t displayed, uint8_t *plane);
+void vm_expected(const vm_frame *f, uint8_t *exp);
+int vm_fixture_ok(const vm_frame *f);
+int vm_matches(const vm_frame *f);
+long vm_first_diff(const uint8_t *got, const uint8_t *exp, uint32_t *skipped);
+/* The count of published positions of color col in the rendered plane, and 1 when two planes differ in a published position. */
+uint32_t vm_count(uint32_t col);
+int vm_planes_differ(const uint8_t *a, const uint8_t *b);
+/* The sliced-run harness of video.mob.slice-invariant over any guest: VM_TOTAL ticks in calls of `slice` ticks (0: one call) of the guest w[0..n),
+ * the delivered slots appended to out (room for VM_CAP bytes); the byte count, or (uint64_t)-1 on a failure. vm_slice_one runs a second
+ * instance in calls of `slice` ticks and compares the slots, the whole instance storage and the video chain with the reference (ref, a). */
+#define VM_SLOT_BYTES 15296u
+#define VM_F 59736u
+#define VM_TOTAL (3u * VM_F + 4000u)
+#define VM_CAP ((uint64_t)VM_SLOT_BYTES * 5u)
+uint64_t vm_run_sliced(ivs_ms_inst *x, const uint16_t *w, size_t n, uint64_t slice, uint8_t *out);
+int vm_slice_one(uint64_t slice, uint8_t *ref, uint64_t ref_bytes, const ivs_ms_inst *a, const uint16_t *w, size_t n);
+
 /* The expected 160 x 96 plane of a frame literal (the symbol - is IVS_PIXEL_BLANK) and its 240 BACKTAB words (the fill word, then the cells). */
 void vf_expected(const vf_frame *f, uint8_t *exp);
 void vf_words(const vf_frame *f, uint16_t *words);

@@ -21,7 +21,40 @@ unqualified "it runs Intellivision games" label.
 
 ### Validated
 
-(None yet — ship to validate)
+Each capability below is complete on documented terms (requirement text met by
+gate evidence, recorded in the phase VERIFICATION record and the REQUIREMENTS
+close-out notes), its claims are provisional (one claim, CL-0002, is
+established) and nothing was measured on hardware: D10 and D11 are not
+performed. REL-01 is excluded until its second stage (the records pull request
+after the merge, Phase 8 D-28). The Active list below is kept as written at
+kickoff.
+
+- Evidence, profile and rights foundations (FND-01..07, Phase 1): complete on
+  documented terms, claims provisional, nothing measured.
+- CP-1610 CPU (CPU-01..05, Phase 2): complete on documented terms, claims
+  provisional, nothing measured.
+- Memory map, content loading and refusal (MEM-01..05, Phase 3): complete on
+  documented terms, claims provisional, nothing measured.
+- Core contract and host independence (API-01..06, Phases 2 to 5): complete on
+  documented terms, claims provisional, nothing measured.
+- Headless runner and verification (RUN-01..06, Phases 2 and 4): complete on
+  documented terms, claims provisional, nothing measured.
+- Packaging, local gate and CI (PKG-01..04, Phases 2 and 4): complete on
+  documented terms, claims provisional, nothing measured.
+- Hand controllers (INP-01..03, Phase 5): complete on documented terms, claims
+  provisional, nothing measured.
+- PSG sound (AUD-01, AUD-02, Phase 5): complete on documented terms, claims
+  provisional, nothing measured.
+- STIC video (VID-01..06, Phases 6 and 8): complete on documented terms, claims
+  provisional, nothing measured; the unresolved STIC behaviours stay on the
+  `unknown-default-chosen` list of the discrepancy log.
+- Visible original scenario (SCN-01, SCN-02, Phase 7): complete on documented
+  terms, claims provisional, nothing measured; SCN-02 is the documented
+  owner-local route only, with no real EXEC or GROM run (D11 not performed).
+- Snapshots, restore and performance baselines (STA-01, STA-02, PRF-01,
+  Phase 8): complete on documented terms, claims provisional, nothing
+  measured; the committed benchmark baseline is informational because it was
+  taken on a host that was not idle.
 
 ### Active
 
@@ -174,8 +207,14 @@ These come from a researched fan-out recommendation that was auto-adopted. Each 
 | D7 | Reference PCM is outside the core and outside every installed artifact: a pure integer converter in `tools/pcm/` is linked only by the runner's operator-side `--audio-wav` and its own tests; raw audio is per-channel level samples every 16 master ticks plus a cycle-stamped write log (Phase 5 D-15, D-21) | An adapter that needs bit-identical PCM across hosts (promote to an installed `ivs::refpcm` target, still outside the core) |
 | D8 | Framebuffer geometry: the raw framebuffer of `intv-2609-ntsc-family-p1` is 159 x 96 display rows (19 x 8 + `video.last_card_column_px` = 7 columns by 12 x 8 rows; the tier 1 count from the GI 1980 and 1982 catalog pages, 159 of a 167 x 105 grid), one byte per position holding the 4-bit STIC color number 0..15 or `0xFF` for a position not displayed; a slot of a 32-byte header plus the plane (15,296 bytes) per frame, completed at the frame event (`E_k`), delivered into a caller-owned buffer (NULL plus 0 means not requested) with the run flag `IVS_RUN_F_STOP_ON_FRAME` and a per-frame digest chain (domain 16); palette, scaling, aspect and border painting stay outside the core (Phase 6 D-12..D-17; Delegated decision, owner authorization 2026-11-09, decided 2026-11-12) | One-field reversal: `video.last_card_column_px` = 8 gives 160 columns, then re-bless the goldens as one classified diff; or a new format id if pixels outside the window are wanted (hardware or primary-page evidence, D10-VID-01, C10 stays `partial`, C101, C105) |
 | D12 | CI shape: one ubuntu-24.04 job, no matrix, no cache, no artifacts, no macOS leg, job summary from the gate, run record file (Phase 4 D-41..D-45) | An Apple-only failure reaching main, a shared library, or a median hosted gate above budget after levers |
-| D10 | Physical hardware measurement: OPEN, a hard stop and not performed; the 42 items of `data/expected/d10-measurements.ids` are handed off and no claim uses the `measured-hardware` tier | Owner-approved measurement evidence (D10), ingested per `docs/input/d10-procedure.md` and `docs/stic/d10-procedure.md` |
+| D10 | Physical hardware measurement: OPEN, a hard stop and not performed; the 47 items of `data/expected/d10-measurements.ids` (42 before the five collision, priority, delay, extension and half-height items of Phase 8) are handed off and no claim uses the `measured-hardware` tier | Owner-approved measurement evidence (D10), ingested per `docs/input/d10-procedure.md` and `docs/stic/d10-procedure.md` |
 | D11 | Owner-local run of a real EXEC and GROM image through the runner (the SCN-02 route, `docs/owner-images.md`): OPEN, a hard stop and not performed; SCN-02 is complete on documented-route terms only (the route page, a counted skipped template scenario, the owner-run helper with tested refusals, the refusal of derived audio and log output for user content, manifests labelled not redistributable); no EXEC or GROM digest is recorded, and no result, claim or tier exists | The owner runs the helper with their own images (never committed, never in CI) and records the outcome as D11 items; documented redistribution permission would be needed before any image or digest enters the repository |
+| OQ8 | Snapshot persistence policy (open question 8; Phase 8 D-19, plan 08-17; Delegated decision, owner authorization 2026-11-09): the core returns bytes and nothing else, so it writes no file and chooses no name, slot, location, compression, encryption or autosave, and no machine behaviour depends on a file; where a snapshot goes is a host's policy, with no default save location; the runner has no snapshot file option in this phase (`--snapshot-out` and `--snapshot-in` are deferred and, when added, are runner-only, take an explicit path and are refused for a `content user` scenario); the container IVSN v1 is exact-build and not archival (one pair of format version and schema version per build, any other pair refused as unsupported, no migration before 1.0); `.ivsn` is rights-bearing by name | Reversal evidence: a consumer that needs archival snapshots (a migration story and a versioning policy), a default location, or battery-backed cartridge RAM; reversible by adding sections and raising the section count and the schema version together |
+| OQ11 | Performance targets (open question 11; Phase 8 PRF-01; Delegated decision, owner authorization 2026-11-09): PRF-01 sets none. The benchmark tool asserts a workload's digest before it reports any figure, a figure is repeatability-only information about one build on one host and never a claim, no check compares a figure with a threshold, and Phase 8 optimized nothing; the committed baseline record is informational | Reversal evidence: a consumer states a frame-rate need (then a target, a workload that represents it and a baseline taken on an idle host) |
+| REL-01 / D-29 | First release: a draft pre-release, published by the orchestrator only after read-only checks. The tag-triggered release workflow creates `v0.1.0` with `--draft --prerelease --verify-tag --latest=false`, and the orchestrator publishes the draft only after the checks P1 to P8 (green `main` at the artifact commit, hygiene, rights, version agreement, notes from the claim ledger, the history disposition, the release machinery, a read of the draft with `gh release view --json`); the tag goes on the Phase 8 merge commit (the artifact commit) and never on a records commit; a failing check is recorded as `ready, not published: blocked by P<n>`; deleting a published release is a hard stop (`.planning/AUTONOMY.md` section 1), and the draft is the cheap reversible step before it, an amendment of the draft-first detail of the section 5 design, which is untouched (Phase 8 D-29; plans 08-01, 08-02 and 08-21; Delegated decision, owner authorization 2026-11-09). At the Phase 8 close the release is not started: the owner paused the flow after Phase 8 (relayed by the orchestrator) | Reversal evidence: the draft step finds no defect in two releases and costs more than it saves (drop the draft flag, one line of `tools/release.sh`); or a published release is ever wrong and the owner chooses a delete-and-recreate policy |
+| REL-01 / D-30 | Three separate version numbers, never conflated: the GSD milestone label (planning only, never a git tag), the software version 0.1.0 (the three `IVS_API_VERSION_*` macros of `core/include/ivs/ivs.h`, equal to the CMake `ivs_VERSION` and to the installed package version) and the format versions (IVSC v1, IVSN v1 with schema version 1, the video slot header, the state digest composite version 3). The tag is strictly `vMAJOR.MINOR.PATCH` and must equal the macros: the release script and the version policy check refuse a skew, and the release trigger is the glob `v[0-9]*.[0-9]*.[0-9]*`. For 0.x a patch means no API or format change and a minor means anything else, consistent with `SameMinorVersion`; the first release is 0.1.0 because nothing was ever tagged, and the snapshot calls are additive inside 0.1 (Phase 8 D-30, D-32; plans 08-01 and 08-02; Delegated decision, owner authorization 2026-11-09) | Reversal evidence: a consumer needs a pre-release suffix or build metadata in the version, a breaking format change before 1.0 that the minor rule handles badly, or a tag is made in another form; then the policy and the check change in the same commit |
+| REL-01 / D-31, D-42 | The milestone tool must not create a tag. `.planning/config.json` carries `git.create_tag: true`, which would make `gsd-complete-milestone` create, and offer to push, a milestone-style tag such as `v1.0`: that is not a 0.x software version and would match a wide release trigger. The release trigger is the strict glob and the release checks refuse a tag that is not the header version; changing that one key to false is an orchestrator-only change in a separate commit with no other file in it, and executors never stage `.planning/config.json` or `.planning/state.json` (Phase 8 D-31, D-42; `.planning/ops/RELEASE-OPS.md` item a; Delegated decision, owner authorization 2026-11-09). The key reads `true` in the working-tree copy at the Phase 8 close, so the change is still to be made | Reversal evidence: the milestone tool gains a no-tag flag or a configurable tag name that cannot match the release glob, or the owner wants a milestone tag; then the key can stay as it is |
+| REL-01 / D-33 | History disposition: six old planning commits on public `main` trip `sh tools/hygiene.sh --history` on the shape of a scratch-directory path (five commits by the token `hygiene-history-home-path` and one commit message by `hygiene-message-home-path`; the matched text carries no user, host or session content). They are **accepted without a rewrite and not cleared**: pinned by (token, short sha) pair in `data/expected/hygiene-history-pinned.ids`, a finding that is not on the list fails the release check, the baseline file `tools/check/hygiene-baseline.txt` is not moved, no rule is widened, and the readiness record prints each finding with its disposition and never says that the history check passed (Phase 8 D-33; plan 08-02 and the full scan of plan 08-21, six findings and none new; Delegated decision, owner authorization 2026-11-09). **The owner may veto this disposition and choose a rewrite**, which is an owner-only hard stop (`.planning/AUTONOMY.md` section 1) and would not purge the pull request refs that GitHub keeps | Reversal evidence: an owner veto; a finding whose matched text carries identifying content (a user name, a host, a session id); or a request to purge the objects (a GitHub Support action) |
 
 D4, D6 and D12 were decided by the fan-out protocol on 2026-11-11; D7 on 2026-11-12 (Phase 5), D8 on 2026-11-12 (Phase 6) (Delegated decision, owner authorization 2026-11-09).
 
@@ -200,16 +239,16 @@ Phase 7 notes on the register above (plan 07-12, 2026-11-13; Delegated decision,
 - **SCN-02 and D11:** SCN-02 is complete on documented-route terms (Phase 5 and 6 close-out precedent); D11 stays open and not performed, so there is no claim-ledger entry and no tier for any real-EXEC result, and no known EXEC or GROM digest is recorded in the repository.
 - **D9 (applied to stale text):** the licence is MIT and release publication is a delegated flow; the lines that still called the licence an owner gate (the Out of Scope list, the owner-gate row above, REL-01) were corrected at the Phase 7 transition. A release ships the program only as tracked source; neither the runner nor `ivs_pack` nor `ivs_asm` is installed, so nothing downloadable is runnable yet (`docs/packaging.md`, "Release content").
 
-D5 and the cartridge format were decided by the fan-out protocol on 2026-11-11 (Delegated decision, owner authorization 2026-11-09). D6, D7, D8 and D12 were not decided in Phase 1 and are decided by the fan-out protocol when their phase needs them; D10 and D11 remain hard stops with evidence marked missing (D-05).
+D5 and the cartridge format were decided by the fan-out protocol on 2026-11-11 (Delegated decision, owner authorization 2026-11-09). D6, D7, D8 and D12 were not decided in Phase 1; each was decided by the fan-out protocol in the phase that needed it (rows above). D10 and D11 remain hard stops with evidence marked missing (D-05) and were not performed.
 
 ### Recommendations (not owner decisions)
 
 | Recommendation | Rationale | Status |
 |----------------|-----------|--------|
-| Early end-to-end slice: one explicitly named Master Component profile + original diagnostic fixture + independent headless consumer | Exercises core, runner, fixture provenance and consumer boundary together | — Pending owner/discussion |
-| 2609-family Master Component as the candidate first profile | Original NTSC console; best-documented; MAME/jzIntv/manuals all reference it | — Pending (revision/region not chosen) |
+| Early end-to-end slice: one explicitly named Master Component profile + original diagnostic fixture + independent headless consumer | Exercises core, runner, fixture provenance and consumer boundary together | ✓ Phase 4: Slice 0, an original diagnostic through the runner and the relocated installed consumer |
+| 2609-family Master Component as the candidate first profile | Original NTSC console; best-documented; MAME/jzIntv/manuals all reference it | ✓ Adopted as D3, `intv-2609-ntsc-family-p1` (delegated decision); a board revision stays unmeasured (D10) |
 | Keep one playable/homebrew scenario visible early | Prevent research-only drift | ✓ Phase 7: the original program Lamp Tone (tracked source, CL-0023), no third-party title |
-| Original source-built diagnostics over third-party test ROMs | No cleared conformance suite found | — Pending |
+| Original source-built diagnostics over third-party test ROMs | No cleared conformance suite found | ✓ Applied: project-authored diagnostics and the Lamp Tone program, no third-party test ROM |
 
 ### GSD-generated decisions (reversible defaults)
 
@@ -234,13 +273,15 @@ D5 and the cartridge format were decided by the fan-out protocol on 2026-11-11 (
 7. Implementation language and build system; public API/ABI; error, ownership
    and versioning policy.
 8. Debugger/headless runner shape; save-state and battery-backed persistence.
+   (Persistence policy decided in Phase 8: Decision Register row OQ8.)
 9. Initial original/cleared fixture and independent oracle; first playable or
    homebrew scenario.
 10. First consumer and supported runtime/platforms; whether/when to pursue a
     LibFuturo adapter.
 11. Dependency policy details, new-code license, repository visibility, release
     artifacts, performance targets. (Licence MIT and visibility public: D9;
-    release content: `docs/packaging.md`; performance targets remain open.)
+    release content: `docs/packaging.md`; performance targets: PRF-01 sets none,
+    Decision Register row OQ11.)
 
 ## Evolution
 
@@ -262,4 +303,4 @@ This document evolves at phase transitions and milestone boundaries.
    of exact tested artifact targeted when rights/readiness/authority permit
 
 ---
-*Last updated: 2026-11-13 after Phase 7 close-out (plan 07-12)*
+*Last updated: 2026-11-15 after the Phase 8 stale-text sweep (plan 08-20)*

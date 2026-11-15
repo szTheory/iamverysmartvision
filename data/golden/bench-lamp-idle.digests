@@ -1,0 +1,60 @@
+# tier: deterministic-repeatability
+# oracle: self-recorded
+# scenario: bench-lamp-idle
+# profile: intv-2609-ntsc-family-p1
+# domains: cpu=observed mem=observed images=observed instance=observed video=observed audio=observed input=none psglog=observed
+# Written by ivs-run --update-golden, never by the gate; a change is a reviewed diff
+# (docs/runner.md). The body is the run's report filtered to the golden key list.
+scenario.id bench-lamp-idle
+scenario.profile intv-2609-ntsc-family-p1
+outcome pass
+outcome.detail -
+exit.code 0
+slot.exec.loaded 1
+slot.exec.length_bytes 8192
+slot.exec.sha256 a2cea795516799811a3ed1df9020d8ed80b90a5a2322d4e5feac38f350538660
+slot.exec.status ok
+slot.exec.reason 0
+slot.grom.loaded 1
+slot.grom.length_bytes 2048
+slot.grom.sha256 e5a00aa9991ac8a5ee3109844d84a55583bd20572ad3ffcd42792f3c36b183ad
+slot.grom.status ok
+slot.grom.reason 0
+slot.cart.loaded 1
+slot.cart.length_bytes 460
+slot.cart.sha256 ac0ad987da1330101f423b294b6c24ea14de36f43f6b2dae82cd91d32b8e0ba8
+slot.cart.status ok
+slot.cart.reason 0
+step.1.target_ticks 7168320 from=120 frames nominal, not frame events
+step.1.now_ticks 7168352
+step.1.overshoot_ticks 32
+step.1.stop_reason target
+step.1.expected_stop target
+cpu.run_state running
+cpu.fault_reason none
+input.events 0
+input.consumed 0
+input.controller.0 00000000
+input.controller.1 00000000
+input.controller.2 00000000
+input.controller.3 00000000
+digest.cpu c11c1c231eecd0630844f8c008eb67c9ab5c3bf88c1145d33c9b7698aac7b9a2
+digest.mem ffabf5b1b081b46ad5c56f280436fa6eb19045c4240ae2bdd7149ad2ad46d45a
+digest.images 09679d87b9851e20d6c32494887429c18be14d9182252de2a881a4633a38ad48
+digest.instance e7c99c12d4257a1737d16b2d5f338629135ff3e66be95114eab1a5258798b0c0
+digest.composite 24a9234a0df949731e116dac8ecb5e6bb991a73a75b6a588134521b013152882
+digest.video 588d9564a8a1f675dc8343dd809230760e76804df3a69790dd255af5e777d1e9
+digest.audio 1eb15ad60379f71f0d91c42a68fd710bf3a1981e48ce4c86c7ac708bab335fb1
+digest.psglog 0a56d85c7d6a4520f73cefba74ffbc1bb9c476386a74ac7d229d3fd42f53fb53
+output.video.bytes 1835520
+output.audio.bytes 1792088
+output.audio.samples 448022
+output.audio.changes 0
+output.psglog.records 6
+output.psglog.bytes 96
+audio.sample_ticks 16
+output.video.frames 120
+video.geometry 159x96
+video.row_lines 2
+video.frame.last_tick 7168320
+video.chain.check pass

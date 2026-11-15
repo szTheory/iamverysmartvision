@@ -51,6 +51,7 @@ key-decisions:
 
 duration: about 14 min of edits plus gates (first task commit 20:25, last 20:35), plus one container gate
 completed: 2026-11-11
+requirements-completed: [PKG-01]  # backfilled by plan 08-20 from the plan requirements field; closure evidence is the phase VERIFICATION record, not this line
 ---
 
 # Phase 4 Plan 23: the independent installed consumer Summary

@@ -10,7 +10,7 @@
 
 #define IVS_OK 0
 #define IVS_E_BAD_ARG (-1)
-#define IVS_E_RESERVED_X (-24)
+#define IVS_E_RESERVED_X (-25)
 
 IVS_API int ivs_toy(int x);
 

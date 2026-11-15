@@ -16,6 +16,15 @@ size_t sc_w_mvii(uint16_t *w, size_t n, uint32_t r, uint32_t imm)
   return n;
 }
 
+size_t sc_w_mvii16(uint16_t *w, size_t n, uint32_t r, uint32_t imm)
+{
+  w[n++] = 0x0001u;                  /* SDBD */
+  w[n++] = (uint16_t)(0x02B8u + r);  /* MVII ..., Rd */
+  w[n++] = (uint16_t)(imm & 0xFFu);  /* low byte */
+  w[n++] = (uint16_t)((imm >> 8) & 0xFFu);
+  return n;
+}
+
 /* A direct address is a 10-bit decle, so an address above $3FF goes through R3: SDBD; MVII #addr, R3 (the two data decles
  * are the low byte then the high byte, sdbd.json cpu.MVII.sdbd-low-high), then MVO@ Rs, R3 or MVI@ R3, Rd (1001 mmm sss
  * and 1010 mmm ddd with mmm = 3, a non-incrementing pointer; MVO@ R1, R2 is 0251 in indirect.json). The register r of

@@ -45,6 +45,7 @@ key-decisions:
 
 duration: about 2 hours elapsed on a loaded laptop (five gate runs of about 1 minute each plus the container gate of 281 s)
 completed: 2026-11-12
+requirements-completed: [VID-06]  # backfilled by plan 08-20 from the plan requirements field; closure evidence is the phase VERIFICATION record, not this line
 ---
 
 # Phase 6 Plan 07: inspection call ivs_machine_stic_state and peek purity Summary

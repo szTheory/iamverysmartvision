@@ -69,6 +69,8 @@ typedef struct fake_host {
   int want_wav;        /* install the operator WAV hooks (plan 05-10) */
   uint32_t wav_rate;   /* options.wav_rate (0: the default 48000; an invalid value must be refused) */
   uint64_t slice_ticks; /* options.slice_ticks (0: the default) */
+  uint32_t rt_flags;   /* options.flags (plan 08-16: 0 or IVS_RUNNER_OPT_ROUNDTRIP, anything else must be refused) */
+  uint64_t rt_ticks;   /* options.roundtrip_ticks (plan 08-16) */
   int wav_fail_pcm;    /* the PCM hook fails */
   int wav_fail_finish; /* the finish hook fails */
   uint8_t wav_pcm[8192]; /* the PCM bytes the hook received, in order */
@@ -318,9 +320,12 @@ static uint32_t rx_exec(const char *text, fake_host *h, ivs_runner_result *res)
     host.buffers = h->buffers;
     host.buffer_bytes = h->buffer_bytes;
   }
-  if (h->out_max != 0u || h->wav_rate != 0u || h->slice_ticks != 0u || h->video_out_max != 0u) {
+  if (h->out_max != 0u || h->wav_rate != 0u || h->slice_ticks != 0u || h->video_out_max != 0u || h->rt_flags != 0u ||
+      h->rt_ticks != 0u) {
     ivs_runner_options o;
     memset(&o, 0, sizeof o);
+    o.flags = h->rt_flags;
+    o.roundtrip_ticks = h->rt_ticks;
     o.audio_out_max_bytes = h->out_max;
     o.video_out_max_bytes = h->video_out_max;
     o.wav_rate = h->wav_rate;
@@ -2807,6 +2812,210 @@ done:
   return rc;
 }
 
+/* ---- the round-trip hook (plan 08-16, D-18, 08-RESEARCH 3.4) ---- */
+
+/* The report text without its host.calls line, the one key that depends on the host (a cut makes one more slice, so one more cancel check),
+ * copied into out. 1 when the line was there exactly once and out was large enough. */
+static int rx_without_host_calls(const char *report, char *out, size_t cap)
+{
+  size_t n = 0u;
+  int seen = 0;
+  const char *p = report;
+  while (*p != '\0') {
+    const char *eol = strchr(p, '\n');
+    size_t ll = eol != NULL ? (size_t)(eol - p) + 1u : strlen(p);
+    if (strncmp(p, "host.calls ", 11u) == 0) {
+      seen++;
+    } else {
+      if (n + ll + 1u > cap) {
+        return 0;
+      }
+      memcpy(out + n, p, ll);
+      n += ll;
+    }
+    p += ll;
+  }
+  out[n] = '\0';
+  return seen == 1;
+}
+
+/* One scenario text executed on two hosts the caller initialised, plain and with the hook (hook->rt_flags and hook->rt_ticks set by the
+ * caller): both end pass with a complete report, the two reports are byte-equal apart from host.calls, the plain run made no cut, the hook run
+ * made at least min_cuts, and (the fake host has a cancel hook and no clock) every cut cost exactly one more slice, that is one more host call.
+ * The reports stay in plain->out and hook->out for the caller. */
+static int rx_roundtrip_compare(const char *text, fake_host *plain, fake_host *hook, uint64_t min_cuts)
+{
+  ivs_runner_result ra;
+  ivs_runner_result rb;
+  char *ta = malloc(FH_OUT_CAP);
+  char *tb = malloc(FH_OUT_CAP);
+  uint32_t oa;
+  uint32_t ob;
+  int ok = 0;
+  if (ta == NULL || tb == NULL) {
+    goto done;
+  }
+  oa = rx_exec(text, plain, &ra);
+  ob = rx_exec(text, hook, &rb);
+  if (oa != IVS_RUNNER_OUTCOME_PASS || ob != IVS_RUNNER_OUTCOME_PASS || ra.exit_code != 0u || rb.exit_code != 0u ||
+      plain->out == NULL || hook->out == NULL || !rx_complete(plain->out, &ra) || !rx_complete(hook->out, &rb)) {
+    ivs_test_diag("plain outcome %u, hook outcome %u\n%s", (unsigned)oa, (unsigned)ob, hook->out != NULL ? hook->out : "");
+    goto done;
+  }
+  if (!rx_without_host_calls(plain->out, ta, FH_OUT_CAP) || !rx_without_host_calls(hook->out, tb, FH_OUT_CAP)) {
+    ivs_test_diag("a report without exactly one host.calls line");
+    goto done;
+  }
+  if (strcmp(ta, tb) != 0) {
+    size_t i = 0u;
+    while (ta[i] != '\0' && ta[i] == tb[i]) {
+      i++;
+    }
+    ivs_test_diag("the reports differ at byte %zu: plain '%.40s' hook '%.40s'", i, ta + i, tb + i);
+    goto done;
+  }
+  if (ra.roundtrip_cuts != 0u || rb.roundtrip_cuts < min_cuts || rb.roundtrip_cuts > IVS_RUNNER_ROUNDTRIP_MAX_CUTS ||
+      rb.host_calls != ra.host_calls + rb.roundtrip_cuts) {
+    ivs_test_diag("cuts: plain %llu, hook %llu (at least %llu); host calls plain %llu, hook %llu", (unsigned long long)ra.roundtrip_cuts,
+                  (unsigned long long)rb.roundtrip_cuts, (unsigned long long)min_cuts, (unsigned long long)ra.host_calls,
+                  (unsigned long long)rb.host_calls);
+    goto done;
+  }
+  ok = 1;
+done:
+  free(ta);
+  free(tb);
+  return ok;
+}
+
+/* runner.exec.roundtrip-equals-straight (plan 08-16, D-18): a run with the hook (a save, a power-on reset and a restore at every multiple of a
+ * value) gives the plain report apart from host.calls. The diagnostic program halts at tick 2,084 (no output block): a value of 600 gives cuts
+ * after 600, 1,200 and 1,800, three, and every one of them leaves the state the program reads at the halt (R0 to R6 and the nine words) as the
+ * plain run has it, with the same digests; each cut is one more slice (one more cancel check of the fake host). The programs with streams, input,
+ * a displayed frame and the collision registers are the scenarios of runner-process.roundtrip.<id>, which run the real ivs-run in both presets. */
+static int ex_roundtrip_equals_straight(void)
+{
+  fake_host a;
+  fake_host b;
+  char diag[RX_SCN_CAP];
+  int rc = IVS_TEST_FAIL;
+  fh_init(&a);
+  fh_init(&b);
+  if (!rx_diag(diag, sizeof diag)) {
+    return IVS_TEST_FAIL;
+  }
+  b.rt_flags = IVS_RUNNER_OPT_ROUNDTRIP;
+  b.rt_ticks = 600u;
+  if (rx_roundtrip_compare(diag, &a, &b, 3u)) {
+    rc = IVS_TEST_PASS;
+  }
+  rx_free(&a);
+  rx_free(&b);
+  return rc;
+}
+
+/* runner.exec.roundtrip-option-range (plan 08-16, D-18): every flag and value combination of the options. A harness failure without a report
+ * (outcome 14, no byte written, no line counted, no cut): the flag with 0, the flag with a value one above IVS_RUN_TARGET_MAX and with 2^64 - 1,
+ * a value without the flag, an unknown flag bit alone (the one flag bit absent) and together with the valid pair, and the top bit. The valid
+ * combinations end pass with a complete report: the flag with 1,500 (one cut, at the first unit boundary after tick 1,500, and no second:
+ * the next multiple 3,000 lies past the halt at 2,084), the flag with exactly IVS_RUN_TARGET_MAX (no multiple is ever reached: no cut) and no
+ * flag with 0. */
+static int ex_roundtrip_option_range(void)
+{
+  static const struct {
+    uint32_t flags;
+    uint64_t ticks;
+    int valid;
+    uint64_t cuts;
+  } rows[] = {{IVS_RUNNER_OPT_ROUNDTRIP, 0u, 0, 0u},
+              {IVS_RUNNER_OPT_ROUNDTRIP, (uint64_t)IVS_RUN_TARGET_MAX + 1u, 0, 0u},
+              {IVS_RUNNER_OPT_ROUNDTRIP, UINT64_MAX, 0, 0u},
+              {0u, 5000u, 0, 0u},
+              {0u, (uint64_t)IVS_RUN_TARGET_MAX, 0, 0u},
+              {2u, 0u, 0, 0u},
+              {2u, 5000u, 0, 0u},
+              {IVS_RUNNER_OPT_ROUNDTRIP | 2u, 5000u, 0, 0u},
+              {0x80000000u, 5000u, 0, 0u},
+              {IVS_RUNNER_OPT_ROUNDTRIP, 1500u, 1, 1u},
+              {IVS_RUNNER_OPT_ROUNDTRIP, (uint64_t)IVS_RUN_TARGET_MAX, 1, 0u},
+              {0u, 0u, 1, 0u}};
+  char diag[RX_SCN_CAP];
+  if (!rx_diag(diag, sizeof diag)) {
+    return IVS_TEST_FAIL;
+  }
+  for (size_t i = 0u; i < sizeof rows / sizeof rows[0]; i++) {
+    fake_host h;
+    ivs_runner_result res;
+    uint32_t out;
+    int ok;
+    fh_init(&h);
+    h.rt_flags = rows[i].flags;
+    h.rt_ticks = rows[i].ticks;
+    out = rx_exec(diag, &h, &res);
+    if (rows[i].valid) {
+      ok = out == IVS_RUNNER_OUTCOME_PASS && res.exit_code == 0u && h.out != NULL && rx_complete(h.out, &res) &&
+           res.roundtrip_cuts == rows[i].cuts;
+    } else {
+      ok = out == IVS_RUNNER_OUTCOME_HARNESS_FAIL && res.outcome == IVS_RUNNER_OUTCOME_HARNESS_FAIL && res.exit_code == 14u &&
+           h.out != NULL && h.out_len == 0u && res.report_lines == 0u && res.host_calls == 0u && res.roundtrip_cuts == 0u;
+    }
+    if (!ok) {
+      ivs_test_diag("row %zu (flags %u, ticks %llu, valid %d): outcome %u, exit %u, report bytes %zu, cuts %llu", i, (unsigned)rows[i].flags,
+                    (unsigned long long)rows[i].ticks, rows[i].valid, (unsigned)out, (unsigned)res.exit_code, h.out_len,
+                    (unsigned long long)res.roundtrip_cuts);
+      rx_free(&h);
+      return IVS_TEST_FAIL;
+    }
+    rx_free(&h);
+  }
+  return IVS_TEST_PASS;
+}
+
+/* runner.exec.roundtrip-cut-cap (plan 08-16, D-18): a value of 1 on the diagnostic program, which has more than 64 unit boundaries before its
+ * halt, makes a cut at each of them, so the 65th is refused: a harness failure (exit 14) with the detail roundtrip-cut-cap, exactly 64 cuts
+ * made (IVS_RUNNER_ROUNDTRIP_MAX_CUTS), and a report that is not a pass report: the step stopped at the target, not at the halt, and no assert
+ * ran (every one reads not-run). */
+static int ex_roundtrip_cut_cap(void)
+{
+#ifdef IVS_RUNNER_FAULT_RUN
+  /* The fault executables (tests/CMakeLists.txt FAULT_DEFINITIONS, the precedent of IVS_STATE_FAULT_RUN) re-run this suite once for each of the 19 runner
+   * faults. Each cut costs about a millisecond (a snapshot hashes the image arrays), so the 65 of this id are about 0.06 s of cpu in each of them, more
+   * than the rest of the three round-trip ids together, and no fault is aimed at the cap. The id runs whole in the normal executables of both presets;
+   * under a fault it only says so. A fault whose must-fail id this becomes needs this branch removed. */
+  ivs_test_diag("runner.exec.roundtrip-cut-cap: the 64 cuts run in the normal executables only, not under a fault (IVS_RUNNER_FAULT_RUN)");
+  return IVS_TEST_PASS;
+#else
+  fake_host h;
+  ivs_runner_result res;
+  char diag[RX_SCN_CAP];
+  char v[RX_VALUE_CAP];
+  uint32_t out;
+  int rc = IVS_TEST_FAIL;
+  if (!rx_diag(diag, sizeof diag)) {
+    return IVS_TEST_FAIL;
+  }
+  fh_init(&h);
+  h.rt_flags = IVS_RUNNER_OPT_ROUNDTRIP;
+  h.rt_ticks = 1u;
+  out = rx_exec(diag, &h, &res);
+  if (out != IVS_RUNNER_OUTCOME_HARNESS_FAIL || res.exit_code != 14u || h.out == NULL || !rx_complete(h.out, &res) ||
+      res.roundtrip_cuts != IVS_RUNNER_ROUNDTRIP_MAX_CUTS || IVS_RUNNER_ROUNDTRIP_MAX_CUTS != 64u) {
+    ivs_test_diag("outcome %u exit %u cuts %llu\n%s", (unsigned)out, (unsigned)res.exit_code, (unsigned long long)res.roundtrip_cuts,
+                  h.out != NULL ? h.out : "");
+    goto done;
+  }
+  if (!rx_is(h.out, "outcome", "harness-fail") || !rx_is(h.out, "outcome.detail", "roundtrip-cut-cap") ||
+      !rx_is(h.out, "step.1.stop_reason", "target") || !rx_value(h.out, "step.1.assert.1", v, sizeof v) || strncmp(v, "not-run ", 8u) != 0 ||
+      !rx_value(h.out, "step.1.assert.18", v, sizeof v) || strncmp(v, "not-run ", 8u) != 0) {
+    goto done;
+  }
+  rc = IVS_TEST_PASS;
+done:
+  rx_free(&h);
+  return rc;
+#endif
+}
+
 static const ivs_test_case exec_cases[] = {
     {"runner.exec.assert-forms", ex_assert_forms, NULL},
     {"runner.exec.cancel", ex_cancel, NULL},
@@ -2846,6 +3055,9 @@ static const ivs_test_case exec_cases[] = {
     {"runner.exec.not-regular", ex_not_regular, NULL},
     {"runner.exec.overshoot", ex_overshoot, NULL},
     {"runner.exec.repeat-identical", ex_repeat_identical, NULL},
+    {"runner.exec.roundtrip-equals-straight", ex_roundtrip_equals_straight, NULL},
+    {"runner.exec.roundtrip-option-range", ex_roundtrip_option_range, NULL},
+    {"runner.exec.roundtrip-cut-cap", ex_roundtrip_cut_cap, NULL},
     {"runner.exec.boot-stub-2", ex_boot_stub_2, NULL},
     {"runner.exec.sha-match", ex_sha_match, NULL},
     {"runner.exec.sha-mismatch", ex_sha_mismatch, NULL},

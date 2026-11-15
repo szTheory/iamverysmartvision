@@ -1,0 +1,121 @@
+# Suite state (STA-01, STA-02, plans 08-11 to 08-15, D-16, D-38): the IVSN v1 snapshot container and the machine state it carries, held to the
+# hand-derived literals of plan 08-09 (data/expected/ivsn-literals.ids, data/state/schema.literal.txt, docs/formats/ivsn-v1.md) and never to the
+# code under test. Plans 08-11 to 08-15 add their ids here, each in the commit that registers the test (and, where the id is named by the hidden-state
+# checklist, deletes its line of data/state/tests-pending.ids in the same commit). Family prefixes: state.size. (the size and its derivation),
+# state.literal. (bytes and digests against the literals), state.save. (the writer: refusals, rights, canonical form), state.read. (the instance-free
+# reader), state.restore. (restore), state.witness. (the hard-point witnesses), state.cut. (the cut round trips), state.sweep. (the row sweeps),
+# state.fuzz. (the seeded corruption family) and state.judge. (self-controls: the comparison of a family can fail).
+# Plan 08-11 Task 1: the profile parameter digest against its literal and an independent rebuild of its preimage.
+state.literal.params-digest
+# Plan 08-11 Task 2: the writer and the two public calls. The size and its derivation (the 4,299 bytes of the literal, the same for every powered instance),
+# the structure of the container against the literals (header prefix, section table, schema digest, profile id, parameter digest, slot records, digests,
+# trailer), the schema text of the live table against the hand-derived literal, and the refusal ladder of snapshot size and snapshot save.
+state.size.derived-and-constant
+state.literal.header-structure
+state.literal.schema-digest
+state.save.refusal-ladder
+# Plan 08-11 Task 3: the rights property of the container (no window of an image array, each slot digest once, the state bytes independent of the images),
+# the canonical stream (the pinned SHA-256 of the stepped boot snapshot, repeatable and identical in both presets), read-only and fixed size, and the judge
+# (the structure comparison of state.literal.header-structure can fail).
+state.save.no-image-bytes
+state.save.canonical-stream-literal
+state.save.read-only-fixed-size
+state.judge.header-literal-corrupt
+# Plan 08-12 Task 1: the instance-free reader and ivs_snapshot_describe (D-13, D-14, D-16). The refusal matrix is written from the specification, not from the
+# reader: a success echoes the identity of the snapshot, the argument classes and the unusable report, the length bound and the total the snapshot states, the
+# header (magic, versions, flags, schema, section count) with the order among them, and the trailer after the structure.
+state.read.describe-ok
+state.read.describe-refuse-args
+state.read.describe-refuse-length
+state.read.describe-refuse-header
+state.read.describe-refuse-trailer
+# Plan 08-12 Task 2: the rest of the matrix. The section table (reason 69 with the index of the entry, every row resealed so that it is the table that is refused), the form
+# of the profile id (reason 71 after the trailer; an empty or unregistered id of good form is accepted), the sweep of every length from 0 to the total plus one from a heap
+# buffer of exactly that length, the exact footprint of the report on refusals and successes, the report struct rule (the v1 size, a larger caller struct, an unusable
+# struct_size), the check that every one of the fourteen reasons is expected and produced by some row, and the judge: the matrix runner can fail.
+state.read.describe-refuse-section-table
+state.read.describe-profile-id-forms
+state.read.describe-heap-exact
+state.read.describe-writes-only-report
+state.read.describe-report-v1-size-caller
+state.read.reasons-covered
+state.judge.matrix-expectation-corrupt
+# Plan 08-13 Task 1: restore (D-14, D-15, D-16, D-41). The round trip is a fixed point at several cuts of the stand-in boot run; every refusal class has rows written from
+# the specification (the arguments, the container structure through restore, the identity of the profile and of the three image slots, the content: the device
+# validators and the scalar ranges, the array counts, the section lengths and the derived invariants), each with the exact status, reason, byte offset, section index
+# and slot kind, and each leaving the whole instance byte-identical; the comparison of the profile id is a pure seam function (a seam test, not an API test: one
+# registered profile means no second registered id can be built); and every one of the reasons 58 to 81 is produced by some row.
+state.restore.roundtrip-fixed-point
+state.restore.refuse-args
+state.restore.refuse-structure
+state.restore.refuse-identity-profile
+state.restore.refuse-identity-slots
+state.restore.refuse-content-validators
+state.restore.refuse-content-invariants
+state.restore.profile-id-seam
+state.restore.reasons-covered
+# Plan 08-13 Task 2: restore into a poisoned target equals the source (the whole instance, the pad bytes and the nine digests, with two poison bytes), a snapshot goes into any
+# instance of the profile whose slots match (OFF, reset, far on, poisoned, halted, faulted), restore sets POWERED and writes no BOUND or IMAGE row, every refusal of every
+# matrix leaves a poisoned non-trivial target byte-identical (the id that RESTORE_MUTATES_BEFORE_VALIDATE must fail), the invariants INV-1 to INV-6 hold at every unit boundary
+# of real programs (the Lamp Tone, the diagnostics, the boot stub, the stand-ins, a halting and a faulting program), the eight digest fields of the header are informational,
+# and the judge: the matrix runner and the atomicity oracle can fail.
+state.restore.poisoned-target-equals-source
+state.restore.same-profile-any-instance
+state.restore.sets-powered
+state.restore.atomic-every-refusal
+state.restore.invariants-hold-reachable
+state.restore.digest-fields-informational
+state.judge.refusal-expectation-corrupt
+# Plan 08-14 Task 1 (D-16, D-17): the hard-point suite. The witness scan finds the first unit boundary at which the predicate of docs/state/hard-points.md holds and the
+# witness id re-proves every pinned tick of data/expected/state-cuts.ids (the first occurrence equals the pin, the public run call ends exactly on it with the scan's bytes,
+# the instance part of the predicate holds there); the cut id restores the snapshot of each cpu cut into a poisoned target and compares it with the uninterrupted run (the
+# whole instance and the nine digests at once, the concatenated streams, the first indexes, the final instance, digests and public reports); the judge shows that comparison
+# can fail (a changed STATE byte and a flipped stream byte).
+state.witness.cpu-points
+state.cut.cpu-points
+state.judge.cut-compare-detects-divergence
+# Plan 08-14 Task 2: the stic and device cuts (mid-frame, the designed latch program, the MOB cut of the second diagnostic, the PSG and envelope mid-phase, input, log) are
+# re-proved by their witness ids and compared with the uninterrupted run by their cut ids (state.cut.stic-points is the must-fail id of SNAPSHOT_STIC_ROWS_OMITTED and always runs
+# the whole set); state.cut.latch-not-recomputed shows that the latch program discriminates a restore that recomputes stic.row_latch from the BACKTAB words.
+state.witness.stic-points
+state.witness.device-points
+state.cut.stic-points
+state.cut.device-points
+state.cut.latch-not-recomputed
+# Plan 08-14 Task 3 (D-12, D-16): the snapshot at every cut is a fixed point (save, restore into a poisoned target, save) and the same bytes from an independently built source, and the
+# snapshot SHA-256 at three cuts equals the literals of data/expected/ivsn-literals.ids in the dev and release presets (state.cut.fixed-point-and-canonical); the run to a cut gives the
+# same instance and snapshot whatever its slicing (state.cut.slicing-independent); the runtime row-omission sweep over the STATE rows at their witness cuts (state.sweep.row-omission;
+# the checklist is frozen and the amendments are the appended notes data/expected/state-sweep-notes.ids) and the judge that shows it can report a read row as divergent and an
+# exempt row as inert (state.judge.row-sweep-detects-omission).
+state.cut.fixed-point-and-canonical
+state.cut.slicing-independent
+state.sweep.row-omission
+state.judge.row-sweep-detects-omission
+# Plan 08-15 Task 1 (D-16, D-20): the seeded corruption family. One valid snapshot of 4,299 bytes (a Lamp Tone instance with an input event applied, stopped in the middle of its third
+# frame) is damaged in every way the family lists, and every case runs through one checker: a documented (status, reason) pair, a refusal leaves the whole target instance equal to its
+# baseline copy and writes only the report, an acceptance re-encodes canonically. The position classifier is written from the layout table of docs/formats/ivsn-v1.md. The truncations
+# are every length from 0 to the size minus one (the reader says truncated with the supplied length as the offset); the byte flips are every offset with XOR 0xFF and XOR 0x01 and the
+# trailer left as it was (refused by the header field or by the trailer).
+state.fuzz.truncations
+state.fuzz.byte-flips
+# Plan 08-15 Task 2: the resealed families, which reach the validators and the invariants. A flip with the trailer recomputed ends in a refusal with a pair of the allowed set of its
+# position (the header fields by their own reasons, the profile id by its form 71 or the registry 72, the parameter digest 74, the slot records 76 and 78, the frame of a section 78, a count
+# prefix 77, a value 78 or 79) or in an acceptance that re-encodes canonically (every free row of the specification, the informational digests, the repaired trailer); every bit of the
+# header with and without the reseal; the lies of the lengths, the header, the section table, the profile id and the identities as data rows with the offset the specification gives each;
+# and each derived invariant and device validator violated one at a time with a valid trailer.
+state.fuzz.byte-flips-resealed
+state.fuzz.header-bit-flips
+state.fuzz.length-and-table-lies
+state.fuzz.semantic-lies
+# Plan 08-15 Task 3: the rest of the family. Saturated counters (a hand built snapshot with every 32-bit counter at 0xFFFFFFFF and every free 64-bit count at 2^64 - 1, and one with the machine
+# time at its largest and the frame index, video count, PSG sample index and emitted count moved with it, which restore accepts, re-encodes canonically and whose machine runs to 2^63);
+# a fixed-seed random family of multi-byte mutations, half resealed, judged by a model of the container layer written from the layout table; every family again through the instance-free
+# describe on heap buffers of exactly the input size (the model is the expectation); a destroyed, NULL and damaged handle, buffers and reports that overlap the instance, and the arguments
+# before the handle; two attempts on identically reset targets for every class of the family; and the self-control of the checker (a wrong expectation, an acceptance and a refusal the wrong
+# way round, a classifier row with the wrong reason, and a byte of the target, the report or the re-encoded section changed behind the checker's back are each reported).
+state.fuzz.saturated-counters
+state.fuzz.random-resealed
+state.fuzz.describe-heap
+state.fuzz.different-handle
+state.fuzz.second-attempt-identical
+state.judge.fuzz-invariant-detects

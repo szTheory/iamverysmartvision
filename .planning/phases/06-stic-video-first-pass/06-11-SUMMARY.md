@@ -40,6 +40,7 @@ key-files:
 
 duration: about 3 hours elapsed (laptop loaded)
 completed: 2026-11-12
+requirements-completed: [VID-04, VID-06]  # backfilled by plan 08-20 from the plan requirements field; closure evidence is the phase VERIFICATION record, not this line
 ---
 
 # Phase 6 Plan 11: Color Stack and Colored Squares rendering, mode switch, inspection completion Summary

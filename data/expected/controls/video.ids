@@ -12,3 +12,8 @@ video-field-missing
 video-pending-stale
 video-frame-hash-expect-drift
 video-frame-pair-region-drift
+# Plan 08-03 (D-05, D-10) adds four controls for the extended frame grammar (unknown regions, mob records, sha256-text none): a - outside every unknown rectangle, a mob colour count that differs from its record, a hash none on a frame with no unknown record, and a pair that names a frame with an unknown region. The positive control is the toy frame T-4 of controls/_good/tree.
+video-frame-unknown-outside-region
+video-frame-mob-count
+video-frame-hash-none-without-unknown
+video-frame-pair-unknown

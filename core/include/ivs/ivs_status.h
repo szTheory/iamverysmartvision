@@ -3,7 +3,7 @@
  * Status codes of the core API. 0 is success; a negative value is a caller refusal, and a
  * refused call never mutates caller state. Guest faults are not refusals (D-12 of Phase 2).
  * The numbers are frozen and append-only (D-09): a number is never reused or renumbered.
- * -6..-15 are unassigned; -24..-31 are reserved for later content codes. Detail (reason,
+ * -6..-15 are unassigned; -25..-31 are reserved for later content codes. Detail (reason,
  * segment index, byte offset) travels in an out report struct, never in the status.
  * The numbers are pinned by data/expected/api-statuses.ids (plan 03-09).
  * IVS_API marks every public function (D-06): empty for the Phase 3 static library; a later
@@ -38,6 +38,10 @@ typedef int ivs_status;
 #define IVS_E_MISSING_SYSTEM_IMAGE (-21)
 #define IVS_E_DUPLICATE_LOAD (-22)
 #define IVS_E_DIGEST_MISMATCH (-23)
+
+/* A well-formed snapshot that does not belong to this instance (plan 08-13, D-14): another profile, other profile parameters or
+ * other images than the ones the instance was loaded with. The snapshot itself is sound; the instance is the wrong target. */
+#define IVS_E_STATE_MISMATCH (-24)
 
 /* The stable name of a status ("IVS_OK", "IVS_E_BAD_ARG", ...), or "IVS_E_UNKNOWN" for a value
  * that is not a code. The returned string is static and constant. */

@@ -16,7 +16,7 @@ PSG_SHAPE_READBACK_STORED psg.reg.shape-reads-zero psg.reg. psg.reset.regs-zero
 # its family (core/src/psg/psg_tone.c, psg_mix.c, psg_sample.c). The engine vectors run at module level on the
 # sample stream, so every tone vector sees a wrong period or step and fails with the named one.
 # PSG_TONE_PERIOD_OFF_BY_ONE: the counter reloads with P + 1, so every half-period is one step too long.
-PSG_TONE_PERIOD_OFF_BY_ONE psg.tone.rate-p1 psg.tone.|psg.judge.tone-|psg.buffers.|psg.sample.|psg.slice.|psg.chain.|psg.profile. psg.mix.truth-table
+PSG_TONE_PERIOD_OFF_BY_ONE psg.tone.rate-p1 psg.tone.|psg.judge.tone-|psg.buffers.|psg.sample.|psg.slice.|psg.chain.|psg.profile.|psg.state. psg.mix.truth-table
 # PSG_STEP_IS_16_CLOCKS: a chip step of 16 chip clocks (32 ticks), the glossary mistake corrected in plan 05-01:
 # a run of N x 16 ticks delivers N / 2 samples, so the sample count of every tone vector is wrong (and the byte
 # counts and the guest tone of the buffer tests with it, psg.buffers.*).
@@ -49,13 +49,13 @@ PSG_SAMPLE_PHASE_RESET_PER_CALL psg.slice.samples-split psg.slice.|psg.sample.|p
 # PSG_NOISE_WRONG_TAP: the other candidate mask $14000 while the profile says $12000: the period is 114,681, not the maximal 131,071.
 PSG_NOISE_WRONG_TAP psg.noise.lfsr-maximal-period psg.noise.|psg.judge.noise-|psg.profile. psg.noise.rate-np1
 # PSG_NOISE_RATE_USES_TONE_DIVISOR: the register shifts every NP steps (the tone divisor) instead of 2 NP.
-PSG_NOISE_RATE_USES_TONE_DIVISOR psg.noise.rate-np1 psg.noise.|psg.judge.noise-|psg.profile. psg.noise.lfsr-maximal-period
+PSG_NOISE_RATE_USES_TONE_DIVISOR psg.noise.rate-np1 psg.noise.|psg.judge.noise-|psg.profile.|psg.state. psg.noise.lfsr-maximal-period
 # PSG_NOISE_TAP_HARDCODED: the default mask is a constant of the engine, the profile field is ignored (T-05-18): only the perturbation tests see it.
 PSG_NOISE_TAP_HARDCODED psg.profile.noise-taps psg.noise.|psg.profile. psg.noise.rate-np1
 # PSG_ENV_SHAPE_ATTACK_DECAY_SWAPPED: attack and decay are swapped at the restart.
 PSG_ENV_SHAPE_ATTACK_DECAY_SWAPPED psg.env.shape-0 psg.env.|psg.amp.|psg.ampenv.|psg.judge.env-|psg.profile.env- psg.env.rate-ep1
 # PSG_ENV_PERIOD_TIMES_16: every envelope state lasts 16 times too many steps.
-PSG_ENV_PERIOD_TIMES_16 psg.env.rate-ep1 psg.env.|psg.amp.|psg.ampenv.|psg.judge.env-|psg.profile. psg.reseng.envelope-held-zero
+PSG_ENV_PERIOD_TIMES_16 psg.env.rate-ep1 psg.env.|psg.amp.|psg.ampenv.|psg.judge.env-|psg.profile.|psg.state. psg.reseng.envelope-held-zero
 # PSG_ENV_HOLD_ALTERNATE_NO_RESET: a held alternating shape keeps its last level (1011 holds 0 instead of 15).
 PSG_ENV_HOLD_ALTERNATE_NO_RESET psg.env.shape-11 psg.env. psg.env.shape-8
 # Write-log faults (plan 05-08, AUD-02, D-13, D-14, D-16, A-01, T-05-20, T-05-21), one site each: the log writer
@@ -79,3 +79,8 @@ PSG_STATIC_CARRY psg.iso.interleaved-instances psg.iso.|psg.fuzz.|psg.slice. psg
 # PSG_LOG_RECORDS_PER_FRAME_CUT: the layout publishes half of W_log (1,076 records per frame slot), below the
 # instruction-only density of 1,660 writes per frame: the safety net stops the worst-case writer INTERNAL.
 PSG_LOG_RECORDS_PER_FRAME_CUT psg.buffers.worst-case-writer psg.buffers.|psg.bounds. psg.log.byte-order
+# Plan 08-10: psg.state.validate (ivs_psg_state_validate accepts the states the chip step functions reach, refuses the ones past the bounds
+# derived from them, and sees each counter at its literal bound) fails as collateral under three faults by its own rule, so its prefix is allowed
+# on those lines only (the must-fail column is untouched): PSG_TONE_PERIOD_OFF_BY_ONE reloads a tone counter with P + 1, so a state past the
+# 12-bit bound is reached; PSG_ENV_PERIOD_TIMES_16 reloads the envelope counter 16 times too high, past its bound; and
+# PSG_NOISE_RATE_USES_TONE_DIVISOR halves the noise reload, so the noise counter never reaches the literal bound of the profile.

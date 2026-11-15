@@ -344,8 +344,19 @@ add_custom_command(
   COMMAND "${CMAKE_COMMAND}" "-DROOT=${PROJECT_SOURCE_DIR}" "-DOUT=${IVS_VIDEOFRAMES_INC}" -P "${IVS_VIDEOFRAMES_GENERATOR}"
   DEPENDS ${IVS_VIDEOFRAMES_LITERALS} "${PROJECT_SOURCE_DIR}/data/video/cards.literal.txt" "${IVS_VIDEOFRAMES_GENERATOR}"
   COMMENT "Generating the video frame literal include")
-set(IVS_VIDEO_TEST_SOURCES video/video_main.c video/video_geom.c video/video_slot.c video/video_buffers.c video/video_stop.c video/video_slice.c video/video_progs.c video/video_fgbg.c video/vid_fields.c video/video_card.c video/video_probe.c video/video_meta.c video/video_judge.c video/video_cstack.c stic/stic_progs.c machine/machine_standin.c)
-add_executable(ivs_tests_video ${IVS_VIDEO_TEST_SOURCES} "${IVS_VIDEOLIT_INC}" "${IVS_VIDEOFRAMES_INC}")
+# The moving-object frame include (cmake/IvsVideoFrames.cmake with FRAMESET=mob, plan 08-04): reads only the ten hand-derived literals
+# data/video/frames/F-M0..F-M9 (.frame), the MOB bit-role literal data/video/mob.literal.txt and the three video.mob_* profile values; the table
+# is kept apart from vf_frames[] (video_mob.c only).
+set(IVS_VIDEOMOB_INC "${CMAKE_CURRENT_BINARY_DIR}/ivs_mob_frames.inc")
+file(GLOB IVS_VIDEOMOB_LITERALS CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/data/video/frames/F-M*.frame")
+file(GLOB IVS_VIDEOMOB_PROFILES CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/data/profiles/*.json")
+add_custom_command(
+  OUTPUT "${IVS_VIDEOMOB_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DROOT=${PROJECT_SOURCE_DIR}" "-DOUT=${IVS_VIDEOMOB_INC}" -DFRAMESET=mob -P "${IVS_VIDEOFRAMES_GENERATOR}"
+  DEPENDS ${IVS_VIDEOMOB_LITERALS} ${IVS_VIDEOMOB_PROFILES} "${PROJECT_SOURCE_DIR}/data/video/mob.literal.txt" "${IVS_VIDEOFRAMES_GENERATOR}"
+  COMMENT "Generating the moving-object frame literal include")
+set(IVS_VIDEO_TEST_SOURCES video/video_main.c video/video_geom.c video/video_slot.c video/video_buffers.c video/video_stop.c video/video_slice.c video/video_progs.c video/video_fgbg.c video/vid_fields.c video/video_card.c video/video_probe.c video/video_meta.c video/video_judge.c video/video_cstack.c video/video_mob.c video/video_collision.c video/video_border.c video/video_delay.c stic/stic_progs.c machine/machine_standin.c)
+add_executable(ivs_tests_video ${IVS_VIDEO_TEST_SOURCES} "${IVS_VIDEOLIT_INC}" "${IVS_VIDEOFRAMES_INC}" "${IVS_VIDEOMOB_INC}")
 target_include_directories(ivs_tests_video PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/stic" "${CMAKE_CURRENT_SOURCE_DIR}/video" "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(ivs_tests_video PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
 add_test(NAME video COMMAND ivs_tests_video)
@@ -363,6 +374,78 @@ target_include_directories(ivs_tests_input PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/
 target_link_libraries(ivs_tests_input PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
 add_test(NAME input COMMAND ivs_tests_input)
 set_tests_properties(input PROPERTIES SKIP_RETURN_CODE 77)
+
+# Suite state (STA-01, STA-02, plans 08-11 to 08-15, D-16): the IVSN v1 snapshot container and the machine state it carries, in its own
+# executable so that its named faults rerun only it. Expected values come from the hand-derived literals of plan 08-09 only
+# (data/expected/ivsn-literals.ids and data/state/schema.literal.txt), turned into C includes by tests/ivsn-literals-inc.cmake so that no
+# number is retyped, never from the profile or the code under test. It reuses the machine suite's stand-in content
+# (machine/machine_standin.c). ONE source list feeds both the executable and ivs_fault_suite(state ...) below (the psg and stic
+# precedent). Its named faults are data/expected/faults/state.ids, whose sites sit in core/src/machine.
+set(IVS_IVSN_LITERALS_GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/ivsn-literals-inc.cmake")
+set(IVS_IVSN_LITERALS_IDS "${PROJECT_SOURCE_DIR}/data/expected/ivsn-literals.ids")
+set(IVS_IVSN_SCHEMA_LITERAL "${PROJECT_SOURCE_DIR}/data/state/schema.literal.txt")
+set(IVS_IVSN_LITERALS_INC "${CMAKE_CURRENT_BINARY_DIR}/ivsn_literals.inc")
+set(IVS_IVSN_SCHEMA_INC "${CMAKE_CURRENT_BINARY_DIR}/ivsn_schema.inc")
+add_custom_command(
+  OUTPUT "${IVS_IVSN_LITERALS_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DIN=${IVS_IVSN_LITERALS_IDS}" "-DOUT=${IVS_IVSN_LITERALS_INC}" -P "${IVS_IVSN_LITERALS_GENERATOR}"
+  DEPENDS "${IVS_IVSN_LITERALS_IDS}" "${IVS_IVSN_LITERALS_GENERATOR}"
+  COMMENT "Generating the IVSN literal include"
+  VERBATIM)
+add_custom_command(
+  OUTPUT "${IVS_IVSN_SCHEMA_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DIN=${IVS_IVSN_SCHEMA_LITERAL}" "-DOUT=${IVS_IVSN_SCHEMA_INC}" -DFORM=schema -P "${IVS_IVSN_LITERALS_GENERATOR}"
+  DEPENDS "${IVS_IVSN_SCHEMA_LITERAL}" "${IVS_IVSN_LITERALS_GENERATOR}"
+  COMMENT "Generating the IVSN schema literal include"
+  VERBATIM)
+# Plan 08-13: the programs the restore and reachability families run (the Lamp Tone, the first STIC diagnostic and the second one, with the two
+# project boot stubs they are entered through): the bytes of the build-tree images that tools/pack writes, turned into a C include by
+# ivs_pack --c-include. A second include, separate from the run suite's ivs_images.inc (which is not edited); nothing in it is committed.
+set(IVS_STATE_IMAGES_INC "${CMAKE_CURRENT_BINARY_DIR}/ivs_state_images.inc")
+add_custom_command(
+  OUTPUT "${IVS_STATE_IMAGES_INC}"
+  COMMAND ivs_pack --c-include "${IVS_STATE_IMAGES_INC}" "boot_stub=${IVS_BOOT_STUB_EXEC}" "boot_stub_2=${IVS_BOOT_STUB_2_EXEC}"
+          "lamp_tone=${IVS_LAMP_TONE_IVSC}" "diag_stic_1=${IVS_DIAG_STIC_1_IVSC}" "diag_stic_2=${IVS_DIAG_STIC_2_IVSC}"
+  DEPENDS ivs_pack ivs_images "${IVS_BOOT_STUB_EXEC}" "${IVS_BOOT_STUB_2_EXEC}" "${IVS_LAMP_TONE_IVSC}" "${IVS_DIAG_STIC_1_IVSC}"
+          "${IVS_DIAG_STIC_2_IVSC}"
+  COMMENT "Generating the build-tree image include of the state suite"
+  VERBATIM)
+# Plan 08-14: the named hard-point cuts (data/expected/state-cuts.ids, the pinned ticks) reach the tests through a generated include, never
+# retyped (T-08-35): tests/state-cuts-inc.cmake turns every cut line into an X-macro line, the data file is its dependency.
+set(IVS_STATE_CUTS_GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/state-cuts-inc.cmake")
+set(IVS_STATE_CUTS_IDS "${PROJECT_SOURCE_DIR}/data/expected/state-cuts.ids")
+set(IVS_STATE_CUTS_INC "${CMAKE_CURRENT_BINARY_DIR}/state_cuts.inc")
+add_custom_command(
+  OUTPUT "${IVS_STATE_CUTS_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DIN=${IVS_STATE_CUTS_IDS}" "-DOUT=${IVS_STATE_CUTS_INC}" -P "${IVS_STATE_CUTS_GENERATOR}"
+  DEPENDS "${IVS_STATE_CUTS_IDS}" "${IVS_STATE_CUTS_GENERATOR}"
+  COMMENT "Generating the hard-point cut include"
+  VERBATIM)
+# Plan 08-14 task 3: the STATE rows of the hidden-state checklist with their witness cut and sweep column, for the row-omission sweep, through the same generator.
+set(IVS_STATE_CHECKLIST_IDS "${PROJECT_SOURCE_DIR}/data/expected/state-checklist.ids")
+set(IVS_STATE_CHECKLIST_INC "${CMAKE_CURRENT_BINARY_DIR}/state_checklist.inc")
+add_custom_command(
+  OUTPUT "${IVS_STATE_CHECKLIST_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DIN=${IVS_STATE_CHECKLIST_IDS}" "-DOUT=${IVS_STATE_CHECKLIST_INC}" -DFORM=checklist -P "${IVS_STATE_CUTS_GENERATOR}"
+  DEPENDS "${IVS_STATE_CHECKLIST_IDS}" "${IVS_STATE_CUTS_GENERATOR}"
+  COMMENT "Generating the hidden-state checklist include"
+  VERBATIM)
+# The appended notes that amend the witness and the sweep column of rows of the frozen checklist (data/expected/state-sweep-notes.ids).
+set(IVS_STATE_NOTES_IDS "${PROJECT_SOURCE_DIR}/data/expected/state-sweep-notes.ids")
+set(IVS_STATE_NOTES_INC "${CMAKE_CURRENT_BINARY_DIR}/state_notes.inc")
+add_custom_command(
+  OUTPUT "${IVS_STATE_NOTES_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DIN=${IVS_STATE_NOTES_IDS}" "-DOUT=${IVS_STATE_NOTES_INC}" -DFORM=notes -P "${IVS_STATE_CUTS_GENERATOR}"
+  DEPENDS "${IVS_STATE_NOTES_IDS}" "${IVS_STATE_CUTS_GENERATOR}"
+  COMMENT "Generating the sweep notes include"
+  VERBATIM)
+set(IVS_STATE_TEST_SOURCES state/state_main.c state/state_literal.c state/state_save.c state/state_read.c state/state_util.c state/state_restore.c state/state_invariants.c state/state_progs.c state/state_witness.c state/state_cut.c state/state_sweep.c state/state_fuzz.c machine/machine_standin.c)
+add_executable(ivs_tests_state ${IVS_STATE_TEST_SOURCES} "${IVS_IVSN_LITERALS_INC}" "${IVS_IVSN_SCHEMA_INC}" "${IVS_STATE_IMAGES_INC}" "${IVS_STATE_CUTS_INC}" "${IVS_STATE_CHECKLIST_INC}" "${IVS_STATE_NOTES_INC}")
+target_include_directories(ivs_tests_state PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/state"
+  "${CMAKE_CURRENT_BINARY_DIR}")
+target_link_libraries(ivs_tests_state PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
+add_test(NAME state COMMAND ivs_tests_state)
+set_tests_properties(state PROPERTIES SKIP_RETURN_CODE 77)
 
 # Suite cpu-fuzz (D-12, plan 02-15): the seeded robustness run; dev links the sanitizers.
 add_executable(ivs_tests_cpu_fuzz cpu/cpu_fuzz.c)
@@ -385,6 +468,14 @@ if(IVS_ENABLE_LIBFUZZER)
   target_compile_options(ivs_fuzz_ivsc PRIVATE "-fsanitize=${IVS_LIBFUZZER_SANITIZERS}" -fno-omit-frame-pointer)
   target_link_options(ivs_fuzz_ivsc PRIVATE "-fsanitize=${IVS_LIBFUZZER_SANITIZERS}")
   target_link_libraries(ivs_fuzz_ivsc PRIVATE ivs_warnings)
+  # Plan 08-15 (D-20): the snapshot target, the reader and restore into a live instance of the stand-in content (it links the core library and the
+  # stand-in helpers of the tests, so build the core with -fsanitize=fuzzer-no-link to instrument it; recipe in tests/fuzz/fuzz_snapshot.c).
+  # Outside the gate, never registered with ctest, never in CI.
+  add_executable(ivs_fuzz_snapshot EXCLUDE_FROM_ALL fuzz/fuzz_snapshot.c machine/machine_standin.c)
+  target_include_directories(ivs_fuzz_snapshot PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine")
+  target_compile_options(ivs_fuzz_snapshot PRIVATE "-fsanitize=${IVS_LIBFUZZER_SANITIZERS}" -fno-omit-frame-pointer)
+  target_link_options(ivs_fuzz_snapshot PRIVATE "-fsanitize=${IVS_LIBFUZZER_SANITIZERS}")
+  target_link_libraries(ivs_fuzz_snapshot PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings)
 endif()
 
 # Suite harness: self-test of the harness library alone (compiled in directly, no core).
@@ -397,11 +488,14 @@ set_tests_properties(harness PROPERTIES SKIP_RETURN_CODE 77)
 # data/expected/faults/*.ids file is described once here; tests/faults.cmake reads it to build
 # that suite's fault executables from its own test sources with plain flags.
 # ivs_fault_suite(<suite> SOURCES <test .c> INCLUDE_DIRS <dirs> GENERATED <generated files>
-#                 [MODULES <modules>])
+#                 [MODULES <modules>] [FAULT_DEFINITIONS <macros>])
 # MODULES (D-24, plan 04-03) names the owner-TU modules whose plain copies the suite's fault
 # executables link: core (the default) or core runner (the runner library needs the core).
+# FAULT_DEFINITIONS (plan 08-11, D-40, D-37) names macros defined for the suite's test sources in the fault
+# executables only; the normal executable of the suite never sees them. A suite whose heavy ids would make every
+# fault run expensive uses one to run a reduced point set under it (suite state: IVS_STATE_FAULT_RUN).
 function(ivs_fault_suite suite)
-  cmake_parse_arguments(PARSE_ARGV 1 arg "" "" "SOURCES;INCLUDE_DIRS;GENERATED;MODULES")
+  cmake_parse_arguments(PARSE_ARGV 1 arg "" "" "SOURCES;INCLUDE_DIRS;GENERATED;MODULES;FAULT_DEFINITIONS")
   if(NOT suite MATCHES "^[a-z0-9][a-z0-9-]*$" OR NOT arg_SOURCES OR arg_UNPARSED_ARGUMENTS)
     message(FATAL_ERROR "ivs_fault_suite(${suite}): bad suite name or arguments")
   endif()
@@ -419,6 +513,7 @@ function(ivs_fault_suite suite)
   set(IVS_FAULT_SUITE_${suite}_INCLUDE_DIRS "${arg_INCLUDE_DIRS}" PARENT_SCOPE)
   set(IVS_FAULT_SUITE_${suite}_GENERATED "${arg_GENERATED}" PARENT_SCOPE)
   set(IVS_FAULT_SUITE_${suite}_MODULES "${arg_MODULES}" PARENT_SCOPE)
+  set(IVS_FAULT_SUITE_${suite}_FAULT_DEFINITIONS "${arg_FAULT_DEFINITIONS}" PARENT_SCOPE)
 endfunction()
 # Generator-path controls (GEN_<NAME> fault ids, no source site): the generator script writes
 # <OUTPUT> with one mutation (-DMUTATE=<must-fail id>, -DOUT=<fault dir>/<OUTPUT> are added by
@@ -483,7 +578,7 @@ ivs_fault_suite(stic
 ivs_fault_suite(video
   SOURCES ${IVS_VIDEO_TEST_SOURCES}
   INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/stic" "${CMAKE_CURRENT_SOURCE_DIR}/video" "${CMAKE_CURRENT_BINARY_DIR}"
-  GENERATED "${IVS_VIDEOLIT_INC}" "${IVS_VIDEOFRAMES_INC}")
+  GENERATED "${IVS_VIDEOLIT_INC}" "${IVS_VIDEOFRAMES_INC}" "${IVS_VIDEOMOB_INC}")
 
 ivs_fault_suite(input
   SOURCES ${IVS_INPUT_TEST_SOURCES}
@@ -500,6 +595,15 @@ ivs_fault_gen(GEN_CTRL_MUTATION SUITE input OUTPUT ivs_ctrl_lines.inc
   ARGS "-DROOT=${PROJECT_SOURCE_DIR}" "-DMUTATE=key_1"
   DEPENDS ${IVS_PROFILE_FILES} "${IVS_CTRL_GENERATOR}" "${PROJECT_SOURCE_DIR}/data/expected/input-bits.ids"
   CONSUMER core:src/machine/machine_input.c)
+
+# Suite state (plan 08-11): ONE source list feeds the executable above and the fault executables. The fault executables are compiled
+# with IVS_STATE_FAULT_RUN (FAULT_DEFINITIONS): every fault re-runs the whole suite unsanitized, so an id that is not the must-fail id of
+# any fault runs a reduced point set under it (state_cases.h, ST_FAULT_STRIDE), while the normal executable and the must-fail ids run it all.
+ivs_fault_suite(state
+  SOURCES ${IVS_STATE_TEST_SOURCES}
+  INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/state" "${CMAKE_CURRENT_BINARY_DIR}"
+  GENERATED "${IVS_IVSN_LITERALS_INC}" "${IVS_IVSN_SCHEMA_INC}" "${IVS_STATE_IMAGES_INC}" "${IVS_STATE_CUTS_INC}" "${IVS_STATE_CHECKLIST_INC}" "${IVS_STATE_NOTES_INC}"
+  FAULT_DEFINITIONS IVS_STATE_FAULT_RUN)
 
 ivs_fault_suite(memmap
   SOURCES memmap/memmap_main.c memmap/memmap_rows.c
@@ -524,6 +628,8 @@ ivs_fault_suite(ivsc
   INCLUDE_DIRS "${CMAKE_CURRENT_BINARY_DIR}"
   GENERATED "${IVS_CART_INC}")
 
+# The fault executables of suite runner are compiled with IVS_RUNNER_FAULT_RUN (FAULT_DEFINITIONS, plan 08-16, the precedent of IVS_STATE_FAULT_RUN): the
+# id runner.exec.roundtrip-cut-cap, 65 save, reset and restore cuts and no fault's must-fail id, runs whole in the normal executables only.
 # Suite runner (D-17, D-20, D-23, plan 04-03): the runner library in process. It links the
 # public ivs_core through ivs_runner_lib; its named faults are data/expected/faults/runner.ids,
 # whose sites sit in runner/ TUs (D-24), so its fault executables link plain copies of the core
@@ -565,7 +671,8 @@ ivs_fault_suite(runner
   runner/runner_time.c runner/runner_refpcm.c runner/runner_vchain.c "${PROJECT_SOURCE_DIR}/tools/pcm/ivs_refpcm.c"
   INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/runner" "${PROJECT_SOURCE_DIR}/tools/pcm" "${CMAKE_CURRENT_BINARY_DIR}"
   GENERATED ${IVS_RUNNER_TEST_GENERATED}
-  MODULES core runner)
+  MODULES core runner
+  FAULT_DEFINITIONS IVS_RUNNER_FAULT_RUN)
 
 # Named-fault control executables (D-18): dev tree only, never registered with ctest.
 if(IVS_FAULT_CONTROLS)
@@ -609,6 +716,14 @@ add_test(NAME asm COMMAND sh "${CMAKE_SOURCE_DIR}/tests/asm-tap.sh" "${CMAKE_SOU
   "$<TARGET_FILE:ivs_pack>")
 set_tests_properties(asm PROPERTIES SKIP_RETURN_CODE 77)
 
+# Suite bench (plan 08-18, D-21 to D-26, D-39): the benchmark tool ivs-bench of this preset in its --verify-only mode against the committed
+# workload table, scenarios and goldens, with the build-tree images (IVS_IMAGES_DIR) as content. The gate never runs the timed path: the
+# clock is read only without --verify-only, and the one case that omits it gives the tool a mutated golden, which is refused after the
+# verification run and before any clock read.
+add_test(NAME bench
+  COMMAND sh "${CMAKE_SOURCE_DIR}/tests/bench-tap.sh" "${CMAKE_SOURCE_DIR}" "$<TARGET_FILE:ivs_bench>" "${IVS_IMAGES_DIR}")
+set_tests_properties(bench PROPERTIES SKIP_RETURN_CODE 77)
+
 # Suite stic-table (VID-01, Phase 6 review WR-03): the STIC parameter generator refuses a geometry the card renderer cannot draw
 # (21 columns, 13 rows, a 7 x 8 card), each case on a scratch copy of the registered profile (cmake -P), never the repository.
 add_test(NAME stic-table COMMAND sh "${CMAKE_SOURCE_DIR}/tests/stic-table-tap.sh" "${CMAKE_SOURCE_DIR}")
@@ -617,8 +732,10 @@ set_tests_properties(stic-table PROPERTIES SKIP_RETURN_CODE 77 ENVIRONMENT "CMAK
 # Suite runner-process (D-20, D-21, D-23, plan 04-20): the real ivs-run of this preset on every
 # scenario of data/expected/runner-scenarios.ids, judged by exit code and report text; the images
 # are this preset's build-tree outputs (IVS_IMAGES_DIR). Reports go to
-# IVS_TEST_OUT_DIR/runner/<id>.report for the golden step.
+# IVS_TEST_OUT_DIR/runner/<id>.report for the golden step. The fifth argument is the build configuration of the preset
+# (plan 08-07, D-10, D-37, D-40): the six STIC2 program mutants run their scenario only in a Release build and are judged
+# statically in any other (the same ids, no skip-ok).
 add_test(NAME runner-process
   COMMAND sh "${CMAKE_SOURCE_DIR}/tests/runner-process-tap.sh" "${CMAKE_SOURCE_DIR}"
-          "$<TARGET_FILE:ivs_run>" "$<TARGET_FILE:ivs_pack>" "${IVS_IMAGES_DIR}")
+          "$<TARGET_FILE:ivs_run>" "$<TARGET_FILE:ivs_pack>" "${IVS_IMAGES_DIR}" "$<CONFIG>")
 set_tests_properties(runner-process PROPERTIES SKIP_RETURN_CODE 77)

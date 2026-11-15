@@ -38,6 +38,7 @@ key-decisions:
 
 duration: about 2 hours, almost all of it measurement on a loaded laptop (10 whole-gate runs, 8 cold fault builds)
 completed: 2026-11-12
+requirements-completed: []  # backfilled by plan 08-20 from the plan requirements field; closure evidence is the phase VERIFICATION record, not this line
 ---
 
 # Phase 6 Plan 02: lever pass and the normalised metric Summary

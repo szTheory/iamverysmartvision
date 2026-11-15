@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: MIT
+# The release workflow (plan 08-01, D-29, D-31, D-32). It runs only on a strict version tag push and
+# does one thing: sh tools/release.sh --publish (gate, assets, content check, consumer against the
+# shipped archive, SHA256SUMS, then a draft pre-release). The ci-parity step holds this file to a
+# per-file exemption table: this trigger, write permission on the one job only, these two run lines,
+# GITHUB_TOKEN as the only secret, timeout 15.
+name: release
+on:
+  push:
+    tags:
+      - 'v*'
+permissions:
+  contents: read
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: cmake --version
+      - run: sh tools/release.sh --publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

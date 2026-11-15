@@ -27,6 +27,7 @@
 
 #include <stdint.h>
 
+#include "ivs/ivs_status.h"
 #include "psg/psg_params.h"
 
 typedef struct ivs_psg_state {
@@ -50,6 +51,39 @@ _Static_assert(sizeof(ivs_psg_state) == 72u, "ivs_psg_state must be 72 bytes (ma
  * (plan 05-07), and env_held, which is 1 with level 0 (the envelope holds level 0 until the first shape
  * write). A NULL p leaves the noise register 0. */
 void ivs_psg_state_reset(const ivs_psg_params *p, ivs_psg_state *s);
+
+/* The range check of a decoded PSG state (plan 08-10, D-15: validate before mutating), in the style of
+ * ivs_stic_state_validate: IVS_OK when every member is one a powered instance can hold, IVS_E_BAD_STATE
+ * otherwise, IVS_E_BAD_ARG for a NULL argument. Every bound is derived from the chip step functions and the
+ * profile parameters, is true of every state reachable from ivs_psg_state_reset by catch-up and register writes
+ * (psg.state.validate runs the real programs to show it), and refuses a state those functions cannot produce.
+ * The bounds, with the code that makes each true:
+ *   next_sample >= 1               reset sets 1, a chip step only adds 1 (psg_sample.c); the all-zero state of an OFF
+ *                                  instance is refused, which is intended: a snapshot is never taken while OFF
+ *   tone_out[i], env_dir, env_held 0 or 1: reset and the toggle ^= 1 (psg_tone.c), the attack bit and ^= 1 and
+ *                                  the held flag (psg_env.c)
+ *   tone_counter[i] < max(0xFFF, period_zero_tone)   a step reloads at most the 12-bit period (the coarse
+ *                                  register is masked to 4 bits, psg_tone.c) or period_zero_tone for the value 0,
+ *                                  then counts down once in the same step
+ *   noise_counter < noise_steps_per_np * max(0x1F, period_zero_noise)   the 5-bit period times the steps per unit,
+ *                                  minus the same step's decrement (psg_noise.c)
+ *   noise_lfsr < 2^b, b the bit length of (galois_mask | seed)   the Galois step shifts right and XORs the mask, so
+ *                                  a value below 2^b stays below it, and the reset loads the seed (psg_noise.c)
+ *   noise_lfsr != 0                only when the seed is nonzero and has no more bits than the mask: the mask then has
+ *                                  its top bit inside the register, the step is a bijection of [0, 2^b) that maps 0 to 0,
+ *                                  so no nonzero value reaches the lock-up value; otherwise this bound is left out
+ *   env_counter < env_steps_per_ep * max(0xFFFF, period_zero_env)   the 16-bit period times the steps per unit,
+ *                                  minus the decrement of the same step (psg_env.c)
+ *   env_level <= 15, env_cycles <= 15   the restart loads 0 or 15 and cycle 0, a cycle has 16 states (psg_env.c)
+ *   env_held == 0 implies env_level == (env_dir ? env_cycles : 15 - env_cycles)   a restart and every advance inside
+ *                                  a cycle or into a new cycle keep it; only the end of a cycle that holds sets the held
+ *                                  flag, and only a restart clears it
+ *   env_held != 0 implies env_counter == 0   the held flag is set only by the advance that follows a decrement to 0
+ *                                  (or by reset), and a held generator does not step
+ *   reserved[0..2] == 0            never written
+ * Deliberately absent: an upper bound of next_sample (the machine time is not in this state: the cross-check
+ * obs.audio.emitted == next_sample - 1 belongs to the code that sees both rows). */
+ivs_status ivs_psg_state_validate(const ivs_psg_params *p, const ivs_psg_state *s);
 
 /* The register file (plan 05-04, D-08): the 16 guest-visible words regs[0..15] at $01F0..$01FF
  * (the storage lives in ivs_memsys psg_reg). A store keeps value & the write mask of the register;

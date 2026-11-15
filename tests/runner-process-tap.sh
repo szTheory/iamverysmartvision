@@ -79,12 +79,31 @@
 # Output: the harness TAP shape (header with IVS_TEST_NONCE or none, plan, one result per case
 # with the findings as `#` lines after a failure, trailer) on stdout and, when IVS_TEST_OUT_DIR is
 # set, in <dir>/runner-process.txt.
-# Usage: sh runner-process-tap.sh <source root> <ivs-run> <ivs_pack> <images dir>
+# Since plan 08-07 (D-10, D-37, D-40): runner-process.mutant.STIC2-*, one case per row of data/expected/diag-mutations-stic2.ids (six one-word
+# mutants of the program ivs-diag-stic-2, the same row grammar as the SCN rows, a `fails=` set on every row), in a sibling loop of the SCN loop.
+# The optional fifth argument is the build configuration (`$<CONFIG>` of tests/CMakeLists.txt). With `Release` each row builds the patched
+# cartridge, runs its scenario and judges outcome, first clause and fails set like the SCN rows. With any other value (the sanitized Debug
+# preset) or none, each row performs its static checks only (the word at every address of the unpatched listing equals its `from`, the three
+# lists have one length, the patch changes the image, the scenario file exists, `fails=` is well formed) and is reported ok without running the
+# scenario: the ids are the same in both presets, no id is skip-ok and tests-skipped does not move (D-40).
+# Since plan 08-lever2 (cost lever 2 of the Phase 8 stop rule, checkpoint A-08): the same rule holds for EVERY mutant inventory of this script
+# (diag-mutations.ids, -ctrl-psg.ids, -stic.ids, -scn.ids and -stic2.ids, 35 ids): the one function mutant_case decides between the full run
+# (Release: run_mutant, outcome, first clause and fails set judged as before) and the static judgement (any other configuration, the sanitized
+# Debug preset, or none). The static judgement is the static half of the full one and every part of it can fail: the checks of the loop of the
+# row (inventory form, the word at each address of the unpatched listing equals its from, list lengths, fails= form, outcome vocabulary) and,
+# in mutant_case, the scenario file exists, the stated outcome and exit code are a pair of runner-outcomes.ids, the assert that the first
+# clause names exists as a line `assert <text>` of the scenario, and the patch builds and changes the image (the boot stub image for a row in
+# the stub window). The ids and their number are the same in both presets, no id is skip-ok, `tests-skipped` does not move. What the static
+# judgement cannot see (a patched program that no longer fails its scenario) is judged by the Release run of the same gate. A comment line
+# `# mutants: configuration=<c> full=<n> static=<m>` before the trailer makes the mode of every run visible. A judgement that needs the
+# sanitized build to be meaningful would stay a full run on both presets; none of the 35 does (every one is judged by exit code and report).
+# Usage: sh runner-process-tap.sh <source root> <ivs-run> <ivs_pack> <images dir> [<build configuration>]
 # Exit: 0 pass, 1 fail, 77 every case skipped.
 # Env: IVS_TEST_NONCE, IVS_TEST_OUT_DIR, IVS_RUNNER_PROCESS_TIMEOUT.
 LC_ALL=C; export LC_ALL
-usage='usage: sh runner-process-tap.sh <source root> <ivs-run> <ivs_pack> <images dir>'
-[ "$#" -eq 4 ] || { printf '%s\n' "$usage" >&2; exit 1; }
+usage='usage: sh runner-process-tap.sh <source root> <ivs-run> <ivs_pack> <images dir> [<build configuration>]'
+[ "$#" -eq 4 ] || [ "$#" -eq 5 ] || { printf '%s\n' "$usage" >&2; exit 1; }
+config=${5:-}
 # Absolute paths: the cwd case runs from another directory.
 abs_dir() { (cd "$1" 2> /dev/null && pwd -P); }
 abs_file() { _d=$(abs_dir "$(dirname "$1")") && printf '%s/%s\n' "$_d" "$(basename "$1")"; }
@@ -117,13 +136,13 @@ if [ -n "${IVS_TEST_OUT_DIR:-}" ]; then
   mkdir -p "$rep_dir" || { printf '# cannot create %s\n' "$rep_dir" >&2; exit 1; }
 fi
 
-# The content dir: copies of the build-tree images (boot stub, since plan 07-05 boot-stub-2, diag-cpu-1, since plan 05-11 diag-ctrl-psg-1, since plan 06-13 diag-stic-1, and since plan 07-06 lamp-tone; the four demo-lamp-tone scenarios of plan 07-07 use the last two),
+# The content dir: copies of the build-tree images (boot stub, since plan 07-05 boot-stub-2, diag-cpu-1, since plan 05-11 diag-ctrl-psg-1, since plan 06-13 diag-stic-1, since plan 07-06 lamp-tone, and since plan 08-07 diag-stic-2; the four demo-lamp-tone scenarios of plan 07-07 use lamp-tone and boot-stub-2, the six diag-stic2 scenarios of plan 08-07 use diag-stic-2 and boot-stub-2),
 # plus diag-cpu-1-truncated.ivsc, the diagnostic
 # container built here by ivs_pack and cut before its 32-byte trailer (POSIX dd).
 listing="$root/fixtures/FX-diag-cpu-1/diag-cpu-1.listing.txt"
 content="$tmp/content"
 mkdir "$content" "$tmp/runs" "$tmp/build" || exit 1
-for f in boot-stub.exec boot-stub-2.exec diag-cpu-1.ivsc diag-ctrl-psg-1.ivsc diag-stic-1.ivsc lamp-tone.ivsc; do
+for f in boot-stub.exec boot-stub-2.exec diag-cpu-1.ivsc diag-ctrl-psg-1.ivsc diag-stic-1.ivsc lamp-tone.ivsc diag-stic-2.ivsc; do
   cp "$images/$f" "$content/$f" || { printf 'runner-process-tap: no image %s/%s\n' "$images" "$f" >&2; exit 1; }
 done
 "$pack" --ivsc "$listing" "$tmp/build/full.ivsc" 2> "$tmp/build/pack.err" \
@@ -324,6 +343,28 @@ check_repeat() {
 # rkey <report> <key>: the value of the first line `<key> <value>` of a report ('' when the key is absent).
 rkey() { awk -v k="$2" '$1 == k { print $2; exit }' "$1"; }
 
+# check_roundtrip <runner> <id> <ticks> <min cuts> (plan 08-16, D-18): one more run of the pass scenario <id> with `--roundtrip-at-ticks <ticks>`:
+# it must pass the judge and equal the scenario case's report apart from host.calls (check_repeat, finding body-differs), and the hook must
+# have cut: every cut is one more slice and the runner makes one cancel check and one clock check per slice, so host.calls of the hook run
+# exceeds the plain run's by at least twice <min cuts> (finding roundtrip-no-cut). Without that second condition a hook that never cut would
+# pass the first one. <ticks> is derived by arithmetic from the scenario's run length (its golden's last step.<k>.now_ticks), see the cases below.
+check_roundtrip() {
+  _rr=$1; _rid=$2; _rtk=$3; _rmc=$4
+  _rref="$tmp/runs/scen-$_rid.out"
+  check_repeat "$tmp" "$_rr" "rt-$_rid" "$_rid" "$_rref" --roundtrip-at-ticks "$_rtk"
+  _rj=$?
+  _rhc=$(rkey "$tmp/runs/rt-$_rid.out" host.calls)
+  _rpc=$(rkey "$_rref" host.calls)
+  case $_rhc$_rpc in
+    '' | *[!0-9]*) why roundtrip-no-cut "host.calls is not a number in a report of $_rid"; return 1 ;;
+  esac
+  if [ -z "$_rhc" ] || [ -z "$_rpc" ] || [ $((_rhc - _rpc)) -lt $((2 * _rmc)) ]; then
+    why roundtrip-no-cut "host.calls $_rhc against the plain run's $_rpc: fewer than $_rmc cuts (two host calls each)"
+    _rj=1
+  fi
+  return "$_rj"
+}
+
 # check_pair <idA> <idB> <reportA> <reportB> <differ list> <equal list> (plan 07-07, D-23, A-16): the metamorphic judge of one line of
 # data/expected/scenario-pairs.ids on two reports of this run. Every key of the comma-joined differ list has two different values
 # (pair-not-different), every key of the equal list two equal values (pair-not-equal), a key absent from a report is pair-missing-key and
@@ -463,6 +504,58 @@ check_fails() {
   return 0
 }
 
+# patch_changes_image <id> <listing> <image file name> <addr list> <word list> [stub]: the static half of run_mutant (plan 08-07, moved here
+# and generalised by plan 08-lever2): builds the patched image in a fresh directory, with `ivs_pack --ivsc` or, with a sixth argument `stub`,
+# `ivs_pack --exec`, and requires it to differ from the unpatched copy in the content dir; nothing is run. Sets $ok, adds to $tmp/why.
+patch_changes_image() {
+  _pd="$tmp/mutstat-$1"
+  if [ "${6:-cart}" = stub ]; then _pf=--exec; else _pf=--ivsc; fi
+  if ! mkdir "$_pd"; then
+    ok=0; why temp "cannot prepare $_pd"
+  elif ! "$pack" "$_pf" "$2" "$_pd/$3" $(patch_args "$4" "$5") > "$tmp/why.pack" 2>&1; then
+    ok=0; why pack "ivs_pack --patch $4=$5 failed: $(cat "$tmp/why.pack")"
+  elif cmp -s "$_pd/$3" "$content/$3"; then
+    ok=0; why pack "the patch $4=$5 leaves the image unchanged"
+  fi
+}
+
+# mutant_case <id> <listing> <cart file name> <scenario id> <addr list> <to list> <exit> <outcome> <detail pattern> [stub] (plan 08-lever2, D-40):
+# the arguments of run_mutant, and the one place that decides what a row of any mutant inventory costs. With the build configuration Release
+# (the fifth argument of this script) it is run_mutant: the full run and the judgement of outcome, exit code and detail. In any other
+# configuration (the sanitized Debug preset) it is the static judgement, which runs nothing: the scenario file exists, the stated outcome
+# and exit code are a pair of runner-outcomes.ids, the assert that the first clause names (the detail pattern of a guest-fail row, cut to
+# `assert <text>` without its ` got <value>`) is a line of the scenario file, and the patch builds and changes the image. The caller has
+# already judged the inventory form, the from words and the list lengths. Sets $ok, $ran (1 only after a run) and the counters of the
+# diagnostic line at the end of the output.
+mut_full=0
+mut_static=0
+mutant_case() {
+  if [ "$config" = Release ]; then
+    mut_full=$((mut_full + 1))
+    run_mutant "$@"
+    return 0
+  fi
+  mut_static=$((mut_static + 1))
+  ran=0
+  _cmi=$1; _cml=$2; _cmc=$3; _cms=$4; _cma=$5; _cmw=$6; _cmx=$7; _cmo=$8; _cmp=$9
+  if [ "${10:-cart}" = stub ]; then _cmimg=boot-stub-2.exec; _cmk=stub; else _cmimg=$_cmc; _cmk=cart; fi
+  if [ ! -f "$scen/$_cms.ivss" ]; then
+    ok=0; why inventory "no scenario file data/scenarios/$_cms.ivss"
+  elif ! grep -q -x -F -e "$_cmo $_cmx" "$tmp/pairs"; then
+    ok=0; why inventory "outcome '$_cmo' with exit '$_cmx' is no pair of runner-outcomes.ids"
+  else
+    case $_cmp in
+      'assert=* line=* '*)
+        _cmt=${_cmp#'assert=* line=* '}
+        _cmt=${_cmt% got *}
+        if ! grep -q -x -F -e "assert $_cmt" "$scen/$_cms.ivss"; then
+          ok=0; why clause "the scenario $_cms has no line 'assert $_cmt'"
+        fi ;;
+    esac
+    if [ "$ok" -eq 1 ]; then patch_changes_image "$_cmi" "$_cml" "$_cmimg" "$_cma" "$_cmw" "$_cmk"; fi
+  fi
+}
+
 # Program mutations (D-32): per line `<ID> <addr> <word> <clause>` of
 # data/expected/diag-mutations.ids, the diagnostic patched at <addr> (whose listing row must be
 # the <from> of <from>-<to>) must end guest-fail naming <clause>.
@@ -479,7 +572,7 @@ while read -r mid addr word clause; do
   elif [ "$row" != "$from" ]; then
     ok=0; why listing "row at $addr is '$row', expected '$from'"
   else
-    run_mutant "$mid" "$listing" diag-cpu-1.ivsc diag-boot-pass "$addr" "$word" 10 guest-fail "assert=* line=* $clause got *"
+    mutant_case "$mid" "$listing" diag-cpu-1.ivsc diag-boot-pass "$addr" "$word" 10 guest-fail "assert=* line=* $clause got *"
   fi
   result "runner-process.mutant.$mid"
 done < "$muts"
@@ -511,7 +604,7 @@ while read -r mid addr from to rest; do
       pass) mp=- ;;
       *) mp=; ok=0; why inventory "outcome '$mo' is not guest-fail, timeout or pass" ;;
     esac
-    [ "$ok" -eq 1 ] && run_mutant "$mid" "$listing2" diag-ctrl-psg-1.ivsc diag-ctrl-psg-pass "$addr" "$to" "$mx" "$mo" "$mp"
+    [ "$ok" -eq 1 ] && mutant_case "$mid" "$listing2" diag-ctrl-psg-1.ivsc diag-ctrl-psg-pass "$addr" "$to" "$mx" "$mo" "$mp"
   fi
   result "runner-process.mutant.$mid"
 done < "$muts2"
@@ -552,7 +645,7 @@ while read -r mid scn addrs froms tos rest; do
       pass) mp=- ;;
       *) mp=; ok=0; why inventory "outcome '$mo' is not guest-fail, timeout or pass" ;;
     esac
-    [ "$ok" -eq 1 ] && run_mutant "$mid" "$listing3" diag-stic-1.ivsc "$scn" "$addrs" "$tos" "$mx" "$mo" "$mp"
+    [ "$ok" -eq 1 ] && mutant_case "$mid" "$listing3" diag-stic-1.ivsc "$scn" "$addrs" "$tos" "$mx" "$mo" "$mp"
   fi
   result "runner-process.mutant.$mid"
 done < "$muts3"
@@ -621,15 +714,78 @@ while read -r mid scn addrs froms tos rest; do
     esac
     if [ "$ok" -eq 1 ]; then
       if [ "$win" = stub ]; then
-        run_mutant "$mid" "$listing4s" lamp-tone.ivsc "$scn" "$addrs" "$tos" "$mx" "$mo" "$mp" stub
+        mutant_case "$mid" "$listing4s" lamp-tone.ivsc "$scn" "$addrs" "$tos" "$mx" "$mo" "$mp" stub
       else
-        run_mutant "$mid" "$listing4" lamp-tone.ivsc "$scn" "$addrs" "$tos" "$mx" "$mo" "$mp"
+        mutant_case "$mid" "$listing4" lamp-tone.ivsc "$scn" "$addrs" "$tos" "$mx" "$mo" "$mp"
       fi
       if [ "$ran" -eq 1 ] && [ -n "$fails" ]; then check_fails "mut-$mid" "$fails" || ok=0; fi
     fi
   fi
   result "runner-process.mutant.$mid"
 done < "$muts4"
+
+# Program mutations of the second original program (plan 08-07, D-10, D-37, D-40): per line
+# `<ID> <scenario> <addr list> <from list> <to list> <clause> <outcome> <exit> [fails=<k.j,...>]` of data/expected/diag-mutations-stic2.ids, the
+# grammar of the scn inventory above (a sibling loop of it). The word at each <addr> of the unpatched listing of ivs-diag-stic-2
+# (ivs_pack --dump-words) must be its <from>. When the fifth argument of this script, the build configuration, is Release the row is run and
+# judged like a scn row (outcome and exit code of the named scenario against outcome.detail, then with `fails=` the complete set of failing
+# asserts, check_fails). In any other configuration the row is judged statically by mutant_case (the checks above plus patch_changes_image)
+# and reported ok without running the scenario; the ids and their number are the same in both presets, and none is skip-ok. Since plan
+# 08-lever2 the choice between the two lives in mutant_case, shared with the four loops above.
+listing5="$root/fixtures/FX-diag-stic-2/diag-stic-2.listing.txt"
+muts5="$root/data/expected/diag-mutations-stic2.ids"
+"$pack" --dump-words "$listing5" > "$tmp/words5" 2> /dev/null || : > "$tmp/words5"
+while read -r mid scn addrs froms tos rest; do
+  case $mid in '' | '#'*) continue ;; esac
+  ok=1
+  ran=0
+  : > "$tmp/why"
+  fails=
+  case ${rest##* } in
+    fails=*) fails=${rest##* }; rest=${rest% *}; fails=${fails#fails=} ;;
+  esac
+  mx=${rest##* }
+  rest=${rest% *}
+  mo=${rest##* }
+  clause=${rest% *}
+  # each address word of the unpatched listing equals its from word, and the three lists have one length
+  bad=$(awk -v a="$addrs" -v f="$froms" -v t="$tos" '
+    NR == FNR { w[$1] = $2; next }
+    END {
+      na = split(a, A, ","); nf = split(f, F, ","); nt = split(t, T, ",")
+      if (na != nf || na != nt) { print "lists of different lengths"; exit }
+      for (i = 1; i <= na; i++) if (w[A[i]] != F[i]) print "the word at " A[i] " is " w[A[i]] ", expected from " F[i]
+    }' "$tmp/words5" /dev/null)
+  fbad=$(printf '%s\n' "$fails" | awk 'NF && $0 !~ /^[0-9]+[.][0-9]+(,[0-9]+[.][0-9]+)*$/ { print "bad" }')
+  if [ -z "$mx" ] || [ -z "$mo" ] || [ -z "$clause" ] || [ "$clause" = "$rest" ]; then
+    ok=0; why inventory "not <ID> <scenario> <addr list> <from list> <to list> <clause> <outcome> <exit> [fails=<k.j,...>]"
+  elif [ ! -f "$scen/$scn.ivss" ]; then
+    ok=0; why inventory "no scenario file data/scenarios/$scn.ivss"
+  elif [ -n "$fbad" ]; then
+    ok=0; why inventory "fails=$fails is not a comma-joined list of <step>.<assert>"
+  elif [ -n "$fails" ] && [ "$mo" != guest-fail ]; then
+    ok=0; why inventory "fails= needs the outcome guest-fail"
+  elif [ -n "$bad" ]; then
+    ok=0; why listing "$bad"
+  else
+    case $mo in
+      guest-fail)
+        case $clause in
+          'stop '*) mp=$clause ;;
+          *' got '*) mp="assert=* line=* $clause" ;;
+          *) mp="assert=* line=* $clause got *" ;;
+        esac ;;
+      timeout) mp="budget step=* line=* expected=halted got=target" ;;
+      pass) mp=- ;;
+      *) mp=; ok=0; why inventory "outcome '$mo' is not guest-fail, timeout or pass" ;;
+    esac
+    if [ "$ok" -eq 1 ]; then
+      mutant_case "$mid" "$listing5" diag-stic-2.ivsc "$scn" "$addrs" "$tos" "$mx" "$mo" "$mp"
+      if [ "$ran" -eq 1 ] && [ -n "$fails" ]; then check_fails "mut-$mid" "$fails" || ok=0; fi
+    fi
+  fi
+  result "runner-process.mutant.$mid"
+done < "$muts5"
 
 # Determinism (D-23, Pitfall 11): a second run, slice sizes 1 and 7, and a run from another
 # working directory all equal the scenario case's report apart from host.calls.
@@ -689,6 +845,69 @@ result "runner-process.slices.$id"
 ok=1
 check_repeat "$tmp/elsewhere" "$ivs_run" "cwd3" "$id" "$ref" || ok=0
 result "runner-process.cwd.$id"
+
+# The round-trip hook (plan 08-16, D-18): a run with --roundtrip-at-ticks saves, resets and restores the machine at every multiple of the value,
+# and must still give the scenario's plain report apart from host.calls, with at least the stated number of cuts (check_roundtrip). Each value
+# is derived by arithmetic from the run length of the scenario's golden (the last step.<k>.now_ticks, or the run-to bound of a scenario that never
+# halts); the frame is 59,736 master ticks and no value is a multiple of it, so no cut sits on a frame boundary by accident. A cut is made at the
+# first unit boundary at or after a multiple, never at the end of a run-to, and a multiple that is a step bound or an input tick is avoided.
+#   diag-boot-pass       halts at tick 2,084 (data/golden/diag-cpu-1.digests step.1.now_ticks): 600 cuts after 600, 1,200 and 1,800 (three; 2,400 lies
+#                        past the halt), the fewest that gives two inside the run. No display.
+#   diag-ctrl-psg-pass   halts at tick 16,752 with seven input events at ticks 4,000 to 8,800: 5,000 cuts after 5,000, 10,000 and 15,000 (three), the first
+#                        between the second and the third event (two applied, a pull-down in force), the other two after the last event (8,800). No display
+#                        (the run ends inside frame 0, which ends at 59,736).
+#   diag-stic-fgbg-pass  halts at tick 88,476, the display on from frame 0 (the golden delivers one frame, ending at 59,736): 20,000 cuts after 20,000, 40,000,
+#                        60,000 and 80,000 (four): two inside the displayed frame 0 (at 20,000 and 40,000), one 264 ticks into frame 1 (66 CPU cycles, inside
+#                        the interrupt service of the frame end, not on the boundary) and one 20,264 ticks into frame 1.
+#   demo-lamp-tone-pass  the four run-to bounds 200,000, 440,000, 640,000 and 806,568 (step.4.now_ticks 806,568), six input events at ticks 100,000 to 700,000:
+#                        90,000 cuts after 90,000 (frame 1, 30,264 ticks in, the first displayed frame), 180,000 (frame 3, 792 ticks in: inside the routine
+#                        of the frame), 270,000, 360,000 (frame 6, 1,584 in), 450,000, 540,000, 630,000 and 720,000 (eight; 810,000 lies past the end). No multiple is a step
+#                        bound (the cut at the end of a run-to is never made) or an input tick.
+#   diag-stic2-collision-pass  the one run-to bound 640,000 (step.1.now_ticks 640,004), the program never halts, the display on from frame 1: 150,000 cuts after
+#                        150,000 (frame 2, which spans 119,472 to 179,207: 30,528 ticks in, so in the frame whose collision registers C0 to C7 are 0002 0001 0008
+#                        0004 0000 0000 0100 0000, set at the end of frame 1, and whose scene 8 MOB words the routine of frame 2 wrote), 300,000 (frame 5, 1,320 in: inside
+#                        its routine), 450,000 (frame 7, 31,848 in) and 600,000 (frame 10, 2,640 in) (four). The scenario's own asserts judge what the cut in
+#                        frame 2 carried: the guest reads C0 to C7 in the routine of frame 3 and stores them at 0300 to 0307, and the asserts mem 0300 == 0002,
+#                        0301 == 0001, 0302 == 0008, 0303 == 0004, 0306 == 0100 (and 0304, 0305, 0307 == 0000) hold in the report of the hook run only if the
+#                        restore brought the collision bits and the registers back; the frame 5 pixel asserts and video count judge the MOB scenes after the cuts.
+: > "$tmp/why"
+ok=1
+check_roundtrip "$ivs_run" diag-boot-pass 600 2 || ok=0
+result runner-process.roundtrip.diag-boot-pass
+: > "$tmp/why"
+ok=1
+check_roundtrip "$ivs_run" diag-ctrl-psg-pass 5000 2 || ok=0
+result runner-process.roundtrip.diag-ctrl-psg-pass
+: > "$tmp/why"
+ok=1
+check_roundtrip "$ivs_run" diag-stic-fgbg-pass 20000 2 || ok=0
+result runner-process.roundtrip.diag-stic-fgbg-pass
+: > "$tmp/why"
+ok=1
+check_roundtrip "$ivs_run" demo-lamp-tone-pass 90000 2 || ok=0
+result runner-process.roundtrip.demo-lamp-tone-pass
+: > "$tmp/why"
+ok=1
+check_roundtrip "$ivs_run" diag-stic2-collision-pass 150000 2 || ok=0
+result runner-process.roundtrip.diag-stic2-collision-pass
+# The refusals of the option (plan 08-16, D-18): a zero, one above IVS_RUN_TARGET_MAX (9223372036854775808) as decimal digits, a missing value (the option
+# last on the line) and the option twice are each a usage error: exit 14, no report on stdout, and on stderr the one message line of every usage error followed by
+# the usage text (the usage block names the option).
+: > "$tmp/why"
+ok=1
+rt_refuse() {
+  _rn=$1; _rm=$2; shift 2
+  run_one "$tmp" "rt-refuse-$_rn" "$ivs_run" --content-dir "$content" "$@"
+  [ "$rc" -eq 14 ] && [ "$hung" -eq 0 ] && [ ! -s "$tmp/runs/rt-refuse-$_rn.out" ] || { ok=0; why roundtrip-refuse "$_rn: exit $rc, hung $hung or a report"; }
+  [ "$(sed -n 1p "$tmp/runs/rt-refuse-$_rn.err")" = "ivs-run: $_rm" ] || { ok=0; why roundtrip-refuse "$_rn: the first stderr line is not 'ivs-run: $_rm'"; }
+  [ "$(sed -n 2p "$tmp/runs/rt-refuse-$_rn.err")" = 'usage: ivs-run [options] <scenario.ivss>' ] || { ok=0; why roundtrip-refuse "$_rn: the usage text does not follow"; }
+  grep -q -F -e '--roundtrip-at-ticks <n>' "$tmp/runs/rt-refuse-$_rn.err" || { ok=0; why roundtrip-refuse "$_rn: the usage text does not name the option"; }
+}
+rt_refuse zero 'option value out of range' --roundtrip-at-ticks 0 "$scen/diag-boot-pass.ivss"
+rt_refuse above-max 'option value out of range' --roundtrip-at-ticks 9223372036854775809 "$scen/diag-boot-pass.ivss"
+rt_refuse no-value 'option without a value' "$scen/diag-boot-pass.ivss" --roundtrip-at-ticks
+rt_refuse twice 'option given twice' --roundtrip-at-ticks 600 --roundtrip-at-ticks 700 "$scen/diag-boot-pass.ivss"
+result runner-process.roundtrip.refuse-range
 
 # The metamorphic judge (plan 07-07, D-23, D-06, A-16): per line `<idA> <idB> differ=<keys> equal=<keys>` of
 # data/expected/scenario-pairs.ids, the reports of the two scenario cases above are related to each other (no expected value).
@@ -1341,6 +1560,35 @@ self_control outcome-exit-disagree outcome-exit-disagree \
   check_scenario "$fakes/outcome-exit.sh" fake-pair guest-assert-mismatch 10 guest-fail -
 self_control body-differs body-differs \
   check_repeat "$tmp" "$fakes/body.sh" fake-body diag-boot-pass "$tmp/runs/scen-diag-boot-pass.out"
+# Judge self-control of the round-trip comparison (plan 08-16, D-18): check_roundtrip must be shown to fail before it is trusted, twice. A fake runner
+# that replays the report of ANOTHER scenario (diag-ctrl-psg-pass) for the hook run must be rejected for body-differs (the comparison with the plain
+# report fails on a report that differs); a fake that replays the plain report unchanged, as a hook that never cut would, must be rejected for
+# roundtrip-no-cut (equal reports are not enough: host.calls must show the cuts).
+cp "$tmp/runs/scen-diag-ctrl-psg-pass.out" "$fakes/cps.report" 2> /dev/null || : > "$fakes/cps.report"
+{
+  printf '#!/bin/sh\n# Fake ivs-run: the report of another scenario.\n'
+  printf 'cat "$(dirname "$0")/cps.report"\nexit 0\n'
+} > "$fakes/rt-other.sh"
+{
+  printf '#!/bin/sh\n# Fake ivs-run: the plain report, as if the hook had never cut.\n'
+  printf 'cat "$(dirname "$0")/dbp.report"\nexit 0\n'
+} > "$fakes/rt-nocut.sh"
+: > "$tmp/rt.bad"
+rt_control() {
+  _rtok=$1; shift
+  : > "$tmp/why"
+  if "$@"; then
+    printf 'judge-vacuous: the check accepted the fake runner of %s\n' "$_rtok" >> "$tmp/rt.bad"
+  elif ! grep -q -e "^$_rtok: " "$tmp/why"; then
+    { printf 'judge-wrong-reason: the check failed, but without %s:\n' "$_rtok"; cat "$tmp/why"; } >> "$tmp/rt.bad"
+  fi
+}
+rt_control body-differs check_roundtrip "$fakes/rt-other.sh" diag-boot-pass 600 2
+rt_control roundtrip-no-cut check_roundtrip "$fakes/rt-nocut.sh" diag-boot-pass 600 2
+cp "$tmp/rt.bad" "$tmp/why"
+ok=1
+[ ! -s "$tmp/rt.bad" ] || ok=0
+result runner-process.judge.roundtrip-differs
 
 # Outcome table anti-drift (D-20): `ivs-run --help` (the lines after its `outcomes (` line),
 # the outcome table of docs/runner.md and data/expected/runner-outcomes.ids list the same
@@ -1472,6 +1720,7 @@ result runner-process.watchdog
   printf '# suite=%s nonce=%s\n' "$suite" "$nonce"
   printf '1..%s\n' "$n"
   cat "$tmp/results"
+  printf '# mutants: configuration=%s full=%s static=%s\n' "${config:-none}" "$mut_full" "$mut_static"
   printf '# suite=%s executed=%s skipped=%s failed=%s\n' "$suite" "$executed" "$skipped" "$failed"
 } > "$tmp/tap"
 cat "$tmp/tap"

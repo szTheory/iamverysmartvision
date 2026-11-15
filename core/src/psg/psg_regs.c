@@ -32,6 +32,14 @@ const ivs_psg_params *ivs_psg_params_get(uint32_t profile)
   return &ivs_psg_params_table[profile];
 }
 
+const uint8_t *ivs_psg_table_digest(uint32_t profile_index)
+{
+  if (profile_index >= IVS_PSG_PROFILE_COUNT) {
+    return NULL;
+  }
+  return ivs_psg_body_digest[profile_index];
+}
+
 /* The slot a bus word idx reaches: the identity. */
 static uint32_t ivs_psg_slot(uint32_t idx)
 {

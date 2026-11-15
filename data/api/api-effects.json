@@ -300,7 +300,7 @@
     {
       "name": "ivs_machine_state_digest",
       "header": "core/include/ivs/ivs_machine.h",
-      "on_ok": "Writes the SHA-256 of the canonical big-endian state of one domain (CPU, MEM, IMAGES, INSTANCE, and the observation domains VIDEO, AUDIO, INPUT, PSGLOG) or of the composite of the first four into out_sha256 (D-35, D-10, D-18: the composite is version 2 over domains 1..4 since plan 05-03); the instance is not written.",
+      "on_ok": "Writes the SHA-256 of the canonical big-endian state of one domain (CPU, MEM, IMAGES, INSTANCE, and the observation domains VIDEO, AUDIO, INPUT, PSGLOG) or of the composite of the first four into out_sha256 (D-35, D-10, D-18: the composite is version 3 over domains 1..4 since plan 06-05, when the STIC registers and state joined domains 2 and 4, with the framing as in version 2); the instance is not written.",
       "precedence": [
         {"status": "IVS_E_BAD_ARG", "checks": "out NULL, or a domain other than 0..4 and 16..19 (20 included)", "pinned_by": ["machine.refuse.digest.domain-over-handle"]},
         {"status": "IVS_E_BAD_HANDLE", "checks": "NULL or invalid handle (a damaged stored profile index included, review WR-03)", "pinned_by": ["machine.refuse.digest.null-handle-low-out", "machine.refuse.digest.destroyed-out-inside"]},
@@ -482,6 +482,215 @@
       "precedence": [],
       "notes": [],
       "refusals": []
+    },
+    {
+      "name": "ivs_machine_snapshot_size",
+      "header": "core/include/ivs/ivs_state.h",
+      "on_ok": "Writes the exact length in bytes of a snapshot of the instance (4,299 for the first profile, the same for every powered instance of one profile and one build) to *out_bytes (plan 08-11, D-13, D-14). The instance is not written, machine time does not advance, nothing is allocated and the call touches no file or clock.",
+      "precedence": [
+        {"status": "IVS_E_BAD_ARG", "checks": "out_bytes NULL", "pinned_by": ["state.save.refusal-ladder"]},
+        {"status": "IVS_E_BAD_HANDLE", "checks": "NULL or invalid handle", "pinned_by": ["state.save.refusal-ladder"]},
+        {"status": "IVS_E_BAD_ARG", "checks": "out_bytes overlapping the storage of the (valid) instance (uintptr_t arithmetic)", "pinned_by": ["state.save.refusal-ladder"]},
+        {"status": "IVS_E_BAD_STATE", "checks": "the machine is OFF: a snapshot point is a unit boundary of a powered machine", "pinned_by": ["state.save.refusal-ladder"]}
+      ],
+      "notes": [
+        "Side-effect free by contract (D-14): a const instance. The length is derived from the digest field table (the lengths of the seven state-only walks plus the header and the trailer), and state.size.derived-and-constant holds it to the 4,299 bytes derived on paper in plan 08-09. Out parameter rule as for ivs_machine_state_digest; the overlap is tested after BAD_HANDLE, against a valid instance only."
+      ],
+      "refusals": [
+        {
+          "status": "IVS_E_BAD_ARG",
+          "effect": "none",
+          "outs": "nothing written: *out_bytes keeps its value",
+          "tests": ["state.save.refusal-ladder"]
+        },
+        {
+          "status": "IVS_E_BAD_HANDLE",
+          "effect": "none",
+          "outs": "nothing written: *out_bytes keeps its value",
+          "tests": ["state.save.refusal-ladder"]
+        },
+        {
+          "status": "IVS_E_BAD_STATE",
+          "effect": "none",
+          "outs": "nothing written: *out_bytes keeps its value",
+          "tests": ["state.save.refusal-ladder"]
+        }
+      ]
+    },
+    {
+      "name": "ivs_machine_snapshot_save",
+      "header": "core/include/ivs/ivs_state.h",
+      "on_ok": "Writes the IVSN v1 snapshot of the instance into the cap bytes at buf: exactly *out_written bytes (4,299 for the first profile), big-endian, field by field, with the seven state-only sections, the profile id and parameter digest, the three slot identities (loaded flag, SHA-256 and length, never an image byte), the schema digest, the composite and section digests and a SHA-256 trailer (plan 08-11, D-12, D-13, D-14). The instance is not written, machine time does not advance, nothing is allocated and the call touches no file or clock; two saves of one instance are byte-identical.",
+      "precedence": [
+        {"status": "IVS_E_BAD_ARG", "checks": "out_written NULL, buf NULL with cap above 0, or out_written inside the cap bytes at buf", "pinned_by": ["state.save.refusal-ladder"]},
+        {"status": "IVS_E_BAD_HANDLE", "checks": "NULL or invalid handle", "pinned_by": ["state.save.refusal-ladder"]},
+        {"status": "IVS_E_BAD_ARG", "checks": "out_written or the cap bytes at buf overlapping the storage of the (valid) instance, or the cap bytes running past the top of the address space (uintptr_t arithmetic, 64-bit lengths)", "pinned_by": ["state.save.refusal-ladder"]},
+        {"status": "IVS_E_BAD_STATE", "checks": "the machine is OFF", "pinned_by": ["state.save.refusal-ladder"]},
+        {"status": "IVS_E_BUFFER_TOO_SMALL", "checks": "cap below the exact length of the snapshot", "pinned_by": ["state.save.refusal-ladder"]}
+      ],
+      "notes": [
+        "Everything that can refuse is decided before the first byte of buf is written, so no refusal writes into buf. BUFFER_TOO_SMALL is the one refusal that writes an out parameter: *out_written is set to the exact length, so a call with cap 0 asks for the size (ivs_machine_snapshot_size gives the same number). Out parameter rule as for ivs_machine_state_digest."
+      ],
+      "refusals": [
+        {
+          "status": "IVS_E_BAD_ARG",
+          "effect": "none",
+          "outs": "nothing written: *out_written keeps its value and no byte of buf changes",
+          "tests": ["state.save.refusal-ladder"]
+        },
+        {
+          "status": "IVS_E_BAD_HANDLE",
+          "effect": "none",
+          "outs": "nothing written: *out_written keeps its value and no byte of buf changes",
+          "tests": ["state.save.refusal-ladder"]
+        },
+        {
+          "status": "IVS_E_BAD_STATE",
+          "effect": "none",
+          "outs": "nothing written: *out_written keeps its value and no byte of buf changes",
+          "tests": ["state.save.refusal-ladder"]
+        },
+        {
+          "status": "IVS_E_BUFFER_TOO_SMALL",
+          "effect": "none",
+          "outs": "*out_written is set to the exact length of the snapshot; no byte of buf changes",
+          "tests": ["state.save.refusal-ladder"]
+        }
+      ]
+    },
+    {
+      "name": "ivs_snapshot_describe",
+      "header": "core/include/ivs/ivs_state.h",
+      "on_ok": "Checks the len bytes at buf in the order of docs/formats/ivsn-v1.md up to and including the SHA-256 trailer and the form of the profile id, without any instance, and writes the full v1 report: reason 0, the format and schema versions, total_bytes (4,299 for the first profile), byte_offset 0, section_index 0xFFFFFFFF, kind 0, the profile id, the parameter digest and the composite digest of the writer and the three image slot records (kind slot index plus one, loaded, length_bytes and SHA-256 as the snapshot states them). Nothing is read past len, nothing is allocated, nothing but the report is written and the call touches no file or clock (plan 08-12, D-13, D-14).",
+      "precedence": [
+        {"status": "IVS_E_BAD_ARG", "checks": "rep NULL, or rep->struct_size below IVS_SNAPSHOT_REPORT_V1_SIZE or above IVS_STRUCT_SIZE_MAX (nothing written)", "pinned_by": ["state.read.describe-refuse-args"]},
+        {"status": "IVS_E_BAD_ARG", "checks": "buf NULL with len above 0 (reason 58), then the report overlapping the first min(len, IVS_SNAPSHOT_MAX_BYTES) bytes of buf (reason 59)", "pinned_by": ["state.read.describe-refuse-args"]},
+        {"status": "IVS_E_OVERSIZED", "checks": "len above IVS_SNAPSHOT_MAX_BYTES, before any byte of buf is read (reason 60)", "pinned_by": ["state.read.describe-refuse-length"]},
+        {"status": "IVS_E_MALFORMED", "checks": "len below the smallest container (reason 61)", "pinned_by": ["state.read.describe-refuse-length"]},
+        {"status": "IVS_E_MALFORMED", "checks": "the magic differs (reason 62)", "pinned_by": ["state.read.describe-refuse-header"]},
+        {"status": "IVS_E_UNSUPPORTED", "checks": "the format version (63), the flags (64), the schema version (65) or the schema digest (66) is not the one of this build, in that order", "pinned_by": ["state.read.describe-refuse-header"]},
+        {"status": "IVS_E_MALFORMED", "checks": "the total the snapshot states is above len (reason 61), or below len or different from the size this build derives (reason 67)", "pinned_by": ["state.read.describe-refuse-length"]},
+        {"status": "IVS_E_MALFORMED", "checks": "the section count is not 7 (reason 68)", "pinned_by": ["state.read.describe-refuse-header"]},
+        {"status": "IVS_E_MALFORMED", "checks": "the section table: an unknown, repeated, skipped or descending domain, a nonzero byte among the three zero bytes, a first offset other than 612, a section that does not begin where the one before ends, a length that does not fit before the trailer, or a last section that does not end 32 bytes before the total (reason 69, with the index of the entry)", "pinned_by": ["state.read.describe-refuse-section-table"]},
+        {"status": "IVS_E_DIGEST_MISMATCH", "checks": "the SHA-256 trailer differs from the digest of every earlier byte (reason 70); checked after the structure, so a structural defect with a wrong trailer is the structural reason", "pinned_by": ["state.read.describe-refuse-trailer"]},
+        {"status": "IVS_E_MALFORMED", "checks": "the profile id field: no NUL in its 64 bytes, a byte after the first NUL, or a byte before it that is not printable ASCII (reason 71); judged after the trailer, an empty or unregistered id of good form is accepted", "pinned_by": ["state.read.describe-profile-id-forms"]}
+      ],
+      "notes": [
+        "Instance-free: no handle, no instance. The reader never reads a byte past len and every length and offset in the bytes is compared with len before the byte it names is read; the section table check (reason 69) and the form of the profile id (reason 71) come after the header checks and before and after the trailer as docs/formats/ivsn-v1.md says. A refusal by an unusable report struct writes nothing. Every other refusal writes only reason, byte_offset, section_index and the header facts the supplied length let it read (format_version at 12 bytes, total_bytes at 16, schema_version at 24); every other member of the report keeps the caller's value. The report is a v1 out struct of 360 bytes: a caller struct larger than that keeps its tail. The snapshot is exact-build state: describe says what a snapshot claims to be, never that it restores."
+      ],
+      "refusals": [
+        {
+          "status": "IVS_E_BAD_ARG",
+          "effect": "none",
+          "outs": "rep unusable: nothing written. A NULL buf with len above 0 or a report overlapping the buffer: only reason (58 or 59), byte_offset 0 and section_index 0xFFFFFFFF are written into the report; the buffer is never read",
+          "tests": ["state.read.describe-refuse-args", "state.read.describe-report-v1-size-caller", "state.read.describe-writes-only-report"]
+        },
+        {
+          "status": "IVS_E_OVERSIZED",
+          "effect": "none",
+          "outs": "only reason 60, byte_offset IVS_SNAPSHOT_MAX_BYTES and section_index 0xFFFFFFFF are written into the report; no byte of buf is read",
+          "tests": ["state.read.describe-refuse-length", "state.read.describe-writes-only-report"]
+        },
+        {
+          "status": "IVS_E_MALFORMED",
+          "effect": "none",
+          "outs": "only reason, byte_offset, section_index and the readable header facts (format_version, total_bytes, schema_version) are written into the report; buf is never changed",
+          "tests": ["state.read.describe-refuse-length", "state.read.describe-refuse-header", "state.read.describe-refuse-trailer", "state.read.describe-refuse-section-table", "state.read.describe-profile-id-forms", "state.read.describe-heap-exact", "state.read.describe-writes-only-report"]
+        },
+        {
+          "status": "IVS_E_UNSUPPORTED",
+          "effect": "none",
+          "outs": "only reason (63 to 66), byte_offset of the field, section_index 0xFFFFFFFF and the header facts, with the version of the snapshot, are written into the report; buf is never changed",
+          "tests": ["state.read.describe-refuse-header", "state.read.describe-writes-only-report"]
+        },
+        {
+          "status": "IVS_E_DIGEST_MISMATCH",
+          "effect": "none",
+          "outs": "only reason 70, byte_offset of the trailer (total minus 32), section_index 0xFFFFFFFF and the header facts are written into the report; buf is never changed",
+          "tests": ["state.read.describe-refuse-trailer", "state.read.describe-writes-only-report"]
+        }
+      ]
+    },
+    {
+      "name": "ivs_machine_snapshot_restore",
+      "header": "core/include/ivs/ivs_state.h",
+      "on_ok": "Validates the whole snapshot (the container as describe judges it, the identity of the profile and of the three image slots against the instance, every section length, array count and frame, the CPU, STIC and PSG states through their validators, the phase and the clock range, the derived invariants) and only then replaces the state of the instance with the state the snapshot holds: the STATE rows of the digest field table are decoded into the instance, the PAD rows are zeroed, no BOUND or IMAGE row is written (the handle, the profile of the instance, the committed image structure, the three slot records and the image arrays stay), and the phase becomes POWERED (plan 08-13, D-14, D-15, D-41). A restore is allowed in every phase: an OFF instance with its images loaded is the normal fresh target and a POWERED one is rewound. The report, when given, is written in full as describe writes it. Nothing is allocated and the call touches no file or clock.",
+      "precedence": [
+        {"status": "IVS_E_BAD_ARG", "checks": "rep not NULL with struct_size below IVS_SNAPSHOT_REPORT_V1_SIZE or above IVS_STRUCT_SIZE_MAX (nothing written)", "pinned_by": ["state.restore.refuse-args"]},
+        {"status": "IVS_E_BAD_ARG", "checks": "buf NULL with len above 0 (reason 58), then the report overlapping the first min(len, IVS_SNAPSHOT_MAX_BYTES) bytes of buf (reason 59)", "pinned_by": ["state.restore.refuse-args"]},
+        {"status": "IVS_E_BAD_HANDLE", "checks": "NULL or invalid handle (the report gets IVS_REASON_HANDLE)", "pinned_by": ["state.restore.refuse-args"]},
+        {"status": "IVS_E_BAD_ARG", "checks": "the first min(len, IVS_SNAPSHOT_MAX_BYTES) bytes of buf or the report overlapping the storage of the valid instance (reason 81; the report is not written when it is the one that overlaps)", "pinned_by": ["state.restore.refuse-args"]},
+        {"status": "IVS_E_OVERSIZED", "checks": "len above IVS_SNAPSHOT_MAX_BYTES, before any byte of buf is read (reason 60)", "pinned_by": ["state.restore.refuse-structure"]},
+        {"status": "IVS_E_MALFORMED", "checks": "the container as describe judges it: the length (61), the magic (62), the total (67), the section count (68), the section table (69)", "pinned_by": ["state.restore.refuse-structure"]},
+        {"status": "IVS_E_UNSUPPORTED", "checks": "the format version (63), the flags (64), the schema version (65) or the schema digest (66) is not the one of this build", "pinned_by": ["state.restore.refuse-structure"]},
+        {"status": "IVS_E_DIGEST_MISMATCH", "checks": "the SHA-256 trailer differs from the digest of every earlier byte (reason 70), checked after the structure", "pinned_by": ["state.restore.refuse-structure"]},
+        {"status": "IVS_E_MALFORMED", "checks": "the form of the profile id field (reason 71), judged after the trailer", "pinned_by": ["state.restore.refuse-structure"]},
+        {"status": "IVS_E_UNKNOWN_PROFILE", "checks": "the profile id of the snapshot is not registered in this build (reason 72)", "pinned_by": ["state.restore.refuse-identity-profile"]},
+        {"status": "IVS_E_STATE_MISMATCH", "checks": "the id is registered and differs from the instance's (reason 73, tested as a pure seam function), or the parameter digest differs from the one of this build (reason 74)", "pinned_by": ["state.restore.refuse-identity-profile", "state.restore.profile-id-seam"]},
+        {"status": "IVS_E_MALFORMED", "checks": "per image slot in the order EXEC, GROM, cartridge: a loaded flag above 1, or an empty record that holds a length or a digest (reason 78)", "pinned_by": ["state.restore.refuse-identity-slots"]},
+        {"status": "IVS_E_MISSING_SYSTEM_IMAGE", "checks": "a slot loaded in the snapshot and not in the instance (reason 75)", "pinned_by": ["state.restore.refuse-identity-slots"]},
+        {"status": "IVS_E_STATE_MISMATCH", "checks": "a slot loaded only in the instance, or loaded on both sides with another SHA-256 or length (reason 76)", "pinned_by": ["state.restore.refuse-identity-slots"]},
+        {"status": "IVS_E_MALFORMED", "checks": "a section length that differs from the derived length (80), an array count that differs from the table (77), a frame, a device state that its validator refuses, a phase other than POWERED or a clock above 2 to the power 63 (78), a derived invariant that does not hold (79), in that order", "pinned_by": ["state.restore.refuse-content-validators", "state.restore.refuse-content-invariants"]}
+      ],
+      "notes": [
+        "Validate everything, then commit (D-15): the sections are decoded into a probe of a few hundred bytes and judged there, and only then does a commit with no refusal path write the instance, so a refusal leaves every byte of the instance as it was (whole-storage memcmp, rows of every family) and writes only the report. The digest fields of the header (the composite and the seven section digests) are informational and never checked; the trailer is integrity, not authenticity, and a snapshot whose trailer was recomputed is judged by the validators and the invariants. The report is optional (rep may be NULL). A refusal writes reason, byte_offset, section_index and the header facts the length let the reader see, as describe does, and kind for a refusal about an image slot; an unusable report struct, and a refusal while the report overlaps the instance, write nothing. The caller keeps its own output buffers and resubmits its input events from the restored applied-event count."
+      ],
+      "refusals": [
+        {
+          "status": "IVS_E_BAD_ARG",
+          "effect": "none",
+          "outs": "an unusable report struct: nothing written. A NULL buffer with a length (58), the report overlapping the buffer (59) or the buffer overlapping the instance (81): only reason, byte_offset 0 and section_index 0xFFFFFFFF are written into the report, and nothing at all when the report itself overlaps the instance",
+          "tests": ["state.restore.refuse-args", "state.restore.reasons-covered"]
+        },
+        {
+          "status": "IVS_E_BAD_HANDLE",
+          "effect": "none",
+          "outs": "only reason IVS_REASON_HANDLE, byte_offset 0 and section_index 0xFFFFFFFF are written into the report (nothing into the bytes the handle names)",
+          "tests": ["state.restore.refuse-args"]
+        },
+        {
+          "status": "IVS_E_OVERSIZED",
+          "effect": "none",
+          "outs": "only reason 60, byte_offset IVS_SNAPSHOT_MAX_BYTES and section_index 0xFFFFFFFF are written into the report; no byte of buf is read",
+          "tests": ["state.restore.refuse-structure"]
+        },
+        {
+          "status": "IVS_E_MALFORMED",
+          "effect": "none",
+          "outs": "only reason (61 to 71, 77 to 80), byte_offset, section_index and the readable header facts are written into the report (kind too for a slot record range error); buf is never changed",
+          "tests": ["state.restore.refuse-structure", "state.restore.refuse-identity-slots", "state.restore.refuse-content-validators", "state.restore.refuse-content-invariants", "state.restore.atomic-every-refusal"]
+        },
+        {
+          "status": "IVS_E_UNSUPPORTED",
+          "effect": "none",
+          "outs": "only reason (63 to 66), byte_offset of the field, section_index 0xFFFFFFFF and the header facts, with the version of the snapshot, are written into the report; buf is never changed",
+          "tests": ["state.restore.refuse-structure"]
+        },
+        {
+          "status": "IVS_E_DIGEST_MISMATCH",
+          "effect": "none",
+          "outs": "only reason 70, byte_offset of the trailer (total minus 32), section_index 0xFFFFFFFF and the header facts are written into the report; buf is never changed",
+          "tests": ["state.restore.refuse-structure"]
+        },
+        {
+          "status": "IVS_E_UNKNOWN_PROFILE",
+          "effect": "none",
+          "outs": "only reason 72, byte_offset of the profile id field, section_index 0xFFFFFFFF and the header facts are written into the report; buf is never changed",
+          "tests": ["state.restore.refuse-identity-profile"]
+        },
+        {
+          "status": "IVS_E_MISSING_SYSTEM_IMAGE",
+          "effect": "none",
+          "outs": "only reason 75, the byte_offset of the slot record, section_index 0xFFFFFFFF, kind (the slot kind) and the header facts are written into the report; buf is never changed",
+          "tests": ["state.restore.refuse-identity-slots"]
+        },
+        {
+          "status": "IVS_E_STATE_MISMATCH",
+          "effect": "none",
+          "outs": "only reason (73, 74 or 76), byte_offset of the field (the profile id, the parameter digest or the field of the slot record), section_index 0xFFFFFFFF, kind for a slot (the slot kind) and the header facts are written into the report; buf is never changed",
+          "tests": ["state.restore.refuse-identity-profile", "state.restore.refuse-identity-slots", "state.restore.profile-id-seam", "state.restore.atomic-every-refusal"]
+        }
+      ]
     }
   ]
 }

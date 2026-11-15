@@ -56,8 +56,8 @@ typedef struct ivs_machine ivs_machine;
 
 /* State digest domains (D-35, D-10, D-18). 0 is the composite of 1..4. 16..19 are observation
  * domains: the RUN-05 video, audio and input observations and (plan 05-03) the PSG write log,
- * domain version 1; none is part of the composite, which is version 2 since plan 05-03 over
- * domains 1..4 (the PSG state joined domains 2 and 4). Every other value is refused. */
+ * domain version 1; none is part of the composite, which is version 3 since plan 06-05 over
+ * domains 1..4 (the STIC registers and state joined domains 2 and 4, framing as in version 2). Every other value is refused. */
 #define IVS_DIGEST_COMPOSITE 0u
 #define IVS_DIGEST_CPU 1u
 #define IVS_DIGEST_MEM 2u
@@ -349,7 +349,7 @@ IVS_API ivs_status ivs_machine_info(const ivs_machine *m, ivs_info *out);
 
 /* SHA-256 of the canonical state (D-35) of one domain (IVS_DIGEST_CPU, _MEM, _IMAGES, _INSTANCE,
  * _VIDEO, _AUDIO, _INPUT, _PSGLOG) or of the composite of the first four (IVS_DIGEST_COMPOSITE,
- * composite version 2; the observation domains are not in it, D-10, D-18). The serialization is field by field and
+ * composite version 3, plan 06-05; the observation domains are not in it, D-10, D-18). The serialization is field by field and
  * big-endian, so the value does not depend on struct layout, padding or host byte order; it
  * excludes the magic and padding. BAD_ARG: out NULL or any other domain; then BAD_HANDLE; then
  * BAD_ARG: out overlapping the instance storage.

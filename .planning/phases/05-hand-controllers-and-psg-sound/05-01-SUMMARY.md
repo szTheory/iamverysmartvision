@@ -65,6 +65,7 @@ key-decisions:
 
 duration: about 40 min of edits plus six gate runs (first commit 01:33, last 01:59)
 completed: 2026-11-12
+requirements-completed: [INP-01, INP-02, INP-03, API-03, AUD-01, AUD-02]  # backfilled by plan 08-20 from the plan requirements field; closure evidence is the phase VERIFICATION record, not this line
 ---
 
 # Phase 5 Plan 01: sources and oracles Summary

@@ -15,8 +15,9 @@ differentiators and all variant/peripheral profiles are v2.
   are *parameters*, not silent decisions. Where a requirement depends on an
   open decision it names the decision (`D#`, see "Decision Gates").
 - "Profile" means an explicitly named hardware/content configuration recorded
-  as data with per-field provenance tags. The recommended first profile is the
-  2609-family NTSC Master Component (recommendation, not an owner decision).
+  as data with per-field provenance tags. The first profile is the
+  2609-family NTSC Master Component, `intv-2609-ntsc-family-p1` (delegated
+  decision D3, recorded in PROJECT.md).
 - "Evidence tier" means one of: source expectation, public vector, original
   diagnostic, independent-implementation comparison, measured hardware,
   deterministic repeatability, playable guest progress, installed-host
@@ -92,7 +93,7 @@ differentiators and all variant/peripheral profiles are v2.
 - [x] **VID-02**: The VBLANK interrupt and BUSRQ/BUSAK bus-steal events occur at profile-defined machine times and their effect on CPU progress is tested.
 - [x] **VID-03**: The core produces a raw palette-index framebuffer at a defined machine-time boundary with profile-defined geometry (D8); palette, scaling and presentation remain host policy.
 - [x] **VID-04**: Foreground/Background and Color Stack card modes render hand-derived expected index frames from known BACKTAB/GRAM fixture contents (no dependency on a real GROM image in CI).
-- [ ] **VID-05**: MOBs, border, horizontal/vertical delay and collision registers are each covered by a single-feature fixture with an independently derived expected result, or explicitly listed as unknown-default-chosen.
+- [x] **VID-05**: MOBs, border, horizontal/vertical delay and collision registers are each covered by a single-feature fixture with an independently derived expected result, or explicitly listed as unknown-default-chosen.
 - [x] **VID-06**: A side-effect-free inspection path exists so debuggers/tests can read STIC/device state without triggering read side effects.
 
 ### Visible Scenario (SCN)
@@ -102,9 +103,9 @@ differentiators and all variant/peripheral profiles are v2.
 
 ### State and Performance (STA / PRF)
 
-- [ ] **STA-01**: A canonical, endianness-independent state serializer is used for both snapshots and digests; snapshots carry format version, profile identity and system-image digests, and restore validates before mutating.
-- [ ] **STA-02**: Snapshot→restore→run equals uninterrupted run at hard points (mid-frame, mid-SDBD, mid-bus-steal), covering a written hidden-state checklist.
-- [ ] **PRF-01**: Named deterministic workloads have a benchmark runner that asserts the correct output digest before reporting throughput; throughput, end-to-end latency and CI time are reported separately.
+- [x] **STA-01**: A canonical, endianness-independent state serializer is used for both snapshots and digests; snapshots carry format version, profile identity and system-image digests, and restore validates before mutating.
+- [x] **STA-02**: Snapshot→restore→run equals uninterrupted run at hard points (mid-frame, mid-SDBD, mid-bus-steal), covering a written hidden-state checklist.
+- [x] **PRF-01**: Named deterministic workloads have a benchmark runner that asserts the correct output digest before reporting throughput; throughput, end-to-end latency and CI time are reported separately.
 
 ### Milestone and Release Practice (REL)
 
@@ -156,7 +157,7 @@ Deferred. Tracked, not in the current roadmap. Each becomes its own profile/slic
 
 ## Decision Gates
 
-Open decisions referenced by requirements. None are decided by this document.
+Decisions referenced by requirements. This document decides none of them; the status column says where each was decided. D1 to D9 and D12 are delegated decisions, D10 and D11 are open owner hard stops that were not performed, and D13 is deferred.
 
 | # | Decision | Status | Needed before |
 |---|----------|--------|---------------|
@@ -164,14 +165,14 @@ Open decisions referenced by requirements. None are decided by this document.
 | D2 | CPU-cycle unit, time base, crystal constant | Delegated decision 2026-11-09 (PROJECT.md) | CPU phase |
 | D3 | First profile: 2609 NTSC recommended; revision, STIC/PSG parts, power-on RAM policy | Delegated decision 2026-11-09 (PROJECT.md) | Foundations exit |
 | D4 | Fixture assembler policy (pinned dev-only `as1600` + cross-check vs project mini-assembler) | Delegated decision 2026-11-11 (Phase 4 D-25: hand-assembled listings); re-evaluated in Phase 7 (D-16, D-19): project mini-assembler `ivs_asm`, never shipped, `PROJECT.md` | Runner phase; Phase 7 |
-| D5 | System-image policy: user-supplied EXEC/GROM only; project boot stub for CI, labelled "not an EXEC" | Decided in Phase 3 (D-24, delegated) | Loader / runner phases |
-| D6 | Controller core-input representation (logical lossless vs electrical per port) | Owner + architecture — open (conflict C14) | Core API skeleton |
-| D7 | Reference PCM location (core observation layer vs host) | Architecture — open | Sound phase |
-| D8 | Raw framebuffer geometry (159 vs 160 visible, nominal grid) | Architecture + evidence — open | Video phase |
-| D9 | License, repository visibility, naming/trademark, publication | Delegated decision 2026-11-09 (PROJECT.md) | Any external publication |
+| D5 | System-image policy: user-supplied EXEC/GROM only; project boot stub for CI, labelled "not an EXEC" | Delegated decision 2026-11-11 (PROJECT.md; Phase 3 D-24) | Loader / runner phases |
+| D6 | Controller core-input representation (logical lossless vs electrical per port) | Delegated decision 2026-11-11 (PROJECT.md; Phase 4 D-12, D-25, D-41): logical switch state per PSG port | Core API skeleton |
+| D7 | Reference PCM location (core observation layer vs host) | Delegated decision 2026-11-12 (PROJECT.md; Phase 5 D-15, D-21): outside the core, `tools/pcm`, runner `--audio-wav` only | Sound phase |
+| D8 | Raw framebuffer geometry (159 vs 160 visible, nominal grid) | Delegated decision 2026-11-12 (PROJECT.md; Phase 6 D-12): 159 x 96, reversible by one profile field | Video phase |
+| D9 | License, repository visibility, naming/trademark, publication | Delegated decision 2026-11-09 (PROJECT.md); the delegated release flow (`.planning/AUTONOMY.md` section 5) applies at the Phase 8 milestone close | Any external publication |
 | D10 | Physical hardware measurement | Owner gate | Any measured-tier claim |
 | D11 | Owner-local real EXEC/GROM runs | Owner gate — open, not performed (SCN-02 documented route only: no result, claim or tier) | Any real-EXEC result |
-| D12 | CI shape (job count, sanitizers, fuzz schedule) | Architecture — open | Runner/CI phase |
+| D12 | CI shape (job count, sanitizers, fuzz schedule) | Delegated decision 2026-11-11 (PROJECT.md; Phase 4 D-41 to D-45): one ubuntu-24.04 job, no matrix | Runner/CI phase |
 | D13 | LibFuturo adapter / shared-contract change | Owner gate | Not before a real consumer |
 
 ## Traceability
@@ -222,13 +223,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VID-02 | Phase 6 | Complete |
 | VID-03 | Phase 6 | Complete |
 | VID-04 | Phase 6 | Complete |
-| VID-05 | Phase 8 | Pending |
+| VID-05 | Phase 8 | Complete |
 | VID-06 | Phase 6 | Complete |
 | SCN-01 | Phase 7 | Complete |
 | SCN-02 | Phase 7 | Complete |
-| STA-01 | Phase 8 | Pending |
-| STA-02 | Phase 8 | Pending |
-| PRF-01 | Phase 8 | Pending |
+| STA-01 | Phase 8 | Complete |
+| STA-02 | Phase 8 | Complete |
+| PRF-01 | Phase 8 | Complete |
 | REL-01 | Phase 8 | Pending |
 
 **Phase 5 close-out note (plan 05-12):** INP-01, INP-02, INP-03, API-03, AUD-01 and AUD-02 are marked complete because the gate evidence in `.planning/phases/05-hand-controllers-and-psg-sound/05-VERIFICATION.md` exists, and only on these terms. Every claim behind them (CL-0009 to CL-0015) is `provisional` and none is at the `measured-hardware` tier (D10): the controller byte table is a tier 4 community literal (C16) with a blind second read that agrees on 31 of 31 rows, the PSG rules are read from AY-3-8910 pages and applied to an AY-3-8914-class part by inference (C11, C69), and the electrical combinations (C63) and port edge cases (C64 to C66) are labelled defaults. Owner hardware items (32 listed in `data/expected/d10-measurements.ids`, D10 and D11) are handed off and not performed; no listening handoff exists because no Phase 5 artifact has a listenable tone (D-22, deferred).
@@ -237,6 +238,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 **Phase 7 close-out note (plan 07-12):** SCN-01 and SCN-02 are marked complete because the gate evidence in `.planning/phases/07-first-visible-original-scenario/07-VERIFICATION.md` exists (V1 to V20), and only on these terms. SCN-01: the original program Lamp Tone (tracked source, MIT, `redistributable: yes`, assembled by the project's `ivs_asm`) runs in the gate through the runner and through the independently built installed consumer, and reaches a hand-derived guest-state progress predicate under scripted input, with the raw video, the PSG write log and the raw samples each asserted; its two claims, CL-0023 (`playable-guest-progress`, the only wording is "playable guest progress, for this original program only") and CL-0024 (`installed-host-behavior`), are `provisional` (tier 4 and inference fields, hand-derived expectations by the author of the program and the core with one blind second read, no timing claimed, index frames not pictures, nobody looked or listened) and none is at the `measured-hardware` tier (D10). SCN-02 is complete on documented-route terms only (the Phase 5 and 6 precedent): the owner-local route, its identity layers, the non-redistributable manifests, the counted SKIPPED template scenario and the tested refusals of the owner-run helper and the runner exist, but D11 is open and not performed, so there is no claim-ledger entry and no tier for any real-EXEC result. Owner hand-offs (listening, viewing frames, the D10 items, the D11 run, publication) are listed in the record, are not evidence and were not performed.
 
+**Phase 8 wave A close-out note (plan 08-08):** VID-05 is marked complete because the gate evidence of plans 08-03 to 08-08 exists (the hand-derived oracle `docs/video/diag-stic-2-derivation.md` with the ten frames F-M0 to F-M9 and a blind second read, the renderer, collision, delay and border-extension tests, the original program `ivs-diag-stic-2` with six scenarios and six program mutants, and the VID-05 lines of the important-gates registry), and only on these terms. The three claims behind it (CL-0025, CL-0026, CL-0027) are `provisional`, at the tiers `source-expectation` and `original-diagnostic` and no higher, and none is at the `measured-hardware` tier (D10): every rule rests on one tier 4 community lineage (no tier 1 to 3 page prints any MOB, delay, collision or border-extension bit), the expected values are hand derived by the author of the program and the core with a blind second read of the same model family (C43), and nobody looked at a picture. The pinned remainder is listed and not hidden: C107 to C110 and the C87 pins (the priority-set pixel rule, half-height publication, strip unit and strip against delay, exposed-area content, a MOB in the exposed area, the delay range, collision at X 0, at the edge, off screen and with the display off, the read with no side effect, and the own bit on a CPU write), each with a profile field or a held-by-absence test that flips it, a claim exclusion and an owner hand-off; the five hand-offs D10-VID-10 to D10-VID-14 are handed off and not performed; collision is evaluated on the undelayed scene and the frame counter of the diagnostic relies on the zero power-on RAM default, both stated in the notes; the published plane stays 159 by 96 (D8). Owner hardware items (47 listed in `data/expected/d10-measurements.ids`, D10 and D11) are handed off and not performed.
+
+**Phase 8 wave B close-out note (plan 08-17):** STA-01 and STA-02 are marked complete because the gate evidence of plans 08-09 to 08-17 exists (the container IVSN v1 and the 88-row hidden-state checklist written before any code, with a blind second read; the digest field table as the single serializer with the writer, the instance-free reader and the validating restore; the corruption and fuzz family; the 18 hard-point cuts with the poisoned-target comparison against the uninterrupted run and the row-omission sweep; the round-trip hook of `ivs-run` and the fifth installed-consumer replay; the `.ivsn` rights rule; and the STA-01 and STA-02 lines of the important-gates registry: nine faults, six judges and seven controls that fail for their intended reasons), and only on these terms. The one claim behind them, CL-0028, is `provisional`, at the tier `deterministic-repeatability` and no higher, for one build and one profile (`intv-2609-ntsc-family-p1`): it states that a snapshot restores and continues equal to the uninterrupted run at the 18 named hard points and that the named classes of bad snapshots are refused with the instance unchanged, and it says nothing about a console, a timing figure or another build; nothing is measured on hardware (D10 and D11 are not performed, no real EXEC or GROM image was used). The checklist, the container and the implementation have one author, and the blind second read of the checklist (`docs/state/checklist-second-read-record.md`: 87 of 88 classes agree, the one difference caused by the blinded inputs, 0 corrections) was made by a reader of the same model family, so a shared misreading is possible and agreement is not independent evidence. The sweep exempts 9 of the 51 STATE rows from the divergence requirement, each with an argument (the exemption list of plan 08-14, `data/expected/state-sweep-notes.ids`, with the arguments in `docs/state/hidden-state-checklist.md`; the frozen checklist file carries no exemption), and two acceptances are pinned and not closed (a STIC register word with a bit outside its write mask, and machine time not tied to a unit boundary). The eight machine-level digests of the header are informational and not authenticated, the trailer is integrity and not authenticity, the encoding is specified byte by byte but no big-endian host was run, and the format is exact-build and not archival. No file persistence exists: the core writes no file, the runner has no snapshot file option, the optional `--snapshot-out` and `--snapshot-in` are deferred (D-18), and the persistence policy (open question 8) is recorded as a delegated decision: bytes only from the core, files are a host's policy, no default location. The applied-event count of an instance has no public getter (a host keeps the count its run calls reported beside the snapshot). Cost: checkpoint C of plan 08-17 is recorded in `.planning/CI-EFFICIENCY.md`.
+
+**Phase 8 wave C close-out note (plan 08-19):** PRF-01 is marked complete because the gate evidence of plans 08-18 and 08-19 exists, and only on these terms. Four named deterministic workloads (`bench-lamp-idle`, `bench-lamp-input` and `bench-lamp-snapshot` of 120 frames and `bench-lamp-cold` of 13; the snapshot workload is the idle scenario with a save, a reset and a restore every 30 frames, three cuts, and its digest precondition is the idle golden) are verified in every gate run in both presets against committed repeatability goldens, and `ivs-bench` compares the report with the golden and with the final machine time before it reads any timer: a mismatch is refused with exit 15 and a row that holds no figure, shown by `bench.mutant.refuse-mutated-golden`, `bench.refuse.wrong-ticks` and the judge `bench.judge.refuse-has-no-timing` (the two named in the important-gates registry under the gate `prf01-digest-first`). Throughput, latency and CI time are reported in separate groups and CI time is a pointer to `.planning/ci-runs.tsv`. No throughput threshold exists anywhere and the gate never reads a timer. The committed baseline `data/bench/baseline-darwin-arm64.tsv` is one person-written record on one host class whose format only is checked (`bench.baseline.record-format`) and which no check asserts; it was taken on a host that was NOT idle (load average 5.96 on 18 cpus, recorded verbatim in its idle line), so it is informational, and a record taken on an idle host replaces it by a reviewed change. No optimization was made in Phase 8 (about 43 percent of a verified run is SHA-256 over every frame, by the design of the video evidence path, measured once on a loaded host). No claim row exists: every figure carries the label `repeatability-only` and is never evidence. D10 and D11 are not performed. REL-01 stays Pending.
+
+**Phase 8 close-out note, stage 1 of REL-01 (plan 08-21):** REL-01 stays `Pending` in its checkbox and in the traceability row, and is not marked complete by this note. Stage 1 is recorded in `.planning/phases/08-stic-completion-save-state-performance-baselines/08-MILESTONE-CLOSE.md` (sections A to K, the generated sections A, F, G and J from `tools/release-readiness.sh`, the full history scan with its recorded disposition of six accepted findings and none new, the checks P2 to P5 and P7 with their stage 1 evidence, the hand-offs and the remaining steps) and in `08-VERIFICATION.md` in the same directory, by an executor and not by an independent verifier. REL-01 is marked complete only after stage 2: the push run on the merge commit, the open pull request and issue counts, the ruleset read and the release decision, recorded by the orchestrator's `gsd/records-m1-close` pull request after the merge (D-28), with a check that no placeholder remains (`.planning/ops/RELEASE-OPS.md` item h). The release is not started: the owner paused the flow after Phase 8, a decision relayed by the orchestrator. The roll-up reads `49 of 50 closed on their recorded terms, REL-01 at stage 1`, with `28 claims, 27 provisional, none measured`; D10 and D11 are not performed.
+
 **Coverage:**
 - v1 requirements: 50 total
 - Mapped to phases: 50
@@ -244,4 +253,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-11-09*
-*Last updated: 2026-11-12 after Phase 6 close-out (plan 06-14)*
+*Last updated: 2026-11-15 after the Phase 8 close-out, stage 1 of REL-01 (plan 08-21); REL-01 stays Pending until stage 2*
