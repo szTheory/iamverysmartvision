@@ -19,14 +19,14 @@ A sanitized tree (the `dev` preset, `IVS_SAN`) refuses to install, because its a
 
 ## Installed layout
 
-The prefix holds exactly these files (the list is pinned by `data/expected/pkg-install-files.ids`):
+The prefix holds exactly these eleven files, five headers, the static library, four CMake package files and the licence (the list is pinned by `data/expected/pkg-install-files.ids`):
 
 | Path | Content |
 |---|---|
 | `include/ivs/ivs.h` | the umbrella header a host includes; the API version macros |
 | `include/ivs/ivs_machine.h` | sizing, create, destroy, info, load, unload, reset, state digest |
 | `include/ivs/ivs_run.h` | bounded run, input events, CPU state, peek |
-| `include/ivs/ivs_state.h` | snapshot size and snapshot save, the snapshot report layout |
+| `include/ivs/ivs_state.h` | snapshot size, save, restore and the instance-free describe, the snapshot report layout |
 | `include/ivs/ivs_status.h` | status codes, `IVS_API` |
 | `lib/libivs_core.a` | the static library |
 | `lib/cmake/ivs/ivsConfig.cmake` | the package config (hand-written, no paths) |
@@ -49,7 +49,7 @@ target_link_libraries(my_host PRIVATE ivs::core)
 ```
 
 Configure with `-DCMAKE_PREFIX_PATH=<dir>`.
-Include `<ivs/ivs.h>`; it brings in the other three headers.
+Include `<ivs/ivs.h>`; it brings in the other four headers.
 `tests/installed-consumer/` is a complete example: it sizes and creates an instance in storage it owns, loads the boot stub, a zero GROM and the diagnostic cartridge from files named on its command line, shows two refusals, resets, makes two bounded run calls with two input events and prints the per-domain digests; since plan 05-11 it takes a third image, the second diagnostic, and replays its seven controller events through the same headers with audio and write-log buffers sized from `ivs_info`, printing the peeked `$01FE` after the first event and `ctrl.digest.<domain>` lines; since plan 06-13 it takes a fourth image, the third diagnostic, and replays it with video, audio and write-log buffers sized from `ivs_info` (the video buffer includes `video_slack_frames`), checks the first frame slot (header, hand-derived pixels, two rectangles, byte count, index and tick order), repeats the run with `IVS_RUN_F_STOP_ON_FRAME` on a fresh instance and prints `stic.`-prefixed lines and `stic.digest.<domain>` lines; since plan 07-09 it takes a fifth and a sixth image, the project boot stub contract 2 and the original program "Lamp Tone" (six images in all), and replays the pass scenario of that program the way a host would (see the fourth replay below); since plan 08-16 the same six images feed a fifth replay of the snapshot calls (see the fifth replay below). It contains no SHA-256 code and no content bytes: every image is a file named on its command line.
 
 ### The fourth replay (plan 07-09)
@@ -112,14 +112,15 @@ A plain dry run and the gate do not need the section.
 
 ## Release content (D-33)
 
-This is the statement for the next release notes. It describes what a release contains; it makes no claim of its own.
+This is the statement for the release notes. It describes what a release contains; it makes no claim of its own.
 
-- The release carries the installed package (the `ivs::core` archive, its headers and the CMake package files, from the release preset only) and the source tarball of the tested commit.
-- The installed headers include `ivs/ivs_state.h` (plan 08-11): the snapshot size and snapshot save calls and the layout of the snapshot report. A snapshot is exact-build state of one profile written into a buffer the host owns; it never carries an image byte, it is not an archival format and it says nothing about hardware. The container is specified in `docs/formats/ivsn-v1.md`.
+- A release carries four things: the source archive of the tested commit, the install archive (the eleven files of the pinned list above, from the release preset only), the checksum file `SHA256SUMS` and the release notes, which are the matching section of `CHANGELOG.md` verbatim.
+- It is created as a draft pre-release by `.github/workflows/release.yml`, a workflow that fires only on a strict version tag (see Release workflow), and the installed consumer is built against the very install archive that ships before the draft is created. A pre-release is a release of an exact tested commit that makes no promise of stability.
+- The installed headers include `ivs/ivs_state.h` (plans 08-11 to 08-13): the snapshot size, save and restore calls, the instance-free describe call and the layout of the snapshot report. A snapshot is exact-build state of one profile written into a buffer the host owns; it never carries an image byte, it is not an archival format and it says nothing about hardware. The container is specified in `docs/formats/ivsn-v1.md`.
 - The first original program, `ivs-demo-lamp-tone-1`, ships only as tracked source (`fixtures/FX-demo-lamp-tone-1/lamp-tone.asm` and its generated listing, MIT licence, manifest `redistributable: yes`). No program image is committed or released.
 - Neither the runner (`ivs-run`), nor `ivs_pack`, nor `ivs_asm` is installed or shipped, so nothing downloadable is runnable yet: a reader builds the runner and the image tools from the source tarball.
 - No EXEC, GROM or commercial content is in a release, and none was used by any check. The owner-local route for user-supplied images (`docs/owner-images.md`) is not part of a release and has not been performed (D11).
-- Claims in the notes are stated as profile, evidence tier and artifact: the program is playable guest progress, for this original program only [claim:CL-0023], and its installed-package replay is [claim:CL-0024]; both are provisional.
+- Claims in the notes are stated as profile, evidence tier and artifact: the program is playable guest progress, for this original program only [claim:CL-0023], and its installed-package replay is [claim:CL-0024]. The other replays of the installed consumer are [claim:CL-0015] and [claim:CL-0022], and the snapshot behaviour of one build and one profile is repeatability only [claim:CL-0028], held by the core's own state suite and not by the consumer's fifth replay. Each of these claims is provisional.
 
 ## What the gate step checks
 
@@ -128,7 +129,7 @@ This is the statement for the next release notes. It describes what a release co
 1. the moved prefix equals the pinned file list, its headers equal `core/include/ivs`, its archive equals the build tree's archive, and no installed file contains a repository path;
 2. every `IVS_API` name of the installed headers is defined in the archive, the set equals the call list of `data/api/api-effects.json`, and every external definition starts with `ivs_`; each installed header compiles alone as C17 and as C++17;
 3. the consumer in `tests/installed-consumer/` is copied outside the repository and configured with only the moved prefix (package registries off, path variables unset), built with strict C17 flags (`-Wall -Wextra -Wpedantic -Wconversion -Wshadow -Werror`, with the package headers not treated as system headers) and run on `build/release/images/boot-stub.exec`, `diag-cpu-1.ivsc`, `diag-ctrl-psg-1.ivsc`, `diag-stic-1.ivsc`, `boot-stub-2.exec` and `lamp-tone.ivsc`;
-4. its output equals `data/expected/pkg-consumer.golden` (a regression pin; the emulator is the oracle), and its `digest.<domain>` lines equal those of `data/golden/diag-input-pass.digests`, which the headless runner produced for the same scenario through the build tree; its `stic.digest.<domain>` lines and observed domains (video and audio observed, the write log and the input not) equal those of `data/golden/diag-stic-fgbg-pass.digests` in the same way; its `scn.digest.<domain>` lines and observed domains (every domain observed) equal those of `data/golden/demo-lamp-tone-pass.digests` in the same way, and so do its `snap.digest.<domain>` lines (the fifth replay, plan 08-16); its `ctrl.digest.<domain>` lines and observed domains (audio and the write log included) equal those of `data/golden/diag-ctrl-psg-pass.digests` in the same way [claim:CL-0015];
+4. its output equals `data/expected/pkg-consumer.golden` (a regression pin; the emulator is the oracle), and its `digest.<domain>` lines equal those of `data/golden/diag-input-pass.digests`, which the headless runner produced for the same scenario through the build tree; its `stic.digest.<domain>` lines and observed domains (video and audio observed, the write log and the input not) equal those of `data/golden/diag-stic-fgbg-pass.digests` in the same way [claim:CL-0022]; its `scn.digest.<domain>` lines and observed domains (every domain observed) equal those of `data/golden/demo-lamp-tone-pass.digests` in the same way [claim:CL-0024], and so do its `snap.digest.<domain>` lines (the fifth replay, plan 08-16); its `ctrl.digest.<domain>` lines and observed domains (audio and the write log included) equal those of `data/golden/diag-ctrl-psg-pass.digests` in the same way [claim:CL-0015];
 5. the consumer's build records show where its inputs came from: `ninja -t deps` lists `ivs.h`, `ivs_machine.h`, `ivs_run.h`, `ivs_state.h` and `ivs_status.h` under the moved prefix and nothing under the repository; the link line names `<prefix>/lib/libivs_core.a` and no other copy of the library; `ivs_DIR` lies under the moved prefix; the `ivs_*` names the consumer object references equal `data/expected/pkg-consumer-calls.ids`;
 6. a small C++17 program (`tests/installed-consumer/main.cpp`) compiles and links directly against the installed headers and archive, so a missing `extern "C"` would show at link time (a visible skip without a C++ compiler);
 7. nineteen in-step selftests (`data/expected/pkg-selftests.ids`) mutate copies and require each check to fail for its intended reason, among them a consumer build that adds the repository's `core/src` include directory (the dependency check must report `pkg-leak`) and a consumer output with one digest nibble changed (`pkg-golden-diff`); three more concern the second replay: a changed `ctrl.digest` nibble, a dropped `ctrl.digest.psglog` line (`pkg-runner-golden-diff`) and a changed peeked `$01FE` (`pkg-golden-diff`); two more concern the third replay: a dropped `stic.digest.video` line (the observed domains differ) and a changed `stic.digest` nibble (`pkg-runner-golden-diff`); two more concern the fourth replay: a dropped `scn.digest.audio` line (the observed domains differ) and a changed `scn.digest.video` nibble (`pkg-runner-golden-diff`); two more concern the fifth replay: a dropped `snap.digest.audio` line (the observed domains differ) and a changed `snap.digest.video` nibble (`pkg-runner-golden-diff`).

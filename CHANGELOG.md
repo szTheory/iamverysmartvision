@@ -5,13 +5,30 @@ The text step scans this file for claim words like the README and `docs/`.
 
 ## [Unreleased]
 
+Nothing is unreleased yet.
+
+## [0.1.0]
+
 Pre-release of a deterministic, headless machine core and its installed package for the profile `intv-2609-ntsc-family-p1`; nothing downloadable executes a program.
+This section is the pre-release of the exact commit tagged v0.1.0; the release's own date is on the releases page.
 
 ### What a release contains
 
 - The source archive of the tested commit.
-- The install archive: ten files, namely the static library `libivs_core.a`, the four public headers, the CMake package files and the licence. The archive name states the operating system and architecture it was built on.
+- The install archive: eleven files, namely the static library `libivs_core.a`, the five public headers, the CMake package files and the licence. The archive name states the operating system and architecture it was built on.
 - `SHA256SUMS`, the SHA-256 of both archives.
+
+### Format and API versions
+
+- The API version is 0.1.0, the version macros of `ivs.h`; the installed package reports the same version.
+- The formats are the snapshot container IVSN v1 with schema version 1, the cartridge container IVSC v1 and the video slot format INDEX8_FRAMES_V1 with its 32-byte slot header.
+- The state digest composite is version 3.
+
+### How to check a download
+
+- Compare the SHA-256 of each archive with the lines of `SHA256SUMS`.
+- Unpack the install archive and configure a host project with `find_package(ivs 0.1 CONFIG REQUIRED)` and `CMAKE_PREFIX_PATH` set to the unpacked directory.
+- `docs/packaging.md` lists the installed files and describes the installed consumer that the release job builds against the very archive it ships.
 
 ### What a release does not contain
 

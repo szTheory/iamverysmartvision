@@ -300,7 +300,7 @@
     {
       "name": "ivs_machine_state_digest",
       "header": "core/include/ivs/ivs_machine.h",
-      "on_ok": "Writes the SHA-256 of the canonical big-endian state of one domain (CPU, MEM, IMAGES, INSTANCE, and the observation domains VIDEO, AUDIO, INPUT, PSGLOG) or of the composite of the first four into out_sha256 (D-35, D-10, D-18: the composite is version 2 over domains 1..4 since plan 05-03); the instance is not written.",
+      "on_ok": "Writes the SHA-256 of the canonical big-endian state of one domain (CPU, MEM, IMAGES, INSTANCE, and the observation domains VIDEO, AUDIO, INPUT, PSGLOG) or of the composite of the first four into out_sha256 (D-35, D-10, D-18: the composite is version 3 over domains 1..4 since plan 06-05, when the STIC registers and state joined domains 2 and 4, with the framing as in version 2); the instance is not written.",
       "precedence": [
         {"status": "IVS_E_BAD_ARG", "checks": "out NULL, or a domain other than 0..4 and 16..19 (20 included)", "pinned_by": ["machine.refuse.digest.domain-over-handle"]},
         {"status": "IVS_E_BAD_HANDLE", "checks": "NULL or invalid handle (a damaged stored profile index included, review WR-03)", "pinned_by": ["machine.refuse.digest.null-handle-low-out", "machine.refuse.digest.destroyed-out-inside"]},
