@@ -6,21 +6,21 @@
 #   the scenarios demo-lamp-tone-idle and demo-lamp-tone-pass; diag-stic-2-collision is the scenario diag-stic2-collision-pass (controller word BD
 #   at tick 0); none means that the cut is taken before any unit runs (HP-RESETPEND). The continuation of a none cut is the lamp-idle run.
 # pinned-tick: the exact token pending-08-14 until plan 08-14 finds the first unit boundary where the predicate holds (a witness scan over the
-#   step seam), writes the decimal machine tick here and re-proves it with a witness test. The ticks are self-recorded repeatability pins, never
-#   evidence of correctness.
+#   step seam), writes the decimal machine tick here and re-proves it with a witness test. The ticks are self-recorded repeatability pins (found
+#   by the scan of tests/state/state_witness.c, re-proved by the ids state.witness.*), never evidence of correctness.
 # family: the test family that compares the cut: cpu-points (state.cut.cpu-points), stic-points (state.cut.stic-points) or device-points
 #   (state.cut.device-points).
-HP-SDBD P-SDBD pending-08-14 cpu-points
-HP-STEAL-A lamp-idle pending-08-14 cpu-points
-HP-STEAL-B lamp-idle pending-08-14 cpu-points
-HP-STEAL-C lamp-idle pending-08-14 cpu-points
-HP-OPEN lamp-idle pending-08-14 cpu-points
-HP-CLOSED lamp-idle pending-08-14 cpu-points
-HP-INT-ENTRY lamp-idle pending-08-14 cpu-points
-HP-HLT P-HLT pending-08-14 cpu-points
-HP-HALTED P-HLT pending-08-14 cpu-points
-HP-FAULTED P-FAULT pending-08-14 cpu-points
-HP-RESETPEND none pending-08-14 cpu-points
+HP-SDBD P-SDBD 112 cpu-points
+HP-STEAL-A lamp-idle 74932 cpu-points
+HP-STEAL-B lamp-idle 78580 cpu-points
+HP-STEAL-C lamp-idle 79016 cpu-points
+HP-OPEN lamp-idle 59772 cpu-points
+HP-CLOSED lamp-idle 59900 cpu-points
+HP-INT-ENTRY lamp-idle 59808 cpu-points
+HP-HLT P-HLT 372 cpu-points
+HP-HALTED P-HLT 15168 cpu-points
+HP-FAULTED P-FAULT 540 cpu-points
+HP-RESETPEND none 0 cpu-points
 HP-FRAME-MID lamp-idle pending-08-14 stic-points
 HP-LATCH P-LATCH pending-08-14 stic-points
 HP-MOB diag-stic-2-collision pending-08-14 stic-points

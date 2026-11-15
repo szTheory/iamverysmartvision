@@ -100,5 +100,10 @@ extern const ivs_test_case ivs_state_restore_cases[];
 extern const size_t ivs_state_restore_count;
 extern const ivs_test_case ivs_state_invariants_cases[];
 extern const size_t ivs_state_invariants_count;
+/* Plan 08-14: the witness scan of the hard-point cuts and the cut comparisons (state_witness.c, state_cut.c). */
+extern const ivs_test_case ivs_state_witness_cases[];
+extern const size_t ivs_state_witness_count;
+extern const ivs_test_case ivs_state_cut_cases[];
+extern const size_t ivs_state_cut_count;
 
 #endif

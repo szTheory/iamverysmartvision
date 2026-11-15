@@ -233,3 +233,29 @@ The loop is 70 cycles (10 + 8 + 11 + 11 + 11 + 10 + 9). The first read lands in 
 | 58 | `0220 0001` | B self |
 
 Mixer `$34` has bits 0 and 1 clear (tones A and B on), bit 2 set (tone C off), bit 3 clear (noise A on) and bits 4 and 5 set (noise B and C off). The tone periods are written twice with different values, so the tone counters are mid-period at the cut and cannot be derived from machine time; the envelope shape `8` repeats a 16-state decay and is never held after its write, so a cut in the first thousands of ticks catches it mid-cycle; amplitude A selects the envelope, so the audio levels follow it. A restore that recomputed a counter from time instead of restoring it would phase the tones wrongly and shift every later level-change record of the audio chain.
+
+## As built (plan 08-14, task 1): the eleven cpu-point ticks
+
+The ticks below were found by the witness scan of `tests/state/state_witness.c` (the first unit boundary at or after the occurrence rule at which the predicate above holds), written into `data/expected/state-cuts.ids` and are re-proved by the id `state.witness.cpu-points`: the scan's first occurrence equals the pin, a fresh instance run to the pin through the public run call ends exactly on that boundary with the same bytes as the scan's instance, and the instance part of the predicate holds there.
+They are self-recorded pins that show repeatability of one build and one profile, never evidence of correctness. [nc]
+No predicate had to be changed and no program had to be corrected: all eleven predicates hold in their programs, where the document expected them.
+
+| Cut | Program | Tick | Units from the reset | Arithmetic cross-check |
+|---|---|---|---|---|
+| HP-SDBD | P-SDBD | 112 | 4 | the document's 28 cycles: 5 + 8 + 11 + 4, times 4 ticks per cycle |
+| HP-STEAL-A | lamp-idle | 74,932 | 2,256 | frame 1 starts at tick 59,736 and its first bus window at cycle 3,791 (tick 74,900); a unit sees the lines of one CPU cycle (4 ticks) before its start, so the first unit that starts at tick 74,904 or later is the grant; it starts at 74,928 and takes 1 cycle |
+| HP-STEAL-B | lamp-idle | 78,580 | 2,473 | the second window starts at cycle 3,791 + 912 = 4,703 (tick 59,736 + 18,812 = 78,548); the grant unit starts at the first idle-loop boundary at or after 78,552 (the lag-adjusted start; here 78,572) and takes 1 cycle, the first hold unit ends 4 ticks after that, at 78,580, and the one window already released in the frame makes the count 1 |
+| HP-STEAL-C | lamp-idle | 79,016 | 2,581 | the hold is 114 cycles: BUSRQ falls at tick 78,548 + 456 = 79,004; the release unit is the first unit that starts at 79,008 or later and takes 2 cycles (8 ticks): 79,016 |
+| HP-OPEN | lamp-idle | 59,772 | 1,750 | frame 1 starts at 59,736 and INTRM is asserted from its start; a unit sees the line 4 ticks before its start, so the first boundary at or after 59,740 with the enable set and the boundary open is 59,772 (the idle loop's units are 9 cycles, 36 ticks) |
+| HP-INT-ENTRY | lamp-idle | 59,808 | 1,751 | the unit after HP-OPEN: an interrupt entry is 9 cycles, 36 ticks: 59,772 + 36 |
+| HP-CLOSED | lamp-idle | 59,900 | 1,753 | the interrupt routine's first two instructions (the jump to the handler, 12 cycles, and the display strobe MVO, 11 cycles, 92 ticks together) after the entry: 59,808 + 92 |
+| HP-HLT | P-HLT | 372 | 12 | the document's 93 cycles, times 4 |
+| HP-HALTED | P-HLT | 15,168 | 3,703 | the first window of frame 0 starts at cycle 3,791 (tick 15,164); the next unit sees the line one cycle (4 ticks) later: 15,164 + 4 |
+| HP-FAULTED | P-FAULT | 540 | 19 | the document's 135 cycles, times 4; 19 units: the reset entry, MVII, eight DECR, eight branches (seven taken, one not) and the fault unit |
+| HP-RESETPEND | none | 0 | 0 | the boundary before any unit |
+
+The window arithmetic of the table uses the profile fields named at the top of this note (the line sampling lag is one CPU cycle).
+The first interrupt of the Lamp Tone run is the one of frame 1 and its vector jumps with the interrupts disabled, as the cut definitions of HP-OPEN, HP-CLOSED and HP-INT-ENTRY assumed; the display latch is set by the first strobe of the routine, so the closed boundary after it is the cut.
+
+The end ticks E of the uninterrupted references (the arithmetic is in `tests/state/state_progs.c`) are 1,000 (HP-SDBD), 4 frames = 238,944 (the lamp cuts), 70,000 (HP-HLT, HP-HALTED: frame 0 ends at 59,736), 1,540 (HP-FAULTED: 540 + 1,000) and 119,472 (HP-RESETPEND).
+Each comparison of `state.cut.cpu-points` restores the snapshot of the cut into a target whose STATE and PAD rows hold the byte `0xA5`, compares the whole target instance and the nine digests with the source at once, continues to E with fresh buffers and resubmitted events, and compares the concatenated video, audio and PSG log streams, the first-index fields, the final instance, the digests and the public reports with the uninterrupted run; every cut of the family agrees, and `state.judge.cut-compare-detects-divergence` shows the comparison is able to fail.

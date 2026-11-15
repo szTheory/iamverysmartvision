@@ -3,6 +3,5 @@
 # The gate step state requires every test id of the checklist to be registered or listed here (token state-test-unknown), an owner inside
 # 08-11 to 08-17 (state-pending-owner) and a line here whose id is already registered to be deleted (state-pending-stale): the owner plan
 # deletes its lines in the same commit that registers the id.
-state.cut.cpu-points 08-14
 state.cut.stic-points 08-14
 state.cut.device-points 08-14

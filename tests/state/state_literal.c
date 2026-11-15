@@ -39,12 +39,15 @@ static const char *const ivsn_schema[] = {
 /* The data files read, for the `# source` lines of the result file. */
 #define IVSN_LIT(k, v)
 #define IVSN_SCHEMA_LINE(s)
+#define STATE_CUT(c, p, t, f)
 #define IVSN_SOURCE(p, h) {p, h},
 static const ivs_test_source ivsn_sources[] = {
 #include "ivsn_literals.inc"
 #include "ivsn_schema.inc"
+#include "state_cuts.inc" /* plan 08-14: the pinned ticks of the hard-point cuts are an oracle file the suite reads too */
 };
 #undef IVSN_SOURCE
+#undef STATE_CUT
 #undef IVSN_SCHEMA_LINE
 #undef IVSN_LIT
 

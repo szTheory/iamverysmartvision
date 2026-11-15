@@ -195,4 +195,116 @@ void su_run_free(su_run *u);
  * (and, with u->digests, its nine digests) are compared with what the contract allows. Returns the number of rows that failed. */
 uint32_t su_run_rows(su_run *u, const su_tab *t);
 
+
+/* ---- plan 08-14, D-16, D-17: the hard-point cuts, their witnesses and the comparison oracle ---- */
+
+#define SC_PENDING UINT64_C(18446744073709551615) /* the pinned tick of a cut that is not pinned yet */
+#define SC_NO_SCENARIO 0xFFFFFFFFu
+#define SC_FRAME 59736u /* one frame of the profile in master ticks (14,934 CPU cycles of 4 ticks) */
+
+/* A program of the cuts (state_progs.c): the `program` column of data/expected/state-cuts.ids. A stand-in program is a list of decles at
+ * $1000 (docs/state/hard-points.md); a scenario run is one of the SU_SC_* builders with its input events. */
+typedef struct sc_run {
+  const char *id;
+  uint32_t scenario; /* SU_SC_* or SC_NO_SCENARIO */
+  const uint16_t *words;
+  size_t nwords;
+} sc_run;
+const sc_run *sc_run_find(const char *id);
+/* A powered instance of the run, stepped no unit (1 on success; freed on failure). power must be nonzero for a stand-in program. */
+int sc_new(ivs_ms_inst *x, const sc_run *r, int power);
+/* The input events of the run (NULL and 0 for none). */
+const ivs_input_event *sc_events(const sc_run *r, uint32_t *count);
+
+/* One line of data/expected/state-cuts.ids through the generated include; the tick is SC_PENDING until it is pinned. */
+typedef struct sc_cut {
+  const char *id;
+  const char *program;
+  uint64_t tick;
+  const char *family;
+} sc_cut;
+size_t sc_cut_count(void);
+const sc_cut *sc_cut_at(size_t i);
+const sc_cut *sc_cut_find(const char *id);
+/* The end tick E of the uninterrupted reference of a cut (the arithmetic is in state_progs.c). */
+uint64_t sc_cut_end(const sc_cut *c);
+/* The occurrence rule of a cut in words, for the failure texts (state_witness.c). */
+const char *sc_cut_rule(const sc_cut *c);
+
+/* The witness scan (state_witness.c, H17): steps a powered instance of the cut's program one unit at a time (through the internal seam
+ * when the program has no input events, through the public run call with the events resubmitted otherwise) and finds the first unit
+ * boundary at or after the occurrence rule of the cut at which the predicate of docs/state/hard-points.md holds. Returns 1 and the tick
+ * and the number of units stepped, and (when storage is not NULL) copies the IVS_MACHINE_BYTES of the instance at that boundary there;
+ * 0 when the predicate never holds before the end tick of the cut. */
+int sc_witness_find(const sc_cut *c, uint64_t *tick, uint64_t *units, uint8_t *storage);
+/* The part of the predicate that is a function of the instance alone (the whole predicate when it needs nothing from the unit just run):
+ * 1 holds, 0 does not hold. */
+int sc_witness_state_holds(const sc_cut *c, const ivs_machine *m);
+
+/* One leg of a run: a call of the public run API with fresh video, audio and PSG log buffers sized from ivs_info, and what it reported. */
+typedef struct sc_leg {
+  uint8_t *video;
+  uint8_t *audio;
+  uint8_t *log;
+  uint64_t vbytes, abytes, lbytes; /* bytes delivered */
+  uint64_t vfirst, afirst, lfirst; /* the first-index fields of the report */
+  uint64_t frames;                 /* video frames completed */
+  uint64_t now, units, elapsed;
+  uint32_t stop;
+  uint32_t consumed; /* events applied by the call */
+  ivs_status st;
+} sc_leg;
+/* Runs m to target ticks with the events from index consumed_in on; the buffers are allocated here (the capacity rule of the run call). 1 when
+ * the call returned OK (the leg is filled either way); sc_leg_free releases the buffers. */
+int sc_run_leg(ivs_machine *m, uint64_t target, const ivs_input_event *ev, uint32_t nev, uint32_t consumed_in, sc_leg *out);
+void sc_leg_free(sc_leg *l);
+
+/* The uninterrupted reference of a run to an end tick (kept in a small cache; sc_ref_free releases it). */
+typedef struct sc_ref {
+  const sc_run *run;
+  uint64_t end;
+  ivs_ms_inst x;
+  sc_leg leg;
+  uint8_t dig[9][32];
+  ivs_cpu_state_report cpu;
+  ivs_stic_report stic;
+  ivs_info info;
+} sc_ref;
+const sc_ref *sc_ref_get(const sc_run *run, uint64_t end);
+void sc_ref_free(void);
+
+/* The end tick a test of the cut may use: E, or, under IVS_STATE_FAULT_RUN for an id that is not a must-fail id (full == 0), the end of the
+ * frame the cut lies in but never below the cut plus one tick (a one-frame window, D-40). */
+uint64_t sc_window_end(uint64_t tick, uint64_t end, int full);
+
+/* The comparison oracle of a cut (D-16, 08-DISCUSS-state 5.3): REF is the uninterrupted run of the program from a fresh instance to the end
+ * tick; SUB runs to the cut, saves, restores into a target that was poisoned (every STATE and PAD row 0xA5, state_poison) and compares at
+ * once the whole target instance and all nine digests with the source; it continues to the end tick with fresh buffers and the events
+ * resubmitted from the applied count, and compares the concatenated video, audio and PSG log streams, the first-index fields, the final
+ * instance bytes, the nine digests and the public reports (CPU state, STIC state, info) with REF. The result is a bit mask of what differed
+ * (0 is a pass); tamper changes the target on purpose, so that a test can show the comparisons can fail (SC_T_*). */
+#define SC_F_IMM_MEM 0x001u  /* the whole target differs from the source right after the restore */
+#define SC_F_IMM_DIG 0x002u  /* a digest of the target differs from the source right after the restore */
+#define SC_F_VIDEO 0x004u    /* the concatenated video stream differs from REF */
+#define SC_F_AUDIO 0x008u
+#define SC_F_LOG 0x010u
+#define SC_F_FIRST 0x020u    /* the first-index fields of leg 2 do not continue leg 1 */
+#define SC_F_FINAL_MEM 0x040u
+#define SC_F_FINAL_DIG 0x080u
+#define SC_F_REPORTS 0x100u
+#define SC_F_RUN 0x200u      /* a call refused, or the run report (time, units, stop reason, events applied) differs from REF */
+#define SC_F_SETUP 0x400u    /* the comparison could not be set up (allocation, snapshot, restore refused, a leg that missed the cut) */
+#define SC_T_NONE 0u
+#define SC_T_ROW 1u    /* the target: one byte of the STATE row time_ticks changed after the restore */
+#define SC_T_STREAM 2u /* leg 2: one byte of the video stream flipped */
+typedef struct sc_cmp_info {
+  uint64_t tick, end;
+  uint64_t units1, units2;
+  uint64_t vbytes1, vbytes2, abytes1, abytes2, lbytes1, lbytes2;
+  uint32_t consumed1;
+  uint8_t snap_sha[32];
+} sc_cmp_info;
+/* label names the case in the diagnostics; quiet suppresses them (the judge runs corrupted comparisons). */
+uint32_t sc_cut_compare(const char *label, const sc_run *run, uint64_t tick, uint64_t end, uint32_t tamper, int quiet, sc_cmp_info *info);
+
 #endif

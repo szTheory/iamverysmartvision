@@ -66,3 +66,11 @@ state.restore.atomic-every-refusal
 state.restore.invariants-hold-reachable
 state.restore.digest-fields-informational
 state.judge.refusal-expectation-corrupt
+# Plan 08-14 Task 1 (D-16, D-17): the hard-point suite. The witness scan finds the first unit boundary at which the predicate of docs/state/hard-points.md holds and the
+# witness id re-proves every pinned tick of data/expected/state-cuts.ids (the first occurrence equals the pin, the public run call ends exactly on it with the scan's bytes,
+# the instance part of the predicate holds there); the cut id restores the snapshot of each cpu cut into a poisoned target and compares it with the uninterrupted run (the
+# whole instance and the nine digests at once, the concatenated streams, the first indexes, the final instance, digests and public reports); the judge shows that comparison
+# can fail (a changed STATE byte and a flipped stream byte).
+state.witness.cpu-points
+state.cut.cpu-points
+state.judge.cut-compare-detects-divergence
