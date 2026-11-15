@@ -55,3 +55,9 @@ params-digest-sha256 89ad65073a3e357acbdd687f6a29016457864a1666b953e9327b7559dc0
 # the value was produced by the writer it holds to account, and it passes unchanged in the dev and the release preset, which shows that the snapshot
 # bytes are identical across the two builds. The test state.save.canonical-stream-literal compares it.
 stepped-snapshot-sha256 087a15d3fce834b1d944bbbd74385d029e42eb4a4f9f0fbb322d754df0755b6b
+# Plan 08-14 (D-12, 08-DISCUSS-state 7.3 item 7): the SHA-256 of the snapshot bytes at three hard-point cuts of data/expected/state-cuts.ids, found by running the instance to the
+# pinned tick of the cut and saving: repeatability only, self-recorded, never evidence of correctness. The dev and release presets and every host build must give the same bytes,
+# which state.cut.fixed-point-and-canonical checks; the keys are the cut ids in lower case.
+cut-snapshot-sha256.hp-frame-mid 9dc4ae7e20a746b4b8d6638cb14305ce3a8d4ec9bd4da872916353272c68567f
+cut-snapshot-sha256.hp-latch 63507cb48fa4bbf42cfebb99e07fa5d722db44797641c3404118c1a9826cee1d
+cut-snapshot-sha256.hp-mob 27e98b02b605d6f201d2745ebf35c3e2a137d62cc9d892b9d0eb7322f09bc768

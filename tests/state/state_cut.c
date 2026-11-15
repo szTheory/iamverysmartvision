@@ -105,12 +105,14 @@ int sc_run_leg(ivs_machine *m, uint64_t target, const ivs_input_event *ev, uint3
   out->elapsed = r.elapsed_ticks;
   out->stop = r.stop_reason;
   out->consumed = r.input_consumed;
+  memcpy(out->ctrl, r.controller_now, sizeof out->ctrl);
+  out->floor = r.input_floor_tick;
   return 1;
 }
 
 /* ---- the reference ---- */
 
-#define SC_REF_MAX 12u
+#define SC_REF_MAX 24u
 static sc_ref sc_refs[SC_REF_MAX];
 static uint32_t sc_ref_n;
 
@@ -130,7 +132,7 @@ void sc_ref_free(void)
   sc_ref_n = 0u;
 }
 
-static int sc_reports(const ivs_machine *m, ivs_cpu_state_report *cpu, ivs_stic_report *stic, ivs_info *info)
+int sc_reports(const ivs_machine *m, ivs_cpu_state_report *cpu, ivs_stic_report *stic, ivs_info *info)
 {
   memset(cpu, 0, sizeof *cpu);
   cpu->struct_size = (uint32_t)sizeof *cpu;
@@ -363,7 +365,8 @@ uint32_t sc_cut_compare(const char *label, const sc_run *run, uint64_t tick, uin
     f |= SC_F_FIRST;
   }
   /* the run reports: time, units, stop reason and the events applied equal the uninterrupted run */
-  if (l2.now != ref->leg.now || l1.units + l2.units != ref->leg.units || l2.stop != ref->leg.stop || l1.consumed + l2.consumed != ref->leg.consumed) {
+  if (l2.now != ref->leg.now || l1.units + l2.units != ref->leg.units || l2.stop != ref->leg.stop || l1.consumed + l2.consumed != ref->leg.consumed ||
+      l2.floor != ref->leg.floor || memcmp(l2.ctrl, ref->leg.ctrl, sizeof l2.ctrl) != 0) {
     SC_NOTE(quiet, "%s: the run reports differ: now %llu (reference %llu), units %llu + %llu (reference %llu), stop %u (reference %u), events %u + %u (reference %u)",
             label, (unsigned long long)l2.now, (unsigned long long)ref->leg.now, (unsigned long long)l1.units, (unsigned long long)l2.units,
             (unsigned long long)ref->leg.units, (unsigned)l2.stop, (unsigned)ref->leg.stop, (unsigned)l1.consumed, (unsigned)l2.consumed,
@@ -593,11 +596,218 @@ static int sc_judge_cut_compare(void)
   return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
 }
 
+/* ---- the canonical form of the snapshot at the cuts ---- */
+
+/* Runs m to the cut tick through the public call in slices of slice ticks (every call's target is the smaller of now + slice and the cut, so a
+ * slice that would overshoot the cut stops on it), or in slices of pseudo-random length 1 to 2,000 from a fixed seed (a deterministic LCG, no host
+ * time) when seed is not 0. Every call ends on the first unit boundary at or after its target and the cut tick is a unit boundary (the witness id
+ * proves that), so the run ends exactly on the cut. 1 when it did. */
+static int sc_run_sliced(ivs_machine *m, const ivs_input_event *ev, uint32_t nev, uint64_t tick, uint64_t slice, uint64_t seed, uint32_t *consumed)
+{
+  uint64_t rng = seed;
+  uint64_t calls = 0u;
+  *consumed = 0u;
+  while (((const struct ivs_machine *)m)->time_ticks < tick) {
+    uint64_t now = ((const struct ivs_machine *)m)->time_ticks;
+    uint64_t len = slice;
+    uint64_t target;
+    if (seed != 0u) {
+      rng = rng * UINT64_C(6364136223846793005) + UINT64_C(1442695040888963407);
+      len = 1u + (rng >> 33) % 2000u;
+    }
+    target = now + len > tick ? tick : now + len;
+    if (!su_run_to(m, target, ev, nev, consumed) || ++calls > 400000u) {
+      return 0;
+    }
+  }
+  return ((const struct ivs_machine *)m)->time_ticks == tick;
+}
+
+/* The key of the snapshot literal of a cut in data/expected/ivsn-literals.ids: cut-snapshot-sha256. and the cut id in lower case. */
+static const char *sc_literal_key(const sc_cut *c, char *buf, size_t cap)
+{
+  size_t i = 0u;
+  (void)snprintf(buf, cap, "cut-snapshot-sha256.");
+  i = strlen(buf);
+  for (const char *p = c->id; *p != '\0' && i + 1u < cap; p++) {
+    buf[i++] = (char)((*p >= 'A' && *p <= 'Z') ? *p - 'A' + 'a' : *p);
+  }
+  buf[i] = '\0';
+  return buf;
+}
+
+/* The three cuts whose snapshot bytes are pinned: the mid-frame cut, the designed latch cut and the MOB cut. */
+static int sc_literal_cut(const sc_cut *c)
+{
+  return strcmp(c->id, "HP-FRAME-MID") == 0 || strcmp(c->id, "HP-LATCH") == 0 || strcmp(c->id, "HP-MOB") == 0;
+}
+
+/* state.cut.fixed-point-and-canonical (D-12, 08-DISCUSS-state 7.3 item 7): at every cut, snapshot, restore into a poisoned target and snapshot again
+ * is a fixed point (the two byte strings are identical); the snapshot of a second, independently built source (run to the cut in slices of 468 ticks)
+ * is byte-identical to the first; and the SHA-256 of the snapshot bytes at HP-FRAME-MID, HP-LATCH and HP-MOB equals the literal pinned in
+ * data/expected/ivsn-literals.ids (self-recorded, repeatability only, never evidence of correctness), which the dev and release presets and every
+ * host build have to match: the canonical form does not depend on the preset. A fault run takes every fourth cut (the id is the must-fail id of no fault). */
+static int sc_fixed_point(void)
+{
+  size_t i;
+  size_t n = 0u;
+  int ok = 1;
+  uint8_t *s1 = (uint8_t *)malloc(IVS_SNAPSHOT_MAX_BYTES);
+  uint8_t *s2 = (uint8_t *)malloc(IVS_SNAPSHOT_MAX_BYTES);
+  uint8_t *s3 = (uint8_t *)malloc(IVS_SNAPSHOT_MAX_BYTES);
+  if (s1 == NULL || s2 == NULL || s3 == NULL) {
+    free(s1);
+    free(s2);
+    free(s3);
+    return IVS_TEST_FAIL;
+  }
+  for (i = 0u; i < sc_cut_count(); i++) {
+    const sc_cut *c = sc_cut_at(i);
+    const sc_run *run = sc_run_find(c->program);
+    const ivs_input_event *ev;
+    uint32_t nev = 0u;
+    uint32_t consumed = 0u;
+    ivs_ms_inst a;
+    ivs_ms_inst b;
+    ivs_ms_inst t;
+    size_t n1 = 0u;
+    size_t n2 = 0u;
+    size_t n3 = 0u;
+    n++;
+    if (ST_FAULT_STRIDE > 1u && (n - 1u) % 4u != 0u) {
+      continue;
+    }
+    if (run == NULL || c->tick == SC_PENDING) {
+      ivs_test_diag("cut %s: no program or a pending tick", c->id);
+      ok = 0;
+      continue;
+    }
+    ev = sc_events(run, &nev);
+    if (!sc_new(&a, run, 1) || !sc_new(&b, run, 1) || !sc_new(&t, run, 1)) {
+      ok = 0;
+      continue;
+    }
+    ST_REQ(ok, c->tick == 0u || su_run_to(a.m, c->tick, ev, nev, &consumed));
+    ST_REQ(ok, su_snapshot(a.m, s1, IVS_SNAPSHOT_MAX_BYTES, &n1));
+    /* save, restore into a poisoned target, save: the fixed point */
+    state_poison(t.m);
+    ST_REQ(ok, ivs_machine_snapshot_restore(t.m, s1, n1, NULL) == IVS_OK);
+    ST_REQ(ok, su_snapshot(t.m, s2, IVS_SNAPSHOT_MAX_BYTES, &n2) && n2 == n1 && memcmp(s1, s2, n1) == 0);
+    /* a second, independently built source, run to the same cut in other slices */
+    ST_REQ(ok, sc_run_sliced(b.m, ev, nev, c->tick, 468u, 0u, &consumed));
+    ST_REQ(ok, su_snapshot(b.m, s3, IVS_SNAPSHOT_MAX_BYTES, &n3) && n3 == n1 && memcmp(s1, s3, n1) == 0);
+    if (n1 == n2 && n1 == n3 && memcmp(s1, s2, n1) == 0 && memcmp(s1, s3, n1) == 0) {
+      /* nothing to say beyond the comparison */
+    } else {
+      ivs_test_diag("cut %s: the snapshots differ (%u, %u and %u bytes)", c->id, (unsigned)n1, (unsigned)n2, (unsigned)n3);
+    }
+    if (sc_literal_cut(c)) {
+      char key[64];
+      uint8_t want[32];
+      uint8_t got[32];
+      char hex[65];
+      uint32_t k;
+      ivs_sha256_digest(s1, n1, got);
+      for (k = 0u; k < 32u; k++) {
+        (void)snprintf(hex + 2u * k, 3u, "%02x", (unsigned)got[k]);
+      }
+      sc_literal_key(c, key, sizeof key);
+      if (!ivsn_lit_hex(key, want, 32u)) {
+        ivs_test_diag("cut %s: no literal %s; the snapshot of %u bytes has SHA-256 %s", c->id, key, (unsigned)n1, hex);
+        ok = 0;
+      } else if (memcmp(got, want, 32u) != 0) {
+        ivs_test_diag("cut %s: the snapshot SHA-256 %s is not the pinned literal %s", c->id, hex, key);
+        ok = 0;
+      } else {
+        ivs_test_diag("cut %s: %u bytes, SHA-256 %s equals the pinned literal", c->id, (unsigned)n1, hex);
+      }
+    }
+    ivs_ms_free(&a);
+    ivs_ms_free(&b);
+    ivs_ms_free(&t);
+  }
+  free(s1);
+  free(s2);
+  free(s3);
+  return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
+}
+
+/* state.cut.slicing-independent (D-12, 08-DISCUSS-state 7.3 item 7): the instance at a cut tick, and so its snapshot, does not depend on how the run
+ * to that tick was sliced into calls: the run to the cut is made in calls of 1, 7, 468 and 4,194,304 ticks and in calls of pseudo-random length from a fixed
+ * seed (the slice suite's rule, no host time), and each result equals the run made in one call byte for byte, whole instance and snapshot. A call ends on the
+ * first unit boundary at or after its target; the last target of every sliced run is the cut tick itself, which is a unit boundary, so every sliced run ends
+ * exactly on it. A fault run takes the first cut only. */
+static int sc_slicing_independent(void)
+{
+  static const char *const cuts[] = {"HP-FRAME-MID", "HP-LATCH", "HP-MOB", "HP-INPUT"};
+  static const uint64_t slices[] = {1u, 7u, 468u, 4194304u, 0u};
+  size_t ci;
+  int ok = 1;
+  uint8_t *s1 = (uint8_t *)malloc(IVS_SNAPSHOT_MAX_BYTES);
+  uint8_t *s2 = (uint8_t *)malloc(IVS_SNAPSHOT_MAX_BYTES);
+  if (s1 == NULL || s2 == NULL) {
+    free(s1);
+    free(s2);
+    return IVS_TEST_FAIL;
+  }
+  for (ci = 0u; ci < sizeof cuts / sizeof cuts[0]; ci++) {
+    const sc_cut *c = sc_cut_find(cuts[ci]);
+    const sc_run *run = c != NULL ? sc_run_find(c->program) : NULL;
+    const ivs_input_event *ev;
+    uint32_t nev = 0u;
+    uint32_t consumed = 0u;
+    ivs_ms_inst ref;
+    size_t n1 = 0u;
+    size_t k;
+    if (ST_FAULT_STRIDE > 1u && ci > 0u) {
+      continue;
+    }
+    if (run == NULL || c->tick == SC_PENDING) {
+      ok = 0;
+      continue;
+    }
+    ev = sc_events(run, &nev);
+    if (!sc_new(&ref, run, 1) || !su_run_to(ref.m, c->tick, ev, nev, &consumed) || !su_snapshot(ref.m, s1, IVS_SNAPSHOT_MAX_BYTES, &n1)) {
+      ok = 0;
+      continue;
+    }
+    for (k = 0u; k < sizeof slices / sizeof slices[0]; k++) {
+      ivs_ms_inst x;
+      uint32_t used = 0u;
+      size_t n2 = 0u;
+      int same;
+      if (!sc_new(&x, run, 1)) {
+        ok = 0;
+        continue;
+      }
+      /* the last slice entry is the seeded run: pseudo-random lengths from the seed 0x2545F4914F6CDD1D */
+      ST_REQ(ok, sc_run_sliced(x.m, ev, nev, c->tick, slices[k] != 0u ? slices[k] : 1u, slices[k] != 0u ? 0u : UINT64_C(0x2545F4914F6CDD1D), &used));
+      same = memcmp(x.storage, ref.storage, IVS_MACHINE_BYTES) == 0 && used == consumed && su_snapshot(x.m, s2, IVS_SNAPSHOT_MAX_BYTES, &n2) && n2 == n1 &&
+             memcmp(s1, s2, n1) == 0;
+      if (!same) {
+        ivs_test_diag("cut %s: the run in slices of %llu ticks (0: seeded) differs from the run in one call", c->id, (unsigned long long)slices[k]);
+      }
+      ST_REQ(ok, same);
+      ivs_ms_free(&x);
+    }
+    if (ok) {
+      ivs_test_diag("cut %s: tick %llu, %u events applied, the runs in calls of 1, 7, 468 and 4,194,304 ticks and the seeded one equal the run in one call", c->id,
+                    (unsigned long long)c->tick, (unsigned)consumed);
+    }
+    ivs_ms_free(&ref);
+  }
+  free(s1);
+  free(s2);
+  return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
+}
+
 const ivs_test_case ivs_state_cut_cases[] = {
     {"state.cut.cpu-points", sc_cut_cpu, NULL},
     {"state.cut.stic-points", sc_cut_stic, NULL},
     {"state.cut.device-points", sc_cut_device, NULL},
     {"state.cut.latch-not-recomputed", sc_latch_not_recomputed, NULL},
+    {"state.cut.fixed-point-and-canonical", sc_fixed_point, NULL},
+    {"state.cut.slicing-independent", sc_slicing_independent, NULL},
     {"state.judge.cut-compare-detects-divergence", sc_judge_cut_compare, NULL},
 };
 const size_t ivs_state_cut_count = sizeof ivs_state_cut_cases / sizeof ivs_state_cut_cases[0];

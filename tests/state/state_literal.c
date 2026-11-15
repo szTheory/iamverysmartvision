@@ -40,13 +40,19 @@ static const char *const ivsn_schema[] = {
 #define IVSN_LIT(k, v)
 #define IVSN_SCHEMA_LINE(s)
 #define STATE_CUT(c, p, t, f)
+#define STATE_ROW(r, c, s)
+#define STATE_NOTE(r, c, s)
 #define IVSN_SOURCE(p, h) {p, h},
 static const ivs_test_source ivsn_sources[] = {
 #include "ivsn_literals.inc"
 #include "ivsn_schema.inc"
-#include "state_cuts.inc" /* plan 08-14: the pinned ticks of the hard-point cuts are an oracle file the suite reads too */
+#include "state_cuts.inc"      /* plan 08-14: the pinned ticks of the hard-point cuts and the STATE rows of the checklist are oracle files the suite reads too */
+#include "state_checklist.inc"
+#include "state_notes.inc"
 };
 #undef IVSN_SOURCE
+#undef STATE_NOTE
+#undef STATE_ROW
 #undef STATE_CUT
 #undef IVSN_SCHEMA_LINE
 #undef IVSN_LIT

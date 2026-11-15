@@ -105,5 +105,8 @@ extern const ivs_test_case ivs_state_witness_cases[];
 extern const size_t ivs_state_witness_count;
 extern const ivs_test_case ivs_state_cut_cases[];
 extern const size_t ivs_state_cut_count;
+/* Plan 08-14 task 3: the runtime row-omission sweep (state_sweep.c). */
+extern const ivs_test_case ivs_state_sweep_cases[];
+extern const size_t ivs_state_sweep_count;
 
 #endif

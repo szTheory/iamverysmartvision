@@ -421,8 +421,26 @@ add_custom_command(
   DEPENDS "${IVS_STATE_CUTS_IDS}" "${IVS_STATE_CUTS_GENERATOR}"
   COMMENT "Generating the hard-point cut include"
   VERBATIM)
-set(IVS_STATE_TEST_SOURCES state/state_main.c state/state_literal.c state/state_save.c state/state_read.c state/state_util.c state/state_restore.c state/state_invariants.c state/state_progs.c state/state_witness.c state/state_cut.c machine/machine_standin.c)
-add_executable(ivs_tests_state ${IVS_STATE_TEST_SOURCES} "${IVS_IVSN_LITERALS_INC}" "${IVS_IVSN_SCHEMA_INC}" "${IVS_STATE_IMAGES_INC}" "${IVS_STATE_CUTS_INC}")
+# Plan 08-14 task 3: the STATE rows of the hidden-state checklist with their witness cut and sweep column, for the row-omission sweep, through the same generator.
+set(IVS_STATE_CHECKLIST_IDS "${PROJECT_SOURCE_DIR}/data/expected/state-checklist.ids")
+set(IVS_STATE_CHECKLIST_INC "${CMAKE_CURRENT_BINARY_DIR}/state_checklist.inc")
+add_custom_command(
+  OUTPUT "${IVS_STATE_CHECKLIST_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DIN=${IVS_STATE_CHECKLIST_IDS}" "-DOUT=${IVS_STATE_CHECKLIST_INC}" -DFORM=checklist -P "${IVS_STATE_CUTS_GENERATOR}"
+  DEPENDS "${IVS_STATE_CHECKLIST_IDS}" "${IVS_STATE_CUTS_GENERATOR}"
+  COMMENT "Generating the hidden-state checklist include"
+  VERBATIM)
+# The appended notes that amend the witness and the sweep column of rows of the frozen checklist (data/expected/state-sweep-notes.ids).
+set(IVS_STATE_NOTES_IDS "${PROJECT_SOURCE_DIR}/data/expected/state-sweep-notes.ids")
+set(IVS_STATE_NOTES_INC "${CMAKE_CURRENT_BINARY_DIR}/state_notes.inc")
+add_custom_command(
+  OUTPUT "${IVS_STATE_NOTES_INC}"
+  COMMAND "${CMAKE_COMMAND}" "-DIN=${IVS_STATE_NOTES_IDS}" "-DOUT=${IVS_STATE_NOTES_INC}" -DFORM=notes -P "${IVS_STATE_CUTS_GENERATOR}"
+  DEPENDS "${IVS_STATE_NOTES_IDS}" "${IVS_STATE_CUTS_GENERATOR}"
+  COMMENT "Generating the sweep notes include"
+  VERBATIM)
+set(IVS_STATE_TEST_SOURCES state/state_main.c state/state_literal.c state/state_save.c state/state_read.c state/state_util.c state/state_restore.c state/state_invariants.c state/state_progs.c state/state_witness.c state/state_cut.c state/state_sweep.c machine/machine_standin.c)
+add_executable(ivs_tests_state ${IVS_STATE_TEST_SOURCES} "${IVS_IVSN_LITERALS_INC}" "${IVS_IVSN_SCHEMA_INC}" "${IVS_STATE_IMAGES_INC}" "${IVS_STATE_CUTS_INC}" "${IVS_STATE_CHECKLIST_INC}" "${IVS_STATE_NOTES_INC}")
 target_include_directories(ivs_tests_state PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/state"
   "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(ivs_tests_state PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
@@ -576,7 +594,7 @@ ivs_fault_gen(GEN_CTRL_MUTATION SUITE input OUTPUT ivs_ctrl_lines.inc
 ivs_fault_suite(state
   SOURCES ${IVS_STATE_TEST_SOURCES}
   INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/state" "${CMAKE_CURRENT_BINARY_DIR}"
-  GENERATED "${IVS_IVSN_LITERALS_INC}" "${IVS_IVSN_SCHEMA_INC}" "${IVS_STATE_IMAGES_INC}" "${IVS_STATE_CUTS_INC}"
+  GENERATED "${IVS_IVSN_LITERALS_INC}" "${IVS_IVSN_SCHEMA_INC}" "${IVS_STATE_IMAGES_INC}" "${IVS_STATE_CUTS_INC}" "${IVS_STATE_CHECKLIST_INC}" "${IVS_STATE_NOTES_INC}"
   FAULT_DEFINITIONS IVS_STATE_FAULT_RUN)
 
 ivs_fault_suite(memmap

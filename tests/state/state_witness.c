@@ -101,21 +101,26 @@ static ivs_stic_line_levels sc_next_lines(const struct ivs_machine *m)
   return l;
 }
 
-/* The kind of the unit that would run next from this instance, found by stepping a copy of it through the seam (0 when it cannot be stepped). */
-static uint32_t sc_next_unit_kind(sc_ctx *c)
+/* The unit that would run next from this instance, found by stepping a copy of it through the seam (1 when it stepped; *r is the unit result). */
+static int sc_next_result(sc_ctx *c, ivs_cp1610_result *r)
 {
-  ivs_cp1610_result r;
   ivs_machine *pm;
   if (c->probe == NULL) {
     c->probe = (uint8_t *)aligned_alloc(IVS_MACHINE_ALIGN, IVS_MACHINE_BYTES);
     if (c->probe == NULL) {
-      return 0u;
+      return 0;
     }
   }
   memcpy(c->probe, c->x.storage, IVS_MACHINE_BYTES);
   pm = (ivs_machine *)(void *)c->probe;
-  memset(&r, 0, sizeof r);
-  return ivs_machine_step_unit_internal(pm, &r) == IVS_OK ? (uint32_t)r.unit_kind : 0u;
+  memset(r, 0, sizeof *r);
+  return ivs_machine_step_unit_internal(pm, r) == IVS_OK;
+}
+
+static uint32_t sc_next_unit_kind(sc_ctx *c)
+{
+  ivs_cp1610_result r;
+  return sc_next_result(c, &r) ? (uint32_t)r.unit_kind : 0u;
 }
 
 /* ---- the predicates of docs/state/hard-points.md ----
@@ -138,26 +143,31 @@ static int sc_st_sdbd(sc_ctx *c)
   return m->cpu.dbd == 1u && m->cpu.run_state == IVS_CP1610_RS_RUNNING;
 }
 
-/* HP-STEAL-A: the unit just run was a bus grant that raised BUSAK (busak was 0 before it), in a displayed frame (frame at least 1). */
+/* HP-STEAL-A: an open boundary (prev_interruptible 1, BUSAK down) in a displayed frame at which BUSRQ is asserted for the next unit, and the next unit (a
+ * copy stepped through the seam) is a bus grant: the boundary just before the first grant of the run. Plan 08-14 moved this cut from the unit after the grant
+ * to the boundary before it: the sweep showed that a lost BUSAK is harmless after the grant (BUSRQ is still asserted, so the grant is taken again) and that a lost
+ * prev_interruptible matters exactly here (a closed boundary does not test BUSRQ, so the grant comes late and the run report counts other units). */
 static int sc_st_steal_a(sc_ctx *c)
 {
   const struct ivs_machine *m = sc_im(c);
-  return m->cpu.busak == 1u && m->stic.frame_index >= 1u;
-}
-static int sc_un_steal_a(const sc_ctx *c)
-{
-  return c->last.unit_kind == IVS_CP1610_UNIT_BUS_GRANT && c->prev_busak == 0u;
+  if (m->cpu.run_state != IVS_CP1610_RS_RUNNING || m->cpu.busak != 0u || m->cpu.prev_interruptible != 1u || m->stic.frame_index < 1u ||
+      sc_next_lines(m).busrq == 0u) {
+    return 0;
+  }
+  return sc_next_unit_kind(c) == IVS_CP1610_UNIT_BUS_GRANT;
 }
 
-/* HP-STEAL-B: mid-hold: a grant unit after a grant unit with BUSAK still raised, and at least one window of the frame already granted. */
+/* HP-STEAL-B: mid-hold with BUSAK up, at least one window of the frame already granted, BUSRQ low for the next unit and the next unit (a copy stepped) the
+ * release: the boundary just before a release. Plan 08-14 moved this cut from the first mid-hold unit to the boundary before the release: a lost BUSAK matters
+ * exactly here (the release unit would not run and the window would not be counted as granted). */
 static int sc_st_steal_b(sc_ctx *c)
 {
   const struct ivs_machine *m = sc_im(c);
-  return m->cpu.busak == 1u && m->stic.grants_in_frame >= 1u;
-}
-static int sc_un_steal_b(const sc_ctx *c)
-{
-  return c->last.unit_kind == IVS_CP1610_UNIT_BUS_GRANT && c->prev_kind == IVS_CP1610_UNIT_BUS_GRANT && c->prev_busak == 1u;
+  ivs_cp1610_result r;
+  if (m->cpu.busak != 1u || m->stic.grants_in_frame < 1u || sc_next_lines(m).busrq != 0u) {
+    return 0;
+  }
+  return sc_next_result(c, &r) && r.unit_kind == IVS_CP1610_UNIT_BUS_GRANT && (r.events & IVS_CP1610_EV_BUS_RELEASED) != 0u;
 }
 
 /* HP-STEAL-C: the release unit (BUS_RELEASED), BUSAK down, prev_interruptible still 1 (a grant never changes it), a window granted. */
@@ -279,11 +289,13 @@ static int sc_st_psg_mid(sc_ctx *c)
          m->psg.tone_out[0] != m->psg.tone_out[1];
 }
 
-/* HP-ENV-MID: a repeating envelope in progress: not held, a cycle index and a level between 1 and 14. */
+/* HP-ENV-MID: a repeating envelope in progress on a rising edge (the direction flag 1; plan 08-14 changed the shape of P-PSG to a triangle so that the row is
+ * non-default): not held, a cycle index and a level between 1 and 14. */
 static int sc_st_env_mid(sc_ctx *c)
 {
   const struct ivs_machine *m = sc_im(c);
-  return m->psg.env_held == 0u && m->psg.env_cycles >= 1u && m->psg.env_cycles <= 14u && m->psg.env_level >= 1u && m->psg.env_level <= 14u;
+  return m->psg.env_held == 0u && m->psg.env_dir == 1u && m->psg.env_cycles >= 1u && m->psg.env_cycles <= 14u && m->psg.env_level >= 1u &&
+         m->psg.env_level <= 14u;
 }
 
 /* HP-INPUT: one event applied, a pull-down in force, the floor above 0 and one event of the host's array still to be submitted. */
@@ -307,10 +319,10 @@ static int sc_un_log(const sc_ctx *c)
 static const sc_def sc_defs[] = {
     {"HP-SDBD", NULL, sc_st_sdbd, NULL, 0,
      "the first boundary with cpu.dbd 1 and the CPU RUNNING (the SDBD unit has just run); arithmetic: reset entry 5 + MVII 8 + MVO 11 + SDBD 4 = 28 cycles, tick 112"},
-    {"HP-STEAL-A", NULL, sc_st_steal_a, sc_un_steal_a, 1,
-     "the first bus grant unit that raises BUSAK in a displayed frame (frame at least 1)"},
-    {"HP-STEAL-B", "HP-STEAL-A", sc_st_steal_b, sc_un_steal_b, 1,
-     "the first mid-hold grant unit after HP-STEAL-A with at least one window of the frame already granted"},
+    {"HP-STEAL-A", NULL, sc_st_steal_a, NULL, 0,
+     "the first open boundary in a displayed frame (frame at least 1) at which BUSRQ is asserted and the next unit is a bus grant (the boundary before the first grant)"},
+    {"HP-STEAL-B", "HP-STEAL-A", sc_st_steal_b, NULL, 0,
+     "the first boundary after HP-STEAL-A with BUSAK up, a window of the frame already granted, BUSRQ low and the next unit the release (the boundary before a release)"},
     {"HP-STEAL-C", "HP-STEAL-B", sc_st_steal_c, sc_un_steal_c, 1,
      "the first release unit (BUS_RELEASED) after HP-STEAL-B, BUSAK down, prev_interruptible 1"},
     {"HP-OPEN", NULL, sc_st_open, NULL, 0,
@@ -335,7 +347,7 @@ static const sc_def sc_defs[] = {
     {"HP-PSG-MID", NULL, sc_st_psg_mid, NULL, 0,
      "the first boundary after both tone periods were rewritten with the noise and tone A counters nonzero and the tone outputs of A and B different"},
     {"HP-ENV-MID", NULL, sc_st_env_mid, NULL, 0,
-     "the first boundary with the envelope not held, a cycle index and a level between 1 and 14"},
+     "the first boundary with the envelope not held, rising (direction 1), a cycle index and a level between 1 and 14"},
     {"HP-INPUT", NULL, sc_st_input, NULL, 0,
      "the first boundary with one event applied, a pull-down in force, the floor above 0 and one event still to be submitted"},
     {"HP-LOG", NULL, sc_st_log, sc_un_log, 0,

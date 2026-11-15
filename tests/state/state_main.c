@@ -66,6 +66,7 @@ int main(int argc, char **argv)
   state_add(ivs_state_invariants_cases, ivs_state_invariants_count);
   state_add(ivs_state_witness_cases, ivs_state_witness_count);
   state_add(ivs_state_cut_cases, ivs_state_cut_count);
+  state_add(ivs_state_sweep_cases, ivs_state_sweep_count);
   if (state_total > STATE_MAX_CASES) {
     fprintf(stderr, "state: more than %u cases; raise STATE_MAX_CASES\n", STATE_MAX_CASES);
     return 1;

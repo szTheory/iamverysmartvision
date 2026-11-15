@@ -252,12 +252,17 @@ typedef struct sc_leg {
   uint64_t now, units, elapsed;
   uint32_t stop;
   uint32_t consumed; /* events applied by the call */
+  uint32_t ctrl[4];  /* controller_now of the report: the words in force at exit */
+  uint64_t floor;    /* input_floor_tick of the report */
   ivs_status st;
 } sc_leg;
 /* Runs m to target ticks with the events from index consumed_in on; the buffers are allocated here (the capacity rule of the run call). 1 when
  * the call returned OK (the leg is filled either way); sc_leg_free releases the buffers. */
 int sc_run_leg(ivs_machine *m, uint64_t target, const ivs_input_event *ev, uint32_t nev, uint32_t consumed_in, sc_leg *out);
 void sc_leg_free(sc_leg *l);
+
+/* The three public reports of an instance (CPU state, STIC state, info), each with its struct_size set. 1 when all three calls returned OK. */
+int sc_reports(const ivs_machine *m, ivs_cpu_state_report *cpu, ivs_stic_report *stic, ivs_info *info);
 
 /* The uninterrupted reference of a run to an end tick (kept in a small cache; sc_ref_free releases it). */
 typedef struct sc_ref {

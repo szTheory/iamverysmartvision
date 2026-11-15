@@ -82,3 +82,12 @@ state.witness.device-points
 state.cut.stic-points
 state.cut.device-points
 state.cut.latch-not-recomputed
+# Plan 08-14 Task 3 (D-12, D-16): the snapshot at every cut is a fixed point (save, restore into a poisoned target, save) and the same bytes from an independently built source, and the
+# snapshot SHA-256 at three cuts equals the literals of data/expected/ivsn-literals.ids in the dev and release presets (state.cut.fixed-point-and-canonical); the run to a cut gives the
+# same instance and snapshot whatever its slicing (state.cut.slicing-independent); the runtime row-omission sweep over the STATE rows at their witness cuts (state.sweep.row-omission;
+# the checklist is frozen and the amendments are the appended notes data/expected/state-sweep-notes.ids) and the judge that shows it can report a read row as divergent and an
+# exempt row as inert (state.judge.row-sweep-detects-omission).
+state.cut.fixed-point-and-canonical
+state.cut.slicing-independent
+state.sweep.row-omission
+state.judge.row-sweep-detects-omission

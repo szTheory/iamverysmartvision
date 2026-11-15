@@ -11,8 +11,8 @@
 # family: the test family that compares the cut: cpu-points (state.cut.cpu-points), stic-points (state.cut.stic-points) or device-points
 #   (state.cut.device-points).
 HP-SDBD P-SDBD 112 cpu-points
-HP-STEAL-A lamp-idle 74932 cpu-points
-HP-STEAL-B lamp-idle 78580 cpu-points
+HP-STEAL-A lamp-idle 74928 cpu-points
+HP-STEAL-B lamp-idle 79008 cpu-points
 HP-STEAL-C lamp-idle 79016 cpu-points
 HP-OPEN lamp-idle 59772 cpu-points
 HP-CLOSED lamp-idle 59900 cpu-points
@@ -25,6 +25,6 @@ HP-FRAME-MID lamp-idle 96652 stic-points
 HP-LATCH P-LATCH 75456 stic-points
 HP-MOB diag-stic-2-collision 153104 stic-points
 HP-PSG-MID P-PSG 66336 device-points
-HP-ENV-MID P-PSG 1320 device-points
+HP-ENV-MID P-PSG 9504 device-points
 HP-INPUT lamp-pass 100064 device-points
 HP-LOG lamp-pass 25920 device-points

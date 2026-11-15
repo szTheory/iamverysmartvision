@@ -191,3 +191,49 @@ Plan 08-13 held each rule against the live instances of real programs at every u
 | INV-6 | kept | the candidate `obs.video.count == stic.frame_index` holds at every boundary of every program |
 
 No rule was dropped. The status of the hidden-state rows (the witness cuts, the sweep) is the work of plan 08-14.
+
+## As built (plan 08-14, task 3): the row-omission sweep
+
+This section is an appended note; the sections above and `data/expected/state-checklist.ids` are untouched.
+The runtime row-omission sweep (`state.sweep.row-omission`, `tests/state/state_sweep.c`) takes each of the 51 STATE rows at its witness cut, restores the snapshot of the cut correctly into a poisoned target, replaces the bytes of that row with a sweep value, continues to the end tick of the cut and requires a difference from the uninterrupted run outside the row's own bytes: the final instance with the row's byte range masked, the video, audio and PSG log streams, the first-index fields and the other members of the run report, the status of the run call, and the three public reports.
+A row that matters keeps `ROW`; a row that no continuation reads is `EXEMPT`. [nc]
+The checklist was not edited: the amendments below are the appended notes `data/expected/state-sweep-notes.ids`, which the sweep reads after the checklist (a note replaces the witness cut and the sweep column of the row it names) and which the sweep test judges (a note must name a STATE row and a cut, an exemption needs a reason of at least three words, and every cut must stay the witness of at least one row).
+
+How the sweep value is chosen. The first candidate of every row is the byte-wise complement of its bytes at the cut, as written above; for a row the validators restrict to a few values the other members follow (the lowest bit flipped, the constant fill `0xA5`, zero, the first or last element alone, every small value of a scalar). Each candidate is first judged by the validators and invariants of the restore (`ivs_snapshot_invariants` on a probe of the modified instance), because a value no run reaches may lie outside what the core can step safely. Candidates that pass all six rules are tried first (at most six continuations), then candidates that break only a derived rule (INV-2 to INV-4, INV-6, or the range rule only: a level, cycle, direction or hold flag of the envelope inside its range, whose relation to its neighbours is a derived rule). A row for which no candidate differs is inert; a row with no safe candidate at all would be a finding (there was none). The sweep value is therefore the complement where that is valid and a different member of the set where it is not, never the constant fill alone.
+
+The zero-coincidence guard (1): the bytes of the row at the cut differ from the bytes of the row in the power-on state of the same program. Two cases cannot, by nature, and are held to the zero row of a fresh target instead: `phase` (POWERED at every cut) and every row at the cut of tick 0, which is the power-on state (HP-RESETPEND, the witness of `mem.gate_open`). `mem.gate_open` and `phase` equal their power-on rows and are non-zero; `psg.env_held` is zero at its cut and differs from its power-on value 1.
+
+Results (51 rows: 39 diverge in behaviour, 3 in a public report only, 9 are exempt; 0 disagreements with the checklist after the amendments below):
+
+| Family | Rows | Divergence in behaviour | In a public report only | Exempt |
+|---|---|---|---|---|
+| instance (`phase`, `time_ticks`) | 2 | 2 | 0 | 0 |
+| CPU | 9 | 8 | 1 (`cpu.fault_reason`) | 0 |
+| memory system | 7 | 7 | 0 | 0 |
+| PSG | 10 | 9 | 0 | 1 (`psg.env_level`) |
+| STIC | 11 | 7 | 2 (`stic.blocked_reads`, `stic.blocked_writes`) | 2 (`stic.late_grants`, `stic.cs_ptr`) |
+| observation rows | 12 | 6 | 0 | 6 (the four chains, `obs.input.count`, `obs.input.words`) |
+
+The three rows that differ in a public report only keep `ROW`: nothing but the report reads a faulted CPU's reason (the CPU stops at the fault) and the two saturating counters of blocked register accesses, and the report echoes them; the plan counts the public reports as divergence, and their witness cuts hold non-zero values.
+
+Witnesses amended (the sweep found the listed witness inert; the cut definitions are in the corrections of `docs/state/hard-points.md`):
+- `cpu.intff`: HP-FRAME-MID to HP-OPEN. At HP-OPEN a lost interrupt enable means the interrupt of the frame is not accepted, so the display is not enabled for the frame and the frame differs.
+- `cpu.prev_interruptible`: HP-OPEN to HP-STEAL-A (now the boundary before the first bus grant). At HP-OPEN a boundary closed by mistake accepts the interrupt one idle unit late; every idle unit is 36 ticks and the late entry leaves the same machine at the same ticks, so the loop cannot show it (the sweep found it inert). A closed boundary before a bus grant delays the grant, and the run reports another number of units.
+- `cpu.busak`: HP-STEAL-A to HP-STEAL-B (now the boundary before a release). After the grant a lost BUSAK is harmless, because BUSRQ is still asserted and the grant is taken again.
+
+Exempt rows, with the argument and the cut at which the sweep found each inert (every candidate, 3 to 6 continuations, no change in behaviour or in any report):
+
+| Row | Cut | What reads it, and why that cannot change a continuation |
+|---|---|---|
+| `obs.video.chain` | HP-FRAME-MID | `h(n+1)` is the SHA-256 of the previous chain value and the new frame record; nothing reads the chain but the VIDEO digest and its own next value |
+| `obs.audio.chain` | HP-PSG-MID | the same over the level-change records |
+| `obs.input.chain` | HP-INPUT | the same over the applied events |
+| `obs.psglog.chain` | HP-LOG | the same over the PSG register writes |
+| `obs.input.count` | HP-INPUT | incremented by every applied event and read by nothing; the host resubmits from the applied count of the report of its own earlier call |
+| `obs.input.words` | HP-INPUT | every event carries the whole controller state and overwrites the four words; the pull-downs the guest reads are a separate stored row (`mem.port_pulldown`, a ROW), and only the run report echoes the words, so a replaced value is overwritten by the next event before anything reads it |
+| `psg.env_level` | HP-ENV-MID | a function of the cycle index and the direction (the validator enforces it) and recomputed at every envelope step before it is used for a sample |
+| `stic.cs_ptr` | HP-LATCH | assigned by every render before anything reads it (each render starts at 0); between two renders it is an output of the last render |
+| `stic.late_grants` | HP-STEAL-C | a saturating count that the end of a frame adds to and nothing reads; the STIC report echoes it, it is zero at every one of the 18 cuts (every bus window of the programs of the cuts is granted: no non-interruptible stretch of 1,026 cycles occurs), so no cut witnesses it non-default; a designed program with such a stretch would |
+
+Nine exemptions, at most the eleven the plan expects. Each exempt row is covered by the poisoned-target equivalence (`state.restore.poisoned-target-equals-source`, which fails a row a restore leaves at the poison byte), by the whole-instance and digest equality of every cut comparison, and, for the four chains, by the digest of their domain at the end of each cut comparison.
+The sweep neither assumes nor fakes the result: `state.judge.row-sweep-detects-omission` applies it to `cpu.r` at HP-SDBD (read by the program, reported as divergent) and on an exempt row of this list (reported as inert), so it can fail both ways.
