@@ -98,3 +98,12 @@ state.judge.row-sweep-detects-omission
 # trailer left as it was (refused by the header field or by the trailer).
 state.fuzz.truncations
 state.fuzz.byte-flips
+# Plan 08-15 Task 2: the resealed families, which reach the validators and the invariants. A flip with the trailer recomputed ends in a refusal with a pair of the allowed set of its
+# position (the header fields by their own reasons, the profile id by its form 71 or the registry 72, the parameter digest 74, the slot records 76 and 78, the frame of a section 78, a count
+# prefix 77, a value 78 or 79) or in an acceptance that re-encodes canonically (every free row of the specification, the informational digests, the repaired trailer); every bit of the
+# header with and without the reseal; the lies of the lengths, the header, the section table, the profile id and the identities as data rows with the offset the specification gives each;
+# and each derived invariant and device validator violated one at a time with a valid trailer.
+state.fuzz.byte-flips-resealed
+state.fuzz.header-bit-flips
+state.fuzz.length-and-table-lies
+state.fuzz.semantic-lies

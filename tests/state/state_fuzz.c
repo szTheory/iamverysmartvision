@@ -119,6 +119,7 @@ typedef struct fz_fixture {
   size_t nrows;
   const char *row_name[FZ_MAXROWS];
   uint8_t row_free[FZ_MAXROWS];
+  uint8_t row_known[FZ_MAXROWS];
   uint32_t row_sec[FZ_MAXROWS];
   uint32_t row_count_off[FZ_MAXROWS]; /* the container offset of the count prefix of an array row, else 0 */
 } fz_fixture;
@@ -138,6 +139,23 @@ static int fz_is_free(const char *row)
   size_t i;
   for (i = 0u; fz_free_rows[i] != NULL; i++) {
     if (strcmp(fz_free_rows[i], row) == 0) {
+      return 1;
+    }
+  }
+  return 0;
+}
+
+/* The rows no validator or invariant constrains although the specification does not call them free: a known acceptance, pinned here so that a
+ * later validator is a conscious change. The STIC register words are stored masked by the write path of the memory system, so a word with a bit
+ * outside its write mask is a state no step makes; nothing refuses it today (plan 08-15, summary: "Accepted by design, and the one known
+ * acceptance"). */
+static const char *const fz_known_rows[] = {"mem.stic_reg", NULL};
+
+static int fz_is_known(const char *row)
+{
+  size_t i;
+  for (i = 0u; fz_known_rows[i] != NULL; i++) {
+    if (strcmp(fz_known_rows[i], row) == 0) {
       return 1;
     }
   }
@@ -223,6 +241,7 @@ static int fz_layout(void)
       row = (uint32_t)fz.nrows++;
       fz.row_name[row] = f->name;
       fz.row_free[row] = (uint8_t)fz_is_free(f->name);
+      fz.row_known[row] = (uint8_t)fz_is_known(f->name);
       fz.row_sec[row] = i;
       fz.row_count_off[row] = 0u;
       if (f->count > 1u) {
@@ -352,7 +371,7 @@ typedef struct fz_res {
 } fz_res;
 
 /* The call into a report poisoned with pbyte, and what the contract says about it. The target is the fixture's. */
-static void fz_call(fz_ctx *c, const fz_lab *lab, uint8_t *h, size_t readable, uint64_t claimed, uint8_t pbyte, fz_res *r)
+static void fz_call(fz_ctx *c, const fz_lab *lab, uint8_t *h, size_t readable, uint64_t claimed, uint8_t pbyte, int subset, fz_res *r)
 {
   su_rep rep;
   uint8_t exp[SU_CALLER];
@@ -369,12 +388,15 @@ static void fz_call(fz_ctx *c, const fz_lab *lab, uint8_t *h, size_t readable, u
   r->sec = FZ_NONE;
   r->kind = 0u;
   if (r->st == IVS_OK) {
-    /* an acceptance writes the whole v1 report exactly as describe does */
-    su_rep want;
-    memset(&want, pbyte, sizeof want);
-    want.r.struct_size = SU_CALLER;
-    if (ivs_snapshot_describe(h, claimed, &want.r) != IVS_OK || memcmp(rep.b, want.b, sizeof rep.b) != 0) {
-      fz_fail(c, lab, "the report of an acceptance is not the report describe writes");
+    /* an acceptance writes the whole v1 report exactly as describe does (describe hashes the snapshot again, so the comparison is made on the
+     * bounded subset of the accepted cases) */
+    if (subset) {
+      su_rep want;
+      memset(&want, pbyte, sizeof want);
+      want.r.struct_size = SU_CALLER;
+      if (ivs_snapshot_describe(h, claimed, &want.r) != IVS_OK || memcmp(rep.b, want.b, sizeof rep.b) != 0) {
+        fz_fail(c, lab, "the report of an acceptance is not the report describe writes");
+      }
     }
     return;
   }
@@ -389,7 +411,8 @@ static void fz_call(fz_ctx *c, const fz_lab *lab, uint8_t *h, size_t readable, u
   if (r->off > IVS_SNAPSHOT_MAX_BYTES || (r->sec != FZ_NONE && r->sec >= ST_SECTIONS) || r->kind > 3u) {
     fz_fail(c, lab, "a reported position out of range: offset %llu, section %u, kind %u", (unsigned long long)r->off, (unsigned)r->sec, (unsigned)r->kind);
   }
-  su_expect_report(exp, h, readable, r->reason, r->off, r->sec, r->kind);
+  /* an oversized length is refused before any byte is read, so no header fact is written either */
+  su_expect_report(exp, h, r->reason == 60u ? 0u : readable, r->reason, r->off, r->sec, r->kind);
   if (memcmp(rep.b, exp, sizeof exp) != 0) {
     size_t i = 0u;
     while (rep.b[i] == exp[i]) {
@@ -399,8 +422,10 @@ static void fz_call(fz_ctx *c, const fz_lab *lab, uint8_t *h, size_t readable, u
   }
 }
 
-/* The checks of an accepted case, made on the restored target. */
-static void fz_accepted_checks(fz_ctx *c, const fz_lab *lab, const uint8_t *h, size_t len)
+/* The checks of an accepted case, made on the restored target. The instance outside the STATE and PAD rows, the PAD rows and the re-encode of every
+ * section that differs from the valid snapshot's are checked on every accepted case; on the bounded subset (the first 16 accepted cases of an id and
+ * every 97th, `subset`) all seven sections, a full save, the report against describe and a short run of the restored machine are checked as well. */
+static void fz_accepted_checks(fz_ctx *c, const fz_lab *lab, const uint8_t *h, size_t len, int subset)
 {
   static uint8_t pre[4096];
   static uint8_t out[IVS_SNAPSHOT_MAX_BYTES];
@@ -425,7 +450,11 @@ static void fz_accepted_checks(fz_ctx *c, const fz_lab *lab, const uint8_t *h, s
     }
   }
   for (i = 0u; i < ST_SECTIONS; i++) {
-    size_t got = ivs_machine_state_preimage(fz.tgt.m, st_section_domain[i], pre, sizeof pre);
+    size_t got;
+    if (!subset && len == fz.n && memcmp(h + fz.sec_off[i], fz.snap + fz.sec_off[i], fz.sec_len[i]) == 0) {
+      continue; /* a section equal to the valid snapshot's: every accepted case of the subset re-encodes all seven */
+    }
+    got = ivs_machine_state_preimage(fz.tgt.m, st_section_domain[i], pre, sizeof pre);
     if (c->tamper == FZ_T_PREIMAGE) {
       pre[0] ^= 0x01u;
     }
@@ -433,7 +462,9 @@ static void fz_accepted_checks(fz_ctx *c, const fz_lab *lab, const uint8_t *h, s
       fz_fail(c, lab, "the re-encode of section %u (%u bytes) is not the input's section", (unsigned)i, (unsigned)got);
     }
   }
-  if (c->accepted <= 16u || c->accepted % 97u == 0u) {
+  if (subset) {
+    uint32_t consumed = 0u;
+    const struct ivs_machine *im = fz.tgt.m;
     c->full_saves++;
     if (!su_snapshot(fz.tgt.m, out, sizeof out, &n) || n != len) {
       fz_fail(c, lab, "a full save of the restored instance gives %u bytes, not %u", (unsigned)n, (unsigned)len);
@@ -452,6 +483,10 @@ static void fz_accepted_checks(fz_ctx *c, const fz_lab *lab, const uint8_t *h, s
         fz_fail(c, lab, "a full save of the restored instance differs from the input at byte %u", (unsigned)d);
       }
     }
+    /* a restored machine runs: a state that restore accepted must not make the core fail (the sanitizer sees any bad access) */
+    if (im->time_ticks < ((uint64_t)1u << 62) && !su_run_to(fz.tgt.m, im->time_ticks + 6000u, NULL, 0u, &consumed)) {
+      fz_fail(c, lab, "the restored machine refuses to run");
+    }
   }
 }
 
@@ -467,6 +502,7 @@ static int fz_check(fz_ctx *c, const char *what, uint64_t a, uint32_t m, const u
   uint8_t *h;
   uint32_t k;
   uint32_t attempts = twice ? 2u : 1u;
+  int subset = c->accepted + 1u <= 16u || (c->accepted + 1u) % 97u == 0u;
   lab.what = what;
   lab.a = a;
   lab.m = m;
@@ -480,7 +516,7 @@ static int fz_check(fz_ctx *c, const char *what, uint64_t a, uint32_t m, const u
   }
   for (k = 0u; k < attempts; k++) {
     uint8_t pbyte = ((psel ^ k) & 1u) != 0u ? 0x5Au : 0xA5u;
-    fz_call(c, &lab, h, readable, claimed, pbyte, &r[k]);
+    fz_call(c, &lab, h, readable, claimed, pbyte, subset, &r[k]);
     if (readable > 0u && memcmp(h, bytes, readable) != 0) {
       fz_fail(c, &lab, "the supplied bytes were changed");
       memcpy(h, bytes, readable);
@@ -498,7 +534,7 @@ static int fz_check(fz_ctx *c, const char *what, uint64_t a, uint32_t m, const u
           fz_fail(c, &lab, "accepted, but the specification says it is refused");
         }
       }
-      fz_accepted_checks(c, &lab, h, readable);
+      fz_accepted_checks(c, &lab, h, readable, subset);
       if (attempts == 2u && k == 0u) {
         memcpy(fz.after, fz.tgt.storage, IVS_MACHINE_BYTES);
       }
@@ -577,6 +613,22 @@ static int fz_finish(const fz_ctx *c)
     ivs_test_diag("%s: refused/accepted by class: %s", c->name, line);
   }
   return c->bad == 0u && c->attempts > 0u ? IVS_TEST_PASS : IVS_TEST_FAIL;
+}
+
+/* A sweep must have met every reason it exists to meet, and some acceptance when it expects any (a normal build; a fault run takes a thinned
+ * point set). Returns IVS_TEST_PASS or IVS_TEST_FAIL. */
+static int fz_seen(const fz_ctx *c, uint32_t want, int expect_accept)
+{
+  int ok = IVS_TEST_PASS;
+  if (ST_FAULT_STRIDE == 1u && (c->seen & want) != want) {
+    ivs_test_diag("%s: reasons never produced: %06X", c->name, (unsigned)(want & ~c->seen));
+    ok = IVS_TEST_FAIL;
+  }
+  if (ST_FAULT_STRIDE == 1u && expect_accept && c->accepted == 0u) {
+    ivs_test_diag("%s: nothing was accepted, the sweep is vacuous", c->name);
+    ok = IVS_TEST_FAIL;
+  }
+  return ok;
 }
 
 /* ---- the position classifier (written from the Layout table and the Check order of the specification) ---- */
@@ -730,8 +782,8 @@ static uint32_t fz_classify(uint32_t k, uint8_t mask, int sealed, fz_exp *e)
       fz_exp_one(e, 77u, xall, fz.row_count_off[row], fz.row_sec[row], 0u);
       return FZ_C_COUNTPFX;
     }
-    if (fz.row_free[fz.pk_row[k]]) {
-      e->accept = 1u;
+    if (fz.row_free[fz.pk_row[k]] || fz.row_known[fz.pk_row[k]]) {
+      e->accept = 1u; /* no validator or invariant constrains the row: any value is accepted */
     } else {
       e->accept = 1u;
       e->reasons = FZ_BIT(78u) | FZ_BIT(79u);
@@ -827,8 +879,641 @@ static int fz_byte_flips(void)
   return ok;
 }
 
+
+/* state.fuzz.byte-flips-resealed: every offset flipped (XOR 0xFF and XOR 0x01) with the trailer RECOMPUTED, so the flip is judged by the
+ * checks after the trailer: the header fields by their own reasons as before, the profile id by its form (71) or the registry (72), the
+ * parameter digest (74), the slot records (76, 78), the informational digests (accepted), the frame of a section (78), a count prefix (77) and
+ * the values (accepted, or 78 or 79). A flip of the trailer is repaired by the reseal and is the valid snapshot. An accepted case must
+ * re-encode canonically (fz_accepted_checks) and, for a row the specification calls free, every flip must be accepted. */
+static void fz_print_rows(const fz_ctx *c)
+{
+  char line[360];
+  size_t at = 0u;
+  size_t i;
+  for (i = 0u; i < fz.nrows; i++) {
+    if (c->row_ref[i] + c->row_acc[i] == 0u) {
+      continue;
+    }
+    if (at + 64u >= sizeof line) {
+      ivs_test_diag("%s: refused/accepted by row: %s", c->name, line);
+      at = 0u;
+    }
+    {
+      int w = snprintf(line + at, sizeof line - at, "%s%s %u/%u; ", fz.row_free[i] ? "free " : (fz.row_known[i] ? "known " : ""), fz.row_name[i], (unsigned)c->row_ref[i],
+                       (unsigned)c->row_acc[i]);
+      if (w > 0) {
+        at += (size_t)w;
+      }
+    }
+  }
+  if (at > 0u) {
+    ivs_test_diag("%s: refused/accepted by row: %s", c->name, line);
+  }
+}
+
+static int fz_byte_flips_resealed(void)
+{
+  static const uint8_t masks[2] = {0xFFu, 0x01u};
+  fz_ctx c;
+  uint32_t k;
+  int ok;
+  ST_CHECK(fz_get());
+  fz_ctx_init(&c, "state.fuzz.byte-flips-resealed");
+  for (k = 0u; k < (uint32_t)fz.n; k++) {
+    uint32_t j;
+    if (!fz_keep(k)) {
+      continue;
+    }
+    for (j = 0u; j < 2u; j++) {
+      /* the second value of a byte of a free row adds nothing to the first: XOR 0xFF flips every bit of the byte, so with the valid snapshot's
+       * own round trip every bit of it is shown restored as 0 and as 1; the constrained rows, the frames, the counts and the header take both
+       * (plan 08-15, cost stop rule) */
+      if (j == 1u && k >= FZ_HDR && k < (uint32_t)fz.n - IVS_SNAP_TRAILER_BYTES && fz.pk_kind[k] == FZ_K_VALUE && fz.row_free[fz.pk_row[k]]) {
+        continue;
+      }
+      fz_flip_case(&c, k, masks[j], 1, k + j, 0);
+    }
+  }
+  fz_print_rows(&c);
+  ok = fz_finish(&c);
+  ok |= fz_seen(&c, FZ_BIT(61u) | FZ_BIT(62u) | FZ_BIT(63u) | FZ_BIT(64u) | FZ_BIT(65u) | FZ_BIT(66u) | FZ_BIT(67u) | FZ_BIT(68u) | FZ_BIT(69u) |
+                        FZ_BIT(71u) | FZ_BIT(72u) | FZ_BIT(74u) | FZ_BIT(76u) | FZ_BIT(77u) | FZ_BIT(78u) | FZ_BIT(79u),
+                1);
+  return ok;
+}
+
+/* 1 when byte k of the header lies in a 32 byte digest field. */
+static int fz_digest_byte(uint32_t k)
+{
+  uint32_t s;
+  if ((k >= IVS_SNAP_OFF_SCHEMA_DIGEST && k < IVS_SNAP_OFF_PROFILE_ID) || (k >= IVS_SNAP_OFF_PARAMS && k < IVS_SNAP_OFF_SLOTS) ||
+      (k >= IVS_SNAP_OFF_COMPOSITE && k < IVS_SNAP_OFF_TABLE)) {
+    return 1;
+  }
+  for (s = 0u; s < 3u; s++) {
+    uint32_t rec = IVS_SNAP_OFF_SLOTS + s * IVS_SNAP_SLOT_BYTES;
+    if (k >= rec + 4u && k < rec + 36u) {
+      return 1;
+    }
+  }
+  return k >= IVS_SNAP_OFF_TABLE && k < FZ_HDR && (k - IVS_SNAP_OFF_TABLE) % IVS_SNAP_ENTRY_BYTES >= 12u;
+}
+
+/* state.fuzz.header-bit-flips: every single bit of the 612 byte header that is not a bit of a digest (the digests take one bit per byte), with the
+ * trailer left as it was and with it recomputed, through the same classifier. */
+static int fz_header_bit_flips(void)
+{
+  fz_ctx c;
+  uint32_t k;
+  int ok;
+  ST_CHECK(fz_get());
+  fz_ctx_init(&c, "state.fuzz.header-bit-flips");
+  for (k = 0u; k < FZ_HDR; k++) {
+    uint32_t b;
+    if (!fz_keep(k)) {
+      continue;
+    }
+    for (b = 0u; b < 8u; b++) {
+      /* a byte of a 32 byte digest (the schema digest, the parameter digest, the three slot SHA-256, the composite and the seven section
+       * digests) is compared or ignored as a whole, so every bit of it ends alike: one bit per byte, rotating with the offset, so that all
+       * eight bit positions occur in every digest (every byte of every digest takes XOR 0xFF and XOR 0x01 in the byte sweeps) */
+      if (fz_digest_byte(k) && b != k % 8u) {
+        continue;
+      }
+      fz_flip_case(&c, k, (uint8_t)(1u << b), 0, k + b, 0);
+      fz_flip_case(&c, k, (uint8_t)(1u << b), 1, k + b + 1u, 0);
+    }
+  }
+  ok = fz_finish(&c);
+  ok |= fz_seen(&c, FZ_BIT(61u) | FZ_BIT(62u) | FZ_BIT(63u) | FZ_BIT(64u) | FZ_BIT(65u) | FZ_BIT(66u) | FZ_BIT(67u) | FZ_BIT(68u) | FZ_BIT(69u) |
+                        FZ_BIT(70u) | FZ_BIT(71u) | FZ_BIT(72u) | FZ_BIT(74u) | FZ_BIT(76u) | FZ_BIT(78u),
+                1);
+  return ok;
+}
+
+/* ---- the rows of the structured lies (data, as in the matrices of plan 08-13) ---- */
+
+#define FZ_TAB_CAP 512u
+static uint8_t fz_lax[FZ_TAB_CAP]; /* 1: the row's expectation names the reason only (the reader's choice of entry or offset is ambiguous) */
+
+static void fz_lax_row(const su_tab *t, const su_row *r)
+{
+  size_t i = (size_t)(r - t->row);
+  if (i < FZ_TAB_CAP) {
+    fz_lax[i] = 1u;
+  }
+}
+
+/* A table row: one lie, the reason and the exact place the specification gives it. */
+static su_row *fz_lie(su_tab *t, uint32_t reason, uint64_t off, uint32_t sec, uint32_t kind, const char *fmt, ...)
+{
+  char name[80];
+  su_row *r;
+  va_list ap;
+  va_start(ap, fmt);
+  (void)vsnprintf(name, sizeof name, fmt, ap);
+  va_end(ap);
+  r = su_add(t, "%s", name);
+  su_expect(r, reason, off, sec, kind);
+  return r;
+}
+
+/* Runs the rows: each is a copy of the valid snapshot with the row's patches, resealed when the row says so, handed to restore as a heap buffer of
+ * its supplied length with the length it claims, and judged against the row's own (status, reason, offset, section, kind). */
+static void fz_run_tab(fz_ctx *c, const su_tab *t, uint32_t psel0, int twice)
+{
+  static uint8_t work[IVS_SNAPSHOT_MAX_BYTES + 64u];
+  size_t r;
+  if (t->bad) {
+    fz_fail(c, &(fz_lab){"a row table overflowed", 0u, 0u}, "raise its capacity");
+    c->bad++;
+    return;
+  }
+  for (r = 0u; r < t->n; r++) {
+    const su_row *w = &t->row[r];
+    fz_exp e;
+    size_t i;
+    size_t readable;
+    uint64_t claimed;
+    memset(work, 0, sizeof work);
+    memcpy(work, fz.snap, fz.n);
+    for (i = 0u; i < w->np; i++) {
+      uint8_t *b = &work[w->p[i].off];
+      *b = w->p[i].op == 1u ? (uint8_t)(*b ^ w->p[i].v) : w->p[i].v;
+    }
+    if (w->reseal != 0u) {
+      su_reseal(work, fz.n);
+    }
+    if (w->big_len != 0u) {
+      readable = 1u;
+      claimed = w->big_len;
+    } else {
+      readable = w->trunc != 0u ? (size_t)w->trunc : fz.n;
+      claimed = readable;
+    }
+    memset(&e, 0, sizeof e);
+    e.reasons = w->reason != 0u ? FZ_BIT(w->reason) : 0u;
+    e.accept = (uint8_t)(w->reason == 0u);
+    e.xmask = (r < FZ_TAB_CAP && fz_lax[r] != 0u) ? 0u : (uint8_t)(FZ_X_OFF | FZ_X_SEC | FZ_X_KIND);
+    e.off = w->off;
+    e.sec = w->sec;
+    e.kind = w->kind;
+    (void)fz_check(c, w->name, r, 0u, work, readable, claimed, &e, -1, -1, psel0 + (uint32_t)r, twice);
+  }
+}
+
+/* The lies of the length, the header, the section table, the profile id and the identities. Every row's outcome is written from the Layout, the
+ * Check order and the Refusal reasons of the specification and the "As built" notes of the reader (the offset a refusal reports). */
+static void fz_build_lies(su_tab *t)
+{
+  const uint32_t n = (uint32_t)fz.n;
+  const uint32_t trailer = n - IVS_SNAP_TRAILER_BYTES;
+  uint32_t i;
+  uint32_t s;
+  su_row *r;
+  memset(fz_lax, 0, sizeof fz_lax);
+  /* total_bytes: 0, 1, below the smallest container, the smallest container, one below, one above, far above, the bound, 0xFFFFFFFF. The total is
+   * judged before the trailer, so a recomputed trailer changes nothing. A total above the supplied length is a truncation (61, offset the
+   * length); a total below it, or any other total that is not the size this build derives, is the total length reason (67, offset 12). */
+  {
+    static const uint32_t totals[] = {0u, 1u, 643u, 644u, 4298u, 4300u, 8598u, 16384u, 16385u, 0x00010000u + 4299u, 0x80000000u, 0xFFFFFFFFu};
+    for (i = 0u; i < sizeof totals / sizeof totals[0]; i++) {
+      uint32_t v = totals[i];
+      r = fz_lie(t, v > n ? 61u : 67u, v > n ? n : IVS_SNAP_OFF_TOTAL, FZ_NONE, 0u, "total_bytes %u", (unsigned)v);
+      su_setn(t, r, IVS_SNAP_OFF_TOTAL, 4u, v);
+      r->reseal = (uint8_t)(i & 1u);
+    }
+  }
+  /* the supplied length against the total the snapshot states: one byte short (the total is above the buffer), one, eight, 4,096 and every byte up
+   * to the bound more (a total below the length), and above the bound (refused before any byte is read, offset the bound) */
+  r = fz_lie(t, 61u, n - 1u, FZ_NONE, 0u, "a buffer one byte short");
+  r->trunc = n - 1u;
+  {
+    static const uint32_t extra[] = {1u, 8u, 64u, 4096u, 16384u - 4299u};
+    for (i = 0u; i < sizeof extra / sizeof extra[0]; i++) {
+      r = fz_lie(t, 67u, IVS_SNAP_OFF_TOTAL, FZ_NONE, 0u, "%u extra bytes after the trailer", (unsigned)extra[i]);
+      r->trunc = n + extra[i];
+    }
+  }
+  r = fz_lie(t, 60u, IVS_SNAPSHOT_MAX_BYTES, FZ_NONE, 0u, "16,385 bytes supplied");
+  r->trunc = IVS_SNAPSHOT_MAX_BYTES + 1u;
+  r = fz_lie(t, 60u, IVS_SNAPSHOT_MAX_BYTES, FZ_NONE, 0u, "a length of 16,385 claimed for one byte");
+  r->big_len = IVS_SNAPSHOT_MAX_BYTES + 1u;
+  r = fz_lie(t, 60u, IVS_SNAPSHOT_MAX_BYTES, FZ_NONE, 0u, "a length of 2^32 claimed for one byte");
+  r->big_len = (uint64_t)1u << 32;
+  r = fz_lie(t, 60u, IVS_SNAPSHOT_MAX_BYTES, FZ_NONE, 0u, "a length of 2^64 - 1 claimed for one byte");
+  r->big_len = UINT64_MAX;
+  /* the versions, the flags, the schema version, the section count and the magic */
+  {
+    static const uint32_t versions[] = {0u, 2u, 0xFFFFu};
+    static const uint32_t schemas[] = {0u, 2u, 0x00010000u, 0xFFFFFFFFu};
+    static const uint32_t counts[] = {0u, 1u, 6u, 8u, 0xFFFFu, 0x00010007u, 0xFFFFFFFFu};
+    for (i = 0u; i < sizeof versions / sizeof versions[0]; i++) {
+      r = fz_lie(t, 63u, IVS_SNAP_OFF_FORMAT, FZ_NONE, 0u, "format version %u", (unsigned)versions[i]);
+      su_setn(t, r, IVS_SNAP_OFF_FORMAT, 2u, versions[i]);
+      r->reseal = (uint8_t)(i & 1u);
+    }
+    for (i = 0u; i < 16u; i++) {
+      r = fz_lie(t, 64u, IVS_SNAP_OFF_FLAGS, FZ_NONE, 0u, "flag bit %u", (unsigned)i);
+      su_setn(t, r, IVS_SNAP_OFF_FLAGS, 2u, 1u << i);
+    }
+    r = fz_lie(t, 64u, IVS_SNAP_OFF_FLAGS, FZ_NONE, 0u, "all 16 flag bits");
+    su_setn(t, r, IVS_SNAP_OFF_FLAGS, 2u, 0xFFFFu);
+    for (i = 0u; i < sizeof schemas / sizeof schemas[0]; i++) {
+      r = fz_lie(t, 65u, IVS_SNAP_OFF_SCHEMA, FZ_NONE, 0u, "schema version %u", (unsigned)schemas[i]);
+      su_setn(t, r, IVS_SNAP_OFF_SCHEMA, 4u, schemas[i]);
+    }
+    for (i = 0u; i < sizeof counts / sizeof counts[0]; i++) {
+      r = fz_lie(t, 68u, IVS_SNAP_OFF_COUNT, FZ_NONE, 0u, "section count %u", (unsigned)counts[i]);
+      su_setn(t, r, IVS_SNAP_OFF_COUNT, 4u, counts[i]);
+      r->reseal = (uint8_t)(i & 1u);
+    }
+    r = fz_lie(t, 62u, 0u, FZ_NONE, 0u, "magic all zero");
+    for (i = 0u; i < 8u; i++) {
+      su_set(t, r, i, 0u);
+    }
+    r = fz_lie(t, 62u, 0u, FZ_NONE, 0u, "magic with the high bit of the first byte cleared (a 7-bit transfer)");
+    su_set(t, r, 0u, 0x09u);
+    r = fz_lie(t, 62u, 5u, FZ_NONE, 0u, "magic with the CR changed to LF (a text-mode transfer)");
+    su_set(t, r, 5u, 0x0Au);
+    r = fz_lie(t, 66u, IVS_SNAP_OFF_SCHEMA_DIGEST, FZ_NONE, 0u, "schema digest all zero");
+    for (i = 0u; i < 32u; i++) {
+      su_set(t, r, IVS_SNAP_OFF_SCHEMA_DIGEST + i, 0u);
+    }
+    r = fz_lie(t, 66u, IVS_SNAP_OFF_SCHEMA_DIGEST, FZ_NONE, 0u, "schema digest, last byte");
+    su_xor(t, r, IVS_SNAP_OFF_SCHEMA_DIGEST + 31u, 0x80u);
+  }
+  /* the section table: wraparound, overlap, gap, unknown and duplicate domains, the reserved bytes, a length that is one too many or too few.
+   * The entry the reader names is the first, in order, whose rule fails: the domain, the three zero bytes, the offset against the end of the entry
+   * before, the length against the end of the payload; when every entry holds and the last section does not end at the trailer, the last entry's
+   * length. */
+  {
+    uint32_t e1 = IVS_SNAP_OFF_TABLE + 1u * IVS_SNAP_ENTRY_BYTES;
+    uint32_t e2 = IVS_SNAP_OFF_TABLE + 2u * IVS_SNAP_ENTRY_BYTES;
+    uint32_t e3 = IVS_SNAP_OFF_TABLE + 3u * IVS_SNAP_ENTRY_BYTES;
+    uint32_t e0 = IVS_SNAP_OFF_TABLE;
+    uint32_t e6 = IVS_SNAP_OFF_TABLE + 6u * IVS_SNAP_ENTRY_BYTES;
+    r = fz_lie(t, 69u, e0 + 4u, 0u, 0u, "entry 0 offset 0xFFFFFFFF");
+    su_setn(t, r, e0 + 4u, 4u, 0xFFFFFFFFu);
+    r = fz_lie(t, 69u, e0 + 8u, 0u, 0u, "entry 0 length 0xFFFFFFFF (offset plus length wraps 32 bits)");
+    su_setn(t, r, e0 + 8u, 4u, 0xFFFFFFFFu);
+    r = fz_lie(t, 69u, e3 + 8u, 3u, 0u, "entry 3 length 0xFFFFFFF0");
+    su_setn(t, r, e3 + 8u, 4u, 0xFFFFFFF0u);
+    r = fz_lie(t, 69u, e3 + 8u, 3u, 0u, "entry 3 length 0x80000000");
+    su_setn(t, r, e3 + 8u, 4u, 0x80000000u);
+    r = fz_lie(t, 69u, e2 + 4u, 2u, 0u, "entry 2 offset equals entry 1 offset (overlap)");
+    su_setn(t, r, e2 + 4u, 4u, fz.sec_off[1]);
+    r = fz_lie(t, 69u, e2 + 4u, 2u, 0u, "entry 2 offset one above (a gap)");
+    su_setn(t, r, e2 + 4u, 4u, fz.sec_off[2] + 1u);
+    r = fz_lie(t, 69u, e2 + 4u, 2u, 0u, "entry 2 offset one below (an overlap of one byte)");
+    su_setn(t, r, e2 + 4u, 4u, fz.sec_off[2] - 1u);
+    r = fz_lie(t, 69u, e2 + 4u, 2u, 0u, "entry 2 offset 0");
+    su_setn(t, r, e2 + 4u, 4u, 0u);
+    r = fz_lie(t, 69u, e2 + 4u, 2u, 0u, "entry 2 offset 0xFFFFFFFF");
+    su_setn(t, r, e2 + 4u, 4u, 0xFFFFFFFFu);
+    r = fz_lie(t, 69u, e1 + 4u, 1u, 0u, "entry 1 offset 0xFFFFFFFC");
+    su_setn(t, r, e1 + 4u, 4u, 0xFFFFFFFCu);
+    r = fz_lie(t, 69u, e1 + 4u, 1u, 0u, "section 0 one byte long: the next entry no longer begins where it ends");
+    su_setn(t, r, e0 + 8u, 4u, fz.sec_len[0] + 1u);
+    r = fz_lie(t, 69u, e1 + 4u, 1u, 0u, "section 0 one byte short");
+    su_setn(t, r, e0 + 8u, 4u, fz.sec_len[0] - 1u);
+    r = fz_lie(t, 69u, e6 + 8u, 6u, 0u, "the last section one byte long: past the payload");
+    su_setn(t, r, e6 + 8u, 4u, fz.sec_len[6] + 1u);
+    r = fz_lie(t, 69u, e6 + 8u, 6u, 0u, "the last section one byte short: it does not end at the trailer");
+    su_setn(t, r, e6 + 8u, 4u, fz.sec_len[6] - 1u);
+    for (i = 1u; i < 4u; i++) {
+      r = fz_lie(t, 69u, e2 + i, 2u, 0u, "entry 2 reserved byte %u not zero", (unsigned)i);
+      su_set(t, r, e2 + i, 0x01u);
+    }
+    /* the domains. The reader judges each entry's domain as known and strictly ascending, so which entry of a repeated or out-of-order pair it
+     * names is its own choice; the reason is the specification's */
+    r = fz_lie(t, 69u, e3, 3u, 0u, "entry 3 domain 0x20 (unknown)");
+    su_set(t, r, e3, 0x20u);
+    fz_lax_row(t, r);
+    r = fz_lie(t, 69u, e0, 0u, 0u, "entry 0 domain 0");
+    su_set(t, r, e0, 0u);
+    fz_lax_row(t, r);
+    r = fz_lie(t, 69u, e0, 0u, 0u, "entry 0 domain 3 (IMAGES holds no section)");
+    su_set(t, r, e0, 3u);
+    r = fz_lie(t, 69u, e6, 6u, 0u, "entry 6 domain 0xFF");
+    su_set(t, r, e6, 0xFFu);
+    fz_lax_row(t, r);
+    r = fz_lie(t, 69u, e1, 1u, 0u, "entry 1 domain 1 (a duplicate of entry 0)");
+    su_set(t, r, e1, 1u);
+    fz_lax_row(t, r);
+    r = fz_lie(t, 69u, e3 + IVS_SNAP_ENTRY_BYTES, 4u, 0u, "entry 4 domain 16 (a duplicate of entry 3)");
+    su_set(t, r, e3 + IVS_SNAP_ENTRY_BYTES, 16u);
+    fz_lax_row(t, r);
+    r = fz_lie(t, 69u, e1, 1u, 0u, "entries 1 and 2 swapped (out of order)");
+    su_set(t, r, e1, 4u);
+    su_set(t, r, e2, 2u);
+    fz_lax_row(t, r);
+    /* the table is judged before the trailer: the same lies with a recomputed trailer */
+    r = fz_lie(t, 69u, e2 + 4u, 2u, 0u, "entry 2 offset one above, resealed");
+    su_setn(t, r, e2 + 4u, 4u, fz.sec_off[2] + 1u);
+    r->reseal = 1u;
+    r = fz_lie(t, 69u, e6 + 8u, 6u, 0u, "the last section one byte long, resealed");
+    su_setn(t, r, e6 + 8u, 4u, fz.sec_len[6] + 1u);
+    r->reseal = 1u;
+  }
+  /* the profile id forms with one byte changed (the forms that need the whole field are fz_id_forms): judged after the trailer, so each row is
+   * resealed; the id is looked up only when its form is good */
+  r = fz_lie(t, 71u, IVS_SNAP_OFF_PROFILE_ID + 40u, FZ_NONE, 0u, "a printable byte at index 40 after the NUL");
+  su_set(t, r, IVS_SNAP_OFF_PROFILE_ID + 40u, (uint8_t)'Z');
+  r->reseal = 1u;
+  r = fz_lie(t, 71u, IVS_SNAP_OFF_PROFILE_ID + 5u + 1u, FZ_NONE, 0u, "an embedded NUL at index 5 with printable bytes after it");
+  su_set(t, r, IVS_SNAP_OFF_PROFILE_ID + 5u, 0u);
+  r->reseal = 1u;
+  r = fz_lie(t, 71u, IVS_SNAP_OFF_PROFILE_ID + 3u, FZ_NONE, 0u, "a non-ASCII byte 0x80 at index 3");
+  su_set(t, r, IVS_SNAP_OFF_PROFILE_ID + 3u, 0x80u);
+  r->reseal = 1u;
+  r = fz_lie(t, 71u, IVS_SNAP_OFF_PROFILE_ID + 5u, FZ_NONE, 0u, "a control byte 0x01 at index 5");
+  su_set(t, r, IVS_SNAP_OFF_PROFILE_ID + 5u, 0x01u);
+  r->reseal = 1u;
+  r = fz_lie(t, 71u, IVS_SNAP_OFF_PROFILE_ID + 7u, FZ_NONE, 0u, "DEL 0x7F at index 7");
+  su_set(t, r, IVS_SNAP_OFF_PROFILE_ID + 7u, 0x7Fu);
+  r->reseal = 1u;
+  r = fz_lie(t, 70u, trailer, FZ_NONE, 0u, "an unregistered id with a stale trailer is the trailer");
+  su_set(t, r, IVS_SNAP_OFF_PROFILE_ID, (uint8_t)'z');
+  /* the identities: the parameter digest and the three slot records */
+  r = fz_lie(t, 74u, IVS_SNAP_OFF_PARAMS, FZ_NONE, 0u, "parameter digest, first byte");
+  su_xor(t, r, IVS_SNAP_OFF_PARAMS, 0x01u);
+  r->reseal = 1u;
+  r = fz_lie(t, 74u, IVS_SNAP_OFF_PARAMS, FZ_NONE, 0u, "parameter digest, last byte");
+  su_xor(t, r, IVS_SNAP_OFF_PARAMS + 31u, 0x80u);
+  r->reseal = 1u;
+  r = fz_lie(t, 74u, IVS_SNAP_OFF_PARAMS, FZ_NONE, 0u, "parameter digest all zero");
+  for (i = 0u; i < 32u; i++) {
+    su_set(t, r, IVS_SNAP_OFF_PARAMS + i, 0u);
+  }
+  r->reseal = 1u;
+  for (s = 0u; s < 3u; s++) {
+    uint32_t rec = IVS_SNAP_OFF_SLOTS + s * IVS_SNAP_SLOT_BYTES;
+    r = fz_lie(t, 76u, rec + 4u, FZ_NONE, s + 1u, "slot %u digest, first byte", (unsigned)s);
+    su_xor(t, r, rec + 4u, 0x01u);
+    r->reseal = 1u;
+    r = fz_lie(t, 76u, rec + 4u, FZ_NONE, s + 1u, "slot %u digest, last byte", (unsigned)s);
+    su_xor(t, r, rec + 4u + 31u, 0x80u);
+    r->reseal = 1u;
+    r = fz_lie(t, 76u, rec + 36u, FZ_NONE, s + 1u, "slot %u length one more", (unsigned)s);
+    su_xor(t, r, rec + 39u, 0x01u);
+    r->reseal = 1u;
+    r = fz_lie(t, 78u, rec, FZ_NONE, s + 1u, "slot %u loaded flag 2", (unsigned)s);
+    su_setn(t, r, rec, 4u, 2u);
+    r->reseal = 1u;
+    r = fz_lie(t, 78u, rec, FZ_NONE, s + 1u, "slot %u loaded flag 0xFFFFFFFF", (unsigned)s);
+    su_setn(t, r, rec, 4u, 0xFFFFFFFFu);
+    r->reseal = 1u;
+    r = fz_lie(t, 78u, rec + 36u, FZ_NONE, s + 1u, "slot %u loaded flag 0 over a full record", (unsigned)s);
+    su_setn(t, r, rec, 4u, 0u);
+    r->reseal = 1u;
+    r = fz_lie(t, 76u, rec, FZ_NONE, s + 1u, "slot %u empty in the snapshot, loaded in the instance", (unsigned)s);
+    su_setn(t, r, rec, 4u, 0u);
+    su_setn(t, r, rec + 36u, 4u, 0u);
+    for (i = 0u; i < 32u; i++) {
+      su_set(t, r, rec + 4u + i, 0u);
+    }
+    r->reseal = 1u;
+    r = fz_lie(t, 70u, trailer, FZ_NONE, 0u, "slot %u digest flipped with a stale trailer is the trailer", (unsigned)s);
+    su_xor(t, r, rec + 4u, 0x01u);
+  }
+}
+
+
+/* The profile id forms that change the whole field: the id bytes from index 0 (the rest of the field NUL), the trailer recomputed or not, and the
+ * outcome the specification gives: 71 at the first offending byte (the last byte of the field when there is no NUL), 72 for a well formed id that
+ * is not the registered one, 70 when the trailer is stale. */
+static void fz_id_forms(fz_ctx *c)
+{
+  static const struct {
+    const char *label;
+    const char *text;
+    int fill; /* >0: that many 'a' bytes instead of text */
+    int sealed;
+    uint32_t reason;
+    uint32_t at; /* the index of the byte reported (71) or 0 */
+  } rows[] = {
+      {"id of 63 printable bytes and the NUL", "", 63, 1, 72u, 0u},
+      {"id empty", "", 0, 1, 72u, 0u},
+      {"id in capitals", "INTV-2609-NTSC-FAMILY-P1", 0, 1, 72u, 0u},
+      {"id one byte short", "intv-2609-ntsc-family-p", 0, 1, 72u, 0u},
+      {"id one byte long", "intv-2609-ntsc-family-p1x", 0, 1, 72u, 0u},
+      {"id of spaces, a tilde and a hyphen", " ~- ", 0, 1, 72u, 0u},
+      {"id of 64 printable bytes (no NUL)", "", 64, 1, 71u, 63u},
+      {"id of 64 printable bytes with a stale trailer is the trailer", "", 64, 0, 70u, 0u},
+  };
+  uint32_t i;
+  for (i = 0u; i < sizeof rows / sizeof rows[0]; i++) {
+    static uint8_t work[IVS_SNAPSHOT_MAX_BYTES];
+    fz_exp e;
+    uint32_t j;
+    size_t want = strlen(rows[i].text);
+    memcpy(work, fz.snap, fz.n);
+    for (j = 0u; j < 64u; j++) {
+      work[IVS_SNAP_OFF_PROFILE_ID + j] = rows[i].fill > 0 ? (j < (uint32_t)rows[i].fill ? (uint8_t)'a' : 0u) : (j < want ? (uint8_t)rows[i].text[j] : 0u);
+    }
+    if (rows[i].sealed) {
+      su_reseal(work, fz.n);
+    }
+    if (rows[i].reason == 70u) {
+      fz_exp_one(&e, 70u, FZ_X_OFF | FZ_X_SEC | FZ_X_KIND, fz.n - IVS_SNAP_TRAILER_BYTES, FZ_NONE, 0u);
+    } else if (rows[i].reason == 71u) {
+      fz_exp_one(&e, 71u, FZ_X_OFF | FZ_X_SEC | FZ_X_KIND, IVS_SNAP_OFF_PROFILE_ID + rows[i].at, FZ_NONE, 0u);
+    } else {
+      fz_exp_one(&e, 72u, FZ_X_OFF | FZ_X_SEC | FZ_X_KIND, IVS_SNAP_OFF_PROFILE_ID, FZ_NONE, 0u);
+    }
+    (void)fz_check(c, rows[i].label, i, 0u, work, fz.n, fz.n, &e, -1, -1, i, 0);
+  }
+}
+
+static int fz_run_lies(const char *name, void (*build)(su_tab *), size_t cap, int twice, int expect_all_refused, void (*extra)(fz_ctx *))
+{
+  fz_ctx c;
+  su_tab t;
+  int ok;
+  ST_CHECK(fz_get());
+  fz_ctx_init(&c, name);
+  ST_CHECK(su_tab_init(&t, cap));
+  build(&t);
+  fz_run_tab(&c, &t, 0u, twice);
+  if (extra != NULL) {
+    extra(&c);
+  }
+  ok = fz_finish(&c);
+  if (expect_all_refused && c.accepted != 0u) {
+    ivs_test_diag("%s: a lie was accepted", name);
+    ok = IVS_TEST_FAIL;
+  }
+  ivs_test_diag("%s: %zu rows, reasons seen %06X", name, t.n, (unsigned)c.seen);
+  su_tab_free(&t);
+  return ok;
+}
+
+static int fz_length_and_table_lies(void)
+{
+  return fz_run_lies("state.fuzz.length-and-table-lies", fz_build_lies, FZ_TAB_CAP, 0, 1, fz_id_forms);
+}
+
+/* ---- the semantic lies: one derived invariant (or device validator) violated at a time, with a valid trailer ---- */
+
+static int fz_where(su_tab *t, const char *row, uint32_t *sec, uint32_t *off)
+{
+  uint32_t cnt = 0u;
+  if (!su_row_pos(row, sec, off, &cnt)) {
+    ivs_test_diag("no STATE row '%s' in the field table", row);
+    t->bad = 1;
+    *sec = 0u;
+    *off = 0u;
+    return 0;
+  }
+  return 1;
+}
+
+static uint64_t fz_base_val(su_tab *t, const char *row, uint32_t elem, uint32_t width)
+{
+  uint32_t sec = 0u;
+  uint32_t off = 0u;
+  if (!fz_where(t, row, &sec, &off)) {
+    return 0u;
+  }
+  return su_get(fz.snap + off + elem * width, width);
+}
+
+/* One member to change: row name, element index, width and the value to put there. */
+typedef struct fz_mem {
+  const char *row;
+  uint32_t elem;
+  uint32_t width;
+  uint64_t v;
+} fz_mem;
+
+/* A resealed row that changes up to three members and must be refused as `reason` at the first element of the row `at` (the struct or scalar
+ * the rule is about: the CPU, the phase, machine time, the PSG state, the STIC state, the input row or the video count). */
+static void fz_member_row(su_tab *t, uint32_t reason, const char *at, const char *label, const fz_mem *a, const fz_mem *b, const fz_mem *c)
+{
+  const fz_mem *m[3];
+  uint32_t k;
+  uint32_t sec = 0u;
+  uint32_t off = 0u;
+  su_row *r;
+  m[0] = a;
+  m[1] = b;
+  m[2] = c;
+  (void)fz_where(t, at, &sec, &off);
+  r = fz_lie(t, reason, off, sec, 0u, "%u %s", (unsigned)reason, label);
+  for (k = 0u; k < 3u; k++) {
+    uint32_t msec;
+    uint32_t moff;
+    if (m[k] == NULL || m[k]->row == NULL) {
+      continue;
+    }
+    if (fz_where(t, m[k]->row, &msec, &moff)) {
+      su_setn(t, r, moff + m[k]->elem * m[k]->width, m[k]->width, m[k]->v);
+    }
+  }
+  r->reseal = 1u;
+}
+
+static void fz_build_semantic(su_tab *t)
+{
+  uint64_t time_ticks = fz_base_val(t, "time_ticks", 0u, 8u);
+  uint64_t ei = fz_base_val(t, "stic.event_index", 0u, 4u);
+  uint64_t ns = fz_base_val(t, "psg.next_sample", 0u, 8u);
+  uint64_t em = fz_base_val(t, "obs.audio.emitted", 0u, 8u);
+  uint64_t vc = fz_base_val(t, "obs.video.count", 0u, 8u);
+  uint64_t gate1 = fz_base_val(t, "mem.gate_open", 1u, 1u);
+  uint64_t pull0 = fz_base_val(t, "mem.port_pulldown", 0u, 1u);
+  uint64_t reg0 = fz_base_val(t, "mem.psg_reg", 0u, 2u);
+  memset(fz_lax, 0, sizeof fz_lax);
+  /* INV-2: the STIC timeline and the gate flags */
+  {
+    fz_mem g1 = {"mem.gate_open", 1u, 1u, gate1 ^ 1u};
+    fz_mem g0 = {"mem.gate_open", 0u, 1u, 0u};
+    fz_mem g3 = {"mem.gate_open", 3u, 1u, 1u};
+    fz_mem e1 = {"stic.event_index", 0u, 4u, ei + 1u};
+    fz_mem e0 = {"stic.event_index", 0u, 4u, ei - 1u};
+    fz_member_row(t, 79u, "stic.frame_index", "INV-2 the register gate flag against the cursor", &g1, NULL, NULL);
+    fz_member_row(t, 79u, "stic.frame_index", "INV-2 gate 0 is always open", &g0, NULL, NULL);
+    fz_member_row(t, 79u, "stic.frame_index", "INV-2 gate 3 is always closed", &g3, NULL, NULL);
+    if (ei + 1u < 16u) {
+      fz_member_row(t, 79u, "stic.frame_index", "INV-2 the cursor one event ahead", &e1, NULL, NULL);
+    }
+    if (ei >= 1u) {
+      fz_member_row(t, 79u, "stic.frame_index", "INV-2 the cursor one event behind", &e0, NULL, NULL);
+    }
+  }
+  /* INV-3: the sample index, the emitted count, the previous levels, the register masks */
+  {
+    fz_mem nhi = {"psg.next_sample", 0u, 8u, ns + 1u};
+    fz_mem nlo = {"psg.next_sample", 0u, 8u, ns - 1u};
+    fz_mem ehi = {"obs.audio.emitted", 0u, 8u, em + 1u};
+    fz_mem pl = {"obs.audio.prev_levels", 0u, 4u, 0x10u};
+    fz_mem pt = {"obs.audio.prev_levels", 0u, 4u, 0x01000000u};
+    fz_mem r0 = {"mem.psg_reg", 0u, 2u, reg0 | 0x0100u};
+    fz_member_row(t, 79u, "psg.next_sample", "INV-3 the next sample index one more than the clock says", &nhi, NULL, NULL);
+    fz_member_row(t, 79u, "psg.next_sample", "INV-3 the next sample index one less", &nlo, NULL, NULL);
+    fz_member_row(t, 79u, "psg.next_sample", "INV-3 the emitted count is not the next index minus one", &ehi, NULL, NULL);
+    fz_member_row(t, 79u, "psg.next_sample", "INV-3 a previous level of 16", &pl, NULL, NULL);
+    fz_member_row(t, 79u, "psg.next_sample", "INV-3 the fourth byte of the previous levels is not 0", &pt, NULL, NULL);
+    fz_member_row(t, 79u, "psg.next_sample", "INV-3 register 0 holds a bit its mask drops", &r0, NULL, NULL);
+  }
+  /* INV-4: the pull-downs against the words, the words of controllers the profile does not connect, the input floor */
+  {
+    fz_mem p0 = {"mem.port_pulldown", 0u, 1u, pull0 ^ 0x01u};
+    fz_mem w0 = {"obs.input.words", 0u, 4u, 0x80000000u};
+    fz_mem w2 = {"obs.input.words", 2u, 4u, 1u};
+    fz_mem fl = {"obs.input.floor_tick", 0u, 8u, time_ticks + 1u};
+    fz_member_row(t, 79u, "obs.input.words", "INV-4 the pull-downs against the words", &p0, NULL, NULL);
+    fz_member_row(t, 79u, "obs.input.words", "INV-4 the reserved bit of a controller word", &w0, NULL, NULL);
+    fz_member_row(t, 79u, "obs.input.words", "INV-4 a word of a controller the profile does not connect", &w2, NULL, NULL);
+    fz_member_row(t, 79u, "obs.input.words", "INV-4 the input floor above machine time", &fl, NULL, NULL);
+  }
+  /* INV-6: the video count is the frames the STIC completed */
+  {
+    fz_mem vhi = {"obs.video.count", 0u, 8u, vc + 1u};
+    fz_mem vbig = {"obs.video.count", 0u, 8u, UINT64_MAX};
+    fz_member_row(t, 79u, "obs.video.count", "INV-6 a video count that differs from the frame index", &vhi, NULL, NULL);
+    fz_member_row(t, 79u, "obs.video.count", "INV-6 a video count of 2^64 - 1", &vbig, NULL, NULL);
+  }
+  /* the validators and the scalars (INV-1, INV-5) */
+  {
+    fz_mem ev16 = {"stic.event_index", 0u, 4u, 16u};
+    fz_mem dbd = {"cpu.dbd", 0u, 1u, 1u};
+    fz_mem pint = {"cpu.prev_interruptible", 0u, 1u, 1u};
+    fz_mem faulted = {"cpu.run_state", 0u, 1u, 4u};
+    fz_mem rs9 = {"cpu.run_state", 0u, 1u, 9u};
+    fz_mem st = {"cpu.status", 0u, 1u, 0x01u};
+    fz_mem ph0 = {"phase", 0u, 4u, 0u};
+    fz_mem ph2 = {"phase", 0u, 4u, 2u};
+    fz_mem thi = {"time_ticks", 0u, 8u, 0x8000000000000001ull};
+    fz_mem tout = {"psg.tone_out", 0u, 4u, 2u};
+    fz_mem lvl = {"psg.env_level", 0u, 4u, 16u};
+    fz_mem cs = {"stic.cs_ptr", 0u, 4u, 4u};
+    fz_member_row(t, 78u, "stic.frame_index", "INV-1 the STIC event index at the table size", &ev16, NULL, NULL);
+    fz_member_row(t, 78u, "cpu.r", "INV-1 a pending SDBD with the interruptible flag set", &dbd, &pint, NULL);
+    fz_member_row(t, 78u, "cpu.r", "INV-1 a faulted run state with fault reason 0", &faulted, NULL, NULL);
+    fz_member_row(t, 78u, "cpu.r", "INV-1 a run state of 9", &rs9, NULL, NULL);
+    fz_member_row(t, 78u, "cpu.r", "INV-1 a status bit outside the mask", &st, NULL, NULL);
+    fz_member_row(t, 78u, "phase", "INV-5 a phase other than POWERED (0)", &ph0, NULL, NULL);
+    fz_member_row(t, 78u, "phase", "INV-5 a phase other than POWERED (2)", &ph2, NULL, NULL);
+    fz_member_row(t, 78u, "time_ticks", "INV-5 machine time above 2^63", &thi, NULL, NULL);
+    fz_member_row(t, 78u, "psg.next_sample", "INV-1 a PSG tone output flag of 2", &tout, NULL, NULL);
+    fz_member_row(t, 78u, "psg.next_sample", "INV-1 an envelope level of 16", &lvl, NULL, NULL);
+    fz_member_row(t, 78u, "stic.frame_index", "INV-1 the color stack pointer 4", &cs, NULL, NULL);
+  }
+}
+
+static int fz_semantic_lies(void)
+{
+  return fz_run_lies("state.fuzz.semantic-lies", fz_build_semantic, 128u, 0, 1, NULL);
+}
+
 const ivs_test_case ivs_state_fuzz_cases[] = {
     {"state.fuzz.truncations", fz_truncations, NULL},
     {"state.fuzz.byte-flips", fz_byte_flips, NULL},
+    {"state.fuzz.byte-flips-resealed", fz_byte_flips_resealed, NULL},
+    {"state.fuzz.header-bit-flips", fz_header_bit_flips, NULL},
+    {"state.fuzz.length-and-table-lies", fz_length_and_table_lies, NULL},
+    {"state.fuzz.semantic-lies", fz_semantic_lies, NULL},
 };
 const size_t ivs_state_fuzz_count = sizeof ivs_state_fuzz_cases / sizeof ivs_state_fuzz_cases[0];
