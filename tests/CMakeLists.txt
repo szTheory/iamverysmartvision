@@ -718,7 +718,8 @@ set_tests_properties(asm PROPERTIES SKIP_RETURN_CODE 77)
 
 # Suite bench (plan 08-18, D-21 to D-26, D-39): the benchmark tool ivs-bench of this preset in its --verify-only mode against the committed
 # workload table, scenarios and goldens, with the build-tree images (IVS_IMAGES_DIR) as content. The gate never runs the timed path: the
-# clock is read only without --verify-only, and no case here omits it.
+# clock is read only without --verify-only, and the one case that omits it gives the tool a mutated golden, which is refused after the
+# verification run and before any clock read.
 add_test(NAME bench
   COMMAND sh "${CMAKE_SOURCE_DIR}/tests/bench-tap.sh" "${CMAKE_SOURCE_DIR}" "$<TARGET_FILE:ivs_bench>" "${IVS_IMAGES_DIR}")
 set_tests_properties(bench PROPERTIES SKIP_RETURN_CODE 77)

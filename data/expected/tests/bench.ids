@@ -5,3 +5,14 @@
 bench.verify.bench-lamp-idle
 bench.verify.bench-lamp-input
 bench.verify.bench-lamp-cold
+# bench.mutant.refuse-mutated-golden (D-22, D-25): a golden with one digest line changed is refused: exit 15, the bench-refuse line, a
+#   refused row with no measurement, in a verify-only run and in a run of one timed iteration.
+# bench.refuse.wrong-ticks: a workload table whose ticks differ from the golden is refused the same way.
+# bench.refuse.bad-args: usage and harness errors end with exit 14, one stderr line and no row.
+# bench.tsv.format: the format line, the header, the three groups, the field count, the tier and ci_time text.
+# bench.judge.refuse-has-no-timing: the absence-of-measurement checker rejects a synthetic refused row that carries a value.
+bench.mutant.refuse-mutated-golden
+bench.refuse.wrong-ticks
+bench.refuse.bad-args
+bench.tsv.format
+bench.judge.refuse-has-no-timing
