@@ -388,3 +388,9 @@ sta02-checklist-controls control state-checklist-test-unknown STA-02
 sta02-checklist-controls control state-checklist-exempt-no-reason STA-02
 sta02-checklist-controls control state-schema-literal-stale STA-02
 sta02-checklist-controls control state-class-source-drift STA-02
+
+# Phase 8 (plan 08-19, D-25): PRF-01. The benchmark tool refuses to print a figure for a run that differs from its committed
+# golden (digest-first), and the check that asserts the absence of any measurement in a refused row can fail. A benchmark figure is
+# never a claim, so there is no claim row; both mechanisms are test ids of the suite bench.
+prf01-digest-first mutant bench.mutant.refuse-mutated-golden PRF-01
+prf01-digest-first mutant bench.judge.refuse-has-no-timing PRF-01

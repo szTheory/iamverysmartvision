@@ -28,3 +28,5 @@ toy-vid05 fault GOOD_FAULT VID-05
 # Phase 8 (plan 08-17): one toy line for each of the Phase 8 requirements STA-01 and STA-02.
 toy-sta01 fault GOOD_FAULT STA-01
 toy-sta02 fault GOOD_FAULT STA-02
+# Phase 8 (plan 08-19): one toy line for the Phase 8 requirement PRF-01.
+toy-prf01 fault GOOD_FAULT PRF-01

@@ -11,7 +11,7 @@
 # Phase 6, Phase 7 and Phase 8 requirement (plan 05-12 added the Phase 5 set, plan 06-14 the Phase 6 set, plan 07-02
 # the Phase 7 requirement SCN-01, plan 07-10 SCN-02 together with its first registry lines, plan 08-08 the
 # Phase 8 requirement VID-05 together with its eighteen registry lines, plan 08-17 the Phase 8 requirements STA-01 and STA-02
-# together with their twenty-two registry lines).
+# together with their twenty-two registry lines, plan 08-19 the Phase 8 requirement PRF-01 together with its two registry lines).
 # Registry: data/expected/important-gates.ids, '#' lines and blank lines skipped, then one line
 #   <gate> <fault|control|mutant> <id> <REQ>
 # per (gate, mechanism, id, requirement). <gate> is a free name of lower-case letters, digits and
@@ -21,7 +21,9 @@
 # 08-08 with its mechanisms: the MOB, collision and delay faults, the four frame judges, the six program mutants of
 # ivs-diag-stic-2 and the four frame-grammar controls), the Phase 8 requirements STA-01 and STA-02 (accepted since plan 08-17
 # with their mechanisms: the nine snapshot and restore faults, the six judges of the state suite and the seven controls of
-# the state step), or the Phase 7 requirements SCN-01 and SCN-02 (A-13: SCN-02 is
+# the state step), the Phase 8 requirement PRF-01 (accepted since plan 08-19 with its two mechanisms, both test ids of the
+# suite bench: the refusal of a mutated golden and the judge of the absence-of-measurement check), or the Phase 7
+# requirements SCN-01 and SCN-02 (A-13: SCN-02 is
 # the owner-local EXEC/GROM route; its mechanisms are the two
 # user-content consistency controls of the golden step). The accepted set is also the must-be-covered set, so a plan
 # that accepts a requirement also appends one toy line for it to the toy registry and to every control that overlays a
@@ -79,7 +81,7 @@ awk -v knownf="$tmp/known" -v find="$find" -v stats="$tmp/stats" '
   BEGIN {
     while ((getline l < knownf) > 0) known[l] = 1
     close(knownf)
-    nreq = split("API-02 API-04 RUN-01 RUN-02 RUN-04 RUN-05 RUN-06 PKG-01 PKG-03 PKG-04 INP-01 INP-02 INP-03 API-03 AUD-01 AUD-02 VID-01 VID-02 VID-03 VID-04 VID-05 VID-06 SCN-01 SCN-02 STA-01 STA-02", reqs, " ")
+    nreq = split("API-02 API-04 RUN-01 RUN-02 RUN-04 RUN-05 RUN-06 PKG-01 PKG-03 PKG-04 INP-01 INP-02 INP-03 API-03 AUD-01 AUD-02 VID-01 VID-02 VID-03 VID-04 VID-05 VID-06 SCN-01 SCN-02 STA-01 STA-02 PRF-01", reqs, " ")
     for (i = 1; i <= nreq; i++) accepted[reqs[i]] = 1
     lines = 0; ngates = 0
   }
