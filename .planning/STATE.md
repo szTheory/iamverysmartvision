@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 current_phase: 8
 current_phase_name: STIC Completion, Save State and Performance Baselines
-current_plan: 20
+current_plan: 21
 status: executing
-stopped_at: Completed 08-19-PLAN.md
-last_updated: "2026-11-15T15:10:00.000Z"
+stopped_at: Completed 08-20-PLAN.md
+last_updated: "2026-11-15T15:52:00.000Z"
 last_activity: 2026-11-14
 last_activity_desc: Phase 8 execution started
-state_head: 4dd5f565e6d3cbf1c04babd54fd7da303ce77c2f
+state_head: d4788f9bf0667fece43233c2ee2bd6a40e6bc121
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 130
-  completed_plans: 128
+  completed_plans: 129
   percent: 88
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 8 (STIC Completion, Save State and Performance Baselines) — EXECUTING
-Current Plan: 20
+Current Plan: 21
 Total Plans in Phase: 21
 Status: Ready to execute
 Last activity: 2026-11-14 — Phase 8 execution started
@@ -187,6 +187,7 @@ Progress: [█████████░] 88%
 | Phase 8 P17 | about 40 min | 3 tasks | 30 files |
 | Phase 8 P18 | about 120 min | 3 tasks | 22 files |
 | Phase 8 P19 | about 150 min (two sessions, the baseline input taken between them) | 3 tasks | 22 files |
+| Phase 8 P20 | about 45 min | 3 tasks | 51 files |
 
 ## Accumulated Context
 
@@ -467,6 +468,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 8]: 08-19: bench-lamp-snapshot is a row of data/bench/workloads.tsv over the idle scenario (cadence 1,792,080 ticks, three cuts in the 120-frame run) and ivs-bench hands the cadence to every execution through IVS_RUNNER_OPT_ROUNDTRIP, so its digest precondition is the idle golden: a save, reset and restore every 30 frames must reproduce the idle report before any figure is printed; a run in which the hook made no cut is a harness failure of the tool; ids bench.verify.bench-lamp-snapshot, bench.workloads.table-consistent (with three broken scratch tables) and bench.baseline.record-format (with four broken scratch records); docs/bench.md says what a figure is and is not (repeatability-only, never evidence, never a claim; lat_first_ms is the first timed iteration of a warm process; about 43 percent of a verified run is SHA-256); important-gates.sh accepts PRF-01 with two lines under the gate prf01-digest-first (gates 89 to 90, lines 304 to 306) and each of the ten toy registries covers it; no claim row for a benchmark
 - [Phase 8]: 08-19: the baseline record data/bench/baseline-darwin-arm64.tsv is the orchestrator's release-preset input unchanged under a three-line comment block, host class darwin arm64 18 cpus, 2026-11-15, and it was taken on a host that was NOT idle (load average 5.96 on 18 cpus, kept verbatim on its idle line), so it is informational and an idle-host record replaces it by a reviewed change; only its format is checked and no number is compared with a threshold; PRF-01 is marked complete on stated terms (named workloads verified before any figure, refusal control, separate groups, CI time a pointer, no threshold, no optimization in Phase 8, no claim, repeatability-only); REL-01 stays Pending; cost of the plan about 0.33 local cpu-s (+0.011 in r), projection about 7.95 by the median, under 8.3
 - [Phase 8]: 08-17: cost checkpoint C reads the median of the last five hosted rows, 7.98 (rows 8.17, 7.98, 7.28, 7.86, 8.29; the newest row 1a27cdd contains wave B as far as plan 08-16): checkpointC-08 no-lever by the rule, with the readings at the lines stated (newest row plus the remaining additions 8.30, median row counted 8.18 to 8.29), wave B measured at about 21.4 hosted cpu-s (suite state 3.30 dev and 1.94 release, nine fault runs 5.50 under the target of about 6), the remaining plans bound to about 0.4 local cpu-s, the lever order (3) next and the first trims named
+- [Phase 8]: 08-20: the stale-text sweep fixed false statements before the tag: the README sentence that no release exists (now a tense-free statement that releases are pre-releases of an exact tested commit and that publication follows the delegated release flow), the installed file counts and the Release content of docs/packaging.md, the CHANGELOG section [0.1.0] (the former Unreleased body, eleven files and five headers), the digest composite version 3 in one header comment and one call record, the ROADMAP, REQUIREMENTS, STATE and PROJECT statements that showed D1 to D9 and D12 open, the Phase 8 plan list, the PROJECT validated list on recorded terms (REL-01 excluded) and the register rows OQ8 (persistence) and OQ11 (performance targets), and Phase 7 lessons 13 to 18 in PLAN-LESSONS; no count, test id, fault, control or golden moved (steps=38/38 controls=380/380 faults=235/235 goldens=29 tests-expected=4958 tests-executed=4954 tests-skipped=4)
+- [Phase 8]: 08-20: requirements-completed was backfilled into the 39 SUMMARY files of Phases 4 to 7 that lacked it (the plan's own requirements field verbatim, one added line each); the three-source check over Phases 1 to 7 reads 45 requirements and 0 findings (11 requirements of Phases 5 and 6 had no SUMMARY before); 08-ACCEPTED-DEBT.md records the six draft validations, the STATE deferred items, the open review items of Phases 4 to 7 and the items deferred out of Phase 8 (the snapshot file options, 192-line video publication, libFuzzer in CI, SHA-256 frame-hash optimization, D10, D11, a history rewrite, name clearance); it changes no requirement mark and no claim; REL-01 stays Pending (D-28)
 
 ### Pending Todos
 
@@ -497,6 +500,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-15T15:10:00.000Z
-Stopped at: Completed 08-19-PLAN.md
+Last session: 2026-11-15T15:52:00.000Z
+Stopped at: Completed 08-20-PLAN.md
 Resume file: None
