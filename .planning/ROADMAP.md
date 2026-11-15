@@ -349,7 +349,7 @@ Plans:
   3. Snapshot, restore and run gives the same result as an uninterrupted run at mid-frame, mid-SDBD and mid-bus-steal points, and tests cover every item on the written hidden-state checklist.
   4. For each named workload, the benchmark runner reports throughput only after it has asserted the correct output digest. Throughput, end-to-end latency and CI time are reported separately.
   5. The milestone-close record shows main green, open PRs triaged, the rolling roadmap and lessons updated, and a release-readiness assessment (rights, package contents, qualification, authority) for the exact tested commit and artifact. Nothing is published without owner gate D9.
-**Plans**: 16/21 plans executed
+**Plans**: 17/21 plans executed
 - [x] 08-01-PLAN.md
 - [x] 08-02-PLAN.md
 - [x] 08-03-PLAN.md
@@ -366,7 +366,7 @@ Plans:
 - [x] 08-14-PLAN.md
 - [x] 08-15-PLAN.md
 - [x] 08-16-PLAN.md
-- [ ] 08-17-PLAN.md
+- [x] 08-17-PLAN.md
 - [ ] 08-18-PLAN.md
 - [ ] 08-19-PLAN.md
 - [ ] 08-20-PLAN.md
@@ -411,4 +411,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 5. Hand Controllers and PSG Sound | 12/12 | Complete    | 2026-11-12 |
 | 6. STIC Video First Pass | 14/14 | Complete    | 2026-11-12 |
 | 7. First Visible Original Scenario | 12/12 | Complete    | 2026-11-13 |
-| 8. STIC Completion, Save State and Performance Baselines | 16/21 | In Progress | - |
+| 8. STIC Completion, Save State and Performance Baselines | 17/21 | In Progress | - |

@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 current_phase: 8
 current_phase_name: STIC Completion, Save State and Performance Baselines
-current_plan: 17
+current_plan: 18
 status: executing
-stopped_at: Completed 08-16-PLAN.md
-last_updated: "2026-11-14T23:00:00.000Z"
+stopped_at: Completed 08-17-PLAN.md
+last_updated: "2026-11-15T04:25:00.000Z"
 last_activity: 2026-11-14
 last_activity_desc: Phase 8 execution started
-state_head: 98b63025a8e99dc61f2bba924244371b6bc73a33
+state_head: 027605e1775ca45edcf5071f04a4676ba4ebfa6b
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 130
-  completed_plans: 125
+  completed_plans: 126
   percent: 88
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 8 (STIC Completion, Save State and Performance Baselines) — EXECUTING
-Current Plan: 17
+Current Plan: 18
 Total Plans in Phase: 21
 Status: Ready to execute
 Last activity: 2026-11-14 — Phase 8 execution started
@@ -184,6 +184,7 @@ Progress: [█████████░] 88%
 | Phase 8 P14 | about 150 min | 3 tasks | 22 files |
 | Phase 8 P15 | about 65 min | 3 tasks | 10 files |
 | Phase 8 P16 | about 75 min | 3 tasks | 17 files |
+| Phase 8 P17 | about 40 min | 3 tasks | 30 files |
 
 ## Accumulated Context
 
@@ -456,6 +457,10 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 8]: 08-15: truncations 4,299 and byte flips 8,598 all refused; resealed flips 3,190 (1,258 refused, 1,932 accepted), header bits 3,968, 126 length and table lies, 28 semantic lies, saturated counters and the clock at its largest (the machine reaches 2^63), 1,200 seeded random cases, 4,484 describe cases on heap buffers of exactly the input size, 10 handle cases, 623 cases twice, and a judge of 49 controls; the plan's literal sets (8,598 resealed attempts and 9,792 header bit cases) were run once in a scratch edit and pass, and are not built (+1.3 dev and +0.8 release cpu-s); two acceptances are pinned and recorded, not closed (the STIC register words are not checked against their write masks, machine time is not tied to a unit boundary); the libFuzzer target fuzz_snapshot.c was built with Homebrew LLVM 21 and ran 100,000 times from one valid snapshot without a violation; the cost stop rule did not fire (suite +1.55 dev, +1.00 release, fault runs +1.0 to 1.4: about 6.2 hosted cpu-s, the projection about 8.13 to 8.21 against the line 8.3); STA-01 and STA-02 stay Pending until plan 08-17
 - [Phase 8]: 08-16: the round-trip hook of ivs-run (ivs_runner_options.roundtrip_ticks with the flag IVS_RUNNER_OPT_ROUNDTRIP, ivs-run --roundtrip-at-ticks <n>): at the first unit boundary at or after every multiple of n the executor saves the machine into a buffer of its own, resets it to power-on and restores the bytes, and the report is the plain report apart from host.calls for five scenario families in both presets (diag-boot-pass 600: 3 cuts, diag-ctrl-psg-pass 5,000: 3 with input events, diag-stic-fgbg-pass 20,000: 4 in a displayed frame, demo-lamp-tone-pass 90,000: 8 across twelve frames and six events, diag-stic2-collision-pass 150,000: 4 with the collision registers of frame 1 carried through the cut that the scenario's own asserts read out in frame 3); no cut at the end of a run-to, more than 64 cuts is the harness failure roundtrip-cut-cap, and machine time is read after the reset and the restore so a cut that did not happen is a harness failure and not a silent no-op; the process comparison has a host.calls vacuity guard and a self-control with two fake runners; a core that skips the STIC register words on restore fails exactly the two STIC process cases; no report key, no golden, no file, no core file
 - [Phase 8]: 08-16: the fifth installed-consumer replay (snap_session, no new image argument, 29 snap. lines, consumer-lines 135 to 164, pkg-selftest 17 to 19): Lamp Tone saved mid-frame (tick 450,032, frame 7, three events applied) through ivs_machine_snapshot_size and _save, described without an instance, restored into a machine another run dirtied after a damaged copy was refused by its trailer, equal to the source through nine digests and the CPU and STIC reports, a save of the target is the snapshot, and the end digests are those of the straight run, compared with data/golden/demo-lamp-tone-pass.digests through the prefix snap; the public API has no call reporting the applied-event count, so the host keeps it beside the snapshot (open item for 08-17); the file options of the runner stay deferred (D-18); 10 test ids (tests-expected 4912 to 4932), no fault, no control; the cost stop rule fired on the upper end before the cost commit (3.2 local cpu-s, 8.25 to 8.33) and not after it (1.6 local cpu-s: the 65 cuts of the cap id run whole in the normal executables only, reported under the 19 runner fault executables): the projection about 8.18 to 8.28 against the line 8.3; STA-01 and STA-02 stay Pending until plan 08-17
+- [Phase 8]: 08-17: the state wave closes on recorded terms: ivsn is a rights-bearing extension by name (tools/check/binary-ext.txt and .gitignore, the control files-unlisted-binary-ivsn shown to fail without the list line, controls 378 to 379), docs/owner-images.md states that a snapshot of an owner-image run is derived rights-bearing material and that the core writes no file and the runner has no snapshot file option in this phase; the persistence policy (open question 8) is decided as a delegated decision: bytes only from the core, files are a host's policy, no default location, exact-build and not archival, reversible by adding sections and raising the schema version (text in the 08-17 SUMMARY for the Decision Register)
+- [Phase 8]: 08-17: CL-0028 (provisional, tier deterministic-repeatability, artifact tests/state/state_cut.c, 51 profile members) states for one build and one profile that snapshot, restore into a poisoned or dirtied target and run equals the uninterrupted run at the 18 hard points and that the named classes of bad snapshots are refused with the instance unchanged; the note carries the oracles, the same-model-family caveat, the 9 exemptions of plan 08-14 (data/expected/state-sweep-notes.ids), the two known acceptances and the Excluded on purpose list (no cross-build, hardware, timing or file claim; informational digests; trailer is integrity not authenticity; no big-endian host; D10 and D11 not performed); claims 28, provisional 27, CHANGELOG table regenerated
+- [Phase 8]: 08-17: important-gates.sh accepts STA-01 and STA-02 and the registry names 22 mechanisms over six gates (nine faults, six judges, seven controls; gates 83 to 89, lines 282 to 304) with one toy line per requirement in each of the ten toy registries and no CHECK, EXPECT or FORBID file changed; STA-01 and STA-02 are marked complete in REQUIREMENTS on stated terms (provisional claim, one build and one profile, same-family blind reader, nine exempt rows, informational digests, no file persistence, file options deferred, applied-event count without a getter, nothing measured); PRF-01 and REL-01 stay Pending
+- [Phase 8]: 08-17: cost checkpoint C reads the median of the last five hosted rows, 7.98 (rows 8.17, 7.98, 7.28, 7.86, 8.29; the newest row 1a27cdd contains wave B as far as plan 08-16): checkpointC-08 no-lever by the rule, with the readings at the lines stated (newest row plus the remaining additions 8.30, median row counted 8.18 to 8.29), wave B measured at about 21.4 hosted cpu-s (suite state 3.30 dev and 1.94 release, nine fault runs 5.50 under the target of about 6), the remaining plans bound to about 0.4 local cpu-s, the lever order (3) next and the first trims named
 
 ### Pending Todos
 
@@ -471,7 +476,7 @@ Still open, decided by fan-out protocol when their phase needs them: D4 (Phase 4
 Hard stops (not delegated): D10 physical measurement, D11 owner-local EXEC/GROM runs — evidence marked missing, work continues.
 
 
-Other open questions: cartridge import format (OQ4, Phase 3), first scenario title/program (OQ9, Phase 7), persistence policy (OQ8, Phase 8).
+Other open questions: cartridge import format (OQ4, Phase 3), first scenario title/program (OQ9, Phase 7). Persistence policy (OQ8) was decided in plan 08-17 as a delegated decision (bytes only from the core, files are a host's policy, exact-build and not archival).
 
 Concerns:
 - 8 phases exceeds `standard` granularity guidance (4-6); justified by five high-uncertainty subsystems (PIT-18). Revisit at milestone discussion.
@@ -488,6 +493,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-14T23:00:00.000Z
-Stopped at: Completed 08-16-PLAN.md
+Last session: 2026-11-15T04:25:00.000Z
+Stopped at: Completed 08-17-PLAN.md
 Resume file: None
