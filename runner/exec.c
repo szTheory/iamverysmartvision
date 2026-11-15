@@ -88,6 +88,7 @@ typedef struct ex_state {
    * by the restore of the same cut, never written to a file or a report. */
   uint64_t rt_ticks;
   uint64_t rt_next;
+  uint64_t rt_t0; /* machine time of a power-on machine (ivs_info time_ticks after the reset that starts the run) */
   uint32_t rt_cuts;
   uint8_t rt_buf[IVS_SNAPSHOT_MAX_BYTES];
   char detail[EX_OBS_BITS][IVS_RUNNER_DETAIL_MAX];
@@ -211,29 +212,44 @@ static int ex_roundtrip_options_valid(const ivs_runner_options *o)
   return o->roundtrip_ticks == 0u;
 }
 
+/* Machine time of the instance by ivs_machine_info (read only). 1 and *t set on success. */
+static int ex_machine_time(const ex_state *x, uint64_t *t)
+{
+  ivs_info info;
+  ivs_status st;
+  memset(&info, 0, sizeof info);
+  info.struct_size = (uint32_t)sizeof info;
+  st = ivs_machine_info(x->m, &info);
+  *t = info.time_ticks;
+  return st == IVS_OK;
+}
+
 /* One cut of the round-trip hook (plan 08-16, D-18): snapshot of the machine into the executor's buffer, power-on reset, restore of
- * the bytes just written. The three calls are public API only; each is its own statement and its status is read before the next. Returns
- * 1 to go on, 0 after a harness failure was observed (the cap, or a refused save, reset or restore). */
+ * the bytes just written. The three calls are public API only; each is its own statement and its status is read before the next. A cut
+ * that did not happen must not read as one, so machine time is read after the reset (the time of a power-on machine, rt_t0) and after the
+ * restore (the time of the cut, x->now): a reset or a restore that left the machine as it was is a harness failure, not a silent no-op.
+ * Returns 1 to go on, 0 after a harness failure was observed (the cap, or a refused or ineffective save, reset or restore). */
 static int ex_roundtrip_cut(ex_state *x)
 {
   uint64_t written = 0u;
+  uint64_t t = 0u;
   ivs_status st;
   if (x->rt_cuts >= IVS_RUNNER_ROUNDTRIP_MAX_CUTS) {
     ex_observe(x, IVS_RUNNER_OBS_HARNESS_FAIL, "roundtrip-cut-cap");
     return 0;
   }
   st = ivs_machine_snapshot_save(x->m, x->rt_buf, (uint64_t)sizeof x->rt_buf, &written);
-  if (st != IVS_OK) {
+  if (st != IVS_OK || written == 0u) {
     ex_observe(x, IVS_RUNNER_OBS_HARNESS_FAIL, "roundtrip-save");
     return 0;
   }
   st = ivs_machine_reset(x->m, IVS_RESET_POWER_ON);
-  if (st != IVS_OK) {
+  if (st != IVS_OK || !ex_machine_time(x, &t) || t != x->rt_t0) {
     ex_observe(x, IVS_RUNNER_OBS_HARNESS_FAIL, "roundtrip-reset");
     return 0;
   }
   st = ivs_machine_snapshot_restore(x->m, x->rt_buf, written, NULL);
-  if (st != IVS_OK) {
+  if (st != IVS_OK || !ex_machine_time(x, &t) || t != x->now) {
     ex_observe(x, IVS_RUNNER_OBS_HARNESS_FAIL, "roundtrip-restore");
     return 0;
   }
@@ -1421,6 +1437,7 @@ uint32_t ivs_runner_execute(const ivs_scenario *scn, const ivs_runner_host *host
         ex_observe(&x, IVS_RUNNER_OBS_HARNESS_FAIL, "no-timebase");
       } else {
         x.now = info.time_ticks;
+        x.rt_t0 = info.time_ticks;
         rec.video_width = info.video_width;
         rec.video_height = info.video_height;
         rec.video_row_lines = info.video_row_lines;

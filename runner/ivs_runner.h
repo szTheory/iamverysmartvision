@@ -460,8 +460,9 @@ typedef struct ivs_runner_host {
  * end of a run-to (the stop was not the target, or machine time reached the bound): a cut is made only when the slice loop goes on.
  * A multiple that machine time passed without a cut (at the end of a run-to, or inside one unit that spans several multiples) moves
  * the next multiple past machine time. More than IVS_RUNNER_ROUNDTRIP_MAX_CUTS cuts in one run are a harness failure (detail
- * `roundtrip-cut-cap`), so a tiny value cannot turn a scenario into millions of snapshots; a failed save, reset or restore is a
- * harness failure (details `roundtrip-save`, `roundtrip-reset`, `roundtrip-restore`). The snapshot lives only in the executor's
+ * `roundtrip-cut-cap`), so a tiny value cannot turn a scenario into millions of snapshots; a refused save, reset or restore is a
+ * harness failure (details `roundtrip-save`, `roundtrip-reset`, `roundtrip-restore`), and so is a reset that did not return machine time to
+ * its power-on value or a restore that did not return it to the time of the cut, so a cut that did not happen is never a silent no-op. The snapshot lives only in the executor's
  * state for the life of the run: nothing writes it to a file or a report, so the hook is allowed for a scenario that names
  * `content ... user`. The report has no key for it. */
 #define IVS_RUNNER_OPT_ROUNDTRIP 1u
