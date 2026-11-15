@@ -443,3 +443,9 @@ Closing either needs a new invariant proved on the reachable states of the progr
 **The libFuzzer target.** `tests/fuzz/fuzz_snapshot.c` builds only when the cache option `IVS_ENABLE_LIBFUZZER` is ON (it joins the block of `ivs_fuzz_ivsc` in `tests/CMakeLists.txt`, `EXCLUDE_FROM_ALL`), is registered with no ctest, gate step or CI job, and needs a clang with the libFuzzer runtime (a Homebrew LLVM or a Linux clang; Apple clang has none).
 The input is a control byte (bit 0: recompute the trailer) and the snapshot bytes, copied to a heap buffer of exactly their size; the target restores into a live instance of the stand-in content that is put back from a baseline copy, holds the invariants above and aborts on a violation, and the header of the file gives the recipe, the corpus seed (`IVS_SNAPSHOT_FUZZ_SEED`) and the sanitizer choice.
 A crash input is the snapshot of a machine that executed guest code, so it is never committed.
+
+## Rights (as built, plan 08-17)
+
+The rule that the section Rights above leaves to a later plan is in place: the extension `ivsn` is in `tools/check/binary-ext.txt` and `*.ivsn` is in `.gitignore`, and a tracked file with that extension is refused by name in the `files` step (the control `files-unlisted-binary-ivsn`).
+The persistence policy is the host's: the core writes no file and chooses no name, slot or location, the runner has no snapshot file option in this phase (the options are deferred), and the format is exact-build and not archival.
+`docs/owner-images.md` states the consequence for a snapshot of a run that used owner-supplied images.

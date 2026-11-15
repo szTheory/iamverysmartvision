@@ -16,3 +16,5 @@ manifests-uncommitted-output-tracked
 manifests-derived-from-unknown
 files-fixture-without-manifest
 files-trademark-name
+# Plan 08-17 (D-19, T-08-39): a tracked snapshot file (extension ivsn) is a rights problem by name.
+files-unlisted-binary-ivsn

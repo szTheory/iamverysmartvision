@@ -84,6 +84,22 @@ With an owner run it is `pass` (the run reached its bound), `guest-fail` (the ma
 
 The runner refuses frame, video, golden and sound output for such a scenario (`--frame-ppm`, `--video-raw`, `--update-golden`, `--audio-raw`, `--psg-log-out` and `--audio-wav`), each with exit 14 and one line on stderr, before any file is created, so no picture, golden, sample, write log or WAV derived from the images is written.
 
+## Snapshots
+
+A snapshot is the byte string that `ivs_machine_snapshot_save` fills into a buffer of the caller (`docs/formats/ivsn-v1.md`).
+It never holds an image byte: the three image arrays are not serialized, and only the SHA-256 identities and the loaded flags of the slots are written.
+It does hold the machine state, which includes guest RAM, graphics RAM and the registers of the display and sound devices, and when a run used owner-supplied images those values are what the images caused to be written.
+A snapshot of such a run is therefore derived rights-bearing material, in the same class as the raw audio, the raw video and the frame outputs above, and the same rule applies: it is never committed, cached or uploaded, and a digest of it states identity, not rights.
+
+What the project does about it:
+
+- The core writes no file and chooses no name, slot or location. It fills a buffer that the caller owns; where the bytes go is the host's decision.
+- The runner has no snapshot file option in this phase: the options to write and to read a snapshot file are deferred. Its `--roundtrip-at-ticks` hook (`docs/runner.md`) keeps the snapshot in memory for the length of one cut and never writes it, which is why the hook is allowed for a scenario with a `content <role> user` line.
+- The extension `ivsn` is in `tools/check/binary-ext.txt`, so a tracked file with that extension is refused by name in the `files` step (the control `files-unlisted-binary-ivsn`), and `*.ivsn` is in `.gitignore`.
+- The format is exact-build and not archival: one build restores exactly one pair of format version and schema version and refuses any other, so a snapshot is not a way to keep a run for later.
+
+A snapshot shows repeatability of one build on one profile and nothing else: it says nothing about accuracy, and nothing about any real EXEC or GROM image, which this project has not run (D11 is open).
+
 ## Record keeping
 
 The owner keeps the note of a run in private notes, not in the repository.
