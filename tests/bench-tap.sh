@@ -103,6 +103,9 @@ verify_case() {
 }
 
 verify_case bench-lamp-idle bench-lamp-idle
+verify_case bench-lamp-input bench-lamp-input
+# The cold workload reuses the existing scenario demo-lamp-tone-pass and its golden: its scenario column names that scenario.
+verify_case bench-lamp-cold demo-lamp-tone-pass
 
 {
   printf '# suite=%s nonce=%s\n' "$suite" "$nonce"

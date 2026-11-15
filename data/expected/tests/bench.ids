@@ -3,3 +3,5 @@
 # bench.verify.<workload>: the verification run of the workload matches its committed golden and the row says status verified, with
 #   empty throughput and latency columns (plan 08-18: bench-lamp-idle, bench-lamp-input, bench-lamp-cold; plan 08-19 adds the snapshot row).
 bench.verify.bench-lamp-idle
+bench.verify.bench-lamp-input
+bench.verify.bench-lamp-cold

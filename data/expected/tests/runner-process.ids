@@ -66,6 +66,7 @@ runner-process.scenario.diag-stic2-hdelay-pass
 runner-process.scenario.diag-stic2-vdelay-pass
 runner-process.scenario.diag-stic2-collision-pass
 runner-process.scenario.bench-lamp-idle
+runner-process.scenario.bench-lamp-input
 runner-process.scenario.owner-exec-title skip-ok
 runner-process.mutant.ADDI-SUBI
 runner-process.mutant.BNZE-BZE

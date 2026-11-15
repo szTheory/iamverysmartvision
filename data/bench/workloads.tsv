@@ -8,3 +8,5 @@
 # golden (its last step.<k>.now_ticks), checked against the run; note: what the workload exercises. No workload is labelled
 # cpu-bound: none is (08-DISCUSS-perf 2.3).
 bench-lamp-idle	bench-lamp-idle	3	15	0	7168352	idle display, full machine
+bench-lamp-input	bench-lamp-input	3	15	0	7168352	64 input events
+bench-lamp-cold	demo-lamp-tone-pass	2	30	0	806568	existing scenario, start-up and load latency
