@@ -237,3 +237,18 @@ Exempt rows, with the argument and the cut at which the sweep found each inert (
 
 Nine exemptions, at most the eleven the plan expects. Each exempt row is covered by the poisoned-target equivalence (`state.restore.poisoned-target-equals-source`, which fails a row a restore leaves at the poison byte), by the whole-instance and digest equality of every cut comparison, and, for the four chains, by the digest of their domain at the end of each cut comparison.
 The sweep neither assumes nor fakes the result: `state.judge.row-sweep-detects-omission` applies it to `cpu.r` at HP-SDBD (read by the program, reported as divergent) and on an exempt row of this list (reported as inert), so it can fail both ways.
+
+## As built (plan 08-17): the end state of the checklist
+
+This section is an appended note; the sections above and `data/expected/state-checklist.ids` are untouched since the blind second read.
+At the end of the state wave every one of the 88 rows names a registered test id (the step `state` holds that, with the control `state-checklist-test-unknown`), `data/state/tests-pending.ids` holds no line, and all 18 cuts of `data/expected/state-cuts.ids` are pinned ticks that the `state.witness.` ids re-prove.
+The mechanisms that answer the adversarial list above are named in the important-gates registry (`data/expected/important-gates.ids`, the gates `sta01-` and `sta02-`): nine faults, six judges and the seven controls of the step `state`.
+The claim written for STA-01 and STA-02 is [claim:CL-0028], provisional and at the tier `deterministic-repeatability`, for one build and one profile; its note repeats the limits below.
+
+The limits, listed and not hidden:
+- The checklist, the container and the implementation have one author, and the blind second read of the checklist was made by a reader of the same model family (`docs/state/checklist-second-read-record.md`), so agreement is transcription agreement and not independent evidence.
+- Nine of the 51 STATE rows are exempt from the divergence requirement of the sweep, with the arguments above and the cut at which each was found inert. `stic.late_grants` has no non-default witness among the 18 cuts, and `obs.input.words` is exempt only while the next input event lies inside the comparison window.
+- Three rows are read by nothing but a public report (`cpu.fault_reason`, `stic.blocked_reads`, `stic.blocked_writes`) and keep `ROW` for that reason.
+- Two acceptances are pinned and not closed: a STIC register word with a bit outside the write mask of its register, and machine time not tied to a unit boundary (`docs/formats/ivsn-v1.md`, Fuzzing as built).
+- The applied-event count of an instance has no public getter: the host keeps the count its run calls reported beside the snapshot, as the runner hook and the installed consumer do.
+- Nothing here is a hardware measurement, and the checklist and the field table are inference checked by tests (D10 and D11 are not performed).

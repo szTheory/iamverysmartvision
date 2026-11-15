@@ -364,3 +364,27 @@ vid05-frame-grammar control video-frame-unknown-outside-region VID-05
 vid05-frame-grammar control video-frame-mob-count VID-05
 vid05-frame-grammar control video-frame-hash-none-without-unknown VID-05
 vid05-frame-grammar control video-frame-pair-unknown VID-05
+
+# STA-01 and STA-02 (plan 08-17, D-16, D-43 retarget 2, hazard H2): the snapshot and the state wave is held by named mechanisms that each fail for their intended reason elsewhere in the gate. Twenty-two lines over six gates. STA-01 (the container and its refusals): the three writer faults (a little-endian header, serialized pad words, image bytes embedded), the two reader faults (the trailer not compared, a claimed length trusted), the three restore faults (the profile, the image digest, an instance mutated before validation) and four judges that each corrupt one expected value of the container literal, the refusal matrix, the refusal-atomicity oracle or the fuzz invariant and require the runner to notice. STA-02 (restore and run equals the uninterrupted run at the named hard points): the writer fault that drops the STIC rows and the two judges of the comparison and the row sweep, and the seven controls of the state step that keep the hidden-state checklist and the schema literal honest (a missing or extra row, an unknown witness or test, an exemption without a reason, a stale schema literal, a drifted class).
+sta01-serializer-faults fault SNAPSHOT_LITTLE_ENDIAN STA-01
+sta01-serializer-faults fault SNAPSHOT_PAD_SERIALIZED STA-01
+sta01-serializer-faults fault SNAPSHOT_IMAGE_BYTES_EMBEDDED STA-01
+sta01-reader-faults fault SNAPSHOT_TRAILER_UNCHECKED STA-01
+sta01-reader-faults fault SNAPSHOT_LENGTH_TRUSTED STA-01
+sta01-restore-faults fault RESTORE_MUTATES_BEFORE_VALIDATE STA-01
+sta01-restore-faults fault RESTORE_PROFILE_UNCHECKED STA-01
+sta01-restore-faults fault RESTORE_IMAGE_DIGEST_UNCHECKED STA-01
+sta01-judges mutant state.judge.header-literal-corrupt STA-01
+sta01-judges mutant state.judge.matrix-expectation-corrupt STA-01
+sta01-judges mutant state.judge.refusal-expectation-corrupt STA-01
+sta01-judges mutant state.judge.fuzz-invariant-detects STA-01
+sta02-hardpoint-mechanisms fault SNAPSHOT_STIC_ROWS_OMITTED STA-02
+sta02-hardpoint-mechanisms mutant state.judge.cut-compare-detects-divergence STA-02
+sta02-hardpoint-mechanisms mutant state.judge.row-sweep-detects-omission STA-02
+sta02-checklist-controls control state-checklist-row-missing STA-02
+sta02-checklist-controls control state-checklist-line-extra STA-02
+sta02-checklist-controls control state-checklist-witness-unknown STA-02
+sta02-checklist-controls control state-checklist-test-unknown STA-02
+sta02-checklist-controls control state-checklist-exempt-no-reason STA-02
+sta02-checklist-controls control state-schema-literal-stale STA-02
+sta02-checklist-controls control state-class-source-drift STA-02

@@ -102,8 +102,8 @@ differentiators and all variant/peripheral profiles are v2.
 
 ### State and Performance (STA / PRF)
 
-- [ ] **STA-01**: A canonical, endianness-independent state serializer is used for both snapshots and digests; snapshots carry format version, profile identity and system-image digests, and restore validates before mutating.
-- [ ] **STA-02**: Snapshot→restore→run equals uninterrupted run at hard points (mid-frame, mid-SDBD, mid-bus-steal), covering a written hidden-state checklist.
+- [x] **STA-01**: A canonical, endianness-independent state serializer is used for both snapshots and digests; snapshots carry format version, profile identity and system-image digests, and restore validates before mutating.
+- [x] **STA-02**: Snapshot→restore→run equals uninterrupted run at hard points (mid-frame, mid-SDBD, mid-bus-steal), covering a written hidden-state checklist.
 - [ ] **PRF-01**: Named deterministic workloads have a benchmark runner that asserts the correct output digest before reporting throughput; throughput, end-to-end latency and CI time are reported separately.
 
 ### Milestone and Release Practice (REL)
@@ -226,8 +226,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VID-06 | Phase 6 | Complete |
 | SCN-01 | Phase 7 | Complete |
 | SCN-02 | Phase 7 | Complete |
-| STA-01 | Phase 8 | Pending |
-| STA-02 | Phase 8 | Pending |
+| STA-01 | Phase 8 | Complete |
+| STA-02 | Phase 8 | Complete |
 | PRF-01 | Phase 8 | Pending |
 | REL-01 | Phase 8 | Pending |
 
@@ -239,6 +239,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 **Phase 8 wave A close-out note (plan 08-08):** VID-05 is marked complete because the gate evidence of plans 08-03 to 08-08 exists (the hand-derived oracle `docs/video/diag-stic-2-derivation.md` with the ten frames F-M0 to F-M9 and a blind second read, the renderer, collision, delay and border-extension tests, the original program `ivs-diag-stic-2` with six scenarios and six program mutants, and the VID-05 lines of the important-gates registry), and only on these terms. The three claims behind it (CL-0025, CL-0026, CL-0027) are `provisional`, at the tiers `source-expectation` and `original-diagnostic` and no higher, and none is at the `measured-hardware` tier (D10): every rule rests on one tier 4 community lineage (no tier 1 to 3 page prints any MOB, delay, collision or border-extension bit), the expected values are hand derived by the author of the program and the core with a blind second read of the same model family (C43), and nobody looked at a picture. The pinned remainder is listed and not hidden: C107 to C110 and the C87 pins (the priority-set pixel rule, half-height publication, strip unit and strip against delay, exposed-area content, a MOB in the exposed area, the delay range, collision at X 0, at the edge, off screen and with the display off, the read with no side effect, and the own bit on a CPU write), each with a profile field or a held-by-absence test that flips it, a claim exclusion and an owner hand-off; the five hand-offs D10-VID-10 to D10-VID-14 are handed off and not performed; collision is evaluated on the undelayed scene and the frame counter of the diagnostic relies on the zero power-on RAM default, both stated in the notes; the published plane stays 159 by 96 (D8). Owner hardware items (47 listed in `data/expected/d10-measurements.ids`, D10 and D11) are handed off and not performed.
 
+**Phase 8 wave B close-out note (plan 08-17):** STA-01 and STA-02 are marked complete because the gate evidence of plans 08-09 to 08-17 exists (the container IVSN v1 and the 88-row hidden-state checklist written before any code, with a blind second read; the digest field table as the single serializer with the writer, the instance-free reader and the validating restore; the corruption and fuzz family; the 18 hard-point cuts with the poisoned-target comparison against the uninterrupted run and the row-omission sweep; the round-trip hook of `ivs-run` and the fifth installed-consumer replay; the `.ivsn` rights rule; and the STA-01 and STA-02 lines of the important-gates registry: nine faults, six judges and seven controls that fail for their intended reasons), and only on these terms. The one claim behind them, CL-0028, is `provisional`, at the tier `deterministic-repeatability` and no higher, for one build and one profile (`intv-2609-ntsc-family-p1`): it states that a snapshot restores and continues equal to the uninterrupted run at the 18 named hard points and that the named classes of bad snapshots are refused with the instance unchanged, and it says nothing about a console, a timing figure or another build; nothing is measured on hardware (D10 and D11 are not performed, no real EXEC or GROM image was used). The checklist, the container and the implementation have one author, and the blind second read of the checklist (`docs/state/checklist-second-read-record.md`: 87 of 88 classes agree, the one difference caused by the blinded inputs, 0 corrections) was made by a reader of the same model family, so a shared misreading is possible and agreement is not independent evidence. The sweep exempts 9 of the 51 STATE rows from the divergence requirement, each with an argument (the exemption list of plan 08-14, `data/expected/state-sweep-notes.ids`, with the arguments in `docs/state/hidden-state-checklist.md`; the frozen checklist file carries no exemption), and two acceptances are pinned and not closed (a STIC register word with a bit outside its write mask, and machine time not tied to a unit boundary). The eight machine-level digests of the header are informational and not authenticated, the trailer is integrity and not authenticity, the encoding is specified byte by byte but no big-endian host was run, and the format is exact-build and not archival. No file persistence exists: the core writes no file, the runner has no snapshot file option, the optional `--snapshot-out` and `--snapshot-in` are deferred (D-18), and the persistence policy (open question 8) is recorded as a delegated decision: bytes only from the core, files are a host's policy, no default location. The applied-event count of an instance has no public getter (a host keeps the count its run calls reported beside the snapshot). Cost: checkpoint C of plan 08-17 is recorded in `.planning/CI-EFFICIENCY.md`.
+
 **Coverage:**
 - v1 requirements: 50 total
 - Mapped to phases: 50
@@ -246,4 +248,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-11-09*
-*Last updated: 2026-11-14 after the Phase 8 wave A close-out (plan 08-08)*
+*Last updated: 2026-11-14 after the Phase 8 wave B close-out (plan 08-17)*
