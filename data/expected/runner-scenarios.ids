@@ -42,4 +42,5 @@ diag-stic2-border-pass 0 pass deterministic run -
 diag-stic2-hdelay-pass 0 pass deterministic run -
 diag-stic2-vdelay-pass 0 pass deterministic run -
 diag-stic2-collision-pass 0 pass deterministic run -
+bench-lamp-idle 0 pass deterministic run -
 owner-exec-title 13 missing-fixture deterministic skip-ok -

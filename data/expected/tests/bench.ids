@@ -1,0 +1,5 @@
+# Suite bench (plans 08-18 and 08-19, D-21 to D-26, D-39): tests/bench-tap.sh runs the benchmark tool ivs-bench of each preset in its
+# --verify-only mode (no clock is read) against data/bench/workloads.tsv, the scenarios, the goldens and the build-tree images.
+# bench.verify.<workload>: the verification run of the workload matches its committed golden and the row says status verified, with
+#   empty throughput and latency columns (plan 08-18: bench-lamp-idle, bench-lamp-input, bench-lamp-cold; plan 08-19 adds the snapshot row).
+bench.verify.bench-lamp-idle
