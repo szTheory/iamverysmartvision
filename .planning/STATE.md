@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 current_phase: 8
 current_phase_name: STIC Completion, Save State and Performance Baselines
-current_plan: 14
+current_plan: 15
 status: executing
-stopped_at: Completed 08-13-PLAN.md
-last_updated: "2026-11-14T17:40:00.000Z"
+stopped_at: Completed 08-14-PLAN.md
+last_updated: "2026-11-14T20:40:00.000Z"
 last_activity: 2026-11-14
 last_activity_desc: Phase 8 execution started
-state_head: e0754ab531babf3a119206611dad1e78171ce827
+state_head: 22215de8a8f71375568bdb1f329306303910c839
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 130
-  completed_plans: 122
+  completed_plans: 123
   percent: 88
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 ## Current Position
 
 Phase: 8 (STIC Completion, Save State and Performance Baselines) — EXECUTING
-Current Plan: 14
+Current Plan: 15
 Total Plans in Phase: 21
 Status: Ready to execute
 Last activity: 2026-11-14 — Phase 8 execution started
@@ -181,6 +181,7 @@ Progress: [█████████░] 88%
 | Phase 8 P11 | about 70 min | 3 tasks | 28 files |
 | Phase 8 P12 | about 55 min | 2 tasks | 17 files |
 | Phase 8 P13 | about 60 min | 3 tasks | 25 files |
+| Phase 8 P14 | about 150 min | 3 tasks | 22 files |
 
 ## Accumulated Context
 
@@ -447,6 +448,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 8]: 08-13: ivs_machine_snapshot_restore validates everything into a probe (the CPU, PSG and STIC structs, the input row and the few scalars the invariants read, about 800 bytes) and then commits with a table-driven pass that cannot refuse: STATE rows decoded, PAD rows zeroed, no BOUND or IMAGE row written, the phase becomes POWERED; the check order is the specification's (arguments, handle, overlap 81, the reader 60 to 71, profile 72 73 74, slots 78 75 76, lengths 80, counts 77, frames and ranges 78, derived invariants 79); IVS_E_STATE_MISMATCH (-24) is added in one change with the reserved band narrowed to -25..-31, the ten reasons 72 to 81 are pinned and the call has 9 refusal rows
 - [Phase 8]: 08-13: the matrices are written from the specification (180 table rows against four targets and 20 argument rows, each run twice into a poisoned 400-byte report compared whole, the whole target instance byte-identical afterwards, repeated against poisoned non-trivial targets with the nine digests), a restore into a poisoned target equals the source byte for byte at 13 cuts, three faults fail the id named for them, and the invariants were held against 411,075 unit boundaries of 23 programs: INV-2 corrected (the reset state), INV-3 strengthened (previous levels three four-bit levels and a byte of 0), INV-6 kept (decided true), none dropped
 - [Phase 8]: 08-13: cost checkpoint B reads the median of the last five hosted rows, 7.98 (row c57328a contains plans 08-09 to 08-12): checkpointB-08 no-lever, with the margin to 8.0 (0.02) and the reading about 8.16 to 8.27 at the end of wave B stated; the wave B additions are priced by measurement (suite state 2.17 dev and 1.05 release cpu-s, 8 fault runs 5.87, the nine digests of the atomicity sweep the first trim); STA-01 and STA-02 stay Pending until the hard-point suite of plan 08-14
+- [Phase 8]: 08-14: the hard-point suite: 18 cuts found by a witness scan over the step seam, pinned in data/expected/state-cuts.ids through a generated include and re-proved by three witness ids (first occurrence equals the pin, the public run call ends exactly on it with the scan's bytes, the instance part of the predicate holds); the comparison restores each cut into a 0xA5-poisoned target and compares the whole instance and the nine digests at once, then the concatenated video, audio and PSG log streams, the first indexes, the run and public reports and the final instance with the uninterrupted run; every cut agrees; the designed latch program discriminates a restore that recomputes stic.row_latch (8 of 15,296 bytes differ); the fault SNAPSHOT_STIC_ROWS_OMITTED is caught by state.cut.stic-points (its must-pass id is state.witness.stic-points); the snapshot at every cut is a fixed point and independent of slicing and the SHA-256 at three cuts is pinned and equal in the dev and release presets
+- [Phase 8]: 08-14: the runtime row-omission sweep puts each of the 51 STATE rows back at its witness cut with other values (the complement first, each candidate judged by the restore's validators and invariants): 39 rows diverge in behaviour, 3 in a public report only, 9 are exempt (four chains, obs.input.count, obs.input.words, psg.env_level, stic.cs_ptr, stic.late_grants) with an argument each; it found weak witnesses and the cuts were corrected (HP-STEAL-A the boundary before the first grant 74,928, HP-STEAL-B the boundary before a release 79,008, P-PSG a triangle envelope so env_dir is non-default, HP-ENV-MID 9,504) while the frozen checklist was left untouched: the amendments are the appended notes data/expected/state-sweep-notes.ids (an edit of the checklist file was refused by the permission system); the cost stop rule did not fire (about 3.2 hosted cpu-s added, the nine fault runs sum to 6.7 local cpu-s); STA-02 stays Pending until plans 08-16 and 08-17
 
 ### Pending Todos
 
@@ -479,6 +482,6 @@ Concerns:
 
 ## Session Continuity
 
-Last session: 2026-11-14T17:40:00.000Z
-Stopped at: Completed 08-13-PLAN.md
+Last session: 2026-11-14T20:40:00.000Z
+Stopped at: Completed 08-14-PLAN.md
 Resume file: None
