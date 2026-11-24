@@ -1063,11 +1063,45 @@ result runner-process.roundtrip.demo-lamp-tone-pass
 ok=1
 check_roundtrip "$ivs_run" diag-stic2-collision-pass 150000 2 || ok=0
 result runner-process.roundtrip.diag-stic2-collision-pass
-# The refusals of the option (plan 08-16, D-18): a zero, one above IVS_RUN_TARGET_MAX (9223372036854775808) as decimal digits, a missing value (the option
-# last on the line) and the option twice are each a usage error: exit 14, no report on stdout, and on stderr the one message line of every usage error followed by
-# the usage text (the usage block names the option).
+# The refusals of the option (plan 08-16, D-18; trimmed by plan 09-01, D-09, trim (a)): a zero, one above IVS_RUN_TARGET_MAX (9223372036854775808) as
+# decimal digits, a missing value (the option last on the line) and the option twice are each a usage error: exit 14, no report on stdout, and on stderr the
+# one message line of every usage error followed by the usage text (the usage block names the option).
+# The `zero` launch is the ONE live launch and stays live: it alone proves exit 14, the empty report, the first stderr line and the usage text together, and
+# its four judgements are unchanged. `above-max`, `no-value` and `twice` are judged statically, against the parser's own guard sites, which are all in
+# runner/main.c and nowhere else (there is no option table in this tree: the parser is a strcmp chain at runner/main.c:588-624, and runner/exec.c holds
+# neither the option name nor either refusal message - recorded deviation D-09-02). Each static judgement can fail for the reason it names, and the id keeps
+# its single result call, so tests-executed does not move.
 : > "$tmp/why"
 ok=1
+# hex_plus_one <0x...>: the decimal string of that value plus one, computed with decimal-string arithmetic so no shell or awk
+# integer width is involved (POSIX awk has no strtonum, and $((0x8000000000000000)) is negative in a signed 64-bit shell).
+hex_plus_one() {
+  printf '%s\n' "$1" | sed 's/^0[xX]//' | awk '
+    {
+      h = tolower($0)
+      nd = 1; D[1] = 0
+      for (i = 1; i <= length(h); i++) {
+        v = index("0123456789abcdef", substr(h, i, 1)) - 1
+        if (v < 0) { exit 1 }
+        c = v
+        for (j = 1; j <= nd; j++) { t = D[j] * 16 + c; D[j] = t % 10; c = int(t / 10) }
+        while (c > 0) { nd++; D[nd] = c % 10; c = int(c / 10) }
+      }
+      c = 1
+      for (j = 1; j <= nd && c; j++) { t = D[j] + c; D[j] = t % 10; c = int(t / 10) }
+      if (c) { nd++; D[nd] = c }
+      s = ""
+      for (j = nd; j >= 1; j--) s = s D[j]
+      print s
+    }'
+}
+# rt_arm <out>: the `--roundtrip-at-ticks` arm of the parser (runner/main.c:589-592), from its strcmp line to the next arm.
+rt_arm() {
+  awk '/strcmp\(a, "--roundtrip-at-ticks"\) == 0/ { p = 1; print; next } p && /^    } else if/ { exit } p { print }' \
+    "$root/runner/main.c" > "$1"
+}
+# rt_usage <out>: the usage block of the runner (runner/main.c:76 names the option).
+rt_usage() { grep -F -e '--roundtrip-at-ticks <n>' "$root/runner/main.c" > "$1"; }
 rt_refuse() {
   _rn=$1; _rm=$2; shift 2
   run_one "$tmp" "rt-refuse-$_rn" "$ivs_run" --content-dir "$content" "$@"
@@ -1077,9 +1111,51 @@ rt_refuse() {
   grep -q -F -e '--roundtrip-at-ticks <n>' "$tmp/runs/rt-refuse-$_rn.err" || { ok=0; why roundtrip-refuse "$_rn: the usage text does not name the option"; }
 }
 rt_refuse zero 'option value out of range' --roundtrip-at-ticks 0 "$scen/diag-boot-pass.ivss"
-rt_refuse above-max 'option value out of range' --roundtrip-at-ticks 9223372036854775809 "$scen/diag-boot-pass.ivss"
-rt_refuse no-value 'option without a value' "$scen/diag-boot-pass.ivss" --roundtrip-at-ticks
-rt_refuse twice 'option given twice' --roundtrip-at-ticks 600 --roundtrip-at-ticks 700 "$scen/diag-boot-pass.ivss"
+# above-max, statically: the literal is one above IVS_RUN_TARGET_MAX, the arm binds that macro as its high limit and leaves `slot` NULL, and the range check
+# (runner/main.c:623-624) refuses a value above it. A changed macro, a changed literal or an arm that stops binding the bound fails here.
+rt_max_dec=9223372036854775809
+rt_arm "$tmp/rt-arm"
+_rtm=$(sed -n 's/^#define IVS_RUN_TARGET_MAX \(0x[0-9a-fA-F][0-9a-fA-F]*\)u*$/\1/p' "$root/core/include/ivs/ivs_run.h")
+_rtd=$(hex_plus_one "$_rtm" 2> /dev/null)
+if [ -z "$_rtm" ]; then
+  ok=0; why rt-static "above-max: no '#define IVS_RUN_TARGET_MAX 0x...' in core/include/ivs/ivs_run.h"
+elif [ -z "$_rtd" ] || [ "$_rtd" != "$rt_max_dec" ]; then
+  ok=0; why rt-static "above-max: IVS_RUN_TARGET_MAX $_rtm is not one below the judged literal $rt_max_dec"
+elif ! grep -q -F -e 'Largest accepted target: 2^63' "$root/core/include/ivs/ivs_run.h"; then
+  ok=0; why rt-static "above-max: the header comment no longer names the 2^63 bound"
+elif ! grep -q -F -e 'seen = &have_roundtrip' "$tmp/rt-arm" || ! grep -q -F -e 'hi = IVS_RUN_TARGET_MAX' "$tmp/rt-arm"; then
+  ok=0; why rt-static "above-max: the --roundtrip-at-ticks arm (runner/main.c:589-592) does not bind seen and hi = IVS_RUN_TARGET_MAX"
+elif grep -q -F -e 'slot =' "$tmp/rt-arm"; then
+  ok=0; why rt-static "above-max: the --roundtrip-at-ticks arm binds a slot, so it is no longer the seen arm this judgement reads"
+elif ! grep -q -F -e 'if (!main_number(argv[i], lo, hi, &v)) {' "$root/runner/main.c" \
+  || ! grep -q -F -e 'return main_usage_error("option value out of range");' "$root/runner/main.c"; then
+  ok=0; why rt-static "above-max: the range check at runner/main.c:623-624 is gone"
+fi
+# no-value, statically: the arm binds `seen` (not `slot`) and consumes no value of its own, so a missing value reaches the refusal at runner/main.c:609-610;
+# the usage text names the option, which the live `zero` launch proves is printed. An arm that starts consuming its own value, or that becomes a slot arm, fails.
+rt_usage "$tmp/rt-usage"
+if ! grep -q -F -e 'seen = &have_roundtrip' "$tmp/rt-arm"; then
+  ok=0; why rt-static "no-value: the --roundtrip-at-ticks arm (runner/main.c:589-592) does not bind seen, so a missing value has no refusal"
+elif grep -q -F -e 'slot =' "$tmp/rt-arm" || grep -q -F -e 'continue' "$tmp/rt-arm"; then
+  ok=0; why rt-static "no-value: the --roundtrip-at-ticks arm consumes its own value or leaves the value tail, so runner/main.c:609-610 is unreachable for it"
+elif ! grep -q -F -e "if (i + 1 >= argc || argv[i + 1][0] == '\\0') {" "$root/runner/main.c" \
+  || ! grep -q -F -e 'return main_usage_error("option without a value");' "$root/runner/main.c"; then
+  ok=0; why rt-static "no-value: the missing-value refusal at runner/main.c:609-610 is gone"
+elif [ ! -s "$tmp/rt-usage" ]; then
+  ok=0; why rt-static "no-value: the usage block (runner/main.c:76) no longer names --roundtrip-at-ticks <n>"
+fi
+# twice, statically: the same `seen` binding routes a second occurrence to the `*seen` branch at runner/main.c:620-621 (`slot` is NULL for this option,
+# so the slot branch at :613-618 is not the one that fires). An arm that becomes repeatable by design, or that stops binding seen, fails.
+if ! grep -q -F -e 'seen = &have_roundtrip' "$tmp/rt-arm"; then
+  ok=0; why rt-static "twice: the --roundtrip-at-ticks arm (runner/main.c:589-592) does not bind seen, so a repeat has no refusal"
+elif grep -q -F -e 'slot =' "$tmp/rt-arm"; then
+  ok=0; why rt-static "twice: the --roundtrip-at-ticks arm is a slot arm, so the slot branch at runner/main.c:613-618 is the one that would fire"
+elif ! grep -q -F -e 'if (*seen) {' "$root/runner/main.c" \
+  || ! grep -q -F -e 'return main_usage_error("option given twice");' "$root/runner/main.c"; then
+  ok=0; why rt-static "twice: the seen branch at runner/main.c:620-621 is gone"
+elif [ ! -s "$tmp/rt-usage" ]; then
+  ok=0; why rt-static "twice: the usage block (runner/main.c:76) no longer names --roundtrip-at-ticks <n>"
+fi
 result runner-process.roundtrip.refuse-range
 
 # The metamorphic judge (plan 07-07, D-23, D-06, A-16): per line `<idA> <idB> differ=<keys> equal=<keys>` of
