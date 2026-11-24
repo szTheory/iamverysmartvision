@@ -422,34 +422,51 @@ static ivs_status ivs_snap_check_slots(const struct ivs_machine *im, const ivs_s
   return IVS_OK;
 }
 
-/* ---- the derived invariants of docs/formats/ivsn-v1.md, each a function of the probe and the profile parameters ---- */
+/* ---- the derived invariants of docs/formats/ivsn-v1.md: ONE list of rules, the only place a rule is composed ----
+ * Each rule is a predicate of the probe and of the profile parameters, the invariant number it decides, the reason a restore refuses it with
+ * (78 for the range rules INV-1 and INV-5, 79 for the derived rules INV-2, INV-3, INV-4 and INV-6) and the probe region whose first row a
+ * refusal names. The list below (ivs_snap_inv_rules) is in the restore check order of step 8. ivs_snap_check_probe walks it and stops at the
+ * first rule that fails, so each refusal can name its row and its reason; ivs_snapshot_invariants walks the same list and reports the lowest
+ * invariant number that fails, which is the first one in the order 1 to 6 of the specification and the number the reachability proof and the
+ * sweep read. A rule is added, removed or moved here alone: there is no second composition to drift from this one. */
 
-/* INV-1, the device validators and the event cursor; INV-5, the phase and the clock range. Restore judges these as range rules (78), one
- * function each so the refusal can name where the struct or scalar lies; ivs_snapshot_invariants judges the same functions. */
-static uint32_t ivs_snap_inv1_cpu(const ivs_snap_probe *p)
+/* The profile parameters the rules read, resolved once per walk: the PSG and the STIC tables of the registry profile and the controller
+ * count of its descriptor. */
+typedef struct ivs_snap_inv_ctx {
+  const ivs_psg_params *pp;
+  const ivs_stic_params *sp;
+  uint32_t profile_index;
+  uint32_t controllers;
+} ivs_snap_inv_ctx;
+
+/* INV-1, the device validators and the event cursor; INV-5, the phase and the clock range. One predicate each, so a refusal can name where
+ * the struct or scalar lies. */
+static uint32_t ivs_snap_inv1_cpu(const ivs_snap_probe *p, const ivs_snap_inv_ctx *c)
 {
+  (void)c;
   return (uint32_t)(ivs_cp1610_state_validate(&p->cpu) == IVS_OK);
 }
 
-static uint32_t ivs_snap_inv1_psg(const ivs_snap_probe *p, const ivs_psg_params *pp)
+static uint32_t ivs_snap_inv1_psg(const ivs_snap_probe *p, const ivs_snap_inv_ctx *c)
 {
-  return (uint32_t)(pp != NULL && ivs_psg_state_validate(pp, &p->psg) == IVS_OK);
+  return (uint32_t)(c->pp != NULL && ivs_psg_state_validate(c->pp, &p->psg) == IVS_OK);
 }
 
-static uint32_t ivs_snap_inv1_stic(const ivs_snap_probe *p, const ivs_stic_params *sp)
+static uint32_t ivs_snap_inv1_stic(const ivs_snap_probe *p, const ivs_snap_inv_ctx *c)
 {
-  return (uint32_t)(sp != NULL && ivs_stic_state_validate(&p->stic) == IVS_OK && p->stic.event_index < sp->event_count);
+  return (uint32_t)(c->sp != NULL && ivs_stic_state_validate(&p->stic) == IVS_OK && p->stic.event_index < c->sp->event_count);
 }
 
-static uint32_t ivs_snap_inv5_phase(const ivs_snap_probe *p)
+static uint32_t ivs_snap_inv5_phase(const ivs_snap_probe *p, const ivs_snap_inv_ctx *c)
 {
+  (void)c;
   return (uint32_t)(p->phase == IVS_PHASE_POWERED);
 }
 
 /* INV-5's clock clause: at most the largest clock a run call can leave behind (see ivs_snap_time_max above). */
-static uint32_t ivs_snap_inv5_time(const ivs_snap_probe *p, const ivs_psg_params *pp)
+static uint32_t ivs_snap_inv5_time(const ivs_snap_probe *p, const ivs_snap_inv_ctx *c)
 {
-  return (uint32_t)(pp != NULL && p->time_ticks <= ivs_snap_time_max(pp));
+  return (uint32_t)(c->pp != NULL && p->time_ticks <= ivs_snap_time_max(c->pp));
 }
 
 /* The tick of event ei of frame fi, phase + fi x F + the event's tick, into *out; 0 when the sum does not fit 64 bits. */
@@ -468,15 +485,16 @@ static uint32_t ivs_snap_event_at(const ivs_stic_params *sp, uint64_t fi, uint32
  * the cursor in this frame, or the last of the frame before) is at or below it; the gate flags are what replaying the events below the
  * cursor from the open state gives (FRAME_START opens both gates, REG_CLOSE closes the registers, GMEM_CLOSE the graphics memory; gate 0
  * is always open and gate 3 always closed). Requires the cursor below the event count (INV-1). */
-static uint32_t ivs_snap_inv2(const ivs_snap_probe *p, const ivs_stic_params *sp)
+static uint32_t ivs_snap_inv2(const ivs_snap_probe *p, const ivs_snap_inv_ctx *c)
 {
+  const ivs_stic_params *sp = c->sp;
   uint64_t fi = p->stic.frame_index;
   uint32_t ei = p->stic.event_index;
   uint64_t at = 0u;
   uint32_t regs = 1u;
   uint32_t gmem = 1u;
   uint32_t e;
-  if (ei >= sp->event_count) {
+  if (sp == NULL || ei >= sp->event_count) {
     return 0u;
   }
   /* The machine that has run no unit (time 0, the cursor at the very start) is the one state where the first event may be due: the
@@ -518,9 +536,13 @@ static uint32_t ivs_snap_inv2(const ivs_snap_probe *p, const ivs_stic_params *sp
  * byte of 0 (the sample is A, B, C, 0, psg_sample.c; the specification says "the bytes are at most 15", a weaker form that this
  * stricter one implies: a correction by derivation, see the appended notes), and every stored PSG register
  * is a value its write mask lets through. The sample period of 0 (a profile that publishes no audio) leaves the step index free. */
-static uint32_t ivs_snap_inv3(const ivs_snap_probe *p, const ivs_psg_params *pp)
+static uint32_t ivs_snap_inv3(const ivs_snap_probe *p, const ivs_snap_inv_ctx *c)
 {
+  const ivs_psg_params *pp = c->pp;
   uint32_t i;
+  if (pp == NULL) {
+    return 0u;
+  }
   if (pp->sample_period_ticks != 0u && p->psg.next_sample != p->time_ticks / pp->sample_period_ticks + 1u) {
     return 0u;
   }
@@ -540,16 +562,16 @@ static uint32_t ivs_snap_inv3(const ivs_snap_probe *p, const ivs_psg_params *pp)
 
 /* INV-4, the input: no control word has the reserved bit, a word of a controller the profile does not connect is 0, the two pull-down
  * masks are what the words derive, and the input floor never lies above machine time. */
-static uint32_t ivs_snap_inv4(const ivs_snap_probe *p, uint32_t profile_index, uint32_t controllers)
+static uint32_t ivs_snap_inv4(const ivs_snap_probe *p, const ivs_snap_inv_ctx *c)
 {
   uint8_t derived[2];
   uint32_t i;
   for (i = 0u; i < 4u; i++) {
-    if ((p->input.words[i] & IVS_CTRL_RESERVED_MASK) != 0u || (i >= controllers && p->input.words[i] != 0u)) {
+    if ((p->input.words[i] & IVS_CTRL_RESERVED_MASK) != 0u || (i >= c->controllers && p->input.words[i] != 0u)) {
       return 0u;
     }
   }
-  ivs_input_derive(profile_index, p->input.words, derived);
+  ivs_input_derive(c->profile_index, p->input.words, derived);
   if (derived[0] != p->port_pulldown[0] || derived[1] != p->port_pulldown[1]) {
     return 0u;
   }
@@ -557,38 +579,61 @@ static uint32_t ivs_snap_inv4(const ivs_snap_probe *p, uint32_t profile_index, u
 }
 
 /* INV-6, the video row counts the frames the STIC completed (the machine path delivers every frame through the video row). */
-static uint32_t ivs_snap_inv6(const ivs_snap_probe *p)
+static uint32_t ivs_snap_inv6(const ivs_snap_probe *p, const ivs_snap_inv_ctx *c)
 {
+  (void)c;
   return (uint32_t)(p->video_count == p->stic.frame_index);
 }
+
+/* One rule of THE list: the invariant number of the specification, the reason a restore refuses it with, the probe region whose first row
+ * the refusal names (IVS_SNAP_R_*), and the predicate. */
+typedef struct ivs_snap_inv_rule {
+  uint32_t inv;
+  uint32_t reason;
+  uint32_t region;
+  uint32_t (*holds)(const ivs_snap_probe *p, const ivs_snap_inv_ctx *c);
+} ivs_snap_inv_rule;
+
+/* THE list of the derived invariants: the order is the restore check order of step 8 of the specification (the range rules of INV-1 and
+ * INV-5 first, each naming its own struct or scalar, then the derived rules of INV-2, INV-3, INV-4 and INV-6), and every reader of the
+ * invariants walks it. Adding a rule, moving one or changing its reason is a change here alone. */
+static const ivs_snap_inv_rule ivs_snap_inv_rules[] = {
+    {1u, IVS_REASON_SNAP_FIELD_RANGE, IVS_SNAP_R_CPU, ivs_snap_inv1_cpu},
+    {5u, IVS_REASON_SNAP_FIELD_RANGE, IVS_SNAP_R_PHASE, ivs_snap_inv5_phase},
+    {5u, IVS_REASON_SNAP_FIELD_RANGE, IVS_SNAP_R_TIME, ivs_snap_inv5_time},
+    {1u, IVS_REASON_SNAP_FIELD_RANGE, IVS_SNAP_R_PSG, ivs_snap_inv1_psg},
+    {1u, IVS_REASON_SNAP_FIELD_RANGE, IVS_SNAP_R_STIC, ivs_snap_inv1_stic},
+    {2u, IVS_REASON_SNAP_INVARIANT, IVS_SNAP_R_STIC, ivs_snap_inv2},
+    {3u, IVS_REASON_SNAP_INVARIANT, IVS_SNAP_R_PSG, ivs_snap_inv3},
+    {4u, IVS_REASON_SNAP_INVARIANT, IVS_SNAP_R_INPUT, ivs_snap_inv4},
+    {6u, IVS_REASON_SNAP_INVARIANT, IVS_SNAP_R_VIDEO, ivs_snap_inv6},
+};
+
+#define IVS_SNAP_INV_RULES (sizeof ivs_snap_inv_rules / sizeof ivs_snap_inv_rules[0])
 
 uint32_t ivs_snapshot_invariants(const ivs_snap_probe *p, uint32_t profile_index)
 {
   const ivs_profile_desc *pd = ivs_profile_get(profile_index);
   const ivs_psg_params *pp = ivs_psg_params_get(profile_index);
   const ivs_stic_params *sp = ivs_stic_params_get(profile_index);
+  ivs_snap_inv_ctx c;
+  uint32_t low = 0u;
+  uint32_t i;
   if (p == NULL || pd == NULL || pp == NULL || sp == NULL) {
     return 1u;
   }
-  if (ivs_snap_inv1_cpu(p) == 0u || ivs_snap_inv1_psg(p, pp) == 0u || ivs_snap_inv1_stic(p, sp) == 0u) {
-    return 1u;
+  c.pp = pp;
+  c.sp = sp;
+  c.profile_index = profile_index;
+  c.controllers = pd->input_controllers;
+  /* The whole list is walked, not stopped at the first failure: the contract of this function is the lowest-numbered invariant that does
+   * not hold, which is the first one of the order 1 to 6 of the specification, whatever order the restore judges them in. */
+  for (i = 0u; i < IVS_SNAP_INV_RULES; i++) {
+    if (ivs_snap_inv_rules[i].holds(p, &c) == 0u && (low == 0u || ivs_snap_inv_rules[i].inv < low)) {
+      low = ivs_snap_inv_rules[i].inv;
+    }
   }
-  if (ivs_snap_inv2(p, sp) == 0u) {
-    return 2u;
-  }
-  if (ivs_snap_inv3(p, pp) == 0u) {
-    return 3u;
-  }
-  if (ivs_snap_inv4(p, profile_index, pd->input_controllers) == 0u) {
-    return 4u;
-  }
-  if (ivs_snap_inv5_phase(p) == 0u || ivs_snap_inv5_time(p, pp) == 0u) {
-    return 5u;
-  }
-  if (ivs_snap_inv6(p) == 0u) {
-    return 6u;
-  }
-  return 0u;
+  return low;
 }
 
 void ivs_snapshot_probe_from_instance(const struct ivs_machine *m, ivs_snap_probe *p)
@@ -608,45 +653,31 @@ void ivs_snapshot_probe_from_instance(const struct ivs_machine *m, ivs_snap_prob
   p->audio_prev_levels = m->obs.audio.prev_levels;
 }
 
-/* Step 8, reasons 78 and 79 on the decoded probe. The range rules (INV-1 and INV-5) first, each naming where its struct or scalar was
- * read, then the derived rules (INV-2, INV-3, INV-4 and INV-6). im gives the registry profile; it is not const only because the named fault below commits into it. */
+/* Step 8, reasons 78 and 79 on the decoded probe: one walk over THE list (ivs_snap_inv_rules), stopped at the first rule that fails, so the
+ * refusal says the reason and the region of that rule. The range rules (INV-1 and INV-5) come first in the list, each naming where its struct
+ * or scalar was read, then the derived rules (INV-2, INV-3, INV-4 and INV-6). im gives the registry profile; it is not const only because the
+ * named fault below commits into it. */
 static ivs_status ivs_snap_check_probe(struct ivs_machine *im, const ivs_snap_probe *pr, const ivs_snap_loc loc[IVS_SNAP_REGIONS],
                                        ivs_snap_refusal *r)
 {
-  const ivs_profile_desc *pd = ivs_profile_get(im->profile);
-  const ivs_psg_params *pp = ivs_psg_params_get(im->profile);
-  const ivs_stic_params *sp = ivs_stic_params_get(im->profile);
-  if (ivs_snap_inv1_cpu(pr) == 0u) {
-    return ivs_snap_refuse(r, IVS_E_MALFORMED, IVS_REASON_SNAP_FIELD_RANGE, loc[IVS_SNAP_R_CPU].off, loc[IVS_SNAP_R_CPU].section, 0u);
-  }
-  if (ivs_snap_inv5_phase(pr) == 0u) {
-    return ivs_snap_refuse(r, IVS_E_MALFORMED, IVS_REASON_SNAP_FIELD_RANGE, loc[IVS_SNAP_R_PHASE].off, loc[IVS_SNAP_R_PHASE].section, 0u);
-  }
-  if (ivs_snap_inv5_time(pr, pp) == 0u) {
-    return ivs_snap_refuse(r, IVS_E_MALFORMED, IVS_REASON_SNAP_FIELD_RANGE, loc[IVS_SNAP_R_TIME].off, loc[IVS_SNAP_R_TIME].section, 0u);
-  }
-  if (ivs_snap_inv1_psg(pr, pp) == 0u) {
-    return ivs_snap_refuse(r, IVS_E_MALFORMED, IVS_REASON_SNAP_FIELD_RANGE, loc[IVS_SNAP_R_PSG].off, loc[IVS_SNAP_R_PSG].section, 0u);
-  }
+  ivs_snap_inv_ctx c;
+  uint32_t i;
+  c.pp = ivs_psg_params_get(im->profile);
+  c.sp = ivs_stic_params_get(im->profile);
+  c.profile_index = im->profile;
+  c.controllers = ivs_profile_get(im->profile)->input_controllers;
+  for (i = 0u; i < IVS_SNAP_INV_RULES; i++) {
 #ifdef IVS_FAULT_RESTORE_MUTATES_BEFORE_VALIDATE
-  /* Named fault RESTORE_MUTATES_BEFORE_VALIDATE (plan 08-13): the CPU rows are committed before the STIC validators run, so a snapshot that
-   * a STIC validator refuses has already changed the instance. */
-  im->cpu = pr->cpu;
+    if (ivs_snap_inv_rules[i].holds == ivs_snap_inv1_stic) {
+      /* Named fault RESTORE_MUTATES_BEFORE_VALIDATE (plan 08-13): the CPU rows are committed before the STIC validators run, so a snapshot
+       * that a STIC validator refuses has already changed the instance. The point is the rule of the list that judges the STIC state. */
+      im->cpu = pr->cpu;
+    }
 #endif
-  if (ivs_snap_inv1_stic(pr, sp) == 0u) {
-    return ivs_snap_refuse(r, IVS_E_MALFORMED, IVS_REASON_SNAP_FIELD_RANGE, loc[IVS_SNAP_R_STIC].off, loc[IVS_SNAP_R_STIC].section, 0u);
-  }
-  if (ivs_snap_inv2(pr, sp) == 0u) {
-    return ivs_snap_refuse(r, IVS_E_MALFORMED, IVS_REASON_SNAP_INVARIANT, loc[IVS_SNAP_R_STIC].off, loc[IVS_SNAP_R_STIC].section, 0u);
-  }
-  if (ivs_snap_inv3(pr, pp) == 0u) {
-    return ivs_snap_refuse(r, IVS_E_MALFORMED, IVS_REASON_SNAP_INVARIANT, loc[IVS_SNAP_R_PSG].off, loc[IVS_SNAP_R_PSG].section, 0u);
-  }
-  if (ivs_snap_inv4(pr, im->profile, pd->input_controllers) == 0u) {
-    return ivs_snap_refuse(r, IVS_E_MALFORMED, IVS_REASON_SNAP_INVARIANT, loc[IVS_SNAP_R_INPUT].off, loc[IVS_SNAP_R_INPUT].section, 0u);
-  }
-  if (ivs_snap_inv6(pr) == 0u) {
-    return ivs_snap_refuse(r, IVS_E_MALFORMED, IVS_REASON_SNAP_INVARIANT, loc[IVS_SNAP_R_VIDEO].off, loc[IVS_SNAP_R_VIDEO].section, 0u);
+    if (ivs_snap_inv_rules[i].holds(pr, &c) == 0u) {
+      uint32_t region = ivs_snap_inv_rules[i].region;
+      return ivs_snap_refuse(r, IVS_E_MALFORMED, ivs_snap_inv_rules[i].reason, loc[region].off, loc[region].section, 0u);
+    }
   }
   return IVS_OK;
 }

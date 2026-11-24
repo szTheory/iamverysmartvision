@@ -1,9 +1,9 @@
 /* SPDX-License-Identifier: MIT */
 /* Suite state, family restore, the derived invariants proved on real programs (plan 08-13, D-15, D-16, docs/formats/ivsn-v1.md "Derived
  * invariants"). A restore accepts a snapshot only if its decoded values satisfy rules that every reachable state satisfies, so a wrong rule
- * would refuse a real snapshot: each of INV-1 to INV-6 is implemented once (ivs_snapshot_invariants, the same function the restore code
- * judges a decoded snapshot with) and is held here against the live instances of real programs at EVERY unit boundary, before it is allowed
- * to refuse anything. The programs: the Lamp Tone with no input and with the six events of its scenario, the boot stub alone, the first STIC
+ * would refuse a real snapshot: each of INV-1 to INV-6 is implemented once, as one list of rules (ivs_snap_inv_rules) that both the restore
+ * code (ivs_snap_check_probe) and ivs_snapshot_invariants walk, and is held here against the live instances of real programs at EVERY unit
+ * boundary, before it is allowed to refuse anything. The programs: the Lamp Tone with no input and with the six events of its scenario, the boot stub alone, the first STIC
  * diagnostic with and without its selector, the second with each selector word, the nine stand-in programs of the machine suite, the stand-in
  * boot program, and one program that halts and one that ends in a guest fault (the decles of tests/run/run_slice.c, each derived there from
  * the printed vector rows). A boundary is the state after a unit, reached through the public run call one unit at a time with the events
