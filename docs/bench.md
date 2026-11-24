@@ -9,8 +9,8 @@ A figure it prints is a measurement of this implementation on one host with one 
 - **Workload**: one row of `data/bench/workloads.tsv`: an id, the scenario it executes, the fixed warmup and iteration counts, the round-trip cadence (0 for none), the final machine time `ticks` the run must end at, and a note.
   The scenario is an ordinary IVSS scenario of `data/scenarios`, listed in `data/expected/runner-scenarios.ids`, with a repeatability golden `data/golden/<scenario>.digests`.
 - **Verification iteration** (iteration 0): one untimed execution whose report is filtered with the runner's golden filter and compared with the committed golden, and whose final machine time is compared with the `ticks` column. No timer is read before it has matched.
-- **Warmup iteration**: an untimed execution after the verification iteration. Its outcome, composite digest and step end ticks are compared with those of iteration 0.
-- **Timed iteration**: an execution bracketed by two reads of the monotonic time source around the call that executes the scenario, and nothing else. One iteration covers creating the instance, loading the images, the reset, the run and the report. The comparison with iteration 0 happens after the second read.
+- **Warmup iteration**: an untimed execution after the verification iteration. Its whole filtered report is compared with the committed golden, the same comparison the verification iteration makes, so every observed row is re-checked (the video, audio, input and write-log digests included, which the composite digest does not cover).
+- **Timed iteration**: an execution bracketed by two reads of the monotonic time source around the call that executes the scenario, and nothing else. One iteration covers creating the instance, loading the images, the reset, the run and the report. The whole filtered report is compared with the committed golden after the second read, outside the measured span, so the comparison is never timed.
 - **Fixed counts**: the numbers of warmup and timed iterations are read from the table and never from a time budget, so the number of executions never depends on the host.
 - **Median**: the median of the per-iteration wall times (the mean of the two middle values when the count is even), never the mean.
 
@@ -71,7 +71,7 @@ A workload whose run differs from its golden prints no figure. The tool writes `
 
 - `digest-mismatch <key>`: the first key of the filtered report that differs from the golden (a changed core, scenario, image or golden);
 - `ticks-mismatch table=<n> run=<m>`: the run ends at another machine time than the table says;
-- `run-mismatch warmup=<i> <key>` or `run-mismatch iteration=<i> <key>`: a warmup or timed iteration differs from iteration 0 in its outcome, composite digest or step end ticks (the key names the first difference).
+- `run-mismatch warmup=<i> <key>` or `run-mismatch iteration=<i> <key>`: the filtered report of a warmup or timed iteration differs from the committed golden (the key names the first differing row, which can be any observed row: the outcome, a digest, a count, the video geometry or a step end tick).
 
 The refusal comes after the verification iteration and before any timer read, so no figure of a wrong run can reach the output. The suite `bench` shows it on a mutated golden and a wrong `ticks` column, and shows that the check which asserts the absence of a figure can fail.
 

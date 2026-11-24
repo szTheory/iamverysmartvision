@@ -11,8 +11,9 @@
  * on stderr, a row with status=refused and every numeric column empty (an empty field cannot be mistaken for a measurement), and
  * exit 15 at the end; no clock is read for that workload. (2) With --verify-only the row says status=verified with every
  * throughput and latency column empty. (3) Otherwise W untimed warmup iterations and N timed iterations, each timed iteration
- * bracketed by two clock reads around ivs_runner_execute alone; the outcome, the digest.composite line and the step end ticks of every
- * iteration are compared with iteration 0 after the timed span (a difference is a refusal and no row of measurements). W and N are
+ * bracketed by two clock reads around ivs_runner_execute alone; the WHOLE filtered report of every warmup and timed iteration is compared
+ * with the committed golden after the timed span, outside it, so a difference in any observed row (a video, audio, input or write-log digest
+ * too, not only the outcome, the composite digest or the step end ticks) is a refusal and no row of measurements. W and N are
  * fixed per workload in the table, never a time budget. Statistics: the median of the per-iteration wall times (the mean of the two
  * middle values for an even N), their maximum, the first timed iteration, and the CPU time of the whole timed loop divided by N.
  * A row with a non-zero roundtrip_ticks (the snapshot workload, plan 08-19, D-39) passes that cadence to every execution through
@@ -357,7 +358,8 @@ static int bench_diff(const char *a, size_t an, const char *b, size_t bn, char *
   return 0;
 }
 
-/* 1 when the line is one of the lines a timed iteration re-checks: outcome, digest.composite and step.<k>.now_ticks. */
+/* 1 when the line is one of the lines the step end ticks are read from: outcome, digest.composite and step.<k>.now_ticks. The re-check of an
+ * iteration is the whole filtered report against the golden; this list only locates the last step's now_ticks for the ticks check. */
 static int bench_sig_line(const char *l, size_t n)
 {
   size_t i;
@@ -757,21 +759,18 @@ static uint32_t bench_execute(const bench_workload *w, bench_ctx *c, const ivs_r
   return ivs_runner_execute(w->scn, host, opts, res);
 }
 
-/* Compares the re-checked lines of the last execution with those of iteration 0. 0 when equal; otherwise 1 with the key. */
-static int bench_recheck(const bench_ctx *c, uint32_t outcome, uint32_t outcome0, const char *sig0, size_t sig0_len, char *key,
-                         size_t kcap)
+/* Compares the whole filtered report of the last execution with the committed golden, the same comparison iteration 0 makes, so a later
+ * iteration that differs in any observed row is a refusal and not only one whose outcome, composite digest or step end ticks moved. filt is
+ * the caller's filter buffer, reused so that a re-check allocates nothing; the call is outside the timed span, so the comparison is never
+ * measured. 0 when equal; otherwise 1 with the key of the first difference. */
+static int bench_recheck(const bench_ctx *c, const bench_workload *w, char *filt, char *key, size_t kcap)
 {
-  char sig[BENCH_SIG_MAX];
   size_t n = 0u;
-  if (c->overflow || bench_sig(c->report, c->report_len, sig, sizeof sig, &n) != 0) {
+  if (c->overflow || bench_filter(c->report, c->report_len, filt, BENCH_REPORT_CAP, &n) != 0) {
     (void)snprintf(key, kcap, "report");
     return 1;
   }
-  if (outcome != outcome0) {
-    (void)snprintf(key, kcap, "outcome");
-    return 1;
-  }
-  return bench_diff(sig, n, sig0, sig0_len, key, kcap);
+  return bench_diff(filt, n, w->golden_body, w->golden_len, key, kcap);
 }
 
 /* Runs one workload and prints its row. BENCH_OK, BENCH_REFUSED (row printed) or BENCH_FAIL (a harness failure, one line). */
@@ -794,8 +793,6 @@ static int bench_run(const char *content_dir, int verify_only, const bench_workl
   size_t filt_len = 0u;
   uint64_t ticks = 0u;
   uint64_t cycles;
-  uint32_t outcome0;
-  uint32_t outcome;
   int rc = BENCH_FAIL;
   memset(&c, 0, sizeof c);
   memset(&opts, 0, sizeof opts);
@@ -828,7 +825,7 @@ static int bench_run(const char *content_dir, int verify_only, const bench_workl
   }
 
   /* Iteration 0: the untimed verification run. No clock is read before it has matched the golden. */
-  outcome0 = bench_execute(w, &c, &host, &opts, &res);
+  (void)bench_execute(w, &c, &host, &opts, &res);
   if (c.overflow || res.report_write_failed != 0u) {
     (void)bench_err(w->id, "the report did not fit the capture buffer");
     goto done;
@@ -880,8 +877,8 @@ static int bench_run(const char *content_dir, int verify_only, const bench_workl
 
   /* Warmup: untimed, but still checked. */
   for (uint32_t i = 0u; i < w->warmup; i++) {
-    outcome = bench_execute(w, &c, &host, &opts, &res);
-    if (bench_recheck(&c, outcome, outcome0, sig0, sig0_len, key, sizeof key) != 0) {
+    (void)bench_execute(w, &c, &host, &opts, &res);
+    if (bench_recheck(&c, w, filt, key, sizeof key) != 0) {
       (void)snprintf(detail, sizeof detail, "warmup=%" PRIu32 " %s", i + 1u, key);
       rc = bench_refuse(w, "run-mismatch", detail);
       goto done;
@@ -905,13 +902,13 @@ static int bench_run(const char *content_dir, int verify_only, const bench_workl
         (void)bench_err(w->id, "the monotonic clock is unavailable");
         goto done;
       }
-      outcome = ivs_runner_execute(w->scn, &host, &opts, &res);
+      (void)ivs_runner_execute(w->scn, &host, &opts, &res);
       if (bench_now_ns(&t1) != 0) {
         (void)bench_err(w->id, "the monotonic clock is unavailable");
         goto done;
       }
       wall[i] = t1 >= t0 ? t1 - t0 : 0u;
-      if (bench_recheck(&c, outcome, outcome0, sig0, sig0_len, key, sizeof key) != 0) {
+      if (bench_recheck(&c, w, filt, key, sizeof key) != 0) {
         (void)snprintf(detail, sizeof detail, "iteration=%" PRIu32 " %s", i + 1u, key);
         rc = bench_refuse(w, "run-mismatch", detail);
         goto done;
