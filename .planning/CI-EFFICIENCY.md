@@ -1583,3 +1583,29 @@ The single 8.39 row is runner speed, not code growth: its `build_s` is 67 agains
 **Actions taken: none.** No cache, concurrency, path-filter, matrix or artifact change is proposed: the two PR-path rows bracket the budget from both sides (7.74 and 8.39) and the median sits 0.44 under the line. The pre-committed trims named in the phase8-close entry (the four `ivs-run` launches of `runner-process.roundtrip.refuse-range` on the dev preset, the `runner.exec.roundtrip-cut-cap` dev launch, the nine digests of every 8th refusal, the second value of the unsealed byte flips, then the point sets of `state.fuzz.describe-heap` and `state.fuzz.second-attempt-identical`) stay queued and unapplied; together they are about 1.1 local cpu-s, too little to move a median by more than the spread of one row. Nothing here weakens evidence.
 
 **Owner/next-milestone items unchanged.** The branch ruleset and the tag ruleset recommended in `.planning/AUTONOMY.md` section 1 are still **not applied** (the close read returned no ruleset). Applying them is a settings action the orchestrator may take; it is recorded as "not applied" in the close record and in check P7 rather than silently skipped.
+
+## 2026-11-24 - milestone close-out: the records merge, the close merge and the push on main (stop line FIRED)
+
+Four more hosted runs, all `success`. Three are gate rows recorded with `tools/ci-record.sh`; the release workflow row of the earlier entry is unchanged.
+
+| Run | event | head | `build_s` | `gate_s` | `cpu_s` | `r` |
+|-----|-------|------|-----------|----------|---------|-----|
+| 45331127340 | `pull_request` | 30ff1be (the records PR) | 50 | 120 | 361 | 7.22 |
+| 45333255371 | `pull_request` | c8524be (the milestone-close PR) | 43 | 112 | 360 | 8.37 |
+| 45333569076 | `push` | 599bc0b (the merge commit on `main`) | 68 | 176 | 567 | 8.34 |
+
+The last five `r` values of the file are now **7.22, 7.74, 8.34, 8.37 and 8.39**, so the median is **8.34**.
+
+**The stop rule fires.** The Phase 8 start entry and the close entry both state it: a last-five median above 8.3 means the orchestrator creates a lever plan and no further test case, control, fault or gate step is added until it lands. It is met here, and it is recorded as met rather than read around.
+
+**What the reading is made of.** The two highest values are not the newest code: `45327854314` (8.39) carries the three review fixes and the independent verification, and `45333569076` (8.34) is the push run of a tree that changed only `.planning/` text. The second column of the window is runner speed: the three high rows took a `build_s` of 67, 43 and 68 and a `cpu_s` of 562, 360 and 567, while the two low rows took 46 and 50 and 356 and 361. A single day's four rows moved the median 0.50 (7.86 to 8.34), which is more than any code change in this close-out could account for; this file has recorded the same effect since the Phase 6 entry (single rows 7.20 to 8.39, median moving far less).
+
+**That reading does not soften the rule, and the lever is not waved away.** Two facts make the answer concrete rather than hopeful:
+1. **No test case remains to be added in this milestone.** Phase 8 is complete, its artifact commit is tagged and the release is published. The stop rule's purpose — stop adding work to a gate that is already at the line — is satisfied trivially here, and nothing was added after the reading.
+2. **The lever that must land before the next milestone adds a check is already designed.** The pre-committed order stands: lever (3), fold `demo-lamp-tone-swap` and `demo-lamp-tone-shift` into repeat variants of one mutant (the last unapplied pre-committed lever), then the four named trims of the phase8-close entry — (a) the four `ivs-run` launches of `runner-process.roundtrip.refuse-range` on the dev preset made static, (b) the `runner.exec.roundtrip-cut-cap` dev launch, (c) the nine digests of every 8th refusal rather than every refusal in `state.restore.atomic-every-refusal` (the whole-instance comparison of every row stays), (d) the second value of the unsealed byte flips in `state.fuzz.byte-flips` — about 1.1 local cpu-s together.
+
+**Action taken: the lever becomes the first task of the next milestone.** It is written into `.planning/RETROSPECTIVE.md` ("Carried Into the Next Milestone") and into `.planning/STATE.md` as a recorded constraint, not left here as prose: **no new test id, control, fault or gate step may enter the gate in the next milestone until lever (3) and trims (a) to (d) have landed and a hosted row has been recorded after them.** Re-running the window on rows taken after that change is what settles the level; a projection from these five is not.
+
+**Not a lever, and not done:** dropping a check, an oracle, a golden or a pinned-default test; caching; `continue-on-error`; a matrix; a path filter that skips the gate. None is proposed and none would be accepted to make this number read lower.
+
+**The release workflow** re-ran on the tag for the earlier entry and is unchanged: one job, one release, no PR critical-path cost.
