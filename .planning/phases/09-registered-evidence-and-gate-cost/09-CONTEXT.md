@@ -310,3 +310,169 @@ Two sentences from that material are load-bearing enough to repeat here:
   stays a watching item governed by the cost rule and is not landed in A1.
 
 </deferred>
+
+---
+
+<amendments>
+## Amendments (A-01 to A-08)
+
+**Status:** appended 2026-11-24 after `09-RESEARCH.md`, before any plan exists.
+**Authority:** an amendment supersedes conflicting text above. Each one exists because
+the research measured the tree and found the frozen sentence unsatisfiable, hollow,
+or factually wrong. Per `PLAN-LESSONS` 19, reality wins and the plan sentence becomes
+a recorded deviation — never code written from the frozen sentence.
+
+### A-01 — EV-04 derives from the records, with an explicit exclusion ledger (shape S1)
+
+**Measured:** 50 requirements are marked `Complete` in
+`.planning/milestones/v0.1.0-REQUIREMENTS.md`'s traceability table; the registry
+covers 27; EV-02 adds 17 → 44. A naive "every Complete requirement must have a line"
+derivation therefore goes **red on the pristine tree** for six requirements:
+`API-01 API-05 API-06 RUN-03 PKG-02 REL-01`.
+
+**Decision:** land `data/expected/important-gates-excluded.ids` with exactly those six
+rows, each `<REQ> <reason>`, and make the step refuse a Complete requirement that is
+**neither registered nor excluded**. Rejected: growing EV-02 to 23 requirements
+(`REL-01` has no gate mechanism at all — it is a close-record requirement, so the
+set cannot be completed honestly), and deriving only from the live
+`.planning/REQUIREMENTS.md` (10 `Pending` rows → a vacuous check, forbidden by
+lesson 20).
+
+The property that makes the gap unrepeatable still holds: the exclusion set is a
+*different file* from the registry, so deleting a registry line cannot silently
+delete the requirement from the must-be-covered set. The control overlays
+`.planning/REQUIREMENTS.md` with one row flipped `Pending` → `Complete` and no
+registry line, and the step must fail.
+
+**Parse rule:** the `## Traceability` table (`| <REQ> | Phase <n> | <Status> |`), id
+from field 2, status from field 4, `Complete*` as a prefix match. Not the
+`- [x] **REQ-NN**:` checkbox lines — the traceability table is the record the
+project already treats as authoritative.
+
+### A-02 — EV-03's honest count is three new controls, one verification and one step-side mechanism
+
+**Measured, item by item:**
+
+| Item | Guard | Landed? | Control today | Reachable from a control? |
+|---|---|---|---|---|
+| whole-token `SRC-` match | `tools/check/steps/sources.sh:40` | no | no | yes (pure step) |
+| zero-document failures | `glossary.sh:48`, `sources.sh:33-35` | **yes** | **yes** (`glossary-no-files`, `sources-no-files` in `gate-hardening.ids`) | yes |
+| per-step pass lines | `tools/gate.sh:111-116` | **yes** | none | **no** — `run-controls.sh` only executes `tools/check/steps/*.sh` |
+| manifest output anchoring | `tools/check/manifests.cmake:88-94` | no | no | yes (pure step) |
+| memmap generator controls | `cmake/IvsMemmapProbes.cmake:14-19` | no (nothing runs it) | no | **yes**, via a `cmake -P` invocation inside `memmap.sh` |
+
+**Decision:** three new controls (whole-token `SRC-`, manifest anchoring, memmap
+generator), one verification (zero-document failures — cite the two existing controls
+and, if cheap, extend to `denylist-no-files` and `runner-scan-empty`, which currently
+have none), and one step-side mechanism for the per-step pass line: require each
+step's pass line to be the **last non-empty line**, enforced in `run-controls.sh`'s
+`good_one`. `controls=380/380 → 383/383` (+2 if the two zero-document extensions land).
+
+**Recorded deviation:** ROADMAP success criterion 4 says "each of the five
+gate-hardening items has a named control". Two of the five already have one and one
+(the pass-line guard in `tools/gate.sh`) is unreachable from the control runner
+without a second gate shape and a recursion. The criterion's *intent* — every item
+has a mechanism shown to fail for its intended reason — is met; the literal
+five-controls count is not, and the deviation is recorded rather than faked. A control
+aimed at a guard it cannot reach is the "check that cannot fail" of lesson 20.
+
+**The memmap item is landed, not deferred.** The generator is already a standalone
+`cmake -P` script with fail-closed messages; `memmap.sh` gains one invocation writing
+into its own `mktemp -d`, mapped to one new token. No new gate step, `steps=38/38`
+unchanged, and `memmap` is a producer step so the preflight partition is undisturbed.
+
+### A-03 — A1 adds no test id, so the static-variant judgement reuses an existing judge
+
+`runner-process.judge.variant-static` as a new id would violate `GUARDRAILS` §2.2
+(no new test id before the hosted row) — and `CONTEXT.md` above both requires and
+forbids it. **Decision:** no new test id in A1. The derivation-equality judgement
+ships as an assertion inside the existing variant case, driven by `mutant_case`'s
+`$config = Release` two-mode switch (an ordinary `ok` line, **never** a skip — a skip
+moves `tests-skipped` 4 → 8 and stales every recorded token). Its committed scratch
+stand-in is a one-value-changed scenario body, run once in the commit and its result
+recorded in the SUMMARY, so the guard is shown able to fail without entering the
+gate. If an existing `runner-process.judge.*` id can carry the judgement without
+changing its meaning, prefer that; otherwise the in-case assertion plus the recorded
+stand-in is the form.
+
+### A-04 — the variant's `id` line cannot equal the pass scenario's
+
+`CONTEXT.md` above says the variant's `content`/`profile`/`ivss`/`id` lines equal the
+pass scenario's. Unsatisfiable for `id`. **Decision:** `content`, `profile` and
+`ivss` equal the pass scenario's; `id` carries the variant's own id. The slice rule is
+the verified one: the derivation block minus its fence lines and leading `#` lines
+equals the scenario body after `ivss 1` minus its header lines (55 / 29 / 55 / 49
+asserts for pass / idle / shift / swap, and the judgement passes today on all four).
+
+### A-05 — "byte-identical output" means identical after normalising the measurement lines
+
+Five things are emitted in sorted step-name order today: the step's stdout+stderr, its
+`-- FAIL` lines (into the job summary, not stdout), a possible
+`-- FAIL gate-step-*` line, its `step-time <name> <s>` line, and its tokens (which
+become the summary tail). **All three of the stdout-affecting ones must be buffered
+and replayed in sorted order**, and `keep_fails` must run during the replay, not
+during execution.
+
+`step-time`, `gate-cpu`, `gate-time` and `gate-env` carry measurements and can never
+match literally. **Decision:** the before/after comparison normalises those four line
+shapes and requires the normalised streams to be identical, plus the summary token
+byte for byte. The pre-change `sh` and `dash` captures are committed as the evidence
+the diff is taken against.
+
+### A-06 — the bookkeeping items, each corrected by measurement
+
+- `git.create_tag` **already reads `false`** (`.planning/config.json:15`). The D-31
+  item is a **prose** fix in `PROJECT.md` and `RELEASE-OPS.md` only. An executor must
+  never stage `.planning/config.json`.
+- `RELEASE-OPS.md` says "the pinned ten files"; `data/expected/pkg-install-files.ids`
+  has **11** non-comment lines. Change "ten" to "eleven".
+- The stale composite-version sentence is `core/src/machine/machine_digest.c:12-14`
+  ("version 2 since plan 05-03") against `IVS_DIGEST_COMPOSITE_VERSION 3u`. **Not**
+  line 407, whose comment describes a fault site and is correct in context.
+- `docs/runner.md` carries **no** bench command; the two bench golden writing
+  commands are added there (`GUARDRAILS` R11).
+- Seven draft `VALIDATION.md` files, not eight: `01` is `status: validated`, `02`–`08`
+  are `status: draft`. Disposition them by citing `08-ACCEPTED-DEBT.md` §1 in a live
+  record. **Never rewrite an archive.**
+
+### A-07 — the cost figures: the recorded allowance stands, the recomputation is stated
+
+Recomputed from `.planning/ci-runs.tsv`: the last five `r` are 7.4167, 7.5333, 7.6957,
+7.8261, 8.3810 → **median 7.696** (0.104 under the 7.8 budget, 0.604 under the 8.3
+stop line). The **recorded** allowance the phase was priced against — about 21 hosted
+cpu-s ≈ 12.9 local cpu-s — stands; the recomputation is stated beside it so a reader
+is not surprised that the arithmetic now shows more headroom than the record.
+
+A2's spend is ≈ **1.2 local cpu-s** (five controls at 0.185 each, plus one `cmake -P`
+launch), ≈ 0.7 hosted, ≈ **+0.015 `r`**. A1's saving is ≈ 1.10 local cpu-s (lever 0.12
+ceiling + trim (a) 0.18 + trim (c) 0.4 + trim (d) 0.4). The cost risk of this phase is
+A1's measurement discipline, not A2's spend.
+
+### A-08 — the registry delta is `gates=90 → 107` and `lines=306 → 330`
+
+The 24 proposed rows name 17 gate names that do not exist today (no `cpu*`, no
+`memmap*` except `memmap-flip`, no `machine`/`ivsc` family). Naming them honestly is
+worth the `gates=` delta; reusing existing family names to hold `gates=90` would make
+the registry say a CPU opcode expectation and a video rule are the same gate. Predicted
+token delta for the EV-02 commit: `gates=90 → 107`, `lines=306 → 330`, and
+`steps`, `controls`, `faults`, `tests-expected`, `tests-executed`, `tests-skipped`,
+`claims` unchanged.
+
+### A-09 — the EV-04 drift check needs a declaration format and two pinned tokens
+
+Each of the nine `important-gates-*/` overlays differs from
+`_good/tree/data/expected/important-gates.ids` by **exactly one non-comment line**
+(measured, comments excluded — each overlay replaces the header by design). The drift
+check in `run-controls.sh` compares sorted non-comment lines in both directions and
+refuses any difference that is not declared, and any declaration that matches no
+difference (so a `DEVIATION` file cannot rot). Two new tokens, `control-toy-drift` and
+`control-deviation-unused`, are pinned in an ids file. The good tree gains minimal toy
+`.planning/REQUIREMENTS.md` and `.planning/milestones/v0.1.0-REQUIREMENTS.md` records
+listing exactly the ids its toy registry covers, so the `_good` positive control is
+consistent by construction.
+
+**Pitfall to respect:** appending the 17 toy lines anywhere but after the existing last
+line shifts the positional EXPECT tokens of `important-gates-bad-req-phase5`
+(`line 19`) and `-phase6` (`line 24`). Append at the end of all ten files.
+
+</amendments>
