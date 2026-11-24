@@ -25,9 +25,10 @@ Each capability below is complete on documented terms (requirement text met by
 gate evidence, recorded in the phase VERIFICATION record and the REQUIREMENTS
 close-out notes), its claims are provisional (one claim, CL-0002, is
 established) and nothing was measured on hardware: D10 and D11 are not
-performed. REL-01 is excluded until its second stage (the records pull request
-after the merge, Phase 8 D-28). The Active list below is kept as written at
-kickoff.
+performed. REL-01 completes at stage 2 (the records pull request after the merge,
+Phase 8 D-28), which is recorded: the push run on the artifact commit, the
+GitHub reads and the release decision. The Active list below is kept as written
+at kickoff.
 
 - Evidence, profile and rights foundations (FND-01..07, Phase 1): complete on
   documented terms, claims provisional, nothing measured.
@@ -55,6 +56,10 @@ kickoff.
   Phase 8): complete on documented terms, claims provisional, nothing
   measured; the committed benchmark baseline is informational because it was
   taken on a host that was not idle.
+- Milestone close and release (REL-01, Phase 8): complete on documented terms.
+  Main green at the artifact commit, 0 open pull requests and 0 open issues, no
+  ruleset applied, and `v0.1.0` published as a pre-release of that exact commit
+  after checks P1 to P8 held. Claims provisional, nothing measured.
 
 ### Active
 
@@ -303,4 +308,4 @@ This document evolves at phase transitions and milestone boundaries.
    of exact tested artifact targeted when rights/readiness/authority permit
 
 ---
-*Last updated: 2026-11-15 after the Phase 8 stale-text sweep (plan 08-20)*
+*Last updated: 2026-11-24 after the Phase 8 close-out, REL-01 stage 2 and the v0.1.0 pre-release*

@@ -52,7 +52,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 5: Hand Controllers and PSG Sound** - Both controllers as multi-signal machine input at explicit time boundaries; PSG raw audio and a register-write log (completed 2026-11-12)
 - [x] **Phase 6: STIC Video First Pass** - Access windows, VBLANK/BUSRQ timing, raw index framebuffer, FG/BG and Color Stack cards, and side-effect-free inspection (completed 2026-11-12; all claims provisional)
 - [x] **Phase 7: First Visible Original Scenario** - A rights-clear original program responds to controller input with video and sound through the installed consumer in CI (completed 2026-11-13; both claims provisional, D11 open and not performed)
-- [ ] **Phase 8: STIC Completion, Save State and Performance Baselines** - Remaining STIC features, canonical snapshots, correctness-asserted benchmarks and the milestone-close record
+- [x] **Phase 8: STIC Completion, Save State and Performance Baselines** - Remaining STIC features, canonical snapshots, correctness-asserted benchmarks and the milestone-close record (completed 2026-11-24; claims provisional, D10 and D11 open and not performed, `v0.1.0` published as a pre-release)
 
 ## Decision Gate Timeline
 
@@ -355,7 +355,7 @@ Plans:
   3. Snapshot, restore and run gives the same result as an uninterrupted run at mid-frame, mid-SDBD and mid-bus-steal points, and tests cover every item on the written hidden-state checklist.
   4. For each named workload, the benchmark runner reports throughput only after it has asserted the correct output digest. Throughput, end-to-end latency and CI time are reported separately.
   5. The milestone-close record shows main green, open PRs triaged, the rolling roadmap and lessons updated, and a release-readiness assessment (rights, package contents, qualification, authority) for the exact tested commit and artifact. Publication follows the delegated release flow: a draft pre-release of that commit is published only after pre-publication checks P1 to P8, with the working name stated as not cleared and D10 and D11 stated as not performed.
-**Plans**: 21/21 plans executed, 21 plans in 21 sequential waves (waves D1 release machinery, A STIC, B snapshot and state, C benchmarks, D stale-text sweep and close-out; D-44 in 08-CONTEXT.md). REL-01 is recorded at stage 1 only: stage 2 (the push run on the merge commit, the pull request and issue counts, the ruleset read, the release decision) is the orchestrator's after the merge, and the release flow is paused by the owner's decision after Phase 8 (relayed)
+**Plans**: 21/21 plans executed, 21 plans in 21 sequential waves (waves D1 release machinery, A STIC, B snapshot and state, C benchmarks, D stale-text sweep and close-out; D-44 in 08-CONTEXT.md). REL-01 is recorded at stage 2: pull request 7 merged as `3fe5373` with green CI on its exact head, the push run `45328318716` recorded, the GitHub reads (0 open pull requests, 0 open issues, no ruleset) and the release decision `PUBLISHED v0.1.0 (prerelease)` recorded in the close record after checks P1 to P8 held
 
 Plans:
 - [x] 08-01-PLAN.md — Release machinery, first half: content-based release asset checker and its gate step, tag-triggered release workflow under a ci-parity exemption table, the release script, CHANGELOG under the claim scan, the Phase 8 start cost entry
