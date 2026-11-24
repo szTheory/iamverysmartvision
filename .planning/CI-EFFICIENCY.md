@@ -1609,3 +1609,32 @@ The last five `r` values of the file are now **7.22, 7.74, 8.34, 8.37 and 8.39**
 **Not a lever, and not done:** dropping a check, an oracle, a golden or a pinned-default test; caching; `continue-on-error`; a matrix; a path filter that skips the gate. None is proposed and none would be accepted to make this number read lower.
 
 **The release workflow** re-ran on the tag for the earlier entry and is unchanged: one job, one release, no PR critical-path cost.
+
+## 2026-11-24 — next-milestone opening: the reading is recomputed and the window arithmetic is fixed
+
+**The reading, recomputed by arithmetic from the committed `.planning/ci-runs.tsv` (no figure quoted from a prior entry).** `r = cpu_s / build_s` over the last five rows:
+
+| run | head | event | `build_s` | `cpu_s` | `r` |
+|-----|------|-------|-----------|---------|-----|
+| 45331127340 | 30ff1be | `pull_request` | 50 | 361 | 7.221 |
+| 45333569076 | 599bc0b | `push` | 68 | 567 | 8.338 |
+| 45334030825 | dfe268c | `pull_request` | 48 | 361 | 7.521 |
+| 45334352408 | d3bcbfa | `push` | 43 | 354 | 8.233 |
+| 45334658874 | 08c20d7 | `pull_request` | 49 | 359 | 7.327 |
+| 45334963892 | 5b6771a | `push` | 46 | 360 | 7.826 |
+
+The five values behind the window are **7.327, 7.521, 7.826, 8.233, 8.338**, so the last-five median is **7.826** — 0.47 under the 8.3 stop line and 0.026 over the 7.8 budget. The 8.34 quoted in the close-out entry above was correct *for the window it read*; four rows recorded afterwards moved the window with no code change. This is the same single-row artefact this file has recorded since Phase 6 (single rows 7.20 to 8.39 against a median that moves far less).
+
+**The stale figure is corrected, and the policy is not read around.** `.planning/RETROSPECTIVE.md` "Carried Into the Next Milestone" item 0 and `.planning/STATE.md` said the stop line had fired. The stop line had not fired; the *rule* still stands, because it is a recorded policy stop and not an evidence claim: lever (3) and trims (a)–(c) land before any new gate content, and a hosted row recorded after them settles the level.
+
+**Window arithmetic, so no later reader re-litigates it.** After one new row `R1` the window becomes `{7.521, 7.826, 8.233, 8.338, R1}`, whose maximum possible median is **8.233 < 8.3**. The stop rule can therefore re-fire only at the *second* row after `R1`, and only if both read ≥ 8.338. Consequence: `R1` can only discharge the rule or leave it armed; it cannot block the rest of Phase 9.
+
+**The allowance, computed rather than assumed.** At `build_s` 46, `Δr = Δcpu_s / 46`, so the 0.47 `r` of headroom is worth about **21 hosted cpu-s** of new gate work for the whole milestone (≈12.9 local cpu-s at the recorded local→hosted factor 1.675). That is the ceiling, not a target: a milestone that spends it all sits at the line again. Every plan that adds ids charges against it, and each phase boundary re-reads the median.
+
+**Lever (3), measured ceiling.** `ivs-run` on the four lamp-tone scenarios, median of five: dev 62 ms, release 9.4–9.8 ms. Folding `demo-lamp-tone-swap` and `demo-lamp-tone-shift` into static repeat variants of one mutant removes two dev launches = **0.12 local cpu-s ≈ 0.005 `r`**. Lever (3) cannot move the metric; it is landed because it is recorded policy and because it is the last non-owner lever in the pre-committed order. Recording that plainly is the point — an unmeasured lever quoted as a saving is how a cost story rots.
+
+**Trims, with the preserving condition of each.** (a) keep the `zero` launch of `runner-process.roundtrip.refuse-range` (it alone proves exit 14, the empty report, the first stderr line and the usage text) and make `above-max`, `no-value` and `twice` static against the option table; (c) nine digests on every 8th refusal **plus the first and last row**, keeping the whole-instance comparison of every row and `produced > 0` as the liveness guard; (d) the first value only of each unsealed byte flip, keeping the guard that the flip *moves* the digest and the offset set unchanged. **(b) is declined with its measurement**: 0.09 local cpu-s (0.03 % of a 219 cpu-s gate) against the only sanitized execution of the 65-cut loop. Together (a)+(c)+(d) ≈ 1.0 local cpu-s.
+
+**Cheap consistency checks before the long suites.** Fresh local profile, load 7.2, 18 cores, warm trees: `total=68`, `gate-cpu 121.83/97.37`; the two expensive steps are `c-tests 18` and `c-faults 17`, then `hygiene 6`, `c-purity 5`, `pkg-install 3`. Rather than hand-maintaining a cheap list, derive the partition: a step belongs to the preflight pass iff its script references neither the gate results directory nor `build/`. That yields 29 preflight and 9 producer/consumer steps, so the self-consistency verdict arrives in about 21–24 s instead of after about 44 s of build-and-suite work. The output must stay byte-identical: buffer each step's tokens and `-- FAIL` lines and concatenate in sorted name order. Hosted cost is unchanged by construction — the same steps run and the same evidence is produced.
+
+phaseA1-start: reading corrected (median 7.826), rule armed, allowance 21 hosted cpu-s, lever (3) and trims (a)(c)(d) next

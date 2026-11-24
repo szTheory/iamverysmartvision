@@ -1,7 +1,7 @@
 {
   "contract": "1.0.0",
   "flavor": "core",
-  "milestone": "v0.1.0",
+  "milestone": "v0.2.0 — Registered Evidence, Reachable Runs, Replayable Input (Phases 9 to 12)</summary>",
   "phases": [
     {
       "number": "1",
@@ -41,13 +41,13 @@
     {
       "number": "8",
       "name": "STIC Completion, Save State and Performance Baselines",
-      "status": "in_progress"
+      "status": "complete"
     }
   ],
   "next": {
-    "command": "/gsd-progress",
-    "label": "Show progress",
-    "reason": "Unsure of state — showing progress"
+    "command": "/gsd-discuss-phase",
+    "label": "Discuss the first phase",
+    "reason": "Project initialized — plan your first phase"
   },
-  "updated_at": "2026-11-24T05:21:36.276Z"
+  "updated_at": "2026-11-24T14:10:59.704Z"
 }

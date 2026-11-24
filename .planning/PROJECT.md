@@ -17,6 +17,32 @@ A deterministic, observable machine core whose every compatibility claim is
 bound to an exactly named profile and independent evidence — never an
 unqualified "it runs Intellivision games" label.
 
+## Current Milestone: v0.2.0 Registered Evidence, Reachable Runs, Replayable Input
+
+**Goal:** Make the shipped core reachable (a person can obtain and run it),
+replayable (a run reproduces from an input log), and durable (the gate's evidence
+cannot rot and its cost is measured), then open the content surface only where a
+rights review clears it.
+
+**Target features:**
+- Gate cost lever and trims, a hosted row that settles the cost level, and
+  registration of the 17 requirements whose faults already run but were never
+  registered (`EV-01`..`EV-04`).
+- A documented person build from the released source archive, a frozen
+  presentation/palette policy, and a recorded look/listen handoff
+  (`PKG-05`, `TOOL-04` narrowed, `EV-05`).
+- Input record and replay at machine-time boundaries, input-only and
+  rights-clean, with the vacuity guards v0.1.0's round-trip hook lacked
+  (`TOOL-01`).
+- Bank-mode profile data with typed refusal for unmapped modes, and `.bin`/`.cfg`
+  import outside the core behind a per-mode rights review
+  (`FMT-01` narrowed, `FMT-04`) — conditional, degradable, droppable.
+
+**Scope record:** `.planning/MILESTONE-CONTEXT.md` (frozen upstream artifact).
+**Guardrails:** `.planning/ops/GUARDRAILS-v0.2.md`.
+**Milestone label v0.2.0; software version 0.2.0 if released** (a minor bump under
+D-30: a new format and new runner options, no API break).
+
 ## Requirements
 
 ### Validated
@@ -64,37 +90,32 @@ at kickoff.
 ### Active
 
 All Active items are hypotheses until delivered and verified. Detailed,
-ID-tagged requirements live in `.planning/REQUIREMENTS.md`.
+ID-tagged requirements live in `.planning/REQUIREMENTS.md`; the v0.1.0 set is
+archived in `.planning/milestones/v0.1.0-REQUIREMENTS.md`.
 
-- [ ] One canonical machine implementation driven through a narrow headless
-      interface with explicit ownership/lifetime of content, controller samples,
-      outputs, reset/unload, errors/refusals, bounded execution and instances.
-- [ ] An explicitly named first hardware profile (model, revision, region/video
-      timing, startup/reset, cartridge arrangement) with documented sources.
-- [ ] CPU (CP1610) behavior verified by exact instruction-level tests with
-      independent expected values.
-- [ ] Memory map, cartridge loading and system-image handling defined with
-      refusal behavior for malformed/unsupported content.
-- [ ] STIC video producing a raw (pre-scaling) framebuffer observable at a
-      defined machine-time boundary.
-- [ ] PSG (AY-3-8914 family) sound producing raw samples/events distinct from
-      host PCM conversion.
-- [ ] Two hand controllers modeled as first-class multi-signal machine input
-      (keypad, disc, side buttons, both players, combinations), separate from
-      host mapping.
-- [ ] Deterministic headless runner: scripted input at an explicit
-      machine/time boundary, fresh isolated state, captured observations.
-- [ ] Original (project-authored) diagnostic fixture(s) with literal expected
-      results, plus a fixture manifest (source, recipe, digest, license,
-      notices, allowed use).
-- [ ] One visible playable or homebrew scenario early, so the project does not
-      become research-only (content must be authored or rights-cleared).
-- [ ] Clean installed consumer proving the packaged artifact independently of
-      source-tree tests.
-- [ ] One documented local command aligned with the fast PR gate; CI that
-      reports skips, missing artifacts and stale output visibly.
-- [ ] Representative deterministic workloads and correctness baselines before
-      any performance optimization.
+- [ ] The gate's cost rule is discharged by measurement: lever (3) and trims
+      (a), (c), (d) land in cost-only commits, trim (b) is declined by
+      measurement, and a hosted row recorded after them settles the level
+      (`EV-01`).
+- [ ] The 17 requirements whose named faults already run (FND-01..07,
+      CPU-01..05, MEM-01..05) are registered with cannot-pass-vacuously
+      mechanisms, without adding a fault or a test id (`EV-02`).
+- [ ] Every gate-hardening item has a control that fails for its intended
+      reason, and a machine check refuses a Complete requirement with no
+      registry line (`EV-03`, `EV-04`).
+- [ ] A handoff ledger records every human-only item with `evidence: none`, and
+      no claim may cite one (`EV-05`).
+- [ ] A person can obtain and run the emulator from the released source archive
+      using documented commands only, proved by the release rehearsal (`PKG-05`).
+- [ ] A frozen presentation and palette policy keeps colour out of the core and
+      out of every claim, enforced by a check (`TOOL-04`, narrowed).
+- [ ] Input record and replay at machine-time boundaries: an input-only log whose
+      replay reproduces the recorded run's digest chain and applied-event chain
+      (`TOOL-01`).
+- [ ] Bank-mode model in profile data with a typed refusal for every unmapped
+      mode and one generated original fixture per mode (`FMT-01`, narrowed).
+- [ ] `.bin`/`.cfg` import outside the core, rights-gated per mode, degrading to
+      `FMT-01` only (`FMT-04`).
 
 ### Out of Scope (for now — not permanent ceilings)
 
@@ -220,6 +241,10 @@ These come from a researched fan-out recommendation that was auto-adopted. Each 
 | REL-01 / D-30 | Three separate version numbers, never conflated: the GSD milestone label (planning only, never a git tag), the software version 0.1.0 (the three `IVS_API_VERSION_*` macros of `core/include/ivs/ivs.h`, equal to the CMake `ivs_VERSION` and to the installed package version) and the format versions (IVSC v1, IVSN v1 with schema version 1, the video slot header, the state digest composite version 3). The tag is strictly `vMAJOR.MINOR.PATCH` and must equal the macros: the release script and the version policy check refuse a skew, and the release trigger is the glob `v[0-9]*.[0-9]*.[0-9]*`. For 0.x a patch means no API or format change and a minor means anything else, consistent with `SameMinorVersion`; the first release is 0.1.0 because nothing was ever tagged, and the snapshot calls are additive inside 0.1 (Phase 8 D-30, D-32; plans 08-01 and 08-02; Delegated decision, owner authorization 2026-11-09) | Reversal evidence: a consumer needs a pre-release suffix or build metadata in the version, a breaking format change before 1.0 that the minor rule handles badly, or a tag is made in another form; then the policy and the check change in the same commit |
 | REL-01 / D-31, D-42 | The milestone tool must not create a tag. `.planning/config.json` carries `git.create_tag: true`, which would make `gsd-complete-milestone` create, and offer to push, a milestone-style tag such as `v1.0`: that is not a 0.x software version and would match a wide release trigger. The release trigger is the strict glob and the release checks refuse a tag that is not the header version; changing that one key to false is an orchestrator-only change in a separate commit with no other file in it, and executors never stage `.planning/config.json` or `.planning/state.json` (Phase 8 D-31, D-42; `.planning/ops/RELEASE-OPS.md` item a; Delegated decision, owner authorization 2026-11-09). The key reads `true` in the working-tree copy at the Phase 8 close, so the change is still to be made | Reversal evidence: the milestone tool gains a no-tag flag or a configurable tag name that cannot match the release glob, or the owner wants a milestone tag; then the key can stay as it is |
 | REL-01 / D-33 | History disposition: six old planning commits on public `main` trip `sh tools/hygiene.sh --history` on the shape of a scratch-directory path (five commits by the token `hygiene-history-home-path` and one commit message by `hygiene-message-home-path`; the matched text carries no user, host or session content). They are **accepted without a rewrite and not cleared**: pinned by (token, short sha) pair in `data/expected/hygiene-history-pinned.ids`, a finding that is not on the list fails the release check, the baseline file `tools/check/hygiene-baseline.txt` is not moved, no rule is widened, and the readiness record prints each finding with its disposition and never says that the history check passed (Phase 8 D-33; plan 08-02 and the full scan of plan 08-21, six findings and none new; Delegated decision, owner authorization 2026-11-09). **The owner may veto this disposition and choose a rewrite**, which is an owner-only hard stop (`.planning/AUTONOMY.md` section 1) and would not purge the pull request refs that GitHub keeps | Reversal evidence: an owner veto; a finding whose matched text carries identifying content (a user name, a host, a session id); or a request to purge the objects (a GitHub Support action) |
+| D14 | The runner is **not** installed in 0.2.x; the person route is the documented build from the source archive (`.planning/MILESTONE-CONTEXT.md` §3; Delegated decision, owner authorization 2026-11-09, decided 2026-11-24). Installing it is structurally blocked, not merely expensive: an installed `ivs-run` has nothing to run, because every cartridge is a build product of `ivs_pack`/`ivs_asm` and both are never shipped, and any release member with an extension in `tools/check/binary-ext.txt` is refused by `release-assets` whatever the list says | Reversal evidence: a named consumer who wants a downloadable binary **and** an images story that survives the release-asset check — concretely a runner-synthesised symbolic content name (like `zero-grom`) for the boot stub plus a project-authored cartridge the runner can make; that is the correct trigger to reopen, and it is not this milestone's |
+| D15 | The replay log is an **input artifact**: ASCII, input events and ticks only, no field able to hold a content digest or path, a `content project\|user` line, not in `binary-ext.txt`, not gitignored (`.planning/MILESTONE-CONTEXT.md` §3; Delegated decision, decided 2026-11-24). Under D11 it is sufficient: an input log holds nothing the images produced, so it is not derived material, and a replay of an owner-image run still needs the images locally and produces no result, claim or tier in the repository | Reversal evidence: a consumer that needs content identity inside the format (then reuse the existing `expect-sha256` directive, not a new field), or a defect found only at the process boundary (then promote two or three in-process cases to the command line) |
+| D16 | The `.bin`/`.cfg` importer lives **outside the core**; its refusals are closed append-only tool tokens pinned in `data/expected/cfg-refusals.ids`, its output is operator-side and refused inside the work tree, and it is rights-gated **per mode** (`.planning/MILESTONE-CONTEXT.md` §3; Delegated decision, decided 2026-11-24). No new `IVS_E_*` reason, no core change, no `api-effects` retarget; a mode the review did not clear appears as `cfg-bank-mode-unmapped`, not as a default | Reversal evidence: a consumer that needs import inside the installed core (then D-cart is revisited first), or a primary permissively described source that makes the description provably clean (then the importer can be un-gated per mode) |
+| EV-scope | The milestone adds **zero new gate steps**: `ls tools/check/steps/*.sh \| wc -l` stays 38 and every new capability lands as ids inside an existing suite (`.planning/MILESTONE-CONTEXT.md` §4; Delegated decision, decided 2026-11-24). The stop rule is a policy stop, and a step is the expensive unit while an id is the cheap one | Reversal evidence: new ids exceed about 15 percent of an existing suite, a suite's measured per-id cost rises above the Phase 9 unit-cost table, or a defect is found only at the seam between two capabilities' cases; then a step is justified — after a hosted row, never before |
 
 D4, D6 and D12 were decided by the fan-out protocol on 2026-11-11; D7 on 2026-11-12 (Phase 5), D8 on 2026-11-12 (Phase 6) (Delegated decision, owner authorization 2026-11-09).
 
@@ -308,4 +333,4 @@ This document evolves at phase transitions and milestone boundaries.
    of exact tested artifact targeted when rights/readiness/authority permit
 
 ---
-*Last updated: 2026-11-24 after the Phase 8 close-out, REL-01 stage 2 and the v0.1.0 pre-release*
+*Last updated: 2026-11-24 at the v0.2.0 milestone opening, after the milestone ritual, the corrected cost reading and the D14 to D16 scope decisions*

@@ -1,19 +1,16 @@
 ---
 gsd_state_version: "1.0"
-milestone: v0.1.0
-status: Awaiting next milestone
-stopped_at: Phase 8 closed; v0.1.0 published as a pre-release; milestone lifecycle (audit, complete, cleanup) next
-last_updated: "2026-11-24T05:21:36.261Z"
+milestone: v0.2.0
+milestone_name: Registered Evidence, Reachable Runs, Replayable Input
+status: planning
+last_updated: "2026-11-24T14:15:00.000Z"
 last_activity: 2026-11-24
-last_activity_desc: Milestone v0.1.0 completed and archived
-state_head: e0c88b41cfea3b24e091ff5ef0c63d9ca6473947
 progress:
-  total_phases: 8
-  completed_phases: 8
-  total_plans: 130
-  completed_plans: 130
-current_phase: 8
-current_phase_name: STIC Completion, Save State and Performance Baselines
+  total_phases: 4
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -23,14 +20,16 @@ current_phase_name: STIC Completion, Save State and Performance Baselines
 See: .planning/PROJECT.md (updated 2026-11-24)
 
 **Core value:** A deterministic, observable machine core whose every compatibility claim is bound to an exactly named profile and independent evidence — never an unqualified "it runs Intellivision games" label.
-**Current focus:** Milestone v0.1.0 is shipped and archived; the next milestone is not started
+**Current focus:** Milestone v0.2.0 Registered Evidence, Reachable Runs, Replayable Input — Phase 9 not started (requirements and roadmap defined 2026-11-24)
 
 ## Current Position
 
-Phase: Milestone v0.1.0 complete
+Phase: 9 of 12 — Registered Evidence and Gate Cost (v0.2.0)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-11-24 — Milestone v0.1.0 completed and archived
+Status: Not started — the roadmap exists (2026-11-24), no phase plan does
+Last activity: 2026-11-24 — Milestone v0.2.0 roadmap created: Phases 9 to 12, 10/10 requirements mapped, zero new gate steps, Phase 12 conditional and droppable
+
+**Next action:** `/gsd-plan-phase 9`, or `/gsd-autonomous` to run the milestone end to end. Phase 9 wave A1 is cost-only: lever (3) and trims (a), (c) and (d), then a hosted row, then wave A2.
 
 ## Releases
 
@@ -526,22 +525,52 @@ Refreshed by plan 08-21 from `.planning/phases/08-stic-completion-save-state-per
 
 ## Session Continuity
 
-Last session: 2026-11-24T05:35:00.000Z
-Stopped at: Milestone v0.1.0 complete, archived and released; `main` green at `599bc0b`; merged branches deleted; nothing in flight
-Resume file: None
+Last session: 2026-11-24
+Stopped at: Milestone v0.2.0 scoped by the milestone ritual; requirements and roadmap being defined; nothing in flight
+Resume file: `.planning/MILESTONE-CONTEXT.md` (the frozen upstream scope)
 
 ## Recorded Constraints for the Next Milestone
 
-These are binding on the next milestone, not suggestions. Each came from a recorded decision, a fired rule or an owner hard stop.
+Binding on v0.2.0, not suggestions. Each came from a recorded decision, a
+recomputed figure or an owner hard stop.
 
-1. **The gate is at its cost stop line — land the lever before adding any check.** The last-five hosted median `r` is **8.34**, above the 8.3 stop line (entry "2026-11-24 - milestone close-out" of `.planning/CI-EFFICIENCY.md`). **No new test id, control, fault or gate step may enter the gate until lever (3)** (fold `demo-lamp-tone-swap` and `demo-lamp-tone-shift` into repeat variants of one mutant) **and trims (a) to (d)** of the Phase 8 close entry have landed, and a hosted row has been recorded after them. Dropping a check, an oracle, a golden or a pinned-default test is not a lever.
-2. **Evidence durability first (audit W1).** 17 requirements (FND-01..07, CPU-01..05, MEM-01..05) have named faults that run in every gate but no lines in `data/expected/important-gates.ids`, so they lack registered "cannot pass vacuously" evidence. Pair this with the Phase 1 gate-hardening items (IN-01, IN-02, IN-04, IN-03, IN-05, the denylist status-2 read, the `--tree` grep-error control).
-3. **Self-referential step inventory (audit W2).** No gate step reads the requirement records, so a commit deleting a step and its inventory line shrinks coverage silently. Any new gate step added in the next milestone must be provable against something outside the inventory itself.
-4. **Owner hard stops, not performed:** D10 (47 hardware items) and D11 (owner-local real EXEC/GROM runs). No claim may exceed the `provisional` standing until they are performed; the release notes already say so.
-5. **Settings still not applied:** the branch ruleset (PR + `gate`, no force push, no deletion) and the tag ruleset (no update, no deletion, only from a green `main`) recommended in `.planning/AUTONOMY.md` section 1.
+1. **The gate cost rule, with its reading corrected.** The close-out quoted a
+   last-five median `r` of 8.34; recomputed by arithmetic from the committed
+   `.planning/ci-runs.tsv` the values are 7.327, 7.521, 7.826, 8.233, 8.338, so
+   the median is **7.826** — 0.47 under the 8.3 stop line and 0.026 over the 7.8
+   budget. The stop line did **not** fire. The rule still stands because it is
+   recorded policy: **lever (3) and trims (a), (c), (d) land in cost-only commits
+   before any new test id, control, fault or gate step, and a hosted row recorded
+   after them settles the level.** Trim (b) is declined by measurement. The
+   headroom is worth about **21 hosted cpu-s** for the whole milestone — a
+   ceiling, not a target. After one new row the maximum possible median is 8.233,
+   so a single row cannot re-fire the rule. Entry: "next-milestone opening" in
+   `.planning/CI-EFFICIENCY.md`.
+2. **Evidence durability first (audit W1).** 17 requirements (FND-01..07,
+   CPU-01..05, MEM-01..05) have named faults that run in every gate but no lines
+   in `data/expected/important-gates.ids`. Register them without adding a fault or
+   a test id, extend the accepted-requirement set and all ten toy registries in
+   the same commit (`GUARDRAILS-v0.2.md` R2), and add the machine check that makes
+   the gap unrepeatable.
+3. **Self-referential step inventory (audit W2).** No gate step reads the
+   requirement records, so a commit deleting a step and its inventory line shrinks
+   coverage silently. v0.2.0 adds **zero new gate steps**; any future step must be
+   provable against something outside the inventory itself.
+4. **Owner hard stops, not performed:** D10 (47 hardware items) and D11
+   (owner-local real EXEC/GROM runs). No claim may exceed `provisional` until they
+   are performed. Every human-only item is a row in `data/expected/handoffs.ids`
+   with `evidence: none`.
+5. **Settings still not applied:** the branch ruleset (PR + `gate`, no force push,
+   no deletion) and the tag ruleset (no update, no deletion, only from a green
+   `main`) recommended in `.planning/AUTONOMY.md` section 1. Apply them, or record
+   "not applied" with a reason — never silently skip.
+6. **The milestone ritual and the guardrails are standing policy.**
+   `.planning/ops/MILESTONE-RITUAL.md`, `.planning/ops/GUARDRAILS-v0.2.md` and
+   `.planning/ops/INDEX.md`. Read the index before asking the owner anything.
 
 ## Operator Next Steps
 
-- Start the next milestone with `/gsd-new-milestone`; take its candidates from section D of the archived close record (`.planning/milestones/v0.1.0-phases/08-stic-completion-save-state-performance-baselines/08-MILESTONE-CLOSE.md`) and its constraints from the section above.
-- Land lever (3) and trims (a) to (d) before any new gate check enters.
+- v0.2.0 is scoped: `.planning/MILESTONE-CONTEXT.md` holds the phase shape, exit criteria and decisions; `.planning/ops/GUARDRAILS-v0.2.md` holds the retarget table and the definition of done.
+- Run the milestone end to end with `/gsd-autonomous` after `/clear`.
+- Phase 9 wave A1 is cost-only: lever (3) and trims (a), (c), (d), then a hosted row, then wave A2.
 - `.planning/ci-runs.tsv` is the orchestrator's live hosted-run record; it is appended by `tools/ci-record.sh` and committed in a records pull request, never by an executor.
