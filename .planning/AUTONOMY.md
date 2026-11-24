@@ -134,6 +134,18 @@ non-trivial decision.
   and why.
 - `workflow.human_verify_mode = end-of-phase`: no mid-flight human
   checkpoints.
+- **Throwaway verification is legitimate.** A one-off probe or script that
+  answers a question does not have to live in CI, and usually should not. Keep
+  it only when it catches a distinct recurring failure class at a useful cost.
+- **Every handoff is a ledger row, not prose.** Items only a human can judge
+  live in `data/expected/handoffs.ids` with `evidence: none`; a claim may never
+  cite one, and a later milestone cites the row id instead of re-asking.
+- **A handoff is recorded as `not-performed` when no human performed it.** Never
+  write a pass, never leave it blank, and never turn an unperformed handoff into
+  a phase exit criterion a tool cannot meet.
+- **Close the loop once.** When a verification decision is made (a check added,
+  a check declined, a handoff accepted), record it in the same commit so it is
+  not re-litigated. This is why `.planning/ops/INDEX.md` exists.
 
 ## 4. CI efficiency review (after every CI run)
 
@@ -151,6 +163,27 @@ evidence**:
 
 Measure before changing. Append findings and actions to
 `.planning/CI-EFFICIENCY.md`. Create that file on the first CI run.
+
+- **Recompute, never quote.** The last-five median `r` is arithmetic over
+  `.planning/ci-runs.tsv`; quote the five values, each row's `build_s` and the
+  median. A quoted figure that disagrees with the file is a defect (this
+  happened at the v0.1.0 close: 8.34 was quoted while the committed rows read
+  7.83).
+- **Reproduce CI locally before waiting on it.** Use GitHub `act` for the
+  workflow shape, and the local gate plus `tools/gate-linux.sh` (the Ubuntu
+  container) for the substance. Check everything that can be checked locally
+  first: hosted minutes cost money and wall time.
+- **Cheap consistency checks before the long suites.** A run should reach a
+  self-consistency verdict before the build-and-suite work, not after. Derive
+  the cheap set rather than hand-maintaining a list: a gate step belongs to the
+  preflight pass if its script references neither the gate results directory nor
+  `build/`. Buffer each step's tokens and `-- FAIL` lines so the summary line and
+  output order stay byte-identical while execution order changes.
+- **Docker hygiene.** Every image, container and volume this project creates is
+  named `ivs-<purpose>` (for example `ivs-gate-linux`) so it is identifiable in
+  `docker ps -a`, `docker images` and `docker volume ls`. Remove them when the
+  run is done: no orphaned images, containers or volumes are left behind, and
+  never run a second container gate while one is live (lesson 18).
 
 ## 5. CD / release steps
 
@@ -210,3 +243,29 @@ end-of-phase`, `workflow.skip_discuss: false` (discuss runs the fan-out
 protocol above and auto-selects), `workflow.research: true`,
 `workflow.verifier: true`. Discuss-phase runs in advisor mode (the
 USER-PROFILE exists) with auto-selection of the synthesized recommendation.
+
+## 8. Milestone ritual (owner instruction, 2026-11-24)
+
+Every new milestone, without being asked, runs the six steps of
+`.planning/ops/MILESTONE-RITUAL.md`: refresh the rolling roadmap (near / mid /
+long, prioritized, every row naming its gate) → inspect state and recompute every
+figure → fan out the milestone choice by lens and auto-select one recommendation
+→ fan out a **separate upstream scoping pass** (phase decomposition, gate cost
+and evidence durability, rights/format/packaging policy, verification strategy,
+downstream guardrails) so the whole milestone's downstream phase work is
+directionally correct → freeze the upstream artifacts and run the normal GSD
+cycle → hand the owner one `/gsd-autonomous` command.
+
+The ritual also owns the **clean-state close**: green `main` with the push run
+recorded, no dirty worktree, one worktree, no stashes, PRs and issues triaged,
+rulesets applied or explicitly recorded as not applied, records reconciled, and
+one release-decision line.
+
+Do not re-ask the owner about any of it. Do not re-derive it.
+
+## 9. Where durable knowledge lives
+
+`.planning/ops/INDEX.md` is the one-hop index of every durable rule, decision and
+lesson. Before asking the owner a question, read it. A new durable fact goes into
+exactly one file and is cited by path and section everywhere else, so two copies
+cannot drift.
