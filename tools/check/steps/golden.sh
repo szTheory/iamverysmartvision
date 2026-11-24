@@ -70,14 +70,18 @@
 #   hides an ordinary test). A row that is absent from the inventory counts as not skip-ok.
 # Dev versus release (Pitfall 11: one ctest run sees one tree): the union of report names in
 #   build/gate/dev/runner and build/gate/release/runner; an id absent from the inventory is
-#   golden-mismatch; an id of class `host-dependent` is skipped and counted; every other id needs
-#   both reports, byte-equal once the `host.calls` lines are removed (golden-dev-release-diff). No
-#   dev report at all is golden-mismatch (the producer did not run), never a vacuous pass.
+#   golden-mismatch; an id of class `host-dependent` is skipped and counted; an id whose column 5 is
+#   `release-only` (plan 09-01, D-09, D-09-01) is skipped and counted in its own stat, because such a
+#   scenario runs on the release preset only and has no dev report by construction; every other id
+#   needs both reports, byte-equal once the `host.calls` lines are removed (golden-dev-release-diff).
+#   No dev report at all is golden-mismatch (the producer did not run), never a vacuous pass. A
+#   `release-only` id is not counted in host-dependent: the two stats answer different questions.
 # Tokens: golden-header-missing-tier, golden-header-missing-oracle,
 #   golden-self-recorded-wrong-tier, golden-empty-domain-observed, golden-mismatch,
 #   golden-expect-drift, golden-dev-release-diff, golden-user-scenario-tracked,
 #   golden-host-dependent, golden-shape, golden-user-content-not-skip-ok, golden-skip-ok-without-user-content.
-# Stats: goldens=<golden files> reports=<dev reports> host-dependent=<skipped report ids>.
+# Stats: goldens=<golden files> reports=<dev reports> host-dependent=<skipped report ids>
+#   release-only=<report ids skipped because column 5 is release-only>.
 LC_ALL=C; export LC_ALL
 : "${ROOT:?ROOT is not set}"
 : "${CHECK_DIR:?CHECK_DIR is not set}"
@@ -129,6 +133,8 @@ if grep -q -x -F -e "$refinv" "$FILELIST" && [ -f "$ROOT/$refinv" ]; then
 fi
 
 class_of() { awk -v id="$1" '$1 == id { print $2; exit }' "$tmp/inv"; }
+# skip_of <id>: column 5 of the inventory row ('' when the id is absent or its row is malformed).
+skip_of() { awk -v id="$1" '$1 == id { print $2; exit }' "$tmp/invskip"; }
 in_list() { grep -q -x -F -e "$1" "$FILELIST"; }
 
 # The golden key list, applied to a report on stdin; v, a, i and p are 1 for observed live domains
@@ -391,6 +397,7 @@ done
 sort -u "$tmp/ids" -o "$tmp/ids"
 [ "$reports" -gt 0 ] || bad golden-mismatch "no report in build/gate/dev/runner (suite runner-process did not run)"
 hostdep=0
+relonly=0
 while IFS= read -r id; do
   cls=$(class_of "$id")
   case $cls in
@@ -398,6 +405,13 @@ while IFS= read -r id; do
     deterministic) ;;
     *) bad golden-mismatch "report $id not in $inv"; continue ;;
   esac
+  # A `release-only` scenario runs on the release preset only (plan 09-01, D-09, D-09-01): it has no dev
+  # report by construction, so it is skipped and counted before the report-pair refusal. The refusal
+  # itself is untouched for every other id, so a silently missing report is still golden-dev-release-diff.
+  if [ "$(skip_of "$id")" = release-only ]; then
+    relonly=$((relonly + 1))
+    continue
+  fi
   dv="$gate/dev/runner/$id.report"
   rl="$gate/release/runner/$id.report"
   if [ ! -f "$dv" ] || [ ! -f "$rl" ]; then
@@ -415,4 +429,4 @@ if [ -s "$find" ]; then
   done
   exit 1
 fi
-printf -- '-- golden pass goldens=%s reports=%s host-dependent=%s\n' "$goldens" "$reports" "$hostdep"
+printf -- '-- golden pass goldens=%s reports=%s host-dependent=%s release-only=%s\n' "$goldens" "$reports" "$hostdep" "$relonly"

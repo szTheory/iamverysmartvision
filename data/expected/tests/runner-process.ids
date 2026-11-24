@@ -18,6 +18,11 @@
 #   runner-process.pair.<idA>.<idB>: the metamorphic judge, one case per line of data/expected/scenario-pairs.ids (two reports of the
 #   same run related by differ and equal keys, input.consumed equal to input.events, an idle run silent);
 #   runner-process.judge.pair-video-equal, .input-not-consumed and .idle-audible: fake report pairs that the pair judge must reject.
+# Plan 09-01 (D-09, D-09-01, A-03, A-04): demo-lamp-tone-shift and demo-lamp-tone-swap are column-5 `release-only`
+#   rows: they run on the Release preset and are judged statically on the sanitized Debug preset by the derivation
+#   equality of docs/video/demo-lamp-tone-1-derivation.md, with a one-value stand-in proving the judgement can fail.
+#   The ids are the same in both presets, none is skip-ok and tests-skipped does not move; the pair with a
+#   release-only member is judged by its inventory form on the sanitized preset and by check_pair on Release.
 # Plan 07-08 (D-25, A-14, A-17): runner-process.mutant.SCN-*, one case per row of data/expected/diag-mutations-scn.ids (12 mutants and one
 #   negative row of the Lamp Tone program; stub-window rows patch boot-stub-2.exec; a fails column states the complete failing set).
 # Plan 07-11 (D-31, T-07-29): runner-process.refuse-user.audio-raw, .psg-log-out and .audio-wav: each option is refused for a scenario with a

@@ -227,7 +227,10 @@ run_one() {
 
 # why <token> <text>: records one finding in $tmp/why and sets found=1.
 found=0
-why() { printf '%s: %s\n' "$1" "$2" >> "$tmp/why"; found=1; }
+# why <token> <detail>: appends a finding to $whytarget (default $tmp/why). The indirection exists for the
+# in-case negative half of the derivation judgement (plan 09-01, A-03), which runs in a subshell with its own
+# target so it cannot set the case's own verdict.
+why() { printf '%s: %s\n' "$1" "$2" >> "${whytarget:-$tmp/why}"; found=1; }
 
 # judge <name> <exit> <outcome> <detail pattern> <stderr line>: judges run <name> (rc, hung and
 # $tmp/runs/<name>.{out,err}) against the expectation; <detail pattern> is a shell pattern for the
@@ -410,11 +413,161 @@ check_pair() {
   [ "$found" -eq 0 ]
 }
 
+# The frozen derivation of the Lamp Tone program: the oracle of the four demo-lamp-tone scenarios, read and never
+# written (plan 09-01, D-09, A-03; GUARDRAILS 2.10, archives and oracles are append-only).
+derivation="$root/docs/video/demo-lamp-tone-1-derivation.md"
+
+# derivation_block <id> <out>: the lines strictly between `<!-- asserts-begin <id> -->` and
+# `<!-- asserts-end <id> -->` of the derivation, minus its fence lines and minus its LEADING `#` lines (the frame
+# literals above the scenario lines; a `#` line further down is a scenario line and is kept).
+derivation_block() {
+  awk -v id="$1" '/<!-- asserts-begin / { b = ($3 == id); next } /<!-- asserts-end / { if (b) b = 0; next } b' "$derivation" \
+    | grep -v '^```' \
+    | awk 'BEGIN { s = 1 } s && /^#/ { next } { s = 0; print }' > "$2"
+}
+
+# scenario_body <scenario file> <out>: every line after the `ivss 1` line minus the id, profile, content and
+# capture lines, which is exactly what a derivation block holds (the input, run-to and assert lines).
+scenario_body() {
+  awk '/^ivss 1$/ { h = 1; next } h' "$1" | grep -v -E '^(id|profile|content|capture) ' > "$2"
+}
+
+# input_ticks <scenario file> <out>: the at_tick value of every input line, one per line.
+input_ticks() { sed -n 's/^input at_tick=\([0-9][0-9]*\) .*$/\1/p' "$1" > "$2"; }
+
+# derivation_equal <id> <scenario file> (plan 09-01, D-09, A-03, A-04): the preserving condition of lever (3), the
+# fold of demo-lamp-tone-shift and demo-lamp-tone-swap into static repeat variants of demo-lamp-tone-pass. Without
+# it the fold would be a coverage deletion. It is file-only and runs on BOTH presets, so a variant that still runs
+# is judged by the frozen oracle too. In order: the scenario file exists and the derivation block of <id> is not
+# empty (variant-derivation-empty, the liveness guard of the whole judgement); the assert count equals the
+# derivation's `Counts:` line at docs/video/demo-lamp-tone-1-derivation.md:316 (variant-assert-count); the `ivss`,
+# `profile` and `content` lines equal demo-lamp-tone-pass's and the `id` line is `id <id>` (variant-header-differs;
+# amendment A-04: the frozen sentence's "id equal to the pass scenario's" is unsatisfiable, so the variant carries
+# its own id); the input lines are the pass inputs transformed as the derivation documents, every tick +2,000 for
+# shift (:436) and c0 and c1 exchanged for swap (:514) (variant-input-transform); and the scenario body equals the
+# block line for line and in order (variant-derivation-differs). The four judgements run cheapest-and-narrowest
+# first and the whole-body equality last on purpose (plan 09-01 deviation, PLAN-LESSONS 20): a token placed behind
+# the full equality is masked by it and cannot fire for the reason it claims. Appends findings to $whytarget
+# (default $tmp/why) and returns 1 when it adds any.
+derivation_equal() {
+  _di=$1; _df=$2
+  if [ ! -f "$_df" ]; then
+    why variant-derivation-differs "$_di: no scenario file $_df"
+    return 1
+  fi
+  derivation_block "$_di" "$tmp/de-$_di.der"
+  scenario_body "$_df" "$tmp/de-$_di.scn"
+  if [ ! -s "$tmp/de-$_di.der" ]; then
+    why variant-derivation-empty "$_di: the derivation block of $_di in docs/video/demo-lamp-tone-1-derivation.md is empty"
+    return 1
+  fi
+  _dan=$(grep -c '^assert ' "$tmp/de-$_di.scn")
+  _dk=${_di#demo-lamp-tone-}
+  _daw=$(sed -n 's/^Counts: //p' "$derivation" | tr ',' '\n' \
+    | awk -v k="$_dk" '{ gsub(/`/, "", $1); if ($1 == k) { v = $2; sub(/[^0-9].*$/, "", v); print v; exit } }')
+  if [ -z "$_daw" ]; then
+    why variant-assert-count "$_di: the derivation has no Counts: entry for '$_dk'"
+    return 1
+  fi
+  if [ "$_dan" -ne "$_daw" ]; then
+    why variant-assert-count "$_di: $_dan assert lines, the derivation counts $_daw"
+    return 1
+  fi
+  _dp="$scen/demo-lamp-tone-pass.ivss"
+  for _dl in ivss profile content; do
+    grep "^$_dl " "$_dp" > "$tmp/de-$_di.h1"
+    grep "^$_dl " "$_df" > "$tmp/de-$_di.h2"
+    if [ ! -s "$tmp/de-$_di.h1" ] || ! cmp -s "$tmp/de-$_di.h1" "$tmp/de-$_di.h2"; then
+      why variant-header-differs "$_di: the '$_dl' lines differ from demo-lamp-tone-pass (or are absent)"
+      return 1
+    fi
+  done
+  printf 'id %s\n' "$_di" > "$tmp/de-$_di.h1"
+  grep '^id ' "$_df" > "$tmp/de-$_di.h2"
+  if ! cmp -s "$tmp/de-$_di.h1" "$tmp/de-$_di.h2"; then
+    why variant-header-differs "$_di: the id line is not 'id $_di'"
+    return 1
+  fi
+  case $_di in
+    demo-lamp-tone-shift)
+      input_ticks "$_dp" "$tmp/de-$_di.t1"
+      input_ticks "$_df" "$tmp/de-$_di.t2"
+      if [ ! -s "$tmp/de-$_di.t1" ] || ! awk 'NR == FNR { p[FNR] = $1; n = FNR; next }
+        { k = FNR; if (k > n || $1 + 0 != p[k] + 2000) bad = 1 }
+        END { if (k != n) bad = 1; exit bad }' "$tmp/de-$_di.t1" "$tmp/de-$_di.t2"; then
+        why variant-input-transform "$_di: an input tick is not the pass tick + 2,000 (docs/video/demo-lamp-tone-1-derivation.md:436)"
+        return 1
+      fi ;;
+    demo-lamp-tone-swap)
+      awk '$1 == "input" { a = $3; b = $4; sub(/^c0=/, "", a); sub(/^c1=/, "", b); print $1, $2, "c0=" b, "c1=" a }' \
+        "$_dp" > "$tmp/de-$_di.t1"
+      awk '$1 == "input" { print $1, $2, $3, $4 }' "$_df" > "$tmp/de-$_di.t2"
+      if [ ! -s "$tmp/de-$_di.t1" ] || ! cmp -s "$tmp/de-$_di.t1" "$tmp/de-$_di.t2"; then
+        why variant-input-transform "$_di: an input line is not the pass line with c0 and c1 exchanged (docs/video/demo-lamp-tone-1-derivation.md:514)"
+        return 1
+      fi ;;
+  esac
+  if ! cmp -s "$tmp/de-$_di.der" "$tmp/de-$_di.scn"; then
+    why variant-derivation-differs "$_di: the scenario body differs from the derivation block (< derivation, > scenario):"
+    diff "$tmp/de-$_di.der" "$tmp/de-$_di.scn" | sed -n '1,12p' >> "${whytarget:-$tmp/why}"
+    return 1
+  fi
+  return 0
+}
+
+# variant_negative <id> <scenario file> (plan 09-01, A-03): the in-case negative half of derivation_equal, run on
+# every run of the static judgement so the guard is shown able to fail every time rather than once in a scratch
+# session. A copy of the scenario with one assert value changed (`assert mem 02F1 == 0003` to `== 0004`, a line
+# both folded variants carry) is judged in a subshell with its own why target, so the negative half cannot set this
+# case's own verdict, and it must be rejected for variant-derivation-differs. A copy the sed did not change, or one
+# the judgement accepts, is judge-vacuous: the stand-in would prove nothing. It adds no test id (A-03, GUARDRAILS
+# 2.2) and it writes only inside the suite's own $tmp, never into the work tree.
+variant_negative() {
+  _ni=$1; _nf=$2
+  sed 's/^assert mem 02F1 == 0003$/assert mem 02F1 == 0004/' "$_nf" > "$tmp/neg-$_ni.ivss"
+  if cmp -s "$_nf" "$tmp/neg-$_ni.ivss"; then
+    why judge-vacuous "$_ni: the one-value stand-in changed nothing (no 'assert mem 02F1 == 0003' line)"
+    return 1
+  fi
+  if ( whytarget="$tmp/neg-$_ni.why"; : > "$whytarget"; derivation_equal "$_ni" "$tmp/neg-$_ni.ivss" ); then
+    why judge-vacuous "$_ni: the judgement accepted a variant body with one assert value changed"
+    return 1
+  fi
+  if ! grep -q -e '^variant-derivation-differs: ' "$tmp/neg-$_ni.why"; then
+    why judge-wrong-reason "$_ni: the one-value stand-in was rejected, but without variant-derivation-differs:"
+    sed 's/^/# /' "$tmp/neg-$_ni.why" >> "${whytarget:-$tmp/why}"
+    return 1
+  fi
+  return 0
+}
+
+# static_scenario <id> (plan 09-01, D-09, A-03): the judgement of a column-5 `release-only` scenario on a preset that
+# does not run it, the static half of the fold and the same shape as mutant_case's (plan 08-lever2, D-40). It runs
+# nothing and judges, in order: the scenario file exists, the derivation equality above (which refuses an empty
+# derivation block), and the in-case one-value stand-in that shows the judgement can fail. It never passes on the
+# strength of "nothing ran": every branch can fail. The case keeps its ordinary `ok` line, never a `# SKIP` (a skip
+# would move tests-skipped 4 to 8).
+static_scenario() {
+  _sci=$1
+  if [ ! -f "$scen/$_sci.ivss" ]; then
+    why inventory "no scenario file data/scenarios/$_sci.ivss"
+    return 1
+  fi
+  derivation_equal "$_sci" "$scen/$_sci.ivss" || return 1
+  variant_negative "$_sci" "$scen/$_sci.ivss" || return 1
+  return 0
+}
+
 : > "$tmp/results"
 n=0
 executed=0
 skipped=0
 failed=0
+# The two counters of the diagnostic line before the trailer (plan 09-01, D-09): the column-5 `release-only`
+# scenario cases that ran on this preset and those judged statically. They sum to the number of such rows, so the
+# mode of every run is visible in the output.
+scen_full=0
+scen_static=0
 # result <id> [<skip reason>]: appends the result of the next case from $ok and $tmp/why; with a
 # skip reason a passing case is reported as a visible skip.
 result() {
@@ -442,12 +595,32 @@ while read -r id x oc class skip args rest; do
     ok=0; why inventory "not six columns"
   fi
   case $class in deterministic | host-dependent) ;; *) ok=0; why inventory "class '$class'" ;; esac
-  case $skip in run | skip-ok) ;; *) ok=0; why inventory "skip '$skip'" ;; esac
+  case $skip in run | skip-ok | release-only) ;; *) ok=0; why inventory "skip '$skip'" ;; esac
   [ -f "$scen/$id.ivss" ] || { ok=0; why inventory "no scenario file data/scenarios/$id.ivss"; }
+  # The two-mode switch (plan 09-01, D-09, A-03), the shape of mutant_case (plan 08-lever2, D-40): a column-5
+  # `release-only` scenario runs on the Release preset and is judged statically on any other, with the same id and
+  # an ordinary ok line on both. Every demo-lamp-tone scenario is additionally held to the frozen derivation
+  # whether it runs or not, so the oracle is enforced on the Release preset too.
   if [ "$ok" -eq 1 ]; then
-    check_scenario "$ivs_run" "scen-$id" "$id" "$x" "$oc" "$args" || ok=0
-    if [ -n "$rep_dir" ] && [ -s "$tmp/runs/scen-$id.out" ]; then
-      cp "$tmp/runs/scen-$id.out" "$rep_dir/$id.report" || { printf '# cannot write %s\n' "$rep_dir/$id.report" >&2; exit 1; }
+    scen_static_now=0
+    if [ "$skip" = release-only ]; then
+      if [ "$config" = Release ]; then
+        scen_full=$((scen_full + 1))
+      else
+        scen_static=$((scen_static + 1))
+        scen_static_now=1
+      fi
+    fi
+    if [ "$scen_static_now" -eq 1 ]; then
+      static_scenario "$id" || ok=0
+    else
+      check_scenario "$ivs_run" "scen-$id" "$id" "$x" "$oc" "$args" || ok=0
+      case $id in
+        demo-lamp-tone-*) derivation_equal "$id" "$scen/$id.ivss" || ok=0 ;;
+      esac
+      if [ -n "$rep_dir" ] && [ -s "$tmp/runs/scen-$id.out" ]; then
+        cp "$tmp/runs/scen-$id.out" "$rep_dir/$id.report" || { printf '# cannot write %s\n' "$rep_dir/$id.report" >&2; exit 1; }
+      fi
     fi
   fi
   if [ "$skip" = skip-ok ]; then
@@ -932,7 +1105,18 @@ while read -r pa pb pdiff peq prest; do
       || { ok=0; why inventory "scenario $_i is not a deterministic line of data/expected/runner-scenarios.ids"; }
   done
   [ "$pa" != "$pb" ] || { ok=0; why inventory "a pair of one scenario"; }
-  if [ "$ok" -eq 1 ]; then
+  # The pair takes the same two-mode switch as its scenarios (plan 09-01, D-09, A-03): a column-5 `release-only`
+  # member has no report on the sanitized preset, so there the line is judged by its inventory form alone (the four
+  # columns, both ids deterministic lines of $inv, neither key list vacuous, differ=- equal=- refused) and
+  # check_pair runs on the Release preset only. data/expected/scenario-pairs.ids keeps its four columns: a fifth
+  # column there would break nine pair lines at once.
+  pstat=0
+  if [ "$config" != Release ]; then
+    for _pi in "$pa" "$pb"; do
+      awk -v i="$_pi" '$1 == i && $5 == "release-only" { f = 1 } END { exit !f }' "$inv" && pstat=1
+    done
+  fi
+  if [ "$ok" -eq 1 ] && [ "$pstat" -eq 0 ]; then
     check_pair "$pa" "$pb" "$tmp/runs/scen-$pa.out" "$tmp/runs/scen-$pb.out" "$pdl" "$pel" || ok=0
   fi
   result "runner-process.pair.$pa.$pb"

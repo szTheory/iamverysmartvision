@@ -5,8 +5,12 @@
 #   class          deterministic, or host-dependent (wall time, signals): the golden step of plan
 #                  04-21 excludes host-dependent reports from the dev versus release comparison
 #                  and refuses goldens for them (D-21: the wall watchdog is never golden).
-#   skip           run, or skip-ok: the scenario needs operator content the gate never has; it is
-#                  judged like any other and a passing judgement is a visible skip.
+#   skip           run, skip-ok, or release-only. skip-ok: the scenario needs operator content the gate
+#                  never has; it is judged like any other and a passing judgement is a visible skip.
+#                  release-only (plan 09-01, D-09, A-03): the scenario runs on the Release preset only and is
+#                  judged statically on the sanitized Debug preset by the derivation equality of
+#                  docs/video/demo-lamp-tone-1-derivation.md; it prints an ordinary ok line on both presets,
+#                  never a skip, and tests-skipped does not move.
 #   operator-args  extra ivs-run words joined by `,`, or `-` for none.
 # One demonstrating scenario per outcome (D-20): pass 0, guest-fail 10, timeout 11, cancelled 12,
 # missing-fixture 13, harness-fail 14.
@@ -34,8 +38,8 @@ diag-stic-cstack-pass 0 pass deterministic run -
 video-assert-mismatch 10 guest-fail deterministic run -
 demo-lamp-tone-pass 0 pass deterministic run -
 demo-lamp-tone-idle 0 pass deterministic run -
-demo-lamp-tone-shift 0 pass deterministic run -
-demo-lamp-tone-swap 0 pass deterministic run -
+demo-lamp-tone-shift 0 pass deterministic release-only -
+demo-lamp-tone-swap 0 pass deterministic release-only -
 diag-stic2-idle-pass 0 pass deterministic run -
 diag-stic2-mob-pass 0 pass deterministic run -
 diag-stic2-border-pass 0 pass deterministic run -
