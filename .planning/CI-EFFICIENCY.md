@@ -1638,3 +1638,18 @@ The five values behind the window are **7.327, 7.521, 7.826, 8.233, 8.338**, so 
 **Cheap consistency checks before the long suites.** Fresh local profile, load 7.2, 18 cores, warm trees: `total=68`, `gate-cpu 121.83/97.37`; the two expensive steps are `c-tests 18` and `c-faults 17`, then `hygiene 6`, `c-purity 5`, `pkg-install 3`. Rather than hand-maintaining a cheap list, derive the partition: a step belongs to the preflight pass iff its script references neither the gate results directory nor `build/`. That yields 29 preflight and 9 producer/consumer steps, so the self-consistency verdict arrives in about 21–24 s instead of after about 44 s of build-and-suite work. The output must stay byte-identical: buffer each step's tokens and `-- FAIL` lines and concatenate in sorted name order. Hosted cost is unchanged by construction — the same steps run and the same evidence is produced.
 
 phaseA1-start: reading corrected (median 7.826), rule armed, allowance 21 hosted cpu-s, lever (3) and trims (a)(c)(d) next
+
+## 2026-11-24 — the records PR and the merge push run
+
+Two rows recorded with `tools/ci-record.sh` for the v0.2.0 opening records PR (#12) and its merge push.
+
+| Run | event | head | `build_s` | `gate_s` | `cpu_s` | `r` |
+|-----|-------|------|-----------|----------|---------|-----|
+| 45412585701 | `pull_request` | bd6f2e3 | 48 | 118 | 356 | 7.417 |
+| 45413049708 | `push` | 3808e6f (merge of #12) | 46 | 115 | 354 | 7.696 |
+
+**Reading.** The last five `r` values are now 8.233, 7.327, 7.826, 7.417, 7.696, so the median is **7.696** — 0.10 under the 7.8 budget and 0.60 under the 8.3 stop line. The two new rows are records-only trees (`.planning` and `AGENTS.md`, no C, no test id, no gate step), and the gate summary token string is identical to the v0.1.0 close, so the movement is runner speed within the recorded spread, not code growth.
+
+**Actions taken: none.** No cache, concurrency, path filter, matrix or artifact change is proposed. The pre-committed lever order stands unchanged and is Phase 9 wave A1's work: lever (3), then trims (a), (c), (d), with trim (b) declined by measurement.
+
+**One correction to the settings record.** `main` **is** protected: legacy branch protection with required status check `gate`, admins enforced, no force push. The v0.1.0 close recorded "no ruleset applied", which is true of *rulesets* but understates the protection that exists. The ruleset migration and the tag ruleset remain open, and Phase 9 owns them.
