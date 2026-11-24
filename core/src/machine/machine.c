@@ -467,6 +467,8 @@ const char *ivs_status_name(ivs_status s)
     return "IVS_E_DUPLICATE_LOAD";
   case IVS_E_DIGEST_MISMATCH:
     return "IVS_E_DIGEST_MISMATCH";
+  case IVS_E_STATE_MISMATCH:
+    return "IVS_E_STATE_MISMATCH";
   default:
     return "IVS_E_UNKNOWN";
   }

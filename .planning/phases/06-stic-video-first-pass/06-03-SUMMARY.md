@@ -45,6 +45,7 @@ key-decisions:
 
 duration: about 3 hours elapsed, most of it three gate runs (sh about 55 s, dash 84 s, container 332 s on a loaded laptop)
 completed: 2026-11-12
+requirements-completed: [VID-03]  # backfilled by plan 08-20 from the plan requirements field; closure evidence is the phase VERIFICATION record, not this line
 ---
 
 # Phase 6 Plan 03: ABI growth, behaviour-neutral Summary

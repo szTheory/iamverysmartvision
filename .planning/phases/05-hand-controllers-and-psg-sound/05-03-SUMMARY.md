@@ -55,6 +55,7 @@ key-decisions:
 
 duration: about 70 min including three gate runs and one container run
 completed: 2026-11-12
+requirements-completed: [AUD-02, API-03]  # backfilled by plan 08-20 from the plan requirements field; closure evidence is the phase VERIFICATION record, not this line
 ---
 
 # Phase 5 Plan 03: state and digest foundation Summary

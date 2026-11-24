@@ -1356,6 +1356,447 @@ static int md_video_h0_create_and_reset(void)
   return IVS_TEST_PASS;
 }
 
+/* ---- snapshot classes and the state preimage (plan 08-10, D-11, D-16) ----
+ * The literals below are copied from the oracle of plan 08-09, not read from the core: the class counts are the
+ * tallies of data/expected/state-checklist.ids (the checklist lists every row once with its class) and the
+ * section lengths are the section-bytes keys of data/expected/ivsn-literals.ids, which were derived on paper
+ * from the table text before any serializer existed (docs/formats/ivsn-v1.md, "Size derivation"). The chain is
+ * oracle document, then literal, then code: a class edit or a row edit in the table that the oracle does not
+ * carry fails here, and the gate step state fails it too (state-class-drift, state-shape-drift). */
+#define MD_SNAP_ROW_COUNT 88u   /* rows of the digest field table (checklist lines) */
+#define MD_SNAP_STATE_ROWS 51u  /* class STATE */
+#define MD_SNAP_IMAGE_ROWS 3u   /* class IMAGE_BEARING: mem.exec, mem.grom, mem.cart */
+#define MD_SNAP_BOUND_ROWS 28u  /* class BOUND */
+#define MD_SNAP_PAD_ROWS 6u     /* class PAD */
+
+/* Section length, in bytes, of the state preimage of each domain that has a snapshot section: the frame of 7
+ * bytes ("IVSD", the domain, the u16 domain version) plus the STATE rows (data/expected/ivsn-literals.ids
+ * section-bytes.cpu 35, .mem 2761, .instance 615, .video 51, .audio 63, .input 79, .psglog 51). */
+typedef struct md_section_len {
+  uint32_t domain;
+  size_t bytes;
+} md_section_len;
+
+static const md_section_len md_section_lens[] = {
+    {IVS_DIGEST_CPU, 35u},    {IVS_DIGEST_MEM, 2761u},  {IVS_DIGEST_INSTANCE, 615u}, {IVS_DIGEST_VIDEO, 51u},
+    {IVS_DIGEST_AUDIO, 63u},  {IVS_DIGEST_INPUT, 79u},  {IVS_DIGEST_PSGLOG, 51u},
+};
+#define MD_SECTION_COUNT (sizeof md_section_lens / sizeof md_section_lens[0])
+#define MD_SECTIONS_TOTAL 3655u /* sections-total-bytes of the same file: 35 + 2761 + 615 + 51 + 63 + 79 + 51 */
+#define MD_FRAME_BYTES 7u       /* "IVSD" + u8 domain + u16 domain version */
+
+/* machine.digest.class-column-valid: every row of the table has a class from 1 to 4, the four classes occur
+ * exactly as often as the checklist says (51, 3, 28, 6 over 88 rows), the constants have the values the
+ * container specification uses, and the member that carries the class took the place of the old reserved
+ * member without growing the struct. */
+static int md_class_column_valid(void)
+{
+  size_t n = ivs_machine_digest_field_count();
+  size_t r;
+  uint32_t count[5];
+  memset(count, 0, sizeof count);
+  IVS_CHECK(IVS_SNAP_STATE == 1u && IVS_SNAP_IMAGE == 2u && IVS_SNAP_BOUND == 3u && IVS_SNAP_PAD == 4u);
+  IVS_CHECK(n == MD_SNAP_ROW_COUNT);
+  for (r = 0; r < n; r++) {
+    const ivs_digest_field *f = ivs_machine_digest_field(r);
+    IVS_CHECK(f != NULL);
+    if (f->snap < IVS_SNAP_STATE || f->snap > IVS_SNAP_PAD) {
+      ivs_test_diag("row %s has the class %u", f->name, (unsigned)f->snap);
+      return IVS_TEST_FAIL;
+    }
+    count[f->snap]++;
+  }
+  IVS_CHECK(count[IVS_SNAP_STATE] == MD_SNAP_STATE_ROWS);
+  IVS_CHECK(count[IVS_SNAP_IMAGE] == MD_SNAP_IMAGE_ROWS);
+  IVS_CHECK(count[IVS_SNAP_BOUND] == MD_SNAP_BOUND_ROWS);
+  IVS_CHECK(count[IVS_SNAP_PAD] == MD_SNAP_PAD_ROWS);
+  IVS_CHECK(count[IVS_SNAP_STATE] + count[IVS_SNAP_IMAGE] + count[IVS_SNAP_BOUND] + count[IVS_SNAP_PAD] == MD_SNAP_ROW_COUNT);
+  IVS_CHECK(sizeof(ivs_digest_field) == sizeof(const char *) + 16u);
+  return IVS_TEST_PASS;
+}
+
+/* machine.digest.state-preimage-lengths: the state-only walk yields the section lengths derived on paper in
+ * plan 08-09 for the seven domains that have a section, a bare frame for IMAGES (it has no STATE row), and 0 for
+ * NULL or a domain without rows; the length depends on the shape of the table only (a poisoned instance gives
+ * the same lengths); a short buffer is filled with the prefix and the full length is returned; and for the
+ * domains whose only non-STATE rows are PAD rows (never serialized by the digest either) the state preimage is
+ * byte for byte the digest preimage. */
+static int md_state_preimage_lengths(void)
+{
+  static const uint8_t frame_images[MD_FRAME_BYTES] = {0x49u, 0x56u, 0x53u, 0x44u, 0x03u, 0x00u, 0x01u}; /* "IVSD", 3, version 1 */
+  static const uint32_t unknown[] = {0u, 5u, 15u, 20u, 21u, 99u, 0xFFFFFFFFu};
+  struct ivs_machine *m = md_fresh();
+  uint8_t *a = malloc(MD_PRE_MAX);
+  uint8_t *b = malloc(MD_PRE_MAX);
+  size_t i;
+  size_t n;
+  size_t total = 0u;
+  int ok = m != NULL && a != NULL && b != NULL;
+  for (i = 0; ok && i < MD_SECTION_COUNT; i++) {
+    uint32_t d = md_section_lens[i].domain;
+    n = ivs_machine_state_preimage(m, d, NULL, 0u);
+    if (n != md_section_lens[i].bytes) {
+      ivs_test_diag("domain %u: state preimage %zu bytes, the oracle derives %zu", (unsigned)d, n, md_section_lens[i].bytes);
+      ok = 0;
+    }
+    total += n;
+  }
+  ok = ok && total == MD_SECTIONS_TOTAL;
+  /* IMAGES has no STATE row: the frame alone. */
+  if (ok) {
+    n = ivs_machine_state_preimage(m, IVS_DIGEST_IMAGES, a, MD_PRE_MAX);
+    ok = n == MD_FRAME_BYTES && memcmp(a, frame_images, MD_FRAME_BYTES) == 0;
+  }
+  /* NULL instance and domains without rows. */
+  ok = ok && ivs_machine_state_preimage(NULL, IVS_DIGEST_CPU, a, MD_PRE_MAX) == 0u;
+  for (i = 0; ok && i < sizeof unknown / sizeof unknown[0]; i++) {
+    ok = ivs_machine_state_preimage(m, unknown[i], a, MD_PRE_MAX) == 0u;
+  }
+  /* The length is the table's shape: a poisoned instance has the same lengths. */
+  if (ok) {
+    struct ivs_machine *p = md_fresh();
+    ok = p != NULL;
+    if (ok) {
+      memset(p, 0xA5, IVS_MACHINE_BYTES);
+      for (i = 0; ok && i < MD_SECTION_COUNT; i++) {
+        ok = ivs_machine_state_preimage(p, md_section_lens[i].domain, NULL, 0u) == md_section_lens[i].bytes;
+      }
+    }
+    free(p);
+  }
+  /* A short buffer gets the prefix; the full length comes back; nothing past the capacity is written. */
+  if (ok) {
+    size_t full = ivs_machine_state_preimage(m, IVS_DIGEST_MEM, a, MD_PRE_MAX);
+    memset(b, 0xEE, MD_PRE_MAX);
+    n = ivs_machine_state_preimage(m, IVS_DIGEST_MEM, b, 300u);
+    ok = full == 2761u && n == full && memcmp(a, b, 300u) == 0 && b[300] == 0xEEu && b[MD_PRE_MAX - 1u] == 0xEEu;
+  }
+  /* Where the only rows that are not STATE are PAD rows, the state preimage is the digest preimage. */
+  for (i = 0; ok && i < MD_SECTION_COUNT; i++) {
+    uint32_t d = md_section_lens[i].domain;
+    if (d == IVS_DIGEST_CPU || d >= IVS_DIGEST_VIDEO) {
+      size_t sn = ivs_machine_state_preimage(m, d, a, MD_PRE_MAX);
+      size_t dn = ivs_machine_digest_preimage(m, d, b, MD_PRE_MAX);
+      ok = sn == dn && memcmp(a, b, sn) == 0;
+      if (!ok) {
+        ivs_test_diag("domain %u: the state and the digest preimages differ", (unsigned)d);
+      }
+    }
+  }
+  free(a);
+  free(b);
+  free(m);
+  IVS_CHECK(ok);
+  return IVS_TEST_PASS;
+}
+
+/* machine.digest.class-pad-iff-kind: a row has the class PAD exactly when its kind is PAD, the MAGIC and PROFILE
+ * rows (the handle and the profile identity) are BOUND, and every UINT row is STATE, IMAGE or BOUND: no
+ * serialized row is a pad, and no pad row can carry a class that a restore would write. */
+static int md_class_pad_iff_kind(void)
+{
+  size_t n = ivs_machine_digest_field_count();
+  size_t r;
+  uint32_t pads = 0u;
+  uint32_t uints = 0u;
+  for (r = 0; r < n; r++) {
+    const ivs_digest_field *f = ivs_machine_digest_field(r);
+    IVS_CHECK(f != NULL);
+    if ((f->snap == IVS_SNAP_PAD) != (f->kind == IVS_DIGEST_KIND_PAD)) {
+      ivs_test_diag("row %s: class %u against kind %u", f->name, (unsigned)f->snap, (unsigned)f->kind);
+      return IVS_TEST_FAIL;
+    }
+    if ((f->kind == IVS_DIGEST_KIND_MAGIC || f->kind == IVS_DIGEST_KIND_PROFILE) && f->snap != IVS_SNAP_BOUND) {
+      ivs_test_diag("row %s: the identity rows are BOUND", f->name);
+      return IVS_TEST_FAIL;
+    }
+    if (f->kind == IVS_DIGEST_KIND_UINT &&
+        f->snap != IVS_SNAP_STATE && f->snap != IVS_SNAP_IMAGE && f->snap != IVS_SNAP_BOUND) {
+      ivs_test_diag("row %s: a UINT row has the class %u", f->name, (unsigned)f->snap);
+      return IVS_TEST_FAIL;
+    }
+    pads += f->kind == IVS_DIGEST_KIND_PAD ? 1u : 0u;
+    uints += f->kind == IVS_DIGEST_KIND_UINT ? 1u : 0u;
+  }
+  IVS_CHECK(pads == MD_SNAP_PAD_ROWS);
+  IVS_CHECK(uints == 79u); /* 79 UINT rows, 2 PROFILE, 1 MAGIC, 6 PAD (plan 08-09, by kind) */
+  return IVS_TEST_PASS;
+}
+
+/* machine.digest.class-image-rows: the rows of class IMAGE are exactly mem.exec, mem.grom and mem.cart (the read-only
+ * image arrays, found by name through the table seam), each of width 2, and together they cover the 110,592 image
+ * bytes: 2 x (4096 + 2048 + 49152) from the memory-system constants of docs/formats/ivsn-v1.md. */
+static int md_class_image_rows(void)
+{
+  static const char *const names[3] = {"mem.exec", "mem.grom", "mem.cart"};
+  static const uint32_t words[3] = {4096u, 2048u, 49152u};
+  size_t n = ivs_machine_digest_field_count();
+  size_t r;
+  size_t i;
+  size_t image_bytes = 0u;
+  uint32_t image_rows = 0u;
+  for (r = 0; r < n; r++) {
+    const ivs_digest_field *f = ivs_machine_digest_field(r);
+    int named = 0;
+    IVS_CHECK(f != NULL);
+    for (i = 0; i < 3u; i++) {
+      named = named || strcmp(f->name, names[i]) == 0;
+    }
+    if ((f->snap == IVS_SNAP_IMAGE) != (named != 0)) {
+      ivs_test_diag("row %s: class %u", f->name, (unsigned)f->snap);
+      return IVS_TEST_FAIL;
+    }
+    if (f->snap == IVS_SNAP_IMAGE) {
+      image_rows++;
+      image_bytes += (size_t)f->width * f->count;
+    }
+  }
+  IVS_CHECK(image_rows == 3u);
+  for (i = 0; i < 3u; i++) {
+    int found = 0;
+    for (r = 0; r < n; r++) {
+      const ivs_digest_field *f = ivs_machine_digest_field(r);
+      if (strcmp(f->name, names[i]) == 0) {
+        found = f->width == 2u && f->count == words[i] && f->snap == IVS_SNAP_IMAGE && f->kind == IVS_DIGEST_KIND_UINT;
+      }
+    }
+    IVS_CHECK(found);
+  }
+  IVS_CHECK(image_bytes == 110592u);
+  return IVS_TEST_PASS;
+}
+
+/* ---- the rights property at the walker level (plan 08-10, D-19) ----
+ * A recognisable image: word i of image k (0 EXEC, 1 GROM, 2 cartridge) is md_pat(k, i) = i * 0x9E37 + 0x1357 (k + 1)
+ * modulo 2^16. The multiplier is odd, so the word value names its index (a bijection of the 16-bit values), and
+ * no run of eight consecutive words is all zero or repeats one value: a 16-byte window of the image is found in a
+ * byte stream by reading the first word, inverting it to an index and comparing the other seven words, in time
+ * linear in the stream. The serialized form of a row is big-endian (D-12), so that is the form searched for. */
+#define MD_PAT_MUL 0x9E37u
+#define MD_PAT_ADD 0x1357u
+
+static uint16_t md_pat(uint32_t k, uint32_t i)
+{
+  return (uint16_t)(i * MD_PAT_MUL + MD_PAT_ADD * (k + 1u));
+}
+
+static uint32_t md_pat_inverse(void)
+{
+  uint32_t x = 1u;
+  while (((x * MD_PAT_MUL) & 0xFFFFu) != 1u) {
+    x += 2u;
+  }
+  return x;
+}
+
+/* 1 when the n bytes at s contain eight consecutive big-endian words of one of the three recognisable images. */
+static int md_has_image_window(const uint8_t *s, size_t n)
+{
+  static const uint32_t words[3] = {4096u, 2048u, 49152u};
+  uint32_t inv = md_pat_inverse();
+  size_t p;
+  uint32_t k;
+  uint32_t j;
+  if (n < 16u) {
+    return 0;
+  }
+  for (p = 0; p + 16u <= n; p++) {
+    uint32_t v = ((uint32_t)s[p] << 8) | (uint32_t)s[p + 1u];
+    for (k = 0; k < 3u; k++) {
+      uint32_t i = (((v - MD_PAT_ADD * (k + 1u)) & 0xFFFFu) * inv) & 0xFFFFu;
+      int same = i + 8u <= words[k];
+      for (j = 0; same && j < 8u; j++) {
+        uint32_t w = ((uint32_t)s[p + 2u * j] << 8) | (uint32_t)s[p + 2u * j + 1u];
+        same = w == (uint32_t)md_pat(k, i + j);
+      }
+      if (same) {
+        return 1;
+      }
+    }
+  }
+  return 0;
+}
+
+/* A recognisable slot record: six u32 words with all four bytes varied and the 32 sha256 bytes. */
+#define MD_SLOT_FIELDS 6u
+
+static uint32_t md_slot_word(uint32_t slot, uint32_t field)
+{
+  return 0xB4C5D6E7u + 0x0F1E2D3Cu * (slot * 8u + field + 1u);
+}
+
+static uint8_t md_slot_sha_byte(uint32_t slot, uint32_t j)
+{
+  return (uint8_t)(0x91u + 29u * j + 53u * slot);
+}
+
+static void md_slot_pattern(struct ivs_machine *m)
+{
+  uint32_t s;
+  uint32_t j;
+  for (s = 0; s < IVS_SLOT_COUNT; s++) {
+    m->slot[s].kind = md_slot_word(s, 0u);
+    m->slot[s].loaded = md_slot_word(s, 1u);
+    m->slot[s].length_bytes = md_slot_word(s, 2u);
+    m->slot[s].length_units = md_slot_word(s, 3u);
+    m->slot[s].unit_bits = md_slot_word(s, 4u);
+    m->slot[s].base_addr = md_slot_word(s, 5u);
+    for (j = 0; j < 32u; j++) {
+      m->slot[s].sha256[j] = md_slot_sha_byte(s, j);
+    }
+  }
+}
+
+/* 1 when the n bytes at s contain, big-endian, a slot word of any slot or the 32 sha256 bytes of any slot. */
+static int md_has_slot_bytes(const uint8_t *s, size_t n)
+{
+  uint32_t slot;
+  uint32_t f;
+  uint32_t j;
+  size_t p;
+  for (p = 0; p < n; p++) {
+    for (slot = 0; slot < IVS_SLOT_COUNT; slot++) {
+      if (p + 32u <= n) {
+        int same = 1;
+        for (j = 0; same && j < 32u; j++) {
+          same = s[p + j] == md_slot_sha_byte(slot, j);
+        }
+        if (same) {
+          return 1;
+        }
+      }
+      for (f = 0; f < MD_SLOT_FIELDS && p + 4u <= n; f++) {
+        uint32_t w = md_slot_word(slot, f);
+        if (s[p] == (uint8_t)(w >> 24) && s[p + 1u] == (uint8_t)(w >> 16) && s[p + 2u] == (uint8_t)(w >> 8) &&
+            s[p + 3u] == (uint8_t)w) {
+          return 1;
+        }
+      }
+    }
+  }
+  return 0;
+}
+
+/* The state preimage of domain d into buf (MD_PRE_MAX bytes); its length, 0 for none. */
+static size_t md_state_into(const struct ivs_machine *m, uint32_t d, uint8_t *buf)
+{
+  return ivs_machine_state_preimage(m, d, buf, MD_PRE_MAX);
+}
+
+/* machine.digest.state-excludes-nonstate: an instance with the stand-in content loaded, then every image array
+ * and every slot record overwritten with a recognisable pattern. (1) The detectors can fail: they find the image
+ * windows in the digest preimage of MEM and the slot words and sha256 bytes in the digest preimage of IMAGES,
+ * where those rows are serialized. (2) The rights property: no state preimage of any domain contains a 16-byte
+ * window of any image array, a slot sha256 or a slot length (or any other slot word). (3) Flipping the first and
+ * the last byte of every row: a row that is not STATE leaves the state preimage of every domain byte-identical,
+ * and a STATE row changes the state preimage of its own domain and of no other. */
+static int md_state_excludes_nonstate(void)
+{
+  static const uint32_t doms[] = {IVS_DIGEST_CPU,   IVS_DIGEST_MEM,   IVS_DIGEST_IMAGES, IVS_DIGEST_INSTANCE,
+                                  IVS_DIGEST_VIDEO, IVS_DIGEST_AUDIO, IVS_DIGEST_INPUT,  IVS_DIGEST_PSGLOG};
+  enum { ND = sizeof doms / sizeof doms[0] };
+  ivs_ms_inst x;
+  struct ivs_machine *m;
+  uint8_t *scratch = malloc(MD_PRE_MAX);
+  uint8_t *base[ND];
+  size_t base_len[ND];
+  size_t n = ivs_machine_digest_field_count();
+  size_t r;
+  size_t i;
+  uint32_t k;
+  int ok;
+  memset(&x, 0, sizeof x);
+  memset(base, 0, sizeof base);
+  memset(base_len, 0, sizeof base_len);
+  ok = scratch != NULL && ivs_ms_new(&x, 0x5Au) != 0;
+  if (!ok) {
+    free(scratch);
+    IVS_CHECK(0);
+  }
+  m = x.m;
+  ok = ivs_ms_content(m, IVS_MS_CONTENT_A) != 0;
+  if (ok) {
+    for (i = 0; i < IVS_MEMSYS_EXEC_WORDS; i++) {
+      m->mem.exec[i] = md_pat(0u, (uint32_t)i);
+    }
+    for (i = 0; i < IVS_MEMSYS_GROM_WORDS; i++) {
+      m->mem.grom[i] = md_pat(1u, (uint32_t)i);
+    }
+    for (i = 0; i < IVS_MEMSYS_CART_WORDS; i++) {
+      m->mem.cart[i] = md_pat(2u, (uint32_t)i);
+    }
+    md_slot_pattern(m);
+  }
+  /* (1) the detectors find what the digest serializes. */
+  if (ok) {
+    size_t len = ivs_machine_digest_preimage(m, IVS_DIGEST_MEM, scratch, MD_PRE_MAX);
+    ok = len > 0u && len < MD_PRE_MAX && md_has_image_window(scratch, len) != 0;
+    if (!ok) {
+      ivs_test_diag("the image detector missed the images in the digest preimage of MEM");
+    }
+  }
+  if (ok) {
+    size_t len = ivs_machine_digest_preimage(m, IVS_DIGEST_IMAGES, scratch, MD_PRE_MAX);
+    ok = len > 0u && len < MD_PRE_MAX && md_has_slot_bytes(scratch, len) != 0;
+    if (!ok) {
+      ivs_test_diag("the slot detector missed the slot records in the digest preimage of IMAGES");
+    }
+  }
+  /* (2) the state preimages hold none of it, and (3) the baselines for the flips. */
+  for (k = 0; ok && k < ND; k++) {
+    base_len[k] = md_state_into(m, doms[k], scratch);
+    ok = base_len[k] > 0u && base_len[k] < MD_PRE_MAX;
+    if (ok && (md_has_image_window(scratch, base_len[k]) != 0 || md_has_slot_bytes(scratch, base_len[k]) != 0)) {
+      ivs_test_diag("domain %u: the state preimage holds image or slot bytes", (unsigned)doms[k]);
+      ok = 0;
+    }
+    base[k] = ok ? malloc(base_len[k]) : NULL;
+    if (ok && base[k] == NULL) {
+      ok = 0;
+    }
+    if (ok) {
+      memcpy(base[k], scratch, base_len[k]);
+    }
+  }
+  /* (3) the first and the last byte of every row. */
+  for (r = 0; ok && r < n; r++) {
+    const ivs_digest_field *f = ivs_machine_digest_field(r);
+    size_t pos[2];
+    size_t w;
+    pos[0] = f->offset;
+    pos[1] = (size_t)f->offset + (size_t)f->width * f->count - 1u;
+    for (w = 0; ok && w < 2u; w++) {
+      uint8_t *bytes = (uint8_t *)m;
+      uint32_t changed = 0u;
+      uint32_t changed_dom = 0u;
+      bytes[pos[w]] ^= 0xFFu;
+      for (k = 0; k < ND; k++) {
+        size_t len = md_state_into(m, doms[k], scratch);
+        if (len != base_len[k] || memcmp(scratch, base[k], len) != 0) {
+          changed++;
+          changed_dom = doms[k];
+        }
+      }
+      bytes[pos[w]] ^= 0xFFu;
+      if (f->snap != IVS_SNAP_STATE && changed != 0u) {
+        ivs_test_diag("row %s (class %u): a state preimage of domain %u changed", f->name, (unsigned)f->snap, (unsigned)changed_dom);
+        ok = 0;
+      } else if (f->snap == IVS_SNAP_STATE && (changed != 1u || changed_dom != f->domain)) {
+        ivs_test_diag("row %s (STATE, domain %u): %u state preimages changed, the last of domain %u", f->name, (unsigned)f->domain,
+                      (unsigned)changed, (unsigned)changed_dom);
+        ok = 0;
+      }
+    }
+  }
+  for (k = 0; k < ND; k++) {
+    free(base[k]);
+  }
+  free(scratch);
+  ivs_ms_free(&x);
+  IVS_CHECK(ok);
+  return IVS_TEST_PASS;
+}
+
 /* ---- refusals ---- */
 
 /* digest(handle, domain, out) expecting want, with out and the instance untouched. */
@@ -1430,6 +1871,9 @@ static int md_refuse_domain_over_handle(void)
 
 const ivs_test_case ivs_machine_digest_cases[] = {
     {"machine.digest.audio-rows", md_audio_rows, NULL},
+    {"machine.digest.class-column-valid", md_class_column_valid, NULL},
+    {"machine.digest.class-image-rows", md_class_image_rows, NULL},
+    {"machine.digest.class-pad-iff-kind", md_class_pad_iff_kind, NULL},
     {"machine.digest.composite-excludes-16-18", md_composite_excludes, NULL},
     {"machine.digest.composite-framing", md_composite_framing, NULL},
     {"machine.digest.composite-v3-framing", md_composite_v3_framing, NULL},
@@ -1450,6 +1894,8 @@ const ivs_test_case ivs_machine_digest_cases[] = {
     {"machine.digest.sensitivity-instance", md_sensitivity_instance, NULL},
     {"machine.digest.sensitivity-mem", md_sensitivity_mem, NULL},
     {"machine.digest.sensitivity-video", md_sensitivity_video, NULL},
+    {"machine.digest.state-excludes-nonstate", md_state_excludes_nonstate, NULL},
+    {"machine.digest.state-preimage-lengths", md_state_preimage_lengths, NULL},
     {"machine.digest.stepped-literals", md_stepped_literals, NULL},
     {"machine.digest.stic-rows-in-mem-and-instance", md_stic_rows_in_mem_and_instance, NULL},
     {"machine.digest.stream-cpu", md_stream_cpu, NULL},

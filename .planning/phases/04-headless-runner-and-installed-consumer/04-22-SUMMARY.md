@@ -53,6 +53,7 @@ key-decisions:
 
 duration: about 15 min of edits plus gates (first task commit 20:03, last 20:16), plus two container gates
 completed: 2026-11-11
+requirements-completed: [PKG-01]  # backfilled by plan 08-20 from the plan requirements field; closure evidence is the phase VERIFICATION record, not this line
 ---
 
 # Phase 4 Plan 22: install/export and the pkg-install step Summary

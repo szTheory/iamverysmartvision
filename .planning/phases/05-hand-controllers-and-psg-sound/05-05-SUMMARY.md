@@ -65,6 +65,7 @@ key-decisions:
 
 duration: about 6 h including ten gate runs, two container runs and the fuzz cost work
 completed: 2026-11-12
+requirements-completed: [INP-01, INP-02, INP-03, API-03]  # backfilled by plan 08-20 from the plan requirements field; closure evidence is the phase VERIFICATION record, not this line
 ---
 
 # Phase 5 Plan 05: Input byte and port reads Summary

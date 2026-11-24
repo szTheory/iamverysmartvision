@@ -38,6 +38,10 @@
 # Plan 06-05 addition (composite version 3, STIC storage): machine.digest.composite-v3-framing (renamed from
 # composite-v2-framing), stic-rows-in-mem-and-instance, cpu-images-unchanged (the CPU and IMAGES digests equal
 # the version 2 pins of data/expected/digest-v2-literals.ids), machine.reset.stic-state and machine.layout.sizes.
+# Plan 08-10 addition (snapshot classes, D-11, D-16): machine.digest.class-column-valid and machine.digest.state-preimage-lengths (the class
+# column of the field table against the tallies of data/expected/state-checklist.ids, and the state-only preimage lengths against the
+# section-bytes literals of data/expected/ivsn-literals.ids); class-pad-iff-kind, class-image-rows and state-excludes-nonstate hold the class column
+# (pad exactly for the pad kind, the three image rows, and no image or identity byte in any state preimage).
 # Review WR-03: a damaged stored profile index (outside the registry, or the memory system's
 # differing) makes the handle invalid: every handle-taking call is BAD_HANDLE on a relocated copy
 # (machine.refuse.handle.*, family reset).
@@ -117,6 +121,9 @@ machine.refuse.requirements.size-0
 machine.refuse.requirements.unknown-profile
 machine.status.names
 machine.digest.audio-rows
+machine.digest.class-column-valid
+machine.digest.class-image-rows
+machine.digest.class-pad-iff-kind
 machine.digest.composite-excludes-16-18
 machine.digest.composite-framing
 machine.digest.composite-v3-framing
@@ -137,6 +144,8 @@ machine.digest.sensitivity-input
 machine.digest.sensitivity-instance
 machine.digest.sensitivity-mem
 machine.digest.sensitivity-video
+machine.digest.state-excludes-nonstate
+machine.digest.state-preimage-lengths
 machine.digest.stepped-literals
 machine.digest.stic-rows-in-mem-and-instance
 machine.digest.stream-cpu

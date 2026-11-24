@@ -43,6 +43,7 @@ key-files:
 
 duration: about 6 hours elapsed on a loaded laptop (1-minute load 13 to 55)
 completed: 2026-11-12
+requirements-completed: [VID-03, VID-04]  # backfilled by plan 08-20 from the plan requirements field; closure evidence is the phase VERIFICATION record, not this line
 ---
 
 # Phase 6 Plan 12: runner and scenarios, ivsr 3, operator outputs, checkpoint C Summary

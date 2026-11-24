@@ -1,0 +1,67 @@
+# Literal bit roles of the three MOB registers of profile intv-2609-ntsc-family-p1 (D-01, D-05; C81; plan 08-03).
+#
+# Claim tier: tier4-community, one lineage. No manufacturer page prints a MOB register bit (08-DISCUSS-stic.md section 2; the pages of
+# SRC-gi-1980-catalog print only that 8 foreground objects exist), and the community wiki STIC page has no MOB register figure. The roles below are a
+# transcription of the register-layout text of SRC-community-emu-docs (the register description of the STIC, read raw in plan 08-03 and logged in
+# docs/provenance/CONSULTATIONS.md); no figure, table or sentence of it is kept here, only one role per bit in the project's own words. It is never
+# derived from, generated from or edited to match the core. A pass of the video step shows the file is complete, not that the layout is right.
+# Its negative proof is the in-process judge video.judge.mob-role-swapped of plan 08-04 (two roles swapped must fail the comparison), as for the
+# cards literal, which has no gate control either.
+#
+# Registers: mobx (X register: position, interaction enable, visible, double width), moby (Y register: position, tall mode, Y size, mirrors),
+# moba (attribute register: color, card number, graphics RAM select, priority). Stored widths agree with data/stic/*.regmap.literal.txt
+# (X 11 bits, Y 12 bits, attribute 14 bits): every bit above the width is ign.
+# Row grammar (one row per line, single spaces): <register> <bit 0..15> <role> then the source key (src, an equals sign, <SRC-id>@<locator>),
+# tag=tier4-community and conf=C81. Forty-eight rows: each register has the sixteen bits 0 to 15 once.
+# Roles: ign (not used), posN (bit N of the position), intr (interaction enable), visb (visible), xsize (double width), yres (tall mode: 16 pattern
+# rows from two cards), ysiz2 and ysiz4 (the two Y size bits that give the displayed height with yres), xflip and yflip (mirrors), colorN (bit N of
+# the color, bit 3 at attribute bit 12), cardN (bit N of the card number at attribute bits 3..10; bits 6 and 7, attribute bits 9 and 10, are ignored for
+# a graphics RAM card, and bit 0 is ignored in tall mode), sel (graphics RAM 1 or ROM 0), prio (behind the background cards when set).
+mobx 0 pos0 src=SRC-community-emu-docs@programming-stic-mob-x-register tag=tier4-community conf=C81
+mobx 1 pos1 src=SRC-community-emu-docs@programming-stic-mob-x-register tag=tier4-community conf=C81
+mobx 2 pos2 src=SRC-community-emu-docs@programming-stic-mob-x-register tag=tier4-community conf=C81
+mobx 3 pos3 src=SRC-community-emu-docs@programming-stic-mob-x-register tag=tier4-community conf=C81
+mobx 4 pos4 src=SRC-community-emu-docs@programming-stic-mob-x-register tag=tier4-community conf=C81
+mobx 5 pos5 src=SRC-community-emu-docs@programming-stic-mob-x-register tag=tier4-community conf=C81
+mobx 6 pos6 src=SRC-community-emu-docs@programming-stic-mob-x-register tag=tier4-community conf=C81
+mobx 7 pos7 src=SRC-community-emu-docs@programming-stic-mob-x-register tag=tier4-community conf=C81
+mobx 8 intr src=SRC-community-emu-docs@programming-stic-mob-x-register tag=tier4-community conf=C81
+mobx 9 visb src=SRC-community-emu-docs@programming-stic-mob-x-register tag=tier4-community conf=C81
+mobx 10 xsize src=SRC-community-emu-docs@programming-stic-mob-x-register tag=tier4-community conf=C81
+mobx 11 ign src=SRC-community-emu-docs@programming-stic-mob-x-register tag=tier4-community conf=C81
+mobx 12 ign src=SRC-community-emu-docs@programming-stic-mob-x-register tag=tier4-community conf=C81
+mobx 13 ign src=SRC-community-emu-docs@programming-stic-mob-x-register tag=tier4-community conf=C81
+mobx 14 ign src=SRC-community-emu-docs@programming-stic-mob-x-register tag=tier4-community conf=C81
+mobx 15 ign src=SRC-community-emu-docs@programming-stic-mob-x-register tag=tier4-community conf=C81
+moby 0 pos0 src=SRC-community-emu-docs@programming-stic-mob-y-register tag=tier4-community conf=C81
+moby 1 pos1 src=SRC-community-emu-docs@programming-stic-mob-y-register tag=tier4-community conf=C81
+moby 2 pos2 src=SRC-community-emu-docs@programming-stic-mob-y-register tag=tier4-community conf=C81
+moby 3 pos3 src=SRC-community-emu-docs@programming-stic-mob-y-register tag=tier4-community conf=C81
+moby 4 pos4 src=SRC-community-emu-docs@programming-stic-mob-y-register tag=tier4-community conf=C81
+moby 5 pos5 src=SRC-community-emu-docs@programming-stic-mob-y-register tag=tier4-community conf=C81
+moby 6 pos6 src=SRC-community-emu-docs@programming-stic-mob-y-register tag=tier4-community conf=C81
+moby 7 yres src=SRC-community-emu-docs@programming-stic-mob-y-register tag=tier4-community conf=C81
+moby 8 ysiz2 src=SRC-community-emu-docs@programming-stic-mob-y-register tag=tier4-community conf=C81
+moby 9 ysiz4 src=SRC-community-emu-docs@programming-stic-mob-y-register tag=tier4-community conf=C81
+moby 10 xflip src=SRC-community-emu-docs@programming-stic-mob-y-register tag=tier4-community conf=C81
+moby 11 yflip src=SRC-community-emu-docs@programming-stic-mob-y-register tag=tier4-community conf=C81
+moby 12 ign src=SRC-community-emu-docs@programming-stic-mob-y-register tag=tier4-community conf=C81
+moby 13 ign src=SRC-community-emu-docs@programming-stic-mob-y-register tag=tier4-community conf=C81
+moby 14 ign src=SRC-community-emu-docs@programming-stic-mob-y-register tag=tier4-community conf=C81
+moby 15 ign src=SRC-community-emu-docs@programming-stic-mob-y-register tag=tier4-community conf=C81
+moba 0 color0 src=SRC-community-emu-docs@programming-stic-mob-attribute-register tag=tier4-community conf=C81
+moba 1 color1 src=SRC-community-emu-docs@programming-stic-mob-attribute-register tag=tier4-community conf=C81
+moba 2 color2 src=SRC-community-emu-docs@programming-stic-mob-attribute-register tag=tier4-community conf=C81
+moba 3 card0 src=SRC-community-emu-docs@programming-stic-mob-attribute-register tag=tier4-community conf=C81
+moba 4 card1 src=SRC-community-emu-docs@programming-stic-mob-attribute-register tag=tier4-community conf=C81
+moba 5 card2 src=SRC-community-emu-docs@programming-stic-mob-attribute-register tag=tier4-community conf=C81
+moba 6 card3 src=SRC-community-emu-docs@programming-stic-mob-attribute-register tag=tier4-community conf=C81
+moba 7 card4 src=SRC-community-emu-docs@programming-stic-mob-attribute-register tag=tier4-community conf=C81
+moba 8 card5 src=SRC-community-emu-docs@programming-stic-mob-attribute-register tag=tier4-community conf=C81
+moba 9 card6 src=SRC-community-emu-docs@programming-stic-mob-attribute-register tag=tier4-community conf=C81
+moba 10 card7 src=SRC-community-emu-docs@programming-stic-mob-attribute-register tag=tier4-community conf=C81
+moba 11 sel src=SRC-community-emu-docs@programming-stic-mob-attribute-register tag=tier4-community conf=C81
+moba 12 color3 src=SRC-community-emu-docs@programming-stic-mob-attribute-register tag=tier4-community conf=C81
+moba 13 prio src=SRC-community-emu-docs@programming-stic-mob-attribute-register tag=tier4-community conf=C81
+moba 14 ign src=SRC-community-emu-docs@programming-stic-mob-attribute-register tag=tier4-community conf=C81
+moba 15 ign src=SRC-community-emu-docs@programming-stic-mob-attribute-register tag=tier4-community conf=C81

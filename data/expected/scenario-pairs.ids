@@ -10,3 +10,9 @@
 # byte-identical (D-06); the other digests are not related here (the input digest differs by construction).
 demo-lamp-tone-pass demo-lamp-tone-idle differ=digest.video,digest.audio,digest.psglog,digest.input,digest.mem equal=-
 demo-lamp-tone-pass demo-lamp-tone-shift differ=- equal=digest.video
+# Plan 08-07 (D-04, D-10): diag-stic2-idle-pass against diag-stic2-mob-pass and against diag-stic2-border-pass. The one program is selected
+# only by the controller word, so the idle control (no input line) and a feature run differ in the video digest and in the input digest: the
+# picture changes with the selector, and the idle control shows that the program, not the core, adds nothing of its own. The PSG log and the
+# audio are not related here (neither program writes a PSG register).
+diag-stic2-idle-pass diag-stic2-mob-pass differ=digest.video,digest.input equal=-
+diag-stic2-idle-pass diag-stic2-border-pass differ=digest.video,digest.input equal=-

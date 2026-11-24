@@ -38,6 +38,8 @@ add_subdirectory(tools/pack)
 add_subdirectory(tools/pcm)
 # Project mini-assembler (plan 07-03, D-17): build-only executable, no install rule.
 add_subdirectory(tools/asm)
+# Benchmark tool (plan 08-18, D-21): build-only executable ivs-bench, no install rule; the clock lives only in its bench_host.c.
+add_subdirectory(tools/bench)
 
 enable_testing()
 add_subdirectory(tests)

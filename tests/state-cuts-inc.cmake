@@ -1,0 +1,95 @@
+# SPDX-License-Identifier: MIT
+# Turns data/expected/state-cuts.ids (the 18 named hard-point cuts and their pinned ticks) into a C include of X-macro lines, so the tests of
+# suite state read every cut id, program, tick and family from the reviewed data file and never retype a tick (plan 08-14, D-16, D-17,
+# threat T-08-35; the precedent is tests/ivsn-literals-inc.cmake). Pure: no host path, no time, no core input. Build output only, never
+# committed.
+# Usage: cmake -DIN=<file> -DOUT=<file.inc> -P state-cuts-inc.cmake
+# Accepted lines: blank lines and `#` comment lines (skipped) and
+#   <cut-id> <program> <pinned-tick> <family>
+# with a cut id HP-<upper case letters, digits, dashes>, a program of letters, digits, underscores and dashes, the pinned tick a decimal
+# number or the token pending-08-14, and the family cpu-points, stic-points or device-points. Any other line stops the build: a cut the test
+# cannot read must not be dropped silently. The output is one line IVSN_SOURCE("<repo path>", "<sha256 of the file>") (the `# source` line of
+# the result file, re-hashed by the gate step tests-inventory) followed by STATE_CUT("<cut>", "<program>", <tick>, "<family>") per line,
+# where a pending tick is written as the largest 64-bit value (the test treats it as not pinned yet).
+# FORM=checklist (plan 08-14 task 3) reads data/expected/state-checklist.ids instead (`<row> <class> <witness> <test> <sweep>`, 88 lines) and writes
+# the same IVSN_SOURCE line followed by STATE_ROW("<row>", "<witness cut>", "<sweep column>") for every row of class STATE, so the row sweep reads
+# its rows, witness cuts and exemptions from the reviewed file and never retypes them; the other classes are not rows of the sweep.
+# FORM=notes reads data/expected/state-sweep-notes.ids (`<row> <witness cut> <sweep>`: the appended notes that amend the witness cut and the sweep column of a
+# row of the frozen checklist) and writes STATE_NOTE("<row>", "<cut>", "<sweep>") per line.
+cmake_minimum_required(VERSION 3.25)
+if(NOT DEFINED IN OR NOT DEFINED OUT)
+  message(FATAL_ERROR "state-cuts-inc: IN and OUT are required")
+endif()
+if(NOT EXISTS "${IN}")
+  message(FATAL_ERROR "state-cuts-inc: ${IN} does not exist")
+endif()
+if(NOT DEFINED FORM)
+  set(FORM cuts)
+endif()
+if(NOT FORM STREQUAL "cuts" AND NOT FORM STREQUAL "checklist" AND NOT FORM STREQUAL "notes")
+  message(FATAL_ERROR "state-cuts-inc: FORM must be cuts, checklist or notes (got ${FORM})")
+endif()
+get_filename_component(in_name "${IN}" NAME)
+file(SHA256 "${IN}" in_sha)
+file(STRINGS "${IN}" lines)
+set(body "/* Generated from data/expected/${in_name} by tests/state-cuts-inc.cmake: build output only, never committed. */\n")
+string(APPEND body "IVSN_SOURCE(\"data/expected/${in_name}\", \"${in_sha}\")\n")
+set(n 0)
+set(lineno 0)
+set(seen "")
+foreach(l IN LISTS lines)
+  math(EXPR lineno "${lineno} + 1")
+  if(l STREQUAL "" OR l MATCHES "^#")
+    continue()
+  endif()
+  if(FORM STREQUAL "checklist")
+    if(NOT l MATCHES "^([A-Za-z0-9_.]+) (STATE|IMAGE_BEARING|BOUND|PAD) ([A-Za-z0-9_-]+) ([A-Za-z0-9_.-]+) ([A-Za-z0-9_:.-]+)$")
+      message(FATAL_ERROR "state-cuts-inc: ${IN}:${lineno}: unsupported line: ${l}")
+    endif()
+    set(row "${CMAKE_MATCH_1}")
+    if(row IN_LIST seen)
+      message(FATAL_ERROR "state-cuts-inc: ${IN}:${lineno}: duplicate row ${row}")
+    endif()
+    list(APPEND seen "${row}")
+    if(CMAKE_MATCH_2 STREQUAL "STATE")
+      string(APPEND body "STATE_ROW(\"${row}\", \"${CMAKE_MATCH_3}\", \"${CMAKE_MATCH_5}\")\n")
+    endif()
+    math(EXPR n "${n} + 1")
+    continue()
+  endif()
+  if(FORM STREQUAL "notes")
+    if(NOT l MATCHES "^([A-Za-z0-9_.]+) (HP-[A-Z0-9-]+) (ROW|EXEMPT:[A-Za-z0-9_.-]+)$")
+      message(FATAL_ERROR "state-cuts-inc: ${IN}:${lineno}: unsupported line: ${l}")
+    endif()
+    set(row "${CMAKE_MATCH_1}")
+    if(row IN_LIST seen)
+      message(FATAL_ERROR "state-cuts-inc: ${IN}:${lineno}: duplicate row ${row}")
+    endif()
+    list(APPEND seen "${row}")
+    string(APPEND body "STATE_NOTE(\"${row}\", \"${CMAKE_MATCH_2}\", \"${CMAKE_MATCH_3}\")\n")
+    math(EXPR n "${n} + 1")
+    continue()
+  endif()
+  if(NOT l MATCHES "^(HP-[A-Z0-9-]+) ([A-Za-z0-9_-]+) (pending-08-14|[0-9]+) (cpu-points|stic-points|device-points)$")
+    message(FATAL_ERROR "state-cuts-inc: ${IN}:${lineno}: unsupported line: ${l}")
+  endif()
+  set(cut "${CMAKE_MATCH_1}")
+  set(prog "${CMAKE_MATCH_2}")
+  set(tick "${CMAKE_MATCH_3}")
+  set(family "${CMAKE_MATCH_4}")
+  if(cut IN_LIST seen)
+    message(FATAL_ERROR "state-cuts-inc: ${IN}:${lineno}: duplicate cut ${cut}")
+  endif()
+  list(APPEND seen "${cut}")
+  if(tick STREQUAL "pending-08-14")
+    set(tick "UINT64_C(18446744073709551615)")
+  else()
+    set(tick "UINT64_C(${tick})")
+  endif()
+  string(APPEND body "STATE_CUT(\"${cut}\", \"${prog}\", ${tick}, \"${family}\")\n")
+  math(EXPR n "${n} + 1")
+endforeach()
+if(n EQUAL 0)
+  message(FATAL_ERROR "state-cuts-inc: ${IN} has no line")
+endif()
+file(WRITE "${OUT}" "${body}")

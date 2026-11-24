@@ -60,6 +60,7 @@ key-decisions:
 
 duration: about 45 min of edits plus about a dozen gate runs (first commit 05:53, last 06:24)
 completed: 2026-11-12
+requirements-completed: [AUD-02]  # backfilled by plan 08-20 from the plan requirements field; closure evidence is the phase VERIFICATION record, not this line
 ---
 
 # Phase 5 Plan 08: Write log, bounds from the code, checkpoint 2 Summary

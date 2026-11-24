@@ -46,6 +46,10 @@
 # region index per 16-word granule, addr >> 4; 0xFF undriven, 0xFE the cartridge span in the
 # read view), the device records per profile and the profile registry, plus _Static_asserts
 # tying the numeric ids to memsys.h and every backing size to its capacity macro.
+# Plan 08-11 (D-13): after them, ivs_mm_body_digest[profile][32], the SHA-256 of the table text one profile adds (its regions, device
+# record, the four granule tables and its registry row, block comments removed, so no cite, tag or provenance text is in it);
+# memsys.c exposes it as ivs_memmap_table_digest and the snapshot parameter digest (machine_snapshot.c) hashes it. Every byte
+# written before it is unchanged.
 # Optional -DMUTATE=<region name> (named-fault control GEN_MAP_MUTATION): after validation, that
 # region's lo moves up by one 16-word granule. The region must exist and keep a granule.
 cmake_minimum_required(VERSION 3.25)
@@ -157,6 +161,29 @@ function(mm_key out v)
   set(${out} "${k}" PARENT_SCOPE)
 endfunction()
 
+# Body digest of one profile's table text (plan 08-11, D-13): the SHA-256 of the text this script writes into the tables for that
+# profile (its regions, device records, the four granule tables and its registry row), with every block comment removed (the
+# comments carry the profile id and region names, never data), as a C byte-array initializer. A cite, tag or provenance string of
+# a profile file never reaches the text, so editing one moves no digest; a change of a value of a table changes exactly this
+# profile's digest. The _Static_assert lines are not table text and are not part of it. Pure: the same text gives the same bytes on
+# every host.
+function(mm_body_digest out text)
+  string(REGEX REPLACE "/[*][^*]*[*]/" "" body "${text}")
+  string(SHA256 hex "${body}")
+  set(arr "")
+  foreach(i RANGE 0 31)
+    math(EXPR at "${i} * 2")
+    string(SUBSTRING "${hex}" ${at} 2 byte)
+    string(TOUPPER "${byte}" byte)
+    if(i EQUAL 0)
+      set(arr "0x${byte}u")
+    else()
+      string(APPEND arr ", 0x${byte}u")
+    endif()
+  endforeach()
+  set(${out} "{${arr}}" PARENT_SCOPE)
+endfunction()
+
 # Numeric ids; the order is the id (memsys.h repeats them and the output asserts equality).
 set(MM_DEVICES undriven rom10 grom8 ram8 ram16 stub psg8 stic14)
 set(MM_DEVICE_MACROS UNDRIVEN ROM10 GROM8 RAM8 RAM16 STUB PSG8 STIC14)
@@ -192,6 +219,7 @@ set(hk_rd_c "")
 set(hk_wr_c "")
 set(dev_c "")
 set(reg_c "")
+set(digest_c "")
 set(asserts_c "")
 set(n_regions 0)
 set(MM_MUTATED 0)
@@ -199,6 +227,10 @@ set(ids_seen "")
 
 foreach(rel IN LISTS mm_profiles)
   file(READ "${ROOT}/${rel}" doc)
+  # Where the text of this profile starts in each accumulated table (the body digest is over what this profile adds).
+  foreach(mm_v regions dev rd wr hk_rd hk_wr reg)
+    string(LENGTH "${${mm_v}_c}" mm_start_${mm_v})
+  endforeach()
   foreach(pn IN LISTS MM_PHYS)
     unset(mm_phys_${pn}_size)
     unset(mm_phys_${pn}_dev)
@@ -723,6 +755,13 @@ foreach(rel IN LISTS mm_profiles)
     "   ${wait_limit}u, ${features}u, ${slot_exec_c}, ${slot_grom_c}, ${scanlines_per_frame}u,\n"
     "   ${cpu_cycles_per_scanline}u, ${input_controllers}u, ${ticks_per_psg}u, ${psg_sample_period}u,\n"
     "   ${psg_max_unit}u, ${psg_log_rpf}u, ${psg_min_gap}u, ${crystal_num}ull, ${crystal_den}ull},\n")
+  set(mm_body "")
+  foreach(mm_v regions dev rd wr hk_rd hk_wr reg)
+    string(SUBSTRING "${${mm_v}_c}" ${mm_start_${mm_v}} -1 mm_slice)
+    string(APPEND mm_body "${mm_slice}")
+  endforeach()
+  mm_body_digest(mm_digest "${mm_body}")
+  string(APPEND digest_c "  ${mm_digest},\n")
 endforeach()
 
 if(DEFINED MUTATE AND NOT MUTATE STREQUAL "" AND NOT MM_MUTATED)
@@ -763,4 +802,5 @@ string(APPEND out_c "static const uint8_t ivs_mm_wr_region[${n_profiles}][4096] 
 string(APPEND out_c "static const uint8_t ivs_mm_hook_rd[${n_profiles}][4096] = {\n${hk_rd_c}};\n")
 string(APPEND out_c "static const uint8_t ivs_mm_hook_wr[${n_profiles}][4096] = {\n${hk_wr_c}};\n")
 string(APPEND out_c "static const ivs_profile_desc ivs_mm_profiles[${n_profiles}] = {\n${reg_c}};\n")
+string(APPEND out_c "static const uint8_t ivs_mm_body_digest[${n_profiles}][32] = {\n${digest_c}};\n")
 file(WRITE "${OUT}" "${out_c}")

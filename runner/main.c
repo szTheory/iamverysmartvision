@@ -55,7 +55,10 @@ typedef struct main_host {
   ivs_hostio_out ppm_out;          /* --frame-ppm file (plan 06-12): the last frame as a PPM, mode 0600 */
 } main_host;
 
-static const char main_usage[] =
+/* The usage text in two parts: each is one string literal below the 4,095 characters ISO C guarantees a compiler (-Woverlength-strings),
+ * printed one after the other, so the text is the one a single literal would give. The outcome table comes last (a test reads the
+ * lines after `outcomes (`). */
+static const char *const main_usage[] = {
     "usage: ivs-run [options] <scenario.ivss>\n"
     "Runs one IVSS v1 scenario on one fresh machine instance and prints its report on stdout.\n"
     "options:\n"
@@ -70,10 +73,15 @@ static const char main_usage[] =
     "                       a scenario's wall-timeout-ms only lowers it; reaching it is\n"
     "                       timeout (wall), never golden\n"
     "  --slice-ticks <n>    master ticks per slice, 1..4194304 (default 4194304)\n"
+    "  --roundtrip-at-ticks <n>  test hook: at the first unit boundary at or after every multiple of n\n"
+    "                       master ticks (n in 1..9223372036854775808), save the machine state to memory,\n"
+    "                       reset the machine and restore the state, then go on; the report is the one\n"
+    "                       of the plain run apart from host.calls; more than 64 cuts is exit 14\n"
+    "                       (detail roundtrip-cut-cap); nothing is written to a file\n"
     "  --self-signal-after-slices <n>  test hook: raise SIGINT after slice n (0: before the\n"
     "                       first slice); the run ends cancelled\n"
     "  --self-signal-count <n>  test hook: raise SIGINT n times there, 1..4 (default 1);\n"
-    "                       needs --self-signal-after-slices\n"
+    "                       needs --self-signal-after-slices\n",
     "  --update-golden <file>  also write the run's repeatability golden (.digests) to file;\n"
     "                       refused for `user` content, host-dependent outcomes and an output file's path;\n"
     "                       a failed run (harness-fail) writes none and keeps an existing file\n"
@@ -111,7 +119,14 @@ static const char main_usage[] =
     "timeout 11\n"
     "cancelled 12\n"
     "missing-fixture 13\n"
-    "harness-fail 14\n";
+    "harness-fail 14\n"};
+
+static void main_usage_write(FILE *f)
+{
+  for (size_t i = 0u; i < sizeof main_usage / sizeof main_usage[0]; i++) {
+    (void)fputs(main_usage[i], f);
+  }
+}
 
 /* ---- host vtable ---- */
 
@@ -242,7 +257,8 @@ static int main_fail(const char *what)
 
 static int main_usage_error(const char *what)
 {
-  fprintf(stderr, "ivs-run: %s\n%s", what, main_usage);
+  fprintf(stderr, "ivs-run: %s\n", what);
+  main_usage_write(stderr);
   return MAIN_EXIT_HARNESS;
 }
 
@@ -504,6 +520,7 @@ int main(int argc, char **argv)
   int have_max = 0;
   int have_wall = 0;
   int have_slice = 0;
+  int have_roundtrip = 0;
   int have_out_max = 0;
   int have_wav_rate = 0;
   int have_vout_max = 0;
@@ -522,7 +539,7 @@ int main(int argc, char **argv)
     uint64_t hi = 0u;
     uint64_t v = 0u;
     if (strcmp(a, "--help") == 0) {
-      fputs(main_usage, stdout);
+      main_usage_write(stdout);
       return fflush(stdout) == 0 ? 0 : MAIN_EXIT_HARNESS;
     }
     if (strcmp(a, "--content-dir") == 0) {
@@ -569,6 +586,10 @@ int main(int argc, char **argv)
       seen = &have_slice;
       lo = 1u;
       hi = IVS_RUNNER_SLICE_TICKS_MAX;
+    } else if (strcmp(a, "--roundtrip-at-ticks") == 0) {
+      seen = &have_roundtrip;
+      lo = 1u;
+      hi = IVS_RUN_TARGET_MAX;
     } else if (strcmp(a, "--self-signal-after-slices") == 0) {
       seen = &mh.self_signal;
       lo = 0u;
@@ -614,6 +635,9 @@ int main(int argc, char **argv)
       opts.wall_timeout_ms = (uint32_t)v;
     } else if (seen == &have_slice) {
       opts.slice_ticks = v;
+    } else if (seen == &have_roundtrip) {
+      opts.flags |= IVS_RUNNER_OPT_ROUNDTRIP;
+      opts.roundtrip_ticks = v;
     } else if (seen == &have_out_max) {
       opts.audio_out_max_bytes = v;
     } else if (seen == &have_vout_max) {

@@ -50,6 +50,7 @@ key-files:
     - .planning/ROADMAP.md
 
 completed: 2026-11-13
+requirements-completed: [SCN-01]  # backfilled by plan 08-20 from the plan requirements field; closure evidence is the phase VERIFICATION record, not this line
 ---
 
 # Phase 7 Plan 06: Lamp Tone, the first original program Summary

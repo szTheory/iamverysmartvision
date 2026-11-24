@@ -50,6 +50,7 @@ key-files:
 
 duration: about 6 hours elapsed on a heavily loaded laptop (1-minute load 55 to 120 for the checkpoint runs)
 completed: 2026-11-12
+requirements-completed: [VID-03]  # backfilled by plan 08-20 from the plan requirements field; closure evidence is the phase VERIFICATION record, not this line
 ---
 
 # Phase 6 Plan 09: raw framebuffer, video buffers, domain 16, frame stop, runner and consumer sizing Summary

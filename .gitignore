@@ -19,6 +19,8 @@
 # Raw and operator-side video output (plan 06-01): derived frames of rights-bearing content must not be committed.
 *.ppm
 *.vraw
+# Snapshot files (plan 08-17, D-19, T-08-39): a snapshot of a run that used owner-supplied images holds guest RAM those images wrote, derived rights-bearing material that must not be committed.
+*.ivsn
 
 # Secrets and local environment.
 .env

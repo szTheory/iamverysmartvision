@@ -257,3 +257,12 @@ runner.frameppm.header-and-size
 # Plan 07-05 (D-09, D-20): the content token boot-stub-2 (stub contract 2, exec role only): runner.parse.accept.boot-stub-2,
 # runner.parse.edge.boot-stub-2-as-cart and -as-grom (bad-content-kind), runner.exec.boot-stub-2 (the reserved file and the label from the
 # symbolic kind only); the fuzz invariant of runner.fuzz.seed-NN moved to the new maximum kind.
+# Plan 08-16 (D-18): the round-trip hook of the executor (options.flags IVS_RUNNER_OPT_ROUNDTRIP and options.roundtrip_ticks): a run with a
+# save, a power-on reset and a restore at every multiple of the value gives the plain report apart from host.calls (runner.exec.roundtrip-equals-straight),
+# every flag and value combination is accepted or refused as the options say (runner.exec.roundtrip-option-range) and more than 64 cuts is
+# the harness failure roundtrip-cut-cap (runner.exec.roundtrip-cut-cap). No fault is added: the three ids sit under the allowed prefix runner.exec. of the faults that
+# share the slice code. The 65 cuts of the cap id run whole in the normal executables of both presets; the fault executables (IVS_RUNNER_FAULT_RUN) only report that
+# they do not, which saves about 0.06 cpu-s in each of the 19 runner faults (the cost stop rule; see tests/CMakeLists.txt).
+runner.exec.roundtrip-equals-straight
+runner.exec.roundtrip-option-range
+runner.exec.roundtrip-cut-cap

@@ -189,6 +189,12 @@ typedef struct ivs_memsys_desc {
 uint32_t ivs_profile_count(void);
 const ivs_profile_desc *ivs_profile_get(uint32_t index);
 
+/* Plan 08-11 (D-13): the 32-byte body digest of the memory-map tables of registry profile index (the SHA-256 of the table text
+ * cmake/IvsMemmapTable.cmake writes for that profile, comments removed: no cite, tag or provenance text is in it), or NULL for an
+ * index at or above the profile count. The pointer names constant data; the digest is a constant of the build, never computed at
+ * run time. The snapshot parameter digest (ivs_snapshot_params_digest, machine.h) hashes it. */
+const uint8_t *ivs_memmap_table_digest(uint32_t profile_index);
+
 /* Zero-fills m, selects the profile and opens every gate. BAD_ARG for NULL or a bad index. */
 int ivs_memsys_init(ivs_memsys *m, uint32_t profile);
 
@@ -213,6 +219,14 @@ void ivs_memsys_clear_slot(ivs_memsys *m, uint32_t slot);
 
 /* Internal gate setter (Phase 6 drives it from the STIC). open is 0 or nonzero. */
 void ivs_memsys_set_gate_internal(ivs_memsys *m, uint32_t gate, uint8_t open);
+
+/* The STIC's own write into its collision registers (plan 08-05, D-06, rule STIC-R44): ORs bits and 03FF into register $0018 + k, k 0 to 7
+ * (IVS_MEMSYS_STIC_COLLISION_FIRST + k), straight into the register file. No gate test (the register window is closed when a frame ends),
+ * no counter and no access record: it is the frame writer's path (ivs_stic_frame_deliver) and, beside the CPU store, the only writer of
+ * these registers. It adds no state: the bits live in the register file the instance already serializes. A k of 8 or more does nothing. */
+#define IVS_MEMSYS_STIC_COLLISION_FIRST 0x18u
+#define IVS_MEMSYS_STIC_COLLISION_COUNT 8u
+void ivs_memsys_stic_collision_or_internal(ivs_memsys *m, uint32_t k, uint32_t bits);
 
 /* The register store of PSG register idx (0..15 = $01F0 + idx): the stored word under the profile's
  * read mask, which is what a bus read of that address returns (upper byte 0); 0 for idx at or

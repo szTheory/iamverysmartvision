@@ -31,6 +31,7 @@ key-decisions:
 
 duration: about 3 hours elapsed on a loaded laptop (load 9 to 20)
 completed: 2026-11-12
+requirements-completed: [VID-01, VID-02, VID-03, VID-04]  # backfilled by plan 08-20 from the plan requirements field; closure evidence is the phase VERIFICATION record, not this line
 ---
 
 # Phase 6 Plan 13: diagnostic ivs-diag-stic-1 and end to end Summary

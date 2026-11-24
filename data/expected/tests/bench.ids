@@ -1,0 +1,28 @@
+# Suite bench (plans 08-18 and 08-19, D-21 to D-26, D-39): tests/bench-tap.sh runs the benchmark tool ivs-bench of each preset in its
+# --verify-only mode (no clock is read) against data/bench/workloads.tsv, the scenarios, the goldens and the build-tree images.
+# bench.verify.<workload>: the verification run of the workload matches its committed golden and the row says status verified, with
+#   empty throughput and latency columns (plan 08-18: bench-lamp-idle, bench-lamp-input, bench-lamp-cold; plan 08-19: bench-lamp-snapshot,
+#   the idle scenario run with a save, reset and restore every 30 frames, verified against the idle golden, its static counts equal to
+#   those of the idle row, and a run in which the round-trip hook made no cut is a harness failure of the tool).
+bench.verify.bench-lamp-idle
+bench.verify.bench-lamp-input
+bench.verify.bench-lamp-cold
+bench.verify.bench-lamp-snapshot
+# bench.mutant.refuse-mutated-golden (D-22, D-25): a golden with one digest line changed is refused: exit 15, the bench-refuse line, a
+#   refused row with no measurement, in a verify-only run and in a run of one timed iteration.
+# bench.refuse.wrong-ticks: a workload table whose ticks differ from the golden is refused the same way.
+# bench.refuse.bad-args: usage and harness errors end with exit 14, one stderr line and no row.
+# bench.tsv.format: the format line, the header, the three groups, the field count, the tier and ci_time text.
+# bench.judge.refuse-has-no-timing: the absence-of-measurement checker rejects a synthetic refused row that carries a value.
+bench.mutant.refuse-mutated-golden
+bench.refuse.wrong-ticks
+bench.refuse.bad-args
+bench.tsv.format
+bench.judge.refuse-has-no-timing
+# bench.workloads.table-consistent (plan 08-19, D-23): the workload table is consistent with the scenario inventory, the scenario files
+#   and the goldens (files and text only, nothing is run); three scratch tables broken one way each show that the rules can fail.
+bench.workloads.table-consistent
+# bench.baseline.record-format (plan 08-19, D-24, T-08-43): every committed data/bench/baseline-*.tsv has the format line, the exact
+#   header, the three provenance comment lines, one measured row per workload of the table in order (optimized 1, sanitizers off, the
+#   table counts, positive figures, the ci_time pointer); four broken scratch records show the rules can fail; no number is compared.
+bench.baseline.record-format

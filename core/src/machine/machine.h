@@ -44,6 +44,7 @@
 #include "cpu/cp1610.h"
 #include "ivs/ivs_machine.h"
 #include "ivs/ivs_run.h"
+#include "ivs/ivs_state.h"
 #include "memmap/memsys.h"
 #include "psg/psg.h"
 #include "stic/stic.h"
@@ -155,6 +156,19 @@ _Static_assert(sizeof(struct ivs_machine) == IVS_MACHINE_BYTES,
 #define IVS_DIGEST_DOMAIN_VERSION 1u
 #define IVS_DIGEST_COMPOSITE_VERSION 3u
 
+/* Snapshot class of a row (plan 08-10, D-11, docs/formats/ivsn-v1.md "Classes"): the table is the single
+ * serializer, so each row also says what a snapshot does with it. STATE: written into the section of its
+ * domain by the snapshot and restored byte for byte. IMAGE: the read-only image arrays of a loaded system or
+ * cartridge image, never serialized (rights), never written by a restore. BOUND: the identity of the instance
+ * or of what is loaded into it (the magic, the registry index, the structure of the loaded images and the
+ * three slot records), never serialized, checked against the live target and never written by a restore.
+ * PAD: a reserved word, never serialized, zeroed by a restore. The digest ignores the class: every digest
+ * byte is what it was before the column existed. The values are the member snap of ivs_digest_field. */
+#define IVS_SNAP_STATE 1u
+#define IVS_SNAP_IMAGE 2u
+#define IVS_SNAP_BOUND 3u
+#define IVS_SNAP_PAD 4u
+
 typedef struct ivs_digest_field {
   const char *name;
   uint32_t offset; /* offsetof(struct ivs_machine, ...) */
@@ -162,8 +176,9 @@ typedef struct ivs_digest_field {
   uint32_t count;  /* elements */
   uint8_t domain;  /* IVS_DIGEST_CPU..IVS_DIGEST_INSTANCE or IVS_DIGEST_VIDEO..IVS_DIGEST_PSGLOG */
   uint8_t kind;    /* IVS_DIGEST_KIND_* */
-  uint16_t reserved;
+  uint16_t snap;   /* IVS_SNAP_*: the snapshot class (the former reserved member, plan 08-10; same size) */
 } ivs_digest_field;
+_Static_assert(sizeof(ivs_digest_field) == sizeof(const char *) + 16u, "snap took the place of the reserved member: the row struct did not grow");
 
 /* The field table (coverage seam for the tests). */
 size_t ivs_machine_digest_field_count(void);
@@ -173,6 +188,13 @@ const ivs_digest_field *ivs_machine_digest_field(size_t i);
  * is 0) and returns its full length; 0 for NULL m or another domain. No handle check: the tests
  * pass modified copies. */
 size_t ivs_machine_digest_preimage(const struct ivs_machine *m, uint32_t domain, uint8_t *buf, size_t cap);
+
+/* The same walk with the state-only filter set (plan 08-10, D-11): the "IVSD" frame of the domain and the rows
+ * of class IVS_SNAP_STATE only, in table order, encoded exactly as the digest encodes them. These are the bytes
+ * the section of that domain holds in a snapshot (plan 08-11). Same contract as ivs_machine_digest_preimage:
+ * the full length, 0 for NULL m or an unknown domain, no handle check. Domain 3 (IMAGES) has no STATE row, so
+ * its preimage is the frame alone. Never public: declared here and nowhere under core/include. */
+size_t ivs_machine_state_preimage(const struct ivs_machine *m, uint32_t domain, uint8_t *buf, size_t cap);
 
 /* Writes the public report of one slot record (shared by ivs_machine_info and the load report,
  * A-08 f). */
@@ -308,12 +330,190 @@ void ivs_input_init(ivs_machine_obs_input *in);
  * below this count (ivs_machine_profile_covered, machine.c). */
 uint32_t ivs_input_profile_count(void);
 
+/* Plan 08-11 (D-13): the 32-byte body digest of the controller line row of registry profile index (the SHA-256 of the table text
+ * cmake/IvsCtrlTable.cmake writes for that profile, comments removed: no cite, tag or provenance text is in it), or NULL for an
+ * index at or above the number of profiles the generated table holds. The pointer names constant data. */
+const uint8_t *ivs_ctrl_table_digest(uint32_t profile_index);
+
+/* The profile parameter digest of a snapshot (plan 08-11, D-13, docs/formats/ivsn-v1.md "Profile identity"): the SHA-256 over the
+ * four ASCII bytes IVSP, a big-endian u16 version 1 and the four body digests in the order memory map, PSG, STIC, controller
+ * (ivs_memmap_table_digest, ivs_psg_table_digest, ivs_stic_table_digest, ivs_ctrl_table_digest). IVS_OK, or IVS_E_BAD_ARG for a
+ * NULL out or an index for which one of the four tables has no row (nothing is written then). No table is hashed at run time:
+ * the four constants are generated, only the 134 bytes of the preimage are hashed here. It binds the numbers of the profile tables, never
+ * the text of a cite. machine_snapshot.c. */
+ivs_status ivs_snapshot_params_digest(uint32_t profile_index, uint8_t out[32]);
+
+/* The schema text of the snapshot (plan 08-11, D-13, docs/formats/ivsn-v1.md "Schema digest"; machine_snapshot.c): the canonical
+ * descriptor of the digest field table, built from the rows themselves. Line 0 is IVSSCHEMA followed by the schema version; line i
+ * for 1 <= i <= the row count is row i - 1 as `<name> <width> <count> <domain> <kind> <class>` with decimal numbers, the kind as UINT,
+ * PROFILE, MAGIC or PAD and the class as STATE, IMAGE_BEARING, BOUND or PAD, without a newline. ivs_snapshot_schema_line_count is the
+ * row count plus one. ivs_snapshot_schema_line writes line i into buf (NUL terminated, at most cap - 1 characters) and returns its
+ * length, 0 for a line past the last, a NULL buf or a cap of 0. ivs_snapshot_schema_digest is the SHA-256 of every line followed by a
+ * newline, which is the exact byte text of data/state/schema.literal.txt; the writer puts it into the header of every snapshot and
+ * the test of the suite state holds it to the hand-pinned digest of plan 08-09. */
+size_t ivs_snapshot_schema_line_count(void);
+size_t ivs_snapshot_schema_line(size_t i, char *buf, size_t cap);
+void ivs_snapshot_schema_digest(uint8_t out[32]);
+
+/* ---- the IVSN v1 layout (plan 08-12, D-13, docs/formats/ivsn-v1.md "Layout") ----
+ * Moved here from machine_snapshot.c without changing a byte: the writer (machine_snapshot.c) and the reader
+ * (machine_snapshot_read.c) are held to one set of numbers. The offsets are counted from the first byte of the container;
+ * IVS_SNAP_SECTIONS is the section count, IVS_SNAP_ENTRY_BYTES the size of one section table entry, IVS_SNAP_SLOT_BYTES the size of
+ * one image slot record. The header is IVS_SNAP_HEADER_BYTES long and the SHA-256 trailer IVS_SNAP_TRAILER_BYTES. The first bytes
+ * (the magic, 0 to 7) are written and compared by the two files themselves. */
+#define IVS_SNAP_SECTIONS 7u
+#define IVS_SNAP_ENTRY_BYTES 44u
+#define IVS_SNAP_SLOT_BYTES 40u
+#define IVS_SNAP_OFF_FORMAT 8u
+#define IVS_SNAP_OFF_FLAGS 10u
+#define IVS_SNAP_OFF_TOTAL 12u
+#define IVS_SNAP_OFF_SCHEMA 16u
+#define IVS_SNAP_OFF_COUNT 20u
+#define IVS_SNAP_OFF_SCHEMA_DIGEST 24u
+#define IVS_SNAP_OFF_PROFILE_ID 56u
+#define IVS_SNAP_OFF_PARAMS 120u
+#define IVS_SNAP_OFF_SLOTS 152u
+#define IVS_SNAP_OFF_COMPOSITE 272u
+#define IVS_SNAP_OFF_TABLE 304u
+#define IVS_SNAP_HEADER_BYTES 612u
+#define IVS_SNAP_TRAILER_BYTES 32u
+#define IVS_SNAP_FRAME_BYTES 7u /* the frame of a section: IVSD, the domain (1 byte) and the domain version (2 bytes); moved here by plan 08-13 */
+_Static_assert(IVS_SNAP_OFF_SCHEMA_DIGEST + 32u == IVS_SNAP_OFF_PROFILE_ID, "the schema digest is 32 bytes");
+_Static_assert(IVS_SNAP_OFF_PROFILE_ID + IVS_PROFILE_ID_MAX_BYTES == IVS_SNAP_OFF_PARAMS, "the profile id field is 64 bytes");
+_Static_assert(IVS_SNAP_OFF_PARAMS + 32u == IVS_SNAP_OFF_SLOTS, "the parameter digest is 32 bytes");
+_Static_assert(IVS_SNAP_OFF_SLOTS + IVS_SLOT_COUNT * IVS_SNAP_SLOT_BYTES == IVS_SNAP_OFF_COMPOSITE, "three slot records of 40 bytes");
+_Static_assert(IVS_SNAP_OFF_COMPOSITE + 32u == IVS_SNAP_OFF_TABLE, "the composite digest is 32 bytes");
+_Static_assert(IVS_SNAP_OFF_TABLE + IVS_SNAP_SECTIONS * IVS_SNAP_ENTRY_BYTES == IVS_SNAP_HEADER_BYTES, "seven section entries of 44 bytes");
+
+/* The seven sections, in table order: the domains that hold STATE rows (1 CPU, 2 MEM, 4 INSTANCE, 16 VIDEO, 17 AUDIO, 18 INPUT, 19
+ * PSGLOG). Domain 3 (IMAGES) holds none, so it has no section. Defined in machine_snapshot.c. */
+extern const uint8_t ivs_snap_domain[IVS_SNAP_SECTIONS];
+
+/* The length in bytes of section index (0 to IVS_SNAP_SECTIONS - 1) and the total of a container of this build, derived from the
+ * digest field table alone, so no instance is needed: a section is the 7-byte frame plus, for each STATE row of its domain, the row's
+ * width times its count plus 4 bytes of count when the count is above 1 (docs/formats/ivsn-v1.md "Size derivation"). 0 for an index
+ * at or above IVS_SNAP_SECTIONS. The total is the header, the seven sections and the trailer. The counting pass of the writer
+ * (ivs_machine_state_preimage with no buffer) gives the same numbers for any instance, and a test holds both to the literals. */
+uint32_t ivs_snapshot_section_derived_length(uint32_t index);
+uint64_t ivs_snapshot_derived_total(void);
+
+/* ---- the IVSN v1 reader (plan 08-12, D-13, D-14, D-16; machine_snapshot_read.c) ----
+ * What the reader knows about a container after one pass over it, with no pointer into the buffer: status and reason of the first
+ * failing class of the check order (docs/formats/ivsn-v1.md "Check order", steps 2 to 5 and the id form of step 6), the byte offset
+ * and section index of the defect, which header facts could be read before the refusal (known), and, after a success, every field
+ * of the header and the section table. The reader never touches an instance. */
+#define IVS_SNAP_KNOWN_FORMAT 1u /* format_version and flags were read (the supplied length is at least 12) */
+#define IVS_SNAP_KNOWN_TOTAL 2u  /* total_bytes was read (at least 16) */
+#define IVS_SNAP_KNOWN_SCHEMA 4u /* schema_version and section_count were read (at least 24) */
+
+typedef struct ivs_snap_slot_view {
+  uint32_t loaded;
+  uint32_t length_bytes;
+  uint8_t sha256[32];
+} ivs_snap_slot_view;
+
+typedef struct ivs_snap_section_view {
+  uint32_t domain;
+  uint32_t offset;
+  uint32_t length;
+  uint8_t digest[32];
+} ivs_snap_section_view;
+
+typedef struct ivs_snap_view {
+  ivs_status status;      /* IVS_OK, or the status the refusal travels with */
+  uint32_t reason;        /* 0, or an IVS_REASON_SNAP_ number */
+  uint64_t byte_offset;   /* where the defect was seen (0 after a success) */
+  uint32_t section_index; /* the table entry a defect concerns, else IVS_SEGMENT_NONE */
+  uint32_t known;         /* IVS_SNAP_KNOWN_* */
+  uint32_t format_version;
+  uint32_t flags;
+  uint32_t schema_version;
+  uint32_t section_count;
+  uint64_t total_bytes;
+  uint32_t profile_id_length;                      /* after a success: the bytes before the first NUL */
+  uint8_t profile_id[IVS_PROFILE_ID_MAX_BYTES];    /* after a success: the 64 bytes of the field */
+  uint8_t params_sha256[32];
+  uint8_t composite_sha256[32];
+  ivs_snap_slot_view slot[IVS_SLOT_COUNT];
+  ivs_snap_section_view section[IVS_SNAP_SECTIONS];
+} ivs_snap_view;
+
+/* Validates the len bytes at buf in the order of the specification up to and including the trailer and the form of the profile id:
+ * the length bound (OVERSIZED before any byte is read), the smallest length, the magic, the format version, the flags, the schema
+ * version and digest (UNSUPPORTED), the claimed total against the length and the derived size, the section count, the section table
+ * (known domains, strictly ascending, zero bytes zero, adjacent, the last end 32 bytes before the total) and the SHA-256 trailer, then
+ * the form of the profile id. The first failing class wins; every offset and length is compared with the supplied length before the
+ * byte it names is read, and a length is a 64-bit value. v is always written (v->status is the result); buf may be NULL only for len 0
+ * and the caller has decided the argument classes (ivs_snapshot_arg_reason) before. No instance, no allocation. */
+ivs_status ivs_snapshot_read(const uint8_t *buf, uint64_t len, ivs_snap_view *v);
+
+/* The argument classes of the calls that read a snapshot and fill a report: 0, or the reason of the first failing class, in the
+ * order of the specification: IVS_REASON_SNAP_BUF_NULL for a NULL buf with a len above 0, IVS_REASON_SNAP_REPORT_OVERLAP for the
+ * rep_bytes bytes at rep overlapping the buffer. A length above IVS_SNAPSHOT_MAX_BYTES names no bytes the reader will read, so the
+ * overlap is judged over the first IVS_SNAPSHOT_MAX_BYTES bytes only. */
+uint32_t ivs_snapshot_arg_reason(const uint8_t *buf, uint64_t len, const void *rep, size_t rep_bytes);
+
+/* The two report writers shared by describe and restore (plan 08-13; machine_snapshot_read.c). A refusal writes only the members the
+ * contract of ivs/ivs_state.h lists: the reason, the byte offset and the section index of the view and, for each header fact the
+ * supplied length let the reader see, that fact (the view's known flags); every other member, struct_size included, keeps the caller's
+ * value. A success writes the 360 bytes of the v1 report in full from an accepted view and keeps the tail of a larger caller struct. */
+void ivs_snap_report_refusal(ivs_snapshot_report *rep, const ivs_snap_view *v);
+void ivs_snap_report_success(ivs_snapshot_report *rep, const ivs_snap_view *v);
+
+/* ---- the IVSN v1 restore (plan 08-13, D-14, D-15, D-41; machine_snapshot_restore.c) ----
+ * The probe: the small part of the state a restore decodes into BEFORE it writes the first byte of the instance, so that the validators
+ * and the derived invariants judge a snapshot with no write. It holds the device structs (CPU 32 bytes, PSG 72, STIC 528), the input
+ * observation row and the few scalars, arrays and counters the invariants read (the clock, the phase, the gate flags, the PSG register
+ * words, the port pull-downs, the video count, the emitted audio sample count and the previous audio levels): well under a kilobyte. A
+ * member the invariants never read is not here. The padding rows of every struct are zero in a probe, as in any instance. */
+typedef struct ivs_snap_probe {
+  uint64_t time_ticks;
+  uint32_t phase;
+  ivs_cp1610 cpu;
+  ivs_psg_state psg;
+  ivs_stic_state stic;
+  ivs_machine_obs_input input;
+  uint16_t psg_reg[IVS_MEMSYS_PSG_REGS];
+  uint8_t gate_open[4];
+  uint8_t port_pulldown[IVS_MEMSYS_PSG_PORTS];
+  uint64_t video_count;
+  uint64_t audio_emitted;
+  uint32_t audio_prev_levels;
+} ivs_snap_probe;
+_Static_assert(sizeof(ivs_snap_probe) <= 1024u, "the restore probe stays well under a kilobyte");
+
+/* Fills p (every member, padding rows zero) from the live instance m, so that the one invariant function judges an instance and a decoded
+ * snapshot alike. */
+void ivs_snapshot_probe_from_instance(const struct ivs_machine *m, ivs_snap_probe *p);
+
+/* The derived invariants INV-1 to INV-6 of docs/formats/ivsn-v1.md as one function of the probe and of the registry profile (the profile
+ * parameters of the PSG, the STIC and the controllers): 0 when every invariant holds, else the number 1 to 6 of the first one that does
+ * not, checked in the order INV-1 (the three device validators and the event cursor), INV-2 (the STIC timeline against machine time
+ * and the gate flags), INV-3 (the PSG sample index, the audio row, the previous levels and the register masks), INV-4 (the controller
+ * words, the pull-downs and the input floor), INV-5 (the phase and the clock range) and INV-6 (the video count against the frame
+ * index). Restore judges INV-1 and INV-5 as range rules (reason 78) and INV-2, INV-3, INV-4 and INV-6 as derived rules (reason 79); the
+ * same function judges a live instance in the test that proves each invariant true on every unit boundary of real programs. A
+ * profile index that is not registered is invariant 1. */
+uint32_t ivs_snapshot_invariants(const ivs_snap_probe *p, uint32_t profile_index);
+
+/* 1 when the profile id of a view (profile_id_length bytes before the NUL, NUL padded to 64) is exactly the id of the descriptor d, 0 for
+ * a different id, an id that is a prefix of the other and an id that is longer: the comparison of restore step 73, a pure function so
+ * that a test can give it a synthetic descriptor (the registry holds one profile, so no second registered id exists to build). */
+uint32_t ivs_snapshot_profile_id_matches(const ivs_snap_view *v, const ivs_profile_desc *d);
+
 /* Derives the pull-down masks of the PSG ports (mem.port_pulldown) from the words in force and the
  * generated control table (plan 05-05, D-03, D-04): the OR of the line masks of every set bit, for
  * each port below the profile's input.controllers, 0 for the others. The one function that sets the
  * masks: an applied event calls it, and the refused-step take-back calls it after restoring the
  * words, so the invariant port_pulldown == derive(words) holds after every call. */
 void ivs_input_rederive(struct ivs_machine *im);
+
+/* The pure form of the derivation (plan 08-10, D-15): the two pull-down masks that the words words[0..3] give for the
+ * registry profile profile_index, written to out[0] and out[1], with no read or write of any instance. ivs_input_rederive is
+ * this function applied to the words in force and stored into the memory system, so a restore can derive the masks of a
+ * decoded snapshot, compare them with the stored ones and refuse a snapshot whose masks differ before it writes anything.
+ * A profile_index at or above ivs_input_profile_count() gives two zero masks (a live machine never holds one). */
+void ivs_input_derive(uint32_t profile_index, const uint32_t words[4], uint8_t out[2]);
 
 /* The per-event stages of the run ladder (D-05, D-14), after BUFFER_TOO_SMALL: IVS_REASON_NONE
  * with *st IVS_OK and *index IVS_INPUT_INDEX_NONE, or the reason with *st and the failing index.

@@ -26,3 +26,11 @@ const ivs_stic_params *ivs_stic_params_get(uint32_t profile)
   }
   return &ivs_stic_params_table[profile];
 }
+
+const uint8_t *ivs_stic_table_digest(uint32_t profile_index)
+{
+  if (profile_index >= IVS_STIC_PROFILE_COUNT) {
+    return NULL;
+  }
+  return ivs_stic_body_digest[profile_index];
+}

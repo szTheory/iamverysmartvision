@@ -1,0 +1,37 @@
+# Appended notes to the hidden-state checklist (plan 08-14, D-16, 08-DISCUSS-state 5.4). The checklist data/expected/state-checklist.ids is frozen oracle data (its rows,
+# classes, witnesses and sweep columns were derived before any serializer existed and closed by the blind second read); the runtime row-omission sweep of
+# tests/state/state_sweep.c found where a listed witness is weak and which rows nothing reads, and records what it found HERE, as appended notes, never as an edit of the
+# checklist. The sweep reads the checklist and then applies this file: a line here replaces the witness cut and the sweep column of the row it names.
+# One line per amended row: `<row> <witness cut> <sweep>`. The row is a STATE row of the checklist, the cut a cut of data/expected/state-cuts.ids, and the sweep column the
+# word ROW (the row must diverge at its cut and must not be default there) or EXEMPT, a colon and a reason (words joined by underscores, at least three) that says what reads
+# the row and why that cannot change a continuation; an exempt row is covered by the poisoned-target equivalence and the final digest equality instead.
+# The argument of every line is in the section "As built (plan 08-14, task 3)" of docs/state/hidden-state-checklist.md. The sweep test fails a line that names no STATE row, an
+# unknown cut, a malformed sweep column, or a cut that no row names after the amendment.
+# Witnesses moved because the sweep showed the listed one inert (a lost value changes nothing there):
+#   cpu.intff: at HP-OPEN a lost enable means the interrupt of the frame is not accepted, so the display is not enabled for the frame; at HP-FRAME-MID the value was only echoed
+#   cpu.prev_interruptible: at HP-OPEN a boundary closed by mistake accepts the interrupt one idle unit late, which the idle loop cannot show; at the boundary before the first bus
+#     grant (HP-STEAL-A, redefined in the appended note of docs/state/hard-points.md) a closed boundary does not test BUSRQ and the grant comes late
+#   cpu.busak: after the grant (the old HP-STEAL-A) the grant is simply taken again; at the boundary before a release (HP-STEAL-B, redefined) a lost BUSAK means the release unit
+#     never runs and the window is not counted as granted
+cpu.intff HP-OPEN ROW
+cpu.prev_interruptible HP-STEAL-A ROW
+cpu.busak HP-STEAL-B ROW
+# Exempt rows: the sweep replaced them with every sweep value it could try and no continuation, stream or other row changed.
+# stic.late_grants: a saturating count that the FRAME_END event adds to and nothing reads; only the STIC report echoes it, and it is zero at every one of the 18 cuts (every
+#   window of the Lamp Tone and of the other programs is granted), so no cut can witness it non-default.
+# stic.cs_ptr: the pointer is assigned by every render before anything reads it ("each render starts at 0"); its value between two renders is only an output of the last render.
+# the four chains: each is h(n+1) = SHA-256 of the previous value and the new record; nothing reads a chain but its own domain digest and its own next value.
+# obs.input.count: incremented by every applied event and read by nothing; the host resubmits from the count of the report of its own earlier call.
+# obs.input.words: the controller words in force; every event carries the full state of all four words and overwrites them, the pull-down masks that the guest reads are a
+#   separate stored row (mem.port_pulldown), and the run report echoes the words only; with the next event inside the window the replaced value is overwritten before any read.
+# psg.env_level: the level of the envelope is a function of the cycle index and the direction (the validator enforces it) and is recomputed at every envelope step before it
+#   is used for a sample; a replaced level changes neither a sample nor a later state.
+stic.late_grants HP-STEAL-C EXEMPT:counter_extended_only_from_itself_and_echoed_by_the_report
+stic.cs_ptr HP-LATCH EXEMPT:overwritten_by_every_render_before_any_read
+obs.video.chain HP-FRAME-MID EXEMPT:chain_extended_only_from_itself_and_hashed_by_its_own_digest
+obs.audio.chain HP-PSG-MID EXEMPT:chain_extended_only_from_itself_and_hashed_by_its_own_digest
+obs.input.chain HP-INPUT EXEMPT:chain_extended_only_from_itself_and_hashed_by_its_own_digest
+obs.psglog.chain HP-LOG EXEMPT:chain_extended_only_from_itself_and_hashed_by_its_own_digest
+obs.input.count HP-INPUT EXEMPT:count_incremented_only_from_itself_and_hashed_by_its_own_digest
+psg.env_level HP-ENV-MID EXEMPT:recomputed_from_cycle_and_direction_before_any_read
+obs.input.words HP-INPUT EXEMPT:overwritten_by_the_next_applied_event_before_any_read

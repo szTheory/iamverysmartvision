@@ -1,0 +1,33 @@
+# suite=state; columns: <FAULT_ID> <must-fail> <allowed-prefixes> <must-pass>
+# State named faults (plans 08-11 to 08-15, STA-01, STA-02, D-16). Each id has one IVS_FAULT_<ID> site, in the owner TU named below, and is caught by the
+# test it is named for; the allowed prefixes cover every collateral failure of the suite (every id of the suite starts with state.).
+# SNAPSHOT_LITTLE_ENDIAN (core/src/machine/machine_snapshot.c): the integer writer of the container header writes the least significant byte first, so the
+# header no longer reads like the bytes derived on paper (the first 24 bytes of the literal, the section table) although every length stays right.
+SNAPSHOT_LITTLE_ENDIAN state.literal.header-structure state. state.size.derived-and-constant
+# SNAPSHOT_PAD_SERIALIZED (core/src/machine/machine_digest.c): the state-only walk of the snapshot also writes the bytes of every PAD row, so the sections
+# grow by their reserved words and the lengths derived on paper (35, 2,761, 615, 51, 63, 79, 51) no longer hold.
+SNAPSHOT_PAD_SERIALIZED state.size.derived-and-constant state. state.literal.params-digest
+# SNAPSHOT_IMAGE_BYTES_EMBEDDED (core/src/machine/machine_digest.c): the state-only filter also admits the IMAGE rows, so the snapshot walk serializes the three
+# image arrays (the rights-bearing bytes of whatever was loaded) like any STATE row; the snapshot then holds recognisable 16-byte windows of an image.
+SNAPSHOT_IMAGE_BYTES_EMBEDDED state.save.no-image-bytes state. state.literal.params-digest
+# SNAPSHOT_TRAILER_UNCHECKED (core/src/machine/machine_snapshot_read.c): the reader skips the comparison of the SHA-256 trailer, so a container with a damaged
+# trailer or a damaged byte that only the trailer covers is accepted instead of refused DIGEST_MISMATCH 70.
+SNAPSHOT_TRAILER_UNCHECKED state.read.describe-refuse-trailer state. state.read.describe-ok
+# SNAPSHOT_LENGTH_TRUSTED (core/src/machine/machine_snapshot_read.c): the reader does not refuse a total above the supplied length, so the later checks use the
+# claim (the trailer is read at the claim, past the bytes supplied: the buffers of a fault build carry a zeroed tail) and a truncated snapshot is no longer
+# reported as truncated.
+SNAPSHOT_LENGTH_TRUSTED state.read.describe-refuse-length state. state.read.describe-ok
+# RESTORE_PROFILE_UNCHECKED (core/src/machine/machine_snapshot_restore.c): restore skips the profile id, the parameter digest and the registry checks, so a
+# snapshot of an unregistered id or of other profile tables is accepted into the instance.
+RESTORE_PROFILE_UNCHECKED state.restore.refuse-identity-profile state. state.read.describe-ok
+# RESTORE_IMAGE_DIGEST_UNCHECKED (core/src/machine/machine_snapshot_restore.c): restore does not compare the SHA-256 and the length of a slot that is loaded on both
+# sides, so a snapshot taken with other images is accepted into an instance that holds these.
+RESTORE_IMAGE_DIGEST_UNCHECKED state.restore.refuse-identity-slots state. state.read.describe-ok
+# RESTORE_MUTATES_BEFORE_VALIDATE (core/src/machine/machine_snapshot_restore.c): the CPU rows are committed into the instance before the STIC validators run, so a snapshot
+# that a STIC validator refuses has already changed the instance; the whole-instance comparison over every refusal row sees it.
+RESTORE_MUTATES_BEFORE_VALIDATE state.restore.atomic-every-refusal state. state.read.describe-ok
+# SNAPSHOT_STIC_ROWS_OMITTED (core/src/machine/machine_digest.c): the state-only walk of the snapshot skips the STIC rows (the register file and the STIC device state), as
+# DIGEST_STIC_ROWS_OMITTED models for the digests: the sections lack them, the lengths derived on paper no longer hold and nothing is left to restore the display state from;
+# the cut comparison of the stic points is the test that must see it. The must-pass id is the witness id of the same cuts: it reads no snapshot, so it stays green when the
+# sections are wrong (state.read.describe-refuse-args, the id the plan named, builds on a valid snapshot and fails with the rest of the reader and writer ids).
+SNAPSHOT_STIC_ROWS_OMITTED state.cut.stic-points state. state.witness.stic-points

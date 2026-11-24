@@ -109,6 +109,7 @@ psg.bounds.slack-covers-worst-case
 psg.bounds.g-and-u
 psg.bounds.log-capacity-formula
 psg.bounds.log-bound-at-g
+psg.state.validate
 psg.buffers.too-small-no-write
 psg.buffers.exact-fit
 psg.buffers.not-requested

@@ -31,6 +31,14 @@
 #                  stic.video_slack_frames. The generator does NOT read data/video/geometry.literal.txt: the
 #                  width is DERIVED as (card_columns - 1) x card_w + last_card_column_px, so a one-field reversal
 #                  of last_card_column_px to 8 gives 160 with no literal edited (the literal is compared by tests).
+#   moving objects (plan 08-04, rules STIC-R37, R43, R50) video.mob_field_origin {x, y} (each 0..15), video.mob_line_sample (0 or 1,
+#                  below video.row_lines) and video.mob_prio_hides (0 or 1): the offset of the object field against the published
+#                  plane and the two pinned selectors of the renderer (core/src/stic/stic_mob.c).
+#   collision (plan 08-05, rules STIC-R44 and R45) video.collision_x0_interacts, video.collision_border_bit, video.collision_offscreen and
+#                  video.collision_display_off (each 0 or 1): the four pinned behaviours of the collision registers (stic_mob.c, stic_frame.c).
+#   border extension (plan 08-06, rules STIC-R48 and R49) video.border_ext_strip {cols, rows} (each 1..15): the left strip width and the top strip
+#                  height in plane positions, and (plan 08-06, rules STIC-R47 and R49) video.border_follows_delay, video.delay_exposed_fill and
+#                  video.delay_mob_in_exposed (each 0 or 1): the three pinned behaviours of the delay registers (core/src/stic/stic_frame.c).
 #
 # Fail closed (message `IvsSticTable: <profile>: <field>: <reason>`): a missing field, a field of a wrong type or
 # outside its range, an unknown or missing record key, a tag of tier5-emulator-hint, an unknown-default-chosen field
@@ -53,6 +61,9 @@
 # ivs_stic_params, core/src/stic/stic_params.h) with _Static_asserts on the counts. The per-frame event table has
 # 4 + rows entries in ascending tick order, ticks counted from the frame start: FRAME_START at 0, REG_CLOSE,
 # GMEM_CLOSE, ROW_FETCH(i) at first_start + i x pitch + fetch_offset for i below rows, and FRAME_END at F.
+# Plan 08-11 (D-13): after them, ivs_stic_body_digest[profile][32], the SHA-256 of the table row text of each profile (block
+# comments removed, so no cite, tag or provenance text is in it); stic_params.c exposes it as ivs_stic_table_digest and the
+# snapshot parameter digest (machine_snapshot.c) hashes it. Every byte written before it is unchanged.
 cmake_minimum_required(VERSION 3.25)
 
 foreach(required ROOT OUT)
@@ -212,6 +223,27 @@ function(st_join out)
   set(${out} "${s}" PARENT_SCOPE)
 endfunction()
 
+# Body digest of one profile's table text (plan 08-11, D-13): the SHA-256 of the text this script writes into the table for that
+# profile, with every block comment removed (the comments carry the profile id, never data), as a C byte-array initializer. A cite,
+# tag or provenance string of a profile file never reaches the text, so editing one moves no digest; a change of a value of the
+# table changes exactly this profile's digest. Pure: the same text gives the same bytes on every host.
+function(st_body_digest out text)
+  string(REGEX REPLACE "/[*][^*]*[*]/" "" body "${text}")
+  string(SHA256 hex "${body}")
+  set(arr "")
+  foreach(i RANGE 0 31)
+    math(EXPR at "${i} * 2")
+    string(SUBSTRING "${hex}" ${at} 2 byte)
+    string(TOUPPER "${byte}" byte)
+    if(i EQUAL 0)
+      set(arr "0x${byte}u")
+    else()
+      string(APPEND arr ", 0x${byte}u")
+    endif()
+  endforeach()
+  set(${out} "{${arr}}" PARENT_SCOPE)
+endfunction()
+
 file(GLOB st_profiles RELATIVE "${ROOT}" "${ROOT}/data/profiles/*.json")
 list(SORT st_profiles)
 if(NOT st_profiles)
@@ -221,6 +253,7 @@ endif()
 list(LENGTH st_profiles n_profiles)
 
 set(table_c "")
+set(digest_c "")
 foreach(rel IN LISTS st_profiles)
   file(READ "${ROOT}/${rel}" doc)
   set(ST_PROFILE "${rel}")
@@ -370,6 +403,46 @@ foreach(rel IN LISTS st_profiles)
   st_num(last_px video.last_card_column_px 255)
   st_num(row_lines video.row_lines 255)
   st_num(blank video.blank_value 255)
+  # ---- moving objects: the object-field offset in plane positions and the two pinned selectors (plan 08-04)
+  st_field("${doc}" video.mob_field_origin)
+  set(ST_CTX "${rel}: video.mob_field_origin")
+  st_type(t "${doc}" fields video.mob_field_origin value)
+  if(NOT t STREQUAL "OBJECT")
+    st_fail("value must be an object {\"x\": n, \"y\": n}")
+  endif()
+  string(JSON mob_obj GET "${doc}" fields video.mob_field_origin value)
+  st_keys("${mob_obj}" "value" x y)
+  st_uint(mob_ox "${mob_obj}" "x" 15 x)
+  st_uint(mob_oy "${mob_obj}" "y" 15 y)
+  st_num(mob_sample video.mob_line_sample 1)
+  st_num(mob_prio video.mob_prio_hides 1)
+  # ---- collision: the four pinned selectors of the registers $0018..$001F (plan 08-05, rules STIC-R44 and R45), each 0 or 1
+  st_num(coll_x0 video.collision_x0_interacts 1)
+  st_num(coll_border video.collision_border_bit 1)
+  st_num(coll_off video.collision_offscreen 1)
+  st_num(coll_dispoff video.collision_display_off 1)
+  # ---- border extension: the size of the two strips in plane positions (plan 08-06, rules STIC-R48 and R49), each member 1..15
+  st_field("${doc}" video.border_ext_strip)
+  set(ST_CTX "${rel}: video.border_ext_strip")
+  st_type(t "${doc}" fields video.border_ext_strip value)
+  if(NOT t STREQUAL "OBJECT")
+    st_fail("value must be an object {\"cols\": n, \"rows\": n}")
+  endif()
+  string(JSON ext_obj GET "${doc}" fields video.border_ext_strip value)
+  st_keys("${ext_obj}" "value" cols rows)
+  st_uint(ext_cols "${ext_obj}" "cols" 15 cols)
+  st_uint(ext_rows "${ext_obj}" "rows" 15 rows)
+  if(ext_cols EQUAL 0 OR ext_rows EQUAL 0)
+    st_fail("cols and rows must each be at least 1")
+  endif()
+  # ---- delay: the three pinned selectors (plan 08-06, rules STIC-R47 and R49), each 0 or 1
+  st_num(ext_follows video.border_follows_delay 1)
+  st_num(delay_fill video.delay_exposed_fill 1)
+  st_num(delay_mob video.delay_mob_in_exposed 1)
+  set(ST_CTX "${rel}: video.mob_line_sample")
+  if(NOT mob_sample LESS row_lines)
+    st_fail("value ${mob_sample} is not below video.row_lines ${row_lines}: the sampled line must be one of the lines of a plane row")
+  endif()
   set(ST_CTX "${rel}: video.colors")
   if(colors EQUAL 0)
     st_fail("must be at least 1")
@@ -653,7 +726,7 @@ foreach(rel IN LISTS st_profiles)
   st_join(evt_c ${ev_t})
   st_join(evk_c ${ev_k})
   st_join(eva_c ${ev_a})
-  string(APPEND table_c "  { /* ${pid} */\n"
+  string(CONCAT row_text "  { /* ${pid} */\n"
     "    .ticks_per_cpu_cycle = ${tpc}u, .frame_ticks = ${frame_ticks}u, .frame_phase_ticks = ${phase}u,\n"
     "    .reg_window_cycles = ${reg_win}u, .reg_window_ticks = ${reg_win_t}u,\n"
     "    .gmem_window_cycles = ${gmem_win}u, .gmem_window_ticks = ${gmem_win_t}u,\n"
@@ -686,7 +759,17 @@ foreach(rel IN LISTS st_profiles)
     "    .video_plane_bytes = ${plane}u, .video_header_bytes = ${header}u, .video_slot_bytes = ${slot}u,\n"
     "    .video_slack_frames = ${slack}u, .video_row_lines = ${row_lines}u,\n"
     "    .video_last_column_px = ${last_px}u, .video_blank_value = ${blank}u,\n"
+    "    .video_mob_origin_x = ${mob_ox}u, .video_mob_origin_y = ${mob_oy}u,\n"
+    "    .video_mob_line_sample = ${mob_sample}u, .video_mob_prio_hides = ${mob_prio}u,\n"
+    "    .video_collision_x0_interacts = ${coll_x0}u, .video_collision_border_bit = ${coll_border}u,\n"
+    "    .video_collision_offscreen = ${coll_off}u, .video_collision_display_off = ${coll_dispoff}u,\n"
+    "    .video_border_ext_cols = ${ext_cols}u, .video_border_ext_rows = ${ext_rows}u,\n"
+    "    .video_border_follows_delay = ${ext_follows}u, .video_delay_exposed_fill = ${delay_fill}u,\n"
+    "    .video_delay_mob_in_exposed = ${delay_mob}u,\n"
     "    .video_display_off_fill = IVS_STIC_FILL_BORDER\n  },\n")
+  string(APPEND table_c "${row_text}")
+  st_body_digest(row_digest "${row_text}")
+  string(APPEND digest_c "  ${row_digest},\n")
 endforeach()
 
 set(out_c "/* Generated by cmake/IvsSticTable.cmake from the files in data/profiles (plan 06-04). */\n")
@@ -696,4 +779,5 @@ string(APPEND out_c "_Static_assert(IVS_STIC_REG_COUNT == 64u, \"the generator e
 string(APPEND out_c "_Static_assert(IVS_STIC_EVENT_MAX == 16u, \"the generator emits at most 16 frame events\");\n")
 string(APPEND out_c "static const ivs_stic_params ivs_stic_params_table[IVS_STIC_PROFILE_COUNT] = {\n${table_c}};\n")
 string(APPEND out_c "_Static_assert(sizeof ivs_stic_params_table / sizeof ivs_stic_params_table[0] == IVS_STIC_PROFILE_COUNT, \"one parameter row per profile\");\n")
+string(APPEND out_c "static const uint8_t ivs_stic_body_digest[IVS_STIC_PROFILE_COUNT][32] = {\n${digest_c}};\n")
 file(WRITE "${OUT}" "${out_c}")

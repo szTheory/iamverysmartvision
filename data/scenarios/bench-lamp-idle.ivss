@@ -1,0 +1,14 @@
+# Scenario bench-lamp-idle (plan 08-18, D-23, D-39): a benchmark workload, not a test of behaviour. The program is "Lamp Tone"
+# (fixtures/FX-demo-lamp-tone-1), entered through the project boot stub contract 2 with the zero graphics ROM and no EXEC image,
+# with no input line, run for 120 frames (7,168,320 ticks, about two seconds of guest time). It has no assert and no capture: its
+# only oracle is the self-recorded repeatability golden data/golden/bench-lamp-idle.digests (written by ivs-run --update-golden, tier
+# deterministic-repeatability), which tools/bench/bench.c compares with its own report before it reads a clock. The ordinary
+# steps of the gate run it in both presets like every scenario of data/expected/runner-scenarios.ids. A throughput figure printed
+# for it is never a claim.
+ivss 1
+id bench-lamp-idle
+profile intv-2609-ntsc-family-p1
+content exec boot-stub-2
+content grom zero-grom
+content cart lamp-tone.ivsc
+run-to 120 frames

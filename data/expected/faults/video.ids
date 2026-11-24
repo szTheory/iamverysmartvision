@@ -3,13 +3,13 @@
 # is caught by the test it is named for; the allowed prefixes cover every collateral failure of the suite.
 # VIDEO_STATE_DEPENDS_ON_BUFFER (core/src/stic/stic_frame.c): a frame completed with no video buffer does not advance the chain or the
 # count, so the machine state depends on the presence of a buffer.
-VIDEO_STATE_DEPENDS_ON_BUFFER video.noop.null-buffer video.noop.|video.buffers.|video.boundary.|video.stop.|video.fuzz. video.geom.profile-derives-159x96
+VIDEO_STATE_DEPENDS_ON_BUFFER video.noop.null-buffer video.noop.|video.buffers.|video.boundary.|video.stop.|video.fuzz.|video.mob.|video.collision.|video.judge.|video.delay. video.geom.profile-derives-159x96
 # VIDEO_CHAIN_FRAMING_STRUCT_HASH (core/src/stic/stic_frame.c): the chain step hashes an image of a struct (host byte order, padding)
 # instead of the framed big-endian header bytes.
 VIDEO_CHAIN_FRAMING_STRUCT_HASH video.chain.framing-oracle video.chain. video.geom.profile-derives-159x96
 # STIC_EVENT_ORDER_START_BEFORE_END (core/src/stic/stic_events.c): FRAME_START of the next frame (which clears the display decision) is
 # applied before FRAME_END is rendered, so a displayed frame is delivered with its displayed flag clear.
-STIC_EVENT_ORDER_START_BEFORE_END video.slot.displayed-flag-follows-latch video.slot.|video.frame.|video.fgbg.|video.cstack.|video.mode. video.geom.profile-derives-159x96
+STIC_EVENT_ORDER_START_BEFORE_END video.slot.displayed-flag-follows-latch video.slot.|video.frame.|video.fgbg.|video.cstack.|video.mode.|video.mob.|video.collision.|video.delay. video.geom.profile-derives-159x96
 # VIDEO_CAP_PLUS_ONE (core/src/machine/machine_bound.c, plan 06-09, D-15, A-08): the video capacity stage ignores video_slack_frames and
 # applies the Phase 4 + 1 formula, which a call that starts just below a frame event and ends on a unit that crosses the target exceeds
 # by one frame.
@@ -23,18 +23,26 @@ VIDEO_OUTBUF_PARTIAL_WRITE video.buffers.undersized-refused video.buffers. video
 VIDEO_FRAME_AT_CALL_END video.boundary.write-straddling video.boundary. video.geom.profile-derives-159x96
 # VIDEO_WRONG_CARD_MODE (core/src/stic/stic_cards.c, plan 06-10, VID-04, D-18): the mode sense is inverted, so a Foreground/Background frame is
 # decoded as Color Stack (every position not displayed until plan 06-11) and every card frame fails.
-VIDEO_WRONG_CARD_MODE video.fgbg.F-A1 video.fgbg.|video.frame.|video.card.|video.grom.|video.color.|video.probe.|video.judge.|video.cstack.|video.meta. video.geom.profile-derives-159x96
+VIDEO_WRONG_CARD_MODE video.fgbg.F-A1 video.fgbg.|video.frame.|video.card.|video.grom.|video.color.|video.probe.|video.judge.|video.cstack.|video.meta.|video.mob.|video.border.|video.delay.|video.hdelay.|video.vdelay. video.geom.profile-derives-159x96
 # VIDEO_CARD_BIT_ORDER_REVERSED (core/src/stic/stic_cards.c, plan 06-10): bit 0 of a graphics byte is the leftmost pixel instead of bit 7.
-VIDEO_CARD_BIT_ORDER_REVERSED video.card.bit-order video.fgbg.|video.card.|video.probe.|video.judge.|video.cstack. video.geom.profile-derives-159x96
+VIDEO_CARD_BIT_ORDER_REVERSED video.card.bit-order video.fgbg.|video.card.|video.probe.|video.judge.|video.cstack.|video.mob.|video.border.|video.hdelay.|video.vdelay. video.geom.profile-derives-159x96
 # VIDEO_GRAM_GROM_SELECT_SWAPPED (core/src/stic/stic_cards.c, plan 06-10): the sense of select bit 11 is inverted, so graphics RAM cards read the
 # (zero) graphics ROM and graphics ROM cards read graphics RAM.
-VIDEO_GRAM_GROM_SELECT_SWAPPED video.fgbg.F-A3 video.fgbg.|video.card.|video.grom.|video.probe.|video.judge.|video.cstack. video.geom.profile-derives-159x96
+VIDEO_GRAM_GROM_SELECT_SWAPPED video.fgbg.F-A3 video.fgbg.|video.card.|video.grom.|video.probe.|video.judge.|video.cstack.|video.mob.|video.border.|video.delay.|video.hdelay.|video.vdelay. video.geom.profile-derives-159x96
 # VIDEO_20TH_COLUMN_WIDTH (core/src/stic/stic_cards.c, plan 06-10): column 19 shows its 8th pixel (the 7-pixel cut-off is not applied), so the plane
 # has no sentinel and the published 159 columns shift nothing but the working plane differs.
-VIDEO_20TH_COLUMN_WIDTH video.card.last-column-clip video.fgbg.|video.card.|video.color.|video.judge.|video.cstack. video.geom.profile-derives-159x96
+VIDEO_20TH_COLUMN_WIDTH video.card.last-column-clip video.fgbg.|video.card.|video.color.|video.judge.|video.cstack.|video.border.|video.hdelay. video.geom.profile-derives-159x96
 # VIDEO_CSTACK_NO_ADVANCE (core/src/stic/stic_cards.c, plan 06-11): bit 13 of a Color Stack card never advances the color-stack pointer, so every card
 # is drawn over stack entry 0 and the frames with advance bits (F-B2, F-B3, the wrap and the restart tests) differ from their literals.
 VIDEO_CSTACK_NO_ADVANCE video.cstack.advance-before-draw video.cstack.|video.probe.|video.judge. video.geom.profile-derives-159x96
 # VIDEO_GEOMETRY_SKIP_SILENT (core/src/stic/stic_frame.c, Phase 6 review WR-03): a frame asked for under a geometry the card-row working buffer
 # cannot hold is skipped without setting video_overflow, so the frame index would advance with no frame and no INTERNAL stop.
 VIDEO_GEOMETRY_SKIP_SILENT video.buffers.unrenderable-geometry-overflows video.buffers. video.geom.profile-derives-159x96
+# MOB_PRIORITY_SWAP (core/src/stic/stic_mob.c, plan 08-04, VID-05, R41): where the visible pixels of two MOBs coincide the MOB with the HIGHER index is shown instead of the lower, so the overlap of two MOBs reads the other color; every frame of the family with an overlap (F-M3) fails.
+MOB_PRIORITY_SWAP video.mob.front-lower-index video.mob. video.geom.profile-derives-159x96
+# MOB_FLIP_SWAPPED (core/src/stic/stic_mob.c, plan 08-04, VID-05, R39): the X flip bit and the Y flip bit of the Y word are exchanged, so a MOB drawn mirrored left to right is turned upside down and the reverse; the frame of the three flipped MOBs (F-M2) fails.
+MOB_FLIP_SWAPPED video.mob.frame-mirror video.mob. video.geom.profile-derives-159x96
+# COLLISION_NOT_STICKY (core/src/stic/stic_frame.c, plan 08-05, VID-05, R44, D-06): the write-back at the end of a frame assigns the frame's collision bits to the registers instead of ORing them in, so a frame in which nothing overlaps clears every bit and the bits are not sticky; the frame sequence of the sticky test, the table read after a second frame and the guest that reads a register after a frame without overlap fail.
+COLLISION_NOT_STICKY video.collision.sticky-across-frames video.collision.|video.judge. video.geom.profile-derives-159x96
+# DELAY_DIRECTION (core/src/stic/stic_frame.c, plan 08-06, VID-05, R46, D-10): both delay registers shift the opposite way (the horizontal delay moves the picture left and the vertical delay up instead of right and down), so the cards and MOBs of the delay frames land at mirrored positions and the exposed area is on the right and below; the frames F-M5 and F-M6 and every delay test of the family fail. The fourth and last core fault of wave A (MOB_PRIORITY_SWAP, MOB_FLIP_SWAPPED, COLLISION_NOT_STICKY, DELAY_DIRECTION).
+DELAY_DIRECTION video.hdelay.shift-right-cards-and-mobs video.hdelay.|video.vdelay.|video.delay.|video.border.|video.judge. video.geom.profile-derives-159x96

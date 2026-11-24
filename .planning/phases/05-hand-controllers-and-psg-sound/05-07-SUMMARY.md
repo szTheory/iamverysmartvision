@@ -61,6 +61,7 @@ key-decisions:
 
 duration: about 4 h including nine gate runs
 completed: 2026-11-12
+requirements-completed: [AUD-01]  # backfilled by plan 08-20 from the plan requirements field; closure evidence is the phase VERIFICATION record, not this line
 ---
 
 # Phase 5 Plan 07: Noise, envelope and the DAC table as data Summary

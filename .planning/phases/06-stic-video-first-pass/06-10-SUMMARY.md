@@ -40,6 +40,7 @@ key-files:
 
 duration: about 2 hours elapsed (laptop load 17 to 38 during the runs)
 completed: 2026-11-12
+requirements-completed: [VID-04]  # backfilled by plan 08-20 from the plan requirements field; closure evidence is the phase VERIFICATION record, not this line
 ---
 
 # Phase 6 Plan 10: Foreground/Background card rendering Summary

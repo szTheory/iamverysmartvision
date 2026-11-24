@@ -55,6 +55,7 @@ key-decisions:
 
 duration: about 35 min of edits plus about a dozen gate runs (first commit 02:13, last 02:27)
 completed: 2026-11-12
+requirements-completed: [API-03, AUD-02]  # backfilled by plan 08-20 from the plan requirements field; closure evidence is the phase VERIFICATION record, not this line
 ---
 
 # Phase 5 Plan 02: behaviour-neutral ABI growth Summary
