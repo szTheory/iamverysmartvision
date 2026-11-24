@@ -1,6 +1,10 @@
 # Milestone v0.2.0 — context and upstream scope
 
-**Status:** frozen upstream artifact, 2026-11-24. Written before any v0.2.0
+**Status:** frozen upstream artifact, 2026-11-24. **This file always describes
+the CURRENT milestone.** The next milestone's ritual replaces it wholesale (a
+prior copy is archived as `.planning/milestones/<version>-CONTEXT.md` at that
+milestone's close), so `gsd-new-milestone` must never read it as a proposal for
+the milestone after this one. Written before any v0.2.0
 phase plan exists. Produced by the milestone ritual
 (`.planning/ops/MILESTONE-RITUAL.md`): a four-lens milestone-choice fan-out
 followed by a five-point upstream scoping fan-out, synthesized and auto-selected
