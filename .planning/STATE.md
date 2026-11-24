@@ -526,10 +526,22 @@ Refreshed by plan 08-21 from `.planning/phases/08-stic-completion-save-state-per
 
 ## Session Continuity
 
-Last session: 2026-11-24T05:10:00.000Z
-Stopped at: Phase 8 close-out complete — merged, released as `v0.1.0` pre-release; milestone lifecycle (audit, complete, cleanup) next
+Last session: 2026-11-24T05:35:00.000Z
+Stopped at: Milestone v0.1.0 complete, archived and released; `main` green at `599bc0b`; merged branches deleted; nothing in flight
 Resume file: None
+
+## Recorded Constraints for the Next Milestone
+
+These are binding on the next milestone, not suggestions. Each came from a recorded decision, a fired rule or an owner hard stop.
+
+1. **The gate is at its cost stop line — land the lever before adding any check.** The last-five hosted median `r` is **8.34**, above the 8.3 stop line (entry "2026-11-24 - milestone close-out" of `.planning/CI-EFFICIENCY.md`). **No new test id, control, fault or gate step may enter the gate until lever (3)** (fold `demo-lamp-tone-swap` and `demo-lamp-tone-shift` into repeat variants of one mutant) **and trims (a) to (d)** of the Phase 8 close entry have landed, and a hosted row has been recorded after them. Dropping a check, an oracle, a golden or a pinned-default test is not a lever.
+2. **Evidence durability first (audit W1).** 17 requirements (FND-01..07, CPU-01..05, MEM-01..05) have named faults that run in every gate but no lines in `data/expected/important-gates.ids`, so they lack registered "cannot pass vacuously" evidence. Pair this with the Phase 1 gate-hardening items (IN-01, IN-02, IN-04, IN-03, IN-05, the denylist status-2 read, the `--tree` grep-error control).
+3. **Self-referential step inventory (audit W2).** No gate step reads the requirement records, so a commit deleting a step and its inventory line shrinks coverage silently. Any new gate step added in the next milestone must be provable against something outside the inventory itself.
+4. **Owner hard stops, not performed:** D10 (47 hardware items) and D11 (owner-local real EXEC/GROM runs). No claim may exceed the `provisional` standing until they are performed; the release notes already say so.
+5. **Settings still not applied:** the branch ruleset (PR + `gate`, no force push, no deletion) and the tag ruleset (no update, no deletion, only from a green `main`) recommended in `.planning/AUTONOMY.md` section 1.
 
 ## Operator Next Steps
 
-- Start the next milestone with /gsd-new-milestone
+- Start the next milestone with `/gsd-new-milestone`; take its candidates from section D of the archived close record (`.planning/milestones/v0.1.0-phases/08-stic-completion-save-state-performance-baselines/08-MILESTONE-CLOSE.md`) and its constraints from the section above.
+- Land lever (3) and trims (a) to (d) before any new gate check enters.
+- `.planning/ci-runs.tsv` is the orchestrator's live hosted-run record; it is appended by `tools/ci-record.sh` and committed in a records pull request, never by an executor.

@@ -70,7 +70,7 @@ evidence apparatus around it.
 
 | Milestone | Phases | Plans | Gate steps | Controls | Faults | Tests expected | Median `r` |
 |-----------|--------|-------|-----------|----------|--------|----------------|------------|
-| v0.1.0 | 8 | 130 | 38 | 380 | 235 | 4,958 | 7.86 |
+| v0.1.0 | 8 | 130 | 38 | 380 | 235 | 4,958 | 7.86 at the close; 8.34 across the close-out window (stop line fired) |
 
 ### Recurring Failure Classes
 
@@ -86,6 +86,7 @@ evidence apparatus around it.
 
 From the milestone audit's tech-debt register and the integration pass:
 
+0. **The gate is at its cost stop line (binding, do this first).** The last-five hosted median `r` reached **8.34**, above the 8.3 stop line, in the close-out window. **No new test id, control, fault or gate step may enter the gate until lever (3)** — fold `demo-lamp-tone-swap` and `demo-lamp-tone-shift` into repeat variants of one mutant — **and trims (a) to (d)** of the Phase 8 close entry have landed, with a hosted row recorded after them. Dropping a check, an oracle, a golden or a pinned-default test is not a lever. Entry: "2026-11-24 - milestone close-out" in `.planning/CI-EFFICIENCY.md`.
 1. **Evidence durability (W1)**: 17 requirements (FND-01..07, CPU-01..05, MEM-01..05) have named faults that run but no lines in `data/expected/important-gates.ids`, so they lack registered "cannot pass vacuously" evidence. Best done as a focused quick task with the Phase 1 gate-hardening items.
 2. **Gate hardening (Phase 1, Phase 3)**: the `SRC-` token match, zero-document failures, per-step pass lines, manifest output anchoring, the memmap generator controls.
 3. **Bookkeeping**: seven `VALIDATION.md` files still `status: draft`; one stale composite-version comment; two bench golden commands missing from `docs/runner.md`.
