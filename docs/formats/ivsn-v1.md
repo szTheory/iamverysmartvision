@@ -449,3 +449,21 @@ A crash input is the snapshot of a machine that executed guest code, so it is ne
 The rule that the section Rights above leaves to a later plan is in place: the extension `ivsn` is in `tools/check/binary-ext.txt` and `*.ivsn` is in `.gitignore`, and a tracked file with that extension is refused by name in the `files` step (the control `files-unlisted-binary-ivsn`).
 The persistence policy is the host's: the core writes no file and chooses no name, slot or location, the runner has no snapshot file option in this phase (the options are deferred), and the format is exact-build and not archival.
 `docs/owner-images.md` states the consequence for a snapshot of a run that used owner-supplied images.
+
+## Correction note (appended after the Phase 8 review, WR-01): the bound of machine time in INV-5
+
+The section "Derived invariants" (clause 5) and the section "Where the code and the plan text differ" above state INV-5 as "`time_ticks` is at most 2^63", and the restore contract in `ivs/ivs_state.h` repeated it. The premise was wrong and is corrected here by addition, as the freeze of this document requires: no line above is edited.
+
+What a run call produces is bounded by its target; machine time is bounded by the unit boundary the call ends on. The run loop steps whole units while machine time is below the target (`machine_bound.c`), so a call whose target is `IVS_RUN_TARGET_MAX` (2^63) ends at the first unit boundary at or after 2^63, and machine time can end above 2^63 by up to one unit. `ivs_machine_snapshot_save` has no matching bound, so until this correction the library wrote a snapshot that its own restore refused: MALFORMED, reason 78 at the `time_ticks` row, as soon as machine time was above 2^63. That is a hole in the rule that a snapshot the library writes is a snapshot the library reads, and the stated reason for the bound — that it is the range of every machine, a run target being at most 2^63 — was false to begin with.
+
+The rule as built: machine time is at most `IVS_RUN_TARGET_MAX` plus one unit, where the unit is the longest one the CPU model can take, derived rather than guessed.
+
+- U = `psg.max_unit_ticks` = (12 + 3 x `bus.wait_limit_cpu_cycles`) x `ticks_per_cpu_cycle` = (12 + 3 x 35) x 4 = 468 master ticks on the registered profile.
+- The table generators refuse a profile whose `psg.max_unit_ticks` is not that product, and `psg.bounds.unit-ticks-max` with `psg.bounds.unit-ticks-real-bus` re-proves U through the CPU model; `machine_bound.c` reads the same U for the same overshoot.
+- The bound is therefore 2^63 + 468 = 9223372036854776276 on the registered profile, and the first refused value is 2^63 + U + 1. A machine time above the bound cannot come out of a run call, so a snapshot that holds one is not a state this library writes.
+
+No other rule moves. INV-2's event tick is overflow checked and INV-3's sample index is `time_ticks / sample_period_ticks + 1`, so both tolerate times above 2^63, and the reachability proof of `state.restore.invariants-hold-reachable` is unaffected: a looser bound cannot refuse a reachable state.
+
+The rows that pin it: `state.restore.refuse-content-validators` and `state.fuzz.semantic-lies` hold one refusal one above the bound, now derived from the profile's `psg.max_unit_ticks` (it was 2^63 + 1, which lies inside the new bound and is accepted); `state.restore.roundtrip-fixed-point` now also restores a snapshot at 2^63 - 1, makes one public call to `IVS_RUN_TARGET_MAX`, saves that state and restores it again, and the second restore is accepted and re-encodes to the same bytes. Against the previous bound that scenario fails with MALFORMED, reason 78 at the `time_ticks` row, which is the record that the case can fail.
+
+The same rule is restated in `docs/state/hidden-state-checklist.md` (clause 5 of the invariants there). That document is the sweep's oracle and is not edited; this note is the correction of record for the bound it states.

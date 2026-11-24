@@ -408,15 +408,24 @@ static void rs_build_validators(su_tab *t)
                     cpu_rows[i].c.row != NULL ? &cpu_rows[i].c : NULL);
     }
   }
-  /* the scalar rules: the phase and the clock range (INV-5) */
+  /* the scalar rules: the phase and the clock range (INV-5). The clock bound is what a run call can produce, IVS_RUN_TARGET_MAX plus the
+   * length of one unit (U = psg.max_unit_ticks: a run to 2^63 ends at the first unit boundary at or after it), so the first refused value is
+   * one above that bound, derived from the profile here rather than guessed (docs/formats/ivsn-v1.md, the appended correction note). */
   {
-    static const rs_mem phase0 = {"phase", 0u, 4u, 0u};
-    static const rs_mem phase2 = {"phase", 0u, 4u, 2u};
-    static const rs_mem time_hi = {"time_ticks", 0u, 8u, 0x8000000000000001ull};
-    static const rs_mem time_max = {"time_ticks", 0u, 8u, 0xFFFFFFFFFFFFFFFFull};
+    const ivs_psg_params *pp = ivs_psg_params_get(st_profile_index());
+    rs_mem phase0 = {"phase", 0u, 4u, 0u};
+    rs_mem phase2 = {"phase", 0u, 4u, 2u};
+    rs_mem time_hi = {"time_ticks", 0u, 8u, 0u};
+    rs_mem time_max = {"time_ticks", 0u, 8u, 0xFFFFFFFFFFFFFFFFull};
+    if (pp == NULL) {
+      ivs_test_diag("no PSG parameters for the registered profile");
+      t->bad = 1;
+      return;
+    }
+    time_hi.v = 0x8000000000000000ull + (uint64_t)pp->max_unit_ticks + 1u;
     rs_member_row(t, "phase 0 (OFF): a snapshot is never of a machine that is OFF", 78u, &g.phase, &phase0, NULL, NULL);
     rs_member_row(t, "phase 2", 78u, &g.phase, &phase2, NULL, NULL);
-    rs_member_row(t, "time_ticks 2^63 + 1", 78u, &g.time, &time_hi, NULL, NULL);
+    rs_member_row(t, "time_ticks one above the bound 2^63 + U + 1", 78u, &g.time, &time_hi, NULL, NULL);
     rs_member_row(t, "time_ticks 2^64 - 1", 78u, &g.time, &time_max, NULL, NULL);
   }
   /* the PSG validator (psg_state.c, psg.h): each bound at its first refused value */
@@ -1106,6 +1115,137 @@ static int rs_same_instance(const char *label, const ivs_ms_inst *a, const ivs_m
   return ok;
 }
 
+/* Puts the big-endian value v into an element of a STATE row of a snapshot buffer, at the position the digest field table gives (su_row_pos
+ * read as data). 1, or 0 with a diagnostic when the row does not exist. */
+static int rs_snap_put(uint8_t *snap, const char *row, uint32_t elem, uint32_t width, uint64_t v)
+{
+  uint32_t sec = 0u;
+  uint32_t off = 0u;
+  uint32_t cnt = 0u;
+  if (!su_row_pos(row, &sec, &off, &cnt)) {
+    ivs_test_diag("no STATE row '%s' in the field table", row);
+    return 0;
+  }
+  su_put(snap + off + elem * width, v, width);
+  return 1;
+}
+
+/* The top of the clock (WR-01 of the Phase 8 review): a snapshot restored at 2^63 - 1, ONE public run call to IVS_RUN_TARGET_MAX, which ends
+ * at the first unit boundary at or after 2^63, a save of that state and a restore of those bytes. The second restore must be ACCEPTED: a
+ * snapshot this library wrote is one it reads back, also at the top of the clock. INV-5's bound is what a run call can produce, IVS_RUN_TARGET_MAX
+ * plus one unit (U = psg.max_unit_ticks); when it was IVS_RUN_TARGET_MAX alone the second restore was refused MALFORMED, reason 78 at the
+ * time_ticks row, which is the defect this scenario locks in (it fails against that bound; the review widened the bound and this case proves
+ * the widening). The state at 2^63 - 1 is a real stepped state moved forward by whole frames, with the event cursor and the gate flags at the
+ * position 2^63 - 1 falls in, so it is a state the machine itself could hold; every value is derived from the profile's own tick tables. */
+static int rs_roundtrip_top_of_clock(void)
+{
+  const ivs_stic_params *sp = ivs_stic_params_get(st_profile_index());
+  const ivs_psg_params *pp = ivs_psg_params_get(st_profile_index());
+  ivs_ms_inst src;
+  ivs_ms_inst mid;
+  ivs_ms_inst end;
+  static uint8_t snap[IVS_SNAPSHOT_MAX_BYTES];
+  static uint8_t snap2[IVS_SNAPSHOT_MAX_BYTES];
+  size_t n1 = 0u;
+  size_t n2 = 0u;
+  size_t n3 = 0u;
+  const uint64_t t1 = ((uint64_t)1u << 63) - 1u;
+  uint64_t fi;
+  uint64_t rem;
+  uint64_t clock;
+  uint32_t ei;
+  uint32_t regs = 1u;
+  uint32_t gmem = 1u;
+  uint32_t consumed = 0u;
+  int ok = 1;
+  ST_CHECK(sp != NULL && pp != NULL && pp->sample_period_ticks != 0u);
+  ST_CHECK(su_boot_stepped(&src, SU_BOOT_UNITS, 0x5Au) && su_snapshot(src.m, snap, sizeof snap, &n1));
+  ivs_ms_free(&src);
+  /* The position of 2^63 - 1 on the timeline: the frame it falls in, the cursor at the first event above that offset (the next frame's
+   * first event when no event of this frame is above it), and the gate flags the replay of the events below the cursor gives. */
+  rem = t1 - (uint64_t)sp->frame_phase_ticks;
+  fi = rem / sp->frame_ticks;
+  rem %= sp->frame_ticks;
+  for (ei = 0u; ei < sp->event_count; ei++) {
+    if ((uint64_t)sp->event_tick[ei] > rem) {
+      break;
+    }
+  }
+  if (ei == sp->event_count) {
+    fi += 1u;
+    ei = 0u;
+  }
+  for (uint32_t e = 0u; e < ei; e++) {
+    switch (sp->event_kind[e]) {
+    case IVS_STIC_EV_FRAME_START:
+      regs = 1u;
+      gmem = 1u;
+      break;
+    case IVS_STIC_EV_REG_CLOSE:
+      regs = 0u;
+      break;
+    case IVS_STIC_EV_GMEM_CLOSE:
+      gmem = 0u;
+      break;
+    default:
+      break;
+    }
+  }
+  /* The rows the other invariants tie to machine time move with it: the frame cursor and the video count (INV-2, INV-6), the PSG sample
+   * index and the emitted audio count (INV-3), the gate flags (INV-2). */
+  ST_REQ(ok, rs_snap_put(snap, "time_ticks", 0u, 8u, t1));
+  ST_REQ(ok, rs_snap_put(snap, "stic.frame_index", 0u, 8u, fi));
+  ST_REQ(ok, rs_snap_put(snap, "stic.event_index", 0u, 4u, (uint64_t)ei));
+  ST_REQ(ok, rs_snap_put(snap, "obs.video.count", 0u, 8u, fi));
+  ST_REQ(ok, rs_snap_put(snap, "psg.next_sample", 0u, 8u, t1 / pp->sample_period_ticks + 1u));
+  ST_REQ(ok, rs_snap_put(snap, "obs.audio.emitted", 0u, 8u, t1 / pp->sample_period_ticks));
+  ST_REQ(ok, rs_snap_put(snap, "mem.gate_open", 0u, 1u, 1u));
+  ST_REQ(ok, rs_snap_put(snap, "mem.gate_open", 1u, 1u, regs));
+  ST_REQ(ok, rs_snap_put(snap, "mem.gate_open", 2u, 1u, gmem));
+  ST_REQ(ok, rs_snap_put(snap, "mem.gate_open", 3u, 1u, 0u));
+  su_reseal(snap, n1);
+  /* The first restore: a snapshot at 2^63 - 1 is inside the bound. Everything after it needs an instance that really holds that state; on a
+   * refused restore (a fault build of the writer, say) the case stops here instead of running a reset machine towards 2^63. */
+  ST_REQ(ok, su_boot_new(&mid, SU_IMG_ALL, 1, 0x33u));
+  if (ok) {
+    ST_REQ(ok, ivs_machine_snapshot_restore(mid.m, snap, n1, NULL) == IVS_OK);
+  }
+  if (!ok) {
+    ivs_test_diag("the snapshot at 2^63 - 1 was not accepted; the rest of the scenario needs that state");
+    ivs_ms_free(&mid);
+    return ok;
+  }
+  ST_REQ(ok, ((const struct ivs_machine *)mid.m)->time_ticks == t1);
+  if (!ok) {
+    /* the run below is only bounded when the clock really is at 2^63 - 1 */
+    ivs_ms_free(&mid);
+    return 0;
+  }
+  /* one run call to the last tick a host may ask for: it ends past 2^63 (at the first unit boundary at or after it) */
+  ST_REQ(ok, su_run_to(mid.m, IVS_RUN_TARGET_MAX, NULL, 0u, &consumed));
+  clock = ((const struct ivs_machine *)mid.m)->time_ticks;
+  ST_REQ(ok, clock > IVS_RUN_TARGET_MAX && clock <= IVS_RUN_TARGET_MAX + (uint64_t)pp->max_unit_ticks);
+  /* the save of that state and its restore: the second restore must be accepted, and it re-encodes to the same bytes */
+  ST_REQ(ok, su_snapshot(mid.m, snap2, sizeof snap2, &n2));
+  if (ok) {
+    ST_REQ(ok, su_boot_new(&end, SU_IMG_ALL, 1, 0x5Au));
+  }
+  if (!ok) {
+    ivs_ms_free(&mid);
+    return 0;
+  }
+  if (!(ivs_machine_snapshot_restore(end.m, snap2, n2, NULL) == IVS_OK)) {
+    ivs_test_diag("a snapshot saved at %llu (above 2^63) is refused by its own restore", (unsigned long long)clock);
+    ok = 0;
+  }
+  ST_REQ(ok, ((const struct ivs_machine *)end.m)->time_ticks == clock);
+  ST_REQ(ok, memcmp(end.storage, mid.storage, IVS_MACHINE_BYTES) == 0);
+  ST_REQ(ok, su_snapshot(end.m, snap, sizeof snap, &n3) && n3 == n2 && memcmp(snap, snap2, n2) == 0);
+  ivs_ms_free(&mid);
+  ivs_ms_free(&end);
+  return ok;
+}
+
 /* state.restore.roundtrip-fixed-point (D-14, D-16): at several cuts of the stand-in boot run, save, restore into a second instance of the
  * same images that is at another point of its run, and save again: the second snapshot is byte-identical to the first (snapshot, restore,
  * snapshot is a fixed point), the nine digests of the two instances are equal and so are their bytes, the report of a success is the report
@@ -1157,6 +1297,8 @@ static int rs_roundtrip_fixed_point(void)
     ivs_ms_free(&src);
     ivs_ms_free(&dst);
   }
+  /* and at the top of the clock, where a run call can end past 2^63 (WR-01 of the Phase 8 review) */
+  ST_REQ(ok, rs_roundtrip_top_of_clock());
   return ok ? IVS_TEST_PASS : IVS_TEST_FAIL;
 }
 

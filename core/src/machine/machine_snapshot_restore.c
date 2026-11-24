@@ -45,7 +45,18 @@
 #include "ivs/ivs.h"
 #include "machine/machine.h"
 
-#define IVS_SNAP_TIME_MAX IVS_RUN_TARGET_MAX /* 2^63: the clock range of every machine (a run target is at most this) */
+/* INV-5's bound on machine time. The bound is what a run call can produce, not the run target: the run loop steps whole units while machine
+ * time is below the target (machine_bound.c), so a call whose target is IVS_RUN_TARGET_MAX ends at the first unit boundary at or after 2^63
+ * and machine time can pass 2^63 by up to one unit. The slack is therefore one unit, derived and not guessed: U = psg.max_unit_ticks, the
+ * proven maximum ticks of one CPU unit, (12 + 3 x bus.wait_limit_cpu_cycles) x ticks_per_cpu_cycle (468 on the registered profile), which
+ * the table generators refuse a profile without and psg.bounds.unit-ticks-max re-proves through the CPU model; machine_bound.c uses the
+ * same U for the same overshoot. A clock value above IVS_RUN_TARGET_MAX + U cannot come out of a run call, so a snapshot that holds one is
+ * not a state this library writes. */
+static uint64_t ivs_snap_time_max(const ivs_psg_params *pp)
+{
+  return IVS_RUN_TARGET_MAX + (uint64_t)pp->max_unit_ticks;
+}
+
 #define IVS_SNAP_NO_OFFSET 0xFFFFFFFFu
 
 /* ---- the probe regions: which instance bytes the probe holds, and where ----
@@ -435,9 +446,10 @@ static uint32_t ivs_snap_inv5_phase(const ivs_snap_probe *p)
   return (uint32_t)(p->phase == IVS_PHASE_POWERED);
 }
 
-static uint32_t ivs_snap_inv5_time(const ivs_snap_probe *p)
+/* INV-5's clock clause: at most the largest clock a run call can leave behind (see ivs_snap_time_max above). */
+static uint32_t ivs_snap_inv5_time(const ivs_snap_probe *p, const ivs_psg_params *pp)
 {
-  return (uint32_t)(p->time_ticks <= IVS_SNAP_TIME_MAX);
+  return (uint32_t)(pp != NULL && p->time_ticks <= ivs_snap_time_max(pp));
 }
 
 /* The tick of event ei of frame fi, phase + fi x F + the event's tick, into *out; 0 when the sum does not fit 64 bits. */
@@ -570,7 +582,7 @@ uint32_t ivs_snapshot_invariants(const ivs_snap_probe *p, uint32_t profile_index
   if (ivs_snap_inv4(p, profile_index, pd->input_controllers) == 0u) {
     return 4u;
   }
-  if (ivs_snap_inv5_phase(p) == 0u || ivs_snap_inv5_time(p) == 0u) {
+  if (ivs_snap_inv5_phase(p) == 0u || ivs_snap_inv5_time(p, pp) == 0u) {
     return 5u;
   }
   if (ivs_snap_inv6(p) == 0u) {
@@ -610,7 +622,7 @@ static ivs_status ivs_snap_check_probe(struct ivs_machine *im, const ivs_snap_pr
   if (ivs_snap_inv5_phase(pr) == 0u) {
     return ivs_snap_refuse(r, IVS_E_MALFORMED, IVS_REASON_SNAP_FIELD_RANGE, loc[IVS_SNAP_R_PHASE].off, loc[IVS_SNAP_R_PHASE].section, 0u);
   }
-  if (ivs_snap_inv5_time(pr) == 0u) {
+  if (ivs_snap_inv5_time(pr, pp) == 0u) {
     return ivs_snap_refuse(r, IVS_E_MALFORMED, IVS_REASON_SNAP_FIELD_RANGE, loc[IVS_SNAP_R_TIME].off, loc[IVS_SNAP_R_TIME].section, 0u);
   }
   if (ivs_snap_inv1_psg(pr, pp) == 0u) {

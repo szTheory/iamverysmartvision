@@ -185,7 +185,8 @@ IVS_API ivs_status ivs_snapshot_describe(const uint8_t *buf, uint64_t len, ivs_s
  *   MALFORMED              a section length that differs from the derived one (IVS_REASON_SNAP_SECTION_LENGTH), then a row count that
  *                          differs from the table (IVS_REASON_SNAP_ROW_COUNT), then a value out of range, a section frame that is not
  *                          its frame, or a CPU, STIC or PSG state its validator refuses, a phase other than POWERED or a machine time
- *                          above 2 to the power 63 (IVS_REASON_SNAP_FIELD_RANGE), then a derived invariant that does not hold
+ *                          above the largest one a run call can leave behind, 2 to the power 63 plus the length of one CPU unit
+ *                          (IVS_REASON_SNAP_FIELD_RANGE), then a derived invariant that does not hold
  *                          (IVS_REASON_SNAP_INVARIANT).
  * There is no BAD_STATE: restore is allowed in every phase. The digest fields of the header (the composite and the seven section digests)
  * are informational and not checked, and the trailer is a checksum, never a proof of who wrote the snapshot: a snapshot whose trailer was

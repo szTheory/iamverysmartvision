@@ -1554,7 +1554,16 @@ static void fz_build_semantic(su_tab *t)
     fz_mem st = {"cpu.status", 0u, 1u, 0x01u};
     fz_mem ph0 = {"phase", 0u, 4u, 0u};
     fz_mem ph2 = {"phase", 0u, 4u, 2u};
-    fz_mem thi = {"time_ticks", 0u, 8u, 0x8000000000000001ull};
+    /* One above the clock bound of INV-5: IVS_RUN_TARGET_MAX plus one unit (U = psg.max_unit_ticks), derived from the profile, not 2^63 + 1,
+     * which a run call can now leave behind (docs/formats/ivsn-v1.md, the appended correction note). */
+    fz_mem thi = {"time_ticks", 0u, 8u, 0u};
+    const ivs_psg_params *bpp = ivs_psg_params_get(st_profile_index());
+    if (bpp == NULL) {
+      ivs_test_diag("no PSG parameters for the registered profile");
+      t->bad = 1;
+      return;
+    }
+    thi.v = 0x8000000000000000ull + (uint64_t)bpp->max_unit_ticks + 1u;
     fz_mem tout = {"psg.tone_out", 0u, 4u, 2u};
     fz_mem lvl = {"psg.env_level", 0u, 4u, 16u};
     fz_mem cs = {"stic.cs_ptr", 0u, 4u, 4u};
@@ -1565,7 +1574,7 @@ static void fz_build_semantic(su_tab *t)
     fz_member_row(t, 78u, "cpu.r", "INV-1 a status bit outside the mask", &st, NULL, NULL);
     fz_member_row(t, 78u, "phase", "INV-5 a phase other than POWERED (0)", &ph0, NULL, NULL);
     fz_member_row(t, 78u, "phase", "INV-5 a phase other than POWERED (2)", &ph2, NULL, NULL);
-    fz_member_row(t, 78u, "time_ticks", "INV-5 machine time above 2^63", &thi, NULL, NULL);
+    fz_member_row(t, 78u, "time_ticks", "INV-5 machine time one above the bound 2^63 + U", &thi, NULL, NULL);
     fz_member_row(t, 78u, "psg.next_sample", "INV-1 a PSG tone output flag of 2", &tout, NULL, NULL);
     fz_member_row(t, 78u, "psg.next_sample", "INV-1 an envelope level of 16", &lvl, NULL, NULL);
     fz_member_row(t, 78u, "stic.frame_index", "INV-1 the color stack pointer 4", &cs, NULL, NULL);
