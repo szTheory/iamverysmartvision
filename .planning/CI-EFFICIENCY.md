@@ -1653,3 +1653,11 @@ Two rows recorded with `tools/ci-record.sh` for the v0.2.0 opening records PR (#
 **Actions taken: none.** No cache, concurrency, path filter, matrix or artifact change is proposed. The pre-committed lever order stands unchanged and is Phase 9 wave A1's work: lever (3), then trims (a), (c), (d), with trim (b) declined by measurement.
 
 **One correction to the settings record.** `main` **is** protected: legacy branch protection with required status check `gate`, admins enforced, no force push. The v0.1.0 close recorded "no ruleset applied", which is true of *rulesets* but understates the protection that exists. The ruleset migration and the tag ruleset remain open, and Phase 9 owns them.
+
+## 2026-11-24 — the records merge push, and the row-recording convention
+
+One row: `45414715588`, `push`, head `aa96e9a` (merge of #13), `build_s` 45, `gate_s` 108, `cpu_s` 339, `r` **7.533**.
+
+The last five `r` values are now 7.327, 7.826, 7.417, 7.696, 7.533, so the median is **7.533** — 0.27 under the 7.8 budget and 0.77 under the 8.3 stop line.
+
+**Convention, recorded so the gap is never silent.** A records pull request that only appends hosted rows produces one more hosted run on its own merge, so a strictly complete log is a moving target. The rule from here: **every hosted run is recorded**, and the one unrecorded row at any moment is the merge push of the records PR that recorded the previous ones — it is recorded at the next phase boundary or checkpoint, which is exactly where the cost rule reads the window. The count `ci-runs=` in the gate summary is the check that no row was lost.
