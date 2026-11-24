@@ -1563,3 +1563,23 @@ The last five successful hosted rows of `.planning/ci-runs.tsv`, recomputed from
 - Open for the next milestone (not a lever): the release workflow has not run as a hosted job, so its own cost entry (`.planning/AUTONOMY.md` section 5, last line) waits for the first tag; the first hosted rows after the merge are the arbiter of the reading above.
 
 phase8-close: no-lever
+
+## 2026-11-24 - Phase 8 close-out stage 2: the fix run, the merge push run and the release workflow
+
+Three hosted runs, all `success`. The first two are rows of `.planning/ci-runs.tsv` (recorded with `tools/ci-record.sh`); the third is the tag-triggered release workflow, which is not a gate row and is not appended to that file.
+
+| Run | event | head | `build_s` | `gate_s` | `cpu_s` | `r` | wall (created to updated) |
+|-----|-------|------|-----------|----------|---------|-----|---------------------------|
+| 45327854314 | `pull_request` | 4a9167a (final head: review fixes + independent verification) | 67 | 175 | 562 | 8.39 | 185 s |
+| 45328318716 | `push` | 3fe5373 (the merge commit, the artifact commit) | 46 | 69 | 356 | 7.74 | 132 s |
+| 45328905701 | `push` on tag `v0.1.0` (release workflow) | 3fe5373 | - | - | - | - | 134 s |
+
+**Reading.** The last five `r` values of the file are now 7.72, 7.80, 7.86, 8.29 and 8.39, so the median is **7.86**: 0.06 above the budget 7.8 and 0.44 under the stop-rule line 8.3. The stop rule (a last-five median above 8.3 creates a lever plan) does not fire, so no lever plan is created and no test, control, fault or golden is dropped.
+
+The single 8.39 row is runner speed, not code growth: its `build_s` is 67 against 45 to 52 in the four rows before it and its `gate_s` is 175 against 113 to 134, while the work added between the previous head `407d668` and this one is three review fixes plus one `.planning` document (the gate summary token string is identical, `steps=38/38 controls=380/380 faults=235/235 tests-expected=4958`). The push row on the merge commit, same tree, reads 7.74 at `build_s` 46. One window of five rows cannot separate code from runner speed, which is why the rule reads the median.
+
+**The release workflow.** One job: the same SHA-pinned checkout, `sh tools/release.sh --publish` (a gate re-run on the tag commit, the two archives, `SHA256SUMS`, and the installed consumer built against the very archive it ships), then the draft pre-release. 134 s wall for one release, and it runs once per tag, not per pull request, so it adds nothing to the PR critical path. Its measured cost is in the same class as a gate run, which is the design: the released commit is proven by re-running the gate on the tag rather than by trusting an earlier run.
+
+**Actions taken: none.** No cache, concurrency, path-filter, matrix or artifact change is proposed: the two PR-path rows bracket the budget from both sides (7.74 and 8.39) and the median sits 0.44 under the line. The pre-committed trims named in the phase8-close entry (the four `ivs-run` launches of `runner-process.roundtrip.refuse-range` on the dev preset, the `runner.exec.roundtrip-cut-cap` dev launch, the nine digests of every 8th refusal, the second value of the unsealed byte flips, then the point sets of `state.fuzz.describe-heap` and `state.fuzz.second-attempt-identical`) stay queued and unapplied; together they are about 1.1 local cpu-s, too little to move a median by more than the spread of one row. Nothing here weakens evidence.
+
+**Owner/next-milestone items unchanged.** The branch ruleset and the tag ruleset recommended in `.planning/AUTONOMY.md` section 1 are still **not applied** (the close read returned no ruleset). Applying them is a settings action the orchestrator may take; it is recorded as "not applied" in the close record and in check P7 rather than silently skipped.

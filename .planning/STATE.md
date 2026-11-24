@@ -3,18 +3,18 @@ gsd_state_version: "1.0"
 current_phase: 8
 current_phase_name: STIC Completion, Save State and Performance Baselines
 current_plan: 21
-status: verifying
-stopped_at: Completed 08-21-PLAN.md
-last_updated: "2026-11-15T16:33:00.000Z"
-last_activity: 2026-11-15
-last_activity_desc: Phase 8 plans complete (plan 08-21, stage 1 of REL-01); the release flow is paused by the owner's decision after Phase 8 (relayed by the orchestrator)
-state_head: 8501f00a6e3c8f4ca16eb5968df1c506c3fc131a
+status: complete
+stopped_at: Phase 8 closed; v0.1.0 published as a pre-release; milestone lifecycle (audit, complete, cleanup) next
+last_updated: "2026-11-24T05:10:00.000Z"
+last_activity: 2026-11-24
+last_activity_desc: Phase 8 close-out driven to the end - review fixes, independent verification, pull request 7 merged as 3fe5373, REL-01 stage 2 recorded, v0.1.0 published as a pre-release
+state_head: 3fe5373f7f5d28501319bf3359d41eb1d77e5a27
 progress:
   total_phases: 8
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 130
   completed_plans: 130
-  percent: 88
+  percent: 100
 ---
 
 # Project State
@@ -28,13 +28,21 @@ See: .planning/PROJECT.md (updated 2026-11-09)
 
 ## Current Position
 
-Phase: 8 (STIC Completion, Save State and Performance Baselines) — ALL 21 PLANS COMPLETE; verification and stage 2 of REL-01 pending
+Phase: 8 (STIC Completion, Save State and Performance Baselines) — COMPLETE; all 21 plans executed, reviewed, security-audited, independently verified and merged
 Current Plan: 21
 Total Plans in Phase: 21
-Status: Plans complete; REL-01 is recorded at stage 1 only (stage 2 is the orchestrator's, after the merge); the release flow is not started, paused by the owner's decision after Phase 8 (relayed by the orchestrator)
-Last activity: 2026-11-15 — plan 08-21 complete (the milestone close record stage 1, the verification record, the cost close `phase8-close: no-lever`)
+Status: Phase 8 complete and merged; REL-01 stage 2 recorded; v0.1.0 published as a pre-release. The milestone lifecycle (audit, complete, cleanup) is the next step.
+Last activity: 2026-11-24 — close-out: three review findings fixed (`6e12c1e`, `88bbfb7`, `befd38a`), independent verification appended (`4a9167a`), pull request 7 squashed as `3fe5373`, push run `45328318716` green, `v0.1.0` tagged on the artifact commit and published after P1 to P8 held
 
-Progress: [█████████░] 88%
+Progress: [██████████] 100%
+
+## Releases
+
+| Version | Date | Commit | Assets | Notes |
+|---------|------|--------|--------|-------|
+| `v0.1.0` (pre-release) | 2026-11-24T05:02:08Z | `3fe5373` (the Phase 8 merge commit, the artifact commit) | `ivs-v0.1.0-source.tar.gz` (5,295,098 B), `ivs-v0.1.0-install-linux-x86_64.tar.gz` (83,468 B), `SHA256SUMS` (196 B) | Source-only; claims provisional and nothing measured; D10 and D11 not performed. Created as a draft by the tag-triggered workflow (run `45328905701`, `success`), read with `gh release view --json`, both archives verified against `SHA256SUMS` (`shasum -a 256 -c`, both OK), then published. No EXEC, GROM, ROM, manual or overlay of any kind. |
+
+The release is a **pre-release**: the first 0.x release, published through the delegated flow (D9, D29). Deleting a published release remains an owner-only hard stop.
 
 ## Performance Metrics
 
@@ -491,7 +499,7 @@ Open questions that remain: unusual cartridge memory maps and further import for
 Concerns:
 - 8 phases exceeds `standard` granularity guidance (4-6); justified by five high-uncertainty subsystems (PIT-18). Revisit at milestone discussion.
 - No tier-1 AY-3-8914 datasheet found; STIC timing constants disputed (C1-C4); controller matrix from one LOW source (C16).
-- The release flow after Phase 8 (the merge, stage 2 of REL-01, the milestone audit and completion, the tag, the draft and its publication, the cleanup) is not started: the owner paused it after Phase 8 (relayed by the orchestrator). No tag, draft or release exists; `git.create_tag` still reads `true` in the working-tree copy of `.planning/config.json` (D-42: an orchestrator-only change).
+- The release flow after Phase 8 is **done as far as the release itself**: pull request 7 merged as `3fe5373`, REL-01 stage 2 recorded, `v0.1.0` tagged on the artifact commit and published as a pre-release after P1 to P8 held. `git.create_tag` was set to `false` in its own commit (`6f800cc`) before the milestone tool was used. What remains of the milestone is the lifecycle (audit, complete, cleanup) and, as settings actions, the branch and tag rulesets recommended in `.planning/AUTONOMY.md` section 1, which are still **not applied**.
 
 ## Deferred Items
 
@@ -512,12 +520,14 @@ Refreshed by plan 08-21 from `.planning/phases/08-stic-completion-save-state-per
 | State | the applied-event count has no public getter; two pinned acceptances (a STIC register word with a bit outside its write mask, machine time not tied to a unit boundary); a non-default witness for `stic.late_grants` | Open (`08-ACCEPTED-DEBT.md` section 6) | Phase 8 | Next milestone (an API addition and a designed program) |
 | Hygiene | an internal comment in `core/src/machine/machine_digest.c` that still names composite version 2 | Open, cosmetic (`08-ACCEPTED-DEBT.md` section 5) | Phase 8 | The next commit that touches the file |
 | Owner items | D10 physical measurement (44 hardware items), D11 owner-local real EXEC and GROM runs, a history rewrite veto, name clearance, the immutable-release setting | Owner hard stops or gates, none performed; no claim above provisional | Phases 1 to 8 | Owner (section K of the close record) |
-| Release | the flow after Phase 8: the merge, stage 2 of REL-01, the `git.create_tag` change, the milestone audit, the completion, the tag, the draft and its publication, the cleanup | Not started: paused by the owner's decision after Phase 8 (relayed by the orchestrator) | Phase 8 | When the owner resumes |
+| Release | the flow after Phase 8: the merge, stage 2 of REL-01, the `git.create_tag` change, the tag, the draft and its publication | **Done**: merged as `3fe5373`, REL-01 complete, `create_tag` false, `v0.1.0` published as a pre-release | Phase 8 | Closed |
+| Milestone lifecycle | the milestone audit, the milestone completion and the cleanup of Phase 8 | Next: the lifecycle sequence after the records pull request | Phase 8 | Now |
+| Settings | the branch ruleset (PR + `gate`, no force push, no deletion) and the tag ruleset (no update, no deletion, from a green `main`) recommended in `.planning/AUTONOMY.md` section 1 | **Not applied** (the close read returned no ruleset) | Phase 4 / Phase 8 | Orchestrator, at the next repository-settings action |
 
 **Milestone close record:** `.planning/phases/08-stic-completion-save-state-performance-baselines/08-MILESTONE-CLOSE.md` (stage 1, sections A to K; every placeholder for a post-merge fact is filled by the records pull request after the merge) and `08-VERIFICATION.md` in the same directory. If `gsd-complete-milestone` archives the phase directories, both move under `.planning/milestones/`; this line is the pointer that does not move, and it must be updated then.
 
 ## Session Continuity
 
-Last session: 2026-11-15T16:33:00.000Z
-Stopped at: Completed 08-21-PLAN.md
+Last session: 2026-11-24T05:10:00.000Z
+Stopped at: Phase 8 close-out complete — merged, released as `v0.1.0` pre-release; milestone lifecycle (audit, complete, cleanup) next
 Resume file: None

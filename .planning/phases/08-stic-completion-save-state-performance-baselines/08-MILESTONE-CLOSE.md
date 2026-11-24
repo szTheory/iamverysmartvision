@@ -6,7 +6,7 @@
 
 **What the placeholder means.** The literal placeholder (the word stage2 inside angle brackets) marks every fact that exists only after the merge of the Phase 8 pull request: the Phase 8 merge commit, the push run on it, the open pull request and issue counts, the ruleset read, and the release decision. Those are filled by the orchestrator's `gsd/records-m1-close` pull request after the merge (D-28, `.planning/ops/RELEASE-OPS.md`, items b and h). An executor writes none of them. REL-01 stays Pending in `.planning/REQUIREMENTS.md` until then. This explanatory text never writes the literal itself, so that the check of item h of `.planning/ops/RELEASE-OPS.md`, a grep for it, finds only real placeholders. [nc]
 
-**Release status at the time of writing: not started, paused by the owner's decision after Phase 8.** This statement is relayed to the executor by the orchestrator, which reports the owner's decision to run `/gsd-pause-work` after Phase 8 instead of continuing into the milestone audit, the milestone completion, the cleanup and the first release; the executor cannot check it independently. Consequently no tag, no draft and no release exists, no push or `gh` call was made by this plan, and nothing in this record says that anything was published. [nc]
+**Release status at stage 1 (history): not started, paused by the owner's decision after Phase 8.** This statement was relayed to the executor by the orchestrator, which reported the owner's decision to run `/gsd-pause-work` after Phase 8 instead of continuing into the milestone audit, the milestone completion, the cleanup and the first release; the executor could not check it independently. It is kept as the stage 1 record. [nc] **Current status: PUBLISHED** — the owner resumed the flow and asked for the close-out to be driven to the end of the milestone; sections B, C, I, K and the P table carry the stage 2 facts. [nc]
 
 **Labels.** Every figure is labelled local laptop, container (Ubuntu 24.04, emulated amd64) or hosted, and the three are never mixed. Every sentence that is not a quote of a gate line and that states a result carries a claim tag (`[claim:CL-NNNN]`) or `[nc]` (not a claim); the record is not scanned by the gate, so this was checked by reading. No sentence here is stronger than provisional: 27 of 28 claims are provisional, the one established claim is CL-0002, and no claim is at the measured-hardware tier. [nc]
 
@@ -28,7 +28,7 @@
 
 - Milestone label: the first milestone, Phases 1 to 8. It is a GSD planning label, not a software version and never a git tag (D-30, D-31).
 - Software version: 0.1.0, from the three version macros of `core/include/ivs/ivs.h`; the installed package reports the same version (D-30).
-- Artifact commit: `<stage2>` (the Phase 8 merge commit on `main`; a tag, when one is made, goes on that commit and not on a records commit, D-29).
+- Artifact commit: `3fe5373f7f5d28501319bf3359d41eb1d77e5a27` (`3fe5373`, the Phase 8 merge commit on `main`, squashed from pull request 7; the tag `v0.1.0` is on this commit and not on a records commit, D-29).
 - The commit line above is the head the script ran on: `407d668`, the head of plan 08-20 (every plan through 08-20, nothing of plan 08-21). Plan 08-21 changes only files under `.planning/` (its `files_modified` list), so the seven tree identities above are the identities of the final tree of this plan; the SUMMARY of plan 08-21 records the re-check made after its last commit.
 - The line "dirty" lists the three tracked files that differ from the head by design, named at the top of this record.
 
@@ -76,20 +76,40 @@ The median of the five `r` values is 7.80 against the budget 7.8 and the revisit
 
 **The push run on the merge commit (stage 2).** Exists only after the merge; the orchestrator records it with `tools/ci-record.sh` as an `event=push` row and fills the lines below. [nc]
 
-- push run id: `<stage2>`
-- head sha of that run (it must equal the artifact commit of section A): `<stage2>`
-- event `push` and conclusion: `<stage2>`
-- the row appended to `.planning/ci-runs.tsv` for the push event, and its `r`: `<stage2>`
+- push run id: `45328318716`
+- head sha of that run (it must equal the artifact commit of section A): `3fe5373f7f5d28501319bf3359d41eb1d77e5a27` (equal)
+- event `push` and conclusion: `push`, `success`
+- the row appended to `.planning/ci-runs.tsv` for the push event, and its `r`: `2026-11-24 45328318716 3fe5373f7f5d28501319bf3359d41eb1d77e5a27 push success 3 5 46 69 115 132 4 356`, `r = 356 / 46 = 7.74`
+- gates on the artifact tree (stage 2). The container gate ran on the tag `v0.1.0` in a detached worktree of the artifact commit `3fe5373` (Ubuntu 24.04, gcc 13.3.0, emulated amd64): 0 `-- FAIL` lines, and:
+
+```
+gate-time total=315
+gate: PASS steps=38/38 controls=380/380 api-calls=19 api-statuses=15 api-rows=61 pinned-defines=120 cc=GNU c-presets=2 fault-runs=235 core-imports=5 purity-selftest=7/7 ctest-runs=2 ci-runs=58 ci-uses=2 ci-workflows=2 ci-summary-selftest=11/11 claims=28 provisional=27 cp1610-rows=74 patterns=1024 unclaimed=0 ambiguous=0 coincidences=1 agree=71 resolved=3 vectors=412 source=291 policy=121 rows-pending=0 policies-pending=0 bus-figure-pages=35 blind-files=12 second-read=12/12 scanned=665 waived=0 discrepancies=110 pending-resolvers=20 open=101 d10-items=47 faults=235/235 tracked=2492 binaries-listed=0 terms=9 doc-files=59 profile-keys=154 goldens=29 reports=32 host-dependent=3 mode=tree hygiene-files=2492 history-commits=1 gates=90 lines=306 input-rows=31 input-policies=11 input-profile-fields=31 files=2492 listings=7 listing-words=1386 manifests=11 effective-yes=8 effective-no=3 literal-rows=80 views=2 dump-lines=160 prefix-files=11 archive=sha256 public-symbols=19 defined=141 hdr-alone=10/10 consumer-lines=164 cxx-link=ok pkg-selftest=19/19 records=154 fields=154 unknown-fields=47 psg-rules=21 psg-vectors=120 psg-policies=12 release-selftest=11/11 runner-files=16 cases=8 sources=12 refs-verified=0/4 state-rows=88 state-cuts=18 tests-expected=4958 tests-executed=4954 tests-skipped=4 tests-missing=0 docs=60 claim-refs=26 stic-rules=67 stic-rows=64 video-frames=26 video-hash-ties=18 video-frame-pairs=9 tags=10 tiers=8
+```
+
+  `refs-verified=0/4` is the worktree having no remotes; every other token equals the local lines below.
+
+- `sh tools/gate.sh` and `dash tools/gate.sh` on the records branch (the artifact tree plus the `.planning/` text of this records commit and the one `git.create_tag` key), verbatim:
+
+```
+sh:   gate-cpu user=136.12 sys=111.65 / gate-time total=75
+dash: gate-cpu user=138.85 sys=123.61 / gate-time total=84
+gate: PASS steps=38/38 controls=380/380 api-calls=19 api-statuses=15 api-rows=61 pinned-defines=120 cc=AppleClang c-presets=2 fault-runs=235 core-imports=7 purity-selftest=7/7 ctest-runs=2 ci-runs=66 ci-uses=2 ci-workflows=2 ci-summary-selftest=11/11 claims=28 provisional=27 cp1610-rows=74 patterns=1024 unclaimed=0 ambiguous=0 coincidences=1 agree=71 resolved=3 vectors=412 source=291 policy=121 rows-pending=0 policies-pending=0 bus-figure-pages=35 blind-files=12 second-read=12/12 scanned=665 waived=0 discrepancies=110 pending-resolvers=20 open=101 d10-items=47 faults=235/235 tracked=2492 binaries-listed=0 terms=9 doc-files=59 profile-keys=154 goldens=29 reports=32 host-dependent=3 mode=tree hygiene-files=2492 history-commits=1 gates=90 lines=306 input-rows=31 input-policies=11 input-profile-fields=31 files=2492 listings=7 listing-words=1386 manifests=11 effective-yes=8 effective-no=3 literal-rows=80 views=2 dump-lines=160 prefix-files=11 archive=members public-symbols=19 defined=141 hdr-alone=10/10 consumer-lines=164 cxx-link=ok pkg-selftest=19/19 records=154 fields=154 unknown-fields=47 psg-rules=21 psg-vectors=120 psg-policies=12 release-selftest=11/11 runner-files=16 cases=8 sources=12 refs-verified=3/4 state-rows=88 state-cuts=18 tests-expected=4958 tests-executed=4954 tests-skipped=4 tests-missing=0 docs=60 claim-refs=26 stic-rules=67 stic-rows=64 video-frames=26 video-hash-ties=18 video-frame-pairs=9 tags=10 tiers=8
+```
+
+  (the two runs print the same summary line, token for token; the `ci-runs` token counts 66 rows because this records commit adds the two stage-2 rows).
+- the final `pull_request` row of the phase, recorded after the review fixes: run `45327854314`, head `4a9167a`, `build_s` 67, `gate_s` 175, `cpu_s` 562, `r = 8.39`. The last five `r` values of the file are now 7.72, 7.80, 7.86, 8.29 and 8.39, so the median is **7.86**: above the budget 7.8 and 0.44 under the stop-rule line 8.3, so no lever plan is required (entry "Phase 8 close-out stage 2" of `.planning/CI-EFFICIENCY.md`).
 - cost close of Phase 8: the line `phase8-close: no-lever` of the entry "Phase 8 close-out (plan 08-21)" in `.planning/CI-EFFICIENCY.md` (median `r` 7.80 of the last five hosted pull request rows against the budget 7.8 and the line 8.3)
 
 ## C. Open pull requests and issues
 
 Everything that is read from GitHub is a stage 2 fact: it is read once, after the merge, by the orchestrator (the API rate limit is shared by every agent and an executor never calls `gh`). [nc]
 
-- open pull requests, count and each with its label and disposition: `<stage2>`
-- open issues, count and each with its label and disposition: `<stage2>`
-- the repository ruleset read (`gh api` rulesets, one read at the close, never polled): ids and enforcement, or "not applied": `<stage2>`
-- the releases list (expected: none before the first release): `<stage2>`
+- open pull requests, count and each with its label and disposition: **0** open; pull request 7 was merged (squash, `3fe5373`) and its head branch deleted. Nothing needed triage.
+- open issues, count and each with its label and disposition: **0** open. Nothing needed triage.
+- the repository ruleset read (`gh api` rulesets, one read at the close, never polled): ids and enforcement, or "not applied": **not applied** — the read returned no ruleset, so neither the branch ruleset of `.planning/AUTONOMY.md` section 1 nor a tag ruleset exists. Recorded as "not applied" per item (c) of `.planning/ops/RELEASE-OPS.md`.
+- the releases list (expected: none before the first release): none before the tag; **one now**, `v0.1.0`, a pre-release published 2026-11-24T05:02:08Z with three assets (source archive, install archive, `SHA256SUMS`). No earlier release exists.
+- the GitHub immutable-release setting (H8-6), read once: `{"enabled":false,"enforced_by_owner":false}` — not enabled, so a published release and its tag remain editable, which is why the draft-first flow was used.
 
 **What was known before the merge (not a fresh read).** The Phase 8 discussion read GitHub on 2026-11-14 and found no open pull request (six merged, numbered 1 to 6), no open issue, no release, no git tag and no repository ruleset, although `.planning/AUTONOMY.md` recommended one on 2026-11-11; that reading is history and is not re-read here. [nc] The Phase 8 pull request did not exist at that time and is not counted. [nc]
 
@@ -197,7 +217,7 @@ One row per requirement, 50 of 50. The table is generated from the traceability 
 | STA-01 | 8 | Complete | `.planning/phases/08-stic-completion-save-state-performance-baselines/08-VERIFICATION.md` | container IVSN v1 is exact-build and not archival; the eight machine-level digests are informational; the trailer is integrity, not authenticity; no big-endian host was run; one claim, provisional [claim:CL-0028] |
 | STA-02 | 8 | Complete | `.planning/phases/08-stic-completion-save-state-performance-baselines/08-VERIFICATION.md` | 18 named hard points (HP-SDBD, HP-STEAL-A to C, HP-OPEN, HP-CLOSED, HP-INT-ENTRY, HP-HLT, HP-HALTED, HP-FAULTED, HP-RESETPEND, HP-FRAME-MID, HP-LATCH, HP-MOB, HP-PSG-MID, HP-ENV-MID, HP-INPUT, HP-LOG) over an 88-row checklist, 9 of 51 STATE rows exempt from the divergence sweep with an argument each, two pinned acceptances; checklist and code have one author, the blind read is the same model family; deterministic repeatability only [claim:CL-0028] |
 | PRF-01 | 8 | Complete | `.planning/phases/08-stic-completion-save-state-performance-baselines/08-VERIFICATION.md` | four named workloads verified before any figure; the baseline is one record on one host class (darwin arm64) taken on a host that was not idle, informational only; no threshold, no optimization, no claim; figures are repeatability only [nc] |
-| REL-01 | 8 | Pending | `.planning/phases/08-stic-completion-save-state-performance-baselines/08-VERIFICATION.md` | stage 1 is recorded here and in the verification record; the stage 2 facts are the placeholder <stage2> until the records pull request after the merge; Pending, not complete [nc] |
+| REL-01 | 8 | Complete (stage 2 recorded) | `.planning/phases/08-stic-completion-save-state-performance-baselines/08-VERIFICATION.md` | stage 1 is recorded here and in the verification record; stage 2 is recorded in this records pull request: the push run `45328318716` on the artifact commit `3fe5373`, the counts and dispositions of section C, the ruleset read (not applied) and the release decision `PUBLISHED v0.1.0 (prerelease)`; complete on those terms [nc] |
 
 **Rows by status:** 49 Complete and 1 Pending (REL-01), 50 rows in all. [nc]
 
@@ -305,12 +325,12 @@ The release actions of `.planning/AUTONOMY.md` and of `08-DISCUSS-release.md` se
 
 | Action | Who may do it | What stops it | State at this record |
 |--------|---------------|---------------|----------------------|
-| Merge a green pull request to `main` | the orchestrator (AUTONOMY section 1, auto-triage, only with CI green) | a red check; no ruleset enforces it today | not done; `<stage2>` |
-| Apply a branch or tag ruleset | the orchestrator, with `gh`; never an executor | nothing in policy; the owner may object | `<stage2>` (a read of the rulesets; none was applied in Phase 8) |
-| Set `git.create_tag` to false | the orchestrator, as a separate commit (D-42); an executor never stages `.planning/config.json` | the milestone tool would otherwise create a milestone-style tag | not done: the key reads `true` in the working-tree copy |
-| Tag `vX.Y.Z` on the artifact commit | the orchestrator (AUTONOMY section 5, step 4), strict 0.x form, equal to the header macros | any failed check P1 to P8; the owner's pause | not done |
-| Create the release as a draft pre-release | the tag-triggered release workflow | the same checks | not done |
-| Publish the draft | the orchestrator, after reading the draft (P8) | a failed check, a draft that disagrees with the checksums | not done |
+| Merge a green pull request to `main` | the orchestrator (AUTONOMY section 1, auto-triage, only with CI green) | a red check; no ruleset enforces it today | done: pull request 7 squashed as `3fe5373`, after run `45327854314` on head `4a9167a` read `success` |
+| Apply a branch or tag ruleset | the orchestrator, with `gh`; never an executor | nothing in policy; the owner may object | not applied: the one read at the close returned no ruleset (P7 records "not applied") |
+| Set `git.create_tag` to false | the orchestrator, as a separate commit (D-42); an executor never stages `.planning/config.json` | the milestone tool would otherwise create a milestone-style tag | done: `6f800cc` on the records branch, one key in one file, before the milestone tool was used |
+| Tag `vX.Y.Z` on the artifact commit | the orchestrator (AUTONOMY section 5, step 4), strict 0.x form, equal to the header macros | any failed check P1 to P8; the owner's pause | done: annotated tag `v0.1.0` on `3fe5373`; the macros, the tag and the installed package version all read 0.1.0 |
+| Create the release as a draft pre-release | the tag-triggered release workflow | the same checks | done: run `45328905701` (`release`) succeeded and created the draft pre-release |
+| Publish the draft | the orchestrator, after reading the draft (P8) | a failed check, a draft that disagrees with the checksums | done: read with `gh release view --json`, both archives verified against `SHA256SUMS` (`shasum -a 256 -c`, both OK), published 2026-11-24T05:02:08Z |
 | Delete a published release or the repository | nobody delegated: a hard stop, owner only | n/a | not applicable |
 | Rewrite published history | nobody delegated: a hard stop, owner only | n/a | not proposed; the six findings are accepted without a rewrite (section J) |
 | Ship EXEC, GROM, commercial or scanned material | nobody: a hard stop | rights | none exists in the tree (section G) |
@@ -318,7 +338,7 @@ The release actions of `.planning/AUTONOMY.md` and of `08-DISCUSS-release.md` se
 | Use the console brand word in a package, product, repository, asset or release name | nobody: a hard stop | third-party trademark | none (section G, name check 0) |
 | Clear the working name as a trademark | the owner | owner gate | not done; every release text says so |
 | Use a paid service | nobody beyond free tiers | cost | none |
-| Skip or reorder the flow after Phase 8 | the owner | n/a | the owner paused the flow after Phase 8 (relayed by the orchestrator) |
+| Skip or reorder the flow after Phase 8 | the owner | n/a | the owner resumed the flow and asked for the close-out to be driven to the end of the milestone (relayed to the orchestrator) |
 
 Executors never call `gh`, push, tag, create a release, run `tools/ci-record.sh` or pass `--hosted` to the readiness script; plan 08-21 did none of them. [nc]
 
@@ -347,11 +367,11 @@ Executors never call `gh`, push, tag, create a release, run `tools/ci-record.sh`
 
 ## K. Decision
 
-**Release status at this record: not started, paused by the owner's decision after Phase 8.** The decision is relayed to the executor by the orchestrator (the owner said to run `/gsd-pause-work` after Phase 8 completes instead of continuing into the milestone audit, the milestone completion, the cleanup and the first release); the executor cannot check it independently. No tag, no draft and no release exists, no `gh` call or push was made by this plan, and this record states nothing as published. [nc]
+**Release status at this record: PUBLISHED.** The record was opened at stage 1, when the owner had paused the flow after Phase 8; the owner then resumed it and asked for the close-out to be driven to the end of the milestone. Stage 1 states above remain the record of what was true before the merge; the stage 2 facts below and in sections B, C, I and the P table are the post-merge record. [nc]
 
-**Decision line (stage 2):** `<stage2>`
+**Decision line (stage 2):** `PUBLISHED v0.1.0 (prerelease)` — claims provisional; nothing measured.
 
-No release decision has been taken. When the flow resumes, the line takes one of two forms, with the evidence that clears the blocker in the second case: `PUBLISHED v0.1.0 (prerelease)`, with the sentence "claims provisional; nothing measured", or `READY, NOT PUBLISHED: blocked by P<n>`. The word "supported" never appears in it. [nc]
+The decision line takes one of two forms, with the evidence that clears the blocker in the second case: `PUBLISHED v0.1.0 (prerelease)`, with the sentence "claims provisional; nothing measured", or `READY, NOT PUBLISHED: blocked by P<n>`. The word "supported" never appears in it. All eight checks held on the tagged artifact commit, so the line reads `PUBLISHED v0.1.0 (prerelease)` and the release is a pre-release, not a final one. [nc]
 
 ### The checks P1 to P8, computable status at stage 1
 
@@ -359,14 +379,14 @@ The checks are those of `.planning/ops/RELEASE-OPS.md` item d and `08-DISCUSS-re
 
 | # | Check | Stage 1 status | Stage 2 |
 |---|-------|----------------|---------|
-| P1 | `main` green at the artifact commit; local sh, dash and container gates pass on the same tree | the three local lines of the final tree are in section B; the hosted `pull_request` rows of section B are successes through head `407d668` | the push run on `main` and its head: `<stage2>` |
+| P1 | `main` green at the artifact commit; local sh, dash and container gates pass on the same tree | the three local lines of the final tree are in section B; the hosted `pull_request` rows of section B are successes through head `407d668` | the push run on `main` and its head: run `45328318716`, head `3fe5373f7f5d28501319bf3359d41eb1d77e5a27`, `success`; the container gate passed on the artifact tree (`gate-time total=315`), and `sh`/`dash` gates passed on the records branch |
 | P2 | hygiene: tree clean, secrets and emails clean, history findings equal the pinned six and nothing new | stage 1 evidence, section J: the tree scan exited 0 and the history scan found six pairs, all pinned, none new; the six are accepted by a recorded disposition and are not cleared | none |
 | P3 | rights: no tracked binary, install list equals the pinned eleven files, manifest census unchanged or explained, no EXEC or GROM byte or digest | stage 1 evidence, section G: 0 tracked binary names, the eleven-file list, 11 manifests (yes 8, no 2, other 1), name check 0 | none |
-| P4 | version agreement: tag equals the header macros equals the installed package version; the changelog has the section | header half: `sh tools/release-readiness.sh --allow-dirty --release` printed `P4: ok` on the head `407d668` (a section `[0.1.0]` for the header version 0.1.0), and the version policy check runs in the gate; the rehearsal `sh tools/release-rehearse.sh --no-gate --release` ended `rehearse: ok` | the tag half cannot be checked before a tag exists: `<stage2>` |
+| P4 | version agreement: tag equals the header macros equals the installed package version; the changelog has the section | header half: `sh tools/release-readiness.sh --allow-dirty --release` printed `P4: ok` on the head `407d668` (a section `[0.1.0]` for the header version 0.1.0), and the version policy check runs in the gate; the rehearsal `sh tools/release-rehearse.sh --no-gate --release` ended `rehearse: ok` | the tag half: tag `v0.1.0` equals `IVS_API_VERSION_MAJOR/MINOR/PATCH` 0/1/0 equals the installed package version; `sh tools/release-readiness.sh --release` printed `P4: ok` and `sh tools/release-rehearse.sh --release` ended `rehearse: ok` |
 | P5 | notes carry the claim table of `data/claims.json`; no claim word outside the allowed wording; the text step scans `CHANGELOG.md` | stage 1 evidence: the claim table of the `[0.1.0]` section equals the generated table (drift check of the `release-assets` step), and the `text` step scans `README.md`, `docs/` and `CHANGELOG.md` (control `text-changelog-untagged`) | none |
-| P6 | the history disposition is recorded as a delegated decision with the owner-veto note | the register row `REL-01 / D-33` of `.planning/PROJECT.md` (added by plan 08-21, Task 2) | that the owner has not vetoed it: `<stage2>` |
-| P7 | release machinery in place: `release.yml` under `ci-parity`, `release-assets` in the gate and the rehearsal, tag ruleset applied or recorded as not applied | stage 1 evidence: `release.yml` is held by the `ci-parity` exemption table and `release-assets` runs in every gate; the rehearsal ended `rehearse: ok` (source archives byte-equal, install archives equal except the Darwin ranlib stamp, tag glob tried) | the ruleset read: `<stage2>` |
-| P8 | the draft is read with `gh release view --json`: names, sizes, `SHA256SUMS`, notes, pre-release flag, no unexpected asset | none can exist before a tag and a draft | `<stage2>` |
+| P6 | the history disposition is recorded as a delegated decision with the owner-veto note | the register row `REL-01 / D-33` of `.planning/PROJECT.md` (added by plan 08-21, Task 2) | the owner resumed the flow and did not veto the disposition; the six findings are still reported and none is cleared |
+| P7 | release machinery in place: `release.yml` under `ci-parity`, `release-assets` in the gate and the rehearsal, tag ruleset applied or recorded as not applied | stage 1 evidence: `release.yml` is held by the `ci-parity` exemption table and `release-assets` runs in every gate; the rehearsal ended `rehearse: ok` (source archives byte-equal, install archives equal except the Darwin ranlib stamp, tag glob tried) | the ruleset read: **not applied** (no ruleset exists; neither the branch nor the tag ruleset was applied) |
+| P8 | the draft is read with `gh release view --json`: names, sizes, `SHA256SUMS`, notes, pre-release flag, no unexpected asset | none can exist before a tag and a draft | read: three assets and nothing else — `ivs-v0.1.0-source.tar.gz` 5,295,098 B, `ivs-v0.1.0-install-linux-x86_64.tar.gz` 83,468 B, `SHA256SUMS` 196 B; `shasum -a 256 -c SHA256SUMS` on the downloaded assets: both `OK`; `isDraft` true, `isPrerelease` true, `tagName` `v0.1.0`, notes carry the generated claim table; published after this read |
 
 ### Hand-offs for the owner (H8-n)
 
@@ -379,14 +399,14 @@ None of these was performed by an agent, none is evidence, and none blocks the s
 | H8-3 Listening and viewing | a person's judgement of sound and picture | H7-1 and H7-2 of the Phase 7 record, and a look at the Phase 8 pictures (`ivs-run` with `--frame-ppm` on a `diag-stic2-` scenario) | none |
 | H8-4 The history veto | a rewrite of published history is an owner-only hard stop | veto the accepted disposition of the six findings and choose a rewrite, or leave it | none; the finding stays reported |
 | H8-5 Name clearance | trademark clearance of the working name | decide whether to clear the name before a release artifact appears | none |
-| H8-6 The GitHub immutable-release setting | a repository setting this executor cannot read | read it once at stage 2: if it is enabled, a published release and its tag cannot be edited, which is one more reason for the draft | none |
+| H8-6 The GitHub immutable-release setting | a repository setting this executor cannot read | read once at stage 2 (done): `{"enabled":false,"enforced_by_owner":false}` — not enabled; a published release and its tag remain editable, so the draft-first flow carried the safety | none |
 | H8-7 The snapshot file options | a scope choice (D-18) | decide whether `--snapshot-out` and `--snapshot-in` are wanted, runner-only, explicit path, refused for user content | none |
 | H8-8 An idle-host benchmark baseline | a measurement on a quiet machine | re-take the baseline by the procedure of `docs/bench.md`; a reviewed change replaces the informational record | none; figures are repeatability only |
 | H8-9 Resume or stop the release flow | the owner paused it after Phase 8 (relayed) | say when to run the audit, the completion, the cleanup and the release | none |
 
-### Remaining steps, none started (paused)
+### The orchestrator's steps after the merge (stage 2, completed)
 
-These are the orchestrator's steps after the merge, in the order of item h of `.planning/ops/RELEASE-OPS.md`; none was started by this plan. [nc]
+These are the orchestrator's steps in the order of item h of `.planning/ops/RELEASE-OPS.md`. All but the last are done and their facts are recorded above; the last is the owner's next action, not an agent's. [nc]
 
 1. Merge the Phase 8 pull request with green CI; the merge commit is the artifact commit of section A.
 2. Record the push run on the merge commit as an `event=push` row with `tools/ci-record.sh` (orchestrator only).
@@ -397,3 +417,5 @@ These are the orchestrator's steps after the merge, in the order of item h of `.
 7. Mark REL-01 complete in `.planning/REQUIREMENTS.md` only after that, record the release in `.planning/STATE.md` and write the CI-efficiency entry for the release workflow.
 8. Merge the records pull request; run the milestone audit (`gsd-audit-milestone`), the milestone completion (`gsd-complete-milestone`) on a records branch and the cleanup (`gsd-cleanup`); delete the merged remote phase branches (housekeeping, which does not purge history).
 9. Start the next milestone (`gsd-new-milestone`) from the candidates of section D.
+
+**Status of these steps:** 1 to 8 are done and their facts are recorded above and in sections B, C, I and K; step 9 is the owner's next action and was not started by this close-out. The release was published as a pre-release after every check held, so no line of this record reads `READY, NOT PUBLISHED`.
