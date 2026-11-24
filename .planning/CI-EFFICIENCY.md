@@ -1661,3 +1661,11 @@ One row: `45414715588`, `push`, head `aa96e9a` (merge of #13), `build_s` 45, `ga
 The last five `r` values are now 7.327, 7.826, 7.417, 7.696, 7.533, so the median is **7.533** — 0.27 under the 7.8 budget and 0.77 under the 8.3 stop line.
 
 **Convention, recorded so the gap is never silent.** A records pull request that only appends hosted rows produces one more hosted run on its own merge, so a strictly complete log is a moving target. The rule from here: **every hosted run is recorded**, and the one unrecorded row at any moment is the merge push of the records PR that recorded the previous ones — it is recorded at the next phase boundary or checkpoint, which is exactly where the cost rule reads the window. The count `ci-runs=` in the gate summary is the check that no row was lost.
+
+## 2026-11-24 — final opening row, and the state repair
+
+One row: `45415977805`, `push`, head `1090500` (merge of #14), `build_s` 42, `gate_s` 112, `cpu_s` 352, `r` **8.381**. Last five: 7.826, 7.417, 7.696, 7.533, 8.381 → median **7.696**.
+
+That row is the fastest `build_s` in the window (42) with a mid-range `cpu_s` (352), so it reads high on the ratio while adding no work; the same tree's PR row read 7.533 at `build_s` 45. It is recorded as taken and not read as growth.
+
+**Reconciliation in the same commit.** `.planning/state.json` carried two defects from the roadmap write: its `milestone` field held a roadmap prose fragment (`v0.2.0 — … (Phases 9 to 12)</summary>`) instead of the version, and its `phases` array still listed Phases 1 to 8 as complete, so a reader would have concluded the milestone had nothing left to run. Both are repaired to `v0.2.0` and Phases 9 to 12 `pending`, with `next` pointing at Phase 9. `state.sync` reports no further changes, so the repair holds. The stale `.planning/milestone.lock` (phase 8, a dead pid, an old session id) is removed. This is exactly the "reconcile any weirdness" step of the milestone ritual, and it is recorded rather than quietly fixed.
