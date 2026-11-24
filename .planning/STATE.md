@@ -1,40 +1,36 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 8
-current_phase_name: STIC Completion, Save State and Performance Baselines
-current_plan: 21
-status: complete
+milestone: v0.1.0
+status: Awaiting next milestone
 stopped_at: Phase 8 closed; v0.1.0 published as a pre-release; milestone lifecycle (audit, complete, cleanup) next
-last_updated: "2026-11-24T05:10:00.000Z"
+last_updated: "2026-11-24T05:21:36.261Z"
 last_activity: 2026-11-24
-last_activity_desc: Phase 8 close-out driven to the end - review fixes, independent verification, pull request 7 merged as 3fe5373, REL-01 stage 2 recorded, v0.1.0 published as a pre-release
-state_head: 3fe5373f7f5d28501319bf3359d41eb1d77e5a27
+last_activity_desc: Milestone v0.1.0 completed and archived
+state_head: e0c88b41cfea3b24e091ff5ef0c63d9ca6473947
 progress:
   total_phases: 8
   completed_phases: 8
   total_plans: 130
   completed_plans: 130
-  percent: 100
+current_phase: 8
+current_phase_name: STIC Completion, Save State and Performance Baselines
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-11-09)
+See: .planning/PROJECT.md (updated 2026-11-24)
 
 **Core value:** A deterministic, observable machine core whose every compatibility claim is bound to an exactly named profile and independent evidence — never an unqualified "it runs Intellivision games" label.
-**Current focus:** Phase 8 — STIC Completion, Save State and Performance Baselines
+**Current focus:** Milestone v0.1.0 is shipped and archived; the next milestone is not started
 
 ## Current Position
 
-Phase: 8 (STIC Completion, Save State and Performance Baselines) — COMPLETE; all 21 plans executed, reviewed, security-audited, independently verified and merged
-Current Plan: 21
-Total Plans in Phase: 21
-Status: Phase 8 complete and merged; REL-01 stage 2 recorded; v0.1.0 published as a pre-release. The milestone lifecycle (audit, complete, cleanup) is the next step.
-Last activity: 2026-11-24 — close-out: three review findings fixed (`6e12c1e`, `88bbfb7`, `befd38a`), independent verification appended (`4a9167a`), pull request 7 squashed as `3fe5373`, push run `45328318716` green, `v0.1.0` tagged on the artifact commit and published after P1 to P8 held
-
-Progress: [██████████] 100%
+Phase: Milestone v0.1.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-11-24 — Milestone v0.1.0 completed and archived
 
 ## Releases
 
@@ -524,10 +520,16 @@ Refreshed by plan 08-21 from `.planning/phases/08-stic-completion-save-state-per
 | Milestone lifecycle | the milestone audit, the milestone completion and the cleanup of Phase 8 | Next: the lifecycle sequence after the records pull request | Phase 8 | Now |
 | Settings | the branch ruleset (PR + `gate`, no force push, no deletion) and the tag ruleset (no update, no deletion, from a green `main`) recommended in `.planning/AUTONOMY.md` section 1 | **Not applied** (the close read returned no ruleset) | Phase 4 / Phase 8 | Orchestrator, at the next repository-settings action |
 
-**Milestone close record:** `.planning/phases/08-stic-completion-save-state-performance-baselines/08-MILESTONE-CLOSE.md` (stage 1, sections A to K; every placeholder for a post-merge fact is filled by the records pull request after the merge) and `08-VERIFICATION.md` in the same directory. If `gsd-complete-milestone` archives the phase directories, both move under `.planning/milestones/`; this line is the pointer that does not move, and it must be updated then.
+**Milestone close record:** `.planning/milestones/v0.1.0-phases/08-stic-completion-save-state-performance-baselines/08-MILESTONE-CLOSE.md` (sections A to K; every stage-2 placeholder is filled by the records commit) and `08-VERIFICATION.md` in the same directory. The milestone archive moved both here on 2026-11-24; this line is the pointer that does not move.
+
+**Milestone archive:** `.planning/milestones/v0.1.0-ROADMAP.md`, `v0.1.0-REQUIREMENTS.md`, `v0.1.0-MILESTONE-AUDIT.md` (status `tech_debt`) and `v0.1.0-phases/` (the eight phase directories). `MILESTONES.md` holds the shipped entry.
 
 ## Session Continuity
 
 Last session: 2026-11-24T05:10:00.000Z
 Stopped at: Phase 8 close-out complete — merged, released as `v0.1.0` pre-release; milestone lifecycle (audit, complete, cleanup) next
 Resume file: None
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone
