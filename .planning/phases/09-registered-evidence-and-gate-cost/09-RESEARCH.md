@@ -1491,9 +1491,14 @@ behind a `checkpoint:human-verify` task and a fresh legitimacy run.
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+All five are answered by amendments A-01 to A-09 in `09-CONTEXT.md`; each question carries its
+answering amendment inline. Nothing in this section is open at plan time.
 
 1. **Does `runner-process.judge.variant-static` add a test id in wave A1, and is that allowed?**
+   — RESOLVED: A-03. No new test id in A1; the judgement ships as an assertion inside the
+   existing variant case, with its negative half run in-case.
    - What we know: CONTEXT's A1 section says both "A1 adds no test id, no control, no fault, no
      gate step and no registry line" **and** "One suite self-control
      (`runner-process.judge.variant-static`) lands in the same commit". GUARDRAILS §2.2 is
@@ -1511,7 +1516,9 @@ behind a `checkpoint:human-verify` task and a fresh legitimacy run.
      amend GUARDRAILS §2.2 for this one id and predict `tests-expected=4960
      tests-executed=4956`, and record the amendment — an unrecorded exception is the defect.
 
-2. **How are the 6 unregistered Complete requirements resolved?**
+2. **How are the 6 unregistered Complete requirements resolved?** — RESOLVED: A-01.
+   Shape S1: a six-row exclusion ledger `data/expected/important-gates-excluded.ids`, and the step
+   refuses a Complete requirement that is neither registered nor excluded.
    - What we know: 50 Complete, 27 registered, 17 added by EV-02, 6 left over (§Q5.1).
    - What's unclear: whether an exclusion record is acceptable (it is a new data file and a new
      file type) or whether EV-02's scope should grow.
@@ -1519,6 +1526,7 @@ behind a `checkpoint:human-verify` task and a fresh legitimacy run.
      the 6 visible.
 
 3. **Does the good tree's `.planning/` carry real requirement records or minimal toy ones?**
+   — RESOLVED: A-09. Minimal toy records listing exactly the ids the toy registry covers.
    - What we know: the good tree currently carries `.planning/PROJECT.md` and
      `.planning/ci-runs.tsv` only (§Q5.2).
    - What's unclear: whether a copy of a real record inside the control tree counts as an
@@ -1528,14 +1536,16 @@ behind a `checkpoint:human-verify` task and a fresh legitimacy run.
      because the drift check compares the toy registry, not the records.
 
 4. **Is `memmap-generator-refused` a new token in an existing step, or does the generator stay
-   uncontrolled?**
+   uncontrolled?** — RESOLVED: A-02. The item is landed, not deferred: `memmap.sh` gains one
+   `cmake -P` invocation and two tokens, with no new gate step.
    - What we know: it is reachable (§Q6 item 5) at ~0.2–0.3 local cpu-s.
    - What's unclear: whether adding a token to `memmap.sh` counts as "new gate content" for the
      A1/A2 ordering rule. It is A2 content either way, so the ordering rule is satisfied.
    - Recommendation: land it in A2; the CONTEXT's deferral clause is available but unnecessary.
 
 5. **Which recorded figure governs the allowance — 21 hosted cpu-s (recorded) or 27.8
-   (recomputed from the current window)?**
+   (recomputed from the current window)?** — RESOLVED: A-07. The recorded 21 hosted / 12.9 local
+   stands as the ceiling; the recomputation (median 7.696) is printed beside it.
    - What we know: the recorded figure was computed at `build_s` 46 against 0.47 of headroom;
      the current window's headroom is 0.604.
    - Recommendation: use the recorded 21/12.9 as the ceiling (it is the more conservative) and
