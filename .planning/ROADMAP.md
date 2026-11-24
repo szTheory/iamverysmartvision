@@ -95,10 +95,10 @@ files.
 <details>
 <summary>🚧 v0.2.0 Registered Evidence, Reachable Runs, Replayable Input (Phases 9 to 12)</summary>
 
-- [ ] Phase 9: Registered Evidence and Gate Cost
-- [ ] Phase 10: Reachable Runs and Presentation Policy
-- [ ] Phase 11: Input Record and Replay
-- [ ] Phase 12: Bank Modes and External Import (conditional)
+- [ ] Phase 9: Registered Evidence and Gate Cost — land the cost lever and trims, take the hosted row that settles the level, then register the 17 already-faulted requirements and make the gap unrepeatable
+- [ ] Phase 10: Reachable Runs and Presentation Policy — a person builds and runs the demo cartridge from the released source archive with documented commands; the presentation policy is frozen and enforced; the look/listen handoff is recorded
+- [ ] Phase 11: Input Record and Replay — an input-only, rights-clean log whose replay reproduces the recorded run's digest chain and applied-event chain, with the vacuity guards proved live
+- [ ] Phase 12: Bank Modes and External Import (conditional) — bank-mode profile data with a typed refusal for every unmapped mode, and `.bin`/`.cfg` import outside the core only where a per-mode rights review clears it; droppable
 
 </details>
 
@@ -130,6 +130,88 @@ gate is resolved by its named authority.
 | OQ8 Snapshot persistence policy | Architecture | Delegated decision (Phase 8) | Done |
 | OQ11 Performance targets | Architecture | Delegated decision (PRF-01 sets none) | Done |
 
+## Phase Details
+
+**Milestone v0.2.0.** The phase shape, exit criteria, decisions (D14 to D16),
+verification strategy, tier ceilings and risks are frozen in
+`.planning/MILESTONE-CONTEXT.md`; the retarget table and the definition of done
+are `.planning/ops/GUARDRAILS-v0.2.md`. The milestone plans about 24 plans across
+the four phases (18 without Phase 12).
+
+Three rules hold across every phase below: **zero new gate steps** (38 stays
+38; every capability lands as ids inside a suite that already exists), **no new
+test id, control or fault before Phase 9's hosted row**, and **no claim above
+`provisional`** while D10 and D11 are unperformed.
+
+### Phase 9: Registered Evidence and Gate Cost
+
+**Goal**: The gate's cost level is settled by measurement before the gate grows,
+and the 17 requirements whose named faults already run in every gate are
+registered with mechanisms that cannot pass vacuously — with a machine check
+that makes the gap unrepeatable.
+**Depends on**: Nothing (first phase of v0.2.0; continues from the shipped Phase 8)
+**Requirements**: EV-01, EV-02, EV-03, EV-04
+**Success Criteria** (what must be TRUE):
+  1. A hosted row recorded after the lever and trim commits settles the cost level: the row's head is a descendant of those commits (`git merge-base --is-ancestor`), and `.planning/CI-EFFICIENCY.md` carries exactly one checkpoint line — `discharged-below-budget`, `discharged-within-line` or `lever-required` — with the last-five median `r` recomputed by arithmetic from `.planning/ci-runs.tsv`.
+  2. No commit before that row adds a test id, control, fault or gate step: `ls tools/check/steps/*.sh | wc -l` stays 38, `data/expected/gate-steps/` is unchanged, and the ancestry check passes.
+  3. `data/expected/important-gates.ids` grows from 306 to 330 registry rows (24 additions, counted as non-comment rows), naming at least one mechanism for each of FND-01..07, CPU-01..05 and MEM-01..05; the registration commit's `steps`/`controls`/`faults`/`tests-*` diff equals its predicted delta exactly, and each of the ten toy registries gains exactly one line per new requirement with zero deletions (`git diff --numstat`).
+  4. Each of the five gate-hardening items (whole-token `SRC-` match, zero-document failures, per-step pass lines, manifest output anchoring, memmap generator controls) has a named control in the gate summary and a committed scratch stand-in showing it fails for its intended reason.
+  5. The EV-04 machine check refuses a requirement marked Complete with no registry line, and refuses a toy registry that drifts from the good tree; both are shown able to fail, and `sh`, `dash` and the container gate end PASS with the predicted summary token.
+**Plans**: TBD (two waves: A1 cost-only, then A2 content-free registration)
+**Tier ceiling**: none — this phase adds no claim.
+**Cost gate**: the only phase allowed to add gate content, and only after its own hosted row. Wave A1 touches only the seven files its plan names.
+
+### Phase 10: Reachable Runs and Presentation Policy
+
+**Goal**: A person obtains and runs the emulator from the released source
+archive using documented commands, the presentation and palette policy is frozen
+and enforced, and the look/listen handoff is recorded rather than assumed.
+**Depends on**: Phase 9 (its hosted row is the entry ticket for any new id, control or fault)
+**Requirements**: PKG-05, TOOL-04 (narrowed), EV-05
+**Success Criteria** (what must be TRUE):
+  1. `docs/running.md` names the three commands and the exact expected stdout tail, and the release rehearsal (`tools/release-rehearse.sh`) builds from the **source archive** in a clean directory and runs `demo-lamp-tone-pass` to its golden — proved by a recorded rehearsal transcript, at release time and not as a gate step.
+  2. `docs/presentation.md` holds the six-clause policy, and one deny-list check refuses a colour symbol defined under `core/src`, shown able to fail by a committed scratch stand-in; the check adds no gate step.
+  3. `data/expected/handoffs.ids` holds H7-1, H7-2, H8-3, D10 and D11, every row `evidence: none` and each dispositioned `handed-off` or `not-performed`; a claim citing a handoff artifact, a `build/` path, a `.wav`, a `.ppm` or a bench `.tsv` is refused, and the `text` step's claim-word list contains the look/listen words — both shown able to fail.
+  4. `README.md` and `docs/packaging.md` carry one identical "nothing downloadable is runnable" sentence (a grep proves a single matching line in each) and one paragraph pointing at `docs/running.md`.
+  5. The gate summary keeps `steps=38/38` and `claims=` at its Phase 9 value, and no claim cites a handoff row: the documented route reaches at most `installed-host-behavior` and the handoff carries no tier.
+**Plans**: TBD
+**Tier ceiling**: at most `installed-host-behavior` for the documented route; no tier for the handoff.
+**Not in this phase**: installing `ivs-run` or any image (structurally blocked, not merely expensive — D14), a windowed frontend, any new dependency, a second example cartridge.
+
+### Phase 11: Input Record and Replay
+
+**Goal**: A run is recorded as a rights-clean, input-only log, and a replay of
+that log reproduces the recorded run's digest chain and applied-event chain —
+with the vacuity guards that v0.1.0's round-trip hook lacked.
+**Depends on**: Phase 10 (replay ships into an artifact a person can now obtain), Phase 9 (the cost row)
+**Requirements**: TOOL-01
+**Success Criteria** (what must be TRUE):
+  1. `docs/formats/ivsl-v1.md` is committed before any code and the ancestry is proved with `git merge-base --is-ancestor`; its grammar has no field able to hold a content digest, image name, length, frame byte, audio byte or path, and an unknown directive is refused with a typed token.
+  2. `runner.record.replay-equals-straight` and `runner.record.format-roundtrip` pass in process: a recorded log replays to the straight run's nine digest lines and applied-event chain, and write, parse and write again is byte-identical.
+  3. The liveness guards do the work: the equality case asserts at least one event, `input.consumed == input.events`, an `at_tick` list equal to the recorded one and all nine domains observed, while `replay-differs` (one digest nibble changed) and `replay-inert` (a fake pair with zero applied events) are rejected **by the guard**, each shown able to fail.
+  4. Every malformed log in the refusal family (unknown directive, non-monotonic tick, tick beyond bound, event cap, undefined controller bit, wrong version, trailing garbage) is refused with a typed token and no state change, and the two named faults `IVS_FAULT_RECORD_DROPS_LAST_EVENT` and `IVS_FAULT_REPLAY_APPLIES_LATE` fail exactly their ids.
+  5. `runner.record.no-content-digest` finds zero runs of 32 or more hex digits in a produced log; the log is text, absent from `tools/check/binary-ext.txt` and not gitignored; the gate ends `steps=38/38` with the plan's predicted count delta and the tier ceiling `deterministic-repeatability`, provisional.
+**Plans**: TBD
+**Tier ceiling**: `deterministic-repeatability` — the same core, so never an independent comparison.
+
+### Phase 12: Bank Modes and External Import (conditional, droppable)
+
+**Goal**: Bank-mode behaviour is profile data with a typed refusal for every mode
+the profile does not name, and — only where a per-mode rights review clears it —
+`.bin`/`.cfg` import outside the core.
+**Depends on**: Phase 9 (the cost row); its own rights-review entry gate
+**Requirements**: FMT-01 (narrowed), FMT-04
+**Entry gate**: a rights-review decision line committed **before** any third-party file is read — `entered`, or `degraded to FMT-01 only`.
+**Success Criteria** (what must be TRUE):
+  1. The entry-gate line exists before any third-party file is read; on degradation the phase records `FMT-01: partial (bank-mode model only), importer deferred: <condition>`, never `Complete`, and writes no `.cfg` description.
+  2. Every accepted bank mode has a generated original fixture (tracked `.asm`/`.cfgsrc` sources plus a manifest, built into `build/<preset>/images/`), a witness pair (the same address reads A before the select write and B after), a no-switch negative case that still reads A, and one named fault — with a positive case beside every refusal, so "refuse everything" cannot pass.
+  3. Every mode the profile does not name is refused by name — `cfg-bank-mode-unmapped` or `cfg-bank-mode-unsupported` — never a silent default; the refusal token set is pinned in `data/expected/cfg-refusals.ids` and each token is shown able to fail.
+  4. No tracked file carries an extension in `tools/check/binary-ext.txt`, that list and `.gitignore` are unchanged, the importer refuses to write inside the work tree (`import-out-inside-tree`, `out-exists`), and no new `IVS_E_*` reason, core change or `api-effects` retarget lands.
+  5. The gate ends `steps=38/38` with no claim above `provisional` and no "runs games" wording; the tier ceiling is `source-expectation` plus `original-diagnostic` plus `deterministic-repeatability`, and `public-vector` and `independent-implementation-comparison` are unreachable by design; if the phase is dropped (the pre-authorized three-phase fallback) or degraded, FMT-01 and FMT-04 are recorded as partial or deferred with the condition in `.planning/REQUIREMENTS.md` traceability — never silently lost and never marked `Complete`.
+**Plans**: TBD
+**Tier ceiling**: as criterion 5 — no third-party file is read, by design.
+**Droppable**: yes. A cost spike or a failed rights review is absorbed here rather than discovered at the milestone close.
+
 ## Coverage (v0.1.0 — archived)
 
 | Category | Requirements | Phase |
@@ -148,6 +230,20 @@ gate is resolved by its named authority.
 | Release practice | REL-01 | 8 |
 
 Mapped: 50/50 v0.1.0 requirements, all Complete. No orphans, no duplicates.
+
+## Coverage (v0.2.0 — in progress)
+
+| Requirement | Phase |
+|-------------|-------|
+| EV-01, EV-02, EV-03, EV-04 | 9 |
+| EV-05, PKG-05, TOOL-04 (narrowed) | 10 |
+| TOOL-01 | 11 |
+| FMT-01 (narrowed), FMT-04 | 12 |
+
+Mapped: 10/10 v0.2.0 requirements, each to exactly one phase. No orphans, no
+duplicates. FMT-01 and FMT-04 are the droppable pair: if Phase 12 is dropped,
+they are recorded as partial or deferred in `.planning/REQUIREMENTS.md` — not
+lost.
 
 ## Progress
 
@@ -170,4 +266,16 @@ pre-release on the artifact commit `3fe5373`.
 `tech_debt`: 50/50 requirements, 8/8 phases, 10/10 integration seams, 10/10
 end-to-end flows; the debt is the recorded, accepted register, not new gaps.
 
-**Current milestone:** v0.2.0, scoped 2026-11-24. Phase 9 not started.
+### v0.2.0 — in progress (scoped 2026-11-24)
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 9. Registered Evidence and Gate Cost | 0/TBD | Not started | - |
+| 10. Reachable Runs and Presentation Policy | 0/TBD | Not started | - |
+| 11. Input Record and Replay | 0/TBD | Not started | - |
+| 12. Bank Modes and External Import (conditional) | 0/TBD | Not started | - |
+
+**Current milestone:** v0.2.0, scoped 2026-11-24 and detailed by this roadmap on
+2026-11-24. Phase 9 not started; no phase plan exists. Phase 12 is conditional
+and droppable. The milestone adds zero new gate steps and no claim above
+`provisional`.
