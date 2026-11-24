@@ -1,33 +1,53 @@
 {
   "contract": "1.0.0",
   "flavor": "core",
-  "milestone": "v0.2.0",
+  "milestone": "v0.2.0 — Registered Evidence, Reachable Runs, Replayable Input (Phases 9 to 12)</summary>",
   "phases": [
     {
-      "number": "9",
-      "name": "Registered Evidence and Gate Cost",
-      "status": "pending"
+      "number": "1",
+      "name": "Evidence, Profile and Rights Foundations",
+      "status": "complete"
     },
     {
-      "number": "10",
-      "name": "Reachable Runs and Presentation Policy",
-      "status": "pending"
+      "number": "2",
+      "name": "CP-1610 CPU Core",
+      "status": "complete"
     },
     {
-      "number": "11",
-      "name": "Input Record and Replay",
-      "status": "pending"
+      "number": "3",
+      "name": "Memory Map, Content Loading and Refusal",
+      "status": "complete"
     },
     {
-      "number": "12",
-      "name": "Bank Modes and External Import",
-      "status": "pending"
+      "number": "4",
+      "name": "Headless Runner and Installed Consumer (Slice 0)",
+      "status": "complete"
+    },
+    {
+      "number": "5",
+      "name": "Hand Controllers and PSG Sound",
+      "status": "complete"
+    },
+    {
+      "number": "6",
+      "name": "STIC Video First Pass",
+      "status": "complete"
+    },
+    {
+      "number": "7",
+      "name": "First Visible Original Scenario",
+      "status": "complete"
+    },
+    {
+      "number": "8",
+      "name": "STIC Completion, Save State and Performance Baselines",
+      "status": "complete"
     }
   ],
   "next": {
-    "command": "/gsd-discuss-phase 9",
-    "label": "Discuss Phase 9",
-    "reason": "Roadmap created — Phase 9 is the first incomplete phase"
+    "command": "/gsd-progress --next",
+    "label": "Advance to the next step (plan phase 9)",
+    "reason": "Phase 1 of 4 — needs a plan"
   },
-  "updated_at": "2026-11-24T14:10:59.704Z"
+  "updated_at": "2026-11-24T16:40:37.471Z"
 }

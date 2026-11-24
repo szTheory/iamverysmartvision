@@ -1,16 +1,20 @@
 ---
 gsd_state_version: "1.0"
 milestone: v0.2.0
-milestone_name: Registered Evidence, Reachable Runs, Replayable Input
+milestone_name: Registered Evidence, Reachable Runs, Replayable Input (Phases 9 to 12)</summary>
+current_phase: 9
+current_phase_name: Registered Evidence and Gate Cost
 status: planning
-last_updated: "2026-11-24T14:15:00.000Z"
+stopped_at: Milestone v0.2.0 scoped by the milestone ritual; requirements and roadmap being defined; nothing in flight
+last_updated: "2026-11-24T16:40:37.447Z"
 last_activity: 2026-11-24
+last_activity_desc: "Milestone v0.2.0 roadmap created: Phases 9 to 12, 10/10 requirements mapped, zero new gate steps, Phase 12 conditional and droppable"
+state_head: 6a8ea277b796693ad593a6c3fde09d387abdd553
 progress:
   total_phases: 4
-  completed_phases: 0
-  total_plans: 0
+  completed_phases: 8
+  total_plans: 9
   completed_plans: 0
-  percent: 0
 ---
 
 # Project State
@@ -20,16 +24,26 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-24)
 
 **Core value:** A deterministic, observable machine core whose every compatibility claim is bound to an exactly named profile and independent evidence — never an unqualified "it runs Intellivision games" label.
-**Current focus:** Milestone v0.2.0 Registered Evidence, Reachable Runs, Replayable Input — Phase 9 not started (requirements and roadmap defined 2026-11-24)
+**Current focus:** Milestone v0.2.0 Registered Evidence, Reachable Runs, Replayable Input — Phase 9 planned (9 plans, 8 waves), ready to execute
 
 ## Current Position
 
-Phase: 9 of 12 — Registered Evidence and Gate Cost (v0.2.0)
-Plan: —
-Status: Not started — the roadmap exists (2026-11-24), no phase plan does
-Last activity: 2026-11-24 — Milestone v0.2.0 roadmap created: Phases 9 to 12, 10/10 requirements mapped, zero new gate steps, Phase 12 conditional and droppable
+Phase: 9 (Registered Evidence and Gate Cost) — READY TO EXECUTE
+Plan: 9 plans across 8 waves; waves 1 and 2 are wave A1 (cost only)
+Status: Planned 2026-11-24 — research, pattern map, nine plans and a five-round plan-check
+  loop are committed. Wave A2 plans are gated on the orchestrator's hosted row.
+Last activity: 2026-11-24 — Phase 9 planned
 
-**Next action:** `/gsd-plan-phase 9`, or `/gsd-autonomous` to run the milestone end to end. Phase 9 wave A1 is cost-only: lever (3) and trims (a), (c) and (d), then a hosted row, then wave A2.
+**Next action:** execute phase 9. Wave A1 (09-01 to 09-03) lands the cost lever and
+three trims; the orchestrator then pushes, takes a hosted row and records it; wave A2
+(09-04 to 09-09) may not add any gate content before that row exists.
+
+### Planning overrides recorded by the autonomous run
+
+| Gate | Result | Disposition |
+|---|---|---|
+| Decision coverage (`check.decision-coverage-plan`) | `could-not-parse` | **Proceeded.** The gate parses `D-NN` bullets; smart-discuss CONTEXT.md carries no ids by design, so the gate is inapplicable rather than unsatisfied. Verified by hand instead: amendments A-01 to A-09 are each cited by at least one plan (A-01→09-05, A-02→09-06/09-07, A-03/A-04→09-01, A-05→09-08, A-06→09-09, A-07→09-03, A-08→09-04..09-09, A-09→09-06) and every decision topic appears in a plan. No decision is dropped. Re-surfaced at verify-work. |
+| Plan-checker iteration cap | Reached at 3, plus two guided passes | **Accepted after the fifth pass.** The loop found 24 real defects (a non-existent option table, a stale count baseline 31 files out of date, a stand-in that could not fire, a generator invocation that would have broken six controls, a regression that would have reclassified `runner-selftest` and made 09-08 unsatisfiable). Each fix was verified against the tree; the two final properties were proved directly by the orchestrator (`grep -e IVS_GATE_DIR -e 'build/' tools/check/steps/runner-selftest.sh` empty; the `memcmp`-before-`su_nine_digests` ordering awk exits 0 at HEAD). No open blocker. |
 
 ## Releases
 
