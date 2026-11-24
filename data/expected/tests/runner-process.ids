@@ -22,7 +22,8 @@
 #   rows: they run on the Release preset and are judged statically on the sanitized Debug preset by the derivation
 #   equality of docs/video/demo-lamp-tone-1-derivation.md, with a one-value stand-in proving the judgement can fail.
 #   The ids are the same in both presets, none is skip-ok and tests-skipped does not move; the pair with a
-#   release-only member is judged by its inventory form on the sanitized preset and by check_pair on Release.
+#   release-only member is judged by its inventory form on the sanitized preset and by check_pair on Release. The
+#   diagnostic line before the trailer gains `variants=` and `variant-static=`, the counts of those rows in each mode.
 # Plan 07-08 (D-25, A-14, A-17): runner-process.mutant.SCN-*, one case per row of data/expected/diag-mutations-scn.ids (12 mutants and one
 #   negative row of the Lamp Tone program; stub-window rows patch boot-stub-2.exec; a fails column states the complete failing set).
 # Plan 07-11 (D-31, T-07-29): runner-process.refuse-user.audio-raw, .psg-log-out and .audio-wav: each option is refused for a scenario with a

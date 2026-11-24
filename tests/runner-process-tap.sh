@@ -95,8 +95,11 @@
 # clause names exists as a line `assert <text>` of the scenario, and the patch builds and changes the image (the boot stub image for a row in
 # the stub window). The ids and their number are the same in both presets, no id is skip-ok, `tests-skipped` does not move. What the static
 # judgement cannot see (a patched program that no longer fails its scenario) is judged by the Release run of the same gate. A comment line
-# `# mutants: configuration=<c> full=<n> static=<m>` before the trailer makes the mode of every run visible. A judgement that needs the
-# sanitized build to be meaningful would stay a full run on both presets; none of the 35 does (every one is judged by exit code and report).
+# `# mutants: configuration=<c> full=<n> static=<m> variants=<v> variant-static=<s>` before the trailer makes the mode of every run visible. A judgement
+# that needs the sanitized build to be meaningful would stay a full run on both presets; none of the 35 does (every one is judged by exit code and report).
+# Since plan 09-01 (D-09, A-03, A-04): the two demo-lamp-tone variants are column-5 `release-only`, so on the sanitized preset they are judged by the
+# derivation equality of docs/video/demo-lamp-tone-1-derivation.md and on Release they run; `variants=` and `variant-static=` count those rows in each
+# mode (they sum to the number of such rows), so the counts make the mode of every run visible instead of leaving it to be inferred.
 # Usage: sh runner-process-tap.sh <source root> <ivs-run> <ivs_pack> <images dir> [<build configuration>]
 # Exit: 0 pass, 1 fail, 77 every case skipped.
 # Env: IVS_TEST_NONCE, IVS_TEST_OUT_DIR, IVS_RUNNER_PROCESS_TIMEOUT.
@@ -1980,7 +1983,8 @@ result runner-process.watchdog
   printf '# suite=%s nonce=%s\n' "$suite" "$nonce"
   printf '1..%s\n' "$n"
   cat "$tmp/results"
-  printf '# mutants: configuration=%s full=%s static=%s\n' "${config:-none}" "$mut_full" "$mut_static"
+  printf '# mutants: configuration=%s full=%s static=%s variants=%s variant-static=%s\n' \
+    "${config:-none}" "$mut_full" "$mut_static" "$scen_full" "$scen_static"
   printf '# suite=%s executed=%s skipped=%s failed=%s\n' "$suite" "$executed" "$skipped" "$failed"
 } > "$tmp/tap"
 cat "$tmp/tap"
