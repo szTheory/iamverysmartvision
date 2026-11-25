@@ -5,9 +5,9 @@
 # check, verdict over producer output), or its failure class escaped once.
 # Columns: <gate> <fault|control|mutant> <id> <REQ>. A fault is judged by faults-verdict (must-fail
 # vector, allowed reason prefixes, must-pass vector); a control by tools/check/run-controls.sh
-# (EXPECT token); a mutant is an in-step selftest case (pkg-selftests.ids, ci-summary-selftests.ids)
-# or a suite self-control `<suite>.judge.<slug>` / `<suite>.mutant.<slug>` that passes only when
-# its check fails for the intended reason. The audit behind this list is in
+# (EXPECT token); a mutant is an in-step selftest case (pkg-selftests.ids, ci-summary-selftests.ids,
+# runner-selftest.ids) or a suite self-control `<suite>.judge.<slug>` / `<suite>.mutant.<slug>` that
+# passes only when its check fails for the intended reason. The audit behind this list is in
 # .planning/phases/04-headless-runner-and-installed-consumer/04-24-SUMMARY.md.
 # Phase 5 (plan 05-12) extends the registry to INP-01 INP-02 INP-03 API-03 AUD-01 AUD-02 (section below the Phase 4 lines).
 

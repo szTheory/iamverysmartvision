@@ -55,12 +55,17 @@
 #            event line and the replay's one-tick shift, and the two judge self-controls of the
 #            recorded-and-replayed comparison; the accepted set is derived, so the row's nreq limb is
 #            gone and this table and the token prose are the only parts a new requirement retargets)
+#   Phase 13 RTS-01 RTS-02 EV-06 EV-07 plan 13-04 (the rights ledger's two limbs under two new gate
+#            names, the claim ceiling's two rules, and the ten D-09-06 registrations: five control
+#            rows, four mutant rows resolved through the new data/expected/runner-selftest.ids, and
+#            one new control directory for important-gates-excluded-stale; zero new faults)
 # Resolution of <id> by mechanism:
 #   fault    first column of any data/expected/faults/*.ids (judged by faults-verdict);
 #   control  first column of any data/expected/controls/*.ids (run by tools/check/run-controls.sh);
-#   mutant   a case of data/expected/pkg-selftests.ids or data/expected/ci-summary-selftests.ids
-#            (in-step selftests), or a test id `<suite>.judge.<slug>` or `<suite>.mutant.<slug>`
-#            of any data/expected/tests/*.ids (suite self-controls, judged by tests-inventory).
+#   mutant   a case of data/expected/pkg-selftests.ids, data/expected/ci-summary-selftests.ids or
+#            data/expected/runner-selftest.ids (in-step selftests), or a test id `<suite>.judge.<slug>`
+#            or `<suite>.mutant.<slug>` of any data/expected/tests/*.ids (suite self-controls, judged by
+#            tests-inventory).
 # Tokens: important-gates-unknown-id: line <n> (not 4 columns, unknown mechanism, bad gate name,
 #   or a requirement outside the derived accepted set) or <mechanism> <id> line <n> (the id is in no
 #   inventory of its mechanism); important-gates-complete-uncovered: <REQ> (a requirement marked
@@ -137,7 +142,7 @@ for f in "$exp"/controls/*.ids; do
   [ -f "$f" ] || continue
   awk '/^#/ { next } NF { print "control", $1 }' "$f" >> "$tmp/known"
 done
-for f in "$exp/pkg-selftests.ids" "$exp/ci-summary-selftests.ids"; do
+for f in "$exp/pkg-selftests.ids" "$exp/ci-summary-selftests.ids" "$exp/runner-selftest.ids"; do
   [ -f "$f" ] || continue
   awk '/^#/ { next } NF { print "mutant", $1 }' "$f" >> "$tmp/known"
 done

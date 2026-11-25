@@ -562,6 +562,7 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 13]: rights_scan_naming() runs after the two file gate_stat() calls and before gate_finish(files), so rights-pinned prints last and a finding is a FAIL line rather than a NOTE.
 - [Phase 13]: D-50 lands as two conditions in claim.cmake and claim-overstated is kept rather than subsumed: D-50 is strictly stronger, both are findings, and a control's EXPECT is a substring match, so a row that trips both keeps every existing control satisfied.
 - [Phase 13]: The claim ceiling's legal positive is a control whose EXPECT names an unrelated refusal and whose FORBID names both new tokens, because a control directory can never express "this passes" (ctl_one refuses control-exit-zero).
+- [Phase 13]: 13-04: EV-07 registered as 6 control + 4 mutant rows (deviation from EV-07's literal "mutant row" wording: five mechanisms are proved by control directories that already exist and one by a directory this plan adds, so a mutant row for them would be a second registration of one proof; zero new faults holds).
 
 ### Pending Todos
 
