@@ -1,5 +1,7 @@
 # Guardrails for milestone v0.2.0
 
+**Superseded 2026-11-26 by `.planning/ops/GUARDRAILS-v0.3.md`** (milestone v0.3.0). This file stays as recorded and is append-only; its R-rows still bind wherever `GUARDRAILS-v0.3` cites them (V5, V7).
+
 **Status:** frozen upstream artifact, 2026-11-24, written before any v0.2.0
 phase plan exists. Every phase plan, executor and verifier of this milestone
 obeys it by path and row number. It is the answer to "every structural phase

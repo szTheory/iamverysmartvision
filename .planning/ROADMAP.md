@@ -4,10 +4,13 @@
 
 The project is building a deterministic, headless Intellivision machine core in
 which every compatibility claim cites an exactly named profile and an evidence
-tier. The first milestone delivered the machine and the evidence apparatus; the
-roadmap now turns toward making that core **reachable** (a person can obtain and
-run it), **replayable** (a run can be reproduced from a log) and **durable**
-(the gate's evidence cannot rot), then toward the content and platform surface.
+tier. v0.1.0 delivered the machine and the evidence apparatus. v0.2.0 made the
+core **reachable** (a person builds and runs it from the source archive),
+**replayable** (a run reproduces from an input log) and **durable** (the gate's
+evidence cannot rot, and its cost is measured). v0.3.0 turns to the question the
+project has never been able to answer: **can a person put real content in and
+drive it?** — a rights-clean content path, a build-only host surface, and the
+owner's own files as a handoff row rather than a promise.
 
 This file is a **rolling roadmap**: a recommendation register, labelled `[REC]`,
 re-triaged at every milestone opening per `.planning/ops/MILESTONE-RITUAL.md`.
@@ -19,32 +22,42 @@ milestone in `.planning/REQUIREMENTS.md`. Archived milestone roadmaps live under
 
 ## Horizons
 
-### Near — v0.2.0 "Registered Evidence, Reachable Runs, Replayable Input"
+### Near — v0.3.0 "Owner-Supplied Content and a Driveable Host"
 
-Selected 2026-11-24 by a four-lens fan-out and a five-point upstream scoping
-pass (`.planning/MILESTONE-CONTEXT.md`). Phases continue the numbering at 9.
+Selected 2026-11-26 by a four-lens fan-out and a five-point upstream scoping
+pass (`.planning/MILESTONE-CONTEXT.md`; the five scoping outputs are frozen in
+`.planning/research/v0.3.0-scoping-*.md`). Phases continue the numbering at 13.
+
+**Why this one, in one line:** the project has never been able to answer "can a
+person put real content in and drive it", and the owner asked for exactly that
+on 2026-11-26; every one of the four lenses put the content path first and the
+host surface second, with the owner's own files last as a handoff row.
 
 | # | Phase | Goal | Requirements | Gate |
 |---|-------|------|--------------|------|
-| 9 | Registered Evidence and Gate Cost | Land the cost lever and trims, take a hosted row, then register the 17 unregistered requirements and harden the gate | EV-01..EV-04 | No external gate; the only work allowed to add gate content, and only after its own hosted row |
-| 10 | Reachable Runs and Presentation Policy | A person builds and runs the demo cartridge from the source archive using documented commands; the presentation policy is frozen; the look/listen handoff is recorded | PKG-05, TOOL-04 (narrowed), EV-05 | No new dependency, no install-list change (structurally blocked, see D14); the handoff is `not-performed` unless a human reports back |
-| 11 | Input Record and Replay | An input-only log whose replay reproduces the recorded run's digest chain and applied-event chain | TOOL-01 | No owner or rights gate; cost gate only (zero new gate steps) |
-| 12 | Bank Modes and External Import | Bank-mode profile data with a typed refusal for every unmapped mode; `.bin`/`.cfg` import outside the core, rights-gated per mode | FMT-01, FMT-04 | Rights review first, per mode; degrades to FMT-01 only; droppable |
+| 13 | Rights Ledger and Enforced Claim Ceiling | One question-shaped rights row per content question, a check that refuses an unsourced `cleared` row and a refused spelling in code or operator pages, D-32's `established`-claim check, and the ten D-09-06 mechanisms registered as `mutant` rows | RTS-01, RTS-02, EV-06, EV-07 | No external gate; it is the entry ticket for every later phase, because until it exists a refused item can be named and a claim can rise with the gate still green |
+| 14 | Flat-Image Wrap and the Cartridge Role | A build-only tool wraps a flat image at an operator-stated base into IVSC v1 with seven typed refusals each beside its boundary positive; the owner-local route gains a cartridge role | TOOL-07, SCN-03 | Rights: nothing parses a third-party format and the output is derived material; cost line only (zero new steps) |
+| 15 | Build-Only Host and the Fake-Frontend Harness | A shared object outside `core/` and outside the install list, driven by a harness that `dlopen`s it and reproduces the runner's nine digest lines on a project cartridge, guarded three ways | TOOL-08 | Cost and CI shape: it is the only phase that creates a new build target (D12's named reversal trigger), so it is the droppable one |
+| 16 | Owner Route, Claim and Release Posture | One documented owner route from the source archive, handoff rows, a tracked shared object refused by name, and a release-decision line recomputed | PKG-06 | Owner hard stop D11: the owner's own run is a handoff row, never a criterion; the concurrency lever is taken here, cost-only |
 
-Rationale for the order, in one line each: **9** is the entry ticket for every
-other phase (the gate may not grow before it); **10** carries the only
-owner-latency item in the milestone and is the cheapest phase, so it is
-front-loaded; **11** ships into an artifact a person can now obtain; **12** is
-last and conditional so a cost spike is absorbed by dropping it rather than
-discovered at the close.
+Rationale for the order, in one line each: **13** is the entry ticket (it makes
+naming legal and claims bounded); **14** is the binding constraint, because a
+host built before it has nothing to load and RetroArch would refuse every real
+image; **15** is worth building only once there is something to load, and it is
+last-but-one because it is the least predictable; **16** closes the loop.
 
-### Mid — the next two or three milestones `[REC]`
+**Droppable:** Phase 15, pre-authorized, degrading to a content-only v0.3.0. It
+leaves a new content capability; dropping 14 would not. The degradation is
+written in the close record.
+
+### Mid — the next two or three milestones `[REC]` (re-triaged 2026-11-26)
 
 | Candidate milestone | Delivers | Gate |
 |---|---|---|
-| **Interactive debugger and inspection** (TOOL-02) | Breakpoints, cycle-stamped trace, disassembly over the existing side-effect-free inspection path; converts tier-4 STIC/CPU claims from golden-compared into inspectable and falsifiable | No external gate; needs replay (v0.2.0) to be useful, and a scripted, headless-verifiable command surface |
-| **Variant profiles** (VAR-01..04: Intellivision II, Sears, Tandy aliases) | Alias vs distinct profile decided by image comparison; the first profiles beyond the family-level 2609 NTSC | User-supplied system images plus a rights review for the first three; **PAL has no evidence at all** — every value is unknown, so it needs a primary data sheet or a measurement |
-| **Content formats with persistence** (FMT-02, FMT-03) | Intellicart/CC3/JLP/LTO Flash shapes and their persistence; a hash-keyed content database | Rights review, and a persistence story that reverses OQ8 (the exact-build, non-archival snapshot policy) |
+| **Interactive debugger and inspection** (TOOL-02) — **promoted to the front** | Breakpoints, a cycle-stamped trace and disassembly over the existing side-effect-free inspection path; converts tier-4 STIC/CPU claims from golden-compared into inspectable and falsifiable | Its "needs replay" gate is **met** (v0.2.0) and v0.3.0 gives it a consumer (the host and the owner route). No external gate; the work is a scripted, headless-verifiable command surface |
+| **Variant profiles** (VAR-01..04) | Alias vs distinct profile decided by image comparison; the first profiles beyond the family-level 2609 NTSC | User-supplied system images plus a rights review for the first three; **PAL has no evidence at all** — it needs a primary data sheet or a measurement (D10) |
+| **Content formats with persistence** (FMT-02, FMT-03) | Intellicart/CC3/JLP/LTO Flash shapes and their persistence; a hash-keyed content database | A rights review per format, and a persistence story that reverses OQ8. **Demoted** below the debugger because it is larger than one milestone and still rights-gated |
+| **Bank modes as profile data** (FMT-01, narrowed) | A typed refusal for every bank mode the profile does not name, with one generated original fixture per accepted mode | A re-derived registry baseline and a cleared cost reading; v0.3.0 refuses `.cfg` by name, so this waits on a mode description the project may write itself |
 | **Scheduled fuzzing and extended sanitizers** (TOOL-05) | A recurring robustness class that the one headless job does not catch | A named failure class that no current gate step catches; the out-of-gate libFuzzer target exists, so the trigger is a failing case found on demand |
 
 ### Long — standing intent and explicit non-goals
@@ -93,7 +106,17 @@ files.
 </details>
 
 <details>
-<summary>🚧 v0.2.0 Registered Evidence, Reachable Runs, Replayable Input (Phases 9 to 12)</summary>
+<summary>🚧 v0.3.0 Owner-Supplied Content and a Driveable Host (Phases 13 to 16)</summary>
+
+- [ ] Phase 13: Rights Ledger and Enforced Claim Ceiling — one question-shaped rights row per content question, an unsourced-`cleared` refusal, a refused-spelling refusal, D-32's `established`-claim check, and the ten D-09-06 mechanisms registered
+- [ ] Phase 14: Flat-Image Wrap and the Cartridge Role — a build-only wrap at an operator-stated base with seven typed refusals each beside its positive, and a cartridge role in the owner-local route
+- [ ] Phase 15: Build-Only Host and the Fake-Frontend Harness — a shared object outside the core and the install list, proved by a harness that reproduces the runner's nine digest lines, guarded three ways (droppable)
+- [ ] Phase 16: Owner Route, Claim and Release Posture — one documented route from the source archive, handoff rows, shared objects refused by name, and a recomputed release decision
+
+</details>
+
+<details>
+<summary>✅ v0.2.0 Registered Evidence, Reachable Runs, Replayable Input (Phases 9 to 12) — SHIPPED 2026-11-25</summary>
 
 - [x] Phase 9: Registered Evidence and Gate Cost — land the cost lever and trims, take the hosted row that settles the level, then register the 17 already-faulted requirements and make the gap unrepeatable
 - [x] Phase 10: Reachable Runs and Presentation Policy — a person builds and runs the demo cartridge from the released source archive with documented commands; the presentation policy is frozen and enforced; the look/listen handoff is recorded
@@ -126,19 +149,106 @@ gate is resolved by its named authority.
 | D13 LibFuturo adapter | Owner gate | Deferred | Not before a real consumer exists |
 | D14 The runner is not installed in 0.2.x; the person route is the documented build | Architecture + rights | Delegated decision 2026-11-24 (`.planning/MILESTONE-CONTEXT.md` §3) | Phase 10 |
 | D15 The replay log is an input artifact (text, no content-digest field) | Architecture + rights | Delegated decision 2026-11-24 | Phase 11 |
-| D16 The `.bin`/`.cfg` importer lives outside the core; its refusals are tool tokens | Architecture + rights | Delegated decision 2026-11-24 | Phase 12 |
+| D16 The `.bin`/`.cfg` importer lives outside the core; its refusals are tool tokens | Architecture + rights | Delegated decision 2026-11-24; **narrowed by D-47** — a flat image at an operator-stated address is accepted, `.cfg` stays refused by name | Phase 14 |
+| D-46 The rights ledger is a second, question-shaped ledger | Rights + architecture | Delegated decision 2026-11-26 (`.planning/MILESTONE-CONTEXT.md` §3) | Phase 13 |
+| D-47 The flat wrap states bytes, never a format | Rights + architecture | Delegated decision 2026-11-26 | Phase 14 |
+| D-48 The host is build-only with a project-authored ABI subset | Rights + architecture | Delegated decision 2026-11-26 | Phase 15 |
+| D-49 The package stays static and eleven files; shared objects refused by name | Architecture + rights | Delegated decision 2026-11-26 | Phase 16 |
+| D-50 The claim ceiling is enforced mechanically | Evidence | Delegated decision 2026-11-26 | Phase 13 |
 | OQ8 Snapshot persistence policy | Architecture | Delegated decision (Phase 8) | Done |
 | OQ11 Performance targets | Architecture | Delegated decision (PRF-01 sets none) | Done |
 
 ## Phase Details
 
-**Milestone v0.2.0.** The phase shape, exit criteria, decisions (D14 to D16),
+**Milestone v0.3.0.** The phase shape, exit criteria, decisions (D-46 to D-50),
 verification strategy, tier ceilings and risks are frozen in
 `.planning/MILESTONE-CONTEXT.md`; the retarget table and the definition of done
-are `.planning/ops/GUARDRAILS-v0.2.md`. The milestone plans about 24 plans across
+are `.planning/ops/GUARDRAILS-v0.3.md`. The milestone plans about 18 to 22 plans
+across four phases.
+
+Four rules hold across every phase below: **zero new gate steps, faults or
+goldens** (38 / 238 / 29 stay; every capability lands as ids inside a suite that
+already exists), **the window is never the evidence** (the fake frontend is),
+**`steps=38/38` is an invariant**, and **no claim above `provisional`**, with
+D-50's check as the enforcement.
+
+### Phase 13: Rights Ledger and Enforced Claim Ceiling
+
+**Goal**: Every third-party-content question this milestone touches has a
+written disposition before any byte is read, a refused item cannot be named in
+code or in an operator page without failing the gate, and the claim ceiling is
+mechanical rather than quoted.
+**Depends on**: Nothing (first phase of v0.3.0; continues from the shipped Phase 11)
+**Requirements**: RTS-01, RTS-02, EV-06, EV-07
+**Success Criteria** (what must be TRUE):
+  1. `data/rights/` holds one row per item the milestone touches — flat image, `.cfg`, bank modes, EXEC, GROM, commercial ROM, frame render or screenshot, save state, the libretro-shaped ABI and core-info strings — each `cleared`, `refused` or `owner-local-only`, with a `SRC-` id resolvable in `data/expected/sources.ids` when the row is `cleared`, and a non-empty "what was taken" cell; a row missing any of those is refused by name.
+  2. A `cleared` row with no source is refused, and a refused item's spellings are refused in `core/src`, `runner/`, `tools/` and the operator pages of `docs/`, except where a pre-existing refusal surface is pinned by a `(token, path)` pair; both limbs are shown able to fail by a committed control.
+  3. The claims step refuses an `established` claim that is not a `source-expectation` claim resting on a `tier1-primary-doc` dependency, and a legal `established` claim still passes; both are shown able to fail.
+  4. Each of the ten D-09-06 mechanisms has an `important-gates.ids` `mutant` row over its existing selftest, the registry baseline is re-derived in the same commit, all ten toy registries gain exactly one line each with zero deletions, and `faults` stays 238.
+  5. The gate ends `steps=38/38` with a predicted and then measured token delta, and one hosted row is recorded after the content lands with the last-five `cpu_s` median recomputed against the 21 cpu-s allowance.
+**Plans**: TBD
+**Tier ceiling**: none — this phase adds no claim.
+
+### Phase 14: Flat-Image Wrap and the Cartridge Role
+
+**Goal**: A person can wrap a flat cartridge image of their own, at an address
+they state, into the project's cartridge container, and the owner-local route
+accepts it — with nothing parsed, nothing described from another implementation
+and nothing committed.
+**Depends on**: Phase 13 (a rights row must exist before a byte is read)
+**Requirements**: TOOL-07, SCN-03
+**Success Criteria** (what must be TRUE):
+  1. `tools/flatwrap <flat> <base> <out> [--word-order hi-first|lo-first]` is build-only, absent from the install list and from `data/expected/pkg-install-files.ids`, and states only a byte length, a word order and an address the operator gave it; it names no other tool's format and auto-detects nothing.
+  2. Seven typed refusals, pinned append-only in `data/expected/flat-refusals.ids`, each beside its boundary positive: odd↔even length, a word above `$03FF`↔`$03FF`, 65,537↔65,536 words, base `$3FFF`↔`$4000`, crossing `$10000`↔ending at it, output inside the work tree↔outside, existing↔new output.
+  3. A wrapped image round-trips: it loads as `content cart user`, `slot.cart.sha256` equals the hash printed on stdout, and flipping one input byte changes that hash (so the equality is proved live).
+  4. The owner-local route gains a cartridge role; all six derived-output refusals and the snapshot rule fire for it, one line each and no file, and `docs/owner-images.md` no longer says the route has no cartridge role.
+  5. No tracked file carries a new binary extension, `binary-ext.txt` and `.gitignore` are unchanged by this phase, and the gate ends `steps=38/38` with the predicted `tests-expected` and `tests-skipped` delta.
+**Plans**: TBD
+**Tier ceiling**: none — the wrap and the round trip are repeatability `[nc]`.
+
+### Phase 15: Build-Only Host and the Fake-Frontend Harness
+
+**Goal**: The core can be driven in real time by a host that loads it as a
+shared object, and the proof is a headless frontend that reproduces the runner's
+nine digest lines — not a window.
+**Depends on**: Phase 13 (rights rows for the ABI and the palette before code)
+**Requirements**: TOOL-08
+**Success Criteria** (what must be TRUE):
+  1. One shared object is built outside `core/` and outside the install list, exporting only its shaped entry points and no `ivs_` or palette symbol; the export surface is refused by name if it grows.
+  2. An automated fake frontend `dlopen`s it, loads one project cartridge with the boot stub and zero GROM, drives the pass scenario's six events, and prints nine digest lines equal byte-for-byte to `data/golden/demo-lamp-tone-pass.digests`.
+  3. The equality is guarded three ways: every line non-`-` with the observed set equal; a second id with an empty poll must give a **different** set; and two stand-ins are refused — a stub printing the golden with no frame (`host-vacuous`) and a mutant with the input poll dropped (`host-digest-diff`).
+  4. The host holds no palette of its own (it links `runner/frame_export.c`), opens no file but the images named on its command line, and the installed package is unchanged: eleven files, with a selftest that the shared object is absent.
+  5. `so` and `dylib` enter `tools/check/binary-ext.txt` with the controls that refuse a tracked shared object, and the gate ends `steps=38/38` with the predicted delta.
+**Plans**: TBD
+**Tier ceiling**: `deterministic-repeatability`, provisional — the same core compared with itself, never an independent comparison.
+**Droppable**: yes. The pre-authorized fallback is a content-only v0.3.0; the goal is amended in the close record and TOOL-08 is recorded `Deferred` with its reversal condition.
+
+### Phase 16: Owner Route, Claim and Release Posture
+
+**Goal**: The owner route from the source archive is documented and rehearsed,
+the one question only the owner can answer is a handoff row, and the release
+posture states plainly that no host artifact and no content ships.
+**Depends on**: Phases 13, 14 and 15 (or 13 and 14 under the fallback)
+**Requirements**: PKG-06
+**Success Criteria** (what must be TRUE):
+  1. One documented owner route (EXEC + GROM + a wrapped cartridge, three commands) is rehearsed from the **source archive** to a project-cartridge golden, with the transcript recorded; it is a release-time rehearsal, not a gate step.
+  2. The route's pass path is exercised with project-made files — zero-filled 8192- and 2048-byte images are shape-legal — and a one-byte EXEC mutation proves the id can fail; the `exec:` label stays `-` so no run reads as a real-EXEC result.
+  3. The owner-only questions are `handoffs.ids` rows, `evidence: none`, dispositioned, cited by no claim and by no phase exit criterion.
+  4. A tracked shared object is refused by name in both directions, the installed package stays eleven files, and the release-decision line reads: the release ships the static package and the source archive; no shared object, no host shim, no content.
+  5. The concurrency lever is taken in one cost-only commit whose summary token line is byte-identical and whose `step.out.<name>` buffers are compared, and the close records one checkpoint line in the section 2.3 vocabulary with `steps=38/38`.
+**Plans**: TBD
+**Tier ceiling**: no new claim; the claim is minted in Phase 15.
+
+<details>
+<summary>v0.2.0 phase details (archived 2026-11-25)</summary>
+
+**Milestone v0.2.0.** The phase shape, exit criteria, decisions (D14 to D16),
+verification strategy, tier ceilings and risks are frozen in
+`.planning/milestones/v0.2.0-CONTEXT.md`; the retarget table and the definition of done
+are `.planning/ops/GUARDRAILS-v0.2.md`. The milestone planned about 24 plans across
 the four phases (18 without Phase 12).
 
-Three rules hold across every phase below: **zero new gate steps** (38 stays
+Three rules held across every phase below: **zero new gate steps** (38 stays
 38; every capability lands as ids inside a suite that already exists), **no new
 test id, control or fault before Phase 9's hosted row**, and **no claim above
 `provisional`** while D10 and D11 are unperformed.
@@ -243,6 +353,33 @@ the profile does not name, and — only where a per-mode rights review clears it
 **Tier ceiling**: as criterion 5 — no third-party file is read, by design.
 **Droppable**: yes. A cost spike or a failed rights review is absorbed here rather than discovered at the milestone close.
 
+</details>
+
+## Coverage (v0.3.0)
+
+| Requirement | Phase |
+|-------------|-------|
+| RTS-01, RTS-02, EV-06, EV-07 | 13 |
+| TOOL-07, SCN-03 | 14 |
+| TOOL-08 | 15 (droppable) |
+| PKG-06 | 16 |
+
+Mapped: 8/8 v0.3.0 requirements, each to exactly one phase. No orphans, no
+duplicates. If Phase 15 is dropped, TOOL-08 is recorded `Deferred` with its
+reversal condition — never lost, never `Complete`.
+
+## Coverage (v0.2.0 — archived)
+
+| Requirement | Phase |
+|-------------|-------|
+| EV-01..EV-04 | 9 |
+| EV-05, PKG-05, TOOL-04 (narrowed) | 10 |
+| TOOL-01 | 11 |
+| FMT-01 (narrowed), FMT-04 | 12 (dropped) |
+
+Mapped: 10/10 v0.2.0 requirements; FMT-01 and FMT-04 were dropped at Phase 12's
+entry gate and are `Deferred` with their reversal conditions.
+
 ## Coverage (v0.1.0 — archived)
 
 | Category | Requirements | Phase |
@@ -306,7 +443,20 @@ end-to-end flows; the debt is the recorded, accepted register, not new gaps.
 | 11. Input Record and Replay | 5/5 | Complete    | 2026-11-25 |
 | 12. Bank Modes and External Import (conditional) | 0/0 | Dropped (three-phase fallback) | 2026-11-25 |
 
-**Current milestone:** v0.2.0, scoped 2026-11-24 and detailed by this roadmap on
-2026-11-24. Phase 9 not started; no phase plan exists. Phase 12 is conditional
-and droppable. The milestone adds zero new gate steps and no claim above
+**v0.2.0 is shipped and archived.** Phases 9 to 11 complete, Phase 12 dropped at
+its entry gate, release `v0.2.0` published as a pre-release on the artifact
+commit `8f017e7`. Its phase details are collapsed above.
+
+### v0.3.0 — scoped 2026-11-26 (in progress)
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 13. Rights Ledger and Enforced Claim Ceiling | 0/TBD | Not started | — |
+| 14. Flat-Image Wrap and the Cartridge Role | 0/TBD | Not started | — |
+| 15. Build-Only Host and the Fake-Frontend Harness | 0/TBD | Not started | — |
+| 16. Owner Route, Claim and Release Posture | 0/TBD | Not started | — |
+
+**Current milestone:** v0.3.0, scoped and detailed by this roadmap on 2026-11-26.
+No phase plan exists. Phase 15 is droppable under the pre-authorized fallback.
+The milestone adds zero new gate steps, faults or goldens, and at most one claim,
 `provisional`.

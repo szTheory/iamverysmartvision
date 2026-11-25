@@ -1,7 +1,7 @@
 {
   "contract": "1.0.0",
   "flavor": "core",
-  "milestone": "v0.2.0 — Registered Evidence, Reachable Runs, Replayable Input (Phases 9 to 12)</summary>",
+  "milestone": "v0.3.0 — Owner-Supplied Content and a Driveable Host (Phases 13 to 16)",
   "phases": [
     {
       "number": "1",
@@ -45,9 +45,9 @@
     }
   ],
   "next": {
-    "command": "/gsd-progress",
-    "label": "Show progress",
-    "reason": "Unsure of state — showing progress"
+    "command": "/gsd-discuss-phase",
+    "label": "Discuss the first phase",
+    "reason": "Project initialized — plan your first phase"
   },
-  "updated_at": "2026-11-25T17:27:31.230Z"
+  "updated_at": "2026-11-25T19:06:40.752Z"
 }

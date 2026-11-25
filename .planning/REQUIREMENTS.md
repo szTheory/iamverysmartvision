@@ -1,41 +1,45 @@
 # Requirements: iamverysmartvision
 
-**Milestone:** v0.2.0 Registered Evidence, Reachable Runs, Replayable Input
-**Defined:** 2026-11-24
+**Milestone:** v0.3.0 Owner-Supplied Content and a Driveable Host
+**Defined:** 2026-11-26
 **Core Value:** A deterministic, observable machine core whose every compatibility claim is bound to an exactly named profile and independent evidence — never an unqualified "it runs Intellivision games" label.
-**Scope record:** `.planning/MILESTONE-CONTEXT.md`. **Guardrails:** `.planning/ops/GUARDRAILS-v0.2.md`.
+**Scope record:** `.planning/MILESTONE-CONTEXT.md`. **Guardrails:** `.planning/ops/GUARDRAILS-v0.3.md`.
 
-The v0.1.0 requirement set (50 requirements, all Complete on their recorded
-terms) is archived in `.planning/milestones/v0.1.0-REQUIREMENTS.md`. Numbering
-continues from it per category; new categories start at 01.
+The v0.2.0 requirement set (10 requirements: 8 Complete, 2 Deferred) is archived
+in `.planning/milestones/v0.2.0-REQUIREMENTS.md`. The v0.1.0 set (50, all
+Complete) is in `.planning/milestones/v0.1.0-REQUIREMENTS.md`. Numbering
+continues from them per category; new categories start at 01.
 
-## v0.2.0 Requirements
+## v0.3.0 Requirements
 
 Requirements for this milestone. Each maps to exactly one roadmap phase. Every
 requirement is a hypothesis until delivered and verified, and **no claim may
-exceed `provisional`** while D10 and D11 are unperformed.
+exceed `provisional`** while D10 and D11 are unperformed (`PROJECT.md` D-32
+scopes that ceiling to behavioural claims, and EV-06 makes the scoping
+mechanical).
 
-### Evidence durability and gate cost
+### Rights
 
-- [x] **EV-01**: The gate cost lever (3) and trims (a), (c) and (d) land in cost-only commits — with trim (b) declined by measurement — before any new test id, control, fault or gate step, and a hosted row recorded after them settles the cost level.
-- [x] **EV-02**: The 17 requirements whose named faults already run in every gate (FND-01..07, CPU-01..05, MEM-01..05) each have at least one cannot-pass-vacuously mechanism registered in `data/expected/important-gates.ids`, with the accepted-requirement set and all ten toy registries extended in the same commit and no new fault or test id.
-- [x] **EV-03**: Each gate-hardening item (`SRC-` whole-token match, zero-document failures, per-step pass lines, manifest output anchoring, memmap generator controls) has a control that fails for its intended reason.
-- [x] **EV-04**: A machine check refuses a requirement marked Complete that has no registry line, and refuses a toy registry that drifts from the good tree, and both are shown able to fail.
-- [x] **EV-05**: A handoff ledger (`data/expected/handoffs.ids`) records every human-only item (H7-1, H7-2, H8-3, D10, D11) with `evidence: none`, a claim may not cite a handoff artifact, and a later milestone cites the row instead of re-asking.
+- [ ] **RTS-01**: A rights ledger records one row per third-party-content question this milestone touches — a flat cartridge image, the `.cfg` container, bank modes, EXEC, GROM, a commercial ROM, a rendered frame or screenshot, a save state, the libretro-shaped ABI and core-info strings — each with a disposition of `cleared`, `refused` or `owner-local-only`, and a `cleared` row cites a resolvable `SRC-` id; a row missing its disposition, a source it needs, or its "what was taken" cell is refused by name.
+- [ ] **RTS-02**: A refused item's spellings cannot appear in `core/src`, `runner/`, `tools/` or the operator pages of `docs/`, except where a pre-existing refusal surface is pinned by a `(token, path)` pair; a new occurrence is refused by name, and both limbs are shown able to fail.
 
-### Packaging and reachability
+### Evidence
 
-- [x] **PKG-05**: A person can build and run the emulator from the released source archive using documented commands only, and the release rehearsal proves that route end to end against the demo cartridge golden from a moved prefix.
+- [ ] **EV-06**: The claims step refuses an `established` claim that is not a `source-expectation` claim resting on a `tier1-primary-doc` dependency, and a legal `established` claim still passes — both shown able to fail (D-32, D-50).
+- [ ] **EV-07**: Each of the ten must-fail mechanisms that have a liveness guard and a re-runnable stand-in but no registry row (D-09-06) gains a `mutant` row over its existing selftest, with the registry baseline re-derived and all ten toy registries extended in the same commit, and **zero new faults**.
 
 ### Tooling
 
-- [x] **TOOL-01**: A run can be recorded as an input-only log and replayed at machine-time boundaries, and the replay reproduces the recorded run's digest chain and applied-event chain, guarded against a vacuous match.
-- [x] **TOOL-04** *(narrowed)*: A frozen presentation and palette policy keeps colour, scaling and aspect out of the core and out of every claim, and a check refuses a colour symbol in the core.
+- [ ] **TOOL-07**: A person can wrap a flat cartridge image of their own, at an address they state, into the project's cartridge container with one build-only command, and every malformed input is refused by a typed token with a positive case beside it; the wrapped image is derived material and is never committed, golden, fixture or claim artifact.
+- [ ] **TOOL-08**: The core can be driven in real time by a host that loads it as a shared object outside the installed package, and an automated frontend reproduces the runner's nine digest lines on a project cartridge — with the vacuity closed three ways and the host holding no palette of its own.
 
-### Content formats
+### Scenario and route
 
-- [ ] **FMT-01** *(narrowed)* — **Deferred (Phase 12 dropped, three-phase fallback)**: Bank-mode behaviour is profile data with a typed refusal for every mode the profile does not name — never a silent default — and one generated original fixture per mode proves a witness pair and a no-switch case.
-- [ ] **FMT-04** — **Deferred (Phase 12 dropped; the rights review cannot clear it)**: `.bin`/`.cfg` import lives outside the core, refuses every unmapped or unsupported mode by name, writes nothing inside the work tree, and is gated per mode by a rights review that can degrade the phase to `FMT-01` only.
+- [ ] **SCN-03**: The owner-local route accepts a cartridge image alongside the EXEC and GROM images, every derived-output refusal is extended to it, and the route's pass path is exercised on project-made files without any owner image.
+
+### Packaging and release
+
+- [ ] **PKG-06**: A tracked shared object is refused by name, the installed package stays eleven files, and the release-decision line states that no shared object, host shim or content is shipped.
 
 ## v2 Requirements
 
@@ -44,16 +48,18 @@ its own research and evidence.
 
 ### Tooling and integration
 
-- **TOOL-02**: Interactive debugger — breakpoints, cycle-stamped trace, disassembly over the side-effect-free inspection path, driven by a scripted command surface so it stays headless-verifiable.
+- **TOOL-02**: Interactive debugger — breakpoints, cycle-stamped trace, disassembly over the side-effect-free inspection path, driven by a scripted command surface so it stays headless-verifiable. **Promoted to the front of the mid horizon:** its "needs replay" gate is met, and v0.3.0 gives it a consumer.
 - **TOOL-03**: LibFuturo adapter, after a real consumer exists and fit is proven (owner gate D13).
-- **TOOL-04 (remainder)**: The reference host frontend proper — window, audio device, physical controller mapping — outside the core build graph, and the packaging story that makes it obtainable.
+- **TOOL-04 (remainder)**: A window, an audio device, physical controller mapping and the packaging story that makes a prebuilt host obtainable. v0.3.0 delivers the host surface *build-only*; shipping a binary is a separate decision (D-49).
 - **TOOL-05**: Scheduled fuzzing and extended sanitizer jobs, once a failure class justifies them that no gate step catches.
 - **TOOL-06**: Hardware-measured timing evidence for STIC windows, BUSRQ and the controller matrix (owner gate D10).
 
 ### Content formats
 
+- **FMT-01** *(narrowed, deferred from v0.2.0)*: Bank-mode behaviour as profile data with a typed refusal for every mode the profile does not name. Reversal: a re-derived registry baseline and a cleared cost reading.
 - **FMT-02**: Intellicart / CC3 / JLP / LTO Flash formats and their persistence.
 - **FMT-03**: Hash-keyed content database for configuration identity.
+- **FMT-04** *(deferred from v0.2.0)*: The `.bin`/`.cfg` importer. Reversal: a permissively-described primary source or an independent `.cfg` description, plus a per-mode rights review with a source id per row. **v0.3.0 narrows the question rather than answering it**: TOOL-07 accepts a flat image at an operator-stated address and refuses `.cfg` by name, so the rights ground no longer blocks *flat* content while the `.cfg` container stays refused.
 
 ### Variant profiles
 
@@ -69,53 +75,47 @@ its own research and evidence.
 
 ## Out of Scope
 
-Explicitly excluded from v0.2.0, with the reason. Documented to prevent scope
+Explicitly excluded from v0.3.0, with the reason. Documented to prevent scope
 creep; the reasons are load-bearing.
 
 | Feature | Reason |
 |---------|--------|
-| Installing `ivs-run` or any cartridge image into the release package | Structurally blocked, not merely expensive: an installed runner has nothing to run (every cartridge is a build product of `ivs_pack`/`ivs_asm`, which are never shipped), and any release member with a binary extension is refused whatever the list says (D14) |
-| A windowed frontend or any new runtime dependency | First genuinely new runtime dependency; a permanent CI blind spot (a window is never evidence); palette risks becoming a de-facto STIC-colour claim. Needs a named consumer and an images story that survives the release-asset check (D14 reversal evidence) |
-| A second example cartridge or program | Lamp Tone already runs end to end; a new program is three or more plans and new gate ids for a presentation gain that belongs to the handoff's result, not to this phase |
-| Any new gate step | The cost rule; a step is the expensive unit and an id is the cheap one. Reversal requires new ids to exceed about 15 percent of an existing suite or a defect found only at a capability seam |
-| A real STIC colour table or any colour claim | Presentation is a host decision; a real table would be a profile field with a source tier and its own evidence row |
-| Copying a `.cfg`/`.bin` format description from an emulator's code, tables or constants | FND-05 and the licences; a per-fact rights review written in the project's own words is the only accepted route |
-| Committing any `.bin`, `.cfg`, `.rom`, `.ivsc` or third-party cartridge | Rights-bearing; a hash establishes identity, not rights. Fixtures are generated from tracked sources into the build tree |
-| Any claim above `provisional` | D10 and D11 are unperformed; no measured-hardware tier exists |
-| Silently defaulting an unknown bank mode, peripheral or memory map | Hides configuration identity; always a typed refusal |
+| Vendoring the libretro header, or claiming libretro compatibility | The shim needs about six entry points, not a 200-symbol header; a project-authored subset is rights-clean and nothing has to be licensed or noticed (D-48). Vendoring is a later decision with the licence text read and recorded first |
+| Shipping the host shim, or any shared object, in a release | The package is static and eleven files; a tracked shared library is refused by name. Shipping one is a separate decision that moves `pkg-install-files.ids` and `docs/packaging.md` together (D-49) |
+| Committing, golden-ing or CI-creating a wrapped image or any third-party content | Rights-bearing: a hash establishes identity, not rights. The wrap output is derived material and is refused inside the work tree except `refs/` (D-47) |
+| Parsing or describing the `.cfg` container, or implementing bank switching | Its only known description is a GPL implementation this project's research rules exclude. FMT-01 and FMT-04 stay `Deferred` with their conditions |
+| A real STIC colour table, or a palette inside the core | Presentation is a host decision; the one palette is the labelled operator preview palette, linked and never copied, and it is never a golden, digest, assert or claim |
+| Any new gate step, fault or golden | 38 steps, 238 faults and 29 goldens stay; the allowance is 21 hosted cpu-s and a step is the expensive unit |
+| Any claim above `provisional` | D10 and D11 are unperformed; no measured-hardware tier exists, and D-50's check is what enforces the behavioural ceiling |
 | "Intellivision" in a package, product or repository name | Third-party trademark |
 
 ## Traceability
 
 Which phase covers which requirement. Filled at roadmap creation
-(2026-11-24) and verified against the `.planning/ROADMAP.md` Phase Details on
-the same date: every requirement appears in exactly one phase, in the phase the
-roadmap names.
+(2026-11-26) and verified against the `.planning/ROADMAP.md` Phase Details on
+the same date: every requirement appears in exactly one phase.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| EV-01 | Phase 9 | Complete |
-| EV-02 | Phase 9 | Complete |
-| EV-03 | Phase 9 | Complete |
-| EV-04 | Phase 9 | Complete |
-| EV-05 | Phase 10 | Complete |
-| PKG-05 | Phase 10 | Complete |
-| TOOL-04 | Phase 10 | Complete |
-| TOOL-01 | Phase 11 | Complete |
-| FMT-01 | Phase 12 | Deferred — cost ground; reversal: a re-derived registry baseline |
-| FMT-04 | Phase 12 | Deferred — rights ground; reversal: a permissively-described primary source |
+| RTS-01 | Phase 13 | Pending |
+| RTS-02 | Phase 13 | Pending |
+| EV-06 | Phase 13 | Pending |
+| EV-07 | Phase 13 | Pending |
+| TOOL-07 | Phase 14 | Pending |
+| SCN-03 | Phase 14 | Pending |
+| TOOL-08 | Phase 15 | Pending |
+| PKG-06 | Phase 16 | Pending |
 
 **Coverage:**
-- v0.2.0 requirements: 10 total
-- Mapped to phases: 10
+- v0.3.0 requirements: 8 total
+- Mapped to phases: 8
 - Unmapped: 0 ✓
-- Phases: 9 (EV-01..EV-04), 10 (PKG-05, TOOL-04, EV-05), 11 (TOOL-01), 12 (FMT-01, FMT-04)
-- Phase 12 is conditional and droppable, and it **was dropped** on 2026-11-25 under
-  the pre-authorized three-phase fallback. The entry-gate decision line is
-  `.planning/phases/12-bank-modes-and-external-import/12-ENTRY-GATE.md`, committed
-  before any third-party file was read. FMT-01 and FMT-04 are `Deferred` above with
-  their reversal conditions, never `Complete` and never silently lost
+- Phases: 13 (RTS-01, RTS-02, EV-06, EV-07), 14 (TOOL-07, SCN-03), 15 (TOOL-08), 16 (PKG-06)
+- Phase 15 is the droppable phase under the pre-authorized fallback; if it is
+  dropped, TOOL-08 is recorded `Deferred` with its reversal condition and the
+  milestone goal is amended to "Owner-Supplied Content" — never silently lost and
+  never marked `Complete`.
 
 ---
-*Requirements defined: 2026-11-24*
-*Last updated: 2026-11-24 at milestone definition*
+*Requirements defined: 2026-11-26*
+*Last updated: 2026-11-26 at milestone definition*

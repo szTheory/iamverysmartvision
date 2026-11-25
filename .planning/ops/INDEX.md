@@ -12,7 +12,8 @@ this index first.**
 | `AGENTS.md` | Project instructions: owner direction, workflow, engineering and evidence rules, the milestone ritual pointer |
 | `.planning/AUTONOMY.md` | Owner delegation, the discuss fan-out protocol, the verification protocol (shift left), the CI-efficiency rule, the release/CD flow, the hygiene check, the milestone ritual, local CI replay |
 | `.planning/ops/MILESTONE-RITUAL.md` | The six-step ritual every new milestone runs: refresh rolling roadmap → inspect → fan out → upstream scoping pass → freeze and run → one command; plus the mandatory clean-state close |
-| `.planning/ops/GUARDRAILS-v0.2.md` | The retarget table (what must move in the same commit as what), the definition of done, the discuss/verify boilerplate, the close-state checklist |
+| `.planning/ops/GUARDRAILS-v0.3.md` | **Current.** The retarget table V1–V11 (what must move in the same commit as what), the milestone rules (no new step/fault/golden; cost is `cpu_s`; the checkpoint vocabulary; rights before bytes), the tier ceilings, the definition of done, the discuss/verify boilerplate, the close-state checklist |
+| `.planning/ops/GUARDRAILS-v0.2.md` | **Superseded 2026-11-26, kept as recorded.** Its R-rows are cited by `GUARDRAILS-v0.3` V5/V7 and still bind where cited |
 | `.planning/ops/EXEC-RULES.md` | What an executor may and may not do (no `gh`, no tags, never stage orchestrator state) |
 | `.planning/ops/RELEASE-OPS.md` | The release step order and the checks P1–P8 |
 | `.planning/ops/PLAN-LESSONS.md` | Numbered planning lessons 1–25; cite them by number in plans |

@@ -1,51 +1,47 @@
 ---
 gsd_state_version: "1.0"
-milestone: v0.2.0
-milestone_name: Registered Evidence, Reachable Runs, Replayable Input
-status: Awaiting next milestone
-stopped_at: All four phases resolved - 9, 10 and 11 delivered and verified; 12 dropped at its entry gate
-last_updated: "2026-11-25T17:27:31.209Z"
+milestone: v0.3.0
+milestone_name: Owner-Supplied Content and a Driveable Host
+status: planning
+last_updated: "2026-11-25T19:06:40.748Z"
 last_activity: 2026-11-25
-last_activity_desc: Milestone v0.2.0 completed and archived
-state_head: 750bdb9
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 20
-  completed_plans: 20
-  percent: 100
-current_phase: none
-current_phase_name: none
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-11-24)
+See: .planning/PROJECT.md (updated 2026-11-26)
 
 **Core value:** A deterministic, observable machine core whose every compatibility claim is bound to an exactly named profile and independent evidence — never an unqualified "it runs Intellivision games" label.
-**Current focus:** no milestone open — v0.2.0 is archived; the next command opens v0.3.0
+**Current focus:** v0.3.0 — Owner-Supplied Content and a Driveable Host (scoped 2026-11-26; Phase 13 not started)
 
 ## Current Position
 
-Phase: Milestone v0.2.0 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-11-25 — Milestone v0.2.0 completed and archived
+Status: Defining requirements
+Last activity: 2026-11-25 — Milestone v0.3.0 started
+
 
 ### Planning overrides recorded by the autonomous run
 
-| Gate | Result | Disposition |
-|---|---|---|
-| Decision coverage (`check.decision-coverage-plan`) | `could-not-parse` | **Proceeded.** The gate parses `D-NN` bullets; smart-discuss CONTEXT.md carries no ids by design, so the gate is inapplicable rather than unsatisfied. Verified by hand instead: amendments A-01 to A-09 are each cited by at least one plan (A-01→09-05, A-02→09-06/09-07, A-03/A-04→09-01, A-05→09-08, A-06→09-09, A-07→09-03, A-08→09-04..09-09, A-09→09-06) and every decision topic appears in a plan. No decision is dropped. Re-surfaced at verify-work. |
-| Plan-checker iteration cap | Reached at 3, plus two guided passes | **Accepted after the fifth pass.** The loop found 24 real defects (a non-existent option table, a stale count baseline 31 files out of date, a stand-in that could not fire, a generator invocation that would have broken six controls, a regression that would have reclassified `runner-selftest` and made 09-08 unsatisfiable). Each fix was verified against the tree; the two final properties were proved directly by the orchestrator (`grep -e IVS_GATE_DIR -e 'build/' tools/check/steps/runner-selftest.sh` empty; the `memcmp`-before-`su_nine_digests` ordering awk exits 0 at HEAD). No open blocker. |
+None yet for v0.3.0. The v0.2.0 overrides are archived with that milestone's phase
+records (`.planning/milestones/v0.2.0-phases/`), and the audit's dispositions are
+in `.planning/milestones/v0.2.0-MILESTONE-AUDIT.md` ("Closure recorded at the
+milestone close").
 
 ## Releases
 
 | Version | Date | Commit | Assets | Notes |
 |---------|------|--------|--------|-------|
-| `v0.2.0` | — | — | — | **Not published: `READY, NOT PUBLISHED: blocked by P5`.** No `[0.2.0]` CHANGELOG section and the three version numbers still read `0.1.0`. P1, P2, P3, P4, P6 and P7 hold. The order that clears it is in the archived milestone audit's release-decision section. |
+| `v0.2.0` (pre-release) | 2026-11-26T18:42:27Z | `8f017e7` (the release-prep merge commit, the artifact commit) | `ivs-v0.2.0-source.tar.gz` (6,086,787 B), `ivs-v0.2.0-install-linux-x86_64.tar.gz` (83,465 B), `SHA256SUMS` (196 B) | Source-only; claims provisional and nothing measured; D10 and D11 not performed. P5 cleared by the v0.3.0 housekeeping pass (version 0.2.0, the `[0.2.0]` CHANGELOG section, the claim table). Created as a draft by the tag-triggered workflow (run `45677885614`, `success`), read with `gh release view --json`, then published. `sh tools/release-rehearse.sh --release --source-route` matched 124 of 124 golden lines from the source archive. No EXEC, GROM, ROM, manual, overlay or host artifact of any kind. |
 | `v0.1.0` (pre-release) | 2026-11-24T05:02:08Z | `3fe5373` (the Phase 8 merge commit, the artifact commit) | `ivs-v0.1.0-source.tar.gz` (5,295,098 B), `ivs-v0.1.0-install-linux-x86_64.tar.gz` (83,468 B), `SHA256SUMS` (196 B) | Source-only; claims provisional and nothing measured; D10 and D11 not performed. Created as a draft by the tag-triggered workflow (run `45328905701`, `success`), read with `gh release view --json`, both archives verified against `SHA256SUMS` (`shasum -a 256 -c`, both OK), then published. No EXEC, GROM, ROM, manual or overlay of any kind. |
 
 The release is a **pre-release**: the first 0.x release, published through the delegated flow (D9, D29). Deleting a published release remains an owner-only hard stop.
@@ -550,6 +546,7 @@ Decision gates (PROJECT.md Decision Register; owner authorization 2026-11-09, `.
 Open questions that remain: unusual cartridge memory maps and further import formats (OQ4; IVSC v1 is the one format, others are v2), IntelliVoice, ECS, Intellivision II and clones (OQ6; a later roadmap decision), the first consumer and any LibFuturo adapter (OQ10; D13 deferred). The first scenario program (OQ9) was decided in Phase 7 (Lamp Tone).
 
 Concerns:
+- **The milestone tool appends a stray `</summary>` to `.planning/state.json`'s `milestone` string** (seen at the v0.2.0 close as audit G-06 and again at the v0.3.0 switch, 2026-11-26, where it took the token from the ROADMAP's `<details><summary>` line). Corrected by hand in the same commit both times. It is a tool defect, not a record defect: check `grep -c '</summary>' .planning/state.json` at every milestone boundary until the tool is fixed.
 - 8 phases exceeds `standard` granularity guidance (4-6); justified by five high-uncertainty subsystems (PIT-18). Revisit at milestone discussion.
 - No tier-1 AY-3-8914 datasheet found; STIC timing constants disputed (C1-C4); controller matrix from one LOW source (C16).
 - The release flow after Phase 8 is **done as far as the release itself**: pull request 7 merged as `3fe5373`, REL-01 stage 2 recorded, `v0.1.0` tagged on the artifact commit and published as a pre-release after P1 to P8 held. `git.create_tag` was set to `false` in its own commit (`6f800cc`) before the milestone tool was used. What remains of the milestone is the lifecycle (audit, complete, cleanup) and, as settings actions, the branch and tag rulesets recommended in `.planning/AUTONOMY.md` section 1, which are still **not applied**.
@@ -611,55 +608,52 @@ The row itself is left as recorded and this note sits under it.
 
 ## Session Continuity
 
-Last session: 2026-11-25T15:03:19.670Z
-Stopped at: Phase 11 complete, ready to plan Phase 12
+Last session: 2026-11-26
+Stopped at: v0.3.0 scoped and committed; Phase 13 ready to discuss and plan
 Resume file: None
 
 ## Recorded Constraints for the Next Milestone
 
-Binding on v0.2.0, not suggestions. Each came from a recorded decision, a
-recomputed figure or an owner hard stop.
+Binding on v0.3.0, not suggestions. Each came from a recorded decision, a
+recomputed figure or an owner hard stop. The full set is
+`.planning/ops/GUARDRAILS-v0.3.md` and `.planning/MILESTONE-CONTEXT.md`.
 
-1. **The gate cost rule, with its reading corrected.** The close-out quoted a
-   last-five median `r` of 8.34; recomputed by arithmetic from the committed
-   `.planning/ci-runs.tsv` the values are 7.327, 7.521, 7.826, 8.233, 8.338, so
-   the median is **7.826** — 0.47 under the 8.3 stop line and 0.026 over the 7.8
-   budget. The stop line did **not** fire. The rule still stands because it is
-   recorded policy: **lever (3) and trims (a), (c), (d) land in cost-only commits
-   before any new test id, control, fault or gate step, and a hosted row recorded
-   after them settles the level.** Trim (b) is declined by measurement. The
-   headroom is worth about **21 hosted cpu-s** for the whole milestone — a
-   ceiling, not a target. After one new row the maximum possible median is 8.233,
-   so a single row cannot re-fire the rule. Entry: "next-milestone opening" in
-   `.planning/CI-EFFICIENCY.md`.
-2. **Evidence durability first (audit W1).** 17 requirements (FND-01..07,
-   CPU-01..05, MEM-01..05) have named faults that run in every gate but no lines
-   in `data/expected/important-gates.ids`. Register them without adding a fault or
-   a test id, extend the accepted-requirement set and all ten toy registries in
-   the same commit (`GUARDRAILS-v0.2.md` R2), and add the machine check that makes
-   the gap unrepeatable.
-3. **Self-referential step inventory (audit W2).** No gate step reads the
-   requirement records, so a commit deleting a step and its inventory line shrinks
-   coverage silently. v0.2.0 adds **zero new gate steps**; any future step must be
-   provable against something outside the inventory itself.
-4. **Owner hard stops, not performed:** D10 (47 hardware items) and D11
-   (owner-local real EXEC/GROM runs). No claim may exceed `provisional` until they
-   are performed. Every human-only item is a row in `data/expected/handoffs.ids`
-   with `evidence: none`.
-   Note (plan 10-06, 2026-11-25): the 47 above is the whole owner-item count, not a
-   second D10 figure. Measured on this tree, `data/expected/d10-measurements.ids`
-   holds 44 `D10-*` rows and 3 `D11-*` rows, 47 in total, which is why the Deferred
-   Items owner row says 44 hardware items and this item says 47. The sentence above
-   is left as recorded and this note sits under it.
-5. **Settings still not applied:** the branch ruleset (PR + `gate`, no force push,
-   no deletion) and the tag ruleset (no update, no deletion, only from a green
-   `main`) recommended in `.planning/AUTONOMY.md` section 1. Apply them, or record
-   "not applied" with a reason — never silently skip.
-6. **The milestone ritual and the guardrails are standing policy.**
-   `.planning/ops/MILESTONE-RITUAL.md`, `.planning/ops/GUARDRAILS-v0.2.md` and
+1. **Cost is `cpu_s`, not `r`.** `r` is retired as a decision input (v0.2.0 close,
+   audit G-04) until `build_s` is stable. Recomputed at the opening commit from
+   `.planning/ci-runs.tsv`: last-five `cpu_s` median **361**, `build_s` median
+   **34**, `gate_s` median **118**. The allowance is **21 hosted cpu-s** and this
+   milestone prices **about 5.2**. The checkpoint vocabulary is
+   `discharged-within-allowance` / `reprice` / `lever-required`, and
+   `steps=38/38` is an invariant.
+2. **Zero new gate steps, faults or goldens.** 38 / 238 / 29 stay. Every
+   capability lands as ids inside an existing suite, a control directory, an
+   in-step selftest or a registry row. The ten D-09-06 mechanisms register as
+   `mutant` rows over existing selftests, never as faults (4.4 cpu-s otherwise).
+3. **Rights before bytes (D-46, D-47).** No third-party file is read, and no code
+   or operator page names a refused item, until its `data/rights/` row exists. A
+   `cleared` row cites a resolvable `SRC-` id. The flat wrap states bytes, a word
+   order and an operator-stated address; nothing is auto-detected and `.cfg` is
+   refused by name.
+4. **The window is never the evidence (D-48).** The host is build-only, outside
+   `core/` and outside the install list, with a project-authored ABI subset; the
+   fake frontend that reproduces the runner's nine digest lines is the evidence.
+5. **The package stays static and eleven files (D-49).** A tracked shared object
+   is refused by name; the release-decision line says no shared object, no host
+   shim, no content ships.
+6. **The claim ceiling is mechanical (D-32, D-50).** An `established` claim must be
+   `source-expectation` resting on a `tier1-primary-doc` dependency. No behavioural
+   claim exceeds `provisional` while D10 and D11 are unperformed. Every human-only
+   item is a row in `data/expected/handoffs.ids` with `evidence: none`.
+7. **Settings still not applied:** the branch and tag rulesets recommended in
+   `.planning/AUTONOMY.md` section 1. `main` carries legacy branch protection with
+   required check `gate`, admins enforced, no force push — recorded as equivalent,
+   not as silence. Phase 16 applies the tag ruleset or re-records "not applied"
+   with a reason.
+8. **The milestone ritual and the guardrails are standing policy.**
+   `.planning/ops/MILESTONE-RITUAL.md`, `.planning/ops/GUARDRAILS-v0.3.md` and
    `.planning/ops/INDEX.md`. Read the index before asking the owner anything.
 
 ## Operator Next Steps
 
 
-- Start the next milestone with /gsd-new-milestone
+- v0.3.0 is scoped and committed. Run `/gsd-autonomous` after `/clear` to drive Phases 13 to 16.
