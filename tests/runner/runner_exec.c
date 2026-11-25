@@ -2985,7 +2985,7 @@ static int ex_roundtrip_option_range(void)
 static int ex_roundtrip_cut_cap(void)
 {
 #ifdef IVS_RUNNER_FAULT_RUN
-  /* The fault executables (tests/CMakeLists.txt FAULT_DEFINITIONS, the precedent of IVS_STATE_FAULT_RUN) re-run this suite once for each of the 19 runner
+  /* The fault executables (tests/CMakeLists.txt FAULT_DEFINITIONS, the precedent of IVS_STATE_FAULT_RUN) re-run this suite once for each of the 21 runner
    * faults. Each cut costs about a millisecond (a snapshot hashes the image arrays), so the 65 of this id are about 0.06 s of cpu in each of them, more
    * than the rest of the three round-trip ids together, and no fault is aimed at the cap. The id runs whole in the normal executables of both presets;
    * under a fault it only says so. A fault whose must-fail id this becomes needs this branch removed. */

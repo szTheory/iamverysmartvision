@@ -64,3 +64,20 @@ RUNNER_WAV_RATE_UNCHECKED runner.parse.wav-rate-refused runner.parse.wav-rate-re
 RUNNER_VIDEO_ASSERT_IGNORED runner.exec.video-assert runner.exec.video-assert runner.parse.diag-boot-pass
 # RUNNER_VIDEO_CHAIN_UNCHECKED: video.chain.check reports pass without recomputing, so a corrupted delivered stream passes.
 RUNNER_VIDEO_CHAIN_UNCHECKED runner.exec.video-chain-check runner.exec.video-chain-check runner.parse.diag-boot-pass
+# Plan 11-05 (TOOL-01, D-15): the input log's two named faults, one in the writer and one in the replay
+# schedule, both in IVS_RUNNER_SOURCES library TUs (runner/ivsl.c and runner/exec.c). Neither can sit in
+# runner/main.c or runner/hostio.c: those are IVS_RUN_SOURCES and outside the fault framework
+# (tests/faults.cmake refuses an owner TU that is not in a module of the suite, A-11-04).
+# The must-fail id is the equality, never the round trip. A writer that drops the last event line is caught
+# by the recorded-and-replayed comparison, because the replayed applied-event chain and input.events differ
+# from the recording run's. The format round trip is not the detector in the intended sense: it compares a
+# log to a log. It does fail here, and that is measured rather than assumed - see the allowed column and
+# 11-05-SUMMARY.md - because a drop inside ivs_ivsl_format is applied again to the log it just wrote, so
+# format is not a fixpoint under this fault. The column names that one id explicitly, never a `runner.record.`
+# prefix: a widened prefix would hide the fault from the one id that has to catch it.
+# RECORD_DROPS_LAST_EVENT: the writer emits one event line fewer than the log holds, so the produced log
+# claims one event fewer than the run applied.
+RECORD_DROPS_LAST_EVENT runner.record.replay-equals-straight runner.record.replay-equals-straight|runner.record.format-roundtrip runner.parse.diag-boot-pass
+# REPLAY_APPLIES_LATE: every replayed event is applied one tick late, so the applied-event chain (which hashes
+# be64(at_tick)) differs from the recorded run's even though the guest never reads a controller word.
+REPLAY_APPLIES_LATE runner.record.replay-equals-straight runner.record.replay-equals-straight runner.parse.diag-boot-pass

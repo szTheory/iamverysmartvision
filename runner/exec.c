@@ -1055,6 +1055,13 @@ static void ex_run_steps_body(ex_state *x, const ivs_info *info)
         return;
       }
       x->sched[i].at_tick = x->log_in->events[i].at_tick;
+#ifdef IVS_FAULT_REPLAY_APPLIES_LATE
+      /* IVS_FAULT_REPLAY_APPLIES_LATE (plan 11-05, TOOL-01): every replayed event is applied one tick late. The
+       * applied-event chain hashes be64(at_tick), so a one-tick shift changes digest.input even when the guest never
+       * reads a controller word - which is why the cheap diagnostic run of the equality case is enough for the
+       * must-fail and the 806k-tick demo stays in the process case. */
+      x->sched[i].at_tick += 1u;
+#endif
       x->sched[i].controller[0] = x->log_in->events[i].controller[0];
       x->sched[i].controller[1] = x->log_in->events[i].controller[1];
     }

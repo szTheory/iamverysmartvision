@@ -135,6 +135,7 @@ int ivs_ivsl_format(const ivs_ivsl_log *log, uint8_t *out, uint64_t cap, uint64_
 {
   const char *content;
   size_t need;
+  uint32_t n_lines;
   char *p;
   if (log == NULL || out == NULL || written == NULL) {
     return 1;
@@ -145,10 +146,21 @@ int ivs_ivsl_format(const ivs_ivsl_log *log, uint8_t *out, uint64_t cap, uint64_
     return 1;
   }
   content = log->content == IVS_IVSL_CONTENT_USER ? "user" : "project";
+  /* IVS_FAULT_RECORD_DROPS_LAST_EVENT (plan 11-05, TOOL-01): the writer emits one event line fewer than the log
+   * holds, so a produced log claims one event fewer than the run applied. Both loops read n_lines, so the byte
+   * count and the emitted lines stay consistent with each other: the log still parses, and it is short by one
+   * event. What this must break is the recorded-and-replayed equality: the replayed applied-event chain and
+   * input.events both differ from the recording run's. It must not be aimed at the format round trip, which
+   * compares a log to a log. */
+#ifdef IVS_FAULT_RECORD_DROPS_LAST_EVENT
+  n_lines = log->n_events > 0u ? log->n_events - 1u : 0u;
+#else
+  n_lines = log->n_events;
+#endif
   /* The exact byte count first: a buffer that is too small takes nothing, never a truncation. */
   need = strlen("ivsl 1\n") + strlen("scenario ") + strlen(log->scenario) + 1u + strlen("profile ") +
          strlen(log->profile) + 1u + strlen("content ") + strlen(content) + 1u;
-  for (uint32_t i = 0u; i < log->n_events; i++) {
+  for (uint32_t i = 0u; i < n_lines; i++) {
     need += strlen("at_tick ") + ivs_ivsl_digits(log->events[i].at_tick) + strlen(" c0=") + 8u + strlen(" c1=") + 8u +
             1u;
   }
@@ -164,7 +176,7 @@ int ivs_ivsl_format(const ivs_ivsl_log *log, uint8_t *out, uint64_t cap, uint64_
   p = ivs_ivsl_put(p, "\ncontent ");
   p = ivs_ivsl_put(p, content);
   *p++ = '\n';
-  for (uint32_t i = 0u; i < log->n_events; i++) {
+  for (uint32_t i = 0u; i < n_lines; i++) {
     p = ivs_ivsl_put(p, "at_tick ");
     p = ivs_ivsl_put_u64(p, log->events[i].at_tick);
     p = ivs_ivsl_put(p, " c0=");
