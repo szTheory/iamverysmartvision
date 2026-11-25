@@ -398,3 +398,24 @@ The lesson, restated because it is the one this plan could have repeated: a requ
 summary file and a status line are all counts the gate reads, so the gate runs **after** the records
 commit and not before it. The predicted delta was stated in advance (+1 file, no other token), so the
 re-run is a confirmation rather than a discovery.
+
+## Appended note (plan 10-06, 2026-11-25): three counts that have moved since
+
+Every gate line and token table in this record was measured on the Phase 9 final tree. Three of the
+counts it quotes have moved since, so a reader must recompute rather than quote (AGENTS.md,
+"Recompute, never quote"):
+
+| Token | This record (Phase 9 final tree) | Measured on the Phase 10 close tree | Cause |
+|---|---|---|---|
+| `controls` | `384/384` | `controls=389/389` | the five controls Phase 10 landed: plan 10-02's route guard, plan 10-03's policy controls and plan 10-05's three (the two `claims` controls and the `text` control) |
+| `files` / `tracked` / `hygiene-files` | `2555` on the pre-SUMMARY tree, `2556` after it | `files=2600 tracked=2600 hygiene-files=2600` | the rest of Phase 10's tracked files: `docs/running.md`, `docs/presentation.md`, `docs/handoffs.md`, `data/expected/handoffs.ids`, the control files and the ids rows |
+| `cases` | `12` | `cases=13` | a scenario added after Phase 9 closed |
+
+Nothing in this record's own lines has been altered: the four gate lines above are the record of that
+tree and stay as taken, and this note sits under them (GUARDRAILS 2.10, lesson 21). Two tokens that did
+not move and are still correct here: `steps=38/38` and `claims=28`. `gates` and `lines` were frozen at
+`107` and `330` by Phase 9's own criterion and have since moved to `109` and `333`, deliberately, by
+plan 10-06's requirement close.
+
+Measured with `tail -1` of `sh tools/gate.sh` on the Phase 10 close tree, and with
+`awk '!/^#/ && NF' data/expected/controls/*.ids | wc -l` for the control count.

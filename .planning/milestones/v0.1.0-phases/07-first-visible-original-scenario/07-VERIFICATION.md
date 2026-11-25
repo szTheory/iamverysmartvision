@@ -149,3 +149,17 @@ Built with `ivs_pack --ivsc ... --patch` into the scratch directory and run thro
 3. Standing caveats, accepted and correctly disclosed above: one author and one blind second read of the same model family (shared misreading); the controller byte table, STIC and PSG rules are tier 4 or inference, hence provisional; the `.digests` goldens are self-recorded (repeatability only); no timing, picture or sound judgement exists (H7-1, H7-2). The owner-run helper symlink gap and the SKIPPED-line wording are recorded in section 3 and are not goal blockers.
 
 No override was needed. The remaining human items are the owner hand-offs H7-1 to H7-5, which the roadmap does not make blocking for this phase.
+
+## Appended note (plan 10-06, 2026-11-25): the H7-3 hardware-item count
+
+Section 2's H7-3 row says the D10 hardware items number 42. Measured on the Phase 10
+tree with `awk '!/^#/ && NF {print $1}' data/expected/d10-measurements.ids | sed 's/-.*//'
+| sort | uniq -c`, `data/expected/d10-measurements.ids` holds 44 `D10-*` rows and 3
+`D11-*` rows: 47 owner items in all, of which the D10 hardware set is 44.
+
+The H7-3 row is left exactly as recorded above, because an archive is append-only
+(GUARDRAILS 2.10, lesson 21) and because the figure was the count at the time the row
+was written. What matters for a later reader is that nothing downstream depends on the
+number: `data/expected/handoffs.ids` cites the file by path and never by a count, so the
+handoff ledger stays correct whichever figure is quoted. Recompute the count from the
+file rather than quoting either number.

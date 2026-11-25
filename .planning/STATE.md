@@ -574,6 +574,13 @@ Refreshed by plan 08-21 from `.planning/phases/08-stic-completion-save-state-per
 | Milestone lifecycle | the milestone audit, the milestone completion and the cleanup of Phase 8 | Next: the lifecycle sequence after the records pull request | Phase 8 | Now |
 | Settings | the branch ruleset (PR + `gate`, no force push, no deletion) and the tag ruleset (no update, no deletion, from a green `main`) recommended in `.planning/AUTONOMY.md` section 1 | **Not applied** (the close read returned no ruleset) | Phase 4 / Phase 8 | Orchestrator, at the next repository-settings action |
 
+**Note on the Owner items row above (plan 10-06, 2026-11-25):** the 44 in that row's
+D10 figure and the 47 in Recorded Constraints item 4 below are one measurement read two
+ways - 44 `D10-*` rows plus 3 `D11-*` rows, 47 in total - so neither sentence is wrong on
+its own and neither should be quoted alone. Measured with
+`awk '!/^#/ && NF {print $1}' data/expected/d10-measurements.ids | sed 's/-.*//' | sort | uniq -c`.
+The row itself is left as recorded and this note sits under it.
+
 **Milestone close record:** `.planning/milestones/v0.1.0-phases/08-stic-completion-save-state-performance-baselines/08-MILESTONE-CLOSE.md` (sections A to K; every stage-2 placeholder is filled by the records commit) and `08-VERIFICATION.md` in the same directory. The milestone archive moved both here on 2026-11-24; this line is the pointer that does not move.
 
 **Milestone archive:** `.planning/milestones/v0.1.0-ROADMAP.md`, `v0.1.0-REQUIREMENTS.md`, `v0.1.0-MILESTONE-AUDIT.md` (status `tech_debt`) and `v0.1.0-phases/` (the eight phase directories). `MILESTONES.md` holds the shipped entry.
@@ -615,6 +622,11 @@ recomputed figure or an owner hard stop.
    (owner-local real EXEC/GROM runs). No claim may exceed `provisional` until they
    are performed. Every human-only item is a row in `data/expected/handoffs.ids`
    with `evidence: none`.
+   Note (plan 10-06, 2026-11-25): the 47 above is the whole owner-item count, not a
+   second D10 figure. Measured on this tree, `data/expected/d10-measurements.ids`
+   holds 44 `D10-*` rows and 3 `D11-*` rows, 47 in total, which is why the Deferred
+   Items owner row says 44 hardware items and this item says 47. The sentence above
+   is left as recorded and this note sits under it.
 5. **Settings still not applied:** the branch ruleset (PR + `gate`, no force push,
    no deletion) and the tag ruleset (no update, no deletion, only from a green
    `main`) recommended in `.planning/AUTONOMY.md` section 1. Apply them, or record
