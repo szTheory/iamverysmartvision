@@ -8,12 +8,19 @@
 #   manifest-id-dir-mismatch, manifest-duplicate-id, manifest-id-missing, manifest-id-extra,
 #   manifest-inventory-empty, manifest-inventory-missing, manifest-yes-without-evidence,
 #   manifest-committed-not-redistributable, manifest-unknown-derived, manifest-missing-output,
-#   manifest-digest-mismatch, manifest-uncommitted-output-tracked, manifest-recipe-digest-mismatch.
+#   manifest-digest-mismatch, manifest-uncommitted-output-tracked, manifest-recipe-digest-mismatch,
+#   rights-ledger-empty, rights-parse, rights-missing-key, rights-format, rights-unknown-key,
+#   rights-id-mismatch, rights-disposition, rights-blank, rights-token-format,
+#   rights-source-missing, rights-source-unresolved, rights-duplicate-id, rights-id-missing,
+#   rights-id-extra, rights-doc-missing, rights-doc-row, rights-inventory-missing,
+#   rights-inventory-empty, rights-inventory-duplicate (the rights-* set is documented in
+#   rights-lib.cmake, RTS-01, plan 13-01; the ledger is judged in this step because a ledger row
+#   is a fail-closed JSON record, not a new gate step).
 # manifest-recipe-digest-mismatch (plan 07-05, D-29, A-12): in a committed manifest with a non-null
 #   recipe, every recipe.sources path must exist with its recorded sha256, and recipe.tool_sha256 must
 #   equal the digest of the sources entry that is the tool's own source (RECIPE_TOOL_SOURCES below);
 #   a tool that is not registered there, or whose source is not listed, is the same finding.
-# Success line: "manifests pass manifests=<n> effective-yes=<a> effective-no=<b>".
+# Success line: "manifests pass manifests=<n> effective-yes=<a> effective-no=<b> rights=<n> rights-cleared=<k>".
 # Limit: a hash proves identity, not rights; duplicate JSON keys are not detectable.
 cmake_minimum_required(VERSION 3.25)
 
@@ -24,6 +31,7 @@ foreach(required ROOT FILELIST)
 endforeach()
 include("${CMAKE_CURRENT_LIST_DIR}/lib.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/manifest-lib.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/rights-lib.cmake")
 
 set(DATE_RE "^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$")
 set(PATH_RE "^[A-Za-z0-9._/-]+$")
@@ -465,4 +473,9 @@ endforeach()
 gate_stat(manifests "${n}")
 gate_stat(effective-yes "${eff_yes}")
 gate_stat(effective-no "${eff_no}")
+# The rights ledger is judged here, after the three manifest stats and immediately before
+# gate_finish(): gate_finish() prints GATE_STATS in insertion order, so the two rights stats must be
+# registered last for the printed success line to equal the order the header documents. Exactly one
+# gate_finish() per checker, so this is a second limb of the manifests step, never a new step.
+rights_check()
 gate_finish(manifests)

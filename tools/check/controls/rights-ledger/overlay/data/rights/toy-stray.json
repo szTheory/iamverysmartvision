@@ -1,0 +1,9 @@
+{
+  "id": "toy-stray",
+  "item": "a toy stray row",
+  "disposition": "owner-local-only",
+  "source": null,
+  "taken": "nothing",
+  "tokens": [],
+  "note": "Control-tree row: well formed and absent from the inventory, so the ledger must refuse the unlisted row."
+}

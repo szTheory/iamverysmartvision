@@ -20,7 +20,7 @@ mechanical).
 
 ### Rights
 
-- [ ] **RTS-01**: A rights ledger records one row per third-party-content question this milestone touches — a flat cartridge image, the `.cfg` container, bank modes, EXEC, GROM, a commercial ROM, a rendered frame or screenshot, a save state, the libretro-shaped ABI and core-info strings — each with a disposition of `cleared`, `refused` or `owner-local-only`, and a `cleared` row cites a resolvable `SRC-` id; a row missing its disposition, a source it needs, or its "what was taken" cell is refused by name.
+- [x] **RTS-01**: A rights ledger records one row per third-party-content question this milestone touches — a flat cartridge image, the `.cfg` container, bank modes, EXEC, GROM, a commercial ROM, a rendered frame or screenshot, a save state, the libretro-shaped ABI and core-info strings — each with a disposition of `cleared`, `refused` or `owner-local-only`, and a `cleared` row cites a resolvable `SRC-` id; a row missing its disposition, a source it needs, or its "what was taken" cell is refused by name.
 - [ ] **RTS-02**: A refused item's spellings cannot appear in `core/src`, `runner/`, `tools/` or the operator pages of `docs/`, except where a pre-existing refusal surface is pinned by a `(token, path)` pair; a new occurrence is refused by name, and both limbs are shown able to fail.
 
 ### Core conformance
@@ -101,7 +101,7 @@ the same date: every requirement appears in exactly one phase.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| RTS-01 | Phase 13 | Pending |
+| RTS-01 | Phase 13 | Complete |
 | RTS-02 | Phase 13 | Pending |
 | EV-06 | Phase 13 | Pending |
 | EV-07 | Phase 13 | Pending |

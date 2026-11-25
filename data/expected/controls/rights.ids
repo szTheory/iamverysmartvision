@@ -21,3 +21,10 @@ files-unlisted-binary-ivsn
 # Plan 09-07 (EV-03 item 4): the two-root output anchoring rule pins manifest-format for an
 # output path outside fixtures/<dir>/ and outside data/.
 manifests-output-anchor
+# Plan 13-01 (RTS-01, GUARDRAILS-v0.3 V1): the rights ledger's own control. One overlay plants a row
+# whose disposition key is absent, a cleared row with no source, a well-formed row absent from the
+# inventory, and an operator page that omits one row's item phrase, so all four refusals are
+# observed in one run. FORBID names rights-disposition even though the short-circuit rule makes it
+# unreachable on that overlay: a checker that did NOT short-circuit would print an extra finding
+# and fail this control instead of silently widening the set.
+rights-ledger

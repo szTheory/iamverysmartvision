@@ -1,0 +1,9 @@
+{
+  "id": "toy-owner-image",
+  "item": "a toy owner image",
+  "disposition": "owner-local-only",
+  "source": null,
+  "taken": "nothing",
+  "tokens": ["toy-image"],
+  "note": "Control-tree row: the bytes stay with the owner, so the item may be named and nothing is taken."
+}

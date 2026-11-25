@@ -23,6 +23,17 @@ A hash proves identity, not rights.
 - Short quotations from a cited source.
   Otherwise paraphrase and cite the source.
 
+## Questions this milestone touches
+
+Each row below is one question about third-party content, recorded as a ledger row in `data/rights/`.
+A row states a disposition of `cleared`, `refused` or `owner-local-only`, what was taken, and the spellings the item must never be named as.
+The `manifests` step refuses a row that has lost its disposition or its "what was taken" cell, a `cleared` row whose source id does not resolve in `data/sources.json`, a row the inventory in `data/expected/rights.ids` does not list, and a row this table does not name.
+A disposition is a decision about naming and shipping, not a finding about behaviour: a `cleared` row says a thing may be named, never that anything about it is true.
+
+| Item | Disposition | What that means |
+|------|-------------|-----------------|
+| the frontend ABI subset | `cleared` | may be named; nothing is vendored, and the project writes its own entry points |
+
 ## The refs/ cache
 
 Reference documents, page renders and downloads live only in the local `refs/` directory.

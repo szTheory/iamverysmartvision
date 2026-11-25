@@ -1,0 +1,5 @@
+# Owning plan 13-01 (RTS-01): the rights-ledger row ids; must equal the ids in data/rights/.
+# One id per line, sorted; read by tools/check/rights-lib.cmake, which refuses a row with no line
+# here (rights-id-extra) and a line here with no row (rights-id-missing). Plan 13-02 appends the
+# nine remaining rows of this phase; the file is a membership baseline, not an optional set.
+libretro-abi

@@ -482,3 +482,10 @@ runner-record fault RECORD_DROPS_LAST_EVENT TOOL-01
 runner-record fault REPLAY_APPLIES_LATE TOOL-01
 runner-record mutant runner.judge.record-replay-differs TOOL-01
 runner-record mutant runner.judge.record-replay-inert TOOL-01
+# Phase 13 (plan 13-01): RTS-01's ledger mechanism under one new gate name, rights-ledger. A ledger
+# row that loses its disposition, a cleared row whose source id does not resolve in the sources
+# registry, a row the inventory does not list and a row the operator page does not name are each
+# refused by name inside the manifests step (tools/check/rights-lib.cmake), and the one control
+# directory plants all four in a single run. RTS-01 takes no exclusion-ledger row: the mechanism is
+# real, and an exclusion row would be the registry declining to cover what it just built.
+rights-ledger control rights-ledger RTS-01

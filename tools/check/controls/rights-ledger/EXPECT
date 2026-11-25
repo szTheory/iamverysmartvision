@@ -1,0 +1,4 @@
+FAIL rights-missing-key: toy-owner-image/disposition
+FAIL rights-source-missing: toy-cleared
+FAIL rights-id-extra: toy-stray
+FAIL rights-doc-row: toy-cleared

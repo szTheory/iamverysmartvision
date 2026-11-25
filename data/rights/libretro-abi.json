@@ -1,0 +1,9 @@
+{
+  "id": "libretro-abi",
+  "item": "the frontend ABI subset",
+  "disposition": "cleared",
+  "source": "SRC-libretro-api-docs",
+  "taken": "nothing",
+  "tokens": ["libretro"],
+  "note": "The project writes its own subset of the frontend entry points and vendors nothing (D-48): no header, no stub, no copy of the upstream interface file, so `taken` is `nothing`. The reading that makes this row cleared is the Libretro Docs core development page, recorded as SRC-libretro-api-docs in data/sources.json; it states that the API is free to implement and MIT-licensed while the reference frontend is GPLv3. This row says the item may be named, never that anything about it is true."
+}

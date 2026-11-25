@@ -1,0 +1,9 @@
+{
+  "id": "toy-cleared",
+  "item": "a toy cleared row",
+  "disposition": "cleared",
+  "source": null,
+  "taken": "nothing",
+  "tokens": [],
+  "note": "Control-tree row: cleared with no source, so the ledger must refuse the missing citation."
+}
