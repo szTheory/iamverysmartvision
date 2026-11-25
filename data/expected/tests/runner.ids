@@ -266,3 +266,11 @@ runner.frameppm.header-and-size
 runner.exec.roundtrip-equals-straight
 runner.exec.roundtrip-option-range
 runner.exec.roundtrip-cut-cap
+# Plan 11-02 (TOOL-01, D-15, A-11-03): the IVSL v1 input log in the runner library. One run that carried two input lines records a log,
+# and the same scenario text with those lines removed replays that log into a byte-identical report, host.calls included
+# (runner.record.replay-equals-straight); the same text with no log gives a different report, so the equality is only possible
+# because the log was applied. The three guard clauses (at least one event, input.events equal to the log's count, and
+# input.consumed equal to input.events) are checked before the equality, so a replay that parses the log and ignores it is
+# rejected by a guard and never read as success. The format is runner/ivsl.c, a library translation unit: tests/faults.cmake
+# refuses a fault whose owner TU is not in IVS_RUNNER_SOURCES, so its two faults can have sites there (A-11-04).
+runner.record.replay-equals-straight

@@ -88,6 +88,10 @@ typedef struct fake_host {
   uint32_t ppm_calls;
   size_t ppm_len;      /* bytes of the last PPM the hook received */
   uint8_t ppm_bytes[IVS_RUNNER_PPM_MAX];
+  /* The input log of the executor (plan 11-02): a parsed log to replay, or a buffer to record into. */
+  const ivs_ivsl_log *log_in;
+  uint8_t *log_out;
+  uint64_t log_out_cap;
 } fake_host;
 
 static int fh_read(void *ctx, const char *relpath, size_t cap, uint8_t *buf, size_t *len)
@@ -321,7 +325,7 @@ static uint32_t rx_exec(const char *text, fake_host *h, ivs_runner_result *res)
     host.buffer_bytes = h->buffer_bytes;
   }
   if (h->out_max != 0u || h->wav_rate != 0u || h->slice_ticks != 0u || h->video_out_max != 0u || h->rt_flags != 0u ||
-      h->rt_ticks != 0u) {
+      h->rt_ticks != 0u || h->log_in != NULL || h->log_out != NULL) {
     ivs_runner_options o;
     memset(&o, 0, sizeof o);
     o.flags = h->rt_flags;
@@ -330,6 +334,9 @@ static uint32_t rx_exec(const char *text, fake_host *h, ivs_runner_result *res)
     o.video_out_max_bytes = h->video_out_max;
     o.wav_rate = h->wav_rate;
     o.slice_ticks = h->slice_ticks;
+    o.log_in = h->log_in;
+    o.log_out = h->log_out;
+    o.log_out_capacity = h->log_out_cap;
     out = ivs_runner_execute(s, &host, &o, res);
   } else {
     out = ivs_runner_execute(s, &host, NULL, res);
@@ -3016,6 +3023,219 @@ done:
 #endif
 }
 
+/* ---- the record/replay hook (plan 11-02, TOOL-01, D-15, A-11-03) ---- */
+
+/* The nine report digest lines, in the writer's key order (the rows of exec.c's ex_domains). */
+static const char *const rx_digest_keys[] = {"digest.cpu",    "digest.mem",    "digest.images", "digest.instance", "digest.composite",
+                                             "digest.video",  "digest.audio",  "digest.input",  "digest.psglog"};
+
+/* The value of key as a decimal, into *v. 1 when the line is there exactly once and is digits only. */
+static int rx_u64_value(const char *report, const char *key, uint64_t *v)
+{
+  char t[RX_VALUE_CAP];
+  uint64_t n = 0u;
+  if (!rx_value(report, key, t, sizeof t) || t[0] == '\0') {
+    return 0;
+  }
+  for (size_t i = 0u; t[i] != '\0'; i++) {
+    if (t[i] < '0' || t[i] > '9') {
+      return 0;
+    }
+    n = n * 10u + (uint64_t)(t[i] - '0');
+  }
+  *v = n;
+  return 1;
+}
+
+/* The bytes an IVSL v1 log of these three header values must take, from the strings themselves (the writer's exact
+ * spelling, never a hard-coded total). */
+static uint64_t rx_ivsl_header_bytes(const char *scenario, const char *profile, const char *content)
+{
+  char text[256];
+  int n = snprintf(text, sizeof text, "ivsl 1\nscenario %s\nprofile %s\ncontent %s\n", scenario, profile, content);
+  return n > 0 ? (uint64_t)n : 0u;
+}
+
+/* The bytes one event line of these values must take, from the same shape the writer emits. */
+static uint64_t rx_ivsl_event_bytes(uint64_t tick, uint32_t c0, uint32_t c1)
+{
+  char text[64];
+  int n = snprintf(text, sizeof text, "at_tick %llu c0=%08X c1=%08X\n", (unsigned long long)tick, (unsigned)c0, (unsigned)c1);
+  return n > 0 ? (uint64_t)n : 0u;
+}
+
+/* The record/replay judgement of a pair of reports (plan 11-02): the three guard clauses first, then the equality. The
+ * order is the point. Any two of the guards are satisfiable vacuously - a replay that parses the log and ignores it
+ * reports input.events 0 and input.consumed 0, which passes consumed == events on 0 == 0 - so a pair is only accepted
+ * when all three hold and the two texts are byte-equal, host.calls included (the log is a caller buffer, never a host
+ * call, so nothing has to be excluded). Findings, in this fixed order:
+ *   record-no-events       either report says no event was given, or the log holds none
+ *   record-count-mismatch  input.events of a report is not the log's event count
+ *   record-not-consumed    input.consumed of a report is not its own input.events
+ *   record-differs         the two reports differ somewhere
+ * Returns 0 when both reports describe a run that applied the log's events and the texts are byte-equal; returns 1 and
+ * sets *why to the first finding otherwise. */
+static int rx_record_compare(const char *a, const char *b, uint32_t log_events, const char **why)
+{
+  uint64_t ea = 0u;
+  uint64_t eb = 0u;
+  uint64_t ca = 0u;
+  uint64_t cb = 0u;
+  *why = "";
+  if (log_events == 0u || !rx_u64_value(a, "input.events", &ea) || !rx_u64_value(b, "input.events", &eb) || ea == 0u ||
+      eb == 0u) {
+    *why = "record-no-events";
+    return 1;
+  }
+  if (ea != (uint64_t)log_events || eb != (uint64_t)log_events) {
+    *why = "record-count-mismatch";
+    return 1;
+  }
+  if (!rx_u64_value(a, "input.consumed", &ca) || !rx_u64_value(b, "input.consumed", &cb) || ca != ea || cb != eb) {
+    *why = "record-not-consumed";
+    return 1;
+  }
+  if (strcmp(a, b) != 0) {
+    *why = "record-differs";
+    return 1;
+  }
+  return 0;
+}
+
+/* runner.record.replay-equals-straight (plan 11-02, TOOL-01, D-15, A-11-03): a run that carried two input lines records
+ * an IVSL v1 log, and the same scenario text with those lines removed replays that log into a byte-identical report,
+ * host.calls included; the same text with no log at all gives a different report, so the equality is only possible
+ * because the log was applied. Three runs:
+ *   A  the diagnostic text with `input at_tick=100 c0=KEY_1 c1=0x0` and `input at_tick=200 c0=0x0 c1=DISC_E` before its
+ *      run-to, with a log buffer: ends pass, and the log it wrote parses back to those two events at those ticks;
+ *   B  the same bytes with those two lines removed, replaying A's log: ends pass and passes the record comparison;
+ *   B' the same bytes with the lines removed and no log: ends pass, reports input.events 0 and input.consumed 0, and
+ *      differs from A - without B' this case would be the 08-16 defect one level up, because a replay that parses the
+ *      log and ignores it is indistinguishable from the plain run when the scenario still carries its own input lines.
+ * The diagnostic program halts at tick 2,084 and reads no controller word, so both events are applied and its 18 asserts
+ * are unchanged; the nine digest lines are present, non-`-` and equal in A and B (six of the nine domains are observable
+ * on the fake host's images, so "all nine observed" is the process case's clause, A-11-01). */
+static int ex_record_replay_equals_straight(void)
+{
+  static const char two_inputs[] = "input at_tick=100 c0=KEY_1 c1=0x0\n"
+                                   "input at_tick=200 c0=0x0 c1=DISC_E\n";
+  static const char run_to[] = "run-to 4000 cpu-cycles stop halted\n";
+  fake_host a;
+  fake_host b;
+  fake_host c;
+  ivs_runner_result ra;
+  ivs_runner_result rb;
+  ivs_runner_result rc;
+  ivs_ivsl_log lg;
+  ivs_ivsl_error err;
+  char diag[RX_SCN_CAP];
+  char atext[RX_SCN_CAP];
+  char btext[RX_SCN_CAP];
+  char insert[sizeof two_inputs + sizeof run_to];
+  char va[RX_VALUE_CAP];
+  char vb[RX_VALUE_CAP];
+  const char *why = "";
+  uint64_t want_bytes;
+  uint32_t outa;
+  uint32_t outb;
+  uint32_t outc;
+  int rc_code = IVS_TEST_FAIL;
+  fh_init(&a);
+  fh_init(&b);
+  fh_init(&c);
+  a.log_out = malloc(IVS_IVSL_MAX_BYTES);
+  a.log_out_cap = IVS_IVSL_MAX_BYTES;
+  if (a.log_out == NULL) {
+    goto done;
+  }
+  (void)snprintf(insert, sizeof insert, "%s%s", two_inputs, run_to);
+  if (!rx_diag(diag, sizeof diag) || !rx_replace(diag, run_to, insert, atext, sizeof atext) ||
+      !rx_replace(atext, two_inputs, "", btext, sizeof btext)) {
+    goto done;
+  }
+  /* A: the run with the two input lines, recording. */
+  outa = rx_exec(atext, &a, &ra);
+  if (outa != IVS_RUNNER_OUTCOME_PASS || ra.exit_code != 0u || a.out == NULL || !rx_complete(a.out, &ra)) {
+    ivs_test_diag("A (recording): outcome %u exit %u\n%s", (unsigned)outa, (unsigned)ra.exit_code, a.out != NULL ? a.out : "");
+    goto done;
+  }
+  want_bytes = rx_ivsl_header_bytes("diag-boot-pass", "intv-2609-ntsc-family-p1", "project") +
+               rx_ivsl_event_bytes(100u, IVS_CTRL_KEY_1, 0u) + rx_ivsl_event_bytes(200u, 0u, IVS_CTRL_DISC_E);
+  if (ra.log_out_bytes != want_bytes) {
+    ivs_test_diag("the log took %llu bytes, want %llu", (unsigned long long)ra.log_out_bytes, (unsigned long long)want_bytes);
+    goto done;
+  }
+  memset(&lg, 0, sizeof lg);
+  memset(&err, 0, sizeof err);
+  if (ivs_ivsl_parse(a.log_out, (size_t)ra.log_out_bytes, &lg, &err) != 0 || lg.n_events != 2u) {
+    ivs_test_diag("the produced log does not parse: reason %s line %u events %u", ivs_ivsl_reason_name(err.reason),
+                  (unsigned)err.line, (unsigned)lg.n_events);
+    goto done;
+  }
+  if (lg.version != IVS_IVSL_VERSION || lg.content != IVS_IVSL_CONTENT_PROJECT || strcmp(lg.scenario, "diag-boot-pass") != 0 ||
+      strcmp(lg.profile, "intv-2609-ntsc-family-p1") != 0) {
+    ivs_test_diag("log header: version %u content %u scenario '%s' profile '%s'", (unsigned)lg.version, (unsigned)lg.content,
+                  lg.scenario, lg.profile);
+    goto done;
+  }
+  /* The at_tick list is what the recorded run applied, and the two words are the ones it applied with it. */
+  if (lg.events[0].at_tick != 100u || lg.events[0].controller[0] != IVS_CTRL_KEY_1 || lg.events[0].controller[1] != 0u ||
+      lg.events[1].at_tick != 200u || lg.events[1].controller[0] != 0u || lg.events[1].controller[1] != IVS_CTRL_DISC_E) {
+    ivs_test_diag("log events: %llu/%08X/%08X %llu/%08X/%08X", (unsigned long long)lg.events[0].at_tick,
+                  (unsigned)lg.events[0].controller[0], (unsigned)lg.events[0].controller[1],
+                  (unsigned long long)lg.events[1].at_tick, (unsigned)lg.events[1].controller[0],
+                  (unsigned)lg.events[1].controller[1]);
+    goto done;
+  }
+  /* B: the same bytes with the two lines removed, replaying the log. */
+  b.log_in = &lg;
+  outb = rx_exec(btext, &b, &rb);
+  if (outb != IVS_RUNNER_OUTCOME_PASS || rb.exit_code != 0u || b.out == NULL || !rx_complete(b.out, &rb)) {
+    ivs_test_diag("B (replaying): outcome %u exit %u\n%s", (unsigned)outb, (unsigned)rb.exit_code, b.out != NULL ? b.out : "");
+    goto done;
+  }
+  if (rx_record_compare(a.out, b.out, 2u, &why) != 0) {
+    ivs_test_diag("the recorded and the replayed reports: %s", why);
+    goto done;
+  }
+  /* B': the same bytes with no log: the report can only differ if the log's events were what made A and B equal. */
+  outc = rx_exec(btext, &c, &rc);
+  if (outc != IVS_RUNNER_OUTCOME_PASS || rc.exit_code != 0u || c.out == NULL || !rx_complete(c.out, &rc)) {
+    ivs_test_diag("B' (no log): outcome %u exit %u\n%s", (unsigned)outc, (unsigned)rc.exit_code, c.out != NULL ? c.out : "");
+    goto done;
+  }
+  if (!rx_is(c.out, "input.events", "0") || !rx_is(c.out, "input.consumed", "0")) {
+    goto done;
+  }
+  if (strcmp(a.out, c.out) == 0) {
+    ivs_test_diag("the no-log run of the same text has the recorded run's report: the equality above is vacuous");
+    goto done;
+  }
+  if (rx_record_compare(a.out, c.out, 2u, &why) != 1 || strcmp(why, "record-no-events") != 0) {
+    ivs_test_diag("the pair with the no-log run is not rejected by the guard: %d '%s'", rx_record_compare(a.out, c.out, 2u, &why),
+                  why);
+    goto done;
+  }
+  /* All nine digest lines are present, not `-`, and equal in A and B. */
+  for (size_t i = 0u; i < sizeof rx_digest_keys / sizeof rx_digest_keys[0]; i++) {
+    va[0] = '\0';
+    vb[0] = '\0';
+    if (!rx_value(a.out, rx_digest_keys[i], va, sizeof va) || !rx_value(b.out, rx_digest_keys[i], vb, sizeof vb) || va[0] == '-' ||
+        vb[0] == '-' || strcmp(va, vb) != 0) {
+      ivs_test_diag("%s: A '%s' B '%s'", rx_digest_keys[i], va, vb);
+      goto done;
+    }
+  }
+  rc_code = IVS_TEST_PASS;
+done:
+  free(a.log_out);
+  a.log_out = NULL;
+  rx_free(&a);
+  rx_free(&b);
+  rx_free(&c);
+  return rc_code;
+}
+
 static const ivs_test_case exec_cases[] = {
     {"runner.exec.assert-forms", ex_assert_forms, NULL},
     {"runner.exec.cancel", ex_cancel, NULL},
@@ -3058,6 +3278,7 @@ static const ivs_test_case exec_cases[] = {
     {"runner.exec.roundtrip-equals-straight", ex_roundtrip_equals_straight, NULL},
     {"runner.exec.roundtrip-option-range", ex_roundtrip_option_range, NULL},
     {"runner.exec.roundtrip-cut-cap", ex_roundtrip_cut_cap, NULL},
+    {"runner.record.replay-equals-straight", ex_record_replay_equals_straight, NULL},
     {"runner.exec.boot-stub-2", ex_boot_stub_2, NULL},
     {"runner.exec.sha-match", ex_sha_match, NULL},
     {"runner.exec.sha-mismatch", ex_sha_mismatch, NULL},

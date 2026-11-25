@@ -11,6 +11,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ivsl.h"
+
 #define IVS_RUNNER_OUTCOME_PASS 0u
 #define IVS_RUNNER_OUTCOME_GUEST_FAIL 10u
 #define IVS_RUNNER_OUTCOME_TIMEOUT 11u
@@ -483,6 +485,15 @@ typedef struct ivs_runner_options {
   uint64_t video_out_max_bytes; /* bytes the operator raw video output may take (plan 06-12), 0: the default */
   uint64_t roundtrip_ticks;     /* plan 08-16: the multiple of the round-trip hook, 1..IVS_RUN_TARGET_MAX with
                                    IVS_RUNNER_OPT_ROUNDTRIP in flags, 0 without it (any other pairing is harness-fail) */
+  /* The input log (plan 11-02, TOOL-01, D-15): no flag bit is taken, the presence of a non-NULL log_out or log_in is
+   * the switch. A non-NULL log_out records the run into log_out (log_out_capacity bytes at most; a buffer that is too
+   * small is a harness failure with detail log-out-max-bytes, never a truncation) and a non-NULL log_in replays that
+   * log instead of the scenario's own input lines. Both at once, or log_out_capacity nonzero without log_out, is a
+   * harness failure. The log is a caller-supplied buffer and never goes through the host vtable, so the recorded and
+   * the replayed reports are equal including host.calls. */
+  const ivs_ivsl_log *log_in;
+  uint8_t *log_out;
+  uint64_t log_out_capacity;
 } ivs_runner_options;
 
 /* The WAV rates the reference converter accepts (plan 05-10, D-21): 44100 and 48000 only. */
@@ -503,6 +514,7 @@ typedef struct ivs_runner_result {
   uint32_t report_write_failed;
   uint32_t reserved;
   uint64_t roundtrip_cuts;
+  uint64_t log_out_bytes; /* plan 11-02: bytes ivs_ivsl_format wrote into options.log_out, 0 without a log buffer */
 } ivs_runner_result;
 
 /* Runs scn (a successful ivs_scenario_parse result) and writes its report. Returns the outcome
@@ -591,6 +603,10 @@ typedef struct ivs_runner_record {
   uint64_t refpcm_frames;      /* PCM frames written; printed only when refpcm_sha_set (else `-`) */
   uint32_t refpcm_sha_set;     /* a finished file: finish_wav returned 0 and the outcome is not harness-fail */
   uint8_t refpcm_sha256[32];   /* SHA-256 of the WAV file bytes as the host wrote them */
+  /* Plan 11-02: the number of input events the run was actually given, which is the scenario's count without a log
+   * and the log's count under replay. input.events prints this, so every report of a run without a log is byte-identical
+   * to what it was before the field existed. */
+  uint32_t input_events_effective;
 } ivs_runner_record;
 
 /* audio.chain.check of the report: not checked (an audio buffer was not delivered on every slice
