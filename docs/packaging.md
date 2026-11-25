@@ -122,6 +122,8 @@ This is the statement for the release notes. It describes what a release contain
 - No EXEC, GROM or commercial content is in a release, and none was used by any check. The owner-local route for user-supplied images (`docs/owner-images.md`) is not part of a release and has not been performed (D11).
 - Claims in the notes are stated as profile, evidence tier and artifact: the program is playable guest progress, for this original program only [claim:CL-0023], and its installed-package replay is [claim:CL-0024]. The other replays of the installed consumer are [claim:CL-0015] and [claim:CL-0022], and the snapshot behaviour of one build and one profile is repeatability only [claim:CL-0028], held by the core's own state suite and not by the consumer's fifth replay. Each of these claims is provisional.
 
+The commands that build the emulator from the source archive and take the demo program to its expected output are in `docs/running.md`. This statement is about what a release contains, not about how to build from it.
+
 ## What the gate step checks
 
 `pkg-install` (in `tools/check/steps/pkg-install.sh`) installs `build/release` into a temporary prefix, moves the prefix into a path that contains a space and deletes the original, then:
