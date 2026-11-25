@@ -292,3 +292,7 @@ runner.record.refuse.version
 runner.record.refuse.arity
 runner.record.refuse.hex
 runner.record.refuse.trailing
+runner.record.refuse.tick-order
+runner.record.refuse.tick-bound
+runner.record.refuse.event-cap
+runner.record.refuse.controller-bit

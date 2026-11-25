@@ -3590,6 +3590,168 @@ static int ex_record_refuse_trailing(void)
   return IVS_TEST_PASS;
 }
 
+/* The other half of a refusal that has a legal boundary nearby (plan 11-03): a log that must be accepted, with the event
+ * count it must parse to and, when keep is not NULL, the parsed log for the caller to read. A refusal that fires one
+ * step inside its own bound is wider than the document's rule and would refuse a legal log, and no refusal-only case can
+ * notice that: an `at_tick` that refused equal ticks, or bit 30, or the 64th event, would pass every refusal row in the
+ * file while being wrong. */
+static int rx_accept(const char *what, const char *text, uint32_t events, ivs_ivsl_log *keep)
+{
+  ivs_ivsl_log out;
+  ivs_ivsl_error err;
+  memset(&out, 0xA5, sizeof out);
+  memset(&err, 0, sizeof err);
+  if (ivs_ivsl_parse((const uint8_t *)text, strlen(text), &out, &err) != 0) {
+    ivs_test_diag("%s: refused %s line %u, want accepted", what, ivs_ivsl_reason_name(err.reason), (unsigned)err.line);
+    return 0;
+  }
+  if (out.n_events != events) {
+    ivs_test_diag("%s: accepted with %u events, want %u", what, (unsigned)out.n_events, (unsigned)events);
+    return 0;
+  }
+  if (keep != NULL) {
+    *keep = out;
+  }
+  return 1;
+}
+
+/* runner.record.refuse.tick-order (plan 11-03, TOOL-01, A-11-02): an `at_tick` below the `at_tick` of the previous event
+ * line, refused at the line of the third event. The acceptance row is the guard: the order is **nondecreasing**, not
+ * strictly increasing, so two events at the same tick are legal (the later line is the state in force after the earlier
+ * one, the core's own rule for equal ticks). A refusal that fired on an equal tick would refuse a legal log. */
+static int ex_record_refuse_tick_order(void)
+{
+  char text[1024];
+  int n;
+  n = snprintf(text, sizeof text,
+               "%sat_tick 100 c0=00000000 c1=00000000\nat_tick 200 c0=00000000 c1=00000000\n"
+               "at_tick 150 c0=00000000 c1=00000000\n",
+               rx_ivsl_head);
+  if (n <= 0 || (size_t)n >= sizeof text ||
+      !rx_refuse("tick-order: 100, 200, 150", "tick-order", IVS_IVSL_R_TICK_ORDER, 7u, text, (size_t)n)) {
+    return IVS_TEST_FAIL;
+  }
+  n = snprintf(text, sizeof text,
+               "%sat_tick 100 c0=00000000 c1=00000000\nat_tick 100 c0=00000001 c1=00000000\n", rx_ivsl_head);
+  if (n <= 0 || (size_t)n >= sizeof text ||
+      !rx_accept("tick-order: two events at the same tick are legal", text, 2u, NULL)) {
+    return IVS_TEST_FAIL;
+  }
+  return IVS_TEST_PASS;
+}
+
+/* runner.record.refuse.tick-bound (plan 11-03, TOOL-01, A-11-02): an `at_tick` above the largest legal tick. The largest
+ * legal tick is IVS_SCN_TIME_MAX - 1, because the parser refuses `tick >= IVS_IVSL_TICK_MAX` and IVS_IVSL_TICK_MAX is
+ * IVS_SCN_TIME_MAX, so the boundary is pinned from both sides: IVS_SCN_TIME_MAX - 1 accepted, IVS_SCN_TIME_MAX refused,
+ * and IVS_SCN_TIME_MAX + 1 refused. The plan's 20-digit row is not here: a 20-digit field is refused by the decimal
+ * reader as a shape fault, so it is `arity` and is fed to that case.
+ *
+ * The two bounds are printed from the constants, never written as literals, so a change to either constant moves the
+ * case with it. */
+static int ex_record_refuse_tick_bound(void)
+{
+  char text[1024];
+  int n;
+  n = snprintf(text, sizeof text, "%sat_tick %llu c0=00000000 c1=00000000\n", rx_ivsl_head,
+               (unsigned long long)IVS_SCN_TIME_MAX);
+  if (n <= 0 || (size_t)n >= sizeof text ||
+      !rx_refuse("tick-bound: the first tick above the bound", "tick-bound", IVS_IVSL_R_TICK_BOUND, 5u, text, (size_t)n)) {
+    return IVS_TEST_FAIL;
+  }
+  n = snprintf(text, sizeof text, "%sat_tick %llu c0=00000000 c1=00000000\n", rx_ivsl_head,
+               (unsigned long long)(IVS_SCN_TIME_MAX + UINT64_C(1)));
+  if (n <= 0 || (size_t)n >= sizeof text ||
+      !rx_refuse("tick-bound: one above the first refused tick", "tick-bound", IVS_IVSL_R_TICK_BOUND, 5u, text, (size_t)n)) {
+    return IVS_TEST_FAIL;
+  }
+  n = snprintf(text, sizeof text, "%sat_tick %llu c0=00000000 c1=00000000\n", rx_ivsl_head,
+               (unsigned long long)(IVS_SCN_TIME_MAX - UINT64_C(1)));
+  if (n <= 0 || (size_t)n >= sizeof text || !rx_accept("tick-bound: the largest legal tick", text, 1u, NULL)) {
+    return IVS_TEST_FAIL;
+  }
+  return IVS_TEST_PASS;
+}
+
+/* runner.record.refuse.event-cap (plan 11-03, TOOL-01, A-11-02, research Pitfall 4): a 65th event line, refused at its
+ * own line (four header lines plus 65). The case asserts its text is **under** IVS_IVSL_MAX_BYTES before it parses, so the
+ * only mechanism that can refuse it is the event cap: a text over the file cap would be refused by the caller's bound and
+ * the case would pass for the wrong reason, leaving the event cap unproven. 64 events are accepted, so the cap is pinned
+ * from both sides and the log's cap is the scenario's cap rather than a number one lower. */
+static int ex_record_refuse_event_cap(void)
+{
+  char text[IVS_IVSL_MAX_BYTES + 256u];
+  size_t at;
+  int n = snprintf(text, sizeof text, "%s", rx_ivsl_head);
+  if (n <= 0) {
+    return IVS_TEST_FAIL;
+  }
+  at = (size_t)n;
+  for (uint32_t i = 0u; i < IVS_IVSL_MAX_EVENTS; i++) {
+    n = snprintf(text + at, sizeof text - at, "at_tick %u c0=00000000 c1=00000000\n", (unsigned)(100u + i));
+    if (n <= 0 || (size_t)n >= sizeof text - at) {
+      ivs_test_diag("event-cap: the 64-event text did not fit");
+      return IVS_TEST_FAIL;
+    }
+    at += (size_t)n;
+  }
+  if (at >= (size_t)IVS_IVSL_MAX_BYTES) {
+    ivs_test_diag("event-cap: the 64-event text is %llu bytes, over the %u-byte file cap", (unsigned long long)at,
+                  (unsigned)IVS_IVSL_MAX_BYTES);
+    return IVS_TEST_FAIL;
+  }
+  if (!rx_accept("event-cap: 64 events are legal", text, IVS_IVSL_MAX_EVENTS, NULL)) {
+    return IVS_TEST_FAIL;
+  }
+  n = snprintf(text + at, sizeof text - at, "at_tick %u c0=00000000 c1=00000000\n", (unsigned)(100u + IVS_IVSL_MAX_EVENTS));
+  if (n <= 0 || (size_t)n >= sizeof text - at) {
+    ivs_test_diag("event-cap: the 65th line did not fit");
+    return IVS_TEST_FAIL;
+  }
+  at += (size_t)n;
+  if (at >= (size_t)IVS_IVSL_MAX_BYTES) {
+    ivs_test_diag("event-cap: the 65-event text is %llu bytes, over the %u-byte file cap", (unsigned long long)at,
+                  (unsigned)IVS_IVSL_MAX_BYTES);
+    return IVS_TEST_FAIL;
+  }
+  ivs_test_diag("event-cap: the 65-event text is %llu bytes, under the %u-byte file cap", (unsigned long long)at,
+                (unsigned)IVS_IVSL_MAX_BYTES);
+  if (!rx_refuse("event-cap: a 65th event line", "event-cap", IVS_IVSL_R_EVENT_CAP, 4u + IVS_IVSL_MAX_EVENTS + 1u, text, at)) {
+    return IVS_TEST_FAIL;
+  }
+  return IVS_TEST_PASS;
+}
+
+/* runner.record.refuse.controller-bit (plan 11-03, TOOL-01, A-11-02): bit 31 set in `c0` or in `c1`, the reserved bit of
+ * the layout pinned by data/expected/input-bits.ids. Two rows, one per word, each refused at its event line. The
+ * acceptance row sets bit 30, the highest bit the profile's side codes use, so the refusal is proved to be the reserved
+ * bit and not "a high bit": a mask wider than IVS_CTRL_RESERVED_MASK would pass both refusal rows and fail here. */
+static int ex_record_refuse_controller_bit(void)
+{
+  char text[1024];
+  ivs_ivsl_log out;
+  int n;
+  n = snprintf(text, sizeof text, "%sat_tick 100 c0=80000000 c1=00000000\n", rx_ivsl_head);
+  if (n <= 0 || (size_t)n >= sizeof text ||
+      !rx_refuse("controller-bit: bit 31 in c0", "controller-bit", IVS_IVSL_R_CONTROLLER_BIT, 5u, text, (size_t)n)) {
+    return IVS_TEST_FAIL;
+  }
+  n = snprintf(text, sizeof text, "%sat_tick 100 c0=00000000 c1=80000000\n", rx_ivsl_head);
+  if (n <= 0 || (size_t)n >= sizeof text ||
+      !rx_refuse("controller-bit: bit 31 in c1", "controller-bit", IVS_IVSL_R_CONTROLLER_BIT, 5u, text, (size_t)n)) {
+    return IVS_TEST_FAIL;
+  }
+  n = snprintf(text, sizeof text, "%sat_tick 100 c0=40000000 c1=00000000\n", rx_ivsl_head);
+  if (n <= 0 || (size_t)n >= sizeof text || !rx_accept("controller-bit: bit 30 is legal", text, 1u, &out)) {
+    return IVS_TEST_FAIL;
+  }
+  if (out.events[0].controller[0] != (IVS_CTRL_RESERVED_MASK >> 1u) || (IVS_CTRL_RESERVED_MASK & (IVS_CTRL_RESERVED_MASK >> 1u)) != 0u) {
+    ivs_test_diag("controller-bit: bit 30 parsed as %08X, want %08X", (unsigned)out.events[0].controller[0],
+                  (unsigned)(IVS_CTRL_RESERVED_MASK >> 1u));
+    return IVS_TEST_FAIL;
+  }
+  return IVS_TEST_PASS;
+}
+
 /* Sets the value of key in report in place. 1 when exactly one line carries the key and the new value has the same
  * length as the old one (every use here keeps the width, so no line has to move and the text stays equal elsewhere). */
 static int rx_report_set_value(char *report, const char *key, const char *value)
@@ -3819,6 +3981,10 @@ static const ivs_test_case exec_cases[] = {
     {"runner.record.refuse.arity", ex_record_refuse_arity, NULL},
     {"runner.record.refuse.hex", ex_record_refuse_hex, NULL},
     {"runner.record.refuse.trailing", ex_record_refuse_trailing, NULL},
+    {"runner.record.refuse.tick-order", ex_record_refuse_tick_order, NULL},
+    {"runner.record.refuse.tick-bound", ex_record_refuse_tick_bound, NULL},
+    {"runner.record.refuse.event-cap", ex_record_refuse_event_cap, NULL},
+    {"runner.record.refuse.controller-bit", ex_record_refuse_controller_bit, NULL},
     {"runner.judge.record-replay-differs", ex_judge_record_replay_differs, NULL},
     {"runner.judge.record-replay-inert", ex_judge_record_replay_inert, NULL},
     {"runner.exec.boot-stub-2", ex_boot_stub_2, NULL},
