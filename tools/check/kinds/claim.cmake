@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Hook for kind claim (SKELETON.md section 4).
 # Failure tokens: claim-order: <id>, claim-unknown-profile: <id>, claim-dangling-path: <id>,
+#   claim-handoff-artifact: <id>,
 #   claim-unknown-field: <id>/<field>, claim-overstated: <id>,
 #   claim-measured-without-d10: <id>, claim-type: <id>/depends_on.
 # Stats: claims=<n>, provisional=<n>.
@@ -98,6 +99,38 @@ function(hook_record id rec)
     if(NOT "${artifact}" MATCHES "^[A-Za-z0-9._/-]+$" OR "${artifact}" MATCHES "^/" OR "${artifact}" MATCHES "[.][.]"
        OR NOT EXISTS "${ROOT}/${artifact}" OR IS_DIRECTORY "${ROOT}/${artifact}")
       gate_fail(claim-dangling-path "${id}")
+    endif()
+  endif()
+
+  # A claim never cites a handoff-shaped artifact (EV-05, GUARDRAILS 2.8): a build product, an
+  # operator render, a timing record or the handoff ledger itself is never evidence for a claim,
+  # so each of the five classes is refused by its own token rather than by claim-dangling-path,
+  # which only fires while the file is absent. The any-`.tsv` suffix is used instead of a
+  # `data/bench/` prefix: one predicate instead of a path prefix to get wrong, and it covers the
+  # hosted timing record `.planning/ci-runs.tsv` as well.
+  #
+  # The test is made on the NORMALISED path, never on the raw spelling. file(REAL_PATH) resolves a
+  # leading `./`, a doubled `/`, and a symlink indirection to the real target, so `./build/x` and
+  # `data/evidence/x` (a link to build) are the same file as `build/x`; the path is then made
+  # relative to ROOT and lower-cased, because this project's primary host is case-insensitive, so
+  # `Build/x` resolves there and `out/x.WAV` is the file `out/x.wav`. Without that normalisation a
+  # claim satisfied every clause by spelling alone: only the file had to exist, and during a gate
+  # run `build/gate/` does. Residual, named rather than papered over: a symlink whose target lies
+  # OUTSIDE the repository normalises to a `../`-relative path, which no clause below matches; such
+  # a claim is still refused by claim-dangling-path only if the link is broken, so a link to an
+  # external build directory is not refused here and is recorded as an open residual.
+  # ROOT is resolved too: a tree reached through a symlink (a worktree under /tmp, which is a link
+  # on Darwin) would otherwise make every relative path a `../` path and silently disarm the two
+  # prefix clauses while the suffix clauses kept working.
+  if(NOT "${artifact}" STREQUAL "" AND EXISTS "${ROOT}/${artifact}")
+    file(REAL_PATH "${ROOT}" handoff_root)
+    file(REAL_PATH "${ROOT}/${artifact}" handoff_real)
+    file(RELATIVE_PATH handoff_norm "${handoff_root}" "${handoff_real}")
+    string(TOLOWER "${handoff_norm}" handoff_low)
+    if("${handoff_low}" MATCHES "^build/" OR "${handoff_low}" MATCHES "[.]wav$"
+       OR "${handoff_low}" MATCHES "[.]ppm$" OR "${handoff_low}" MATCHES "[.]tsv$"
+       OR "${handoff_low}" STREQUAL "data/expected/handoffs.ids")
+      gate_fail(claim-handoff-artifact "${id}")
     endif()
   endif()
 

@@ -1,0 +1,34 @@
+# Human-only items: what a person owes this project, never evidence and never citable by a
+# claim (EV-05, GUARDRAILS 2.8, AUTONOMY.md section 3: a handoff is a ledger row, not prose).
+# One line per item, four space-separated tokens:
+#   <id> <disposition> evidence: none
+# The id is the one the project's own records already use: an H-id of a phase verification
+# record or a milestone close record (H7-1, H7-2, H8-3) or a D-id owner gate (D10, D11).
+# The disposition is `handed-off` or `not-performed`, and nothing else: a handoff is never a
+# done item and never blank (this file refuses the verdict vocabulary on purpose, so a row
+# cannot be read as a verdict either). `handed-off` means the item has been offered to the owner with the
+# procedure it needs; `not-performed` means it needs hardware or owner-local images that no
+# tool on this host can supply.
+# The third and fourth tokens are the literal words `evidence: none`, so a row cannot express
+# an evidence tier: a person's answer of yes or no is a handoff RESULT, it is recorded here as
+# `evidence: none` either way, and it never becomes a claim. A claim that wants to rest on a
+# result must be raised by a separate decision, never by editing this file.
+# A MISSING file means an empty set, not a missing inventory. This file is NOT read through
+# `read_ids` (tools/check/lib.cmake:75-101, which appends whole lines and is only usable for
+# single-column inventories), so its reader must guard on existence with `if(EXISTS ...)`,
+# the way the claim profile file is guarded. This file carries no allow-empty directive,
+# because emptiness is not legal for this ledger: a ledger with no rows records nothing.
+# Read by the claim hook's artifact refusal (tools/check/kinds/claim.cmake, plan 10-05) and by
+# later milestones, which cite a row id and open the packet in docs/handoffs.md instead of
+# re-asking the owner.
+# The five ids are five rows but not five human acts. H8-3 is the Phase 8 close record's id
+# (08-MILESTONE-CLOSE.md section K) for the same two acts as H7-1 and H7-2 plus a look at the
+# STIC pictures of a `diag-stic2-` scenario, so one act discharges both H8-3 and the two Phase
+# 7 rows; a later milestone must not book a third act on the strength of this count.
+# The D10 and D11 rows name items held in data/expected/d10-measurements.ids, cited by path
+# only: that file is the inventory and this file never restates its row count.
+H7-1 handed-off evidence: none
+H7-2 handed-off evidence: none
+H8-3 handed-off evidence: none
+D10 not-performed evidence: none
+D11 not-performed evidence: none

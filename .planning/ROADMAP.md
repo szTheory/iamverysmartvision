@@ -95,8 +95,8 @@ files.
 <details>
 <summary>🚧 v0.2.0 Registered Evidence, Reachable Runs, Replayable Input (Phases 9 to 12)</summary>
 
-- [ ] Phase 9: Registered Evidence and Gate Cost — land the cost lever and trims, take the hosted row that settles the level, then register the 17 already-faulted requirements and make the gap unrepeatable
-- [ ] Phase 10: Reachable Runs and Presentation Policy — a person builds and runs the demo cartridge from the released source archive with documented commands; the presentation policy is frozen and enforced; the look/listen handoff is recorded
+- [x] Phase 9: Registered Evidence and Gate Cost — land the cost lever and trims, take the hosted row that settles the level, then register the 17 already-faulted requirements and make the gap unrepeatable
+- [x] Phase 10: Reachable Runs and Presentation Policy — a person builds and runs the demo cartridge from the released source archive with documented commands; the presentation policy is frozen and enforced; the look/listen handoff is recorded
 - [ ] Phase 11: Input Record and Replay — an input-only, rights-clean log whose replay reproduces the recorded run's digest chain and applied-event chain, with the vacuity guards proved live
 - [ ] Phase 12: Bank Modes and External Import (conditional) — bank-mode profile data with a typed refusal for every unmapped mode, and `.bin`/`.cfg` import outside the core only where a per-mode rights review clears it; droppable
 
@@ -187,7 +187,13 @@ and enforced, and the look/listen handoff is recorded rather than assumed.
   3. `data/expected/handoffs.ids` holds H7-1, H7-2, H8-3, D10 and D11, every row `evidence: none` and each dispositioned `handed-off` or `not-performed`; a claim citing a handoff artifact, a `build/` path, a `.wav`, a `.ppm` or a bench `.tsv` is refused, and the `text` step's claim-word list contains the look/listen words — both shown able to fail.
   4. `README.md` and `docs/packaging.md` carry one identical "nothing downloadable is runnable" sentence (a grep proves a single matching line in each) and one paragraph pointing at `docs/running.md`.
   5. The gate summary keeps `steps=38/38` and `claims=` at its Phase 9 value, and no claim cites a handoff row: the documented route reaches at most `installed-host-behavior` and the handoff carries no tier.
-**Plans**: TBD
+**Plans**: 6/6 plans executed
+- [x] 10-01-PLAN.md
+- [x] 10-02-PLAN.md
+- [x] 10-03-PLAN.md
+- [x] 10-04-PLAN.md
+- [x] 10-05-PLAN.md
+- [x] 10-06-PLAN.md
 **Tier ceiling**: at most `installed-host-behavior` for the documented route; no tier for the handoff.
 **Not in this phase**: installing `ivs-run` or any image (structurally blocked, not merely expensive — D14), a windowed frontend, any new dependency, a second example cartridge.
 
@@ -284,7 +290,7 @@ end-to-end flows; the debt is the recorded, accepted register, not new gaps.
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 9. Registered Evidence and Gate Cost | 9/9 | Complete    | 2026-11-24 |
-| 10. Reachable Runs and Presentation Policy | 0/TBD | Not started | - |
+| 10. Reachable Runs and Presentation Policy | 6/6 | Complete    | 2026-11-25 |
 | 11. Input Record and Replay | 0/TBD | Not started | - |
 | 12. Bank Modes and External Import (conditional) | 0/TBD | Not started | - |
 

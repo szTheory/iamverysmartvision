@@ -2,19 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v0.2.0
 milestone_name: Registered Evidence, Reachable Runs, Replayable Input (Phases 9 to 12)</summary>
-current_phase: 10
-current_phase_name: Reachable Runs and Presentation Policy
+current_phase: 11
+current_phase_name: Input Record and Replay
+current_plan: Not started
 status: planning
-stopped_at: Phase 9 complete, ready to plan Phase 10
-last_updated: "2026-11-25T04:33:42.841Z"
-last_activity: 2026-11-24
-last_activity_desc: Phase 9 complete, transitioned to Phase 10
-state_head: fd0ef31ebf854275fcdc90cb3cf4e853f84647d0
+stopped_at: Phase 10 complete, ready to plan Phase 11
+last_updated: "2026-11-25T12:48:40.384Z"
+last_activity: 2026-11-25
+last_activity_desc: Phase 10 complete, transitioned to Phase 11
+state_head: cf4a3dc665fc9d3ee3a1f13232557f223d20b83f
 progress:
   total_phases: 4
   completed_phases: 8
-  total_plans: 9
-  completed_plans: 9
+  total_plans: 15
+  completed_plans: 15
   percent: 100
 ---
 
@@ -25,20 +26,27 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-24)
 
 **Core value:** A deterministic, observable machine core whose every compatibility claim is bound to an exactly named profile and independent evidence — never an unqualified "it runs Intellivision games" label.
-**Current focus:** Phase 9 — Registered Evidence and Gate Cost
+**Current focus:** Phase 10 — Reachable Runs and Presentation Policy (complete)
 
 ## Current Position
 
-Phase: 10 — Reachable Runs and Presentation Policy
-Plan: Not started
+Phase: 11 — Input Record and Replay
+Current Plan: Not started
+Total Plans in Phase: 6
 Status: Ready to plan
-Last activity: 2026-11-24 — Phase 9 complete, transitioned to Phase 10
+Last activity: 2026-11-25 — Phase 10 complete, transitioned to Phase 11
+
+**Phase 10 final counts:** `steps=38/38 controls=389/389 claims=28 provisional=27 gates=109
+lines=333 faults=235/235 cases=13 goldens=29 claim-refs=26 prefix-files=11 doc-files=62 docs=63`.
+`gates` moved 107 to 109 and `lines` 330 to 333 in plan 10-06, deliberately: three EV-05 registry
+rows and two exclusion rows make the derived must-be-covered set legal in both directions
+(`Complete 57 - excluded 12 = accepted 45 = registered 45`). Amendment A-04's predicted `lines=335`
+was an arithmetic slip and is corrected by measurement in `10-06-SUMMARY.md`.
 
 **Next action:** the orchestrator's phase boundary. It runs the container gate once on this
-final tree (the executor did not: the dispatch reserves it), applies or records the branch and
-tag rulesets in `.planning/AUTONOMY.md` section 1, and runs verify-work. Phase 10
-(`PKG-05`, `TOOL-04`, `EV-05`) starts after that. Nothing in wave A2 added gate content before
-the hosted row, and the row is in `.planning/ci-runs.tsv` (run 45527058543, head `93e6b9f`).
+final tree (the executor did not: the dispatch reserves it, and this plan's budget deviation
+records that), applies or records the branch and tag rulesets in `.planning/AUTONOMY.md`
+section 1, and runs verify-work. Phase 11 (`TOOL-01`) starts after that.
 
 ### Planning overrides recorded by the autonomous run
 
@@ -58,7 +66,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 108
+- Total plans completed: 114
 - Average duration: -
 - Total execution time: -
 
@@ -73,6 +81,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | 5 | 12 | - | - |
 | 6 | 14 | - | - |
 | 9 | 9 | - | - |
+| 10 | 6 | - | - |
 
 *Updated after each plan completion*
 **Per-Plan Metrics:**
@@ -216,6 +225,11 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | Phase 09 P07 | 13 | 3 tasks | 11 files |
 | Phase 09 P08 | 32m | 3 tasks | 3 files |
 | Phase 9 P09 | 22m | 3 tasks | 8 files |
+| Phase 10 P01 | 7m40s | 2 tasks | 3 files |
+| Phase 10 P02 | ~28m | 2 tasks | 1 files |
+| Phase 10 P03 | 24 min | 2 tasks | 2 files |
+| Phase 10 P04 | 18m | 2 tasks | 3 files |
+| Phase 10 P6 | ~55 min wall clock | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -512,6 +526,13 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 09]: 09-07: the memmap generator's refusal is additive, not a short-circuit, so the six existing memmap controls keep their pinned tokens; memmap-generator-missing is proved by a committed selftest case
 - [Phase 09]: The preflight class is derived by grep over step source text (neither IVS_GATE_DIR nor build/) and printed in the run header, so a reclassification is visible rather than silent
 - [Phase 9]: Plan 09-09: every bookkeeping correction is an appended note beside the measured value, the seven draft VALIDATION.md files are rows citing 08-ACCEPTED-DEBT.md section 1, and the EV-01/EV-03/EV-04 flip lands with its three exclusion rows so 54 - 10 = 44 = 44 holds
+- [Phase 10]: The documented route is the source archive plus the release preset; nothing downloadable is runnable, so the route is build-from-source and no install claim is made (A-01)
+- [Phase 10]: docs/running.md quotes the measured nine-line tail with host.calls qualified by slice size (11 default, 1599 at --slice-ticks 1000) rather than dropped
+- [Phase 10]: The golden comparison is the committed data/golden/demo-lamp-tone-pass.digests body (124 of 124 lines) against a 131-line report; no second expectation was invented
+- [Phase 10]: docs/presentation.md cites tools/check/core-symbols.sh:163-173 and its committed stand-in instead of adding a second colour mechanism (A-02); the mechanism (51515f1) is an ancestor of the policy (b5ad01d), an inversion of GUARDRAILS 2.9 recorded rather than claimed away
+- [Phase 10]: the release rehearsal gains --source-route: the archive a release carries is extracted, built cold, run on the demo and compared with the committed golden by a verbatim copy of the gate's filter; release-time only, no gate step, no control, no claim
+- [Phase 10]: Amendment A-04 predicted lines=335; the mechanism's stats line counts registry rows only, so the measured value is 333 (three registry rows; the two exclusion rows live in a different file). gates 107->109. The rule stands, the figure is corrected by measurement.
+- [Phase 10]: The three requirement flips land with their five ledger rows in one commit: EV-05 gets three registry rows (two claims controls, one text control), PKG-05 and TOOL-04 get exclusion rows. Identity 57 - 12 = 45 = 45.
 
 ### Pending Todos
 
@@ -564,14 +585,21 @@ Refreshed by plan 08-21 from `.planning/phases/08-stic-completion-save-state-per
 | Milestone lifecycle | the milestone audit, the milestone completion and the cleanup of Phase 8 | Next: the lifecycle sequence after the records pull request | Phase 8 | Now |
 | Settings | the branch ruleset (PR + `gate`, no force push, no deletion) and the tag ruleset (no update, no deletion, from a green `main`) recommended in `.planning/AUTONOMY.md` section 1 | **Not applied** (the close read returned no ruleset) | Phase 4 / Phase 8 | Orchestrator, at the next repository-settings action |
 
+**Note on the Owner items row above (plan 10-06, 2026-11-25):** the 44 in that row's
+D10 figure and the 47 in Recorded Constraints item 4 below are one measurement read two
+ways - 44 `D10-*` rows plus 3 `D11-*` rows, 47 in total - so neither sentence is wrong on
+its own and neither should be quoted alone. Measured with
+`awk '!/^#/ && NF {print $1}' data/expected/d10-measurements.ids | sed 's/-.*//' | sort | uniq -c`.
+The row itself is left as recorded and this note sits under it.
+
 **Milestone close record:** `.planning/milestones/v0.1.0-phases/08-stic-completion-save-state-performance-baselines/08-MILESTONE-CLOSE.md` (sections A to K; every stage-2 placeholder is filled by the records commit) and `08-VERIFICATION.md` in the same directory. The milestone archive moved both here on 2026-11-24; this line is the pointer that does not move.
 
 **Milestone archive:** `.planning/milestones/v0.1.0-ROADMAP.md`, `v0.1.0-REQUIREMENTS.md`, `v0.1.0-MILESTONE-AUDIT.md` (status `tech_debt`) and `v0.1.0-phases/` (the eight phase directories). `MILESTONES.md` holds the shipped entry.
 
 ## Session Continuity
 
-Last session: 2026-11-25T03:11:17.532Z
-Stopped at: Phase 9 complete, ready to plan Phase 10
+Last session: 2026-11-25T09:04:20.194Z
+Stopped at: Phase 10 complete, ready to plan Phase 11
 Resume file: None
 
 ## Recorded Constraints for the Next Milestone
@@ -605,6 +633,11 @@ recomputed figure or an owner hard stop.
    (owner-local real EXEC/GROM runs). No claim may exceed `provisional` until they
    are performed. Every human-only item is a row in `data/expected/handoffs.ids`
    with `evidence: none`.
+   Note (plan 10-06, 2026-11-25): the 47 above is the whole owner-item count, not a
+   second D10 figure. Measured on this tree, `data/expected/d10-measurements.ids`
+   holds 44 `D10-*` rows and 3 `D11-*` rows, 47 in total, which is why the Deferred
+   Items owner row says 44 hardware items and this item says 47. The sentence above
+   is left as recorded and this note sits under it.
 5. **Settings still not applied:** the branch ruleset (PR + `gate`, no force push,
    no deletion) and the tag ruleset (no update, no deletion, only from a green
    `main`) recommended in `.planning/AUTONOMY.md` section 1. Apply them, or record

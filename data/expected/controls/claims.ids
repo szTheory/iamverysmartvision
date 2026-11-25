@@ -1,4 +1,10 @@
 claims-dangling-artifact
+claims-handoff-artifact
+claims-handoff-row
+claims-handoff-missing
+claims-handoff-unreadable
+claims-handoff-id-missing
+claims-handoff-id-extra
 claims-missing-key
 claims-unknown-tier
 claims-overstated-standing
@@ -9,8 +15,11 @@ claims-empty
 claims-inventory-empty
 text-untagged-claim-word
 text-untagged-playable
+text-untagged-look-listen
 text-missing-claim-ref
 text-undocumented-tier
 text-no-files
 claims-measured-without-d10
 text-changelog-untagged
+claims-handoff-id-duplicate
+claims-handoff-disposition

@@ -21,9 +21,10 @@
 # requirement that is in neither the registry nor this file (important-gates-complete-uncovered) and
 # refuses a row here whose requirement is not Complete (important-gates-excluded-stale). Deleting a
 # row therefore re-opens the refusal instead of silencing it. There is no '#allow-empty' line: the
-# file holds seven rows and emptiness is not legal here.
+# file holds twelve rows and emptiness is not legal here.
 # Close-record requirements (the evidence is a close record or a release action):
 REL-01 close_record_and_release_action_only
+PKG-05 close_record_only_release_rehearsal_transcript_and_moved_prefix_run
 # Gate-machinery self-evidence (the evidence is the machinery itself, not a registerable mechanism):
 API-01 instance_isolation_proved_by_suite_test_ids
 API-05 core_purity_controls_registered_under_INP-03
@@ -34,3 +35,4 @@ EV-02 the_registration_commit_is_its_own_evidence
 EV-01 gate_machinery_self_evidence_hosted_cost_row_and_trim_commits
 EV-03 gate_machinery_self_evidence_three_controls_and_one_verification
 EV-04 gate_machinery_self_evidence_derived_must_be_covered_set
+TOOL-04 gate_machinery_self_evidence_enforcement_predates_the_requirement_core_symbols_palette_defined

@@ -19,3 +19,7 @@ hygiene-message-home-path 955c13fa02
 # matched text is the shape of a scratch path, not a private path with identifying content, and a
 # rewrite of published branch history is an owner-only hard stop.
 hygiene-history-home-path 6d11e4e27e
+# Appended (Phase 10 close): the Phase 10 security record quoted the home-path shapes it was
+# certifying the absence of. Corrected in the same commit that appends this pin; this names the
+# commit that still carries them. Same disposition as the rows above.
+hygiene-history-home-path 5a9d2ead73

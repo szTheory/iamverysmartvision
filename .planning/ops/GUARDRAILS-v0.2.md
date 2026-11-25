@@ -27,6 +27,23 @@ A count edited in a later "re-bless" commit is a defect.
 | R10 | a new fault site | `data/expected/faults/<suite>.ids` plus the site, same commit (an orphan site fails) |
 | R11 | a new golden | `data/golden/<name>.{expect,digests}` with exactly one `# tier:` / `# oracle:` / `# scenario:` header; `data/expected/runner-scenarios.ids`; `data/expected/scenario-pairs.ids`; the writing command added to `docs/runner.md` |
 
+### Note on R2, appended by plan 10-06 (2026-11-25)
+
+The R2 row above names an `nreq` split string that no longer exists. Measured on
+this tree with `grep -n nreq tools/check/steps/important-gates.sh`: four lines
+(156, 160, 177, 180), and all four are the same awk counter over the derived
+accepted set (`reqs[++nreq]`, then `i <= nreq`), never a hand-written list of
+requirement ids. Plan 09-05 deleted the hand-written list when it made the
+accepted set derived (EV-04, amendment A-01), so the only parts of the row that
+can still need a retarget are the header comment and the token prose. The row is
+left exactly as recorded; this note sits under it rather than replacing it
+(GUARDRAILS 2.10, lesson 21).
+
+The same row's toy-registry limb was measured and does not apply to the Phase 10
+acceptance: `grep -rn EV-05 tools/check/controls/_good/tree/` returns nothing, so
+the toy requirement record carries no EV-05 and no toy registry line is due. The
+toy `control-toy-drift` check stays green.
+
 ## 2. Milestone-level rules
 
 1. **No new gate step.** `ls tools/check/steps/*.sh | wc -l` stays 38 and

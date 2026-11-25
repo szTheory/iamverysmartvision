@@ -179,6 +179,21 @@ Measure before changing. Append findings and actions to
   preflight pass if its script references neither the gate results directory nor
   `build/`. Buffer each step's tokens and `-- FAIL` lines so the summary line and
   output order stay byte-identical while execution order changes.
+- **Measure the hosted step profile before proposing anything.** Fetch a green run's log and
+  rank its `step-time` lines; four steps are about 88 % of this gate (`c-build`, `c-faults`,
+  `c-tests`, `controls`), so a change aimed anywhere else cannot matter. A proposal that does
+  not start from that table is a guess. The profile and its ranked opportunities live in
+  `.planning/CI-EFFICIENCY.md`.
+- **The one lever that preserves evidence is concurrency between independent steps.** Two steps
+  that write to different trees and read nothing of each other's, whose output the partition
+  already buffers and replays in sorted order, can run at the same time with byte-identical
+  evidence: `cpu_s` is unchanged, wall time drops, and Actions wall-minutes drop with it. This
+  is *not* caching, *not* a path filter and *not* a matrix — it is the same work, overlapped.
+  Take it only when the gate driver is otherwise stable for the milestone.
+- **A red hosted run is recorded, never skipped.** Every run is a row; a failure is read for its
+  cause and its cause is written down. Three pushes in this milestone failed on `hygiene`, a
+  *local* step — which is the standing argument for reproducing locally first: a hosted minute
+  spent on a check that runs in one second at home is the most expensive kind of waste.
 - **Docker hygiene.** Every image, container and volume this project creates is
   named `ivs-<purpose>` (for example `ivs-gate-linux`) so it is identifiable in
   `docker ps -a`, `docker images` and `docker volume ls`. Remove them when the

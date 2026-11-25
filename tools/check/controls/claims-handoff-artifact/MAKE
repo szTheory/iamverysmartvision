@@ -1,0 +1,10 @@
+# Every cited target must EXIST, so claim-dangling-path cannot fire and only the handoff predicate
+# can. Two are assembled at run time rather than committed: a `.wav`/`.ppm` is binary by name
+# (tools/check/binary-ext.txt) and would drag a rights row into the files step, and a `Build/` path
+# would be a case-variant duplicate of `build/` in the repository.
+write out/x.wav x
+write out/x.ppm x
+write Build/gate/dev/runner/toy.report x
+# A link indirection to the same build product, so the normalised predicate is proved on a path
+# whose spelling names no refused class at all.
+symlink x build

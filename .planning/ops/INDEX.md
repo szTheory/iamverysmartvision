@@ -15,7 +15,7 @@ this index first.**
 | `.planning/ops/GUARDRAILS-v0.2.md` | The retarget table (what must move in the same commit as what), the definition of done, the discuss/verify boilerplate, the close-state checklist |
 | `.planning/ops/EXEC-RULES.md` | What an executor may and may not do (no `gh`, no tags, never stage orchestrator state) |
 | `.planning/ops/RELEASE-OPS.md` | The release step order and the checks P1–P8 |
-| `.planning/ops/PLAN-LESSONS.md` | Numbered planning lessons 1–24; cite them by number in plans |
+| `.planning/ops/PLAN-LESSONS.md` | Numbered planning lessons 1–25; cite them by number in plans |
 | `.planning/ops/verify-push.sh` | Helper for the verification-push shape |
 
 ## Project state (the current truth)

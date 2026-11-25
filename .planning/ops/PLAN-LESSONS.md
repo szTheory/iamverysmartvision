@@ -32,3 +32,28 @@ Defects the plan-checker found in Phases 5 and 6, in the order of how often they
 22. **Unit costs priced by id and by fault were wrong for heavy suites:** wave B was planned at 12 to 16 hosted cpu-s and measured 21.4 (checkpoint C, 08-17) because one suite of 61 ids costs 3.3 local cpu-s on the dev preset; price a suite with heavy ids by `/usr/bin/time -p`, three alternated runs, in the plan that adds it, state a local cpu-s budget for the remaining plans, and read the median `r` of the last five rows, because runner speed moves the metric more than code does (single rows read 7.20 to 8.37).
 23. **A recorded condition the host did not meet is kept as taken, and said:** the benchmark baseline procedure asks for an idle host and the host had a load average of 5.96 on 18 cpus (08-19); take a load reading at record time, keep the statement verbatim in the record, let the format check judge the format and never the quality of the host, and say in the note of any mark that depends on the condition that it was not met.
 24. **An interrupted run leaves state that cannot be trusted:** a container gate stalled under emulation and two attempts never left the package install, all killed (08-17), and a session cut off by a network error left partial files (08-18); write a visible not-run line with the reason and never a pass, re-validate each partial file against the plan's own check before building on it, and run one container gate at a time (lesson 18).
+
+## Phase 10 (plans 10-01 to 10-06; added by plan 10-06)
+
+25. **A keyword gate that cannot tell a policy document from a frontend is answered by a recorded disposition, never by renaming the work:** the orchestrator's `ui-plan-gate` read a frontend signal from the words `presentation` and `palette` in this phase's own prose, while its own report said the blocking flag was false. The phase adds no frontend, and `10-CONTEXT.md` excludes one explicitly ("a windowed frontend" is in the not-in-this-phase line). The disposition is recorded here as **settled, with no action**: the gate is advisory when `block: false`, and re-wording a frozen phase document to satisfy a substring would trade a correct record for a quiet scanner. The general lesson is not about `ui-plan-gate`: when a keyword check fires on a document that describes a policy rather than implements a surface, record the false positive with its evidence and move on, so the next run reads a decision instead of re-litigating it.
+
+## Phase 9 and 10 (added at the Phase 10 close)
+
+25. **A record that certifies the absence of a pattern must not quote the pattern.** The Phase 9
+    security record quoted a control's tilde-home literal while describing a shellcheck finding,
+    and the Phase 10 security record quoted the four home-path shapes it was certifying absent.
+    Both took the tree red at `steps=36/38` — the hygiene step refuses the literal in any tracked
+    file, including the file that is about the literal. Describe the *shape* ("a tilde-home
+    prefix", "an absolute macOS home prefix"); never paste the string. This happened twice in one
+    milestone, which is what makes it a lesson and not an accident.
+26. **A `ui-plan-gate` reading of `frontend: true` is not an answer when the phase adds no
+    frontend.** Phase 10 read `frontend: true` from the words "presentation" and "palette" while
+    `block` was `false`. The gate is a keyword detector, not a judgement: check the phase's
+    "Not in this phase" line before generating a UI-SPEC for a policy document, and record the
+    false positive where a later run will look so it is not re-litigated.
+27. **A fix introduced by a review can break the thing the review was protecting.** Phase 10's
+    W-01 added a drift assertion to the release rehearsal and passed its own control, but its
+    parameter mapping was wrong, so the rehearsal aborted unconditionally and criterion 1 failed —
+    three green gates coexisted with it because the rehearsal is deliberately not a gate step.
+    When a fix lands in a script the gate does not run, re-run *that script* before claiming the
+    finding closed; the re-verification pass is what caught it.

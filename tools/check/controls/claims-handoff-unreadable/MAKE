@@ -1,0 +1,4 @@
+# The ledger path exists but is not a readable regular file: a directory, assembled at run time so
+# the case is host-independent (a chmod-based case would pass when the gate runs as root).
+delete data/expected/handoffs.ids
+write data/expected/handoffs.ids/placeholder x
