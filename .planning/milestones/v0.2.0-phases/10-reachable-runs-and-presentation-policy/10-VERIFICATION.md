@@ -3,6 +3,13 @@ phase: 10-reachable-runs-and-presentation-policy
 verified: 2026-11-25T14:38:02Z
 verifier: Claude (gsd-verifier)
 status: passed
+# Reconciled by the milestone audit (G-01): the body below records the verifier's second pass as
+# `gaps_found 4/5` because the W-01 fix broke the rehearsal. G-01 was then closed by the
+# ORCHESTRATOR (commit 153fd51, the drift() argument mapping), and the `## G-01 closed` section is
+# an orchestrator record, not a verifier re-run. The frontmatter says `passed` because the phase
+# is closed and green on all three gates; the two facts below say who proved what.
+verifier_verdict: gaps_found (4/5) at tree 6dbf4ca
+closed_by: orchestrator, commit 153fd51 - the verifier did not re-run after that fix
 score: 5/5
 re_verification: true
 phase_base: d3952ea

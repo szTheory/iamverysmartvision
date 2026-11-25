@@ -1860,3 +1860,59 @@ host. **Consequence, recorded rather than acted on:** the stop line's trigger is
 trustworthy at this spread, so no lever is invented to chase it; the standing rule that the
 gate may not grow before a row is satisfied for Phase 9, and Phases 10–12 add no gate step.
 The measured `cpu_s` per run and the per-step profile above are the figures to compare, not `r`.
+
+## 2026-11-25 — the milestone close: the checkpoint the audit found missing, and the arithmetic that was never printed
+
+**Audit G-03 and G-04, closed here.** There was no cost checkpoint at the Phase 11 boundary or at the
+close, and the stop rule fired on the arithmetic with no lever and no amendment — while the same
+number was used as Ground 2 for dropping Phase 12. Both are corrected, and the second is corrected
+against the run's own argument, which was inconsistent.
+
+**The window, recomputed by arithmetic from the committed file.** Last five `r`: 10.5588, 10.5882,
+10.7059, 11.3514, 11.6735 → **median 10.7059**, against a budget of 7.8 and a stop line of 8.3.
+
+**The arithmetic that should have been printed months of entries ago.** `r = cpu_s / build_s`, so a
+falling denominator raises `r` with no change in work:
+
+| | Phase 9's settling rows | The close |
+|---|---|---|
+| `build_s` | 42–49 | **34** |
+| `cpu_s` | 339–360 | **359–360** |
+| `r` | 7.4–8.4 | 10.4–11.7 |
+
+`cpu_s` at the close is the same as the `cpu_s` that settled Phase 9. `build_s` fell by about a
+quarter. **The gate did not get more expensive; the runner got faster, and `r` is a ratio.** That is
+the whole of the movement, and it is why the "cannot be trusted" conclusion in the entry above is
+right — but a conclusion is not an argument, and this table is the argument.
+
+**What the milestone actually spent.** Added gate work ≈ **4.5 hosted cpu-s** of the ~21 the
+milestone opened with: three controls in Phase 9 (0.56 local), two in Phase 10 (0.37), one `cmake -P`
+launch, and Phase 11's 15 ids and 3 fault runs (about 1.9 local, measured). Phases 9, 10 and 11
+*removed* about 0.80 local cpu-s through the lever and three trims. Net, the milestone is inside its
+allowance by a wide margin — which the `r` reading cannot show and `cpu_s` can.
+
+**The lever, recorded as not required.** The stop rule fires on `r`; `r` is a ratio whose denominator
+moved; the measured work did not grow. No lever is invented to chase a ratio, and none is needed:
+the pre-committed order is exhausted (lever (3) and trims (a), (c), (d) landed; trim (b) declined by
+measurement), and the next lever is the measured step-profile one recorded above (concurrency
+between independent steps), which buys wall time and not a better ratio.
+
+**The Phase 12 inconsistency, resolved against the run's own reasoning.** The Phase 12 entry gate
+used the `r` reading as Ground 2 for dropping the phase. That was wrong in method even though the
+decision was right: Ground 1 (the rights review cannot clear the importer, because its only source
+is a GPL one) is sufficient on its own. The entry gate keeps both grounds and now says which one is
+load-bearing; **Ground 1 is.** A correction is appended there rather than the text rewritten.
+
+**Where the close stands, in the terms the rule asks for:**
+
+- The gate is **38 steps, 395 controls, 238 faults, 110 gates, 337 registry rows** — it grew by
+  registry content, never by a step.
+- `steps=38/38` at the milestone's first commit and its last.
+- Added hosted cost ≈ 4.5 cpu-s against a 21 cpu-s allowance, with 0.80 local cpu-s removed.
+- **`r` is retired as a decision input for the next milestone** until `build_s` is stable enough for
+  the ratio to mean something; `cpu_s` and the step profile are the figures to read. That is a
+  change of method, recorded here rather than left to be rediscovered.
+
+phase11-close: no-lever (median r 10.7059 fires the rule on arithmetic; cpu_s 359-360 equals the
+339-360 that settled Phase 9 while build_s fell 42-48 to 34, so the ratio moved and the work did not;
+allowance spent is about 4.5 of 21 hosted cpu-s)
