@@ -156,9 +156,15 @@ if CONTROLS_DIR="$pl/controls" CONTROLS_INVENTORY_DIR="$pl/inventory" \
   bad runner-selftest-missing "pass-line-runner-exit-nonzero"
 fi
 if grep -q -F -e '-- FAIL control-pass-line-not-last: profile' "$tmp/passline.out"; then
-  # Print the observed refusal, so the guard's failure is visible in every gate log rather than
-  # living only in a temp file this run throws away.
-  grep -F -e '-- FAIL control-pass-line-not-last: profile' "$tmp/passline.out"
+  # Print the observed refusal so the guard's proof is visible in every gate log rather than living
+  # only in a temp file this run throws away - but NOT at the start of the line. tools/gate.sh's
+  # keep_fails collects every line matching '^-- FAIL ' into fail.lines, which ci-summary.sh renders
+  # into the job summary; a refusal this case EXPECTS to observe would then be advertised as a
+  # failure of a passing run. The '-- runner-selftest proof ' prefix keeps the token text readable
+  # and keeps it out of that set.
+  printf -- '-- runner-selftest proof control-pass-line-not-last: profile (observed: '
+  grep -F -e '-- FAIL control-pass-line-not-last: profile' "$tmp/passline.out" | tr -d '\n'
+  printf -- ')\n'
   cases=$((cases + 1))
 else
   bad runner-selftest-missing "control-pass-line-not-last"

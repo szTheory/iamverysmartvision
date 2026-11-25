@@ -19,8 +19,8 @@ exceed `provisional`** while D10 and D11 are unperformed.
 
 - [ ] **EV-01**: The gate cost lever (3) and trims (a), (c) and (d) land in cost-only commits — with trim (b) declined by measurement — before any new test id, control, fault or gate step, and a hosted row recorded after them settles the cost level.
 - [x] **EV-02**: The 17 requirements whose named faults already run in every gate (FND-01..07, CPU-01..05, MEM-01..05) each have at least one cannot-pass-vacuously mechanism registered in `data/expected/important-gates.ids`, with the accepted-requirement set and all ten toy registries extended in the same commit and no new fault or test id.
-- [x] **EV-03**: Each gate-hardening item (`SRC-` whole-token match, zero-document failures, per-step pass lines, manifest output anchoring, memmap generator controls) has a control that fails for its intended reason.
-- [x] **EV-04**: A machine check refuses a requirement marked Complete that has no registry line, and refuses a toy registry that drifts from the good tree, and both are shown able to fail.
+- [ ] **EV-03**: Each gate-hardening item (`SRC-` whole-token match, zero-document failures, per-step pass lines, manifest output anchoring, memmap generator controls) has a control that fails for its intended reason.
+- [ ] **EV-04**: A machine check refuses a requirement marked Complete that has no registry line, and refuses a toy registry that drifts from the good tree, and both are shown able to fail.
 - [ ] **EV-05**: A handoff ledger (`data/expected/handoffs.ids`) records every human-only item (H7-1, H7-2, H8-3, D10, D11) with `evidence: none`, a claim may not cite a handoff artifact, and a later milestone cites the row instead of re-asking.
 
 ### Packaging and reachability
@@ -96,8 +96,8 @@ roadmap names.
 |-------------|-------|--------|
 | EV-01 | Phase 9 | Pending |
 | EV-02 | Phase 9 | Complete |
-| EV-03 | Phase 9 | Complete |
-| EV-04 | Phase 9 | Complete |
+| EV-03 | Phase 9 | Pending |
+| EV-04 | Phase 9 | Pending |
 | EV-05 | Phase 10 | Pending |
 | PKG-05 | Phase 10 | Pending |
 | TOOL-04 | Phase 10 | Pending |
