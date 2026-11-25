@@ -275,3 +275,5 @@ runner.exec.roundtrip-cut-cap
 # refuses a fault whose owner TU is not in IVS_RUNNER_SOURCES, so its two faults can have sites there (A-11-04).
 runner.record.replay-equals-straight
 runner.record.format-roundtrip
+runner.judge.record-replay-differs
+runner.judge.record-replay-inert

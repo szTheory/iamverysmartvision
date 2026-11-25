@@ -3382,6 +3382,186 @@ done:
   return rc;
 }
 
+/* Sets the value of key in report in place. 1 when exactly one line carries the key and the new value has the same
+ * length as the old one (every use here keeps the width, so no line has to move and the text stays equal elsewhere). */
+static int rx_report_set_value(char *report, const char *key, const char *value)
+{
+  size_t kl = strlen(key);
+  size_t vl = strlen(value);
+  char *p = report;
+  int seen = 0;
+  while (*p != '\0') {
+    char *eol = strchr(p, '\n');
+    size_t ll = eol != NULL ? (size_t)(eol - p) : strlen(p);
+    if (ll > kl && strncmp(p, key, kl) == 0 && p[kl] == ' ') {
+      if (seen != 0 || ll - kl - 1u != vl) {
+        return 0;
+      }
+      (void)memcpy(p + kl + 1u, value, vl);
+      seen = 1;
+    }
+    p += ll;
+    if (*p == '\n') {
+      p++;
+    }
+  }
+  return seen == 1;
+}
+
+/* The report of one fresh recording run of the two-input diagnostic text, in a heap copy the caller frees (NULL when the
+ * run does not end pass with a complete report). The judge self-controls build their pairs from it, so neither depends on
+ * another case's state. */
+static char *rx_record_report(void)
+{
+  fake_host h;
+  ivs_runner_result res;
+  char atext[RX_SCN_CAP];
+  char btext[RX_SCN_CAP];
+  char insert[sizeof rx_record_inputs + sizeof rx_record_run_to];
+  char *copy = NULL;
+  size_t len;
+  uint32_t out;
+  fh_init(&h);
+  (void)snprintf(insert, sizeof insert, "%s%s", rx_record_inputs, rx_record_run_to);
+  if (!rx_diag(btext, sizeof btext) || !rx_replace(btext, rx_record_run_to, insert, atext, sizeof atext)) {
+    goto done;
+  }
+  out = rx_exec(atext, &h, &res);
+  if (out != IVS_RUNNER_OUTCOME_PASS || res.exit_code != 0u || h.out == NULL || !rx_complete(h.out, &res)) {
+    ivs_test_diag("the recording run: outcome %u exit %u\n%s", (unsigned)out, (unsigned)res.exit_code, h.out != NULL ? h.out : "");
+    goto done;
+  }
+  len = strlen(h.out);
+  copy = malloc(len + 1u);
+  if (copy != NULL) {
+    (void)memcpy(copy, h.out, len + 1u);
+  }
+done:
+  rx_free(&h);
+  return copy;
+}
+
+/* Rewrites input.events and input.consumed of both reports to 0 and requires the two texts to stay identical (the pair
+ * the guard mechanism must reject). 0 on success. */
+static int rx_report_zero_events(char *c, char *d)
+{
+  if (!rx_report_set_value(c, "input.events", "0") || !rx_report_set_value(d, "input.events", "0") ||
+      !rx_report_set_value(c, "input.consumed", "0") || !rx_report_set_value(d, "input.consumed", "0")) {
+    return 1;
+  }
+  return strcmp(c, d) == 0 ? 0 : 1;
+}
+
+/* The finding each of the two judge mechanisms produces, each on a pair built from a fresh recording run:
+ *   differs_why  the equality mechanism on two texts that differ in one nibble of digest.input (want record-differs)
+ *   inert_why    the guard mechanism on two identical texts that report input.events 0 and input.consumed 0 (want
+ *                record-no-events)
+ * Returns 1 when both pairs were built and both comparisons rejected, 0 otherwise. A comparison that accepted its pair
+ * is reported as "(accepted)", so a red run says which mechanism stopped discriminating. */
+static int rx_judge_findings(char *differs_why, size_t differs_cap, char *inert_why, size_t inert_cap)
+{
+  char *a = rx_record_report();
+  char *b = NULL;
+  char *c = NULL;
+  char *d = NULL;
+  char va[RX_VALUE_CAP];
+  char vb[RX_VALUE_CAP];
+  const char *why = "";
+  size_t len;
+  int ok = 0;
+  if (a == NULL) {
+    goto done;
+  }
+  len = strlen(a) + 1u;
+  b = malloc(len);
+  c = malloc(len);
+  d = malloc(len);
+  if (b == NULL || c == NULL || d == NULL) {
+    goto done;
+  }
+  (void)memcpy(b, a, len);
+  (void)memcpy(c, a, len);
+  (void)memcpy(d, a, len);
+  /* The equality mechanism: one nibble of digest.input changed, so nothing but the equality can reject the pair. */
+  if (!rx_value(a, "digest.input", va, sizeof va) || strlen(va) != 64u || !rx_hex64(va)) {
+    ivs_test_diag("digest.input is not one 64-digit hex value");
+    goto done;
+  }
+  (void)memcpy(vb, va, strlen(va) + 1u);
+  vb[0] = va[0] == '0' ? '1' : '0';
+  if (!rx_report_set_value(b, "digest.input", vb) || strcmp(a, b) == 0) {
+    ivs_test_diag("the one-nibble copy was not made");
+    goto done;
+  }
+  if (rx_record_compare(a, b, 2u, &why) != 1) {
+    why = "(accepted)";
+  }
+  (void)snprintf(differs_why, differs_cap, "%s", why);
+  /* The guard mechanism: two identical texts that report no event at all. */
+  if (rx_report_zero_events(c, d) != 0) {
+    goto done;
+  }
+  why = "";
+  if (rx_record_compare(c, d, 0u, &why) != 1) {
+    why = "(accepted)";
+  }
+  (void)snprintf(inert_why, inert_cap, "%s", why);
+  ok = 1;
+done:
+  free(a);
+  free(b);
+  free(c);
+  free(d);
+  return ok;
+}
+
+/* runner.judge.record-replay-differs (plan 11-02, D-15): the comparison's equality is live. Two report texts of a real
+ * recording run that differ in one nibble of digest.input are rejected with exactly record-differs - the equality, not a
+ * guard. A control that only required "the comparison failed" would pass on a guard failure and prove nothing about the
+ * equality. It also asserts that the guard mechanism's finding is a different string, so the two mechanisms are separate.
+ * The name matches the registry's mutant shape `^[a-z0-9-]+[.](judge|mutant)[.][^ ]+$`, which is what lets plan 11-05
+ * register it as a mutant row. */
+static int ex_judge_record_replay_differs(void)
+{
+  char dw[64];
+  char iw[64];
+  if (!rx_judge_findings(dw, sizeof dw, iw, sizeof iw)) {
+    return IVS_TEST_FAIL;
+  }
+  if (strcmp(dw, "record-differs") != 0) {
+    ivs_test_diag("the one-nibble pair gave '%s', want record-differs", dw);
+    return IVS_TEST_FAIL;
+  }
+  if (strcmp(iw, dw) == 0) {
+    ivs_test_diag("both mechanisms gave '%s': they are not separate", iw);
+    return IVS_TEST_FAIL;
+  }
+  return IVS_TEST_PASS;
+}
+
+/* runner.judge.record-replay-inert (plan 11-02, D-15): the guard is live, and this is the load-bearing control. Two
+ * identical report texts that both carry input.events 0 and input.consumed 0 are accepted by any equality, so only the
+ * guard clause can reject a zero-event pair: it must, with exactly record-no-events. Without this control the equality
+ * case's three clauses would be unproven machinery - the 08-16 lesson, one level up. It also asserts that the equality
+ * mechanism's finding is a different string. */
+static int ex_judge_record_replay_inert(void)
+{
+  char dw[64];
+  char iw[64];
+  if (!rx_judge_findings(dw, sizeof dw, iw, sizeof iw)) {
+    return IVS_TEST_FAIL;
+  }
+  if (strcmp(iw, "record-no-events") != 0) {
+    ivs_test_diag("the identical zero-event pair gave '%s', want record-no-events", iw);
+    return IVS_TEST_FAIL;
+  }
+  if (strcmp(iw, dw) == 0) {
+    ivs_test_diag("both mechanisms gave '%s': they are not separate", dw);
+    return IVS_TEST_FAIL;
+  }
+  return IVS_TEST_PASS;
+}
+
 static const ivs_test_case exec_cases[] = {
     {"runner.exec.assert-forms", ex_assert_forms, NULL},
     {"runner.exec.cancel", ex_cancel, NULL},
@@ -3426,6 +3606,8 @@ static const ivs_test_case exec_cases[] = {
     {"runner.exec.roundtrip-cut-cap", ex_roundtrip_cut_cap, NULL},
     {"runner.record.replay-equals-straight", ex_record_replay_equals_straight, NULL},
     {"runner.record.format-roundtrip", ex_record_format_roundtrip, NULL},
+    {"runner.judge.record-replay-differs", ex_judge_record_replay_differs, NULL},
+    {"runner.judge.record-replay-inert", ex_judge_record_replay_inert, NULL},
     {"runner.exec.boot-stub-2", ex_boot_stub_2, NULL},
     {"runner.exec.sha-match", ex_sha_match, NULL},
     {"runner.exec.sha-mismatch", ex_sha_mismatch, NULL},
