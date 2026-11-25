@@ -3559,14 +3559,16 @@ static int ex_record_refuse_version(void)
   return IVS_TEST_PASS;
 }
 
-/* runner.record.refuse.arity (plan 11-03, TOOL-01, A-11-02): a line-shape fault. Seven rows, and they are the
+/* runner.record.refuse.arity (plan 11-03, TOOL-01, A-11-02): a line-shape fault. Ten rows, and they are the
  * enumerated members of the class rather than a place to put everything: a header directive missing at the end (named
  * at the last line the file has), a header directive duplicated, a header directive out of order, an `at_tick` with
  * three tokens instead of four, a `content` value that is neither `project` nor `user`, a `scenario` value outside
- * `[a-z0-9-]`, a `profile` value above 64 bytes, and an `at_tick` field of 20 digits (the field's width is 1..19, so a
+ * `[a-z0-9-]`, a `profile` value above 64 bytes, an `at_tick` field of 20 digits (the field's width is 1..19, so a
  * 20-digit tick is a shape fault here and never `tick-bound`: the bound is judged only on a value the decimal reader
- * accepted, which is why the plan's 20-digit tick-bound row is fed here). Each is one line's shape; none is a value on
- * a line, which is what keeps `arity` and `trailing` narrow (A-11-02's rejected fold). */
+ * accepted, which is why the plan's 20-digit tick-bound row is fed here), and the document's three spellings of an
+ * `at_tick` that is not a bare decimal (a plus sign, a `0x` prefix, a leading zero: review WR-03, each measured to be
+ * refused `arity` at line 5, so a change that folded any of them into an accepted tick is a failure here). Each is one
+ * line's shape; none is a value on a line, which is what keeps `arity` and `trailing` narrow (A-11-02's rejected fold). */
 static int ex_record_refuse_arity(void)
 {
   typedef struct arity_row {
@@ -3583,6 +3585,9 @@ static int ex_record_refuse_arity(void)
       {"arity: content hardware", "ivsl 1\nscenario s\nprofile p\ncontent hardware\n", 0, 4u},
       {"arity: a dot in the scenario id", "ivsl 1\nscenario a.b\nprofile p\ncontent project\n", 0, 2u},
       {"arity: an at_tick field of 20 digits", "at_tick 10000000000000000000 c0=00000000 c1=00000000\n", 1, 5u},
+      {"arity: at_tick with a plus sign", "at_tick +100 c0=00000000 c1=00000000\n", 1, 5u},
+      {"arity: at_tick with a 0x prefix", "at_tick 0x10 c0=00000000 c1=00000000\n", 1, 5u},
+      {"arity: at_tick with a leading zero", "at_tick 0100 c0=00000000 c1=00000000\n", 1, 5u},
   };
   char text[1024];
   char longname[IVS_IVSL_MAX_PROFILE + 2u];
