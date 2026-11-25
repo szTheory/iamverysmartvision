@@ -336,3 +336,18 @@ change; `T-11-18` to `T-11-22` are each met by a measured check quoted above.
   fault executables' TAP output is quoted above.
 - `git merge-base --is-ancestor` finds all three commits (`3a48161`, `16afb31`, `bcbcf34`) on HEAD.
 - `-- important-gates pass gates=110 lines=337`; the identity closes at 46 = 58 - 12.
+
+## The third gate run: after this SUMMARY's own commit
+
+`11-05-SUMMARY.md` is this plan's own output, committed in its own commit, and it is the only file
+that commit adds. Measured on that commit (`c5dd5e9`) rather than predicted:
+
+```
+gate: PASS steps=38/38 controls=395/395 faults=237/237 fault-runs=237 gates=110 lines=337
+files=2647 tracked=2647 hygiene-files=2647 tests-executed=4984 claims=28 provisional=27
+```
+
+Every frozen token is where the two earlier runs left it; the three file-count shapes move 2646 to
+2647 together, which is this file and nothing else. `roadmap.update-plan-progress 11` was re-run on
+this tree and reports `plan_count 5, summary_count 5, "already reflects"` — the verb agrees with the
+hand-set `5/5` line and made no change.
