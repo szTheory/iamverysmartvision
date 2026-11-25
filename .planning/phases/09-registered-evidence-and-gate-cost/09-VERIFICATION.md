@@ -113,7 +113,7 @@ covered_files:
   - tools/check/steps/important-gates.sh
   - tools/check/steps/runner-selftest.sh
   - tools/gate.sh
-covered_digest: "v4:sha256:8b8e6a20c5c304785156dca59c5ac6bad0502ba76f917a818277d6b3093a52a7"
+covered_digest: "v4:sha256:cd5a9bd9fae951772b4f4f36331b680d394ccd42f61804f90be357bc7fac8002"
 ---
 
 # Phase 9: Registered Evidence and Gate Cost — Verification Report
