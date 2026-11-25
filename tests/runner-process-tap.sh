@@ -1297,6 +1297,20 @@ while IFS= read -r _ln; do _hl=$((_hl + ${#_ln} + 1)); done < "$tmp/rec/head.ivs
 [ "$_hl" -eq 80 ] && [ "$(wc -c < "$tmp/rec/head.ivsl" | tr -d ' ')" -eq "$_hl" ] || {
   ok=0; why record-headonly "the header-only log is $(wc -c < "$tmp/rec/head.ivsl" | tr -d ' ') bytes, its four lines give $_hl, expected 80"
 }
+# A run that never reached the executor names its empty log (review WR-01): `needs-user-exec` is a designed
+# missing-fixture outcome (exit 13), so the file created at the exclusive create stays empty and the tool says so on one
+# stderr line. The file is left in place, the same choice `--frame-ppm` and `--video-raw` make for a run that delivered
+# nothing, rather than removed: an empty .ivsl is describable and a silent removal of a path the operator named would be
+# the only such place. The report is unchanged.
+run_one "$tmp" rec-mf "$ivs_run" --content-dir "$content" --record-input "$tmp/rec/mf.ivsl" "$scen/needs-user-exec.ivss"
+[ "$rc" -eq 13 ] && [ "$hung" -eq 0 ] || { ok=0; why record-empty "exit $rc, hung $hung, expected 13"; }
+[ "$(rkey "$tmp/runs/rec-mf.out" outcome)" = 'missing-fixture' ] || { ok=0; why record-empty "the report's outcome is not missing-fixture"; }
+[ "$(sed -n 1p "$tmp/runs/rec-mf.err")" = 'ivs-run: --record-input: no event log was written, the file is empty' ] || {
+  ok=0; why record-empty "the empty log is not named on stderr: '$(sed -n 1p "$tmp/runs/rec-mf.err")'"
+}
+[ "$(wc -l < "$tmp/runs/rec-mf.err" | tr -d ' ')" -eq 1 ] || { ok=0; why record-empty "stderr is not exactly one line"; }
+[ -f "$tmp/rec/mf.ivsl" ] || { ok=0; why record-empty "the created log file is gone"; }
+[ -f "$tmp/rec/mf.ivsl" ] && [ "$(wc -c < "$tmp/rec/mf.ivsl" | tr -d ' ')" -eq 0 ] || { ok=0; why record-empty "the log file is not empty"; }
 # The refusals.
 rec_refuse missing 'log not readable: missing' --replay-input "$tmp/rec/nope.ivsl" "$scen/demo-lamp-tone-pass.ivss"
 head -c 4200 /dev/zero | tr '\0' 'a' > "$tmp/rec/big.ivsl"

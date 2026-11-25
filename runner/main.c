@@ -1035,6 +1035,14 @@ int main(int argc, char **argv)
     if (frame_ppm_path != NULL && mh.ppm_written == 0u) {
       fprintf(stderr, "ivs-run: --frame-ppm: no frame was delivered, the file is empty\n");
     }
+    /* The input log of a run that never reached the executor (missing-fixture is a designed outcome, exit 13): the file
+     * was created and the recorder wrote nothing into it. Named and left in place, exactly as the frame and raw notes
+     * above do it, rather than removed: a silent removal would be the only place a path the operator named disappears,
+     * and the exclusive-create story (T-11-13) is one the operator can then see the state of. A --replay-input of it is a
+     * typed refusal (`line 0 reason arity`), never a crash. */
+    if (log_out_path != NULL && res.log_out_bytes == 0u) {
+      fprintf(stderr, "ivs-run: --record-input: no event log was written, the file is empty\n");
+    }
   }
   if (fflush(stdout) != 0 || ferror(stdout) || res.report_write_failed != 0u) {
     code = MAIN_EXIT_HARNESS;
