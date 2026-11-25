@@ -18,6 +18,8 @@
 # must-be-covered set, so a plan that accepts a requirement also appends one toy line for it to the
 # toy registry and to every control that overlays a whole-file toy registry.
 #   Phase 1  FND-01 FND-02 FND-03 FND-04 FND-05 FND-06 FND-07                      plan 09-04
+#   Phase 2  CPU-01 CPU-02 CPU-03 CPU-04 CPU-05                                    plan 09-04
+#   Phase 3  MEM-01 MEM-02 MEM-03 MEM-04 MEM-05                                    plan 09-04
 #   Phase 4  API-02 API-04 RUN-01 RUN-02 RUN-04 RUN-05 RUN-06 PKG-01 PKG-03 PKG-04  plan 04-24
 #   Phase 5  INP-01 INP-02 INP-03 API-03 AUD-01 AUD-02                             plan 05-12
 #   Phase 6  VID-01 VID-02 VID-03 VID-04 VID-06                                    plan 06-14
@@ -81,7 +83,7 @@ awk -v knownf="$tmp/known" -v find="$find" -v stats="$tmp/stats" '
   BEGIN {
     while ((getline l < knownf) > 0) known[l] = 1
     close(knownf)
-    nreq = split("API-02 API-04 RUN-01 RUN-02 RUN-04 RUN-05 RUN-06 PKG-01 PKG-03 PKG-04 INP-01 INP-02 INP-03 API-03 AUD-01 AUD-02 VID-01 VID-02 VID-03 VID-04 VID-05 VID-06 SCN-01 SCN-02 STA-01 STA-02 PRF-01 FND-01 FND-02 FND-03 FND-04 FND-05 FND-06 FND-07", reqs, " ")
+    nreq = split("API-02 API-04 RUN-01 RUN-02 RUN-04 RUN-05 RUN-06 PKG-01 PKG-03 PKG-04 INP-01 INP-02 INP-03 API-03 AUD-01 AUD-02 VID-01 VID-02 VID-03 VID-04 VID-05 VID-06 SCN-01 SCN-02 STA-01 STA-02 PRF-01 FND-01 FND-02 FND-03 FND-04 FND-05 FND-06 FND-07 CPU-01 CPU-02 CPU-03 CPU-04 CPU-05 MEM-01 MEM-02 MEM-03 MEM-04 MEM-05", reqs, " ")
     for (i = 1; i <= nreq; i++) accepted[reqs[i]] = 1
     lines = 0; ngates = 0
   }

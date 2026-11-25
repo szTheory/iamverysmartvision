@@ -42,3 +42,13 @@ toy-fnd04 fault GOOD_FAULT FND-04
 toy-fnd05 fault GOOD_FAULT FND-05
 toy-fnd06 fault GOOD_FAULT FND-06
 toy-fnd07 fault GOOD_FAULT FND-07
+toy-cpu01 fault GOOD_FAULT CPU-01
+toy-cpu02 fault GOOD_FAULT CPU-02
+toy-cpu03 fault GOOD_FAULT CPU-03
+toy-cpu04 fault GOOD_FAULT CPU-04
+toy-cpu05 fault GOOD_FAULT CPU-05
+toy-mem01 fault GOOD_FAULT MEM-01
+toy-mem02 fault GOOD_FAULT MEM-02
+toy-mem03 fault GOOD_FAULT MEM-03
+toy-mem04 fault GOOD_FAULT MEM-04
+toy-mem05 fault GOOD_FAULT MEM-05
