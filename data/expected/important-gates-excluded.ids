@@ -1,0 +1,33 @@
+# Requirements that are marked Complete and are excluded from the important-gates must-be-covered
+# set (plan 09-05, EV-04, amendment A-01). The must-be-covered set is derived from the requirement
+# records under .planning/, never hand-written; this file is the only thing subtracted from it, and
+# it is deliberately a different file from data/expected/important-gates.ids, so deleting a registry
+# line cannot silently delete the requirement from the must-be-covered set.
+# One line per exclusion: '<REQ> <reason>'. The REQ is the id of a '## Traceability' row of
+# .planning/REQUIREMENTS.md or of a .planning/milestones/*-REQUIREMENTS.md, and the reason is words
+# joined by underscores (at least three) that name the evidence the requirement actually has and why
+# that evidence is not a row this registry may carry. A reason of 'none' is not legal: a requirement
+# with no evidence at all is not Complete, so it does not belong here.
+# Two categories, and every row belongs to one of them:
+#   close_record_only             the evidence is a close record or a release action, not a gate
+#                                 mechanism, so there is no <gate> <mechanism> <id> row to name;
+#   gate_machinery_self_evidence  the evidence is the gate machinery itself (a gate step, the local
+#                                 gate command, a suite test id, a control already registered under
+#                                 another requirement, or the registration commit itself), not one of
+#                                 the registry's three mechanism kinds (fault, control, mutant).
+#                                 Plan 09-09 uses this same category for the four EV requirements it
+#                                 excludes at the phase close.
+# The ledger is two-directional so it cannot rot: the important-gates step refuses a Complete
+# requirement that is in neither the registry nor this file (important-gates-complete-uncovered) and
+# refuses a row here whose requirement is not Complete (important-gates-excluded-stale). Deleting a
+# row therefore re-opens the refusal instead of silencing it. There is no '#allow-empty' line: the
+# file holds seven rows and emptiness is not legal here.
+# Close-record requirements (the evidence is a close record or a release action):
+REL-01 close_record_and_release_action_only
+# Gate-machinery self-evidence (the evidence is the machinery itself, not a registerable mechanism):
+API-01 instance_isolation_proved_by_suite_test_ids
+API-05 core_purity_controls_registered_under_INP-03
+API-06 api_effects_controls_are_unregistered_here
+RUN-03 tests_inventory_step_is_the_inventory_gate_itself
+PKG-02 tools_gate_sh_is_the_documented_local_command
+EV-02 the_registration_commit_is_its_own_evidence
