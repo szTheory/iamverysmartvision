@@ -4,18 +4,18 @@ milestone: v0.2.0
 milestone_name: Registered Evidence, Reachable Runs, Replayable Input (Phases 9 to 12)</summary>
 current_phase: 11
 current_phase_name: Input Record and Replay
-current_plan: 4
+current_plan: 5
 status: executing
-stopped_at: Completed 11-03-PLAN.md
-last_updated: "2026-11-25T14:44:09.719Z"
+stopped_at: Completed 11-04-PLAN.md
+last_updated: "2026-11-25T15:03:19.746Z"
 last_activity: 2026-11-25
 last_activity_desc: Phase 10 complete, transitioned to Phase 11
-state_head: 86a2682c9f722a95be8a10afcae2ce4c5a587e2d
+state_head: 1e6373351e9fa2db2fbaa7ee7dd7a124b8a77e31
 progress:
   total_phases: 4
   completed_phases: 8
   total_plans: 20
-  completed_plans: 18
+  completed_plans: 19
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-24)
 ## Current Position
 
 Phase: 11 (Input Record and Replay) — EXECUTING
-Current Plan: 4
+Current Plan: 5
 Total Plans in Phase: 5
 Status: Ready to execute
 Last activity: 2026-11-25 — 11-03 complete: the nine typed refusals with their acceptance rows and the rights check with its stand-in
@@ -232,6 +232,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | Phase 11 P01 | 14m | 2 tasks | 1 files |
 | Phase 11 P02 | 27m | 3 tasks | 8 files |
 | Phase 11 P03 | 24m | 3 tasks | 2 files |
+| Phase 11 P4 | 1h 02m | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -542,6 +543,7 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 11]: the tick bound is pinned as IVS_SCN_TIME_MAX - 1 accepted and IVS_SCN_TIME_MAX refused, because the parser refuses tick >= IVS_IVSL_TICK_MAX
 - [Phase 11]: hex runs are counted in both cases in runner.record.no-content-digest: the project's digests are lower case, so an upper-case-only scan would miss the stand-in's value
 - [Phase 11]: no-content-digest lands in 11-03 rather than 11-04: both halves live in the record section of tests/runner/runner_exec.c
+- [Phase 11]: the log is deliberately absent from the three content-user refusal blocks (D15) and a static assertion keeps it so; the no-log witness of the stripped demo copy ends guest-fail, not pass
 
 ### Pending Todos
 
@@ -607,8 +609,8 @@ The row itself is left as recorded and this note sits under it.
 
 ## Session Continuity
 
-Last session: 2026-11-25T14:44:09.640Z
-Stopped at: Completed 11-03-PLAN.md
+Last session: 2026-11-25T15:03:19.670Z
+Stopped at: Completed 11-04-PLAN.md
 Resume file: None
 
 ## Recorded Constraints for the Next Milestone
