@@ -1,16 +1,20 @@
 ---
 gsd_state_version: "1.0"
 milestone: v0.3.0
-milestone_name: Owner-Supplied Content and a Driveable Host
-status: planning
-last_updated: "2026-11-25T19:06:40.748Z"
+milestone_name: Owner-Supplied Content and a Driveable Host (Phases 13 to 16)</summary>
+current_phase: 13
+current_phase_name: Rights Ledger and Enforced Claim Ceiling
+status: executing
+stopped_at: v0.3.0 scoped and committed; Phase 13 ready to discuss and plan
+last_updated: "2026-11-25T21:27:09.781Z"
 last_activity: 2026-11-25
+last_activity_desc: Milestone v0.3.0 started
+state_head: 2f8516a54f1270b6743db119374cb5be0aed61c8
 progress:
-  total_phases: 0
-  completed_phases: 0
-  total_plans: 0
+  total_phases: 4
+  completed_phases: 8
+  total_plans: 5
   completed_plans: 0
-  percent: 0
 ---
 
 # Project State
@@ -24,18 +28,33 @@ See: .planning/PROJECT.md (updated 2026-11-26)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 13 (Rights Ledger and Enforced Claim Ceiling) — READY TO EXECUTE
 Plan: —
-Status: Defining requirements
+Status: Ready to execute
 Last activity: 2026-11-25 — Milestone v0.3.0 started
 
 
 ### Planning overrides recorded by the autonomous run
 
-None yet for v0.3.0. The v0.2.0 overrides are archived with that milestone's phase
-records (`.planning/milestones/v0.2.0-phases/`), and the audit's dispositions are
-in `.planning/milestones/v0.2.0-MILESTONE-AUDIT.md` ("Closure recorded at the
+The v0.2.0 overrides are archived with that milestone's phase records
+(`.planning/milestones/v0.2.0-phases/`), and the audit's dispositions are in
+`.planning/milestones/v0.2.0-MILESTONE-AUDIT.md` ("Closure recorded at the
 milestone close").
+
+- **[Phase 13] The decision-coverage gate is overridden as `could-not-parse`, not
+  as a coverage gap.** `check.decision-coverage-plan` cannot extract decision
+  bullets from `13-CONTEXT.md` because smart-discuss deliberately writes
+  decisions with no `D-NN` prefix (its reference says the gate therefore tracks
+  no smart-discuss decisions). The plans instead cite the frozen decision ids
+  directly — D-32, D-46, D-48, D-49, D-50, D-51 and D-09-06 — and each plan's
+  `must_haves` restates the property it discharges. Re-writing a discuss record
+  to quiet a scanner is the anti-pattern; the override is recorded here instead.
+- **[Phase 13] `workflow.ui_phase`'s `plan:pre` UI hook was skipped.** The
+  `ui-plan-gate` heuristic matched the token "page" in the phase goal's phrase
+  "operator page" and reported `frontend: true`. Phase 13 is C/CMake gate work
+  with no presentation surface, so generating a UI-SPEC would have produced a
+  design contract for a library. The skip is recorded rather than silently
+  taken; the gate's `block` was `false`.
 
 ## Releases
 

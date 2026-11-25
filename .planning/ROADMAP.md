@@ -197,10 +197,19 @@ mechanical rather than quoted.
   5. The gate ends `steps=38/38` with a predicted and then measured token delta, and one hosted row is recorded after the content lands with the last-five `cpu_s` median recomputed against the 21 cpu-s allowance.
 **Plans**: 5 plans
 Plans:
+**Wave 1**
 - [ ] 13-01-PLAN.md — the rights-ledger limb end to end: the checker, the inventory, one live row and the `rights-ledger` control (RTS-01)
+
+**Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 13-02-PLAN.md — the nine remaining RTS-01 rows and their operator rows (RTS-01)
+
+**Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 13-03-PLAN.md — the naming limb with its `(token, path)` pins, and the enforced claim ceiling (RTS-02, EV-06)
+
+**Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 13-04-PLAN.md — the ten D-09-06 registrations, the re-derived baseline and the 13-file toy extension (EV-07)
+
+**Wave 5** *(blocked on Wave 4 completion)*
 - [ ] 13-05-PLAN.md — the phase close: two-shell gate, token-line reconciliation, the recomputed cost checkpoint and the validation sign-off
 **Tier ceiling**: none — this phase adds no claim.
 
