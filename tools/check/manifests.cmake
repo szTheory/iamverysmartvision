@@ -94,6 +94,12 @@ function(path_ok out p)
 endfunction()
 
 # Entries of an array of objects: shape, then path and digest formats.
+# For outputs only (plan 09-07, EV-03 item 4) the path must also be anchored under the manifest's
+# own fixture directory or under data/, so an output cannot point anywhere else in the tree. The
+# second root is measured, not a convenience: FX-ivsc-vectors legitimately writes two derived
+# files under data/cart/ (data/cart/ivsc-parse.json, data/cart/ivsc-load.json), so a
+# fixtures-only rule would refuse the pristine tree. notices and recipe.sources are NOT anchored:
+# recipe sources legitimately name tools/asm/asm.c and tools/pack/pack.c.
 function(check_entries lbl key obj)
   json_type(t "${obj}" ${key})
   if(NOT t STREQUAL "ARRAY")
@@ -124,6 +130,12 @@ function(check_entries lbl key obj)
       path_ok(ok "${p}")
       if(NOT ok)
         gate_fail(manifest-format "${lbl}/${key}/path")
+      endif()
+      # Raised here, before the digest comparison below, so a moved output reports one reason.
+      if(key STREQUAL "outputs" AND NOT "${ARGV3}" STREQUAL "")
+        if(NOT p MATCHES "^fixtures/${ARGV3}/" AND NOT p MATCHES "^data/")
+          gate_fail(manifest-format "${lbl}/${key}/path")
+        endif()
       endif()
     endif()
   endforeach()
@@ -237,7 +249,7 @@ function(check_manifest path doc)
     check_enum("${lbl}" rights_review/status "${o}" REVIEWS status)
     check_match("${lbl}" rights_review/date "${o}" "${DATE_RE}" date)
   endif()
-  check_entries("${lbl}" outputs "${doc}")
+  check_entries("${lbl}" outputs "${doc}" "${dirname}")
   check_entries("${lbl}" notices "${doc}")
   check_string_array("${lbl}" inputs "${doc}" "")
   check_string_array("${lbl}" copyright "${doc}" "")
