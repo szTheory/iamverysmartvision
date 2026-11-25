@@ -5,16 +5,16 @@ milestone_name: Owner-Supplied Content and a Driveable Host (Phases 13 to 16)</s
 current_phase: 13
 current_phase_name: Rights Ledger and Enforced Claim Ceiling
 status: executing
-stopped_at: Completed 13-03-PLAN.md
-last_updated: "2026-11-25T22:17:26.000Z"
+stopped_at: Completed 13-04-PLAN.md
+last_updated: "2026-11-25T22:32:41.150Z"
 last_activity: 2026-11-25
 last_activity_desc: Phase 13 execution started
-state_head: e8c6b754f38995895cf2778ef9262e1c2b1b4a9f
+state_head: e93dbe8840faaf9b9740415d3ed55b1bbcec9e39
 progress:
   total_phases: 4
   completed_phases: 8
   total_plans: 5
-  completed_plans: 3
+  completed_plans: 4
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-26)
 ## Current Position
 
 Phase: 13 (Rights Ledger and Enforced Claim Ceiling) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-11-25 — Phase 13 execution started
 
@@ -241,6 +241,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | Phase 13 P01 | 34min | 1 tasks | 25 files |
 | Phase 13 P02 | 20min | 1 tasks | 11 files |
 | Phase 13 P03 | 27min | 2 tasks | 27 files |
+| Phase 13 P04 | 26min | 3 tasks | 25 files |
 
 ## Accumulated Context
 
@@ -563,6 +564,9 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 13]: D-50 lands as two conditions in claim.cmake and claim-overstated is kept rather than subsumed: D-50 is strictly stronger, both are findings, and a control's EXPECT is a substring match, so a row that trips both keeps every existing control satisfied.
 - [Phase 13]: The claim ceiling's legal positive is a control whose EXPECT names an unrelated refusal and whose FORBID names both new tokens, because a control directory can never express "this passes" (ctl_one refuses control-exit-zero).
 - [Phase 13]: 13-04: EV-07 registered as 6 control + 4 mutant rows (deviation from EV-07's literal "mutant row" wording: five mechanisms are proved by control directories that already exist and one by a directory this plan adds, so a mutant row for them would be a second registration of one proof; zero new faults holds).
+- [Phase 13]: The selftest-inventory rule lives in tools/check/selftest-inventory.sh, not inlined in the step, because a guard inside the step is reachable only by the step running itself; its failure is committed as the st-no-such-case case rather than demonstrated on a scratch copy the commit discards.
+- [Phase 13]: important-gates-excluded-stale keeps the good tree's FND-98 row in its overlay: dropping it would make FND-98 Complete-and-uncovered and add the two coverage tokens the control's own FORBID list names, so the control would be unsatisfiable for the wrong reason.
+- [Phase 13]: The important-gates baseline is the step's own printed stat, re-derived by running it: gates=114 is 113 plus one new gate name and lines=352 is 342 plus ten rows, and RESEARCH's lines=347 was 337 + 10 (it omitted the five rows RTS-01, RTS-02 and EV-06 add).
 
 ### Pending Todos
 
@@ -641,8 +645,8 @@ The row itself is left as recorded and this note sits under it.
 
 ## Session Continuity
 
-Last session: 2026-11-25T22:17:26.000Z
-Stopped at: Completed 13-03-PLAN.md
+Last session: 2026-11-25T22:32:41.101Z
+Stopped at: Completed 13-04-PLAN.md
 Resume file: None
 
 ## Recorded Constraints for the Next Milestone

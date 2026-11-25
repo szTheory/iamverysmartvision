@@ -193,9 +193,9 @@ mechanical rather than quoted.
   1. `data/rights/` holds one row per item the milestone touches — flat image, `.cfg`, bank modes, EXEC, GROM, commercial ROM, frame render or screenshot, save state, the libretro-shaped ABI and core-info strings — each `cleared`, `refused` or `owner-local-only`, with a `SRC-` id resolvable in `data/expected/sources.ids` when the row is `cleared`, and a non-empty "what was taken" cell; a row missing any of those is refused by name.
   2. A `cleared` row with no source is refused, and a refused item's spellings are refused in `core/src`, `runner/`, `tools/` and the operator pages of `docs/`, except where a pre-existing refusal surface is pinned by a `(token, path)` pair; both limbs are shown able to fail by a committed control.
   3. The claims step refuses an `established` claim that is not a `source-expectation` claim resting on a `tier1-primary-doc` dependency, and a legal `established` claim still passes; both are shown able to fail.
-  4. Each of the ten D-09-06 mechanisms has an `important-gates.ids` `mutant` row over its existing selftest, the registry baseline is re-derived in the same commit, all ten toy registries gain exactly one line each with zero deletions, and `faults` stays 238.
+  4. Each of the ten D-09-06 mechanisms has an `important-gates.ids` `mutant` row over its existing selftest, the registry baseline is re-derived in the same commit, all ten toy registries gain exactly one line each with zero deletions, and `faults` stays 238. *Amended by plan 13-04 (recorded deviation, `13-04-SUMMARY.md` and `STATE.md` `[Phase 13]: 13-04`): the registration is six `control` rows and four `mutant` rows, because five mechanisms are already proved by control directories that exist and one is proved only as a co-firing `EXPECT` line, so a `mutant` row for them would be a second registration of one proof. The baseline was re-derived in the same commit, the ten toy registries gained one line each, and `faults` stayed 238.*
   5. The gate ends `steps=38/38` with a predicted and then measured token delta, and one hosted row is recorded after the content lands with the last-five `cpu_s` median recomputed against the 21 cpu-s allowance.
-**Plans**: 3/5 plans executed
+**Plans**: 4/5 plans executed
 Plans:
 **Wave 1**
 - [x] 13-01-PLAN.md — the rights-ledger limb end to end: the checker, the inventory, one live row and the `rights-ledger` control (RTS-01)
@@ -207,7 +207,7 @@ Plans:
 - [x] 13-03-PLAN.md — the naming limb with its `(token, path)` pins, and the enforced claim ceiling (RTS-02, EV-06)
 
 **Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 13-04-PLAN.md — the ten D-09-06 registrations, the re-derived baseline and the 13-file toy extension (EV-07)
+- [x] 13-04-PLAN.md — the ten D-09-06 registrations, the re-derived baseline and the 13-file toy extension (EV-07)
 
 **Wave 5** *(blocked on Wave 4 completion)*
 - [ ] 13-05-PLAN.md — the phase close: two-shell gate, token-line reconciliation, the recomputed cost checkpoint and the validation sign-off
