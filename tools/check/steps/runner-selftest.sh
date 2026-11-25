@@ -18,7 +18,9 @@
 # One proof needs more than a synthetic controls tree: the pass-line guard lives in the runner's
 # own good_one, so it can only be reached by a step whose output continues after its pass line.
 # That case runs a COPY of the runner whose CHECK_DIR is a copy of tools/check with one printing
-# line appended to steps/profile.sh, so this step also owns proofs needing a copied CHECK_DIR.
+# line appended to steps/profile.sh, so this step also owns proofs needing a copied CHECK_DIR; the
+# memmap generator-missing guard (EV-03 item 5) uses the same copy, because its path is derived
+# from CHECK_DIR and no control directory can reach it.
 # Tokens: runner-selftest-missing: <token>.
 # Stats: cases=<n>.
 LC_ALL=C; export LC_ALL
@@ -136,7 +138,9 @@ fi
 # controls/, then controls/_good) and append one line that PRINTS after profile.sh's pass line.
 # A bare '#' line is shell source and emits nothing, which would leave the guard silent and
 # this case failing as runner-selftest-missing - a stand-in that cannot make the guard fire.
-cc="$tmp/checkcopy"
+# The copy sits at <tmp>/checkcopy/tools/check so that its ../.. is <tmp>/checkcopy: a directory
+# this case owns, which carries no cmake/. The generator-missing case below depends on that.
+cc="$tmp/checkcopy/tools/check"
 mkdir -p "$cc/controls"
 for _e in "$CHECK_DIR"/*; do
   case ${_e##*/} in controls) continue ;; esac
@@ -168,6 +172,28 @@ if grep -q -F -e '-- FAIL control-pass-line-not-last: profile' "$tmp/passline.ou
   cases=$((cases + 1))
 else
   bad runner-selftest-missing "control-pass-line-not-last"
+fi
+
+# Generator missing (EV-03 item 5). The memmap step derives the generator's path from CHECK_DIR,
+# and a control may only change the tree, so no control directory can reach this guard. The copy
+# above has no sibling cmake/, so the step must report the liveness guard and stop before invoking
+# cmake at all. Without this case the guard's failure would be recorded only as prose - the
+# lesson-20 defect GUARDRAILS 2.3 exists to prevent. The filelist is a runtime artifact; the
+# script's own source must never spell the tree's generated directory name, because a step's
+# partition class is derived by grepping this file.
+mg_tree="$cc/controls/_good/tree"
+mg_fl="$tmp/memmapgen.filelist"
+find "$mg_tree" -type f | sed "s|^$mg_tree/||" | sort > "$mg_fl"
+mgout=$(ROOT="$mg_tree" CHECK_DIR="$cc" FILELIST="$mg_fl" sh "$cc/steps/memmap.sh" 2>&1)
+mgrc=$?
+if [ "$mgrc" -eq 0 ]; then
+  bad runner-selftest-missing "memmap-generator-missing"
+elif printf '%s\n' "$mgout" | grep -q -F -e '-- FAIL memmap-generator-missing: cmake/IvsMemmapProbes.cmake'; then
+  # Printed with the same non-collected prefix as the pass-line proof above.
+  printf -- '-- runner-selftest proof memmap-generator-missing: cmake/IvsMemmapProbes.cmake (observed)\n'
+  cases=$((cases + 1))
+else
+  bad runner-selftest-missing "memmap-generator-missing"
 fi
 
 [ "$rc" -eq 0 ] || exit 1
