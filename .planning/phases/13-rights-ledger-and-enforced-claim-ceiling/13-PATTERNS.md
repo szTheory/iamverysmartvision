@@ -20,8 +20,8 @@ and line range shown.
 | `data/expected/rights.ids` | data / inventory | set equality | `data/expected/claims.ids` | exact |
 | `data/expected/rights-pinned.ids` | data / pin list | pair-keyed suppression | `data/expected/hygiene-history-pinned.ids` | exact |
 | `data/expected/runner-selftest.ids` | data / inventory | set membership (one-directional) | `data/expected/pkg-selftests.ids` | exact |
-| `tools/check/schema/rights.txt` | config / schema | declarative | `tools/check/schema/claim.txt` | exact |
-| `tools/check/kinds/rights.cmake` | hook / checker | batch over records | `tools/check/kinds/claim.cmake` | role-match |
+| `tools/check/schema/rights.txt` | config / schema | declarative | `tools/check/schema/claim.txt` | exact — **superseded, see the amendment below the table** |
+| `tools/check/kinds/rights.cmake` | hook / checker | batch over records | `tools/check/kinds/claim.cmake` | role-match — **superseded, see the amendment below the table** |
 | `tools/check/steps/*` | — | — | — | **none — no new step** (CONTEXT invariant) |
 | `tools/check/controls/important-gates-excluded-stale/` | test / negative control | event-driven (step invocation) | `tools/check/controls/sources-src-token-whole/` | role-match |
 | `tools/check/controls/rights-*` (RTS-01) | test / negative control | event-driven | `tools/check/controls/manifests-output-anchor/` | role-match |
@@ -31,6 +31,22 @@ and line range shown.
 | `tools/check/controls/claim-established-positive/` | test / negative control (FORBID-only positive) | event-driven | `tools/check/controls/important-gates-complete-uncovered/` | role-match (see **Pitfall P5**) |
 | `tools/check/controls/_good/tree/data/rights/*.json` + toy `rights.ids`/`rights-pinned.ids` | test fixture | — | `_good/tree/data/claims.json` + `_good/tree/data/expected/claims.ids` | exact |
 | `data/sources.json` + `data/expected/sources.ids` (one `reference-only` row) | data / registry | append-only | existing `capture: reference-only` rows (`SRC-intv-wiki`) | exact |
+
+**Amendment (2026-11-26, plan-phase revision 2): D1 resolved to form (a), the per-file loop.**
+The two rows above naming `tools/check/schema/rights.txt` and `tools/check/kinds/rights.cmake` as
+new files are superseded and no such file is created. Plan 13-01 creates
+`tools/check/rights-lib.cmake` instead — `rights_select` + `rights_check` (plan 13-01), then
+`rights_rows` + `rights_scan_naming` (plan 13-03) — called from `tools/check/manifests.cmake` and
+`tools/check/files.cmake`. There is no `records.cmake` kind, no `schema/rights.txt` and no
+`schema/rights.txt`-driven `keys`/`req` grammar for the ledger: the per-file loop copies
+`manifest-lib.cmake:186-216`'s FILELIST-driven selection and does its own exact-key-set check, so
+the key set lives in `rights-lib.cmake` rather than in the schema language. The
+"`tools/check/schema/rights.txt`" and "`tools/check/kinds/rights.cmake`" pattern sections below
+remain the grammar references they are (the `claim.txt` schema language table, the hook
+conventions and anti-patterns); read them as the design precedent, not as file plans. The
+consequence for the plan set: `data/expected/gate-steps/rights.ids` still names `manifests` and
+`files` only, and `steps` stays 38 because the new functions are library code called from two
+existing steps, never a third step.
 
 ### Modified files
 
