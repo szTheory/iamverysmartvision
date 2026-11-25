@@ -9,8 +9,8 @@
 #   manifest-inventory-empty, manifest-inventory-missing, manifest-yes-without-evidence,
 #   manifest-committed-not-redistributable, manifest-unknown-derived, manifest-missing-output,
 #   manifest-digest-mismatch, manifest-uncommitted-output-tracked, manifest-recipe-digest-mismatch,
-#   rights-ledger-empty, rights-parse, rights-missing-key, rights-format, rights-unknown-key,
-#   rights-id-mismatch, rights-disposition, rights-blank, rights-token-format,
+#   rights-ledger-empty, rights-unlisted, rights-parse, rights-missing-key, rights-format,
+#   rights-unknown-key, rights-id-mismatch, rights-disposition, rights-blank, rights-token-format,
 #   rights-source-missing, rights-source-unresolved, rights-duplicate-id, rights-id-missing,
 #   rights-id-extra, rights-doc-missing, rights-doc-row, rights-inventory-missing,
 #   rights-inventory-empty, rights-inventory-duplicate (the rights-* set is documented in

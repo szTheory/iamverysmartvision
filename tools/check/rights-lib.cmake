@@ -6,7 +6,8 @@
 # schema-language kind. The exact key set lives here, in one place, rather than in a schema file.
 # A row is: id, item, disposition in {cleared, refused, owner-local-only}, source (a SRC- id or
 # null), taken ("nothing" is legal), tokens (an array; an empty array is a recorded answer) and note.
-# Tokens: rights-ledger-empty: <dir>, rights-parse: <path>, rights-missing-key: <slug>/<key>,
+# Tokens: rights-ledger-empty: <dir>, rights-unlisted: <path>, rights-parse: <path>,
+#   rights-missing-key: <slug>/<key>,
 #   rights-format: <slug>/<key>, rights-unknown-key: <slug>/<key>, rights-id-mismatch: <path>,
 #   rights-disposition: <slug>, rights-blank: <slug>/<key>, rights-token-format: <slug>/<token>,
 #   rights-source-missing: <slug>, rights-source-unresolved: <slug>/<src>,
@@ -32,6 +33,10 @@ cmake_minimum_required(VERSION 3.25)
 # Ledger paths from FILELIST: data/rights/<slug>.json, sorted. Anchored at the repository root, so
 # a control overlay or a good-tree copy under tools/check/controls/ is never selected on the real
 # tree (the same anchoring decision steps/sources.sh documents for its own scan).
+# The selection is only half the rule: rights_check() also refuses, by name, every tracked path
+# under data/rights/ that this regex does not select (rights-unlisted). Without that reverse
+# direction a misnamed file -- an uppercase slug, an underscore, a dot-file, a nested directory --
+# is invisible to both limbs, so its tokens are silently never refused and the step stays green.
 function(rights_select out)
   file(READ "${FILELIST}" txt)
   gate_lines(lines "${txt}")
@@ -119,6 +124,19 @@ function(rights_check)
   if(nsel EQUAL 0)
     gate_fail(rights-ledger-empty "data/rights")
   endif()
+  # The reverse direction of rights_select(), and the one place the ledger's fail-closed posture
+  # would otherwise invert: every tracked path under data/rights/ must be a selected row. The
+  # idiom is files-unlisted-fixture-file's (a file inside fixtures/<dir>/ that its manifest does
+  # not list), one level up. A path under data/rights/ that is not a row is refused by name here
+  # rather than silently dropped from `sel`, because a dropped row's `tokens` are never refused.
+  file(READ "${FILELIST}" all_txt)
+  gate_lines(all_lines "${all_txt}")
+  foreach(l IN LISTS all_lines)
+    gate_unprotect(l "${l}")
+    if(l MATCHES "^data/rights/" AND NOT "${l}" IN_LIST sel)
+      gate_fail(rights-unlisted "${l}")
+    endif()
+  endforeach()
   rights_source_ids(srcids)
   set(doc_path "docs/RIGHTS.md")
   set(ids "")
