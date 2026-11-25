@@ -12,8 +12,13 @@
 # last line without a newline) that the runner must accept. The blank-line and token cases pin
 # the runner's builtin blank check and one-pass token match (D-45 lever, plan 04-LEVER-01);
 # the two drift cases pin the toy-registry check (A-09, EV-04). These tokens live here because
-# a control directory cannot prove them: the control runner would have to run itself.
+# a control directory cannot prove them: the control runner would have to run itself. The
+# pass-line case below proves control-pass-line-not-last the same way, through a copied runner.
 # Reads ROOT, CHECK_DIR and FILELIST only (ROOT and FILELIST are unused: the tree is synthetic).
+# One proof needs more than a synthetic controls tree: the pass-line guard lives in the runner's
+# own good_one, so it can only be reached by a step whose output continues after its pass line.
+# That case runs a COPY of the runner whose CHECK_DIR is a copy of tools/check with one printing
+# line appended to steps/profile.sh, so this step also owns proofs needing a copied CHECK_DIR.
 # Tokens: runner-selftest-missing: <token>.
 # Stats: cases=<n>.
 LC_ALL=C; export LC_ALL
@@ -124,6 +129,39 @@ else
 fi
 if grep -q -F -e "control-good-failed" "$tmp/out"; then
   bad runner-selftest-missing "positive-control-on-good-tree"
+fi
+
+# Pass line not last (A-02/O2, EV-03). A control directory cannot reach the guard: the control
+# runner would have to run itself. So copy the runner and its CHECK_DIR (everything but
+# controls/, then controls/_good) and append one line that PRINTS after profile.sh's pass line.
+# A bare '#' line is shell source and emits nothing, which would leave the guard silent and
+# this case failing as runner-selftest-missing - a stand-in that cannot make the guard fire.
+cc="$tmp/checkcopy"
+mkdir -p "$cc/controls"
+for _e in "$CHECK_DIR"/*; do
+  case ${_e##*/} in controls) continue ;; esac
+  cp -R "$_e" "$cc/" || bad runner-selftest-missing "checkcopy"
+done
+cp -R "$CHECK_DIR/controls/_good" "$cc/controls/_good" || bad runner-selftest-missing "checkcopy-good"
+printf '%s\n' "printf -- '# trailing comment after the pass line\\n'" >> "$cc/steps/profile.sh"
+pl="$tmp/passline"
+mkdir -p "$pl/controls/st-pass-line" "$pl/inventory"
+cp -R "$CHECK_DIR/controls/_good" "$pl/controls/_good"
+printf 'profile\n' > "$pl/controls/st-pass-line/CHECK"
+printf 'FAIL profile-file-missing\n' > "$pl/controls/st-pass-line/EXPECT"
+printf 'delete %s\n' "$good_file" > "$pl/controls/st-pass-line/MAKE"
+printf '%s\n' st-pass-line > "$pl/inventory/selftest.ids"
+if CONTROLS_DIR="$pl/controls" CONTROLS_INVENTORY_DIR="$pl/inventory" \
+  sh "$cc/run-controls.sh" > "$tmp/passline.out" 2>&1; then
+  bad runner-selftest-missing "pass-line-runner-exit-nonzero"
+fi
+if grep -q -F -e '-- FAIL control-pass-line-not-last: profile' "$tmp/passline.out"; then
+  # Print the observed refusal, so the guard's failure is visible in every gate log rather than
+  # living only in a temp file this run throws away.
+  grep -F -e '-- FAIL control-pass-line-not-last: profile' "$tmp/passline.out"
+  cases=$((cases + 1))
+else
+  bad runner-selftest-missing "control-pass-line-not-last"
 fi
 
 [ "$rc" -eq 0 ] || exit 1

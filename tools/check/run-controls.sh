@@ -15,6 +15,10 @@
 # non-comment line. Both directions are refused, so a DEVIATION file cannot rot into stale
 # permissions: an undeclared difference is control-toy-drift, a declaration that matches no
 # difference is control-deviation-unused.
+# Pass line (A-02/O2, EV-03): a step's pass line must be its LAST non-empty line; a step that
+# exits zero and then prints something after it is control-pass-line-not-last. This is the
+# step-side form of the gate-step-no-pass-line guard in tools/gate.sh, which no control can
+# reach because this runner only executes files in tools/check/steps/.
 # Controls run in JOBS lanes (D-22 lever 2, A-09): each control gets its own work dir
 # (tree, filelist, step output, result lines), so lanes share no temp state. Lane i takes
 # every JOBS-th entry of the sorted list; results are printed afterwards in sorted order,
@@ -165,9 +169,20 @@ run_step() {
 # Positive control for step $1 in work dir $2: prints its result lines, touches $2/ok on success.
 good_one() {
   build_tree "$2" "" || { fail control-good-failed "$1"; return 0; }
-  if run_step "$2" "$1" && grep -q -F -e "-- $1 pass" "$2/out"; then
-    printf 'control ok   _good/%s\n' "$1"
-    : > "$2/ok"
+  if run_step "$2" "$1"; then
+    # The pass line must be the LAST non-empty line (A-02/O2, EV-03): a step that prints
+    # anything after it has not finished reporting when it claims to have passed.
+    _last=$(awk 'NF { l = $0 } END { print l }' "$2/out")
+    case $_last in
+      "-- $1 pass"*)
+        printf 'control ok   _good/%s\n' "$1"
+        : > "$2/ok"
+        ;;
+      *)
+        fail control-pass-line-not-last "$1"
+        cat "$2/out"
+        ;;
+    esac
   else
     fail control-good-failed "$1"
     cat "$2/out"
