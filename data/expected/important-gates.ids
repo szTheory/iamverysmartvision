@@ -469,3 +469,16 @@ ivsc-import-format fault IVSC_TRUST_TOTAL_BYTES MEM-05
 claims control claims-handoff-artifact EV-05
 claims control claims-handoff-row EV-05
 text control text-untagged-look-listen EV-05
+# Phase 11 (plan 11-05): TOOL-01's four mechanisms under one new gate name, runner-record. The recorded
+# run and the replay of its log are equal only if the log holds the events the run applied and they are
+# applied at the ticks they were recorded at, so the equality is the sole evidence for the requirement and
+# each of its two ways of being wrong has a named fault: a writer that drops the last event line and a
+# replay that applies every event one tick late (both judged by faults-verdict, both must-failing
+# runner.record.replay-equals-straight). The two judge self-controls are the comparison's own liveness:
+# record-replay-differs passes only when two reports that differ are refused, record-replay-inert passes
+# only when the no-log witness is rejected as vacuous. TOOL-01 takes no exclusion-ledger row: its
+# mechanisms are real, and an exclusion row would be the registry declining to cover what it just built.
+runner-record fault RECORD_DROPS_LAST_EVENT TOOL-01
+runner-record fault REPLAY_APPLIES_LATE TOOL-01
+runner-record mutant runner.judge.record-replay-differs TOOL-01
+runner-record mutant runner.judge.record-replay-inert TOOL-01

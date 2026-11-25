@@ -29,7 +29,7 @@ exceed `provisional`** while D10 and D11 are unperformed.
 
 ### Tooling
 
-- [ ] **TOOL-01**: A run can be recorded as an input-only log and replayed at machine-time boundaries, and the replay reproduces the recorded run's digest chain and applied-event chain, guarded against a vacuous match.
+- [x] **TOOL-01**: A run can be recorded as an input-only log and replayed at machine-time boundaries, and the replay reproduces the recorded run's digest chain and applied-event chain, guarded against a vacuous match.
 - [x] **TOOL-04** *(narrowed)*: A frozen presentation and palette policy keeps colour, scaling and aspect out of the core and out of every claim, and a check refuses a colour symbol in the core.
 
 ### Content formats
@@ -101,7 +101,7 @@ roadmap names.
 | EV-05 | Phase 10 | Complete |
 | PKG-05 | Phase 10 | Complete |
 | TOOL-04 | Phase 10 | Complete |
-| TOOL-01 | Phase 11 | Pending |
+| TOOL-01 | Phase 11 | Complete |
 | FMT-01 | Phase 12 | Pending |
 | FMT-04 | Phase 12 | Pending |
 
