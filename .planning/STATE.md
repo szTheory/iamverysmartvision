@@ -4,18 +4,18 @@ milestone: v0.2.0
 milestone_name: Registered Evidence, Reachable Runs, Replayable Input (Phases 9 to 12)</summary>
 current_phase: 10
 current_phase_name: Reachable Runs and Presentation Policy
-current_plan: 5
-status: executing
-stopped_at: Completed 10-04-PLAN.md
-last_updated: "2026-11-25T07:52:25.139Z"
-last_activity: 2026-11-24
+current_plan: 6
+status: phase-complete
+stopped_at: Completed 10-06-PLAN.md
+last_updated: "2026-11-25T09:09:13.153Z"
+last_activity: 2026-11-25
 last_activity_desc: Phase 9 complete, transitioned to Phase 10
-state_head: a488d83f2d521995e5758d8fdb168a53ce1c01fa
+state_head: 09e44876aee241354f040ae7a2a296eee93178a5
 progress:
   total_phases: 4
   completed_phases: 8
   total_plans: 15
-  completed_plans: 13
+  completed_plans: 14
 ---
 
 # Project State
@@ -25,21 +25,27 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-24)
 
 **Core value:** A deterministic, observable machine core whose every compatibility claim is bound to an exactly named profile and independent evidence — never an unqualified "it runs Intellivision games" label.
-**Current focus:** Phase 9 — Registered Evidence and Gate Cost
+**Current focus:** Phase 10 — Reachable Runs and Presentation Policy (complete)
 
 ## Current Position
 
-Phase: 10 (Reachable Runs and Presentation Policy) — IN PROGRESS
-Current Plan: 5
+Phase: 10 (Reachable Runs and Presentation Policy) — COMPLETE
+Current Plan: 6 of 6
 Total Plans in Phase: 6
-Status: Ready to execute
-Last activity: 2026-11-24 — Phase 9 complete, transitioned to Phase 10
+Status: Phase complete; PKG-05, TOOL-04 and EV-05 are `Complete`
+Last activity: 2026-11-25 — plan 10-06 closed the phase
+
+**Phase 10 final counts:** `steps=38/38 controls=389/389 claims=28 provisional=27 gates=109
+lines=333 faults=235/235 cases=13 goldens=29 claim-refs=26 prefix-files=11 doc-files=62 docs=63`.
+`gates` moved 107 to 109 and `lines` 330 to 333 in plan 10-06, deliberately: three EV-05 registry
+rows and two exclusion rows make the derived must-be-covered set legal in both directions
+(`Complete 57 - excluded 12 = accepted 45 = registered 45`). Amendment A-04's predicted `lines=335`
+was an arithmetic slip and is corrected by measurement in `10-06-SUMMARY.md`.
 
 **Next action:** the orchestrator's phase boundary. It runs the container gate once on this
-final tree (the executor did not: the dispatch reserves it), applies or records the branch and
-tag rulesets in `.planning/AUTONOMY.md` section 1, and runs verify-work. Phase 10
-(`PKG-05`, `TOOL-04`, `EV-05`) starts after that. Nothing in wave A2 added gate content before
-the hosted row, and the row is in `.planning/ci-runs.tsv` (run 45527058543, head `93e6b9f`).
+final tree (the executor did not: the dispatch reserves it, and this plan's budget deviation
+records that), applies or records the branch and tag rulesets in `.planning/AUTONOMY.md`
+section 1, and runs verify-work. Phase 11 (`TOOL-01`) starts after that.
 
 ### Planning overrides recorded by the autonomous run
 
@@ -221,6 +227,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | Phase 10 P02 | ~28m | 2 tasks | 1 files |
 | Phase 10 P03 | 24 min | 2 tasks | 2 files |
 | Phase 10 P04 | 18m | 2 tasks | 3 files |
+| Phase 10 P6 | ~55 min wall clock | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -522,6 +529,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 10]: The golden comparison is the committed data/golden/demo-lamp-tone-pass.digests body (124 of 124 lines) against a 131-line report; no second expectation was invented
 - [Phase 10]: docs/presentation.md cites tools/check/core-symbols.sh:163-173 and its committed stand-in instead of adding a second colour mechanism (A-02); the mechanism (51515f1) is an ancestor of the policy (b5ad01d), an inversion of GUARDRAILS 2.9 recorded rather than claimed away
 - [Phase 10]: the release rehearsal gains --source-route: the archive a release carries is extracted, built cold, run on the demo and compared with the committed golden by a verbatim copy of the gate's filter; release-time only, no gate step, no control, no claim
+- [Phase 10]: Amendment A-04 predicted lines=335; the mechanism's stats line counts registry rows only, so the measured value is 333 (three registry rows; the two exclusion rows live in a different file). gates 107->109. The rule stands, the figure is corrected by measurement.
+- [Phase 10]: The three requirement flips land with their five ledger rows in one commit: EV-05 gets three registry rows (two claims controls, one text control), PKG-05 and TOOL-04 get exclusion rows. Identity 57 - 12 = 45 = 45.
 
 ### Pending Todos
 
@@ -587,8 +596,8 @@ The row itself is left as recorded and this note sits under it.
 
 ## Session Continuity
 
-Last session: 2026-11-25T07:52:25.105Z
-Stopped at: Completed 10-04-PLAN.md
+Last session: 2026-11-25T09:04:20.194Z
+Stopped at: Completed 10-06-PLAN.md
 Resume file: None
 
 ## Recorded Constraints for the Next Milestone
