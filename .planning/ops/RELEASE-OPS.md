@@ -5,7 +5,7 @@ Written by plan 08-02 for the orchestrator. An executor never performs anything 
 What an executor may do locally, and what each tool reads or writes:
 
 - `sh tools/release.sh` (no `--publish`) is a dry run. It never calls `gh`, builds the two archives and `SHA256SUMS` under `build/release-assets` or the directory given with `--out`, and runs the installed consumer against the install archive.
-- `sh tools/release-rehearse.sh [--no-gate] [--release]` runs that dry run twice and compares the archives (source archive byte-equal; install archive equal, or on Darwin equal except the ranlib stamp it names), checks the tag glob of `.github/workflows/release.yml`, and prints readiness sections A, F and G. It never calls `gh`.
+- `sh tools/release-rehearse.sh [--no-gate] [--release] [--source-route]` runs that dry run twice and compares the archives (source archive byte-equal; install archive equal, or on Darwin equal except the ranlib stamp it names), checks the tag glob of `.github/workflows/release.yml`, and prints readiness sections A, F and G. It never calls `gh`.
 - `sh tools/release-readiness.sh --allow-dirty` prints the computable sections of the close record (A identity, F claim table, G rights and package audit, J tree hygiene). `--history` runs the full history scan (minutes; a release step, run by the orchestrator at the close) and `--hosted` makes read-only `gh` calls (item e).
 
 ## (a) The git.create_tag footgun (D-31, D-42)
@@ -49,7 +49,7 @@ The first release is a draft pre-release created by the workflow and published b
 
 ## (g) The 0.1.0 section of CHANGELOG.md
 
-The `## [0.1.0]` section is the stage-1 draft written by plans 08-20 and 08-21. Until it exists, `sh tools/release.sh --release`, `--publish` and `sh tools/release-readiness.sh --release` halt on `release-changelog-section-missing: 0.1.0` by design, and the plain gate, the plain dry run and the plain rehearsal stay green. Before tagging, the orchestrator runs `sh tools/release-rehearse.sh --release` and expects it to finish with `rehearse: ok`.
+The `## [0.1.0]` section is the stage-1 draft written by plans 08-20 and 08-21. Until it exists, `sh tools/release.sh --release`, `--publish` and `sh tools/release-readiness.sh --release` halt on `release-changelog-section-missing: 0.1.0` by design, and the plain gate, the plain dry run and the plain rehearsal stay green. Before tagging, the orchestrator runs `sh tools/release-rehearse.sh --release --source-route` and expects it to finish with `rehearse: ok`, having printed `rehearse: source-route: <archive>, golden match (report <n> lines, <m> of <m> compared), prefix <prefix>`: that mode discharges PKG-05, because it is the only run that unpacks the source archive a release carries, builds it cold and compares its report with `data/golden/demo-lamp-tone-pass.digests`; a release that skips it records the mode as `not run`, never as a pass.
 
 ## (h) The stage 2 check and the order of the orchestrator's actions (plan 08-21)
 
