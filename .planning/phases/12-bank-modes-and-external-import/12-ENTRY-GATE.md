@@ -99,3 +99,27 @@ pointer.
 *Written 2026-11-25 by the autonomous run, before any third-party file was read, as
 the roadmap's entry gate requires. It is an appended record: corrections go below
 this line with their own date, never into the text above.*
+
+---
+
+## Appended correction, 2026-11-25 (milestone audit G-04): which ground is load-bearing
+
+Ground 2 above uses the hosted `r` reading as a second reason to drop the phase. **That was wrong in
+method, even though the decision was right, and the audit caught it.** `r` is a ratio whose
+denominator (`build_s`) fell from 42–49 to 34 across the milestone while `cpu_s` stayed at 339–360, so
+`r` rose from 7.4–8.4 to 10.4–11.7 **with no growth in gate work**. Using it as a ground is the same
+inconsistency as arguing elsewhere in the same run that `r` cannot be trusted at this spread.
+
+**Ground 1 is the load-bearing ground, and it is sufficient on its own.** The rights review cannot
+clear the importer: the only route to a `.cfg` description is a GPL implementation that this project's
+own research already rules out as a derivation source. That is a rights conclusion, not a cost one, and
+it does not move with a build-time measurement.
+
+Ground 2 is retained as written (this document is append-only) and is downgraded by this note to a
+**supporting observation, not a reason**. Nothing about the decision changes: FMT-01 and FMT-04 remain
+`Deferred` with their reversal conditions, and FMT-04's reversal condition is unchanged — a
+permissively-described primary source or an independent `.cfg` description.
+
+The cost ground would have been available on the honest figure rather than the ratio: the milestone
+spent about 4.5 of its 21 hosted cpu-s allowance, so it had **not** exhausted it. A future run that
+wants to drop a phase on cost should cite `cpu_s` and the step profile, not `r`.
