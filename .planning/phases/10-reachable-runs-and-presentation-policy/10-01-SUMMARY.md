@@ -149,9 +149,20 @@ The documented route's ceiling is **`installed-host-behavior`**: the run is a he
 - **Fix:** none; recorded here so the missing evidence is visible. `tools/gate-linux.sh` remains the Ubuntu substance check and was not exercised by this plan.
 - **Files modified:** none.
 
+**3. [Rule 1 - Bug] `PKG-05` was marked complete too early, and the mark was reverted**
+- **Found during:** the closing records step
+- **Issue:** `gsd_run query requirements.mark-complete PKG-05` set the checkbox and the traceability row to Complete. The `important-gates` step derives its accepted set from that table, so a Complete requirement with neither a registry line nor an exclusion row trips `important-gates-complete-uncovered: PKG-05` and `important-gates-uncovered-gate: PKG-05`, and the gate dropped to `steps=37/38`. `PKG-05` is a phase-long requirement: its gate row is the release rehearsal of plan 10-04, which has not been written yet, and this plan's prohibitions forbid a new registry row.
+- **Fix:** reverted both the checkbox and the traceability status to Pending in `.planning/REQUIREMENTS.md`. `PKG-05` is left for the plan that registers its proof, so the requirement is marked Complete only when a gate row covers it. Gate returned to `steps=38/38`.
+- **Files modified:** `.planning/REQUIREMENTS.md`
+- **Commit:** `5ba9784` introduced the mark; the follow-up commit reverts it.
+
 ### Plan-versus-tree
 
 None. The plan text and the tree agreed on every measured value, on every token, and on both prose targets; nothing was re-blessed and no baseline was re-derived.
+
+### Out of scope, not fixed
+
+`gsd_run query state.update-progress` declined with `progress percent withheld by buildStateFrontmatter` and left STATE.md unchanged. The cause is in `.planning/STATE.md`'s frontmatter, which predates this plan: `progress.total_phases: 4` against `completed_phases: 8`, and a stray `</summary>` inside `milestone_name`. Both are pre-existing corruption in a record this plan does not own, so neither was repaired; the progress bar is therefore stale by one plan and the next record-owning step should reconcile the frontmatter counts.
 
 ## Known Stubs
 
