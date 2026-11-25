@@ -34,8 +34,8 @@ exceed `provisional`** while D10 and D11 are unperformed.
 
 ### Content formats
 
-- [ ] **FMT-01** *(narrowed)*: Bank-mode behaviour is profile data with a typed refusal for every mode the profile does not name — never a silent default — and one generated original fixture per mode proves a witness pair and a no-switch case.
-- [ ] **FMT-04**: `.bin`/`.cfg` import lives outside the core, refuses every unmapped or unsupported mode by name, writes nothing inside the work tree, and is gated per mode by a rights review that can degrade the phase to `FMT-01` only.
+- [ ] **FMT-01** *(narrowed)* — **Deferred (Phase 12 dropped, three-phase fallback)**: Bank-mode behaviour is profile data with a typed refusal for every mode the profile does not name — never a silent default — and one generated original fixture per mode proves a witness pair and a no-switch case.
+- [ ] **FMT-04** — **Deferred (Phase 12 dropped; the rights review cannot clear it)**: `.bin`/`.cfg` import lives outside the core, refuses every unmapped or unsupported mode by name, writes nothing inside the work tree, and is gated per mode by a rights review that can degrade the phase to `FMT-01` only.
 
 ## v2 Requirements
 
@@ -102,16 +102,19 @@ roadmap names.
 | PKG-05 | Phase 10 | Complete |
 | TOOL-04 | Phase 10 | Complete |
 | TOOL-01 | Phase 11 | Complete |
-| FMT-01 | Phase 12 | Pending |
-| FMT-04 | Phase 12 | Pending |
+| FMT-01 | Phase 12 | Deferred — cost ground; reversal: a re-derived registry baseline |
+| FMT-04 | Phase 12 | Deferred — rights ground; reversal: a permissively-described primary source |
 
 **Coverage:**
 - v0.2.0 requirements: 10 total
 - Mapped to phases: 10
 - Unmapped: 0 ✓
 - Phases: 9 (EV-01..EV-04), 10 (PKG-05, TOOL-04, EV-05), 11 (TOOL-01), 12 (FMT-01, FMT-04)
-- Phase 12 is conditional and droppable: if it is dropped, FMT-01 and FMT-04 are
-  recorded here as partial or deferred with the condition, never silently lost
+- Phase 12 is conditional and droppable, and it **was dropped** on 2026-11-25 under
+  the pre-authorized three-phase fallback. The entry-gate decision line is
+  `.planning/phases/12-bank-modes-and-external-import/12-ENTRY-GATE.md`, committed
+  before any third-party file was read. FMT-01 and FMT-04 are `Deferred` above with
+  their reversal conditions, never `Complete` and never silently lost
 
 ---
 *Requirements defined: 2026-11-24*
