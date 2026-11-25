@@ -5,17 +5,17 @@ milestone_name: Registered Evidence, Reachable Runs, Replayable Input (Phases 9 
 current_phase: 11
 current_phase_name: Input Record and Replay
 current_plan: 5
-status: executing
-stopped_at: Completed 11-04-PLAN.md
-last_updated: "2026-11-25T15:03:19.746Z"
+status: phase-complete
+stopped_at: Completed 11-05-PLAN.md
+last_updated: "2026-11-25T15:16:15.507Z"
 last_activity: 2026-11-25
 last_activity_desc: Phase 10 complete, transitioned to Phase 11
-state_head: 1e6373351e9fa2db2fbaa7ee7dd7a124b8a77e31
+state_head: 16afb31c044c19f2e9f63f61d99fa22e64b24726
 progress:
   total_phases: 4
   completed_phases: 8
   total_plans: 20
-  completed_plans: 19
+  completed_plans: 20
 ---
 
 # Project State
@@ -25,15 +25,29 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-24)
 
 **Core value:** A deterministic, observable machine core whose every compatibility claim is bound to an exactly named profile and independent evidence — never an unqualified "it runs Intellivision games" label.
-**Current focus:** Phase 10 — Reachable Runs and Presentation Policy (complete)
+**Current focus:** Phase 11 — Input Record and Replay (complete)
 
 ## Current Position
 
-Phase: 11 (Input Record and Replay) — EXECUTING
-Current Plan: 5
+Phase: 11 (Input Record and Replay) — COMPLETE
+Current Plan: 5 of 5
 Total Plans in Phase: 5
-Status: Ready to execute
-Last activity: 2026-11-25 — 11-03 complete: the nine typed refusals with their acceptance rows and the rights check with its stand-in
+Status: Phase complete; TOOL-01 is `Complete`
+Last activity: 2026-11-25 — plan 11-05 closed the phase: the two named faults, the requirement close and the exit
+
+**Phase 11 final counts:** `steps=38/38 controls=395/395 faults=237/237 fault-runs=237 gates=110
+lines=337 tests-expected=4988 tests-executed=4984 tests-skipped=4 tests-missing=0 runner-files=18
+docs=64 doc-files=63 claims=28 provisional=27 goldens=29 reports=30 host-dependent=3 release-only=2
+prefix-files=11 claim-refs=26 api-calls=19 api-rows=61 public-symbols=19 pinned-defines=120
+pkg-selftest=19/19 consumer-lines=164 state-rows=88 state-cuts=18 input-rows=31 input-policies=11
+input-profile-fields=31 cases=13 terms=9 mode=tree`.
+`gates` moved 109 to 110 and `lines` 333 to 337 in plan 11-05, deliberately: four `runner-record`
+rows for TOOL-01 (the two input-log faults and the two judge self-controls of the equality) make the
+derived must-be-covered set legal in both directions (`Complete 58 - excluded 12 = accepted 46 =
+registered 46`). `faults` and `fault-runs` moved 235 to 237 for the same plan's two faults;
+`steps=38/38` never moved, and no claim was minted or raised. The tier ceiling stays
+`deterministic-repeatability` — the replay is the same core, so it is never an independent
+comparison — and a ceiling is not a claim.
 
 **Phase 10 final counts:** `steps=38/38 controls=389/389 claims=28 provisional=27 gates=109
 lines=333 faults=235/235 cases=13 goldens=29 claim-refs=26 prefix-files=11 doc-files=62 docs=63`.
@@ -46,6 +60,13 @@ was an arithmetic slip and is corrected by measurement in `10-06-SUMMARY.md`.
 final tree (the executor did not: the dispatch reserves it, and this plan's budget deviation
 records that), applies or records the branch and tag rulesets in `.planning/AUTONOMY.md`
 section 1, and runs verify-work. Phase 11 (`TOOL-01`) starts after that.
+
+**Next action, Phase 11 (plan 11-05, 2026-11-25) — supersedes the paragraph above, which is left as
+recorded:** the orchestrator's phase boundary. It runs the container gate once on this final tree
+(the executor did not: the dispatch reserves it as the phase-boundary gate, and this plan's budget
+deviation records that), applies or records the branch and tag rulesets in
+`.planning/AUTONOMY.md` section 1, and runs verify-work. Phase 12 (`FMT-01`, `FMT-04`) is
+conditional and starts after that.
 
 ### Planning overrides recorded by the autonomous run
 
@@ -233,6 +254,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | Phase 11 P02 | 27m | 3 tasks | 8 files |
 | Phase 11 P03 | 24m | 3 tasks | 2 files |
 | Phase 11 P4 | 1h 02m | 2 tasks | 4 files |
+| Phase 11 P5 | 55m | 3 tasks | 20 files |
 
 ## Accumulated Context
 
@@ -595,6 +617,18 @@ Refreshed by plan 08-21 from `.planning/phases/08-stic-completion-save-state-per
 | Release | the flow after Phase 8: the merge, stage 2 of REL-01, the `git.create_tag` change, the tag, the draft and its publication | **Done**: merged as `3fe5373`, REL-01 complete, `create_tag` false, `v0.1.0` published as a pre-release | Phase 8 | Closed |
 | Milestone lifecycle | the milestone audit, the milestone completion and the cleanup of Phase 8 | Next: the lifecycle sequence after the records pull request | Phase 8 | Now |
 | Settings | the branch ruleset (PR + `gate`, no force push, no deletion) and the tag ruleset (no update, no deletion, from a green `main`) recommended in `.planning/AUTONOMY.md` section 1 | **Not applied** (the close read returned no ruleset) | Phase 4 / Phase 8 | Orchestrator, at the next repository-settings action |
+
+**Appended by plan 11-05 (2026-11-25), Phase 11's five deferred items.** Each is recorded here
+because a later run reads this table, not the plan's prose. None was silently dropped, and none is
+a new mechanism: `lines` moves only for the four TOOL-01 registry rows this plan added.
+
+| Category | Item | Status | Deferred At | Milestone |
+|----------|------|--------|-------------|-----------|
+| Input log | the `scenario`/`profile` **mismatch** refusals (research O-1, O-2): a log whose `scenario` or `profile` line disagrees with the scenario it is replayed into is currently accepted, because the replay substitutes the schedule and the two header fields are descriptive. Stated as the format's own limit in `docs/formats/ivsl-v1.md` `## Identity`, not as a defect | Deferred, reader-side change: refusing it is a new `ivsl` refusal token and therefore a version decision, and no run has yet wanted it | Phase 11 | Next milestone that opens the format (a v2 `ivsl`), with a token and a control of its own |
+| Input log | a **content-identity field** in the log (a content digest, image name or length) so a log names the content it was recorded against | Deferred by D15 and by the format's posture: the log is an input artifact and carries no content bytes or digest, which is what makes it rights-clean and what `runner.record.no-content-digest` checks. The supported route is `expect-sha256` on the report | Phase 11 | Never as an `ivsl` v1 field; a v2 decision only if a consumer needs the binding |
+| Evidence | promoting the **process case** (`runner-process.record.command-line`) from the script-driven suite to a real-executable case inside the gate | Deferred: the process case already runs the built `ivs-run` binary end to end on `demo-lamp-tone-pass` (319-byte log, byte-identical report, no-log witness), and a gate-level copy would be a new step, which GUARDRAILS 2.1 forbids. Reversal trigger: a defect found only at the process boundary and invisible to the in-process equality | Phase 11 | Next milestone, only on that trigger |
+| Snapshots | the file options `--snapshot-out` and `--snapshot-in` | Still deferred from Phase 8 (the row above); Phase 11 neither needed nor touched them | Phase 8 | Unchanged: when a consumer needs a file (owner scope choice H8-7) |
+| Gate shape | a **new gate step** for the record/replay evidence | Forbidden by GUARDRAILS 2.1 and by ROADMAP Phase 11's own cost gate (`steps=38/38` never moved); the two faults run inside the existing `c-faults` step and the registry rows inside the existing `important-gates` step | Phase 11 | Not a deferral with a trigger: a step is added only by a milestone that re-derives the step count |
 
 **Note on the Owner items row above (plan 10-06, 2026-11-25):** the 44 in that row's
 D10 figure and the 47 in Recorded Constraints item 4 below are one measurement read two
