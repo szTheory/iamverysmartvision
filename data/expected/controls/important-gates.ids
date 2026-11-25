@@ -14,3 +14,9 @@ important-gates-unknown-id-phase6
 important-gates-bad-req-phase6
 # Plan 07-02 (A-13, A-21): SCN-01 accepted; a Phase 7 requirement without a registry line.
 important-gates-req-uncovered-phase7
+# Plan 09-05 (EV-04, A-01): the derived must-be-covered set, both directions. A Complete requirement
+# with no registry line and no exclusion (important-gates-complete-uncovered) and an exclusion whose
+# requirement is not Complete (important-gates-excluded-stale), in one run. The FORBID names
+# important-gates-unknown-id only: a Complete-and-unregistered requirement also trips the generic
+# important-gates-uncovered-gate, so forbidding that token would make the control unsatisfiable.
+important-gates-complete-uncovered
