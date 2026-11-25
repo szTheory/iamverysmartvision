@@ -4,18 +4,17 @@ milestone: v0.2.0
 milestone_name: Registered Evidence, Reachable Runs, Replayable Input (Phases 9 to 12)</summary>
 current_phase: 10
 current_phase_name: Reachable Runs and Presentation Policy
-status: planning
+status: executing
 stopped_at: Phase 9 complete, ready to plan Phase 10
-last_updated: "2026-11-25T04:33:42.841Z"
+last_updated: "2026-11-25T06:18:28.770Z"
 last_activity: 2026-11-24
 last_activity_desc: Phase 9 complete, transitioned to Phase 10
-state_head: fd0ef31ebf854275fcdc90cb3cf4e853f84647d0
+state_head: eeaa4f3fe5745e68357881b104d7b57cfecb59d1
 progress:
   total_phases: 4
   completed_phases: 8
-  total_plans: 9
+  total_plans: 15
   completed_plans: 9
-  percent: 100
 ---
 
 # Project State
@@ -29,9 +28,9 @@ See: .planning/PROJECT.md (updated 2026-11-24)
 
 ## Current Position
 
-Phase: 10 — Reachable Runs and Presentation Policy
+Phase: 10 (Reachable Runs and Presentation Policy) — READY TO EXECUTE
 Plan: Not started
-Status: Ready to plan
+Status: Ready to execute
 Last activity: 2026-11-24 — Phase 9 complete, transitioned to Phase 10
 
 **Next action:** the orchestrator's phase boundary. It runs the container gate once on this
