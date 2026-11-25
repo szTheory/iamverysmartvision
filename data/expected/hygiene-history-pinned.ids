@@ -13,3 +13,9 @@ hygiene-history-home-path b78af4fb9f
 hygiene-history-home-path cccdfefdce
 hygiene-history-home-path 345c48dd7f
 hygiene-message-home-path 955c13fa02
+# Appended (Phase 10 entry, 2026-11-25): the Phase 9 security record quoted a control's deliberate
+# tilde-home literal verbatim; the file was corrected in 6be961d, and this pin names the commit that
+# still carries it. Same disposition as the six above (accepted without a rewrite), same reason: the
+# matched text is the shape of a scratch path, not a private path with identifying content, and a
+# rewrite of published branch history is an owner-only hard stop.
+hygiene-history-home-path 6d11e4e27e
