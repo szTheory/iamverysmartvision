@@ -1,0 +1,8 @@
+# A ledger whose grammar is clean and whose row set carries one id the project does not have: X-1.
+# Every row is well formed and every pinned id is present, so the only finding is the unknown id.
+H7-1 handed-off evidence: none
+H7-2 handed-off evidence: none
+H8-3 handed-off evidence: none
+D10 not-performed evidence: none
+D11 not-performed evidence: none
+X-1 handed-off evidence: none

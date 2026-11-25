@@ -1,0 +1,6 @@
+# A ledger whose grammar is clean and whose row set is short by one: D11 has no row. Every row is
+# well formed, so the only finding the step may print is the missing id.
+H7-1 handed-off evidence: none
+H7-2 handed-off evidence: none
+H8-3 handed-off evidence: none
+D10 not-performed evidence: none

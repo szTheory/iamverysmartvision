@@ -1,6 +1,10 @@
 claims-dangling-artifact
 claims-handoff-artifact
 claims-handoff-row
+claims-handoff-missing
+claims-handoff-unreadable
+claims-handoff-id-missing
+claims-handoff-id-extra
 claims-missing-key
 claims-unknown-tier
 claims-overstated-standing
