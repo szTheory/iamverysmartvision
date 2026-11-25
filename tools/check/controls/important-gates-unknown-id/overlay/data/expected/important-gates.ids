@@ -34,3 +34,10 @@ toy-sta01 fault GOOD_FAULT STA-01
 toy-sta02 fault GOOD_FAULT STA-02
 # Phase 8 (plan 08-19): one toy line for the Phase 8 requirement PRF-01.
 toy-prf01 fault GOOD_FAULT PRF-01
+toy-fnd01 fault GOOD_FAULT FND-01
+toy-fnd02 fault GOOD_FAULT FND-02
+toy-fnd03 fault GOOD_FAULT FND-03
+toy-fnd04 fault GOOD_FAULT FND-04
+toy-fnd05 fault GOOD_FAULT FND-05
+toy-fnd06 fault GOOD_FAULT FND-06
+toy-fnd07 fault GOOD_FAULT FND-07

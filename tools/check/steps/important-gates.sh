@@ -7,27 +7,27 @@
 # vacuously (inventory, digest or golden comparison, outcome classifier, refusal/no-state-change
 # check, verdict over producer output), or its failure class escaped once. Each such gate has a
 # named mechanism that is shown to fail for its intended reason elsewhere in the gate; this step
-# checks that the registry names only mechanisms that exist and covers every Phase 4, Phase 5,
-# Phase 6, Phase 7 and Phase 8 requirement (plan 05-12 added the Phase 5 set, plan 06-14 the Phase 6 set, plan 07-02
-# the Phase 7 requirement SCN-01, plan 07-10 SCN-02 together with its first registry lines, plan 08-08 the
-# Phase 8 requirement VID-05 together with its eighteen registry lines, plan 08-17 the Phase 8 requirements STA-01 and STA-02
-# together with their twenty-two registry lines, plan 08-19 the Phase 8 requirement PRF-01 together with its two registry lines).
+# checks that the registry names only mechanisms that exist and covers every accepted requirement;
+# the phase table below is the whole list, so no sentence here enumerates a phase set that can
+# silently omit one.
 # Registry: data/expected/important-gates.ids, '#' lines and blank lines skipped, then one line
 #   <gate> <fault|control|mutant> <id> <REQ>
 # per (gate, mechanism, id, requirement). <gate> is a free name of lower-case letters, digits and
-# '-'; <REQ> is one of the Phase 4 requirements API-02 API-04 RUN-01 RUN-02 RUN-04 RUN-05 RUN-06
-# PKG-01 PKG-03 PKG-04, one of the Phase 5 requirements INP-01 INP-02 INP-03 API-03 AUD-01 AUD-02 or one
-# of the Phase 6 requirements VID-01 VID-02 VID-03 VID-04 VID-06, the Phase 8 requirement VID-05 (accepted since plan
-# 08-08 with its mechanisms: the MOB, collision and delay faults, the four frame judges, the six program mutants of
-# ivs-diag-stic-2 and the four frame-grammar controls), the Phase 8 requirements STA-01 and STA-02 (accepted since plan 08-17
-# with their mechanisms: the nine snapshot and restore faults, the six judges of the state suite and the seven controls of
-# the state step), the Phase 8 requirement PRF-01 (accepted since plan 08-19 with its two mechanisms, both test ids of the
-# suite bench: the refusal of a mutated golden and the judge of the absence-of-measurement check), or the Phase 7
-# requirements SCN-01 and SCN-02 (A-13: SCN-02 is
-# the owner-local EXEC/GROM route; its mechanisms are the two
-# user-content consistency controls of the golden step). The accepted set is also the must-be-covered set, so a plan
-# that accepts a requirement also appends one toy line for it to the toy registry and to every control that overlays a
-# whole-file toy registry.
+# '-'; <REQ> is one of the accepted requirements in the table below.
+# Accepted requirements by phase, with the plan that added each set. The accepted set is also the
+# must-be-covered set, so a plan that accepts a requirement also appends one toy line for it to the
+# toy registry and to every control that overlays a whole-file toy registry.
+#   Phase 1  FND-01 FND-02 FND-03 FND-04 FND-05 FND-06 FND-07                      plan 09-04
+#   Phase 4  API-02 API-04 RUN-01 RUN-02 RUN-04 RUN-05 RUN-06 PKG-01 PKG-03 PKG-04  plan 04-24
+#   Phase 5  INP-01 INP-02 INP-03 API-03 AUD-01 AUD-02                             plan 05-12
+#   Phase 6  VID-01 VID-02 VID-03 VID-04 VID-06                                    plan 06-14
+#   Phase 7  SCN-01 plan 07-02; SCN-02 plan 07-10 (A-13: SCN-02 is the owner-local EXEC/GROM route,
+#            and its mechanisms are the two user-content consistency controls of the golden step)
+#   Phase 8  VID-05 plan 08-08 (the MOB, collision and delay faults, the four frame judges, the six
+#            program mutants of ivs-diag-stic-2 and the four frame-grammar controls); STA-01 STA-02
+#            plan 08-17 (the nine snapshot and restore faults, the six judges of the state suite and
+#            the seven controls of the state step); PRF-01 plan 08-19 (both test ids of the suite
+#            bench: the refusal of a mutated golden and the judge of the absence-of-measurement check)
 # Resolution of <id> by mechanism:
 #   fault    first column of any data/expected/faults/*.ids (judged by faults-verdict);
 #   control  first column of any data/expected/controls/*.ids (run by tools/check/run-controls.sh);
@@ -35,9 +35,9 @@
 #            (in-step selftests), or a test id `<suite>.judge.<slug>` or `<suite>.mutant.<slug>`
 #            of any data/expected/tests/*.ids (suite self-controls, judged by tests-inventory).
 # Tokens: important-gates-unknown-id: line <n> (not 4 columns, unknown mechanism, bad gate name,
-#   or a requirement outside the Phase 4, Phase 5, Phase 6, Phase 7 and Phase 8 sets) or <mechanism> <id> line <n> (the id
-#   is in no inventory of its mechanism); important-gates-uncovered-gate: <REQ> (a Phase 4, Phase 5, Phase 6, Phase 7 or
-#   Phase 8 requirement with no registry line; also the registry file missing).
+#   or a requirement outside the accepted set above) or <mechanism> <id> line <n> (the id is in no
+#   inventory of its mechanism); important-gates-uncovered-gate: <REQ> (an accepted requirement with
+#   no registry line; also the registry file missing).
 # Stats: gates=<distinct gate names> lines=<registry lines>.
 LC_ALL=C; export LC_ALL
 : "${ROOT:?ROOT is not set}"
@@ -81,7 +81,7 @@ awk -v knownf="$tmp/known" -v find="$find" -v stats="$tmp/stats" '
   BEGIN {
     while ((getline l < knownf) > 0) known[l] = 1
     close(knownf)
-    nreq = split("API-02 API-04 RUN-01 RUN-02 RUN-04 RUN-05 RUN-06 PKG-01 PKG-03 PKG-04 INP-01 INP-02 INP-03 API-03 AUD-01 AUD-02 VID-01 VID-02 VID-03 VID-04 VID-05 VID-06 SCN-01 SCN-02 STA-01 STA-02 PRF-01", reqs, " ")
+    nreq = split("API-02 API-04 RUN-01 RUN-02 RUN-04 RUN-05 RUN-06 PKG-01 PKG-03 PKG-04 INP-01 INP-02 INP-03 API-03 AUD-01 AUD-02 VID-01 VID-02 VID-03 VID-04 VID-05 VID-06 SCN-01 SCN-02 STA-01 STA-02 PRF-01 FND-01 FND-02 FND-03 FND-04 FND-05 FND-06 FND-07", reqs, " ")
     for (i = 1; i <= nreq; i++) accepted[reqs[i]] = 1
     lines = 0; ngates = 0
   }

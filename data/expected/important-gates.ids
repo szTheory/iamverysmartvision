@@ -394,3 +394,32 @@ sta02-checklist-controls control state-class-source-drift STA-02
 # never a claim, so there is no claim row; both mechanisms are test ids of the suite bench.
 prf01-digest-first mutant bench.mutant.refuse-mutated-golden PRF-01
 prf01-digest-first mutant bench.judge.refuse-has-no-timing PRF-01
+
+# Plan 09-04 (EV-02, R2): the Phase 1 requirements FND-01 to FND-07, registered against mechanisms
+# the gate already runs. Each is a control, so tools/check/run-controls.sh requires the step to exit
+# non-zero and to print its pinned token: a step that does not actually read the record it claims to
+# check cannot refuse a doctored one. No new fault site, control, test id or gate step is added.
+# FND-01: a profile record is read, not described; a required key absent from the record and a tier
+# tag outside the vocabulary must each be refused.
+profile-record control profile-missing-key FND-01
+profile-record control profile-tier5-tag FND-01
+# FND-02: the claim ledger is consulted, not quoted; a tier outside the evidence-tier vocabulary and
+# a claim standing above its recorded tier must each be refused.
+claim-ledger control claims-unknown-tier FND-02
+claim-ledger control claims-overstated-standing FND-02
+# FND-03: a discrepancy row carries its conflict-resolution link; removing it must be refused, so a
+# log that is only prose passes and the control fails.
+discrepancy-log control discrepancies-missing-c17 FND-03
+# FND-04: a manifest is a record of identity; a changed recorded digest and a broken recipe-to-source
+# digest chain each make it a decoration rather than a record, and both must be refused.
+fixture-manifest control manifests-digest-mismatch FND-04
+fixture-manifest control manifests-recipe-source-digest FND-04
+# FND-05: the provenance rule is enforced by a scan, not by review prose, only if a planted copied
+# constant in an in-scope file is refused.
+provenance-rule control denylist-hit FND-05
+# FND-06: the reference notes are project-owned only if every row carries its source citation; a row
+# without one must be refused.
+cp1610-reference-notes control cp1610-row-without-cite FND-06
+# FND-07: a defined time-base vocabulary that is not enforced is a document; a bare `clock` where a
+# qualified unit is required must be refused.
+time-base-vocabulary control glossary-bare-clock FND-07
