@@ -106,6 +106,11 @@ apply_make() {
       rename)
         case ${3:-} in /*|*..*) fail control-make-path "${3:-}"; return 1 ;; esac
         mkdir -p "$(dirname "$_t/${3:-}")"; mv "$_t/$_p" "$_t/${3:-}" ;;
+      symlink)
+        # A relative in-tree link, assembled at run time so no control tree carries a tracked
+        # symlink (the repository has none, and a case can then not depend on one).
+        case ${3:-} in ''|/*|*..*) fail control-make-path "${3:-}"; return 1 ;; esac
+        mkdir -p "$(dirname "$_t/$_p")"; ln -s "${3:-}" "$_t/$_p" ;;
       crlf) awk '{ printf "%s\r\n", $0 }' "$_t/$_p" > "$_t/$_p.tmp" && mv "$_t/$_p.tmp" "$_t/$_p" ;;
       bom) { printf '\357\273\277'; cat "$_t/$_p"; } > "$_t/$_p.tmp" && mv "$_t/$_p.tmp" "$_t/$_p" ;;
       nonascii) printf '\303\251' >> "$_t/$_p" ;;

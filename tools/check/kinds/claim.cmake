@@ -108,10 +108,28 @@ function(hook_record id rec)
   # which only fires while the file is absent. The any-`.tsv` suffix is used instead of a
   # `data/bench/` prefix: one predicate instead of a path prefix to get wrong, and it covers the
   # hosted timing record `.planning/ci-runs.tsv` as well.
-  if(NOT "${artifact}" STREQUAL "")
-    if("${artifact}" MATCHES "^build/" OR "${artifact}" MATCHES "[.]wav$"
-       OR "${artifact}" MATCHES "[.]ppm$" OR "${artifact}" MATCHES "[.]tsv$"
-       OR "${artifact}" STREQUAL "data/expected/handoffs.ids")
+  #
+  # The test is made on the NORMALISED path, never on the raw spelling. file(REAL_PATH) resolves a
+  # leading `./`, a doubled `/`, and a symlink indirection to the real target, so `./build/x` and
+  # `data/evidence/x` (a link to build) are the same file as `build/x`; the path is then made
+  # relative to ROOT and lower-cased, because this project's primary host is case-insensitive, so
+  # `Build/x` resolves there and `out/x.WAV` is the file `out/x.wav`. Without that normalisation a
+  # claim satisfied every clause by spelling alone: only the file had to exist, and during a gate
+  # run `build/gate/` does. Residual, named rather than papered over: a symlink whose target lies
+  # OUTSIDE the repository normalises to a `../`-relative path, which no clause below matches; such
+  # a claim is still refused by claim-dangling-path only if the link is broken, so a link to an
+  # external build directory is not refused here and is recorded as an open residual.
+  # ROOT is resolved too: a tree reached through a symlink (a worktree under /tmp, which is a link
+  # on Darwin) would otherwise make every relative path a `../` path and silently disarm the two
+  # prefix clauses while the suffix clauses kept working.
+  if(NOT "${artifact}" STREQUAL "" AND EXISTS "${ROOT}/${artifact}")
+    file(REAL_PATH "${ROOT}" handoff_root)
+    file(REAL_PATH "${ROOT}/${artifact}" handoff_real)
+    file(RELATIVE_PATH handoff_norm "${handoff_root}" "${handoff_real}")
+    string(TOLOWER "${handoff_norm}" handoff_low)
+    if("${handoff_low}" MATCHES "^build/" OR "${handoff_low}" MATCHES "[.]wav$"
+       OR "${handoff_low}" MATCHES "[.]ppm$" OR "${handoff_low}" MATCHES "[.]tsv$"
+       OR "${handoff_low}" STREQUAL "data/expected/handoffs.ids")
       gate_fail(claim-handoff-artifact "${id}")
     endif()
   endif()

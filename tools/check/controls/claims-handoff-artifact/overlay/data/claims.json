@@ -21,6 +21,66 @@
       "depends_on": ["stic.part"],
       "standing": "established",
       "note": "Example entry."
+    },
+    {
+      "id": "CL-0003",
+      "statement": "The example profile names the STIC part.",
+      "profile": "intv-2609-ntsc-family-p1",
+      "tier": "source-expectation",
+      "artifact": "out/x.wav",
+      "depends_on": ["stic.part"],
+      "standing": "established",
+      "note": "Example entry."
+    },
+    {
+      "id": "CL-0004",
+      "statement": "The example profile names the STIC part.",
+      "profile": "intv-2609-ntsc-family-p1",
+      "tier": "source-expectation",
+      "artifact": "out/x.ppm",
+      "depends_on": ["stic.part"],
+      "standing": "established",
+      "note": "Example entry."
+    },
+    {
+      "id": "CL-0005",
+      "statement": "The example profile names the STIC part.",
+      "profile": "intv-2609-ntsc-family-p1",
+      "tier": "source-expectation",
+      "artifact": "data/expected/handoffs.ids",
+      "depends_on": ["stic.part"],
+      "standing": "established",
+      "note": "Example entry."
+    },
+    {
+      "id": "CL-0006",
+      "statement": "The example profile names the STIC part.",
+      "profile": "intv-2609-ntsc-family-p1",
+      "tier": "source-expectation",
+      "artifact": "./build/gate/dev/runner/toy.report",
+      "depends_on": ["stic.part"],
+      "standing": "established",
+      "note": "Example entry."
+    },
+    {
+      "id": "CL-0007",
+      "statement": "The example profile names the STIC part.",
+      "profile": "intv-2609-ntsc-family-p1",
+      "tier": "source-expectation",
+      "artifact": "Build/gate/dev/runner/toy.report",
+      "depends_on": ["stic.part"],
+      "standing": "established",
+      "note": "Example entry."
+    },
+    {
+      "id": "CL-0008",
+      "statement": "The example profile names the STIC part.",
+      "profile": "intv-2609-ntsc-family-p1",
+      "tier": "source-expectation",
+      "artifact": "x/gate/dev/runner/toy.report",
+      "depends_on": ["stic.part"],
+      "standing": "established",
+      "note": "Example entry."
     }
   ]
 }
