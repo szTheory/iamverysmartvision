@@ -7,7 +7,7 @@ stopped_at: All four phases resolved - 9, 10 and 11 delivered and verified; 12 d
 last_updated: "2026-11-25T17:27:31.209Z"
 last_activity: 2026-11-25
 last_activity_desc: Milestone v0.2.0 completed and archived
-state_head: dea1c13
+state_head: 750bdb9
 progress:
   total_phases: 4
   completed_phases: 4
@@ -25,7 +25,7 @@ current_phase_name: none
 See: .planning/PROJECT.md (updated 2026-11-24)
 
 **Core value:** A deterministic, observable machine core whose every compatibility claim is bound to an exactly named profile and independent evidence — never an unqualified "it runs Intellivision games" label.
-**Current focus:** Phase 11 — Input Record and Replay (complete)
+**Current focus:** no milestone open — v0.2.0 is archived; the next command opens v0.3.0
 
 ## Current Position
 
@@ -45,6 +45,7 @@ Last activity: 2026-11-25 — Milestone v0.2.0 completed and archived
 
 | Version | Date | Commit | Assets | Notes |
 |---------|------|--------|--------|-------|
+| `v0.2.0` | — | — | — | **Not published: `READY, NOT PUBLISHED: blocked by P5`.** No `[0.2.0]` CHANGELOG section and the three version numbers still read `0.1.0`. P1, P2, P3, P4, P6 and P7 hold. The order that clears it is in the archived milestone audit's release-decision section. |
 | `v0.1.0` (pre-release) | 2026-11-24T05:02:08Z | `3fe5373` (the Phase 8 merge commit, the artifact commit) | `ivs-v0.1.0-source.tar.gz` (5,295,098 B), `ivs-v0.1.0-install-linux-x86_64.tar.gz` (83,468 B), `SHA256SUMS` (196 B) | Source-only; claims provisional and nothing measured; D10 and D11 not performed. Created as a draft by the tag-triggered workflow (run `45328905701`, `success`), read with `gh release view --json`, both archives verified against `SHA256SUMS` (`shasum -a 256 -c`, both OK), then published. No EXEC, GROM, ROM, manual or overlay of any kind. |
 
 The release is a **pre-release**: the first 0.x release, published through the delegated flow (D9, D29). Deleting a published release remains an owner-only hard stop.
