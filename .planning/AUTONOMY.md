@@ -250,6 +250,17 @@ Run this before the first push and before every release:
 - **Third-party binaries.** No `.rom/.bin/.int/.itv/.cc3/.pdf` or images
   unless listed as project-authored in the fixture manifest with
   `redistributable: yes`.
+- **No PII anywhere, including records.** A personal name, user name, host
+  name, home path or email other than a GitHub noreply address is not written
+  into a tracked file, a commit message, a phase record or an archived record.
+  A hit found later in a **tracked** file — even an archived phase record that
+  the append-only rule otherwise protects — is **redacted in place** and the
+  redaction is recorded in the commit that makes it: the append-only rule
+  protects evidence from changing under a citation, and a user name in a `stat`
+  line is not evidence. Rewriting **published history** to remove a hit is a
+  separate, irreversible action and stays an owner decision (section 1).
+  Local third-party material (ROMs, system images, manuals) lives only under the
+  ignored `refs/` tree and is never named by an absolute path.
 
 ## 7. GSD config mapping
 

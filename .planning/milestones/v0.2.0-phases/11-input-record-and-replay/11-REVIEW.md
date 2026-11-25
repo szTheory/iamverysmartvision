@@ -163,7 +163,7 @@ file created at `runner/main.c:931` is left behind empty, with no stderr line.
 ```
 ivs-run --content-dir /nonexistent --record-input mf.ivsl demo-lamp-tone-pass.ivss
 rc=13   outcome missing-fixture   outcome.detail missing role=exec path=boot-stub-2.exec
--rw-r--r--  1 jon wheel 0 … mf.ivsl          <-- left behind, 0 bytes
+-rw-r--r--  1 <user> wheel 0 … mf.ivsl          <-- left behind, 0 bytes
 stderr: (empty)
 ```
 

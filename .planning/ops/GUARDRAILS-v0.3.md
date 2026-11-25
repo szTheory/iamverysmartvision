@@ -27,6 +27,7 @@ A count edited in a later "re-bless" commit is a defect.
 | V8 | a handoff row | `data/expected/handoffs.ids`; the `docs/handoffs.md` packet; never a phase exit criterion; no claim cites it |
 | V9 | a version, changelog or release text | `data/expected/pkg-install-files.ids`; `docs/packaging.md`; `RELEASE-OPS.md`; `release-assets` |
 | V10 | an operator page describing owner content | `docs/owner-images.md` and `docs/RIGHTS.md` in the behaviour's commit, claiming nothing the gate cannot exercise |
+| V12 | a profile field that changes a CPU, memory or STIC behaviour | that field's tag and cite; `data/memmap/<profile>.literal.txt` if the field is a map row; the profile parameter digest and **every** snapshot literal in `data/expected/ivsn-literals.ids`; every test or golden whose expectation the behaviour moves (measured for `cpu.interrupt_accept_clears_intff`: `state.read.describe-ok`, `state.literal.params-digest` and `run.stub2.jd-as-j`); the discrepancy note that records the observation. An `unknown-default-chosen` field may be resolved by an owner-local observation (D-51), and it **stays** `unknown-default-chosen` — a resolved default is an observation, never a claim |
 | V11 | one of the ten D-09-06 must-fail mechanisms | an `important-gates.ids` **`mutant` row over an existing selftest**, never a new fault. Ten faults would cost about 4.4 hosted cpu-s, 82 % of this milestone's allowance, on the step already 29 % of the gate |
 
 `steps=38/38` is an invariant, not a target: any commit whose summary line reads

@@ -36,7 +36,7 @@ host surface second, with the owner's own files last as a handoff row.
 | # | Phase | Goal | Requirements | Gate |
 |---|-------|------|--------------|------|
 | 13 | Rights Ledger and Enforced Claim Ceiling | One question-shaped rights row per content question, a check that refuses an unsourced `cleared` row and a refused spelling in code or operator pages, D-32's `established`-claim check, and the ten D-09-06 mechanisms registered as `mutant` rows | RTS-01, RTS-02, EV-06, EV-07 | No external gate; it is the entry ticket for every later phase, because until it exists a refused item can be named and a claim can rise with the gate still green |
-| 14 | Flat-Image Wrap and the Cartridge Role | A build-only tool wraps a flat image at an operator-stated base into IVSC v1 with seven typed refusals each beside its boundary positive; the owner-local route gains a cartridge role | TOOL-07, SCN-03 | Rights: nothing parses a third-party format and the output is derived material; cost line only (zero new steps) |
+| 14 | Cartridge Route and Real-Content Conformance | A build-only tool wraps a flat image at an operator-stated base into IVSC v1 with seven typed refusals each beside its boundary positive; the owner-local route gains a cartridge role; and the first real-content blocker — the interrupt-enable default that ends the EXEC at `$FFFF` — is fixed with its default resolved, pinned by a project-authored test, and every dependent expectation retargeted | TOOL-07, SCN-03, CPU-06 | Rights: nothing parses a third-party format and the output is derived material; cost line only (zero new steps). **The owner's own images drive it**, and the observation mints no claim (D-51) |
 | 15 | Build-Only Host and the Fake-Frontend Harness | A shared object outside `core/` and outside the install list, driven by a harness that `dlopen`s it and reproduces the runner's nine digest lines on a project cartridge, guarded three ways | TOOL-08 | Cost and CI shape: it is the only phase that creates a new build target (D12's named reversal trigger), so it is the droppable one |
 | 16 | Owner Route, Claim and Release Posture | One documented owner route from the source archive, handoff rows, a tracked shared object refused by name, and a release-decision line recomputed | PKG-06 | Owner hard stop D11: the owner's own run is a handoff row, never a criterion; the concurrency lever is taken here, cost-only |
 
@@ -46,9 +46,18 @@ host built before it has nothing to load and RetroArch would refuse every real
 image; **15** is worth building only once there is something to load, and it is
 last-but-one because it is the least predictable; **16** closes the loop.
 
-**Droppable:** Phase 15, pre-authorized, degrading to a content-only v0.3.0. It
-leaves a new content capability; dropping 14 would not. The degradation is
-written in the close record.
+**Droppable:** Phase 15, pre-authorized, degrading to a content-and-conformance
+v0.3.0. It leaves a new content capability; dropping 14 would not. The
+degradation is written in the close record.
+
+**Re-cut 2026-11-26 by the first owner-local real-content run.** The owner's own
+EXEC, GROM and an 8K cartridge now load and run; the EXEC dies at the first
+interrupt because `cpu.interrupt_accept_clears_intff = 0` (C41) lets the handler
+re-enter on every instruction boundary, and 600 frames are black. Clearing the
+enable on acceptance fixes the storm and the EXEC populates BACKTAB. A host built
+before that fix is a black screen with a window around it, so the conformance
+work joins Phase 14 and Phase 15 now depends on it. Full record:
+`.planning/MILESTONE-CONTEXT.md` §1a.
 
 ### Mid — the next two or three milestones `[REC]` (re-triaged 2026-11-26)
 
@@ -109,7 +118,7 @@ files.
 <summary>🚧 v0.3.0 Owner-Supplied Content and a Driveable Host (Phases 13 to 16)</summary>
 
 - [ ] Phase 13: Rights Ledger and Enforced Claim Ceiling — one question-shaped rights row per content question, an unsourced-`cleared` refusal, a refused-spelling refusal, D-32's `established`-claim check, and the ten D-09-06 mechanisms registered
-- [ ] Phase 14: Flat-Image Wrap and the Cartridge Role — a build-only wrap at an operator-stated base with seven typed refusals each beside its positive, and a cartridge role in the owner-local route
+- [ ] Phase 14: Cartridge Route and Real-Content Conformance — a build-only wrap at an operator-stated base with seven typed refusals each beside its positive, a cartridge role in the owner-local route, and the first real-content blocker fixed, pinned and retargeted
 - [ ] Phase 15: Build-Only Host and the Fake-Frontend Harness — a shared object outside the core and the install list, proved by a harness that reproduces the runner's nine digest lines, guarded three ways (droppable)
 - [ ] Phase 16: Owner Route, Claim and Release Posture — one documented route from the source archive, handoff rows, shared objects refused by name, and a recomputed release decision
 
@@ -189,22 +198,25 @@ mechanical rather than quoted.
 **Plans**: TBD
 **Tier ceiling**: none — this phase adds no claim.
 
-### Phase 14: Flat-Image Wrap and the Cartridge Role
+### Phase 14: Cartridge Route and Real-Content Conformance
 
 **Goal**: A person can wrap a flat cartridge image of their own, at an address
-they state, into the project's cartridge container, and the owner-local route
-accepts it — with nothing parsed, nothing described from another implementation
-and nothing committed.
+they state, into the project's cartridge container and run it through the
+owner-local route — with nothing parsed, nothing described from another
+implementation and nothing committed — and the first blocker that run exposes is
+fixed, pinned and retargeted rather than recorded and abandoned.
 **Depends on**: Phase 13 (a rights row must exist before a byte is read)
-**Requirements**: TOOL-07, SCN-03
+**Requirements**: TOOL-07, SCN-03, CPU-06
 **Success Criteria** (what must be TRUE):
   1. `tools/flatwrap <flat> <base> <out> [--word-order hi-first|lo-first]` is build-only, absent from the install list and from `data/expected/pkg-install-files.ids`, and states only a byte length, a word order and an address the operator gave it; it names no other tool's format and auto-detects nothing.
   2. Seven typed refusals, pinned append-only in `data/expected/flat-refusals.ids`, each beside its boundary positive: odd↔even length, a word above `$03FF`↔`$03FF`, 65,537↔65,536 words, base `$3FFF`↔`$4000`, crossing `$10000`↔ending at it, output inside the work tree↔outside, existing↔new output.
   3. A wrapped image round-trips: it loads as `content cart user`, `slot.cart.sha256` equals the hash printed on stdout, and flipping one input byte changes that hash (so the equality is proved live).
   4. The owner-local route gains a cartridge role; all six derived-output refusals and the snapshot rule fire for it, one line each and no file, and `docs/owner-images.md` no longer says the route has no cartridge role.
   5. No tracked file carries a new binary extension, `binary-ext.txt` and `.gitignore` are unchanged by this phase, and the gate ends `steps=38/38` with the predicted `tests-expected` and `tests-skipped` delta.
+  6. The interrupt-enable default is resolved from the owner-local observation (`cpu.interrupt_accept_clears_intff` = 1, D-51), a project-authored CPU test pins **both** settings so the not-cleared case is still exercised, the value stays `unknown-default-chosen` with the observation in `data/discrepancies.json` C41, and the profile parameter digest, every snapshot literal and the boot-stub-2 interrupt expectations move in the same commit with a predicted delta.
+  7. The next blocker the same run exposes is recorded with its own row and its own gate: measured, the display-enable strobe never latches, so frames stay black and the STIC register-window / strobe rule is the next tier-4 default to resolve — named, not silently carried.
 **Plans**: TBD
-**Tier ceiling**: none — the wrap and the round trip are repeatability `[nc]`.
+**Tier ceiling**: none — the wrap and the round trip are repeatability `[nc]`, and a resolved default is an observation, never a claim.
 
 ### Phase 15: Build-Only Host and the Fake-Frontend Harness
 
@@ -360,11 +372,11 @@ the profile does not name, and — only where a per-mode rights review clears it
 | Requirement | Phase |
 |-------------|-------|
 | RTS-01, RTS-02, EV-06, EV-07 | 13 |
-| TOOL-07, SCN-03 | 14 |
+| TOOL-07, SCN-03, CPU-06 | 14 |
 | TOOL-08 | 15 (droppable) |
 | PKG-06 | 16 |
 
-Mapped: 8/8 v0.3.0 requirements, each to exactly one phase. No orphans, no
+Mapped: 9/9 v0.3.0 requirements, each to exactly one phase. No orphans, no
 duplicates. If Phase 15 is dropped, TOOL-08 is recorded `Deferred` with its
 reversal condition — never lost, never `Complete`.
 
@@ -452,7 +464,7 @@ commit `8f017e7`. Its phase details are collapsed above.
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 13. Rights Ledger and Enforced Claim Ceiling | 0/TBD | Not started | — |
-| 14. Flat-Image Wrap and the Cartridge Role | 0/TBD | Not started | — |
+| 14. Cartridge Route and Real-Content Conformance | 0/TBD | Not started | — |
 | 15. Build-Only Host and the Fake-Frontend Harness | 0/TBD | Not started | — |
 | 16. Owner Route, Claim and Release Posture | 0/TBD | Not started | — |
 

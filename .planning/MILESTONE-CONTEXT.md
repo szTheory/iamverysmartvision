@@ -74,6 +74,43 @@ executed.
 
 ---
 
+## 1a. What the first real-content run changed (2026-11-26, after this file was first frozen)
+
+The owner supplied their own EXEC, GROM and a cartridge collection on 2026-11-26 and
+authorised a local diagnostic run. The D11 route now executes, and the first run **fails
+deterministically**, which re-cuts this milestone's order. [OBS]
+
+- **The EXEC boots and runs.** 8192-byte EXEC and 2048-byte GROM load through the public
+  API; the reset entry at `$1000` executes, runs a delay loop and reaches a VBlank wait at
+  `$1067`. [OBS]
+- **The cartridge path is sound.** With the project boot stub and a real 8K cartridge at
+  `$5000`, the guest runs 30,000 instructions without leaving the code ranges. [OBS]
+- **The EXEC path dies at the first interrupt.** Accepting an interrupt left the CPU's
+  interrupt enable set (`cpu.interrupt_accept_clears_intff = 0`, conflict **C41**, an
+  `unknown-default-chosen` default). The CPU therefore re-entered the handler on every
+  instruction boundary, the EXEC's stack walked past `$035F` into undriven space, and the
+  program counter ended at `$FFFF` within about 1.3 frames: 96,066 gate-blocked reads, 600
+  black frames. [OBS]
+- **Clearing the enable on acceptance fixes the storm.** The handler then runs its own
+  prologue linearly (`PSHR R0`, `GSWD R0`, …), blocked reads fall to 185, the EXEC
+  populates BACKTAB with real card descriptors, and the run reaches 4,411 instructions
+  before the next blocker. The display-enable strobe still never latches, so frames stay
+  black; the next blocker is the STIC register-window / strobe rule, also a tier-4 default.
+  [OBS]
+- **The fix is a phase of work, not an edit.** Flipping the field moves the profile
+  parameter digest, every snapshot literal and the boot-stub-2 interrupt tests: measured,
+  the gate goes red in `state.*` and `run.stub2.jd-as-j` until those are retargeted in the
+  same commit. [OBS]
+
+**Consequence for the order.** A host built before this is a black screen with a window
+around it, so the content route and the conformance work become one phase and move ahead of
+the host: **13 rights ledger → 14 cartridge route and real-content conformance → 15 host →
+16 release posture.** The observation is not evidence and mints no claim: the field stays
+`unknown-default-chosen` until the recorded hardware probe exists, and no digest of any
+owner image is recorded anywhere.
+
+---
+
 ## 2. The phase shape (frozen)
 
 Each phase's success criteria are written into `.planning/ROADMAP.md`; the
@@ -83,22 +120,23 @@ mechanism that proves each one and whether it already exists is in
 | # | Phase | Exit in one line | Tier ceiling |
 |---|---|---|---|
 | 13 | Rights Ledger and Enforced Claim Ceiling | A question-shaped rights ledger with a check that refuses an unsourced `cleared` row and a refused spelling in code or operator pages; D-32's `established`-claim check; the ten D-09-06 mechanisms registered as `mutant` rows | none — adds no claim |
-| 14 | Flat-Image Wrap and the Cartridge Role | A build-only tool wraps a flat image at an operator-stated base into IVSC v1 with seven typed refusals each beside its boundary positive; the owner-local route gains a cartridge role with the derived-output refusals extended | none — adds no claim |
+| 14 | Cartridge Route and Real-Content Conformance | A build-only tool wraps a flat image at an operator-stated base into IVSC v1 with seven typed refusals each beside its boundary positive; the owner-local route gains a cartridge role; and the first real-content blocker is fixed with its default resolved, pinned by a project-authored test, and every dependent expectation retargeted | none — adds no claim |
 | 15 | Build-Only Host and the Fake-Frontend Harness | A shared object outside `core/` and outside the install list, driven by a harness that `dlopen`s it and reproduces the runner's nine digest lines on a project cartridge, guarded three ways | `deterministic-repeatability`, provisional (one claim) |
 | 16 | Owner Route, Claim and Release Posture | One documented owner route from the source archive, handoff rows, and a release-decision line recomputed | none — the claim is minted in Phase 15 |
 
-**Depends on:** `13 → {14, 15}`; `{13, 14, 15} → 16`. Phases 14 and 15 are
-siblings: the harness is proved on a **project** cartridge, so 15 does not need
-14, which is what makes either droppable without re-cutting the other.
+**Depends on:** `13 → 14 → 15 → 16`. Phase 15 no longer stands beside 14: the
+first real-content run shows that a host built before the EXEC path is fixed shows
+a black screen, so 15 depends on 14. Phase 15 stays droppable — the fallback is a
+content-and-conformance v0.3.0 — and the degradation is unchanged.
 
-**Droppable: Phase 15**, pre-authorized, degrading to a content-only v0.3.0
-(ledger, ceiling, wrap, cartridge role, owner route). It is droppable because it
-alone creates a new build target — D12's named reversal trigger — so its cost and
-CI shape are the least predictable. Dropping it leaves a new content capability;
-dropping 14 would not. The degradation is written in the close record: the goal
-is amended to "Owner-Supplied Content", no host route appears in
-`docs/owner-images.md`, and the libretro-header and core-info rights rows keep
-their verdicts and are cited, not re-argued.
+**Droppable: Phase 15**, pre-authorized, degrading to a content-and-conformance
+v0.3.0 (ledger, ceiling, wrap, cartridge role, the first blocker fixed, owner
+route). It is droppable because it alone creates a new build target — D12's named
+reversal trigger — so its cost and CI shape are the least predictable. Dropping
+it leaves a new content capability; dropping 14 would not. The degradation is
+written in the close record: the goal is amended to "Owner-Supplied Content", no
+host route appears in `docs/owner-images.md`, and the libretro-header and
+core-info rights rows keep their verdicts and are cited, not re-argued.
 
 ---
 
@@ -134,6 +172,15 @@ Full rows with reversal evidence are in `.planning/PROJECT.md`; the short form:
   `source-expectation` resting on a `tier1-primary-doc` dependency; no other
   tier may stand `established`. `CL-0002` is the only claim this permits, and it
   is checked rather than assumed.
+- **D-51 — an owner-local observation may resolve an `unknown-default-chosen`
+  profile field, and the retarget is part of the change.** The first real-content
+  run showed `cpu.interrupt_accept_clears_intff = 0` producing an interrupt storm
+  that ends at `$FFFF`; the value becomes `1`, informed by the owner's own images
+  through the D11 route. The field stays tagged `unknown-default-chosen` (the
+  observation is not a hardware probe and mints no claim), and the commit that
+  changes it carries the profile parameter digest, every snapshot literal, the
+  boot-stub-2 interrupt tests and the discrepancy note (C41). An observation that
+  cannot be turned into a project-authored test is recorded, not acted on.
 
 ---
 

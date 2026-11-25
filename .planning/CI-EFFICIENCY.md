@@ -1964,9 +1964,9 @@ merge push `45682845654` (`build_s` 34, `gate_s` 114, `cpu_s` 363). Both sit ins
 the 359–366 band the last five rows have held since Phase 9's settling window, so
 nothing moved but the runner.
 
-**By the termination rule (v0.2.0 close), this records PR's own two runs are the
-deferred pair**: its `pull_request` run and the push run created by its merge land
-as the first rows of Phase 13's first commit, never in a follow-up records PR.
-They are named here so they are deferred, not dropped. The chain then terminates:
-Phase 13's first commit is milestone work that the run would make anyway, and its
-own merge push follows the same rule once.
+**By the termination rule (v0.2.0 close), this records PR's own two runs were the
+deferred pair**: its `pull_request` run and the push run created by its merge. They
+landed in the next commit the project made anyway — the 2026-11-26 milestone
+correction — as `45683331636` (`build_s` 46, `gate_s` 148, `cpu_s` 497) and
+`45683886915` (`build_s` 33, `gate_s` 121, `cpu_s` 357), both now rows in
+`.planning/ci-runs.tsv`. Deferred by exactly one commit, named, never dropped.
