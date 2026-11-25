@@ -4,17 +4,17 @@ milestone: v0.2.0
 milestone_name: Registered Evidence, Reachable Runs, Replayable Input (Phases 9 to 12)</summary>
 current_phase: 9
 current_phase_name: Registered Evidence and Gate Cost
-status: planning
-stopped_at: Milestone v0.2.0 scoped by the milestone ritual; requirements and roadmap being defined; nothing in flight
-last_updated: "2026-11-24T16:40:37.447Z"
+status: executing
+stopped_at: Completed 09-03-PLAN.md; wave A1 finished, the hosted row is the orchestrator's
+last_updated: "2026-11-25T01:35:38.551Z"
 last_activity: 2026-11-24
-last_activity_desc: "Milestone v0.2.0 roadmap created: Phases 9 to 12, 10/10 requirements mapped, zero new gate steps, Phase 12 conditional and droppable"
-state_head: 6a8ea277b796693ad593a6c3fde09d387abdd553
+last_activity_desc: Phase 9 execution started
+state_head: 36893ad
 progress:
   total_phases: 4
   completed_phases: 8
   total_plans: 9
-  completed_plans: 0
+  completed_plans: 3
 ---
 
 # Project State
@@ -24,15 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-24)
 
 **Core value:** A deterministic, observable machine core whose every compatibility claim is bound to an exactly named profile and independent evidence — never an unqualified "it runs Intellivision games" label.
-**Current focus:** Milestone v0.2.0 Registered Evidence, Reachable Runs, Replayable Input — Phase 9 planned (9 plans, 8 waves), ready to execute
+**Current focus:** Phase 9 — Registered Evidence and Gate Cost
 
 ## Current Position
 
-Phase: 9 (Registered Evidence and Gate Cost) — READY TO EXECUTE
-Plan: 9 plans across 8 waves; waves 1 and 2 are wave A1 (cost only)
-Status: Planned 2026-11-24 — research, pattern map, nine plans and a five-round plan-check
-  loop are committed. Wave A2 plans are gated on the orchestrator's hosted row.
-Last activity: 2026-11-24 — Phase 9 planned
+Phase: 9 (Registered Evidence and Gate Cost) — EXECUTING
+Plan: 3 of 9 (wave A1 complete: 09-01, 09-02, 09-03)
+Status: Wave A1 done — waiting on the orchestrator's hosted row before wave A2
+Last activity: 2026-11-24 — wave A1 complete, the hosted row is the orchestrator's
 
 **Next action:** execute phase 9. Wave A1 (09-01 to 09-03) lands the cost lever and
 three trims; the orchestrator then pushes, takes a hosted row and records it; wave A2
@@ -206,6 +205,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | Phase 8 P19 | about 150 min (two sessions, the baseline input taken between them) | 3 tasks | 22 files |
 | Phase 8 P20 | about 45 min | 3 tasks | 51 files |
 | Phase 8 P21 | about 65 min (estimated: no start time was taken) | 3 tasks | 10 files |
+| Phase 09 P03 | 15m | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -490,6 +490,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 8]: 08-20: requirements-completed was backfilled into the 39 SUMMARY files of Phases 4 to 7 that lacked it (the plan's own requirements field verbatim, one added line each); the three-source check over Phases 1 to 7 reads 45 requirements and 0 findings (11 requirements of Phases 5 and 6 had no SUMMARY before); 08-ACCEPTED-DEBT.md records the six draft validations, the STATE deferred items, the open review items of Phases 4 to 7 and the items deferred out of Phase 8 (the snapshot file options, 192-line video publication, libFuzzer in CI, SHA-256 frame-hash optimization, D10, D11, a history rewrite, name clearance); it changes no requirement mark and no claim; REL-01 stays Pending (D-28)
 - [Phase 8]: 08-21: stage 1 of REL-01 is recorded and REL-01 stays Pending: 08-MILESTONE-CLOSE.md holds the eleven sections A to K with A, F, G and J pasted from tools/release-readiness.sh (the full history scan: six findings, all six on the pinned list and printed with their recorded disposition, none new, never recorded as a pass; 253 s of wall time on the head of plan 08-20), 08-VERIFICATION.md follows the Phase 7 layout (status human_needed: SC1 to SC4 hold on recorded terms, SC5 at stage 1; 20 V-rows with the commits read from git log), every fact that exists only after the merge is the literal placeholder (the push run, the open pull request and issue counts, the ruleset read, the artifact commit and the release decision), and the release is not started: paused by the owner's decision after Phase 8, relayed by the orchestrator, so no tag, draft, release, push or gh call exists
 - [Phase 8]: 08-21: the Decision Register gained four rows (the draft pre-release D-29, the three version numbers D-30, the milestone tool's tag step D-31 and D-42, the history disposition D-33 with the owner-veto note), PLAN-LESSONS gained lessons 19 to 24, the STATE deferred items were refreshed from 08-ACCEPTED-DEBT.md, and RELEASE-OPS.md item h holds the grep that proves no placeholder remains and the order of the orchestrator's stage 2 actions; cost close phase8-close no-lever (the last-five median r is 7.80 against the budget 7.8 and the line 8.3; the five rows contain wave B and the newest contains every plan through 08-20; both raw triggers fire and r sits at the budget, read as runner speed with the stated caveat)
+- [Phase 09]: Wave A1's cost record recomputes the last-five window from the committed rows (median 7.696) and prints the allowance as priced with its recomputation beside it, never instead of it
+- [Phase 09]: Lever (3) is recorded as a 0.12 local cpu-s ceiling that cannot move r; trim (b) is declined in writing; the lever and trim (a) alternated before/after stays an open item with its reason rather than a figure that was not taken
 
 ### Pending Todos
 
@@ -539,8 +541,8 @@ Refreshed by plan 08-21 from `.planning/phases/08-stic-completion-save-state-per
 
 ## Session Continuity
 
-Last session: 2026-11-24
-Stopped at: Milestone v0.2.0 scoped by the milestone ritual; requirements and roadmap being defined; nothing in flight
+Last session: 2026-11-25T01:35:38.524Z
+Stopped at: Completed 09-03-PLAN.md; wave A1 finished, the hosted row is the orchestrator's
 Resume file: `.planning/MILESTONE-CONTEXT.md` (the frozen upstream scope)
 
 ## Recorded Constraints for the Next Milestone
