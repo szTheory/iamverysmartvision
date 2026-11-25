@@ -2,19 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v0.2.0
 milestone_name: Registered Evidence, Reachable Runs, Replayable Input (Phases 9 to 12)</summary>
-current_phase: 9
-current_phase_name: Registered Evidence and Gate Cost
-status: executing
-stopped_at: Completed 09-09-PLAN.md (phase 9 complete)
-last_updated: "2026-11-25T03:11:17.559Z"
+current_phase: 10
+current_phase_name: Reachable Runs and Presentation Policy
+status: planning
+stopped_at: Phase 9 complete, ready to plan Phase 10
+last_updated: "2026-11-25T04:33:42.841Z"
 last_activity: 2026-11-24
-last_activity_desc: Phase 9 execution started
-state_head: f52610e1fd46a09e0447ff247ea0bf8ed13530a6
+last_activity_desc: Phase 9 complete, transitioned to Phase 10
+state_head: fd0ef31ebf854275fcdc90cb3cf4e853f84647d0
 progress:
   total_phases: 4
   completed_phases: 8
   total_plans: 9
   completed_plans: 9
+  percent: 100
 ---
 
 # Project State
@@ -28,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-11-24)
 
 ## Current Position
 
-Phase: 9 (Registered Evidence and Gate Cost) — EXECUTING, all 9 plans executed
-Plan: 9 of 9 (wave A1 complete: 09-01, 09-02, 09-03; wave A2 complete: 09-04 to 09-09)
-Status: Phase 9 execution complete — EV-01 to EV-04 Complete with a ten-row exclusion ledger; the phase boundary (container gate, rulesets, verify-work) is the orchestrator's
-Last activity: 2026-11-25 — plan 09-09 closed the requirements and left the records corrected
+Phase: 10 — Reachable Runs and Presentation Policy
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-11-24 — Phase 9 complete, transitioned to Phase 10
 
 **Next action:** the orchestrator's phase boundary. It runs the container gate once on this
 final tree (the executor did not: the dispatch reserves it), applies or records the branch and
@@ -57,7 +58,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 99
+- Total plans completed: 108
 - Average duration: -
 - Total execution time: -
 
@@ -71,6 +72,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | 4 | 27 | - | - |
 | 5 | 12 | - | - |
 | 6 | 14 | - | - |
+| 9 | 9 | - | - |
 
 *Updated after each plan completion*
 **Per-Plan Metrics:**
@@ -556,6 +558,7 @@ Refreshed by plan 08-21 from `.planning/phases/08-stic-completion-save-state-per
 | Hygiene | an internal comment in `core/src/machine/machine_digest.c` that still names composite version 2 | **Closed by plan 09-09** (2026-11-25): the header comment now says version 3 since plan 06-05, matching `IVS_DIGEST_COMPOSITE_VERSION 3u` (`core/src/machine/machine.h:157`); it was a comment and only a comment (`08-ACCEPTED-DEBT.md` section 5) | Phase 8 | Closed |
 | Gate hardening | the two uncontrolled zero-document tokens `denylist-no-files` (`tools/check/steps/denylist.sh:43`) and `runner-scan-empty` (`tools/check/steps/runner-scan.sh:58`) | **Declined, not silently dropped** (plan 09-07, dispositioned by plan 09-09): amendment A-02's honest count for EV-03 is three controls plus one verification plus one step-side mechanism, and two more controls is scope the phase did not price. They stay uncontrolled and are visible here | Phase 9 | Next milestone, if the cost rule prices two controls |
 | Evidence | GUARDRAILS 2.3's registration limb for the **ten** mechanisms Phase 9 landed with no `data/expected/important-gates.ids` row: `important-gates-complete-uncovered`, `important-gates-excluded-stale`, `control-toy-drift`, `control-deviation-unused`, `control-pass-line-not-last`, `sources-src-token-whole`, `manifests-output-anchor`, `memmap-generator-refused`, `memmap-generator-missing` (the liveness guard for the one before it), and `important-gates-excluded-malformed` (added by the review fix WR-01, `0d84484`) | **Registration deferred, visibly** (deviation D-09-06, `09-05-SUMMARY.md` is the canonical list): the registry row count is frozen at `lines=330` by ROADMAP Phase 9 criterion 3 and amendment A-08, so any row added after 09-04 makes the phase end at a count its own criterion forbids. The other two limbs of 2.3 are met: each mechanism has a liveness guard and a committed, re-runnable stand-in showing the guard fail. Reversal condition: a later milestone re-derives the `lines=330` baseline, then adds these ten rows under EV-03/EV-04 with the non-vacuity sentence every other row carries | Phase 9 | A later milestone that re-derives the registry baseline |
+| Gate hardening | the four low-severity findings of the Phase 9 security audit (`09-SECURITY.md`): **F1** `GATE_TMP` is exported with deterministic `step.out.<name>` buffers, so a step can overwrite another step's buffer (the verdict cannot be flipped — `rc.<name>` is the driver's own file — but a step's body, `-- FAIL` lines and summary tokens can be mis-attributed); **F2** an exclusion-ledger reason is validated for shape, not for truth; **F3** three stale pointers inside the mechanisms' own prose (the ledger header says "seven rows" where it holds ten, the step header says "six requirements", and `state_fuzz.c:945-948` is cited where the refusal is at `:954`); **F4** `manifests.cmake:136` interpolates the fixture directory name into a CMake regex, so a `.` in a directory name widens one character, and `^data/` is broader than the two measured files need | **Recorded, not fixed** (plan 09-09 close, security audit `09-SECURITY.md`): none is high or medium, none can flip a verdict, and each fix would move the gate after the phase's verification record was taken. F1 is one line (stop exporting `GATE_TMP`; no step reads it — verified by `grep -ln GATE_TMP tools/check/steps/*.sh` returning nothing) | Phase 9 | Next milestone's gate-hardening pass |
 | Owner items | D10 physical measurement (44 hardware items), D11 owner-local real EXEC and GROM runs, a history rewrite veto, name clearance, the immutable-release setting | Owner hard stops or gates, none performed; no claim above provisional | Phases 1 to 8 | Owner (section K of the close record) |
 | Release | the flow after Phase 8: the merge, stage 2 of REL-01, the `git.create_tag` change, the tag, the draft and its publication | **Done**: merged as `3fe5373`, REL-01 complete, `create_tag` false, `v0.1.0` published as a pre-release | Phase 8 | Closed |
 | Milestone lifecycle | the milestone audit, the milestone completion and the cleanup of Phase 8 | Next: the lifecycle sequence after the records pull request | Phase 8 | Now |
@@ -568,7 +571,7 @@ Refreshed by plan 08-21 from `.planning/phases/08-stic-completion-save-state-per
 ## Session Continuity
 
 Last session: 2026-11-25T03:11:17.532Z
-Stopped at: Completed 09-09-PLAN.md (phase 9 complete)
+Stopped at: Phase 9 complete, ready to plan Phase 10
 Resume file: None
 
 ## Recorded Constraints for the Next Milestone
