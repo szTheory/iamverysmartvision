@@ -21,6 +21,9 @@
 # line appended to steps/profile.sh, so this step also owns proofs needing a copied CHECK_DIR; the
 # memmap generator-missing guard (EV-03 item 5) uses the same copy, because its path is derived
 # from CHECK_DIR and no control directory can reach it.
+# One more proof has no control and no copied runner: the pass-line rule the gate replay applies to
+# all 38 steps (review WR-02) is a file, tools/check/pass-line.sh, and the case near the end proves
+# that file refuses both shapes.
 # Tokens: runner-selftest-missing: <token>.
 # Stats: cases=<n>.
 LC_ALL=C; export LC_ALL
@@ -172,6 +175,31 @@ if grep -q -F -e '-- FAIL control-pass-line-not-last: profile' "$tmp/passline.ou
   cases=$((cases + 1))
 else
   bad runner-selftest-missing "control-pass-line-not-last"
+fi
+
+# Pass-line rule, gate side (review WR-02). The rule reaches all 38 steps only in tools/gate.sh's
+# replay, and a gate run needs cmake, ninja and a compiler, so neither a control directory nor a
+# case here can reach it by running the gate. The rule is therefore a file,
+# tools/check/pass-line.sh, which the replay calls once per step; this case proves that file refuses
+# both shapes rather than one: a verdict with a non-empty line after it (exit 2) and no verdict line
+# at all (exit 1), and accepts the one shape the 38 steps must produce (exit 0). Without it the
+# gate-side rule would be a check whose failure is recorded only as prose - the lesson-20 defect.
+plout="$tmp/passline"
+printf -- '-- profile pass stats=1\n' > "$plout.ok"
+printf -- '-- profile pass stats=1\nstill reporting\n' > "$plout.late"
+printf -- 'no verdict here\n' > "$plout.none"
+pl_bad=0
+sh "$CHECK_DIR/pass-line.sh" profile "$plout.ok" || pl_bad=1
+sh "$CHECK_DIR/pass-line.sh" profile "$plout.late"
+[ "$?" -eq 2 ] || pl_bad=1
+sh "$CHECK_DIR/pass-line.sh" profile "$plout.none"
+[ "$?" -eq 1 ] || pl_bad=1
+if [ "$pl_bad" -eq 0 ]; then
+  # Printed with the same non-collected prefix as the other proofs above.
+  printf -- '-- runner-selftest proof pass-line-not-last: profile (exit 2 observed)\n'
+  cases=$((cases + 1))
+else
+  bad runner-selftest-missing "pass-line-not-last"
 fi
 
 # Generator missing (EV-03 item 5). The memmap step derives the generator's path from CHECK_DIR,

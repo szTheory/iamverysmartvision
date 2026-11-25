@@ -165,13 +165,27 @@ for name in $(cat "$GATE_TMP/steps.have"); do
   cat "$GATE_TMP/step.out.$name"
   keep_fails "$GATE_TMP/step.out.$name"
   if [ "$(cat "$GATE_TMP/rc.$name")" -eq 0 ]; then
-    if grep -q -F -e "-- $name pass" "$GATE_TMP/step.out.$name"; then
-      passed=$((passed + 1))
-      toks=$(sed -n "s/^-- $name pass //p" "$GATE_TMP/step.out.$name" | tr '\n' ' ')
-      tokens="$tokens$toks"
-    else
-      bad gate-step-no-pass-line "$name"
-    fi
+    # The pass line must be the step's LAST non-empty line (A-02/O2, EV-03; review WR-02). This is
+    # the only place the rule can cover all 38 steps: run-controls.sh's copy runs once per distinct
+    # CHECK, so the five steps no control names would otherwise keep only the weaker
+    # 'a pass line exists somewhere'. The rule itself lives in tools/check/pass-line.sh so the
+    # runner-selftest st-gate-pass-line case can make it fail for its intended reason. Both shapes
+    # report gate-step-no-pass-line, and the detail says which: gate.sh has no ids inventory of its
+    # own tokens, so a second token here would be a name nothing pins, and the shape is carried by
+    # the detail instead. The token is reused rather than renamed because the invariant is one
+    # invariant - a step that exits 0 must END with its verdict - and every earlier log reads this
+    # name.
+    pl_rc=0
+    sh "$CHECK_DIR/pass-line.sh" "$name" "$GATE_TMP/step.out.$name" || pl_rc=$?
+    case $pl_rc in
+      0)
+        passed=$((passed + 1))
+        toks=$(sed -n "s/^-- $name pass //p" "$GATE_TMP/step.out.$name" | tr '\n' ' ')
+        tokens="$tokens$toks"
+        ;;
+      2) bad gate-step-no-pass-line "$name (the pass line is not the last non-empty line)" ;;
+      *) bad gate-step-no-pass-line "$name" ;;
+    esac
   else
     bad gate-step-failed "$name"
   fi
