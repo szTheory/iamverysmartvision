@@ -5,16 +5,16 @@ milestone_name: Owner-Supplied Content and a Driveable Host (Phases 13 to 16)</s
 current_phase: 13
 current_phase_name: Rights Ledger and Enforced Claim Ceiling
 status: executing
-stopped_at: Completed 13-01-PLAN.md
-last_updated: "2026-11-25T21:48:54.343Z"
+stopped_at: Completed 13-02-PLAN.md
+last_updated: "2026-11-25T21:55:55.780Z"
 last_activity: 2026-11-25
 last_activity_desc: Phase 13 execution started
-state_head: 9362fda513b4cb44cdda81bef054bbd6aad1f431
+state_head: bfa009ca034dd54036fc0993cc2a2ce4626ace46
 progress:
   total_phases: 4
   completed_phases: 8
   total_plans: 5
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-26)
 ## Current Position
 
 Phase: 13 (Rights Ledger and Enforced Claim Ceiling) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-11-25 — Phase 13 execution started
 
@@ -239,6 +239,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | Phase 11 P4 | 1h 02m | 2 tasks | 4 files |
 | Phase 11 P5 | 55m | 3 tasks | 20 files |
 | Phase 13 P01 | 34min | 1 tasks | 25 files |
+| Phase 13 P02 | 20min | 1 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -552,6 +553,9 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 11]: the log is deliberately absent from the three content-user refusal blocks (D15) and a static assertion keeps it so; the no-log witness of the stripped demo copy ends guest-fail, not pass
 - [Phase 13]: The rights ledger is judged as a second limb of the manifests step (rights_check() before the single gate_finish), never as a new step: steps stays 38 and the ledger row resolves through data/expected/controls/rights.ids.
 - [Phase 13]: A ledger row's id is collected before the shape verdict, so a row whose disposition is missing is refused once by name and never also produces a spurious rights-id-missing.
+- [Phase 13]: Rights ledger: every new RTS-01 row is refused or owner-local-only with source null, so libretro-abi stays the only cleared row and rights-cleared=1 is the count that catches a row added to make the ledger look answered.
+- [Phase 13]: Rights ledger: core-info-strings carries an empty tokens list as a recorded answer, because the field names it would refuse are governed by the cleared libretro-abi row and a non-empty list would make one row refuse what another clears.
+- [Phase 13]: Rights ledger: cfg-container is enforced on the hyphenated noun, not the file extension, because under the character-bounded rule a leading-dot token can only match at a boundary; the extension refusal stays in the binary-extension list and the ignore file.
 
 ### Pending Todos
 
@@ -630,8 +634,8 @@ The row itself is left as recorded and this note sits under it.
 
 ## Session Continuity
 
-Last session: 2026-11-25T21:48:54.291Z
-Stopped at: Completed 13-01-PLAN.md
+Last session: 2026-11-25T21:55:55.730Z
+Stopped at: Completed 13-02-PLAN.md
 Resume file: None
 
 ## Recorded Constraints for the Next Milestone

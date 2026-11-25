@@ -195,13 +195,13 @@ mechanical rather than quoted.
   3. The claims step refuses an `established` claim that is not a `source-expectation` claim resting on a `tier1-primary-doc` dependency, and a legal `established` claim still passes; both are shown able to fail.
   4. Each of the ten D-09-06 mechanisms has an `important-gates.ids` `mutant` row over its existing selftest, the registry baseline is re-derived in the same commit, all ten toy registries gain exactly one line each with zero deletions, and `faults` stays 238.
   5. The gate ends `steps=38/38` with a predicted and then measured token delta, and one hosted row is recorded after the content lands with the last-five `cpu_s` median recomputed against the 21 cpu-s allowance.
-**Plans**: 1/5 plans executed
+**Plans**: 2/5 plans executed
 Plans:
 **Wave 1**
 - [x] 13-01-PLAN.md — the rights-ledger limb end to end: the checker, the inventory, one live row and the `rights-ledger` control (RTS-01)
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 13-02-PLAN.md — the nine remaining RTS-01 rows and their operator rows (RTS-01)
+- [x] 13-02-PLAN.md — the nine remaining RTS-01 rows and their operator rows (RTS-01)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 13-03-PLAN.md — the naming limb with its `(token, path)` pins, and the enforced claim ceiling (RTS-02, EV-06)
