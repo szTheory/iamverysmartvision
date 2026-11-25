@@ -64,6 +64,80 @@ evidence apparatus around it.
 
 ---
 
+## Milestone: v0.2.0 — Registered Evidence, Reachable Runs, Replayable Input
+
+**Shipped:** 2026-11-25
+**Phases:** 4 resolved (9, 10, 11 delivered; 12 dropped at its entry gate) | **Plans:** 20
+**Release:** `v0.2.0` pre-release on the artifact commit `8f017e7`, published 2026-11-26 after
+the housekeeping pass cleared P5.
+
+### What Was Built
+
+- **The gate's cost level settled by measurement.** Lever (3) and trims (a), (c), (d) landed in
+  cost-only commits, a hosted row followed them and their ancestry was proved, and trim (b) was
+  declined with its measurement. The preflight partition takes local time-to-first-signal from
+  79 s to 31 s with byte-identical normalised output.
+- **The invisible evidence gap closed.** 17 requirements whose named faults already ran were
+  registered (306 to 337 rows, 90 to 110 gates) against mechanisms that already existed, with the
+  must-be-covered set derived from the requirement records and a two-directional exclusion ledger.
+- **A person can obtain and run it.** `docs/running.md` names three measured commands;
+  `tools/release-rehearse.sh --source-route` takes the released archive to 124 of 124 golden lines
+  in a clean extraction.
+- **Colour kept out of the core and out of every claim.** `docs/presentation.md` freezes six
+  clauses; the refusal that enforces the load-bearing one already existed.
+- **What a human owes became a ledger.** Five `evidence: none` rows, and a claim can no longer cite
+  a handoff artifact.
+- **A run is recordable and replayable.** IVSL v1 is input-only by construction; replay reproduces
+  the nine digest lines and the applied-event chain with the vacuity closed three ways.
+- **Phase 12 was dropped with its reason written before any third-party file was read.**
+
+### What Worked
+
+- **Oracle before code, again.** `docs/formats/ivsl-v1.md` came before the tracer, and its grammar
+  made "no content digest" a property of the bytes rather than a promise.
+- **Priced levers.** Measuring before changing kept the gate at 38 steps and spent 4.5 of the 21
+  hosted cpu-s the milestone opened with.
+- **Derived inventories.** The must-be-covered set and the preflight partition are computed, so a
+  deleted line fails instead of silently shrinking coverage.
+- **The droppable phase.** Phase 12 absorbed a rights refusal and a cost reading at its own entry
+  gate instead of at the close.
+
+### What Was Inefficient
+
+- **Three executors stopped at a 1800 s dispatch limit** and their plans were closed by the
+  orchestrator, including the Phase 9 cost measurement that was never taken.
+- **Four review rounds found 3 blockers and 13 warnings in work already `passed`**, two in a phase's
+  central deliverable.
+- **The cost metric was read as authoritative in one record and untrustworthy in another**, and the
+  decisive arithmetic was printed only at the close.
+- **A frozen-oracle rule designed for archives was applied to a live specification**, leaving a false
+  sentence in the document an operator reads until the close added a pointer.
+
+### Patterns Established
+
+- A **termination rule** for the CI-row regress (one records PR; its merge push is the next
+  milestone's opening row).
+- A **question-shaped rights ledger** as the answer to "what may be named", distinct from the
+  byte-set fixture manifest.
+- **`mutant` registry rows over existing selftests** instead of new faults when a must-fail mechanism
+  already has a stand-in.
+- **A build-only host surface** proved by a headless fake frontend, so the window never becomes the
+  evidence.
+
+### Key Lessons
+
+See `PLAN-LESSONS.md` 28 to 31: a review is load-bearing; a ratio whose denominator moves is not a
+signal; a self-feeding process needs a termination rule; a rule with no mechanism is quoted, not
+obeyed.
+
+### Cost Observations
+
+Hosted: 4.5 of 21 cpu-s spent. `cpu_s` at the close (359–360) equals the figure that settled Phase 9
+(339–360) while `build_s` fell from 42–49 to 33–34, so `r` rose and the work did not; `r` is retired
+as a decision input.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -71,6 +145,7 @@ evidence apparatus around it.
 | Milestone | Phases | Plans | Gate steps | Controls | Faults | Tests expected | Median `r` |
 |-----------|--------|-------|-----------|----------|--------|----------------|------------|
 | v0.1.0 | 8 | 130 | 38 | 380 | 235 | 4,958 | 7.86 at the close; 8.34 across the close-out window (stop line fired) |
+| v0.2.0 | 4 (3 delivered, 1 dropped) | 20 | 38 | 395 | 238 | 4,990 | `r` retired as a decision input; `cpu_s` 361 median at the close, `build_s` 34 |
 
 ### Recurring Failure Classes
 

@@ -17,31 +17,34 @@ A deterministic, observable machine core whose every compatibility claim is
 bound to an exactly named profile and independent evidence — never an
 unqualified "it runs Intellivision games" label.
 
-## Current Milestone: v0.2.0 Registered Evidence, Reachable Runs, Replayable Input
+## Current Milestone: v0.3.0 Owner-Supplied Content and a Driveable Host
 
-**Goal:** Make the shipped core reachable (a person can obtain and run it),
-replayable (a run reproduces from an input log), and durable (the gate's evidence
-cannot rot and its cost is measured), then open the content surface only where a
-rights review clears it.
+**Goal:** A person can load their own EXEC, GROM and a flat cartridge image into
+this core and drive it in real time through a build-only libretro-shaped host,
+while the project ships, describes and commits none of that content — and every
+capability is proved headlessly with original fixtures, with the one question
+only the owner can answer recorded as a handoff row.
 
 **Target features:**
-- Gate cost lever and trims, a hosted row that settles the cost level, and
-  registration of the 17 requirements whose faults already run but were never
-  registered (`EV-01`..`EV-04`).
-- A documented person build from the released source archive, a frozen
-  presentation/palette policy, and a recorded look/listen handoff
-  (`PKG-05`, `TOOL-04` narrowed, `EV-05`).
-- Input record and replay at machine-time boundaries, input-only and
-  rights-clean, with the vacuity guards v0.1.0's round-trip hook lacked
-  (`TOOL-01`).
-- Bank-mode profile data with typed refusal for unmapped modes, and `.bin`/`.cfg`
-  import outside the core behind a per-mode rights review
-  (`FMT-01` narrowed, `FMT-04`) — conditional, degradable, droppable.
+- A question-shaped rights ledger and a mechanical claim ceiling, plus the ten
+  must-fail mechanisms that have a guard but no registry row (`RTS-01`, `RTS-02`,
+  `EV-06`, `EV-07`).
+- A build-only tool that wraps a flat image at an address the operator states
+  into the project's cartridge container, with typed refusals each beside its
+  boundary positive, and a cartridge role in the owner-local route (`TOOL-07`,
+  `SCN-03`).
+- A build-only host surface outside the core and outside the installed package,
+  proved by a fake frontend that reproduces the runner's nine digest lines and
+  guarded three ways (`TOOL-08`).
+- One documented owner route from the source archive, the handoff rows, and a
+  release posture that states no host artifact and no content ships (`PKG-06`).
 
-**Scope record:** `.planning/MILESTONE-CONTEXT.md` (frozen upstream artifact).
-**Guardrails:** `.planning/ops/GUARDRAILS-v0.2.md`.
-**Milestone label v0.2.0; software version 0.2.0 if released** (a minor bump under
-D-30: a new format and new runner options, no API break).
+**Scope record:** `.planning/MILESTONE-CONTEXT.md` (frozen upstream artifact);
+the five scoping outputs are `.planning/research/v0.3.0-scoping-*.md`.
+**Guardrails:** `.planning/ops/GUARDRAILS-v0.3.md`.
+**Milestone label v0.3.0; software version 0.3.0 if released** (a minor bump under
+D-30: a new tool, a new build target and a new operator route; no API break).
+**Droppable:** Phase 15, pre-authorized, degrading to a content-only v0.3.0.
 
 ## Requirements
 
@@ -87,35 +90,58 @@ at kickoff.
   ruleset applied, and `v0.1.0` published as a pre-release of that exact commit
   after checks P1 to P8 held. Claims provisional, nothing measured.
 
+**v0.2.0 (shipped 2026-11-25, release `v0.2.0` on the artifact commit `8f017e7`).**
+Eight requirements Complete on documented terms and two Deferred, recorded in
+`.planning/milestones/v0.2.0-REQUIREMENTS.md`; 20 plans over Phases 9 to 11;
+Phase 12 dropped at a written entry gate.
+
+- Registered evidence and gate cost (`EV-01`..`EV-04`, Phase 9): complete. Lever
+  (3) and trims (a), (c), (d) landed cost-only, a hosted row followed them, and
+  the registry grew to 337 rows naming 110 gates without a new fault or test id.
+- Handoff ledger (`EV-05`, Phase 10): complete. Five rows, every one
+  `evidence: none`, and a claim may not cite one.
+- Reachable runs and presentation policy (`PKG-05`, `TOOL-04` narrowed, Phase
+  10): complete. `docs/running.md` is measured, the release rehearsal takes the
+  source archive to 124 of 124 golden lines, and `docs/presentation.md` freezes
+  six clauses.
+- Input record and replay (`TOOL-01`, Phase 11): complete. IVSL v1, fifteen new
+  ids, two named faults, and the vacuity closed three ways.
+- Bank modes and `.bin`/`.cfg` import (`FMT-01`, `FMT-04`, Phase 12): **Deferred**
+  at the entry gate — the only known `.cfg` description is a GPL implementation
+  this project's research rules exclude. v0.3.0 narrows the question with
+  `TOOL-07` rather than answering it.
+- Every claim stays `provisional` except `CL-0002` (source-expectation, tier 1
+  primary doc); D10 and D11 remain unperformed.
+
 ### Active
 
 All Active items are hypotheses until delivered and verified. Detailed,
-ID-tagged requirements live in `.planning/REQUIREMENTS.md`; the v0.1.0 set is
-archived in `.planning/milestones/v0.1.0-REQUIREMENTS.md`.
+ID-tagged requirements live in `.planning/REQUIREMENTS.md`; the v0.1.0 and
+v0.2.0 sets are archived under `.planning/milestones/`.
 
-- [ ] The gate's cost rule is discharged by measurement: lever (3) and trims
-      (a), (c), (d) land in cost-only commits, trim (b) is declined by
-      measurement, and a hosted row recorded after them settles the level
-      (`EV-01`).
-- [ ] The 17 requirements whose named faults already run (FND-01..07,
-      CPU-01..05, MEM-01..05) are registered with cannot-pass-vacuously
-      mechanisms, without adding a fault or a test id (`EV-02`).
-- [ ] Every gate-hardening item has a control that fails for its intended
-      reason, and a machine check refuses a Complete requirement with no
-      registry line (`EV-03`, `EV-04`).
-- [ ] A handoff ledger records every human-only item with `evidence: none`, and
-      no claim may cite one (`EV-05`).
-- [ ] A person can obtain and run the emulator from the released source archive
-      using documented commands only, proved by the release rehearsal (`PKG-05`).
-- [ ] A frozen presentation and palette policy keeps colour out of the core and
-      out of every claim, enforced by a check (`TOOL-04`, narrowed).
-- [ ] Input record and replay at machine-time boundaries: an input-only log whose
-      replay reproduces the recorded run's digest chain and applied-event chain
-      (`TOOL-01`).
-- [ ] Bank-mode model in profile data with a typed refusal for every unmapped
-      mode and one generated original fixture per mode (`FMT-01`, narrowed).
-- [ ] `.bin`/`.cfg` import outside the core, rights-gated per mode, degrading to
-      `FMT-01` only (`FMT-04`).
+- [ ] A rights ledger records one row per third-party-content question the
+      milestone touches, with a disposition, a resolvable source when cleared,
+      and a naming rule that a refused spelling cannot escape (`RTS-01`,
+      `RTS-02`).
+- [ ] The claims step refuses an `established` claim that is not a
+      `source-expectation` claim resting on a `tier1-primary-doc` dependency
+      (`EV-06`, D-32, D-50).
+- [ ] The ten must-fail mechanisms that have a guard and a re-runnable stand-in
+      but no registry row are registered as `mutant` rows, with zero new faults
+      (`EV-07`).
+- [ ] A person can wrap a flat cartridge image of their own, at an address they
+      state, into the project's cartridge container with one build-only command,
+      and every malformed input is refused by a typed token beside a positive
+      case (`TOOL-07`).
+- [ ] The owner-local route accepts a cartridge image, with every derived-output
+      refusal extended and the pass path exercised on project-made files
+      (`SCN-03`).
+- [ ] The core can be driven in real time by a host that loads it as a shared
+      object outside the installed package, proved by an automated frontend that
+      reproduces the runner's nine digest lines (`TOOL-08`).
+- [ ] A tracked shared object is refused by name, the installed package stays
+      eleven files, and the release-decision line states that no host artifact
+      and no content ships (`PKG-06`).
 
 ### Out of Scope (for now — not permanent ceilings)
 
@@ -129,7 +155,17 @@ archived in `.planning/milestones/v0.1.0-REQUIREMENTS.md`.
   another emulator does not imply required support; each is a later roadmap
   decision.
 - Physical controller discovery, remapping, accessibility, windowing and audio
-  device output inside the core — host-layer responsibilities.
+  device output inside the core — host-layer responsibilities. **v0.3.0 note:** a
+  *build-only* host surface outside `core/` and outside the installed package is
+  in scope (`TOOL-08`, D-48); a shipped or installed host is not (D-49), and a
+  window is never the evidence.
+- Vendoring the libretro header, or claiming libretro compatibility (D-48). The
+  shim states only the subset it implements and is *libretro-shaped*.
+- Parsing or describing the `.cfg` container, or implementing bank switching
+  (D-16, D-47). A flat image at an operator-stated address is accepted; `.cfg`
+  is refused by name.
+- Committing, golden-ing or CI-creating a wrapped image or any third-party
+  content byte (D-47). The wrap output is derived material.
 - Unqualified compatibility labels or percentage claims — contradicts Core
   Value.
 - Trademark clearance, physical hardware testing, owner-local EXEC/GROM runs
@@ -245,6 +281,11 @@ These come from a researched fan-out recommendation that was auto-adopted. Each 
 | D15 | The replay log is an **input artifact**: ASCII, input events and ticks only, no field able to hold a content digest or path, a `content project\|user` line, not in `binary-ext.txt`, not gitignored (`.planning/MILESTONE-CONTEXT.md` §3; Delegated decision, decided 2026-11-24). Under D11 it is sufficient: an input log holds nothing the images produced, so it is not derived material, and a replay of an owner-image run still needs the images locally and produces no result, claim or tier in the repository | Reversal evidence: a consumer that needs content identity inside the format (then reuse the existing `expect-sha256` directive, not a new field), or a defect found only at the process boundary (then promote two or three in-process cases to the command line) |
 | D16 | The `.bin`/`.cfg` importer lives **outside the core**; its refusals are closed append-only tool tokens pinned in `data/expected/cfg-refusals.ids`, its output is operator-side and refused inside the work tree, and it is rights-gated **per mode** (`.planning/MILESTONE-CONTEXT.md` §3; Delegated decision, decided 2026-11-24). No new `IVS_E_*` reason, no core change, no `api-effects` retarget; a mode the review did not clear appears as `cfg-bank-mode-unmapped`, not as a default | Reversal evidence: a consumer that needs import inside the installed core (then D-cart is revisited first), or a primary permissively described source that makes the description provably clean (then the importer can be un-gated per mode) |
 | EV-scope | The milestone adds **zero new gate steps**: `ls tools/check/steps/*.sh \| wc -l` stays 38 and every new capability lands as ids inside an existing suite (`.planning/MILESTONE-CONTEXT.md` §4; Delegated decision, decided 2026-11-24). The stop rule is a policy stop, and a step is the expensive unit while an id is the cheap one | Reversal evidence: new ids exceed about 15 percent of an existing suite, a suite's measured per-id cost rises above the Phase 9 unit-cost table, or a defect is found only at the seam between two capabilities' cases; then a step is justified — after a hosted row, never before |
+| D-46 | **The rights ledger is a second, question-shaped ledger** (v0.3.0, Delegated decision 2026-11-26): `data/rights/<slug>.json`, one file per item, `disposition` in {`cleared`, `refused`, `owner-local-only`}, a `SRC-` id or null, a "what was taken" cell and the spellings a refused item must never appear as. Enforced as ids inside `files`/`manifests`; zero new steps. The naming limb is token+scope with a `(token, path)` pinned baseline, never a global grep, because `cfg` and `ivsc` already sit in `binary-ext.txt` and `.gitignore` as refusal surfaces and removing them would delete a refusal | Reversal evidence: a question whose answer is a byte set becomes a fixture manifest instead |
+| D-47 | **The flat wrap states bytes, never a format** (v0.3.0, Delegated decision 2026-11-26): `tools/flatwrap <flat> <base> <out> --word-order hi-first\|lo-first` takes a byte length, a word order and an address the operator states; nothing is auto-detected and nothing is described from another implementation. `.cfg` is refused by name. The output is derived material of rights-bearing content: never committed (`*.ivsc` is already ignored and refused), never a golden, fixture, CI-created or claim artifact, and no digest of it but on stdout | Reversal evidence: an owner shows a flat image neither word order expresses |
+| D-48 | **The host is build-only with a project-authored ABI subset** (v0.3.0, Delegated decision 2026-11-26): no libretro header is vendored — the shim needs about six `retro_*` entry points, so `host/` states only the subset it implements and says *libretro-shaped*, never compatible. If an exact header is ever required, its licence text is read first and recorded as `licence_evidence {url, text_sha256, accessed}`, and the manifest's effective-`yes` rule governs it | Reversal evidence: a real frontend loads the shim, or an exact header is needed |
+| D-49 | **The package stays static and eleven files** (v0.3.0, Delegated decision 2026-11-26): the build-only shared target is the only place `IVS_API` is defined; installed headers keep it empty; `binary-ext.txt` gains `so`, `dylib`, `dll`, `bundle` so a tracked shared library is refused by name; `pkg-install-files.ids` stays 11 with a selftest that the shared object is absent. The release-decision line reads: the release ships the static package and the source archive; no shared object, no host shim, no content | Reversal evidence: a decision to ship a shared core, which moves `pkg-install-files.ids` and `docs/packaging.md` in the same commit |
+| D-50 | **The claim ceiling is enforced mechanically** (v0.3.0, Delegated decision 2026-11-26): an `established` claim must be `source-expectation` resting on a `tier1-primary-doc` dependency; no other tier may stand `established`. `CL-0002` is the only claim this permits, and it is checked rather than assumed. This is the mechanical half of D-32 and it closes audit gap G-09 | Reversal evidence: D10 or D11 performed, after which behavioural claims may legitimately rise above `provisional` |
 | D-32 | **The provisional ceiling is a behavioural-claim ceiling, and it is stated as one** (v0.3.0 housekeeping 2026-11-26, closing audit gap G-09's ambiguity; Delegated decision, owner authorization 2026-11-09). GUARDRAILS-v0.2 §2.8 said "a claim never rises above `provisional` while D10 and D11 are unperformed", and `tools/check/kinds/claim.cmake` does not enforce it, so every phase quoted `claims=28 provisional=27` as if it discharged the rule. The rule was written one class too wide: D10 (hardware measurement) and D11 (owner-local EXEC/GROM runs) gate claims about **what the machine does**. `CL-0002` is a `source-expectation` claim that a printed figure names the STIC part and crystal, its three fields carry `tier1-primary-doc` tags, and no run, hardware measurement or owner image is involved — so its `established` standing is correct and is **not** an exemption from the ceiling. The ceiling applies unchanged to every `original-diagnostic`, `deterministic-repeatability`, `installed-host-behavior`, `playable-guest-progress`, `public-vector` and `independent-implementation-comparison` claim, all of which rest on runs. The mechanical check that makes this distinction enforceable — an `established` claim must be `source-expectation` resting on a `tier1-primary-doc` dependency, and no other tier may stand `established` — is the first row of the next gate-hardening pass, priced as gate content, not smuggled in as a housekeeping edit | Reversal evidence: an owner-approved hardware measurement (D10) or a performed D11 run, after which behavioural claims may legitimately rise above `provisional`; or a `source-expectation` claim shown to rest on a page the project never read |
 
 D4, D6 and D12 were decided by the fan-out protocol on 2026-11-11; D7 on 2026-11-12 (Phase 5), D8 on 2026-11-12 (Phase 6) (Delegated decision, owner authorization 2026-11-09).

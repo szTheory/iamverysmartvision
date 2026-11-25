@@ -1,401 +1,236 @@
-# Milestone v0.2.0 — context and upstream scope
+# Milestone v0.3.0 — context and upstream scope
 
-**Status:** frozen upstream artifact, 2026-11-24. **This file always describes
-the CURRENT milestone.** The next milestone's ritual replaces it wholesale (a
-prior copy is archived as `.planning/milestones/<version>-CONTEXT.md` at that
+**Status:** frozen upstream artifact, 2026-11-26. **This file always describes
+the CURRENT milestone.** The next milestone's ritual replaces it wholesale (this
+copy is archived as `.planning/milestones/<version>-CONTEXT.md` at that
 milestone's close), so `gsd-new-milestone` must never read it as a proposal for
-the milestone after this one. Written before any v0.2.0
-phase plan exists. Produced by the milestone ritual
-(`.planning/ops/MILESTONE-RITUAL.md`): a four-lens milestone-choice fan-out
-followed by a five-point upstream scoping fan-out, synthesized and auto-selected
-under the owner's delegation (`.planning/AUTONOMY.md` sections 1 and 2).
+the milestone after this one. Written before any v0.3.0 phase plan exists.
+Produced by the milestone ritual (`.planning/ops/MILESTONE-RITUAL.md`): a
+four-lens milestone-choice fan-out followed by a five-point upstream scoping
+fan-out, synthesized and auto-selected under the owner's delegation
+(`.planning/AUTONOMY.md` sections 1 and 2). The five scoping outputs are frozen
+alongside this file in `.planning/research/v0.3.0-scoping-*.md`.
 
-**Name:** Registered Evidence, Reachable Runs, Replayable Input
-**GSD label:** v0.2.0. **Software version:** 0.2.0 if released (a minor bump is
-correct under D-30: a new format and new runner options; no API break).
-**Phases:** 9 to 12. **Branch slugs:** `gsd/phase-9-…` through `gsd/phase-12-…`.
-**Plans:** about 24 (18 without Phase 12), against 21 in Phase 8 and 16 average
-in v0.1.0.
+**Name:** Owner-Supplied Content and a Driveable Host
+**GSD label:** v0.3.0. **Software version:** 0.3.0 if released (a minor bump
+under D-30: a new tool, a new host target and a new operator route; no API break).
+**Phases:** 13 to 16. **Branch slugs:** `gsd/phase-13-…` through
+`gsd/phase-16-…`. **Plans:** about 18 to 22.
 
 ---
 
 ## 1. Why this milestone, and why in this order
 
-v0.1.0 shipped a complete, well-evidenced machine core. Three things are now the
-binding constraints on the project's own stated intent ("high-quality, accurate
-and **useful**"):
+v0.2.0 made the core reachable by source build, replayable and durable. It left
+one question the project has never been able to answer: **can a person put real
+content into this machine and drive it?** Today the answer is no on three
+independent counts, and every one of them is a recorded fact:
 
-1. **Nothing a person can obtain is runnable.** `docs/packaging.md` states it
-   plainly: neither `ivs-run`, `ivs_pack` nor `ivs_asm` is installed or shipped,
-   so nothing downloadable runs. [OBS]
-2. **Evidence cannot travel.** Every observation lives inside this repository,
-   produced by one author lineage; there is no artifact a second party can hand
-   back that the gate can re-run. 27 of 28 claims are `provisional`. [OBS]
-3. **The gate has a cost rule with no measured floor.** The cost rule fired on a
-   stale reading (corrected: median 7.826, not 8.34), and the last non-owner
-   lever is still queued. Every future phase that adds a check inherits that
-   uncertainty. [OBS]
+1. **The core reads only the project's own cartridge container.** `IVSC v1` is
+   produced by `ivs_pack` from tracked listings; there is no route from a flat
+   cartridge image to something the machine can load, and `.bin`/`.cfg` import
+   was deferred at Phase 12's entry gate. [OBS]
+2. **There is no host.** `runner/` is scenario-driven and headless. The
+   framebuffer is a 159x96 palette-index plane delivered one slot per frame
+   event, the audio is a per-channel level stream every 16 master ticks, and no
+   artifact in the tree presents either. TOOL-04's frontend limb is deferred. [OBS]
+3. **The content itself is owner-held.** The EXEC and GROM images are the
+   owner's files (D11), never committed, and `refs/` holds research PDFs only.
+   No amount of project work can supply them. [OBS]
 
-The four-lens fan-out converged on **replay (TOOL-01)** as the highest-value
-candidate by three of four lenses (rights-clean by construction, cheapest, reuses
-the scenario grammar, the applied-event chain and the round-trip hook), with
-**reachability (TOOL-04, cheap half)** as the largest *capability* gap and
-**FMT-01** as the only route to external validity but the largest rights risk.
-The scoping pass then reordered reachability ahead of replay, because replay's
-consumers all reach the runner through the source tree today and because the
-reachability phase carries the milestone's only owner-latency item.
+The owner's stated want, 2026-11-26, verbatim: *"can u play games with it in
+retroarch yet? i want to try it out if possible... with real games like a few
+different ones kind of sanity/smoke test it"*. That is the strongest product
+signal the project has received, and all four fan-out lenses converged on the
+same answer: **content path first, host surface second, and the owner's own
+files last, as a handoff row rather than a criterion.** The four lenses differed
+on ordering and on how much gate work goes first; the synthesis below takes the
+rights lens's ledger and the evidence lens's enforced ceiling into Phase 13, the
+architecture lens's "the content path is the binding constraint" into Phase 14,
+and the product and rights lenses' build-only host into Phase 15.
 
-**Order: 9 (registered evidence and gate cost) → 10 (reachable runs) → 11 (input
-record and replay) → 12 (bank modes and external import, conditional).**
+**Order: 13 (rights ledger and enforced ceiling) → 14 (flat-image wrap and the
+cartridge role) → 15 (build-only host and the fake-frontend harness) → 16
+(owner route, one claim, handoff rows, release posture).**
 
 | Phase | Why here, not elsewhere |
 |---|---|
-| 9 | The gate may not grow before it. Its first wave is cost-only so the hosted row is attributable to the cost changes alone. |
-| 10 | Cheapest phase, and the only one with an owner-latency item (look/listen). Front-load the one thing a machine cannot do. |
-| 11 | Replay is more valuable once a person can obtain the runner; landing it first would ship a feature into an unobtainable artifact. |
-| 12 | Last and droppable, so a cost spike is absorbed by dropping it rather than discovered at the close. Rights-gated per mode. |
+| 13 | Every later phase either names a third-party-content item or mints a claim. Until the ledger and D-32's mechanical check exist, a refused item can be named and a claim can rise with the gate still green. It is the entry ticket. |
+| 14 | The content path is the binding constraint: a host built before it has nothing to load, and RetroArch would refuse every real image. Rights-clean by construction — the base address is stated by the operator, nothing parses a third-party format. |
+| 15 | A host is only worth building once there is something to load. It is also the only phase that creates a new build target, so it is the least predictable in cost and the droppable one. |
+| 16 | Closes the loop: the owner route end to end, exactly one claim, the handoff rows, and the release posture. |
 
-Rejected alternatives, with the reason: a three-phase milestone without Phase 12
-(pre-authorized fallback, taken if the rights review fails or the cost row is
-tight); Phase 9 folded into Phase 11 as a wave (loses the milestone-level
-allowance and produces a hollow verification record in the phase that exists to
-prevent them); reachability merged with replay (two failure classes in one
-VERIFICATION record); a windowed frontend (first runtime dependency, permanent
-CI blind spot, and a palette that risks becoming a de-facto STIC-colour claim).
-
----
-
-## 2. Phase shape and exit criteria
-
-### Phase 9 — Registered Evidence and Gate Cost
-
-**Goal:** bank the cost levers, take a hosted row that settles the level, then
-convert the 0.47 `r` of headroom into a priced allowance and close the largest
-evidence hole in the project.
-
-**Wave A1 (cost only, one push, no evidence content):**
-1. Recompute the window by arithmetic from `.planning/ci-runs.tsv` and open the
-   cost entry with the corrected reading. (Already done at the milestone
-   opening — the entry reads `phaseA1-start`.)
-2. **Lever (3):** fold `demo-lamp-tone-swap` and `demo-lamp-tone-shift` into
-   static repeat variants of one mutant — column 5 `run` → `release-only` in
-   `data/expected/runner-scenarios.ids`, the skip vocabulary and a
-   derivation-equality judgement in `tests/runner-process-tap.sh` (the scenario's
-   `assert` block must equal, in order, the block between the
-   `asserts-begin`/`asserts-end` markers of
-   `docs/video/demo-lamp-tone-1-derivation.md`; its `content`/`profile`/`ivss`/`id`
-   lines equal the pass scenario's; its `input` lines are the pass inputs
-   transformed as documented), the same mode switch on the scenario pair, and
-   **one** suite self-control (`runner-process.judge.variant-static`) in the same
-   commit. Measured ceiling: 0.12 local cpu-s.
-3. **Trims (a), (c), (d)** with their preserving conditions, and **(b) declined
-   by measurement**. See `.planning/CI-EFFICIENCY.md`, "next-milestone opening".
-4. Measure, both presets, three alternated runs; state the before/after.
-5. Push. The orchestrator records `R1` and writes exactly one line:
-   `phaseA1: discharged-below-budget` (≤7.8), `discharged-within-line` (7.8–8.3)
-   or `lever-required` (>8.3, possible only at the second row after `R1`).
-
-**Wave A2 (content-free registration, after the row):**
-6. **EV-02 W1 registration:** 24 lines in `data/expected/important-gates.ids`
-   (306→330) covering 17 requirements (FND-01..07, CPU-01..05, MEM-01..05), each
-   naming a mechanism that already exists in an inventory that already runs.
-   Extend the accepted-requirement set in
-   `tools/check/steps/important-gates.sh` and append one toy line per new REQ to
-   **all ten** whole-file toy registries, in the same commit (GUARDRAILS R2).
-   No new fault, no new test id. Predict the count delta in the plan.
-7. **EV-03 gate hardening:** `SRC-` whole-token match, zero-document failures,
-   per-step pass lines, manifest output anchoring, memmap generator controls —
-   each with one control that fails for its intended reason.
-8. **EV-04 machine check:** a requirement marked Complete with no registry line
-   is refused, and a toy registry that drifts from the good tree is refused; both
-   shown able to fail. This is the mechanism that makes EV-02 unrepeatable.
-9. **Cheap consistency checks before the long suites:** derive the preflight
-   partition (a step is preflight iff its script references neither the gate
-   results directory nor `build/`), buffer each step's tokens and `-- FAIL` lines,
-   concatenate in sorted name order so output stays byte-identical. Local
-   time-to-first-signal drops from ~44 s to ~21–24 s; hosted cost is unchanged by
-   construction.
-10. **Bookkeeping and settings:** correct the stale `D-31` `create_tag` text and
-    `RELEASE-OPS.md` (says `create_tag: true`, "ten files"); the stale
-    composite-version comment; the two bench golden commands into
-    `docs/runner.md`; disposition the seven draft `VALIDATION.md` files by citing
-    `08-ACCEPTED-DEBT.md` §1 in a live record (never a rewrite of an archive);
-    apply the branch and tag rulesets or record "not applied" with a reason.
-
-**Exit:** `sh`, `dash` and the container gate green; the lever and trims commits
-are ancestors of the recorded row; the W1 commit's `steps/controls/faults/
-tests-*` match its predicted delta exactly; the allowance and the unit-cost table
-are recorded; a phase-boundary checkpoint line exists.
-
-### Phase 10 — Reachable Runs and Presentation Policy
-
-**Goal:** a person obtains and runs the emulator from the source archive with
-documented commands, the presentation policy is frozen, and the look/listen
-handoff is recorded rather than assumed.
-
-1. **`docs/running.md`** — the three commands (`cmake --preset release`,
-   `cmake --build --preset release`, then `ivs-run` on
-   `demo-lamp-tone-pass`), the exact expected stdout tail, where the `.ppm` and
-   `.wav` land, and the carried-over sentence that nothing downloadable is
-   runnable. No helper script (it would need either zero logic or a new id).
-2. **`docs/presentation.md`** — the six-clause policy: the core publishes palette
-   indices only; exactly one operator preview palette exists, labelled "not STIC
-   colour data", never installed, never in a golden, digest, assert or claim; the
-   project makes no colour claim for any profile; a host chooses palette, scaling
-   and aspect; "index frame" is the published plane and "picture/render/looks
-   like" are never evidence; a real colour table would be a profile field with a
-   source tier. Enforced by one deny-list check that colour symbols are not
-   defined in `core/src`.
-3. **`docs/packaging.md` and README** — one paragraph pointing at
-   `docs/running.md`; the "nothing downloadable is runnable" sentence kept
-   identical so release text and README cannot disagree.
-4. **The release rehearsal proves the documented route:** extend
-   `tools/release-rehearse.sh` to build from the **source archive** in a clean
-   directory and run `demo-lamp-tone-pass` to its golden. This is release-time,
-   not CI — the gate already pays for a cold build, and a second one in CI would
-   be duplicate cost.
-5. **`data/expected/handoffs.ids`** seeded with H7-1, H7-2, H8-3, D10, D11, all
-   `evidence: none`; H7-1/H7-2 get a handoff packet (exact commands, the
-   deterministic identities, the report digest lines) and the status
-   `handed-off` or `not-performed`. Two guards: the `claims` step refuses a claim
-   citing a handoff artifact or a `build/`, `.wav`, `.ppm` or bench `.tsv` path;
-   the `text` step's claim-word list gains the look/listen words.
-
-**Exit:** the documented commands run end to end from the source archive to the
-golden, proved by the rehearsal; the policy document is frozen and cited by the
-deny-list check; the handoff ledger exists with every id dispositioned; zero new
-gate steps; `claims=` unchanged.
-
-**Not in this phase:** installing `bin/ivs-run` or any image (see §3, D14 — it is
-structurally blocked, not merely expensive), a windowed frontend, any new
-dependency, a second example cartridge.
-
-### Phase 11 — Input Record and Replay
-
-**Goal:** a rights-clean input-only log whose replay reproduces the recorded
-run's digest chain and applied-event chain, with the vacuity guards that
-v0.1.0's round-trip hook lacked.
-
-1. **`docs/formats/ivsl-v1.md` first** (ancestry-proved): version, scenario id,
-   profile id, a `content project|user` line, and `at_tick <n> c0=<HEX>
-   c1=<HEX>` records. **No field can hold a content digest, image name, length,
-   frame byte, audio byte or path** — absent from the grammar, and an unknown
-   directive is refused. Identity binding, when an operator wants it, reuses the
-   existing `expect-sha256` directive in their own untracked scenario.
-2. `--record-input` (operator side, exclusive create) and `--replay-input`.
-3. **Ids inside existing suites — zero new gate steps.** `runner.record.
-   replay-equals-straight` (in process), `runner.record.format-roundtrip`
-   (write→parse→write byte-identical), the refusal family (unknown directive,
-   non-monotonic tick, tick beyond bound, event cap, undefined controller bit,
-   wrong version, trailing garbage), and **exactly one** process case for the
-   command line (argument parsing, `--content-dir`, exit codes).
-4. **Must-fail:** `IVS_FAULT_RECORD_DROPS_LAST_EVENT` and
-   `IVS_FAULT_REPLAY_APPLIES_LATE` (one tick) on digest domain 18, registered
-   under TOOL-01.
-5. **Liveness guards:** the equality case must also assert ≥1 event,
-   `input.consumed == input.events`, the `at_tick` list equals the recorded one,
-   and all nine domains observed. **Judge self-controls:** `replay-differs` (one
-   digest nibble changed → rejected) and `replay-inert` (a fake pair with zero
-   applied events → rejected *by the guard*, not the equality).
-6. **Rights check:** `runner.record.no-content-digest` greps the produced log for
-   a ≥32-hex run and requires zero hits.
-
-**Exit:** replay reproduces the straight run's digests and chains with the guards
-proved live; every malformed log refused with a typed token and no state change;
-`ivsl` is text, not in `binary-ext.txt`, not gitignored; tier ceiling
-`deterministic-repeatability`, provisional.
-
-### Phase 12 — Bank Modes and External Import (conditional)
-
-**Goal:** bank-mode model in profile data with a typed refusal for every unmapped
-mode, and — only if the rights review clears it per mode — `.bin`/`.cfg` import
-outside the core.
-
-**Entry gate:** a rights-review decision line written **before** any third-party
-file is read. `entered`, or `degraded to FMT-01 only`.
-
-1. **Rights review first.** A per-fact table: `fact | source id | rights status |
-   what was taken (fact / paraphrase / short quote / nothing)`. A description
-   written in the project's own words (`docs/formats/cfg-import-v1.md`), with no
-   code, table or constant list copied from any emulator. Sources enter
-   `data/sources.json` with `rights: unknown` before any fact is written down.
-2. **Bank-mode model (always deliverable):** profile fields for the address-space
-   split, the selected bank and per-bank spans; **explicit typed refusal for
-   every mode the profile does not name** — never a silent default.
-3. **Fixtures are generated, never committed as binaries:** tracked `.asm` and
-   `.cfgsrc` sources plus a manifest, built into `build/<preset>/images/` by a
-   target beside `ivs_images`. A tracked file with an extension in
-   `binary-ext.txt` can never ship (the `files` and `release-assets` rules
-   together), so nothing changes in `binary-ext.txt` or `.gitignore`.
-4. **Per-mode evidence:** a witness pair (the same address reads A before the
-   select write and B after), a **no-switch negative case** (a program that never
-   writes the select register still reads A), one named fault per mode, and a
-   positive case beside every refusal so "refuse everything" cannot pass.
-5. **Importer outside the core:** refusals are closed, append-only **tool tokens**
-   (`cfg-syntax`, `cfg-unknown-directive`, `cfg-missing-key`, `cfg-range`,
-   `cfg-duplicate-key`, `cfg-bank-mode-unmapped`, `cfg-bank-mode-unsupported`,
-   `cfg-bin-size`, `cfg-bin-overlap`, `cfg-bin-outside-window`,
-   `cfg-bin-not-found`, `cfg-bin-not-regular`, `import-out-inside-tree`,
-   `out-exists`, `cfg-digest-mismatch`) pinned in
-   `data/expected/cfg-refusals.ids`. No new `IVS_E_*` reason, no core change, no
-   `api-effects` retarget.
-
-**Degradation — Phase 12 ships FMT-01 only if any of these holds:** a written
-fact has no review row; the mapping is only expressible as a table copied from a
-GPL source; a mode can only be exercised by a third-party file; the importer
-would have to live inside the core; or no suite may be added because the cost row
-has not cleared. On degradation, record `FMT-01: partial (bank-mode model only),
-importer deferred: <condition>` — never `Complete`, and do not write the
-description.
-
-**Exit:** every accepted mode has a fixture, a witness pair, a no-switch case and
-a fault; every unaccepted mode is refused by name; no tracked binary; no claim
-above `provisional`; no "runs games" wording.
+Rejected alternatives, with the reason: **the debugger and inspection path
+(TOOL-02)** is the cheapest and most falsifiable capability on the mid horizon,
+but its only consumer is the project itself, and the roadmap's own rule is that
+a row with no named consumer is a wish; it moves to the next mid slot, after the
+host gives it a consumer. **Variant profiles (VAR-01..04)** need owner-supplied
+system images for the first three and have no evidence at all for PAL. **Content
+formats with persistence (FMT-02/FMT-03)** is larger than this milestone and
+still rights-gated. **A pure gate-hardening milestone** would retire record debt
+but mint nothing falsifiable, and the largest untested assumption — that a
+cartridge image can be driven by a real frontend — would still never have
+executed.
 
 ---
 
-## 3. Decisions taken by this milestone (delegated, with reversal evidence)
+## 2. The phase shape (frozen)
 
-Recorded in `PROJECT.md`'s Decision Register as `D14`–`D16`.
+Each phase's success criteria are written into `.planning/ROADMAP.md`; the
+mechanism that proves each one and whether it already exists is in
+`.planning/research/v0.3.0-scoping-4-verification.md`.
 
-| Id | Decision | Reversal evidence |
-|---|---|---|
-| **D14** | The runner is **not** installed in 0.2.x; the person route is the documented build from the source archive. Installing it is structurally blocked, not merely expensive: an installed runner has nothing to run (every cartridge is a build product of `ivs_pack`/`ivs_asm`, which are never shipped), and any release member with a binary extension is refused "whatever the list says". | A named consumer who wants a downloadable binary **and** an images story that survives the release-asset check — concretely, a runner-synthesised symbolic content name (like `zero-grom`) for the boot stub plus a project-authored cartridge the runner can make. That is a real design; it is the correct trigger to reopen, and it is not this milestone's. |
-| **D15** | The replay log is an **input artifact**: ASCII, input events and ticks only, no content-digest field, a `content project\|user` line, not in `binary-ext.txt`, not gitignored. Under D11 it is sufficient: an input log holds nothing the images produced, so it is not derived material. | A consumer that needs the log to bind content identity inside the format (then reuse `expect-sha256`, not a new field), or a defect found only at the process boundary (then promote two or three cases from in-process). |
-| **D16** | The `.bin`/`.cfg` importer lives **outside the core**; its refusals are tool tokens; its output is operator-side and refused inside the work tree; it is rights-gated per mode. | A consumer that needs import inside the installed core (then D-cart is revisited first), or a primary, permissively described source that makes the description provably clean (then the importer can be un-gated per mode). |
+| # | Phase | Exit in one line | Tier ceiling |
+|---|---|---|---|
+| 13 | Rights Ledger and Enforced Claim Ceiling | A question-shaped rights ledger with a check that refuses an unsourced `cleared` row and a refused spelling in code or operator pages; D-32's `established`-claim check; the ten D-09-06 mechanisms registered as `mutant` rows | none — adds no claim |
+| 14 | Flat-Image Wrap and the Cartridge Role | A build-only tool wraps a flat image at an operator-stated base into IVSC v1 with seven typed refusals each beside its boundary positive; the owner-local route gains a cartridge role with the derived-output refusals extended | none — adds no claim |
+| 15 | Build-Only Host and the Fake-Frontend Harness | A shared object outside `core/` and outside the install list, driven by a harness that `dlopen`s it and reproduces the runner's nine digest lines on a project cartridge, guarded three ways | `deterministic-repeatability`, provisional (one claim) |
+| 16 | Owner Route, Claim and Release Posture | One documented owner route from the source archive, handoff rows, and a release-decision line recomputed | none — the claim is minted in Phase 15 |
 
-Also decided here, and recorded in the phase records rather than as register rows:
-the milestone adds **zero new gate steps** (38 stays 38); every new capability
-lands as ids in an existing suite.
+**Depends on:** `13 → {14, 15}`; `{13, 14, 15} → 16`. Phases 14 and 15 are
+siblings: the harness is proved on a **project** cartridge, so 15 does not need
+14, which is what makes either droppable without re-cutting the other.
 
----
-
-## 4. Verification strategy (shift left, zero human UAT)
-
-**Automated, in CI (existing suites only):** everything in Phases 9, 11 and 12,
-and the policy and rehearsal checks in Phase 10. Every new check ships three
-things in one commit: a must-fail mechanism registered under its requirement, a
-liveness guard, and a committed scratch stand-in showing the *guard* fail.
-
-**Throwaway, not in CI:** the cost measurement (`/usr/bin/time -p`, three
-alternated runs), the ancestry proofs, the log-size probe that sizes the event
-cap, and the rights-review source search. Record the result, not the script.
-
-**Release-time, not CI:** the cold "person build from the source archive, then
-run to the golden" check. The gate already pays for a cold build and
-`release-assets` already checks archive membership; a second cold build in CI is
-duplicate cost.
-
-**Handed off, and only these:** H7-1/H7-2 (look at a frame, listen to a tone),
-D10 (physical hardware), D11 (owner-local real EXEC/GROM). Each is a row in
-`data/expected/handoffs.ids` with `evidence: none`; none is citable by a claim;
-none is a phase exit criterion a tool cannot meet; a later milestone cites the row
-id instead of re-asking, and opens a new id only if the artifact itself changed.
-
-**Tier ceilings, frozen before the work:** Phase 9 adds no claim. Phase 10 reaches
-at most `installed-host-behavior` for the documented route, and **no** tier for
-the handoff. Phase 11 reaches `deterministic-repeatability` (same core, so never
-an independent comparison). Phase 12 reaches `source-expectation` +
-`original-diagnostic` + `deterministic-repeatability`, and **cannot** reach
-`public-vector` or `independent-implementation-comparison` because by design no
-third-party file is read. Nothing reaches `measured-hardware` while D10 is open.
+**Droppable: Phase 15**, pre-authorized, degrading to a content-only v0.3.0
+(ledger, ceiling, wrap, cartridge role, owner route). It is droppable because it
+alone creates a new build target — D12's named reversal trigger — so its cost and
+CI shape are the least predictable. Dropping it leaves a new content capability;
+dropping 14 would not. The degradation is written in the close record: the goal
+is amended to "Owner-Supplied Content", no host route appears in
+`docs/owner-images.md`, and the libretro-header and core-info rights rows keep
+their verdicts and are cited, not re-argued.
 
 ---
 
-## 5. Risks and their counters
+## 3. Decisions frozen before any plan (D-46 to D-50)
+
+Full rows with reversal evidence are in `.planning/PROJECT.md`; the short form:
+
+- **D-46 — the rights ledger is a second, question-shaped ledger.**
+  `data/rights/<slug>.json`, one file per item, `disposition` in
+  {`cleared`, `refused`, `owner-local-only`}, a `SRC-` id or null, a "what was
+  taken" cell and the spellings a refused item must never appear as. Enforced as
+  ids inside `files`/`manifests`; zero new steps. The naming limb is
+  token+scope with a pinned baseline, never a global grep, because `cfg` and
+  `ivsc` already exist in the tree as *refusal surfaces*.
+- **D-47 — the wrap tool states bytes, never a format.** `tools/flatwrap
+  <flat> <base> <out> --word-order hi-first|lo-first`: a byte length, a word
+  order and an address the operator states. Nothing is auto-detected, nothing is
+  described from another implementation, and `.cfg` is refused by name. The
+  output is derived material of rights-bearing content: never committed, never a
+  golden, never a fixture, never created by CI, never a claim artifact.
+- **D-48 — the host is build-only, with a project-authored ABI subset.** No
+  libretro header is vendored: the shim needs about six `retro_*` entry points,
+  so `host/` states only the subset it implements and says *libretro-shaped*,
+  never compatible. Vendoring an exact header requires its licence text read
+  first and recorded as `licence_evidence`.
+- **D-49 — the package stays static and eleven files.** The build-only shared
+  target is the only place `IVS_API` is defined; installed headers keep it empty;
+  `binary-ext.txt` gains `so`, `dylib`, `dll`, `bundle` so a tracked shared
+  library is refused by name. The release-decision line reads: *the release ships
+  the static package and the source archive; no shared object, no host shim, no
+  content.*
+- **D-50 — D-32 is enforced mechanically.** An `established` claim must be
+  `source-expectation` resting on a `tier1-primary-doc` dependency; no other
+  tier may stand `established`. `CL-0002` is the only claim this permits, and it
+  is checked rather than assumed.
+
+---
+
+## 4. Verification strategy (frozen)
+
+The full matrix is `.planning/research/v0.3.0-scoping-4-verification.md`. The
+rule in one sentence: **every capability is an id inside an existing suite;
+every new equivalence gets a control whose stand-in fails it; a check enters CI
+only if it catches a recurring class.**
+
+- **Zero new gate steps.** 38 stays 38. Zero new faults, zero new goldens.
+  Twenty ids, eleven controls, four in-step selftests and ten registry rows.
+- **The window is never the evidence.** The host is proved by a fake frontend
+  that `dlopen`s it, drives a project cartridge and must reproduce the runner's
+  nine digest lines; a stub that prints the golden with no frame must be refused
+  `host-vacuous`, and a mutant with the input poll dropped must be refused
+  `host-digest-diff`.
+- **Every refusal sits beside its boundary positive**: odd↔even length,
+  `$0400`↔`$03FF`, 65,537↔65,536 words, base `$3FFF`↔`$4000`, crossing↔ending at
+  `$10000`, in-tree↔outside output, existing↔new.
+- **The owner route's PASS path is exercised with project-made files**:
+  zero-filled 8192/2048-byte images are shape-legal, so `owner-run.sh`'s pass
+  path runs end to end; a one-byte EXEC mutation proves the id can fail, and the
+  `exec:` label stays `-` so nothing reads as a real-EXEC result.
+- **Not in CI, and why:** any real frontend, anything needing `refs/` or an owner
+  image, `--source-route` (release-time), a shim sanitizer lane (no distinct
+  class; the core's ASan path covers it), per-id rebuilds, an `nm` dump, a shim
+  audio listen. These are throwaway probes, not recurring failure classes.
+- **Handoffs, never criteria:** D10 and D11 stay `not-performed`; three new
+  `handed-off` rows cover "a real frontend loads the shim", "an owner image's
+  picture and sound look right" and "the owner's flat image needs no word-order
+  guess". None is a phase exit criterion and no claim cites one.
+
+---
+
+## 5. Cost (frozen)
+
+The arithmetic is `.planning/research/v0.3.0-scoping-2-gate-cost.md`, recomputed
+from `.planning/ci-runs.tsv`: last-five medians `cpu_s` **361**, `build_s` **34**,
+`gate_s` **118**. `r` is retired as a decision input (v0.2.0 close, audit G-04).
+
+- **Allowance: 21 hosted cpu-s** (v0.2.0 spent about 4.5). This milestone prices
+  **about 5.2**: 13 → 2.0, 14 → 1.3, 15 → 1.5, 16 → 0.4.
+- **Units, measured:** in-process id 0.065, process-launch id 0.10, control 0.31,
+  in-step selftest 0.05, registry row 0.005, fault 0.44 hosted cpu-s.
+- **The checkpoint rule now that `r` is retired:** at each phase boundary and at
+  the close, recompute the last-five medians and the token line, charge the
+  phase's priced addition against 21, and record `discharged-within-allowance`,
+  `reprice` (the median moved more than the priced addition with an unchanged
+  token line: a runner event, no lever invented) or `lever-required`.
+  **`steps=38/38` is an invariant**: any commit where it is not stops the
+  milestone.
+- **The concurrency lever is taken**, once, in Phase 16's first commit, cost-only:
+  `c-tests` and `c-faults` overlapped (164 s → about 115 s wall, `cpu_s`
+  unchanged), with the summary token line byte-identical and each
+  `step.out.<name>` compared. It buys wall time and Actions minutes, not ratio:
+  no checkpoint, no allowance credit.
+- **What would blow the allowance:** registering the ten D-09-06 mechanisms as
+  *faults* instead of `mutant` rows (4.4 cpu-s, 82 % of the milestone's spend on
+  the step already 29 % of the gate), and a harness that rebuilds per id or
+  replays the six-image consumer per id.
+
+---
+
+## 6. Risks and their counters
 
 | Risk | Counter |
 |---|---|
-| Cost work grows into a gate redesign | Wave A1 may touch only the seven named files; a hard scope sentence in the plan; guardrail 2 of `GUARDRAILS-v0.2.md` |
-| W1 silently adds content | The W1 commit's exit criterion is the predicted count delta, and the ten toy registries are checked by `git diff --numstat` (one addition each, zero deletions) before the commit |
-| A vacuous replay oracle (the 08-16 failure class) | The perturbed-tick mutant, the non-empty applied-event guard, `input.consumed == input.events`, and `replay-inert`, which proves the *guard* rejects a no-op |
-| Phase 10 drifts into a packaging project | D14's structural-blocker argument, the reversal trigger, and a `files_modified` list the plan checker can test |
-| Phase 12's rights review becomes a rubber stamp | One row per fact with a source id and a "what was taken" cell; no fact may cite an emulator's code; the ordering proof; per-mode degradation, so a thin review produces a *refusal*, not a breach |
-| A handoff or reachability result drifts into a claim | The frozen tier ceilings, `handoffs.ids` with `evidence: none`, the `claims` step refusing handoff artifacts, and the extended claim-word list |
-| A structural phase rediscovers the seven gate retargets | `GUARDRAILS-v0.2.md` §1, cited by row number in every plan's `files_modified` |
-| The milestone closes with a stale verification (v0.1.0's seven-of-eight) | Every phase's verify block re-runs the gate on the final tree; the close-state reconciliation is a checklist, not a memory |
+| The owner has no EXEC, GROM or cartridge dump | The milestone is still deliverable and still verifiable: every capability is proved with project-made bytes. The owner's files change a handoff result, nothing else. The EXEC/GROM requirement is stated in `docs/owner-images.md`, not discovered at the close |
+| The flat-image wrap needs a word order the project guessed wrong | The operator states it (`hi-first` default, `lo-first` accepted); nothing is auto-detected; a rights row records that the project makes no statement about any real dump's layout |
+| The host target drags in a licence the project cannot accept | D-48: no header is vendored; the ABI subset is project-authored. If an exact header is ever needed, its licence text is read and recorded first |
+| The host becomes a window and therefore a CI blind spot | The harness, not the window, is the evidence; the shim is build-only and never a release member |
+| Phase 15's cost or CI shape is unpredictable | It is droppable, pre-authorized, with a written degradation |
+| A claim rises above `provisional` | D-50's mechanical check lands in Phase 13, before any claim exists in this milestone |
+| The rights ledger becomes a second manifest schema that drifts | It is question-shaped, one file per item, and the manifest stays the byte-set answer; the reversal condition is written |
 
 ---
 
-## 6. Frozen upstream artifacts
+## 7. What this milestone does not do
 
-These must exist before any phase plan is written. This file is item 1.
-
-1. **This file** — the phase shape, exit criteria, decisions, verification
-   strategy and risks.
-2. **`.planning/ops/GUARDRAILS-v0.2.md`** — the 11-row retarget table, the
-   definition of done, the discuss and verify boilerplate, the close-state
-   checklist.
-3. **`.planning/ops/MILESTONE-RITUAL.md`** and **`.planning/ops/INDEX.md`** — the
-   standing ritual and the durable-knowledge index.
-4. **`.planning/CI-EFFICIENCY.md`, "next-milestone opening" entry** — the
-   corrected reading, the window arithmetic, the 21 hosted cpu-s allowance, the
-   lever and trim mechanics with preserving conditions, and the preflight
-   partition rule.
-5. **`.planning/REQUIREMENTS.md`** for v0.2.0 with the ids below minted and
-   traceability filled by the roadmapper.
-6. **`data/expected/handoffs.ids`** — created in Phase 10, seeded with H7-1,
-   H7-2, H8-3, D10, D11.
-7. **`docs/formats/ivsl-v1.md`** — Phase 11's oracle, committed before its code.
-8. **`docs/presentation.md`** — Phase 10's policy, frozen before its checks.
-9. **`data/expected/cfg-refusals.ids`** and the rights-review template — Phase
-   12, before any third-party file is read.
-10. **The tier-ceiling table** (§4) and **the unit-cost table** (measured in
-    Phase 9) — so a plan cannot write "supported" and cannot price by id count.
+- It does not ship a host artifact, a runner installer, a cartridge or any
+  content byte.
+- It does not parse `.cfg`, implement bank switching, or describe any
+  third-party format. FMT-01 and FMT-04 stay `Deferred` with their conditions.
+- It does not claim that any real EXEC, GROM or commercial cartridge boots,
+  plays, looks or sounds right. That is the handoff.
+- It does not take the debugger, variant profiles, content persistence or
+  scheduled fuzzing. They stay on the rolling roadmap with their gates named.
+- It does not add a gate step, a fault, a golden or a second installed consumer.
 
 ---
 
-## 7. Requirements
+## 8. The frozen guardrails
 
-Minted for this milestone; full text and traceability in
-`.planning/REQUIREMENTS.md`.
+`.planning/ops/GUARDRAILS-v0.3.md` holds the retarget table (V1 to V11), the
+definition of done, the discuss and verify boilerplate, the per-phase tier
+ceilings and the clean-state reconciliation. It supersedes `GUARDRAILS-v0.2.md`,
+which stays untouched except for one supersession line.
 
-**EV — evidence durability and gate cost**
-- EV-01 The cost lever and trims land in cost-only commits before any new gate
-  content, with a hosted row recorded after them that settles the level.
-- EV-02 The 17 requirements whose named faults already run are registered with
-  cannot-pass-vacuously mechanisms, with the accepted set and all ten toy
-  registries extended in the same commit and no new fault or test id.
-- EV-03 Each gate-hardening item has a control that fails for its intended reason.
-- EV-04 A machine check refuses a requirement marked Complete with no registry
-  line, and a toy registry that drifts from the good tree; both shown able to fail.
-- EV-05 A handoff ledger records every human-only item with `evidence: none`, and
-  no claim may cite a handoff artifact.
-
-**PKG — packaging and reachability**
-- PKG-05 A person can obtain and run the emulator from the released source
-  archive using documented commands only, proved by the release rehearsal.
-
-**TOOL — tooling**
-- TOOL-01 Input record and replay at machine-time boundaries.
-- TOOL-04 (narrowed) A frozen presentation and palette policy keeps colour out of
-  the core and out of every claim, enforced by a check.
-
-**FMT — content formats**
-- FMT-01 (narrowed) Bank-mode model in profile data with a typed refusal for
-  every unmapped mode and one generated original fixture per mode.
-- FMT-04 `.bin`/`.cfg` import outside the core, rights-gated per mode, degrading
-  to FMT-01 only.
-
-**Explicitly out of scope for this milestone:** a windowed frontend, any new
-runtime dependency, installing the runner or any image (D14), the rest of the
-TOOL-04 surface (audio device, physical controller mapping), FMT-02/FMT-03,
-VAR-01..04, PER-01/PER-02, TOOL-02, TOOL-03, TOOL-05, TOOL-06, and any claim
-above `provisional`.
-
----
-
-## 8. Clean-state close
-
-Per `.planning/ops/MILESTONE-RITUAL.md` step 7 and `GUARDRAILS-v0.2.md` §6: green
-`main` with the push run recorded, empty `git status --porcelain` on `main`, one
-worktree, no stashes, no unmerged phase branches, PRs and issues triaged to zero,
-both rulesets applied with ids recorded or explicitly recorded as not applied,
-records reconciled, a stale-text sweep, and one release-decision line
-(`PUBLISHED v0.2.0 (prerelease)` or `READY, NOT PUBLISHED: blocked by P<n>`) with
-the checks recomputed.
-
----
-
-*Frozen 2026-11-24 by the milestone ritual. Amendments are appended with their
-own commit and a date, never edited in place.*
+**The owner runs one command after `/clear`:** `/gsd-autonomous`.

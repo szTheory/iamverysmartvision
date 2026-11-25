@@ -57,3 +57,27 @@ Defects the plan-checker found in Phases 5 and 6, in the order of how often they
     three green gates coexisted with it because the rehearsal is deliberately not a gate step.
     When a fix lands in a script the gate does not run, re-run *that script* before claiming the
     finding closed; the re-verification pass is what caught it.
+
+28. **`passed` means the verifier's own probes passed, and a review is load-bearing, not advisory.**
+    v0.2.0's four code reviews found 3 blockers and 13 warnings in work already marked `passed`, two
+    in a phase's central deliverable, and three blockers landed in the phase's *central* deliverable.
+    Budget the review as a finding round with its own fix and re-verify, never as a formality; and when
+    a verifier's record is closed by the orchestrator, label the closure as an orchestrator record
+    rather than letting a frontmatter say `passed` over a body that says `gaps_found`.
+29. **A ratio whose denominator moves is not a signal; retire it instead of chasing it.**
+    `r = cpu_s / build_s` read 10.7 against a stop line of 8.3 at the v0.2.0 close while `cpu_s` was
+    unchanged and `build_s` fell from 42–49 to 33–34. The stop rule fired on a number the record itself
+    called untrustworthy, and the same number was used as a reason to drop a phase. Print the arithmetic,
+    name the replacement figure (`cpu_s` and the per-step profile), and record the change of method in
+    the same entry — a rule that fires on a number nobody trusts is worse than no rule.
+30. **A process whose output is its own next input needs a written termination rule.**
+    Recording a hosted run needs a commit; a commit needs a PR; a PR merge is a hosted run. v0.2.0
+    walked four links into that regress. The rule: a milestone's close rows go in **one** records PR,
+    and the push run that PR's own merge creates is the *next* milestone's opening row — deferred by
+    exactly one commit, named, never dropped.
+31. **A rule with no mechanism is quoted, not obeyed.** GUARDRAILS 2.8 ("no claim above provisional")
+    had no check, so every phase quoted `claims=28 provisional=27` as if it discharged it while
+    `CL-0002` stood `established`. Either scope the rule until it is true (D-32: a behavioural-claim
+    ceiling) or give it a mechanism (D-50: an `established` claim must be `source-expectation` on a
+    `tier1-primary-doc` dependency). A rule whose scope is wider than its mechanism teaches readers to
+    quote it.
