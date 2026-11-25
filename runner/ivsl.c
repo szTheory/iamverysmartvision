@@ -145,6 +145,19 @@ int ivs_ivsl_format(const ivs_ivsl_log *log, uint8_t *out, uint64_t cap, uint64_
       (log->content != IVS_IVSL_CONTENT_PROJECT && log->content != IVS_IVSL_CONTENT_USER)) {
     return 1;
   }
+  /* O-11-V2, closed in v0.3.0 housekeeping: the writer's domain is the parser's domain. The parser refuses a tick
+   * at or above IVS_IVSL_TICK_MAX, a tick below its predecessor and a controller word with IVS_CTRL_RESERVED_MASK
+   * set. A log holding any of those used to format into bytes this module's own reader refuses, which is a contract
+   * defect in a header that is public through ivs_runner.h. Refuse the log instead of writing it; the check reads
+   * every held event, including one the record fault drops from the output. */
+  for (uint32_t i = 0u; i < log->n_events; i++) {
+    if (log->events[i].at_tick >= IVS_IVSL_TICK_MAX ||
+        (log->events[i].controller[0] & IVS_CTRL_RESERVED_MASK) != 0u ||
+        (log->events[i].controller[1] & IVS_CTRL_RESERVED_MASK) != 0u ||
+        (i > 0u && log->events[i].at_tick < log->events[i - 1u].at_tick)) {
+      return 1;
+    }
+  }
   content = log->content == IVS_IVSL_CONTENT_USER ? "user" : "project";
   /* IVS_FAULT_RECORD_DROPS_LAST_EVENT (plan 11-05, TOOL-01): the writer emits one event line fewer than the log
    * holds, so a produced log claims one event fewer than the run applied. Both loops read n_lines, so the byte
