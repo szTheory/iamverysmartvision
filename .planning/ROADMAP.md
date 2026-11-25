@@ -283,7 +283,7 @@ end-to-end flows; the debt is the recorded, accepted register, not new gaps.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 9. Registered Evidence and Gate Cost | 0/TBD | Not started | - |
+| 9. Registered Evidence and Gate Cost | 9/9 | Complete    | 2026-11-24 |
 | 10. Reachable Runs and Presentation Policy | 0/TBD | Not started | - |
 | 11. Input Record and Replay | 0/TBD | Not started | - |
 | 12. Bank Modes and External Import (conditional) | 0/TBD | Not started | - |
