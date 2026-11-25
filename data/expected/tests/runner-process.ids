@@ -139,6 +139,15 @@ runner-process.roundtrip.diag-stic-fgbg-pass
 runner-process.roundtrip.demo-lamp-tone-pass
 runner-process.roundtrip.diag-stic2-collision-pass
 runner-process.roundtrip.refuse-range
+# Plan 11-04 (TOOL-01, A-11-01, A-11-03, D15): the phase's only process case, and the only place a produced log is a
+# file at all. It records demo-lamp-tone-pass to a 319-byte ivsl v1 log, requires the same path to be refused again with
+# the file byte-identical, replays the log into a copy whose input lines were removed with sed and requires the recorded
+# report byte for byte including host.calls with all nine digest.* lines equal and non-`-` against the committed golden,
+# and requires the same copy with no log to differ. It also covers a header-only log for a scenario with no input, the
+# missing, oversize, malformed and directory refusals, the mutual exclusion (which creates no file), the usage text, the
+# rights grep on the real file with its stand-in, and the two `content ... user` refusal blocks naming exactly the five
+# derived-art options. Not skip-ok: it needs no operator image.
+runner-process.record.command-line
 runner-process.pair.demo-lamp-tone-pass.demo-lamp-tone-idle
 runner-process.pair.demo-lamp-tone-pass.demo-lamp-tone-shift
 runner-process.pair.diag-stic2-idle-pass.diag-stic2-mob-pass
