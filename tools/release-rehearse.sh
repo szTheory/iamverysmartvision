@@ -97,10 +97,11 @@ done
 # on every rehearsal rather than only with --source-route, because a stale copy is a false statement
 # in this file even on a run that does not use it.
 drift() {
-  _src=$(sed -n "/^$2() {/,/^}/p" tools/check/steps/golden.sh | sed "s/^$2() {/$3() {/")
-  _cpy=$(sed -n "/^$3() {/,/^}/p" "$self")
+  # $1 is the name in the gate step, $2 the name of the copy in this script.
+  _src=$(sed -n "/^$1() {/,/^}/p" tools/check/steps/golden.sh | sed "s/^$1() {/$2() {/")
+  _cpy=$(sed -n "/^$2() {/,/^}/p" "$self")
   [ -n "$_src" ] && [ "$_src" = "$_cpy" ] \
-    || fail "$3 has drifted from tools/check/steps/golden.sh ($2)"
+    || fail "$2 has drifted from tools/check/steps/golden.sh ($1)"
 }
 drift filter_report route_filter
 drift live_count route_live
