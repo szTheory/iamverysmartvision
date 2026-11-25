@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "note": "Control tree only: the toy legal claim with its tier moved off source-expectation, so D-50 condition (a) must refuse it by name. Everything else about the row stays legal.",
+  "claims": [
+    {
+      "id": "CL-0001",
+      "statement": "The example profile names the STIC part.",
+      "profile": "intv-2609-ntsc-family-p1",
+      "tier": "deterministic-repeatability",
+      "artifact": "data/tiers.json",
+      "depends_on": ["stic.part"],
+      "standing": "established",
+      "note": "Example entry."
+    }
+  ]
+}

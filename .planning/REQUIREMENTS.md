@@ -20,8 +20,8 @@ mechanical).
 
 ### Rights
 
-- [ ] **RTS-01**: A rights ledger records one row per third-party-content question this milestone touches — a flat cartridge image, the `.cfg` container, bank modes, EXEC, GROM, a commercial ROM, a rendered frame or screenshot, a save state, the libretro-shaped ABI and core-info strings — each with a disposition of `cleared`, `refused` or `owner-local-only`, and a `cleared` row cites a resolvable `SRC-` id; a row missing its disposition, a source it needs, or its "what was taken" cell is refused by name.
-- [ ] **RTS-02**: A refused item's spellings cannot appear in `core/src`, `runner/`, `tools/` or the operator pages of `docs/`, except where a pre-existing refusal surface is pinned by a `(token, path)` pair; a new occurrence is refused by name, and both limbs are shown able to fail.
+- [x] **RTS-01**: A rights ledger records one row per third-party-content question this milestone touches — a flat cartridge image, the `.cfg` container, bank modes, EXEC, GROM, a commercial ROM, a rendered frame or screenshot, a save state, the libretro-shaped ABI and core-info strings — each with a disposition of `cleared`, `refused` or `owner-local-only`, and a `cleared` row cites a resolvable `SRC-` id; a row missing its disposition, a source it needs, or its "what was taken" cell is refused by name.
+- [x] **RTS-02**: A refused item's spellings cannot appear in `core/src`, `runner/`, `tools/` or the operator pages of `docs/`, except where a pre-existing refusal surface is pinned by a `(token, path)` pair; a new occurrence is refused by name, and both limbs are shown able to fail.
 
 ### Core conformance
 
@@ -29,8 +29,8 @@ mechanical).
 
 ### Evidence
 
-- [ ] **EV-06**: The claims step refuses an `established` claim that is not a `source-expectation` claim resting on a `tier1-primary-doc` dependency, and a legal `established` claim still passes — both shown able to fail (D-32, D-50).
-- [ ] **EV-07**: Each of the ten must-fail mechanisms that have a liveness guard and a re-runnable stand-in but no registry row (D-09-06) gains a `mutant` row over its existing selftest, with the registry baseline re-derived and all ten toy registries extended in the same commit, and **zero new faults**.
+- [x] **EV-06**: The claims step refuses an `established` claim that is not a `source-expectation` claim resting on a `tier1-primary-doc` dependency, and a legal `established` claim still passes — both shown able to fail (D-32, D-50).
+- [x] **EV-07**: Each of the ten must-fail mechanisms that have a liveness guard and a re-runnable stand-in but no registry row (D-09-06) gains a `mutant` row over its existing selftest, with the registry baseline re-derived and all ten toy registries extended in the same commit, and **zero new faults**. Registered as six `control` rows and four `mutant` rows: five mechanisms are proved by control directories that already exist and one by a directory plan 13-04 adds, so a `mutant` row for them would be a second registration of one proof. The deviation from this sentence's literal "mutant row" wording is recorded in `.planning/STATE.md` (`[Phase 13]: 13-04`) and in `13-04-SUMMARY.md`; zero new faults holds.
 
 ### Tooling
 
@@ -101,10 +101,10 @@ the same date: every requirement appears in exactly one phase.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| RTS-01 | Phase 13 | Pending |
-| RTS-02 | Phase 13 | Pending |
-| EV-06 | Phase 13 | Pending |
-| EV-07 | Phase 13 | Pending |
+| RTS-01 | Phase 13 | Complete |
+| RTS-02 | Phase 13 | Complete |
+| EV-06 | Phase 13 | Complete |
+| EV-07 | Phase 13 | Complete |
 | TOOL-07 | Phase 14 | Pending |
 | SCN-03 | Phase 14 | Pending |
 | CPU-06 | Phase 14 | Pending |

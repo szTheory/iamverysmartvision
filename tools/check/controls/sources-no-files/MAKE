@@ -11,3 +11,5 @@ delete data/api/api-effects.json
 delete data/psg/rules.json
 delete data/stic/rules.json
 delete docs/stic/reference-notes.md
+delete data/rights/toy-owner-image.json
+delete data/rights/toy-reference-doc.json

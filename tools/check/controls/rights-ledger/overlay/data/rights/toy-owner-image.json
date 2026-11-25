@@ -1,0 +1,8 @@
+{
+  "id": "toy-owner-image",
+  "item": "a toy owner image",
+  "source": null,
+  "taken": "nothing",
+  "tokens": ["toy-image"],
+  "note": "Control-tree row with its disposition key removed: the checker must refuse it by name, once."
+}

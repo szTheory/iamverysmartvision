@@ -28,8 +28,11 @@ research input; verify material claims before turning them into requirements.
   weakening evidence. Reproduce CI locally first (GitHub `act` for workflow
   shape, `tools/gate-linux.sh` for the Ubuntu substance) before spending hosted
   minutes. Name every docker image, container and volume `ivs-<purpose>` and
-  remove it when the run is done. Details in `.planning/AUTONOMY.md` sections 3,
-  4 and 9.
+  remove it when the run is done, and clean up after yourself generally: every
+  process, background job, fuzzing run, temp tree and open connection you start
+  is terminated and removed before you hand off, so nothing runs away with the
+  owner's CPU, memory or disk. Details in `.planning/AUTONOMY.md` sections 3, 4
+  and 9.
 - **Every new milestone runs the standing ritual** in
   `.planning/ops/MILESTONE-RITUAL.md`, unasked: refresh the rolling roadmap
   (near / mid / long, prioritized, every row naming its gate) → inspect state

@@ -1,0 +1,20 @@
+# Owning plan 13-03 (RTS-02, D-46, GUARDRAILS-v0.3 V2): the pre-existing occurrences of a
+# rights-ledger row's refused spelling that are accepted without a rename, one "<token> <path>" pair
+# per line. Read by rights_scan_naming() in tools/check/rights-lib.cmake, called from the files step.
+# Grammar: exactly two whitespace-separated fields. A line that is not exactly two fields is
+# rights-pinned-malformed, and a pair that no longer occurs is rights-pinned-stale, which is a
+# FAILURE and not a NOTE. That direction is the point: a history pin names a commit, which cannot
+# disappear, while a rights pin names a path, which can, so a stale pin means the rule silently
+# widened. Deleting a line here is therefore a behaviour change with its own diff, never a tidy-up.
+# Disposition: the four pairs are the operator's own argument placeholders in tools/owner-run.sh and
+# docs/owner-images.md, so the names ARE the operator interface: an operator is told to pass their
+# own images under exactly these placeholders. Renaming them would break the instruction without
+# refusing anything, so the occurrences are accepted and the spellings stay refused everywhere else
+# in the four scopes. A pair that is not on this list, whatever its token, is rights-token.
+# Both tokens below belong to the two `owner-local-only` rows, which is why the naming limb scans
+# `owner-local-only` rows as well as `refused` ones: scanning only the `refused` rows would leave
+# these four pins stale on the first run and the step would fail on its own permission list.
+exec-image docs/owner-images.md
+exec-image tools/owner-run.sh
+grom-image docs/owner-images.md
+grom-image tools/owner-run.sh

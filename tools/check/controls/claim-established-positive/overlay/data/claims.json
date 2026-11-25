@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "note": "Control tree only: the legal established claim survives both D-50 conditions and the step fails for an unrelated reason, a dangling artifact. A control directory cannot express 'this passes', so the positive is the absence of both new tokens here plus the pristine good-tree run of the same step.",
+  "claims": [
+    {
+      "id": "CL-0001",
+      "statement": "The example profile names the STIC part.",
+      "profile": "intv-2609-ntsc-family-p1",
+      "tier": "source-expectation",
+      "artifact": "data/no-such-artifact.json",
+      "depends_on": ["stic.part"],
+      "standing": "established",
+      "note": "Example entry."
+    }
+  ]
+}

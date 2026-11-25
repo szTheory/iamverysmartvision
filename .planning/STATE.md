@@ -1,16 +1,20 @@
 ---
 gsd_state_version: "1.0"
 milestone: v0.3.0
-milestone_name: Owner-Supplied Content and a Driveable Host
-status: planning
-last_updated: "2026-11-25T19:06:40.748Z"
+milestone_name: Owner-Supplied Content and a Driveable Host (Phases 13 to 16)</summary>
+current_phase: 13
+current_phase_name: Rights Ledger and Enforced Claim Ceiling
+status: executing
+stopped_at: Completed 13-04-PLAN.md
+last_updated: "2026-11-25T22:32:41.150Z"
 last_activity: 2026-11-25
+last_activity_desc: Phase 13 execution started
+state_head: e93dbe8840faaf9b9740415d3ed55b1bbcec9e39
 progress:
-  total_phases: 0
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_phases: 4
+  completed_phases: 8
+  total_plans: 5
+  completed_plans: 4
 ---
 
 # Project State
@@ -20,22 +24,50 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-26)
 
 **Core value:** A deterministic, observable machine core whose every compatibility claim is bound to an exactly named profile and independent evidence — never an unqualified "it runs Intellivision games" label.
-**Current focus:** v0.3.0 — Owner-Supplied Content and a Driveable Host (scoped 2026-11-26; Phase 13 not started)
+**Current focus:** Phase 13 — Rights Ledger and Enforced Claim Ceiling
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-11-25 — Milestone v0.3.0 started
+Phase: 13 (Rights Ledger and Enforced Claim Ceiling) — COMPLETE
+Plan: 5 of 5
+Status: Phase complete, ready for `/gsd:verify-work 13`
+Last activity: 2026-11-25 — plan 13-05 closed the phase
+
+The closing gate run reads `gate: PASS steps=38/38 controls=401/401 … faults=238/238 …
+goldens=29`, byte-identical under `sh` and `dash`, and repeated inside the Ubuntu 24.04
+container (`gate-linux: exit 0`, four documented host tokens differing: `cc`, `core-imports`,
+`archive`, `refs-verified`). The phase's own tokens are `tracked=2722`, `rights=10
+rights-cleared=1`, `gates=114 lines=352`, `cases=14`, `claims=28 provisional=27`. The full line is
+quoted in `13-05-SUMMARY.md` and in `13-VALIDATION.md`'s Approval block.
+
+Phase 13's cost checkpoint reads `reprice`: the last-five `cpu_s` median recomputed by arithmetic
+from `.planning/ci-runs.tsv` is 366 against the frozen 361, while the priced addition is 1.935 of
+the 21 cpu-s allowance. The phase's hosted row is **`not-recorded`**: the phase's commits are not
+pushed, so `gh run list --commit 10f66a1 --json databaseId,event,conclusion,headSha` returns `[]`
+and `.planning/ci-runs.tsv` was left untouched rather than given a fabricated row.
 
 
 ### Planning overrides recorded by the autonomous run
 
-None yet for v0.3.0. The v0.2.0 overrides are archived with that milestone's phase
-records (`.planning/milestones/v0.2.0-phases/`), and the audit's dispositions are
-in `.planning/milestones/v0.2.0-MILESTONE-AUDIT.md` ("Closure recorded at the
+The v0.2.0 overrides are archived with that milestone's phase records
+(`.planning/milestones/v0.2.0-phases/`), and the audit's dispositions are in
+`.planning/milestones/v0.2.0-MILESTONE-AUDIT.md` ("Closure recorded at the
 milestone close").
+
+- **[Phase 13] The decision-coverage gate is overridden as `could-not-parse`, not
+  as a coverage gap.** `check.decision-coverage-plan` cannot extract decision
+  bullets from `13-CONTEXT.md` because smart-discuss deliberately writes
+  decisions with no `D-NN` prefix (its reference says the gate therefore tracks
+  no smart-discuss decisions). The plans instead cite the frozen decision ids
+  directly — D-32, D-46, D-48, D-49, D-50, D-51 and D-09-06 — and each plan's
+  `must_haves` restates the property it discharges. Re-writing a discuss record
+  to quiet a scanner is the anti-pattern; the override is recorded here instead.
+- **[Phase 13] `workflow.ui_phase`'s `plan:pre` UI hook was skipped.** The
+  `ui-plan-gate` heuristic matched the token "page" in the phase goal's phrase
+  "operator page" and reported `frontend: true`. Phase 13 is C/CMake gate work
+  with no presentation surface, so generating a UI-SPEC would have produced a
+  design contract for a library. The skip is recorded rather than silently
+  taken; the gate's `block` was `false`.
 
 ## Releases
 
@@ -219,6 +251,10 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | Phase 11 P03 | 24m | 3 tasks | 2 files |
 | Phase 11 P4 | 1h 02m | 2 tasks | 4 files |
 | Phase 11 P5 | 55m | 3 tasks | 20 files |
+| Phase 13 P01 | 34min | 1 tasks | 25 files |
+| Phase 13 P02 | 20min | 1 tasks | 11 files |
+| Phase 13 P03 | 27min | 2 tasks | 27 files |
+| Phase 13 P04 | 26min | 3 tasks | 25 files |
 
 ## Accumulated Context
 
@@ -530,6 +566,22 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 11]: hex runs are counted in both cases in runner.record.no-content-digest: the project's digests are lower case, so an upper-case-only scan would miss the stand-in's value
 - [Phase 11]: no-content-digest lands in 11-03 rather than 11-04: both halves live in the record section of tests/runner/runner_exec.c
 - [Phase 11]: the log is deliberately absent from the three content-user refusal blocks (D15) and a static assertion keeps it so; the no-log witness of the stripped demo copy ends guest-fail, not pass
+- [Phase 13]: The rights ledger is judged as a second limb of the manifests step (rights_check() before the single gate_finish), never as a new step: steps stays 38 and the ledger row resolves through data/expected/controls/rights.ids.
+- [Phase 13]: A ledger row's id is collected before the shape verdict, so a row whose disposition is missing is refused once by name and never also produces a spurious rights-id-missing.
+- [Phase 13]: Rights ledger: every new RTS-01 row is refused or owner-local-only with source null, so libretro-abi stays the only cleared row and rights-cleared=1 is the count that catches a row added to make the ledger look answered.
+- [Phase 13]: Rights ledger: core-info-strings carries an empty tokens list as a recorded answer, because the field names it would refuse are governed by the cleared libretro-abi row and a non-empty list would make one row refuse what another clears.
+- [Phase 13]: Rights ledger: cfg-container is enforced on the hyphenated noun, not the file extension, because under the character-bounded rule a leading-dot token can only match at a boundary; the extension refusal stays in the binary-extension list and the ignore file.
+- [Phase 13]: The naming limb scans every row whose disposition is refused or owner-local-only, not only the refused rows: the four measured pins belong to the two owner-local-only rows, and because a stale pin is a failure, scanning only refused rows would make all four stale on the first run.
+- [Phase 13]: A rights pin that no longer matches is a failure (rights-pinned-stale), not a NOTE as release-readiness.sh treats a history pin: history pins a commit, which cannot disappear, while a rights pin names a path, which can.
+- [Phase 13]: rights_scan_naming() runs after the two file gate_stat() calls and before gate_finish(files), so rights-pinned prints last and a finding is a FAIL line rather than a NOTE.
+- [Phase 13]: D-50 lands as two conditions in claim.cmake and claim-overstated is kept rather than subsumed: D-50 is strictly stronger, both are findings, and a control's EXPECT is a substring match, so a row that trips both keeps every existing control satisfied.
+- [Phase 13]: The claim ceiling's legal positive is a control whose EXPECT names an unrelated refusal and whose FORBID names both new tokens, because a control directory can never express "this passes" (ctl_one refuses control-exit-zero).
+- [Phase 13]: 13-04: EV-07 registered as 6 control + 4 mutant rows (deviation from EV-07's literal "mutant row" wording: five mechanisms are proved by control directories that already exist and one by a directory this plan adds, so a mutant row for them would be a second registration of one proof; zero new faults holds).
+- [Phase 13]: The selftest-inventory rule lives in tools/check/selftest-inventory.sh, not inlined in the step, because a guard inside the step is reachable only by the step running itself; its failure is committed as the st-no-such-case case rather than demonstrated on a scratch copy the commit discards.
+- [Phase 13]: important-gates-excluded-stale keeps the good tree's FND-98 row in its overlay: dropping it would make FND-98 Complete-and-uncovered and add the two coverage tokens the control's own FORBID list names, so the control would be unsatisfiable for the wrong reason.
+- [Phase 13]: The important-gates baseline is the step's own printed stat, re-derived by running it: gates=114 is 113 plus one new gate name and lines=352 is 342 plus ten rows, and RESEARCH's lines=347 was 337 + 10 (it omitted the five rows RTS-01, RTS-02 and EV-06 add).
+- [Phase 13]: 13-05: checkpoint: reprice (cpu_s 357 363 366 435 497, median 366; gate_s 114 121 121 137 148, median 121; priced addition 1.935; allowance 21). Recomputed by arithmetic from the last five `.planning/ci-runs.tsv` rows (45683886915, 45683331636, 45682845654, 45682366772, 45677865721), never quoted: the frozen 361/118 figures are stale by measurement, by +5 and +3. `discharged-within-allowance` is not reachable because 366 > 361 + 1.935 = 362.935. `lever-required` is not reached because the cumulative milestone spend is 1.935 of 21 and this phase's additions landed at exactly the priced count (controls 395 to 401, important-gates lines 337 to 352, steps 38, faults 238 and goldens 29 unmoved), so no line overran by 25 percent. The residual +5 cpu-s is a runner event on the shared series with the token line where it was predicted, so no lever is invented.
+  **Recomputed again after this phase's own hosted row landed** (`45717868904`, `pull_request`, `cpu_s` 360, `gate_s` 120): the last five `cpu_s` are now 357 360 363 366 497 (median **363**) and `gate_s` 120 121 121 137 148 (median **121**). The verdict is unchanged — 363 > 361 + 1.935 = 362.935 still rules out `discharged-within-allowance`, and the margin is 0.065 cpu-s rather than 3.065 — because the window moved, not the work. Recorded here rather than left as the pre-row figure, per "recompute, never quote".
 
 ### Pending Todos
 
@@ -608,8 +660,10 @@ The row itself is left as recorded and this note sits under it.
 
 ## Session Continuity
 
-Last session: 2026-11-26
-Stopped at: v0.3.0 scoped and committed; Phase 13 ready to discuss and plan
+Last session: 2026-11-25T22:50:19Z
+Stopped at: Completed 13-05-PLAN.md — Phase 13 complete (5 of 5 plans); the resume point is
+`/gsd:verify-work 13`, and the one thing a later run must still do is record the phase's hosted
+row from `sh tools/ci-record.sh <run-id>` once the commits are pushed.
 Resume file: None
 
 ## Recorded Constraints for the Next Milestone

@@ -1,0 +1,9 @@
+{
+  "id": "core-info-strings",
+  "item": "the core information strings",
+  "disposition": "owner-local-only",
+  "source": null,
+  "taken": "nothing",
+  "tokens": [],
+  "note": "Owner-local only: the descriptive strings a frontend reports may be read from the owner's own build output and never committed. Nothing is taken. The token list is deliberately empty: the field names this row would otherwise refuse are governed by the frontend ABI row, which is cleared, and a non-empty list here would make one row refuse what that row clears. An empty list is a recorded answer, not a missing one."
+}

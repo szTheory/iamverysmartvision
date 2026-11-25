@@ -1,0 +1,15 @@
+# Requirements that are marked Complete and are excluded from the important-gates must-be-covered
+# set (plan 09-05, EV-04, amendment A-01). The must-be-covered set is derived from the requirement
+# records under .planning/; this file is the only thing subtracted from it.
+# One line per exclusion: '<REQ> <reason>', the reason being words joined by underscores (at least
+# three) that name the evidence the requirement actually has. There are two categories: a close
+# record or release action instead of a gate mechanism, and gate-machinery self-evidence (a step,
+# the local gate command, a suite test id, or the registration commit itself).
+# Plan 13-04 (EV-07): this overlay is the good tree's ledger plus one stale row, FND-96. FND-96 is
+# marked Complete in no toy record, so important-gates-excluded-stale is the only finding, and the
+# control's FORBID list pins that. The good tree's FND-98 row is kept deliberately: dropping it
+# would make FND-98 Complete-and-uncovered and add the two coverage tokens the FORBID list names.
+# Every other id the toy records mark Complete is in the toy registry, so the derived set and the
+# registry still agree.
+FND-98 close_record_only_toy_positive_row_for_the_ledger_format
+FND-96 not_a_gate_mechanism_at_all

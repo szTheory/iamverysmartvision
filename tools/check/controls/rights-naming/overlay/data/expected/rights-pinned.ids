@@ -1,0 +1,7 @@
+# Control tree only: one pin that matches the planted pair (so the suppressed occurrence stays
+# suppressed) and one pin that matches nothing (so the reverse direction is shown to fail).
+# The first pin separates its two fields with a tab and a second tab: read_ids() strips only the
+# line ends, so this line proves the canonical form is what BOTH pin directions compare against
+# (review WR-01). A tab or a run of spaces is a separator, never a silently unpinned occurrence.
+toy-image		core/src/common/planted_pinned.h
+grom-image tools/nowhere.sh

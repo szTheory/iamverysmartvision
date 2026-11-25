@@ -199,6 +199,22 @@ Measure before changing. Append findings and actions to
   `docker ps -a`, `docker images` and `docker volume ls`. Remove them when the
   run is done: no orphaned images, containers or volumes are left behind, and
   never run a second container gate while one is live (lesson 18).
+- **Process and resource hygiene (owner instruction, 2026-11-26).** The same rule
+  covers everything that is not a container: every background job, fuzzing run,
+  watcher, dev server, `ctest`/`ninja` tree, temp directory and open connection
+  this project starts is terminated and removed before the work is handed off.
+  Nothing is left holding the owner's CPU, memory, disk or a database
+  connection after a run ends, including a run that failed or was interrupted.
+  Check before handing off (`ps`, `docker ps -a`, `git status`, `/tmp` entries
+  this project made) rather than assuming a clean exit cleaned up. A throwaway
+  probe that cannot be cleaned up is not thrown away — it is a leak.
+- **Green locally before a hosted minute is spent.** Reproducing CI locally is a
+  duty, not an option: do not push a commit whose local equivalent has not run,
+  and do not push to "see if it passes". The order is cheap consistency checks →
+  the affected step alone → the full local gate → `act` for workflow shape →
+  the Ubuntu substance under `tools/gate-linux.sh` → push. A push that fails a
+  check that runs in one second at home is the most expensive kind of waste
+  this project has measured.
 
 ## 5. CD / release steps
 

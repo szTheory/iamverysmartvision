@@ -1,0 +1,9 @@
+# Owning plan 13-04 (EV-07): the four D-09-06 mechanisms whose only proof is an in-step case of the
+# gate step runner-selftest (D-12). One case name per line; the step runs exactly these and fails on
+# a name it does not run (runner-selftest-missing), so a registry row can never point at a renamed or
+# deleted case. The other six mechanisms of the D-09-06 list are registered as `control` rows,
+# because a control directory already proves them.
+st-toy-drift
+st-deviation-unused
+st-pass-line
+st-memmap-generator-missing

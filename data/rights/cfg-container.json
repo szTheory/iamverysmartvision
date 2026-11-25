@@ -1,0 +1,9 @@
+{
+  "id": "cfg-container",
+  "item": "the configuration container",
+  "disposition": "refused",
+  "source": null,
+  "taken": "nothing",
+  "tokens": [".cfg", "cfg-container"],
+  "note": "Refused: the project does not parse, describe or ship this container, so the item may not be named as a shipped artifact (FMT-01 stays Deferred with its reversal condition). The enforced spelling is the hyphenated noun above, not a file extension: under the character-bounded match rule a token beginning with a dot can only match at a boundary, so it cannot catch an extension in the middle of a file name. The refusal of the extension itself stays where it already lives, in the binary-extension list and the ignore file."
+}

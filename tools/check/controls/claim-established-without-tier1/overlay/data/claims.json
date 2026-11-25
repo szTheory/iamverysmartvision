@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "note": "Control tree only: the toy legal claim resting on a field tagged tier2-first-party-adjacent instead of tier1-primary-doc, so D-50 condition (b) must refuse it by name. The tier stays source-expectation, which is what isolates the second condition from the first.",
+  "claims": [
+    {
+      "id": "CL-0001",
+      "statement": "The example profile names the STIC part.",
+      "profile": "intv-2609-ntsc-family-p1",
+      "tier": "source-expectation",
+      "artifact": "data/tiers.json",
+      "depends_on": ["model"],
+      "standing": "established",
+      "note": "Example entry."
+    }
+  ]
+}

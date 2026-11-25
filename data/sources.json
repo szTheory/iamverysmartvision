@@ -181,6 +181,21 @@
       "authority_tier": "tier4-community",
       "local_path": null,
       "note": "Community wiki page with the controller-port pin table, the pin-to-PSG-bit map and the 31-row pull-to-ground matrix. Identity is the revision number (23186, read on 2026-11-12). The capture bytes are not pinned: the Phase 5 discuss recorded 36,791 bytes with sha256 prefix 984d548c, plan 05-01 fetched 35,364 bytes with sha256 prefix 82ad0ff1 (the archive wraps each fetch in a different toolbar), so no hash is pinned and the difference is recorded, not accepted as a match. The live host answers 403 to command-line clients. Cached only under refs/."
+    },
+    {
+      "id": "SRC-libretro-api-docs",
+      "title": "Libretro Docs, Developing Libretro Cores (the libretro API)",
+      "url": "https://docs.libretro.com/development/cores/developing-cores/",
+      "wayback": null,
+      "accessed": "2026-11-25",
+      "capture": "reference-only",
+      "sha256": null,
+      "size_bytes": null,
+      "pages": null,
+      "rights": "unknown",
+      "authority_tier": "tier5-emulator-hint",
+      "local_path": null,
+      "note": "Not hashed because it is a living multi-page documentation site whose pages change independently, so a hash of one page would not identify the document; nothing is vendored (D-48). Read on 2026-11-25: the page returned 200 with 81,258 bytes and states that libretro is an open specification free to implement, that the reference frontend RetroArch is GPLv3 while the libretro API itself is MIT-licensed, and that the canonical interface header is libretro.h in the libretro-common repository. That licence statement is an observation about the document, not a disposition: the rights field stays unknown, and the rights ledger row data/rights/libretro-abi.json is what records the disposition. Read as a lead for the shape of the frontend entry points only."
     }
   ]
 }

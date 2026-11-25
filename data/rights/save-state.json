@@ -1,0 +1,9 @@
+{
+  "id": "save-state",
+  "item": "a saved machine state",
+  "disposition": "owner-local-only",
+  "source": null,
+  "taken": "nothing",
+  "tokens": ["save-state", "savestate"],
+  "note": "Owner-local only: a state saved from the owner's own run may be read from the owner's files and never committed as a golden, a fixture or a claim artifact. Nothing is taken by this phase. The project's own snapshots are named snapshot and use the .ivsn extension, so this row refuses neither the feature nor its files."
+}

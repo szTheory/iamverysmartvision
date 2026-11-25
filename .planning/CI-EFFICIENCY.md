@@ -1970,3 +1970,37 @@ landed in the next commit the project made anyway — the 2026-11-26 milestone
 correction — as `45683331636` (`build_s` 46, `gate_s` 148, `cpu_s` 497) and
 `45683886915` (`build_s` 33, `gate_s` 121, `cpu_s` 357), both now rows in
 `.planning/ci-runs.tsv`. Deferred by exactly one commit, named, never dropped.
+
+## 2026-11-26 — Phase 13 (v0.3.0): the PR run, its measured step profile, and the one lever left alone
+
+PR #30 (`gsd/phase-13-rights-ledger-and-enforced-claim-ceiling`) produced run
+`45717868904` (`pull_request`, `success`), recorded in `.planning/ci-runs.tsv`:
+queue 3 s, setup 5 s, `build_s` 34, `gate_s` 120, `test_s` 86, total 136 s, `ncpu` 4,
+`cpu_s` 360.
+
+**Measured step profile of this run** (from the hosted log's own `step-time` lines, not
+quoted from an earlier entry). The five costliest steps are `c-build` 34, `c-faults` 31,
+`controls` 27, `c-purity` 17, `c-tests` 17 — 126 s of step time, the same ~88 % shape the
+2026-11-25 profile found. Everything else is ≤ 4 s; twenty-eight steps are ≤ 1 s.
+
+**Overhead is already negligible.** Queue + setup is 8 s against a 120 s gate, so there is
+nothing to win by shortening checkout or adding a cache the gate has no dependency to fill.
+
+**No action, and the reason is recorded rather than implied.** The one lever that preserves
+evidence — overlapping `c-tests` and `c-faults`, whose trees are disjoint and whose output the
+partition already buffers and replays in sorted order — is **pre-committed to Phase 16's first
+commit** by the frozen upstream artifact (`.planning/MILESTONE-CONTEXT.md` §5, cost-only, no
+allowance credit). Taking it here would spend the milestone's single lever on a phase that does
+not need it and would contradict the freeze. Nothing else in this run's profile is a candidate:
+the four producer steps are the work, `controls` is the 401 negative controls that make the
+evidence non-vacuous, and every remaining step is already sub-second.
+
+**Nothing moved but the runner.** `cpu_s` 360 sits inside the 357–366 band the series has held
+since Phase 9's settling window, and `gate_s` 120 is one second under the 121 median. This run
+adds no gate step, fault, golden or control — `steps=38`, `faults=238`, `goldens=29` are unmoved
+and the six new control directories were priced at 0.31 each before they were written.
+
+**Deferred by one commit, by name (the termination rule).** This PR's own merge push run is not
+in this commit — it does not exist yet when the row above is written. It is recorded in the next
+commit the project makes anyway (the Phase 13 completion commit), so the pair is deferred by
+exactly one commit and named here rather than dropped.

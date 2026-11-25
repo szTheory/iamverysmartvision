@@ -1,0 +1,9 @@
+{
+  "id": "toy-stray-upper",
+  "item": "a toy row whose file name the ledger's selection drops",
+  "disposition": "owner-local-only",
+  "source": null,
+  "taken": "nothing",
+  "tokens": ["toy-image"],
+  "note": "Control-tree row: well formed, but the underscore in this file's name keeps it out of the data/rights/<slug>.json selection, so the ledger must refuse the path by name (rights-unlisted) instead of silently dropping the row and its refused spelling."
+}

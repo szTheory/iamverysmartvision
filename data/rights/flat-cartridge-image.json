@@ -1,0 +1,9 @@
+{
+  "id": "flat-cartridge-image",
+  "item": "a flat cartridge image",
+  "disposition": "owner-local-only",
+  "source": null,
+  "taken": "nothing",
+  "tokens": ["flat-image"],
+  "note": "Owner-local only: an image of this shape may be read from the owner's own files and never committed, never a fixture and never a golden. Nothing is taken by this phase: no image exists in the tree, no digest of one is recorded and no tracked path names one. Phase 14's wrap tool states a byte length and a word order the operator supplies; it detects nothing and describes nothing."
+}

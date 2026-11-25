@@ -23,8 +23,12 @@
 # from CHECK_DIR and no control directory can reach it.
 # One more proof has no control and no copied runner: the pass-line rule the gate replay applies to
 # all 38 steps (review WR-02) is a file, tools/check/pass-line.sh, and the case near the end proves
-# that file refuses both shapes.
-# Tokens: runner-selftest-missing: <token>.
+# that file refuses both shapes. The selftest-inventory rule (EV-07) is a file for the same reason,
+# tools/check/selftest-inventory.sh: a guard inlined in this step would be reachable only by the step
+# running itself, so the case `st-no-such-case` runs that file against a renamed inventory and
+# requires its refusal, and against the real inventory and requires its acceptance.
+# Tokens: runner-selftest-missing: <token>; runner-selftest-inventory: <path> (absent inventory, or an
+# inventory with no non-comment line).
 # Stats: cases=<n>.
 LC_ALL=C; export LC_ALL
 : "${ROOT:?ROOT is not set}"
@@ -35,6 +39,9 @@ trap 'rm -rf "$tmp"' EXIT
 trap 'exit 1' HUP INT TERM
 rc=0
 bad() { printf -- '-- FAIL %s: %s\n' "$1" "$2"; rc=1; }
+# The case names this run actually passed, so the inventory check at the tail can refuse a name the
+# step does not run (EV-07: a registry row must not point at a renamed or deleted case).
+ran="$tmp/ran"; : > "$ran"
 
 ctl="$tmp/controls"
 inv="$tmp/inventory"
@@ -123,12 +130,14 @@ for pair in control-expect-blank:st-expect-blank control-expect-blank:st-expect-
   name=${pair#*:}
   if grep -q -F -e "-- FAIL $tok: $name" "$tmp/out"; then
     cases=$((cases + 1))
+    printf '%s\n' "$name" >> "$ran"
   else
     bad runner-selftest-missing "$tok"
   fi
 done
 if grep -q -x -F -e 'control ok   st-ok' "$tmp/out" && ! grep -q -e '^-- FAIL [a-z-]*: st-ok$' "$tmp/out"; then
   cases=$((cases + 1))
+  printf '%s\n' st-ok >> "$ran"
 else
   bad runner-selftest-missing "accepted-control"
 fi
@@ -173,6 +182,7 @@ if grep -q -F -e '-- FAIL control-pass-line-not-last: profile' "$tmp/passline.ou
   grep -F -e '-- FAIL control-pass-line-not-last: profile' "$tmp/passline.out" | tr -d '\n'
   printf -- ')\n'
   cases=$((cases + 1))
+  printf '%s\n' st-pass-line >> "$ran"
 else
   bad runner-selftest-missing "control-pass-line-not-last"
 fi
@@ -220,8 +230,48 @@ elif printf '%s\n' "$mgout" | grep -q -F -e '-- FAIL memmap-generator-missing: c
   # Printed with the same non-collected prefix as the pass-line proof above.
   printf -- '-- runner-selftest proof memmap-generator-missing: cmake/IvsMemmapProbes.cmake (observed)\n'
   cases=$((cases + 1))
+  printf '%s\n' st-memmap-generator-missing >> "$ran"
 else
   bad runner-selftest-missing "memmap-generator-missing"
+fi
+
+# The case inventory (EV-07, D-09-06). data/expected/runner-selftest.ids names the four mechanisms
+# whose only proof is a case of this step, and the important-gates registry resolves a `mutant` row by
+# those names. The direction that matters is the one below: a name in the inventory that this run did
+# not pass is runner-selftest-missing, so a renamed or deleted case cannot leave a registry row
+# pointing at nothing. The rule itself is tools/check/selftest-inventory.sh, and the case after this
+# one proves that file can fail.
+sh "$CHECK_DIR/selftest-inventory.sh" "$ROOT/data/expected/runner-selftest.ids" "$ran" || rc=1
+
+# Selftest-inventory rule, stand-in (EV-07). The guard above is a file no control directory can reach
+# - the control runner would have to run this step - so its failure is committed here as a case: a
+# renamed copy of the real inventory must be refused with the renamed name, and the real inventory
+# against a complete `ran` list must be accepted, which is what keeps the refusal from being a rule
+# that refuses everything.
+si_real="$ROOT/data/expected/runner-selftest.ids"
+si_bad="$tmp/runner-selftest.renamed.ids"
+si_ran="$tmp/ran.all"
+printf '%s\n' st-toy-drift st-deviation-unused st-pass-line st-memmap-generator-missing > "$si_ran"
+si_ok=1
+if sed 's/^st-pass-line$/st-no-such-case/' "$si_real" > "$si_bad" \
+  && grep -q -x -F -e 'st-no-such-case' "$si_bad"; then
+  :
+else
+  si_ok=0
+fi
+if sh "$CHECK_DIR/selftest-inventory.sh" "$si_bad" "$si_ran" > "$tmp/si.bad" 2>&1; then
+  si_ok=0
+fi
+grep -q -F -e '-- FAIL runner-selftest-missing: st-no-such-case' "$tmp/si.bad" || si_ok=0
+sh "$CHECK_DIR/selftest-inventory.sh" "$si_real" "$si_ran" > "$tmp/si.good" 2>&1 || si_ok=0
+if [ "$si_ok" -eq 1 ]; then
+  # Printed with the same non-collected prefix as the proofs above.
+  printf -- '-- runner-selftest proof runner-selftest-missing: st-no-such-case (observed: '
+  grep -F -e '-- FAIL runner-selftest-missing: st-no-such-case' "$tmp/si.bad" | tr -d '\n'
+  printf -- ')\n'
+  cases=$((cases + 1))
+else
+  bad runner-selftest-missing "selftest-inventory"
 fi
 
 [ "$rc" -eq 0 ] || exit 1

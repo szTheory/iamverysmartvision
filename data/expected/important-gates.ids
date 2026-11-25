@@ -5,9 +5,9 @@
 # check, verdict over producer output), or its failure class escaped once.
 # Columns: <gate> <fault|control|mutant> <id> <REQ>. A fault is judged by faults-verdict (must-fail
 # vector, allowed reason prefixes, must-pass vector); a control by tools/check/run-controls.sh
-# (EXPECT token); a mutant is an in-step selftest case (pkg-selftests.ids, ci-summary-selftests.ids)
-# or a suite self-control `<suite>.judge.<slug>` / `<suite>.mutant.<slug>` that passes only when
-# its check fails for the intended reason. The audit behind this list is in
+# (EXPECT token); a mutant is an in-step selftest case (pkg-selftests.ids, ci-summary-selftests.ids,
+# runner-selftest.ids) or a suite self-control `<suite>.judge.<slug>` / `<suite>.mutant.<slug>` that
+# passes only when its check fails for the intended reason. The audit behind this list is in
 # .planning/phases/04-headless-runner-and-installed-consumer/04-24-SUMMARY.md.
 # Phase 5 (plan 05-12) extends the registry to INP-01 INP-02 INP-03 API-03 AUD-01 AUD-02 (section below the Phase 4 lines).
 
@@ -482,3 +482,53 @@ runner-record fault RECORD_DROPS_LAST_EVENT TOOL-01
 runner-record fault REPLAY_APPLIES_LATE TOOL-01
 runner-record mutant runner.judge.record-replay-differs TOOL-01
 runner-record mutant runner.judge.record-replay-inert TOOL-01
+# Phase 13 (plan 13-01): RTS-01's ledger mechanism under one new gate name, rights-ledger. A ledger
+# row that loses its disposition, a cleared row whose source id does not resolve in the sources
+# registry, a row the inventory does not list and a row the operator page does not name are each
+# refused by name inside the manifests step (tools/check/rights-lib.cmake), and the one control
+# directory plants all four in a single run. RTS-01 takes no exclusion-ledger row: the mechanism is
+# real, and an exclusion row would be the registry declining to cover what it just built.
+rights-ledger control rights-ledger RTS-01
+# Phase 13 (plan 13-03): RTS-02's naming limb under one new gate name, rights-naming. A ledger row's
+# refused spelling is refused inside core/src/, runner/, tools/ and the six pinned operator pages and
+# nowhere else, and a pre-existing occurrence is suppressed only by an exact "<token> <path>" pair in
+# data/expected/rights-pinned.ids (tools/check/rights-lib.cmake, called from the files step). The
+# control observes all three directions in one run: a pinned occurrence suppressed, an unpinned one
+# refused, and a pin that matches nothing refused as stale. RTS-02 takes no exclusion-ledger row: the
+# mechanism is real, and an exclusion row would be the registry declining to cover what it just built.
+rights-naming control rights-naming RTS-02
+# Phase 13 (plan 13-03): EV-06's claim ceiling under one new gate name, claim-ceiling. D-50 is two
+# conditions inside tools/check/kinds/claim.cmake: no tier but source-expectation may stand
+# established, and an established claim rests only on fields tagged tier1-primary-doc. Two must-fail
+# controls isolate the two conditions, and one legal positive keeps both satisfied while the step
+# fails for an unrelated reason, so a rule that refused every established claim would fail it. The
+# live ledger is asserted, never edited: CL-0002 rests on three tier1-primary-doc fields and
+# claims=28 provisional=27 is the criterion that catches an edit made to satisfy a test.
+claim-ceiling control claim-established-non-source EV-06
+claim-ceiling control claim-established-without-tier1 EV-06
+claim-ceiling control claim-established-positive EV-06
+# Phase 13 (plan 13-04): EV-07's ten D-09-06 registrations under one new gate name,
+# d09-06-registration. Each of the ten mechanisms that already had a liveness guard and a re-runnable
+# stand-in but no registry row gains the row that says so, and the row's kind is the kind that
+# actually proves it: six `control` rows resolve through data/expected/controls/*.ids (five
+# directories that already existed, important-gates-complete-uncovered, important-gates-excluded-malformed,
+# sources-src-token-whole, manifests-output-anchor and memmap-generator-refused, plus the new
+# important-gates-excluded-stale directory this plan adds), and four `mutant` rows resolve through the
+# new data/expected/runner-selftest.ids, which the runner-selftest step must actually run
+# (runner-selftest-missing). This narrows EV-07's literal "mutant row" wording: a mutant row for a
+# mechanism a control directory already proves would be a second registration of one proof, and
+# inventing a selftest to re-prove it would add a case with no new evidence. Zero new faults holds:
+# ten faults here would cost about 4.4 hosted cpu-s, 82 percent of the milestone's allowance, on the
+# step already 29 percent of the gate. EV-07 takes no exclusion-ledger row: the mechanisms are real,
+# and an exclusion row would be the registry declining to cover what it just built. The baseline is
+# re-derived by running the step, never quoted: lines and gates are its own printed stats.
+d09-06-registration control important-gates-excluded-stale EV-07
+d09-06-registration control important-gates-complete-uncovered EV-07
+d09-06-registration control important-gates-excluded-malformed EV-07
+d09-06-registration mutant st-toy-drift EV-07
+d09-06-registration mutant st-deviation-unused EV-07
+d09-06-registration mutant st-pass-line EV-07
+d09-06-registration control sources-src-token-whole EV-07
+d09-06-registration control manifests-output-anchor EV-07
+d09-06-registration control memmap-generator-refused EV-07
+d09-06-registration mutant st-memmap-generator-missing EV-07
