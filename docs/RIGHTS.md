@@ -33,6 +33,15 @@ A disposition is a decision about naming and shipping, not a finding about behav
 | Item | Disposition | What that means |
 |------|-------------|-----------------|
 | the frontend ABI subset | `cleared` | may be named; nothing is vendored, and the project writes its own entry points |
+| a flat cartridge image | `owner-local-only` | may be read only from the owner's own files and never committed |
+| the configuration container | `refused` | may not be named as a shipped artifact; the project does not parse or describe it |
+| a bank-switched cartridge mode | `refused` | may not be named as a shipped capability; no such mode is implemented or described |
+| the executive image | `owner-local-only` | may be read only from the owner's own files and never committed |
+| the graphics image | `owner-local-only` | may be read only from the owner's own files and never committed |
+| a commercial cartridge | `refused` | may not be committed, copied into a fixture, digested or named as a shipped artifact |
+| a rendered page image | `refused` | may not be committed or named; a render of a rights-bearing page is derivative of it |
+| a saved machine state | `owner-local-only` | may be read only from the owner's own files and never committed as a golden, a fixture or a claim artifact |
+| the core information strings | `owner-local-only` | may be read only from the owner's own build output and never committed |
 
 ## The refs/ cache
 

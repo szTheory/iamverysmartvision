@@ -1,0 +1,9 @@
+{
+  "id": "bank-modes",
+  "item": "a bank-switched cartridge mode",
+  "disposition": "refused",
+  "source": null,
+  "taken": "nothing",
+  "tokens": ["bank-switch", "bankswitch"],
+  "note": "Refused: the project implements no such cartridge mode and describes none (FMT-04 stays Deferred with its reversal condition), so the item may not be named as a shipped capability. Nothing is taken: no map, no table and no description of one exists in the tree."
+}

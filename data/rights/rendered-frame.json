@@ -1,0 +1,9 @@
+{
+  "id": "rendered-frame",
+  "item": "a rendered page image",
+  "disposition": "refused",
+  "source": null,
+  "taken": "nothing",
+  "tokens": ["screenshot", "rendered-frame", "page-render"],
+  "note": "Refused: a render of a rights-bearing page is a derivative of that document, so it may not be committed, cached in the tree or named as a shipped artifact. Nothing is taken by this phase. The runner's own frame export writes a project-authored frame of a machine state, which is a different item and is answered by the saved-state row."
+}

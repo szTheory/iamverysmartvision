@@ -1,0 +1,9 @@
+{
+  "id": "commercial-rom",
+  "item": "a commercial cartridge",
+  "disposition": "refused",
+  "source": null,
+  "taken": "nothing",
+  "tokens": ["game-rom", "cartridge-dump", "commercial-rom"],
+  "note": "Refused: no such cartridge may be committed, copied into a fixture, recorded as a digest or named as a shipped artifact. Nothing is taken by this phase, and the milestone's handoff takes no content byte of any kind."
+}

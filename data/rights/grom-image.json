@@ -1,0 +1,9 @@
+{
+  "id": "grom-image",
+  "item": "the graphics image",
+  "disposition": "owner-local-only",
+  "source": null,
+  "taken": "nothing",
+  "tokens": ["grom-image"],
+  "note": "Owner-local only: the image may be read from the owner's own files and never committed, never a fixture and never a golden. Nothing is taken: no image byte, no digest and no tracked path is recorded here. The four pre-existing occurrences of the spelling above are the operator's own argument placeholders in the owner-run script and its page; they are pinned by plan 13-03 rather than suppressed by this row."
+}
