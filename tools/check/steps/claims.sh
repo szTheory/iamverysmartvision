@@ -28,6 +28,10 @@ stats=$(printf '%s\n' "$out" | sed -n 's/^-- claim pass records=[0-9][0-9]* //p'
 # milestone close record, or a D-id owner gate. Frozen here so the set cannot be edited away
 # together with the ledger.
 HANDOFF_IDS='H7-1 H7-2 H8-3 D10 D11'
+# The disposition each id carries, pinned here for the same reason the id set is: a row with the
+# right id and the wrong disposition reads as a performed handoff that nobody performed, and the
+# ledger is the only place a later milestone looks. Edit both lists together or not at all.
+HANDOFF_DISP='H7-1=handed-off H7-2=handed-off H8-3=handed-off D10=not-performed D11=not-performed'
 hled="$ROOT/data/expected/handoffs.ids"
 
 hb=$(mktemp "${TMPDIR:-/tmp}/claims.XXXXXX") || exit 1
@@ -64,11 +68,20 @@ cat "$hb"
 [ -s "$hb" ] && exit 1
 # The row set, both directions, only once the grammar is clean: a malformed row already fails the
 # step, and one finding per ledger is enough to refuse it.
-if ! awk -v want="$HANDOFF_IDS" '
-    BEGIN { n = split(want, w, " "); for (i = 1; i <= n; i++) pin[w[i]] = 1 }
+if ! awk -v want="$HANDOFF_IDS" -v disp="$HANDOFF_DISP" '
+    BEGIN {
+      n = split(want, w, " "); for (i = 1; i <= n; i++) pin[w[i]] = 1
+      m = split(disp, d, " "); for (i = 1; i <= m; i++) { split(d[i], kv, "="); want_disp[kv[1]] = kv[2] }
+    }
     /^[[:space:]]*#/ { next }
     NF == 0 { next }
-    { if (!($1 in seen)) ord[++nr] = $1; seen[$1] = 1 }
+    {
+      if ($1 in seen) { print "-- FAIL claim-handoff-row: duplicate id " $1; next }
+      if (!($1 in seen)) ord[++nr] = $1; seen[$1] = 1
+      if (($1 in want_disp) && $2 != want_disp[$1]) {
+        print "-- FAIL claim-handoff-row: disposition " $1 " is " $2 ", pinned " want_disp[$1]
+      }
+    }
     END {
       for (i = 1; i <= nr; i++) if (!(ord[i] in pin)) print "-- FAIL claim-handoff-row: unknown id " ord[i]
       for (i = 1; i <= n; i++) if (!(w[i] in seen)) print "-- FAIL claim-handoff-row: missing id " w[i]

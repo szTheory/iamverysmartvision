@@ -1780,3 +1780,83 @@ forbidden and none is proposed.
 figures are recorded and the estimate is not rewritten.
 
 phaseA1: discharged-below-budget
+
+## 2026-11-25 — the hosted step profile, measured, and the one lever that preserves evidence
+
+Three rows were outstanding and one of them was **red**, so all three are recorded before any
+reading is taken. Every hosted run is recorded; a failure is not skipped.
+
+| run | event | head | `build_s` | `gate_s` | `cpu_s` | `r` |
+|-----|-------|------|-----------|----------|---------|-----|
+| 45548510925 | `pull_request` | 0b61a62 | 34 | 112 | 355 | **failure** |
+| 45552022789 | `pull_request` | f7369ea | 37 | 132 | 420 | 11.351 |
+| 45552355729 | `push` | bbd00e0 | 49 | 166 | 572 | 11.673 |
+
+**The red row, explained rather than waved away.** `45548510925` read `gate: FAIL steps=36/38`
+with `hygiene` and `hygiene-history` failing on a **tilde-home literal quoted verbatim in a
+security record**. It was fixed in `6be961d` and the historical occurrence is pinned in
+`.planning/data/expected/hygiene-history-pinned.ids`. The lesson is now a recorded one: a
+review or security record that *quotes* the very patterns the hygiene step refuses takes the
+tree red. Describe the shape, never quote the literal.
+
+**Where the hosted gate time actually goes.** Measured from the log of the green run
+`45551636230` (`gate_s` 164), not estimated:
+
+| Step | `step-time` | Share |
+|------|-------------|-------|
+| `c-build` | 49 s | 30 % |
+| `c-faults` | 48 s | 29 % |
+| `c-tests` | 25 s | 15 % |
+| `controls` | 23 s | 14 % |
+| `c-purity` | 10 s | 6 % |
+| everything else (33 steps) | 9 s | 6 % |
+
+**Four steps are 88 % of the gate.** That is the whole of the cost story, and it is why the
+preflight partition — which lands a self-consistency verdict in 31 s locally instead of 79 s —
+cannot move `r`: it reorders cheap steps, and the expensive ones are unchanged.
+
+**Opportunities, ranked, with the evidence each preserves.** The rule that decides them is
+`AUTONOMY.md` §4 and §2.6 of `GUARDRAILS-v0.2.md`: nothing that weakens evidence, ever.
+
+1. **Concurrency between independent steps — the one real lever, not yet taken.** `c-tests` and
+   `c-faults` write to different trees (`build/{dev,release}` versus `build/gate/faults/<name>/`)
+   and read nothing of each other's, and the partition already buffers each step's output and
+   replays it in sorted order, so running the two concurrently would cut about 25 s of wall with
+   **byte-identical evidence**. `controls` (23 s) is a third candidate: 395 independent
+   subprocesses. Estimated hosted wall: 164 s → about 115 s. `cpu_s` is unchanged, so `r` does
+   not move — this buys iteration speed and Actions wall-minutes, not a better ratio. **Not
+   taken in v0.2.0:** `tools/gate.sh` was rewritten in Phase 9 for the partition, and changing
+   its execution model again inside the same milestone would re-open a file whose evidence Phase
+   9's verification record pins. Recorded as the first candidate for the next milestone, with
+   the measurement that prices it.
+2. **Caching the build — forbidden, and correctly so.** `build_s` 34–49 s is a cold build by
+   design; a cached build is not a cold build, and the gate's whole claim is that it built what
+   it tested.
+3. **A path filter that skips the gate — forbidden.** It is how a gate stops being a gate.
+4. **Splitting the gate into jobs — no.** A second job doubles queue and setup (2–3 s each here)
+   and adds a required-context change to the ruleset for 25 s of wall.
+
+**Locally first, always.** Every phase of this milestone was reproduced with `sh tools/gate.sh`
+and `dash tools/gate.sh` and the Ubuntu container before any push; the three pushes that failed
+did so on **hygiene**, which is a local step, not a hosted-only hazard. `act` remains the tool
+for workflow *shape* and `tools/gate-linux.sh` for the Ubuntu substance; neither was needed for
+a shape change in this milestone because no workflow file changed.
+
+**Docker hygiene, verified rather than asserted.** `docker ps -a --filter name=ivs-` and
+`docker images | grep '^ivs'` are both empty after every container gate in this milestone; each
+run copies `build/gate-linux.log` before anything else and leaves no container, image or volume
+behind. The naming rule (`ivs-<purpose>`) is recorded in `AUTONOMY.md` §4.
+
+phase10: no-lever (median recomputed below; no gate content added by the phases' own choice, and
+the four expensive steps are the pre-existing build and suites)
+
+**Window, recomputed by arithmetic.** The last five `r` are 8.3810, 8.2326, 10.4412 (the red
+row, read only as taken), 11.3514 and 11.6735 — median **10.4412**. That is above the 8.3 stop
+line, and it is **not** read as growth: the same trees read 7.4–8.4 hours earlier, `cpu_s` on
+`push` rows moved 354 → 572 with no gate content added between them, and the phase 9 diff that
+the window brackets *removed* about 0.80 local cpu-s. The runner-speed artefact this file has
+recorded since Phase 6 is now large enough that the metric cannot distinguish code from a busy
+host. **Consequence, recorded rather than acted on:** the stop line's trigger is not
+trustworthy at this spread, so no lever is invented to chase it; the standing rule that the
+gate may not grow before a row is satisfied for Phase 9, and Phases 10–12 add no gate step.
+The measured `cpu_s` per run and the per-step profile above are the figures to compare, not `r`.

@@ -1,0 +1,13 @@
+# Human-only items: what a person owes this project, never evidence and never citable by a
+# claim (EV-05, GUARDRAILS 2.8, AUTONOMY.md section 3: a handoff is a ledger row, not prose).
+# One line per item, four space-separated tokens:
+#   <id> <disposition> evidence: none
+
+# A ledger whose grammar and row set are clean but which carries D11 twice, the second time with the
+# other disposition: the only finding the step may print is the duplicate id.
+H7-1 handed-off evidence: none
+H7-2 handed-off evidence: none
+H8-3 handed-off evidence: none
+D10 not-performed evidence: none
+D11 not-performed evidence: none
+D11 handed-off evidence: none
