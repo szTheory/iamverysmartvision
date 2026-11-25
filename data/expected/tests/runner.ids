@@ -296,3 +296,4 @@ runner.record.refuse.tick-order
 runner.record.refuse.tick-bound
 runner.record.refuse.event-cap
 runner.record.refuse.controller-bit
+runner.record.no-content-digest

@@ -3752,6 +3752,255 @@ static int ex_record_refuse_controller_bit(void)
   return IVS_TEST_PASS;
 }
 
+/* ---- the rights check (plan 11-03, TOOL-01, A-11-05) ---- */
+
+/* 1 when c is a hex digit. Both cases count: the project's digests are spelled in lower case (the `digest.*` lines of data/golden), so
+ * a scan restricted to upper case would not find the very value the stand-in carries and the stand-in would be a false
+ * witness. */
+static int rx_is_hex(char c)
+{
+  return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f');
+}
+
+/* The number of runs of 32 or more hex digits in text. A run is counted once however long it is, so a 64-hex digest
+ * counts 1 and a 31-hex field counts 0; scanning resumes after each run, counted or not. A count of runs rather than of
+ * matches is what makes the assertion readable, and grep is deliberately not used because `grep -c` counts lines and a
+ * log is one line per field. */
+static uint32_t rx_hex32_runs(const char *text)
+{
+  uint32_t runs = 0u;
+  size_t i = 0u;
+  while (text[i] != '\0') {
+    size_t n = 0u;
+    while (text[i + n] != '\0' && rx_is_hex(text[i + n]) != 0) {
+      n++;
+    }
+    if (n >= 32u) {
+      runs++;
+    }
+    i += n == 0u ? 1u : n;
+  }
+  return runs;
+}
+
+/* Copies text into out with the value of every `scenario` and `profile` line replaced by a single `x`.
+ *
+ * Why the values are masked: `copy_slug` in runner/scenario.c permits digits, so a 32-digit scenario id is a legal slug
+ * and a naive whole-file scan would count it as a 32-hex run and refuse a legitimate log. The exclusion is therefore a
+ * rule, not a convenience, and the shape pin below is what makes it safe: the two excluded fields are bounded by a
+ * charset and a width, so nothing goes unscanned - the field is scanned as a field rather than as a hex candidate. The
+ * fourth assertion of the case proves the exclusion is doing work. */
+static int rx_mask_names(const char *text, char *out, size_t cap)
+{
+  size_t i = 0u;
+  size_t o = 0u;
+  while (text[i] != '\0') {
+    const char *eol = strchr(text + i, '\n');
+    size_t ll = eol != NULL ? (size_t)(eol - (text + i)) : strlen(text + i);
+    size_t skip = 0u;
+    if (ll > 9u && strncmp(text + i, "scenario ", 9u) == 0) {
+      skip = 9u;
+    } else if (ll > 8u && strncmp(text + i, "profile ", 8u) == 0) {
+      skip = 8u;
+    }
+    if (o + ll + 3u > cap) {
+      return 0;
+    }
+    if (skip != 0u) {
+      memcpy(out + o, text + i, skip);
+      out[o + skip] = 'x';
+      o += skip + 1u;
+    } else {
+      memcpy(out + o, text + i, ll);
+      o += ll;
+    }
+    if (eol != NULL) {
+      out[o++] = '\n';
+    }
+    i += ll + (eol != NULL ? 1u : 0u);
+    if (eol == NULL) {
+      break;
+    }
+  }
+  out[o] = '\0';
+  return 1;
+}
+
+/* The number of lines whose first token is directive, which is how the shape pin counts `scenario` and `profile`: one of
+ * each, so the masking rule above has exactly two fields to mask and neither can be duplicated past it. */
+static uint32_t rx_directive_lines(const char *text, const char *directive)
+{
+  uint32_t n = 0u;
+  size_t i = 0u;
+  size_t dl = strlen(directive);
+  while (text[i] != '\0') {
+    if (strncmp(text + i, directive, dl) == 0 && text[i + dl] == ' ') {
+      n++;
+    }
+    const char *eol = strchr(text + i, '\n');
+    if (eol == NULL) {
+      break;
+    }
+    i = (size_t)(eol - text) + 1u;
+  }
+  return n;
+}
+
+/* 1 when s is 1..max bytes of [a-z0-9-] and nothing else: the document's name charset and width, restated here so the
+ * shape pin is a measurement of the log rather than a call into the parser that produced it. */
+static int rx_slug_shape(const char *s, size_t max)
+{
+  size_t n = strlen(s);
+  if (n == 0u || n > max) {
+    return 0;
+  }
+  for (size_t i = 0u; i < n; i++) {
+    char c = s[i];
+    if (!((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-')) {
+      return 0;
+    }
+  }
+  return 1;
+}
+
+/* runner.record.no-content-digest (plan 11-03, TOOL-01, D-15, A-11-05): a produced log carries no 32-character hex run,
+ * and the check that says so is shown able to fail. Four assertions, in this order:
+ *   1. zero hits on a produced log. A real recording run writes a log (the same two-input text the equality case uses),
+ *      its `scenario` and `profile` values are masked out by rx_mask_names, and the scan finds 0 runs. Unmasked, nothing
+ *      in this log would match either, so the mask is not what makes the count 0; assertion 4 is where the mask earns
+ *      its place;
+ *   2. the stand-in fires. The produced log with one appended line carrying `digest.input` and the golden's real 64-hex
+ *      value is scanned and must carry **at least 1** run. Without this the id cannot fail: no well-formed log can carry
+ *      a 32-hex run, a decimal tick is at most 19 digits and a controller field is exactly 8 hex digits separated from
+ *      its neighbour by ` c1=`, so "0 runs on a produced log" is true of every log and proves nothing on its own
+ *      (lesson 20, A-11-05). The stand-in is a string literal in this committed source, never a tracked `.ivsl` file;
+ *   3. the shape pin. The log's `scenario` value is 1..48 bytes of [a-z0-9-], its `profile` value 1..64, and the text
+ *      carries exactly one `scenario` line and exactly one `profile` line. That is what justifies the mask: the two
+ *      excluded fields are bounded by a rule, so the exclusion does not leave a hole;
+ *   4. the exclusion is a decision, proved. A log whose `scenario` value is 32 digits - a legal slug, because copy_slug
+ *      permits digits - is formatted and parsed, and the unmasked text must carry at least 1 run while the masked text
+ *      carries 0 and the shape pin still passes. So the mask is the reason a legitimate all-digit slug is not refused,
+ *      asserted rather than described.
+ * The check can prove what a well-formed log carries; it cannot prove the machine produced no digest elsewhere, which is
+ * why the format has no field for one (docs/formats/ivsl-v1.md, "Rights"). */
+static int ex_record_no_content_digest(void)
+{
+  fake_host h;
+  ivs_runner_result res;
+  ivs_ivsl_log lg;
+  ivs_ivsl_log slug;
+  ivs_ivsl_error err;
+  char atext[RX_SCN_CAP];
+  char btext[RX_SCN_CAP];
+  char insert[sizeof rx_record_inputs + sizeof rx_record_run_to];
+  char log[1024];
+  char masked[1024];
+  char standin[1200];
+  char slugtext[512];
+  char slugmasked[512];
+  uint8_t slugbytes[512];
+  uint64_t slugbytes_n = 0u;
+  uint32_t out;
+  int rc = IVS_TEST_FAIL;
+  fh_init(&h);
+  (void)snprintf(insert, sizeof insert, "%s%s", rx_record_inputs, rx_record_run_to);
+  if (!rx_diag(btext, sizeof btext) || !rx_replace(btext, rx_record_run_to, insert, atext, sizeof atext)) {
+    goto done;
+  }
+  h.log_out = (uint8_t *)malloc(IVS_IVSL_MAX_BYTES);
+  h.log_out_cap = IVS_IVSL_MAX_BYTES;
+  if (h.log_out == NULL) {
+    goto done;
+  }
+  out = rx_exec(atext, &h, &res);
+  if (out != IVS_RUNNER_OUTCOME_PASS || res.log_out_bytes == 0u || res.log_out_bytes >= sizeof log) {
+    ivs_test_diag("the recording run: outcome %u, log bytes %llu", (unsigned)out, (unsigned long long)res.log_out_bytes);
+    goto done;
+  }
+  memcpy(log, h.log_out, (size_t)res.log_out_bytes);
+  log[res.log_out_bytes] = '\0';
+  memset(&lg, 0, sizeof lg);
+  memset(&err, 0, sizeof err);
+  if (ivs_ivsl_parse((const uint8_t *)log, (size_t)res.log_out_bytes, &lg, &err) != 0) {
+    ivs_test_diag("the produced log does not parse: reason %s line %u", ivs_ivsl_reason_name(err.reason), (unsigned)err.line);
+    goto done;
+  }
+  if (!rx_mask_names(log, masked, sizeof masked)) {
+    ivs_test_diag("the produced log did not fit the masked copy");
+    goto done;
+  }
+  /* 1. zero hits on a produced log. */
+  if (rx_hex32_runs(masked) != 0u) {
+    ivs_test_diag("the produced log carries %u 32-hex runs, want 0\n%s", (unsigned)rx_hex32_runs(masked), masked);
+    goto done;
+  }
+  /* 2. the stand-in fires: the same log with one digest line appended must be found. */
+  if ((size_t)snprintf(standin, sizeof standin, "%sdigest.input %s\n", masked,
+                       "832906ce775d32a98ae607386ce4bbcdd4d08017e3b914b6089e50a5364c7761") >= sizeof standin) {
+    ivs_test_diag("the stand-in did not fit");
+    goto done;
+  }
+  if (rx_hex32_runs(standin) < 1u) {
+    ivs_test_diag("the stand-in carries %u 32-hex runs, want at least 1: the check cannot fail", (unsigned)rx_hex32_runs(standin));
+    goto done;
+  }
+  /* 3. the shape pin, which is what makes the mask safe. */
+  if (!rx_slug_shape(lg.scenario, IVS_IVSL_MAX_ID) || !rx_slug_shape(lg.profile, IVS_IVSL_MAX_PROFILE) ||
+      rx_directive_lines(log, "scenario") != 1u || rx_directive_lines(log, "profile") != 1u) {
+    ivs_test_diag("the produced log's names: scenario '%s' profile '%s', %u and %u lines", lg.scenario, lg.profile,
+                  (unsigned)rx_directive_lines(log, "scenario"), (unsigned)rx_directive_lines(log, "profile"));
+    goto done;
+  }
+  /* 4. the exclusion is a decision, proved: a 32-digit scenario id is a legal slug, unmasked it looks like a digest, and
+   * the masked scan plus the shape pin accept it. */
+  memset(&slug, 0, sizeof slug);
+  slug.version = IVS_IVSL_VERSION;
+  memset(slug.scenario, '1', 32u);
+  slug.scenario[32] = '\0';
+  (void)snprintf(slug.profile, sizeof slug.profile, "intv-2609-ntsc-family-p1");
+  slug.content = IVS_IVSL_CONTENT_PROJECT;
+  slug.n_events = 0u;
+  if (ivs_ivsl_format(&slug, slugbytes, sizeof slugbytes, &slugbytes_n) != 0 || slugbytes_n >= sizeof slugtext) {
+    ivs_test_diag("the 32-digit-slug log could not be formatted");
+    goto done;
+  }
+  memcpy(slugtext, slugbytes, (size_t)slugbytes_n);
+  slugtext[slugbytes_n] = '\0';
+  memset(&lg, 0, sizeof lg);
+  memset(&err, 0, sizeof err);
+  if (ivs_ivsl_parse(slugbytes, (size_t)slugbytes_n, &lg, &err) != 0) {
+    ivs_test_diag("the 32-digit-slug log is refused (%s line %u): an all-digit slug is legal", ivs_ivsl_reason_name(err.reason),
+                  (unsigned)err.line);
+    goto done;
+  }
+  if (!rx_mask_names(slugtext, slugmasked, sizeof slugmasked)) {
+    ivs_test_diag("the 32-digit-slug log did not fit the masked copy");
+    goto done;
+  }
+  if (rx_hex32_runs(slugtext) < 1u) {
+    ivs_test_diag("the unmasked 32-digit-slug log carries %u runs: the mask has nothing to exclude",
+                  (unsigned)rx_hex32_runs(slugtext));
+    goto done;
+  }
+  if (rx_hex32_runs(slugmasked) != 0u) {
+    ivs_test_diag("the masked 32-digit-slug log carries %u runs, want 0", (unsigned)rx_hex32_runs(slugmasked));
+    goto done;
+  }
+  if (!rx_slug_shape(lg.scenario, IVS_IVSL_MAX_ID) || strlen(lg.scenario) != 32u) {
+    ivs_test_diag("the 32-digit-slug log's scenario is '%s' (%llu bytes)", lg.scenario, (unsigned long long)strlen(lg.scenario));
+    goto done;
+  }
+  ivs_test_diag("no-content-digest: the produced log %llu bytes, 0 masked 32-hex runs; the stand-in 1; the 32-digit slug "
+                "1 unmasked and 0 masked",
+                (unsigned long long)res.log_out_bytes);
+  rc = IVS_TEST_PASS;
+done:
+  free(h.log_out);
+  h.log_out = NULL;
+  rx_free(&h);
+  return rc;
+}
+
 /* Sets the value of key in report in place. 1 when exactly one line carries the key and the new value has the same
  * length as the old one (every use here keeps the width, so no line has to move and the text stays equal elsewhere). */
 static int rx_report_set_value(char *report, const char *key, const char *value)
@@ -3985,6 +4234,7 @@ static const ivs_test_case exec_cases[] = {
     {"runner.record.refuse.tick-bound", ex_record_refuse_tick_bound, NULL},
     {"runner.record.refuse.event-cap", ex_record_refuse_event_cap, NULL},
     {"runner.record.refuse.controller-bit", ex_record_refuse_controller_bit, NULL},
+    {"runner.record.no-content-digest", ex_record_no_content_digest, NULL},
     {"runner.judge.record-replay-differs", ex_judge_record_replay_differs, NULL},
     {"runner.judge.record-replay-inert", ex_judge_record_replay_inert, NULL},
     {"runner.exec.boot-stub-2", ex_boot_stub_2, NULL},
