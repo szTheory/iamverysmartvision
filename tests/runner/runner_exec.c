@@ -3025,6 +3025,12 @@ done:
 
 /* ---- the record/replay hook (plan 11-02, TOOL-01, D-15, A-11-03) ---- */
 
+/* The two fragments the record section builds its texts from: the two input lines of the recording run, and the
+ * diagnostic program's run-to line, which is where they are inserted. */
+static const char rx_record_inputs[] = "input at_tick=100 c0=KEY_1 c1=0x0\n"
+                                      "input at_tick=200 c0=0x0 c1=DISC_E\n";
+static const char rx_record_run_to[] = "run-to 4000 cpu-cycles stop halted\n";
+
 /* The nine report digest lines, in the writer's key order (the rows of exec.c's ex_domains). */
 static const char *const rx_digest_keys[] = {"digest.cpu",    "digest.mem",    "digest.images", "digest.instance", "digest.composite",
                                              "digest.video",  "digest.audio",  "digest.input",  "digest.psglog"};
@@ -3117,9 +3123,6 @@ static int rx_record_compare(const char *a, const char *b, uint32_t log_events, 
  * on the fake host's images, so "all nine observed" is the process case's clause, A-11-01). */
 static int ex_record_replay_equals_straight(void)
 {
-  static const char two_inputs[] = "input at_tick=100 c0=KEY_1 c1=0x0\n"
-                                   "input at_tick=200 c0=0x0 c1=DISC_E\n";
-  static const char run_to[] = "run-to 4000 cpu-cycles stop halted\n";
   fake_host a;
   fake_host b;
   fake_host c;
@@ -3131,7 +3134,7 @@ static int ex_record_replay_equals_straight(void)
   char diag[RX_SCN_CAP];
   char atext[RX_SCN_CAP];
   char btext[RX_SCN_CAP];
-  char insert[sizeof two_inputs + sizeof run_to];
+  char insert[sizeof rx_record_inputs + sizeof rx_record_run_to];
   char va[RX_VALUE_CAP];
   char vb[RX_VALUE_CAP];
   const char *why = "";
@@ -3148,9 +3151,9 @@ static int ex_record_replay_equals_straight(void)
   if (a.log_out == NULL) {
     goto done;
   }
-  (void)snprintf(insert, sizeof insert, "%s%s", two_inputs, run_to);
-  if (!rx_diag(diag, sizeof diag) || !rx_replace(diag, run_to, insert, atext, sizeof atext) ||
-      !rx_replace(atext, two_inputs, "", btext, sizeof btext)) {
+  (void)snprintf(insert, sizeof insert, "%s%s", rx_record_inputs, rx_record_run_to);
+  if (!rx_diag(diag, sizeof diag) || !rx_replace(diag, rx_record_run_to, insert, atext, sizeof atext) ||
+      !rx_replace(atext, rx_record_inputs, "", btext, sizeof btext)) {
     goto done;
   }
   /* A: the run with the two input lines, recording. */
@@ -3236,6 +3239,149 @@ done:
   return rc_code;
 }
 
+/* runner.record.format-roundtrip (plan 11-02, TOOL-01, D-15): writing a log, parsing it and writing it again is
+ * byte-identical, and parse and format are fixpoints of each other; the byte figures are computed from the strings the
+ * case built, never hard-coded; the event cap is tied to the constant it comes from; and a refusal leaves the caller's
+ * output untouched. Five assertions, in this order:
+ *   1. the round trip: a real recorded log parses, and formatting the parsed log gives the same bytes and the same
+ *      length;
+ *   2. the fixpoint: format, parse, format, parse leaves the events, the ticks, both words of each event, the names and
+ *      the content class unchanged, and the two later buffers are byte-equal to the first;
+ *   3. the sizes: the four header lines come to the bytes their own strings spell (80 for diag-boot-pass and
+ *      intv-2609-ntsc-family-p1 with `content project`), and the produced log is that header plus one event line per
+ *      event, each counted from its own tick (36 bytes each here: a 39-byte line is a six-digit tick, and the
+ *      demo-lamp-tone-pass log of 85 + 6 * 39 = 319 bytes is measured by the process case of plan 11-04, not here,
+ *      because the in-process suite has no lamp-tone image);
+ *   4. the two caps: IVS_IVSL_MAX_EVENTS is 64 and is IVS_SCN_MAX_INPUTS, and a buffer one byte short of the log's
+ *      length is refused with nothing written;
+ *   5. a refusal leaves the output untouched: a one-byte-truncated log is refused `trailing` and the poisoned log the
+ *      caller passed is still poisoned. This is the contract the nine per-token cases of plan 11-03 repeat. */
+static int ex_record_format_roundtrip(void)
+{
+  fake_host h;
+  ivs_runner_result res;
+  ivs_ivsl_log l1;
+  ivs_ivsl_log l2;
+  ivs_ivsl_log l3;
+  ivs_ivsl_log poison;
+  ivs_ivsl_error err;
+  char atext[RX_SCN_CAP];
+  char btext[RX_SCN_CAP];
+  char insert[sizeof rx_record_inputs + sizeof rx_record_run_to];
+  char *first = NULL;
+  char *second = NULL;
+  char *third = NULL;
+  uint64_t n1 = 0u;
+  uint64_t n2 = 0u;
+  uint64_t n3 = 0u;
+  uint64_t header;
+  uint64_t want;
+  uint32_t out;
+  int rc = IVS_TEST_FAIL;
+  fh_init(&h);
+  first = malloc(IVS_IVSL_MAX_BYTES);
+  second = malloc(IVS_IVSL_MAX_BYTES);
+  third = malloc(IVS_IVSL_MAX_BYTES);
+  if (first == NULL || second == NULL || third == NULL) {
+    goto done;
+  }
+  (void)snprintf(insert, sizeof insert, "%s%s", rx_record_inputs, rx_record_run_to);
+  if (!rx_diag(btext, sizeof btext) || !rx_replace(btext, rx_record_run_to, insert, atext, sizeof atext)) {
+    goto done;
+  }
+  h.log_out = (uint8_t *)first;
+  h.log_out_cap = IVS_IVSL_MAX_BYTES;
+  out = rx_exec(atext, &h, &res);
+  if (out != IVS_RUNNER_OUTCOME_PASS || res.exit_code != 0u || h.out == NULL || !rx_complete(h.out, &res) || res.log_out_bytes == 0u) {
+    ivs_test_diag("the recording run: outcome %u exit %u log bytes %llu", (unsigned)out, (unsigned)res.exit_code,
+                  (unsigned long long)res.log_out_bytes);
+    goto done;
+  }
+  n1 = res.log_out_bytes;
+  memset(&l1, 0, sizeof l1);
+  memset(&err, 0, sizeof err);
+  if (ivs_ivsl_parse((const uint8_t *)first, (size_t)n1, &l1, &err) != 0 || l1.n_events != 2u) {
+    ivs_test_diag("the recorded log does not parse: reason %s line %u", ivs_ivsl_reason_name(err.reason), (unsigned)err.line);
+    goto done;
+  }
+  /* 1. write, parse, write again: byte-identical, same length. */
+  memset(second, 0xA5, IVS_IVSL_MAX_BYTES);
+  if (ivs_ivsl_format(&l1, (uint8_t *)second, IVS_IVSL_MAX_BYTES, &n2) != 0 || n2 != n1 ||
+      memcmp(first, second, (size_t)n1) != 0) {
+    ivs_test_diag("the second write took %llu bytes (first %llu) or differs", (unsigned long long)n2, (unsigned long long)n1);
+    goto done;
+  }
+  /* 2. parse and format are fixpoints of each other. */
+  memset(&l2, 0, sizeof l2);
+  memset(&err, 0, sizeof err);
+  if (ivs_ivsl_parse((const uint8_t *)second, (size_t)n2, &l2, &err) != 0) {
+    ivs_test_diag("the second log does not parse: reason %s line %u", ivs_ivsl_reason_name(err.reason), (unsigned)err.line);
+    goto done;
+  }
+  if (ivs_ivsl_format(&l2, (uint8_t *)third, IVS_IVSL_MAX_BYTES, &n3) != 0 || n3 != n1 || memcmp(first, third, (size_t)n1) != 0) {
+    ivs_test_diag("the third write differs from the first (%llu bytes against %llu)", (unsigned long long)n3, (unsigned long long)n1);
+    goto done;
+  }
+  if (l2.n_events != l1.n_events || l2.version != l1.version || l2.content != l1.content ||
+      strcmp(l2.scenario, l1.scenario) != 0 || strcmp(l2.profile, l1.profile) != 0) {
+    ivs_test_diag("the fixpoint moved the header: events %u/%u content %u/%u scenario '%s'/'%s'", (unsigned)l1.n_events,
+                  (unsigned)l2.n_events, (unsigned)l1.content, (unsigned)l2.content, l1.scenario, l2.scenario);
+    goto done;
+  }
+  for (uint32_t i = 0u; i < l1.n_events; i++) {
+    if (l2.events[i].at_tick != l1.events[i].at_tick || l2.events[i].controller[0] != l1.events[i].controller[0] ||
+        l2.events[i].controller[1] != l1.events[i].controller[1]) {
+      ivs_test_diag("the fixpoint moved event %u: %llu/%08X/%08X against %llu/%08X/%08X", (unsigned)i,
+                    (unsigned long long)l1.events[i].at_tick, (unsigned)l1.events[i].controller[0],
+                    (unsigned)l1.events[i].controller[1], (unsigned long long)l2.events[i].at_tick,
+                    (unsigned)l2.events[i].controller[0], (unsigned)l2.events[i].controller[1]);
+      goto done;
+    }
+  }
+  /* 3. the sizes, from the strings themselves. */
+  header = rx_ivsl_header_bytes(l1.scenario, l1.profile, l1.content == IVS_IVSL_CONTENT_USER ? "user" : "project");
+  want = header + rx_ivsl_event_bytes(l1.events[0].at_tick, l1.events[0].controller[0], l1.events[0].controller[1]) +
+         rx_ivsl_event_bytes(l1.events[1].at_tick, l1.events[1].controller[0], l1.events[1].controller[1]);
+  if (header == 0u || want != n1) {
+    ivs_test_diag("the log took %llu bytes, its own strings spell %llu (header %llu)", (unsigned long long)n1,
+                  (unsigned long long)want, (unsigned long long)header);
+    goto done;
+  }
+  ivs_test_diag("the log is %llu bytes: a %llu-byte header and %llu and %llu for its two event lines",
+                (unsigned long long)n1, (unsigned long long)header,
+                (unsigned long long)rx_ivsl_event_bytes(l1.events[0].at_tick, l1.events[0].controller[0], l1.events[0].controller[1]),
+                (unsigned long long)rx_ivsl_event_bytes(l1.events[1].at_tick, l1.events[1].controller[0], l1.events[1].controller[1]));
+  /* 4. the caps, and a buffer one byte short. */
+  if (IVS_IVSL_MAX_EVENTS != 64u || IVS_IVSL_MAX_EVENTS != IVS_SCN_MAX_INPUTS) {
+    ivs_test_diag("IVS_IVSL_MAX_EVENTS %u is not 64 == IVS_SCN_MAX_INPUTS %u", (unsigned)IVS_IVSL_MAX_EVENTS,
+                  (unsigned)IVS_SCN_MAX_INPUTS);
+    goto done;
+  }
+  memset(third, 0xA5, IVS_IVSL_MAX_BYTES);
+  n3 = 7u;
+  if (ivs_ivsl_format(&l1, (uint8_t *)third, n1 - 1u, &n3) != 1 || n3 != 7u || (unsigned char)third[0] != 0xA5u) {
+    ivs_test_diag("a buffer of %llu bytes (one short) was not refused with nothing written", (unsigned long long)(n1 - 1u));
+    goto done;
+  }
+  /* 5. a refusal leaves the output untouched: the last LF removed is a trailing fault, and the poisoned log stays so. */
+  memset(&poison, 0xA5, sizeof poison);
+  l3 = poison;
+  memset(&err, 0, sizeof err);
+  if (ivs_ivsl_parse((const uint8_t *)first, (size_t)(n1 - 1u), &l3, &err) == 0 || err.reason != IVS_IVSL_R_TRAILING ||
+      memcmp(&l3, &poison, sizeof l3) != 0) {
+    ivs_test_diag("the truncated log: reason %s line %u, and the output %s left untouched", ivs_ivsl_reason_name(err.reason),
+                  (unsigned)err.line, memcmp(&l3, &poison, sizeof l3) == 0 ? "was" : "was not");
+    goto done;
+  }
+  rc = IVS_TEST_PASS;
+done:
+  free(first);
+  free(second);
+  free(third);
+  rx_free(&h);
+  return rc;
+}
+
 static const ivs_test_case exec_cases[] = {
     {"runner.exec.assert-forms", ex_assert_forms, NULL},
     {"runner.exec.cancel", ex_cancel, NULL},
@@ -3279,6 +3425,7 @@ static const ivs_test_case exec_cases[] = {
     {"runner.exec.roundtrip-option-range", ex_roundtrip_option_range, NULL},
     {"runner.exec.roundtrip-cut-cap", ex_roundtrip_cut_cap, NULL},
     {"runner.record.replay-equals-straight", ex_record_replay_equals_straight, NULL},
+    {"runner.record.format-roundtrip", ex_record_format_roundtrip, NULL},
     {"runner.exec.boot-stub-2", ex_boot_stub_2, NULL},
     {"runner.exec.sha-match", ex_sha_match, NULL},
     {"runner.exec.sha-mismatch", ex_sha_mismatch, NULL},

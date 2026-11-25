@@ -274,3 +274,4 @@ runner.exec.roundtrip-cut-cap
 # rejected by a guard and never read as success. The format is runner/ivsl.c, a library translation unit: tests/faults.cmake
 # refuses a fault whose owner TU is not in IVS_RUNNER_SOURCES, so its two faults can have sites there (A-11-04).
 runner.record.replay-equals-straight
+runner.record.format-roundtrip
