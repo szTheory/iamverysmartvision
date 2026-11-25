@@ -4,18 +4,18 @@ milestone: v0.2.0
 milestone_name: Registered Evidence, Reachable Runs, Replayable Input (Phases 9 to 12)</summary>
 current_phase: 10
 current_phase_name: Reachable Runs and Presentation Policy
-current_plan: 4
+current_plan: 5
 status: executing
-stopped_at: Completed 10-03-PLAN.md
-last_updated: "2026-11-25T07:31:56.073Z"
+stopped_at: Completed 10-04-PLAN.md
+last_updated: "2026-11-25T07:52:25.139Z"
 last_activity: 2026-11-24
 last_activity_desc: Phase 9 complete, transitioned to Phase 10
-state_head: 36c79813c1df54fee7c3796e67cbb93bda2075fd
+state_head: a488d83f2d521995e5758d8fdb168a53ce1c01fa
 progress:
   total_phases: 4
   completed_phases: 8
   total_plans: 15
-  completed_plans: 12
+  completed_plans: 13
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-24)
 ## Current Position
 
 Phase: 10 (Reachable Runs and Presentation Policy) — IN PROGRESS
-Current Plan: 4
+Current Plan: 5
 Total Plans in Phase: 6
 Status: Ready to execute
 Last activity: 2026-11-24 — Phase 9 complete, transitioned to Phase 10
@@ -220,6 +220,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | Phase 10 P01 | 7m40s | 2 tasks | 3 files |
 | Phase 10 P02 | ~28m | 2 tasks | 1 files |
 | Phase 10 P03 | 24 min | 2 tasks | 2 files |
+| Phase 10 P04 | 18m | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -520,6 +521,7 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 10]: docs/running.md quotes the measured nine-line tail with host.calls qualified by slice size (11 default, 1599 at --slice-ticks 1000) rather than dropped
 - [Phase 10]: The golden comparison is the committed data/golden/demo-lamp-tone-pass.digests body (124 of 124 lines) against a 131-line report; no second expectation was invented
 - [Phase 10]: docs/presentation.md cites tools/check/core-symbols.sh:163-173 and its committed stand-in instead of adding a second colour mechanism (A-02); the mechanism (51515f1) is an ancestor of the policy (b5ad01d), an inversion of GUARDRAILS 2.9 recorded rather than claimed away
+- [Phase 10]: the release rehearsal gains --source-route: the archive a release carries is extracted, built cold, run on the demo and compared with the committed golden by a verbatim copy of the gate's filter; release-time only, no gate step, no control, no claim
 
 ### Pending Todos
 
@@ -578,8 +580,8 @@ Refreshed by plan 08-21 from `.planning/phases/08-stic-completion-save-state-per
 
 ## Session Continuity
 
-Last session: 2026-11-25T07:31:56.039Z
-Stopped at: Completed 10-03-PLAN.md
+Last session: 2026-11-25T07:52:25.105Z
+Stopped at: Completed 10-04-PLAN.md
 Resume file: None
 
 ## Recorded Constraints for the Next Milestone
