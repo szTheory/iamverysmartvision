@@ -239,3 +239,21 @@ described it was overstated.
 **No format change, no code change, no version bump follows.** The grammar is unchanged, the
 version stays 1, and no reader or writer moves. A future revision of this document should replace
 the overstated sentence with this one, and may then delete this note.
+
+## Appended amendment A-11-V2 (Phase 11 code review, 2026-11-25): the `trailing` line is one line later than the row says
+
+The `trailing` row above says the token names *"the last line before the offending byte"*. The
+parser names **the line the offending byte sits on**, and the row is left as written because this
+document is a frozen oracle (GUARDRAILS 2.10, lesson 21). The correction is this note.
+
+**Measured:** a well-formed four-line header followed by a bare `x` (no LF) is refused `trailing`
+at line 5, not 4; the same header with a CR inside its fifth line is refused at line 5, and the
+last complete line before it is 4. In `runner/ivsl.c` the pre-scan counts the LF-terminated lines
+and the missing-LF branch names the line the byte begins, so for the row's first trigger the two
+readings differ by exactly one: the offending byte begins a line, and that line is one past the
+last complete line.
+
+**No format change, no code change, no version bump follows.** The nine tokens, their triggers and
+their reason strings are unaffected; only this one row's "Line named" wording is superseded, and
+`err.line` is a diagnostic that no consumer branches on. The nine `runner.record.refuse.*` ids
+assert the parser's number and now also say which reading they pin.

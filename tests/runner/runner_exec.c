@@ -3642,9 +3642,11 @@ static int ex_record_refuse_hex(void)
 /* runner.record.refuse.trailing (plan 11-03, TOOL-01, A-11-02): a file-shape fault, which is the class `arity` would
  * otherwise have swallowed. Three rows: a byte after the last complete line (a bare `x` with no LF), a complete final
  * line with its LF removed, and a NUL inside an event line. The NUL row is fed by length, not by strlen, because the
- * byte the parser has to judge is the terminator a string helper would stop at. Each names the line the fault sits on:
- * a file-shape fault is not the end of the file in the NUL's case, and the document's "last line before the offending
- * byte" and "the line the byte sits on" agree here because the offending byte is inside line 5. */
+ * byte the parser has to judge is the terminator a string helper would stop at. Each names the line the fault sits on,
+ * which is what the parser does: the document's `trailing` row says "the last line before the offending byte", and the
+ * amendment appended as A-11-V2 (review WR-04) records that the parser names the line the byte sits on. For the first
+ * row those differ by one - a 4-line header and a bare `x` are refused at line 5, not 4 - so these rows pin the
+ * parser's reading, not the document's wording. */
 static int ex_record_refuse_trailing(void)
 {
   char text[1024];
