@@ -3,17 +3,17 @@ gsd_state_version: "1.0"
 milestone: v0.2.0
 milestone_name: Registered Evidence, Reachable Runs, Replayable Input (Phases 9 to 12)</summary>
 current_phase: 12
-current_phase_name: Bank Modes and External Import (conditional, droppable)
-current_plan: Not started
-status: planning
-stopped_at: Phase 11 complete, ready to plan Phase 12
-last_updated: "2026-11-25T16:58:34.863Z"
+current_phase_name: Bank Modes and External Import (dropped at its entry gate)
+current_plan: none
+status: milestone-complete
+stopped_at: All four phases resolved - 9, 10 and 11 delivered and verified; 12 dropped at its entry gate
+last_updated: "2026-11-25T17:30:00.000Z"
 last_activity: 2026-11-25
-last_activity_desc: Phase 11 complete, transitioned to Phase 12
-state_head: 3a13fa9eb4455a4dc7083c99beb86303e0a07b35
+last_activity_desc: "v0.2.0 phases resolved: 9 (9/9), 10 (6/6), 11 (5/5), 12 dropped; lifecycle next"
+state_head: 71ff301
 progress:
   total_phases: 4
-  completed_phases: 8
+  completed_phases: 4
   total_plans: 20
   completed_plans: 20
   percent: 100
