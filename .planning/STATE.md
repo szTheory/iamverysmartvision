@@ -5,16 +5,16 @@ milestone_name: Registered Evidence, Reachable Runs, Replayable Input (Phases 9 
 current_phase: 9
 current_phase_name: Registered Evidence and Gate Cost
 status: executing
-stopped_at: Completed 09-08-PLAN.md
-last_updated: "2026-11-25T02:54:31.865Z"
+stopped_at: Completed 09-09-PLAN.md (phase 9 complete)
+last_updated: "2026-11-25T03:11:17.559Z"
 last_activity: 2026-11-24
 last_activity_desc: Phase 9 execution started
-state_head: e15dbbebc09d443d83daf17e280b65d328c81625
+state_head: f52610e1fd46a09e0447ff247ea0bf8ed13530a6
 progress:
   total_phases: 4
   completed_phases: 8
   total_plans: 9
-  completed_plans: 8
+  completed_plans: 9
 ---
 
 # Project State
@@ -28,14 +28,16 @@ See: .planning/PROJECT.md (updated 2026-11-24)
 
 ## Current Position
 
-Phase: 9 (Registered Evidence and Gate Cost) — EXECUTING
-Plan: 8 of 9 (wave A1 complete: 09-01, 09-02, 09-03)
-Status: Wave A1 done — waiting on the orchestrator's hosted row before wave A2
-Last activity: 2026-11-24 — wave A1 complete, the hosted row is the orchestrator's
+Phase: 9 (Registered Evidence and Gate Cost) — EXECUTING, all 9 plans executed
+Plan: 9 of 9 (wave A1 complete: 09-01, 09-02, 09-03; wave A2 complete: 09-04 to 09-09)
+Status: Phase 9 execution complete — EV-01 to EV-04 Complete with a ten-row exclusion ledger; the phase boundary (container gate, rulesets, verify-work) is the orchestrator's
+Last activity: 2026-11-25 — plan 09-09 closed the requirements and left the records corrected
 
-**Next action:** execute phase 9. Wave A1 (09-01 to 09-03) lands the cost lever and
-three trims; the orchestrator then pushes, takes a hosted row and records it; wave A2
-(09-04 to 09-09) may not add any gate content before that row exists.
+**Next action:** the orchestrator's phase boundary. It runs the container gate once on this
+final tree (the executor did not: the dispatch reserves it), applies or records the branch and
+tag rulesets in `.planning/AUTONOMY.md` section 1, and runs verify-work. Phase 10
+(`PKG-05`, `TOOL-04`, `EV-05`) starts after that. Nothing in wave A2 added gate content before
+the hosted row, and the row is in `.planning/ci-runs.tsv` (run 45527058543, head `93e6b9f`).
 
 ### Planning overrides recorded by the autonomous run
 
@@ -211,6 +213,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | Phase 9 P6 | 41m | 2 tasks | 11 files |
 | Phase 09 P07 | 13 | 3 tasks | 11 files |
 | Phase 09 P08 | 32m | 3 tasks | 3 files |
+| Phase 9 P09 | 22m | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -506,6 +509,7 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 09]: 09-07: manifest outputs are anchored to two roots, fixtures/<dirname>/ or data/, because FX-ivsc-vectors writes data/cart/*.json and a fixtures-only rule refuses the pristine tree
 - [Phase 09]: 09-07: the memmap generator's refusal is additive, not a short-circuit, so the six existing memmap controls keep their pinned tokens; memmap-generator-missing is proved by a committed selftest case
 - [Phase 09]: The preflight class is derived by grep over step source text (neither IVS_GATE_DIR nor build/) and printed in the run header, so a reclassification is visible rather than silent
+- [Phase 9]: Plan 09-09: every bookkeeping correction is an appended note beside the measured value, the seven draft VALIDATION.md files are rows citing 08-ACCEPTED-DEBT.md section 1, and the EV-01/EV-03/EV-04 flip lands with its three exclusion rows so 54 - 10 = 44 = 44 holds
 
 ### Pending Todos
 
@@ -563,8 +567,8 @@ Refreshed by plan 08-21 from `.planning/phases/08-stic-completion-save-state-per
 
 ## Session Continuity
 
-Last session: 2026-11-25T02:54:31.838Z
-Stopped at: Completed 09-08-PLAN.md
+Last session: 2026-11-25T03:11:17.532Z
+Stopped at: Completed 09-09-PLAN.md (phase 9 complete)
 Resume file: None
 
 ## Recorded Constraints for the Next Milestone
