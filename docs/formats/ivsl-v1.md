@@ -80,7 +80,7 @@ digit; `scenario` and `profile` are slugs over `[a-z0-9-]`, so no `/`, `.`, `:`,
 expressible and the only separator is a hyphen; `content` is one of two fixed words; `at_tick` is
 a decimal of at most 19 digits; `c0` and `c1` are eight upper-case hex digits each. A name is at
 most 48 or 64 characters and a tick at most 19 digits, so no 32-character hex sequence and no
-path is expressible anywhere in the file (D-15).
+path is expressible anywhere in the file (D-15). **[Corrected by A-11-V1 at the end of this document: a `scenario` slug of 32 hex characters is legal and does produce one such run; the rights property holds for a reason the sentence does not state.]**
 
 The absence is a property of the grammar, not a promise about the writer, and this document does
 not enforce it. It is enforced in two other places: the writer in `runner/ivsl.c` emits only the
