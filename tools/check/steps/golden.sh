@@ -71,9 +71,12 @@
 # Dev versus release (Pitfall 11: one ctest run sees one tree): the union of report names in
 #   build/gate/dev/runner and build/gate/release/runner; an id absent from the inventory is
 #   golden-mismatch; an id of class `host-dependent` is skipped and counted; an id whose column 5 is
-#   `release-only` (plan 09-01, D-09, D-09-01) is skipped and counted in its own stat, because such a
-#   scenario runs on the release preset only and has no dev report by construction; every other id
-#   needs both reports, byte-equal once the `host.calls` lines are removed (golden-dev-release-diff).
+#   `release-only` (plan 09-01, D-09, D-09-01) is skipped, because such a scenario runs on the release
+#   preset only and has no dev report by construction; every other id needs both reports, byte-equal
+#   once the `host.calls` lines are removed (golden-dev-release-diff). The `release-only` stat is
+#   derived from the INVENTORY rows, not from the reports found (review WR-03): every row the
+#   inventory marks `release-only` must have its release report, so a lost report is that same
+#   refusal and the count cannot silently shrink.
 #   No dev report at all is golden-mismatch (the producer did not run), never a vacuous pass. A
 #   `release-only` id is not counted in host-dependent: the two stats answer different questions.
 # Tokens: golden-header-missing-tier, golden-header-missing-oracle,
@@ -81,7 +84,8 @@
 #   golden-expect-drift, golden-dev-release-diff, golden-user-scenario-tracked,
 #   golden-host-dependent, golden-shape, golden-user-content-not-skip-ok, golden-skip-ok-without-user-content.
 # Stats: goldens=<golden files> reports=<dev reports> host-dependent=<skipped report ids>
-#   release-only=<report ids skipped because column 5 is release-only>.
+#   release-only=<inventory rows whose column 5 is release-only, each required to have its release
+#   report>.
 LC_ALL=C; export LC_ALL
 : "${ROOT:?ROOT is not set}"
 : "${CHECK_DIR:?CHECK_DIR is not set}"
@@ -397,7 +401,6 @@ done
 sort -u "$tmp/ids" -o "$tmp/ids"
 [ "$reports" -gt 0 ] || bad golden-mismatch "no report in build/gate/dev/runner (suite runner-process did not run)"
 hostdep=0
-relonly=0
 while IFS= read -r id; do
   cls=$(class_of "$id")
   case $cls in
@@ -406,10 +409,11 @@ while IFS= read -r id; do
     *) bad golden-mismatch "report $id not in $inv"; continue ;;
   esac
   # A `release-only` scenario runs on the release preset only (plan 09-01, D-09, D-09-01): it has no dev
-  # report by construction, so it is skipped and counted before the report-pair refusal. The refusal
-  # itself is untouched for every other id, so a silently missing report is still golden-dev-release-diff.
+  # report by construction, so it is skipped before the report-pair refusal. The refusal itself is
+  # untouched for every other id, so a silently missing report is still golden-dev-release-diff. The
+  # id is NOT counted here: relonly comes from the inventory below (review WR-03), so a report that
+  # went missing cannot shrink the count instead of refusing.
   if [ "$(skip_of "$id")" = release-only ]; then
-    relonly=$((relonly + 1))
     continue
   fi
   dv="$gate/dev/runner/$id.report"
@@ -422,6 +426,20 @@ while IFS= read -r id; do
   awk '$1 != "host.calls"' "$rl" > "$tmp/rl"
   cmp -s "$tmp/dv" "$tmp/rl" || bad golden-dev-release-diff "$id (dev and release reports differ apart from host.calls)"
 done < "$tmp/ids"
+
+# The release-only count is derived from the INVENTORY, not from the reports that happen to exist
+# (review WR-03): $tmp/ids only holds ids with a report somewhere, so counting there made a lost
+# release report print `release-only=1` and pass, and the report `release-only=` counted was read by
+# nothing. Here every row the inventory marks `release-only` must have its release report, and
+# relonly counts the rows, so the stat cannot silently shrink and the refusal that guards a missing
+# report is the same golden-dev-release-diff every other id gets.
+relonly=0
+while read -r rid rskip; do
+  [ "$rskip" = release-only ] || continue
+  relonly=$((relonly + 1))
+  [ -f "$gate/release/runner/$rid.report" ] \
+    || bad golden-dev-release-diff "$rid (a release-only scenario has no release report)"
+done < "$tmp/invskip"
 
 if [ -s "$find" ]; then
   sort -u "$find" | while IFS= read -r l; do
