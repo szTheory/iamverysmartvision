@@ -4,17 +4,18 @@ milestone: v0.2.0
 milestone_name: Registered Evidence, Reachable Runs, Replayable Input (Phases 9 to 12)</summary>
 current_phase: 10
 current_phase_name: Reachable Runs and Presentation Policy
+current_plan: 2
 status: executing
-stopped_at: Phase 9 complete, ready to plan Phase 10
-last_updated: "2026-11-25T06:18:28.770Z"
+stopped_at: Completed 10-01-PLAN.md (the source-archive route and the checked phrase)
+last_updated: "2026-11-25T06:30:02.300Z"
 last_activity: 2026-11-24
 last_activity_desc: Phase 9 complete, transitioned to Phase 10
-state_head: eeaa4f3fe5745e68357881b104d7b57cfecb59d1
+state_head: 0f1c0a1ea9ddd793b841e97f05500b1b16087b6c
 progress:
   total_phases: 4
   completed_phases: 8
   total_plans: 15
-  completed_plans: 9
+  completed_plans: 10
 ---
 
 # Project State
@@ -28,8 +29,9 @@ See: .planning/PROJECT.md (updated 2026-11-24)
 
 ## Current Position
 
-Phase: 10 (Reachable Runs and Presentation Policy) — READY TO EXECUTE
-Plan: Not started
+Phase: 10 (Reachable Runs and Presentation Policy) — IN PROGRESS
+Current Plan: 2
+Total Plans in Phase: 6
 Status: Ready to execute
 Last activity: 2026-11-24 — Phase 9 complete, transitioned to Phase 10
 
@@ -215,6 +217,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | Phase 09 P07 | 13 | 3 tasks | 11 files |
 | Phase 09 P08 | 32m | 3 tasks | 3 files |
 | Phase 9 P09 | 22m | 3 tasks | 8 files |
+| Phase 10 P01 | 7m40s | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -511,6 +514,9 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 09]: 09-07: the memmap generator's refusal is additive, not a short-circuit, so the six existing memmap controls keep their pinned tokens; memmap-generator-missing is proved by a committed selftest case
 - [Phase 09]: The preflight class is derived by grep over step source text (neither IVS_GATE_DIR nor build/) and printed in the run header, so a reclassification is visible rather than silent
 - [Phase 9]: Plan 09-09: every bookkeeping correction is an appended note beside the measured value, the seven draft VALIDATION.md files are rows citing 08-ACCEPTED-DEBT.md section 1, and the EV-01/EV-03/EV-04 flip lands with its three exclusion rows so 54 - 10 = 44 = 44 holds
+- [Phase 10]: The documented route is the source archive plus the release preset; nothing downloadable is runnable, so the route is build-from-source and no install claim is made (A-01)
+- [Phase 10]: docs/running.md quotes the measured nine-line tail with host.calls qualified by slice size (11 default, 1599 at --slice-ticks 1000) rather than dropped
+- [Phase 10]: The golden comparison is the committed data/golden/demo-lamp-tone-pass.digests body (124 of 124 lines) against a 131-line report; no second expectation was invented
 
 ### Pending Todos
 
@@ -569,8 +575,8 @@ Refreshed by plan 08-21 from `.planning/phases/08-stic-completion-save-state-per
 
 ## Session Continuity
 
-Last session: 2026-11-25T03:11:17.532Z
-Stopped at: Phase 9 complete, ready to plan Phase 10
+Last session: 2026-11-25T06:30:01.984Z
+Stopped at: Completed 10-01-PLAN.md (the source-archive route and the checked phrase)
 Resume file: None
 
 ## Recorded Constraints for the Next Milestone

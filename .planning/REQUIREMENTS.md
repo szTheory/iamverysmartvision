@@ -25,7 +25,7 @@ exceed `provisional`** while D10 and D11 are unperformed.
 
 ### Packaging and reachability
 
-- [ ] **PKG-05**: A person can build and run the emulator from the released source archive using documented commands only, and the release rehearsal proves that route end to end against the demo cartridge golden from a moved prefix.
+- [x] **PKG-05**: A person can build and run the emulator from the released source archive using documented commands only, and the release rehearsal proves that route end to end against the demo cartridge golden from a moved prefix.
 
 ### Tooling
 
@@ -99,7 +99,7 @@ roadmap names.
 | EV-03 | Phase 9 | Complete |
 | EV-04 | Phase 9 | Complete |
 | EV-05 | Phase 10 | Pending |
-| PKG-05 | Phase 10 | Pending |
+| PKG-05 | Phase 10 | Complete |
 | TOOL-04 | Phase 10 | Pending |
 | TOOL-01 | Phase 11 | Pending |
 | FMT-01 | Phase 12 | Pending |

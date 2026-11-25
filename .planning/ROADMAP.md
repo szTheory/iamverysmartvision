@@ -187,7 +187,13 @@ and enforced, and the look/listen handoff is recorded rather than assumed.
   3. `data/expected/handoffs.ids` holds H7-1, H7-2, H8-3, D10 and D11, every row `evidence: none` and each dispositioned `handed-off` or `not-performed`; a claim citing a handoff artifact, a `build/` path, a `.wav`, a `.ppm` or a bench `.tsv` is refused, and the `text` step's claim-word list contains the look/listen words — both shown able to fail.
   4. `README.md` and `docs/packaging.md` carry one identical "nothing downloadable is runnable" sentence (a grep proves a single matching line in each) and one paragraph pointing at `docs/running.md`.
   5. The gate summary keeps `steps=38/38` and `claims=` at its Phase 9 value, and no claim cites a handoff row: the documented route reaches at most `installed-host-behavior` and the handoff carries no tier.
-**Plans**: TBD
+**Plans**: 1/6 plans executed
+- [x] 10-01-PLAN.md
+- [ ] 10-02-PLAN.md
+- [ ] 10-03-PLAN.md
+- [ ] 10-04-PLAN.md
+- [ ] 10-05-PLAN.md
+- [ ] 10-06-PLAN.md
 **Tier ceiling**: at most `installed-host-behavior` for the documented route; no tier for the handoff.
 **Not in this phase**: installing `ivs-run` or any image (structurally blocked, not merely expensive — D14), a windowed frontend, any new dependency, a second example cartridge.
 
