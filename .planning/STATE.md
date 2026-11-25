@@ -28,10 +28,23 @@ See: .planning/PROJECT.md (updated 2026-11-26)
 
 ## Current Position
 
-Phase: 13 (Rights Ledger and Enforced Claim Ceiling) — EXECUTING
+Phase: 13 (Rights Ledger and Enforced Claim Ceiling) — COMPLETE
 Plan: 5 of 5
-Status: Ready to execute
-Last activity: 2026-11-25 — Phase 13 execution started
+Status: Phase complete, ready for `/gsd:verify-work 13`
+Last activity: 2026-11-25 — plan 13-05 closed the phase
+
+The closing gate run reads `gate: PASS steps=38/38 controls=401/401 … faults=238/238 …
+goldens=29`, byte-identical under `sh` and `dash`, and repeated inside the Ubuntu 24.04
+container (`gate-linux: exit 0`, four documented host tokens differing: `cc`, `core-imports`,
+`archive`, `refs-verified`). The phase's own tokens are `tracked=2722`, `rights=10
+rights-cleared=1`, `gates=114 lines=352`, `cases=14`, `claims=28 provisional=27`. The full line is
+quoted in `13-05-SUMMARY.md` and in `13-VALIDATION.md`'s Approval block.
+
+Phase 13's cost checkpoint reads `reprice`: the last-five `cpu_s` median recomputed by arithmetic
+from `.planning/ci-runs.tsv` is 366 against the frozen 361, while the priced addition is 1.935 of
+the 21 cpu-s allowance. The phase's hosted row is **`not-recorded`**: the phase's commits are not
+pushed, so `gh run list --commit 10f66a1 --json databaseId,event,conclusion,headSha` returns `[]`
+and `.planning/ci-runs.tsv` was left untouched rather than given a fabricated row.
 
 
 ### Planning overrides recorded by the autonomous run
@@ -646,8 +659,10 @@ The row itself is left as recorded and this note sits under it.
 
 ## Session Continuity
 
-Last session: 2026-11-25T22:32:41.101Z
-Stopped at: Completed 13-04-PLAN.md
+Last session: 2026-11-25T22:50:19Z
+Stopped at: Completed 13-05-PLAN.md — Phase 13 complete (5 of 5 plans); the resume point is
+`/gsd:verify-work 13`, and the one thing a later run must still do is record the phase's hosted
+row from `sh tools/ci-record.sh <run-id>` once the commits are pushed.
 Resume file: None
 
 ## Recorded Constraints for the Next Milestone
