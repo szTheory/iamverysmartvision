@@ -97,7 +97,7 @@ files.
 
 - [x] Phase 9: Registered Evidence and Gate Cost — land the cost lever and trims, take the hosted row that settles the level, then register the 17 already-faulted requirements and make the gap unrepeatable
 - [x] Phase 10: Reachable Runs and Presentation Policy — a person builds and runs the demo cartridge from the released source archive with documented commands; the presentation policy is frozen and enforced; the look/listen handoff is recorded
-- [ ] Phase 11: Input Record and Replay — an input-only, rights-clean log whose replay reproduces the recorded run's digest chain and applied-event chain, with the vacuity guards proved live
+- [x] Phase 11: Input Record and Replay — an input-only, rights-clean log whose replay reproduces the recorded run's digest chain and applied-event chain, with the vacuity guards proved live
 - [x] Phase 12: Bank Modes and External Import — **DROPPED**, not delivered: the rights review cannot clear the importer (its only source is a GPL one) and the recorded cost level is above the stop line; entry-gate decision in `.planning/phases/12-bank-modes-and-external-import/12-ENTRY-GATE.md`, FMT-01 and FMT-04 `Deferred` with their reversal conditions — bank-mode profile data with a typed refusal for every unmapped mode, and `.bin`/`.cfg` import outside the core only where a per-mode rights review clears it; droppable
 
 </details>
