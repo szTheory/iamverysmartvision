@@ -5,16 +5,16 @@ milestone_name: Registered Evidence, Reachable Runs, Replayable Input (Phases 9 
 current_phase: 9
 current_phase_name: Registered Evidence and Gate Cost
 status: executing
-stopped_at: Completed 09-03-PLAN.md; wave A1 finished, the hosted row is the orchestrator's
-last_updated: "2026-11-25T01:35:38.551Z"
+stopped_at: Completed 09-04-PLAN.md
+last_updated: "2026-11-25T01:50:24.983Z"
 last_activity: 2026-11-24
 last_activity_desc: Phase 9 execution started
-state_head: 36893ad
+state_head: b76d31e601c165315bb6dd7ff7ac6143bae7574f
 progress:
   total_phases: 4
   completed_phases: 8
   total_plans: 9
-  completed_plans: 3
+  completed_plans: 4
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-24)
 ## Current Position
 
 Phase: 9 (Registered Evidence and Gate Cost) — EXECUTING
-Plan: 3 of 9 (wave A1 complete: 09-01, 09-02, 09-03)
+Plan: 4 of 9 (wave A1 complete: 09-01, 09-02, 09-03)
 Status: Wave A1 done — waiting on the orchestrator's hosted row before wave A2
 Last activity: 2026-11-24 — wave A1 complete, the hosted row is the orchestrator's
 
@@ -206,6 +206,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | Phase 8 P20 | about 45 min | 3 tasks | 51 files |
 | Phase 8 P21 | about 65 min (estimated: no start time was taken) | 3 tasks | 10 files |
 | Phase 09 P03 | 15m | 2 tasks | 2 files |
+| Phase 09 P04 | ~70 min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -492,6 +493,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 8]: 08-21: the Decision Register gained four rows (the draft pre-release D-29, the three version numbers D-30, the milestone tool's tag step D-31 and D-42, the history disposition D-33 with the owner-veto note), PLAN-LESSONS gained lessons 19 to 24, the STATE deferred items were refreshed from 08-ACCEPTED-DEBT.md, and RELEASE-OPS.md item h holds the grep that proves no placeholder remains and the order of the orchestrator's stage 2 actions; cost close phase8-close no-lever (the last-five median r is 7.80 against the budget 7.8 and the line 8.3; the five rows contain wave B and the newest contains every plan through 08-20; both raw triggers fire and r sits at the budget, read as runner speed with the stated caveat)
 - [Phase 09]: Wave A1's cost record recomputes the last-five window from the committed rows (median 7.696) and prints the allowance as priced with its recomputation beside it, never instead of it
 - [Phase 09]: Lever (3) is recorded as a 0.12 local cpu-s ceiling that cannot move r; trim (b) is declined in writing; the lever and trim (a) alternated before/after stays an open item with its reason rather than a figure that was not taken
+- [Phase 09]: The header's phase enumeration was replaced by one phase-to-plan table rather than extended in place: a prose list of phases is what rotted (it said Phase 4 to Phase 8 and omitted Phase 1 to Phase 3), and the two token sentences now say 'the accepted set above' instead of re-listing phases.
+- [Phase 09]: The real registry is counted over non-comment rows (24/0 filtered) and the ten toy registries over git diff --numstat (17/0 each); the 68-vs-24 numstat gap on the real registry is its # Plan 09-04 and 17 # <REQ>: comment blocks, which lines= never counted.
 
 ### Pending Todos
 
@@ -541,9 +544,9 @@ Refreshed by plan 08-21 from `.planning/phases/08-stic-completion-save-state-per
 
 ## Session Continuity
 
-Last session: 2026-11-25T01:35:38.524Z
-Stopped at: Completed 09-03-PLAN.md; wave A1 finished, the hosted row is the orchestrator's
-Resume file: `.planning/MILESTONE-CONTEXT.md` (the frozen upstream scope)
+Last session: 2026-11-25T01:50:24.944Z
+Stopped at: Completed 09-04-PLAN.md
+Resume file: None
 
 ## Recorded Constraints for the Next Milestone
 
