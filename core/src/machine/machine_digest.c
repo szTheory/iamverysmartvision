@@ -10,9 +10,10 @@
  * record count), 17 AUDIO (chain, level-change count, emitted samples, previous levels), 18 INPUT
  * (controller words, applied count, floor tick, chain) (plan 04-05, D-10) and 19 PSGLOG (chain
  * and record count, plan 05-03, D-18). The composite hashes the digests of domains 1..4 under a
- * version with the domain ids ("IVSSTATE"); it is version 2 since plan 05-03 (deliberate, D-18:
- * guest-visible PSG state is in it) and never includes 16..19, so an observation row changes only
- * its own domain's digest (A-03).
+ * version with the domain ids ("IVSSTATE"); it is version 3 since plan 06-05 (deliberate: the
+ * guest-visible PSG state joined in plan 05-03, D-18, and the STIC register file and the device
+ * state in plan 06-05, D-16; IVS_DIGEST_COMPOSITE_VERSION in machine.h) and never includes 16..19,
+ * so an observation row changes only its own domain's digest (A-03).
  * Output is SHA-256 (core/src/common/ivs_sha256.c). Serialized bytes pass through a small stage
  * buffer that feeds the hash and, for the test seam ivs_machine_digest_preimage, a caller buffer
  * (no function pointer).

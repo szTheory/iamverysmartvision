@@ -254,7 +254,11 @@ build/dev/runner/ivs-run --content-dir build/dev/images --update-golden data/gol
 build/dev/runner/ivs-run --content-dir build/dev/images --update-golden data/golden/diag-stic-cstack-pass.digests data/scenarios/diag-stic-cstack-pass.ivss
 build/dev/runner/ivs-run --content-dir build/dev/images --update-golden data/golden/demo-lamp-tone-pass.digests data/scenarios/demo-lamp-tone-pass.ivss
 build/dev/runner/ivs-run --content-dir build/dev/images --update-golden data/golden/demo-lamp-tone-idle.digests data/scenarios/demo-lamp-tone-idle.ivss
+build/dev/runner/ivs-run --content-dir build/dev/images --update-golden data/golden/bench-lamp-idle.digests data/scenarios/bench-lamp-idle.ivss
+build/dev/runner/ivs-run --content-dir build/dev/images --update-golden data/golden/bench-lamp-input.digests data/scenarios/bench-lamp-input.ivss
 ```
+
+The two `bench-lamp-*` goldens are the digest precondition of the benchmark workloads of `docs/bench.md` (`bench-lamp-idle` and `bench-lamp-input`); the `bench-lamp-snapshot` workload reuses the `bench-lamp-idle` golden, so it has no command of its own.
 
 The composite digest is version 3 since plan 06-05 (D-16): the STIC register file joined the `mem` domain and the STIC device state the `instance` domain, and the framing is unchanged. That plan re-blessed every `.digests` golden and `data/expected/pkg-consumer.golden` once with the recipe above and the consumer refresh of the `pkg-install` step header, and the diff moved only `digest.mem`, `digest.instance` and `digest.composite` (also their `ctrl.`-prefixed twins in the consumer golden); `digest.cpu` and `digest.images` stay equal to the version 2 values pinned in `data/expected/digest-v2-literals.ids` (the version 1 values are in `data/expected/digest-v1-literals.ids`). The tracked goldens are now written by the release runner (`build/release/runner/ivs-run --content-dir build/release/images`; the dev and release reports are byte-equal, which the step checks).
 
