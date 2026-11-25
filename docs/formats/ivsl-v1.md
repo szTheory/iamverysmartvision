@@ -231,9 +231,9 @@ runner from the file the operator named. It is never anything the images produce
 frame byte, no audio byte, no image name, no length, no path. D-15's requirement is that the log
 hold nothing derived from content, and it does not.
 
-**What `runner.record.no-content-digest` therefore checks, stated accurately:** zero runs of 32 or
-more hex digits **outside the two slug fields**, which it masks by rule, plus the stand-in that
-carries such a run and must be caught. The check's meaning is unchanged; only the sentence that
+**What `runner.record.no-content-digest` therefore checks, stated accurately:** zero sequences of 32
+or more hex digits **outside the two slug fields**, which it masks by rule, plus the stand-in that
+carries such a sequence and must be caught. The check's meaning is unchanged; only the sentence that
 described it was overstated.
 
 **No format change, no code change, no version bump follows.** The grammar is unchanged, the
