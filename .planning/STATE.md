@@ -5,16 +5,16 @@ milestone_name: Owner-Supplied Content and a Driveable Host (Phases 13 to 16)</s
 current_phase: 13
 current_phase_name: Rights Ledger and Enforced Claim Ceiling
 status: executing
-stopped_at: v0.3.0 scoped and committed; Phase 13 ready to discuss and plan
-last_updated: "2026-11-25T21:27:09.781Z"
+stopped_at: Completed 13-01-PLAN.md
+last_updated: "2026-11-25T21:48:54.343Z"
 last_activity: 2026-11-25
-last_activity_desc: Milestone v0.3.0 started
-state_head: 2f8516a54f1270b6743db119374cb5be0aed61c8
+last_activity_desc: Phase 13 execution started
+state_head: 9362fda513b4cb44cdda81bef054bbd6aad1f431
 progress:
   total_phases: 4
   completed_phases: 8
   total_plans: 5
-  completed_plans: 0
+  completed_plans: 1
 ---
 
 # Project State
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-26)
 
 **Core value:** A deterministic, observable machine core whose every compatibility claim is bound to an exactly named profile and independent evidence — never an unqualified "it runs Intellivision games" label.
-**Current focus:** v0.3.0 — Owner-Supplied Content and a Driveable Host (scoped 2026-11-26; Phase 13 not started)
+**Current focus:** Phase 13 — Rights Ledger and Enforced Claim Ceiling
 
 ## Current Position
 
-Phase: 13 (Rights Ledger and Enforced Claim Ceiling) — READY TO EXECUTE
-Plan: —
+Phase: 13 (Rights Ledger and Enforced Claim Ceiling) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
-Last activity: 2026-11-25 — Milestone v0.3.0 started
+Last activity: 2026-11-25 — Phase 13 execution started
 
 
 ### Planning overrides recorded by the autonomous run
@@ -238,6 +238,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | Phase 11 P03 | 24m | 3 tasks | 2 files |
 | Phase 11 P4 | 1h 02m | 2 tasks | 4 files |
 | Phase 11 P5 | 55m | 3 tasks | 20 files |
+| Phase 13 P01 | 34min | 1 tasks | 25 files |
 
 ## Accumulated Context
 
@@ -549,6 +550,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 11]: hex runs are counted in both cases in runner.record.no-content-digest: the project's digests are lower case, so an upper-case-only scan would miss the stand-in's value
 - [Phase 11]: no-content-digest lands in 11-03 rather than 11-04: both halves live in the record section of tests/runner/runner_exec.c
 - [Phase 11]: the log is deliberately absent from the three content-user refusal blocks (D15) and a static assertion keeps it so; the no-log witness of the stripped demo copy ends guest-fail, not pass
+- [Phase 13]: The rights ledger is judged as a second limb of the manifests step (rights_check() before the single gate_finish), never as a new step: steps stays 38 and the ledger row resolves through data/expected/controls/rights.ids.
+- [Phase 13]: A ledger row's id is collected before the shape verdict, so a row whose disposition is missing is refused once by name and never also produces a spurious rights-id-missing.
 
 ### Pending Todos
 
@@ -627,8 +630,8 @@ The row itself is left as recorded and this note sits under it.
 
 ## Session Continuity
 
-Last session: 2026-11-26
-Stopped at: v0.3.0 scoped and committed; Phase 13 ready to discuss and plan
+Last session: 2026-11-25T21:48:54.291Z
+Stopped at: Completed 13-01-PLAN.md
 Resume file: None
 
 ## Recorded Constraints for the Next Milestone
