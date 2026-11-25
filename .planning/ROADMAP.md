@@ -195,7 +195,12 @@ mechanical rather than quoted.
   3. The claims step refuses an `established` claim that is not a `source-expectation` claim resting on a `tier1-primary-doc` dependency, and a legal `established` claim still passes; both are shown able to fail.
   4. Each of the ten D-09-06 mechanisms has an `important-gates.ids` `mutant` row over its existing selftest, the registry baseline is re-derived in the same commit, all ten toy registries gain exactly one line each with zero deletions, and `faults` stays 238.
   5. The gate ends `steps=38/38` with a predicted and then measured token delta, and one hosted row is recorded after the content lands with the last-five `cpu_s` median recomputed against the 21 cpu-s allowance.
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 13-01-PLAN.md — the rights-ledger limb: one row end to end, then the ten RTS-01 rows and their operator rows
+- [ ] 13-02-PLAN.md — the naming limb with its `(token, path)` pins, and the enforced claim ceiling (RTS-02, EV-06)
+- [ ] 13-03-PLAN.md — the ten D-09-06 registrations, the re-derived baseline and the 13-file toy extension (EV-07)
+- [ ] 13-04-PLAN.md — the phase close: two-shell gate, token-line reconciliation and the recomputed cost checkpoint
 **Tier ceiling**: none — this phase adds no claim.
 
 ### Phase 14: Cartridge Route and Real-Content Conformance
