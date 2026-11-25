@@ -4,18 +4,18 @@ milestone: v0.2.0
 milestone_name: Registered Evidence, Reachable Runs, Replayable Input (Phases 9 to 12)</summary>
 current_phase: 11
 current_phase_name: Input Record and Replay
-current_plan: Not started
+current_plan: 2
 status: executing
-stopped_at: Phase 10 complete, ready to plan Phase 11
-last_updated: "2026-11-25T13:51:24.473Z"
+stopped_at: Completed 11-01-PLAN.md
+last_updated: "2026-11-25T13:57:13.154Z"
 last_activity: 2026-11-25
 last_activity_desc: Phase 10 complete, transitioned to Phase 11
-state_head: fd6a7bf636c28addff93e8ca10d7b243617da9b0
+state_head: 159905304990f85a102419a7485c220bffd8156d
 progress:
   total_phases: 4
   completed_phases: 8
   total_plans: 20
-  completed_plans: 15
+  completed_plans: 16
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-24)
 ## Current Position
 
 Phase: 11 (Input Record and Replay) — READY TO EXECUTE
-Current Plan: Not started
+Current Plan: 2
 Total Plans in Phase: 5
 Status: Ready to execute
 Last activity: 2026-11-25 — Phase 10 complete, transitioned to Phase 11
@@ -229,6 +229,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | Phase 10 P03 | 24 min | 2 tasks | 2 files |
 | Phase 10 P04 | 18m | 2 tasks | 3 files |
 | Phase 10 P6 | ~55 min wall clock | 3 tasks | 12 files |
+| Phase 11 P01 | 14m | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -532,6 +533,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 10]: the release rehearsal gains --source-route: the archive a release carries is extracted, built cold, run on the demo and compared with the committed golden by a verbatim copy of the gate's filter; release-time only, no gate step, no control, no claim
 - [Phase 10]: Amendment A-04 predicted lines=335; the mechanism's stats line counts registry rows only, so the measured value is 333 (three registry rows; the two exclusion rows live in a different file). gates 107->109. The rule stands, the figure is corrected by measurement.
 - [Phase 10]: The three requirement flips land with their five ledger rows in one commit: EV-05 gets three registry rows (two claims controls, one text control), PKG-05 and TOOL-04 get exclusion rows. Identity 57 - 12 = 45 = 45.
+- [Phase 11]: Nine refusal tokens, not seven (A-11-02): arity carries the line-shape triggers and trailing the file-shape triggers
+- [Phase 11]: The ivsl v1 document is committed before any code; the seven-field table cannot express a digest, a name, a length, a byte or a path, and the absence is enforced by the writer and runner.record.no-content-digest
 
 ### Pending Todos
 
@@ -597,8 +600,8 @@ The row itself is left as recorded and this note sits under it.
 
 ## Session Continuity
 
-Last session: 2026-11-25T09:04:20.194Z
-Stopped at: Phase 10 complete, ready to plan Phase 11
+Last session: 2026-11-25T13:57:13.079Z
+Stopped at: Completed 11-01-PLAN.md
 Resume file: None
 
 ## Recorded Constraints for the Next Milestone
