@@ -911,7 +911,13 @@ static int fz_free_taken(uint32_t k)
  * reseal and is the valid snapshot. An accepted case must re-encode canonically (fz_accepted_checks) and, for a row the specification calls
  * free, every flip must be accepted. The second value of a byte of a free row adds nothing to the first when resealed: XOR 0xFF flips every
  * bit of the byte, so with the valid snapshot's own round trip every bit of it is shown restored as 0 and as 1; the constrained rows, the frames,
- * the counts and the header take both, and the interior of a long free row is sampled (fz_free_taken; plan 08-15, cost stop rule). */
+ * the counts and the header take both, and the interior of a long free row is sampled (fz_free_taken; plan 08-15, cost stop rule).
+ * Plan 09-02, trim (d): an unsealed flip takes the first value only (j 0, XOR 0xFF) and skips the second. The offset set is unchanged by
+ * construction, because the offset loop bound (k < fz.n), fz_pick and masks[] are untouched; only the second value of an unsealed flip is
+ * skipped, and the resealed path keeps both. The property that a flip MOVES the digest is not a mechanism of its own in this file - nothing
+ * named "moves the digest" exists in the tree - and it is enforced operationally by the acceptance refusal in fz_byte_flips below
+ * (c.accepted != 0, tests/state/state_fuzz.c:945-948): with the trailer left as it was, a payload byte the digest does not cover would be
+ * accepted and the id would fail. No new guard was invented to stand in for it. */
 static void fz_run_flips(fz_ctx *c, const fz_plan *p, int sealed)
 {
   static const uint8_t masks[2] = {0xFFu, 0x01u};
@@ -922,6 +928,9 @@ static void fz_run_flips(fz_ctx *c, const fz_plan *p, int sealed)
       continue;
     }
     for (j = 0u; j < 2u; j++) {
+      if (!sealed && j == 1u) {
+        continue;
+      }
       if (sealed && j == 1u && k >= FZ_HDR && k < (uint32_t)fz.n - IVS_SNAP_TRAILER_BYTES && fz.pk_kind[k] == FZ_K_VALUE && fz.row_free[fz.pk_row[k]]) {
         continue;
       }
