@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Hook for kind claim (SKELETON.md section 4).
 # Failure tokens: claim-order: <id>, claim-unknown-profile: <id>, claim-dangling-path: <id>,
+#   claim-handoff-artifact: <id>,
 #   claim-unknown-field: <id>/<field>, claim-overstated: <id>,
 #   claim-measured-without-d10: <id>, claim-type: <id>/depends_on.
 # Stats: claims=<n>, provisional=<n>.
@@ -98,6 +99,20 @@ function(hook_record id rec)
     if(NOT "${artifact}" MATCHES "^[A-Za-z0-9._/-]+$" OR "${artifact}" MATCHES "^/" OR "${artifact}" MATCHES "[.][.]"
        OR NOT EXISTS "${ROOT}/${artifact}" OR IS_DIRECTORY "${ROOT}/${artifact}")
       gate_fail(claim-dangling-path "${id}")
+    endif()
+  endif()
+
+  # A claim never cites a handoff-shaped artifact (EV-05, GUARDRAILS 2.8): a build product, an
+  # operator render, a timing record or the handoff ledger itself is never evidence for a claim,
+  # so each of the five classes is refused by its own token rather than by claim-dangling-path,
+  # which only fires while the file is absent. The any-`.tsv` suffix is used instead of a
+  # `data/bench/` prefix: one predicate instead of a path prefix to get wrong, and it covers the
+  # hosted timing record `.planning/ci-runs.tsv` as well.
+  if(NOT "${artifact}" STREQUAL "")
+    if("${artifact}" MATCHES "^build/" OR "${artifact}" MATCHES "[.]wav$"
+       OR "${artifact}" MATCHES "[.]ppm$" OR "${artifact}" MATCHES "[.]tsv$"
+       OR "${artifact}" STREQUAL "data/expected/handoffs.ids")
+      gate_fail(claim-handoff-artifact "${id}")
     endif()
   endif()
 
