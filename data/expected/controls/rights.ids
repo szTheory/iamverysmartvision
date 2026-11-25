@@ -28,3 +28,11 @@ manifests-output-anchor
 # unreachable on that overlay: a checker that did NOT short-circuit would print an extra finding
 # and fail this control instead of silently widening the set.
 rights-ledger
+# Plan 13-03 (RTS-02, GUARDRAILS-v0.3 V2): the naming limb's own control. One overlay plants the toy
+# ledger's refused spelling in core/src/ (pinned, so the finding must not appear) and in runner/ (no
+# pin, so it must be refused), and replaces the pin list with that matching pair plus one pin that
+# matches nothing, so the suppressed direction, the refused direction and the stale direction are all
+# observed in one run. FORBID names the pinned finding, the grammar finding and a missing pin list: a
+# rule that ignored the pin would print the pinned finding, and a rule that silently dropped a bad
+# line would print neither of the other two.
+rights-naming

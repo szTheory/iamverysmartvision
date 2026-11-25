@@ -489,3 +489,11 @@ runner-record mutant runner.judge.record-replay-inert TOOL-01
 # directory plants all four in a single run. RTS-01 takes no exclusion-ledger row: the mechanism is
 # real, and an exclusion row would be the registry declining to cover what it just built.
 rights-ledger control rights-ledger RTS-01
+# Phase 13 (plan 13-03): RTS-02's naming limb under one new gate name, rights-naming. A ledger row's
+# refused spelling is refused inside core/src/, runner/, tools/ and the six pinned operator pages and
+# nowhere else, and a pre-existing occurrence is suppressed only by an exact "<token> <path>" pair in
+# data/expected/rights-pinned.ids (tools/check/rights-lib.cmake, called from the files step). The
+# control observes all three directions in one run: a pinned occurrence suppressed, an unpinned one
+# refused, and a pin that matches nothing refused as stale. RTS-02 takes no exclusion-ledger row: the
+# mechanism is real, and an exclusion row would be the registry declining to cover what it just built.
+rights-naming control rights-naming RTS-02

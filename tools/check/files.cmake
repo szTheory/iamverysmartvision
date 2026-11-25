@@ -18,8 +18,17 @@
 #   brand word in any letter case (D-29, plan 07-06: the project name rule of AGENTS.md and
 #   .planning/AUTONOMY.md made machine-checked; the scope is names of fixtures, scenarios, goldens, tools and
 #   test files, and prose inside docs is not a name) -> files-trademark-name
-# Tokens also: files-filelist-empty, files-ext-list-empty.
-# Success line: "files pass tracked=<n> binaries-listed=<k>".
+#   a spelling a rights-ledger row refuses, inside core/src/, runner/, tools/ (minus tools/check/controls/)
+#   or one of the six pinned operator pages, unless an exact "<token> <path>" pair in
+#   data/expected/rights-pinned.ids suppresses it -> rights-token; a pin whose pair no longer occurs
+#   -> rights-pinned-stale; a pin line that is not exactly two fields -> rights-pinned-malformed
+#   (RTS-02; the limb lives in rights-lib.cmake so the token list stays data and is never transcribed
+#   into the source that judges it)
+# Tokens also: files-filelist-empty, files-ext-list-empty, rights-token, rights-pinned-stale,
+#   rights-pinned-malformed, rights-pinned-inventory-missing/-empty/-duplicate.
+# Success line: "files pass tracked=<n> binaries-listed=<k> rights-pinned=<matched>/<total>".
+# The rights-pinned stat is registered after the two file stats, because gate_finish() prints
+# GATE_STATS in insertion order and the printed line must equal the order this header documents.
 cmake_minimum_required(VERSION 3.25)
 
 foreach(required ROOT FILELIST)
@@ -29,6 +38,7 @@ foreach(required ROOT FILELIST)
 endforeach()
 include("${CMAKE_CURRENT_LIST_DIR}/lib.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/manifest-lib.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/rights-lib.cmake")
 
 file(STRINGS "${CMAKE_CURRENT_LIST_DIR}/binary-ext.txt" BINARY_EXT REGEX "^[a-z0-9]+$")
 if("${BINARY_EXT}" STREQUAL "")
@@ -172,4 +182,8 @@ endforeach()
 
 gate_stat(tracked "${ntracked}")
 gate_stat(binaries-listed "${nbin}")
+# The naming limb runs here, after the file stats and immediately before gate_finish(files): the scan
+# is complete, the sorted path list is still in scope, and a finding registered now is a FAIL line
+# rather than a NOTE. It is also what makes the printed stat order match the header.
+rights_scan_naming("${paths}")
 gate_finish(files)

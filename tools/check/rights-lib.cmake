@@ -14,6 +14,12 @@
 #   rights-doc-missing: docs/RIGHTS.md, rights-doc-row: <id>, plus the three
 #   rights-inventory-missing, rights-inventory-empty and rights-inventory-duplicate that read_ids()
 #   produces for data/expected/rights.ids.
+# Tokens from the naming limb (rights_scan_naming, called from files.cmake):
+#   rights-token: <token> <path>, rights-pinned-stale: <token> <path>,
+#   rights-pinned-malformed: <pin>, plus the three rights-pinned-inventory-missing,
+#   rights-pinned-inventory-empty and rights-pinned-inventory-duplicate that read_ids() produces for
+#   data/expected/rights-pinned.ids.
+# Called from: files.cmake too, for the naming limb only (rights_scan_naming).
 # Called from: manifests.cmake, once, after the three manifest gate_stat() calls and immediately
 #   before gate_finish(manifests). The position is load-bearing: gate_finish() prints GATE_STATS in
 #   insertion order, so registering the two rights stats last is what makes the step's printed
@@ -256,4 +262,156 @@ function(rights_check)
 
   gate_stat(rights "${nsel}")
   gate_stat(rights-cleared "${ncleared}")
+endfunction()
+
+# Every token a row declares, as one `<disposition>|<token>` element. The token set is data: only a
+# row's `disposition` and `tokens` are read, and nothing else about the row is judged here.
+# This function emits no finding on purpose. The manifests step owns the row grammar, and two steps
+# must never report one defect twice. It is therefore tolerant as well as silent: a row that does not
+# parse, has no `disposition`, or whose `tokens` member is absent or is not an ARRAY contributes no
+# element and raises nothing, so a malformed row degrades to the manifests step's own named finding
+# (rights-missing-key / rights-format) instead of aborting the files step with an unhandled
+# string(JSON ...) error.
+function(rights_rows out)
+  rights_select(sel)
+  set(rows "")
+  foreach(p IN LISTS sel)
+    if(NOT EXISTS "${ROOT}/${p}")
+      continue()
+    endif()
+    file(READ "${ROOT}/${p}" doc)
+    string(JSON t ERROR_VARIABLE e TYPE "${doc}")
+    if(NOT "${e}" STREQUAL "NOTFOUND" OR NOT t STREQUAL "OBJECT")
+      continue()
+    endif()
+    json_type(dt "${doc}" disposition)
+    if(NOT dt STREQUAL "STRING")
+      continue()
+    endif()
+    string(JSON disposition GET "${doc}" disposition)
+    json_type(tt "${doc}" tokens)
+    if(NOT tt STREQUAL "ARRAY")
+      continue()
+    endif()
+    string(JSON n LENGTH "${doc}" tokens)
+    if(n GREATER 0)
+      math(EXPR last "${n} - 1")
+      foreach(i RANGE 0 ${last})
+        json_type(it "${doc}" tokens ${i})
+        if(NOT it STREQUAL "STRING")
+          continue()
+        endif()
+        string(JSON tok GET "${doc}" tokens ${i})
+        list(APPEND rows "${disposition}|${tok}")
+      endforeach()
+    endif()
+  endforeach()
+  set(${out} "${rows}" PARENT_SCOPE)
+endfunction()
+
+# The naming limb (RTS-02): a refused spelling is refused inside the four scopes and nowhere else,
+# and a pre-existing occurrence is suppressed only by an exact "<token> <path>" pin.
+#
+# The refused set is every row whose disposition is `refused` or `owner-local-only`, not only the
+# `refused` rows. That is deliberate and load-bearing: the operator's own argument placeholders live
+# in the two `owner-local-only` rows, and because a stale pin is a failure here, scanning only the
+# `refused` rows would make every pin stale on the first run. A `cleared` row's tokens are never
+# refused -- that is what clearing means.
+#
+# The scope is three path prefixes plus six exact operator pages, never a directory glob: a glob would
+# sweep in the reference notes under docs/ that legitimately quote their sources, and every new page
+# would widen the rule silently. The controls prefix is excluded because control overlays are tracked
+# files under tools/, so without that exclusion the real tree would refuse its own test data and no
+# control could plant a spelling. This is the same anchoring decision steps/sources.sh states for its
+# own scan: the rule is applied to tracked paths, never to a filesystem walk.
+#
+# The match is character-bounded: the character before and after must be outside [A-Za-z0-9_-], with
+# the token's dot escaped. Never a bare substring match, and never a word-oriented match: the hyphen
+# is a member of the boundary class, so a word-oriented match treats it as a separator, and a
+# hyphenated token would then fire inside a spaced spelling or inside a longer hyphenated name.
+function(rights_scan_naming paths)
+  set(pages "README.md" "docs/running.md" "docs/owner-images.md" "docs/packaging.md"
+            "docs/diagnostics.md" "docs/RIGHTS.md")
+  rights_rows(rows)
+  set(refused "")
+  foreach(r IN LISTS rows)
+    string(FIND "${r}" "|" bar)
+    string(SUBSTRING "${r}" 0 ${bar} disp)
+    math(EXPR b1 "${bar} + 1")
+    string(SUBSTRING "${r}" ${b1} -1 tok)
+    if(disp STREQUAL "refused" OR disp STREQUAL "owner-local-only")
+      list(APPEND refused "${tok}")
+    endif()
+  endforeach()
+  list(REMOVE_DUPLICATES refused)
+  list(SORT refused)
+
+  set(seen "")
+  foreach(p IN LISTS paths)
+    set(inscope FALSE)
+    if(p MATCHES "^(core/src/|runner/|tools/)" AND NOT p MATCHES "^tools/check/controls/")
+      set(inscope TRUE)
+    else()
+      foreach(pg IN LISTS pages)
+        if(p STREQUAL pg)
+          set(inscope TRUE)
+        endif()
+      endforeach()
+    endif()
+    if(NOT inscope)
+      continue()
+    endif()
+    if(NOT EXISTS "${ROOT}/${p}")
+      continue()
+    endif()
+    file(READ "${ROOT}/${p}" body)
+    foreach(tok IN LISTS refused)
+      # A cheap substring probe first: the bounded match below can only fire where the token occurs,
+      # so this keeps the regular-expression engine off every scoped file for every token.
+      string(FIND "${body}" "${tok}" at)
+      if(at EQUAL -1)
+        continue()
+      endif()
+      string(REPLACE "." "\\." esc "${tok}")
+      string(REGEX MATCH "(^|[^A-Za-z0-9_-])${esc}([^A-Za-z0-9_-]|$)" hit "${body}")
+      if(NOT hit STREQUAL "")
+        # One pair per (token, path): a file that spells a token twice contributes one pair, not two.
+        list(APPEND seen "${tok} ${p}")
+      endif()
+    endforeach()
+  endforeach()
+  list(REMOVE_DUPLICATES seen)
+  list(SORT seen)
+
+  # A pin is exactly two whitespace-separated fields, and a pin that no longer matches is a failure,
+  # not a NOTE. History pins a commit, which cannot disappear; a rights pin names a path, which can,
+  # so a stale pin means the rule silently widened. A pin line that is not exactly two fields is
+  # refused too, because history_compare silently drops such a line, which is the same rot in a
+  # different disguise.
+  read_ids(pins "data/expected/rights-pinned.ids" rights-pinned)
+  set(npin 0)
+  set(nmatch 0)
+  foreach(pin IN LISTS pins)
+    math(EXPR npin "${npin} + 1")
+    # Canonical form first: two fields joined by exactly one space, which is how an observed pair is
+    # built. A tab or a run of spaces is a separator, not a malformed line.
+    string(REPLACE "\t" " " key "${pin}")
+    string(REGEX REPLACE " +" " " key "${key}")
+    string(REGEX MATCH "^[^ ]+ [^ ]+$" two_field "${key}")
+    if(two_field STREQUAL "")
+      gate_fail(rights-pinned-malformed "${pin}")
+      continue()
+    endif()
+    if("${key}" IN_LIST seen)
+      math(EXPR nmatch "${nmatch} + 1")
+    else()
+      gate_fail(rights-pinned-stale "${key}")
+    endif()
+  endforeach()
+  foreach(pair IN LISTS seen)
+    if(NOT "${pair}" IN_LIST pins)
+      gate_fail(rights-token "${pair}")
+    endif()
+  endforeach()
+  gate_stat(rights-pinned "${nmatch}/${npin}")
 endfunction()
