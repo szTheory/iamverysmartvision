@@ -19,9 +19,11 @@
 #   .planning/AUTONOMY.md made machine-checked; the scope is names of fixtures, scenarios, goldens, tools and
 #   test files, and prose inside docs is not a name) -> files-trademark-name
 #   a spelling a rights-ledger row refuses, inside core/src/, runner/, tools/ (minus tools/check/controls/)
-#   or one of the six pinned operator pages, unless an exact "<token> <path>" pair in
+#   or one of the six pinned operator pages, unless a "<token> <path>" pair in
 #   data/expected/rights-pinned.ids suppresses it -> rights-token; a pin whose pair no longer occurs
-#   -> rights-pinned-stale; a pin line that is not exactly two fields -> rights-pinned-malformed
+#   -> rights-pinned-stale; a pin line that is not exactly two fields -> rights-pinned-malformed.
+#   Both pin directions compare one canonical pair (two fields, one space), so a tab or a run of
+#   spaces is a separator in the pin file, never a silently unpinned occurrence.
 #   (RTS-02; the limb lives in rights-lib.cmake so the token list stays data and is never transcribed
 #   into the source that judges it)
 # Tokens also: files-filelist-empty, files-ext-list-empty, rights-token, rights-pinned-stale,

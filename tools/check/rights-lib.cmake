@@ -328,7 +328,9 @@ function(rights_rows out)
 endfunction()
 
 # The naming limb (RTS-02): a refused spelling is refused inside the four scopes and nowhere else,
-# and a pre-existing occurrence is suppressed only by an exact "<token> <path>" pin.
+# and a pre-existing occurrence is suppressed only by a "<token> <path>" pin. The pair is compared
+# in one canonical spelling -- two fields joined by a single space -- so a pin written with a tab or
+# a run of spaces names the same pair, in the stale direction and in the suppression direction.
 #
 # The refused set is every row whose disposition is `refused` or `owner-local-only`, not only the
 # `refused` rows. That is deliberate and load-bearing: the operator's own argument placeholders live
@@ -407,12 +409,16 @@ function(rights_scan_naming paths)
   # refused too, because history_compare silently drops such a line, which is the same rot in a
   # different disguise.
   read_ids(pins "data/expected/rights-pinned.ids" rights-pinned)
+  set(pins_canon "")
   set(npin 0)
   set(nmatch 0)
   foreach(pin IN LISTS pins)
     math(EXPR npin "${npin} + 1")
     # Canonical form first: two fields joined by exactly one space, which is how an observed pair is
-    # built. A tab or a run of spaces is a separator, not a malformed line.
+    # built. A tab or a run of spaces is a separator, not a malformed line. The canonical list is
+    # what BOTH directions compare against -- the stale check below and the suppression loop after
+    # it -- so a pin spelled with a tab or a run of spaces suppresses the occurrence it names
+    # instead of being counted as matched and then reported as unpinned (review WR-01).
     string(REPLACE "\t" " " key "${pin}")
     string(REGEX REPLACE " +" " " key "${key}")
     string(REGEX MATCH "^[^ ]+ [^ ]+$" two_field "${key}")
@@ -420,6 +426,7 @@ function(rights_scan_naming paths)
       gate_fail(rights-pinned-malformed "${pin}")
       continue()
     endif()
+    list(APPEND pins_canon "${key}")
     if("${key}" IN_LIST seen)
       math(EXPR nmatch "${nmatch} + 1")
     else()
@@ -427,7 +434,7 @@ function(rights_scan_naming paths)
     endif()
   endforeach()
   foreach(pair IN LISTS seen)
-    if(NOT "${pair}" IN_LIST pins)
+    if(NOT "${pair}" IN_LIST pins_canon)
       gate_fail(rights-token "${pair}")
     endif()
   endforeach()
