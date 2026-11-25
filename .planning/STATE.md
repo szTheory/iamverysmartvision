@@ -1,22 +1,21 @@
 ---
 gsd_state_version: "1.0"
 milestone: v0.2.0
-milestone_name: Registered Evidence, Reachable Runs, Replayable Input (Phases 9 to 12)</summary>
-current_phase: 12
-current_phase_name: Bank Modes and External Import (dropped at its entry gate)
-current_plan: none
-status: milestone-complete
+milestone_name: Registered Evidence, Reachable Runs, Replayable Input
+status: Awaiting next milestone
 stopped_at: All four phases resolved - 9, 10 and 11 delivered and verified; 12 dropped at its entry gate
-last_updated: "2026-11-25T17:30:00.000Z"
+last_updated: "2026-11-25T17:27:31.209Z"
 last_activity: 2026-11-25
-last_activity_desc: "v0.2.0 phases resolved: 9 (9/9), 10 (6/6), 11 (5/5), 12 dropped; lifecycle next"
-state_head: 71ff301
+last_activity_desc: Milestone v0.2.0 completed and archived
+state_head: dea1c13
 progress:
   total_phases: 4
   completed_phases: 4
   total_plans: 20
   completed_plans: 20
   percent: 100
+current_phase: none
+current_phase_name: none
 ---
 
 # Project State
@@ -30,44 +29,10 @@ See: .planning/PROJECT.md (updated 2026-11-24)
 
 ## Current Position
 
-Phase: 12 — Bank Modes and External Import (conditional, droppable)
-Current Plan: Not started
-Total Plans in Phase: 5
-Status: Ready to plan
-Last activity: 2026-11-25 — Phase 11 complete, transitioned to Phase 12
-
-**Phase 11 final counts:** `steps=38/38 controls=395/395 faults=237/237 fault-runs=237 gates=110
-lines=337 tests-expected=4988 tests-executed=4984 tests-skipped=4 tests-missing=0 runner-files=18
-docs=64 doc-files=63 claims=28 provisional=27 goldens=29 reports=30 host-dependent=3 release-only=2
-prefix-files=11 claim-refs=26 api-calls=19 api-rows=61 public-symbols=19 pinned-defines=120
-pkg-selftest=19/19 consumer-lines=164 state-rows=88 state-cuts=18 input-rows=31 input-policies=11
-input-profile-fields=31 cases=13 terms=9 mode=tree`.
-`gates` moved 109 to 110 and `lines` 333 to 337 in plan 11-05, deliberately: four `runner-record`
-rows for TOOL-01 (the two input-log faults and the two judge self-controls of the equality) make the
-derived must-be-covered set legal in both directions (`Complete 58 - excluded 12 = accepted 46 =
-registered 46`). `faults` and `fault-runs` moved 235 to 237 for the same plan's two faults;
-`steps=38/38` never moved, and no claim was minted or raised. The tier ceiling stays
-`deterministic-repeatability` — the replay is the same core, so it is never an independent
-comparison — and a ceiling is not a claim.
-
-**Phase 10 final counts:** `steps=38/38 controls=389/389 claims=28 provisional=27 gates=109
-lines=333 faults=235/235 cases=13 goldens=29 claim-refs=26 prefix-files=11 doc-files=62 docs=63`.
-`gates` moved 107 to 109 and `lines` 330 to 333 in plan 10-06, deliberately: three EV-05 registry
-rows and two exclusion rows make the derived must-be-covered set legal in both directions
-(`Complete 57 - excluded 12 = accepted 45 = registered 45`). Amendment A-04's predicted `lines=335`
-was an arithmetic slip and is corrected by measurement in `10-06-SUMMARY.md`.
-
-**Next action:** the orchestrator's phase boundary. It runs the container gate once on this
-final tree (the executor did not: the dispatch reserves it, and this plan's budget deviation
-records that), applies or records the branch and tag rulesets in `.planning/AUTONOMY.md`
-section 1, and runs verify-work. Phase 11 (`TOOL-01`) starts after that.
-
-**Next action, Phase 11 (plan 11-05, 2026-11-25) — supersedes the paragraph above, which is left as
-recorded:** the orchestrator's phase boundary. It runs the container gate once on this final tree
-(the executor did not: the dispatch reserves it as the phase-boundary gate, and this plan's budget
-deviation records that), applies or records the branch and tag rulesets in
-`.planning/AUTONOMY.md` section 1, and runs verify-work. Phase 12 (`FMT-01`, `FMT-04`) is
-conditional and starts after that.
+Phase: Milestone v0.2.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-11-25 — Milestone v0.2.0 completed and archived
 
 ### Planning overrides recorded by the autonomous run
 
@@ -695,7 +660,5 @@ recomputed figure or an owner hard stop.
 
 ## Operator Next Steps
 
-- v0.2.0 is scoped: `.planning/MILESTONE-CONTEXT.md` holds the phase shape, exit criteria and decisions; `.planning/ops/GUARDRAILS-v0.2.md` holds the retarget table and the definition of done.
-- Run the milestone end to end with `/gsd-autonomous` after `/clear`.
-- Phase 9 wave A1 is cost-only: lever (3) and trims (a), (c), (d), then a hosted row, then wave A2.
-- `.planning/ci-runs.tsv` is the orchestrator's live hosted-run record; it is appended by `tools/ci-record.sh` and committed in a records pull request, never by an executor.
+
+- Start the next milestone with /gsd-new-milestone

@@ -1,5 +1,27 @@
 # Milestones
 
+## v0.2.0 Registered Evidence, Reachable Runs, Replayable Input (Shipped: 2026-11-25)
+
+**Phases resolved:** 4 of 4 — 9, 10 and 11 delivered and verified; **12 dropped at its own entry gate**. 20 plans.
+
+**Key accomplishments:**
+- **The gate's cost level is settled by measurement, not by argument.** Lever (3) and trims (a), (c) and (d) landed in cost-only commits, a hosted row was taken *after* them and every one of those commits is proved an ancestor of its head, and the median was recomputed by arithmetic from the committed rows. Wave A1 was priced at 1.10 local cpu-s and **measured 0.80**. Trim (b) was declined with its measurement rather than quietly skipped.
+- **The evidence gap that could not be seen is closed and cannot recur.** 17 requirements whose named faults already ran in every gate — FND-01..07, CPU-01..05, MEM-01..05 — are now registered (306 → 330 rows, 90 → 107 gates) against mechanisms that already existed, with no new fault, test id or control. The must-be-covered set is **derived from the requirement records**, with a two-directional exclusion ledger, so deleting a registry line can no longer shrink coverage silently.
+- **Four steps were 88 % of the gate and now the cheap ones report first.** The measured hosted profile is `c-build 49s, c-faults 48s, c-tests 25s, controls 23s`. The preflight partition — derived, never hand-maintained — takes local time-to-first-signal from 79 s to 31 s with byte-identical normalised output. The one lever that preserves evidence (concurrency between independent steps) is priced and recorded for the next milestone.
+- **A person can now obtain the emulator and run it.** `docs/running.md` names three commands and the exact stdout tail, measured by running them; `tools/release-rehearse.sh --source-route` unpacks the released source archive into a clean directory, builds cold, runs `demo-lamp-tone-pass` and compares **124 of 124** golden lines, with the gate's own filter program copied verbatim and **proved against its source on every rehearsal**.
+- **Colour is kept out of the core and out of every claim.** `docs/presentation.md` freezes six clauses, and the refusal that enforces the important one already existed — the policy cites it rather than building a second mechanism, and records that inversion of oracle-first honestly.
+- **What a human owes is now a ledger, not prose.** `data/expected/handoffs.ids` holds five rows, every one `evidence: none`, each dispositioned; `docs/handoffs.md` makes H7-1 and H7-2 performable without reconstructing them; and a claim can no longer cite a handoff artifact — after the review found that `./build/…` and a deleted ledger both slipped through.
+- **A run is recordable as an input-only log and replayable, with the vacuity closed three ways.** `docs/formats/ivsl-v1.md` came before any code, with no field able to hold a content digest, image name, length, frame byte, audio byte or path. The replay case runs on a scenario with its `input` lines stripped, so a replay that ignores the log *cannot* pass; a recorder writing the whole schedule instead of the applied prefix was caught by review and is now failed by its own id and a third fault; and `no-content-digest` gained the stand-in that lets it fail at all.
+- **Three phases, three security audits, 64/64 threats closed, 0 at or above the high threshold** — including the first genuine parser over operator-supplied input this project has, probed with 31 hostile shapes.
+- **Every phase's defects were found before the milestone closed.** Four code reviews found 3 blockers and 13 warnings **in work already marked `passed`**, two in a phase's central deliverable. That is recorded as a lesson, not smoothed over: `passed` means "the verifier's probes passed", and independence stops one inch short at the close-out.
+- **Phase 12 was dropped, with the reason written before any third-party file was read.** The rights review cannot clear the `.cfg` importer — its only route is a GPL implementation this project's own research rules out as a derivation source. FMT-01 and FMT-04 are `Deferred` with their reversal conditions, never `Complete` and never silently lost.
+
+**Release:** `READY, NOT PUBLISHED: blocked by P5` — no `[0.2.0]` CHANGELOG section and the version numbers still read `0.1.0`; P1, P2, P3, P4, P6 and P7 hold. See the milestone audit's release-decision section for the order that clears it.
+
+**Audit:** `.planning/milestones/v0.2.0-MILESTONE-AUDIT.md` — status `tech_debt`: 8/10 requirements delivered (4 clean, 4 on recorded terms), 2 deferred with conditions, 0 lost; 9 of 11 audit gaps closed at the close, 2 carried as recorded debt.
+
+---
+
 ## v0.1.0 Machine Core Foundations (Shipped: 2026-11-24)
 
 **Phases completed:** 8 phases, 130 plans, 151 tasks
