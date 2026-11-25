@@ -277,3 +277,18 @@ runner.record.replay-equals-straight
 runner.record.format-roundtrip
 runner.judge.record-replay-differs
 runner.judge.record-replay-inert
+# Plan 11-03 (TOOL-01, A-11-02, A-11-05): the nine refusals of docs/formats/ivsl-v1.md's "Refusals" table, one id per
+# token and none per trigger, each asserting the reason code, the 1-based line the token names, the token string
+# ivs_ivsl_reason_name renders against the document's own spelling, and a caller's output the call left byte-for-byte
+# untouched. `arity` and `trailing` are classes with enumerated members rather than places to put everything (A-11-02):
+# `arity` holds the line shapes and `trailing` the file shapes, and the document's `content` value trigger sits in
+# `arity` where the document puts it. Four of the nine (tick-order, tick-bound, event-cap, controller-bit) also carry an
+# acceptance row just inside their bound, so a refusal wider than the rule is a failure rather than strictness.
+# The rights check is the `no-content-digest` id: zero 32-hex runs on a produced log with the two name values
+# masked, at least one on a committed stand-in that carries a real 64-hex digest, a shape pin on the two name fields
+# that justifies the masking, and a 32-digit-slug witness that proves the exclusion is a decision (A-11-05).
+runner.record.refuse.unknown-directive
+runner.record.refuse.version
+runner.record.refuse.arity
+runner.record.refuse.hex
+runner.record.refuse.trailing

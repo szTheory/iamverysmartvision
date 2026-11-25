@@ -3382,6 +3382,214 @@ done:
   return rc;
 }
 
+/* ---- the nine refusals and the rights check (plan 11-03, TOOL-01, A-11-02, A-11-05) ---- */
+
+/* The header the refusal rows start from: four well-formed lines, so every fault a row feeds is the only fault in its
+ * text and the line the row names is the line the parser has to name. */
+static const char rx_ivsl_head[] =
+    "ivsl 1\nscenario diag-boot-pass\nprofile intv-2609-ntsc-family-p1\ncontent project\n";
+
+/* One refusal, judged four ways (plan 11-03, TOOL-01, A-11-02): the parse is refused; the reason is the code the row
+ * names; ivs_ivsl_reason_name renders the token the row passes, which is a transcription of docs/formats/ivsl-v1.md's
+ * "Refusals" table, so the comparison is the document against the code rather than the code against a copy of itself;
+ * the 1-based line is the one the row judges; and the caller's output is byte-for-byte what it was before the call.
+ * The last condition is why a case per token is stronger than a non-zero return: a parser that filled half an event
+ * before refusing would pass every other assertion here. On failure the diagnostic names the trigger, the reason, the
+ * line, or the first differing byte of the poisoned struct. */
+static int rx_refuse(const char *what, const char *token, uint32_t reason, uint32_t line, const char *text, size_t len)
+{
+  ivs_ivsl_log poison;
+  ivs_ivsl_log out;
+  ivs_ivsl_error err;
+  const unsigned char *a = (const unsigned char *)&out;
+  const unsigned char *b = (const unsigned char *)&poison;
+  size_t i;
+  memset(&poison, 0xA5, sizeof poison);
+  out = poison;
+  memset(&err, 0, sizeof err);
+  if (ivs_ivsl_parse((const uint8_t *)text, len, &out, &err) != 1) {
+    ivs_test_diag("%s: not refused", what);
+    return 0;
+  }
+  if (err.reason != reason || err.line != line) {
+    ivs_test_diag("%s: reason %s line %u, want %s line %u", what, ivs_ivsl_reason_name(err.reason), (unsigned)err.line,
+                  ivs_ivsl_reason_name(reason), (unsigned)line);
+    return 0;
+  }
+  if (strcmp(ivs_ivsl_reason_name(err.reason), token) != 0) {
+    ivs_test_diag("%s: the code renders '%s', the document says '%s'", what, ivs_ivsl_reason_name(err.reason), token);
+    return 0;
+  }
+  if (memcmp(&out, &poison, sizeof out) != 0) {
+    for (i = 0u; i < sizeof out && a[i] == b[i]; i++) {
+    }
+    ivs_test_diag("%s: the output was written, first differing byte %llu of %llu: %02X against %02X", what,
+                  (unsigned long long)i, (unsigned long long)sizeof out, (unsigned)a[i], (unsigned)b[i]);
+    return 0;
+  }
+  return 1;
+}
+
+/* A refusal row's two halves: the trigger, named in the diagnostic, and the text that carries only that trigger. */
+typedef struct rx_refuse_row {
+  const char *what;
+  const char *text;
+} rx_refuse_row;
+
+/* runner.record.refuse.unknown-directive (plan 11-03, TOOL-01, A-11-02): the first token of a line is not one of the
+ * five directives. Three rows, each a different way to be unknown: a `digest.input` line (a digest is the one field the
+ * format exists to have none of, so an operator pasting one gets this token), a scenario-grammar `input` line (the
+ * directive the log deliberately does not have, because the log is the record of what was applied), and an `AT_TICK`
+ * first token (the directive's name in the wrong case: the grammar is case-sensitive and nothing is folded).
+ *
+ * The plan's second row was `content hardware`, which is not this token: `content` is a directive, so the fault is its
+ * value, and the document's `arity` row names that trigger explicitly. That row is fed to the `arity` case below, where
+ * the document puts it, so the trigger is still exercised and the token is the document's. */
+static int ex_record_refuse_unknown_directive(void)
+{
+  static const rx_refuse_row rows[] = {
+      {"unknown-directive: a digest.input line",
+       "digest.input 832906ce775d32a98ae607386ce4bbcdd4d08017e3b914b6089e50a5364c7761\n"},
+      {"unknown-directive: an input line of the scenario grammar", "input at_tick=100 c0=KEY_1 c1=0x0\n"},
+      {"unknown-directive: AT_TICK in the wrong case", "AT_TICK 100 c0=00000000 c1=00000000\n"},
+  };
+  char text[1024];
+  for (size_t i = 0u; i < sizeof rows / sizeof rows[0]; i++) {
+    int n = snprintf(text, sizeof text, "%s%s", rx_ivsl_head, rows[i].text);
+    if (n <= 0 || (size_t)n >= sizeof text) {
+      ivs_test_diag("%s: the text did not fit", rows[i].what);
+      return IVS_TEST_FAIL;
+    }
+    if (!rx_refuse(rows[i].what, "unknown-directive", IVS_IVSL_R_UNKNOWN_DIRECTIVE, 5u, text, (size_t)n)) {
+      return IVS_TEST_FAIL;
+    }
+  }
+  return IVS_TEST_PASS;
+}
+
+/* runner.record.refuse.version (plan 11-03, TOOL-01, A-11-02): the first line is `ivsl` and its version token is not
+ * exactly `1`. Two rows, `ivsl 2` (a version this document does not specify) and `ivsl 0` (no version at all), both
+ * named at line 1 because the version is judged before any other line is read. A version token that is not a number at
+ * all is `arity`, not this token, so it is not fed here. */
+static int ex_record_refuse_version(void)
+{
+  static const rx_refuse_row rows[] = {{"version: ivsl 2", "ivsl 2\n"}, {"version: ivsl 0", "ivsl 0\n"}};
+  for (size_t i = 0u; i < sizeof rows / sizeof rows[0]; i++) {
+    if (!rx_refuse(rows[i].what, "version", IVS_IVSL_R_VERSION, 1u, rows[i].text, strlen(rows[i].text))) {
+      return IVS_TEST_FAIL;
+    }
+  }
+  return IVS_TEST_PASS;
+}
+
+/* runner.record.refuse.arity (plan 11-03, TOOL-01, A-11-02): a line-shape fault. Seven rows, and they are the
+ * enumerated members of the class rather than a place to put everything: a header directive missing at the end (named
+ * at the last line the file has), a header directive duplicated, a header directive out of order, an `at_tick` with
+ * three tokens instead of four, a `content` value that is neither `project` nor `user`, a `scenario` value outside
+ * `[a-z0-9-]`, a `profile` value above 64 bytes, and an `at_tick` field of 20 digits (the field's width is 1..19, so a
+ * 20-digit tick is a shape fault here and never `tick-bound`: the bound is judged only on a value the decimal reader
+ * accepted, which is why the plan's 20-digit tick-bound row is fed here). Each is one line's shape; none is a value on
+ * a line, which is what keeps `arity` and `trailing` narrow (A-11-02's rejected fold). */
+static int ex_record_refuse_arity(void)
+{
+  typedef struct arity_row {
+    const char *what;
+    const char *text;
+    int on_head; /* the text is a tail on the well-formed header rather than a file of its own */
+    uint32_t line;
+  } arity_row;
+  static const arity_row rows[] = {
+      {"arity: content missing at the end", "ivsl 1\nscenario s\nprofile p\n", 0, 3u},
+      {"arity: scenario duplicated", "ivsl 1\nscenario a\nscenario b\nprofile p\ncontent project\n", 0, 3u},
+      {"arity: profile before scenario", "ivsl 1\nprofile p\nscenario s\ncontent project\n", 0, 2u},
+      {"arity: at_tick with three tokens", "at_tick 100 c0=00000000\n", 1, 5u},
+      {"arity: content hardware", "ivsl 1\nscenario s\nprofile p\ncontent hardware\n", 0, 4u},
+      {"arity: a dot in the scenario id", "ivsl 1\nscenario a.b\nprofile p\ncontent project\n", 0, 2u},
+      {"arity: an at_tick field of 20 digits", "at_tick 10000000000000000000 c0=00000000 c1=00000000\n", 1, 5u},
+  };
+  char text[1024];
+  char longname[IVS_IVSL_MAX_PROFILE + 2u];
+  for (size_t i = 0u; i < sizeof rows / sizeof rows[0]; i++) {
+    int n = rows[i].on_head != 0 ? snprintf(text, sizeof text, "%s%s", rx_ivsl_head, rows[i].text)
+                                 : snprintf(text, sizeof text, "%s", rows[i].text);
+    if (n <= 0 || (size_t)n >= sizeof text) {
+      ivs_test_diag("%s: the text did not fit", rows[i].what);
+      return IVS_TEST_FAIL;
+    }
+    if (!rx_refuse(rows[i].what, "arity", IVS_IVSL_R_ARITY, rows[i].line, text, (size_t)n)) {
+      return IVS_TEST_FAIL;
+    }
+  }
+  /* A profile above its 64-byte width: 65 bytes of the legal charset is still a shape fault. */
+  memset(longname, 'a', sizeof longname - 1u);
+  longname[sizeof longname - 1u] = '\0';
+  if ((size_t)snprintf(text, sizeof text, "ivsl 1\nscenario s\nprofile %s\ncontent project\n", longname) >= sizeof text) {
+    ivs_test_diag("arity: the long profile text did not fit");
+    return IVS_TEST_FAIL;
+  }
+  if (!rx_refuse("arity: a profile of 65 bytes", "arity", IVS_IVSL_R_ARITY, 3u, text, strlen(text))) {
+    return IVS_TEST_FAIL;
+  }
+  return IVS_TEST_PASS;
+}
+
+/* runner.record.refuse.hex (plan 11-03, TOOL-01, A-11-02): a `c0=` or `c1=` value that is not exactly eight upper-case
+ * hex digits. Three rows, one per way the width or the case can be wrong: a lower-case digit (refused, never folded),
+ * seven digits, and nine digits. Each names the event line it judged, which is line 5 on the header above. */
+static int ex_record_refuse_hex(void)
+{
+  static const rx_refuse_row rows[] = {
+      {"hex: c0=0000000a lower case", "at_tick 100 c0=0000000a c1=00000000\n"},
+      {"hex: c0=0000001 seven digits", "at_tick 100 c0=0000001 c1=00000000\n"},
+      {"hex: c1=000000001 nine digits", "at_tick 100 c0=00000000 c1=000000001\n"},
+  };
+  char text[1024];
+  for (size_t i = 0u; i < sizeof rows / sizeof rows[0]; i++) {
+    int n = snprintf(text, sizeof text, "%s%s", rx_ivsl_head, rows[i].text);
+    if (n <= 0 || (size_t)n >= sizeof text) {
+      ivs_test_diag("%s: the text did not fit", rows[i].what);
+      return IVS_TEST_FAIL;
+    }
+    if (!rx_refuse(rows[i].what, "hex", IVS_IVSL_R_HEX, 5u, text, (size_t)n)) {
+      return IVS_TEST_FAIL;
+    }
+  }
+  return IVS_TEST_PASS;
+}
+
+/* runner.record.refuse.trailing (plan 11-03, TOOL-01, A-11-02): a file-shape fault, which is the class `arity` would
+ * otherwise have swallowed. Three rows: a byte after the last complete line (a bare `x` with no LF), a complete final
+ * line with its LF removed, and a NUL inside an event line. The NUL row is fed by length, not by strlen, because the
+ * byte the parser has to judge is the terminator a string helper would stop at. Each names the line the fault sits on:
+ * a file-shape fault is not the end of the file in the NUL's case, and the document's "last line before the offending
+ * byte" and "the line the byte sits on" agree here because the offending byte is inside line 5. */
+static int ex_record_refuse_trailing(void)
+{
+  char text[1024];
+  size_t head = strlen(rx_ivsl_head);
+  int n;
+  n = snprintf(text, sizeof text, "%sx", rx_ivsl_head);
+  if (n <= 0 || (size_t)n >= sizeof text ||
+      !rx_refuse("trailing: a byte after the last complete line", "trailing", IVS_IVSL_R_TRAILING, 5u, text, (size_t)n)) {
+    return IVS_TEST_FAIL;
+  }
+  n = snprintf(text, sizeof text, "%sat_tick 100 c0=00000000 c1=00000000", rx_ivsl_head);
+  if (n <= 0 || (size_t)n >= sizeof text ||
+      !rx_refuse("trailing: a final line with its LF removed", "trailing", IVS_IVSL_R_TRAILING, 5u, text, (size_t)n)) {
+    return IVS_TEST_FAIL;
+  }
+  n = snprintf(text, sizeof text, "%sat_tick 100 c0=00000000 c1=00000000\n", rx_ivsl_head);
+  if (n <= 0 || (size_t)n >= sizeof text) {
+    ivs_test_diag("trailing: the NUL text did not fit");
+    return IVS_TEST_FAIL;
+  }
+  text[head + 9u] = '\0'; /* the first digit of the tick: a NUL inside the event line, not at its end */
+  if (!rx_refuse("trailing: a NUL inside an event line", "trailing", IVS_IVSL_R_TRAILING, 5u, text, (size_t)n)) {
+    return IVS_TEST_FAIL;
+  }
+  return IVS_TEST_PASS;
+}
+
 /* Sets the value of key in report in place. 1 when exactly one line carries the key and the new value has the same
  * length as the old one (every use here keeps the width, so no line has to move and the text stays equal elsewhere). */
 static int rx_report_set_value(char *report, const char *key, const char *value)
@@ -3606,6 +3814,11 @@ static const ivs_test_case exec_cases[] = {
     {"runner.exec.roundtrip-cut-cap", ex_roundtrip_cut_cap, NULL},
     {"runner.record.replay-equals-straight", ex_record_replay_equals_straight, NULL},
     {"runner.record.format-roundtrip", ex_record_format_roundtrip, NULL},
+    {"runner.record.refuse.unknown-directive", ex_record_refuse_unknown_directive, NULL},
+    {"runner.record.refuse.version", ex_record_refuse_version, NULL},
+    {"runner.record.refuse.arity", ex_record_refuse_arity, NULL},
+    {"runner.record.refuse.hex", ex_record_refuse_hex, NULL},
+    {"runner.record.refuse.trailing", ex_record_refuse_trailing, NULL},
     {"runner.judge.record-replay-differs", ex_judge_record_replay_differs, NULL},
     {"runner.judge.record-replay-inert", ex_judge_record_replay_inert, NULL},
     {"runner.exec.boot-stub-2", ex_boot_stub_2, NULL},
