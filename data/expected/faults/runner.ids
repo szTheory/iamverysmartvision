@@ -77,7 +77,15 @@ RUNNER_VIDEO_CHAIN_UNCHECKED runner.exec.video-chain-check runner.exec.video-cha
 # prefix: a widened prefix would hide the fault from the one id that has to catch it.
 # RECORD_DROPS_LAST_EVENT: the writer emits one event line fewer than the log holds, so the produced log
 # claims one event fewer than the run applied.
-RECORD_DROPS_LAST_EVENT runner.record.replay-equals-straight runner.record.replay-equals-straight|runner.record.format-roundtrip runner.parse.diag-boot-pass
+# runner.record.partial-run is also caught by this fault, and it is named rather than hidden: its log holds one event, so a
+# writer that drops the last event line drops that one and the parse asserts 1 but reads 0. Same property of the code as the
+# format-roundtrip row, not a widened prefix.
+RECORD_DROPS_LAST_EVENT runner.record.replay-equals-straight runner.record.replay-equals-straight|runner.record.format-roundtrip|runner.record.partial-run runner.parse.diag-boot-pass
 # REPLAY_APPLIES_LATE: every replayed event is applied one tick late, so the applied-event chain (which hashes
 # be64(at_tick)) differs from the recorded run's even though the guest never reads a controller word.
 REPLAY_APPLIES_LATE runner.record.replay-equals-straight runner.record.replay-equals-straight runner.parse.diag-boot-pass
+# RECORD_WHOLE_SCHEDULE: the recorder takes its event count from the schedule rather than from the prefix the run applied,
+# so a log of a run that stopped early carries events it never applied (review BL-01). The must-fail id is the partial-run
+# id: every other recording id consumes its whole schedule, so the read is invisible there, and the prefix is named rather
+# than a `runner.record.` prefix so that a second failing id is still a finding.
+RECORD_WHOLE_SCHEDULE runner.record.partial-run runner.record.partial-run runner.parse.diag-boot-pass

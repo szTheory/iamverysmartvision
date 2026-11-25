@@ -999,6 +999,14 @@ static void ex_write_log(ex_state *x)
   ivs_ivsl_log log;
   uint64_t written = 0u;
   uint32_t n = x->rec->input_consumed;
+#ifdef IVS_FAULT_RECORD_WHOLE_SCHEDULE
+  /* IVS_FAULT_RECORD_WHOLE_SCHEDULE (plan 11-05 review BL-01): the recorder takes the whole schedule instead of the
+   * prefix the run applied, so a log of a run that stopped early (a halt or a guest-fail before the last input line, a
+   * budget timeout, a cancelled run) carries events the run never applied, and a replay of it is not the recorded run.
+   * Detected by runner.record.partial-run: every other recording id runs a schedule it consumes in full, which is why
+   * that id exists. */
+  n = x->sched_n;
+#endif
   if (n > x->sched_n) {
     n = x->sched_n;
   }

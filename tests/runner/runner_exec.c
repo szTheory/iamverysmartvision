@@ -3030,6 +3030,10 @@ done:
 static const char rx_record_inputs[] = "input at_tick=100 c0=KEY_1 c1=0x0\n"
                                       "input at_tick=200 c0=0x0 c1=DISC_E\n";
 static const char rx_record_run_to[] = "run-to 4000 cpu-cycles stop halted\n";
+/* The partial-run id's schedule: the first event is applied before the diagnostic halts, the second is past the halt, so
+ * a run of this text applies one of its two events (runner.record.partial-run, review BL-01). */
+static const char rx_partial_inputs[] = "input at_tick=100 c0=KEY_1 c1=0x0\n"
+                                        "input at_tick=3000 c0=0x0 c1=DISC_E\n";
 
 /* The nine report digest lines, in the writer's key order (the rows of exec.c's ex_domains). */
 static const char *const rx_digest_keys[] = {"digest.cpu",    "digest.mem",    "digest.images", "digest.instance", "digest.composite",
@@ -3237,6 +3241,79 @@ done:
   rx_free(&b);
   rx_free(&c);
   return rc_code;
+}
+
+/* runner.record.partial-run (plan 11-05 review BL-01, D-15, A-11-03): the recorder writes the prefix the run applied,
+ * never the schedule the scenario declared. Every other recording id runs a schedule it consumes in full, so there
+ * `input.consumed` equals `input.events` (2 == 2 in the in-process equality, 6 == 6 in the process case) and a recorder
+ * that took its count from `x->sched_n` instead of `x->rec->input_consumed` would pass all of them. This id is the
+ * liveness for that read: the diagnostic text with two input lines, the second past the tick the program halts on, so
+ * the run applies exactly the first and still ends pass. Asserted:
+ *   - input.events 2 and input.consumed 1, so consumed is strictly below events;
+ *   - the log is the four header lines plus exactly one event line, `at_tick 100` with KEY_1 and a zero c1, and no other
+ *     event line - the second event is absent because the run never applied it;
+ *   - the log parses back to one event at that tick with those words, so a log carrying the whole schedule fails the byte
+ *     count and the parse rather than a comment.
+ * IVS_FAULT_RECORD_WHOLE_SCHEDULE (`n = x->sched_n`) is the mutation this id is the detector for. */
+static int ex_record_partial_run(void)
+{
+  fake_host h;
+  ivs_runner_result r;
+  ivs_ivsl_log lg;
+  ivs_ivsl_error err;
+  char diag[RX_SCN_CAP];
+  char text[RX_SCN_CAP];
+  char insert[sizeof rx_partial_inputs + sizeof rx_record_run_to];
+  uint64_t want;
+  uint32_t out;
+  int code = IVS_TEST_FAIL;
+  fh_init(&h);
+  h.log_out = malloc(IVS_IVSL_MAX_BYTES);
+  h.log_out_cap = IVS_IVSL_MAX_BYTES;
+  if (h.log_out == NULL) {
+    goto done;
+  }
+  (void)snprintf(insert, sizeof insert, "%s%s", rx_partial_inputs, rx_record_run_to);
+  if (!rx_diag(diag, sizeof diag) || !rx_replace(diag, rx_record_run_to, insert, text, sizeof text)) {
+    goto done;
+  }
+  out = rx_exec(text, &h, &r);
+  if (out != IVS_RUNNER_OUTCOME_PASS || r.exit_code != 0u || h.out == NULL || !rx_complete(h.out, &r)) {
+    ivs_test_diag("the partial run: outcome %u exit %u\n%s", (unsigned)out, (unsigned)r.exit_code, h.out != NULL ? h.out : "");
+    goto done;
+  }
+  if (!rx_is(h.out, "input.events", "2") || !rx_is(h.out, "input.consumed", "1")) {
+    goto done;
+  }
+  want = rx_ivsl_header_bytes("diag-boot-pass", "intv-2609-ntsc-family-p1", "project") +
+         rx_ivsl_event_bytes(100u, IVS_CTRL_KEY_1, 0u);
+  if (r.log_out_bytes != want) {
+    ivs_test_diag("the partial log took %llu bytes, want %llu: the header and the one applied event line",
+                  (unsigned long long)r.log_out_bytes, (unsigned long long)want);
+    goto done;
+  }
+  memset(&lg, 0, sizeof lg);
+  memset(&err, 0, sizeof err);
+  if (ivs_ivsl_parse(h.log_out, (size_t)r.log_out_bytes, &lg, &err) != 0) {
+    ivs_test_diag("the partial log does not parse: reason %s line %u", ivs_ivsl_reason_name(err.reason), (unsigned)err.line);
+    goto done;
+  }
+  if (lg.n_events != 1u) {
+    ivs_test_diag("the partial log holds %u events, want 1: the recorder wrote events the run did not apply",
+                  (unsigned)lg.n_events);
+    goto done;
+  }
+  if (lg.events[0].at_tick != 100u || lg.events[0].controller[0] != IVS_CTRL_KEY_1 || lg.events[0].controller[1] != 0u) {
+    ivs_test_diag("the partial log's one event: %llu/%08X/%08X", (unsigned long long)lg.events[0].at_tick,
+                  (unsigned)lg.events[0].controller[0], (unsigned)lg.events[0].controller[1]);
+    goto done;
+  }
+  code = IVS_TEST_PASS;
+done:
+  free(h.log_out);
+  h.log_out = NULL;
+  rx_free(&h);
+  return code;
 }
 
 /* runner.record.format-roundtrip (plan 11-02, TOOL-01, D-15): writing a log, parsing it and writing it again is
@@ -4225,6 +4302,7 @@ static const ivs_test_case exec_cases[] = {
     {"runner.exec.roundtrip-cut-cap", ex_roundtrip_cut_cap, NULL},
     {"runner.record.replay-equals-straight", ex_record_replay_equals_straight, NULL},
     {"runner.record.format-roundtrip", ex_record_format_roundtrip, NULL},
+    {"runner.record.partial-run", ex_record_partial_run, NULL},
     {"runner.record.refuse.unknown-directive", ex_record_refuse_unknown_directive, NULL},
     {"runner.record.refuse.version", ex_record_refuse_version, NULL},
     {"runner.record.refuse.arity", ex_record_refuse_arity, NULL},
