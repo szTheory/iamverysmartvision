@@ -3332,7 +3332,10 @@ done:
  *   4. the two caps: IVS_IVSL_MAX_EVENTS is 64 and is IVS_SCN_MAX_INPUTS, and a buffer one byte short of the log's
  *      length is refused with nothing written;
  *   5. a refusal leaves the output untouched: a one-byte-truncated log is refused `trailing` and the poisoned log the
- *      caller passed is still poisoned. This is the contract the nine per-token cases of plan 11-03 repeat. */
+ *      caller passed is still poisoned. This is the contract the nine per-token cases of plan 11-03 repeat;
+ *   6. the writer's domain is the reader's domain (O-11-V2): a log whose event sits outside the parser's domain
+ *      (a tick at IVS_IVSL_TICK_MAX, a controller word with bit 31 set, or a tick below its predecessor) is refused
+ *      with nothing written, so `ivs_ivsl_format` can never produce bytes `ivs_ivsl_parse` would refuse. */
 static int ex_record_format_roundtrip(void)
 {
   fake_host h;
@@ -3449,6 +3452,37 @@ static int ex_record_format_roundtrip(void)
     ivs_test_diag("the truncated log: reason %s line %u, and the output %s left untouched", ivs_ivsl_reason_name(err.reason),
                   (unsigned)err.line, memcmp(&l3, &poison, sizeof l3) == 0 ? "was" : "was not");
     goto done;
+  }
+  /* 6. the writer refuses what the reader refuses (O-11-V2): every mutation below is outside the parser's domain. */
+  {
+    static const uint32_t word_bit = 0x80000000u;
+    ivs_ivsl_log bad = l1;
+    bad.events[0].at_tick = IVS_IVSL_TICK_MAX;
+    memset(third, 0xA5, IVS_IVSL_MAX_BYTES);
+    n3 = 7u;
+    if (ivs_ivsl_format(&bad, (uint8_t *)third, IVS_IVSL_MAX_BYTES, &n3) != 1 || n3 != 7u ||
+        (unsigned char)third[0] != 0xA5u) {
+      ivs_test_diag("a tick at IVS_IVSL_TICK_MAX was not refused with nothing written");
+      goto done;
+    }
+    bad = l1;
+    bad.events[0].controller[1] |= word_bit;
+    memset(third, 0xA5, IVS_IVSL_MAX_BYTES);
+    n3 = 7u;
+    if (ivs_ivsl_format(&bad, (uint8_t *)third, IVS_IVSL_MAX_BYTES, &n3) != 1 || n3 != 7u ||
+        (unsigned char)third[0] != 0xA5u) {
+      ivs_test_diag("a controller word with bit 31 set was not refused with nothing written");
+      goto done;
+    }
+    bad = l1;
+    bad.events[0].at_tick = bad.events[1].at_tick + 1u;
+    memset(third, 0xA5, IVS_IVSL_MAX_BYTES);
+    n3 = 7u;
+    if (ivs_ivsl_format(&bad, (uint8_t *)third, IVS_IVSL_MAX_BYTES, &n3) != 1 || n3 != 7u ||
+        (unsigned char)third[0] != 0xA5u) {
+      ivs_test_diag("a descending tick was not refused with nothing written");
+      goto done;
+    }
   }
   rc = IVS_TEST_PASS;
 done:

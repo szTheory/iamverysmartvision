@@ -124,6 +124,8 @@ rows rather than seven (A-11-02).
   supplied, so the log's cap is the scenario's cap and not a new number.
 - **4096 bytes.** The largest well-formed log is 3,482 bytes, and 4096 is that figure plus 614
   bytes of slack. A file above 4096 bytes is refused `trailing` before its directives are judged.
+  *(Superseded in part by A-11-V3 below: an oversize file is refused by the operator layer as
+  `too large`, before the parser is called. The cap itself is unchanged.)*
   The exact counts are 3482 and 614, and both are derived below.
 - No separate line cap is needed. The field widths bound one event line to 52 bytes and one
   header line to 73 bytes, so a longer line is already refused `arity` or `trailing`.
@@ -257,3 +259,27 @@ last complete line.
 their reason strings are unaffected; only this one row's "Line named" wording is superseded, and
 `err.line` is a diagnostic that no consumer branches on. The nine `runner.record.refuse.*` ids
 assert the parser's number and now also say which reading they pin.
+
+## Appended amendment A-11-V3 (v0.3.0 housekeeping, 2026-11-26): two `Limits`/`arity` prose gaps closed
+
+Two sentences above are imprecise about which layer refuses a file, and they are left as written
+because this document is a frozen oracle (GUARDRAILS §2.10, lesson 21). The corrections are this note,
+and the `Limits` sentence now carries an inline pointer to it so a reader is not misled at the line.
+
+**1. An oversize file is not refused `trailing` by this grammar.** `ivs_ivsl_parse` never sees it: the
+operator layer (`runner/main.c`) reads the log with `ivs_hostio_read` capped at `IVS_IVSL_MAX_BYTES`
+and reports `log not readable: too large` before the parser is called. The 4096-byte cap is therefore
+enforced twice, by the reader and by `ivs_ivsl_format`, and neither enforcement is a format token.
+A file of exactly 4096 bytes is still read and judged by the grammar; the cap is the read bound, not
+a rejection threshold.
+
+**2. An empty file is refused `arity` at line 0, a trigger the `arity` row does not enumerate.** A
+zero-byte file has no line at all, and the parser's line loop reports `arity` with `err.line = 0`
+rather than inventing a line 1. The row's enumerated triggers are unchanged and remain exhaustive for
+every line that exists; the empty-file case is the one shape with no line to name.
+
+**No format change, no code change, no version bump follows.** The nine tokens, their triggers, the
+4096-byte cap and every byte the writer emits are unchanged; only the layer that refuses an oversize
+file and the line number of the empty-file refusal are now stated accurately. The `arity` case for an
+empty file is pinned by the parser's own suite, and `runner.record.refuse.*` asserts the operator
+layer's message for the oversize case.

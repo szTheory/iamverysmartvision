@@ -70,6 +70,19 @@ toy `control-toy-drift` check stays green.
 8. **A claim never rises above `provisional`** while D10 and D11 are
    unperformed, and no claim may cite a handoff artifact, a `build/` path, a
    `.wav`, a `.ppm` or a bench `.tsv`.
+
+   *Read as a gap in this milestone (audit G-09) and **scoped precisely in
+   v0.3.0 housekeeping, 2026-11-26**: the ceiling is a **behavioural-claim**
+   ceiling. D10 and D11 gate claims about what the machine does, so every
+   `original-diagnostic`, `deterministic-repeatability`,
+   `installed-host-behavior`, `playable-guest-progress`, `public-vector` and
+   `independent-implementation-comparison` claim stays `provisional`. A
+   `source-expectation` claim may stand `established` when its fields carry
+   `tier1-primary-doc` tags and it rests on no run, no measurement and no owner
+   image — `CL-0002` is the only such claim. This clause is not rewritten, per
+   the append-only rule; `PROJECT.md` D-32 carries the decision and the
+   reversal evidence, and the mechanical check that enforces it is the first
+   row of the next gate-hardening pass.*
 9. **Oracle first, provably.** The format or policy document, the expected
    values and the field table are committed *before* the code, and the ancestry
    is proved with `git merge-base --is-ancestor`. When plan prose and the frozen
