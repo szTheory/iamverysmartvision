@@ -168,7 +168,8 @@ Every `<automated>` command in the plan was run against the committed tree, and 
 | `run-controls.sh` after Task 3 | `controls=401/401` |
 | `files` after Task 2 | `-- files pass tracked=2721 binaries-listed=0 rights-pinned=4/4` |
 | `integrity` after Task 1 / Task 2 | `-- integrity pass files=2717` / `-- integrity pass files=2721`, no `integrity-missing-spdx` and no `integrity-non-ascii` |
-| `sh tools/gate.sh` (final) | `gate: PASS steps=38/38 controls=401/401 ... fault-runs=238 ... faults=238/238 ... tracked=2721 binaries-listed=0 rights-pinned=4/4 ... goldens=29 ... gates=114 lines=352 ... cases=14` |
+| `sh tools/gate.sh` (at the Task 3 commit) | `gate: PASS steps=38/38 controls=401/401 ... fault-runs=238 ... faults=238/238 ... tracked=2721 binaries-listed=0 rights-pinned=4/4 ... goldens=29 ... gates=114 lines=352 ... cases=14` |
+| `sh tools/gate.sh` (at the metadata commit `1f814c8`) | `gate: PASS steps=38/38 controls=401/401 ... faults=238/238 ... tracked=2722 ... goldens=29 ... gates=114 lines=352 ... cases=14` — `tracked` is one higher only because this SUMMARY is now a tracked file; every other token is identical |
 | `dash tools/gate.sh` (final) | `gate: PASS ...`; `diff` of the two `gate:` lines is empty |
 | `sh tools/hygiene.sh --tree` | `-- hygiene pass mode=tree hygiene-files=2721` |
 | `ls tools/check/steps/*.sh \| wc -l` | `38` |
@@ -290,7 +291,7 @@ None - no external service configuration required.
 - Created files exist: all six created paths are tracked (`git ls-files` → `2721`) and were read by the steps that judge them (`important-gates` on the real and toy trees, `runner-selftest`, `run-controls.sh`, `integrity`).
 - Commits exist: `b1abccc`, `2c32390` and `e93dbe8` are ancestors of HEAD.
 - Re-ran every acceptance criterion from all three tasks after the last edit: `runner-selftest cases=14`, `important-gates gates=114 lines=352`, toy tree `gates=45 lines=46`, `controls=401/401` with `control ok   important-gates-excluded-stale`, `files tracked=2721 rights-pinned=4/4`, `integrity files=2721`, `steps=38`, `faults=238`, `goldens=29`, 352 registry lines, 10 `d09-06-registration` rows, and the 13-toy-path diff at 13 added / 0 deleted.
-- Re-ran the plan-level `<verification>` commands: all six pass, `sh tools/gate.sh` ends `gate: PASS`, and `dash tools/gate.sh` prints a byte-identical summary line.
+- Re-ran the plan-level `<verification>` commands: all six pass, `sh tools/gate.sh` ends `gate: PASS`, and `dash tools/gate.sh` prints a byte-identical summary line. The gate was run once more at the metadata commit `1f814c8`: `gate: PASS steps=38/38 controls=401/401 ... faults=238/238 ... tracked=2722 ... goldens=29 ... gates=114 lines=352 ... cases=14`, where the single changed token is `tracked` (this SUMMARY is now tracked) and `faults=238`/`steps=38/38` are unchanged.
 
 ---
 *Phase: 13-rights-ledger-and-enforced-claim-ceiling*
