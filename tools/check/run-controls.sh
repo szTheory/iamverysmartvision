@@ -2,9 +2,19 @@
 # SPDX-License-Identifier: MIT
 # Negative-control runner (SKELETON.md section 3).
 # Each control dir holds CHECK (step name), EXPECT (one token per line), optional
-# FORBID, overlay/ (copied over a fresh copy of _good/tree) and MAKE (transform lines).
+# FORBID, overlay/ (copied over a fresh copy of _good/tree), MAKE (transform lines) and
+# DEVIATION (declared toy-registry differences, see below).
 # Env: CONTROLS_DIR (default tools/check/controls), CONTROLS_INVENTORY_DIR
 # (default data/expected/controls). Final line: controls=<ok>/<total>.
+# Toy-registry drift (A-09, EV-04): a control that carries
+# overlay/data/expected/important-gates.ids may differ from
+# _good/tree/data/expected/important-gates.ids only in ways its DEVIATION file declares.
+# Comments are excluded from the comparison because every overlay replaces the good tree's
+# header by design, so a comment-inclusive comparison would fire on all of them. DEVIATION
+# holds one declaration per permitted difference: a '<' or '>' and one space, then the exact
+# non-comment line. Both directions are refused, so a DEVIATION file cannot rot into stale
+# permissions: an undeclared difference is control-toy-drift, a declaration that matches no
+# difference is control-deviation-unused.
 # Controls run in JOBS lanes (D-22 lever 2, A-09): each control gets its own work dir
 # (tree, filelist, step output, result lines), so lanes share no temp state. Lane i takes
 # every JOBS-th entry of the sorted list; results are printed afterwards in sorted order,
@@ -266,6 +276,34 @@ if [ ! -s "$tmp/ctl.want" ]; then fail control-inventory-empty "inventory"; fi
 if [ ! -s "$tmp/ctl.have" ]; then fail control-none "no control directories"; fi
 for n in $(comm -13 "$tmp/ctl.want" "$tmp/ctl.have"); do fail control-not-in-inventory "$n"; done
 for n in $(comm -23 "$tmp/ctl.want" "$tmp/ctl.have"); do fail control-inventory-orphan "$n"; done
+
+# Toy-registry drift, both directions (A-09, EV-04). Comments are excluded: every overlay
+# replaces the good tree's header by design. One finding per offending line, so the detail
+# names what drifted; a control with the overlay and no DEVIATION file has an empty
+# declaration set, which is exactly what an undeclared drift looks like.
+_good_reg="$CONTROLS_DIR/_good/tree/data/expected/important-gates.ids"
+if [ -f "$_good_reg" ]; then
+  awk '!/^#/ && NF' "$_good_reg" | sort > "$tmp/reg.good"
+  for n in $(cat "$tmp/ctl.have"); do
+    _ov="$CONTROLS_DIR/$n/overlay/data/expected/important-gates.ids"
+    [ -f "$_ov" ] || continue
+    awk '!/^#/ && NF' "$_ov" | sort > "$tmp/reg.ov"
+    {
+      comm -23 "$tmp/reg.good" "$tmp/reg.ov" | sed 's/^/< /'
+      comm -13 "$tmp/reg.good" "$tmp/reg.ov" | sed 's/^/> /'
+    } | sort > "$tmp/reg.diff"
+    : > "$tmp/reg.decl"
+    if [ -f "$CONTROLS_DIR/$n/DEVIATION" ]; then
+      awk 'NF' "$CONTROLS_DIR/$n/DEVIATION" | sort > "$tmp/reg.decl"
+    fi
+    while IFS= read -r _l; do
+      grep -q -x -F -e "$_l" "$tmp/reg.decl" || fail control-toy-drift "$n: $_l"
+    done < "$tmp/reg.diff"
+    while IFS= read -r _l; do
+      grep -q -x -F -e "$_l" "$tmp/reg.diff" || fail control-deviation-unused "$n: $_l"
+    done < "$tmp/reg.decl"
+  done
+fi
 
 # Positive control: every distinct CHECK step must pass on the pristine good tree.
 : > "$tmp/checks"

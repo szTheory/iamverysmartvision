@@ -1,15 +1,18 @@
 #!/bin/sh
 # SPDX-License-Identifier: MIT
 # Step runner-selftest: the negative-control runner itself rejects bad controls (D-12).
-# Builds a throwaway controls tree (a copy of _good plus eight synthetic controls that use
+# Builds a throwaway controls tree (a copy of _good plus nine synthetic controls that use
 # the real profile step) and an inventory missing one of them, runs the real runner on it
-# and requires a nonzero exit and all five runner tokens, each naming the right control
+# and requires a nonzero exit and all seven runner tokens, each naming the right control
 # (control-expect-blank twice: an empty line, and a whitespace-only last line without a
 # newline; control-token-missing twice: a wrong single token, and a second token missing after
-# a first one that matches), plus one well-formed control (two matching tokens, a FORBID file
-# with a blank line and a last line without a newline) that the runner must accept. The
-# blank-line and token cases pin the runner's builtin blank check and one-pass token match
-# (D-45 lever, plan 04-LEVER-01).
+# a first one that matches; control-toy-drift: an overlay registry row missing with no
+# DEVIATION file; control-deviation-unused: a DEVIATION line that matches no difference),
+# plus one well-formed control (two matching tokens, a FORBID file with a blank line and a
+# last line without a newline) that the runner must accept. The blank-line and token cases pin
+# the runner's builtin blank check and one-pass token match (D-45 lever, plan 04-LEVER-01);
+# the two drift cases pin the toy-registry check (A-09, EV-04). These tokens live here because
+# a control directory cannot prove them: the control runner would have to run itself.
 # Reads ROOT, CHECK_DIR and FILELIST only (ROOT and FILELIST are unused: the tree is synthetic).
 # Tokens: runner-selftest-missing: <token>.
 # Stats: cases=<n>.
@@ -78,8 +81,24 @@ printf 'FAIL profile-file-missing\nprofile-file-missing' > "$ctl/st-ok/EXPECT"
 printf '\nselftest-no-such-token' > "$ctl/st-ok/FORBID"
 printf 'delete %s\n' "$good_file" > "$ctl/st-ok/MAKE"
 
+# Toy registry drifts from the good tree with no DEVIATION file: one row removed, undeclared.
+reg=data/expected/important-gates.ids
+mkdir -p "$ctl/st-toy-drift/overlay/data/expected"
+printf 'profile\n' > "$ctl/st-toy-drift/CHECK"
+printf 'FAIL profile-file-missing\n' > "$ctl/st-toy-drift/EXPECT"
+printf 'delete %s\n' "$good_file" > "$ctl/st-toy-drift/MAKE"
+grep -v -x -F -e 'toy-regs fault GOOD_FAULT VID-01' "$ctl/_good/tree/$reg" > "$ctl/st-toy-drift/overlay/$reg"
+
+# Toy registry identical to the good tree, but DEVIATION declares a difference that is not there.
+mkdir -p "$ctl/st-deviation-unused/overlay/data/expected"
+printf 'profile\n' > "$ctl/st-deviation-unused/CHECK"
+printf 'FAIL profile-file-missing\n' > "$ctl/st-deviation-unused/EXPECT"
+printf 'delete %s\n' "$good_file" > "$ctl/st-deviation-unused/MAKE"
+cp "$ctl/_good/tree/$reg" "$ctl/st-deviation-unused/overlay/$reg"
+printf '> toy-nothing fault GOOD_FAULT NOPE-01\n' > "$ctl/st-deviation-unused/DEVIATION"
+
 printf '%s\n' st-expect-blank st-expect-space st-exit-zero st-token-missing st-second-token-missing \
-  st-forbidden-token st-ok > "$inv/selftest.ids"
+  st-forbidden-token st-toy-drift st-deviation-unused st-ok > "$inv/selftest.ids"
 
 if CONTROLS_DIR="$ctl" CONTROLS_INVENTORY_DIR="$inv" sh "$CHECK_DIR/run-controls.sh" > "$tmp/out" 2>&1; then
   bad runner-selftest-missing "runner-exit-nonzero"
@@ -88,7 +107,8 @@ cases=0
 for pair in control-expect-blank:st-expect-blank control-expect-blank:st-expect-space \
   control-exit-zero:st-exit-zero \
   control-token-missing:st-token-missing control-not-in-inventory:st-not-in-inventory \
-  control-token-missing:st-second-token-missing control-forbidden-token:st-forbidden-token; do
+  control-token-missing:st-second-token-missing control-forbidden-token:st-forbidden-token \
+  control-toy-drift:st-toy-drift control-deviation-unused:st-deviation-unused; do
   tok=${pair%%:*}
   name=${pair#*:}
   if grep -q -F -e "-- FAIL $tok: $name" "$tmp/out"; then
