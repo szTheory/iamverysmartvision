@@ -36,8 +36,16 @@ if ! grep -q '^data/' "$tmp/scan"; then
 fi
 
 : > "$tmp/refs"
+# Whole-token extraction (EV-03 item 1). The class is [A-Za-z0-9_-] and carries NO dot, and the
+# quantifier is +, so the match ends only where the token ends: a truncating class silently turns
+# 'SRC-bsr-2609_nope' into the registered 'SRC-bsr-2609' (the step then exits zero) and a
+# lowercase-only class ignores 'SRC-Nope-Doc' entirely. The dot is excluded on measurement, not
+# taste: 'SRC-[A-Za-z0-9_.-]*[A-Za-z0-9]' swallows a trailing file extension and extracts three
+# unregistered tokens from the real tree (SRC-gi-1980-catalog.pdf, SRC-gi-1982-catalog.pdf,
+# SRC-gi-cp1600-um-1975.pdf), which would turn the gate red; no registry id contains a dot, and
+# this class extracts the same 11 tokens the inventory lists, 0 unregistered.
 while IFS= read -r f; do
-  grep -a -o -E 'SRC-[a-z0-9-]+' "$ROOT/$f" >> "$tmp/refs"
+  grep -a -o -E 'SRC-[A-Za-z0-9_-]+' "$ROOT/$f" >> "$tmp/refs"
 done < "$tmp/scan"
 sort -u "$tmp/refs" | while IFS= read -r id; do
   grep -q -x -F -e "$id" "$tmp/ids" || printf -- '-- FAIL source-unknown-ref: %s\n' "$id"

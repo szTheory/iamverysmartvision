@@ -95,8 +95,11 @@
 # clause names exists as a line `assert <text>` of the scenario, and the patch builds and changes the image (the boot stub image for a row in
 # the stub window). The ids and their number are the same in both presets, no id is skip-ok, `tests-skipped` does not move. What the static
 # judgement cannot see (a patched program that no longer fails its scenario) is judged by the Release run of the same gate. A comment line
-# `# mutants: configuration=<c> full=<n> static=<m>` before the trailer makes the mode of every run visible. A judgement that needs the
-# sanitized build to be meaningful would stay a full run on both presets; none of the 35 does (every one is judged by exit code and report).
+# `# mutants: configuration=<c> full=<n> static=<m> variants=<v> variant-static=<s>` before the trailer makes the mode of every run visible. A judgement
+# that needs the sanitized build to be meaningful would stay a full run on both presets; none of the 35 does (every one is judged by exit code and report).
+# Since plan 09-01 (D-09, A-03, A-04): the two demo-lamp-tone variants are column-5 `release-only`, so on the sanitized preset they are judged by the
+# derivation equality of docs/video/demo-lamp-tone-1-derivation.md and on Release they run; `variants=` and `variant-static=` count those rows in each
+# mode (they sum to the number of such rows), so the counts make the mode of every run visible instead of leaving it to be inferred.
 # Usage: sh runner-process-tap.sh <source root> <ivs-run> <ivs_pack> <images dir> [<build configuration>]
 # Exit: 0 pass, 1 fail, 77 every case skipped.
 # Env: IVS_TEST_NONCE, IVS_TEST_OUT_DIR, IVS_RUNNER_PROCESS_TIMEOUT.
@@ -227,7 +230,10 @@ run_one() {
 
 # why <token> <text>: records one finding in $tmp/why and sets found=1.
 found=0
-why() { printf '%s: %s\n' "$1" "$2" >> "$tmp/why"; found=1; }
+# why <token> <detail>: appends a finding to $whytarget (default $tmp/why). The indirection exists for the
+# in-case negative half of the derivation judgement (plan 09-01, A-03), which runs in a subshell with its own
+# target so it cannot set the case's own verdict.
+why() { printf '%s: %s\n' "$1" "$2" >> "${whytarget:-$tmp/why}"; found=1; }
 
 # judge <name> <exit> <outcome> <detail pattern> <stderr line>: judges run <name> (rc, hung and
 # $tmp/runs/<name>.{out,err}) against the expectation; <detail pattern> is a shell pattern for the
@@ -410,11 +416,161 @@ check_pair() {
   [ "$found" -eq 0 ]
 }
 
+# The frozen derivation of the Lamp Tone program: the oracle of the four demo-lamp-tone scenarios, read and never
+# written (plan 09-01, D-09, A-03; GUARDRAILS 2.10, archives and oracles are append-only).
+derivation="$root/docs/video/demo-lamp-tone-1-derivation.md"
+
+# derivation_block <id> <out>: the lines strictly between `<!-- asserts-begin <id> -->` and
+# `<!-- asserts-end <id> -->` of the derivation, minus its fence lines and minus its LEADING `#` lines (the frame
+# literals above the scenario lines; a `#` line further down is a scenario line and is kept).
+derivation_block() {
+  awk -v id="$1" '/<!-- asserts-begin / { b = ($3 == id); next } /<!-- asserts-end / { if (b) b = 0; next } b' "$derivation" \
+    | grep -v '^```' \
+    | awk 'BEGIN { s = 1 } s && /^#/ { next } { s = 0; print }' > "$2"
+}
+
+# scenario_body <scenario file> <out>: every line after the `ivss 1` line minus the id, profile, content and
+# capture lines, which is exactly what a derivation block holds (the input, run-to and assert lines).
+scenario_body() {
+  awk '/^ivss 1$/ { h = 1; next } h' "$1" | grep -v -E '^(id|profile|content|capture) ' > "$2"
+}
+
+# input_ticks <scenario file> <out>: the at_tick value of every input line, one per line.
+input_ticks() { sed -n 's/^input at_tick=\([0-9][0-9]*\) .*$/\1/p' "$1" > "$2"; }
+
+# derivation_equal <id> <scenario file> (plan 09-01, D-09, A-03, A-04): the preserving condition of lever (3), the
+# fold of demo-lamp-tone-shift and demo-lamp-tone-swap into static repeat variants of demo-lamp-tone-pass. Without
+# it the fold would be a coverage deletion. It is file-only and runs on BOTH presets, so a variant that still runs
+# is judged by the frozen oracle too. In order: the scenario file exists and the derivation block of <id> is not
+# empty (variant-derivation-empty, the liveness guard of the whole judgement); the assert count equals the
+# derivation's `Counts:` line at docs/video/demo-lamp-tone-1-derivation.md:316 (variant-assert-count); the `ivss`,
+# `profile` and `content` lines equal demo-lamp-tone-pass's and the `id` line is `id <id>` (variant-header-differs;
+# amendment A-04: the frozen sentence's "id equal to the pass scenario's" is unsatisfiable, so the variant carries
+# its own id); the input lines are the pass inputs transformed as the derivation documents, every tick +2,000 for
+# shift (:436) and c0 and c1 exchanged for swap (:514) (variant-input-transform); and the scenario body equals the
+# block line for line and in order (variant-derivation-differs). The four judgements run cheapest-and-narrowest
+# first and the whole-body equality last on purpose (plan 09-01 deviation, PLAN-LESSONS 20): a token placed behind
+# the full equality is masked by it and cannot fire for the reason it claims. Appends findings to $whytarget
+# (default $tmp/why) and returns 1 when it adds any.
+derivation_equal() {
+  _di=$1; _df=$2
+  if [ ! -f "$_df" ]; then
+    why variant-derivation-differs "$_di: no scenario file $_df"
+    return 1
+  fi
+  derivation_block "$_di" "$tmp/de-$_di.der"
+  scenario_body "$_df" "$tmp/de-$_di.scn"
+  if [ ! -s "$tmp/de-$_di.der" ]; then
+    why variant-derivation-empty "$_di: the derivation block of $_di in docs/video/demo-lamp-tone-1-derivation.md is empty"
+    return 1
+  fi
+  _dan=$(grep -c '^assert ' "$tmp/de-$_di.scn")
+  _dk=${_di#demo-lamp-tone-}
+  _daw=$(sed -n 's/^Counts: //p' "$derivation" | tr ',' '\n' \
+    | awk -v k="$_dk" '{ gsub(/`/, "", $1); if ($1 == k) { v = $2; sub(/[^0-9].*$/, "", v); print v; exit } }')
+  if [ -z "$_daw" ]; then
+    why variant-assert-count "$_di: the derivation has no Counts: entry for '$_dk'"
+    return 1
+  fi
+  if [ "$_dan" -ne "$_daw" ]; then
+    why variant-assert-count "$_di: $_dan assert lines, the derivation counts $_daw"
+    return 1
+  fi
+  _dp="$scen/demo-lamp-tone-pass.ivss"
+  for _dl in ivss profile content; do
+    grep "^$_dl " "$_dp" > "$tmp/de-$_di.h1"
+    grep "^$_dl " "$_df" > "$tmp/de-$_di.h2"
+    if [ ! -s "$tmp/de-$_di.h1" ] || ! cmp -s "$tmp/de-$_di.h1" "$tmp/de-$_di.h2"; then
+      why variant-header-differs "$_di: the '$_dl' lines differ from demo-lamp-tone-pass (or are absent)"
+      return 1
+    fi
+  done
+  printf 'id %s\n' "$_di" > "$tmp/de-$_di.h1"
+  grep '^id ' "$_df" > "$tmp/de-$_di.h2"
+  if ! cmp -s "$tmp/de-$_di.h1" "$tmp/de-$_di.h2"; then
+    why variant-header-differs "$_di: the id line is not 'id $_di'"
+    return 1
+  fi
+  case $_di in
+    demo-lamp-tone-shift)
+      input_ticks "$_dp" "$tmp/de-$_di.t1"
+      input_ticks "$_df" "$tmp/de-$_di.t2"
+      if [ ! -s "$tmp/de-$_di.t1" ] || ! awk 'NR == FNR { p[FNR] = $1; n = FNR; next }
+        { k = FNR; if (k > n || $1 + 0 != p[k] + 2000) bad = 1 }
+        END { if (k != n) bad = 1; exit bad }' "$tmp/de-$_di.t1" "$tmp/de-$_di.t2"; then
+        why variant-input-transform "$_di: an input tick is not the pass tick + 2,000 (docs/video/demo-lamp-tone-1-derivation.md:436)"
+        return 1
+      fi ;;
+    demo-lamp-tone-swap)
+      awk '$1 == "input" { a = $3; b = $4; sub(/^c0=/, "", a); sub(/^c1=/, "", b); print $1, $2, "c0=" b, "c1=" a }' \
+        "$_dp" > "$tmp/de-$_di.t1"
+      awk '$1 == "input" { print $1, $2, $3, $4 }' "$_df" > "$tmp/de-$_di.t2"
+      if [ ! -s "$tmp/de-$_di.t1" ] || ! cmp -s "$tmp/de-$_di.t1" "$tmp/de-$_di.t2"; then
+        why variant-input-transform "$_di: an input line is not the pass line with c0 and c1 exchanged (docs/video/demo-lamp-tone-1-derivation.md:514)"
+        return 1
+      fi ;;
+  esac
+  if ! cmp -s "$tmp/de-$_di.der" "$tmp/de-$_di.scn"; then
+    why variant-derivation-differs "$_di: the scenario body differs from the derivation block (< derivation, > scenario):"
+    diff "$tmp/de-$_di.der" "$tmp/de-$_di.scn" | sed -n '1,12p' >> "${whytarget:-$tmp/why}"
+    return 1
+  fi
+  return 0
+}
+
+# variant_negative <id> <scenario file> (plan 09-01, A-03): the in-case negative half of derivation_equal, run on
+# every run of the static judgement so the guard is shown able to fail every time rather than once in a scratch
+# session. A copy of the scenario with one assert value changed (`assert mem 02F1 == 0003` to `== 0004`, a line
+# both folded variants carry) is judged in a subshell with its own why target, so the negative half cannot set this
+# case's own verdict, and it must be rejected for variant-derivation-differs. A copy the sed did not change, or one
+# the judgement accepts, is judge-vacuous: the stand-in would prove nothing. It adds no test id (A-03, GUARDRAILS
+# 2.2) and it writes only inside the suite's own $tmp, never into the work tree.
+variant_negative() {
+  _ni=$1; _nf=$2
+  sed 's/^assert mem 02F1 == 0003$/assert mem 02F1 == 0004/' "$_nf" > "$tmp/neg-$_ni.ivss"
+  if cmp -s "$_nf" "$tmp/neg-$_ni.ivss"; then
+    why judge-vacuous "$_ni: the one-value stand-in changed nothing (no 'assert mem 02F1 == 0003' line)"
+    return 1
+  fi
+  if ( whytarget="$tmp/neg-$_ni.why"; : > "$whytarget"; derivation_equal "$_ni" "$tmp/neg-$_ni.ivss" ); then
+    why judge-vacuous "$_ni: the judgement accepted a variant body with one assert value changed"
+    return 1
+  fi
+  if ! grep -q -e '^variant-derivation-differs: ' "$tmp/neg-$_ni.why"; then
+    why judge-wrong-reason "$_ni: the one-value stand-in was rejected, but without variant-derivation-differs:"
+    sed 's/^/# /' "$tmp/neg-$_ni.why" >> "${whytarget:-$tmp/why}"
+    return 1
+  fi
+  return 0
+}
+
+# static_scenario <id> (plan 09-01, D-09, A-03): the judgement of a column-5 `release-only` scenario on a preset that
+# does not run it, the static half of the fold and the same shape as mutant_case's (plan 08-lever2, D-40). It runs
+# nothing and judges, in order: the scenario file exists, the derivation equality above (which refuses an empty
+# derivation block), and the in-case one-value stand-in that shows the judgement can fail. It never passes on the
+# strength of "nothing ran": every branch can fail. The case keeps its ordinary `ok` line, never a `# SKIP` (a skip
+# would move tests-skipped 4 to 8).
+static_scenario() {
+  _sci=$1
+  if [ ! -f "$scen/$_sci.ivss" ]; then
+    why inventory "no scenario file data/scenarios/$_sci.ivss"
+    return 1
+  fi
+  derivation_equal "$_sci" "$scen/$_sci.ivss" || return 1
+  variant_negative "$_sci" "$scen/$_sci.ivss" || return 1
+  return 0
+}
+
 : > "$tmp/results"
 n=0
 executed=0
 skipped=0
 failed=0
+# The two counters of the diagnostic line before the trailer (plan 09-01, D-09): the column-5 `release-only`
+# scenario cases that ran on this preset and those judged statically. They sum to the number of such rows, so the
+# mode of every run is visible in the output.
+scen_full=0
+scen_static=0
 # result <id> [<skip reason>]: appends the result of the next case from $ok and $tmp/why; with a
 # skip reason a passing case is reported as a visible skip.
 result() {
@@ -442,12 +598,32 @@ while read -r id x oc class skip args rest; do
     ok=0; why inventory "not six columns"
   fi
   case $class in deterministic | host-dependent) ;; *) ok=0; why inventory "class '$class'" ;; esac
-  case $skip in run | skip-ok) ;; *) ok=0; why inventory "skip '$skip'" ;; esac
+  case $skip in run | skip-ok | release-only) ;; *) ok=0; why inventory "skip '$skip'" ;; esac
   [ -f "$scen/$id.ivss" ] || { ok=0; why inventory "no scenario file data/scenarios/$id.ivss"; }
+  # The two-mode switch (plan 09-01, D-09, A-03), the shape of mutant_case (plan 08-lever2, D-40): a column-5
+  # `release-only` scenario runs on the Release preset and is judged statically on any other, with the same id and
+  # an ordinary ok line on both. Every demo-lamp-tone scenario is additionally held to the frozen derivation
+  # whether it runs or not, so the oracle is enforced on the Release preset too.
   if [ "$ok" -eq 1 ]; then
-    check_scenario "$ivs_run" "scen-$id" "$id" "$x" "$oc" "$args" || ok=0
-    if [ -n "$rep_dir" ] && [ -s "$tmp/runs/scen-$id.out" ]; then
-      cp "$tmp/runs/scen-$id.out" "$rep_dir/$id.report" || { printf '# cannot write %s\n' "$rep_dir/$id.report" >&2; exit 1; }
+    scen_static_now=0
+    if [ "$skip" = release-only ]; then
+      if [ "$config" = Release ]; then
+        scen_full=$((scen_full + 1))
+      else
+        scen_static=$((scen_static + 1))
+        scen_static_now=1
+      fi
+    fi
+    if [ "$scen_static_now" -eq 1 ]; then
+      static_scenario "$id" || ok=0
+    else
+      check_scenario "$ivs_run" "scen-$id" "$id" "$x" "$oc" "$args" || ok=0
+      case $id in
+        demo-lamp-tone-*) derivation_equal "$id" "$scen/$id.ivss" || ok=0 ;;
+      esac
+      if [ -n "$rep_dir" ] && [ -s "$tmp/runs/scen-$id.out" ]; then
+        cp "$tmp/runs/scen-$id.out" "$rep_dir/$id.report" || { printf '# cannot write %s\n' "$rep_dir/$id.report" >&2; exit 1; }
+      fi
     fi
   fi
   if [ "$skip" = skip-ok ]; then
@@ -890,11 +1066,45 @@ result runner-process.roundtrip.demo-lamp-tone-pass
 ok=1
 check_roundtrip "$ivs_run" diag-stic2-collision-pass 150000 2 || ok=0
 result runner-process.roundtrip.diag-stic2-collision-pass
-# The refusals of the option (plan 08-16, D-18): a zero, one above IVS_RUN_TARGET_MAX (9223372036854775808) as decimal digits, a missing value (the option
-# last on the line) and the option twice are each a usage error: exit 14, no report on stdout, and on stderr the one message line of every usage error followed by
-# the usage text (the usage block names the option).
+# The refusals of the option (plan 08-16, D-18; trimmed by plan 09-01, D-09, trim (a)): a zero, one above IVS_RUN_TARGET_MAX (9223372036854775808) as
+# decimal digits, a missing value (the option last on the line) and the option twice are each a usage error: exit 14, no report on stdout, and on stderr the
+# one message line of every usage error followed by the usage text (the usage block names the option).
+# The `zero` launch is the ONE live launch and stays live: it alone proves exit 14, the empty report, the first stderr line and the usage text together, and
+# its four judgements are unchanged. `above-max`, `no-value` and `twice` are judged statically, against the parser's own guard sites, which are all in
+# runner/main.c and nowhere else (there is no option table in this tree: the parser is a strcmp chain at runner/main.c:588-624, and runner/exec.c holds
+# neither the option name nor either refusal message - recorded deviation D-09-02). Each static judgement can fail for the reason it names, and the id keeps
+# its single result call, so tests-executed does not move.
 : > "$tmp/why"
 ok=1
+# hex_plus_one <0x...>: the decimal string of that value plus one, computed with decimal-string arithmetic so no shell or awk
+# integer width is involved (POSIX awk has no strtonum, and $((0x8000000000000000)) is negative in a signed 64-bit shell).
+hex_plus_one() {
+  printf '%s\n' "$1" | sed 's/^0[xX]//' | awk '
+    {
+      h = tolower($0)
+      nd = 1; D[1] = 0
+      for (i = 1; i <= length(h); i++) {
+        v = index("0123456789abcdef", substr(h, i, 1)) - 1
+        if (v < 0) { exit 1 }
+        c = v
+        for (j = 1; j <= nd; j++) { t = D[j] * 16 + c; D[j] = t % 10; c = int(t / 10) }
+        while (c > 0) { nd++; D[nd] = c % 10; c = int(c / 10) }
+      }
+      c = 1
+      for (j = 1; j <= nd && c; j++) { t = D[j] + c; D[j] = t % 10; c = int(t / 10) }
+      if (c) { nd++; D[nd] = c }
+      s = ""
+      for (j = nd; j >= 1; j--) s = s D[j]
+      print s
+    }'
+}
+# rt_arm <out>: the `--roundtrip-at-ticks` arm of the parser (runner/main.c:589-592), from its strcmp line to the next arm.
+rt_arm() {
+  awk '/strcmp\(a, "--roundtrip-at-ticks"\) == 0/ { p = 1; print; next } p && /^    } else if/ { exit } p { print }' \
+    "$root/runner/main.c" > "$1"
+}
+# rt_usage <out>: the usage block of the runner (runner/main.c:76 names the option).
+rt_usage() { grep -F -e '--roundtrip-at-ticks <n>' "$root/runner/main.c" > "$1"; }
 rt_refuse() {
   _rn=$1; _rm=$2; shift 2
   run_one "$tmp" "rt-refuse-$_rn" "$ivs_run" --content-dir "$content" "$@"
@@ -904,9 +1114,51 @@ rt_refuse() {
   grep -q -F -e '--roundtrip-at-ticks <n>' "$tmp/runs/rt-refuse-$_rn.err" || { ok=0; why roundtrip-refuse "$_rn: the usage text does not name the option"; }
 }
 rt_refuse zero 'option value out of range' --roundtrip-at-ticks 0 "$scen/diag-boot-pass.ivss"
-rt_refuse above-max 'option value out of range' --roundtrip-at-ticks 9223372036854775809 "$scen/diag-boot-pass.ivss"
-rt_refuse no-value 'option without a value' "$scen/diag-boot-pass.ivss" --roundtrip-at-ticks
-rt_refuse twice 'option given twice' --roundtrip-at-ticks 600 --roundtrip-at-ticks 700 "$scen/diag-boot-pass.ivss"
+# above-max, statically: the literal is one above IVS_RUN_TARGET_MAX, the arm binds that macro as its high limit and leaves `slot` NULL, and the range check
+# (runner/main.c:623-624) refuses a value above it. A changed macro, a changed literal or an arm that stops binding the bound fails here.
+rt_max_dec=9223372036854775809
+rt_arm "$tmp/rt-arm"
+_rtm=$(sed -n 's/^#define IVS_RUN_TARGET_MAX \(0x[0-9a-fA-F][0-9a-fA-F]*\)u*$/\1/p' "$root/core/include/ivs/ivs_run.h")
+_rtd=$(hex_plus_one "$_rtm" 2> /dev/null)
+if [ -z "$_rtm" ]; then
+  ok=0; why rt-static "above-max: no '#define IVS_RUN_TARGET_MAX 0x...' in core/include/ivs/ivs_run.h"
+elif [ -z "$_rtd" ] || [ "$_rtd" != "$rt_max_dec" ]; then
+  ok=0; why rt-static "above-max: IVS_RUN_TARGET_MAX $_rtm is not one below the judged literal $rt_max_dec"
+elif ! grep -q -F -e 'Largest accepted target: 2^63' "$root/core/include/ivs/ivs_run.h"; then
+  ok=0; why rt-static "above-max: the header comment no longer names the 2^63 bound"
+elif ! grep -q -F -e 'seen = &have_roundtrip' "$tmp/rt-arm" || ! grep -q -F -e 'hi = IVS_RUN_TARGET_MAX' "$tmp/rt-arm"; then
+  ok=0; why rt-static "above-max: the --roundtrip-at-ticks arm (runner/main.c:589-592) does not bind seen and hi = IVS_RUN_TARGET_MAX"
+elif grep -q -F -e 'slot =' "$tmp/rt-arm"; then
+  ok=0; why rt-static "above-max: the --roundtrip-at-ticks arm binds a slot, so it is no longer the seen arm this judgement reads"
+elif ! grep -q -F -e 'if (!main_number(argv[i], lo, hi, &v)) {' "$root/runner/main.c" \
+  || ! grep -q -F -e 'return main_usage_error("option value out of range");' "$root/runner/main.c"; then
+  ok=0; why rt-static "above-max: the range check at runner/main.c:623-624 is gone"
+fi
+# no-value, statically: the arm binds `seen` (not `slot`) and consumes no value of its own, so a missing value reaches the refusal at runner/main.c:609-610;
+# the usage text names the option, which the live `zero` launch proves is printed. An arm that starts consuming its own value, or that becomes a slot arm, fails.
+rt_usage "$tmp/rt-usage"
+if ! grep -q -F -e 'seen = &have_roundtrip' "$tmp/rt-arm"; then
+  ok=0; why rt-static "no-value: the --roundtrip-at-ticks arm (runner/main.c:589-592) does not bind seen, so a missing value has no refusal"
+elif grep -q -F -e 'slot =' "$tmp/rt-arm" || grep -q -F -e 'continue' "$tmp/rt-arm"; then
+  ok=0; why rt-static "no-value: the --roundtrip-at-ticks arm consumes its own value or leaves the value tail, so runner/main.c:609-610 is unreachable for it"
+elif ! grep -q -F -e "if (i + 1 >= argc || argv[i + 1][0] == '\\0') {" "$root/runner/main.c" \
+  || ! grep -q -F -e 'return main_usage_error("option without a value");' "$root/runner/main.c"; then
+  ok=0; why rt-static "no-value: the missing-value refusal at runner/main.c:609-610 is gone"
+elif [ ! -s "$tmp/rt-usage" ]; then
+  ok=0; why rt-static "no-value: the usage block (runner/main.c:76) no longer names --roundtrip-at-ticks <n>"
+fi
+# twice, statically: the same `seen` binding routes a second occurrence to the `*seen` branch at runner/main.c:620-621 (`slot` is NULL for this option,
+# so the slot branch at :613-618 is not the one that fires). An arm that becomes repeatable by design, or that stops binding seen, fails.
+if ! grep -q -F -e 'seen = &have_roundtrip' "$tmp/rt-arm"; then
+  ok=0; why rt-static "twice: the --roundtrip-at-ticks arm (runner/main.c:589-592) does not bind seen, so a repeat has no refusal"
+elif grep -q -F -e 'slot =' "$tmp/rt-arm"; then
+  ok=0; why rt-static "twice: the --roundtrip-at-ticks arm is a slot arm, so the slot branch at runner/main.c:613-618 is the one that would fire"
+elif ! grep -q -F -e 'if (*seen) {' "$root/runner/main.c" \
+  || ! grep -q -F -e 'return main_usage_error("option given twice");' "$root/runner/main.c"; then
+  ok=0; why rt-static "twice: the seen branch at runner/main.c:620-621 is gone"
+elif [ ! -s "$tmp/rt-usage" ]; then
+  ok=0; why rt-static "twice: the usage block (runner/main.c:76) no longer names --roundtrip-at-ticks <n>"
+fi
 result runner-process.roundtrip.refuse-range
 
 # The metamorphic judge (plan 07-07, D-23, D-06, A-16): per line `<idA> <idB> differ=<keys> equal=<keys>` of
@@ -932,7 +1184,18 @@ while read -r pa pb pdiff peq prest; do
       || { ok=0; why inventory "scenario $_i is not a deterministic line of data/expected/runner-scenarios.ids"; }
   done
   [ "$pa" != "$pb" ] || { ok=0; why inventory "a pair of one scenario"; }
-  if [ "$ok" -eq 1 ]; then
+  # The pair takes the same two-mode switch as its scenarios (plan 09-01, D-09, A-03): a column-5 `release-only`
+  # member has no report on the sanitized preset, so there the line is judged by its inventory form alone (the four
+  # columns, both ids deterministic lines of $inv, neither key list vacuous, differ=- equal=- refused) and
+  # check_pair runs on the Release preset only. data/expected/scenario-pairs.ids keeps its four columns: a fifth
+  # column there would break nine pair lines at once.
+  pstat=0
+  if [ "$config" != Release ]; then
+    for _pi in "$pa" "$pb"; do
+      awk -v i="$_pi" '$1 == i && $5 == "release-only" { f = 1 } END { exit !f }' "$inv" && pstat=1
+    done
+  fi
+  if [ "$ok" -eq 1 ] && [ "$pstat" -eq 0 ]; then
     check_pair "$pa" "$pb" "$tmp/runs/scen-$pa.out" "$tmp/runs/scen-$pb.out" "$pdl" "$pel" || ok=0
   fi
   result "runner-process.pair.$pa.$pb"
@@ -1720,7 +1983,8 @@ result runner-process.watchdog
   printf '# suite=%s nonce=%s\n' "$suite" "$nonce"
   printf '1..%s\n' "$n"
   cat "$tmp/results"
-  printf '# mutants: configuration=%s full=%s static=%s\n' "${config:-none}" "$mut_full" "$mut_static"
+  printf '# mutants: configuration=%s full=%s static=%s variants=%s variant-static=%s\n' \
+    "${config:-none}" "$mut_full" "$mut_static" "$scen_full" "$scen_static"
   printf '# suite=%s executed=%s skipped=%s failed=%s\n' "$suite" "$executed" "$skipped" "$failed"
 } > "$tmp/tap"
 cat "$tmp/tap"

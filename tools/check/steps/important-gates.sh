@@ -1,33 +1,54 @@
 #!/bin/sh
 # SPDX-License-Identifier: MIT
 # Step important-gates: the machine-checked form of RUN-04 (D-46, plan 04-24). Pure checker: reads
-# only $ROOT/data/expected/, never builds or runs anything, so the control runner can drive it.
+# only $ROOT/data/expected/ and the requirement records under $ROOT/.planning/, never builds or runs
+# anything, so the control runner can drive it. Reading .planning/ is not new for a preflight step:
+# ci-log reads $ROOT/.planning/ci-runs.tsv (ci-log.sh:24) and glossary reads
+# $ROOT/.planning/PROJECT.md (glossary.sh:64-66), and both stay pure checkers.
 # An important gate is one whose silent pass would let a requirement, claim or evidence tier be
 # asserted without evidence: it is the sole evidence for a requirement or claim, it can pass
 # vacuously (inventory, digest or golden comparison, outcome classifier, refusal/no-state-change
 # check, verdict over producer output), or its failure class escaped once. Each such gate has a
 # named mechanism that is shown to fail for its intended reason elsewhere in the gate; this step
-# checks that the registry names only mechanisms that exist and covers every Phase 4, Phase 5,
-# Phase 6, Phase 7 and Phase 8 requirement (plan 05-12 added the Phase 5 set, plan 06-14 the Phase 6 set, plan 07-02
-# the Phase 7 requirement SCN-01, plan 07-10 SCN-02 together with its first registry lines, plan 08-08 the
-# Phase 8 requirement VID-05 together with its eighteen registry lines, plan 08-17 the Phase 8 requirements STA-01 and STA-02
-# together with their twenty-two registry lines, plan 08-19 the Phase 8 requirement PRF-01 together with its two registry lines).
+# checks that the registry names only mechanisms that exist and covers every accepted requirement;
+# the phase table below is the whole list, so no sentence here enumerates a phase set that can
+# silently omit one.
 # Registry: data/expected/important-gates.ids, '#' lines and blank lines skipped, then one line
 #   <gate> <fault|control|mutant> <id> <REQ>
 # per (gate, mechanism, id, requirement). <gate> is a free name of lower-case letters, digits and
-# '-'; <REQ> is one of the Phase 4 requirements API-02 API-04 RUN-01 RUN-02 RUN-04 RUN-05 RUN-06
-# PKG-01 PKG-03 PKG-04, one of the Phase 5 requirements INP-01 INP-02 INP-03 API-03 AUD-01 AUD-02 or one
-# of the Phase 6 requirements VID-01 VID-02 VID-03 VID-04 VID-06, the Phase 8 requirement VID-05 (accepted since plan
-# 08-08 with its mechanisms: the MOB, collision and delay faults, the four frame judges, the six program mutants of
-# ivs-diag-stic-2 and the four frame-grammar controls), the Phase 8 requirements STA-01 and STA-02 (accepted since plan 08-17
-# with their mechanisms: the nine snapshot and restore faults, the six judges of the state suite and the seven controls of
-# the state step), the Phase 8 requirement PRF-01 (accepted since plan 08-19 with its two mechanisms, both test ids of the
-# suite bench: the refusal of a mutated golden and the judge of the absence-of-measurement check), or the Phase 7
-# requirements SCN-01 and SCN-02 (A-13: SCN-02 is
-# the owner-local EXEC/GROM route; its mechanisms are the two
-# user-content consistency controls of the golden step). The accepted set is also the must-be-covered set, so a plan
-# that accepts a requirement also appends one toy line for it to the toy registry and to every control that overlays a
-# whole-file toy registry.
+# '-'; <REQ> is one of the accepted requirements in the table below.
+# Accepted requirements are DERIVED, never hand-written (plan 09-05, EV-04, amendment A-01): every
+# row of the '## Traceability' table ('| <REQ> | Phase <n> | <Status> |', id from field 2, status
+# from field 4, 'Complete' as a prefix match) of $ROOT/.planning/REQUIREMENTS.md and of every
+# $ROOT/.planning/milestones/*-REQUIREMENTS.md, minus the ids listed in
+# data/expected/important-gates-excluded.ids. The '- [x] **REQ-NN**:' checkbox lines are NOT parsed:
+# the traceability table is the record the project treats as authoritative. The exclusion set is a
+# different file from the registry, so deleting a registry line cannot delete the requirement from
+# the must-be-covered set; a missing ledger file is an empty exclusion set, which is safe because
+# the six requirements it lists then fail important-gates-complete-uncovered.
+# The ledger's own row format is validated in the same pass (review WR-01): a row must be exactly
+# '<REQ> <reason>', with <REQ> shaped like a requirement id and <reason> at least three
+# underscore-joined words; 'none' is refused. A row that fails is reported as
+# important-gates-excluded-malformed and does NOT enter the exclusion set, so it can neither
+# silence a requirement nor pass as a recorded exclusion.
+# The accepted set is also the must-be-covered set, so a plan that accepts a requirement also
+# appends one toy line for it to the toy registry, to every control that overlays a whole-file toy
+# registry, and one row for it to the two toy requirement records of the good tree.
+# The phase table below records which plan added which set. It is history for the reviewer, not the
+# definition, so it cannot silently omit a requirement.
+#   Phase 1  FND-01 FND-02 FND-03 FND-04 FND-05 FND-06 FND-07                      plan 09-04
+#   Phase 2  CPU-01 CPU-02 CPU-03 CPU-04 CPU-05                                    plan 09-04
+#   Phase 3  MEM-01 MEM-02 MEM-03 MEM-04 MEM-05                                    plan 09-04
+#   Phase 4  API-02 API-04 RUN-01 RUN-02 RUN-04 RUN-05 RUN-06 PKG-01 PKG-03 PKG-04  plan 04-24
+#   Phase 5  INP-01 INP-02 INP-03 API-03 AUD-01 AUD-02                             plan 05-12
+#   Phase 6  VID-01 VID-02 VID-03 VID-04 VID-06                                    plan 06-14
+#   Phase 7  SCN-01 plan 07-02; SCN-02 plan 07-10 (A-13: SCN-02 is the owner-local EXEC/GROM route,
+#            and its mechanisms are the two user-content consistency controls of the golden step)
+#   Phase 8  VID-05 plan 08-08 (the MOB, collision and delay faults, the four frame judges, the six
+#            program mutants of ivs-diag-stic-2 and the four frame-grammar controls); STA-01 STA-02
+#            plan 08-17 (the nine snapshot and restore faults, the six judges of the state suite and
+#            the seven controls of the state step); PRF-01 plan 08-19 (both test ids of the suite
+#            bench: the refusal of a mutated golden and the judge of the absence-of-measurement check)
 # Resolution of <id> by mechanism:
 #   fault    first column of any data/expected/faults/*.ids (judged by faults-verdict);
 #   control  first column of any data/expected/controls/*.ids (run by tools/check/run-controls.sh);
@@ -35,9 +56,21 @@
 #            (in-step selftests), or a test id `<suite>.judge.<slug>` or `<suite>.mutant.<slug>`
 #            of any data/expected/tests/*.ids (suite self-controls, judged by tests-inventory).
 # Tokens: important-gates-unknown-id: line <n> (not 4 columns, unknown mechanism, bad gate name,
-#   or a requirement outside the Phase 4, Phase 5, Phase 6, Phase 7 and Phase 8 sets) or <mechanism> <id> line <n> (the id
-#   is in no inventory of its mechanism); important-gates-uncovered-gate: <REQ> (a Phase 4, Phase 5, Phase 6, Phase 7 or
-#   Phase 8 requirement with no registry line; also the registry file missing).
+#   or a requirement outside the derived accepted set) or <mechanism> <id> line <n> (the id is in no
+#   inventory of its mechanism); important-gates-complete-uncovered: <REQ> (a requirement marked
+#   Complete in a record with neither a registry line nor a row in the exclusion ledger);
+#   important-gates-excluded-stale: <REQ> (an exclusion ledger row whose requirement is not marked
+#   Complete); important-gates-uncovered-gate: <REQ> (an accepted requirement with no registry line;
+#   also the registry file missing); important-gates-excluded-malformed: line <n>: <row> (a ledger
+#   row that is not exactly '<REQ> <reason>' with <REQ> shaped like a requirement id and <reason> at
+#   least three underscore-joined words, or that gives 'none' as the reason).
+# A Complete requirement that is neither registered nor excluded emits BOTH
+# important-gates-complete-uncovered and important-gates-uncovered-gate, because the derived accepted
+# set is also the must-be-covered set. important-gates-complete-uncovered is authoritative in that
+# pair: it states WHY (marked Complete, with neither a registry line nor a recorded exclusion), while
+# important-gates-uncovered-gate keeps its generic meaning (it also fires when the registry file is
+# missing) and is what the earlier req-uncovered controls pin. Neither is renamed or dropped, and a
+# control that forbids the second while pinning the first would be unsatisfiable.
 # Stats: gates=<distinct gate names> lines=<registry lines>.
 LC_ALL=C; export LC_ALL
 : "${ROOT:?ROOT is not set}"
@@ -49,6 +82,44 @@ trap 'exit 1' HUP INT TERM
 find="$tmp/findings"; : > "$find"
 exp="$ROOT/data/expected"
 reg="$exp/important-gates.ids"
+
+# The derived must-be-covered set: the Complete ids of the requirement records, minus the ledger.
+: > "$tmp/complete"
+for f in "$ROOT/.planning/REQUIREMENTS.md" "$ROOT"/.planning/milestones/*-REQUIREMENTS.md; do
+  [ -f "$f" ] || continue
+  awk -F'|' '/^\| *[A-Z]+-[0-9]+ *\|/ {
+      id = $2; st = $4
+      gsub(/^ +| +$/, "", id); gsub(/^ +| +$/, "", st)
+      if (st ~ /^Complete/) print id
+    }' "$f" >> "$tmp/complete"
+done
+sort -u "$tmp/complete" -o "$tmp/complete"
+: > "$tmp/excluded"
+: > "$tmp/excl.bad"
+if [ -f "$exp/important-gates-excluded.ids" ]; then
+  # The ledger is the one file that can remove a requirement from the must-be-covered set, so its
+  # declared row format is enforced here and a malformed row contributes nothing (review WR-01).
+  # The reason is words joined by underscores, at least three of them: two or more underscores
+  # with no empty word, so a leading, trailing or doubled underscore is malformed too.
+  awk '
+    /^#/ { next }
+    NF == 0 { next }
+    {
+      words = gsub(/_/, "_", $2) + 1
+      if (NF != 2 || $1 !~ /^[A-Z][A-Z0-9]*-[0-9][0-9]*$/ || $2 == "none" \
+          || words < 3 || $2 ~ /__/ || $2 ~ /^_/ || $2 ~ /_$/) {
+        print "MALFORMED line " FNR ": " $0
+        next
+      }
+      print $1
+    }
+  ' "$exp/important-gates-excluded.ids" > "$tmp/excl.raw"
+  grep -v -e '^MALFORMED ' "$tmp/excl.raw" > "$tmp/excluded" || :
+  grep -e '^MALFORMED ' "$tmp/excl.raw" >> "$tmp/excl.bad" || :
+  while IFS= read -r l; do
+    printf 'important-gates-excluded-malformed %s\n' "${l#MALFORMED }" >> "$find"
+  done < "$tmp/excl.bad"
+fi
 
 # The three inventories, one `<mechanism> <id>` line each.
 : > "$tmp/known"
@@ -76,13 +147,17 @@ else
   cp "$reg" "$tmp/reg"
 fi
 
-awk -v knownf="$tmp/known" -v find="$find" -v stats="$tmp/stats" '
+awk -v knownf="$tmp/known" -v find="$find" -v stats="$tmp/stats" -v reqf="$tmp/complete" \
+    -v excf="$tmp/excluded" '
   function bad(t, d) { printf "%s %s\n", t, d >> find }
   BEGIN {
     while ((getline l < knownf) > 0) known[l] = 1
     close(knownf)
-    nreq = split("API-02 API-04 RUN-01 RUN-02 RUN-04 RUN-05 RUN-06 PKG-01 PKG-03 PKG-04 INP-01 INP-02 INP-03 API-03 AUD-01 AUD-02 VID-01 VID-02 VID-03 VID-04 VID-05 VID-06 SCN-01 SCN-02 STA-01 STA-02 PRF-01", reqs, " ")
-    for (i = 1; i <= nreq; i++) accepted[reqs[i]] = 1
+    while ((getline l < reqf) > 0) if (l != "") { complete[l] = 1; reqs[++nreq] = l }
+    close(reqf)
+    while ((getline l < excf) > 0) if (l != "") excluded[l] = 1
+    close(excf)
+    for (i = 1; i <= nreq; i++) if (!(reqs[i] in excluded)) accepted[reqs[i]] = 1
     lines = 0; ngates = 0
   }
   /^#/ { next }
@@ -99,7 +174,11 @@ awk -v knownf="$tmp/known" -v find="$find" -v stats="$tmp/stats" '
     covered[$4] = 1
   }
   END {
-    for (i = 1; i <= nreq; i++) if (!(reqs[i] in covered)) bad("important-gates-uncovered-gate", reqs[i])
+    for (i = 1; i <= nreq; i++) if (!(reqs[i] in covered) && !(reqs[i] in excluded)) \
+      bad("important-gates-complete-uncovered", reqs[i])
+    for (x in excluded) if (!(x in complete)) bad("important-gates-excluded-stale", x)
+    for (i = 1; i <= nreq; i++) if (!(reqs[i] in covered) && !(reqs[i] in excluded)) \
+      bad("important-gates-uncovered-gate", reqs[i])
     print "gates=" ngates " lines=" lines > stats
   }
 ' "$tmp/reg" || printf 'important-gates-unknown-id %s\n' "awk error" >> "$find"

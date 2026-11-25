@@ -14,6 +14,8 @@ What an executor may do locally, and what each tool reads or writes:
 
 Action: set that one key to false in a separate, deliberate commit made by the orchestrator, with no other file in it. An executor never stages `.planning/config.json` or `.planning/state.json`; both are modified in the working tree during Phase 8 and stay uncommitted by executors.
 
+**Correction, plan 09-09 (2026-11-25), measured:** the key already reads `"create_tag": false` at `.planning/config.json:15`, set by `e0c88b4` (the records commit that closed stage 2 of REL-01, 2026-11-24) before the milestone tool was used. The two sentences above are kept as written (lesson 21, a correction to a frozen record is an appended note); item (a) was therefore a prose fix in this page and in the D-31 row of `.planning/PROJECT.md`, and no executor touched the key.
+
 ## (b) Stage 2 of REL-01 (D-28)
 
 REL-01 completes in two stages. Stage 1 is the close record in the phase pull request, with every stage-2 field a literal `<stage2>` placeholder. Stage 2: after the phase merge, a `gsd/records-m1-close` pull request records the push run on the merge commit (run id, head sha, event `push`, conclusion; the row appended to `.planning/ci-runs.tsv` by `tools/ci-record.sh`), the open pull request and issue counts with their dispositions, and the ruleset read, replacing every `<stage2>` placeholder. A one-line check in that pull request fails if a placeholder remains. REL-01 is marked complete only after stage 2.
@@ -28,7 +30,7 @@ The tag push starts `.github/workflows/release.yml`; its one job runs `sh tools/
 
 - P1: `main` is green at the artifact commit C: the push run is `success` with head equal to C, and the local sh, dash and container gates pass on the same tree; evidence is the run id and the summary lines; if it fails, fix `main` first.
 - P2: hygiene: `--tree` clean, secrets and emails clean, and `--history` findings equal the pinned six (`data/expected/hygiene-history-pinned.ids`), nothing new; any new finding blocks.
-- P3: rights: the tracked-binary scan is empty, the install list equals the pinned ten files, the manifest census is unchanged or explained, and no EXEC or GROM byte or digest exists anywhere; any miss blocks.
+- P3: rights: the tracked-binary scan is empty, the install list equals the pinned eleven files (`data/expected/pkg-install-files.ids`, measured at 11 non-comment lines by plan 09-09; the earlier wording said "ten" and was stale), the manifest census is unchanged or explained, and no EXEC or GROM byte or digest exists anywhere; any miss blocks.
 - P4: version agreement: the tag equals the header macros equals the installed package version, and `CHANGELOG.md` has the section for that version (`sh tools/release-readiness.sh --release` prints the row); a miss blocks.
 - P5: the notes carry the claim table rendered from `data/claims.json`, no claim word stands outside the allowed wording, and the text step scans `CHANGELOG.md`; a miss blocks.
 - P6: the history disposition is recorded (accepted without a rewrite, pinned, owner may veto) as a delegated decision; record "ready, not published" and ask the owner only if the disposition is judged unsafe.
@@ -62,7 +64,7 @@ The order of the orchestrator's actions, as the record needs them. None is an ex
 
 1. Merge the Phase 8 pull request with green CI. The merge commit is the artifact commit of section A.
 2. Record the push run on the merge commit with `tools/ci-record.sh` (an `event=push` row of `.planning/ci-runs.tsv`); this gives the lines of section B.
-3. Open the `gsd/records-m1-close` branch and make the `git.create_tag` change of item a as its first commit, alone, before the milestone tool is used.
+3. Open the `gsd/records-m1-close` branch and make the `git.create_tag` change of item a as its first commit, alone, before the milestone tool is used. Done: `e0c88b4` made it, and the key reads `false` (plan 09-09, measured 2026-11-25); this step is kept for the record of the order, not as work still to do.
 4. Read GitHub once with `sh tools/release-readiness.sh --hosted` (five read-only calls); this gives the counts and dispositions of section C and the ruleset read, and the immutable-release setting of hand-off H8-6 is read at the same time.
 5. Tag `v0.1.0` on the artifact commit, let the workflow create the draft, read it with `gh release view --json`, and check P1 to P8 (item d); publish only if all hold, otherwise the decision line reads `READY, NOT PUBLISHED: blocked by P<n>` with the evidence that clears it.
 6. Fill every placeholder of the record (sections A, B, C, I and K), run the check above until it prints nothing, and run `sh tools/gate.sh` on the records branch.

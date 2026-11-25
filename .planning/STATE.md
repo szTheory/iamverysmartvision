@@ -1,16 +1,21 @@
 ---
 gsd_state_version: "1.0"
 milestone: v0.2.0
-milestone_name: Registered Evidence, Reachable Runs, Replayable Input
+milestone_name: Registered Evidence, Reachable Runs, Replayable Input (Phases 9 to 12)</summary>
+current_phase: 10
+current_phase_name: Reachable Runs and Presentation Policy
 status: planning
-last_updated: "2026-11-24T14:15:00.000Z"
+stopped_at: Phase 9 complete, ready to plan Phase 10
+last_updated: "2026-11-25T04:33:42.841Z"
 last_activity: 2026-11-24
+last_activity_desc: Phase 9 complete, transitioned to Phase 10
+state_head: fd0ef31ebf854275fcdc90cb3cf4e853f84647d0
 progress:
   total_phases: 4
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  completed_phases: 8
+  total_plans: 9
+  completed_plans: 9
+  percent: 100
 ---
 
 # Project State
@@ -20,16 +25,27 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-24)
 
 **Core value:** A deterministic, observable machine core whose every compatibility claim is bound to an exactly named profile and independent evidence — never an unqualified "it runs Intellivision games" label.
-**Current focus:** Milestone v0.2.0 Registered Evidence, Reachable Runs, Replayable Input — Phase 9 not started (requirements and roadmap defined 2026-11-24)
+**Current focus:** Phase 9 — Registered Evidence and Gate Cost
 
 ## Current Position
 
-Phase: 9 of 12 — Registered Evidence and Gate Cost (v0.2.0)
-Plan: —
-Status: Not started — the roadmap exists (2026-11-24), no phase plan does
-Last activity: 2026-11-24 — Milestone v0.2.0 roadmap created: Phases 9 to 12, 10/10 requirements mapped, zero new gate steps, Phase 12 conditional and droppable
+Phase: 10 — Reachable Runs and Presentation Policy
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-11-24 — Phase 9 complete, transitioned to Phase 10
 
-**Next action:** `/gsd-plan-phase 9`, or `/gsd-autonomous` to run the milestone end to end. Phase 9 wave A1 is cost-only: lever (3) and trims (a), (c) and (d), then a hosted row, then wave A2.
+**Next action:** the orchestrator's phase boundary. It runs the container gate once on this
+final tree (the executor did not: the dispatch reserves it), applies or records the branch and
+tag rulesets in `.planning/AUTONOMY.md` section 1, and runs verify-work. Phase 10
+(`PKG-05`, `TOOL-04`, `EV-05`) starts after that. Nothing in wave A2 added gate content before
+the hosted row, and the row is in `.planning/ci-runs.tsv` (run 45527058543, head `93e6b9f`).
+
+### Planning overrides recorded by the autonomous run
+
+| Gate | Result | Disposition |
+|---|---|---|
+| Decision coverage (`check.decision-coverage-plan`) | `could-not-parse` | **Proceeded.** The gate parses `D-NN` bullets; smart-discuss CONTEXT.md carries no ids by design, so the gate is inapplicable rather than unsatisfied. Verified by hand instead: amendments A-01 to A-09 are each cited by at least one plan (A-01→09-05, A-02→09-06/09-07, A-03/A-04→09-01, A-05→09-08, A-06→09-09, A-07→09-03, A-08→09-04..09-09, A-09→09-06) and every decision topic appears in a plan. No decision is dropped. Re-surfaced at verify-work. |
+| Plan-checker iteration cap | Reached at 3, plus two guided passes | **Accepted after the fifth pass.** The loop found 24 real defects (a non-existent option table, a stale count baseline 31 files out of date, a stand-in that could not fire, a generator invocation that would have broken six controls, a regression that would have reclassified `runner-selftest` and made 09-08 unsatisfiable). Each fix was verified against the tree; the two final properties were proved directly by the orchestrator (`grep -e IVS_GATE_DIR -e 'build/' tools/check/steps/runner-selftest.sh` empty; the `memcmp`-before-`su_nine_digests` ordering awk exits 0 at HEAD). No open blocker. |
 
 ## Releases
 
@@ -42,7 +58,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 99
+- Total plans completed: 108
 - Average duration: -
 - Total execution time: -
 
@@ -56,6 +72,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | 4 | 27 | - | - |
 | 5 | 12 | - | - |
 | 6 | 14 | - | - |
+| 9 | 9 | - | - |
 
 *Updated after each plan completion*
 **Per-Plan Metrics:**
@@ -192,6 +209,13 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | Phase 8 P19 | about 150 min (two sessions, the baseline input taken between them) | 3 tasks | 22 files |
 | Phase 8 P20 | about 45 min | 3 tasks | 51 files |
 | Phase 8 P21 | about 65 min (estimated: no start time was taken) | 3 tasks | 10 files |
+| Phase 09 P03 | 15m | 2 tasks | 2 files |
+| Phase 09 P04 | ~70 min | 3 tasks | 13 files |
+| Phase 9 P05 | 47m | 2 tasks | 11 files |
+| Phase 9 P6 | 41m | 2 tasks | 11 files |
+| Phase 09 P07 | 13 | 3 tasks | 11 files |
+| Phase 09 P08 | 32m | 3 tasks | 3 files |
+| Phase 9 P09 | 22m | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -476,6 +500,18 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 8]: 08-20: requirements-completed was backfilled into the 39 SUMMARY files of Phases 4 to 7 that lacked it (the plan's own requirements field verbatim, one added line each); the three-source check over Phases 1 to 7 reads 45 requirements and 0 findings (11 requirements of Phases 5 and 6 had no SUMMARY before); 08-ACCEPTED-DEBT.md records the six draft validations, the STATE deferred items, the open review items of Phases 4 to 7 and the items deferred out of Phase 8 (the snapshot file options, 192-line video publication, libFuzzer in CI, SHA-256 frame-hash optimization, D10, D11, a history rewrite, name clearance); it changes no requirement mark and no claim; REL-01 stays Pending (D-28)
 - [Phase 8]: 08-21: stage 1 of REL-01 is recorded and REL-01 stays Pending: 08-MILESTONE-CLOSE.md holds the eleven sections A to K with A, F, G and J pasted from tools/release-readiness.sh (the full history scan: six findings, all six on the pinned list and printed with their recorded disposition, none new, never recorded as a pass; 253 s of wall time on the head of plan 08-20), 08-VERIFICATION.md follows the Phase 7 layout (status human_needed: SC1 to SC4 hold on recorded terms, SC5 at stage 1; 20 V-rows with the commits read from git log), every fact that exists only after the merge is the literal placeholder (the push run, the open pull request and issue counts, the ruleset read, the artifact commit and the release decision), and the release is not started: paused by the owner's decision after Phase 8, relayed by the orchestrator, so no tag, draft, release, push or gh call exists
 - [Phase 8]: 08-21: the Decision Register gained four rows (the draft pre-release D-29, the three version numbers D-30, the milestone tool's tag step D-31 and D-42, the history disposition D-33 with the owner-veto note), PLAN-LESSONS gained lessons 19 to 24, the STATE deferred items were refreshed from 08-ACCEPTED-DEBT.md, and RELEASE-OPS.md item h holds the grep that proves no placeholder remains and the order of the orchestrator's stage 2 actions; cost close phase8-close no-lever (the last-five median r is 7.80 against the budget 7.8 and the line 8.3; the five rows contain wave B and the newest contains every plan through 08-20; both raw triggers fire and r sits at the budget, read as runner speed with the stated caveat)
+- [Phase 09]: Wave A1's cost record recomputes the last-five window from the committed rows (median 7.696) and prints the allowance as priced with its recomputation beside it, never instead of it
+- [Phase 09]: Lever (3) is recorded as a 0.12 local cpu-s ceiling that cannot move r; trim (b) is declined in writing; the lever and trim (a) alternated before/after stays an open item with its reason rather than a figure that was not taken
+- [Phase 09]: The header's phase enumeration was replaced by one phase-to-plan table rather than extended in place: a prose list of phases is what rotted (it said Phase 4 to Phase 8 and omitted Phase 1 to Phase 3), and the two token sentences now say 'the accepted set above' instead of re-listing phases.
+- [Phase 09]: The real registry is counted over non-comment rows (24/0 filtered) and the ten toy registries over git diff --numstat (17/0 each); the 68-vs-24 numstat gap on the real registry is its # Plan 09-04 and 17 # <REQ>: comment blocks, which lines= never counted.
+- [Phase 9]: 09-05: the important-gates must-be-covered set is derived from the requirement records minus a seven-row exclusion ledger; EV-02 joined the ledger because 09-04 marked it Complete (51 - 7 = 44 = registered)
+- [Phase 9]: The toy-registry drift check excludes comments and runs in both directions, so an undeclared drift and a stale DEVIATION declaration are both refused; the nine declarations were copied from measured comm output (44/43/45 rows, not the plan's stale 27/26/28)
+- [Phase 9]: The per-step pass line is required to be the last non-empty line in good_one, proved by a copied-CHECK_DIR case in runner-selftest.sh because no control directory can reach a token the runner itself emits (A-02/O2)
+- [Phase 09]: 09-07: the SRC- class is [A-Za-z0-9_-]+ with no dot, measured (11 tokens, 0 unregistered; the research's dot class extracts 3 unregistered .pdf tokens)
+- [Phase 09]: 09-07: manifest outputs are anchored to two roots, fixtures/<dirname>/ or data/, because FX-ivsc-vectors writes data/cart/*.json and a fixtures-only rule refuses the pristine tree
+- [Phase 09]: 09-07: the memmap generator's refusal is additive, not a short-circuit, so the six existing memmap controls keep their pinned tokens; memmap-generator-missing is proved by a committed selftest case
+- [Phase 09]: The preflight class is derived by grep over step source text (neither IVS_GATE_DIR nor build/) and printed in the run header, so a reclassification is visible rather than silent
+- [Phase 9]: Plan 09-09: every bookkeeping correction is an appended note beside the measured value, the seven draft VALIDATION.md files are rows citing 08-ACCEPTED-DEBT.md section 1, and the EV-01/EV-03/EV-04 flip lands with its three exclusion rows so 54 - 10 = 44 = 44 holds
 
 ### Pending Todos
 
@@ -498,22 +534,31 @@ Concerns:
 
 ## Deferred Items
 
-Refreshed by plan 08-21 from `.planning/phases/08-stic-completion-save-state-performance-baselines/08-ACCEPTED-DEBT.md`. Phase 8 resolved none of the four earlier rows, so none is removed; each keeps its status and gets the milestone it now waits for. The "Milestone" column says when the item is next looked at, and "next milestone" means the one that follows the first.
+Refreshed by plan 08-21 from `.planning/phases/08-stic-completion-save-state-performance-baselines/08-ACCEPTED-DEBT.md`. Phase 8 resolved none of the four earlier rows, so none is removed; each keeps its status and gets the milestone it now waits for. Refreshed again by plan 09-09 (2026-11-25): the gate-hardening row (IN-01 to IN-04), the memmap-gen row and the machine-digest comment row are closed, the seven draft `VALIDATION.md` files of Phases 2 to 8 are now one row each (cited to `08-ACCEPTED-DEBT.md` section 1, never rewritten), and the two items Phase 9 declined plus the nine deferred registrations of D-09-06 have rows of their own. The "Milestone" column says when the item is next looked at, and "next milestone" means the one that follows the first.
 
 | Category | Item | Status | Deferred At | Milestone |
 |----------|------|--------|-------------|-----------|
-| Gate hardening | IN-01 whole `SRC-` token match; IN-02 fail glossary/sources on zero documents; IN-04 require each step's pass line; IN-03 anchor manifest outputs to their own fixture dir; IN-05 runner-selftest coverage of remaining tokens; denylist grep status 2 read as no-hit (`denylist.sh`); `--tree` grep-error control | Open, low severity (01-REVIEW.md, 01-SECURITY.md residual risks) | Phase 1 | Next milestone: a gate-hardening quick task |
-| Gate speed | Run negative controls in parallel if the hosted gate step passes ~30 s | Watching; now governed by the cost rule of `.planning/CI-EFFICIENCY.md` (median `r` 7.80 at the Phase 8 close against the budget 7.8 and the line 8.3; the hosted gate step reads 113 s on run 43732465524); the lever order is recorded there | Phase 1 | Next milestone: the cost rule decides |
-| Gate hardening | memmap-gen-* gate-level controls of cmake/IvsMemmapTable.cmake (needs a dedicated toy memmap profile fixture and a way for a pure step to run the generator; 03-04, 03-05, 03-06 open item) | Open | Phase 3 | Next milestone: needs a toy memmap profile fixture |
+| Gate hardening | IN-01 whole `SRC-` token match; IN-02 fail glossary/sources on zero documents; IN-04 require each step's pass line; IN-03 anchor manifest outputs to their own fixture dir; IN-05 runner-selftest coverage of remaining tokens; denylist grep status 2 read as no-hit (`denylist.sh`); `--tree` grep-error control | **IN-01 to IN-04 closed by Phase 9** (plan 09-09 update): IN-01 `sources-src-token-whole`, IN-02 the glossary/sources zero-document controls and their verification (09-07 items 1 and 2), IN-03 `manifests-output-anchor` (09-07 item 4), IN-04 `control-pass-line-not-last` (09-06) plus the three 09-07 controls. IN-05, the denylist status-2 reading and the `--tree` grep-error control stay open, low severity (01-REVIEW.md, 01-SECURITY.md residual risks) | Phase 1 | IN-05 and the two remaining items: next milestone, a gate-hardening quick task |
+| Gate speed | Run negative controls in parallel if the hosted gate step passes ~30 s | Watching; now governed by the cost rule of `.planning/CI-EFFICIENCY.md` (median `r` 7.80 at the Phase 8 close against the budget 7.8 and the line 8.3; the hosted gate step reads 113 s on run 43732465524); the lever order is recorded there. **Phase 9 (plan 09-09) did not land it**: the phase priced three controls plus one verification plus one step-side mechanism for EV-03 (amendment A-02) and no more, and running negative controls in parallel moves no figure this phase measured, so the idea stays a watching item, governed by the cost rule | Phase 1 | Next milestone: the cost rule decides |
+| Gate hardening | memmap-gen-* gate-level controls of cmake/IvsMemmapTable.cmake (needs a dedicated toy memmap profile fixture and a way for a pure step to run the generator; 03-04, 03-05, 03-06 open item) | **Closed by 09-07 item 5**: the generator now runs under the gate, `memmap-generator-refused` is the control and `memmap-generator-missing` its liveness guard (plan 09-09 update) | Phase 3 | Closed 2026-11-25 |
 | Evidence | C11 AY-3-8914 datasheet not found; CP-1600 vs CP-1610 inference (C31); same-model second reader (the two Phase 8 blind reads were the same model family too) | Open, carried by the discrepancy log | Phase 1 | Owner gate D10, or a primary AY-3-8914 data sheet, or an independent reader |
 | Review items | the open review items of Phases 4 to 7 by name (IN-04, IN-06, IN-09 to IN-11 of Phase 4; IN-01, IN-03, IN-05, IN-06 of Phase 5; IN-02, IN-03 of Phase 6; the owner-run helper's symbolic-link gap and two wording items of Phase 7) and the residuals of the Phase 5 and 6 security records | Open, low severity, carried (`08-ACCEPTED-DEBT.md` section 3) | Phases 4 to 7 | Next milestone |
-| Validation | the six draft validation files of Phases 2 to 7 and Phase 8's own `08-VALIDATION.md` | Accepted tech debt, status `draft` (every check in their maps ran in its own plan and runs again in every gate; `08-ACCEPTED-DEBT.md` section 1) | Phases 2 to 8 | Next milestone, or never |
+| Validation | `.planning/milestones/v0.1.0-phases/02-cp-1610-cpu-core/02-VALIDATION.md` | Accepted tech debt, status `draft`; dispositioned by `08-ACCEPTED-DEBT.md` section 1 (every check in its map ran in its own plan and runs again in every gate), cited here rather than rewritten (GUARDRAILS 2.10) | Phase 2 | Next milestone, or never (plan 09-09, 2026-11-25) |
+| Validation | `.planning/milestones/v0.1.0-phases/03-memory-map-content-loading-and-refusal/03-VALIDATION.md` | Accepted tech debt, status `draft`; dispositioned by `08-ACCEPTED-DEBT.md` section 1, cited not rewritten (GUARDRAILS 2.10) | Phase 3 | Next milestone, or never (plan 09-09, 2026-11-25) |
+| Validation | `.planning/milestones/v0.1.0-phases/04-headless-runner-and-installed-consumer/04-VALIDATION.md` | Accepted tech debt, status `draft`; dispositioned by `08-ACCEPTED-DEBT.md` section 1, cited not rewritten (GUARDRAILS 2.10) | Phase 4 | Next milestone, or never (plan 09-09, 2026-11-25) |
+| Validation | `.planning/milestones/v0.1.0-phases/05-hand-controllers-and-psg-sound/05-VALIDATION.md` | Accepted tech debt, status `draft`; dispositioned by `08-ACCEPTED-DEBT.md` section 1, cited not rewritten (GUARDRAILS 2.10) | Phase 5 | Next milestone, or never (plan 09-09, 2026-11-25) |
+| Validation | `.planning/milestones/v0.1.0-phases/06-stic-video-first-pass/06-VALIDATION.md` | Accepted tech debt, status `draft`; dispositioned by `08-ACCEPTED-DEBT.md` section 1, cited not rewritten (GUARDRAILS 2.10) | Phase 6 | Next milestone, or never (plan 09-09, 2026-11-25) |
+| Validation | `.planning/milestones/v0.1.0-phases/07-first-visible-original-scenario/07-VALIDATION.md` | Accepted tech debt, status `draft`; dispositioned by `08-ACCEPTED-DEBT.md` section 1, cited not rewritten (GUARDRAILS 2.10) | Phase 7 | Next milestone, or never (plan 09-09, 2026-11-25) |
+| Validation | `.planning/milestones/v0.1.0-phases/08-stic-completion-save-state-performance-baselines/08-VALIDATION.md` | Accepted tech debt, status `draft`; dispositioned by `08-ACCEPTED-DEBT.md` section 1, cited not rewritten (GUARDRAILS 2.10). `01-VALIDATION.md` is `status: validated` and is not one of these rows | Phase 8 | Next milestone, or never (plan 09-09, 2026-11-25) |
 | Snapshots | the file options `--snapshot-out` and `--snapshot-in` (runner-only, explicit path, refused for user content) | Deferred (D-18 optional last plan; policy decided in the register row OQ8) | Phase 8 | Next milestone, when a consumer needs a file; owner scope choice H8-7 |
 | Video | 192-line video publication (D8 stays at 159 by 96) | Deferred | Phase 8 | Next milestone, only on evidence that reverses D8 |
 | Fuzzing | libFuzzer runs of `tests/fuzz/fuzz_snapshot.c` in CI | Deferred outside the gate (TOOL-05) | Phase 8 | When a failure class appears that no gate step catches |
-| Performance | optimization of the SHA-256 frame hashing; an idle-host benchmark baseline (the committed record is informational); the two benchmark golden commands missing from `docs/runner.md`; the timed path run on macOS arm64 only | Open, informational | Phase 8 | When a consumer states a frame-rate need; the baseline by owner choice H8-8 |
+| Performance | optimization of the SHA-256 frame hashing; an idle-host benchmark baseline (the committed record is informational); the timed path run on macOS arm64 only | Open, informational. The two benchmark golden commands are no longer missing: plan 09-09 added the `bench-lamp-idle` and `bench-lamp-input` writing commands to `docs/runner.md` (GUARDRAILS R11) | Phase 8 | When a consumer states a frame-rate need; the baseline by owner choice H8-8 |
 | State | the applied-event count has no public getter; two pinned acceptances (a STIC register word with a bit outside its write mask, machine time not tied to a unit boundary); a non-default witness for `stic.late_grants` | Open (`08-ACCEPTED-DEBT.md` section 6) | Phase 8 | Next milestone (an API addition and a designed program) |
-| Hygiene | an internal comment in `core/src/machine/machine_digest.c` that still names composite version 2 | Open, cosmetic (`08-ACCEPTED-DEBT.md` section 5) | Phase 8 | The next commit that touches the file |
+| Hygiene | an internal comment in `core/src/machine/machine_digest.c` that still names composite version 2 | **Closed by plan 09-09** (2026-11-25): the header comment now says version 3 since plan 06-05, matching `IVS_DIGEST_COMPOSITE_VERSION 3u` (`core/src/machine/machine.h:157`); it was a comment and only a comment (`08-ACCEPTED-DEBT.md` section 5) | Phase 8 | Closed |
+| Gate hardening | the two uncontrolled zero-document tokens `denylist-no-files` (`tools/check/steps/denylist.sh:43`) and `runner-scan-empty` (`tools/check/steps/runner-scan.sh:58`) | **Declined, not silently dropped** (plan 09-07, dispositioned by plan 09-09): amendment A-02's honest count for EV-03 is three controls plus one verification plus one step-side mechanism, and two more controls is scope the phase did not price. They stay uncontrolled and are visible here | Phase 9 | Next milestone, if the cost rule prices two controls |
+| Evidence | GUARDRAILS 2.3's registration limb for the **ten** mechanisms Phase 9 landed with no `data/expected/important-gates.ids` row: `important-gates-complete-uncovered`, `important-gates-excluded-stale`, `control-toy-drift`, `control-deviation-unused`, `control-pass-line-not-last`, `sources-src-token-whole`, `manifests-output-anchor`, `memmap-generator-refused`, `memmap-generator-missing` (the liveness guard for the one before it), and `important-gates-excluded-malformed` (added by the review fix WR-01, `0d84484`) | **Registration deferred, visibly** (deviation D-09-06, `09-05-SUMMARY.md` is the canonical list): the registry row count is frozen at `lines=330` by ROADMAP Phase 9 criterion 3 and amendment A-08, so any row added after 09-04 makes the phase end at a count its own criterion forbids. The other two limbs of 2.3 are met: each mechanism has a liveness guard and a committed, re-runnable stand-in showing the guard fail. Reversal condition: a later milestone re-derives the `lines=330` baseline, then adds these ten rows under EV-03/EV-04 with the non-vacuity sentence every other row carries | Phase 9 | A later milestone that re-derives the registry baseline |
+| Gate hardening | the four low-severity findings of the Phase 9 security audit (`09-SECURITY.md`): **F1** `GATE_TMP` is exported with deterministic `step.out.<name>` buffers, so a step can overwrite another step's buffer (the verdict cannot be flipped — `rc.<name>` is the driver's own file — but a step's body, `-- FAIL` lines and summary tokens can be mis-attributed); **F2** an exclusion-ledger reason is validated for shape, not for truth; **F3** three stale pointers inside the mechanisms' own prose (the ledger header says "seven rows" where it holds ten, the step header says "six requirements", and `state_fuzz.c:945-948` is cited where the refusal is at `:954`); **F4** `manifests.cmake:136` interpolates the fixture directory name into a CMake regex, so a `.` in a directory name widens one character, and `^data/` is broader than the two measured files need | **Recorded, not fixed** (plan 09-09 close, security audit `09-SECURITY.md`): none is high or medium, none can flip a verdict, and each fix would move the gate after the phase's verification record was taken. F1 is one line (stop exporting `GATE_TMP`; no step reads it — verified by `grep -ln GATE_TMP tools/check/steps/*.sh` returning nothing) | Phase 9 | Next milestone's gate-hardening pass |
 | Owner items | D10 physical measurement (44 hardware items), D11 owner-local real EXEC and GROM runs, a history rewrite veto, name clearance, the immutable-release setting | Owner hard stops or gates, none performed; no claim above provisional | Phases 1 to 8 | Owner (section K of the close record) |
 | Release | the flow after Phase 8: the merge, stage 2 of REL-01, the `git.create_tag` change, the tag, the draft and its publication | **Done**: merged as `3fe5373`, REL-01 complete, `create_tag` false, `v0.1.0` published as a pre-release | Phase 8 | Closed |
 | Milestone lifecycle | the milestone audit, the milestone completion and the cleanup of Phase 8 | Next: the lifecycle sequence after the records pull request | Phase 8 | Now |
@@ -525,9 +570,9 @@ Refreshed by plan 08-21 from `.planning/phases/08-stic-completion-save-state-per
 
 ## Session Continuity
 
-Last session: 2026-11-24
-Stopped at: Milestone v0.2.0 scoped by the milestone ritual; requirements and roadmap being defined; nothing in flight
-Resume file: `.planning/MILESTONE-CONTEXT.md` (the frozen upstream scope)
+Last session: 2026-11-25T03:11:17.532Z
+Stopped at: Phase 9 complete, ready to plan Phase 10
+Resume file: None
 
 ## Recorded Constraints for the Next Milestone
 

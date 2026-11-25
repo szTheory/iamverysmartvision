@@ -1,0 +1,518 @@
+step-time ...
+-- api-effects pass api-calls=19 api-statuses=15 api-rows=61 pinned-defines=120
+step-time ...
+-- c-build pass cc=AppleClang c-presets=2
+step-time ...
+-- c-faults pass fault-runs=235
+step-time ...
+-- c-purity pass core-imports=7 purity-selftest=7/7
+step-time ...
+-- c-tests pass ctest-runs=2
+step-time ...
+-- ci-log pass ci-runs=N
+step-time ...
+-- ci-parity pass ci-uses=2 ci-workflows=2
+step-time ...
+-- ci-summary pass ci-summary-selftest=11/11
+step-time ...
+-- claim pass records=28 claims=28 provisional=27
+-- claims pass claims=28 provisional=27
+step-time ...
+-- cp1610-row pass records=74 cp1610-rows=74
+-- coverage pass patterns=1024 unclaimed=0 ambiguous=0 coincidences=1
+-- c17-consistency pass c17=resolved-primary
+-- cp1610 pass cp1610-rows=74 patterns=1024 unclaimed=0 ambiguous=0 coincidences=1
+step-time ...
+-- second-reader pass records=74 agree=71 resolved=3
+-- cp1610-reader pass agree=71 resolved=3
+step-time ...
+-- vectors pass vectors=412 source=291 policy=121 rows-pending=0 policies-pending=0 bus-figure-pages=35
+-- vector-review pass records=12 reviewed-vectors=412 review-disagreements=30
+-- cp1610-vectors pass vectors=412 source=291 policy=121 rows-pending=0 policies-pending=0 bus-figure-pages=35 blind-files=12 second-read=12/12
+step-time ...
+-- denylist pass scanned=666 waived=0
+step-time ...
+-- discrepancy pass records=110 discrepancies=110 pending-resolvers=20 open=101 d10-items=47
+-- discrepancies pass discrepancies=110 pending-resolvers=20 open=101 d10-items=47
+step-time ...
+-- faults-verdict pass faults=235/235
+step-time ...
+-- files pass tracked=N binaries-listed=0
+step-time ...
+-- glossary pass terms=9 doc-files=59 profile-keys=154
+step-time ...
+-- golden pass goldens=29 reports=30 host-dependent=3 release-only=2
+step-time ...
+-- hygiene pass mode=tree hygiene-files=N
+step-time ...
+-- hygiene-history pass history-commits=N
+step-time ...
+-- important-gates pass gates=107 lines=330
+step-time ...
+-- input pass input-rows=31 input-policies=11 input-profile-fields=31
+step-time ...
+-- integrity pass files=N
+step-time ...
+-- listing pass listings=7 listing-words=1386
+step-time ...
+-- manifests pass manifests=11 effective-yes=8 effective-no=3
+step-time ...
+-- memmap pass literal-rows=80 views=2 dump-lines=160
+step-time ...
+-- pkg-install pass prefix-files=11 archive=members public-symbols=19 defined=141 hdr-alone=10/10 consumer-lines=164 cxx-link=ok pkg-selftest=19/19
+step-time ...
+-- profile pass records=154 fields=154 unknown-fields=47
+step-time ...
+-- psg-vectors pass psg-rules=21 psg-vectors=120 psg-policies=12
+step-time ...
+-- release-assets pass release-selftest=11/11
+step-time ...
+-- runner-scan pass runner-files=16
+step-time ...
+-- runner-selftest proof control-pass-line-not-last: profile (observed: -- FAIL control-pass-line-not-last: profile)
+-- runner-selftest proof memmap-generator-missing: cmake/IvsMemmapProbes.cmake (observed)
+-- runner-selftest pass cases=12
+step-time ...
+-- source pass records=12 sources=12 refs-verified=3/4
+-- sources pass sources=12 refs-verified=3/4
+step-time ...
+-- state pass state-rows=88 state-cuts=18
+step-time ...
+-- SKIPPED dev/runner-process/runner-process.scenario.needs-user-exec: needs-user-exec: needs operator content (ended missing-fixture, exit 13, as expected)
+-- SKIPPED dev/runner-process/runner-process.scenario.owner-exec-title: owner-exec-title: needs operator content (ended missing-fixture, exit 13, as expected)
+-- SKIPPED release/runner-process/runner-process.scenario.needs-user-exec: needs-user-exec: needs operator content (ended missing-fixture, exit 13, as expected)
+-- SKIPPED release/runner-process/runner-process.scenario.owner-exec-title: owner-exec-title: needs operator content (ended missing-fixture, exit 13, as expected)
+-- tests-inventory pass tests-expected=4958 tests-executed=4954 tests-skipped=4 tests-missing=0
+step-time ...
+-- text pass docs=60 claim-refs=26
+step-time ...
+-- video pass stic-rules=67 stic-rows=64 video-frames=26 video-hash-ties=18 video-frame-pairs=9
+step-time ...
+-- tags pass records=10
+-- evidence-tiers pass records=8
+-- vocab pass tags=10 tiers=8
+step-time ...
+control ok   _good/api-effects
+control ok   _good/c-build
+control ok   _good/c-purity
+control ok   _good/ci-log
+control ok   _good/ci-parity
+control ok   _good/claims
+control ok   _good/cp1610
+control ok   _good/cp1610-reader
+control ok   _good/cp1610-vectors
+control ok   _good/denylist
+control ok   _good/discrepancies
+control ok   _good/faults-verdict
+control ok   _good/files
+control ok   _good/glossary
+control ok   _good/golden
+control ok   _good/hygiene
+control ok   _good/hygiene-history
+control ok   _good/important-gates
+control ok   _good/input
+control ok   _good/integrity
+control ok   _good/listing
+control ok   _good/manifests
+control ok   _good/memmap
+control ok   _good/profile
+control ok   _good/psg-vectors
+control ok   _good/release-assets
+control ok   _good/runner-scan
+control ok   _good/sources
+control ok   _good/state
+control ok   _good/tests-inventory
+control ok   _good/text
+control ok   _good/video
+control ok   _good/vocab
+control ok   api-call-indented
+control ok   api-call-own-line
+control ok   api-call-undeclared
+control ok   api-call-undocumented
+control ok   api-dead-status
+control ok   api-effect-unregistered
+control ok   api-effects-format
+control ok   api-input-bit-duplicate
+control ok   api-input-bit-unpinned
+control ok   api-psglog-src-orphan
+control ok   api-psglog-src-unpinned
+control ok   api-reason-unpinned
+control ok   api-refusal-no-test
+control ok   api-status-renumbered
+control ok   api-status-reserved
+control ok   api-status-unpinned
+control ok   api-stop-orphan
+control ok   api-stop-renumbered
+control ok   api-stop-unpinned
+control ok   bootstub-row
+control ok   bootstub-size
+control ok   bootstub-vector
+control ok   c-build-unlisted-asm-source
+control ok   c-build-unlisted-bench-source
+control ok   c-build-unlisted-pcm-source
+control ok   ci-log-duplicate
+control ok   ci-log-fields
+control ok   ci-log-header
+control ok   ci-log-order
+control ok   ci-parity-action-cache
+control ok   ci-parity-action-upload
+control ok   ci-parity-conditional
+control ok   ci-parity-continue-on-error
+control ok   ci-parity-extra-workflow-target
+control ok   ci-parity-extra-workflow-unpinned
+control ok   ci-parity-gate-job-write
+control ok   ci-parity-matrix
+control ok   ci-parity-missing-gate
+control ok   ci-parity-release-extra-run
+control ok   ci-parity-release-no-tag-trigger
+control ok   ci-parity-release-pull-request
+control ok   ci-parity-release-secret
+control ok   ci-parity-release-tag-wide
+control ok   ci-parity-release-top-write
+control ok   ci-parity-run-spacing
+control ok   ci-parity-runs-on
+control ok   ci-parity-secrets
+control ok   ci-parity-timeout
+control ok   ci-parity-unpinned-action
+control ok   ci-parity-write-permissions
+control ok   claims-dangling-artifact
+control ok   claims-duplicate-id
+control ok   claims-empty
+control ok   claims-established-without-deps
+control ok   claims-inventory-empty
+control ok   claims-measured-without-d10
+control ok   claims-missing-key
+control ok   claims-order
+control ok   claims-overstated-standing
+control ok   claims-unknown-field
+control ok   claims-unknown-tier
+control ok   core-purity-alloc
+control ok   core-purity-arm-counter
+control ok   core-purity-asm
+control ok   core-purity-clock
+control ok   core-purity-computed-include
+control ok   core-purity-env
+control ok   core-purity-float
+control ok   core-purity-float-literal
+control ok   core-purity-fs
+control ok   core-purity-generated-missing
+control ok   core-purity-generated-scan
+control ok   core-purity-generated-unlisted
+control ok   core-purity-header
+control ok   core-purity-hollow
+control ok   core-purity-hw-random
+control ok   core-purity-include-comment-prefix
+control ok   core-purity-include-digraph
+control ok   core-purity-include-outside
+control ok   core-purity-io
+control ok   core-purity-prelude
+control ok   core-purity-quoted-header
+control ok   core-purity-rand
+control ok   core-purity-static-mutable
+control ok   core-purity-steady-counter
+control ok   core-purity-strlen
+control ok   core-purity-thread
+control ok   core-symbols-palette-defined
+control ok   core-symbols-pcm-defined
+control ok   cp1610-c17-inconsistent
+control ok   cp1610-coverage-missing-row
+control ok   cp1610-empty-table
+control ok   cp1610-misread-pattern
+control ok   cp1610-overlap-without-refines
+control ok   cp1610-reader-missing-id
+control ok   cp1610-reader-missing-key
+control ok   cp1610-reader-resolved-without-note
+control ok   cp1610-row-missing-key
+control ok   cp1610-row-without-cite
+control ok   denylist-author-not-waivable
+control ok   denylist-cite-unwaived
+control ok   denylist-hit
+control ok   denylist-nul-hit
+control ok   discrepancies-bad-resolver
+control ok   discrepancies-d10-missing
+control ok   discrepancies-d10-unknown
+control ok   discrepancies-duplicate-id
+control ok   discrepancies-missing-c17
+control ok   discrepancies-missing-key
+control ok   discrepancies-open-without-ukdc
+control ok   discrepancies-resolved-without-page
+control ok   faults-collateral
+control ok   faults-duplicate-id
+control ok   faults-empty-prefix
+control ok   faults-list-mismatch
+control ok   faults-missing
+control ok   faults-missing-site
+control ok   faults-missing-site-runner
+control ok   faults-not-detected
+control ok   faults-orphan-site
+control ok   faults-orphan-site-runner
+control ok   faults-second-missing-site
+control ok   faults-second-not-detected
+control ok   faults-stale
+control ok   faults-suite-missing
+control ok   faults-unknown-vector
+control ok   faults-wrong-reason
+control ok   files-env-file
+control ok   files-fixture-without-manifest
+control ok   files-tracked-refs-file
+control ok   files-trademark-name
+control ok   files-unlisted-binary
+control ok   files-unlisted-binary-archive
+control ok   files-unlisted-binary-content
+control ok   files-unlisted-binary-ivsn
+control ok   files-unlisted-binary-nonul
+control ok   files-unlisted-fixture-file
+control ok   glossary-bare-clock
+control ok   glossary-d2-unlinked
+control ok   glossary-missing-term
+control ok   glossary-no-files
+control ok   glossary-nul-bare-clock
+control ok   glossary-unit-suffix
+control ok   golden-dev-release-diff
+control ok   golden-digest-psglog-missing
+control ok   golden-digest-video-missing
+control ok   golden-domains-psglog-missing
+control ok   golden-domains-video-missing
+control ok   golden-empty-domain-observed
+control ok   golden-expect-drift
+control ok   golden-header-missing-oracle
+control ok   golden-header-missing-tier
+control ok   golden-host-dependent-golden
+control ok   golden-host-dependent-unmarked
+control ok   golden-mismatch
+control ok   golden-output-key-unknown
+control ok   golden-refpcm-grammar
+control ok   golden-refpcm-key
+control ok   golden-refpcm-mismatch
+control ok   golden-self-recorded-wrong-tier
+control ok   golden-shape-no-input
+control ok   golden-shape-no-progress
+control ok   golden-skip-ok-without-user-content
+control ok   golden-user-content-not-skip-ok
+control ok   golden-user-scenario-tracked
+control ok   golden-video-chain-check-missing
+control ok   hygiene-credential-anthropic
+control ok   hygiene-credential-api-key
+control ok   hygiene-credential-google
+control ok   hygiene-credential-json-password
+control ok   hygiene-credential-slack
+control ok   hygiene-foreign-email
+control ok   hygiene-history-home-path
+control ok   hygiene-history-secret
+control ok   hygiene-history-unreadable-object
+control ok   hygiene-home-path
+control ok   hygiene-nul-home-path
+control ok   hygiene-password
+control ok   hygiene-scratch-private-tmp
+control ok   hygiene-scratch-root-home
+control ok   hygiene-scratch-tilde
+control ok   hygiene-scratch-tmp-claude
+control ok   hygiene-scratch-var-folders
+control ok   hygiene-secret
+control ok   important-gates-bad-req-phase5
+control ok   important-gates-bad-req-phase6
+control ok   important-gates-complete-uncovered
+control ok   important-gates-req-uncovered-phase5
+control ok   important-gates-req-uncovered-phase6
+control ok   important-gates-req-uncovered-phase7
+control ok   important-gates-uncovered-gate
+control ok   important-gates-unknown-id
+control ok   important-gates-unknown-id-phase5
+control ok   important-gates-unknown-id-phase6
+control ok   input-byte-mismatch
+control ok   input-literal-duplicate
+control ok   input-literal-name-set-missing
+control ok   input-profile-field-missing
+control ok   input-profile-field-shape
+control ok   input-profile-mask-mismatch
+control ok   input-source-unknown
+control ok   input-tag-missing
+control ok   input-tiling-pins
+control ok   integrity-bom
+control ok   integrity-crlf
+control ok   integrity-empty-file
+control ok   integrity-missing-spdx
+control ok   integrity-missing-spdx-c
+control ok   integrity-missing-spdx-runner
+control ok   integrity-missing-spdx-tools-asm
+control ok   integrity-missing-spdx-tools-c
+control ok   integrity-missing-spdx-tools-pcm
+control ok   integrity-non-ascii
+control ok   integrity-non-ascii-c
+control ok   integrity-non-ascii-runner
+control ok   integrity-nul-byte
+control ok   integrity-path-charset
+control ok   listing-bits-mismatch
+control ok   listing-branch-target-mismatch
+control ok   listing-branch-target-missing
+control ok   listing-data-after-sdbd
+control ok   listing-data-in-operand-slot
+control ok   listing-header
+control ok   listing-operand-count
+control ok   listing-operand-count-after-sdbd
+control ok   listing-range
+control ok   listing-row-mismatch
+control ok   listing-sdbd-carry-over
+control ok   listing-sdbd-indirect-mode
+control ok   listing-sdbd-operand-missing
+control ok   listing-sdbd-prefix-before-branch
+control ok   listing-sdbd-target-mvo
+control ok   listing-sdbd-target-zero
+control ok   listing-unlisted
+control ok   manifests-derived-from-unknown
+control ok   manifests-digest-mismatch
+control ok   manifests-duplicate-id
+control ok   manifests-id-missing
+control ok   manifests-inventory-empty
+control ok   manifests-missing-key
+control ok   manifests-misspelled-key
+control ok   manifests-output-anchor
+control ok   manifests-recipe-source-digest
+control ok   manifests-uncommitted-output-tracked
+control ok   manifests-unknown-committed
+control ok   manifests-yes-without-evidence
+control ok   memmap-dump-diff
+control ok   memmap-dump-missing
+control ok   memmap-dump-stale
+control ok   memmap-exception-unknown
+control ok   memmap-generator-refused
+control ok   memmap-literal-grammar
+control ok   memmap-literal-hole
+control ok   memmap-literal-missing
+control ok   memmap-literal-no-cite
+control ok   memmap-literal-orphan
+control ok   memmap-literal-overlap
+control ok   memmap-literal-tier5
+control ok   memmap-literal-unknown-conf
+control ok   memmap-literal-unknown-source
+control ok   memmap-literal-unknown-tag
+control ok   profile-bad-conflict-id
+control ok   profile-blank-value
+control ok   profile-conflict-unknown-id
+control ok   profile-empty-inventory
+control ok   profile-empty-record-file
+control ok   profile-missing-field
+control ok   profile-missing-key
+control ok   profile-no-d3
+control ok   profile-tier5-tag
+control ok   profile-ukdc-without-evidence
+control ok   profile-unknown-key
+control ok   profile-unknown-tag
+control ok   psg-vectors-bad-grammar
+control ok   psg-vectors-field-missing
+control ok   psg-vectors-field-pending-stale
+control ok   psg-vectors-orphan-id
+control ok   psg-vectors-regmap-profile-mismatch
+control ok   psg-vectors-rule-without-vector
+control ok   psg-vectors-unknown-default-unresolved
+control ok   psg-vectors-unknown-rule
+control ok   psg-vectors-unlisted-file
+control ok   psg-vectors-unregistered
+control ok   psg-vectors-vector-no-cite
+control ok   release-assets-claims-drift
+control ok   release-assets-source-binary
+control ok   runner-scan-header
+control ok   runner-scan-header-tools-other
+control ok   runner-scan-internal-include
+control ok   runner-scan-posix-define
+control ok   sources-bad-digest-format
+control ok   sources-digest-mismatch
+control ok   sources-local-path
+control ok   sources-missing-key
+control ok   sources-no-files
+control ok   sources-reference-only-unexplained
+control ok   sources-src-token-whole
+control ok   sources-unknown-ref
+control ok   state-checklist-exempt-no-reason
+control ok   state-checklist-line-extra
+control ok   state-checklist-row-missing
+control ok   state-checklist-test-unknown
+control ok   state-checklist-witness-unknown
+control ok   state-class-source-drift
+control ok   state-schema-literal-stale
+control ok   tests-inventory-ctest-drift
+control ok   tests-inventory-duplicate
+control ok   tests-inventory-empty
+control ok   tests-inventory-failed
+control ok   tests-inventory-missing
+control ok   tests-inventory-plan-mismatch
+control ok   tests-inventory-stale-digest
+control ok   tests-inventory-stale-nonce
+control ok   tests-inventory-suite-missing
+control ok   tests-inventory-truncated
+control ok   tests-inventory-unexpected-skip
+control ok   tests-inventory-unlisted
+control ok   text-changelog-untagged
+control ok   text-missing-claim-ref
+control ok   text-no-files
+control ok   text-nul-untagged-claim-word
+control ok   text-undocumented-tier
+control ok   text-untagged-claim-word
+control ok   text-untagged-playable
+control ok   vectors-addr-required-format
+control ok   vectors-addr-uncovered
+control ok   vectors-bad-cite
+control ok   vectors-blind-leak
+control ok   vectors-blind-unknown-key
+control ok   vectors-branch-required-format
+control ok   vectors-branch-uncovered
+control ok   vectors-bus-uncovered
+control ok   vectors-cycles-basis
+control ok   vectors-cycles-uncovered
+control ok   vectors-duplicate-id
+control ok   vectors-emulator-name
+control ok   vectors-file-missing
+control ok   vectors-file-unlisted
+control ok   vectors-flag-uncovered
+control ok   vectors-format
+control ok   vectors-id-extra
+control ok   vectors-id-missing
+control ok   vectors-missing-key
+control ok   vectors-pending-covered
+control ok   vectors-policy-no-fault
+control ok   vectors-policy-uncovered
+control ok   vectors-policy-with-tier
+control ok   vectors-program-mismatch
+control ok   vectors-review-count
+control ok   vectors-review-format
+control ok   vectors-review-handoff-mismatch
+control ok   vectors-review-reviewer
+control ok   vectors-review-stale
+control ok   vectors-review-unresolved
+control ok   vectors-row-mismatch
+control ok   vectors-row-uncovered
+control ok   vectors-skip-unknown
+control ok   vectors-suite-drift
+control ok   vectors-tag-false
+control ok   vectors-unknown-key
+control ok   vectors-unknown-row
+control ok   vectors-unknown-source
+control ok   vectors-witness-format
+control ok   vectors-witness-uncovered
+control ok   video-field-missing
+control ok   video-frame-dimension
+control ok   video-frame-hash-drift
+control ok   video-frame-hash-expect-drift
+control ok   video-frame-hash-none-without-unknown
+control ok   video-frame-mob-count
+control ok   video-frame-pair-region-drift
+control ok   video-frame-pair-unknown
+control ok   video-frame-popcount
+control ok   video-frame-symbol
+control ok   video-frame-tier-missing
+control ok   video-frame-unknown-outside-region
+control ok   video-frame-unregistered
+control ok   video-pending-stale
+control ok   video-regmap-row-count
+control ok   video-rule-no-test
+control ok   video-verdict-key-missing
+control ok   vocab-conflated-id
+control ok   vocab-duplicate-id
+control ok   vocab-missing-key
+controls=384/384
+step-time ...
+step-time ...
+gate-env ...
+gate-cpu ...
+gate-time ...
+gate: PASS steps=38/38 controls=384/384 api-calls=19 api-statuses=15 api-rows=61 pinned-defines=120 cc=AppleClang c-presets=2 fault-runs=235 core-imports=7 purity-selftest=7/7 ctest-runs=2 ci-runs=N ci-uses=2 ci-workflows=2 ci-summary-selftest=11/11 claims=28 provisional=27 cp1610-rows=74 patterns=1024 unclaimed=0 ambiguous=0 coincidences=1 agree=71 resolved=3 vectors=412 source=291 policy=121 rows-pending=0 policies-pending=0 bus-figure-pages=35 blind-files=12 second-read=12/12 scanned=666 waived=0 discrepancies=110 pending-resolvers=20 open=101 d10-items=47 faults=235/235 tracked=N binaries-listed=0 terms=9 doc-files=59 profile-keys=154 goldens=29 reports=30 host-dependent=3 release-only=2 mode=tree hygiene-files=N history-commits=N gates=107 lines=330 input-rows=31 input-policies=11 input-profile-fields=31 files=N listings=7 listing-words=1386 manifests=11 effective-yes=8 effective-no=3 literal-rows=80 views=2 dump-lines=160 prefix-files=11 archive=members public-symbols=19 defined=141 hdr-alone=10/10 consumer-lines=164 cxx-link=ok pkg-selftest=19/19 records=154 fields=154 unknown-fields=47 psg-rules=21 psg-vectors=120 psg-policies=12 release-selftest=11/11 runner-files=16 cases=12 sources=12 refs-verified=3/4 state-rows=88 state-cuts=18 tests-expected=4958 tests-executed=4954 tests-skipped=4 tests-missing=0 docs=60 claim-refs=26 stic-rules=67 stic-rows=64 video-frames=26 video-hash-ties=18 video-frame-pairs=9 tags=10 tiers=8

@@ -179,6 +179,10 @@ typedef struct su_run {
   int poisoned; /* 1: every target gets its STATE and PAD rows poisoned (state_poison) before its first use */
   int quiet;    /* 1: no diagnostics (the judge case runs corrupted expectations) */
   int digests;  /* 1: the nine digests of the target are compared before and after each row, besides the whole instance */
+  int digest_sampled; /* 1: the nine digests are compared on row 0, every 8th row and the last row of the table, and nowhere else
+                       * (plan 09-02, trim (c)).  This is a second flag and not a third value of digests so that every existing
+                       * setter keeps the every-row meaning.  The whole-instance comparison of every row is outside both flags and
+                       * therefore cannot be switched off by either: see the memcmp in su_call_row, which is not inside the branch. */
   ivs_ms_inst target[SU_T_COUNT];
   uint8_t *ref[SU_T_COUNT]; /* the bytes of each target before the first row, to prove none was changed */
   uint8_t dig[SU_T_COUNT][9][32];
@@ -192,7 +196,8 @@ void su_run_free(su_run *u);
 
 /* Runs every row of t: for each row, two calls of ivs_machine_snapshot_restore into a report poisoned 0xA5 and then 0x5A (a caller
  * struct of 400 bytes) against the target of the row; the status, the whole report, the supplied bytes and the whole target instance
- * (and, with u->digests, its nine digests) are compared with what the contract allows. Returns the number of rows that failed. */
+ * (and, with u->digests, its nine digests on every row; with u->digest_sampled, on row 0, every 8th row and the last row) are compared
+ * with what the contract allows. Returns the number of rows that failed. */
 uint32_t su_run_rows(su_run *u, const su_tab *t);
 
 

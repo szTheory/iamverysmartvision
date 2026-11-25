@@ -1669,3 +1669,114 @@ One row: `45415977805`, `push`, head `1090500` (merge of #14), `build_s` 42, `ga
 That row is the fastest `build_s` in the window (42) with a mid-range `cpu_s` (352), so it reads high on the ratio while adding no work; the same tree's PR row read 7.533 at `build_s` 45. It is recorded as taken and not read as growth.
 
 **Reconciliation in the same commit.** `.planning/state.json` carried two defects from the roadmap write: its `milestone` field held a roadmap prose fragment (`v0.2.0 — … (Phases 9 to 12)</summary>`) instead of the version, and its `phases` array still listed Phases 1 to 8 as complete, so a reader would have concluded the milestone had nothing left to run. Both are repaired to `v0.2.0` and Phases 9 to 12 `pending`, with `next` pointing at Phase 9. `state.sync` reports no further changes, so the repair holds. The stale `.planning/milestone.lock` (phase 8, a dead pid, an old session id) is removed. This is exactly the "reconcile any weirdness" step of the milestone ritual, and it is recorded rather than quietly fixed.
+
+## 2026-11-25 — wave A1 (Phase 9): the lever and the three trims, measured and recorded
+
+**The reading is recomputed by arithmetic from the committed `.planning/ci-runs.tsv` in the same commit that writes this entry — no figure here is quoted from an earlier entry (amendment A-07).** `r = cpu_s / build_s` over the last five rows carrying a non-zero `cpu_s`, with the command that produced it:
+
+```sh
+awk -F'\t' 'NR>1 && $13>0 {printf "%s\t%s\t%s\t%s\t%s\t%.4f\n", $2, substr($3,1,7), $4, $8, $13, $13/$8}' \
+  .planning/ci-runs.tsv | tail -5
+```
+
+| run | head | event | `build_s` | `cpu_s` | `r` |
+|-----|------|-------|-----------|---------|-----|
+| 45334963892 | 5b6771a | `push` | 46 | 360 | 7.8261 |
+| 45412585701 | bd6f2e3 | `pull_request` | 48 | 356 | 7.4167 |
+| 45413049708 | 3808e6f | `push` | 46 | 354 | 7.6957 |
+| 45414715588 | aa96e9a | `push` | 45 | 339 | 7.5333 |
+| 45415977805 | 1090500 | `push` | 42 | 352 | 8.3810 |
+
+**The window.** The five values sorted are **7.4167, 7.5333, 7.6957, 7.8261, 8.3810**, so the last-five median is **7.696** (7.6957 to four decimals) — 0.104 under the 7.8 budget and **0.604 under the 8.3 stop line**. It agrees with the 7.696 recorded in the entry above; it is printed here because it was recomputed, not because it was quoted, and the two must agree or one of them is the defect. The spread is the same single-row artefact this file has recorded since Phase 6: the window's fastest `build_s` (42) carries the highest `r` (8.3810) and adds no work at all.
+
+**The allowance as it was priced, with the recomputation beside it.** Phase 9 was priced against about **21 hosted cpu-s ≈ 12.9 local cpu-s** at the recorded local→hosted factor 1.675 — the ceiling, not a target. The same arithmetic on the window above now reads: (8.3 − 7.696) = **0.6044 `r`** of headroom at the median row's `build_s` 46, i.e. 0.6044 × 46 = **27.8 hosted cpu-s ≈ 16.6 local cpu-s**. The recomputation shows more headroom than the record because the two records-only rows recorded after the phase was priced moved the median down without changing any work. The priced figure is **not** replaced: it is what these plans were budgeted against, and a milestone that spends to the recomputed line sits on the stop line again.
+
+**The lever's saving is a ceiling, and it is not a saving.** Lever (3) removes two `ivs-run` dev launches of the Lamp Tone scenarios (median of five, dev 62 ms, release 9.4–9.8 ms). That is **0.12 local cpu-s ≈ 0.005 `r`** (0.12 × 1.675 / 46 = 0.0044). **Lever (3) cannot move `r`**, and it is landed because it is recorded policy and because it is the last non-owner lever in the pre-committed order — not because it buys anything on the hosted row. An unmeasured lever quoted as a saving is how a cost story rots; a measured lever quoted as a ceiling is the whole of what it is.
+
+**The trims, measured.** Figures copied from `09-01-SUMMARY.md` and `09-02-SUMMARY.md`, not re-estimated here.
+
+| item | preset | before (median of 3) | after (median of 3) | saved | load average | source |
+|------|--------|----------------------|---------------------|-------|--------------|--------|
+| trim (c)+(d) | dev | 2.76 s (2.75 / 2.76 / 2.76) | 2.46 s (2.46 / 2.46 / 2.44) | **0.30 s** | 13.04 / 18 cpus | 09-02, `93edc18` → `0a91804` |
+| trim (c)+(d) | release | 1.61 s (1.61 / 1.61 / 1.62) | 1.41 s (1.41 / 1.41 / 1.42) | **0.20 s** | 13.04 / 18 cpus | 09-02, `93edc18` → `0a91804` |
+| trim (a) | dev | not captured | not captured | **0.18 s** (recorded: about 0.06 per launch × 3) | not recorded | 09-01, per-launch medians of five |
+| lever (3) | dev | not captured | not captured | **0.12 s ceiling** (recorded: 2 × 62 ms) | not recorded | 09-01, per-launch medians of five |
+
+Trims (c) and (d) were taken with `/usr/bin/time -p`, three alternated runs per preset, `ivs_tests_state` run directly so the figure is the suite and not the harness, the pre-trim tree built at `93edc18` in a throwaway worktree with its own build directory. Trims (c)+(d) measured **0.50 local cpu-s** against the **0.8** the cost rule predicted for the pair; both figures are recorded and the estimate was not rewritten after the fact.
+
+**The open item, recorded rather than dropped.** The alternated `/usr/bin/time -p` before/after capture for **lever (3) and trim (a)** was never taken: both dispatched executors were stopped by their 1800 s dispatch limit before reaching it. What stands in its place is measured, not assumed — the per-launch medians of five that the 0.12 ceiling is arithmetic over, the post-fold `runner-process` suite times on this tree (**21.55 s dev / 22.69 s release**, both green), and the structural proof that the two dev launches are gone (`reports=32 → 30`, `release-only=2`, `build/gate/dev/runner-process.txt` reading `configuration=Debug full=0 static=35 variants=0 variant-static=2` against the release file's `configuration=Release full=35 static=0 variants=2 variant-static=0`). It stays open, with its reason, rather than being closed by a figure that was not taken.
+
+**The wave total.** 0.12 (lever, a ceiling) + 0.18 (trim a) + 0.50 (trims c + d) = **0.80 local cpu-s ≈ 1.34 hosted cpu-s ≈ 0.029 `r`**. The recorded estimate for (a)+(c)+(d) was about 1.0 local cpu-s; the measured figure is 0.68 for those three and is the figure that counts.
+
+**Trim (b): declined, in writing, with its measurement.** 0.09 local cpu-s — 0.03 % of a 219 cpu-s gate — against the only sanitized execution of the 65-cut loop. The saving does not pay for the coverage question the cut raises, so the trim is **declined** and the loop keeps its sanitized execution. A decline recorded is a decision; a trim silently omitted is a defect.
+
+**The load condition, stated as taken (lesson 23).** The 09-02 pair was taken alternately on the same host within one session at load average **13.04 on 18 cpus** — the laptop is loaded, so the absolute times read high and the before/after difference is what is meaningful, not the absolute values. The 09-01 per-launch figures carry no recorded load average and this entry does not invent one. The gate runs behind `09-03-SUMMARY.md` were taken on the same loaded host — the 1-minute load average read 7.89 at the plan-start baseline, with 5- and 15-minute averages 13.93 and 17.98, on 18 cpus — and the load observed at each later run is recorded beside its line in that SUMMARY rather than summarised here, because a single number for runs an hour apart would be a guess dressed as a measurement. None of these timing lines is an idle-host figure.
+
+**What wave A1 did not do.** No test id, no control, no fault, no gate step and no registry line — this is a cost wave, not a content wave, and the token proves it: `steps=38/38 controls=380/380 faults=235/235 fault-runs=235 gates=90 lines=306 goldens=29 reports=30 release-only=2 host-dependent=3 tests-expected=4958 tests-executed=4954 tests-skipped=4 tests-missing=0 claims=28 provisional=27`. Exactly two tokens moved across the whole wave — `reports=32 → 30` and `release-only=2`, the pair 09-01's D-09-01 predicted — and `tests-skipped` stayed 4 before and after, which is the check that the variant fold is a fold and not a skip.
+
+**The seam, named so no later reader crosses it.** The hosted row after these commits is the orchestrator's: no executor of this wave calls `tools/ci-record.sh`, writes or stages `.planning/ci-runs.tsv`, pushes, or calls `gh`. The words that row may settle are exactly **`discharged-below-budget`** (≤ 7.8), **`discharged-within-line`** (7.8–8.3) and **`lever-required`** (> 8.3) — one line, written by the orchestrator after the push, and **not** by this entry; a later reader should not look for a `phaseA1:` checkpoint line here. The row's ancestry is proved with `git merge-base --is-ancestor <row-commit> <this-commit>`, and the A1 commits the proof runs over are listed by hash and subject in `09-03-SUMMARY.md`.
+
+waveA1: measured and recorded; the checkpoint word is the orchestrator's, after the hosted row
+
+
+## 2026-11-25 — wave A1's hosted row: the level is settled, and it is under budget
+
+**One row, taken on the PR head after lever (3) and trims (a), (c) and (d) landed.** Run
+`45527058543`, `pull_request`, head `93e6b9f`, `build_s` 43, `gate_s` 111, `cpu_s` 354,
+`r` = **8.2326**. Recorded with `tools/ci-record.sh` and appended to `.planning/ci-runs.tsv`
+by the orchestrator, never by an executor.
+
+**Ancestry, proved rather than asserted.** Every wave A1 commit is an ancestor of the row's
+head: `git merge-base --is-ancestor <c> 93e6b9f` returns 0 for `8d28dce` (the fold), `dcb50f4`
+(trim a), `f271769` (the diagnostic line), `0c217ed` (trim c), `d7f5ec4` (trim d), `0a91804`
+(the inventory comments) and `e8a740c` (the cost record). ROADMAP criterion 1's
+`git merge-base --is-ancestor` check therefore holds for the row and for every commit that adds
+gate content later in this phase.
+
+**The window, recomputed by arithmetic from the committed file.** The last five rows in file
+order and their `r`:
+
+| run | event | head | `build_s` | `cpu_s` | `r` |
+|-----|-------|------|-----------|---------|-----|
+| 45412585701 | `pull_request` | bd6f2e3 | 48 | 356 | 7.4167 |
+| 45413049708 | `push` | 3808e6f | 46 | 354 | 7.6957 |
+| 45414715588 | `push` | aa96e9a | 45 | 339 | 7.5333 |
+| 45415977805 | `push` | 1090500 | 42 | 352 | 8.3810 |
+| 45527058543 | `pull_request` | 93e6b9f | 43 | 354 | 8.2326 |
+
+Sorted: 7.4167, 7.5333, 7.6957, 8.2326, 8.3810 → **median 7.6957**, i.e. **7.696**.
+
+```
+awk -F'\t' 'NR>1 && $13>0 {a[++n]=$13/$8} END{for(i=n-4;i<=n;i++)v[i-n+5]=a[i];
+  for(i=1;i<=5;i++)for(j=i+1;j<=5;j++)if(v[i]>v[j]){t=v[i];v[i]=v[j];v[j]=t};
+  printf "median: %.4f\n",v[3]}' .planning/ci-runs.tsv
+```
+
+**The new row reads 8.2326 and the median did not move.** The row that left the window is
+`45334963892` (7.8261) — the oldest of the previous five — so the window's composition changed
+by one row in and one out, and the two nearly cancel: 7.6957 before, 7.6957 after. The new
+row's own 8.2326 comes from the fastest `build_s` in the window (43) with a mid-range `cpu_s`
+(354), which is the single-row runner-speed artefact this file has recorded since the Phase 6
+entry, not growth: the wave A1 diff adds no gate work at all and removes about 0.80 local
+cpu-s of it.
+
+**The allowance, and what wave A2 may spend.** The priced allowance stands at about **21 hosted
+cpu-s ≈ 12.9 local** for the whole milestone; recomputed against this window the headroom to
+the 8.3 stop line is 0.604 `r` ≈ 27.8 hosted cpu-s, and to the 7.8 budget 0.104 `r` ≈ 4.8
+hosted cpu-s. Both figures are printed so a later reader sees that the budget, not the stop
+line, is the binding number today. Wave A2's measured expectation is ≈ **1.2 local cpu-s**
+(five controls at 0.185 each plus one `cmake -P` launch), ≈ 0.7 hosted, ≈ +0.015 `r` — inside
+the ceiling with room to spare, and inside the 4.8 hosted cpu-s to the budget.
+
+**No lever is proposed and none is needed.** The stop line did not fire, and the lever order is
+exhausted of non-owner items: lever (3) and trims (a), (c) and (d) are all landed, and trim (b)
+is declined by measurement (0.09 local cpu-s against the only sanitized execution of the
+65-cut loop). Dropping a check, caching, `continue-on-error`, a matrix or a path filter remains
+forbidden and none is proposed.
+
+**Measured against the prediction.** Wave A1 was priced at 0.12 (lever, a ceiling) + 0.18
+(trim a) + 0.8 (trims c and d, estimated) = 1.10 local cpu-s. Measured: 0.12 + 0.18 + **0.50**
+= **0.80 local cpu-s**. The estimate for (c)+(d) was 0.8 and the measurement is 0.50; both
+figures are recorded and the estimate is not rewritten.
+
+phaseA1: discharged-below-budget

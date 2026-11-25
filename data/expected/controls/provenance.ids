@@ -8,3 +8,6 @@ sources-digest-mismatch
 sources-missing-key
 sources-local-path
 sources-reference-only-unexplained
+# Plan 09-07 (EV-03 item 1): the whole-token SRC- extraction pins source-unknown-ref for an
+# underscore-suffixed and an upper-case reference.
+sources-src-token-whole

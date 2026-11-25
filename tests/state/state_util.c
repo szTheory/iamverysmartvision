@@ -386,7 +386,9 @@ static ivs_ms_inst *su_target(su_run *u, uint32_t tsel)
     return NULL;
   }
   memcpy(u->ref[tsel], x->storage, IVS_MACHINE_BYTES);
-  if (u->digests && !su_nine_digests(x->m, u->dig[tsel])) {
+  /* The reference digests are taken here, once, for either digest mode: a sampled run still needs the before value on the rows it
+   * does sample, and row 0 is always one of them. */
+  if ((u->digests || u->digest_sampled) && !su_nine_digests(x->m, u->dig[tsel])) {
     ivs_ms_free(x);
     free(u->ref[tsel]);
     u->ref[tsel] = NULL;
@@ -428,8 +430,9 @@ void su_expect_report(uint8_t *exp, const uint8_t *src, size_t readable, uint32_
   }
 }
 
-/* One row against its target. */
-static int su_call_row(su_run *u, const su_row *w, const uint8_t *work, uint8_t *h, uint64_t claimed, size_t readable)
+/* One row against its target.  r is the row's index in the table and n the table's row count, which are what the sampled digest mode
+ * selects on; neither is otherwise used. */
+static int su_call_row(su_run *u, const su_row *w, const uint8_t *work, uint8_t *h, uint64_t claimed, size_t readable, size_t r, size_t n)
 {
   static const uint8_t poison[2] = {0xA5u, 0x5Au};
   ivs_ms_inst *x = su_target(u, w->tsel);
@@ -479,7 +482,9 @@ static int su_call_row(su_run *u, const su_row *w, const uint8_t *work, uint8_t 
     }
     ok = 0;
   }
-  if (u->digests) {
+  /* The whole-instance comparison above and the produced accumulation below are outside this branch: the digest mode, every-row or
+   * sampled, changes only how often the nine digests are computed, never whether the instance itself is compared (plan 09-02, trim (c)). */
+  if (u->digests || (u->digest_sampled && (r == 0u || r % 8u == 0u || r + 1u == n))) {
     if (!su_nine_digests(x->m, after) || memcmp(after, u->dig[w->tsel], sizeof after) != 0) {
       if (!u->quiet) {
         ivs_test_diag("row '%s': a digest of the instance changed by a refusal", w->name);
@@ -530,7 +535,7 @@ uint32_t su_run_rows(su_run *u, const su_tab *t)
       bad++;
       continue;
     }
-    if (!su_call_row(u, w, work, h, claimed, readable)) {
+    if (!su_call_row(u, w, work, h, claimed, readable, r, t->n)) {
       bad++;
     }
     free(h);

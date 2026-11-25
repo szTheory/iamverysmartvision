@@ -157,7 +157,20 @@ that makes the gap unrepeatable.
   3. `data/expected/important-gates.ids` grows from 306 to 330 registry rows (24 additions, counted as non-comment rows), naming at least one mechanism for each of FND-01..07, CPU-01..05 and MEM-01..05; the registration commit's `steps`/`controls`/`faults`/`tests-*` diff equals its predicted delta exactly, and each of the ten toy registries gains exactly one line per new requirement with zero deletions (`git diff --numstat`).
   4. Each of the five gate-hardening items (whole-token `SRC-` match, zero-document failures, per-step pass lines, manifest output anchoring, memmap generator controls) has a named control in the gate summary and a committed scratch stand-in showing it fails for its intended reason.
   5. The EV-04 machine check refuses a requirement marked Complete with no registry line, and refuses a toy registry that drifts from the good tree; both are shown able to fail, and `sh`, `dash` and the container gate end PASS with the predicted summary token.
-**Plans**: TBD (two waves: A1 cost-only, then A2 content-free registration)
+**Plans**: 9/9 plans executed in two waves (A1 cost-only, then A2 content-free registration after the orchestrator's hosted row)
+
+Wave A1 (cost only; no test id, control, fault, gate step or registry line):
+- [x] 09-01-PLAN.md — lever (3): the static-variant fold with the derivation-equality judgement, the pair mode switch and trim (a)
+- [x] 09-02-PLAN.md — trims (c) and (d) with their preserving conditions
+- [x] 09-03-PLAN.md — the measured wave A1 cost record and the wave exit evidence
+
+Wave A2 (after the hosted row; `depends_on` the A1 plans):
+- [x] 09-04-PLAN.md — EV-02: 24 registry rows for FND-01..07, CPU-01..05, MEM-01..05, the accepted set, the prose and the ten toy registries
+- [x] 09-05-PLAN.md — EV-04(a): the derived must-be-covered set, the six-row exclusion ledger and its control
+- [x] 09-06-PLAN.md — EV-04(b) and EV-03 item 3: the toy-registry drift check and the per-step pass-line guard
+- [x] 09-07-PLAN.md — EV-03: the whole-token `SRC-` match, manifest output anchoring, the memmap generator, and the zero-document verification
+- [x] 09-08-PLAN.md — the preflight partition with its committed pre-change capture and normalised diff
+- [x] 09-09-PLAN.md — bookkeeping, the requirement close and the phase exit evidence
 **Tier ceiling**: none — this phase adds no claim.
 **Cost gate**: the only phase allowed to add gate content, and only after its own hosted row. Wave A1 touches only the seven files its plan names.
 
@@ -270,7 +283,7 @@ end-to-end flows; the debt is the recorded, accepted register, not new gaps.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 9. Registered Evidence and Gate Cost | 0/TBD | Not started | - |
+| 9. Registered Evidence and Gate Cost | 9/9 | Complete    | 2026-11-24 |
 | 10. Reachable Runs and Presentation Policy | 0/TBD | Not started | - |
 | 11. Input Record and Replay | 0/TBD | Not started | - |
 | 12. Bank Modes and External Import (conditional) | 0/TBD | Not started | - |

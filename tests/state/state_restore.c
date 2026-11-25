@@ -665,8 +665,9 @@ static const rs_fam rs_families[] = {
 };
 #define RS_FAMILIES (sizeof rs_families / sizeof rs_families[0])
 
-/* Builds and runs one family against a fresh run: the number of failing rows. poisoned and digests are the run's modes. */
-static uint32_t rs_run_family(const rs_fam *f, int poisoned, int digests, uint32_t *produced)
+/* Builds and runs one family against a fresh run: the number of failing rows. poisoned is the run's target mode and digest_mode its digest
+ * mode: 0 none, 1 the nine digests of every row, 2 the nine digests of row 0, every 8th row and the last row (plan 09-02, trim (c)). */
+static uint32_t rs_run_family(const rs_fam *f, int poisoned, int digest_mode, uint32_t *produced)
 {
   su_tab t;
   su_run u;
@@ -676,7 +677,8 @@ static uint32_t rs_run_family(const rs_fam *f, int poisoned, int digests, uint32
   }
   f->build(&t);
   su_run_init(&u, rs_snap, rs_snap_n, poisoned);
-  u.digests = digests;
+  u.digests = digest_mode == 1;
+  u.digest_sampled = digest_mode == 2;
   bad = su_run_rows(&u, &t);
   if (produced != NULL) {
     *produced |= u.produced;
@@ -1580,14 +1582,19 @@ static int rs_sets_powered(void)
  * rows, are run against POISONED non-trivial targets (their STATE and PAD rows hold 0xA5, so a write of any kind is seen at once): after
  * every refusal the whole target instance is byte-identical to what it was and the nine digests are unchanged. This is the id that the
  * fault RESTORE_MUTATES_BEFORE_VALIDATE must fail: the matrices hold rows that only a STIC validator refuses, and a restore that commits
- * the CPU rows first has changed the target when it gets there. */
+ * the CPU rows first has changed the target when it gets there.
+ * Plan 09-02, trim (c): the nine digests are computed on row 0, every 8th row and the last row of each family (digest mode 2), and the two
+ * assertions that make the property hold are untouched by that sampling - the whole-instance comparison of every row at
+ * tests/state/state_util.c:479 (`memcmp(x->storage, u->ref[w->tsel], IVS_MACHINE_BYTES)`, lines 476-480 before this plan's comments) and the
+ * `produced` liveness accumulation at tests/state/state_util.c:496 (`u->produced |= 1u << (w->reason - 58u)`, line 491 before), both
+ * outside the digest branch. */
 static int rs_atomic_every_refusal(void)
 {
   uint32_t bad = 0u;
   size_t i;
   uint32_t produced = 0u;
   for (i = 0u; i < RS_FAMILIES; i++) {
-    bad += rs_run_family(&rs_families[i], 1, 1, &produced);
+    bad += rs_run_family(&rs_families[i], 1, 2, &produced);
   }
   if (!rs_args(&produced, 1)) {
     bad++;

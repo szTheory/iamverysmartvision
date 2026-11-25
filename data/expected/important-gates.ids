@@ -394,3 +394,71 @@ sta02-checklist-controls control state-class-source-drift STA-02
 # never a claim, so there is no claim row; both mechanisms are test ids of the suite bench.
 prf01-digest-first mutant bench.mutant.refuse-mutated-golden PRF-01
 prf01-digest-first mutant bench.judge.refuse-has-no-timing PRF-01
+
+# Plan 09-04 (EV-02, R2): the Phase 1 requirements FND-01 to FND-07, registered against mechanisms
+# the gate already runs. Each is a control, so tools/check/run-controls.sh requires the step to exit
+# non-zero and to print its pinned token: a step that does not actually read the record it claims to
+# check cannot refuse a doctored one. No new fault site, control, test id or gate step is added.
+# FND-01: a profile record is read, not described; a required key absent from the record and a tier
+# tag outside the vocabulary must each be refused.
+profile-record control profile-missing-key FND-01
+profile-record control profile-tier5-tag FND-01
+# FND-02: the claim ledger is consulted, not quoted; a tier outside the evidence-tier vocabulary and
+# a claim standing above its recorded tier must each be refused.
+claim-ledger control claims-unknown-tier FND-02
+claim-ledger control claims-overstated-standing FND-02
+# FND-03: a discrepancy row carries its conflict-resolution link; removing it must be refused, so a
+# log that is only prose passes and the control fails.
+discrepancy-log control discrepancies-missing-c17 FND-03
+# FND-04: a manifest is a record of identity; a changed recorded digest and a broken recipe-to-source
+# digest chain each make it a decoration rather than a record, and both must be refused.
+fixture-manifest control manifests-digest-mismatch FND-04
+fixture-manifest control manifests-recipe-source-digest FND-04
+# FND-05: the provenance rule is enforced by a scan, not by review prose, only if a planted copied
+# constant in an in-scope file is refused.
+provenance-rule control denylist-hit FND-05
+# FND-06: the reference notes are project-owned only if every row carries its source citation; a row
+# without one must be refused.
+cp1610-reference-notes control cp1610-row-without-cite FND-06
+# FND-07: a defined time-base vocabulary that is not enforced is a document; a bare `clock` where a
+# qualified unit is required must be refused.
+time-base-vocabulary control glossary-bare-clock FND-07
+
+# Plan 09-04 (EV-02, R2): the Phase 2 CPU and Phase 3 MEM requirements, registered against mechanisms
+# the gate already runs. A fault cannot pass vacuously because the gate mutates the implementation at
+# a named site and the suite must observe the mutation, so a surviving mutation fails faults-verdict;
+# a control because run-controls.sh requires the step to exit non-zero and print its pinned token.
+# GEN_EXPECT_MUTATION and GEN_MAP_MUTATION are generator faults (first column of
+# data/expected/faults/cpu.ids and memmap.ids), so they resolve as `fault`, not as a test id.
+# CPU-01: ADD_OVERFLOW proves the ALU result is compared; GEN_EXPECT_MUTATION proves the generated
+# expectation table is read at all, since an unread table makes every opcode case pass.
+cpu-opcode-expectations fault ADD_OVERFLOW CPU-01
+cpu-opcode-expectations fault GEN_EXPECT_MUTATION CPU-01
+# CPU-02: an acceptance model that is not executed cannot observe a reordered interrupt entry
+# sequence or an inverted BUSRQ/BUSAK priority.
+cpu-interrupt-model fault INT_ENTRY_ORDER CPU-02
+cpu-interrupt-model fault BUSRQ_PRIORITY CPU-02
+# CPU-03: the double-byte-data flag surviving an SDBD immediate must be observed, so the SDBD
+# behaviour is compared rather than asserted in prose.
+cpu-sdbd fault SDBD_DBD_NOT_CLEARED CPU-03
+# CPU-04: the vector suite must fail on a reversed stack growth direction, so stack direction is a
+# measured fact.
+cpu-stack-and-reset fault PUSH_DIRECTION CPU-04
+# CPU-05: a stepper whose reported trace is not read cannot show a dropped cycle stamp on its bus
+# accesses.
+cpu-bus-trace fault TCI_STROBE_STAMP CPU-05
+# MEM-01: the map is generated from the profile descriptors and the data is checked, not asserted;
+# a mutated generator and a literal map file with no profile must each be refused.
+memmap-profile-generated fault GEN_MAP_MUTATION MEM-01
+memmap-profile-generated control memmap-literal-orphan MEM-01
+# MEM-02: both mechanisms are width behaviour, so a width claim with no failing mutation is a claim
+# about code shape.
+memmap-width-masking fault MEM_ROM_NO_MASK MEM-02
+memmap-width-masking fault MEM_RAM8_NO_TRUNC MEM-02
+# MEM-03: typed loading is proven by the refusal of a load published before the segment is validated.
+content-loading fault LOAD_TABLE_BEFORE_VALIDATE MEM-03
+# MEM-04: the refusal order is the requirement, and only a mutation of the order can test it.
+content-refusal-order fault CHECK_ORDER_MALFORMED_FIRST MEM-04
+# MEM-05: the documented import format is enforced only if a container that lies about its declared
+# total byte count is refused.
+ivsc-import-format fault IVSC_TRUST_TOTAL_BYTES MEM-05

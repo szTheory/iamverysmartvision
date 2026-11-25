@@ -63,6 +63,10 @@ state.restore.poisoned-target-equals-source
 state.restore.same-profile-any-instance
 state.restore.sets-powered
 state.restore.atomic-every-refusal
+# Plan 09-02 trim (c) (EV-01, T-09-04): the nine digests are sampled on every 8th refusal plus the first and the last row of the family. What the
+# trim does NOT touch is the evidence: the whole-instance comparison of every row (tests/state/state_util.c:476, outside the digest branch) and the
+# `produced` accumulation (tests/state/state_util.c:491, unconditional) still run for every row, so a refusal that mutates its target is still caught
+# on the rows whose digests are not computed. The sampled mode is a second field, so every other case of the family keeps its every-row comparison.
 state.restore.invariants-hold-reachable
 state.restore.digest-fields-informational
 state.judge.refusal-expectation-corrupt
@@ -97,6 +101,10 @@ state.judge.row-sweep-detects-omission
 # are every length from 0 to the size minus one (the reader says truncated with the supplied length as the offset); the byte flips are every offset with XOR 0xFF and XOR 0x01 and the
 # trailer left as it was (refused by the header field or by the trailer).
 state.fuzz.truncations
+# Plan 09-02 trim (d) (EV-01, T-09-05): an unsealed flip takes the first value only (XOR 0xFF) and skips the second (XOR 0x01); the resealed path keeps
+# both. The offset set is unchanged by construction - the offset loop bound (`k < fz.n`), `fz_pick` and `masks[]` in tests/state/state_fuzz.c are
+# untouched - and the guard that a flip moves the digest is enforced operationally by the acceptance refusal (`c.accepted != 0u`,
+# tests/state/state_fuzz.c:945-948): with the trailer left as it was, a payload byte the digest does not cover would be accepted and this id would fail.
 state.fuzz.byte-flips
 # Plan 08-15 Task 2: the resealed families, which reach the validators and the invariants. A flip with the trailer recomputed ends in a refusal with a pair of the allowed set of its
 # position (the header fields by their own reasons, the profile id by its form 71 or the registry 72, the parameter digest 74, the slot records 76 and 78, the frame of a section 78, a count

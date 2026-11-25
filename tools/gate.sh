@@ -4,6 +4,17 @@
 # Measurement lines (not tokens; the summary line ignores them): `step-time <name> <s>` per step,
 # then `gate-env ncpu=<n> cc=<id>-<version>` and `gate-cpu user=<s> sys=<s>` (children CPU from
 # POSIX `times`, read in this shell after the controls `wait`), then `gate-time total=<s>`.
+# Preflight partition (A-05): the 29 steps whose script references neither $IVS_GATE_DIR nor build/
+# are consistency checks that need no built artifact, so they run FIRST and print
+# `gate-preflight: PASS steps=<n>/<n>` (or `gate-preflight: FAIL <name>...`) before the 9 producers
+# start: a typo in a checker is reported before the build and the suites, not after them. The class
+# is DERIVED from each step's source text by the grep below, never a hand-maintained list, and it is
+# printed as `gate-partition preflight=<n> producers=<n>: <names...>` before any step runs, so a step
+# that starts reading the results directory shows up as a change of class in the log.
+# The OUTPUT order is unchanged: each step's whole stdout+stderr is buffered in
+# $GATE_TMP/step.out.<name> (one reused file cannot hold 38 bodies) and replayed after both groups in
+# steps.have order, so `cat`, keep_fails, the bad lines, the tokens and step-time are all emitted in
+# the sorted-name order a reader of an earlier log expects. Nothing is emitted during execution.
 # Job summary (D-42): when GITHUB_STEP_SUMMARY is non-empty, the EXIT trap runs
 # tools/check/ci-summary.sh on the files kept in $GATE_TMP (summary.line, measure.lines,
 # step.times, fail.lines) before the temp dir is removed. It prints nothing and its status is
@@ -101,26 +112,84 @@ want=$(grep -c . "$GATE_TMP/steps.want")
 for name in $(comm -23 "$GATE_TMP/steps.want" "$GATE_TMP/steps.have"); do bad gate-step-missing "$name"; done
 for name in $(comm -13 "$GATE_TMP/steps.want" "$GATE_TMP/steps.have"); do bad gate-step-extra "$name"; done
 
-# Run every step (sorted, never stopping at the first failure).
+# Preflight partition: a step is a producer iff its script names the results directory or build/.
+# Anything else is a pure consistency check and runs in the first group. Both lists are sorted
+# because they are derived from steps.have, which is sorted.
+: > "$GATE_TMP/preflight"
+: > "$GATE_TMP/producers"
+for name in $(cat "$GATE_TMP/steps.have"); do
+  if grep -q -e 'IVS_GATE_DIR' -e 'build/' "$CHECK_DIR/steps/$name.sh"; then
+    printf '%s\n' "$name" >> "$GATE_TMP/producers"
+  else
+    printf '%s\n' "$name" >> "$GATE_TMP/preflight"
+  fi
+done
+pf_n=$(grep -c . "$GATE_TMP/preflight")
+pr_n=$(grep -c . "$GATE_TMP/producers")
+printf 'gate-partition preflight=%s producers=%s: %s\n' "$pf_n" "$pr_n" \
+  "$(awk '{ printf "%s%s", sep, $0; sep = " " }' "$GATE_TMP/preflight")"
+
+# Run every step (sorted within each group, never stopping at the first failure), preflight first.
+# Output goes to a per-step buffer and nothing is printed here: the replay below does all of it.
+for group in preflight producers; do
+  for name in $(cat "$GATE_TMP/$group"); do
+    t0=$(date +%s)
+    if sh "$CHECK_DIR/steps/$name.sh" > "$GATE_TMP/step.out.$name" 2>&1; then
+      printf '0\n' > "$GATE_TMP/rc.$name"
+    else
+      printf '1\n' > "$GATE_TMP/rc.$name"
+    fi
+    printf '%s %s\n' "$(date +%s)" "$t0" > "$GATE_TMP/t.$name"
+  done
+  # The early verdict: printed as soon as the preflight group has finished, before any producer
+  # runs. It never stops the run - the producers and the replay still happen.
+  if [ "$group" = preflight ]; then
+    pf_failed=
+    for name in $(cat "$GATE_TMP/preflight"); do
+      [ "$(cat "$GATE_TMP/rc.$name")" -eq 0 ] || pf_failed="$pf_failed $name"
+    done
+    if [ -z "$pf_failed" ]; then
+      printf 'gate-preflight: PASS steps=%s/%s\n' "$pf_n" "$pf_n"
+    else
+      printf 'gate-preflight: FAIL%s\n' "$pf_failed"
+    fi
+  fi
+done
+
+# Replay in steps.have order, which is sorted name order: the same cat, keep_fails, pass/fail
+# branch, token accumulation and step-time line as a single sorted loop emitted before the
+# partition existed. keep_fails runs HERE, not during execution, so $GATE_TMP/fail.lines - and so
+# the job summary - keeps its order.
 passed=0
 for name in $(cat "$GATE_TMP/steps.have"); do
-  t0=$(date +%s)
-  if sh "$CHECK_DIR/steps/$name.sh" > "$GATE_TMP/step.out" 2>&1; then
-    cat "$GATE_TMP/step.out"
-    keep_fails "$GATE_TMP/step.out"
-    if grep -q -F -e "-- $name pass" "$GATE_TMP/step.out"; then
-      passed=$((passed + 1))
-      toks=$(sed -n "s/^-- $name pass //p" "$GATE_TMP/step.out" | tr '\n' ' ')
-      tokens="$tokens$toks"
-    else
-      bad gate-step-no-pass-line "$name"
-    fi
+  cat "$GATE_TMP/step.out.$name"
+  keep_fails "$GATE_TMP/step.out.$name"
+  if [ "$(cat "$GATE_TMP/rc.$name")" -eq 0 ]; then
+    # The pass line must be the step's LAST non-empty line (A-02/O2, EV-03; review WR-02). This is
+    # the only place the rule can cover all 38 steps: run-controls.sh's copy runs once per distinct
+    # CHECK, so the five steps no control names would otherwise keep only the weaker
+    # 'a pass line exists somewhere'. The rule itself lives in tools/check/pass-line.sh so the
+    # runner-selftest st-gate-pass-line case can make it fail for its intended reason. Both shapes
+    # report gate-step-no-pass-line, and the detail says which: gate.sh has no ids inventory of its
+    # own tokens, so a second token here would be a name nothing pins, and the shape is carried by
+    # the detail instead. The token is reused rather than renamed because the invariant is one
+    # invariant - a step that exits 0 must END with its verdict - and every earlier log reads this
+    # name.
+    pl_rc=0
+    sh "$CHECK_DIR/pass-line.sh" "$name" "$GATE_TMP/step.out.$name" || pl_rc=$?
+    case $pl_rc in
+      0)
+        passed=$((passed + 1))
+        toks=$(sed -n "s/^-- $name pass //p" "$GATE_TMP/step.out.$name" | tr '\n' ' ')
+        tokens="$tokens$toks"
+        ;;
+      2) bad gate-step-no-pass-line "$name (the pass line is not the last non-empty line)" ;;
+      *) bad gate-step-no-pass-line "$name" ;;
+    esac
   else
-    cat "$GATE_TMP/step.out"
-    keep_fails "$GATE_TMP/step.out"
     bad gate-step-failed "$name"
   fi
-  step_time "$name" "$(date +%s)" "$t0"
+  step_time "$name" $(cat "$GATE_TMP/t.$name")
 done
 
 # Negative controls.

@@ -13,3 +13,6 @@ memmap-dump-diff
 memmap-dump-stale
 memmap-dump-missing
 memmap-exception-unknown
+# Plan 09-07 (EV-03 item 5): the real generator refuses a mirror that is not a power of two;
+# memmap-generator-missing is forbidden because a refusal is not the liveness guard.
+memmap-generator-refused
