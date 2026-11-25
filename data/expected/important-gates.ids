@@ -497,3 +497,13 @@ rights-ledger control rights-ledger RTS-01
 # refused, and a pin that matches nothing refused as stale. RTS-02 takes no exclusion-ledger row: the
 # mechanism is real, and an exclusion row would be the registry declining to cover what it just built.
 rights-naming control rights-naming RTS-02
+# Phase 13 (plan 13-03): EV-06's claim ceiling under one new gate name, claim-ceiling. D-50 is two
+# conditions inside tools/check/kinds/claim.cmake: no tier but source-expectation may stand
+# established, and an established claim rests only on fields tagged tier1-primary-doc. Two must-fail
+# controls isolate the two conditions, and one legal positive keeps both satisfied while the step
+# fails for an unrelated reason, so a rule that refused every established claim would fail it. The
+# live ledger is asserted, never edited: CL-0002 rests on three tier1-primary-doc fields and
+# claims=28 provisional=27 is the criterion that catches an edit made to satisfy a test.
+claim-ceiling control claim-established-non-source EV-06
+claim-ceiling control claim-established-without-tier1 EV-06
+claim-ceiling control claim-established-positive EV-06

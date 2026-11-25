@@ -319,6 +319,10 @@ Phase 7 notes on the register above (plan 07-12, 2026-11-13; Delegated decision,
 - **SCN-02 and D11:** SCN-02 is complete on documented-route terms (Phase 5 and 6 close-out precedent); D11 stays open and not performed, so there is no claim-ledger entry and no tier for any real-EXEC result, and no known EXEC or GROM digest is recorded in the repository.
 - **D9 (applied to stale text):** the licence is MIT and release publication is a delegated flow; the lines that still called the licence an owner gate (the Out of Scope list, the owner-gate row above, REL-01) were corrected at the Phase 7 transition. A release ships the program only as tracked source; neither the runner nor `ivs_pack` nor `ivs_asm` is installed, so nothing downloadable is runnable yet (`docs/packaging.md`, "Release content").
 
+Phase 13 notes on the register above (plan 13-03, 2026-11-25; Delegated decision, owner authorization 2026-11-09; nothing here is a new owner decision and each row is reversible by the evidence in its last column):
+
+- **D-32 (note):** the mechanical half landed as two findings in tools/check/kinds/claim.cmake — claim-established-non-source and claim-established-without-tier1 — with two must-fail controls and one legal positive; CL-0002 is asserted unchanged and is the only live established claim the rule permits.
+
 D5 and the cartridge format were decided by the fan-out protocol on 2026-11-11 (Delegated decision, owner authorization 2026-11-09). D6, D7, D8 and D12 were not decided in Phase 1; each was decided by the fan-out protocol in the phase that needed it (rows above). D10 and D11 remain hard stops with evidence marked missing (D-05) and were not performed.
 
 ### Recommendations (not owner decisions)

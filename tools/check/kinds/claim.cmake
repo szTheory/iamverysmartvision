@@ -3,7 +3,13 @@
 # Failure tokens: claim-order: <id>, claim-unknown-profile: <id>, claim-dangling-path: <id>,
 #   claim-handoff-artifact: <id>,
 #   claim-unknown-field: <id>/<field>, claim-overstated: <id>,
+#   claim-established-non-source: <id>, claim-established-without-tier1: <id>/<field>,
 #   claim-measured-without-d10: <id>, claim-type: <id>/depends_on.
+# claim-established-non-source and claim-established-without-tier1 are D-50's two conditions (EV-06):
+# no tier but source-expectation may stand established, and an established claim rests only on fields
+# tagged tier1-primary-doc. Rule (b) is not vacuous despite the early return below: schema/claim.txt
+# already refuses an established claim whose depends_on is absent or empty (`when standing=established
+# nonblank depends_on`), so the case rule (b) judges always reaches the loop.
 # Stats: claims=<n>, provisional=<n>.
 # The profile file is read once per profile id and cached in GLOBAL properties.
 cmake_minimum_required(VERSION 3.25)
@@ -94,6 +100,13 @@ function(hook_record id rec)
     gate_fail(claim-measured-without-d10 "${id}")
   endif()
 
+  # D-50 condition (a): no tier but source-expectation may stand established. This sits before the
+  # artifact path check and before every early return below, so a row whose artifact or profile is
+  # missing is still refused by name for its tier alone rather than escaping the rule.
+  if(standing STREQUAL "established" AND NOT tier STREQUAL "source-expectation")
+    gate_fail(claim-established-non-source "${id}")
+  endif()
+
   # The artifact must be a repo-relative file under ROOT.
   if(NOT "${artifact}" STREQUAL "")
     if(NOT "${artifact}" MATCHES "^[A-Za-z0-9._/-]+$" OR "${artifact}" MATCHES "^/" OR "${artifact}" MATCHES "[.][.]"
@@ -167,11 +180,20 @@ function(hook_record id rec)
       continue()
     endif()
     get_property(ftag GLOBAL PROPERTY "CLAIM_PROFILE_TAG:${profile}:${field}")
+    # D-50 condition (b): an established claim rests only on tier1-primary-doc fields, so every
+    # other tag is refused by name, not only the weak ones the rule below names.
+    if(standing STREQUAL "established" AND NOT ftag STREQUAL "tier1-primary-doc")
+      gate_fail(claim-established-without-tier1 "${id}/${field}")
+    endif()
     if("${ftag}" MATCHES "^(tier4-community|tier5-emulator-hint|inference|unknown-default-chosen)$")
       set(weak TRUE)
     endif()
   endforeach()
-  # Weakest-field rule: an established claim may not rest on a weak field.
+  # Weakest-field rule: an established claim may not rest on a weak field. Kept rather than folded
+  # into D-50's condition (b): D-50 is strictly stronger, but both are findings, and a control's
+  # EXPECT is a substring match, so a row that trips both keeps every existing control satisfied.
+  # Dropping this rule would delete a refusal (GUARDRAILS-v0.3 V2) and would leave a non-established
+  # claim's weak-field record unjudged.
   if(weak AND standing STREQUAL "established")
     gate_fail(claim-overstated "${id}")
   endif()

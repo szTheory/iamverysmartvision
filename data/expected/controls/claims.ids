@@ -23,3 +23,11 @@ claims-measured-without-d10
 text-changelog-untagged
 claims-handoff-id-duplicate
 claims-handoff-disposition
+# Plan 13-03 (EV-06, D-50, GUARDRAILS-v0.3 V4): the claim ceiling's three controls. Two must-fail
+# controls isolate the two conditions: an established row moved off source-expectation, and an
+# established row resting on a field tagged tier2-first-party-adjacent, and one legal positive keeps
+# both conditions satisfied while the step fails for an unrelated reason, because a control directory
+# can never express "this passes" (ctl_one refuses control-exit-zero).
+claim-established-non-source
+claim-established-without-tier1
+claim-established-positive
