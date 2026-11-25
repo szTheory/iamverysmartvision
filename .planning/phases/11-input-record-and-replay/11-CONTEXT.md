@@ -135,3 +135,82 @@ failure class)"* is the risk, and the counter is the guards, not the equality.
 - **A new gate step** — forbidden this milestone.
 
 </deferred>
+
+---
+
+<amendments>
+## Amendments (A-11-01 to A-11-05)
+
+**Status:** appended 2026-11-25 after `11-RESEARCH.md`, before any plan exists.
+Each exists because the research measured the tree and found a frozen sentence
+unsatisfiable, vacuous, or factually wrong. Per `PLAN-LESSONS` 19, reality wins and
+the plan sentence becomes a recorded deviation.
+
+### A-11-01 — "all nine domains observed" cannot be asserted in process
+
+**Measured:** the in-process fake host carries only the boot stub and `diag-cpu-1`,
+and a run on those observes **6 of 9** domains — no video, no audio, no psglog.
+**Decision:** the "all nine domains observed" clause moves to the **process case**
+on `demo-lamp-tone-pass`, whose golden observes all nine; the in-process equality
+case asserts the nine digest lines, ≥1 applied event, `input.consumed ==
+input.events` and the `at_tick` list. The criterion is met, on the case that can
+actually observe what it claims.
+
+### A-11-02 — seven refusal tokens cannot cover the grammar
+
+**Measured:** arity and hex refusals are unavoidable, so seven classes leave two
+ungoverned inputs. **Decision:** **nine** tokens (the seven frozen classes plus
+`ivsl-arity` and `ivsl-hex`), +2 test ids. The refusal family is closed, which is
+what the criterion is for; the count of seven was an estimate, not a property.
+
+### A-11-03 — the vacuity this phase must actually close, which the frozen text does not name
+
+**Measured, and this is the phase's real risk:** if the replay runs on a scenario
+that **still carries its own `input` lines**, a `--replay-input` that parses the
+log and then *ignores it* produces a **byte-identical report** and passes every
+guard on the frozen list. The 08-16 body could do nothing for the same reason: a
+no-op is indistinguishable from the plain run when the plain run is the oracle.
+**Decision:** the process case runs the replay on a scenario with **no `input`
+lines** — `sed '/^input /d'` into a temp copy with its `id` kept — so the report
+can only match if the log's events were applied. The in-process case additionally
+proves the guard by running the same pair with a **stripped** log and requiring a
+difference. This is the liveness guard the criterion asks for; the frozen list is
+what it asks for, not the whole of it.
+
+### A-11-04 — the format must be a pure library TU, not code in `main.c`
+
+**Measured:** `tests/faults.cmake:155` fails configure for an owner translation
+unit outside `IVS_RUNNER_SOURCES`, so the two named faults **cannot have sites**
+in `main.c` or `hostio.c`. **Decision:** the format is `runner/ivsl.c`, a pure
+library TU operating on memory, with the file I/O in `main.c` — which is also
+GUARDRAILS §2.7. `runner-files` moves 16 → 18.
+
+### A-11-05 — `no-content-digest` as written cannot fail, and has a hole
+
+**Measured:** no well-formed log can contain 32 hex characters (decimal fields are
+≤ 19 digits, hex fields 8), so "zero runs of 32 or more hex digits" is
+**unfalsifiable**; and a slug that is all digits would be missed by a hex-only
+scan. **Decision:** one id with **two assertions** — a real produced log has zero
+hits, and a committed stand-in that *does* carry a 32-hex run has at least one —
+plus a scan that covers a digit-only slug. A check that cannot fail is the lesson
+20 defect, and the criterion's own wording is the trap.
+
+### Also recorded, measured, and not amendments to the criteria
+
+- **Domain 18 is not free.** `IVS_DIGEST_INPUT` is live and already carries five
+  core faults (`data/expected/faults/run.ids:76,79,81,84,114`). What is free is the
+  runner-side record/replay path; the two new faults are registered there and the
+  criterion's "digest domain 18" is read as "the input domain", which is correct.
+- **No API addition, so no R1 retarget.** `ivs_info` has no input field (the
+  Phase 8 gap is real), but `ivs_run_report.input_consumed` exists and the runner
+  already accumulates it (`runner/exec.c:1098-1100`); only `report.c:341` needs the
+  **effective** count under replay. Zero golden movement.
+- **Do not take flag bit `2u`.** Three rows of `runner.exec.roundtrip-option-range`
+  (`tests/runner/runner_exec.c:2935-2937`) assert it is refused.
+- **The event cap is measured, not chosen:** a `demo-lamp-tone-pass` log is 319
+  bytes (6 events, 85-byte header) and the largest is 3,482 bytes; the cap is **64
+  events** (= `IVS_SCN_MAX_INPUTS`) and **4,096 bytes**.
+- **TOOL-01's close is one commit.** It is `Pending`, so its registry rows read
+  `important-gates-unknown-id` until it flips; the flip, the four registry rows,
+  the ten toy lines and the two toy requirement records move together.
+</amendments>
