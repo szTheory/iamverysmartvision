@@ -53,4 +53,5 @@ is consistent by construction: the derived must-be-covered set equals the toy re
 | STA-01 | Phase 8 | Complete |
 | STA-02 | Phase 8 | Complete |
 | PRF-01 | Phase 8 | Complete |
+| FND-98 | Phase 1 | Complete |
 | FND-99 | Phase 1 | Complete |

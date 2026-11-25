@@ -5,8 +5,8 @@
 # three) that name the evidence the requirement actually has. There are two categories: a close
 # record or release action instead of a gate mechanism, and gate-machinery self-evidence (a step,
 # the local gate command, a suite test id, or the registration commit itself).
-# The toy tree needs none of them: its two requirement records list exactly the ids the toy registry
-# covers and mark every one of them Complete, so the derived set and the registry agree by
-# construction.
-#allow-empty: the toy registry covers every requirement its records mark Complete
+# The good tree carries one well-formed row (FND-98) and this overlay keeps it, so the only
+# difference from the good tree is the stale row below; every other id the toy records mark
+# Complete is in the toy registry, so the derived set and the registry agree by construction.
+FND-98 close_record_only_toy_positive_row_for_the_ledger_format
 EV-99 not_a_gate_mechanism_at_all

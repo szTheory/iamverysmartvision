@@ -1,0 +1,8 @@
+# Requirements that are marked Complete and are excluded from the important-gates must-be-covered
+# set (plan 09-05, EV-04, amendment A-01). This overlay is the good tree's ledger plus two
+# malformed rows (review WR-01): a bare '<REQ>' row and a '<REQ> none' row. Both are refused by
+# important-gates-excluded-malformed and neither enters the exclusion set, so the requirement each
+# one names keeps its registry line and no coverage token may fire.
+FND-98 close_record_only_toy_positive_row_for_the_ledger_format
+API-02
+API-03 none

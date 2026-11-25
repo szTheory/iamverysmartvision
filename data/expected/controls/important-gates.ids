@@ -20,3 +20,7 @@ important-gates-req-uncovered-phase7
 # important-gates-unknown-id only: a Complete-and-unregistered requirement also trips the generic
 # important-gates-uncovered-gate, so forbidding that token would make the control unsatisfiable.
 important-gates-complete-uncovered
+# Plan 09 review (WR-01): the exclusion ledger's declared row format, which the step now validates.
+# A bare '<REQ>' row and a '<REQ> none' row are both refused as important-gates-excluded-malformed,
+# and neither enters the exclusion set, so the requirement each names keeps its registry line.
+important-gates-excluded-malformed

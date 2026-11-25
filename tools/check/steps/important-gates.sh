@@ -26,6 +26,11 @@
 # different file from the registry, so deleting a registry line cannot delete the requirement from
 # the must-be-covered set; a missing ledger file is an empty exclusion set, which is safe because
 # the six requirements it lists then fail important-gates-complete-uncovered.
+# The ledger's own row format is validated in the same pass (review WR-01): a row must be exactly
+# '<REQ> <reason>', with <REQ> shaped like a requirement id and <reason> at least three
+# underscore-joined words; 'none' is refused. A row that fails is reported as
+# important-gates-excluded-malformed and does NOT enter the exclusion set, so it can neither
+# silence a requirement nor pass as a recorded exclusion.
 # The accepted set is also the must-be-covered set, so a plan that accepts a requirement also
 # appends one toy line for it to the toy registry, to every control that overlays a whole-file toy
 # registry, and one row for it to the two toy requirement records of the good tree.
@@ -56,7 +61,9 @@
 #   Complete in a record with neither a registry line nor a row in the exclusion ledger);
 #   important-gates-excluded-stale: <REQ> (an exclusion ledger row whose requirement is not marked
 #   Complete); important-gates-uncovered-gate: <REQ> (an accepted requirement with no registry line;
-#   also the registry file missing).
+#   also the registry file missing); important-gates-excluded-malformed: line <n>: <row> (a ledger
+#   row that is not exactly '<REQ> <reason>' with <REQ> shaped like a requirement id and <reason> at
+#   least three underscore-joined words, or that gives 'none' as the reason).
 # A Complete requirement that is neither registered nor excluded emits BOTH
 # important-gates-complete-uncovered and important-gates-uncovered-gate, because the derived accepted
 # set is also the must-be-covered set. important-gates-complete-uncovered is authoritative in that
@@ -88,8 +95,30 @@ for f in "$ROOT/.planning/REQUIREMENTS.md" "$ROOT"/.planning/milestones/*-REQUIR
 done
 sort -u "$tmp/complete" -o "$tmp/complete"
 : > "$tmp/excluded"
+: > "$tmp/excl.bad"
 if [ -f "$exp/important-gates-excluded.ids" ]; then
-  awk '!/^#/ && NF { print $1 }' "$exp/important-gates-excluded.ids" > "$tmp/excluded"
+  # The ledger is the one file that can remove a requirement from the must-be-covered set, so its
+  # declared row format is enforced here and a malformed row contributes nothing (review WR-01).
+  # The reason is words joined by underscores, at least three of them: two or more underscores
+  # with no empty word, so a leading, trailing or doubled underscore is malformed too.
+  awk '
+    /^#/ { next }
+    NF == 0 { next }
+    {
+      words = gsub(/_/, "_", $2) + 1
+      if (NF != 2 || $1 !~ /^[A-Z][A-Z0-9]*-[0-9][0-9]*$/ || $2 == "none" \
+          || words < 3 || $2 ~ /__/ || $2 ~ /^_/ || $2 ~ /_$/) {
+        print "MALFORMED line " FNR ": " $0
+        next
+      }
+      print $1
+    }
+  ' "$exp/important-gates-excluded.ids" > "$tmp/excl.raw"
+  grep -v -e '^MALFORMED ' "$tmp/excl.raw" > "$tmp/excluded" || :
+  grep -e '^MALFORMED ' "$tmp/excl.raw" >> "$tmp/excl.bad" || :
+  while IFS= read -r l; do
+    printf 'important-gates-excluded-malformed %s\n' "${l#MALFORMED }" >> "$find"
+  done < "$tmp/excl.bad"
 fi
 
 # The three inventories, one `<mechanism> <id>` line each.
