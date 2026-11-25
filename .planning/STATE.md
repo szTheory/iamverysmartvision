@@ -4,18 +4,18 @@ milestone: v0.2.0
 milestone_name: Registered Evidence, Reachable Runs, Replayable Input (Phases 9 to 12)</summary>
 current_phase: 11
 current_phase_name: Input Record and Replay
-current_plan: 3
+current_plan: 4
 status: executing
-stopped_at: Completed 11-02-PLAN.md
-last_updated: "2026-11-25T14:26:00.000Z"
+stopped_at: Completed 11-03-PLAN.md
+last_updated: "2026-11-25T14:44:09.719Z"
 last_activity: 2026-11-25
 last_activity_desc: Phase 10 complete, transitioned to Phase 11
-state_head: 159905304990f85a102419a7485c220bffd8156d
+state_head: 86a2682c9f722a95be8a10afcae2ce4c5a587e2d
 progress:
   total_phases: 4
   completed_phases: 8
   total_plans: 20
-  completed_plans: 17
+  completed_plans: 18
 ---
 
 # Project State
@@ -30,10 +30,10 @@ See: .planning/PROJECT.md (updated 2026-11-24)
 ## Current Position
 
 Phase: 11 (Input Record and Replay) — EXECUTING
-Current Plan: 3
+Current Plan: 4
 Total Plans in Phase: 5
-Status: Executing
-Last activity: 2026-11-25 — 11-02 complete: the record/replay tracer, the IVSL library and the two judge self-controls
+Status: Ready to execute
+Last activity: 2026-11-25 — 11-03 complete: the nine typed refusals with their acceptance rows and the rights check with its stand-in
 
 **Phase 10 final counts:** `steps=38/38 controls=389/389 claims=28 provisional=27 gates=109
 lines=333 faults=235/235 cases=13 goldens=29 claim-refs=26 prefix-files=11 doc-files=62 docs=63`.
@@ -231,6 +231,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | Phase 10 P6 | ~55 min wall clock | 3 tasks | 12 files |
 | Phase 11 P01 | 14m | 2 tasks | 1 files |
 | Phase 11 P02 | 27m | 3 tasks | 8 files |
+| Phase 11 P03 | 24m | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -536,6 +537,11 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 10]: The three requirement flips land with their five ledger rows in one commit: EV-05 gets three registry rows (two claims controls, one text control), PKG-05 and TOOL-04 get exclusion rows. Identity 57 - 12 = 45 = 45.
 - [Phase 11]: Nine refusal tokens, not seven (A-11-02): arity carries the line-shape triggers and trailing the file-shape triggers
 - [Phase 11]: The ivsl v1 document is committed before any code; the seven-field table cannot express a digest, a name, a length, a byte or a path, and the absence is enforced by the writer and runner.record.no-content-digest
+- [Phase 11]: the document's content-value trigger is fed to arity, where the document and the parser both put it, not to unknown-directive
+- [Phase 11]: a 20-digit at_tick field is arity, not tick-bound: the decimal reader refuses the field's width before the bound is judged
+- [Phase 11]: the tick bound is pinned as IVS_SCN_TIME_MAX - 1 accepted and IVS_SCN_TIME_MAX refused, because the parser refuses tick >= IVS_IVSL_TICK_MAX
+- [Phase 11]: hex runs are counted in both cases in runner.record.no-content-digest: the project's digests are lower case, so an upper-case-only scan would miss the stand-in's value
+- [Phase 11]: no-content-digest lands in 11-03 rather than 11-04: both halves live in the record section of tests/runner/runner_exec.c
 
 ### Pending Todos
 
@@ -601,8 +607,8 @@ The row itself is left as recorded and this note sits under it.
 
 ## Session Continuity
 
-Last session: 2026-11-25T14:26:00.000Z
-Stopped at: Completed 11-02-PLAN.md
+Last session: 2026-11-25T14:44:09.640Z
+Stopped at: Completed 11-03-PLAN.md
 Resume file: None
 
 ## Recorded Constraints for the Next Milestone
