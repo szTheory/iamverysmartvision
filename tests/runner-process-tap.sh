@@ -1161,6 +1161,199 @@ elif [ ! -s "$tmp/rt-usage" ]; then
 fi
 result runner-process.roundtrip.refuse-range
 
+# The input log at the process boundary (plan 11-04, TOOL-01, D-15, A-11-01, A-11-03): the phase's only process case, and the
+# only place a produced log is a file at all. It is one id with every assertion below, because they share the same four runs
+# and the milestone allows zero new gate steps.
+#   Record      `demo-lamp-tone-pass` with `--record-input` into a mktemp directory: a 319-byte log whose four header lines
+#               are the scenario's own and whose six `at_tick` lines carry the scenario's own six ticks in order, with the
+#               report saying input.events 6 and input.consumed 6. The event list is checked against the scenario, not
+#               against itself, so a log that listed its own events would be caught.
+#   Exclusive   the same command on the same path: exit 14, one stderr line, no report, and `cmp` equality with a saved copy,
+#               so the file was neither overwritten nor truncated (T-11-13).
+#   Stripped    `sed '/^input /d'` makes a copy with 0 `input` lines that keeps its `id` and its four `run-to` lines. This is
+#               A-11-03: with the scenario's own `input` lines present, a `--replay-input` that parsed the file and ignored it
+#               would produce a byte-identical report and every assertion below would still pass.
+#   Replay      the stripped copy with `--replay-input`: the recorded report byte for byte, `host.calls` included, all nine
+#               `digest.*` lines present, non-`-` and equal, the four live counts nonzero, and `digest.input` equal to the
+#               committed golden's value on both runs. That last comparison is the frozen oracle, not the recorded run alone.
+#               Nine domains are observable here and only here: the in-process fake host carries two images and produces no
+#               video, no audio and no PSG write (A-11-01).
+#   No log      the same stripped copy with no `--replay-input`: a different report with input.events 0. Without this the
+#               equality above would not be shown to depend on the log at the process boundary.
+#   Rights      the real 319-byte file, with the `scenario` and `profile` values masked and their shape pinned, carries zero
+#               runs of 32 or more hex digits; the same masked text with the golden's `digest.input` line appended carries at
+#               least one, so the check is shown able to fail (A-11-05, lesson 20).
+#   Header-only `diag-boot-pass` has no `input` line: it is recordable, its report says input.events 0, and its log is exactly
+#               the four header lines, so a run that applied no event is not refused for having nothing to write (O-3).
+#   Refusals    a missing, an oversize (4,200 bytes), a malformed log and the two options together: exit 14, no report, and for
+#               the mutual exclusion no file created either - the observable form of the ordering that makes "no state change"
+#               a property (T-11-15). The usage text names both options.
+#   Posture     the two `content ... user` refusal blocks of runner/main.c name exactly the five derived-art options and no log
+#               option, so the log's exemption cannot drift by someone adding a line (T-11-17, D15).
+mkdir "$tmp/rec" || exit 1
+# hex32_runs: the number of runs of 32 or more hex digits in the text on stdin, one run counted once however long it is.
+hex32_runs() {
+  awk '{
+    s = $0
+    while (length(s) > 0) {
+      if (match(s, /[0-9A-Fa-f]+/)) {
+        if (RLENGTH >= 32) { total++ }
+        s = substr(s, RSTART + RLENGTH)
+      } else { break }
+    }
+  } END { print total + 0 }'
+}
+# rec_refuse <name> <expected first stderr line> <args...>: exit 14, no report and exactly that one line on stderr.
+rec_refuse() {
+  _rn=$1; _rm=$2; shift 2
+  run_one "$tmp" "rec-refuse-$_rn" "$ivs_run" --content-dir "$content" "$@"
+  [ "$rc" -eq 14 ] && [ "$hung" -eq 0 ] && [ ! -s "$tmp/runs/rec-refuse-$_rn.out" ] || { ok=0; why record-refuse "$_rn: exit $rc, hung $hung or a report"; }
+  [ "$(sed -n 1p "$tmp/runs/rec-refuse-$_rn.err")" = "ivs-run: $_rm" ] || { ok=0; why record-refuse "$_rn: the first stderr line is not 'ivs-run: $_rm'"; }
+  [ "$(wc -l < "$tmp/runs/rec-refuse-$_rn.err" | tr -d ' ')" -eq 1 ] || { ok=0; why record-refuse "$_rn: stderr is not exactly one line"; }
+}
+: > "$tmp/why"
+ok=1
+# Record.
+run_one "$tmp" rec-record "$ivs_run" --content-dir "$content" --record-input "$tmp/rec/pass.ivsl" "$scen/demo-lamp-tone-pass.ivss"
+judge rec-record 0 pass - "" || ok=0
+rec_log="$tmp/rec/pass.ivsl"
+[ "$(wc -c < "$rec_log" | tr -d ' ')" -eq 319 ] || { ok=0; why record-log "the log is $(wc -c < "$rec_log" | tr -d ' ') bytes, expected 319"; }
+for _h in 'ivsl 1' 'scenario demo-lamp-tone-pass' 'profile intv-2609-ntsc-family-p1' 'content project'; do
+  grep -q -x -F -e "$_h" "$rec_log" || { ok=0; why record-log "the header line '$_h' is absent"; }
+done
+[ "$(sed -n 1p "$rec_log")" = 'ivsl 1' ] || { ok=0; why record-log "the first line is not 'ivsl 1'"; }
+[ "$(sed -n 2p "$rec_log")" = 'scenario demo-lamp-tone-pass' ] || { ok=0; why record-log "the second line is not the scenario's"; }
+[ "$(sed -n 3p "$rec_log")" = 'profile intv-2609-ntsc-family-p1' ] || { ok=0; why record-log "the third line is not the profile's"; }
+[ "$(sed -n 4p "$rec_log")" = 'content project' ] || { ok=0; why record-log "the fourth line is not 'content project'"; }
+[ "$(grep -c -E '^at_tick [0-9]+ c0=[0-9A-F]{8} c1=[0-9A-F]{8}$' "$rec_log")" -eq 6 ] || { ok=0; why record-log "the log does not carry six well-formed event lines"; }
+_ticks=$(sed -n 's/^at_tick \([0-9][0-9]*\) .*$/\1/p' "$rec_log" | tr '\n' ' ')
+[ "$_ticks" = '100000 220000 340000 460000 580000 700000 ' ] || { ok=0; why record-log "the event ticks are '$_ticks', not the scenario's six"; }
+[ "$(rkey "$tmp/runs/rec-record.out" input.events)" = 6 ] || { ok=0; why record-log "input.events is '$(rkey "$tmp/runs/rec-record.out" input.events)', expected 6"; }
+[ "$(rkey "$tmp/runs/rec-record.out" input.consumed)" = 6 ] || { ok=0; why record-log "input.consumed is '$(rkey "$tmp/runs/rec-record.out" input.consumed)', expected 6"; }
+# Exclusive create: the same path again is refused and the file is untouched.
+cp "$rec_log" "$tmp/rec/first"
+run_one "$tmp" rec-exists "$ivs_run" --content-dir "$content" --record-input "$rec_log" "$scen/demo-lamp-tone-pass.ivss"
+[ "$rc" -eq 14 ] && [ "$hung" -eq 0 ] && [ ! -s "$tmp/runs/rec-exists.out" ] || { ok=0; why record-exists "exit $rc, hung $hung or a report"; }
+[ "$(sed -n 1p "$tmp/runs/rec-exists.err")" = 'ivs-run: --record-input: output file exists, refusing to overwrite it' ] || { ok=0; why record-exists "the first stderr line is not the exclusive-create refusal"; }
+[ "$(wc -l < "$tmp/runs/rec-exists.err" | tr -d ' ')" -eq 1 ] || { ok=0; why record-exists "stderr is not exactly one line"; }
+cmp -s "$tmp/rec/first" "$rec_log" || { ok=0; why record-exists "the refused run changed the file"; }
+# The stripped copy (A-11-03).
+sed '/^input /d' "$scen/demo-lamp-tone-pass.ivss" > "$tmp/rec/pass-noinput.ivss"
+[ "$(grep -c '^input ' "$tmp/rec/pass-noinput.ivss")" -eq 0 ] || { ok=0; why record-strip "the copy still carries input lines"; }
+grep -q -x -F -e 'id demo-lamp-tone-pass' "$tmp/rec/pass-noinput.ivss" || { ok=0; why record-strip "the copy lost its id line"; }
+[ "$(grep -c '^run-to ' "$tmp/rec/pass-noinput.ivss")" -eq 4 ] || { ok=0; why record-strip "the copy does not keep the four run-to lines"; }
+# Replay into the stripped copy.
+run_one "$tmp" rec-replay "$ivs_run" --content-dir "$content" --replay-input "$rec_log" "$tmp/rec/pass-noinput.ivss"
+judge rec-replay 0 pass - "" || ok=0
+cmp -s "$tmp/runs/rec-record.out" "$tmp/runs/rec-replay.out" || {
+  ok=0; why record-replay "the replayed report differs from the recorded one (< recorded, > replayed):"
+  diff "$tmp/runs/rec-record.out" "$tmp/runs/rec-replay.out" | sed -n '1,12p' >> "$tmp/why"
+}
+[ "$(rkey "$tmp/runs/rec-replay.out" input.events)" = 6 ] || { ok=0; why record-replay "the replay's input.events is not 6"; }
+[ "$(rkey "$tmp/runs/rec-replay.out" input.consumed)" = 6 ] || { ok=0; why record-replay "the replay's input.consumed is not 6"; }
+for _k in digest.cpu digest.mem digest.images digest.instance digest.composite digest.video digest.audio digest.input digest.psglog; do
+  _va=$(rkey "$tmp/runs/rec-record.out" "$_k")
+  _vb=$(rkey "$tmp/runs/rec-replay.out" "$_k")
+  [ -n "$_va" ] && [ "$_va" != - ] || { ok=0; why record-digest "$_k is absent or - in the recorded report"; }
+  [ -n "$_vb" ] && [ "$_vb" != - ] || { ok=0; why record-digest "$_k is absent or - in the replayed report"; }
+  [ "$_va" = "$_vb" ] || { ok=0; why record-digest "$_k differs between the recorded and the replayed report"; }
+done
+for _k in output.video.bytes output.audio.bytes output.psglog.records input.events; do
+  for _r in rec-record rec-replay; do
+    _v=$(rkey "$tmp/runs/$_r.out" "$_k")
+    case $_v in '' | 0 | *[!0-9]*) ok=0; why record-live "$_k is '$_v' in $_r, expected a nonzero count" ;; esac
+  done
+done
+_goldin=$(sed -n 's/^digest\.input //p' "$root/data/golden/demo-lamp-tone-pass.digests")
+[ "$_goldin" = '832906ce775d32a98ae607386ce4bbcdd4d08017e3b914b6089e50a5364c7761' ] || { ok=0; why record-golden "the golden's digest.input is '$_goldin'"; }
+for _r in rec-record rec-replay; do
+  [ "$(rkey "$tmp/runs/$_r.out" digest.input)" = "$_goldin" ] || { ok=0; why record-golden "digest.input of $_r is not the committed golden's value"; }
+done
+# The no-log witness: the same stripped copy without the option must differ.
+run_one "$tmp" rec-nolog "$ivs_run" --content-dir "$content" "$tmp/rec/pass-noinput.ivss"
+judge rec-nolog 10 guest-fail 'assert=4 line=27 mem 02F2 == 007E got 00FF' "" || ok=0
+cmp -s "$tmp/runs/rec-record.out" "$tmp/runs/rec-nolog.out" && { ok=0; why record-nolog "the run with no --replay-input gave the recorded report: the equality does not depend on the log"; }
+[ "$(rkey "$tmp/runs/rec-nolog.out" input.events)" = 0 ] || { ok=0; why record-nolog "the run with no --replay-input says input.events $(rkey "$tmp/runs/rec-nolog.out" input.events)"; }
+# The rights check on the file the runner actually wrote (A-11-05): mask the two name fields, pin their shape.
+sed -e 's/^scenario .*/scenario x/' -e 's/^profile .*/profile x/' "$rec_log" > "$tmp/rec/masked.ivsl"
+[ "$(hex32_runs < "$tmp/rec/masked.ivsl")" -eq 0 ] || { ok=0; why record-rights "the produced log carries $(hex32_runs < "$tmp/rec/masked.ivsl") runs of 32 or more hex digits, expected 0"; }
+printf 'digest.input %s\n' "$_goldin" > "$tmp/rec/standin.ivsl"
+cat "$tmp/rec/masked.ivsl" "$tmp/rec/standin.ivsl" > "$tmp/rec/withdigest.ivsl"
+[ "$(hex32_runs < "$tmp/rec/withdigest.ivsl")" -ge 1 ] || { ok=0; why record-rights "the stand-in carries no 32-hex run: the check cannot fail"; }
+_slug=$(sed -n 's/^scenario //p' "$rec_log")
+_prof=$(sed -n 's/^profile //p' "$rec_log")
+case $_slug in '' | *[!a-z0-9-]*) ok=0; why record-rights "the masked scenario value '$_slug' is outside [a-z0-9-]" ;; esac
+[ "${#_slug}" -ge 1 ] && [ "${#_slug}" -le 48 ] || { ok=0; why record-rights "the masked scenario value is ${#_slug} bytes, outside 1..48"; }
+case $_prof in '' | *[!a-z0-9-]*) ok=0; why record-rights "the masked profile value '$_prof' is outside [a-z0-9-]" ;; esac
+[ "${#_prof}" -ge 1 ] && [ "${#_prof}" -le 64 ] || { ok=0; why record-rights "the masked profile value is ${#_prof} bytes, outside 1..64"; }
+# A header-only log is valid (research O-3).
+run_one "$tmp" rec-headonly "$ivs_run" --content-dir "$content" --record-input "$tmp/rec/head.ivsl" "$scen/diag-boot-pass.ivss"
+judge rec-headonly 0 pass - "" || ok=0
+[ "$(rkey "$tmp/runs/rec-headonly.out" input.events)" = 0 ] || { ok=0; why record-headonly "input.events is not 0"; }
+[ "$(wc -l < "$tmp/rec/head.ivsl" | tr -d ' ')" -eq 4 ] || { ok=0; why record-headonly "the log is not four lines"; }
+[ "$(grep -c '^at_tick ' "$tmp/rec/head.ivsl")" -eq 0 ] || { ok=0; why record-headonly "a log of a scenario with no input carries an event line"; }
+_hl=0
+while IFS= read -r _ln; do _hl=$((_hl + ${#_ln} + 1)); done < "$tmp/rec/head.ivsl"
+[ "$_hl" -eq 80 ] && [ "$(wc -c < "$tmp/rec/head.ivsl" | tr -d ' ')" -eq "$_hl" ] || {
+  ok=0; why record-headonly "the header-only log is $(wc -c < "$tmp/rec/head.ivsl" | tr -d ' ') bytes, its four lines give $_hl, expected 80"
+}
+# A run that never reached the executor names its empty log (review WR-01): `needs-user-exec` is a designed
+# missing-fixture outcome (exit 13), so the file created at the exclusive create stays empty and the tool says so on one
+# stderr line. The file is left in place, the same choice `--frame-ppm` and `--video-raw` make for a run that delivered
+# nothing, rather than removed: an empty .ivsl is describable and a silent removal of a path the operator named would be
+# the only such place. The report is unchanged.
+run_one "$tmp" rec-mf "$ivs_run" --content-dir "$content" --record-input "$tmp/rec/mf.ivsl" "$scen/needs-user-exec.ivss"
+[ "$rc" -eq 13 ] && [ "$hung" -eq 0 ] || { ok=0; why record-empty "exit $rc, hung $hung, expected 13"; }
+[ "$(rkey "$tmp/runs/rec-mf.out" outcome)" = 'missing-fixture' ] || { ok=0; why record-empty "the report's outcome is not missing-fixture"; }
+[ "$(sed -n 1p "$tmp/runs/rec-mf.err")" = 'ivs-run: --record-input: no event log was written, the file is empty' ] || {
+  ok=0; why record-empty "the empty log is not named on stderr: '$(sed -n 1p "$tmp/runs/rec-mf.err")'"
+}
+[ "$(wc -l < "$tmp/runs/rec-mf.err" | tr -d ' ')" -eq 1 ] || { ok=0; why record-empty "stderr is not exactly one line"; }
+[ -f "$tmp/rec/mf.ivsl" ] || { ok=0; why record-empty "the created log file is gone"; }
+[ -f "$tmp/rec/mf.ivsl" ] && [ "$(wc -c < "$tmp/rec/mf.ivsl" | tr -d ' ')" -eq 0 ] || { ok=0; why record-empty "the log file is not empty"; }
+# The refusals.
+rec_refuse missing 'log not readable: missing' --replay-input "$tmp/rec/nope.ivsl" "$scen/demo-lamp-tone-pass.ivss"
+head -c 4200 /dev/zero | tr '\0' 'a' > "$tmp/rec/big.ivsl"
+rec_refuse oversize 'log not readable: too large' --replay-input "$tmp/rec/big.ivsl" "$scen/demo-lamp-tone-pass.ivss"
+printf 'digest.input %s\n' "$_goldin" > "$tmp/rec/bad.ivsl"
+rec_refuse malformed '--replay-input: line 1 reason unknown-directive' --replay-input "$tmp/rec/bad.ivsl" "$scen/demo-lamp-tone-pass.ivss"
+rec_refuse directory 'log not readable: not a regular file' --replay-input "$tmp/rec" "$scen/demo-lamp-tone-pass.ivss"
+run_one "$tmp" rec-refuse-both "$ivs_run" --content-dir "$content" --record-input "$tmp/rec/both.ivsl" --replay-input "$rec_log" "$scen/demo-lamp-tone-pass.ivss"
+[ "$rc" -eq 14 ] && [ "$hung" -eq 0 ] && [ ! -s "$tmp/runs/rec-refuse-both.out" ] || { ok=0; why record-refuse "both: exit $rc, hung $hung or a report"; }
+[ "$(sed -n 1p "$tmp/runs/rec-refuse-both.err")" = 'ivs-run: --record-input and --replay-input are exclusive' ] || { ok=0; why record-refuse "both: the first stderr line is not the exclusion message"; }
+[ "$(sed -n 2p "$tmp/runs/rec-refuse-both.err")" = 'usage: ivs-run [options] <scenario.ivss>' ] || { ok=0; why record-refuse "both: the usage text does not follow"; }
+[ ! -e "$tmp/rec/both.ivsl" ] || { ok=0; why record-refuse "both: the refusal created a file"; }
+# The usage text names both options, in --help and in a refusal's stderr.
+run_one "$tmp" rec-help "$ivs_run" --help
+[ "$rc" -eq 0 ] || { ok=0; why record-usage "--help exited $rc"; }
+for _o in '--record-input <file>' '--replay-input <file>'; do
+  grep -q -F -e "$_o" "$tmp/runs/rec-help.out" || { ok=0; why record-usage "--help does not name '$_o'"; }
+  grep -q -F -e "$_o" "$tmp/runs/rec-refuse-both.err" || { ok=0; why record-usage "the refusal's usage text does not name '$_o'"; }
+done
+# The rights posture is a checked property (T-11-17, D15): the two `content ... user` blocks name exactly the five
+# derived-art options and no log option.
+rec_block() {
+  awk -v start="$2" 'NR < start { next } NR == start { p = 1 } p { print } p && NR > start && /^  }$/ { exit }' \
+    "$root/runner/main.c" > "$1"
+}
+_b1=$(grep -n -F -e 'if (frame_ppm_path != NULL || video_raw_path != NULL) {' "$root/runner/main.c" | sed -n 's/:.*//p')
+_b2=$(grep -n -F -e 'if (audio_raw_path != NULL || psg_log_path != NULL || audio_wav_path != NULL) {' "$root/runner/main.c" | sed -n 's/:.*//p')
+if [ -z "$_b1" ] || [ -z "$_b2" ]; then
+  ok=0; why record-posture "a content-user refusal block of runner/main.c is gone"
+else
+  rec_block "$tmp/rec/block1" "$_b1"
+  rec_block "$tmp/rec/block2" "$_b2"
+  _o1=$(grep -o -E -- '--[a-z][a-z-]*' "$tmp/rec/block1" | sort -u | tr '\n' ' ')
+  _o2=$(grep -o -E -- '--[a-z][a-z-]*' "$tmp/rec/block2" | sort -u | tr '\n' ' ')
+  [ "$_o1" = '--frame-ppm --video-raw ' ] || { ok=0; why record-posture "the frame refusal block names '$_o1', expected '--frame-ppm --video-raw '"; }
+  [ "$_o2" = '--audio-raw --audio-wav --psg-log-out ' ] || { ok=0; why record-posture "the audio refusal block names '$_o2', expected '--audio-raw --audio-wav --psg-log-out '"; }
+  for _o in --record-input --replay-input; do
+    grep -q -F -e "$_o" "$tmp/rec/block1" && { ok=0; why record-posture "the frame refusal block names $_o"; }
+    grep -q -F -e "$_o" "$tmp/rec/block2" && { ok=0; why record-posture "the audio refusal block names $_o"; }
+  done
+fi
+result runner-process.record.command-line
+
 # The metamorphic judge (plan 07-07, D-23, D-06, A-16): per line `<idA> <idB> differ=<keys> equal=<keys>` of
 # data/expected/scenario-pairs.ids, the reports of the two scenario cases above are related to each other (no expected value).
 pairs="$root/data/expected/scenario-pairs.ids"

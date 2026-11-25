@@ -88,6 +88,10 @@ typedef struct fake_host {
   uint32_t ppm_calls;
   size_t ppm_len;      /* bytes of the last PPM the hook received */
   uint8_t ppm_bytes[IVS_RUNNER_PPM_MAX];
+  /* The input log of the executor (plan 11-02): a parsed log to replay, or a buffer to record into. */
+  const ivs_ivsl_log *log_in;
+  uint8_t *log_out;
+  uint64_t log_out_cap;
 } fake_host;
 
 static int fh_read(void *ctx, const char *relpath, size_t cap, uint8_t *buf, size_t *len)
@@ -321,7 +325,7 @@ static uint32_t rx_exec(const char *text, fake_host *h, ivs_runner_result *res)
     host.buffer_bytes = h->buffer_bytes;
   }
   if (h->out_max != 0u || h->wav_rate != 0u || h->slice_ticks != 0u || h->video_out_max != 0u || h->rt_flags != 0u ||
-      h->rt_ticks != 0u) {
+      h->rt_ticks != 0u || h->log_in != NULL || h->log_out != NULL) {
     ivs_runner_options o;
     memset(&o, 0, sizeof o);
     o.flags = h->rt_flags;
@@ -330,6 +334,9 @@ static uint32_t rx_exec(const char *text, fake_host *h, ivs_runner_result *res)
     o.video_out_max_bytes = h->video_out_max;
     o.wav_rate = h->wav_rate;
     o.slice_ticks = h->slice_ticks;
+    o.log_in = h->log_in;
+    o.log_out = h->log_out;
+    o.log_out_capacity = h->log_out_cap;
     out = ivs_runner_execute(s, &host, &o, res);
   } else {
     out = ivs_runner_execute(s, &host, NULL, res);
@@ -2978,7 +2985,7 @@ static int ex_roundtrip_option_range(void)
 static int ex_roundtrip_cut_cap(void)
 {
 #ifdef IVS_RUNNER_FAULT_RUN
-  /* The fault executables (tests/CMakeLists.txt FAULT_DEFINITIONS, the precedent of IVS_STATE_FAULT_RUN) re-run this suite once for each of the 19 runner
+  /* The fault executables (tests/CMakeLists.txt FAULT_DEFINITIONS, the precedent of IVS_STATE_FAULT_RUN) re-run this suite once for each of the 21 runner
    * faults. Each cut costs about a millisecond (a snapshot hashes the image arrays), so the 65 of this id are about 0.06 s of cpu in each of them, more
    * than the rest of the three round-trip ids together, and no fault is aimed at the cap. The id runs whole in the normal executables of both presets;
    * under a fault it only says so. A fault whose must-fail id this becomes needs this branch removed. */
@@ -3014,6 +3021,1248 @@ done:
   rx_free(&h);
   return rc;
 #endif
+}
+
+/* ---- the record/replay hook (plan 11-02, TOOL-01, D-15, A-11-03) ---- */
+
+/* The two fragments the record section builds its texts from: the two input lines of the recording run, and the
+ * diagnostic program's run-to line, which is where they are inserted. */
+static const char rx_record_inputs[] = "input at_tick=100 c0=KEY_1 c1=0x0\n"
+                                      "input at_tick=200 c0=0x0 c1=DISC_E\n";
+static const char rx_record_run_to[] = "run-to 4000 cpu-cycles stop halted\n";
+/* The partial-run id's schedule: the first event is applied before the diagnostic halts, the second is past the halt, so
+ * a run of this text applies one of its two events (runner.record.partial-run, review BL-01). */
+static const char rx_partial_inputs[] = "input at_tick=100 c0=KEY_1 c1=0x0\n"
+                                        "input at_tick=3000 c0=0x0 c1=DISC_E\n";
+
+/* The nine report digest lines, in the writer's key order (the rows of exec.c's ex_domains). */
+static const char *const rx_digest_keys[] = {"digest.cpu",    "digest.mem",    "digest.images", "digest.instance", "digest.composite",
+                                             "digest.video",  "digest.audio",  "digest.input",  "digest.psglog"};
+
+/* The value of key as a decimal, into *v. 1 when the line is there exactly once and is digits only. */
+static int rx_u64_value(const char *report, const char *key, uint64_t *v)
+{
+  char t[RX_VALUE_CAP];
+  uint64_t n = 0u;
+  if (!rx_value(report, key, t, sizeof t) || t[0] == '\0') {
+    return 0;
+  }
+  for (size_t i = 0u; t[i] != '\0'; i++) {
+    if (t[i] < '0' || t[i] > '9') {
+      return 0;
+    }
+    n = n * 10u + (uint64_t)(t[i] - '0');
+  }
+  *v = n;
+  return 1;
+}
+
+/* The bytes an IVSL v1 log of these three header values must take, from the strings themselves (the writer's exact
+ * spelling, never a hard-coded total). */
+static uint64_t rx_ivsl_header_bytes(const char *scenario, const char *profile, const char *content)
+{
+  char text[256];
+  int n = snprintf(text, sizeof text, "ivsl 1\nscenario %s\nprofile %s\ncontent %s\n", scenario, profile, content);
+  return n > 0 ? (uint64_t)n : 0u;
+}
+
+/* The bytes one event line of these values must take, from the same shape the writer emits. */
+static uint64_t rx_ivsl_event_bytes(uint64_t tick, uint32_t c0, uint32_t c1)
+{
+  char text[64];
+  int n = snprintf(text, sizeof text, "at_tick %llu c0=%08X c1=%08X\n", (unsigned long long)tick, (unsigned)c0, (unsigned)c1);
+  return n > 0 ? (uint64_t)n : 0u;
+}
+
+/* The record/replay judgement of a pair of reports (plan 11-02): the three guard clauses first, then the equality. The
+ * order is the point. Any two of the guards are satisfiable vacuously - a replay that parses the log and ignores it
+ * reports input.events 0 and input.consumed 0, which passes consumed == events on 0 == 0 - so a pair is only accepted
+ * when all three hold and the two texts are byte-equal, host.calls included (the log is a caller buffer, never a host
+ * call, so nothing has to be excluded). Findings, in this fixed order:
+ *   record-no-events       either report says no event was given, or the log holds none
+ *   record-count-mismatch  input.events of a report is not the log's event count
+ *   record-not-consumed    input.consumed of a report is not its own input.events
+ *   record-differs         the two reports differ somewhere
+ * Returns 0 when both reports describe a run that applied the log's events and the texts are byte-equal; returns 1 and
+ * sets *why to the first finding otherwise. */
+static int rx_record_compare(const char *a, const char *b, uint32_t log_events, const char **why)
+{
+  uint64_t ea = 0u;
+  uint64_t eb = 0u;
+  uint64_t ca = 0u;
+  uint64_t cb = 0u;
+  *why = "";
+  if (log_events == 0u || !rx_u64_value(a, "input.events", &ea) || !rx_u64_value(b, "input.events", &eb) || ea == 0u ||
+      eb == 0u) {
+    *why = "record-no-events";
+    return 1;
+  }
+  if (ea != (uint64_t)log_events || eb != (uint64_t)log_events) {
+    *why = "record-count-mismatch";
+    return 1;
+  }
+  if (!rx_u64_value(a, "input.consumed", &ca) || !rx_u64_value(b, "input.consumed", &cb) || ca != ea || cb != eb) {
+    *why = "record-not-consumed";
+    return 1;
+  }
+  if (strcmp(a, b) != 0) {
+    *why = "record-differs";
+    return 1;
+  }
+  return 0;
+}
+
+/* runner.record.replay-equals-straight (plan 11-02, TOOL-01, D-15, A-11-03): a run that carried two input lines records
+ * an IVSL v1 log, and the same scenario text with those lines removed replays that log into a byte-identical report,
+ * host.calls included; the same text with no log at all gives a different report, so the equality is only possible
+ * because the log was applied. Three runs:
+ *   A  the diagnostic text with `input at_tick=100 c0=KEY_1 c1=0x0` and `input at_tick=200 c0=0x0 c1=DISC_E` before its
+ *      run-to, with a log buffer: ends pass, and the log it wrote parses back to those two events at those ticks;
+ *   B  the same bytes with those two lines removed, replaying A's log: ends pass and passes the record comparison;
+ *   B' the same bytes with the lines removed and no log: ends pass, reports input.events 0 and input.consumed 0, and
+ *      differs from A - without B' this case would be the 08-16 defect one level up, because a replay that parses the
+ *      log and ignores it is indistinguishable from the plain run when the scenario still carries its own input lines.
+ * The diagnostic program halts at tick 2,084 and reads no controller word, so both events are applied and its 18 asserts
+ * are unchanged; the nine digest lines are present, non-`-` and equal in A and B (six of the nine domains are observable
+ * on the fake host's images, so "all nine observed" is the process case's clause, A-11-01). */
+static int ex_record_replay_equals_straight(void)
+{
+  fake_host a;
+  fake_host b;
+  fake_host c;
+  ivs_runner_result ra;
+  ivs_runner_result rb;
+  ivs_runner_result rc;
+  ivs_ivsl_log lg;
+  ivs_ivsl_error err;
+  char diag[RX_SCN_CAP];
+  char atext[RX_SCN_CAP];
+  char btext[RX_SCN_CAP];
+  char insert[sizeof rx_record_inputs + sizeof rx_record_run_to];
+  char va[RX_VALUE_CAP];
+  char vb[RX_VALUE_CAP];
+  const char *why = "";
+  uint64_t want_bytes;
+  uint32_t outa;
+  uint32_t outb;
+  uint32_t outc;
+  int rc_code = IVS_TEST_FAIL;
+  fh_init(&a);
+  fh_init(&b);
+  fh_init(&c);
+  a.log_out = malloc(IVS_IVSL_MAX_BYTES);
+  a.log_out_cap = IVS_IVSL_MAX_BYTES;
+  if (a.log_out == NULL) {
+    goto done;
+  }
+  (void)snprintf(insert, sizeof insert, "%s%s", rx_record_inputs, rx_record_run_to);
+  if (!rx_diag(diag, sizeof diag) || !rx_replace(diag, rx_record_run_to, insert, atext, sizeof atext) ||
+      !rx_replace(atext, rx_record_inputs, "", btext, sizeof btext)) {
+    goto done;
+  }
+  /* A: the run with the two input lines, recording. */
+  outa = rx_exec(atext, &a, &ra);
+  if (outa != IVS_RUNNER_OUTCOME_PASS || ra.exit_code != 0u || a.out == NULL || !rx_complete(a.out, &ra)) {
+    ivs_test_diag("A (recording): outcome %u exit %u\n%s", (unsigned)outa, (unsigned)ra.exit_code, a.out != NULL ? a.out : "");
+    goto done;
+  }
+  want_bytes = rx_ivsl_header_bytes("diag-boot-pass", "intv-2609-ntsc-family-p1", "project") +
+               rx_ivsl_event_bytes(100u, IVS_CTRL_KEY_1, 0u) + rx_ivsl_event_bytes(200u, 0u, IVS_CTRL_DISC_E);
+  if (ra.log_out_bytes != want_bytes) {
+    ivs_test_diag("the log took %llu bytes, want %llu", (unsigned long long)ra.log_out_bytes, (unsigned long long)want_bytes);
+    goto done;
+  }
+  memset(&lg, 0, sizeof lg);
+  memset(&err, 0, sizeof err);
+  if (ivs_ivsl_parse(a.log_out, (size_t)ra.log_out_bytes, &lg, &err) != 0 || lg.n_events != 2u) {
+    ivs_test_diag("the produced log does not parse: reason %s line %u events %u", ivs_ivsl_reason_name(err.reason),
+                  (unsigned)err.line, (unsigned)lg.n_events);
+    goto done;
+  }
+  if (lg.version != IVS_IVSL_VERSION || lg.content != IVS_IVSL_CONTENT_PROJECT || strcmp(lg.scenario, "diag-boot-pass") != 0 ||
+      strcmp(lg.profile, "intv-2609-ntsc-family-p1") != 0) {
+    ivs_test_diag("log header: version %u content %u scenario '%s' profile '%s'", (unsigned)lg.version, (unsigned)lg.content,
+                  lg.scenario, lg.profile);
+    goto done;
+  }
+  /* The at_tick list is what the recorded run applied, and the two words are the ones it applied with it. */
+  if (lg.events[0].at_tick != 100u || lg.events[0].controller[0] != IVS_CTRL_KEY_1 || lg.events[0].controller[1] != 0u ||
+      lg.events[1].at_tick != 200u || lg.events[1].controller[0] != 0u || lg.events[1].controller[1] != IVS_CTRL_DISC_E) {
+    ivs_test_diag("log events: %llu/%08X/%08X %llu/%08X/%08X", (unsigned long long)lg.events[0].at_tick,
+                  (unsigned)lg.events[0].controller[0], (unsigned)lg.events[0].controller[1],
+                  (unsigned long long)lg.events[1].at_tick, (unsigned)lg.events[1].controller[0],
+                  (unsigned)lg.events[1].controller[1]);
+    goto done;
+  }
+  /* B: the same bytes with the two lines removed, replaying the log. */
+  b.log_in = &lg;
+  outb = rx_exec(btext, &b, &rb);
+  if (outb != IVS_RUNNER_OUTCOME_PASS || rb.exit_code != 0u || b.out == NULL || !rx_complete(b.out, &rb)) {
+    ivs_test_diag("B (replaying): outcome %u exit %u\n%s", (unsigned)outb, (unsigned)rb.exit_code, b.out != NULL ? b.out : "");
+    goto done;
+  }
+  if (rx_record_compare(a.out, b.out, 2u, &why) != 0) {
+    ivs_test_diag("the recorded and the replayed reports: %s", why);
+    goto done;
+  }
+  /* B': the same bytes with no log: the report can only differ if the log's events were what made A and B equal. */
+  outc = rx_exec(btext, &c, &rc);
+  if (outc != IVS_RUNNER_OUTCOME_PASS || rc.exit_code != 0u || c.out == NULL || !rx_complete(c.out, &rc)) {
+    ivs_test_diag("B' (no log): outcome %u exit %u\n%s", (unsigned)outc, (unsigned)rc.exit_code, c.out != NULL ? c.out : "");
+    goto done;
+  }
+  if (!rx_is(c.out, "input.events", "0") || !rx_is(c.out, "input.consumed", "0")) {
+    goto done;
+  }
+  if (strcmp(a.out, c.out) == 0) {
+    ivs_test_diag("the no-log run of the same text has the recorded run's report: the equality above is vacuous");
+    goto done;
+  }
+  if (rx_record_compare(a.out, c.out, 2u, &why) != 1 || strcmp(why, "record-no-events") != 0) {
+    ivs_test_diag("the pair with the no-log run is not rejected by the guard: %d '%s'", rx_record_compare(a.out, c.out, 2u, &why),
+                  why);
+    goto done;
+  }
+  /* All nine digest lines are present, not `-`, and equal in A and B. */
+  for (size_t i = 0u; i < sizeof rx_digest_keys / sizeof rx_digest_keys[0]; i++) {
+    va[0] = '\0';
+    vb[0] = '\0';
+    if (!rx_value(a.out, rx_digest_keys[i], va, sizeof va) || !rx_value(b.out, rx_digest_keys[i], vb, sizeof vb) || va[0] == '-' ||
+        vb[0] == '-' || strcmp(va, vb) != 0) {
+      ivs_test_diag("%s: A '%s' B '%s'", rx_digest_keys[i], va, vb);
+      goto done;
+    }
+  }
+  rc_code = IVS_TEST_PASS;
+done:
+  free(a.log_out);
+  a.log_out = NULL;
+  rx_free(&a);
+  rx_free(&b);
+  rx_free(&c);
+  return rc_code;
+}
+
+/* runner.record.partial-run (plan 11-05 review BL-01, D-15, A-11-03): the recorder writes the prefix the run applied,
+ * never the schedule the scenario declared. Every other recording id runs a schedule it consumes in full, so there
+ * `input.consumed` equals `input.events` (2 == 2 in the in-process equality, 6 == 6 in the process case) and a recorder
+ * that took its count from `x->sched_n` instead of `x->rec->input_consumed` would pass all of them. This id is the
+ * liveness for that read: the diagnostic text with two input lines, the second past the tick the program halts on, so
+ * the run applies exactly the first and still ends pass. Asserted:
+ *   - input.events 2 and input.consumed 1, so consumed is strictly below events;
+ *   - the log is the four header lines plus exactly one event line, `at_tick 100` with KEY_1 and a zero c1, and no other
+ *     event line - the second event is absent because the run never applied it;
+ *   - the log parses back to one event at that tick with those words, so a log carrying the whole schedule fails the byte
+ *     count and the parse rather than a comment.
+ * IVS_FAULT_RECORD_WHOLE_SCHEDULE (`n = x->sched_n`) is the mutation this id is the detector for. */
+static int ex_record_partial_run(void)
+{
+  fake_host h;
+  ivs_runner_result r;
+  ivs_ivsl_log lg;
+  ivs_ivsl_error err;
+  char diag[RX_SCN_CAP];
+  char text[RX_SCN_CAP];
+  char insert[sizeof rx_partial_inputs + sizeof rx_record_run_to];
+  uint64_t want;
+  uint32_t out;
+  int code = IVS_TEST_FAIL;
+  fh_init(&h);
+  h.log_out = malloc(IVS_IVSL_MAX_BYTES);
+  h.log_out_cap = IVS_IVSL_MAX_BYTES;
+  if (h.log_out == NULL) {
+    goto done;
+  }
+  (void)snprintf(insert, sizeof insert, "%s%s", rx_partial_inputs, rx_record_run_to);
+  if (!rx_diag(diag, sizeof diag) || !rx_replace(diag, rx_record_run_to, insert, text, sizeof text)) {
+    goto done;
+  }
+  out = rx_exec(text, &h, &r);
+  if (out != IVS_RUNNER_OUTCOME_PASS || r.exit_code != 0u || h.out == NULL || !rx_complete(h.out, &r)) {
+    ivs_test_diag("the partial run: outcome %u exit %u\n%s", (unsigned)out, (unsigned)r.exit_code, h.out != NULL ? h.out : "");
+    goto done;
+  }
+  if (!rx_is(h.out, "input.events", "2") || !rx_is(h.out, "input.consumed", "1")) {
+    goto done;
+  }
+  want = rx_ivsl_header_bytes("diag-boot-pass", "intv-2609-ntsc-family-p1", "project") +
+         rx_ivsl_event_bytes(100u, IVS_CTRL_KEY_1, 0u);
+  if (r.log_out_bytes != want) {
+    ivs_test_diag("the partial log took %llu bytes, want %llu: the header and the one applied event line",
+                  (unsigned long long)r.log_out_bytes, (unsigned long long)want);
+    goto done;
+  }
+  memset(&lg, 0, sizeof lg);
+  memset(&err, 0, sizeof err);
+  if (ivs_ivsl_parse(h.log_out, (size_t)r.log_out_bytes, &lg, &err) != 0) {
+    ivs_test_diag("the partial log does not parse: reason %s line %u", ivs_ivsl_reason_name(err.reason), (unsigned)err.line);
+    goto done;
+  }
+  if (lg.n_events != 1u) {
+    ivs_test_diag("the partial log holds %u events, want 1: the recorder wrote events the run did not apply",
+                  (unsigned)lg.n_events);
+    goto done;
+  }
+  if (lg.events[0].at_tick != 100u || lg.events[0].controller[0] != IVS_CTRL_KEY_1 || lg.events[0].controller[1] != 0u) {
+    ivs_test_diag("the partial log's one event: %llu/%08X/%08X", (unsigned long long)lg.events[0].at_tick,
+                  (unsigned)lg.events[0].controller[0], (unsigned)lg.events[0].controller[1]);
+    goto done;
+  }
+  code = IVS_TEST_PASS;
+done:
+  free(h.log_out);
+  h.log_out = NULL;
+  rx_free(&h);
+  return code;
+}
+
+/* runner.record.format-roundtrip (plan 11-02, TOOL-01, D-15): writing a log, parsing it and writing it again is
+ * byte-identical, and parse and format are fixpoints of each other; the byte figures are computed from the strings the
+ * case built, never hard-coded; the event cap is tied to the constant it comes from; and a refusal leaves the caller's
+ * output untouched. Five assertions, in this order:
+ *   1. the round trip: a real recorded log parses, and formatting the parsed log gives the same bytes and the same
+ *      length;
+ *   2. the fixpoint: format, parse, format, parse leaves the events, the ticks, both words of each event, the names and
+ *      the content class unchanged, and the two later buffers are byte-equal to the first;
+ *   3. the sizes: the four header lines come to the bytes their own strings spell (80 for diag-boot-pass and
+ *      intv-2609-ntsc-family-p1 with `content project`), and the produced log is that header plus one event line per
+ *      event, each counted from its own tick (36 bytes each here: a 39-byte line is a six-digit tick, and the
+ *      demo-lamp-tone-pass log of 85 + 6 * 39 = 319 bytes is measured by the process case of plan 11-04, not here,
+ *      because the in-process suite has no lamp-tone image);
+ *   4. the two caps: IVS_IVSL_MAX_EVENTS is 64 and is IVS_SCN_MAX_INPUTS, and a buffer one byte short of the log's
+ *      length is refused with nothing written;
+ *   5. a refusal leaves the output untouched: a one-byte-truncated log is refused `trailing` and the poisoned log the
+ *      caller passed is still poisoned. This is the contract the nine per-token cases of plan 11-03 repeat. */
+static int ex_record_format_roundtrip(void)
+{
+  fake_host h;
+  ivs_runner_result res;
+  ivs_ivsl_log l1;
+  ivs_ivsl_log l2;
+  ivs_ivsl_log l3;
+  ivs_ivsl_log poison;
+  ivs_ivsl_error err;
+  char atext[RX_SCN_CAP];
+  char btext[RX_SCN_CAP];
+  char insert[sizeof rx_record_inputs + sizeof rx_record_run_to];
+  char *first = NULL;
+  char *second = NULL;
+  char *third = NULL;
+  uint64_t n1 = 0u;
+  uint64_t n2 = 0u;
+  uint64_t n3 = 0u;
+  uint64_t header;
+  uint64_t want;
+  uint32_t out;
+  int rc = IVS_TEST_FAIL;
+  fh_init(&h);
+  first = malloc(IVS_IVSL_MAX_BYTES);
+  second = malloc(IVS_IVSL_MAX_BYTES);
+  third = malloc(IVS_IVSL_MAX_BYTES);
+  if (first == NULL || second == NULL || third == NULL) {
+    goto done;
+  }
+  (void)snprintf(insert, sizeof insert, "%s%s", rx_record_inputs, rx_record_run_to);
+  if (!rx_diag(btext, sizeof btext) || !rx_replace(btext, rx_record_run_to, insert, atext, sizeof atext)) {
+    goto done;
+  }
+  h.log_out = (uint8_t *)first;
+  h.log_out_cap = IVS_IVSL_MAX_BYTES;
+  out = rx_exec(atext, &h, &res);
+  if (out != IVS_RUNNER_OUTCOME_PASS || res.exit_code != 0u || h.out == NULL || !rx_complete(h.out, &res) || res.log_out_bytes == 0u) {
+    ivs_test_diag("the recording run: outcome %u exit %u log bytes %llu", (unsigned)out, (unsigned)res.exit_code,
+                  (unsigned long long)res.log_out_bytes);
+    goto done;
+  }
+  n1 = res.log_out_bytes;
+  memset(&l1, 0, sizeof l1);
+  memset(&err, 0, sizeof err);
+  if (ivs_ivsl_parse((const uint8_t *)first, (size_t)n1, &l1, &err) != 0 || l1.n_events != 2u) {
+    ivs_test_diag("the recorded log does not parse: reason %s line %u", ivs_ivsl_reason_name(err.reason), (unsigned)err.line);
+    goto done;
+  }
+  /* 1. write, parse, write again: byte-identical, same length. */
+  memset(second, 0xA5, IVS_IVSL_MAX_BYTES);
+  if (ivs_ivsl_format(&l1, (uint8_t *)second, IVS_IVSL_MAX_BYTES, &n2) != 0 || n2 != n1 ||
+      memcmp(first, second, (size_t)n1) != 0) {
+    ivs_test_diag("the second write took %llu bytes (first %llu) or differs", (unsigned long long)n2, (unsigned long long)n1);
+    goto done;
+  }
+  /* 2. parse and format are fixpoints of each other. */
+  memset(&l2, 0, sizeof l2);
+  memset(&err, 0, sizeof err);
+  if (ivs_ivsl_parse((const uint8_t *)second, (size_t)n2, &l2, &err) != 0) {
+    ivs_test_diag("the second log does not parse: reason %s line %u", ivs_ivsl_reason_name(err.reason), (unsigned)err.line);
+    goto done;
+  }
+  if (ivs_ivsl_format(&l2, (uint8_t *)third, IVS_IVSL_MAX_BYTES, &n3) != 0 || n3 != n1 || memcmp(first, third, (size_t)n1) != 0) {
+    ivs_test_diag("the third write differs from the first (%llu bytes against %llu)", (unsigned long long)n3, (unsigned long long)n1);
+    goto done;
+  }
+  if (l2.n_events != l1.n_events || l2.version != l1.version || l2.content != l1.content ||
+      strcmp(l2.scenario, l1.scenario) != 0 || strcmp(l2.profile, l1.profile) != 0) {
+    ivs_test_diag("the fixpoint moved the header: events %u/%u content %u/%u scenario '%s'/'%s'", (unsigned)l1.n_events,
+                  (unsigned)l2.n_events, (unsigned)l1.content, (unsigned)l2.content, l1.scenario, l2.scenario);
+    goto done;
+  }
+  for (uint32_t i = 0u; i < l1.n_events; i++) {
+    if (l2.events[i].at_tick != l1.events[i].at_tick || l2.events[i].controller[0] != l1.events[i].controller[0] ||
+        l2.events[i].controller[1] != l1.events[i].controller[1]) {
+      ivs_test_diag("the fixpoint moved event %u: %llu/%08X/%08X against %llu/%08X/%08X", (unsigned)i,
+                    (unsigned long long)l1.events[i].at_tick, (unsigned)l1.events[i].controller[0],
+                    (unsigned)l1.events[i].controller[1], (unsigned long long)l2.events[i].at_tick,
+                    (unsigned)l2.events[i].controller[0], (unsigned)l2.events[i].controller[1]);
+      goto done;
+    }
+  }
+  /* 3. the sizes, from the strings themselves. */
+  header = rx_ivsl_header_bytes(l1.scenario, l1.profile, l1.content == IVS_IVSL_CONTENT_USER ? "user" : "project");
+  want = header + rx_ivsl_event_bytes(l1.events[0].at_tick, l1.events[0].controller[0], l1.events[0].controller[1]) +
+         rx_ivsl_event_bytes(l1.events[1].at_tick, l1.events[1].controller[0], l1.events[1].controller[1]);
+  if (header == 0u || want != n1) {
+    ivs_test_diag("the log took %llu bytes, its own strings spell %llu (header %llu)", (unsigned long long)n1,
+                  (unsigned long long)want, (unsigned long long)header);
+    goto done;
+  }
+  ivs_test_diag("the log is %llu bytes: a %llu-byte header and %llu and %llu for its two event lines",
+                (unsigned long long)n1, (unsigned long long)header,
+                (unsigned long long)rx_ivsl_event_bytes(l1.events[0].at_tick, l1.events[0].controller[0], l1.events[0].controller[1]),
+                (unsigned long long)rx_ivsl_event_bytes(l1.events[1].at_tick, l1.events[1].controller[0], l1.events[1].controller[1]));
+  /* 4. the caps, and a buffer one byte short. */
+  if (IVS_IVSL_MAX_EVENTS != 64u || IVS_IVSL_MAX_EVENTS != IVS_SCN_MAX_INPUTS) {
+    ivs_test_diag("IVS_IVSL_MAX_EVENTS %u is not 64 == IVS_SCN_MAX_INPUTS %u", (unsigned)IVS_IVSL_MAX_EVENTS,
+                  (unsigned)IVS_SCN_MAX_INPUTS);
+    goto done;
+  }
+  memset(third, 0xA5, IVS_IVSL_MAX_BYTES);
+  n3 = 7u;
+  if (ivs_ivsl_format(&l1, (uint8_t *)third, n1 - 1u, &n3) != 1 || n3 != 7u || (unsigned char)third[0] != 0xA5u) {
+    ivs_test_diag("a buffer of %llu bytes (one short) was not refused with nothing written", (unsigned long long)(n1 - 1u));
+    goto done;
+  }
+  /* 5. a refusal leaves the output untouched: the last LF removed is a trailing fault, and the poisoned log stays so. */
+  memset(&poison, 0xA5, sizeof poison);
+  l3 = poison;
+  memset(&err, 0, sizeof err);
+  if (ivs_ivsl_parse((const uint8_t *)first, (size_t)(n1 - 1u), &l3, &err) == 0 || err.reason != IVS_IVSL_R_TRAILING ||
+      memcmp(&l3, &poison, sizeof l3) != 0) {
+    ivs_test_diag("the truncated log: reason %s line %u, and the output %s left untouched", ivs_ivsl_reason_name(err.reason),
+                  (unsigned)err.line, memcmp(&l3, &poison, sizeof l3) == 0 ? "was" : "was not");
+    goto done;
+  }
+  rc = IVS_TEST_PASS;
+done:
+  free(first);
+  free(second);
+  free(third);
+  rx_free(&h);
+  return rc;
+}
+
+/* ---- the nine refusals and the rights check (plan 11-03, TOOL-01, A-11-02, A-11-05) ---- */
+
+/* The header the refusal rows start from: four well-formed lines, so every fault a row feeds is the only fault in its
+ * text and the line the row names is the line the parser has to name. */
+static const char rx_ivsl_head[] =
+    "ivsl 1\nscenario diag-boot-pass\nprofile intv-2609-ntsc-family-p1\ncontent project\n";
+
+/* One refusal, judged four ways (plan 11-03, TOOL-01, A-11-02): the parse is refused; the reason is the code the row
+ * names; ivs_ivsl_reason_name renders the token the row passes, which is a transcription of docs/formats/ivsl-v1.md's
+ * "Refusals" table, so the comparison is the document against the code rather than the code against a copy of itself;
+ * the 1-based line is the one the row judges; and the caller's output is byte-for-byte what it was before the call.
+ * The last condition is why a case per token is stronger than a non-zero return: a parser that filled half an event
+ * before refusing would pass every other assertion here. On failure the diagnostic names the trigger, the reason, the
+ * line, or the first differing byte of the poisoned struct. */
+static int rx_refuse(const char *what, const char *token, uint32_t reason, uint32_t line, const char *text, size_t len)
+{
+  ivs_ivsl_log poison;
+  ivs_ivsl_log out;
+  ivs_ivsl_error err;
+  const unsigned char *a = (const unsigned char *)&out;
+  const unsigned char *b = (const unsigned char *)&poison;
+  size_t i;
+  memset(&poison, 0xA5, sizeof poison);
+  out = poison;
+  memset(&err, 0, sizeof err);
+  if (ivs_ivsl_parse((const uint8_t *)text, len, &out, &err) != 1) {
+    ivs_test_diag("%s: not refused", what);
+    return 0;
+  }
+  if (err.reason != reason || err.line != line) {
+    ivs_test_diag("%s: reason %s line %u, want %s line %u", what, ivs_ivsl_reason_name(err.reason), (unsigned)err.line,
+                  ivs_ivsl_reason_name(reason), (unsigned)line);
+    return 0;
+  }
+  if (strcmp(ivs_ivsl_reason_name(err.reason), token) != 0) {
+    ivs_test_diag("%s: the code renders '%s', the document says '%s'", what, ivs_ivsl_reason_name(err.reason), token);
+    return 0;
+  }
+  if (memcmp(&out, &poison, sizeof out) != 0) {
+    for (i = 0u; i < sizeof out && a[i] == b[i]; i++) {
+    }
+    ivs_test_diag("%s: the output was written, first differing byte %llu of %llu: %02X against %02X", what,
+                  (unsigned long long)i, (unsigned long long)sizeof out, (unsigned)a[i], (unsigned)b[i]);
+    return 0;
+  }
+  return 1;
+}
+
+/* A refusal row's two halves: the trigger, named in the diagnostic, and the text that carries only that trigger. */
+typedef struct rx_refuse_row {
+  const char *what;
+  const char *text;
+} rx_refuse_row;
+
+/* runner.record.refuse.unknown-directive (plan 11-03, TOOL-01, A-11-02): the first token of a line is not one of the
+ * five directives. Three rows, each a different way to be unknown: a `digest.input` line (a digest is the one field the
+ * format exists to have none of, so an operator pasting one gets this token), a scenario-grammar `input` line (the
+ * directive the log deliberately does not have, because the log is the record of what was applied), and an `AT_TICK`
+ * first token (the directive's name in the wrong case: the grammar is case-sensitive and nothing is folded).
+ *
+ * The plan's second row was `content hardware`, which is not this token: `content` is a directive, so the fault is its
+ * value, and the document's `arity` row names that trigger explicitly. That row is fed to the `arity` case below, where
+ * the document puts it, so the trigger is still exercised and the token is the document's. */
+static int ex_record_refuse_unknown_directive(void)
+{
+  static const rx_refuse_row rows[] = {
+      {"unknown-directive: a digest.input line",
+       "digest.input 832906ce775d32a98ae607386ce4bbcdd4d08017e3b914b6089e50a5364c7761\n"},
+      {"unknown-directive: an input line of the scenario grammar", "input at_tick=100 c0=KEY_1 c1=0x0\n"},
+      {"unknown-directive: AT_TICK in the wrong case", "AT_TICK 100 c0=00000000 c1=00000000\n"},
+  };
+  char text[1024];
+  for (size_t i = 0u; i < sizeof rows / sizeof rows[0]; i++) {
+    int n = snprintf(text, sizeof text, "%s%s", rx_ivsl_head, rows[i].text);
+    if (n <= 0 || (size_t)n >= sizeof text) {
+      ivs_test_diag("%s: the text did not fit", rows[i].what);
+      return IVS_TEST_FAIL;
+    }
+    if (!rx_refuse(rows[i].what, "unknown-directive", IVS_IVSL_R_UNKNOWN_DIRECTIVE, 5u, text, (size_t)n)) {
+      return IVS_TEST_FAIL;
+    }
+  }
+  return IVS_TEST_PASS;
+}
+
+/* runner.record.refuse.version (plan 11-03, TOOL-01, A-11-02): the first line is `ivsl` and its version token is not
+ * exactly `1`. Two rows, `ivsl 2` (a version this document does not specify) and `ivsl 0` (no version at all), both
+ * named at line 1 because the version is judged before any other line is read. A version token that is not a number at
+ * all is `arity`, not this token, so it is not fed here. */
+static int ex_record_refuse_version(void)
+{
+  static const rx_refuse_row rows[] = {{"version: ivsl 2", "ivsl 2\n"}, {"version: ivsl 0", "ivsl 0\n"}};
+  for (size_t i = 0u; i < sizeof rows / sizeof rows[0]; i++) {
+    if (!rx_refuse(rows[i].what, "version", IVS_IVSL_R_VERSION, 1u, rows[i].text, strlen(rows[i].text))) {
+      return IVS_TEST_FAIL;
+    }
+  }
+  return IVS_TEST_PASS;
+}
+
+/* runner.record.refuse.arity (plan 11-03, TOOL-01, A-11-02): a line-shape fault. Ten rows, and they are the
+ * enumerated members of the class rather than a place to put everything: a header directive missing at the end (named
+ * at the last line the file has), a header directive duplicated, a header directive out of order, an `at_tick` with
+ * three tokens instead of four, a `content` value that is neither `project` nor `user`, a `scenario` value outside
+ * `[a-z0-9-]`, a `profile` value above 64 bytes, an `at_tick` field of 20 digits (the field's width is 1..19, so a
+ * 20-digit tick is a shape fault here and never `tick-bound`: the bound is judged only on a value the decimal reader
+ * accepted, which is why the plan's 20-digit tick-bound row is fed here), and the document's three spellings of an
+ * `at_tick` that is not a bare decimal (a plus sign, a `0x` prefix, a leading zero: review WR-03, each measured to be
+ * refused `arity` at line 5, so a change that folded any of them into an accepted tick is a failure here). Each is one
+ * line's shape; none is a value on a line, which is what keeps `arity` and `trailing` narrow (A-11-02's rejected fold). */
+static int ex_record_refuse_arity(void)
+{
+  typedef struct arity_row {
+    const char *what;
+    const char *text;
+    int on_head; /* the text is a tail on the well-formed header rather than a file of its own */
+    uint32_t line;
+  } arity_row;
+  static const arity_row rows[] = {
+      {"arity: content missing at the end", "ivsl 1\nscenario s\nprofile p\n", 0, 3u},
+      {"arity: scenario duplicated", "ivsl 1\nscenario a\nscenario b\nprofile p\ncontent project\n", 0, 3u},
+      {"arity: profile before scenario", "ivsl 1\nprofile p\nscenario s\ncontent project\n", 0, 2u},
+      {"arity: at_tick with three tokens", "at_tick 100 c0=00000000\n", 1, 5u},
+      {"arity: content hardware", "ivsl 1\nscenario s\nprofile p\ncontent hardware\n", 0, 4u},
+      {"arity: a dot in the scenario id", "ivsl 1\nscenario a.b\nprofile p\ncontent project\n", 0, 2u},
+      {"arity: an at_tick field of 20 digits", "at_tick 10000000000000000000 c0=00000000 c1=00000000\n", 1, 5u},
+      {"arity: at_tick with a plus sign", "at_tick +100 c0=00000000 c1=00000000\n", 1, 5u},
+      {"arity: at_tick with a 0x prefix", "at_tick 0x10 c0=00000000 c1=00000000\n", 1, 5u},
+      {"arity: at_tick with a leading zero", "at_tick 0100 c0=00000000 c1=00000000\n", 1, 5u},
+  };
+  char text[1024];
+  char longname[IVS_IVSL_MAX_PROFILE + 2u];
+  for (size_t i = 0u; i < sizeof rows / sizeof rows[0]; i++) {
+    int n = rows[i].on_head != 0 ? snprintf(text, sizeof text, "%s%s", rx_ivsl_head, rows[i].text)
+                                 : snprintf(text, sizeof text, "%s", rows[i].text);
+    if (n <= 0 || (size_t)n >= sizeof text) {
+      ivs_test_diag("%s: the text did not fit", rows[i].what);
+      return IVS_TEST_FAIL;
+    }
+    if (!rx_refuse(rows[i].what, "arity", IVS_IVSL_R_ARITY, rows[i].line, text, (size_t)n)) {
+      return IVS_TEST_FAIL;
+    }
+  }
+  /* A profile above its 64-byte width: 65 bytes of the legal charset is still a shape fault. */
+  memset(longname, 'a', sizeof longname - 1u);
+  longname[sizeof longname - 1u] = '\0';
+  if ((size_t)snprintf(text, sizeof text, "ivsl 1\nscenario s\nprofile %s\ncontent project\n", longname) >= sizeof text) {
+    ivs_test_diag("arity: the long profile text did not fit");
+    return IVS_TEST_FAIL;
+  }
+  if (!rx_refuse("arity: a profile of 65 bytes", "arity", IVS_IVSL_R_ARITY, 3u, text, strlen(text))) {
+    return IVS_TEST_FAIL;
+  }
+  return IVS_TEST_PASS;
+}
+
+/* runner.record.refuse.hex (plan 11-03, TOOL-01, A-11-02): a `c0=` or `c1=` value that is not exactly eight upper-case
+ * hex digits. Three rows, one per way the width or the case can be wrong: a lower-case digit (refused, never folded),
+ * seven digits, and nine digits. Each names the event line it judged, which is line 5 on the header above. */
+static int ex_record_refuse_hex(void)
+{
+  static const rx_refuse_row rows[] = {
+      {"hex: c0=0000000a lower case", "at_tick 100 c0=0000000a c1=00000000\n"},
+      {"hex: c0=0000001 seven digits", "at_tick 100 c0=0000001 c1=00000000\n"},
+      {"hex: c1=000000001 nine digits", "at_tick 100 c0=00000000 c1=000000001\n"},
+  };
+  char text[1024];
+  for (size_t i = 0u; i < sizeof rows / sizeof rows[0]; i++) {
+    int n = snprintf(text, sizeof text, "%s%s", rx_ivsl_head, rows[i].text);
+    if (n <= 0 || (size_t)n >= sizeof text) {
+      ivs_test_diag("%s: the text did not fit", rows[i].what);
+      return IVS_TEST_FAIL;
+    }
+    if (!rx_refuse(rows[i].what, "hex", IVS_IVSL_R_HEX, 5u, text, (size_t)n)) {
+      return IVS_TEST_FAIL;
+    }
+  }
+  return IVS_TEST_PASS;
+}
+
+/* runner.record.refuse.trailing (plan 11-03, TOOL-01, A-11-02): a file-shape fault, which is the class `arity` would
+ * otherwise have swallowed. Three rows: a byte after the last complete line (a bare `x` with no LF), a complete final
+ * line with its LF removed, and a NUL inside an event line. The NUL row is fed by length, not by strlen, because the
+ * byte the parser has to judge is the terminator a string helper would stop at. Each names the line the fault sits on,
+ * which is what the parser does: the document's `trailing` row says "the last line before the offending byte", and the
+ * amendment appended as A-11-V2 (review WR-04) records that the parser names the line the byte sits on. For the first
+ * row those differ by one - a 4-line header and a bare `x` are refused at line 5, not 4 - so these rows pin the
+ * parser's reading, not the document's wording. */
+static int ex_record_refuse_trailing(void)
+{
+  char text[1024];
+  size_t head = strlen(rx_ivsl_head);
+  int n;
+  n = snprintf(text, sizeof text, "%sx", rx_ivsl_head);
+  if (n <= 0 || (size_t)n >= sizeof text ||
+      !rx_refuse("trailing: a byte after the last complete line", "trailing", IVS_IVSL_R_TRAILING, 5u, text, (size_t)n)) {
+    return IVS_TEST_FAIL;
+  }
+  n = snprintf(text, sizeof text, "%sat_tick 100 c0=00000000 c1=00000000", rx_ivsl_head);
+  if (n <= 0 || (size_t)n >= sizeof text ||
+      !rx_refuse("trailing: a final line with its LF removed", "trailing", IVS_IVSL_R_TRAILING, 5u, text, (size_t)n)) {
+    return IVS_TEST_FAIL;
+  }
+  n = snprintf(text, sizeof text, "%sat_tick 100 c0=00000000 c1=00000000\n", rx_ivsl_head);
+  if (n <= 0 || (size_t)n >= sizeof text) {
+    ivs_test_diag("trailing: the NUL text did not fit");
+    return IVS_TEST_FAIL;
+  }
+  text[head + 9u] = '\0'; /* the first digit of the tick: a NUL inside the event line, not at its end */
+  if (!rx_refuse("trailing: a NUL inside an event line", "trailing", IVS_IVSL_R_TRAILING, 5u, text, (size_t)n)) {
+    return IVS_TEST_FAIL;
+  }
+  return IVS_TEST_PASS;
+}
+
+/* The other half of a refusal that has a legal boundary nearby (plan 11-03): a log that must be accepted, with the event
+ * count it must parse to and, when keep is not NULL, the parsed log for the caller to read. A refusal that fires one
+ * step inside its own bound is wider than the document's rule and would refuse a legal log, and no refusal-only case can
+ * notice that: an `at_tick` that refused equal ticks, or bit 30, or the 64th event, would pass every refusal row in the
+ * file while being wrong. */
+static int rx_accept(const char *what, const char *text, uint32_t events, ivs_ivsl_log *keep)
+{
+  ivs_ivsl_log out;
+  ivs_ivsl_error err;
+  memset(&out, 0xA5, sizeof out);
+  memset(&err, 0, sizeof err);
+  if (ivs_ivsl_parse((const uint8_t *)text, strlen(text), &out, &err) != 0) {
+    ivs_test_diag("%s: refused %s line %u, want accepted", what, ivs_ivsl_reason_name(err.reason), (unsigned)err.line);
+    return 0;
+  }
+  if (out.n_events != events) {
+    ivs_test_diag("%s: accepted with %u events, want %u", what, (unsigned)out.n_events, (unsigned)events);
+    return 0;
+  }
+  if (keep != NULL) {
+    *keep = out;
+  }
+  return 1;
+}
+
+/* runner.record.refuse.tick-order (plan 11-03, TOOL-01, A-11-02): an `at_tick` below the `at_tick` of the previous event
+ * line, refused at the line of the third event. The acceptance row is the guard: the order is **nondecreasing**, not
+ * strictly increasing, so two events at the same tick are legal (the later line is the state in force after the earlier
+ * one, the core's own rule for equal ticks). A refusal that fired on an equal tick would refuse a legal log. */
+static int ex_record_refuse_tick_order(void)
+{
+  char text[1024];
+  int n;
+  n = snprintf(text, sizeof text,
+               "%sat_tick 100 c0=00000000 c1=00000000\nat_tick 200 c0=00000000 c1=00000000\n"
+               "at_tick 150 c0=00000000 c1=00000000\n",
+               rx_ivsl_head);
+  if (n <= 0 || (size_t)n >= sizeof text ||
+      !rx_refuse("tick-order: 100, 200, 150", "tick-order", IVS_IVSL_R_TICK_ORDER, 7u, text, (size_t)n)) {
+    return IVS_TEST_FAIL;
+  }
+  n = snprintf(text, sizeof text,
+               "%sat_tick 100 c0=00000000 c1=00000000\nat_tick 100 c0=00000001 c1=00000000\n", rx_ivsl_head);
+  if (n <= 0 || (size_t)n >= sizeof text ||
+      !rx_accept("tick-order: two events at the same tick are legal", text, 2u, NULL)) {
+    return IVS_TEST_FAIL;
+  }
+  return IVS_TEST_PASS;
+}
+
+/* runner.record.refuse.tick-bound (plan 11-03, TOOL-01, A-11-02): an `at_tick` above the largest legal tick. The largest
+ * legal tick is IVS_SCN_TIME_MAX - 1, because the parser refuses `tick >= IVS_IVSL_TICK_MAX` and IVS_IVSL_TICK_MAX is
+ * IVS_SCN_TIME_MAX, so the boundary is pinned from both sides: IVS_SCN_TIME_MAX - 1 accepted, IVS_SCN_TIME_MAX refused,
+ * and IVS_SCN_TIME_MAX + 1 refused. The plan's 20-digit row is not here: a 20-digit field is refused by the decimal
+ * reader as a shape fault, so it is `arity` and is fed to that case.
+ *
+ * The two bounds are printed from the constants, never written as literals, so a change to either constant moves the
+ * case with it. */
+static int ex_record_refuse_tick_bound(void)
+{
+  char text[1024];
+  int n;
+  n = snprintf(text, sizeof text, "%sat_tick %llu c0=00000000 c1=00000000\n", rx_ivsl_head,
+               (unsigned long long)IVS_SCN_TIME_MAX);
+  if (n <= 0 || (size_t)n >= sizeof text ||
+      !rx_refuse("tick-bound: the first tick above the bound", "tick-bound", IVS_IVSL_R_TICK_BOUND, 5u, text, (size_t)n)) {
+    return IVS_TEST_FAIL;
+  }
+  n = snprintf(text, sizeof text, "%sat_tick %llu c0=00000000 c1=00000000\n", rx_ivsl_head,
+               (unsigned long long)(IVS_SCN_TIME_MAX + UINT64_C(1)));
+  if (n <= 0 || (size_t)n >= sizeof text ||
+      !rx_refuse("tick-bound: one above the first refused tick", "tick-bound", IVS_IVSL_R_TICK_BOUND, 5u, text, (size_t)n)) {
+    return IVS_TEST_FAIL;
+  }
+  n = snprintf(text, sizeof text, "%sat_tick %llu c0=00000000 c1=00000000\n", rx_ivsl_head,
+               (unsigned long long)(IVS_SCN_TIME_MAX - UINT64_C(1)));
+  if (n <= 0 || (size_t)n >= sizeof text || !rx_accept("tick-bound: the largest legal tick", text, 1u, NULL)) {
+    return IVS_TEST_FAIL;
+  }
+  return IVS_TEST_PASS;
+}
+
+/* runner.record.refuse.event-cap (plan 11-03, TOOL-01, A-11-02, research Pitfall 4): a 65th event line, refused at its
+ * own line (four header lines plus 65). The case asserts its text is **under** IVS_IVSL_MAX_BYTES before it parses, so the
+ * only mechanism that can refuse it is the event cap: a text over the file cap would be refused by the caller's bound and
+ * the case would pass for the wrong reason, leaving the event cap unproven. 64 events are accepted, so the cap is pinned
+ * from both sides and the log's cap is the scenario's cap rather than a number one lower. */
+static int ex_record_refuse_event_cap(void)
+{
+  char text[IVS_IVSL_MAX_BYTES + 256u];
+  size_t at;
+  int n = snprintf(text, sizeof text, "%s", rx_ivsl_head);
+  if (n <= 0) {
+    return IVS_TEST_FAIL;
+  }
+  at = (size_t)n;
+  for (uint32_t i = 0u; i < IVS_IVSL_MAX_EVENTS; i++) {
+    n = snprintf(text + at, sizeof text - at, "at_tick %u c0=00000000 c1=00000000\n", (unsigned)(100u + i));
+    if (n <= 0 || (size_t)n >= sizeof text - at) {
+      ivs_test_diag("event-cap: the 64-event text did not fit");
+      return IVS_TEST_FAIL;
+    }
+    at += (size_t)n;
+  }
+  if (at >= (size_t)IVS_IVSL_MAX_BYTES) {
+    ivs_test_diag("event-cap: the 64-event text is %llu bytes, over the %u-byte file cap", (unsigned long long)at,
+                  (unsigned)IVS_IVSL_MAX_BYTES);
+    return IVS_TEST_FAIL;
+  }
+  if (!rx_accept("event-cap: 64 events are legal", text, IVS_IVSL_MAX_EVENTS, NULL)) {
+    return IVS_TEST_FAIL;
+  }
+  n = snprintf(text + at, sizeof text - at, "at_tick %u c0=00000000 c1=00000000\n", (unsigned)(100u + IVS_IVSL_MAX_EVENTS));
+  if (n <= 0 || (size_t)n >= sizeof text - at) {
+    ivs_test_diag("event-cap: the 65th line did not fit");
+    return IVS_TEST_FAIL;
+  }
+  at += (size_t)n;
+  if (at >= (size_t)IVS_IVSL_MAX_BYTES) {
+    ivs_test_diag("event-cap: the 65-event text is %llu bytes, over the %u-byte file cap", (unsigned long long)at,
+                  (unsigned)IVS_IVSL_MAX_BYTES);
+    return IVS_TEST_FAIL;
+  }
+  ivs_test_diag("event-cap: the 65-event text is %llu bytes, under the %u-byte file cap", (unsigned long long)at,
+                (unsigned)IVS_IVSL_MAX_BYTES);
+  if (!rx_refuse("event-cap: a 65th event line", "event-cap", IVS_IVSL_R_EVENT_CAP, 4u + IVS_IVSL_MAX_EVENTS + 1u, text, at)) {
+    return IVS_TEST_FAIL;
+  }
+  return IVS_TEST_PASS;
+}
+
+/* runner.record.refuse.controller-bit (plan 11-03, TOOL-01, A-11-02): bit 31 set in `c0` or in `c1`, the reserved bit of
+ * the layout pinned by data/expected/input-bits.ids. Two rows, one per word, each refused at its event line. The
+ * acceptance row sets bit 30, the highest bit the profile's side codes use, so the refusal is proved to be the reserved
+ * bit and not "a high bit": a mask wider than IVS_CTRL_RESERVED_MASK would pass both refusal rows and fail here. */
+static int ex_record_refuse_controller_bit(void)
+{
+  char text[1024];
+  ivs_ivsl_log out;
+  int n;
+  n = snprintf(text, sizeof text, "%sat_tick 100 c0=80000000 c1=00000000\n", rx_ivsl_head);
+  if (n <= 0 || (size_t)n >= sizeof text ||
+      !rx_refuse("controller-bit: bit 31 in c0", "controller-bit", IVS_IVSL_R_CONTROLLER_BIT, 5u, text, (size_t)n)) {
+    return IVS_TEST_FAIL;
+  }
+  n = snprintf(text, sizeof text, "%sat_tick 100 c0=00000000 c1=80000000\n", rx_ivsl_head);
+  if (n <= 0 || (size_t)n >= sizeof text ||
+      !rx_refuse("controller-bit: bit 31 in c1", "controller-bit", IVS_IVSL_R_CONTROLLER_BIT, 5u, text, (size_t)n)) {
+    return IVS_TEST_FAIL;
+  }
+  n = snprintf(text, sizeof text, "%sat_tick 100 c0=40000000 c1=00000000\n", rx_ivsl_head);
+  if (n <= 0 || (size_t)n >= sizeof text || !rx_accept("controller-bit: bit 30 is legal", text, 1u, &out)) {
+    return IVS_TEST_FAIL;
+  }
+  if (out.events[0].controller[0] != (IVS_CTRL_RESERVED_MASK >> 1u) || (IVS_CTRL_RESERVED_MASK & (IVS_CTRL_RESERVED_MASK >> 1u)) != 0u) {
+    ivs_test_diag("controller-bit: bit 30 parsed as %08X, want %08X", (unsigned)out.events[0].controller[0],
+                  (unsigned)(IVS_CTRL_RESERVED_MASK >> 1u));
+    return IVS_TEST_FAIL;
+  }
+  return IVS_TEST_PASS;
+}
+
+/* ---- the rights check (plan 11-03, TOOL-01, A-11-05) ---- */
+
+/* 1 when c is a hex digit. Both cases count: the project's digests are spelled in lower case (the `digest.*` lines of data/golden), so
+ * a scan restricted to upper case would not find the very value the stand-in carries and the stand-in would be a false
+ * witness. */
+static int rx_is_hex(char c)
+{
+  return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f');
+}
+
+/* The number of runs of 32 or more hex digits in text. A run is counted once however long it is, so a 64-hex digest
+ * counts 1 and a 31-hex field counts 0; scanning resumes after each run, counted or not. A count of runs rather than of
+ * matches is what makes the assertion readable, and grep is deliberately not used because `grep -c` counts lines and a
+ * log is one line per field. */
+static uint32_t rx_hex32_runs(const char *text)
+{
+  uint32_t runs = 0u;
+  size_t i = 0u;
+  while (text[i] != '\0') {
+    size_t n = 0u;
+    while (text[i + n] != '\0' && rx_is_hex(text[i + n]) != 0) {
+      n++;
+    }
+    if (n >= 32u) {
+      runs++;
+    }
+    i += n == 0u ? 1u : n;
+  }
+  return runs;
+}
+
+/* Copies text into out with the value of every `scenario` and `profile` line replaced by a single `x`.
+ *
+ * Why the values are masked: `copy_slug` in runner/scenario.c permits digits, so a 32-digit scenario id is a legal slug
+ * and a naive whole-file scan would count it as a 32-hex run and refuse a legitimate log. The exclusion is therefore a
+ * rule, not a convenience, and the shape pin below is what makes it safe: the two excluded fields are bounded by a
+ * charset and a width, so nothing goes unscanned - the field is scanned as a field rather than as a hex candidate. The
+ * fourth assertion of the case proves the exclusion is doing work. */
+static int rx_mask_names(const char *text, char *out, size_t cap)
+{
+  size_t i = 0u;
+  size_t o = 0u;
+  while (text[i] != '\0') {
+    const char *eol = strchr(text + i, '\n');
+    size_t ll = eol != NULL ? (size_t)(eol - (text + i)) : strlen(text + i);
+    size_t skip = 0u;
+    if (ll > 9u && strncmp(text + i, "scenario ", 9u) == 0) {
+      skip = 9u;
+    } else if (ll > 8u && strncmp(text + i, "profile ", 8u) == 0) {
+      skip = 8u;
+    }
+    if (o + ll + 3u > cap) {
+      return 0;
+    }
+    if (skip != 0u) {
+      memcpy(out + o, text + i, skip);
+      out[o + skip] = 'x';
+      o += skip + 1u;
+    } else {
+      memcpy(out + o, text + i, ll);
+      o += ll;
+    }
+    if (eol != NULL) {
+      out[o++] = '\n';
+    }
+    i += ll + (eol != NULL ? 1u : 0u);
+    if (eol == NULL) {
+      break;
+    }
+  }
+  out[o] = '\0';
+  return 1;
+}
+
+/* The number of lines whose first token is directive, which is how the shape pin counts `scenario` and `profile`: one of
+ * each, so the masking rule above has exactly two fields to mask and neither can be duplicated past it. */
+static uint32_t rx_directive_lines(const char *text, const char *directive)
+{
+  uint32_t n = 0u;
+  size_t i = 0u;
+  size_t dl = strlen(directive);
+  while (text[i] != '\0') {
+    if (strncmp(text + i, directive, dl) == 0 && text[i + dl] == ' ') {
+      n++;
+    }
+    const char *eol = strchr(text + i, '\n');
+    if (eol == NULL) {
+      break;
+    }
+    i = (size_t)(eol - text) + 1u;
+  }
+  return n;
+}
+
+/* 1 when s is 1..max bytes of [a-z0-9-] and nothing else: the document's name charset and width, restated here so the
+ * shape pin is a measurement of the log rather than a call into the parser that produced it. */
+static int rx_slug_shape(const char *s, size_t max)
+{
+  size_t n = strlen(s);
+  if (n == 0u || n > max) {
+    return 0;
+  }
+  for (size_t i = 0u; i < n; i++) {
+    char c = s[i];
+    if (!((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-')) {
+      return 0;
+    }
+  }
+  return 1;
+}
+
+/* runner.record.no-content-digest (plan 11-03, TOOL-01, D-15, A-11-05): a produced log carries no 32-character hex run,
+ * and the check that says so is shown able to fail. Four assertions, in this order:
+ *   1. zero hits on a produced log. A real recording run writes a log (the same two-input text the equality case uses),
+ *      its `scenario` and `profile` values are masked out by rx_mask_names, and the scan finds 0 runs. Unmasked, nothing
+ *      in this log would match either, so the mask is not what makes the count 0; assertion 4 is where the mask earns
+ *      its place;
+ *   2. the stand-in fires. The produced log with one appended line carrying `digest.input` and the golden's real 64-hex
+ *      value is scanned and must carry **at least 1** run. Without this the id cannot fail: no well-formed log can carry
+ *      a 32-hex run, a decimal tick is at most 19 digits and a controller field is exactly 8 hex digits separated from
+ *      its neighbour by ` c1=`, so "0 runs on a produced log" is true of every log and proves nothing on its own
+ *      (lesson 20, A-11-05). The stand-in is a string literal in this committed source, never a tracked `.ivsl` file;
+ *   3. the shape pin. The log's `scenario` value is 1..48 bytes of [a-z0-9-], its `profile` value 1..64, and the text
+ *      carries exactly one `scenario` line and exactly one `profile` line. That is what justifies the mask: the two
+ *      excluded fields are bounded by a rule, so the exclusion does not leave a hole;
+ *   4. the exclusion is a decision, proved. A log whose `scenario` value is 32 digits - a legal slug, because copy_slug
+ *      permits digits - is formatted and parsed, and the unmasked text must carry at least 1 run while the masked text
+ *      carries 0 and the shape pin still passes. So the mask is the reason a legitimate all-digit slug is not refused,
+ *      asserted rather than described.
+ * The check can prove what a well-formed log carries; it cannot prove the machine produced no digest elsewhere, which is
+ * why the format has no field for one (docs/formats/ivsl-v1.md, "Rights"). */
+static int ex_record_no_content_digest(void)
+{
+  fake_host h;
+  ivs_runner_result res;
+  ivs_ivsl_log lg;
+  ivs_ivsl_log slug;
+  ivs_ivsl_error err;
+  char atext[RX_SCN_CAP];
+  char btext[RX_SCN_CAP];
+  char insert[sizeof rx_record_inputs + sizeof rx_record_run_to];
+  char log[1024];
+  char masked[1024];
+  char standin[1200];
+  char slugtext[512];
+  char slugmasked[512];
+  uint8_t slugbytes[512];
+  uint64_t slugbytes_n = 0u;
+  uint32_t out;
+  int rc = IVS_TEST_FAIL;
+  fh_init(&h);
+  (void)snprintf(insert, sizeof insert, "%s%s", rx_record_inputs, rx_record_run_to);
+  if (!rx_diag(btext, sizeof btext) || !rx_replace(btext, rx_record_run_to, insert, atext, sizeof atext)) {
+    goto done;
+  }
+  h.log_out = (uint8_t *)malloc(IVS_IVSL_MAX_BYTES);
+  h.log_out_cap = IVS_IVSL_MAX_BYTES;
+  if (h.log_out == NULL) {
+    goto done;
+  }
+  out = rx_exec(atext, &h, &res);
+  if (out != IVS_RUNNER_OUTCOME_PASS || res.log_out_bytes == 0u || res.log_out_bytes >= sizeof log) {
+    ivs_test_diag("the recording run: outcome %u, log bytes %llu", (unsigned)out, (unsigned long long)res.log_out_bytes);
+    goto done;
+  }
+  memcpy(log, h.log_out, (size_t)res.log_out_bytes);
+  log[res.log_out_bytes] = '\0';
+  memset(&lg, 0, sizeof lg);
+  memset(&err, 0, sizeof err);
+  if (ivs_ivsl_parse((const uint8_t *)log, (size_t)res.log_out_bytes, &lg, &err) != 0) {
+    ivs_test_diag("the produced log does not parse: reason %s line %u", ivs_ivsl_reason_name(err.reason), (unsigned)err.line);
+    goto done;
+  }
+  if (!rx_mask_names(log, masked, sizeof masked)) {
+    ivs_test_diag("the produced log did not fit the masked copy");
+    goto done;
+  }
+  /* 1. zero hits on a produced log. */
+  if (rx_hex32_runs(masked) != 0u) {
+    ivs_test_diag("the produced log carries %u 32-hex runs, want 0\n%s", (unsigned)rx_hex32_runs(masked), masked);
+    goto done;
+  }
+  /* 2. the stand-in fires: the same log with one digest line appended must be found. */
+  if ((size_t)snprintf(standin, sizeof standin, "%sdigest.input %s\n", masked,
+                       "832906ce775d32a98ae607386ce4bbcdd4d08017e3b914b6089e50a5364c7761") >= sizeof standin) {
+    ivs_test_diag("the stand-in did not fit");
+    goto done;
+  }
+  if (rx_hex32_runs(standin) < 1u) {
+    ivs_test_diag("the stand-in carries %u 32-hex runs, want at least 1: the check cannot fail", (unsigned)rx_hex32_runs(standin));
+    goto done;
+  }
+  /* 3. the shape pin, which is what makes the mask safe. */
+  if (!rx_slug_shape(lg.scenario, IVS_IVSL_MAX_ID) || !rx_slug_shape(lg.profile, IVS_IVSL_MAX_PROFILE) ||
+      rx_directive_lines(log, "scenario") != 1u || rx_directive_lines(log, "profile") != 1u) {
+    ivs_test_diag("the produced log's names: scenario '%s' profile '%s', %u and %u lines", lg.scenario, lg.profile,
+                  (unsigned)rx_directive_lines(log, "scenario"), (unsigned)rx_directive_lines(log, "profile"));
+    goto done;
+  }
+  /* 4. the exclusion is a decision, proved: a 32-digit scenario id is a legal slug, unmasked it looks like a digest, and
+   * the masked scan plus the shape pin accept it. */
+  memset(&slug, 0, sizeof slug);
+  slug.version = IVS_IVSL_VERSION;
+  memset(slug.scenario, '1', 32u);
+  slug.scenario[32] = '\0';
+  (void)snprintf(slug.profile, sizeof slug.profile, "intv-2609-ntsc-family-p1");
+  slug.content = IVS_IVSL_CONTENT_PROJECT;
+  slug.n_events = 0u;
+  if (ivs_ivsl_format(&slug, slugbytes, sizeof slugbytes, &slugbytes_n) != 0 || slugbytes_n >= sizeof slugtext) {
+    ivs_test_diag("the 32-digit-slug log could not be formatted");
+    goto done;
+  }
+  memcpy(slugtext, slugbytes, (size_t)slugbytes_n);
+  slugtext[slugbytes_n] = '\0';
+  memset(&lg, 0, sizeof lg);
+  memset(&err, 0, sizeof err);
+  if (ivs_ivsl_parse(slugbytes, (size_t)slugbytes_n, &lg, &err) != 0) {
+    ivs_test_diag("the 32-digit-slug log is refused (%s line %u): an all-digit slug is legal", ivs_ivsl_reason_name(err.reason),
+                  (unsigned)err.line);
+    goto done;
+  }
+  if (!rx_mask_names(slugtext, slugmasked, sizeof slugmasked)) {
+    ivs_test_diag("the 32-digit-slug log did not fit the masked copy");
+    goto done;
+  }
+  if (rx_hex32_runs(slugtext) < 1u) {
+    ivs_test_diag("the unmasked 32-digit-slug log carries %u runs: the mask has nothing to exclude",
+                  (unsigned)rx_hex32_runs(slugtext));
+    goto done;
+  }
+  if (rx_hex32_runs(slugmasked) != 0u) {
+    ivs_test_diag("the masked 32-digit-slug log carries %u runs, want 0", (unsigned)rx_hex32_runs(slugmasked));
+    goto done;
+  }
+  if (!rx_slug_shape(lg.scenario, IVS_IVSL_MAX_ID) || strlen(lg.scenario) != 32u) {
+    ivs_test_diag("the 32-digit-slug log's scenario is '%s' (%llu bytes)", lg.scenario, (unsigned long long)strlen(lg.scenario));
+    goto done;
+  }
+  ivs_test_diag("no-content-digest: the produced log %llu bytes, 0 masked 32-hex runs; the stand-in 1; the 32-digit slug "
+                "1 unmasked and 0 masked",
+                (unsigned long long)res.log_out_bytes);
+  rc = IVS_TEST_PASS;
+done:
+  free(h.log_out);
+  h.log_out = NULL;
+  rx_free(&h);
+  return rc;
+}
+
+/* Sets the value of key in report in place. 1 when exactly one line carries the key and the new value has the same
+ * length as the old one (every use here keeps the width, so no line has to move and the text stays equal elsewhere). */
+static int rx_report_set_value(char *report, const char *key, const char *value)
+{
+  size_t kl = strlen(key);
+  size_t vl = strlen(value);
+  char *p = report;
+  int seen = 0;
+  while (*p != '\0') {
+    char *eol = strchr(p, '\n');
+    size_t ll = eol != NULL ? (size_t)(eol - p) : strlen(p);
+    if (ll > kl && strncmp(p, key, kl) == 0 && p[kl] == ' ') {
+      if (seen != 0 || ll - kl - 1u != vl) {
+        return 0;
+      }
+      (void)memcpy(p + kl + 1u, value, vl);
+      seen = 1;
+    }
+    p += ll;
+    if (*p == '\n') {
+      p++;
+    }
+  }
+  return seen == 1;
+}
+
+/* The report of one fresh recording run of the two-input diagnostic text, in a heap copy the caller frees (NULL when the
+ * run does not end pass with a complete report). The judge self-controls build their pairs from it, so neither depends on
+ * another case's state. */
+static char *rx_record_report(void)
+{
+  fake_host h;
+  ivs_runner_result res;
+  char atext[RX_SCN_CAP];
+  char btext[RX_SCN_CAP];
+  char insert[sizeof rx_record_inputs + sizeof rx_record_run_to];
+  char *copy = NULL;
+  size_t len;
+  uint32_t out;
+  fh_init(&h);
+  (void)snprintf(insert, sizeof insert, "%s%s", rx_record_inputs, rx_record_run_to);
+  if (!rx_diag(btext, sizeof btext) || !rx_replace(btext, rx_record_run_to, insert, atext, sizeof atext)) {
+    goto done;
+  }
+  out = rx_exec(atext, &h, &res);
+  if (out != IVS_RUNNER_OUTCOME_PASS || res.exit_code != 0u || h.out == NULL || !rx_complete(h.out, &res)) {
+    ivs_test_diag("the recording run: outcome %u exit %u\n%s", (unsigned)out, (unsigned)res.exit_code, h.out != NULL ? h.out : "");
+    goto done;
+  }
+  len = strlen(h.out);
+  copy = malloc(len + 1u);
+  if (copy != NULL) {
+    (void)memcpy(copy, h.out, len + 1u);
+  }
+done:
+  rx_free(&h);
+  return copy;
+}
+
+/* Rewrites input.events and input.consumed of both reports to 0 and requires the two texts to stay identical (the pair
+ * the guard mechanism must reject). 0 on success. */
+static int rx_report_zero_events(char *c, char *d)
+{
+  if (!rx_report_set_value(c, "input.events", "0") || !rx_report_set_value(d, "input.events", "0") ||
+      !rx_report_set_value(c, "input.consumed", "0") || !rx_report_set_value(d, "input.consumed", "0")) {
+    return 1;
+  }
+  return strcmp(c, d) == 0 ? 0 : 1;
+}
+
+/* The finding each of the two judge mechanisms produces, each on a pair built from a fresh recording run:
+ *   differs_why  the equality mechanism on two texts that differ in one nibble of digest.input (want record-differs)
+ *   inert_why    the guard mechanism on two identical texts that report input.events 0 and input.consumed 0 (want
+ *                record-no-events)
+ * Returns 1 when both pairs were built and both comparisons rejected, 0 otherwise. A comparison that accepted its pair
+ * is reported as "(accepted)", so a red run says which mechanism stopped discriminating. */
+static int rx_judge_findings(char *differs_why, size_t differs_cap, char *inert_why, size_t inert_cap)
+{
+  char *a = rx_record_report();
+  char *b = NULL;
+  char *c = NULL;
+  char *d = NULL;
+  char va[RX_VALUE_CAP];
+  char vb[RX_VALUE_CAP];
+  const char *why = "";
+  size_t len;
+  int ok = 0;
+  if (a == NULL) {
+    goto done;
+  }
+  len = strlen(a) + 1u;
+  b = malloc(len);
+  c = malloc(len);
+  d = malloc(len);
+  if (b == NULL || c == NULL || d == NULL) {
+    goto done;
+  }
+  (void)memcpy(b, a, len);
+  (void)memcpy(c, a, len);
+  (void)memcpy(d, a, len);
+  /* The equality mechanism: one nibble of digest.input changed, so nothing but the equality can reject the pair. */
+  if (!rx_value(a, "digest.input", va, sizeof va) || strlen(va) != 64u || !rx_hex64(va)) {
+    ivs_test_diag("digest.input is not one 64-digit hex value");
+    goto done;
+  }
+  (void)memcpy(vb, va, strlen(va) + 1u);
+  vb[0] = va[0] == '0' ? '1' : '0';
+  if (!rx_report_set_value(b, "digest.input", vb) || strcmp(a, b) == 0) {
+    ivs_test_diag("the one-nibble copy was not made");
+    goto done;
+  }
+  if (rx_record_compare(a, b, 2u, &why) != 1) {
+    why = "(accepted)";
+  }
+  (void)snprintf(differs_why, differs_cap, "%s", why);
+  /* The guard mechanism: two identical texts that report no event at all. */
+  if (rx_report_zero_events(c, d) != 0) {
+    goto done;
+  }
+  why = "";
+  if (rx_record_compare(c, d, 0u, &why) != 1) {
+    why = "(accepted)";
+  }
+  (void)snprintf(inert_why, inert_cap, "%s", why);
+  ok = 1;
+done:
+  free(a);
+  free(b);
+  free(c);
+  free(d);
+  return ok;
+}
+
+/* runner.judge.record-replay-differs (plan 11-02, D-15): the comparison's equality is live. Two report texts of a real
+ * recording run that differ in one nibble of digest.input are rejected with exactly record-differs - the equality, not a
+ * guard. A control that only required "the comparison failed" would pass on a guard failure and prove nothing about the
+ * equality. It also asserts that the guard mechanism's finding is a different string, so the two mechanisms are separate.
+ * The name matches the registry's mutant shape `^[a-z0-9-]+[.](judge|mutant)[.][^ ]+$`, which is what lets plan 11-05
+ * register it as a mutant row. */
+static int ex_judge_record_replay_differs(void)
+{
+  char dw[64];
+  char iw[64];
+  if (!rx_judge_findings(dw, sizeof dw, iw, sizeof iw)) {
+    return IVS_TEST_FAIL;
+  }
+  if (strcmp(dw, "record-differs") != 0) {
+    ivs_test_diag("the one-nibble pair gave '%s', want record-differs", dw);
+    return IVS_TEST_FAIL;
+  }
+  if (strcmp(iw, dw) == 0) {
+    ivs_test_diag("both mechanisms gave '%s': they are not separate", iw);
+    return IVS_TEST_FAIL;
+  }
+  return IVS_TEST_PASS;
+}
+
+/* runner.judge.record-replay-inert (plan 11-02, D-15): the guard is live, and this is the load-bearing control. Two
+ * identical report texts that both carry input.events 0 and input.consumed 0 are accepted by any equality, so only the
+ * guard clause can reject a zero-event pair: it must, with exactly record-no-events. Without this control the equality
+ * case's three clauses would be unproven machinery - the 08-16 lesson, one level up. It also asserts that the equality
+ * mechanism's finding is a different string. */
+static int ex_judge_record_replay_inert(void)
+{
+  char dw[64];
+  char iw[64];
+  if (!rx_judge_findings(dw, sizeof dw, iw, sizeof iw)) {
+    return IVS_TEST_FAIL;
+  }
+  if (strcmp(iw, "record-no-events") != 0) {
+    ivs_test_diag("the identical zero-event pair gave '%s', want record-no-events", iw);
+    return IVS_TEST_FAIL;
+  }
+  if (strcmp(iw, dw) == 0) {
+    ivs_test_diag("both mechanisms gave '%s': they are not separate", dw);
+    return IVS_TEST_FAIL;
+  }
+  return IVS_TEST_PASS;
 }
 
 static const ivs_test_case exec_cases[] = {
@@ -3058,6 +4307,21 @@ static const ivs_test_case exec_cases[] = {
     {"runner.exec.roundtrip-equals-straight", ex_roundtrip_equals_straight, NULL},
     {"runner.exec.roundtrip-option-range", ex_roundtrip_option_range, NULL},
     {"runner.exec.roundtrip-cut-cap", ex_roundtrip_cut_cap, NULL},
+    {"runner.record.replay-equals-straight", ex_record_replay_equals_straight, NULL},
+    {"runner.record.format-roundtrip", ex_record_format_roundtrip, NULL},
+    {"runner.record.partial-run", ex_record_partial_run, NULL},
+    {"runner.record.refuse.unknown-directive", ex_record_refuse_unknown_directive, NULL},
+    {"runner.record.refuse.version", ex_record_refuse_version, NULL},
+    {"runner.record.refuse.arity", ex_record_refuse_arity, NULL},
+    {"runner.record.refuse.hex", ex_record_refuse_hex, NULL},
+    {"runner.record.refuse.trailing", ex_record_refuse_trailing, NULL},
+    {"runner.record.refuse.tick-order", ex_record_refuse_tick_order, NULL},
+    {"runner.record.refuse.tick-bound", ex_record_refuse_tick_bound, NULL},
+    {"runner.record.refuse.event-cap", ex_record_refuse_event_cap, NULL},
+    {"runner.record.refuse.controller-bit", ex_record_refuse_controller_bit, NULL},
+    {"runner.record.no-content-digest", ex_record_no_content_digest, NULL},
+    {"runner.judge.record-replay-differs", ex_judge_record_replay_differs, NULL},
+    {"runner.judge.record-replay-inert", ex_judge_record_replay_inert, NULL},
     {"runner.exec.boot-stub-2", ex_boot_stub_2, NULL},
     {"runner.exec.sha-match", ex_sha_match, NULL},
     {"runner.exec.sha-mismatch", ex_sha_mismatch, NULL},

@@ -18,7 +18,12 @@
  * by a person, never by the gate, and refuses `user` content, host-dependent outcomes and a path that
  * is one of the operator output files (review WR-02). A run that ends harness-fail removes the operator
  * output files it created (review WR-01) and writes no golden; the golden is written to a temporary file and
- * renamed, so an existing one is never truncated by a failed run (Phase 6 review WR-02). Documented in docs/runner.md. */
+ * renamed, so an existing one is never truncated by a failed run (Phase 6 review WR-02). Documented in docs/runner.md.
+ * --record-input <file> (plan 11-04, TOOL-01, D-15) also writes the run's ivsl v1 input log - the events the run applied,
+ * never a content byte - through the same exclusive create as the other operator outputs; --replay-input <file> applies a
+ * log instead of the scenario's own `input` lines, and reads and parses it after the scenario and after every
+ * `content ... user` refusal but before the first output file is created, so a refusal leaves the tree as it found it.
+ * Neither takes a flag bit and neither is refused for operator content: the log holds no content bytes (D15). */
 #include <signal.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -53,6 +58,7 @@ typedef struct main_host {
   ivs_hostio_out wav_out;          /* --audio-wav file (plan 05-10): 44 reserved header bytes, then the PCM */
   ivs_hostio_out video_out;        /* --video-raw file (plan 06-12): the delivered slots, mode 0600 */
   ivs_hostio_out ppm_out;          /* --frame-ppm file (plan 06-12): the last frame as a PPM, mode 0600 */
+  ivs_hostio_out ivsl_out;         /* --record-input file (plan 11-04): the run's ivsl v1 input log */
 } main_host;
 
 /* The usage text in two parts: each is one string literal below the 4,095 characters ISO C guarantees a compiler (-Woverlength-strings),
@@ -112,6 +118,15 @@ static const char *const main_usage[] = {
     "  --frame-ppm <file>   also write the LAST delivered frame as a binary PPM (P6) in the operator preview\n"
     "                       palette (not STIC colour data) to a NEW file created mode 0600; refused for a\n"
     "                       scenario with `content <role> user`; an exported frame is never evidence\n"
+    "  --record-input <file>  also write the run's ivsl v1 input log (docs/formats/ivsl-v1.md) - the events this run\n"
+    "                       applied, never a content byte - to a NEW file created 0644 (an existing path is refused,\n"
+    "                       exit 14, never overwritten; a run that ends harness-fail removes it); the log is operator\n"
+    "                       output, never evidence; not refused for `content <role> user`, because it holds no content\n"
+    "                       bytes at all (D15)\n"
+    "  --replay-input <file>  apply the events of an ivsl v1 log instead of the scenario's own `input` lines; the log is\n"
+    "                       read and parsed before any output file is created, and a missing, non-regular, oversize\n"
+    "                       (above 4096 bytes) or malformed log is exit 14 with one line and no report; the report's\n"
+    "                       input.events is the log's count; exclusive with --record-input\n"
     "  --help               print this text and exit 0\n"
     "outcomes (outcome exit-code):\n"
     "pass 0\n"
@@ -512,6 +527,12 @@ int main(int argc, char **argv)
   const char *audio_wav_path = NULL;
   const char *video_raw_path = NULL;
   const char *frame_ppm_path = NULL;
+  const char *log_out_path = NULL;
+  const char *log_in_path = NULL;
+  ivs_ivsl_log log_parsed;
+  ivs_ivsl_error log_err;
+  uint8_t *log_buf = NULL;
+  size_t log_len = 0u;
   char dirbuf[MAIN_DIR_MAX];
   size_t text_len = 0u;
   size_t storage_bytes;
@@ -530,6 +551,9 @@ int main(int argc, char **argv)
   mh.wav_out.fd = -1;
   mh.video_out.fd = -1;
   mh.ppm_out.fd = -1;
+  mh.ivsl_out.fd = -1;
+  memset(&log_parsed, 0, sizeof log_parsed);
+  memset(&log_err, 0, sizeof log_err);
   memset(&opts, 0, sizeof opts);
   for (int i = 1; i < argc; i++) {
     const char *a = argv[i];
@@ -562,6 +586,10 @@ int main(int argc, char **argv)
       slot = &video_raw_path;
     } else if (strcmp(a, "--frame-ppm") == 0) {
       slot = &frame_ppm_path;
+    } else if (strcmp(a, "--record-input") == 0) {
+      slot = &log_out_path;
+    } else if (strcmp(a, "--replay-input") == 0) {
+      slot = &log_in_path;
     } else if (strcmp(a, "--video-out-max-bytes") == 0) {
       seen = &have_vout_max;
       lo = 1u;
@@ -657,22 +685,32 @@ int main(int argc, char **argv)
   if (have_wav_rate && audio_wav_path == NULL) {
     return main_usage_error("--wav-rate needs --audio-wav");
   }
+  /* One run either records the events it applied or replays a log's: both at once has no meaning (plan 11-04, T-11-15).
+   * Refused here, before anything is created, like the cross-option check above. */
+  if (log_out_path != NULL && log_in_path != NULL) {
+    return main_usage_error("--record-input and --replay-input are exclusive");
+  }
   /* --update-golden overwrites its file, so it must never be one of the operator output files (review WR-02):
    * the same string is refused here, before anything is created; the same file under another spelling is
    * refused below once the outputs exist. */
   if (main_same_path(golden_path, audio_raw_path) || main_same_path(golden_path, psg_log_path) ||
       main_same_path(golden_path, audio_wav_path) || main_same_path(golden_path, video_raw_path) ||
-      main_same_path(golden_path, frame_ppm_path)) {
+      main_same_path(golden_path, frame_ppm_path) || main_same_path(golden_path, log_out_path)) {
     return main_fail("--update-golden must not name an operator output file");
   }
   /* Two operator outputs on one path: refused before anything is created, naming the clash (Phase 6 review IN-05; without this the
    * second create reported "output file exists" for a path that was free). The same file under another spelling is still caught by
    * the exclusive create. */
+  /* --record-input joins them (plan 11-04): it is a file this run creates. --replay-input does not, because it names an
+   * input: a replay path that happens to equal an output path is a legitimate (if odd) operator choice, and the exclusive
+   * create already refuses the collision that matters. */
   {
-    const char *const out_path[5] = {audio_raw_path, psg_log_path, audio_wav_path, video_raw_path, frame_ppm_path};
-    static const char *const out_opt[5] = {"--audio-raw", "--psg-log-out", "--audio-wav", "--video-raw", "--frame-ppm"};
-    for (size_t a = 0u; a < 5u; a++) {
-      for (size_t b = a + 1u; b < 5u; b++) {
+    const char *const out_path[6] = {audio_raw_path, psg_log_path,  audio_wav_path,
+                                     video_raw_path, frame_ppm_path, log_out_path};
+    static const char *const out_opt[6] = {"--audio-raw", "--psg-log-out", "--audio-wav",
+                                           "--video-raw", "--frame-ppm",   "--record-input"};
+    for (size_t a = 0u; a < 6u; a++) {
+      for (size_t b = a + 1u; b < 6u; b++) {
         if (main_same_path(out_path[a], out_path[b])) {
           fprintf(stderr, "ivs-run: %s: names the same path as %s\n", out_opt[b], out_opt[a]);
           return MAIN_EXIT_HARNESS;
@@ -759,6 +797,53 @@ int main(int argc, char **argv)
       return main_fail("out of memory");
     }
   }
+  /* --replay-input (plan 11-04, TOOL-01, D-15, T-11-14, T-11-15): the log is read and parsed here - after the scenario and
+   * after every `content ... user` refusal, and before the first output file is created - so a refusal is exit 14, one line
+   * and no report with the tree exactly as it was found. That ordering is the criterion's "no state change": a property,
+   * not an assertion. ivs_hostio_read opens without blocking, requires fstat to report a regular file and reads at most
+   * cap + 1 bytes, so a FIFO, a directory and an oversize file are each refused rather than read or followed. */
+  if (log_in_path != NULL) {
+    log_buf = malloc((size_t)IVS_IVSL_MAX_BYTES + 1u);
+    if (log_buf == NULL) {
+      free(mh.golden_buf);
+      free(scn);
+      return main_fail("out of memory");
+    }
+    r = ivs_hostio_read(NULL, log_in_path, IVS_IVSL_MAX_BYTES, log_buf, &log_len);
+    if (r != IVS_RUNNER_READ_OK) {
+      free(log_buf);
+      free(mh.golden_buf);
+      free(scn);
+      return main_fail(r == IVS_RUNNER_READ_MISSING       ? "log not readable: missing"
+                       : r == IVS_RUNNER_READ_TOO_LARGE   ? "log not readable: too large"
+                       : r == IVS_RUNNER_READ_NOT_REGULAR ? "log not readable: not a regular file"
+                                                          : "log not readable: io-error");
+    }
+    if (ivs_ivsl_parse(log_buf, log_len, &log_parsed, &log_err) != 0) {
+      char line[128];
+      (void)snprintf(line, sizeof line, "--replay-input: line %u reason %s", (unsigned)log_err.line,
+                     ivs_ivsl_reason_name(log_err.reason));
+      free(log_buf);
+      free(mh.golden_buf);
+      free(scn);
+      return main_fail(line);
+    }
+    free(log_buf);
+    log_buf = NULL;
+    opts.log_in = &log_parsed;
+  }
+  /* --record-input (plan 11-04, TOOL-01, D-15): the executor fills a caller buffer and never touches a file, so the log is
+   * formatted into memory here and written after the run. A header-only log is valid (research O-3): a run that applied no
+   * event records one, so a scenario with no `input` line is recordable and is not refused for having nothing to write. */
+  if (log_out_path != NULL) {
+    opts.log_out = malloc((size_t)IVS_IVSL_MAX_BYTES);
+    if (opts.log_out == NULL) {
+      free(mh.golden_buf);
+      free(scn);
+      return main_fail("out of memory");
+    }
+    opts.log_out_capacity = IVS_IVSL_MAX_BYTES;
+  }
 
   /* Storage: the instance (aligned by the executor), then one read buffer of the largest role. A
    * refused profile gets a token buffer, so the executor reports profile-refused itself. */
@@ -775,6 +860,7 @@ int main(int argc, char **argv)
    * IVS_RUNNER_BUFFERS_MAX; the executor cuts it per slice from ivs_info (plan 05-09, A-11). */
   buffers = malloc((size_t)IVS_RUNNER_BUFFERS_MAX);
   if (storage == NULL || buffers == NULL) {
+    free(opts.log_out);
     free(storage);
     free(buffers);
     free(mh.golden_buf);
@@ -785,6 +871,7 @@ int main(int argc, char **argv)
   /* The operator's raw outputs, created exclusively before the run: an existing path is refused with
    * one line and exit 14, nothing is overwritten (plan 05-09, T-05-23). */
   if (audio_raw_path != NULL && main_open_out(&mh.audio_out, audio_raw_path, "--audio-raw", IVS_HOSTIO_MODE_SHARED) != 0) {
+    free(opts.log_out);
     free(storage);
     free(buffers);
     free(mh.golden_buf);
@@ -793,6 +880,7 @@ int main(int argc, char **argv)
   }
   if (psg_log_path != NULL && main_open_out(&mh.log_out, psg_log_path, "--psg-log-out", IVS_HOSTIO_MODE_SHARED) != 0) {
     main_discard(&mh.audio_out, audio_raw_path, NULL);
+    free(opts.log_out);
     free(storage);
     free(buffers);
     free(mh.golden_buf);
@@ -813,6 +901,7 @@ int main(int argc, char **argv)
     if (wr != 0) {
       main_discard(&mh.audio_out, audio_raw_path, NULL);
       main_discard(&mh.log_out, psg_log_path, NULL);
+      free(opts.log_out);
       free(storage);
       free(buffers);
       free(mh.golden_buf);
@@ -829,6 +918,23 @@ int main(int argc, char **argv)
     main_discard(&mh.wav_out, audio_wav_path, NULL);
     main_discard(&mh.video_out, video_raw_path, NULL);
     main_discard(&mh.ppm_out, frame_ppm_path, NULL);
+    free(opts.log_out);
+    free(storage);
+    free(buffers);
+    free(mh.golden_buf);
+    free(scn);
+    return MAIN_EXIT_HARNESS;
+  }
+  /* The input log (plan 11-04, T-11-13): created exclusively here, with the other operator outputs and after the scenario
+   * parse and every `content ... user` refusal, so a refused scenario or a refused option has created no file. A run that
+   * ends harness-fail removes it below, so the operator never finds a truncated log. */
+  if (log_out_path != NULL && main_open_out(&mh.ivsl_out, log_out_path, "--record-input", IVS_HOSTIO_MODE_SHARED) != 0) {
+    main_discard(&mh.audio_out, audio_raw_path, NULL);
+    main_discard(&mh.log_out, psg_log_path, NULL);
+    main_discard(&mh.wav_out, audio_wav_path, NULL);
+    main_discard(&mh.video_out, video_raw_path, NULL);
+    main_discard(&mh.ppm_out, frame_ppm_path, NULL);
+    free(opts.log_out);
     free(storage);
     free(buffers);
     free(mh.golden_buf);
@@ -840,12 +946,15 @@ int main(int argc, char **argv)
                               ivs_hostio_out_is_path(&mh.log_out, golden_path) == 1 ||
                               ivs_hostio_out_is_path(&mh.wav_out, golden_path) == 1 ||
                               ivs_hostio_out_is_path(&mh.video_out, golden_path) == 1 ||
-                              ivs_hostio_out_is_path(&mh.ppm_out, golden_path) == 1)) {
+                              ivs_hostio_out_is_path(&mh.ppm_out, golden_path) == 1 ||
+                              ivs_hostio_out_is_path(&mh.ivsl_out, golden_path) == 1)) {
     main_discard(&mh.audio_out, audio_raw_path, NULL);
     main_discard(&mh.log_out, psg_log_path, NULL);
     main_discard(&mh.wav_out, audio_wav_path, NULL);
     main_discard(&mh.video_out, video_raw_path, NULL);
     main_discard(&mh.ppm_out, frame_ppm_path, NULL);
+    main_discard(&mh.ivsl_out, log_out_path, NULL);
+    free(opts.log_out);
     free(storage);
     free(buffers);
     free(mh.golden_buf);
@@ -904,6 +1013,19 @@ int main(int argc, char **argv)
     code = MAIN_EXIT_HARNESS;
     fprintf(stderr, "ivs-run: --frame-ppm: close failed\n");
   }
+  /* The input log (plan 11-04, research O-4): written on a guest-fail, timeout or cancelled run, because the events it
+   * applied are worth replaying, and removed on harness-fail, because a harness failure is not a run. */
+  if (log_out_path != NULL) {
+    if (code != MAIN_EXIT_HARNESS && res.log_out_bytes != 0u &&
+        ivs_hostio_out_write(&mh.ivsl_out, opts.log_out, (size_t)res.log_out_bytes) != 0) {
+      code = MAIN_EXIT_HARNESS;
+      fprintf(stderr, "ivs-run: --record-input: cannot write the output file\n");
+    }
+    if (ivs_hostio_out_close(&mh.ivsl_out) != 0) {
+      code = MAIN_EXIT_HARNESS;
+      fprintf(stderr, "ivs-run: --record-input: close failed\n");
+    }
+  }
   /* A run that ends without a failure but delivered no frame leaves an empty file: say so (Phase 6 review IN-01), exit code and
    * report unchanged. */
   if (code != MAIN_EXIT_HARNESS) {
@@ -912,6 +1034,14 @@ int main(int argc, char **argv)
     }
     if (frame_ppm_path != NULL && mh.ppm_written == 0u) {
       fprintf(stderr, "ivs-run: --frame-ppm: no frame was delivered, the file is empty\n");
+    }
+    /* The input log of a run that never reached the executor (missing-fixture is a designed outcome, exit 13): the file
+     * was created and the recorder wrote nothing into it. Named and left in place, exactly as the frame and raw notes
+     * above do it, rather than removed: a silent removal would be the only place a path the operator named disappears,
+     * and the exclusive-create story (T-11-13) is one the operator can then see the state of. A --replay-input of it is a
+     * typed refusal (`line 0 reason arity`), never a crash. */
+    if (log_out_path != NULL && res.log_out_bytes == 0u) {
+      fprintf(stderr, "ivs-run: --record-input: no event log was written, the file is empty\n");
     }
   }
   if (fflush(stdout) != 0 || ferror(stdout) || res.report_write_failed != 0u) {
@@ -929,7 +1059,9 @@ int main(int argc, char **argv)
     main_discard(&mh.wav_out, audio_wav_path, "--audio-wav");
     main_discard(&mh.video_out, video_raw_path, "--video-raw");
     main_discard(&mh.ppm_out, frame_ppm_path, "--frame-ppm");
+    main_discard(&mh.ivsl_out, log_out_path, "--record-input");
   }
+  free(opts.log_out);
   free(mh.golden_buf);
   free(scn);
   return code;

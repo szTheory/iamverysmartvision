@@ -51,6 +51,10 @@
 #            bench: the refusal of a mutated golden and the judge of the absence-of-measurement check)
 #   Phase 10 EV-05 plan 10-06 (the three controls of the handoff ledger and of the look/listen prose:
 #            the two claims controls and the one text control, the first rows either gate name has had)
+#   Phase 11 TOOL-01 plan 11-05 (the runner-record gate: the two input-log faults, the writer's dropped
+#            event line and the replay's one-tick shift, and the two judge self-controls of the
+#            recorded-and-replayed comparison; the accepted set is derived, so the row's nreq limb is
+#            gone and this table and the token prose are the only parts a new requirement retargets)
 # Resolution of <id> by mechanism:
 #   fault    first column of any data/expected/faults/*.ids (judged by faults-verdict);
 #   control  first column of any data/expected/controls/*.ids (run by tools/check/run-controls.sh);

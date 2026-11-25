@@ -14,6 +14,7 @@
 set(IVS_RUNNER_SOURCES
   exec.c
   frame_export.c
+  ivsl.c
   outcome.c
   report.c
   runner_chain.c

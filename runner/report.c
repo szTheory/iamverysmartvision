@@ -338,7 +338,9 @@ static void rp_value(const ivs_runner_record *r, uint32_t field, char *v, size_t
     }
     break;
   case RF_INPUT_EVENTS:
-    rp_u64(v, cap, s->n_inputs);
+    /* Plan 11-02: the count the run was actually given (the log's under replay), not the scenario's. Without a log the
+     * two are equal, so every report of a plain run is byte-identical. */
+    rp_u64(v, cap, r->input_events_effective);
     break;
   case RF_INPUT_CONSUMED:
     rp_u64(v, cap, r->input_consumed);

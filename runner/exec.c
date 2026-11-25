@@ -91,6 +91,15 @@ typedef struct ex_state {
   uint64_t rt_t0; /* machine time of a power-on machine (ivs_info time_ticks after the reset that starts the run) */
   uint32_t rt_cuts;
   uint8_t rt_buf[IVS_SNAPSHOT_MAX_BYTES];
+  /* The input log (plan 11-02, TOOL-01, D-15): log_in substitutes the schedule, log_out takes the applied prefix; both
+   * are caller buffers, never files and never host calls. sched is the schedule the run was given (the scenario's or
+   * the log's) and sched_n its length, so the recorder writes what the run applied rather than what the scenario said. */
+  const ivs_ivsl_log *log_in;
+  uint8_t *log_out;
+  uint64_t log_out_cap;
+  uint64_t log_out_bytes;
+  ivs_input_event sched[IVS_SCN_MAX_INPUTS];
+  uint32_t sched_n;
   char detail[EX_OBS_BITS][IVS_RUNNER_DETAIL_MAX];
 } ex_state;
 
@@ -210,6 +219,24 @@ static int ex_roundtrip_options_valid(const ivs_runner_options *o)
     return o->roundtrip_ticks >= 1u && o->roundtrip_ticks <= IVS_RUN_TARGET_MAX;
   }
   return o->roundtrip_ticks == 0u;
+}
+
+/* 1 when the input-log options of the options are valid (plan 11-02): at most one of log_in and log_out is set (both
+ * at once is a harness failure, there is no run that records and replays in one call), log_out_capacity is 0 without a
+ * log buffer, and a log_in carries this format's version and at most IVS_IVSL_MAX_EVENTS events. No flag bit is taken:
+ * a non-NULL buffer is the switch, so IVS_RUNNER_OPT_ROUNDTRIP keeps its only-bit meaning. */
+static int ex_log_options_valid(const ivs_runner_options *o)
+{
+  if (o->log_in != NULL && o->log_out != NULL) {
+    return 0;
+  }
+  if (o->log_out == NULL && o->log_out_capacity != 0u) {
+    return 0;
+  }
+  if (o->log_in != NULL) {
+    return o->log_in->version == IVS_IVSL_VERSION && o->log_in->n_events <= IVS_IVSL_MAX_EVENTS;
+  }
+  return 1;
 }
 
 /* Machine time of the instance by ivs_machine_info (read only). 1 and *t set on success. */
@@ -962,10 +989,55 @@ static int ex_plan_buffers(ex_state *x, const ivs_info *info)
 }
 
 
-static void ex_run_steps(ex_state *x, const ivs_info *info)
+static int ex_names_user_content(const ivs_scenario *scn);
+
+/* Writes the applied prefix of the schedule as an IVSL v1 log into the caller's buffer (plan 11-02, TOOL-01, D-15): the
+ * events the run consumed, in order, with their declared ticks, plus the scenario's id, profile and content class. A
+ * buffer too small for the bytes is a harness failure with detail log-out-max-bytes, never a truncation. */
+static void ex_write_log(ex_state *x)
+{
+  ivs_ivsl_log log;
+  uint64_t written = 0u;
+  uint32_t n = x->rec->input_consumed;
+#ifdef IVS_FAULT_RECORD_WHOLE_SCHEDULE
+  /* IVS_FAULT_RECORD_WHOLE_SCHEDULE (plan 11-05 review BL-01): the recorder takes the whole schedule instead of the
+   * prefix the run applied, so a log of a run that stopped early (a halt or a guest-fail before the last input line, a
+   * budget timeout, a cancelled run) carries events the run never applied, and a replay of it is not the recorded run.
+   * Detected by runner.record.partial-run: every other recording id runs a schedule it consumes in full, which is why
+   * that id exists. */
+  n = x->sched_n;
+#endif
+  if (n > x->sched_n) {
+    n = x->sched_n;
+  }
+  if (n > IVS_IVSL_MAX_EVENTS) {
+    n = IVS_IVSL_MAX_EVENTS;
+  }
+  memset(&log, 0, sizeof log);
+  log.version = IVS_IVSL_VERSION;
+  (void)snprintf(log.scenario, sizeof log.scenario, "%s", x->scn->id);
+  (void)snprintf(log.profile, sizeof log.profile, "%s", x->scn->profile);
+  log.content = ex_names_user_content(x->scn) ? IVS_IVSL_CONTENT_USER : IVS_IVSL_CONTENT_PROJECT;
+  for (uint32_t i = 0u; i < n; i++) {
+    log.events[i].at_tick = x->sched[i].at_tick;
+    log.events[i].controller[0] = x->sched[i].controller[0];
+    log.events[i].controller[1] = x->sched[i].controller[1];
+  }
+  log.n_events = n;
+  if (ivs_ivsl_format(&log, x->log_out, x->log_out_cap, &written) != 0) {
+    ex_observe(x, IVS_RUNNER_OBS_HARNESS_FAIL, "log-out-max-bytes");
+    return;
+  }
+  x->log_out_bytes = written;
+}
+
+/* The run, then the log of what it applied. The recorder runs after the step loop and only when the run did not end
+ * harness-fail, so a log always describes a run that happened (an earlier harness failure records nothing). */
+static void ex_run_steps(ex_state *x, const ivs_info *info);
+
+static void ex_run_steps_body(ex_state *x, const ivs_info *info)
 {
   const ivs_scenario *s = x->scn;
-  ivs_input_event events[IVS_SCN_MAX_INPUTS];
   uint32_t consumed = 0u;
   char d[IVS_RUNNER_DETAIL_MAX];
   uint64_t step_mult = 1u;
@@ -975,16 +1047,47 @@ static void ex_run_steps(ex_state *x, const ivs_info *info)
   } else if (s->step_unit == IVS_SCN_UNIT_FRAMES) {
     step_mult = info->nominal_frame_ticks;
   }
-  /* The input schedule in master ticks (D-09, D-13); words 2 and 3 stay 0. */
-  memset(events, 0, sizeof events);
-  for (uint32_t i = 0u; i < s->n_inputs && i < IVS_SCN_MAX_INPUTS; i++) {
-    if (!ex_ticks(s->inputs[i].at, input_mult, &events[i].at_tick) || events[i].at_tick >= IVS_RUN_TARGET_MAX) {
-      (void)snprintf(d, sizeof d, "input-out-of-range line=%u", (unsigned)s->inputs[i].line);
-      ex_observe(x, IVS_RUNNER_OBS_HARNESS_FAIL, d);
-      return;
+  /* The input schedule in master ticks (D-09, D-13); words 2 and 3 stay 0. Under replay (plan 11-02) the log's events
+   * are already master ticks, so no unit conversion applies, and the log's count replaces the scenario's everywhere the
+   * schedule is used: q.events, q.event_count and the suffix arithmetic below. */
+  memset(x->sched, 0, sizeof x->sched);
+  if (x->log_in != NULL) {
+    uint32_t n = x->log_in->n_events;
+    if (n > IVS_SCN_MAX_INPUTS) {
+      n = IVS_SCN_MAX_INPUTS; /* ex_log_options_valid already refused a log above the cap */
     }
-    events[i].controller[0] = s->inputs[i].controller[0];
-    events[i].controller[1] = s->inputs[i].controller[1];
+    for (uint32_t i = 0u; i < n; i++) {
+      if (x->log_in->events[i].at_tick >= IVS_RUN_TARGET_MAX) {
+        (void)snprintf(d, sizeof d, "input-out-of-range line=%u", (unsigned)(i + 1u));
+        ex_observe(x, IVS_RUNNER_OBS_HARNESS_FAIL, d);
+        return;
+      }
+      x->sched[i].at_tick = x->log_in->events[i].at_tick;
+#ifdef IVS_FAULT_REPLAY_APPLIES_LATE
+      /* IVS_FAULT_REPLAY_APPLIES_LATE (plan 11-05, TOOL-01): every replayed event is applied one tick late. The
+       * applied-event chain hashes be64(at_tick), so a one-tick shift changes digest.input even when the guest never
+       * reads a controller word - which is why the cheap diagnostic run of the equality case is enough for the
+       * must-fail and the 806k-tick demo stays in the process case. */
+      x->sched[i].at_tick += 1u;
+#endif
+      x->sched[i].controller[0] = x->log_in->events[i].controller[0];
+      x->sched[i].controller[1] = x->log_in->events[i].controller[1];
+    }
+    x->sched_n = n;
+    x->rec->input_events_effective = n;
+  } else {
+    for (uint32_t i = 0u; i < s->n_inputs && i < IVS_SCN_MAX_INPUTS; i++) {
+      if (!ex_ticks(s->inputs[i].at, input_mult, &x->sched[i].at_tick) ||
+          x->sched[i].at_tick >= IVS_RUN_TARGET_MAX) {
+        (void)snprintf(d, sizeof d, "input-out-of-range line=%u", (unsigned)s->inputs[i].line);
+        ex_observe(x, IVS_RUNNER_OBS_HARNESS_FAIL, d);
+        return;
+      }
+      x->sched[i].controller[0] = s->inputs[i].controller[0];
+      x->sched[i].controller[1] = s->inputs[i].controller[1];
+    }
+    x->sched_n = s->n_inputs;
+    x->rec->input_events_effective = s->n_inputs;
   }
   if (!ex_plan_buffers(x, info)) {
     ex_observe(x, IVS_RUNNER_OBS_HARNESS_FAIL, "buffers-too-small");
@@ -1078,8 +1181,8 @@ static void ex_run_steps(ex_state *x, const ivs_info *info)
       q.audio_capacity = x->aud_cap;
       q.psg_log = x->log_buf;
       q.psg_log_capacity = x->log_cap;
-      q.events = consumed < s->n_inputs ? &events[consumed] : NULL;
-      q.event_count = s->n_inputs - consumed;
+      q.events = consumed < x->sched_n ? &x->sched[consumed] : NULL;
+      q.event_count = x->sched_n - consumed;
       memset(&rep, 0, sizeof rep);
       rep.struct_size = (uint32_t)sizeof rep;
       rs = ivs_machine_run(x->m, &q, &rep);
@@ -1206,6 +1309,14 @@ static void ex_run_steps(ex_state *x, const ivs_info *info)
     if (x->observed != 0u) {
       return;
     }
+  }
+}
+
+static void ex_run_steps(ex_state *x, const ivs_info *info)
+{
+  ex_run_steps_body(x, info);
+  if (x->log_out != NULL && (x->observed & IVS_RUNNER_OBS_HARNESS_FAIL) == 0u) {
+    ex_write_log(x);
   }
 }
 
@@ -1392,7 +1503,8 @@ uint32_t ivs_runner_execute(const ivs_scenario *scn, const ivs_runner_host *host
     result->exit_code = ivs_runner_exit_code(IVS_RUNNER_OUTCOME_HARNESS_FAIL);
   }
   if (scn == NULL || host == NULL || host->read_file == NULL || host->write_report == NULL ||
-      (opts != NULL && (!ex_roundtrip_options_valid(opts) || opts->slice_ticks > IVS_RUNNER_SLICE_TICKS_MAX ||
+      (opts != NULL && (!ex_roundtrip_options_valid(opts) || !ex_log_options_valid(opts) ||
+                        opts->slice_ticks > IVS_RUNNER_SLICE_TICKS_MAX ||
                         opts->max_ticks > IVS_RUN_TARGET_MAX || opts->reserved != 0u ||
                         (opts->wav_rate != 0u && !ivs_runner_wav_rate_valid(opts->wav_rate)))) ||
       (host->write_wav_pcm == NULL) != (host->finish_wav == NULL)) {
@@ -1401,9 +1513,13 @@ uint32_t ivs_runner_execute(const ivs_scenario *scn, const ivs_runner_host *host
   memset(&rec, 0, sizeof rec);
   memset(&x, 0, sizeof x);
   rec.scn = scn;
+  rec.input_events_effective = scn->n_inputs; /* plan 11-02: the scenario's count until a run replaces it */
   x.scn = scn;
   x.host = host;
   x.rec = &rec;
+  x.log_in = opts != NULL ? opts->log_in : NULL;
+  x.log_out = opts != NULL ? opts->log_out : NULL;
+  x.log_out_cap = opts != NULL ? opts->log_out_capacity : 0u;
   x.slice_ticks = opts != NULL && opts->slice_ticks != 0u ? opts->slice_ticks : IVS_RUNNER_SLICE_TICKS_MAX;
   x.max_ticks = opts != NULL && opts->max_ticks != 0u ? opts->max_ticks : IVS_RUNNER_MAX_TICKS_DEFAULT;
   x.wall_cap_ms = opts != NULL && opts->wall_timeout_ms != 0u ? opts->wall_timeout_ms : IVS_RUNNER_WALL_MS_DEFAULT;
@@ -1497,6 +1613,7 @@ uint32_t ivs_runner_execute(const ivs_scenario *scn, const ivs_runner_host *host
     result->report_lines = lines;
     result->report_write_failed = wrote != 0 ? 1u : 0u;
     result->roundtrip_cuts = x.rt_cuts;
+    result->log_out_bytes = x.log_out_bytes;
   }
   return outcome;
 }
