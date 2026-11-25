@@ -369,3 +369,32 @@ table; the `text` step reads `docs/runner.md`).
 - `docs/runner.md` - `bench-lamp-idle` and `bench-lamp-input` present
 - commits `d6bb0da` (Task 1) and `31821b4` (Task 2) - both ancestors of `HEAD`
 - `sh` and `dash` on the final tree - `gate: PASS`, both tails above, zero top-level `-- FAIL ` lines
+
+## After the closing records commit
+
+This is the re-run plan 09-06 had to be fixed for: its own closing records commit moved a count the
+gate reads, after the last gate run, and the phase boundary read `gate: FAIL steps=37/38`. Here the
+records commit (`47f5701`: ROADMAP.md 9/9, STATE.md position, metrics, session and status) and the
+SUMMARY commit (`f52610e`) came first, and both local gates were re-run **on that tree**. Both end
+`gate: PASS`, and the token differs from the pre-commit tail in exactly three derived fields and
+nothing else - `files`, `tracked` and `hygiene-files` each `2555` to `2556`, because this SUMMARY is
+the one file the plan adds. `diff` of the space-split tokens reports six changed lines, all of them
+those three fields' two sides; every absolute-and-frozen token is byte-identical.
+
+**Local `sh` after the closing records commit (exit 0, 72 s wall):**
+
+```
+gate: PASS steps=38/38 controls=384/384 api-calls=19 api-statuses=15 api-rows=61 pinned-defines=120 cc=AppleClang c-presets=2 fault-runs=235 core-imports=7 purity-selftest=7/7 ctest-runs=2 ci-runs=78 ci-uses=2 ci-workflows=2 ci-summary-selftest=11/11 claims=28 provisional=27 cp1610-rows=74 patterns=1024 unclaimed=0 ambiguous=0 coincidences=1 agree=71 resolved=3 vectors=412 source=291 policy=121 rows-pending=0 policies-pending=0 bus-figure-pages=35 blind-files=12 second-read=12/12 scanned=666 waived=0 discrepancies=110 pending-resolvers=20 open=101 d10-items=47 faults=235/235 tracked=2556 binaries-listed=0 terms=9 doc-files=59 profile-keys=154 goldens=29 reports=30 host-dependent=3 release-only=2 mode=tree hygiene-files=2556 history-commits=1 gates=107 lines=330 input-rows=31 input-policies=11 input-profile-fields=31 files=2556 listings=7 listing-words=1386 manifests=11 effective-yes=8 effective-no=3 literal-rows=80 views=2 dump-lines=160 prefix-files=11 archive=members public-symbols=19 defined=141 hdr-alone=10/10 consumer-lines=164 cxx-link=ok pkg-selftest=19/19 records=154 fields=154 unknown-fields=47 psg-rules=21 psg-vectors=120 psg-policies=12 release-selftest=11/11 runner-files=16 cases=12 sources=12 refs-verified=3/4 state-rows=88 state-cuts=18 tests-expected=4958 tests-executed=4954 tests-skipped=4 tests-missing=0 docs=60 claim-refs=26 stic-rules=67 stic-rows=64 video-frames=26 video-hash-ties=18 video-frame-pairs=9 tags=10 tiers=8
+```
+
+**Local `dash` after the closing records commit (exit 0, 80 s wall), byte-identical to the `sh`
+line** (zero top-level `-- FAIL ` lines in either log):
+
+```
+gate: PASS steps=38/38 controls=384/384 api-calls=19 api-statuses=15 api-rows=61 pinned-defines=120 cc=AppleClang c-presets=2 fault-runs=235 core-imports=7 purity-selftest=7/7 ctest-runs=2 ci-runs=78 ci-uses=2 ci-workflows=2 ci-summary-selftest=11/11 claims=28 provisional=27 cp1610-rows=74 patterns=1024 unclaimed=0 ambiguous=0 coincidences=1 agree=71 resolved=3 vectors=412 source=291 policy=121 rows-pending=0 policies-pending=0 bus-figure-pages=35 blind-files=12 second-read=12/12 scanned=666 waived=0 discrepancies=110 pending-resolvers=20 open=101 d10-items=47 faults=235/235 tracked=2556 binaries-listed=0 terms=9 doc-files=59 profile-keys=154 goldens=29 reports=30 host-dependent=3 release-only=2 mode=tree hygiene-files=2556 history-commits=1 gates=107 lines=330 input-rows=31 input-policies=11 input-profile-fields=31 files=2556 listings=7 listing-words=1386 manifests=11 effective-yes=8 effective-no=3 literal-rows=80 views=2 dump-lines=160 prefix-files=11 archive=members public-symbols=19 defined=141 hdr-alone=10/10 consumer-lines=164 cxx-link=ok pkg-selftest=19/19 records=154 fields=154 unknown-fields=47 psg-rules=21 psg-vectors=120 psg-policies=12 release-selftest=11/11 runner-files=16 cases=12 sources=12 refs-verified=3/4 state-rows=88 state-cuts=18 tests-expected=4958 tests-executed=4954 tests-skipped=4 tests-missing=0 docs=60 claim-refs=26 stic-rules=67 stic-rows=64 video-frames=26 video-hash-ties=18 video-frame-pairs=9 tags=10 tiers=8
+```
+
+The lesson, restated because it is the one this plan could have repeated: a requirement mark, a
+summary file and a status line are all counts the gate reads, so the gate runs **after** the records
+commit and not before it. The predicted delta was stated in advance (+1 file, no other token), so the
+re-run is a confirmation rather than a discovery.
