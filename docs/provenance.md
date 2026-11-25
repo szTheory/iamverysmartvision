@@ -79,7 +79,7 @@ The same list is in `.github/pull_request_template.md`.
 
 The `denylist` step of `sh tools/gate.sh` scans every tracked text file.
 Its scope is everything except `.planning/`, `.claude/`, `docs/provenance.md`, `docs/provenance/`, `data/sources.json` and `tools/check/`.
-Those paths are excluded because they must name the things the scan looks for: the rule itself, the consultation log, the registry URLs, the lists and the control inputs.
+Those paths are excluded because they must name the things the scan looks for: the rule itself, the consultation log, the registry URLs, the lists and the control inputs. [nc]
 `.claude/` is excluded because `.claude/CLAUDE.md` is a generated mirror of research text under `.planning/`, which is already excluded.
 Author names and licence-header strings in `tools/check/denylist.txt` fail the scan wherever they appear in scope, and they cannot be waived.
 Emulator project names in `tools/check/denylist-cite.txt` fail the scan unless the same line carries the marker `[cite-only]`.

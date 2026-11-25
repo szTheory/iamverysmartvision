@@ -41,8 +41,8 @@ contradicts it in the open.
    the machine.
 
 5. `index frame` names the published plane, and the words a person uses for a
-   picture or a sound are never evidence of hardware behaviour. `looks like`,
-   `sounds like`, `the picture is washed out`, `render`, `picture` and their
+   picture or a sound are never evidence of hardware behaviour. `looks like` [nc],
+   `sounds like` [nc], `the picture is washed out`, `render`, `picture` and their
    relatives describe a host's presentation and a viewer's judgement, never the
    machine; the evidence is the index plane, the digest chain and the hand-derived
    frames. This line is a policy statement and makes no claim. [nc]

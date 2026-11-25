@@ -3,7 +3,9 @@
 # Step text: claim-language tripwire (R1), claim-reference resolution and tier ids documented.
 # Scans README.md, CHANGELOG.md and docs/**/*.md from FILELIST only (CHANGELOG.md since plan 08-01, D-32: the
 #   release notes are the most public claim text of the project). Findings are reported in sorted order.
-# Claim words (D-27): supports, compatible, passes, accurate, verified, runs, plays, playable. The tier identifier
+# Claim words (D-27): supports, compatible, passes, accurate, verified, runs, plays, playable, looks, sounds.
+#   The last two are the words a person uses for a picture or a sound, which are never evidence of hardware
+#   behaviour (EV-05, GUARDRAILS 2.8); plan 10-05 added them and no other word of that family. The tier identifier
 #   playable-guest-progress is an identifier, not a claim word: that exact string is removed from a line before
 #   it is matched (the only exemption); any other use of plays or playable needs a claim tag or the waiver.
 # Tokens: text-no-files, text-claim-untagged: <file>:<line>, text-unknown-claim-ref: <id>,
@@ -42,7 +44,7 @@ set --
 while IFS= read -r f; do set -- "$@" "$f"; done < "$tmp/scan"
 idfiles=$( (cd "$ROOT" && grep -a -l -F -e playable-guest-progress -- "$@") 2> /dev/null || true )
 claim_hits() {
-  grep -a -n -i -w -E 'supports|compatible|passes|accurate|verified|runs|plays|playable' \
+  grep -a -n -i -w -E 'supports|compatible|passes|accurate|verified|runs|plays|playable|looks|sounds' \
     | grep -a -v -E '\[claim:CL-[0-9]{4}\]|\[nc\]' \
     | sed -n 's/^\([0-9][0-9]*\):.*/\1/p'
 }
