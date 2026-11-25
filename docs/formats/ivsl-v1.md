@@ -214,3 +214,28 @@ questions O-1 and O-2). The reason: it is an operator-error guard and not a prop
 format; the process case's stripped copy keeps its `id` line, so no case needs it; and adding it
 later is a reader-side change that needs no version bump, because no field changes. Until then
 both values are informational, as the field table says.
+
+## Appended amendment A-11-V1 (Phase 11 verification, 2026-11-25): one sentence above is too strong
+
+The paragraph on this page that says *"no 32-character hex sequence ... is expressible anywhere in
+the file"* is **false as written, and it is left as written** because this document is a frozen
+oracle (GUARDRAILS §2.10, lesson 21). The correction is this note.
+
+**Measured:** `scenario 832906ce775d32a98ae607386ce4bbcd` is a legal value — `scenario` is a slug
+over `[a-z0-9-]`, and a slug of 32 lower-case hex characters satisfies it. The runner records it,
+and a produced log then contains exactly one run of 32 or more hex digits.
+
+**The rights property still holds, and this is why the sentence's conclusion survives its own
+premise failing.** The value in that field is the **operator's own scenario id**, written by the
+runner from the file the operator named. It is never anything the images produced: no digest, no
+frame byte, no audio byte, no image name, no length, no path. D-15's requirement is that the log
+hold nothing derived from content, and it does not.
+
+**What `runner.record.no-content-digest` therefore checks, stated accurately:** zero runs of 32 or
+more hex digits **outside the two slug fields**, which it masks by rule, plus the stand-in that
+carries such a run and must be caught. The check's meaning is unchanged; only the sentence that
+described it was overstated.
+
+**No format change, no code change, no version bump follows.** The grammar is unchanged, the
+version stays 1, and no reader or writer moves. A future revision of this document should replace
+the overstated sentence with this one, and may then delete this note.
