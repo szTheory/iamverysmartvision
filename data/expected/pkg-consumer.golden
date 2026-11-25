@@ -27,7 +27,7 @@
 # snap.digest.<domain> lines and observed domains (all nine) must equal data/golden/demo-lamp-tone-pass.digests like the scn. lines; the new lines are additions only.
 # Repeatability output of the installed package, not an oracle: the core agrees with itself.
 ivs-consumer 1
-version package=0.1.0 header=0.1.0 api=0x000100 library=0x000100 tie=yes
+version package=0.2.0 header=0.2.0 api=0x000200 library=0x000200 tie=yes
 v1-sizes run_request_v1=64 events_at=48 run_request=80 run_report_v1=112 run_report=160 info_v1=216 info=320 input_event=32 cpu_state_report=36 ok=yes
 create status=IVS_OK profile=intv-2609-ntsc-family-p1
 refusal.truncated-exec status=IVS_E_MALFORMED reason=21 digest-unchanged=yes
