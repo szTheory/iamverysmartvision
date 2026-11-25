@@ -1837,10 +1837,17 @@ cannot move `r`: it reorders cheap steps, and the expensive ones are unchanged.
    and adds a required-context change to the ruleset for 25 s of wall.
 
 **Locally first, always.** Every phase of this milestone was reproduced with `sh tools/gate.sh`
-and `dash tools/gate.sh` and the Ubuntu container before any push; the three pushes that failed
-did so on **hygiene**, which is a local step, not a hosted-only hazard. `act` remains the tool
-for workflow *shape* and `tools/gate-linux.sh` for the Ubuntu substance; neither was needed for
-a shape change in this milestone because no workflow file changed.
+and `dash tools/gate.sh` and the Ubuntu container before any push; the one push that failed in
+this milestone (`45548510925`) did so on **hygiene**, which is a local step, not a hosted-only
+hazard. `act` remains the tool for workflow *shape* and `tools/gate-linux.sh` for the Ubuntu
+substance; neither was needed for a shape change in this milestone because no workflow file
+changed.
+
+*Correction, v0.3.0 housekeeping 2026-11-26 (audit G-11), recomputed from `.planning/ci-runs.tsv`:
+that sentence said "the three pushes that failed". The file holds three failures **in total**, and
+two of them are v0.1.0-era `pull_request` rows (`43053142759`, 2026-11-11; `43148343848`,
+2026-11-12) that predate this milestone's rule. Exactly one failure is in this milestone, and it is
+the hygiene one named above. The count is arithmetic over the file, not a recollection.*
 
 **Docker hygiene, verified rather than asserted.** `docker ps -a --filter name=ivs-` and
 `docker images | grep '^ivs'` are both empty after every container gate in this milestone; each
@@ -1916,3 +1923,35 @@ load-bearing; **Ground 1 is.** A correction is appended there rather than the te
 phase11-close: no-lever (median r 10.7059 fires the rule on arithmetic; cpu_s 359-360 equals the
 339-360 that settled Phase 9 while build_s fell 42-48 to 34, so the ratio moved and the work did not;
 allowance spent is about 4.5 of 21 hosted cpu-s)
+
+## 2026-11-26 — v0.3.0 opening: the deferred terminal row lands, and the window is recomputed at it
+
+**The row the termination rule deferred.** The v0.2.0 close named its own terminal run — the merge push of the
+records PR that carried the termination note — and recorded that its row belongs to the next milestone's opening
+commit rather than to a follow-up PR. It is `45671125088`, head `0bc1f46`, `push`, success, and it is now the last
+line of `.planning/ci-runs.tsv`: `queue_s` 2, `setup_s` 5, `build_s` 33, `test_s` 84, `gate_s` 117, `total_s` 130,
+`ncpu` 4, `cpu_s` 360. The regress terminates here: this commit's own push run is the first row of the *next*
+milestone's opening commit, by the same rule.
+
+**The window, recomputed by arithmetic from the committed file** (the last five successful rows in file order with
+`build_s` and `cpu_s` above 0, after the three close-record pushes `45665957382`, `45666970547`, `45668965465` and
+the records push `45669923074` moved it):
+
+| Run | `build_s` | `cpu_s` | `r` |
+|---|---|---|---|
+| 45665957382 | 38 | 434 | 11.4211 |
+| 45666970547 | 34 | 360 | 10.5882 |
+| 45668965465 | 34 | 361 | 10.6176 |
+| 45669923074 | 52 | 608 | 11.6923 |
+| 45671125088 | 33 | 360 | 10.9091 |
+
+`r` median **10.9091**, `cpu_s` median **361**, `build_s` median **34**. The close entry's 10.7059 was correct for
+the window that existed when it was written (ending at the cherry-picked phase 10 row); four later rows moved the
+window and none moved the work. The `cpu_s` median of 361 is the same figure the close read (359–360) and the same
+figure that settled Phase 9 (339–360), while `build_s` stays at 33–34 against the 42–49 of that settling window.
+**That is the confirmation the close asked for, not a new cost event.**
+
+**No action, and the reason is recorded rather than implied.** `r` is retired as a decision input until `build_s`
+is stable (the close entry above), so a median of 10.9091 against a stop line of 8.3 triggers nothing: the standing
+figures are `cpu_s` and the measured per-step profile, and `cpu_s` did not move. The gate is still 38 steps; this
+opening commit adds no test id, control, fault, gate step or registry line.
