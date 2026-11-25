@@ -4,10 +4,10 @@ milestone: v0.2.0
 milestone_name: Registered Evidence, Reachable Runs, Replayable Input (Phases 9 to 12)</summary>
 current_phase: 11
 current_phase_name: Input Record and Replay
-current_plan: 2
+current_plan: 3
 status: executing
-stopped_at: Completed 11-01-PLAN.md
-last_updated: "2026-11-25T13:57:13.154Z"
+stopped_at: Completed 11-02-PLAN.md
+last_updated: "2026-11-25T14:26:00.000Z"
 last_activity: 2026-11-25
 last_activity_desc: Phase 10 complete, transitioned to Phase 11
 state_head: 159905304990f85a102419a7485c220bffd8156d
@@ -15,7 +15,7 @@ progress:
   total_phases: 4
   completed_phases: 8
   total_plans: 20
-  completed_plans: 16
+  completed_plans: 17
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-11-24)
 
 ## Current Position
 
-Phase: 11 (Input Record and Replay) — READY TO EXECUTE
-Current Plan: 2
+Phase: 11 (Input Record and Replay) — EXECUTING
+Current Plan: 3
 Total Plans in Phase: 5
-Status: Ready to execute
-Last activity: 2026-11-25 — Phase 10 complete, transitioned to Phase 11
+Status: Executing
+Last activity: 2026-11-25 — 11-02 complete: the record/replay tracer, the IVSL library and the two judge self-controls
 
 **Phase 10 final counts:** `steps=38/38 controls=389/389 claims=28 provisional=27 gates=109
 lines=333 faults=235/235 cases=13 goldens=29 claim-refs=26 prefix-files=11 doc-files=62 docs=63`.
@@ -230,6 +230,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | Phase 10 P04 | 18m | 2 tasks | 3 files |
 | Phase 10 P6 | ~55 min wall clock | 3 tasks | 12 files |
 | Phase 11 P01 | 14m | 2 tasks | 1 files |
+| Phase 11 P02 | 27m | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -600,8 +601,8 @@ The row itself is left as recorded and this note sits under it.
 
 ## Session Continuity
 
-Last session: 2026-11-25T13:57:13.079Z
-Stopped at: Completed 11-01-PLAN.md
+Last session: 2026-11-25T14:26:00.000Z
+Stopped at: Completed 11-02-PLAN.md
 Resume file: None
 
 ## Recorded Constraints for the Next Milestone

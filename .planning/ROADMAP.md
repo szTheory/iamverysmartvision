@@ -210,10 +210,10 @@ with the vacuity guards that v0.1.0's round-trip hook lacked.
   3. The liveness guards do the work: the equality case asserts at least one event, `input.consumed == input.events`, an `at_tick` list equal to the recorded one and all nine domains observed, while `replay-differs` (one digest nibble changed) and `replay-inert` (a fake pair with zero applied events) are rejected **by the guard**, each shown able to fail.
   4. Every malformed log in the refusal family (unknown directive, non-monotonic tick, tick beyond bound, event cap, undefined controller bit, wrong version, trailing garbage) is refused with a typed token and no state change, and the two named faults `IVS_FAULT_RECORD_DROPS_LAST_EVENT` and `IVS_FAULT_REPLAY_APPLIES_LATE` fail exactly their ids.
   5. `runner.record.no-content-digest` finds zero runs of 32 or more hex digits in a produced log; the log is text, absent from `tools/check/binary-ext.txt` and not gitignored; the gate ends `steps=38/38` with the plan's predicted count delta and the tier ceiling `deterministic-repeatability`, provisional.
-**Plans**: 1/5 plans executed, 4 waves
+**Plans**: 2/5 plans executed, 4 waves
 Plans:
 - [x] 11-01-PLAN.md — `docs/formats/ivsl-v1.md` first: the grammar, the nine refusal tokens, the measured caps, the profile scope and the D15 rights posture (wave 1)
-- [ ] 11-02-PLAN.md — the tracer: `runner/ivsl.c` + the executor's schedule substitution and applied-prefix recorder + the effective `input.events`, with the equality, the round trip and the two judge self-controls (wave 2)
+- [x] 11-02-PLAN.md — the tracer: `runner/ivsl.c` + the executor's schedule substitution and applied-prefix recorder + the effective `input.events`, with the equality, the round trip and the two judge self-controls (wave 2)
 - [ ] 11-03-PLAN.md — the nine `runner.record.refuse.<token>` ids with an untouched-output assertion each, and `runner.record.no-content-digest` with its stand-in (wave 3)
 - [ ] 11-04-PLAN.md — `--record-input` (exclusive create) and `--replay-input`, and the one process case on `demo-lamp-tone-pass` with its `input` lines stripped (wave 3)
 - [ ] 11-05-PLAN.md — the two named faults, `TOOL-01`'s close with four registry rows and the toy obligations in one commit, and the phase exit (wave 4)
