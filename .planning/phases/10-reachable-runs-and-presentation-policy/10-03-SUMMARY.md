@@ -109,7 +109,7 @@ None were needed. The packet avoids the eight claim words the `text` step alread
 ## Token deltas
 
 - `docs` 62 → **63**, `doc-files` 61 → **62** (the one new `docs/*.md`); `data/expected/handoffs.ids` is not a document and moves no document count.
-- `files` = `tracked` = `hygiene-files` = **2584** at the end (task 1: +1 over 2582; task 2: +1 over 2583). Each task's delta against its own baseline is exactly 1.
+- `files` = `tracked` = `hygiene-files` = **2584** after task 2 (task 1: +1 over 2582; task 2: +1 over 2583; each task's delta against its own baseline is exactly 1), and **2585** at the final record commit, which adds this SUMMARY file (the two record files, `STATE.md` and `ROADMAP.md`, were already tracked). `files == tracked == hygiene-files` holds at both points.
 - Unmoved: `steps=38/38`, `controls=386/386`, `claims=28`, `provisional=27`, `gates=107`, `lines=330`, `claim-refs=26`, `prefix-files=11`, `goldens=29`, `cases=13`, `faults=235/235`, `tests-expected/executed/skipped/missing=4958/4954/4/0`.
 
 ## Gate lines
@@ -117,12 +117,24 @@ None were needed. The packet avoids the eight claim words the `text` step alread
 ```
 sh:    gate: PASS steps=38/38 controls=386/386 ... claims=28 provisional=27 ... gates=107 lines=330 ... doc-files=62 ... tracked=2584 ... files=2584 ... prefix-files=11 ... cases=13 ... tests-expected=4958 tests-executed=4954 tests-skipped=4 tests-missing=0 docs=63 claim-refs=26
 dash:  gate: PASS steps=38/38 controls=386/386 claims=28 provisional=27 tracked=2584 doc-files=62 hygiene-files=2584 gates=107 lines=330 files=2584 prefix-files=11 docs=63 claim-refs=26
+sh at the final record commit:
+gate: PASS steps=38/38 controls=386/386 claims=28 provisional=27 tracked=2585 doc-files=62 hygiene-files=2585 gates=107 lines=330 files=2585 prefix-files=11 docs=63 claim-refs=26
 ```
+
+Both shells PASS; the only token that moves between the content HEAD and the final record commit is `files`/`tracked`/`hygiene-files` 2584 to 2585, caused by this SUMMARY file, and every absolute-and-frozen token is unchanged.
 
 ## Commits
 
-- `841d6e6` docs(10): record the five human-only items as a handoff ledger
-- `2cf4dd6` docs(10): add the handoff packet for the five ledger rows
+- `841d6e6` docs(10): record the five human-only items as a handoff ledger (task 1)
+- `2cf4dd6` docs(10): add the handoff packet for the five ledger rows (task 2)
+- `36c7981` docs(10): complete the handoff ledger and packet plan (this file)
+- the record commit `docs(10): record plan 10-03 completion in STATE and ROADMAP` (its hash is this plan's last commit, so it is named rather than quoted: a hash written into a file cannot survive the commit that writes it)
+
+The frontmatter's `commits: 2` counts the two task commits the ledger measured at SUMMARY-write time (`plan_head_before..plan_head_after`); the two record commits follow this file and are outside every task's delta.
+
+## EV-05 stays Pending (deliberate)
+
+The plan frontmatter lists `requirements: [EV-05]`, and `requirements mark-complete EV-05` was applied and then reverted. EV-05's criterion has three clauses and this plan supplies two of them: the ledger and the packet. The third - "a claim may not cite a handoff artifact" - is plan 10-05, and the claim-word list extension is 10-05/10-06. Marking EV-05 Complete here would misstate the record and would also turn the gate red: `important-gates-excluded.ids` excludes EV-01..EV-04 but not EV-05, so a Complete EV-05 with no registry row trips `important-gates-complete-uncovered` (verified green after the revert). EV-05 is completed at the phase close, by the plan that lands the claim refusal.
 
 ## Self-Check: PASSED
 
