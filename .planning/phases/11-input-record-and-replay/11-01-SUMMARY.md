@@ -30,9 +30,9 @@ status: complete
 actuals:
   tokens: 5582
   tasks: 2
-  commits: 2
+  commits: 4
   plan_head_before: c98db20d6bd15a11148156a9457cfec802428d0b
-  plan_head_after: PENDING
+  plan_head_after: 622a5f331e7cb35da07551e2d788095392ce7828
 ---
 
 # Phase 11 Plan 01: The frozen IVSL v1 oracle Summary
@@ -209,11 +209,31 @@ where `<doc-add-commit>` is `dcfcd65` on this branch.
 - **Files modified:** `docs/formats/ivsl-v1.md`
 - **Commit:** `dcfcd65`
 
+**2. [Rule 3 - Blocking] `requirements mark-complete TOOL-01` tripped the `important-gates` step**
+- **Found during:** the closing-records gate run, after `622a5f3`
+- **Issue:** marking `TOOL-01` complete in `REQUIREMENTS.md` makes `important-gates` fail with
+  `important-gates-complete-uncovered: TOOL-01` and `important-gates-uncovered-gate: TOOL-01`, so
+  the gate dropped to `steps=37/38`. The requirement is not satisfied by this plan: only its
+  oracle half exists, and no gate yet covers it.
+- **Fix:** restored `REQUIREMENTS.md` to its pre-`mark-complete` content and amended the
+  closing-records commit; `TOOL-01` stays Pending until the phase's gate evidence lands. Both
+  gates then end `gate: PASS steps=38/38`.
+- **Files modified:** `.planning/REQUIREMENTS.md` (reverted)
+- **Commit:** `622a5f3` (amended)
+
 ### Recorded, not a deviation
 
 - **Budget deviation (approved):** `sh tools/gate.sh` ran once at the end of the plan and `dash`
   once immediately after, rather than per task, and the container gate did not run. Recorded here
   as the dispatch instructed.
+
+## Closing counts, after the records commit
+
+`sh tools/gate.sh` and `dash tools/gate.sh` re-ran after the closing records commit and both end
+`gate: PASS` with `steps=38/38 controls=395/395 faults=235/235 gates=109 lines=333
+claims=28 provisional=27 docs=64 doc-files=63 claim-refs=26 tests-expected=4958 runner-files=16
+cases=13 goldens=29`, and `files=2641 tracked=2641 hygiene-files=2641`. `TOOL-01` remains
+**Pending** in `REQUIREMENTS.md` by design; the phase's own plans close it.
 
 ## Known Stubs
 
