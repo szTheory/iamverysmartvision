@@ -1718,3 +1718,65 @@ Trims (c) and (d) were taken with `/usr/bin/time -p`, three alternated runs per 
 
 waveA1: measured and recorded; the checkpoint word is the orchestrator's, after the hosted row
 
+
+## 2026-11-25 — wave A1's hosted row: the level is settled, and it is under budget
+
+**One row, taken on the PR head after lever (3) and trims (a), (c) and (d) landed.** Run
+`45527058543`, `pull_request`, head `93e6b9f`, `build_s` 43, `gate_s` 111, `cpu_s` 354,
+`r` = **8.2326**. Recorded with `tools/ci-record.sh` and appended to `.planning/ci-runs.tsv`
+by the orchestrator, never by an executor.
+
+**Ancestry, proved rather than asserted.** Every wave A1 commit is an ancestor of the row's
+head: `git merge-base --is-ancestor <c> 93e6b9f` returns 0 for `8d28dce` (the fold), `dcb50f4`
+(trim a), `f271769` (the diagnostic line), `0c217ed` (trim c), `d7f5ec4` (trim d), `0a91804`
+(the inventory comments) and `e8a740c` (the cost record). ROADMAP criterion 1's
+`git merge-base --is-ancestor` check therefore holds for the row and for every commit that adds
+gate content later in this phase.
+
+**The window, recomputed by arithmetic from the committed file.** The last five rows in file
+order and their `r`:
+
+| run | event | head | `build_s` | `cpu_s` | `r` |
+|-----|-------|------|-----------|---------|-----|
+| 45412585701 | `pull_request` | bd6f2e3 | 48 | 356 | 7.4167 |
+| 45413049708 | `push` | 3808e6f | 46 | 354 | 7.6957 |
+| 45414715588 | `push` | aa96e9a | 45 | 339 | 7.5333 |
+| 45415977805 | `push` | 1090500 | 42 | 352 | 8.3810 |
+| 45527058543 | `pull_request` | 93e6b9f | 43 | 354 | 8.2326 |
+
+Sorted: 7.4167, 7.5333, 7.6957, 8.2326, 8.3810 → **median 7.6957**, i.e. **7.696**.
+
+```
+awk -F'\t' 'NR>1 && $13>0 {a[++n]=$13/$8} END{for(i=n-4;i<=n;i++)v[i-n+5]=a[i];
+  for(i=1;i<=5;i++)for(j=i+1;j<=5;j++)if(v[i]>v[j]){t=v[i];v[i]=v[j];v[j]=t};
+  printf "median: %.4f\n",v[3]}' .planning/ci-runs.tsv
+```
+
+**The new row reads 8.2326 and the median did not move.** The row that left the window is
+`45334963892` (7.8261) — the oldest of the previous five — so the window's composition changed
+by one row in and one out, and the two nearly cancel: 7.6957 before, 7.6957 after. The new
+row's own 8.2326 comes from the fastest `build_s` in the window (43) with a mid-range `cpu_s`
+(354), which is the single-row runner-speed artefact this file has recorded since the Phase 6
+entry, not growth: the wave A1 diff adds no gate work at all and removes about 0.80 local
+cpu-s of it.
+
+**The allowance, and what wave A2 may spend.** The priced allowance stands at about **21 hosted
+cpu-s ≈ 12.9 local** for the whole milestone; recomputed against this window the headroom to
+the 8.3 stop line is 0.604 `r` ≈ 27.8 hosted cpu-s, and to the 7.8 budget 0.104 `r` ≈ 4.8
+hosted cpu-s. Both figures are printed so a later reader sees that the budget, not the stop
+line, is the binding number today. Wave A2's measured expectation is ≈ **1.2 local cpu-s**
+(five controls at 0.185 each plus one `cmake -P` launch), ≈ 0.7 hosted, ≈ +0.015 `r` — inside
+the ceiling with room to spare, and inside the 4.8 hosted cpu-s to the budget.
+
+**No lever is proposed and none is needed.** The stop line did not fire, and the lever order is
+exhausted of non-owner items: lever (3) and trims (a), (c) and (d) are all landed, and trim (b)
+is declined by measurement (0.09 local cpu-s against the only sanitized execution of the
+65-cut loop). Dropping a check, caching, `continue-on-error`, a matrix or a path filter remains
+forbidden and none is proposed.
+
+**Measured against the prediction.** Wave A1 was priced at 0.12 (lever, a ceiling) + 0.18
+(trim a) + 0.8 (trims c and d, estimated) = 1.10 local cpu-s. Measured: 0.12 + 0.18 + **0.50**
+= **0.80 local cpu-s**. The estimate for (c)+(d) was 0.8 and the measurement is 0.50; both
+figures are recorded and the estimate is not rewritten.
+
+phaseA1: discharged-below-budget
