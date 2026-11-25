@@ -25,7 +25,7 @@
 # the traceability table is the record the project treats as authoritative. The exclusion set is a
 # different file from the registry, so deleting a registry line cannot delete the requirement from
 # the must-be-covered set; a missing ledger file is an empty exclusion set, which is safe because
-# the six requirements it lists then fail important-gates-complete-uncovered.
+# the twelve requirements it lists then fail important-gates-complete-uncovered.
 # The ledger's own row format is validated in the same pass (review WR-01): a row must be exactly
 # '<REQ> <reason>', with <REQ> shaped like a requirement id and <reason> at least three
 # underscore-joined words; 'none' is refused. A row that fails is reported as
@@ -49,6 +49,8 @@
 #            plan 08-17 (the nine snapshot and restore faults, the six judges of the state suite and
 #            the seven controls of the state step); PRF-01 plan 08-19 (both test ids of the suite
 #            bench: the refusal of a mutated golden and the judge of the absence-of-measurement check)
+#   Phase 10 EV-05 plan 10-06 (the three controls of the handoff ledger and of the look/listen prose:
+#            the two claims controls and the one text control, the first rows either gate name has had)
 # Resolution of <id> by mechanism:
 #   fault    first column of any data/expected/faults/*.ids (judged by faults-verdict);
 #   control  first column of any data/expected/controls/*.ids (run by tools/check/run-controls.sh);

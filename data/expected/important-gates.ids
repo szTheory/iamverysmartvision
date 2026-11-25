@@ -462,3 +462,10 @@ content-refusal-order fault CHECK_ORDER_MALFORMED_FIRST MEM-04
 # MEM-05: the documented import format is enforced only if a container that lies about its declared
 # total byte count is refused.
 ivsc-import-format fault IVSC_TRUST_TOTAL_BYTES MEM-05
+# Phase 10 (plan 10-06): EV-05's three controls. A claim may not cite a handoff artifact and an
+# untagged look/listen word is refused, so the two claims controls and the one text control are the
+# mechanisms that make the handoff-ledger requirement fail when it is violated. Both gate names are
+# new to this registry and both ids resolve through data/expected/controls/claims.ids.
+claims control claims-handoff-artifact EV-05
+claims control claims-handoff-row EV-05
+text control text-untagged-look-listen EV-05

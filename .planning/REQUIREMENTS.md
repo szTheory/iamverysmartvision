@@ -21,16 +21,16 @@ exceed `provisional`** while D10 and D11 are unperformed.
 - [x] **EV-02**: The 17 requirements whose named faults already run in every gate (FND-01..07, CPU-01..05, MEM-01..05) each have at least one cannot-pass-vacuously mechanism registered in `data/expected/important-gates.ids`, with the accepted-requirement set and all ten toy registries extended in the same commit and no new fault or test id.
 - [x] **EV-03**: Each gate-hardening item (`SRC-` whole-token match, zero-document failures, per-step pass lines, manifest output anchoring, memmap generator controls) has a control that fails for its intended reason.
 - [x] **EV-04**: A machine check refuses a requirement marked Complete that has no registry line, and refuses a toy registry that drifts from the good tree, and both are shown able to fail.
-- [ ] **EV-05**: A handoff ledger (`data/expected/handoffs.ids`) records every human-only item (H7-1, H7-2, H8-3, D10, D11) with `evidence: none`, a claim may not cite a handoff artifact, and a later milestone cites the row instead of re-asking.
+- [x] **EV-05**: A handoff ledger (`data/expected/handoffs.ids`) records every human-only item (H7-1, H7-2, H8-3, D10, D11) with `evidence: none`, a claim may not cite a handoff artifact, and a later milestone cites the row instead of re-asking.
 
 ### Packaging and reachability
 
-- [ ] **PKG-05**: A person can build and run the emulator from the released source archive using documented commands only, and the release rehearsal proves that route end to end against the demo cartridge golden from a moved prefix.
+- [x] **PKG-05**: A person can build and run the emulator from the released source archive using documented commands only, and the release rehearsal proves that route end to end against the demo cartridge golden from a moved prefix.
 
 ### Tooling
 
 - [ ] **TOOL-01**: A run can be recorded as an input-only log and replayed at machine-time boundaries, and the replay reproduces the recorded run's digest chain and applied-event chain, guarded against a vacuous match.
-- [ ] **TOOL-04** *(narrowed)*: A frozen presentation and palette policy keeps colour, scaling and aspect out of the core and out of every claim, and a check refuses a colour symbol in the core.
+- [x] **TOOL-04** *(narrowed)*: A frozen presentation and palette policy keeps colour, scaling and aspect out of the core and out of every claim, and a check refuses a colour symbol in the core.
 
 ### Content formats
 
@@ -98,9 +98,9 @@ roadmap names.
 | EV-02 | Phase 9 | Complete |
 | EV-03 | Phase 9 | Complete |
 | EV-04 | Phase 9 | Complete |
-| EV-05 | Phase 10 | Pending |
-| PKG-05 | Phase 10 | Pending |
-| TOOL-04 | Phase 10 | Pending |
+| EV-05 | Phase 10 | Complete |
+| PKG-05 | Phase 10 | Complete |
+| TOOL-04 | Phase 10 | Complete |
 | TOOL-01 | Phase 11 | Pending |
 | FMT-01 | Phase 12 | Pending |
 | FMT-04 | Phase 12 | Pending |
