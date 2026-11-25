@@ -83,10 +83,27 @@ done
 
 here=$(cd "$(dirname "$0")" && pwd) || exit 2
 ROOT=$(cd "$here/.." && pwd) || exit 2
+self="$here/$(basename "$0")"
 cd "$ROOT" || exit 2
 for tool in git tar gzip awk cmake cmp mktemp find sort; do
   command -v "$tool" > /dev/null 2>&1 || refuse "$tool not found"
 done
+
+# The copy above is CHECKED, not trusted (PLAN-LESSONS 20: an equivalence check needs a guard that
+# the thing it compares really happened, and here the comment is the only other evidence). Both
+# functions must stay byte-identical to the gate's own program at tools/check/steps/golden.sh,
+# renamed; the source is extracted by name from that file and the copy by name from this one, so the
+# comparison is against the code that actually runs, not against a second transcription of it. Run
+# on every rehearsal rather than only with --source-route, because a stale copy is a false statement
+# in this file even on a run that does not use it.
+drift() {
+  _src=$(sed -n "/^$2() {/,/^}/p" tools/check/steps/golden.sh | sed "s/^$2() {/$3() {/")
+  _cpy=$(sed -n "/^$3() {/,/^}/p" "$self")
+  [ -n "$_src" ] && [ "$_src" = "$_cpy" ] \
+    || fail "$3 has drifted from tools/check/steps/golden.sh ($2)"
+}
+drift filter_report route_filter
+drift live_count route_live
 work=$(mktemp -d "${TMPDIR:-/tmp}/release-rehearse.XXXXXX") || exit 2
 trap 'rm -rf "$work"' EXIT
 trap 'exit 2' HUP INT TERM
