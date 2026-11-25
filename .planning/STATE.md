@@ -5,16 +5,16 @@ milestone_name: Registered Evidence, Reachable Runs, Replayable Input (Phases 9 
 current_phase: 9
 current_phase_name: Registered Evidence and Gate Cost
 status: executing
-stopped_at: Completed 09-04-PLAN.md
-last_updated: "2026-11-25T01:50:24.983Z"
+stopped_at: Completed 09-05-PLAN.md
+last_updated: "2026-11-25T02:04:14.847Z"
 last_activity: 2026-11-24
 last_activity_desc: Phase 9 execution started
-state_head: b76d31e601c165315bb6dd7ff7ac6143bae7574f
+state_head: 5f9d25bf44b6136fdefd2cd1205883458cc1046a
 progress:
   total_phases: 4
   completed_phases: 8
   total_plans: 9
-  completed_plans: 4
+  completed_plans: 5
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-24)
 ## Current Position
 
 Phase: 9 (Registered Evidence and Gate Cost) — EXECUTING
-Plan: 4 of 9 (wave A1 complete: 09-01, 09-02, 09-03)
+Plan: 5 of 9 (wave A1 complete: 09-01, 09-02, 09-03)
 Status: Wave A1 done — waiting on the orchestrator's hosted row before wave A2
 Last activity: 2026-11-24 — wave A1 complete, the hosted row is the orchestrator's
 
@@ -207,6 +207,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | Phase 8 P21 | about 65 min (estimated: no start time was taken) | 3 tasks | 10 files |
 | Phase 09 P03 | 15m | 2 tasks | 2 files |
 | Phase 09 P04 | ~70 min | 3 tasks | 13 files |
+| Phase 9 P05 | 47m | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -495,6 +496,7 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 09]: Lever (3) is recorded as a 0.12 local cpu-s ceiling that cannot move r; trim (b) is declined in writing; the lever and trim (a) alternated before/after stays an open item with its reason rather than a figure that was not taken
 - [Phase 09]: The header's phase enumeration was replaced by one phase-to-plan table rather than extended in place: a prose list of phases is what rotted (it said Phase 4 to Phase 8 and omitted Phase 1 to Phase 3), and the two token sentences now say 'the accepted set above' instead of re-listing phases.
 - [Phase 09]: The real registry is counted over non-comment rows (24/0 filtered) and the ten toy registries over git diff --numstat (17/0 each); the 68-vs-24 numstat gap on the real registry is its # Plan 09-04 and 17 # <REQ>: comment blocks, which lines= never counted.
+- [Phase 9]: 09-05: the important-gates must-be-covered set is derived from the requirement records minus a seven-row exclusion ledger; EV-02 joined the ledger because 09-04 marked it Complete (51 - 7 = 44 = registered)
 
 ### Pending Todos
 
@@ -544,8 +546,8 @@ Refreshed by plan 08-21 from `.planning/phases/08-stic-completion-save-state-per
 
 ## Session Continuity
 
-Last session: 2026-11-25T01:50:24.944Z
-Stopped at: Completed 09-04-PLAN.md
+Last session: 2026-11-25T02:04:14.820Z
+Stopped at: Completed 09-05-PLAN.md
 Resume file: None
 
 ## Recorded Constraints for the Next Milestone
