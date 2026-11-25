@@ -23,6 +23,10 @@ mechanical).
 - [ ] **RTS-01**: A rights ledger records one row per third-party-content question this milestone touches — a flat cartridge image, the `.cfg` container, bank modes, EXEC, GROM, a commercial ROM, a rendered frame or screenshot, a save state, the libretro-shaped ABI and core-info strings — each with a disposition of `cleared`, `refused` or `owner-local-only`, and a `cleared` row cites a resolvable `SRC-` id; a row missing its disposition, a source it needs, or its "what was taken" cell is refused by name.
 - [ ] **RTS-02**: A refused item's spellings cannot appear in `core/src`, `runner/`, `tools/` or the operator pages of `docs/`, except where a pre-existing refusal surface is pinned by a `(token, path)` pair; a new occurrence is refused by name, and both limbs are shown able to fail.
 
+### Core conformance
+
+- [ ] **CPU-06**: The first real-content blocker is resolved from an owner-local observation rather than a guess: an interrupt acceptance clears the CPU's interrupt enable when the profile says so, a project-authored test pins **both** settings (cleared and not cleared), the value stays tagged `unknown-default-chosen` with the observation in the discrepancy log, and the profile parameter digest, every snapshot literal and the boot-stub-2 interrupt expectations move in the same commit.
+
 ### Evidence
 
 - [ ] **EV-06**: The claims step refuses an `established` claim that is not a `source-expectation` claim resting on a `tier1-primary-doc` dependency, and a legal `established` claim still passes — both shown able to fail (D-32, D-50).
@@ -103,14 +107,16 @@ the same date: every requirement appears in exactly one phase.
 | EV-07 | Phase 13 | Pending |
 | TOOL-07 | Phase 14 | Pending |
 | SCN-03 | Phase 14 | Pending |
+| CPU-06 | Phase 14 | Pending |
 | TOOL-08 | Phase 15 | Pending |
 | PKG-06 | Phase 16 | Pending |
 
 **Coverage:**
-- v0.3.0 requirements: 8 total
-- Mapped to phases: 8
+- v0.3.0 requirements: 9 total
+- Mapped to phases: 9
 - Unmapped: 0 ✓
-- Phases: 13 (RTS-01, RTS-02, EV-06, EV-07), 14 (TOOL-07, SCN-03), 15 (TOOL-08), 16 (PKG-06)
+- Phases: 13 (RTS-01, RTS-02, EV-06, EV-07), 14 (TOOL-07, SCN-03, CPU-06), 15 (TOOL-08), 16 (PKG-06)
+- CPU-06 was added on 2026-11-26, after the first owner-local real-content run failed deterministically; it is the evidence that a host built before the EXEC path is fixed would show a black screen
 - Phase 15 is the droppable phase under the pre-authorized fallback; if it is
   dropped, TOOL-08 is recorded `Deferred` with its reversal condition and the
   milestone goal is amended to "Owner-Supplied Content" — never silently lost and

@@ -649,7 +649,13 @@ recomputed figure or an owner hard stop. The full set is
    required check `gate`, admins enforced, no force push — recorded as equivalent,
    not as silence. Phase 16 applies the tag ruleset or re-records "not applied"
    with a reason.
-8. **The milestone ritual and the guardrails are standing policy.**
+8. **The first real-content run failed, and it re-cut the order.** The owner's own EXEC, GROM and an 8K
+   cartridge load and run; the EXEC dies at the first interrupt because
+   `cpu.interrupt_accept_clears_intff = 0` (C41) lets the handler re-enter on every instruction boundary
+   (96,066 blocked reads, 600 black frames, PC at `$FFFF`). With the field at 1 the handler runs linearly
+   and the EXEC populates BACKTAB, but the display-enable strobe still never latches. Phase 14 now carries
+   the conformance work and Phase 15 depends on it (`.planning/MILESTONE-CONTEXT.md` §1a, D-51).
+9. **The milestone ritual and the guardrails are standing policy.**
    `.planning/ops/MILESTONE-RITUAL.md`, `.planning/ops/GUARDRAILS-v0.3.md` and
    `.planning/ops/INDEX.md`. Read the index before asking the owner anything.
 
