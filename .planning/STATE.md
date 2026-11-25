@@ -2,20 +2,21 @@
 gsd_state_version: "1.0"
 milestone: v0.2.0
 milestone_name: Registered Evidence, Reachable Runs, Replayable Input (Phases 9 to 12)</summary>
-current_phase: 11
-current_phase_name: Input Record and Replay
-current_plan: 5
-status: phase-complete
-stopped_at: Completed 11-05-PLAN.md
-last_updated: "2026-11-25T15:16:15.507Z"
+current_phase: 12
+current_phase_name: Bank Modes and External Import (conditional, droppable)
+current_plan: Not started
+status: planning
+stopped_at: Phase 11 complete, ready to plan Phase 12
+last_updated: "2026-11-25T16:58:34.863Z"
 last_activity: 2026-11-25
-last_activity_desc: Phase 10 complete, transitioned to Phase 11
-state_head: 16afb31c044c19f2e9f63f61d99fa22e64b24726
+last_activity_desc: Phase 11 complete, transitioned to Phase 12
+state_head: 3a13fa9eb4455a4dc7083c99beb86303e0a07b35
 progress:
   total_phases: 4
   completed_phases: 8
   total_plans: 20
   completed_plans: 20
+  percent: 100
 ---
 
 # Project State
@@ -29,11 +30,11 @@ See: .planning/PROJECT.md (updated 2026-11-24)
 
 ## Current Position
 
-Phase: 11 (Input Record and Replay) — COMPLETE
-Current Plan: 5 of 5
+Phase: 12 — Bank Modes and External Import (conditional, droppable)
+Current Plan: Not started
 Total Plans in Phase: 5
-Status: Phase complete; TOOL-01 is `Complete`
-Last activity: 2026-11-25 — plan 11-05 closed the phase: the two named faults, the requirement close and the exit
+Status: Ready to plan
+Last activity: 2026-11-25 — Phase 11 complete, transitioned to Phase 12
 
 **Phase 11 final counts:** `steps=38/38 controls=395/395 faults=237/237 fault-runs=237 gates=110
 lines=337 tests-expected=4988 tests-executed=4984 tests-skipped=4 tests-missing=0 runner-files=18
@@ -86,7 +87,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 114
+- Total plans completed: 119
 - Average duration: -
 - Total execution time: -
 
@@ -102,6 +103,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | 6 | 14 | - | - |
 | 9 | 9 | - | - |
 | 10 | 6 | - | - |
+| 11 | 5 | - | - |
 
 *Updated after each plan completion*
 **Per-Plan Metrics:**
@@ -644,7 +646,7 @@ The row itself is left as recorded and this note sits under it.
 ## Session Continuity
 
 Last session: 2026-11-25T15:03:19.670Z
-Stopped at: Completed 11-04-PLAN.md
+Stopped at: Phase 11 complete, ready to plan Phase 12
 Resume file: None
 
 ## Recorded Constraints for the Next Milestone
