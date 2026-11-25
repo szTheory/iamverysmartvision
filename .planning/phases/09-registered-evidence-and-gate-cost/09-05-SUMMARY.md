@@ -212,7 +212,11 @@ under its requirement". These are not registered, because the registry's row cou
 phase end at a count its own criterion forbids.
 
 The deferral covers **nine mechanisms and no fewer**, and this is the canonical enumeration that
-`09-06`, `09-07` and `09-09` cite by name instead of re-listing a subset:
+`09-06`, `09-07` and `09-09` cite by name instead of re-listing a subset. **Appended note (review fix
+WR-01, commit `0d84484`):** the list is now **ten** — `important-gates-excluded-malformed`, which
+validates the exclusion ledger's own declared row format, was added by the code review's fix pass.
+The enumeration below is left as written (this file is not rewritten); the tenth is named here and
+in `09-REVIEW.md`'s `## Fixes applied`.
 
 1. `important-gates-complete-uncovered` (this plan)
 2. `important-gates-excluded-stale` (this plan)

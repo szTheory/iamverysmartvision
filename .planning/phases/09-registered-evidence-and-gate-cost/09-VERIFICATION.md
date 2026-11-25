@@ -1,13 +1,16 @@
 ---
 phase: 09-registered-evidence-and-gate-cost
-verified: 2026-11-26T03:10:00Z
+verified: 2026-11-26T15:00:00Z
 status: passed
 score: 5/5 must-haves verified
 verifier: gsd-verifier
-tree: 86c7878 (+ the pre-existing dirty .planning/state.json, untouched)
 phase_base: 912ab9a
-phase_span: "912ab9a..HEAD = 39 commits, 81 files, 4875 insertions, 140 deletions"
-gates_rerun_by_verifier:
+# The two measurements below are the INITIAL verification's (tree 86c7878). The final tree's are in
+# re_verification: tree 768e97e, phase_span_final, gates_rerun_on_final_tree, covered_digest.
+tree_at_initial_verification: 86c7878 (+ the pre-existing dirty .planning/state.json, untouched)
+phase_span_at_initial_verification: "912ab9a..86c7878 = 39 commits, 81 files, 4875 insertions, 140 deletions"
+phase_span_final: "912ab9a..768e97e = 44 commits, 94 files, 5910 insertions, 144 deletions"
+gates_rerun_at_initial_verification:
   sh: "exit 0, gate: PASS steps=38/38 controls=384/384 faults=235/235 fault-runs=235 gates=107 lines=330 goldens=29 reports=30 host-dependent=3 release-only=2 cases=12 tests-expected=4958 tests-executed=4954 tests-skipped=4 tests-missing=0 claims=28 provisional=27 files=2556 tracked=2556 hygiene-files=2556, 0 top-level '-- FAIL ' lines"
   dash: "exit 0, gate: PASS, token list byte-identical to sh (diff of the space-split tokens empty), 0 top-level '-- FAIL ' lines"
   linux: "exit 0, gate-linux: exit 0, gate: PASS, cc=GNU, core-imports=5, archive=sha256, refs-verified=0/4, files=tracked=hygiene-files=2556, 0 top-level '-- FAIL ' lines, no ivs- container left behind"
@@ -48,7 +51,69 @@ must_haves:
       via: "grep -q -e IVS_GATE_DIR -e build/ per step source, printed as gate-partition"
       verified: true
 deviations_accepted: 8
-open_items: 6
+open_items: 7
+re_verification:
+  previous_status: passed
+  previous_score: 5/5
+  previous_verified: 2026-11-26T03:10:00Z
+  previous_tree: 86c7878
+  tree: 768e97e
+  commits:
+    - 0d84484 # WR-01, the exclusion ledger's declared row format is validated
+    - 9f5e08c # WR-03, the release-only count is derived from the inventory
+    - ba34aba # WR-02, the pass-line rule runs in the gate replay, all 38 steps
+  gaps_closed: []
+  gaps_remaining: []
+  regressions: []
+  status_unchanged: true
+  verdict: "passed on the final tree - the three review fixes add mechanisms and weaken none; one bookkeeping defect (the D-09-06 count still reads nine where the tree holds ten) is recorded as open item 7, not absorbed into the pass"
+  gates_rerun_on_final_tree:
+    sh: "exit 0, gate: PASS steps=38/38 controls=386/386 faults=235/235 fault-runs=235 gates=107 lines=330 goldens=29 reports=30 host-dependent=3 release-only=2 cases=13 tests-expected=4958 tests-executed=4954 tests-skipped=4 tests-missing=0 claims=28 provisional=27 files=2568 tracked=2568 hygiene-files=2568, 0 top-level '-- FAIL ' lines"
+    dash: "exit 0, gate: PASS, token list byte-identical to sh (diff of the space-split tokens empty), 0 top-level '-- FAIL ' lines"
+    linux: "exit 0, gate-linux: exit 0, gate: PASS, cc=GNU, core-imports=5, archive=sha256, refs-verified=0/4, files=tracked=hygiene-files=2568, controls=386/386, cases=13, 0 top-level '-- FAIL ' lines, no ivs- container or volume left behind"
+  token_delta_vs_initial: "controls 384/384 -> 386/386, cases 12 -> 13, files/tracked/hygiene-files 2556 -> 2568 (+12 files from the fix commits); every other token byte-identical"
+  output_order_unchanged: "normalised diff of the final sh log against the committed pre-change capture 09-PREFLIGHT-BEFORE-SH.log differs only by the 2 partition lines, the 1 new proof line, cases 12->13, the 2 new 'control ok' lines in sorted position, controls 384->386, and the /usr/bin/time wrapper's 3 lines"
+covered_files:
+  - .planning/phases/09-registered-evidence-and-gate-cost/09-01-PLAN.md
+  - .planning/phases/09-registered-evidence-and-gate-cost/09-01-SUMMARY.md
+  - .planning/phases/09-registered-evidence-and-gate-cost/09-02-PLAN.md
+  - .planning/phases/09-registered-evidence-and-gate-cost/09-02-SUMMARY.md
+  - .planning/phases/09-registered-evidence-and-gate-cost/09-03-PLAN.md
+  - .planning/phases/09-registered-evidence-and-gate-cost/09-03-SUMMARY.md
+  - .planning/phases/09-registered-evidence-and-gate-cost/09-04-PLAN.md
+  - .planning/phases/09-registered-evidence-and-gate-cost/09-04-SUMMARY.md
+  - .planning/phases/09-registered-evidence-and-gate-cost/09-05-PLAN.md
+  - .planning/phases/09-registered-evidence-and-gate-cost/09-05-SUMMARY.md
+  - .planning/phases/09-registered-evidence-and-gate-cost/09-06-PLAN.md
+  - .planning/phases/09-registered-evidence-and-gate-cost/09-06-SUMMARY.md
+  - .planning/phases/09-registered-evidence-and-gate-cost/09-07-PLAN.md
+  - .planning/phases/09-registered-evidence-and-gate-cost/09-07-SUMMARY.md
+  - .planning/phases/09-registered-evidence-and-gate-cost/09-08-PLAN.md
+  - .planning/phases/09-registered-evidence-and-gate-cost/09-08-SUMMARY.md
+  - .planning/phases/09-registered-evidence-and-gate-cost/09-09-PLAN.md
+  - .planning/phases/09-registered-evidence-and-gate-cost/09-09-SUMMARY.md
+  - data/expected/controls/golden.ids
+  - data/expected/controls/important-gates.ids
+  - tools/check/controls/_good/tree/.planning/REQUIREMENTS.md
+  - tools/check/controls/_good/tree/.planning/milestones/v0.1.0-REQUIREMENTS.md
+  - tools/check/controls/_good/tree/data/expected/important-gates-excluded.ids
+  - tools/check/controls/golden-release-only-no-report/CHECK
+  - tools/check/controls/golden-release-only-no-report/EXPECT
+  - tools/check/controls/golden-release-only-no-report/FORBID
+  - tools/check/controls/golden-release-only-no-report/MAKE
+  - tools/check/controls/golden-release-only-no-report/overlay/data/expected/runner-scenarios.ids
+  - tools/check/controls/important-gates-complete-uncovered/overlay/.planning/REQUIREMENTS.md
+  - tools/check/controls/important-gates-complete-uncovered/overlay/data/expected/important-gates-excluded.ids
+  - tools/check/controls/important-gates-excluded-malformed/CHECK
+  - tools/check/controls/important-gates-excluded-malformed/EXPECT
+  - tools/check/controls/important-gates-excluded-malformed/FORBID
+  - tools/check/controls/important-gates-excluded-malformed/overlay/data/expected/important-gates-excluded.ids
+  - tools/check/pass-line.sh
+  - tools/check/steps/golden.sh
+  - tools/check/steps/important-gates.sh
+  - tools/check/steps/runner-selftest.sh
+  - tools/gate.sh
+covered_digest: "v4:sha256:8b8e6a20c5c304785156dca59c5ac6bad0502ba76f917a818277d6b3093a52a7"
 ---
 
 # Phase 9: Registered Evidence and Gate Cost — Verification Report
@@ -60,14 +125,21 @@ pass vacuously — with a machine check that makes the gap unrepeatable.
 **Verified:** 2026-11-26
 **Status:** passed
 **Score:** 5/5 frozen success criteria verified (2 of the 5 met on recorded terms, named below)
-**Re-verification:** No — initial verification (no previous `09-VERIFICATION.md` existed)
+**Re-verification:** Yes — after the three code-review fixes (WR-01, WR-02, WR-03). The
+initial verification's measurements are kept as recorded below; the final tree's re-measurement is
+in [Re-verification after the review fixes](#re-verification-after-the-review-fixes).
 
 Everything below was re-measured on the final tree. No SUMMARY claim is quoted as evidence; where a
 SUMMARY and the tree agree, the tree is what is cited.
 
 ---
 
-## Gates, re-run by the verifier on the final tree
+## Gates, re-run by the verifier at the initial verification
+
+> This section records the **initial** verification's run on tree `86c7878` (`controls=384/384`,
+> `cases=12`). The three review fixes moved exactly two fields; the final tree's runs on `768e97e`
+> (`controls=386/386`, `cases=13`) are in
+> [Re-verification after the review fixes](#re-verification-after-the-review-fixes).
 
 | Shell | Command | Exit | Tail (absolute-and-frozen tokens) |
 |---|---|---|---|
@@ -232,7 +304,7 @@ the fix: the proof prints as `-- runner-selftest proof control-pass-line-not-las
 | **D-09-01** | `tools/check/steps/golden.sh` joined wave A1's closed file list | Measured: `golden.sh:402-406` as the plan recorded it before the change — `:417-419` on this tree — refuses `golden-dev-release-diff` for any id with one missing report, and a `release-only` scenario has no dev report by construction. Declared before the commit with its predicted delta. It is a skip **by name** plus a count, not a loosening: the missing-report refusal is untouched for every other id | `golden.sh:411-419`; my run reads `reports=30 release-only=2`, the predicted `32 → 30` |
 | **D-09-02** | Trim (a) judged against `runner/main.c`'s guard sites, not "the option table" | Measured: no option table exists in this tree — the parser is a `strcmp` chain at `runner/main.c:588-624`, and `runner/exec.c` contains neither `roundtrip-at-ticks` nor either refusal message. PLAN-LESSONS 19: reality wins, the plan sentence becomes a deviation | `tests/runner-process-tap.sh:1117-1160` names `:589-592`, `:609-610`, `:613-621`, `:623-624` |
 | **D-09-05** | The EV status flips land **with** their exclusion rows, in 09-09's commit | The ledger is two-directional, so either half alone turns the tree red; the ordering is proved by the refusals observed in tree (`important-gates-complete-uncovered: EV-02` in 09-05, `: EV-03`/`: EV-04` in 09-06's orchestrator re-run) and pinned by the committed control's `excluded-stale` token | `data/expected/important-gates-excluded.ids` has 10 rows; identity `54 − 10 = 44` |
-| **D-09-06** | Nine new must-fail mechanisms carry **no** registry row | `lines=330` is frozen by SC3 and A-08, so any row after 09-04 would make the phase end at a count its own criterion forbids. The other two limbs of GUARDRAILS 2.3 (liveness guard, committed re-runnable stand-in) are met. The deferral names all nine and carries a reversal condition | `grep -c -F <m> data/expected/important-gates.ids` → **0** for all nine; `.planning/STATE.md:558` names all nine individually with the reason and the reversal condition |
+| **D-09-06** | Nine new must-fail mechanisms carry **no** registry row (**ten** on the final tree — WR-01 added `important-gates-excluded-malformed`; see open item 7) | `lines=330` is frozen by SC3 and A-08, so any row after 09-04 would make the phase end at a count its own criterion forbids. The other two limbs of GUARDRAILS 2.3 (liveness guard, committed re-runnable stand-in) are met. The deferral names all nine and carries a reversal condition | `grep -c -F <m> data/expected/important-gates.ids` → **0** for all nine; `.planning/STATE.md:558` names all nine individually with the reason and the reversal condition |
 | **A-02's five-controls deviation** | EV-03's count is three new controls, one verification and one step-side mechanism, not five controls | Measured per item: two already had controls, and the `tools/gate.sh:111-116` pass-line branch cannot be reached from `run-controls.sh` (which only executes `tools/check/steps/*.sh`; a `CHECK gate` control would recurse). A control aimed at an unreachable guard is lesson 20's check that cannot fail | All five mechanisms observed firing (SC4) |
 | **09-07's `SRC-` regex correction** | The class is `SRC-[A-Za-z0-9_-]+`, not the research's `SRC-[A-Za-z0-9_.-]*[A-Za-z0-9]` | Measured over the real tree: the research's class extracts **three unregistered tokens** (`SRC-gi-1980-catalog.pdf`, `SRC-gi-1982-catalog.pdf`, `SRC-gi-cp1600-um-1975.pdf`) and would turn the gate red; no registry id contains a dot | `sources.sh:48`, with the measurement in the comment above it (`:43`) |
 | **Budget deviations: no container gate inside any executor dispatch** | 09-04, 09-05, 09-06, 09-07, 09-08 and 09-09 each record `container gate: not run` with its reason (the 1800 s dispatch limit) rather than reporting a pass they did not observe | The container gate is a wave/phase-boundary action owned by the orchestrator; lesson 24 forbids a fabricated pass | The orchestrator ran it, and the **verifier re-ran it**: `sh tools/gate-linux.sh` → exit 0, `gate: PASS`, `cc=GNU`. The gap is closed |
@@ -246,10 +318,11 @@ the fix: the proof prints as `-- runner-selftest proof control-pass-line-not-las
 |---|---|---|---|
 | 1 | The **alternated `/usr/bin/time -p` before/after capture** for lever (3) and trim (a) was never taken (two executors stopped by the 1800 s dispatch limit) | Open, with its reason, **not** closed by a figure that was not taken. What stands in its place is measured: per-launch medians of five (dev 62 ms, release 9.4–9.8 ms) that the 0.12 local cpu-s **ceiling** is arithmetic over, the post-fold suite times (21.55 s dev / 22.69 s release), and the structural proof the two dev launches are gone (`reports=32 → 30`, `release-only=2`, the `# mutants:` two-mode lines). The lever is labelled a ceiling and never a saving | `09-01-SUMMARY.md`, `09-03-SUMMARY.md`, `.planning/CI-EFFICIENCY.md` ("The open item, recorded rather than dropped") |
 | 2 | `denylist-no-files` (`tools/check/steps/denylist.sh:43`) and `runner-scan-empty` (`tools/check/steps/runner-scan.sh:58`) have no control | **Declined, not silently dropped**: A-02's honest count for EV-03 is three controls plus one verification plus one step-side mechanism, and two more controls is scope the phase did not price | `.planning/STATE.md:557` (row with its reason and its milestone) |
-| 3 | The **nine** D-09-06 mechanisms have no `data/expected/important-gates.ids` row: `important-gates-complete-uncovered`, `important-gates-excluded-stale`, `control-toy-drift`, `control-deviation-unused`, `control-pass-line-not-last`, `sources-src-token-whole`, `manifests-output-anchor`, `memmap-generator-refused`, `memmap-generator-missing` | Registration deferred against the frozen `lines=330`, with the reversal condition stated (a later milestone re-derives the baseline, then adds the nine rows under EV-03/EV-04 with the non-vacuity sentence every other row carries). Verified: **0** registry mentions of all nine | `.planning/STATE.md:558`; `09-05-SUMMARY.md` is the canonical list |
+| 3 | The **nine** D-09-06 mechanisms have no `data/expected/important-gates.ids` row: `important-gates-complete-uncovered`, `important-gates-excluded-stale`, `control-toy-drift`, `control-deviation-unused`, `control-pass-line-not-last`, `sources-src-token-whole`, `manifests-output-anchor`, `memmap-generator-refused`, `memmap-generator-missing` | Registration deferred against the frozen `lines=330`, with the reversal condition stated (a later milestone re-derives the baseline, then adds the nine rows under EV-03/EV-04 with the non-vacuity sentence every other row carries). Verified: **0** registry mentions of all nine. **The list is ten on the final tree** — WR-01 added `important-gates-excluded-malformed`, also unregistered (0 mentions); the count that needs correcting in the records is open item 7 | `.planning/STATE.md:558`; `09-05-SUMMARY.md` is the canonical list |
 | 4 | Trim (d)'s "the flip moves the digest" is not a purpose-built mechanism | Recorded as a plan-sentence deviation: the property is enforced operationally by the acceptance refusal at `tests/state/state_fuzz.c:954-957`; no hollow guard was invented (lesson 20) | `09-02-SUMMARY.md` deviation 2 |
 | 5 | Phase 9's own `09-VALIDATION.md` remains `status: draft` (`nyquist_compliant: false`) | Consistent with the standing disposition of `02`–`08` (cited to `08-ACCEPTED-DEBT.md` §1 in `.planning/STATE.md`), and not one of the five frozen criteria. Named here so a later reader does not discover it as a surprise | `.planning/STATE.md` Deferred Items (seven `Validation` rows) |
 | 6 | Wave A2's cost is only partly priced plan by plan: 09-09 records that "at least 1.59 local cpu-s of the 12.9 recorded allowance is measured" and that 09-06 to 09-09 each changed a count the gate reads without pricing it | Recorded as a lesson rather than filled with an estimate. No success criterion depends on it: the hosted row that settles the level is SC1's, and it reads `discharged-below-budget` with 0.604 `r` of headroom to the 8.3 stop line | `09-09-SUMMARY.md` "Cost" |
+| 7 | **Introduced by the review fixes**: deviation D-09-06's count still reads **nine** mechanisms where the tree now holds **ten**. `.planning/STATE.md:558` says "the **nine** mechanisms Phase 9 landed" and enumerates nine; `09-05-SUMMARY.md:214` — the file `STATE.md` names as the canonical list — says "nine mechanisms and no fewer" and enumerates nine. WR-01 added `important-gates-excluded-malformed`, a must-fail mechanism with no registry row (verified: `grep -c -F important-gates-excluded-malformed data/expected/important-gates.ids` → 0), so the deferral covers ten | **Open, disclosed, and named here rather than absorbed into the pass.** The deviation's substance is unchanged and still correct: registration is deferred against the frozen `lines=330` (ROADMAP criterion 3, amendment A-08), which still holds, and the other two GUARDRAILS 2.3 limbs are met for the tenth mechanism too. `09-REVIEW.md`'s `## Fixes applied` does name the tenth and says it extends the list to ten, so the fact is disclosed somewhere; what is stale is the standing-gap row a later milestone reads. **Fix:** add `important-gates-excluded-malformed` to the enumeration and change nine → ten in both records, and "these nine rows" → "these ten rows". Not done here because this re-verification is confined to `09-VERIFICATION.md` | `.planning/STATE.md:558`; `09-05-SUMMARY.md:214`; `09-REVIEW.md` "Fixes applied" |
 
 ---
 
@@ -268,4 +341,216 @@ at `54 − 10 = 44`.
 ---
 
 _Verified: 2026-11-26_
+_Verifier: gsd-verifier_
+
+---
+
+## Re-verification after the review fixes
+
+**Tree:** `768e97e` — the initially-verified tree `86c7878` plus `0d84484` (WR-01), `9f5e08c`
+(WR-03), `ba34aba` (WR-02) and the two records commits `f8800c0`, `768e97e`. The working tree holds
+only the pre-existing `.planning/state.json` timestamp change, untouched, as at the initial
+verification.
+**Re-verified:** 2026-11-26 (the record's existing convention; the authoritative identity of what was
+measured is the commit `768e97e` and `covered_digest` in the frontmatter, not the clock)
+**Verdict:** **unchanged — `passed`, 5/5.** Each of the three fixes adds a mechanism; none removes,
+narrows or replaces one. One bookkeeping defect was introduced alongside them and is recorded as
+**open item 7** below rather than passed over.
+
+### The three gates, re-run by the verifier on the final tree
+
+| Shell | Command | Exit | Tail (absolute-and-frozen tokens) |
+|---|---|---|---|
+| `sh` | `sh tools/gate.sh` | 0 | `gate: PASS steps=38/38 controls=386/386 … cases=13 … goldens=29 reports=30 host-dependent=3 release-only=2 … gates=107 lines=330 … tests-expected=4958 tests-executed=4954 tests-skipped=4 tests-missing=0 claims=28 provisional=27 files=2568 tracked=2568 hygiene-files=2568 … tiers=8` |
+| `dash` | `dash tools/gate.sh` | 0 | the same line; `diff` of the space-split token lists is **empty** |
+| container | `sh tools/gate-linux.sh` | 0 | `gate-linux: exit 0`, `gate: PASS`, `cc=GNU`, `core-imports=5`, `archive=sha256`, `refs-verified=0/4`, `files=tracked=hygiene-files=2568`, `controls=386/386`, `cases=13` |
+
+The full `sh` tail, verbatim, is the same 100-field line the initial verification recorded with the
+two fields the fixes moved changed and nothing else:
+
+```
+gate: PASS steps=38/38 controls=386/386 api-calls=19 api-statuses=15 api-rows=61 pinned-defines=120
+cc=AppleClang c-presets=2 fault-runs=235 core-imports=7 purity-selftest=7/7 ctest-runs=2 ci-runs=78
+ci-uses=2 ci-workflows=2 ci-summary-selftest=11/11 claims=28 provisional=27 cp1610-rows=74
+patterns=1024 unclaimed=0 ambiguous=0 coincidences=1 agree=71 resolved=3 vectors=412 source=291
+policy=121 rows-pending=0 policies-pending=0 bus-figure-pages=35 blind-files=12 second-read=12/12
+scanned=666 waived=0 discrepancies=110 pending-resolvers=20 open=101 d10-items=47 faults=235/235
+tracked=2568 binaries-listed=0 terms=9 doc-files=59 profile-keys=154 goldens=29 reports=30
+host-dependent=3 release-only=2 mode=tree hygiene-files=2568 history-commits=1 gates=107 lines=330
+input-rows=31 input-policies=11 input-profile-fields=31 files=2568 listings=7 listing-words=1386
+manifests=11 effective-yes=8 effective-no=3 literal-rows=80 views=2 dump-lines=160 prefix-files=11
+archive=members public-symbols=19 defined=141 hdr-alone=10/10 consumer-lines=164 cxx-link=ok
+pkg-selftest=19/19 records=154 fields=154 unknown-fields=47 psg-rules=21 psg-vectors=120
+psg-policies=12 release-selftest=11/11 runner-files=16 cases=13 sources=12 refs-verified=3/4
+state-rows=88 state-cuts=18 tests-expected=4958 tests-executed=4954 tests-skipped=4 tests-missing=0
+docs=60 claim-refs=26 stic-rules=67 stic-rows=64 video-frames=26 video-hash-ties=18
+video-frame-pairs=9 tags=10 tiers=8
+```
+
+`grep -c '^-- FAIL '` is **0** in all three logs. `sh` and `dash` are 526 lines each; the container
+log is 524, and the whole difference is accounted for: it carries one extra line of its own (the
+`gate-linux: x86_64, gcc (Ubuntu 13.3.0…)` banner) and lacks my `/usr/bin/time` wrapper's three
+`real`/`user`/`sys` lines, which the gate does not emit. After normalising the nine measurement
+members, the two streams are otherwise identical. `build/gate-linux.log` was copied before anything
+else ran; `docker ps -a` and `docker volume ls` show **no** `ivs-` container and **no** `ivs-` volume
+left behind.
+
+**Token delta against the initial verification — exactly the predicted one:**
+
+| Field | Initial (`86c7878`) | Final (`768e97e`) | Cause |
+|---|---|---|---|
+| `controls` | `384/384` | **`386/386`** | +2: `important-gates-excluded-malformed` (WR-01), `golden-release-only-no-report` (WR-03) |
+| `cases` | `12` | **`13`** | +1: the `st-gate-pass-line` case (WR-02) |
+| `files` / `tracked` / `hygiene-files` | `2556` | **`2568`** | +12 files: 4 + 4 control declarations, 3 overlay files, `tools/check/pass-line.sh`, 2 `_good` record files (verified: `git diff --name-status 86c7878..HEAD` lists exactly 12 `A`) |
+| every other token | — | — | byte-identical, including `steps=38/38`, `faults=235/235`, `fault-runs=235`, `gates=107`, `lines=330`, `goldens=29`, `reports=30`, `release-only=2`, `host-dependent=3`, `tests-*`, `claims=28`, `provisional=27`, `tiers=8` |
+
+### Output order and the summary token are unchanged (WR-02)
+
+The decisive check is a normalised diff of my `sh` log against the committed pre-change capture
+`09-PREFLIGHT-BEFORE-SH.log`, using the same closed nine-member normalisation the initial
+verification used (`step-time`/`gate-cpu`/`gate-time`/`gate-env` lines and the five inline
+`ci-runs=`/`files=`/`tracked=`/`hygiene-files=`/`history-commits=` values). The **complete** diff is:
+
+| Diff | Lines | Attribution |
+|---|---|---|
+| added | `gate-partition preflight=29 producers=9: …` and `gate-preflight: PASS steps=29/29` | the phase's own partition lines (09-08); the capture predates the partition, so these are not from the fixes |
+| added | `-- runner-selftest proof pass-line-not-last: profile (exit 2 observed)` | WR-02's stand-in, inside `runner-selftest`'s own buffered output |
+| changed | `-- runner-selftest pass cases=12` → `cases=13` | the same case |
+| added | `control ok   golden-release-only-no-report`, `control ok   important-gates-excluded-malformed` | the two new controls, in **sorted** position within the controls output |
+| changed | `controls=384/384` → `controls=386/386` | the same two controls |
+| changed | the summary token's `controls=` and `cases=` fields | the same |
+| added | `real` / `user` / `sys` | my own `/usr/bin/time` wrapper, which the gate does not emit |
+
+Nothing else differs: no step's output changed, no line moved, and `keep_fails` still runs **inside**
+the replay (`tools/gate.sh:167-168`, before the pass/fail branch). `tools/check/pass-line.sh` prints
+nothing on exit 0, which is why a green run gains no line from the rule itself. `sh` and `dash`
+produce identical token lists.
+
+### The five frozen success criteria, re-checked on the final tree
+
+| # | Criterion | Verdict | Re-measurement |
+|---|---|---|---|
+| 1 | The hosted row settles the cost level | **met** | Untouched by the fixes (`git diff --name-only 86c7878..HEAD -- .planning/ci-runs.tsv .planning/CI-EFFICIENCY.md` → 0). Re-ran the arithmetic: `tail -5 .planning/ci-runs.tsv \| awk -F'\t' '{printf "%.4f\n",$13/$8}' \| sort -n` → `7.4167 7.5333 7.6957 8.2326 8.3810`, median **7.6957** ≤ 7.8; `grep -c '^phaseA1:'` → **1**, `phaseA1: discharged-below-budget`; `git merge-base --is-ancestor 93e6b9f HEAD` and `… 93e6b9f 081d441` both exit 0 |
+| 2 | No commit before that row added a test id, control, fault or gate step | **met on recorded terms** (D-09-01, unchanged) | `ls tools/check/steps/*.sh \| wc -l` → **38**; `git diff --name-only 912ab9a..HEAD -- data/expected/gate-steps/` → **0 files**; `tests-expected/executed/skipped` still `4958/4954/4`. The three fix commits add **2 controls and 1 selftest case**, which is a change *after* the row, not before it, so this criterion's subject (what preceded the row) is untouched |
+| 3 | Registry 306 → 330 rows, 107 gate names, 17 toy lines per file | **met** | `data/expected/important-gates.ids` is **unchanged since `285807e`** (`git diff --name-only 285807e..HEAD` → 0), so `lines=330` and `gates=107` hold by construction and the gate reads them: **330** non-comment rows, **107** distinct gate names |
+| 4 | Each of the five gate-hardening items has a named mechanism shown to fail for its intended reason | **met on recorded terms** (A-02, unchanged) — and **strengthened, not weakened** | All five still fire in my run (the same proof and `control ok` lines as the initial verification). The fixes close the two edges the reviewer named: the pass-line rule now runs in the replay and covers all 38 steps (WR-02, so the five producers no longer keep only "a pass line exists somewhere"), and each new mechanism has a pinned token, a control or case that fails for its intended reason, and a committed re-runnable stand-in — all three shown live below |
+| 5 | The EV-04 machine check derives its set from the records, refuses both directions and a drift, `Complete − excluded = registered` | **met** — and the ledger now enforces its own declared format | Derivation still reads the records (`important-gates.sh:86-93`, `awk` over `## Traceability` rows of `REQUIREMENTS.md` and every `milestones/*-REQUIREMENTS.md`; no hand-written id string). Recomputed independently: `complete=54 excluded=10 accepted=44`, all **44** accepted requirements have a registry row, **0** without one, **0** stale exclusion rows → `54 − 10 = 44`. Standalone step: `-- important-gates pass gates=107 lines=330`, exit 0, zero findings. The malformed-row probe is below |
+
+### The ledger now enforces its declared row format (WR-01) — probed, not read
+
+`important-gates.sh:99-121` runs one `awk` pass over the ledger: a row must be exactly two fields,
+`$1` shaped `^[A-Z][A-Z0-9]*-[0-9]+$`, `$2` at least three underscore-joined words with no leading,
+trailing or doubled underscore, and `$2 != "none"`. A row that fails is printed as
+`MALFORMED line <n>: <row>`, kept **out** of the exclusion set, and emitted as
+`important-gates-excluded-malformed`. Probes on a symlinked copy of the real tree (the real ledger
+restored afterwards; `git status` clean):
+
+| Probe | Ledger edit | Observed | Exit |
+|---|---|---|---|
+| baseline | none | `-- important-gates pass gates=107 lines=330` | 0 |
+| B (the reviewer's) | append a bare `API-02` | `-- FAIL important-gates-excluded-malformed: line 37: API-02` | 1 |
+| C (the reviewer's) | append `API-02 none` | `-- FAIL important-gates-excluded-malformed: line 37: API-02 none` | 1 |
+| D | append `API-02 a_b` (two words) | `-- FAIL important-gates-excluded-malformed: line 37: API-02 a_b` | 1 |
+| E | append a **well-formed** `API-02 close_record_and_release_only_…` | `-- FAIL important-gates-unknown-id: line 16` … `line 24` (nine lines) | 1 |
+
+Probe B is the reviewer's probe, and it now refuses instead of printing `pass`: the one-word edit
+that used to silence a Complete requirement is a red gate. Probe E is the case the reviewer did not
+raise and is worth recording: a **well-formed** exclusion row for a requirement that already carries
+registry rows is refused too, because it removes API-02 from the derived accepted set and every one
+of API-02's nine registry lines (`important-gates.ids:16-24`) becomes `important-gates-unknown-id`.
+So the ledger cannot quietly un-register a covered requirement in either shape.
+
+The accepting half is exercised by the `_good` positive control, which is the reason WR-01 also had
+to add a well-formed row to it: `_good`'s ledger holds exactly one row,
+`FND-98 close_record_only_toy_positive_row_for_the_ledger_format`, for a toy requirement that is
+`Complete` and unregistered. Run standalone: `-- important-gates pass gates=43 lines=44`, exit 0 —
+the `gates=43 lines=44` the review recorded. A validator that refused **every** row would make FND-98
+uncovered and turn `_good` red, so the positive control exercises both halves. Adding a malformed row
+to `_good` (`FND-97`) gives `-- FAIL important-gates-excluded-malformed: line 15: FND-97`, exit 1.
+
+### Every new mechanism has a pinned token, a failing control or case, and a live stand-in
+
+| Fix | Token | Control / case that makes it fail for its intended reason | Observed in my run | Stand-in is live (mutant check) |
+|---|---|---|---|---|
+| WR-01 | `important-gates-excluded-malformed` (**new**) | `tools/check/controls/important-gates-excluded-malformed` — CHECK `important-gates`, EXPECT `FAIL important-gates-excluded-malformed: line 7: API-02` **and** `… line 8: API-03 none`, FORBID `important-gates-complete-uncovered`, `important-gates-excluded-stale`, `important-gates-uncovered-gate`, `important-gates-unknown-id`; registered at `data/expected/controls/important-gates.ids:26` | `control ok   important-gates-excluded-malformed`; `control ok   _good/important-gates` | yes — the malformed `FND-97` probe above refuses, and `_good` accepts the well-formed row |
+| WR-03 | `golden-dev-release-diff` (**reused** — it already means "a report of one preset is missing"; the detail names the id) | `tools/check/controls/golden-release-only-no-report` — CHECK `golden`, MAKE `delete build/gate/release/runner/toy.report`, EXPECT `FAIL golden-dev-release-diff: toy (a release-only scenario has no release report)`, FORBID `golden-mismatch` **and** `-- golden pass`; registered at `data/expected/controls/golden.ids:31` | `control ok   golden-release-only-no-report`; `control ok   _good/golden` | yes — the FORBID `-- golden pass` is exactly the pre-fix output the reviewer saw (`release-only=1`), so the control cannot pass on the old behaviour |
+| WR-02 | `gate-step-no-pass-line` (**reused**, detail names the shape; `tools/gate.sh` has no token inventory of its own to pin a second name in) | `tools/check/steps/runner-selftest.sh:182-202` — feeds `tools/check/pass-line.sh` three outputs and requires exit 0, exit 2 and exit 1 | `-- runner-selftest proof pass-line-not-last: profile (exit 2 observed)`; `-- runner-selftest pass cases=13` | yes — I ran the case's three assertions against four rules: the real one passes; `always-exit-0`, `always-exit-2`, and the **pre-fix shape** (`grep` for the pass line anywhere) each make the assertions fail |
+
+The three mutants in the WR-02 row matter: the third one is the reviewer's finding reproduced as a
+mutant, so the case does not merely check "some non-zero exit happens" — it rejects the exact weaker
+rule the gate used to apply.
+
+### Nothing was weakened by the fixes
+
+| Check | Command | Result |
+|---|---|---|
+| The four lamp-tone scenarios behave as before | `grep -n 'lamp-tone' data/expected/runner-scenarios.ids` | `demo-lamp-tone-pass` / `-idle` `deterministic`, `demo-lamp-tone-shift` / `-swap` **`release-only`** — unchanged, and `data/expected/runner-scenarios.ids` is not in `86c7878..HEAD` |
+| The release-only count did not shrink | gate token, all three shapes | `reports=30`, `release-only=2`, `tests-skipped=4`, `goldens=29` — identical to the initial verification |
+| The derivation is from the inventory, not the reports found | `grep -n invskip tools/check/steps/golden.sh` | `$tmp/invskip` built at `:120` from `$ROOT/$inv` column 5; `relonly` counted at `:437-443`, and **each** such row must have `build/gate/release/runner/<id>.report` or it is `golden-dev-release-diff` |
+| No step output changed for a green run | normalised diff above | only the lines tabulated; every other step byte-identical |
+| The `_good` positive control still passes with the new well-formed row | standalone step on `_good/tree` | `-- important-gates pass gates=43 lines=44`, exit 0 |
+| No control, fault, golden or pinned test was dropped | gate token | `controls` 384 → **386**, `faults=235/235`, `fault-runs=235`, `goldens=29`, `tests-*` unchanged; `.github/` untouched by the fixes (`git diff --name-only 86c7878..HEAD -- .github/` → 0) |
+
+### The no-regression set, re-confirmed
+
+| Item | Check | Result |
+|---|---|---|
+| No new claim | gate token | `claims=28 provisional=27` — unchanged; `data/expected/claims.ids` not in the fix range |
+| No new tier | gate token | `tiers=8` — unchanged |
+| 38 steps | `ls tools/check/steps/*.sh \| wc -l`; gate token | **38**; `steps=38/38` in all three shapes |
+| `data/expected/gate-steps/` unchanged | `git diff --name-only 912ab9a..HEAD -- data/expected/gate-steps/` | **0 files** |
+| Registry unchanged | `git diff --name-only 285807e..HEAD -- data/expected/important-gates.ids` | **0 files**; `gates=107 lines=330` |
+| No binary fixtures tracked | `git ls-files \| grep -E '\.(bin\|rom\|ivsc)$' \| wc -l` | **0** |
+| `binary-ext.txt` / `.gitignore` unchanged | `git diff --stat 86c7878..HEAD -- …` | empty |
+| No `data/` change outside `data/expected/` | `git diff --name-only 86c7878..HEAD -- data/ \| grep -v '^data/expected/'` | empty |
+| Single noreply author | `git log 86c7878..HEAD --format='%ae' \| sort -u` | `szTheory@users.noreply.github.com` only |
+| No home paths | `grep -E '/Users/\|/home/'` over every file the fixes changed | none (the only match in the phase range is this report's own prose quoting the check, as before) |
+| No debt markers | `grep -E 'TBD\|FIXME\|XXX'` and `TODO\|HACK\|PLACEHOLDER` over the five changed source files | none (the `XXXXXX` in `mktemp` templates is the only `X`-run match, and it is not a marker) |
+| Only the intended files changed | `git diff --name-only 86c7878..HEAD` | 23 files: 21 fix files + `09-REVIEW.md` + this report. No source outside the five shell files, the two `data/expected/controls/*.ids`, and the control directories |
+
+### The one defect the fixes introduced — recorded, not passed over
+
+WR-01's fix adds a **tenth** must-fail mechanism with no `data/expected/important-gates.ids` row,
+which is exactly what deviation D-09-06 discloses. The registry is confirmed clean
+(`grep -c -F <mechanism> data/expected/important-gates.ids` → **0** for all ten, including
+`important-gates-excluded-malformed`), and `lines=330` still holds, so the deviation's substance is
+unchanged and still correct. What is stale is its **count**: `.planning/STATE.md:558` still says
+"the **nine** mechanisms Phase 9 landed" and lists nine, and `09-05-SUMMARY.md:214` — the file
+`STATE.md` names as "the canonical list" — still says "nine mechanisms and no fewer" and enumerates
+nine. `09-REVIEW.md`'s `## Fixes applied` does name the tenth and says it extends the list to ten,
+so the fact is disclosed somewhere; but the standing-gap row a later milestone reads understates the
+tree by one. That is a record/tree disagreement of the class `AGENTS.md` names ("recompute, never
+quote — a quoted figure that disagrees with the file is a defect to correct"), it is a one-line fix
+in each of the two records, and it is **open item 7** below. It is not one of the five frozen
+criteria, it hides no weakened check, and it does not move the verdict — which is why it is an open
+item rather than a gap, and why it is stated here in full rather than left for a reader to find.
+
+### Verdict
+
+**Unchanged: `passed`, 5/5 frozen success criteria.**
+
+- All three gate shapes end `gate: PASS` on `768e97e` with the predicted token
+  (`controls 384 → 386`, `cases 12 → 13`, everything else unchanged), zero top-level `-- FAIL ` lines,
+  and no `ivs-` container or volume left behind.
+- The three fixes each add a mechanism with a pinned token, a control or case that fails for its
+  intended reason, and a committed re-runnable stand-in — and I proved each stand-in live by mutating
+  the rule it guards, including the reviewer's own pre-fix shape.
+- The normalised diff against the committed pre-change capture shows no output-order change and no
+  changed step output; the pass-line rule prints nothing when it accepts, so a green run's summary
+  token moves only by the two fields the fixes intend.
+- The five criteria re-measure as before, and criterion 4 and 5 are strictly stronger: the pass-line
+  rule now covers all 38 steps instead of 33, and the ledger — the one file that can silence the
+  EV-04 check — now refuses the malformed rows its own header forbids, in both shapes.
+- The no-regression set is intact: no new claim, no new tier, 38 steps, `gate-steps/` and the
+  registry unchanged, no binary fixtures, no home paths, one noreply author.
+- One bookkeeping defect was introduced (the D-09-06 count still reads nine where the tree holds
+  ten) and is recorded as open item 7 rather than absorbed into a pass.
+
+Nothing in this re-verification is a human-only item, and no claim cites one. The status remains
+`passed` for the same reason it was `passed` initially: every criterion is judged by a tool, and no
+item is left that a tool cannot judge.
+
+---
+
+_Re-verified: 2026-11-26_
 _Verifier: gsd-verifier_
