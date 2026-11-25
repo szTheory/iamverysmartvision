@@ -5,16 +5,16 @@ milestone_name: Registered Evidence, Reachable Runs, Replayable Input (Phases 9 
 current_phase: 9
 current_phase_name: Registered Evidence and Gate Cost
 status: executing
-stopped_at: Completed 09-07-PLAN.md
-last_updated: "2026-11-25T02:38:37.632Z"
+stopped_at: Completed 09-08-PLAN.md
+last_updated: "2026-11-25T02:54:31.865Z"
 last_activity: 2026-11-24
 last_activity_desc: Phase 9 execution started
-state_head: 1caeb937510dbd0b827f31af55ed14659f30b501
+state_head: e15dbbebc09d443d83daf17e280b65d328c81625
 progress:
   total_phases: 4
   completed_phases: 8
   total_plans: 9
-  completed_plans: 7
+  completed_plans: 8
 ---
 
 # Project State
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-24)
 ## Current Position
 
 Phase: 9 (Registered Evidence and Gate Cost) — EXECUTING
-Plan: 7 of 9 (wave A1 complete: 09-01, 09-02, 09-03)
+Plan: 8 of 9 (wave A1 complete: 09-01, 09-02, 09-03)
 Status: Wave A1 done — waiting on the orchestrator's hosted row before wave A2
 Last activity: 2026-11-24 — wave A1 complete, the hosted row is the orchestrator's
 
@@ -210,6 +210,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | Phase 9 P05 | 47m | 2 tasks | 11 files |
 | Phase 9 P6 | 41m | 2 tasks | 11 files |
 | Phase 09 P07 | 13 | 3 tasks | 11 files |
+| Phase 09 P08 | 32m | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -504,6 +505,7 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 09]: 09-07: the SRC- class is [A-Za-z0-9_-]+ with no dot, measured (11 tokens, 0 unregistered; the research's dot class extracts 3 unregistered .pdf tokens)
 - [Phase 09]: 09-07: manifest outputs are anchored to two roots, fixtures/<dirname>/ or data/, because FX-ivsc-vectors writes data/cart/*.json and a fixtures-only rule refuses the pristine tree
 - [Phase 09]: 09-07: the memmap generator's refusal is additive, not a short-circuit, so the six existing memmap controls keep their pinned tokens; memmap-generator-missing is proved by a committed selftest case
+- [Phase 09]: The preflight class is derived by grep over step source text (neither IVS_GATE_DIR nor build/) and printed in the run header, so a reclassification is visible rather than silent
 
 ### Pending Todos
 
@@ -553,8 +555,8 @@ Refreshed by plan 08-21 from `.planning/phases/08-stic-completion-save-state-per
 
 ## Session Continuity
 
-Last session: 2026-11-25T02:38:37.606Z
-Stopped at: Completed 09-07-PLAN.md
+Last session: 2026-11-25T02:54:31.838Z
+Stopped at: Completed 09-08-PLAN.md
 Resume file: None
 
 ## Recorded Constraints for the Next Milestone
