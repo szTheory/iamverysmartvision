@@ -1955,3 +1955,18 @@ figure that settled Phase 9 (339–360), while `build_s` stays at 33–34 agains
 is stable (the close entry above), so a median of 10.9091 against a stop line of 8.3 triggers nothing: the standing
 figures are `cpu_s` and the measured per-step profile, and `cpu_s` did not move. The gate is still 38 steps; this
 opening commit adds no test id, control, fault, gate step or registry line.
+
+## 2026-11-26 — v0.3.0 opening: two rows, and the pair this PR defers by name
+
+The opening commit `a41f679` (PR #27) produced two hosted rows, recorded here:
+`45682366772` (`pull_request`, `build_s` 35, `gate_s` 121, `cpu_s` 366) and its
+merge push `45682845654` (`build_s` 34, `gate_s` 114, `cpu_s` 363). Both sit inside
+the 359–366 band the last five rows have held since Phase 9's settling window, so
+nothing moved but the runner.
+
+**By the termination rule (v0.2.0 close), this records PR's own two runs are the
+deferred pair**: its `pull_request` run and the push run created by its merge land
+as the first rows of Phase 13's first commit, never in a follow-up records PR.
+They are named here so they are deferred, not dropped. The chain then terminates:
+Phase 13's first commit is milestone work that the run would make anyway, and its
+own merge push follows the same rule once.
