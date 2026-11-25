@@ -279,3 +279,32 @@ None. Every file added here is a data declaration, and every mechanism added her
 - `grep -n -e 'IVS_GATE_DIR' -e 'build/' tools/check/steps/runner-selftest.sh` - EMPTY (the step stays a preflight-class step, so 09-08's frozen 29/9 split is untouched)
 - `ROOT=$(pwd) CHECK_DIR=$(pwd)/tools/check FILELIST=<built> sh tools/check/steps/runner-selftest.sh` - `-- runner-selftest pass cases=11`, preceded by `-- FAIL control-pass-line-not-last: profile`
 - commit `0326e64` (Task 1) and `a9426a0` (Task 2) - both ancestors of `HEAD`
+
+## Appended by the orchestrator after the plan closed: two defects, found by re-running the gate
+
+The plan's own gate runs were green, but its **closing records commit** (`80525d6`) moved
+things after the last gate run, and the orchestrator's re-run on the final tree read
+`gate: FAIL steps=37/38`. Two defects, both fixed in `d3ff4bd`:
+
+1. **The pass-line proof forged a failure line.** The `st-pass-line-not-last` case printed its
+   *expected* refusal as a bare `-- FAIL control-pass-line-not-last: profile` line so the guard's
+   proof would be visible in every gate log. `tools/gate.sh`'s `keep_fails` collects every line
+   matching `^-- FAIL ` into `fail.lines`, which `ci-summary.sh` renders into the job summary —
+   so a refusal the case is *supposed* to observe was advertised as a failure of a passing run.
+   It now prints as `-- runner-selftest proof control-pass-line-not-last: profile (observed: …)`:
+   the token text stays readable in every log and stays out of the fail set. This is lesson 20's
+   mirror image — a proof that cannot be told apart from a failure is not a proof either.
+
+2. **EV-03 and EV-04 were marked Complete without their exclusion rows.** The derived
+   must-be-covered set therefore fired `important-gates-complete-uncovered: EV-03` and `: EV-04`
+   on the pristine tree. `D-09-05` already says the status flip lands **with** its exclusion row
+   in plan 09-09; the marks are reverted here rather than papered over with exclusion rows that
+   09-09 owns and that plan 09-05's ledger prose already reserves for it.
+
+**The lesson, recorded rather than left as prose:** a plan whose last commit is a records commit
+must re-run the gate *after* that commit. `PLAN-LESSONS` 1 says counts move in the task that
+causes the change; this is the same defect one step further out — a requirement mark is a count
+the gate reads.
+
+Re-measured after the fix: `sh` and `dash` both `gate: PASS steps=38/38 controls=381/381
+gates=107 lines=330 cases=11`, zero top-level `-- FAIL` lines.
