@@ -523,3 +523,12 @@ claim-ceiling control claim-established-positive EV-06
 # and an exclusion row would be the registry declining to cover what it just built. The baseline is
 # re-derived by running the step, never quoted: lines and gates are its own printed stats.
 d09-06-registration control important-gates-excluded-stale EV-07
+d09-06-registration control important-gates-complete-uncovered EV-07
+d09-06-registration control important-gates-excluded-malformed EV-07
+d09-06-registration mutant st-toy-drift EV-07
+d09-06-registration mutant st-deviation-unused EV-07
+d09-06-registration mutant st-pass-line EV-07
+d09-06-registration control sources-src-token-whole EV-07
+d09-06-registration control manifests-output-anchor EV-07
+d09-06-registration control memmap-generator-refused EV-07
+d09-06-registration mutant st-memmap-generator-missing EV-07
