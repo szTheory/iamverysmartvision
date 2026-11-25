@@ -163,3 +163,120 @@ repeat:
   deliverable.
 
 </deferred>
+
+<amendments>
+## Amendments (appended 2026-11-25, after `10-RESEARCH.md`)
+
+The research measured four places where a frozen sentence cannot be satisfied as
+written. Each amendment is **appended**, never an edit of the text above it, and
+**supersedes the conflicting sentence wherever a plan, executor or verifier
+cites it** (GUARDRAILS 2.9: when plan prose and the frozen record differ, the
+recorded amendment wins). The measured evidence is `10-RESEARCH.md` Q1, Q4, Q5,
+Q10 and Q11; the numbers below were re-measured on the planning branch at
+`d3952ea`.
+
+### A-01 — Criterion 4's premise is false: the sentence is **made** identical, not kept identical
+
+**Frozen text superseded:** decision "The route cannot become an install claim —
+the sentence is kept **identical** in `README.md` and `docs/packaging.md`",
+MILESTONE-CONTEXT §2 Phase 10 item 3, and ROADMAP criterion 4's "carry one
+identical ... sentence".
+
+**Measured at `d3952ea`:** `grep -c -F 'nothing downloadable is runnable'`
+returns **1** for `docs/packaging.md` (line 121) and **0** for `README.md`.
+`README.md:17` states the same fact in different words. A sentence that appears
+once cannot be "kept" identical: `README.md` must **gain** the phrase.
+
+**Second measurement:** `docs/packaging.md:121` is a `- ` bullet whose sentence
+continues past the phrase, so a whole-line comparison (`grep -x`) is
+unsatisfiable there without destroying the bullet list.
+
+**Amendment:** the checked object is the 34-byte subtree of the phrase, and the
+proof is `grep -c -F` (line-wise) in **both** files, each equal to 1 — never
+`grep -x`. `README.md:17` is edited minimally to contain the phrase and keep its
+meaning; `docs/packaging.md:121` is left byte-identical ("do not edit a sentence
+that is still true", Phase 8 rule). Both files gain one paragraph pointing at
+`docs/running.md`. The criterion is satisfied by making the sentence identical.
+
+### A-02 — Criterion 2's mechanism limb is **already delivered**: the policy cites a rule that pre-dates it
+
+**Frozen text superseded:** ROADMAP criterion 2's "one deny-list check refuses a
+colour symbol defined under `core/src`, shown able to fail by a committed
+scratch stand-in; the check adds no gate step", read as work to be built here.
+
+**Measured at `d3952ea`:** `tools/check/core-symbols.sh:163-173` already refuses
+a defined symbol matching `palette|rgb|ppm|framepreview` (the rule header is at
+`:38-41`), it catches a file-local `static` too, its committed stand-in
+`tools/check/controls/core-symbols-palette-defined/` exists with
+`EXPECT -> FAIL core-symbols-palette-defined:`, and the control is green in
+today's gate (`controls=386/386`). All three limbs of the criterion are true
+today.
+
+**Amendment:** Phase 10 writes `docs/presentation.md` and **cites** the rule; it
+does not build a second colour mechanism. Consequently the oracle order is
+**inverted** relative to GUARDRAILS 2.9: here the mechanism (plan 06-09) is an
+**ancestor** of the policy, and the ancestry is proved in the direction history
+runs (`git merge-base --is-ancestor <control-adding commit> <policy-adding
+commit>`). That inversion is acceptable and recorded because the policy freezes
+the **meaning** of a rule that already exists; it does not create the check, and
+pretending otherwise would be a false oracle-first claim. TOOL-04 therefore
+closes on an **exclusion row** (reason
+`enforcement_predates_the_requirement_core_symbols_palette_defined`), not on a
+registry row that would attribute a 06-09 mechanism to a Phase 10 requirement.
+
+### A-03 — The tree was red at entry; it is fixed and pinned, so criterion 5 holds at the phase's first commit
+
+**Measured at `f3a6c67` (the research baseline):** `steps=36/38`, from **one**
+root cause: a tilde-home literal quoted in
+`.planning/phases/09-registered-evidence-and-gate-cost/09-SECURITY.md:122`, which
+failed both `hygiene` and `hygiene-history`. Criterion 5 (`steps=38/38`) was
+unsatisfiable on that tree.
+
+**Already repaired before this plan set:** `6be961d` rewrote that one sentence
+without the literal (the Phase 9 record's meaning is unchanged) and `8f71ce3`
+appended the commit that still carries the text to
+`data/expected/hygiene-history-pinned.ids` with the same disposition as the six
+pins above it. **Measured on the planning branch at `d3952ea`:**
+`sh tools/gate.sh` ends `gate: PASS steps=38/38 controls=386/386 ... claims=28
+provisional=27 ... gates=107 lines=330`, exit 0.
+
+**Amendment:** `steps=38/38` holds at the phase's first commit, and **no plan
+spends a task on it**. Every plan's baseline is the green tree at `d3952ea`, not
+the research's red reading, and every count prediction in the plan set is made
+against that baseline. A plan that finds `steps` below 38 is a stop (GUARDRAILS
+§3), not a re-bless.
+
+### A-04 — The close is a trap: the status flip and its ledger rows are one commit, and `lines`/`gates` are **not** frozen here
+
+**Frozen text superseded:** ROADMAP criterion 5's "keeps `steps=38/38` and
+`claims=` at its Phase 9 value", read as freezing every other count.
+
+**Mechanism measured at `d3952ea`:** `tools/check/steps/important-gates.sh:145-181`
+**derives** the must-be-covered set from the `## Traceability` rows whose status
+begins `Complete`, minus `data/expected/important-gates-excluded.ids`. It refuses
+a Complete requirement in neither the registry nor the ledger
+(`important-gates-complete-uncovered`) and a ledger row whose requirement is not
+Complete (`important-gates-excluded-stale`). So flipping PKG-05, TOOL-04 or
+EV-05 to `Complete` turns the tree red **unless** its registry or exclusion row
+lands in the **same commit** — the `09-09` pattern.
+
+**Amendment:**
+
+- **Frozen for this phase:** `steps=38/38`, `claims=28`, `provisional=27`,
+  `faults=235/235`, `cases=13`, `goldens=29`, `claim-refs=26`, `prefix-files=11`,
+  `d10-items=47`, `tests-expected=4958`, `tests-executed=4954`,
+  `tests-skipped=4`, `tests-missing=0`.
+- **Not frozen, and predicted per commit before it lands:** `lines=330` and
+  `gates=107`. The close commit moves them to **`gates=109`, `lines=335`**: three
+  registry rows under EV-05 (two `claims` controls, one `text` control, so two
+  new gate names) and two exclusion rows (PKG-05 for the release-time rehearsal,
+  TOOL-04 per A-02).
+- **`files` / `tracked` / `hygiene-files` are derived at run time and are never a
+  predicate** (every committed planning artifact moves them by one): a plan
+  asserts a **delta** against its task-start baseline
+  (`git ls-tree -r --name-only HEAD^ | wc -l`).
+- The Phase 9 `lines=330` baseline for the ten unregistered mechanisms of
+  deviation D-09-06 is **not** re-derived here (STATE.md's deferred row makes
+  that a separate milestone's job); this phase adds rows, it does not rebaseline.
+
+</amendments>
