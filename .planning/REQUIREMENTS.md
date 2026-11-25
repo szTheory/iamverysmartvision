@@ -30,7 +30,7 @@ mechanical).
 ### Evidence
 
 - [x] **EV-06**: The claims step refuses an `established` claim that is not a `source-expectation` claim resting on a `tier1-primary-doc` dependency, and a legal `established` claim still passes — both shown able to fail (D-32, D-50).
-- [ ] **EV-07**: Each of the ten must-fail mechanisms that have a liveness guard and a re-runnable stand-in but no registry row (D-09-06) gains a `mutant` row over its existing selftest, with the registry baseline re-derived and all ten toy registries extended in the same commit, and **zero new faults**.
+- [x] **EV-07**: Each of the ten must-fail mechanisms that have a liveness guard and a re-runnable stand-in but no registry row (D-09-06) gains a `mutant` row over its existing selftest, with the registry baseline re-derived and all ten toy registries extended in the same commit, and **zero new faults**. Registered as six `control` rows and four `mutant` rows: five mechanisms are proved by control directories that already exist and one by a directory plan 13-04 adds, so a `mutant` row for them would be a second registration of one proof. The deviation from this sentence's literal "mutant row" wording is recorded in `.planning/STATE.md` (`[Phase 13]: 13-04`) and in `13-04-SUMMARY.md`; zero new faults holds.
 
 ### Tooling
 
@@ -104,7 +104,7 @@ the same date: every requirement appears in exactly one phase.
 | RTS-01 | Phase 13 | Complete |
 | RTS-02 | Phase 13 | Complete |
 | EV-06 | Phase 13 | Complete |
-| EV-07 | Phase 13 | Pending |
+| EV-07 | Phase 13 | Complete |
 | TOOL-07 | Phase 14 | Pending |
 | SCN-03 | Phase 14 | Pending |
 | CPU-06 | Phase 14 | Pending |

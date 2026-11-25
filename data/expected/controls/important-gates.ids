@@ -24,3 +24,8 @@ important-gates-complete-uncovered
 # A bare '<REQ>' row and a '<REQ> none' row are both refused as important-gates-excluded-malformed,
 # and neither enters the exclusion set, so the requirement each names keeps its registry line.
 important-gates-excluded-malformed
+# Plan 13-04 (EV-07, D-09-06): the stale exclusion direction, given its own directory so the
+# mechanism resolves as a `control` id rather than only as a co-firing EXPECT line of the
+# complete-uncovered control. One stale row (FND-96) and nothing else, with the good tree's FND-98
+# row kept so no coverage token can fire; the FORBID list is what proves it failed for that reason.
+important-gates-excluded-stale

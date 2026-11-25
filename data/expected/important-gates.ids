@@ -507,3 +507,19 @@ rights-naming control rights-naming RTS-02
 claim-ceiling control claim-established-non-source EV-06
 claim-ceiling control claim-established-without-tier1 EV-06
 claim-ceiling control claim-established-positive EV-06
+# Phase 13 (plan 13-04): EV-07's ten D-09-06 registrations under one new gate name,
+# d09-06-registration. Each of the ten mechanisms that already had a liveness guard and a re-runnable
+# stand-in but no registry row gains the row that says so, and the row's kind is the kind that
+# actually proves it: six `control` rows resolve through data/expected/controls/*.ids (five
+# directories that already existed, important-gates-complete-uncovered, important-gates-excluded-malformed,
+# sources-src-token-whole, manifests-output-anchor and memmap-generator-refused, plus the new
+# important-gates-excluded-stale directory this plan adds), and four `mutant` rows resolve through the
+# new data/expected/runner-selftest.ids, which the runner-selftest step must actually run
+# (runner-selftest-missing). This narrows EV-07's literal "mutant row" wording: a mutant row for a
+# mechanism a control directory already proves would be a second registration of one proof, and
+# inventing a selftest to re-prove it would add a case with no new evidence. Zero new faults holds:
+# ten faults here would cost about 4.4 hosted cpu-s, 82 percent of the milestone's allowance, on the
+# step already 29 percent of the gate. EV-07 takes no exclusion-ledger row: the mechanisms are real,
+# and an exclusion row would be the registry declining to cover what it just built. The baseline is
+# re-derived by running the step, never quoted: lines and gates are its own printed stats.
+d09-06-registration control important-gates-excluded-stale EV-07

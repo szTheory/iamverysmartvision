@@ -48,3 +48,4 @@ toy-mem03 fault GOOD_FAULT MEM-03
 toy-mem04 fault GOOD_FAULT MEM-04
 toy-mem05 fault GOOD_FAULT MEM-05
 toy-tool01 fault GOOD_FAULT TOOL-01
+toy-phase13 fault GOOD_FAULT EV-98
