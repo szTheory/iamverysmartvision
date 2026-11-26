@@ -54,6 +54,61 @@
 #   agree; runner-process.outcomes-covered: every outcome has a running scenario.
 # runner-process.watchdog: the watchdog self-control (stopped at once it stays silent; it stops a
 #   run past its limit).
+# Plan 15-01 (TOOL-08, D-48, D-35): the host shim. The suite's seventh argument is the built build-only shared object
+#   libivs_retro and the eighth is the fake frontend ivs_host_harness; both are `$<TARGET_FILE:...>` paths, never an
+#   environment variable. runner-process.host.digests runs the frontend once on the project's own lamp-tone.ivsc (boot
+#   stub 2, a made zero GROM) and requires a positive frame count before anything is compared, then the nine `digest.`
+#   lines it printed to equal data/golden/demo-lamp-tone-pass.digests byte for byte under exactly the two comparisons
+#   check_one_golden makes: the sorted line set and the observed domain set. A missing argument is `not ok` with that
+#   reason, never a skip, so a configuration without the object cannot pass.
+#   runner-process.host.exports runs tools/check/host-symbols.sh over the same object: the exported set equals
+#   data/expected/host-symbols.ids in BOTH directions (a listed name the object does not export, an exported name the
+#   list does not carry), no exported name carries a palette word, and every undefined name is in
+#   core-symbols-allow.txt or data/expected/host-imports.ids once the three sanitizer prefixes are subtracted. The
+#   missing-name direction is proved live inside the case: a scratch ids copy with one name appended must be refused
+#   with `-- FAIL host-symbols-missing: ivs_not_defined`.
+# Plan 15-02 (TOOL-08, D-48): the shaped-entry contract, judged on the SAME pass-mode run host.digests makes (no second
+#   harness process). runner-process.host.api: the shape version the object answers, a host with a NULL input_poll
+#   REFUSED rather than ignored beside a complete host accepted, and the av_info metadata a frontend places a frame
+#   with - 159 x 96 base and max, frame_phase_ticks 0, nominal_frame_ticks 59736, the fps pair 3579545/59736 and
+#   sample_rate 48000, each pinned in the harness from data/profiles/intv-2609-ntsc-family-p1.json's own fields and
+#   from the converter the shim uses. runner-process.host.frames: frames 13 required first (so a run that delivered
+#   nothing cannot pass on a comparison of nothing), then video.plane.bytes 198432 = 13 x 159 x 96 index-plane bytes
+#   (not the golden's 198848 slot bytes, which include the core's 32-byte header), frame.geometry ok 13 and
+#   pixel.probes ok 13 equal to the frame count, a positive audio.frames with audio.bytes == 2 x audio.frames (mono
+#   signed 16-bit), and the poll's six `<at_tick> <c0> <c1>` words equal to the scenario's - derived at run time from
+#   data/scenarios/demo-lamp-tone-pass.ivss and data/expected/input-bits.ids, never typed in the case.
+#   runner-process.host.unload: `unload.digest.refused 1`, and a `digest.` line BEFORE it by line number, so the
+#   order proves the digests were taken while the machine was still loaded - a harness that only pretended to unload
+#   cannot pass.
+#   runner-process.host.empty-poll: the same harness and the same drive with NO input, judged in three limbs each able
+#   to fail on its own - at least one digest line differs from the pass golden (so a judge that compared an output
+#   with itself fails), digest.images is EQUAL to the pass golden (so a shim that stopped rendering fails, and a
+#   difference stays attributable to the input alone), and every non-input digest line the IDLE golden carries
+#   (eight today; its `# domains:` line reads input=none) equals that golden's, with digest.input differing from the
+#   pass golden's.
+# Plan 15-04 (TOOL-08, review CR-01, WR-01 and WR-02): the two measured defects of the shim and the guard on the
+#   guard, each made observable through the frontend's own answers. runner-process.judge.host-schedule: the input schedule is bounded and REFUSES rather than
+#   truncates, in two limbs - `--schedule-full` (5000 events pending in one drain) requires `schedule.runs.ok 0`,
+#   `schedule.frames 0` and a `schedule.polled` above zero and below 5000, so the refusal came from the schedule's
+#   bound while the host still had events left; `--schedule-long` (8000 events over two calls, 4000 at a time)
+#   requires both calls to succeed and all 8000 to be polled, so the bound is on OUTSTANDING events and a long run
+#   cannot lose input. The pair is the non-vacuity: one count fits over a lifetime, one does not fit at once.
+#   runner-process.judge.host-load-refused: a refused load leaves nothing committed - the instance digest is unmoved by a
+#   refused four-byte-cartridge load, the run is refused, and the same call with the right images then succeeds and
+#   moves the digest, so the refusal is not a dead machine and a retry is meaningful.
+#   runner-process.judge.host-two-limb: the two limbs that make the judge self-control's own guard able to fail. A
+#   self_control now requires the check's OBSERVED token set to equal the DECLARED one, so (a) the pass golden's lines
+#   with `frames 13`, which an empty-poll judge finds identical to the pass output (empty-poll-identical) AND still
+#   carrying the pass run's input (empty-poll-idle), must be refused as judge-wrong-reason rather than accepted because
+#   the declared token is present; and (b) a declaration claiming a limb the check never exercised (frames-zero AND
+#   digest-diff on the frames-zero stand-in, whose check returns before the digests) must be refused too.
+#   runner-process.judge.host-vacuous and runner-process.judge.host-digest-diff: the phase's two COMMITTED stand-ins
+#   (criterion 3.3), not scratch probes. Each is a fake frontend this suite writes into its temp dir and judges with
+#   the SAME check_host the real run is judged by: host-vacuous prints the pass golden's nine lines with `frames 0`
+#   and must be refused for frames-zero; host-digest-diff prints them with `digest.input` replaced by the empty-poll
+#   run's OBSERVED value and `frames 13` and must be refused for digest-diff. Each differs from a passing output in
+#   one limb only, so a rejection for another token is judge-wrong-reason and an acceptance is judge-vacuous.
 runner-process.scenario.diag-boot-pass
 runner-process.scenario.guest-assert-mismatch
 runner-process.scenario.timeout-budget
@@ -210,3 +265,14 @@ runner-process.judge.roundtrip-differs
 runner-process.outcomes-consistent
 runner-process.outcomes-covered
 runner-process.watchdog
+runner-process.host.digests
+runner-process.host.exports
+runner-process.host.api
+runner-process.host.frames
+runner-process.host.unload
+runner-process.host.empty-poll
+runner-process.judge.host-schedule
+runner-process.judge.host-load-refused
+runner-process.judge.host-vacuous
+runner-process.judge.host-digest-diff
+runner-process.judge.host-two-limb

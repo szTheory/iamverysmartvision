@@ -49,7 +49,7 @@
 #   c++ link   (D-38) tests/installed-consumer/main.cpp compiled and linked by ${CXX:-c++}
 #              -std=c++17 directly against the installed headers and archive, then run; a
 #              visible `-- pkg-cxx-link SKIP` line without a C++ compiler.
-#   selftest   nineteen in-step cases (D-40, exact inventory data/expected/pkg-selftests.ids), each on a
+#   selftest   twenty in-step cases (D-40, exact inventory data/expected/pkg-selftests.ids), each on a
 #              copy or the deleted prefix and each required to fail for its intended reason:
 #              core-src-include, missing-symbol, ghost-decl, unprefixed, extra-file, baked-path,
 #              version-refused (the next minor, the next major and an older minor are refused;
@@ -64,7 +64,9 @@
 #              changed: pkg-runner-golden-diff), and, from plan 07-09, scn-domain-missing (the scn.digest.audio line dropped: the
 #              observed domains differ) and scn-digest-drift (one scn.digest.video nibble changed: pkg-runner-golden-diff), and, from plan
 #              08-16, snap-domain-missing (the snap.digest.audio line dropped: the observed domains differ) and snap-digest-drift (one
-#              snap.digest.video nibble changed: pkg-runner-golden-diff).
+#              snap.digest.video nibble changed: pkg-runner-golden-diff), and, from plan 15-02, host-so-absent (a planted
+#              lib/libivs_retro.so in a copy of the installed prefix: pkg-inventory-extra, so the build-only host object
+#              cannot acquire an install rule unnoticed - the eleven-path inventory is what makes its absence a check).
 # Every temp file is under one mktemp dir outside the repo, removed on exit; the step writes
 # nothing else but build/gate/pkg-consumer.txt. Logs are printed only on failure.
 # Tokens: pkg-install-no-tree: <path>, pkg-install-failed: <what>, pkg-install-relocate: <what>,
@@ -664,6 +666,16 @@ run_case() {
       if check_inventory "$d/prefix" > "$d/out"; then detail="inventory passed"; return 1; fi
       grep -q -x -F -e '-- FAIL pkg-inventory-extra: share/ivs/stray.txt' "$d/out" \
         || { detail="no pkg-inventory-extra: share/ivs/stray.txt"; return 1; }
+      ;;
+    host-so-absent)
+      # The build-only host object (plan 15-02, TOOL-08, D-49) is a NON-member: it has no install rule and the
+      # eleven-path inventory is what makes its absence a check rather than a statement. A future
+      # install(TARGETS ivs_retro_shim ...) fails here first, by name, before it can reach a release.
+      cp -R "$pb" "$d/prefix" || { detail="copy"; return 1; }
+      mkdir -p "$d/prefix/lib" && printf 'x\n' > "$d/prefix/lib/libivs_retro.so"
+      if check_inventory "$d/prefix" > "$d/out"; then detail="inventory passed"; return 1; fi
+      grep -q -x -F -e '-- FAIL pkg-inventory-extra: lib/libivs_retro.so' "$d/out" \
+        || { detail="no pkg-inventory-extra: lib/libivs_retro.so"; return 1; }
       ;;
     baked-path)
       cp -R "$pb" "$d/prefix" || { detail="copy"; return 1; }

@@ -16,6 +16,9 @@
 #         install-extra-member  an extra library member in an install archive is reported by name
 #         rom-member            a .rom member that the list itself names is still refused (the binary
 #                               rule does not depend on the list)
+#         so-member             a .so member that the list itself names is still refused, and refused for that
+#                               reason alone (plan 15-02: the build-only host object is a non-member, so no
+#                               host artifact can enter a release archive whatever the list says)
 #         outer-name-pass       a clean archive whose outer name is ivs-test.tar.gz passes
 #       Five cases (plan 08-02, D-30) judge the version and changelog modes on synthetic inputs, each
 #       a header with the three IVS_API_VERSION defines plus a config version file with a
@@ -171,6 +174,20 @@ run_case() {
         || { detail="cannot build the archive"; return 1; }
       runlib "$c" install a.tar.gz ivs-x include/ivs/ivs.h share/doc/ivs/diag.rom
       wantfail "$c" 'release-assets-binary-member: share/doc/ivs/diag.rom' || return 1
+      if grep -q -e 'release-assets-extra-member' -e 'release-assets-missing-member' "$tmp/$c/lib.out"; then
+        detail="the list was not honoured, so the binary rule is not the only finding"
+        return 1
+      fi
+      ;;
+    so-member)
+      # The build-only host object is not a release member (plan 15-02, TOOL-08, D-48, D-49, GUARDRAILS-v0.3 V6): a
+      # synthetic archive whose own list names lib/libivs_retro.so must still be refused by the binary rule, which
+      # does not consult the list. The last limb is what proves the rule fires whatever the list says - a checker that
+      # honoured the list would report nothing here and pass for the wrong reason.
+      mkdir -p "$tmp/$c" && mkarch "$c" a.tar.gz ivs-x include/ivs/ivs.h lib/libivs_core.a lib/libivs_retro.so \
+        || { detail="cannot build the archive"; return 1; }
+      runlib "$c" install a.tar.gz ivs-x include/ivs/ivs.h lib/libivs_core.a lib/libivs_retro.so
+      wantfail "$c" 'release-assets-binary-member: lib/libivs_retro.so' || return 1
       if grep -q -e 'release-assets-extra-member' -e 'release-assets-missing-member' "$tmp/$c/lib.out"; then
         detail="the list was not honoured, so the binary rule is not the only finding"
         return 1

@@ -57,8 +57,10 @@ foreach(p IN LISTS paths)
   if(NOT len EQUAL size OR content MATCHES "\r")
     gate_fail(integrity-crlf "${p}")
   endif()
-  # ASCII rule: every text file under these top-level directories (runner/ since plan 04-04, A-07).
-  if(p MATCHES "^(data|fixtures|tools|[.]github|core|include|tests|cmake|runner)/" OR p MATCHES "^CMakeLists[.]txt$")
+  # ASCII rule: every text file under these top-level directories (runner/ since plan 04-04, A-07; host/
+  # since plan 15-01, TOOL-08: host/ is a new top-level directory, and both this rule and the SPDX rule
+  # below are directory-anchored, so without the widening the phase's own sources would escape them).
+  if(p MATCHES "^(data|fixtures|tools|[.]github|core|include|tests|cmake|runner|host)/" OR p MATCHES "^CMakeLists[.]txt$")
     if(content MATCHES "[^\t\n -~]")
       gate_fail(integrity-non-ascii "${p}")
     endif()
@@ -71,9 +73,12 @@ foreach(p IN LISTS paths)
   # in plan 08-18 without a fourth control directory of its own, and tools/flatwrap joins it the same way in
   # plan 14-01: the rule stays proved three times (integrity-missing-spdx-tools-c, -asm, -pcm), and the control
   # that plan 14-01 does add is the c-build unlisted-source guard for the new directory.
+  # host/ joins the C/H and CMakeLists alternations in plan 15-01 (TOOL-08) the same way: tests/host/ was already
+  # covered by the tests/ alternative, host/ was not, and a scope widening is not a new check - the mechanisms
+  # (integrity-missing-spdx, integrity-non-ascii) stay proved by the eight committed controls.
   if(p MATCHES "^tools/.*[.](sh|cmake)$" OR p MATCHES "^[.]github/workflows/[^/]*[.]yml$"
-     OR p MATCHES "^(core|include|tests)/.*[.](c|h|sh|cmake)$" OR p MATCHES "^cmake/.*[.]cmake$"
-     OR p MATCHES "^CMakeLists[.]txt$" OR p MATCHES "^(core|include|tests|runner)/(.*/)?CMakeLists[.]txt$"
+     OR p MATCHES "^(core|include|tests|host)/.*[.](c|h|sh|cmake)$" OR p MATCHES "^cmake/.*[.]cmake$"
+     OR p MATCHES "^CMakeLists[.]txt$" OR p MATCHES "^(core|include|tests|runner|host)/(.*/)?CMakeLists[.]txt$"
      OR p MATCHES "^runner/.*[.](c|h|sh|cmake)$" OR p MATCHES "^tools/(pack|cart|pcm|asm|bench|flatwrap)/.*[.](c|h)$")
     string(FIND "${content}" "SPDX-License-Identifier: MIT" pos)
     if(pos EQUAL -1)

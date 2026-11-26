@@ -4,19 +4,18 @@ milestone: v0.3.0
 milestone_name: Owner-Supplied Content and a Driveable Host (Phases 13 to 16)</summary>
 current_phase: 15
 current_phase_name: Build-Only Host and the Fake-Frontend Harness
-current_plan: Not started
-status: planning
-stopped_at: Phase 14 complete, ready to plan Phase 15
-last_updated: "2026-11-26T04:36:22.347Z"
+current_plan: 3
+status: verifying
+stopped_at: Completed 15-03-PLAN.md
+last_updated: "2026-11-26T07:06:56.329Z"
 last_activity: 2026-11-26
-last_activity_desc: Phase 14 complete, transitioned to Phase 15
-state_head: 55f26b5333b001ef5114d3873e96f4258ca7fdc7
+last_activity_desc: Phase 15 complete, ready for verification
+state_head: 85470b80771da9157b38496a19b3d81302a130d5
 progress:
   total_phases: 4
   completed_phases: 8
-  total_plans: 9
-  completed_plans: 9
-  percent: 100
+  total_plans: 12
+  completed_plans: 12
 ---
 
 # Project State
@@ -30,11 +29,31 @@ See: .planning/PROJECT.md (updated 2026-11-26)
 
 ## Current Position
 
-Phase: 15 — Build-Only Host and the Fake-Frontend Harness
-Current Plan: Not started
-Total Plans in Phase: 4
-Status: Ready to plan
-Last activity: 2026-11-25 — Phase 14 complete, transitioned to Phase 15
+Phase: 15 (Build-Only Host and the Fake-Frontend Harness) — COMPLETE
+Current Plan: 3 of 3
+Total Plans in Phase: 3
+Status: Phase complete — ready for verification; 3/3 plans executed, `15-VALIDATION.md` signed off, TOOL-08 `Complete`, one claim `CL-0029` at `deterministic-repeatability`, `provisional` (D-50 unchanged)
+Last activity: 2026-11-26 — 15-03 executed: the TOOL-08 flip with its two live `judge` rows and the thirteen-file toy extension, the re-derived `gates=118 lines=358` (toy `gates=47 lines=50`), `CL-0029` with GUARDRAILS V3's whole retarget set, the closing gate line under `sh`/`dash` and in the container, one cost verdict `reprice`, and the validation sign-off
+
+Phase 15's closing gate run reads `gate: PASS steps=38/38 controls=404/404 … faults=238/238 …
+goldens=29 … gates=118 lines=358 … tests-expected=5036 tests-executed=5032 tests-skipped=4
+tests-missing=0 … claims=29 provisional=28 claim-refs=27 prefix-files=11 pkg-selftest=20/20
+release-selftest=12/12 binaries-listed=0`, exit 0 and byte-identical under `sh` and `dash` (`cmp` on
+`tail -1`, 1509 bytes each, `gate-time total=74`), and repeated once inside the Ubuntu 24.04 container
+(`gate: PASS`, `gate-time total=279`, four documented host tokens differing: `cc=GNU`,
+`core-imports=5`, `archive=sha256`, `refs-verified=0/4`). The phase's own tokens are `tracked=2771
+files=2771 hygiene-files=2771`, `claims=29 provisional=28 claim-refs=27`, `public-symbols=19
+defined=141`, `discrepancies=110 open=101`, `vectors=412`, `cases=14`, `rights=10 rights-cleared=1`
+and `mode=tree`. `steps`, `faults` and `goldens` are where they were frozen: no new gate step, fault
+or golden. The full line is quoted once in `15-03-SUMMARY.md` and in `15-VALIDATION.md`'s Approval
+block.
+
+Phase 15's cost checkpoint reads `reprice`: the last-five `cpu_s` median recomputed by arithmetic from
+`.planning/ci-runs.tsv` is 366 against the frozen 361, while the priced addition is 1.535 of the 21
+cpu-s allowance (the window and all three medians are enumerated in the `15-03: checkpoint` decision
+bullet).
+hosted row: not-recorded — no push run for 85470b8 at 2026-11-26; the orchestrator records it from
+sh tools/ci-record.sh <run-id> after the push
 
 Phase 14's closing gate run reads `gate: PASS steps=38/38 controls=402/402 … faults=238/238 …
 goldens=29 … tests-expected=5014 tests-executed=5010 tests-skipped=4 tests-missing=0 … gates=117
@@ -104,6 +123,24 @@ milestone close").
   with no presentation surface, so generating a UI-SPEC would have produced a
   design contract for a library. The skip is recorded rather than silently
   taken; the gate's `block` was `false`.
+- **[Phase 15] The decision-coverage gate is overridden as `could-not-parse` for
+  the same reason as Phase 13, and the plans cite the frozen ids instead.**
+  `check.decision-coverage-plan` returns `could-not-parse` on `15-CONTEXT.md`
+  because smart-discuss writes its decisions with no `D-NN` prefix (measured:
+  `reason: could-not-parse`, `total: null`). The three plans name the decisions
+  they discharge by id in their `<objective>` blocks and restate the property in
+  `must_haves`: D-48 (no vendored frontend header; the subset is project-authored
+  and *libretro-shaped*, never compatible), D-35 (the package stays static, so
+  `IVS_API` is defined for the shared target only), D-49 (the package stays
+  eleven files and a shared object is refused by name), D-50 (the claim ceiling
+  is enforced mechanically), and D-01 (the core takes no allocator, so the shim
+  owns its instance storage). Re-writing the discuss record to quiet a scanner
+  is the anti-pattern; the override is recorded here instead.
+- **[Phase 15] `workflow.ui_phase`'s UI hook is not applicable.** Phase 15 adds
+  no presentation surface: the fake frontend is a headless `dlopen` harness
+  whose evidence is nine digest lines, and the CONTEXT's deferred list refuses a
+  window explicitly. No UI-SPEC is generated and the skip is recorded rather
+  than silently taken.
 
 ## Releases
 
@@ -297,6 +334,9 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | Phase 14 P02 | 145 min | 2 tasks | 15 files |
 | Phase 14 P03 | 80 min | 3 tasks | 6 files |
 | Phase 14 P04 | 28 min | 2 tasks | 21 files |
+| Phase 15 P01 | 17 min | 2 tasks | 12 files |
+| Phase 15 P02 | 22 min | 3 tasks | 17 files |
+| Phase 15 P03 | 48 min | 3 tasks | 27 files |
 
 ## Accumulated Context
 
@@ -634,6 +674,11 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 14]: no cart size rule in the route: the core refuses a short container (reason 1) and a long one (reason 2) at load with a precise report line
 - [Phase 14]: the route's pass path pins the measured outcome.detail line=24, not the research's predicted line=23: the inserted content cart user line shifts the halted step's scenario line
 - [Phase 14]: 14-04: checkpoint: reprice (cpu_s 357 360 363 368 438, median 363; build_s 33 34 35 35 39, median 35; gate_s 119 120 121 122 135, median 121; priced addition 1.535; allowance 21). Recomputed by arithmetic from the last five .planning/ci-runs.tsv rows (45683886915, 45717868904, 45718553735, 45720934719, 45723269901), never quoted: the frozen 361/34/118 figures are stale by measurement, by +2/+1/+3. discharged-within-allowance is not reachable because 363 > 361 + 1.535 = 362.535, by 0.465. lever-required is not reached because the cumulative milestone spend is 3.470 of 21 (1.935 from Phase 13 plus 1.535 here) and this phase's additions landed at the priced count (steps 38, faults 238 and goldens 29 unmoved, one control directory, five registry rows, thirteen toy files), so no line overran by 25 percent (1.535 against 1.3 is +18.1 percent). The median moved more than the priced addition while the token line is where it was predicted, so reprice is what the rule names.
+- [Phase 15]: The host shim exports exactly the nine names of data/expected/host-symbols.ids, enforced by the linker on both platforms and checked in both directions; IVS_API is defined for that target alone so the static package stays eleven files.
+- [Phase 15]: A dlopen frontend over the build-only object reproduces the runner nine digest lines byte-for-byte on lamp-tone.ivsc at tick 806568 (frames 13, plane bytes 198432, PCM frames 10815), so the seam is proved before nine more assertions build on it.
+- [Phase 15]: The pixel probe counts delivered pixels (198432 = 13 x 159 x 96), not frames: runner-process.host.frames requires pixel.probes ok <n> to equal video.plane.bytes and be positive, which is the equality the plan's 'pixel.probes ok 13' would have lost.
+- [Phase 15]: No important-gates row is written for the two new binary controls: PKG-06 is Pending until Phase 16 and important-gates.sh refuses a row naming a Pending requirement; a control runs from its directory and its rights.ids line.
+- [Phase 15]: 15-03: checkpoint: reprice (cpu_s 363 438 368 366 359, median 366; build_s 35 39 35 34 34, median 35; gate_s 119 135 122 115 120, median 120; priced addition 1.535; allowance 21). Recomputed by arithmetic from the last five .planning/ci-runs.tsv rows (45718553735, 45720934719, 45723269901, 45747709457, 45751979661), never quoted: the frozen 361/34/118 figures are stale by measurement, by +5/+1/+2. discharged-within-allowance is not reachable because 366 > 361 + 1.535 = 362.535, by 3.465. lever-required is not reached because the cumulative milestone spend is 5.005 of 21 (1.935 from Phase 13, 1.535 from Phase 14 and 1.535 here) and this phase's additions landed at the priced count (steps 38, faults 238 and goldens 29 unmoved, two registry rows, one claim row, thirteen toy files), so no line overran by 25 percent (1.535 against the plan's 1.5 comparison line is +2.33 percent, and 0.055 under the research's frozen 1.59). The median moved more than the priced addition while the token line is where it was predicted, so reprice is what the rule names. container: gate: PASS, gate-time total=279, four documented host tokens differing (cc=GNU, core-imports=5, archive=sha256, refs-verified=0/4) and no other token. Window note: three newer hosted runs exist on GitHub for Phase 14's close (45752237522, 45756308953, 45756570481) and are not in the committed TSV; tools/ci-record.sh is orchestrator-only, so they are not appended here and this verdict must be recomputed if they land.
 
 ### Pending Todos
 
@@ -730,8 +775,8 @@ The row itself is left as recorded and this note sits under it.
 
 ## Session Continuity
 
-Last session: 2026-11-26T03:11:17.023Z
-Stopped at: Phase 14 complete, ready to plan Phase 15
+Last session: 2026-11-26T07:06:56.112Z
+Stopped at: Completed 15-03-PLAN.md
 Resume file: None
 
 The Phase 13 close still leaves one thing a later run must do: record the phase's hosted row from

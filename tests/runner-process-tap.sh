@@ -110,14 +110,24 @@
 # Since plan 09-01 (D-09, A-03, A-04): the two demo-lamp-tone variants are column-5 `release-only`, so on the sanitized preset they are judged by the
 # derivation equality of docs/video/demo-lamp-tone-1-derivation.md and on Release they run; `variants=` and `variant-static=` count those rows in each
 # mode (they sum to the number of such rows), so the counts make the mode of every run visible instead of leaving it to be inferred.
-# Usage: sh runner-process-tap.sh <source root> <ivs-run> <ivs_pack> <images dir> [<build configuration>] [<ivs_flatwrap>]
+# Since plan 15-01 (TOOL-08, D-48, D-35): the host shim. The seventh argument is the built build-only shared object
+# libivs_retro and the eighth is the fake frontend ivs_host_harness that dlopens it; both are `$<TARGET_FILE:...>` paths
+# CMake provides, never an environment variable (T-15-01). runner-process.host.digests drives the project's own
+# lamp-tone.ivsc with the pass scenario's six events, one call per frame boundary and then exactly 806568, and requires
+# the nine `digest.` lines the frontend printed to equal data/golden/demo-lamp-tone-pass.digests byte for byte under
+# exactly the two comparisons check_one_golden makes (the sorted line set and the observed domain set), with a positive
+# frame count required before anything is compared (a vacuous judge cannot pass). Missing either argument, the case is
+# `not ok` with that reason, never a skip.
+# Usage: sh runner-process-tap.sh <source root> <ivs-run> <ivs_pack> <images dir> [<build configuration>] [<ivs_flatwrap>] [<libivs_retro>] [<ivs_host_harness>]
 # Exit: 0 pass, 1 fail, 77 every case skipped.
 # Env: IVS_TEST_NONCE, IVS_TEST_OUT_DIR, IVS_RUNNER_PROCESS_TIMEOUT.
 LC_ALL=C; export LC_ALL
-usage='usage: sh runner-process-tap.sh <source root> <ivs-run> <ivs_pack> <images dir> [<build configuration>] [<ivs_flatwrap>]'
-[ "$#" -eq 4 ] || [ "$#" -eq 5 ] || [ "$#" -eq 6 ] || { printf '%s\n' "$usage" >&2; exit 1; }
+usage='usage: sh runner-process-tap.sh <source root> <ivs-run> <ivs_pack> <images dir> [<build configuration>] [<ivs_flatwrap>] [<libivs_retro>] [<ivs_host_harness>]'
+[ "$#" -ge 4 ] && [ "$#" -le 8 ] || { printf '%s\n' "$usage" >&2; exit 1; }
 config=${5:-}
 flatwrap_arg=${6:-}
+shim_arg=${7:-}
+harness_arg=${8:-}
 # Absolute paths: the cwd case runs from another directory.
 abs_dir() { (cd "$1" 2> /dev/null && pwd -P); }
 abs_file() { _d=$(abs_dir "$(dirname "$1")") && printf '%s/%s\n' "$_d" "$(basename "$1")"; }
@@ -130,6 +140,16 @@ flatwrap=
 if [ -n "$flatwrap_arg" ]; then
   flatwrap=$(abs_file "$flatwrap_arg") || { printf 'runner-process-tap: no %s\n' "$flatwrap_arg" >&2; exit 1; }
 fi
+# The build-only shared object and the fake frontend (plan 15-01, TOOL-08): a shared object is a regular file, not an
+# executable, so it is required to exist rather than to carry the execute bit. Absent, the host case reports a finding.
+shim=
+if [ -n "$shim_arg" ]; then
+  shim=$(abs_file "$shim_arg") || { printf 'runner-process-tap: no %s\n' "$shim_arg" >&2; exit 1; }
+fi
+harness=
+if [ -n "$harness_arg" ]; then
+  harness=$(abs_file "$harness_arg") || { printf 'runner-process-tap: no %s\n' "$harness_arg" >&2; exit 1; }
+fi
 inv="$root/data/expected/runner-scenarios.ids"
 outcomes="$root/data/expected/runner-outcomes.ids"
 scen="$root/data/scenarios"
@@ -139,6 +159,8 @@ done
 [ -x "$ivs_run" ] || { printf 'runner-process-tap: %s is not executable\n' "$ivs_run" >&2; exit 1; }
 [ -x "$pack" ] || { printf 'runner-process-tap: %s is not executable\n' "$pack" >&2; exit 1; }
 [ -z "$flatwrap" ] || [ -x "$flatwrap" ] || { printf 'runner-process-tap: %s is not executable\n' "$flatwrap" >&2; exit 1; }
+[ -z "$shim" ] || [ -f "$shim" ] || { printf 'runner-process-tap: %s is not a file\n' "$shim" >&2; exit 1; }
+[ -z "$harness" ] || [ -x "$harness" ] || { printf 'runner-process-tap: %s is not executable\n' "$harness" >&2; exit 1; }
 limit=${IVS_RUNNER_PROCESS_TIMEOUT:-60}
 case $limit in '' | *[!0-9]* | 0) printf 'runner-process-tap: IVS_RUNNER_PROCESS_TIMEOUT=%s\n' "$limit" >&2; exit 1 ;; esac
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/runner-process-tap.XXXXXX") || exit 1
@@ -2187,6 +2209,421 @@ fi
 or_end
 result runner-process.judge.owner-run-cart-pass
 
+# ---- the host shim (plan 15-01, TOOL-08, D-48, D-35) ----
+# check_digest_lines <golden> <output>: exactly the two comparisons check_one_golden makes, applied to the fake
+# frontend's stdout - the sorted `digest.` line set is byte-equal (both non-empty), and the observed domain set the
+# golden's `# domains:` line declares equals the non-composite domains the output printed. 0 only when both hold.
+check_digest_lines() {
+  _cdg=$1; _cdo=$2
+  _cdrc=0
+  grep '^digest\.' "$_cdg" 2> /dev/null | sort > "$tmp/hd.want"
+  grep '^digest\.' "$_cdo" 2> /dev/null | sort > "$tmp/hd.have"
+  if [ ! -s "$tmp/hd.want" ] || ! cmp -s "$tmp/hd.want" "$tmp/hd.have"; then
+    why digest-diff "golden only: $(comm -23 "$tmp/hd.want" "$tmp/hd.have" | awk '{ print $1 }' | tr '\n' ' ')output only: $(comm -13 "$tmp/hd.want" "$tmp/hd.have" | awk '{ print $1 }' | tr '\n' ' ')"
+    _cdrc=1
+  fi
+  sed -n 's/^# domains: //p' "$_cdg" | tr ' ' '\n' | sed -n 's/=observed$//p' | sort > "$tmp/hd.dom.want"
+  sed -n 's/^digest\.\([a-z]*\) .*/\1/p' "$_cdo" | grep -v -x -e composite | sort > "$tmp/hd.dom.have"
+  if [ ! -s "$tmp/hd.dom.want" ] || ! cmp -s "$tmp/hd.dom.want" "$tmp/hd.dom.have"; then
+    why digest-diff "observed domains: golden $(tr '\n' ' ' < "$tmp/hd.dom.want")output $(tr '\n' ' ' < "$tmp/hd.dom.have")"
+    _cdrc=1
+  fi
+  return "$_cdrc"
+}
+
+# check_host_empty <output>: the empty-poll run judged in three limbs, each able to fail on its own (research Open
+# Question 5, measured; criterion 3.2). 0 only when all three hold; findings in $tmp/why.
+#   (1) at least one `digest.` line DIFFERS from the pass golden's same-named line - the "different set" the
+#       criterion names, and the limb a constant judge (one that compared an output with itself) fails;
+#   (2) `digest.images` is EQUAL to the pass golden's - the frames are the same, so a shim that stopped rendering
+#       fails here while a judge that compared nothing would pass on limb (1) alone;
+#   (3) every non-input `digest.` line the IDLE golden carries equals that golden's same-named line, and
+#       `digest.input` differs from the pass golden's. The idle golden is read for the set it carries - eight
+#       domains today (cpu mem images instance composite video audio psglog); its `# domains:` line reads
+#       input=none, so it has no digest.input line - never from a list typed here.
+check_host_empty() {
+  _eh=$1; _rc=0
+  _ehf=$(sed -n 's/^frames //p' "$_eh" | head -n 1)
+  case $_ehf in
+    '' | *[!0-9]*) why empty-poll-frames "frames '$_ehf' is not a positive integer"; return 1 ;;
+  esac
+  [ "$_ehf" -gt 0 ] || { why empty-poll-frames "frames $_ehf"; return 1; }
+  # (1) at least one line differs from the pass golden's same-named line.
+  _ehd=$(awk -v pass="$root/data/golden/demo-lamp-tone-pass.digests" '
+    BEGIN { while ((getline l < pass) > 0) { split(l, kv, " "); if (kv[1] ~ /^digest[.]/) g[kv[1]] = kv[2] } close(pass) }
+    /^digest[.]/ { if (!($1 in g) || g[$1] != $2) n++ }
+    END { print n + 0 }' "$_eh")
+  if [ "${_ehd:-0}" -lt 1 ]; then
+    why empty-poll-identical 'no digest line differs from the pass golden, so the poll was not dropped'
+    _rc=1
+  fi
+  # (2) digest.images equal to the pass golden's.
+  _ehi=$(sed -n 's/^digest[.]images //p' "$_eh" | head -n 1)
+  _ehig=$(sed -n 's/^digest[.]images //p' "$root/data/golden/demo-lamp-tone-pass.digests" | head -n 1)
+  if [ -z "$_ehi" ] || [ "$_ehi" != "$_ehig" ]; then
+    why empty-poll-images "digest.images '${_ehi:-missing}' is not the pass golden's '${_ehig:-missing}': the run stopped rendering, so a difference is not attributable to the input alone"
+    _rc=1
+  fi
+  # (3) the idle golden's non-input lines, and digest.input differing from the pass golden's.
+  awk '/^digest[.]/ && $1 != "digest.input" { print $1, $2 }' "$root/data/golden/demo-lamp-tone-idle.digests" \
+    > "$tmp/eh.idle.want"
+  if [ ! -s "$tmp/eh.idle.want" ]; then
+    why empty-poll-idle 'the idle golden carries no non-input digest line, so the limb would compare nothing'
+    _rc=1
+  else
+    while read -r _ehk _ehv; do
+      _ehgot=$(sed -n "s/^${_ehk} //p" "$_eh" | head -n 1)
+      if [ "$_ehgot" != "$_ehv" ]; then
+        why empty-poll-idle "$_ehk '${_ehgot:-missing}' is not the idle golden's '$_ehv'"
+        _rc=1
+      fi
+    done < "$tmp/eh.idle.want"
+  fi
+  _ehin=$(sed -n 's/^digest[.]input //p' "$_eh" | head -n 1)
+  _ehing=$(sed -n 's/^digest[.]input //p' "$root/data/golden/demo-lamp-tone-pass.digests" | head -n 1)
+  if [ -z "$_ehin" ] || [ -z "$_ehing" ] || [ "$_ehin" = "$_ehing" ]; then
+    why empty-poll-idle "digest.input '${_ehin:-missing}' does not differ from the pass golden's '${_ehing:-missing}': the poll was not dropped"
+    _rc=1
+  fi
+  return "$_rc"
+}
+
+# check_host <output>: the drive is not vacuous (a positive frame count is required before anything is compared) and
+# the nine digest lines equal the pass golden's, byte for byte.
+check_host() {
+  _chf=$(sed -n 's/^frames //p' "$1" | head -n 1)
+  case $_chf in
+    '' | *[!0-9]*) why frames-zero "frames '$_chf' is not a positive integer"; return 1 ;;
+  esac
+  [ "$_chf" -gt 0 ] || { why frames-zero "frames $_chf"; return 1; }
+  check_digest_lines "$root/data/golden/demo-lamp-tone-pass.digests" "$1"
+}
+
+: > "$tmp/why"
+ok=1
+if [ -z "$shim" ]; then
+  ok=0; why host-shim 'the seventh argument (libivs_retro) is missing: the host case cannot be run'
+elif [ -z "$harness" ]; then
+  ok=0; why host-harness 'the eighth argument (ivs_host_harness) is missing: the host case cannot be run'
+else
+  run_one "$tmp" host-pass "$harness" "$shim" "$content"
+  if [ "$hung" -eq 1 ] || [ "$rc" -ne 0 ]; then
+    ok=0
+    why host-run "exit $rc, hung $hung: $(sed -n 's/^fail //p' "$tmp/runs/host-pass.out" | head -n 1)"
+  elif ! check_host "$tmp/runs/host-pass.out"; then
+    ok=0
+  fi
+  # The evidence is inspectable, and deliberately NOT under IVS_TEST_OUT_DIR/runner/: the golden step compares
+  # everything in that directory and a frontend's stdout is not a scenario report.
+  if [ -n "${IVS_TEST_OUT_DIR:-}" ]; then
+    cp "$tmp/runs/host-pass.out" "$IVS_TEST_OUT_DIR/host-pass.out" || exit 1
+  fi
+fi
+result runner-process.host.digests
+
+# ---- the shaped-entry contract (plan 15-02, TOOL-08, D-48): three cases over the SAME pass-mode run ----
+# They judge lines of the run host.digests already made and start no second harness process: the cost unit is the
+# id, but the wall time is the process, and a second run would double the suite's new time for no new evidence.
+pass_out="$tmp/runs/host-pass.out"
+
+# host_field <output> <expected line> <token>: the output carries exactly <expected line>. A missing or different
+# line records a finding naming the key and the value the object returned, never a bare `missing`.
+host_field() {
+  grep -q -x -F -e "$2" "$1" && return 0
+  _hf=${2%% *}
+  _hv=$(sed -n "s/^${_hf} //p" "$1" | head -n 1)
+  why "$3" "$_hf '${_hv:-missing}', expected '$2'"
+  return 1
+}
+
+# host_scenario_words <scenario>: the six `<at_tick> <c0> <c1>` triples of the scenario's own `input` lines, each
+# symbolic name resolved to its bit index through data/expected/input-bits.ids - the pinned table the core's
+# IVS_CTRL_* defines are checked against - so the expectation comes from the two committed oracles and is not typed
+# here. A name the table does not carry, a word form this cannot read, or a line without at_tick fails the
+# derivation (exit 1) instead of printing a guess.
+host_scenario_words() {
+  awk -v bits="$root/data/expected/input-bits.ids" '
+    function word(s,   k, parts, i, v, name) {
+      if (s == "0x0") return "00000000"
+      if (s ~ /^0[xX]/) { bad = 1; return "?" }
+      v = 0
+      k = split(s, parts, "+")
+      for (i = 1; i <= k; i++) {
+        name = "IVS_CTRL_" parts[i]
+        if (!(name in bit)) { bad = 1; return "?" }
+        v += 2 ^ bit[name]
+      }
+      return sprintf("%08x", v)
+    }
+    BEGIN {
+      while ((getline l < bits) > 0) {
+        if (l ~ /^#/ || l !~ /[^ \t]/) continue
+        split(l, b, " ")
+        bit[b[1]] = b[2]
+      }
+      close(bits)
+    }
+    /^input / {
+      tick = ""; c0 = "0x0"; c1 = "0x0"
+      for (i = 2; i <= NF; i++) {
+        split($i, kv, "=")
+        if (kv[1] == "at_tick") tick = kv[2]
+        else if (kv[1] == "c0") c0 = kv[2]
+        else if (kv[1] == "c1") c1 = kv[2]
+      }
+      if (tick == "") { bad = 1; next }
+      print tick, word(c0), word(c1)
+    }
+    END { if (bad) exit 1 }
+  ' "$1"
+}
+
+# runner-process.host.api (plan 15-02, TOOL-08): the shape's version, its refusal of an incomplete host (refused,
+# not ignored) and the av_info metadata a frontend places a frame with. Every value is pinned in the harness from
+# the profile's own fields - data/profiles/intv-2609-ntsc-family-p1.json: video.card_columns 20,
+# video.card_size_px.w 8, video.last_card_column_px 7 (= 159), video.card_rows 12, video.card_size_px.h 8 (= 96),
+# scanlines_per_frame 262 x cpu_cycles_per_scanline 57 x ticks_per_cpu_cycle 4 (= 59736), stic.frame_phase_ticks 0
+# and crystal_hz.num 3579545 - and sample_rate 48000 is the rate the shim's own converter delivers
+# (tools/pcm/ivs_refpcm.c), not the core's native level rate. The harness is not linked against the core, so the
+# profile is the shared source both sides read rather than ivs_machine_info.
+: > "$tmp/why"
+ok=1
+if [ ! -s "$pass_out" ]; then
+  ok=0; why host-api 'the pass-mode run produced no output'
+else
+  for _l in 'api.version 1' 'env.denied 1' 'env.accepted 1' \
+    'av_info.base_width 159' 'av_info.base_height 96' 'av_info.max_width 159' 'av_info.max_height 96' \
+    'av_info.frame_phase_ticks 0' 'av_info.nominal_frame_ticks 59736' 'av_info.fps_num 3579545' \
+    'av_info.fps_den 59736' 'av_info.sample_rate 48000'; do
+    host_field "$pass_out" "$_l" host-api || ok=0
+  done
+fi
+result runner-process.host.api
+
+# runner-process.host.frames (plan 15-02, TOOL-08): the delivered streams. The frame count is required FIRST, so a
+# run that delivered nothing cannot pass on a comparison of nothing; then the index plane (198432 = 13 x 159 x 96
+# bytes, the plane the callback receives - deliberately NOT the golden's output.video.bytes 198848, which counts 13
+# x 15296 slot bytes with the core's 32-byte header included: comparing the two is the trap, and the 416-byte
+# difference is exactly 13 headers), the per-frame geometry and pitch count, the pixel probes, the mono
+# signed-16-bit sample width (audio.bytes == 2 x audio.frames) and the poll's six words.
+: > "$tmp/why"
+ok=1
+if [ ! -s "$pass_out" ]; then
+  ok=0; why host-frames 'the pass-mode run produced no output'
+elif host_field "$pass_out" 'frames 13' host-frames; then
+  for _l in 'video.plane.bytes 198432' 'frame.geometry ok 13'; do
+    host_field "$pass_out" "$_l" host-frames || ok=0
+  done
+  # The pixel probe counts DELIVERED PIXELS (plan 15-01), not frames: every delivered pixel must equal exactly one
+  # of the 17 pinned-distinct palette triples, so its count equals the plane byte count. Requiring the two to agree
+  # is the equality a frame-count form would lose.
+  _pp=$(sed -n 's/^pixel[.]probes ok //p' "$pass_out" | head -n 1)
+  _pb=$(sed -n 's/^video[.]plane[.]bytes //p' "$pass_out" | head -n 1)
+  case ${_pp:-} in
+    '' | *[!0-9]*) ok=0; why host-frames "pixel.probes '${_pp:-}' is not a count" ;;
+    *) [ "$_pp" -gt 0 ] || { ok=0; why host-frames "pixel.probes $_pp"; }
+       [ "$_pp" = "${_pb:-}" ] \
+         || { ok=0; why host-frames "pixel.probes $_pp is not video.plane.bytes ${_pb:-}"; } ;;
+  esac
+  _af=$(sed -n 's/^audio.frames //p' "$pass_out" | head -n 1)
+  _ab=$(sed -n 's/^audio.bytes //p' "$pass_out" | head -n 1)
+  case ${_af:-} in
+    '' | *[!0-9]*) ok=0; why host-frames "audio.frames '${_af:-}' is not a positive integer" ;;
+    *) [ "$_af" -gt 0 ] || { ok=0; why host-frames "audio.frames $_af"; }
+       [ "${_ab:-}" = "$((_af * 2))" ] \
+         || { ok=0; why host-frames "audio.bytes '${_ab:-}' is not 2 x audio.frames $_af"; } ;;
+  esac
+  if host_scenario_words "$root/data/scenarios/demo-lamp-tone-pass.ivss" > "$tmp/host.words.want"; then
+    awk '/^input[.]words / { print $2, $3, $4 }' "$pass_out" > "$tmp/host.words.have"
+    cmp -s "$tmp/host.words.want" "$tmp/host.words.have" \
+      || { ok=0; why host-frames "input.words differ from the scenario's six events: $(diff "$tmp/host.words.want" "$tmp/host.words.have" | tr '\n' ' ')"; }
+  else
+    ok=0; why host-frames 'the six scenario words could not be derived from data/scenarios/demo-lamp-tone-pass.ivss and data/expected/input-bits.ids'
+  fi
+else
+  ok=0
+fi
+result runner-process.host.frames
+
+# runner-process.host.unload (plan 15-02, TOOL-08): a real teardown, proved by the refusal it leaves behind. A single
+# `unload.digest.refused 1` line could be printed by a harness that never asked, so the case also requires a digest
+# line BEFORE it by line number: the digests were taken while the machine was still loaded, and only then refused.
+: > "$tmp/why"
+ok=1
+if [ ! -s "$pass_out" ]; then
+  ok=0; why host-unload 'the pass-mode run produced no output'
+else
+  grep -q -x -F -e 'unload.digest.refused 1' "$pass_out" \
+    || { ok=0; why host-unload "no 'unload.digest.refused 1' line: the teardown answered a digest, or never unloaded"; }
+  _dl=$(grep -n -m 1 -e '^digest[.]' "$pass_out" | cut -d: -f1)
+  _ul=$(grep -n -m 1 -e '^unload[.]digest[.]refused ' "$pass_out" | cut -d: -f1)
+  if [ -z "${_dl:-}" ] || [ -z "${_ul:-}" ]; then
+    ok=0; why host-unload 'the output carries no digest line or no unload line, so their order proves nothing'
+  elif [ "$_dl" -ge "$_ul" ]; then
+    ok=0; why host-unload "the first digest line is line $_dl, not before the unload line $_ul"
+  fi
+fi
+result runner-process.host.unload
+
+# runner-process.host.empty-poll (plan 15-02, TOOL-08, criterion 3.2): the same harness, the same drive shape, no
+# input. A judge that compared an output with itself would pass the digests case; this id is the limb that fails it,
+# and it fails in three independent ways (check_host_empty). Its stdout is kept outside IVS_TEST_OUT_DIR/runner/ for
+# the same reason host-pass.out is: the golden step compares everything in that directory and a frontend's stdout is
+# not a scenario report.
+: > "$tmp/why"
+ok=1
+if [ -z "$harness" ]; then
+  ok=0; why host-empty-poll 'the eighth argument (ivs_host_harness) is missing: the empty-poll case cannot be run'
+elif [ -z "$shim" ]; then
+  ok=0; why host-empty-poll 'the seventh argument (libivs_retro) is missing: the empty-poll case cannot be run'
+else
+  run_one "$tmp" host-empty "$harness" "$shim" "$content" --empty-poll
+  if [ "$hung" -eq 1 ] || [ "$rc" -ne 0 ]; then
+    ok=0
+    why host-empty-run "exit $rc, hung $hung: $(sed -n 's/^fail //p' "$tmp/runs/host-empty.out" | head -n 1)"
+  elif ! check_host_empty "$tmp/runs/host-empty.out"; then
+    ok=0
+  fi
+  if [ -n "${IVS_TEST_OUT_DIR:-}" ]; then
+    cp "$tmp/runs/host-empty.out" "$IVS_TEST_OUT_DIR/host-empty.out" || exit 1
+  fi
+fi
+result runner-process.host.empty-poll
+
+# runner-process.judge.host-schedule (plan 15-04, TOOL-08, review CR-01): the input schedule is bounded and REFUSES rather
+# than truncates. The pass drive's six events cannot reach the bound, so nothing else in the phase could notice a
+# regression here: the review measured a probe host returning 5000 events and getting `poll_calls=4096 run=1`, 904
+# events silently lost. Two limbs over the same harness, in two processes:
+#   full - 5000 events pending in ONE drain. The run must be refused and deliver nothing, AND the poll must have been
+#          asked at least once and fewer than 5000 times: the refusal came from the schedule's bound while the host
+#          still had events left, never because the host ran out (which would print 5000 and mean nothing).
+#   long - 8000 events over two calls, 4000 at a time. Both calls must succeed and all 8000 must be polled, so the
+#          bound is on OUTSTANDING events: a schedule that never reclaimed its applied prefix stops polling at 4096
+#          here, which is the silent loss the review measured, and one that refuses a merely long run is refused by
+#          `runs.ok 2`.
+# A refusal asserted only by `runs.ok 0` could pass on a harness that never called run, so the pair is required: the
+# same harness, the same images, one count that fits over a lifetime and one that does not fit at once.
+: > "$tmp/why"
+ok=1
+if [ -z "$shim" ] || [ -z "$harness" ]; then
+  ok=0
+  why host-schedule 'the seventh or eighth argument (libivs_retro, ivs_host_harness) is missing: the schedule case cannot be run'
+else
+  run_one "$tmp" host-schedule-full "$harness" "$shim" "$content" --schedule-full
+  if [ "$hung" -eq 1 ] || [ "$rc" -ne 0 ]; then
+    ok=0
+    why host-schedule-full "exit $rc, hung $hung: $(sed -n 's/^fail //p' "$tmp/runs/host-schedule-full.out" | head -n 1)"
+  else
+    _f="$tmp/runs/host-schedule-full.out"
+    host_field "$_f" 'schedule.mode full' host-schedule-full || ok=0
+    host_field "$_f" 'schedule.runs 1' host-schedule-full || ok=0
+    host_field "$_f" 'schedule.runs.ok 0' host-schedule-full || ok=0
+    host_field "$_f" 'schedule.frames 0' host-schedule-full || ok=0
+    _sp=$(sed -n 's/^schedule[.]polled //p' "$_f" | head -n 1)
+    case ${_sp:-} in
+      '' | *[!0-9]*) ok=0; why host-schedule-full "schedule.polled '${_sp:-}' is not a count" ;;
+      *) [ "$_sp" -gt 0 ] || { ok=0; why host-schedule-full "schedule.polled $_sp: the host was never asked"; }
+         [ "$_sp" -lt 5000 ] \
+           || { ok=0; why host-schedule-full "schedule.polled $_sp: the host ran out, so the refusal is not the schedule's"; } ;;
+    esac
+  fi
+  run_one "$tmp" host-schedule-long "$harness" "$shim" "$content" --schedule-long
+  if [ "$hung" -eq 1 ] || [ "$rc" -ne 0 ]; then
+    ok=0
+    why host-schedule-long "exit $rc, hung $hung: $(sed -n 's/^fail //p' "$tmp/runs/host-schedule-long.out" | head -n 1)"
+  else
+    _f="$tmp/runs/host-schedule-long.out"
+    host_field "$_f" 'schedule.mode long' host-schedule-long || ok=0
+    host_field "$_f" 'schedule.runs 2' host-schedule-long || ok=0
+    host_field "$_f" 'schedule.runs.ok 2' host-schedule-long || ok=0
+    host_field "$_f" 'schedule.polled 8000' host-schedule-long || ok=0
+    host_field "$_f" 'schedule.frames 2' host-schedule-long || ok=0
+  fi
+fi
+result runner-process.judge.host-schedule
+
+# runner-process.judge.host-load-refused (plan 15-04, TOOL-08, review WR-01): a refused load leaves NOTHING committed.
+# The review measured the defect with a four-byte cartridge: `load_bad_cart_first=0` and then a digest answered on a
+# half-loaded machine (EXEC and GROM stayed installed) and `load_good_retry=0` (the right images were then refused
+# IVS_E_DUPLICATE_LOAD until retro_deinit). The harness reports the whole sequence, and the case requires all eight
+# observations, so neither half can pass alone: the instance digest is UNMOVED by the refused attempt (nothing was
+# committed, and a digest cannot answer a state no load produced), the run is refused (nothing to run), and the SAME
+# call with the right images then succeeds and MOVES the digest - a refusal cannot pass as a machine that is simply
+# dead. The `unchanged`/`moved` pair is what a bare `load.refused 1` could not establish.
+: > "$tmp/why"
+ok=1
+if [ -z "$shim" ] || [ -z "$harness" ]; then
+  ok=0
+  why host-load-refused 'the seventh or eighth argument (libivs_retro, ivs_host_harness) is missing: the refused-load case cannot be run'
+else
+  run_one "$tmp" host-load-refused "$harness" "$shim" "$content" --refused-load
+  if [ "$hung" -eq 1 ] || [ "$rc" -ne 0 ]; then
+    ok=0
+    why host-load-refused "exit $rc, hung $hung: $(sed -n 's/^fail //p' "$tmp/runs/host-load-refused.out" | head -n 1)"
+  else
+    for _l in 'load.before.digest 1' 'load.refused 1' 'load.refused.digest 1' 'load.refused.unchanged 1' \
+      'load.refused.run 0' 'load.retry 1' 'load.retry.digest 1' 'load.retry.moved 1'; do
+      host_field "$tmp/runs/host-load-refused.out" "$_l" host-load-refused || ok=0
+    done
+  fi
+fi
+result runner-process.judge.host-load-refused
+
+# runner-process.host.exports (plan 15-02, TOOL-08, D-48, D-35): the export surface refused by name, in both
+# directions and on both platforms. tools/check/host-symbols.sh compares the object's exported set against
+# data/expected/host-symbols.ids and its undefined set against core-symbols-allow.txt plus data/expected/host-imports.ids.
+# The three sanitizer prefixes are passed HERE, at the call site, exactly as tests/CMakeLists.txt passes them to
+# core-symbols-tap.sh and never baked into the script: they are a property of the target that links ivs_san. The
+# second direction is proved LIVE without a second build: a scratch copy of the ids file with one name appended must
+# be refused, and refused by that name - on GNU's linker an export-list name nothing defines is accepted silently, so
+# this limb is the only detector there. BOTH directions are proved live (review WR-04): a second scratch copy with an
+# exported name DELETED must be refused as host-symbols-extra by that name, so an object that grew a symbol the pin
+# does not carry is caught rather than silently accepted.
+: > "$tmp/why"
+ok=1
+if [ -z "$shim" ]; then
+  ok=0; why host-shim 'the seventh argument (libivs_retro) is missing: the export case cannot be run'
+else
+  check_sym="$root/tools/check/host-symbols.sh"
+  if [ ! -f "$check_sym" ]; then
+    ok=0; why host-exports "no $check_sym"
+  else
+    CHECK_DIR="$root/tools/check" ROOT="$root" sh "$check_sym" --allow-prefix __asan_ --allow-prefix __ubsan_ \
+      --allow-prefix __sanitizer_ "$shim" > "$tmp/runs/host-symbols.out" 2>&1
+    if ! grep -q -x -F -e '-- host-symbols pass exported=9 imports=0' "$tmp/runs/host-symbols.out"; then
+      ok=0
+      why host-exports "$(grep -m 1 -e '^-- FAIL ' "$tmp/runs/host-symbols.out")"
+    fi
+    awk '/^#/ { next } NF { print $1 }' "$root/data/expected/host-symbols.ids" > "$tmp/host-extra.ids"
+    printf '%s\n' ivs_not_defined >> "$tmp/host-extra.ids"
+    if CHECK_DIR="$root/tools/check" ROOT="$root" sh "$check_sym" --allow-prefix __asan_ --allow-prefix __ubsan_ \
+      --allow-prefix __sanitizer_ "$shim" "$tmp/host-extra.ids" > "$tmp/runs/host-symbols-extra.out" 2>&1; then
+      ok=0
+      why host-exports-live 'the checker accepted an ids list carrying a name the object does not export'
+    elif ! grep -q -x -F -e '-- FAIL host-symbols-missing: ivs_not_defined' "$tmp/runs/host-symbols-extra.out"; then
+      ok=0
+      why host-exports-live "the checker failed, but not by the appended name: $(grep -m 1 -e 'FAIL' "$tmp/runs/host-symbols-extra.out")"
+    fi
+    # The other direction (review WR-04): an EXPORTED name the list does not carry. The scratch copy drops retro_run,
+    # a name the object defines, so the exact-set comparison must refuse it as host-symbols-extra and name it. Without
+    # this limb half of the comparison - the half that catches a symbol the pin does not know about - was unproved.
+    awk '/^#/ { next } NF { print $1 }' "$root/data/expected/host-symbols.ids" \
+      | grep -v -x -F -e retro_run > "$tmp/host-short.ids"
+    if [ ! -s "$tmp/host-short.ids" ]; then
+      ok=0
+      why host-exports-live 'the shortened ids copy is empty, so the extra direction would compare nothing'
+    elif CHECK_DIR="$root/tools/check" ROOT="$root" sh "$check_sym" --allow-prefix __asan_ --allow-prefix __ubsan_ \
+      --allow-prefix __sanitizer_ "$shim" "$tmp/host-short.ids" > "$tmp/runs/host-symbols-short.out" 2>&1; then
+      ok=0
+      why host-exports-live 'the checker accepted an ids list missing a name the object exports'
+    elif ! grep -q -x -F -e '-- FAIL host-symbols-extra: retro_run' "$tmp/runs/host-symbols-short.out"; then
+      ok=0
+      why host-exports-live "the checker failed, but not by the dropped name: $(grep -m 1 -e 'FAIL' "$tmp/runs/host-symbols-short.out")"
+    fi
+  fi
+fi
+result runner-process.host.exports
+
 # Judge self-controls (D-23, T-04-59): the same checks run against wrong runners, shell scripts
 # in the temp dir that replay this run's recorded reports with one defect each. A control passes
 # only when the check fails with a finding of its intended token.
@@ -2211,31 +2648,126 @@ z64=0000000000000000000000000000000000000000000000000000000000000000
   printf '#!/bin/sh\n# Fake ivs-run: the pass report with a different digest.cpu.\n'
   printf 'sed '"'"'s/^digest\\.cpu .*/digest.cpu %s/'"'"' "$(dirname "$0")/dbp.report"\nexit 0\n' "$z64"
 } > "$fakes/body.sh"
-# self_control <slug> <token> <check...>: runs the check; ok only when it fails with <token>.
-self_control() {
-  _slug=$1; _tok=$2; shift 2
+# self_control_run <slug> <expect> <check...>: runs the check against a stand-in and sets _sc to `ok`, `vacuous`
+# or `wrong-reason`. <expect> is the COMPLETE set of finding tokens the stand-in is declared to produce, space
+# separated, and the control is healthy only when the check's OBSERVED token set equals it exactly (review WR-02).
+# A stand-in differs from a passing output in one limb, so an extra token means it differs in a second place and the
+# rejection says nothing about the limb under test; a missing token means the declaration claims a limb the check
+# never saw. Requiring the intended token's PRESENCE alone accepted the first case, which is the opposite of the
+# property the committed stand-ins claim. Two tokens in a declaration are legitimate when ONE defect is judged by two
+# limbs of the same check (an outcome word that is neither the expected outcome nor a pair of runner-outcomes.ids),
+# and the declaration is what makes that explicit instead of invisible.
+self_control_run() {
+  _slug=$1; _exp=$2; shift 2
   : > "$tmp/why"
   if "$@"; then
-    ok=0
+    _sc=vacuous
     : > "$tmp/why"
     why judge-vacuous "the check accepted the fake runner of $_slug"
-  elif grep -q -e "^$_tok: " "$tmp/why"; then
-    ok=1
-  else
-    ok=0
-    { printf 'judge-wrong-reason: the check failed, but without %s:\n' "$_tok"; cat "$tmp/why"; } > "$tmp/why.2"
-    mv "$tmp/why.2" "$tmp/why"
+    return 0
   fi
+  _scwant=$(printf '%s\n' $_exp | sort -u)
+  _schave=$(sed -n 's/^\([a-z0-9-]*\):.*/\1/p' "$tmp/why" | sort -u)
+  if [ -n "$_schave" ] && [ "$_scwant" = "$_schave" ]; then
+    _sc=ok
+    return 0
+  fi
+  _sc=wrong-reason
+  {
+    printf 'judge-wrong-reason: the check did not fail for exactly the declared set of %s:\n' "$_slug"
+    printf 'declared: %s\n' "$(printf '%s ' $_exp)"
+    printf 'observed: %s\n' "$(printf '%s ' ${_schave:-none})"
+    cat "$tmp/why"
+  } > "$tmp/why.2"
+  mv "$tmp/why.2" "$tmp/why"
+}
+
+# self_control <slug> <expect> <check...>: runs the check; ok only when it fails for exactly the declared set.
+self_control() {
+  _slug=$1; _exp=$2; shift 2
+  self_control_run "$_slug" "$_exp" "$@"
+  ok=0
+  if [ "$_sc" = ok ]; then ok=1; fi
   result "runner-process.judge.$_slug"
 }
 self_control exit-mismatch exit-code \
   check_scenario "$fakes/exit-mismatch.sh" fake-exit guest-assert-mismatch 10 guest-fail -
 self_control no-report-end report-end \
   check_scenario "$fakes/no-report-end.sh" fake-end guest-assert-mismatch 10 guest-fail -
-self_control outcome-exit-disagree outcome-exit-disagree \
+# One defect, two judged limbs: the outcome word stops being the expected one AND stops being a pair with exit 10.
+self_control outcome-exit-disagree 'outcome outcome-exit-disagree' \
   check_scenario "$fakes/outcome-exit.sh" fake-pair guest-assert-mismatch 10 guest-fail -
 self_control body-differs body-differs \
   check_repeat "$tmp" "$fakes/body.sh" fake-body diag-boot-pass "$tmp/runs/scen-diag-boot-pass.out"
+
+# The host judge's two COMMITTED stand-ins (plan 15-02, TOOL-08, criterion 3.3): fake frontends written into $fakes
+# by this suite and judged by the SAME check_host the real run is judged by. Each differs from a passing output in
+# ONE limb, so a rejection for any other token means it differs in two places (self_control reports
+# judge-wrong-reason) and a pass means the limb it was written to test is dead (judge-vacuous). No second .so is
+# built, no fault site is added and no golden is added (GUARDRAILS 2.1). They are cases, not scratch probes.
+cp "$root/data/golden/demo-lamp-tone-pass.digests" "$fakes/host.digests" || exit 1
+{
+  printf '#!/bin/sh\n'
+  printf '# Fake frontend: the pass golden'"'"'s nine digest lines and frames 0 - a stub that rendered nothing.\n'
+  printf 'printf "frames 0\\n"\n'
+  printf 'grep "^digest[.]" "$(dirname "$0")/host.digests"\n'
+} > "$fakes/host-vacuous.sh"
+# The digest a poll-dropped host prints IS the empty chain's input digest, so this stand-in takes that value from the
+# empty-poll run this suite has just made - never typed - and changes nothing else. With no value to substitute it
+# prints the pass golden unchanged, so check_host ACCEPTS it and the case fails as judge-vacuous: the honest report
+# of an empty-poll run that produced no input digest, rather than a rejection for a wrong reason.
+_empty_input=$(sed -n 's/^digest[.]input //p' "$tmp/runs/host-empty.out" | head -n 1)
+{
+  printf '#!/bin/sh\n'
+  printf '# Fake frontend: the pass golden'"'"'s nine digest lines with the input poll dropped, and frames 13.\n'
+  printf 'printf "frames 13\\n"\n'
+  if [ -n "$_empty_input" ]; then
+    printf 'sed "s|^digest[.]input .*|digest.input %s|" "$(dirname "$0")/host.digests"\n' "$_empty_input"
+  else
+    printf 'cat "$(dirname "$0")/host.digests"\n'
+  fi
+} > "$fakes/host-digest-diff.sh"
+# host_stand_in <slug>: run the fake frontend, require it to have printed something (a stand-in that produced no
+# output would fail for the wrong reason), then judge its stdout with check_host.
+host_stand_in() {
+  run_one "$tmp" "fake-$1" "$fakes/$1.sh"
+  if [ ! -s "$tmp/runs/fake-$1.out" ]; then
+    why stand-in-empty "the fake frontend of $1 printed nothing"
+    return 1
+  fi
+  check_host "$tmp/runs/fake-$1.out"
+}
+self_control host-vacuous frames-zero host_stand_in host-vacuous
+self_control host-digest-diff digest-diff host_stand_in host-digest-diff
+# The guard ON the guard (plan 15-04, review WR-02): a control is healthy only when the check's OBSERVED token set
+# equals the DECLARED one, in both directions. Two limbs, over stand-ins this suite already has:
+#   extra   - the pass golden's own lines with `frames 13` are an empty-poll output that dropped nothing, so
+#             check_host_empty finds it identical to the pass golden (empty-poll-identical, the declared token) AND
+#             still carrying the pass run's input (empty-poll-idle). Two limbs, and only the first is under test.
+#   missing - the host-vacuous stand-in is declared to produce frames-zero AND digest-diff, but check_host returns at
+#             frames-zero, so the digest limb is never exercised: a declaration that claimed it would report a limb as
+#             covered that nothing tested.
+# Without this id a self_control that only grepped for the intended token could not tell a one-limb stand-in from a
+# two-limb one, which is the defect the review measured. Findings go to their own file because each self_control_run
+# starts by clearing $tmp/why.
+{ printf 'frames 13\n'; cat "$fakes/host.digests"; } > "$fakes/host-two-limb.out"
+: > "$tmp/two.bad"
+self_control_run host-two-limb empty-poll-identical check_host_empty "$fakes/host-two-limb.out"
+case $_sc in
+  ok) printf 'judge-two-limb: self_control accepted a stand-in that differs from a passing output in two limbs\n' >> "$tmp/two.bad" ;;
+  wrong-reason) : ;;
+  *) printf 'judge-two-limb: self_control refused the two-limb stand-in as %s, not judge-wrong-reason\n' "$_sc" >> "$tmp/two.bad" ;;
+esac
+self_control_run host-two-limb-missing 'frames-zero digest-diff' host_stand_in host-vacuous
+case $_sc in
+  ok) printf 'judge-two-limb: self_control accepted a declaration claiming a limb the check never exercised\n' >> "$tmp/two.bad" ;;
+  wrong-reason) : ;;
+  *) printf 'judge-two-limb: self_control refused the unexercised-limb declaration as %s, not judge-wrong-reason\n' "$_sc" >> "$tmp/two.bad" ;;
+esac
+: > "$tmp/why"
+ok=1
+if [ -s "$tmp/two.bad" ]; then ok=0; cat "$tmp/two.bad" > "$tmp/why"; fi
+result runner-process.judge.host-two-limb
 # Judge self-control of the round-trip comparison (plan 08-16, D-18): check_roundtrip must be shown to fail before it is trusted, twice. A fake runner
 # that replays the report of ANOTHER scenario (diag-ctrl-psg-pass) for the hook run must be rejected for body-differs (the comparison with the plain
 # report fails on a report that differs); a fake that replays the plain report unchanged, as a hook that never cut would, must be rejected for
@@ -2348,7 +2880,8 @@ or_fake() {
   or_end
   return "$_fj"
 }
-self_control owner-run-refusal owner-run-exit or_fake
+# One defect, two judged limbs: the helper exits 0 instead of 2 and prints none of the refusal line.
+self_control owner-run-refusal 'owner-run-exit owner-run-stderr' or_fake
 
 # Watchdog self-control (the hosted false `hung` of run 43148343848, see wd_start): 20 watchdogs
 # of a live target, each stopped at once, must leave no marker and the target alive (before the

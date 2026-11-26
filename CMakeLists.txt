@@ -43,6 +43,9 @@ add_subdirectory(tools/bench)
 # Wrap tool (plan 14-01, D-47): build-only executable ivs_flatwrap, no install rule; it writes the container the
 # core already parses, over the layout in core/src/content/ivsc.h, and detects nothing about its input.
 add_subdirectory(tools/flatwrap)
+# Host shim (plan 15-01, TOOL-08, D-48, D-35): a build-only SHARED target with no install rule, so the
+# installed package keeps its eleven paths and the release ships no shared object.
+add_subdirectory(host)
 
 enable_testing()
 add_subdirectory(tests)

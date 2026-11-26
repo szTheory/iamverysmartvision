@@ -1,0 +1,30 @@
+# The host shim's export contract (plan 15-01, TOOL-08, D-48, D-35): the nine names the build-only
+# shared object libivs_retro exports, and the only names it may export. One file, read twice, so the
+# artifact and the pin cannot drift apart silently:
+#   - host/CMakeLists.txt generates the linker's export list from these lines (Apple
+#     -exported_symbols_list, GNU --version-script with `local: *`), so an exported name outside this
+#     file cannot exist in a built object;
+#   - tools/check/host-symbols.sh compares the built object's exported set against these lines in
+#     BOTH directions, so a listed name the object does not export (host-symbols-missing) and an
+#     exported name the list does not carry (host-symbols-extra) are each refused by name.
+# One contract, one spelling: the identifiers below are the ones host/libretro_shim.h declares and
+# host/ivs_retro_shim.c defines, verbatim. The eight shaped entries are libretro-shaped and NEVER
+# compatible; the subset is project-authored and nothing was vendored (D-48; rights row
+# `libretro-abi`, disposition cleared, taken: nothing). The ninth, ivs_retro_digest, is the
+# harness-only entry: one call to ivs_machine_state_digest, computing nothing itself.
+# The linker, not a convention, fixes the surface: on Darwin a listed name no object defines fails
+# the link outright, and on GNU the link succeeds while the check's missing-name direction reports
+# it, which is why both directions exist.
+# A comment line begins with '#' and so cannot match the reader's ^[A-Za-z_][A-Za-z0-9_]*$ regex: the
+# block is skipped because it does not look like a name, not because a reader understands comments.
+# Write the names without a leading underscore; the Darwin underscore is added when the export list
+# is generated and stripped again by the check's norm() recipe.
+retro_api_version
+retro_init
+retro_deinit
+retro_set_environment
+retro_get_system_av_info
+retro_load_game
+retro_run
+retro_unload_game
+ivs_retro_digest

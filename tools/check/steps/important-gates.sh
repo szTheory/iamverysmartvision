@@ -67,6 +67,17 @@
 #            and the three requirement flips land in one commit because this step refuses a row
 #            naming a Pending requirement and refuses a Complete requirement with no row, so the
 #            two directions move together; the 2.4 debt plan 14-01 recorded closes here)
+#   Phase 15 TOOL-08 plan 15-03 (one new gate name `host` and its two `mutant` rows: the digest
+#            equality's two must-fail limbs as the committed runner-process judge self-controls
+#            runner-process.judge.host-vacuous (refused for frames-zero) and
+#            runner-process.judge.host-digest-diff (refused for digest-diff); two rows, one gate
+#            name, zero new faults, zero new steps; the rows and the TOOL-08 flip land in one commit
+#            for the same two-direction reason as Phase 14, and all ten toy registries gain their
+#            toy-phase15 line in that commit; plan 15-04, the code review's CR-01, WR-01 and WR-02, adds
+#            three more rows under the same `host` gate name - the bounded input schedule's refusal with
+#            its long-run witness pair, the refused load's rollback with its retry, and the judge
+#            self-control's two-limb guard - five rows in that gate, one gate name, zero new faults,
+#            zero new steps, and no toy line because no requirement is accepted here)
 # Resolution of <id> by mechanism:
 #   fault    first column of any data/expected/faults/*.ids (judged by faults-verdict);
 #   control  first column of any data/expected/controls/*.ids (run by tools/check/run-controls.sh);

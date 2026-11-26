@@ -1,6 +1,21 @@
 # Extensions treated as binary by name (one per line, lower case, no dot). Binary-by-name
 # files are governed by the files step (rights gate) and skipped by the text integrity rules.
-# Read by tools/check/integrity.cmake, tools/check/files.cmake and tools/check/binscan.sh.
+# Read by tools/check/integrity.cmake, tools/check/files.cmake, tools/check/binscan.sh,
+# tools/check/release-assets.sh, tools/check/steps/release-assets.sh, tools/release-readiness.sh
+# and tools/hygiene.sh; every reader treats each non-comment line as one extension and nothing else.
+# Plan 15-02 (TOOL-08, D-48, D-49, GUARDRAILS-v0.3 V6): the host shim is a build-only shared
+# object, so a shared-object extension is a refusal surface and not a convenience. One list
+# feeds all three surfaces that refuse a shared library by name - the files step in the tree,
+# the release member check in an archive, and the binary-by-name hygiene rule - so an artifact
+# cannot be refused in one place and accepted in another. Controls files-unlisted-binary-so and
+# files-unlisted-binary-dylib plant a tracked .so and a tracked .dylib; the pkg-install selftest
+# host-so-absent plants one in a copy of the installed prefix; the release-assets case so-member
+# plants one in a synthetic archive. dll and bundle are listed with no control: the four
+# extensions are one line of code in files.cmake, and a control per extension would prove it
+# again for no new evidence (the tools/bench precedent). Do not put a comment inside the list
+# body: a trailing comment on a name line would become part of the name.
+#
+# The list body follows, one extension per line.
 int
 ivsc
 bin
@@ -29,3 +44,7 @@ wav
 ppm
 vraw
 ivsn
+so
+dylib
+dll
+bundle

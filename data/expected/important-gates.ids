@@ -563,3 +563,35 @@ cart-role mutant runner-process.judge.owner-run-cart-pass SCN-03
 # cpu.UNIT-INT.accept-keeps-intff, so the not-cleared setting is the half that must keep passing: the
 # both-settings pin and its must-fail mechanism in one row. The fault already exists (no new fault).
 cpu06 fault ACCEPT_CLEARS_INTFF_IGNORED CPU-06
+# host (plan 15-03, TOOL-08): the digest equality's two must-fail limbs, each a committed
+# runner-process judge self-control rather than a new fault. A stub that prints the golden's nine
+# lines with no frame is refused for `frames-zero`, so the "frames>0" limb is load-bearing and the
+# equality cannot pass on a frontend that rendered nothing.
+host mutant runner-process.judge.host-vacuous TOOL-08
+# host: the pass golden's lines with the poll dropped (the empty-chain `digest.input` the empty-poll
+# run observed) are refused for `digest-diff`, so the equality is proved live against a second,
+# measured input state rather than against a constant. Both ids are judge-shaped because a `mutant`
+# row resolves only through `<suite>.judge.<slug>` or `<suite>.mutant.<slug>`; a plain
+# `runner-process.host.*` id would make this row important-gates-unknown-id.
+host mutant runner-process.judge.host-digest-diff TOOL-08
+# host (plan 15-04, TOOL-08, review CR-01): the bounded input schedule refuses rather than truncates. The
+# mechanism is the committed harness mode `--schedule-full`, a host with 5000 events pending in one drain:
+# it must be refused with nothing delivered and with the poll stopped short of 5000, so the refusal is the
+# schedule's bound and not a host that ran out. Its witness pair is `--schedule-long` (8000 events over two
+# calls, 4000 at a time, every one of them polled and both calls succeeding), which a schedule that never
+# reclaimed its applied prefix fails - the silent loss the review measured. The id is judge-shaped because
+# a `mutant` row resolves only through `<suite>.judge.<slug>` or `<suite>.mutant.<slug>`.
+host mutant runner-process.judge.host-schedule TOOL-08
+# host (plan 15-04, TOOL-08, review WR-01): a refused load leaves nothing committed. The mechanism is the
+# committed harness mode `--refused-load`, a four-byte cartridge the core refuses: the instance digest must
+# be unmoved, the run refused, and the same call with the right images must then succeed and move the
+# digest. The witness pair is what a bare `load.refused 1` could not establish: the refusal cannot pass as
+# a machine that is simply dead, and a half-loaded machine cannot answer a digest.
+host mutant runner-process.judge.host-load-refused TOOL-08
+# host (plan 15-04, TOOL-08, review WR-02): the judge self-control's own guard. `self_control` accepted a
+# stand-in that failed for its intended token AND others, so a stand-in that differs from a passing output
+# in two limbs - the pass golden's lines with `frames 13`, which an empty-poll judge finds identical to the
+# pass output (empty-poll-identical) and still carrying the pass run's input (empty-poll-idle) - must be
+# refused as judge-wrong-reason. Without this row the two digest limbs above would be guarded by a control
+# that cannot tell a one-limb stand-in from a two-limb one.
+host mutant runner-process.judge.host-two-limb TOOL-08

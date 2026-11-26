@@ -94,8 +94,9 @@ The claim table below is rendered from `data/claims.json`; a claim stands as pro
 | CL-0026 | source-expectation | provisional | tests/video/video_collision.c |
 | CL-0027 | original-diagnostic | provisional | fixtures/FX-diag-stic-2/diag-stic-2.listing.txt |
 | CL-0028 | deterministic-repeatability | provisional | tests/state/state_cut.c |
+| CL-0029 | deterministic-repeatability | provisional | tests/host/ivs_host_harness.c |
 
-Claims: 28 in total, 27 provisional, 1 established; none at tier measured-hardware.
+Claims: 29 in total, 28 provisional, 1 established; none at tier measured-hardware.
 <!-- claims-table-end -->
 
 ## [0.1.0]

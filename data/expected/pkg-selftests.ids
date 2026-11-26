@@ -7,7 +7,10 @@
 # two for the replay of diag-stic-fgbg-pass: stic-domain-missing (the stic.digest.video line dropped) and stic-digest-drift (a
 # stic.digest nibble changed). Plan 07-09 adds two for the replay of demo-lamp-tone-pass: scn-domain-missing (the scn.digest.audio
 # line dropped) and scn-digest-drift (a scn.digest.video nibble changed). Plan 08-16 adds two for the fifth replay, the snapshot of the same program: snap-domain-missing
-# (the snap.digest.audio line dropped) and snap-digest-drift (a snap.digest.video nibble changed).
+# (the snap.digest.audio line dropped) and snap-digest-drift (a snap.digest.video nibble changed). Plan 15-02 (TOOL-08, D-49,
+# GUARDRAILS-v0.3 V6) adds host-so-absent: a lib/libivs_retro.so planted in a copy of the installed prefix must be refused as
+# pkg-inventory-extra, so the build-only host object cannot acquire an install rule unnoticed and the eleven-path inventory
+# stays the thing that makes its absence a check.
 core-src-include
 missing-symbol
 ghost-decl
@@ -27,3 +30,4 @@ scn-domain-missing
 scn-digest-drift
 snap-domain-missing
 snap-digest-drift
+host-so-absent

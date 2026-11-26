@@ -35,7 +35,14 @@ if ! tr '\n' '\000' < "$FILELIST" | xargs -0 git --git-dir="$gdir" --work-tree="
   sed -n '1,3p' "$tmp/add.out"
   exit 1
 fi
-if ! t -c user.name=gate -c user.email=noreply@github.com -c commit.gpgsign=false commit -q --no-verify \
+# gc.auto=0 and maintenance.auto=false: `git commit` otherwise launches a DETACHED auto-maintenance
+# run in this throwaway repo, which holds .git open and races the EXIT-trap `rm -rf` above, so
+# `rm: ... Directory not empty` lands in the shared gate log AFTER the pass line and the runner
+# reports gate-step-no-pass-line (plan 15-03, measured: the temp repo's loose-object count crosses
+# git's sampled gc.auto threshold once the file set's blob hashes distribute that way). Nothing here
+# wants a pack, so the auto run is disabled rather than waited for.
+if ! t -c user.name=gate -c user.email=noreply@github.com -c commit.gpgsign=false \
+  -c gc.auto=0 -c maintenance.auto=false commit -q --no-verify \
   -m "gate history self-test" > "$tmp/commit.out" 2>&1; then
   bad hygiene-history-setup "git commit"
   sed -n '1,3p' "$tmp/commit.out"
