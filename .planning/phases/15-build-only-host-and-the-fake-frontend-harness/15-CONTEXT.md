@@ -95,6 +95,14 @@ member, any window, any audio device, any new gate step/fault/golden.
 - [Packaging] Q: "Where does 'no host artifact ships' live?" → Selected: "one `release-assets` case plus the `RELEASE-OPS.md` line" — record edits.
 - [Cost] Q: "Does the checkpoint add a measurement run?" → Selected: "no — recompute from the committed `.planning/ci-runs.tsv` rows" — the file is the arithmetic input.
 
+### Resolved from the research open questions (2026-11-26)
+- **The harness loads `lamp-tone.ivsc`, not `diag-cpu-1.ivsc`.** Criterion 2 names the nine lines of `demo-lamp-tone-pass.digests`, whose cartridge is the build-tree `lamp-tone.ivsc` (sha `ac0ad987…`); `diag-cpu-1`'s golden has `video=none` and no input, so it cannot satisfy the non-`-`/observed-set guard. The criterion wins over the CONTEXT bullet that named `diag-cpu-1`, and the substitution is recorded with its reason.
+- **`run` carries a tick target.** The golden's final tick 806568 is not a frame boundary, and `digest.input` serialises `obs.input.floor_tick`, so stopping at a frame end moves seven of the nine lines. A strict libretro signature cannot express it; the subset is project-authored and already states it is *shaped*, never compatible, so `run(target_ticks)` is the honest signature. `load_game` likewise takes three byte spans.
+- **`av_info.sample_rate` is 48000**, the rate the shim delivers through `tools/pcm/ivs_refpcm.c`, not the core's native 223721.5625. The shim converts; the harness asserts what the shim declares.
+- **The TOOL-08 claim is minted in Phase 15**, at tier `deterministic-repeatability`, standing `provisional` — one claim, and only if the verifier can evidence it. It compares the same core with itself, never an independent oracle.
+- **The export surface is enforced by the linker**, measured on both platforms: `-Wl,-exported_symbols_list` on Darwin and `-Wl,--version-script` on Ubuntu, each yielding exactly the listed names under the `nm -P -g --defined-only` recipe `pkg-install` already uses. No new step; one symbol list plus the existing recipe.
+- **The `c-build` control R6 suggested is not taken.** The link plus a `host-symbols.ids` list already covers that failure class, and taking it would put the phase at 1.90 cpu-s (+27 % over the frozen 1.5), forcing a reprice the milestone did not price. The priced plan is 1.59.
+
 ### Claude's Discretion
 None — every question was frozen upstream or decided autonomously under the reversible-technical rule.
 
