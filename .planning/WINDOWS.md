@@ -1,10 +1,10 @@
 ---
 schema_version: 1
 open_count: 3
-waived_count: 6
+waived_count: 7
 fixed_count: 0
-total_count: 9
-last_updated: 2026-11-26T09:36:04.518Z
+total_count: 10
+last_updated: 2026-11-26T10:10:14.493Z
 ---
 
 # Broken Windows Ledger
@@ -24,6 +24,7 @@ last_updated: 2026-11-26T09:36:04.518Z
 | 7 | 16 | deviation | tools/release-rehearse.sh |  | 16-02 plan defect: Task 2 asks the record to carry 'the cold configure and build result', but the rehearsal prints no line for a successful configure or build (a failure ends the run with 'rehearse: FAIL:' and exit 1); section (j) states the absence of a FAIL and that the golden line is only reachable after a successful build, rather than inventing a figure the log does not hold | waived | Section (j) states the build result the log actually holds (no FAIL line; the golden comparison is downstream of a successful build), rather than a figure the rehearsal does not print. | 2026-11-26T09:36:00.251Z | 2026-11-26T09:36:04.406Z |
 | 8 | 16 | deviation | tools/hygiene.sh |  | 16-02 plan defect: 'sh tools/hygiene.sh --tree is silent' in Task 1's verify is unsatisfiable - it prints its contract pass line '-- hygiene pass mode=tree hygiene-files=2784' and exits 0, the same defect 16-01 recorded for the same sentence; the check performed is exit 0 with no '-- FAIL' | waived | The check performed is exit 0 with no '-- FAIL', which is what the verify's set -e asserts; the pass line is the project's contract for every step. | 2026-11-26T09:36:00.314Z | 2026-11-26T09:36:04.462Z |
 | 9 | 16 | deviation | .planning/phases/16-owner-route-claim-and-release-posture/16-02-PLAN.md |  | 16-02 plan defect, vestigial: Task 2's <fails_when> guard annotations (HEAD=1509/0/27/2784) name figures no assertion in Task 2's <automated> reads - 1509 is 16-01's summary-line byte count; the <automated> block is the contract and it passed in full, so no substitution was needed | waived | Vestigial annotation only: the <automated> block is the contract and it passed in full, so nothing was substituted or skipped. | 2026-11-26T09:36:00.374Z | 2026-11-26T09:36:04.518Z |
+| 10 | 16 | deviation | .planning/phases/16-owner-route-claim-and-release-posture/16-03-PLAN.md |  | Task 2's verify greps H16- in ROADMAP.md, whose plan inventory line has named the three ids since planning; the substantive check (REQUIREMENTS.md, claims.json, CHANGELOG.md, and every ROADMAP line but the plan entry) is clean | waived | The <automated> block is the contract and it passed except this one line; the ROADMAP plan inventory entry names the ids as rows to add, which is not a citation of a result, and the same grep over REQUIREMENTS.md, data/claims.json, CHANGELOG.md and every other ROADMAP line is empty. | 2026-11-26T10:10:06.032Z | 2026-11-26T10:10:14.493Z |
 
 ````json
 [
@@ -142,6 +143,19 @@ last_updated: 2026-11-26T09:36:04.518Z
     "reason": "Vestigial annotation only: the <automated> block is the contract and it passed in full, so nothing was substituted or skipped.",
     "recorded_at": "2026-11-26T09:36:00.374Z",
     "resolved_at": "2026-11-26T09:36:04.518Z",
+    "milestone": "v0.3.0"
+  },
+  {
+    "id": 10,
+    "kind": "deviation",
+    "phase": "16",
+    "file": ".planning/phases/16-owner-route-claim-and-release-posture/16-03-PLAN.md",
+    "line": null,
+    "description": "Task 2's verify greps H16- in ROADMAP.md, whose plan inventory line has named the three ids since planning; the substantive check (REQUIREMENTS.md, claims.json, CHANGELOG.md, and every ROADMAP line but the plan entry) is clean",
+    "status": "waived",
+    "reason": "The <automated> block is the contract and it passed except this one line; the ROADMAP plan inventory entry names the ids as rows to add, which is not a citation of a result, and the same grep over REQUIREMENTS.md, data/claims.json, CHANGELOG.md and every other ROADMAP line is empty.",
+    "recorded_at": "2026-11-26T10:10:06.032Z",
+    "resolved_at": "2026-11-26T10:10:14.493Z",
     "milestone": "v0.3.0"
   }
 ]

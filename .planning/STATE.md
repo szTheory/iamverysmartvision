@@ -4,18 +4,18 @@ milestone: v0.3.0
 milestone_name: Owner-Supplied Content and a Driveable Host (Phases 13 to 16)</summary>
 current_phase: 16
 current_phase_name: Owner Route, Claim and Release Posture
-current_plan: 3
+current_plan: 4
 status: executing
-stopped_at: Completed 16-02-PLAN.md (owner route from the source archive); 16-03 next
-last_updated: "2026-11-26T09:41:00.000Z"
+stopped_at: Completed 16-03-PLAN.md (the three handoff rows and the handoffs= stat); 16-04 next
+last_updated: "2026-11-26T10:11:55.934Z"
 last_activity: 2026-11-26
 last_activity_desc: Phase 15 complete, transitioned to Phase 16
-state_head: 6b5714894cf0e5d1e017d2a4f818b7c21c5eb89d
+state_head: 43b4394837e47c21b143a57cf3028cf8a7639b0e
 progress:
   total_phases: 4
   completed_phases: 8
   total_plans: 17
-  completed_plans: 14
+  completed_plans: 15
 ---
 
 # Project State
@@ -30,10 +30,23 @@ See: .planning/PROJECT.md (updated 2026-11-26)
 ## Current Position
 
 Phase: 16 — Owner Route, Claim and Release Posture
-Current Plan: 3
+Current Plan: 4
 Total Plans in Phase: 5
 Status: Ready to execute
-Last activity: 2026-11-26 — Completed 16-02-PLAN.md, the owner route from the source archive
+Last activity: 2026-11-26 — Completed 16-03-PLAN.md, the three handoff rows and the `handoffs=` stat
+
+Phase 16's third plan (16-03, the three owner-only questions as handoff rows) added `H16-1`, `H16-2` and
+`H16-3` to `data/expected/handoffs.ids` as `handed-off evidence: none` rows beside the five existing ones,
+extended both pins in `tools/check/steps/claims.sh` to the eight ids and their dispositions, moved the good
+tree's ledger and the four `claims-handoff-*` overlays in the same commit, and gave each row a section in
+`docs/handoffs.md` with a command, an artefact, the identities a person compares and what a person judges.
+The gate at `43b4394` reads `gate: PASS steps=38/38 controls=404/404 … claims=29 provisional=28 handoffs=8 …
+faults=238/238 … goldens=29 … gates=118 lines=361 … tracked=2785`, and a token-by-token `diff` against task
+1's log prints exactly one changed line, `handoffs=5` → `handoffs=8`. **No gate step, control, fault, golden,
+registry row, claim or test id was added**; the ledger's growth is the only movement. **D10 and D11 stay
+`not-performed`**, and no `H16-` id is cited by a requirement record, the claim ledger or the release notes.
+hosted row: not-recorded — no push run for 43b4394 at 2026-11-26; the orchestrator records it from
+sh tools/ci-record.sh <run-id> after the push
 
 Phase 16's second plan (16-02, the owner route from the source archive) ran the release-time rehearsal at
 `14f81ed`: `sh tools/release-rehearse.sh --release --source-route` ended `rehearse: ok` with
@@ -371,6 +384,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | Phase 15 P03 | 48 min | 3 tasks | 27 files |
 | Phase 16 P01 | 14 | 2 tasks | 4 files |
 | Phase 16 P02 | 21 min | 2 tasks | 3 files |
+| Phase 16 P03 | 30min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -717,6 +731,7 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 16]: The measured lever gives back 13 s of the pair's 37 s (gate 79 s to 72 s, cpu inside its band); the frozen 164 to 115 s hosted estimate is recorded as optimistic because an overlap absorbs the smaller member, so the prediction is about 144 s, to be settled by the first hosted row after the push
 - [Phase 16]: The owner route from the source archive is performed inside --source-route after the existing golden comparison, on dd-made zero-filled images, with the archive's own ivs_flatwrap at base 4000 hi-first and the archive's own owner-run.sh --record --cart, so the route a person has is the route the rehearsal performs and the endpoint stays the committed demo-lamp-tone-pass golden
 - [Phase 16]: The route's pass path is proved able to fail in the same run: after --record one EXEC byte is flipped and the --cart-only rerun (a second --record is refused with exit 2) is refused at load with IVS_E_DIGEST_MISMATCH, exit 14, cpu.run_state unreset; the exec: label stays - so D11 stays not-performed and no claim cites RELEASE-OPS section (j)
+- [Phase 16]: The ledger's row count is a stat on the claims pass line (handoffs=<n>), counted from the file, not a check and not a control: the pinned id set and dispositions are the mechanism, and a control of the count would prove the count rather than the ledger.
 
 ### Pending Todos
 
@@ -813,8 +828,8 @@ The row itself is left as recorded and this note sits under it.
 
 ## Session Continuity
 
-Last session: 2026-11-26T09:40:58.000Z
-Stopped at: Completed 16-02-PLAN.md (owner route from the source archive); 16-03 next
+Last session: 2026-11-26T10:11:55.818Z
+Stopped at: Completed 16-03-PLAN.md (the three handoff rows and the handoffs= stat); 16-04 next
 Resume file: None
 
 The Phase 13 close still leaves one thing a later run must do: record the phase's hosted row from
