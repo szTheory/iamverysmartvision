@@ -1,0 +1,9 @@
+{
+  "id": "toy-blank",
+  "item": "a toy row with a blank taken cell",
+  "disposition": "owner-local-only",
+  "source": null,
+  "taken": "   ",
+  "tokens": [],
+  "note": "Control-tree row: every key is present and of the right type, but the taken cell is whitespace only, so the ledger must refuse the empty cell by name (rights-blank) rather than count the row as answered."
+}

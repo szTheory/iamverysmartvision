@@ -3,3 +3,4 @@ FAIL rights-source-missing: toy-cleared
 FAIL rights-id-extra: toy-stray
 FAIL rights-doc-row: toy-cleared
 FAIL rights-unlisted: data/rights/toy_stray.json
+FAIL rights-blank: toy-blank/taken
