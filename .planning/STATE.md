@@ -6,14 +6,14 @@ stopped_at: Phase 16 complete — all phases complete
 last_updated: "2026-11-26T13:23:03.650Z"
 last_activity: 2026-11-26
 last_activity_desc: Milestone v0.3.0 completed and archived
-state_head: ad6675c51a462c5e1a9bc4ad12b4b3b9a51339f0
+state_head: 291a17c8df08dc8c68d1bbcf617d067a50c6391d
 progress:
   total_phases: 4
-  completed_phases: 8
+  completed_phases: 4
   total_plans: 17
   completed_plans: 17
   percent: 100
-milestone_name: Owner-Supplied Content and a Driveable Host (Phases 13 to 16)</summary>
+milestone_name: Owner-Supplied Content and a Driveable Host (Phases 13 to 16)
 current_phase: 16
 ---
 
