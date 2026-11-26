@@ -81,3 +81,48 @@ Defects the plan-checker found in Phases 5 and 6, in the order of how often they
     ceiling) or give it a mechanism (D-50: an `established` claim must be `source-expectation` on a
     `tier1-primary-doc` dependency). A rule whose scope is wider than its mechanism teaches readers to
     quote it.
+
+32. **The three shapes of a gate a correct implementation cannot satisfy are one defect class, and two of
+    them are proved by a pointer at a mechanism that already exists.** Lesson 20 says a check that cannot
+    fail proves nothing and lesson 31 says a rule with no mechanism is quoted rather than obeyed; both are
+    about a check that does not check. This one is narrower: a count read from the wrong file, a baseline
+    measured somewhere other than the plan's own start commit, and a verdict decided by a pipeline tail
+    each pass a wrong implementation while reading green, so the gate measures the wrong thing and reports
+    a pass. The contract is `GUARDRAILS-v0.4` section 2.14 (D-56), in three clauses:
+
+  - **1.** Every count gate names the file it counts.
+  - **2.** Every baseline names the plan's own start commit sha and is measured there.
+  - **3.** No verify block decides an outcome by a pipeline tail.
+
+    What proves each clause, and what does not:
+
+    - Clause 1 — the `count-gate` row of `data/expected/important-gates.ids` over `extra-file`, an existing
+      in-step case of the `pkg-install` step whose count comes from the named file
+      `data/expected/pkg-install-files.ids` (eleven paths). The step's `check_inventory` reads that file and
+      prints its own name as `pkg-inventory-list` when it is missing, so a count taken from anywhere else is
+      a finding rather than a number; the case copies the installed prefix, plants `share/ivs/stray.txt` in
+      the copy, and requires `pkg-inventory-extra: share/ivs/stray.txt` from the same `check_inventory` the
+      real prefix is judged by. The stand-in is committed code inside the step, so it is re-run on every gate
+      run and reported as the step's own `pkg-selftest` token, rather than built and deleted once. The row
+      points at a mechanism that already exists — the same case is registered for `PKG-01` — instead of
+      minting a case in order to register it, which is the EV-07 precedent's own criterion.
+    - Clause 2 — **no mechanism**, and the gap is stated rather than implied away. No gate step parses
+      plans, so nothing can refuse a plan that quotes a figure without naming where it measured it. The only
+      evidence this clause can have is a plan that prints the sha it measured at and a record a reader can
+      re-derive; the check is a reader's. A rule whose scope is wider than its mechanism teaches readers to
+      quote it (lesson 31), so the honest form is a rule with a known, stated gap — and no registry row,
+      because a row would assert a mechanism that does not exist.
+    - Clause 3 — the already-registered `d09-06-registration mutant st-pass-line EV-07` row and the in-step
+      case behind it: a copied runner whose step prints one line after its pass line must be refused, and the
+      gate-side `tools/check/pass-line.sh` refuses a verdict followed by a line (exit 2) and a run with no
+      verdict (exit 1) while accepting the one legal shape. Cite the row and do not duplicate it: a second
+      row for one proof is the second registration plan 13-04 named and refused.
+
+    The four invariants this phase does not move are figures a reader recomputes from the tree, not
+    assertions: `faults` is the site count over `data/expected/faults/`
+    (`cat data/expected/faults/*.ids | grep -v '^#' | awk 'NF' | wc -l`), `goldens` the files under
+    `data/golden/`, and `claims` and `provisional` the entries of the `claims` array of `data/claims.json`
+    and those of them whose `standing` is `provisional`. All four are printed on every gate line, so a
+    lesson quoting a stale one would disagree with the next run:
+
+invariants: faults=238 goldens=29 claims=29 provisional=28

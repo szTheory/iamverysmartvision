@@ -17,7 +17,7 @@ this index first.**
 | `.planning/ops/GUARDRAILS-v0.2.md` | **Superseded 2026-11-26, kept as recorded.** Its R-rows are cited by `GUARDRAILS-v0.3` V5/V7 and still bind where cited |
 | `.planning/ops/EXEC-RULES.md` | What an executor may and may not do (no `gh`, no tags, never stage orchestrator state) |
 | `.planning/ops/RELEASE-OPS.md` | The release step order and the checks P1–P8 |
-| `.planning/ops/PLAN-LESSONS.md` | Numbered planning lessons 1–25; cite them by number in plans |
+| `.planning/ops/PLAN-LESSONS.md` | Numbered planning lessons 1–32; cite them by number in plans |
 | `.planning/ops/verify-push.sh` | Helper for the verification-push shape |
 
 ## Project state (the current truth)
