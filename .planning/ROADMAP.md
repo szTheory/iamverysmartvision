@@ -228,7 +228,7 @@ contract becomes a numbered lesson with a mechanism.
   3. One committed id, `runner-process.judge.flatwrap-shim` in the existing `tests/runner-process-tap.sh` suite, asserts that the shim's cartridge-slot digest equals the container `tools/flatwrap` wrote in the same case, and a committed stand-in that ignores its input (one flipped input byte) is shown failing that id. `ls tools/check/steps/*.sh | wc -l` still reads 38.
   4. `docs/packaging.md`'s "no host shim ships" sentence is corrected to name the source archive beside the static package - the archive carries the source of the build-only tools and of the build-only host shim and ships no built object - and agrees, sentence for sentence, with the release-decision line of `.planning/ops/RELEASE-OPS.md` section (i).
   5. `.planning/ops/PLAN-LESSONS.md` holds lesson 32 **with its mechanism**: every count gate names the file it counts, every baseline names the plan's own start commit sha and is measured there, and no verify block decides an outcome by a pipeline tail, carried by a `mutant` row in `data/expected/important-gates.ids` over an existing selftest and shown able to fail on a committed stand-in. `faults=238`, `goldens=29`, `claims=29` and `provisional=28` are unchanged.
-**Plans**: 3/3 plans executed, waves 1 to 3, serial (because `17-02` and `17-03` both touch `data/expected/`)
+**Plans**: 3/3 plans complete, waves 1 to 3, serial (because `17-02` and `17-03` both touch `data/expected/`)
 Plans:
 **Wave 1**
 - [x] 17-01-PLAN.md — the seven release-records rows verified and the cost window recomputed by arithmetic at the plan's own start commit, printed before anything is priced with exactly one checkpoint line (the phase's tracer; criterion 1; wave 1)
@@ -411,7 +411,7 @@ The milestone adds zero new gate steps, faults or goldens, and at most one claim
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 17. Records, Cost Window and the Count-Gate Contract | 0/3 | Not started | - |
+| 17. Records, Cost Window and the Count-Gate Contract | 3/3 | Complete    | 2026-11-26 |
 | 18. The Inspection Surface | 0/3 | Not started | - |
 | 19. Discriminating the Display Path | 0/3 | Not started | - |
 | 20. Route, Witness and Release Posture | 0/2 | Not started | - |

@@ -2,20 +2,21 @@
 gsd_state_version: "1.0"
 milestone: v0.4.0
 milestone_name: Inspectable Machine, One Default Decided
-current_phase: 17
-current_phase_name: Records, Cost Window and the Count-Gate Contract
-current_plan: 3
-status: executing
-stopped_at: Completed 17-03-PLAN.md — lesson 32 with its clause-to-mechanism map, the `count-gate` row over the existing `extra-file` case, and the baselines measured at 1dc57c2 (gates 119 to 120, lines 365 to 366, every other token where it was)
-last_updated: "2026-11-26T21:01:59.000Z"
+current_phase: 18
+current_phase_name: The Inspection Surface
+current_plan: Not started
+status: planning
+stopped_at: Phase 17 complete, ready to plan Phase 18
+last_updated: "2026-11-26T22:16:54.165Z"
 last_activity: 2026-11-26
-last_activity_desc: Plan 17-03 completed — lesson 32 and the count-gate contract
-state_head: bfa0815
+last_activity_desc: Phase 17 complete, transitioned to Phase 18
+state_head: 6bca3ea3f83729e0193db284f39d65d0e414a8d3
 progress:
   total_phases: 4
-  completed_phases: 8
-  total_plans: 3
+  completed_phases: 1
+  total_plans: 11
   completed_plans: 3
+  percent: 25
 ---
 
 # Project State
@@ -25,16 +26,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-26)
 
 **Core value:** A deterministic, observable machine core whose every compatibility claim is bound to an exactly named profile and independent evidence — never an unqualified "it runs Intellivision games" label.
-**Current focus:** Phase 17 — Records, Cost Window and the Count-Gate Contract
+**Current focus:** Phase 18 — The Inspection Surface
 **Milestone scope:** `.planning/MILESTONE-CONTEXT.md` (frozen 2026-11-26) and the five `.planning/research/v0.4.0-scoping-*.md` records. **Guardrails:** `.planning/ops/GUARDRAILS-v0.4.md`. **Mints no claim:** `claims=29` and `provisional=28` are invariants.
 
 ## Current Position
 
-Phase: 17 (Records, Cost Window and the Count-Gate Contract) — IN PROGRESS
-Current Plan: 3
+Phase: 18 — The Inspection Surface
+Current Plan: Not started
 Total Plans in Phase: 3
-Status: Plan 17-03 complete — lesson 32 recorded with its three clauses and a clause-to-mechanism map that names the one clause with no checker, carried by the `count-gate` registry row over the existing `extra-file` case whose committed stand-in the same comparison refuses on every gate run
-Last activity: 2026-11-26 - Plan 17-03 completed: lesson 32 and the count-gate contract
+Status: Ready to plan
+Last activity: 2026-11-26 — Phase 17 complete, transitioned to Phase 18
 
 
 ### Planning overrides recorded by the autonomous run
@@ -91,7 +92,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 136
+- Total plans completed: 139
 - Average duration: -
 - Total execution time: -
 
@@ -112,6 +113,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | 14 | 4 | - | - |
 | 15 | 3 | - | - |
 | 16 | 5 | - | - |
+| 17 | 3 | - | - |
 
 *Updated after each plan completion*
 **Per-Plan Metrics:**
@@ -737,13 +739,14 @@ The row itself is left as recorded and this note sits under it.
 
 ## Session Continuity
 
-Last session: 2026-11-26T21:01:59.000Z
-Stopped at: Completed 17-03-PLAN.md — lesson 32, the count-gate row, gates 120 / lines 366
+Last session: 2026-11-26T22:16:54.165Z
+Stopped at: Phase 17 complete, ready to plan Phase 18
 Resume file: None
 
-The Phase 13 close still leaves one thing a later run must do: record the phase's hosted row from
-`sh tools/ci-record.sh <run-id>` once the commits are pushed (`/gsd:verify-work 13`).
-Resume file: None
+The stale Phase 13 note that stood here (record that phase's hosted row with
+`sh tools/ci-record.sh <run-id>`) is removed: Phase 13 closed in v0.3.0 and its hosted rows are in
+`.planning/ci-runs.tsv` — the row the note asked for is not outstanding, and a resuming session that
+read it would re-ask a question a record already answers.
 
 ## Recorded Constraints for the Next Milestone
 
