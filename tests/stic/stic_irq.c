@@ -1,15 +1,19 @@
 /* SPDX-License-Identifier: MIT */
 /* Suite stic, family irq (plan 06-08; D-08, A-09): the VBLANK interrupt request as the CPU stepper accepts it. INTRM is a level from
- * each frame start; the stepper accepts it only at an interruptible boundary with INTFF set (EIS), and with C41 = 0 acceptance does
- * not clear INTFF, so every service routine of these stand-ins starts with DIS. The stand-ins are the programs of stic_cases.h.
+ * each frame start; the stepper accepts it only at an interruptible boundary with INTFF set (EIS). Amendment, plan 14-02 (D-51): the
+ * profile's cpu.interrupt_accept_clears_intff is now 1, so acceptance clears INTFF and a service routine without DIS is entered once;
+ * the re-entry storm of the not-cleared setting is shown by the rig with the field stated explicitly as 0. The stand-ins are the
+ * programs of stic_cases.h.
  * Expectations are relations to the parameters (an entry starts at or after the frame start plus the sampling lag and its sample is
  * inside the INTRM level) and to the guest's own counter (R2), never a policy number (D-02).
  *   stic.irq.one-per-frame         EIS and a DIS-first counting ISR: one interrupt entry per frame start crossed, each inside its level
  *   stic.irq.open-boundary-only    a stream of non-interruptible stores is never interrupted; the first entry is the boundary after it
  *   stic.irq.dis-blocks            the same program without EIS has no entry in two frames
  *   stic.irq.eis-late-misses       an EIS whose next open boundary is after the level ends misses the frame, and the next frame is taken
- *   stic.irq.level-held-reentry-c41-0  C41 = 0 and a service routine without DIS: re-entered at every open boundary while the level is held;
- *                                  the entry count of one frame is the closed form from the entry and instruction cycle counts
+ *   stic.irq.level-held-reentry-c41-0  both halves of the C41 pin in one case (re-targeted by plan 14-02): the machine, which takes its
+ *                                  configuration from the profile (cpu.interrupt_accept_clears_intff = 1), gives exactly one entry in the
+ *                                  frame with a service routine without DIS; the stepper rig with the field stated explicitly as 0 still
+ *                                  gives the closed form of the held level, so the not-cleared setting stays exercised by a stated value
  *   stic.irq.dis-first-isr-one-entry   a service routine that starts with DIS and never re-enables: exactly one entry in three frames
  *   stic.irq.c41-both-values       the stepper-level family: both values of cpu.interrupt_accept_clears_intff crossed with a DIS-first and
  *                                  a not DIS-first service routine, driven by ivs_stic_lines (a test-built configuration copy) */
@@ -250,6 +254,9 @@ static uint32_t si_machine_entries(uint32_t dis_first, uint64_t frames, uint64_t
   return entries;
 }
 
+/* Declared here, because stic.irq.level-held-reentry-c41-0 states the field explicitly through the rig defined below (plan 14-02). */
+static uint32_t si_rig_entries(uint32_t c41, uint32_t dis_first, uint64_t *t0);
+
 /* The closed form of the entries of a held level (C41 = 0, no DIS): entries start every entry + INCR cycles from the first one while
  * start - lag is below the level length. */
 static uint32_t si_reentry_closed_form(const ivs_stic_params *p, uint64_t t0, uint64_t period_ticks)
@@ -258,17 +265,33 @@ static uint32_t si_reentry_closed_form(const ivs_stic_params *p, uint64_t t0, ui
   return t0 >= limit ? 0u : (uint32_t)((limit - t0 + period_ticks - 1u) / period_ticks);
 }
 
+/* stic.irq.level-held-reentry-c41-0 (plan 06-08, re-targeted by plan 14-02, C41/D-51): the two halves of the C41 pin in one case, so the
+ * id fails if either half stops holding. (a) The machine builds its guest from the profile (si_machine_entries loads the stand-in through
+ * the public API, and the machine takes its CPU configuration from the profile registry), and the profile's
+ * cpu.interrupt_accept_clears_intff is 1: acceptance clears the enable, so this service routine without DIS is entered exactly once in the
+ * frame and the guest's own counter reads 1. It fails if the profile's value stops reaching the machine, which is this retarget's own
+ * subject. (b) The stepper rig with the same field stated explicitly as 0 still gives the closed form of the held level, so the
+ * not-cleared setting is exercised by a value a vector states rather than by whatever a default happens to be. */
 static int si_reentry_c41_0(void)
 {
   const ivs_stic_params *p = ivs_stic_params_get(SC_PROFILE);
   uint64_t t0 = 0u;
   uint32_t counter = 0u;
   uint32_t entries = si_machine_entries(0u, 1u, &t0, &counter);
+  uint64_t rt0 = 0u;
+  uint32_t rig;
+  uint32_t rig_expect;
+  if (entries != 1u || counter != 1u || t0 >= (uint64_t)p->frame_ticks) {
+    ivs_test_diag("%u entries in frame 0 with the profile's value (one expected), the guest counted %u, the first entry at %llu",
+                  (unsigned)entries, (unsigned)counter, (unsigned long long)t0);
+    return IVS_TEST_FAIL;
+  }
+  rig = si_rig_entries(0u, 0u, &rt0);
   /* an entry is 9 CPU cycles (the stepper's constant) and the first service instruction INCR 6: one period of 15 cycles */
-  uint32_t expect = si_reentry_closed_form(p, t0, 15u * (uint64_t)p->ticks_per_cpu_cycle);
-  if (entries == 0xFFFFFFFFu || entries < 100u || entries != expect || counter != entries) {
-    ivs_test_diag("%u entries in frame 0 (closed form %u from the first entry at %llu), the guest counted %u", (unsigned)entries,
-                  (unsigned)expect, (unsigned long long)t0, (unsigned)counter);
+  rig_expect = si_reentry_closed_form(p, rt0, 15u * (uint64_t)p->ticks_per_cpu_cycle);
+  if (rig == 0xFFFFFFFFu || rig < 100u || rig != rig_expect) {
+    ivs_test_diag("C41 stated as 0 on the rig: %u entries in a frame (closed form %u from the first entry at %llu), refused %u", (unsigned)rig,
+                  (unsigned)rig_expect, (unsigned long long)rt0, (unsigned)(rig == 0xFFFFFFFFu));
     return IVS_TEST_FAIL;
   }
   return IVS_TEST_PASS;

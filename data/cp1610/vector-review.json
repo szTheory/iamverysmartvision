@@ -175,7 +175,7 @@
     {
       "id": "interrupt",
       "file": "data/cp1610/vectors/interrupt.json",
-      "file_sha256": "fd4f22bd52d8efca4dd3162a069193e840d1f77be0eb5aeec00fa2cb6b21359a",
+      "file_sha256": "8ff666aeea12c167ed1540a79a768abd5e58b65bd9e17919e80254cab61cb2c2",
       "derived_sha256": "507266a4cd3959d356c3bdc9951f104312ed820441cb56748e8c3100ad53175a",
       "reviewer": "isolated-subagent-blind-v1",
       "vectors": 39,

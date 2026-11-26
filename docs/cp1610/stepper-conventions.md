@@ -60,7 +60,13 @@ A `bus` list is compared in order by kind, address and data, and its cycles are 
 
 ## Config defaults and profile fields
 
-`interrupt_accept_clears_intff` defaults to 0, from the profile field `cpu.interrupt_accept_clears_intff` (C41) [INF].
+`interrupt_accept_clears_intff` defaults to 0, from the profile field `cpu.interrupt_accept_clears_intff` (C41) [INF]. **[Amended by A-14-02 at the end of this page (2026-11-26, D-51, C41): the profile field carries 1, the library default `ivs_cp1610_config_default` also gives 1, and the 0 case is stated per vector.]**
 `release_latency_cpu_cycles` defaults to 2, from the profile field `bus.release_latency_cpu_cycles` (C52), and 0 is refused [INF].
 `wait_limit_cpu_cycles` defaults to 35, from the profile field `bus.wait_limit_cpu_cycles` (C53) [INF].
 The IAB vector and the EBCI default belong to the bus layer, through the profile fields `interrupt.iab_value` and `cpu.ebci_default` (C32, C57) [INF].
+
+## Appended amendment A-14-02 (Phase 14, 2026-11-26): the default of `interrupt_accept_clears_intff` is 1
+
+The first line of **Config defaults and profile fields** above is left as written (GUARDRAILS §2.10) and now carries an inline pointer to this note.
+
+**What moved (D-51, C41).** The profile field `cpu.interrupt_accept_clears_intff` now carries 1, and the library default `ivs_cp1610_config_default` also gives 1, so a caller that applies no configuration gets the enable cleared on acceptance. The 0 case is stated by the vector that wants it, through the `config` key: without that key the harness starts from the library default, and `config_mask` bit 0 is set exactly when the vector carries a `config` key (`cmake/IvsVectorTable.cmake`).

@@ -228,9 +228,13 @@ void ivs_cp1610_config_default(ivs_cp1610_config *out)
   if (out == NULL) {
     return;
   }
-  /* Profile intv-2609-ntsc-family-p1 (plan 02-01): cpu.interrupt_accept_clears_intff = 0,
-   * bus.release_latency_cpu_cycles = 2, bus.wait_limit_cpu_cycles = 35. */
-  out->interrupt_accept_clears_intff = 0u;
+  /* The default of the library surface, not a copy of the profile: the machine overrides every
+   * field below from the profile registry (ivs_mm_profiles[]), and the one registered profile
+   * intv-2609-ntsc-family-p1 carries interrupt_accept_clears_intff = 1, release latency 2 and wait
+   * limit 35 (plan 14-02, D-51). A standalone CPU caller that never applies a profile gets these
+   * values, so the library default agrees with the profile instead of contradicting it silently
+   * (C41; nothing in the gate compares the two). */
+  out->interrupt_accept_clears_intff = 1u;
   out->release_latency_cpu_cycles = 2u;
   out->wait_limit_cpu_cycles = 35u;
   out->reserved = 0u;

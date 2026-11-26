@@ -23,7 +23,7 @@ All values are fields of `data/profiles/intv-2609-ntsc-family-p1.json` or consta
 - There are 13 bus windows per frame; the first starts at cycle 3,791, the pitch is 912 cycles and the hold 114 cycles; the fetch of card row i is at cycle 3,848 + 912 i (the fetch offset is 57).
 - The frame timeline has 16 events in this order: 0 FRAME_START, 1 REG_CLOSE, 2 GMEM_CLOSE, 3 to 14 ROW_FETCH of rows 0 to 11, 15 FRAME_END. `stic.event_index` is the index of the next event to apply, so after ROW_FETCH of row 5 (index 8) it is 9.
 - The reset entry vector is `$1000` and the interrupt vector `$1004`. A program word k is loaded at `$1000` plus k, the stand-in memory is filled with zero words, and the stack pointer is whatever the program sets (the stand-in programs below use none).
-- Acceptance of an interrupt does not clear the interrupt enable in this profile (a pinned default, C41).
+- Acceptance of an interrupt does not clear the interrupt enable in this profile (a pinned default, C41). **[Amended by A-14-02 at the end of this page (2026-11-26, D-51, C41): the profile carries 1, so acceptance clears it; the value is still a pinned default and still not a hardware finding.]**
 
 ## The scenario executions, by id
 
@@ -298,3 +298,11 @@ Each is corrected here, in an appended note, and not by changing the section tha
 
 The snapshot bytes at three cuts are pinned in `data/expected/ivsn-literals.ids` as `cut-snapshot-sha256.hp-frame-mid`, `cut-snapshot-sha256.hp-latch` and `cut-snapshot-sha256.hp-mob` (4,299 bytes each; self-recorded, repeatability only): the dev and release presets give the same bytes, which `state.cut.fixed-point-and-canonical` checks together with the fixed point (save, restore into a poisoned target, save) at every cut and the equality of the snapshot of an independently built source run to the cut in slices of 468 ticks.
 `state.cut.slicing-independent` takes the cuts HP-FRAME-MID, HP-LATCH, HP-MOB and HP-INPUT in calls of 1, 7, 468 and 4,194,304 ticks and in calls of pseudo-random length from a fixed seed: the instance and the snapshot at the cut equal the run in one call byte for byte (every call ends on the first unit boundary at or after its target and the last target is the cut itself, a unit boundary).
+
+## Appended amendment A-14-02 (Phase 14, 2026-11-26): this profile clears the interrupt enable on acceptance
+
+The bullet above that reads *"Acceptance of an interrupt does not clear the interrupt enable in this profile (a pinned default, C41)"* is left as written (GUARDRAILS §2.10) and now carries an inline pointer to this note.
+
+**What moved (D-51, C41).** The profile field `cpu.interrupt_accept_clears_intff` now carries 1, so acceptance of an interrupt clears the interrupt enable in this profile. The value is still a pinned default and still not a hardware finding: it was chosen on an owner-local observation, the field stays `unknown-default-chosen`, and C41 stays open.
+
+**What moved with it.** The parameter digest `params-digest-sha256` and the four snapshot literals `stepped-snapshot-sha256`, `cut-snapshot-sha256.hp-frame-mid`, `-hp-latch` and `-hp-mob` in `data/expected/ivsn-literals.ids` were re-pinned in the same commit; the profile's value is one of the inputs the snapshot records, and it reaches the parameter digest through the memory-map registry scalar. The cut ticks, the cut predicates and the row classifications of this page are unchanged: only the snapshot bytes at a cut move.
