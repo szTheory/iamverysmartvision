@@ -40,6 +40,9 @@ add_subdirectory(tools/pcm)
 add_subdirectory(tools/asm)
 # Benchmark tool (plan 08-18, D-21): build-only executable ivs-bench, no install rule; the clock lives only in its bench_host.c.
 add_subdirectory(tools/bench)
+# Wrap tool (plan 14-01, D-47): build-only executable ivs_flatwrap, no install rule; it writes the container the
+# core already parses, over the layout in core/src/content/ivsc.h, and detects nothing about its input.
+add_subdirectory(tools/flatwrap)
 
 enable_testing()
 add_subdirectory(tests)

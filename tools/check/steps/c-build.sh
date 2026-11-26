@@ -3,13 +3,16 @@
 # Step c-build: configure and build the dev and release presets (D-19, D-22), plus the
 # named-fault executables (target ivs_faults) in the dev tree (D-18), then fail on any
 # tracked or untracked-not-ignored core/**/*.c, runner/**/*.c, tools/pack/**/*.c, tools/pcm/**/*.c,
-# tools/asm/**/*.c or tools/bench/**/*.c that the build does not compile (the build writes its repo-relative source lists to
+# tools/asm/**/*.c, tools/bench/**/*.c or tools/flatwrap/**/*.c that the build does not compile (the build writes its
+# repo-relative source lists to
 # build/dev/ivs-core-sources.txt, since plan 04-04 (D-24) build/dev/ivs-runner-sources.txt, since plan 04-14
 # (D-30) build/dev/ivs-pack-sources.txt, since plan 05-10 (D-21, A-07) build/dev/ivs-pcm-sources.txt, since
-# plan 07-03 (D-17) build/dev/ivs-asm-sources.txt and since plan 08-18 (D-21) build/dev/ivs-bench-sources.txt).
+# plan 07-03 (D-17) build/dev/ivs-asm-sources.txt, since plan 08-18 (D-21) build/dev/ivs-bench-sources.txt and since
+# plan 14-01 (D-47) build/dev/ivs-flatwrap-sources.txt).
 # The control tree (tools/check/controls/_good/tree) is a toy CMake project with the same presets and
-# the six lists, so this step has a positive and a negative control per tool directory
-# (c-build-unlisted-pcm-source, c-build-unlisted-asm-source, c-build-unlisted-bench-source).
+# the seven lists, so this step has a positive and a negative control per tool directory
+# (c-build-unlisted-pcm-source, c-build-unlisted-asm-source, c-build-unlisted-bench-source,
+# c-build-unlisted-flatwrap-source).
 # Build logs are printed only on failure.
 # Tokens: c-build-failed: <preset>, c-build-unlisted-source: <path>.
 # Stats: cc=<CMAKE_C_COMPILER_ID of the dev tree> c-presets=<n>.
@@ -44,7 +47,8 @@ done
 # Each item: <tracked-path regex> <repo-relative source list the build writes to build/dev>.
 for mod in '^core/.*[.]c$ ivs-core-sources.txt' '^runner/.*[.]c$ ivs-runner-sources.txt' \
   '^tools/pack/.*[.]c$ ivs-pack-sources.txt' '^tools/pcm/.*[.]c$ ivs-pcm-sources.txt' \
-  '^tools/asm/.*[.]c$ ivs-asm-sources.txt' '^tools/bench/.*[.]c$ ivs-bench-sources.txt'; do
+  '^tools/asm/.*[.]c$ ivs-asm-sources.txt' '^tools/bench/.*[.]c$ ivs-bench-sources.txt' \
+  '^tools/flatwrap/.*[.]c$ ivs-flatwrap-sources.txt'; do
   re=${mod%% *}
   name=${mod#* }
   listed="$ROOT/build/dev/$name"

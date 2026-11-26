@@ -35,7 +35,7 @@ The prefix holds exactly these eleven files, five headers, the static library, f
 | `share/doc/ivs/LICENSE` | the licence |
 
 Nothing else is installed: no internal header, no runner, no image, no `pkg-config` file and no package registry entry.
-The development tools `ivs_pack` (tools/pack) and `ivs_asm` (tools/asm, the project mini-assembler, D-17) are build-only: they have no install rule, are never installed or shipped, and are not part of the core.
+The development tools `ivs_pack` (tools/pack), `ivs_asm` (tools/asm, the project mini-assembler, D-17) and `ivs_flatwrap` (tools/flatwrap, the wrap tool of D-47, which writes the container the core already parses from bytes the operator states) are build-only: they have no install rule, are never installed or shipped, and are not part of the core.
 The exported include directory is `${_IMPORT_PREFIX}/include`, computed from where the config file lies, so the prefix can be moved after installation.
 
 ## Consume
@@ -118,7 +118,7 @@ This is the statement for the release notes. It describes what a release contain
 - It is created as a draft pre-release by `.github/workflows/release.yml`, a workflow that fires only on a strict version tag (see Release workflow), and the installed consumer is built against the very install archive that ships before the draft is created. A pre-release is a release of an exact tested commit that makes no promise of stability.
 - The installed headers include `ivs/ivs_state.h` (plans 08-11 to 08-13): the snapshot size, save and restore calls, the instance-free describe call and the layout of the snapshot report. A snapshot is exact-build state of one profile written into a buffer the host owns; it never carries an image byte, it is not an archival format and it says nothing about hardware. The container is specified in `docs/formats/ivsn-v1.md`.
 - The first original program, `ivs-demo-lamp-tone-1`, ships only as tracked source (`fixtures/FX-demo-lamp-tone-1/lamp-tone.asm` and its generated listing, MIT licence, manifest `redistributable: yes`). No program image is committed or released.
-- Neither the runner (`ivs-run`), nor `ivs_pack`, nor `ivs_asm` is installed or shipped, so nothing downloadable is runnable yet: a reader builds the runner and the image tools from the source tarball.
+- Neither the runner (`ivs-run`), nor `ivs_pack`, nor `ivs_asm`, nor `ivs_flatwrap` is installed or shipped, so nothing downloadable is runnable yet: a reader builds the runner and the image tools from the source tarball.
 - No EXEC, GROM or commercial content is in a release, and none was used by any check. The owner-local route for user-supplied images (`docs/owner-images.md`) is not part of a release and has not been performed (D11).
 - Claims in the notes are stated as profile, evidence tier and artifact: the program is playable guest progress, for this original program only [claim:CL-0023], and its installed-package replay is [claim:CL-0024]. The other replays of the installed consumer are [claim:CL-0015] and [claim:CL-0022], and the snapshot behaviour of one build and one profile is repeatability only [claim:CL-0028], held by the core's own state suite and not by the consumer's fifth replay. Each of these claims is provisional.
 

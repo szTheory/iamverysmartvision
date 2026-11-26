@@ -65,13 +65,16 @@ foreach(p IN LISTS paths)
   endif()
   # SPDX rule (A-07, plan 04-04): runner/ sources, scripts and CMake files, and the C tool
   # directories tools/pack/, tools/cart/ and, since plan 05-10 (D-21, A-07: the reference PCM
-  # converter sat outside the rule), tools/pcm/, since plan 07-03 (D-17) tools/asm/ and since plan 08-18 (D-21)
-  # tools/bench/. The C pattern is anchored to those five directories on purpose: tools/check/controls/denylist-hit/overlay/src/x.c and denylist-nul-hit/overlay/src/x.c
-  # are SPDX-less denylist control inputs and must stay outside the rule.
+  # converter sat outside the rule), tools/pcm/, since plan 07-03 (D-17) tools/asm/, since plan 08-18 (D-21)
+  # tools/bench/ and since plan 14-01 (D-47, 2026-11-26) tools/flatwrap/. The C pattern is anchored to those six directories on purpose: tools/check/controls/denylist-hit/overlay/src/x.c and denylist-nul-hit/overlay/src/x.c
+  # are SPDX-less denylist control inputs and must stay outside the rule. tools/bench joined the alternation
+  # in plan 08-18 without a fourth control directory of its own, and tools/flatwrap joins it the same way in
+  # plan 14-01: the rule stays proved three times (integrity-missing-spdx-tools-c, -asm, -pcm), and the control
+  # that plan 14-01 does add is the c-build unlisted-source guard for the new directory.
   if(p MATCHES "^tools/.*[.](sh|cmake)$" OR p MATCHES "^[.]github/workflows/[^/]*[.]yml$"
      OR p MATCHES "^(core|include|tests)/.*[.](c|h|sh|cmake)$" OR p MATCHES "^cmake/.*[.]cmake$"
      OR p MATCHES "^CMakeLists[.]txt$" OR p MATCHES "^(core|include|tests|runner)/(.*/)?CMakeLists[.]txt$"
-     OR p MATCHES "^runner/.*[.](c|h|sh|cmake)$" OR p MATCHES "^tools/(pack|cart|pcm|asm|bench)/.*[.](c|h)$")
+     OR p MATCHES "^runner/.*[.](c|h|sh|cmake)$" OR p MATCHES "^tools/(pack|cart|pcm|asm|bench|flatwrap)/.*[.](c|h)$")
     string(FIND "${content}" "SPDX-License-Identifier: MIT" pos)
     if(pos EQUAL -1)
       gate_fail(integrity-missing-spdx "${p}")
