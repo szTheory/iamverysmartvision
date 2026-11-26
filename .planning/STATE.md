@@ -2,19 +2,20 @@
 gsd_state_version: "1.0"
 milestone: v0.3.0
 milestone_name: Owner-Supplied Content and a Driveable Host (Phases 13 to 16)</summary>
-current_phase: 13
-current_phase_name: Rights Ledger and Enforced Claim Ceiling
-status: executing
-stopped_at: Completed 13-04-PLAN.md
-last_updated: "2026-11-25T22:32:41.150Z"
+current_phase: 14
+current_phase_name: Cartridge Route and Real-Content Conformance
+status: planning
+stopped_at: Phase 13 complete, ready to plan Phase 14
+last_updated: "2026-11-26T00:22:25.784Z"
 last_activity: 2026-11-25
-last_activity_desc: Phase 13 execution started
-state_head: e93dbe8840faaf9b9740415d3ed55b1bbcec9e39
+last_activity_desc: Phase 13 complete, transitioned to Phase 14
+state_head: 962deaf598939dc9f57ef1b96237ebb07fe2d743
 progress:
   total_phases: 4
   completed_phases: 8
   total_plans: 5
-  completed_plans: 4
+  completed_plans: 5
+  percent: 100
 ---
 
 # Project State
@@ -28,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-11-26)
 
 ## Current Position
 
-Phase: 13 (Rights Ledger and Enforced Claim Ceiling) — COMPLETE
-Plan: 5 of 5
-Status: Phase complete, ready for `/gsd:verify-work 13`
-Last activity: 2026-11-25 — plan 13-05 closed the phase
+Phase: 14 — Cartridge Route and Real-Content Conformance
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-11-25 — Phase 13 complete, transitioned to Phase 14
 
 The closing gate run reads `gate: PASS steps=38/38 controls=401/401 … faults=238/238 …
 goldens=29`, byte-identical under `sh` and `dash`, and repeated inside the Ubuntu 24.04
@@ -48,9 +49,12 @@ decision bullet). The phase's hosted rows **are recorded**, and they close SC5's
 `e2d3a40`), `45718553735` (`e2d3a40`, `pull_request`, 363) and `45720934719` (`b482e91`,
 `pull_request`, 438), the last two appended by `7b7b382`. This paragraph previously read
 **`not-recorded`** on the strength of `gh run list --commit 10f66a1` returning `[]` before the
-phase was pushed; the three rows above are that limb met on the tree. The merge push run is still
-absent — `gh run list --commit 151b688 --json databaseId,event,conclusion,headSha` returns `[]` —
-so no `event=push` row for the merge is written rather than a fabricated one.
+phase was pushed; the three rows above are that limb met on the tree. **Amended at the phase close:**
+the merge push run is no longer absent. `gh run view 45723269901` reports `event=push`,
+`headSha 151b688`, `conclusion success`, and its row is in `.planning/ci-runs.tsv` (`cpu_s` 368,
+`gate_s` 122). The earlier sentence above is kept because it was true when written — `gh run list
+--commit 151b688` returned `[]` because GitHub had not yet registered the run — and the phase's
+hosted-row limb is now met by four rows rather than three.
 
 
 ### Planning overrides recorded by the autonomous run
@@ -87,7 +91,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 119
+- Total plans completed: 124
 - Average duration: -
 - Total execution time: -
 
@@ -104,6 +108,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | 9 | 9 | - | - |
 | 10 | 6 | - | - |
 | 11 | 5 | - | - |
+| 13 | 5 | - | - |
 
 *Updated after each plan completion*
 **Per-Plan Metrics:**
@@ -588,6 +593,7 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 13]: The important-gates baseline is the step's own printed stat, re-derived by running it: gates=114 is 113 plus one new gate name and lines=352 is 342 plus ten rows, and RESEARCH's lines=347 was 337 + 10 (it omitted the five rows RTS-01, RTS-02 and EV-06 add).
 - [Phase 13]: 13-05: checkpoint: reprice (cpu_s 357 363 366 435 497, median 366; gate_s 114 121 121 137 148, median 121; priced addition 1.935; allowance 21). Recomputed by arithmetic from the last five `.planning/ci-runs.tsv` rows (45683886915, 45683331636, 45682845654, 45682366772, 45677865721), never quoted: the frozen 361/118 figures are stale by measurement, by +5 and +3. `discharged-within-allowance` is not reachable because 366 > 361 + 1.935 = 362.935. `lever-required` is not reached because the cumulative milestone spend is 1.935 of 21 and this phase's additions landed at exactly the priced count (controls 395 to 401, important-gates lines 337 to 352, steps 38, faults 238 and goldens 29 unmoved), so no line overran by 25 percent. The residual +5 cpu-s is a runner event on the shared series with the token line where it was predicted, so no lever is invented.
   **Recomputed again after this phase's own hosted rows landed** (`45717868904`, `pull_request`, `cpu_s` 360, `gate_s` 120; `45718553735`, `pull_request`, 363, 119; `45720934719`, `pull_request`, 438, 135): the last five `cpu_s` are now 357 360 363 438 497 (median **363**) and `gate_s` 119 120 121 135 148 (median **121**). The verdict is unchanged — 363 > 361 + 1.935 = 362.935 still rules out `discharged-within-allowance`, and the margin is 0.065 cpu-s rather than 3.065 — because the window moved, not the work. Recorded here rather than left as the pre-row figure, per "recompute, never quote".
+  **Final recompute at the phase close, after the merge push row landed** (`45723269901`, `push`, `cpu_s` 368, `gate_s` 122, the merge commit `151b688`): the last five `cpu_s` are **357 360 363 368 438 → median 363** and the last five `gate_s` are **119 120 121 122 135 → median 121**. Same verdict, same margin (363 > 362.935 by 0.065), same reason: the window moved, the work did not. This is the figure the milestone's Phase-13 checkpoint is read at.
 
 ### Pending Todos
 
@@ -684,7 +690,7 @@ The row itself is left as recorded and this note sits under it.
 ## Session Continuity
 
 Last session: 2026-11-25T22:50:19Z
-Stopped at: Completed 13-05-PLAN.md — Phase 13 complete (5 of 5 plans); the resume point is
+Stopped at: Phase 13 complete, ready to plan Phase 14
 `/gsd:verify-work 13`, and the one thing a later run must still do is record the phase's hosted
 row from `sh tools/ci-record.sh <run-id>` once the commits are pushed.
 Resume file: None
