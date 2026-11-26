@@ -1961,8 +1961,10 @@ else
   # join-images; an acceptance records judge-vacuous, because then the comparison proves nothing. The judgement runs
   # in a subshell with its own why target, so the stand-in's expected finding cannot set this case's verdict.
   if [ "$ok" -eq 1 ]; then
-    grep -E '^(frames|digest[.])' "$tmp/runs/fwshim-a-harness.out" > "$fwf/stand-in.out" || exit 1
-    if [ ! -s "$fwf/stand-in.out" ]; then
+    # The guard must be able to fire (lesson 20): `grep ... || exit 1` would abort the whole suite on a report
+    # with no matching line, so the judge-vacuous branch below could never run and the case would truncate the
+    # TAP stream instead of naming the reason. A `!` test over the same grep makes the branch the only handler.
+    if ! grep -E '^(frames|digest[.])' "$tmp/runs/fwshim-a-harness.out" > "$fwf/stand-in.out"; then
       ok=0; why judge-vacuous 'the stand-in was built from no lines of the first harness report'
     fi
   fi
