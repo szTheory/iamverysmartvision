@@ -86,9 +86,10 @@ then is append-only:
 > the release ships the static package and the source archive; no shared object, no host shim, no content
 
 It was corrected because it denied a host shim without saying that the source archive carries its source, so a
-reader could conclude that the shim's source is withheld too. The inspection-limb clause of the guardrails' close
-line is not written here: the tool it names does not exist until Phase 18, and Phase 20 recomputes the line with
-it.
+reader could conclude that the shim's source is withheld too. Three clauses of the guardrails' close line are not
+written here — `no built inspection tool` (the tool it names does not exist until Phase 18), `no trace or
+disassembly output` and `no content` — and Phase 20 recomputes the full section 7.4 line with all of them. The
+content claim is stated in `docs/packaging.md`'s release-content list until then.
 
 Three mechanisms hold that line, and each is a committed check rather than a promise:
 
