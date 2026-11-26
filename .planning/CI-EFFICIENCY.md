@@ -2164,3 +2164,27 @@ volume survives the run.
 hosted row after the push is what settles the lever's ~144 s prediction, and `tools/ci-record.sh` is the
 orchestrator's call. The hosted row for this phase's commits is recorded `not-recorded` in `.planning/STATE.md`
 with that reason.
+
+## 2026-11-26 — v0.3.0 close: the last two rows, and the pair this entry defers by name
+
+The close's two merges produced two more runs, both `success` and both now rows:
+`45832244091` (`push`, `0bdc4f9`, `build_s` 52, `gate_s` 169, `cpu_s` 583) and
+`45833228626` (`push`, `291a17c`, `build_s` 34, `gate_s` 115, `cpu_s` 367).
+
+**The 583 is a runner event, not a regression.** Its own step profile shows the
+same five steps; the `build_s` 52 and `gate_s` 169 are a cold checkout plus a
+busy host on the first push after the archive move, and the very next push of the
+same tree returned `build_s` 34 / `gate_s` 115 / `cpu_s` 367 — the 357–366 band
+the series has held since Phase 9. No lever is invented for it, and no checkpoint
+is reopened: the milestone's four verdicts are recorded and none depended on this
+row.
+
+**Deferred by one commit, by name (the termination rule).** This entry's own
+commit produces one more push run. It is recorded in the next commit the project
+makes anyway — the next milestone's opening commit — rather than spawning another
+PR and another hosted minute to record a row about a record. That is the rule's
+own intent: a run is never dropped, and never chased with a cycle of its own.
+
+**Milestone close, in one line per the ritual:** `main` green at `291a17c`, no
+open PR, one worktree, no stashes, no `ivs-*` container or image, and every
+observed hosted run of the milestone recorded.

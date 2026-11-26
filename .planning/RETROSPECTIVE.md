@@ -170,3 +170,38 @@ From the milestone audit's tech-debt register and the integration pass:
 4. **Settings**: the branch and tag rulesets recommended in `.planning/AUTONOMY.md` section 1 are still not applied. [OBS]
    Also stale as of 2026-11-24: `PROJECT.md` D-31 says the `git.create_tag` key "reads `true` … the change is still to be made", but `.planning/config.json` reads `false` and the close record attributes the change to `6f800cc`. `.planning/ops/RELEASE-OPS.md` likewise says `create_tag: true` and "ten files" where the install list is eleven. Bookkeeping for the next milestone's Phase 9, not a new decision.
 5. **Owner hard stops**: D10 (47 hardware items) and D11 (owner-local real EXEC/GROM runs) remain unperformed; every claim stays provisional until they are.
+
+## v0.3.0 — Owner-Supplied Content and a Driveable Host (closed 2026-11-26)
+
+**What worked, measured.** Four phases, 17 plans, nine requirements, one claim,
+**zero new gate steps, faults or goldens** — every capability landed as an id
+inside a suite that already existed, which is the discipline the milestone was
+built to test. Every phase's verify chain ran locally first (`sh`, `dash`, then
+the Ubuntu container) and **every hosted run in the milestone was green on its
+first attempt**; the container leg earned its keep twice in Phase 15, finding a
+non-PIC archive and four ELF crt stubs that do not reproduce on Darwin.
+
+**What cost the most, and what to do about it.** Planning, not execution. Phase
+13's plan took three checker passes (4 → 2 → 0 blockers); Phase 14's took four
+(6 → 2 → 1 → 0); Phase 16's took three. Almost every blocker was the same class:
+**an `<automated>` gate that a correct implementation cannot satisfy** — a count
+read from a file the tool does not write, an exit status decided by a trailing
+`tail`, a baseline measured at the wrong commit, a literal in the wrong token
+order. Each phase's executor then re-found the same class in the plan's own
+prose (nine recorded plan defects in Phase 16 alone). The lesson is concrete and
+belongs in the planner's contract, not in a retrospective: **every count gate
+must name the file it counts, and every baseline must be measured at the plan's
+own start commit.**
+
+**What the milestone deliberately did not do.** It did not claim that any real
+content boots, plays, looks or sounds right. Eight handoff rows carry
+`evidence: none`; D10 and D11 stay `not-performed`; no claim rises above
+`provisional`. That restraint held under pressure — the first real-content run
+produced a genuine, exciting result (the EXEC populating BACKTAB), and it was
+still recorded as an observation that mints no claim.
+
+**Carried into the next milestone.** The wrap→shim join is measured but
+unguarded by a case; the eight wrap tokens are undocumented under `docs/`; and
+the `reprice` verdict fired at every phase boundary because the frozen 361/34/118
+figures were stale from the start — the next milestone should recompute the
+window before it prices anything, not after.
