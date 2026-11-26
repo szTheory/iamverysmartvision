@@ -820,7 +820,7 @@
       "default_policy": "unknown-default-chosen: a write to $0020 inside the register window sets the display latch for the current frame and the latch is cleared at every frame start; a read of $0020 has no effect; the value written is ignored; a strobe outside the window is dropped.",
       "resolver": "measurement: D10-VID-08 owner diagnostic with strobes at swept offsets and a frame capture",
       "evidence": "Phase 6 final (plan 06-14): carried by profile rows stic.access_effects and the display latch cleared at every frame start by core/src/stic/stic_events.c; exercised by stic.enable.seq.strobe-in-window, stic.enable.seq.strobe-outside-window-dropped, stic.enable.seq.second-strobe, stic.enable.seq.latch-cleared-at-frame-start, stic.enable.seq.strobe-via-write-alias, stic.reg.strobe-stores-nothing.",
-      "note": "Raised by plan 06-01 (D-22, A-11). Extends C6. Source note ids: register note C82."
+      "note": "Raised by plan 06-01 (D-22, A-11). Extends C6. Source note ids: register note C82. Observation, 2026-11-26 (owner-local, the D11 route, the same run that produced C41's observation; no image, digest or hash of an operator's file is named). With the interrupt-enable default corrected (C41, D-51) the program ran further and the picture stayed black: the display-enable strobe written at $0020 never latched. The register-window rule that decides whether a strobe is inside the window, and the strobe rule itself, are therefore the next tier-4 default to resolve, and they are not resolved here: this record names the observation and its gate (D10-VID-08) and leaves the row open with its default_policy unchanged. The observation mints no claim."
     },
     {
       "id": "C83",
