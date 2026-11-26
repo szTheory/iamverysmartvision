@@ -81,6 +81,18 @@
 #   runner-process.host.unload: `unload.digest.refused 1`, and a `digest.` line BEFORE it by line number, so the
 #   order proves the digests were taken while the machine was still loaded - a harness that only pretended to unload
 #   cannot pass.
+#   runner-process.host.empty-poll: the same harness and the same drive with NO input, judged in three limbs each able
+#   to fail on its own - at least one digest line differs from the pass golden (so a judge that compared an output
+#   with itself fails), digest.images is EQUAL to the pass golden (so a shim that stopped rendering fails, and a
+#   difference stays attributable to the input alone), and every non-input digest line the IDLE golden carries
+#   (eight today; its `# domains:` line reads input=none) equals that golden's, with digest.input differing from the
+#   pass golden's.
+#   runner-process.judge.host-vacuous and runner-process.judge.host-digest-diff: the phase's two COMMITTED stand-ins
+#   (criterion 3.3), not scratch probes. Each is a fake frontend this suite writes into its temp dir and judges with
+#   the SAME check_host the real run is judged by: host-vacuous prints the pass golden's nine lines with `frames 0`
+#   and must be refused for frames-zero; host-digest-diff prints them with `digest.input` replaced by the empty-poll
+#   run's OBSERVED value and `frames 13` and must be refused for digest-diff. Each differs from a passing output in
+#   one limb only, so a rejection for another token is judge-wrong-reason and an acceptance is judge-vacuous.
 runner-process.scenario.diag-boot-pass
 runner-process.scenario.guest-assert-mismatch
 runner-process.scenario.timeout-budget
@@ -242,3 +254,6 @@ runner-process.host.exports
 runner-process.host.api
 runner-process.host.frames
 runner-process.host.unload
+runner-process.host.empty-poll
+runner-process.judge.host-vacuous
+runner-process.judge.host-digest-diff

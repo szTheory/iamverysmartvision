@@ -2231,6 +2231,63 @@ check_digest_lines() {
   return "$_cdrc"
 }
 
+# check_host_empty <output>: the empty-poll run judged in three limbs, each able to fail on its own (research Open
+# Question 5, measured; criterion 3.2). 0 only when all three hold; findings in $tmp/why.
+#   (1) at least one `digest.` line DIFFERS from the pass golden's same-named line - the "different set" the
+#       criterion names, and the limb a constant judge (one that compared an output with itself) fails;
+#   (2) `digest.images` is EQUAL to the pass golden's - the frames are the same, so a shim that stopped rendering
+#       fails here while a judge that compared nothing would pass on limb (1) alone;
+#   (3) every non-input `digest.` line the IDLE golden carries equals that golden's same-named line, and
+#       `digest.input` differs from the pass golden's. The idle golden is read for the set it carries - eight
+#       domains today (cpu mem images instance composite video audio psglog); its `# domains:` line reads
+#       input=none, so it has no digest.input line - never from a list typed here.
+check_host_empty() {
+  _eh=$1; _rc=0
+  _ehf=$(sed -n 's/^frames //p' "$_eh" | head -n 1)
+  case $_ehf in
+    '' | *[!0-9]*) why empty-poll-frames "frames '$_ehf' is not a positive integer"; return 1 ;;
+  esac
+  [ "$_ehf" -gt 0 ] || { why empty-poll-frames "frames $_ehf"; return 1; }
+  # (1) at least one line differs from the pass golden's same-named line.
+  _ehd=$(awk -v pass="$root/data/golden/demo-lamp-tone-pass.digests" '
+    BEGIN { while ((getline l < pass) > 0) { split(l, kv, " "); if (kv[1] ~ /^digest[.]/) g[kv[1]] = kv[2] } close(pass) }
+    /^digest[.]/ { if (!($1 in g) || g[$1] != $2) n++ }
+    END { print n + 0 }' "$_eh")
+  if [ "${_ehd:-0}" -lt 1 ]; then
+    why empty-poll-identical 'no digest line differs from the pass golden, so the poll was not dropped'
+    _rc=1
+  fi
+  # (2) digest.images equal to the pass golden's.
+  _ehi=$(sed -n 's/^digest[.]images //p' "$_eh" | head -n 1)
+  _ehig=$(sed -n 's/^digest[.]images //p' "$root/data/golden/demo-lamp-tone-pass.digests" | head -n 1)
+  if [ -z "$_ehi" ] || [ "$_ehi" != "$_ehig" ]; then
+    why empty-poll-images "digest.images '${_ehi:-missing}' is not the pass golden's '${_ehig:-missing}': the run stopped rendering, so a difference is not attributable to the input alone"
+    _rc=1
+  fi
+  # (3) the idle golden's non-input lines, and digest.input differing from the pass golden's.
+  awk '/^digest[.]/ && $1 != "digest.input" { print $1, $2 }' "$root/data/golden/demo-lamp-tone-idle.digests" \
+    > "$tmp/eh.idle.want"
+  if [ ! -s "$tmp/eh.idle.want" ]; then
+    why empty-poll-idle 'the idle golden carries no non-input digest line, so the limb would compare nothing'
+    _rc=1
+  else
+    while read -r _ehk _ehv; do
+      _ehgot=$(sed -n "s/^${_ehk} //p" "$_eh" | head -n 1)
+      if [ "$_ehgot" != "$_ehv" ]; then
+        why empty-poll-idle "$_ehk '${_ehgot:-missing}' is not the idle golden's '$_ehv'"
+        _rc=1
+      fi
+    done < "$tmp/eh.idle.want"
+  fi
+  _ehin=$(sed -n 's/^digest[.]input //p' "$_eh" | head -n 1)
+  _ehing=$(sed -n 's/^digest[.]input //p' "$root/data/golden/demo-lamp-tone-pass.digests" | head -n 1)
+  if [ -z "$_ehin" ] || [ -z "$_ehing" ] || [ "$_ehin" = "$_ehing" ]; then
+    why empty-poll-idle "digest.input '${_ehin:-missing}' does not differ from the pass golden's '${_ehing:-missing}': the poll was not dropped"
+    _rc=1
+  fi
+  return "$_rc"
+}
+
 # check_host <output>: the drive is not vacuous (a positive frame count is required before anything is compared) and
 # the nine digest lines equal the pass golden's, byte for byte.
 check_host() {
@@ -2408,6 +2465,31 @@ else
 fi
 result runner-process.host.unload
 
+# runner-process.host.empty-poll (plan 15-02, TOOL-08, criterion 3.2): the same harness, the same drive shape, no
+# input. A judge that compared an output with itself would pass the digests case; this id is the limb that fails it,
+# and it fails in three independent ways (check_host_empty). Its stdout is kept outside IVS_TEST_OUT_DIR/runner/ for
+# the same reason host-pass.out is: the golden step compares everything in that directory and a frontend's stdout is
+# not a scenario report.
+: > "$tmp/why"
+ok=1
+if [ -z "$harness" ]; then
+  ok=0; why host-empty-poll 'the eighth argument (ivs_host_harness) is missing: the empty-poll case cannot be run'
+elif [ -z "$shim" ]; then
+  ok=0; why host-empty-poll 'the seventh argument (libivs_retro) is missing: the empty-poll case cannot be run'
+else
+  run_one "$tmp" host-empty "$harness" "$shim" "$content" --empty-poll
+  if [ "$hung" -eq 1 ] || [ "$rc" -ne 0 ]; then
+    ok=0
+    why host-empty-run "exit $rc, hung $hung: $(sed -n 's/^fail //p' "$tmp/runs/host-empty.out" | head -n 1)"
+  elif ! check_host_empty "$tmp/runs/host-empty.out"; then
+    ok=0
+  fi
+  if [ -n "${IVS_TEST_OUT_DIR:-}" ]; then
+    cp "$tmp/runs/host-empty.out" "$IVS_TEST_OUT_DIR/host-empty.out" || exit 1
+  fi
+fi
+result runner-process.host.empty-poll
+
 # runner-process.host.exports (plan 15-02, TOOL-08, D-48, D-35): the export surface refused by name, in both
 # directions and on both platforms. tools/check/host-symbols.sh compares the object's exported set against
 # data/expected/host-symbols.ids and its undefined set against core-symbols-allow.txt plus data/expected/host-imports.ids.
@@ -2494,6 +2576,46 @@ self_control outcome-exit-disagree outcome-exit-disagree \
   check_scenario "$fakes/outcome-exit.sh" fake-pair guest-assert-mismatch 10 guest-fail -
 self_control body-differs body-differs \
   check_repeat "$tmp" "$fakes/body.sh" fake-body diag-boot-pass "$tmp/runs/scen-diag-boot-pass.out"
+
+# The host judge's two COMMITTED stand-ins (plan 15-02, TOOL-08, criterion 3.3): fake frontends written into $fakes
+# by this suite and judged by the SAME check_host the real run is judged by. Each differs from a passing output in
+# ONE limb, so a rejection for any other token means it differs in two places (self_control reports
+# judge-wrong-reason) and a pass means the limb it was written to test is dead (judge-vacuous). No second .so is
+# built, no fault site is added and no golden is added (GUARDRAILS 2.1). They are cases, not scratch probes.
+cp "$root/data/golden/demo-lamp-tone-pass.digests" "$fakes/host.digests" || exit 1
+{
+  printf '#!/bin/sh\n'
+  printf '# Fake frontend: the pass golden'"'"'s nine digest lines and frames 0 - a stub that rendered nothing.\n'
+  printf 'printf "frames 0\\n"\n'
+  printf 'grep "^digest[.]" "$(dirname "$0")/host.digests"\n'
+} > "$fakes/host-vacuous.sh"
+# The digest a poll-dropped host prints IS the empty chain's input digest, so this stand-in takes that value from the
+# empty-poll run this suite has just made - never typed - and changes nothing else. With no value to substitute it
+# prints the pass golden unchanged, so check_host ACCEPTS it and the case fails as judge-vacuous: the honest report
+# of an empty-poll run that produced no input digest, rather than a rejection for a wrong reason.
+_empty_input=$(sed -n 's/^digest[.]input //p' "$tmp/runs/host-empty.out" | head -n 1)
+{
+  printf '#!/bin/sh\n'
+  printf '# Fake frontend: the pass golden'"'"'s nine digest lines with the input poll dropped, and frames 13.\n'
+  printf 'printf "frames 13\\n"\n'
+  if [ -n "$_empty_input" ]; then
+    printf 'sed "s|^digest[.]input .*|digest.input %s|" "$(dirname "$0")/host.digests"\n' "$_empty_input"
+  else
+    printf 'cat "$(dirname "$0")/host.digests"\n'
+  fi
+} > "$fakes/host-digest-diff.sh"
+# host_stand_in <slug>: run the fake frontend, require it to have printed something (a stand-in that produced no
+# output would fail for the wrong reason), then judge its stdout with check_host.
+host_stand_in() {
+  run_one "$tmp" "fake-$1" "$fakes/$1.sh"
+  if [ ! -s "$tmp/runs/fake-$1.out" ]; then
+    why stand-in-empty "the fake frontend of $1 printed nothing"
+    return 1
+  fi
+  check_host "$tmp/runs/fake-$1.out"
+}
+self_control host-vacuous frames-zero host_stand_in host-vacuous
+self_control host-digest-diff digest-diff host_stand_in host-digest-diff
 # Judge self-control of the round-trip comparison (plan 08-16, D-18): check_roundtrip must be shown to fail before it is trusted, twice. A fake runner
 # that replays the report of ANOTHER scenario (diag-ctrl-psg-pass) for the hook run must be rejected for body-differs (the comparison with the plain
 # report fails on a report that differs); a fake that replays the plain report unchanged, as a hook that never cut would, must be rejected for
