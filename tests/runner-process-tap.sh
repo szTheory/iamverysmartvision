@@ -1783,6 +1783,49 @@ else
 fi
 result runner-process.cart-user.refuse-derived
 
+# The wrap tool's container round-trips through the runner as `content cart user` (plan 14-03, SCN-03, criterion 3, D-47): the report's
+# slot.cart.sha256 equals the digest the tool printed on stdout, slot.cart.length_bytes is the container's own size on disk, and the
+# equality is proved live rather than vacuous — flipping ONE byte of the tool's input changes both the printed digest and the report's
+# value, and the second half fails if the two digests are equal. The input byte is the first word's low half (00 -> 01, still at most
+# $03FF, so the tool's word-range rule stays satisfied). The container, the flat file and both reports live under this run's mktemp
+# directory; nothing is written into the tree. The `exec:` label stays `-`, so no line reads as a real-EXEC result.
+: > "$tmp/why"
+ok=1
+if [ -z "$flatwrap" ]; then
+  ok=0; why flatwrap-roundtrip 'the sixth argument (ivs_flatwrap) is missing: the round trip cannot be run'
+else
+  rt_flat="$tmp/rt-flat.bin"
+  rt_a="$tmp/rt-a.ivsc"
+  rt_b="$tmp/rt-b.ivsc"
+  dd if=/dev/zero of="$rt_flat" bs=8192 count=1 2> /dev/null || exit 1
+  rt_d1=$("$flatwrap" "$rt_flat" 4000 "$rt_a" 2> "$tmp/rt-wrap.err") \
+    || { ok=0; why flatwrap-roundtrip "the first wrap failed: $(sed -n '1p' "$tmp/rt-wrap.err")"; }
+  rt_size=$(wc -c < "$rt_a" 2> /dev/null | tr -d ' ')
+  run_one "$tmp" rt-a "$ivs_run" --content-dir "$cuc" --exec "$cu_exec" --grom "$cu_grom" --cart "$rt_a" "$cucscn"
+  judge rt-a 0 pass - "" || ok=0
+  [ "$(op_value rt-a slot.cart.loaded)" = 1 ] \
+    || { ok=0; why flatwrap-roundtrip "slot.cart.loaded '$(op_value rt-a slot.cart.loaded)'"; }
+  [ "$(op_value rt-a slot.cart.status)" = ok ] \
+    || { ok=0; why flatwrap-roundtrip "slot.cart.status '$(op_value rt-a slot.cart.status)'"; }
+  [ -n "$rt_size" ] && [ "$(op_value rt-a slot.cart.length_bytes)" = "$rt_size" ] \
+    || { ok=0; why flatwrap-roundtrip "slot.cart.length_bytes '$(op_value rt-a slot.cart.length_bytes)', the container is '$rt_size' bytes"; }
+  [ -n "$rt_d1" ] && [ "$(op_value rt-a slot.cart.sha256)" = "$rt_d1" ] \
+    || { ok=0; why flatwrap-roundtrip "slot.cart.sha256 '$(op_value rt-a slot.cart.sha256)', the tool printed '$rt_d1'"; }
+  grep -q -x -F 'exec: -' "$tmp/runs/rt-a.out" || { ok=0; why flatwrap-roundtrip 'the report does not carry the `exec: -` label'; }
+  # One byte of the tool's input moves: a judge that accepted the same digest twice would pass the equality above, so it is made to fail here.
+  printf '\001' | dd of="$rt_flat" bs=1 seek=1 conv=notrunc 2> /dev/null || exit 1
+  rt_d2=$("$flatwrap" "$rt_flat" 4000 "$rt_b" 2> "$tmp/rt-wrap2.err") \
+    || { ok=0; why flatwrap-roundtrip "the second wrap failed: $(sed -n '1p' "$tmp/rt-wrap2.err")"; }
+  if [ -z "$rt_d1" ] || [ -z "$rt_d2" ] || [ "$rt_d2" = "$rt_d1" ]; then
+    ok=0; why flatwrap-roundtrip "the flipped input byte left the printed digest at '$rt_d1' (second '$rt_d2'): the equality is vacuous"
+  fi
+  run_one "$tmp" rt-b "$ivs_run" --content-dir "$cuc" --exec "$cu_exec" --grom "$cu_grom" --cart "$rt_b" "$cucscn"
+  judge rt-b 0 pass - "" || ok=0
+  [ -n "$rt_d2" ] && [ "$(op_value rt-b slot.cart.sha256)" = "$rt_d2" ] \
+    || { ok=0; why flatwrap-roundtrip "the second run's slot.cart.sha256 '$(op_value rt-b slot.cart.sha256)', the tool printed '$rt_d2'"; }
+fi
+result runner-process.judge.flatwrap-roundtrip
+
 # Operator WAV (plan 05-10, D-20, D-21, T-05-26): the same stand-in under --audio-wav, into the mktemp directory.
 # By hand: the report ends with refpcm.rate (48000), refpcm.frames and refpcm.sha256 right before report.end;
 # the file is 44 + 2 x frames bytes (a mono 16-bit RIFF/WAVE file), begins with the four bytes RIFF and the
