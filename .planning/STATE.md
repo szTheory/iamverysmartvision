@@ -1,16 +1,20 @@
 ---
 gsd_state_version: "1.0"
 milestone: v0.4.0
-milestone_name: Inspectable Machine, One Default Decided
+milestone_name: scoped 2026-11-26 (in progress)
+current_phase: 17
+current_phase_name: Records, Cost Window and the Count-Gate Contract
 status: planning
-last_updated: "2026-11-26T15:24:08.882Z"
+stopped_at: Phase 16 complete — all phases complete
+last_updated: "2026-11-26T19:57:54.072Z"
 last_activity: 2026-11-26
+last_activity_desc: Milestone v0.4.0 requirements and roadmap defined
+state_head: 708eea4f0bc75f81ed6fe3b0490dd16f7187909e
 progress:
   total_phases: 4
-  completed_phases: 0
-  total_plans: 11
+  completed_phases: 8
+  total_plans: 3
   completed_plans: 0
-  percent: 0
 ---
 
 # Project State
@@ -25,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-11-26)
 
 ## Current Position
 
-Phase: 17 - Records, Cost Window and the Count-Gate Contract
+Phase: 17 (Records, Cost Window and the Count-Gate Contract) — READY TO EXECUTE
 Plan: 0 of about 3
 Status: Defining requirements is complete; ready for discuss-phase 17
 Last activity: 2026-11-26 - Milestone v0.4.0 requirements and roadmap defined
