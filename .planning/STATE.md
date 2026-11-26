@@ -1,20 +1,16 @@
 ---
 gsd_state_version: "1.0"
-milestone: v0.3.0
-status: Awaiting next milestone
-stopped_at: Phase 16 complete — all phases complete
-last_updated: "2026-11-26T13:23:03.650Z"
+milestone: v0.4.0
+milestone_name: Inspectable Machine, One Default Decided
+status: planning
+last_updated: "2026-11-26T15:24:08.882Z"
 last_activity: 2026-11-26
-last_activity_desc: Milestone v0.3.0 completed and archived
-state_head: 291a17c8df08dc8c68d1bbcf617d067a50c6391d
 progress:
   total_phases: 4
-  completed_phases: 4
-  total_plans: 17
-  completed_plans: 17
-  percent: 100
-milestone_name: Owner-Supplied Content and a Driveable Host (Phases 13 to 16)
-current_phase: 16
+  completed_phases: 0
+  total_plans: 11
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -24,14 +20,16 @@ current_phase: 16
 See: .planning/PROJECT.md (updated 2026-11-26)
 
 **Core value:** A deterministic, observable machine core whose every compatibility claim is bound to an exactly named profile and independent evidence — never an unqualified "it runs Intellivision games" label.
-**Current focus:** Phase 13 — Rights Ledger and Enforced Claim Ceiling
+**Current focus:** Phase 17 — Records, Cost Window and the Count-Gate Contract
+**Milestone scope:** `.planning/MILESTONE-CONTEXT.md` (frozen 2026-11-26) and the five `.planning/research/v0.4.0-scoping-*.md` records. **Guardrails:** `.planning/ops/GUARDRAILS-v0.4.md`. **Mints no claim:** `claims=29` and `provisional=28` are invariants.
 
 ## Current Position
 
-Phase: Milestone v0.3.0 complete
-Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-11-26 — Milestone v0.3.0 completed and archived
+Phase: 17 - Records, Cost Window and the Count-Gate Contract
+Plan: 0 of about 3
+Status: Defining requirements is complete; ready for discuss-phase 17
+Last activity: 2026-11-26 - Milestone v0.4.0 requirements and roadmap defined
+
 
 ### Planning overrides recorded by the autonomous run
 

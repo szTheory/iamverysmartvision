@@ -2188,3 +2188,48 @@ own intent: a run is never dropped, and never chased with a cycle of its own.
 **Milestone close, in one line per the ritual:** `main` green at `291a17c`, no
 open PR, one worktree, no stashes, no `ivs-*` container or image, and every
 observed hosted run of the milestone recorded.
+
+## 2026-11-26 — v0.4.0 opening: the seven unrecorded rows land, and the window stops being a decision input
+
+**The rows the termination rule deferred, all seven of them.** The v0.3.0 close recorded its
+own last two merges (`45832244091`, `45833228626`) and named one further push run as the next
+milestone's opening row. The release-records work then produced six more runs before the
+milestone actually opened, so the regress is seven rows, not one, and all seven are now the
+tail of `.planning/ci-runs.tsv` (109 rows to 116): `45835631107` (`pull_request`, `build_s` 51,
+`gate_s` 172, `cpu_s` 588), `45836207855` (`push`, 42 / 138 / 467), `45839153455`
+(`pull_request`, 34 / 119 / 365), `45839646456` (`push`, 47 / 153 / 513), `45841732895`
+(`push`, 51 / 171 / 584), `45842795129` (`pull_request`, 51 / 165 / 580) and `45843408874`
+(`push`, 49 / 164 / 572). Every one is `success`. Each was read with `sh tools/ci-record.sh
+<run-id>`, which makes exactly two GitHub calls per row.
+
+**The window, recomputed by arithmetic from the committed file** (last five successful rows
+with `build_s` and `cpu_s` above 0, in file order): `cpu_s` 365, 513, 572, 580, 584 — median
+**572**; `build_s` 34, 47, 49, 51, 51 — median **49**; `gate_s` 119, 153, 164, 165, 171 —
+median **164**. The previous window read 367 / 34 / 115.
+
+**This is a runner event, and the ratio says so.** `r = cpu_s / build_s` over the same five
+rows is 10.735, 10.915, 11.451, 11.373, 11.673 — flat inside the 10.6 to 11.7 band every row
+since Phase 9 has sat in. `cpu_s` moved because `build_s` moved from 34 to 49, and `build_s`
+moved because the release-records pushes were queued behind a busy runner; the token line
+under the work is unmoved. No lever is invented, no checkpoint is reopened, and the 367 / 34 /
+115 figures are recorded as **stale by measurement** rather than re-blessed.
+
+**`r` stays retired, and the reason is now measured rather than asserted.** Over the two
+windows the same tree produced `r` values between 10.56 and 11.69 while `cpu_s` spanned 362 to
+588: a 62 percent swing in `cpu_s` with no code change. A median whose own window spans 60
+percent of its value cannot resolve a phase's 1 to 3 cpu-s addition, which is at most 1.4
+percent of that span. This milestone therefore adopts the rule recorded as `PROJECT.md` D-55
+and `GUARDRAILS-v0.4` §2.2: **price a phase locally (alternated before and after, times 1.675)
+against the allowance, and record the hosted row to monitor, not to decide.**
+
+**The allowance and this milestone's price.** 21 hosted cpu-s, recomputed from the rule and not
+from a prior entry; v0.4.0 prices 4.72 across Phases 17 to 20 (0.10 / 2.96 / 1.64 / 0.02) with a
+hard ceiling of 5.6, and adds no gate step, no fault and no golden. The opening commit itself
+adds no test id, control, fault, gate step or registry line: `steps=38/38` is where it was.
+
+**A local baseline, taken once at `cc4f991` for the milestone to price against.** `sh
+tools/gate.sh` exited 0 with `gate: PASS steps=38/38 controls=404/404 faults=238/238 goldens=29
+gates=119 lines=364 claims=29 provisional=28 handoffs=8 tests-expected=5042 tests-executed=5038
+tests-skipped=4 tests-missing=0 tracked=2791`, `gate-time total=129` and `gate-cpu user=223.40
+sys=202.80` on a host that was not idle. That is the plan-start baseline every v0.4.0 plan
+cites by sha under `GUARDRAILS-v0.4` §2.14 (lesson 32).

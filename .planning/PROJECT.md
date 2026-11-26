@@ -17,6 +17,41 @@ A deterministic, observable machine core whose every compatibility claim is
 bound to an exactly named profile and independent evidence — never an
 unqualified "it runs Intellivision games" label.
 
+## Current Milestone: v0.4.0 Inspectable Machine, One Default Decided
+
+**Goal:** Give the core a build-only, scripted, headless inspection surface —
+disassembly, breakpoints and a cycle-stamped access trace over the seams that
+already exist — and then use it to decide, by discrimination rather than by fit,
+the display-path default that currently leaves the owner's own EXEC showing a
+black picture; or record honestly that no rival rule discriminates.
+
+**Target features:**
+- A clean ledger to start on (`EV-08`): the hosted cost window recomputed by
+  arithmetic before anything is priced, the eight wrap refusal tokens documented,
+  one id guarding the wrap-to-shim join, the source-archive letter corrected, and
+  the count-gate contract recorded as a lesson with a mechanism.
+- The inspection surface (`TOOL-02`, promoted from the deferred list):
+  disassembly, breakpoints and a cycle-stamped access trace, driven by a scripted
+  command surface, in a build-only tool outside `core/` and outside the installed
+  package.
+- The rights posture for its output (`TOOL-09`): one operator-local rights row,
+  output refused inside the work tree, `ivst` refused by name, never a golden,
+  fixture, CI artifact or claim artifact.
+- The display path discriminated and decided (`VID-07`): four authored guests
+  whose observations separate the four rival rules diagonally, then either the
+  decided default with both settings pinned and every dependent expectation
+  retargeted in one commit, or the recorded "unchanged, rivals named" exit.
+- The hardware question as a named packet (`VID-08`): the exact trace lines a
+  D10-VID-08 probe must contradict, as a handoff row that no claim cites.
+
+**Scope record:** `.planning/MILESTONE-CONTEXT.md` (frozen upstream artifact);
+the five scoping outputs are `.planning/research/v0.4.0-scoping-*.md`.
+**Guardrails:** `.planning/ops/GUARDRAILS-v0.4.md`.
+**Milestone label v0.4.0; software version 0.4.0 if released** (a minor bump under
+D-30: a new build-only tool and a decided default; no API break).
+**Phases:** 17 to 20. **Droppable:** Phase 18's disassembly limb, pre-authorized.
+**Mints no claim:** `claims=29` and `provisional=28` are invariants.
+
 ## Shipped Milestone: v0.3.0 Owner-Supplied Content and a Driveable Host (SHIPPED 2026-11-26)
 
 **Goal:** A person can load their own EXEC, GROM and a flat cartridge image into
@@ -139,19 +174,43 @@ v0.2.0 sets are archived under `.planning/milestones/`.
       `mutant` rows; the deviation from the requirement's literal wording is
       recorded in `13-04-SUMMARY.md`, `STATE.md` and beside the unchanged
       `REQUIREMENTS.md` sentence.
-- [ ] A person can wrap a flat cartridge image of their own, at an address they
+- [x] A person can wrap a flat cartridge image of their own, at an address they
       state, into the project's cartridge container with one build-only command,
       and every malformed input is refused by a typed token beside a positive
-      case (`TOOL-07`).
-- [ ] The owner-local route accepts a cartridge image, with every derived-output
+      case (`TOOL-07`) — **Phase 14**, verified 2026-11-25 (eight refusals, one
+      more than planned, because a zero-byte input produced a container the core
+      rejects).
+- [x] The owner-local route accepts a cartridge image, with every derived-output
       refusal extended and the pass path exercised on project-made files
-      (`SCN-03`).
-- [ ] The core can be driven in real time by a host that loads it as a shared
+      (`SCN-03`) — **Phase 14**.
+- [x] The core can be driven in real time by a host that loads it as a shared
       object outside the installed package, proved by an automated frontend that
-      reproduces the runner's nine digest lines (`TOOL-08`).
-- [ ] A tracked shared object is refused by name, the installed package stays
+      reproduces the runner's nine digest lines (`TOOL-08`) — **Phase 15**, and
+      Phase 15 delivered inside its priced line, so no degradation clause fired.
+- [x] A tracked shared object is refused by name, the installed package stays
       eleven files, and the release-decision line states that no host artifact
-      and no content ships (`PKG-06`).
+      and no content ships (`PKG-06`) — **Phase 16**.
+
+**v0.4.0 Active (Phases 17 to 20; `claims=29` and `provisional=28` are
+invariants — this milestone mints no claim).**
+
+- [ ] The hosted cost window is recomputed by arithmetic before anything is
+      priced, the eight wrap refusal tokens are documented under `docs/`, one id
+      guards the wrap-to-shim join, the source-archive letter is corrected, and
+      the count-gate contract is recorded with a mechanism (`EV-08`).
+- [ ] A scripted, headless inspection surface exists as a build-only tool:
+      disassembly, breakpoints and a cycle-stamped access trace over the
+      side-effect-free seams, with a liveness guard whose stand-in fails
+      (`TOOL-02`, promoted from the deferred list).
+- [ ] Trace and disassembly output over operator content is an operator-local
+      rights-bearing artifact: refused inside the work tree, `ivst` refused by
+      name, never a golden, fixture, CI artifact or claim artifact (`TOOL-09`).
+- [ ] The four rival display-path rules are separated diagonally by authored
+      guests, and the default is either decided with both settings pinned and
+      every dependent expectation retargeted in one commit, or recorded unchanged
+      with the rivals named (`VID-07`).
+- [ ] The D10-VID-08 hardware question is a named packet of the exact trace lines
+      a probe must contradict, as a handoff row no claim cites (`VID-08`).
 
 ### Out of Scope (for now — not permanent ceilings)
 
@@ -299,6 +358,12 @@ These come from a researched fan-out recommendation that was auto-adopted. Each 
 | D-50 | **The claim ceiling is enforced mechanically** (v0.3.0, Delegated decision 2026-11-26): an `established` claim must be `source-expectation` resting on a `tier1-primary-doc` dependency; no other tier may stand `established`. `CL-0002` is the only claim this permits, and it is checked rather than assumed. This is the mechanical half of D-32 and it closes audit gap G-09 | Reversal evidence: D10 or D11 performed, after which behavioural claims may legitimately rise above `provisional` |
 | D-32 | **The provisional ceiling is a behavioural-claim ceiling, and it is stated as one** (v0.3.0 housekeeping 2026-11-26, closing audit gap G-09's ambiguity; Delegated decision, owner authorization 2026-11-09). GUARDRAILS-v0.2 §2.8 said "a claim never rises above `provisional` while D10 and D11 are unperformed", and `tools/check/kinds/claim.cmake` does not enforce it, so every phase quoted `claims=28 provisional=27` as if it discharged the rule. The rule was written one class too wide: D10 (hardware measurement) and D11 (owner-local EXEC/GROM runs) gate claims about **what the machine does**. `CL-0002` is a `source-expectation` claim that a printed figure names the STIC part and crystal, its three fields carry `tier1-primary-doc` tags, and no run, hardware measurement or owner image is involved — so its `established` standing is correct and is **not** an exemption from the ceiling. The ceiling applies unchanged to every `original-diagnostic`, `deterministic-repeatability`, `installed-host-behavior`, `playable-guest-progress`, `public-vector` and `independent-implementation-comparison` claim, all of which rest on runs. The mechanical check that makes this distinction enforceable — an `established` claim must be `source-expectation` resting on a `tier1-primary-doc` dependency, and no other tier may stand `established` — is the first row of the next gate-hardening pass, priced as gate content, not smuggled in as a housekeeping edit | Reversal evidence: an owner-approved hardware measurement (D10) or a performed D11 run, after which behavioural claims may legitimately rise above `provisional`; or a `source-expectation` claim shown to rest on a page the project never read |
 
+| D-52 | **The inspection surface wraps existing seams; the core does not grow a sink** (v0.4.0, Delegated decision 2026-11-26). The trace reads through the side-effect-free `ivs_machine_peek` path and the per-unit access trace the core already has, whose own contract states the machine state, the log and the samples do not depend on it. The tool is a build-only executable shaped like `tools/flatwrap`: its own target under the existing presets, no install rule, never installed, outside the eleven-path prefix, its source shipped in the source archive. **No new core function, no new sink, no file I/O in the core, no new installed file** — which is what keeps the phase off the retarget table entirely. If an exact ABI is ever needed by a host, that is a separate decision with its licence text read first | Reversal evidence: a consumer needs the trace in-process inside the core (then it is a core feature with a digest and an API row, priced as such); or `c-build` cannot build the tool under both existing presets without a third configuration |
+| D-53 | **Trace and disassembly output is an operator-local rights-bearing artifact** (v0.4.0, Delegated decision 2026-11-26). One question-shaped row, `data/rights/inspection-output.json`, `disposition: owner-local-only`, `source: null`, `taken: "nothing"`, tokens `trace-file`, `disassembly-dump`, `inspection-dump`. The tool refuses an output path inside the work tree except under the ignored `refs/` (token `inspect-output-tree`), refuses an existing file, and refuses any extension but `ivst`; `ivst` joins `.gitignore` and `binary-ext.txt` in the same commit and the claim-artifact predicate refuses it. **No trace or disassembly is ever committed, whatever its content** — project-authored or operator. The naming limb widens by one exact page (`docs/inspection.md`) and by zero tokens; `rights-pinned.ids` stays at four pairs | Reversal evidence: a text-integrity need for a committed `.ivst` moves the rule to a dedicated path refusal with its own control; or a page that must spell a rights token becomes a priced pin |
+| D-54 | **A display-path default is decided by discrimination, never by fit** (v0.4.0, Delegated decision 2026-11-26). A default may change only when an authored guest's observation moves under that field **and under no other**, at the default of the remaining three, across the 16-cell sweep of the four rival fields; pairwise-distinct traces alone prove nothing, because different guests differ trivially. A flip that merely makes a frame appear is a probe result, not a decision. If no rule discriminates, the milestone exits "default unchanged, observation appended, rivals named" — a success, not a failure. A decided value is pinned by two ids, one per setting, each building the alternate parameter row explicitly, and the field stays tagged `unknown-default-chosen` because the observation is not a hardware probe (D-51) | Reversal evidence: a D10 hardware probe (the D10-VID-08 resolver) that settles the rule directly; or a discriminating instrument that turns out to perturb the run it observes, which would make every trace result inadmissible |
+| D-55 | **Cost is priced locally and monitored hosted** (v0.4.0, Delegated decision 2026-11-26). The hosted last-five `cpu_s` window spans 221 cpu-s, 60 percent of its own median, so a phase's 1 to 3 cpu-s addition is at most 1.4 percent of the span: **the hosted median cannot price a phase.** A phase is priced from an alternated local measurement (before and after, times 1.675 for the hosted scale) against the allowance recomputed from `.planning/ci-runs.tsv`, and the hosted row is recorded to monitor, not to decide. `r` stays retired as a decision input; the standing figures are `cpu_s` and the measured per-step profile. The allowance for v0.4.0 is 21 hosted cpu-s and the milestone prices 4.72 | Reversal evidence: a hosted runner whose `build_s` is stable across a milestone (then `r` becomes a usable normaliser again), or a local-to-hosted scale factor measured to differ from 1.675 by more than 25 percent on three consecutive rows |
+| D-56 | **The count-gate contract is a planner obligation with a mechanism** (v0.4.0, Delegated decision 2026-11-26). Every count gate names the file it counts; every baseline names the plan's own start commit sha and is measured there; no verify block decides an outcome by a pipeline tail. v0.3.0's nine recorded plan defects were all this one class — an automated gate a correct implementation cannot satisfy — and three checker passes per phase did not catch them, so the rule becomes a numbered lesson (`PLAN-LESSONS` 32) with a `mutant` row over an existing selftest as its mechanism rather than a paragraph in a retrospective | Reversal evidence: two consecutive phases whose plans produce no gate-satisfiability defect without the mechanism (then the mechanism is retired by measurement, not by preference) |
+
 D4, D6 and D12 were decided by the fan-out protocol on 2026-11-11; D7 on 2026-11-12 (Phase 5), D8 on 2026-11-12 (Phase 6) (Delegated decision, owner authorization 2026-11-09).
 
 Phase 5 notes on the register above (plan 05-12, 2026-11-12; Delegated decision, owner authorization 2026-11-09; nothing here is a new owner decision and each row is reversible by the evidence in its last column):
@@ -390,4 +455,4 @@ This document evolves at phase transitions and milestone boundaries.
    of exact tested artifact targeted when rights/readiness/authority permit
 
 ---
-*Last updated: 2026-11-26 at the v0.3.0 milestone close — audit passed (9/9 requirements, 0 broken flows), archive in `.planning/milestones/`, one claim (`CL-0029`, `deterministic-repeatability`, `provisional`), eight handoff rows `evidence: none`, and no claim above `provisional` while D10 and D11 are unperformed*
+*Last updated: 2026-11-26 at the v0.4.0 milestone opening — the rolling roadmap re-triaged, the upstream scope frozen in `.planning/MILESTONE-CONTEXT.md` and the five `v0.4.0-scoping-*.md` records, decisions D-52 to D-56 recorded, and `GUARDRAILS-v0.4.md` superseding `GUARDRAILS-v0.3.md` (whose V1–V10 rows carry forward). v0.3.0 shipped: 9/9 requirements, 0 broken flows, one claim (`CL-0029`, `provisional`), eight handoff rows `evidence: none`. v0.4.0 mints no claim; `claims=29` and `provisional=28` are invariants, and no claim exceeds `provisional` while D10 and D11 are unperformed*

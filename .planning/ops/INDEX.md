@@ -12,7 +12,8 @@ this index first.**
 | `AGENTS.md` | Project instructions: owner direction, workflow, engineering and evidence rules, the milestone ritual pointer |
 | `.planning/AUTONOMY.md` | Owner delegation, the discuss fan-out protocol, the verification protocol (shift left), the CI-efficiency rule, **green-locally-before-push**, **process/container/resource cleanup (`ivs-<purpose>`)**, the release/CD flow, the hygiene check, the milestone ritual, local CI replay (`act`, `tools/gate-linux.sh`) |
 | `.planning/ops/MILESTONE-RITUAL.md` | The six-step ritual every new milestone runs: refresh rolling roadmap → inspect → fan out → upstream scoping pass → freeze and run → one command; plus the mandatory clean-state close |
-| `.planning/ops/GUARDRAILS-v0.3.md` | **Current.** The retarget table V1–V11 (what must move in the same commit as what), the milestone rules (no new step/fault/golden; cost is `cpu_s`; the checkpoint vocabulary; rights before bytes), the tier ceilings, the definition of done, the discuss/verify boilerplate, the close-state checklist |
+| `.planning/ops/GUARDRAILS-v0.4.md` | **Current.** The retarget table W1–W10 (what must move in the same commit as what), the milestone rules (no new step/fault/golden/claim; cost is `cpu_s`, priced locally and monitored hosted; the checkpoint vocabulary; the instrument wraps seams and the core gains no sink; a default is decided by discrimination, never by fit; rights before bytes), the tier ceilings, the definition of done, the discuss/verify boilerplate, the close-state checklist |
+| `.planning/ops/GUARDRAILS-v0.3.md` | **Superseded 2026-11-26, kept as recorded.** Its V1–V10 rows carry forward and still bind where `GUARDRAILS-v0.4` cites them; V11 is spent (the ten D-09-06 mechanisms closed at the v0.3.0 close) |
 | `.planning/ops/GUARDRAILS-v0.2.md` | **Superseded 2026-11-26, kept as recorded.** Its R-rows are cited by `GUARDRAILS-v0.3` V5/V7 and still bind where cited |
 | `.planning/ops/EXEC-RULES.md` | What an executor may and may not do (no `gh`, no tags, never stage orchestrator state) |
 | `.planning/ops/RELEASE-OPS.md` | The release step order and the checks P1–P8 |
@@ -31,7 +32,9 @@ this index first.**
 | `.planning/RETROSPECTIVE.md` | What worked, what was inefficient, patterns, key lessons, cross-milestone trends, and **"Carried Into the Next Milestone"** |
 | `.planning/CI-EFFICIENCY.md` | Append-only hosted-run log and the cost rule: budget 7.8, revisit 8.3, the pre-committed lever order, per-phase checkpoints |
 | `.planning/ci-runs.tsv` | The machine-readable hosted rows the cost rule is computed from |
-| `.planning/milestones/<version>-*/` | Archived phases, requirements, roadmap and close record for a shipped milestone |
+| `.planning/milestones/<version>-*/` | Archived phases, requirements, roadmap, context and close record for a shipped milestone |
+| `.planning/MILESTONE-CONTEXT.md` | **Current milestone only.** The frozen upstream artifact: why this milestone, the phase shape, the frozen decisions, the verification strategy, the cost arithmetic, the risks, and what it refuses. Replaced wholesale at each milestone opening; archived as `<version>-CONTEXT.md` |
+| `.planning/research/v<version>-scoping-*.md` | The five frozen upstream scoping outputs of the current milestone (phase decomposition, gate cost, rights/format/packaging, verification, guardrails/autonomy) |
 | `data/claims.json` | The claim ledger: every claim with its profile, evidence tier, artifact and standing |
 | `data/discrepancies.json` | Conflicts and pinned defaults with their resolvers |
 | `data/expected/important-gates.ids` | The registry that ties each requirement to a mechanism that cannot pass vacuously |
