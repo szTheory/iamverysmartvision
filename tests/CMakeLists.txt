@@ -704,8 +704,11 @@ set_tests_properties(headers PROPERTIES SKIP_RETURN_CODE 77 ENVIRONMENT "CC=${CM
 
 # Suite pack (D-26, plan 04-15): ivs_pack --dump-words of every listing of
 # data/expected/listings.ids against the listing step's own parse (cmake -DDUMP=<id> -P
-# tools/check/listing.cmake), byte for byte; two independent parsers, never the core.
-add_test(NAME pack COMMAND sh "${CMAKE_SOURCE_DIR}/tests/pack-tap.sh" "${CMAKE_SOURCE_DIR}" "$<TARGET_FILE:ivs_pack>")
+# tools/check/listing.cmake), byte for byte; two independent parsers, never the core. Plan 14-01
+# passes the wrap tool as a third argument: its seven refusals (each beside its boundary positive),
+# the token-coverage judge and the live digest judge are ids of this suite.
+add_test(NAME pack COMMAND sh "${CMAKE_SOURCE_DIR}/tests/pack-tap.sh" "${CMAKE_SOURCE_DIR}"
+  "$<TARGET_FILE:ivs_pack>" "$<TARGET_FILE:ivs_flatwrap>")
 set_tests_properties(pack PROPERTIES SKIP_RETURN_CODE 77 ENVIRONMENT "CMAKE=${CMAKE_COMMAND}")
 
 # Suite asm (D-16 to D-19, plan 07-03): the project mini-assembler against the hand-assembled listings.

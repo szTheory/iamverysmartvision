@@ -15,19 +15,33 @@
 # it passes only when the comparison fails on a dump with one word patched by ivs_pack --patch.
 # A last case pack.c-include.write-error (review IN-08): a failed --c-include write is the
 # documented write error line, a nonzero exit and no output file.
+# The flatwrap cases (plan 14-01, D-47, TOOL-07) exercise the wrap tool of tools/flatwrap, the second
+# writer of the same container. pack.flatwrap.neg.<token> is minted by a loop over the seven tokens pinned in
+# data/expected/flat-refusals.ids, so a token added to the pin without a case is a finding rather than a silent
+# gap, and each case asserts the refusal and its boundary positive together: exit 1 with exactly one stderr line
+# carrying the token, nothing on stdout and no output file, then exit 0 with one 64-hex line and a container of
+# the exact expected size (and, where the pair is about a value, the value read back from the container).
+# pack.judge.flatwrap-tokens is the coverage judge (the pin against the literals the source can print, and
+# against the tokens the cases observed); pack.judge.flatwrap-digest-live is the digest judge (sha256sum, an
+# implementation other than the core's, over the whole container and over the trailer, shown live by flipping
+# one input byte).
 # Output: the harness TAP shape (header with IVS_TEST_NONCE or none, plan, one result per case,
 # trailer) on stdout and, when IVS_TEST_OUT_DIR is set, in <dir>/pack.txt.
-# Usage: sh pack-tap.sh <source root> <ivs_pack>   Exit: 0 pass, 1 fail, 77 every case skipped.
+# Usage: sh pack-tap.sh <source root> <ivs_pack> <ivs_flatwrap>   Exit: 0 pass, 1 fail, 77 every case skipped.
 # Env: CMAKE (set by ctest to this build's cmake; default cmake), IVS_TEST_NONCE,
 # IVS_TEST_OUT_DIR.
 LC_ALL=C; export LC_ALL
-[ "$#" -eq 2 ] || { printf 'usage: sh pack-tap.sh <source root> <ivs_pack>\n' >&2; exit 1; }
+[ "$#" -eq 3 ] || { printf 'usage: sh pack-tap.sh <source root> <ivs_pack> <ivs_flatwrap>\n' >&2; exit 1; }
 root=$1
 pack=$2
+flatwrap=$3
 cmake=${CMAKE:-cmake}
 inv="$root/data/expected/listings.ids"
 [ -f "$inv" ] || { printf 'pack-tap: no %s\n' "$inv" >&2; exit 1; }
 [ -x "$pack" ] || { printf 'pack-tap: %s is not executable\n' "$pack" >&2; exit 1; }
+[ -x "$flatwrap" ] || { printf 'pack-tap: %s is not executable\n' "$flatwrap" >&2; exit 1; }
+tokens="$root/data/expected/flat-refusals.ids"
+[ -f "$tokens" ] || { printf 'pack-tap: no %s\n' "$tokens" >&2; exit 1; }
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/pack-tap.XXXXXX") || exit 1
 trap 'rm -rf "$tmp"' EXIT
 trap 'exit 1' HUP INT TERM
@@ -168,6 +182,239 @@ elif [ "$(cat "$tmp/inc.err")" != "ivs_pack: write error on $tmp/inc.out" ]; the
 elif [ -e "$tmp/inc.out" ]; then
   ok=0
   printf 'the failed output file was left behind\n' > "$tmp/why"
+fi
+report
+
+# ---- The wrap tool's seven refusals, each beside its boundary positive (plan 14-01, D-47) ----
+# The refusal half of a case: exit 1, exactly one stderr line carrying the token $1, nothing on stdout and
+# no output file at $2. $3 is `rm` to clear the output path first and require it absent afterwards (the
+# ordinary case), or `keep` when the path is the pre-existing file the case is about, whose byte-for-byte
+# survival the case asserts itself. The tool's own arguments follow. Appends the token to $tmp/fw.observed,
+# which pack.judge.flatwrap-tokens compares with the pin.
+fw_refused() {
+  f_tok=$1
+  f_out=$2
+  f_mode=$3
+  shift 3
+  [ "$f_mode" = keep ] || rm -f "$f_out"
+  "$flatwrap" "$@" > "$tmp/fw.out" 2> "$tmp/fw.err"
+  f_rc=$?
+  if [ "$f_rc" -ne 1 ]; then
+    printf 'expected exit 1 with the token %s, got exit %s\n' "$f_tok" "$f_rc" > "$tmp/why"
+  elif [ -s "$tmp/fw.out" ]; then
+    printf 'a refusal wrote on stdout\n' > "$tmp/why"
+  elif [ "$(wc -l < "$tmp/fw.err" | tr -d ' ')" -ne 1 ] || ! grep -q "^ivs_flatwrap: $f_tok: " "$tmp/fw.err"; then
+    { printf 'expected exactly one stderr line ivs_flatwrap: %s: ..., got:\n' "$f_tok"; cat "$tmp/fw.err"; } > "$tmp/why"
+  elif [ "$f_mode" != keep ] && [ -e "$f_out" ]; then
+    printf 'a refusal left an output file\n' > "$tmp/why"
+  else
+    printf '%s\n' "$f_tok" >> "$tmp/fw.observed"
+    return 0
+  fi
+  return 1
+}
+# The boundary positive of a case: exit 0, exactly one 64-hex line on stdout and a container of exactly
+# $2 bytes at $1. The tool's own arguments follow.
+fw_accepted() {
+  f_out=$1
+  f_want=$2
+  shift 2
+  rm -f "$f_out"
+  if ! "$flatwrap" "$@" > "$tmp/fw.out" 2> "$tmp/fw.err"; then
+    { printf 'the boundary positive was refused:\n'; cat "$tmp/fw.err"; } > "$tmp/why"
+  elif [ "$(wc -l < "$tmp/fw.out" | tr -d ' ')" -ne 1 ] || ! grep -q -E '^[0-9a-f]{64}$' "$tmp/fw.out"; then
+    { printf 'stdout is not exactly one 64-hex line:\n'; cat "$tmp/fw.out"; } > "$tmp/why"
+  elif [ "$(wc -c < "$f_out" | tr -d ' ')" != "$f_want" ]; then
+    printf 'the container is %s bytes, expected %s\n' "$(wc -c < "$f_out" | tr -d ' ')" "$f_want" > "$tmp/why"
+  else
+    return 0
+  fi
+  return 1
+}
+# The segment entry of a one-segment container, eight hex digits: addr then len_words, big-endian.
+fw_entry() { od -An -tx1 -v -j 24 -N 4 "$1" | tr -d ' \n'; }
+# The first data word of a container, four hex digits (the data starts at 24 + 8).
+fw_word0() { od -An -tx1 -v -j 32 -N 2 "$1" | tr -d ' \n'; }
+: > "$tmp/fw.observed"
+grep -v '^#' "$tokens" | awk 'NF { print $1 }' > "$tmp/fw.tokens"
+dd if=/dev/zero of="$tmp/fl.2" bs=2 count=1 2> /dev/null
+while read -r tok; do
+  [ -n "$tok" ] || continue
+  n=$((n + 1))
+  tid="pack.flatwrap.neg.$tok"
+  executed=$((executed + 1))
+  ok=1
+  case $tok in
+    flatwrap-length)
+      # 1 byte is not a whole word; 2 bytes is one word, and the container is 24 + 8 + 2 + 32 = 66 bytes.
+      dd if=/dev/zero of="$tmp/fl.1" bs=1 count=1 2> /dev/null
+      fw_refused flatwrap-length "$tmp/fw.out.ivsc" rm "$tmp/fl.1" 4000 "$tmp/fw.out.ivsc" || ok=0
+      if [ "$ok" -eq 1 ]; then
+        fw_accepted "$tmp/fl.len.ivsc" 66 "$tmp/fl.2" 4000 "$tmp/fl.len.ivsc" || ok=0
+      fi
+      ;;
+    flatwrap-word-range)
+      # 0400 is above the container's word maximum 03FF; 03FF is the boundary that must be accepted, and the
+      # word read back from the container is the value the pair is about.
+      printf '\004\000' > "$tmp/fl.400"
+      printf '\003\377' > "$tmp/fl.3ff"
+      fw_refused flatwrap-word-range "$tmp/fw.out.ivsc" rm "$tmp/fl.400" 4000 "$tmp/fw.out.ivsc" || ok=0
+      if [ "$ok" -eq 1 ]; then
+        fw_accepted "$tmp/fl.3ff.ivsc" 66 "$tmp/fl.3ff" 4000 "$tmp/fl.3ff.ivsc" || ok=0
+      fi
+      if [ "$ok" -eq 1 ] && [ "$(fw_word0 "$tmp/fl.3ff.ivsc")" != 03ff ]; then
+        ok=0
+        printf 'the container word is %s, expected 03ff\n' "$(fw_word0 "$tmp/fl.3ff.ivsc")" > "$tmp/why"
+      fi
+      ;;
+    flatwrap-words)
+      # This pair is a token pair, not a refuse-to-accept pair, and the arithmetic is why:
+      # IVS_IVSC_MAX_SEGMENT_WORDS is 65,535, so a one-segment writer cannot encode 65,536 words at all, and
+      # $4000 + 65536 = $14000 crosses $10000 first. So 65,537 words (131,074 bytes) is refused by the count
+      # rule and 65,536 words (131,072 bytes) is refused by the crossing rule, which pins the count rule's
+      # threshold at exactly 65,536 and proves the writer never emits a wrapped or zero len_words. The real
+      # acceptance boundary is flatwrap-cross's pair (49,152 words at 4000).
+      dd if=/dev/zero of="$tmp/fl.65537" bs=65537 count=2 2> /dev/null
+      dd if=/dev/zero of="$tmp/fl.65536" bs=65536 count=2 2> /dev/null
+      fw_refused flatwrap-words "$tmp/fw.out.ivsc" rm "$tmp/fl.65537" 4000 "$tmp/fw.out.ivsc" || ok=0
+      if [ "$ok" -eq 1 ]; then
+        fw_refused flatwrap-cross "$tmp/fw.out.ivsc" rm "$tmp/fl.65536" 4000 "$tmp/fw.out.ivsc" || ok=0
+      fi
+      ;;
+    flatwrap-base)
+      # 3FFF is below the lowest base an accepted image may state; 4000 is that boundary.
+      fw_refused flatwrap-base "$tmp/fw.out.ivsc" rm "$tmp/fl.2" 3FFF "$tmp/fw.out.ivsc" || ok=0
+      if [ "$ok" -eq 1 ]; then
+        fw_accepted "$tmp/fl.base.ivsc" 66 "$tmp/fl.2" 4000 "$tmp/fl.base.ivsc" || ok=0
+      fi
+      ;;
+    flatwrap-cross)
+      # $10000 - $4000 = $C000 = 49,152 words is the largest image any accepted base can hold, and its last
+      # word sits at $FFFF; one word more crosses $10000. 24 + 8 + 2 x 49,152 + 32 = 98,368 bytes.
+      dd if=/dev/zero of="$tmp/fl.49153" bs=49153 count=2 2> /dev/null
+      dd if=/dev/zero of="$tmp/fl.49152" bs=49152 count=2 2> /dev/null
+      fw_refused flatwrap-cross "$tmp/fw.out.ivsc" rm "$tmp/fl.49153" 4000 "$tmp/fw.out.ivsc" || ok=0
+      if [ "$ok" -eq 1 ]; then
+        fw_accepted "$tmp/fl.cross.ivsc" 98368 "$tmp/fl.49152" 4000 "$tmp/fl.cross.ivsc" || ok=0
+      fi
+      if [ "$ok" -eq 1 ] && [ "$(fw_entry "$tmp/fl.cross.ivsc")" != 4000c000 ]; then
+        ok=0
+        printf 'the entry is %s, expected 4000c000 (addr 4000, len_words C000, ending at FFFF)\n' \
+          "$(fw_entry "$tmp/fl.cross.ivsc")" > "$tmp/why"
+      fi
+      ;;
+    flatwrap-output-tree)
+      # The rule compares the output's physical parent directory, so the literal spelling, a `..` spelling
+      # and a symlink to a directory inside the tree are the same answer; outside the tree is accepted.
+      mkdir -p "$root/build" "$tmp/linkdir"
+      ln -sfn "$root/build" "$tmp/linkdir/inside"
+      rm -f "$root/build/fw-out.ivsc"
+      fw_refused flatwrap-output-tree "$root/build/fw-out.ivsc" rm "$tmp/fl.2" 4000 "$root/build/fw-out.ivsc" || ok=0
+      if [ "$ok" -eq 1 ]; then
+        fw_refused flatwrap-output-tree "$root/tools/../build/fw-out.ivsc" rm "$tmp/fl.2" 4000 \
+          "$root/tools/../build/fw-out.ivsc" || ok=0
+      fi
+      if [ "$ok" -eq 1 ]; then
+        fw_refused flatwrap-output-tree "$tmp/linkdir/inside/fw-out.ivsc" rm "$tmp/fl.2" 4000 \
+          "$tmp/linkdir/inside/fw-out.ivsc" || ok=0
+      fi
+      if [ "$ok" -eq 1 ]; then
+        fw_accepted "$tmp/fl.tree.ivsc" 66 "$tmp/fl.2" 4000 "$tmp/fl.tree.ivsc" || ok=0
+      fi
+      ;;
+    flatwrap-output-exists)
+      # The point of the exclusive create: the refused run must leave the existing file byte-identical, so a
+      # writer that truncates first cannot pass on its exit status.
+      printf 'keep this file\n' > "$tmp/fl.existing"
+      cp "$tmp/fl.existing" "$tmp/fl.existing.before"
+      fw_refused flatwrap-output-exists "$tmp/fl.existing" keep "$tmp/fl.2" 4000 "$tmp/fl.existing" || ok=0
+      if [ "$ok" -eq 1 ] && ! cmp -s "$tmp/fl.existing" "$tmp/fl.existing.before"; then
+        ok=0
+        printf 'the refused run changed the existing file\n' > "$tmp/why"
+      fi
+      if [ "$ok" -eq 1 ]; then
+        fw_accepted "$tmp/fl.new.ivsc" 66 "$tmp/fl.2" 4000 "$tmp/fl.new.ivsc" || ok=0
+      fi
+      ;;
+    *)
+      ok=0
+      printf 'no case for the pinned token %s\n' "$tok" > "$tmp/why"
+      ;;
+  esac
+  report
+done < "$tmp/fw.tokens"
+
+# pack.judge.flatwrap-tokens: the pinned tokens are the tokens the source can print, once each and
+# well-formed, and every one of them was observed by a case above.
+n=$((n + 1))
+tid=pack.judge.flatwrap-tokens
+executed=$((executed + 1))
+ok=1
+: > "$tmp/why"
+sort "$tmp/fw.tokens" > "$tmp/fw.tokens.sorted"
+sort -u "$tmp/fw.tokens" | cmp -s - "$tmp/fw.tokens.sorted" || { ok=0; printf 'a token is pinned twice\n' >> "$tmp/why"; }
+grep -v -E '^flatwrap-[a-z][a-z-]*$' "$tmp/fw.tokens" | sed 's/^/malformed token: /' >> "$tmp/why"
+grep -o '"flatwrap-[a-z-]*"' "$root/tools/flatwrap/flatwrap.c" | tr -d '"' | sort -u > "$tmp/fw.src"
+if ! cmp -s "$tmp/fw.src" "$tmp/fw.tokens.sorted"; then
+  ok=0
+  { printf 'tokens the source can print (<) against pinned tokens (>)\n'; diff "$tmp/fw.src" "$tmp/fw.tokens.sorted"; } >> "$tmp/why"
+fi
+sort -u "$tmp/fw.observed" > "$tmp/fw.observed.sorted"
+if ! cmp -s "$tmp/fw.observed.sorted" "$tmp/fw.tokens.sorted"; then
+  ok=0
+  { printf 'tokens a case observed (<) against pinned tokens (>)\n'; diff "$tmp/fw.observed.sorted" "$tmp/fw.tokens.sorted"; } >> "$tmp/why"
+fi
+[ ! -s "$tmp/why" ] || ok=0
+report
+
+# pack.judge.flatwrap-digest-live: the printed digest is sha256sum of the whole container and the trailer is
+# sha256sum of every byte before it (an implementation other than the core's), and the equality is shown live:
+# the same input wrapped twice gives the same digest, and the same input with one byte flipped (00 00 -> 00 01,
+# still at most 03FF) gives a different digest and a different trailer. A judge that accepted the same digest
+# twice would be vacuous, so that limb is the liveness guard.
+n=$((n + 1))
+tid=pack.judge.flatwrap-digest-live
+executed=$((executed + 1))
+ok=1
+dd if=/dev/zero of="$tmp/dg.a" bs=4 count=1 2> /dev/null
+printf '\000\000\000\001' > "$tmp/dg.b"
+rm -f "$tmp/dg1.ivsc" "$tmp/dg2.ivsc" "$tmp/dg3.ivsc"
+dg1=$("$flatwrap" "$tmp/dg.a" 4000 "$tmp/dg1.ivsc" 2> "$tmp/dg.err")
+dg1_rc=$?
+dg2=$("$flatwrap" "$tmp/dg.a" 4000 "$tmp/dg2.ivsc" 2> "$tmp/dg.err")
+dg2_rc=$?
+dg3=$("$flatwrap" "$tmp/dg.b" 4000 "$tmp/dg3.ivsc" 2> "$tmp/dg.err")
+dg3_rc=$?
+if [ "$dg1_rc" -ne 0 ] || [ "$dg2_rc" -ne 0 ] || [ "$dg3_rc" -ne 0 ]; then
+  ok=0
+  { printf 'a wrap failed (exit %s %s %s):\n' "$dg1_rc" "$dg2_rc" "$dg3_rc"; cat "$tmp/dg.err"; } > "$tmp/why"
+elif [ "$dg1" != "$dg2" ]; then
+  ok=0
+  printf 'the same input wrapped twice gave %s and %s\n' "$dg1" "$dg2" > "$tmp/why"
+elif [ "$dg1" != "$("$cmake" -E sha256sum "$tmp/dg1.ivsc" | cut -d ' ' -f 1)" ]; then
+  ok=0
+  printf 'the printed digest %s is not sha256sum of the whole container\n' "$dg1" > "$tmp/why"
+elif [ "$dg1" = "$dg3" ]; then
+  ok=0
+  printf 'judge-vacuous: flipping one input byte left the digest at %s\n' "$dg1" > "$tmp/why"
+else
+  for f in dg1 dg3; do
+    dg_size=$(wc -c < "$tmp/$f.ivsc" | tr -d ' ')
+    dd if="$tmp/$f.ivsc" of="$tmp/$f.body" bs=1 count=$((dg_size - 32)) 2> /dev/null
+    dd if="$tmp/$f.ivsc" of="$tmp/$f.trail" bs=1 skip=$((dg_size - 32)) 2> /dev/null
+    dg_want=$("$cmake" -E sha256sum "$tmp/$f.body" | cut -d ' ' -f 1)
+    dg_got=$(od -An -tx1 -v "$tmp/$f.trail" | tr -d ' \n')
+    if [ "$dg_got" != "$dg_want" ]; then
+      ok=0
+      printf 'the trailer of %s is %s, sha256 of the first %s bytes is %s\n' "$f" "$dg_got" "$((dg_size - 32))" "$dg_want" > "$tmp/why"
+      break
+    fi
+    eval "dg_trail_$f=\$dg_got"
+  done
+  if [ "$ok" -eq 1 ] && [ "$dg_trail_dg1" = "$dg_trail_dg3" ]; then
+    ok=0
+    printf 'judge-vacuous: flipping one input byte left the trailer at %s\n' "$dg_trail_dg1" > "$tmp/why"
+  fi
 fi
 report
 

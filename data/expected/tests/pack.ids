@@ -20,3 +20,33 @@ pack.judge.patched-word
 # pack.c-include.write-error (review IN-08): a failed write of --c-include is the documented
 # write error line, a nonzero exit and no output file.
 pack.c-include.write-error
+# The wrap tool (plan 14-01, D-47, TOOL-07): one case per token pinned in data/expected/flat-refusals.ids,
+# minted by a loop over that file, each asserting the refusal (exit 1, one stderr line with the token, nothing
+# on stdout, no output file) and its boundary positive (exit 0, one 64-hex line, a container of the exact
+# expected size, and the value read back where the pair is about a value).
+# pack.flatwrap.neg.flatwrap-length: 1 byte refused, 2 bytes accepted as one word.
+pack.flatwrap.neg.flatwrap-length
+# pack.flatwrap.neg.flatwrap-word-range: 0400 refused, 03FF accepted and its container word is 03FF.
+pack.flatwrap.neg.flatwrap-word-range
+# pack.flatwrap.neg.flatwrap-words: a token pair, not a refuse-to-accept pair. 65,537 words is refused by the
+# count rule and 65,536 words by the crossing rule, because IVS_IVSC_MAX_SEGMENT_WORDS is 65,535 and
+# $4000 + 65536 = $14000 crosses $10000 first; the case pins the count rule's threshold at 65,536.
+pack.flatwrap.neg.flatwrap-words
+# pack.flatwrap.neg.flatwrap-base: base 3FFF refused, 4000 accepted.
+pack.flatwrap.neg.flatwrap-base
+# pack.flatwrap.neg.flatwrap-cross: 49,153 words at 4000 refused, 49,152 accepted with its last word at FFFF
+# (the entry reads 4000c000).
+pack.flatwrap.neg.flatwrap-cross
+# pack.flatwrap.neg.flatwrap-output-tree: the literal spelling, a `..` spelling and a symlink to a directory
+# inside the work tree are all refused; a path outside it is accepted.
+pack.flatwrap.neg.flatwrap-output-tree
+# pack.flatwrap.neg.flatwrap-output-exists: an existing file is refused and left byte-identical; a new path is
+# accepted.
+pack.flatwrap.neg.flatwrap-output-exists
+# pack.judge.flatwrap-tokens: the pinned tokens are the literals tools/flatwrap/flatwrap.c can print, once each
+# and well-formed, and every one of them was observed by a case above.
+pack.judge.flatwrap-tokens
+# pack.judge.flatwrap-digest-live: the printed digest is sha256sum of the whole container and the trailer is
+# sha256sum of every byte before it; the same input twice gives the same digest and one flipped input byte moves
+# both, which is the liveness guard.
+pack.judge.flatwrap-digest-live
