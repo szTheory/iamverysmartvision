@@ -115,12 +115,12 @@ files.
 </details>
 
 <details>
-<summary>🚧 v0.3.0 Owner-Supplied Content and a Driveable Host (Phases 13 to 16)</summary>
+<summary>✅ v0.3.0 Owner-Supplied Content and a Driveable Host (Phases 13 to 16) — SHIPPED 2026-11-26</summary>
 
-- [ ] Phase 13: Rights Ledger and Enforced Claim Ceiling — one question-shaped rights row per content question, an unsourced-`cleared` refusal, a refused-spelling refusal, D-32's `established`-claim check, and the ten D-09-06 mechanisms registered
-- [ ] Phase 14: Cartridge Route and Real-Content Conformance — a build-only wrap at an operator-stated base with seven typed refusals each beside its positive, a cartridge role in the owner-local route, and the first real-content blocker fixed, pinned and retargeted
-- [ ] Phase 15: Build-Only Host and the Fake-Frontend Harness — a shared object outside the core and the install list, proved by a harness that reproduces the runner's nine digest lines, guarded three ways (droppable)
-- [ ] Phase 16: Owner Route, Claim and Release Posture — one documented route from the source archive, handoff rows, shared objects refused by name, and a recomputed release decision
+- [x] Phase 13: Rights Ledger and Enforced Claim Ceiling — one question-shaped rights row per content question, an unsourced-`cleared` refusal, a refused-spelling refusal, D-32's `established`-claim check, and the ten D-09-06 mechanisms registered
+- [x] Phase 14: Cartridge Route and Real-Content Conformance — a build-only wrap at an operator-stated base with seven typed refusals each beside its positive, a cartridge role in the owner-local route, and the first real-content blocker fixed, pinned and retargeted
+- [x] Phase 15: Build-Only Host and the Fake-Frontend Harness — a shared object outside the core and the install list, proved by a harness that reproduces the runner's nine digest lines, guarded three ways (droppable)
+- [x] Phase 16: Owner Route, Claim and Release Posture — one documented route from the source archive, handoff rows, shared objects refused by name, and a recomputed release decision
 
 </details>
 
@@ -509,7 +509,7 @@ end-to-end flows; the debt is the recorded, accepted register, not new gaps.
 its entry gate, release `v0.2.0` published as a pre-release on the artifact
 commit `8f017e7`. Its phase details are collapsed above.
 
-### v0.3.0 — scoped 2026-11-26 (in progress)
+### v0.3.0 — scoped 2026-11-26 (shipped 2026-11-26)
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
