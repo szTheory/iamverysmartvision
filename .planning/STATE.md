@@ -3,19 +3,19 @@ gsd_state_version: "1.0"
 milestone: v0.3.0
 milestone_name: Owner-Supplied Content and a Driveable Host (Phases 13 to 16)</summary>
 current_phase: 16
-current_phase_name: Owner Route, Claim and Release Posture
-current_plan: 5
-status: verifying
-stopped_at: Completed 16-05-PLAN.md (the phase close: two shells, one container, one verdict, the signed validation record); Phase 16 executed 5/5, awaiting verify-work
-last_updated: "2026-11-26T11:14:56.000Z"
+current_plan: Not started
+status: completed
+stopped_at: Phase 16 complete — all phases complete
+last_updated: "2026-11-26T12:54:58.074Z"
 last_activity: 2026-11-26
-last_activity_desc: Phase 16 executed 5/5 (owner route, claim and release posture), transitioned to verification
-state_head: ed1622a7eca9b0608e550af9374d646f376f921d
+last_activity_desc: Phase 16 complete
+state_head: 93f27abc7c2bd1ee9cd8c3d04441cfa3d7081948
 progress:
   total_phases: 4
   completed_phases: 8
   total_plans: 17
   completed_plans: 17
+  percent: 100
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-11-26)
 
 ## Current Position
 
-Phase: 16 — Owner Route, Claim and Release Posture
-Current Plan: 5 of 5 (executed)
+Phase: 16
+Current Plan: Not started
 Total Plans in Phase: 5
-Status: Phase executed — awaiting `/gsd:verify-work`; the milestone close is the orchestrator's next action
-Last activity: 2026-11-26 — Completed 16-05-PLAN.md, the phase close (two shells, one container, one verdict, the signed validation record)
+Status: All phases complete
+Last activity: 2026-11-26 — Phase 16 complete
 
 Phase 16's fifth and last plan (16-05, the phase close) measured **one** line on one tree under two shells and
 once inside the Ubuntu 24.04 container, reconciled every token the five plans predicted, recorded exactly one
@@ -252,7 +252,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 131
+- Total plans completed: 136
 - Average duration: -
 - Total execution time: -
 
@@ -272,6 +272,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | 13 | 5 | - | - |
 | 14 | 4 | - | - |
 | 15 | 3 | - | - |
+| 16 | 5 | - | - |
 
 *Updated after each plan completion*
 **Per-Plan Metrics:**
@@ -886,7 +887,7 @@ The row itself is left as recorded and this note sits under it.
 ## Session Continuity
 
 Last session: 2026-11-26T10:35:46.199Z
-Stopped at: Completed 16-04-PLAN.md (the committed-direction probe, the recomputed line, PKG-06 Complete); 16-05 next
+Stopped at: Phase 16 complete — all phases complete
 Resume file: None
 
 The Phase 13 close still leaves one thing a later run must do: record the phase's hosted row from
