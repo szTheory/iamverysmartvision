@@ -58,3 +58,4 @@ toy-phase14 fault GOOD_FAULT TOOL-97
 toy-phase14 fault GOOD_FAULT SCN-97
 toy-phase14 fault GOOD_FAULT CPU-97
 toy-phase15 fault GOOD_FAULT TOOL-96
+toy-phase16 fault GOOD_FAULT PKG-96

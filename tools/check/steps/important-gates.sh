@@ -78,6 +78,17 @@
 #            its long-run witness pair, the refused load's rollback with its retry, and the judge
 #            self-control's two-limb guard - five rows in that gate, one gate name, zero new faults,
 #            zero new steps, and no toy line because no requirement is accepted here)
+#   Phase 16 PKG-06 plan 16-04 (one new gate name `release-posture` and its three rows: two `control`
+#            rows naming the committed files-unlisted-binary-so and files-unlisted-binary-dylib
+#            controls, which refuse a shared object by name in the tree, and one `mutant` row naming
+#            the committed pkg-install selftest host-so-absent, which refuses the object in a copy of
+#            the installed prefix; three rows, one gate name, zero new faults, zero new steps. Every
+#            row names a mechanism plan 15-02 already built, so the registration is a pointer; the
+#            rows and the PKG-06 flip land in one commit for the same two-direction reason as Phases
+#            14 and 15, and all ten toy registries and the three toy requirement records gain their
+#            PKG-96 line in that commit. Plan 16-04's own committed-direction probe - a tracked
+#            probe.so refused as files-unlisted-binary with probe.txt at the same place not refused -
+#            is not a row here: it is a throwaway check on the real tree, not a committed mechanism)
 # Resolution of <id> by mechanism:
 #   fault    first column of any data/expected/faults/*.ids (judged by faults-verdict);
 #   control  first column of any data/expected/controls/*.ids (run by tools/check/run-controls.sh);
