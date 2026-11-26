@@ -6,16 +6,16 @@ current_phase: 17
 current_phase_name: Records, Cost Window and the Count-Gate Contract
 current_plan: 3
 status: executing
-stopped_at: Completed 17-02-PLAN.md
-last_updated: "2026-11-26T20:45:13.217Z"
+stopped_at: Completed 17-03-PLAN.md — lesson 32 with its clause-to-mechanism map, the `count-gate` row over the existing `extra-file` case, and the baselines measured at 1dc57c2 (gates 119 to 120, lines 365 to 366, every other token where it was)
+last_updated: "2026-11-26T21:01:59.000Z"
 last_activity: 2026-11-26
-last_activity_desc: Plan 17-02 completed — the refusal tokens, the source-archive letter and the join id
-state_head: be69a5e6c743cf4f2bf651c4549a1e3f2a09f24f
+last_activity_desc: Plan 17-03 completed — lesson 32 and the count-gate contract
+state_head: bfa0815
 progress:
   total_phases: 4
   completed_phases: 8
   total_plans: 3
-  completed_plans: 2
+  completed_plans: 3
 ---
 
 # Project State
@@ -33,8 +33,8 @@ See: .planning/PROJECT.md (updated 2026-11-26)
 Phase: 17 (Records, Cost Window and the Count-Gate Contract) — IN PROGRESS
 Current Plan: 3
 Total Plans in Phase: 3
-Status: Plan 17-02 complete — the eight refusal tokens documented, the source-archive letter corrected in both live documents, and one committed id guarding the flatwrap-to-shim join, with EV-08 Complete
-Last activity: 2026-11-26 - Plan 17-02 completed: the refusal tokens, the source-archive letter and the join id
+Status: Plan 17-03 complete — lesson 32 recorded with its three clauses and a clause-to-mechanism map that names the one clause with no checker, carried by the `count-gate` registry row over the existing `extra-file` case whose committed stand-in the same comparison refuses on every gate run
+Last activity: 2026-11-26 - Plan 17-03 completed: lesson 32 and the count-gate contract
 
 
 ### Planning overrides recorded by the autonomous run
@@ -282,6 +282,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | Phase 16 P04 | 15min | 2 tasks | 17 files |
 | Phase 17 P01 | 19min | 2 tasks | 1 files |
 | Phase 17 P02 | 96min | 3 tasks | 18 files |
+| Phase 17 P03 | 15min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -634,6 +635,7 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 17]: 17-01: checkpoint: reprice (cpu_s 572, build_s 49, gate_s 164 from the last five .planning/ci-runs.tsv rows 584/51/171, 580/51/165, 572/49/164, 530/49/154, 368/35/115, per-column median by sort -n then sed -n 3p; previous window 367/34/115; priced addition 0.11; allowance 21). Recomputed by arithmetic at the plan's own start commit 21d023c, never quoted: the roadmap's prose figures do not survive recomputation, so the record prints the file's own values instead — the seven release-records rows carry build_s 34 to 51 (the roadmap says 47 to 51) and r over the last five rows spans 10.5143 to 11.6735 (the roadmap says 10.6 to 11.7), and r is printed as arithmetic only because lesson 29 retires it as a signal. discharged-within-allowance is not reachable because 572 > 367 + 0.11 by 204.89. lever-required is not reached because the priced addition is 0.11 against the roadmap's 0.10 line, +10 percent and inside the 25 percent repricing threshold, and the cumulative milestone total is 0.11 of 21. The median moved more than the priced addition while the token line is exactly where the plan predicted, so reprice is what the rule names — a runner event, no lever invented. The seven rows were verified present once each (118 data rows over 119 lines, seven counts compared as one whole file against seven lines of 1) and .planning/ci-runs.tsv is byte-identical to what the plan started from. Two-shell: sh and dash final lines cmp clean at 1,520 bytes each; container: one run, gate: PASS, gate-linux: exit 0, gate-time total=249, the four documented host tokens differing (cc=GNU, core-imports=5, archive=sha256, refs-verified=0/4) and no other token. Only the three git ls-files counts moved, by exactly +1, and it is the record file itself.
 - [Phase 17]: The eight flatwrap refusal tokens are documented in the inventory's append-only order, each alone on its line, with the trigger and the accepted boundary; the inventory itself is unchanged at the start commit.
 - [Phase 17]: The flatwrap-to-shim join is one committed id with five limbs and no typed digest value, and its must-fail stand-in is the case's own second container judged by the same shim_join, so plan 15's two-id precedent is not repeated and the 0.10 cpu-s line holds.
+- [Phase 17]: 17-03: lesson 32's three clauses are indented list items with the number inside the item, because the file's column-1 shape is `N. **title**` and a clause written as `1. ` at column 1 would read as lessons 1, 2 and 3 to anything that parses the file by that shape, including the check that the last numbered lesson is 32. The mechanical clause is carried by `count-gate mutant extra-file EV-08`, which points at the `pkg-install` step's existing `extra-file` case (also registered for PKG-01) rather than minting one: `check_inventory` reads the named file data/expected/pkg-install-files.ids and the case's committed stand-in plants share/ivs/stray.txt in a copy of the installed prefix, refused by the same function the real prefix is judged by and re-run on every gate run as `pkg-selftest=20/20`. The gate name is new because the row registers a contract, not a step, and that is what makes `gates` read 120. Clause 3 cites the already-registered `d09-06-registration mutant st-pass-line EV-07` row instead of duplicating it, and clause 2 has no mechanism at all — no gate step parses plans — so it is registered nowhere and the lesson says so in as many words. Baselines measured at start commit 1dc57c2 before the first edit: gates=119 lines=365, registry rows 365, tracked files 2808; after: gates=120 lines=366 with faults=238/238, goldens=29, claims=29, provisional=28, steps=38/38, prefix-files=11 unchanged. Two-shell sh and dash final lines cmp clean, and the container gate ran once after the log was copied aside: gate-linux: exit 0, gates=120 lines=366, gate-time total=258, no ivs- container left behind.
 
 ### Pending Todos
 

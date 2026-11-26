@@ -22,9 +22,11 @@ affects:
   - "Phase 20: the close recomputes the token line, which now ends at `gates=120 lines=366`"
 
 actuals:
-  tokens: 0
+  tokens: 7073
   tasks: 2
-  commits: 0
+  commits: 2
+  plan_head_before: 1dc57c2ebcafd7b94432ce1d9817554f266789b1
+  plan_head_after: bfa0815
 
 tech-stack:
   added: []
@@ -52,7 +54,7 @@ requirements-completed:
   - EV-08
 
 # Metrics
-duration: 0min
+duration: 15min
 completed: 2026-11-26
 status: complete
 ---
