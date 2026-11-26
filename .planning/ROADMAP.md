@@ -283,11 +283,11 @@ posture states plainly that no host artifact and no content ships.
   3. The owner-only questions are `handoffs.ids` rows, `evidence: none`, dispositioned, cited by no claim and by no phase exit criterion.
   4. A tracked shared object is refused by name in both directions, the installed package stays eleven files, and the release-decision line reads: the release ships the static package and the source archive; no shared object, no host shim, no content.
   5. The concurrency lever is taken in one cost-only commit whose summary token line is byte-identical and whose `step.out.<name>` buffers are compared, and the close records one checkpoint line in the section 2.3 vocabulary with `steps=38/38`.
-**Plans**: 5 plans
+**Plans**: 1/5 plans executed
 **Tier ceiling**: no new claim; the claim is minted in Phase 15.
 
 **Wave 1** *(no dependency; the milestone's pre-committed lever, cost-only, is this plan's first commit)*
-- [ ] 16-01-PLAN.md — the concurrency lever taken once: `c-tests` and `c-faults` overlapped in `tools/gate.sh` with one inline build lock in each step, the summary token line byte-identical, each `step.out.<name>` compared, and the before/after arithmetic appended to `CI-EFFICIENCY.md`
+- [x] 16-01-PLAN.md — the concurrency lever taken once: `c-tests` and `c-faults` overlapped in `tools/gate.sh` with one inline build lock in each step, the summary token line byte-identical, each `step.out.<name>` compared, and the before/after arithmetic appended to `CI-EFFICIENCY.md`
 
 **Wave 2** *(blocked on 16-01)*
 - [ ] 16-02-PLAN.md — the owner route from the source archive: the three commands in `docs/owner-images.md`, `--source-route` extended to build, wrap and run them on project-made files, and the transcript appended as `RELEASE-OPS.md` section (j)

@@ -4,19 +4,18 @@ milestone: v0.3.0
 milestone_name: Owner-Supplied Content and a Driveable Host (Phases 13 to 16)</summary>
 current_phase: 16
 current_phase_name: Owner Route, Claim and Release Posture
-current_plan: Not started
-status: planning
-stopped_at: Phase 15 complete, ready to plan Phase 16
-last_updated: "2026-11-26T08:27:20.580Z"
+current_plan: 2
+status: executing
+stopped_at: Completed 16-01-PLAN.md (concurrency lever, cost-only); 16-02 next
+last_updated: "2026-11-26T09:16:49.091Z"
 last_activity: 2026-11-26
 last_activity_desc: Phase 15 complete, transitioned to Phase 16
-state_head: 0fc4d33d8b314629398ec0a55d53c1c2ce64ab4e
+state_head: e9ac9986770dd8d0f984b3afcd16c729493cfb1c
 progress:
   total_phases: 4
   completed_phases: 8
-  total_plans: 12
-  completed_plans: 12
-  percent: 100
+  total_plans: 17
+  completed_plans: 13
 ---
 
 # Project State
@@ -31,10 +30,24 @@ See: .planning/PROJECT.md (updated 2026-11-26)
 ## Current Position
 
 Phase: 16 — Owner Route, Claim and Release Posture
-Current Plan: Not started
-Total Plans in Phase: 3
-Status: Ready to plan
-Last activity: 2026-11-26 — Phase 15 complete, transitioned to Phase 16
+Current Plan: 2
+Total Plans in Phase: 5
+Status: Ready to execute
+Last activity: 2026-11-26 — Completed 16-01-PLAN.md, the cost-only concurrency lever
+
+Phase 16's first plan (16-01, the cost-only concurrency lever) ran the gate at `e9ac998`: `gate: PASS
+steps=38/38 controls=404/404 … faults=238/238 … goldens=29 … gates=118 lines=361 … tests-expected=5042
+tests-executed=5038 tests-skipped=4 tests-missing=0 … claims=29 provisional=28 claim-refs=27
+prefix-files=11 pkg-selftest=20/20 release-selftest=12/12 binaries-listed=0`, exit 0 and byte-identical
+under `sh` and `dash` (`cmp` on `tail -1`, 1509 bytes each), with `gate-time total=71` (`sh`) and 72
+(`dash`) against 79 measured before the change, `gate-cpu` sums 228.23 → 265.58 (inside the 20 % band)
+and `gate-overlap pair=c-faults+c-tests` in the log. `tracked=2783 files=2783 hygiene-files=2783` are
+unchanged because the lever adds no tracked file; `steps`, `faults` and `goldens` are where they were
+frozen. The before/after figures, the subtraction and the byte-identical proof are in `16-01-SUMMARY.md`
+and in `.planning/CI-EFFICIENCY.md`'s 2026-11-26 Phase 16 entry. **No checkpoint word and no allowance
+credit**: the lever buys wall minutes, not ratio, and the phase's single verdict is 16-05's.
+hosted row: not-recorded — no push run for e9ac998 at 2026-11-26; the orchestrator records it from
+sh tools/ci-record.sh <run-id> after the push
 
 Phase 15's closing gate run reads `gate: PASS steps=38/38 controls=404/404 … faults=238/238 …
 goldens=29 … gates=118 lines=358 … tests-expected=5036 tests-executed=5032 tests-skipped=4
@@ -339,6 +352,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | Phase 15 P01 | 17 min | 2 tasks | 12 files |
 | Phase 15 P02 | 22 min | 3 tasks | 17 files |
 | Phase 15 P03 | 48 min | 3 tasks | 27 files |
+| Phase 16 P01 | 14 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -681,6 +695,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 15]: The pixel probe counts delivered pixels (198432 = 13 x 159 x 96), not frames: runner-process.host.frames requires pixel.probes ok <n> to equal video.plane.bytes and be positive, which is the equality the plan's 'pixel.probes ok 13' would have lost.
 - [Phase 15]: No important-gates row is written for the two new binary controls: PKG-06 is Pending until Phase 16 and important-gates.sh refuses a row naming a Pending requirement; a control runs from its directory and its rights.ids line.
 - [Phase 15]: 15-03: checkpoint: reprice (cpu_s 363 438 368 366 359, median 366; build_s 35 39 35 34 34, median 35; gate_s 119 135 122 115 120, median 120; priced addition 1.535; allowance 21). Recomputed by arithmetic from the last five .planning/ci-runs.tsv rows (45718553735, 45720934719, 45723269901, 45747709457, 45751979661), never quoted: the frozen 361/34/118 figures are stale by measurement, by +5/+1/+2. discharged-within-allowance is not reachable because 366 > 361 + 1.535 = 362.535, by 3.465. lever-required is not reached because the cumulative milestone spend is 5.005 of 21 (1.935 from Phase 13, 1.535 from Phase 14 and 1.535 here) and this phase's additions landed at the priced count (steps 38, faults 238 and goldens 29 unmoved, two registry rows, one claim row, thirteen toy files), so no line overran by 25 percent (1.535 against the plan's 1.5 comparison line is +2.33 percent, and 0.055 under the research's frozen 1.59). The median moved more than the priced addition while the token line is where it was predicted, so reprice is what the rule names. container: gate: PASS, gate-time total=279, four documented host tokens differing (cc=GNU, core-imports=5, archive=sha256, refs-verified=0/4) and no other token. Window note: three newer hosted runs exist on GitHub for Phase 14's close (45752237522, 45756308953, 45756570481) and are not in the committed TSV; tools/ci-record.sh is orchestrator-only, so they are not appended here and this verdict must be recomputed if they land.
+- [Phase 16]: The concurrency lever is taken cost-only: c-faults runs in the background, c-tests in the foreground, the partner is joined on both paths and killed by the EXIT trap; both step scripts take one byte-identical inline mkdir build lock because a shared helper file would move the token line
+- [Phase 16]: The measured lever gives back 13 s of the pair's 37 s (gate 79 s to 72 s, cpu inside its band); the frozen 164 to 115 s hosted estimate is recorded as optimistic because an overlap absorbs the smaller member, so the prediction is about 144 s, to be settled by the first hosted row after the push
 
 ### Pending Todos
 
@@ -777,8 +793,8 @@ The row itself is left as recorded and this note sits under it.
 
 ## Session Continuity
 
-Last session: 2026-11-26T07:06:56.112Z
-Stopped at: Phase 15 complete, ready to plan Phase 16
+Last session: 2026-11-26T09:16:48.973Z
+Stopped at: Completed 16-01-PLAN.md (concurrency lever, cost-only); 16-02 next
 Resume file: None
 
 The Phase 13 close still leaves one thing a later run must do: record the phase's hosted row from
