@@ -830,7 +830,8 @@ The member rule is **extension-based only**: `tools/check/release-assets.sh` (he
 the last extension of a member file name (lower case, after the last dot) is a line of binary-ext.txt,
 whatever the list says") and the awk at `tools/check/release-assets.sh:189-195`
 (`k = split(base, part, "."); if (k >= 2 && (tolower(part[k]) in bin)) emit(...)`). **A member named
-`bin/ivs-inspect` has no dot, so no rule refuses it.** The refusable member is the trace artifact:
+`bin/ivs-inspect` has no dot, so no rule refuses it.** *(Corrected: that is true of the binary-by-name limb only;
+see the amendment at the end of this section.)* The refusable member is the trace artifact:
 
 ```
 inspect-ivst-member)
@@ -845,6 +846,21 @@ reading: criterion 5 says "one `release-assets` case refuses it as an archive me
 current rule can refuse is the `.ivst`, so **"it" is the trace artifact, not the binary**. Making the
 binary refusable would need a new name-based rule in `release-assets.sh`, which is a behaviour change
 needing its own positive and negative control — out of this phase's line. `release-selftest=12/12` → `13/13`.
+
+**Amendment (plan revision, owner decision — supersedes the reading above).** The paragraph above is wrong on
+refusability, and the correction is recorded here rather than only in the plan. The extra-member limb
+(`tools/check/release-assets.sh:217` and `:231`) reports **every** member the list does not name, whatever its
+extension, and `tools/check/steps/release-assets.sh:166-171` (`install-extra-member`) is the existing proof of that
+limb. `bin/ivs-inspect` therefore **is** refusable as an unlisted archive member with no new rule, no new control
+and no new step: the eleven-path inventory simply has no `bin/` entry. Criterion 5 says "one `release-assets` case
+refuses **it** as an archive member", where "it" is `ivs_inspect`; the case is `inspect-unlisted-member`, it plants
+`bin/ivs-inspect` and requires `release-assets-extra-member: bin/ivs-inspect`, and its negative limb requires that
+neither `release-assets-binary-member` nor `release-assets-missing-member` appears — the extension-only rule at
+`:202-205` needs a dot in the base name, so a run that reported the binary rule would mean the case passed for the
+wrong reason. The `.ivst` is refused where it belongs and already proved: by the `files` step's binary-by-name rule
+through `tools/check/binary-ext.txt`, and by the committed `files-unlisted-binary-ivst` control. An archive case for
+the `.ivst` would be a third proof of a mechanism proved twice, so it is not written. `release-selftest` still moves
+12/12 → 13/13, one case either way, and the delta table is unchanged. A5 below is closed by this decision.
 
 ### 5.3 The four invariant counts, and where they come from
 
@@ -1090,7 +1106,7 @@ unexpected token as a stop.
 | A2 | `1000` is fetched exactly once and `1002` never in `diag-boot-pass` | §1.9 | the pinned pair is wrong and `break-pair` fails; the plan measures before pinning, so this is a prediction, not a commitment |
 | A3 | `dis` can be implemented from `ROW` + `BITS` for the seven rows the boot stub needs | §1.10 | `18-03` cannot round-trip inside the line and the pre-authorized drop is taken (CONTEXT records the reversal condition) |
 | A4 | One new control dir satisfies both W3's `files-unlisted-*` and W4's unlisted-source limb | §4.2 | a second control is needed and `controls` is 406, not 405 — a one-line correction to the predicted token line |
-| A5 | The `release-assets` case refuses a `.ivst` member, not the extensionless binary | §5.2 | the case cannot be written as criterion 5's words read; needs an owner decision |
+| A5 | ~~The `release-assets` case refuses a `.ivst` member, not the extensionless binary~~ — **withdrawn**: the case refuses `bin/ivs-inspect` as an unlisted archive member | §5.2 | **closed by the owner decision**: §5.2's amendment records the extra-member limb that refuses it, so no new rule is needed and criterion 5 is met as written |
 | A6 | `docs/inspection.md` can be written without a claim word on an untagged line | §8 Pitfall 4 | the wave-1 commit fails the gate and the freeze is delayed; fixable with `[nc]` |
 
 **If A1 fails**, the phase still meets TOOL-02's words ("end at the report's own step tick") but loses the
