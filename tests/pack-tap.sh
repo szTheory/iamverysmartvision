@@ -24,7 +24,10 @@
 # pack.judge.flatwrap-tokens is the coverage judge (the pin against the literals the source can print, and
 # against the tokens the cases observed); pack.judge.flatwrap-digest-live is the digest judge (sha256sum, an
 # implementation other than the core's, over the whole container and over the trailer, shown live by flipping
-# one input byte).
+# one input byte). pack.flatwrap.word-order covers the tool's one option: lo-first swaps the two bytes of each
+# word, hi-first is the default, and the two orders print different digests. pack.flatwrap.usage-word-order
+# covers the other side of that parser: an unknown or missing --word-order value is a usage error (exit 2, the
+# tool's own usage line, no token on it), not a refusal.
 # Output: the harness TAP shape (header with IVS_TEST_NONCE or none, plan, one result per case,
 # trailer) on stdout and, when IVS_TEST_OUT_DIR is set, in <dir>/pack.txt.
 # Usage: sh pack-tap.sh <source root> <ivs_pack> <ivs_flatwrap>   Exit: 0 pass, 1 fail, 77 every case skipped.
@@ -431,6 +434,90 @@ else
     ok=0
     printf 'judge-vacuous: flipping one input byte left the trailer at %s\n' "$dg_trail_dg1" > "$tmp/why"
   fi
+fi
+report
+
+# pack.flatwrap.word-order: the stated word order decides the pairing and hi-first is the default. One word
+# whose two bytes differ (01 02) is wrapped three times: with no flag, with an explicit hi-first and with
+# lo-first. The bytes are chosen so that both orders are legal words -- 0102 and its byte-swap 0201 are at or
+# below the 03FF word maximum, so neither run is refused by the range rule and the case is about the pairing
+# alone. The two container words must be the byte-swap of each other, the two printed digests must differ, the
+# header entry must not move with the option, and the no-flag digest must equal the explicit hi-first one (a
+# default that had drifted to lo-first would pass a swap-only assertion, so this limb is the default's guard).
+n=$((n + 1))
+tid=pack.flatwrap.word-order
+executed=$((executed + 1))
+ok=1
+: > "$tmp/why"
+printf '\001\002' > "$tmp/wo.flat"
+rm -f "$tmp/wo.def.ivsc" "$tmp/wo.hi.ivsc" "$tmp/wo.lo.ivsc"
+wo_def=$("$flatwrap" "$tmp/wo.flat" 4000 "$tmp/wo.def.ivsc" 2> "$tmp/wo.err")
+wo_def_rc=$?
+wo_hi=$("$flatwrap" "$tmp/wo.flat" 4000 "$tmp/wo.hi.ivsc" --word-order hi-first 2> "$tmp/wo.err")
+wo_hi_rc=$?
+wo_lo=$("$flatwrap" "$tmp/wo.flat" 4000 "$tmp/wo.lo.ivsc" --word-order lo-first 2> "$tmp/wo.err")
+wo_lo_rc=$?
+if [ "$wo_def_rc" -ne 0 ] || [ "$wo_hi_rc" -ne 0 ] || [ "$wo_lo_rc" -ne 0 ]; then
+  ok=0
+  { printf 'a wrap failed (exit %s %s %s):\n' "$wo_def_rc" "$wo_hi_rc" "$wo_lo_rc"; cat "$tmp/wo.err"; } > "$tmp/why"
+elif [ "$wo_def" != "$wo_hi" ]; then
+  ok=0
+  printf 'the no-flag digest %s is not the explicit hi-first digest %s, so hi-first is not the default\n' \
+    "$wo_def" "$wo_hi" > "$tmp/why"
+elif [ "$wo_hi" = "$wo_lo" ]; then
+  ok=0
+  printf 'judge-vacuous: lo-first printed the hi-first digest %s, so the two orders are one order\n' \
+    "$wo_hi" > "$tmp/why"
+else
+  wo_whi=$(fw_word0 "$tmp/wo.hi.ivsc")
+  wo_wlo=$(fw_word0 "$tmp/wo.lo.ivsc")
+  wo_swap=$(printf '%s\n' "$wo_whi" | sed 's/\(..\)\(..\)/\2\1/')
+  if [ "$wo_whi" != 0102 ]; then
+    ok=0
+    printf 'the hi-first container word is %s, expected 0102 from the input bytes 01 02\n' "$wo_whi" > "$tmp/why"
+  elif [ "$wo_wlo" != "$wo_swap" ]; then
+    ok=0
+    printf 'the lo-first container word is %s, not the byte-swap %s of the hi-first word %s\n' \
+      "$wo_wlo" "$wo_swap" "$wo_whi" > "$tmp/why"
+  elif [ "$(fw_entry "$tmp/wo.hi.ivsc")" != "$(fw_entry "$tmp/wo.lo.ivsc")" ]; then
+    ok=0
+    printf 'the segment entry moved with the word order (%s against %s)\n' \
+      "$(fw_entry "$tmp/wo.hi.ivsc")" "$(fw_entry "$tmp/wo.lo.ivsc")" > "$tmp/why"
+  fi
+fi
+report
+
+# pack.flatwrap.usage-word-order: the other side of the same parser. A --word-order value outside the two
+# stated words, and a --word-order with no value at all, are file or usage errors, not refusals: exit 2, exactly
+# one stderr line that is the tool's own usage line and so carries no token (the typed surface is the eight
+# refusal tokens of data/expected/flat-refusals.ids and nothing else), nothing on stdout and no output file.
+n=$((n + 1))
+tid=pack.flatwrap.usage-word-order
+executed=$((executed + 1))
+ok=1
+: > "$tmp/why"
+printf '\001\002' > "$tmp/wo.flat"
+wo_use='ivs_flatwrap: usage: ivs_flatwrap <flat> <base> <out> [--word-order hi-first|lo-first]'
+rm -f "$tmp/wo.u1.ivsc" "$tmp/wo.u2.ivsc"
+"$flatwrap" "$tmp/wo.flat" 4000 "$tmp/wo.u1.ivsc" --word-order lo-hi > "$tmp/wo.out1" 2> "$tmp/wo.err1"
+wo_rc1=$?
+"$flatwrap" "$tmp/wo.flat" 4000 "$tmp/wo.u2.ivsc" --word-order > "$tmp/wo.out2" 2> "$tmp/wo.err2"
+wo_rc2=$?
+if [ "$wo_rc1" -ne 2 ] || [ "$wo_rc2" -ne 2 ]; then
+  ok=0
+  printf 'an unknown value exited %s and a missing value %s, expected 2 and 2\n' "$wo_rc1" "$wo_rc2" > "$tmp/why"
+elif [ -s "$tmp/wo.out1" ] || [ -s "$tmp/wo.out2" ]; then
+  ok=0
+  { printf 'a usage error wrote on stdout:\n'; cat "$tmp/wo.out1" "$tmp/wo.out2"; } > "$tmp/why"
+elif [ "$(wc -l < "$tmp/wo.err1" | tr -d ' ')" -ne 1 ] || [ "$(wc -l < "$tmp/wo.err2" | tr -d ' ')" -ne 1 ]; then
+  ok=0
+  { printf 'a usage error did not print exactly one stderr line:\n'; cat "$tmp/wo.err1" "$tmp/wo.err2"; } > "$tmp/why"
+elif ! grep -q -x -F "$wo_use" "$tmp/wo.err1" || ! grep -q -x -F "$wo_use" "$tmp/wo.err2"; then
+  ok=0
+  { printf 'expected the one usage line %s, got:\n' "$wo_use"; cat "$tmp/wo.err1" "$tmp/wo.err2"; } > "$tmp/why"
+elif [ -e "$tmp/wo.u1.ivsc" ] || [ -e "$tmp/wo.u2.ivsc" ]; then
+  ok=0
+  printf 'a usage error left an output file\n' > "$tmp/why"
 fi
 report
 
