@@ -1,7 +1,7 @@
 ---
 gsd_state_version: "1.0"
 milestone: v0.4.0
-milestone_name: scoped 2026-11-26 (in progress)
+milestone_name: Inspectable Machine, One Default Decided
 current_phase: 17
 current_phase_name: Records, Cost Window and the Count-Gate Contract
 status: planning
@@ -645,6 +645,8 @@ Open questions that remain: unusual cartridge memory maps and further import for
 
 Concerns:
 - **The milestone tool appends a stray `</summary>` to `.planning/state.json`'s `milestone` string** (seen at the v0.2.0 close as audit G-06 and again at the v0.3.0 switch, 2026-11-26, where it took the token from the ROADMAP's `<details><summary>` line). Corrected by hand in the same commit both times. It is a tool defect, not a record defect: check `grep -c '</summary>' .planning/state.json` at every milestone boundary until the tool is fixed.
+- **The milestone tool derives `milestone_name` from the ROADMAP's generated archived-milestone heading, not from its own "Current milestone:" line.** At the v0.4.0 opening it wrote `milestone_name: scoped 2026-11-26 (in progress)` into this file's frontmatter and `"milestone": "v0.4.0 — scoped 2026-11-26 (in progress)"` into `.planning/state.json`, both taken from `### v0.4.0 - scoped 2026-11-26 (in progress)` (`ROADMAP.md:410`) instead of `Inspectable Machine, One Default Decided`. Corrected by hand on 2026-11-26 in the same commit as the Phase 17 planning state; the generated heading is left as the tool wrote it, so check both fields at every milestone boundary until the tool is fixed. This is a tool defect, not a record defect, and it is the same class as the `</summary>` leak below.
+- **Two deferred rows are discharged by Phase 17 and must be closed at the v0.4.0 close, not left to look open:** `W3` ("the `flatwrap` → host-shim join is true today but no committed case guards it", Deferred At "Phase 16 close") is closed by `runner-process.judge.flatwrap-shim`; `W4` ("none of the eight `flatwrap` typed tokens appears under `docs/`", Deferred At "Phase 16 close") is closed by the `## Wrap tool refusals` section of `docs/formats/ivsc-v1.md`. Both rows say "the milestone that next touches the container format or the shim", which is this one. They are named here because the plans do not carry them and a records gap is cheaper to close from a note than from a replan.
 - 8 phases exceeds `standard` granularity guidance (4-6); justified by five high-uncertainty subsystems (PIT-18). Revisit at milestone discussion.
 - No tier-1 AY-3-8914 datasheet found; STIC timing constants disputed (C1-C4); controller matrix from one LOW source (C16).
 - The release flow after Phase 8 is **done as far as the release itself**: pull request 7 merged as `3fe5373`, REL-01 stage 2 recorded, `v0.1.0` tagged on the artifact commit and published as a pre-release after P1 to P8 held. `git.create_tag` was set to `false` in its own commit (`6f800cc`) before the milestone tool was used. What remains of the milestone is the lifecycle (audit, complete, cleanup) and, as settings actions, the branch and tag rulesets recommended in `.planning/AUTONOMY.md` section 1, which are still **not applied**.
