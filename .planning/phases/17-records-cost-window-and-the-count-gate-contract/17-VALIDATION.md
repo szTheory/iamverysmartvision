@@ -43,7 +43,7 @@ created: "2026-11-26"
 | 17-02-01 | 02 | 2 | EV-08 (c2) | — | N/A | verify | `grep '^flatwrap-' data/expected/flat-refusals.ids > /tmp/a; grep '^flatwrap-' docs/formats/ivsc-v1.md > /tmp/b; diff /tmp/a /tmp/b` is silent | ✅ | ⬜ pending |
 | 17-02-02 | 02 | 2 | EV-08 (c3) | — | N/A | suite | `runner-process.judge.flatwrap-shim` in `tests/runner-process-tap.sh`, both presets | ❌ W0 | ⬜ pending |
 | 17-02-03 | 02 | 2 | EV-08 (c4) | — | N/A | verify | the corrected `RELEASE-OPS.md` (i) line occurs verbatim twice in `docs/packaging.md` | ✅ | ⬜ pending |
-| 17-03-01 | 03 | 3 | EV-08 (c5) | — | N/A | registry | `important-gates` row `count-gate mutant slowest-eight EV-08` plus the `st-pass-line` row | ❌ W0 | ⬜ pending |
+| 17-03-01 | 03 | 3 | EV-08 (c5) | — | N/A | registry | `important-gates` row `count-gate mutant extra-file EV-08` plus the `st-pass-line` row; the committed stand-in is `pkg-install`'s `extra-file` case, re-run on every gate as `pkg-selftest=20/20` | ❌ W0 | ⬜ pending |
 | 17-03-02 | 03 | 3 | EV-08 (c5) | — | N/A | step | the gate token line carries `faults=238/238`, `goldens=29`, `claims=29`, `provisional=28` | ✅ | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
@@ -53,7 +53,7 @@ created: "2026-11-26"
 ## Wave 0 Requirements
 
 - [ ] `runner-process.judge.flatwrap-shim` — the id itself is the phase's deliverable (17-02)
-- [ ] `count-gate mutant slowest-eight EV-08` — the registry row that carries lesson 32's mechanism (17-03)
+- [ ] `count-gate mutant extra-file EV-08` — the registry row that carries lesson 32's mechanism (17-03); it points at an existing case, so no new selftest case and no new test id is created
 
 *Everything else already exists: the suite, the two documents, the inventory and the step.*
 
