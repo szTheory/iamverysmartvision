@@ -28,6 +28,7 @@ actuals:
   tasks: 3
   commits: 3
   plan_head_before: 67e35a600f9a7e965dfd7c6a76d95c075343b1c2
+  plan_head_after: be69a5e6c743cf4f2bf651c4549a1e3f2a09f24f
 
 tech-stack:
   added: []
@@ -277,6 +278,13 @@ flips offset 1, as the plan states. Both limbs still move; no value is typed int
 None. No stub, skipped test or unrun verify was left behind: the container gate ran and passed, and the case is
 `ok` in both presets with `tests-missing=0`.
 
-## Self-Check: PENDING
+## Self-Check: PASSED
 
-<!-- gsd:write-continue -->
+- Every file this plan claims to have created or modified exists: the format page, the packaging page,
+  `RELEASE-OPS.md`, the suite, both inventories, the step, `REQUIREMENTS.md` and this record.
+- All three task commits are ancestors of `HEAD`: `4e0c894` (the tokens), `135bfa5` (the letter), `be69a5e`
+  (the id, the row and the flip).
+- `commits:` is measured, not narrated: `git rev-list --count 67e35a6..HEAD` at this record's write reads 3, and
+  `plan_head_before` / `plan_head_after` are the two shas of that range.
+- The final gate line, under both shells and in the Ubuntu container, carries `lines=365`, `gates=119`,
+  `tests-expected=5044`, `tests-executed=5040`, `tests-skipped=4` and `tests-missing=0`.
