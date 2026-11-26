@@ -11,6 +11,19 @@
 # is DERIVED from each step's source text by the grep below, never a hand-maintained list, and it is
 # printed as `gate-partition preflight=<n> producers=<n>: <names...>` before any step runs, so a step
 # that starts reading the results directory shows up as a change of class in the log.
+# Overlap pair (Phase 16 cost-only lever): `c-tests` and `c-faults` are the two producers whose
+# results subdirectories are disjoint (<results>/{dev,release} versus <results>/faults) and whose
+# stdout is already buffered per step and replayed in steps.have order, so they run at the same
+# time. The earlier member in steps.have order (c-faults) is started in the background with the
+# same redirection the foreground path uses, the later member (c-tests) runs in the foreground
+# exactly as before, and the partner is joined immediately after it - on the foreground member's
+# normal path AND when it fails, since this loop never stops at a failure - writing *its*
+# rc.<name> and t.<name> from the wait status and its own start time. The replay, keep_fails, the
+# token accumulation and the summary construction are untouched, so the summary token line stays
+# byte-identical and only wall time moves. The pair is printed once as
+# `gate-overlap pair=c-faults+c-tests` before any step runs, so a log alone shows the overlap
+# happened; it is a measurement line, never a token. Both step scripts take one mkdir build lock
+# (their `build-lock` blocks) because the two share build/dev.
 # The OUTPUT order is unchanged: each step's whole stdout+stderr is buffered in
 # $GATE_TMP/step.out.<name> (one reused file cannot hold 38 bodies) and replayed after both groups in
 # steps.have order, so `cat`, keep_fails, the bad lines, the tokens and step-time are all emitted in
@@ -26,8 +39,18 @@ ROOT=$(cd "$here/.." && pwd) || exit 1
 CHECK_DIR="$ROOT/tools/check"
 GATE_TMP=$(mktemp -d "${TMPDIR:-/tmp}/gate.XXXXXX") || exit 1
 ctl_pid=
+# The declared overlap pair (see the header contract). Both must be producers or the overlap
+# silently degrades to the old serial chain, so that is checked below, not assumed.
+overlap_bg=c-faults
+overlap_fg=c-tests
+bg_pid=
+bg_name=
+bg_t0=
 on_exit() {
   if [ -n "$ctl_pid" ]; then kill "$ctl_pid" 2> /dev/null; wait "$ctl_pid" 2> /dev/null; fi
+  # A background partner is killed the way the controls runner is: the TERM reaches it before the
+  # temp dir holding its output buffer is removed.
+  if [ -n "$bg_pid" ]; then kill "$bg_pid" 2> /dev/null; wait "$bg_pid" 2> /dev/null; fi
   [ -z "${GITHUB_STEP_SUMMARY:-}" ] || sh "$CHECK_DIR/ci-summary.sh" "$GATE_TMP" > /dev/null 2>&1 || :
   rm -rf "$GATE_TMP"
 }
@@ -128,19 +151,52 @@ pf_n=$(grep -c . "$GATE_TMP/preflight")
 pr_n=$(grep -c . "$GATE_TMP/producers")
 printf 'gate-partition preflight=%s producers=%s: %s\n' "$pf_n" "$pr_n" \
   "$(awk '{ printf "%s%s", sep, $0; sep = " " }' "$GATE_TMP/preflight")"
+for name in $overlap_bg $overlap_fg; do
+  grep -q -x -F -e "$name" "$GATE_TMP/producers" || bad gate-overlap-pair "$name (not a producer)"
+done
+printf 'gate-overlap pair=%s+%s\n' "$overlap_bg" "$overlap_fg"
 
+# rc.<name>: the status the sequential loop wrote, from an exit code or a wait status.
+record_rc() {
+  if [ "$2" -eq 0 ]; then printf '0\n' > "$GATE_TMP/rc.$1"; else printf '1\n' > "$GATE_TMP/rc.$1"; fi
+}
 # Run every step (sorted within each group, never stopping at the first failure), preflight first.
 # Output goes to a per-step buffer and nothing is printed here: the replay below does all of it.
 for group in preflight producers; do
   for name in $(cat "$GATE_TMP/$group"); do
+    # The declared pair's earlier member starts here and is joined after its partner (below).
+    if [ "$group" = producers ] && [ "$name" = "$overlap_bg" ]; then
+      bg_name=$name
+      bg_t0=$(date +%s)
+      sh "$CHECK_DIR/steps/$name.sh" > "$GATE_TMP/step.out.$name" 2>&1 < /dev/null &
+      bg_pid=$!
+      continue
+    fi
     t0=$(date +%s)
     if sh "$CHECK_DIR/steps/$name.sh" > "$GATE_TMP/step.out.$name" 2>&1; then
-      printf '0\n' > "$GATE_TMP/rc.$name"
+      record_rc "$name" 0
     else
-      printf '1\n' > "$GATE_TMP/rc.$name"
+      record_rc "$name" 1
     fi
     printf '%s %s\n' "$(date +%s)" "$t0" > "$GATE_TMP/t.$name"
+    if [ -n "$bg_pid" ] && [ "$name" = "$overlap_fg" ]; then
+      if wait "$bg_pid"; then record_rc "$bg_name" 0; else record_rc "$bg_name" 1; fi
+      printf '%s %s\n' "$(date +%s)" "$bg_t0" > "$GATE_TMP/t.$bg_name"
+      bg_pid=
+      bg_name=
+      bg_t0=
+    fi
   done
+  # Safety net, never reached while the pair is declared in steps.have order: a partner that was
+  # not joined by the foreground member is joined here, so a reordered declaration still writes
+  # every rc.<name> and t.<name> the replay reads.
+  if [ -n "$bg_pid" ]; then
+    if wait "$bg_pid"; then record_rc "$bg_name" 0; else record_rc "$bg_name" 1; fi
+    printf '%s %s\n' "$(date +%s)" "$bg_t0" > "$GATE_TMP/t.$bg_name"
+    bg_pid=
+    bg_name=
+    bg_t0=
+  fi
   # The early verdict: printed as soon as the preflight group has finished, before any producer
   # runs. It never stops the run - the producers and the replay still happen.
   if [ "$group" = preflight ]; then
