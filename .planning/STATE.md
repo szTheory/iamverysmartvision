@@ -737,8 +737,8 @@ The row itself is left as recorded and this note sits under it.
 
 ## Session Continuity
 
-Last session: 2026-11-26T20:45:02.896Z
-Stopped at: Completed 17-02-PLAN.md
+Last session: 2026-11-26T21:01:59.000Z
+Stopped at: Completed 17-03-PLAN.md — lesson 32, the count-gate row, gates 120 / lines 366
 Resume file: None
 
 The Phase 13 close still leaves one thing a later run must do: record the phase's hosted row from
