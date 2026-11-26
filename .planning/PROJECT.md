@@ -17,7 +17,7 @@ A deterministic, observable machine core whose every compatibility claim is
 bound to an exactly named profile and independent evidence — never an
 unqualified "it runs Intellivision games" label.
 
-## Current Milestone: v0.3.0 Owner-Supplied Content and a Driveable Host
+## Shipped Milestone: v0.3.0 Owner-Supplied Content and a Driveable Host (SHIPPED 2026-11-26)
 
 **Goal:** A person can load their own EXEC, GROM and a flat cartridge image into
 this core and drive it in real time through a build-only libretro-shaped host,
@@ -390,4 +390,4 @@ This document evolves at phase transitions and milestone boundaries.
    of exact tested artifact targeted when rights/readiness/authority permit
 
 ---
-*Last updated: 2026-11-25 after Phase 13 (rights ledger and enforced claim ceiling) completed and verified — the first v0.3.0 phase, and the first time a third-party-content question has a written disposition the gate enforces*
+*Last updated: 2026-11-26 at the v0.3.0 milestone close — audit passed (9/9 requirements, 0 broken flows), archive in `.planning/milestones/`, one claim (`CL-0029`, `deterministic-repeatability`, `provisional`), eight handoff rows `evidence: none`, and no claim above `provisional` while D10 and D11 are unperformed*
