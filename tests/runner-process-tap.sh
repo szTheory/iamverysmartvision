@@ -2490,6 +2490,58 @@ else
 fi
 result runner-process.host.empty-poll
 
+# runner-process.judge.host-schedule (plan 15-04, TOOL-08, review CR-01): the input schedule is bounded and REFUSES rather
+# than truncates. The pass drive's six events cannot reach the bound, so nothing else in the phase could notice a
+# regression here: the review measured a probe host returning 5000 events and getting `poll_calls=4096 run=1`, 904
+# events silently lost. Two limbs over the same harness, in two processes:
+#   full - 5000 events pending in ONE drain. The run must be refused and deliver nothing, AND the poll must have been
+#          asked at least once and fewer than 5000 times: the refusal came from the schedule's bound while the host
+#          still had events left, never because the host ran out (which would print 5000 and mean nothing).
+#   long - 8000 events over two calls, 4000 at a time. Both calls must succeed and all 8000 must be polled, so the
+#          bound is on OUTSTANDING events: a schedule that never reclaimed its applied prefix stops polling at 4096
+#          here, which is the silent loss the review measured, and one that refuses a merely long run is refused by
+#          `runs.ok 2`.
+# A refusal asserted only by `runs.ok 0` could pass on a harness that never called run, so the pair is required: the
+# same harness, the same images, one count that fits over a lifetime and one that does not fit at once.
+: > "$tmp/why"
+ok=1
+if [ -z "$shim" ] || [ -z "$harness" ]; then
+  ok=0
+  why host-schedule 'the seventh or eighth argument (libivs_retro, ivs_host_harness) is missing: the schedule case cannot be run'
+else
+  run_one "$tmp" host-schedule-full "$harness" "$shim" "$content" --schedule-full
+  if [ "$hung" -eq 1 ] || [ "$rc" -ne 0 ]; then
+    ok=0
+    why host-schedule-full "exit $rc, hung $hung: $(sed -n 's/^fail //p' "$tmp/runs/host-schedule-full.out" | head -n 1)"
+  else
+    _f="$tmp/runs/host-schedule-full.out"
+    host_field "$_f" 'schedule.mode full' host-schedule-full || ok=0
+    host_field "$_f" 'schedule.runs 1' host-schedule-full || ok=0
+    host_field "$_f" 'schedule.runs.ok 0' host-schedule-full || ok=0
+    host_field "$_f" 'schedule.frames 0' host-schedule-full || ok=0
+    _sp=$(sed -n 's/^schedule[.]polled //p' "$_f" | head -n 1)
+    case ${_sp:-} in
+      '' | *[!0-9]*) ok=0; why host-schedule-full "schedule.polled '${_sp:-}' is not a count" ;;
+      *) [ "$_sp" -gt 0 ] || { ok=0; why host-schedule-full "schedule.polled $_sp: the host was never asked"; }
+         [ "$_sp" -lt 5000 ] \
+           || { ok=0; why host-schedule-full "schedule.polled $_sp: the host ran out, so the refusal is not the schedule's"; } ;;
+    esac
+  fi
+  run_one "$tmp" host-schedule-long "$harness" "$shim" "$content" --schedule-long
+  if [ "$hung" -eq 1 ] || [ "$rc" -ne 0 ]; then
+    ok=0
+    why host-schedule-long "exit $rc, hung $hung: $(sed -n 's/^fail //p' "$tmp/runs/host-schedule-long.out" | head -n 1)"
+  else
+    _f="$tmp/runs/host-schedule-long.out"
+    host_field "$_f" 'schedule.mode long' host-schedule-long || ok=0
+    host_field "$_f" 'schedule.runs 2' host-schedule-long || ok=0
+    host_field "$_f" 'schedule.runs.ok 2' host-schedule-long || ok=0
+    host_field "$_f" 'schedule.polled 8000' host-schedule-long || ok=0
+    host_field "$_f" 'schedule.frames 2' host-schedule-long || ok=0
+  fi
+fi
+result runner-process.judge.host-schedule
+
 # runner-process.host.exports (plan 15-02, TOOL-08, D-48, D-35): the export surface refused by name, in both
 # directions and on both platforms. tools/check/host-symbols.sh compares the object's exported set against
 # data/expected/host-symbols.ids and its undefined set against core-symbols-allow.txt plus data/expected/host-imports.ids.

@@ -574,3 +574,11 @@ host mutant runner-process.judge.host-vacuous TOOL-08
 # row resolves only through `<suite>.judge.<slug>` or `<suite>.mutant.<slug>`; a plain
 # `runner-process.host.*` id would make this row important-gates-unknown-id.
 host mutant runner-process.judge.host-digest-diff TOOL-08
+# host (plan 15-04, TOOL-08, review CR-01): the bounded input schedule refuses rather than truncates. The
+# mechanism is the committed harness mode `--schedule-full`, a host with 5000 events pending in one drain:
+# it must be refused with nothing delivered and with the poll stopped short of 5000, so the refusal is the
+# schedule's bound and not a host that ran out. Its witness pair is `--schedule-long` (8000 events over two
+# calls, 4000 at a time, every one of them polled and both calls succeeding), which a schedule that never
+# reclaimed its applied prefix fails - the silent loss the review measured. The id is judge-shaped because
+# a `mutant` row resolves only through `<suite>.judge.<slug>` or `<suite>.mutant.<slug>`.
+host mutant runner-process.judge.host-schedule TOOL-08

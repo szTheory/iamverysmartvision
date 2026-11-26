@@ -108,7 +108,12 @@ IVS_API int retro_load_game(const ivs_retro_images *imgs);
 /* Runs to the absolute target tick and delivers every frame completed on the way to video_refresh and
  * the samples those frames carried to audio_batch. Returns 1 when at least one frame was delivered and
  * 0 otherwise, a refusal included: a refused or internal-failure run records nothing, never a
- * truncated delivery. */
+ * truncated delivery.
+ * The input schedule between calls is bounded (4096 outstanding events, the shim's own cap and not the
+ * core's 65536): the applied prefix is reclaimed before every call, so the bound is on outstanding
+ * events and a long run cannot lose input, and a poll that still has more to say when the schedule
+ * fills is REFUSED - the call returns 0 and delivers nothing - rather than truncated, because a full
+ * schedule cannot be told from a truncated one without consuming an event the shim could not store. */
 IVS_API int retro_run(uint64_t target_ticks);
 
 /* Tears the machine down. After it ivs_retro_digest refuses, so a frontend that only pretends to

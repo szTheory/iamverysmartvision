@@ -27,7 +27,9 @@
 #define SHIM_SAMPLE_RATE IVS_REFPCM_RATE_48000
 /* The largest instance storage this shim will allocate; the profile needs far less. */
 #define SHIM_STORAGE_MAX ((size_t)1u << 20)
-/* The input schedule the shim can hold between calls (the core's own cap is 65536 events). */
+/* The OUTSTANDING input events the shim holds between calls (the core's own cap is 65536 events). The
+ * applied prefix is reclaimed before every drain, so this is not a lifetime count; a poll that fills it
+ * is refused rather than truncated (review CR-01). */
 #define SHIM_EVENTS_MAX 4096u
 /* Bytes of one XRGB pixel this shim delivers. */
 #define SHIM_PIXEL_BYTES 4u
@@ -303,14 +305,28 @@ IVS_API int retro_load_game(const ivs_retro_images *imgs)
 
 /* Appends what the host's poll has produced to the schedule. 1 on success; 0 when the poll went
  * backwards (a host error: the core's log is a chain over the events in order, so a reordered script
- * would silently produce a different digest). */
+ * would silently produce a different digest) or when the host has more outstanding events than the
+ * schedule holds (review CR-01: refused, never truncated - a full schedule cannot be told from a
+ * truncated one without consuming an event the shim could not store, so filling it IS the refusal).
+ * The applied prefix is reclaimed first, so the cap is on outstanding events and a long run cannot lose
+ * input. */
 static int shim_drain_poll(uint64_t now_ticks)
 {
+  if (shim.consumed > 0u) {
+    if (shim.consumed < shim.sched_n) {
+      memmove(&shim.sched[0], &shim.sched[shim.consumed],
+              (size_t)(shim.sched_n - shim.consumed) * sizeof shim.sched[0]);
+      shim.sched_n -= shim.consumed;
+    } else {
+      shim.sched_n = 0u;
+    }
+    shim.consumed = 0u;
+  }
   while (shim.sched_n < SHIM_EVENTS_MAX) {
     ivs_retro_input ev;
     memset(&ev, 0, sizeof ev);
     if (shim.host.input_poll(shim.host.ctx, now_ticks, &ev) != 1) {
-      break;
+      return 1;                       /* script exhausted */
     }
     if (shim.sched_n > 0u && ev.at_tick < shim.sched[shim.sched_n - 1u].at_tick) {
       return 0;
@@ -320,7 +336,7 @@ static int shim_drain_poll(uint64_t now_ticks)
     memcpy(shim.sched[shim.sched_n].controller, ev.controller, sizeof ev.controller);
     shim.sched_n++;
   }
-  return 1;
+  return 0;                           /* still full: the host has more to say than the shim can hold */
 }
 
 /* Delivers the whole slots this call completed: one video_refresh per frame at the declared pitch. 1 on

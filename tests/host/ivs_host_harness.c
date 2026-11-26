@@ -7,9 +7,13 @@
  * The one thing it compiles in is runner/frame_export.c, for ivs_frameppm_palette alone, used only to
  * check that every delivered pixel is exactly one palette entry.
  * It recomputes no digest: the nine lines are what ivs_retro_digest returned.
- * Usage: ivs_host_harness <shim-path> <content-dir> [--empty-poll]
+ * Usage: ivs_host_harness <shim-path> <content-dir> [--empty-poll | --schedule-full | --schedule-long]
  * Output: one `key value` line per observation on stdout; on a failed assertion one `fail <key> <detail>`
- * line and exit 1, so the suite can quote the reason. Exit 0 only when every assertion held. */
+ * line and exit 1, so the suite can quote the reason. Exit 0 only when every assertion held.
+ * The two schedule modes are the review's first measured defect (CR-01), made observable from the
+ * object's own answers: a host that outruns the shim's bounded input schedule must be refused, and one
+ * that outruns it only over a long run must not lose input. In those modes the frontend's own verdicts
+ * are the observations, so the suite asserts them. */
 #include <dlfcn.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -29,6 +33,23 @@
 #define HARNESS_EVENT_COUNT 6u
 #define HARNESS_FRAME_CALLS 13u
 #define HARNESS_LAST_TARGET 806568u
+
+/* The mode selector: the pass drive, the empty poll, and the review's two measured defects. */
+#define HARNESS_MODE_PASS 0u
+#define HARNESS_MODE_EMPTY 1u
+#define HARNESS_MODE_SCHEDULE_FULL 2u
+#define HARNESS_MODE_SCHEDULE_LONG 3u
+
+/* The schedule modes' own scripts (review CR-01). Both counts are the HARNESS's, never the shim's cap: a
+ * frontend says how much it has to say and the shim decides what it can hold. FULL exceeds the shim's
+ * 4096 outstanding events in ONE drain; LONG says 8000 events over two calls (4000 at a time), so it
+ * exceeds that bound over its lifetime but never at once - which is what tells a cap on outstanding
+ * events from a cap on lifetime ones. The poll reports a batch only once the machine has come within one
+ * frame of it, so LONG is a host saying "nothing yet", never a host that drops its own events. */
+#define HARNESS_SCHEDULE_FULL 5000u
+#define HARNESS_SCHEDULE_BATCH 4000u
+#define HARNESS_SCHEDULE_BATCHES 2u
+#define HARNESS_SCHEDULE_BASE 1000u
 
 /* What the object must report, pinned from the profile the shim reads through ivs_info
  * (data/profiles/intv-2609-ntsc-family-p1.json). This harness is not linked against the core, so it cannot
@@ -86,7 +107,7 @@ typedef struct harness_host {
   unsigned script_at;
   unsigned poll_events;
   ivs_retro_input poll_got[HARNESS_EVENT_COUNT];
-  int empty_poll;
+  unsigned mode;
   int geometry_bad;
   int pitch_bad;
   int palette_bad;
@@ -176,7 +197,45 @@ static void on_audio(void *ctx, const int16_t *pcm, size_t frames)
 static int on_poll(void *ctx, uint64_t now_ticks, ivs_retro_input *ev)
 {
   harness_host *c = (harness_host *)ctx;
-  if (c->empty_poll || c->script_at >= HARNESS_EVENT_COUNT) {
+  if (c->mode == HARNESS_MODE_EMPTY) {
+    return 0;
+  }
+  if (c->mode == HARNESS_MODE_SCHEDULE_FULL || c->mode == HARNESS_MODE_SCHEDULE_LONG) {
+    /* A generated, strictly increasing script: the words stay zero (a released pad) and only the tick
+     * moves, so what the schedule holds is exactly what the poll handed over. In the long mode a batch
+     * is reported only once now_ticks is within one frame of it; before that the host has nothing to say
+     * yet and answers 0, which is not the same thing as dropping an event. */
+    unsigned batch;
+    unsigned within;
+    uint64_t base;
+    uint64_t horizon;
+    if (c->mode == HARNESS_MODE_SCHEDULE_FULL) {
+      if (c->script_at >= HARNESS_SCHEDULE_FULL) {
+        return 0;
+      }
+      batch = 0u;
+      within = c->script_at;
+    } else {
+      batch = c->script_at / HARNESS_SCHEDULE_BATCH;
+      within = c->script_at % HARNESS_SCHEDULE_BATCH;
+      if (batch >= HARNESS_SCHEDULE_BATCHES) {
+        return 0;
+      }
+    }
+    base = (uint64_t)HARNESS_SCHEDULE_BASE + (uint64_t)batch * (uint64_t)HARNESS_NOMINAL_FRAME_TICKS;
+    if (c->mode == HARNESS_MODE_SCHEDULE_LONG) {
+      horizon = now_ticks + (uint64_t)HARNESS_NOMINAL_FRAME_TICKS;
+      if (base + (uint64_t)within >= horizon) {
+        return 0; /* nothing to say yet: the batch is a frame or more away */
+      }
+    }
+    memset(ev, 0, sizeof *ev);
+    ev->at_tick = base + (uint64_t)within;
+    c->script_at++;
+    c->poll_events++;
+    return 1;
+  }
+  if (c->script_at >= HARNESS_EVENT_COUNT) {
     return 0;
   }
   if (harness_script[c->script_at].at_tick < now_ticks) {
@@ -271,12 +330,17 @@ int main(int argc, char **argv)
   uint8_t sha[32];
   unsigned k;
   unsigned i;
-  int empty_poll = 0;
+  unsigned mode = HARNESS_MODE_PASS;
 
   if (argc == 4 && strcmp(argv[3], "--empty-poll") == 0) {
-    empty_poll = 1;
+    mode = HARNESS_MODE_EMPTY;
+  } else if (argc == 4 && strcmp(argv[3], "--schedule-full") == 0) {
+    mode = HARNESS_MODE_SCHEDULE_FULL;
+  } else if (argc == 4 && strcmp(argv[3], "--schedule-long") == 0) {
+    mode = HARNESS_MODE_SCHEDULE_LONG;
   } else if (argc != 3) {
-    printf("usage: ivs_host_harness <shim-path> <content-dir> [--empty-poll]\n");
+    printf("usage: ivs_host_harness <shim-path> <content-dir> [--empty-poll | --schedule-full | "
+           "--schedule-long]\n");
     return 1;
   }
   shim_path = argv[1];
@@ -345,7 +409,7 @@ int main(int argc, char **argv)
   }
   host.expect_width = av.base_width;
   host.expect_height = av.base_height;
-  host.empty_poll = empty_poll;
+  host.mode = mode;
   printf("av_info.base_width %u\n", av.base_width);
   printf("av_info.base_height %u\n", av.base_height);
   printf("av_info.max_width %u\n", av.max_width);
@@ -378,14 +442,46 @@ int main(int argc, char **argv)
   imgs.grom_len = grom_len;
   imgs.cart = cart_bytes;
   imgs.cart_len = cart_len;
+
   if (api.load_game(&imgs) != 1) {
     fail("load.images", "retro_load_game refused the three spans");
   }
   printf("load.images 1\n");
 
+  if (mode == HARNESS_MODE_SCHEDULE_FULL) {
+    /* CR-01, first limb: 5000 events pending in ONE drain, more than the shim's schedule holds. The run
+     * must be refused and must deliver nothing. The poll count is printed so the suite can require that
+     * the refusal came while the host still had events left, never because the host ran out. */
+    int r = api.run((uint64_t)HARNESS_NOMINAL_FRAME_TICKS);
+    printf("schedule.mode full\n");
+    printf("schedule.polled %u\n", host.poll_events);
+    printf("schedule.runs 1\n");
+    printf("schedule.runs.ok %d\n", r == 1 ? 1 : 0);
+    printf("schedule.frames %u\n", host.frames);
+    goto done;
+  }
+  if (mode == HARNESS_MODE_SCHEDULE_LONG) {
+    /* CR-01, second limb: 8000 events over two calls, 4000 at a time, so the lifetime count exceeds the
+     * shim's schedule while the outstanding count never does. Every call must succeed and every batch
+     * must reach the core: a schedule that never reclaimed its applied prefix would refuse the second
+     * batch here. */
+    unsigned ok_runs = 0u;
+    for (k = 1u; k <= HARNESS_SCHEDULE_BATCHES; k++) {
+      if (api.run(av.nominal_frame_ticks * (uint64_t)k) == 1) {
+        ok_runs++;
+      }
+    }
+    printf("schedule.mode long\n");
+    printf("schedule.polled %u\n", host.poll_events);
+    printf("schedule.runs %u\n", HARNESS_SCHEDULE_BATCHES);
+    printf("schedule.runs.ok %u\n", ok_runs);
+    printf("schedule.frames %u\n", host.frames);
+    goto done;
+  }
+
   /* The drive: one call per frame boundary, then the scenario's last bound. A frame-only stop ends at
    * 776568 and moves seven of the nine lines, so the final call to 806568 is what makes them equal. */
-  if (empty_poll) {
+  if (mode == HARNESS_MODE_EMPTY) {
     (void)api.run((uint64_t)HARNESS_LAST_TARGET);
   } else {
     for (k = 1u; k <= HARNESS_FRAME_CALLS; k++) {
@@ -425,7 +521,7 @@ int main(int argc, char **argv)
   /* The poll's six events, printed in order as the three values the object returned: a frame-quantized poll (the
    * failure research Pitfall 2 names) moves an at_tick and fails the suite's word comparison. The empty-poll run
    * carries no event by construction, so the assertion is made only on the scripted run. */
-  if (empty_poll) {
+  if (mode == HARNESS_MODE_EMPTY) {
     if (host.poll_events != 0u) {
       fail("input.words", "--empty-poll returned an event");
     }
@@ -463,6 +559,7 @@ int main(int argc, char **argv)
   }
   printf("unload.digest.refused 1\n");
 
+done:
   api.deinit();
   free(exec_bytes);
   free(grom_bytes);
