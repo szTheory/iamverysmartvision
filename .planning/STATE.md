@@ -4,17 +4,18 @@ milestone: v0.3.0
 milestone_name: Owner-Supplied Content and a Driveable Host (Phases 13 to 16)</summary>
 current_phase: 14
 current_phase_name: Cartridge Route and Real-Content Conformance
+current_plan: 3
 status: executing
-stopped_at: Phase 13 complete, ready to plan Phase 14
-last_updated: "2026-11-26T01:41:30.592Z"
+stopped_at: Completed 14-01-PLAN.md
+last_updated: "2026-11-26T01:53:07.814Z"
 last_activity: 2026-11-25
 last_activity_desc: Phase 13 complete, transitioned to Phase 14
-state_head: abc0cebef2855c0726331ccf6e157d553177df3f
+state_head: d17cc3be1df1c01b51d2bdec2ed8e2d6413a8611
 progress:
   total_phases: 4
   completed_phases: 8
   total_plans: 9
-  completed_plans: 5
+  completed_plans: 6
 ---
 
 # Project State
@@ -28,10 +29,11 @@ See: .planning/PROJECT.md (updated 2026-11-26)
 
 ## Current Position
 
-Phase: 14 (Cartridge Route and Real-Content Conformance) — READY TO EXECUTE
-Plan: Not started
+Phase: 14 (Cartridge Route and Real-Content Conformance) — EXECUTING
+Current Plan: 2
+Total Plans in Phase: 4
 Status: Ready to execute
-Last activity: 2026-11-25 — Phase 13 complete, transitioned to Phase 14
+Last activity: 2026-11-25 — 14-01 executed: the build-only wrap tool and its nine pack ids
 
 The closing gate run reads `gate: PASS steps=38/38 controls=401/401 … faults=238/238 …
 goldens=29`, byte-identical under `sh` and `dash`, and repeated inside the Ubuntu 24.04
@@ -265,6 +267,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | Phase 13 P02 | 20min | 1 tasks | 11 files |
 | Phase 13 P03 | 27min | 2 tasks | 27 files |
 | Phase 13 P04 | 26min | 3 tasks | 25 files |
+| Phase 14 P01 | 26 min | 2 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -593,6 +596,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 13]: 13-05: checkpoint: reprice (cpu_s 357 363 366 435 497, median 366; gate_s 114 121 121 137 148, median 121; priced addition 1.935; allowance 21). Recomputed by arithmetic from the last five `.planning/ci-runs.tsv` rows (45683886915, 45683331636, 45682845654, 45682366772, 45677865721), never quoted: the frozen 361/118 figures are stale by measurement, by +5 and +3. `discharged-within-allowance` is not reachable because 366 > 361 + 1.935 = 362.935. `lever-required` is not reached because the cumulative milestone spend is 1.935 of 21 and this phase's additions landed at exactly the priced count (controls 395 to 401, important-gates lines 337 to 352, steps 38, faults 238 and goldens 29 unmoved), so no line overran by 25 percent. The residual +5 cpu-s is a runner event on the shared series with the token line where it was predicted, so no lever is invented.
   **Recomputed again after this phase's own hosted rows landed** (`45717868904`, `pull_request`, `cpu_s` 360, `gate_s` 120; `45718553735`, `pull_request`, 363, 119; `45720934719`, `pull_request`, 438, 135): the last five `cpu_s` are now 357 360 363 438 497 (median **363**) and `gate_s` 119 120 121 135 148 (median **121**). The verdict is unchanged — 363 > 361 + 1.935 = 362.935 still rules out `discharged-within-allowance`, and the margin is 0.065 cpu-s rather than 3.065 — because the window moved, not the work. Recorded here rather than left as the pre-row figure, per "recompute, never quote".
   **Final recompute at the phase close, after the merge push row landed** (`45723269901`, `push`, `cpu_s` 368, `gate_s` 122, the merge commit `151b688`): the last five `cpu_s` are **357 360 363 368 438 → median 363** and the last five `gate_s` are **119 120 121 122 135 → median 121**. Same verdict, same margin (363 > 362.935 by 0.065), same reason: the window moved, the work did not. This is the figure the milestone's Phase-13 checkpoint is read at.
+- [Phase 14]: The wrap tool's executable is ivs_flatwrap while its build-written source list is the hyphenated ivs-flatwrap-sources.txt; the eight container magic bytes are restated in the tool rather than exported, so no core symbol set moves
+- [Phase 14]: The SPDX alternation in tools/check/integrity.cmake gains flatwrap with no fourth control directory (the tools/bench plan 08-18 precedent); the phase's priced addition stays 1.535, not 1.845
 
 ### Pending Todos
 
@@ -688,10 +693,12 @@ The row itself is left as recorded and this note sits under it.
 
 ## Session Continuity
 
-Last session: 2026-11-25T22:50:19Z
-Stopped at: Phase 13 complete, ready to plan Phase 14
-`/gsd:verify-work 13`, and the one thing a later run must still do is record the phase's hosted
-row from `sh tools/ci-record.sh <run-id>` once the commits are pushed.
+Last session: 2026-11-26T01:53:05.824Z
+Stopped at: Completed 14-01-PLAN.md
+Resume file: None
+
+The Phase 13 close still leaves one thing a later run must do: record the phase's hosted row from
+`sh tools/ci-record.sh <run-id>` once the commits are pushed (`/gsd:verify-work 13`).
 Resume file: None
 
 ## Recorded Constraints for the Next Milestone
