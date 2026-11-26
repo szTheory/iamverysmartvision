@@ -2,20 +2,21 @@
 gsd_state_version: "1.0"
 milestone: v0.3.0
 milestone_name: Owner-Supplied Content and a Driveable Host (Phases 13 to 16)</summary>
-current_phase: 14
-current_phase_name: Cartridge Route and Real-Content Conformance
-current_plan: 4
-status: verifying
-stopped_at: Completed 14-04-PLAN.md
-last_updated: "2026-11-26T03:11:17.267Z"
+current_phase: 15
+current_phase_name: Build-Only Host and the Fake-Frontend Harness
+current_plan: Not started
+status: planning
+stopped_at: Phase 14 complete, ready to plan Phase 15
+last_updated: "2026-11-26T04:36:22.347Z"
 last_activity: 2026-11-26
-last_activity_desc: Phase 13 complete, transitioned to Phase 14
-state_head: bee451127d9930199603a40eddf1bbab635c837c
+last_activity_desc: Phase 14 complete, transitioned to Phase 15
+state_head: 55f26b5333b001ef5114d3873e96f4258ca7fdc7
 progress:
   total_phases: 4
   completed_phases: 8
   total_plans: 9
   completed_plans: 9
+  percent: 100
 ---
 
 # Project State
@@ -29,11 +30,11 @@ See: .planning/PROJECT.md (updated 2026-11-26)
 
 ## Current Position
 
-Phase: 14 (Cartridge Route and Real-Content Conformance) — COMPLETE
-Current Plan: 4 of 4
+Phase: 15 — Build-Only Host and the Fake-Frontend Harness
+Current Plan: Not started
 Total Plans in Phase: 4
-Status: Phase complete — ready for verification; 4/4 plans executed, `14-VALIDATION.md` signed off, no claim raised (D-50 unchanged)
-Last activity: 2026-11-26 — 14-04 executed: the three flips with the five registry rows that name them, the 13-file toy extension, the closing gate line under `sh`/`dash` and in the container, one cost verdict and the validation sign-off; then the phase's code review (CR-01 fixed at `bf3215d`, WR-01 at `4efc806`, WR-02 at `94300ec`, WR-03 at `fc25ce9`, the three INFO rows deferred with reasons in `14-REVIEW.md`)
+Status: Ready to plan
+Last activity: 2026-11-25 — Phase 14 complete, transitioned to Phase 15
 
 Phase 14's closing gate run reads `gate: PASS steps=38/38 controls=402/402 … faults=238/238 …
 goldens=29 … tests-expected=5014 tests-executed=5010 tests-skipped=4 tests-missing=0 … gates=117
@@ -116,7 +117,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 124
+- Total plans completed: 128
 - Average duration: -
 - Total execution time: -
 
@@ -134,6 +135,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | 10 | 6 | - | - |
 | 11 | 5 | - | - |
 | 13 | 5 | - | - |
+| 14 | 4 | - | - |
 
 *Updated after each plan completion*
 **Per-Plan Metrics:**
@@ -729,7 +731,7 @@ The row itself is left as recorded and this note sits under it.
 ## Session Continuity
 
 Last session: 2026-11-26T03:11:17.023Z
-Stopped at: Completed 14-04-PLAN.md
+Stopped at: Phase 14 complete, ready to plan Phase 15
 Resume file: None
 
 The Phase 13 close still leaves one thing a later run must do: record the phase's hosted row from

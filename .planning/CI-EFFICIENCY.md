@@ -2004,3 +2004,29 @@ and the six new control directories were priced at 0.31 each before they were wr
 in this commit — it does not exist yet when the row above is written. It is recorded in the next
 commit the project makes anyway (the Phase 13 completion commit), so the pair is deferred by
 exactly one commit and named here rather than dropped.
+
+## 2026-11-26 — Phase 14 (v0.3.0): two PR runs, the same step shape, and the lever still left alone
+
+PR #32 (`gsd/v0.3.0-phase-14-cartridge-route`) produced run `45747709457` (`pull_request`, `success`,
+`build_s` 34, `gate_s` 115, `cpu_s` 366) and, after the review fixes, `45751979661`
+(`pull_request`, `success`, queue 2 s, setup 5 s, `build_s` 34, `gate_s` 120, `test_s` 86,
+total 133 s, `ncpu` 4, `cpu_s` 359). Both are rows in `.planning/ci-runs.tsv`.
+
+**Measured step profile of the later run** (from its own `step-time` lines): `c-build` 34,
+`c-faults` 30, `controls` 27, `c-tests` 17, `c-purity` 17 — 125 s of step time, the same ~88 %
+shape as the 2026-11-25 and 2026-11-26 profiles before it. Everything else is ≤ 4 s.
+
+**No action, and the reason is measured rather than assumed.** Queue + setup is 7 s against a
+120 s gate; there is no dependency for a cache to fill. The one evidence-preserving lever
+(`c-tests` ∥ `c-faults`) is still pre-committed to **Phase 16's first commit** by the frozen
+upstream artifact, so spending it here would still be spending it on a phase that does not need
+it. `cpu_s` 359 and 366 both sit inside the 357–366 band the series has held since Phase 9.
+
+**Local-first paid for itself twice in this phase.** Both review rounds were caught at home: the
+zero-byte input that produced a container the core rejects (CR-01) and the two FIFO probes that
+blocked forever (WR-01) would each have been a red hosted run and a wasted cycle. The gate was run
+locally under `sh`, `dash` and the Ubuntu container before every push, and every hosted run in
+this phase was green on the first attempt.
+
+**Deferred by one commit, by name.** The merge push run for `4ee92f8` is recorded in the next
+commit the project makes anyway (the Phase 14 completion commit).
