@@ -6,16 +6,16 @@ current_phase: 14
 current_phase_name: Cartridge Route and Real-Content Conformance
 current_plan: 3
 status: executing
-stopped_at: Completed 14-01-PLAN.md
-last_updated: "2026-11-26T01:53:07.814Z"
+stopped_at: Completed 14-02-PLAN.md
+last_updated: "2026-11-26T02:18:47.020Z"
 last_activity: 2026-11-25
 last_activity_desc: Phase 13 complete, transitioned to Phase 14
-state_head: d17cc3be1df1c01b51d2bdec2ed8e2d6413a8611
+state_head: a030e7f1cbf6aa11d4368a683d6ad6d5cd76ead5
 progress:
   total_phases: 4
   completed_phases: 8
   total_plans: 9
-  completed_plans: 6
+  completed_plans: 7
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-26)
 ## Current Position
 
 Phase: 14 (Cartridge Route and Real-Content Conformance) — EXECUTING
-Current Plan: 2
+Current Plan: 3
 Total Plans in Phase: 4
 Status: Ready to execute
 Last activity: 2026-11-25 — 14-01 executed: the build-only wrap tool and its nine pack ids
@@ -268,6 +268,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | Phase 13 P03 | 27min | 2 tasks | 27 files |
 | Phase 13 P04 | 26min | 3 tasks | 25 files |
 | Phase 14 P01 | 26 min | 2 tasks | 15 files |
+| Phase 14 P02 | 145 min | 2 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -598,6 +599,9 @@ recommendations / GSD defaults / open questions are kept separate).
   **Final recompute at the phase close, after the merge push row landed** (`45723269901`, `push`, `cpu_s` 368, `gate_s` 122, the merge commit `151b688`): the last five `cpu_s` are **357 360 363 368 438 → median 363** and the last five `gate_s` are **119 120 121 122 135 → median 121**. Same verdict, same margin (363 > 362.935 by 0.065), same reason: the window moved, the work did not. This is the figure the milestone's Phase-13 checkpoint is read at.
 - [Phase 14]: The wrap tool's executable is ivs_flatwrap while its build-written source list is the hyphenated ivs-flatwrap-sources.txt; the eight container magic bytes are restated in the tool rather than exported, so no core symbol set moves
 - [Phase 14]: The SPDX alternation in tools/check/integrity.cmake gains flatwrap with no fourth control directory (the tools/bench plan 08-18 precedent); the phase's priced addition stays 1.535, not 1.845
+- [Phase 14]: the profile field cpu.interrupt_accept_clears_intff is 1 on the owner-local observation (D-51) and the tag stays unknown-default-chosen — an observation is not a hardware probe: the tag, not the number, keeps the claim ceiling honest, and C41 stays open with the hardware probe as its resolver
+- [Phase 14]: ivs_cp1610_config_default moves to 1 with the profile and the five vectors that rested on it state config 0 explicitly — leaving the library default at 0 would keep a public default contradicting the only registered profile, with nothing in the gate comparing the two (RESEARCH Pitfall 4)
+- [Phase 14]: run.stub2.jd-as-j and runner-process.mutant.SCN-STUB-JD-AS-J are re-expressed as the flip's own negative pins rather than deleted — measured: at the profile's value 1 a plain J and a JD execute with the enable already clear, so no re-expression exists in which the J half takes more entries; both cases fail again when the field returns to 0
 
 ### Pending Todos
 
@@ -694,8 +698,8 @@ The row itself is left as recorded and this note sits under it.
 
 ## Session Continuity
 
-Last session: 2026-11-26T01:53:05.824Z
-Stopped at: Completed 14-01-PLAN.md
+Last session: 2026-11-26T02:18:42.681Z
+Stopped at: Completed 14-02-PLAN.md
 Resume file: None
 
 The Phase 13 close still leaves one thing a later run must do: record the phase's hosted row from
