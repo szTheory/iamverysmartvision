@@ -407,7 +407,7 @@ The milestone adds zero new gate steps, faults or goldens, and at most one claim
 
 
 
-### v0.4.0 - scoped 2026-11-26 (in progress)
+### v0.4.0 - Inspectable Machine, One Default Decided
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -417,7 +417,10 @@ The milestone adds zero new gate steps, faults or goldens, and at most one claim
 | 20. Route, Witness and Release Posture | 0/2 | Not started | - |
 
 **Current milestone:** v0.4.0 "Inspectable Machine, One Default Decided", scoped by
-this roadmap on 2026-11-26. Eleven plans over four phases, none started. The
+this roadmap on 2026-11-26 and **in progress**. The heading above was rewritten on
+2026-11-26 because the milestone tool derived `milestone_name` from it and had written
+`scoped 2026-11-26 (in progress)` — a date, not a name — into `STATE.md` and
+`.planning/state.json`. Eleven plans over four phases, none started. The
 milestone adds zero new gate steps, faults or goldens, mints no claim (`claims=29`
 and `provisional=28` are invariants), and prices 4.72 of the 21 hosted cpu-s
 allowance.
