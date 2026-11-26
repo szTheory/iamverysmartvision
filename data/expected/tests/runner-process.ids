@@ -28,6 +28,12 @@
 #   negative row of the Lamp Tone program; stub-window rows patch boot-stub-2.exec; a fails column states the complete failing set).
 # Plan 07-11 (D-31, T-07-29): runner-process.refuse-user.audio-raw, .psg-log-out and .audio-wav: each option is refused for a scenario with a
 #   `content ... user` line (exit 14, one stderr line `<option> refused: content user`, no report, no file).
+# Plan 14-03 (SCN-03, D-47, criterion 4): runner-process.cart-user.refuse-derived — a scratch scenario naming all three user roles
+#   (`content exec user`, `content grom user`, `content cart user`) is refused for each of the six derived-output options (--frame-ppm,
+#   --video-raw, --audio-raw, --psg-log-out, --audio-wav, --update-golden): exit 14, exactly one stderr line, no report and no file, with
+#   the three audio options given together naming the first of their fixed order. The same case proves the snapshot rule to be the ABSENCE
+#   of a seventh refusal: --roundtrip-at-ticks is accepted for that scenario, writes no file, leaves the report equal to the plain run apart
+#   from host.calls, and must have made at least one cut.
 # Plan 07-11 (D-31, T-07-26 to T-07-28): runner-process.owner-run.<case>, the nine cases of the owner-local helper tools/owner-run.sh (usage,
 #   ci-env, github-actions-env, in-tree-path, wrong-size, missing-lock, bad-lock-line, no-images-skip, identity-mismatch), each on a copy of the
 #   helper in a scratch root outside the work tree with project-made zero-filled files only; runner-process.judge.owner-run-refusal rejects a
@@ -167,6 +173,7 @@ runner-process.operator.frame-ppm-refused-user-content
 runner-process.refuse-user.audio-raw
 runner-process.refuse-user.psg-log-out
 runner-process.refuse-user.audio-wav
+runner-process.cart-user.refuse-derived
 runner-process.refpcm.wav-written
 runner-process.refpcm.diag-ctrl-psg-pass
 runner-process.listen-demo.refuses-user

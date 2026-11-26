@@ -60,6 +60,16 @@
 # runner-process.owner-run.* cases of the owner-local helper tools/owner-run.sh (refusal, skip and identity cases on a copy of the helper in a
 # scratch root outside the work tree, project-made zero-filled files only; see the comment above them), with the judge self-control
 # runner-process.judge.owner-run-refusal (a fake helper that exits 0 where it must refuse is rejected).
+# Since plan 14-03 (SCN-03, D-47): the cartridge role. runner-process.cart-user.refuse-derived: a scratch scenario naming all three user
+# roles (`content exec user`, `content grom user`, `content cart user`) is refused for each of the six derived-output options (exit 14, one
+# exact stderr line, no report, no file), the three audio options together name the first of their fixed order, and the snapshot rule is
+# proved to be the ABSENCE of a seventh refusal: `--roundtrip-at-ticks` is accepted, writes no file and leaves the report equal to the plain
+# run apart from host.calls, with at least one cut. runner-process.judge.flatwrap-roundtrip: a container the project's own wrap tool wrote
+# loads as `content cart user` with slot.cart.sha256 equal to the digest the tool printed, and the equality is proved live by flipping one
+# byte of the tool's input, which moves both digests. runner-process.judge.owner-run-cart-pass: the helper's `--cart` option runs the pass
+# path on project-made files with `exec: -`, and a one-byte EXEC mutation after --record is refused at load (IVS_E_DIGEST_MISMATCH, exit 14),
+# so the pass direction is proved able to fail. The optional sixth argument is the build-only wrap tool ivs_flatwrap: without it those three
+# cases report `not ok` with that reason, never a skip, so a configuration in which the tool is missing cannot pass.
 # Judge self-controls (runner-process.judge.<slug>): the same checks run against four fake
 # runners (shell scripts in the temp dir replaying this run's reports with one defect: exit 0 for
 # a guest-fail, no report.end, outcome pass with exit.code 10, a changed digest line); each passes
@@ -100,13 +110,14 @@
 # Since plan 09-01 (D-09, A-03, A-04): the two demo-lamp-tone variants are column-5 `release-only`, so on the sanitized preset they are judged by the
 # derivation equality of docs/video/demo-lamp-tone-1-derivation.md and on Release they run; `variants=` and `variant-static=` count those rows in each
 # mode (they sum to the number of such rows), so the counts make the mode of every run visible instead of leaving it to be inferred.
-# Usage: sh runner-process-tap.sh <source root> <ivs-run> <ivs_pack> <images dir> [<build configuration>]
+# Usage: sh runner-process-tap.sh <source root> <ivs-run> <ivs_pack> <images dir> [<build configuration>] [<ivs_flatwrap>]
 # Exit: 0 pass, 1 fail, 77 every case skipped.
 # Env: IVS_TEST_NONCE, IVS_TEST_OUT_DIR, IVS_RUNNER_PROCESS_TIMEOUT.
 LC_ALL=C; export LC_ALL
-usage='usage: sh runner-process-tap.sh <source root> <ivs-run> <ivs_pack> <images dir> [<build configuration>]'
-[ "$#" -eq 4 ] || [ "$#" -eq 5 ] || { printf '%s\n' "$usage" >&2; exit 1; }
+usage='usage: sh runner-process-tap.sh <source root> <ivs-run> <ivs_pack> <images dir> [<build configuration>] [<ivs_flatwrap>]'
+[ "$#" -eq 4 ] || [ "$#" -eq 5 ] || [ "$#" -eq 6 ] || { printf '%s\n' "$usage" >&2; exit 1; }
 config=${5:-}
+flatwrap_arg=${6:-}
 # Absolute paths: the cwd case runs from another directory.
 abs_dir() { (cd "$1" 2> /dev/null && pwd -P); }
 abs_file() { _d=$(abs_dir "$(dirname "$1")") && printf '%s/%s\n' "$_d" "$(basename "$1")"; }
@@ -114,6 +125,11 @@ root=$(abs_dir "$1") || { printf 'runner-process-tap: no dir %s\n' "$1" >&2; exi
 ivs_run=$(abs_file "$2") || { printf 'runner-process-tap: no %s\n' "$2" >&2; exit 1; }
 pack=$(abs_file "$3") || { printf 'runner-process-tap: no %s\n' "$3" >&2; exit 1; }
 images=$(abs_dir "$4") || { printf 'runner-process-tap: no dir %s\n' "$4" >&2; exit 1; }
+# The wrap tool (plan 14-03): absent, the three cartridge cases report a finding rather than a skip.
+flatwrap=
+if [ -n "$flatwrap_arg" ]; then
+  flatwrap=$(abs_file "$flatwrap_arg") || { printf 'runner-process-tap: no %s\n' "$flatwrap_arg" >&2; exit 1; }
+fi
 inv="$root/data/expected/runner-scenarios.ids"
 outcomes="$root/data/expected/runner-outcomes.ids"
 scen="$root/data/scenarios"
@@ -122,6 +138,7 @@ for f in "$inv" "$outcomes"; do
 done
 [ -x "$ivs_run" ] || { printf 'runner-process-tap: %s is not executable\n' "$ivs_run" >&2; exit 1; }
 [ -x "$pack" ] || { printf 'runner-process-tap: %s is not executable\n' "$pack" >&2; exit 1; }
+[ -z "$flatwrap" ] || [ -x "$flatwrap" ] || { printf 'runner-process-tap: %s is not executable\n' "$flatwrap" >&2; exit 1; }
 limit=${IVS_RUNNER_PROCESS_TIMEOUT:-60}
 case $limit in '' | *[!0-9]* | 0) printf 'runner-process-tap: IVS_RUNNER_PROCESS_TIMEOUT=%s\n' "$limit" >&2; exit 1 ;; esac
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/runner-process-tap.XXXXXX") || exit 1
@@ -1677,6 +1694,94 @@ refuse_user() {
 refuse_user audio-raw --audio-raw "$opo/ru.raw"
 refuse_user psg-log-out --psg-log-out "$opo/ru.log"
 refuse_user audio-wav --audio-wav "$opo/ru.wav"
+
+# The cartridge role of the owner-local route (plan 14-03, SCN-03, criterion 4, D-47): a scenario that names all three user roles
+# (`content exec user`, `content grom user`, `content cart user`) is refused for every one of the six derived-output options — exit 14,
+# exactly one stderr line, no report on stdout and no file at the named path — and the snapshot rule is proved to be the ABSENCE of a
+# seventh refusal: `--roundtrip-at-ticks` is accepted for the same scenario, writes nothing, and leaves the report equal to the plain
+# run apart from host.calls. The runner's three refusal loops are already role-generic (runner/main.c: one loop over IVS_SCN_ROLES per
+# output family), so this case is proof, not implementation. Project-made files only: zero-filled exec/grom images and a container the
+# project's own wrap tool writes from a zero-filled flat file, all under this run's mktemp directory; the scenario is a scratch file, so
+# no tracked scenario and no skip-ok row moves. The hook must have CUT: a run in which it made no cut would exercise nothing.
+: > "$tmp/why"
+ok=1
+cuc="$tmp/cartuser"
+mkdir "$cuc" || exit 1
+cucscn="$cuc/cart-user.ivss"
+cu_exec="$cuc/exec.bin"
+cu_grom="$cuc/grom.bin"
+cu_flat="$tmp/cartuser-flat.bin"
+cu_cart="$tmp/cartuser-wrapped.ivsc"
+dd if=/dev/zero of="$cu_exec" bs=8192 count=1 2> /dev/null || exit 1
+dd if=/dev/zero of="$cu_grom" bs=2048 count=1 2> /dev/null || exit 1
+dd if=/dev/zero of="$cu_flat" bs=8192 count=1 2> /dev/null || exit 1
+printf 'ivss 1\nid cart-user\nprofile intv-2609-ntsc-family-p1\ncontent exec user\ncontent grom user\ncontent cart user\nrun-to 1000 ticks\n' \
+  > "$cucscn"
+cu_d1=
+if [ -z "$flatwrap" ]; then
+  ok=0; why cart-user-flatwrap 'the sixth argument (ivs_flatwrap) is missing: the case cannot build the container it loads'
+else
+  cu_d1=$("$flatwrap" "$cu_flat" 4000 "$cu_cart" 2> "$tmp/cu-wrap.err") \
+    || { ok=0; why cart-user-flatwrap "ivs_flatwrap failed: $(sed -n '1p' "$tmp/cu-wrap.err")"; }
+  [ "${#cu_d1}" -eq 64 ] || { ok=0; why cart-user-flatwrap "the printed digest is '$cu_d1'"; }
+fi
+# cu_refuse <slug> <option> <path> <stderr line>: one run per option; the refusal is the exit code, the one line, no report and no file.
+cu_refuse() {
+  printf 'ivs-run: %s\n' "$4" > "$tmp/cu.want.err"
+  run_one "$tmp" "cu-$1" "$ivs_run" --content-dir "$cuc" --exec "$cu_exec" --grom "$cu_grom" --cart "$cu_cart" \
+    "$2" "$3" "$cucscn"
+  [ "$rc" -eq 14 ] && [ "$hung" -eq 0 ] && [ ! -s "$tmp/runs/cu-$1.out" ] \
+    || { ok=0; why cart-user-refused "$2: exit $rc, hung $hung or a report on stdout"; }
+  cmp -s "$tmp/runs/cu-$1.err" "$tmp/cu.want.err" \
+    || { ok=0; why cart-user-refused "$2: stderr is not the one line 'ivs-run: $4'"; }
+  [ ! -e "$3" ] || { ok=0; why cart-user-refused "$2: a file was created at $3"; }
+}
+cu_refuse frame-ppm --frame-ppm "$tmp/cu.ppm" '--frame-ppm refused: content user'
+cu_refuse video-raw --video-raw "$tmp/cu.vraw" '--video-raw refused: content user'
+cu_refuse audio-raw --audio-raw "$tmp/cu.raw" '--audio-raw refused: content user'
+cu_refuse psg-log-out --psg-log-out "$tmp/cu.log" '--psg-log-out refused: content user'
+cu_refuse audio-wav --audio-wav "$tmp/cu.wav" '--audio-wav refused: content user'
+cu_refuse update-golden --update-golden "$tmp/cu.digests" 'golden refused: content user'
+# The three audio options at once: the first of the fixed order (--audio-raw, --psg-log-out, --audio-wav) is the one named, and none of
+# the three files exists afterwards.
+run_one "$tmp" cu-all "$ivs_run" --content-dir "$cuc" --exec "$cu_exec" --grom "$cu_grom" --cart "$cu_cart" \
+  --audio-wav "$tmp/cu-all.wav" --psg-log-out "$tmp/cu-all.log" --audio-raw "$tmp/cu-all.raw" "$cucscn"
+[ "$rc" -eq 14 ] && [ "$hung" -eq 0 ] && [ ! -s "$tmp/runs/cu-all.out" ] \
+  || { ok=0; why cart-user-refused "all three audio options: exit $rc, hung $hung or a report on stdout"; }
+printf 'ivs-run: --audio-raw refused: content user\n' > "$tmp/cu.want.err"
+cmp -s "$tmp/runs/cu-all.err" "$tmp/cu.want.err" \
+  || { ok=0; why cart-user-refused 'all three audio options: stderr is not the one --audio-raw line'; }
+for f in wav log raw; do
+  [ ! -e "$tmp/cu-all.$f" ] || { ok=0; why cart-user-refused "all three audio options: a file was created ($tmp/cu-all.$f)"; }
+done
+# The snapshot rule (docs/owner-images.md): the save/restore hook fills a caller's buffer and chooses no file, so it is allowed for user
+# content — the absence of a seventh refusal. The tick value is derived from the scenario's own `run-to` (half of it, so a 1000-tick run
+# is cut once) rather than guessed, and a run that made no cut is a finding, not a pass.
+if [ -z "$cu_d1" ]; then
+  ok=0; why cart-user-snapshot 'no container was built: the snapshot limb cannot load a cartridge'
+else
+  run_one "$tmp" cu-plain "$ivs_run" --content-dir "$cuc" --exec "$cu_exec" --grom "$cu_grom" --cart "$cu_cart" "$cucscn"
+  judge cu-plain 0 pass - "" || ok=0
+  cu_to=$(sed -n 's/^run-to \([0-9][0-9]*\) ticks$/\1/p' "$cucscn")
+  case $cu_to in '' | *[!0-9]*) ok=0; why cart-user-snapshot "the scenario's run-to is '$cu_to'"; cu_to=1000 ;; esac
+  cu_rt=$((cu_to / 2))
+  ls -A "$cuc" > "$tmp/cu.files.before" || exit 1
+  run_one "$tmp" cu-rt "$ivs_run" --content-dir "$cuc" --exec "$cu_exec" --grom "$cu_grom" --cart "$cu_cart" \
+    --roundtrip-at-ticks "$cu_rt" "$cucscn"
+  judge cu-rt 0 pass - "" || ok=0
+  same_body cu-rt "$tmp/runs/cu-plain.out" || ok=0
+  cu_hc=$(rkey "$tmp/runs/cu-rt.out" host.calls)
+  cu_pc=$(rkey "$tmp/runs/cu-plain.out" host.calls)
+  case $cu_hc$cu_pc in
+    '' | *[!0-9]*) ok=0; why cart-user-snapshot "host.calls is not a number (hook '$cu_hc', plain '$cu_pc')" ;;
+    *) [ $((cu_hc - cu_pc)) -ge 2 ] \
+         || { ok=0; why cart-user-snapshot "host.calls $cu_hc against the plain run's $cu_pc: the hook made no cut, so the snapshot rule was not exercised"; } ;;
+  esac
+  ls -A "$cuc" > "$tmp/cu.files.after" || exit 1
+  cmp -s "$tmp/cu.files.before" "$tmp/cu.files.after" \
+    || { ok=0; why cart-user-snapshot "the hook run changed the scratch tree: $(tr '\n' ' ' < "$tmp/cu.files.after")"; }
+fi
+result runner-process.cart-user.refuse-derived
 
 # Operator WAV (plan 05-10, D-20, D-21, T-05-26): the same stand-in under --audio-wav, into the mktemp directory.
 # By hand: the report ends with refpcm.rate (48000), refpcm.frames and refpcm.sha256 right before report.end;

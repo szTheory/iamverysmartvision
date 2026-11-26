@@ -740,5 +740,6 @@ set_tests_properties(stic-table PROPERTIES SKIP_RETURN_CODE 77 ENVIRONMENT "CMAK
 # statically in any other (the same ids, no skip-ok).
 add_test(NAME runner-process
   COMMAND sh "${CMAKE_SOURCE_DIR}/tests/runner-process-tap.sh" "${CMAKE_SOURCE_DIR}"
-          "$<TARGET_FILE:ivs_run>" "$<TARGET_FILE:ivs_pack>" "${IVS_IMAGES_DIR}" "$<CONFIG>")
+          "$<TARGET_FILE:ivs_run>" "$<TARGET_FILE:ivs_pack>" "${IVS_IMAGES_DIR}" "$<CONFIG>"
+          "$<TARGET_FILE:ivs_flatwrap>")
 set_tests_properties(runner-process PROPERTIES SKIP_RETURN_CODE 77)
