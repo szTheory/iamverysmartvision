@@ -76,7 +76,7 @@ A shared build would export no symbol until `IVS_API` is defined (visibility or 
 
 Three separate numbers exist, and none stands for another (D-30):
 
-- The software version is the `IVS_API_VERSION_MAJOR`, `_MINOR` and `_PATCH` macros of `ivs.h` (0.2.0 today). The root `CMakeLists.txt` parses them before `project()` (D-34), so this is the one place the software version is written.
+- The software version is the `IVS_API_VERSION_MAJOR`, `_MINOR` and `_PATCH` macros of `ivs.h` (0.3.0 today). The root `CMakeLists.txt` parses them before `project()` (D-34), so this is the one place the software version is written.
 - The installed package version is the `PACKAGE_VERSION` of the installed `lib/cmake/ivs/ivsConfigVersion.cmake`. It is `ivs_VERSION` as a consumer sees it, and it equals the software version because the root `CMakeLists.txt` hands the parsed macros to `project()`.
 - The GSD milestone label and the data-format versions (the container, frame header and scenario grammar numbers) are other numbers. They move by their own rules and never name a tag or a release.
 
@@ -93,7 +93,7 @@ A host that compares `ivs_api_version()` with `IVS_API_VERSION` at start-up dete
 
 ### The release check
 
-A release tag has exactly the form `v<digits>.<digits>.<digits>` (`v0.2.0`; `v1.0`, `vfoo` and `1.0.0` are refused).
+A release tag has exactly the form `v<digits>.<digits>.<digits>` (`v0.3.0`; `v1.0`, `vfoo` and `1.0.0` are refused).
 `tools/release.sh` calls `sh tools/check/release-assets.sh version <tag> core/include/ivs/ivs.h <staged prefix>/lib/cmake/ivs/ivsConfigVersion.cmake` on the staged install, before the install archive is written.
 The tag, the header macros and the installed package version must be equal; a skew or an ill-formed tag stops the script with the finding printed (`release-version-skew`, `release-version-tag-form`).
 When no tag is given the script derives it from the header macros, so a dry run of a clean tree always agrees.

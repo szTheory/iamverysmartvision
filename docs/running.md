@@ -25,8 +25,8 @@ downloaded rather than from this file. The members sit under one directory whose
 name is the archive's stem, and every path below is relative to it.
 
 ```sh
-tar -xzf ivs-v0.2.0-source.tar.gz
-cd ivs-v0.2.0
+tar -xzf ivs-v0.3.0-source.tar.gz
+cd ivs-v0.3.0
 ```
 
 ## The three commands
