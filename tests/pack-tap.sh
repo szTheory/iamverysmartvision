@@ -16,7 +16,7 @@
 # A last case pack.c-include.write-error (review IN-08): a failed --c-include write is the
 # documented write error line, a nonzero exit and no output file.
 # The flatwrap cases (plan 14-01, D-47, TOOL-07) exercise the wrap tool of tools/flatwrap, the second
-# writer of the same container. pack.flatwrap.neg.<token> is minted by a loop over the seven tokens pinned in
+# writer of the same container. pack.flatwrap.neg.<token> is minted by a loop over the eight tokens pinned in
 # data/expected/flat-refusals.ids, so a token added to the pin without a case is a finding rather than a silent
 # gap, and each case asserts the refusal and its boundary positive together: exit 1 with exactly one stderr line
 # carrying the token, nothing on stdout and no output file, then exit 0 with one 64-hex line and a container of
@@ -185,7 +185,7 @@ elif [ -e "$tmp/inc.out" ]; then
 fi
 report
 
-# ---- The wrap tool's seven refusals, each beside its boundary positive (plan 14-01, D-47) ----
+# ---- The wrap tool's eight refusals, each beside its boundary positive (plan 14-01, D-47) ----
 # The refusal half of a case: exit 1, exactly one stderr line carrying the token $1, nothing on stdout and
 # no output file at $2. $3 is `rm` to clear the output path first and require it absent afterwards (the
 # ordinary case), or `keep` when the path is the pre-existing file the case is about, whose byte-for-byte
@@ -245,6 +245,22 @@ while read -r tok; do
   executed=$((executed + 1))
   ok=1
   case $tok in
+    flatwrap-empty)
+      # A zero-byte input holds no word, and a container segment holds at least one: the core's parser refuses
+      # len_words == 0 (IVS_IVSC_R_SEGMENT_LENGTH) and IVS_IVSC_MIN_BYTES is 66, so the 64-byte container the tool
+      # used to write from an empty input was a file the project's own loader refuses (review CR-01). The boundary
+      # positive is the smallest legal container: one word, 24 + 8 + 2 + 32 = 66 bytes, entry addr 4000 len 0001.
+      : > "$tmp/fl.0"
+      fw_refused flatwrap-empty "$tmp/fw.out.ivsc" rm "$tmp/fl.0" 4000 "$tmp/fw.out.ivsc" || ok=0
+      if [ "$ok" -eq 1 ]; then
+        fw_accepted "$tmp/fl.empty.ivsc" 66 "$tmp/fl.2" 4000 "$tmp/fl.empty.ivsc" || ok=0
+      fi
+      if [ "$ok" -eq 1 ] && [ "$(fw_entry "$tmp/fl.empty.ivsc")" != 40000001 ]; then
+        ok=0
+        printf 'the entry is %s, expected 40000001 (addr 4000, len_words 0001)\n' \
+          "$(fw_entry "$tmp/fl.empty.ivsc")" > "$tmp/why"
+      fi
+      ;;
     flatwrap-length)
       # 1 byte is not a whole word; 2 bytes is one word, and the container is 24 + 8 + 2 + 32 = 66 bytes.
       dd if=/dev/zero of="$tmp/fl.1" bs=1 count=1 2> /dev/null

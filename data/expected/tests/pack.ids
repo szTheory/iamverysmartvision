@@ -24,6 +24,10 @@ pack.c-include.write-error
 # minted by a loop over that file, each asserting the refusal (exit 1, one stderr line with the token, nothing
 # on stdout, no output file) and its boundary positive (exit 0, one 64-hex line, a container of the exact
 # expected size, and the value read back where the pair is about a value).
+# pack.flatwrap.neg.flatwrap-empty: a zero-byte input is refused (a container segment holds at least one word, so
+# no container exists for it); one word (2 bytes) is accepted as the smallest legal container, 66 bytes, entry
+# 40000001.
+pack.flatwrap.neg.flatwrap-empty
 # pack.flatwrap.neg.flatwrap-length: 1 byte refused, 2 bytes accepted as one word.
 pack.flatwrap.neg.flatwrap-length
 # pack.flatwrap.neg.flatwrap-word-range: 0400 refused, 03FF accepted and its container word is 03FF.

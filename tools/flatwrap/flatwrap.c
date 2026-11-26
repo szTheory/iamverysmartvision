@@ -25,18 +25,27 @@
  *
  * Check order, part of the published contract (the container's own specification states its order
  * and that the first failing check decides the refusal):
- *   1 length         an odd byte count                            flatwrap-length
- *   2 words          more than 65,536 words                       flatwrap-words
- *   3 base           below $4000                                  flatwrap-base
- *   4 crossing       base + words above $10000                    flatwrap-cross
- *   5 output tree    the output's physical parent directory is inside the work tree and not under
+ *   1 empty          no words at all (a zero-byte input)          flatwrap-empty
+ *   2 length         an odd byte count                            flatwrap-length
+ *   3 words          more than 65,536 words                       flatwrap-words
+ *   4 base           below $4000                                  flatwrap-base
+ *   5 crossing       base + words above $10000                    flatwrap-cross
+ *   6 output tree    the output's physical parent directory is inside the work tree and not under
  *                    refs/                                       flatwrap-output-tree
- *   6 output exists  a path that already exists                   flatwrap-output-exists
- *   7 word range     a word above $03FF                           flatwrap-word-range
+ *   7 output exists  a path that already exists                   flatwrap-output-exists
+ *   8 word range     a word above $03FF                           flatwrap-word-range
  * A refusal is one stderr line `ivs_flatwrap: <token>: <detail>`, exit status 1, and no output
  * file. Any other failure (an input that cannot be read, an output directory that cannot be
  * resolved, a write error) is a file or usage error: one stderr line without a token, exit status
- * 2. The seven tokens are the whole typed surface and are pinned in data/expected/flat-refusals.ids.
+ * 2. The eight tokens are the whole typed surface and are pinned in data/expected/flat-refusals.ids.
+ *
+ * Rule 1 is the lower bound the container imposes and the tool used to lack: a segment holds at
+ * least one word, so an input of no bytes has no legal container at all. The container's own
+ * specification states len_words is 1 to 65,535, IVS_IVSC_MIN_BYTES is 66 (prefix 24 + entry 8 +
+ * one word 2 + trailer 32), and the core's parser refuses len_words == 0 outright
+ * (IVS_IVSC_R_SEGMENT_LENGTH, content/ivsc.c). Writing a container the project's own loader refuses
+ * is the one thing this tool must never do, so the empty input is refused by its own token before
+ * any byte count arithmetic, and its boundary positive is the smallest legal container: one word.
  *
  * The output is derived material of content the operator holds. It is written only to the path
  * named, refused inside the work tree (refs/ is the one exception, as it is for tools/owner-run.sh),
@@ -98,7 +107,7 @@ static int fw_refuse(const char *token, const char *detail)
   return 1;
 }
 
-/* A failure that is not one of the seven rules: a file or usage error, with no token. */
+/* A failure that is not one of the eight rules: a file or usage error, with no token. */
 static int fw_fail(const char *detail)
 {
   fprintf(stderr, "ivs_flatwrap: %s\n", detail);
@@ -266,9 +275,9 @@ int main(int argc, char **argv)
     }
   }
 
-  /* Rule 1 (length) and rule 2 (words) are decided from the byte count, before anything is read,
-   * so an oversized file never reaches the buffer and the word count is checked before any
-   * multiplication by two. */
+  /* Rule 1 (empty), rule 2 (length) and rule 3 (words) are decided from the byte count, before
+   * anything is read, so an oversized file never reaches the buffer and the word count is checked
+   * before any multiplication by two. */
   f = fopen(flat, "rb");
   if (f == NULL) {
     fprintf(stderr, "ivs_flatwrap: cannot read %s\n", flat);
@@ -278,6 +287,10 @@ int main(int argc, char **argv)
     fclose(f);
     fprintf(stderr, "ivs_flatwrap: cannot read %s\n", flat);
     return 2;
+  }
+  if (size == 0L) {
+    fclose(f);
+    return fw_refuse("flatwrap-empty", "the input is empty, and a container segment holds at least one word");
   }
   if ((size % 2L) != 0L) {
     fclose(f);
@@ -291,7 +304,7 @@ int main(int argc, char **argv)
   }
   n_words = (uint32_t)((unsigned long)size / 2UL);
 
-  /* Rule 3 (base) and rule 4 (crossing). */
+  /* Rule 4 (base) and rule 5 (crossing). */
   if (!fw_parse_base(argv[2], &base) || base < 0x4000u) {
     fclose(f);
     snprintf(detail, sizeof detail, "the base %s is not four hex digits in 4000 to FFFF", argv[2]);
@@ -303,7 +316,7 @@ int main(int argc, char **argv)
     return fw_refuse("flatwrap-cross", detail);
   }
 
-  /* Rule 5 (output tree) and rule 6 (output exists). */
+  /* Rule 6 (output tree) and rule 7 (output exists). */
   inside = fw_inside_tree(out);
   if (inside < 0) {
     fclose(f);
@@ -322,7 +335,7 @@ int main(int argc, char **argv)
     return fw_refuse("flatwrap-output-exists", detail);
   }
 
-  /* Read the input and pair its bytes into words, then rule 7 (word range). */
+  /* Read the input and pair its bytes into words, then rule 8 (word range). */
   got = fread(fw_in, 1u, (size_t)size, f);
   if (got != (size_t)size) {
     fclose(f);
