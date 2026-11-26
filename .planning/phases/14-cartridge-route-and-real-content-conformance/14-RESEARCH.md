@@ -971,7 +971,15 @@ content cart user
 | A6 | The next blocker (STIC strobe) is recorded by appending to C82's `note` plus a `STATE.md` Deferred row, with no new discrepancy id | Pattern 6, Open Question 3 | A new `C111` row would move `discrepancies=110`/`open=101` and need a `d10-measurements.ids` line; the opposite of the cost posture |
 | A7 | The cost unit "process-launch id 0.10 cpu-s" is per id across both presets, so 13 ids ≈ the priced 1.3 | Validation Architecture | If it is per id *per preset*, the same id list costs ~2.6 and the phase must record `reprice` |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+**All four are resolved.** The resolutions are frozen in `14-CONTEXT.md` → "Resolved from the research open
+questions (2026-11-26)", one row per question below, and the plans cite them by row rather than re-arguing
+them. Read that block as the answer; the question text and its `Recommendation:` line stay as the record of
+what was open at research time. Questions 1 and 2 are also restated as readings in `14-01-PLAN.md`'s context
+block (the executable is `ivs_flatwrap`, the base is four bare hex digits), question 3 is plan 14-02's task 2,
+and question 4 is the phase boundary's cost checkpoint in plan 14-04. Where a `Recommendation:` line and the
+CONTEXT resolution differ, the CONTEXT resolution wins — that is the frozen artifact.
 
 1. **How does the tool know where the work tree is?**
    - What we know: R-2 says "an output inside the work tree except under the ignored `refs/`
@@ -1066,7 +1074,7 @@ predicted delta is `tests-expected = 4990 + 2N`, `tests-skipped = 4` unchanged.
 | SCN-03 | `content cart user` + all six derived outputs refused, one line each, no file | integration (process) | `ctest --preset dev -R '^runner-process$'` — `runner-process.cart-user.refuse-derived` (or six ids) | ❌ Wave 0 |
 | SCN-03 | the snapshot rule fires: `--roundtrip-at-ticks` allowed, nothing written | integration | `runner-process.cart-user.roundtrip` | ❌ Wave 0 |
 | TOOL-07/SCN-03 | wrapped image loads as `content cart user`; `slot.cart.sha256` == printed; one flipped input byte changes it | integration (process, 2 runs) | `runner-process.flatwrap.roundtrip` | ❌ Wave 0 |
-| SCN-03 | the route's cartridge role: pass path on project-made files, outcome pinned, one-byte mutation fails it | integration (process) | `runner-process.owner-run.cart-pass` | ❌ Wave 0 |
+| SCN-03 | the route's cartridge role: pass path on project-made files, outcome pinned, one-byte mutation fails it | integration (process) | `runner-process.judge.owner-run-cart-pass` (judge-shaped: plan 14-04 registers it as a `mutant` row, and `important-gates.sh:151` resolves such a row only through a `<suite>.judge.<slug>` id) | ❌ Wave 0 |
 | CPU-06 | the field is 1 and both settings are pinned | in-process | `ctest --preset dev -R '^cpu-vectors$'` — the five retargeted vectors + `cpu.UNIT-INT.accept-clears-intff-config` | ✅ exists, needs the override edit |
 | CPU-06 | the digest and every snapshot literal are the new values | in-process | `ctest --preset dev -R '^state$'` — `state.literal.params-digest`, `state.save.canonical-stream-literal`, `state.cut.fixed-point-and-canonical` | ✅ exists, needs the re-pin |
 | CPU-06 | the boot-stub-2 interrupt control still discriminates | in-process | `ctest --preset dev -R '^run$'` — `run.stub2.jd-as-j` | ✅ exists, needs re-expression |
@@ -1101,7 +1109,7 @@ process-launch id, 0.31 per control), and assuming A7 (per id, both presets):
 
 | Package | ids | controls | ≈ cpu-s | Fits 1.3? |
 |---|---|---|---|---|
-| **A (recommended)** 8 `pack` + 1 `cart-user.refuse-derived` + 1 `cart-user.roundtrip` + 1 `flatwrap.roundtrip` + 1 `owner-run.cart-pass` | 12 | 1 (c-build) | 1.2 + 0.31 = 1.51 | over by 0.21 → record `reprice` or drop the second control |
+| **A (recommended)** 8 `pack` + 1 `cart-user.refuse-derived` + 1 `cart-user.roundtrip` + 1 `flatwrap.roundtrip` + 1 `judge.owner-run-cart-pass` | 12 | 1 (c-build) | 1.2 + 0.31 = 1.51 | over by 0.21 → record `reprice` or drop the second control |
 | **B** package A without `pack.flatwrap.word-order` and `cart-user.roundtrip` (fold both into neighbours) | 10 | 1 | 1.0 + 0.31 = 1.31 | yes, exactly at the price |
 | **C** package B without the `integrity` control (extend the alternation, no new control: the rule is already proved three times) | 10 | 1 | 1.31 | yes, with the Pitfall 8 convention deviation recorded in the summary |
 
