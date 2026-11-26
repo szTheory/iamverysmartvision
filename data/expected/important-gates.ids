@@ -588,3 +588,10 @@ host mutant runner-process.judge.host-schedule TOOL-08
 # digest. The witness pair is what a bare `load.refused 1` could not establish: the refusal cannot pass as
 # a machine that is simply dead, and a half-loaded machine cannot answer a digest.
 host mutant runner-process.judge.host-load-refused TOOL-08
+# host (plan 15-04, TOOL-08, review WR-02): the judge self-control's own guard. `self_control` accepted a
+# stand-in that failed for its intended token AND others, so a stand-in that differs from a passing output
+# in two limbs - the pass golden's lines with `frames 13`, which an empty-poll judge finds identical to the
+# pass output (empty-poll-identical) and still carrying the pass run's input (empty-poll-idle) - must be
+# refused as judge-wrong-reason. Without this row the two digest limbs above would be guarded by a control
+# that cannot tell a one-limb stand-in from a two-limb one.
+host mutant runner-process.judge.host-two-limb TOOL-08

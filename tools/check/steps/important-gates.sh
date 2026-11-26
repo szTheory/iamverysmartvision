@@ -73,7 +73,11 @@
 #            runner-process.judge.host-digest-diff (refused for digest-diff); two rows, one gate
 #            name, zero new faults, zero new steps; the rows and the TOOL-08 flip land in one commit
 #            for the same two-direction reason as Phase 14, and all ten toy registries gain their
-#            toy-phase15 line in that commit)
+#            toy-phase15 line in that commit; plan 15-04, the code review's CR-01, WR-01 and WR-02, adds
+#            three more rows under the same `host` gate name - the bounded input schedule's refusal with
+#            its long-run witness pair, the refused load's rollback with its retry, and the judge
+#            self-control's two-limb guard - five rows in that gate, one gate name, zero new faults,
+#            zero new steps, and no toy line because no requirement is accepted here)
 # Resolution of <id> by mechanism:
 #   fault    first column of any data/expected/faults/*.ids (judged by faults-verdict);
 #   control  first column of any data/expected/controls/*.ids (run by tools/check/run-controls.sh);

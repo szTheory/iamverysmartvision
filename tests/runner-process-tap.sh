@@ -2630,28 +2630,54 @@ z64=0000000000000000000000000000000000000000000000000000000000000000
   printf '#!/bin/sh\n# Fake ivs-run: the pass report with a different digest.cpu.\n'
   printf 'sed '"'"'s/^digest\\.cpu .*/digest.cpu %s/'"'"' "$(dirname "$0")/dbp.report"\nexit 0\n' "$z64"
 } > "$fakes/body.sh"
-# self_control <slug> <token> <check...>: runs the check; ok only when it fails with <token>.
-self_control() {
-  _slug=$1; _tok=$2; shift 2
+# self_control_run <slug> <expect> <check...>: runs the check against a stand-in and sets _sc to `ok`, `vacuous`
+# or `wrong-reason`. <expect> is the COMPLETE set of finding tokens the stand-in is declared to produce, space
+# separated, and the control is healthy only when the check's OBSERVED token set equals it exactly (review WR-02).
+# A stand-in differs from a passing output in one limb, so an extra token means it differs in a second place and the
+# rejection says nothing about the limb under test; a missing token means the declaration claims a limb the check
+# never saw. Requiring the intended token's PRESENCE alone accepted the first case, which is the opposite of the
+# property the committed stand-ins claim. Two tokens in a declaration are legitimate when ONE defect is judged by two
+# limbs of the same check (an outcome word that is neither the expected outcome nor a pair of runner-outcomes.ids),
+# and the declaration is what makes that explicit instead of invisible.
+self_control_run() {
+  _slug=$1; _exp=$2; shift 2
   : > "$tmp/why"
   if "$@"; then
-    ok=0
+    _sc=vacuous
     : > "$tmp/why"
     why judge-vacuous "the check accepted the fake runner of $_slug"
-  elif grep -q -e "^$_tok: " "$tmp/why"; then
-    ok=1
-  else
-    ok=0
-    { printf 'judge-wrong-reason: the check failed, but without %s:\n' "$_tok"; cat "$tmp/why"; } > "$tmp/why.2"
-    mv "$tmp/why.2" "$tmp/why"
+    return 0
   fi
+  _scwant=$(printf '%s\n' $_exp | sort -u)
+  _schave=$(sed -n 's/^\([a-z0-9-]*\):.*/\1/p' "$tmp/why" | sort -u)
+  if [ -n "$_schave" ] && [ "$_scwant" = "$_schave" ]; then
+    _sc=ok
+    return 0
+  fi
+  _sc=wrong-reason
+  {
+    printf 'judge-wrong-reason: the check did not fail for exactly the declared set of %s:\n' "$_slug"
+    printf 'declared: %s\n' "$(printf '%s ' $_exp)"
+    printf 'observed: %s\n' "$(printf '%s ' ${_schave:-none})"
+    cat "$tmp/why"
+  } > "$tmp/why.2"
+  mv "$tmp/why.2" "$tmp/why"
+}
+
+# self_control <slug> <expect> <check...>: runs the check; ok only when it fails for exactly the declared set.
+self_control() {
+  _slug=$1; _exp=$2; shift 2
+  self_control_run "$_slug" "$_exp" "$@"
+  ok=0
+  if [ "$_sc" = ok ]; then ok=1; fi
   result "runner-process.judge.$_slug"
 }
 self_control exit-mismatch exit-code \
   check_scenario "$fakes/exit-mismatch.sh" fake-exit guest-assert-mismatch 10 guest-fail -
 self_control no-report-end report-end \
   check_scenario "$fakes/no-report-end.sh" fake-end guest-assert-mismatch 10 guest-fail -
-self_control outcome-exit-disagree outcome-exit-disagree \
+# One defect, two judged limbs: the outcome word stops being the expected one AND stops being a pair with exit 10.
+self_control outcome-exit-disagree 'outcome outcome-exit-disagree' \
   check_scenario "$fakes/outcome-exit.sh" fake-pair guest-assert-mismatch 10 guest-fail -
 self_control body-differs body-differs \
   check_repeat "$tmp" "$fakes/body.sh" fake-body diag-boot-pass "$tmp/runs/scen-diag-boot-pass.out"
@@ -2695,6 +2721,35 @@ host_stand_in() {
 }
 self_control host-vacuous frames-zero host_stand_in host-vacuous
 self_control host-digest-diff digest-diff host_stand_in host-digest-diff
+# The guard ON the guard (plan 15-04, review WR-02): a control is healthy only when the check's OBSERVED token set
+# equals the DECLARED one, in both directions. Two limbs, over stand-ins this suite already has:
+#   extra   - the pass golden's own lines with `frames 13` are an empty-poll output that dropped nothing, so
+#             check_host_empty finds it identical to the pass golden (empty-poll-identical, the declared token) AND
+#             still carrying the pass run's input (empty-poll-idle). Two limbs, and only the first is under test.
+#   missing - the host-vacuous stand-in is declared to produce frames-zero AND digest-diff, but check_host returns at
+#             frames-zero, so the digest limb is never exercised: a declaration that claimed it would report a limb as
+#             covered that nothing tested.
+# Without this id a self_control that only grepped for the intended token could not tell a one-limb stand-in from a
+# two-limb one, which is the defect the review measured. Findings go to their own file because each self_control_run
+# starts by clearing $tmp/why.
+{ printf 'frames 13\n'; cat "$fakes/host.digests"; } > "$fakes/host-two-limb.out"
+: > "$tmp/two.bad"
+self_control_run host-two-limb empty-poll-identical check_host_empty "$fakes/host-two-limb.out"
+case $_sc in
+  ok) printf 'judge-two-limb: self_control accepted a stand-in that differs from a passing output in two limbs\n' >> "$tmp/two.bad" ;;
+  wrong-reason) : ;;
+  *) printf 'judge-two-limb: self_control refused the two-limb stand-in as %s, not judge-wrong-reason\n' "$_sc" >> "$tmp/two.bad" ;;
+esac
+self_control_run host-two-limb-missing 'frames-zero digest-diff' host_stand_in host-vacuous
+case $_sc in
+  ok) printf 'judge-two-limb: self_control accepted a declaration claiming a limb the check never exercised\n' >> "$tmp/two.bad" ;;
+  wrong-reason) : ;;
+  *) printf 'judge-two-limb: self_control refused the unexercised-limb declaration as %s, not judge-wrong-reason\n' "$_sc" >> "$tmp/two.bad" ;;
+esac
+: > "$tmp/why"
+ok=1
+if [ -s "$tmp/two.bad" ]; then ok=0; cat "$tmp/two.bad" > "$tmp/why"; fi
+result runner-process.judge.host-two-limb
 # Judge self-control of the round-trip comparison (plan 08-16, D-18): check_roundtrip must be shown to fail before it is trusted, twice. A fake runner
 # that replays the report of ANOTHER scenario (diag-ctrl-psg-pass) for the hook run must be rejected for body-differs (the comparison with the plain
 # report fails on a report that differs); a fake that replays the plain report unchanged, as a hook that never cut would, must be rejected for
@@ -2807,7 +2862,8 @@ or_fake() {
   or_end
   return "$_fj"
 }
-self_control owner-run-refusal owner-run-exit or_fake
+# One defect, two judged limbs: the helper exits 0 instead of 2 and prints none of the refusal line.
+self_control owner-run-refusal 'owner-run-exit owner-run-stderr' or_fake
 
 # Watchdog self-control (the hosted false `hung` of run 43148343848, see wd_start): 20 watchdogs
 # of a live target, each stopped at once, must leave no marker and the target alive (before the

@@ -87,8 +87,8 @@
 #   difference stays attributable to the input alone), and every non-input digest line the IDLE golden carries
 #   (eight today; its `# domains:` line reads input=none) equals that golden's, with digest.input differing from the
 #   pass golden's.
-# Plan 15-04 (TOOL-08, review CR-01 and WR-01): the two measured defects of the shim, each made observable through
-#   the frontend's own answers. runner-process.judge.host-schedule: the input schedule is bounded and REFUSES rather than
+# Plan 15-04 (TOOL-08, review CR-01, WR-01 and WR-02): the two measured defects of the shim and the guard on the
+#   guard, each made observable through the frontend's own answers. runner-process.judge.host-schedule: the input schedule is bounded and REFUSES rather than
 #   truncates, in two limbs - `--schedule-full` (5000 events pending in one drain) requires `schedule.runs.ok 0`,
 #   `schedule.frames 0` and a `schedule.polled` above zero and below 5000, so the refusal came from the schedule's
 #   bound while the host still had events left; `--schedule-long` (8000 events over two calls, 4000 at a time)
@@ -97,6 +97,12 @@
 #   runner-process.judge.host-load-refused: a refused load leaves nothing committed - the instance digest is unmoved by a
 #   refused four-byte-cartridge load, the run is refused, and the same call with the right images then succeeds and
 #   moves the digest, so the refusal is not a dead machine and a retry is meaningful.
+#   runner-process.judge.host-two-limb: the two limbs that make the judge self-control's own guard able to fail. A
+#   self_control now requires the check's OBSERVED token set to equal the DECLARED one, so (a) the pass golden's lines
+#   with `frames 13`, which an empty-poll judge finds identical to the pass output (empty-poll-identical) AND still
+#   carrying the pass run's input (empty-poll-idle), must be refused as judge-wrong-reason rather than accepted because
+#   the declared token is present; and (b) a declaration claiming a limb the check never exercised (frames-zero AND
+#   digest-diff on the frames-zero stand-in, whose check returns before the digests) must be refused too.
 #   runner-process.judge.host-vacuous and runner-process.judge.host-digest-diff: the phase's two COMMITTED stand-ins
 #   (criterion 3.3), not scratch probes. Each is a fake frontend this suite writes into its temp dir and judges with
 #   the SAME check_host the real run is judged by: host-vacuous prints the pass golden's nine lines with `frames 0`
@@ -269,3 +275,4 @@ runner-process.judge.host-schedule
 runner-process.judge.host-load-refused
 runner-process.judge.host-vacuous
 runner-process.judge.host-digest-diff
+runner-process.judge.host-two-limb
