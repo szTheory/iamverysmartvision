@@ -12,7 +12,7 @@ last_activity_desc: Phase 16 complete
 state_head: 93f27abc7c2bd1ee9cd8c3d04441cfa3d7081948
 progress:
   total_phases: 4
-  completed_phases: 8
+  completed_phases: 4
   total_plans: 17
   completed_plans: 17
   percent: 100
