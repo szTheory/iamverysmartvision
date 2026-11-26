@@ -1096,19 +1096,32 @@ unexpected token as a stop.
 **If A1 fails**, the phase still meets TOOL-02's words ("end at the report's own step tick") but loses the
 state-equality limb; the poke stand-in would then have to break the tick instead, and the plan must say so.
 
-## 12. Open Questions
+## 12. Open Questions (RESOLVED)
 
-1. **O1 — what "the last record's tick" means.** Criterion 2 says it equals `step.<k>`'s end tick; CONTEXT's
+All three are resolved by the plans; each entry names where the resolution lands, so no question is left for the
+executor to settle in the dark.
+
+1. **O1 — what "the last record's tick" means. (RESOLVED — `18-01-PLAN.md` Task 1, `docs/inspection.md`'s
+   `## The trace file` paragraph.)** The page is frozen with an `end` record as the last line, its `tick` equal to
+   the last step record's `end` and to the report's own `step.<k>.now_ticks`, while an access record keeps its own
+   cycle stamp. The alternative (every record's `tick` = unit end) is refused in the page's own words because it
+   loses the per-access cycle stamp the requirement names. Criterion 2 says it equals `step.<k>`'s end tick; CONTEXT's
    field order puts the unit stamps after the tick. Recommendation: an `end` record as the last line, access
    records carrying their own cycle stamp (§1.8). Alternative: `tick` = unit end. **The plan decides and, if
    the decision differs from the frozen doc's wording, records it as a deviation** — this is precisely the
    case W5's "the document wins" rule was written for, and the doc is frozen first, so the doc's own sentence
    is the one that binds.
-2. **O2 — how many ids the phase actually ships.** The priced line says 14 process ids + 5 stand-ins; §3.5
-   proposes 8 + 6 plus 2 refusal ids. The plan states the number and the resulting `tests-expected` before
-   execution; a shipped number below 14 is under the line and must be reported as such.
-3. **O3 — where the disassembly ids live when `18-03` is dropped.** `data/expected/tests/asm.ids` must not
-   name an id the suite cannot mint (`tests-missing`), so the drop and the inventory edit are one commit.
+2. **O2 — how many ids the phase actually ships. (RESOLVED — `18-02-PLAN.md` and `18-03-PLAN.md`, stated in each
+   plan's delta table before execution.)** Nineteen: fourteen non-stand-in ids (four in `18-02` Task 1, five in
+   `18-02` Task 2, five in `18-03`) and five stand-ins (four in `18-02` Task 2, one in `18-03`) — the priced line's
+   14 + 5 exactly, so the phase is neither under nor over it. `tests-expected` moves 5044 → 5052 → 5070 → 5082 and
+   `tests-executed` 5040 → 5048 → 5066 → 5078, both counted across two presets.
+3. **O3 — where the disassembly ids live when `18-03` is dropped. (RESOLVED — `18-03-PLAN.md` Task 1, steps (c)
+   and (e).)** The six `asm` ids, their six inventory lines and their one registry row land in the same commit as
+   the emitter, and the drop is taken in that same commit: the six inventory lines are removed with it, so
+   `data/expected/tests/asm.ids` never names an id the suite cannot mint. The drop also appends the note
+   `docs/inspection.md`'s `## Disassembly` section authorises and records `TOOL-02` exiting with the reduced
+   surface named.
 
 ## 13. Sources
 
