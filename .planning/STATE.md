@@ -5,17 +5,17 @@ milestone_name: Owner-Supplied Content and a Driveable Host (Phases 13 to 16)</s
 current_phase: 14
 current_phase_name: Cartridge Route and Real-Content Conformance
 current_plan: 4
-status: executing
-stopped_at: Completed 14-03-PLAN.md
-last_updated: "2026-11-26T03:06:58.199Z"
+status: verifying
+stopped_at: Completed 14-04-PLAN.md
+last_updated: "2026-11-26T03:11:17.267Z"
 last_activity: 2026-11-26
 last_activity_desc: Phase 13 complete, transitioned to Phase 14
-state_head: 548e80d3b853e24ef0042d69a8b50f2b204edc1b
+state_head: bee451127d9930199603a40eddf1bbab635c837c
 progress:
   total_phases: 4
   completed_phases: 8
   total_plans: 9
-  completed_plans: 8
+  completed_plans: 9
 ---
 
 # Project State
@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-11-26)
 Phase: 14 (Cartridge Route and Real-Content Conformance) — COMPLETE
 Current Plan: 4 of 4
 Total Plans in Phase: 4
-Status: Phase complete — 4/4 plans executed, `14-VALIDATION.md` signed off, no claim raised (D-50 unchanged)
+Status: Phase complete — ready for verification; 4/4 plans executed, `14-VALIDATION.md` signed off, no claim raised (D-50 unchanged)
 Last activity: 2026-11-26 — 14-04 executed: the three flips with the five registry rows that name them, the 13-file toy extension, the closing gate line under `sh`/`dash` and in the container, one cost verdict and the validation sign-off
 
 Phase 14's closing gate run reads `gate: PASS steps=38/38 controls=402/402 … faults=238/238 …
@@ -283,6 +283,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | Phase 14 P01 | 26 min | 2 tasks | 15 files |
 | Phase 14 P02 | 145 min | 2 tasks | 15 files |
 | Phase 14 P03 | 80 min | 3 tasks | 6 files |
+| Phase 14 P04 | 28 min | 2 tasks | 21 files |
 
 ## Accumulated Context
 
@@ -716,8 +717,8 @@ The row itself is left as recorded and this note sits under it.
 
 ## Session Continuity
 
-Last session: 2026-11-26T02:37:55.920Z
-Stopped at: Completed 14-03-PLAN.md
+Last session: 2026-11-26T03:11:17.023Z
+Stopped at: Completed 14-04-PLAN.md
 Resume file: None
 
 The Phase 13 close still leaves one thing a later run must do: record the phase's hosted row from
