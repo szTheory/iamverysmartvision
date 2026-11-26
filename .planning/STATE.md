@@ -4,18 +4,18 @@ milestone: v0.3.0
 milestone_name: Owner-Supplied Content and a Driveable Host (Phases 13 to 16)</summary>
 current_phase: 15
 current_phase_name: Build-Only Host and the Fake-Frontend Harness
-current_plan: 2
+current_plan: 3
 status: executing
-stopped_at: Completed 15-01-PLAN.md
-last_updated: "2026-11-26T05:51:51.886Z"
+stopped_at: Completed 15-02-PLAN.md
+last_updated: "2026-11-26T06:15:59.321Z"
 last_activity: 2026-11-26
 last_activity_desc: Phase 14 complete, transitioned to Phase 15
-state_head: 7fc801105dd69445b94a8c1894be6e5838f71cb1
+state_head: 1260022305f73f074cf82dadb666d636724b6c0f
 progress:
   total_phases: 4
   completed_phases: 8
   total_plans: 12
-  completed_plans: 10
+  completed_plans: 11
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-26)
 ## Current Position
 
 Phase: 15 — Build-Only Host and the Fake-Frontend Harness
-Current Plan: 2
+Current Plan: 3
 Total Plans in Phase: 3
 Status: Ready to execute
 Last activity: 2026-11-25 — Phase 14 complete, transitioned to Phase 15
@@ -315,6 +315,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | Phase 14 P03 | 80 min | 3 tasks | 6 files |
 | Phase 14 P04 | 28 min | 2 tasks | 21 files |
 | Phase 15 P01 | 17 min | 2 tasks | 12 files |
+| Phase 15 P02 | 22 min | 3 tasks | 17 files |
 
 ## Accumulated Context
 
@@ -654,6 +655,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 14]: 14-04: checkpoint: reprice (cpu_s 357 360 363 368 438, median 363; build_s 33 34 35 35 39, median 35; gate_s 119 120 121 122 135, median 121; priced addition 1.535; allowance 21). Recomputed by arithmetic from the last five .planning/ci-runs.tsv rows (45683886915, 45717868904, 45718553735, 45720934719, 45723269901), never quoted: the frozen 361/34/118 figures are stale by measurement, by +2/+1/+3. discharged-within-allowance is not reachable because 363 > 361 + 1.535 = 362.535, by 0.465. lever-required is not reached because the cumulative milestone spend is 3.470 of 21 (1.935 from Phase 13 plus 1.535 here) and this phase's additions landed at the priced count (steps 38, faults 238 and goldens 29 unmoved, one control directory, five registry rows, thirteen toy files), so no line overran by 25 percent (1.535 against 1.3 is +18.1 percent). The median moved more than the priced addition while the token line is where it was predicted, so reprice is what the rule names.
 - [Phase 15]: The host shim exports exactly the nine names of data/expected/host-symbols.ids, enforced by the linker on both platforms and checked in both directions; IVS_API is defined for that target alone so the static package stays eleven files.
 - [Phase 15]: A dlopen frontend over the build-only object reproduces the runner nine digest lines byte-for-byte on lamp-tone.ivsc at tick 806568 (frames 13, plane bytes 198432, PCM frames 10815), so the seam is proved before nine more assertions build on it.
+- [Phase 15]: The pixel probe counts delivered pixels (198432 = 13 x 159 x 96), not frames: runner-process.host.frames requires pixel.probes ok <n> to equal video.plane.bytes and be positive, which is the equality the plan's 'pixel.probes ok 13' would have lost.
+- [Phase 15]: No important-gates row is written for the two new binary controls: PKG-06 is Pending until Phase 16 and important-gates.sh refuses a row naming a Pending requirement; a control runs from its directory and its rights.ids line.
 
 ### Pending Todos
 
@@ -750,8 +753,8 @@ The row itself is left as recorded and this note sits under it.
 
 ## Session Continuity
 
-Last session: 2026-11-26T05:51:51.768Z
-Stopped at: Completed 15-01-PLAN.md
+Last session: 2026-11-26T06:15:55.477Z
+Stopped at: Completed 15-02-PLAN.md
 Resume file: None
 
 The Phase 13 close still leaves one thing a later run must do: record the phase's hosted row from
