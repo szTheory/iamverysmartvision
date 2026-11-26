@@ -2109,3 +2109,58 @@ frozen figure is recorded here as optimistic rather than re-blessed, and the fir
 the push is the measurement that settles it. Context recomputed from the file, not quoted: the last
 five `.planning/ci-runs.tsv` rows give medians `cpu_s` **366** (352, 359, 366, 368, 441) and
 `gate_s` **133** (126, 130, 133, 134, 155), with one 441/155 outlier among them.
+
+> **Correction (plan 16-05, the phase close).** The `cpu_s` limb above is right — median 366 over
+> 352, 359, 366, 368, 441. The `gate_s` limb reads the **wrong column**: 126, 130, 133, 134, 155 are the
+> last five **`total_s`** values (column 11), not `gate_s` (column 10), which is 122, 115, 120, 145, 115
+> and whose median is **120**. The "441/155 outlier" pairs a `cpu_s` with a `total_s` for the same
+> reason. No figure in this entry's wall-time arithmetic depends on it (the pair figures come from
+> `step-time` lines in the two kept logs), and the phase's checkpoint uses the corrected window, which
+> is printed in full in the section below.
+
+## 2026-11-26 — Phase 16 close (plan 16-05): the checkpoint, recomputed at the closing commit
+
+phase16: reprice (cpu_s 368 366 359 441 352, median 366; build_s 35 34 34 38 33, median 34; gate_s 122 115 120 145 115, median 120; priced addition 0.4; actual addition 0.015; allowance 21)
+
+**The arithmetic, over the committed file and not over a memory of it.** The last five rows of
+`.planning/ci-runs.tsv` at this commit are `45723269901`, `45747709457`, `45751979661`, `45778926664` and
+`45779277467`. Each window, sorted, with its middle value:
+
+| Window | The five values, sorted | Median | Frozen | Movement |
+|---|---|---|---|---|
+| `cpu_s` (col 13) | 352, 359, 366, 368, 441 | **366** | 361 | +5 |
+| `build_s` (col 8) | 33, 34, 34, 35, 38 | **34** | 34 | 0 |
+| `gate_s` (col 10) | 115, 115, 120, 122, 145 | **120** | 118 | +2 |
+
+**Why `reprice` and not the other two words.** `discharged-within-allowance` requires the recomputed median
+to sit inside the frozen figure plus the phase's priced addition: `361 + 0.4 = 361.4`, and `366 > 361.4` by
+4.6, so it is not reachable. `lever-required` requires a line that overran its price: the phase priced
+**0.4** cpu-s and actually added **0.015** (the three `release-posture` registry rows and nothing else — no
+step, fault, golden, control, selftest, claim or test id), which is 0.385 *under*, and the cumulative priced
+total is `2.0 + 1.3 + 1.5 + 0.4 = 5.2` of the **21** cpu-s allowance (the four phases' recorded actuals sum
+to `1.935 + 1.535 + 1.535 + 0.015 = 5.02`), so no line overran by 25 percent. That leaves `reprice`: the
+median moved more than the priced addition while the token line is exactly where the five plans predicted.
+**`steps=38/38` is an invariant, not a target**, and it is where it was at every commit of the phase.
+
+**The phase's own gate content is zero, and the movement is a runner event.** The five plans predicted 38
+invariant tokens and four entitled growth gates; the close measured every one of them where it was predicted
+(`gates` 118 → 119, `lines` 361 → 364, `handoffs` 5 → 8, the good toy tree 47/50 → 48/51; everything else
+unmoved). A window that moves +5 cpu-s with the token line unmoved is the rule's own description of a runner
+event, so no lever is invented and the frozen 361 / 34 / 118 is recorded as stale by measurement rather than
+re-blessed.
+
+**The two-shell and container evidence, taken once each at this close.** `sh tools/gate.sh` and
+`dash tools/gate.sh` both exited 0 with byte-identical final lines (`cmp` clean, 1,520 bytes each; the `sh`
+run took `gate-time total=104`, the `dash` run `204`, on a host that was not idle). The container leg ran
+**once** — `sh tools/gate-linux.sh` printed `gate-linux: exit 0`, and `build/gate-linux.log` was copied to
+`/tmp/g16-gate-linux.log` in the same command sequence before anything else ran, because a second run would
+destroy the first run's evidence. Inside Ubuntu 24.04 under amd64 emulation it read `gate: PASS`,
+`gate-time total=793`, and differed from the host's line in exactly the four documented host tokens and
+nothing else: `cc` `AppleClang`→`GNU`, `core-imports` `7`→`5`, `archive` `members`→`sha256`,
+`refs-verified` `3/4`→`0/4` (eight differing token lines, a 1,512-byte line). No `ivs-` container, image or
+volume survives the run.
+
+**What this entry does not claim.** No allowance credit beyond the 0.4 above, no hosted figure — the first
+hosted row after the push is what settles the lever's ~144 s prediction, and `tools/ci-record.sh` is the
+orchestrator's call. The hosted row for this phase's commits is recorded `not-recorded` in `.planning/STATE.md`
+with that reason.
