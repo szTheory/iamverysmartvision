@@ -505,22 +505,36 @@ A refusal is one stderr line `ivs_flatwrap: <token>: <detail>`, exit status 1, a
 
 **If this table is empty:** it is not — A1 is the one that needs a CI run to close.
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+Every question below is resolved by a decision the plans implement, or by a documented fallback the plan carries;
+none is left open. The resolution marker names where it lands.
 
 1. **Does the harness behave identically under the Ubuntu dev preset with a halted guest?**
    - What we know: it is green on macOS on both presets; the drive, the six events, the 13 frame calls and the 806568-tick bound are the same ones `runner-process.host.digests` already runs in CI.
    - What's unclear: nothing measured; the guest program differs from the proven one.
    - Recommendation: land the zero-word shape, and if the first CI run disagrees, switch to Code Example 3's real-program shape in the same plan (it is a 6-line diff, not a redesign).
+   - **RESOLVED (fallback carried):** plan 17-02 Task 3(h) lands the zero-word shape and records the container gate's
+     verdict or a visible `not run` line; the real-program switch is written into the task as the fallback, with
+     the requirement that it is recorded as a deviation and that no limb is weakened. A1 stays a live assumption
+     the plan is built to survive rather than a blocker.
 
 2. **Which registry row carries the count-gate contract?**
    - What we know: no gate step parses plans (`grep -rln "PLAN[.]md\|-PLAN" tools/check/` is empty), so clauses 1 and 2 have no checker; clause 3's mechanism is `st-pass-line` plus `tools/check/pass-line.sh`.
    - What's unclear: whether "a count gate" means a gate step printing a count token (then `extra-file`/`prefix-files=11` is the fit) or any count derived from a named file (then `slowest-eight` is the fit).
    - Recommendation: `count-gate mutant slowest-eight EV-08` — it registers a mechanism that has no row today, which is the EV-07 precedent's own criterion, and it proves a count is taken from a named file (`step.times`: 12 entries in, exactly the 8 slowest out).
+   - **RESOLVED (decided):** plan 17-03 Task 2 appends that row, with a comment stating that it points at an
+     existing case rather than a new one and that clause 2 has no mechanism and is therefore not registered; the
+     `extra-file` alternative is named and refused in the same comment.
 
 3. **Does 17-02 carry the 16-file flip, or does 17-03?**
    - What we know: the first EV-08 row must land with the flip (D6); §2.7 wants a new check's row in its own commit.
    - What's unclear: whether the planner prefers a heavy 17-02 or a recorded §2.7 deviation.
    - Recommendation: 17-02, split into two commits (documents; then id + inventory line + row + flip). 17-03 then adds only lesson 32 and the `count-gate` row.
+   - **RESOLVED (decided):** 17-02 carries the flip, in **one** commit with the row and the thirteen toy lines —
+     the step refuses a `Pending` requirement's row and a `Complete` requirement with no row, so splitting them
+     would put the tree red between the two commits. Its two document tasks are separate commits in the same plan,
+     ahead of it. No section 2.7 deviation is needed: the row lands in the commit of the check it registers.
 
 ## Environment Availability
 

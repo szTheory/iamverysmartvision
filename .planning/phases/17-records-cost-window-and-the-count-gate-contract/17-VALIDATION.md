@@ -40,11 +40,11 @@ created: "2026-11-26"
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
 | 17-01-01 | 01 | 1 | EV-08 (c1) | — | N/A | record | `awk -F'\t' 'NR>1{print $13}' .planning/ci-runs.tsv \| tail -5 \| sort -n \| sed -n 3p` prints `572` | ✅ | ⬜ pending |
 | 17-01-02 | 01 | 1 | EV-08 (c1) | — | N/A | step | `sh tools/check/steps/ci-log.sh` reports `ci-runs=118` | ✅ | ⬜ pending |
-| 17-02-01 | 02 | 1 | EV-08 (c2) | — | N/A | verify | `grep '^flatwrap-' data/expected/flat-refusals.ids > /tmp/a; grep '^flatwrap-' docs/formats/ivsc-v1.md > /tmp/b; diff /tmp/a /tmp/b` is silent | ✅ | ⬜ pending |
-| 17-02-02 | 02 | 1 | EV-08 (c3) | — | N/A | suite | `runner-process.judge.flatwrap-shim` in `tests/runner-process-tap.sh`, both presets | ❌ W0 | ⬜ pending |
-| 17-02-03 | 02 | 1 | EV-08 (c4) | — | N/A | verify | the corrected `RELEASE-OPS.md` (i) line occurs verbatim twice in `docs/packaging.md` | ✅ | ⬜ pending |
-| 17-03-01 | 03 | 1 | EV-08 (c5) | — | N/A | registry | `important-gates` row `count-gate mutant slowest-eight EV-08` plus the `st-pass-line` row | ❌ W0 | ⬜ pending |
-| 17-03-02 | 03 | 1 | EV-08 (c5) | — | N/A | step | the gate token line carries `faults=238/238`, `goldens=29`, `claims=29`, `provisional=28` | ✅ | ⬜ pending |
+| 17-02-01 | 02 | 2 | EV-08 (c2) | — | N/A | verify | `grep '^flatwrap-' data/expected/flat-refusals.ids > /tmp/a; grep '^flatwrap-' docs/formats/ivsc-v1.md > /tmp/b; diff /tmp/a /tmp/b` is silent | ✅ | ⬜ pending |
+| 17-02-02 | 02 | 2 | EV-08 (c3) | — | N/A | suite | `runner-process.judge.flatwrap-shim` in `tests/runner-process-tap.sh`, both presets | ❌ W0 | ⬜ pending |
+| 17-02-03 | 02 | 2 | EV-08 (c4) | — | N/A | verify | the corrected `RELEASE-OPS.md` (i) line occurs verbatim twice in `docs/packaging.md` | ✅ | ⬜ pending |
+| 17-03-01 | 03 | 3 | EV-08 (c5) | — | N/A | registry | `important-gates` row `count-gate mutant slowest-eight EV-08` plus the `st-pass-line` row | ❌ W0 | ⬜ pending |
+| 17-03-02 | 03 | 3 | EV-08 (c5) | — | N/A | step | the gate token line carries `faults=238/238`, `goldens=29`, `claims=29`, `provisional=28` | ✅ | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
