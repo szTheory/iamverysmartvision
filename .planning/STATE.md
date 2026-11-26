@@ -1,21 +1,20 @@
 ---
 gsd_state_version: "1.0"
 milestone: v0.3.0
-milestone_name: Owner-Supplied Content and a Driveable Host (Phases 13 to 16)</summary>
-current_phase: 16
-current_plan: Not started
-status: completed
+status: Awaiting next milestone
 stopped_at: Phase 16 complete — all phases complete
-last_updated: "2026-11-26T12:54:58.074Z"
+last_updated: "2026-11-26T13:23:03.650Z"
 last_activity: 2026-11-26
-last_activity_desc: Phase 16 complete
-state_head: 93f27abc7c2bd1ee9cd8c3d04441cfa3d7081948
+last_activity_desc: Milestone v0.3.0 completed and archived
+state_head: ad6675c51a462c5e1a9bc4ad12b4b3b9a51339f0
 progress:
   total_phases: 4
-  completed_phases: 4
+  completed_phases: 8
   total_plans: 17
   completed_plans: 17
   percent: 100
+milestone_name: Owner-Supplied Content and a Driveable Host (Phases 13 to 16)</summary>
+current_phase: 16
 ---
 
 # Project State
@@ -29,176 +28,10 @@ See: .planning/PROJECT.md (updated 2026-11-26)
 
 ## Current Position
 
-Phase: 16
-Current Plan: Not started
-Total Plans in Phase: 5
-Status: All phases complete
-Last activity: 2026-11-26 — Phase 16 complete
-
-Phase 16's fifth and last plan (16-05, the phase close) measured **one** line on one tree under two shells and
-once inside the Ubuntu 24.04 container, reconciled every token the five plans predicted, recorded exactly one
-checkpoint verdict and signed `16-VALIDATION.md`. `sh tools/gate.sh` and `dash tools/gate.sh` both exited 0 and
-their final lines are byte-identical (`cmp` clean, **1,520 bytes each**), `gate-time total=104` under `sh` and
-`204` under `dash` on a host that was not idle; the container leg ran **once** (`gate-linux: exit 0`, its log
-copied to `/tmp/g16-gate-linux.log` in the same command sequence, before anything else ran) and printed
-`gate-time total=793` under amd64 emulation, differing from the host's line in exactly the four documented host
-tokens and nothing else — `cc` `AppleClang`→`GNU`, `core-imports` `7`→`5`, `archive` `members`→`sha256`,
-`refs-verified` `3/4`→`0/4` — eight differing token lines and a 1,512-byte line. No `ivs-` container, image or
-volume survives, `sh tools/hygiene.sh --tree` printed its pass line and exited 0, and `git ls-files` holds no
-refused binary extension. **Every token the five plans predicted is where it was measured**, and the only moved
-tokens are the phase's four entitled growth gates: `gates` 118 → 119, `lines` 361 → 364, `handoffs` 5 → 8 and
-the good toy tree's 47/50 → 48/51. The closing line, quoted once here and once in the validation record's
-Approval:
-
-gate: PASS steps=38/38 controls=404/404 api-calls=19 api-statuses=15 api-rows=61 pinned-defines=120 cc=AppleClang c-presets=2 fault-runs=238 core-imports=7 purity-selftest=7/7 ctest-runs=2 ci-runs=104 ci-uses=2 ci-workflows=2 ci-summary-selftest=11/11 claims=29 provisional=28 handoffs=8 cp1610-rows=74 patterns=1024 unclaimed=0 ambiguous=0 coincidences=1 agree=71 resolved=3 vectors=412 source=291 policy=121 rows-pending=0 policies-pending=0 bus-figure-pages=35 blind-files=12 second-read=12/12 scanned=695 waived=0 discrepancies=110 pending-resolvers=20 open=101 d10-items=47 faults=238/238 tracked=2787 binaries-listed=0 rights-pinned=4/4 terms=9 doc-files=63 profile-keys=154 goldens=29 reports=30 host-dependent=3 release-only=2 mode=tree hygiene-files=2787 history-commits=1 gates=119 lines=364 input-rows=31 input-policies=11 input-profile-fields=31 files=2787 listings=7 listing-words=1386 manifests=11 effective-yes=8 effective-no=3 rights=10 rights-cleared=1 literal-rows=80 views=2 dump-lines=160 prefix-files=11 archive=members public-symbols=19 defined=141 hdr-alone=10/10 consumer-lines=164 cxx-link=ok pkg-selftest=20/20 records=154 fields=154 unknown-fields=47 psg-rules=21 psg-vectors=120 psg-policies=12 release-selftest=12/12 runner-files=18 cases=14 sources=13 refs-verified=3/4 state-rows=88 state-cuts=18 tests-expected=5042 tests-executed=5038 tests-skipped=4 tests-missing=0 docs=64 claim-refs=27 stic-rules=67 stic-rows=64 video-frames=26 video-hash-ties=18 video-frame-pairs=9 tags=10 tiers=8
-
-cost: the phase's single checkpoint verdict is **`reprice`**, recomputed by arithmetic at this commit from the
-last five `.planning/ci-runs.tsv` rows (`45723269901`, `45747709457`, `45751979661`, `45778926664`,
-`45779277467`) rather than quoted: `cpu_s` 368 366 359 441 352 → median **366**, `build_s` 35 34 34 38 33 →
-median **34**, `gate_s` 122 115 120 145 115 → median **120**, against the frozen 361 / 34 / 118. The phase's
-priced addition is **0.4** cpu-s and its actual addition **0.015** (three registry rows and nothing else).
-`discharged-within-allowance` is not reachable because 366 > 361 + 0.4 = 361.4, by 4.6; `lever-required` is not
-reached because the cumulative priced total is 2.0 + 1.3 + 1.5 + 0.4 = **5.2 of 21** (the four phases' recorded
-actuals sum to 1.935 + 1.535 + 1.535 + 0.015 = 5.02) and this phase's addition landed 0.385 cpu-s *under* its
-price, so no line overran. The median moved more than the priced addition while the token line is exactly where
-the five plans predicted, which is the rule's own definition of `reprice`: a runner event, no lever invented.
-`steps=38/38` is the invariant it is, not a target.
-hosted row: not-recorded — no push run exists for a commit that is not pushed yet at 2026-11-26; the orchestrator
-records it from `tools/ci-record.sh <run-id>` after the push, deferred by exactly one commit and never dropped.
-
-Phase 16's fourth plan (16-04, the release posture) proved the limb Phase 15 could not reach from a control:
-the **committed** direction of the shared-object refusal. With both paths staged and read from `git ls-files`,
-the files step printed exactly `-- FAIL files-unlisted-binary: probe.so` and nothing for `probe.txt` at the
-same place with the same bytes, and printed no pass line; `binscan.sh binary` named neither path, because it
-skips a name-listed extension, so the refusal is the name and not a byte scan. Both files were unstaged and
-removed in the same task, `git ls-files` holds no shared-object extension, and the gate is green afterwards.
-Section **(i.1)** of `.planning/ops/RELEASE-OPS.md` carries the recomputation: the release-decision line
-quoted **unchanged** beside the values measured at `4a1e993` — `binaries-listed=0`, `prefix-files=11`,
-`pkg-selftest=20/20` naming `host-so-absent`, `release-selftest=12/12` naming `so-member`, `controls=404/404`
-naming the two `files-unlisted-binary-*` controls — plus the transcript and the three surfaces named (the
-tree, an archive, an installed prefix), each with its own evidence. **PKG-06 is `Complete`** in the checkbox,
-the traceability row, the `Last updated` line and the Coverage block, in the same commit as the three
-`release-posture` rows that name its mechanisms (`files-unlisted-binary-so`, `files-unlisted-binary-dylib`
-as `control`; `host-so-absent` as `mutant`) and the thirteen toy lines (ten registries, three requirement
-records) that keep the derived set closed. The gate at `298be25` reads `gate: PASS steps=38/38
-controls=404/404 … faults=238/238 … goldens=29 … gates=119 lines=364 … prefix-files=11 … tracked=2786`, the
-real registry re-derived `-- important-gates pass gates=119 lines=364` and the good toy tree `gates=48
-lines=51`. **`faults=238`, `steps=38`, `goldens=29` and `controls=404` did not move**: a registration is a
-pointer, not a new fault. The probe is a throwaway check — not a gate step, not in CI, and deliberately not a
-registry row. The plan's one defect (Task 1's verify asserts both a clean tree and the appended note's
-contents, which one run cannot satisfy) is `.planning/WINDOWS.md` row 11, waived with the measured reason.
-hosted row: not-recorded — no push run for 298be25 at 2026-11-26
-
-Phase 16's third plan (16-03, the three owner-only questions as handoff rows) added `H16-1`, `H16-2` and
-`H16-3` to `data/expected/handoffs.ids` as `handed-off evidence: none` rows beside the five existing ones,
-extended both pins in `tools/check/steps/claims.sh` to the eight ids and their dispositions, moved the good
-tree's ledger and the four `claims-handoff-*` overlays in the same commit, and gave each row a section in
-`docs/handoffs.md` with a command, an artefact, the identities a person compares and what a person judges.
-The gate at `43b4394` reads `gate: PASS steps=38/38 controls=404/404 … claims=29 provisional=28 handoffs=8 …
-faults=238/238 … goldens=29 … gates=118 lines=361 … tracked=2785`, and a token-by-token `diff` against task
-1's log prints exactly one changed line, `handoffs=5` → `handoffs=8`. **No gate step, control, fault, golden,
-registry row, claim or test id was added**; the ledger's growth is the only movement. **D10 and D11 stay
-`not-performed`**, and no `H16-` id is cited by a requirement record, the claim ledger or the release notes.
-hosted row: not-recorded — no push run for 43b4394 at 2026-11-26; the orchestrator records it from
-sh tools/ci-record.sh <run-id> after the push
-
-Phase 16's second plan (16-02, the owner route from the source archive) ran the release-time rehearsal at
-`14f81ed`: `sh tools/release-rehearse.sh --release --source-route` ended `rehearse: ok` with
-`rehearse: source-route: ivs-v0.2.0-source.tar.gz, golden match (report 131 lines, 124 of 124 compared),
-prefix ivs-v0.2.0`, then `rehearse: owner-route: wrap base=4000 word-order=hi-first
-digest=8d73b98c58bb75a6515c6a791ebd2925265d05874e324c31a5836e61055b74f5`, `rehearse: owner-route: run
-exit=10 outcome=guest-fail exec-label=- cart-digest-matched=yes` and `rehearse: owner-route: mutation exit=14
-status=IVS_E_DIGEST_MISMATCH run-state=unreset`. The route is the three commands of
-`docs/owner-images.md` performed on project-made zero-filled images, and its transcript is
-`.planning/ops/RELEASE-OPS.md` section (j). The gate line is unchanged in every token the plan predicted
-(`steps=38/38 controls=404/404 faults=238/238 goldens=29 gates=118 lines=361 docs=64 tests-expected=5042
-tests-executed=5038 tests-skipped=4 claims=29 provisional=28 claim-refs=27 prefix-files=11
-tracked=2784`), and it is byte-identical between the two task logs (`cmp` on `tail -1`). **No gate step,
-fault, golden, control, test id, registry row or claim was added**: the route is release-time and its only
-new output is a record. **D11 stays `not-performed`** and no claim cites section (j).
-hosted row: not-recorded — no push run for 6b57148 at 2026-11-26; the orchestrator records it from
-sh tools/ci-record.sh <run-id> after the push
-
-Phase 16's first plan (16-01, the cost-only concurrency lever) ran the gate at `e9ac998`: `gate: PASS
-steps=38/38 controls=404/404 … faults=238/238 … goldens=29 … gates=118 lines=361 … tests-expected=5042
-tests-executed=5038 tests-skipped=4 tests-missing=0 … claims=29 provisional=28 claim-refs=27
-prefix-files=11 pkg-selftest=20/20 release-selftest=12/12 binaries-listed=0`, exit 0 and byte-identical
-under `sh` and `dash` (`cmp` on `tail -1`, 1509 bytes each), with `gate-time total=71` (`sh`) and 72
-(`dash`) against 79 measured before the change, `gate-cpu` sums 228.23 → 265.58 (inside the 20 % band)
-and `gate-overlap pair=c-faults+c-tests` in the log. `tracked=2783 files=2783 hygiene-files=2783` are
-unchanged because the lever adds no tracked file; `steps`, `faults` and `goldens` are where they were
-frozen. The before/after figures, the subtraction and the byte-identical proof are in `16-01-SUMMARY.md`
-and in `.planning/CI-EFFICIENCY.md`'s 2026-11-26 Phase 16 entry. **No checkpoint word and no allowance
-credit**: the lever buys wall minutes, not ratio, and the phase's single verdict is 16-05's.
-hosted row: not-recorded — no push run for e9ac998 at 2026-11-26; the orchestrator records it from
-sh tools/ci-record.sh <run-id> after the push
-
-Phase 15's closing gate run reads `gate: PASS steps=38/38 controls=404/404 … faults=238/238 …
-goldens=29 … gates=118 lines=358 … tests-expected=5036 tests-executed=5032 tests-skipped=4
-tests-missing=0 … claims=29 provisional=28 claim-refs=27 prefix-files=11 pkg-selftest=20/20
-release-selftest=12/12 binaries-listed=0`, exit 0 and byte-identical under `sh` and `dash` (`cmp` on
-`tail -1`, 1509 bytes each, `gate-time total=74`), and repeated once inside the Ubuntu 24.04 container
-(`gate: PASS`, `gate-time total=279`, four documented host tokens differing: `cc=GNU`,
-`core-imports=5`, `archive=sha256`, `refs-verified=0/4`). The phase's own tokens are `tracked=2771
-files=2771 hygiene-files=2771`, `claims=29 provisional=28 claim-refs=27`, `public-symbols=19
-defined=141`, `discrepancies=110 open=101`, `vectors=412`, `cases=14`, `rights=10 rights-cleared=1`
-and `mode=tree`. `steps`, `faults` and `goldens` are where they were frozen: no new gate step, fault
-or golden. The full line is quoted once in `15-03-SUMMARY.md` and in `15-VALIDATION.md`'s Approval
-block.
-
-Phase 15's cost checkpoint reads `reprice`: the last-five `cpu_s` median recomputed by arithmetic from
-`.planning/ci-runs.tsv` is 366 against the frozen 361, while the priced addition is 1.535 of the 21
-cpu-s allowance (the window and all three medians are enumerated in the `15-03: checkpoint` decision
-bullet).
-hosted row: not-recorded — no push run for 85470b8 at 2026-11-26; the orchestrator records it from
-sh tools/ci-record.sh <run-id> after the push
-
-Phase 14's closing gate run reads `gate: PASS steps=38/38 controls=402/402 … faults=238/238 …
-goldens=29 … tests-expected=5014 tests-executed=5010 tests-skipped=4 tests-missing=0 … gates=117
-lines=357 …`, exit 0 and byte-identical under `sh` and `dash` (`cmp` on `tail -1`), and repeated once
-inside the Ubuntu 24.04 container (`gate-linux: exit 0`, `gate-time total=487`, four documented host
-tokens differing: `cc=GNU`, `core-imports=5`, `archive=sha256`, `refs-verified=0/4`). The phase's own
-tokens are `tracked=2745 files=2745 hygiene-files=2745`, `claims=28 provisional=27`,
-`discrepancies=110 open=101`, `vectors=412`, `cases=14`, `prefix-files=11 pkg-selftest=19/19`,
-`rights=10 rights-cleared=1` and `mode=tree`. `steps`, `faults` and `goldens` are where they were
-frozen: no new gate step, fault or golden. The full line is quoted once in `14-04-SUMMARY.md` and in
-`14-VALIDATION.md`'s Approval block.
-
-Amendment, 2026-11-26 (the phase's code review round, `14-REVIEW.md`): three tokens in the line above
-are stale, and each has a named cause rather than a re-bless. `gates=117 lines=357` is now
-`gates=117 lines=356`: WR-03 deleted the vacuous `SCN-STUB-JD-AS-J` registry row (a `pass 0` row that
-cannot fail is not a must-fail mechanism; the case itself still runs from its inventory row), and
-`gates` does not move because it counts distinct gate names. `tests-expected=5014 tests-executed=5010`
-is now `5016`/`5012`: CR-01's `pack.flatwrap.neg.flatwrap-empty` is one id, counted once per preset.
-`tracked=2745 files=2745 hygiene-files=2745` is now `2747`: the two record files written after the
-closing line was measured (`14-04-SUMMARY.md` in `2e27267` and `14-REVIEW.md`). The measured line at the
-fix head, no `^-- FAIL`, `gate-time total=97`, is quoted in `14-REVIEW.md`'s Dispositions section;
-`steps=38/38`, `faults=238`, `goldens=29` and `controls=402/402` are unchanged.
-hosted row: not-recorded — no push run for 548e80d at 2026-11-26; the orchestrator records it from
-sh tools/ci-record.sh <run-id> after the push
-
-The Phase 13 closing gate run reads `gate: PASS steps=38/38 controls=401/401 … faults=238/238 …
-goldens=29`, byte-identical under `sh` and `dash`, and repeated inside the Ubuntu 24.04
-container (`gate-linux: exit 0`, four documented host tokens differing: `cc`, `core-imports`,
-`archive`, `refs-verified`). The phase's own tokens are `tracked=2722`, `rights=10
-rights-cleared=1`, `gates=114 lines=352`, `cases=14`, `claims=28 provisional=27`. The full line is
-quoted in `13-05-SUMMARY.md` and in `13-VALIDATION.md`'s Approval block.
-
-Phase 13's cost checkpoint reads `reprice`: the last-five `cpu_s` median recomputed by arithmetic
-from `.planning/ci-runs.tsv` is 363 against the frozen 361, while the priced addition is 1.935 of
-the 21 cpu-s allowance (the window and both medians are enumerated in the `13-05: checkpoint`
-decision bullet). The phase's hosted rows **are recorded**, and they close SC5's hosted-row limb:
-`.planning/ci-runs.tsv` carries `45717868904` (`14d72b8`, `pull_request`, `cpu_s` 360, appended by
-`e2d3a40`), `45718553735` (`e2d3a40`, `pull_request`, 363) and `45720934719` (`b482e91`,
-`pull_request`, 438), the last two appended by `7b7b382`. This paragraph previously read
-**`not-recorded`** on the strength of `gh run list --commit 10f66a1` returning `[]` before the
-phase was pushed; the three rows above are that limb met on the tree. **Amended at the phase close:**
-the merge push run is no longer absent. `gh run view 45723269901` reports `event=push`,
-`headSha 151b688`, `conclusion success`, and its row is in `.planning/ci-runs.tsv` (`cpu_s` 368,
-`gate_s` 122). The earlier sentence above is kept because it was true when written — `gh run list
---commit 151b688` returned `[]` because GitHub had not yet registered the run — and the phase's
-hosted-row limb is now met by four rows rather than three.
-
+Phase: Milestone v0.3.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-11-26 — Milestone v0.3.0 completed and archived
 
 ### Planning overrides recorded by the autonomous run
 
@@ -947,4 +780,5 @@ recomputed figure or an owner hard stop. The full set is
 ## Operator Next Steps
 
 
-- v0.3.0 is scoped and committed. Run `/gsd-autonomous` after `/clear` to drive Phases 13 to 16.
+
+- Start the next milestone with /gsd-new-milestone

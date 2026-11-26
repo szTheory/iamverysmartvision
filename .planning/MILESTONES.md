@@ -1,5 +1,18 @@
 # Milestones
 
+## v0.3.0 Owner-Supplied Content and a Driveable Host (Shipped: 2026-11-26)
+
+**Phases completed:** 4 phases, 17 plans, 24 tasks
+
+**Key accomplishments:**
+- The phase closes on a measured line — `steps=38/38 controls=401/401 … faults=238/238 … goldens=29`, byte-identical under `sh` and `dash` and repeated in the Ubuntu 24.04 container — with one cost verdict, `reprice`, recomputed by arithmetic as a `cpu_s` median of 366 against a priced addition of 1.935, and the hosted row recorded as a visible `not-recorded` line rather than a fabricated one.
+- The seam is open end to end: a linker-export-enforced `libivs_retro` that a `dlopen` frontend drives to tick 806568 reproduces the runner's nine digest lines byte for byte on the project's own `lamp-tone.ivsc`, as two committed `runner-process` ids and no new gate step, fault or golden.
+- The seam can no longer lie: six more `runner-process` ids assert what the object actually returned and prove the digest judge able to fail, and a shared object is now refused by name in the tree, in an archive and in a copy of the installed prefix — with the package still at eleven files and `steps=38/38`, `faults=238/238`, `goldens=29` untouched.
+- Three owner-only questions became `H16-1`/`H16-2`/`H16-3` ledger rows with real packet procedures, the id set and each disposition pinned in both directions, and the ledger's row count printed as `handoffs=8` on the claims pass line.
+- A shared object committed to the tree is refused by name on the real tree — one finding for `probe.so`, none for `probe.txt` with identical bytes — and PKG-06 is `Complete` against the line recomputed at the commit rather than quoted.
+
+---
+
 ## v0.2.0 Registered Evidence, Reachable Runs, Replayable Input (Shipped: 2026-11-25)
 
 **Phases resolved:** 4 of 4 — 9, 10 and 11 delivered and verified; **12 dropped at its own entry gate**. 20 plans.
