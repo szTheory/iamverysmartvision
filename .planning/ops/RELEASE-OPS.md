@@ -71,15 +71,17 @@ The order of the orchestrator's actions, as the record needs them. None is an ex
 7. Mark REL-01 complete in `.planning/REQUIREMENTS.md` (the checkbox and the traceability row, with a note that stage 2 is recorded), record the release in `.planning/STATE.md` (`.planning/AUTONOMY.md` section 5, step 6) and write the CI-efficiency entry for the release workflow.
 8. Merge the records pull request; then run the milestone audit, the milestone completion on a records branch and the cleanup (`08-DISCUSS-release.md` section 5).
 
-## (i) The release-decision line for v0.4.0 (plan 15-02, GUARDRAILS-v0.3 V6 and section 7.4)
+## (i) The release-decision line for v0.4.0 (plan 15-02; `GUARDRAILS-v0.3` V6 still binds where cited; recomputed by plan 17-02 against `GUARDRAILS-v0.4` section 7.4)
 
 The milestone close carries exactly one release-decision line, in this wording:
 
 > the release ships the static package and the source archive, which carries the source of the build-only tools and of the build-only host shim; no shared object, no built host shim
 
-The line above was superseded on 2026-11-26 by plan 17-02 (EV-08), which is why it names the source archive
-rather than only the static package. The v0.3.0 wording is quoted here instead of being deleted, because the
-record of what was said then is append-only:
+The line above **replaces** the v0.3.0 wording, which was superseded on 2026-11-26 by plan 17-02 (EV-08): it
+adds the relative clause saying the source archive carries the source of the build-only tools and of the
+build-only host shim, and it says `no built host shim` rather than `no host shim`. The superseded v0.3.0
+wording, superseded 2026-11-26, is quoted here instead of being deleted, because the record of what was said
+then is append-only:
 
 > the release ships the static package and the source archive; no shared object, no host shim, no content
 
