@@ -33,7 +33,7 @@ Phase: 14 (Cartridge Route and Real-Content Conformance) — COMPLETE
 Current Plan: 4 of 4
 Total Plans in Phase: 4
 Status: Phase complete — ready for verification; 4/4 plans executed, `14-VALIDATION.md` signed off, no claim raised (D-50 unchanged)
-Last activity: 2026-11-26 — 14-04 executed: the three flips with the five registry rows that name them, the 13-file toy extension, the closing gate line under `sh`/`dash` and in the container, one cost verdict and the validation sign-off
+Last activity: 2026-11-26 — 14-04 executed: the three flips with the five registry rows that name them, the 13-file toy extension, the closing gate line under `sh`/`dash` and in the container, one cost verdict and the validation sign-off; then the phase's code review (CR-01 fixed at `bf3215d`, WR-01 at `4efc806`, WR-02 at `94300ec`, WR-03 at `fc25ce9`, the three INFO rows deferred with reasons in `14-REVIEW.md`)
 
 Phase 14's closing gate run reads `gate: PASS steps=38/38 controls=402/402 … faults=238/238 …
 goldens=29 … tests-expected=5014 tests-executed=5010 tests-skipped=4 tests-missing=0 … gates=117
@@ -45,6 +45,17 @@ tokens are `tracked=2745 files=2745 hygiene-files=2745`, `claims=28 provisional=
 `rights=10 rights-cleared=1` and `mode=tree`. `steps`, `faults` and `goldens` are where they were
 frozen: no new gate step, fault or golden. The full line is quoted once in `14-04-SUMMARY.md` and in
 `14-VALIDATION.md`'s Approval block.
+
+Amendment, 2026-11-26 (the phase's code review round, `14-REVIEW.md`): three tokens in the line above
+are stale, and each has a named cause rather than a re-bless. `gates=117 lines=357` is now
+`gates=117 lines=356`: WR-03 deleted the vacuous `SCN-STUB-JD-AS-J` registry row (a `pass 0` row that
+cannot fail is not a must-fail mechanism; the case itself still runs from its inventory row), and
+`gates` does not move because it counts distinct gate names. `tests-expected=5014 tests-executed=5010`
+is now `5016`/`5012`: CR-01's `pack.flatwrap.neg.flatwrap-empty` is one id, counted once per preset.
+`tracked=2745 files=2745 hygiene-files=2745` is now `2747`: the two record files written after the
+closing line was measured (`14-04-SUMMARY.md` in `2e27267` and `14-REVIEW.md`). The measured line at the
+fix head, no `^-- FAIL`, `gate-time total=97`, is quoted in `14-REVIEW.md`'s Dispositions section;
+`steps=38/38`, `faults=238`, `goldens=29` and `controls=402/402` are unchanged.
 hosted row: not-recorded — no push run for 548e80d at 2026-11-26; the orchestrator records it from
 sh tools/ci-record.sh <run-id> after the push
 

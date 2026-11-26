@@ -395,3 +395,33 @@ There is no placeholder, no unwired value and no skipped check.
 - `/tmp/g14linux.log` - FOUND (`gate: PASS`, `gate-linux: exit 0`)
 
 **Self-Check: PASSED**
+
+---
+
+## Amendment, 2026-11-26 (the phase's code review round)
+
+Appended, never rewritten: every figure above was measured at this plan's own commit and stays as it was
+measured there. The review (`14-REVIEW.md`) closed two of the items this summary recorded as open, and
+two of them move a token in the line quoted above.
+
+1. **The deferred `important-gates` row (WR-03).** The item recorded above under "recorded finding still
+   stands" is fixed at `fc25ce9`: `scn-mutants mutant runner-process.mutant.SCN-STUB-JD-AS-J SCN-01` is
+   deleted, not repointed, because every one of SCN-01's eleven still-failing mutant rows is already
+   registered and the project's own practice is that a `pass 0` row is not a registry line (the other
+   three are deliberately absent). The case is not dropped: it stays a live inventory row whose stated
+   outcome the `scn-mutants` case judges. The step now prints `-- important-gates pass gates=117
+   lines=356`: `lines` moves `357` -> `356`, and `gates` does not move because it counts distinct gate
+   names and `scn-mutants` keeps eleven rows. This summary's prediction of `gates=117 lines=357` and its
+   `357 non-comment lines` self-check line were correct at `548e80d`; the review's own Fix text predicted
+   `116`/`356` and was wrong about `gates`.
+2. **The other two tokens that differ at the fix head**, neither caused by this plan's own edits:
+   `tests-expected=5014 tests-executed=5010` -> `5016`/`5012` is CR-01's `pack.flatwrap.neg.flatwrap-empty`
+   (one id, counted once per preset, added at `bf3215d` after this line was measured), and
+   `tracked=2745 files=2745 hygiene-files=2745` -> `2747` is the two record files written after that
+   measurement (this summary in `2e27267`, `14-REVIEW.md`). `steps=38/38`, `faults=238`, `goldens=29` and
+   `controls=402/402` are unchanged, so no gate step, fault, golden or control was added or dropped. The
+   line at the fix head is quoted in `14-REVIEW.md`'s Dispositions section.
+3. **The plan's predicted token is not re-blessed.** `14-04-PLAN.md`'s `<fails_when>` names
+   `-- important-gates pass gates=117 lines=357`; that was true at this plan's commit and the plan is a
+   record of an execution, not a re-runnable oracle. A reader re-running it gets a red on `lines` and this
+   amendment is the reason.

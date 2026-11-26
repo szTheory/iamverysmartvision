@@ -102,3 +102,28 @@ from `/tmp/g14sh.tail`:
 ```
 gate: PASS steps=38/38 controls=402/402 api-calls=19 api-statuses=15 api-rows=61 pinned-defines=120 cc=AppleClang c-presets=2 fault-runs=238 core-imports=7 purity-selftest=7/7 ctest-runs=2 ci-runs=100 ci-uses=2 ci-workflows=2 ci-summary-selftest=11/11 claims=28 provisional=27 cp1610-rows=74 patterns=1024 unclaimed=0 ambiguous=0 coincidences=1 agree=71 resolved=3 vectors=412 source=291 policy=121 rows-pending=0 policies-pending=0 bus-figure-pages=35 blind-files=12 second-read=12/12 scanned=689 waived=0 discrepancies=110 pending-resolvers=20 open=101 d10-items=47 faults=238/238 tracked=2745 binaries-listed=0 rights-pinned=4/4 terms=9 doc-files=63 profile-keys=154 goldens=29 reports=30 host-dependent=3 release-only=2 mode=tree hygiene-files=2745 history-commits=1 gates=117 lines=357 input-rows=31 input-policies=11 input-profile-fields=31 files=2745 listings=7 listing-words=1386 manifests=11 effective-yes=8 effective-no=3 rights=10 rights-cleared=1 literal-rows=80 views=2 dump-lines=160 prefix-files=11 archive=members public-symbols=19 defined=141 hdr-alone=10/10 consumer-lines=164 cxx-link=ok pkg-selftest=19/19 records=154 fields=154 unknown-fields=47 psg-rules=21 psg-vectors=120 psg-policies=12 release-selftest=11/11 runner-files=18 cases=14 sources=13 refs-verified=3/4 state-rows=88 state-cuts=18 tests-expected=5014 tests-executed=5010 tests-skipped=4 tests-missing=0 docs=64 claim-refs=26 stic-rules=67 stic-rows=64 video-frames=26 video-hash-ties=18 video-frame-pairs=9 tags=10 tiers=8
 ```
+
+---
+
+## Amendment, 2026-11-26 (the phase's code review round)
+
+Appended after the signature, never rewritten: the Approval block above records the line measured at this
+validation's own commit and stays as it was measured there. Three of its tokens are stale at the fix head,
+each with a named cause rather than a re-bless:
+
+- `gates=117 lines=357` -> `gates=117 lines=356`: review WR-03 deleted the vacuous `SCN-STUB-JD-AS-J`
+  registry row at `fc25ce9` (a `pass 0` row cannot fail, so it is not a must-fail mechanism; the case still
+  runs from its inventory row). `gates` does not move because it counts distinct gate names. The row
+  `14-04-T1` above therefore reads `lines=356` at the fix head.
+- `tests-expected=5014 tests-executed=5010` -> `5016`/`5012`: review CR-01's `pack.flatwrap.neg.flatwrap-empty`
+  (`bf3215d`), one id counted once per preset.
+- `tracked=2745 files=2745 hygiene-files=2745` -> `2747`: the two record files written after the measured
+  line (`14-04-SUMMARY.md` in `2e27267` and `14-REVIEW.md`).
+
+`steps=38/38`, `faults=238`, `goldens=29` and `controls=402/402` are unchanged, so this amendment adds no
+step, fault, golden or control. The measured line at the fix head (`sh tools/gate.sh`, exit 0, no `^-- FAIL`,
+`gate-time total=97`) is quoted in `14-REVIEW.md`'s Dispositions section. The review also fixed WR-01
+(`4efc806`, both operator paths opened without blocking, proved under `timeout` with a real FIFO) and WR-02
+(`94300ec`, C41's three present-tense statements given the inline pointer GUARDRAILS 2.10 asks for), and
+deferred IN-01..IN-03 with their reasons. No evidence tier moved and no claim was raised: the phase's
+ceiling is still no claim (D-50).
