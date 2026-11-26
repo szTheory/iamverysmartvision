@@ -7,10 +7,10 @@ current_phase_name: Cartridge Route and Real-Content Conformance
 current_plan: 4
 status: executing
 stopped_at: Completed 14-03-PLAN.md
-last_updated: "2026-11-26T02:37:57.802Z"
-last_activity: 2026-11-25
+last_updated: "2026-11-26T03:06:58.199Z"
+last_activity: 2026-11-26
 last_activity_desc: Phase 13 complete, transitioned to Phase 14
-state_head: 6837c8f9d9ee31a1c5685e3906b9caa73211773f
+state_head: 548e80d3b853e24ef0042d69a8b50f2b204edc1b
 progress:
   total_phases: 4
   completed_phases: 8
@@ -29,13 +29,26 @@ See: .planning/PROJECT.md (updated 2026-11-26)
 
 ## Current Position
 
-Phase: 14 (Cartridge Route and Real-Content Conformance) — EXECUTING
-Current Plan: 4
+Phase: 14 (Cartridge Route and Real-Content Conformance) — COMPLETE
+Current Plan: 4 of 4
 Total Plans in Phase: 4
-Status: Ready to execute
-Last activity: 2026-11-26 — 14-03 executed: the route's cartridge role, its six refusals, the live round-trip equality and the pass path with its mutation
+Status: Phase complete — 4/4 plans executed, `14-VALIDATION.md` signed off, no claim raised (D-50 unchanged)
+Last activity: 2026-11-26 — 14-04 executed: the three flips with the five registry rows that name them, the 13-file toy extension, the closing gate line under `sh`/`dash` and in the container, one cost verdict and the validation sign-off
 
-The closing gate run reads `gate: PASS steps=38/38 controls=401/401 … faults=238/238 …
+Phase 14's closing gate run reads `gate: PASS steps=38/38 controls=402/402 … faults=238/238 …
+goldens=29 … tests-expected=5014 tests-executed=5010 tests-skipped=4 tests-missing=0 … gates=117
+lines=357 …`, exit 0 and byte-identical under `sh` and `dash` (`cmp` on `tail -1`), and repeated once
+inside the Ubuntu 24.04 container (`gate-linux: exit 0`, `gate-time total=487`, four documented host
+tokens differing: `cc=GNU`, `core-imports=5`, `archive=sha256`, `refs-verified=0/4`). The phase's own
+tokens are `tracked=2745 files=2745 hygiene-files=2745`, `claims=28 provisional=27`,
+`discrepancies=110 open=101`, `vectors=412`, `cases=14`, `prefix-files=11 pkg-selftest=19/19`,
+`rights=10 rights-cleared=1` and `mode=tree`. `steps`, `faults` and `goldens` are where they were
+frozen: no new gate step, fault or golden. The full line is quoted once in `14-04-SUMMARY.md` and in
+`14-VALIDATION.md`'s Approval block.
+hosted row: not-recorded — no push run for 548e80d at 2026-11-26; the orchestrator records it from
+sh tools/ci-record.sh <run-id> after the push
+
+The Phase 13 closing gate run reads `gate: PASS steps=38/38 controls=401/401 … faults=238/238 …
 goldens=29`, byte-identical under `sh` and `dash`, and repeated inside the Ubuntu 24.04
 container (`gate-linux: exit 0`, four documented host tokens differing: `cc`, `core-imports`,
 `archive`, `refs-verified`). The phase's own tokens are `tracked=2722`, `rights=10
@@ -606,6 +619,7 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 14]: the cartridge is --cart <cart-image>, an option and not a third positional: nine ids pass exactly two positionals and the lock's grammar is asserted against a cart role
 - [Phase 14]: no cart size rule in the route: the core refuses a short container (reason 1) and a long one (reason 2) at load with a precise report line
 - [Phase 14]: the route's pass path pins the measured outcome.detail line=24, not the research's predicted line=23: the inserted content cart user line shifts the halted step's scenario line
+- [Phase 14]: 14-04: checkpoint: reprice (cpu_s 357 360 363 368 438, median 363; build_s 33 34 35 35 39, median 35; gate_s 119 120 121 122 135, median 121; priced addition 1.535; allowance 21). Recomputed by arithmetic from the last five .planning/ci-runs.tsv rows (45683886915, 45717868904, 45718553735, 45720934719, 45723269901), never quoted: the frozen 361/34/118 figures are stale by measurement, by +2/+1/+3. discharged-within-allowance is not reachable because 363 > 361 + 1.535 = 362.535, by 0.465. lever-required is not reached because the cumulative milestone spend is 3.470 of 21 (1.935 from Phase 13 plus 1.535 here) and this phase's additions landed at the priced count (steps 38, faults 238 and goldens 29 unmoved, one control directory, five registry rows, thirteen toy files), so no line overran by 25 percent (1.535 against 1.3 is +18.1 percent). The median moved more than the priced addition while the token line is where it was predicted, so reprice is what the rule names.
 
 ### Pending Todos
 
