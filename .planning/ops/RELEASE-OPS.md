@@ -96,3 +96,115 @@ Three mechanisms hold that line, and each is a committed check rather than a pro
 bullet), and no claim cites the object: the shim is never installed, so the installed-host tier's own
 definition does not apply (GUARDRAILS-v0.3 section 3, the Phase 15 row). Appended, never a rewrite of an
 existing section (section 2.10 of the guardrails).
+
+### (i.1) The line recomputed at plan 16-04, with the committed-direction probe (PKG-06, section 2.10)
+
+Appended by plan 16-04. The line and its three mechanisms above are unchanged; this note adds the
+measurement, and says where an earlier sentence is narrower than the evidence rather than rewriting it.
+
+The commit: `4a1e993`, the tree plan 16-04's Task 1 started from. Task 1 changes only this record, so the gate
+line below is also the line at the commit that carries this note.
+
+The line, quoted exactly and unchanged in this phase: the release ships the static package and the source archive; no shared object, no host shim, no content.
+
+The values, read from the closing gate line at that commit rather than quoted from a record:
+
+- `binaries-listed=0` — the `files` step's own count of name-listed binaries in the tree: none is committed.
+- `prefix-files=11` — the installed package is exactly the eleven paths of
+  `data/expected/pkg-install-files.ids`.
+- `pkg-selftest=20/20` — all twenty in-step selftests of the `pkg-install` step pass, including
+  `host-so-absent`.
+- `release-selftest=12/12` — all twelve cases of the `release-assets` step pass, including `so-member`.
+- `controls=404/404` — every control passes, including `files-unlisted-binary-so` and
+  `files-unlisted-binary-dylib`.
+
+The probe. Both files hold the same ASCII text; only the extension differs, and both are staged with the
+force flag so the list the step reads is the list git would ship:
+
+```sh
+printf 'probe\n' > probe.so
+printf 'probe\n' > probe.txt
+git add -f probe.so probe.txt
+git ls-files > /tmp/g16-so-fl          # the file list in the shape the gate builds it
+ROOT=$PWD CHECK_DIR=$PWD/tools/check FILELIST=/tmp/g16-so-fl sh tools/check/steps/files.sh
+```
+
+Its output, in full:
+
+```
+-- FAIL files-unlisted-binary: probe.so
+```
+
+`probe.txt` is named nowhere in that output, and the step prints no pass line — so the step is not one that
+refuses everything. The content scan over the same list (`binscan.sh binary`) names neither path: it skips
+`probe.so` by name, because `so` is in `tools/check/binary-ext.txt`, and `probe.txt` is clean text. Two facts
+make this the **committed direction** rather than a copy of a tree: the path was tracked (`git ls-files`
+listed `probe.so` before the step ran), and the content scan skips a name-listed extension, so the refusal
+above is the **name** and not a byte scan. Both files were unstaged and removed in the same task:
+`git ls-files` holds no path with any of the four shared-object extensions, `git status --porcelain` is
+empty, and `sh tools/gate.sh` is green afterwards.
+
+Three surfaces, three pieces of evidence, and no one of them covers another:
+
+1. **The tree (committed paths)** — this probe, on the real tree with a tracked path: one finding for the
+   shared-object name, none for the same bytes under an ordinary extension. The two
+   `files-unlisted-binary-*` controls prove the same rule on a copy of the toy tree; the probe is what
+   proves it on a path somebody actually committed, which is the limb Phase 15 could not reach from a
+   control.
+2. **The archive** — the `release-assets` case `so-member`, a synthetic archive whose own list names
+   `lib/libivs_retro.so`, refused because the binary rule does not consult the list.
+3. **The installed prefix** — the `pkg-install` selftest `host-so-absent`, an object planted in a copy of
+   the installed prefix and refused as `pkg-inventory-extra`, with the eleven-path inventory making the
+   absence a check.
+
+The probe is a throwaway check: it is not a gate step, CI never runs it, no test id, control, fault or
+golden was added for it, and it left the tree clean. Re-running it is a copy of the four commands above.
+
+## (j) The owner route, rehearsed from the source archive (plan 16-02, PKG-06, GUARDRAILS-v0.3 V10 and section 2.10)
+
+The route is the three commands of `docs/owner-images.md` ("The route from the source archive, in three
+commands"), and this section is its transcript. It is a release-time record: no gate step runs it, CI never
+runs it, no test id, control, fault or golden was added for it, and a release that skips this mode records the
+mode as `not run`, never as a pass.
+
+The command, and the commit it ran on:
+
+```sh
+sh tools/release-rehearse.sh --release --source-route    # on 14f81ed
+```
+
+The archive, its size, and the prefix the run read from the archive's first member:
+
+- archive `ivs-v0.2.0-source.tar.gz`, 6,759,881 bytes, byte-equal to the second dry run's copy;
+- extraction prefix `ivs-v0.2.0`.
+
+The cold configure (`cmake --preset release`) and build (`cmake --build --preset release`) in the extracted
+prefix completed. The log holds no `rehearse: FAIL:` line, and the golden comparison below is reached only
+after that build succeeds, because a non-zero status at either step ends the rehearsal.
+
+The rehearsal's own lines, quoted:
+
+```
+rehearse: source-route: ivs-v0.2.0-source.tar.gz, golden match (report 131 lines, 124 of 124 compared), prefix ivs-v0.2.0
+rehearse: owner-route: wrap base=4000 word-order=hi-first digest=8d73b98c58bb75a6515c6a791ebd2925265d05874e324c31a5836e61055b74f5
+rehearse: owner-route: run exit=10 outcome=guest-fail exec-label=- cart-digest-matched=yes
+rehearse: owner-route: mutation exit=14 status=IVS_E_DIGEST_MISMATCH run-state=unreset
+```
+
+The wrap is the archive's own `build/release/tools/flatwrap/ivs_flatwrap` at base `4000` with the default
+`hi-first` word order, and the digest it printed is the container's, matched against the run's own
+`slot.cart.sha256`. The run is the archive's own `tools/owner-run.sh --record --cart` on the three files, and
+the mutation run is the same command without `--record`, because a second `--record` is refused with exit 2
+(`refs/owner-images.sha256 exists: remove it to record again`).
+
+The three things a reader must not have to infer:
+
+- The EXEC, GROM and flat images are **project-made zero-filled files** (8,192, 2,048 and 8,192 bytes) that the
+  rehearsal writes with `dd` from the zero device inside the extraction's `refs/`; no owner file was read and no
+  byte of one was written anywhere. D11 stays `not-performed`.
+- The run's values (`guest-fail`, exit 10, `exec: -`) are a statement about these project-made bytes and about
+  nothing else. No claim cites this record, and no phase exit criterion reads it as evidence.
+- A release that skips this mode records it as `not run`, never as a pass (PLAN-LESSONS 24).
+
+After the run, the rehearsal's workspace (one `mktemp` directory, removed by its `EXIT` trap) was gone and
+`git status --porcelain` was empty, so the route wrote nothing into the repository.

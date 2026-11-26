@@ -595,3 +595,26 @@ host mutant runner-process.judge.host-load-refused TOOL-08
 # refused as judge-wrong-reason. Without this row the two digest limbs above would be guarded by a control
 # that cannot tell a one-limb stand-in from a two-limb one.
 host mutant runner-process.judge.host-two-limb TOOL-08
+# release-posture (plan 16-04, PKG-06): the three mechanisms that hold the release-decision line
+# ("the release ships the static package and the source archive; no shared object, no host shim, no
+# content"). Every row below names a mechanism the phase *registered* rather than created: the two
+# controls were built in plan 15-02 and the selftest in plan 15-02, so faults, steps and controls do
+# not move here. The surface each row proves is named in its comment, because the tree, an archive and
+# an installed prefix are three different surfaces and no one of them covers another.
+# release-posture: a shared object is refused by name in the tree. The control plants a tracked .so in
+# a copy of the toy tree and requires the refusal; plan 16-04's own probe proved the same rule on a
+# committed path in the real tree (one finding for probe.so, none for probe.txt), which is the limb a
+# control cannot reach. That probe is a throwaway check and is deliberately not a row here.
+release-posture control files-unlisted-binary-so PKG-06
+# release-posture: the same rule for the second extension family, so the refusal is the list and not
+# one spelling - a rule that knew only `so` would let a `.dylib` through on the same surface.
+release-posture control files-unlisted-binary-dylib PKG-06
+# release-posture: the object cannot enter the installed package. The selftest plants
+# lib/libivs_retro.so in a copy of the installed prefix and requires pkg-inventory-extra, so a future
+# install rule on the build-only host target fails there first; the eleven-path inventory
+# (data/expected/pkg-install-files.ids) is what makes the absence a check, and `prefix-files=11` is
+# that same statement on every gate line. The release-assets case `so-member` (a synthetic archive
+# whose own list names the object) is not registered: a `mutant` row resolves only through the three
+# selftest inventories or a `<suite>.judge.<slug>`/`<suite>.mutant.<slug>` test id, and a name outside
+# those inventories would make this row important-gates-unknown-id.
+release-posture mutant host-so-absent PKG-06

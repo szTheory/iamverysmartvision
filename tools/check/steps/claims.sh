@@ -14,6 +14,13 @@
 # not a readable regular file), `unknown id <id>` (a row the project does not have), `missing id
 # <id>` (a project id with no row). One token with a detail keeps a control's EXPECT readable while
 # each case stays distinguishable.
+# The pass line also carries `handoffs=<n>`, the ledger's row count, counted from the file on every
+# run so no record has to quote a figure that can go stale (the project's own rule: recompute,
+# never quote). It is a STAT for a reader, not a check, and it has no control on purpose: the
+# mechanism that keeps the ledger honest is the pair of pinned lists below, where a missing row, an
+# extra row, a duplicate and a wrong disposition are each a named finding in both directions. A
+# control of the count would prove the count rather than the ledger, and GUARDRAILS 2.4 asks a new
+# control only for a new check - this step adds none.
 LC_ALL=C; export LC_ALL
 : "${ROOT:?ROOT is not set}"
 : "${CHECK_DIR:?CHECK_DIR is not set}"
@@ -24,14 +31,15 @@ printf '%s\n' "$out"
 stats=$(printf '%s\n' "$out" | sed -n 's/^-- claim pass records=[0-9][0-9]* //p')
 [ -n "$stats" ] || exit 1
 
-# The five ids the project's own records already use: an H-id of a phase verification record or a
+# The eight ids the project's own records already use: an H-id of a phase verification record or a
 # milestone close record, or a D-id owner gate. Frozen here so the set cannot be edited away
-# together with the ledger.
-HANDOFF_IDS='H7-1 H7-2 H8-3 D10 D11'
+# together with the ledger. Phase 16 added H16-1, H16-2 and H16-3, the three owner-only questions
+# that phase offered as rows.
+HANDOFF_IDS='H7-1 H7-2 H8-3 D10 D11 H16-1 H16-2 H16-3'
 # The disposition each id carries, pinned here for the same reason the id set is: a row with the
 # right id and the wrong disposition reads as a performed handoff that nobody performed, and the
 # ledger is the only place a later milestone looks. Edit both lists together or not at all.
-HANDOFF_DISP='H7-1=handed-off H7-2=handed-off H8-3=handed-off D10=not-performed D11=not-performed'
+HANDOFF_DISP='H7-1=handed-off H7-2=handed-off H8-3=handed-off D10=not-performed D11=not-performed H16-1=handed-off H16-2=handed-off H16-3=handed-off'
 hled="$ROOT/data/expected/handoffs.ids"
 
 hb=$(mktemp "${TMPDIR:-/tmp}/claims.XXXXXX") || exit 1
@@ -93,4 +101,8 @@ if ! awk -v want="$HANDOFF_IDS" -v disp="$HANDOFF_DISP" '
 fi
 cat "$hb"
 [ -s "$hb" ] && exit 1
-printf -- '-- claims pass %s\n' "$stats"
+# The row count is the file's, read with the same predicate the grammar pass uses for a row (a
+# non-comment line with fields), and appended after the hook's own stats rather than inserted into
+# the captured string, so the hook's token order stays byte-identical.
+handoff_rows=$(awk '/^[[:space:]]*#/ { next } NF == 0 { next } { n++ } END { print n + 0 }' "$hled")
+printf -- '-- claims pass %s handoffs=%s\n' "$stats" "$handoff_rows"

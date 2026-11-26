@@ -43,7 +43,7 @@ mechanical).
 
 ### Packaging and release
 
-- [ ] **PKG-06**: A tracked shared object is refused by name, the installed package stays eleven files, and the release-decision line states that no shared object, host shim or content is shipped.
+- [x] **PKG-06**: A tracked shared object is refused by name, the installed package stays eleven files, and the release-decision line states that no shared object, host shim or content is shipped.
 
 ## v2 Requirements
 
@@ -109,7 +109,7 @@ the same date: every requirement appears in exactly one phase.
 | SCN-03 | Phase 14 | Complete |
 | CPU-06 | Phase 14 | Complete |
 | TOOL-08 | Phase 15 | Complete |
-| PKG-06 | Phase 16 | Pending |
+| PKG-06 | Phase 16 | Complete |
 
 **Coverage:**
 - v0.3.0 requirements: 9 total
@@ -125,9 +125,16 @@ the same date: every requirement appears in exactly one phase.
   pressure: a future re-open that cannot be made green records TOOL-08 `Deferred` with its reversal
   condition and amends the milestone goal to "Owner-Supplied Content" — never silently lost and
   never marked `Complete`.
+- Phase 16 carries PKG-06, and it is `Complete` on the phase's own evidence rather than on a promise: the
+  committed-direction probe (a tracked path refused as `files-unlisted-binary: probe.so`, with the same
+  bytes under an ordinary extension producing no finding), `prefix-files=11` with the `host-so-absent`
+  selftest, and the release-decision line recomputed at the commit in `.planning/ops/RELEASE-OPS.md`
+  section (i.1).
 
 ---
 *Requirements defined: 2026-11-26*
-*Last updated: 2026-11-26 at Phase 15 completion (TOOL-08 flipped to `Complete` with the two
-`important-gates` `mutant` rows that name it under the new `host` gate name, in one commit; the checkbox
-lines and the traceability table move together because the table is the parsed record)*
+*Last updated: 2026-11-26 at Phase 16 completion (PKG-06 flipped to `Complete` with the three
+`important-gates` rows that name it under the new `release-posture` gate name - two `control` rows for the
+committed shared-object refusal by name and one `mutant` row for the installed prefix - in one commit with
+the thirteen toy lines that keep the derived set closed; the checkbox lines and the traceability table move
+together because the table is the parsed record)*

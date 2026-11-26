@@ -25,6 +25,13 @@
 # (08-MILESTONE-CLOSE.md section K) for the same two acts as H7-1 and H7-2 plus a look at the
 # STIC pictures of a `diag-stic2-` scenario, so one act discharges both H8-3 and the two Phase
 # 7 rows; a later milestone must not book a third act on the strength of this count.
+# That sentence is a pointer to the five ids it was written about, not a count of this file: Phase
+# 16 added three rows beside them, H16-1 (a real frontend loads the build-only shared object),
+# H16-2 (an owner image's picture and its sound) and H16-3 (the word order of the owner's flat
+# image). Their procedures are the packet's sections of the same names in docs/handoffs.md. The
+# row count is printed by the claims step as `handoffs=<n>`, counted from this file on every run,
+# so no record has to quote a figure that goes stale; like every row here the three are never a
+# pass, never evidence and never a criterion of any phase.
 # The D10 and D11 rows name items held in data/expected/d10-measurements.ids, cited by path
 # only: that file is the inventory and this file never restates its row count.
 H7-1 handed-off evidence: none
@@ -32,3 +39,6 @@ H7-2 handed-off evidence: none
 H8-3 handed-off evidence: none
 D10 not-performed evidence: none
 D11 not-performed evidence: none
+H16-1 handed-off evidence: none
+H16-2 handed-off evidence: none
+H16-3 handed-off evidence: none

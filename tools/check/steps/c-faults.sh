@@ -19,7 +19,10 @@
 # parent polls for within a bound (review WR-03; see run_limited). A self-test, run alongside the lanes,
 # proves the watchdog stops a 30-second sleep after 1 second, stays silent for a run that ends in time,
 # and that a watchdog which dies or never arms ends the wait as a finding instead of a hang.
-# Tokens: c-faults-run: <ID or what>, c-faults-run: no suite in <file>,
+# Build lock (Phase 16 cost-only lever): tools/gate.sh runs this step overlapped with c-tests,
+# which builds the dev and release presets in the same tree, so the `cmake --build` call below
+# takes the mkdir lock defined in the `build-lock` block; its reason is a measurement, quoted there.
+# Tokens: c-faults-run: <ID or what>, c-faults-run: no suite in <file>, c-faults-run: build lock,
 #   c-faults-run: duplicate <ID>, c-faults-run: <ID> (timeout), c-faults-run: <ID> (watchdog not armed),
 #   c-faults-run: watchdog self-test (<case>: fire, quiet, arm, dead, stall). Stats: fault-runs=<n> (summed over files).
 LC_ALL=C; export LC_ALL
@@ -28,8 +31,45 @@ LC_ALL=C; export LC_ALL
 : "${FILELIST:?FILELIST is not set}"
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/c-faults.XXXXXX") || exit 1
 lane_pids=
-trap 'rm -rf "$tmp"' EXIT
-trap 'if [ -n "$lane_pids" ]; then kill $lane_pids 2> /dev/null; fi; exit 1' HUP INT TERM
+# The block below is a byte-identical copy of the one in tools/check/steps/c-tests.sh, and it is a
+# copy rather than a shared helper file on purpose: a new tracked file would move `tracked`,
+# `files` and `hygiene-files` and destroy the byte-identical summary line the Phase 16 lever
+# commit is required to show. The two copies are compared between their own markers.
+# build-lock begin
+# Serialise this tree's builds: the two steps that tools/gate.sh runs overlapped both build the
+# dev preset in one tree, and two concurrent `cmake --build --preset dev` runs were measured to
+# fail at link time (`clang: error: no such file or directory: 'core/libivs_core.a'` - one run
+# archiving while the other links), so every build takes this mkdir lock. It lives in the per-run
+# results directory, which tools/gate.sh recreates (rm -rf, then mkdir -p) for every run, so a
+# stale lock cannot outlive a run and no takeover rule is needed. The wait is bounded and polled
+# (0.01 s, 60000 polls = about ten minutes); on expiry the caller reports its own token with the
+# `build-lock` detail and exits non-zero. build_unlock releases on the success path, the failure
+# path and the HUP/INT/TERM and EXIT traps the caller already sets.
+build_lock=
+lock_held=0
+lock_polls=60000
+build_unlock() {
+  [ "$lock_held" -eq 1 ] || return 0
+  rmdir "$build_lock" 2> /dev/null
+  lock_held=0
+}
+lock_acquire() {
+  build_lock="$gate_dir/.build-lock"
+  _lk=0
+  while ! mkdir "$build_lock" 2> /dev/null; do
+    if [ "$_lk" -ge "$lock_polls" ]; then
+      build_lock=
+      return 1
+    fi
+    _lk=$((_lk + 1))
+    sleep 0.01
+  done
+  lock_held=1
+  return 0
+}
+# build-lock end
+trap 'build_unlock; rm -rf "$tmp"' EXIT
+trap 'build_unlock; if [ -n "$lane_pids" ]; then kill $lane_pids 2> /dev/null; fi; exit 1' HUP INT TERM
 rc=0
 bad() { printf -- '-- FAIL %s: %s\n' "$1" "$2"; rc=1; }
 cd "$ROOT" || exit 1
@@ -58,11 +98,17 @@ if [ ! -f "$gate_dir/NONCE" ]; then
 fi
 nonce=$(cat "$gate_dir/NONCE")
 
+if ! lock_acquire; then
+  bad c-faults-run "build lock"
+  exit 1
+fi
 if ! cmake --build --preset dev --target ivs_faults > "$tmp/build.log" 2>&1; then
+  build_unlock
   cat "$tmp/build.log"
   bad c-faults-run "build ivs_faults"
   exit 1
 fi
+build_unlock
 
 limit=${IVS_FAULT_TIMEOUT:-120}
 case $limit in ''|*[!0-9]*|0) bad c-faults-run "IVS_FAULT_TIMEOUT=$limit"; exit 1 ;; esac
