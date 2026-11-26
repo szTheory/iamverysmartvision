@@ -94,6 +94,18 @@ After applying, record the date and the ruleset id here. Reversal: delete the
 ruleset (`gh api --method DELETE 'repos/{owner}/{repo}/rulesets/<id>'`) if it
 blocks a needed recovery; force-push to `main` stays a hard stop either way.
 
+**Applied 2026-11-26 (owner instruction), two rulesets, read back once:**
+
+| id | name | target | enforcement | rules |
+|---|---|---|---|---|
+| 28169379 | `main: PR and gate` | branch (`~DEFAULT_BRANCH`) | active | deletion, non_fast_forward, pull_request (0 approvals, no code-owner review), required_status_checks (`gate`, non-strict) — **no bypass list** |
+| 28169381 | `tags: release tags are immutable` | tag (`refs/tags/v*`) | active | deletion, update — **no bypass list** |
+
+The tag ruleset was added beyond the recorded recommendation because the first
+release under it was about to be cut: a movable release tag is a published
+artifact that can change under a reader. PR #41 was the first change to go
+through the branch ruleset and merged only after `gate` reported success.
+
 ## 2. Discuss protocol (fan-out by default)
 
 Use this at every discuss-phase and milestone discussion, and for any
