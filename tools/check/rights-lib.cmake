@@ -338,7 +338,7 @@ endfunction()
 # `refused` rows would make every pin stale on the first run. A `cleared` row's tokens are never
 # refused -- that is what clearing means.
 #
-# The scope is three path prefixes plus six exact operator pages, never a directory glob: a glob would
+# The scope is four path prefixes plus seven exact operator pages, never a directory glob: a glob would
 # sweep in the reference notes under docs/ that legitimately quote their sources, and every new page
 # would widen the rule silently. The controls prefix is excluded because control overlays are tracked
 # files under tools/, so without that exclusion the real tree would refuse its own test data and no
@@ -350,8 +350,14 @@ endfunction()
 # is a member of the boundary class, so a word-oriented match treats it as a separator, and a
 # hyphenated token would then fire inside a spaced spelling or inside a longer hyphenated name.
 function(rights_scan_naming paths)
+  # Seven pages since the milestone close: docs/handoffs.md joined the set when plan 16-03 made it
+  # the only operator documentation of the host shim's step (integration check W1, 2026-11-26). The
+  # page is clean today: its one occurrence of an owner-local token sits inside a hyphenated
+  # plan-directory path, and `-` is a member of the boundary class, so the widening moves no finding;
+  # it makes the rule cover the page a person actually reads. This comment does not spell the token,
+  # because this file is itself inside the scanned scope.
   set(pages "README.md" "docs/running.md" "docs/owner-images.md" "docs/packaging.md"
-            "docs/diagnostics.md" "docs/RIGHTS.md")
+            "docs/diagnostics.md" "docs/RIGHTS.md" "docs/handoffs.md")
   rights_rows(rows)
   set(refused "")
   foreach(r IN LISTS rows)
@@ -369,7 +375,11 @@ function(rights_scan_naming paths)
   set(seen "")
   foreach(p IN LISTS paths)
     set(inscope FALSE)
-    if(p MATCHES "^(core/src/|runner/|tools/)" AND NOT p MATCHES "^tools/check/controls/")
+    # `host/` joined the code prefixes at the milestone close (integration check W2, 2026-11-26): plan
+    # 15-01 created a code directory the rule's three prefixes did not cover, so a refused spelling
+    # could have landed there unseen. It is clean today (0 hits for all fifteen refused and
+    # owner-local tokens), so the widening moves no finding; it closes the surface.
+    if(p MATCHES "^(core/src/|runner/|tools/|host/)" AND NOT p MATCHES "^tools/check/controls/")
       set(inscope TRUE)
     else()
       foreach(pg IN LISTS pages)
