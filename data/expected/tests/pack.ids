@@ -54,3 +54,14 @@ pack.judge.flatwrap-tokens
 # sha256sum of every byte before it; the same input twice gives the same digest and one flipped input byte moves
 # both, which is the liveness guard.
 pack.judge.flatwrap-digest-live
+# The tool's one option (the parser the cases above do not reach): the stated word order decides the pairing and
+# hi-first is the default.
+# pack.flatwrap.word-order: one asymmetric word (input bytes 01 02) is wrapped with no flag, with an explicit
+# hi-first and with lo-first. The container words are 0102 and 0201, the byte-swap of each other (both at or below
+# the 03FF word maximum, so neither run is refused by the range rule), the two printed digests differ, the segment
+# entry does not move, and the no-flag digest equals the explicit hi-first one.
+pack.flatwrap.word-order
+# pack.flatwrap.usage-word-order: a --word-order value outside hi-first/lo-first, and a --word-order with no
+# value, are usage errors and not refusals: exit 2, exactly one stderr line that is the tool's own usage line
+# with no token on it, nothing on stdout and no output file.
+pack.flatwrap.usage-word-order
