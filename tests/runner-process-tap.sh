@@ -2576,7 +2576,9 @@ result runner-process.judge.host-load-refused
 # core-symbols-tap.sh and never baked into the script: they are a property of the target that links ivs_san. The
 # second direction is proved LIVE without a second build: a scratch copy of the ids file with one name appended must
 # be refused, and refused by that name - on GNU's linker an export-list name nothing defines is accepted silently, so
-# this limb is the only detector there.
+# this limb is the only detector there. BOTH directions are proved live (review WR-04): a second scratch copy with an
+# exported name DELETED must be refused as host-symbols-extra by that name, so an object that grew a symbol the pin
+# does not carry is caught rather than silently accepted.
 : > "$tmp/why"
 ok=1
 if [ -z "$shim" ]; then
@@ -2601,6 +2603,22 @@ else
     elif ! grep -q -x -F -e '-- FAIL host-symbols-missing: ivs_not_defined' "$tmp/runs/host-symbols-extra.out"; then
       ok=0
       why host-exports-live "the checker failed, but not by the appended name: $(grep -m 1 -e 'FAIL' "$tmp/runs/host-symbols-extra.out")"
+    fi
+    # The other direction (review WR-04): an EXPORTED name the list does not carry. The scratch copy drops retro_run,
+    # a name the object defines, so the exact-set comparison must refuse it as host-symbols-extra and name it. Without
+    # this limb half of the comparison - the half that catches a symbol the pin does not know about - was unproved.
+    awk '/^#/ { next } NF { print $1 }' "$root/data/expected/host-symbols.ids" \
+      | grep -v -x -F -e retro_run > "$tmp/host-short.ids"
+    if [ ! -s "$tmp/host-short.ids" ]; then
+      ok=0
+      why host-exports-live 'the shortened ids copy is empty, so the extra direction would compare nothing'
+    elif CHECK_DIR="$root/tools/check" ROOT="$root" sh "$check_sym" --allow-prefix __asan_ --allow-prefix __ubsan_ \
+      --allow-prefix __sanitizer_ "$shim" "$tmp/host-short.ids" > "$tmp/runs/host-symbols-short.out" 2>&1; then
+      ok=0
+      why host-exports-live 'the checker accepted an ids list missing a name the object exports'
+    elif ! grep -q -x -F -e '-- FAIL host-symbols-extra: retro_run' "$tmp/runs/host-symbols-short.out"; then
+      ok=0
+      why host-exports-live "the checker failed, but not by the dropped name: $(grep -m 1 -e 'FAIL' "$tmp/runs/host-symbols-short.out")"
     fi
   fi
 fi
