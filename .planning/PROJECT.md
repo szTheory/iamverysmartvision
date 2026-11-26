@@ -126,16 +126,19 @@ All Active items are hypotheses until delivered and verified. Detailed,
 ID-tagged requirements live in `.planning/REQUIREMENTS.md`; the v0.1.0 and
 v0.2.0 sets are archived under `.planning/milestones/`.
 
-- [ ] A rights ledger records one row per third-party-content question the
+- [x] A rights ledger records one row per third-party-content question the
       milestone touches, with a disposition, a resolvable source when cleared,
       and a naming rule that a refused spelling cannot escape (`RTS-01`,
-      `RTS-02`).
-- [ ] The claims step refuses an `established` claim that is not a
+      `RTS-02`) — **Phase 13**, verified 2026-11-25 (18/18 must-haves).
+- [x] The claims step refuses an `established` claim that is not a
       `source-expectation` claim resting on a `tier1-primary-doc` dependency
-      (`EV-06`, D-32, D-50).
-- [ ] The ten must-fail mechanisms that have a guard and a re-runnable stand-in
-      but no registry row are registered as `mutant` rows, with zero new faults
-      (`EV-07`).
+      (`EV-06`, D-32, D-50) — **Phase 13**.
+- [x] The ten must-fail mechanisms that have a guard and a re-runnable stand-in
+      but no registry row are registered, with zero new faults (`EV-07`) —
+      **Phase 13**, as six `control` + four `mutant` rows rather than ten
+      `mutant` rows; the deviation from the requirement's literal wording is
+      recorded in `13-04-SUMMARY.md`, `STATE.md` and beside the unchanged
+      `REQUIREMENTS.md` sentence.
 - [ ] A person can wrap a flat cartridge image of their own, at an address they
       state, into the project's cartridge container with one build-only command,
       and every malformed input is refused by a typed token beside a positive
@@ -387,4 +390,4 @@ This document evolves at phase transitions and milestone boundaries.
    of exact tested artifact targeted when rights/readiness/authority permit
 
 ---
-*Last updated: 2026-11-24 at the v0.2.0 milestone opening, after the milestone ritual, the corrected cost reading and the D14 to D16 scope decisions*
+*Last updated: 2026-11-25 after Phase 13 (rights ledger and enforced claim ceiling) completed and verified — the first v0.3.0 phase, and the first time a third-party-content question has a written disposition the gate enforces*
