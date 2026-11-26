@@ -104,6 +104,24 @@ milestone close").
   with no presentation surface, so generating a UI-SPEC would have produced a
   design contract for a library. The skip is recorded rather than silently
   taken; the gate's `block` was `false`.
+- **[Phase 15] The decision-coverage gate is overridden as `could-not-parse` for
+  the same reason as Phase 13, and the plans cite the frozen ids instead.**
+  `check.decision-coverage-plan` returns `could-not-parse` on `15-CONTEXT.md`
+  because smart-discuss writes its decisions with no `D-NN` prefix (measured:
+  `reason: could-not-parse`, `total: null`). The three plans name the decisions
+  they discharge by id in their `<objective>` blocks and restate the property in
+  `must_haves`: D-48 (no vendored frontend header; the subset is project-authored
+  and *libretro-shaped*, never compatible), D-35 (the package stays static, so
+  `IVS_API` is defined for the shared target only), D-49 (the package stays
+  eleven files and a shared object is refused by name), D-50 (the claim ceiling
+  is enforced mechanically), and D-01 (the core takes no allocator, so the shim
+  owns its instance storage). Re-writing the discuss record to quiet a scanner
+  is the anti-pattern; the override is recorded here instead.
+- **[Phase 15] `workflow.ui_phase`'s UI hook is not applicable.** Phase 15 adds
+  no presentation surface: the fake frontend is a headless `dlopen` harness
+  whose evidence is nine digest lines, and the CONTEXT's deferred list refuses a
+  window explicitly. No UI-SPEC is generated and the skip is recorded rather
+  than silently taken.
 
 ## Releases
 
