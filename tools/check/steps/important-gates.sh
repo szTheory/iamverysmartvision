@@ -97,6 +97,15 @@
 #            an existing suite, not a new step: zero new faults, zero new steps, and no new gate name. The row
 #            and the EV-08 flip land in one commit for the same two-direction reason as Phases 14 to 16, and
 #            all ten toy registries and the three toy requirement records gain their EV-97 line in that commit)
+#   Phase 17 EV-08 plan 17-03 (the count-gate contract, PLAN-LESSONS lesson 32, clause 1: one `mutant` row under
+#            one new gate name `count-gate`, over the existing `extra-file` case of the `pkg-install` step, whose
+#            count comes from the named file data/expected/pkg-install-files.ids and whose committed stand-in the
+#            same check_inventory refuses on every gate run. One row, one gate name, zero new cases, zero new
+#            test ids, zero new steps and zero new faults: the row points at a mechanism plan 04-22 already
+#            built, so no 0.05 selftest price is incurred and the phase's priced line stays 0.11. The gate name
+#            is new because the row registers a contract rather than a step, and it is what makes `gates` read
+#            120. Lesson 32's clause 3 is the already-registered st-pass-line row, cited not duplicated, and
+#            clause 2 has no mechanism and is not registered at all)
 # Resolution of <id> by mechanism:
 #   fault    first column of any data/expected/faults/*.ids (judged by faults-verdict);
 #   control  first column of any data/expected/controls/*.ids (run by tools/check/run-controls.sh);

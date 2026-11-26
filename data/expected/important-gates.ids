@@ -626,3 +626,21 @@ release-posture mutant host-so-absent PKG-06
 # must-fail demonstration is repeated on every gate run instead of once. The gate name is the existing
 # cart-role: no new gate name is minted, and no new fault, step or golden is produced.
 cart-role mutant runner-process.judge.flatwrap-shim EV-08
+# count-gate (plan 17-03, EV-08, lesson 32 clause 1): a count gate names the file it counts, and the count is
+# taken from that file. The pkg-install step's check_inventory reads data/expected/pkg-install-files.ids (eleven
+# paths) and prints that file's own name as pkg-inventory-list when it is missing, so a count read from anywhere
+# else is a finding rather than a number; the committed `extra-file` case copies the installed prefix, plants
+# share/ivs/stray.txt in the copy, and requires `pkg-inventory-extra: share/ivs/stray.txt` from the same
+# check_inventory the real prefix is judged by. The stand-in is committed code inside the step, so the
+# demonstration is re-run on every gate run and reported as the step's own pkg-selftest=20/20 token, instead of
+# being built and deleted once. The row therefore POINTS at a mechanism that already exists - the same case is
+# registered for PKG-01 under the step's own gate name - rather than minting a case to register: a new case
+# would cost 0.05 hosted cpu-s and reprice this phase from 0.11 to 0.16, and the phase's priced line stays 0.11
+# (one process id plus the two 0.005 rows). The gate is named `count-gate`, not `pkg-install`, because the row
+# registers a CONTRACT rather than a step, exactly as d09-06-registration registers one; the new gate name is
+# deliberate and is what makes the gate line's `gates` token read 120. Lesson 32's clause 3 (no verdict decided
+# by a pipeline tail) is already registered as d09-06-registration mutant st-pass-line EV-07 and is cited there,
+# not duplicated: a second row for one proof is the second registration plan 13-04 named and refused. Clause 2
+# (a baseline names the plan's own start commit sha) has NO mechanism - no gate step parses plans - and is
+# therefore not registered here: a row for it would register a mechanism that does not exist.
+count-gate mutant extra-file EV-08
