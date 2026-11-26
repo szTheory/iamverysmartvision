@@ -1,9 +1,13 @@
 # Toy handoff ledger for the known-good control tree. The claims step REQUIRES this file and pins
 # its id set to the five ids the project's own records use (H7-1, H7-2, H8-3, D10, D11), so the
 # good tree carries one well-formed row per id: a good tree without a ledger would fail the step,
-# which is the point of the requirement (EV-05).
+# which is the point of the requirement (EV-05). Phase 16 added H16-1, H16-2 and H16-3 to the
+# project's id set, so this tree carries their three rows too.
 H7-1 handed-off evidence: none
 H7-2 handed-off evidence: none
 H8-3 handed-off evidence: none
 D10 not-performed evidence: none
 D11 not-performed evidence: none
+H16-1 handed-off evidence: none
+H16-2 handed-off evidence: none
+H16-3 handed-off evidence: none

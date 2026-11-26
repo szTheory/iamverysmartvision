@@ -4,10 +4,14 @@
 #   <id> <disposition> evidence: none
 
 # A ledger whose grammar and row set are clean but which carries D11 twice, the second time with the
-# other disposition: the only finding the step may print is the duplicate id.
+# other disposition: the only finding the step may print is the duplicate id. The three Phase 16
+# rows (H16-1, H16-2, H16-3) are present, so the duplicated D11 stays the one finding.
 H7-1 handed-off evidence: none
 H7-2 handed-off evidence: none
 H8-3 handed-off evidence: none
 D10 not-performed evidence: none
 D11 not-performed evidence: none
 D11 handed-off evidence: none
+H16-1 handed-off evidence: none
+H16-2 handed-off evidence: none
+H16-3 handed-off evidence: none

@@ -5,8 +5,13 @@
 
 # A ledger whose grammar, row set and id uniqueness are all clean but which records D10, an owner
 # hard stop nobody performed, as handed off: the only finding the step may print is the disposition.
+# The three Phase 16 rows (H16-1, H16-2, H16-3) are present and carry their pinned disposition, so
+# D10 stays the one finding.
 H7-1 handed-off evidence: none
 H7-2 handed-off evidence: none
 H8-3 handed-off evidence: none
 D10 handed-off evidence: none
 D11 not-performed evidence: none
+H16-1 handed-off evidence: none
+H16-2 handed-off evidence: none
+H16-3 handed-off evidence: none

@@ -3,6 +3,7 @@
 This page is the packet for the human-only items of `data/expected/handoffs.ids`: for every row of that ledger it gives the exact command, the artefact path and the deterministic identities (byte size, file mode, the one digest line) that a person would compare, so the owner can perform the item without rebuilding the procedure from a phase record.
 It is not a check, not a gate step, not evidence and not citable by a claim: no gate step opens this page, no test reads it, and no `data/claims.json` record points at it.
 The ledger is the inventory; this page is only the instruction sheet for it.
+Phase 16 added three rows to that inventory — `H16-1`, `H16-2` and `H16-3` — and their sections below are this page's newest ones; the page states no count of rows anywhere, because the ledger is the inventory and the claims step prints that count as `handoffs=<n>` from the file itself.
 
 ## The one rule to carry away
 
@@ -87,6 +88,69 @@ SKIPPED owner-run: no operator images (D11)
 and exits `77`.
 That is the state of this host, and it is why the ledger row is `not-performed` rather than a gap in the inventory: the item is named, the procedure exists, and no image exists here to read.
 The owner-local invocation, once the images and the digest lock are in place, is `sh tools/owner-run.sh refs/FX-owner-exec.bin refs/FX-owner-grom.bin`.
+
+## H16-1: a real frontend loading the build-only shared object
+
+The object is build-only: it has no install rule, it is never installed and never shipped, and it is not one of the installed package's paths (`docs/packaging.md`).
+From the repository root, with the release preset:
+
+```
+cmake --preset release
+cmake --build --preset release --target ivs_retro_shim
+```
+
+The target is `ivs_retro_shim` and its output name is `ivs_retro`, so the artefact is the shared object that target writes in the preset's own build tree: `build/release/host/libivs_retro.dylib` on this host, `build/release/host/libivs_retro.so` on Linux.
+
+- Compare before and after the frontend is pointed at it, because a rebuild is a different object and its identity says so:
+
+```
+cmake -E sha256sum build/release/host/libivs_retro.dylib
+ls -l build/release/host/libivs_retro.dylib
+```
+
+- The deterministic identity is that digest and that byte size, and nothing about the object is a statement about any frontend.
+- The project's own reproducible statement about the object is the nine digest lines its own fake frontend prints. That frontend is `tests/host/ivs_host_harness.c`, whose usage line is the command, and the release preset's object, content directory and no mode flag are all it needs:
+
+```
+build/release/tests/ivs_host_harness build/release/host/libivs_retro.dylib build/release/images
+```
+
+Those nine lines are what a person with a real frontend can hold their frontend's own answer against; they are the project's answer through the object's entries, not a statement about anyone else's frontend.
+What a person judges is whether their frontend accepts the object and presents something from it.
+The project states nothing about any frontend: it has no frontend of its own, it offers no compatibility toward any other project's frontend ABI, and a frontend that refuses the object is a fact about that frontend.
+
+## H16-2: an owner image's picture and its sound
+
+The procedure is the three-command route of `docs/owner-images.md` ("The route from the source archive, in three commands"), and its rehearsal transcript is `.planning/ops/RELEASE-OPS.md` section (j), cited by path and section letter rather than restated here.
+The route loads the owner's EXEC image, GROM image and wrapped cartridge container through `tools/owner-run.sh`; the images stay in the ignored `refs/` directory and are never committed.
+
+- The deterministic identity of such a run is that run's own report: its loader lines and its outcome, read on the owner's machine.
+- It is not any picture or sample file: for a scenario with a `content <role> user` line the runner refuses the frame, video, golden, audio and psg-log output options, so the route writes no file of what the images caused, and no derived file of owner content may be written into the repository.
+- The picture and the sound can only be judged through a frontend that presents them, which is `H16-1`'s act: the object plus the owner's images in a frontend the owner chooses.
+
+What a person judges is whether the picture is the one their program intends and whether the sound is the one it intends.
+The project states nothing about either: it names no digest of any owner image, it says no real EXEC, GROM or commercial cartridge is known to behave in any particular way on this core, and a judgement of a picture or a sound is a judgement about one person's observation on one day.
+
+## H16-3: the word order of the owner's flat image
+
+The procedure is the wrap command of that same route, run twice into two containers, once at its default `hi-first` and once with `lo-first`, followed by loading each container and comparing the loader lines and the outcome.
+The base address is a required input that the owner states as four hex digits without a prefix, `$4000` to `$FFFF`, and nothing is auto-detected: the tool takes the base and the word order from the command line and reads no other format.
+
+```
+build/release/tools/flatwrap/ivs_flatwrap refs/FX-owner-flat.bin 4000 refs/FX-owner-cart.ivsc
+build/release/tools/flatwrap/ivs_flatwrap refs/FX-owner-flat.bin 4000 refs/FX-owner-cart-lo.ivsc --word-order lo-first
+sh tools/owner-run.sh --cart refs/FX-owner-cart.ivsc refs/FX-owner-exec.bin refs/FX-owner-grom.bin
+sh tools/owner-run.sh --cart refs/FX-owner-cart-lo.ivsc refs/FX-owner-exec.bin refs/FX-owner-grom.bin
+```
+
+Each wrap prints the digest of the container it wrote, and each run publishes the container's own digest as `slot.cart.sha256`, so the container a run loaded is the container the tool wrote.
+What a person judges is which of the two orders makes their image mean what they expect — a judgement of their own dump, not a measurement.
+The project makes no statement about any real dump's byte layout: it does not know whether a given flat file matches this container without conversion, and this page does not say that it does.
+
+## These rows are never a result
+
+A row is never a pass, never evidence and never a claim's support: an answer of yes or no is a handoff result, recorded as `evidence: none` either way, and these three change no exit criterion of any phase.
+They are offered, not performed, and a later milestone opens this packet and cites the row instead of asking the owner the same question again.
 
 ## When a person does report back
 

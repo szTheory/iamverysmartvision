@@ -1,6 +1,10 @@
 # A ledger whose grammar is clean and whose row set is short by one: D11 has no row. Every row is
-# well formed, so the only finding the step may print is the missing id.
+# well formed, so the only finding the step may print is the missing id. The three Phase 16 rows
+# (H16-1, H16-2, H16-3) are present, so D11 stays the one missing id.
 H7-1 handed-off evidence: none
 H7-2 handed-off evidence: none
 H8-3 handed-off evidence: none
 D10 not-performed evidence: none
+H16-1 handed-off evidence: none
+H16-2 handed-off evidence: none
+H16-3 handed-off evidence: none
