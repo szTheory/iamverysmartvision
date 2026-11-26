@@ -230,7 +230,17 @@ fixed, pinned and retargeted rather than recorded and abandoned.
   5. No tracked file carries a new binary extension, `binary-ext.txt` and `.gitignore` are unchanged by this phase, and the gate ends `steps=38/38` with the predicted `tests-expected` and `tests-skipped` delta.
   6. The interrupt-enable default is resolved from the owner-local observation (`cpu.interrupt_accept_clears_intff` = 1, D-51), a project-authored CPU test pins **both** settings so the not-cleared case is still exercised, the value stays `unknown-default-chosen` with the observation in `data/discrepancies.json` C41, and the profile parameter digest, every snapshot literal and the boot-stub-2 interrupt expectations move in the same commit with a predicted delta.
   7. The next blocker the same run exposes is recorded with its own row and its own gate: measured, the display-enable strobe never latches, so frames stay black and the STIC register-window / strobe rule is the next tier-4 default to resolve — named, not silently carried.
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+**Wave 1** *(two plans in parallel: no shared file, one touches `tools/` and one touches the profile)*
+- [ ] 14-01-PLAN.md — the wrap tool end to end: one flat file at a stated base becomes a container the runner loads as `content cart user`, then seven typed refusals each beside its boundary positive, with the build wiring, the SPDX alternation and one control (TOOL-07)
+- [ ] 14-02-PLAN.md — the interrupt-enable default: the field at 1 with its tag unchanged, the C default agreeing with the profile, five explicit vector overrides, the digest and every snapshot literal re-pinned, `run.stub2.jd-as-j` re-expressed and `stic.irq.level-held-reentry-c41-0` re-targeted in one commit, plus C82's next-blocker record (CPU-06)
+
+**Wave 2** *(blocked on 14-01: needs the tool to wrap with)*
+- [ ] 14-03-PLAN.md — the cartridge role: the six derived-output refusals and the snapshot rule for `content cart user`, the round trip's digest equality proved live, the route's `--cart` option, its pass path on project-made files with a one-byte EXEC mutation, and the two operator pages (SCN-03)
+
+**Wave 3** *(blocked on 14-01, 14-02 and 14-03)*
+- [ ] 14-04-PLAN.md — the phase close: three requirement flips with five live mechanism rows, the 13-file toy extension, the re-derived `gates=`/`lines=`, the two-shell and container gate evidence, the recomputed cost checkpoint and the validation sign-off
 **Tier ceiling**: none — the wrap and the round trip are repeatability `[nc]`, and a resolved default is an observation, never a claim.
 
 ### Phase 15: Build-Only Host and the Fake-Frontend Harness
