@@ -2,20 +2,21 @@
 gsd_state_version: "1.0"
 milestone: v0.3.0
 milestone_name: Owner-Supplied Content and a Driveable Host (Phases 13 to 16)</summary>
-current_phase: 15
-current_phase_name: Build-Only Host and the Fake-Frontend Harness
-current_plan: 3
-status: verifying
-stopped_at: Completed 15-03-PLAN.md
-last_updated: "2026-11-26T07:06:56.329Z"
+current_phase: 16
+current_phase_name: Owner Route, Claim and Release Posture
+current_plan: Not started
+status: planning
+stopped_at: Phase 15 complete, ready to plan Phase 16
+last_updated: "2026-11-26T08:27:20.580Z"
 last_activity: 2026-11-26
-last_activity_desc: Phase 15 complete, ready for verification
-state_head: 85470b80771da9157b38496a19b3d81302a130d5
+last_activity_desc: Phase 15 complete, transitioned to Phase 16
+state_head: 0fc4d33d8b314629398ec0a55d53c1c2ce64ab4e
 progress:
   total_phases: 4
   completed_phases: 8
   total_plans: 12
   completed_plans: 12
+  percent: 100
 ---
 
 # Project State
@@ -29,11 +30,11 @@ See: .planning/PROJECT.md (updated 2026-11-26)
 
 ## Current Position
 
-Phase: 15 (Build-Only Host and the Fake-Frontend Harness) — COMPLETE
-Current Plan: 3 of 3
+Phase: 16 — Owner Route, Claim and Release Posture
+Current Plan: Not started
 Total Plans in Phase: 3
-Status: Phase complete — ready for verification; 3/3 plans executed, `15-VALIDATION.md` signed off, TOOL-08 `Complete`, one claim `CL-0029` at `deterministic-repeatability`, `provisional` (D-50 unchanged)
-Last activity: 2026-11-26 — 15-03 executed: the TOOL-08 flip with its two live `judge` rows and the thirteen-file toy extension, the re-derived `gates=118 lines=358` (toy `gates=47 lines=50`), `CL-0029` with GUARDRAILS V3's whole retarget set, the closing gate line under `sh`/`dash` and in the container, one cost verdict `reprice`, and the validation sign-off
+Status: Ready to plan
+Last activity: 2026-11-26 — Phase 15 complete, transitioned to Phase 16
 
 Phase 15's closing gate run reads `gate: PASS steps=38/38 controls=404/404 … faults=238/238 …
 goldens=29 … gates=118 lines=358 … tests-expected=5036 tests-executed=5032 tests-skipped=4
@@ -154,7 +155,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 128
+- Total plans completed: 131
 - Average duration: -
 - Total execution time: -
 
@@ -173,6 +174,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | 11 | 5 | - | - |
 | 13 | 5 | - | - |
 | 14 | 4 | - | - |
+| 15 | 3 | - | - |
 
 *Updated after each plan completion*
 **Per-Plan Metrics:**
@@ -776,7 +778,7 @@ The row itself is left as recorded and this note sits under it.
 ## Session Continuity
 
 Last session: 2026-11-26T07:06:56.112Z
-Stopped at: Completed 15-03-PLAN.md
+Stopped at: Phase 15 complete, ready to plan Phase 16
 Resume file: None
 
 The Phase 13 close still leaves one thing a later run must do: record the phase's hosted row from

@@ -500,7 +500,7 @@ commit `8f017e7`. Its phase details are collapsed above.
 |-------|----------------|--------|-----------|
 | 13. Rights Ledger and Enforced Claim Ceiling | 5/5 | Complete    | 2026-11-25 |
 | 14. Cartridge Route and Real-Content Conformance | 4/4 | Complete    | 2026-11-25 |
-| 15. Build-Only Host and the Fake-Frontend Harness | 2/3 | In progress | — |
+| 15. Build-Only Host and the Fake-Frontend Harness | 3/3 | Complete    | 2026-11-26 |
 | 16. Owner Route, Claim and Release Posture | 0/TBD | Not started | — |
 
 **Current milestone:** v0.3.0, scoped and detailed by this roadmap on 2026-11-26.
