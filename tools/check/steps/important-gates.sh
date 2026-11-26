@@ -59,6 +59,14 @@
 #            names, the claim ceiling's two rules, and the ten D-09-06 registrations: five control
 #            rows, four mutant rows resolved through the new data/expected/runner-selftest.ids, and
 #            one new control directory for important-gates-excluded-stale; zero new faults)
+#   Phase 14 TOOL-07 SCN-03 CPU-06 plan 14-04 (three new gate names: flatwrap's one control row
+#            (c-build-unlisted-flatwrap-source) and one mutant row (pack.judge.flatwrap-digest-live),
+#            cart-role's two mutant rows (runner-process.judge.flatwrap-roundtrip and
+#            runner-process.judge.owner-run-cart-pass), and cpu06's one pre-existing fault row
+#            (ACCEPT_CLEARS_INTFF_IGNORED); five rows, three gate names, zero new faults. The rows
+#            and the three requirement flips land in one commit because this step refuses a row
+#            naming a Pending requirement and refuses a Complete requirement with no row, so the
+#            two directions move together; the 2.4 debt plan 14-01 recorded closes here)
 # Resolution of <id> by mechanism:
 #   fault    first column of any data/expected/faults/*.ids (judged by faults-verdict);
 #   control  first column of any data/expected/controls/*.ids (run by tools/check/run-controls.sh);
