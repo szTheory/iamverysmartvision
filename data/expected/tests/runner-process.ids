@@ -54,6 +54,13 @@
 #   agree; runner-process.outcomes-covered: every outcome has a running scenario.
 # runner-process.watchdog: the watchdog self-control (stopped at once it stays silent; it stops a
 #   run past its limit).
+# Plan 15-01 (TOOL-08, D-48, D-35): the host shim. The suite's seventh argument is the built build-only shared object
+#   libivs_retro and the eighth is the fake frontend ivs_host_harness; both are `$<TARGET_FILE:...>` paths, never an
+#   environment variable. runner-process.host.digests runs the frontend once on the project's own lamp-tone.ivsc (boot
+#   stub 2, a made zero GROM) and requires a positive frame count before anything is compared, then the nine `digest.`
+#   lines it printed to equal data/golden/demo-lamp-tone-pass.digests byte for byte under exactly the two comparisons
+#   check_one_golden makes: the sorted line set and the observed domain set. A missing argument is `not ok` with that
+#   reason, never a skip, so a configuration without the object cannot pass.
 runner-process.scenario.diag-boot-pass
 runner-process.scenario.guest-assert-mismatch
 runner-process.scenario.timeout-budget
@@ -210,3 +217,4 @@ runner-process.judge.roundtrip-differs
 runner-process.outcomes-consistent
 runner-process.outcomes-covered
 runner-process.watchdog
+runner-process.host.digests

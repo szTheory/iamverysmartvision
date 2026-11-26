@@ -732,14 +732,27 @@ set_tests_properties(bench PROPERTIES SKIP_RETURN_CODE 77)
 add_test(NAME stic-table COMMAND sh "${CMAKE_SOURCE_DIR}/tests/stic-table-tap.sh" "${CMAKE_SOURCE_DIR}")
 set_tests_properties(stic-table PROPERTIES SKIP_RETURN_CODE 77 ENVIRONMENT "CMAKE=${CMAKE_COMMAND}")
 
+# The fake frontend of the host shim (plan 15-01, TOOL-08, D-48): it dlopens the build-only shared
+# object and is NOT linked against ivs_core, so everything it knows about the machine comes through the
+# object's nine entries. runner/frame_export.c is compiled in for ivs_frameppm_palette alone (the pixel
+# probe), and ivs_san is required: the dev preset's shim is instrumented, and an ASan runtime must be
+# present in the process before dlopen. The object's path is handed over by the runner-process
+# registration below, never through the environment (T-15-01).
+add_executable(ivs_host_harness host/ivs_host_harness.c "${PROJECT_SOURCE_DIR}/runner/frame_export.c")
+target_include_directories(ivs_host_harness PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/host"
+  "${PROJECT_SOURCE_DIR}/host" "${PROJECT_SOURCE_DIR}/runner" "${PROJECT_SOURCE_DIR}/core/include")
+target_link_libraries(ivs_host_harness PRIVATE ivs_warnings ivs_san ${CMAKE_DL_LIBS})
+
 # Suite runner-process (D-20, D-21, D-23, plan 04-20): the real ivs-run of this preset on every
 # scenario of data/expected/runner-scenarios.ids, judged by exit code and report text; the images
 # are this preset's build-tree outputs (IVS_IMAGES_DIR). Reports go to
 # IVS_TEST_OUT_DIR/runner/<id>.report for the golden step. The fifth argument is the build configuration of the preset
 # (plan 08-07, D-10, D-37, D-40): the six STIC2 program mutants run their scenario only in a Release build and are judged
-# statically in any other (the same ids, no skip-ok).
+# statically in any other (the same ids, no skip-ok). The seventh argument (plan 15-01, TOOL-08) is the built
+# build-only shared object: the host cases dlopen it and report a finding, never a skip, when it is missing. The eighth is
+# the fake frontend executable itself, which drives it.
 add_test(NAME runner-process
   COMMAND sh "${CMAKE_SOURCE_DIR}/tests/runner-process-tap.sh" "${CMAKE_SOURCE_DIR}"
           "$<TARGET_FILE:ivs_run>" "$<TARGET_FILE:ivs_pack>" "${IVS_IMAGES_DIR}" "$<CONFIG>"
-          "$<TARGET_FILE:ivs_flatwrap>")
+          "$<TARGET_FILE:ivs_flatwrap>" "$<TARGET_FILE:ivs_retro_shim>" "$<TARGET_FILE:ivs_host_harness>")
 set_tests_properties(runner-process PROPERTIES SKIP_RETURN_CODE 77)

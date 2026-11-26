@@ -110,14 +110,24 @@
 # Since plan 09-01 (D-09, A-03, A-04): the two demo-lamp-tone variants are column-5 `release-only`, so on the sanitized preset they are judged by the
 # derivation equality of docs/video/demo-lamp-tone-1-derivation.md and on Release they run; `variants=` and `variant-static=` count those rows in each
 # mode (they sum to the number of such rows), so the counts make the mode of every run visible instead of leaving it to be inferred.
-# Usage: sh runner-process-tap.sh <source root> <ivs-run> <ivs_pack> <images dir> [<build configuration>] [<ivs_flatwrap>]
+# Since plan 15-01 (TOOL-08, D-48, D-35): the host shim. The seventh argument is the built build-only shared object
+# libivs_retro and the eighth is the fake frontend ivs_host_harness that dlopens it; both are `$<TARGET_FILE:...>` paths
+# CMake provides, never an environment variable (T-15-01). runner-process.host.digests drives the project's own
+# lamp-tone.ivsc with the pass scenario's six events, one call per frame boundary and then exactly 806568, and requires
+# the nine `digest.` lines the frontend printed to equal data/golden/demo-lamp-tone-pass.digests byte for byte under
+# exactly the two comparisons check_one_golden makes (the sorted line set and the observed domain set), with a positive
+# frame count required before anything is compared (a vacuous judge cannot pass). Missing either argument, the case is
+# `not ok` with that reason, never a skip.
+# Usage: sh runner-process-tap.sh <source root> <ivs-run> <ivs_pack> <images dir> [<build configuration>] [<ivs_flatwrap>] [<libivs_retro>] [<ivs_host_harness>]
 # Exit: 0 pass, 1 fail, 77 every case skipped.
 # Env: IVS_TEST_NONCE, IVS_TEST_OUT_DIR, IVS_RUNNER_PROCESS_TIMEOUT.
 LC_ALL=C; export LC_ALL
-usage='usage: sh runner-process-tap.sh <source root> <ivs-run> <ivs_pack> <images dir> [<build configuration>] [<ivs_flatwrap>]'
-[ "$#" -eq 4 ] || [ "$#" -eq 5 ] || [ "$#" -eq 6 ] || { printf '%s\n' "$usage" >&2; exit 1; }
+usage='usage: sh runner-process-tap.sh <source root> <ivs-run> <ivs_pack> <images dir> [<build configuration>] [<ivs_flatwrap>] [<libivs_retro>] [<ivs_host_harness>]'
+[ "$#" -ge 4 ] && [ "$#" -le 8 ] || { printf '%s\n' "$usage" >&2; exit 1; }
 config=${5:-}
 flatwrap_arg=${6:-}
+shim_arg=${7:-}
+harness_arg=${8:-}
 # Absolute paths: the cwd case runs from another directory.
 abs_dir() { (cd "$1" 2> /dev/null && pwd -P); }
 abs_file() { _d=$(abs_dir "$(dirname "$1")") && printf '%s/%s\n' "$_d" "$(basename "$1")"; }
@@ -130,6 +140,16 @@ flatwrap=
 if [ -n "$flatwrap_arg" ]; then
   flatwrap=$(abs_file "$flatwrap_arg") || { printf 'runner-process-tap: no %s\n' "$flatwrap_arg" >&2; exit 1; }
 fi
+# The build-only shared object and the fake frontend (plan 15-01, TOOL-08): a shared object is a regular file, not an
+# executable, so it is required to exist rather than to carry the execute bit. Absent, the host case reports a finding.
+shim=
+if [ -n "$shim_arg" ]; then
+  shim=$(abs_file "$shim_arg") || { printf 'runner-process-tap: no %s\n' "$shim_arg" >&2; exit 1; }
+fi
+harness=
+if [ -n "$harness_arg" ]; then
+  harness=$(abs_file "$harness_arg") || { printf 'runner-process-tap: no %s\n' "$harness_arg" >&2; exit 1; }
+fi
 inv="$root/data/expected/runner-scenarios.ids"
 outcomes="$root/data/expected/runner-outcomes.ids"
 scen="$root/data/scenarios"
@@ -139,6 +159,8 @@ done
 [ -x "$ivs_run" ] || { printf 'runner-process-tap: %s is not executable\n' "$ivs_run" >&2; exit 1; }
 [ -x "$pack" ] || { printf 'runner-process-tap: %s is not executable\n' "$pack" >&2; exit 1; }
 [ -z "$flatwrap" ] || [ -x "$flatwrap" ] || { printf 'runner-process-tap: %s is not executable\n' "$flatwrap" >&2; exit 1; }
+[ -z "$shim" ] || [ -f "$shim" ] || { printf 'runner-process-tap: %s is not a file\n' "$shim" >&2; exit 1; }
+[ -z "$harness" ] || [ -x "$harness" ] || { printf 'runner-process-tap: %s is not executable\n' "$harness" >&2; exit 1; }
 limit=${IVS_RUNNER_PROCESS_TIMEOUT:-60}
 case $limit in '' | *[!0-9]* | 0) printf 'runner-process-tap: IVS_RUNNER_PROCESS_TIMEOUT=%s\n' "$limit" >&2; exit 1 ;; esac
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/runner-process-tap.XXXXXX") || exit 1
@@ -2186,6 +2208,61 @@ else
 fi
 or_end
 result runner-process.judge.owner-run-cart-pass
+
+# ---- the host shim (plan 15-01, TOOL-08, D-48, D-35) ----
+# check_digest_lines <golden> <output>: exactly the two comparisons check_one_golden makes, applied to the fake
+# frontend's stdout - the sorted `digest.` line set is byte-equal (both non-empty), and the observed domain set the
+# golden's `# domains:` line declares equals the non-composite domains the output printed. 0 only when both hold.
+check_digest_lines() {
+  _cdg=$1; _cdo=$2
+  _cdrc=0
+  grep '^digest\.' "$_cdg" 2> /dev/null | sort > "$tmp/hd.want"
+  grep '^digest\.' "$_cdo" 2> /dev/null | sort > "$tmp/hd.have"
+  if [ ! -s "$tmp/hd.want" ] || ! cmp -s "$tmp/hd.want" "$tmp/hd.have"; then
+    why digest-diff "golden only: $(comm -23 "$tmp/hd.want" "$tmp/hd.have" | awk '{ print $1 }' | tr '\n' ' ')output only: $(comm -13 "$tmp/hd.want" "$tmp/hd.have" | awk '{ print $1 }' | tr '\n' ' ')"
+    _cdrc=1
+  fi
+  sed -n 's/^# domains: //p' "$_cdg" | tr ' ' '\n' | sed -n 's/=observed$//p' | sort > "$tmp/hd.dom.want"
+  sed -n 's/^digest\.\([a-z]*\) .*/\1/p' "$_cdo" | grep -v -x -e composite | sort > "$tmp/hd.dom.have"
+  if [ ! -s "$tmp/hd.dom.want" ] || ! cmp -s "$tmp/hd.dom.want" "$tmp/hd.dom.have"; then
+    why digest-diff "observed domains: golden $(tr '\n' ' ' < "$tmp/hd.dom.want")output $(tr '\n' ' ' < "$tmp/hd.dom.have")"
+    _cdrc=1
+  fi
+  return "$_cdrc"
+}
+
+# check_host <output>: the drive is not vacuous (a positive frame count is required before anything is compared) and
+# the nine digest lines equal the pass golden's, byte for byte.
+check_host() {
+  _chf=$(sed -n 's/^frames //p' "$1" | head -n 1)
+  case $_chf in
+    '' | *[!0-9]*) why frames-zero "frames '$_chf' is not a positive integer"; return 1 ;;
+  esac
+  [ "$_chf" -gt 0 ] || { why frames-zero "frames $_chf"; return 1; }
+  check_digest_lines "$root/data/golden/demo-lamp-tone-pass.digests" "$1"
+}
+
+: > "$tmp/why"
+ok=1
+if [ -z "$shim" ]; then
+  ok=0; why host-shim 'the seventh argument (libivs_retro) is missing: the host case cannot be run'
+elif [ -z "$harness" ]; then
+  ok=0; why host-harness 'the eighth argument (ivs_host_harness) is missing: the host case cannot be run'
+else
+  run_one "$tmp" host-pass "$harness" "$shim" "$content"
+  if [ "$hung" -eq 1 ] || [ "$rc" -ne 0 ]; then
+    ok=0
+    why host-run "exit $rc, hung $hung: $(sed -n 's/^fail //p' "$tmp/runs/host-pass.out" | head -n 1)"
+  elif ! check_host "$tmp/runs/host-pass.out"; then
+    ok=0
+  fi
+  # The evidence is inspectable, and deliberately NOT under IVS_TEST_OUT_DIR/runner/: the golden step compares
+  # everything in that directory and a frontend's stdout is not a scenario report.
+  if [ -n "${IVS_TEST_OUT_DIR:-}" ]; then
+    cp "$tmp/runs/host-pass.out" "$IVS_TEST_OUT_DIR/host-pass.out" || exit 1
+  fi
+fi
+result runner-process.host.digests
 
 # Judge self-controls (D-23, T-04-59): the same checks run against wrong runners, shell scripts
 # in the temp dir that replay this run's recorded reports with one defect each. A control passes
