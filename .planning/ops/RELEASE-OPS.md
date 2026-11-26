@@ -71,11 +71,22 @@ The order of the orchestrator's actions, as the record needs them. None is an ex
 7. Mark REL-01 complete in `.planning/REQUIREMENTS.md` (the checkbox and the traceability row, with a note that stage 2 is recorded), record the release in `.planning/STATE.md` (`.planning/AUTONOMY.md` section 5, step 6) and write the CI-efficiency entry for the release workflow.
 8. Merge the records pull request; then run the milestone audit, the milestone completion on a records branch and the cleanup (`08-DISCUSS-release.md` section 5).
 
-## (i) The release-decision line for v0.3.0 (plan 15-02, GUARDRAILS-v0.3 V6 and section 7.4)
+## (i) The release-decision line for v0.4.0 (plan 15-02, GUARDRAILS-v0.3 V6 and section 7.4)
 
 The milestone close carries exactly one release-decision line, in this wording:
 
+> the release ships the static package and the source archive, which carries the source of the build-only tools and of the build-only host shim; no shared object, no built host shim
+
+The line above was superseded on 2026-11-26 by plan 17-02 (EV-08), which is why it names the source archive
+rather than only the static package. The v0.3.0 wording is quoted here instead of being deleted, because the
+record of what was said then is append-only:
+
 > the release ships the static package and the source archive; no shared object, no host shim, no content
+
+It was corrected because it denied a host shim without saying that the source archive carries its source, so a
+reader could conclude that the shim's source is withheld too. The inspection-limb clause of the guardrails' close
+line is not written here: the tool it names does not exist until Phase 18, and Phase 20 recomputes the line with
+it.
 
 Three mechanisms hold that line, and each is a committed check rather than a promise:
 

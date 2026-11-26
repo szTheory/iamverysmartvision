@@ -76,4 +76,49 @@ same commit. The plan's prediction was `lines=364` and `tests-expected=5042`; bo
 correcting and none was corrected. `baseline-tracked-files` is `git ls-files` (2807) rather than the gate's
 `tracked=2808` token: the gate counts the work tree, which at that moment already held this untracked record.
 
+## The documented refusal tokens
+
+`docs/formats/ivsc-v1.md` gains one section, `## Wrap tool refusals`, between `## Refusal reasons` and
+`## Digests`. It lists the eight tokens of `data/expected/flat-refusals.ids` in the inventory's order, each as
+the first and only text on its line, and under each token the condition that triggers it and the boundary that
+must still be accepted. The two boundaries a reader would otherwise get wrong are stated plainly: 49,152 words
+at base `4000` (a 98,368-byte container ending at `FFFF`) is the largest input the address space allows, so a
+65,536-word input crosses it first and the count rule is the one check an accepted input cannot reach; and an
+output outside the work tree, or any path under `refs/`, must still be accepted however an in-tree path is
+spelled.
+
+The closing paragraph carries the three framing facts: these are the tool's tokens rather than the container
+format's eighteen numbered refusal reasons; the order is the append-only inventory's, not the tool's own check
+order; and a refusal is one stderr line with exit status 1 and no output file, while a file or usage error
+carries no token and exit 2.
+
+The mechanical check is a `diff` of two `grep '^flatwrap-'` outputs: eight lines each side, silent. The check is
+shown able to fail by the plan's own stand-in — one existing line-initial token renamed in a copy, the count
+still eight — which makes the same `diff` non-silent. `data/expected/flat-refusals.ids` is unchanged from the
+start commit (`git diff 67e35a6 --numstat` over it is empty), because this phase documents the inventory rather
+than editing it.
+
+## The source-archive letter
+
+One canonical sentence is used verbatim in three places:
+
+```
+the release ships the static package and the source archive, which carries the source of the build-only tools and of the build-only host shim; no shared object, no built host shim
+```
+
+`docs/packaging.md` carries it exactly twice, both corrected in place: the build-only paragraph at line 39, whose
+old clause said the shim was "never installed and never shipped, and not a release member", and the
+release-content bullet at line 123, whose old lead clause gave the release's contents and then denied a host
+shim. The paragraph's object is now an **install-archive** non-member rather than a "release" non-member,
+because the source archive does carry its source and the old phrasing would have contradicted the sentence
+beside it. Both paragraphs keep their other clauses.
+
+`.planning/ops/RELEASE-OPS.md` section (i) is amended in place: the heading's version token reads `for v0.4.0`
+with its parenthetical history untouched, the quoted line is the canonical sentence, and immediately beneath it
+the superseded v0.3.0 sentence is quoted with the date (2026-11-26) and the reason it was corrected. One
+sentence records the deferral: the inspection-limb clause of the guardrails' close line is not written here
+because the tool it names does not exist until Phase 18, and Phase 20 recomputes the line with it. The section's
+three numbered mechanisms are unchanged, and `### (i.1)` — the dated append from plan 16-04 — is byte-identical
+to its state at the start commit (`cmp` over the slice).
+
 <!-- gsd:write-continue -->
