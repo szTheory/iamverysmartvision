@@ -87,6 +87,8 @@ The picture and the sound of such a run belong to a frontend to present, not to 
 What a run shows is the owner's private observation and nothing else, and the project states no result about it.
 
 The rehearsal of this route is `sh tools/release-rehearse.sh --release --source-route`, which performs exactly these three commands against the archive it unpacks and builds, on project-made zero-filled images of the shapes above rather than on any file of the owner's.
+Its transcript is `.planning/ops/RELEASE-OPS.md` section (j), measured from `ivs-v0.2.0-source.tar.gz` at base `4000` with the default `hi-first` word order, and it carries the digest of the container that run wrapped, so the record can be read without rebuilding the procedure.
+The same rehearsal proves its own pass path able to fail: after `--record`, one byte of the EXEC image is flipped and the same run is refused at load (`IVS_E_DIGEST_MISMATCH`, exit 14), so neither half of the rehearsal can pass alone.
 
 ## The helper
 

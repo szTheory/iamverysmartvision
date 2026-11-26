@@ -96,3 +96,52 @@ Three mechanisms hold that line, and each is a committed check rather than a pro
 bullet), and no claim cites the object: the shim is never installed, so the installed-host tier's own
 definition does not apply (GUARDRAILS-v0.3 section 3, the Phase 15 row). Appended, never a rewrite of an
 existing section (section 2.10 of the guardrails).
+
+## (j) The owner route, rehearsed from the source archive (plan 16-02, PKG-06, GUARDRAILS-v0.3 V10 and section 2.10)
+
+The route is the three commands of `docs/owner-images.md` ("The route from the source archive, in three
+commands"), and this section is its transcript. It is a release-time record: no gate step runs it, CI never
+runs it, no test id, control, fault or golden was added for it, and a release that skips this mode records the
+mode as `not run`, never as a pass.
+
+The command, and the commit it ran on:
+
+```sh
+sh tools/release-rehearse.sh --release --source-route    # on 14f81ed
+```
+
+The archive, its size, and the prefix the run read from the archive's first member:
+
+- archive `ivs-v0.2.0-source.tar.gz`, 6,759,881 bytes, byte-equal to the second dry run's copy;
+- extraction prefix `ivs-v0.2.0`.
+
+The cold configure (`cmake --preset release`) and build (`cmake --build --preset release`) in the extracted
+prefix completed. The log holds no `rehearse: FAIL:` line, and the golden comparison below is reached only
+after that build succeeds, because a non-zero status at either step ends the rehearsal.
+
+The rehearsal's own lines, quoted:
+
+```
+rehearse: source-route: ivs-v0.2.0-source.tar.gz, golden match (report 131 lines, 124 of 124 compared), prefix ivs-v0.2.0
+rehearse: owner-route: wrap base=4000 word-order=hi-first digest=8d73b98c58bb75a6515c6a791ebd2925265d05874e324c31a5836e61055b74f5
+rehearse: owner-route: run exit=10 outcome=guest-fail exec-label=- cart-digest-matched=yes
+rehearse: owner-route: mutation exit=14 status=IVS_E_DIGEST_MISMATCH run-state=unreset
+```
+
+The wrap is the archive's own `build/release/tools/flatwrap/ivs_flatwrap` at base `4000` with the default
+`hi-first` word order, and the digest it printed is the container's, matched against the run's own
+`slot.cart.sha256`. The run is the archive's own `tools/owner-run.sh --record --cart` on the three files, and
+the mutation run is the same command without `--record`, because a second `--record` is refused with exit 2
+(`refs/owner-images.sha256 exists: remove it to record again`).
+
+The three things a reader must not have to infer:
+
+- The EXEC, GROM and flat images are **project-made zero-filled files** (8,192, 2,048 and 8,192 bytes) that the
+  rehearsal writes with `dd` from the zero device inside the extraction's `refs/`; no owner file was read and no
+  byte of one was written anywhere. D11 stays `not-performed`.
+- The run's values (`guest-fail`, exit 10, `exec: -`) are a statement about these project-made bytes and about
+  nothing else. No claim cites this record, and no phase exit criterion reads it as evidence.
+- A release that skips this mode records it as `not run`, never as a pass (PLAN-LESSONS 24).
+
+After the run, the rehearsal's workspace (one `mktemp` directory, removed by its `EXIT` trap) was gone and
+`git status --porcelain` was empty, so the route wrote nothing into the repository.
