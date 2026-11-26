@@ -1,5 +1,7 @@
 # Control-tree rights-ledger inventory with the overlay's rows: toy-stray is deliberately absent,
 # so the extra direction (rights-id-extra) is the finding and the missing direction stays quiet.
+# toy-blank is listed so the blank taken cell is the only finding that row raises.
+toy-blank
 toy-cleared
 toy-owner-image
 toy-reference-doc
