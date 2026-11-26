@@ -2233,3 +2233,20 @@ gates=119 lines=364 claims=29 provisional=28 handoffs=8 tests-expected=5042 test
 tests-skipped=4 tests-missing=0 tracked=2791`, `gate-time total=129` and `gate-cpu user=223.40
 sys=202.80` on a host that was not idle. That is the plan-start baseline every v0.4.0 plan
 cites by sha under `GUARDRAILS-v0.4` §2.14 (lesson 32).
+
+## 2026-11-26 — v0.4.0 opening: the opening PR's own two rows, and the one-hop deferral
+
+The opening pull request (#43) produced two runs, both `success`, both now rows in
+`.planning/ci-runs.tsv` (116 to 118): `45850438592` (`pull_request`, `build_s` 49, `gate_s` 154,
+`cpu_s` 530) and its merge push `45850984597` (`push`, `build_s` 35, `gate_s` 115, `cpu_s` 368).
+
+The last-five window is now `cpu_s` 368, 530, 572, 580, 584 — median **572**, unchanged by these
+two rows — over `build_s` 34 to 51. The 368 is the fast-runner row of the same tree that produced
+the 530, and `r` across the pair is 10.8 and 10.5, inside the band the series has held since
+Phase 9. Nothing about the work moved; the window is still reading runner speed, which is the
+measured case for D-55.
+
+**This commit's own two runs are the next commit's rows**, by the termination rule (lesson 30):
+the records commit that carries this entry produces one pull-request run and one merge push run,
+and they are recorded in the commit the project makes anyway — Phase 17's first plan. Deferred by
+exactly one commit, named, never dropped, and never chased with a cycle of its own.

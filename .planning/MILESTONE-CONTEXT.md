@@ -197,9 +197,10 @@ it catches a recurring class.**
 
 The arithmetic is `.planning/research/v0.4.0-scoping-2-gate-cost.md`, recomputed
 from `.planning/ci-runs.tsv`. Last-five medians at `cc4f991`: `cpu_s` **367**,
-`build_s` **34**, `gate_s` **115**. The seven unrecorded release-records rows are
-appended by Phase 17 before anything is priced; they are slow-runner rows
-(`build_s` 47 to 51), so Phase 17's verdict is `reprice` by construction.
+`build_s` **34**, `gate_s` **115**. The seven unrecorded release-records rows were appended at the milestone
+opening, and the opening commit's own two runs in the records commit that follows;
+they are slow-runner rows (`build_s` 47 to 51), so Phase 17's verdict is `reprice`
+by construction.
 
 - **Allowance: 21 hosted cpu-s.** This milestone prices **4.72**: 17 → 0.10,
   18 → 2.96, 19 → 1.64, 20 → 0.02. Hard ceiling 5.6.

@@ -774,11 +774,25 @@ recomputed figure or an owner hard stop. The full set is
    and the EXEC populates BACKTAB, but the display-enable strobe still never latches. Phase 14 now carries
    the conformance work and Phase 15 depends on it (`.planning/MILESTONE-CONTEXT.md` §1a, D-51).
 9. **The milestone ritual and the guardrails are standing policy.**
-   `.planning/ops/MILESTONE-RITUAL.md`, `.planning/ops/GUARDRAILS-v0.3.md` and
+   `.planning/ops/MILESTONE-RITUAL.md`, `.planning/ops/GUARDRAILS-v0.4.md` and
    `.planning/ops/INDEX.md`. Read the index before asking the owner anything.
+10. **v0.4.0 is scoped and committed; the picture question is now a discrimination.**
+    The four rival display-path rules (window length 2000 against 2900, gating
+    when the display is off, a `$0020` strobe on a read against a write, and the
+    latch cleared each frame against persisting) are unseparated, so Phase 18
+    builds the instrument and Phase 19 decides by discrimination or records
+    "unchanged, rivals named". A fitted default is worse than an unresolved one
+    (D-54). This milestone mints no claim: `claims=29` and `provisional=28` are
+    invariants.
+11. **Two hosted rows are deferred by one commit, by name.** The opening PR's own
+    two runs (`45850438592` `pull_request`, `45850984597` `push`) are recorded in
+    this records commit, and this commit's own two runs are the *next* commit's
+    rows under the termination rule (lesson 30). Never dropped, never chased with
+    a cycle of its own.
 
 ## Operator Next Steps
 
-
-
-- Start the next milestone with /gsd-new-milestone
+- Run the whole milestone with `/gsd-autonomous` (after `/clear`). The scope is
+  frozen: `.planning/MILESTONE-CONTEXT.md`, the five
+  `.planning/research/v0.4.0-scoping-*.md` records and
+  `.planning/ops/GUARDRAILS-v0.4.md`. Nothing needs to be re-asked.
