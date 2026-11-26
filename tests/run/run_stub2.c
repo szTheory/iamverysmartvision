@@ -14,10 +14,15 @@
  *                        frame enters 1004 once, the next unit is at 5004 with interrupts off and R6 = 0341, and at
  *                        the end of the frame (59,736 ticks) the marker word is 03C5, the counter word is 0001, R6 is
  *                        still 0341 and the CPU waits at 500D with interrupts off.
- *   run.stub2.jd-as-j    the control STUB2_JD_AS_J (A-17), without a core fault: a heap copy of the stub 2 image with
- *                        the second decle of the vector (word 1005, 0352 for JD) changed to the J form (0350) shows
- *                        more than one interrupt entry in the frame, interrupts still on after the vector, and R6
- *                        above 0341 at the end of the frame: a plain J is a trap (D-10). */
+ *   run.stub2.jd-as-j    the control STUB2_JD_AS_J (A-17), without a core fault: two heap copies of the stub 2 image, one
+ *                        carrying the vector's own second decle (word 1005, 0352 for JD) and one with the J form (0350), run
+ *                        through the same single-unit frame loop. The two images differ in that one word and in nothing else.
+ *                        Re-expressed by plan 14-02: with the profile's value 1 acceptance clears the interrupt enable
+ *                        (C41, D-51), so a plain J no longer re-enters, and the J run's frame is the JD run's frame unit for
+ *                        unit (one entry at 1004, R7 5004 with interrupts off after the vector, R6 0341, marker 03C5,
+ *                        counter 0001, R7 500D at the end of the frame). The old premise -- more than one entry, interrupts
+ *                        still on after the vector, R6 above 0341, "a plain J is a trap" (D-10) -- is what that flip deletes,
+ *                        and returning cpu.interrupt_accept_clears_intff to 0 restores it. */
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -293,14 +298,31 @@ done:
 
 static int rs2_jd_as_j(void)
 {
-  ivs_ms_inst x;
+  ivs_ms_inst xjd;
+  ivs_ms_inst xj;
   ivs_cpu_state_report r;
-  rs2_frame f;
+  rs2_frame fjd;
+  rs2_frame fj;
   uint8_t *patched;
   uint64_t now = 0u;
   int rc = IVS_TEST_FAIL;
+  memset(&xjd, 0, sizeof xjd);
+  memset(&xj, 0, sizeof xj);
   /* The second decle of the vector, image offset 2 * (1005 - 1000): 0352 is the JD form (BB = 11, target bits 15..10
    * = 010100, EE = 10); 0350 is the J form (EE = 00). */
+
+  /* The JD run: the image's own vector. */
+  IVS_CHECK(rs2_powered(&xjd, rs2_copy(ivs_img_boot_stub_2, IVS_IMG_BOOT_STUB_2_BYTES), 1));
+  RS2_CHECK(rs2_to_entry(&xjd, &now));
+  RS2_CHECK(rs2_run_frame(xjd.m, now, &fjd));
+  RS2_CHECK(fjd.entries == 1u);
+  RS2_CHECK(fjd.vec_seen == 1u && fjd.vec_r7 == 0x5004u && fjd.vec_intr == 0u && fjd.vec_r6 == 0x0341u);
+  RS2_CHECK(rs2_peek(xjd.m, 0x02F0u) == 0x03C5u && rs2_peek(xjd.m, 0x02F1u) == 0x0001u);
+  RS2_CHECK(rs2_cpu(xjd.m, &r));
+  RS2_CHECK(r.r[6] == 0x0341u && r.r[7] == 0x500Du && r.intr_enabled == 0u);
+  ivs_ms_free(&xjd);
+
+  /* The J run: the same image, one word of the vector changed. */
   patched = rs2_copy(ivs_img_boot_stub_2, IVS_IMG_BOOT_STUB_2_BYTES);
   IVS_CHECK(patched != NULL);
   if (patched[2u * 5u] != 0x03u || patched[2u * 5u + 1u] != 0x52u) {
@@ -309,16 +331,22 @@ static int rs2_jd_as_j(void)
     return IVS_TEST_FAIL;
   }
   patched[2u * 5u + 1u] = 0x50u;
-  IVS_CHECK(rs2_powered(&x, patched, 1));
-  RS2_CHECK(rs2_to_entry(&x, &now));
-  RS2_CHECK(rs2_run_frame(x.m, now, &f));
-  RS2_CHECK(f.entries > 1u);
-  RS2_CHECK(f.vec_seen == 1u && f.vec_r7 == 0x5004u && f.vec_intr == 1u);
-  RS2_CHECK(rs2_cpu(x.m, &r));
-  RS2_CHECK(r.r[6] > 0x0341u);
+  /* the mutant really is applied: the two images differ in that one word */
+  IVS_CHECK(patched[2u * 5u] == 0x03u && patched[2u * 5u + 1u] == 0x50u);
+  now = 0u;
+  IVS_CHECK(rs2_powered(&xj, patched, 1));
+  RS2_CHECK(rs2_to_entry(&xj, &now));
+  RS2_CHECK(rs2_run_frame(xj.m, now, &fj));
+  /* One word apart, and the frames are the same: acceptance cleared the enable, so a plain J does not re-enter. */
+  RS2_CHECK(fj.entries == 1u && fj.entries == fjd.entries);
+  RS2_CHECK(fj.vec_seen == 1u && fj.vec_r7 == 0x5004u && fj.vec_intr == 0u && fj.vec_r6 == 0x0341u);
+  RS2_CHECK(rs2_peek(xj.m, 0x02F0u) == 0x03C5u && rs2_peek(xj.m, 0x02F1u) == 0x0001u);
+  RS2_CHECK(rs2_cpu(xj.m, &r));
+  RS2_CHECK(r.r[6] == 0x0341u && r.r[7] == 0x500Du && r.intr_enabled == 0u);
   rc = IVS_TEST_PASS;
 done:
-  ivs_ms_free(&x);
+  ivs_ms_free(&xjd);
+  ivs_ms_free(&xj);
   return rc;
 }
 

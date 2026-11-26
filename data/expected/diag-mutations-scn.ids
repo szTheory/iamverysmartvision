@@ -65,9 +65,14 @@
 #                                          level, the run stops at the halt (frame 0) before the first routine, so step 1 ends with a stop
 #                                          mismatch instead of reaching its bound
 #   SCN-STUB-JD-AS-J     1005   0352  0350  the second decle of the stub vector, `J` with disable code, loses the disable (J $5004 plain, the
-#                                          reset vector at 1014 has the same word 0350): the vector re-enters while the level lasts, the
-#                                          routine body starts after the level has ended, the strobe is dropped and no frame is displayed;
-#                                          the counter and every guest word asserted before it still hold (D-10)
+#                                          reset vector at 1014 has the same word 0350). Plan 14-02 (D-51, C41) re-expressed this row: with
+#                                          acceptance clearing the interrupt enable, the vector executes with the enable already clear, so a
+#                                          plain `J` there re-enters nothing and the mutation no longer breaks the scenario. The row now pins
+#                                          that opposite observation -- the scenario reaches its bound, exit 0 -- and it fails as a row again
+#                                          when cpu.interrupt_accept_clears_intff returns to 0, which gives the old observation back: the
+#                                          vector re-enters while the level lasts, the routine body starts after it, the strobe is
+#                                          dropped and frame 3 is not displayed, while the counter and every guest word asserted before
+#                                          it still hold (D-10).
 #   SCN-ISR-TIE          1006   0004  0006  the third decle of the stub vector, the target bits 9..0, becomes 6: the vector jumps to the
 #                                          second routine instruction (5006), the strobe at 5004 never runs, and nothing else is wrong (A-14)
 #   SCN-REARM-NEGATIVE   508F   01F4  012C  negative row: N = 500 becomes 300, inside the band: only the timing of the re-arm moves, so no
@@ -82,6 +87,6 @@ SCN-REARM-LONG demo-lamp-tone-pass 508F 01F4 03FF mem 02F1 == 0003 got 0002 gues
 SCN-STROBE-LATE demo-lamp-tone-pass 5005 0020 0022 frame 3 displayed == yes got no guest-fail 10 fails=4.30,4.31,4.32,4.33,4.34,4.35,4.36,4.37,4.38,4.39,4.40
 SCN-NO-EIS demo-lamp-tone-pass 5093 0002 0034 mem 02F1 == 0003 got 0000 guest-fail 10
 SCN-HLT-IDLE demo-lamp-tone-pass 5094,5095 0220,0001 0000,0000 stop step=1 line=* expected=target got=halted guest-fail 10
-SCN-STUB-JD-AS-J demo-lamp-tone-pass 1005 0352 0350 frame 3 displayed == yes got no guest-fail 10
+SCN-STUB-JD-AS-J demo-lamp-tone-pass 1005 0352 0350 - pass 0
 SCN-ISR-TIE demo-lamp-tone-pass 1006 0004 0006 frame 3 displayed == yes got no guest-fail 10
 SCN-REARM-NEGATIVE demo-lamp-tone-pass 508F 01F4 012C - pass 0

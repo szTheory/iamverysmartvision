@@ -1,0 +1,25 @@
+# Refusal tokens of ivs_flatwrap (plan 14-01, D-47, TOOL-07): one token per line, the exact set the tool can print.
+# A refusal is one stderr line `ivs_flatwrap: <token>: <detail>`, exit status 1, and no output file. Any other
+# failure (an input that cannot be read, an output directory that cannot be resolved, a write error) is a file or
+# usage error with no token, so this list stays exactly these eight. The eighth (flatwrap-empty, review CR-01,
+# 2026-11-26) is appended, never substituted: a zero-byte input used to be accepted and produced a 64-byte container
+# the project's own parser refuses (IVS_IVSC_MIN_BYTES is 66 and len_words must be at least 1), so the lower bound
+# the container imposes became its own rule and its own token rather than a branch of the odd-length rule.
+# These are the tokens the tool can print, append-only: a token that changes re-opens every row and every case that
+# cites it. The suite pack (tests/pack-tap.sh) pins this list three ways: every token has exactly one case
+# pack.flatwrap.neg.<token> that asserts the refusal and its boundary positive together; every token the source
+# tools/flatwrap/flatwrap.c can print is in this list (pack.judge.flatwrap-tokens); and every token here was observed
+# by a case. Adjust it only with a reason in the summary of the plan that changes it.
+#
+# The order below is the order of the phase's criterion 2 and nothing reads it: the tool's own check order (empty,
+# length, words, base, crossing, output directory, output exists, word range) is a separate concern and is stated in
+# the header comment of tools/flatwrap/flatwrap.c. flatwrap-empty is last here only because this list is append-only.
+flatwrap-length
+flatwrap-word-range
+flatwrap-words
+flatwrap-base
+flatwrap-cross
+flatwrap-output-tree
+flatwrap-output-exists
+# The lower bound of the container: an input of no bytes holds no word, and every segment holds at least one.
+flatwrap-empty

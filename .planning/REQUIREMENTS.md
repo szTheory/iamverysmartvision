@@ -25,7 +25,7 @@ mechanical).
 
 ### Core conformance
 
-- [ ] **CPU-06**: The first real-content blocker is resolved from an owner-local observation rather than a guess: an interrupt acceptance clears the CPU's interrupt enable when the profile says so, a project-authored test pins **both** settings (cleared and not cleared), the value stays tagged `unknown-default-chosen` with the observation in the discrepancy log, and the profile parameter digest, every snapshot literal and the boot-stub-2 interrupt expectations move in the same commit.
+- [x] **CPU-06**: The first real-content blocker is resolved from an owner-local observation rather than a guess: an interrupt acceptance clears the CPU's interrupt enable when the profile says so, a project-authored test pins **both** settings (cleared and not cleared), the value stays tagged `unknown-default-chosen` with the observation in the discrepancy log, and the profile parameter digest, every snapshot literal and the boot-stub-2 interrupt expectations move in the same commit.
 
 ### Evidence
 
@@ -34,12 +34,12 @@ mechanical).
 
 ### Tooling
 
-- [ ] **TOOL-07**: A person can wrap a flat cartridge image of their own, at an address they state, into the project's cartridge container with one build-only command, and every malformed input is refused by a typed token with a positive case beside it; the wrapped image is derived material and is never committed, golden, fixture or claim artifact.
+- [x] **TOOL-07**: A person can wrap a flat cartridge image of their own, at an address they state, into the project's cartridge container with one build-only command, and every malformed input is refused by a typed token with a positive case beside it; the wrapped image is derived material and is never committed, golden, fixture or claim artifact.
 - [ ] **TOOL-08**: The core can be driven in real time by a host that loads it as a shared object outside the installed package, and an automated frontend reproduces the runner's nine digest lines on a project cartridge — with the vacuity closed three ways and the host holding no palette of its own.
 
 ### Scenario and route
 
-- [ ] **SCN-03**: The owner-local route accepts a cartridge image alongside the EXEC and GROM images, every derived-output refusal is extended to it, and the route's pass path is exercised on project-made files without any owner image.
+- [x] **SCN-03**: The owner-local route accepts a cartridge image alongside the EXEC and GROM images, every derived-output refusal is extended to it, and the route's pass path is exercised on project-made files without any owner image.
 
 ### Packaging and release
 
@@ -105,9 +105,9 @@ the same date: every requirement appears in exactly one phase.
 | RTS-02 | Phase 13 | Complete |
 | EV-06 | Phase 13 | Complete |
 | EV-07 | Phase 13 | Complete |
-| TOOL-07 | Phase 14 | Pending |
-| SCN-03 | Phase 14 | Pending |
-| CPU-06 | Phase 14 | Pending |
+| TOOL-07 | Phase 14 | Complete |
+| SCN-03 | Phase 14 | Complete |
+| CPU-06 | Phase 14 | Complete |
 | TOOL-08 | Phase 15 | Pending |
 | PKG-06 | Phase 16 | Pending |
 
@@ -124,4 +124,6 @@ the same date: every requirement appears in exactly one phase.
 
 ---
 *Requirements defined: 2026-11-26*
-*Last updated: 2026-11-26 at milestone definition*
+*Last updated: 2026-11-26 at Phase 14 completion (TOOL-07, SCN-03 and CPU-06 flipped to `Complete` with the five
+`important-gates` rows that name them, in one commit; the checkbox lines and the traceability table move
+together because the table is the parsed record)*

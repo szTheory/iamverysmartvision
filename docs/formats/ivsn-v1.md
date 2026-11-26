@@ -242,7 +242,9 @@ The test `state.literal.schema-digest` compares the lines first and names the fi
 
 **Profile parameter digest.** Each of the four generators (`cmake/IvsMemmapTable.cmake`, `IvsPsgTable.cmake`, `IvsSticTable.cmake`, `IvsCtrlTable.cmake`) emits, after every byte it wrote before, one 32-byte constant per profile: the SHA-256 of the table text it wrote for that profile with the block comments removed, so no cite, tag or provenance string of the profile file is in it.
 `ivs_snapshot_params_digest` hashes the four ASCII bytes `IVSP`, the big-endian u16 1 and the four constants in the order memory map, PSG, STIC, controller (134 bytes).
-Its value for the registered profile is `89ad65073a3e357acbdd687f6a29016457864a1666b953e9327b7559dc0c0522`, pinned as `params-digest-sha256` in `data/expected/ivsn-literals.ids` as a repeatability pin of the current profile files, never as evidence that the tables are right.
+Its value for the registered profile is `efba85009a57e91ad21060742dadc34949b976829525bb5e18d6b0897af1425c`, pinned as `params-digest-sha256` in `data/expected/ivsn-literals.ids` as a repeatability pin of the current profile files, never as evidence that the tables are right.
+
+> **Amended 2026-11-26 (Phase 14, plan 14-02; GUARDRAILS V12, §2.10).** This paragraph previously stated `89ad65073a3e357acbdd687f6a29016457864a1666b953e9327b7559dc0c0522` as the current value, which was true before `cpu.interrupt_accept_clears_intff` moved from 0 to 1: the CPU table text carries that field, so the constant of the controller table — and with it the 134-byte preimage — moved. The old value is kept here as the record of what the pin read before the flip; the current pin is the digest above. The arithmetic that reproduces both is in `14-02-SUMMARY.md`.
 The value was first computed by a scratch script outside the tree from the generated includes, and the test also rebuilds the preimage from the specification alone.
 An edit of one cite string of the profile file changed none of the four constants, an edit of one table value changed exactly the constant of its table.
 

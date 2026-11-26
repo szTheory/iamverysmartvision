@@ -172,14 +172,14 @@
       "note": "The core holds no vector constant. The machine bus answers the IAB access with this value for an interrupt, as reset.r7 is answered for a reset."
     },
     "cpu.interrupt_accept_clears_intff": {
-      "value": 0,
+      "value": 1,
       "tag": "unknown-default-chosen",
-      "cite": "SRC-gi-cp1600-um-1975 pdf 22, pdf 56: the pages do not say that accepting an interrupt clears the interrupt enable; not-cleared is the chosen default",
+      "cite": "SRC-gi-cp1600-um-1975 pdf 22, pdf 56: the pages do not say that accepting an interrupt clears the interrupt enable, so no source states the chosen value 1; the value is chosen on the owner-local observation (D-51) through the D11 route",
       "conflict": "C41",
       "resolving_evidence": "measurement: D10 repeated-interrupt probe on owner hardware",
       "revisit_trigger": "when a source documents the enable state after acceptance or a hardware probe exists",
       "decision": null,
-      "note": "0 = false, 1 = true. Stored as a number because the profile schema has no boolean value type."
+      "note": "1 = true, 0 = false, and 1 is the chosen value: acceptance of an interrupt clears the interrupt enable. Chosen on the owner-local observation (D-51, C41) and not on a source, which is why the tag stays unknown-default-chosen. Stored as a number because the profile schema has no boolean value type. No image, digest or hash of an operator's file is named."
     },
     "bus.release_latency_cpu_cycles": {
       "value": 2,

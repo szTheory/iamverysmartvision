@@ -56,3 +56,6 @@ is consistent by construction: the derived must-be-covered set equals the toy re
 | FND-98 | Phase 1 | Complete |
 | TOOL-01 | Phase 11 | Complete |
 | EV-98 | Phase 13 | Complete |
+| TOOL-97 | Phase 14 | Complete |
+| SCN-97 | Phase 14 | Complete |
+| CPU-97 | Phase 14 | Complete |

@@ -46,7 +46,7 @@ header-prefix-hex 894956534E0D0A1A00010000000010CB0000000100000007
 # current profile files, never evidence that the tables are right (a changed table value changes it on purpose, a changed cite string changes nothing).
 # The value was first computed by a scratch script outside the tree from the generated includes; the test state.literal.params-digest holds the core to
 # it and to a second rebuild of the preimage.
-params-digest-sha256 89ad65073a3e357acbdd687f6a29016457864a1666b953e9327b7559dc0c0522
+params-digest-sha256 efba85009a57e91ad21060742dadc34949b976829525bb5e18d6b0897af1425c
 #
 # Plan 08-11 Task 3 (appended; every line above is frozen oracle data of plan 08-09 and is not edited): the SHA-256 of the whole snapshot of the stepped
 # stand-in boot program, 5000 units after the power-on reset of the project profile with the three stand-in images loaded (the program is in
@@ -54,10 +54,10 @@ params-digest-sha256 89ad65073a3e357acbdd687f6a29016457864a1666b953e9327b7559dc0
 # the third frame, after a write to every array the program touches). Repeatability only, a self-recorded value, never evidence of correctness:
 # the value was produced by the writer it holds to account, and it passes unchanged in the dev and the release preset, which shows that the snapshot
 # bytes are identical across the two builds. The test state.save.canonical-stream-literal compares it.
-stepped-snapshot-sha256 087a15d3fce834b1d944bbbd74385d029e42eb4a4f9f0fbb322d754df0755b6b
+stepped-snapshot-sha256 95dd98cbb5221c99f189173c54d72bde17409ea98ce05616c01a6b1d5a363bcc
 # Plan 08-14 (D-12, 08-DISCUSS-state 7.3 item 7): the SHA-256 of the snapshot bytes at three hard-point cuts of data/expected/state-cuts.ids, found by running the instance to the
 # pinned tick of the cut and saving: repeatability only, self-recorded, never evidence of correctness. The dev and release presets and every host build must give the same bytes,
 # which state.cut.fixed-point-and-canonical checks; the keys are the cut ids in lower case.
-cut-snapshot-sha256.hp-frame-mid 9dc4ae7e20a746b4b8d6638cb14305ce3a8d4ec9bd4da872916353272c68567f
-cut-snapshot-sha256.hp-latch 63507cb48fa4bbf42cfebb99e07fa5d722db44797641c3404118c1a9826cee1d
-cut-snapshot-sha256.hp-mob 27e98b02b605d6f201d2745ebf35c3e2a137d62cc9d892b9d0eb7322f09bc768
+cut-snapshot-sha256.hp-frame-mid 82fd4438b78390cea19056722bb30cbe1759aae9f7150c288088262b9818478b
+cut-snapshot-sha256.hp-latch 1eb9c2cd15f6a7da80d5b88138c04cf1db323bd278a60a823a7d13ea58f8662b
+cut-snapshot-sha256.hp-mob ffdf3d0e4b8793e953cb3911f77bf2314267e32c7409d92d05bedc250eb9bc55

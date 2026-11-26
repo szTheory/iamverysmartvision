@@ -102,10 +102,20 @@ These are outputs of the implemented lines and the test guests, recorded so a la
 
 - Executed instruction cycles per frame depend on the guest's instruction mix. With the display on, a loop of one instruction length keeps the CPU out of 13 bus windows (grant, hold and release cycles are stolen) and out of one interrupt entry per frame; the executed cycles of a steady frame of the 12-cycle loop lie within one percent of the community aggregate 13,518 (plausibility only, C95). With the display off the CPU keeps all 14,934 cycles of the frame.
 - A window starting at tick w resumes the CPU at w + 4 (H + 1 + L) ticks whichever instruction was interrupted (468 ticks with H 114 and L 2); the grant happens at the first open boundary inside the window, so a stream of non-interruptible stores is never stalled and its 13 windows count as late grants.
-- With C41 = 0 a service routine that does not start with DIS is entered again at every open boundary while the interrupt level is held: 15 CPU cycles per entry (9 for the entry, 6 for the first instruction) give about 253 entries in the level of 3,791 cycles. Every stand-in service routine of Phase 6 starts with DIS.
+- With C41 = 0 a service routine that does not start with DIS is entered again at every open boundary while the interrupt level is held: 15 CPU cycles per entry (9 for the entry, 6 for the first instruction) give about 253 entries in the level of 3,791 cycles. Every stand-in service routine of Phase 6 starts with DIS. **[Amended by A-14-02 at the end of this page (2026-11-26, D-51, C41): the profile now carries 1, so this consequence holds only with the field stated as 0.]**
 - The densest reachable PSG writer (back-to-back non-interruptible indirect stores) makes 1,660 register writes in a span of one frame with the display on and with it off; the log bound is 2,152. The shortest gap between two writes of instruction units is 36 ticks; the 28 ticks of the published bound need an interrupt-entry write and are proven at the stepper level.
 - The longest unit seen through the full machine over all 1,024 decles, with and without the SDBD prefix, with the interrupt level held and a window open, is 48 ticks; grant, hold and release units are at most 8 ticks. U stays 468.
 
 ## Not modelled in Phase 6
 
 Mid-frame register effects, the picture offset that yields a fourteenth window, per-line fetches, the second half of the interrupt (acknowledge-driven release), and any PAL timing (D-03).
+
+## Appended amendment A-14-02 (Phase 14, 2026-11-26): the C41 = 0 consequence is now a conditional
+
+The bullet above that opens *"With C41 = 0 a service routine that does not start with DIS is entered again at every open boundary while the interrupt level is held"* is left as written, because it states the 0 setting, which stays exercised; it now carries an inline pointer to this note (GUARDRAILS §2.10).
+
+**What moved (D-51, C41).** The profile field `cpu.interrupt_accept_clears_intff` now carries 1, so on this profile acceptance clears the interrupt enable and a service routine that does not start with DIS is entered once per interrupt request, not once per open boundary. The library default `ivs_cp1610_config_default` also gives 1, and the vectors that rest on the not-cleared setting state `"config": {"interrupt_accept_clears_intff": 0}` instead of inheriting a default.
+
+**The 15-cycle period and the closed form are unchanged and still held to account.** `stic.irq.level-held-reentry-c41-0` now states the field explicitly as 0 on the stepper rig and holds the same closed-form count of entries in the level of 3,791 cycles, while its machine-level half holds the profile's value 1 to exactly one entry. `stic.irq.c41-both-values` keeps its four-way sweep of both settings crossed with a DIS-first and a not DIS-first routine.
+
+The value is still an `unknown-default-chosen` field with C41 open: it is chosen on an owner-local observation and it is not a hardware finding.

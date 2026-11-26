@@ -4,18 +4,18 @@ milestone: v0.3.0
 milestone_name: Owner-Supplied Content and a Driveable Host (Phases 13 to 16)</summary>
 current_phase: 14
 current_phase_name: Cartridge Route and Real-Content Conformance
-status: planning
-stopped_at: Phase 13 complete, ready to plan Phase 14
-last_updated: "2026-11-26T00:22:25.784Z"
-last_activity: 2026-11-25
+current_plan: 4
+status: verifying
+stopped_at: Completed 14-04-PLAN.md
+last_updated: "2026-11-26T03:11:17.267Z"
+last_activity: 2026-11-26
 last_activity_desc: Phase 13 complete, transitioned to Phase 14
-state_head: 962deaf598939dc9f57ef1b96237ebb07fe2d743
+state_head: bee451127d9930199603a40eddf1bbab635c837c
 progress:
   total_phases: 4
   completed_phases: 8
-  total_plans: 5
-  completed_plans: 5
-  percent: 100
+  total_plans: 9
+  completed_plans: 9
 ---
 
 # Project State
@@ -29,12 +29,37 @@ See: .planning/PROJECT.md (updated 2026-11-26)
 
 ## Current Position
 
-Phase: 14 — Cartridge Route and Real-Content Conformance
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-11-25 — Phase 13 complete, transitioned to Phase 14
+Phase: 14 (Cartridge Route and Real-Content Conformance) — COMPLETE
+Current Plan: 4 of 4
+Total Plans in Phase: 4
+Status: Phase complete — ready for verification; 4/4 plans executed, `14-VALIDATION.md` signed off, no claim raised (D-50 unchanged)
+Last activity: 2026-11-26 — 14-04 executed: the three flips with the five registry rows that name them, the 13-file toy extension, the closing gate line under `sh`/`dash` and in the container, one cost verdict and the validation sign-off; then the phase's code review (CR-01 fixed at `bf3215d`, WR-01 at `4efc806`, WR-02 at `94300ec`, WR-03 at `fc25ce9`, the three INFO rows deferred with reasons in `14-REVIEW.md`)
 
-The closing gate run reads `gate: PASS steps=38/38 controls=401/401 … faults=238/238 …
+Phase 14's closing gate run reads `gate: PASS steps=38/38 controls=402/402 … faults=238/238 …
+goldens=29 … tests-expected=5014 tests-executed=5010 tests-skipped=4 tests-missing=0 … gates=117
+lines=357 …`, exit 0 and byte-identical under `sh` and `dash` (`cmp` on `tail -1`), and repeated once
+inside the Ubuntu 24.04 container (`gate-linux: exit 0`, `gate-time total=487`, four documented host
+tokens differing: `cc=GNU`, `core-imports=5`, `archive=sha256`, `refs-verified=0/4`). The phase's own
+tokens are `tracked=2745 files=2745 hygiene-files=2745`, `claims=28 provisional=27`,
+`discrepancies=110 open=101`, `vectors=412`, `cases=14`, `prefix-files=11 pkg-selftest=19/19`,
+`rights=10 rights-cleared=1` and `mode=tree`. `steps`, `faults` and `goldens` are where they were
+frozen: no new gate step, fault or golden. The full line is quoted once in `14-04-SUMMARY.md` and in
+`14-VALIDATION.md`'s Approval block.
+
+Amendment, 2026-11-26 (the phase's code review round, `14-REVIEW.md`): three tokens in the line above
+are stale, and each has a named cause rather than a re-bless. `gates=117 lines=357` is now
+`gates=117 lines=356`: WR-03 deleted the vacuous `SCN-STUB-JD-AS-J` registry row (a `pass 0` row that
+cannot fail is not a must-fail mechanism; the case itself still runs from its inventory row), and
+`gates` does not move because it counts distinct gate names. `tests-expected=5014 tests-executed=5010`
+is now `5016`/`5012`: CR-01's `pack.flatwrap.neg.flatwrap-empty` is one id, counted once per preset.
+`tracked=2745 files=2745 hygiene-files=2745` is now `2747`: the two record files written after the
+closing line was measured (`14-04-SUMMARY.md` in `2e27267` and `14-REVIEW.md`). The measured line at the
+fix head, no `^-- FAIL`, `gate-time total=97`, is quoted in `14-REVIEW.md`'s Dispositions section;
+`steps=38/38`, `faults=238`, `goldens=29` and `controls=402/402` are unchanged.
+hosted row: not-recorded — no push run for 548e80d at 2026-11-26; the orchestrator records it from
+sh tools/ci-record.sh <run-id> after the push
+
+The Phase 13 closing gate run reads `gate: PASS steps=38/38 controls=401/401 … faults=238/238 …
 goldens=29`, byte-identical under `sh` and `dash`, and repeated inside the Ubuntu 24.04
 container (`gate-linux: exit 0`, four documented host tokens differing: `cc`, `core-imports`,
 `archive`, `refs-verified`). The phase's own tokens are `tracked=2722`, `rights=10
@@ -266,6 +291,10 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | Phase 13 P02 | 20min | 1 tasks | 11 files |
 | Phase 13 P03 | 27min | 2 tasks | 27 files |
 | Phase 13 P04 | 26min | 3 tasks | 25 files |
+| Phase 14 P01 | 26 min | 2 tasks | 15 files |
+| Phase 14 P02 | 145 min | 2 tasks | 15 files |
+| Phase 14 P03 | 80 min | 3 tasks | 6 files |
+| Phase 14 P04 | 28 min | 2 tasks | 21 files |
 
 ## Accumulated Context
 
@@ -594,6 +623,15 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 13]: 13-05: checkpoint: reprice (cpu_s 357 363 366 435 497, median 366; gate_s 114 121 121 137 148, median 121; priced addition 1.935; allowance 21). Recomputed by arithmetic from the last five `.planning/ci-runs.tsv` rows (45683886915, 45683331636, 45682845654, 45682366772, 45677865721), never quoted: the frozen 361/118 figures are stale by measurement, by +5 and +3. `discharged-within-allowance` is not reachable because 366 > 361 + 1.935 = 362.935. `lever-required` is not reached because the cumulative milestone spend is 1.935 of 21 and this phase's additions landed at exactly the priced count (controls 395 to 401, important-gates lines 337 to 352, steps 38, faults 238 and goldens 29 unmoved), so no line overran by 25 percent. The residual +5 cpu-s is a runner event on the shared series with the token line where it was predicted, so no lever is invented.
   **Recomputed again after this phase's own hosted rows landed** (`45717868904`, `pull_request`, `cpu_s` 360, `gate_s` 120; `45718553735`, `pull_request`, 363, 119; `45720934719`, `pull_request`, 438, 135): the last five `cpu_s` are now 357 360 363 438 497 (median **363**) and `gate_s` 119 120 121 135 148 (median **121**). The verdict is unchanged — 363 > 361 + 1.935 = 362.935 still rules out `discharged-within-allowance`, and the margin is 0.065 cpu-s rather than 3.065 — because the window moved, not the work. Recorded here rather than left as the pre-row figure, per "recompute, never quote".
   **Final recompute at the phase close, after the merge push row landed** (`45723269901`, `push`, `cpu_s` 368, `gate_s` 122, the merge commit `151b688`): the last five `cpu_s` are **357 360 363 368 438 → median 363** and the last five `gate_s` are **119 120 121 122 135 → median 121**. Same verdict, same margin (363 > 362.935 by 0.065), same reason: the window moved, the work did not. This is the figure the milestone's Phase-13 checkpoint is read at.
+- [Phase 14]: The wrap tool's executable is ivs_flatwrap while its build-written source list is the hyphenated ivs-flatwrap-sources.txt; the eight container magic bytes are restated in the tool rather than exported, so no core symbol set moves
+- [Phase 14]: The SPDX alternation in tools/check/integrity.cmake gains flatwrap with no fourth control directory (the tools/bench plan 08-18 precedent); the phase's priced addition stays 1.535, not 1.845
+- [Phase 14]: the profile field cpu.interrupt_accept_clears_intff is 1 on the owner-local observation (D-51) and the tag stays unknown-default-chosen — an observation is not a hardware probe: the tag, not the number, keeps the claim ceiling honest, and C41 stays open with the hardware probe as its resolver
+- [Phase 14]: ivs_cp1610_config_default moves to 1 with the profile and the five vectors that rested on it state config 0 explicitly — leaving the library default at 0 would keep a public default contradicting the only registered profile, with nothing in the gate comparing the two (RESEARCH Pitfall 4)
+- [Phase 14]: run.stub2.jd-as-j and runner-process.mutant.SCN-STUB-JD-AS-J are re-expressed as the flip's own negative pins rather than deleted — measured: at the profile's value 1 a plain J and a JD execute with the enable already clear, so no re-expression exists in which the J half takes more entries; both cases fail again when the field returns to 0
+- [Phase 14]: the cartridge is --cart <cart-image>, an option and not a third positional: nine ids pass exactly two positionals and the lock's grammar is asserted against a cart role
+- [Phase 14]: no cart size rule in the route: the core refuses a short container (reason 1) and a long one (reason 2) at load with a precise report line
+- [Phase 14]: the route's pass path pins the measured outcome.detail line=24, not the research's predicted line=23: the inserted content cart user line shifts the halted step's scenario line
+- [Phase 14]: 14-04: checkpoint: reprice (cpu_s 357 360 363 368 438, median 363; build_s 33 34 35 35 39, median 35; gate_s 119 120 121 122 135, median 121; priced addition 1.535; allowance 21). Recomputed by arithmetic from the last five .planning/ci-runs.tsv rows (45683886915, 45717868904, 45718553735, 45720934719, 45723269901), never quoted: the frozen 361/34/118 figures are stale by measurement, by +2/+1/+3. discharged-within-allowance is not reachable because 363 > 361 + 1.535 = 362.535, by 0.465. lever-required is not reached because the cumulative milestone spend is 3.470 of 21 (1.935 from Phase 13 plus 1.535 here) and this phase's additions landed at the priced count (steps 38, faults 238 and goldens 29 unmoved, one control directory, five registry rows, thirteen toy files), so no line overran by 25 percent (1.535 against 1.3 is +18.1 percent). The median moved more than the priced addition while the token line is where it was predicted, so reprice is what the rule names.
 
 ### Pending Todos
 
@@ -605,6 +643,7 @@ Decision gates (PROJECT.md Decision Register; owner authorization 2026-11-09, `.
 - Delegated decisions, recorded: D1 C17 + CMake; D2 master tick (u64); D3 `intv-2609-ntsc-family-p1`; D4 fixture assembler policy (Phase 4, re-evaluated in Phase 7: `ivs_asm`); D5 system images user-supplied only with a project boot stub (Phase 3); D6 logical controller input (Phase 4); D7 reference PCM outside the core (Phase 5); D8 159 x 96 framebuffer (Phase 6); D9 MIT, public repository, publication through the delegated release flow; D12 one hosted job, no matrix (Phase 4).
 - Hard stops (not delegated), open and not performed: D10 physical measurement and D11 owner-local EXEC/GROM runs; evidence is marked missing and work continues.
 - Deferred: D13 (LibFuturo adapter or shared-contract change), not before a real consumer exists.
+- Deferred: the STIC register-window and strobe rule (the display-enable strobe written at `$0020` never latches, so frames stay black), recorded in C82 with its gate `D10-VID-08`; it is not fixed in Phase 14, and Phase 16's owner-route work is where the route first has a picture to show, so that is the candidate and the milestone close decides. Named here rather than carried silently.
 - The persistence policy (open question 8) was decided in Phase 8 (plan 08-17) as a delegated decision: bytes only from the core, files are a host's policy, exact-build and not archival. Performance targets (open question 11): PRF-01 sets none.
 
 Open questions that remain: unusual cartridge memory maps and further import formats (OQ4; IVSC v1 is the one format, others are v2), IntelliVoice, ECS, Intellivision II and clones (OQ6; a later roadmap decision), the first consumer and any LibFuturo adapter (OQ10; D13 deferred). The first scenario program (OQ9) was decided in Phase 7 (Lamp Tone).
@@ -689,10 +728,12 @@ The row itself is left as recorded and this note sits under it.
 
 ## Session Continuity
 
-Last session: 2026-11-25T22:50:19Z
-Stopped at: Phase 13 complete, ready to plan Phase 14
-`/gsd:verify-work 13`, and the one thing a later run must still do is record the phase's hosted
-row from `sh tools/ci-record.sh <run-id>` once the commits are pushed.
+Last session: 2026-11-26T03:11:17.023Z
+Stopped at: Completed 14-04-PLAN.md
+Resume file: None
+
+The Phase 13 close still leaves one thing a later run must do: record the phase's hosted row from
+`sh tools/ci-record.sh <run-id>` once the commits are pushed (`/gsd:verify-work 13`).
 Resume file: None
 
 ## Recorded Constraints for the Next Milestone

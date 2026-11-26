@@ -106,7 +106,7 @@ An IAB access changes no register other than R7.
 
 EIS, JE and JSRE set INTFF; DIS, JD and JSRD clear it; reset clears it; GSWD and RSWD leave it unchanged.
 A change of INTFF by JE takes effect before the boundary test that follows it.
-[param] `interrupt_accept_clears_intff` defaults to 0, so accepting an interrupt leaves INTFF unchanged; when a vector's `config` sets it to 1, accepting an interrupt clears INTFF.
+[param] `interrupt_accept_clears_intff` defaults to 0, so accepting an interrupt leaves INTFF unchanged; when a vector's `config` sets it to 1, accepting an interrupt clears INTFF. **[Amended by A-14-02 at the end of this page (2026-11-26, D-51, C41): the default is 1 from the profile, and a vector that wants the not-cleared behaviour states `"config": {"interrupt_accept_clears_intff": 0}`.]**
 
 ## p13
 
@@ -165,3 +165,11 @@ NOPP is never taken and always costs the smaller value.
 BEXT asks the external-condition provider with the low four bits of the decle, and an absent provider answers false.
 In these vectors the provider answers true exactly for the codes listed in `init.stimulus.ebci`; without that key the provider is absent.
 The target of a taken branch follows the branch format figure (pdf 47).
+
+## Appended amendment A-14-02 (Phase 14, 2026-11-26): the `[param]` default is 1, and the 0 case is stated per vector
+
+The `[param] interrupt_accept_clears_intff` line above is left as written (GUARDRAILS §2.10) and now carries an inline pointer to this note.
+
+**What moved (D-51, C41).** The profile field `cpu.interrupt_accept_clears_intff` now carries 1, and the library default `ivs_cp1610_config_default` also gives 1, so accepting an interrupt clears INTFF unless a vector states otherwise. A vector that wants the not-cleared behaviour states `"config": {"interrupt_accept_clears_intff": 0}`; seven vectors of `data/cp1610/vectors/interrupt.json` carry a `config` key, and the two that pin the two settings against each other are `cpu.UNIT-INT.accept-keeps-intff` (0) and `cpu.UNIT-INT.accept-clears-intff-config` (1).
+
+**No `config`, `init` or `expect` datum of the corpus moved.** Only the derivations were rewritten, because they had called 0 the profile default and would otherwise state a value the profile no longer carries; every rewritten clause still names `interrupt_accept_clears_intff` in full, and no clause was deleted.

@@ -323,7 +323,7 @@ scn-shape control golden-shape-no-progress SCN-01
 scn-differential mutant runner-process.judge.pair-video-equal SCN-01
 scn-differential mutant runner-process.judge.input-not-consumed SCN-01
 scn-differential mutant runner-process.judge.idle-audible SCN-01
-# SCN-01 (plan 07-08, D-25, D-10, A-14, A-17): the program mutants of the Lamp Tone program, one per failure class of the derivation table (g): the input decode, the progress store, the lamp complement, the amplitude value, the ungated sound (judged under the idle scenario), both re-arm edges, the late strobe, the missing EIS, the halt in the idle branch and the two stub-vector mutants (JD as J, the interrupt target tie). Each ends with its stated first failing clause and, on the channel-isolation rows, its complete failing set (the fails column). The negative row (re-arm inside the band) must still pass and is not a registry line.
+# SCN-01 (plan 07-08, D-25, D-10, A-14, A-17): the program mutants of the Lamp Tone program, one per failure class of the derivation table (g): the input decode, the progress store, the lamp complement, the amplitude value, the ungated sound (judged under the idle scenario), both re-arm edges, the late strobe, the missing EIS, the halt in the idle branch and the stub-vector interrupt target tie. Each ends with its stated first failing clause and, on the channel-isolation rows, its complete failing set (the fails column). The two negative rows must still pass and are not registry lines: re-arm inside the band (SCN-REARM-NEGATIVE) and, since plan 14-02, JD as J (SCN-STUB-JD-AS-J). At the profile's value 1 a plain J and a JD execute with the enable already clear, so the JD-as-J row pins pass 0 and can prove only the absence of a failure; registering it here would report a must-fail mechanism that no longer fails (review WR-03). Both rows stay live cases in data/expected/diag-mutations-scn.ids, where their stated outcome is judged.
 scn-mutants mutant runner-process.mutant.SCN-INPUT-PORT SCN-01
 scn-mutants mutant runner-process.mutant.SCN-PROGRESS-STORE SCN-01
 scn-mutants mutant runner-process.mutant.SCN-LAMP-COMPLEMENT SCN-01
@@ -334,7 +334,6 @@ scn-mutants mutant runner-process.mutant.SCN-REARM-LONG SCN-01
 scn-mutants mutant runner-process.mutant.SCN-STROBE-LATE SCN-01
 scn-mutants mutant runner-process.mutant.SCN-NO-EIS SCN-01
 scn-mutants mutant runner-process.mutant.SCN-HLT-IDLE SCN-01
-scn-mutants mutant runner-process.mutant.SCN-STUB-JD-AS-J SCN-01
 scn-mutants mutant runner-process.mutant.SCN-ISR-TIE SCN-01
 # SCN-01 (plan 07-09, D-26, T-07-21): the installed-consumer replay of the pass scenario. The consumer's scn.digest lines and observed domains are compared with the runner golden of demo-lamp-tone-pass; a consumer that never read the audio samples (a dropped scn.digest.audio line) and a consumer whose video digest differs from the runner's (a changed scn.digest.video nibble) are each refused by the pkg-install step.
 pkg-install mutant scn-domain-missing SCN-01
@@ -532,3 +531,35 @@ d09-06-registration control sources-src-token-whole EV-07
 d09-06-registration control manifests-output-anchor EV-07
 d09-06-registration control memmap-generator-refused EV-07
 d09-06-registration mutant st-memmap-generator-missing EV-07
+# Phase 14 (plan 14-04): TOOL-07, SCN-03 and CPU-06 under three new gate names, flatwrap, cart-role
+# and cpu06. These five rows are the GUARDRAILS 2.4 debt plan 14-01 recorded by name and plan 14-03
+# repeated: 2.4 wants each new check's must-fail row in the check's own commit, but this step refuses
+# a row naming a Pending requirement, and all three requirements stay Pending until this commit. So
+# the rows and the three flips land together, and the deviation closes here over exactly the five
+# mechanisms 14-01's table names, no more and no fewer. Two of the phase's new ids owe no 2.4 row and
+# are named here so a reader does not have to count: pack.judge.flatwrap-tokens is a coverage diff
+# (its failure is a mismatch between the pin and the literals the source can print, which needs no
+# scratch mutation, so it has no stand-in limb to register), and runner-process.cart-user.refuse-derived
+# is a refusal asserted by exit status plus one typed line, not an equivalence with a stand-in. A row
+# for either would register a mechanism that does not exist. Zero new faults holds: the one fault row
+# below is a fault that already exists, registered because CPU-06's flip owes its coverage.
+# flatwrap: TOOL-07's "build-only command, derived material never committed". The tool is build-only
+# and its sources are the build's, so the control is the c-build unlisted-source guard, shown to fail
+# when a tools/flatwrap/*.c file is not listed (the control's own probe file reproduces it).
+flatwrap control c-build-unlisted-flatwrap-source TOOL-07
+# flatwrap: the printed digest is the file's digest by an implementation other than the core's
+# (cmake -E sha256sum), and one flipped input byte moves it, so the equality cannot pass vacuously.
+flatwrap mutant pack.judge.flatwrap-digest-live TOOL-07
+# cart-role: the report's slot.cart.sha256 equals the digest the wrap tool printed, and one flipped
+# input byte moves both; the same-input-twice stand-in shows the equality is live.
+cart-role mutant runner-process.judge.flatwrap-roundtrip SCN-03
+# cart-role: the route's pass path is shown able to fail. The case requires the unmutated run to meet
+# its pinned outcome AND a one-byte EXEC mutation to give exit 14 with IVS_E_DIGEST_MISMATCH, so
+# neither half can pass alone. The id is judge-shaped for exactly that reason: a `mutant` row resolves
+# only through `<suite>.judge.<slug>` or `<suite>.mutant.<slug>`, and a case id without the judge
+# segment would be important-gates-unknown-id.
+cart-role mutant runner-process.judge.owner-run-cart-pass SCN-03
+# cpu06: the profile field's effect is shown able to break. The fault's must-pass is
+# cpu.UNIT-INT.accept-keeps-intff, so the not-cleared setting is the half that must keep passing: the
+# both-settings pin and its must-fail mechanism in one row. The fault already exists (no new fault).
+cpu06 fault ACCEPT_CLEARS_INTFF_IGNORED CPU-06
