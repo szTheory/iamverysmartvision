@@ -17,7 +17,10 @@ The repository holds a deterministic machine core, a headless runner and a first
 Releases, when they exist, are listed on the repository's releases page. Each one is a pre-release of an exact tested commit and carries the source archive, the installed package archive and the checksums; nothing downloadable is runnable, because neither the runner nor `ivs_pack` nor `ivs_asm` is installed. A release ships the program only as tracked source, and the claims about its behaviour stay provisional.
 The commands that build the emulator from the source archive and take the demo program to its expected output are in `docs/running.md`.
 Publication follows the delegated release flow of `.planning/AUTONOMY.md` and its pre-publication checks. The working name is not cleared as a trademark, and neither a measurement on a console nor a run with real EXEC or GROM images has been performed.
-No EXEC, GROM or commercial content is included or used by any check. The route for running images that the owner supplies locally is described in `docs/owner-images.md`; it is not part of CI and has not been performed.
+No EXEC, GROM or commercial content is included or used by any check. The route for running images that the owner supplies locally is described in `docs/owner-images.md`; it is not
+part of CI and has not been performed. What the project cannot answer for itself — a real frontend loading the
+host shim, an owner image's picture and sound, an owner flat image's word order, physical measurement, and the
+owner's own run — is listed with its procedure in [`docs/handoffs.md`](docs/handoffs.md).
 
 ## Evidence
 
