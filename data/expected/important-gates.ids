@@ -563,3 +563,14 @@ cart-role mutant runner-process.judge.owner-run-cart-pass SCN-03
 # cpu.UNIT-INT.accept-keeps-intff, so the not-cleared setting is the half that must keep passing: the
 # both-settings pin and its must-fail mechanism in one row. The fault already exists (no new fault).
 cpu06 fault ACCEPT_CLEARS_INTFF_IGNORED CPU-06
+# host (plan 15-03, TOOL-08): the digest equality's two must-fail limbs, each a committed
+# runner-process judge self-control rather than a new fault. A stub that prints the golden's nine
+# lines with no frame is refused for `frames-zero`, so the "frames>0" limb is load-bearing and the
+# equality cannot pass on a frontend that rendered nothing.
+host mutant runner-process.judge.host-vacuous TOOL-08
+# host: the pass golden's lines with the poll dropped (the empty-chain `digest.input` the empty-poll
+# run observed) are refused for `digest-diff`, so the equality is proved live against a second,
+# measured input state rather than against a constant. Both ids are judge-shaped because a `mutant`
+# row resolves only through `<suite>.judge.<slug>` or `<suite>.mutant.<slug>`; a plain
+# `runner-process.host.*` id would make this row important-gates-unknown-id.
+host mutant runner-process.judge.host-digest-diff TOOL-08

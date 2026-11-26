@@ -35,7 +35,7 @@ mechanical).
 ### Tooling
 
 - [x] **TOOL-07**: A person can wrap a flat cartridge image of their own, at an address they state, into the project's cartridge container with one build-only command, and every malformed input is refused by a typed token with a positive case beside it; the wrapped image is derived material and is never committed, golden, fixture or claim artifact.
-- [ ] **TOOL-08**: The core can be driven in real time by a host that loads it as a shared object outside the installed package, and an automated frontend reproduces the runner's nine digest lines on a project cartridge — with the vacuity closed three ways and the host holding no palette of its own.
+- [x] **TOOL-08**: The core can be driven in real time by a host that loads it as a shared object outside the installed package, and an automated frontend reproduces the runner's nine digest lines on a project cartridge — with the vacuity closed three ways and the host holding no palette of its own.
 
 ### Scenario and route
 
@@ -108,7 +108,7 @@ the same date: every requirement appears in exactly one phase.
 | TOOL-07 | Phase 14 | Complete |
 | SCN-03 | Phase 14 | Complete |
 | CPU-06 | Phase 14 | Complete |
-| TOOL-08 | Phase 15 | Pending |
+| TOOL-08 | Phase 15 | Complete |
 | PKG-06 | Phase 16 | Pending |
 
 **Coverage:**
@@ -117,13 +117,17 @@ the same date: every requirement appears in exactly one phase.
 - Unmapped: 0 ✓
 - Phases: 13 (RTS-01, RTS-02, EV-06, EV-07), 14 (TOOL-07, SCN-03, CPU-06), 15 (TOOL-08), 16 (PKG-06)
 - CPU-06 was added on 2026-11-26, after the first owner-local real-content run failed deterministically; it is the evidence that a host built before the EXEC path is fixed would show a black screen
-- Phase 15 is the droppable phase under the pre-authorized fallback; if it is
-  dropped, TOOL-08 is recorded `Deferred` with its reversal condition and the
-  milestone goal is amended to "Owner-Supplied Content" — never silently lost and
+- Phase 15 was the droppable phase under the pre-authorized fallback; it was not dropped, and it
+  delivered: TOOL-08 is `Complete` on the phase's own evidence (a build-only shared object, a
+  `dlopen` frontend reproducing the runner's nine digest lines on the project's own cartridge, the
+  vacuity closed three ways and one `deterministic-repeatability` claim, `CL-0029`, standing
+  `provisional`). The fallback remains written down so the choice is made by the rule and not under
+  pressure: a future re-open that cannot be made green records TOOL-08 `Deferred` with its reversal
+  condition and amends the milestone goal to "Owner-Supplied Content" — never silently lost and
   never marked `Complete`.
 
 ---
 *Requirements defined: 2026-11-26*
-*Last updated: 2026-11-26 at Phase 14 completion (TOOL-07, SCN-03 and CPU-06 flipped to `Complete` with the five
-`important-gates` rows that name them, in one commit; the checkbox lines and the traceability table move
-together because the table is the parsed record)*
+*Last updated: 2026-11-26 at Phase 15 completion (TOOL-08 flipped to `Complete` with the two
+`important-gates` `mutant` rows that name it under the new `host` gate name, in one commit; the checkbox
+lines and the traceability table move together because the table is the parsed record)*
