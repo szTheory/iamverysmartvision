@@ -4,18 +4,18 @@ milestone: v0.3.0
 milestone_name: Owner-Supplied Content and a Driveable Host (Phases 13 to 16)</summary>
 current_phase: 16
 current_phase_name: Owner Route, Claim and Release Posture
-current_plan: 4
+current_plan: 5
 status: executing
-stopped_at: Completed 16-03-PLAN.md (the three handoff rows and the handoffs= stat); 16-04 next
-last_updated: "2026-11-26T10:11:55.934Z"
+stopped_at: Completed 16-04-PLAN.md (the committed-direction probe, the recomputed line, PKG-06 Complete); 16-05 next
+last_updated: "2026-11-26T10:35:46.368Z"
 last_activity: 2026-11-26
 last_activity_desc: Phase 15 complete, transitioned to Phase 16
-state_head: 43b4394837e47c21b143a57cf3028cf8a7639b0e
+state_head: 298be257670b5242e458ccf452de7a04c15d6501
 progress:
   total_phases: 4
   completed_phases: 8
   total_plans: 17
-  completed_plans: 15
+  completed_plans: 16
 ---
 
 # Project State
@@ -30,10 +30,33 @@ See: .planning/PROJECT.md (updated 2026-11-26)
 ## Current Position
 
 Phase: 16 — Owner Route, Claim and Release Posture
-Current Plan: 4
+Current Plan: 5
 Total Plans in Phase: 5
 Status: Ready to execute
-Last activity: 2026-11-26 — Completed 16-03-PLAN.md, the three handoff rows and the `handoffs=` stat
+Last activity: 2026-11-26 — Completed 16-04-PLAN.md, the committed-direction probe and PKG-06 `Complete`
+
+Phase 16's fourth plan (16-04, the release posture) proved the limb Phase 15 could not reach from a control:
+the **committed** direction of the shared-object refusal. With both paths staged and read from `git ls-files`,
+the files step printed exactly `-- FAIL files-unlisted-binary: probe.so` and nothing for `probe.txt` at the
+same place with the same bytes, and printed no pass line; `binscan.sh binary` named neither path, because it
+skips a name-listed extension, so the refusal is the name and not a byte scan. Both files were unstaged and
+removed in the same task, `git ls-files` holds no shared-object extension, and the gate is green afterwards.
+Section **(i.1)** of `.planning/ops/RELEASE-OPS.md` carries the recomputation: the release-decision line
+quoted **unchanged** beside the values measured at `4a1e993` — `binaries-listed=0`, `prefix-files=11`,
+`pkg-selftest=20/20` naming `host-so-absent`, `release-selftest=12/12` naming `so-member`, `controls=404/404`
+naming the two `files-unlisted-binary-*` controls — plus the transcript and the three surfaces named (the
+tree, an archive, an installed prefix), each with its own evidence. **PKG-06 is `Complete`** in the checkbox,
+the traceability row, the `Last updated` line and the Coverage block, in the same commit as the three
+`release-posture` rows that name its mechanisms (`files-unlisted-binary-so`, `files-unlisted-binary-dylib`
+as `control`; `host-so-absent` as `mutant`) and the thirteen toy lines (ten registries, three requirement
+records) that keep the derived set closed. The gate at `298be25` reads `gate: PASS steps=38/38
+controls=404/404 … faults=238/238 … goldens=29 … gates=119 lines=364 … prefix-files=11 … tracked=2786`, the
+real registry re-derived `-- important-gates pass gates=119 lines=364` and the good toy tree `gates=48
+lines=51`. **`faults=238`, `steps=38`, `goldens=29` and `controls=404` did not move**: a registration is a
+pointer, not a new fault. The probe is a throwaway check — not a gate step, not in CI, and deliberately not a
+registry row. The plan's one defect (Task 1's verify asserts both a clean tree and the appended note's
+contents, which one run cannot satisfy) is `.planning/WINDOWS.md` row 11, waived with the measured reason.
+hosted row: not-recorded — no push run for 298be25 at 2026-11-26
 
 Phase 16's third plan (16-03, the three owner-only questions as handoff rows) added `H16-1`, `H16-2` and
 `H16-3` to `data/expected/handoffs.ids` as `handed-off evidence: none` rows beside the five existing ones,
@@ -385,6 +408,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | Phase 16 P01 | 14 | 2 tasks | 4 files |
 | Phase 16 P02 | 21 min | 2 tasks | 3 files |
 | Phase 16 P03 | 30min | 2 tasks | 8 files |
+| Phase 16 P04 | 15min | 2 tasks | 17 files |
 
 ## Accumulated Context
 
@@ -732,6 +756,7 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 16]: The owner route from the source archive is performed inside --source-route after the existing golden comparison, on dd-made zero-filled images, with the archive's own ivs_flatwrap at base 4000 hi-first and the archive's own owner-run.sh --record --cart, so the route a person has is the route the rehearsal performs and the endpoint stays the committed demo-lamp-tone-pass golden
 - [Phase 16]: The route's pass path is proved able to fail in the same run: after --record one EXEC byte is flipped and the --cart-only rerun (a second --record is refused with exit 2) is refused at load with IVS_E_DIGEST_MISMATCH, exit 14, cpu.run_state unreset; the exec: label stays - so D11 stays not-performed and no claim cites RELEASE-OPS section (j)
 - [Phase 16]: The ledger's row count is a stat on the claims pass line (handoffs=<n>), counted from the file, not a check and not a control: the pinned id set and dispositions are the mechanism, and a control of the count would prove the count rather than the ledger.
+- [Phase 16]: 16-04: the release-assets so-member case is deliberately not registered as a row - a mutant row resolves only through the three selftest inventories or a <suite>.judge.<slug>/<suite>.mutant.<slug> test id, so registering it would make the row important-gates-unknown-id; the archive surface is named in RELEASE-OPS section (i.1) and in the row comment instead
 
 ### Pending Todos
 
@@ -828,8 +853,8 @@ The row itself is left as recorded and this note sits under it.
 
 ## Session Continuity
 
-Last session: 2026-11-26T10:11:55.818Z
-Stopped at: Completed 16-03-PLAN.md (the three handoff rows and the handoffs= stat); 16-04 next
+Last session: 2026-11-26T10:35:46.199Z
+Stopped at: Completed 16-04-PLAN.md (the committed-direction probe, the recomputed line, PKG-06 Complete); 16-05 next
 Resume file: None
 
 The Phase 13 close still leaves one thing a later run must do: record the phase's hosted row from

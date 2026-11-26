@@ -283,7 +283,7 @@ posture states plainly that no host artifact and no content ships.
   3. The owner-only questions are `handoffs.ids` rows, `evidence: none`, dispositioned, cited by no claim and by no phase exit criterion.
   4. A tracked shared object is refused by name in both directions, the installed package stays eleven files, and the release-decision line reads: the release ships the static package and the source archive; no shared object, no host shim, no content.
   5. The concurrency lever is taken in one cost-only commit whose summary token line is byte-identical and whose `step.out.<name>` buffers are compared, and the close records one checkpoint line in the section 2.3 vocabulary with `steps=38/38`.
-**Plans**: 3/5 plans executed
+**Plans**: 4/5 plans executed
 **Tier ceiling**: no new claim; the claim is minted in Phase 15.
 
 **Wave 1** *(no dependency; the milestone's pre-committed lever, cost-only, is this plan's first commit)*
@@ -296,7 +296,7 @@ posture states plainly that no host artifact and no content ships.
 - [x] 16-03-PLAN.md — the three handoff rows (`H16-1`, `H16-2`, `H16-3`) with their packet sections, five ledger copies and two extended pins in one commit, and the ledger's row count printed as `handoffs=` on the claims pass line
 
 **Wave 4** *(blocked on 16-03)*
-- [ ] 16-04-PLAN.md — the release posture: the committed-direction probe with its witness pair, the recomputed release-decision line in `RELEASE-OPS.md` section (i), and PKG-06 `Complete` with three `release-posture` rows and the thirteen-file toy extension
+- [x] 16-04-PLAN.md — the release posture: the committed-direction probe with its witness pair, the recomputed release-decision line in `RELEASE-OPS.md` section (i), and PKG-06 `Complete` with three `release-posture` rows and the thirteen-file toy extension
 
 **Wave 5** *(blocked on 16-01 to 16-04)*
 - [ ] 16-05-PLAN.md — the phase close: the two-shell and single container gate evidence, the token reconciliation, one checkpoint verdict, the signed `16-VALIDATION.md`, and the SUMMARY's statement of what the milestone can and cannot claim

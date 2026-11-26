@@ -1,10 +1,10 @@
 ---
 schema_version: 1
 open_count: 3
-waived_count: 7
+waived_count: 8
 fixed_count: 0
-total_count: 10
-last_updated: 2026-11-26T10:10:14.493Z
+total_count: 11
+last_updated: 2026-11-26T10:34:55.989Z
 ---
 
 # Broken Windows Ledger
@@ -25,6 +25,7 @@ last_updated: 2026-11-26T10:10:14.493Z
 | 8 | 16 | deviation | tools/hygiene.sh |  | 16-02 plan defect: 'sh tools/hygiene.sh --tree is silent' in Task 1's verify is unsatisfiable - it prints its contract pass line '-- hygiene pass mode=tree hygiene-files=2784' and exits 0, the same defect 16-01 recorded for the same sentence; the check performed is exit 0 with no '-- FAIL' | waived | The check performed is exit 0 with no '-- FAIL', which is what the verify's set -e asserts; the pass line is the project's contract for every step. | 2026-11-26T09:36:00.314Z | 2026-11-26T09:36:04.462Z |
 | 9 | 16 | deviation | .planning/phases/16-owner-route-claim-and-release-posture/16-02-PLAN.md |  | 16-02 plan defect, vestigial: Task 2's <fails_when> guard annotations (HEAD=1509/0/27/2784) name figures no assertion in Task 2's <automated> reads - 1509 is 16-01's summary-line byte count; the <automated> block is the contract and it passed in full, so no substitution was needed | waived | Vestigial annotation only: the <automated> block is the contract and it passed in full, so nothing was substituted or skipped. | 2026-11-26T09:36:00.374Z | 2026-11-26T09:36:04.518Z |
 | 10 | 16 | deviation | .planning/phases/16-owner-route-claim-and-release-posture/16-03-PLAN.md |  | Task 2's verify greps H16- in ROADMAP.md, whose plan inventory line has named the three ids since planning; the substantive check (REQUIREMENTS.md, claims.json, CHANGELOG.md, and every ROADMAP line but the plan entry) is clean | waived | The <automated> block is the contract and it passed except this one line; the ROADMAP plan inventory entry names the ids as rows to add, which is not a citation of a result, and the same grep over REQUIREMENTS.md, data/claims.json, CHANGELOG.md and every other ROADMAP line is empty. | 2026-11-26T10:10:06.032Z | 2026-11-26T10:10:14.493Z |
+| 11 | 16 | deviation | .planning/phases/16-owner-route-claim-and-release-posture/16-04-PLAN.md |  | 16-04 plan defect: Task 1's <automated> opens with 'git status --porcelain is empty' and also asserts the appended note's contents, so the two halves cannot hold in one run - the note makes the tree dirty. The probe half was run on the clean tree first (pre-probe status empty, /tmp/g16-04-pre), the note was appended afterwards, and the probe was re-run on the dirty tree afterwards with the same single finding | waived | The probe half of Task 1's verify was run on the clean tree before the note existed (pre-probe status empty) and re-run unchanged after the note was appended, giving the same single finding; the note half's every assertion was then run and passed. The block's opening cleanliness assertion and its note-content assertions are mutually exclusive in one run, which is the defect. | 2026-11-26T10:34:46.959Z | 2026-11-26T10:34:55.989Z |
 
 ````json
 [
@@ -156,6 +157,19 @@ last_updated: 2026-11-26T10:10:14.493Z
     "reason": "The <automated> block is the contract and it passed except this one line; the ROADMAP plan inventory entry names the ids as rows to add, which is not a citation of a result, and the same grep over REQUIREMENTS.md, data/claims.json, CHANGELOG.md and every other ROADMAP line is empty.",
     "recorded_at": "2026-11-26T10:10:06.032Z",
     "resolved_at": "2026-11-26T10:10:14.493Z",
+    "milestone": "v0.3.0"
+  },
+  {
+    "id": 11,
+    "kind": "deviation",
+    "phase": "16",
+    "file": ".planning/phases/16-owner-route-claim-and-release-posture/16-04-PLAN.md",
+    "line": null,
+    "description": "16-04 plan defect: Task 1's <automated> opens with 'git status --porcelain is empty' and also asserts the appended note's contents, so the two halves cannot hold in one run - the note makes the tree dirty. The probe half was run on the clean tree first (pre-probe status empty, /tmp/g16-04-pre), the note was appended afterwards, and the probe was re-run on the dirty tree afterwards with the same single finding",
+    "status": "waived",
+    "reason": "The probe half of Task 1's verify was run on the clean tree before the note existed (pre-probe status empty) and re-run unchanged after the note was appended, giving the same single finding; the note half's every assertion was then run and passed. The block's opening cleanliness assertion and its note-content assertions are mutually exclusive in one run, which is the defect.",
+    "recorded_at": "2026-11-26T10:34:46.959Z",
+    "resolved_at": "2026-11-26T10:34:55.989Z",
     "milestone": "v0.3.0"
   }
 ]
