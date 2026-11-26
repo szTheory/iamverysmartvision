@@ -1696,8 +1696,8 @@ refuse_user psg-log-out --psg-log-out "$opo/ru.log"
 refuse_user audio-wav --audio-wav "$opo/ru.wav"
 
 # The cartridge role of the owner-local route (plan 14-03, SCN-03, criterion 4, D-47): a scenario that names all three user roles
-# (`content exec user`, `content grom user`, `content cart user`) is refused for every one of the six derived-output options — exit 14,
-# exactly one stderr line, no report on stdout and no file at the named path — and the snapshot rule is proved to be the ABSENCE of a
+# (`content exec user`, `content grom user`, `content cart user`) is refused for every one of the six derived-output options - exit 14,
+# exactly one stderr line, no report on stdout and no file at the named path - and the snapshot rule is proved to be the ABSENCE of a
 # seventh refusal: `--roundtrip-at-ticks` is accepted for the same scenario, writes nothing, and leaves the report equal to the plain
 # run apart from host.calls. The runner's three refusal loops are already role-generic (runner/main.c: one loop over IVS_SCN_ROLES per
 # output family), so this case is proof, not implementation. Project-made files only: zero-filled exec/grom images and a container the
@@ -1755,7 +1755,7 @@ for f in wav log raw; do
   [ ! -e "$tmp/cu-all.$f" ] || { ok=0; why cart-user-refused "all three audio options: a file was created ($tmp/cu-all.$f)"; }
 done
 # The snapshot rule (docs/owner-images.md): the save/restore hook fills a caller's buffer and chooses no file, so it is allowed for user
-# content — the absence of a seventh refusal. The tick value is derived from the scenario's own `run-to` (half of it, so a 1000-tick run
+# content - the absence of a seventh refusal. The tick value is derived from the scenario's own `run-to` (half of it, so a 1000-tick run
 # is cut once) rather than guessed, and a run that made no cut is a finding, not a pass.
 if [ -z "$cu_d1" ]; then
   ok=0; why cart-user-snapshot 'no container was built: the snapshot limb cannot load a cartridge'
@@ -1785,7 +1785,7 @@ result runner-process.cart-user.refuse-derived
 
 # The wrap tool's container round-trips through the runner as `content cart user` (plan 14-03, SCN-03, criterion 3, D-47): the report's
 # slot.cart.sha256 equals the digest the tool printed on stdout, slot.cart.length_bytes is the container's own size on disk, and the
-# equality is proved live rather than vacuous — flipping ONE byte of the tool's input changes both the printed digest and the report's
+# equality is proved live rather than vacuous - flipping ONE byte of the tool's input changes both the printed digest and the report's
 # value, and the second half fails if the two digests are equal. The input byte is the first word's low half (00 -> 01, still at most
 # $03FF, so the tool's word-range rule stays satisfied). The container, the flat file and both reports live under this run's mktemp
 # directory; nothing is written into the tree. The `exec:` label stays `-`, so no line reads as a real-EXEC result.
@@ -1916,7 +1916,8 @@ result runner-process.listen-demo.refuses-user
 or_tmpd="$tmp/or-tmpdir"
 mkdir "$or_tmpd" || exit 1
 or_ci_msg='owner-run: refusing to run in CI (CI or GITHUB_ACTIONS is set): owner images are never used there'
-or_usage_msg='owner-run: usage: owner-run.sh [--preset dev|release] [--record] <exec-image> <grom-image>'
+# The usage line carries the cartridge option since plan 14-03 (SCN-03): `--cart <cart-image>` is an option, never a third positional.
+or_usage_msg='owner-run: usage: owner-run.sh [--preset dev|release] [--record] [--cart <cart-image>] <exec-image> <grom-image>'
 or_lock_msg='owner-run: bad lock line: want 64 lower-case hex digits, two spaces, exec or grom'
 or_z=$(printf '%064d' 0)
 # or_scratch: a fresh scratch root in $sr.
@@ -1971,6 +1972,9 @@ or_scratch
 or_run usage '' ''
 or_judge usage 2 '' "$or_usage_msg" || ok=0
 or_run usage '' '' --preset bogus "$sr/refs/a" "$sr/refs/b"
+or_judge usage 2 '' "$or_usage_msg" || ok=0
+# --cart names an argument: the option without a value is the usage refusal, not a positional that shifts the two images.
+or_run usage '' '' --cart
 or_judge usage 2 '' "$or_usage_msg" || ok=0
 or_end
 result runner-process.owner-run.usage
@@ -2114,6 +2118,74 @@ printf '%s\n' build/release/runner/ivs-run data/scenarios/owner-exec-title.ivss 
 cmp -s "$tmp/or.files" "$tmp/or.want" || { ok=0; why owner-run-files "the scratch root holds other files: $(tr '\n' ' ' < "$tmp/or.files")"; }
 or_end
 result runner-process.owner-run.identity-mismatch
+
+# The cartridge pass path of the owner-local route (plan 14-03, SCN-03, criterion 4, D-47): `--cart <file>` is an OPTION of the helper, and
+# with it the helper inserts one `content cart user` line into its temporary copy, forwards `--cart` to the runner, and the run loads an
+# EXEC image and the container. Project-made files only: zero-filled refs/e.bin (8192) and refs/g.bin (2048), and a container the
+# project's own wrap tool wrote into refs/ from a zero-filled flat file. The report's slot.cart.sha256 must be the digest the tool printed,
+# the `exec:` label stays `-` (nothing reads as a real-EXEC result), and the outcome, exit code and outcome.detail are pinned to what this
+# run MEASURED (recorded in the plan's SUMMARY), not to the research's prediction: the inserted `content cart user` line moves the halted
+# step's scenario line from 23 to 24. The pass direction is then proved able to fail: after --record, one byte of refs/e.bin is flipped and
+# the same run is refused at load (IVS_E_DIGEST_MISMATCH, exit 14), so neither half can pass alone. A container inside the work tree outside
+# refs/ is refused exactly as the other two images are, which is why the cartridge joins the helper's location loop.
+: > "$tmp/why"
+ok=1
+or_scratch
+or_img "$sr/refs/e.bin" 8192
+or_img "$sr/refs/g.bin" 2048
+or_img "$sr/refs/flat.bin" 8192
+mkdir "$sr/data/own" || exit 1
+oc_d1=
+if [ -z "$flatwrap" ]; then
+  ok=0; why owner-run-cart 'the sixth argument (ivs_flatwrap) is missing: the case cannot build the container it loads'
+else
+  oc_d1=$("$flatwrap" "$sr/refs/flat.bin" 4000 "$sr/refs/c.ivsc" 2> "$tmp/oc-wrap.err") \
+    || { ok=0; why owner-run-cart "ivs_flatwrap failed: $(sed -n '1p' "$tmp/oc-wrap.err")"; }
+  [ "${#oc_d1}" -eq 64 ] || { ok=0; why owner-run-cart "the printed digest is '$oc_d1'"; }
+  cp "$sr/refs/c.ivsc" "$sr/data/own/c.ivsc" || exit 1
+  # A cartridge inside the work tree outside refs/ is refused by the same location rule as the two images.
+  or_run carttree '' '' --cart "$sr/data/own/c.ivsc" "$sr/refs/e.bin" "$sr/refs/g.bin"
+  or_judge carttree 2 '' "owner-run: an image is inside the work tree outside refs/: $sr/data/own/c.ivsc" || ok=0
+  # --record writes the two-role lock from the two images and goes on; with no --cart this run is also the no-cartridge path.
+  or_run record '' '' --record "$sr/refs/e.bin" "$sr/refs/g.bin"
+  [ "$hung" -eq 0 ] || { ok=0; why owner-run-cart 'the --record run was stopped by the watchdog'; }
+  [ ! -s "$tmp/runs/or-record.err" ] || { ok=0; why owner-run-cart "the --record run wrote on stderr: $(sed -n '1p' "$tmp/runs/or-record.err")"; }
+  cp "$tmp/runs/or-record.out" "$tmp/oc-nocart.report" || exit 1
+  # The lock keeps exactly two roles: no cartridge line was recorded, and the run without --cart names no cartridge role.
+  [ "$(grep -c . "$sr/refs/owner-images.sha256")" -eq 2 ] \
+    || { ok=0; why owner-run-cart "the lock has $(grep -c . "$sr/refs/owner-images.sha256") lines, expected 2"; }
+  or_run cartpass '' '' --cart "$sr/refs/c.ivsc" "$sr/refs/e.bin" "$sr/refs/g.bin"
+  [ "$hung" -eq 0 ] || { ok=0; why owner-run-cart 'the cartridge run was stopped by the watchdog'; }
+  [ "$rc" -eq 10 ] || { ok=0; why owner-run-cart "exit $rc, expected 10"; }
+  [ ! -s "$tmp/runs/or-cartpass.err" ] || { ok=0; why owner-run-cart "stderr is not empty: $(sed -n '1p' "$tmp/runs/or-cartpass.err")"; }
+  [ "$(sed -n '1p' "$tmp/runs/or-cartpass.out")" = "OWNER-LOCAL RUN (D11): inputs are the owner's, not redistributable, not run in CI, not evidence, no claim" ] \
+    || { ok=0; why owner-run-cart 'the first stdout line is not the banner'; }
+  grep -q -x -F 'slot.exec.loaded 1' "$tmp/runs/or-cartpass.out" || { ok=0; why owner-run-cart 'slot.exec.loaded is not 1'; }
+  grep -q -x -F 'slot.cart.loaded 1' "$tmp/runs/or-cartpass.out" || { ok=0; why owner-run-cart 'slot.cart.loaded is not 1'; }
+  grep -q -x -F "slot.cart.sha256 $oc_d1" "$tmp/runs/or-cartpass.out" \
+    || { ok=0; why owner-run-cart "slot.cart.sha256 is not the digest the tool printed ('$oc_d1')"; }
+  grep -q -x -F 'exec: -' "$tmp/runs/or-cartpass.out" || { ok=0; why owner-run-cart 'the report does not carry the `exec: -` label'; }
+  grep -q -x -F 'outcome guest-fail' "$tmp/runs/or-cartpass.out" || { ok=0; why owner-run-cart 'outcome is not guest-fail'; }
+  grep -q -x -F 'exit.code 10' "$tmp/runs/or-cartpass.out" || { ok=0; why owner-run-cart 'exit.code is not 10'; }
+  grep -q -x -F 'outcome.detail stop step=1 line=24 expected=target got=halted' "$tmp/runs/or-cartpass.out" \
+    || { ok=0; why owner-run-cart "outcome.detail is '$(sed -n 's/^outcome\.detail //p' "$tmp/runs/or-cartpass.out")'"; }
+  # The one-byte EXEC mutation, after --record: the core refuses at load, so the pinned pass report is not met.
+  printf '\001' | dd of="$sr/refs/e.bin" bs=1 seek=0 conv=notrunc 2> /dev/null || exit 1
+  or_run mutate '' '' --cart "$sr/refs/c.ivsc" "$sr/refs/e.bin" "$sr/refs/g.bin"
+  [ "$hung" -eq 0 ] || { ok=0; why owner-run-cart 'the mutated EXEC run was stopped by the watchdog'; }
+  [ "$rc" -eq 14 ] || { ok=0; why owner-run-cart "the mutated EXEC run: exit $rc, expected 14"; }
+  grep -q '^outcome\.detail load-refused role=exec status=IVS_E_DIGEST_MISMATCH' "$tmp/runs/or-mutate.out" \
+    || { ok=0; why owner-run-cart 'the mutated EXEC run does not name the digest mismatch at load'; }
+  grep -q -x 'cpu.run_state unreset' "$tmp/runs/or-mutate.out" || { ok=0; why owner-run-cart 'the mutated EXEC run executed the machine'; }
+  # The scratch root holds no file but the ones this case wrote.
+  find "$sr" ! -type d | sed "s|^$sr/||" | sort > "$tmp/oc.files"
+  printf '%s\n' build/release/runner/ivs-run data/own/c.ivsc data/scenarios/owner-exec-title.ivss refs/c.ivsc refs/e.bin refs/flat.bin \
+    refs/g.bin refs/owner-images.sha256 tools/owner-run.sh | sort > "$tmp/oc.want"
+  cmp -s "$tmp/oc.files" "$tmp/oc.want" \
+    || { ok=0; why owner-run-cart "the scratch root holds other files: $(tr '\n' ' ' < "$tmp/oc.files")"; }
+fi
+or_end
+result runner-process.judge.owner-run-cart-pass
 
 # Judge self-controls (D-23, T-04-59): the same checks run against wrong runners, shell scripts
 # in the temp dir that replay this run's recorded reports with one defect each. A control passes

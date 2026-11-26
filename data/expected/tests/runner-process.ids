@@ -28,16 +28,21 @@
 #   negative row of the Lamp Tone program; stub-window rows patch boot-stub-2.exec; a fails column states the complete failing set).
 # Plan 07-11 (D-31, T-07-29): runner-process.refuse-user.audio-raw, .psg-log-out and .audio-wav: each option is refused for a scenario with a
 #   `content ... user` line (exit 14, one stderr line `<option> refused: content user`, no report, no file).
-# Plan 14-03 (SCN-03, D-47, criterion 4): runner-process.cart-user.refuse-derived — a scratch scenario naming all three user roles
+# Plan 14-03 (SCN-03, D-47, criterion 4): runner-process.cart-user.refuse-derived - a scratch scenario naming all three user roles
 #   (`content exec user`, `content grom user`, `content cart user`) is refused for each of the six derived-output options (--frame-ppm,
 #   --video-raw, --audio-raw, --psg-log-out, --audio-wav, --update-golden): exit 14, exactly one stderr line, no report and no file, with
 #   the three audio options given together naming the first of their fixed order. The same case proves the snapshot rule to be the ABSENCE
 #   of a seventh refusal: --roundtrip-at-ticks is accepted for that scenario, writes no file, leaves the report equal to the plain run apart
 #   from host.calls, and must have made at least one cut.
-# Plan 14-03 (SCN-03, D-47, criterion 3): runner-process.judge.flatwrap-roundtrip — a container the project's own wrap tool wrote loads as
+# Plan 14-03 (SCN-03, D-47, criterion 3): runner-process.judge.flatwrap-roundtrip - a container the project's own wrap tool wrote loads as
 #   `content cart user` with slot.cart.loaded 1, slot.cart.status ok, slot.cart.length_bytes equal to the file's size and slot.cart.sha256
 #   equal to the digest the tool printed; the `exec:` label stays `-`. The equality is proved live: flipping one byte of the tool's input
 #   moves both the printed digest and the report's value, so a judge that accepted the same digest twice cannot pass.
+# Plan 14-03 (SCN-03, criterion 4, V10): runner-process.judge.owner-run-cart-pass - the helper's `--cart` option runs its pass path on
+#   project-made zero-filled files and a container the tool wrote into refs/, printing the banner first `exec: -`, slot.exec.loaded 1,
+#   slot.cart.loaded 1 and slot.cart.sha256 equal to the digest the tool printed, with the outcome, exit code and outcome.detail pinned to
+#   what the run measured. A cartridge inside the work tree outside refs/ is refused like the other two images, and a one-byte EXEC mutation
+#   after --record is refused at load (IVS_E_DIGEST_MISMATCH, exit 14), so the pass direction is proved able to fail.
 # Plan 07-11 (D-31, T-07-26 to T-07-28): runner-process.owner-run.<case>, the nine cases of the owner-local helper tools/owner-run.sh (usage,
 #   ci-env, github-actions-env, in-tree-path, wrong-size, missing-lock, bad-lock-line, no-images-skip, identity-mismatch), each on a copy of the
 #   helper in a scratch root outside the work tree with project-made zero-filled files only; runner-process.judge.owner-run-refusal rejects a
@@ -191,6 +196,7 @@ runner-process.owner-run.missing-lock
 runner-process.owner-run.bad-lock-line
 runner-process.owner-run.no-images-skip
 runner-process.owner-run.identity-mismatch
+runner-process.judge.owner-run-cart-pass
 runner-process.judge.exit-mismatch
 runner-process.judge.no-report-end
 runner-process.judge.outcome-exit-disagree
