@@ -228,7 +228,11 @@ contract becomes a numbered lesson with a mechanism.
   3. One committed id, `runner-process.judge.flatwrap-shim` in the existing `tests/runner-process-tap.sh` suite, asserts that the shim's cartridge-slot digest equals the container `tools/flatwrap` wrote in the same case, and a committed stand-in that ignores its input (one flipped input byte) is shown failing that id. `ls tools/check/steps/*.sh | wc -l` still reads 38.
   4. `docs/packaging.md`'s "no host shim ships" sentence is corrected to name the source archive beside the static package - the archive carries the source of the build-only tools and of the build-only host shim and ships no built object - and agrees, sentence for sentence, with the release-decision line of `.planning/ops/RELEASE-OPS.md` section (i).
   5. `.planning/ops/PLAN-LESSONS.md` holds lesson 32 **with its mechanism**: every count gate names the file it counts, every baseline names the plan's own start commit sha and is measured there, and no verify block decides an outcome by a pipeline tail, carried by a `mutant` row in `data/expected/important-gates.ids` over an existing selftest and shown able to fail on a committed stand-in. `faults=238`, `goldens=29`, `claims=29` and `provisional=28` are unchanged.
-**Plans**: TBD (3 planned: `17-01` the seven rows and the recomputed window, `17-02` the document set and the `flatwrap-shim` id, `17-03` lesson 32 and its mechanism; one wave, serial, because `17-02` and `17-03` both touch `data/expected/`)
+**Plans**: 3 plans, one wave, serial (because `17-02` and `17-03` both touch `data/expected/`)
+Plans:
+- [ ] 17-01-PLAN.md — the seven release-records rows verified and the cost window recomputed by arithmetic at the plan's own start commit, printed before anything is priced with exactly one checkpoint line (the phase's tracer; criterion 1)
+- [ ] 17-02-PLAN.md — the eight `flatwrap` refusal tokens documented, the source-archive letter corrected in both live documents, and `runner-process.judge.flatwrap-shim` shown able to fail; carries the EV-08 acceptance flip and its thirteen toy lines (criteria 2, 3 and 4)
+- [ ] 17-03-PLAN.md — lesson 32 with the `count-gate` mechanism over an existing selftest (criterion 5)
 **Tier ceiling**: none - this phase adds no claim.
 **Cost**: 0.10 hosted cpu-s against the 21 allowance; a records cost, not a gate cost, because the window is the phase's own first deliverable.
 
