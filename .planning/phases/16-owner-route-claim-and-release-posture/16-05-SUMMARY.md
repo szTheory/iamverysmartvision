@@ -91,7 +91,8 @@ itself — never an independent oracle — and no claim rests on a handoff, a
   `H7-1`, `H7-2` and `H8-3` from earlier milestones (`handed-off`), and this phase's
   three — `H16-1` a real frontend loads the shim, `H16-2` an owner image's picture
   and sound look right, `H16-3` the owner's flat image needs no word-order guess.
-  None is evidence; none is a criterion; none is re-asked.
+  A handoff row is not evidence: none is cited by a claim, none is a phase exit
+  criterion, and none is re-asked in a later milestone.
 - **Nothing ships but the static package and the source archive** — no shared
   object, no host shim, no content byte. The release-decision line says so in
   `RELEASE-OPS.md` §(i).
