@@ -157,3 +157,5 @@ Every discuss answers, in writing, before planning:
    object, no host shim, no content*.
 5. Stale-text sweep over every recorded fact the milestone changed.
 6. Release decision as one line with the checks recomputed.
+
+**Superseded 2026-11-26 by `GUARDRAILS-v0.4.md`; its V-rows still bind where cited.**
