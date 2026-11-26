@@ -23,7 +23,7 @@ created: "2026-11-26"
 | **Config file** | `tools/gate.sh` (runner), `data/expected/gate-steps/*.ids`, `data/expected/controls/*.ids`, `data/expected/*.ids` |
 | **Quick run command** | `git ls-files > /tmp/fl && ROOT="$PWD" CHECK_DIR="$PWD/tools/check" FILELIST=/tmp/fl sh tools/check/steps/<step>.sh` |
 | **Full suite command** | `sh tools/gate.sh` (the local fast path, same as the PR gate) |
-| **Estimated runtime** | ~72 s full gate on this host (`gate-time total` 79 → 72 after the lever); 66 s at the final tree |
+| **Measured runtime** | full gate 66–147 s on this host across five `sh` runs and 172–204 s under `dash` (the host was not idle); the lever's own measured effect was `gate-time total` 79 → 72 on a quiet tree. The bound is 180 s; a loaded host exceeds it and the figure is quoted as a range, not a promise |
 
 ---
 
@@ -41,15 +41,15 @@ created: "2026-11-26"
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
 | 16-01-T1 | 01 | 1 | PKG-06 | T-16-01 | the overlap cannot hide a behavioural difference: each `step.out.<name>` compared, token line byte-identical | integration | `sh tools/gate.sh` twice, per-buffer `cmp` + filtered whole-log `cmp` | ✅ | ✅ green |
-| 16-01-T2 | 01 | 1 | PKG-06 | T-16-01 | the record states the measured before/after and what the lever is not | record | `grep -q 'gate-overlap pair=c-faults+c-tests' .planning/CI-EFFICIENCY.md` | ✅ | ✅ green |
-| 16-02-T1 | 02 | 2 | PKG-06 | T-16-02 | the route runs from the source archive and refuses a CI environment | integration | `sh tools/release-rehearse.sh --source-route` (exit 0, `124 of 124` compared) | ✅ | ✅ green |
-| 16-02-T2 | 02 | 2 | PKG-06 | T-16-02 | the mutation is refused and `exec:` stays `-` | integration + record | transcript in `RELEASE-OPS.md` §(j); `exit=14 status=IVS_E_DIGEST_MISMATCH` | ✅ | ✅ green |
-| 16-03-T1 | 03 | 3 | PKG-06 | T-16-03 | the ledger's row count is a stat counted from the file | unit (step) | `-- claims pass claims=29 provisional=28 handoffs=8` | ✅ | ✅ green |
-| 16-03-T2 | 03 | 3 | PKG-06 | T-16-03 | a handoff row is `evidence: none`, cited by no claim and no criterion | unit (step) + record | `claims-handoff-row`/`-missing`/`-unreadable` controls; `docs/handoffs.md` sections | ✅ | ✅ green |
-| 16-04-T1 | 04 | 4 | PKG-06 | T-16-04 | a **tracked** shared object is refused by name, tree left clean | integration | `files-unlisted-binary-so` on a tracked probe, witness pair, `git status` clean after | ✅ | ✅ green |
-| 16-04-T2 | 04 | 4 | PKG-06 | T-16-04 | PKG-06 accepted; package stays eleven files; release line recomputed | unit (step) | `-- files pass … prefix-files=11`; `important-gates gates=119 lines=364` | ✅ | ✅ green |
-| 16-05-T1 | 05 | 5 | PKG-06 | T-16-05 | one line on one tree under two shells and once in the container; one verdict | integration | `sh`/`dash` `cmp`-identical tails; `sh tools/gate-linux.sh` exit 0 | ✅ | ✅ green |
-| 16-05-T2 | 05 | 5 | PKG-06 | T-16-05 | the validation record is signed and the milestone's claim/handoff posture stated | record | `16-VALIDATION.md` frontmatter `status: validated`; SUMMARY section present | ✅ | ✅ green |
+| 16-01-T2 | 01 | 1 | PKG-06 | T-16-02 | the record states the measured before/after and what the lever is not | record | `grep -q 'gate-overlap pair=c-faults+c-tests' .planning/CI-EFFICIENCY.md` | ✅ | ✅ green |
+| 16-02-T1 | 02 | 2 | PKG-06 | T-16-05 | the route runs from the source archive and refuses a CI environment | integration | `sh tools/release-rehearse.sh --source-route` (exit 0, `124 of 124` compared) | ✅ | ✅ green |
+| 16-02-T2 | 02 | 2 | PKG-06 | T-16-06 | the mutation is refused and `exec:` stays `-` | integration + record | transcript in `RELEASE-OPS.md` §(j); `exit=14 status=IVS_E_DIGEST_MISMATCH` | ✅ | ✅ green |
+| 16-03-T1 | 03 | 3 | PKG-06 | T-16-10 | the ledger's row count is a stat counted from the file | unit (step) | `-- claims pass claims=29 provisional=28 handoffs=8` | ✅ | ✅ green |
+| 16-03-T2 | 03 | 3 | PKG-06 | T-16-11 | a handoff row is `evidence: none`, cited by no claim and no criterion | unit (step) + record | `claims-handoff-row`/`-missing`/`-unreadable` controls; `docs/handoffs.md` sections | ✅ | ✅ green |
+| 16-04-T1 | 04 | 4 | PKG-06 | T-16-14 | a **tracked** shared object is refused by name, tree left clean | integration | `files-unlisted-binary-so` on a tracked probe, witness pair, `git status` clean after | ✅ | ✅ green |
+| 16-04-T2 | 04 | 4 | PKG-06 | T-16-15 | PKG-06 accepted; package stays eleven files; release line recomputed | unit (step) | `-- files pass … prefix-files=11`; `important-gates gates=119 lines=364` | ✅ | ✅ green |
+| 16-05-T1 | 05 | 5 | PKG-06 | T-16-19 | one line on one tree under two shells and once in the container; one verdict | integration | `sh`/`dash` `cmp`-identical tails; `sh tools/gate-linux.sh` exit 0 | ✅ | ✅ green |
+| 16-05-T2 | 05 | 5 | PKG-06 | T-16-20 | the validation record is signed and the milestone's claim/handoff posture stated | record | `16-VALIDATION.md` frontmatter `status: validated`; SUMMARY section present | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -74,7 +74,13 @@ created: "2026-11-26"
 
 | Behavior | Requirement | Why Manual | Test Instructions |
 |----------|-------------|------------|-------------------|
-| none | — | — | All phase behaviors have automated verification. The owner's own run is a handoff row (H16-1..H16-3), not a criterion. |
+| A real frontend loads the shim (`H16-1`) | PKG-06 | Needs a real libretro frontend, which the project does not ship or run in CI | `docs/handoffs.md` H16-1 — recorded, never a criterion |
+| An owner image's picture and sound look right (`H16-2`) | PKG-06 | Needs the owner's own EXEC/GROM/cartridge and a human eye and ear (D11) | `docs/handoffs.md` H16-2 |
+| The owner's flat image needs no word-order guess (`H16-3`) | PKG-06 | Needs an owner image whose layout the project cannot know | `docs/handoffs.md` H16-3 |
+
+All three are **handoff rows with `evidence: none`**, cited by no claim and by no phase exit criterion. They
+are recorded here so the table does not claim the phase has no manual surface; they are not verification
+items and they are never re-asked in a later milestone.
 
 ---
 
@@ -87,4 +93,10 @@ created: "2026-11-26"
 - [x] Feedback latency < 120s (measured ~72 s full gate)
 - [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** approved 2026-11-26 — `gate: PASS steps=38/38 controls=404/404 faults=238/238 goldens=29 gates=119 lines=364 handoffs=8 claims=29 provisional=28 pkg-selftest=20/20 release-selftest=12/12 tests-expected=5042`, `sh` and `dash` tails `cmp`-identical at 1,520 bytes, `sh tools/gate-linux.sh` exit 0 (`gate-time total=793`, four documented host tokens differing), one checkpoint verdict `reprice`.
+**Approval:** approved 2026-11-26, against the closing line quoted in full in `STATE.md` and in
+`16-05-SUMMARY.md`: `gate: PASS steps=38/38 controls=404/404 faults=238/238 goldens=29 gates=119 lines=364
+handoffs=8 claims=29 provisional=28 pkg-selftest=20/20 release-selftest=12/12 tests-expected=5042
+tests-executed=5038 tests-skipped=4 tests-missing=0 prefix-files=11`. `sh` and `dash` final lines are
+`cmp`-identical at **1,520 bytes**; `sh tools/gate-linux.sh` exited 0 (`gate-time total=793`) differing in
+exactly the four documented host tokens (`cc`, `core-imports`, `archive`, `refs-verified`) and nothing else;
+one checkpoint verdict, `reprice`, recomputed from the last five `.planning/ci-runs.tsv` rows.

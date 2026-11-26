@@ -516,10 +516,10 @@ commit `8f017e7`. Its phase details are collapsed above.
 | 13. Rights Ledger and Enforced Claim Ceiling | 5/5 | Complete    | 2026-11-25 |
 | 14. Cartridge Route and Real-Content Conformance | 4/4 | Complete    | 2026-11-25 |
 | 15. Build-Only Host and the Fake-Frontend Harness | 3/3 | Complete    | 2026-11-26 |
-| 16. Owner Route, Claim and Release Posture | 0/TBD | Not started | — |
+| 16. Owner Route, Claim and Release Posture | 5/5 | Complete    | 2026-11-26 |
 
 **Current milestone:** v0.3.0, scoped and detailed by this roadmap on 2026-11-26.
-Phase 15 is planned in three waves and 2 of 3 plans are executed (15-01 the seam, 15-02 the guards and
-the non-member set); 15-03 is the phase close. Phase 15 is droppable under the pre-authorized fallback.
+All four phases are executed and verified. Phase 15 was droppable under the pre-authorized fallback and
+was delivered inside its priced line, so no degradation clause was triggered.
 The milestone adds zero new gate steps, faults or goldens, and at most one claim,
 `provisional`.
