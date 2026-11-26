@@ -70,3 +70,29 @@ The order of the orchestrator's actions, as the record needs them. None is an ex
 6. Fill every placeholder of the record (sections A, B, C, I and K), run the check above until it prints nothing, and run `sh tools/gate.sh` on the records branch.
 7. Mark REL-01 complete in `.planning/REQUIREMENTS.md` (the checkbox and the traceability row, with a note that stage 2 is recorded), record the release in `.planning/STATE.md` (`.planning/AUTONOMY.md` section 5, step 6) and write the CI-efficiency entry for the release workflow.
 8. Merge the records pull request; then run the milestone audit, the milestone completion on a records branch and the cleanup (`08-DISCUSS-release.md` section 5).
+
+## (i) The release-decision line for v0.3.0 (plan 15-02, GUARDRAILS-v0.3 V6 and section 7.4)
+
+The milestone close carries exactly one release-decision line, in this wording:
+
+> the release ships the static package and the source archive; no shared object, no host shim, no content
+
+Three mechanisms hold that line, and each is a committed check rather than a promise:
+
+1. `tools/check/binary-ext.txt` lists `so`, `dylib`, `dll` and `bundle`, so a shared library is binary by
+   name to the `files` step (the tree), the `release-assets` member check (an archive) and the
+   binary-by-name hygiene rule. Two controls plant a tracked `.so` and a tracked `.dylib` and must be
+   refused by name: `files-unlisted-binary-so` and `files-unlisted-binary-dylib`.
+2. The `release-assets` case `so-member` builds a synthetic archive whose own list names
+   `lib/libivs_retro.so` and requires `release-assets-binary-member: lib/libivs_retro.so`, with no
+   extra-member or missing-member finding: the binary rule does not consult the list, so a list that
+   named the object could not smuggle it in.
+3. The `pkg-install` selftest `host-so-absent` plants `lib/libivs_retro.so` in a copy of the installed
+   prefix and requires `pkg-inventory-extra: lib/libivs_retro.so`, so a future install rule on the host
+   target fails there first. The eleven-path inventory (`data/expected/pkg-install-files.ids`) is what
+   makes the absence a check; `prefix-files=11` in the gate line is the same statement at every commit.
+
+`docs/packaging.md` states the non-membership for a reader (the build-only paragraph and the release-content
+bullet), and no claim cites the object: the shim is never installed, so the installed-host tier's own
+definition does not apply (GUARDRAILS-v0.3 section 3, the Phase 15 row). Appended, never a rewrite of an
+existing section (section 2.10 of the guardrails).

@@ -18,6 +18,15 @@ files-fixture-without-manifest
 files-trademark-name
 # Plan 08-17 (D-19, T-08-39): a tracked snapshot file (extension ivsn) is a rights problem by name.
 files-unlisted-binary-ivsn
+# Plan 15-02 (TOOL-08, D-49, GUARDRAILS-v0.3 V6): the host shim is a build-only shared object, so a
+# tracked shared library is a rights-bearing, executable artifact refused by name. Two controls plant
+# one file each - a .so and a .dylib - and the files step must refuse each by name; the one extension
+# list in tools/check/binary-ext.txt carries all four shared-object extensions, so a third and a fourth
+# control would prove the same line of code again (the tools/bench precedent). No important-gates row is
+# written for either: PKG-06 stays Pending until Phase 16, and important-gates.sh refuses a row naming a
+# Pending requirement. A control needs no row to run - the runner finds it by directory and this line.
+files-unlisted-binary-so
+files-unlisted-binary-dylib
 # Plan 09-07 (EV-03 item 4): the two-root output anchoring rule pins manifest-format for an
 # output path outside fixtures/<dir>/ and outside data/.
 manifests-output-anchor
