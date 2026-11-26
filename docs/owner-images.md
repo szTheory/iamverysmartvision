@@ -52,6 +52,42 @@ The ignore patterns are `/refs/`, `*.bin`, `*.grom`, `*.img` and `*.ivsc`, and `
 2. **Owner digest lock.** The owner writes `refs/owner-images.sha256` with one line per role, a SHA-256 digest of 64 lower-case hex digits, two spaces, then `exec` or `grom` (the form of `cmake -E sha256sum`); the helper's `--record` writes it from the two images. The lock is a convenience for the owner's own reproducibility: it states which bytes the owner meant, and it states nothing about rights. The project records no digest of any EXEC or GROM image. The lock has exactly these two roles: a cartridge is not locked there, and a lock line naming `cart` is still refused as a bad line. The cartridge's identity is the container's own trailer digest, which the loader publishes as `slot.cart.sha256` and compares at load.
 3. **Core check at load.** The template scenario `data/scenarios/owner-exec-title.ivss` carries a marker comment line. The owner works on a temporary copy of the template, outside the work tree, and inserts after that marker two header lines taken from the lock: `expect-sha256 exec <digest>` and `expect-sha256 grom <digest>`. The core then compares its own digest of the loaded bytes with the stated one, so there is no gap between a read by the owner's tool and the read by the runner. A mismatch ends the run as a refusal (`unexpected-refusal`, exit 14).
 
+## The route from the source archive, in three commands
+
+A release carries a source archive, and this is the route a person has after downloading it: three commands, performed in order from the unpacked prefix, on the owner's own machine.
+It is a release-time rehearsal and never a gate step: CI does not perform it, and its transcript is in `.planning/ops/RELEASE-OPS.md` section (j).
+
+1. Unpack the archive and build it cold:
+
+```sh
+tar -xzf iamverysmartvision-<version>-source.tar.gz
+cd iamverysmartvision-<version>
+cmake --preset release
+cmake --build --preset release
+```
+
+2. Wrap the owner's flat cartridge image at the address the owner states, with the archive's own build-only wrap tool (`docs/packaging.md` names it and states its contract).
+The base is four hex digits without a prefix, `$4000` to `$FFFF`; `--word-order hi-first` is the default and `lo-first` swaps the two bytes of each word.
+The tool prints the digest of the container it wrote:
+
+```sh
+build/release/tools/flatwrap/ivs_flatwrap refs/FX-owner-flat.bin 4000 refs/FX-owner-cart.ivsc
+```
+
+3. Load the two images and the container through the helper of the next section, with its `--cart` option:
+
+```sh
+sh tools/owner-run.sh --record --cart refs/FX-owner-cart.ivsc refs/FX-owner-exec.bin refs/FX-owner-grom.bin
+```
+
+The three files live in `refs/` (the section "Where the files live" below), and the container the second command writes is the wrap tool's output: derived material of content the owner holds, in the same class as the flat file it came from, and never a tracked path.
+`--record` writes the owner digest lock from the two images and goes on with the run; it refuses to replace an existing lock, so a later run of the same files is the `--cart`-only form of the same command.
+
+The picture and the sound of such a run belong to a frontend to present, not to this route: for a scenario with a `content <role> user` line the runner refuses the frame, video, golden, audio and psg-log output options, so the route writes no file of what the images caused (the section "The template scenario and the gate" below).
+What a run shows is the owner's private observation and nothing else, and the project states no result about it.
+
+The rehearsal of this route is `sh tools/release-rehearse.sh --release --source-route`, which performs exactly these three commands against the archive it unpacks and builds, on project-made zero-filled images of the shapes above rather than on any file of the owner's.
+
 ## The helper
 
 `sh tools/owner-run.sh [--preset dev|release] [--record] [--cart <cart-image>] <exec-image> <grom-image>` does the three steps in one place.

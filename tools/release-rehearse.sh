@@ -17,7 +17,16 @@
 #      its report, and that report is compared with data/golden/demo-lamp-tone-pass.digests using a copy of
 #      the gate's own filter (route_live and route_filter below, whose comment records where the copy came
 #      from and why it stops on error). The archive name and the extraction prefix are read from the run,
-#      never written here, so a version bump needs no edit in this file;
+#      never written here, so a version bump needs no edit in this file. The same limb then performs the
+#      owner route of docs/owner-images.md on project-made bytes: it makes an 8192-byte EXEC image, a
+#      2048-byte GROM image and an 8192-byte flat image with dd from the zero device inside the
+#      extraction's refs/ directory, wraps the flat image with the archive's own ivs_flatwrap at base 4000
+#      and the default hi-first word order, and loads the three through the archive's own
+#      tools/owner-run.sh with --record and --cart. Nothing of the owner's is read and nothing is written
+#      into the repository. The route's pass path is proved able to fail in the same run: one byte of the
+#      EXEC image is flipped after --record and the same --cart run (no second --record, which the helper
+#      refuses with exit 2) must be refused at load. A CI environment is refused with exit 2, never
+#      skipped, because the helper refuses it by design and a route silently left out reads as a pass;
 #   5. the two install archives are compared and the result is printed: "install-archive: equal" for a
 #      byte-equal pair, "install-archive: DIFFERENT" (exit 1) otherwise. One host effect is named and
 #      bounded: on Darwin the install step re-runs ranlib, which restamps the time field of the first
@@ -32,14 +41,16 @@
 #              header macros. Without it the section is not required (changelog-section: not required).
 #   --no-gate  both dry runs reuse the existing builds.
 #   --source-route  also rehearse the source route (step 4): the archive a release carries is unpacked,
-#              built cold and compared with the committed golden. Release-time only: it runs no gate step,
+#              built cold, compared with the committed golden, and then taken through the three commands of
+#              the owner route - wrap a flat image, load the EXEC, GROM and container images, and the
+#              one-byte mutation that must be refused at load. Release-time only: it runs no gate step,
 #              adds no control and moves no count, and it writes nothing into the repository.
 # Every temporary path is under one mktemp directory removed on exit. The tar mode that ran is printed.
 # Exit: 0 ok, 1 a check failed, 2 usage error or a missing tool.
 LC_ALL=C; export LC_ALL
 
 usage() {
-  sed -n '3,38p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '3,49p' "$0" | sed 's/^# \{0,1\}//'
 }
 refuse() { printf 'rehearse: refused: %s\n' "$1" >&2; exit 2; }
 fail() { printf 'rehearse: FAIL: %s\n' "$1"; exit 1; }
@@ -85,7 +96,7 @@ here=$(cd "$(dirname "$0")" && pwd) || exit 2
 ROOT=$(cd "$here/.." && pwd) || exit 2
 self="$here/$(basename "$0")"
 cd "$ROOT" || exit 2
-for tool in git tar gzip awk cmake cmp mktemp find sort; do
+for tool in git tar gzip awk cmake cmp dd mktemp find sort; do
   command -v "$tool" > /dev/null 2>&1 || refuse "$tool not found"
 done
 
@@ -196,6 +207,96 @@ if [ "$srcroute" -eq 1 ]; then
   printf 'rehearse: source-route: %s, golden match (report %s lines, %s of %s compared), prefix %s\n' \
     "$src_a" "$(wc -l < "$rep" | tr -d ' ')" "$(wc -l < "$work/route/want" | tr -d ' ')" \
     "$(wc -l < "$work/route/have" | tr -d ' ')" "$prefix"
+
+  # The owner route, in the three commands a person performs from this archive (plan 16-02, PKG-06): wrap a flat
+  # image with the archive's own ivs_flatwrap, then load the EXEC, GROM and container images through the archive's
+  # own tools/owner-run.sh --cart. Every input below is made here from the zero device, so no owner file is read
+  # and no byte of one is written anywhere; every path is inside this run's workspace, which the EXIT trap removes.
+  # The environment is refused rather than skipped: the helper refuses CI by design, and a rehearsal that quietly
+  # omitted its own route would be the not-run-read-as-a-pass defect of PLAN-LESSONS 24.
+  if [ -n "${CI:-}" ] || [ -n "${GITHUB_ACTIONS:-}" ]; then
+    refuse 'source-route: CI or GITHUB_ACTIONS is set, and the owner route is never rehearsed in CI'
+  fi
+  route=$work/route/$prefix
+  refs=$route/refs
+  mkdir "$refs" || fail "owner-route: cannot make $refs"
+  # The helper refuses a TMPDIR inside the work tree, so the route's temporary directory is a sibling of the
+  # extraction, inside this run's workspace and outside the archive's prefix.
+  mkdir "$work/route-tmp" || fail "owner-route: cannot make the route's temporary directory"
+  show() { sed 's/^/  /' "$1" | tail -n 25; }
+  dd if=/dev/zero of="$refs/e.bin" bs=8192 count=1 2> /dev/null \
+    || fail 'owner-route: cannot make the project-made 8192-byte EXEC image'
+  dd if=/dev/zero of="$refs/g.bin" bs=2048 count=1 2> /dev/null \
+    || fail 'owner-route: cannot make the project-made 2048-byte GROM image'
+  dd if=/dev/zero of="$refs/flat.bin" bs=8192 count=1 2> /dev/null \
+    || fail 'owner-route: cannot make the project-made 8192-byte flat image'
+  sized() { [ -f "$2" ] && [ "$(wc -c < "$2" | tr -d ' ')" = "$3" ] \
+    || fail "owner-route: the project-made $1 image is not $3 bytes"; }
+  sized exec "$refs/e.bin" 8192
+  sized grom "$refs/g.bin" 2048
+  sized flat "$refs/flat.bin" 8192
+  wrap=$route/build/release/tools/flatwrap/ivs_flatwrap
+  [ -x "$wrap" ] || fail 'owner-route: the archive built no build/release/tools/flatwrap/ivs_flatwrap'
+  st=0
+  digest=$("$wrap" "$refs/flat.bin" 4000 "$refs/c.ivsc" 2> "$work/route/wrap.err") || st=$?
+  if [ "$st" -ne 0 ]; then
+    show "$work/route/wrap.err"
+    fail "owner-route: ivs_flatwrap exited $st"
+  fi
+  case $digest in
+    '' | *[!0-9a-f]*) fail "owner-route: ivs_flatwrap printed no lower-case hex digest ('$digest')" ;;
+  esac
+  [ "${#digest}" -eq 64 ] || fail "owner-route: ivs_flatwrap printed a digest of ${#digest} characters, not 64"
+  printf 'rehearse: owner-route: wrap base=4000 word-order=hi-first digest=%s\n' "$digest"
+  run=$route/tools/owner-run.sh
+  [ -f "$run" ] || fail 'owner-route: the archive holds no tools/owner-run.sh'
+  rep1=$work/route/owner-route.report
+  st=0
+  TMPDIR=$work/route-tmp sh "$run" --record --cart "$refs/c.ivsc" "$refs/e.bin" "$refs/g.bin" \
+    > "$rep1" 2> "$work/route/owner-route.err" < /dev/null || st=$?
+  if [ "$st" -ne 10 ]; then
+    show "$rep1"
+    show "$work/route/owner-route.err"
+    fail "owner-route: the run with the container exited $st, expected 10"
+  fi
+  [ ! -s "$work/route/owner-route.err" ] || { show "$work/route/owner-route.err"; fail 'owner-route: the run with the container wrote on stderr'; }
+  [ "$(sed -n '1p' "$rep1")" = "OWNER-LOCAL RUN (D11): inputs are the owner's, not redistributable, not run in CI, not evidence, no claim" ] \
+    || { show "$rep1"; fail 'owner-route: the first report line is not the owner-local banner'; }
+  grep -q -x -F 'slot.exec.loaded 1' "$rep1" \
+    || { show "$rep1"; fail 'owner-route: the report does not say slot.exec.loaded 1'; }
+  grep -q -x -F 'slot.cart.loaded 1' "$rep1" \
+    || { show "$rep1"; fail 'owner-route: the report does not say slot.cart.loaded 1'; }
+  grep -q -x -F "slot.cart.sha256 $digest" "$rep1" \
+    || { show "$rep1"; fail 'owner-route: slot.cart.sha256 is not the digest ivs_flatwrap printed'; }
+  # The label is the whole point of the project-made inputs: nothing in this run may read as a real-EXEC result.
+  grep -q -x -F 'exec: -' "$rep1" \
+    || { show "$rep1"; fail 'owner-route: the report exec: label is not -'; }
+  grep -q -x -F 'outcome guest-fail' "$rep1" \
+    || { show "$rep1"; fail 'owner-route: the outcome on these bytes is not guest-fail'; }
+  grep -q -x -F 'exit.code 10' "$rep1" \
+    || { show "$rep1"; fail 'owner-route: exit.code is not 10'; }
+  grep -q -x -F 'outcome.detail stop step=1 line=24 expected=target got=halted' "$rep1" \
+    || { show "$rep1"; fail "owner-route: outcome.detail is '$(sed -n 's/^outcome\.detail //p' "$rep1")'"; }
+  printf 'rehearse: owner-route: run exit=10 outcome=guest-fail exec-label=- cart-digest-matched=yes\n'
+  # The pass path is proved able to fail in the same run: one byte of the EXEC image after --record, and the same
+  # --cart run must be refused at load. A second --record is refused with exit 2 by design, so the mutation run is
+  # the --cart-only form - which is also the form the gate's own runner-process case performs.
+  printf '\001' | dd of="$refs/e.bin" bs=1 seek=0 conv=notrunc 2> /dev/null \
+    || fail 'owner-route: cannot write the one-byte EXEC mutation'
+  rep2=$work/route/owner-route-mutation.report
+  st=0
+  TMPDIR=$work/route-tmp sh "$run" --cart "$refs/c.ivsc" "$refs/e.bin" "$refs/g.bin" \
+    > "$rep2" 2> "$work/route/owner-route-mutation.err" < /dev/null || st=$?
+  if [ "$st" -ne 14 ]; then
+    show "$rep2"
+    show "$work/route/owner-route-mutation.err"
+    fail "owner-route: the mutated EXEC run exited $st, expected 14"
+  fi
+  grep -q '^outcome\.detail load-refused role=exec status=IVS_E_DIGEST_MISMATCH' "$rep2" \
+    || { show "$rep2"; fail 'owner-route: the mutated EXEC run does not name the digest mismatch at load'; }
+  grep -q -x -F 'cpu.run_state unreset' "$rep2" \
+    || { show "$rep2"; fail 'owner-route: the mutated EXEC run executed the machine'; }
+  printf 'rehearse: owner-route: mutation exit=14 status=IVS_E_DIGEST_MISMATCH run-state=unreset\n'
 fi
 
 # 5: the install archives.
