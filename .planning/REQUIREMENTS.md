@@ -18,7 +18,7 @@ below is a hypothesis until delivered and verified.
 
 ### Evidence and records
 
-- [ ] **EV-08**: The milestone starts on a measured ledger rather than a quoted one: the hosted cost window (the last-five `cpu_s`, `build_s` and `gate_s` medians, with the token line) is recomputed by arithmetic from `.planning/ci-runs.tsv` at the plan's own start commit and **before** anything is priced — the seven release-records rows that were outstanding at the milestone opening are recorded in that file at the opening commit and verified, never re-appended; the eight `flatwrap` refusal tokens are documented under `docs/`; one committed test id guards the `flatwrap`-to-shim join and is shown able to fail; the "no host shim ships" sentence is corrected to name the source archive; and the count-gate contract — every count gate names the file it counts, every baseline is measured at the plan's own start commit — is recorded as a numbered lesson **with a mechanism**.
+- [x] **EV-08**: The milestone starts on a measured ledger rather than a quoted one: the hosted cost window (the last-five `cpu_s`, `build_s` and `gate_s` medians, with the token line) is recomputed by arithmetic from `.planning/ci-runs.tsv` at the plan's own start commit and **before** anything is priced — the seven release-records rows that were outstanding at the milestone opening are recorded in that file at the opening commit and verified, never re-appended; the eight `flatwrap` refusal tokens are documented under `docs/`; one committed test id guards the `flatwrap`-to-shim join and is shown able to fail; the "no host shim ships" sentence is corrected to name the source archive; and the count-gate contract — every count gate names the file it counts, every baseline is measured at the plan's own start commit — is recorded as a numbered lesson **with a mechanism**.
 
 ### Tooling and integration
 
@@ -85,7 +85,7 @@ requirement appears in exactly one phase.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| EV-08 | Phase 17 | Pending |
+| EV-08 | Phase 17 | Complete |
 | TOOL-02 | Phase 18 | Pending |
 | TOOL-09 | Phase 18 | Pending |
 | VID-07 | Phase 19 | Pending |
@@ -106,5 +106,6 @@ appended, rivals named") **is** `Complete` for VID-07 on its own stated terms.
 
 ---
 *Requirements defined: 2026-11-26*
-*Last updated: 2026-11-26 at the v0.4.0 opening, with the five requirements
-minted from the frozen scope record and mapped to Phases 17 to 20*
+*Last updated: 2026-11-26 by plan 17-02, with EV-08 Complete once its one
+committed join id, its registry row and the corrected source-archive letter
+landed in one commit*

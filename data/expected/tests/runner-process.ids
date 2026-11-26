@@ -239,6 +239,7 @@ runner-process.refuse-user.psg-log-out
 runner-process.refuse-user.audio-wav
 runner-process.cart-user.refuse-derived
 runner-process.judge.flatwrap-roundtrip
+runner-process.judge.flatwrap-shim
 runner-process.refpcm.wav-written
 runner-process.refpcm.diag-ctrl-psg-pass
 runner-process.listen-demo.refuses-user

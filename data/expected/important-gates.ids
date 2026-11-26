@@ -618,3 +618,11 @@ release-posture control files-unlisted-binary-dylib PKG-06
 # selftest inventories or a `<suite>.judge.<slug>`/`<suite>.mutant.<slug>` test id, and a name outside
 # those inventories would make this row important-gates-unknown-id.
 release-posture mutant host-so-absent PKG-06
+# cart-role (plan 17-02, EV-08, criterion 3): the flatwrap-to-shim join. The harness's digest.images for the
+# container the wrap tool wrote equals the runner's digest.images for it, and the runner's slot.cart.sha256
+# equals the digest the tool printed; one flipped input byte must move both, and the committed stand-in that
+# replays the FIRST container's lines against the SECOND container is refused with join-images. The
+# same-input-twice stand-in is therefore the case's own second container, judged by the same shim_join, so the
+# must-fail demonstration is repeated on every gate run instead of once. The gate name is the existing
+# cart-role: no new gate name is minted, and no new fault, step or golden is produced.
+cart-role mutant runner-process.judge.flatwrap-shim EV-08

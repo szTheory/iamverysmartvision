@@ -1848,6 +1848,137 @@ else
 fi
 result runner-process.judge.flatwrap-roundtrip
 
+# The wrap tool's container digested by the shim AND by the runner (plan 17-02, EV-08, criterion 3, W9). The join:
+# both processes read the same container the wrap tool wrote, so the harness's `digest.images` for it must equal the
+# runner's `digest.images` for it, and the runner's `slot.cart.sha256` must equal the digest the tool printed. The
+# IMAGES domain serialises slot.cart.sha256 (core/src/machine/machine_digest.c), which is why no slot accessor is
+# added: D-52 forbids one, and no new golden is needed for the join.
+#
+# Five limbs, each its own finding, and no digest value is typed: every limb is a relation between values observed
+# in this case, so a changed container format is not a test edit.
+#   (1) the harness accepted container A and its digest.images is compared at a positive frame count;
+#   (2) the runner accepted container A, its digest.images equals the harness's, and its slot.cart.sha256 equals
+#       the digest the tool printed;
+#   (3) after ONE flipped input byte, both hold again for container B;
+#   (4) both values MOVE between A and B (join-immobile), so an equality that ignored its input cannot pass;
+#   (5) the committed stand-in built below is REFUSED by the same shim_join (join-images).
+#
+# The two content directories hold a copy of boot-stub-2.exec and the tool's container named lamp-tone.ivsc, because
+# the harness reads those two literal names (tests/host/ivs_host_harness.c) and changing them would need new host
+# surface. The scenario, the flat input, both content directories and every report live under this run's mktemp
+# directory: nothing is written into the work tree, and the second wrap writes a NEW path because
+# flatwrap-output-exists refuses an existing one. The `exec:` label names the project boot stub and says in words
+# that it is not an EXEC, so no line can read as a real-EXEC result.
+#
+# One id, not two: plan 15's precedent for the same kind of join minted two extra committed ids (host-vacuous,
+# host-digest-diff), and this phase's locked decision is one id at 0.10 cpu-s. The fifth limb reaches the same
+# property - a stand-in that ignores its input, committed in the same commit, refused by the same check - at zero
+# extra ids and zero extra process launches, and it is re-demonstrated on every gate run rather than once.
+: > "$tmp/why"
+ok=1
+# shim_join <harness-out> <runner-out> <tool-digest> <token>: appends findings to the current why target, each
+# prefixed by <token>, and returns non-zero when it appended one. The prefix is `join`, so the three findings are
+# join-frames, join-images and join-cart-digest.
+shim_join() {
+  _sj_h=$1; _sj_r=$2; _sj_d=$3; _sj_t=$4
+  _sj_rc=0
+  _sj_f=$(sed -n 's/^frames //p' "$_sj_h" | head -n 1)
+  case $_sj_f in
+    '' | *[!0-9]*) why "$_sj_t-frames" "the harness reported no frame count ('$_sj_f'), so the drive cannot be judged"; _sj_rc=1 ;;
+    *) [ "$_sj_f" -gt 0 ] || { why "$_sj_t-frames" "frames $_sj_f"; _sj_rc=1; } ;;
+  esac
+  _sj_hi=$(sed -n 's/^digest[.]images //p' "$_sj_h" | head -n 1)
+  _sj_ri=$(sed -n 's/^digest[.]images //p' "$_sj_r" | head -n 1)
+  if [ -z "$_sj_hi" ] || [ -z "$_sj_ri" ] || [ "$_sj_hi" != "$_sj_ri" ]; then
+    why "$_sj_t-images" "the harness digested '${_sj_hi:-missing}' and the runner '${_sj_ri:-missing}': the two processes did not digest the same container"
+    _sj_rc=1
+  fi
+  _sj_cs=$(sed -n 's/^slot[.]cart[.]sha256 //p' "$_sj_r" | head -n 1)
+  if [ -z "$_sj_d" ] || [ "$_sj_cs" != "$_sj_d" ]; then
+    why "$_sj_t-cart-digest" "slot.cart.sha256 '${_sj_cs:-missing}', the tool printed '${_sj_d:-missing}'"
+    _sj_rc=1
+  fi
+  return "$_sj_rc"
+}
+if [ -z "$flatwrap" ]; then
+  ok=0; why flatwrap-shim 'the sixth argument (ivs_flatwrap) is missing: the join cannot be run'
+elif [ -z "$shim" ]; then
+  ok=0; why flatwrap-shim 'the seventh argument (libivs_retro) is missing: the join cannot be run'
+elif [ -z "$harness" ]; then
+  ok=0; why flatwrap-shim 'the eighth argument (ivs_host_harness) is missing: the join cannot be run'
+else
+  fwshim="$tmp/fwshim"
+  fwa="$fwshim/a"; fwb="$fwshim/b"; fwf="$fwshim/fakes"
+  mkdir -p "$fwa" "$fwb" "$fwf" || exit 1
+  fwflat="$tmp/fwshim-flat.bin"
+  dd if=/dev/zero of="$fwflat" bs=8192 count=1 2> /dev/null || exit 1
+  cp "$images/boot-stub-2.exec" "$fwa/boot-stub-2.exec" || exit 1
+  cp "$images/boot-stub-2.exec" "$fwb/boot-stub-2.exec" || exit 1
+  fwscn="$fwshim/flatwrap-shim.ivss"
+  printf 'ivss 1\nid flatwrap-shim\nprofile intv-2609-ntsc-family-p1\ncontent exec boot-stub-2\ncontent grom zero-grom\ncontent cart lamp-tone.ivsc\nrun-to 1000 ticks\n' \
+    > "$fwscn" || exit 1
+  # (1) container A: the tool wraps 8192 zero bytes at base 4000, and the shim digests the result.
+  fwd1=$("$flatwrap" "$fwflat" 4000 "$fwa/lamp-tone.ivsc" 2> "$tmp/fwshim-wrap1.err") \
+    || { ok=0; why flatwrap-shim "the first wrap failed: $(sed -n '1p' "$tmp/fwshim-wrap1.err")"; }
+  run_one "$tmp" fwshim-a-harness "$harness" "$shim" "$fwa"
+  if [ "$hung" -eq 1 ] || [ "$rc" -ne 0 ]; then
+    ok=0; why flatwrap-shim "the harness on container A exited $rc (hung $hung): $(sed -n 's/^fail //p' "$tmp/runs/fwshim-a-harness.out" | head -n 1)"
+  fi
+  # (2) the runner on the same container, judged as an ordinary pass run.
+  run_one "$tmp" fwshim-a-run "$ivs_run" --content-dir "$fwa" "$fwscn"
+  judge fwshim-a-run 0 pass - "" || ok=0
+  if [ "$ok" -eq 1 ]; then
+    shim_join "$tmp/runs/fwshim-a-harness.out" "$tmp/runs/fwshim-a-run.out" "$fwd1" join || ok=0
+    grep -q -F -e 'exec: project boot stub contract 2, not an EXEC sha256=' "$tmp/runs/fwshim-a-run.out" \
+      || { ok=0; why flatwrap-shim 'the report does not carry the boot-stub label on its exec: line, so a line could read as a real-EXEC result'; }
+  fi
+  # (3) ONE flipped input byte at offset 1 (the first word's high half, still at most 03FF so the tool's word-range
+  # rule stays satisfied), wrapped into a NEW path and run the same way.
+  printf '\001' | dd of="$fwflat" bs=1 seek=1 conv=notrunc 2> /dev/null || exit 1
+  fwd2=$("$flatwrap" "$fwflat" 4000 "$fwb/lamp-tone.ivsc" 2> "$tmp/fwshim-wrap2.err") \
+    || { ok=0; why flatwrap-shim "the second wrap failed: $(sed -n '1p' "$tmp/fwshim-wrap2.err")"; }
+  run_one "$tmp" fwshim-b-harness "$harness" "$shim" "$fwb"
+  if [ "$hung" -eq 1 ] || [ "$rc" -ne 0 ]; then
+    ok=0; why flatwrap-shim "the harness on container B exited $rc (hung $hung): $(sed -n 's/^fail //p' "$tmp/runs/fwshim-b-harness.out" | head -n 1)"
+  fi
+  run_one "$tmp" fwshim-b-run "$ivs_run" --content-dir "$fwb" "$fwscn"
+  judge fwshim-b-run 0 pass - "" || ok=0
+  if [ "$ok" -eq 1 ]; then
+    shim_join "$tmp/runs/fwshim-b-harness.out" "$tmp/runs/fwshim-b-run.out" "$fwd2" join || ok=0
+  fi
+  # (4) liveness: both values move with the input byte, so the equalities above are not satisfied by a stand-in that
+  # ignores what it is given.
+  if [ "$ok" -eq 1 ]; then
+    fwi_a=$(sed -n 's/^digest[.]images //p' "$tmp/runs/fwshim-a-harness.out" | head -n 1)
+    fwi_b=$(sed -n 's/^digest[.]images //p' "$tmp/runs/fwshim-b-harness.out" | head -n 1)
+    if [ -z "$fwd1" ] || [ -z "$fwd2" ] || [ "$fwd1" = "$fwd2" ] \
+        || [ -z "$fwi_a" ] || [ "$fwi_a" = "$fwi_b" ]; then
+      ok=0; why join-immobile "the flipped input byte left the tool digest at '${fwd1:-missing}'/'${fwd2:-missing}' and digest.images at '${fwi_a:-missing}'/'${fwi_b:-missing}'"
+    fi
+  fi
+  # (5) the committed stand-in: a harness report built here from the FIRST container's lines, judged against the
+  # SECOND container's real runner report and the second container's tool digest. It must be refused with
+  # join-images; an acceptance records judge-vacuous, because then the comparison proves nothing. The judgement runs
+  # in a subshell with its own why target, so the stand-in's expected finding cannot set this case's verdict.
+  if [ "$ok" -eq 1 ]; then
+    grep -E '^(frames|digest[.])' "$tmp/runs/fwshim-a-harness.out" > "$fwf/stand-in.out" || exit 1
+    if [ ! -s "$fwf/stand-in.out" ]; then
+      ok=0; why judge-vacuous 'the stand-in was built from no lines of the first harness report'
+    fi
+  fi
+  if [ "$ok" -eq 1 ]; then
+    _fw_sj=0
+    ( whytarget="$fwf/stand-in.why"; : > "$whytarget"; \
+      shim_join "$fwf/stand-in.out" "$tmp/runs/fwshim-b-run.out" "$fwd2" join ) || _fw_sj=$?
+    if [ "$_fw_sj" -eq 0 ]; then
+      ok=0; why judge-vacuous 'shim_join accepted the stand-in that replays the first container against the second'
+    elif ! grep -q -e '^join-images: ' "$fwf/stand-in.why"; then
+      ok=0; why judge-wrong-reason "the stand-in was refused, but not with join-images: $(sed -n '1p' "$fwf/stand-in.why")"
+    fi
+  fi
+fi
+result runner-process.judge.flatwrap-shim
+
 # Operator WAV (plan 05-10, D-20, D-21, T-05-26): the same stand-in under --audio-wav, into the mktemp directory.
 # By hand: the report ends with refpcm.rate (48000), refpcm.frames and refpcm.sha256 right before report.end;
 # the file is 44 + 2 x frames bytes (a mono 16-bit RIFF/WAVE file), begins with the four bytes RIFF and the

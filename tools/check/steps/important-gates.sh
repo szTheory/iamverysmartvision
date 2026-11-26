@@ -89,6 +89,14 @@
 #            PKG-96 line in that commit. Plan 16-04's own committed-direction probe - a tracked
 #            probe.so refused as files-unlisted-binary with probe.txt at the same place not refused -
 #            is not a row here: it is a throwaway check on the real tree, not a committed mechanism)
+#   Phase 17 EV-08 plan 17-02 (the flatwrap-to-shim join, one row under the existing `cart-role` gate name:
+#            a `mutant` row naming the committed runner-process id runner-process.judge.flatwrap-shim, whose
+#            five limbs join the harness's digest.images to the runner's and the runner's slot.cart.sha256 to
+#            the digest the wrap tool printed, move both values with one flipped input byte, and refuse the
+#            committed stand-in that replays the first container against the second. The case is a new id in
+#            an existing suite, not a new step: zero new faults, zero new steps, and no new gate name. The row
+#            and the EV-08 flip land in one commit for the same two-direction reason as Phases 14 to 16, and
+#            all ten toy registries and the three toy requirement records gain their EV-97 line in that commit)
 # Resolution of <id> by mechanism:
 #   fault    first column of any data/expected/faults/*.ids (judged by faults-verdict);
 #   control  first column of any data/expected/controls/*.ids (run by tools/check/run-controls.sh);
