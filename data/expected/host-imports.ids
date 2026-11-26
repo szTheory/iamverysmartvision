@@ -1,0 +1,18 @@
+# The host shim's import allowlist (plan 15-02, TOOL-08, D-01, D-35): the names libivs_retro may import
+# BEYOND tools/check/core-symbols-allow.txt. Read by tools/check/host-symbols.sh, which subtracts this
+# file, core-symbols-allow.txt and every --allow-prefix from the object's undefined names; whatever is
+# left is refused by name (host-symbols-import), so "the shim opens no file" is a static fact and not a
+# promise: fopen, open, read and stat are untouched by every prefix the call site passes.
+# The allocator is here for one reason: the core takes no allocator (D-01), so the shim allocates the
+# instance storage and aligns it by hand, exactly as runner/exec.c's ex_create does, and it owns the
+# three output buffers and the frame/audio staging blocks it hands to the host callbacks.
+# NEVER add a filesystem, clock, environment, thread, randomness, assert, abort or libm name to this
+# list: a name added here is a second content route or a host dependency the object must not have.
+# malloc: the instance storage block (aligned by hand), the three run buffers and the staging blocks.
+malloc
+# calloc: the harness-side zero GROM is not here; this is for zeroed staging where a memset would do two passes.
+calloc
+# realloc: the run buffers grow to the documented per-call capacity formulas, never to a guess.
+realloc
+# free: every block above is released by retro_deinit and by a real retro_unload_game teardown.
+free

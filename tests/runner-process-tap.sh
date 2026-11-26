@@ -2264,6 +2264,43 @@ else
 fi
 result runner-process.host.digests
 
+# runner-process.host.exports (plan 15-02, TOOL-08, D-48, D-35): the export surface refused by name, in both
+# directions and on both platforms. tools/check/host-symbols.sh compares the object's exported set against
+# data/expected/host-symbols.ids and its undefined set against core-symbols-allow.txt plus data/expected/host-imports.ids.
+# The three sanitizer prefixes are passed HERE, at the call site, exactly as tests/CMakeLists.txt passes them to
+# core-symbols-tap.sh and never baked into the script: they are a property of the target that links ivs_san. The
+# second direction is proved LIVE without a second build: a scratch copy of the ids file with one name appended must
+# be refused, and refused by that name - on GNU's linker an export-list name nothing defines is accepted silently, so
+# this limb is the only detector there.
+: > "$tmp/why"
+ok=1
+if [ -z "$shim" ]; then
+  ok=0; why host-shim 'the seventh argument (libivs_retro) is missing: the export case cannot be run'
+else
+  check_sym="$root/tools/check/host-symbols.sh"
+  if [ ! -f "$check_sym" ]; then
+    ok=0; why host-exports "no $check_sym"
+  else
+    CHECK_DIR="$root/tools/check" ROOT="$root" sh "$check_sym" --allow-prefix __asan_ --allow-prefix __ubsan_ \
+      --allow-prefix __sanitizer_ "$shim" > "$tmp/runs/host-symbols.out" 2>&1
+    if ! grep -q -x -F -e '-- host-symbols pass exported=9 imports=0' "$tmp/runs/host-symbols.out"; then
+      ok=0
+      why host-exports "$(grep -m 1 -e '^-- FAIL ' "$tmp/runs/host-symbols.out")"
+    fi
+    awk '/^#/ { next } NF { print $1 }' "$root/data/expected/host-symbols.ids" > "$tmp/host-extra.ids"
+    printf '%s\n' ivs_not_defined >> "$tmp/host-extra.ids"
+    if CHECK_DIR="$root/tools/check" ROOT="$root" sh "$check_sym" --allow-prefix __asan_ --allow-prefix __ubsan_ \
+      --allow-prefix __sanitizer_ "$shim" "$tmp/host-extra.ids" > "$tmp/runs/host-symbols-extra.out" 2>&1; then
+      ok=0
+      why host-exports-live 'the checker accepted an ids list carrying a name the object does not export'
+    elif ! grep -q -x -F -e '-- FAIL host-symbols-missing: ivs_not_defined' "$tmp/runs/host-symbols-extra.out"; then
+      ok=0
+      why host-exports-live "the checker failed, but not by the appended name: $(grep -m 1 -e 'FAIL' "$tmp/runs/host-symbols-extra.out")"
+    fi
+  fi
+fi
+result runner-process.host.exports
+
 # Judge self-controls (D-23, T-04-59): the same checks run against wrong runners, shell scripts
 # in the temp dir that replay this run's recorded reports with one defect each. A control passes
 # only when the check fails with a finding of its intended token.

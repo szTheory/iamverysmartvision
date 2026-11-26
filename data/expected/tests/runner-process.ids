@@ -61,6 +61,12 @@
 #   lines it printed to equal data/golden/demo-lamp-tone-pass.digests byte for byte under exactly the two comparisons
 #   check_one_golden makes: the sorted line set and the observed domain set. A missing argument is `not ok` with that
 #   reason, never a skip, so a configuration without the object cannot pass.
+#   runner-process.host.exports runs tools/check/host-symbols.sh over the same object: the exported set equals
+#   data/expected/host-symbols.ids in BOTH directions (a listed name the object does not export, an exported name the
+#   list does not carry), no exported name carries a palette word, and every undefined name is in
+#   core-symbols-allow.txt or data/expected/host-imports.ids once the three sanitizer prefixes are subtracted. The
+#   missing-name direction is proved live inside the case: a scratch ids copy with one name appended must be refused
+#   with `-- FAIL host-symbols-missing: ivs_not_defined`.
 runner-process.scenario.diag-boot-pass
 runner-process.scenario.guest-assert-mismatch
 runner-process.scenario.timeout-budget
@@ -218,3 +224,4 @@ runner-process.outcomes-consistent
 runner-process.outcomes-covered
 runner-process.watchdog
 runner-process.host.digests
+runner-process.host.exports
