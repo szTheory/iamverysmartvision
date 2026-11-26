@@ -4,17 +4,17 @@ milestone: v0.4.0
 milestone_name: Inspectable Machine, One Default Decided
 current_phase: 17
 current_phase_name: Records, Cost Window and the Count-Gate Contract
-status: planning
-stopped_at: Phase 16 complete — all phases complete
-last_updated: "2026-11-26T19:57:54.072Z"
+status: executing
+stopped_at: "Completed 17-01-PLAN.md — the opening cost window recomputed at 21d023c (cpu_s 572, build_s 49, gate_s 164 against 367/34/115), the seven release-records rows verified once each, the 0.11 priced addition charged, one checkpoint: reprice"
+last_updated: "2026-11-26T20:19:22.722Z"
 last_activity: 2026-11-26
-last_activity_desc: Milestone v0.4.0 requirements and roadmap defined
-state_head: 708eea4f0bc75f81ed6fe3b0490dd16f7187909e
+last_activity_desc: Plan 17-01 completed — the recomputed cost window and the count-gate contract
+state_head: 99df1e3b0e0c8ea58eb3b2e1e1786e7a1b6825d8
 progress:
   total_phases: 4
   completed_phases: 8
   total_plans: 3
-  completed_plans: 0
+  completed_plans: 1
 ---
 
 # Project State
@@ -29,10 +29,11 @@ See: .planning/PROJECT.md (updated 2026-11-26)
 
 ## Current Position
 
-Phase: 17 (Records, Cost Window and the Count-Gate Contract) — READY TO EXECUTE
-Plan: 0 of about 3
-Status: Defining requirements is complete; ready for discuss-phase 17
-Last activity: 2026-11-26 - Milestone v0.4.0 requirements and roadmap defined
+Phase: 17 (Records, Cost Window and the Count-Gate Contract) — IN PROGRESS
+Current Plan: 2
+Total Plans in Phase: 3
+Status: Plan 17-01 complete — the opening cost window recomputed by arithmetic, the 0.11 priced addition charged against the 21 allowance, one `checkpoint: reprice` recorded
+Last activity: 2026-11-26 - Plan 17-01 completed: the recomputed cost window and the count-gate contract
 
 
 ### Planning overrides recorded by the autonomous run
@@ -278,6 +279,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | Phase 16 P02 | 21 min | 2 tasks | 3 files |
 | Phase 16 P03 | 30min | 2 tasks | 8 files |
 | Phase 16 P04 | 15min | 2 tasks | 17 files |
+| Phase 17 P01 | 19min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -627,6 +629,7 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 16]: The ledger's row count is a stat on the claims pass line (handoffs=<n>), counted from the file, not a check and not a control: the pinned id set and dispositions are the mechanism, and a control of the count would prove the count rather than the ledger.
 - [Phase 16]: 16-04: the release-assets so-member case is deliberately not registered as a row - a mutant row resolves only through the three selftest inventories or a <suite>.judge.<slug>/<suite>.mutant.<slug> test id, so registering it would make the row important-gates-unknown-id; the archive surface is named in RELEASE-OPS section (i.1) and in the row comment instead
 - [Phase 16]: 16-05: checkpoint: reprice (cpu_s 368 366 359 441 352, median 366; build_s 35 34 34 38 33, median 34; gate_s 122 115 120 145 115, median 120; priced addition 0.4; allowance 21). Recomputed by arithmetic from the last five `.planning/ci-runs.tsv` rows (45723269901, 45747709457, 45751979661, 45778926664, 45779277467), never quoted: the frozen 361/34/118 figures are stale by measurement, by +5/0/+2. `discharged-within-allowance` is not reachable because 366 > 361 + 0.4 = 361.4, by 4.6. `lever-required` is not reached because the cumulative priced total is 5.2 of 21 (2.0 + 1.3 + 1.5 + 0.4; the four recorded actuals sum to 5.02) and this phase's actual addition is 0.015 against the 0.4 it priced - 0.385 under, so no line overran by 25 percent. The median moved more than the priced addition while the token line is exactly where the five plans predicted (only the four entitled growth gates moved: `gates` 118 to 119, `lines` 361 to 364, `handoffs` 5 to 8, toy 47/50 to 48/51), so reprice is what the rule names - a runner event, no lever invented. `steps=38/38` is an invariant, not a target. container: one run, `gate: PASS`, `gate-linux: exit 0`, `gate-time total=793`, the four documented host tokens differing (cc=GNU, core-imports=5, archive=sha256, refs-verified=0/4) and no other token. Two-shell: `sh` and `dash` final lines `cmp` clean at 1,520 bytes each (`gate-time total=104` and `204`).
+- [Phase 17]: 17-01: checkpoint: reprice (cpu_s 572, build_s 49, gate_s 164 from the last five .planning/ci-runs.tsv rows 584/51/171, 580/51/165, 572/49/164, 530/49/154, 368/35/115, per-column median by sort -n then sed -n 3p; previous window 367/34/115; priced addition 0.11; allowance 21). Recomputed by arithmetic at the plan's own start commit 21d023c, never quoted: the roadmap's prose figures do not survive recomputation, so the record prints the file's own values instead — the seven release-records rows carry build_s 34 to 51 (the roadmap says 47 to 51) and r over the last five rows spans 10.5143 to 11.6735 (the roadmap says 10.6 to 11.7), and r is printed as arithmetic only because lesson 29 retires it as a signal. discharged-within-allowance is not reachable because 572 > 367 + 0.11 by 204.89. lever-required is not reached because the priced addition is 0.11 against the roadmap's 0.10 line, +10 percent and inside the 25 percent repricing threshold, and the cumulative milestone total is 0.11 of 21. The median moved more than the priced addition while the token line is exactly where the plan predicted, so reprice is what the rule names — a runner event, no lever invented. The seven rows were verified present once each (118 data rows over 119 lines, seven counts compared as one whole file against seven lines of 1) and .planning/ci-runs.tsv is byte-identical to what the plan started from. Two-shell: sh and dash final lines cmp clean at 1,520 bytes each; container: one run, gate: PASS, gate-linux: exit 0, gate-time total=249, the four documented host tokens differing (cc=GNU, core-imports=5, archive=sha256, refs-verified=0/4) and no other token. Only the three git ls-files counts moved, by exactly +1, and it is the record file itself.
 
 ### Pending Todos
 
@@ -728,8 +731,8 @@ The row itself is left as recorded and this note sits under it.
 
 ## Session Continuity
 
-Last session: 2026-11-26T10:35:46.199Z
-Stopped at: Phase 16 complete — all phases complete
+Last session: 2026-11-26T20:19:22.692Z
+Stopped at: Completed 17-01-PLAN.md — the opening cost window recomputed at 21d023c (cpu_s 572, build_s 49, gate_s 164 against 367/34/115), the seven release-records rows verified once each, the 0.11 priced addition charged, one checkpoint: reprice
 Resume file: None
 
 The Phase 13 close still leaves one thing a later run must do: record the phase's hosted row from

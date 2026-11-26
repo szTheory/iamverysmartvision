@@ -25,11 +25,11 @@ affects:
   - "the v0.4.0 close: the `reprice` verdict is the milestone's opening checkpoint, so the close compares against it rather than re-deriving a first window"
 
 actuals:
-  tokens: 0
+  tokens: 6285
   tasks: 2
   commits: 1
   plan_head_before: 21d023cf312430ebcba75e512c7ee3bc7a202a2f
-  plan_head_after: pending
+  plan_head_after: 99df1e3b0e0c8ea58eb3b2e1e1786e7a1b6825d8
 
 tech-stack:
   added: []
@@ -98,7 +98,7 @@ coverage:
     human_judgment: false
 
 # Metrics
-duration: 0min
+duration: 19min
 completed: 2026-11-26
 status: complete
 ---
@@ -222,18 +222,20 @@ checkpoint: reprice
 
 ## Gate
 
-Both shells were run at `21d023c`, on the plan's own tree, before this record was tracked. `sh` and `dash`
+Both shells were run at this record's own commit, on the plan's tree with the record tracked. `sh` and `dash`
 produced the **same** summary line byte for byte, and neither log carries a single `-- FAIL ` line:
 
 ```
-gate: PASS steps=38/38 controls=404/404 api-calls=19 api-statuses=15 api-rows=61 pinned-defines=120 cc=AppleClang c-presets=2 fault-runs=238 core-imports=7 purity-selftest=7/7 ctest-runs=2 ci-runs=118 ci-uses=2 ci-workflows=2 ci-summary-selftest=11/11 claims=29 provisional=28 handoffs=8 cp1610-rows=74 patterns=1024 unclaimed=0 ambiguous=0 coincidences=1 agree=71 resolved=3 vectors=412 source=291 policy=121 rows-pending=0 policies-pending=0 bus-figure-pages=35 blind-files=12 second-read=12/12 scanned=695 waived=0 discrepancies=110 pending-resolvers=20 open=101 d10-items=47 faults=238/238 tracked=2806 binaries-listed=0 rights-pinned=4/4 terms=9 doc-files=63 profile-keys=154 goldens=29 reports=30 host-dependent=3 release-only=2 mode=tree hygiene-files=2806 history-commits=1 gates=119 lines=364 input-rows=31 input-policies=11 input-profile-fields=31 files=2806 listings=7 listing-words=1386 manifests=11 effective-yes=8 effective-no=3 rights=10 rights-cleared=1 literal-rows=80 views=2 dump-lines=160 prefix-files=11 archive=members public-symbols=19 defined=141 hdr-alone=10/10 consumer-lines=164 cxx-link=ok pkg-selftest=20/20 records=154 fields=154 unknown-fields=47 psg-rules=21 psg-vectors=120 psg-policies=12 release-selftest=12/12 runner-files=18 cases=14 sources=13 refs-verified=3/4 state-rows=88 state-cuts=18 tests-expected=5042 tests-executed=5038 tests-skipped=4 tests-missing=0 docs=64 claim-refs=27 stic-rules=67 stic-rows=64 video-frames=26 video-hash-ties=18 video-frame-pairs=9 tags=10 tiers=8
+gate: PASS steps=38/38 controls=404/404 api-calls=19 api-statuses=15 api-rows=61 pinned-defines=120 cc=AppleClang c-presets=2 fault-runs=238 core-imports=7 purity-selftest=7/7 ctest-runs=2 ci-runs=118 ci-uses=2 ci-workflows=2 ci-summary-selftest=11/11 claims=29 provisional=28 handoffs=8 cp1610-rows=74 patterns=1024 unclaimed=0 ambiguous=0 coincidences=1 agree=71 resolved=3 vectors=412 source=291 policy=121 rows-pending=0 policies-pending=0 bus-figure-pages=35 blind-files=12 second-read=12/12 scanned=695 waived=0 discrepancies=110 pending-resolvers=20 open=101 d10-items=47 faults=238/238 tracked=2807 binaries-listed=0 rights-pinned=4/4 terms=9 doc-files=63 profile-keys=154 goldens=29 reports=30 host-dependent=3 release-only=2 mode=tree hygiene-files=2807 history-commits=1 gates=119 lines=364 input-rows=31 input-policies=11 input-profile-fields=31 files=2807 listings=7 listing-words=1386 manifests=11 effective-yes=8 effective-no=3 rights=10 rights-cleared=1 literal-rows=80 views=2 dump-lines=160 prefix-files=11 archive=members public-symbols=19 defined=141 hdr-alone=10/10 consumer-lines=164 cxx-link=ok pkg-selftest=20/20 records=154 fields=154 unknown-fields=47 psg-rules=21 psg-vectors=120 psg-policies=12 release-selftest=12/12 runner-files=18 cases=14 sources=13 refs-verified=3/4 state-rows=88 state-cuts=18 tests-expected=5042 tests-executed=5038 tests-skipped=4 tests-missing=0 docs=64 claim-refs=27 stic-rules=67 stic-rows=64 video-frames=26 video-hash-ties=18 video-frame-pairs=9 tags=10 tiers=8
 ```
 
 That line is the whole token comparison, split into one token per line and matched as whole tokens, not
 searched as a substring of an unsplit line: every token the plan predicted before execution is present and
 unchanged — `steps=38/38`, `controls=404/404`, `faults=238/238`, `goldens=29`, `gates=119`, `lines=364`,
 `tests-expected=5042`, `tests-executed=5038`, `tests-skipped=4`, `prefix-files=11`, `claims=29`,
-`provisional=28`, `ci-runs=118`, `binaries-listed=0`. Nothing moved and nothing was re-blessed.
+`provisional=28`, `ci-runs=118`, `binaries-listed=0`. Nothing moved and nothing was re-blessed. The three
+`git ls-files` counts on that line — `files=2807 tracked=2807 hygiene-files=2807` — are the tracked list at
+this commit, read from `git ls-files | wc -l` rather than predicted.
 
 The Ubuntu container gate ran **once** (`sh tools/gate-linux.sh`), with the prior `build/gate-linux.log`
 copied aside before it started (lesson 18) and no other container gate running: it exited 0 and printed
@@ -249,22 +251,44 @@ gate: PASS steps=38/38 controls=404/404 api-calls=19 api-statuses=15 api-rows=61
 
 gate-linux: PASS (exit 0)
 
-The tracked-file count read from `git ls-files` at the commit that introduces this record is **2807**. The
-gate lines above read `files=2806 tracked=2806 hygiene-files=2806` because both were produced before this
-record was tracked; the move is exactly **+1**, and it is this file. The plan predicted exactly that delta
-for those three tokens and no other token moving, and that is what happened: `docs=64`, `scanned=695`,
-`records=154` and every other count are identical to the run before the record existed.
+The container gate ran before this record was tracked, so its three `git ls-files` counts read 2806 rather than
+2807; the +1 is this file and applies to it identically.
+
+Both host gates were also run once **before** this record was tracked, and that earlier pair read
+`files=2806 tracked=2806 hygiene-files=2806` with every other token identical to the line above. That pair of
+runs is the plan's own delta measurement, and it is why the delta is measured rather than asserted: the move
+between the two pairs is exactly **+1** in each of the three `git ls-files` counts, and it is this file. The
+plan predicted exactly that and no other token moving, and that is what happened — `docs=64`, `scanned=695`,
+`records=154`, `steps=38/38`, `controls=404/404`, `faults=238/238`, `goldens=29`, `gates=119`, `lines=364`,
+`tests-expected=5042`, `prefix-files=11`, `claims=29`, `provisional=28` and `ci-runs=118` are identical in both
+pairs.
 
 ## Performance
 
-- **Duration:** 12 min
+- **Duration:** 19 min
 - **Started:** 2026-11-26T20:00:55Z
-- **Completed:** 2026-11-26T20:12:00Z
+- **Completed:** 2026-11-26T20:19:41Z
 - **Tasks:** 2 of 2
 - **Files created:** 1 (this record). **Files modified:** 0. **Files deleted:** 0.
 
-The container gate is the bulk of the wall time (`gate-time total=249`); the two host gates and the three
-measurements are the rest. No build was re-run and no preset was rebuilt.
+The container gate is the bulk of the wall time (`gate-time total=249`, measured by the step itself). The host
+gate was run six times in three pairs — one pair before the record existed, one pair at the record's own
+commit, and one pair inside the task-2 verify block — and the measurements are the rest. No build was re-run
+and no preset was rebuilt.
+
+## Task Commits
+
+This plan's two tasks deliver one file, so they land in one record commit rather than two — the plan itself
+prescribes that shape (task 1 writes the window block, task 2 appends the cost and gate blocks and then takes
+the plan's own commit of the record file and nothing else).
+
+1. **Tasks 1 and 2: the recomputed window, the charged priced addition and the gate evidence** - `99df1e3`
+   (docs) — one file created, 326 insertions, 0 deletions
+
+**Plan metadata:** the commit that follows this one (docs) — `STATE.md`, `ROADMAP.md`, and the correction of
+this record's gate block from the pre-commit measurement to the at-commit measurement.
+
+_Measured over `21d023c..99df1e3`: `commits: 1`, and the realized diff is this file._
 
 ## Files Created/Modified
 
@@ -324,3 +348,14 @@ tracked, while `git ls-files` at the commit reads 2807.
 ---
 *Phase: 17-records-cost-window-and-the-count-gate-contract*
 *Completed: 2026-11-26*
+
+## Self-Check: PASSED
+
+- The one file this plan creates exists at the path its frontmatter names: `17-01-SUMMARY.md`.
+- The record commit `99df1e3` is an ancestor of this commit, so the record is tracked at the commit it
+  describes rather than sitting untracked beside it.
+- `.planning/ci-runs.tsv` is byte-identical to the file the plan started from: no row was appended, inserted
+  or removed, and the seven release-records rows are present once each.
+- `sh` and `dash` produced identical `gate: PASS` lines (1,520 bytes each, `cmp` clean) with every token the
+  plan predicted; the container gate passed once and its four host-dependent tokens are the pre-existing ones.
+- Exactly one `checkpoint:` line exists, it reads `reprice`, and it follows the pricing sentence.

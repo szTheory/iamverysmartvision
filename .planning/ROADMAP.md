@@ -228,10 +228,10 @@ contract becomes a numbered lesson with a mechanism.
   3. One committed id, `runner-process.judge.flatwrap-shim` in the existing `tests/runner-process-tap.sh` suite, asserts that the shim's cartridge-slot digest equals the container `tools/flatwrap` wrote in the same case, and a committed stand-in that ignores its input (one flipped input byte) is shown failing that id. `ls tools/check/steps/*.sh | wc -l` still reads 38.
   4. `docs/packaging.md`'s "no host shim ships" sentence is corrected to name the source archive beside the static package - the archive carries the source of the build-only tools and of the build-only host shim and ships no built object - and agrees, sentence for sentence, with the release-decision line of `.planning/ops/RELEASE-OPS.md` section (i).
   5. `.planning/ops/PLAN-LESSONS.md` holds lesson 32 **with its mechanism**: every count gate names the file it counts, every baseline names the plan's own start commit sha and is measured there, and no verify block decides an outcome by a pipeline tail, carried by a `mutant` row in `data/expected/important-gates.ids` over an existing selftest and shown able to fail on a committed stand-in. `faults=238`, `goldens=29`, `claims=29` and `provisional=28` are unchanged.
-**Plans**: 3 plans, waves 1 to 3, serial (because `17-02` and `17-03` both touch `data/expected/`)
+**Plans**: 1/3 plans executed, waves 1 to 3, serial (because `17-02` and `17-03` both touch `data/expected/`)
 Plans:
 **Wave 1**
-- [ ] 17-01-PLAN.md — the seven release-records rows verified and the cost window recomputed by arithmetic at the plan's own start commit, printed before anything is priced with exactly one checkpoint line (the phase's tracer; criterion 1; wave 1)
+- [x] 17-01-PLAN.md — the seven release-records rows verified and the cost window recomputed by arithmetic at the plan's own start commit, printed before anything is priced with exactly one checkpoint line (the phase's tracer; criterion 1; wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 17-02-PLAN.md — the eight `flatwrap` refusal tokens documented, the source-archive letter corrected in both live documents, and `runner-process.judge.flatwrap-shim` shown able to fail by a committed stand-in the same comparison refuses; carries the EV-08 acceptance flip and its thirteen toy lines (criteria 2, 3 and 4; wave 2; every baseline measured at its own start commit and recorded in `17-02-SUMMARY.md`)
