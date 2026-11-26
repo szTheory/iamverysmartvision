@@ -73,7 +73,7 @@ wall time and Actions minutes, not ratio — no allowance credit is claimed.
 ## What the milestone can now claim
 
 **One claim, `CL-0029`**, tier `deterministic-repeatability`, standing
-`provisional`: the same core driven through a shared-object host reproduces the
+`provisional`, and `CL-0002` remains the only `established` claim: the same core driven through a shared-object host reproduces the
 runner's nine digest lines on a project cartridge. It compares the core with
 itself — never an independent oracle — and no claim rests on a handoff, a
 `build/` path, a `.wav`, a `.ppm`, a `.ivsn` or a bench `.tsv`.
@@ -83,14 +83,26 @@ itself — never an independent oracle — and no claim rests on a handoff, a
 - **No real EXEC, GROM or commercial cartridge has been shown to boot, play, look
   or sound right.** That is D11, still `not-performed`, and the route's `exec:`
   label stays `-` so no run reads as a real-EXEC result.
-- **No hardware measurement exists** (D10, 47 items handed off). No
-  `measured-hardware` tier exists.
-- **The three owner-only questions are handoff rows, `evidence: none`, cited by no
-  claim and by no criterion:** `H16-1` a real frontend loads the shim, `H16-2` an
-  owner image's picture and sound look right, `H16-3` the owner's flat image needs
-  no word-order guess.
+- **No hardware measurement exists** (D10, 47 items handed off). No claim reaches
+  the `measured-hardware` tier, and none may: that tier needs D10 performed.
+- **The owner's questions are handoff rows, `evidence: none`, cited by no claim and
+  by no criterion.** The ledger holds eight: `D10` (physical measurement, 47 items,
+  `not-performed`), `D11` (the owner's own EXEC/GROM/cartridge run, `not-performed`),
+  `H7-1`, `H7-2` and `H8-3` from earlier milestones (`handed-off`), and this phase's
+  three — `H16-1` a real frontend loads the shim, `H16-2` an owner image's picture
+  and sound look right, `H16-3` the owner's flat image needs no word-order guess.
+  None is evidence; none is a criterion; none is re-asked.
 - **Nothing ships but the static package and the source archive** — no shared
-  object, no host shim, no content byte.
+  object, no host shim, no content byte. The release-decision line says so in
+  `RELEASE-OPS.md` §(i).
+
+## Growth gates, and the four tokens this phase owns
+
+The phase's four entitled growth gates are `gates` 118 → 119, `lines` 361 → 364,
+`handoffs` 5 → 8 and the good toy tree 47/50 → 48/51; nothing else moved. The four
+tokens this phase itself owns are `handoffs=8` (the ledger's counted row count),
+`gates=119`/`lines=364` (the three `release-posture` rows and their re-derived
+baseline), and `prefix-files=11` (the package the posture refuses to grow).
 
 ## Deviations
 

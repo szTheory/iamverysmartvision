@@ -57,16 +57,16 @@ created: "2026-11-26"
 
 ## Wave 0 Requirements
 
-- [x] `tools/gate.sh` — the lever's overlap and the inline build lock. **Satisfied by** `tools/gate.sh`'s `overlap_bg`/`overlap_fg` declarations and the byte-identical `# build-lock begin/end` blocks in `tools/check/steps/c-tests.sh` and `c-faults.sh` (plan 16-01, `f9fe6a9`).
-- [x] `tools/release-rehearse.sh` — the three-command source route. **Satisfied by** the `--source-route` build → wrap → run sequence and its eight report assertions (plan 16-02, `14f81ed`).
-- [x] `docs/owner-images.md` — the documented route. **Satisfied by** "The route from the source archive, in three commands" (plan 16-02, `14f81ed`).
-- [x] `.planning/ops/RELEASE-OPS.md` §(j) — the transcript. **Satisfied by** the 49-line section quoting the archive prefix, the wrap digest, the run's `exit=10 outcome=guest-fail exec-label=-` and the mutation's `exit=14 status=IVS_E_DIGEST_MISMATCH` (plan 16-02, `6b57148`).
-- [x] `data/expected/handoffs.ids` — the three rows, `evidence: none`. **Satisfied by** `H16-1`/`H16-2`/`H16-3` at `handed-off evidence: none`, with `D10`/`D11` still `not-performed` (plan 16-03, `43b4394`).
-- [x] `docs/handoffs.md` — the packet sections. **Satisfied by** one section per row, each naming its command, artefact, deterministic identities and what a person judges (plan 16-03, `43b4394`).
-- [x] `data/expected/important-gates.ids` — the three `release-posture` rows. **Satisfied by** the rows at `gates=119 lines=364`, with the re-derived baseline in the same commit (plan 16-04, `298be25`).
-- [x] `.planning/ops/RELEASE-OPS.md` §(i) — the recomputed release-decision line. **Satisfied by** "the release ships the static package and the source archive; no shared object, no host shim, no content" (plan 16-04, `298be25`).
-- [x] `16-VALIDATION.md` — this record, signed. **Satisfied by** this file's `status: validated` frontmatter and the Approval line below (plan 16-05).
-- [x] Framework install: none — the harness is the project's own. **Satisfied by** the absence of any dependency in `tools/gate.sh`; `cmake`/`sh`/`awk`/`grep`/`git` are the host's.
+- [x] `tools/gate.sh` — the lever's overlap and the inline build lock. **satisfied by** `tools/gate.sh`'s `overlap_bg`/`overlap_fg` declarations and the byte-identical `# build-lock begin/end` blocks in `tools/check/steps/c-tests.sh` and `c-faults.sh` (plan 16-01, `f9fe6a9`).
+- [x] `tools/release-rehearse.sh` — the three-command source route. **satisfied by** the `--source-route` build → wrap → run sequence and its eight report assertions (plan 16-02, `14f81ed`).
+- [x] `docs/owner-images.md` — the documented route. **satisfied by** "The route from the source archive, in three commands" (plan 16-02, `14f81ed`).
+- [x] `.planning/ops/RELEASE-OPS.md` §(j) — the transcript. **satisfied by** the 49-line section quoting the archive prefix, the wrap digest, the run's `exit=10 outcome=guest-fail exec-label=-` and the mutation's `exit=14 status=IVS_E_DIGEST_MISMATCH` (plan 16-02, `6b57148`).
+- [x] `data/expected/handoffs.ids` — the three rows, `evidence: none`. **satisfied by** `H16-1`/`H16-2`/`H16-3` at `handed-off evidence: none`, with `D10`/`D11` still `not-performed` (plan 16-03, `43b4394`).
+- [x] `docs/handoffs.md` — the packet sections. **satisfied by** one section per row, each naming its command, artefact, deterministic identities and what a person judges (plan 16-03, `43b4394`).
+- [x] `data/expected/important-gates.ids` — the three `release-posture` rows. **satisfied by** the rows at `gates=119 lines=364`, with the re-derived baseline in the same commit (plan 16-04, `298be25`).
+- [x] `.planning/ops/RELEASE-OPS.md` §(i) — the recomputed release-decision line. **satisfied by** "the release ships the static package and the source archive; no shared object, no host shim, no content" (plan 16-04, `298be25`).
+- [x] `16-VALIDATION.md` — this record, signed. **satisfied by** this file's `status: validated` frontmatter and the Approval line below (plan 16-05).
+- [x] Framework install: none — the harness is the project's own. **satisfied by** the absence of any dependency in `tools/gate.sh`; `cmake`/`sh`/`awk`/`grep`/`git` are the host's.
 
 ## Manual-Only Verifications
 
@@ -78,7 +78,7 @@ created: "2026-11-26"
 | An owner image's picture and sound look right (`H16-2`) | PKG-06 | Needs the owner's own EXEC/GROM/cartridge and a human eye and ear (D11) | `docs/handoffs.md` H16-2 |
 | The owner's flat image needs no word-order guess (`H16-3`) | PKG-06 | Needs an owner image whose layout the project cannot know | `docs/handoffs.md` H16-3 |
 
-All three are **handoff rows with `evidence: none`**, cited by no claim and by no phase exit criterion. They
+All five are **handoff rows with `evidence: none`**, cited by no claim and by no phase exit criterion. They
 are recorded here so the table does not claim the phase has no manual surface; they are not verification
 items and they are never re-asked in a later milestone.
 
@@ -90,7 +90,7 @@ items and they are never re-asked in a later milestone.
 - [x] Sampling continuity: no 3 consecutive tasks without automated verify
 - [x] Wave 0 covers all MISSING references
 - [x] No watch-mode flags
-- [x] Feedback latency < 120s (measured ~72 s full gate)
+- [x] Feedback latency within the 180 s budget (measured 66–147 s on a loaded host; the lever's own effect was 79 → 72 s on a quiet tree)
 - [x] `nyquist_compliant: true` set in frontmatter
 
 **Approval:** approved 2026-11-26. The measured closing line, quoted verbatim:
