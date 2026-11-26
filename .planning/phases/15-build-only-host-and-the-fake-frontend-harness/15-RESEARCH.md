@@ -771,7 +771,10 @@ a target — the only deviation from the eight names' *signatures*, not their co
 | A4 | The TOOL-08 claim row is minted in Phase 15 (GUARDRAILS §3, MILESTONE-CONTEXT §2) although scoping-2's price table puts "+1 claim row" in Phase 16 | Cost, Open Question 4 | a claim minted a phase late, or `claims=28` where the close expects 29 |
 | A5 | `host/` needs no `c-build` module row because a dropped host TU breaks the link or the export set (Pitfall 7) | Pitfall 7 | the verifier may insist on R6: +0.31 cpu-s, and the toy tree gains a `host/` source list |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+All five are answered: `15-CONTEXT.md` > `### Resolved from the research open questions` is the binding
+answer for each, and the recommendation under each question below is the one that block adopted.
 
 1. **Which cartridge?** (MATERIAL — the two frozen documents disagree.)
    - What we know: criterion 2 names `data/golden/demo-lamp-tone-pass.digests`, whose
