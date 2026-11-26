@@ -4,18 +4,18 @@ milestone: v0.3.0
 milestone_name: Owner-Supplied Content and a Driveable Host (Phases 13 to 16)</summary>
 current_phase: 16
 current_phase_name: Owner Route, Claim and Release Posture
-current_plan: 2
+current_plan: 3
 status: executing
-stopped_at: Completed 16-01-PLAN.md (concurrency lever, cost-only); 16-02 next
-last_updated: "2026-11-26T09:16:49.091Z"
+stopped_at: Completed 16-02-PLAN.md (owner route from the source archive); 16-03 next
+last_updated: "2026-11-26T09:41:00.000Z"
 last_activity: 2026-11-26
 last_activity_desc: Phase 15 complete, transitioned to Phase 16
-state_head: e9ac9986770dd8d0f984b3afcd16c729493cfb1c
+state_head: 6b5714894cf0e5d1e017d2a4f818b7c21c5eb89d
 progress:
   total_phases: 4
   completed_phases: 8
   total_plans: 17
-  completed_plans: 13
+  completed_plans: 14
 ---
 
 # Project State
@@ -30,10 +30,27 @@ See: .planning/PROJECT.md (updated 2026-11-26)
 ## Current Position
 
 Phase: 16 — Owner Route, Claim and Release Posture
-Current Plan: 2
+Current Plan: 3
 Total Plans in Phase: 5
 Status: Ready to execute
-Last activity: 2026-11-26 — Completed 16-01-PLAN.md, the cost-only concurrency lever
+Last activity: 2026-11-26 — Completed 16-02-PLAN.md, the owner route from the source archive
+
+Phase 16's second plan (16-02, the owner route from the source archive) ran the release-time rehearsal at
+`14f81ed`: `sh tools/release-rehearse.sh --release --source-route` ended `rehearse: ok` with
+`rehearse: source-route: ivs-v0.2.0-source.tar.gz, golden match (report 131 lines, 124 of 124 compared),
+prefix ivs-v0.2.0`, then `rehearse: owner-route: wrap base=4000 word-order=hi-first
+digest=8d73b98c58bb75a6515c6a791ebd2925265d05874e324c31a5836e61055b74f5`, `rehearse: owner-route: run
+exit=10 outcome=guest-fail exec-label=- cart-digest-matched=yes` and `rehearse: owner-route: mutation exit=14
+status=IVS_E_DIGEST_MISMATCH run-state=unreset`. The route is the three commands of
+`docs/owner-images.md` performed on project-made zero-filled images, and its transcript is
+`.planning/ops/RELEASE-OPS.md` section (j). The gate line is unchanged in every token the plan predicted
+(`steps=38/38 controls=404/404 faults=238/238 goldens=29 gates=118 lines=361 docs=64 tests-expected=5042
+tests-executed=5038 tests-skipped=4 claims=29 provisional=28 claim-refs=27 prefix-files=11
+tracked=2784`), and it is byte-identical between the two task logs (`cmp` on `tail -1`). **No gate step,
+fault, golden, control, test id, registry row or claim was added**: the route is release-time and its only
+new output is a record. **D11 stays `not-performed`** and no claim cites section (j).
+hosted row: not-recorded — no push run for 6b57148 at 2026-11-26; the orchestrator records it from
+sh tools/ci-record.sh <run-id> after the push
 
 Phase 16's first plan (16-01, the cost-only concurrency lever) ran the gate at `e9ac998`: `gate: PASS
 steps=38/38 controls=404/404 … faults=238/238 … goldens=29 … gates=118 lines=361 … tests-expected=5042
@@ -353,6 +370,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | Phase 15 P02 | 22 min | 3 tasks | 17 files |
 | Phase 15 P03 | 48 min | 3 tasks | 27 files |
 | Phase 16 P01 | 14 | 2 tasks | 4 files |
+| Phase 16 P02 | 21 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -697,6 +715,8 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 15]: 15-03: checkpoint: reprice (cpu_s 363 438 368 366 359, median 366; build_s 35 39 35 34 34, median 35; gate_s 119 135 122 115 120, median 120; priced addition 1.535; allowance 21). Recomputed by arithmetic from the last five .planning/ci-runs.tsv rows (45718553735, 45720934719, 45723269901, 45747709457, 45751979661), never quoted: the frozen 361/34/118 figures are stale by measurement, by +5/+1/+2. discharged-within-allowance is not reachable because 366 > 361 + 1.535 = 362.535, by 3.465. lever-required is not reached because the cumulative milestone spend is 5.005 of 21 (1.935 from Phase 13, 1.535 from Phase 14 and 1.535 here) and this phase's additions landed at the priced count (steps 38, faults 238 and goldens 29 unmoved, two registry rows, one claim row, thirteen toy files), so no line overran by 25 percent (1.535 against the plan's 1.5 comparison line is +2.33 percent, and 0.055 under the research's frozen 1.59). The median moved more than the priced addition while the token line is where it was predicted, so reprice is what the rule names. container: gate: PASS, gate-time total=279, four documented host tokens differing (cc=GNU, core-imports=5, archive=sha256, refs-verified=0/4) and no other token. Window note: three newer hosted runs exist on GitHub for Phase 14's close (45752237522, 45756308953, 45756570481) and are not in the committed TSV; tools/ci-record.sh is orchestrator-only, so they are not appended here and this verdict must be recomputed if they land.
 - [Phase 16]: The concurrency lever is taken cost-only: c-faults runs in the background, c-tests in the foreground, the partner is joined on both paths and killed by the EXIT trap; both step scripts take one byte-identical inline mkdir build lock because a shared helper file would move the token line
 - [Phase 16]: The measured lever gives back 13 s of the pair's 37 s (gate 79 s to 72 s, cpu inside its band); the frozen 164 to 115 s hosted estimate is recorded as optimistic because an overlap absorbs the smaller member, so the prediction is about 144 s, to be settled by the first hosted row after the push
+- [Phase 16]: The owner route from the source archive is performed inside --source-route after the existing golden comparison, on dd-made zero-filled images, with the archive's own ivs_flatwrap at base 4000 hi-first and the archive's own owner-run.sh --record --cart, so the route a person has is the route the rehearsal performs and the endpoint stays the committed demo-lamp-tone-pass golden
+- [Phase 16]: The route's pass path is proved able to fail in the same run: after --record one EXEC byte is flipped and the --cart-only rerun (a second --record is refused with exit 2) is refused at load with IVS_E_DIGEST_MISMATCH, exit 14, cpu.run_state unreset; the exec: label stays - so D11 stays not-performed and no claim cites RELEASE-OPS section (j)
 
 ### Pending Todos
 
@@ -793,8 +813,8 @@ The row itself is left as recorded and this note sits under it.
 
 ## Session Continuity
 
-Last session: 2026-11-26T09:16:48.973Z
-Stopped at: Completed 16-01-PLAN.md (concurrency lever, cost-only); 16-02 next
+Last session: 2026-11-26T09:40:58.000Z
+Stopped at: Completed 16-02-PLAN.md (owner route from the source archive); 16-03 next
 Resume file: None
 
 The Phase 13 close still leaves one thing a later run must do: record the phase's hosted row from
