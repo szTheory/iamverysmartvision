@@ -21,7 +21,7 @@ extern "C" {
 #endif
 
 #define IVS_API_VERSION_MAJOR 0u
-#define IVS_API_VERSION_MINOR 2u
+#define IVS_API_VERSION_MINOR 3u
 #define IVS_API_VERSION_PATCH 0u
 /* Packed: major << 16 | minor << 8 | patch. */
 #define IVS_API_VERSION ((IVS_API_VERSION_MAJOR << 16) | (IVS_API_VERSION_MINOR << 8) | IVS_API_VERSION_PATCH)
