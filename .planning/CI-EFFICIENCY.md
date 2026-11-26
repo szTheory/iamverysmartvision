@@ -2030,3 +2030,82 @@ this phase was green on the first attempt.
 
 **Deferred by one commit, by name.** The merge push run for `4ee92f8` is recorded in the next
 commit the project makes anyway (the Phase 14 completion commit).
+
+## 2026-11-26 — Phase 16: the concurrency lever taken, cost-only, and proved byte-identical
+
+Phase 16's first commit (`f9fe6a9`, plan 16-01) takes the milestone's one pre-committed
+concurrency lever — `c-tests` overlapped with `c-faults` — in `tools/gate.sh`, with one inline
+`mkdir` build lock in each of the two step scripts. It is **cost-only**: no token moves, no
+gate step, fault, golden, control or registry row is added, and the summary line is byte-identical.
+The three earlier entries that deferred it by name ("still pre-committed to **Phase 16's first
+commit**") are now discharged by this one; they are left as written, per the append-only rule.
+
+**Before, measured this session at the plan's start commit `da38d7d`** (`sh tools/gate.sh`, exit 0,
+`ncpu=18`, `cc=AppleClang-21.0.0.21000101`): `gate-time total=79`,
+`gate-cpu user=121.50 sys=106.73`, and the four largest `step-time` lines were `c-tests 21`,
+`controls 19`, `c-faults 16`, `hygiene 8`.
+
+**After, same tree, same host** (exit 0): `gate-time total=72`, `gate-cpu user=127.65 sys=133.12`,
+and the four largest `step-time` lines are `controls 26`, `c-tests 24`, `c-faults 24`, `hygiene 9`.
+A second post-change run under `dash` read `gate-time total=69` and
+`gate-cpu user=126.91 sys=126.84`, so the local spread on this host is 69–72 for the post run and
+the 79 above for the pre run.
+
+**The arithmetic, printed rather than asserted.** The two steps are serial before the change, so
+they occupy `21 + 16 = 37` s of the gate's wall; after it, `c-faults` starts first and `c-tests`
+follows, so the pair occupies `max` of the two, and the log's own `step-time` for both reads 24
+(the partner is joined when the foreground member ends, so its step-time is time-to-join). The pair
+therefore gives back `37 − 24 = 13` s. Decomposing the total: before, `37 (pair) + 19 (controls) +
+23 (everything else) = 79`; after, `24 + 26 + 22 = 72`. So the pair gave back 13 s, `controls`
+absorbed 7 s and `hygiene` 1 s of contention under the same load, and the net is `79 − 72 = 7` s.
+The saving is the **smaller** member's wall time less the contention the two pick up: 13 of a
+possible 16 s, 81 %.
+
+**`cpu_s` did not move beyond the noise band this file has recorded since Phase 9.** The local
+`gate-cpu` sums (children's user + sys, not the hosted `cpu_s` column) are `228.23` before and
+`260.77` after, a delta of `32.54`, inside the 20 % band of `45.6`; the `dash` run's sum is
+`253.75`, a delta of `25.52`. These are not comparable to the hosted `cpu_s` figures (that column
+is 352–441 on a 4-vCPU runner; this host reports `ncpu=18`), so the hosted claim is the prediction
+below, to be checked against the first hosted row after the push.
+
+**The evidence is byte-identical, and that is a comparison, not a claim.** The pre-change and
+post-change logs' final lines `cmp` clean at **1,509 bytes**; each overlapped step's own buffer —
+`$GATE_TMP/step.out.<name>`, replayed verbatim — was extracted from both logs and `cmp` clean
+(`c-tests` and `c-faults`), each ending in its own pass line (`-- c-tests pass ctest-runs=2`,
+`-- c-faults pass fault-runs=238`) and carrying no `step-time` line, so the comparison cannot be
+vacuous; and the whole logs, with only the measurement lines filtered out, also `cmp` clean. The
+post log carries `gate-overlap pair=c-faults+c-tests`, which is the log's own statement that the
+overlap happened rather than a serial chain under a new name. `steps=38/38`, `controls=404/404`,
+`faults=238/238`, `goldens=29`, `gates=118`, `lines=361` and `tracked=2783` are unchanged.
+
+**Why the pair's builds are serialised, and why the lock is a copy.** The two steps share
+`build/dev`, and "both builds are no-ops because `c-build` already built everything" is a
+precondition, not a guarantee. It was measured to fail: two concurrent
+`cmake --build --preset dev` runs on one tree failed at link time with
+`clang: error: no such file or directory: 'core/libivs_core.a'` — one run archiving while the
+other links. So each script takes one bounded, polled `mkdir` lock
+(`<results>/.build-lock`) around every `cmake --build` call, released on the success path, the
+failure path and the caller's `HUP`/`INT`/`TERM`/`EXIT` traps; on expiry the step reports its own
+existing token with the `build-lock` detail. The lock block is a **byte-identical copy** in both
+scripts rather than a shared helper file because a new tracked file would move
+`tracked`/`files`/`hygiene-files` and destroy the byte-identical summary line this commit exists to
+show; the two copies are compared between their own `# build-lock begin` / `# build-lock end`
+markers, and the sentence naming the other copy sits above the marker, outside the compared range.
+
+**What this entry does not claim.** It claims no allowance credit and no checkpoint word: the lever buys wall
+minutes and Actions minutes, not ratio, and the phase's single checkpoint verdict is recorded at
+the phase close (plan 16-05) by arithmetic over `.planning/ci-runs.tsv`. The container leg
+(`sh tools/gate-linux.sh`) was **not run** for this entry — one container gate per phase, so it is
+deferred by name to the close (plan 16-05) and is not recorded here as a pass.
+
+**The one thing this entry cannot show, stated as a prediction with its arithmetic.** The hosted
+wall saving is not measured by a local run. The last hosted profile that priced this lever put
+`c-faults` at 48 s and `c-tests` at 25 s in a 164 s gate, so the pair is 73 s of that 164 s and the
+smaller member is 25 s; at this host's measured 81 % efficiency the prediction is
+`164 − 25 × 0.81 ≈ 144` s, i.e. about 20 s of hosted wall. **That is smaller than the frozen
+estimate's "164 s → about 115 s"** (`.planning/MILESTONE-CONTEXT.md` §5), whose subtraction takes
+the larger member — `164 − 49 = 115` — while an overlap can only absorb the smaller one. The
+frozen figure is recorded here as optimistic rather than re-blessed, and the first hosted row after
+the push is the measurement that settles it. Context recomputed from the file, not quoted: the last
+five `.planning/ci-runs.tsv` rows give medians `cpu_s` **366** (352, 359, 366, 368, 441) and
+`gate_s` **133** (126, 130, 133, 134, 155), with one 441/155 outlier among them.
