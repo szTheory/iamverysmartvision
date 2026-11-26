@@ -2542,6 +2542,33 @@ else
 fi
 result runner-process.judge.host-schedule
 
+# runner-process.judge.host-load-refused (plan 15-04, TOOL-08, review WR-01): a refused load leaves NOTHING committed.
+# The review measured the defect with a four-byte cartridge: `load_bad_cart_first=0` and then a digest answered on a
+# half-loaded machine (EXEC and GROM stayed installed) and `load_good_retry=0` (the right images were then refused
+# IVS_E_DUPLICATE_LOAD until retro_deinit). The harness reports the whole sequence, and the case requires all eight
+# observations, so neither half can pass alone: the instance digest is UNMOVED by the refused attempt (nothing was
+# committed, and a digest cannot answer a state no load produced), the run is refused (nothing to run), and the SAME
+# call with the right images then succeeds and MOVES the digest - a refusal cannot pass as a machine that is simply
+# dead. The `unchanged`/`moved` pair is what a bare `load.refused 1` could not establish.
+: > "$tmp/why"
+ok=1
+if [ -z "$shim" ] || [ -z "$harness" ]; then
+  ok=0
+  why host-load-refused 'the seventh or eighth argument (libivs_retro, ivs_host_harness) is missing: the refused-load case cannot be run'
+else
+  run_one "$tmp" host-load-refused "$harness" "$shim" "$content" --refused-load
+  if [ "$hung" -eq 1 ] || [ "$rc" -ne 0 ]; then
+    ok=0
+    why host-load-refused "exit $rc, hung $hung: $(sed -n 's/^fail //p' "$tmp/runs/host-load-refused.out" | head -n 1)"
+  else
+    for _l in 'load.before.digest 1' 'load.refused 1' 'load.refused.digest 1' 'load.refused.unchanged 1' \
+      'load.refused.run 0' 'load.retry 1' 'load.retry.digest 1' 'load.retry.moved 1'; do
+      host_field "$tmp/runs/host-load-refused.out" "$_l" host-load-refused || ok=0
+    done
+  fi
+fi
+result runner-process.judge.host-load-refused
+
 # runner-process.host.exports (plan 15-02, TOOL-08, D-48, D-35): the export surface refused by name, in both
 # directions and on both platforms. tools/check/host-symbols.sh compares the object's exported set against
 # data/expected/host-symbols.ids and its undefined set against core-symbols-allow.txt plus data/expected/host-imports.ids.

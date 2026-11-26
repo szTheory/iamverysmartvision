@@ -582,3 +582,9 @@ host mutant runner-process.judge.host-digest-diff TOOL-08
 # reclaimed its applied prefix fails - the silent loss the review measured. The id is judge-shaped because
 # a `mutant` row resolves only through `<suite>.judge.<slug>` or `<suite>.mutant.<slug>`.
 host mutant runner-process.judge.host-schedule TOOL-08
+# host (plan 15-04, TOOL-08, review WR-01): a refused load leaves nothing committed. The mechanism is the
+# committed harness mode `--refused-load`, a four-byte cartridge the core refuses: the instance digest must
+# be unmoved, the run refused, and the same call with the right images must then succeed and move the
+# digest. The witness pair is what a bare `load.refused 1` could not establish: the refusal cannot pass as
+# a machine that is simply dead, and a half-loaded machine cannot answer a digest.
+host mutant runner-process.judge.host-load-refused TOOL-08

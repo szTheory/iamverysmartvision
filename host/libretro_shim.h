@@ -102,7 +102,10 @@ IVS_API int retro_set_environment(const ivs_retro_host *host);
 IVS_API void retro_get_system_av_info(ivs_retro_av_info *out);
 
 /* Loads the three spans into the core and powers the machine on. Returns 1 on success and 0 on a
- * refusal: the core's typed refusal is the boundary and nothing is loaded twice. */
+ * refusal: the core's typed refusal is the boundary and nothing is loaded twice. A refused load is
+ * rolled back - the kinds that call committed are unloaded again (or, when the refusal came after the
+ * power-on reset, the instance is rebuilt image-less) - so a refusal leaves the machine exactly as it
+ * was, no digest answers a state no load produced, and a retry with the right images is meaningful. */
 IVS_API int retro_load_game(const ivs_retro_images *imgs);
 
 /* Runs to the absolute target tick and delivers every frame completed on the way to video_refresh and

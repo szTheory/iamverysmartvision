@@ -87,13 +87,16 @@
 #   difference stays attributable to the input alone), and every non-input digest line the IDLE golden carries
 #   (eight today; its `# domains:` line reads input=none) equals that golden's, with digest.input differing from the
 #   pass golden's.
-# Plan 15-04 (TOOL-08, review CR-01): the measured defect of the shim, made observable through the frontend's own
-#   answers. runner-process.judge.host-schedule: the input schedule is bounded and REFUSES rather than
+# Plan 15-04 (TOOL-08, review CR-01 and WR-01): the two measured defects of the shim, each made observable through
+#   the frontend's own answers. runner-process.judge.host-schedule: the input schedule is bounded and REFUSES rather than
 #   truncates, in two limbs - `--schedule-full` (5000 events pending in one drain) requires `schedule.runs.ok 0`,
 #   `schedule.frames 0` and a `schedule.polled` above zero and below 5000, so the refusal came from the schedule's
 #   bound while the host still had events left; `--schedule-long` (8000 events over two calls, 4000 at a time)
 #   requires both calls to succeed and all 8000 to be polled, so the bound is on OUTSTANDING events and a long run
 #   cannot lose input. The pair is the non-vacuity: one count fits over a lifetime, one does not fit at once.
+#   runner-process.judge.host-load-refused: a refused load leaves nothing committed - the instance digest is unmoved by a
+#   refused four-byte-cartridge load, the run is refused, and the same call with the right images then succeeds and
+#   moves the digest, so the refusal is not a dead machine and a retry is meaningful.
 #   runner-process.judge.host-vacuous and runner-process.judge.host-digest-diff: the phase's two COMMITTED stand-ins
 #   (criterion 3.3), not scratch probes. Each is a fake frontend this suite writes into its temp dir and judges with
 #   the SAME check_host the real run is judged by: host-vacuous prints the pass golden's nine lines with `frames 0`
@@ -263,5 +266,6 @@ runner-process.host.frames
 runner-process.host.unload
 runner-process.host.empty-poll
 runner-process.judge.host-schedule
+runner-process.judge.host-load-refused
 runner-process.judge.host-vacuous
 runner-process.judge.host-digest-diff

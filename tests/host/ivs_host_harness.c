@@ -7,13 +7,15 @@
  * The one thing it compiles in is runner/frame_export.c, for ivs_frameppm_palette alone, used only to
  * check that every delivered pixel is exactly one palette entry.
  * It recomputes no digest: the nine lines are what ivs_retro_digest returned.
- * Usage: ivs_host_harness <shim-path> <content-dir> [--empty-poll | --schedule-full | --schedule-long]
+ * Usage: ivs_host_harness <shim-path> <content-dir> [--empty-poll | --schedule-full | --schedule-long |
+ *        --refused-load]
  * Output: one `key value` line per observation on stdout; on a failed assertion one `fail <key> <detail>`
  * line and exit 1, so the suite can quote the reason. Exit 0 only when every assertion held.
- * The two schedule modes are the review's first measured defect (CR-01), made observable from the
- * object's own answers: a host that outruns the shim's bounded input schedule must be refused, and one
- * that outruns it only over a long run must not lose input. In those modes the frontend's own verdicts
- * are the observations, so the suite asserts them. */
+ * The four alternate modes are the review's two measured defects, each made observable from the object's
+ * own answers: --schedule-full and --schedule-long are CR-01 (a host that outruns the shim's bounded
+ * input schedule must be refused, and one that outruns it only over a long run must not lose input) and
+ * --refused-load is WR-01 (a refused load must leave nothing committed, so a retry is meaningful). In
+ * those modes the frontend's own verdicts are the observations, so the suite asserts them. */
 #include <dlfcn.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -39,6 +41,7 @@
 #define HARNESS_MODE_EMPTY 1u
 #define HARNESS_MODE_SCHEDULE_FULL 2u
 #define HARNESS_MODE_SCHEDULE_LONG 3u
+#define HARNESS_MODE_REFUSED_LOAD 4u
 
 /* The schedule modes' own scripts (review CR-01). Both counts are the HARNESS's, never the shim's cap: a
  * frontend says how much it has to say and the shim decides what it can hold. FULL exceeds the shim's
@@ -338,9 +341,11 @@ int main(int argc, char **argv)
     mode = HARNESS_MODE_SCHEDULE_FULL;
   } else if (argc == 4 && strcmp(argv[3], "--schedule-long") == 0) {
     mode = HARNESS_MODE_SCHEDULE_LONG;
+  } else if (argc == 4 && strcmp(argv[3], "--refused-load") == 0) {
+    mode = HARNESS_MODE_REFUSED_LOAD;
   } else if (argc != 3) {
     printf("usage: ivs_host_harness <shim-path> <content-dir> [--empty-poll | --schedule-full | "
-           "--schedule-long]\n");
+           "--schedule-long | --refused-load]\n");
     return 1;
   }
   shim_path = argv[1];
@@ -442,6 +447,51 @@ int main(int argc, char **argv)
   imgs.grom_len = grom_len;
   imgs.cart = cart_bytes;
   imgs.cart_len = cart_len;
+
+  if (mode == HARNESS_MODE_REFUSED_LOAD) {
+    /* WR-01: a refused load must leave nothing committed. The observations are a witness pair - the
+     * digest of the untouched instance is unmoved by the refused attempt (nothing was committed), the
+     * run is refused (there is nothing to run), and the SAME call with the right images then succeeds and
+     * moves the digest - so the refusal cannot pass as a machine that is simply dead. */
+    ivs_retro_images bad = imgs;
+    uint8_t before[32];
+    uint8_t after[32];
+    uint8_t retried[32];
+    bad.cart_len = 4u; /* a container header with nothing behind it: the core's own malformed refusal */
+    if (api.digest(IVS_DIGEST_COMPOSITE, before) != 1) {
+      fail("load.before.digest", "the fresh instance answered no digest");
+    }
+    printf("load.before.digest 1\n");
+    if (api.load_game(&bad) != 0) {
+      fail("load.refused", "retro_load_game accepted a four-byte cartridge");
+    }
+    printf("load.refused 1\n");
+    if (api.digest(IVS_DIGEST_COMPOSITE, after) != 1) {
+      fail("load.refused.digest", "the instance answered no digest after a refused load");
+    }
+    printf("load.refused.digest 1\n");
+    if (memcmp(before, after, sizeof before) != 0) {
+      fail("load.refused.unchanged", "a refused load moved the instance digest: something was committed");
+    }
+    printf("load.refused.unchanged 1\n");
+    if (api.run((uint64_t)HARNESS_NOMINAL_FRAME_TICKS) != 0) {
+      fail("load.refused.run", "a run was accepted on a machine whose load was refused");
+    }
+    printf("load.refused.run 0\n");
+    if (api.load_game(&imgs) != 1) {
+      fail("load.retry", "the correct images were refused after a refused load");
+    }
+    printf("load.retry 1\n");
+    if (api.digest(IVS_DIGEST_COMPOSITE, retried) != 1) {
+      fail("load.retry.digest", "the retried load answered no digest");
+    }
+    printf("load.retry.digest 1\n");
+    if (memcmp(before, retried, sizeof before) == 0) {
+      fail("load.retry.moved", "the retried load's digest equals the image-less instance's");
+    }
+    printf("load.retry.moved 1\n");
+    goto done;
+  }
 
   if (api.load_game(&imgs) != 1) {
     fail("load.images", "retro_load_game refused the three spans");

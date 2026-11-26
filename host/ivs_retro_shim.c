@@ -262,10 +262,40 @@ IVS_API void retro_get_system_av_info(ivs_retro_av_info *out)
   out->nominal_frame_ticks = shim.info.nominal_frame_ticks;
 }
 
+/* The rollback of a refused load that got as far as the power-on reset (review WR-01). After the reset
+ * the machine is POWERED, where ivs_machine_unload refuses BAD_STATE, so the undo is the rebuild
+ * retro_init performs: a fresh, image-less instance over the same storage. Only this call's own work can
+ * be lost here, because a load into a powered machine is refused before it commits anything. */
+static void shim_rebuild_machine(void)
+{
+  ivs_create_options co;
+  if (shim.machine != NULL) {
+    (void)ivs_machine_destroy(shim.machine);
+    shim.machine = NULL;
+  }
+  memset(&co, 0, sizeof co);
+  co.struct_size = (uint32_t)sizeof co;
+  co.profile_id = SHIM_PROFILE;
+  if (shim.storage != NULL &&
+      ivs_machine_create(&co, shim.storage, shim.storage_bytes, &shim.machine) != IVS_OK) {
+    shim.machine = NULL;
+  }
+  shim.sched_n = 0u;
+  shim.consumed = 0u;
+  shim.rp_ready = 0;
+  shim.have_info = 0;
+  if (shim.machine != NULL) {
+    (void)shim_read_info();
+  }
+}
+
 IVS_API int retro_load_game(const ivs_retro_images *imgs)
 {
   ivs_load_report rep;
   ivs_status st;
+  /* The kinds THIS call committed (1 EXEC, 2 GROM, 4 cartridge): the rollback unloads exactly these,
+   * so a refused load leaves the machine as it was and never damages images an earlier call loaded. */
+  unsigned committed = 0u;
 
   if (shim.machine == NULL || imgs == NULL) {
     return 0;
@@ -275,32 +305,55 @@ IVS_API int retro_load_game(const ivs_retro_images *imgs)
   rep.image.struct_size = (uint32_t)sizeof rep.image;
   st = ivs_machine_load(shim.machine, IVS_KIND_EXEC, imgs->exec, imgs->exec_len, NULL, &rep);
   if (st != IVS_OK) {
-    return 0;
+    goto refuse;
   }
+  committed |= 1u;
   st = ivs_machine_load(shim.machine, IVS_KIND_GROM, imgs->grom, imgs->grom_len, NULL, &rep);
   if (st != IVS_OK) {
-    return 0;
+    goto refuse;
   }
+  committed |= 2u;
   st = ivs_machine_load(shim.machine, IVS_KIND_CARTRIDGE, imgs->cart, imgs->cart_len, NULL, &rep);
   if (st != IVS_OK) {
-    return 0;
+    goto refuse;
   }
+  committed |= 4u;
   st = ivs_machine_reset(shim.machine, IVS_RESET_POWER_ON);
   if (st != IVS_OK) {
-    return 0;
+    goto refuse_powered;
   }
   if (!shim_read_info()) {
-    return 0;
+    goto refuse_powered;
+  }
+  if (ivs_refpcm_init(&shim.rp, shim.info.crystal_hz_num, shim.info.crystal_hz_den, shim.info.audio_sample_ticks,
+                      SHIM_SAMPLE_RATE) != IVS_REFPCM_OK) {
+    goto refuse_powered;
+  }
+  shim.rp_ready = 1;
+  return 1;
+
+refuse:
+  /* ivs_machine_load is validate-then-commit per kind and refuses a load into a powered machine, so the
+   * phase is OFF here and every unload below is legal. Unloading an absent kind is a no-op. */
+  if ((committed & 4u) != 0u) {
+    (void)ivs_machine_unload(shim.machine, IVS_KIND_CARTRIDGE);
+  }
+  if ((committed & 2u) != 0u) {
+    (void)ivs_machine_unload(shim.machine, IVS_KIND_GROM);
+  }
+  if ((committed & 1u) != 0u) {
+    (void)ivs_machine_unload(shim.machine, IVS_KIND_EXEC);
   }
   shim.sched_n = 0u;
   shim.consumed = 0u;
   shim.rp_ready = 0;
-  if (ivs_refpcm_init(&shim.rp, shim.info.crystal_hz_num, shim.info.crystal_hz_den, shim.info.audio_sample_ticks,
-                      SHIM_SAMPLE_RATE) != IVS_REFPCM_OK) {
-    return 0;
-  }
-  shim.rp_ready = 1;
-  return 1;
+  /* The machine itself is untouched, so the instance information is still the one it had at entry. */
+  (void)shim_read_info();
+  return 0;
+
+refuse_powered:
+  shim_rebuild_machine();
+  return 0;
 }
 
 /* Appends what the host's poll has produced to the schedule. 1 on success; 0 when the poll went
