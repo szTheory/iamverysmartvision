@@ -157,7 +157,7 @@ and its three numbered mechanisms above it are untouched, and the note says whic
 | `steps`/`goldens` | 38/38, 29 | same | invariant |
 | `pkg-selftest`/`release-selftest` | 20/20, 12/12 | same | invariant: `host-so-absent`, `so-member` already exist |
 | `claims`/`provisional`/`claim-refs`/`handoffs` | 29/28/27/8 | same | invariant (§3: no claim minted) |
-| `tracked`/`files`/`hygiene-files` | 2786 | 2786 | invariant: no file created, no file deleted |
+| `tracked`/`files`/`hygiene-files` | 2786 | 2786 → 2787 | invariant inside the plan: no file created, no file deleted. The one move is this SUMMARY itself, tracked by the plan's own metadata commit — measured `2786` at `298be25` (the SUMMARY was untracked there) and `2787` at the metadata commit, an exact `+1` |
 | `binaries-listed`/`prefix-files` | 0, 11 | 0, 11 | the posture's own two figures |
 | `tests-expected`/`-executed`/`-skipped` | 5042/5038/4 | same | invariant |
 
@@ -179,6 +179,11 @@ Each task was committed atomically:
 
 _Measured over `4a1e993..298be25`: `commits: 2`, `git diff | wc -c` / 4 = **4882** actual tokens against the
 plan's 55,000-token estimate (0.09). 17 files, 122 insertions, 5 deletions, no file created or deleted._
+
+The `tracked` figure is the one number this plan's arithmetic could not fix: the plan predicted it invariant at
+2,786, and that is what the gate read at `298be25`. The metadata commit then tracks this SUMMARY, so the gate at
+that commit reads `tracked=files=hygiene-files=2787`. The move is exactly `+1` and it is this file; the section
+(i.1) note and the thirteen toy lines added no file. Recorded rather than left for the close to notice.
 
 ## Files Created/Modified
 
@@ -296,4 +301,7 @@ None.
 - `9c621a8` — FOUND (ancestor of HEAD)
 - `298be25` — FOUND (HEAD)
 - `git ls-files | grep -E '[.](so|dylib|dll|bundle)$'` — empty
-- `sh tools/gate.sh` at `298be25` — `gate: PASS steps=38/38 controls=404/404 … gates=119 lines=364 …`
+- `sh tools/gate.sh` at `298be25` — `gate: PASS steps=38/38 controls=404/404 … gates=119 lines=364 … tracked=2786`
+- `sh tools/gate.sh` at the metadata commit — `gate: PASS steps=38/38 controls=404/404 … gates=119 lines=364 …`
+  with `tracked=files=hygiene-files=2787`, the `+1` being this SUMMARY file and nothing else
+- `git status --porcelain` at the metadata commit — empty
