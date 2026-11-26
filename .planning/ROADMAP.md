@@ -256,10 +256,10 @@ nine digest lines — not a window.
   3. The equality is guarded three ways: every line non-`-` with the observed set equal; a second id with an empty poll must give a **different** set; and two stand-ins are refused — a stub printing the golden with no frame (`host-vacuous`) and a mutant with the input poll dropped (`host-digest-diff`).
   4. The host holds no palette of its own (it links `runner/frame_export.c`), opens no file but the images named on its command line, and the installed package is unchanged: eleven files, with a selftest that the shared object is absent.
   5. `so` and `dylib` enter `tools/check/binary-ext.txt` with the controls that refuse a tracked shared object, and the gate ends `steps=38/38` with the predicted delta.
-**Plans**: 3 plans in three waves
+**Plans**: 1/3 plans executed in three waves
 
 **Wave 1** *(no dependency)*
-- [ ] 15-01-PLAN.md — the seam, end to end (tracer): the build-only shared target with a linker-enforced export list generated from `data/expected/host-symbols.ids`, the project-authored `host/libretro_shim.h` and `host/ivs_retro_shim.c`, the `dlopen` harness that drives `lamp-tone.ivsc` to tick 806568 and prints the nine digest lines, `tools/check/host-symbols.sh` refusing the export surface in both directions, and the integrity alternations extended to `host/` (TOOL-08)
+- [x] 15-01-PLAN.md — the seam, end to end (tracer): the build-only shared target with a linker-enforced export list generated from `data/expected/host-symbols.ids`, the project-authored `host/libretro_shim.h` and `host/ivs_retro_shim.c`, the `dlopen` harness that drives `lamp-tone.ivsc` to tick 806568 and prints the nine digest lines, `tools/check/host-symbols.sh` refusing the export surface in both directions, and the integrity alternations extended to `host/` (TOOL-08)
 
 **Wave 2** *(blocked on 15-01)*
 - [ ] 15-02-PLAN.md — the shaped-entry assertions, the empty-poll id and the two committed stand-ins, then GUARDRAILS V6's whole retarget set in one commit: `so dylib dll bundle` in the one extension list, two controls, the `pkg-install` selftest that the object is absent, one `release-assets` case, and the two "not installed, not shipped" record lines (TOOL-08)
