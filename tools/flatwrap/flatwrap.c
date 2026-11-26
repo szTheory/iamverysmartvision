@@ -39,6 +39,13 @@
  * resolved, a write error) is a file or usage error: one stderr line without a token, exit status
  * 2. The eight tokens are the whole typed surface and are pinned in data/expected/flat-refusals.ids.
  *
+ * Both paths this tool touches are operator-supplied, so neither probe blocks on one: the input is
+ * opened without blocking and refused unless fstat reports a regular file, and the output's
+ * existence is a stat, not an open (review WR-01). The technique is runner/hostio.c's
+ * ivs_hostio_read, which exists for the same reason: fopen("rb") on a FIFO waits for a writer that
+ * never comes, and a refusal that never returns is worse than a wrong token. The exclusive create
+ * (`wbx`) is still what enforces rule 7; the stat is only the early, non-blocking answer.
+ *
  * Rule 1 is the lower bound the container imposes and the tool used to lack: a segment holds at
  * least one word, so an input of no bytes has no legal container at all. The container's own
  * specification states len_words is 1 to 65,535, IVS_IVSC_MIN_BYTES is 66 (prefix 24 + entry 8 +
@@ -61,9 +68,12 @@
 #define _POSIX_C_SOURCE 200809L
 
 #include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include "common/ivs_sha256.h"
 #include "content/ivsc.h"
@@ -251,7 +261,8 @@ int main(int argc, char **argv)
   int i;
   long size;
   FILE *f;
-  FILE *probe;
+  struct stat sb;
+  int fd;
   size_t got;
   uint32_t k;
   int inside;
@@ -278,8 +289,19 @@ int main(int argc, char **argv)
   /* Rule 1 (empty), rule 2 (length) and rule 3 (words) are decided from the byte count, before
    * anything is read, so an oversized file never reaches the buffer and the word count is checked
    * before any multiplication by two. */
-  f = fopen(flat, "rb");
+  fd = open(flat, O_RDONLY | O_NOCTTY | O_NONBLOCK);
+  if (fd < 0) {
+    fprintf(stderr, "ivs_flatwrap: cannot read %s\n", flat);
+    return 2;
+  }
+  if (fstat(fd, &sb) != 0 || !S_ISREG(sb.st_mode)) {
+    (void)close(fd);
+    fprintf(stderr, "ivs_flatwrap: %s is not a regular file\n", flat);
+    return 2;
+  }
+  f = fdopen(fd, "rb");
   if (f == NULL) {
+    (void)close(fd);
     fprintf(stderr, "ivs_flatwrap: cannot read %s\n", flat);
     return 2;
   }
@@ -327,9 +349,7 @@ int main(int argc, char **argv)
     snprintf(detail, sizeof detail, "the output %s is inside the work tree outside refs/", out);
     return fw_refuse("flatwrap-output-tree", detail);
   }
-  probe = fopen(out, "rb");
-  if (probe != NULL) {
-    fclose(probe);
+  if (stat(out, &sb) == 0) {
     fclose(f);
     snprintf(detail, sizeof detail, "the output %s already exists", out);
     return fw_refuse("flatwrap-output-exists", detail);
