@@ -2264,6 +2264,150 @@ else
 fi
 result runner-process.host.digests
 
+# ---- the shaped-entry contract (plan 15-02, TOOL-08, D-48): three cases over the SAME pass-mode run ----
+# They judge lines of the run host.digests already made and start no second harness process: the cost unit is the
+# id, but the wall time is the process, and a second run would double the suite's new time for no new evidence.
+pass_out="$tmp/runs/host-pass.out"
+
+# host_field <output> <expected line> <token>: the output carries exactly <expected line>. A missing or different
+# line records a finding naming the key and the value the object returned, never a bare `missing`.
+host_field() {
+  grep -q -x -F -e "$2" "$1" && return 0
+  _hf=${2%% *}
+  _hv=$(sed -n "s/^${_hf} //p" "$1" | head -n 1)
+  why "$3" "$_hf '${_hv:-missing}', expected '$2'"
+  return 1
+}
+
+# host_scenario_words <scenario>: the six `<at_tick> <c0> <c1>` triples of the scenario's own `input` lines, each
+# symbolic name resolved to its bit index through data/expected/input-bits.ids - the pinned table the core's
+# IVS_CTRL_* defines are checked against - so the expectation comes from the two committed oracles and is not typed
+# here. A name the table does not carry, a word form this cannot read, or a line without at_tick fails the
+# derivation (exit 1) instead of printing a guess.
+host_scenario_words() {
+  awk -v bits="$root/data/expected/input-bits.ids" '
+    function word(s,   k, parts, i, v, name) {
+      if (s == "0x0") return "00000000"
+      if (s ~ /^0[xX]/) { bad = 1; return "?" }
+      v = 0
+      k = split(s, parts, "+")
+      for (i = 1; i <= k; i++) {
+        name = "IVS_CTRL_" parts[i]
+        if (!(name in bit)) { bad = 1; return "?" }
+        v += 2 ^ bit[name]
+      }
+      return sprintf("%08x", v)
+    }
+    BEGIN {
+      while ((getline l < bits) > 0) {
+        if (l ~ /^#/ || l !~ /[^ \t]/) continue
+        split(l, b, " ")
+        bit[b[1]] = b[2]
+      }
+      close(bits)
+    }
+    /^input / {
+      tick = ""; c0 = "0x0"; c1 = "0x0"
+      for (i = 2; i <= NF; i++) {
+        split($i, kv, "=")
+        if (kv[1] == "at_tick") tick = kv[2]
+        else if (kv[1] == "c0") c0 = kv[2]
+        else if (kv[1] == "c1") c1 = kv[2]
+      }
+      if (tick == "") { bad = 1; next }
+      print tick, word(c0), word(c1)
+    }
+    END { if (bad) exit 1 }
+  ' "$1"
+}
+
+# runner-process.host.api (plan 15-02, TOOL-08): the shape's version, its refusal of an incomplete host (refused,
+# not ignored) and the av_info metadata a frontend places a frame with. Every value is pinned in the harness from
+# the profile's own fields - data/profiles/intv-2609-ntsc-family-p1.json: video.card_columns 20,
+# video.card_size_px.w 8, video.last_card_column_px 7 (= 159), video.card_rows 12, video.card_size_px.h 8 (= 96),
+# scanlines_per_frame 262 x cpu_cycles_per_scanline 57 x ticks_per_cpu_cycle 4 (= 59736), stic.frame_phase_ticks 0
+# and crystal_hz.num 3579545 - and sample_rate 48000 is the rate the shim's own converter delivers
+# (tools/pcm/ivs_refpcm.c), not the core's native level rate. The harness is not linked against the core, so the
+# profile is the shared source both sides read rather than ivs_machine_info.
+: > "$tmp/why"
+ok=1
+if [ ! -s "$pass_out" ]; then
+  ok=0; why host-api 'the pass-mode run produced no output'
+else
+  for _l in 'api.version 1' 'env.denied 1' 'env.accepted 1' \
+    'av_info.base_width 159' 'av_info.base_height 96' 'av_info.max_width 159' 'av_info.max_height 96' \
+    'av_info.frame_phase_ticks 0' 'av_info.nominal_frame_ticks 59736' 'av_info.fps_num 3579545' \
+    'av_info.fps_den 59736' 'av_info.sample_rate 48000'; do
+    host_field "$pass_out" "$_l" host-api || ok=0
+  done
+fi
+result runner-process.host.api
+
+# runner-process.host.frames (plan 15-02, TOOL-08): the delivered streams. The frame count is required FIRST, so a
+# run that delivered nothing cannot pass on a comparison of nothing; then the index plane (198432 = 13 x 159 x 96
+# bytes, the plane the callback receives - deliberately NOT the golden's output.video.bytes 198848, which counts 13
+# x 15296 slot bytes with the core's 32-byte header included: comparing the two is the trap, and the 416-byte
+# difference is exactly 13 headers), the per-frame geometry and pitch count, the pixel probes, the mono
+# signed-16-bit sample width (audio.bytes == 2 x audio.frames) and the poll's six words.
+: > "$tmp/why"
+ok=1
+if [ ! -s "$pass_out" ]; then
+  ok=0; why host-frames 'the pass-mode run produced no output'
+elif host_field "$pass_out" 'frames 13' host-frames; then
+  for _l in 'video.plane.bytes 198432' 'frame.geometry ok 13'; do
+    host_field "$pass_out" "$_l" host-frames || ok=0
+  done
+  # The pixel probe counts DELIVERED PIXELS (plan 15-01), not frames: every delivered pixel must equal exactly one
+  # of the 17 pinned-distinct palette triples, so its count equals the plane byte count. Requiring the two to agree
+  # is the equality a frame-count form would lose.
+  _pp=$(sed -n 's/^pixel[.]probes ok //p' "$pass_out" | head -n 1)
+  _pb=$(sed -n 's/^video[.]plane[.]bytes //p' "$pass_out" | head -n 1)
+  case ${_pp:-} in
+    '' | *[!0-9]*) ok=0; why host-frames "pixel.probes '${_pp:-}' is not a count" ;;
+    *) [ "$_pp" -gt 0 ] || { ok=0; why host-frames "pixel.probes $_pp"; }
+       [ "$_pp" = "${_pb:-}" ] \
+         || { ok=0; why host-frames "pixel.probes $_pp is not video.plane.bytes ${_pb:-}"; } ;;
+  esac
+  _af=$(sed -n 's/^audio.frames //p' "$pass_out" | head -n 1)
+  _ab=$(sed -n 's/^audio.bytes //p' "$pass_out" | head -n 1)
+  case ${_af:-} in
+    '' | *[!0-9]*) ok=0; why host-frames "audio.frames '${_af:-}' is not a positive integer" ;;
+    *) [ "$_af" -gt 0 ] || { ok=0; why host-frames "audio.frames $_af"; }
+       [ "${_ab:-}" = "$((_af * 2))" ] \
+         || { ok=0; why host-frames "audio.bytes '${_ab:-}' is not 2 x audio.frames $_af"; } ;;
+  esac
+  if host_scenario_words "$root/data/scenarios/demo-lamp-tone-pass.ivss" > "$tmp/host.words.want"; then
+    awk '/^input[.]words / { print $2, $3, $4 }' "$pass_out" > "$tmp/host.words.have"
+    cmp -s "$tmp/host.words.want" "$tmp/host.words.have" \
+      || { ok=0; why host-frames "input.words differ from the scenario's six events: $(diff "$tmp/host.words.want" "$tmp/host.words.have" | tr '\n' ' ')"; }
+  else
+    ok=0; why host-frames 'the six scenario words could not be derived from data/scenarios/demo-lamp-tone-pass.ivss and data/expected/input-bits.ids'
+  fi
+else
+  ok=0
+fi
+result runner-process.host.frames
+
+# runner-process.host.unload (plan 15-02, TOOL-08): a real teardown, proved by the refusal it leaves behind. A single
+# `unload.digest.refused 1` line could be printed by a harness that never asked, so the case also requires a digest
+# line BEFORE it by line number: the digests were taken while the machine was still loaded, and only then refused.
+: > "$tmp/why"
+ok=1
+if [ ! -s "$pass_out" ]; then
+  ok=0; why host-unload 'the pass-mode run produced no output'
+else
+  grep -q -x -F -e 'unload.digest.refused 1' "$pass_out" \
+    || { ok=0; why host-unload "no 'unload.digest.refused 1' line: the teardown answered a digest, or never unloaded"; }
+  _dl=$(grep -n -m 1 -e '^digest[.]' "$pass_out" | cut -d: -f1)
+  _ul=$(grep -n -m 1 -e '^unload[.]digest[.]refused ' "$pass_out" | cut -d: -f1)
+  if [ -z "${_dl:-}" ] || [ -z "${_ul:-}" ]; then
+    ok=0; why host-unload 'the output carries no digest line or no unload line, so their order proves nothing'
+  elif [ "$_dl" -ge "$_ul" ]; then
+    ok=0; why host-unload "the first digest line is line $_dl, not before the unload line $_ul"
+  fi
+fi
+result runner-process.host.unload
+
 # runner-process.host.exports (plan 15-02, TOOL-08, D-48, D-35): the export surface refused by name, in both
 # directions and on both platforms. tools/check/host-symbols.sh compares the object's exported set against
 # data/expected/host-symbols.ids and its undefined set against core-symbols-allow.txt plus data/expected/host-imports.ids.

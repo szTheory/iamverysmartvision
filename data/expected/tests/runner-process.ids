@@ -67,6 +67,20 @@
 #   core-symbols-allow.txt or data/expected/host-imports.ids once the three sanitizer prefixes are subtracted. The
 #   missing-name direction is proved live inside the case: a scratch ids copy with one name appended must be refused
 #   with `-- FAIL host-symbols-missing: ivs_not_defined`.
+# Plan 15-02 (TOOL-08, D-48): the shaped-entry contract, judged on the SAME pass-mode run host.digests makes (no second
+#   harness process). runner-process.host.api: the shape version the object answers, a host with a NULL input_poll
+#   REFUSED rather than ignored beside a complete host accepted, and the av_info metadata a frontend places a frame
+#   with - 159 x 96 base and max, frame_phase_ticks 0, nominal_frame_ticks 59736, the fps pair 3579545/59736 and
+#   sample_rate 48000, each pinned in the harness from data/profiles/intv-2609-ntsc-family-p1.json's own fields and
+#   from the converter the shim uses. runner-process.host.frames: frames 13 required first (so a run that delivered
+#   nothing cannot pass on a comparison of nothing), then video.plane.bytes 198432 = 13 x 159 x 96 index-plane bytes
+#   (not the golden's 198848 slot bytes, which include the core's 32-byte header), frame.geometry ok 13 and
+#   pixel.probes ok 13 equal to the frame count, a positive audio.frames with audio.bytes == 2 x audio.frames (mono
+#   signed 16-bit), and the poll's six `<at_tick> <c0> <c1>` words equal to the scenario's - derived at run time from
+#   data/scenarios/demo-lamp-tone-pass.ivss and data/expected/input-bits.ids, never typed in the case.
+#   runner-process.host.unload: `unload.digest.refused 1`, and a `digest.` line BEFORE it by line number, so the
+#   order proves the digests were taken while the machine was still loaded - a harness that only pretended to unload
+#   cannot pass.
 runner-process.scenario.diag-boot-pass
 runner-process.scenario.guest-assert-mismatch
 runner-process.scenario.timeout-budget
@@ -225,3 +239,6 @@ runner-process.outcomes-covered
 runner-process.watchdog
 runner-process.host.digests
 runner-process.host.exports
+runner-process.host.api
+runner-process.host.frames
+runner-process.host.unload

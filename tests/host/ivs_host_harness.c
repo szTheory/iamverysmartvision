@@ -29,6 +29,25 @@
 #define HARNESS_EVENT_COUNT 6u
 #define HARNESS_FRAME_CALLS 13u
 #define HARNESS_LAST_TARGET 806568u
+
+/* What the object must report, pinned from the profile the shim reads through ivs_info
+ * (data/profiles/intv-2609-ntsc-family-p1.json). This harness is not linked against the core, so it cannot
+ * call ivs_machine_info and does not pretend to: the profile is the committed source both sides read, and the
+ * derivation of each constant from that file's own fields is stated here, field for field:
+ *   159     = (video.card_columns 20 - 1) x video.card_size_px.w 8 + video.last_card_column_px 7
+ *   96      = video.card_rows 12 x video.card_size_px.h 8
+ *   59736   = scanlines_per_frame 262 x cpu_cycles_per_scanline 57 x ticks_per_cpu_cycle 4
+ *   0       = stic.frame_phase_ticks
+ *   3579545 = crystal_hz.num (crystal_hz.den is 1)
+ *   48000   = the PCM rate the shim delivers through its converter (tools/pcm/ivs_refpcm.c), not the core's
+ *             native level rate; the harness asserts what the shim declares (15-CONTEXT, resolved questions) */
+#define HARNESS_BASE_WIDTH 159u
+#define HARNESS_BASE_HEIGHT 96u
+#define HARNESS_NOMINAL_FRAME_TICKS 59736u
+#define HARNESS_FRAME_PHASE_TICKS 0u
+#define HARNESS_SAMPLE_RATE 48000u
+#define HARNESS_FPS_NUM 3579545u
+#define HARNESS_FPS_DEN 59736u
 /* The nine digest domains in the golden's order (data/golden/demo-lamp-tone-pass.digests). */
 #define HARNESS_DOMAINS 9u
 /* Bytes of one XRGB pixel the shim delivers. */
@@ -54,15 +73,19 @@ static const char *const harness_domain_name[HARNESS_DOMAINS] = {
     "cpu", "mem", "images", "instance", "composite", "video", "audio", "input", "psglog",
 };
 
-/* The host's counters and its poll cursor. */
+/* The host's counters, its poll cursor and the events the poll actually returned (recorded so every printed
+ * word is what the object handed over, never a restatement of the script this harness believes in). */
 typedef struct harness_host {
   unsigned frames;
+  unsigned geometry_ok;
   uint64_t plane_bytes;
   uint64_t audio_frames;
   uint64_t pixel_probes;
   unsigned expect_width;
   unsigned expect_height;
   unsigned script_at;
+  unsigned poll_events;
+  ivs_retro_input poll_got[HARNESS_EVENT_COUNT];
   int empty_poll;
   int geometry_bad;
   int pitch_bad;
@@ -112,6 +135,10 @@ static void on_video(void *ctx, const uint32_t *xrgb, unsigned w, unsigned h, si
     c->pitch_bad = 1;
     return;
   }
+  /* The frame satisfied the callback contract: the declared geometry, a pitch of at least one XRGB pixel per
+   * position, and (below) an index plane of exactly w * h positions. Counted per delivered frame, so the suite
+   * can require the count to equal the frame count rather than trusting a single frame. */
+  c->geometry_ok++;
   /* The pixel probe: the 17 palette triples are pinned distinct (tests/runner/runner_exec.c), so a
    * delivered pixel must equal exactly one of them. A pixel that equals none, or two, is a conversion
    * this harness will not accept. */
@@ -159,6 +186,10 @@ static int on_poll(void *ctx, uint64_t now_ticks, ivs_retro_input *ev)
     return 0;
   }
   *ev = harness_script[c->script_at];
+  if (c->poll_events < HARNESS_EVENT_COUNT) {
+    c->poll_got[c->poll_events] = *ev;
+  }
+  c->poll_events++;
   c->script_at++;
   return 1;
 }
@@ -281,31 +312,49 @@ int main(int argc, char **argv)
   hooks.audio_batch = on_audio;
   hooks.input_poll = NULL;
   if (api.set_environment(&hooks) != 0) {
-    fail("env.refused", "a host without input_poll was accepted");
+    fail("env.denied", "a host without input_poll was accepted");
   }
   hooks.input_poll = on_poll;
   if (api.set_environment(&hooks) != 1) {
     fail("env.accepted", "a complete host was refused");
   }
-  printf("env.refused 1\n");
+  printf("env.denied 1\n");
   printf("env.accepted 1\n");
 
+  /* The metadata a frontend places a frame with, asserted against the profile's own fields (the pinned constants
+   * above) and then printed from the struct the object filled - so a shim that declared the core's native level
+   * rate, or dropped the two project-shaped tick fields, fails here rather than printing a plausible number. */
   api.get_system_av_info(&av);
-  if (av.base_width == 0u || av.base_height == 0u || av.nominal_frame_ticks == 0u) {
-    fail("av.geometry", "a zero geometry or a zero frame spacing");
+  if (av.base_width != HARNESS_BASE_WIDTH || av.base_height != HARNESS_BASE_HEIGHT) {
+    fail("av_info.geometry", "not the profile's 159 x 96 published plane");
+  }
+  if (av.max_width != HARNESS_BASE_WIDTH || av.max_height != HARNESS_BASE_HEIGHT) {
+    fail("av_info.max", "a max geometry above the base geometry");
+  }
+  if (av.frame_phase_ticks != (uint64_t)HARNESS_FRAME_PHASE_TICKS) {
+    fail("av_info.frame_phase_ticks", "not stic.frame_phase_ticks");
+  }
+  if (av.nominal_frame_ticks != (uint64_t)HARNESS_NOMINAL_FRAME_TICKS) {
+    fail("av_info.nominal_frame_ticks", "not the profile's frame spacing");
+  }
+  if ((unsigned long long)(av.sample_rate + 0.5) != (unsigned long long)HARNESS_SAMPLE_RATE) {
+    fail("av_info.sample_rate", "not the converter's rate");
+  }
+  if ((unsigned long long)(av.fps * (double)av.nominal_frame_ticks + 0.5) != (unsigned long long)HARNESS_FPS_NUM) {
+    fail("av_info.fps_num", "not crystal_hz.num");
   }
   host.expect_width = av.base_width;
   host.expect_height = av.base_height;
   host.empty_poll = empty_poll;
-  printf("av.base_width %u\n", av.base_width);
-  printf("av.base_height %u\n", av.base_height);
-  printf("av.max_width %u\n", av.max_width);
-  printf("av.max_height %u\n", av.max_height);
-  printf("av.frame_phase_ticks %llu\n", (unsigned long long)av.frame_phase_ticks);
-  printf("av.nominal_frame_ticks %llu\n", (unsigned long long)av.nominal_frame_ticks);
-  printf("av.fps_num %llu\n", (unsigned long long)(av.fps * (double)av.nominal_frame_ticks + 0.5));
-  printf("av.fps_den %llu\n", (unsigned long long)av.nominal_frame_ticks);
-  printf("av.sample_rate %llu\n", (unsigned long long)(av.sample_rate + 0.5));
+  printf("av_info.base_width %u\n", av.base_width);
+  printf("av_info.base_height %u\n", av.base_height);
+  printf("av_info.max_width %u\n", av.max_width);
+  printf("av_info.max_height %u\n", av.max_height);
+  printf("av_info.frame_phase_ticks %llu\n", (unsigned long long)av.frame_phase_ticks);
+  printf("av_info.nominal_frame_ticks %llu\n", (unsigned long long)av.nominal_frame_ticks);
+  printf("av_info.fps_num %llu\n", (unsigned long long)(av.fps * (double)av.nominal_frame_ticks + 0.5));
+  printf("av_info.fps_den %llu\n", (unsigned long long)av.nominal_frame_ticks);
+  printf("av_info.sample_rate %llu\n", (unsigned long long)(av.sample_rate + 0.5));
 
   /* The three images: the build-tree boot stub and cartridge, and the zero GROM the scenario names
    * (`content grom zero-grom` is made here, exactly as runner/exec.c makes it, never read). */
@@ -356,11 +405,42 @@ int main(int argc, char **argv)
   if (host.poll_backwards != 0) {
     fail("poll.backwards", "the machine passed an event the script still held");
   }
+  /* A positive frame count and a positive PCM frame count: the two non-vacuity limbs of the drive. */
+  if (host.frames == 0u) {
+    fail("frames.zero", "the run delivered no frame");
+  }
+  if (host.geometry_ok != host.frames) {
+    fail("frame.geometry", "a delivered frame did not satisfy the callback contract");
+  }
+  if (host.audio_frames == 0u) {
+    fail("audio.frames", "the run delivered no PCM frame");
+  }
   printf("frames %u\n", host.frames);
+  printf("frame.geometry ok %u\n", host.geometry_ok);
   printf("video.plane.bytes %llu\n", (unsigned long long)host.plane_bytes);
   printf("audio.frames %llu\n", (unsigned long long)host.audio_frames);
   printf("audio.bytes %llu\n", (unsigned long long)(host.audio_frames * 2u));
   printf("pixel.probes ok %llu\n", (unsigned long long)host.pixel_probes);
+
+  /* The poll's six events, printed in order as the three values the object returned: a frame-quantized poll (the
+   * failure research Pitfall 2 names) moves an at_tick and fails the suite's word comparison. The empty-poll run
+   * carries no event by construction, so the assertion is made only on the scripted run. */
+  if (empty_poll) {
+    if (host.poll_events != 0u) {
+      fail("input.words", "--empty-poll returned an event");
+    }
+  } else {
+    if (host.poll_events != HARNESS_EVENT_COUNT) {
+      fail("input.words", "the poll did not return the scenario's six events");
+    }
+    for (i = 0u; i < HARNESS_EVENT_COUNT; i++) {
+      if (host.poll_got[i].at_tick != harness_script[i].at_tick) {
+        fail("input.tick", "a returned event's at_tick is not the scenario's");
+      }
+      printf("input.words %llu %08x %08x\n", (unsigned long long)host.poll_got[i].at_tick,
+             (unsigned)host.poll_got[i].controller[0], (unsigned)host.poll_got[i].controller[1]);
+    }
+  }
 
   /* The nine lines, in the golden's order, exactly as the object returned them. */
   for (i = 0u; i < HARNESS_DOMAINS; i++) {
