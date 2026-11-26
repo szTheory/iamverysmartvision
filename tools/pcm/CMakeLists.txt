@@ -13,7 +13,14 @@ set(IVS_PCM_SOURCES
 )
 
 add_library(ivs_refpcm STATIC ${IVS_PCM_SOURCES})
-set_target_properties(ivs_refpcm PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF LINKER_LANGUAGE C)
+# PIC for the same reason core's object libraries carry it (D-34, plan 04-22): a host may link this
+# archive into a shared object. Since plan 15-01 it does -- host/libivs_retro links ivs_refpcm -- and
+# without this property the dev object fails to link on GNU ld, because an instrumented non-PIC member
+# carries a relocation against `__asan_option_detect_stack_use_after_return` that a shared object cannot
+# use (`relocation R_X86_64_PC32 ... can not be used when making a shared object`). Darwin's ld accepts
+# it, which is why the host built on macOS and not in the container (plan 15-03, measured).
+set_target_properties(ivs_refpcm PROPERTIES INTERPROCEDURAL_OPTIMIZATION OFF LINKER_LANGUAGE C
+  POSITION_INDEPENDENT_CODE ON)
 target_include_directories(ivs_refpcm PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(ivs_refpcm PRIVATE ivs_warnings ivs_san)
 

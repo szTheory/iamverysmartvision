@@ -16,3 +16,16 @@ calloc
 realloc
 # free: every block above is released by retro_deinit and by a real retro_unload_game teardown.
 free
+# The GNU C runtime's own weak stubs, emitted by crtbeginS/crtendS into every ELF shared object and not
+# by the object's own code: the two Intel-Transactional-Memory clone hooks (present in the object even
+# with no ITM code), the atexit finalizer the crt calls back through, and the profiling startup hook.
+# None is a content route, a clock, an environment, a thread, a randomness source, an assert, an abort
+# or a libm name, and each is `weak undefined`, so a build without them still links. They are listed
+# rather than hidden behind a --allow-prefix at one call site because they are the same class on every
+# ELF build: a prefix would allow `_ITM_*` and `__gmon_*` spellings the contract never reviewed.
+# Measured on the Ubuntu 24.04 container leg (plan 15-03): the release object's undefined set carries
+# _ITM_deregisterTMCloneTable, which host-symbols.sh refused as host-symbols-import before this line.
+_ITM_deregisterTMCloneTable
+_ITM_registerTMCloneTable
+__cxa_finalize
+__gmon_start__
