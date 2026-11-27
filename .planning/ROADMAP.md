@@ -277,10 +277,10 @@ unchanged with the rivals named.
   3. Exactly one of two exits is recorded. **Exit A:** the decided default is pinned by two ids, one per setting, each building the alternate parameter row explicitly, and one commit carries the whole `GUARDRAILS-v0.4` **W1** chain - the profile field with its tag and cite, `data/expected/profile-fields.ids`, the parameter digest, every snapshot literal in `data/expected/ivsn-literals.ids`, any moved golden retargeted in place, the moved `stic` inventory ids, the append-only C-row note and the prose - with the commit's file list equal to the enumeration written into the phase record before the commit. **Exit B:** the record reads "default unchanged, observation appended, rivals named", which is `Complete` for VID-07 on its own stated terms. A mismatch between the enumeration and the commit's file list is a stop, not a re-bless.
   4. In both exits the four rival rows in `data/discrepancies.json` carry the appended observation, the field stays tagged `unknown-default-chosen` (D-51: an observation is not a hardware probe), no claim cites the observation, `claims=29` and `provisional=28` are unchanged, `goldens=29` (a moved golden is retargeted, never added), and no claim, tier or golden records a digest, size, path or name of an operator file.
   5. The owner-local sweep (`19-02`) is contained as a throwaway probe and is nobody's exit criterion: it lives under `refs/` only, is bounded by a wall-clock limit and a run count, its output is refused outside `refs/` on the `tools/flatwrap` precedent, and it is `skip-ok` (exit 13, `missing-fixture`) in both test inventories. Its absence, or a run that ends inconclusive, leaves criteria 1 to 4 standing: no criterion of this phase depends on a human act.
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans executed
 - [x] 19-01-PLAN.md - the four authored guests with one machine-state observable and a liveness guard each, the three branches that make the unreachable fields movable, and the display-latch field row with its whole W1 chain (wave 1)
 - [x] 19-02-PLAN.md - the bounded `refs/`-only owner-local probe, `skip-ok` in both inventories (wave 2)
-- [ ] 19-03-PLAN.md - the sixteen-cell diagonal sweep with its committed stand-in, both exits' commit shapes written before the measurement, and the exit the measurement decides (wave 3)
+- [x] 19-03-PLAN.md - the sixteen-cell diagonal sweep with its committed stand-in, both exits' commit shapes written before the measurement, and the exit the measurement decides (wave 3). The measurement decided **Exit B**: the sixteen cells are diagonal (masks 0xAAAA, 0xCCCC, 0xF0F0, 0xFF00) and no cell prefers a setting, so the record reads "default unchanged, observation appended, rivals named", the four rival rows C1, C6, C82 and C94 carry the observation, and every display-path field stays tagged `unknown-default-chosen` (D-51)
 **Tier ceiling**: none - the field stays `unknown-default-chosen` even when a default is decided.
 **Cost**: 1.64 hosted cpu-s against the 21 allowance, for four discrimination ids and two pinning ids per decided field inside the existing `stic` suite. Registered as faults the same cases would cost 1.76 and move `faults=238`, which is why they are ids.
 
@@ -419,7 +419,7 @@ The milestone adds zero new gate steps, faults or goldens, and at most one claim
 |-------|----------------|--------|-----------|
 | 17. Records, Cost Window and the Count-Gate Contract | 3/3 | Complete    | 2026-11-26 |
 | 18. The Inspection Surface | 3/3 | Complete    | 2026-11-26 |
-| 19. Discriminating the Display Path | 2/3 | In progress | - |
+| 19. Discriminating the Display Path | 3/3 | Complete    | 2026-11-27 |
 | 20. Route, Witness and Release Posture | 0/2 | Not started | - |
 
 **Current milestone:** v0.4.0 "Inspectable Machine, One Default Decided", scoped by

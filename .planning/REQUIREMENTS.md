@@ -27,7 +27,7 @@ below is a hypothesis until delivered and verified.
 
 ### Video and the display path
 
-- [ ] **VID-07**: The four rival display-path rules — the register-window length, the gating rule when the display is off, whether `$0020` strobes on a read or only on a write, and whether the display latch is cleared at each frame start — are separated by four authored guests whose observations are **diagonal** across the 16-cell sweep (each guest moves under its own field and no other, at the default of the remaining three), each with a liveness guard a committed stand-in can fail. Then either the decided default is pinned by one test per setting and every dependent expectation (profile tag, profile-field inventory, parameter digest, every snapshot literal, any moved golden retargeted in place, the append-only discrepancy note) moves in one commit, or the record reads "default unchanged, observation appended, rivals named". The field stays tagged `unknown-default-chosen` in either case.
+- [x] **VID-07**: The four rival display-path rules — the register-window length, the gating rule when the display is off, whether `$0020` strobes on a read or only on a write, and whether the display latch is cleared at each frame start — are separated by four authored guests whose observations are **diagonal** across the 16-cell sweep (each guest moves under its own field and no other, at the default of the remaining three), each with a liveness guard a committed stand-in can fail. Then either the decided default is pinned by one test per setting and every dependent expectation (profile tag, profile-field inventory, parameter digest, every snapshot literal, any moved golden retargeted in place, the append-only discrepancy note) moves in one commit, or the record reads "default unchanged, observation appended, rivals named". The field stays tagged `unknown-default-chosen` in either case.
 - [ ] **VID-08**: The D10-VID-08 hardware question is a named packet rather than a wish: the exact trace lines a hardware probe must contradict are written down, the row exists in `data/expected/handoffs.ids` with `evidence: none`, and no claim cites it and no phase exit criterion names it.
 
 ## v2 Requirements
@@ -88,7 +88,7 @@ requirement appears in exactly one phase.
 | EV-08 | Phase 17 | Complete |
 | TOOL-02 | Phase 18 | Complete |
 | TOOL-09 | Phase 18 | Complete |
-| VID-07 | Phase 19 | Pending |
+| VID-07 | Phase 19 | Complete |
 | VID-08 | Phase 20 | Pending |
 
 **Coverage:**
@@ -111,4 +111,12 @@ their five registry rows, the two build-only proofs and the rights row landed in
 one commit. TOOL-02's disassembly limb is plan `18-03`; if that limb is dropped,
 the drop is recorded in the frozen page (`docs/inspection.md`) and in `18-03`'s
 record, TOOL-02 exits with the reduced surface named, and this status is not
-retracted — the flip therefore does not depend on a droppable plan.*
+retracted — the flip therefore does not depend on a droppable plan.
+*2026-11-27, plan 19-03:* VID-07 is `Complete` on **Exit B**'s own stated terms —
+"default unchanged, observation appended, rivals named". The sixteen-cell sweep is
+diagonal (each of the four guests moves under its own field and no other), no cell
+prefers a setting, the four rival rows (C1, C6, C82, C94) carry the appended
+observation, no claim cites it, and every display-path field stays tagged
+`unknown-default-chosen` because an observation is not a hardware probe (D-51). The
+six `stic-disc` registry rows landed in the same commit as this flip, because
+`important-gates` derives its accepted set from these records.*

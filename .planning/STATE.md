@@ -4,19 +4,19 @@ milestone: v0.4.0
 milestone_name: Inspectable Machine, One Default Decided
 current_phase: 19
 current_phase_name: Discriminating the Display Path
-current_plan: Not started
-status: planning
-stopped_at: Phase 18 complete, ready to plan Phase 19
+current_plan: 19-03 complete (3 of 3)
+status: phase-complete
+stopped_at: Phase 19 complete on Exit B, ready to verify the phase
 last_updated: "2026-11-27T03:53:24.799Z"
-last_activity: 2026-11-26
-last_activity_desc: Phase 18 complete, transitioned to Phase 19
+last_activity: 2026-11-27
+last_activity_desc: Phase 19 complete on Exit B - the sixteen-cell sweep is diagonal and no default is decided
 state_head: 610e645223833bf263843ba5c0dd49a40cb39a81
 progress:
   total_phases: 4
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 11
-  completed_plans: 6
-  percent: 50
+  completed_plans: 8
+  percent: 75
 ---
 
 # Project State
@@ -32,10 +32,10 @@ See: .planning/PROJECT.md (updated 2026-11-26)
 ## Current Position
 
 Phase: 19 — Discriminating the Display Path
-Current Plan: 19-02 complete (2 of 3); next is 19-03
+Current Plan: 19-03 complete (3 of 3) - the phase's three plans are executed
 Total Plans in Phase: 3
-Status: In progress
-Last activity: 2026-11-27 — Phase 19 plan 02 complete: the owner-local sweep is contained as a throwaway probe, refused outside `refs/`, bounded, and `skip-ok` (exit 13, `missing-fixture`) in both inventories, with its three refusals judged by `runner-process` on both presets
+Status: Phase complete, awaiting verification
+Last activity: 2026-11-27 — Phase 19 plan 03 complete: the sixteen-cell sweep is diagonal in one comparison (masks 0xAAAA, 0xCCCC, 0xF0F0, 0xFF00) with a committed stand-in that makes it fail, both exits' enumerations were committed before the measurement, and the measurement decided **Exit B** — "default unchanged, observation appended, rivals named" — with the four rival rows C1, C6, C82 and C94 carrying the observation, six `stic-disc` registry rows landing with the VID-07 flip, and every display-path field still tagged `unknown-default-chosen`
 
 
 ### Phase-boundary cost checkpoints (`GUARDRAILS-v0.4` §2.4)

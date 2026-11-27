@@ -173,3 +173,81 @@ and `prefix-files=11` are invariants in both exits.
 In one sentence: the prediction is not the decision - the measurement taken after this commit decides
 which enumeration is honoured, neither enumeration is edited afterwards, and the final commit's file
 list is compared against the blob this commit wrote, not against a list completed later.
+
+<!-- Everything below this line is appended by plan 19-03's second task, after the sweep ran. No line above
+     it was edited: `git diff <start-commit> -- 19-DECISION.md` contains no removed line. -->
+
+## Measured matrix: the sixteen cells as measured
+
+Taken after the enumerations above were committed, by `stic.disc.sweep-diagonal` in the `stic` suite on the
+dev preset (`IVS_TEST_OUT_DIR=<tmp> ctest --preset dev -R '^stic$' --output-on-failure`, result file
+`<tmp>/stic.txt`, grammar `ok <n> <id>`). Each guest's decisive stamps were measured from the guest itself,
+then every cell re-drove that access sequence through the hand-built bus context with `c.stic` set to the
+cell's stack-copied row. `G4`'s observable is a three-element vector, the displayed word of frames 0, 1
+and 2.
+
+| cell | W | G | R | L | G1 `blocked_writes` | G2 `blocked_writes` | G3 frame-0 `displayed` | G4 frames 0/1/2 |
+|---|---|---|---|---|---|---|---|---|
+| 0 | 0 | 0 | 0 | 0 | 1 | 1 | 0 | 1/0/0 |
+| 1 | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 1/0/0 |
+| 2 | 0 | 1 | 0 | 0 | 1 | 0 | 0 | 1/0/0 |
+| 3 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1/0/0 |
+| 4 | 0 | 0 | 1 | 0 | 1 | 1 | 1 | 1/0/0 |
+| 5 | 1 | 0 | 1 | 0 | 0 | 1 | 1 | 1/0/0 |
+| 6 | 0 | 1 | 1 | 0 | 1 | 0 | 1 | 1/0/0 |
+| 7 | 1 | 1 | 1 | 0 | 0 | 0 | 1 | 1/0/0 |
+| 8 | 0 | 0 | 0 | 1 | 1 | 1 | 0 | 1/1/1 |
+| 9 | 1 | 0 | 0 | 1 | 0 | 1 | 0 | 1/1/1 |
+| 10 | 0 | 1 | 0 | 1 | 1 | 0 | 0 | 1/1/1 |
+| 11 | 1 | 1 | 0 | 1 | 0 | 0 | 0 | 1/1/1 |
+| 12 | 0 | 0 | 1 | 1 | 1 | 1 | 1 | 1/1/1 |
+| 13 | 1 | 0 | 1 | 1 | 0 | 1 | 1 | 1/1/1 |
+| 14 | 0 | 1 | 1 | 1 | 1 | 0 | 1 | 1/1/1 |
+| 15 | 1 | 1 | 1 | 1 | 0 | 0 | 1 | 1/1/1 |
+
+Every cell agrees with the prediction, and the four guests' alternate-value masks are exactly the cells
+with their own bit set:
+
+```
+# sweep-diagonal: G1 field 0 mask 0xAAAA default 1 alternate 0
+# sweep-diagonal: G2 field 1 mask 0xCCCC default 1 alternate 0
+# sweep-diagonal: G3 field 2 mask 0xF0F0 default 0 alternate 1
+# sweep-diagonal: G4 field 3 mask 0xFF00 default 4 alternate 7
+```
+
+So the diagonal holds as one sentence over sixteen cells, and no prediction had to be corrected: each
+guest moves under its own field and under no other, at the default of the remaining three. The diagonal is
+falsifiable rather than vacuous - `stic.judge.disc-diagonal-two-fields` drives the same comparison on G1's
+entangled reading and the comparison rejects it:
+
+```
+# judge: the diagonal rejected the entangled guest at cell 2 (bits 0x2), observed 1
+```
+
+Cell 2 is the gating field alone, which is exactly the coupling plan 19-01 measured when it made the
+blocked counter G1's registered observable.
+
+### Why the measurement is Exit B and not Exit A
+
+The sweep settles **separability**, which is criterion 2, and it settles nothing else. A diagonal cell
+shows that a field's two settings are told apart by an authored guest's registered observable; it cannot
+show which setting the hardware used, because the row under test is a stack copy of the engine's own
+generated table and an engine agreeing with itself is not an oracle (`AGENTS.md`: repeated hashes and
+shared-core agreement are not independent evidence; D-51: an observation is not a hardware probe). All
+four guests are diagonal, so no field yields evidence that prefers one of its settings, and the four
+rivals stay `open` with their `default_policy` sentences and their `unknown-default-chosen` tags intact.
+
+That is the reading of the plan's Exit A trigger this record uses, stated so a reader can check it rather
+than infer it: "exactly one field discriminates" is read as "exactly one field yields evidence that
+prefers one of its settings", not as "exactly one field's guest moves", because a four-diagonal matrix is
+the criterion-2 success and would otherwise satisfy "one field discriminates" zero times or four times
+depending on how the sentence is parsed. Nothing here is decided by fit, and a diagonal is not a decision.
+
+Exit B taken - the sixteen cells are diagonal and no cell prefers a setting, so the record reads default
+unchanged, observation appended, rivals named, which is `Complete` for VID-07 on its own stated terms.
+
+The evidence the line above names is `stic.disc.sweep-diagonal` (`ok 110`) and
+`stic.judge.disc-diagonal-two-fields` (`ok 111`) in the `stic` suite's own result file, on both presets
+through the gate. No profile value, parameter digest, snapshot literal, rule statement, golden or
+installed file moves with this exit, and `data/expected/discrepancies.ids` does not move either: no new C
+id is minted.

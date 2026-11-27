@@ -680,3 +680,28 @@ files control files-unlisted-binary-ivst TOOL-09
 # emitter cannot pass. TOOL-02 is already Complete from plan 18-02, so the row and the requirement agree
 # in both directions, and the gate name is new because the row registers a contract rather than a step.
 asm mutant asm.judge.dis-constant-mnemonic TOOL-02
+# Phase 19 VID-07 plan 19-03 (the sixteen-cell sweep and the five stand-ins it makes falsifiable): six `mutant`
+# rows under one new gate name `stic-disc`, one per committed stand-in - plan 19-01's four guests' judges
+# (disc-g1-dead, disc-g2-dead, disc-g3-dead, disc-g4-dead), its displayed-word equivalence judge
+# (disc-equivalence-dead) and this plan's diagonal stand-in (disc-diagonal-two-fields). A `mutant` row is a suite
+# self-control `<suite>.judge.<slug>` judged by tests-inventory, so these rows add no step, no fault, no golden and
+# no control: zero new faults, zero new steps, zero new goldens, and the sweep stays an id inside the existing
+# `stic` suite. The gate name is new because the suite's discrimination family is a contract, not a step - the
+# EV-07/TOOL-02 precedent - so `gates` moves by one and `lines` by six.
+# What each stand-in proves, in one line each: disc-g1-dead makes G1's blocked counter stop moving; disc-g2-dead
+# moves G2's write inside the window; disc-g3-dead writes where G3 reads; disc-g4-dead re-strobes every frame;
+# disc-equivalence-dead reads the two words of the displayed equivalence at two different instants; and
+# disc-diagonal-two-fields reads G1's observable the entangled way, so the diagonal check must reject it for moving
+# under a field that is not its own - which is what makes "each guest moves under its own field and no other"
+# falsifiable rather than promised.
+# The rows and the VID-07 flip land in ONE commit for the derived-accepted-set reason: this step derives its accepted
+# set from the requirement records' Complete ids and refuses a row naming a Pending requirement, so a row cannot
+# precede the flip. The cases and their stand-ins landed one task earlier (19-01's Task 1 and Task 3, this plan's
+# Task 1) and the split is recorded in 19-01-SUMMARY.md and 19-03-SUMMARY.md as a 2.7 deviation, with Phase 18's
+# observation O4 as the precedent.
+stic-disc mutant stic.judge.disc-g1-dead VID-07
+stic-disc mutant stic.judge.disc-g2-dead VID-07
+stic-disc mutant stic.judge.disc-g3-dead VID-07
+stic-disc mutant stic.judge.disc-g4-dead VID-07
+stic-disc mutant stic.judge.disc-equivalence-dead VID-07
+stic-disc mutant stic.judge.disc-diagonal-two-fields VID-07
