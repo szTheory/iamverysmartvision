@@ -373,6 +373,14 @@ foreach(rel IN LISTS st_profiles)
   st_policy(irq_line stic.irq_line "INTRM" "no other interrupt line is implemented")
   st_policy(late_grant stic.late_grant "fetch-at-schedule" "no waiting-for-grant policy is implemented")
   st_policy(gating_off stic.access_gating_when_off "apply" "no policy that opens the windows while the display is off is implemented")
+  # Plan 19-01 (C94): the accepted policy is emitted as the member the engine reads, so the profile stays the single
+  # source and the member's value is a consequence of the row rather than a literal beside it. `apply` is value 1 (the
+  # windows apply whatever the display latch is); the alternate, 0, is only ever a stack copy in a test.
+  if(gating_off STREQUAL "apply")
+    set(gating_apply 1)
+  else()
+    st_fail("no other access-gating policy is implemented")
+  endif()
   st_policy(off_fill video.display_off_fill "border" "no other display-off fill is implemented")
   st_policy(drop video.last_card_column_drop "right" "no left clip of the 20th card column is implemented")
 
@@ -665,6 +673,12 @@ foreach(rel IN LISTS st_profiles)
   endforeach()
   st_num(alias_sens stic.alias_read_sensitive 1)
 
+  # ---- display-path policy selectors (plan 19-01, D-54, C82 and C94)
+  # stic.display_latch_cleared_each_frame: 1 = the latch is cleared at every frame start (today's rule), 0 = it persists.
+  # The generator emits the profile's own value; the alternate is a stack copy in a test, never a second profile value,
+  # because a profile file would multiply the four generated tables and every profile-step count (research 1c).
+  st_num(latch_clear stic.display_latch_cleared_each_frame 1)
+
   # ---- stic.power_on
   st_field("${doc}" stic.power_on)
   set(ST_CTX "${rel}: stic.power_on")
@@ -750,6 +764,7 @@ foreach(rel IN LISTS st_profiles)
     "    .effect_access = {${ek_c}},\n"
     "    .effect_code = {${ec_c}},\n"
     "    .alias_read_sensitive = ${alias_sens}u,\n"
+    "    .access_gating_when_off = ${gating_apply}u, .display_latch_cleared_each_frame = ${latch_clear}u,\n"
     "    .backtab_lo = ${backtab_lo}u, .backtab_words = ${backtab_words}u,\n"
     "    .power_on_mode = ${pmode_c}, .power_on_display_latch = ${pl}u,\n"
     "    .video_card_columns = ${cards_x}u, .video_card_rows = ${cards_y}u,\n"

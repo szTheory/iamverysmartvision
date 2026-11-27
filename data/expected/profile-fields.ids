@@ -130,6 +130,7 @@ stic.bus.fetch_offset_cpu_cycles
 stic.late_grant
 stic.access_strobe_ticks
 stic.access_gating_when_off
+stic.display_latch_cleared_each_frame
 stic.video_slack_frames
 bus.line_sample_lag_cpu_cycles
 video.card_columns

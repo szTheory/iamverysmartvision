@@ -21,7 +21,7 @@
  *
  * The guests are this project's own content: every word is built by the suite's decle builders (`sc_w_*`, stic_progs.c)
  * from the project's own Phase 2 opcode vectors, exactly as `stic_cases.h` derives them, and no byte here is
- * rights-bearing — no EXEC, GROM, cartridge or diagnostic image is read, and nothing third-party is named.
+ * rights-bearing - no EXEC, GROM, cartridge or diagnostic image is read, and nothing third-party is named.
  *
  * The report's key table is closed and carries no STIC counter (`docs/runner.md` `## Report`), so the blocked-write
  * counter has no report line and is read from machine state only. The displayed word is the opposite case: the report's
@@ -302,16 +302,45 @@ static uint32_t sd_guard_g1(const uint16_t *witness, size_t witness_n, uint32_t 
  * window field, so it can never be a witness for one field, while the counter does not move with the pre-latch. */
 static int sd_g1_window(void)
 {
+  const ivs_stic_params *p = ivs_stic_params_get(SC_PROFILE);
   uint16_t wit[SC_PROG_MAX];
+  uint16_t crit[SC_PROG_MAX];
   size_t wit_n;
+  size_t crit_n;
   uint32_t blocked = 0u;
   uint32_t displayed = 0u;
   uint32_t bad;
+  ivs_stic_params open;
+  sd_hits ch;
+  sd_hits wh;
+  ivs_stic_report r;
   wit_n = sd_prog_g1_witness(wit);
+  crit_n = sd_prog_g1_criterion(crit);
   bad = sd_guard_g1(wit, wit_n, &blocked, &displayed);
   if (bad != 0u) {
     ivs_test_diag("G1 guard failed: limbs 0x%02X (witness blocked %u, criterion displayed %u)", (unsigned)bad,
                   (unsigned)blocked, (unsigned)displayed);
+    return IVS_TEST_FAIL;
+  }
+  /* The coupling, measured in the case rather than asserted in a comment: a latch-clear access inside the gap is exactly
+   * what the gating alternate unblocks, so the criterion guest's displayed word moves under the gating field as well as
+   * under the window field - it can never be a witness for one field. The witness's counter does not move, because with
+   * the display already on the gating alternate's condition ("the latch is clear") is false and the window schedule alone
+   * decides the write. That is why the counter is the registered observable and the displayed word is not. */
+  open = *p;
+  open.access_gating_when_off = 0u;
+  SC_CHECK(sd_measure(crit, crit_n, 1u, 0x0020u, p->frame_ticks, &ch) && ch.n == 1u);
+  SC_CHECK(sd_measure(wit, wit_n, 1u, 0x0020u, p->frame_ticks, &wh) && wh.n == 2u);
+  SC_CHECK(sd_observe(&open, &ch, 1u, 0x0020u, &r));
+  if (r.windows_active != 1u) {
+    ivs_test_diag("gating alternate: the criterion guest's displayed word is %u, not 1 (blocked %u)",
+                  (unsigned)r.windows_active, (unsigned)r.blocked_writes);
+    return IVS_TEST_FAIL;
+  }
+  SC_CHECK(sd_observe(&open, &wh, 1u, 0x0020u, &r));
+  if (r.blocked_writes != 1u) {
+    ivs_test_diag("gating alternate: the witness's blocked count is %u, not 1 (displayed %u)",
+                  (unsigned)r.blocked_writes, (unsigned)r.windows_active);
     return IVS_TEST_FAIL;
   }
   return IVS_TEST_PASS;

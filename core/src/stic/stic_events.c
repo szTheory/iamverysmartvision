@@ -52,7 +52,13 @@ void ivs_stic_catch_up(const ivs_stic_params *p, ivs_stic_state *s, ivs_memsys *
 #endif
     switch (kind) {
     case IVS_STIC_EV_FRAME_START:
-      s->display_latch = 0u;
+      /* Plan 19-01 (D-54, C82): stic.display_latch_cleared_each_frame = 1 is today's rule (the latch is cleared at every
+       * frame start, so one strobe displays one frame) and leaves the bytes identical. At 0 the latch persists across
+       * frame starts, so one strobe displays every following frame until another rule clears it. windows_active is
+       * cleared here either way: it is decided from the latch at this frame's GMEM_CLOSE, not carried over. */
+      if (p->display_latch_cleared_each_frame != 0u) {
+        s->display_latch = 0u;
+      }
       s->windows_active = 0u;
       s->grants_in_frame = 0u;
       ivs_memsys_set_gate_internal(mem, IVS_MEMSYS_GATE_STIC_REGS, 1u);

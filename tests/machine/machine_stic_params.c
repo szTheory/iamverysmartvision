@@ -221,6 +221,10 @@ static int msp_regmap_shape(void)
       IVS_CHECK(p->effect_code[r] <= IVS_STIC_EFFECT_MODE_CS);
     }
     IVS_CHECK(p->alias_read_sensitive <= 1u);
+    /* Plan 19-01 (D-54, C82, C94): the two display-path policy selectors are 0/1. A generator that emitted an
+     * out-of-range policy is a machine-suite failure here rather than a silently different frame. */
+    IVS_CHECK(p->access_gating_when_off <= 1u);
+    IVS_CHECK(p->display_latch_cleared_each_frame <= 1u);
   }
   return IVS_TEST_PASS;
 }
