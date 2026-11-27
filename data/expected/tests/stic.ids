@@ -120,3 +120,10 @@ stic.disc.g4-latch
 stic.judge.disc-g2-dead
 stic.judge.disc-g3-dead
 stic.judge.disc-g4-dead
+# Plan 19-03 task 1 (VID-07 criterion 2): the sixteen-cell diagonal sweep and the committed stand-in that makes it
+# falsifiable. One id builds all sixteen cells as stack copies of the generated row and asserts one sentence - each
+# guest's registered observable takes its alternate value if and only if the cell sets that guest's own field - with a
+# per-cell diagnostic; the judge drives the same comparison with G1's observable read the entangled way and is red if the
+# comparison accepts a guest that moves under two fields.
+stic.disc.sweep-diagonal
+stic.judge.disc-diagonal-two-fields
