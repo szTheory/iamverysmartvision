@@ -138,6 +138,17 @@ Its result is an observation of the owner's own run and nothing more: it is not 
 `data/scenarios/disc-sweep-probe.ivss` is the probe's visible skip marker: it asks for the operator's EXEC image by role, so the gate ends it `missing-fixture` (exit 13) and the suite reports it as a skip, and the probe's absence is the expected state rather than a gap.
 The gate tests the probe's containment, never its sweep: `runner-process.disc-sweep.ci-refusal`, `runner-process.disc-sweep.output-tree` and `runner-process.disc-sweep.bound` run a copy of it in a scratch directory outside the work tree, with zero-filled files the test makes and never an operator image, and they read and write nothing of the real `refs/`.
 
+## The inspection instrument
+
+The source archive builds the build-only inspection instrument as the target `ivs_inspect`, and the executable that target writes is `build/release/tools/inspect/ivs-inspect` in the release preset's own build tree; `cmake --build --preset release --target ivs_inspect` is the command that builds it.
+It is build-only in the same sense as the runner and the image tools: it has no install rule, it is never installed, and it is not one of the eleven paths of the installed package, so it is reached from the build tree and never from the package (`docs/packaging.md`).
+Its command surface, its record fields and its refusal tokens are frozen in `docs/inspection.md`, and the route a person drives it by is that page's appended `## The operator route` section, cited here by name and not restated: the four subcommands, their options, their three exit statuses and the shape of what they print are that section's business.
+Every output must lie under `refs/`, because the frozen output-policy token refuses a path inside the work tree that is not under `refs/` whatever the spelling of the path, and an existing path is refused, so a second invocation needs the first one's files removed; `refs/` is ignored by version control and lies outside every gate step.
+Nothing the instrument writes is ever committed: a trace or a disassembly of an owner-local run is derived material of the owner's files, kept in private notes or discarded, and never a fixture, a golden, a CI artifact or a claim artifact.
+
+The instrument is a route, not a result.
+This page names it so a person holding their own files can reach it; the page does not perform any item, it states no result about any owner image, and the ledger rows stay `not-performed`.
+
 ## The template scenario and the gate
 
 `data/scenarios/owner-exec-title.ivss` asks for `content exec user` and `content grom user`, names no cartridge, bounds the run at 600 frames and has no `assert` line: it states no result, because the project does not describe a real EXEC. The helper's `--cart` adds the cartridge role to its own temporary copy, and the tracked template is unchanged.
