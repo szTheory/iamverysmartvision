@@ -31,6 +31,7 @@ this index first.**
 | `.planning/MILESTONES.md` | What shipped, per milestone, with the key accomplishments |
 | `.planning/RETROSPECTIVE.md` | What worked, what was inefficient, patterns, key lessons, cross-milestone trends, and **"Carried Into the Next Milestone"** |
 | `.planning/CI-EFFICIENCY.md` | Append-only hosted-run log and the cost rule: budget 7.8, revisit 8.3, the pre-committed lever order, per-phase checkpoints |
+| `.agents/skills/ops-hygiene/SKILL.md` | **The discoverable entry point for subagents.** Local-first before any push (`gate.sh` under both shells, `hygiene.sh`, `gate-linux.sh`, `act` for workflow shape), cheap consistency checks before long suites, the post-run CI efficiency review, `ivs-<purpose>` container naming and removal, and the process/temp-tree cleanup checklist. Adds no rule of its own: it points at `AUTONOMY.md` section 4 and section 9 |
 | `.planning/ci-runs.tsv` | The machine-readable hosted rows the cost rule is computed from |
 | `.planning/milestones/<version>-*/` | Archived phases, requirements, roadmap, context and close record for a shipped milestone |
 | `.planning/MILESTONE-CONTEXT.md` | **Current milestone only.** The frozen upstream artifact: why this milestone, the phase shape, the frozen decisions, the verification strategy, the cost arithmetic, the risks, and what it refuses. Replaced wholesale at each milestone opening; archived as `<version>-CONTEXT.md` |
