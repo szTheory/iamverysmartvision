@@ -671,3 +671,12 @@ runner-process mutant runner-process.judge.break-always-hits TOOL-02
 # `files` is the step that owns `tools/check/binary-ext.txt`. The row is the phase's one new gate name,
 # which is why the gate line's `gates` token reads 121 rather than 120.
 files control files-unlisted-binary-ivst TOOL-09
+# Phase 18 TOOL-02 plan 18-03 (the disassembly limb's own stand-in): one `mutant` row under the new gate
+# name `asm`, over asm.judge.dis-constant-mnemonic - the case that replaces every instruction line of the
+# emitter's own output with the whole line `DECLE $0000`, reassembles it with ivs_asm and requires the
+# word comparison to fail. The stand-in is a committed case in the existing `asm` suite, re-run on every
+# gate run, so the row adds no step, no fault, no golden and no control; it is the liveness guard on the
+# round trip's word equality (docs/inspection.md, `## Liveness guards`), and it is why a DECLE-everything
+# emitter cannot pass. TOOL-02 is already Complete from plan 18-02, so the row and the requirement agree
+# in both directions, and the gate name is new because the row registers a contract rather than a step.
+asm mutant asm.judge.dis-constant-mnemonic TOOL-02

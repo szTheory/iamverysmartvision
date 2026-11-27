@@ -715,8 +715,11 @@ set_tests_properties(pack PROPERTIES SKIP_RETURN_CODE 77 ENVIRONMENT "CMAKE=${CM
 # Each twin under tests/asm/twins/ is assembled by ivs_asm and its words, read back by ivs_pack
 # --dump-words, must equal ivs_pack's words of the committed hand listing; asm.judge.mutated-twin shows
 # the comparison can fail. ivs_asm reads only its source and writes only its listing; no core is involved.
+# The fourth argument (plan 18-03, TOOL-02) is the build-only inspection instrument: the asm.dis.* cases
+# disassemble the boot-stub listing, reassemble the emitted source with ivs_asm and compare the two word
+# dumps, so the disassembly limb is judged by the same comparator the twins use.
 add_test(NAME asm COMMAND sh "${CMAKE_SOURCE_DIR}/tests/asm-tap.sh" "${CMAKE_SOURCE_DIR}" "$<TARGET_FILE:ivs_asm>"
-  "$<TARGET_FILE:ivs_pack>")
+  "$<TARGET_FILE:ivs_pack>" "$<TARGET_FILE:ivs_inspect>")
 set_tests_properties(asm PROPERTIES SKIP_RETURN_CODE 77)
 
 # Suite bench (plan 08-18, D-21 to D-26, D-39): the benchmark tool ivs-bench of this preset in its --verify-only mode against the committed

@@ -59,11 +59,13 @@
  * is named "the inspection trace" or "the disassembly dump" in prose; the row and docs/inspection.md
  * carry the refused spellings.
  *
- * The one cross-file prototype this program needs is declared at both ends - here and at the top of
- * inspect_trace.c - because plan 18-02 pins the tool to two sources and a header would be a third
- * file. Its contract: 0 the trace is written and reconciled, 1 the reconciliation refused (detail
- * carries the reason and the caller prints the named refusal), 2 a file or usage error (detail
- * carries the message and the caller prints it with no token). */
+ * The cross-file prototypes this program needs are declared at both ends - here and at the top of
+ * inspect_trace.c and inspect_dis.c - because plan 18-02 pinned the command surface to its own file and
+ * a header would be one more file. inspect_trace.c's contract: 0 the trace is written and reconciled, 1
+ * the reconciliation refused (detail carries the reason and the caller prints the named refusal), 2 a
+ * file or usage error (detail carries the message and the caller prints it with no token).
+ * inspect_dis.c's contract: 0 the emitted source is in the buffer the caller frees, 1 a row refused
+ * (`inspect-dis-row`, detail carries the detail), 2 a listing or bound error with no token. */
 
 #define _POSIX_C_SOURCE 200809L
 
@@ -88,6 +90,8 @@
 #define IX_REPORT_MAX (16u * 1024u * 1024u)
 /* The trace the `break` surface reads back: the same 64 MiB bound the trace pass writes under. */
 #define IX_TRACE_MAX (64u * 1024u * 1024u)
+/* The listing `dis` reads: a listing is a few hundred lines at the listing grammar's caps. */
+#define IX_LISTING_MAX (4u * 1024u * 1024u)
 #define IX_DETAIL_MAX 320u
 
 /* Exit statuses of the frozen page. */
@@ -109,6 +113,7 @@
 static const char ix_tok_output_tree[] = "inspect-output-tree";
 static const char ix_tok_output_exists[] = "inspect-output-exists";
 static const char ix_tok_break_empty[] = "inspect-break-empty";
+static const char ix_tok_dis_row[] = "inspect-dis-row";
 
 /* The outcome of the output policy, in the frozen order: the tree, then existence, then the exclusive
  * create. IX_OPEN_REFUSED_TREE and IX_OPEN_REFUSED_EXISTS carry the caller's token; IX_OPEN_ERROR is a
@@ -135,6 +140,13 @@ typedef struct ix_host {
   size_t report_len;
   size_t report_cap;
 } ix_host;
+
+/* The interface tools/inspect/inspect_dis.c implements. See that file's header for the contract: 0 the
+ * emitted source is in *out_text (malloc'd, *out_len bytes, the caller owns it); 1 a row was refused
+ * (detail carries the refusal's detail); 2 a bound, allocation or listing-grammar error (detail carries
+ * the message, which carries no token). */
+int ivs_inspect_dis_emit(const uint8_t *bytes, size_t len, char **out_text, size_t *out_len, char *detail,
+                         size_t detail_cap);
 
 /* The interface tools/inspect/inspect_trace.c implements. See the file header for the contract. */
 int ivs_inspect_trace_run(const ivs_scenario *scn, uint8_t *const role_bytes[IVS_SCN_ROLES],
@@ -1024,6 +1036,106 @@ static int ix_cmd_break(int argc, char **argv)
   return rc;
 }
 
+/* ---- the dis subcommand ---- */
+
+/* `dis`: the frozen page's fourth subcommand. The listing is read whole and turned into source before
+ * anything is created, because the row refusal is fail-closed and must leave no output behind; only
+ * then is the output opened through the same ladder `trace` and `break` use, and a short write removes
+ * what this run created. The transform itself, and the only knowledge of the listing's grammar, is
+ * inspect_dis.c. */
+static int ix_cmd_dis(int argc, char **argv)
+{
+  const char *listing_path;
+  const char *out = NULL;
+  uint8_t *bytes = NULL;
+  size_t len = 0u;
+  char *text = NULL;
+  size_t text_len = 0u;
+  char detail[IX_DETAIL_MAX];
+  FILE *f = NULL;
+  int created = 0;
+  int rc = IX_EXIT_ERROR;
+  int r;
+  int i;
+
+  detail[0] = '\0';
+  if (argc < 3) {
+    return ix_usage();
+  }
+  listing_path = argv[2];
+  for (i = 3; i < argc; i++) {
+    if (strcmp(argv[i], "--out") == 0) {
+      if (out != NULL || i + 1 >= argc) {
+        return ix_usage();
+      }
+      out = argv[++i];
+    } else {
+      return ix_usage();
+    }
+  }
+  if (out == NULL) {
+    return ix_usage();
+  }
+
+  bytes = malloc(IX_LISTING_MAX + 1u);
+  if (bytes == NULL) {
+    (void)fprintf(stderr, "ivs-inspect: cannot allocate the listing buffer\n");
+    goto done;
+  }
+  if (ix_read_regular(listing_path, IX_LISTING_MAX, bytes, &len) != IX_READ_OK) {
+    (void)fprintf(stderr, "ivs-inspect: cannot read the listing %s\n", listing_path);
+    goto done;
+  }
+  r = ivs_inspect_dis_emit(bytes, len, &text, &text_len, detail, sizeof detail);
+  if (r == 1) {
+    rc = ix_refuse(ix_tok_dis_row, detail);
+    goto done;
+  }
+  if (r != 0) {
+    (void)fprintf(stderr, "ivs-inspect: %s\n", detail);
+    goto done;
+  }
+
+  switch (ix_open_output(out, &f, &created, detail, sizeof detail)) {
+  case IX_OPEN_OK:
+    break;
+  case IX_OPEN_REFUSED_TREE:
+    rc = ix_refuse(ix_tok_output_tree, detail);
+    goto done;
+  case IX_OPEN_REFUSED_EXISTS:
+    rc = ix_refuse(ix_tok_output_exists, detail);
+    goto done;
+  default:
+    (void)fprintf(stderr, "ivs-inspect: %s\n", detail);
+    goto done;
+  }
+
+  if (fwrite(text, 1u, text_len, f) != text_len) {
+    (void)fclose(f);
+    f = NULL;
+    (void)fprintf(stderr, "ivs-inspect: a write error on %s\n", out);
+    goto done;
+  }
+  if (fclose(f) != 0) {
+    f = NULL;
+    (void)fprintf(stderr, "ivs-inspect: a write error on %s\n", out);
+    goto done;
+  }
+  f = NULL;
+  rc = IX_EXIT_OK;
+
+ done:
+  if (f != NULL) {
+    (void)fclose(f);
+  }
+  if (rc != IX_EXIT_OK && created != 0) {
+    (void)remove(out);
+  }
+  free(text);
+  free(bytes);
+  return rc;
+}
+
 /* ---- the step subcommand ---- */
 
 /* A whole argument as a decimal count. */
@@ -1163,10 +1275,13 @@ int main(int argc, char **argv)
   if (strcmp(argv[1], "break") == 0) {
     return ix_cmd_break(argc, argv);
   }
+  if (strcmp(argv[1], "dis") == 0) {
+    return ix_cmd_dis(argc, argv);
+  }
   if (strcmp(argv[1], "step") == 0) {
     return ix_cmd_step(argc, argv);
   }
-  /* `dis` is the frozen page's fourth subcommand and plan 18-03 lands it, so its name is a usage
-   * error (exit 2, no token) here, exactly like a fifth name. */
+  /* A fifth name is a usage error (exit 2, no token), never a quiet alias: the frozen page's command
+   * surface is four subcommands and no fifth. */
   return ix_usage();
 }

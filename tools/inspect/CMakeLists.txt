@@ -12,14 +12,17 @@
 # repo-relative to the build tree (ivs-inspect-sources.txt) like the lists of the other tools, so the
 # c-build step finds a tracked tools/inspect/*.c that is not compiled.
 #
-# Two file stems and no third file: object and plain-copy names use the stem, so a stem that collides
-# with core/src or runner/ is a configure-time fault (runner/CMakeLists.txt states the rule), and the
-# tool's own two-file split is pinned by plan 18-02, so the one cross-file prototype is declared at
-# both ends (tools/inspect/inspect.c and tools/inspect/inspect_trace.c) rather than in a header.
+# Three file stems and no fourth file: object and plain-copy names use the stem, so a stem that
+# collides with core/src or runner/ is a configure-time fault (runner/CMakeLists.txt states the rule).
+# Plan 18-02 pinned the command surface and the trace pass to two sources and plan 18-03 added the
+# disassembly limb as its own translation unit, so the cross-file prototypes are declared at both ends
+# (tools/inspect/inspect.c and each of the two limb files) rather than in a header, which would be a
+# fourth file the two-source split refuses.
 
 set(IVS_INSPECT_SOURCES
   inspect.c
   inspect_trace.c
+  inspect_dis.c
 )
 
 add_executable(ivs_inspect ${IVS_INSPECT_SOURCES})
