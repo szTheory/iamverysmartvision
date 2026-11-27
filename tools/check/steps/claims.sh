@@ -34,12 +34,13 @@ stats=$(printf '%s\n' "$out" | sed -n 's/^-- claim pass records=[0-9][0-9]* //p'
 # The eight ids the project's own records already use: an H-id of a phase verification record or a
 # milestone close record, or a D-id owner gate. Frozen here so the set cannot be edited away
 # together with the ledger. Phase 16 added H16-1, H16-2 and H16-3, the three owner-only questions
-# that phase offered as rows.
-HANDOFF_IDS='H7-1 H7-2 H8-3 D10 D11 H16-1 H16-2 H16-3'
+# that phase offered as rows. Phase 20 added D10-VID-08, the STIC display-strobe and latch item
+# (GUARDRAILS-v0.4 W6), so the set is nine rows and not the eight this comment was first written for.
+HANDOFF_IDS='H7-1 H7-2 H8-3 D10 D11 H16-1 H16-2 H16-3 D10-VID-08'
 # The disposition each id carries, pinned here for the same reason the id set is: a row with the
 # right id and the wrong disposition reads as a performed handoff that nobody performed, and the
 # ledger is the only place a later milestone looks. Edit both lists together or not at all.
-HANDOFF_DISP='H7-1=handed-off H7-2=handed-off H8-3=handed-off D10=not-performed D11=not-performed H16-1=handed-off H16-2=handed-off H16-3=handed-off'
+HANDOFF_DISP='H7-1=handed-off H7-2=handed-off H8-3=handed-off D10=not-performed D11=not-performed H16-1=handed-off H16-2=handed-off H16-3=handed-off D10-VID-08=not-performed'
 hled="$ROOT/data/expected/handoffs.ids"
 
 hb=$(mktemp "${TMPDIR:-/tmp}/claims.XXXXXX") || exit 1
