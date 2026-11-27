@@ -105,6 +105,29 @@ files.
 
 ## Phases
 
+### v0.4.0 - Inspectable Machine, One Default Decided
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 17. Records, Cost Window and the Count-Gate Contract | 3/3 | Complete    | 2026-11-26 |
+| 18. The Inspection Surface | 3/3 | Complete    | 2026-11-26 |
+| 19. Discriminating the Display Path | 3/3 | Complete    | 2026-11-27 |
+| 20. Route, Witness and Release Posture | 2/2 | Complete    | 2026-11-27 |
+
+**Current milestone:** v0.4.0 "Inspectable Machine, One Default Decided", scoped by
+this roadmap on 2026-11-26 and **in progress**. The heading above was rewritten on
+2026-11-26 because the milestone tool derived `milestone_name` from it and had written
+`scoped 2026-11-26 (in progress)` — a date, not a name — into `STATE.md` and
+`.planning/state.json`. Eleven plans over four phases, none started. The
+milestone adds zero new gate steps, faults or goldens, mints no claim (`claims=29`
+and `provisional=28` are invariants), and prices 4.72 of the 21 hosted cpu-s
+allowance.
+
+**Phase details for v0.3.0 are archived** in `.planning/milestones/v0.3.0-ROADMAP.md`
+(the phase shape, goals, success criteria, waves and plan lists), with the
+requirements in `.planning/milestones/v0.3.0-REQUIREMENTS.md` and the audit in
+`.planning/milestones/v0.3.0-MILESTONE-AUDIT.md`. They are not restated here.
+
 <details>
 <summary>✅ v0.1.0 Machine Core Foundations (Phases 1 to 8) — SHIPPED 2026-11-24</summary>
 
@@ -427,25 +450,3 @@ The milestone adds zero new gate steps, faults or goldens, and at most one claim
 
 
 
-### v0.4.0 - Inspectable Machine, One Default Decided
-
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 17. Records, Cost Window and the Count-Gate Contract | 3/3 | Complete    | 2026-11-26 |
-| 18. The Inspection Surface | 3/3 | Complete    | 2026-11-26 |
-| 19. Discriminating the Display Path | 3/3 | Complete    | 2026-11-27 |
-| 20. Route, Witness and Release Posture | 2/2 | Complete    | 2026-11-27 |
-
-**Current milestone:** v0.4.0 "Inspectable Machine, One Default Decided", scoped by
-this roadmap on 2026-11-26 and **in progress**. The heading above was rewritten on
-2026-11-26 because the milestone tool derived `milestone_name` from it and had written
-`scoped 2026-11-26 (in progress)` — a date, not a name — into `STATE.md` and
-`.planning/state.json`. Eleven plans over four phases, none started. The
-milestone adds zero new gate steps, faults or goldens, mints no claim (`claims=29`
-and `provisional=28` are invariants), and prices 4.72 of the 21 hosted cpu-s
-allowance.
-
-**Phase details for v0.3.0 are archived** in `.planning/milestones/v0.3.0-ROADMAP.md`
-(the phase shape, goals, success criteria, waves and plan lists), with the
-requirements in `.planning/milestones/v0.3.0-REQUIREMENTS.md` and the audit in
-`.planning/milestones/v0.3.0-MILESTONE-AUDIT.md`. They are not restated here.
