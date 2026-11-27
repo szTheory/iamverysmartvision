@@ -105,3 +105,10 @@ stic.bounds.no-wait-reply
 # Plan 06-11 (VID-06): inspection completed against rendering: the peek sweep with a delivered Color Stack frame present leaves the whole instance byte-identical, and the report's cs_ptr after a rendered frame equals the final pointer of a frame with a known number of advances.
 stic.peek.sweep-bytes-equal-after-render
 stic.state.cs-ptr-after-render
+# Plan 19-01 task 1 (VID-07): the discrimination family, first guest. Four rival display-path rules, each an authored guest
+# whose one registered observable is machine state read at the machine-state seam, with a two-limb liveness guard, a
+# committed stand-in that makes the guard fail and a judge that is red if the stand-in passes.
+stic.disc.g1-window
+stic.judge.disc-g1-dead
+stic.disc.displayed-equivalence
+stic.judge.disc-equivalence-dead
