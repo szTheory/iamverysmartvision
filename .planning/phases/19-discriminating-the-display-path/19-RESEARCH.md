@@ -826,25 +826,35 @@ are build outputs and are regenerated, never migrated.
 
 ## Open Questions
 
-1. **Does the latch field belong in `stic.power_on` or at the top level?**
+All three are **(RESOLVED)** at the plan set committed as `e148500`, and each names where it lands. A later
+reader should treat them as settled decisions, not as open research.
+
+1. **(RESOLVED) Does the latch field belong in `stic.power_on` or at the top level?**
    - What we know: `stic.power_on.display_latch` is the *power-on* value (`stic.power_on`, C85), a different
      question from the per-frame sustain rule (C6/C82).
-   - What's unclear: whether the plan wants one field or two.
-   - Recommendation: a **new top-level** field (`stic.display_latch_...`), because folding the sustain rule into
-     the power-on record would make one row answer two conflicts.
+   - What was unclear: whether the plan wants one field or two.
+   - **Resolution: a new top-level field**, `stic.display_latch_cleared_each_frame`, because folding the sustain
+     rule into the power-on record would make one row answer two conflicts. It lands as the profile row plus its
+     inventory line plus the whole W1 retarget in `19-01-PLAN.md` Task 2 (step 4 and step 6), and is the field
+     the G4 guest sweeps in `19-01-PLAN.md` Task 3.
 
-2. **Should the sweep's observation be `display_latch`, `windows_active`, or the slot header bit?**
+2. **(RESOLVED) Should the sweep's observation be `display_latch`, `windows_active`, or the slot header bit?**
    - What we know: `displayed` = `windows_active` at GMEM_CLOSE = `display_latch != 0` at that instant
      (`stic_events.c:66`, `stic_frame.c:394`).
-   - What's unclear: which of the three the criterion means by "frame 0 `displayed`".
-   - Recommendation: the **slot header bit** where a frame is delivered (the guest ids), and
-     `windows_active` where the cell only drives an access (the sweep), with the equivalence asserted once.
+   - What was unclear: which of the three the criterion means by "frame 0 `displayed`".
+   - **Resolution: all three, pinned as one word by one id.** `stic.disc.displayed-equivalence`
+     (`19-01-PLAN.md` Task 1, step 6) asserts the equality in both polarities and names the slot header bit
+     (`video.slot.displayed-flag-follows-latch`) and the runner's `frame N displayed` line as the other two
+     readings; the guests read the machine state, and the sweep cells read the same machine-state call, so no
+     plan has to choose between the three.
 
-3. **Is `19-02` a scenario, a helper, or both?**
+3. **(RESOLVED) Is `19-02` a scenario, a helper, or both?**
    - What we know: exit 13 is a *scenario outcome*; the `refs/`-only refusal is a *helper* rule; the two live in
      different files today (`owner-run.sh` + `needs-user-exec.ivss`).
-   - Recommendation: **both**, as `owner-run.sh` and `needs-user-exec` already are: a helper script and a
-     `skip-ok` scenario that drives it. One of them carries the bound, the other carries the visible skip.
+   - **Resolution: both**, as `owner-run.sh` and `needs-user-exec` already are. `19-02-PLAN.md` Task 1 is the
+     helper (`tools/disc-sweep.sh`, which carries the bound, the `refs/` rule and the `CI` refusal, and exits 77
+     when the images are absent) and Task 2 is the `skip-ok` scenario that carries the visible skip and exit 13.
+     The two codes are different on purpose and the helper's header says so.
 
 ---
 
