@@ -797,7 +797,7 @@ static int mc_status_names(void)
 static int mc_api_version(void)
 {
   IVS_CHECK(IVS_API_VERSION_MAJOR == 0u);
-  IVS_CHECK(IVS_API_VERSION_MINOR == 3u);
+  IVS_CHECK(IVS_API_VERSION_MINOR == 4u);
   IVS_CHECK(IVS_API_VERSION_PATCH == 0u);
   IVS_CHECK(IVS_API_VERSION == ((IVS_API_VERSION_MAJOR << 16) | (IVS_API_VERSION_MINOR << 8) | IVS_API_VERSION_PATCH));
   IVS_CHECK(ivs_api_version() == IVS_API_VERSION);
