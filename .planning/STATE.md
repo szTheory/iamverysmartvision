@@ -2,15 +2,15 @@
 gsd_state_version: "1.0"
 milestone: v0.4.0
 milestone_name: Inspectable Machine, One Default Decided
-current_phase: 19
-current_phase_name: Discriminating the Display Path
-current_plan: 19-03 complete (3 of 3)
-status: phase-complete
-stopped_at: Phase 19 complete on Exit B, ready to verify the phase
-last_updated: "2026-11-27T03:53:24.799Z"
+current_phase: 20
+current_phase_name: Route, Witness and Release Posture
+current_plan: Not started
+status: planning
+stopped_at: Phase 19 complete, ready to plan Phase 20
+last_updated: "2026-11-27T06:41:32.262Z"
 last_activity: 2026-11-27
-last_activity_desc: Phase 19 complete on Exit B - the sixteen-cell sweep is diagonal and no default is decided
-state_head: 610e645223833bf263843ba5c0dd49a40cb39a81
+last_activity_desc: Phase 19 complete, transitioned to Phase 20
+state_head: 86f5cc0d7b3fbff305a16012851bbccd73ee7e9c
 progress:
   total_phases: 4
   completed_phases: 3
@@ -26,16 +26,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-26)
 
 **Core value:** A deterministic, observable machine core whose every compatibility claim is bound to an exactly named profile and independent evidence — never an unqualified "it runs Intellivision games" label.
-**Current focus:** Phase 19 — Discriminating the Display Path
+**Current focus:** Phase 20 — Route, Witness and Release Posture
 **Milestone scope:** `.planning/MILESTONE-CONTEXT.md` (frozen 2026-11-26) and the five `.planning/research/v0.4.0-scoping-*.md` records. **Guardrails:** `.planning/ops/GUARDRAILS-v0.4.md`. **Mints no claim:** `claims=29` and `provisional=28` are invariants.
 
 ## Current Position
 
-Phase: 19 — Discriminating the Display Path
-Current Plan: 19-03 complete (3 of 3) - the phase's three plans are executed
+Phase: 20 — Route, Witness and Release Posture
+Current Plan: Not started
 Total Plans in Phase: 3
-Status: Phase complete, awaiting verification
-Last activity: 2026-11-27 — Phase 19 plan 03 complete: the sixteen-cell sweep is diagonal in one comparison (masks 0xAAAA, 0xCCCC, 0xF0F0, 0xFF00) with a committed stand-in that makes it fail, both exits' enumerations were committed before the measurement, and the measurement decided **Exit B** — "default unchanged, observation appended, rivals named" — with the four rival rows C1, C6, C82 and C94 carrying the observation, six `stic-disc` registry rows landing with the VID-07 flip, and every display-path field still tagged `unknown-default-chosen`
+Status: Ready to plan
+Last activity: 2026-11-27 — Phase 19 complete, transitioned to Phase 20
 
 
 ### Phase-boundary cost checkpoints (`GUARDRAILS-v0.4` §2.4)
@@ -54,6 +54,12 @@ against the 21 hosted cpu-s allowance. The vocabulary is exactly three words.
   3.59 against 21. **No hosted row was added in this phase** (nothing was pushed yet), so the window
   is unchanged from Phase 17's and this checkpoint is arithmetic, not a new measurement; the push
   run's own row lands at the milestone close.
+
+- **Phase 19 — `reprice`.** Window recomputed at the plan's own start commit `15db4e6`: medians
+  **572 / 49 / 164** from 584,580,572,530,368 · 51,51,49,49,35 · 171,165,164,154,115, against the
+  frozen 361 / 34 / 118 — a runner event with an unchanged token line, so no lever is invented.
+  Phase charge **1.21** of the 1.64 line (0.65 in-process ids + 0.40 process ids + 0.16 registry
+  rows and controls).
 
 ### Planning overrides recorded by the autonomous run
 
@@ -109,7 +115,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 142
+- Total plans completed: 145
 - Average duration: -
 - Total execution time: -
 
@@ -132,6 +138,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | 16 | 5 | - | - |
 | 17 | 3 | - | - |
 | 18 | 3 | - | - |
+| 19 | 3 | - | - |
 
 *Updated after each plan completion*
 **Per-Plan Metrics:**
@@ -757,8 +764,8 @@ The row itself is left as recorded and this note sits under it.
 
 ## Session Continuity
 
-Last session: 2026-11-27T06:05:00.000Z
-Stopped at: Phase 18 complete, ready to plan Phase 19
+Last session: 2026-11-27T08:40:00.000Z
+Stopped at: Phase 19 complete (Exit B), ready to plan Phase 20
 Resume file: None
 
 The stale Phase 13 note that stood here (record that phase's hosted row with
