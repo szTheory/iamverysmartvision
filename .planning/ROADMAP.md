@@ -297,7 +297,11 @@ release decision is recomputed rather than quoted.
   3. The packet names the exact trace lines a hardware probe must contradict - the record fields and, per guest, the observable line and its two candidate values under the rival rules from Phase 19 - as a list a probe's capture is compared against. No claim cites the row: the claim-artifact predicate refuses a handoff id, and that refusal is shown able to fail on a committed stand-in.
   4. The packet's own status line reads either the four rival candidates from Phase 19's guests or "unproduced by instrument", naming the trace lines as specified in `docs/inspection.md`, and no criterion anywhere in this milestone requires the packet's answer or the D11 sweep to be performed - the packet is a row, not a gate.
   5. The release-decision line is recomputed per `.planning/ops/RELEASE-OPS.md` section (i) and reads: the release ships the static package and the source archive, which carries the source of the build-only tools and of the build-only host shim; no shared object, no built host shim, no built inspection tool, no trace or disassembly output, no content - with `data/expected/pkg-install-files.ids` still 11 and `release-assets` unchanged.
-**Plans**: TBD (2 planned: `20-01` the operator page and the route; `20-02` the VID-08 packet, the handoff row and the release line)
+**Plans:** 2 plans
+
+Plans:
+- [ ] `20-01-PLAN.md` - the operator page and the owner route: an appended `## The operator route` section in `docs/inspection.md` whose every line is executed as written, and the instrument named in `docs/owner-images.md`, with the naming limb widened by one page and zero rights tokens (wave 1, tracer)
+- [ ] `20-02-PLAN.md` - the VID-08 packet, the ninth handoff row and the recomputed release-decision line: the exact trace lines and the two candidate values per guest, the row no claim can cite with its refusal shown on the committed stand-in, and the release line re-run clause by clause (wave 2)
 **Tier ceiling**: none - the packet is a handoff row.
 **Cost**: 0.02 hosted cpu-s against the 21 allowance: one handoff row, one document section and a recomputed release line, with no new id in the gate.
 
