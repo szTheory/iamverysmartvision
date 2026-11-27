@@ -176,7 +176,12 @@ done
 limit=${IVS_RUNNER_PROCESS_TIMEOUT:-60}
 case $limit in '' | *[!0-9]* | 0) printf 'runner-process-tap: IVS_RUNNER_PROCESS_TIMEOUT=%s\n' "$limit" >&2; exit 1 ;; esac
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/runner-process-tap.XXXXXX") || exit 1
-trap 'rm -rf "$tmp"' EXIT
+# The EXIT trap also covers the two probe paths the output-policy case writes INSIDE the work tree (one
+# under build/, refused, and one under the accepted refs/): a rights-bearing `.ivst` must not survive an
+# interrupted run, and naming both paths here means no limb has to remember them. The HUP/INT/TERM trap
+# below exits, and the exit runs this one, so every trappable signal is covered; a SIGKILL cannot be
+# trapped, which is why the limb also clears both paths before it writes them.
+trap 'rm -rf "$tmp"; rm -f "$root/build/inspect-probe.ivst" "$root/refs/inspect-probe.ivst"' EXIT
 trap 'exit 1' HUP INT TERM
 
 ifs0=$IFS
@@ -3165,7 +3170,10 @@ result runner-process.inspect.trace-digests
 # path through `..`, and a path through a symlink to a directory inside the tree - each refused with exit 1, an
 # empty stdout, exactly one stderr line and no file left; then the positive beside it, the same write under the
 # ignored refs/, which must be accepted. The probe path is removed at the start of every limb, because a leftover
-# file would turn the next limb into an exists refusal and the case would pass for the wrong reason.
+# file would turn the next limb into an exists refusal and the case would pass for the wrong reason. Both probe
+# paths are also held by the suite's EXIT trap (installed above, before any case runs), so an interrupted run
+# cannot leave a rights-bearing `.ivst` in the work tree - which neither `git ls-files` nor `hygiene --tree` would
+# see, because the extension is ignored.
 : > "$tmp/why"
 ok=1
 if [ -z "$inspect" ]; then
