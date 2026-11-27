@@ -3045,6 +3045,42 @@ ix_records() {
   return 0
 }
 
+# ix_digests_equal <report a> <report b>: the nine `digest.` lines of each, required nine on each side before
+# anything is compared (a silent empty extraction must not pass), then a byte equality. The trace-digests case
+# and the poked-register stand-in are both judged by this one function, so the stand-in defeats the same code
+# the real case trusts.
+ix_digests_equal() {
+  sed -n 's/^digest\.//p' "$1" > "$tmp/ix.digests.a"
+  sed -n 's/^digest\.//p' "$2" > "$tmp/ix.digests.b"
+  for _f in "$tmp/ix.digests.a" "$tmp/ix.digests.b"; do
+    _nd=$(grep -c . "$_f")
+    [ "$_nd" -eq 9 ] || { why digest-lines "$_f holds $_nd digest lines, expected 9"; return 1; }
+  done
+  cmp -s "$tmp/ix.digests.a" "$tmp/ix.digests.b" \
+    || { why digest-differs "the nine digest lines of $1 and $2 differ"; return 1; }
+  return 0
+}
+
+# ix_break_pair <break report> <trace>: the frozen page's pair in ONE assertion set, and reconciled with the
+# trace's own end record so the two documents are compared rather than trusted. A matcher that always hits
+# reports 1 where the answer is 0, so the pair fails on its second number - which is why the always-hits
+# stand-in is judged by this function and not by a second one written for it.
+ix_break_pair() {
+  _bp=$(sed -n 's/^break\.hits //p' "$1" | head -n 1)
+  _bq=$(sed -n 's/^break\.other\.hits //p' "$1" | head -n 1)
+  case $_bp in '' | *[!0-9]*) why break-zero "no break.hits count in $1"; return 1 ;; esac
+  case $_bq in '' | *[!0-9]*) why break-zero "no break.other.hits count in $1"; return 1 ;; esac
+  # The pair, measured on this build: the reset entry at 1000 is executed once (an IAB, which is why the hit
+  # rule names it) and 1002 is never executed. Typed here as the pinned expectation, not read from the listing.
+  [ "$_bp $_bq" = '1 0' ] \
+    || { why break-zero "the pair is '$_bp $_bq', expected '1 0' (a matcher that always hits reads 1 here)"; return 1; }
+  _ep=$(sed -n 's/^end .*break_hits=\([0-9][0-9]*\).*/\1/p' "$2" | head -n 1)
+  _eq=$(sed -n 's/^end .*other_hits=\([0-9][0-9]*\).*/\1/p' "$2" | head -n 1)
+  [ "$_bp" = "$_ep" ] && [ "$_bq" = "$_eq" ] \
+    || { why break-zero "the file-derived counts '$_bp $_bq' are not the trace's own in-run counts '$_ep $_eq'"; return 1; }
+  return 0
+}
+
 # ix_tick_domain <trace>: the frozen page's fifth equality - access ticks non-decreasing AND not all equal.
 # Both clauses, because monotonicity alone is satisfied by a trace that repeats one tick.
 ix_tick_domain() {
@@ -3120,17 +3156,8 @@ else
   [ "$hung" -eq 0 ] && [ "$rc" -eq 0 ] || { ok=0; why exit-code "ivs-run on the pass scenario exited $rc (hung $hung)"; }
   run_one "$tmp" ix-trace2 "$inspect" trace "$scen/diag-boot-pass.ivss" --content-dir "$content" --out "$tmp/ix/trace2.ivst"
   [ "$hung" -eq 0 ] && [ "$rc" -eq 0 ] || { ok=0; why exit-code "the second trace run exited $rc (hung $hung)"; }
-  sed -n 's/^digest\.//p' "$tmp/runs/ix-run.out" > "$tmp/ix.run.digests"
-  sed -n 's/^digest\.//p' "$tmp/runs/ix-trace.out" > "$tmp/ix.tool.digests"
-  sed -n 's/^digest\.//p' "$tmp/runs/ix-trace2.out" > "$tmp/ix.tool2.digests"
-  for _f in ix.run.digests ix.tool.digests ix.tool2.digests; do
-    _nd=$(grep -c . "$tmp/$_f")
-    [ "$_nd" -eq 9 ] || { ok=0; why digest-lines "$_f holds $_nd digest lines, expected 9"; }
-  done
-  cmp -s "$tmp/ix.tool.digests" "$tmp/ix.run.digests" \
-    || { ok=0; why digest-differs "the tool's nine digest lines are not ivs-run's for the same scenario"; }
-  cmp -s "$tmp/ix.tool2.digests" "$tmp/ix.tool.digests" \
-    || { ok=0; why digest-differs "two traced runs of one scenario printed different digest lines"; }
+  ix_digests_equal "$tmp/runs/ix-run.out" "$tmp/runs/ix-trace.out" || ok=0
+  ix_digests_equal "$tmp/runs/ix-trace2.out" "$tmp/runs/ix-trace.out" || ok=0
 fi
 result runner-process.inspect.trace-digests
 
@@ -3195,6 +3222,299 @@ else
   [ -s "$tmp/ix/fresh.ivst" ] || { ok=0; why output-exists "a path that did not exist was not created"; }
 fi
 result runner-process.inspect.neg.inspect-output-exists
+
+# runner-process.inspect.trace-state: `--report` substitutes a stored report for the run's own as the oracle.
+# The positive half: the report this run printed, handed back through the flag, must produce a trace
+# byte-identical to the run without the flag - so the flag cannot turn a good run into a refusal, and the
+# substitution is a substitution rather than a second oracle.
+: > "$tmp/why"
+ok=1
+if [ -z "$inspect" ]; then
+  ok=0; why inspect-missing 'the ninth argument (ivs_inspect) is missing: the stored-report case cannot be run'
+else
+  rm -f "$tmp/ix/state-plain.ivst" "$tmp/ix/state-report.ivst" "$tmp/ix/state.report"
+  run_one "$tmp" ix-state-plain "$inspect" trace "$scen/diag-boot-pass.ivss" --content-dir "$content" \
+    --out "$tmp/ix/state-plain.ivst"
+  [ "$hung" -eq 0 ] && [ "$rc" -eq 0 ] \
+    || { ok=0; why exit-code "the plain run exited $rc (hung $hung): $(sed -n '1p' "$tmp/runs/ix-state-plain.err")"; }
+  cp "$tmp/runs/ix-state-plain.out" "$tmp/ix/state.report" 2> /dev/null || : > "$tmp/ix/state.report"
+  [ -s "$tmp/ix/state.report" ] || { ok=0; why report-flag 'the plain run printed no report to hand back'; }
+  if [ "$ok" -eq 1 ]; then
+    run_one "$tmp" ix-state-report "$inspect" trace "$scen/diag-boot-pass.ivss" --content-dir "$content" \
+      --out "$tmp/ix/state-report.ivst" --report "$tmp/ix/state.report"
+    [ "$hung" -eq 0 ] && [ "$rc" -eq 0 ] \
+      || { ok=0; why report-flag "the run with its own report as --report exited $rc (hung $hung): $(sed -n '1p' "$tmp/runs/ix-state-report.err")"; }
+    cmp -s "$tmp/ix/state-report.ivst" "$tmp/ix/state-plain.ivst" \
+      || { ok=0; why report-flag 'the run with --report produced a trace that differs from the run without it'; }
+  fi
+fi
+result runner-process.inspect.trace-state
+
+# runner-process.inspect.break-pair: the breakpoint as a PAIR in one assertion set - hit 1 at 1000 and 0 at
+# 1002 in the same report - with the in-run count (the trace's end record) and the file-derived count (the
+# `break` report) reconciling, the latter's records and end tick copied from the trace's own end record; then
+# the third limb, a trace with zero access records refused with `inspect-break-empty`, which is that token's
+# only case. The pair is measured on this build and pinned in ix_break_pair, never read from the listing.
+: > "$tmp/why"
+ok=1
+if [ -z "$inspect" ]; then
+  ok=0; why inspect-missing 'the ninth argument (ivs_inspect) is missing: the breakpoint pair cannot be run'
+else
+  rm -f "$tmp/ix/brk.ivst" "$tmp/ix/brk.brk"
+  run_one "$tmp" ix-brk "$inspect" trace "$scen/diag-boot-pass.ivss" --content-dir "$content" \
+    --out "$tmp/ix/brk.ivst" --break 1000 --other 1002
+  [ "$hung" -eq 0 ] && [ "$rc" -eq 0 ] \
+    || { ok=0; why exit-code "the armed run exited $rc (hung $hung): $(sed -n '1p' "$tmp/runs/ix-brk.err")"; }
+  sed -n 's/^end .*break_hits=\([0-9][0-9]*\) other_pc=[0-9A-Fa-f]* other_hits=\([0-9][0-9]*\).*/\1 \2/p' \
+    "$tmp/ix/brk.ivst" > "$tmp/ix.brk.endpair"
+  [ "$(grep -c . "$tmp/ix.brk.endpair")" -eq 1 ] \
+    || { ok=0; why break-pair 'the armed trace holds no single end record with both break counts'; }
+  grep -q -x -F -e '1 0' "$tmp/ix.brk.endpair" \
+    || { ok=0; why break-pair "the end record's pair is '$(cat "$tmp/ix.brk.endpair")', expected '1 0'"; }
+  run_one "$tmp" ix-brkfile "$inspect" break --pc 1000 --other 1002 --trace "$tmp/ix/brk.ivst" \
+    --out "$tmp/ix/brk.brk"
+  [ "$hung" -eq 0 ] && [ "$rc" -eq 0 ] \
+    || { ok=0; why break-pair "the file-derived break run exited $rc (hung $hung): $(sed -n '1p' "$tmp/runs/ix-brkfile.err")"; }
+  ix_break_pair "$tmp/ix/brk.brk" "$tmp/ix/brk.ivst" || ok=0
+  # The last three keys are the trace's own end record, so the two documents are compared rather than trusted.
+  sed -n 's/^end .*records=\([0-9][0-9]*\).*/\1/p' "$tmp/ix/brk.ivst" > "$tmp/ix.brk.records"
+  sed -n 's/^break\.records //p' "$tmp/ix/brk.brk" > "$tmp/ix.brk.brkrecords"
+  cmp -s "$tmp/ix.brk.records" "$tmp/ix.brk.brkrecords" \
+    || { ok=0; why break-pair "break.records '$(cat "$tmp/ix.brk.brkrecords" 2> /dev/null)' is not the trace's own '$(cat "$tmp/ix.brk.records")'"; }
+  sed -n 's/^end tick=\([0-9][0-9]*\) .*/\1/p' "$tmp/ix/brk.ivst" > "$tmp/ix.brk.endtick"
+  sed -n 's/^break\.end_tick //p' "$tmp/ix/brk.brk" > "$tmp/ix.brk.brkendtick"
+  cmp -s "$tmp/ix.brk.endtick" "$tmp/ix.brk.brkendtick" \
+    || { ok=0; why break-pair "break.end_tick '$(cat "$tmp/ix.brk.brkendtick" 2> /dev/null)' is not the trace's own '$(cat "$tmp/ix.brk.endtick")'"; }
+  # `inspect-break-empty`: a trace with zero access records has nothing to count against.
+  printf 'end tick=0 records=0 units=0 steps=0 break_pc=none break_hits=0 other_pc=none other_hits=0\n' \
+    > "$tmp/ix/empty.ivst"
+  rm -f "$tmp/ix/empty.brk"
+  run_one "$tmp" ix-brkempty "$inspect" break --pc 1000 --other 1002 --trace "$tmp/ix/empty.ivst" \
+    --out "$tmp/ix/empty.brk"
+  [ "$rc" -eq 1 ] \
+    || { ok=0; why break-empty "a zero-record trace exited $rc, expected 1: $(sed -n '1p' "$tmp/runs/ix-brkempty.err")"; }
+  grep -q -F -e 'ivs-inspect: inspect-break-empty: ' "$tmp/runs/ix-brkempty.err" \
+    || { ok=0; why break-empty "the zero-record trace was not refused by that token: $(sed -n '1p' "$tmp/runs/ix-brkempty.err")"; }
+  [ ! -s "$tmp/runs/ix-brkempty.out" ] || { ok=0; why break-empty 'the refused run printed on stdout'; }
+  [ ! -e "$tmp/ix/empty.brk" ] || { ok=0; why break-empty 'the refused run left an output file behind'; }
+fi
+result runner-process.inspect.break-pair
+
+# runner-process.inspect.break-noninterference: arming a breakpoint changes no access record and no digest.
+# The nine `digest.` lines of the armed and unarmed reports are byte-identical, the access records are
+# byte-identical, and the two trace files differ on exactly two diff lines - the end record removed and the
+# end record added - so the breakpoint moved the two counts and nothing else. Asserted separately from the
+# trace's own equalities, because a later implementation that re-stepped the machine under a breakpoint would
+# break it silently.
+: > "$tmp/why"
+ok=1
+if [ -z "$inspect" ]; then
+  ok=0; why inspect-missing 'the ninth argument (ivs_inspect) is missing: the non-interference case cannot be run'
+else
+  rm -f "$tmp/ix/ni-plain.ivst" "$tmp/ix/ni-armed.ivst"
+  run_one "$tmp" ix-ni-plain "$inspect" trace "$scen/diag-boot-pass.ivss" --content-dir "$content" \
+    --out "$tmp/ix/ni-plain.ivst"
+  [ "$hung" -eq 0 ] && [ "$rc" -eq 0 ] \
+    || { ok=0; why exit-code "the unarmed run exited $rc (hung $hung): $(sed -n '1p' "$tmp/runs/ix-ni-plain.err")"; }
+  run_one "$tmp" ix-ni-armed "$inspect" trace "$scen/diag-boot-pass.ivss" --content-dir "$content" \
+    --out "$tmp/ix/ni-armed.ivst" --break 1000 --other 1002
+  [ "$hung" -eq 0 ] && [ "$rc" -eq 0 ] \
+    || { ok=0; why exit-code "the armed run exited $rc (hung $hung): $(sed -n '1p' "$tmp/runs/ix-ni-armed.err")"; }
+  ix_digests_equal "$tmp/runs/ix-ni-armed.out" "$tmp/runs/ix-ni-plain.out" || ok=0
+  sed -n '/^tick=/p' "$tmp/ix/ni-armed.ivst" > "$tmp/ix.ni.armed.acc"
+  sed -n '/^tick=/p' "$tmp/ix/ni-plain.ivst" > "$tmp/ix.ni.plain.acc"
+  [ -s "$tmp/ix.ni.armed.acc" ] || { ok=0; why break-moves 'the armed trace holds no access record'; }
+  cmp -s "$tmp/ix.ni.armed.acc" "$tmp/ix.ni.plain.acc" \
+    || { ok=0; why break-moves 'arming the breakpoint changed an access record'; }
+  diff "$tmp/ix/ni-armed.ivst" "$tmp/ix/ni-plain.ivst" > "$tmp/ix.ni.diff" 2>&1 || true
+  grep -E '^[<>] ' "$tmp/ix.ni.diff" > "$tmp/ix.ni.lines" || true
+  [ "$(grep -c . "$tmp/ix.ni.lines")" -eq 2 ] \
+    || { ok=0; why break-moves "the two traces differ on $(grep -c . "$tmp/ix.ni.lines") lines, expected the end record only"; }
+  grep -q -E '^[<>] end tick=' "$tmp/ix.ni.lines" \
+    || { ok=0; why break-moves 'the armed and unarmed traces differ on a line that is not the end record'; }
+fi
+result runner-process.inspect.break-noninterference
+
+# runner-process.inspect.step: the `step` surface, reconciled with two other documents rather than with
+# literals. `step.units` equals the trace's own `units` (a reconciliation between two subcommands), `step.ticks`
+# equals the trace's end tick, `step.halted yes`, the seven registers equal the scenario's own `assert reg`
+# lines and `step.mem.0200` its `assert mem 0200` line - all extracted with sed into files and compared, so no
+# witness value is typed into this script.
+: > "$tmp/why"
+ok=1
+if [ -z "$inspect" ]; then
+  ok=0; why inspect-missing 'the ninth argument (ivs_inspect) is missing: the step surface cannot be run'
+else
+  rm -f "$tmp/ix/step-trace.ivst" "$tmp/ix/step.report"
+  run_one "$tmp" ix-step-trace "$inspect" trace "$scen/diag-boot-pass.ivss" --content-dir "$content" \
+    --out "$tmp/ix/step-trace.ivst"
+  [ "$hung" -eq 0 ] && [ "$rc" -eq 0 ] \
+    || { ok=0; why exit-code "the trace the step case reads exited $rc (hung $hung): $(sed -n '1p' "$tmp/runs/ix-step-trace.err")"; }
+  sed -n 's/^end .*units=\([0-9][0-9]*\).*/\1/p' "$tmp/ix/step-trace.ivst" > "$tmp/ix.step.units"
+  [ "$(grep -c . "$tmp/ix.step.units")" -eq 1 ] \
+    || { ok=0; why step-units 'the trace holds no single units= field to reconcile against'; }
+  run_one "$tmp" ix-step "$inspect" step "$scen/diag-boot-pass.ivss" --content-dir "$content" \
+    --units "$(cat "$tmp/ix.step.units")" --peek 0200 16
+  [ "$hung" -eq 0 ] && [ "$rc" -eq 0 ] \
+    || { ok=0; why exit-code "the step run exited $rc (hung $hung): $(sed -n '1p' "$tmp/runs/ix-step.err")"; }
+  cp "$tmp/runs/ix-step.out" "$tmp/ix/step.report" 2> /dev/null || : > "$tmp/ix/step.report"
+  sed -n 's/^step\.units //p' "$tmp/ix/step.report" > "$tmp/ix.step.reported"
+  cmp -s "$tmp/ix.step.reported" "$tmp/ix.step.units" \
+    || { ok=0; why step-units "step.units '$(cat "$tmp/ix.step.reported" 2> /dev/null)' is not the trace's own '$(cat "$tmp/ix.step.units")'"; }
+  sed -n 's/^end tick=\([0-9][0-9]*\) .*/\1/p' "$tmp/ix/step-trace.ivst" > "$tmp/ix.step.endtick"
+  sed -n 's/^step\.ticks //p' "$tmp/ix/step.report" > "$tmp/ix.step.ticks"
+  cmp -s "$tmp/ix.step.ticks" "$tmp/ix.step.endtick" \
+    || { ok=0; why step-ticks "step.ticks '$(cat "$tmp/ix.step.ticks" 2> /dev/null)' is not the trace's end tick '$(cat "$tmp/ix.step.endtick")'"; }
+  grep -q -x -F -e 'step.halted yes' "$tmp/ix/step.report" \
+    || { ok=0; why step-halted "the scenario stops halted and the step report says '$(sed -n 's/^step\.halted //p' "$tmp/ix/step.report")'"; }
+  sed -n 's/^assert reg R\([0-6]\) == \([0-9A-F]\{4\}\)$/\1 \2/p' "$scen/diag-boot-pass.ivss" > "$tmp/ix.step.wantreg"
+  [ "$(grep -c . "$tmp/ix.step.wantreg")" -eq 7 ] \
+    || { ok=0; why step-reg "the scenario states $(grep -c . "$tmp/ix.step.wantreg") register asserts, expected 7"; }
+  while read -r _r _v; do
+    grep -q -x -F -e "step.reg.R$_r $_v" "$tmp/ix/step.report" \
+      || { ok=0; why step-reg "step.reg.R$_r is not the scenario's own $_v: $(sed -n "s/^step\.reg\.R$_r //p" "$tmp/ix/step.report")"; }
+  done < "$tmp/ix.step.wantreg"
+  sed -n 's/^assert mem 0200 == \([0-9A-F]\{4\}\)$/step.mem.0200 \1/p' "$scen/diag-boot-pass.ivss" > "$tmp/ix.step.wantmem"
+  [ "$(grep -c . "$tmp/ix.step.wantmem")" -eq 1 ] \
+    || { ok=0; why step-mem 'the scenario states no single `assert mem 0200` line to use as the witness'; }
+  grep -q -x -F -e "$(cat "$tmp/ix.step.wantmem")" "$tmp/ix/step.report" \
+    || { ok=0; why step-mem "step.mem.0200 is not the scenario's own value: $(sed -n 's/^step\.mem\.0200 //p' "$tmp/ix/step.report")"; }
+fi
+result runner-process.inspect.step
+
+# runner-process.inspect.surface: the command surface and the token coverage, in both directions. `--help`
+# names the four subcommands; an unknown subcommand and a `break` without `--pc` each exit 2 with a usage
+# line and no token; and every token the tool can print for the trace and break surfaces is named in the
+# frozen page's block, and every token that block names for them is one the tool can print. `inspect-dis-row`
+# belongs to the `dis` surface, which plan 18-03 lands in the next wave, so it is excluded from BOTH sides:
+# that is what stops a wave-3 commit turning a wave-2 id red across a wave boundary, and asserting the
+# remaining set both ways is what stops the exclusion becoming a hole.
+: > "$tmp/why"
+ok=1
+if [ -z "$inspect" ]; then
+  ok=0; why inspect-missing 'the ninth argument (ivs_inspect) is missing: the command surface cannot be run'
+else
+  run_one "$tmp" ix-help "$inspect" --help
+  [ "$hung" -eq 0 ] && [ "$rc" -eq 0 ] || { ok=0; why surface "--help exited $rc (hung $hung)"; }
+  [ ! -s "$tmp/runs/ix-help.err" ] || { ok=0; why surface '--help wrote on stderr'; }
+  for _s in trace break dis step; do
+    grep -q -F -e "ivs-inspect $_s " "$tmp/runs/ix-help.out" \
+      || { ok=0; why surface "--help does not name the $_s subcommand"; }
+  done
+  run_one "$tmp" ix-usage "$inspect" nosuchsubcommand
+  [ "$rc" -eq 2 ] || { ok=0; why surface "an unknown subcommand exited $rc, expected 2"; }
+  [ ! -s "$tmp/runs/ix-usage.out" ] || { ok=0; why surface 'an unknown subcommand printed on stdout'; }
+  grep -q -F -e 'usage' "$tmp/runs/ix-usage.err" || { ok=0; why surface 'an unknown subcommand printed no usage line'; }
+  [ "$(grep -c -E '^ivs-inspect: [a-z][a-z-]*: ' "$tmp/runs/ix-usage.err" || true)" -eq 0 ] \
+    || { ok=0; why surface 'an unknown subcommand printed a refusal token'; }
+  run_one "$tmp" ix-usage-break "$inspect" break --other 1002 --trace "$tmp/ix/brk.ivst" --out "$tmp/ix/x.brk"
+  [ "$rc" -eq 2 ] || { ok=0; why surface "a break without --pc exited $rc, expected 2"; }
+  # The extraction. `-h` is load-bearing: grep -o prints the file name before each match when its argument
+  # list holds more than one file, and tools/inspect/*.c holds two today and three after 18-03, so without it
+  # every token would read `tools/inspect/inspect.c:inspect-output-tree` and look undocumented.
+  sed -n '/^## Refusal tokens/,/^## Liveness guards/p' "$root/docs/inspection.md" \
+    | grep -o -E 'inspect-[a-z-]+' | sort -u > "$tmp/ix.doc.tokens"
+  grep -h -o -E '"inspect-[a-z-]+"' "$root"/tools/inspect/*.c | tr -d '"' | sort -u > "$tmp/ix.src.tokens"
+  [ "$(grep -c . "$tmp/ix.doc.tokens")" -eq 5 ] \
+    || { ok=0; why surface-tokens "the frozen page's block holds $(grep -c . "$tmp/ix.doc.tokens") tokens, expected 5"; }
+  [ -s "$tmp/ix.src.tokens" ] \
+    || { ok=0; why surface-tokens 'the extraction found no token in tools/inspect/*.c, so it would compare nothing'; }
+  grep -v -x -F -e 'inspect-dis-row' "$tmp/ix.doc.tokens" > "$tmp/ix.doc.except-dis"
+  grep -v -x -F -e 'inspect-dis-row' "$tmp/ix.src.tokens" > "$tmp/ix.src.except-dis"
+  [ "$(grep -c . "$tmp/ix.doc.except-dis")" -eq 4 ] \
+    || { ok=0; why surface-tokens "the page's block holds $(grep -c . "$tmp/ix.doc.except-dis") tokens after excluding inspect-dis-row, expected 4"; }
+  comm -13 "$tmp/ix.doc.except-dis" "$tmp/ix.src.except-dis" > "$tmp/ix.undoc.tokens"
+  [ ! -s "$tmp/ix.undoc.tokens" ] \
+    || { ok=0; why surface-tokens "the tool prints a token the frozen page does not name: $(tr '\n' ' ' < "$tmp/ix.undoc.tokens")"; }
+  comm -23 "$tmp/ix.doc.except-dis" "$tmp/ix.src.except-dis" > "$tmp/ix.unprinted.tokens"
+  [ ! -s "$tmp/ix.unprinted.tokens" ] \
+    || { ok=0; why surface-tokens "the frozen page names a token the tool cannot print: $(tr '\n' ' ' < "$tmp/ix.unprinted.tokens")"; }
+fi
+result runner-process.inspect.surface
+
+# runner-process.judge.trace-empty: the `records > 0` guard's committed stand-in. The trace has an end record
+# and zero access records - what a tracer that recorded nothing would write - and is judged by ix_records, the
+# same function the real trace-records case uses. Declared token set: trace-records, and only that, because
+# the file differs from a real trace in the record count alone.
+printf 'end tick=0 records=0 units=0 steps=0 break_pc=none break_hits=0 other_pc=none other_hits=0\n' \
+  > "$fakes/trace-empty.ivst"
+self_control trace-empty trace-records ix_records "$fakes/trace-empty.ivst"
+
+# runner-process.judge.trace-repeat-tick: the fifth equality's `not all equal` clause, which is the only clause
+# a repeated-tick trace fails - a constant sequence IS non-decreasing, so a monotonicity-only check would accept
+# this stand-in and the case would report judge-vacuous. Built from the real trace with every access record's
+# tick set to the first record's value, and judged by the same ix_tick_domain the real case uses.
+if [ -s "$tmp/ix/trace.ivst" ]; then
+  _first=$(sed -n 's/^tick=\([0-9][0-9]*\) .*/\1/p' "$tmp/ix/trace.ivst" | head -n 1)
+else
+  _first=
+fi
+if [ -n "$_first" ]; then
+  sed "s/^tick=[0-9][0-9]* /tick=$_first /" "$tmp/ix/trace.ivst" > "$fakes/trace-repeat-tick.ivst"
+else
+  # No real trace to repeat (an earlier case is already red): one access record is also a constant column, so
+  # the clause under test is still the one that fires.
+  printf 'tick=0 kind=fetch addr=1000 value=0000 wait=0 cycle=0 unit_start=0 unit_end=4\n' \
+    > "$fakes/trace-repeat-tick.ivst"
+fi
+self_control trace-repeat-tick trace-ticks ix_tick_domain "$fakes/trace-repeat-tick.ivst"
+
+# runner-process.judge.trace-pokes-register: the liveness guard on the reconciliation, in the form the frozen
+# page names - a tracing build that pokes one register diverges on exactly one digest domain. Applied here to
+# the mechanism under test: the real report with `digest.cpu` replaced by another domain's own value, which is
+# a report one domain away from this run. Judged by ix_digests_equal, the same function the trace-digests case
+# uses, and then fed to the tool's own `--report`, which must refuse it with `inspect-reconcile`, exit 1, print
+# nothing on stdout and leave no output file. A tool that accepted it is reported as judge-vacuous.
+: > "$tmp/why"
+ok=1
+if [ -z "$inspect" ]; then
+  ok=0; why inspect-missing 'the ninth argument (ivs_inspect) is missing: the poked-report stand-in cannot be run'
+else
+  _real="$tmp/runs/ix-trace.out"
+  _mem=$(sed -n 's/^digest\.mem //p' "$_real" 2> /dev/null | head -n 1)
+  if [ ! -s "$_real" ] || [ -z "$_mem" ]; then
+    ok=0; why judge-vacuous 'the real report of the trace run is missing, so the stand-in cannot be built'
+  else
+    sed "s/^digest\.cpu .*/digest.cpu $_mem/" "$_real" > "$fakes/poked.report"
+    if cmp -s "$fakes/poked.report" "$_real"; then
+      ok=0; why judge-vacuous 'the poked report is identical to the real one, so it stands in for nothing'
+    else
+      self_control_run trace-pokes-register digest-differs ix_digests_equal "$fakes/poked.report" "$_real"
+      _scv=$_sc
+      _scw=$(tr '\n' ' ' < "$tmp/why")
+      : > "$tmp/why"
+      case $_scv in
+        ok) : ;;
+        vacuous) ok=0; why judge-vacuous 'the digest-equality check accepted a report whose digest.cpu is another domain value' ;;
+        *) ok=0; why judge-wrong-reason "the digest-equality check did not fail for exactly digest-differs: $_scw" ;;
+      esac
+      rm -f "$tmp/ix/poked.ivst"
+      run_one "$tmp" ix-poked "$inspect" trace "$scen/diag-boot-pass.ivss" --content-dir "$content" \
+        --out "$tmp/ix/poked.ivst" --report "$fakes/poked.report"
+      [ "$hung" -eq 0 ] || { ok=0; why reconcile 'the run over the poked report was stopped by the watchdog'; }
+      [ "$rc" -eq 1 ] \
+        || { ok=0; why reconcile "the tool did not refuse the poked report: exit $rc, $(sed -n '1p' "$tmp/runs/ix-poked.err")"; }
+      grep -q -F -e 'ivs-inspect: inspect-reconcile: ' "$tmp/runs/ix-poked.err" \
+        || { ok=0; why reconcile "the poked report was refused, but not by that token: $(sed -n '1p' "$tmp/runs/ix-poked.err")"; }
+      [ ! -s "$tmp/runs/ix-poked.out" ] || { ok=0; why reconcile 'the refused run printed a report on stdout'; }
+      [ ! -e "$tmp/ix/poked.ivst" ] || { ok=0; why reconcile 'the refused run left an output file behind'; }
+    fi
+  fi
+fi
+result runner-process.judge.trace-pokes-register
+
+# runner-process.judge.break-always-hits: the breakpoint pair's zero case. The real break report with
+# `break.other.hits` set to 1 is what a matcher that always hits prints: it reports 1 where the answer is 0,
+# and the pair fails on its second number. Judged by the same ix_break_pair the real break-pair case uses, so
+# the clause it defeats and the clause the real case asserts are the same clause. Declared set: break-zero.
+if [ -s "$tmp/ix/brk.brk" ]; then
+  sed 's/^break\.other\.hits .*/break.other.hits 1/' "$tmp/ix/brk.brk" > "$fakes/break-always.brk"
+else
+  # No real break report (an earlier case is already red): the same shape with the second number wrong.
+  printf 'break.pc 1000\nbreak.hits 1\nbreak.other.pc 1002\nbreak.other.hits 1\nbreak.records 0\nbreak.end_tick 0\nbreak.steps 0\n' \
+    > "$fakes/break-always.brk"
+fi
+self_control break-always-hits break-zero ix_break_pair "$fakes/break-always.brk" "$tmp/ix/brk.ivst"
 
 # Watchdog self-control (the hosted false `hung` of run 43148343848, see wd_start): 20 watchdogs
 # of a live target, each stopped at once, must leave no marker and the target alive (before the

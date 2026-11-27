@@ -1,8 +1,9 @@
 /* SPDX-License-Identifier: MIT */
-/* ivs-inspect's trace pass (Phase 18, plan 18-02, TOOL-02). The frozen contract is
- * docs/inspection.md: this file implements its `## The trace file`, its `## The reconciliation` and
- * the `--report` sentence of its `## Command surface`. Where this file's prose and that page
- * disagree, the page wins.
+/* ivs-inspect's machine passes (Phase 18, plan 18-02, TOOL-02 and TOOL-09). The frozen contract is
+ * docs/inspection.md: this file implements its `## The trace file`, its `## The reconciliation`, the
+ * `--report` sentence of its `## Command surface`, the breakpoint rule of its `## Breakpoints` and
+ * the machine half of its `step` subcommand. Where this file's prose and that page disagree, the
+ * page wins.
  *
  * Two passes, and this is the sentence that says why they cannot be one. Pass A is the library's: the
  * caller has already parsed the scenario and this file is handed the report text the library produced
@@ -43,11 +44,29 @@
  * written as a literal; the end record's tick is the last step record's end, which is the report's own
  * step.<k>.now_ticks.
  *
- * The one cross-file prototype this program needs is declared at both ends - here and in
+ * Breakpoints are a pair and they are armed inside this loop, not by a second run. A hit is an access
+ * at the named address whose kind is `fetch` or `iab`: the reset entry is an IAB carrying the reset
+ * flag, so a rule naming only `fetch` would read the entry as never executed. The two counts go into
+ * the end record's four break fields and the matched access is otherwise untouched, so arming a
+ * breakpoint changes no access record and no digest - the non-interference the frozen page asserts
+ * separately - and the `break` subcommand's file-derived count is an independent computation of the
+ * same number as this loop's in-run count. `break` steps no machine at all, which is why the
+ * non-interference is structural there and still asserted: a later implementation that re-ran the
+ * scenario to count would break it silently.
+ *
+ * The `step` surface is the same loop minus the access array: the same instance setup (ixt_open), the
+ * same core breaks, the same input floor, the same refused-step ending - so its unit count is the
+ * trace's own `units` when it is given that number, which is what makes the two subcommands
+ * reconcilable rather than two opinions. It observes guest state through ivs_machine_cpu_state and
+ * ivs_machine_peek only, both public and side-effect-free, so it adds no seam and advances no time
+ * while reporting.
+ *
+ * The cross-file prototypes this program needs are declared at both ends - here and in
  * tools/inspect/inspect.c - because plan 18-02 pins the tool to two sources and a header would be a
- * third file. Contract: 0 the trace is written and reconciled, 1 the reconciliation refused (detail
- * carries the reason; the caller prints the named refusal), 2 a file or usage error (detail carries
- * the message; the caller prints it with no token). */
+ * third file. ivs_inspect_trace_run: 0 the trace is written and reconciled, 1 the reconciliation
+ * refused (detail carries the reason; the caller prints the named refusal), 2 a file or usage error
+ * (detail carries the message; the caller prints it with no token). ivs_inspect_step_run: 0 the step
+ * report is written, 2 a file or usage error (the step surface has no named refusal of its own). */
 
 #include <inttypes.h>
 #include <stdarg.h>
@@ -75,7 +94,11 @@
 /* The interface tools/inspect/inspect.c calls. See the file header for the contract. */
 int ivs_inspect_trace_run(const ivs_scenario *scn, uint8_t *const role_bytes[IVS_SCN_ROLES],
                           const size_t role_len[IVS_SCN_ROLES], const char *report_text, size_t report_len,
-                          const char *stored_text, size_t stored_len, FILE *out, char *detail, size_t detail_cap);
+                          const char *stored_text, size_t stored_len, int have_break, uint16_t break_pc,
+                          uint16_t other_pc, FILE *out, char *detail, size_t detail_cap);
+int ivs_inspect_step_run(const ivs_scenario *scn, uint8_t *const role_bytes[IVS_SCN_ROLES],
+                         const size_t role_len[IVS_SCN_ROLES], uint64_t units, int have_peek,
+                         uint16_t peek_addr, uint32_t peek_count, FILE *out, char *detail, size_t detail_cap);
 
 /* The nine domains in the report's own order, and their key names. */
 static const uint32_t ixt_domain[IXT_DOMAINS] = {IVS_DIGEST_CPU,      IVS_DIGEST_MEM,   IVS_DIGEST_IMAGES,
@@ -299,32 +322,175 @@ static const char *ixt_stop_name(uint32_t run_state)
   return "target";
 }
 
-int ivs_inspect_trace_run(const ivs_scenario *scn, uint8_t *const role_bytes[IVS_SCN_ROLES],
-                          const size_t role_len[IVS_SCN_ROLES], const char *report_text, size_t report_len,
-                          const char *stored_text, size_t stored_len, FILE *out, char *detail, size_t detail_cap)
+/* One instance built from a scenario's bytes: the machine, its time base and the input schedule in
+ * master ticks. Both entry points of this file start from exactly this, so the trace pass and the
+ * `step` surface observe the same machine by construction rather than by a second implementation of
+ * the loader, the reset, the profile's time base and the input-unit conversion. */
+typedef struct ixt_instance {
+  void *storage;
+  ivs_machine *m;
+  ivs_info info;
+  ivs_input_event sched[IVS_SCN_MAX_INPUTS];
+  uint32_t n_sched;
+  uint64_t step_mult; /* master ticks per unit of the scenario's run-to step unit */
+  uint64_t now;       /* the machine's tick at the start of the run */
+} ixt_instance;
+
+static void ixt_close(ixt_instance *in)
+{
+  if (in->m != NULL) {
+    (void)ivs_machine_destroy(in->m);
+    in->m = NULL;
+  }
+  free(in->storage);
+  in->storage = NULL;
+}
+
+/* Creates, loads, resets and time-bases one instance from the scenario's bytes, and builds the input
+ * schedule with the executor's own unit conversion. IXT_OK on success; IXT_ERROR otherwise with
+ * detail filled and nothing left allocated. */
+static int ixt_open(const ivs_scenario *scn, uint8_t *const role_bytes[IVS_SCN_ROLES],
+                    const size_t role_len[IVS_SCN_ROLES], ixt_instance *in, char *cap_detail, size_t cap)
 {
   static const uint32_t role_kind[IVS_SCN_ROLES] = {IVS_KIND_EXEC, IVS_KIND_GROM, IVS_KIND_CARTRIDGE};
   static const char *const role_name[IVS_SCN_ROLES] = {"exec", "grom", "cart"};
-  ixt_oracle run_oracle;
-  ixt_oracle oracle;
   ivs_storage_requirements req;
   ivs_create_options co;
-  ivs_info info;
-  ivs_input_event sched[IVS_SCN_MAX_INPUTS];
-  ixt_buf buf;
-  void *storage = NULL;
-  ivs_machine *m = NULL;
-  uint64_t now;
-  uint64_t step_mult;
   uint64_t input_mult;
+  uint32_t role;
+  uint32_t i;
+
+  memset(in, 0, sizeof *in);
+  memset(&req, 0, sizeof req);
+  req.struct_size = (uint32_t)sizeof req;
+  {
+    ivs_status st = ivs_machine_storage_requirements(scn->profile, &req);
+    if (st != IVS_OK) {
+      (void)snprintf(cap_detail, cap, "the scenario's profile %s is not registered (status %s)", scn->profile,
+                     ivs_status_name(st));
+      return IXT_ERROR;
+    }
+  }
+  if (req.align_bytes == 0u || (req.align_bytes & (req.align_bytes - 1u)) != 0u) {
+    (void)snprintf(cap_detail, cap, "the profile publishes no usable instance alignment");
+    return IXT_ERROR;
+  }
+  in->storage = malloc((size_t)req.size_bytes + (size_t)req.align_bytes);
+  if (in->storage == NULL) {
+    (void)snprintf(cap_detail, cap, "cannot allocate the instance's storage");
+    return IXT_ERROR;
+  }
+  {
+    uintptr_t base = (uintptr_t)in->storage;
+    uintptr_t aligned = (base + (uintptr_t)(req.align_bytes - 1u)) & ~(uintptr_t)(req.align_bytes - 1u);
+    memset(&co, 0, sizeof co);
+    co.struct_size = (uint32_t)sizeof co;
+    co.flags = 0u;
+    co.profile_id = scn->profile;
+    {
+      ivs_status st = ivs_machine_create(&co, (void *)aligned, (size_t)req.size_bytes, &in->m);
+      if (st != IVS_OK) {
+        (void)snprintf(cap_detail, cap, "the instance could not be created (status %s)", ivs_status_name(st));
+        goto fail;
+      }
+    }
+  }
+  for (role = 0u; role < IVS_SCN_ROLES; role++) {
+    const ivs_scenario_expect *e = &scn->expect[role];
+    ivs_load_options lo;
+    ivs_load_report lr;
+    ivs_status st;
+    if (scn->content[role].kind == IVS_SCN_CONTENT_NONE) {
+      continue;
+    }
+    if (role_bytes[role] == NULL) {
+      (void)snprintf(cap_detail, cap, "role %s has no bytes to load", role_name[role]);
+      goto fail;
+    }
+    memset(&lo, 0, sizeof lo);
+    lo.struct_size = (uint32_t)sizeof lo;
+    if (e->sha_set != 0u) {
+      lo.flags = IVS_LOAD_F_EXPECT_SHA256;
+      (void)memcpy(lo.expect_sha256, e->sha256, sizeof lo.expect_sha256);
+    }
+    memset(&lr, 0, sizeof lr);
+    lr.struct_size = (uint32_t)sizeof lr;
+    lr.image.struct_size = (uint32_t)sizeof lr.image;
+    st = ivs_machine_load(in->m, role_kind[role], role_bytes[role], role_len[role], &lo, &lr);
+    if (st != IVS_OK) {
+      (void)snprintf(cap_detail, cap, "this tool could not load role %s (status %s, reason %" PRIu32 ")",
+                     role_name[role], ivs_status_name(st), lr.reason);
+      goto fail;
+    }
+  }
+  {
+    ivs_status st = ivs_machine_reset(in->m, IVS_RESET_POWER_ON);
+    if (st != IVS_OK) {
+      (void)snprintf(cap_detail, cap, "the instance refused the power-on reset (status %s)", ivs_status_name(st));
+      goto fail;
+    }
+  }
+  memset(&in->info, 0, sizeof in->info);
+  in->info.struct_size = (uint32_t)sizeof in->info;
+  {
+    ivs_status st = ivs_machine_info(in->m, &in->info);
+    if (st != IVS_OK || in->info.ticks_per_cpu_cycle == 0u || in->info.nominal_frame_ticks == 0u) {
+      (void)snprintf(cap_detail, cap, "the instance publishes no time base");
+      goto fail;
+    }
+  }
+  /* The input schedule, in master ticks, with the executor's own unit conversion. */
+  input_mult = scn->input_unit == IVS_SCN_INPUT_AT_CYCLE ? (uint64_t)in->info.ticks_per_cpu_cycle : 1u;
+  for (i = 0u; i < scn->n_inputs && i < IVS_SCN_MAX_INPUTS; i++) {
+    uint64_t at;
+    if (input_mult == 0u || scn->inputs[i].at > IVS_RUN_TARGET_MAX / input_mult) {
+      (void)snprintf(cap_detail, cap, "input-out-of-range line=%" PRIu32, scn->inputs[i].line);
+      goto fail;
+    }
+    at = scn->inputs[i].at * input_mult;
+    if (at >= IVS_RUN_TARGET_MAX) {
+      (void)snprintf(cap_detail, cap, "input-out-of-range line=%" PRIu32, scn->inputs[i].line);
+      goto fail;
+    }
+    in->sched[i].at_tick = at;
+    in->sched[i].flags = 0u;
+    in->sched[i].reserved = 0u;
+    in->sched[i].controller[0] = scn->inputs[i].controller[0];
+    in->sched[i].controller[1] = scn->inputs[i].controller[1];
+    in->n_sched++;
+  }
+  in->step_mult = 1u;
+  if (scn->step_unit == IVS_SCN_UNIT_CPU_CYCLES) {
+    in->step_mult = (uint64_t)in->info.ticks_per_cpu_cycle;
+  } else if (scn->step_unit == IVS_SCN_UNIT_FRAMES) {
+    in->step_mult = in->info.nominal_frame_ticks;
+  }
+  in->now = in->info.time_ticks;
+  return IXT_OK;
+
+fail:
+  ixt_close(in);
+  return IXT_ERROR;
+}
+
+int ivs_inspect_trace_run(const ivs_scenario *scn, uint8_t *const role_bytes[IVS_SCN_ROLES],
+                          const size_t role_len[IVS_SCN_ROLES], const char *report_text, size_t report_len,
+                          const char *stored_text, size_t stored_len, int have_break, uint16_t break_pc,
+                          uint16_t other_pc, FILE *out, char *detail, size_t detail_cap)
+{
+  ixt_oracle run_oracle;
+  ixt_oracle oracle;
+  ixt_instance in;
+  ixt_buf buf;
+  uint64_t now;
   uint64_t records = 0u;
+  uint64_t break_hits = 0u;
+  uint64_t other_hits = 0u;
   uint64_t units = 0u;
   uint64_t steps = 0u;
   uint64_t last_step_end = 0u;
   uint64_t prev_tick = 0u;
   uint32_t consumed = 0u;
-  uint32_t n_sched = 0u;
-  uint32_t role;
   uint32_t k;
   uint32_t i;
   int have_prev_tick = 0;
@@ -334,7 +500,7 @@ int ivs_inspect_trace_run(const ivs_scenario *scn, uint8_t *const role_bytes[IVS
 
   detail[0] = '\0';
   memset(&buf, 0, sizeof buf);
-  memset(sched, 0, sizeof sched);
+  memset(&in, 0, sizeof in);
 
   if (scn->n_steps == 0u) {
     (void)snprintf(detail, detail_cap, "the scenario has no run-to step, so there is no run to trace");
@@ -372,129 +538,25 @@ int ivs_inspect_trace_run(const ivs_scenario *scn, uint8_t *const role_bytes[IVS
     oracle = stored;
   }
 
-  /* Pass B's instance: the profile's own size and alignment, then each role's bytes. */
-  memset(&req, 0, sizeof req);
-  req.struct_size = (uint32_t)sizeof req;
-  {
-    ivs_status st = ivs_machine_storage_requirements(scn->profile, &req);
-    if (st != IVS_OK) {
-      (void)snprintf(detail, detail_cap, "the scenario's profile %s is not registered (status %s)", scn->profile,
-                     ivs_status_name(st));
-      return IXT_ERROR;
-    }
-  }
-  if (req.align_bytes == 0u || (req.align_bytes & (req.align_bytes - 1u)) != 0u) {
-    (void)snprintf(detail, detail_cap, "the profile publishes no usable instance alignment");
+  /* Pass B's instance: the profile's own size and alignment, each role's bytes, the reset, the time
+   * base and the input schedule - the one setup both entry points of this file share. */
+  if (ixt_open(scn, role_bytes, role_len, &in, detail, detail_cap) != IXT_OK) {
     return IXT_ERROR;
-  }
-  storage = malloc((size_t)req.size_bytes + (size_t)req.align_bytes);
-  if (storage == NULL) {
-    (void)snprintf(detail, detail_cap, "cannot allocate the traced instance's storage");
-    return IXT_ERROR;
-  }
-  {
-    uintptr_t base = (uintptr_t)storage;
-    uintptr_t aligned = (base + (uintptr_t)(req.align_bytes - 1u)) & ~(uintptr_t)(req.align_bytes - 1u);
-    memset(&co, 0, sizeof co);
-    co.struct_size = (uint32_t)sizeof co;
-    co.flags = 0u;
-    co.profile_id = scn->profile;
-    {
-      ivs_status st = ivs_machine_create(&co, (void *)aligned, (size_t)req.size_bytes, &m);
-      if (st != IVS_OK) {
-        (void)snprintf(detail, detail_cap, "the traced instance could not be created (status %s)",
-                       ivs_status_name(st));
-        goto done;
-      }
-    }
-  }
-  for (role = 0u; role < IVS_SCN_ROLES; role++) {
-    const ivs_scenario_expect *e = &scn->expect[role];
-    ivs_load_options lo;
-    ivs_load_report lr;
-    ivs_status st;
-    if (scn->content[role].kind == IVS_SCN_CONTENT_NONE) {
-      continue;
-    }
-    if (role_bytes[role] == NULL) {
-      (void)snprintf(detail, detail_cap, "role %s has no bytes to load", role_name[role]);
-      goto done;
-    }
-    memset(&lo, 0, sizeof lo);
-    lo.struct_size = (uint32_t)sizeof lo;
-    if (e->sha_set != 0u) {
-      lo.flags = IVS_LOAD_F_EXPECT_SHA256;
-      (void)memcpy(lo.expect_sha256, e->sha256, sizeof lo.expect_sha256);
-    }
-    memset(&lr, 0, sizeof lr);
-    lr.struct_size = (uint32_t)sizeof lr;
-    lr.image.struct_size = (uint32_t)sizeof lr.image;
-    st = ivs_machine_load(m, role_kind[role], role_bytes[role], role_len[role], &lo, &lr);
-    if (st != IVS_OK) {
-      (void)snprintf(detail, detail_cap, "the trace pass could not load role %s (status %s, reason %" PRIu32 ")",
-                     role_name[role], ivs_status_name(st), lr.reason);
-      goto done;
-    }
-  }
-  {
-    ivs_status st = ivs_machine_reset(m, IVS_RESET_POWER_ON);
-    if (st != IVS_OK) {
-      (void)snprintf(detail, detail_cap, "the traced instance refused the power-on reset (status %s)",
-                     ivs_status_name(st));
-      goto done;
-    }
-  }
-  memset(&info, 0, sizeof info);
-  info.struct_size = (uint32_t)sizeof info;
-  {
-    ivs_status st = ivs_machine_info(m, &info);
-    if (st != IVS_OK || info.ticks_per_cpu_cycle == 0u || info.nominal_frame_ticks == 0u) {
-      (void)snprintf(detail, detail_cap, "the traced instance publishes no time base");
-      goto done;
-    }
-  }
-
-  /* The input schedule, in master ticks, with the executor's own unit conversion. */
-  input_mult = scn->input_unit == IVS_SCN_INPUT_AT_CYCLE ? (uint64_t)info.ticks_per_cpu_cycle : 1u;
-  for (i = 0u; i < scn->n_inputs && i < IVS_SCN_MAX_INPUTS; i++) {
-    uint64_t at;
-    if (input_mult == 0u || scn->inputs[i].at > IVS_RUN_TARGET_MAX / input_mult) {
-      (void)snprintf(detail, detail_cap, "input-out-of-range line=%" PRIu32, scn->inputs[i].line);
-      goto done;
-    }
-    at = scn->inputs[i].at * input_mult;
-    if (at >= IVS_RUN_TARGET_MAX) {
-      (void)snprintf(detail, detail_cap, "input-out-of-range line=%" PRIu32, scn->inputs[i].line);
-      goto done;
-    }
-    sched[i].at_tick = at;
-    sched[i].flags = 0u;
-    sched[i].reserved = 0u;
-    sched[i].controller[0] = scn->inputs[i].controller[0];
-    sched[i].controller[1] = scn->inputs[i].controller[1];
-    n_sched++;
-  }
-
-  step_mult = 1u;
-  if (scn->step_unit == IVS_SCN_UNIT_CPU_CYCLES) {
-    step_mult = (uint64_t)info.ticks_per_cpu_cycle;
-  } else if (scn->step_unit == IVS_SCN_UNIT_FRAMES) {
-    step_mult = info.nominal_frame_ticks;
   }
 
   /* Pass B: one unit at a time, with the core's own ladder. */
-  now = info.time_ticks;
+  now = in.now;
   for (k = 0u; k < scn->n_steps && k < IVS_SCN_MAX_STEPS; k++) {
     uint64_t target_ticks;
     uint64_t limit;
     uint64_t entry;
     ivs_psg_sink sink;
     uint32_t run_state = 0u;
-    if (step_mult == 0u || scn->steps[k].target > IVS_RUN_TARGET_MAX / step_mult) {
+    if (in.step_mult == 0u || scn->steps[k].target > IVS_RUN_TARGET_MAX / in.step_mult) {
       (void)snprintf(detail, detail_cap, "bound-too-large step=%" PRIu32, k + 1u);
       goto done;
     }
-    target_ticks = scn->steps[k].target * step_mult;
+    target_ticks = scn->steps[k].target * in.step_mult;
     limit = target_ticks < IVS_RUNNER_MAX_TICKS_DEFAULT ? target_ticks : IVS_RUNNER_MAX_TICKS_DEFAULT;
     entry = now;
     /* One sink per run-to, the shape the core gives one run call: the counting channel for all three
@@ -512,7 +574,7 @@ int ivs_inspect_trace_run(const ivs_scenario *scn, uint8_t *const role_bytes[IVS
       }
       memset(&cs, 0, sizeof cs);
       cs.struct_size = (uint32_t)sizeof cs;
-      st = ivs_machine_cpu_state(m, &cs);
+      st = ivs_machine_cpu_state(in.m, &cs);
       if (st != IVS_OK) {
         (void)snprintf(detail, detail_cap, "the traced instance refused its CPU state (status %s)",
                        ivs_status_name(st));
@@ -525,20 +587,31 @@ int ivs_inspect_trace_run(const ivs_scenario *scn, uint8_t *const role_bytes[IVS
       if (run_state == IVS_CP1610_RS_HALTED) {
         break; /* the executor always sets IVS_RUN_F_STOP_ON_HALT */
       }
-      consumed = ivs_input_apply_due(m, n_sched == 0u ? NULL : sched, n_sched, consumed, now, entry);
+      consumed = ivs_input_apply_due(in.m, in.n_sched == 0u ? NULL : in.sched, in.n_sched, consumed, now, entry);
       memset(trace, 0, sizeof trace);
       memset(&res, 0, sizeof res);
-      st = ivs_machine_step_unit_trace_internal(m, &res, &sink, trace, IVS_CP1610_MAX_ACCESSES);
+      st = ivs_machine_step_unit_trace_internal(in.m, &res, &sink, trace, IVS_CP1610_MAX_ACCESSES);
       if (st != IVS_OK) {
         break; /* a refused step ends the run; the core reports it as an internal stop, not an error */
       }
-      unit_end = now + (uint64_t)res.elapsed_cpu_cycles * (uint64_t)info.ticks_per_cpu_cycle;
+      unit_end = now + (uint64_t)res.elapsed_cpu_cycles * (uint64_t)in.info.ticks_per_cpu_cycle;
       for (a = 0u; a < (uint32_t)res.n_accesses && a < IVS_CP1610_MAX_ACCESSES; a++) {
         const ivs_cp1610_access *ac = &trace[a];
-        uint64_t tick = now + (uint64_t)ac->offset_cpu_cycles * (uint64_t)info.ticks_per_cpu_cycle;
+        uint64_t tick = now + (uint64_t)ac->offset_cpu_cycles * (uint64_t)in.info.ticks_per_cpu_cycle;
         if (ac->kind == 0u || ac->kind > 9u) {
           (void)snprintf(detail, detail_cap, "the core reported an access kind this tool does not know");
           goto done;
+        }
+        /* The frozen page's hit rule: an access at the named address whose kind is fetch or iab. The
+         * reset entry is an IAB, so a rule naming only fetch would read it as never executed. The
+         * counters are the only thing arming changes; the record below is written either way. */
+        if (have_break != 0 && (ac->kind == IVS_ACC_FETCH || ac->kind == IVS_ACC_IAB)) {
+          if (ac->addr == break_pc) {
+            break_hits++;
+          }
+          if (ac->addr == other_pc) {
+            other_hits++;
+          }
         }
         ixt_add(&buf,
                 "tick=%" PRIu64 " kind=%s addr=%04X value=%04X wait=%u cycle=%u unit_start=%" PRIu64
@@ -596,11 +669,23 @@ int ivs_inspect_trace_run(const ivs_scenario *scn, uint8_t *const role_bytes[IVS
                    records);
     goto done;
   }
-  /* The end record, last in the file and the only record that is not an observation. */
-  ixt_add(&buf,
-          "end tick=%" PRIu64 " records=%" PRIu64 " units=%" PRIu64 " steps=%" PRIu64
-          " break_pc=none break_hits=0 other_pc=none other_hits=0\n",
-          last_step_end, records, units, steps);
+  /* The end record, last in the file and the only record that is not an observation. The four break
+   * fields carry `none` when the option was absent and this run's own in-run counts otherwise. */
+  {
+    char bp_text[8];
+    char op_text[8];
+    if (have_break != 0) {
+      (void)snprintf(bp_text, sizeof bp_text, "%04X", (unsigned)break_pc);
+      (void)snprintf(op_text, sizeof op_text, "%04X", (unsigned)other_pc);
+    } else {
+      (void)snprintf(bp_text, sizeof bp_text, "none");
+      (void)snprintf(op_text, sizeof op_text, "none");
+    }
+    ixt_add(&buf,
+            "end tick=%" PRIu64 " records=%" PRIu64 " units=%" PRIu64 " steps=%" PRIu64
+            " break_pc=%s break_hits=%" PRIu64 " other_pc=%s other_hits=%" PRIu64 "\n",
+            last_step_end, records, units, steps, bp_text, break_hits, op_text, other_hits);
+  }
   if (buf.bad != 0) {
     (void)snprintf(detail, detail_cap, "the trace is larger than %u bytes, or could not be built",
                    (unsigned)IXT_TRACE_MAX);
@@ -610,7 +695,7 @@ int ivs_inspect_trace_run(const ivs_scenario *scn, uint8_t *const role_bytes[IVS
   for (i = 0u; i < IXT_DOMAINS; i++) {
     uint8_t d[32];
     char hex[65];
-    ivs_status st = ivs_machine_state_digest(m, ixt_domain[i], d);
+    ivs_status st = ivs_machine_state_digest(in.m, ixt_domain[i], d);
     if (st != IVS_OK) {
       (void)snprintf(detail, detail_cap, "the traced instance refused digest.%s (status %s)",
                      ixt_domain_name[i], ivs_status_name(st));
@@ -637,10 +722,133 @@ int ivs_inspect_trace_run(const ivs_scenario *scn, uint8_t *const role_bytes[IVS
   rc = IXT_OK;
 
 done:
-  if (m != NULL) {
-    (void)ivs_machine_destroy(m);
-  }
-  free(storage);
+  ixt_close(&in);
   free(buf.p);
+  return rc;
+}
+
+/* The `step` surface (frozen page, `## Command surface`): the same loop as the trace pass minus the
+ * access array, so its unit count is the trace's own `units` when it is given that number. It reads
+ * guest state through ivs_machine_cpu_state and ivs_machine_peek only - both public and
+ * side-effect-free - so reporting advances no time and changes no digest. */
+int ivs_inspect_step_run(const ivs_scenario *scn, uint8_t *const role_bytes[IVS_SCN_ROLES],
+                         const size_t role_len[IVS_SCN_ROLES], uint64_t units, int have_peek,
+                         uint16_t peek_addr, uint32_t peek_count, FILE *out, char *detail, size_t detail_cap)
+{
+  ixt_instance in;
+  ixt_buf buf;
+  ivs_psg_sink sink;
+  ivs_cpu_state_report cs;
+  uint64_t stepped = 0u;
+  uint64_t entry;
+  uint32_t consumed = 0u;
+  uint16_t *words = NULL;
+  uint32_t i;
+  int rc = IXT_ERROR;
+
+  detail[0] = '\0';
+  memset(&buf, 0, sizeof buf);
+  memset(&in, 0, sizeof in);
+
+  if (units == 0u) {
+    (void)snprintf(detail, detail_cap, "the step surface needs at least one unit");
+    return IXT_ERROR;
+  }
+  if (ixt_open(scn, role_bytes, role_len, &in, detail, detail_cap) != IXT_OK) {
+    return IXT_ERROR;
+  }
+  if (have_peek != 0) {
+    if (peek_count == 0u || (uint64_t)peek_addr + (uint64_t)peek_count > 0x10000u) {
+      (void)snprintf(detail, detail_cap, "the peek range is empty or runs past 10000");
+      goto done;
+    }
+    words = calloc((size_t)peek_count, sizeof *words);
+    if (words == NULL) {
+      (void)snprintf(detail, detail_cap, "cannot allocate the peeked words");
+      goto done;
+    }
+  }
+
+  /* The trace pass's loop, minus the access array: the core's own fault and halt breaks, the core's
+   * own input floor before each unit, and a refused step ending the run rather than becoming an
+   * error. */
+  entry = in.now;
+  ivs_psg_sink_init(&sink, NULL, 0u);
+  while (stepped < units) {
+    ivs_cp1610_result res;
+    uint64_t unit_end;
+    ivs_status st;
+    memset(&cs, 0, sizeof cs);
+    cs.struct_size = (uint32_t)sizeof cs;
+    st = ivs_machine_cpu_state(in.m, &cs);
+    if (st != IVS_OK) {
+      (void)snprintf(detail, detail_cap, "the instance refused its CPU state (status %s)", ivs_status_name(st));
+      goto done;
+    }
+    if (cs.run_state == IVS_CP1610_RS_FAULTED || cs.run_state == IVS_CP1610_RS_HALTED) {
+      break;
+    }
+    consumed = ivs_input_apply_due(in.m, in.n_sched == 0u ? NULL : in.sched, in.n_sched, consumed, in.now, entry);
+    memset(&res, 0, sizeof res);
+    st = ivs_machine_step_unit_trace_internal(in.m, &res, &sink, NULL, 0u);
+    if (st != IVS_OK) {
+      break;
+    }
+    unit_end = in.now + (uint64_t)res.elapsed_cpu_cycles * (uint64_t)in.info.ticks_per_cpu_cycle;
+    if (unit_end == in.now) {
+      (void)snprintf(detail, detail_cap, "a unit of the stepped run advanced no machine time");
+      goto done;
+    }
+    in.now = unit_end;
+    stepped++;
+  }
+
+  memset(&cs, 0, sizeof cs);
+  cs.struct_size = (uint32_t)sizeof cs;
+  {
+    ivs_status st = ivs_machine_cpu_state(in.m, &cs);
+    if (st != IVS_OK) {
+      (void)snprintf(detail, detail_cap, "the instance refused its CPU state (status %s)", ivs_status_name(st));
+      goto done;
+    }
+  }
+  if (have_peek != 0) {
+    ivs_status st = ivs_machine_peek(in.m, peek_addr, peek_count, words);
+    if (st != IVS_OK) {
+      (void)snprintf(detail, detail_cap, "the instance refused the peek at %04X (status %s)",
+                     (unsigned)peek_addr, ivs_status_name(st));
+      goto done;
+    }
+  }
+
+  /* The frozen page's key order, exactly: units, ticks, halted, pc, R0..R7, then the peeked words in
+   * ascending address order. Addresses and values are four upper-case hex digits, counts decimal. */
+  ixt_add(&buf, "step.units %" PRIu64 "\n", stepped);
+  ixt_add(&buf, "step.ticks %" PRIu64 "\n", in.now);
+  ixt_add(&buf, "step.halted %s\n", cs.run_state == IVS_CP1610_RS_HALTED ? "yes" : "no");
+  ixt_add(&buf, "step.pc %04X\n", (unsigned)cs.r[7]);
+  for (i = 0u; i < 8u; i++) {
+    ixt_add(&buf, "step.reg.R%u %04X\n", (unsigned)i, (unsigned)cs.r[i]);
+  }
+  if (have_peek != 0) {
+    for (i = 0u; i < peek_count; i++) {
+      ixt_add(&buf, "step.mem.%04X %04X\n", (unsigned)((uint32_t)peek_addr + i), (unsigned)words[i]);
+    }
+  }
+  if (buf.bad != 0) {
+    (void)snprintf(detail, detail_cap, "the step report is larger than %u bytes, or could not be built",
+                   (unsigned)IXT_TRACE_MAX);
+    goto done;
+  }
+  if (fwrite(buf.p, 1u, buf.len, out) != buf.len || fflush(out) != 0) {
+    (void)snprintf(detail, detail_cap, "a write error on the step report");
+    goto done;
+  }
+  rc = IXT_OK;
+
+done:
+  free(words);
+  free(buf.p);
+  ixt_close(&in);
   return rc;
 }

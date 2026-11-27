@@ -281,3 +281,12 @@ runner-process.inspect.trace-records
 runner-process.inspect.trace-digests
 runner-process.inspect.neg.inspect-output-tree
 runner-process.inspect.neg.inspect-output-exists
+runner-process.inspect.trace-state
+runner-process.inspect.break-pair
+runner-process.inspect.break-noninterference
+runner-process.inspect.step
+runner-process.inspect.surface
+runner-process.judge.trace-empty
+runner-process.judge.trace-repeat-tick
+runner-process.judge.trace-pokes-register
+runner-process.judge.break-always-hits

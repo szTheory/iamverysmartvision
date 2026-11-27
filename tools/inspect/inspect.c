@@ -1,10 +1,18 @@
 /* SPDX-License-Identifier: MIT */
 /* ivs-inspect: the project's build-only inspection instrument (Phase 18, plan 18-02, TOOL-02 and
  * TOOL-09). One binary, four subcommands, no window, never installed, driven by a script only. The
- * frozen contract is docs/inspection.md: this file implements its `## Command surface` (the `trace`
- * grammar, `--help`, the three exit statuses), its output policy (the two refusals of
- * `## Refusal tokens` and the `refs/` exception of `## Rights`) and its host. Where this file's
- * prose and that page disagree, the page wins.
+ * frozen contract is docs/inspection.md: this file implements its `## Command surface` (the `trace`,
+ * `break` and `step` grammars, `--help`, the three exit statuses), its output policy (the two output
+ * refusals of `## Refusal tokens` and the `refs/` exception of `## Rights`), the `break` report of
+ * `## Breakpoints` and its host. Where this file's prose and that page disagree, the page wins.
+ *
+ * `break` steps no machine: it reads a trace this tool wrote and counts, so the non-interference the
+ * frozen page asserts is structural there - and it is still asserted by a case, because a later
+ * implementation that re-ran the scenario to count would break it silently. Its count is derived
+ * from the file while the trace's own end record carries the in-run count, so the two are two
+ * independent computations of the same number and the case reconciles them rather than trusting
+ * either. `step` creates its own instance through inspect_trace.c's own setup, so its unit count is
+ * the trace's own `units` when it is given that number.
  *
  * What this file owns, and what it deliberately does not. The report is the library's: pass A parses
  * the scenario with ivs_scenario_parse and runs it with ivs_runner_execute, so the report's bytes are
@@ -78,6 +86,8 @@
  * the library's: a report of a scenario at the parser's caps is a few hundred kilobytes. */
 #define IX_PATH_MAX 4096
 #define IX_REPORT_MAX (16u * 1024u * 1024u)
+/* The trace the `break` surface reads back: the same 64 MiB bound the trace pass writes under. */
+#define IX_TRACE_MAX (64u * 1024u * 1024u)
 #define IX_DETAIL_MAX 320u
 
 /* Exit statuses of the frozen page. */
@@ -92,9 +102,21 @@
 #define IX_READ_TOO_LARGE 3
 #define IX_READ_ERROR 4
 
-/* The two refusal tokens of the output policy, each one standalone double-quoted literal. */
+/* The output policy's two refusal tokens and `break`'s own, each one standalone double-quoted
+ * literal: the coverage case extracts the tool's token set from every source in this directory with
+ * `grep -h -o -E '"inspect-[a-z-]+"'`, so a token assembled from fragments would read as a page line
+ * the tool cannot print. `inspect-reconcile` is written the same way where it is raised. */
 static const char ix_tok_output_tree[] = "inspect-output-tree";
 static const char ix_tok_output_exists[] = "inspect-output-exists";
+static const char ix_tok_break_empty[] = "inspect-break-empty";
+
+/* The outcome of the output policy, in the frozen order: the tree, then existence, then the exclusive
+ * create. IX_OPEN_REFUSED_TREE and IX_OPEN_REFUSED_EXISTS carry the caller's token; IX_OPEN_ERROR is a
+ * file error with no token. */
+#define IX_OPEN_OK 0
+#define IX_OPEN_REFUSED_TREE 1
+#define IX_OPEN_REFUSED_EXISTS 2
+#define IX_OPEN_ERROR 3
 
 /* One role's content, read once and handed to both passes. */
 typedef struct ix_content {
@@ -117,7 +139,11 @@ typedef struct ix_host {
 /* The interface tools/inspect/inspect_trace.c implements. See the file header for the contract. */
 int ivs_inspect_trace_run(const ivs_scenario *scn, uint8_t *const role_bytes[IVS_SCN_ROLES],
                           const size_t role_len[IVS_SCN_ROLES], const char *report_text, size_t report_len,
-                          const char *stored_text, size_t stored_len, FILE *out, char *detail, size_t detail_cap);
+                          const char *stored_text, size_t stored_len, int have_break, uint16_t break_pc,
+                          uint16_t other_pc, FILE *out, char *detail, size_t detail_cap);
+int ivs_inspect_step_run(const ivs_scenario *scn, uint8_t *const role_bytes[IVS_SCN_ROLES],
+                         const size_t role_len[IVS_SCN_ROLES], uint64_t units, int have_peek,
+                         uint16_t peek_addr, uint32_t peek_count, FILE *out, char *detail, size_t detail_cap);
 
 /* ---- the command surface ---- */
 
@@ -295,6 +321,42 @@ static int ix_inside_tree(const char *out, char *detail, size_t cap)
     return 0;
   }
   return 1;
+}
+
+/* The frozen page's output policy, decided before anything is created, in its own order: the
+ * physical tree check, then existence (a dangling symlink included), then the exclusive create.
+ * *created is set once the path is this run's to remove. Every subcommand's --out goes through this,
+ * because the page states the rule for "an output" and not for one subcommand's output. */
+static int ix_open_output(const char *out, FILE **f, int *created, char *detail, size_t cap)
+{
+  struct stat sb;
+  int inside = ix_inside_tree(out, detail, cap);
+
+  *f = NULL;
+  *created = 0;
+  if (inside < 0) {
+    return IX_OPEN_ERROR;
+  }
+  if (inside != 0) {
+    (void)snprintf(detail, cap, "the output %s is inside the work tree outside refs/", out);
+    return IX_OPEN_REFUSED_TREE;
+  }
+  /* lstat, not stat: a dangling symlink is a path that exists, and the page refuses it. */
+  if (lstat(out, &sb) == 0) {
+    (void)snprintf(detail, cap, "the output %s already exists", out);
+    return IX_OPEN_REFUSED_EXISTS;
+  }
+  *f = fopen(out, "wbx");
+  if (*f != NULL) {
+    *created = 1; /* from here on the path is this run's to remove */
+    return IX_OPEN_OK;
+  }
+  if (errno == EEXIST) {
+    (void)snprintf(detail, cap, "the output %s already exists", out);
+    return IX_OPEN_REFUSED_EXISTS;
+  }
+  (void)snprintf(detail, cap, "cannot create %s", out);
+  return IX_OPEN_ERROR;
 }
 
 /* ---- the host ---- */
@@ -538,8 +600,6 @@ static int ix_cmd_trace(int argc, char **argv)
   char detail[IX_DETAIL_MAX];
   char outcome_detail[IX_DETAIL_MAX];
   FILE *f = NULL;
-  struct stat sb;
-  int inside;
   int created = 0;
   int rc;
   int i;
@@ -587,12 +647,6 @@ static int ix_cmd_trace(int argc, char **argv)
   }
   if (content_dir == NULL || out == NULL || have_break != have_other) {
     return ix_usage();
-  }
-  if (have_break) {
-    /* The breakpoint surface is the next plan's; the grammar above is the frozen page's, so a
-     * malformed pair is a usage error and a well-formed one is refused rather than silently ignored. */
-    (void)fprintf(stderr, "ivs-inspect: the breakpoint surface is not part of this build\n");
-    return IX_EXIT_ERROR;
   }
 
   /* The scenario, read and parsed before anything is created. */
@@ -643,35 +697,18 @@ static int ix_cmd_trace(int argc, char **argv)
   }
 
   /* The output policy, in the frozen order: the tree, then existence, then the exclusive create. */
-  inside = ix_inside_tree(out, detail, sizeof detail);
-  if (inside < 0) {
-    (void)fprintf(stderr, "ivs-inspect: %s\n", detail);
-    rc = IX_EXIT_ERROR;
-    goto done;
-  }
-  if (inside != 0) {
-    (void)snprintf(detail, sizeof detail, "the output %s is inside the work tree outside refs/", out);
+  switch (ix_open_output(out, &f, &created, detail, sizeof detail)) {
+  case IX_OPEN_OK:
+    break;
+  case IX_OPEN_REFUSED_TREE:
     rc = ix_refuse(ix_tok_output_tree, detail);
     goto done;
-  }
-  /* lstat, not stat: a dangling symlink is a path that exists, and the page refuses it. */
-  if (lstat(out, &sb) == 0) {
-    (void)snprintf(detail, sizeof detail, "the output %s already exists", out);
+  case IX_OPEN_REFUSED_EXISTS:
     rc = ix_refuse(ix_tok_output_exists, detail);
     goto done;
-  }
-  f = fopen(out, "wbx");
-  if (f != NULL) {
-    created = 1; /* from here on the path is this run's to remove */
-  }
-  if (f == NULL) {
-    if (errno == EEXIST) {
-      (void)snprintf(detail, sizeof detail, "the output %s already exists", out);
-      rc = ix_refuse(ix_tok_output_exists, detail);
-    } else {
-      (void)fprintf(stderr, "ivs-inspect: cannot create %s\n", out);
-      rc = IX_EXIT_ERROR;
-    }
+  default:
+    (void)fprintf(stderr, "ivs-inspect: %s\n", detail);
+    rc = IX_EXIT_ERROR;
     goto done;
   }
 
@@ -714,8 +751,8 @@ static int ix_cmd_trace(int argc, char **argv)
   }
 
   /* Pass B and the reconciliation, in inspect_trace.c. */
-  rc = ivs_inspect_trace_run(&scn, content.bytes, content.len, h.report, h.report_len, stored, stored_len, f,
-                             detail, sizeof detail);
+  rc = ivs_inspect_trace_run(&scn, content.bytes, content.len, h.report, h.report_len, stored, stored_len,
+                             have_break, break_pc, other_pc, f, detail, sizeof detail);
   if (fclose(f) != 0 && rc == IX_EXIT_OK) {
     (void)snprintf(detail, sizeof detail, "a write error on the output %s", out);
     rc = IX_EXIT_ERROR;
@@ -750,6 +787,368 @@ done:
   return rc;
 }
 
+/* ---- the break subcommand ---- */
+
+/* The value of `key` in one record line: 1 when the line holds exactly one `key=value` field, with
+ * *val and *vlen naming it. The trace's grammar separates fields with single spaces and nothing else,
+ * so a field is a space-delimited token whose text starts `key=`. */
+static int ix_field(const char *line, size_t n, const char *key, const char **val, size_t *vlen)
+{
+  size_t klen = strlen(key);
+  size_t at = 0u;
+  int found = 0;
+
+  while (at < n) {
+    size_t end = at;
+    while (end < n && line[end] != ' ') {
+      end++;
+    }
+    if (end - at > klen && memcmp(line + at, key, klen) == 0 && line[at + klen] == '=') {
+      *val = line + at + klen + 1u;
+      *vlen = end - at - klen - 1u;
+      found++;
+    }
+    at = end + 1u;
+  }
+  return found == 1;
+}
+
+/* A decimal field, at least one digit, no wrap. */
+static int ix_field_dec(const char *line, size_t n, const char *key, uint64_t *out)
+{
+  const char *v;
+  size_t vlen;
+  uint64_t x = 0u;
+  size_t i;
+
+  if (!ix_field(line, n, key, &v, &vlen) || vlen == 0u) {
+    return 0;
+  }
+  for (i = 0u; i < vlen; i++) {
+    uint64_t d;
+    if (v[i] < '0' || v[i] > '9') {
+      return 0;
+    }
+    d = (uint64_t)(v[i] - '0');
+    if (x > (UINT64_MAX - d) / 10u) {
+      return 0;
+    }
+    x = x * 10u + d;
+  }
+  *out = x;
+  return 1;
+}
+
+/* A four-hex-digit field. */
+static int ix_field_hex4(const char *line, size_t n, const char *key, uint16_t *out)
+{
+  const char *v;
+  size_t vlen;
+  char buf[5];
+
+  if (!ix_field(line, n, key, &v, &vlen) || vlen != 4u) {
+    return 0;
+  }
+  (void)memcpy(buf, v, 4u);
+  buf[4] = '\0';
+  return ix_hex4(buf, out);
+}
+
+/* The frozen page's hit rule: `fetch` or `iab`. Both must count - the reset entry is an IAB carrying
+ * the reset flag, not a fetch - so a rule that named only `fetch` would read the entry as never
+ * executed. */
+static int ix_kind_is_hit(const char *kind, size_t n)
+{
+  return (n == 5u && memcmp(kind, "fetch", 5u) == 0) || (n == 3u && memcmp(kind, "iab", 3u) == 0);
+}
+
+/* `break`: the file-derived count at each of the two addresses, over a trace this tool wrote. It steps
+ * no machine, so the breakpoint cannot have moved anything - and the report's last three keys are
+ * copied from the trace's own end record so the two documents can be compared rather than trusted. */
+static int ix_cmd_break(int argc, char **argv)
+{
+  const char *trace_path = NULL;
+  const char *out = NULL;
+  uint16_t pc = 0u;
+  uint16_t other = 0u;
+  int have_pc = 0;
+  int have_other = 0;
+  uint8_t *text = NULL;
+  size_t len = 0u;
+  uint64_t hits = 0u;
+  uint64_t other_hits = 0u;
+  uint64_t end_tick = 0u;
+  uint64_t end_records = 0u;
+  uint64_t end_steps = 0u;
+  int have_end = 0;
+  size_t at = 0u;
+  FILE *f = NULL;
+  int created = 0;
+  char detail[IX_DETAIL_MAX];
+  int rc = IX_EXIT_ERROR;
+  int i;
+
+  detail[0] = '\0';
+  if (argc < 3) {
+    return ix_usage();
+  }
+  for (i = 2; i < argc; i++) {
+    if (strcmp(argv[i], "--pc") == 0) {
+      if (have_pc || i + 1 >= argc || !ix_hex4(argv[i + 1], &pc)) {
+        return ix_usage();
+      }
+      have_pc = 1;
+      i++;
+    } else if (strcmp(argv[i], "--other") == 0) {
+      if (have_other || i + 1 >= argc || !ix_hex4(argv[i + 1], &other)) {
+        return ix_usage();
+      }
+      have_other = 1;
+      i++;
+    } else if (strcmp(argv[i], "--trace") == 0) {
+      if (trace_path != NULL || i + 1 >= argc) {
+        return ix_usage();
+      }
+      trace_path = argv[++i];
+    } else if (strcmp(argv[i], "--out") == 0) {
+      if (out != NULL || i + 1 >= argc) {
+        return ix_usage();
+      }
+      out = argv[++i];
+    } else {
+      return ix_usage();
+    }
+  }
+  if (have_pc == 0 || have_other == 0 || trace_path == NULL || out == NULL) {
+    return ix_usage();
+  }
+
+  /* The trace, read whole before anything is created: an unreadable or malformed trace is a file
+   * error (exit 2, no token) and must not leave an output behind. */
+  text = malloc(IX_TRACE_MAX);
+  if (text == NULL) {
+    (void)fprintf(stderr, "ivs-inspect: cannot allocate the trace buffer\n");
+    goto done;
+  }
+  if (ix_read_regular(trace_path, IX_TRACE_MAX - 1u, text, &len) != IX_READ_OK) {
+    (void)fprintf(stderr, "ivs-inspect: cannot read the trace %s\n", trace_path);
+    goto done;
+  }
+  while (at < len) {
+    size_t end = at;
+    const char *line = (const char *)text + at;
+    size_t n;
+    while (end < len && text[end] != '\n') {
+      end++;
+    }
+    n = end - at;
+    if (n > 5u && memcmp(line, "tick=", 5u) == 0) {
+      const char *kind = NULL;
+      size_t kind_len = 0u;
+      uint16_t addr = 0u;
+      if (!ix_field(line, n, "kind", &kind, &kind_len) || !ix_field_hex4(line, n, "addr", &addr)) {
+        (void)fprintf(stderr, "ivs-inspect: the trace's access record is malformed\n");
+        goto done;
+      }
+      if (ix_kind_is_hit(kind, kind_len) != 0) {
+        if (addr == pc) {
+          hits++;
+        }
+        if (addr == other) {
+          other_hits++;
+        }
+      }
+    } else if (n > 4u && memcmp(line, "end ", 4u) == 0) {
+      if (!ix_field_dec(line, n, "tick", &end_tick) || !ix_field_dec(line, n, "records", &end_records) ||
+          !ix_field_dec(line, n, "steps", &end_steps)) {
+        (void)fprintf(stderr, "ivs-inspect: the trace's end record is malformed\n");
+        goto done;
+      }
+      have_end = 1;
+    }
+    at = end + 1u;
+  }
+  if (have_end == 0) {
+    (void)fprintf(stderr, "ivs-inspect: the trace %s holds no end record\n", trace_path);
+    goto done;
+  }
+  /* `inspect-break-empty`: a trace with no access record has nothing to count a breakpoint against.
+   * A trace with one access record yields 1 or 0 and is not refused. */
+  if (end_records == 0u) {
+    (void)snprintf(detail, sizeof detail, "the trace %s holds no access record to count against", trace_path);
+    rc = ix_refuse(ix_tok_break_empty, detail);
+    goto done;
+  }
+
+  switch (ix_open_output(out, &f, &created, detail, sizeof detail)) {
+  case IX_OPEN_OK:
+    break;
+  case IX_OPEN_REFUSED_TREE:
+    rc = ix_refuse(ix_tok_output_tree, detail);
+    goto done;
+  case IX_OPEN_REFUSED_EXISTS:
+    rc = ix_refuse(ix_tok_output_exists, detail);
+    goto done;
+  default:
+    (void)fprintf(stderr, "ivs-inspect: %s\n", detail);
+    goto done;
+  }
+
+  /* The frozen page's break report, one `key value` line each and in this order. */
+  if (fprintf(f, "break.pc %04X\n", (unsigned)pc) < 0 || fprintf(f, "break.hits %" PRIu64 "\n", hits) < 0 ||
+      fprintf(f, "break.other.pc %04X\n", (unsigned)other) < 0 ||
+      fprintf(f, "break.other.hits %" PRIu64 "\n", other_hits) < 0 ||
+      fprintf(f, "break.records %" PRIu64 "\n", end_records) < 0 ||
+      fprintf(f, "break.end_tick %" PRIu64 "\n", end_tick) < 0 ||
+      fprintf(f, "break.steps %" PRIu64 "\n", end_steps) < 0) {
+    (void)snprintf(detail, sizeof detail, "a write error on the break report");
+    (void)fprintf(stderr, "ivs-inspect: %s\n", detail);
+    goto done;
+  }
+  if (fclose(f) != 0) {
+    f = NULL;
+    (void)fprintf(stderr, "ivs-inspect: a write error on the break report\n");
+    goto done;
+  }
+  f = NULL;
+  rc = IX_EXIT_OK;
+
+ done:
+  if (f != NULL) {
+    (void)fclose(f);
+  }
+  if (rc != IX_EXIT_OK && created != 0) {
+    (void)remove(out);
+  }
+  free(text);
+  return rc;
+}
+
+/* ---- the step subcommand ---- */
+
+/* A whole argument as a decimal count. */
+static int ix_dec(const char *a, uint64_t *out)
+{
+  uint64_t v = 0u;
+  size_t i = 0u;
+
+  if (a[0] == '\0') {
+    return 0;
+  }
+  for (i = 0u; a[i] != '\0'; i++) {
+    uint64_t d;
+    if (a[i] < '0' || a[i] > '9') {
+      return 0;
+    }
+    d = (uint64_t)(a[i] - '0');
+    if (v > (UINT64_MAX - d) / 10u) {
+      return 0;
+    }
+    v = v * 10u + d;
+  }
+  *out = v;
+  return 1;
+}
+
+/* `step`: one instance, `--units` units of the same loop the trace pass runs, then the frozen page's
+ * key order. Its witnesses are read through ivs_machine_cpu_state and ivs_machine_peek only, both
+ * public and side-effect-free, so the report advances no time and changes no digest. */
+static int ix_cmd_step(int argc, char **argv)
+{
+  const char *scenario_path;
+  const char *content_dir = NULL;
+  uint64_t units = 0u;
+  int have_units = 0;
+  int have_peek = 0;
+  uint16_t peek_addr = 0u;
+  uint32_t peek_count = 0u;
+  uint8_t *scn_bytes = NULL;
+  size_t scn_len = 0u;
+  ivs_scenario scn;
+  ivs_scenario_error serr;
+  ix_content content;
+  char detail[IX_DETAIL_MAX];
+  int rc;
+  int i;
+
+  detail[0] = '\0';
+  memset(&content, 0, sizeof content);
+  if (argc < 3) {
+    return ix_usage();
+  }
+  scenario_path = argv[2];
+  for (i = 3; i < argc; i++) {
+    if (strcmp(argv[i], "--content-dir") == 0) {
+      if (content_dir != NULL || i + 1 >= argc) {
+        return ix_usage();
+      }
+      content_dir = argv[++i];
+    } else if (strcmp(argv[i], "--units") == 0) {
+      if (have_units || i + 1 >= argc || !ix_dec(argv[i + 1], &units)) {
+        return ix_usage();
+      }
+      have_units = 1;
+      i++;
+    } else if (strcmp(argv[i], "--peek") == 0) {
+      uint64_t count = 0u;
+      if (have_peek || i + 2 >= argc || !ix_hex4(argv[i + 1], &peek_addr) || !ix_dec(argv[i + 2], &count) ||
+          count == 0u || count > 0xFFFFu) {
+        return ix_usage();
+      }
+      peek_count = (uint32_t)count;
+      have_peek = 1;
+      i += 2;
+    } else {
+      return ix_usage();
+    }
+  }
+  if (content_dir == NULL || have_units == 0 || units == 0u) {
+    return ix_usage();
+  }
+
+  scn_bytes = malloc((size_t)IVS_SCN_MAX_BYTES + 1u);
+  if (scn_bytes == NULL) {
+    (void)fprintf(stderr, "ivs-inspect: cannot allocate the scenario buffer\n");
+    rc = IX_EXIT_ERROR;
+    goto done;
+  }
+  if (ix_read_regular(scenario_path, (size_t)IVS_SCN_MAX_BYTES, scn_bytes, &scn_len) != IX_READ_OK) {
+    (void)fprintf(stderr, "ivs-inspect: cannot read the scenario %s\n", scenario_path);
+    rc = IX_EXIT_ERROR;
+    goto done;
+  }
+  memset(&scn, 0, sizeof scn);
+  memset(&serr, 0, sizeof serr);
+  if (ivs_scenario_parse(scn_bytes, scn_len, &scn, &serr) != 0) {
+    char text[IX_DETAIL_MAX];
+    if (ivs_scenario_error_format(&serr, text, sizeof text) != 0) {
+      (void)snprintf(text, sizeof text, "scenario-syntax line=%u", (unsigned)serr.line);
+    }
+    (void)fprintf(stderr, "ivs-inspect: %s\n", text);
+    rc = IX_EXIT_ERROR;
+    goto done;
+  }
+  free(scn_bytes);
+  scn_bytes = NULL;
+
+  rc = ix_load_content(&scn, content_dir, &content, detail, sizeof detail);
+  if (rc != IX_EXIT_OK) {
+    (void)fprintf(stderr, "ivs-inspect: %s\n", detail);
+    goto done;
+  }
+  rc = ivs_inspect_step_run(&scn, content.bytes, content.len, units, have_peek, peek_addr, peek_count, stdout,
+                            detail, sizeof detail);
+  if (rc != IX_EXIT_OK) {
+    (void)fprintf(stderr, "ivs-inspect: %s\n", detail);
+    rc = IX_EXIT_ERROR;
+  }
+
+ done:
+  free(scn_bytes);
+  ix_free_content(&content);
+  return rc;
+}
+
 int main(int argc, char **argv)
 {
   if (argc < 2) {
@@ -761,7 +1160,13 @@ int main(int argc, char **argv)
   if (strcmp(argv[1], "trace") == 0) {
     return ix_cmd_trace(argc, argv);
   }
-  /* `break`, `dis` and `step` are the frozen page's other three subcommands; the plans after this one
-   * land them, so their names are a usage error (exit 2, no token) here, exactly like a fifth name. */
+  if (strcmp(argv[1], "break") == 0) {
+    return ix_cmd_break(argc, argv);
+  }
+  if (strcmp(argv[1], "step") == 0) {
+    return ix_cmd_step(argc, argv);
+  }
+  /* `dis` is the frozen page's fourth subcommand and plan 18-03 lands it, so its name is a usage
+   * error (exit 2, no token) here, exactly like a fifth name. */
   return ix_usage();
 }
