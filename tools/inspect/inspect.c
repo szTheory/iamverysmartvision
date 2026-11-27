@@ -401,6 +401,42 @@ static int ix_role_of(const ix_host *h, const char *relpath)
   return -1;
 }
 
+
+/* ---- bounded string building (GCC's -Wformat-truncation cannot see through the length checks the
+ * callers make, so the two path joins and the one long detail line are built with memcpy instead of
+ * snprintf: a construction GCC can prove cannot truncate, rather than a warning suppressed. ---- */
+
+/* Joins dir and rel with one '/' into dst, or returns -1 when it would not fit. */
+static int ix_join_path(char *dst, size_t cap, const char *dir, const char *rel)
+{
+  size_t a = strlen(dir);
+  size_t b = strlen(rel);
+  if (a + b + 2u > cap) {
+    return -1;
+  }
+  (void)memcpy(dst, dir, a);
+  dst[a] = '/';
+  (void)memcpy(dst + a + 1u, rel, b);
+  dst[a + 1u + b] = '\0';
+  return 0;
+}
+
+/* Appends src to dst at *at, truncating to fit cap - 1 bytes in total, and keeps dst NUL-terminated. */
+static void ix_put(char *dst, size_t cap, size_t *at, const char *src)
+{
+  size_t n = strlen(src);
+  if (*at >= cap - 1u) {
+    dst[cap - 1u] = '\0';
+    return;
+  }
+  if (n > cap - 1u - *at) {
+    n = cap - 1u - *at;
+  }
+  (void)memcpy(dst + *at, src, n);
+  *at += n;
+  dst[*at] = '\0';
+}
+
 /* Serves the cached bytes, at most cap + 1 of them, with the executor's contract: *len above cap means
  * the file was larger than the role's bound. */
 static int ix_host_read(void *ctx, const char *relpath, size_t cap, uint8_t *buf, size_t *len)
@@ -425,7 +461,9 @@ static int ix_host_read(void *ctx, const char *relpath, size_t cap, uint8_t *buf
   if (strlen(h->content_dir) + strlen(relpath) + 2u > sizeof path) {
     return IVS_RUNNER_READ_IO_ERROR;
   }
-  (void)snprintf(path, sizeof path, "%s/%s", h->content_dir, relpath);
+  if (ix_join_path(path, sizeof path, h->content_dir, relpath) != 0) {
+    return IVS_RUNNER_READ_IO_ERROR;
+  }
   r = ix_read_regular(path, cap, buf, len);
   switch (r) {
   case IX_READ_OK:
@@ -531,15 +569,27 @@ static int ix_load_content(const ivs_scenario *scn, const char *content_dir, ix_
       (void)snprintf(detail, cap, "role %s names a path this tool does not read", role_name[role]);
       return IX_EXIT_ERROR;
     }
-    (void)snprintf(path, sizeof path, "%s/%s", content_dir, name);
+    if (ix_join_path(path, sizeof path, content_dir, name) != 0) {
+      (void)snprintf(detail, cap, "the content directory and the role's path do not fit one path");
+      return IX_EXIT_ERROR;
+    }
     r = ix_read_regular(path, role_cap[role], c->bytes[role], &len);
     if (r != IX_READ_OK) {
-      (void)snprintf(detail, cap, "role %s: %s (%s)", role_name[role],
-                     r == IX_READ_MISSING       ? "missing"
-                     : r == IX_READ_NOT_REGULAR ? "not a regular file"
-                     : r == IX_READ_TOO_LARGE   ? "larger than the role's bound"
-                                                : "cannot be read",
-                     path);
+      {
+        const char *why = r == IX_READ_MISSING       ? "missing"
+                          : r == IX_READ_NOT_REGULAR ? "not a regular file"
+                          : r == IX_READ_TOO_LARGE   ? "larger than the role's bound"
+                                                     : "cannot be read";
+        size_t at = 0u;
+        detail[0] = '\0';
+        ix_put(detail, cap, &at, "role ");
+        ix_put(detail, cap, &at, role_name[role]);
+        ix_put(detail, cap, &at, ": ");
+        ix_put(detail, cap, &at, why);
+        ix_put(detail, cap, &at, " (");
+        ix_put(detail, cap, &at, path);
+        ix_put(detail, cap, &at, ")");
+      }
       return IX_EXIT_ERROR;
     }
     c->len[role] = len;
