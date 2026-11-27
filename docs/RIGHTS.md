@@ -43,6 +43,7 @@ A disposition is a decision about naming and shipping, not a finding about behav
 | a rendered page image | `refused` | may not be committed or named; a render of a rights-bearing page is derivative of it |
 | a saved machine state | `owner-local-only` | may be read only from the owner's own files and never committed as a golden, a fixture or a claim artifact |
 | the core information strings | `owner-local-only` | may be read only from the owner's own build output and never committed |
+| an inspection trace or disassembly dump | `owner-local-only` | written by the build-only inspection instrument to a path the operator names, outside the work tree or under the ignored `refs/` directory, and never committed as a golden, a fixture, a CI artifact or a claim artifact |
 
 ## The refs/ cache
 

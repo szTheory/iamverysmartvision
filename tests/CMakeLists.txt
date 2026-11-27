@@ -750,9 +750,11 @@ target_link_libraries(ivs_host_harness PRIVATE ivs_warnings ivs_san ${CMAKE_DL_L
 # (plan 08-07, D-10, D-37, D-40): the six STIC2 program mutants run their scenario only in a Release build and are judged
 # statically in any other (the same ids, no skip-ok). The seventh argument (plan 15-01, TOOL-08) is the built
 # build-only shared object: the host cases dlopen it and report a finding, never a skip, when it is missing. The eighth is
-# the fake frontend executable itself, which drives it.
+# the fake frontend executable itself, which drives it. The ninth (plan 18-02, TOOL-02) is the build-only inspection
+# instrument: the inspection cases drive it as a script does and report a finding, never a skip, when it is missing.
 add_test(NAME runner-process
   COMMAND sh "${CMAKE_SOURCE_DIR}/tests/runner-process-tap.sh" "${CMAKE_SOURCE_DIR}"
           "$<TARGET_FILE:ivs_run>" "$<TARGET_FILE:ivs_pack>" "${IVS_IMAGES_DIR}" "$<CONFIG>"
-          "$<TARGET_FILE:ivs_flatwrap>" "$<TARGET_FILE:ivs_retro_shim>" "$<TARGET_FILE:ivs_host_harness>")
+          "$<TARGET_FILE:ivs_flatwrap>" "$<TARGET_FILE:ivs_retro_shim>" "$<TARGET_FILE:ivs_host_harness>"
+          "$<TARGET_FILE:ivs_inspect>")
 set_tests_properties(runner-process PROPERTIES SKIP_RETURN_CODE 77)

@@ -1,0 +1,9 @@
+{
+  "id": "inspection-output",
+  "item": "an inspection trace or disassembly dump",
+  "disposition": "owner-local-only",
+  "source": null,
+  "taken": "nothing",
+  "tokens": ["trace-file", "disassembly-dump", "inspection-dump"],
+  "note": "Owner-local only: an inspection trace or a disassembly dump is written by the build-only instrument of plan 18-02 (TOOL-02, TOOL-09) to a path the operator names, outside the work tree or under the ignored refs/ directory, and it is never committed - not as a golden, not as a fixture, not as a CI artifact and not as a claim artifact - whatever its content. A trace of a run over owner-supplied images is derivative material of them, and a disassembly dump of a rights-bearing program is derivative of that program, so both are covered by this one row. Nothing is taken by this phase: the instrument reads only images the operator already holds and the project's own listings."
+}

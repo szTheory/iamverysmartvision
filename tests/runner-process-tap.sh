@@ -118,16 +118,23 @@
 # exactly the two comparisons check_one_golden makes (the sorted line set and the observed domain set), with a positive
 # frame count required before anything is compared (a vacuous judge cannot pass). Missing either argument, the case is
 # `not ok` with that reason, never a skip.
-# Usage: sh runner-process-tap.sh <source root> <ivs-run> <ivs_pack> <images dir> [<build configuration>] [<ivs_flatwrap>] [<libivs_retro>] [<ivs_host_harness>]
+# Since plan 18-02 (TOOL-02, TOOL-09): the ninth argument is the build-only inspection instrument ivs-inspect,
+# also a `$<TARGET_FILE:...>` path CMake provides. The inspection cases drive it as a script does - one run
+# of `trace` on the pass scenario, and the output policy's three in-tree spellings, its `refs/` positive and
+# its existing-path refusal - and every one of them asserts a domain (a record count, a tick domain, a
+# witness pair between two documents), never a bare exit status. Missing the argument, each case is `not ok`
+# with that reason, never a skip: the same rule the sixth, seventh and eighth arguments follow.
+# Usage: sh runner-process-tap.sh <source root> <ivs-run> <ivs_pack> <images dir> [<build configuration>] [<ivs_flatwrap>] [<libivs_retro>] [<ivs_host_harness>] [<ivs_inspect>]
 # Exit: 0 pass, 1 fail, 77 every case skipped.
 # Env: IVS_TEST_NONCE, IVS_TEST_OUT_DIR, IVS_RUNNER_PROCESS_TIMEOUT.
 LC_ALL=C; export LC_ALL
-usage='usage: sh runner-process-tap.sh <source root> <ivs-run> <ivs_pack> <images dir> [<build configuration>] [<ivs_flatwrap>] [<libivs_retro>] [<ivs_host_harness>]'
-[ "$#" -ge 4 ] && [ "$#" -le 8 ] || { printf '%s\n' "$usage" >&2; exit 1; }
+usage='usage: sh runner-process-tap.sh <source root> <ivs-run> <ivs_pack> <images dir> [<build configuration>] [<ivs_flatwrap>] [<libivs_retro>] [<ivs_host_harness>] [<ivs_inspect>]'
+[ "$#" -ge 4 ] && [ "$#" -le 9 ] || { printf '%s\n' "$usage" >&2; exit 1; }
 config=${5:-}
 flatwrap_arg=${6:-}
 shim_arg=${7:-}
 harness_arg=${8:-}
+inspect_arg=${9:-}
 # Absolute paths: the cwd case runs from another directory.
 abs_dir() { (cd "$1" 2> /dev/null && pwd -P); }
 abs_file() { _d=$(abs_dir "$(dirname "$1")") && printf '%s/%s\n' "$_d" "$(basename "$1")"; }
@@ -145,6 +152,11 @@ fi
 shim=
 if [ -n "$shim_arg" ]; then
   shim=$(abs_file "$shim_arg") || { printf 'runner-process-tap: no %s\n' "$shim_arg" >&2; exit 1; }
+fi
+inspect=
+if [ -n "$inspect_arg" ]; then
+  inspect=$(abs_file "$inspect_arg") || { printf 'runner-process-tap: no %s\n' "$inspect_arg" >&2; exit 1; }
+  [ -x "$inspect" ] || { printf 'runner-process-tap: %s is not executable\n' "$inspect" >&2; exit 1; }
 fi
 harness=
 if [ -n "$harness_arg" ]; then
@@ -3015,6 +3027,174 @@ or_fake() {
 }
 # One defect, two judged limbs: the helper exits 0 instead of 2 and prints none of the refusal line.
 self_control owner-run-refusal 'owner-run-exit owner-run-stderr' or_fake
+
+# ---- the inspection instrument (plan 18-02, TOOL-02, TOOL-09) ----
+# The tool is build-only and driven by a script, so every case here drives it the way an operator would. The
+# four ids assert a domain and never a bare exit status: a record count above zero, a tick domain (non-decreasing
+# AND at least two distinct values - a constant column is non-decreasing and would assert nothing), a witness pair
+# between two documents, and a byte equality. The tick domain lives in one function because the repeat-tick
+# stand-in of the next plan is judged by the same code.
+
+# ix_records <trace>: the end record's records= field, required above zero.
+ix_records() {
+  _rc=$(sed -n 's/^end .*records=\([0-9][0-9]*\).*/\1/p' "$1" | head -n 1)
+  case $_rc in
+    '' | *[!0-9]*) why trace-records "no records= field in the end record of $1"; return 1 ;;
+  esac
+  [ "$_rc" -gt 0 ] || { why trace-records "records=$_rc in $1"; return 1; }
+  return 0
+}
+
+# ix_tick_domain <trace>: the frozen page's fifth equality - access ticks non-decreasing AND not all equal.
+# Both clauses, because monotonicity alone is satisfied by a trace that repeats one tick.
+ix_tick_domain() {
+  sed -n 's/^tick=\([0-9][0-9]*\) .*/\1/p' "$1" > "$tmp/ix.ticks"
+  [ -s "$tmp/ix.ticks" ] || { why trace-ticks "no access records in $1"; return 1; }
+  sort -n "$tmp/ix.ticks" > "$tmp/ix.ticks.sorted"
+  cmp -s "$tmp/ix.ticks" "$tmp/ix.ticks.sorted" || { why trace-ticks "the access ticks of $1 are not non-decreasing"; return 1; }
+  sort -u "$tmp/ix.ticks" > "$tmp/ix.ticks.distinct"
+  [ "$(grep -c . "$tmp/ix.ticks.distinct")" -gt 1 ] \
+    || { why trace-ticks "the access ticks of $1 hold one distinct value, so the trace asserts nothing"; return 1; }
+  return 0
+}
+
+mkdir -p "$tmp/ix" || exit 1
+
+# runner-process.inspect.trace-records: the tracer, end to end. Exit 0, a report that begins `ivsr 3` and ends
+# `report.end <n>`, a trace whose records and units are above zero, a tick domain, one step record, the end
+# record last, and the end tick equal to the step record's end equal to the report's own step.1.now_ticks.
+: > "$tmp/why"
+ok=1
+if [ -z "$inspect" ]; then
+  ok=0; why inspect-missing 'the ninth argument (ivs_inspect) is missing: the inspection cases cannot run'
+else
+  ixt="$tmp/ix/trace.ivst"
+  rm -f "$ixt"
+  run_one "$tmp" ix-trace "$inspect" trace "$scen/diag-boot-pass.ivss" --content-dir "$content" --out "$ixt"
+  [ "$hung" -eq 0 ] || { ok=0; why hung "the trace run was stopped by the watchdog"; }
+  [ "$rc" -eq 0 ] || { ok=0; why exit-code "the trace run exited $rc: $(sed -n '1p' "$tmp/runs/ix-trace.err")"; }
+  [ -s "$ixt" ] || { ok=0; why no-output "the trace run wrote no trace"; }
+  if [ "$ok" -eq 1 ]; then
+    [ "$(sed -n '1p' "$tmp/runs/ix-trace.out")" = 'ivsr 3' ] \
+      || { ok=0; why report-header "the report's first line is '$(sed -n '1p' "$tmp/runs/ix-trace.out")', not 'ivsr 3'"; }
+    grep -q -E '^report\.end [0-9]+$' "$tmp/runs/ix-trace.out" \
+      || { ok=0; why report-end "the report does not end with a report.end line"; }
+    ix_records "$ixt" || ok=0
+    _u=$(sed -n 's/^end .*units=\([0-9][0-9]*\).*/\1/p' "$ixt" | head -n 1)
+    case $_u in
+      '' | *[!0-9]*) ok=0; why trace-units "no units= field in the end record of the trace" ;;
+      *) [ "$_u" -gt 0 ] || { ok=0; why trace-units "units=$_u in the trace"; } ;;
+    esac
+    ix_tick_domain "$ixt" || ok=0
+    _ns=$(grep -c '^step=' "$ixt" || true)
+    [ "$_ns" -eq 1 ] || { ok=0; why trace-steps "$_ns step records, expected 1"; }
+    case $(sed -n '$p' "$ixt") in
+      'end tick='*) ;;
+      *) ok=0; why trace-end "the last line of the trace is not the end record" ;;
+    esac
+    sed -n 's/^step=[0-9][0-9]* target=[0-9][0-9]* end=\([0-9][0-9]*\) .*/\1/p' "$ixt" > "$tmp/ix.stepend"
+    sed -n 's/^end tick=\([0-9][0-9]*\) .*/\1/p' "$ixt" > "$tmp/ix.endtick"
+    cmp -s "$tmp/ix.stepend" "$tmp/ix.endtick" \
+      || { ok=0; why trace-end-tick "the end record's tick is not the last step record's end"; }
+    # The witness pair: the trace's step end against the report's own step.1.now_ticks, never a literal here.
+    sed -n 's/^step\.1\.now_ticks //p' "$tmp/runs/ix-trace.out" > "$tmp/ix.reportend"
+    [ "$(grep -c . "$tmp/ix.reportend")" -eq 1 ] \
+      || { ok=0; why report-step "the report holds no single step.1.now_ticks line"; }
+    cmp -s "$tmp/ix.stepend" "$tmp/ix.reportend" \
+      || { ok=0; why trace-end-tick "the step record's end is not the report's own step.1.now_ticks"; }
+  fi
+fi
+result runner-process.inspect.trace-records
+
+# runner-process.inspect.trace-digests: the tool's nine `digest.` lines against ivs-run's for the same scenario
+# and the same content, nine on each side before anything is compared (a silent empty extraction must not pass),
+# and a second traced run agreeing with the first - the traced and untraced runs of one scenario agree as well
+# as the tool and the runner do.
+: > "$tmp/why"
+ok=1
+if [ -z "$inspect" ]; then
+  ok=0; why inspect-missing 'the ninth argument (ivs_inspect) is missing: the digest equality cannot be run'
+else
+  rm -f "$tmp/ix/trace2.ivst"
+  run_one "$tmp" ix-run "$ivs_run" --content-dir "$content" "$scen/diag-boot-pass.ivss"
+  [ "$hung" -eq 0 ] && [ "$rc" -eq 0 ] || { ok=0; why exit-code "ivs-run on the pass scenario exited $rc (hung $hung)"; }
+  run_one "$tmp" ix-trace2 "$inspect" trace "$scen/diag-boot-pass.ivss" --content-dir "$content" --out "$tmp/ix/trace2.ivst"
+  [ "$hung" -eq 0 ] && [ "$rc" -eq 0 ] || { ok=0; why exit-code "the second trace run exited $rc (hung $hung)"; }
+  sed -n 's/^digest\.//p' "$tmp/runs/ix-run.out" > "$tmp/ix.run.digests"
+  sed -n 's/^digest\.//p' "$tmp/runs/ix-trace.out" > "$tmp/ix.tool.digests"
+  sed -n 's/^digest\.//p' "$tmp/runs/ix-trace2.out" > "$tmp/ix.tool2.digests"
+  for _f in ix.run.digests ix.tool.digests ix.tool2.digests; do
+    _nd=$(grep -c . "$tmp/$_f")
+    [ "$_nd" -eq 9 ] || { ok=0; why digest-lines "$_f holds $_nd digest lines, expected 9"; }
+  done
+  cmp -s "$tmp/ix.tool.digests" "$tmp/ix.run.digests" \
+    || { ok=0; why digest-differs "the tool's nine digest lines are not ivs-run's for the same scenario"; }
+  cmp -s "$tmp/ix.tool2.digests" "$tmp/ix.tool.digests" \
+    || { ok=0; why digest-differs "two traced runs of one scenario printed different digest lines"; }
+fi
+result runner-process.inspect.trace-digests
+
+# runner-process.inspect.neg.inspect-output-tree: the three spellings of the frozen page - the literal path, a
+# path through `..`, and a path through a symlink to a directory inside the tree - each refused with exit 1, an
+# empty stdout, exactly one stderr line and no file left; then the positive beside it, the same write under the
+# ignored refs/, which must be accepted. The probe path is removed at the start of every limb, because a leftover
+# file would turn the next limb into an exists refusal and the case would pass for the wrong reason.
+: > "$tmp/why"
+ok=1
+if [ -z "$inspect" ]; then
+  ok=0; why inspect-missing 'the ninth argument (ivs_inspect) is missing: the output policy cannot be run'
+else
+  mkdir -p "$root/build" "$root/refs" "$tmp/ix/linkdir" || exit 1
+  ln -sfn "$root/build" "$tmp/ix/linkdir/inside" || exit 1
+  _i=0
+  for _p in "$root/build/inspect-probe.ivst" "$root/tools/../build/inspect-probe.ivst" \
+            "$tmp/ix/linkdir/inside/inspect-probe.ivst"; do
+    _i=$((_i + 1))
+    rm -f "$root/build/inspect-probe.ivst" "$root/tools/../build/inspect-probe.ivst"
+    run_one "$tmp" "ix-tree-$_i" "$inspect" trace "$scen/diag-boot-pass.ivss" --content-dir "$content" --out "$_p"
+    [ "$rc" -eq 1 ] || { ok=0; why output-tree "spelling $_i ($_p) exited $rc, expected 1"; }
+    [ ! -s "$tmp/runs/ix-tree-$_i.out" ] || { ok=0; why output-tree "spelling $_i ($_p) printed on stdout"; }
+    grep -q -F -e 'ivs-inspect: inspect-output-tree: ' "$tmp/runs/ix-tree-$_i.err" \
+      || { ok=0; why output-tree "spelling $_i ($_p) did not refuse with the tree token: $(sed -n '1p' "$tmp/runs/ix-tree-$_i.err")"; }
+    [ "$(grep -c . "$tmp/runs/ix-tree-$_i.err")" -eq 1 ] \
+      || { ok=0; why output-tree "spelling $_i ($_p) printed more than one stderr line"; }
+    [ ! -e "$root/build/inspect-probe.ivst" ] || { ok=0; why output-tree "spelling $_i ($_p) left a file behind"; }
+  done
+  rm -f "$root/refs/inspect-probe.ivst"
+  run_one "$tmp" ix-refs "$inspect" trace "$scen/diag-boot-pass.ivss" --content-dir "$content" \
+    --out "$root/refs/inspect-probe.ivst"
+  [ "$hung" -eq 0 ] && [ "$rc" -eq 0 ] \
+    || { ok=0; why output-tree "the write under refs/ exited $rc (hung $hung): $(sed -n '1p' "$tmp/runs/ix-refs.err")"; }
+  [ -s "$root/refs/inspect-probe.ivst" ] || { ok=0; why output-tree "the write under refs/ created no trace"; }
+  rm -f "$root/refs/inspect-probe.ivst"
+fi
+result runner-process.inspect.neg.inspect-output-tree
+
+# runner-process.inspect.neg.inspect-output-exists: an existing file outside the tree is refused, and the refused
+# run leaves it byte-identical - a writer that truncated first cannot pass on its exit status alone - while a path
+# that does not exist is created.
+: > "$tmp/why"
+ok=1
+if [ -z "$inspect" ]; then
+  ok=0; why inspect-missing 'the ninth argument (ivs_inspect) is missing: the exists refusal cannot be run'
+else
+  printf 'keep this file\n' > "$tmp/ix/exists.ivst"
+  cp "$tmp/ix/exists.ivst" "$tmp/ix/exists.before" || exit 1
+  run_one "$tmp" ix-exists "$inspect" trace "$scen/diag-boot-pass.ivss" --content-dir "$content" \
+    --out "$tmp/ix/exists.ivst"
+  [ "$rc" -eq 1 ] || { ok=0; why output-exists "the existing-path run exited $rc, expected 1"; }
+  grep -q -F -e 'ivs-inspect: inspect-output-exists: ' "$tmp/runs/ix-exists.err" \
+    || { ok=0; why output-exists "the existing-path run did not refuse with the exists token: $(sed -n '1p' "$tmp/runs/ix-exists.err")"; }
+  cmp -s "$tmp/ix/exists.ivst" "$tmp/ix/exists.before" \
+    || { ok=0; why output-exists "the refused run changed the file it refused to overwrite"; }
+  rm -f "$tmp/ix/fresh.ivst"
+  run_one "$tmp" ix-fresh "$inspect" trace "$scen/diag-boot-pass.ivss" --content-dir "$content" \
+    --out "$tmp/ix/fresh.ivst"
+  [ "$hung" -eq 0 ] && [ "$rc" -eq 0 ] \
+    || { ok=0; why output-exists "a path that did not exist exited $rc (hung $hung): $(sed -n '1p' "$tmp/runs/ix-fresh.err")"; }
+  [ -s "$tmp/ix/fresh.ivst" ] || { ok=0; why output-exists "a path that did not exist was not created"; }
+fi
+result runner-process.inspect.neg.inspect-output-exists
 
 # Watchdog self-control (the hosted false `hung` of run 43148343848, see wd_start): 20 watchdogs
 # of a live target, each stopped at once, must leave no marker and the target alive (before the

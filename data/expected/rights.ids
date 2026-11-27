@@ -9,6 +9,7 @@ core-info-strings
 exec-image
 flat-cartridge-image
 grom-image
+inspection-output
 libretro-abi
 rendered-frame
 save-state
