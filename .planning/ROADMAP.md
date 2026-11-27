@@ -124,7 +124,7 @@ files.
 
 - [x] Phase 17: Records, Cost Window and the Count-Gate Contract (3/3 plans) — completed 2026-11-26
 - [x] Phase 18: The Inspection Surface (3/3 plans) — completed 2026-11-27
-- [x] Phase 19: Discriminating the Display Path (3/3 plans) — completed 2026-11-27, **Exit B** ("default unchanged, observation appended, rivals named")
+- [x] Phase 19: Discriminating the Display Path (3/3 plans) — completed 2026-11-27
 - [x] Phase 20: Route, Witness and Release Posture (2/2 plans) — completed 2026-11-27
 
 </details>

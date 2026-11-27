@@ -28,7 +28,7 @@ below is a hypothesis until delivered and verified.
 ### Video and the display path
 
 - [x] **VID-07**: The four rival display-path rules — the register-window length, the gating rule when the display is off, whether `$0020` strobes on a read or only on a write, and whether the display latch is cleared at each frame start — are separated by four authored guests whose observations are **diagonal** across the 16-cell sweep (each guest moves under its own field and no other, at the default of the remaining three), each with a liveness guard a committed stand-in can fail. Then either the decided default is pinned by one test per setting and every dependent expectation (profile tag, profile-field inventory, parameter digest, every snapshot literal, any moved golden retargeted in place, the append-only discrepancy note) moves in one commit, or the record reads "default unchanged, observation appended, rivals named". The field stays tagged `unknown-default-chosen` in either case.
-- [ ] **VID-08**: The D10-VID-08 hardware question is a named packet rather than a wish: the exact trace lines a hardware probe must contradict are written down, the row exists in `data/expected/handoffs.ids` with `evidence: none`, and no claim cites it and no phase exit criterion names it.
+- [x] **VID-08**: The D10-VID-08 hardware question is a named packet rather than a wish: the exact trace lines a hardware probe must contradict are written down, the row exists in `data/expected/handoffs.ids` with `evidence: none`, and no claim cites it and no phase exit criterion names it.
 
 ## v2 Requirements
 
@@ -89,7 +89,7 @@ requirement appears in exactly one phase.
 | TOOL-02 | Phase 18 | Complete |
 | TOOL-09 | Phase 18 | Complete |
 | VID-07 | Phase 19 | Complete |
-| VID-08 | Phase 20 | Pending |
+| VID-08 | Phase 20 | Complete |
 
 **Coverage:**
 - v0.4.0 requirements: 5 total

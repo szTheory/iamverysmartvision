@@ -1,7 +1,7 @@
 {
   "contract": "1.0.0",
   "flavor": "core",
-  "milestone": "v0.4.0 — Inspectable Machine, One Default Decided",
+  "milestone": "v0.4.0 \u2014 Inspectable Machine, One Default Decided",
   "phases": [
     {
       "number": "1",
@@ -42,12 +42,72 @@
       "number": "8",
       "name": "STIC Completion, Save State and Performance Baselines",
       "status": "complete"
+    },
+    {
+      "number": "9",
+      "name": "Registered Evidence and Gate Cost",
+      "status": "complete"
+    },
+    {
+      "number": "10",
+      "name": "Reachable Runs and Presentation Policy",
+      "status": "complete"
+    },
+    {
+      "number": "11",
+      "name": "Input Record and Replay",
+      "status": "complete"
+    },
+    {
+      "number": "12",
+      "name": "Bank Modes and External Import",
+      "status": "complete"
+    },
+    {
+      "number": "13",
+      "name": "Rights Ledger and Enforced Claim Ceiling",
+      "status": "complete"
+    },
+    {
+      "number": "14",
+      "name": "Cartridge Route and Real-Content Conformance",
+      "status": "complete"
+    },
+    {
+      "number": "15",
+      "name": "Build-Only Host and the Fake-Frontend Harness",
+      "status": "complete"
+    },
+    {
+      "number": "16",
+      "name": "Owner Route, Claim and Release Posture",
+      "status": "complete"
+    },
+    {
+      "number": "17",
+      "name": "Records, Cost Window and the Count-Gate Contract",
+      "status": "complete"
+    },
+    {
+      "number": "18",
+      "name": "The Inspection Surface",
+      "status": "complete"
+    },
+    {
+      "number": "19",
+      "name": "Discriminating the Display Path",
+      "status": "complete"
+    },
+    {
+      "number": "20",
+      "name": "Route, Witness and Release Posture",
+      "status": "complete"
     }
   ],
   "next": {
     "command": "/gsd-new-milestone",
     "label": "Start a new milestone",
-    "reason": "All phases complete — start a new milestone"
+    "reason": "All phases complete \u2014 start a new milestone"
   },
-  "updated_at": "2026-11-27T07:57:39.378Z"
+  "updated_at": "2026-11-27T07:58:24.000Z"
 }
