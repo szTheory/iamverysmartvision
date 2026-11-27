@@ -202,34 +202,57 @@ static int sd_blank(ivs_ms_inst *x)
   return sc_guest(x, w, n, 0u);
 }
 
-/* Replays the recorded accesses at their measured stamps through the machine's bus wrapper with the row q (the cell's
- * row, not the profile's), then catches the STIC up past frame 0's graphics-memory close and reads the stored view.
- * 1 on success. */
-static int sd_observe_x(const ivs_stic_params *q, const sd_hits *h, uint32_t is_write, uint16_t addr,
+/* Replays ONE recorded access through the bus wrapper at the stamp the guest itself measured, with the row q (the
+ * cell's row, not the profile's) and the kind the guest actually made. This is the one place the stamp is composed:
+ * h->stamp[i] is the instant of the access, so its unit started that many ticks less the strobe offset (the access is
+ * offset 0 of its unit). The family's whole claim rests on that composition, so a second copy of it is how a future
+ * guest gets mis-stamped while the suite stays green (PLAN-LESSONS lesson 13, applied to the stamp). */
+static void sd_replay_one(struct ivs_machine *im, const ivs_stic_params *q, const sd_hits *h, size_t i, uint16_t addr)
+{
+  ivs_machine_bus_ctx c;
+  ivs_cp1610_access a;
+  memset(&c, 0, sizeof c);
+  c.m = im;
+  c.unit_start_tick = h->stamp[i] - q->access_strobe_ticks; /* the access is offset 0 of its unit */
+  c.ticks_per_cpu_cycle = q->ticks_per_cpu_cycle;
+  c.psg = ivs_psg_params_get(im->profile);
+  c.stic = q;
+  c.sink = NULL;
+  memset(&a, 0, sizeof a);
+  a.kind = h->write[i] != 0u ? IVS_ACC_WRITE : IVS_ACC_READ; /* the kind the guest made, never a hardcoded one */
+  a.addr = addr;
+  (void)ivs_machine_bus(&c, &a);
+}
+
+/* Replays the first n recorded hits through the bus wrapper with the row q, keeping only those of `filter` kind
+ * (SD_READS, SD_WRITES, or SD_ANY for each hit's own kind). SD_ANY is how one guard runs unchanged on a stand-in whose
+ * guest makes the other kind of access; the kind always comes from the hit and the address from the caller, so a guest
+ * whose observable is read at another address replays the access it measured rather than a plausible substitute. */
+static void sd_replay(struct ivs_machine *im, const ivs_stic_params *q, const sd_hits *h, size_t n, uint32_t filter,
+                      uint16_t addr)
+{
+  size_t i;
+  for (i = 0u; i < n && i < h->n; i++) {
+    if (filter != SD_ANY && (uint32_t)h->write[i] != filter) {
+      continue;
+    }
+    sd_replay_one(im, q, h, i, addr);
+  }
+}
+
+/* Replays the recorded accesses at their measured stamps under the row q, then catches the STIC up past frame 0's
+ * graphics-memory close and reads the stored view. `filter` is the kind of hit to replay (SD_ANY takes each hit's own
+ * kind). 1 on success. */
+static int sd_observe_x(const ivs_stic_params *q, const sd_hits *h, uint32_t filter, uint16_t addr,
                         ivs_stic_report *rep, uint16_t *regs)
 {
   ivs_ms_inst x;
   struct ivs_machine *im;
-  size_t i;
   if (!sd_blank(&x)) {
     return 0;
   }
   im = ivs_machine_from_handle_mut(x.m);
-  for (i = 0u; i < h->n; i++) {
-    ivs_machine_bus_ctx c;
-    ivs_cp1610_access a;
-    memset(&c, 0, sizeof c);
-    c.m = im;
-    c.unit_start_tick = h->stamp[i] - q->access_strobe_ticks; /* the access is offset 0 of its unit */
-    c.ticks_per_cpu_cycle = q->ticks_per_cpu_cycle;
-    c.psg = ivs_psg_params_get(im->profile);
-    c.stic = q;
-    c.sink = NULL;
-    memset(&a, 0, sizeof a);
-    a.kind = is_write != 0u ? IVS_ACC_WRITE : IVS_ACC_READ;
-    a.addr = addr;
-    (void)ivs_machine_bus(&c, &a);
-  }
+  sd_replay(im, q, h, h->n, filter, addr);
   ivs_stic_catch_up(q, &im->stic, &im->mem, (uint64_t)q->gmem_window_ticks + 1u, NULL, NULL);
   memset(rep, 0, sizeof *rep);
   rep->struct_size = IVS_STIC_REPORT_V1_SIZE;
@@ -244,47 +267,10 @@ static int sd_observe_x(const ivs_stic_params *q, const sd_hits *h, uint32_t is_
   return 1;
 }
 
-static int sd_observe(const ivs_stic_params *q, const sd_hits *h, uint32_t is_write, uint16_t addr,
+static int sd_observe(const ivs_stic_params *q, const sd_hits *h, uint32_t filter, uint16_t addr,
                       ivs_stic_report *rep)
 {
-  return sd_observe_x(q, h, is_write, addr, rep, NULL);
-}
-
-/* Replays the recorded accesses with the kind each one actually had, which is how one guard runs unchanged on a stand-in
- * whose guest makes the other kind of access. */
-static int sd_observe_hits(const ivs_stic_params *q, const sd_hits *h, uint16_t addr, ivs_stic_report *rep)
-{
-  ivs_ms_inst x;
-  struct ivs_machine *im;
-  size_t i;
-  if (!sd_blank(&x)) {
-    return 0;
-  }
-  im = ivs_machine_from_handle_mut(x.m);
-  for (i = 0u; i < h->n; i++) {
-    ivs_machine_bus_ctx c;
-    ivs_cp1610_access a;
-    memset(&c, 0, sizeof c);
-    c.m = im;
-    c.unit_start_tick = h->stamp[i] - q->access_strobe_ticks;
-    c.ticks_per_cpu_cycle = q->ticks_per_cpu_cycle;
-    c.psg = ivs_psg_params_get(im->profile);
-    c.stic = q;
-    c.sink = NULL;
-    memset(&a, 0, sizeof a);
-    a.kind = h->write[i] != 0u ? IVS_ACC_WRITE : IVS_ACC_READ;
-    a.addr = addr;
-    (void)ivs_machine_bus(&c, &a);
-  }
-  ivs_stic_catch_up(q, &im->stic, &im->mem, (uint64_t)q->gmem_window_ticks + 1u, NULL, NULL);
-  memset(rep, 0, sizeof *rep);
-  rep->struct_size = IVS_STIC_REPORT_V1_SIZE;
-  if (ivs_machine_stic_state(x.m, rep) != IVS_OK) {
-    ivs_ms_free(&x);
-    return 0;
-  }
-  ivs_ms_free(&x);
-  return 1;
+  return sd_observe_x(q, h, filter, addr, rep, NULL);
 }
 
 /* ---- G1's guard: the witness's blocked counter takes both values under the window field alone ---- */
@@ -469,26 +455,11 @@ static int sd_words_at(const ivs_stic_params *q, const sd_hits *h, uint64_t at, 
   ivs_ms_inst x;
   struct ivs_machine *im;
   ivs_stic_report rep;
-  size_t i;
   if (!sd_blank(&x)) {
     return 0;
   }
   im = ivs_machine_from_handle_mut(x.m);
-  for (i = 0u; i < h->n; i++) {
-    ivs_machine_bus_ctx c;
-    ivs_cp1610_access a;
-    memset(&c, 0, sizeof c);
-    c.m = im;
-    c.unit_start_tick = h->stamp[i] - q->access_strobe_ticks;
-    c.ticks_per_cpu_cycle = q->ticks_per_cpu_cycle;
-    c.psg = ivs_psg_params_get(im->profile);
-    c.stic = q;
-    c.sink = NULL;
-    memset(&a, 0, sizeof a);
-    a.kind = IVS_ACC_WRITE;
-    a.addr = 0x0020u;
-    (void)ivs_machine_bus(&c, &a);
-  }
+  sd_replay(im, q, h, h->n, SD_WRITES, 0x0020u);
   ivs_stic_catch_up(q, &im->stic, &im->mem, at, NULL, NULL);
   memset(&rep, 0, sizeof rep);
   rep.struct_size = IVS_STIC_REPORT_V1_SIZE;
@@ -512,26 +483,11 @@ static int sd_equiv_dead(const ivs_stic_params *q, const sd_hits *h, sd_words *w
   ivs_ms_inst x;
   struct ivs_machine *im;
   ivs_stic_report rep;
-  size_t i;
   if (!sd_blank(&x)) {
     return 0;
   }
   im = ivs_machine_from_handle_mut(x.m);
-  for (i = 0u; i < h->n; i++) {
-    ivs_machine_bus_ctx c;
-    ivs_cp1610_access a;
-    memset(&c, 0, sizeof c);
-    c.m = im;
-    c.unit_start_tick = h->stamp[i] - q->access_strobe_ticks;
-    c.ticks_per_cpu_cycle = q->ticks_per_cpu_cycle;
-    c.psg = ivs_psg_params_get(im->profile);
-    c.stic = q;
-    c.sink = NULL;
-    memset(&a, 0, sizeof a);
-    a.kind = IVS_ACC_WRITE;
-    a.addr = 0x0020u;
-    (void)ivs_machine_bus(&c, &a);
-  }
+  sd_replay(im, q, h, h->n, SD_WRITES, 0x0020u);
   /* first instant: the graphics-memory window close of frame 0 */
   ivs_stic_catch_up(q, &im->stic, &im->mem, (uint64_t)q->gmem_window_ticks, NULL, NULL);
   memset(&rep, 0, sizeof rep);
@@ -805,14 +761,14 @@ static uint32_t sd_guard_g3(const uint16_t *guest, size_t guest_n, uint32_t *shi
   if (!sd_measure(guest, guest_n, SD_ANY, 0x0020u, p->frame_ticks, &h) || h.n != 1u) {
     return SD_G3_BROKEN;
   }
-  if (!sd_observe_hits(p, &h, 0x0020u, &r)) {
+  if (!sd_observe_x(p, &h, SD_ANY, 0x0020u, &r, NULL)) {
     return SD_G3_BROKEN;
   }
   *shipped = r.windows_active;
   if (r.windows_active != 0u) {
     bad |= SD_G3_SHIPPED;
   }
-  if (!sd_observe_hits(&arms, &h, 0x0020u, &r)) {
+  if (!sd_observe_x(&arms, &h, SD_ANY, 0x0020u, &r, NULL)) {
     return SD_G3_BROKEN;
   }
   *armed = r.windows_active;
@@ -943,19 +899,7 @@ static int sd_g4_vector(const ivs_stic_params *q, const sd_hits *h, uint32_t v[3
     /* every write stamped at or before this frame's close is replayed first, then the close is read: one ascending pass,
      * so a guest that re-strobes cannot move the cursor past an earlier close before that close has been read */
     for (; i < h->n && h->stamp[i] <= at; i++) {
-      ivs_machine_bus_ctx c;
-      ivs_cp1610_access a;
-      memset(&c, 0, sizeof c);
-      c.m = im;
-      c.unit_start_tick = h->stamp[i] - q->access_strobe_ticks;
-      c.ticks_per_cpu_cycle = q->ticks_per_cpu_cycle;
-      c.psg = ivs_psg_params_get(im->profile);
-      c.stic = q;
-      c.sink = NULL;
-      memset(&a, 0, sizeof a);
-      a.kind = IVS_ACC_WRITE;
-      a.addr = 0x0020u;
-      (void)ivs_machine_bus(&c, &a);
+      sd_replay_one(im, q, h, i, 0x0020u);
     }
     ivs_stic_catch_up(q, &im->stic, &im->mem, at, NULL, NULL);
     memset(&rep, 0, sizeof rep);
