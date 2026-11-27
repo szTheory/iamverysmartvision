@@ -3099,6 +3099,25 @@ ix_tick_domain() {
   return 0
 }
 
+# ix_end_tick <trace> <report>: the frozen page's end-tick equality, in the two clauses the page pins -
+# the last step record's `end` equals the end record's `tick`, and that number equals the report's own
+# `step.<k>.now_ticks`. Both documents are read here, so the trace-records case and the committed
+# target-instead-of-stop stand-in (inside the trace-state case) are judged by ONE function: the stand-in
+# defeats the same code the real case trusts, which is what makes it a liveness guard rather than a
+# second assertion written for it.
+ix_end_tick() {
+  sed -n 's/^step=[0-9][0-9]* target=[0-9][0-9]* end=\([0-9][0-9]*\) .*/\1/p' "$1" > "$tmp/ix.endtick.stepend"
+  sed -n 's/^end tick=\([0-9][0-9]*\) .*/\1/p' "$1" > "$tmp/ix.endtick.endrec"
+  cmp -s "$tmp/ix.endtick.stepend" "$tmp/ix.endtick.endrec" \
+    || { why trace-end-tick "the end record's tick is not the last step record's end in $1"; return 1; }
+  sed -n 's/^step\.1\.now_ticks //p' "$2" > "$tmp/ix.endtick.report"
+  [ "$(grep -c . "$tmp/ix.endtick.report")" -eq 1 ] \
+    || { why report-step "the report $2 holds no single step.1.now_ticks line"; return 1; }
+  cmp -s "$tmp/ix.endtick.stepend" "$tmp/ix.endtick.report" \
+    || { why trace-end-tick "the step record's end '$(head -n 1 "$tmp/ix.endtick.stepend")' is not the report's own step.1.now_ticks '$(head -n 1 "$tmp/ix.endtick.report")'"; return 1; }
+  return 0
+}
+
 mkdir -p "$tmp/ix" || exit 1
 
 # runner-process.inspect.trace-records: the tracer, end to end. Exit 0, a report that begins `ivsr 3` and ends
@@ -3133,16 +3152,10 @@ else
       'end tick='*) ;;
       *) ok=0; why trace-end "the last line of the trace is not the end record" ;;
     esac
-    sed -n 's/^step=[0-9][0-9]* target=[0-9][0-9]* end=\([0-9][0-9]*\) .*/\1/p' "$ixt" > "$tmp/ix.stepend"
-    sed -n 's/^end tick=\([0-9][0-9]*\) .*/\1/p' "$ixt" > "$tmp/ix.endtick"
-    cmp -s "$tmp/ix.stepend" "$tmp/ix.endtick" \
-      || { ok=0; why trace-end-tick "the end record's tick is not the last step record's end"; }
-    # The witness pair: the trace's step end against the report's own step.1.now_ticks, never a literal here.
-    sed -n 's/^step\.1\.now_ticks //p' "$tmp/runs/ix-trace.out" > "$tmp/ix.reportend"
-    [ "$(grep -c . "$tmp/ix.reportend")" -eq 1 ] \
-      || { ok=0; why report-step "the report holds no single step.1.now_ticks line"; }
-    cmp -s "$tmp/ix.stepend" "$tmp/ix.reportend" \
-      || { ok=0; why trace-end-tick "the step record's end is not the report's own step.1.now_ticks"; }
+    # The end-tick equality, both clauses, through the one function the target-instead-of-stop stand-in in
+    # the trace-state case is judged by. The witness pair is the trace's step end against the report's own
+    # step.1.now_ticks, never a literal typed here.
+    ix_end_tick "$ixt" "$tmp/runs/ix-trace.out" || ok=0
   fi
 fi
 result runner-process.inspect.trace-records
@@ -3254,6 +3267,30 @@ else
       || { ok=0; why report-flag "the run with its own report as --report exited $rc (hung $hung): $(sed -n '1p' "$tmp/runs/ix-state-report.err")"; }
     cmp -s "$tmp/ix/state-report.ivst" "$tmp/ix/state-plain.ivst" \
       || { ok=0; why report-flag 'the run with --report produced a trace that differs from the run without it'; }
+    # The end-tick equality's committed stand-in, as a second limb of THIS id rather than a new one (the
+    # frozen page's guard 1, which named a stand-in that was never committed). It is a trace that steps to
+    # the scenario's target instead of to the stop: BOTH the step record's `end` and the end record's `tick`
+    # are set to the page's 16000, so the trace is internally consistent and only its disagreement with the
+    # report's own `step.1.now_ticks` (2084) can refuse it - which is exactly the limb under test, and why a
+    # monotonic or self-consistent trace cannot pass. Judged by ix_end_tick, the same function the
+    # trace-records case uses, so the stand-in defeats the code the real case trusts. Declared token set:
+    # trace-end-tick, and only that.
+    sed 's/^\(step=[0-9][0-9]* target=[0-9][0-9]* end=\)[0-9][0-9]*\( .*\)$/\116000\2/; s/^\(end tick=\)[0-9][0-9]*\( .*\)$/\116000\2/' \
+      "$tmp/ix/state-plain.ivst" > "$fakes/trace-target.ivst"
+    if cmp -s "$fakes/trace-target.ivst" "$tmp/ix/state-plain.ivst"; then
+      ok=0; why judge-vacuous 'the target-instead-of-stop trace is identical to the real one, so it stands in for nothing'
+    else
+      self_control_run trace-target-instead-of-stop trace-end-tick ix_end_tick \
+        "$fakes/trace-target.ivst" "$tmp/ix/state.report"
+      _scv=$_sc
+      _scw=$(tr '\n' ' ' < "$tmp/why")
+      : > "$tmp/why"
+      case $_scv in
+        ok) : ;;
+        vacuous) ok=0; why judge-vacuous 'the end-tick equality accepted a trace whose step end and end tick disagree with the report' ;;
+        *) ok=0; why judge-wrong-reason "the end-tick equality did not fail for exactly trace-end-tick: $_scw" ;;
+      esac
+    fi
   fi
 fi
 result runner-process.inspect.trace-state
