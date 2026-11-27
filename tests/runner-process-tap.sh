@@ -3252,7 +3252,8 @@ result runner-process.inspect.trace-state
 
 # runner-process.inspect.break-pair: the breakpoint as a PAIR in one assertion set - hit 1 at 1000 and 0 at
 # 1002 in the same report - with the in-run count (the trace's end record) and the file-derived count (the
-# `break` report) reconciling, the latter's records and end tick copied from the trace's own end record; then
+# `break` report) reconciling, the latter's three copied keys each reconciled with the file independently;
+# then
 # the third limb, `inspect-break-empty` in BOTH directions the frozen page names - zero access records refused
 # even when the end record declares records=5, one access record accepted even when it declares records=0 - so
 # the refusal is decided on the records the file holds rather than on a declared field. That token's only case.
@@ -3278,15 +3279,30 @@ else
   [ "$hung" -eq 0 ] && [ "$rc" -eq 0 ] \
     || { ok=0; why break-pair "the file-derived break run exited $rc (hung $hung): $(sed -n '1p' "$tmp/runs/ix-brkfile.err")"; }
   ix_break_pair "$tmp/ix/brk.brk" "$tmp/ix/brk.ivst" || ok=0
-  # The last three keys are the trace's own end record, so the two documents are compared rather than trusted.
-  sed -n 's/^end .*records=\([0-9][0-9]*\).*/\1/p' "$tmp/ix/brk.ivst" > "$tmp/ix.brk.records"
-  sed -n 's/^break\.records //p' "$tmp/ix/brk.brk" > "$tmp/ix.brk.brkrecords"
-  cmp -s "$tmp/ix.brk.records" "$tmp/ix.brk.brkrecords" \
-    || { ok=0; why break-pair "break.records '$(cat "$tmp/ix.brk.brkrecords" 2> /dev/null)' is not the trace's own '$(cat "$tmp/ix.brk.records")'"; }
-  sed -n 's/^end tick=\([0-9][0-9]*\) .*/\1/p' "$tmp/ix/brk.ivst" > "$tmp/ix.brk.endtick"
-  sed -n 's/^break\.end_tick //p' "$tmp/ix/brk.brk" > "$tmp/ix.brk.brkendtick"
-  cmp -s "$tmp/ix.brk.endtick" "$tmp/ix.brk.brkendtick" \
-    || { ok=0; why break-pair "break.end_tick '$(cat "$tmp/ix.brk.brkendtick" 2> /dev/null)' is not the trace's own '$(cat "$tmp/ix.brk.endtick")'"; }
+  # The last three keys are COPIED from the trace's `end` record, so comparing each one to that same record
+  # would compare a copy to its own source and could only fail if the copy itself were broken. Each is
+  # compared instead to the thing it is a copy OF, read independently from the file: `break.records` to the
+  # `tick=` records the file actually holds, `break.end_tick` to the last step record's `end` (which the page
+  # pins equal to the end tick), and `break.steps` to the step records the file actually holds. Three
+  # independent computations of three numbers, not three copies checked against themselves.
+  _counted=$(grep -c '^tick=' "$tmp/ix/brk.ivst" || true)
+  _reported=$(sed -n 's/^break\.records //p' "$tmp/ix/brk.brk" | head -n 1)
+  case $_counted in
+    '' | *[!0-9]*) ok=0; why break-pair 'the armed trace holds no access record to count against break.records' ;;
+    *) [ "$_counted" -gt 0 ] \
+         || { ok=0; why break-pair 'the armed trace holds no access record to count against break.records'; } ;;
+  esac
+  [ "$_reported" = "$_counted" ] \
+    || { ok=0; why break-pair "break.records '$_reported' is not the $_counted access records the trace holds"; }
+  _stepend=$(sed -n 's/^step=[0-9][0-9]* target=[0-9][0-9]* end=\([0-9][0-9]*\) .*/\1/p' "$tmp/ix/brk.ivst" | tail -n 1)
+  _brkend=$(sed -n 's/^break\.end_tick //p' "$tmp/ix/brk.brk" | head -n 1)
+  [ -n "$_stepend" ] || { ok=0; why break-pair 'the armed trace holds no step record end to reconcile break.end_tick with'; }
+  [ "$_brkend" = "$_stepend" ] \
+    || { ok=0; why break-pair "break.end_tick '$_brkend' is not the last step record's end '$_stepend'"; }
+  _stepcount=$(grep -c '^step=' "$tmp/ix/brk.ivst" || true)
+  _brksteps=$(sed -n 's/^break\.steps //p' "$tmp/ix/brk.brk" | head -n 1)
+  [ "$_brksteps" = "$_stepcount" ] \
+    || { ok=0; why break-pair "break.steps '$_brksteps' is not the $_stepcount step records the trace holds"; }
   # `inspect-break-empty`, both directions the frozen page names, and the refusal decided on the access
   # records the file HOLDS rather than on the `end` record's declared `records=` field. A declared field
   # that disagrees with the file is exactly what separates the two rules, so each limb makes the two
