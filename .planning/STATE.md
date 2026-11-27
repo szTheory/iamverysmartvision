@@ -2,20 +2,19 @@
 gsd_state_version: "1.0"
 milestone: v0.4.0
 milestone_name: Inspectable Machine, One Default Decided
-current_phase: 20
-current_plan: Not started
-status: completed
+status: Awaiting next milestone
 stopped_at: Phase 20 complete — all phases complete
-last_updated: "2026-11-27T07:57:39.363Z"
+last_updated: "2026-11-27T08:16:34.707Z"
 last_activity: 2026-11-27
-last_activity_desc: Phase 20 complete
-state_head: 98039e36e9da93e42692021836ccc2b08cd6e8ec
+last_activity_desc: Milestone v0.4.0 completed and archived
+state_head: 7ba79ad4f968e076f3b66ab5b90796ee0ee78720
 progress:
   total_phases: 4
-  completed_phases: 4
+  completed_phases: 8
   total_plans: 11
   completed_plans: 11
   percent: 100
+current_phase: 20
 ---
 
 # Project State
@@ -30,12 +29,10 @@ See: .planning/PROJECT.md (updated 2026-11-26)
 
 ## Current Position
 
-Phase: 20
-Current Plan: Not started
-Total Plans in Phase: 3
-Status: All phases complete
-Last activity: 2026-11-27 — Phase 20 complete
-
+Phase: Milestone v0.4.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-11-27 — Milestone v0.4.0 completed and archived
 
 ### Phase-boundary cost checkpoints (`GUARDRAILS-v0.4` §2.4)
 
@@ -835,7 +832,5 @@ recomputed figure or an owner hard stop. The full set is
 
 ## Operator Next Steps
 
-- Run the whole milestone with `/gsd-autonomous` (after `/clear`). The scope is
-  frozen: `.planning/MILESTONE-CONTEXT.md`, the five
-  `.planning/research/v0.4.0-scoping-*.md` records and
-  `.planning/ops/GUARDRAILS-v0.4.md`. Nothing needs to be re-asked.
+
+- Start the next milestone with /gsd-new-milestone
