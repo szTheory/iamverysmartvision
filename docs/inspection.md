@@ -251,3 +251,80 @@ repeatability information for an operator on one build, and it is never evidence
 
 Its consumer is Phase 19, which uses it to decide a display-path default by discrimination: an observation
 that moves under one profile field and under no other, at the default of the remaining fields.
+
+## Amendments
+
+Appended, never edited in place: 18-01's freeze check is a byte-prefix comparison, so no sentence above may
+move. Each note names the section it corrects, quotes the sentence it supersedes where there is one, and states
+what shipped.
+
+### Amendment 1 (plan 18-03, 2026-11-27): the operand derivation
+
+The second sentence of `## Disassembly` reads "the operands are the following `-` rows plus the field groups of
+the `BITS` column". That sentence is superseded by the pinned derivation list in the same section, which is the
+rule `tools/inspect/inspect_dis.c` implements: the operand text is the listing's own `ASM` column cut by the
+three pinned rules, in the pinned order. The `BITS` groups are consumed only to locate the `ROW` field, and a
+`-` row only to count an instruction's words; neither contributes an operand. The pinned list is authoritative
+because it is pinned for the reason it states - a cut the implementer has to guess is a cut that silently emits
+a source assembling to different words.
+
+### Amendment 2 (fix pass, 2026-11-27): `inspect-break-empty` is decided on the records present
+
+`## Refusal tokens` pins the trigger as "`break` is given a trace with zero access records" and the boundary as
+"A trace with one access record yields a count of 1 or 0 and is not refused". `break` now decides on the access
+records it actually parses, never on the `end` record's declared `records=` field: a trace that declares
+`records=5` and holds no access record is refused, and a trace that holds one access record and declares
+`records=0` is accepted with its own count. The declared field stays the number `break.records` copies, so the
+report's copy and the file's record count are two independent computations of one number rather than one
+number checked against itself.
+
+### Amendment 3 (fix pass, 2026-11-27): `## Liveness guards`
+
+The list above opens "Four guards", and its first entry named a stand-in that did not exist when this page was
+frozen: "a trace that steps to the scenario's target instead of to the stop: it prints 16000 for a run that
+ended at 2084". That stand-in now exists, as a second limb of `runner-process.inspect.trace-state`: the real
+trace with the step record's `end` and the end record's `tick` both set to 16000, judged by the same end-tick
+equality the real case uses, so the stand-in is internally consistent and only its disagreement with the
+report's own `step.1.now_ticks` refuses it. Two further corrections to the same list:
+
+- The `DECLE`-everything entry says the stand-in "fails the two presence assertions rather than the word
+  comparison". The committed `asm.judge.dis-constant-mnemonic` fails the **word comparison**, and its case
+  enforces that: it reports `judge-vacuous` when the word dumps agree on the stand-in and `judge-wrong-reason`
+  unless the reason begins `word dumps differ`. The presence assertions are still asserted on the emitted
+  source, but they are not the clause the stand-in defeats.
+- The list is five, not four. The repeat-tick stand-in of `## The reconciliation`'s fifth equality,
+  `runner-process.judge.trace-repeat-tick`, is a guard with a committed stand-in and belongs in the list beside
+  the other four.
+
+### Amendment 4 (plan 18-03, fix pass 2026-11-27): the registered listing that is refused
+
+`## Disassembly` opens "The corpus is the project's own listings, registered in `data/expected/listings.ids`",
+which reads as a promise that the whole corpus decodes. Six of the seven do. `ivs-diag-stic-2` is refused,
+fail-closed, with exactly
+
+```
+ivs-inspect: inspect-dis-row: the row DATA at 512E is not one of the mnemonics ivs_asm accepts
+```
+
+because its `DATA` row is not one of the mnemonics `ivs_asm` accepts. That is the operative boundary: the
+`## Refusal tokens` sentence "Every row the boot-stub corpus uses is decoded" is narrower than the corpus
+sentence above it, and it is the one that holds. A data row is refused by name and address rather than emitted
+as a guess, which is the fail-closed behaviour the same section requires.
+
+### Amendment 5 (fix pass, 2026-11-27): `## The reconciliation`, equalities 1 and 4
+
+The section says the tool "requires five equalities". Equalities 2, 3 and 5 are the tool's own refusals.
+Equalities 1 and 4 hold by construction and are asserted on the artifacts rather than computed by the tool:
+equality 1 is structural, because the report the trace is reconciled against is the library's own bytes, and it
+is asserted by `runner-process.inspect.trace-digests`; equality 4 is one number written into two records of the
+trace, and it is asserted by the end-tick comparison in `runner-process.inspect.trace-records`. Neither is a
+weaker claim for being asserted outside the tool: both are byte comparisons on the two documents, not proxies.
+
+### Amendment 6 (fix pass, 2026-11-27): the breakpoint pair's precondition
+
+`## Breakpoints` says "One report prints the hit count at `--pc` and the hit count at `--other`, so a matcher
+that always hits cannot satisfy both". That sentence holds only when the two addresses differ. The surface
+accepts `--pc` equal to `--other` - neither `trace` nor `break` refuses it, and the exit-status 2 list above
+does not name such a refusal - and under two equal addresses a matcher that always hits satisfies both numbers.
+The pair is therefore an operator precondition of this page, not a condition the tool enforces: a
+discrimination invocation names two different addresses, as every committed case does.
