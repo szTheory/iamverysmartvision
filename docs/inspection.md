@@ -328,3 +328,114 @@ accepts `--pc` equal to `--other` - neither `trace` nor `break` refuses it, and 
 does not name such a refusal - and under two equal addresses a matcher that always hits satisfies both numbers.
 The pair is therefore an operator precondition of this page, not a condition the tool enforces: a
 discrimination invocation names two different addresses, as every committed case does.
+
+## The operator route
+
+Appended by plan 20-01. This section states no new rule and corrects no sentence above it: the frozen prefix
+of this page is unchanged, and the ancestry is checkable against the page's own freeze commit `0627be92` with
+`git merge-base --is-ancestor`. Every command line below was executed as written on this tree, from the
+repository root, and the shape of its output is stated beside it. A line that needs a local tweak is a defect
+in this page, not in the reader.
+
+**The directory first.** `refs/` is ignored by version control and is therefore absent from a fresh clone, so
+the first command creates it. Without that line every `--out` below exits 2 on a tree that has never had one.
+
+```sh
+mkdir -p refs
+```
+
+**The build.** Both targets belong to the `dev` preset. `ivs_images` is part of the default build, so naming
+it beside `ivs_inspect` is explicit rather than a change of behaviour.
+
+```sh
+cmake --preset dev
+cmake --build --preset dev --target ivs_inspect ivs_images
+```
+
+**A trace, with both breakpoints armed, into `refs/`.** The scenario is the project's own
+`data/scenarios/diag-boot-pass.ivss`. The shell redirect writes the report text to a file; it is not the
+`--report` option, which reconciles a run against a *stored* report instead of the one the invocation prints.
+
+```sh
+build/dev/tools/inspect/ivs-inspect trace data/scenarios/diag-boot-pass.ivss --content-dir build/dev/images --out refs/op-trace.ivst --break 1000 --other 1002 > refs/op-trace.report
+```
+
+**A break report derived from that trace file**, into `refs/op-break.txt`.
+
+```sh
+build/dev/tools/inspect/ivs-inspect break --pc 1000 --other 1002 --trace refs/op-trace.ivst --out refs/op-break.txt
+```
+
+**A disassembly of the registered boot-stub listing**, into `refs/op-dis.asm`. `boot-stub` is one of the
+seven rows of `data/expected/listings.ids`.
+
+```sh
+build/dev/tools/inspect/ivs-inspect dis fixtures/FX-boot-stub/boot-stub.listing.txt --out refs/op-dis.asm
+```
+
+**A step report, bounded at 70 units, with a one-word peek, printed to the terminal.** The step report is
+`4 + 8 + peek_count` lines: the four `step.units`, `step.ticks`, `step.halted` and `step.pc` lines, the eight
+`step.reg.R0`..`R7` lines, and one `step.mem.<AAAA>` line per peeked word. One peeked word therefore prints
+thirteen lines, and two would print fourteen.
+
+```sh
+build/dev/tools/inspect/ivs-inspect step data/scenarios/diag-boot-pass.ivss --content-dir build/dev/images --units 70 --peek 0200 1
+```
+
+**The read block: what "read the output under `refs/`" means.** Each line prints a value named below.
+
+```sh
+sed -n '1p;$p' refs/op-trace.report
+sed -n '$p' refs/op-trace.ivst
+grep -c '^tick=' refs/op-trace.ivst
+sed -n 's/^break\.hits //p' refs/op-break.txt
+sed -n 's/^break\.other\.hits //p' refs/op-break.txt
+sed -n '1p;$p' refs/op-dis.asm
+```
+
+### The shapes these lines print
+
+The rule the statements follow: a relation is stated wherever the value is derivable from the invocation
+itself, and a literal only where this page pins the literal or where the statement quotes the number this
+tree's invocation printed.
+
+**The report.** Its first line is `ivsr 3`. Its last line is `report.end 78`, and that number is the report's
+own line count: it is the count of lines before it, so the file holds seventy-nine printed lines and its last
+line says seventy-eight. It is a truncation guard - a cut report cannot read as complete - and it is **not**
+the tick this scenario stops at.
+
+**The stop tick.** The trace's `end` record carries `tick=`, which is the tick the machine stopped at, and
+that number equals the single step record's `end=` and the report's own `step.1.now_ticks`. Three records
+state one number. No golden pins this report, so the two figures quoted here are the ones this tree's
+invocation printed: seventy-nine report lines, and an `end` record whose `tick=` is `2084`.
+
+**The trace.** Its first record is an access record whose `kind=` is `iab`, and its last line is the `end`
+record. The `end` record's `records=` equals the number of `tick=` lines the file holds. With both
+breakpoints armed the `end` record also carries `break_pc=1000`, `break_hits=1`, `other_pc=1002` and
+`other_hits=0`.
+
+**The break report.** It holds the seven pinned keys in their pinned order. Its `break.hits` is `1` and its
+`break.other.hits` is `0` - the pair a matcher that always hits cannot satisfy - and its `break.records`,
+`break.end_tick` and `break.steps` are copies of the trace's own `end` record.
+
+**The disassembly.** Its first line is `# id: boot-stub`, its header run is the eight `# key: value` lines the
+assembler accepts, it carries an `ORG` directive for `$1000`, and it ends at the jump to `$5000`.
+
+**The step report.** Thirteen `key value` lines in the frozen order, from `step.units 70` through
+`step.mem.0200`.
+
+### Containment
+
+Every `--out` above lies under `refs/`, and it has to: the frozen `inspect-output-tree` token refuses an
+output whose physical parent is inside the work tree and not under `refs/` whatever the spelling of the path,
+and `inspect-output-exists` refuses a path that already exists, so a second invocation needs the first one's
+files removed. `refs/` is ignored by version control and lies outside every gate step, and nothing the tool
+writes is ever committed.
+
+### Agreement with the command surface
+
+Every subcommand and every option used above is one the `## Command surface` block names. A token that block
+does not name is a deviation recorded against this page, never a new spelling invented here.
+
+When the four files under `refs/` have been read, remove them: `refs/op-trace.ivst`, `refs/op-trace.report`,
+`refs/op-break.txt` and `refs/op-dis.asm`.
