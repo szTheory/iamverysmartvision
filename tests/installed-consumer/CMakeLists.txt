@@ -11,7 +11,7 @@ project(ivs_consumer LANGUAGES C)
 # No user or system package registry: the prefix given on the command line is the only source.
 set(CMAKE_FIND_USE_PACKAGE_REGISTRY OFF)
 set(CMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY OFF)
-find_package(ivs 0.3 CONFIG REQUIRED)
+find_package(ivs 0.4 CONFIG REQUIRED)
 
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)

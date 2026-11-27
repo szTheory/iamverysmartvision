@@ -217,6 +217,32 @@ prevent: `data/expected/pkg-install-files.ids` still holds eleven paths, the ins
 that list exactly in both directions once the archive's own prefix is stripped, and the `release-assets` step is
 unchanged - `release-selftest=13/13` with its case list unedited.
 
+### (i.3) The five prefix counts in (i.2), corrected (2026-11-27, the v0.4.0 close)
+
+Appended at the v0.4.0 close. Neither (i.2) nor anything before it is edited.
+
+`(i.2)`'s table gives the source archive's build-only prefix counts as **7 / 3 / 9 / 5 / 6**
+(`tools/inspect/`, `tools/pack/`, `tools/asm/`, `tools/flatwrap/`, `host/`). Those figures were read with an
+**unanchored** pattern over `tar -tzf`, which also matches nested paths under the control fixtures
+(`tools/check/controls/_good/tree/tools/inspect/good.c` and its siblings), so each count is larger than the
+number of files the archive root actually carries under that prefix.
+
+Measured at the close on the archive `sh tools/release.sh --no-gate --out <fresh temp dir>` writes, counting
+only members whose path is exactly `<prefix>/<file>`:
+
+| prefix | files at the archive root | the members |
+|---|---|---|
+| `tools/inspect/` | **4** | `CMakeLists.txt`, `inspect.c`, `inspect_dis.c`, `inspect_trace.c` |
+| `tools/pack/` | **2** | `CMakeLists.txt`, `pack.c` |
+| `tools/asm/` | **2** | `CMakeLists.txt`, `asm.c` |
+| `tools/flatwrap/` | **2** | `CMakeLists.txt`, `flatwrap.c` |
+| `host/` | **3** | `CMakeLists.txt`, `ivs_retro_shim.c`, `libretro_shim.h` |
+
+The clause the counts support is unaffected and was re-derived: the source archive carries the source of the
+build-only tools and of the build-only host shim, and the install archive carries the eleven installed paths
+with no built object. What was wrong was the arithmetic behind five numbers, not the sentence they support.
+This is `20-SECURITY.md`'s recorded debt `R-20-01`, discharged here.
+
 ## (j) The owner route, rehearsed from the source archive (plan 16-02, PKG-06, GUARDRAILS-v0.3 V10 and section 2.10)
 
 The route is the three commands of `docs/owner-images.md` ("The route from the source archive, in three
