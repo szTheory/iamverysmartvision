@@ -248,9 +248,12 @@ typedef struct ivs_stic_line_levels {
  * (the event cursor is the only clock, D-07), so the machine seam may call it at any unit start whatever the host's slicing. */
 ivs_stic_line_levels ivs_stic_lines(const ivs_stic_params *p, const ivs_stic_state *s, uint64_t tick);
 
-/* Access effects (stic_regs.c, plan 06-06; pure functions of the parameters, no address constant). access is
- * IVS_STIC_ACCESS_READ (a READ or FETCH) or IVS_STIC_ACCESS_WRITE (a WRITE or DW); the result is an IVS_STIC_EFFECT_*.
- * A read has an effect only when its address is in stic.mode_select_addrs (decided on the address before decode, A-07). */
+/* Access effects (stic_regs.c, plan 06-06; the READ match, plan 19-01; pure functions of the parameters, no address
+ * constant). access is IVS_STIC_ACCESS_READ (a READ or FETCH) or IVS_STIC_ACCESS_WRITE (a WRITE or DW); the result is an
+ * IVS_STIC_EFFECT_*. A WRITE or DW matches a row by register index (address & 63, the write aliases included). A READ whose
+ * address is a member of stic.mode_select_addrs keeps the register-index match (so $4021 still selects Color Stack mode,
+ * A-07); a READ of any other address matches stic.access_effects by EXACT address, so the $0020 READ row is reachable and a
+ * read of $0040 still has no effect (C84). */
 uint32_t ivs_stic_is_mode_select_addr(const ivs_stic_params *p, uint32_t addr);
 uint32_t ivs_stic_effect(const ivs_stic_params *p, uint32_t access, uint32_t addr);
 /* Applies an effect to the display latch or the mode of s; any other value does nothing. */
