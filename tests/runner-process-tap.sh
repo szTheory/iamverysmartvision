@@ -3422,11 +3422,11 @@ result runner-process.inspect.step
 
 # runner-process.inspect.surface: the command surface and the token coverage, in both directions. `--help`
 # names the four subcommands; an unknown subcommand and a `break` without `--pc` each exit 2 with a usage
-# line and no token; and every token the tool can print for the trace and break surfaces is named in the
-# frozen page's block, and every token that block names for them is one the tool can print. `inspect-dis-row`
-# belongs to the `dis` surface, which plan 18-03 lands in the next wave, so it is excluded from BOTH sides:
-# that is what stops a wave-3 commit turning a wave-2 id red across a wave boundary, and asserting the
-# remaining set both ways is what stops the exclusion becoming a hole.
+# line and no token; and every token the tool can print for all four subcommands is named in the frozen
+# page's block, and every token that block names is one the tool can print. All five are compared in both
+# directions, `inspect-dis-row` included: 18-03 landed the `dis` surface in this phase, so the two sets are
+# identical and an exclusion would be dead leniency on the phase's own token - a rename or a removal of the
+# disassembly refusal would go unnoticed by the only id that compares the two sets.
 : > "$tmp/why"
 ok=1
 if [ -z "$inspect" ]; then
@@ -3448,23 +3448,19 @@ else
   run_one "$tmp" ix-usage-break "$inspect" break --other 1002 --trace "$tmp/ix/brk.ivst" --out "$tmp/ix/x.brk"
   [ "$rc" -eq 2 ] || { ok=0; why surface "a break without --pc exited $rc, expected 2"; }
   # The extraction. `-h` is load-bearing: grep -o prints the file name before each match when its argument
-  # list holds more than one file, and tools/inspect/*.c holds two today and three after 18-03, so without it
-  # every token would read `tools/inspect/inspect.c:inspect-output-tree` and look undocumented.
+  # list holds more than one file, and tools/inspect/*.c holds three since 18-03, so without it every token
+  # would read `tools/inspect/inspect.c:inspect-output-tree` and look undocumented.
   sed -n '/^## Refusal tokens/,/^## Liveness guards/p' "$root/docs/inspection.md" \
     | grep -o -E 'inspect-[a-z-]+' | sort -u > "$tmp/ix.doc.tokens"
   grep -h -o -E '"inspect-[a-z-]+"' "$root"/tools/inspect/*.c | tr -d '"' | sort -u > "$tmp/ix.src.tokens"
   [ "$(grep -c . "$tmp/ix.doc.tokens")" -eq 5 ] \
     || { ok=0; why surface-tokens "the frozen page's block holds $(grep -c . "$tmp/ix.doc.tokens") tokens, expected 5"; }
-  [ -s "$tmp/ix.src.tokens" ] \
-    || { ok=0; why surface-tokens 'the extraction found no token in tools/inspect/*.c, so it would compare nothing'; }
-  grep -v -x -F -e 'inspect-dis-row' "$tmp/ix.doc.tokens" > "$tmp/ix.doc.except-dis"
-  grep -v -x -F -e 'inspect-dis-row' "$tmp/ix.src.tokens" > "$tmp/ix.src.except-dis"
-  [ "$(grep -c . "$tmp/ix.doc.except-dis")" -eq 4 ] \
-    || { ok=0; why surface-tokens "the page's block holds $(grep -c . "$tmp/ix.doc.except-dis") tokens after excluding inspect-dis-row, expected 4"; }
-  comm -13 "$tmp/ix.doc.except-dis" "$tmp/ix.src.except-dis" > "$tmp/ix.undoc.tokens"
+  [ "$(grep -c . "$tmp/ix.src.tokens")" -eq 5 ] \
+    || { ok=0; why surface-tokens "the extraction found $(grep -c . "$tmp/ix.src.tokens") tokens in tools/inspect/*.c, expected 5"; }
+  comm -13 "$tmp/ix.doc.tokens" "$tmp/ix.src.tokens" > "$tmp/ix.undoc.tokens"
   [ ! -s "$tmp/ix.undoc.tokens" ] \
     || { ok=0; why surface-tokens "the tool prints a token the frozen page does not name: $(tr '\n' ' ' < "$tmp/ix.undoc.tokens")"; }
-  comm -23 "$tmp/ix.doc.except-dis" "$tmp/ix.src.except-dis" > "$tmp/ix.unprinted.tokens"
+  comm -23 "$tmp/ix.doc.tokens" "$tmp/ix.src.tokens" > "$tmp/ix.unprinted.tokens"
   [ ! -s "$tmp/ix.unprinted.tokens" ] \
     || { ok=0; why surface-tokens "the frozen page names a token the tool cannot print: $(tr '\n' ' ' < "$tmp/ix.unprinted.tokens")"; }
 fi
