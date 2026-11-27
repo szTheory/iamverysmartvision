@@ -48,7 +48,7 @@ done
 for mod in '^core/.*[.]c$ ivs-core-sources.txt' '^runner/.*[.]c$ ivs-runner-sources.txt' \
   '^tools/pack/.*[.]c$ ivs-pack-sources.txt' '^tools/pcm/.*[.]c$ ivs-pcm-sources.txt' \
   '^tools/asm/.*[.]c$ ivs-asm-sources.txt' '^tools/bench/.*[.]c$ ivs-bench-sources.txt' \
-  '^tools/flatwrap/.*[.]c$ ivs-flatwrap-sources.txt'; do
+  '^tools/flatwrap/.*[.]c$ ivs-flatwrap-sources.txt' '^tools/inspect/.*[.]c$ ivs-inspect-sources.txt'; do
   re=${mod%% *}
   name=${mod#* }
   listed="$ROOT/build/dev/$name"

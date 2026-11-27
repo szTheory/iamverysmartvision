@@ -14,6 +14,14 @@
 # half of the displacement boundary (03FF accepted, 0400 is asm.neg.asm-branch-range).
 # asm.judge.mutated-twin: self-control of the words comparison; passes only when it fails on a twin
 # with one register changed and the diff shows that one word.
+# asm.dis.* (plan 18-03, TOOL-02): the inspection instrument's disassembly limb, in this same suite. The
+# emitted source of the project's own boot-stub listing is reassembled by ivs_asm and its words, read by
+# ivs_pack --dump-words, must equal the words of the hand listing and of the committed twin (three
+# oracles, one dump, the comparison asm.twin-boot-stub makes); asm.dis.two-word-form, asm.dis.immediate
+# and asm.dis.words-nonvacuous are the guards that stop the round trip being vacuous, asm.dis.deterministic
+# asserts the emitter twice, and asm.judge.dis-constant-mnemonic is the committed stand-in: every
+# instruction line replaced by the whole line DECLE $0000 still reassembles and must then fail the word
+# comparison, so a DECLE-everything emitter cannot pass.
 # asm.regen-<listing id> (plan 07-05, D-19): one case per fixtures/*/*.asm in the tree; the source is assembled
 # again and the result must equal the committed listing byte for byte (the listing id is the # id: header line
 # of the source, the committed path comes from data/expected/listings.ids). The first is stub contract 2.
@@ -22,6 +30,12 @@ asm.twin-diag-cpu-1
 asm.twin-diag-ctrl-psg-1
 asm.twin-diag-stic-1
 asm.repeat
+asm.dis.roundtrip-boot-stub
+asm.dis.two-word-form
+asm.dis.immediate
+asm.dis.words-nonvacuous
+asm.dis.deterministic
+asm.judge.dis-constant-mnemonic
 asm.judge.mutated-twin
 asm.regen-boot-stub-2
 asm.regen-ivs-demo-lamp-tone-1

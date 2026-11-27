@@ -2,15 +2,19 @@
 gsd_state_version: "1.0"
 milestone: v0.4.0
 milestone_name: Inspectable Machine, One Default Decided
-status: planning
-last_updated: "2026-11-26T15:24:08.882Z"
-last_activity: 2026-11-26
+status: Awaiting next milestone
+stopped_at: Phase 20 complete — all phases complete
+last_updated: "2026-11-27T08:16:34.707Z"
+last_activity: 2026-11-27
+last_activity_desc: Milestone v0.4.0 completed and archived
+state_head: 7ba79ad4f968e076f3b66ab5b90796ee0ee78720
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 8
   total_plans: 11
-  completed_plans: 0
-  percent: 0
+  completed_plans: 11
+  percent: 100
+current_phase: 20
 ---
 
 # Project State
@@ -20,16 +24,38 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-26)
 
 **Core value:** A deterministic, observable machine core whose every compatibility claim is bound to an exactly named profile and independent evidence — never an unqualified "it runs Intellivision games" label.
-**Current focus:** Phase 17 — Records, Cost Window and the Count-Gate Contract
+**Current focus:** Phase 20 — Route, Witness and Release Posture
 **Milestone scope:** `.planning/MILESTONE-CONTEXT.md` (frozen 2026-11-26) and the five `.planning/research/v0.4.0-scoping-*.md` records. **Guardrails:** `.planning/ops/GUARDRAILS-v0.4.md`. **Mints no claim:** `claims=29` and `provisional=28` are invariants.
 
 ## Current Position
 
-Phase: 17 - Records, Cost Window and the Count-Gate Contract
-Plan: 0 of about 3
-Status: Defining requirements is complete; ready for discuss-phase 17
-Last activity: 2026-11-26 - Milestone v0.4.0 requirements and roadmap defined
+Phase: Milestone v0.4.0 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-11-27 — Milestone v0.4.0 completed and archived
 
+### Phase-boundary cost checkpoints (`GUARDRAILS-v0.4` §2.4)
+
+One line per phase boundary, recomputed by arithmetic from `.planning/ci-runs.tsv` and charged
+against the 21 hosted cpu-s allowance. The vocabulary is exactly three words.
+
+- **Phase 17 — `reprice`.** Window at the plan's own start commit `fb50835`: last-five medians
+  `cpu_s` **572**, `build_s` **49**, `gate_s` **164**, against the previous **367 / 34 / 115**; the
+  gate's token line did not move and `r` stayed inside 10.5143 to 11.6735. The median moved far more
+  than the phase's 0.11 priced addition, so this is a runner event: no lever invented. Charge 0.11
+  against 21.
+- **Phase 18 — `discharged-within-allowance`.** Priced 2.96; shipped **3.59** (14 process-launch ids
+  + 5 in-case stand-ins + 1 control + 6 registry rows + 2 in-step selftests), a 21 percent overrun —
+  **inside** the 25 percent band, so no reprice is owed and the frozen figure is not edited. Charge
+  3.59 against 21. **No hosted row was added in this phase** (nothing was pushed yet), so the window
+  is unchanged from Phase 17's and this checkpoint is arithmetic, not a new measurement; the push
+  run's own row lands at the milestone close.
+
+- **Phase 19 — `reprice`.** Window recomputed at the plan's own start commit `15db4e6`: medians
+  **572 / 49 / 164** from 584,580,572,530,368 · 51,51,49,49,35 · 171,165,164,154,115, against the
+  frozen 361 / 34 / 118 — a runner event with an unchanged token line, so no lever is invented.
+  Phase charge **1.21** of the 1.64 line (0.65 in-process ids + 0.40 process ids + 0.16 registry
+  rows and controls).
 
 ### Planning overrides recorded by the autonomous run
 
@@ -85,7 +111,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 136
+- Total plans completed: 147
 - Average duration: -
 - Total execution time: -
 
@@ -106,6 +132,10 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | 14 | 4 | - | - |
 | 15 | 3 | - | - |
 | 16 | 5 | - | - |
+| 17 | 3 | - | - |
+| 18 | 3 | - | - |
+| 19 | 3 | - | - |
+| 20 | 2 | - | - |
 
 *Updated after each plan completion*
 **Per-Plan Metrics:**
@@ -274,6 +304,9 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | Phase 16 P02 | 21 min | 2 tasks | 3 files |
 | Phase 16 P03 | 30min | 2 tasks | 8 files |
 | Phase 16 P04 | 15min | 2 tasks | 17 files |
+| Phase 17 P01 | 19min | 2 tasks | 1 files |
+| Phase 17 P02 | 96min | 3 tasks | 18 files |
+| Phase 17 P03 | 15min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -623,6 +656,10 @@ recommendations / GSD defaults / open questions are kept separate).
 - [Phase 16]: The ledger's row count is a stat on the claims pass line (handoffs=<n>), counted from the file, not a check and not a control: the pinned id set and dispositions are the mechanism, and a control of the count would prove the count rather than the ledger.
 - [Phase 16]: 16-04: the release-assets so-member case is deliberately not registered as a row - a mutant row resolves only through the three selftest inventories or a <suite>.judge.<slug>/<suite>.mutant.<slug> test id, so registering it would make the row important-gates-unknown-id; the archive surface is named in RELEASE-OPS section (i.1) and in the row comment instead
 - [Phase 16]: 16-05: checkpoint: reprice (cpu_s 368 366 359 441 352, median 366; build_s 35 34 34 38 33, median 34; gate_s 122 115 120 145 115, median 120; priced addition 0.4; allowance 21). Recomputed by arithmetic from the last five `.planning/ci-runs.tsv` rows (45723269901, 45747709457, 45751979661, 45778926664, 45779277467), never quoted: the frozen 361/34/118 figures are stale by measurement, by +5/0/+2. `discharged-within-allowance` is not reachable because 366 > 361 + 0.4 = 361.4, by 4.6. `lever-required` is not reached because the cumulative priced total is 5.2 of 21 (2.0 + 1.3 + 1.5 + 0.4; the four recorded actuals sum to 5.02) and this phase's actual addition is 0.015 against the 0.4 it priced - 0.385 under, so no line overran by 25 percent. The median moved more than the priced addition while the token line is exactly where the five plans predicted (only the four entitled growth gates moved: `gates` 118 to 119, `lines` 361 to 364, `handoffs` 5 to 8, toy 47/50 to 48/51), so reprice is what the rule names - a runner event, no lever invented. `steps=38/38` is an invariant, not a target. container: one run, `gate: PASS`, `gate-linux: exit 0`, `gate-time total=793`, the four documented host tokens differing (cc=GNU, core-imports=5, archive=sha256, refs-verified=0/4) and no other token. Two-shell: `sh` and `dash` final lines `cmp` clean at 1,520 bytes each (`gate-time total=104` and `204`).
+- [Phase 17]: 17-01: checkpoint: reprice (cpu_s 572, build_s 49, gate_s 164 from the last five .planning/ci-runs.tsv rows 584/51/171, 580/51/165, 572/49/164, 530/49/154, 368/35/115, per-column median by sort -n then sed -n 3p; previous window 367/34/115; priced addition 0.11; allowance 21). Recomputed by arithmetic at the plan's own start commit 21d023c, never quoted: the roadmap's prose figures do not survive recomputation, so the record prints the file's own values instead — the seven release-records rows carry build_s 34 to 51 (the roadmap says 47 to 51) and r over the last five rows spans 10.5143 to 11.6735 (the roadmap says 10.6 to 11.7), and r is printed as arithmetic only because lesson 29 retires it as a signal. discharged-within-allowance is not reachable because 572 > 367 + 0.11 by 204.89. lever-required is not reached because the priced addition is 0.11 against the roadmap's 0.10 line, +10 percent and inside the 25 percent repricing threshold, and the cumulative milestone total is 0.11 of 21. The median moved more than the priced addition while the token line is exactly where the plan predicted, so reprice is what the rule names — a runner event, no lever invented. The seven rows were verified present once each (118 data rows over 119 lines, seven counts compared as one whole file against seven lines of 1) and .planning/ci-runs.tsv is byte-identical to what the plan started from. Two-shell: sh and dash final lines cmp clean at 1,520 bytes each; container: one run, gate: PASS, gate-linux: exit 0, gate-time total=249, the four documented host tokens differing (cc=GNU, core-imports=5, archive=sha256, refs-verified=0/4) and no other token. Only the three git ls-files counts moved, by exactly +1, and it is the record file itself.
+- [Phase 17]: The eight flatwrap refusal tokens are documented in the inventory's append-only order, each alone on its line, with the trigger and the accepted boundary; the inventory itself is unchanged at the start commit.
+- [Phase 17]: The flatwrap-to-shim join is one committed id with five limbs and no typed digest value, and its must-fail stand-in is the case's own second container judged by the same shim_join, so plan 15's two-id precedent is not repeated and the 0.10 cpu-s line holds.
+- [Phase 17]: 17-03: lesson 32's three clauses are indented list items with the number inside the item, because the file's column-1 shape is `N. **title**` and a clause written as `1. ` at column 1 would read as lessons 1, 2 and 3 to anything that parses the file by that shape, including the check that the last numbered lesson is 32. The mechanical clause is carried by `count-gate mutant extra-file EV-08`, which points at the `pkg-install` step's existing `extra-file` case (also registered for PKG-01) rather than minting one: `check_inventory` reads the named file data/expected/pkg-install-files.ids and the case's committed stand-in plants share/ivs/stray.txt in a copy of the installed prefix, refused by the same function the real prefix is judged by and re-run on every gate run as `pkg-selftest=20/20`. The gate name is new because the row registers a contract, not a step, and that is what makes `gates` read 120. Clause 3 cites the already-registered `d09-06-registration mutant st-pass-line EV-07` row instead of duplicating it, and clause 2 has no mechanism at all — no gate step parses plans — so it is registered nowhere and the lesson says so in as many words. Baselines measured at start commit 1dc57c2 before the first edit: gates=119 lines=365, registry rows 365, tracked files 2808; after: gates=120 lines=366 with faults=238/238, goldens=29, claims=29, provisional=28, steps=38/38, prefix-files=11 unchanged. Two-shell sh and dash final lines cmp clean, and the container gate ran once after the log was copied aside: gate-linux: exit 0, gates=120 lines=366, gate-time total=258, no ivs- container left behind.
 
 ### Pending Todos
 
@@ -641,6 +678,8 @@ Open questions that remain: unusual cartridge memory maps and further import for
 
 Concerns:
 - **The milestone tool appends a stray `</summary>` to `.planning/state.json`'s `milestone` string** (seen at the v0.2.0 close as audit G-06 and again at the v0.3.0 switch, 2026-11-26, where it took the token from the ROADMAP's `<details><summary>` line). Corrected by hand in the same commit both times. It is a tool defect, not a record defect: check `grep -c '</summary>' .planning/state.json` at every milestone boundary until the tool is fixed.
+- **The milestone tool derives `milestone_name` from the ROADMAP's generated archived-milestone heading, not from its own "Current milestone:" line.** At the v0.4.0 opening it wrote `milestone_name: scoped 2026-11-26 (in progress)` into this file's frontmatter and `"milestone": "v0.4.0 — scoped 2026-11-26 (in progress)"` into `.planning/state.json`, both taken from `### v0.4.0 - scoped 2026-11-26 (in progress)` (`ROADMAP.md:410`) instead of `Inspectable Machine, One Default Decided`. Corrected by hand on 2026-11-26 in the same commit as the Phase 17 planning state; the generated heading is left as the tool wrote it, so check both fields at every milestone boundary until the tool is fixed. This is a tool defect, not a record defect, and it is the same class as the `</summary>` leak below.
+- **Two deferred rows are discharged by Phase 17 and must be closed at the v0.4.0 close, not left to look open:** `W3` ("the `flatwrap` → host-shim join is true today but no committed case guards it", Deferred At "Phase 16 close") is closed by `runner-process.judge.flatwrap-shim`; `W4` ("none of the eight `flatwrap` typed tokens appears under `docs/`", Deferred At "Phase 16 close") is closed by the `## Wrap tool refusals` section of `docs/formats/ivsc-v1.md`. Both rows say "the milestone that next touches the container format or the shim", which is this one. They are named here because the plans do not carry them and a records gap is cheaper to close from a note than from a replan.
 - 8 phases exceeds `standard` granularity guidance (4-6); justified by five high-uncertainty subsystems (PIT-18). Revisit at milestone discussion.
 - No tier-1 AY-3-8914 datasheet found; STIC timing constants disputed (C1-C4); controller matrix from one LOW source (C16).
 - The release flow after Phase 8 is **done as far as the release itself**: pull request 7 merged as `3fe5373`, REL-01 stage 2 recorded, `v0.1.0` tagged on the artifact commit and published as a pre-release after P1 to P8 held. `git.create_tag` was set to `false` in its own commit (`6f800cc`) before the milestone tool was used. What remains of the milestone is the lifecycle (audit, complete, cleanup) and, as settings actions, the branch and tag rulesets recommended in `.planning/AUTONOMY.md` section 1, which are still **not applied**.
@@ -650,8 +689,8 @@ Concerns:
 Refreshed by plan 08-21 from `.planning/phases/08-stic-completion-save-state-performance-baselines/08-ACCEPTED-DEBT.md`. Phase 8 resolved none of the four earlier rows, so none is removed; each keeps its status and gets the milestone it now waits for. Refreshed again by plan 09-09 (2026-11-25): the gate-hardening row (IN-01 to IN-04), the memmap-gen row and the machine-digest comment row are closed, the seven draft `VALIDATION.md` files of Phases 2 to 8 are now one row each (cited to `08-ACCEPTED-DEBT.md` section 1, never rewritten), and the two items Phase 9 declined plus the nine deferred registrations of D-09-06 have rows of their own. The "Milestone" column says when the item is next looked at, and "next milestone" means the one that follows the first.
 
 | Category | Item | Status | Deferred At | Milestone |
-| Integration | **W3** the `flatwrap` → host-shim join is true today but no committed case guards it: `runner-process.host.digests` loads the `ivs_pack` image and `pack.judge.flatwrap-roundtrip` loads a wrap output through the *runner*, so the two writers (each restating the 8 magic bytes) could diverge with both suites green. The integration check measured them byte-identical on 2026-11-26 | **Open** — needs one new test id inside an existing suite | Phase 16 close | The milestone that next touches the container format or the shim |
-| Integration | **W4** none of the eight `flatwrap` typed tokens appears under `docs/`: the write-side contract lives only in `tools/flatwrap/flatwrap.c` and `data/expected/flat-refusals.ids`, and `docs/formats/ivsc-v1.md` is a parser spec with no writer section. The load side and the six derived-output refusals are documented | **Open** — a writer section in the format page | Phase 16 close | The next documentation pass |
+| Integration | **W3** the `flatwrap` → host-shim join is true today but no committed case guards it: `runner-process.host.digests` loads the `ivs_pack` image and `pack.judge.flatwrap-roundtrip` loads a wrap output through the *runner*, so the two writers (each restating the 8 magic bytes) could diverge with both suites green. The integration check measured them byte-identical on 2026-11-26 | **Closed** by plan 17-02 (`be69a5e`): `runner-process.judge.flatwrap-shim` asserts the shim's digest against the container the tool wrote, with a committed replay stand-in | Phase 16 close | Closed at the v0.4.0 close |
+| Integration | **W4** none of the eight `flatwrap` typed tokens appears under `docs/`: the write-side contract lives only in `tools/flatwrap/flatwrap.c` and `data/expected/flat-refusals.ids`, and `docs/formats/ivsc-v1.md` is a parser spec with no writer section. The load side and the six derived-output refusals are documented | **Closed** by plan 17-02 (`4e0c894`): `docs/formats/ivsc-v1.md` carries `## Wrap tool refusals`, the eight tokens in the inventory's order, `diff`-silent | Phase 16 close | Closed at the v0.4.0 close |
 
 |----------|------|--------|-------------|-----------|
 | Gate hardening | IN-01 whole `SRC-` token match; IN-02 fail glossary/sources on zero documents; IN-04 require each step's pass line; IN-03 anchor manifest outputs to their own fixture dir; IN-05 runner-selftest coverage of remaining tokens; denylist grep status 2 read as no-hit (`denylist.sh`); `--tree` grep-error control | **IN-01 to IN-04 closed by Phase 9** (plan 09-09 update): IN-01 `sources-src-token-whole`, IN-02 the glossary/sources zero-document controls and their verification (09-07 items 1 and 2), IN-03 `manifests-output-anchor` (09-07 item 4), IN-04 `control-pass-line-not-last` (09-06) plus the three 09-07 controls. IN-05, the denylist status-2 reading and the `--tree` grep-error control stay open, low severity (01-REVIEW.md, 01-SECURITY.md residual risks) | Phase 1 | IN-05 and the two remaining items: next milestone, a gate-hardening quick task |
@@ -722,13 +761,14 @@ The row itself is left as recorded and this note sits under it.
 
 ## Session Continuity
 
-Last session: 2026-11-26T10:35:46.199Z
-Stopped at: Phase 16 complete — all phases complete
+Last session: 2026-11-27T08:40:00.000Z
+Stopped at: Phase 20 complete — all phases complete
 Resume file: None
 
-The Phase 13 close still leaves one thing a later run must do: record the phase's hosted row from
-`sh tools/ci-record.sh <run-id>` once the commits are pushed (`/gsd:verify-work 13`).
-Resume file: None
+The stale Phase 13 note that stood here (record that phase's hosted row with
+`sh tools/ci-record.sh <run-id>`) is removed: Phase 13 closed in v0.3.0 and its hosted rows are in
+`.planning/ci-runs.tsv` — the row the note asked for is not outstanding, and a resuming session that
+read it would re-ask a question a record already answers.
 
 ## Recorded Constraints for the Next Milestone
 
@@ -792,7 +832,5 @@ recomputed figure or an owner hard stop. The full set is
 
 ## Operator Next Steps
 
-- Run the whole milestone with `/gsd-autonomous` (after `/clear`). The scope is
-  frozen: `.planning/MILESTONE-CONTEXT.md`, the five
-  `.planning/research/v0.4.0-scoping-*.md` records and
-  `.planning/ops/GUARDRAILS-v0.4.md`. Nothing needs to be re-asked.
+
+- Start the next milestone with /gsd-new-milestone

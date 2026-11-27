@@ -108,6 +108,56 @@ A NULL view or report, or NULL bytes with a length above 0, is BAD_ARG and nothi
 A refusal writes only the report; an acceptance writes only the view, which holds the prefix values and, per segment, addr, len_words and the computed data offset.
 The parser keeps no pointer into the container and allocates nothing.
 
+## Wrap tool refusals
+
+The build-only tool `ivs_flatwrap` writes a container from a flat image, and it prints one token when it refuses
+an input. The eight tokens below are the whole set, and the list is append-only: a token that changes re-opens
+every case that cites it. Each token states the condition that triggers it and the boundary case that must still
+be accepted, because the rule is one-sided without both.
+
+flatwrap-length
+  An input whose byte count is odd is refused: a segment holds whole 16-bit words. Two bytes are the boundary
+  that must still be accepted, and they wrap to the 66-byte smallest container.
+
+flatwrap-word-range
+  A word above `03FF` is refused, because a container word carries ten data bits. `03FF` itself must still be
+  accepted, and the word read back from the container is that value.
+
+flatwrap-words
+  An input above 65,536 words is refused. This is the one check an accepted input cannot reach: at the lowest
+  base `4000` a 65,536-word input crosses the address space first, so `flatwrap-cross` decides it, and the
+  largest input the address space allows is 49,152 words.
+
+flatwrap-base
+  A base below `4000`, or a base that is not four hexadecimal digits, is refused. `4000` must still be accepted,
+  and `FFFF` is accepted for a one-word input.
+
+flatwrap-cross
+  A base plus the word count above `10000` is refused: a segment may end at `FFFF` but never wrap. The boundary
+  that must still be accepted is 49,152 words at base `4000`, a 98,368-byte container whose last word sits at
+  `FFFF`.
+
+flatwrap-output-tree
+  An output whose physical parent directory lies inside the work tree, and not under `refs/`, is refused however
+  the path is spelled: a literal path, a `..` spelling and a symlink to a directory inside the tree are the same
+  answer. An output outside the tree must still be accepted, and so must any path under `refs/`.
+
+flatwrap-output-exists
+  An output path that already exists is refused, and the refused attempt leaves that file byte-identical, so a
+  writer that truncates before it checks cannot hide behind its exit status. A path that does not exist must
+  still be created, and created exclusively.
+
+flatwrap-empty
+  A zero-byte input is refused: a segment holds at least one word, so an empty input has no legal container at
+  all. One word is the boundary that must still be accepted, and it is the smallest legal container.
+
+Three framing facts belong with this list. These are the tool's tokens, not the container format's eighteen
+numbered refusal reasons in the section above: the two sets answer different questions and are not
+interchangeable. The order here is the append-only inventory's order, not the tool's own check order, which the
+tool's source states (`tools/flatwrap/flatwrap.c`); `flatwrap-empty` sits last here only because the list is
+append-only. A refusal is one stderr line naming the token with exit status 1 and no output file. Any other
+failure carries no token: one stderr line without a token and exit 2.
+
 ## Digests
 
 The trailer is the SHA-256 of bytes 0 to total_bytes - 33.

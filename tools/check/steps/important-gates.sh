@@ -89,6 +89,36 @@
 #            PKG-96 line in that commit. Plan 16-04's own committed-direction probe - a tracked
 #            probe.so refused as files-unlisted-binary with probe.txt at the same place not refused -
 #            is not a row here: it is a throwaway check on the real tree, not a committed mechanism)
+#   Phase 17 EV-08 plan 17-02 (the flatwrap-to-shim join, one row under the existing `cart-role` gate name:
+#            a `mutant` row naming the committed runner-process id runner-process.judge.flatwrap-shim, whose
+#            five limbs join the harness's digest.images to the runner's and the runner's slot.cart.sha256 to
+#            the digest the wrap tool printed, move both values with one flipped input byte, and refuse the
+#            committed stand-in that replays the first container against the second. The case is a new id in
+#            an existing suite, not a new step: zero new faults, zero new steps, and no new gate name. The row
+#            and the EV-08 flip land in one commit for the same two-direction reason as Phases 14 to 16, and
+#            all ten toy registries and the three toy requirement records gain their EV-97 line in that commit)
+#   Phase 17 EV-08 plan 17-03 (the count-gate contract, PLAN-LESSONS lesson 32, clause 1: one `mutant` row under
+#            one new gate name `count-gate`, over the existing `extra-file` case of the `pkg-install` step, whose
+#            count comes from the named file data/expected/pkg-install-files.ids and whose committed stand-in the
+#            same check_inventory refuses on every gate run. One row, one gate name, zero new cases, zero new
+#            test ids, zero new steps and zero new faults: the row points at a mechanism plan 04-22 already
+#            built, so no 0.05 selftest price is incurred and the phase's priced line stays 0.11. The gate name
+#            is new because the row registers a contract rather than a step, and it is what makes `gates` read
+#            120. Lesson 32's clause 3 is the already-registered st-pass-line row, cited not duplicated, and
+#            clause 2 has no mechanism and is not registered at all)
+#   Phase 18 TOOL-02 TOOL-09 plan 18-02 (the inspection surface's four committed stand-ins and the artifact
+#            class's own control: four `mutant` rows under the existing `runner-process` gate name - the
+#            trace-empty, trace-repeat-tick, trace-pokes-register and break-always-hits cases, which live in
+#            the runner-process suite and are re-run on every gate run - and one `control` row under the new
+#            gate name `files` for files-unlisted-binary-ivst, the step that enforces the extension refusal.
+#            Five rows, two gate names, and every mechanism is a new id in an existing suite, a control
+#            directory or an in-step selftest rather than a new step: zero new faults, zero new steps, zero
+#            new goldens. The rows and the two requirement flips land in one commit for the same two-direction
+#            reason as Phases 14 to 17, and all ten toy registries and the three toy requirement records gain
+#            their toy-phase18 pair in that commit. The stand-ins themselves landed in plan 18-02's Task 2
+#            commit and these rows in Task 3's: this step derives its accepted set from the traceability table
+#            and refuses a row naming a Pending requirement, so the derived-accepted-set rule (2.14) is what
+#            forces the split, which 18-02-SUMMARY.md records as a deviation)
 # Resolution of <id> by mechanism:
 #   fault    first column of any data/expected/faults/*.ids (judged by faults-verdict);
 #   control  first column of any data/expected/controls/*.ids (run by tools/check/run-controls.sh);

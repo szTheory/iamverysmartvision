@@ -75,6 +75,51 @@ The procedure is `docs/input/d10-procedure.md`, and `docs/stic/d10-procedure.md`
 The third column says what the owner records, and a recorded measurement is a fact about one console under the conditions the procedure asks for.
 These items need physical hardware, so no tool on this host can perform them and the ledger row is `not-performed`.
 
+## D10-VID-08: the display strobe and the latch, at swept offsets
+
+This section is the packet for the ledger row `D10-VID-08 not-performed evidence: none`.
+Its procedure is `docs/stic/d10-procedure.md` `### stic-strobe`, with `### stic-window-probes` beside it for the gating candidate's window edges, and the row it belongs to in `data/expected/d10-measurements.ids` carries the anchor `#stic-strobe`.
+It is a row and not a gate: no criterion of any phase requires its answer, no claim cites it, and an answer recorded here would still carry `evidence: none`.
+
+### The record fields a capture is compared field for field
+
+The names below are the frozen page's own, quoted from `docs/inspection.md` `## The trace file` and from nowhere else, so a capture recorded in the `## Record format` shape of the procedure can be laid beside them field for field.
+
+- An access record, one per bus access: `tick`, `kind`, `addr`, `value`, `wait`, `cycle`, `unit_start`, `unit_end`.
+- A step record, one per run-to: `step`, `target`, `end`, `stop`.
+- The end record, last in the file: `tick`, `records`, `units`, `steps`, `break_pc`, `break_hits`, `other_pc`, `other_hits`.
+
+### The comparison list
+
+One row per guest. The third column is the trace line that separates the two candidate values, the fourth is the observable line with its shipped value and its rival value, and the fifth is the guest's alternate-value mask as `stic.disc.sweep-diagonal` measured it.
+
+| guest | the field it separates | the trace lines that carry it | the observable line, shipped then rival | the mask |
+|---|---|---|---|---|
+| `G1` | `stic.reg_window_cpu_cycles` `2000` then `2900` CPU cycles | one `write` record at `addr=0020` whose `tick=` lies strictly inside `8000 < tick < 11600` - 2000 and 2900 CPU cycles at four ticks per cycle - with no earlier strobe in the invocation, plus the `end` record's `tick=`, `records=` and `units=` | registered observable `blocked_writes` `1` then `0` (machine state, with no report line at all, which the packet says plainly); witness `frame 0 displayed` `no` then `yes` | `0xAAAA` |
+| `G2` | `stic.access_gating_when_off` `apply` then the windows open while the display is off | one `write` record at `addr=0020` whose `tick=` lies strictly inside `11600 < tick < 15120` - 2900 and 3780 CPU cycles at four ticks per cycle - made with the display latch clear across the frame boundary, plus the `end` record's `tick=`, `records=` and `units=` | registered observable `blocked_writes` `1` then `0`; witness `frame 0 displayed` `no` then `yes` | `0xCCCC` |
+| `G3` | the `$0020` READ row of `stic.access_effects`, `none` then `arm` | one `read` record at `addr=0020` and no `write` at that address in the same frame | registered observable `frame 0 displayed` `no` then `yes` | `0xF0F0` |
+| `G4` | `stic.display_latch_cleared_each_frame` `1` then `0` | exactly one `write` record at `addr=0020` in the whole invocation | registered observable `frame 0 displayed` `yes` then `yes`, `frame 1 displayed` `no` then `yes`, `frame 2 displayed` `no` then `yes` | `0xFF00` |
+
+### Why the frame value alone does not separate the four
+
+Phase 19 measured that the single-strobe reading of the frame-0 word moves under the gating field as well; its committed stand-in `stic.judge.disc-diagonal-two-fields` rejects that reading at cell `0x2`, bits `0x2`, observed `1`.
+A capture must therefore record the access's stamp and the display latch's state beside the frame value: the separation is the pair (stamp, registered observable), never the frame value alone.
+The consequence is the first thing a reader will notice, so it is said here: `G1` and `G2` carry the same witness pair, for the reason that one guest writes `$0020` once and the frame word reads the same under both rules, and what separates those two rules is the **stamp band** - `8000 < tick < 11600` for `G1` and `11600 < tick < 15120` for `G2` - together with the display latch's state, so a capture that records no stamp cannot separate them at all.
+`G3`'s and `G4`'s registered observables are the frame words themselves, which is why those two rows need no separate witness.
+The masks above were measured by `stic.disc.sweep-diagonal` over its sixteen stack-copied cells, so the table is traceable to a committed measurement rather than asserted.
+
+### Status
+
+Status: `G1` `0xAAAA`, `G2` `0xCCCC`, `G3` `0xF0F0` and `G4` `0xFF00` are the four rival candidates; each guest's two values are measured at the default of the other three fields, so every row is a comparison a capture is laid against and none of them is an answer. The row stays `not-performed` because no hardware probe has produced an answer.
+
+### What this packet does not carry
+
+It names trace lines and profile keys only. It carries no digest, no size, no path and no name of any file: a hash establishes identity and not rights, and this row is not about anyone's file.
+
+### No claim cites this row
+
+A claim may not cite this row or the ledger that holds it, and the mechanism is the claim-artifact predicate's refusal of `data/expected/handoffs.ids`, which is demonstrated rather than promised: the committed stand-in `tools/check/controls/claims-handoff-artifact` is run in plan 20-02 and prints `-- FAIL claim-handoff-artifact: CL-0005` and no `claim-dangling-path` for that id, and a copy whose `CL-0005` is repointed to another existing path stops being refused while the other rows are still refused.
+
 ## D11: the owner-local system image
 
 The procedure is `docs/owner-images.md` and the helper is `tools/owner-run.sh`.

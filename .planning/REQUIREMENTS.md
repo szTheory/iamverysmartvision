@@ -18,17 +18,17 @@ below is a hypothesis until delivered and verified.
 
 ### Evidence and records
 
-- [ ] **EV-08**: The milestone starts on a measured ledger rather than a quoted one: the hosted cost window (the last-five `cpu_s`, `build_s` and `gate_s` medians, with the token line) is recomputed by arithmetic from `.planning/ci-runs.tsv` at the plan's own start commit and **before** anything is priced — the seven release-records rows that were outstanding at the milestone opening are recorded in that file at the opening commit and verified, never re-appended; the eight `flatwrap` refusal tokens are documented under `docs/`; one committed test id guards the `flatwrap`-to-shim join and is shown able to fail; the "no host shim ships" sentence is corrected to name the source archive; and the count-gate contract — every count gate names the file it counts, every baseline is measured at the plan's own start commit — is recorded as a numbered lesson **with a mechanism**.
+- [x] **EV-08**: The milestone starts on a measured ledger rather than a quoted one: the hosted cost window (the last-five `cpu_s`, `build_s` and `gate_s` medians, with the token line) is recomputed by arithmetic from `.planning/ci-runs.tsv` at the plan's own start commit and **before** anything is priced — the seven release-records rows that were outstanding at the milestone opening are recorded in that file at the opening commit and verified, never re-appended; the eight `flatwrap` refusal tokens are documented under `docs/`; one committed test id guards the `flatwrap`-to-shim join and is shown able to fail; the "no host shim ships" sentence is corrected to name the source archive; and the count-gate contract — every count gate names the file it counts, every baseline is measured at the plan's own start commit — is recorded as a numbered lesson **with a mechanism**.
 
 ### Tooling and integration
 
-- [ ] **TOOL-02** *(promoted from the v2 deferred list)*: A build-only, scripted, headless inspection surface exists over the seams the core already exposes: disassembly of the project's own listings, breakpoints with an asserted hit and non-hit count, and a cycle-stamped access trace whose records are non-empty, cycle-monotonic, end at the report's own step tick and leave every digest byte-identical to the same run untraced. It is never installed, never enters the eleven-path prefix, and adds no gate step.
-- [ ] **TOOL-09**: Trace and disassembly output over operator content is an operator-local, rights-bearing artifact: one question-shaped `data/rights/` row with a disposition and a "what was taken" cell, an output path inside the work tree refused by name except under the ignored `refs/`, an `ivst` file refused by name in the binary-extension list and `.gitignore`, and no trace or disassembly ever committed as a golden, fixture, CI artifact or claim artifact — whatever its content.
+- [x] **TOOL-02** *(promoted from the v2 deferred list)*: A build-only, scripted, headless inspection surface exists over the seams the core already exposes: disassembly of the project's own listings, breakpoints with an asserted hit and non-hit count, and a cycle-stamped access trace whose records are non-empty, cycle-monotonic, end at the report's own step tick and leave every digest byte-identical to the same run untraced. It is never installed, never enters the eleven-path prefix, and adds no gate step.
+- [x] **TOOL-09**: Trace and disassembly output over operator content is an operator-local, rights-bearing artifact: one question-shaped `data/rights/` row with a disposition and a "what was taken" cell, an output path inside the work tree refused by name except under the ignored `refs/`, an `ivst` file refused by name in the binary-extension list and `.gitignore`, and no trace or disassembly ever committed as a golden, fixture, CI artifact or claim artifact — whatever its content.
 
 ### Video and the display path
 
-- [ ] **VID-07**: The four rival display-path rules — the register-window length, the gating rule when the display is off, whether `$0020` strobes on a read or only on a write, and whether the display latch is cleared at each frame start — are separated by four authored guests whose observations are **diagonal** across the 16-cell sweep (each guest moves under its own field and no other, at the default of the remaining three), each with a liveness guard a committed stand-in can fail. Then either the decided default is pinned by one test per setting and every dependent expectation (profile tag, profile-field inventory, parameter digest, every snapshot literal, any moved golden retargeted in place, the append-only discrepancy note) moves in one commit, or the record reads "default unchanged, observation appended, rivals named". The field stays tagged `unknown-default-chosen` in either case.
-- [ ] **VID-08**: The D10-VID-08 hardware question is a named packet rather than a wish: the exact trace lines a hardware probe must contradict are written down, the row exists in `data/expected/handoffs.ids` with `evidence: none`, and no claim cites it and no phase exit criterion names it.
+- [x] **VID-07**: The four rival display-path rules — the register-window length, the gating rule when the display is off, whether `$0020` strobes on a read or only on a write, and whether the display latch is cleared at each frame start — are separated by four authored guests whose observations are **diagonal** across the 16-cell sweep (each guest moves under its own field and no other, at the default of the remaining three), each with a liveness guard a committed stand-in can fail. Then either the decided default is pinned by one test per setting and every dependent expectation (profile tag, profile-field inventory, parameter digest, every snapshot literal, any moved golden retargeted in place, the append-only discrepancy note) moves in one commit, or the record reads "default unchanged, observation appended, rivals named". The field stays tagged `unknown-default-chosen` in either case.
+- [x] **VID-08**: The D10-VID-08 hardware question is a named packet rather than a wish: the exact trace lines a hardware probe must contradict are written down, the row exists in `data/expected/handoffs.ids` with `evidence: none`, and no claim cites it and no phase exit criterion names it.
 
 ## v2 Requirements
 
@@ -85,11 +85,11 @@ requirement appears in exactly one phase.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| EV-08 | Phase 17 | Pending |
-| TOOL-02 | Phase 18 | Pending |
-| TOOL-09 | Phase 18 | Pending |
-| VID-07 | Phase 19 | Pending |
-| VID-08 | Phase 20 | Pending |
+| EV-08 | Phase 17 | Complete |
+| TOOL-02 | Phase 18 | Complete |
+| TOOL-09 | Phase 18 | Complete |
+| VID-07 | Phase 19 | Complete |
+| VID-08 | Phase 20 | Complete |
 
 **Coverage:**
 - v0.4.0 requirements: 5 total
@@ -106,5 +106,17 @@ appended, rivals named") **is** `Complete` for VID-07 on its own stated terms.
 
 ---
 *Requirements defined: 2026-11-26*
-*Last updated: 2026-11-26 at the v0.4.0 opening, with the five requirements
-minted from the frozen scope record and mapped to Phases 17 to 20*
+*Last updated: 2026-11-26 by plan 18-02, with TOOL-02 and TOOL-09 Complete once
+their five registry rows, the two build-only proofs and the rights row landed in
+one commit. TOOL-02's disassembly limb is plan `18-03`; if that limb is dropped,
+the drop is recorded in the frozen page (`docs/inspection.md`) and in `18-03`'s
+record, TOOL-02 exits with the reduced surface named, and this status is not
+retracted — the flip therefore does not depend on a droppable plan.
+*2026-11-27, plan 19-03:* VID-07 is `Complete` on **Exit B**'s own stated terms —
+"default unchanged, observation appended, rivals named". The sixteen-cell sweep is
+diagonal (each of the four guests moves under its own field and no other), no cell
+prefers a setting, the four rival rows (C1, C6, C82, C94) carry the appended
+observation, no claim cites it, and every display-path field stays tagged
+`unknown-default-chosen` because an observation is not a hardware probe (D-51). The
+six `stic-disc` registry rows landed in the same commit as this flip, because
+`important-gates` derives its accepted set from these records.*

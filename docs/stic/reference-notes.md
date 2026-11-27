@@ -214,3 +214,37 @@ STIC-R27 in practice (the artifact of the future claim CL-0021). The machine off
 
 The register literal, the geometry literal, the card bit roles, the chain framing and the ten frames were written from the sources and the written rules before any comparison with the planning notes' tables and before any core code exists (D-02); policy numbers (windows, hold, interrupt width, power-on state) are never expected values.
 The blind second reads are requested in `docs/stic/second-read-request.md`; the author, the reader and the core share one model family, so agreement is a check of transcription and derivation and not an independent implementation comparison (C43).
+
+## Display-path policy selectors (plan 19-01)
+
+The sustain rule and the two other settings that the display path could not move before are profile data since plan 19-01 (D-54). Three branches in the core now read a parameter instead of a constant, and each branch's value 1 reproduces the bytes of the commit before the change, so no frame, digest or golden moved when the parameter was introduced. Labels as above.
+
+- [INF] The sustain rule is `stic.display_latch_cleared_each_frame` (value 1: the display latch is cleared at every frame start, so one write to `$0020` displays one frame and the program must re-strobe; the alternate 0 is the persist rule). It is read at the frame-start event of `core/src/stic/stic_events.c`. `stic.access_gating_when_off` now produces a member of the same name (1: the access windows apply whatever the display latch is, the accepted `apply` policy; 0: the windows are open while the display is off), read in the gate decision of `core/src/machine/machine_bus.c`. Neither alternate is a profile value: the generator refuses anything but the implemented one, and an alternate is only ever a stack copy of the generated row inside a test.
+- [INF] The third setting was not a missing member but an unreachable row. `ivs_stic_effect` used to return "no effect" for every read that was not a mode-select address, so the `$0020` READ row of `stic.access_effects` could never be selected. The lookup now matches a READ by **exact address** for every address that is not a member of `stic.mode_select_addrs`, and keeps the register-index match for the members - so `$0020` is reachable, a read of `$0040` still has no effect (C84), and `$4021`, `$8021` and `$C021` still select Color Stack mode. Under the shipped profile the change is byte-identical: the only READ rows are `$0020` with effect `none` and `$0021` with the mode-select effect, and the mode-select addresses never reached the old early return.
+- [UNK] The field stays tagged `unknown-default-chosen` even if a default is later decided: an observation is not a hardware probe (D-51), and the D10-VID-08 measurement is the resolver. `stic.disc.g1-window`, `stic.disc.g3-read`, `stic.disc.g4-latch` and `stic.disc.displayed-equivalence` pin the defaults and their one-field reversals; each ships a committed stand-in that makes its liveness guard fail.
+
+## The sixteen-cell sweep and the exit it landed (plan 19-03)
+
+The four rival display-path rules are swept as sixteen parameter rows - four fields at two settings each,
+every cell a stack copy of the generated row rather than a profile file, a global or a second table - and
+the sweep is **diagonal**: each guest's registered observable moves under its own field and under no other,
+at the default of the remaining three. The four rival rows are C1 (the register-window length), C6 (the
+display-enable strobe), C82 (the `$0020` read effect and the per-frame re-strobe) and C94 (whether the
+windows apply while the display is off); C82 alone carries two of the four. Labels as above.
+
+- [INF] Separability is the whole result (`stic.disc.sweep-diagonal`, rules STIC-R13, STIC-R15, STIC-R18 and
+  STIC-R22, discrepancies C1, C6, C82 and C94): the sweep builds the sixteen cells from the generated row and
+  asserts one sentence - alternate value if and only if the cell sets the guest's own field - so a guest that
+  moved under two fields would be caught by the same comparison that proves the other three diagonal. The
+  measured alternate-value masks are 0xAAAA, 0xCCCC, 0xF0F0 and 0xFF00, one per guest, each exactly the cells
+  with that guest's own bit set. `stic.judge.disc-diagonal-two-fields` drives the same comparison on G1's
+  observable read the entangled way and is rejected at the gating cell, which is what makes the diagonal
+  falsifiable rather than promised.
+- [UNK] The exit is **Exit B**: default unchanged, observation appended, rivals named. A diagonal shows the
+  four fields *separable*; it cannot show which setting the hardware used, because the row under test is a
+  stack copy of the engine's own generated table and an engine agreeing with itself is not an oracle (D-51).
+  So no field is decided, the four rival rows keep their `default_policy` sentences and their `open` status
+  and each carries one appended dated observation, and the four display-path fields stay tagged
+  `unknown-default-chosen` even though every one of them is now movable and measured. The resolvers are
+  unchanged: C1 and C82 wait on the D10-VID-08 owner diagnostic, C94 on its own measurement, and this
+  milestone mints no claim from the sweep.

@@ -1421,6 +1421,16 @@
       "decision": null,
       "note": "Policy selector: the windows apply whatever the display latch is. The generator accepts only apply, the one policy the engine implements."
     },
+    "stic.display_latch_cleared_each_frame": {
+      "value": 1,
+      "tag": "unknown-default-chosen",
+      "cite": "none-found: no source states whether one display-enable strobe sustains the display for more than one frame",
+      "conflict": "C82",
+      "resolving_evidence": "test: stic.disc.g4-latch and stic.disc.g1-window (plan 19-01) pin the default and its one-field reversal; measurement: D10-VID-08",
+      "revisit_trigger": "a D10 strobe sweep, or a primary register description of the sustain rule",
+      "decision": null,
+      "note": "Policy selector: 1 = the display latch is cleared at every frame start, so one write to $0020 displays one frame and the program must re-strobe every frame; 0 = the latch persists across frame starts, so one write displays every following frame. 1 is today's rule (core/src/stic/stic_events.c) and reproduces the bytes of the commit before plan 19-01. The alternate is only ever a stack copy of the generated row in a test, never a second profile value. The field stays unknown-default-chosen even when a default is decided: an observation is not a hardware probe (D-51), and the D10-VID-08 measurement is the resolver."
+    },
     "stic.video_slack_frames": {
       "value": 1,
       "tag": "inference",

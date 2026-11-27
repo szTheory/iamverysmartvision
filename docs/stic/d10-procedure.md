@@ -37,6 +37,8 @@ Item `D10-VID-09`: right after power-on and again after a console reset, read th
 
 Item `D10-VID-08`: write the display strobe at a sweep of cycle offsets after the vertical-blank interrupt and record, for each offset, whether the frame is displayed; then write it once and record whether the next frames are displayed without another write; also read the strobe address and record whether the read arms the display.
 
+The four candidate pairs a capture is compared against, with the instrument's own lines for each, are the comparison list of the packet in docs/handoffs.md (`## D10-VID-08`); the capture is recorded in the `## Record format` shape unchanged, and nothing above this sentence changes.
+
 ## Frame edge and timing
 
 ### stic-frame-edge

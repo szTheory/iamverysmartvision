@@ -82,6 +82,14 @@ ivs_bus_reply ivs_machine_bus(void *ctx, const ivs_cp1610_access *a)
       if (cls != IVS_MEMSYS_HOOK_BACKTAB && (is_read != 0u || is_write != 0u)) {
         uint32_t gate = cls == IVS_MEMSYS_HOOK_GMEM ? IVS_MEMSYS_GATE_GMEM : IVS_MEMSYS_GATE_STIC_REGS;
         uint32_t open = c->m->mem.gate_open[gate];
+        /* Plan 19-01 (D-54, C94): the gating alternate. stic.access_gating_when_off = 1 is today's `apply` - the windows
+         * apply whatever the display latch is - and leaves the gate decision exactly as it was. At 0 the windows are open
+         * while the display is off: an access with the latch clear is treated as served, so it is neither counted as
+         * blocked nor refused an effect. The gate itself is NOT forced open: forcing it would also apply effects outside
+         * the window under the default, which would move stic.enable.seq.strobe-outside-window-dropped. */
+        if (open == 0u && c->stic->access_gating_when_off == 0u && c->m->stic.display_latch == 0u) {
+          open = 1u;
+        }
         if (open == 0u) {
           ivs_stic_count_blocked(&c->m->stic, is_read);
         }

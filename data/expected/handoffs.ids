@@ -34,6 +34,10 @@
 # pass, never evidence and never a criterion of any phase.
 # The D10 and D11 rows name items held in data/expected/d10-measurements.ids, cited by path
 # only: that file is the inventory and this file never restates its row count.
+# Phase 20 added D10-VID-08: the STIC display-strobe and latch item, whose procedure is
+# docs/stic/d10-procedure.md `### stic-strobe`, whose packet is the section of the same name in
+# docs/handoffs.md, and which needs physical hardware, so no tool on this host can perform it. Like
+# every row here it is never a pass, never evidence and never a criterion of any phase.
 H7-1 handed-off evidence: none
 H7-2 handed-off evidence: none
 H8-3 handed-off evidence: none
@@ -42,3 +46,4 @@ D11 not-performed evidence: none
 H16-1 handed-off evidence: none
 H16-2 handed-off evidence: none
 H16-3 handed-off evidence: none
+D10-VID-08 not-performed evidence: none

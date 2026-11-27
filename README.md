@@ -55,6 +55,7 @@ It is a local helper only: it is not a gate step and CI does not run it.
 - `core/` holds the machine core and its public headers, `runner/` the headless runner and `tests/` the test suites and the installed consumer.
 - `fixtures/` holds project-authored fixtures, programs and their manifests.
 - `tools/` holds the gate and its checks, and the development tools that build fixture images.
+- The build-only inspection instrument (`ivs-inspect`, built from `tools/inspect/`, never installed) and its frozen contract are described in [`docs/inspection.md`](docs/inspection.md).
 - `refs/` is a local, ignored cache for reference documents and is never tracked.
 
 ## Rights and provenance

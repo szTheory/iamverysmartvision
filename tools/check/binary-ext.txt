@@ -12,8 +12,10 @@
 # host-so-absent plants one in a copy of the installed prefix; the release-assets case so-member
 # plants one in a synthetic archive. dll and bundle are listed with no control: the four
 # extensions are one line of code in files.cmake, and a control per extension would prove it
-# again for no new evidence (the tools/bench precedent). Do not put a comment inside the list
-# body: a trailing comment on a name line would become part of the name.
+# again for no new evidence (the tools/bench precedent). Plan 18-02 (TOOL-02, TOOL-09) adds ivst: the
+# build-only inspection instrument's own artifact, an operator-local and rights-bearing derivative, so a
+# tracked one is a rights problem by name. Its control is files-unlisted-binary-ivst. Do not put a
+# comment inside the list body: a trailing comment on a name line would become part of the name.
 #
 # The list body follows, one extension per line.
 int
@@ -44,6 +46,7 @@ wav
 ppm
 vraw
 ivsn
+ivst
 so
 dylib
 dll

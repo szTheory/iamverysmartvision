@@ -76,10 +76,12 @@ foreach(p IN LISTS paths)
   # host/ joins the C/H and CMakeLists alternations in plan 15-01 (TOOL-08) the same way: tests/host/ was already
   # covered by the tests/ alternative, host/ was not, and a scope widening is not a new check - the mechanisms
   # (integrity-missing-spdx, integrity-non-ascii) stay proved by the eight committed controls.
+  # tools/inspect/ joins the alternation in plan 18-02 (TOOL-02) the same way: without it the new directory would be
+  # silently outside this scan, and a source with no licence line would pass the gate.
   if(p MATCHES "^tools/.*[.](sh|cmake)$" OR p MATCHES "^[.]github/workflows/[^/]*[.]yml$"
      OR p MATCHES "^(core|include|tests|host)/.*[.](c|h|sh|cmake)$" OR p MATCHES "^cmake/.*[.]cmake$"
      OR p MATCHES "^CMakeLists[.]txt$" OR p MATCHES "^(core|include|tests|runner|host)/(.*/)?CMakeLists[.]txt$"
-     OR p MATCHES "^runner/.*[.](c|h|sh|cmake)$" OR p MATCHES "^tools/(pack|cart|pcm|asm|bench|flatwrap)/.*[.](c|h)$")
+     OR p MATCHES "^runner/.*[.](c|h|sh|cmake)$" OR p MATCHES "^tools/(pack|cart|pcm|asm|bench|flatwrap|inspect)/.*[.](c|h)$")
     string(FIND "${content}" "SPDX-License-Identifier: MIT" pos)
     if(pos EQUAL -1)
       gate_fail(integrity-missing-spdx "${p}")

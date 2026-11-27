@@ -1,5 +1,14 @@
 # Milestones
 
+## v0.4.0 v0.4.0 (Shipped: 2026-11-27)
+
+**Phases completed:** 4 phases, 11 plans, 12 tasks
+
+**Key accomplishments:**
+- The milestone's opening cost window recomputed by arithmetic at `21d023c` — `cpu_s` 572, `build_s` 49, `gate_s` 164 against the previous 367 / 34 / 115 — with the seven release-records rows verified present once each rather than re-appended, the phase's 0.11 addition charged against the 21 allowance, and one `reprice` line closing the block because the median moved by a runner event while the token line did not.
+
+---
+
 ## v0.3.0 Owner-Supplied Content and a Driveable Host (Shipped: 2026-11-26)
 
 **Phases completed:** 4 phases, 17 plans, 24 tasks

@@ -105,6 +105,29 @@ files.
 
 ## Phases
 
+### v0.4.0 - Inspectable Machine, One Default Decided
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 17. Records, Cost Window and the Count-Gate Contract | 3/3 | Complete    | 2026-11-26 |
+| 18. The Inspection Surface | 3/3 | Complete    | 2026-11-26 |
+| 19. Discriminating the Display Path | 3/3 | Complete    | 2026-11-27 |
+| 20. Route, Witness and Release Posture | 2/2 | Complete    | 2026-11-27 |
+
+**Current milestone:** v0.4.0 "Inspectable Machine, One Default Decided", scoped by
+this roadmap on 2026-11-26 and **in progress**. The heading above was rewritten on
+2026-11-26 because the milestone tool derived `milestone_name` from it and had written
+`scoped 2026-11-26 (in progress)` — a date, not a name — into `STATE.md` and
+`.planning/state.json`. Eleven plans over four phases, none started. The
+milestone adds zero new gate steps, faults or goldens, mints no claim (`claims=29`
+and `provisional=28` are invariants), and prices 4.72 of the 21 hosted cpu-s
+allowance.
+
+**Phase details for v0.3.0 are archived** in `.planning/milestones/v0.3.0-ROADMAP.md`
+(the phase shape, goals, success criteria, waves and plan lists), with the
+requirements in `.planning/milestones/v0.3.0-REQUIREMENTS.md` and the audit in
+`.planning/milestones/v0.3.0-MILESTONE-AUDIT.md`. They are not restated here.
+
 <details>
 <summary>✅ v0.1.0 Machine Core Foundations (Phases 1 to 8) — SHIPPED 2026-11-24</summary>
 
@@ -116,6 +139,16 @@ files.
 - [x] Phase 6: STIC Video First Pass (14/14 plans) — completed 2026-11-12
 - [x] Phase 7: First Visible Original Scenario (12/12 plans) — completed 2026-11-13
 - [x] Phase 8: STIC Completion, Save State and Performance Baselines (21/21 plans) — completed 2026-11-24
+
+</details>
+
+<details>
+<summary>✅ v0.4.0 Inspectable Machine, One Default Decided (Phases 17 to 20) — all four phases complete 2026-11-27</summary>
+
+- [x] Phase 17: Records, Cost Window and the Count-Gate Contract (3/3 plans) — completed 2026-11-26
+- [x] Phase 18: The Inspection Surface (3/3 plans) — completed 2026-11-27
+- [x] Phase 19: Discriminating the Display Path (3/3 plans) — completed 2026-11-27
+- [x] Phase 20: Route, Witness and Release Posture (2/2 plans) — completed 2026-11-27
 
 </details>
 
@@ -228,7 +261,16 @@ contract becomes a numbered lesson with a mechanism.
   3. One committed id, `runner-process.judge.flatwrap-shim` in the existing `tests/runner-process-tap.sh` suite, asserts that the shim's cartridge-slot digest equals the container `tools/flatwrap` wrote in the same case, and a committed stand-in that ignores its input (one flipped input byte) is shown failing that id. `ls tools/check/steps/*.sh | wc -l` still reads 38.
   4. `docs/packaging.md`'s "no host shim ships" sentence is corrected to name the source archive beside the static package - the archive carries the source of the build-only tools and of the build-only host shim and ships no built object - and agrees, sentence for sentence, with the release-decision line of `.planning/ops/RELEASE-OPS.md` section (i).
   5. `.planning/ops/PLAN-LESSONS.md` holds lesson 32 **with its mechanism**: every count gate names the file it counts, every baseline names the plan's own start commit sha and is measured there, and no verify block decides an outcome by a pipeline tail, carried by a `mutant` row in `data/expected/important-gates.ids` over an existing selftest and shown able to fail on a committed stand-in. `faults=238`, `goldens=29`, `claims=29` and `provisional=28` are unchanged.
-**Plans**: TBD (3 planned: `17-01` the seven rows and the recomputed window, `17-02` the document set and the `flatwrap-shim` id, `17-03` lesson 32 and its mechanism; one wave, serial, because `17-02` and `17-03` both touch `data/expected/`)
+**Plans**: 3/3 plans complete, waves 1 to 3, serial (because `17-02` and `17-03` both touch `data/expected/`)
+Plans:
+**Wave 1**
+- [x] 17-01-PLAN.md — the seven release-records rows verified and the cost window recomputed by arithmetic at the plan's own start commit, printed before anything is priced with exactly one checkpoint line (the phase's tracer; criterion 1; wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [x] 17-02-PLAN.md — the eight `flatwrap` refusal tokens documented, the source-archive letter corrected in both live documents, and `runner-process.judge.flatwrap-shim` shown able to fail by a committed stand-in the same comparison refuses; carries the EV-08 acceptance flip and its thirteen toy lines (criteria 2, 3 and 4; wave 2; every baseline measured at its own start commit and recorded in `17-02-SUMMARY.md`)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [x] 17-03-PLAN.md — lesson 32 with the `count-gate` mechanism over an existing selftest (criterion 5; wave 3; every baseline measured at its own start commit and recorded in `17-03-SUMMARY.md`)
 **Tier ceiling**: none - this phase adds no claim.
 **Cost**: 0.10 hosted cpu-s against the 21 allowance; a records cost, not a gate cost, because the window is the phase's own first deliverable.
 
@@ -247,7 +289,10 @@ operator-local, rights-bearing artifact.
   3. Breakpoints are asserted as a pair in one id: hit count 1 at a unique PC and 0 at an unreached PC, with a stand-in matcher that always hits shown failing the 0 case. The disassembly limb (`18-03`) round-trips in the existing `tests/asm-tap.sh` suite: disassemble, re-assemble with `ivs_asm`, bytes equal to the input, with words > 0, at least one two-word form and one immediate present, and a constant-mnemonic stand-in failing byte equality. If `18-03` is dropped, `docs/inspection.md`'s disassembly section reads "not built; a reader uses the committed listings named in `data/expected/listings.ids`" and TOOL-02 exits with the reduced surface named.
   4. `data/rights/inspection-output.json` (`disposition: owner-local-only`, `source: null`, nothing taken, tokens `trace-file`, `disassembly-dump`, `inspection-dump`), `data/expected/rights.ids` and the `docs/RIGHTS.md` row land in one commit, and `ivst` joins `tools/check/binary-ext.txt` and `.gitignore` in that same commit. The tool refuses an output path inside the work tree with `inspect-output-tree` beside its `refs/` positive and refuses an existing file, and `git ls-files | grep -E '\.ivst$'` is empty.
   5. The tool is build-only and nothing it touches moves: `data/expected/pkg-install-files.ids` stays 11 with a `pkg-install` selftest that `ivs_inspect` is absent from the prefix, one `release-assets` case refuses it as an archive member, `ls tools/check/steps/*.sh | wc -l` reads 38, and no profile field, parameter digest, snapshot literal or golden moves (`goldens=29`, `faults=238`, `claims=29`, `provisional=28`).
-**Plans**: TBD (3 planned: `18-01` freeze `docs/inspection.md` alone in wave 1; `18-02` the tool with the trace, the breakpoints and the command surface in wave 2; `18-03` disassembly and the `ivs_asm` round trip in wave 3, droppable)
+**Plans**: 3 plans
+- [ ] 18-01-PLAN.md - freeze `docs/inspection.md` alone in wave 1, with the ancestry proof (W5)
+- [ ] 18-02-PLAN.md - the build-only tool: the report from the library, the trace from its own loop, the five reconciliation equalities, the breakpoint pair, the `step` surface, the rights row and the two build-only proofs
+- [ ] 18-03-PLAN.md - disassembly and the `ivs_asm` round trip (wave 3, droppable under the frozen page's own reversal condition)
 **Tier ceiling**: none - the tool is build-only and its output is repeatability information, never a claim.
 **Cost**: 2.96 hosted cpu-s against the 21 allowance, the largest line of the milestone, priced from an alternated local measurement (D-55) because it builds one new target under the existing presets and adds no step.
 
@@ -265,7 +310,10 @@ unchanged with the rivals named.
   3. Exactly one of two exits is recorded. **Exit A:** the decided default is pinned by two ids, one per setting, each building the alternate parameter row explicitly, and one commit carries the whole `GUARDRAILS-v0.4` **W1** chain - the profile field with its tag and cite, `data/expected/profile-fields.ids`, the parameter digest, every snapshot literal in `data/expected/ivsn-literals.ids`, any moved golden retargeted in place, the moved `stic` inventory ids, the append-only C-row note and the prose - with the commit's file list equal to the enumeration written into the phase record before the commit. **Exit B:** the record reads "default unchanged, observation appended, rivals named", which is `Complete` for VID-07 on its own stated terms. A mismatch between the enumeration and the commit's file list is a stop, not a re-bless.
   4. In both exits the four rival rows in `data/discrepancies.json` carry the appended observation, the field stays tagged `unknown-default-chosen` (D-51: an observation is not a hardware probe), no claim cites the observation, `claims=29` and `provisional=28` are unchanged, `goldens=29` (a moved golden is retargeted, never added), and no claim, tier or golden records a digest, size, path or name of an operator file.
   5. The owner-local sweep (`19-02`) is contained as a throwaway probe and is nobody's exit criterion: it lives under `refs/` only, is bounded by a wall-clock limit and a run count, its output is refused outside `refs/` on the `tools/flatwrap` precedent, and it is `skip-ok` (exit 13, `missing-fixture`) in both test inventories. Its absence, or a run that ends inconclusive, leaves criteria 1 to 4 standing: no criterion of this phase depends on a human act.
-**Plans**: TBD (3 planned: `19-01` one authored guest per rival rule with pairwise-distinct traces; `19-02` the bounded throwaway owner-local sweep; `19-03` the decision commit or the degraded record)
+**Plans**: 3/3 plans executed
+- [x] 19-01-PLAN.md - the four authored guests with one machine-state observable and a liveness guard each, the three branches that make the unreachable fields movable, and the display-latch field row with its whole W1 chain (wave 1)
+- [x] 19-02-PLAN.md - the bounded `refs/`-only owner-local probe, `skip-ok` in both inventories (wave 2)
+- [x] 19-03-PLAN.md - the sixteen-cell diagonal sweep with its committed stand-in, both exits' commit shapes written before the measurement, and the exit the measurement decides (wave 3). The measurement decided **Exit B**: the sixteen cells are diagonal (masks 0xAAAA, 0xCCCC, 0xF0F0, 0xFF00) and no cell prefers a setting, so the record reads "default unchanged, observation appended, rivals named", the four rival rows C1, C6, C82 and C94 carry the observation, and every display-path field stays tagged `unknown-default-chosen` (D-51)
 **Tier ceiling**: none - the field stays `unknown-default-chosen` even when a default is decided.
 **Cost**: 1.64 hosted cpu-s against the 21 allowance, for four discrimination ids and two pinning ids per decided field inside the existing `stic` suite. Registered as faults the same cases would cost 1.76 and move `faults=238`, which is why they are ids.
 
@@ -282,7 +330,11 @@ release decision is recomputed rather than quoted.
   3. The packet names the exact trace lines a hardware probe must contradict - the record fields and, per guest, the observable line and its two candidate values under the rival rules from Phase 19 - as a list a probe's capture is compared against. No claim cites the row: the claim-artifact predicate refuses a handoff id, and that refusal is shown able to fail on a committed stand-in.
   4. The packet's own status line reads either the four rival candidates from Phase 19's guests or "unproduced by instrument", naming the trace lines as specified in `docs/inspection.md`, and no criterion anywhere in this milestone requires the packet's answer or the D11 sweep to be performed - the packet is a row, not a gate.
   5. The release-decision line is recomputed per `.planning/ops/RELEASE-OPS.md` section (i) and reads: the release ships the static package and the source archive, which carries the source of the build-only tools and of the build-only host shim; no shared object, no built host shim, no built inspection tool, no trace or disassembly output, no content - with `data/expected/pkg-install-files.ids` still 11 and `release-assets` unchanged.
-**Plans**: TBD (2 planned: `20-01` the operator page and the route; `20-02` the VID-08 packet, the handoff row and the release line)
+**Plans:** 2 plans
+
+Plans:
+- [ ] `20-01-PLAN.md` - the operator page and the owner route: an appended `## The operator route` section in `docs/inspection.md` whose every line is executed as written, and the instrument named in `docs/owner-images.md`, with the naming limb widened by one page and zero rights tokens (wave 1, tracer)
+- [ ] `20-02-PLAN.md` - the VID-08 packet, the ninth handoff row and the recomputed release-decision line: the exact trace lines and the two candidate values per guest, the row no claim can cite with its refusal shown on the committed stand-in, and the release line re-run clause by clause (wave 2)
 **Tier ceiling**: none - the packet is a handoff row.
 **Cost**: 0.02 hosted cpu-s against the 21 allowance: one handoff row, one document section and a recomputed release line, with no new id in the gate.
 
@@ -398,22 +450,3 @@ The milestone adds zero new gate steps, faults or goldens, and at most one claim
 
 
 
-### v0.4.0 - scoped 2026-11-26 (in progress)
-
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 17. Records, Cost Window and the Count-Gate Contract | 0/3 | Not started | - |
-| 18. The Inspection Surface | 0/3 | Not started | - |
-| 19. Discriminating the Display Path | 0/3 | Not started | - |
-| 20. Route, Witness and Release Posture | 0/2 | Not started | - |
-
-**Current milestone:** v0.4.0 "Inspectable Machine, One Default Decided", scoped by
-this roadmap on 2026-11-26. Eleven plans over four phases, none started. The
-milestone adds zero new gate steps, faults or goldens, mints no claim (`claims=29`
-and `provisional=28` are invariants), and prices 4.72 of the 21 hosted cpu-s
-allowance.
-
-**Phase details for v0.3.0 are archived** in `.planning/milestones/v0.3.0-ROADMAP.md`
-(the phase shape, goals, success criteria, waves and plan lists), with the
-requirements in `.planning/milestones/v0.3.0-REQUIREMENTS.md` and the audit in
-`.planning/milestones/v0.3.0-MILESTONE-AUDIT.md`. They are not restated here.

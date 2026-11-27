@@ -76,6 +76,7 @@ int main(int argc, char **argv)
   stic_add(ivs_stic_fuzz_cases, ivs_stic_fuzz_count);
   stic_add(ivs_stic_iso_cases, ivs_stic_iso_count);
   stic_add(ivs_stic_bounds_cases, ivs_stic_bounds_count);
+  stic_add(ivs_stic_disc_cases, ivs_stic_disc_count);
   if (stic_total > STIC_MAX_CASES) {
     fprintf(stderr, "stic: more than %u cases; raise STIC_MAX_CASES\n", STIC_MAX_CASES);
     return 1;

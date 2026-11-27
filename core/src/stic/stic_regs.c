@@ -6,8 +6,10 @@
  * ivs_stic_effect: a WRITE or DW takes the effect row of its register (address & 63, the write aliases included): arm
  * (the display-enable strobe) or the Foreground/Background mode select; a READ or FETCH takes an effect only when its
  * ADDRESS, before any decode, is a member of stic.mode_select_addrs (the alias addresses decode to the cartridge in the
- * read view, A-07), and then the effect row of that register (the Color Stack mode select). A read of the other
- * registers has no effect, so the read view of the register file and PEEK never switch a mode.
+ * read view, A-07), and then the effect row of that register (the Color Stack mode select). A read of any other address
+ * matches a row by EXACT ADDRESS (plan 19-01): the profile's $0020 READ row is therefore reachable, and because its
+ * effect is `none` a read of the register file still has no effect - so the read view and PEEK never switch a mode, and
+ * a read of $0040 keeps no effect (C84).
  * ivs_stic_apply_effect changes only the display latch and the mode. ivs_stic_count_blocked counts a refused access,
  * saturating at 0xFFFFFFFF. */
 #include "common/ivs_prelude.h"
@@ -29,13 +31,29 @@ uint32_t ivs_stic_effect(const ivs_stic_params *p, uint32_t access, uint32_t add
 {
   uint32_t reg = addr & (IVS_STIC_REG_COUNT - 1u);
   uint32_t i;
-  if (access == IVS_STIC_ACCESS_READ && ivs_stic_is_mode_select_addr(p, addr) == 0u) {
-    return IVS_STIC_EFFECT_NONE;
+  /* Plan 19-01 (D-54, C82, C84): the READ match has two limbs, and under the shipped profile they are byte-identical to
+   * the unconditional early return this function used to make.
+   *   - A READ whose ADDRESS is a member of stic.mode_select_addrs keeps the REGISTER-INDEX match, so $0021, $4021,
+   *     $8021 and $C021 all reach the $0021 READ row and still select Color Stack mode. This limb is not optional: an
+   *     exact-address match for $4021 finds no row, and stic.alias.read-4021-switches-mode - which asserts C84's stated
+   *     default - would go red.
+   *   - A READ of any other address matches a row by EXACT ADDRESS, so the $0020 READ row is reachable at all while a read
+   *     of $0040 stays inert. A masked match is forbidden here: $0040 has register index 0 and would arm the display,
+   *     which C84 forbids.
+   * A WRITE or DW keeps the masked match unconditionally: the write aliases at $4000, $8000 and $C000 are what C84 and
+   * the stic.alias.* family are about. */
+  uint32_t exact = 0u;
+  if (access == IVS_STIC_ACCESS_READ) {
+    exact = ivs_stic_is_mode_select_addr(p, addr) == 0u ? 1u : 0u;
   }
   for (i = 0u; i < p->effect_count; i++) {
-    if ((uint32_t)p->effect_access[i] == access && ((uint32_t)p->effect_addr[i] & (IVS_STIC_REG_COUNT - 1u)) == reg) {
-      return p->effect_code[i];
+    if ((uint32_t)p->effect_access[i] != access) {
+      continue;
     }
+    if (exact != 0u ? (uint32_t)p->effect_addr[i] != addr : ((uint32_t)p->effect_addr[i] & (IVS_STIC_REG_COUNT - 1u)) != reg) {
+      continue;
+    }
+    return p->effect_code[i];
   }
   return IVS_STIC_EFFECT_NONE;
 }

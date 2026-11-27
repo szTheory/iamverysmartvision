@@ -618,3 +618,90 @@ release-posture control files-unlisted-binary-dylib PKG-06
 # selftest inventories or a `<suite>.judge.<slug>`/`<suite>.mutant.<slug>` test id, and a name outside
 # those inventories would make this row important-gates-unknown-id.
 release-posture mutant host-so-absent PKG-06
+# cart-role (plan 17-02, EV-08, criterion 3): the flatwrap-to-shim join. The harness's digest.images for the
+# container the wrap tool wrote equals the runner's digest.images for it, and the runner's slot.cart.sha256
+# equals the digest the tool printed; one flipped input byte must move both, and the committed stand-in that
+# replays the FIRST container's lines against the SECOND container is refused with join-images. The
+# same-input-twice stand-in is therefore the case's own second container, judged by the same shim_join, so the
+# must-fail demonstration is repeated on every gate run instead of once. The gate name is the existing
+# cart-role: no new gate name is minted, and no new fault, step or golden is produced.
+cart-role mutant runner-process.judge.flatwrap-shim EV-08
+# count-gate (plan 17-03, EV-08, lesson 32 clause 1): a count gate names the file it counts, and the count is
+# taken from that file. The pkg-install step's check_inventory reads data/expected/pkg-install-files.ids (eleven
+# paths) and prints that file's own name as pkg-inventory-list when it is missing, so a count read from anywhere
+# else is a finding rather than a number; the committed `extra-file` case copies the installed prefix, plants
+# share/ivs/stray.txt in the copy, and requires `pkg-inventory-extra: share/ivs/stray.txt` from the same
+# check_inventory the real prefix is judged by. The stand-in is committed code inside the step, so the
+# demonstration is re-run on every gate run and reported as the step's own pkg-selftest=20/20 token, instead of
+# being built and deleted once. The row therefore POINTS at a mechanism that already exists - the same case is
+# registered for PKG-01 under the step's own gate name - rather than minting a case to register: a new case
+# would cost 0.05 hosted cpu-s and reprice this phase from 0.11 to 0.16, and the phase's priced line stays 0.11
+# (one process id plus the two 0.005 rows). The gate is named `count-gate`, not `pkg-install`, because the row
+# registers a CONTRACT rather than a step, exactly as d09-06-registration registers one; the new gate name is
+# deliberate and is what makes the gate line's `gates` token read 120. Lesson 32's clause 3 (no verdict decided
+# by a pipeline tail) is already registered as d09-06-registration mutant st-pass-line EV-07 and is cited there,
+# not duplicated: a second row for one proof is the second registration plan 13-04 named and refused. Clause 2
+# (a baseline names the plan's own start commit sha) has NO mechanism - no gate step parses plans - and is
+# therefore not registered here: a row for it would register a mechanism that does not exist.
+count-gate mutant extra-file EV-08
+
+# Phase 18 (plan 18-02, TOOL-02 TOOL-09): the inspection surface's four committed stand-ins and the one
+# control for the artifact class. Five rows, two gate names - four `mutant` rows under the EXISTING
+# `runner-process` gate name, whose stand-ins are cases inside the `runner-process` suite that the gate
+# re-runs on every run, and one `control` row under the new gate name `files`, which is the step that
+# enforces the extension refusal. Every mechanism is a new id in an existing suite, a control directory
+# or an in-step selftest: zero new faults, zero new steps, zero new goldens.
+#
+# The four trace stand-ins each fail for its own stated reason and each is judged by the SAME function
+# the real case uses (GUARDRAILS-v0.4 2.7, 2.8): trace-empty fails `records > 0`; trace-repeat-tick
+# fails the fifth equality's `not all equal` clause - a constant column IS non-decreasing, so a
+# monotonicity-only check would accept it, which is what makes this stand-in the guard's own negative
+# control; trace-pokes-register replaces one `digest.*` line with another domain's value, is refused by
+# the suite's digest comparison, and is then fed to the tool's own reconciliation, which must refuse it
+# with `inspect-reconcile`, exit 1 and no output file; break-always-hits sets the non-hit count to 1 and
+# is refused by the hit/non-hit pair. The stand-ins and their guards landed in plan 18-02's Task 2
+# commit and these rows land in Task 3's, because this step derives its accepted set from the
+# traceability table and refuses a row naming a Pending requirement - the derived-accepted-set rule
+# (GUARDRAILS-v0.4 2.14) is what forces that split, and the plan records it as a deviation.
+runner-process mutant runner-process.judge.trace-empty TOOL-02
+runner-process mutant runner-process.judge.trace-repeat-tick TOOL-02
+runner-process mutant runner-process.judge.trace-pokes-register TOOL-02
+runner-process mutant runner-process.judge.break-always-hits TOOL-02
+# The control row is TOOL-09's own refusal: a tracked `ivst` in the tree must be refused by name, and
+# `files` is the step that owns `tools/check/binary-ext.txt`. The row is the phase's one new gate name,
+# which is why the gate line's `gates` token reads 121 rather than 120.
+files control files-unlisted-binary-ivst TOOL-09
+# Phase 18 TOOL-02 plan 18-03 (the disassembly limb's own stand-in): one `mutant` row under the new gate
+# name `asm`, over asm.judge.dis-constant-mnemonic - the case that replaces every instruction line of the
+# emitter's own output with the whole line `DECLE $0000`, reassembles it with ivs_asm and requires the
+# word comparison to fail. The stand-in is a committed case in the existing `asm` suite, re-run on every
+# gate run, so the row adds no step, no fault, no golden and no control; it is the liveness guard on the
+# round trip's word equality (docs/inspection.md, `## Liveness guards`), and it is why a DECLE-everything
+# emitter cannot pass. TOOL-02 is already Complete from plan 18-02, so the row and the requirement agree
+# in both directions, and the gate name is new because the row registers a contract rather than a step.
+asm mutant asm.judge.dis-constant-mnemonic TOOL-02
+# Phase 19 VID-07 plan 19-03 (the sixteen-cell sweep and the five stand-ins it makes falsifiable): six `mutant`
+# rows under one new gate name `stic-disc`, one per committed stand-in - plan 19-01's four guests' judges
+# (disc-g1-dead, disc-g2-dead, disc-g3-dead, disc-g4-dead), its displayed-word equivalence judge
+# (disc-equivalence-dead) and this plan's diagonal stand-in (disc-diagonal-two-fields). A `mutant` row is a suite
+# self-control `<suite>.judge.<slug>` judged by tests-inventory, so these rows add no step, no fault, no golden and
+# no control: zero new faults, zero new steps, zero new goldens, and the sweep stays an id inside the existing
+# `stic` suite. The gate name is new because the suite's discrimination family is a contract, not a step - the
+# EV-07/TOOL-02 precedent - so `gates` moves by one and `lines` by six.
+# What each stand-in proves, in one line each: disc-g1-dead makes G1's blocked counter stop moving; disc-g2-dead
+# moves G2's write inside the window; disc-g3-dead writes where G3 reads; disc-g4-dead re-strobes every frame;
+# disc-equivalence-dead reads the two words of the displayed equivalence at two different instants; and
+# disc-diagonal-two-fields reads G1's observable the entangled way, so the diagonal check must reject it for moving
+# under a field that is not its own - which is what makes "each guest moves under its own field and no other"
+# falsifiable rather than promised.
+# The rows and the VID-07 flip land in ONE commit for the derived-accepted-set reason: this step derives its accepted
+# set from the requirement records' Complete ids and refuses a row naming a Pending requirement, so a row cannot
+# precede the flip. The cases and their stand-ins landed one task earlier (19-01's Task 1 and Task 3, this plan's
+# Task 1) and the split is recorded in 19-01-SUMMARY.md and 19-03-SUMMARY.md as a 2.7 deviation, with Phase 18's
+# observation O4 as the precedent.
+stic-disc mutant stic.judge.disc-g1-dead VID-07
+stic-disc mutant stic.judge.disc-g2-dead VID-07
+stic-disc mutant stic.judge.disc-g3-dead VID-07
+stic-disc mutant stic.judge.disc-g4-dead VID-07
+stic-disc mutant stic.judge.disc-equivalence-dead VID-07
+stic-disc mutant stic.judge.disc-diagonal-two-fields VID-07

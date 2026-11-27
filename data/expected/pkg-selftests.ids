@@ -31,3 +31,8 @@ scn-digest-drift
 snap-domain-missing
 snap-digest-drift
 host-so-absent
+# Plan 18-02 (TOOL-02, D-52, GUARDRAILS-v0.4 2.1): a bin/ivs-inspect planted in a copy of the installed prefix must
+# be refused as pkg-inventory-extra by the same check_inventory the real prefix is judged by, so the build-only
+# inspection tool cannot acquire an install rule unnoticed and the eleven-path inventory stays the thing that makes
+# its absence a check. The install inventory itself is not touched: eleven paths before and after.
+inspect-absent

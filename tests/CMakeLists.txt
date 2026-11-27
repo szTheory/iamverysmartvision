@@ -315,7 +315,7 @@ add_custom_command(
   COMMAND "${CMAKE_COMMAND}" "-DROOT=${PROJECT_SOURCE_DIR}" "-DOUT=${IVS_STICPROBE_INC}" -P "${IVS_STICPROBE_GENERATOR}"
   DEPENDS ${IVS_STICPROBE_LITERALS} "${PROJECT_SOURCE_DIR}/data/video/geometry.literal.txt" "${IVS_STICPROBE_GENERATOR}"
   COMMENT "Generating the STIC literal probe include")
-set(IVS_STIC_TEST_SOURCES stic/stic_main.c stic/stic_events.c stic/stic_access.c stic/stic_progs.c stic/stic_reg.c stic/stic_hook.c stic/stic_profile.c stic/stic_judge.c stic/stic_state.c stic/stic_peek.c stic/stic_lines.c stic/stic_irq.c stic/stic_busrq.c stic/stic_fetch.c stic/stic_tile.c stic/stic_slice.c stic/stic_fuzz.c stic/stic_iso.c stic/stic_bounds.c machine/machine_standin.c)
+set(IVS_STIC_TEST_SOURCES stic/stic_main.c stic/stic_events.c stic/stic_access.c stic/stic_progs.c stic/stic_reg.c stic/stic_hook.c stic/stic_profile.c stic/stic_judge.c stic/stic_state.c stic/stic_peek.c stic/stic_lines.c stic/stic_irq.c stic/stic_busrq.c stic/stic_fetch.c stic/stic_tile.c stic/stic_slice.c stic/stic_fuzz.c stic/stic_iso.c stic/stic_bounds.c stic/stic_disc.c machine/machine_standin.c)
 add_executable(ivs_tests_stic ${IVS_STIC_TEST_SOURCES} "${IVS_STICPROBE_INC}")
 target_include_directories(ivs_tests_stic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/machine" "${CMAKE_CURRENT_SOURCE_DIR}/stic" "${CMAKE_CURRENT_BINARY_DIR}")
 target_link_libraries(ivs_tests_stic PRIVATE ivs_test_harness ivs_core ivs_core_internal ivs_warnings ivs_san)
@@ -715,8 +715,11 @@ set_tests_properties(pack PROPERTIES SKIP_RETURN_CODE 77 ENVIRONMENT "CMAKE=${CM
 # Each twin under tests/asm/twins/ is assembled by ivs_asm and its words, read back by ivs_pack
 # --dump-words, must equal ivs_pack's words of the committed hand listing; asm.judge.mutated-twin shows
 # the comparison can fail. ivs_asm reads only its source and writes only its listing; no core is involved.
+# The fourth argument (plan 18-03, TOOL-02) is the build-only inspection instrument: the asm.dis.* cases
+# disassemble the boot-stub listing, reassemble the emitted source with ivs_asm and compare the two word
+# dumps, so the disassembly limb is judged by the same comparator the twins use.
 add_test(NAME asm COMMAND sh "${CMAKE_SOURCE_DIR}/tests/asm-tap.sh" "${CMAKE_SOURCE_DIR}" "$<TARGET_FILE:ivs_asm>"
-  "$<TARGET_FILE:ivs_pack>")
+  "$<TARGET_FILE:ivs_pack>" "$<TARGET_FILE:ivs_inspect>")
 set_tests_properties(asm PROPERTIES SKIP_RETURN_CODE 77)
 
 # Suite bench (plan 08-18, D-21 to D-26, D-39): the benchmark tool ivs-bench of this preset in its --verify-only mode against the committed
@@ -750,9 +753,11 @@ target_link_libraries(ivs_host_harness PRIVATE ivs_warnings ivs_san ${CMAKE_DL_L
 # (plan 08-07, D-10, D-37, D-40): the six STIC2 program mutants run their scenario only in a Release build and are judged
 # statically in any other (the same ids, no skip-ok). The seventh argument (plan 15-01, TOOL-08) is the built
 # build-only shared object: the host cases dlopen it and report a finding, never a skip, when it is missing. The eighth is
-# the fake frontend executable itself, which drives it.
+# the fake frontend executable itself, which drives it. The ninth (plan 18-02, TOOL-02) is the build-only inspection
+# instrument: the inspection cases drive it as a script does and report a finding, never a skip, when it is missing.
 add_test(NAME runner-process
   COMMAND sh "${CMAKE_SOURCE_DIR}/tests/runner-process-tap.sh" "${CMAKE_SOURCE_DIR}"
           "$<TARGET_FILE:ivs_run>" "$<TARGET_FILE:ivs_pack>" "${IVS_IMAGES_DIR}" "$<CONFIG>"
-          "$<TARGET_FILE:ivs_flatwrap>" "$<TARGET_FILE:ivs_retro_shim>" "$<TARGET_FILE:ivs_host_harness>")
+          "$<TARGET_FILE:ivs_flatwrap>" "$<TARGET_FILE:ivs_retro_shim>" "$<TARGET_FILE:ivs_host_harness>"
+          "$<TARGET_FILE:ivs_inspect>")
 set_tests_properties(runner-process PROPERTIES SKIP_RETURN_CODE 77)

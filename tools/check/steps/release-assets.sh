@@ -19,6 +19,12 @@
 #         so-member             a .so member that the list itself names is still refused, and refused for that
 #                               reason alone (plan 15-02: the build-only host object is a non-member, so no
 #                               host artifact can enter a release archive whatever the list says)
+#         inspect-unlisted-member an extensionless bin/ivs-inspect member the list does not name is reported by
+#                               name through the EXISTING extra-member limb (plan 18-02: the build-only inspection
+#                               tool of TOOL-02 is a non-member too; the eleven-path inventory has no bin/ entry),
+#                               and the case's negative limb requires that neither the binary-member rule nor the
+#                               missing-member rule fired - the binary rule needs a dot in the base name, so a run
+#                               that reported this member would have passed for a reason other than this one)
 #         outer-name-pass       a clean archive whose outer name is ivs-test.tar.gz passes
 #       Five cases (plan 08-02, D-30) judge the version and changelog modes on synthetic inputs, each
 #       a header with the three IVS_API_VERSION defines plus a config version file with a
@@ -190,6 +196,21 @@ run_case() {
       wantfail "$c" 'release-assets-binary-member: lib/libivs_retro.so' || return 1
       if grep -q -e 'release-assets-extra-member' -e 'release-assets-missing-member' "$tmp/$c/lib.out"; then
         detail="the list was not honoured, so the binary rule is not the only finding"
+        return 1
+      fi
+      ;;
+    inspect-unlisted-member)
+      # The build-only inspection tool is not a release member (plan 18-02, TOOL-02, D-52): an extensionless
+      # bin/ivs-inspect the list does not name is refused by the existing extra-member limb, with no new rule,
+      # control or step. The negative limb is what makes the reading falsifiable: the binary rule is
+      # extension-only (`k >= 2` needs a dot in the base name), so it cannot see this member at all, and a run
+      # that reported either of those two tokens passed for a reason other than the one this case names.
+      mkdir -p "$tmp/$c" && mkarch "$c" a.tar.gz ivs-x include/ivs/ivs.h lib/libivs_core.a bin/ivs-inspect \
+        || { detail="cannot build the archive"; return 1; }
+      runlib "$c" install a.tar.gz ivs-x include/ivs/ivs.h lib/libivs_core.a
+      wantfail "$c" 'release-assets-extra-member: bin/ivs-inspect' || return 1
+      if grep -q -e 'release-assets-binary-member' -e 'release-assets-missing-member' "$tmp/$c/lib.out"; then
+        detail="the extension rule saw the extensionless member, or a listed path went missing"
         return 1
       fi
       ;;

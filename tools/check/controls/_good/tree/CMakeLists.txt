@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: MIT
 # Toy project of the control tree (plan 05-10): the c-build step configures and builds the dev and release
-# presets and compares the tracked C sources with the lists the build writes. This project writes the seven
+# presets and compares the tracked C sources with the lists the build writes. This project writes the eight
 # lists (ivs-core-sources.txt, ivs-runner-sources.txt, ivs-pack-sources.txt, ivs-pcm-sources.txt,
-# ivs-asm-sources.txt, plan 07-03, ivs-bench-sources.txt, plan 08-18, and ivs-flatwrap-sources.txt, plan 14-01, empty
-# like the pack list) for the toy sources and has the
+# ivs-asm-sources.txt, plan 07-03, ivs-bench-sources.txt, plan 08-18, ivs-flatwrap-sources.txt, plan 14-01, empty
+# like the pack list, and ivs-inspect-sources.txt, plan 18-02) for the toy sources and has the
 # target ivs_faults the dev tree builds; it compiles nothing.
 cmake_minimum_required(VERSION 3.25)
 project(toy LANGUAGES C)
@@ -14,4 +14,5 @@ file(WRITE "${CMAKE_BINARY_DIR}/ivs-pcm-sources.txt" "tools/pcm/good.c\n")
 file(WRITE "${CMAKE_BINARY_DIR}/ivs-asm-sources.txt" "tools/asm/good.c\n")
 file(WRITE "${CMAKE_BINARY_DIR}/ivs-bench-sources.txt" "")
 file(WRITE "${CMAKE_BINARY_DIR}/ivs-flatwrap-sources.txt" "")
+file(WRITE "${CMAKE_BINARY_DIR}/ivs-inspect-sources.txt" "tools/inspect/good.c\n")
 add_custom_target(ivs_faults)

@@ -59,6 +59,8 @@ extern const ivs_test_case ivs_stic_fetch_cases[];
 extern const size_t ivs_stic_fetch_count;
 extern const ivs_test_case ivs_stic_busrq_cases[];
 extern const size_t ivs_stic_busrq_count;
+extern const ivs_test_case ivs_stic_disc_cases[];
+extern const size_t ivs_stic_disc_count;
 
 /* ---- the independent literals (stic_reg.c includes the generated ivs_stic_probe.inc, cmake/IvsSticProbes.cmake) ---- */
 typedef struct sl_reg_row {

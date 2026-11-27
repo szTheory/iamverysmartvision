@@ -1,0 +1,23 @@
+# Scenario disc-sweep-probe (plan 19-02, VID-07, criterion 5): outcome missing-fixture, exit 13,
+# skip-ok. It is the visible skip marker of the owner-local sweep probe tools/disc-sweep.sh and
+# nothing else: the probe is the owner's private observation on the owner's own images, and no
+# criterion of Phase 19 depends on it (docs/owner-images.md).
+# It asks for the operator's EXEC image (`content exec user`), which the gate never passes
+# (`--exec`), so in the gate it ends missing-fixture with detail `missing role=exec user` and the
+# suite reports a passing judgement as a visible skip. No image of an operator is named or pinned
+# here.
+# It carries NO cartridge line, and that is the declared outcome and not taste: the outcome is
+# `missing-fixture` with exit 13, which happens only because the exec role it asks for is the
+# operator's and is therefore absent from the gate. A `content cart` line would supply a loadable
+# program the runner could boot instead of refusing, and the row would stop being the visible skip
+# it exists to be. The `golden` step independently refuses a golden for a scenario with a
+# user-content line, and a golden here would be a tracked record of an operator run. Do not add a
+# cartridge to "fix" this.
+# expect-detail: missing role=exec user
+ivss 1
+id disc-sweep-probe
+profile intv-2609-ntsc-family-p1
+content exec user
+content grom zero-grom
+run-to 4000 cpu-cycles stop halted
+assert halted == yes

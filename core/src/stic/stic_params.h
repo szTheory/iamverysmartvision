@@ -92,6 +92,17 @@ typedef struct ivs_stic_params {
   uint8_t effect_access[IVS_STIC_EFFECT_MAX];
   uint8_t effect_code[IVS_STIC_EFFECT_MAX];
   uint32_t alias_read_sensitive;
+  /* Display-path policy selectors (plan 19-01, D-54, C82 and C94): each is a 0/1 policy whose value 1 reproduces the
+   * bytes of the commit before plan 19-01, so a row that emits 1 moves no observable. They exist so the two rival rules
+   * are reachable as parameters instead of hardcoded: a cell of the phase's sweep is a stack copy of this struct with one
+   * of them at 0, and the shipped profile never holds anything but 1 (the generator refuses another value).
+   *   access_gating_when_off (C94, stic.access_gating_when_off): 1 = the access windows apply whatever the display latch
+   *     is (today's `apply`); 0 = the windows are open while the display is off, so an access with the latch clear is
+   *     neither blocked nor refused an effect.
+   *   display_latch_cleared_each_frame (C82, stic.display_latch_cleared_each_frame): 1 = the display latch is cleared at
+   *     every frame start (today's rule); 0 = the latch persists across frame starts. */
+  uint32_t access_gating_when_off;
+  uint32_t display_latch_cleared_each_frame;
   /* Background memory span (stic.backtab) and the power-on record (stic.power_on; registers are zero). */
   uint32_t backtab_lo;
   uint32_t backtab_words;

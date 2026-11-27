@@ -21,6 +21,8 @@
 *.vraw
 # Snapshot files (plan 08-17, D-19, T-08-39): a snapshot of a run that used owner-supplied images holds guest RAM those images wrote, derived rights-bearing material that must not be committed.
 *.ivsn
+# Inspection traces (plan 18-02, TOOL-09): the build-only instrument's output is operator-local and derivative of the content it traced, so it is never committed.
+*.ivst
 
 # Secrets and local environment.
 .env

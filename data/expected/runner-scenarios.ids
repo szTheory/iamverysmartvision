@@ -49,3 +49,9 @@ diag-stic2-collision-pass 0 pass deterministic run -
 bench-lamp-idle 0 pass deterministic run -
 bench-lamp-input 0 pass deterministic run -
 owner-exec-title 13 missing-fixture deterministic skip-ok -
+# Plan 19-02 (VID-07, criterion 5): the owner-local sweep probe tools/disc-sweep.sh has no case of its own in the gate, because its input is
+# the operator's own EXEC image and the gate never has one (D11). This row is its visible skip marker, beside the two skip-ok rows above: the
+# scenario asks for `content exec user`, so the gate ends it missing-fixture with exit 13, the suite judges it like any other and reports the
+# passing judgement as a skip, and the probe's absence is the expected state rather than a gap. The scenario names no cartridge on purpose
+# (data/scenarios/disc-sweep-probe.ivss says why): a loadable program would destroy the declared outcome.
+disc-sweep-probe 13 missing-fixture deterministic skip-ok -

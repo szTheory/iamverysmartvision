@@ -27,6 +27,12 @@ files-unlisted-binary-ivsn
 # Pending requirement. A control needs no row to run - the runner finds it by directory and this line.
 files-unlisted-binary-so
 files-unlisted-binary-dylib
+# Plan 18-02 (TOOL-02, TOOL-09, GUARDRAILS-v0.4 W3): the inspection instrument's output is an operator-local,
+# rights-bearing artifact, so a tracked one is refused by name. The extension list in tools/check/binary-ext.txt
+# carries ivst and the files step refuses it; this control plants one file and proves that refusal. No
+# important-gates row is written for it here: the registry step refuses a row naming a Pending requirement, and
+# TOOL-09's row lands in the commit that flips it.
+files-unlisted-binary-ivst
 # Plan 09-07 (EV-03 item 4): the two-root output anchoring rule pins manifest-format for an
 # output path outside fixtures/<dir>/ and outside data/.
 manifests-output-anchor
