@@ -13,7 +13,7 @@ STIC_CATCHUP_LAGS_UNIT stic.slice.state-equal-at-every-unit-boundary stic.slice.
 # STIC_ALIAS_NOT_HOOKED (core/src/machine/machine_bus.c): the STIC_ALIAS_READ hook class is treated as NONE, so a read of a
 # mode-select alias address ($4021, $8021, $C021), which the read view decodes to the cartridge, never reaches the STIC:
 # no mode switch inside the window and no blocked count outside it.
-STIC_ALIAS_NOT_HOOKED stic.alias.read-4021-switches-mode stic.alias. stic.mode.read-selects-cs
+STIC_ALIAS_NOT_HOOKED stic.alias.read-4021-switches-mode stic.alias.|stic.disc.|stic.judge.disc- stic.mode.read-selects-cs
 # STIC_MODE_SWITCH_OUTSIDE_WINDOW (core/src/machine/machine_bus.c): the access effects (the display-enable strobe, the mode
 # selects) are applied even when the gate is closed, so a blocked access still changes the latch or the mode.
 STIC_MODE_SWITCH_OUTSIDE_WINDOW stic.mode.read-outside-window-no-effect stic.mode.|stic.alias.|stic.enable.|stic.window.|stic.blocked.|stic.peek.|stic.disc.|stic.judge.disc- stic.events.table-order

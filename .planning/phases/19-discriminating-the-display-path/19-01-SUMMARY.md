@@ -219,3 +219,74 @@ value 1 of each member reproduces the previous bytes. The five ids the plan name
 checked individually from the suite's own result file
 (`stic.alias.read-4021-switches-mode`, `stic.alias.read-4021-returns-read-view-value`, `stic.alias.read-0040`,
 `stic.enable.seq.strobe-outside-window-dropped`, `stic.window.applies-when-display-off`), all `ok`.
+
+## Task 3: G2, G3 and G4, their guards and their committed stand-ins
+
+Six ids appended to `data/expected/tests/stic.ids` (`stic.disc.g2-gating`, `stic.disc.g3-read`,
+`stic.disc.g4-latch`, `stic.judge.disc-g2-dead`, `stic.judge.disc-g3-dead`, `stic.judge.disc-g4-dead`), so the
+`stic` inventory goes 99 at `start-commit` to 109 now, and the suite is `executed=109 skipped=0 failed=0`.
+
+### The observable table (what plan 19-03's predicted matrix is derived from)
+
+Measured by running each guard and reading its own report; the stand-in column is the value that makes the
+guard fail.
+
+| guest | access and stamp (measured) | registered observable | default | alternate (own field) | stand-in |
+|---|---|---|---|---|---|
+| `stic.disc.g1-window` | WRITE `$0020` at CPU cycle 2251 (tick 9004): 2 writes for the witness, 1 for the criterion guest | `blocked_writes` (witness) | 1 | 0 | `sd_prog_g1_dead`: the delay removed, so both writes land inside the window -> 0 in both limbs |
+| `stic.disc.g2-gating` | WRITE `$0020` at CPU cycle 3016 (tick 12064), past 2900 and short of the 3780-cycle gmem close, latch clear | `blocked_writes` | 1 | 0 | `sd_prog_g2_dead`: the write inside the window -> 0 in both limbs |
+| `stic.disc.g3-read` | READ `$0020` at CPU cycle 10, inside both candidates, no write | frame-0 `displayed` | 0 | 1 | `sd_prog_g3_dead`: a WRITE instead of the read -> 1 in both limbs |
+| `stic.disc.g4-latch` | WRITE `$0020` at CPU cycle 10, never re-strobed | `displayed` for frames 0, 1, 2 (a three-element vector) | (1, 0, 0) | (1, 1, 1) | `sd_prog_g4_dead`: re-strobes every frame (14931-cycle delays) -> (1, 1, 1) in both limbs |
+| `stic.disc.displayed-equivalence` | the same write as G1, read at the gmem close | `windows_active` and `display_latch` at one instant | (0, 0) | (1, 1) | `sd_equiv_dead`: the two words read at two instants |
+
+The blocked-write counter has **no report line at all**: the report's key table is closed and carries no STIC
+counter, so G1's witness and G2 read machine state and nowhere else. `displayed` is `windows_active`, which
+the report's `frame N displayed` clause prints through the delivered slot header bit; the source comments say
+so instead of implying symmetry.
+
+G3's case also asserts the whole of C84 as the exact-address match leaves it: the read leaves the 64-word
+register file byte-identical to power-on; a read of `$0040` has no effect **even on the stack copy whose
+`$0020` READ row arms** (a match that also armed on a mirrored address is a defect the diagonal would never
+catch); and a read of `$4021` still selects Color Stack mode, which is the register-index limb the exact
+match must not swallow.
+
+### Guards proven able to fail (each reverted before the commit)
+
+Throwaway substitution of each real guest into its judge's slot:
+
+```
+# judge-vacuous: the guard passed on the stand-in (shipped 1, gating alternate 0)   -> stic.judge.disc-g2-dead red
+# judge-vacuous: the guard passed on the stand-in (shipped 0, arming row 1)        -> stic.judge.disc-g3-dead red
+# judge-vacuous: the guard passed on the stand-in (shipped 1 0 0, persist 1 1 1)   -> stic.judge.disc-g4-dead red
+```
+
+Restored, all four `stic.judge.disc-*` cases are green.
+
+### Two mechanics worth recording for plan 19-03
+
+- **A guard measures the kind the guest makes.** `sd_measure` takes a kind filter (`SD_READS`, `SD_WRITES`,
+  `SD_ANY`) and `sd_hits` records each access's own kind, so G2's and G3's guards run **unchanged** on a
+  stand-in whose guest makes the other kind of access. The stamp relation ("strictly inside the gap",
+  "strictly outside both candidates") is a **case** assertion, not a guard limb: a stand-in that writes
+  inside the window must fail the guard's value limb, not be reported as broken.
+- **G4's vector is read in one ascending pass.** Replaying every write first and then walking back to earlier
+  frame closes is wrong: a re-strobing guest moves the catch-up cursor past frame 0's close before that close
+  is read. `sd_g4_vector` replays only the writes stamped at or before each frame's close, then reads it.
+
+### The §2.7 deviation, extended to all ten ids
+
+The entry above is extended, not replaced: **all ten** ids this plan registers
+(`stic.disc.g1-window`, `stic.disc.g2-gating`, `stic.disc.g3-read`, `stic.disc.g4-latch`,
+`stic.disc.displayed-equivalence`, `stic.judge.disc-g1-dead`, `stic.judge.disc-g2-dead`,
+`stic.judge.disc-g3-dead`, `stic.judge.disc-g4-dead`, `stic.judge.disc-equivalence-dead`) land without a
+`data/expected/important-gates.ids` row, because `important-gates.sh` **derives** its accepted set from the
+requirement records' `Complete` ids and refuses a row naming a `Pending` requirement, and VID-07 stays
+`Pending` until plan 19-03's second task flips it. The derived-accepted-set rule is what forces the split;
+their rows land in plan 19-03's Task 2 commit with the flip. Each id does ship its liveness guard and its
+committed stand-in in the same commit as the id, so only the registry row is deferred.
+
+### Collateral record this task had to extend
+
+`data/expected/faults/stic.ids`: `STIC_ALIAS_NOT_HOOKED` gained `stic.disc.|stic.judge.disc-`. The fault
+treats the alias-read hook class as NONE, so G3's `$4021` limb cannot see the mode switch. `faults=238/238`
+is unchanged - no fault site is added, one existing site's collateral is classified.

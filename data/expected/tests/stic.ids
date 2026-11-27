@@ -112,3 +112,11 @@ stic.disc.g1-window
 stic.judge.disc-g1-dead
 stic.disc.displayed-equivalence
 stic.judge.disc-equivalence-dead
+# Plan 19-01 task 3 (VID-07): the remaining three guests, G2 the gating rule, G3 the read-versus-write rule and G4 the
+# latch sustain rule, each with its own committed stand-in and judge, now that their fields can move.
+stic.disc.g2-gating
+stic.disc.g3-read
+stic.disc.g4-latch
+stic.judge.disc-g2-dead
+stic.judge.disc-g3-dead
+stic.judge.disc-g4-dead

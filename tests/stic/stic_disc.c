@@ -128,12 +128,20 @@ typedef struct sd_hits {
   size_t n;
   uint64_t stamp[SD_HIT_MAX];
   uint32_t cycle[SD_HIT_MAX];
+  uint8_t write[SD_HIT_MAX]; /* 1 for WRITE/DW, 0 for READ/FETCH: the kind the guest actually made */
 } sd_hits;
+
+/* The kind filter of sd_measure: a guest is measured for the accesses its shape implies. SD_ANY measures either kind,
+ * which is how G2's and G3's guards run the SAME guard on a stand-in that makes the other kind. */
+#define SD_READS 0u
+#define SD_WRITES 1u
+#define SD_ANY 2u
 
 /* Runs the guest unit by unit to machine time `until` and records the composed stamp of every access of the wanted kind
  * at the wanted address. 1 when the guest reached `until`; the caller checks the count, because a guest that never
  * strobes is the dead guest this family must not accept. */
-static int sd_measure(const uint16_t *w, size_t n, uint32_t is_write, uint16_t addr, uint64_t until, sd_hits *h)
+static int sd_measure(const uint16_t *w, size_t n, uint32_t kind_filter, uint16_t addr, uint64_t until,
+                      sd_hits *h)
 {
   const ivs_stic_params *p = ivs_stic_params_get(SC_PROFILE);
   ivs_ms_inst x;
@@ -157,12 +165,13 @@ static int sd_measure(const uint16_t *w, size_t n, uint32_t is_write, uint16_t a
     }
     for (j = 0u; j < r.n_accesses && j < 8u; j++) {
       uint32_t write = acc[j].kind == IVS_ACC_WRITE || acc[j].kind == IVS_ACC_DW;
-      if (write != is_write || acc[j].addr != addr || h->n >= SD_HIT_MAX) {
+      if ((kind_filter != SD_ANY && write != kind_filter) || acc[j].addr != addr || h->n >= SD_HIT_MAX) {
         continue;
       }
       h->stamp[h->n] = start + (uint64_t)acc[j].offset_cpu_cycles * (uint64_t)p->ticks_per_cpu_cycle +
                        (uint64_t)p->access_strobe_ticks;
       h->cycle[h->n] = (uint32_t)(start / (uint64_t)p->ticks_per_cpu_cycle) + acc[j].offset_cpu_cycles;
+      h->write[h->n] = (uint8_t)(write != 0u ? 1u : 0u);
       h->n += 1u;
     }
   }
@@ -188,8 +197,8 @@ static int sd_blank(ivs_ms_inst *x)
 /* Replays the recorded accesses at their measured stamps through the machine's bus wrapper with the row q (the cell's
  * row, not the profile's), then catches the STIC up past frame 0's graphics-memory close and reads the stored view.
  * 1 on success. */
-static int sd_observe(const ivs_stic_params *q, const sd_hits *h, uint32_t is_write, uint16_t addr,
-                      ivs_stic_report *rep)
+static int sd_observe_x(const ivs_stic_params *q, const sd_hits *h, uint32_t is_write, uint16_t addr,
+                        ivs_stic_report *rep, uint16_t *regs)
 {
   ivs_ms_inst x;
   struct ivs_machine *im;
@@ -210,6 +219,52 @@ static int sd_observe(const ivs_stic_params *q, const sd_hits *h, uint32_t is_wr
     c.sink = NULL;
     memset(&a, 0, sizeof a);
     a.kind = is_write != 0u ? IVS_ACC_WRITE : IVS_ACC_READ;
+    a.addr = addr;
+    (void)ivs_machine_bus(&c, &a);
+  }
+  ivs_stic_catch_up(q, &im->stic, &im->mem, (uint64_t)q->gmem_window_ticks + 1u, NULL, NULL);
+  memset(rep, 0, sizeof *rep);
+  rep->struct_size = IVS_STIC_REPORT_V1_SIZE;
+  if (ivs_machine_stic_state(x.m, rep) != IVS_OK) {
+    ivs_ms_free(&x);
+    return 0;
+  }
+  if (regs != NULL) {
+    memcpy(regs, rep->regs, IVS_STIC_REG_COUNT * sizeof regs[0]);
+  }
+  ivs_ms_free(&x);
+  return 1;
+}
+
+static int sd_observe(const ivs_stic_params *q, const sd_hits *h, uint32_t is_write, uint16_t addr,
+                      ivs_stic_report *rep)
+{
+  return sd_observe_x(q, h, is_write, addr, rep, NULL);
+}
+
+/* Replays the recorded accesses with the kind each one actually had, which is how one guard runs unchanged on a stand-in
+ * whose guest makes the other kind of access. */
+static int sd_observe_hits(const ivs_stic_params *q, const sd_hits *h, uint16_t addr, ivs_stic_report *rep)
+{
+  ivs_ms_inst x;
+  struct ivs_machine *im;
+  size_t i;
+  if (!sd_blank(&x)) {
+    return 0;
+  }
+  im = ivs_machine_from_handle_mut(x.m);
+  for (i = 0u; i < h->n; i++) {
+    ivs_machine_bus_ctx c;
+    ivs_cp1610_access a;
+    memset(&c, 0, sizeof c);
+    c.m = im;
+    c.unit_start_tick = h->stamp[i] - q->access_strobe_ticks;
+    c.ticks_per_cpu_cycle = q->ticks_per_cpu_cycle;
+    c.psg = ivs_psg_params_get(im->profile);
+    c.stic = q;
+    c.sink = NULL;
+    memset(&a, 0, sizeof a);
+    a.kind = h->write[i] != 0u ? IVS_ACC_WRITE : IVS_ACC_READ;
     a.addr = addr;
     (void)ivs_machine_bus(&c, &a);
   }
@@ -252,10 +307,10 @@ static uint32_t sd_guard_g1(const uint16_t *witness, size_t witness_n, uint32_t 
     return SD_G1_BROKEN;
   }
   /* the criterion's guest strobes once; the witness (and its stand-in) strobes twice */
-  if (!sd_measure(crit, crit_n, 1u, 0x0020u, p->frame_ticks, &ch) || ch.n != 1u) {
+  if (!sd_measure(crit, crit_n, SD_WRITES, 0x0020u, p->frame_ticks, &ch) || ch.n != 1u) {
     return SD_G1_BROKEN;
   }
-  if (!sd_measure(witness, witness_n, 1u, 0x0020u, p->frame_ticks, &wh) || wh.n != 2u) {
+  if (!sd_measure(witness, witness_n, SD_WRITES, 0x0020u, p->frame_ticks, &wh) || wh.n != 2u) {
     return SD_G1_BROKEN;
   }
   /* the criterion's gap: strictly inside the 2000-to-2900 window, computed from the profile's own parameters */
@@ -329,8 +384,8 @@ static int sd_g1_window(void)
    * decides the write. That is why the counter is the registered observable and the displayed word is not. */
   open = *p;
   open.access_gating_when_off = 0u;
-  SC_CHECK(sd_measure(crit, crit_n, 1u, 0x0020u, p->frame_ticks, &ch) && ch.n == 1u);
-  SC_CHECK(sd_measure(wit, wit_n, 1u, 0x0020u, p->frame_ticks, &wh) && wh.n == 2u);
+  SC_CHECK(sd_measure(crit, crit_n, SD_WRITES, 0x0020u, p->frame_ticks, &ch) && ch.n == 1u);
+  SC_CHECK(sd_measure(wit, wit_n, SD_WRITES, 0x0020u, p->frame_ticks, &wh) && wh.n == 2u);
   SC_CHECK(sd_observe(&open, &ch, 1u, 0x0020u, &r));
   if (r.windows_active != 1u) {
     ivs_test_diag("gating alternate: the criterion guest's displayed word is %u, not 1 (blocked %u)",
@@ -509,7 +564,7 @@ static int sd_displayed_equivalence(void)
   sd_words w;
   crit_n = sd_prog_g1_criterion(crit);
   SC_CHECK(sd_row_wide(p, &wide));
-  SC_CHECK(sd_measure(crit, crit_n, 1u, 0x0020u, p->frame_ticks, &ch));
+  SC_CHECK(sd_measure(crit, crit_n, SD_WRITES, 0x0020u, p->frame_ticks, &ch));
   SC_CHECK(ch.n == 1u);
   /* polarity 1: the shipped row, where the write is blocked and both words are zero */
   SC_CHECK(sd_words_at(p, &ch, (uint64_t)p->gmem_window_ticks, &w));
@@ -552,7 +607,7 @@ static int sd_judge_equivalence_dead(void)
   sd_words w;
   uint32_t reason;
   crit_n = sd_prog_g1_criterion(crit);
-  SC_CHECK(sd_measure(crit, crit_n, 1u, 0x0020u, p->frame_ticks, &ch));
+  SC_CHECK(sd_measure(crit, crit_n, SD_WRITES, 0x0020u, p->frame_ticks, &ch));
   SC_CHECK(ch.n == 1u);
   SC_CHECK(sd_equiv_dead(p, &ch, &w));
   reason = sd_equiv_guard(&w);
@@ -571,6 +626,419 @@ static int sd_judge_equivalence_dead(void)
   return IVS_TEST_PASS;
 }
 
+/* ---- G2: whether the access windows apply while the display latch is clear (C94) ---- */
+
+/* G2's delay: `sc_w_delay(200)` is 3006 cycles, so with the leading MVII and the MVO's own offset the write is stamped
+ * past 2900 CPU cycles and still short of the graphics-memory close at 3780 - the criterion's "outside both window
+ * candidates", asserted as a relation in the case and never written as a tick literal. */
+#define SD_G2_DELAY 200u
+
+/* G2, the criterion's guest: one write to $0020 stamped past both window candidates, with the display latch clear. */
+static size_t sd_prog_g2(uint16_t *w)
+{
+  size_t n = 0u;
+  n = sc_w_mvii(w, n, 0u, 0x0000u); /* $1000 MVII #0, R0        8 cycles */
+  n = sc_w_delay(w, n, SD_G2_DELAY); /* $1002 MVII #200,R1; DECR; BNZE   3006 cycles */
+  n = sc_w_mvo(w, n, 0u, 0x0020u);   /* $1007 MVO R0, $0020      11 cycles, past both candidates */
+  return sc_w_loop(w, n);            /* $1009 B self */
+}
+
+/* G2's committed stand-in: the write lands inside the window, so it is served under both settings and the guard fails. */
+static size_t sd_prog_g2_dead(uint16_t *w)
+{
+  size_t n = 0u;
+  n = sc_w_mvii(w, n, 0u, 0x0000u); /* $1000 MVII #0, R0        8 cycles */
+  n = sc_w_mvo(w, n, 0u, 0x0020u);  /* $1002 MVO R0, $0020      11 cycles, inside the window */
+  return sc_w_loop(w, n);           /* $1004 B self */
+}
+
+/* A stack copy with the gating member at 0: the windows are open while the display is off. */
+static void sd_row_gating_open(const ivs_stic_params *p, ivs_stic_params *q)
+{
+  *q = *p;
+  q->access_gating_when_off = 0u;
+}
+
+#define SD_G2_SHIPPED 0x01u /* the blocked count is not 1 at the shipped row */
+#define SD_G2_OPEN 0x02u    /* the blocked count is not 0 under the gating alternate */
+#define SD_G2_BROKEN 0x04u  /* the guest did not strobe $0020 exactly once */
+
+/* G2's guard: the blocked-write counter takes both values under the gating field alone. 0 means it passed. */
+static uint32_t sd_guard_g2(const uint16_t *guest, size_t guest_n, uint32_t *shipped, uint32_t *open_count)
+{
+  const ivs_stic_params *p = ivs_stic_params_get(SC_PROFILE);
+  ivs_stic_params open;
+  sd_hits h;
+  ivs_stic_report r;
+  uint32_t bad = 0u;
+  sd_row_gating_open(p, &open);
+  if (!sd_measure(guest, guest_n, SD_WRITES, 0x0020u, p->frame_ticks, &h) || h.n != 1u) {
+    return SD_G2_BROKEN;
+  }
+  if (!sd_observe(p, &h, 1u, 0x0020u, &r)) {
+    return SD_G2_BROKEN;
+  }
+  *shipped = r.blocked_writes;
+  if (r.blocked_writes != 1u) {
+    bad |= SD_G2_SHIPPED;
+  }
+  if (!sd_observe(&open, &h, 1u, 0x0020u, &r)) {
+    return SD_G2_BROKEN;
+  }
+  *open_count = r.blocked_writes;
+  if (r.blocked_writes != 0u) {
+    bad |= SD_G2_OPEN;
+  }
+  return bad;
+}
+
+/* G2's case. The report's key table is closed and carries no STIC counter, so this observable has no report line at all -
+ * it is read from `ivs_machine_stic_state` and nowhere else. The default is one blocked write: the write is outside the
+ * window and the closed register gate drops it. */
+static int sd_g2_gating(void)
+{
+  uint16_t w[SC_PROG_MAX];
+  size_t n = sd_prog_g2(w);
+  const ivs_stic_params *p = ivs_stic_params_get(SC_PROFILE);
+  uint32_t shipped = 0u;
+  uint32_t open_count = 0u;
+  uint32_t bad;
+  sd_hits h;
+  /* the criterion's "outside both window candidates": past the alternate and short of the graphics-memory close, both
+   * converted from the profile's own parameters */
+  SC_CHECK(sd_measure(w, n, SD_WRITES, 0x0020u, p->frame_ticks, &h) && h.n == 1u);
+  if (!(h.stamp[0] > (uint64_t)SD_WINDOW_WIDE_CYCLES * (uint64_t)p->ticks_per_cpu_cycle &&
+        h.stamp[0] < (uint64_t)p->gmem_window_ticks)) {
+    ivs_test_diag("G2 stamp %llu is not strictly inside (%llu, %llu)", (unsigned long long)h.stamp[0],
+                  (unsigned long long)((uint64_t)SD_WINDOW_WIDE_CYCLES * p->ticks_per_cpu_cycle),
+                  (unsigned long long)p->gmem_window_ticks);
+    return IVS_TEST_FAIL;
+  }
+  bad = sd_guard_g2(w, n, &shipped, &open_count);
+  if (bad != 0u) {
+    ivs_test_diag("G2 guard failed: limbs 0x%02X (shipped %u, gating alternate %u)", (unsigned)bad, (unsigned)shipped,
+                  (unsigned)open_count);
+    return IVS_TEST_FAIL;
+  }
+  return IVS_TEST_PASS;
+}
+
+static int sd_judge_g2_dead(void)
+{
+  uint16_t w[SC_PROG_MAX];
+  size_t n = sd_prog_g2_dead(w);
+  uint32_t shipped = 0u;
+  uint32_t open_count = 0u;
+  uint32_t bad = sd_guard_g2(w, n, &shipped, &open_count);
+  if (bad == 0u) {
+    ivs_test_diag("judge-vacuous: the guard passed on the stand-in (shipped %u, gating alternate %u)",
+                  (unsigned)shipped, (unsigned)open_count);
+    return IVS_TEST_FAIL;
+  }
+  if ((bad & SD_G2_SHIPPED) == 0u || (bad & (SD_G2_OPEN | SD_G2_BROKEN)) != 0u) {
+    ivs_test_diag("judge-wrong-reason: limbs 0x%02X (shipped %u, gating alternate %u)", (unsigned)bad,
+                  (unsigned)shipped, (unsigned)open_count);
+    return IVS_TEST_FAIL;
+  }
+  return IVS_TEST_PASS;
+}
+
+/* ---- G3: whether a READ of $0020 strobes the display (C82, bounded by C84) ---- */
+
+/* G3, the criterion's guest: one READ of $0020, stamped inside both window candidates, and no write at all. */
+static size_t sd_prog_g3(uint16_t *w)
+{
+  size_t n = 0u;
+  n = sc_w_mvii(w, n, 0u, 0x0000u); /* $1000 MVII #0, R0        8 cycles */
+  n = sc_w_mvi(w, n, 0x0020u, 1u);  /* $1002 MVI $0020, R1      10 cycles, the read */
+  return sc_w_loop(w, n);           /* $1004 B self */
+}
+
+/* G3's committed stand-in: a WRITE of $0020 instead of a read, so both settings display and the guard fails. */
+static size_t sd_prog_g3_dead(uint16_t *w)
+{
+  size_t n = 0u;
+  n = sc_w_mvii(w, n, 0u, 0x0000u); /* $1000 MVII #0, R0        8 cycles */
+  n = sc_w_mvo(w, n, 0u, 0x0020u);  /* $1002 MVO R0, $0020      11 cycles, a write where the guest reads */
+  return sc_w_loop(w, n);           /* $1004 B self */
+}
+
+/* A stack copy with the $0020 READ row of stic.access_effects carrying the arm effect: the third rival field's parameter
+ * is that row, not a member, because the row already exists in the profile with the effect `none`. */
+static int sd_row_read_arms(const ivs_stic_params *p, ivs_stic_params *q)
+{
+  uint32_t i;
+  uint32_t found = 0u;
+  *q = *p;
+  for (i = 0u; i < q->effect_count; i++) {
+    if ((uint32_t)q->effect_access[i] == IVS_STIC_ACCESS_READ && (uint32_t)q->effect_addr[i] == 0x0020u) {
+      q->effect_code[i] = IVS_STIC_EFFECT_ARM;
+      found = 1u;
+    }
+  }
+  return (int)found;
+}
+
+#define SD_G3_SHIPPED 0x01u /* the read displayed frame 0 at the shipped row */
+#define SD_G3_ARMED 0x02u   /* the read did not display frame 0 under the arming row */
+#define SD_G3_BROKEN 0x04u  /* the guest did not touch $0020 the way its shape implies */
+
+/* G3's guard: the frame-0 displayed word takes both values under the $0020 READ row alone. 0 means it passed. */
+static uint32_t sd_guard_g3(const uint16_t *guest, size_t guest_n, uint32_t *shipped, uint32_t *armed)
+{
+  const ivs_stic_params *p = ivs_stic_params_get(SC_PROFILE);
+  ivs_stic_params arms;
+  sd_hits h;
+  ivs_stic_report r;
+  uint32_t bad = 0u;
+  if (!sd_row_read_arms(p, &arms)) {
+    return SD_G3_BROKEN;
+  }
+  if (!sd_measure(guest, guest_n, SD_ANY, 0x0020u, p->frame_ticks, &h) || h.n != 1u) {
+    return SD_G3_BROKEN;
+  }
+  if (!sd_observe_hits(p, &h, 0x0020u, &r)) {
+    return SD_G3_BROKEN;
+  }
+  *shipped = r.windows_active;
+  if (r.windows_active != 0u) {
+    bad |= SD_G3_SHIPPED;
+  }
+  if (!sd_observe_hits(&arms, &h, 0x0020u, &r)) {
+    return SD_G3_BROKEN;
+  }
+  *armed = r.windows_active;
+  if (r.windows_active != 1u) {
+    bad |= SD_G3_ARMED;
+  }
+  return bad;
+}
+
+/* G3's case, and C84's three limbs in the same comparison. The default is "not displayed": a read has no effect, because
+ * the profile's $0020 READ row carries `none` (rule STIC-R15). The guard's second limb sets that row's effect on a stack
+ * copy, which is the whole of the third rival field. The three further limbs are what the exact-address READ match must
+ * not have swallowed: the read leaves the register file unchanged; a read of $0040 has no effect even on the arming row,
+ * because a match that also armed on a mirrored address is a defect the diagonal would never catch; and a read of $4021
+ * still switches Color Stack mode, because the mode-select limb is what the exact-address match keeps. */
+static int sd_g3_read(void)
+{
+  const ivs_stic_params *p = ivs_stic_params_get(SC_PROFILE);
+  uint16_t w[SC_PROG_MAX];
+  size_t n = sd_prog_g3(w);
+  uint32_t shipped = 0u;
+  uint32_t armed = 0u;
+  uint32_t bad = sd_guard_g3(w, n, &shipped, &armed);
+  ivs_stic_params arms;
+  sd_hits h;
+  sd_hits none;
+  ivs_stic_report r;
+  uint16_t before[IVS_STIC_REG_COUNT];
+  uint16_t after[IVS_STIC_REG_COUNT];
+  if (bad != 0u) {
+    ivs_test_diag("G3 guard failed: limbs 0x%02X (shipped %u, arming row %u)", (unsigned)bad, (unsigned)shipped,
+                  (unsigned)armed);
+    return IVS_TEST_FAIL;
+  }
+  SC_CHECK(sd_row_read_arms(p, &arms));
+  SC_CHECK(sd_measure(w, n, SD_READS, 0x0020u, p->frame_ticks, &h) && h.n == 1u);
+  memset(&none, 0, sizeof none);
+  /* limb 1: the read leaves the register file exactly as power-on left it */
+  SC_CHECK(sd_observe_x(p, &none, 0u, 0x0020u, &r, before));
+  SC_CHECK(sd_observe_x(p, &h, 0u, 0x0020u, &r, after));
+  if (memcmp(before, after, sizeof before) != 0) {
+    ivs_test_diag("the read of $0020 changed the register file");
+    return IVS_TEST_FAIL;
+  }
+  /* limb 2: a read of $0040 has no effect, even with the $0020 READ row arming - C84's stated default */
+  SC_CHECK(sd_observe(&arms, &h, 0u, 0x0040u, &r));
+  if (r.windows_active != 0u || r.mode != 0u) {
+    ivs_test_diag("a read of $0040 had an effect (displayed %u, mode %u)", (unsigned)r.windows_active,
+                  (unsigned)r.mode);
+    return IVS_TEST_FAIL;
+  }
+  /* limb 3: a read of $4021 still selects Color Stack mode - the register-index limb the exact match must not swallow */
+  SC_CHECK(sd_observe(p, &h, 0u, 0x4021u, &r));
+  if (r.mode != IVS_STIC_MODE_COLOR_STACK) {
+    ivs_test_diag("a read of $4021 did not select Color Stack mode (mode %u)", (unsigned)r.mode);
+    return IVS_TEST_FAIL;
+  }
+  return IVS_TEST_PASS;
+}
+
+static int sd_judge_g3_dead(void)
+{
+  uint16_t w[SC_PROG_MAX];
+  size_t n = sd_prog_g3_dead(w);
+  uint32_t shipped = 0u;
+  uint32_t armed = 0u;
+  uint32_t bad = sd_guard_g3(w, n, &shipped, &armed);
+  if (bad == 0u) {
+    ivs_test_diag("judge-vacuous: the guard passed on the stand-in (shipped %u, arming row %u)", (unsigned)shipped,
+                  (unsigned)armed);
+    return IVS_TEST_FAIL;
+  }
+  if ((bad & SD_G3_SHIPPED) == 0u || (bad & (SD_G3_ARMED | SD_G3_BROKEN)) != 0u) {
+    ivs_test_diag("judge-wrong-reason: limbs 0x%02X (shipped %u, arming row %u)", (unsigned)bad, (unsigned)shipped,
+                  (unsigned)armed);
+    return IVS_TEST_FAIL;
+  }
+  return IVS_TEST_PASS;
+}
+
+/* ---- G4: whether one strobe sustains the display for more than one frame (C82) ---- */
+
+/* G4, the criterion's guest: one write to $0020 inside both windows, never re-strobed. */
+static size_t sd_prog_g4(uint16_t *w)
+{
+  size_t n = 0u;
+  n = sc_w_mvii(w, n, 0u, 0x0000u); /* $1000 MVII #0, R0        8 cycles */
+  n = sc_w_mvo(w, n, 0u, 0x0020u);  /* $1002 MVO R0, $0020      11 cycles, inside the window */
+  return sc_w_loop(w, n);           /* $1004 B self, forever */
+}
+
+/* G4's committed stand-in: re-strobes every frame, so both rules give (yes, yes, yes) and the guard fails. The delay is
+ * 15 x 995 + 6 = 14931 cycles, just under the 14934-cycle frame, so the three strobes land in frames 0, 1 and 2. */
+static size_t sd_prog_g4_dead(uint16_t *w)
+{
+  size_t n = 0u;
+  n = sc_w_mvii(w, n, 0u, 0x0000u); /* $1000 MVII #0, R0        8 cycles */
+  n = sc_w_mvo(w, n, 0u, 0x0020u);  /* $1002 MVO R0, $0020      frame 0 */
+  n = sc_w_delay(w, n, 995u);       /* $1004 14931 cycles */
+  n = sc_w_mvo(w, n, 0u, 0x0020u);  /* $1009 MVO R0, $0020      frame 1 */
+  n = sc_w_delay(w, n, 995u);       /* $100B 14931 cycles */
+  n = sc_w_mvo(w, n, 0u, 0x0020u);  /* $1010 MVO R0, $0020      frame 2 */
+  return sc_w_loop(w, n);           /* $1012 B self */
+}
+
+/* A stack copy with the latch member at 0: the latch persists across frame starts. */
+static void sd_row_latch_persists(const ivs_stic_params *p, ivs_stic_params *q)
+{
+  *q = *p;
+  q->display_latch_cleared_each_frame = 0u;
+}
+
+/* The displayed word at each of the first three graphics-memory window closes, so the observable is a three-element
+ * vector and not a scalar. 1 on success. */
+static int sd_g4_vector(const ivs_stic_params *q, const sd_hits *h, uint32_t v[3])
+{
+  ivs_ms_inst x;
+  struct ivs_machine *im;
+  ivs_stic_report rep;
+  size_t i = 0u;
+  uint32_t k;
+  if (!sd_blank(&x)) {
+    return 0;
+  }
+  im = ivs_machine_from_handle_mut(x.m);
+  for (k = 0u; k < 3u; k++) {
+    uint64_t at = (uint64_t)k * (uint64_t)q->frame_ticks + (uint64_t)q->gmem_window_ticks;
+    /* every write stamped at or before this frame's close is replayed first, then the close is read: one ascending pass,
+     * so a guest that re-strobes cannot move the cursor past an earlier close before that close has been read */
+    for (; i < h->n && h->stamp[i] <= at; i++) {
+      ivs_machine_bus_ctx c;
+      ivs_cp1610_access a;
+      memset(&c, 0, sizeof c);
+      c.m = im;
+      c.unit_start_tick = h->stamp[i] - q->access_strobe_ticks;
+      c.ticks_per_cpu_cycle = q->ticks_per_cpu_cycle;
+      c.psg = ivs_psg_params_get(im->profile);
+      c.stic = q;
+      c.sink = NULL;
+      memset(&a, 0, sizeof a);
+      a.kind = IVS_ACC_WRITE;
+      a.addr = 0x0020u;
+      (void)ivs_machine_bus(&c, &a);
+    }
+    ivs_stic_catch_up(q, &im->stic, &im->mem, at, NULL, NULL);
+    memset(&rep, 0, sizeof rep);
+    rep.struct_size = IVS_STIC_REPORT_V1_SIZE;
+    if (ivs_machine_stic_state(x.m, &rep) != IVS_OK) {
+      ivs_ms_free(&x);
+      return 0;
+    }
+    v[k] = rep.windows_active;
+  }
+  ivs_ms_free(&x);
+  return 1;
+}
+
+#define SD_G4_SHIPPED 0x01u /* the shipped vector is not (yes, no, no) */
+#define SD_G4_PERSIST 0x02u /* the persist vector is not (yes, yes, yes) */
+#define SD_G4_BROKEN 0x04u  /* the guest did not strobe, or the vector could not be read */
+
+/* G4's guard: the three-element displayed vector takes both values under the latch field alone. 0 means it passed. */
+static uint32_t sd_guard_g4(const uint16_t *guest, size_t guest_n, uint32_t shipped[3], uint32_t persist[3])
+{
+  const ivs_stic_params *p = ivs_stic_params_get(SC_PROFILE);
+  ivs_stic_params keep;
+  sd_hits h;
+  sd_row_latch_persists(p, &keep);
+  if (!sd_measure(guest, guest_n, SD_WRITES, 0x0020u, 3u * (uint64_t)p->frame_ticks, &h) || h.n == 0u) {
+    return SD_G4_BROKEN;
+  }
+  if (!sd_g4_vector(p, &h, shipped) || !sd_g4_vector(&keep, &h, persist)) {
+    return SD_G4_BROKEN;
+  }
+  /* a guest that stops inside frame 0 cannot distinguish the two rules: fail with a diagnostic, never pass on a partial
+   * vector. One strobe in frame 0 is enough for the shipped rule, so the requirement is on the reading, not on the count. */
+  if (shipped[0] != 1u && persist[0] != 1u) {
+    ivs_test_diag("G4 could not read a displayed frame 0 at all (shipped %u %u %u, persist %u %u %u)",
+                  (unsigned)shipped[0], (unsigned)shipped[1], (unsigned)shipped[2], (unsigned)persist[0],
+                  (unsigned)persist[1], (unsigned)persist[2]);
+    return SD_G4_BROKEN;
+  }
+  {
+    uint32_t bad = 0u;
+    if (shipped[0] != 1u || shipped[1] != 0u || shipped[2] != 0u) {
+      bad |= SD_G4_SHIPPED;
+    }
+    if (persist[0] != 1u || persist[1] != 1u || persist[2] != 1u) {
+      bad |= SD_G4_PERSIST;
+    }
+    return bad;
+  }
+}
+
+/* G4's case. The default is (yes, no, no): one strobe displays the frame it lands in and the frame start clears the
+ * latch. The alternate is (yes, yes, yes): the latch persists until something else clears it. */
+static int sd_g4_latch(void)
+{
+  uint16_t w[SC_PROG_MAX];
+  size_t n = sd_prog_g4(w);
+  uint32_t shipped[3] = {0u, 0u, 0u};
+  uint32_t persist[3] = {0u, 0u, 0u};
+  uint32_t bad = sd_guard_g4(w, n, shipped, persist);
+  if (bad != 0u) {
+    ivs_test_diag("G4 guard failed: limbs 0x%02X (shipped %u %u %u, persist %u %u %u)", (unsigned)bad,
+                  (unsigned)shipped[0], (unsigned)shipped[1], (unsigned)shipped[2], (unsigned)persist[0],
+                  (unsigned)persist[1], (unsigned)persist[2]);
+    return IVS_TEST_FAIL;
+  }
+  return IVS_TEST_PASS;
+}
+
+static int sd_judge_g4_dead(void)
+{
+  uint16_t w[SC_PROG_MAX];
+  size_t n = sd_prog_g4_dead(w);
+  uint32_t shipped[3] = {0u, 0u, 0u};
+  uint32_t persist[3] = {0u, 0u, 0u};
+  uint32_t bad = sd_guard_g4(w, n, shipped, persist);
+  if (bad == 0u) {
+    ivs_test_diag("judge-vacuous: the guard passed on the stand-in (shipped %u %u %u, persist %u %u %u)",
+                  (unsigned)shipped[0], (unsigned)shipped[1], (unsigned)shipped[2], (unsigned)persist[0],
+                  (unsigned)persist[1], (unsigned)persist[2]);
+    return IVS_TEST_FAIL;
+  }
+  if ((bad & SD_G4_SHIPPED) == 0u || (bad & (SD_G4_PERSIST | SD_G4_BROKEN)) != 0u) {
+    ivs_test_diag("judge-wrong-reason: limbs 0x%02X (shipped %u %u %u, persist %u %u %u)", (unsigned)bad,
+                  (unsigned)shipped[0], (unsigned)shipped[1], (unsigned)shipped[2], (unsigned)persist[0],
+                  (unsigned)persist[1], (unsigned)persist[2]);
+    return IVS_TEST_FAIL;
+  }
+  return IVS_TEST_PASS;
+}
+
 /* ---- the family table ---- */
 
 const ivs_test_case ivs_stic_disc_cases[] = {
@@ -578,6 +1046,12 @@ const ivs_test_case ivs_stic_disc_cases[] = {
     {"stic.judge.disc-g1-dead", sd_judge_g1_dead, NULL},
     {"stic.disc.displayed-equivalence", sd_displayed_equivalence, NULL},
     {"stic.judge.disc-equivalence-dead", sd_judge_equivalence_dead, NULL},
+    {"stic.disc.g2-gating", sd_g2_gating, NULL},
+    {"stic.disc.g3-read", sd_g3_read, NULL},
+    {"stic.disc.g4-latch", sd_g4_latch, NULL},
+    {"stic.judge.disc-g2-dead", sd_judge_g2_dead, NULL},
+    {"stic.judge.disc-g3-dead", sd_judge_g3_dead, NULL},
+    {"stic.judge.disc-g4-dead", sd_judge_g4_dead, NULL},
 };
 
 const size_t ivs_stic_disc_count = sizeof ivs_stic_disc_cases / sizeof ivs_stic_disc_cases[0];
