@@ -125,6 +125,19 @@ for the cartridge it also builds its container with the project's own wrap tool 
 The pass path is pinned to what a run of that shape measured, and the same case flips one EXEC byte after `--record` to show the pin can fail: the core then refuses at load with `IVS_E_DIGEST_MISMATCH` (exit 14).
 The tests read and write nothing of the real `refs/`.
 
+## The sweep probe
+
+`sh tools/disc-sweep.sh --out refs/disc-sweep.tsv <exec-image> <grom-image>` is the second owner-local route of this page, and it is a probe, not a capability: it sweeps the display-enable strobe over a fixed, small list of offsets against the owner's own images and writes one line per offset.
+It is an operator tool like the helper above: it is not a gate step, CI never calls it, and it refuses a `CI` or `GITHUB_ACTIONS` environment with one line on stderr and exit 2.
+The offset it sweeps is the CPU-cycle bound of one run, and the fixed list straddles the end of the first frame, so a bound below that boundary must record `-` (the frame was never delivered) and a bound at or above it records the displayed word the slot header carries; the same run shape gives one value below the boundary and another above it, which is what makes the table an observation and not a formality.
+Each line of the output holds the swept offset, the run's own outcome word and that observed displayed word, and nothing else: the probe copies no digest, no size, no path and no name of an operator file into it.
+The output is refused outside `refs/`: the physical parent directory of the path is resolved and compared with the work-tree root, so a literal path, a spelling through `..` and a path through a symlink to a directory inside the tree all get the same refusal, and a parent that cannot be resolved is a refusal rather than a blind write.
+It is bounded three ways: the offset list is fixed and small, a count above a fixed bound is refused instead of truncating the sweep silently, and every invocation carries the runner's own wall cap with the elapsed time re-checked between invocations.
+With neither image present it prints `SKIPPED disc-sweep: no operator images (D11)` and exits 77, the skip exit code of the repository's test conventions, which is a different code from the scenario's exit 13 and both are needed.
+Its result is an observation of the owner's own run and nothing more: it is not evidence for any statement in this repository, it is not a claim and it adds no evidence tier, and no criterion of any phase depends on it.
+`data/scenarios/disc-sweep-probe.ivss` is the probe's visible skip marker: it asks for the operator's EXEC image by role, so the gate ends it `missing-fixture` (exit 13) and the suite reports it as a skip, and the probe's absence is the expected state rather than a gap.
+The gate tests the probe's containment, never its sweep: `runner-process.disc-sweep.ci-refusal`, `runner-process.disc-sweep.output-tree` and `runner-process.disc-sweep.bound` run a copy of it in a scratch directory outside the work tree, with zero-filled files the test makes and never an operator image, and they read and write nothing of the real `refs/`.
+
 ## The template scenario and the gate
 
 `data/scenarios/owner-exec-title.ivss` asks for `content exec user` and `content grom user`, names no cartridge, bounds the run at 600 frames and has no `assert` line: it states no result, because the project does not describe a real EXEC. The helper's `--cart` adds the cartridge role to its own temporary copy, and the tracked template is unchanged.

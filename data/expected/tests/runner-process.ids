@@ -43,6 +43,13 @@
 #   slot.cart.loaded 1 and slot.cart.sha256 equal to the digest the tool printed, with the outcome, exit code and outcome.detail pinned to
 #   what the run measured. A cartridge inside the work tree outside refs/ is refused like the other two images, and a one-byte EXEC mutation
 #   after --record is refused at load (IVS_E_DIGEST_MISMATCH, exit 14), so the pass direction is proved able to fail.
+# Plan 19-02 (VID-07, criterion 5): runner-process.disc-sweep.<case>, the three refusal cases of the owner-local sweep probe
+#   tools/disc-sweep.sh (ci-refusal, output-tree, bound). The probe is NOT a gate step and its sweep never runs in the gate: each case runs a
+#   COPY of the helper in a fresh scratch root outside the work tree with project-made zero-filled files only, so what the gate judges is the
+#   containment - the CI refusal, the output path refused in three spellings (literal, `..`, and a symlink to a directory inside the root) with
+#   the same write under refs/ accepted, and the run-count bound refused before any run - and never an operator image. The probe's own skip is
+#   exit 77 (`SKIPPED disc-sweep: no operator images (D11)`), which is a different code from the scenario's exit 13; the scenario case is
+#   runner-process.scenario.disc-sweep-probe, a skip-ok row in both inventories.
 # Plan 07-11 (D-31, T-07-26 to T-07-28): runner-process.owner-run.<case>, the nine cases of the owner-local helper tools/owner-run.sh (usage,
 #   ci-env, github-actions-env, in-tree-path, wrong-size, missing-lock, bad-lock-line, no-images-skip, identity-mismatch), each on a copy of the
 #   helper in a scratch root outside the work tree with project-made zero-filled files only; runner-process.judge.owner-run-refusal rejects a
@@ -144,6 +151,7 @@ runner-process.scenario.diag-stic2-collision-pass
 runner-process.scenario.bench-lamp-idle
 runner-process.scenario.bench-lamp-input
 runner-process.scenario.owner-exec-title skip-ok
+runner-process.scenario.disc-sweep-probe skip-ok
 runner-process.mutant.ADDI-SUBI
 runner-process.mutant.BNZE-BZE
 runner-process.mutant.PSHR-MVOAT
@@ -252,6 +260,9 @@ runner-process.owner-run.missing-lock
 runner-process.owner-run.bad-lock-line
 runner-process.owner-run.no-images-skip
 runner-process.owner-run.identity-mismatch
+runner-process.disc-sweep.ci-refusal
+runner-process.disc-sweep.output-tree
+runner-process.disc-sweep.bound
 runner-process.judge.owner-run-cart-pass
 runner-process.judge.exit-mismatch
 runner-process.judge.no-report-end

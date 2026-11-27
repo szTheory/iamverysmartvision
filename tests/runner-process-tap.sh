@@ -2359,6 +2359,106 @@ fi
 or_end
 result runner-process.judge.owner-run-cart-pass
 
+# ---- the owner-local display-path sweep probe (plan 19-02, VID-07, criterion 5; docs/owner-images.md) ----
+# tools/disc-sweep.sh is the probe, and it is not a gate step: its sweep needs the operator's own EXEC image, which the gate never has, so the
+# gate judges the probe's CONTAINMENT and never its sweep. Each case runs a COPY of the helper in a fresh scratch root outside the work tree
+# (its own tools/, data/scenarios/, build/release/runner/ivs-run and refs/), so the helper's root, taken from its $0, is the scratch root and
+# nothing of the repository can be read or written. The only images are project-made zero-filled files of the exact sizes (EXEC 8192, GROM
+# 2048). Three cases: ci-refusal (the environment refused with exit 2, one line, nothing on stdout); output-tree (the output path refused in
+# three spellings - the literal path, a `..` spelling and a path through a symlink to a directory inside the root - each with exit 2 and no
+# file left behind, then the same write under refs/ accepted and its table written); bound (a run count above the fixed bound refused before
+# any run and before the output exists, and the helper's own skip: exit 77 with its SKIPPED line, a different code from the scenario's exit
+# 13, both of which the criterion needs).
+ds_tmpd="$tmp/ds-tmpdir"
+mkdir "$ds_tmpd" || exit 1
+ds_ci_msg='disc-sweep: refusing to run in CI (CI or GITHUB_ACTIONS is set): owner images are never used there'
+# ds_scratch: a fresh scratch root in $sr.
+ds_scratch() {
+  sr=$(mktemp -d "$tmp/disc-sweep-root.XXXXXX") || exit 1
+  mkdir -p "$sr/tools" "$sr/data/scenarios" "$sr/build/release/runner" "$sr/refs" || exit 1
+  cp "$root/tools/disc-sweep.sh" "$sr/tools/disc-sweep.sh" || exit 1
+  cp "$scen/disc-sweep-probe.ivss" "$sr/data/scenarios/disc-sweep-probe.ivss" || exit 1
+  ln -s "$ivs_run" "$sr/build/release/runner/ivs-run" || exit 1
+}
+# ds_img <path> <bytes>: a project-made zero-filled file.
+ds_img() { dd if=/dev/zero of="$1" bs="$2" count=1 2> /dev/null || exit 1; }
+# ds_run <name> <CI> <GITHUB_ACTIONS> <helper arguments...>: the scratch copy as run ds-<name>, with its TMPDIR outside every scratch root.
+ds_run() {
+  _dn=$1; _dc=$2; _dg=$3; shift 3
+  run_one "$tmp" "ds-$_dn" env "CI=$_dc" "GITHUB_ACTIONS=$_dg" "TMPDIR=$ds_tmpd" sh "$sr/tools/disc-sweep.sh" "$@"
+}
+# ds_judge <name> <exit> <stdout line> <stderr line>: the judgement or_judge makes, for the probe's runs ('' for no line).
+ds_judge() {
+  found=0
+  [ "$hung" -eq 0 ] || why disc-sweep-hung "still running after ${limit}s, stopped by the watchdog"
+  [ "$rc" = "$2" ] || why disc-sweep-exit "exit $rc, expected $2"
+  or_same "$tmp/runs/ds-$1.out" "$3" || why disc-sweep-stdout "stdout is not exactly: $3 (got: $(sed -n '1,2p' "$tmp/runs/ds-$1.out"))"
+  or_same "$tmp/runs/ds-$1.err" "$4" || why disc-sweep-stderr "stderr is not exactly: $4 (got: $(sed -n '1,2p' "$tmp/runs/ds-$1.err"))"
+  [ "$found" -eq 0 ]
+}
+# ds_end: ends a case: nothing may be left in the helper's TMPDIR (finding disc-sweep-tmpdir), and the scratch root is removed.
+ds_end() {
+  if [ -n "$(ls -A "$ds_tmpd")" ]; then
+    ok=0; why disc-sweep-tmpdir "left in the helper's TMPDIR: $(ls -A "$ds_tmpd")"
+    rm -rf "$ds_tmpd"; mkdir "$ds_tmpd"
+  fi
+  rm -rf "$sr"
+}
+
+# The CI refusal: both environment variables at once, then GITHUB_ACTIONS alone, each before the absent-images skip (the two paths do not
+# exist, so an unchecked environment would skip instead of refusing).
+: > "$tmp/why"
+ok=1
+ds_scratch
+ds_run ci true true --out "$sr/refs/x.tsv" "$sr/refs/a" "$sr/refs/b"
+ds_judge ci 2 '' "$ds_ci_msg" || ok=0
+ds_run gha '' true --out "$sr/refs/x.tsv" "$sr/refs/a" "$sr/refs/b"
+ds_judge gha 2 '' "$ds_ci_msg" || ok=0
+ds_end
+result runner-process.disc-sweep.ci-refusal
+
+# The output-path rule, in the three spellings the flatwrap rule must answer the same way: the literal path inside the root outside refs/, a
+# spelling through `..`, and a path through a symlink to a directory inside the root. Each is refused with exit 2, leaves no file, and names
+# refs/. Then the same write under the scratch root's refs/ is ACCEPTED: the helper runs its six bounded runs and writes its table, which is
+# the positive half - a rule that refused every output would pass the three negative limbs alone.
+: > "$tmp/why"
+ok=1
+ds_scratch
+ds_img "$sr/refs/e.bin" 8192
+ds_img "$sr/refs/g.bin" 2048
+ln -s "$sr/data" "$sr/link" || exit 1
+for ds_sp in "$sr/data/probe.tsv" "$sr/refs/../data/probe.tsv" "$sr/link/probe.tsv"; do
+  ds_run tree '' '' --out "$ds_sp" "$sr/refs/e.bin" "$sr/refs/g.bin"
+  ds_judge tree 2 '' "disc-sweep: the output $ds_sp is inside the work tree outside refs/" || ok=0
+  [ ! -e "$sr/data/probe.tsv" ] || { ok=0; why disc-sweep-blind-write "the refused output $ds_sp was created"; }
+done
+ds_run treeok '' '' --out "$sr/refs/probe.tsv" "$sr/refs/e.bin" "$sr/refs/g.bin"
+ds_judge treeok 0 '' '' || ok=0
+[ -s "$sr/refs/probe.tsv" ] || { ok=0; why disc-sweep-no-table "the accepted write left no table under refs/"; }
+# The table holds the swept offsets and the run's own words, and never an image identity: six offsets, and no digest-shaped token anywhere.
+[ "$(grep -c -E '^[0-9]+ ' "$sr/refs/probe.tsv")" -eq 6 ] \
+  || { ok=0; why disc-sweep-table "the table does not hold one line per swept offset"; }
+! grep -q -E '[0-9a-f]{64}' "$sr/refs/probe.tsv" || { ok=0; why disc-sweep-table "the table holds a digest"; }
+ds_end
+result runner-process.disc-sweep.output-tree
+
+# The bounds. A run count above the fixed bound is refused with exit 2 before any run and before the output exists (the refusal names the
+# bound, so the case and the helper cannot drift); and the helper's own skip, exit 77 with the SKIPPED line and no output, is a different code
+# from the scenario's exit 13 and both are needed.
+: > "$tmp/why"
+ok=1
+ds_scratch
+ds_img "$sr/refs/e.bin" 8192
+ds_img "$sr/refs/g.bin" 2048
+ds_run bound '' '' --max-runs 100000 --out "$sr/refs/bound.tsv" "$sr/refs/e.bin" "$sr/refs/g.bin"
+ds_judge bound 2 '' 'disc-sweep: the run count 100000 is above the bound 16' || ok=0
+[ ! -e "$sr/refs/bound.tsv" ] || { ok=0; why disc-sweep-bound-write "the refused run count created its output"; }
+ds_run skip '' '' --out "$sr/refs/skip.tsv" "$sr/refs/absent-e.bin" "$sr/refs/absent-g.bin"
+ds_judge skip 77 'SKIPPED disc-sweep: no operator images (D11)' '' || ok=0
+[ ! -e "$sr/refs/skip.tsv" ] || { ok=0; why disc-sweep-skip-write "the skip created its output"; }
+ds_end
+result runner-process.disc-sweep.bound
+
 # ---- the host shim (plan 15-01, TOOL-08, D-48, D-35) ----
 # check_digest_lines <golden> <output>: exactly the two comparisons check_one_golden makes, applied to the fake
 # frontend's stdout - the sorted `digest.` line set is byte-equal (both non-empty), and the observed domain set the
