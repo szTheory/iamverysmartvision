@@ -290,3 +290,98 @@ committed stand-in in the same commit as the id, so only the registry row is def
 `data/expected/faults/stic.ids`: `STIC_ALIAS_NOT_HOOKED` gained `stic.disc.|stic.judge.disc-`. The fault
 treats the alias-read hook class as NONE, so G3's `$4021` limb cannot see the mode switch. `faults=238/238`
 is unchanged - no fault site is added, one existing site's collateral is classified.
+
+## The W1 commit's file list against the plan's enumeration
+
+Task 2's commit (`6cffdb4`) is the one that adds the profile field and pays the whole chain. `git show
+--name-only` on it:
+
+| file | in the plan's `files_modified`? |
+|---|---|
+| `core/src/stic/stic_params.h` | yes |
+| `cmake/IvsSticTable.cmake` | yes |
+| `core/src/machine/machine_bus.c` | yes |
+| `core/src/stic/stic_regs.c` | yes |
+| `core/src/stic/stic_events.c` | yes |
+| `tests/machine/machine_stic_params.c` | yes |
+| `data/profiles/intv-2609-ntsc-family-p1.json` | yes |
+| `data/expected/profile-fields.ids` | yes |
+| `data/expected/ivsn-literals.ids` | yes |
+| `data/discrepancies.json` | yes |
+| `docs/stic/reference-notes.md` | yes |
+| `.planning/PROJECT.md` | yes |
+| `tests/stic/stic_disc.c` | yes (plan level; the gating-coupling limb - see the deviation) |
+| `.planning/phases/.../19-01-SUMMARY.md` | yes |
+| `data/expected/faults/stic.ids` | **no** - see the deviation below |
+
+`data/expected/discrepancies.ids`, `data/stic/rules.json`, `data/stic/fields-pending.ids`, `data/golden/*`,
+`data/claims.json`, `data/expected/handoffs.ids` and `data/expected/pkg-install-files.ids` are **not** in the
+commit, which is the other half of the same statement: no C id was minted, no rule statement changed, no
+golden moved and no claim moved.
+
+### Rule 3 - Blocking issue: `data/expected/faults/stic.ids`
+
+Ten new `stic` ids exist, and the fault executables rerun the whole suite under every named fault.
+`faults-verdict` classifies each collateral failure against the `allowed-prefixes` column, so three existing
+fault sites (`STIC_WINDOW_OFF_BY_ONE`, `STIC_MODE_SWITCH_OUTSIDE_WINDOW`, `STIC_ALIAS_NOT_HOOKED`) needed
+`stic.disc.|stic.judge.disc-` added to that column or the gate is red for a reason unrelated to the change.
+The file is not in the plan's `files_modified`. It adds no fault site and no vector: `faults=238/238` is
+unchanged, and the only edit is three prefix strings on three existing lines. Recorded here because the
+phase record requires a commit's file list to match its enumeration, and this is a one-file mismatch forced
+by a gate step rather than by the change.
+
+## Gate
+
+`sh tools/gate.sh`, then `dash tools/gate.sh`, sequentially - never concurrently (lesson 33).
+
+```
+sh   rc=0   -- FAIL lines: 0
+dash rc=0   -- FAIL lines: 0
+cmp /tmp/g19-final-sh.line /tmp/g19-final-dash.line  -> identical
+```
+
+Final summary line (both shells byte-identical):
+
+```
+gate: PASS steps=38/38 controls=405/405 ... claims=29 provisional=28 handoffs=8 ... discrepancies=110 ... faults=238/238 ... profile-keys=155 goldens=29 ... gates=122 lines=372 ... prefix-files=11 ... records=155 fields=155 unknown-fields=48 ... tests-expected=5102 tests-executed=5098 tests-skipped=4 tests-missing=0 ... stic-rules=67 ...
+```
+
+`gate-linux: not run` - the docker daemon is unresponsive on this host (18-VERIFICATION measured `docker info`
+rc 124 twice), so the container gate is recorded as not run and never as a pass (lesson 24).
+
+### Measured token delta against the line at `start-commit`
+
+| token | start | now | predicted |
+|---|---|---|---|
+| `tests-expected` | 5082 | 5102 | +20 (ten ids x two presets) |
+| `tests-executed` | 5078 | 5098 | +20 |
+| `profile-keys` | 154 | 155 | +1 |
+| `fields` | 154 | 155 | +1 |
+| `records` | 154 | 155 | +1 |
+| `unknown-fields` | 47 | 48 | +1 |
+| `steps` | 38/38 | 38/38 | 0 |
+| `controls` | 405/405 | 405/405 | 0 |
+| `faults` | 238/238 | 238/238 | 0 |
+| `goldens` | 29 | 29 | 0 |
+| `gates` / `lines` | 122 / 372 | 122 / 372 | 0 |
+| `prefix-files` | 11 | 11 | 0 |
+| `claims` / `provisional` | 29 / 28 | 29 / 28 | 0 |
+| `discrepancies` | 110 | 110 | 0 |
+| `stic-rules` | 67 | 67 | 0 |
+| `handoffs` / `rights` | 8 / 11 | 8 / 11 | 0 |
+| `tracked` / `files` / `hygiene-files` | 2843 | 2845 | +2 (the new module and this SUMMARY) |
+| `scanned` | 702 | 703 | +1 (the new module) |
+
+Every token the plan predicted moved exactly as predicted, and no token the plan predicted as 0 moved.
+
+## Self-Check: PASSED
+
+- `tests/stic/stic_disc.c` exists, carries `SPDX-License-Identifier: MIT`, and is in `IVS_STIC_TEST_SOURCES`,
+  `ivs_stic_disc_cases[]` and the `stic_add` concatenation.
+- All ten ids are in `data/expected/tests/stic.ids` (99 -> 103 -> 109 data lines), each has a case, and each
+  is `ok` in the suite's own result file (`$IVS_TEST_OUT_DIR/stic.txt`, grammar `ok <n> <id>`).
+- Five committed stand-ins (`sd_prog_g1_dead`, `sd_equiv_dead`, `sd_prog_g2_dead`, `sd_prog_g3_dead`,
+  `sd_prog_g4_dead`), each referenced by its judge, each shown by a throwaway experiment to make its guard
+  fail, and each judge shown to report `judge-vacuous` when the real guest is substituted for it.
+- `start-commit: 57fe0550248d0e814b1b5903b9ada185ae9bb83a` is a 40-hex ancestor of HEAD.
+- Both gate shells green, sequentially, in byte-identical summary lines; `gate-linux: not run`.
