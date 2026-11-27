@@ -415,7 +415,7 @@ The milestone adds zero new gate steps, faults or goldens, and at most one claim
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 17. Records, Cost Window and the Count-Gate Contract | 3/3 | Complete    | 2026-11-26 |
-| 18. The Inspection Surface | 0/3 | Not started | - |
+| 18. The Inspection Surface | 3/3 | Complete    | 2026-11-26 |
 | 19. Discriminating the Display Path | 0/3 | Not started | - |
 | 20. Route, Witness and Release Posture | 0/2 | Not started | - |
 

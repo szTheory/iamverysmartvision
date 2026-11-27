@@ -126,3 +126,7 @@ Defects the plan-checker found in Phases 5 and 6, in the order of how often they
     lesson quoting a stale one would disagree with the next run:
 
 invariants: faults=238 goldens=29 claims=29 provisional=28
+
+## Phase 18 (plan 18-03, added at the Phase 18 close)
+
+33. **Two gate runs in one tree must be sequential, not concurrent.** A verification pass started `sh tools/gate.sh` and `dash tools/gate.sh` at the same time; the second run read a half-built `build/` and reported `-- FAIL c-build-failed: dev`, `steps=36/38` — a red result that belonged to the *harness*, not the tree. The rule is already in lesson 18 for containers; it applies to the two shells too, because both write `build/`. Run one, capture its summary line, then run the other, and compare the two lines with `cmp`. A red gate is never dismissed as "a race" without re-running sequentially and showing the green line: the re-run is the evidence, the excuse is not.

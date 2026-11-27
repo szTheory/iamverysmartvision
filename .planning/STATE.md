@@ -2,21 +2,21 @@
 gsd_state_version: "1.0"
 milestone: v0.4.0
 milestone_name: Inspectable Machine, One Default Decided
-current_phase: 18
-current_phase_name: The Inspection Surface
+current_phase: 19
+current_phase_name: Discriminating the Display Path
 current_plan: Not started
 status: planning
-stopped_at: Phase 17 complete, ready to plan Phase 18
-last_updated: "2026-11-26T22:16:54.165Z"
+stopped_at: Phase 18 complete, ready to plan Phase 19
+last_updated: "2026-11-27T03:53:24.799Z"
 last_activity: 2026-11-26
-last_activity_desc: Phase 17 complete, transitioned to Phase 18
-state_head: 6bca3ea3f83729e0193db284f39d65d0e414a8d3
+last_activity_desc: Phase 18 complete, transitioned to Phase 19
+state_head: 610e645223833bf263843ba5c0dd49a40cb39a81
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 11
-  completed_plans: 3
-  percent: 25
+  completed_plans: 6
+  percent: 50
 ---
 
 # Project State
@@ -26,16 +26,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-26)
 
 **Core value:** A deterministic, observable machine core whose every compatibility claim is bound to an exactly named profile and independent evidence — never an unqualified "it runs Intellivision games" label.
-**Current focus:** Phase 18 — The Inspection Surface
+**Current focus:** Phase 19 — Discriminating the Display Path
 **Milestone scope:** `.planning/MILESTONE-CONTEXT.md` (frozen 2026-11-26) and the five `.planning/research/v0.4.0-scoping-*.md` records. **Guardrails:** `.planning/ops/GUARDRAILS-v0.4.md`. **Mints no claim:** `claims=29` and `provisional=28` are invariants.
 
 ## Current Position
 
-Phase: 18 — The Inspection Surface
+Phase: 19 — Discriminating the Display Path
 Current Plan: Not started
 Total Plans in Phase: 3
 Status: Ready to plan
-Last activity: 2026-11-26 — Phase 17 complete, transitioned to Phase 18
+Last activity: 2026-11-26 — Phase 18 complete, transitioned to Phase 19
 
 
 ### Phase-boundary cost checkpoints (`GUARDRAILS-v0.4` §2.4)
@@ -109,7 +109,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 139
+- Total plans completed: 142
 - Average duration: -
 - Total execution time: -
 
@@ -131,6 +131,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | 15 | 3 | - | - |
 | 16 | 5 | - | - |
 | 17 | 3 | - | - |
+| 18 | 3 | - | - |
 
 *Updated after each plan completion*
 **Per-Plan Metrics:**
@@ -756,8 +757,8 @@ The row itself is left as recorded and this note sits under it.
 
 ## Session Continuity
 
-Last session: 2026-11-26T22:16:54.165Z
-Stopped at: Phase 17 complete, ready to plan Phase 18
+Last session: 2026-11-27T06:05:00.000Z
+Stopped at: Phase 18 complete, ready to plan Phase 19
 Resume file: None
 
 The stale Phase 13 note that stood here (record that phase's hosted row with
