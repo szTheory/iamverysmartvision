@@ -3,20 +3,19 @@ gsd_state_version: "1.0"
 milestone: v0.4.0
 milestone_name: Inspectable Machine, One Default Decided
 current_phase: 20
-current_phase_name: Route, Witness and Release Posture
 current_plan: Not started
-status: planning
-stopped_at: Phase 19 complete, ready to plan Phase 20
-last_updated: "2026-11-27T06:41:32.262Z"
+status: completed
+stopped_at: Phase 20 complete — all phases complete
+last_updated: "2026-11-27T07:57:39.363Z"
 last_activity: 2026-11-27
-last_activity_desc: Phase 19 complete, transitioned to Phase 20
-state_head: 86f5cc0d7b3fbff305a16012851bbccd73ee7e9c
+last_activity_desc: Phase 20 complete
+state_head: 98039e36e9da93e42692021836ccc2b08cd6e8ec
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 11
-  completed_plans: 8
-  percent: 75
+  completed_plans: 11
+  percent: 100
 ---
 
 # Project State
@@ -31,11 +30,11 @@ See: .planning/PROJECT.md (updated 2026-11-26)
 
 ## Current Position
 
-Phase: 20 — Route, Witness and Release Posture
+Phase: 20
 Current Plan: Not started
 Total Plans in Phase: 3
-Status: Ready to plan
-Last activity: 2026-11-27 — Phase 19 complete, transitioned to Phase 20
+Status: All phases complete
+Last activity: 2026-11-27 — Phase 20 complete
 
 
 ### Phase-boundary cost checkpoints (`GUARDRAILS-v0.4` §2.4)
@@ -115,7 +114,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 145
+- Total plans completed: 147
 - Average duration: -
 - Total execution time: -
 
@@ -139,6 +138,7 @@ The release is a **pre-release**: the first 0.x release, published through the d
 | 17 | 3 | - | - |
 | 18 | 3 | - | - |
 | 19 | 3 | - | - |
+| 20 | 2 | - | - |
 
 *Updated after each plan completion*
 **Per-Plan Metrics:**
@@ -765,7 +765,7 @@ The row itself is left as recorded and this note sits under it.
 ## Session Continuity
 
 Last session: 2026-11-27T08:40:00.000Z
-Stopped at: Phase 19 complete (Exit B), ready to plan Phase 20
+Stopped at: Phase 20 complete — all phases complete
 Resume file: None
 
 The stale Phase 13 note that stood here (record that phase's hosted row with

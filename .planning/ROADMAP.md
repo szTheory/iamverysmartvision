@@ -120,6 +120,16 @@ files.
 </details>
 
 <details>
+<summary>✅ v0.4.0 Inspectable Machine, One Default Decided (Phases 17 to 20) — all four phases complete 2026-11-27</summary>
+
+- [x] Phase 17: Records, Cost Window and the Count-Gate Contract (3/3 plans) — completed 2026-11-26
+- [x] Phase 18: The Inspection Surface (3/3 plans) — completed 2026-11-27
+- [x] Phase 19: Discriminating the Display Path (3/3 plans) — completed 2026-11-27, **Exit B** ("default unchanged, observation appended, rivals named")
+- [x] Phase 20: Route, Witness and Release Posture (2/2 plans) — completed 2026-11-27
+
+</details>
+
+<details>
 <summary>✅ v0.3.0 Owner-Supplied Content and a Driveable Host (Phases 13 to 16) — SHIPPED 2026-11-26</summary>
 
 - [x] Phase 13: Rights Ledger and Enforced Claim Ceiling — one question-shaped rights row per content question, an unsourced-`cleared` refusal, a refused-spelling refusal, D-32's `established`-claim check, and the ten D-09-06 mechanisms registered
@@ -424,7 +434,7 @@ The milestone adds zero new gate steps, faults or goldens, and at most one claim
 | 17. Records, Cost Window and the Count-Gate Contract | 3/3 | Complete    | 2026-11-26 |
 | 18. The Inspection Surface | 3/3 | Complete    | 2026-11-26 |
 | 19. Discriminating the Display Path | 3/3 | Complete    | 2026-11-27 |
-| 20. Route, Witness and Release Posture | 0/2 | Not started | - |
+| 20. Route, Witness and Release Posture | 2/2 | Complete    | 2026-11-27 |
 
 **Current milestone:** v0.4.0 "Inspectable Machine, One Default Decided", scoped by
 this roadmap on 2026-11-26 and **in progress**. The heading above was rewritten on
