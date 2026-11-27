@@ -644,3 +644,30 @@ cart-role mutant runner-process.judge.flatwrap-shim EV-08
 # (a baseline names the plan's own start commit sha) has NO mechanism - no gate step parses plans - and is
 # therefore not registered here: a row for it would register a mechanism that does not exist.
 count-gate mutant extra-file EV-08
+
+# Phase 18 (plan 18-02, TOOL-02 TOOL-09): the inspection surface's four committed stand-ins and the one
+# control for the artifact class. Five rows, two gate names - four `mutant` rows under the EXISTING
+# `runner-process` gate name, whose stand-ins are cases inside the `runner-process` suite that the gate
+# re-runs on every run, and one `control` row under the new gate name `files`, which is the step that
+# enforces the extension refusal. Every mechanism is a new id in an existing suite, a control directory
+# or an in-step selftest: zero new faults, zero new steps, zero new goldens.
+#
+# The four trace stand-ins each fail for its own stated reason and each is judged by the SAME function
+# the real case uses (GUARDRAILS-v0.4 2.7, 2.8): trace-empty fails `records > 0`; trace-repeat-tick
+# fails the fifth equality's `not all equal` clause - a constant column IS non-decreasing, so a
+# monotonicity-only check would accept it, which is what makes this stand-in the guard's own negative
+# control; trace-pokes-register replaces one `digest.*` line with another domain's value, is refused by
+# the suite's digest comparison, and is then fed to the tool's own reconciliation, which must refuse it
+# with `inspect-reconcile`, exit 1 and no output file; break-always-hits sets the non-hit count to 1 and
+# is refused by the hit/non-hit pair. The stand-ins and their guards landed in plan 18-02's Task 2
+# commit and these rows land in Task 3's, because this step derives its accepted set from the
+# traceability table and refuses a row naming a Pending requirement - the derived-accepted-set rule
+# (GUARDRAILS-v0.4 2.14) is what forces that split, and the plan records it as a deviation.
+runner-process mutant runner-process.judge.trace-empty TOOL-02
+runner-process mutant runner-process.judge.trace-repeat-tick TOOL-02
+runner-process mutant runner-process.judge.trace-pokes-register TOOL-02
+runner-process mutant runner-process.judge.break-always-hits TOOL-02
+# The control row is TOOL-09's own refusal: a tracked `ivst` in the tree must be refused by name, and
+# `files` is the step that owns `tools/check/binary-ext.txt`. The row is the phase's one new gate name,
+# which is why the gate line's `gates` token reads 121 rather than 120.
+files control files-unlisted-binary-ivst TOOL-09

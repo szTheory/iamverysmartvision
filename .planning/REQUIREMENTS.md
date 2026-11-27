@@ -22,8 +22,8 @@ below is a hypothesis until delivered and verified.
 
 ### Tooling and integration
 
-- [ ] **TOOL-02** *(promoted from the v2 deferred list)*: A build-only, scripted, headless inspection surface exists over the seams the core already exposes: disassembly of the project's own listings, breakpoints with an asserted hit and non-hit count, and a cycle-stamped access trace whose records are non-empty, cycle-monotonic, end at the report's own step tick and leave every digest byte-identical to the same run untraced. It is never installed, never enters the eleven-path prefix, and adds no gate step.
-- [ ] **TOOL-09**: Trace and disassembly output over operator content is an operator-local, rights-bearing artifact: one question-shaped `data/rights/` row with a disposition and a "what was taken" cell, an output path inside the work tree refused by name except under the ignored `refs/`, an `ivst` file refused by name in the binary-extension list and `.gitignore`, and no trace or disassembly ever committed as a golden, fixture, CI artifact or claim artifact — whatever its content.
+- [x] **TOOL-02** *(promoted from the v2 deferred list)*: A build-only, scripted, headless inspection surface exists over the seams the core already exposes: disassembly of the project's own listings, breakpoints with an asserted hit and non-hit count, and a cycle-stamped access trace whose records are non-empty, cycle-monotonic, end at the report's own step tick and leave every digest byte-identical to the same run untraced. It is never installed, never enters the eleven-path prefix, and adds no gate step.
+- [x] **TOOL-09**: Trace and disassembly output over operator content is an operator-local, rights-bearing artifact: one question-shaped `data/rights/` row with a disposition and a "what was taken" cell, an output path inside the work tree refused by name except under the ignored `refs/`, an `ivst` file refused by name in the binary-extension list and `.gitignore`, and no trace or disassembly ever committed as a golden, fixture, CI artifact or claim artifact — whatever its content.
 
 ### Video and the display path
 
@@ -86,8 +86,8 @@ requirement appears in exactly one phase.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | EV-08 | Phase 17 | Complete |
-| TOOL-02 | Phase 18 | Pending |
-| TOOL-09 | Phase 18 | Pending |
+| TOOL-02 | Phase 18 | Complete |
+| TOOL-09 | Phase 18 | Complete |
 | VID-07 | Phase 19 | Pending |
 | VID-08 | Phase 20 | Pending |
 
@@ -106,6 +106,9 @@ appended, rivals named") **is** `Complete` for VID-07 on its own stated terms.
 
 ---
 *Requirements defined: 2026-11-26*
-*Last updated: 2026-11-26 by plan 17-02, with EV-08 Complete once its one
-committed join id, its registry row and the corrected source-archive letter
-landed in one commit*
+*Last updated: 2026-11-26 by plan 18-02, with TOOL-02 and TOOL-09 Complete once
+their five registry rows, the two build-only proofs and the rights row landed in
+one commit. TOOL-02's disassembly limb is plan `18-03`; if that limb is dropped,
+the drop is recorded in the frozen page (`docs/inspection.md`) and in `18-03`'s
+record, TOOL-02 exits with the reduced surface named, and this status is not
+retracted — the flip therefore does not depend on a droppable plan.*

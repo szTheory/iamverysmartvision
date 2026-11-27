@@ -106,6 +106,19 @@
 #            is new because the row registers a contract rather than a step, and it is what makes `gates` read
 #            120. Lesson 32's clause 3 is the already-registered st-pass-line row, cited not duplicated, and
 #            clause 2 has no mechanism and is not registered at all)
+#   Phase 18 TOOL-02 TOOL-09 plan 18-02 (the inspection surface's four committed stand-ins and the artifact
+#            class's own control: four `mutant` rows under the existing `runner-process` gate name - the
+#            trace-empty, trace-repeat-tick, trace-pokes-register and break-always-hits cases, which live in
+#            the runner-process suite and are re-run on every gate run - and one `control` row under the new
+#            gate name `files` for files-unlisted-binary-ivst, the step that enforces the extension refusal.
+#            Five rows, two gate names, and every mechanism is a new id in an existing suite, a control
+#            directory or an in-step selftest rather than a new step: zero new faults, zero new steps, zero
+#            new goldens. The rows and the two requirement flips land in one commit for the same two-direction
+#            reason as Phases 14 to 17, and all ten toy registries and the three toy requirement records gain
+#            their toy-phase18 pair in that commit. The stand-ins themselves landed in plan 18-02's Task 2
+#            commit and these rows in Task 3's: this step derives its accepted set from the traceability table
+#            and refuses a row naming a Pending requirement, so the derived-accepted-set rule (2.14) is what
+#            forces the split, which 18-02-SUMMARY.md records as a deviation)
 # Resolution of <id> by mechanism:
 #   fault    first column of any data/expected/faults/*.ids (judged by faults-verdict);
 #   control  first column of any data/expected/controls/*.ids (run by tools/check/run-controls.sh);

@@ -55,3 +55,5 @@ toy-phase14 fault GOOD_FAULT CPU-97
 toy-phase15 fault GOOD_FAULT TOOL-96
 toy-phase16 fault GOOD_FAULT PKG-96
 toy-phase17 fault GOOD_FAULT EV-97
+toy-phase18 fault GOOD_FAULT TOOL-98
+toy-phase18 fault GOOD_FAULT TOOL-99

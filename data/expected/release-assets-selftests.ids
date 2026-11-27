@@ -19,3 +19,9 @@ readiness-selftest
 # missing-member finding - the binary rule does not consult the list, so no build-only host artifact can
 # enter a release archive.
 so-member
+# Plan 18-02 (TOOL-02, D-52): a synthetic install archive carrying an extensionless bin/ivs-inspect the list does
+# not name is refused as release-assets-extra-member by the EXISTING extra-member limb, and the case also requires
+# that neither release-assets-binary-member nor release-assets-missing-member fired - the extension-only binary rule
+# cannot see a name with no dot, so this is the phase's one release-assets case and it replaces the .ivst archive
+# case rather than joining it (the .ivst refusal is already proved by the files-unlisted-binary-ivst control).
+inspect-unlisted-member
