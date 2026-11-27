@@ -2,7 +2,7 @@
 /* ivs-inspect: the project's build-only inspection instrument (Phase 18, plan 18-02, TOOL-02 and
  * TOOL-09). One binary, four subcommands, no window, never installed, driven by a script only. The
  * frozen contract is docs/inspection.md: this file implements its `## Command surface` (the `trace`,
- * `break` and `step` grammars, `--help`, the three exit statuses), its output policy (the two output
+ * `break`, `dis` and `step` grammars, `--help`, the three exit statuses), its output policy (the two output
  * refusals of `## Refusal tokens` and the `refs/` exception of `## Rights`), the `break` report of
  * `## Breakpoints` and its host. Where this file's prose and that page disagree, the page wins.
  *

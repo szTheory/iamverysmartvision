@@ -73,11 +73,11 @@ foreach(p IN LISTS paths)
   # in plan 08-18 without a fourth control directory of its own, and tools/flatwrap joins it the same way in
   # plan 14-01: the rule stays proved three times (integrity-missing-spdx-tools-c, -asm, -pcm), and the control
   # that plan 14-01 does add is the c-build unlisted-source guard for the new directory.
-  # tools/inspect/ joins the alternation in plan 18-02 (TOOL-02) the same way: without it the new directory would be
-# silently outside this scan, and a source with no licence line would pass the gate.
-# host/ joins the C/H and CMakeLists alternations in plan 15-01 (TOOL-08) the same way: tests/host/ was already
+  # host/ joins the C/H and CMakeLists alternations in plan 15-01 (TOOL-08) the same way: tests/host/ was already
   # covered by the tests/ alternative, host/ was not, and a scope widening is not a new check - the mechanisms
   # (integrity-missing-spdx, integrity-non-ascii) stay proved by the eight committed controls.
+  # tools/inspect/ joins the alternation in plan 18-02 (TOOL-02) the same way: without it the new directory would be
+  # silently outside this scan, and a source with no licence line would pass the gate.
   if(p MATCHES "^tools/.*[.](sh|cmake)$" OR p MATCHES "^[.]github/workflows/[^/]*[.]yml$"
      OR p MATCHES "^(core|include|tests|host)/.*[.](c|h|sh|cmake)$" OR p MATCHES "^cmake/.*[.]cmake$"
      OR p MATCHES "^CMakeLists[.]txt$" OR p MATCHES "^(core|include|tests|runner|host)/(.*/)?CMakeLists[.]txt$"
