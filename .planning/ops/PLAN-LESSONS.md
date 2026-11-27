@@ -130,3 +130,34 @@ invariants: faults=238 goldens=29 claims=29 provisional=28
 ## Phase 18 (plan 18-03, added at the Phase 18 close)
 
 33. **Two gate runs in one tree must be sequential, not concurrent.** A verification pass started `sh tools/gate.sh` and `dash tools/gate.sh` at the same time; the second run read a half-built `build/` and reported `-- FAIL c-build-failed: dev`, `steps=36/38` — a red result that belonged to the *harness*, not the tree. The rule is already in lesson 18 for containers; it applies to the two shells too, because both write `build/`. Run one, capture its summary line, then run the other, and compare the two lines with `cmp`. A red gate is never dismissed as "a race" without re-running sequentially and showing the green line: the re-run is the evidence, the excuse is not.
+
+## Phase 19 (added at the Phase 19 review-and-fix pass)
+
+34. **The fourth shape of the lesson-32 class: a verify predicate that a correct record cannot satisfy.** Lesson 32
+    names three ways a gate measures the wrong thing and reports a pass — a count read from the wrong file, a baseline
+    measured somewhere other than the plan's own start commit, a verdict decided by a pipeline tail. This is the fourth:
+    the predicate is unsatisfiable *as written*, so the only implementation that passes it is a wrong one (reword correct
+    content to fit the scanner, or drop the check), and the only correct implementation is a deviation. Plan 19-03's
+    Task 2 verify block carried it: one limb required each rival note to match
+    `Observation, \d{4}-\d{2}-\d{2} \(Phase 19 sweep[^.]*\.` and the companion limb required the matched text to contain
+    `stic.disc.sweep-diagonal`. The two cannot both hold: `[^.]*` cannot cross a dot, and the id's first segment is
+    `stic.`, so for *any* wording that keeps the `(Phase 19 sweep` literal and the id the match necessarily stops at
+    `(Phase 19 sweep, stic.` — and the companion limb then fails on a record that is exactly right. The executor ran an
+    equivalent form (a dated shape that did not exist at the start commit, and the id inside the note) and recorded the
+    deviation, which was the right call for a frozen run and the wrong outcome for the plan: an "equivalent form run by
+    hand" is a workaround, not a check, because nothing re-runs it on the next gate and the next reader inherits a
+    predicate that still cannot pass.
+
+    The rule, two limbs, and it is cheap:
+
+  - **Limb 1 — prove the predicate matches a CONSTRUCTED correct example.** Write the record the check is meant to
+    accept, feed it to the predicate, and show the match. For a regex, run it (`printf '%s\n' '<example>' | grep -E
+    '<pattern>'`) before committing the plan, not after the executor reports the deviation.
+  - **Limb 2 — prove it FAILS a constructed wrong one.** A near-miss: the undated sentence, the note without the id, a
+    different date. A predicate that accepts both is lesson 20's check that cannot fail.
+
+    Two corollaries worth writing down with it. First, **an unsatisfiable pair of limbs is a defect in the predicate and
+    never in the record**: do not reword four correct discrepancy notes to satisfy a scanner, and do not record the
+    reworded content as evidence. Second, **when the two limbs must be independent, write them as two checks** (here: a
+    dated shape, and the id inside the note), so no single character class has to carry both claims at once — the fix is
+    the shape of the check, not a cleverer pattern.
