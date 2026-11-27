@@ -38,6 +38,23 @@ Status: Ready to plan
 Last activity: 2026-11-26 — Phase 17 complete, transitioned to Phase 18
 
 
+### Phase-boundary cost checkpoints (`GUARDRAILS-v0.4` §2.4)
+
+One line per phase boundary, recomputed by arithmetic from `.planning/ci-runs.tsv` and charged
+against the 21 hosted cpu-s allowance. The vocabulary is exactly three words.
+
+- **Phase 17 — `reprice`.** Window at the plan's own start commit `fb50835`: last-five medians
+  `cpu_s` **572**, `build_s` **49**, `gate_s` **164**, against the previous **367 / 34 / 115**; the
+  gate's token line did not move and `r` stayed inside 10.5143 to 11.6735. The median moved far more
+  than the phase's 0.11 priced addition, so this is a runner event: no lever invented. Charge 0.11
+  against 21.
+- **Phase 18 — `discharged-within-allowance`.** Priced 2.96; shipped **3.59** (14 process-launch ids
+  + 5 in-case stand-ins + 1 control + 6 registry rows + 2 in-step selftests), a 21 percent overrun —
+  **inside** the 25 percent band, so no reprice is owed and the frozen figure is not edited. Charge
+  3.59 against 21. **No hosted row was added in this phase** (nothing was pushed yet), so the window
+  is unchanged from Phase 17's and this checkpoint is arithmetic, not a new measurement; the push
+  run's own row lands at the milestone close.
+
 ### Planning overrides recorded by the autonomous run
 
 The v0.2.0 overrides are archived with that milestone's phase records
