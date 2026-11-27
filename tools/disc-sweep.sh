@@ -22,7 +22,8 @@
 # Usage: sh tools/disc-sweep.sh [--preset dev|release] [--max-runs <n>] --out <output> <exec> <grom>
 #   (the two positional arguments are the operator's EXEC and GROM files; the placeholders are spelled <exec> and <grom> here because the
 #   rights ledger refuses the hyphenated spellings outside the two pages that already carry them, and a new occurrence is not a rename)
-#   (default release; build/<preset>/runner/ivs-run must be built; --out is required and must resolve under refs/)
+#   (default release; build/<preset>/runner/ivs-run must be built; --out is required and must resolve under refs/; --max-runs N sweeps at
+#   most N of the fixed offsets, N in 1..16, and the table's header states how much of the list was covered)
 # Env: CI and GITHUB_ACTIONS must be empty or unset. TMPDIR is honoured for the temporary scenario copy (refused inside the work tree).
 # Refuses (one stderr line `disc-sweep: <reason>`, exit 2), in this order: a CI environment; bad arguments; an image path whose physical
 #   directory is inside the work tree outside refs/; an output path whose physical parent is inside the work tree and not under refs/ (a
@@ -35,9 +36,10 @@
 #   because the two are different limbs: 77 is a bare invocation with no image, 13 is the suite's case for a scenario whose exec role is the
 #   operator's. Both are needed and neither is a failure.
 # Exit: 0 the sweep ran and wrote its table; 1 the table could not be written; 2 refusal; 77 no operator images.
-# Bounds: the offset list is fixed and small, the run count is refused above a fixed bound rather than silently truncated, every run carries
-#   the runner's own wall cap, and the elapsed time is re-checked between runs so the total wall bound is a bound and not a hope. A run that
-#   ends inconclusive - a timeout, a fault, a missing frame - is an outcome recorded in the table, never a failure of the probe.
+# Bounds: the offset list is fixed and small; `--max-runs N` CAPS the sweep at the first N offsets (N in 1..16) and the table's header says
+#   so, while a value above the fixed bound is refused rather than silently truncated; every run carries the runner's own wall cap, and the
+#   elapsed time is re-checked between runs so the total wall bound is a bound and not a hope. A run that ends inconclusive - a timeout, a
+#   fault, a missing frame - is an outcome recorded in the table, never a failure of the probe.
 LC_ALL=C; export LC_ALL
 unset CDPATH   # a set CDPATH would let cd resolve a relative directory somewhere else and print it
 die() { printf 'disc-sweep: %s\n' "$1" >&2; exit 2; }
@@ -79,16 +81,19 @@ case $od/ in
   "$root/refs/"*) ;;
   "$root/"*) die "the output $out is inside the work tree outside refs/" ;;
 esac
-# The run-count bound, enforced before the first run and before the output is created: a bound that would be exceeded refuses instead of
-# truncating the sweep silently.
+# The run-count cap, enforced before the first run and before the output is created: `--max-runs N` runs at most N of the fixed offsets and
+# the table's own header states how much of the list it covered, so the option is a cap and not a name for two refusals. A value above the
+# fixed bound still refuses instead of silently running the whole list. The list length is asserted once, here, next to the list.
 runs=0
 for o in $offsets; do runs=$((runs + 1)); done
+[ "$runs" -le "$max_bound" ] || die "the run count $runs is above the bound $max_bound"
+cap=$runs
 if [ -n "$max_runs" ]; then
   case $max_runs in '' | *[!0-9]*) die "$usage" ;; esac
+  [ "$max_runs" -ge 1 ] || die "$usage"
   [ "$max_runs" -le "$max_bound" ] || die "the run count $max_runs is above the bound $max_bound"
-  [ "$runs" -le "$max_runs" ] || die "the run count $runs is above the bound $max_runs"
+  [ "$max_runs" -ge "$cap" ] || cap=$max_runs
 fi
-[ "$runs" -le "$max_bound" ] || die "the run count $runs is above the bound $max_bound"
 # The helper's own skip, a different code from the scenario's exit 13 (see the header).
 if [ ! -e "$ex" ] && [ ! -e "$gr" ]; then
   printf 'SKIPPED disc-sweep: no operator images (D11)\n'
@@ -105,12 +110,17 @@ tmp=$(mktemp -d "${TMPDIR:-/tmp}/disc-sweep.XXXXXX" 2> /dev/null) || die 'cannot
 trap 'rm -rf "$tmp"' EXIT
 trap 'exit 1' HUP INT TERM
 case $(cd -P -- "$tmp" && pwd -P)/ in "$root/"*) die 'TMPDIR is inside the work tree' ;; esac
-printf '# disc-sweep: %s runs, run-count bound %s, total wall bound %ss, per-run wall cap %sms\n' \
-  "$runs" "$max_bound" "$wall_bound" "$run_wall_ms" > "$out" || { printf 'disc-sweep: cannot write the output %s\n' "$out" >&2; exit 1; }
+printf '# disc-sweep: %s of %s offsets (run-count cap %s, bound %s), total wall bound %ss, per-run wall cap %sms\n' \
+  "$cap" "$runs" "${max_runs:-none}" "$max_bound" "$wall_bound" "$run_wall_ms" > "$out" \
+  || { printf 'disc-sweep: cannot write the output %s\n' "$out" >&2; exit 1; }
 printf 'offset_cpu_cycles outcome displayed\n' >> "$out" \
   || { printf 'disc-sweep: cannot write the output %s\n' "$out" >&2; exit 1; }
 started=$(date +%s)
+made=0
 for off in $offsets; do
+  # The cap stops the walk after $cap runs, so the table never holds more rows than the caller asked for.
+  [ "$made" -lt "$cap" ] || break
+  made=$((made + 1))
   # The wall bound is re-checked between runs: a run that ends late cannot hold the sweep open past it.
   if [ $(( $(date +%s) - started )) -ge "$wall_bound" ]; then
     printf '%s wall-bound -\n' "$off" >> "$out"

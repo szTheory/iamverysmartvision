@@ -2443,8 +2443,9 @@ ds_end
 result runner-process.disc-sweep.output-tree
 
 # The bounds. A run count above the fixed bound is refused with exit 2 before any run and before the output exists (the refusal names the
-# bound, so the case and the helper cannot drift); and the helper's own skip, exit 77 with the SKIPPED line and no output, is a different code
-# from the scenario's exit 13 and both are needed.
+# bound, so the case and the helper cannot drift); `--max-runs 2` is then honoured as a CAP - two rows, the first two offsets in list order, and
+# a header naming the cap and the list length - which is the limb that fails if the option goes back to being inert above the refusal; and the
+# helper's own skip, exit 77 with the SKIPPED line and no output, is a different code from the scenario's exit 13 and both are needed.
 : > "$tmp/why"
 ok=1
 ds_scratch
@@ -2453,6 +2454,16 @@ ds_img "$sr/refs/g.bin" 2048
 ds_run bound '' '' --max-runs 100000 --out "$sr/refs/bound.tsv" "$sr/refs/e.bin" "$sr/refs/g.bin"
 ds_judge bound 2 '' 'disc-sweep: the run count 100000 is above the bound 16' || ok=0
 [ ! -e "$sr/refs/bound.tsv" ] || { ok=0; why disc-sweep-bound-write "the refused run count created its output"; }
+# An accepted, in-range value must change what the sweep does, or the option's only effects are its two refusals. Two rows, the first two
+# offsets in list order (a cap truncates the walk; it does not resample it), and a header that states the cap against the list length.
+ds_run cap '' '' --max-runs 2 --out "$sr/refs/cap.tsv" "$sr/refs/e.bin" "$sr/refs/g.bin"
+ds_judge cap 0 '' '' || ok=0
+[ "$(grep -c -E '^[0-9]+ ' "$sr/refs/cap.tsv")" -eq 2 ] \
+  || { ok=0; why disc-sweep-cap "the capped sweep wrote $(grep -c -E '^[0-9]+ ' "$sr/refs/cap.tsv") offset rows, expected 2"; }
+[ "$(sed -n 's/^\([0-9]*\) .*/\1/p' "$sr/refs/cap.tsv" | tr '\n' ' ')" = '14000 14934 ' ] \
+  || { ok=0; why disc-sweep-cap "the capped sweep did not sweep the first two offsets in list order: $(sed -n 's/^\([0-9]*\) .*/\1/p' "$sr/refs/cap.tsv" | tr '\n' ' ')"; }
+grep -q -F '# disc-sweep: 2 of 6 offsets (run-count cap 2, bound 16)' "$sr/refs/cap.tsv" \
+  || { ok=0; why disc-sweep-cap "the table header does not state the cap and the list length: $(sed -n '1p' "$sr/refs/cap.tsv")"; }
 ds_run skip '' '' --out "$sr/refs/skip.tsv" "$sr/refs/absent-e.bin" "$sr/refs/absent-g.bin"
 ds_judge skip 77 'SKIPPED disc-sweep: no operator images (D11)' '' || ok=0
 [ ! -e "$sr/refs/skip.tsv" ] || { ok=0; why disc-sweep-skip-write "the skip created its output"; }
