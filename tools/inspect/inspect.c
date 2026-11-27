@@ -889,6 +889,7 @@ static int ix_cmd_break(int argc, char **argv)
   size_t len = 0u;
   uint64_t hits = 0u;
   uint64_t other_hits = 0u;
+  uint64_t records_seen = 0u;
   uint64_t end_tick = 0u;
   uint64_t end_records = 0u;
   uint64_t end_steps = 0u;
@@ -962,6 +963,7 @@ static int ix_cmd_break(int argc, char **argv)
         (void)fprintf(stderr, "ivs-inspect: the trace's access record is malformed\n");
         goto done;
       }
+      records_seen++;
       if (ix_kind_is_hit(kind, kind_len) != 0) {
         if (addr == pc) {
           hits++;
@@ -985,8 +987,12 @@ static int ix_cmd_break(int argc, char **argv)
     goto done;
   }
   /* `inspect-break-empty`: a trace with no access record has nothing to count a breakpoint against.
-   * A trace with one access record yields 1 or 0 and is not refused. */
-  if (end_records == 0u) {
+   * A trace with one access record yields 1 or 0 and is not refused. The decision is made on the
+   * access records this loop actually parsed, never on the `end` record's declared `records=` field:
+   * the frozen page's trigger is "a trace with zero access records", and a declared count that
+   * disagrees with the file must not move a named refusal. `end_records` stays the value the report
+   * copies, so `break.records` is the trace's own number rather than a second opinion of it. */
+  if (records_seen == 0u) {
     (void)snprintf(detail, sizeof detail, "the trace %s holds no access record to count against", trace_path);
     rc = ix_refuse(ix_tok_break_empty, detail);
     goto done;

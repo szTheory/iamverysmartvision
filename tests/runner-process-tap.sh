@@ -3253,8 +3253,10 @@ result runner-process.inspect.trace-state
 # runner-process.inspect.break-pair: the breakpoint as a PAIR in one assertion set - hit 1 at 1000 and 0 at
 # 1002 in the same report - with the in-run count (the trace's end record) and the file-derived count (the
 # `break` report) reconciling, the latter's records and end tick copied from the trace's own end record; then
-# the third limb, a trace with zero access records refused with `inspect-break-empty`, which is that token's
-# only case. The pair is measured on this build and pinned in ix_break_pair, never read from the listing.
+# the third limb, `inspect-break-empty` in BOTH directions the frozen page names - zero access records refused
+# even when the end record declares records=5, one access record accepted even when it declares records=0 - so
+# the refusal is decided on the records the file holds rather than on a declared field. That token's only case.
+# The pair is measured on this build and pinned in ix_break_pair, never read from the listing.
 : > "$tmp/why"
 ok=1
 if [ -z "$inspect" ]; then
@@ -3285,18 +3287,38 @@ else
   sed -n 's/^break\.end_tick //p' "$tmp/ix/brk.brk" > "$tmp/ix.brk.brkendtick"
   cmp -s "$tmp/ix.brk.endtick" "$tmp/ix.brk.brkendtick" \
     || { ok=0; why break-pair "break.end_tick '$(cat "$tmp/ix.brk.brkendtick" 2> /dev/null)' is not the trace's own '$(cat "$tmp/ix.brk.endtick")'"; }
-  # `inspect-break-empty`: a trace with zero access records has nothing to count against.
-  printf 'end tick=0 records=0 units=0 steps=0 break_pc=none break_hits=0 other_pc=none other_hits=0\n' \
+  # `inspect-break-empty`, both directions the frozen page names, and the refusal decided on the access
+  # records the file HOLDS rather than on the `end` record's declared `records=` field. A declared field
+  # that disagrees with the file is exactly what separates the two rules, so each limb makes the two
+  # disagree: zero access records declared as five must be REFUSED (a declared-field rule reads 5 and
+  # accepts), and one access record declared as zero must be ACCEPTED with its own count (a declared-field
+  # rule reads 0 and refuses). The first limb's trace is the shape a tracer that recorded nothing writes;
+  # the second's single record is a `fetch` at 1000, so the accepted count is the pair `1 0` and not a
+  # bare exit status.
+  printf 'end tick=0 records=5 units=0 steps=0 break_pc=none break_hits=0 other_pc=none other_hits=0\n' \
     > "$tmp/ix/empty.ivst"
   rm -f "$tmp/ix/empty.brk"
   run_one "$tmp" ix-brkempty "$inspect" break --pc 1000 --other 1002 --trace "$tmp/ix/empty.ivst" \
     --out "$tmp/ix/empty.brk"
   [ "$rc" -eq 1 ] \
-    || { ok=0; why break-empty "a zero-record trace exited $rc, expected 1: $(sed -n '1p' "$tmp/runs/ix-brkempty.err")"; }
+    || { ok=0; why break-empty "a zero-record trace declaring records=5 exited $rc, expected 1: $(sed -n '1p' "$tmp/runs/ix-brkempty.err")"; }
   grep -q -F -e 'ivs-inspect: inspect-break-empty: ' "$tmp/runs/ix-brkempty.err" \
     || { ok=0; why break-empty "the zero-record trace was not refused by that token: $(sed -n '1p' "$tmp/runs/ix-brkempty.err")"; }
   [ ! -s "$tmp/runs/ix-brkempty.out" ] || { ok=0; why break-empty 'the refused run printed on stdout'; }
   [ ! -e "$tmp/ix/empty.brk" ] || { ok=0; why break-empty 'the refused run left an output file behind'; }
+  printf 'tick=0 kind=fetch addr=1000 value=0000 wait=0 cycle=0 unit_start=0 unit_end=4\nend tick=0 records=0 units=1 steps=0 break_pc=none break_hits=0 other_pc=none other_hits=0\n' \
+    > "$tmp/ix/one.ivst"
+  rm -f "$tmp/ix/one.brk"
+  run_one "$tmp" ix-brkone "$inspect" break --pc 1000 --other 1002 --trace "$tmp/ix/one.ivst" \
+    --out "$tmp/ix/one.brk"
+  [ "$hung" -eq 0 ] && [ "$rc" -eq 0 ] \
+    || { ok=0; why break-empty "a one-record trace declaring records=0 exited $rc (hung $hung), and the page says it is not refused: $(sed -n '1p' "$tmp/runs/ix-brkone.err")"; }
+  [ ! -s "$tmp/runs/ix-brkone.err" ] || { ok=0; why break-empty 'the one-record trace was refused on stderr'; }
+  [ -s "$tmp/ix/one.brk" ] || { ok=0; why break-empty 'the one-record trace wrote no report'; }
+  sed -n 's/^break\.hits \([0-9][0-9]*\)$/\1/p' "$tmp/ix/one.brk" > "$tmp/ix.one.hits"
+  sed -n 's/^break\.other\.hits \([0-9][0-9]*\)$/\1/p' "$tmp/ix/one.brk" > "$tmp/ix.one.otherhits"
+  [ "$(cat "$tmp/ix.one.hits" "$tmp/ix.one.otherhits" | tr '\n' ' ')" = '1 0 ' ] \
+    || { ok=0; why break-empty "the one-record trace's pair is '$(cat "$tmp/ix.one.hits" 2> /dev/null) $(cat "$tmp/ix.one.otherhits" 2> /dev/null)', expected '1 0' for its single fetch at 1000"; }
 fi
 result runner-process.inspect.break-pair
 
