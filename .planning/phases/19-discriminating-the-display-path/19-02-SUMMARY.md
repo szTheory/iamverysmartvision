@@ -50,14 +50,14 @@ key-decisions:
   - "No `content cart` line in the probe scenario, and the file's header says why: a loadable program would let the runner boot instead of refusing, which would destroy the declared `missing-fixture`/13 outcome the row exists to be."
 
 actuals:
-  tokens: 0
+  tokens: 13375
   tasks: 2
-  commits: 0
+  commits: 1
   plan_head_before: 19b1e7a2a4a4d08c968b481592709f3ef60c7abd
-  plan_head_after: 0
+  plan_head_after: cc41dc47769f9cdd11f9df5637b0f103d9a54f97
 
 # Metrics
-duration: 0min
+duration: 26min
 completed: 2026-11-27
 status: complete
 ---
@@ -255,6 +255,120 @@ A user-content scenario is refused every frame **output** option (`--frame-ppm`,
 is an in-memory capture that names no file and no rate, so the temporary copy carries `capture video 0 1` and the
 assert. No committed file gains a capture line: the committed scenario is unchanged by the sweep and the copy lives
 in the helper's own `mktemp -d`.
+
+### The plan's Task 2 verify limb for the skip detail greps a shape the result file does not carry
+
+The plan's Task 2 verify asserts the skip detail with
+
+```
+grep -q -F -e 'runner-process.scenario.disc-sweep-probe: disc-sweep-probe: needs operator content (...)' \
+  /tmp/g19t5-out-dev/runner-process.txt
+```
+
+That is the **gate's** line shape (`-- SKIPPED <preset>/<suite>/<id>: <reason>`, `tests-inventory.sh:21`). The
+suite's own result file prints `ok <n> <id> # SKIP <reason>` (`tests/harness/ivs_test.h`), so the id is followed by
+` # SKIP ` and not by `: `, and the limb cannot pass against the producer it names. This is the same defect class the
+plan's own `fails_when` warns about one level up ("a skip gate that counts a path shape the producer never writes
+passes on zero evidence"). Resolution: the limb reads `' # SKIP disc-sweep-probe: needs operator content (ended
+missing-fixture, exit 13, as expected)'` from **each** preset's result file, which is strictly stronger than the
+plan's intent - it also proves the `# SKIP` marker precedes the reason. The gate-side assertion is unchanged and
+still greps the whole `-- SKIPPED <preset>/runner-process/<id>: <reason>` line, twice.
+
+### Two findings the gate made before this plan's commit, both fixed in it
+
+- `-- FAIL rights-token: exec-image tools/disc-sweep.sh` (and the same for `grom-image`): the rights ledger refuses
+  those two spellings everywhere except the four `(token, path)` pairs pinned in
+  `data/expected/rights-pinned.ids`, and the pin's own disposition says the spellings are refused everywhere else.
+  The helper's usage placeholders are `<exec>` and `<grom>`, and its header says why in one sentence. No pin line was
+  added or deleted.
+- `-- FAIL text-claim-untagged: docs/owner-images.md:135`: the claim-word tripwire matches the bare word `runs`.
+  The sentence became "every invocation carries the runner's own wall cap with the elapsed time re-checked between
+  invocations". The helper's own file is outside the tripwire's scan (`README.md`, `CHANGELOG.md` and `docs/**/*.md`
+  only), so `runs=` in a shell script is not a claim word.
+
+### One harness guard deliberately not applied
+
+The executor addendum refuses a commit whose HEAD is on a protected/default branch. This run is a **sequential**
+executor (`SEQUENTIAL=true`) dispatched onto the main working tree, which the repository's own executor rules
+(`.planning/ops/EXEC-RULES.md`) prescribe ("Sequential run on the main working tree (no worktree), on the current
+phase branch"), and every commit of this phase and the phases before it is on `main`. The guard exists to catch a
+worktree executor that drifted onto a protected branch; here the branch is the orchestrator's deliberate choice, so
+the commit was made on `main` with the normal hooks and no `--no-verify`.
+
+## Gate
+
+`sh tools/gate.sh`, then `dash tools/gate.sh`, sequentially, never concurrently (lesson 33).
+
+```
+sh   rc=0   -- FAIL lines: 0
+dash rc=0   -- FAIL lines: 0
+cmp /tmp/g19t5-sh.line /tmp/g19t5-dash.line  -> identical
+```
+
+Final summary line, both shells byte-identical:
+
+```
+gate: PASS steps=38/38 controls=405/405 api-calls=19 api-statuses=15 api-rows=61 pinned-defines=120 cc=AppleClang c-presets=2 fault-runs=238 core-imports=7 purity-selftest=7/7 ctest-runs=2 ci-runs=118 ci-uses=2 ci-workflows=2 ci-summary-selftest=11/11 claims=29 provisional=28 handoffs=8 cp1610-rows=74 patterns=1024 unclaimed=0 ambiguous=0 coincidences=1 agree=71 resolved=3 vectors=412 source=291 policy=121 rows-pending=0 policies-pending=0 bus-figure-pages=35 blind-files=12 second-read=12/12 scanned=705 waived=0 discrepancies=110 pending-resolvers=20 open=101 d10-items=47 faults=238/238 tracked=2848 binaries-listed=0 rights-pinned=4/4 terms=9 doc-files=64 profile-keys=155 goldens=29 reports=31 host-dependent=3 release-only=2 mode=tree hygiene-files=2848 history-commits=1 gates=122 lines=372 input-rows=31 input-policies=11 input-profile-fields=31 files=2848 listings=7 listing-words=1386 manifests=11 effective-yes=8 effective-no=3 rights=11 rights-cleared=1 literal-rows=80 views=2 dump-lines=160 prefix-files=11 archive=members public-symbols=19 defined=141 hdr-alone=10/10 consumer-lines=164 cxx-link=ok pkg-selftest=21/21 records=155 fields=155 unknown-fields=48 psg-rules=21 psg-vectors=120 psg-policies=12 release-selftest=13/13 runner-files=18 cases=14 sources=13 refs-verified=3/4 state-rows=88 state-cuts=18 tests-expected=5110 tests-executed=5104 tests-skipped=6 tests-missing=0 docs=65 claim-refs=27 stic-rules=67 stic-rows=64 video-frames=26 video-hash-ties=18 video-frame-pairs=9 tags=10 tiers=8
+```
+
+The gate printed exactly two skip lines for the probe, one per preset:
+
+```
+-- SKIPPED dev/runner-process/runner-process.scenario.disc-sweep-probe: disc-sweep-probe: needs operator content (ended missing-fixture, exit 13, as expected)
+-- SKIPPED release/runner-process/runner-process.scenario.disc-sweep-probe: disc-sweep-probe: needs operator content (ended missing-fixture, exit 13, as expected)
+```
+
+`gate-linux: not run` - the docker daemon is unresponsive on this host (18-VERIFICATION measured `docker info` rc
+124 twice), and the plan's own rule is not to start it. Recorded as not run and never as a pass (lesson 24).
+
+`sh tools/hygiene.sh --tree` is silent (rc 0, `hygiene-files=2848`); `git ls-files` holds no `.ivsc`, `.bin`, `.rom`,
+`.so`, `.dylib`, `.cfg`, `.ivsn` or `.ivst` path and no path under `refs/`; the probe wrote nothing outside its own
+`mktemp -d` scratch trees, so the work tree's `refs/` is exactly what it was at `start-commit`.
+
+### Measured token delta against the line at `start-commit`
+
+| token | start | now | predicted by the plan |
+|---|---|---|---|
+| `tests-expected` | 5102 | 5110 | +8 (four ids x two presets) |
+| `tests-executed` | 5098 | 5104 | +6 (three refusal cases x two presets; the scenario case is a skip) |
+| `tests-skipped` | 4 | 6 | +2 (one `skip-ok` id, one skip line per preset) |
+| `reports` | 30 | 31 | **not named by the plan** - one more scenario row's dev report (`golden.sh`) |
+| `tracked` / `files` / `hygiene-files` | 2845 | 2848 | +3 (the helper, the scenario, this SUMMARY) |
+| `scanned` | 703 | 705 | +2 (the helper and the scenario; `.planning/` is out of scope) |
+| `steps` | 38/38 | 38/38 | 0 |
+| `controls` | 405/405 | 405/405 | 0 |
+| `faults` | 238/238 | 238/238 | 0 |
+| `goldens` | 29 | 29 | 0 |
+| `claims` / `provisional` | 29 / 28 | 29 / 28 | 0 |
+| `gates` / `lines` | 122 / 372 | 122 / 372 | 0 |
+| `prefix-files` | 11 | 11 | 0 |
+| `records` / `fields` / `unknown-fields` | 155 / 155 / 48 | 155 / 155 / 48 | 0 |
+| `discrepancies` | 110 | 110 | 0 |
+| `host-dependent` / `release-only` | 3 / 2 | 3 / 2 | 0 |
+| `rights` / `rights-cleared` / `rights-pinned` | 11 / 1 / 4 | 11 / 1 / 4 | 0 |
+
+Every token the plan predicted moved exactly as predicted, one token it did not name (`reports`) moved for the reason
+recorded above, and every token it predicted as 0 stayed 0.
+
+`actuals.commits` counts this plan's **code** commit (`cc41dc4`, `git rev-list --count
+19b1e7a2a4a4d08c968b481592709f3ef60c7abd..cc41dc4` reads 1); the records commit that carries this SUMMARY follows it
+and is not counted, which is the shape plan 18-03 recorded.
+
+## Self-Check: PASSED
+
+- `tools/disc-sweep.sh` exists, is tracked, parses under `sh -n` and `dash -n`, carries the licence line, and its
+  header states that it is not a gate step and that no Phase 19 criterion depends on it.
+- `ls tools/check/steps/*.sh | wc -l` reads 38: no gate step was added.
+- The four refusal limbs the plan names behave as stated (CI, in-tree image, in-tree output in three spellings with
+  no file left behind, a run count above the bound before any run), and the helper's own skip is exit 77 with
+  `SKIPPED disc-sweep: no operator images (D11)`.
+- `data/scenarios/disc-sweep-probe.ivss` carries `content exec user`, `expect-detail: missing role=exec user`, a
+  bounded `run-to` with one assert, and no `content cart` line; it is `skip-ok` with exit 13 and `missing-fixture` in
+  both inventories, and both presets report it as a `# SKIP` line with that detail.
+- The three `runner-process.disc-sweep.*` ids are listed, have cases, and are `ok` in both presets' own result files.
+- `git merge-base --is-ancestor 19b1e7a2a4a4d08c968b481592709f3ef60c7abd HEAD` holds; `git ls-files` holds no path
+  under `refs/` and no probe output was left anywhere.
+- Both gate shells green, sequentially, in byte-identical summary lines; `gate-linux: not run`.
 
 ## Open items
 

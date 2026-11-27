@@ -32,10 +32,10 @@ See: .planning/PROJECT.md (updated 2026-11-26)
 ## Current Position
 
 Phase: 19 — Discriminating the Display Path
-Current Plan: Not started
+Current Plan: 19-02 complete (2 of 3); next is 19-03
 Total Plans in Phase: 3
-Status: Ready to plan
-Last activity: 2026-11-26 — Phase 18 complete, transitioned to Phase 19
+Status: In progress
+Last activity: 2026-11-27 — Phase 19 plan 02 complete: the owner-local sweep is contained as a throwaway probe, refused outside `refs/`, bounded, and `skip-ok` (exit 13, `missing-fixture`) in both inventories, with its three refusals judged by `runner-process` on both presets
 
 
 ### Phase-boundary cost checkpoints (`GUARDRAILS-v0.4` §2.4)
