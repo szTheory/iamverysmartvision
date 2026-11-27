@@ -174,6 +174,49 @@ Three surfaces, three pieces of evidence, and no one of them covers another:
 The probe is a throwaway check: it is not a gate step, CI never runs it, no test id, control, fault or
 golden was added for it, and it left the tree clean. Re-running it is a copy of the four commands above.
 
+### (i.2) The line recomputed at plan 20-02 (VID-08, GUARDRAILS-v0.4 section 7.4)
+
+Appended by plan 20-02. Neither (i) nor (i.1) is edited: the record of what was said then is append-only, and
+this note says what is true now.
+
+> the release ships the static package and the source archive, which carries the source of the build-only tools and of the build-only host shim; no shared object, no built host shim, no built inspection tool, no trace or disassembly output, no content
+
+That is the guardrails' close line complete for the first time. Section (i) said the three missing clauses - the
+built inspection tool, the trace and disassembly output, and the content - would be recomputed at Phase 20, and
+this note is that recomputation.
+
+The commit: `3cedf54280d4f9d1b8998bbc25b24bc916bd97fb`, the tree plan 20-02's Task 1 started from. Every value
+below was read from the archives `sh tools/release.sh --no-gate --out <fresh temp dir>` wrote and from the checks
+that ran on this tree. None is copied from the v0.4.0 opening record, and none is quoted from an earlier note.
+
+The archives were rebuilt on the tree that carries plan 20-02's Task 1 commit `e10c45f`, whose only difference
+from the start commit above is this plan's own record files: the ledger row, the packet, the anchor, the two
+pinned sets, the five control-tree ledgers and this plan's SUMMARY. No source file, no install rule and no
+`data/expected/` count that a clause below reads differs between the two trees, so the only value that moves is
+the source archive's member count - which is a count of tracked files and therefore includes the SUMMARY - and
+that is the count stated below and the count `git ls-files` gives on the tree the archives were built from.
+
+The dry run's own lines, in the order it prints them: `release: notes: CHANGELOG.md section [0.3.0] present`,
+`release: tag v0.3.0`, `release-assets source ok members=2859`, `release-assets install ok members=11`, and the
+consumer comparison against the install archive that ships. The tag is the header macros' version and not a
+milestone label.
+
+| clause | the check that holds it | the value read from this invocation |
+|---|---|---|
+| the release ships the static package | `pkg-install`'s inventory against `data/expected/pkg-install-files.ids`, and `prefix-files` on the gate line | eleven paths, `prefix-files=11` |
+| the source archive | `tools/release.sh`'s `release-assets source ok members=<n>` | `members=2859`, equal to the 2859 lines of `git ls-files` captured to a file on the tree the archives were built from |
+| the source archive carries the source of the build-only tools and of the build-only host shim | the five build-only source prefixes present in the source archive's member list | `tools/inspect/` 7 members, `tools/pack/` 3, `tools/asm/` 9, `tools/flatwrap/` 5, `host/` 6 |
+| no shared object | zero `so`/`dylib`/`dll`/`bundle` members in either archive; `binaries-listed` on the gate line; the `release-assets` case `so-member` | zero in both archives, `binaries-listed=0`, `release-selftest=13/13` with `so-member` among its thirteen cases |
+| no built host shim | zero `libivs_retro*` members; the `pkg-install` selftest `host-so-absent` | zero members, `pkg-selftest=21/21` with `host-so-absent` among its twenty-one |
+| no built inspection tool | zero `ivs-inspect` members; the `release-assets` case `inspect-unlisted-member`; no `bin/` line in the eleven-path inventory | zero members, the case inside `release-selftest=13/13`, no `bin/` path in the inventory or in the install archive |
+| no trace or disassembly output | zero `refs/` members and zero `.ivst` members in either archive; `ivst` in `tools/check/binary-ext.txt` with its `files-unlisted-binary-ivst` control; nothing the tool writes is ever committed (`docs/inspection.md` `## Rights`) | zero `refs/` members, zero `.ivst` members, and `git ls-files` names no such path |
+| no content | zero members with a content extension in either archive; `git ls-files` naming none | zero `ivsc`/`bin`/`grom`/`img`/`rom`/`exec` members in either archive, and no tracked path with one of those extensions |
+
+What did **not** move, because a recomputation that quietly moved a count would be the defect this note exists to
+prevent: `data/expected/pkg-install-files.ids` still holds eleven paths, the install archive's member list equals
+that list exactly in both directions once the archive's own prefix is stripped, and the `release-assets` step is
+unchanged - `release-selftest=13/13` with its case list unedited.
+
 ## (j) The owner route, rehearsed from the source archive (plan 16-02, PKG-06, GUARDRAILS-v0.3 V10 and section 2.10)
 
 The route is the three commands of `docs/owner-images.md` ("The route from the source archive, in three

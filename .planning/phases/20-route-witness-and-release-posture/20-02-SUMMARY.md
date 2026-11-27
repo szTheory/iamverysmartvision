@@ -20,6 +20,8 @@ provides:
   - "`docs/handoffs.md` `## D10-VID-08: the display strobe and the latch, at swept offsets`: the frozen record fields, the four comparison rows with per guest its registered observable, its witness, its own stamp band and both candidate values, the four masks, the status line, the no-leak paragraph and the never-a-claim paragraph"
   - "`docs/stic/d10-procedure.md`'s `### stic-strobe` anchor naming the packet and the four candidate pairs"
   - "the claim-artifact refusal demonstrated in both directions on the committed stand-in `tools/check/controls/claims-handoff-artifact`, with no new id, registry row or control minted for it"
+  - "`.planning/ops/RELEASE-OPS.md` `### (i.2)`: the close line complete in all seven clauses, the commit it was recomputed at, and a per-clause table whose every value was read from the archives the dry run wrote"
+  - "`docs/packaging.md` `## Release content (D-33)`: the one clause the list was missing - a release carries no trace or disassembly output - with its `ivst` mechanism named inside the same region"
 
 affects:
   - "`data/claims.json`: unmoved; no claim names the ledger or the row id, and `claims=29`/`provisional=28` hold"
@@ -45,6 +47,8 @@ key-files:
     - tools/check/controls/claims-handoff-disposition/overlay/data/expected/handoffs.ids
     - docs/handoffs.md
     - docs/stic/d10-procedure.md
+    - .planning/ops/RELEASE-OPS.md
+    - docs/packaging.md
 
 key-decisions:
   - "`G1` and `G2` carry the same witness pair, because one guest writes `$0020` once and the frame word reads the same under both rules; what separates them is the stamp band - `8000 < tick < 11600` for `G1` and `11600 < tick < 15120` for `G2` - together with the display latch's state, so the packet says plainly that a capture recording no stamp cannot separate the two."
@@ -204,6 +208,78 @@ The two real-tree facts: `data/claims.json` contains **no** occurrence of `hando
 
 The artifact predicate is already registered as `claims control claims-handoff-artifact EV-05` in `data/expected/important-gates.ids`, and its control already cites the ledger path. The criterion's "shown able to fail on a committed stand-in" is therefore satisfied by **running the committed stand-in**, not by minting a second one; a second registration for one proof is the thing plan 13-04 named and refused. The gate delta of that decision is zero: `gates=123`, `lines=378`, `controls=405/405`, `tests-expected=5114`.
 
+## Task 2: The release-decision line recomputed clause by clause
+
+### The recomputation
+
+One fresh asset directory, never `build/release-assets`, so a stale asset could not be read as this invocation's:
+
+```sh
+rm -rf /tmp/p20-rel && mkdir -p /tmp/p20-rel
+sh tools/release.sh --no-gate --out /tmp/p20-rel
+```
+
+Exit 0, zero `release: FAIL` lines. Its own lines, in the order it prints them:
+
+```
+release: notes: CHANGELOG.md section [0.3.0] present
+release: tag v0.3.0, publish=0, release-checks=0, gate=skipped
+release-assets source ok members=2859
+release-assets install ok members=11
+release: consumer against ivs-v0.3.0-install-darwin-arm64.tar.gz: output equals data/expected/pkg-consumer.golden (164 lines)
+```
+
+The tag is the header macros' version and not a milestone label, and the note says so.
+
+Then, from the archives that invocation wrote and from nothing else:
+
+| reading | command | value |
+|---|---|---|
+| source archive member count | `tar -tzf <src> \| grep -vc '/$'` | 2859, equal to `git ls-files \| grep -c .` = 2859 |
+| install archive member count | `tar -tzf <inst> \| grep -vc '/$'` | 11 |
+| install archive vs the pinned inventory | strip the archive prefix, `sort`, `cmp` | **identical**, both directions, 11 paths each |
+| `tools/inspect/` in the source archive | `grep -c -F -e '/tools/inspect/'` | 7 members |
+| `tools/pack/` | same | 3 members |
+| `tools/asm/` | same | 9 members |
+| `tools/flatwrap/` | same | 5 members |
+| `host/` | same | 6 members |
+| shared objects in either archive | `grep -E '\.(so\|dylib\|dll\|bundle)$'` | 0 and 0 |
+| `libivs_retro*` or `ivs-inspect` members | `grep -E -e 'libivs_retro' -e 'ivs-inspect'` | 0 |
+| `refs/` or `.ivst` members | `grep -E -e '(^\|/)refs/' -e '\.ivst$'` | 0 |
+| content-extension members | `grep -E '\.(ivsc\|bin\|grom\|img\|rom\|exec)$'` | 0 |
+| `bin/` in the install archive | `grep -c -E '(^\|/)bin/'` | 0 |
+| tracked paths with a content extension | `git ls-files \| grep -E` | none |
+
+The four figures the note cites, read from the gate line measured at `start-commit`: `prefix-files=11`,
+`binaries-listed=0`, `release-selftest=13/13`, `pkg-selftest=21/21`. The temporary asset directory was removed
+once the readings were recorded: the phase leaves no archives behind.
+
+### The note
+
+`### (i.2) The line recomputed at plan 20-02 (VID-08, GUARDRAILS-v0.4 section 7.4)` is appended to
+`.planning/ops/RELEASE-OPS.md` after `### (i.1)` and before `## (j)` (line 177, between 114 and 214), as an
+appended note: neither (i) nor (i.1) lost a line. It carries the close line as one block quote with all seven
+clauses; the statement that this is the guardrails' close line complete for the first time, because (i) named the
+three missing clauses and this note is their recomputation; the commit it was recomputed at; the per-clause table;
+and one sentence on what did not move.
+
+The note also states precisely where its values came from, because the archives were rebuilt on the tree that
+carries Task 1's commit `e10c45f` and not on the start commit itself. The only difference between the two trees is
+this plan's own record files, so the single value that moves is the source archive's member count - a count of
+tracked files, which includes this plan's SUMMARY. Every other clause's value is identical at both commits, and
+the note says so rather than implying the archives were built at the start commit.
+
+### The release-content clause `docs/packaging.md` was missing
+
+`## Release content (D-33)` stated six of the seven clauses and was missing exactly one: nothing there said a
+release carries no trace or disassembly output. One bullet is added immediately after the "No shared object is in
+a release" bullet, in the page's own register, resting on mechanisms that exist rather than on intent: the
+instrument is build-only and never installed, its output is refused inside the work tree except under the ignored
+`refs/`, `refs/` is not a member of either archive, the `ivst` extension is binary by name in
+`tools/check/binary-ext.txt` so a tracked trace is refused in the tree, in an archive and in a copy of the
+installed prefix, and nothing the instrument writes is ever committed. No claim tag is added, because this is a
+statement of what ships and not a claim. The page lost no line: 1 addition, 0 deletions.
+
 ## Token line, before and after
 
 | token | before | after | why |
@@ -217,6 +293,7 @@ The artifact predicate is already registered as `claims control claims-handoff-a
 | `tests-expected` / `tests-executed` | 5114 / 5108 | same | no test id |
 | `d10-items` | 47 | 47 | no D10 inventory row |
 | `tracked` / `hygiene-files` | 2858 | 2859 | `20-02-SUMMARY.md`; every other file is a modification |
+| `binaries-listed` / `release-selftest` / `pkg-selftest` | 0 / 13/13 / 21/21 | same | the `release-assets` step and its case list are unchanged |
 
 ## Cost arithmetic
 
@@ -256,13 +333,50 @@ This plan adds zero in-process ids (0.065), zero process-launch ids (0.10) and z
 
 `gsd_run query git.base-branch --is-protected main` reads `true`, `git.allow_default_branch_commits` is not set, and `.planning/config.json` must never be staged by an executor. The project configures `branching_strategy: none` with `use_worktrees: false`, the orchestrator dispatched a **SEQUENTIAL** executor onto the main working tree, and every prior phase of this repository committed on `main`. Recorded rather than worked around silently.
 
+### 4. Rule 1 - Plan defect: `wc -l` padding, as in deviation 2
+
+The `(a)` limb that counts the ledger's data rows and the `(j)` limbs that count `CL-` entries were unaffected
+because they use `grep -c` and `awk`, but the Task 1 limb counting the ledger rows through `wc -l` needed the same
+`tr -d ' '` fix recorded above. No further limb needed adjusting: every other count in this plan's two verify
+blocks is a `grep -c` or an `awk` count, which does not pad.
+
 ## Open items
 
 - `tools/gate-linux.sh` was **not run**: the container daemon is unresponsive on this host, which the orchestrator's rules for this phase record. A visible `not run` line is carried here rather than a pass.
 
+### 5. Rule 1 - Plan defect: the packaging constructed negative used a capitalised clause
+
+The `(g)` limb builds a constructed bullet that states the clause and drops the `ivst` mechanism, and asserts
+that the clause literal is present and the mechanism absent. It wrote the bullet as `- No trace or disassembly
+output is in a release.`, with a capital `N`, while the predicate greps the lowercase literal
+`no trace or disassembly output` with `grep -F`. The negative therefore reported "clause absent" and failed on
+the example it was meant to accept as the clause-bearing case. The fix is in the constructed example, not in the
+page or the predicate: the bullet now reads `- A release carries no trace or disassembly output.`, which is
+also the page's own register. The limb still proves what it was written to prove - the clause present, the
+mechanism absent, so a bullet without its mechanism is not accepted - and the page's real bullet carries both.
+
 ## Final gate
 
-Recorded in the completion section: `sh` then `dash`, sequentially, both summary lines compared with `cmp`.
+Both shells, sequentially and never concurrently (lesson 33), each summary line captured and the two compared
+with `cmp`.
+
+`sh tools/gate.sh` - exit 0, zero `-- FAIL` lines:
+
+```
+gate: PASS steps=38/38 controls=405/405 api-calls=19 api-statuses=15 api-rows=61 pinned-defines=120 cc=AppleClang c-presets=2 fault-runs=238 core-imports=7 purity-selftest=7/7 ctest-runs=2 ci-runs=118 ci-uses=2 ci-workflows=2 ci-summary-selftest=11/11 claims=29 provisional=28 handoffs=9 cp1610-rows=74 patterns=1024 unclaimed=0 ambiguous=0 coincidences=1 agree=71 resolved=3 vectors=412 source=291 policy=121 rows-pending=0 policies-pending=0 bus-figure-pages=35 blind-files=12 second-read=12/12 scanned=705 waived=0 discrepancies=110 pending-resolvers=20 open=101 d10-items=47 faults=238/238 tracked=2859 binaries-listed=0 rights-pinned=4/4 terms=9 doc-files=64 profile-keys=155 goldens=29 reports=31 host-dependent=3 release-only=2 mode=tree hygiene-files=2859 history-commits=1 gates=123 lines=378 input-rows=31 input-policies=11 input-profile-fields=31 files=2859 listings=7 listing-words=1386 manifests=11 effective-yes=8 effective-no=3 rights=11 rights-cleared=1 literal-rows=80 views=2 dump-lines=160 prefix-files=11 archive=members public-symbols=19 defined=141 hdr-alone=10/10 consumer-lines=164 cxx-link=ok pkg-selftest=21/21 records=155 fields=155 unknown-fields=48 psg-rules=21 psg-vectors=120 psg-policies=12 release-selftest=13/13 runner-files=18 cases=14 sources=13 refs-verified=3/4 state-rows=88 state-cuts=18 tests-expected=5114 tests-executed=5108 tests-skipped=6 tests-missing=0 docs=65 claim-refs=27 stic-rules=67 stic-rows=64 video-frames=26 video-hash-ties=18 video-frame-pairs=9 tags=10 tiers=8
+```
+
+`dash tools/gate.sh` - exit 0, zero `-- FAIL` lines, and `cmp` of the two summary lines: **identical**.
+
+`sh tools/hygiene.sh --tree` - silent, then `-- hygiene pass mode=tree hygiene-files=2859`.
+
+The only token that moved across the whole phase is `handoffs` 8 to 9 (and `tracked`/`hygiene-files` by the two
+SUMMARYs): `steps=38/38`, `controls=405/405`, `faults=238/238`, `goldens=29`, `claims=29 provisional=28`,
+`prefix-files=11`, `rights-pinned=4/4`, `gates=123 lines=378`, `d10-items=47`,
+`tests-expected=5114 tests-executed=5108` are all unmoved.
+
+Container gate: **not run** - `tools/gate-linux.sh` needs a responsive container daemon, which this host does not
+have; recorded as a visible `not run` line rather than a pass.
 
 ## Self-Check: PASSED
 
@@ -270,3 +384,5 @@ Recorded in the completion section: `sh` then `dash`, sequentially, both summary
 - `docs/handoffs.md` exists and carries `## D10-VID-08: the display strobe and the latch, at swept offsets`.
 - `docs/stic/d10-procedure.md` exists and carries the anchor sentence inside `### stic-strobe`.
 - `tools/check/steps/claims.sh` exists and names both pinned entries for the row.
+- `.planning/ops/RELEASE-OPS.md` exists and carries `### (i.2)` between `### (i.1)` and `## (j)`.
+- `docs/packaging.md` exists and carries the trace-and-disassembly clause inside `## Release content (D-33)`.
